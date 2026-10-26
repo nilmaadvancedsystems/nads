@@ -418,8 +418,10 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
       }
       else if (RE_DATA_MES.test(diaDoOcr(t[0].s))) { data = lerData(diaDoOcr(t[0].s), ano); if (data) t.shift(); }
       if (data) { dataAtual = data; noResumo = false; }
-      // (e o "Detalhamento do Saldo" do BNB: saldo disponível, limite, Investimentos "BNB AUTOMATICO FIF"; Vitor, 14/10/2026)
-      if (!data && /^(resumo|encargos vencidos|detalhamento do s)/.test(normalizarTexto(l.texto))) { juntarPerto(); noResumo = true; continue; }
+      // (e o "Detalhamento do Saldo" do BNB: saldo disponível, limite, Investimentos "BNB AUTOMATICO FIF"; Vitor, 14/10/2026; e o
+      // quadro do limite do BB depois do 999 S A L D O: Limite Ouro Empresarial, Custo Efetivo Total, Valor total devido,
+      // Valor liberado, IOF, Tarifa — a simulação do cheque especial, que entrava como lançamento do último dia; Vitor, 26/10/2026)
+      if (!data && /^(resumo|encargos vencidos|detalhamento do s|limite ouro|custo efetivo total|valor total devido|informacoes complementares)/.test(normalizarTexto(l.texto))) { juntarPerto(); noResumo = true; continue; }
       if (noResumo) continue;
 
       const valores: Token[] = [];
@@ -482,9 +484,9 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
         if (!candidatos.length) candidatos = [valores[0]];
       }
       const v = candidatos[0];
-      // no BB "Consultas", o valor com * é bloqueado ("911 Depósito bloquead.1d útil 4.837,00 *"): não mexe no saldo, não é
-      // lançamento (Vitor, 09/10/2026: a 380 não fechava maio com junho)
-      if (pelaDtMovimento && bloqueados.has(v)) { solta = null; continue; }
+      // o valor com * é bloqueado ("911 Depósito bloquead.1d útil 4.837,00 *"): não mexe no saldo, não é lançamento (Vitor,
+      // 09/10/2026: a 380 não fechava maio com junho, no BB "Consultas"; 26/10/2026: o mesmo no extrato do BB da 237)
+      if (bloqueados.has(v)) { solta = null; continue; }
       let c = centavos(v.s);
       if (c == null || c === 0) continue;
       const saldoDaLinha = lado === 'banco' && valores.length > 1 && valores[valores.length - 1] !== v ? centavos(valores[valores.length - 1].s) : null;

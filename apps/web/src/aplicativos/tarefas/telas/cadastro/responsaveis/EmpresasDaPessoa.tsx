@@ -88,7 +88,7 @@ export function EmpresasSemResponsavel({ vm }: { vm: VmEmpresasPorResponsavel })
                 <li key={l.chave}>
                   <span className="emp-pessoa-cod num fraco">{l.codigo ?? ''}</span>
                   <span className="emp-pessoa-nome" title={l.nome}>{l.nome}</span>
-                  <MenuSuspenso rotulo="Escolher" icone="usuario" className="btn btn-outline" titulo={'Responsável no ' + d.rotulo} direita largura={220}
+                  <MenuSuspenso rotulo="Escolher" icone="usuario" className="btn btn-outline" titulo={'Responsável no ' + d.rotulo} direita largura={220} flutuante
                     itens={vm.opcoes[d.id].map(n => ({ rotulo: <PessoaComFoto nome={n} {...vm.fotoDe(n)} />, onClick: () => vm.definir(l.nome, l.codigo, d.id, n) }))} />
                 </li>
               ))}

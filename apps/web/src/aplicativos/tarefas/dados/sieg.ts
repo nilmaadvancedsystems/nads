@@ -37,7 +37,8 @@ export type TipoDePedidoSieg = 'saidas' | 'contagem' | 'xmls' | 'xmlsCliente' | 
 export interface RepoSieg {
   exemplos: boolean;
   /** o robô do SIEG: ligado (com as credenciais) e quando bateu o ponto */
-  robo(): { carregado: boolean; ligado: boolean; motivo: string; em: string };
+  /** o robô do SIEG: ligado, o último sinal (em), o que está fazendo agora ('livre' = nada) e quantos pedidos esperam */
+  robo(): { carregado: boolean; ligado: boolean; motivo: string; em: string; situacao: string; naFila: number };
   contagem(codigo: string, competencia: string): { carregada: boolean; dados: t.sieg.ContagemSieg | null };
   /** as contagens e as saídas de todos os clientes do mês, numa consulta só (o Painel do Fiscal; 09/10/2026), pelo código */
   doMes(competencia: string): { carregado: boolean; contagens: Map<string, t.sieg.ContagemSieg>; saidas: Map<string, t.sieg.SaidasSieg> };
@@ -125,7 +126,7 @@ export function criarSiegMemoria(): RepoSieg {
   const agora = () => new Date().toISOString();
   return {
     exemplos: true,
-    robo: () => ({ carregado: true, ligado: true, motivo: '', em: agora() }),
+    robo: () => ({ carregado: true, ligado: true, motivo: '', em: agora(), situacao: 'livre', naFila: 0 }),
     contagem: (codigo, competencia) => ({
       carregada: true,
       dados: contadasAgora.get(codigo + '_' + competencia)

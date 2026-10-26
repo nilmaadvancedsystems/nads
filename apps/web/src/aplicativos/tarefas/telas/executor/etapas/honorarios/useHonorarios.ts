@@ -165,7 +165,8 @@ export function useHonorarios() {
     escolherBanco: (numero: string, conta: string) => setBancos(x => ({ ...x, [numero]: conta })),
     faltaBanco,
     baixado,
-    podeBaixar: !!e && (doPeriodo.length > 0 || pagas.length > 0) && contasOk && !faltaBanco,
+    // só com pagamento no PDF (Vitor, 26/10/2026)
+    podeBaixar: !!e && pagas.length > 0 && contasOk && !faltaBanco,
     /** o .xls de importação do Alterdata (o padrão de 10 colunas): a provisão de cada cobrança na emissão e o pagamento das pagas */
     baixar: () => {
       const linhas = [...t.lancamentosDosHonorarios(doPeriodo, contaDespesa, contaAPagar), ...t.pagamentosDosHonorarios(pagas, contaAPagar, contaDespesa, bancoDe)]

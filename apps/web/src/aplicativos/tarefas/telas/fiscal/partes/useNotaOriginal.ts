@@ -2,7 +2,9 @@
 // resumo do SIEG não guarda a descrição dos produtos, então o XML inteiro vem na hora, pelo mesmo pedido do ".zip das
 // notas que faltam no Alterdata" com uma chave só (o robô do PC pega no SIEG pela chave, ou no .zip do mês no Drive, e
 // entrega o .zip; o nads abre, lê o XML e monta a DANFE, core tarefas.sieg.danfeDoXml). A nota já aberta fica guardada
-// nesta aba. Nos exemplos, um XML montado do resumo (com descrições inventadas), só para ver a tela.
+// nesta aba. Nos exemplos, um XML montado do resumo (com descrições inventadas), só para ver a tela. Enquanto o pedido
+// espera, a tela diz o que o robô está fazendo e quantos pedidos há na fila, ou que ele está fora do ar (26/10/2026: "ta
+// bugado ou demora muito para puxar a nota"; a nota passa na frente da fila no robô).
 import { tarefas as t } from '@nads/core';
 import { useEffect, useRef, useState } from 'react';
 import { lerXmlsDosArquivos } from '../../../dados/arquivosXml';
@@ -11,6 +13,17 @@ import { useSieg } from '../../../dados/repo';
 const jaAbertas = new Map<string, { xml: string; danfe: t.sieg.Danfe }>();
 
 /** a competência da nota pela data dela (dd/mm/aaaa), quando quem chama não diz */
+/** o que dizer enquanto o pedido espera o robô pegar: fora do ar (sem sinal há 3 min), ocupado com outro pedido, ou já vai */
+function esperandoORobo(r: { carregado: boolean; ligado: boolean; em: string; situacao: string; naFila: number }): string {
+  if (!r.carregado) return 'Pedindo a nota ao robô…';
+  const sinal = Date.parse(r.em);
+  if (!r.ligado || !sinal || Date.now() - sinal > 3 * 60_000) {
+    return 'O robô do SIEG está fora do ar' + (sinal ? ' desde ' + new Date(sinal).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '') + ': a nota vem quando ele voltar.';
+  }
+  if (r.situacao && r.situacao !== 'livre') return 'Na fila: o robô está ' + r.situacao + '. A nota é a próxima.';
+  return 'Pedindo a nota ao robô…';
+}
+
 const competenciaDaData = (data: string) => { const m = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(data); return m ? m[3] + '-' + m[2] : ''; };
 
 /** nos exemplos: um XML do resumo, com descrições inventadas */
@@ -58,7 +71,7 @@ export function useNotaOriginal(nota: t.sieg.NotaDoSieg, codigo: string | number
     pode: !!cod && !!comp && (sieg.exemplos || /^\d{44}$/.test(nota.chave)) && (nota.tipo === 'NF-e' || nota.tipo === 'NFC-e'),
     fase: estado.fase,
     erro: estado.erro || '',
-    andamento: meu?.andamento || (estado.fase === 'pedindo' ? 'Pedindo a nota ao robô…' : ''),
+    andamento: meu?.andamento || (estado.fase === 'pedindo' ? esperandoORobo(sieg.robo()) : ''),
     danfe: guardada?.danfe || null,
     aberta: aberta && !!guardada,
     async abrir() {

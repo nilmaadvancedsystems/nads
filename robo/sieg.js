@@ -470,8 +470,10 @@ function iniciarSieg({ db, log }) {
     return () => {};
   }
   let situacao = 'livre';
+  // quantos pedidos esperam na fila (a tela mostra enquanto a pessoa espera; 26/10/2026)
+  let naFila = 0;
   painel.fazendoPor('sieg', () => (situacao === 'livre' ? null : 'SIEG: ' + situacao));
-  const ponto = () => estadoRef.set({ em: new Date().toISOString(), ligado: true, motivo: null, situacao }, { merge: true }).catch(() => {});
+  const ponto = () => estadoRef.set({ em: new Date().toISOString(), ligado: true, motivo: null, situacao, naFila }, { merge: true }).catch(() => {});
   ponto();
   const relogio = setInterval(ponto, 60 * 1000);
 
@@ -528,6 +530,49 @@ function iniciarSieg({ db, log }) {
       painel.atividade('sieg', 'O Drive deste PC abriu: ' + voltam.length + ' pedidos de XMLs voltaram para a fila', 'eles tinham dado erro porque o Google Drive estava fechado');
     }
   }
+  // A ordem da fila (26/10/2026): primeiro a nota que alguém abriu na tela (zipFaltam), depois os pedidos das pessoas
+  // (saídas, contagem, XMLs), por último os da madrugada; dentro de cada um, o mais antigo primeiro. Os repetidos (o mesmo
+  // tipo, empresa e mês: a madrugada de 3 noites devolvida de uma vez quando o Drive abriu) vão juntos: fica o mais novo,
+  // que é o que a tela acompanha, com a prioridade do mais urgente deles; os outros fecham como concluídos ("juntadoCom").
+  // Os de XMLs ficam esperando se o Drive deste PC não estiver aberto (sem mexer neles).
+  const JUNTAVEIS = new Set(['saidas', 'contagem', 'xmls']);
+  const urgencia = p => (p.tipo === 'zipFaltam' ? 0 : p.madrugada || p.criadoPorUid === 'robo' ? 2 : 1);
+  async function proximoPedido() {
+    const s = await db.collection('pedidosSieg').where('status', '==', 'pendente').limit(500).get();
+    const semDrive = !driveAberto();
+    const vale = s.docs.filter(d => !(semDrive && (d.data().tipo === 'xmls' || d.data().tipo === 'xmlsCliente')));
+    if (vale.length < s.docs.length && Date.now() - avisouSemDrive > 60 * 60 * 1000) {
+      avisouSemDrive = Date.now();
+      log('SIEG: pedidos de XMLs esperando o Google Drive deste PC abrir (' + PASTA_DO_DRIVE + ')');
+      painel.atividade('sieg', 'Pedidos de XMLs esperando o Google Drive deste PC abrir', 'a pasta ' + PASTA_DO_DRIVE + ' não está aberta; o robô baixa assim que ela aparecer', { aviso: true });
+    }
+    const grupos = new Map();
+    const candidatos = [];
+    for (const d of vale) {
+      const p = d.data();
+      const tipo = p.tipo || 'saidas';
+      if (!JUNTAVEIS.has(tipo)) { candidatos.push({ d, u: urgencia(p) }); continue; }
+      const k = tipo + '|' + soDigitos(p.codigo) + '|' + p.competencia;
+      if (!grupos.has(k)) grupos.set(k, []);
+      grupos.get(k).push(d);
+    }
+    let juntados = 0;
+    for (const g of grupos.values()) {
+      g.sort((a, b) => String(b.data().criadoEm || '').localeCompare(String(a.data().criadoEm || '')));
+      const fica = g[0];
+      for (const d of g.slice(1)) {
+        await d.ref.update({ status: 'concluido', concluidoEm: new Date().toISOString(), andamento: '', juntadoCom: fica.id }).catch(() => {});
+        juntados++;
+      }
+      candidatos.push({ d: fica, u: Math.min(...g.map(x => urgencia(x.data()))) });
+    }
+    if (juntados) log('SIEG: ' + juntados + ' pedidos repetidos (mesmo tipo, empresa e mês) foram juntos com o mais novo');
+    candidatos.sort((a, b) => a.u - b.u || String(a.d.data().criadoEm || '').localeCompare(String(b.d.data().criadoEm || '')));
+    naFila = Math.max(0, candidatos.length - 1);
+    ponto();
+    return candidatos.length ? candidatos[0].d : null;
+  }
+
   async function atenderPedidos() {
     if (ocupado) { chegouOutro = true; return; }
     ocupado = true;
@@ -535,20 +580,11 @@ function iniciarSieg({ db, log }) {
     try {
       await apagarZipsVelhos().catch(err => log('SIEG: não consegui apagar os .zip velhos -', err.message));
       await devolverOsQueEsperavamODrive().catch(err => log('SIEG: não consegui devolver os pedidos que esperavam o Drive -', err.message));
-      // 25 de uma vez (eram 5): os de XMLs que esperam o Drive ficam na fila e não podem tapar os outros
-      const snap = await db.collection('pedidosSieg').where('status', '==', 'pendente').limit(25).get();
-      for (const d of snap.docs) {
+      // um pedido por vez, e a fila é relida depois de cada um (26/10/2026: "ta bugado ou demora muito para puxar a nota":
+      // a nota de uma tela esperava atrás de 176 pedidos de XMLs da madrugada). Cada volta escolhe o mais urgente.
+      for (let d = await proximoPedido(), voltas = 0; d && voltas < 1000; d = await proximoPedido(), voltas++) {
         const p = d.data();
         const id = soDigitos(p.codigo) + '_' + p.competencia;
-        if ((p.tipo === 'xmls' || p.tipo === 'xmlsCliente') && !driveAberto()) {
-          // fica pendente, sem mexer no pedido (mexer acordaria a fila de novo, sem parar)
-          if (Date.now() - avisouSemDrive > 60 * 60 * 1000) {
-            avisouSemDrive = Date.now();
-            log('SIEG: pedidos de XMLs esperando o Google Drive deste PC abrir (' + PASTA_DO_DRIVE + ')');
-            painel.atividade('sieg', 'Pedidos de XMLs esperando o Google Drive deste PC abrir', 'a pasta ' + PASTA_DO_DRIVE + ' não está aberta; o robô baixa assim que ela aparecer', { aviso: true });
-          }
-          continue;
-        }
         situacao = 'baixando as saídas de ' + p.codigo;
         await d.ref.update({ status: 'processando', processandoEm: new Date().toISOString() });
         try {
@@ -788,7 +824,7 @@ function iniciarSieg({ db, log }) {
         }
       }
     } catch (err) { log('SIEG: não consegui ler os pedidos -', err.message); }
-    finally { situacao = 'livre'; ocupado = false; if (chegouOutro) setTimeout(atenderPedidos, 0); }
+    finally { situacao = 'livre'; naFila = 0; ponto(); ocupado = false; if (chegouOutro) setTimeout(atenderPedidos, 0); }
   }
   const pararPedidos = db.collection('pedidosSieg').where('status', '==', 'pendente').onSnapshot(s => { if (!s.empty) atenderPedidos(); }, err => log('SIEG: pedidos -', err.message));
 
