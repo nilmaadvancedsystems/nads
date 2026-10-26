@@ -147,6 +147,28 @@ export function extratosParaReler(e: EmpresaExtrator): ArquivoImportado[] {
 }
 
 /**
+ * Os extratos importados do computador (ou do e-mail) lidos por um leitor mais velho (Vitor, 26/10/2026: o Stone da 183
+ * continuava com o sinal errado depois do leitor novo): o arquivo não fica guardado, então quem relê busca o PDF do mês
+ * no Drive (useDriveDaLinha) e só troca quando ele cobre todos os meses do importado.
+ */
+export function extratosParaRelerPeloDrive(e: EmpresaExtrator): ArquivoImportado[] {
+  return e.arquivos.filter(a => a.lado === 'banco' && !a.drive && (a.leitor ?? 1) < VERSAO_DO_LEITOR && a.lancamentos.length > 0 && /\.(pdf|jpe?g|png)$/i.test(a.nome));
+}
+
+/**
+ * A leitura nova cobre os meses do arquivo? (senão, trocar perderia um mês) O mês com 1 ou 2 lançamentos pode faltar: é o
+ * erro do leitor velho que a leitura nova conserta (o "27/07/2026" do cabeçalho do Sicoob do SISBR que virava lançamento
+ * com o saldo anterior); os meses com 3 ou mais têm de estar todos.
+ */
+export function leituraCobreOArquivo(a: ArquivoImportado, lido: ArquivoLido): boolean {
+  if (lido.erro || !lido.lancamentos.length) return false;
+  const lidos = new Set(lido.lancamentos.map(l => l.data.slice(0, 7)));
+  const porMes = new Map<string, number>();
+  for (const l of a.lancamentos) porMes.set(l.data.slice(0, 7), (porMes.get(l.data.slice(0, 7)) || 0) + 1);
+  return [...porMes].every(([m, n]) => n < 3 || lidos.has(m)) && [...porMes.keys()].some(m => lidos.has(m));
+}
+
+/**
  * Troca os lançamentos do arquivo pelos da leitura nova (o mesmo arquivo, os mesmos meses dele; o que outro arquivo do
  * lado já tem não entra de novo) e marca a versão do leitor. Fica no histórico. Sem lançamentos na leitura nova, só marca.
  */
