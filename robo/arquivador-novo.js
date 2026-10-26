@@ -39,7 +39,8 @@ const PLANILHA = path.join(ROTINA, 'necessario para o claude', 'dados agentes', 
 const MANIFESTO_ANTIGO = path.join(ROTINA, '_CONTROLE', 'MANIFESTO', 'manifesto.jsonl');
 const K = require('./arquivador-chaves');
 const TRAVA_ANTIGA = path.join(ROTINA, '_CONTROLE', '_execucao.lock');
-const CONTROLE = process.env.ARQ_NOVO_CONTROLE || path.join(process.env.LOCALAPPDATA || os.homedir(), 'nads', 'arquivador-novo');
+// fora do AppData (26/10/2026: o AppData visto de dentro e de fora do Claude para Windows são dois; pastas-locais.js)
+const CONTROLE = process.env.ARQ_NOVO_CONTROLE || require('./pastas-locais').CONTROLE;
 const NAO_IDENTIFICADOS = 'NÃO IDENTIFICADOS';
 const UNRAR = 'C:\\Program Files\\WinRAR\\UnRAR.exe';
 const TAR = 'C:\\Windows\\System32\\tar.exe';

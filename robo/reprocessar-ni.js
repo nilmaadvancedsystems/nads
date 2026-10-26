@@ -21,7 +21,9 @@ const log = (...m) => console.log(new Date().toLocaleTimeString('pt-BR'), ...m);
 (async () => {
   fs.mkdirSync(SAIDA, { recursive: true });
   const pastaNi = path.join(ORIGEM, 'NÃO IDENTIFICADOS');
-  const todos = A.arquivosDosNaoIdentificados(pastaNi);
+  // --apenas <texto>: só os arquivos com o texto no caminho (ex.: "EXTRATOS")
+  const apenas = arg('--apenas', null);
+  const todos = A.arquivosDosNaoIdentificados(pastaNi).filter(r => !apenas || r.toUpperCase().includes(String(apenas).toUpperCase()));
   log('em NÃO IDENTIFICADOS: ' + todos.length + ' arquivos · ' + (APLICAR ? 'PRODUÇÃO' : 'simulação'));
   const manifestoAntigo = path.join(process.env.ARQUIVO_RAIZ || 'C:\\Users\\DPTO FISCAL 004\\GUSTAVO\\claudio', '_CONTROLE', 'MANIFESTO', 'manifesto.jsonl');
   const cadastro = A.carregarCadastro({});

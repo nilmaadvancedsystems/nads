@@ -77,11 +77,26 @@ function estaveis(mapa, vistos, agora, estavelMs) {
 // gravado pela metade) não vira "simulação" (23/10/2026: o robô religou às 15:42 dizendo "modo simulacao" com o arquivo
 // em produção)
 const configBom = new Map();
+const errosDoConfig = new Set();
 function lerConfig(arquivo, doBanco) {
   let doArquivo = {};
   try { doArquivo = JSON.parse(fs.readFileSync(arquivo, 'utf8').replace(/^﻿/, '')); configBom.set(arquivo, doArquivo); }
-  catch (e) { if (e.code === 'ENOENT') configBom.delete(arquivo); else if (configBom.has(arquivo)) doArquivo = configBom.get(arquivo); /* sem arquivo: o do banco ou o padrão */ }
+  catch (e) {
+    if (e.code === 'ENOENT') configBom.delete(arquivo); else if (configBom.has(arquivo)) doArquivo = configBom.get(arquivo); /* sem arquivo: o do banco ou o padrão */
+    // o erro da leitura vai para o log uma vez (por arquivo e tipo de erro), para não adivinhar de novo (26/10/2026)
+    const chave = arquivo + '|' + (e.code || e.name);
+    if (!errosDoConfig.has(chave)) { errosDoConfig.add(chave); console.log('[arquivador-novo] não li o config.json ' + arquivo + ': ' + (e.code || '') + ' ' + e.message); }
+  }
+  // de onde veio o modo (26/10/2026): o painel e o log dizem, para ninguém mais adivinhar
+  let origem;
+  if (configBom.has(arquivo) && configBom.get(arquivo) === doArquivo) {
+    let quando = '';
+    try { const d = new Date(fs.statSync(arquivo).mtimeMs); quando = ', gravado em ' + String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); } catch (e) { /* segue */ }
+    origem = 'config.json (' + arquivo + quando + ')';
+  } else if (doBanco && Object.keys(doBanco).length) origem = 'banco (robo/arquivadorNovo.config), sem config.json em ' + arquivo;
+  else origem = 'padrão: sem config.json em ' + arquivo + ' e sem config no banco';
   const c = Object.assign({}, PADRAO, doBanco || {}, doArquivo);
+  Object.defineProperty(c, 'origem', { value: origem, enumerable: false, writable: true });
   if (!['desligado', 'simulacao', 'producao'].includes(c.modo)) c.modo = 'simulacao';
   // "todos" (texto ou na lista) libera todos os tipos
   c.tiposProducao = c.tiposProducao === 'todos' ? ['todos'] : Array.isArray(c.tiposProducao) ? c.tiposProducao.map(String).filter(Boolean) : [];
@@ -183,12 +198,27 @@ function iniciar(opcoes) {
     const relerIndices = !cache.indicesEm || Date.now() - cache.indicesEm > 6 * 36e5;
     const manifestoAntigo = path.join(o.controleAntigo, 'MANIFESTO', 'manifesto.jsonl');
     const t0 = Date.now();
+    const antes = cache;
+    let novos = null;
+    if (relerIndices) {
+      // 26/10/2026: o índice de conteúdo caiu de 37.446 para 13.574 sem ninguém ver: a leitura que falha mantém o de antes,
+      // e o índice que ENCOLHE mais de 10% (eles só crescem) também, com o aviso
+      try {
+        novos = { manifesto: A.indiceDoManifesto(manifestoAntigo), chaves: K.carregar({ controle: o.controle, manifestoAntigo, raiz: o.clientes }), conteudos: require('./arquivador-conteudos').carregar({ controle: o.controle, manifestoAntigo }) };
+      } catch (e) { o.log('não reli os índices (' + e.message + '): fico com os de antes'); novos = null; }
+      const encolheu = (a, b) => a && b && b.tamanho < a.tamanho * 0.9;
+      if (novos && antes.conteudos && (encolheu(antes.conteudos, novos.conteudos) || encolheu(antes.chaves, novos.chaves))) {
+        const aviso = 'os índices encolheram (conteúdos ' + antes.conteudos.tamanho + ' → ' + novos.conteudos.tamanho + ', chaves ' + antes.chaves.tamanho + ' → ' + novos.chaves.tamanho + '): fico com os de antes';
+        o.log(aviso); atividade('Os índices do arquivador encolheram', aviso, true);
+        novos = null;
+      }
+    }
     cache = { em: Date.now(), cadastro: o.cadastro || A.carregarCadastro({ controle: o.controle }), contas: A.lerContas(o.controle),
-      indicesEm: relerIndices ? Date.now() : cache.indicesEm,
-      manifesto: relerIndices ? A.indiceDoManifesto(manifestoAntigo) : cache.manifesto,
-      chaves: relerIndices ? K.carregar({ controle: o.controle, manifestoAntigo, raiz: o.clientes }) : cache.chaves,
-      conteudos: relerIndices ? require('./arquivador-conteudos').carregar({ controle: o.controle, manifestoAntigo }) : cache.conteudos };
-    if (relerIndices) o.log('índices relidos em ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s: ' + cache.chaves.tamanho + ' chaves, ' + cache.conteudos.tamanho + ' conteúdos já arquivados');
+      indicesEm: novos ? Date.now() : (antes.indicesEm && antes.conteudos ? antes.indicesEm : null),
+      manifesto: novos ? novos.manifesto : antes.manifesto || A.indiceDoManifesto(manifestoAntigo),
+      chaves: novos ? novos.chaves : antes.chaves || K.carregar({ controle: o.controle, manifestoAntigo, raiz: o.clientes }),
+      conteudos: novos ? novos.conteudos : antes.conteudos || require('./arquivador-conteudos').carregar({ controle: o.controle, manifestoAntigo }) };
+    if (novos) o.log('índices relidos em ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s: ' + cache.chaves.tamanho + ' chaves, ' + cache.conteudos.tamanho + ' conteúdos já arquivados');
     if (o.depurar) o.log('índice de chaves: ' + JSON.stringify(cache.chaves.estatistica));
     if (pedidos) void pedidos.publicarCadastro(cache.cadastro);
     return cache;
@@ -582,9 +612,10 @@ function iniciar(opcoes) {
   function anunciarModo(c) {
     const hora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     const r = resumoDoConfig(c);
-    if (r !== modoAnunciado) { o.log('modo: ' + r + ', lido às ' + hora); modoAnunciado = r; }
-    if (o.painel) o.painel.fazendo('arquivador-novo-modo', 'modo: ' + r + ', lido às ' + hora);
-    publicarEstado({ modoEmVigor: { modo: c.modo, emProducao: !!c.emProducao, tiposProducao: c.tiposProducao || [], lidoEm: new Date().toISOString() } });
+    const de = c.origem ? ' de ' + c.origem : '';
+    if (r + de !== modoAnunciado) { o.log('modo: ' + r + ', lido às ' + hora + de); modoAnunciado = r + de; }
+    if (o.painel) o.painel.fazendo('arquivador-novo-modo', 'modo: ' + r + ', lido às ' + hora + de);
+    publicarEstado({ modoEmVigor: { modo: c.modo, emProducao: !!c.emProducao, tiposProducao: c.tiposProducao || [], origem: c.origem || null, lidoEm: new Date().toISOString() } });
   }
   /** Entre as passadas inteiras: só o que o fs.watch avisou (o nome relativo à origem; pasta nova = a pasta inteira). */
   async function* doQueMudou(org) {
@@ -838,7 +869,12 @@ function iniciar(opcoes) {
   }
   const timer = o.umaVez ? null : setInterval(() => { void ciclo(); }, (lerConfig(CONFIG, configBanco).intervaloMs) || INTERVALO_MS);
   if (o.painel) o.painel.modulo('arquivador-novo', 'Arquivador novo (por evento)', true, lerConfig(CONFIG, configBanco).modo);
-  o.log('vigiando ' + o.origem + ' (modo ' + lerConfig(CONFIG, configBanco).modo + ')');
+  o.log('vigiando ' + o.origem + ' (modo ' + lerConfig(CONFIG, configBanco).modo + ') · controle em ' + o.controle);
+  if (!fs.existsSync(CONFIG) && !fs.existsSync(path.join(o.controle, 'MANIFESTO', 'manifesto.jsonl'))) {
+    const aviso = 'a pasta de controle (' + o.controle + ') não tem o config.json nem o manifesto: o arquivador segue em simulação. Rode node migrar-pastas-locais.js (os dados estavam no AppData)';
+    o.log(aviso); atividade('O arquivador está sem a pasta de controle', aviso, true);
+    if (o.painel) o.painel.fazendo('arquivador-novo-controle', 'Sem a pasta de controle: em simulação');
+  }
   return {
     ciclo, comparar, config: () => lerConfig(CONFIG, configBanco),
     // para os testes: o ritmo e a varredura
