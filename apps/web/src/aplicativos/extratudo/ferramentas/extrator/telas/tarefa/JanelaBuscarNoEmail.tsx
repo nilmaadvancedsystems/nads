@@ -4,6 +4,8 @@
 // Drive). Só com o login do Entregas. O remetente vem sugerido (os e-mails do cadastro do cliente no Entregas e os que a
 // pessoa já usou aqui) e o período tem os atalhos do mês (Vitor, 13/10/2026: "puxa do e-mail para ajudar a preencher" e
 // as datas no campo do sistema). ViewModel (useBuscarNoEmail) e View (JanelaBuscarNoEmail) juntos: são só desta tela.
+// No modo comprovantes (a aba Comprovantes, Vitor, 26/10/2026): sem o filtro do banco e sem a leitura do extrato; o anexo
+// escolhido vai para o Drive (a pasta COMPROVANTES do mês) e a janela fica aberta para mandar outros.
 import { creditor as cr, extrator as x, type creditor } from '@nads/core';
 import { BotaoFechar, CampoData, classeDaJanela, Icone, LogoGmail, Segmentado } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
@@ -47,7 +49,10 @@ export interface LidoDoAnexo { lancamentos: number; meses: string[]; semMoviment
 
 /** importar: a linha, o arquivo e os meses que ele cobre (os lidos na prévia; senão, o mês da busca) */
 export function useBuscarNoEmail(importar: (linha: Linha, fs: File[], meses: string[]) => void, pedirLogin: (depois: () => void) => void, codigo: number | null,
-  lerDoAnexo?: (nome: string, conteudo: ArrayBuffer) => Promise<LidoDoAnexo>) {
+  lerDoAnexo?: (nome: string, conteudo: ArrayBuffer) => Promise<LidoDoAnexo>, opcoes: { comprovantes?: boolean } = {}) {
+  const comprovantes = !!opcoes.comprovantes;
+  // os anexos já mandados nesta janela (o modo comprovantes não fecha: o selo "Mandado" na lista)
+  const [enviados, setEnviados] = useState<string[]>([]);
   const { drive, acesso } = useDriveDaBusca();
   const [e, setE] = useState<Estado | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -115,6 +120,13 @@ export function useBuscarNoEmail(importar: (linha: Linha, fs: File[], meses: str
   function importarAberto() {
     if (!e || !preview?.conteudo) return;
     const linha = e.linha, arquivo = new File([preview.conteudo], preview.anexo.nome);
+    if (comprovantes) {
+      // o comprovante: vai para o Drive no mês da busca; a janela fica aberta para os outros
+      const id = preview.anexo.anexoId;
+      setEnviados(v => (v.includes(id) ? v : [...v, id]));
+      importar(linha, [arquivo], [e.mes]);
+      return;
+    }
     const meses = preview.meses?.length ? preview.meses : [e.mes];
     soltar(); setPreview(null); setE(null);
     importar(linha, [arquivo], meses);
@@ -122,7 +134,7 @@ export function useBuscarNoEmail(importar: (linha: Linha, fs: File[], meses: str
 
 
   return {
-    existe, estado: e, abrir, fechar: () => { soltar(); setPreview(null); setE(null); }, muda, preview, ver: (a: creditor.AnexoDoEmail) => { void ver(a); }, importarAberto,
+    existe, estado: e, abrir, fechar: () => { soltar(); setPreview(null); setE(null); setEnviados([]); }, muda, preview, comprovantes, enviados, ver: (a: creditor.AnexoDoEmail) => { void ver(a); }, importarAberto,
     atalho: (a: Atalho) => { if (e && a !== 'outro') muda({ atalho: a, ...periodoDoAtalho(e.mes, a) }); },
     buscar: () => { void buscar(); },
   };
@@ -142,7 +154,7 @@ export function JanelaBuscarNoEmail({ vm }: { vm: Vm }) {
     <div className="modal-overlay" role="presentation" onClick={() => { if (!ocupado) vm.fechar(); }}>
       <div className={classeDaJanela({})} role="dialog" aria-modal="true" aria-labelledby="tituloEmail" style={{ maxWidth: 'min(1180px, 96vw)', width: '100%', textAlign: 'left', padding: 20 }} onClick={ev => ev.stopPropagation()}>
         <BotaoFechar canto disabled={ocupado} onClick={vm.fechar} />
-        <h3 id="tituloEmail">Buscar no e-mail · {e.linha.nome} · {rotuloDoMes(e.mes)}</h3>
+        <h3 id="tituloEmail">{vm.comprovantes ? 'Buscar comprovantes no e-mail · ' + rotuloDoMes(e.mes) : 'Buscar no e-mail · ' + e.linha.nome + ' · ' + rotuloDoMes(e.mes)}</h3>
         <form style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 14 }} onSubmit={ev => { ev.preventDefault(); vm.buscar(); }}>
           <div className="field" style={{ margin: 0 }}>
             <label htmlFor="fRemetente" style={ROTULO}>Remetente</label>
@@ -162,7 +174,7 @@ export function JanelaBuscarNoEmail({ vm }: { vm: Vm }) {
             <span style={ROTULO}>Recebido</span>
             <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
               <Segmentado<Atalho> valor={e.atalho} onMudar={vm.atalho} opcoes={[
-                { valor: 'mes', rotulo: 'Mês do extrato' }, { valor: 'seguinte', rotulo: 'Mês seguinte' }, { valor: 'dois', rotulo: 'Os dois' }, { valor: 'outro', rotulo: 'Outro', oculta: e.atalho !== 'outro' },
+                { valor: 'mes', rotulo: vm.comprovantes ? 'Mês do comprovante' : 'Mês do extrato' }, { valor: 'seguinte', rotulo: 'Mês seguinte' }, { valor: 'dois', rotulo: 'Os dois' }, { valor: 'outro', rotulo: 'Outro', oculta: e.atalho !== 'outro' },
               ]} />
               <span style={{ width: 118 }}><CampoData valor={e.de} rotulo="Recebido de" onMudar={v => vm.muda({ de: v, atalho: 'outro' })} onEnter={vm.buscar} /></span>
               <span className="hint">até</span>
@@ -196,7 +208,8 @@ function ListaDeAnexos({ vm, e, ocupado }: { vm: Vm; e: NonNullable<Vm['estado']
   const [verOutrosBancos, setVerOutrosBancos] = useState(false);
   // o banco da linha (Vitor, 19/10/2026): o anexo de outro banco (pelo nome dele; sem banco no nome, pelo assunto e pelo
   // corpo) nem aparece; o e-mail que cita o banco procurado, sozinho ou com outros, fica
-  const porBanco = cr.separarPeloBanco(e.resultados || [], cr.bancoDaLinha(e.linha.nome, e.linha.id));
+  // (os comprovantes não são de um banco: nada de filtro)
+  const porBanco = vm.comprovantes ? { doBanco: e.resultados || [], outros: [] } : cr.separarPeloBanco(e.resultados || [], cr.bancoDaLinha(e.linha.nome, e.linha.id));
   const r = cr.separarPeloMes(verOutrosBancos ? e.resultados || [] : porBanco.doBanco, e.mes);
   const linha = (a: creditor.AnexoDoEmail, doMes: boolean) => {
     const aberto = vm.preview?.anexo.anexoId === a.anexoId;
@@ -204,7 +217,8 @@ function ListaDeAnexos({ vm, e, ocupado }: { vm: Vm; e: NonNullable<Vm['estado']
       <button key={a.mensagemId + a.anexoId} type="button" onClick={() => vm.ver(a)} disabled={ocupado}
         style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 12px', border: 0, borderBottom: '1px solid var(--border-muted)', cursor: 'pointer',
           background: aberto ? 'var(--surface-2)' : 'transparent', color: 'inherit', font: 'inherit', boxShadow: aberto ? 'inset 3px 0 0 var(--accent)' : 'none' }}>
-        <b style={{ display: 'block', wordBreak: 'break-word' }}>{a.nome}{doMes && <span className="badge badge-ok" style={{ marginLeft: 6 }}>{rotuloDoMes(e.mes)}</span>}</b>
+        <b style={{ display: 'block', wordBreak: 'break-word' }}>{a.nome}{doMes && <span className="badge badge-ok" style={{ marginLeft: 6 }}>{rotuloDoMes(e.mes)}</span>}
+          {vm.enviados.includes(a.anexoId) && <span className="badge badge-ok" style={{ marginLeft: 6 }}>Mandado</span>}</b>
         <span className="hint" style={{ display: 'block' }}>{(a.de.replace(/<.*>/, '').replace(/"/g, '').trim() || a.de)} · {dataBR(a.em)} · {tamanho(a.tamanho)}</span>
         {a.assunto && <span className="hint" style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.assunto}</span>}
       </button>
@@ -242,20 +256,26 @@ function PreviewDoAnexo({ vm }: { vm: Vm }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <b style={{ flex: 1, minWidth: 0, wordBreak: 'break-word' }}>{p.anexo.nome}</b>
-        <button type="button" className="btn btn-primary" disabled={!p.conteudo} onClick={vm.importarAberto}>
-          <LogoGmail />Importar este
-        </button>
+        {vm.comprovantes ? (
+          <button type="button" className="btn btn-primary" disabled={!p.conteudo || vm.enviados.includes(p.anexo.anexoId)} onClick={vm.importarAberto}>
+            <Icone nome="upload" />{vm.enviados.includes(p.anexo.anexoId) ? 'Mandado para o Drive' : 'Mandar para o Drive'}
+          </button>
+        ) : (
+          <button type="button" className="btn btn-primary" disabled={!p.conteudo} onClick={vm.importarAberto}>
+            <LogoGmail />Importar este
+          </button>
+        )}
       </div>
       {p.carregando && <p className="hint"><span className="btn-spinner" /> Trazendo o anexo…</p>}
       {p.erro && <p className="hint ext-neg">{p.erro}</p>}
-      {!p.carregando && p.conteudo && (
+      {!vm.comprovantes && !p.carregando && p.conteudo && (
         <p className="hint" style={{ margin: 0 }}>
           {p.semMovimento ? 'Sem movimento' + (meses ? ' em ' + meses : '')
             : p.lancamentos ? p.lancamentos + ' lançamentos · ' + meses : 'O nads não achou lançamentos neste arquivo.'}
         </p>
       )}
       {p.url && <iframe title={'Prévia de ' + p.anexo.nome} src={p.url} style={{ width: '100%', height: '46vh', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface-2)' }} />}
-      {!!p.primeiros?.length && (
+      {!vm.comprovantes && !!p.primeiros?.length && (
         <div className="table-wrap" style={{ maxHeight: p.url ? 160 : '50vh', overflow: 'auto' }}>
           <table className="table-compact">
             <thead><tr><th>Data</th><th>Histórico</th><th className="num">Valor</th></tr></thead>
