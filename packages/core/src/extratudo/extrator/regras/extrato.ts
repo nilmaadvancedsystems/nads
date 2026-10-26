@@ -45,7 +45,7 @@ const RE_ENTRADA = /\b(recebid|receb\b|credito|cred\b|deposito|dep\b|resgate|est
  * com valor; o valor é o da direita (a coluna Saldo), com o sinal dele (−, D/C, parênteses). Sem a linha, null.
  */
 export function saldoAnteriorDoPdf(paginas: ItemDeTexto[][]): number | null {
-  for (const linhas of paginas.map(montarLinhas)) {
+  for (const linhas of paginas.map(p => juntarPedacosSoltos(montarLinhas(p)))) {
     for (const l of linhas) {
       if (!/saldo\s*(anterior|inicial)/i.test(normalizarTexto(l.texto))) continue;
       const t = l.tokens;
@@ -85,10 +85,57 @@ export function montarLinhas(itens: ItemDeTexto[]): Linha[] {
       if (ant && /^(R\$|-|\()$/.test(ant.s) && /^\(?\d/.test(t.s) && t.x - ant.x2 < 14) {
         ant.s = (ant.s === 'R$' ? '' : ant.s) + t.s;
         ant.x2 = t.x2;
+        // o "-" antes do "R$" ("- R$ 95.000,00", o Stone): o sinal é do número (Vitor, 26/10/2026: na 183 as saídas do
+        // Stone entravam como entrada)
+        const menos = junto[junto.length - 2];
+        if (menos && menos.s === '-' && ant.x - menos.x2 < 14 && /^\d/.test(ant.s)) { menos.s = '-' + ant.s; menos.x2 = ant.x2; junto.pop(); }
       } else junto.push({ ...t });
     }
     return { y: g.y, tokens: junto, texto: junto.map(t => t.s).join(' ') };
   });
+}
+
+/** os pedaços soltos de um lançamento: só o valor, ou só a letra C/D do sinal */
+const SO_VALOR = /^\(?-?\d{1,3}(?:\.\d{3})*,\d{2}\)?$/;
+const SO_SINAL = /^[CD]$/;
+/** até onde fica o pedaço solto da linha dele (o Sicoob do SISBR: o valor 5 pontos acima; a letra 5 abaixo, ou 11 quando o
+ *  valor está na linha da data), e a letra logo à direita do valor */
+const PERTO_DO_PEDACO = 7;
+const PERTO_DO_SINAL = 12;
+const LADO_DO_VALOR = 15;
+
+/**
+ * O Sicoob do SISBR ("EXTRATO CONTA CORRENTE", a data sem o ano) imprime o valor das saídas, do saldo anterior e do saldo
+ * do dia 5 pontos acima da linha da data e a letra C/D 5 pontos abaixo (Vitor, 26/10/2026: na 183, junho/2026 entrava com
+ * o saldo de cada dia como lançamento e as saídas com o valor do saldo). Junta os dois na linha da data, que não tem
+ * valor: o valor que está sozinho logo acima, e a letra sozinha logo abaixo de quem tem o valor.
+ */
+export function juntarPedacosSoltos(linhas: Linha[]): Linha[] {
+  const saida: Linha[] = [];
+  for (let i = 0; i < linhas.length; i++) {
+    const l = linhas[i];
+    const prox = linhas[i + 1];
+    const temValor = (x: Linha) => x.tokens.some(t => RE_VALOR.test(t.s));
+    // o valor sozinho logo acima da linha da data sem valor
+    if (prox && l.tokens.length === 1 && SO_VALOR.test(l.tokens[0].s) && l.y - prox.y <= PERTO_DO_PEDACO
+      && RE_DATA.test(prox.tokens[0]?.s || '') && !temValor(prox)) {
+      const tokens = [...prox.tokens, ...l.tokens].sort((a, b) => a.x - b.x);
+      saida.push({ y: prox.y, tokens, texto: tokens.map(t => t.s).join(' ') });
+      i++;
+      continue;
+    }
+    // a letra sozinha logo abaixo da linha que termina no valor
+    const ant = saida[saida.length - 1];
+    const valorDeCima = ant?.tokens[ant.tokens.length - 1];
+    if (ant && valorDeCima && l.tokens.length === 1 && SO_SINAL.test(l.tokens[0].s) && ant.y - l.y <= PERTO_DO_SINAL
+      && RE_VALOR.test(valorDeCima.s) && !RE_SINAL.test(valorDeCima.s.slice(-1)) && Math.abs(l.tokens[0].x - valorDeCima.x2) <= LADO_DO_VALOR) {
+      ant.tokens = [...ant.tokens, l.tokens[0]];
+      ant.texto = ant.tokens.map(t => t.s).join(' ');
+      continue;
+    }
+    saida.push(l);
+  }
+  return saida;
 }
 
 /** Cabeçalho da tabela: onde ficam as colunas Débito / Crédito / Saldo / Valor (pela borda direita). */
@@ -291,13 +338,23 @@ function lancamentosDaCaixa(todas: Linha[][], ano: number): { lancamentos: Lanca
 function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: number): { lancamentos: Lancamento[]; pagina: number[]; saldosDoDia?: Map<string, number> } {
   const saldosDoDia = new Map<string, number>();
   let ultimaDataDeValor: string | null = null;
-  const todas = paginas.map(montarLinhas);
+  const todas = paginas.map(p => juntarPedacosSoltos(montarLinhas(p)));
   if (lado === 'banco') {
     const texto = todas.map(p => p.map(l => l.texto).join('\n')).join('\n');
     if (ehExtratoDaCaixa(texto)) return lancamentosDaCaixa(todas, anoDoTexto(texto, anoPadrao));
   }
   const paginaDe: number[] = [];
   const ano = anoDoTexto(todas.map(p => p.map(l => l.texto).join('\n')).join('\n'), anoPadrao);
+  // a ordem das datas que abrem as linhas: o extrato do mais novo para o mais velho (o Stone) tem mais descidas que subidas
+  let sobe = 0, desce = 0, antes: string | null = null;
+  for (const l of todas.flat()) {
+    const d = l.tokens[0] && RE_DATA.test(l.tokens[0].s) ? lerData(l.tokens[0].s, ano) : null;
+    if (!d) continue;
+    if (antes && d > antes) sobe++;
+    else if (antes && d < antes) desce++;
+    antes = d;
+  }
+  const decrescente = desce > sobe;
   const saida: Lancamento[] = [];
   let col: Colunas | null = null;
   let dataAtual: string | null = null;
@@ -400,6 +457,9 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
         const sv = diaDoSaldo ? centavos(valores[valores.length - 1].s) : null;
         if (sv != null && diaDoSaldo) saldosDoDia.set(diaDoSaldo, sv);
         juntarPerto();
+        // o texto entre o último lançamento do dia e o saldo é dele (o Sicoob do SISBR: "Pagto de Simples Nacional" embaixo
+        // do DB.CONV.TR FD-RFB; Vitor, 26/10/2026)
+        if (solta && ultimo) ultimo.historico = (ultimo.historico + ' ' + solta).trim();
         solta = null; continue;
       }
       if (!dataAtual) continue;
@@ -426,8 +486,12 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
       const saldoDaLinha = lado === 'banco' && valores.length > 1 && valores[valores.length - 1] !== v ? centavos(valores[valores.length - 1].s) : null;
       const saldoAntes = saldoCorrido;
       if (saldoDaLinha != null) saldoCorrido = saldoDaLinha;
-      const diferenca = saldoAntes != null && saldoDaLinha != null ? saldoDaLinha - saldoAntes : null;
-      if (diferenca != null && diferenca !== 0 && Math.abs(Math.abs(diferenca) - Math.abs(c)) <= 1) c = Math.sign(diferenca) * Math.abs(c);
+      // do mais novo para o mais velho (o Stone), a diferença dos saldos é a do lançamento de cima, não a deste: não vale. A
+      // folga de 1 centavo (o arredondamento) só em valor de 1 real para cima: no Stone, o rendimento de R$ 0,01 virava
+      // saída pela diferença de R$ 0,02 do lançamento vizinho (Vitor, 26/10/2026)
+      const diferenca = !decrescente && saldoAntes != null && saldoDaLinha != null ? saldoDaLinha - saldoAntes : null;
+      const folga = Math.abs(c) >= 100 ? 1 : 0;
+      if (diferenca != null && diferenca !== 0 && Math.abs(Math.abs(diferenca) - Math.abs(c)) <= folga) c = Math.sign(diferenca) * Math.abs(c);
       else if (!temSinal(v.s)) {
         const base = normalizarTexto(hist || solta || '');
         if (col && col.deb != null && col.cred != null) {
