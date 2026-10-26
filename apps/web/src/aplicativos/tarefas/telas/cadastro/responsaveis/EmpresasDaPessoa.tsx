@@ -64,39 +64,47 @@ export function EmpresasDaPessoa({ pessoa, vm: vmDeFora }: { pessoa: string; vm?
   );
 }
 
-/** As empresas sem responsável num departamento, para escolher direto quem cuida (a janela Empresas por responsável). */
+/**
+ * As empresas sem responsável, para escolher direto quem cuida (a janela Empresas por responsável). No mesmo jeito das
+ * empresas da pessoa (26/10/2026: "layouts totalmente diferentes"): o título com a contagem e a busca em cima, uma lista só,
+ * o Contábil num selo na linha.
+ */
 export function EmpresasSemResponsavel({ vm }: { vm: VmEmpresasPorResponsavel }) {
   const [busca, setBusca] = useState('');
   const q = busca.trim().toLowerCase();
+  const todas = vm.departamentos.flatMap(d => vm.semResponsavel(d.id).map(l => ({ l, d })));
+  const lista = todas.filter(({ l }) => !q || l.nome.toLowerCase().includes(q) || String(l.codigo ?? '').includes(q));
+  const porDep = (d: string) => todas.filter(x => x.d.id === d).length;
   return (
     <div className="emp-pessoa">
-      <div className="emp-pessoa-topo">
-        <label className="busca-curta">
-          <Icone nome="search" />
-          <input type="text" placeholder="Buscar empresa" aria-label="Buscar empresa" value={busca} onChange={e => setBusca(e.target.value)} />
-        </label>
+      <div className="cfg-secao-topo emp-pessoa-topo">
+        <h3>
+          {todas.length} {todas.length === 1 ? 'empresa' : 'empresas'}
+          {porDep('contabil') > 0 && porDep('fiscal') > 0 && <span className="fraco"> · {porDep('fiscal')} no Fiscal, {porDep('contabil')} no Contábil</span>}
+        </h3>
+        {todas.length > 8 && (
+          <label className="busca-curta">
+            <Icone nome="search" />
+            <input type="text" placeholder="Buscar" aria-label="Buscar empresa" value={busca} onChange={e => setBusca(e.target.value)} />
+          </label>
+        )}
       </div>
-      {vm.departamentos.map(d => {
-        const todas = vm.semResponsavel(d.id);
-        const lista = todas.filter(l => !q || l.nome.toLowerCase().includes(q) || String(l.codigo ?? '').includes(q));
-        if (!todas.length) return null;
-        return (
-          <section key={d.id} className="emp-sem">
-            <p className="pessoal-grupo">{d.rotulo} ({todas.length})</p>
-            <ul className="emp-pessoa-lista">
-              {lista.slice(0, 60).map(l => (
-                <li key={l.chave}>
-                  <span className="emp-pessoa-cod num fraco">{l.codigo ?? ''}</span>
-                  <span className="emp-pessoa-nome" title={l.nome}>{l.nome}</span>
-                  <MenuSuspenso rotulo="Escolher" icone="usuario" className="btn btn-outline" titulo={'Responsável no ' + d.rotulo} direita largura={220} flutuante
-                    itens={vm.opcoes[d.id].map(n => ({ rotulo: <PessoaComFoto nome={n} {...vm.fotoDe(n)} />, onClick: () => vm.definir(l.nome, l.codigo, d.id, n) }))} />
-                </li>
-              ))}
-            </ul>
-            {lista.length > 60 && <p className="hint">60 de {lista.length}</p>}
-          </section>
-        );
-      })}
+      {!todas.length && <ConfigLinha titulo="Nenhuma empresa" descricao="Todas as empresas têm responsável no Fiscal e no Contábil." />}
+      {todas.length > 0 && !lista.length && <ConfigLinha titulo={'Nada com "' + busca + '"'} />}
+      {lista.length > 0 && (
+        <ul className="emp-pessoa-lista">
+          {lista.slice(0, 60).map(({ l, d }) => (
+            <li key={l.chave + d.id}>
+              <span className="emp-pessoa-cod num fraco">{l.codigo ?? ''}</span>
+              <span className="emp-pessoa-nome" title={l.nome}>{l.nome}</span>
+              {d.id === 'contabil' && <span className="badge badge-neutral">Contábil</span>}
+              <MenuSuspenso rotulo="Escolher" icone="usuario" className="btn btn-outline" titulo={'Responsável no ' + d.rotulo} direita largura={220} flutuante
+                itens={vm.opcoes[d.id].map(n => ({ rotulo: <PessoaComFoto nome={n} {...vm.fotoDe(n)} />, onClick: () => vm.definir(l.nome, l.codigo, d.id, n) }))} />
+            </li>
+          ))}
+        </ul>
+      )}
+      {lista.length > 60 && <p className="hint">60 de {lista.length}</p>}
     </div>
   );
 }

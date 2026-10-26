@@ -3247,7 +3247,6 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .emp-pessoa-ic{width:12px;height:12px;vertical-align:-2px;margin-right:3px;color:var(--warn);}
 .emp-pessoa-acoes{display:inline-flex;gap:6px;flex:none;}
 .emp-pessoa-acoes .btn{height:28px;padding:0 10px;font-size:var(--fs-12);}
-.emp-sem{display:flex;flex-direction:column;gap:6px;}
 /* DP › Obrigações numa tabela só e compacta (07/10/2026: "muito grande e com espaço sobrando"; "unifique") */
 .dp-tabela td{padding-top:6px;padding-bottom:6px;}
 .dp-tabela .dp-cliente-nome{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:var(--fs-13);}
