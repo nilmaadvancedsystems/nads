@@ -29,7 +29,8 @@ export function useAdiantamentoSalarial() {
   const doDinamico = useMemo(() => (contabil.dinamico ? cl.contasDeAdiantamentoSalarial(contabil.dinamico.d)[0]?.codigo || '' : ''), [contabil.dinamico]);
   const contaAdiantamento = contas.adiantamento ?? doDinamico;
   // o razão contra o balancete da empresa (Vitor, 26/10/2026: "exportou uns lançamentos nada a ver" — o razão era de outra
-  // empresa, com a mesma conta): não bateu, não exporta
+  // empresa, com a mesma conta): não bateu, avisa. Só avisa, não trava (26/10/2026: "não tá deixando eu importar" — o
+  // balancete de antes de mexer no Alterdata também não bate com o razão novo)
   const linhaDoBalancete = useMemo(() => {
     const d = contabil.dinamico?.d;
     const conta = razao?.razao.conta || contaAdiantamento;
@@ -37,10 +38,9 @@ export function useAdiantamentoSalarial() {
   }, [contabil.dinamico, razao, contaAdiantamento]);
   const naoBate = useMemo(() => (razao && linhaDoBalancete ? t.razaoContraOBalancete(razao.razao, linhaDoBalancete.saldos, s.meses) : []), [razao, linhaDoBalancete, s.meses]);
   const saldoBR = (v: number) => formatos.brl(Math.abs(v)) + (v > 0.005 ? ' C' : v < -0.005 ? ' D' : '');
-  const avisoNaoBate = naoBate.length
-    ? 'O razão não bate com o balancete desta empresa em ' + naoBate.map(x => t.rotuloNumericoCompetencia(x.mes)).join(', ')
-      + ' (' + t.rotuloNumericoCompetencia(naoBate[naoBate.length - 1].mes) + ': razão ' + saldoBR(naoBate[naoBate.length - 1].razao) + ', balancete ' + saldoBR(naoBate[naoBate.length - 1].balancete) + ')'
-    : '';
+  // curto, na linha do resumo (26/10/2026: o comprido passava por cima do nome); os saldos ficam no title
+  const avisoNaoBate = naoBate.length ? 'Não bate com o balancete em ' + naoBate.map(x => t.rotuloNumericoCompetencia(x.mes)).join(', ') : '';
+  const detalheNaoBate = naoBate.map(x => t.rotuloNumericoCompetencia(x.mes) + ': razão ' + saldoBR(x.razao) + ', balancete ' + saldoBR(x.balancete)).join('\n');
   const contaBanco = contas.banco ?? '';
   // o ⚡ do modo desenvolvedor: o razão de teste (16/10/2026)
   useDadosDeTesteDaEtapa(s.dev ? [{ id: 'certo', rotulo: 'Razão de teste (zerando)' }, { id: 'falta', rotulo: 'Razão de teste (sem o pagamento do último mês)' }] : [],
@@ -61,7 +61,6 @@ export function useAdiantamentoSalarial() {
   const faltando = useMemo(() => (razao && s.meses.length ? t.pagamentosQueFaltam(razao.razao, s.meses[s.meses.length - 1]) : []), [razao, s.meses]);
   const faltam = semMovimento ? [] : [
     ...(!razao ? ['Importar o razão do Adiantamento salarial'] : []),
-    ...(avisoNaoBate ? [avisoNaoBate + ': confira se é o razão desta empresa'] : []),
     ...(naoZerou.length ? ['O Adiantamento salarial não zerou em ' + naoZerou.map(m => t.rotuloNumericoCompetencia(m.mes)).join(', ')] : []),
   ];
   useRequisitosDaEtapa({ pronto: !faltam.length, faltam });
@@ -94,11 +93,11 @@ export function useAdiantamentoSalarial() {
     digitarContaAdiantamento: (v: string) => setContas(c => ({ ...c, adiantamento: v.replace(/\D/g, '') })),
     digitarContaBanco: (v: string) => setContas(c => ({ ...c, banco: v.replace(/\D/g, '') })),
     qtd: faltando.length,
-    podeExportar: faltando.length > 0 && !!contaAdiantamento && !!contaBanco && !naoBate.length,
-    /** por que o .xls não sai */
-    porQueNaoExporta: naoBate.length ? 'O razão não bate com o balancete desta empresa: importe o razão da empresa certa (ou o balancete de novo, se já lançou)' : 'Informe as duas contas',
-    /** o resumo em vermelho */
+    podeExportar: faltando.length > 0 && !!contaAdiantamento && !!contaBanco,
+    /** o resumo em vermelho: a 1ª linha é o "Não bate com o balancete" */
     resumoRuim: naoBate.length > 0,
+    /** os saldos de cada mês que não bate, no title do aviso */
+    detalheNaoBate: detalheNaoBate ? detalheNaoBate + '\nConfira se é o razão desta empresa (ou importe o balancete de novo, se já lançou no Alterdata).' : '',
     /** o .xls de importação do Alterdata: D Adiantamento salarial, C o banco, no dia 15 (ou no útil antes) */
     baixarXls: () => {
       const bytes = creditor.planilhaDeImportacao(faltando.map(p => ({
