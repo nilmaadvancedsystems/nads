@@ -201,7 +201,7 @@ function linhasDaPlanilha(buffer, nome) {
   } catch (e) { return []; } finally { console.error = erro; }
 }
 /** O que as regras precisam de cada formato. */
-async function montarEntrada(nome, rel, buffer) {
+async function montarEntrada(nome, rel, buffer, op) {
   const e = { nome, rel, hash: sha(buffer), tamanho: buffer.length };
   const ext = (/\.([a-z0-9]+)$/i.exec(nome) || [])[1];
   switch ((ext || '').toLowerCase()) {
@@ -211,6 +211,8 @@ async function montarEntrada(nome, rel, buffer) {
       if (t.erro) e.erroLeitura = t.erro;
       // escaneado (sem camada de texto, ou quase nada): OCR das primeiras páginas (arquivador-ocr.js)
       if (OCR_LIGADO && e.texto.join('').replace(/\s/g, '').length < 40) {
+        // o contínuo manda o escaneado para a fila do OCR (26/10/2026): o lote não espera a leitura da imagem
+        if (op && op.adiarOcr) { e.precisaOcr = true; break; }
         const o = await require('./arquivador-ocr').ocrDoPdf(buffer);
         e.ocr = { confianca: o.confianca, ms: o.ms, erro: o.erro || null };
         if (o.paginas.length && o.paginas.join('').replace(/\s/g, '').length >= 40) { e.texto = o.paginas; e.paginas = e.paginas || o.total; }
@@ -419,11 +421,17 @@ async function executar(opcoes) {
   log(id + ': ' + arquivos.length + ' arquivo(s) na origem');
 
   // a leitura em paralelo (23/10/2026: no G: em streaming, ler é baixar; ~1 s por arquivo um de cada vez, 5 a 8 por
-  // segundo com 8 juntos): até opcoes.leiturasJuntas (8) adiantadas, na ordem do lote; a decisão vem uma de cada vez
+  // segundo com 8 juntos): até opcoes.leiturasJuntas (8) adiantadas, na ordem do lote. Desde 26/10/2026 a extração
+  // (o texto do PDF, o OCR, a planilha) também vem adiantada, junto com a leitura; só a decisão, que reserva os nomes
+  // no destino, segue uma de cada vez e na ordem (o mesmo resultado de antes)
   const tempos = { leituraMs: 0, decisaoMs: 0, gravacaoMs: 0 };
   const juntas = Math.max(1, +opcoes.leiturasJuntas || 8);
   const leituras = new Map();
-  const adiantar = i => { if (i < arquivos.length && !leituras.has(i)) leituras.set(i, fs.promises.readFile(path.join(opcoes.origem, arquivos[i])).then(b => ({ b }), e => ({ e }))); };
+  const preparar = async (rel, b) => {
+    if (/\.(zip|rar|7z)$/i.test(rel)) return { b };
+    try { return { b, entrada: await montarEntrada(path.basename(rel), rel, b, { adiarOcr: !!opcoes.adiarOcr }) }; } catch (e) { return { b, erroEntrada: e }; }
+  };
+  const adiantar = i => { if (i < arquivos.length && !leituras.has(i)) leituras.set(i, fs.promises.readFile(path.join(opcoes.origem, arquivos[i])).then(b => preparar(arquivos[i], b), e => ({ e }))); };
   for (let i = 0; i < arquivos.length; i++) {
     const rel = arquivos[i];
     const caminho = path.join(opcoes.origem, rel);
@@ -447,7 +455,8 @@ async function executar(opcoes) {
       continue;
     }
     // o conteúdo pequeno fica com o item até o fim (a quarentena do "já arquivado" grava dele, sem ler o G: de novo)
-    itens.push(Object.assign(await decidirUm(path.basename(rel), rel, buffer, ctx), { tamanho: buffer.length }, producao && buffer.length <= 1024 * 1024 ? { _buf: buffer } : {}));
+    if (lido.erroEntrada) throw lido.erroEntrada;
+    itens.push(Object.assign(await decidirUm(path.basename(rel), rel, buffer, ctx, lido.entrada), { tamanho: buffer.length }, producao && buffer.length <= 1024 * 1024 ? { _buf: buffer } : {}));
     tempos.decisaoMs += Date.now() - t1;
   }
 
@@ -459,12 +468,14 @@ async function executar(opcoes) {
   tempos.gravacaoMs = Date.now() - t2;
   if (opcoes.registrar !== false) gravarRegistros(resultado, opcoes);   // o modo contínuo tem o diário dele
   if (opcoes.publicar) await publicar(resultado, opcoes);
-  await encerrarOcr();
+  if (!opcoes.manterOcr) await encerrarOcr();   // o contínuo mantém os trabalhadores do OCR entre os lotes
   return resultado;
 }
 
-async function decidirUm(nome, rel, buffer, ctx) {
-  const entrada = await montarEntrada(nome, rel, buffer);
+async function decidirUm(nome, rel, buffer, ctx, pronta) {
+  const entrada = pronta || await montarEntrada(nome, rel, buffer);
+  // o escaneado que o contínuo mandou para a fila do OCR: nada decidido agora (volta no lote do OCR)
+  if (entrada.precisaOcr) return { rel, nome, hash: entrada.hash, acao: 'AGUARDANDO_OCR', motivo: 'ESCANEADO_NA_FILA_DO_OCR', confianca: 0, evidencias: [], copias: [] };
   let d = ctx.manual && ctx.manual[rel] ? require('./arquivador-manual').decidirManual(entrada, ctx, ctx.manual[rel]) : R.decidir(entrada, ctx);
   // a migração (23/10/2026): o que o conteúdo não decidiu, a pasta de origem pode decidir (o mapa da migração)
   if (!(ctx.manual && ctx.manual[rel]) && d.acao === 'NAO_IDENTIFICADO') { try { const m = require('./arquivador-migracao').decidir(entrada, ctx, d); if (m) d = m; } catch (e) { d.evidencias = (d.evidencias || []).concat('mapa da migração: ' + e.message); } }

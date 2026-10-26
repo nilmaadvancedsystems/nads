@@ -709,6 +709,9 @@ async function iniciar() {
   catch (err) { log('SIEG desligado:', err.message); painel.modulo('sieg', 'SIEG', false, err.message); }
   // a Área do Cliente (16/10/2026): o espelho de cada link secreto e as caixas de chamados e de arquivos do cliente; aqui
   // porque o arquivo do cliente vai para a pasta dele no G: deste PC
+  // o vigia do Google Drive (26/10/2026): o G: sumido por mais de 10 min reinicia o Drive (no máximo a cada 30 min)
+  try { require('./drive-vigia').iniciar({ log, painel }); }
+  catch (err) { log('vigia do Google Drive não ligou:', err.message); }
   painel.modulo('area-cliente', 'Área do Cliente', true);
   try { require('./area-cliente').iniciarAreaDoCliente(db, log); }
   catch (err) { log('Área do Cliente não ligou:', err.message); painel.modulo('area-cliente', 'Área do Cliente', false, err.message); }

@@ -359,8 +359,10 @@ function iniciar(opcoes) {
   // o ritmo pelo Google Drive (23/10/2026): um pedaço da leitura de mais de 60 s ou mais de 10 s por arquivo no lote, o lote
   // cai (40 → 10 → 5) e os lotes se espaçam (2 e 5 min); três lotes rápidos seguidos, volta um degrau. No ritmo normal, com
   // o Drive respondendo rápido (menos de 1,5 s por arquivo em três lotes seguidos), o lote sobe para LOTE_RAPIDO
-  const RITMOS = [{ lote: null, esperaMs: 0 }, { lote: 10, esperaMs: 2 * 60000 }, { lote: 5, esperaMs: 5 * 60000 }];
+  // 26/10/2026 (a migração de ~307 mil): sem pausa no primeiro degrau; só o Drive muito lento espaça os lotes (1 min)
+  const RITMOS = [{ lote: null, esperaMs: 0 }, { lote: 20, esperaMs: 0 }, { lote: 10, esperaMs: 60000 }];
   const LOTE_RAPIDO = 100;
+  const LOTE_OCR = +(process.env.ARQ_LOTE_OCR || 12);   // escaneados por lote do OCR (3 trabalhadores: 4 rodadas)
   let nivelRitmo = 0, rapidos = 0, proximoCicloEm = 0, folgados = 0;
   function medirRitmo(varreduraMs, porArquivoMs) {
     const antes = nivelRitmo;
@@ -377,7 +379,21 @@ function iniciar(opcoes) {
     acomp.ritmo(texto);
     proximoCicloEm = Date.now() + r.esperaMs;
   }
-  const destinosJuntos = () => (nivelRitmo === 0 ? (folgados >= 3 ? 8 : 6) : nivelRitmo === 1 ? 2 : 1);
+  // os destinos ao mesmo tempo no G: (26/10/2026): até DESTINOS_MAX; o freio corta pela metade quando o Drive erra ou passa
+  // de 4 s por arquivo, e três lotes bons seguidos sobem de 4 em 4
+  const DESTINOS_MAX = 16, DESTINOS_MIN = 4;
+  let destinosAgora = DESTINOS_MAX, destinosBons = 0;
+  function freioDosDestinos(res) {
+    const t = (res.tempos && res.tempos.porAcao) || {};
+    const movidos = Object.values(t).reduce((s, v) => s + v.n, 0), ms = Object.values(t).reduce((s, v) => s + v.ms, 0);
+    const erros = A.planos(res).filter(x => x.erro && !x.temporario).length;
+    if (!movidos) return;
+    const antes = destinosAgora;
+    if (erros > Math.max(1, movidos * 0.05) || ms / movidos > 4000) { destinosAgora = Math.max(DESTINOS_MIN, Math.floor(destinosAgora / 2)); destinosBons = 0; }
+    else if (++destinosBons >= 3) { destinosAgora = Math.min(DESTINOS_MAX, destinosAgora + 4); destinosBons = 0; }
+    if (destinosAgora !== antes) o.log('destinos juntos no G: ' + antes + ' → ' + destinosAgora + ' (' + erros + ' erro(s), ' + (ms / movidos / 1000).toFixed(1) + ' s por arquivo)');
+  }
+  const destinosJuntos = () => (nivelRitmo === 0 ? destinosAgora : nivelRitmo === 1 ? Math.min(destinosAgora, 4) : 2);
   const loteAgora = (cfg, porPedido) => porPedido ? 400 : nivelRitmo ? Math.min(cfg.lote, RITMOS[nivelRitmo].lote) : folgados >= 3 ? Math.max(cfg.lote, LOTE_RAPIDO) : cfg.lote;
 
   /** zip ainda chegando: o diretório central não está lá. */
@@ -391,6 +407,7 @@ function iniciar(opcoes) {
   // ---------------------------------------------------------------------------------------------------------------------
   const mudados = new Set();
   let ultimaInteiraEm = 0;
+  let modoDaInteira = '';        // 'P'/'S' da última passada inteira que chegou ao fim
   let vez = [];                  // os pedidos do site (exclusivo) que esperam o fim do lote
   const feitosEm = [];           // a hora de cada decisão (o ritmo por minuto e a previsão)
   let leitura = null;            // a passada de agora: { inicio, inteira, porOrigem: { id: { lidos, achados, feitos, total } } }
@@ -399,6 +416,42 @@ function iniciar(opcoes) {
   const porMinuto = () => { const agora = Date.now(); while (feitosEm.length && agora - feitosEm[0] > 10 * 60000) feitosEm.shift(); if (feitosEm.length < 2) return 0; return feitosEm.length / Math.max(1, (agora - feitosEm[0]) / 60000); };
   const duracao = min => min < 1 ? 'menos de 1 min' : min < 60 ? Math.round(min) + ' min' : min < 48 * 60 ? (Math.round(min / 6) / 10).toString().replace('.', ',') + ' h' : Math.round(min / 1440) + ' dias';
   /** A fila de cada origem: os achados prontos que ainda não foram feitos + a parte ainda não lida (pela proporção desta passada). */
+  // ---------------------------------------------------------------------------------------------------------------------
+  // a contagem da pasta (26/10/2026: o painel mostrava "1.229 na pasta" com ~307 mil lá dentro: a passada lê aos poucos e só
+  // sabe o total no fim, que nunca chegava). Só a listagem (nada é aberto nem medido): ao ligar e a cada 2 h, gravada no
+  // estado (sobrevive ao robô religado) e descontada a cada arquivo que sai da pasta.
+  // ---------------------------------------------------------------------------------------------------------------------
+  const CONTAR_A_CADA_MS = 2 * 36e5;
+  let contando = false;
+  const contados = id => { const c = (estado.contagem || {})[id]; return c ? Math.max(0, c.arquivos) : 0; };
+  async function contarPasta() {
+    if (contando || parado || !fs.existsSync(o.origem)) return;
+    const c = (estado.contagem || {})['G:'];
+    if (c && Date.now() - Date.parse(c.em) < CONTAR_A_CADA_MS) return;
+    contando = true;
+    const t0 = Date.now(), inicio = new Date().toISOString();
+    let n = 0, falhou = false;
+    try {
+      const pilha = [''];
+      while (pilha.length && !parado) {
+        const rel = pilha.pop();
+        let es;
+        try { es = await fs.promises.readdir(rel ? path.join(o.origem, rel) : o.origem, { withFileTypes: true }); } catch (e) { if (!rel) falhou = true; continue; }
+        for (const e of es) {
+          const r = rel ? rel + '\\' + e.name : e.name;
+          if (e.isDirectory()) { if (incluir(r, true)) pilha.push(r); }
+          else if (incluir(r, false) && !C_ehTemporario(r)) n++;
+        }
+      }
+      // o G: que sumiu no meio não vale (a contagem fica com a anterior)
+      if (!falhou && !parado && fs.existsSync(o.origem)) {
+        estado.contagem = Object.assign({}, estado.contagem, { 'G:': { arquivos: n, em: inicio, ms: Date.now() - t0 } });
+        salvar();
+        o.log('contei a pasta: ' + mil(n) + ' arquivo(s) em ' + Math.round((Date.now() - t0) / 1000) + ' s');
+      }
+    } catch (e) { o.log('não contei a pasta:', e.message); }
+    finally { contando = false; }
+  }
   function filas() {
     const out = {};
     for (const [id, p] of Object.entries((leitura && leitura.porOrigem) || {})) {
@@ -467,10 +520,13 @@ function iniciar(opcoes) {
     let comTrava = false;
     try {
       const origens = origensDe(cfg);
-      const inteira = !observador || mudados.has('*') || Date.now() - ultimaInteiraEm >= PASSADA_INTEIRA_MS || !ultimaInteiraEm || op.porPedido || o.umaVez;
+      // o modo mudou desde a última passada inteira completa: a próxima é inteira, já (26/10/2026: a troca para produção
+      // parou a passada no meio e, por 15 min, só os eventos do fs.watch entravam: lotes de 6 a 8, nada da pilha antiga)
+      const modoAgora = cfg.emProducao ? 'P' : 'S';
+      const inteira = !observador || mudados.has('*') || Date.now() - ultimaInteiraEm >= PASSADA_INTEIRA_MS || !ultimaInteiraEm || modoDaInteira !== modoAgora || op.porPedido || o.umaVez;
       if (inteira) { mudados.clear(); ultimaInteiraEm = Date.now(); }
       const totais = estado.totais || {};
-      leitura = { inicio: Date.now(), inteira, porOrigem: Object.fromEntries(origens.map(g => [g.id, { lidos: 0, achados: 0, feitos: 0, total: inteira ? (totais[g.id] || 0) : 0 }])) };
+      leitura = { inicio: Date.now(), inteira, porOrigem: Object.fromEntries(origens.map(g => [g.id, { lidos: 0, achados: 0, feitos: 0, total: inteira ? Math.max(totais[g.id] || 0, contados(g.id)) : 0 }])) };
       const estavelMs = op.porPedido ? Math.min(cfg.estavelMs, 10000) : cfg.estavelMs;
       const modoChave = cfg.emProducao ? 'P' : 'S';   // o que a simulação decidiu volta a ser avaliado em produção
       estado.aguardando = estado.aguardando || {};
@@ -482,6 +538,9 @@ function iniciar(opcoes) {
       // os pedaços: as origens se revezam (a carga do G: não segura a entrada local, e vice-versa)
       const fontes = origens.map(g => ({ org: g, it: inteira ? andarEmFluxo(g.raiz) : (g.principal ? doQueMudou(g) : andarEmFluxo(g.raiz)) }));
       const prontos = [];   // [{ org, v }]
+      // os escaneados desta passada (26/10/2026): saem do lote comum e são lidos em lotes do OCR, vários ao mesmo tempo
+      const filaOcr = [];   // [{ org, v }]
+      const opLote = Object.assign({}, op, { filaOcr }), opOcr = Object.assign({}, op, { loteOcr: true });
       let listagemMs = 0;
       const tratarPedaco = async (org, rels) => {
         const t0 = Date.now();
@@ -535,7 +594,9 @@ function iniciar(opcoes) {
         const naFila = new Set(prontos.map(x => x.v.rel)), esperando = new Set(amostra.aguardando);
         amostra.pendentes = amostra.pendentes.filter(r => naFila.has(r));
         amostra.vistos = amostra.vistos.filter(v => naFila.has(v.rel) || esperando.has(v.rel) || (recentes.get('G:|' + v.rel) || {}).pronto === false);
-        acomp.varredura({ vistos: amostra.vistos, mapa: new Map([...recentes.values()].filter(r => r.org.principal && !r.pronto).slice(0, 300).map(r => [r.rel, r])), pendentes: amostra.pendentes, estavelMs, aguardando: amostra.aguardando, contagem: conta, faltam });
+        // na pasta: o que esta passada já leu ou a contagem (a passada lê aos poucos; a contagem sabe o total)
+        const contagem = Object.assign({}, conta, { naPasta: Math.max(conta.naPasta, contados('G:')) });
+        acomp.varredura({ vistos: amostra.vistos, mapa: new Map([...recentes.values()].filter(r => r.org.principal && !r.pronto).slice(0, 300).map(r => [r.rel, r])), pendentes: amostra.pendentes, estavelMs, aguardando: amostra.aguardando, contagem, faltam });
       };
       /** Esvazia os lotes enquanto houver pelo menos "ate" prontos. Devolve false quando a passada tem de parar. */
       const drenar = async (ate) => {
@@ -547,7 +608,7 @@ function iniciar(opcoes) {
           if (mudouOConfig(cfg, agoraCfg)) { o.log('o config mudou no meio da passada (' + resumoDoConfig(cfg) + ' → ' + resumoDoConfig(agoraCfg) + '): paro aqui; a próxima volta segue o config novo'); acomp.config(agoraCfg); resumo.esperando = 'o config mudou'; return false; }
           if (!comTrava) { if (!pegarTrava()) { o.log('outro processo do arquivador novo está trabalhando'); resumo.esperando = 'outro processo do arquivador novo está trabalhando'; return false; } comTrava = true; }
           informarPasta(false);
-          const r2 = await processarLote(prontos.splice(0, loteAgora(cfg, op.porPedido)), cfg, op, resumo, modoChave, esperaMs, listagemMs);
+          const r2 = await processarLote(prontos.splice(0, loteAgora(cfg, op.porPedido)), cfg, opLote, resumo, modoChave, esperaMs, listagemMs);
           listagemMs = 0;
           tocarTrava();
           publicarProgresso(true);
@@ -556,6 +617,21 @@ function iniciar(opcoes) {
           const m2 = outraExecucao(op.porPedido);
           if (m2) { acomp.situacao('esperando', m2); resumo.esperando = m2; return false; }
           if (!op.porPedido && r2.esperaMs && (prontos.length || fontes.length)) await dormir(r2.esperaMs);
+          if (!(await drenarOcr(LOTE_OCR))) return false;
+        }
+        return !parado;
+      };
+      /** Os lotes do OCR, enquanto houver pelo menos "ate" escaneados na fila. */
+      const drenarOcr = async (ate) => {
+        while (filaOcr.length && filaOcr.length >= ate && !parado) {
+          const agoraCfg = lerConfig(CONFIG, configBanco);
+          if (mudouOConfig(cfg, agoraCfg)) { resumo.esperando = 'o config mudou'; return false; }
+          await processarLote(filaOcr.splice(0, LOTE_OCR), cfg, opOcr, resumo, modoChave, esperaMs, 0);
+          tocarTrava();
+          publicarProgresso(true);
+          await darAVez();
+          const m2 = outraExecucao(op.porPedido);
+          if (m2) { acomp.situacao('esperando', m2); resumo.esperando = m2; return false; }
         }
         return !parado;
       };
@@ -573,8 +649,11 @@ function iniciar(opcoes) {
         if (seguir) await conferirRecentes();
       }
       if (seguir) { await conferirRecentes(); seguir = await drenar(1); }
+      if (seguir) seguir = await drenarOcr(1);
       if (!seguir) { completa = false; for (const f of fontes) { try { await f.it.return(); } catch (e) { /* já fechou */ } } }
       if (parado) completa = false;
+      // a passada inteira que parou no meio (o config mudou, a rotina antiga, o robô parando) não conta: a próxima é inteira
+      if (inteira) { if (completa) modoDaInteira = modoChave; else ultimaInteiraEm = 0; }
       resumo.restantes = prontos.length;
       // a pasta agora (a lista do site mostra só uma amostra; os números são de tudo)
       informarPasta(true);
@@ -592,7 +671,7 @@ function iniciar(opcoes) {
         }
         salvar();
       }
-    } catch (err) { o.log('erro no ciclo:', err.message); atividade('O arquivador novo deu erro', err.message, true); acomp.erro(err.message); resumo.esperando = 'erro: ' + err.message; }
+    } catch (err) { if (leitura && leitura.inteira) ultimaInteiraEm = 0; o.log('erro no ciclo:', err.message); atividade('O arquivador novo deu erro', err.message, true); acomp.erro(err.message); resumo.esperando = 'erro: ' + err.message; }
     finally {
       if (comTrava) soltarTrava();
       rodando = false;
@@ -653,22 +732,30 @@ function iniciar(opcoes) {
         pastaNaoIdentificados: new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-NOVO', raizNaoIdentificados: o.origem, travaAntiga: path.join(o.controleAntigo, '_execucao.lock'),
         // vários destinos ao mesmo tempo (23/10/2026): 6 no ritmo normal, 8 com o Drive folgado, 2 e 1 com ele lento
         destinosJuntos: destinosJuntos(),
+        // o escaneado vai para a fila do OCR (o lote não espera a imagem); no lote do OCR, vários ao mesmo tempo
+        adiarOcr: !op.loteOcr, manterOcr: true,
         arquivos: lote, marcas: porRel, cadastro: cache.cadastro, contas: cache.contas, manifesto: cache.manifesto, conteudos: cache.conteudos, tiposProducao: cfg.tiposProducao, moverNaoIdentificados: !!cfg.moverNaoIdentificados,
         chaves: cache.chaves, buscaSieg, esperaVencida, manifestoAntigo: path.join(o.controleAntigo, 'MANIFESTO', 'manifesto.jsonl'),
         painel: cfg.modo === 'producao' ? { atividade: (t, x, d) => atividade(x, d), erro: (t, x, d) => atividade(x, d, true) } : null,
         registrar: false, log: () => {},
       });
       registrar(res, lote, porRel, cfg, resumo, modoChave, versaoIdx, org);
+      if (cfg.emProducao) freioDosDestinos(res);
+      // os escaneados deste lote: para a fila do OCR da passada (não contam como feitos ainda)
+      const adiados = res.itens.filter(x => x.acao === 'AGUARDANDO_OCR').map(x => porRel.get(x.rel)).filter(Boolean);
+      if (op.filaOcr) for (const v of adiados) op.filaOcr.push({ org, v });
       const ms = Date.now() - tLote;
-      for (let i = 0; i < lote.length; i++) feitosEm.push(Date.now());
-      if (leitura && leitura.porOrigem[org.id]) leitura.porOrigem[org.id].feitos += lote.length;
+      for (let i = 0; i < lote.length - adiados.length; i++) feitosEm.push(Date.now());
+      if (leitura && leitura.porOrigem[org.id]) leitura.porOrigem[org.id].feitos += lote.length - adiados.length;
       // o tempo por arquivo (ler, decidir, levar ao destino pelo Drive)
       porArquivoMs = Math.max(porArquivoMs || 0, ms / Math.max(1, lote.length));
       const t = res.tempos || {};
-      o.log('lote de ' + lote.length + (org.principal ? '' : ' (local)') + ' em ' + (ms / 1000).toFixed(1) + ' s: leitura ' + ((t.leituraMs || 0) / 1000).toFixed(1) + ' s, decisão ' + ((t.decisaoMs || 0) / 1000).toFixed(1) + ' s, destino ' + ((t.gravacaoMs || 0) / 1000).toFixed(1) + ' s (' + destinosJuntos() + ' juntos' + (t.porAcao ? ': ' + Object.entries(t.porAcao).map(([k, v]) => k + ' ' + v.n + ' × ' + (v.ms / v.n / 1000).toFixed(2) + ' s').join(', ') : '') + ') · listagem ' + (listagemMs / 1000).toFixed(1) + ' s');
+      o.log((op.loteOcr ? 'lote do OCR de ' : 'lote de ') + lote.length + (org.principal ? '' : ' (local)') + (adiados.length ? ' (' + adiados.length + ' escaneado(s) para a fila do OCR)' : '') + ' em ' + (ms / 1000).toFixed(1) + ' s: leitura ' + ((t.leituraMs || 0) / 1000).toFixed(1) + ' s, decisão ' + ((t.decisaoMs || 0) / 1000).toFixed(1) + ' s, destino ' + ((t.gravacaoMs || 0) / 1000).toFixed(1) + ' s (' + destinosJuntos() + ' juntos' + (t.porAcao ? ': ' + Object.entries(t.porAcao).map(([k, v]) => k + ' ' + v.n + ' × ' + (v.ms / v.n / 1000).toFixed(2) + ' s').join(', ') : '') + ') · listagem ' + (listagemMs / 1000).toFixed(1) + ' s');
     }
     if (o.painel) o.painel.fazendo('arquivador-novo', null);
     if (op.porPedido) return { esperaMs: 0 };
+    // o lote do OCR é lento por natureza (a leitura da imagem): não conta como Drive lento
+    if (op.loteOcr) return { esperaMs: 0 };
     medirRitmo(listagemMs, porArquivoMs);
     return { esperaMs: RITMOS[nivelRitmo].esperaMs };
   }
@@ -680,13 +767,14 @@ function iniciar(opcoes) {
     const diario = path.join(pasta, 'decisoes-' + mes + '.jsonl');
     const m = estado.mes[mes] || (estado.mes[mes] = { arquivou: 0, arquivaria: 0, jaArquivado: 0, naoIdentificado: 0, pastasNovas: 0 });
     const linhas = [];
-    const planos = A.planos(res).filter(x => x.acao !== 'CONTEINER');
+    const planos = A.planos(res).filter(x => x.acao !== 'CONTEINER' && x.acao !== 'AGUARDANDO_OCR');
     acomp.decisoes(planos, res.modo);
     const simulados = [];
     for (const x of planos) {
-      const aplicado = res.modo === 'PRODUCAO' && !x.naoAplicado && !x.erro && (x.acao === 'ARQUIVAR' || x.acao === 'JA_ARQUIVADO');
+      // o não identificado movido para NÃO IDENTIFICADOS também foi aplicado (o diário dizia SIMULACAO; 26/10/2026)
+      const aplicado = res.modo === 'PRODUCAO' && !x.naoAplicado && !x.erro && (x.acao === 'ARQUIVAR' || x.acao === 'JA_ARQUIVADO' || !!x.movidoPara);
       if (x.acao === 'AGUARDANDO_ORIGINAL') { resumo.aguardando = (resumo.aguardando || 0) + 1; continue; }   // volta no próximo ciclo; não conta nem vai ao diário
-      linhas.push(JSON.stringify({ em: new Date().toISOString(), modo: aplicado ? 'PRODUCAO' : 'SIMULACAO', rel: x.rel, hash: x.hash, acao: x.acao, motivo: x.motivo, tipo: x.tipo, confianca: x.confianca, onde: x.onde || null, destinoSugerido: x.destinoSugerido || null, copias: (x.copias || []).map(c => c.onde), pastaNova: !!x.criarPastaCliente, erro: x.erro || null, chave: x.chave || null, viaSieg: x.viaSieg || undefined }));
+      linhas.push(JSON.stringify({ em: new Date().toISOString(), modo: aplicado ? 'PRODUCAO' : 'SIMULACAO', rel: x.rel, hash: x.hash, acao: x.acao, motivo: x.motivo, tipo: x.tipo, confianca: x.confianca, onde: x.onde || x.movidoPara || null, destinoSugerido: x.destinoSugerido || null, copias: (x.copias || []).map(c => c.onde), pastaNova: !!x.criarPastaCliente, erro: x.erro || null, chave: x.chave || null, viaSieg: x.viaSieg || undefined }));
       resumo.decididos++;
       if (x.erro) resumo.erros++;
       if (x.acao === 'ARQUIVAR') { if (aplicado) { m.arquivou++; resumo.arquivou++; } else { m.arquivaria++; resumo.arquivaria++; simulados.push(x); } if (x.criarPastaCliente) m.pastasNovas++; }
@@ -695,6 +783,11 @@ function iniciar(opcoes) {
       else resumo.fica++;
     }
     fs.appendFileSync(diario, linhas.join('\n') + (linhas.length ? '\n' : ''));
+    // o que saiu da pasta sai da contagem (o compactado conta uma vez, pelo de fora)
+    if (org.principal && estado.contagem && estado.contagem['G:']) {
+      const sairam = new Set(planos.filter(x => res.modo === 'PRODUCAO' && !x.naoAplicado && !x.erro && (x.acao === 'ARQUIVAR' || x.acao === 'JA_ARQUIVADO' || x.acao === 'DESCARTAR' || !!x.movidoPara)).map(x => x.dentroDe || x.rel));
+      estado.contagem['G:'].arquivos = Math.max(0, estado.contagem['G:'].arquivos - sairam.size);
+    }
     // em produção, o que deu erro (o Google Drive às vezes falha um rename/leitura no G:) volta no próximo ciclo, até 3 vezes;
     // o destino nunca é sobrescrito, então tentar de novo é seguro (o que já foi gravado vira "já arquivado")
     const comErro = new Set(res.modo === 'PRODUCAO' ? A.planos(res).filter(x => x.erro).map(x => x.dentroDe || x.rel) : []);
@@ -705,12 +798,14 @@ function iniciar(opcoes) {
     // o evento que espera o documento original: não fica decidido; anota desde quando espera (a espera vence em
     // esperaOriginalHoras) e com que versão do índice tentou (volta quando o índice muda, ou em 10 min)
     const esperam = new Set(A.planos(res).filter(x => x.acao === 'AGUARDANDO_ORIGINAL').map(x => x.dentroDe || x.rel));
+    const naFilaDoOcr = new Set(res.itens.filter(x => x.acao === 'AGUARDANDO_OCR').map(x => x.rel));   // volta no lote do OCR
     estado.aguardando = estado.aguardando || {};
     for (const rel of lote) {
       const v = porRel.get(rel); if (!v) continue;
       const ka = chaveDe(org, rel, v);
       if (esperam.has(rel)) { estado.aguardando[ka] = { desde: (estado.aguardando[ka] && estado.aguardando[ka].desde) || Date.now(), tentativa: Date.now(), versao: versaoIdx }; continue; }
       delete estado.aguardando[ka];
+      if (naFilaDoOcr.has(rel)) continue;
       const k = ka + '|' + modoChave;
       if (temporarios.has(rel) && (estado.tentativas[k] = (estado.tentativas[k] || 0) + 1) < 5) continue;
       if (comErro.has(rel) && (estado.tentativas[k] = (estado.tentativas[k] || 0) + 1) < 3) continue;
@@ -868,6 +963,8 @@ function iniciar(opcoes) {
     void garantirContexto().catch(e => o.log('contexto:', e.message));
   }
   const timer = o.umaVez ? null : setInterval(() => { void ciclo(); }, (lerConfig(CONFIG, configBanco).intervaloMs) || INTERVALO_MS);
+  const timerContagem = o.umaVez ? null : setInterval(() => { void contarPasta(); }, 10 * 60000);
+  if (!o.umaVez) setTimeout(() => { void contarPasta(); }, 30000);
   if (o.painel) o.painel.modulo('arquivador-novo', 'Arquivador novo (por evento)', true, lerConfig(CONFIG, configBanco).modo);
   o.log('vigiando ' + o.origem + ' (modo ' + lerConfig(CONFIG, configBanco).modo + ') · controle em ' + o.controle);
   if (!fs.existsSync(CONFIG) && !fs.existsSync(path.join(o.controle, 'MANIFESTO', 'manifesto.jsonl'))) {
@@ -880,9 +977,9 @@ function iniciar(opcoes) {
     // para os testes: o ritmo e a varredura
     _medirRitmo: (v, a) => medirRitmo(v, a), _ritmo: () => ({ nivel: nivelRitmo, proximoCicloEm, folgados }),
     _listar: async (raiz) => { const out = []; for await (const p of andarEmFluxo(raiz || o.origem)) out.push(...p); return out; },
-    _modoAnunciado: () => modoAnunciado,
+    _modoAnunciado: () => modoAnunciado, _contarPasta: () => { if (estado.contagem) delete estado.contagem['G:']; return contarPasta(); }, _contados: () => contados('G:'),
     _mudados: () => mudados, _decididos: () => estado.decididos, _recentes: () => recentes, _grupos: () => gruposNi, _conferirNaoIdentificados: f => conferirNaoIdentificados(f), _lembrar: e => lembrarGrupo(e),
-    parar: () => { parado = true; if (pedidos) pedidos.parar(); if (timer) clearInterval(timer); clearTimeout(acordar); if (observador) observador.close(); soltarTrava(); void acomp.parar(); },
+    parar: () => { parado = true; if (pedidos) pedidos.parar(); if (timer) clearInterval(timer); if (timerContagem) clearInterval(timerContagem); clearTimeout(acordar); if (observador) observador.close(); soltarTrava(); void acomp.parar(); },
   };
 }
 

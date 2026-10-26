@@ -335,15 +335,16 @@ try {
     fs.writeFileSync(path.join(oR, '2026-10', 'a.xml'), '<a/>'); fs.writeFileSync(path.join(oR, '2026-10', 'b.xml'), '<b/>');
     const vR = C.iniciar(Object.assign({}, baseC, { origem: oR, controle: kR, arvoreGrande: 0, umaVez: false }));
     vR._medirRitmo(70000, null);
-    igual('ritmo: varredura de 70 s → lote de 10 e ciclo a cada 2 min', [vR._ritmo().nivel, vR._ritmo().proximoCicloEm > Date.now() + 100000], [1, true]);
+    // 26/10/2026: o primeiro degrau não espaça mais os lotes (a migração); só o segundo espera 1 min
+    igual('ritmo: varredura de 70 s → lote de 20, sem pausa', [vR._ritmo().nivel, vR._ritmo().proximoCicloEm > Date.now() + 1000], [1, false]);
     vR._medirRitmo(5000, 12000);
-    igual('ritmo: 12 s por arquivo → lote de 5', vR._ritmo().nivel, 2);
+    igual('ritmo: 12 s por arquivo → lote de 10 e 1 min entre os lotes', [vR._ritmo().nivel, vR._ritmo().proximoCicloEm > Date.now() + 50000], [2, true]);
     vR._medirRitmo(1000, 500); vR._medirRitmo(1000, 500);
     igual('ritmo: dois ciclos rápidos ainda não voltam', vR._ritmo().nivel, 2);
     vR._medirRitmo(1000, 500);
     igual('ritmo: o terceiro rápido volta um degrau', vR._ritmo().nivel, 1);
     const r1 = await vR.ciclo();
-    igual('ritmo: ciclo antes da hora espera', /Google Drive lento/.test(r1.esperando || ''), true);
+    igual('ritmo: no primeiro degrau o ciclo não espera', /Google Drive lento/.test(r1.esperando || ''), false);
     // a leitura em fluxo (23/10/2026): pasta por pasta, sem as pastas de fora (NÃO IDENTIFICADOS, "_", CLAUDE FAVOR NÃO MEXER)
     fs.mkdirSync(path.join(oR, 'NÃO IDENTIFICADOS', 'x'), { recursive: true }); fs.writeFileSync(path.join(oR, 'NÃO IDENTIFICADOS', 'x', 'n.xml'), '<n/>');
     fs.mkdirSync(path.join(oR, '_tmp'), { recursive: true }); fs.writeFileSync(path.join(oR, '_tmp', 't.xml'), '<t/>');
