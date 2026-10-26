@@ -3,6 +3,7 @@
 // no tópico Empresas do usuário e no Minhas empresas da Minha página.
 import { ConfigLinha, Esqueleto, Icone, MenuSuspenso } from '@nads/ui';
 import { useState } from 'react';
+import { PessoaComFoto } from './FotoDaPessoa';
 import { JanelaDeTroca } from './JanelaDeTroca';
 import { useEmpresasPorResponsavel, type VmEmpresasPorResponsavel } from './useEmpresasPorResponsavel';
 
@@ -88,7 +89,7 @@ export function EmpresasSemResponsavel({ vm }: { vm: VmEmpresasPorResponsavel })
                   <span className="emp-pessoa-cod num fraco">{l.codigo ?? ''}</span>
                   <span className="emp-pessoa-nome" title={l.nome}>{l.nome}</span>
                   <MenuSuspenso rotulo="Escolher" icone="usuario" className="btn btn-outline" titulo={'Responsável no ' + d.rotulo} direita largura={220}
-                    itens={vm.opcoes[d.id].map(n => ({ rotulo: n, icone: 'usuario' as const, onClick: () => vm.definir(l.nome, l.codigo, d.id, n) }))} />
+                    itens={vm.opcoes[d.id].map(n => ({ rotulo: <PessoaComFoto nome={n} {...vm.fotoDe(n)} />, onClick: () => vm.definir(l.nome, l.codigo, d.id, n) }))} />
                 </li>
               ))}
             </ul>

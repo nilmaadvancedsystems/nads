@@ -75,7 +75,7 @@ export function MinhasEmpresas() {
 
       {/* a tabela aparece na hora; as linhas entram quando o banco responde (a barra do topo termina) */}
       {!vm.carregando && vm.total === 0 ? <Vazio icone="briefcase" titulo={vm.filtrandoPorResponsavel && !vm.busca && !vm.situacao ? 'Nenhuma empresa no seu nome' : 'Nenhuma empresa nesta situação'}
-        texto={vm.filtrandoPorResponsavel && !vm.busca && !vm.situacao ? 'As empresas aparecem aqui quando você é o responsável por elas no seu setor (Cadastro › Empresas por responsável).' : undefined}>
+        texto={vm.filtrandoPorResponsavel && !vm.busca && !vm.situacao ? 'Aqui aparecem as empresas em que você é o responsável no seu setor e as que ainda não têm responsável (Cadastro › Empresas por responsável).' : undefined}>
         {/* a saída do vazio (revisão da UI, 18/10/2026) */}
         {(vm.busca || vm.situacao) && <button type="button" className="btn btn-outline" onClick={vm.limparFiltros}>Limpar a busca e a situação</button>}
       </Vazio> : (

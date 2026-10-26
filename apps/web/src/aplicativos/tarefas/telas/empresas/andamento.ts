@@ -60,7 +60,9 @@ export function useAndamento() {
     const r = cadastros.porId.get(formatos.slug(emp.nome))?.responsaveis?.[dep as 'fiscal' | 'contabil'] || '';
     return r || (dep === 'fiscal' ? empresas.clienteDoDp(emp.codigo)?.responsavel || '' : '');
   };
-  const daPessoa = (emp: { nome: string; codigo: number | null }) => { const r = responsavelDe(emp); return !!r && nomes.some(n => igual(n, r)); };
+  // a empresa sem responsável no setor aparece para todos do setor (26/10/2026: "não tem nada no cadastro"); a que tem,
+  // só para o responsável
+  const daPessoa = (emp: { nome: string; codigo: number | null }) => { const r = responsavelDe(emp); return !r || nomes.some(n => igual(n, r)); };
 
   // as empresas da rotina: o DP, os clientes da planilha do DP; o Contábil e o Fiscal, a lista do escritório
   const linhas = rotinaDoDep ? t.empresasDaRotina(dep, repo.listarEmpresas()).filter(emp => !filtrar || daPessoa(emp)).map(emp => {
