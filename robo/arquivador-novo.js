@@ -200,6 +200,23 @@ function linhasDaPlanilha(buffer, nome) {
     return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 }).slice(0, 15);
   } catch (e) { return []; } finally { console.error = erro; }
 }
+// o OCR adiantado do escaneado que foi para a fila: { hash: Promise<resultado> }, no máximo OCR_ADIANTADOS pendentes (o
+// buffer fica preso até a leitura acabar); o lote do OCR usa o resultado e o tira daqui
+const OCR_ADIANTADOS = 60;
+const ocrAdiantado = new Map();
+function adiantarOcr(hash, buffer) {
+  if (ocrAdiantado.has(hash) || ocrAdiantado.size >= OCR_ADIANTADOS) return;
+  const p = require('./arquivador-ocr').ocrDoPdf(buffer);
+  ocrAdiantado.set(hash, p);
+  // o que ninguém veio buscar (a passada parou antes do lote do OCR) sai em 30 min e abre a vaga
+  p.then(() => { const t = setTimeout(() => { if (ocrAdiantado.get(hash) === p) ocrAdiantado.delete(hash); }, 30 * 60000); if (t.unref) t.unref(); });
+}
+function ocrDe(hash, buffer) {
+  const p = ocrAdiantado.get(hash);
+  if (p) { ocrAdiantado.delete(hash); return p; }
+  return require('./arquivador-ocr').ocrDoPdf(buffer);
+}
+
 /** O que as regras precisam de cada formato. */
 async function montarEntrada(nome, rel, buffer, op) {
   const e = { nome, rel, hash: sha(buffer), tamanho: buffer.length };
@@ -212,8 +229,10 @@ async function montarEntrada(nome, rel, buffer, op) {
       // escaneado (sem camada de texto, ou quase nada): OCR das primeiras páginas (arquivador-ocr.js)
       if (OCR_LIGADO && e.texto.join('').replace(/\s/g, '').length < 40) {
         // o contínuo manda o escaneado para a fila do OCR (26/10/2026): o lote não espera a leitura da imagem
-        if (op && op.adiarOcr) { e.precisaOcr = true; break; }
-        const o = await require('./arquivador-ocr').ocrDoPdf(buffer);
+        // e o OCR já começa, em paralelo (os trabalhadores do Tesseract rodam em outras threads): quando o lote do OCR
+        // chegar, a leitura está pronta (26/10/2026: o lote do OCR de 12 levava ~52 s e parava a fila comum)
+        if (op && op.adiarOcr) { e.precisaOcr = true; adiantarOcr(e.hash, buffer); break; }
+        const o = await ocrDe(e.hash, buffer);
         e.ocr = { confianca: o.confianca, ms: o.ms, erro: o.erro || null };
         if (o.paginas.length && o.paginas.join('').replace(/\s/g, '').length >= 40) { e.texto = o.paginas; e.paginas = e.paginas || o.total; }
       }
