@@ -150,10 +150,16 @@ class Correcao {
   /** Depois de cada lote: cada arquivo está no destino, com o mesmo tamanho (e o mesmo sha256), e saiu da origem. */
   conferirLote() {
     const erros = [];
-    if (this.producao) for (const p of this.lote) {
-      if (p.pulou) continue;
+    // os passos encadeados (a pasta com nome de arquivo: arquivo → .correcao-tmp → o nome da pasta, que foi para a
+    // quarentena): o destino intermediário saiu de novo, e a origem que outro passo ocupou é o arquivo no lugar certo
+    // (26/10/2026: a conferência parava a correção com o resultado certo no G:)
+    const feitos = this.lote.filter(p => !p.pulou);
+    const origensDepois = (i) => new Set(feitos.slice(i + 1).map(p => lower(p.de)));
+    const destinosDeOutros = (p) => feitos.some(q => q !== p && lower(q.para) === lower(p.de));
+    if (this.producao) for (const [i, p] of feitos.entries()) {
+      if (origensDepois(i).has(lower(p.para))) continue;
       let st = null; try { st = fs.statSync(p.para); } catch (e) { erros.push('não está no destino: ' + p.para); continue; }
-      if (fs.existsSync(p.de) && lower(p.de) !== lower(p.para)) erros.push('ficou também na origem: ' + p.de);
+      if (fs.existsSync(p.de) && lower(p.de) !== lower(p.para) && !destinosDeOutros(p)) erros.push('ficou também na origem: ' + p.de);
       if (!p.pasta && st.size !== p.tamanho) erros.push('tamanho diferente: ' + p.para);
       if (!p.pasta && p.sha) { const h = shaDe(fs.readFileSync(p.para)); if (h !== p.sha) erros.push('sha256 diferente no destino: ' + p.para); }
     } else {
