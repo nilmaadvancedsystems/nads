@@ -250,7 +250,9 @@ const INDICADOR: Record<Jeito, () => AnimationParams> = {
 /** Leva o indicador até o lugar (left/top/largura/altura); na primeira vez, aparece já no lugar. */
 export function moverIndicador(el: HTMLElement, lugar: { x: number; y: number; w: number; h: number }, primeira: boolean): void {
   const alvo = { translateX: lugar.x, translateY: lugar.y, width: lugar.w, height: lugar.h };
-  if (primeira || semMovimento()) { utils.set(el, { ...alvo, opacity: 1 }); return; }
+  // o lugar direto (a primeira vez, sem movimento ou a lateral mudando de largura) para antes a animação que ainda corre:
+  // sem isso, ela terminava depois e deixava o fundo no lugar velho (26/10/2026: o fundo do "Acesso" parado embaixo do ícone)
+  if (primeira || semMovimento()) { utils.remove(el); utils.set(el, { ...alvo, opacity: 1 }); return; }
   animate(el, { ...alvo, opacity: 1, ...INDICADOR[jeito](), composition: 'replace' });
 }
 
@@ -362,14 +364,20 @@ export function useIndicador<T extends HTMLElement>(seletorAtivo: string, deps: 
   };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useLayoutEffect(() => { posicionar(false); }, deps);
+  // o lugar acompanha a caixa e cada item (26/10/2026: o CSS que chega depois muda os itens sem mudar a caixa, e o fundo
+  // ficava no lugar velho, embaixo do ícone)
   useLayoutEffect(() => {
     const raiz = ref.current;
     if (!raiz || typeof ResizeObserver === 'undefined') return;
-    const obs = new ResizeObserver(() => posicionar(true));
+    // o primeiro aviso é o de quando começa a olhar (não mudou nada): passa, para não cortar o deslize da troca de página
+    let comecou = false;
+    const obs = new ResizeObserver(() => { if (comecou) posicionar(true); comecou = true; });
     obs.observe(raiz);
+    // (os itens e o que os embrulha: na lateral, cada item vem dentro de um div)
+    for (const el of Array.from(raiz.querySelectorAll(':scope > *, :scope > * > *'))) if (!el.classList.contains(classe)) obs.observe(el);
     return () => obs.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, deps);
   return ref;
 }
 

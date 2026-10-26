@@ -508,16 +508,47 @@ function iniciarSieg({ db, log }) {
   // o pedido que chega enquanto o robô atende outro não pode ficar esquecido (08/10/2026: o 380 do Gustavo ficou parado
   // porque chegou durante o 62): ao terminar, olha a fila de novo
   let chegouOutro = false;
+  // sem o Google Drive deste PC aberto (26/10/2026: 59 erros "a pasta do Drive deste PC não está em…" às 3h35; o Drive só
+  // abriu às 13h06): o pedido de XMLs não dá erro, fica na fila e é atendido quando a pasta aparecer (o relógio de 10 em
+  // 10 minutos tenta de novo); e os que já deram esse erro nos últimos 3 dias voltam para a fila sozinhos quando o Drive
+  // volta. Os outros pedidos (saídas, contagem) não precisam do Drive e seguem.
+  const ERRO_SEM_DRIVE = 'a pasta do Drive deste PC não está em';
+  const driveAberto = () => fs.existsSync(PASTA_DO_DRIVE);
+  let avisouSemDrive = 0;
+  let devolveuEm = 0;
+  async function devolverOsQueEsperavamODrive() {
+    if (!driveAberto() || Date.now() - devolveuEm < 10 * 60 * 1000) return;
+    devolveuEm = Date.now();
+    const desde = new Date(Date.now() - 3 * 864e5).toISOString();
+    const s = await db.collection('pedidosSieg').where('status', '==', 'erro').limit(300).get();
+    const voltam = s.docs.filter(d => String(d.data().erro || '').startsWith(ERRO_SEM_DRIVE) && String(d.data().erroEm || '') >= desde);
+    for (const d of voltam) await d.ref.update({ status: 'pendente', erro: null, andamento: '' });
+    if (voltam.length) {
+      log('SIEG: o Drive deste PC abriu -', voltam.length, 'pedidos de XMLs que deram erro sem ele voltaram para a fila');
+      painel.atividade('sieg', 'O Drive deste PC abriu: ' + voltam.length + ' pedidos de XMLs voltaram para a fila', 'eles tinham dado erro porque o Google Drive estava fechado');
+    }
+  }
   async function atenderPedidos() {
     if (ocupado) { chegouOutro = true; return; }
     ocupado = true;
     chegouOutro = false;
     try {
       await apagarZipsVelhos().catch(err => log('SIEG: não consegui apagar os .zip velhos -', err.message));
-      const snap = await db.collection('pedidosSieg').where('status', '==', 'pendente').limit(5).get();
+      await devolverOsQueEsperavamODrive().catch(err => log('SIEG: não consegui devolver os pedidos que esperavam o Drive -', err.message));
+      // 25 de uma vez (eram 5): os de XMLs que esperam o Drive ficam na fila e não podem tapar os outros
+      const snap = await db.collection('pedidosSieg').where('status', '==', 'pendente').limit(25).get();
       for (const d of snap.docs) {
         const p = d.data();
         const id = soDigitos(p.codigo) + '_' + p.competencia;
+        if ((p.tipo === 'xmls' || p.tipo === 'xmlsCliente') && !driveAberto()) {
+          // fica pendente, sem mexer no pedido (mexer acordaria a fila de novo, sem parar)
+          if (Date.now() - avisouSemDrive > 60 * 60 * 1000) {
+            avisouSemDrive = Date.now();
+            log('SIEG: pedidos de XMLs esperando o Google Drive deste PC abrir (' + PASTA_DO_DRIVE + ')');
+            painel.atividade('sieg', 'Pedidos de XMLs esperando o Google Drive deste PC abrir', 'a pasta ' + PASTA_DO_DRIVE + ' não está aberta; o robô baixa assim que ela aparecer', { aviso: true });
+          }
+          continue;
+        }
         situacao = 'baixando as saídas de ' + p.codigo;
         await d.ref.update({ status: 'processando', processandoEm: new Date().toISOString() });
         try {

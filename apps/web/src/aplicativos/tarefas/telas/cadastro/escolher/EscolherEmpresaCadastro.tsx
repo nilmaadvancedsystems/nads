@@ -8,6 +8,19 @@ import { JanelaNovaEmpresa } from './JanelaNovaEmpresa';
 import { usePapeisDoCadastro } from './usePapeisDoCadastro';
 import { SITUACOES, useListaDoCadastro } from './useListaDoCadastro';
 
+/** um logo por banco: as contas do mesmo banco juntas (a dica diz o nome e cada conta) */
+function logosDosBancos(bancos: readonly { marca: string; nome: string; rotulo?: string }[]) {
+  const porMarca = new Map<string, { marca: string; nome: string; contas: number; rotulos: string[] }>();
+  for (const b of bancos) {
+    const chave = b.marca || b.nome;
+    const x = porMarca.get(chave) || { marca: b.marca, nome: b.nome, contas: 0, rotulos: [] };
+    x.contas++;
+    if (b.rotulo) x.rotulos.push(b.rotulo);
+    porMarca.set(chave, x);
+  }
+  return [...porMarca.values()].map(x => ({ ...x, dica: x.nome + (x.contas > 1 ? ' · ' + x.contas + ' contas' : '') + (x.rotulos.length ? ' (' + x.rotulos.join('; ') + ')' : '') }));
+}
+
 export function EscolherEmpresaCadastro() {
   // a Nova empresa (Vitor, 07/10/2026: "um cadastro de empresas sem o botão de cadastrar empresa")
   const [nova, setNova] = useState(false);
@@ -52,7 +65,7 @@ export function EscolherEmpresaCadastro() {
         {/* a saída do vazio (revisão da UI, 18/10/2026) */}
         {(vm.busca || vm.situacao) && <button type="button" className="btn btn-outline" onClick={() => { vm.setBusca(''); vm.setSituacao(''); }}>Limpar a busca e a situação</button>}
       </Vazio> : (
-        <div ref={tabela} className="table-wrap">
+        <div ref={tabela} className="table-wrap cad-lista-rolagem">
           <table ref={linhasQueSeMovem} className="tabela-empresas cad-lista">
             <thead><tr><th>Código</th><th>Empresa</th><th>Cadastro</th><th>Bancos</th><th>Atualizado</th></tr></thead>
             <tbody>
@@ -68,14 +81,16 @@ export function EscolherEmpresaCadastro() {
                     </span>
                   </td>
                   <td>
+                    {/* só o logo de cada banco, colorido e nítido (26/10/2026: "coloca só o logo do banco em alta resolução"): o banco
+                        repetido vira um logo só, com quantas contas no canto; o nome, as contas e o "achado pelo robô" na dica */}
                     {l.bancos.length ? (
-                      <span className={'cad-bancos-da-linha' + (l.origem === 'robo' ? ' do-robo' : '')}>
-                        {l.bancos.map((b, i) => (
-                          <span key={b.marca + i} className="cad-banco-mini" title={b.nome + (b.rotulo ? ' · ' + b.rotulo : '')}>
-                            <span className="add-banco-logo"><LogoBanco banco={b.marca} cor={l.origem === 'cadastro'} /></span>{b.nome}
+                      <span className="cad-bancos-da-linha">
+                        {logosDosBancos(l.bancos).map(b => (
+                          <span key={b.marca} className="cad-banco-logo" title={b.dica + (l.origem === 'robo' ? ' · achado pelo robô (Drive e extratos), ainda não confirmado no Cadastro' : '')}>
+                            <LogoBanco banco={b.marca} cor />
+                            {b.contas > 1 && <span className="cad-banco-qtd num">{b.contas}</span>}
                           </span>
                         ))}
-                        {l.origem === 'robo' && <span className="badge badge-neutral cad-badge" title="O robô achou pelo Drive e pelos extratos; ainda não confirmado no Cadastro">pelo robô</span>}
                       </span>
                     ) : <span className="fraco">—</span>}
                   </td>

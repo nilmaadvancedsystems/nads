@@ -131,7 +131,6 @@ export function htmlDoProtocolo(p: { competencia: string; grupo: GrupoDoProtocol
   th.sdr{width:6mm}
   td.mail{text-align:center}
   th.mail{width:16mm}
-  .pe{margin-top:3mm;font-size:6.5pt;color:#555}
   .retificacao{margin-top:5mm;break-inside:avoid;page-break-inside:avoid}
   .retificacao h2{margin:0 0 1.5mm;font-size:10pt;font-weight:700;letter-spacing:.5pt}
   .retificacao td{height:7mm}
@@ -145,7 +144,6 @@ export function htmlDoProtocolo(p: { competencia: string; grupo: GrupoDoProtocol
 </style></head><body>
 ${p.logo.definicao}<div class="topo"><span class="logo">${p.logo.uso}</span><span class="selo">${esc(p.grupo.selo)}</span><span class="titulo"><b>Protocolo de Entrega de Tributos</b><span>Ref: ${esc(ref)}</span></span></div>
 <table><thead>${cab}</thead><tbody>${corpo}</tbody></table>
-<p class="pe">${p.linhas.length} ${p.linhas.length === 1 ? 'empresa' : 'empresas'}. Os valores e as datas preenchidos vêm das guias entregues pelo Entregas nesta competência; o resto é para preencher à mão.</p>
 <section class="retificacao"><h2>RETIFICAÇÃO</h2>
 <table><thead><tr><th class="ret-cod">COD.</th><th class="ret-nome">RAZÃO SOCIAL</th><th class="ret-trib">TRIBUTO</th><th class="ret-comp">COMPETÊNCIA</th><th class="ret-valor">VALOR ANTERIOR</th><th class="ret-valor">VALOR RETIFICADO</th><th>MOTIVO</th><th class="ret-data">DATA</th><th class="ret-visto">VISTO</th></tr></thead>
 <tbody>${'<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td class="data">&nbsp;&nbsp;/&nbsp;&nbsp;</td><td></td></tr>'.repeat(LINHAS_DA_RETIFICACAO)}</tbody></table>

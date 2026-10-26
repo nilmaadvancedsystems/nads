@@ -17,6 +17,8 @@ export function useAdiantamentoSalarial() {
   const { aviso } = useRetorno();
   const chave = useChaveDaEtapa('adiantamento-salarial');
   const [proprio, setRazao] = useGuardado<{ arquivo: string; razao: t.RazaoDaConta } | null>(chave + '|razao', null);
+  // "Não houve mais movimento" (Vitor, 26/10/2026): marcado, a etapa não cobra o razão nem o zerar; clicar de novo desfaz
+  const [semMovimento, setSemMovimento] = useGuardado<boolean>(chave + '|sem-mais-movimento', false);
   // o da Importação (o upload único dos razões; 16/10/2026), quando a etapa não tem o próprio
   const contabil = useContabilDaEmpresa(s.nome, s.codigo);
   const daImportacao = contabil.razaoDoTipo('adiantamento-salarial');
@@ -42,8 +44,9 @@ export function useAdiantamentoSalarial() {
 
   const meses = useMemo(() => (razao ? t.conferirAdiantamentoSalarial(razao.razao, s.meses) : []), [razao, s.meses]);
   const naoZerou = meses.filter(m => Math.abs(m.saldoFinal) > 0.005);
-  const faltando = meses.filter(m => m.falta > 0.005);
-  const faltam = [
+  // o que falta pagar, também dos meses antes dos da etapa, que é de onde vem o saldo que não zera (Vitor, 26/10/2026)
+  const faltando = useMemo(() => (razao && s.meses.length ? t.pagamentosQueFaltam(razao.razao, s.meses[s.meses.length - 1]) : []), [razao, s.meses]);
+  const faltam = semMovimento ? [] : [
     ...(!razao ? ['Importar o razão do Adiantamento salarial'] : []),
     ...(naoZerou.length ? ['O Adiantamento salarial não zerou em ' + naoZerou.map(m => t.rotuloNumericoCompetencia(m.mes)).join(', ')] : []),
   ];
@@ -51,9 +54,15 @@ export function useAdiantamentoSalarial() {
 
   const reais = formatos.reais;
   return {
+    semMovimento, alternarSemMovimento: () => setSemMovimento(x => !x),
+    /** o botão aparece quando a etapa ainda cobra algo (ou já foi marcado, para desfazer) */
+    mostrarSemMovimento: semMovimento || !razao || naoZerou.length > 0,
     temRazao: !!razao, arquivo: razao?.arquivo || '',
     importar, remover: () => { setRazao(null); if (!proprio && daImportacao) contabil.tirarRazao(daImportacao.conta); },
-    resumo: razao ? [naoZerou.length ? 'Não zerou em ' + naoZerou.map(m => t.rotuloNumericoCompetencia(m.mes)).join(', ') : 'Ok'] : [],
+    resumo: razao ? [
+      naoZerou.length ? 'Não zerou em ' + naoZerou.map(m => t.rotuloNumericoCompetencia(m.mes)).join(', ') : 'Ok',
+      ...(faltando.length ? ['Falta pagar ' + reais(faltando.reduce((x, p) => x + p.valor, 0)) + ' (' + faltando.map(p => t.rotuloNumericoCompetencia(p.mes)).join(', ') + ')'] : []),
+    ] : [],
     ok: !!razao && !naoZerou.length,
     meses: meses.map(m => ({
       mes: m.mes, rotulo: t.rotuloNumericoCompetencia(m.mes),
@@ -73,9 +82,9 @@ export function useAdiantamentoSalarial() {
     podeExportar: faltando.length > 0 && !!contaAdiantamento && !!contaBanco,
     /** o .xls de importação do Alterdata: D Adiantamento salarial, C o banco, no dia 15 (ou no útil antes) */
     baixarXls: () => {
-      const bytes = creditor.planilhaDeImportacao(faltando.map(m => ({
-        automatico: '', data: dataBR(m.dataEsperada), debito: contaAdiantamento, credito: contaBanco, codHistorico: '',
-        historico: t.historicoDoAdiantamentoSalarial(m.mes), valor: m.falta, documento: '', tipo: 'principal' as const, tituloId: 0,
+      const bytes = creditor.planilhaDeImportacao(faltando.map(p => ({
+        automatico: '', data: dataBR(p.data), debito: contaAdiantamento, credito: contaBanco, codHistorico: '',
+        historico: p.historico, valor: p.valor, documento: '', tipo: 'principal' as const, tituloId: 0,
       })));
       baixarBytes(bytes, 'adiantamento-salarial-' + s.nome.split(' ')[0] + '.xls', creditor.TIPO_XLS);
     },
