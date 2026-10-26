@@ -81,14 +81,13 @@ function lerComONads(arquivo, ano) {
   });
 }
 
-/** Junta os pedaços do arquivo (esperando chegarem todos). */
-async function arquivoDoBug(ref, esperadas) {
+/** Os pedaços dos arquivos, na ordem (esperando chegarem todos). */
+async function pedacosDoBug(ref, esperadas) {
   const ate = Date.now() + ESPERA_DOS_PEDACOS_MS;
   for (;;) {
     const s = await ref.collection('partes').get();
     if (s.size >= esperadas) {
-      const pedacos = s.docs.sort((a, b) => Number(a.id) - Number(b.id)).map(d => Buffer.from(d.get('dados').toUint8Array ? d.get('dados').toUint8Array() : d.get('dados')));
-      return Buffer.concat(pedacos);
+      return s.docs.sort((a, b) => Number(a.id) - Number(b.id)).map(d => Buffer.from(d.get('dados').toUint8Array ? d.get('dados').toUint8Array() : d.get('dados')));
     }
     if (Date.now() > ate) throw new Error('o arquivo não chegou inteiro (' + s.size + ' de ' + esperadas + ' pedaços)');
     await new Promise(r => setTimeout(r, 5000));
@@ -117,13 +116,24 @@ function iniciarSuporteClaude({ db, log = console.log }) {
       fs.mkdirSync(pasta, { recursive: true });
       const ctx = pegou.contexto || {};
       const ano = (ctx.meses && ctx.meses[0] && Number(ctx.meses[0].slice(0, 4))) || new Date().getFullYear();
-      let arquivo = '', leitura = '(sem arquivo anexado)';
-      if (pegou.arquivo && pegou.arquivo.partes) {
-        const nome = String(pegou.arquivo.nome || 'arquivo').replace(/[\\/:*?"<>|]/g, '_');
-        arquivo = path.join(pasta, nome);
-        fs.writeFileSync(arquivo, await arquivoDoBug(ref, pegou.arquivo.partes));
-        leitura = await lerComONads(arquivo, ano);
+      // um ou mais arquivos (26/10/2026: o balão anexa vários): cada um com os pedaços dele (de, partes); o de antes, um só
+      const lista = pegou.arquivo && pegou.arquivo.partes
+        ? (Array.isArray(pegou.arquivo.arquivos) ? pegou.arquivo.arquivos : [{ nome: pegou.arquivo.nome, de: 0, partes: pegou.arquivo.partes }]) : [];
+      const arquivos = [];
+      const leituras = [];
+      if (lista.length) {
+        const total = Number(pegou.arquivo.total) || lista.reduce((t, a) => t + (Number(a.partes) || 0), 0);
+        const pedacos = await pedacosDoBug(ref, total);
+        for (const a of lista) {
+          const nome = String(a.nome || 'arquivo').replace(/[\\/:*?"<>|]/g, '_');
+          const arq = path.join(pasta, nome);
+          const de = Number(a.de) || 0;
+          fs.writeFileSync(arq, Buffer.concat(pedacos.slice(de, de + (Number(a.partes) || 0))));
+          arquivos.push(arq);
+          leituras.push((lista.length > 1 ? '### ' + nome + '\n' : '') + await lerComONads(arq, ano));
+        }
       }
+      const leitura = leituras.length ? leituras.join('\n\n') : '(sem arquivo anexado)';
       const pedido = [
         'O bug:',
         '- quem: ' + (pegou.nome || pegou.email || '—'),
@@ -132,7 +142,7 @@ function iniciarSuporteClaude({ db, log = console.log }) {
         '- meses da tarefa: ' + ((ctx.meses || []).join(', ') || '—'),
         '- a conversa no balão (as cápsulas): ' + (pegou.caminho || '—'),
         '- o que a pessoa escreveu: ' + (pegou.texto || '—'),
-        '- o arquivo: ' + (arquivo ? arquivo + ' (' + Math.round(fs.statSync(arquivo).size / 1024) + ' KB)' : 'nenhum'),
+        '- ' + (arquivos.length > 1 ? 'os arquivos: ' : 'o arquivo: ') + (arquivos.length ? arquivos.map(a => a + ' (' + Math.round(fs.statSync(a).size / 1024) + ' KB)').join('; ') : 'nenhum'),
         '',
         'A leitura do nads sobre o arquivo (node robo/suporte-ler.js):',
         leitura.slice(0, 20000),
