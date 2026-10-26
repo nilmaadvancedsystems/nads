@@ -144,15 +144,14 @@ export const APLICACOES: readonly Aplicacao[] = [
  */
 export const podeMexerNoCadastro = (op: Operador | null) => !!op && (op.admin || op.nivel === 'diretor' || op.nivel === 'senior');
 
-/** As aplicações que a pessoa vê: Fiscal só para o Fiscal; Contábil e Drive só para o Contábil; Gmail para os dois (admin vê tudo). */
+/** As aplicações que a pessoa vê: Fiscal só para o Fiscal; Contábil só para o Contábil; Drive para todos; Gmail para os dois (admin vê tudo). */
 export function aplicacoesDe(op: Operador): Aplicacao[] {
   return APLICACOES.filter(a =>
     (a.id !== 'fiscal' || op.admin || op.departamento === 'fiscal') &&
     (a.id !== 'dp' || op.admin || op.departamento === 'dp') &&
     (a.id !== 'contabil' || op.admin || op.departamento === 'contabil') &&
-    // o Drive do robô: as regras do Entregas só deixam o admin e o contábil lerem; o Gmail (01/10/2026): o contábil
-    // e o fiscal (cada um vê a caixa da Nilma e a do próprio setor)
-    (a.id !== 'drive' || op.admin || op.departamento === 'contabil') &&
+    // o Drive do robô: para toda a equipe (26/10/2026: "libera o drive para todos os usuarios"); o Gmail (01/10/2026): o
+    // contábil e o fiscal (cada um vê a caixa da Nilma e a do próprio setor)
     (a.id !== 'contato' || op.admin || op.departamento === 'contabil' || op.departamento === 'fiscal') &&
     // o Cadastro (empresas e equipe): o admin, o diretor (Vitor, 05/10/2026) e o sênior (19/10/2026)
     (a.id !== 'cadastro' || podeMexerNoCadastro(op)) &&
@@ -236,8 +235,7 @@ export function inicioEscolhido(): string {
 }
 export function caminhoDoInicio(op: { departamento: string; admin: boolean }): string {
   const i = INICIOS.find(x => x.valor === inicioEscolhido()) || INICIOS[0];
-  // o Drive e o Gmail têm dono (departamento): sem acesso, abre em Minhas empresas
-  if (i.valor === 'drive' && !op.admin && op.departamento !== 'contabil') return INICIOS[0].caminho;
+  // o Gmail tem dono (departamento): sem acesso, abre em Minhas empresas
   if (i.valor === 'gmail' && !op.admin && op.departamento !== 'contabil' && op.departamento !== 'fiscal') return INICIOS[0].caminho;
   return i.caminho;
 }
