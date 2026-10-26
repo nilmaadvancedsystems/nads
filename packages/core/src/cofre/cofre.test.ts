@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   cifrar, decifrar, destrancar, destrancarComCodigo, metaDosSegredos, normalizarCodigo, novaChaveDoCofre, novoCodigoDeRecuperacao,
-  novoParDaPessoa, situacaoDoCertificado, trancarComCodigo, trancarPara, type SegredosDaEmpresa,
+  navegadorDoUserAgent, novoParDaPessoa, situacaoDoCertificado, trancarComCodigo, trancarPara, type SegredosDaEmpresa,
 } from './index';
 
 const SEGREDOS: SegredosDaEmpresa = {
@@ -57,5 +57,16 @@ describe('as regras do cofre', () => {
   it('às claras só o que não é segredo', () => {
     expect(metaDosSegredos(SEGREDOS)).toEqual({ temGov: true, temCertificado: true, validade: '2027-01-31' });
     expect(metaDosSegredos({})).toEqual({ temGov: false, temCertificado: false });
+  });
+});
+
+describe('o navegador de cada login (26/10/2026)', () => {
+  it('o navegador e o sistema do userAgent', () => {
+    expect(navegadorDoUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36')).toBe('Chrome no Windows');
+    expect(navegadorDoUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0')).toBe('Edge no Windows');
+    expect(navegadorDoUserAgent('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1')).toBe('Safari no iPhone');
+    expect(navegadorDoUserAgent('Mozilla/5.0 (Linux; Android 14; SM-A145M) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36')).toBe('Chrome no Android');
+    expect(navegadorDoUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 14.5; rv:131.0) Gecko/20100101 Firefox/131.0')).toBe('Firefox no Mac');
+    expect(navegadorDoUserAgent('')).toBe('Navegador desconhecido');
   });
 });
