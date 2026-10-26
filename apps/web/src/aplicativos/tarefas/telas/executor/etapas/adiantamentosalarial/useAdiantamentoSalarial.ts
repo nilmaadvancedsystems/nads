@@ -17,6 +17,8 @@ export function useAdiantamentoSalarial() {
   const { aviso } = useRetorno();
   const chave = useChaveDaEtapa('adiantamento-salarial');
   const [proprio, setRazao] = useGuardado<{ arquivo: string; razao: t.RazaoDaConta } | null>(chave + '|razao', null);
+  // "Não houve mais movimento" (Vitor, 26/10/2026): marcado, a etapa não cobra o razão nem o zerar; clicar de novo desfaz
+  const [semMovimento, setSemMovimento] = useGuardado<boolean>(chave + '|sem-mais-movimento', false);
   // o da Importação (o upload único dos razões; 16/10/2026), quando a etapa não tem o próprio
   const contabil = useContabilDaEmpresa(s.nome, s.codigo);
   const daImportacao = contabil.razaoDoTipo('adiantamento-salarial');
@@ -43,7 +45,7 @@ export function useAdiantamentoSalarial() {
   const meses = useMemo(() => (razao ? t.conferirAdiantamentoSalarial(razao.razao, s.meses) : []), [razao, s.meses]);
   const naoZerou = meses.filter(m => Math.abs(m.saldoFinal) > 0.005);
   const faltando = meses.filter(m => m.falta > 0.005);
-  const faltam = [
+  const faltam = semMovimento ? [] : [
     ...(!razao ? ['Importar o razão do Adiantamento salarial'] : []),
     ...(naoZerou.length ? ['O Adiantamento salarial não zerou em ' + naoZerou.map(m => t.rotuloNumericoCompetencia(m.mes)).join(', ')] : []),
   ];
@@ -51,6 +53,9 @@ export function useAdiantamentoSalarial() {
 
   const reais = formatos.reais;
   return {
+    semMovimento, alternarSemMovimento: () => setSemMovimento(x => !x),
+    /** o botão aparece quando a etapa ainda cobra algo (ou já foi marcado, para desfazer) */
+    mostrarSemMovimento: semMovimento || !razao || naoZerou.length > 0,
     temRazao: !!razao, arquivo: razao?.arquivo || '',
     importar, remover: () => { setRazao(null); if (!proprio && daImportacao) contabil.tirarRazao(daImportacao.conta); },
     resumo: razao ? [naoZerou.length ? 'Não zerou em ' + naoZerou.map(m => t.rotuloNumericoCompetencia(m.mes)).join(', ') : 'Ok'] : [],
