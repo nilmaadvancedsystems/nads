@@ -1,10 +1,23 @@
 import { describe, expect, it } from 'vitest';
 import { conferirAdiantamentoSalarial, dataDoAdiantamentoSalarial, pagamentosQueFaltam } from './adiantamentoSalarial';
-import { lerRazao } from './razao';
+import { lerRazao, razaoContraOBalancete, type RazaoDaConta } from './razao';
 
 // valores e nomes inventados
 const CAB = ['', 'Status conciliação', 'Data', 'Lançamento automático', 'Contrapartida', 'Descrição', 'Valor', 'Histórico', 'Descrição histórico', 'Saldo', 'Observação'];
 const L = (data: string, valor: number, hist: string, saldo: number) => ['', '', data, '', '52001', 'Salários a Pagar', valor, '', hist, saldo, ''];
+
+describe('o razão contra o balancete', () => {
+  const razao: RazaoDaConta = {
+    saldoInicial: 0, saldoFinal: 300, inicio: '2026-01-31', fim: '2026-01-31',
+    lancamentos: [{ data: '2026-01-31', contrapartida: '52001', nomeContrapartida: '', valor: 300, codigoHistorico: '', historico: '', saldo: 300 }],
+  };
+  it('bate: o credor do razão é o negativo do dinâmico', () => {
+    expect(razaoContraOBalancete(razao, { '2026-01': -300, '2026-02': -300 }, ['2026-01', '2026-02'])).toEqual([]);
+  });
+  it('não bate: o razão de outra empresa (ou de antes de lançar)', () => {
+    expect(razaoContraOBalancete(razao, { '2026-01': -300, '2026-02': -500 }, ['2026-01', '2026-02', '2026-03'])).toEqual([{ mes: '2026-02', razao: 300, balancete: 500 }]);
+  });
+});
 
 describe('o adiantamento salarial (16/10/2026)', () => {
   it('o dia 15, ou o dia útil antes dele', () => {

@@ -142,6 +142,20 @@ export function mesesDoRazao(razao: RazaoDaConta, meses: readonly string[]): Mes
   });
 }
 
+/** Um mês em que o razão não bate com o balancete: os dois saldos do fim do mês, no sinal do razão (credor = positivo). */
+export interface DiferencaDoRazao { mes: string; razao: number; balancete: number }
+
+/**
+ * Os meses em que o saldo do razão não bate com o do balancete dinâmico da empresa (Vitor, 26/10/2026: o razão de outra
+ * empresa, com a mesma conta e o mesmo nome de arquivo, gerou pagamentos "nada a ver" e deixou de fora os meses certos). Só
+ * os meses que o balancete tem. O balancete vem com o sinal do dinâmico (devedor positivo); o razão, credor positivo.
+ */
+export function razaoContraOBalancete(razao: RazaoDaConta, saldosDoBalancete: Record<string, number>, meses: readonly string[]): DiferencaDoRazao[] {
+  return mesesDoRazao(razao, meses.filter(m => m in saldosDoBalancete))
+    .map(m => ({ mes: m.mes, razao: Math.round(m.saldoFinal * 100) / 100, balancete: Math.round(-saldosDoBalancete[m.mes] * 100) / 100 }))
+    .filter(x => Math.abs(x.razao - x.balancete) > 0.01);
+}
+
 // ─── Pontos de atenção do caixa (Vitor, 05/10/2026) ───────────────────────────────────────────────────────────────────
 // O que o banco pagou ou recebeu e foi parar no caixa. Só o CRÉD.LIQ.COBRANÇA obriga (a etapa Creditor entra no mês);
 // o resto é aviso: a pessoa decide se corrige.

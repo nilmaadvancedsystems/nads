@@ -1067,19 +1067,6 @@ export const PECAS_BASE: Peca[] = [
       const itens = entregas.saudeDoBanco({ resumo, uso: entregas.lerUsoDeHoje({ em: new Date(agora - 6e5).toISOString(), leituras: 38200, gravacoes: 1320, exclusoes: 240 }), sinais: [], filas: [], errosDaFila: [] }, agora);
       return <div className="card" style={{ width: '100%', margin: 0 }}><div className="cad-placar atencao"><span className="saude-ponto" aria-hidden="true" /><b>{itens.filter(i => i.tom === 'aviso' || i.tom === 'erro').length} itens precisam de atenção</b></div><ListaDaSaude itens={itens} /></div>;
     } },
-  // o subprocesso do fluxo do Fiscal (23/10/2026): o nome (abre o painel), o responsável e o status
-  { id: 'fluxo-sub', tipo: 'listas', nome: 'Subprocesso do fluxo (responsável e status)', descricao: 'Uma linha por subprocesso: o nome (com a seta quando tem o que abrir: o painel, o importar, o link), quem mexeu por último, o responsável num menu e o status num selo que abre os seis status. Travado (a etapa de antes não acabou): o selo com o cadeado', classes: ['fluxo-lista', 'fluxo-sub', 'fluxo-sub-linha', 'fluxo-sub-nome', 'fluxo-resp', 'fluxo-status'], telas: ['t-exec-fiscal-rotina'],
-    uso: '<div className="fluxo-lista"><div className="fluxo-sub"><div className="fluxo-sub-linha">…nome… <MenuSuspenso className="btn btn-ghost btn-sm fluxo-resp" … /> <MenuSuspenso className="btn btn-ghost btn-sm fluxo-status" rotulo={<span className="badge badge-ok">Concluído</span>} … /></div></div></div>',
-    demo: () => (
-      <div className="fluxo-lista" style={{ width: '100%' }}>
-        {([['Importar notas fiscais de entrada', 'Heverton', 'Concluído', 'badge-ok'], ['Importar notas fiscais de saída', '', 'Em execução', 'badge-warn'], ['Importar documentos de transporte', '', 'Não aplicável', 'badge-neutral']] as const).map(([n, r, st, b]) => (
-          <div key={n} className="fluxo-sub"><div className="fluxo-sub-linha">
-            <button type="button" className="fluxo-sub-nome"><Icone nome="chevronRight" width={14} height={14} /><span><b>{n}</b></span></button>
-            <button type="button" className="btn btn-ghost btn-sm fluxo-resp"><Icone nome="usuario" width={14} height={14} />{r || <span className="fraco">Sem responsável</span>}</button>
-            <button type="button" className="btn btn-ghost btn-sm fluxo-status"><span className={'badge ' + b}>{st}</span></button>
-          </div></div>
-        ))}
-      </div>) },
   { id: 'admin-numero', tipo: 'cartoes', nome: 'Número do painel que abre a página (site do admin)', descricao: 'O número em painel colorido (painel-numero) como link: clicar abre a página dele (Robôs ligados → Robô, Feedbacks altos novos → Feedbacks). O tom segue a situação: verde tudo certo, âmbar atenção, laranja erro', classes: ['stat painel-numero admin-numero', 'admin-numeros', 'painel-ok', 'painel-aviso', 'painel-laranja'], telas: ['a-visao-geral', 'a-arquivador'], largo: true,
     demo: () => <div className="stat-grid dp-numeros admin-numeros" style={{ width: '100%' }}>{([['Robôs ligados', '2 de 2', 'ok', 'robo'], ['Erros em 24 h', '3', 'laranja', 'alert'], ['Filas atrasadas', '1', 'aviso', 'clock'], ['Feedbacks altos novos', '0', 'ok', 'mensagem']] as [string, string, string, NomeIcone][]).map(([r, v, tom, ic]) => <a key={r} href="#" onClick={e => e.preventDefault()} className={'stat painel-numero admin-numero painel-' + tom}><span className="painel-numero-icone" aria-hidden="true"><Icone nome={ic} width={16} height={16} /></span><p className="stat-label">{r}</p><p className="stat-value num">{v}</p></a>)}</div> },
 ];

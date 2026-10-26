@@ -731,7 +731,7 @@ export function TarefaExtratos() {
         </nav>
       )}
       {aba === 'contabil' ? <div data-destaque="contabil"><ContabilNaImportacao nome={s.nome} codigo={s.codigo} meses={mesesDaEtapa} /></div>
-        : aba === 'comprovantes' ? <ComprovantesNaImportacao meses={mesesDaEtapa} pedirLogin={d.pedirLogin} avisarErro={vm.avisarErro} />
+        : aba === 'comprovantes' ? <div data-destaque="comprovantes-aba"><ComprovantesNaImportacao meses={mesesDaEtapa} bancos={vm.bancos.filter(b => b.id !== 'banco')} competencia={vm.competencia} pedirLogin={d.pedirLogin} avisar={vm.avisar} avisarErro={vm.avisarErro} /></div>
         : aba !== 'bancos' ? <div data-destaque="importacao"><ImportacaoNaEtapa nome={s.nome} tipo={aba} prestaServico={vm.prestaServico} meses={mesesDaEtapa} /></div> : (<>
       <div className={'imp-topo' + (ocupadoGeral ? ' travado' : '')} aria-busy={ocupadoGeral}>
         {/* à esquerda, como o "⎇ main ▾  6 Branches" do GitHub: a competência e o número de bancos */}
@@ -1003,10 +1003,6 @@ export function TarefaExtratos() {
       </div>
 
       {/* o resultado: uma barrinha por cima da tela; o que deu certo some em 2,7 s, erro fica até o × */}
-      <MensagemFlutuante id="impAviso" className="imp-aviso" chave={vm.seqMensagem} onFechar={vm.fecharMensagem}
-        duracao={vm.mensagem?.tom === 'erro' ? null : 2700}>
-        {vm.mensagem && <Aviso m={vm.mensagem} onFechar={vm.fecharMensagem} />}
-      </MensagemFlutuante>
 
 
       {d.escolha && (
@@ -1063,6 +1059,11 @@ export function TarefaExtratos() {
           </div>
         </div>
       )}
+      {/* o aviso do topo (Bancos e Comprovantes) */}
+      <MensagemFlutuante id="impAviso" className="imp-aviso" chave={vm.seqMensagem} onFechar={vm.fecharMensagem}
+        duracao={vm.mensagem?.tom === 'erro' ? null : 2700}>
+        {vm.mensagem && <Aviso m={vm.mensagem} onFechar={vm.fecharMensagem} />}
+      </MensagemFlutuante>
       {/* o login do Drive (Bancos e Comprovantes) */}
       {d.login.aberto && (
         <div className="modal-overlay" role="presentation" onClick={d.login.fechar}>

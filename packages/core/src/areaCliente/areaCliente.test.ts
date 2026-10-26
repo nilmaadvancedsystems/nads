@@ -84,10 +84,10 @@ describe('a tabela de vencimentos', () => {
     for (const x of VENCIMENTOS) expect(ids.has(x.etapa), x.etapa).toBe(true);
   });
   it('DAS dia 20 do mês seguinte; domingo e sábado antecipam para sexta', () => {
-    expect(v('fs-6-das', '2026-09')).toBe('2026-10-20'); // terça
-    expect(v('fs-6-das', '2026-10')).toBe('2026-11-20'); // sexta
-    expect(v('fs-6-das', '2026-11')).toBe('2026-12-18'); // dia 20 é domingo
-    expect(v('fs-6-das', '2026-05')).toBe('2026-06-19'); // dia 20 é sábado
+    expect(v('fiscal-simples', '2026-09')).toBe('2026-10-20'); // terça
+    expect(v('fiscal-simples', '2026-10')).toBe('2026-11-20'); // sexta
+    expect(v('fiscal-simples', '2026-11')).toBe('2026-12-18'); // dia 20 é domingo
+    expect(v('fiscal-simples', '2026-05')).toBe('2026-06-19'); // dia 20 é sábado
   });
   it('vira o ano: dezembro vence em janeiro', () => {
     expect(v('dp-fgts', '2026-12')).toBe('2027-01-20'); // quarta
@@ -100,23 +100,23 @@ describe('a tabela de vencimentos', () => {
     expect(v('dp-fgts', '2026-11')).toBe('2026-12-18');
   });
   it('ICMS (dia 9) e ISS (dia 10) empurram para segunda quando caem no fim de semana', () => {
-    expect(v('fp-4-icms', '2026-05')).toBe('2026-06-09'); // terça
-    expect(v('fp-4-icms', '2026-07')).toBe('2026-08-10'); // dia 9 é domingo
-    expect(v('fp-4-iss', '2026-09')).toBe('2026-10-12'); // dia 10 é sábado
+    expect(v('fiscal-icms', '2026-05')).toBe('2026-06-09'); // terça
+    expect(v('fiscal-icms', '2026-07')).toBe('2026-08-10'); // dia 9 é domingo
+    expect(v('fiscal-iss', '2026-09')).toBe('2026-10-12'); // dia 10 é sábado
   });
   it('PIS/COFINS no dia 25', () => {
-    expect(v('fp-4-pis', '2026-09')).toBe('2026-10-23'); // dia 25 é domingo: antecipa
-    expect(v('fr-4-pis', '2026-10')).toBe('2026-11-25'); // quarta
+    expect(v('fiscal-piscofins', '2026-09')).toBe('2026-10-23'); // dia 25 é domingo: antecipa
+    expect(v('fiscal-piscofins-real', '2026-10')).toBe('2026-11-25'); // quarta
   });
   it('IRPJ/CSLL: o último dia útil do mês seguinte ao trimestre', () => {
-    expect(v('fp-5-irpj', '2026-09')).toBe('2026-10-30'); // 31/10 é sábado
-    expect(v('fp-5-irpj', '2026-12')).toBe('2027-01-29'); // 31/01/2027 é domingo
-    expect(v('fp-5-irpj', '2026-03')).toBe('2026-04-30'); // quinta
+    expect(v('fiscal-irpj-csll', '2026-09')).toBe('2026-10-30'); // 31/10 é sábado
+    expect(v('fiscal-irpj-csll', '2026-12')).toBe('2027-01-29'); // 31/01/2027 é domingo
+    expect(v('fiscal-irpj-csll', '2026-03')).toBe('2026-04-30'); // quinta
   });
   it('etapa fora da tabela não tem vencimento; competência torta também não', () => {
-    expect(v('fp-2-saidas', '2026-09')).toBeNull();
-    expect(v('fs-6-das', 'setembro')).toBeNull();
-    expect(v('fs-6-das', '2026-13')).toBeNull();
+    expect(v('fiscal-conf-saidas', '2026-09')).toBeNull();
+    expect(v('fiscal-simples', 'setembro')).toBeNull();
+    expect(v('fiscal-simples', '2026-13')).toBeNull();
   });
 });
 
@@ -131,7 +131,7 @@ describe('a agenda', () => {
     expect(itens[0]).toEqual({ id: 'das', nome: 'DAS do Simples Nacional', vence: '2026-10-20', situacao: 'a fazer' });
   });
   it('etapa fora da tabela não aparece (conferência, importação, relatórios…)', () => {
-    const ex: Execucao = { ...execucaoNova(presumido.nome, presumido.codigo, '2026-09', 'fiscal'), etapas: { 'fp-2-saidas': { situacao: 'feita', por: 'Heverton', em: '2026-10-01T10:00:00.000Z' } } };
+    const ex: Execucao = { ...execucaoNova(presumido.nome, presumido.codigo, '2026-09', 'fiscal'), etapas: { 'fiscal-conf-saidas': { situacao: 'feita', por: 'Heverton', em: '2026-10-01T10:00:00.000Z' } } };
     const itens = agendaDaExecucao(ex, ROTINA_FISCAL, { nome: presumido.nome, codigo: presumido.codigo }, '2026-09');
     const nomes = itens.map(i => i.nome).join('|');
     expect(nomes).not.toMatch(/Saídas|Conferência|Importação|Relatório/);
