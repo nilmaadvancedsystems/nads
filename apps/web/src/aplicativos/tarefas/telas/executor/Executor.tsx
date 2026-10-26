@@ -132,6 +132,14 @@ export function Executor() {
     publicarOndeEsta(vm.empresa ? { empresa: vm.empresa.nome, codigo: vm.empresa.codigo ?? null, meses: vm.meses.length ? vm.meses : [vm.competencia], etapa: vm.etapa?.nome || '', aba: abaAberta, bancos: vm.bancosDaEmpresa } : null);
   });
   useEffect(() => () => publicarOndeEsta(null), []);
+  // o nome da aba do navegador (Vitor, 26/10/2026: "o número da empresa e a etapa"): "289 · Caixa — Tarefas"; saiu, volta
+  const tituloDaAba = vm.empresa ? String(vm.empresa.codigo ?? vm.empresa.nome) + (vm.etapa?.nome ? ' · ' + vm.etapa.nome : '') + ' — Tarefas' : '';
+  useEffect(() => {
+    if (!tituloDaAba) return;
+    const antes = document.title;
+    document.title = tituloDaAba;
+    return () => { document.title = antes; };
+  }, [tituloDaAba]);
   // os botões da etapa só com a tela pronta (a Tarefas e a ferramenta carregadas); o avançar, se a ferramenta tem
   // requisitos, só depois que ela disser o que falta (antes disso ele apareceria liberado)
   const telaPronta = !vm.carregando && !ferramentaCarregando;
