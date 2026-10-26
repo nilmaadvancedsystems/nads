@@ -4,37 +4,57 @@ import { etapaNoMes, execucaoNova, regimeDaEmpresa, usarRegimesDoCadastro } from
 import { ROTINA_FISCAL } from './fiscal';
 import { rotinaDo } from './rotinaDo';
 
-// Desde 23/10/2026 a rotina do Fiscal é o fluxo operacional por regime (fluxoFiscal.ts; os testes do fluxo em
-// regras/fluxoFiscal.test.ts); a rotina antiga, de checklists, fica só nos regimes sem fluxo (MEI, isentas, física e domésticas).
-describe('rotina do Fiscal', () => {
-  it('ids únicos; as etapas do fluxo e as antigas, cada uma no seu regime', () => {
-    expect(new Set(ROTINA_FISCAL.etapas.map(e => e.id)).size).toBe(ROTINA_FISCAL.etapas.length);
-    for (const e of ROTINA_FISCAL.etapas) {
-      expect(e.regimes?.length).toBeGreaterThan(0);
-      if (e.id.startsWith('fiscal-')) expect(e.regimes!.every(r => ['MEI', 'Isentas', 'Física', 'Domésticas'].includes(r))).toBe(true);
-    }
-    expect(ROTINA_FISCAL.etapas.find(e => e.id === 'fiscal-mei')?.regimes).toEqual(['MEI']);
-    expect(ROTINA_FISCAL.etapas.some(e => e.id === 'fiscal-simples' || e.id === 'fiscal-icms')).toBe(false);
+describe('rotina do Fiscal (o Notion do Heverton)', () => {
+  it('os grupos na ordem: Importação de Notas, Conferência, Apuração, Envio', () => {
+    expect([...new Set(ROTINA_FISCAL.etapas.map(e => e.secao))]).toEqual(['Relatório inicial', 'Importação de Notas', 'Conferência', 'Apuração', 'Obrigações', 'Regularidade', 'Anuais', 'Envio', 'Relatório final']);
   });
-  it('pelo regime: o Presumido no fluxo dele; o IRPJ/CSLL trimestral só no fim do trimestre', () => {
+  it('toda etapa é um checklist (menos a Importação, que abre a do Contábil), com ids únicos', () => {
+    const imp = ROTINA_FISCAL.etapas.find(e => e.id === 'fiscal-importacao')!;
+    expect(imp.ferramenta?.caminho('x')).toBe('/extratudo/x/extrator/tarefa/extratos?etapa=fiscal');
+    expect(imp.ferramenta?.requisitos).toBe(true);
+    for (const e of ROTINA_FISCAL.etapas) {
+      if (e === imp) continue;
+      expect(e.checklist?.length).toBeGreaterThan(0);
+      expect(new Set(e.checklist?.map(i => i.id)).size).toBe(e.checklist?.length);
+    }
+    expect(new Set(ROTINA_FISCAL.etapas.map(e => e.id)).size).toBe(ROTINA_FISCAL.etapas.length);
+  });
+  it('pelo regime: o Simples só no Simples; ICMS e as obrigações só no Presumido e no Real; IRPJ/CSLL só no fim do trimestre', () => {
     const ex = (codigo: number, competencia: string) => execucaoNova('X', codigo, competencia, 'fiscal');
     // 292 é Presumido (lista de empresas)
     expect(regimeDaEmpresa(292)).toBe('Presumido');
-    expect(etapaNoMes(ex(292, '2026-09'), 'fp-4-icms')).toBe(true);
-    expect(etapaNoMes(ex(292, '2026-09'), 'fs-6-das')).toBe(false);
-    expect(etapaNoMes(ex(292, '2026-09'), 'fiscal-mei')).toBe(false);
-    expect(etapaNoMes(ex(292, '2026-09'), 'fp-5-irpj')).toBe(true);
-    expect(etapaNoMes(ex(292, '2026-10'), 'fp-5-irpj')).toBe(false);
-    const simples = EMPRESAS.find(e => e.codigo != null && regimeDaEmpresa(e.codigo) === 'Simples');
-    if (simples?.codigo != null) expect(etapaNoMes(ex(simples.codigo, '2026-09'), 'fs-6-das')).toBe(true);
+    expect(etapaNoMes(ex(292, '2026-10'), 'fiscal-simples')).toBe(false);
+    expect(etapaNoMes(ex(292, '2026-10'), 'fiscal-icms')).toBe(true);
+    expect(etapaNoMes(ex(292, '2026-10'), 'fiscal-irpj-csll')).toBe(false);
+    expect(etapaNoMes(ex(292, '2026-09'), 'fiscal-irpj-csll')).toBe(true);
+    const simples = EMPRESAS.find(e => e.regime === 'Simples')!.codigo!;
+    expect(etapaNoMes(ex(simples, '2026-10'), 'fiscal-simples')).toBe(true);
+    expect(etapaNoMes(ex(simples, '2026-10'), 'fiscal-efd-icms')).toBe(false);
+    // regime desconhecido: entra (nada some por engano); as de todos, sempre
+    expect(etapaNoMes(ex(999999, '2026-10'), 'fiscal-icms')).toBe(true);
+    expect(etapaNoMes(ex(292, '2026-10'), 'fiscal-envio')).toBe(true);
+  });
+  it('o Presumido e o Real separados (13/10/2026): o PIS/COFINS e o IRPJ/CSLL de cada um', () => {
+    const ex = (codigo: number, competencia: string) => execucaoNova('X', codigo, competencia, 'fiscal');
+    const real = EMPRESAS.find(e => e.regime === 'Real')!.codigo!;
+    // 292 é Presumido: o cumulativo e o IRPJ/CSLL do trimestre
+    expect(etapaNoMes(ex(292, '2026-10'), 'fiscal-piscofins')).toBe(true);
+    expect(etapaNoMes(ex(292, '2026-10'), 'fiscal-piscofins-real')).toBe(false);
+    expect(etapaNoMes(ex(292, '2026-10'), 'fiscal-irpj-csll-real')).toBe(false);
+    // o Real: o não cumulativo e a estimativa todo mês; nada do Presumido
+    expect(etapaNoMes(ex(real, '2026-10'), 'fiscal-piscofins')).toBe(false);
+    expect(etapaNoMes(ex(real, '2026-10'), 'fiscal-piscofins-real')).toBe(true);
+    expect(etapaNoMes(ex(real, '2026-10'), 'fiscal-irpj-csll-real')).toBe(true);
+    expect(etapaNoMes(ex(real, '2026-09'), 'fiscal-irpj-csll')).toBe(false);
+    expect(etapaNoMes(ex(real, '2026-10'), 'fiscal-icms')).toBe(true);
   });
   it('o regime do cadastro vale no lugar do da lista (13/10/2026)', () => {
     const ex = execucaoNova('X', 292, '2026-10', 'fiscal');
     usarRegimesDoCadastro(c => (c === 292 ? 'Simples' : ''));
     try {
       expect(regimeDaEmpresa(292)).toBe('Simples');
-      expect(etapaNoMes(ex, 'fs-6-das')).toBe(true);
-      expect(etapaNoMes(ex, 'fp-4-icms')).toBe(false);
+      expect(etapaNoMes(ex, 'fiscal-simples')).toBe(true);
+      expect(etapaNoMes(ex, 'fiscal-icms')).toBe(false);
     } finally { usarRegimesDoCadastro(() => ''); }
     expect(regimeDaEmpresa(292)).toBe('Presumido');
   });
