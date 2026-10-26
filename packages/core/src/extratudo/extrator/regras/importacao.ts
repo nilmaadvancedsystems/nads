@@ -11,9 +11,10 @@ import { dataBR } from './texto';
  * 3 = o OCR melhor (216 dpi, preto e branco, a página como tabela) e o sinal conferido pelo saldo corrido; 4 = os "Últimos
  * Lançamentos" do Bradesco fora (19/10/2026); 5 = a data do Nubank com o ano em pedaço separado e o dia que o OCR leu com
  * letra ("O8FEV2026"; 20/10/2026); 6 = o Sicoob do SISBR com o valor e o C/D em linhas soltas, o "- R$" do Stone e o extrato
- * do mais novo para o mais velho (26/10/2026).
+ * do mais novo para o mais velho (26/10/2026); 7 = o nome do Pix do Stone no lançamento dele (não no de cima) e o saldo de
+ * abertura pela coluna Saldo, quando o extrato não imprime o saldo anterior (26/10/2026).
  */
-export const VERSAO_DO_LEITOR = 6;
+export const VERSAO_DO_LEITOR = 7;
 
 export function empresaNova(nome: string): EmpresaExtrator {
   return { nome, arquivos: [], auditoria: [] };
@@ -71,13 +72,18 @@ export function jaTemNoPeriodo(e: EmpresaExtrator, lado: Lado, lidos: ArquivoLid
   return qtd;
 }
 
-const chave = (x: Lancamento) => x.data + '|' + x.valor + '|' + normalizarTexto(x.historico);
+const chaveComHistorico = (x: Lancamento) => x.data + '|' + x.valor + '|' + normalizarTexto(x.historico);
+const chaveSemHistorico = (x: Lancamento) => x.data + '|' + x.valor;
 
 /**
  * O que de `novos` ainda não existe em `velhos` (mesma data, valor e histórico). Conta repetições:
  * dois lançamentos iguais no arquivo e um guardado → entra um.
+ * `semHistorico`: no extrato, a mesma data e o mesmo valor bastam — os PDFs de meses vizinhos levam a página da virada
+ * nos dois, e o histórico do mesmo lançamento sai diferente em cada um (o nome do Pix vai para outro lançamento perto da
+ * quebra de página). Vitor, 26/10/2026: o Stone da 183 tinha os lançamentos de 31/01 "duas vezes no extrato".
  */
-export function soNovos(velhos: Lancamento[], novos: Lancamento[]): Lancamento[] {
+export function soNovos(velhos: Lancamento[], novos: Lancamento[], semHistorico = false): Lancamento[] {
+  const chave = semHistorico ? chaveSemHistorico : chaveComHistorico;
   const conta = new Map<string, number>();
   for (const x of velhos) conta.set(chave(x), (conta.get(chave(x)) || 0) + 1);
   return novos.filter(x => {
@@ -123,7 +129,7 @@ export function importar(e: EmpresaExtrator, lado: Lado, lidos: ArquivoLido[], m
   for (const l of bons) {
     let lanc = l.lancamentos;
     if (modo === 'novas') {
-      const nv = soNovos(base, lanc);
+      const nv = soNovos(base, lanc, lado === 'banco');
       jaExistiam += lanc.length - nv.length;
       base = base.concat(nv);
       lanc = nv;

@@ -240,10 +240,10 @@ export function saldosDoDiaDoPdf(paginas: ItemDeTexto[][], anoPadrao = new Date(
 }
 
 /** Os lançamentos e o saldo do dia numa leitura só (a importação lê o PDF uma vez; Vitor, 13/10/2026: ficou lento). */
-export function extratoDoPdf(paginas: ItemDeTexto[][], lado: Lado, anoPadrao = new Date().getFullYear()): { lancamentos: Lancamento[]; saldosDoDia: { data: string; saldo: number }[] } {
+export function extratoDoPdf(paginas: ItemDeTexto[][], lado: Lado, anoPadrao = new Date().getFullYear()): { lancamentos: Lancamento[]; saldosDoDia: { data: string; saldo: number }[]; saldoAnteriorPelaLinha: number | null } {
   const r = lancamentosComPagina(paginas, lado, anoPadrao);
   const s = r.saldosDoDia;
-  return { lancamentos: r.lancamentos, saldosDoDia: s ? [...s].map(([data, saldo]) => ({ data, saldo })).sort((a, b) => a.data.localeCompare(b.data)) : [] };
+  return { saldoAnteriorPelaLinha: r.saldoAnteriorPelaLinha ?? null, lancamentos: r.lancamentos, saldosDoDia: s ? [...s].map(([data, saldo]) => ({ data, saldo })).sort((a, b) => a.data.localeCompare(b.data)) : [] };
 }
 
 /**
@@ -335,7 +335,7 @@ function lancamentosDaCaixa(todas: Linha[][], ano: number): { lancamentos: Lanca
   return { lancamentos, pagina };
 }
 
-function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: number): { lancamentos: Lancamento[]; pagina: number[]; saldosDoDia?: Map<string, number> } {
+function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: number): { lancamentos: Lancamento[]; pagina: number[]; saldosDoDia?: Map<string, number>; saldoAnteriorPelaLinha?: number | null } {
   const saldosDoDia = new Map<string, number>();
   let ultimaDataDeValor: string | null = null;
   const todas = paginas.map(p => juntarPedacosSoltos(montarLinhas(p)));
@@ -356,6 +356,8 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
   }
   const decrescente = desce > sobe;
   const saida: Lancamento[] = [];
+  /** o saldo da coluna Saldo na linha de cada lançamento (null = a linha não tem) */
+  const saldoDeCada: (number | null)[] = [];
   let col: Colunas | null = null;
   let dataAtual: string | null = null;
   // o quadro RESUMO do fim (Sicoob: "Cheque especial contratado: 10.000,00C", juros e tarifas provisionados…): não é
@@ -380,6 +382,8 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
   for (const [nPagina, linhas] of todas.entries()) {
     col = colunas(linhas) || col;
     let solta: string | null = null;
+    /** a altura da última linha do texto solto: ele fica com o lançamento mais perto */
+    let soltaY: number | null = null;
     let ultimo: Lancamento | null = null;
     let ultimaY: number | null = null;
     let pulandoBloqueado = false;
@@ -443,9 +447,9 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
       if (!valores.length) {
         if (hist && !RE_SALDO.test(hist) && !/^(data|dt\.?)\b/i.test(hist) && hist.length <= 90) {
           const acima = perto.length ? perto[perto.length - 1].y : ultimaY;
-          if (data) { juntarPerto(); solta = hist; }
+          if (data) { juntarPerto(); solta = hist; soltaY = l.y; }
           else if (ultimo && acima != null && Math.abs(acima - l.y) < 16 && !solta) perto.push({ texto: hist, y: l.y });
-          else { juntarPerto(); solta = (solta ? solta + ' ' : '') + hist; }
+          else { juntarPerto(); solta = (solta ? solta + ' ' : '') + hist; soltaY = l.y; }
         }
         continue;
       }
@@ -508,9 +512,17 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
       }
       perto = [];
       let h = antes ? (antes + ' ' + hist).trim() : hist;
+      // o texto solto colado nesta linha (menos de 9 pontos acima; no Sicoob do SISBR o texto de baixo fica a 12 da próxima
+      // linha e é do lançamento de cima) e mais perto dela que do lançamento de cima abre este: o Stone
+      // põe o nome do Pix 6 pontos acima do valor e o tipo ("Entrada") na linha dele (Vitor, 26/10/2026: o nome ia para a
+      // tarifa de cima, e o mesmo lançamento saía com histórico diferente em cada PDF)
+      const desteLado = solta != null && soltaY != null && Math.abs(soltaY - l.y) < 9
+        && (!ultimo || ultimaY == null || Math.abs(soltaY - l.y) < Math.abs(ultimaY - soltaY));
       if (!h && solta) { h = solta; solta = null; }
+      else if (solta && desteLado) { h = (solta + ' ' + h).trim(); solta = null; }
       else if (solta && ultimo) { ultimo.historico = (ultimo.historico + ' ' + solta).trim(); solta = null; }
       else solta = null;
+      soltaY = null;
       // o BB "Consultas": vale a Dt. movimento (a 2ª data), quando a linha tem (Vitor, 09/10/2026: "nesse layout, siga a
       // Dt. movimento"); nos outros, o extrato de um mês só ("Período do extrato 02 / 2026"): a linha com a 1ª data fora do
       // mês e a 2ª dentro é do mês do extrato
@@ -522,9 +534,19 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
       // anterior do extrato seguinte já é o de antes dele)
       if (pelaDtMovimento && periodo && !dataDoLanc.startsWith(periodo)) continue;
       saida.push(ultimo);
+      saldoDeCada.push(saldoDaLinha);
       paginaDe.push(nPagina);
     }
     juntarPerto();
   }
-  return { lancamentos: saida, pagina: paginaDe, saldosDoDia };
+  // o saldo antes do primeiro lançamento pela coluna Saldo, quando o extrato não imprime a linha do saldo anterior (o Stone;
+  // Vitor, 26/10/2026): o saldo da linha do lançamento mais antigo menos o valor dele
+  let saldoAnteriorPelaLinha: number | null = null;
+  if (col && (col as Colunas).saldo != null && saida.length) {
+    let i0 = -1;
+    saida.forEach((l, i) => { if (i0 < 0 || l.data < saida[i0].data || (decrescente && l.data === saida[i0].data)) i0 = i; });
+    const s0 = saldoDeCada[i0];
+    if (s0 != null) saldoAnteriorPelaLinha = s0 - saida[i0].valor;
+  }
+  return { lancamentos: saida, pagina: paginaDe, saldosDoDia, saldoAnteriorPelaLinha };
 }

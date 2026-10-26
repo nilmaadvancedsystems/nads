@@ -30,11 +30,12 @@ export async function lerArquivo(nome: string, bytes: Uint8Array, lado: Lado, an
   // as páginas (do texto do PDF ou do OCR) → os lançamentos, o sem movimento e o saldo anterior
   const doTexto = (paginas: ItemDeTexto[][], porOcr: boolean): ArquivoLido => {
     const marca = porOcr ? { ocr: true } : {};
-    const { lancamentos: l } = extratoDoPdf(paginas, lado, anoPadrao);
+    const { lancamentos: l, saldoAnteriorPelaLinha } = extratoDoPdf(paginas, lado, anoPadrao);
     // o extrato que diz que não teve movimento: o mês fica marcado como sem movimento (não é erro de leitura)
     const semMov = !l.length && lado === 'banco' ? mesesSemMovimento(paginas.map(p => p.map(i => i.texto).join(' ')).join('\n')) : null;
     if (semMov) return { nome, lancamentos: [], erro: 'Extrato sem movimento.', semMovimento: semMov, ...marca };
-    const saldo = lado === 'banco' ? saldoAnteriorDoPdf(paginas) : null;
+    // sem a linha do saldo anterior, o da coluna Saldo (o Stone; 26/10/2026)
+    const saldo = lado === 'banco' ? saldoAnteriorDoPdf(paginas) ?? saldoAnteriorPelaLinha : null;
     return { nome, lancamentos: l, erro: l.length ? null : 'Não achei lançamentos com data e valor neste ' + (porOcr ? 'arquivo, nem pelo OCR' : 'PDF') + '.', ...(saldo != null ? { saldoAnterior: saldo } : {}), ...marca };
   };
   try {

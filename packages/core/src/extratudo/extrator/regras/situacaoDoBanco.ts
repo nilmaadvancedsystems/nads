@@ -73,6 +73,13 @@ export interface ConferenciaDoBanco {
   faltamCheque: DiaNegativo[];
   /** o cheque especial achado no razão */
   cheque: ChequeNoRazao;
+  /** o "Ajuste de exercícios anteriores" do razão que bate com o saldo do extrato naquele dia: fica de fora */
+  ajustes: Set<LancamentoDoArquivo>;
+}
+
+/** O lançamento que implanta o saldo da conta no razão: "Ajuste de exercício(s) anterior(es)". */
+export function ehAjusteDeExerciciosAnteriores(historico: string): boolean {
+  return /\bajustes? (?:de |do |dos )?exercicios? anterior(?:es)?\b/.test(normalizarTexto(historico));
 }
 
 /** A conferência do banco no período: mês a mês, extrato × razão, tirando o cheque especial do razão. */
@@ -104,10 +111,21 @@ export function conferenciaDoBanco(e: EmpresaExtrator, banco: string, primeiro: 
     const estorno = sobras.find(l => !cheque.linhas.has(l) && l.data.startsWith(inicio) && Number(l.data.slice(8, 10)) <= 5 && Math.abs(l.valor) === -aberturaNegativa);
     if (estorno) cheque.linhas.add(estorno);
   }
+  // o "Ajuste de exercicio anteriores" que implanta o saldo da conta no razão (só no razão): fica de fora desde que o valor
+  // seja o saldo do extrato antes daquele dia (Vitor, 26/10/2026: "desde que o saldo bata, ignore")
+  const ajustes = new Set<LancamentoDoArquivo>();
+  for (const l of sobras) {
+    if (cheque.linhas.has(l) || !ehAjusteDeExerciciosAnteriores(l.historico)) continue;
+    const mov = movimentoDoExtrato(e, banco, primeiro, l.data.slice(0, 7));
+    // sem o saldo de abertura do extrato, não dá para saber se bate: fica como pendência
+    if (mov.abertura == null) continue;
+    const saldoAntes = mov.saldoAnterior + mov.linhas.filter(x => x.data < l.data).reduce((t, x) => t + x.valor, 0);
+    if (Math.abs(l.valor) === Math.abs(saldoAntes)) ajustes.add(l);
+  }
   const pendencias = porMes
-    .map(p => ({ mes: p.mes, linhas: p.linhas.filter(l => !(l.situacao === 'amais' && l.sistema && cheque.linhas.has(l.sistema))) }))
+    .map(p => ({ mes: p.mes, linhas: p.linhas.filter(l => !(l.situacao === 'amais' && l.sistema && (cheque.linhas.has(l.sistema) || ajustes.has(l.sistema)))) }))
     .filter(p => p.linhas.length > 0);
-  return { completo, pendencias, negativos, faltamCheque: negativos.filter(n => !cheque.cobertos.has(n.data)), cheque };
+  return { completo, pendencias, negativos, faltamCheque: negativos.filter(n => !cheque.cobertos.has(n.data)), cheque, ajustes };
 }
 
 /** O lançamento do cheque especial (o histórico diz "cheque especial" ou o código 92029) entre 1º e 5 de janeiro. */
