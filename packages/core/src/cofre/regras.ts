@@ -39,4 +39,14 @@ export function navegadorDoUserAgent(ua: string): string {
   return navegador && sistema ? navegador + ' no ' + sistema : navegador || sistema || 'Navegador desconhecido';
 }
 
+/** A cidade do IP para mostrar: "Montes Claros/MG" no Brasil, "Lisboa (PT)" fora; '' sem cidade. */
+export function cidadeDoIp(d: { cidade?: unknown; uf?: unknown; pais?: unknown }): string {
+  const cidade = String(d.cidade || '').trim();
+  if (!cidade) return '';
+  const pais = String(d.pais || '').trim().toUpperCase();
+  const uf = String(d.uf || '').trim().toUpperCase();
+  if (pais && pais !== 'BR') return cidade + ' (' + pais + ')';
+  return uf ? cidade + '/' + uf : cidade;
+}
+
 export const dataBr = (iso: string) => (/^\d{4}-\d{2}-\d{2}/.test(iso) ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4) : '');
