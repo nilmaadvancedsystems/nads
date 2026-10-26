@@ -3,13 +3,13 @@
 // criar (gera o código de recuperação), pedir acesso, recuperar pelo código, liberar e recusar pedidos, tirar o acesso
 // (troca a chave do cofre e gera um código novo), um código de recuperação novo, ler e gravar os segredos de uma empresa.
 // A chave do cofre aberta fica só na memória desta aba (todas as telas usam a mesma). Cada login guarda o último acesso
-// (26/10/2026: "quero que apareça o IP"): ao abrir o cofre (uma vez por aba) e ao pedir acesso, o IP público, o navegador
-// e o sistema e quando.
+// (26/10/2026: "quero que apareça o IP", e a cidade): ao abrir o cofre (uma vez por aba) e ao pedir acesso, o IP público e
+// a cidade dele, o navegador e o sistema e quando.
 import { cofre as c, formatos, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { guardarChavePrivada, idDaChave, lerChavePrivada } from '../../dados/chaveLocal';
-import { meuIp } from '../../dados/rede';
+import { ondeEstou } from '../../dados/rede';
 import { useAcesso, useCofreRepo } from '../../dados/repo';
 import type { RepoCofre } from '../../dados/cofre';
 import { imprimirCodigoDoCofre } from './imprimirCodigo';
@@ -25,9 +25,10 @@ const ouvintes = new Set<() => void>();
 function abrirCom(v: { versao: number; chave: CryptoKey; dono: string } | null) { aberta = v; verAberta++; for (const f of ouvintes) f(); }
 const assinarAberta = (f: () => void) => { ouvintes.add(f); return () => { ouvintes.delete(f); }; };
 
-/** De onde este navegador entra: o IP público (vazio se a consulta falhar), o navegador e o sistema, e agora. */
+/** De onde este navegador entra: o IP público e a cidade (vazios se a consulta falhar), o navegador e o sistema, e agora. */
 async function acessoDaqui(): Promise<c.AcessoDoLogin> {
-  return { em: new Date().toISOString(), ip: await meuIp(), navegador: c.navegadorDoUserAgent(navigator.userAgent) };
+  const { ip, cidade } = await ondeEstou();
+  return { em: new Date().toISOString(), ip, ...(cidade ? { cidade } : {}), navegador: c.navegadorDoUserAgent(navigator.userAgent) };
 }
 // o acesso de cada login vai uma vez por aba (abrir o cofre de novo na mesma aba não grava de novo)
 const marcados = new Set<string>();

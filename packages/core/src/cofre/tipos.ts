@@ -78,8 +78,11 @@ export interface ChaveDaPessoa {
   ultimoAcesso?: AcessoDoLogin;
 }
 
-/** De onde o login entrou: o IP público (vazio = não deu para saber), o navegador e o sistema ("Chrome no Windows"), e quando. */
-export interface AcessoDoLogin { em: string; ip: string; navegador: string }
+/**
+ * De onde o login entrou: o IP público (vazio = não deu para saber), a cidade aproximada do IP ("Montes Claros/MG"), o
+ * navegador e o sistema ("Chrome no Windows"), e quando.
+ */
+export interface AcessoDoLogin { em: string; ip: string; cidade?: string; navegador: string }
 
 /** A chave do cofre trancada com o código de recuperação (PBKDF2 + AES-GCM). */
 export interface Recuperacao { sal: string; iv: string; dados: string }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   cifrar, decifrar, destrancar, destrancarComCodigo, metaDosSegredos, normalizarCodigo, novaChaveDoCofre, novoCodigoDeRecuperacao,
-  navegadorDoUserAgent, novoParDaPessoa, situacaoDoCertificado, trancarComCodigo, trancarPara, type SegredosDaEmpresa,
+  cidadeDoIp, navegadorDoUserAgent, novoParDaPessoa, situacaoDoCertificado, trancarComCodigo, trancarPara, type SegredosDaEmpresa,
 } from './index';
 
 const SEGREDOS: SegredosDaEmpresa = {
@@ -68,5 +68,11 @@ describe('o navegador de cada login (26/10/2026)', () => {
     expect(navegadorDoUserAgent('Mozilla/5.0 (Linux; Android 14; SM-A145M) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36')).toBe('Chrome no Android');
     expect(navegadorDoUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 14.5; rv:131.0) Gecko/20100101 Firefox/131.0')).toBe('Firefox no Mac');
     expect(navegadorDoUserAgent('')).toBe('Navegador desconhecido');
+  });
+  it('a cidade do IP', () => {
+    expect(cidadeDoIp({ cidade: 'Montes Claros', uf: 'MG', pais: 'BR' })).toBe('Montes Claros/MG');
+    expect(cidadeDoIp({ cidade: 'Lisboa', uf: '11', pais: 'pt' })).toBe('Lisboa (PT)');
+    expect(cidadeDoIp({ cidade: 'Taiobeiras' })).toBe('Taiobeiras');
+    expect(cidadeDoIp({ cidade: '', uf: 'MG', pais: 'BR' })).toBe('');
   });
 });

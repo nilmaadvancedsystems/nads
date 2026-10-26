@@ -160,7 +160,9 @@ export function useArquivadorAdmin() {
   const pendentesAgora = entregas.paraResolverAgora(p);
   // os números grandes (o dia ou o mês)
   const numeros = c ? [
-    { id: 'arquivados', rotulo: p?.config?.emProducao ? 'Arquivados' : 'Arquivaria (simulação)', valor: mil(c.porAcao.arquivou + c.porAcao.arquivaria), icone: 'checkCircle' as NomeIcone, tom: 'ok' as Tom, aba: 'arquivados' as AbaDoArquivador },
+    // só o que foi arquivado de verdade; o simulado do mesmo dia à parte no rótulo (26/10/2026: "729" somava os 543 arquivados
+    // com os 186 da simulação da manhã, e o rótulo mudava com o modo de agora)
+    { id: 'arquivados', rotulo: c.porAcao.arquivaria ? 'Arquivados · +' + mil(c.porAcao.arquivaria) + ' em simulação' : 'Arquivados', valor: mil(c.porAcao.arquivou), icone: 'checkCircle' as NomeIcone, tom: 'ok' as Tom, aba: 'arquivados' as AbaDoArquivador },
     // os que estão esperando agora, não as decisões do dia (22/10/2026: "como tem 1200 arquivos para decidir" com a pasta vazia:
     // o robô passa pela pasta várias vezes, e cada passada que não identificava um arquivo contava de novo, mesmo depois de resolvido)
     { id: 'resolver', rotulo: 'Para resolver agora', valor: mil(pendentesAgora), icone: 'alert' as NomeIcone, tom: (pendentesAgora ? 'aviso' : 'ok') as Tom, aba: 'resolver' as AbaDoArquivador },
@@ -183,7 +185,7 @@ export function useArquivadorAdmin() {
 
   // a caixa de entrada: o que está na pasta × o que foi arquivado no mês (o anel do Paperless)
   const naPasta = p?.pasta?.naPasta ?? 0;
-  const noMes = p ? p.mes.porAcao.arquivou + p.mes.porAcao.arquivaria : 0;
+  const noMes = p ? p.mes.porAcao.arquivou : 0;
   const caixa = p ? {
     total: naPasta, fatias: [
       { id: 'pasta', rotulo: 'Na pasta Claudio Secretario', valor: naPasta, tom: (naPasta ? 'aviso' : 'ok') as 'aviso' | 'ok' },
@@ -304,7 +306,7 @@ export function useArquivadorAdmin() {
     ultimoSinal: p?.em ? 'Último sinal ' + haQuanto(p.em, agora) : '',
     progresso: progresso ? {
       ...progresso,
-      texto: mil(progresso.feitos) + ' de ' + mil(progresso.total) + (p?.config?.emProducao ? ' arquivos decididos' : ' arquivos simulados'),
+      texto: mil(progresso.feitos) + ' de ' + mil(progresso.total) + (p?.config?.modo === 'simulacao' ? ' arquivos simulados' : ' arquivos decididos'),
       inicio: p?.passada?.inicio ? 'Passada começou ' + quando(p.passada.inicio, agora) : '',
     } : null,
     ritmo: p && p.ritmo > 0 ? mil(Math.round(p.ritmo * 10) / 10) + ' por minuto' : p ? 'parado agora' : '',

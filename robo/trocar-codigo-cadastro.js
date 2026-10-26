@@ -23,7 +23,7 @@ const os = require('os');
 const path = require('path');
 const R = require('./arquivador-regras');
 
-const DIARIOS = path.join(process.env.LOCALAPPDATA || os.homedir(), 'nads', 'arquivador-novo', 'correcao');
+const DIARIOS = path.join(require('./pastas-locais').CONTROLE, 'correcao');   // fora do AppData (26/10/2026)
 const DEPENDENTES = [
   { col: 'rotinas', campo: 'codigo' }, { col: 'cofre', campo: 'codigo' }, { col: 'financeiroHonorarios', campo: 'codigo' },
   { col: 'nfseEmissoes', campo: 'empresaCodigo' },

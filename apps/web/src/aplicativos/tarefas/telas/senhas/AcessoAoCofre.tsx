@@ -8,9 +8,10 @@ import { TelaDeBloqueio } from './TelaDeBloqueio';
 import { useCofre } from './useCofre';
 
 const quando = (iso?: string) => (iso ? new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '');
-/** de onde o login entrou por último: o navegador, o IP e quando (26/10/2026: "quero que apareça o IP") */
-const deOnde = (a?: { em: string; ip: string; navegador: string }, desde = 'último acesso') =>
-  (a ? [a.navegador, 'IP ' + (a.ip || 'não informado'), desde + ' ' + quando(a.em)].join(' · ') : 'Sem acesso registrado ainda (aparece na próxima vez que o cofre abrir nele)');
+/** de onde o login entrou por último: o navegador, o IP, a cidade do IP e quando (26/10/2026: "quero que apareça o IP", e
+ *  "a localização de cidade") */
+const deOnde = (a?: { em: string; ip: string; cidade?: string; navegador: string }, desde = 'último acesso') =>
+  (a ? [a.navegador, 'IP ' + (a.ip || 'não informado'), ...(a.cidade ? [a.cidade] : []), desde + ' ' + quando(a.em)].join(' · ') : 'Sem acesso registrado ainda (aparece na próxima vez que o cofre abrir nele)');
 const dia = (iso?: string) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '');
 
 export function AcessoAoCofre() {

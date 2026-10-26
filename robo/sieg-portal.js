@@ -15,7 +15,7 @@ const fs = require('fs');
 const path = require('path');
 const sx = require('./sieg-xmls');
 
-const PERFIL = path.join(process.env.LOCALAPPDATA || __dirname, 'nads-robo', 'sieg-perfil');
+const PERFIL = path.join(require('./pastas-locais').ROBO, 'sieg-perfil');   // fora do AppData (26/10/2026)
 const CHROME = process.env.SIEG_CHROME || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 // o código da Nilma no SIEG (a primeira parte do id do cliente no portal)
 const EMPRESA = process.env.SIEG_EMPRESA || '12865';
