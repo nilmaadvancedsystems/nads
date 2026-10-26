@@ -13,7 +13,7 @@ export { ehOfx, lancamentosDoOfx } from './regras/ofx';
 export { conferir, totais, rotuloSituacao, csvConferencia, PARECIDO_MESMO_DIA, PARECIDO_OUTRO_DIA, PARECIDO_DUPLICADO } from './regras/conferencia';
 export {
   empresaNova, normalizarEmpresa, lancamentosDe, periodo, rotuloPeriodo, competencias, jaTemNoPeriodo, soNovos,
-  importar, excluirArquivo, excluirMesesDoArquivo, linhasAuditoria, extratosParaReler, relerExtrato, VERSAO_DO_LEITOR, type ResultadoImportacao,
+  importar, excluirArquivo, excluirMesesDoArquivo, linhasAuditoria, extratosParaReler, extratosParaRelerPeloDrive, leituraCobreOArquivo, relerExtrato, VERSAO_DO_LEITOR, type ResultadoImportacao,
 } from './regras/importacao';
 export { EXTENSOES_EXTRATO, EXTENSOES_SISTEMA, EXTENSOES_IMAGEM, abasDaPlanilha, lerArquivo } from './arquivos/leitura';
 export { definirWorkerDoPdf, definirOcr, ehPdf, itensDoPdf, type Ocr } from './arquivos/pdf';
