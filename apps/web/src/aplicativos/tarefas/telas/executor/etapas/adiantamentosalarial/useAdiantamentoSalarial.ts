@@ -28,6 +28,19 @@ export function useAdiantamentoSalarial() {
   const [contas, setContas] = useGuardado<{ adiantamento?: string; banco?: string }>('adiantamento-salarial-contas|' + empresa, {});
   const doDinamico = useMemo(() => (contabil.dinamico ? cl.contasDeAdiantamentoSalarial(contabil.dinamico.d)[0]?.codigo || '' : ''), [contabil.dinamico]);
   const contaAdiantamento = contas.adiantamento ?? doDinamico;
+  // o razão contra o balancete da empresa (Vitor, 26/10/2026: "exportou uns lançamentos nada a ver" — o razão era de outra
+  // empresa, com a mesma conta): não bateu, não exporta
+  const linhaDoBalancete = useMemo(() => {
+    const d = contabil.dinamico?.d;
+    const conta = razao?.razao.conta || contaAdiantamento;
+    return d && conta ? d.linhas.find(l => l.codigo === conta) || null : null;
+  }, [contabil.dinamico, razao, contaAdiantamento]);
+  const naoBate = useMemo(() => (razao && linhaDoBalancete ? t.razaoContraOBalancete(razao.razao, linhaDoBalancete.saldos, s.meses) : []), [razao, linhaDoBalancete, s.meses]);
+  const saldoBR = (v: number) => formatos.brl(Math.abs(v)) + (v > 0.005 ? ' C' : v < -0.005 ? ' D' : '');
+  const avisoNaoBate = naoBate.length
+    ? 'O razão não bate com o balancete desta empresa em ' + naoBate.map(x => t.rotuloNumericoCompetencia(x.mes)).join(', ')
+      + ' (' + t.rotuloNumericoCompetencia(naoBate[naoBate.length - 1].mes) + ': razão ' + saldoBR(naoBate[naoBate.length - 1].razao) + ', balancete ' + saldoBR(naoBate[naoBate.length - 1].balancete) + ')'
+    : '';
   const contaBanco = contas.banco ?? '';
   // o ⚡ do modo desenvolvedor: o razão de teste (16/10/2026)
   useDadosDeTesteDaEtapa(s.dev ? [{ id: 'certo', rotulo: 'Razão de teste (zerando)' }, { id: 'falta', rotulo: 'Razão de teste (sem o pagamento do último mês)' }] : [],
@@ -48,6 +61,7 @@ export function useAdiantamentoSalarial() {
   const faltando = useMemo(() => (razao && s.meses.length ? t.pagamentosQueFaltam(razao.razao, s.meses[s.meses.length - 1]) : []), [razao, s.meses]);
   const faltam = semMovimento ? [] : [
     ...(!razao ? ['Importar o razão do Adiantamento salarial'] : []),
+    ...(avisoNaoBate ? [avisoNaoBate + ': confira se é o razão desta empresa'] : []),
     ...(naoZerou.length ? ['O Adiantamento salarial não zerou em ' + naoZerou.map(m => t.rotuloNumericoCompetencia(m.mes)).join(', ')] : []),
   ];
   useRequisitosDaEtapa({ pronto: !faltam.length, faltam });
@@ -60,6 +74,7 @@ export function useAdiantamentoSalarial() {
     temRazao: !!razao, arquivo: razao?.arquivo || '',
     importar, remover: () => { setRazao(null); if (!proprio && daImportacao) contabil.tirarRazao(daImportacao.conta); },
     resumo: razao ? [
+      ...(avisoNaoBate ? [avisoNaoBate] : []),
       naoZerou.length ? 'Não zerou em ' + naoZerou.map(m => t.rotuloNumericoCompetencia(m.mes)).join(', ') : 'Ok',
       ...(faltando.length ? ['Falta pagar ' + reais(faltando.reduce((x, p) => x + p.valor, 0)) + ' (' + faltando.map(p => t.rotuloNumericoCompetencia(p.mes)).join(', ') + ')'] : []),
     ] : [],
@@ -79,7 +94,11 @@ export function useAdiantamentoSalarial() {
     digitarContaAdiantamento: (v: string) => setContas(c => ({ ...c, adiantamento: v.replace(/\D/g, '') })),
     digitarContaBanco: (v: string) => setContas(c => ({ ...c, banco: v.replace(/\D/g, '') })),
     qtd: faltando.length,
-    podeExportar: faltando.length > 0 && !!contaAdiantamento && !!contaBanco,
+    podeExportar: faltando.length > 0 && !!contaAdiantamento && !!contaBanco && !naoBate.length,
+    /** por que o .xls não sai */
+    porQueNaoExporta: naoBate.length ? 'O razão não bate com o balancete desta empresa: importe o razão da empresa certa (ou o balancete de novo, se já lançou)' : 'Informe as duas contas',
+    /** o resumo em vermelho */
+    resumoRuim: naoBate.length > 0,
     /** o .xls de importação do Alterdata: D Adiantamento salarial, C o banco, no dia 15 (ou no útil antes) */
     baixarXls: () => {
       const bytes = creditor.planilhaDeImportacao(faltando.map(p => ({

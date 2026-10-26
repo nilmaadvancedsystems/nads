@@ -23,7 +23,7 @@ export function AdiantamentoSalarial() {
             <div className="imp-txt">
               <span><b>Adiantamento salarial</b>{vm.arquivo && <span className="imp-conta">{vm.arquivo}</span>}</span>
             </div>
-            <div className="imp-resumo">{vm.resumo.length > 0 && <div>{vm.resumo.map(x => <span key={x}>{x}</span>)}</div>}</div>
+            <div className="imp-resumo">{vm.resumo.length > 0 && <div>{vm.resumo.map((x, i) => <span key={x} className={vm.resumoRuim && i === 0 ? 'ext-neg' : undefined}>{x}</span>)}</div>}</div>
             <div className="imp-grupos">
               {/* faltando pagamento: as duas contas digitadas e o .xls do Alterdata (o desenho dos pagamentos do Pró-labore) */}
               {vm.qtd > 0 && (
@@ -33,7 +33,7 @@ export function AdiantamentoSalarial() {
                   <input type="text" inputMode="numeric" placeholder="Banco" aria-label="Conta do banco (crédito)" title="O código da conta do banco que pagou (crédito)"
                     value={vm.contaBanco} onChange={e => vm.digitarContaBanco(e.target.value)} style={{ width: 96 }} />
                   <button type="button" className="icon-btn icon-btn-sm" disabled={!vm.podeExportar} onClick={vm.baixarXls}
-                    title={vm.podeExportar ? 'Importar no meu Sistema: o .xls do Alterdata com ' + (vm.qtd === 1 ? 'o pagamento que falta' : 'os ' + vm.qtd + ' pagamentos que faltam') : 'Informe as duas contas'}
+                    title={vm.podeExportar ? 'Importar no meu Sistema: o .xls do Alterdata com ' + (vm.qtd === 1 ? 'o pagamento que falta' : 'os ' + vm.qtd + ' pagamentos que faltam') : vm.porQueNaoExporta}
                     aria-label="Importar no meu Sistema"><Icone nome="download" /></button>
                 </div>
               )}
