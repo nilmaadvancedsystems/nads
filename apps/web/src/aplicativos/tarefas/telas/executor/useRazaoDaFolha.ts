@@ -10,7 +10,9 @@ import { useContabilDaEmpresa } from '../../../../comum/contabilDaEmpresa';
 const NOME: Record<t.ContaDaFolha, string> = { salarios: 'Salários a pagar', fgts: 'FGTS a recolher', prolabore: 'Pró-labore a pagar', honorarios: 'Honorários a pagar', simples: 'Simples Nacional a recolher' };
 
 /** empresa: o nome (o razão importado na Importação, quando a etapa não tem o próprio; 16/10/2026) */
-export function useRazaoDaFolha(conta: t.ContaDaFolha, chave: string, meses: readonly string[], empresa = '') {
+/** soImportar: o razão importado basta, sem cobrar o zerar nem o devedor (Vitor, 26/10/2026, Honorários: "deixa só importado,
+ * às vezes o cliente não paga") */
+export function useRazaoDaFolha(conta: t.ContaDaFolha, chave: string, meses: readonly string[], empresa = '', soImportar = false) {
   const { aviso } = useRetorno();
   const [razao, setRazao] = useGuardado<{ chave: string; arquivo: string; razao: t.RazaoDaConta } | null>('folha|' + conta + '|' + chave, null);
   // o da Importação (o upload único dos razões), pela conta reconhecida no dinâmico
@@ -32,7 +34,7 @@ export function useRazaoDaFolha(conta: t.ContaDaFolha, chave: string, meses: rea
   // o passivo fica credor ou zera: o errado é o devedor (a mesma regra do Adiantamento de clientes)
   const devedores = t.mesesErrados(doPeriodo, 'clientes');
   // Salários tem que zerar (Vitor, 07/10/2026): a folha de antes paga no mês; a sobra trava
-  const sobras = t.CONTAS_QUE_ZERAM.includes(conta) ? t.sobrasDaFolha(doPeriodo) : [];
+  const sobras = t.CONTAS_QUE_ZERAM.includes(conta) && !soImportar ? t.sobrasDaFolha(doPeriodo) : [];
   return {
     conta, nome: NOME[conta],
     temRazao: !!r, arquivo: r?.arquivo || '',
@@ -51,7 +53,7 @@ export function useRazaoDaFolha(conta: t.ContaDaFolha, chave: string, meses: rea
       ...(sobras.length ? ['Não zerou em ' + sobras.map(x => t.rotuloNumericoCompetencia(x.mes)).join(', ')] : []),
       ...(!devedores.length && !sobras.length ? ['Ok'] : []),
     ] : [],
-    ok: !!r && !devedores.length && !sobras.length,
+    ok: !!r && (soImportar || (!devedores.length && !sobras.length)),
     /** o razão é obrigatório (Salários) */
     obrigatorio: t.CONTAS_QUE_ZERAM.includes(conta),
     devedores: devedores.map(t.rotuloNumericoCompetencia),
