@@ -617,7 +617,8 @@ function iniciar(opcoes) {
           const m2 = outraExecucao(op.porPedido);
           if (m2) { acomp.situacao('esperando', m2); resumo.esperando = m2; return false; }
           if (!op.porPedido && r2.esperaMs && (prontos.length || fontes.length)) await dormir(r2.esperaMs);
-          if (!(await drenarOcr(LOTE_OCR))) return false;
+          // o lote do OCR sai com 3 lotes na fila: os 12 mais antigos já estão sendo lidos desde que foram separados
+          if (!(await drenarOcr(LOTE_OCR * 3))) return false;
         }
         return !parado;
       };
