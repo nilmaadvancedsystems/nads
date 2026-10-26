@@ -230,7 +230,7 @@ const anoDaParte = p => (/^((?:19|20)\d{2})$/.exec(p) || [])[1];
  */
 // empresas do mesmo dono (Vitor, 23/10/2026): o cruzamento entre elas não é ERRADO-CLIENTE; vale o conteúdo
 const MESMO_DONO = [[55, 174]];
-const ANUAIS = /^(DEFIS|DIRF|ECF|BALANCETE|INFORME DE RENDIMENTOS)$/;   // ficam no ano da ENTREGA (Vitor, 23/10/2026)
+const ANUAIS = /^(DEFIS|DIRF|ECF|BALANCETE)$/;   // ficam no ano da ENTREGA (Vitor, 23/10/2026); o INFORME DE RENDIMENTOS fica no ano-base (Vitor, 26/10/2026), como nas regras
 const COM_EXTENSAO = /\.(pdf|xml|ofx|txt|xlsx|xls|csv|zip|rar|7z|jpe?g|png|docx?|pfx|p12)$/i;
 function analisarLocal(sub, nome, cli) {
   // a rotina antiga deixou PASTAS com nome de arquivo ("…\NFC-e\09-2026_NFC-e_31411.xml\09-2026_NFC-e_31411.xml",
