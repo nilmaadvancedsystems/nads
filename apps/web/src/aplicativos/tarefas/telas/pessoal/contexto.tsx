@@ -7,7 +7,7 @@ import { pedaco } from '../../../../comum/pedaco';
 // a janela (com os ícones de perfil, 120 KB) é um pedaço à parte (revisão da UI, 18/10/2026): só baixa quando abre
 const JanelaPessoal = pedaco(() => import('./JanelaPessoal'), 'JanelaPessoal');
 
-export type TopicoPessoal = 'caixa' | 'notas' | 'conta' | 'empresas' | 'preferencias' | 'aplicativo' | 'ia' | 'faq';
+export type TopicoPessoal = 'caixa' | 'notas' | 'conta' | 'empresas' | 'preferencias' | 'aplicativo' | 'ia' | 'faq' | 'feedbacks';
 
 interface Pessoal { topico: TopicoPessoal | null; abrir: (t: string) => void; fechar: () => void }
 
