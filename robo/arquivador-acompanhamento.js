@@ -356,6 +356,9 @@ function criar(opcoes) {
     if (dia.partes[dia.partes.length - 1].length) dia.sujas.add(dia.partes.length - 1);
   }
   carregarDia(st.hoje.chave);
+  // as contagens de hoje recontadas do histórico do dia, que é o registro (26/10/2026: o robô religado com o acompanhamento
+  // de outro dia mostrava "Hoje: 0" com 543 arquivados no histórico)
+  if (dia.partes.some(p => p.length)) { const c = contagemVazia(st.hoje.chave); for (const p of dia.partes) for (const x of p) somar(c, x); st.hoje = c; }
   // as contagens de cada dia (para o resumo do mês): as que já estão no PC, mais as dos dias que só têm o histórico
   // (arquivados-AAAA-MM-DD.jsonl), contadas uma vez; o dia de hoje é sempre o st.hoje
   const arqResumo = path.join(o.controle, 'resumo-dias.json');
