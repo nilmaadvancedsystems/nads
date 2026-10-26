@@ -17,7 +17,7 @@ export function criarSiegFirestore(quem: () => Quem): RepoSieg {
   let ver = 0;
   const ouvintes = new Set<() => void>();
   const mudou = () => { ver++; for (const f of ouvintes) f(); };
-  let robo = { carregado: false, ligado: false, motivo: '', em: '' };
+  let robo = { carregado: false, ligado: false, motivo: '', em: '', situacao: '', naFila: 0 };
   let ouvindoRobo = false;
   const contagens = new Map<string, { carregada: boolean; dados: t.sieg.ContagemSieg | null }>();
   const saidas = new Map<string, { carregadas: boolean; dados: t.sieg.SaidasSieg | null }>();
@@ -36,8 +36,8 @@ export function criarSiegFirestore(quem: () => Quem): RepoSieg {
     robo() {
       if (!ouvindoRobo) {
         ouvindoRobo = true;
-        onSnapshot(doc(db, 'robo', 'sieg'), s => { const d = s.data() || {}; robo = { carregado: true, ligado: !!d.ligado, motivo: texto(d.motivo), em: texto(d.em) }; mudou(); },
-          () => { robo = { carregado: true, ligado: false, motivo: 'sem acesso', em: '' }; mudou(); });
+        onSnapshot(doc(db, 'robo', 'sieg'), s => { const d = s.data() || {}; robo = { carregado: true, ligado: !!d.ligado, motivo: texto(d.motivo), em: texto(d.em), situacao: texto(d.situacao), naFila: Number(d.naFila) || 0 }; mudou(); },
+          () => { robo = { carregado: true, ligado: false, motivo: 'sem acesso', em: '', situacao: '', naFila: 0 }; mudou(); });
       }
       return robo;
     },
