@@ -16,7 +16,8 @@ const curta = k => { const s = String(k || ''); return /^[0-9a-f]{64}$/i.test(s)
 
 /** Lê um .jsonl grande sem carregar o arquivo inteiro (pedaços de 1 MB). */
 function cadaLinha(arquivo, f) {
-  let fd; try { fd = fs.openSync(arquivo, 'r'); } catch (e) { return 0; }
+  // só o arquivo que não existe conta como vazio; outra falha (preso, sem permissão) é erro (26/10/2026)
+  let fd; try { fd = fs.openSync(arquivo, 'r'); } catch (e) { if (e.code === 'ENOENT') return 0; throw e; }
   const buf = Buffer.alloc(1 << 20);
   let resto = '', n = 0, lidos;
   const linha = l => { if (!l.trim()) return; let r; try { r = JSON.parse(l); } catch (e) { try { r = JSON.parse(l.replace(/\\/g, '/')); } catch (e2) { return; } } n++; f(r); };

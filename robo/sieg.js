@@ -379,7 +379,7 @@ async function xmlsJaNoDrive(codigo, nomeDaPasta, competencia, db) {
     if (/\.xml$/i.test(n)) lerArquivo(path.join(pasta, n));
     else if (/^SIEG .*\.zip$/i.test(n)) { try { xmls.push(...lerZip(await fs.promises.readFile(path.join(pasta, n)))); } catch (_) { /* .zip quebrado */ } }
   }
-  const CACHE = path.join(process.env.LOCALAPPDATA || __dirname, 'nads-robo', 'xmls-do-drive');
+  const CACHE = path.join(require('./pastas-locais').ROBO, 'xmls-do-drive');   // fora do AppData (26/10/2026)
   await fs.promises.mkdir(CACHE, { recursive: true }).catch(() => {});
   await Promise.all(Array.from({ length: 32 }, async () => {
     for (let x = aLer.shift(); x; x = aLer.shift()) {

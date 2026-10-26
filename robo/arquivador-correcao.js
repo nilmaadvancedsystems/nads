@@ -20,12 +20,13 @@
 //   zelo        a troca ZELO × AAP (23/10/2026: a ZELO passou a 591 e a AAP a 602 no cadastro): "591 - AAP …" → "602 - AAP …";
 //               o conteúdo de "602 - ZELO …" para dentro de "591 - ZELO …"; a 602-ZELO vazia para a quarentena.
 //               Só roda se o cadastro (o do arquivador, relido do banco) disser ZELO = 591 e AAP = 602.
-//   cliente     ERRADO-CLIENTE do plano      pasta       ERRADO-PASTA (inclusive as pastas com nome de arquivo)
+//   cliente     ERRADO-CLIENTE do plano      ano         ERRADO-ANO (para a raiz do ano da competência)
+//   pasta       ERRADO-PASTA (inclusive as pastas com nome de arquivo)
 //   duplicados  DUPLICADO (quarentena)       renomes     NOME-FORA-DO-PADRAO (renomear no lugar)
 // Do plano, só os passos "automatico" (confiança ≥ 0,9 e destino conhecido); o resto fica na lista de revisão.
 //
 //   node arquivador-correcao.js --etapas zelo [--producao --confirmo]
-//   node arquivador-correcao.js --plano <plano-simulado.jsonl> --etapas cliente,pasta,duplicados,renomes [--producao --confirmo]
+//   node arquivador-correcao.js --plano <plano-simulado.jsonl> --etapas cliente,ano,pasta,duplicados,renomes [--producao --confirmo]
 //   node arquivador-correcao.js --desfazer <correcao-<id>.jsonl> [--producao --confirmo]
 'use strict';
 const fs = require('fs');
@@ -43,8 +44,8 @@ const CONTROLE = A.CONTROLE;
 const DIARIOS = W.join(CONTROLE, 'correcao');
 const MANIFESTO = W.join(CONTROLE, 'MANIFESTO', 'manifesto.jsonl');
 const LOTE = 200;
-const ETAPAS = ['zelo', 'cliente', 'pasta', 'duplicados', 'renomes'];
-const ETAPA_DO_PLANO = { 'ERRADO-CLIENTE': 'cliente', 'ERRADO-PASTA': 'pasta', DUPLICADO: 'duplicados', 'NOME-FORA-DO-PADRAO': 'renomes' };
+const ETAPAS = ['zelo', 'cliente', 'ano', 'pasta', 'duplicados', 'renomes'];   // ano: ERRADO-ANO (26/10/2026; a auditoria já dava a etapa, o executor não)
+const ETAPA_DO_PLANO = { 'ERRADO-CLIENTE': 'cliente', 'ERRADO-ANO': 'ano', 'ERRADO-PASTA': 'pasta', DUPLICADO: 'duplicados', 'NOME-FORA-DO-PADRAO': 'renomes' };
 const ZELO = { cnpj: '53636418000156', codigo: 591, pasta: '591 - ZELO AGROINDUSTRIAIS LTDA', antiga: '602 - ZELO AGROINDUSTRIAIS LTDA' };
 const AAP = { cnpj: '65116389000180', codigo: 602, de: '591 - AAP INTERMEDIACOES LTDA', para: '602 - AAP INTERMEDIACOES LTDA' };
 
