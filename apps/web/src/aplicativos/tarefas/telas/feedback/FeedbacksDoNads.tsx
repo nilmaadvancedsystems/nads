@@ -75,7 +75,7 @@ export function ListaDosFeedbacks({ vm }: { vm: ReturnType<typeof useFeedbacks> 
           ))}
         </ul>
       )}
-      {vm.aberto && <JanelaDoFeedback f={vm.aberto} fechar={vm.fecharAberto} ampliar={vm.setAberta} marcar={vm.marcar} baixar={id => { void vm.baixarArquivoDoBug(id); }} />}
+      {vm.aberto && <JanelaDoFeedback f={vm.aberto} fechar={vm.fecharAberto} ampliar={vm.setAberta} marcar={vm.marcar} baixar={(id, i) => { void vm.baixarArquivoDoBug(id, i); }} />}
       {vm.aberta && (
         <div className="modal-overlay pessoal-fundo feedback-zoom" onMouseDown={() => vm.setAberta('')}>
           <img src={vm.aberta} alt="O print do feedback" />
@@ -89,7 +89,7 @@ export function ListaDosFeedbacks({ vm }: { vm: ReturnType<typeof useFeedbacks> 
  * e a versão; embaixo Visto / Feito / Reabrir. O Esc fecha só esta janela. */
 function JanelaDoFeedback({ f, fechar, ampliar, marcar, baixar }: {
   f: NonNullable<ReturnType<typeof useFeedbacks>['aberto']>; fechar: () => void; ampliar: (img: string) => void; marcar: (id: string, s: SituacaoDoFeedback) => void;
-  baixar: (id: string) => void;
+  baixar: (id: string, i: number) => void;
 }) {
   // revisão da UI, 16/10/2026: Esc, foco preso e o foco de volta pela peça useJanela (antes, um Esc à mão por janela)
   const janela = useRef<HTMLDivElement>(null);
@@ -116,9 +116,10 @@ function JanelaDoFeedback({ f, fechar, ampliar, marcar, baixar }: {
             <p className="feedback-txt"><b>{f.empresa || '—'}</b>{f.caminho ? ' · ' + f.caminho : ''}</p>
           )}
           <p className="feedback-txt">{f.texto}</p>
-          {f.tipo === 'bug' && f.arquivo && (
-            <button type="button" className="btn btn-outline" onClick={() => baixar(f.id)}><Icone nome="download" />{f.arquivo.nome}</button>
-          )}
+          {/* todos os arquivos (do bug ou anexados ao feedback), cada um no seu botão (26/10/2026) */}
+          {f.arquivos.length > 0 && f.arquivos.map((a, i) => (
+            <button key={i} type="button" className="btn btn-outline" onClick={() => baixar(f.id, i)}><Icone nome="download" />{a.nome}</button>
+          ))}
           {/* o report do robô do suporte (termina em "Realmente, isso é erro do sistema" ou "Precisa da sua análise") */}
           {f.tipo === 'bug' && (f.relatorio ? <p className="feedback-txt feedback-relatorio">{f.relatorio}</p> : <p className="hint">{ANALISE[f.analise] || 'Sem report ainda.'}</p>)}
           <span className="fraco feedback-onde">{f.tela}{f.versao ? ' · ' + f.versao : ''}</span>

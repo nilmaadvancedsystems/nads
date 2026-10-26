@@ -100,6 +100,7 @@ export function useImportacao() {
   const movimentos = useMemo(() => new Map<string, x.MovimentoDoExtrato>(), [s.empresa, primeiro, competenciaDeTeste]);
   const extratosSemSaldo = useMemo(() => x.extratosSemSaldoAnterior(s.empresa, primeiro), [s.empresa, primeiro]);
   const extratosParaReler = useMemo(() => x.extratosParaReler(s.empresa), [s.empresa]);
+  const extratosParaRelerPeloDrive = useMemo(() => x.extratosParaRelerPeloDrive(s.empresa), [s.empresa]);
   const [mensagem, setMensagemBruta] = useState<Mensagem | null>(null);
   const [seqMensagem, setSeq] = useState(0);
   const setMensagem = (m: Mensagem | null) => { setMensagemBruta(m); setSeq(v => v + 1); };
@@ -420,6 +421,8 @@ export function useImportacao() {
     extratosSemSaldo,
     /** os extratos do Drive lidos por um leitor mais velho: o useDriveDaLinha relê sozinho (Vitor, 14/10/2026) */
     extratosParaReler,
+    /** os importados do computador lidos por um leitor mais velho: o useDriveDaLinha relê pelo PDF do mês no Drive (26/10/2026) */
+    extratosParaRelerPeloDrive,
     relerExtrato: (arquivoId: string, lido: x.ArquivoLido) => s.aplicar(e => x.relerExtrato(e, arquivoId, lido, new Date())),
     /** quem marca o mês como sem movimento quando o extrato importado não teve movimento */
     aoSemMovimento: (fn: (banco: string, meses: string[]) => void) => { aoSemMovimento.current = fn; },
