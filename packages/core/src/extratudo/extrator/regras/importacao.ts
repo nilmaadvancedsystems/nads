@@ -10,9 +10,10 @@ import { dataBR } from './texto';
  * (useDriveDaLinha), com relerExtrato. 2 = o Detalhamento do Saldo do BNB fora e o histórico no lançamento mais perto;
  * 3 = o OCR melhor (216 dpi, preto e branco, a página como tabela) e o sinal conferido pelo saldo corrido; 4 = os "Últimos
  * Lançamentos" do Bradesco fora (19/10/2026); 5 = a data do Nubank com o ano em pedaço separado e o dia que o OCR leu com
- * letra ("O8FEV2026"; 20/10/2026).
+ * letra ("O8FEV2026"; 20/10/2026); 6 = o Sicoob do SISBR com o valor e o C/D em linhas soltas, o "- R$" do Stone e o extrato
+ * do mais novo para o mais velho (26/10/2026).
  */
-export const VERSAO_DO_LEITOR = 5;
+export const VERSAO_DO_LEITOR = 6;
 
 export function empresaNova(nome: string): EmpresaExtrator {
   return { nome, arquivos: [], auditoria: [] };
@@ -143,6 +144,28 @@ export function importar(e: EmpresaExtrator, lado: Lado, lidos: ArquivoLido[], m
 /** Os extratos do Drive lidos por um leitor mais velho (o PDF ou a imagem; o OFX e a planilha não mudam): para reler. */
 export function extratosParaReler(e: EmpresaExtrator): ArquivoImportado[] {
   return e.arquivos.filter(a => a.lado === 'banco' && !!a.drive && (a.leitor ?? 1) < VERSAO_DO_LEITOR && /\.(pdf|jpe?g|png)$/i.test(a.drive.nome || a.nome));
+}
+
+/**
+ * Os extratos importados do computador (ou do e-mail) lidos por um leitor mais velho (Vitor, 26/10/2026: o Stone da 183
+ * continuava com o sinal errado depois do leitor novo): o arquivo não fica guardado, então quem relê busca o PDF do mês
+ * no Drive (useDriveDaLinha) e só troca quando ele cobre todos os meses do importado.
+ */
+export function extratosParaRelerPeloDrive(e: EmpresaExtrator): ArquivoImportado[] {
+  return e.arquivos.filter(a => a.lado === 'banco' && !a.drive && (a.leitor ?? 1) < VERSAO_DO_LEITOR && a.lancamentos.length > 0 && /\.(pdf|jpe?g|png)$/i.test(a.nome));
+}
+
+/**
+ * A leitura nova cobre os meses do arquivo? (senão, trocar perderia um mês) O mês com 1 ou 2 lançamentos pode faltar: é o
+ * erro do leitor velho que a leitura nova conserta (o "27/07/2026" do cabeçalho do Sicoob do SISBR que virava lançamento
+ * com o saldo anterior); os meses com 3 ou mais têm de estar todos.
+ */
+export function leituraCobreOArquivo(a: ArquivoImportado, lido: ArquivoLido): boolean {
+  if (lido.erro || !lido.lancamentos.length) return false;
+  const lidos = new Set(lido.lancamentos.map(l => l.data.slice(0, 7)));
+  const porMes = new Map<string, number>();
+  for (const l of a.lancamentos) porMes.set(l.data.slice(0, 7), (porMes.get(l.data.slice(0, 7)) || 0) + 1);
+  return [...porMes].every(([m, n]) => n < 3 || lidos.has(m)) && [...porMes.keys()].some(m => lidos.has(m));
 }
 
 /**

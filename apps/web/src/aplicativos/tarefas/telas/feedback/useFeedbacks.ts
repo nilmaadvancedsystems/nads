@@ -50,6 +50,6 @@ export function useFeedbacks() {
     aberta, setAberta,
     marcar: (id: string, status: SituacaoDoFeedback) => void repo.marcar(id, status),
     /** o arquivo do bug, para baixar (o que a pessoa mandou pelo balão) */
-    baixarArquivoDoBug: async (id: string) => { const a = await repo.arquivoDoBug(id); if (a) baixarBytes(a.bytes, a.nome, 'application/octet-stream'); },
+    baixarArquivoDoBug: async (id: string, i = 0) => { const a = await repo.arquivoDoBug(id, i); if (a) baixarBytes(a.bytes, a.nome, 'application/octet-stream'); },
   };
 }
