@@ -4,7 +4,11 @@
 // Alta) que quem manda escolhe; o admin filtra e ordena por ela. Interface + a versão de exemplo; a do banco é
 // feedback.firestore.ts (coleção feedbacks do Entregas).
 
-export type SituacaoDoFeedback = 'novo' | 'visto' | 'feito';
+/** resolvendo (Vitor, 26/10/2026): o admin está resolvendo; quem mandou é avisado */
+export type SituacaoDoFeedback = 'novo' | 'visto' | 'resolvendo' | 'feito';
+
+/** Um feedback de quem mandou (o aviso do Resolvendo): o que a regra deixa a pessoa ler dos seus. */
+export interface MeuFeedback { id: string; texto: string; status: SituacaoDoFeedback; criadoEm: string }
 
 /** A prioridade que quem manda escolhe (Vitor, 19/10/2026: feedbacks com "prioridade"). */
 export type PrioridadeDoFeedback = 'baixa' | 'media' | 'alta';
@@ -84,6 +88,8 @@ export interface RepoFeedback {
   /** todos os feedbacks (só o admin lê); pedir já começa a ouvir */
   todos(): { carregados: boolean; lista: Feedback[] };
   marcar(id: string, status: SituacaoDoFeedback): Promise<void>;
+  /** os feedbacks de quem está usando (a regra deixa ler os seus); pedir já começa a ouvir */
+  meus(): MeuFeedback[];
   assinar(aoMudar: () => void): () => void;
   versao(): number;
 }
@@ -127,6 +133,7 @@ export function criarFeedbackMemoria(quem: () => string): RepoFeedback {
     async arquivoDoBug() { return null; },
     todos: () => ({ carregados: true, lista }),
     async marcar(id, status) { lista = lista.map(x => (x.id === id ? { ...x, status } : x)); mudou(); },
+    meus: () => lista.filter(x => x.nome === quem()).map(x => ({ id: x.id, texto: x.texto, status: x.status, criadoEm: x.criadoEm })),
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,
   };

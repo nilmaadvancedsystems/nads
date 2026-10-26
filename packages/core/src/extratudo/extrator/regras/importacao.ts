@@ -12,9 +12,10 @@ import { dataBR } from './texto';
  * Lançamentos" do Bradesco fora (19/10/2026); 5 = a data do Nubank com o ano em pedaço separado e o dia que o OCR leu com
  * letra ("O8FEV2026"; 20/10/2026); 6 = o Sicoob do SISBR com o valor e o C/D em linhas soltas, o "- R$" do Stone e o extrato
  * do mais novo para o mais velho (26/10/2026); 7 = o nome do Pix do Stone no lançamento dele (não no de cima) e o saldo de
- * abertura pela coluna Saldo, quando o extrato não imprime o saldo anterior (26/10/2026).
+ * abertura pela coluna Saldo, quando o extrato não imprime o saldo anterior (26/10/2026); 8 = o quadro do limite do BB (Custo
+ * Efetivo Total, Valor total devido…) fora e o depósito bloqueado com o "*" solto fora (26/10/2026).
  */
-export const VERSAO_DO_LEITOR = 7;
+export const VERSAO_DO_LEITOR = 8;
 
 export function empresaNova(nome: string): EmpresaExtrator {
   return { nome, arquivos: [], auditoria: [] };
@@ -136,7 +137,7 @@ export function importar(e: EmpresaExtrator, lado: Lado, lidos: ArquivoLido[], m
     }
     if (!lanc.length) continue;
     const a: ArquivoImportado = { id: ids(), lado, nome: l.nome, importadoEm: agora.toISOString(), modo, lancamentos: lanc, leitor: VERSAO_DO_LEITOR, ...(l.saldoAnterior != null ? { saldoAnterior: l.saldoAnterior } : {}), ...(l.saldosDoDia?.length ? { saldosDoDia: l.saldosDoDia } : {}) };
-    arquivos.push(a);
+    arquivos.push(...caberNoBanco(a));
     gravados += lanc.length;
     novosArquivos++;
   }
@@ -257,6 +258,38 @@ export function excluirArquivo(e: EmpresaExtrator, id: string, agora: Date): Emp
 }
 
 /**
+ * O arquivo cortado em um por mês (como o PDF que sobe para o Drive), cada um com o saldo anterior dele (o do arquivo mais
+ * os lançamentos dos meses de antes) e os saldos do dia dele. O de um mês só volta como está.
+ */
+export function pedacosPorMes(a: ArquivoImportado): ArquivoImportado[] {
+  const meses = [...new Set(a.lancamentos.map(l => l.data.slice(0, 7)))].sort();
+  if (meses.length <= 1) return [a];
+  return meses.map(m => {
+    const lancamentos = a.lancamentos.filter(l => l.data.startsWith(m));
+    const antes = a.lancamentos.filter(l => l.data < m).reduce((t, l) => t + l.valor, 0);
+    const saldosDoDia = a.saldosDoDia?.filter(s => s.data.startsWith(m));
+    return {
+      ...a, id: a.id + '|' + m, lancamentos,
+      ...(a.saldoAnterior != null ? { saldoAnterior: a.saldoAnterior + antes } : {}),
+      ...(a.saldosDoDia ? { saldosDoDia: saldosDoDia || [] } : {}),
+    };
+  });
+}
+
+/**
+ * O tamanho de um arquivo importado no banco não pode passar de 1 MB (o limite do documento do Firestore): o razão grande
+ * (Vitor, 26/10/2026: o do BB da 237, 6.891 lançamentos, 1,2 MB) não gravava — a tela mostrava, e ele sumia depois de
+ * uns minutos ou ao trocar de aba. Acima disto, o arquivo é guardado cortado por mês.
+ */
+export const TAMANHO_PARA_CORTAR = 700_000;
+const tamanho = (a: ArquivoImportado) => JSON.stringify(a).length;
+
+/** O arquivo, ou os pedaços dele por mês quando ele é grande demais para um documento do banco. */
+export function caberNoBanco(a: ArquivoImportado): ArquivoImportado[] {
+  return tamanho(a) > TAMANHO_PARA_CORTAR ? pedacosPorMes(a) : [a];
+}
+
+/**
  * Tira só os meses escolhidos do arquivo, no extrato e no razão (Vitor, 21/10/2026: "tem vezes que o cliente manda os
  * extratos quebrados… deixa eu conseguir excluir apenas o mês que selecionei, ao invés de excluir tudo"). O arquivo de
  * vários meses é cortado em um por mês (como o PDF que sobe para o Drive), cada um com o saldo anterior dele (o do arquivo
@@ -271,16 +304,7 @@ export function excluirMesesDoArquivo(e: EmpresaExtrator, id: string, meses: rea
   if (!ficam.length) return excluirArquivo(e, id, agora);
   const saem = doArquivo.filter(m => tirar.has(m));
   if (!saem.length) return e;
-  const pedacos: ArquivoImportado[] = ficam.map(m => {
-    const lancamentos = a.lancamentos.filter(l => l.data.startsWith(m));
-    const antes = a.lancamentos.filter(l => l.data < m).reduce((t, l) => t + l.valor, 0);
-    const saldosDoDia = a.saldosDoDia?.filter(s => s.data.startsWith(m));
-    return {
-      ...a, id: doArquivo.length > 1 ? a.id + '|' + m : a.id, lancamentos,
-      ...(a.saldoAnterior != null ? { saldoAnterior: a.saldoAnterior + antes } : {}),
-      ...(a.saldosDoDia ? { saldosDoDia: saldosDoDia || [] } : {}),
-    };
-  });
+  const pedacos = pedacosPorMes(a).filter(x => ficam.includes(x.lancamentos[0].data.slice(0, 7)));
   const rot = (m: string) => m.slice(5) + '/' + m.slice(0, 4);
   const qtd = a.lancamentos.filter(l => tirar.has(l.data.slice(0, 7))).length;
   const reg: RegistroAuditoria = {
