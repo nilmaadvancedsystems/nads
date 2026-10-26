@@ -1003,10 +1003,6 @@ export function TarefaExtratos() {
       </div>
 
       {/* o resultado: uma barrinha por cima da tela; o que deu certo some em 2,7 s, erro fica até o × */}
-      <MensagemFlutuante id="impAviso" className="imp-aviso" chave={vm.seqMensagem} onFechar={vm.fecharMensagem}
-        duracao={vm.mensagem?.tom === 'erro' ? null : 2700}>
-        {vm.mensagem && <Aviso m={vm.mensagem} onFechar={vm.fecharMensagem} />}
-      </MensagemFlutuante>
 
 
       {d.escolha && (
@@ -1063,6 +1059,11 @@ export function TarefaExtratos() {
           </div>
         </div>
       )}
+      {/* o aviso do topo (Bancos e Comprovantes) */}
+      <MensagemFlutuante id="impAviso" className="imp-aviso" chave={vm.seqMensagem} onFechar={vm.fecharMensagem}
+        duracao={vm.mensagem?.tom === 'erro' ? null : 2700}>
+        {vm.mensagem && <Aviso m={vm.mensagem} onFechar={vm.fecharMensagem} />}
+      </MensagemFlutuante>
       {/* o login do Drive (Bancos e Comprovantes) */}
       {d.login.aberto && (
         <div className="modal-overlay" role="presentation" onClick={d.login.fechar}>
