@@ -1,10 +1,10 @@
 // Os feedbacks no banco do Entregas (coleção feedbacks; regra em firestore.rules): quem está no nads cria o seu (com o
 // uid dele, status 'novo' e a prioridade baixa/media/alta); só o admin lê todos e muda o status. A imagem vai no próprio
-// documento (JPEG comprimido, até ~900 KB), sem Storage.
-import { Bytes, collection, doc, getDocs, limit, onSnapshot, orderBy, query, setDoc as setDocBruto, updateDoc as updateDocBruto } from 'firebase/firestore';
+// documento (JPEG comprimido, até ~900 KB), sem Storage. Quem mandou lê os seus (o aviso do Resolvendo; 26/10/2026).
+import { Bytes, collection, doc, getDocs, limit, onSnapshot, orderBy, query, where, setDoc as setDocBruto, updateDoc as updateDocBruto } from 'firebase/firestore';
 import { entregas } from '@nads/core';
 import { bancoDoEntregas } from './entregas.firestore';
-import { ehPrioridade, type Feedback, type RepoFeedback, type SituacaoDoFeedback } from './feedback';
+import { ehPrioridade, type Feedback, type MeuFeedback, type RepoFeedback, type SituacaoDoFeedback } from './feedback';
 import { guardar, guardarPedido } from '../../../comum/modoDesenvolvedor';
 
 // a trava do modo desenvolvedor: com o modo ligado, nada é gravado
@@ -13,7 +13,7 @@ const setDoc = guardarPedido(setDocBruto) as typeof setDocBruto;
 
 type Quem = { uid: string; email: string; nome: string } | null;
 const texto = (v: unknown) => (v == null ? '' : String(v));
-const STATUS: readonly SituacaoDoFeedback[] = ['novo', 'visto', 'feito'];
+const STATUS: readonly SituacaoDoFeedback[] = ['novo', 'visto', 'resolvendo', 'feito'];
 
 export function criarFeedbackFirestore(quem: () => Quem): RepoFeedback {
   const db = bancoDoEntregas();
@@ -21,6 +21,7 @@ export function criarFeedbackFirestore(quem: () => Quem): RepoFeedback {
   const ouvintes = new Set<() => void>();
   const mudou = () => { ver++; for (const f of ouvintes) f(); };
   let todos: { carregados: boolean; lista: Feedback[] } | null = null;
+  let meus: { uid: string; lista: MeuFeedback[] } | null = null;
   return {
     exemplos: false,
     async enviar(f) {
@@ -108,6 +109,21 @@ export function criarFeedbackFirestore(quem: () => Quem): RepoFeedback {
       return todos;
     },
     async marcar(id, status) { await updateDoc(doc(db, 'feedbacks', id), { status }); },
+    // os seus (Vitor, 26/10/2026: o aviso do Resolvendo): a regra deixa cada um ler os que mandou (uid); sem orderBy, para
+    // não pedir índice composto
+    meus() {
+      const q = quem();
+      if (!q) return [];
+      if (!meus || meus.uid !== q.uid) {
+        const estes: { uid: string; lista: MeuFeedback[] } = { uid: q.uid, lista: [] };
+        meus = estes;
+        onSnapshot(query(collection(db, 'feedbacks'), where('uid', '==', q.uid), limit(200)), s => {
+          estes.lista = s.docs.map(d => { const x = d.data(); return { id: d.id, texto: texto(x.texto), status: (STATUS.includes(x.status) ? x.status : 'novo') as SituacaoDoFeedback, criadoEm: texto(x.criadoEm) }; });
+          mudou();
+        }, () => { estes.lista = []; mudou(); });
+      }
+      return meus.lista;
+    },
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,
   };
