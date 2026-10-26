@@ -153,6 +153,55 @@ export function extratosParaReler(e: EmpresaExtrator): ArquivoImportado[] {
 }
 
 /**
+ * O mesmo lançamento guardado em dois extratos do mesmo banco (Vitor, 26/10/2026: o Stone da 183 tinha os de 31/01 no PDF
+ * de janeiro e no de fevereiro — o de cada mês leva a página da virada — e "Aparece duas vezes no extrato"; no PDF, uma
+ * vez só). Dia a dia: o dia fica com o arquivo que tem mais lançamentos nele (no empate, o importado primeiro); dos outros
+ * saem os lançamentos daquele dia que ele também tem (mesma data e valor, contando as repetições: o rendimento de R$ 0,01
+ * que o dia tem quatro vezes continua quatro). Rodar de novo não tira mais nada.
+ * `bancoDe`: o banco de cada arquivo (bancoDoArquivo). Devolve quantos saíram (0 = nada a fazer).
+ */
+export function tirarSobreposicaoDosExtratos(e: EmpresaExtrator, bancoDe: (a: ArquivoImportado) => string, agora: Date): { empresa: EmpresaExtrator; tirados: number } {
+  const porBanco = new Map<string, ArquivoImportado[]>();
+  for (const a of e.arquivos) if (a.lado === 'banco') porBanco.set(bancoDe(a), [...(porBanco.get(bancoDe(a)) || []), a]);
+  const novos = new Map<string, Lancamento[]>();
+  let tirados = 0;
+  for (const arqs of porBanco.values()) {
+    if (arqs.length < 2) continue;
+    // os arquivos de cada dia
+    const dias = new Map<string, ArquivoImportado[]>();
+    for (const a of arqs) for (const d of new Set(a.lancamentos.map(l => l.data))) dias.set(d, [...(dias.get(d) || []), a]);
+    // o que sai de cada arquivo: 'arquivo' → os índices
+    const sai = new Map<string, Set<number>>();
+    for (const [d, doDia] of dias) {
+      if (doDia.length < 2) continue;
+      const qtd = (a: ArquivoImportado) => a.lancamentos.filter(l => l.data === d).length;
+      const fica = doDia.reduce((m, a) => (qtd(a) > qtd(m) ? a : m));
+      const tem = new Map<number, number>();
+      for (const l of fica.lancamentos) if (l.data === d) tem.set(l.valor, (tem.get(l.valor) || 0) + 1);
+      for (const a of doDia) {
+        if (a === fica) continue;
+        const resta = new Map(tem);
+        a.lancamentos.forEach((l, i) => {
+          if (l.data !== d || !(resta.get(l.valor) || 0)) return;
+          resta.set(l.valor, (resta.get(l.valor) || 0) - 1);
+          sai.set(a.id, (sai.get(a.id) || new Set()).add(i));
+        });
+      }
+    }
+    for (const a of arqs) {
+      const s = sai.get(a.id);
+      if (!s?.size) continue;
+      novos.set(a.id, a.lancamentos.filter((_, i) => !s.has(i)));
+      tirados += s.size;
+    }
+  }
+  if (!tirados) return { empresa: e, tirados: 0 };
+  const arquivos = e.arquivos.map(a => (novos.has(a.id) ? { ...a, lancamentos: novos.get(a.id) as Lancamento[] } : a)).filter(a => a.lancamentos.length);
+  const reg: RegistroAuditoria = { ts: agora.toISOString(), acao: 'Tirou lançamentos repetidos entre extratos', detalhe: tirados + ' lançamento(s) que estavam em dois extratos do mesmo banco (a página da virada do mês)', tom: 'ok' };
+  return { empresa: { ...e, arquivos, auditoria: [reg, ...e.auditoria] }, tirados };
+}
+
+/**
  * Os extratos importados do computador (ou do e-mail) lidos por um leitor mais velho (Vitor, 26/10/2026: o Stone da 183
  * continuava com o sinal errado depois do leitor novo): o arquivo não fica guardado, então quem relê busca o PDF do mês
  * no Drive (useDriveDaLinha) e só troca quando ele cobre todos os meses do importado.
