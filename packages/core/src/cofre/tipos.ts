@@ -73,7 +73,13 @@ export interface ChaveDaPessoa {
   versao?: number;
   liberadoPor?: string;
   liberadoEm?: string;
+  /** o último acesso deste login (Senhas › Acesso, 26/10/2026: "quero que apareça o IP"): quando o cofre abriu neste
+   *  navegador (ou o pedido de acesso), o IP público de então e o navegador e o sistema */
+  ultimoAcesso?: AcessoDoLogin;
 }
+
+/** De onde o login entrou: o IP público (vazio = não deu para saber), o navegador e o sistema ("Chrome no Windows"), e quando. */
+export interface AcessoDoLogin { em: string; ip: string; navegador: string }
 
 /** A chave do cofre trancada com o código de recuperação (PBKDF2 + AES-GCM). */
 export interface Recuperacao { sal: string; iv: string; dados: string }

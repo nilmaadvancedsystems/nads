@@ -47,6 +47,7 @@ export function criarCofreFirestore(eu: () => { uid: string; nome: string } | nu
     },
     registrarChave: c => setDoc(doc(db, 'cofreChaves', c.id), limpo(c)),
     liberar: (id, trancada, versao, por) => setDoc(doc(db, 'cofreChaves', id), { trancada, versao, liberadoPor: por, liberadoEm: new Date().toISOString() }, { merge: true }),
+    marcarAcesso: (id, acesso) => setDoc(doc(db, 'cofreChaves', id), { ultimoAcesso: limpo(acesso) }, { merge: true }),
     apagarChave: id => deleteDoc(doc(db, 'cofreChaves', id)),
     salvar: (id, d) => setDoc(doc(db, 'cofre', id), limpo(d)),
     async salvarVarios(lista) {

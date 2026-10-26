@@ -23,7 +23,7 @@ export function AdiantamentoSalarial() {
             <div className="imp-txt">
               <span><b>Adiantamento salarial</b>{vm.arquivo && <span className="imp-conta">{vm.arquivo}</span>}</span>
             </div>
-            <div className="imp-resumo">{vm.resumo.length > 0 && <div>{vm.resumo.map((x, i) => <span key={x} className={vm.resumoRuim && i === 0 ? 'ext-neg' : undefined} title={vm.resumoRuim && i === 0 ? vm.detalheNaoBate : undefined}>{x}</span>)}</div>}</div>
+            <div className="imp-resumo">{vm.resumo.length > 0 && <div>{vm.resumo.map(x => <span key={x}>{x}</span>)}</div>}</div>
             <div className="imp-grupos">
               {/* faltando pagamento: as duas contas digitadas e o .xls do Alterdata (o desenho dos pagamentos do Pró-labore) */}
               {vm.qtd > 0 && (
@@ -37,6 +37,8 @@ export function AdiantamentoSalarial() {
                     aria-label="Importar no meu Sistema"><Icone nome="download" /></button>
                 </div>
               )}
+              {/* zerou em todos os meses: o Ok padrão (o selo, como nos Bancos) */}
+              {vm.ok && <span className="badge badge-ok" title="O Adiantamento salarial zerou em todos os meses do período">Ok</span>}
               <div className="imp-grupo" aria-label="Razão do Adiantamento salarial">
                 <span className="imp-rotulo">Razão</span>
                 {vm.temRazao ? (

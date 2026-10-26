@@ -17,6 +17,8 @@ export interface RepoCofre {
   /** grava a chave de uma pessoa (o pedido de acesso, ou a liberação pelo código de recuperação) */
   registrarChave(c: cofre.ChaveDaPessoa): Promise<void>;
   liberar(id: string, trancada: string, versao: number, por: string): Promise<void>;
+  /** o último acesso deste login (o IP, o navegador e quando) */
+  marcarAcesso(id: string, acesso: cofre.AcessoDoLogin): Promise<void>;
   /** apaga a chave de uma pessoa (recusar o pedido ou tirar o acesso) */
   apagarChave(id: string): Promise<void>;
   salvar(id: string, d: cofre.DocDoCofre): Promise<void>;
@@ -50,6 +52,10 @@ export function criarCofreMemoria(eu: () => { uid: string; nome: string } | null
     async liberar(id, trancada, versao, por) {
       const p = pessoas.get(id);
       if (p) { pessoas.set(id, { ...p, trancada, versao, liberadoPor: por, liberadoEm: new Date().toISOString() }); mudou(); }
+    },
+    async marcarAcesso(id, acesso) {
+      const p = pessoas.get(id);
+      if (p) { pessoas.set(id, { ...p, ultimoAcesso: acesso }); mudou(); }
     },
     async apagarChave(id) { pessoas.delete(id); mudou(); },
     async salvar(id, d) { itens.set(id, d); mudou(); },
