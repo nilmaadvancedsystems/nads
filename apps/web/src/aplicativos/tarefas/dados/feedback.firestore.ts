@@ -1,14 +1,13 @@
 // Os feedbacks no banco do Entregas (coleção feedbacks; regra em firestore.rules): quem está no nads cria o seu (com o
 // uid dele, status 'novo' e a prioridade baixa/media/alta); só o admin lê todos e muda o status. A imagem vai no próprio
 // documento (JPEG comprimido, até ~900 KB), sem Storage.
-import { addDoc as addDocBruto, Bytes, collection, doc, getDocs, limit, onSnapshot, orderBy, query, setDoc as setDocBruto, updateDoc as updateDocBruto } from 'firebase/firestore';
+import { Bytes, collection, doc, getDocs, limit, onSnapshot, orderBy, query, setDoc as setDocBruto, updateDoc as updateDocBruto } from 'firebase/firestore';
 import { entregas } from '@nads/core';
 import { bancoDoEntregas } from './entregas.firestore';
 import { ehPrioridade, type Feedback, type RepoFeedback, type SituacaoDoFeedback } from './feedback';
 import { guardar, guardarPedido } from '../../../comum/modoDesenvolvedor';
 
 // a trava do modo desenvolvedor: com o modo ligado, nada é gravado
-const addDoc = guardarPedido(addDocBruto) as typeof addDocBruto;
 const updateDoc = guardar(updateDocBruto) as typeof updateDocBruto;
 const setDoc = guardarPedido(setDocBruto) as typeof setDocBruto;
 
@@ -27,10 +26,21 @@ export function criarFeedbackFirestore(quem: () => Quem): RepoFeedback {
     async enviar(f) {
       const q = quem();
       if (!q) throw new Error('entre com a conta do Entregas');
-      await addDoc(collection(db, 'feedbacks'), {
+      // os anexos (26/10/2026): como os do bug, os pedaços em partes/ e a lista no mapa arquivo (a regra já aceita)
+      const anexos = f.arquivos || [];
+      for (const a of anexos) {
+        const problema = entregas.problemaDoArquivo({ nome: a.nome, tamanho: a.bytes.length });
+        if (problema) throw new Error(a.nome + ': ' + problema);
+      }
+      const partes: Uint8Array[] = [];
+      const lista = anexos.map(a => { const ps = entregas.partesDoArquivo(a.bytes); const de = partes.length; partes.push(...ps); return { nome: a.nome, tamanho: a.bytes.length, de, partes: ps.length }; });
+      const ref = doc(collection(db, 'feedbacks'));
+      await setDoc(ref, {
         uid: q.uid, nome: q.nome, email: q.email, texto: f.texto, imagem: f.imagem, tela: f.tela, versao: f.versao,
         criadoEm: new Date().toISOString(), status: 'novo', prioridade: f.prioridade,
+        ...(lista.length ? { arquivo: { nome: lista[0].nome, tamanho: lista[0].tamanho, partes: lista[0].partes, total: partes.length, arquivos: lista } } : {}),
       });
+      for (let i = 0; i < partes.length; i++) await setDoc(doc(ref, 'partes', String(i)), { dados: Bytes.fromUint8Array(partes[i]) });
     },
     // o bug do suporte de leitura (Vitor, 20/10/2026): o documento com a conversa e o contexto, e o arquivo em pedaços em
     // feedbacks/{id}/partes (como o enviosSecretario); o robô do PC do escritório espera os pedaços, investiga e escreve o

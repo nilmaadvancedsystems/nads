@@ -116,8 +116,8 @@ function JanelaDoFeedback({ f, fechar, ampliar, marcar, baixar }: {
             <p className="feedback-txt"><b>{f.empresa || '—'}</b>{f.caminho ? ' · ' + f.caminho : ''}</p>
           )}
           <p className="feedback-txt">{f.texto}</p>
-          {/* todos os arquivos do bug, cada um no seu botão (26/10/2026) */}
-          {f.tipo === 'bug' && f.arquivos.length > 0 && f.arquivos.map((a, i) => (
+          {/* todos os arquivos (do bug ou anexados ao feedback), cada um no seu botão (26/10/2026) */}
+          {f.arquivos.length > 0 && f.arquivos.map((a, i) => (
             <button key={i} type="button" className="btn btn-outline" onClick={() => baixar(f.id, i)}><Icone nome="download" />{a.nome}</button>
           ))}
           {/* o report do robô do suporte (termina em "Realmente, isso é erro do sistema" ou "Precisa da sua análise") */}

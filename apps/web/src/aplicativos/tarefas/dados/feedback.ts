@@ -75,7 +75,8 @@ export interface BugDoSuporte {
 
 export interface RepoFeedback {
   exemplos: boolean;
-  enviar(f: { texto: string; imagem: string; tela: string; versao: string; prioridade: PrioridadeDoFeedback }): Promise<void>;
+  /** arquivos: os anexos além do print (Vitor, 26/10/2026: "deixa o usuário anexar mais de um arquivo, para enviar junto") */
+  enviar(f: { texto: string; imagem: string; tela: string; versao: string; prioridade: PrioridadeDoFeedback; arquivos?: { nome: string; bytes: Uint8Array }[] }): Promise<void>;
   /** o bug do suporte de leitura: o documento e o arquivo em pedaços; o robô do PC do escritório escreve o report */
   enviarBug(b: BugDoSuporte): Promise<string>;
   /** um arquivo do bug (o i-ésimo; o primeiro, por padrão), de volta (só o admin), para baixar */
@@ -106,8 +107,10 @@ export function criarFeedbackMemoria(quem: () => string): RepoFeedback {
   ];
   return {
     exemplos: true,
-    async enviar(f) {
-      lista = [{ id: 'f' + Date.now(), ...f, nome: quem(), email: '', criadoEm: new Date().toISOString(), status: 'novo', tipo: 'feedback', caminho: '', empresa: '', arquivo: null, arquivos: [], analise: '', relatorio: '' }, ...lista];
+    async enviar({ arquivos: anexos = [], ...f }) {
+      lista = [{ id: 'f' + Date.now(), ...f, nome: quem(), email: '', criadoEm: new Date().toISOString(), status: 'novo', tipo: 'feedback', caminho: '', empresa: '',
+        arquivo: anexos[0] ? { nome: anexos[0].nome, tamanho: anexos[0].bytes.length, partes: 1 } : null,
+        arquivos: anexos.map((a, i) => ({ nome: a.nome, tamanho: a.bytes.length, de: i, partes: 1 })), analise: '', relatorio: '' }, ...lista];
       mudou();
     },
     async enviarBug(b) {

@@ -11,6 +11,7 @@ export function JanelaDeFeedback({ fechar }: { fechar: () => void }) {
   const [escondida, setEscondida] = useState(false);
   const [falha, setFalha] = useState('');
   const arquivo = useRef<HTMLInputElement>(null);
+  const anexos = useRef<HTMLInputElement>(null);
   const { setImagem } = vm;
   // revisão da UI, 16/10/2026: Esc, foco preso e o foco de volta pela peça useJanela (antes, um Esc à mão por janela)
   const janela = useRef<HTMLDivElement>(null);
@@ -62,6 +63,19 @@ export function JanelaDeFeedback({ fechar }: { fechar: () => void }) {
             <span className="hint">O que você quer melhorar?</span>
             <textarea rows={5} value={vm.texto} onChange={e => vm.setTexto(e.target.value)} autoFocus />
           </label>
+          {/* os anexos além do print (26/10/2026): um ou mais arquivos; clicou num, ele sai */}
+          <div className="feedback-prioridade">
+            <span className="hint">Arquivos</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {vm.arquivos.map((f, i) => (
+                <button key={f.name + i} type="button" className="btn btn-outline" title={'Tirar ' + f.name} aria-label={'Tirar ' + f.name} onClick={() => vm.tirarArquivo(i)}>
+                  <Icone nome="clipe" />{f.name}<Icone nome="x" />
+                </button>
+              ))}
+              <button type="button" className="btn btn-outline" onClick={() => anexos.current?.click()}><Icone nome="clipe" />{vm.arquivos.length ? 'Anexar mais' : 'Anexar arquivos'}</button>
+              <CampoArquivo semCaixa semFoco multiplo ref={anexos} aceitar="*/*" onEscolherVarios={fs => { if (fs.length) vm.anexar(fs); }} />
+            </div>
+          </div>
           {/* a prioridade (19/10/2026), da mais baixa para a mais alta; começa em Média */}
           <div className="feedback-prioridade">
             <span className="hint">Prioridade</span>
