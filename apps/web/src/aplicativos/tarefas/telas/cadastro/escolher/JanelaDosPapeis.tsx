@@ -43,7 +43,6 @@ export function JanelaDosPapeis({ vm }: { vm: VmPapeis }) {
             {etiquetas ? (
               <>
                 <span>Departamento</span><Segmentado valor={vm.departamento} opcoes={vm.departamentos} onMudar={vm.setDepartamento} />
-                <span>Por folha</span><Segmentado valor={String(vm.porPagina)} opcoes={vm.porPaginaOpcoes} onMudar={vm.setPorPagina} />
                 <span>Na caixa</span><Segmentado valor={vm.caixa} opcoes={vm.textosDaCaixa} onMudar={vm.setCaixa} />
               </>
             ) : (
@@ -81,7 +80,7 @@ export function JanelaDosPapeis({ vm }: { vm: VmPapeis }) {
           </div>
           <div className="modal-actions">
             <span className="papeis-total fraco">{etiquetas
-              ? vm.quantas + (vm.quantas === 1 ? ' etiqueta' : ' etiquetas') + ' · ' + vm.paginas + (vm.paginas === 1 ? ' folha A4' : ' folhas A4')
+              ? vm.quantas + (vm.quantas === 1 ? ' etiqueta' : ' etiquetas') + ' · uma por folha A4 deitada'
               : vm.quantas + (vm.quantas === 1 ? ' empresa' : ' empresas') + (vm.aberto === 'extratos' ? ' · A4 em pé' : ' · A4 deitado')}</span>
             <button type="button" className="btn btn-outline" onClick={fechar}>Cancelar</button>
             <button type="submit" className="btn btn-primary" disabled={!vm.quantas}><Icone nome="printer" width={16} height={16} />Imprimir</button>

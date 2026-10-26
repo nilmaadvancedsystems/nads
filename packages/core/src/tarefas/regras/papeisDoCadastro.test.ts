@@ -1,14 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { grupoDoProtocolo, htmlDoProtocolo, linhasDoProtocolo } from './protocoloDeTributos';
-import { htmlDosEnvelopes, paginasDosEnvelopes, regimeAbreviado, tipoNaEtiqueta } from './etiquetasDoEnvelope';
+import { htmlDosEnvelopes, regimeAbreviado, tipoNaEtiqueta } from './etiquetasDoEnvelope';
 
 const logo = { definicao: '<svg id="def"></svg>', uso: '<svg><use href="#x"/></svg>' };
 
 describe('as etiquetas do envelope (Heverton, 20/10/2026)', () => {
-  it('a sigla do regime e as páginas', () => {
+  it('a sigla do regime', () => {
     expect(['Simples', 'MEI', 'Presumido', 'Real', 'Física', 'Isentas', 'Domésticas', '', 'Outro'].map(regimeAbreviado)).toEqual(['SN', 'MEI', 'LP', 'LR', 'PF', 'ISENTA', 'DOM', '', 'OUTRO']);
-    expect(paginasDosEnvelopes(5, 2)).toBe(3);
-    expect(paginasDosEnvelopes(4, 4)).toBe(1);
   });
   it('o tipo na caixa: PJ-F (pessoa jurídica, Fiscal), PF para Física e Domésticas, a letra do departamento', () => {
     expect(tipoNaEtiqueta('Presumido', 'Fiscal')).toBe('PJ-F');
@@ -17,22 +15,21 @@ describe('as etiquetas do envelope (Heverton, 20/10/2026)', () => {
     expect(tipoNaEtiqueta('Domésticas', 'Fiscal')).toBe('PF-F');
     expect(tipoNaEtiqueta(null, 'Fiscal')).toBe('PJ-F');
   });
-  it('uma por página: a folha deitada, a etiqueta na folha inteira; duas: em pé', () => {
-    const um = htmlDosEnvelopes({ competencia: '2026-09', departamento: 'Fiscal', porPagina: 1, logo, etiquetas: [{ codigo: 462, nome: 'X', caixa: 'LP' }] });
-    expect(um).toContain('size:A4 landscape');
-    expect(um).toContain('height:194mm');
-    const dois = htmlDosEnvelopes({ competencia: '2026-09', departamento: 'Fiscal', porPagina: 2, logo, etiquetas: [{ codigo: 462, nome: 'X', caixa: 'LP' }] });
-    expect(dois).not.toContain('landscape');
+  it('sempre uma por folha, a folha deitada, a etiqueta na folha inteira (26/10/2026)', () => {
+    const h = htmlDosEnvelopes({ competencia: '2026-09', departamento: 'Fiscal', logo, etiquetas: [{ codigo: 462, nome: 'X', caixa: 'LP' }, { codigo: 356, nome: 'Y', caixa: 'LP' }] });
+    expect(h).toContain('size:A4 landscape');
+    expect(h).toContain('height:194mm');
+    expect(h.match(/<section class="pagina">/g)?.length).toBe(2);
   });
   it('o HTML: a logo uma vez só, o movimento, o código, o nome, a caixa e o departamento', () => {
-    const h = htmlDosEnvelopes({ competencia: '2026-09', departamento: 'Fiscal', porPagina: 2, logo,
+    const h = htmlDosEnvelopes({ competencia: '2026-09', departamento: 'Fiscal', logo,
       etiquetas: [{ codigo: 302, nome: 'TEOBALDO MENDES DE OLIVEIRA', caixa: 'PF' }, { codigo: 1, nome: 'A & B', caixa: '' }, { codigo: 2, nome: 'C', caixa: 'SN' }] });
     expect(h.match(/id="def"/g)?.length).toBe(1);
     expect(h).toContain('MOVIMENTO 09/2026');
     expect(h).toContain('>302<');
     expect(h).toContain('A &amp; B');
     expect(h).toContain('DEPARTAMENTO FISCAL');
-    expect(h.match(/<section class="pagina p2">/g)?.length).toBe(2);
+    expect(h.match(/<section class="pagina">/g)?.length).toBe(3);
   });
 });
 
