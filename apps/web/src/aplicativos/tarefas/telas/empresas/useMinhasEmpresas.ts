@@ -75,6 +75,7 @@ export function useMinhasEmpresas() {
   return {
     temRotina: a.temRotina,
     departamento: a.departamento,
+    podeVerTodas: a.podeVerTodas, escopo: a.escopo, setEscopo: a.setEscopo, filtrandoPorResponsavel: a.filtrandoPorResponsavel,
     competencia: a.competencia,
     rotuloCompetencia: t.rotuloCompetencia(a.competencia),
     competencias: a.competencias,
