@@ -71,7 +71,10 @@ export function AntecipacaoIcms() {
       <div className="tarefas-barra-topo">
         <BuscaDaEmpresa vm={vm} />
         <Segmentado valor={vm.periodo} opcoes={[...vm.periodos]} onMudar={vm.setPeriodo} />
-        <SeletorMes valor={vm.competencia} onMudar={vm.setCompetencia} rotulo="Competência" />
+        {/* no Ano, só o ano; no Mês e nos 12 meses, o mês (nunca um que ainda não começou) */}
+        {vm.periodo === 'ano'
+          ? <Segmentado valor={vm.ano} opcoes={vm.anos} onMudar={vm.setAno} />
+          : <SeletorMes valor={vm.competencia} onMudar={vm.setCompetencia} rotulo={vm.periodo === 'mes' ? 'Mês' : 'Até o mês'} max={vm.ultimoMes} />}
         <span className="tarefas-barra-espaco" />
         <button type="button" className="btn btn-outline" disabled={!vm.linhas.length} onClick={vm.imprimir}><Icone nome="printer" width={16} height={16} />Imprimir</button>
       </div>
@@ -81,13 +84,13 @@ export function AntecipacaoIcms() {
       ) : vm.carregando ? <Esqueleto linhas={8} numeros={5} /> : (
         <>
           <p className="hint">
-            {vm.rotuloDoPeriodo}. Fonte: os XMLs do SIEG (as NF-e recebidas com CFOP 6xxx, sem as canceladas). Base da antecipação = valor da operação
+            {vm.rotuloDoPeriodo}.{vm.mesAberto && ' O mês de hoje ainda está em andamento: as notas dele vão chegando até o fim do mês.'} Fonte: os XMLs do SIEG (as NF-e recebidas com CFOP 6xxx, sem as canceladas). Base da antecipação = valor da operação
             (produto, despesas e IPI); ICMS interno = base × alíquota interna; antecipação = ICMS interno − ICMS destacado.
           </p>
           {vm.semXml.length > 0 && (
             <Alerta naLinha titulo={'Sem os XMLs do SIEG em ' + vm.semXml.map(m => m.rotulo).join(', ')}
-              texto={vm.pedindo ? 'O robô está baixando; as notas entram sozinhas quando ele terminar.' : 'As notas desses meses não entram até o robô baixar os XMLs (o mesmo "Baixar XMLs do SIEG" da rotina).'}>
-              {!vm.pedindo && <button type="button" className="btn btn-outline" disabled={!vm.roboLigado} title={vm.roboLigado ? undefined : 'O robô do SIEG está desligado'} onClick={() => void vm.pedirXmls()}><Icone nome="download" width={16} height={16} />Pedir ao robô</button>}
+              texto={vm.pedindo || vm.comErro ? vm.situacaoDoRobo : 'As notas desses meses não entram até o robô baixar os XMLs (o mesmo "Baixar XMLs do SIEG" da rotina).'}>
+              {!vm.pedindo && <button type="button" className="btn btn-outline" disabled={!vm.roboLigado} title={vm.roboLigado ? undefined : 'O robô do SIEG está desligado'} onClick={() => void vm.pedirXmls()}><Icone nome="download" width={16} height={16} />{vm.comErro ? 'Pedir de novo' : 'Pedir ao robô'}</button>}
             </Alerta>
           )}
           {vm.antigos.length > 0 && (
