@@ -1689,10 +1689,10 @@ td.cad-acoes .menu-seta{display:none;}
 .cad-sugestoes-lista li:first-child{border-top:none;}
 .cad-lista td{vertical-align:middle;}
 .cad-bancos-da-linha{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px;}
-/* o logo do banco na lista do Cadastro (26/10/2026): colorido, num quadro branco (o tema escuro não apaga o logo), 28 px */
-.cad-banco-logo{position:relative;display:inline-flex;align-items:center;justify-content:center;flex:none;width:30px;height:30px;padding:3px;
-  border-radius:7px;background:#fff;box-shadow:0 0 0 1px var(--border);color:#333;}
-.cad-banco-logo img,.cad-banco-logo svg{width:24px !important;height:24px !important;object-fit:contain;border-radius:3px;}
+/* o logo do banco na lista do Cadastro (26/10/2026): colorido, 26 px, o fundo transparente e sem borda ("fundo do banco
+   transparente, sem essa borda branca") */
+.cad-banco-logo{position:relative;display:inline-flex;align-items:center;justify-content:center;flex:none;width:26px;height:26px;background:none;}
+.cad-banco-logo img,.cad-banco-logo svg{width:26px !important;height:26px !important;object-fit:contain;border-radius:5px;}
 .cad-banco-qtd{position:absolute;top:-6px;right:-6px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--ink);color:var(--surface);
   font-size:10px;font-weight:700;line-height:16px;text-align:center;}
 /* a lista ocupa a tela até embaixo e rola por dentro, com o cabeçalho preso (26/10/2026: "caber na tela inteira e não fica flutuando") */
