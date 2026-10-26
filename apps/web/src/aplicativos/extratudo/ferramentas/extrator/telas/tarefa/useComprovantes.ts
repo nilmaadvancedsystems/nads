@@ -24,7 +24,7 @@ export function useComprovantes(meses: readonly string[], pedirLogin: (depois: (
   // os envios ao Drive que o robô ainda não gravou, por mês
   const [mandando, setMandando] = useState<Record<string, string[]>>({});
   const vivo = useRef(true);
-  useEffect(() => () => { vivo.current = false; }, []);
+  useEffect(() => { vivo.current = true; return () => { vivo.current = false; }; }, []);
   const pode = acesso.entrou || drive.exemplos;
 
   async function ler(atualizar = false) {

@@ -22,7 +22,7 @@ export function ComprovantesNaImportacao({ meses, pedirLogin, avisarErro }: { me
       <div className="imp-bloco">
         <div className="imp-linha">
           <span className="imp-ico imp-logo"><Icone nome="recibo" /></span>
-          <div className="imp-txt"><span><b>Comprovantes</b><span className="imp-conta">CONTÁBIL › EXTRATOS › ano › mês › COMPROVANTES</span></span></div>
+          <div className="imp-txt"><span><b>Comprovantes</b><span className="imp-conta" title="CONTÁBIL › EXTRATOS › ano › mês › COMPROVANTES">pasta COMPROVANTES de cada mês</span></span></div>
           <div className="imp-resumo"><div><span>{vm.lendo ? 'Lendo o Drive…' : vm.total + (vm.total === 1 ? ' comprovante' : ' comprovantes') + ' no período'}</span></div></div>
           <div className="imp-grupos">
             <div className="imp-grupo">
