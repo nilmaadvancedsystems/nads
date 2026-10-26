@@ -107,7 +107,7 @@ export function InssDaEtapa({ inss, conferir, teste = [], folha, so, conferencia
                     <tr><th scope="row">Diferença</th>{inss.meses.map(m => <td key={m.mes} className={'num' + (m.mes === inss.mesAberto ? ' atual' : '') + (m.diferenca && !m.bate ? ' ext-neg' : '')}>{m.diferenca ? <ValorNaGrade texto={m.diferenca} /> : '—'}</td>)}</tr>
                     <tr><th scope="row">Baixa</th>{inss.meses.map(m => (
                       <td key={m.mes} className={(m.mes === inss.mesAberto ? 'atual' : '') + (m.baixa === 'falta' ? ' ext-neg' : '')}
-                        title={m.baixa === 'falta' ? 'Guia paga em ' + m.pagaEm + ' sem a baixa no razão' : m.baixa === 'depois' ? 'Paga em ' + (m.pagaEm || '?') + ', depois do período' : m.pagaEm ? 'Paga em ' + m.pagaEm : undefined}>
+                        title={m.baixa === 'falta' ? 'Guia paga em ' + m.pagaEm + ' sem a baixa no razão' : m.baixa === 'depois' ? 'Paga em ' + (m.pagaEm || '?') + ', depois do período' : m.pagaEm ? 'Paga em ' + m.pagaEm + (m.baixaComOutroValor ? '; a baixa no razão é de ' + m.baixaComOutroValor + ' (o saldo da conta, com a diferença da guia no mesmo lançamento)' : '') : undefined}>
                         {BAIXA[m.baixa]}
                       </td>
                     ))}</tr>
