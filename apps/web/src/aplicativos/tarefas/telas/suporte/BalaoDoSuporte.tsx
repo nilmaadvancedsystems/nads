@@ -127,11 +127,21 @@ export function BalaoDoSuporte() {
             <div className="field suporte-frase">
               <textarea rows={p.livre ? 4 : 2} placeholder={p.livre ? 'Escreva o que aconteceu' : 'Comentário (opcional)'} aria-label={p.livre ? 'O que aconteceu' : 'Comentário'} value={vm.frase} onChange={e => vm.setFrase(e.target.value)} />
             </div>
+            {/* os anexados (Vitor, 26/10/2026: "só tá dando para anexar somente 1"): clicou num, ele sai */}
+            {vm.arquivos.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                {vm.arquivos.map((f, i) => (
+                  <button key={f.name + i} type="button" className="btn btn-outline" title={'Tirar ' + f.name} aria-label={'Tirar ' + f.name} onClick={() => vm.tirarArquivo(i)}>
+                    <Icone nome="clipe" /><span className="suporte-arquivo">{f.name}</span><Icone nome="x" />
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="suporte-envio-linha">
-              <label htmlFor={idArquivo} className="btn btn-outline" title={vm.arquivo ? vm.arquivo.name : 'Anexar o arquivo'}>
-                <Icone nome="clipe" />{vm.arquivo ? <span className="suporte-arquivo">{vm.arquivo.name}</span> : 'Anexar o arquivo'}
+              <label htmlFor={idArquivo} className="btn btn-outline" title="Anexar um ou mais arquivos">
+                <Icone nome="clipe" />{vm.arquivos.length ? 'Anexar mais' : 'Anexar arquivos'}
               </label>
-              <input id={idArquivo} type="file" className="sr-only" onChange={e => { vm.setArquivo(e.target.files?.[0] || null); e.target.value = ''; }} />
+              <input id={idArquivo} type="file" multiple className="sr-only" onChange={e => { vm.anexar(Array.from(e.target.files || [])); e.target.value = ''; }} />
               <button type="button" className="btn btn-primary" disabled={vm.enviando} onClick={vm.enviar}>{vm.enviando ? 'Enviando…' : 'Enviar'}</button>
             </div>
           </div>
