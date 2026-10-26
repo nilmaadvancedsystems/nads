@@ -2,12 +2,16 @@
 // usando — ainda não existe (criar), este navegador não tem chave (pedir acesso), pediu e espera, ou aberto — e as ações:
 // criar (gera o código de recuperação), pedir acesso, recuperar pelo código, liberar e recusar pedidos, tirar o acesso
 // (troca a chave do cofre e gera um código novo), um código de recuperação novo, ler e gravar os segredos de uma empresa.
-// A chave do cofre aberta fica só na memória desta aba (todas as telas usam a mesma).
+// A chave do cofre aberta fica só na memória desta aba (todas as telas usam a mesma). Cada login guarda o último acesso
+// (26/10/2026: "quero que apareça o IP"): ao abrir o cofre (uma vez por aba) e ao pedir acesso, o IP público, o navegador
+// e o sistema e quando.
 import { cofre as c, formatos, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { guardarChavePrivada, idDaChave, lerChavePrivada } from '../../dados/chaveLocal';
+import { meuIp } from '../../dados/rede';
 import { useAcesso, useCofreRepo } from '../../dados/repo';
+import type { RepoCofre } from '../../dados/cofre';
 import { imprimirCodigoDoCofre } from './imprimirCodigo';
 import { modoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
 
@@ -20,6 +24,18 @@ let verAberta = 0;
 const ouvintes = new Set<() => void>();
 function abrirCom(v: { versao: number; chave: CryptoKey; dono: string } | null) { aberta = v; verAberta++; for (const f of ouvintes) f(); }
 const assinarAberta = (f: () => void) => { ouvintes.add(f); return () => { ouvintes.delete(f); }; };
+
+/** De onde este navegador entra: o IP público (vazio se a consulta falhar), o navegador e o sistema, e agora. */
+async function acessoDaqui(): Promise<c.AcessoDoLogin> {
+  return { em: new Date().toISOString(), ip: await meuIp(), navegador: c.navegadorDoUserAgent(navigator.userAgent) };
+}
+// o acesso de cada login vai uma vez por aba (abrir o cofre de novo na mesma aba não grava de novo)
+const marcados = new Set<string>();
+function marcarAcesso(repo: RepoCofre, id: string) {
+  if (marcados.has(id) || modoDesenvolvedor()) return;
+  marcados.add(id);
+  void acessoDaqui().then(a => repo.marcarAcesso(id, a)).catch(() => { /* sem o IP desta vez: fica o anterior */ });
+}
 
 export type EstadoDoCofre = 'carregando' | 'erro' | 'novo' | 'sem-chave' | 'aguardando' | 'aberto';
 
@@ -45,7 +61,10 @@ export function useCofre() {
       if (!vale) return;
       setTemPrivada(!!k);
       if (k && config && minha?.trancada && minha.versao === config.versao && (aberta?.versao !== config.versao || aberta.dono !== id)) {
-        try { abrirCom({ versao: config.versao, chave: await c.destrancar(minha.trancada, k), dono: id }); } catch { /* a cópia não é desta chave: pedir de novo */ }
+        try {
+          abrirCom({ versao: config.versao, chave: await c.destrancar(minha.trancada, k), dono: id });
+          marcarAcesso(repo, id);
+        } catch { /* a cópia não é desta chave: pedir de novo */ }
       }
     });
     return () => { vale = false; };
@@ -111,12 +130,14 @@ export function useCofre() {
         { id, nome: eu.nome, publica: par.publica, criadaEm: agora(), trancada: await c.trancarPara(chave, par.publica), versao: 1, liberadoPor: eu.nome, liberadoEm: agora() },
       );
       abrirCom({ versao: 1, chave, dono: id });
+      marcarAcesso(repo, id);
       await mostrarCodigo(codigo, 'Cofre criado: o código de recuperação');
     }),
     pedirAcesso: () => tentar(async () => {
       if (!eu) return;
       const par = await minhaChaveNova();
-      await repo.registrarChave({ id, nome: eu.nome, publica: par.publica, criadaEm: agora() });
+      // o pedido já leva de onde veio (quem libera vê o IP e o navegador)
+      await repo.registrarChave({ id, nome: eu.nome, publica: par.publica, criadaEm: agora(), ultimoAcesso: await acessoDaqui() });
       toast('Pedido enviado: alguém com acesso libera em Senhas › Acesso.');
     }),
     recuperar: (codigo: string) => tentar(async () => {
@@ -126,6 +147,7 @@ export function useCofre() {
       const par = await minhaChaveNova();
       await repo.registrarChave({ id, nome: eu.nome, publica: par.publica, criadaEm: agora(), trancada: await c.trancarPara(chave, par.publica), versao: config.versao, liberadoPor: eu.nome + ' (código)', liberadoEm: agora() });
       abrirCom({ versao: config.versao, chave, dono: id });
+      marcarAcesso(repo, id);
     }),
     liberar: (p: c.ChaveDaPessoa) => tentar(async () => {
       if (!aberta || !config || !eu) return;
