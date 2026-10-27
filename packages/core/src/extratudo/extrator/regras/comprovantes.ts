@@ -69,6 +69,17 @@ export function mesDoComprovante(nome: string, texto: string, meses: readonly st
   return peloMes || datas(texto)[0] || null;
 }
 
+/**
+ * O nome com que o comprovante do mês vai para o Drive, no molde do extrato ("Extrato SICOOB 06-2026.pdf"; Vitor, 27/10/2026:
+ * "não tá upando o comprovante no drive… deixe a lógica idêntica ao que funciona"): "Comprovante BRADESCO 02-2026 - <nome
+ * original>". O robô reconhece e grava direto em CONTÁBIL/EXTRATOS/AAAA/MM/COMPROVANTES/<BANCO>, com o nome original.
+ */
+export function nomeDoComprovanteDoMes(banco: string, mes: string, nome: string): string {
+  const b = String(banco || '').replace(/[/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().toUpperCase() || 'BANCO';
+  const n = String(nome || 'comprovante.pdf').replace(/^.*[\\/]/, '').trim() || 'comprovante.pdf';
+  return 'Comprovante ' + b + ' ' + mes.slice(5) + '-' + mes.slice(0, 4) + ' - ' + n;
+}
+
 /** O nome com que o comprovante vai para o Drive: o "COMPROVANTE" e o banco na frente (o robô do arquivamento acha a pasta). */
 export function nomeDoComprovante(nome: string, banco = ''): string {
   const n = String(nome || 'comprovante.pdf').trim();

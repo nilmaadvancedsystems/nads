@@ -56,7 +56,8 @@ export function useComprovantes(meses: readonly string[], bancos: readonly Banco
     if (!acesso.entrou && !drive.exemplos) { pedirLogin(() => { void mandar(b, fs, mes); }); return; }
     try {
       for (const f of fs) {
-        const id = await drive.enviarAoDrive({ nome: x.nomeDoComprovante(f.name, b.nome), bytes: new Uint8Array(await f.arrayBuffer()) }, { competencia: mes, codigo: s.codigo, cliente: s.nome });
+        // o nome no molde do extrato: o robô grava direto na pasta COMPROVANTES do banco no mês (27/10/2026)
+        const id = await drive.enviarAoDrive({ nome: x.nomeDoComprovanteDoMes(b.nome, mes, f.name), bytes: new Uint8Array(await f.arrayBuffer()) }, { competencia: mes, codigo: s.codigo, cliente: s.nome });
         if (id) setMandando(m => ({ ...m, [b.id + '|' + mes]: [...(m[b.id + '|' + mes] || []), { id, em: Date.now() }] }));
       }
       avisar('Enviado para o Drive: ' + fs.map(f => f.name).join(', ') + ' (vai para a pasta COMPROVANTES do ' + b.nome + ' em ' + rotuloDoMes(mes) + ', em até 2 minutos)');

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ItemDrive } from '../../creditor/regras/drive';
-import { comprovantesDoBanco, comprovantesNoDrive, mesDoComprovante, nomeDoComprovante } from './comprovantes';
+import { comprovantesDoBanco, comprovantesNoDrive, mesDoComprovante, nomeDoComprovante, nomeDoComprovanteDoMes } from './comprovantes';
 
 const d = (i: string, n: string, p: string): ItemDrive => ({ i, n, p, t: 'd' });
 const f = (i: string, n: string, p: string, s = 1000): ItemDrive => ({ i, n, p, t: 'f', s, m: '2026-02-10T10:00:00Z' });
@@ -39,5 +39,12 @@ describe('o mês do comprovante (vários de uma vez)', () => {
     expect(mesDoComprovante('05-2026 pix.pdf', '', meses)).toBe('2026-05');
     expect(mesDoComprovante('pix.pdf', 'Data: 10/06/2026', meses)).toBe('2026-06');
     expect(mesDoComprovante('pix.pdf', '', meses)).toBeNull();
+  });
+});
+
+describe('o nome do comprovante do mês, no molde do extrato (27/10/2026)', () => {
+  it('"Comprovante <BANCO> MM-AAAA - <nome original>": o robô grava direto na pasta COMPROVANTES do banco', () => {
+    expect(nomeDoComprovanteDoMes('Bradesco', '2026-02', 'TITULOS PAGOS FEV2026 (2).pdf')).toBe('Comprovante BRADESCO 02-2026 - TITULOS PAGOS FEV2026 (2).pdf');
+    expect(nomeDoComprovanteDoMes('Banco do Brasil', '2026-11', 'pasta/sub/pix.pdf')).toBe('Comprovante BANCO DO BRASIL 11-2026 - pix.pdf');
   });
 });

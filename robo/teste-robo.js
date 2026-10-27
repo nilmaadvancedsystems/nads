@@ -689,6 +689,15 @@ igual('extrato: banco que a empresa ainda não tem vira o nome do arquivo',
   en.caminhoDoExtratoNoIndice(itensDoMapa, 'cli', en.extratoDoNome('Extrato NUBANK 05-2026.ofx')),
   { existente: 'b5', faltam: ['NUBANK'], caminho: 'CONTÁBIL/EXTRATOS/2026/05/BANCÁRIOS/NUBANK', nomeFinal: '05-2026.ofx' });
 
+// --- o comprovante da aba Comprovantes direto na pasta do banco, igual ao extrato (27/10/2026) ---
+igual('comprovante: o nome da aba Comprovantes', en.comprovanteDoNome('Comprovante BANCO DO BRASIL 02-2026 - TITULOS PAGOS FEV2026 (2).pdf'),
+  { banco: 'BANCO DO BRASIL', mes: '02', ano: '2026', ext: '.pdf', original: 'TITULOS PAGOS FEV2026 (2).pdf' });
+igual('comprovante: o extrato não é comprovante', en.comprovanteDoNome('Extrato SICOOB 06-2026.pdf'), null);
+igual('comprovante: o nome solto não é', en.comprovanteDoNome('COMPROVANTE - SICOOB - pix.pdf'), null);
+igual('comprovante: na pasta COMPROVANTES do mês, com o nome da pasta do banco que a empresa usa, e o nome original',
+  en.caminhoDoExtratoNoIndice(itensDoMapa, 'cli', en.comprovanteDoNome('Comprovante SICOOB 05-2026 - pix fornecedor.pdf'), 'COMPROVANTES', 'pix fornecedor.pdf'),
+  { existente: 'm5', faltam: ['COMPROVANTES', 'BANCOOB'], caminho: 'CONTÁBIL/EXTRATOS/2026/05/COMPROVANTES/BANCOOB', nomeFinal: 'pix fornecedor.pdf' });
+
 // --- a guia DAS/DAE na Área do Cliente (envios-do-nads.js) ---
 const envioGuia = { guia: 'DAS', vencimento: '20/10/2026', valor: '1.234,56', codigo: 58, competencia: '2026-09', criadoPorUid: 'u1' };
 igual('guia do envio: conferida', en.guiaDoEnvio(envioGuia), { tipo: 'DAS', vencimento: '20/10/2026', valor: 1234.56, valorTexto: '1.234,56', codigo: '58', competencia: '2026-09' });
