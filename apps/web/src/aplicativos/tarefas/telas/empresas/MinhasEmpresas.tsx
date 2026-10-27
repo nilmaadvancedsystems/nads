@@ -1,13 +1,15 @@
-// Minhas empresas: a barra de cima, no jeito da do GitHub (competência no lugar do "main ▾", quantas
-// empresas, Insights; à direita a busca curta com atalho "/", Situação ▾ e "Iniciar ▾", que abre
-// o painel para escolher a empresa, em partes/PainelIniciar), o painel do progresso (27/10/2026) e a lista (clicar no título da coluna ordena; clicar na linha abre a página da empresa). Os números por situação ficam em Insights.
+// Minhas empresas, uma tela só (27/10/2026), sem a barra lateral: a barra de cima, no jeito da do GitHub (competência no
+// lugar do "main ▾"; à direita a busca curta com atalho "/" e Situação ▾), as empresas por situação, a lista (clicar no
+// título da coluna ordena; clicar na linha abre a página da empresa), as etapas paradas e, no Contábil, os históricos do
+// Creditor. O "Iniciar", o Progresso do mês e os Insights saíram (27/10/2026).
 import { Icone, MenuSuspenso, Segmentado, useCarregando, useEntradaAnimada, useLinhasQueSeMovem, Vazio } from '@nads/ui';
 import { useEffect, useRef } from 'react';
 import { EmDesenvolvimento } from '../em-desenvolvimento/EmDesenvolvimento';
-import { PainelIniciar } from './partes/PainelIniciar';
+import { EtapasParadas } from './partes/EtapasParadas';
 import { LIMITE, useMinhasEmpresas, type Coluna } from './useMinhasEmpresas';
 import { JanelaDaCompetencia } from './partes/JanelaDaCompetencia';
 import { TransferenciasPendentes } from '../cadastro/responsaveis/TransferenciasPendentes';
+import { ConfiguracoesContabil } from '../contabil/configuracoes/ConfiguracoesContabil';
 
 
 /** Título de coluna que ordena: clicar ordena por ela (crescente), clicar de novo inverte; a setinha cinza só aparece depois do clique. */
@@ -69,21 +71,10 @@ export function MinhasEmpresas() {
           className={'btn btn-outline' + (vm.situacao ? ' ativo' : '')}
           itens={[{ rotulo: 'Todas', marcado: !vm.situacao, onClick: () => vm.setSituacao('') },
             ...vm.situacoes.map(s => ({ rotulo: s.rotulo, marcado: s.valor === vm.situacao, onClick: () => vm.setSituacao(s.valor) }))]} />
-        <MenuSuspenso icone="play" rotulo="Iniciar" className="btn btn-primary" classeAberto="botao-apagado" direita largura={400} dica="Escolher a empresa para iniciar"
-          conteudo={fechar => <PainelIniciar vm={vm} fechar={fechar} />} />
       </div>
 
-      {/* o painel do progresso do mês (27/10/2026): o quanto das etapas está feito e as empresas por situação; clicar numa
-          situação filtra a lista */}
+      {/* as empresas por situação; clicar numa situação filtra a lista (o Progresso do mês saiu; 27/10/2026) */}
       <div className="stat-grid empresa-numeros">
-        <div className="stat">
-          <p className="stat-label">Progresso do mês</p>
-          <p className="stat-value">{vm.carregando ? '—' : vm.resumo.porcentagem + '%'}</p>
-          <span className="tarefas-barra larga" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={vm.resumo.porcentagem} aria-label="Etapas feitas no mês">
-            <span style={{ width: (vm.carregando ? 0 : vm.resumo.porcentagem) + '%' }} />
-          </span>
-          {!vm.carregando && <p className="hint">{vm.resumo.etapasFeitas} de {vm.resumo.etapasTotal} etapas</p>}
-        </div>
         {vm.situacoes.map(s => (
           <button key={s.valor} type="button" className={'stat stat-filtro' + (vm.situacao === s.valor ? ' ativo' : '')} aria-pressed={vm.situacao === s.valor}
             title={vm.situacao === s.valor ? 'Mostrar todas' : 'Mostrar só as ' + s.rotulo.toLowerCase()} onClick={() => vm.setSituacao(vm.situacao === s.valor ? '' : s.valor)}>
@@ -135,6 +126,10 @@ export function MinhasEmpresas() {
           {vm.total > LIMITE && <p className="hint" style={{ padding: '8px 16px' }}>Mostrando {LIMITE} de {vm.total}. Use a busca ou a situação.</p>}
         </div>
       )}
+
+      <EtapasParadas dep={vm.departamento} />
+      {/* os históricos do Creditor, os mesmos para todas as empresas (eram o Contábil › Configurações) */}
+      {vm.departamento === 'contabil' && <ConfiguracoesContabil />}
     </section>
   );
 }

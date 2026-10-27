@@ -48,7 +48,8 @@ export interface EmpresaDaCasca {
   onPagina: (id: string) => void;
 }
 
-export function CascaTarefas({ app, pagina, telaInteira, larga, empresa, children }: { app: IdAplicacao; pagina: string; telaInteira?: boolean; larga?: boolean; empresa?: EmpresaDaCasca; children: ReactNode }) {
+/** semLateral: sem a barra lateral, mas com o título (Minhas empresas, uma tela só; 27/10/2026). */
+export function CascaTarefas({ app, pagina, telaInteira, semLateral, larga, empresa, children }: { app: IdAplicacao; pagina: string; telaInteira?: boolean; semLateral?: boolean; larga?: boolean; empresa?: EmpresaDaCasca; children: ReactNode }) {
   const vm = useCascaTarefas(app, pagina);
   const secoes = empresa ? empresa.paginas.map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, grupo: 1, ativa: p.id === empresa.pagina })) : vm.secoes;
   const titulo = empresa ? empresa.paginas.find(p => p.id === empresa.pagina)?.titulo || '' : vm.titulo;
@@ -60,7 +61,7 @@ export function CascaTarefas({ app, pagina, telaInteira, larga, empresa, childre
   useAvisoDosMeusFeedbacks();
   return (
     <Casca sistema="Tarefas" temaNaGaveta={false} empresa={vm.empresa} versao={vm.versao} trilha={trilha} secoes={secoes} paginas={vm.paginas} titulo={telaInteira ? '' : titulo}
-      lateral={telaInteira || vm.comAbas ? 'nenhuma' : undefined} larga={telaInteira || larga}
+      lateral={telaInteira || semLateral || vm.comAbas ? 'nenhuma' : undefined} larga={telaInteira || larga}
       acoes={telaInteira || (empresa && !titulo) ? undefined : <LugarDasAcoes />} onSecao={empresa ? empresa.onPagina : vm.onSecao} onPagina={vm.onPagina} onInicio={vm.inicio} onAplicativos={vm.inicio}
       onEmpresa={vm.trocarPessoa} aplicativos={vm.aplicacoes} onAplicativo={vm.onAplicacao}
       // escolher a empresa e o setor, no alto do menu ☰, entre o N e o × (27/10/2026: "era para ficar aqui a escolha de

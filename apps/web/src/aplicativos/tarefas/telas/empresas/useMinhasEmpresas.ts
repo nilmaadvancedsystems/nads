@@ -3,7 +3,7 @@
 import { empresas, tarefas as t } from '@nads/core';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { caminhoDaEmpresa, caminhoDaPagina, caminhoDoExecutor } from '../../casca/navegacao';
+import { caminhoDaEmpresa, caminhoDoExecutor } from '../../casca/navegacao';
 import { SITUACOES, useAndamento } from './andamento';
 import { useDepartamentoDaTela } from '../../casca/departamento';
 
@@ -106,8 +106,7 @@ export function useMinhasEmpresas() {
       porcentagem: t.porcentagemDe(l.concluidas, l.total),
     })),
     total: linhas.length,
-    /** o painel do progresso (27/10/2026: "minhas empresas vai virar um dashboard de progresso das empresas"): as da pessoa
-     * (ou todas), sem a busca e a situação */
+    /** as empresas por situação: as da pessoa (ou todas), sem a busca e a situação */
     resumo: t.resumoDoProgresso(a.linhas),
     abrir,
     /** a página da empresa (insights dela) */
@@ -138,6 +137,5 @@ export function useMinhasEmpresas() {
     recentes: recentes.slice(0, LIMITE_INICIAR),
     ultimaAberta, proximaDaFila, paradas,
     verParadas: () => { setBusca(''); a.mudar('situacao', 'parada'); },
-    abrirInsights: () => navegar(caminhoDaPagina('minhas-empresas', 'insights') + '?competencia=' + a.competencia),
   };
 }
