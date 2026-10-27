@@ -359,6 +359,8 @@ function criar(opcoes) {
   // as contagens de hoje recontadas do histórico do dia, que é o registro (26/10/2026: o robô religado com o acompanhamento
   // de outro dia mostrava "Hoje: 0" com 543 arquivados no histórico)
   if (dia.partes.some(p => p.length)) { const c = contagemVazia(st.hoje.chave); for (const p of dia.partes) for (const x of p) somar(c, x); st.hoje = c; }
+  // e os erros que o histórico do dia já mostra decididos depois saem da lista
+  { const ultima = new Map(); for (const p of dia.partes) for (const x of p) if (x.rel) ultima.set(x.rel, x.acao); st.erros = (st.erros || []).filter(e => !e.rel || !ultima.has(e.rel) || ultima.get(e.rel) === 'erro'); }
   // as contagens de cada dia (para o resumo do mês): as que já estão no PC, mais as dos dias que só têm o histórico
   // (arquivados-AAAA-MM-DD.jsonl), contadas uma vez; o dia de hoje é sempre o st.hoje
   const arqResumo = path.join(o.controle, 'resumo-dias.json');
@@ -539,6 +541,9 @@ function criar(opcoes) {
         somar(st.hoje, it); somar(st.mes, it);
         st.marcas.push(t);
         if (st.passada && !st.passada.fim) st.passada.feitos++;
+        // o que deu erro e foi decidido depois (27/10/2026: o Drive caiu 1 min às 03:53 e a nova tentativa arquivou os 57)
+        // sai da lista de erros
+        if (it.acao !== 'erro' && it.rel && st.erros.length) st.erros = st.erros.filter(e => e.rel !== it.rel);
         if (it.acao === 'erro') st.erros.unshift(it);
         else if (it.acao === 'naoIdentificado' || it.acao === 'fica') st.pendentes.unshift(it);
         else st.ultimos.unshift(it);
