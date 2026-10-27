@@ -126,6 +126,10 @@ function decidirPeloMapa(entrada, ctx, d) {
   else if (doConteudo != null && pista && pista.codigo !== doConteudo) { cliente = doConteudo; como = 'doc'; conf = 0.9; }
   else if (doConteudo != null) { cliente = doConteudo; como = d.comoCliente || 'doc'; conf = pista ? 0.95 : 0.9; if (pista) ev.push('o cliente do conteúdo confere com a pasta de origem'); }
   else if (pista && pista.forte) { cliente = pista.codigo; como = 'pastaConferida'; conf = 0.9; ev.push(pista.como); }
+  // o IRPF do sócio (o CPF dele não é cliente) na pasta da empresa: SOCIETÁRIO\IMPOSTOS\IRPF (Vitor, 26/10/2026)
+  if (cliente != null && !socio && pista && cliente === pista.codigo && ((cad.porCod.get(cliente) || {}).doc || '').length === 14 && /IRPF/i.test(entrada.nome || '')) {
+    const s2 = documentoDeSocio(entrada, ctx, d, pista, ev); if (s2) return s2;
+  }
   if (cliente == null) return R.comMotivoDoCodigo(Object.assign({}, d, { motivo: 'CLIENTE_NAO_LOCALIZADO', evidencias: ev.concat(pista ? 'a pasta de origem só traz o código (' + pista.como + '), sem o nome do cadastro' : 'nem o conteúdo nem a pasta de origem dizem o cliente') }));
   // a competência: o nome do arquivo ("04-2024.pdf"), senão as pastas de origem ("…\2024\04\"), senão o conteúdo
   const nome = entrada.nome || path.win32.basename(String(entrada.rel || 'arquivo'));

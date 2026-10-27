@@ -515,6 +515,8 @@ d = decMig16('0434 - CONSTRUNOVO LTDA - ME\\DOCUMENTO CONSTITUTIVOS\\06330653666
 igual('o CPF de uma pessoa fica na empresa da pasta: o IRPF em SOCIETÁRIO\\IMPOSTOS\\IRPF\\<ano-calendário>, a raiz do exercício', so16(d), ['ARQUIVAR', null, '434 - CONSTRUNOVO LTDA\\SOCIETÁRIO\\IMPOSTOS\\IRPF\\2020', '06330653666-IRPF-2021-2020-retif-imagem-recibo.pdf', 2021]);
 d = decMig16('0434 - CONSTRUNOVO LTDA - ME\\DOCUMENTO CONSTITUTIVOS\\CNH 2024.pdf', 'CARTEIRA NACIONAL DE HABILITACAO\nFERNANDO GOMES DOS ANJOS CPF 063.306.536-66');
 igual('... o documento pessoal (tipo não reconhecido) em SOCIETÁRIO\\DOCUMENTOS DE SÓCIOS', so16(d), ['ARQUIVAR', null, '434 - CONSTRUNOVO LTDA\\SOCIETÁRIO\\DOCUMENTOS DE SÓCIOS', 'CNH 2024.pdf', 2024]);
+d = decMig16('0434 - CONSTRUNOVO LTDA - ME\\DOCUMENTO CONSTITUTIVOS\\08375157694-IRPF-2025-2024-origi-imagem-recibo.pdf', 'RECIBO DE ENTREGA DA DECLARACAO DE AJUSTE ANUAL\nCPF 083.751.576-94');
+igual('... o IRPF de um sócio que não é cliente, na pasta da empresa: SOCIETÁRIO\\IMPOSTOS\\IRPF\\<ano-calendário>', so16(d), ['ARQUIVAR', null, '434 - CONSTRUNOVO LTDA\\SOCIETÁRIO\\IMPOSTOS\\IRPF\\2024', '08375157694-IRPF-2025-2024-origi-imagem-recibo.pdf', 2025]);
 // a trava da "mesma empresa com outro código" (Vitor, 27/10/2026): só o mesmo CNPJ/CPF, nunca o nome parecido
 igual('trava da pasta: 463 × 455 CENTRO DE ODONTOLOGIA são empresas diferentes (a pasta da 463 nasce em 2022)', (r => [r.acao, r.criarPastaCliente, r.anoRaiz])(R.decidir({ nome: 'n.xml', rel: 'n.xml', xml: nfe('45430981000145', '99999999000191', '1', '2022-08-05T10:00:00-03:00') }, ctx16)), ['ARQUIVAR', true, 2022]);
 igual('... 475 ADERLEI DOS SANTOS (CPF) × 66 ADERLEI SANTOS E CIA: a 475 ganha a pasta dela', R.pastaParecida(cad16.porCod.get(475), cad16), null);
