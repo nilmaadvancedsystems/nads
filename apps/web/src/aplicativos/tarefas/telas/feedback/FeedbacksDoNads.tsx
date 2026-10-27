@@ -75,7 +75,7 @@ export function ListaDosFeedbacks({ vm }: { vm: ReturnType<typeof useFeedbacks> 
           ))}
         </ul>
       )}
-      {vm.aberto && <JanelaDoFeedback f={vm.aberto} fechar={vm.fecharAberto} ampliar={vm.setAberta} marcar={vm.marcar} baixar={(id, i) => { void vm.baixarArquivoDoBug(id, i); }} baixarTudo={vm.baixarTudo} />}
+      {vm.aberto && <JanelaDoFeedback f={vm.aberto} fechar={vm.fecharAberto} ampliar={vm.setAberta} marcar={vm.marcar} baixar={(id, i) => { void vm.baixarArquivoDoBug(id, i); }} baixarTudo={vm.baixarTudo} copiar={vm.copiarSolicitacao} />}
       {vm.aberta && (
         <div className="modal-overlay pessoal-fundo feedback-zoom" onMouseDown={() => vm.setAberta('')}>
           <img src={vm.aberta} alt="O print do feedback" />
@@ -87,10 +87,11 @@ export function ListaDosFeedbacks({ vm }: { vm: ReturnType<typeof useFeedbacks> 
 
 /** A solicitação inteira numa janela flutuante por cima da lista: o print (clicar amplia), o texto, quem, quando, a tela
  * e a versão; embaixo Visto / Feito / Reabrir. O Esc fecha só esta janela. */
-function JanelaDoFeedback({ f, fechar, ampliar, marcar, baixar, baixarTudo }: {
+function JanelaDoFeedback({ f, fechar, ampliar, marcar, baixar, baixarTudo, copiar }: {
   f: NonNullable<ReturnType<typeof useFeedbacks>['aberto']>; fechar: () => void; ampliar: (img: string) => void; marcar: (id: string, s: SituacaoDoFeedback) => void;
   baixar: (id: string, i: number) => void;
   baixarTudo: (id: string) => Promise<void>;
+  copiar: (id: string) => void;
 }) {
   const [zipando, setZipando] = useState(false);
   // revisão da UI, 16/10/2026: Esc, foco preso e o foco de volta pela peça useJanela (antes, um Esc à mão por janela)
@@ -118,22 +119,25 @@ function JanelaDoFeedback({ f, fechar, ampliar, marcar, baixar, baixarTudo }: {
             <p className="feedback-txt"><b>{f.empresa || '—'}</b>{f.caminho ? ' · ' + f.caminho : ''}</p>
           )}
           <p className="feedback-txt">{f.texto}</p>
-          {/* tudo num .zip (Vitor, 27/10/2026): a pasta com o número do ticket e o nome da pessoa, com o print e os arquivos */}
-          {f.arquivos.length > 0 && (
-            <BotaoAcao className="btn btn-outline" carregando={zipando} textoCarregando="Juntando os arquivos"
-              onClick={() => { setZipando(true); void baixarTudo(f.id).finally(() => setZipando(false)); }}>
-              <Icone nome="download" />Baixar tudo (.zip)
-            </BotaoAcao>
-          )}
           {/* todos os arquivos (do bug ou anexados ao feedback), cada um no seu botão (26/10/2026) */}
           {f.arquivos.length > 0 && f.arquivos.map((a, i) => (
             <button key={i} type="button" className="btn btn-outline" onClick={() => baixar(f.id, i)}><Icone nome="download" />{a.nome}</button>
           ))}
+          {/* tudo num .zip (Vitor, 27/10/2026): a pasta com o número do ticket e o nome da pessoa, com o print e os arquivos; por
+              último e em outra cor (27/10/2026) */}
+          {f.arquivos.length > 0 && (
+            <BotaoAcao className="btn btn-success" carregando={zipando} textoCarregando="Juntando os arquivos"
+              onClick={() => { setZipando(true); void baixarTudo(f.id).finally(() => setZipando(false)); }}>
+              <Icone nome="download" />Baixar tudo (.zip)
+            </BotaoAcao>
+          )}
           {/* o report do robô do suporte (termina em "Realmente, isso é erro do sistema" ou "Precisa da sua análise") */}
           {f.tipo === 'bug' && (f.relatorio ? <p className="feedback-txt feedback-relatorio">{f.relatorio}</p> : <p className="hint">{ANALISE[f.analise] || 'Sem report ainda.'}</p>)}
           <span className="fraco feedback-onde">{f.tela}{f.versao ? ' · ' + f.versao : ''}</span>
         </div>
         <footer className="usuario-pe">
+          {/* o texto da solicitação, para colar (Vitor, 27/10/2026) */}
+          <button type="button" className="btn btn-outline" title="Copiar o texto da solicitação" onClick={() => copiar(f.id)}><Icone nome="copiar" />Copiar solicitação</button>
           <span className="tarefas-barra-espaco" />
           {f.status === 'novo' && <button type="button" className="btn btn-outline" onClick={() => marcar(f.id, 'visto')}><Icone nome="olho" />Visto</button>}
           {/* Resolvendo (Vitor, 26/10/2026): quem mandou é avisado no Tarefas */}

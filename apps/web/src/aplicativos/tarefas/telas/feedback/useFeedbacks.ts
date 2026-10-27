@@ -2,7 +2,7 @@
 // tela e a prioridade), com o filtro Novos / Vistos / Feitos / Todos e o Visto / Feito. A prioridade (Vitor, 19/10/2026):
 // filtrar por Alta, Média ou Baixa e ordenar pelos mais novos ou pela prioridade.
 import { suporte, tarefas } from '@nads/core';
-import { baixarBytes } from '@nads/ui';
+import { baixarBytes, useRetorno } from '@nads/ui';
 import { useState } from 'react';
 import { ordenarPorPrioridade, PRIORIDADES, type PrioridadeDoFeedback, type SituacaoDoFeedback } from '../../dados/feedback';
 import { useFeedback } from '../../dados/repo';
@@ -17,6 +17,7 @@ export function useFeedbacks() {
   const [ordem, setOrdem] = useState<'recentes' | 'prioridade'>('recentes');
   // o feedback aberto na janela dele (Vitor, 07/10/2026: "quando eu clique no feedback abra outra janela flutuante")
   const [aberto, setAberto] = useState('');
+  const { toast } = useRetorno();
   const comQuando = (f: (typeof todos.lista)[number]) => ({
     ...f, veredito: f.tipo === 'bug' ? suporte.vereditoDoReport(f.relatorio) : null, pedido: f.tipo === 'bug' ? suporte.codigoDoPedido(f.id) : '', quando: f.criadoEm ? new Date(f.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '',
   });
@@ -56,6 +57,26 @@ export function useFeedbacks() {
      * Tudo o que a pessoa mandou num .zip (Vitor, 27/10/2026: "com o nome da pasta como nome do ticket e nome da pessoa"):
      * a pasta e o .zip "#COOK7D - Felipe Souza", com o print e os arquivos.
      */
+    /**
+     * A solicitação inteira, como texto, para colar (Vitor, 27/10/2026: "um botão de copiar solicitação para colar o texto"):
+     * o número, quem, quando, a empresa e o caminho, o texto, os arquivos e a tela.
+     */
+    copiarSolicitacao: (id: string) => {
+      const x = todos.lista.find(y => y.id === id);
+      if (!x) return;
+      const f = comQuando(x);
+      const texto = [
+        [f.pedido, f.nome || f.email, f.quando].filter(Boolean).join(' · '),
+        ...(f.tipo === 'bug' ? [[f.empresa, f.caminho].filter(Boolean).join(' · ')] : []),
+        '',
+        f.texto,
+        ...(f.arquivos.length ? ['', 'Arquivos: ' + f.arquivos.map(a => a.nome).join(', ')] : []),
+        ...(f.relatorio ? ['', f.relatorio] : []),
+        '',
+        [f.tela, f.versao].filter(Boolean).join(' · '),
+      ].join('\n').replace(/\n{3,}/g, '\n\n').trim();
+      void navigator.clipboard?.writeText(texto).then(() => toast('Solicitação copiada.'), () => toast('Não consegui copiar (o navegador não deixou).'));
+    },
     baixarTudo: async (id: string) => {
       const f = todos.lista.find(x => x.id === id);
       if (!f) return;
