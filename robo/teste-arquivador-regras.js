@@ -253,6 +253,9 @@ cad27.mapaMigracao = MIG.carregar({});   // o versionado (as pastas que juntam m
 const d27 = e => R.decidir(Object.assign({ rel: e.nome }, e), { cadastro: cad27, hoje: new Date(2026, 9, 27) });
 const destino = x => [x.acao, x.motivo || null, x.destinoRelativo || null, x.nomeFinal || null];
 
+// o extrato do internet banking do BB sem "Banco do Brasil" no texto (o nome só no logo; 27/10/2026, a 407 DUDA HOME)
+d = d27({ nome: 'ComprovanteBB - 2022-08-04-104558.pdf', rel: '0152 - JANIO JOSE DE ALMEIDA\\EXTRATOS\\2022\\07\\ComprovanteBB - 2022-08-04-104558.pdf', texto: ['\nExtrato de Conta Corrente\nCliente:JANIO JOSE DE ALMEIDA\nAgência: 2705-7 Conta: 28265-0\nLançamentos\nDiaHistóricoValor\n0,00 (+)30/06/2022Saldo Anterior\n122,26 (+)01/07/2022Cielo Vendas Crédito\n122,26 (-)01/07/2022BB Rende Fácil\n673,03 (+)31/07/2022Cielo Vendas Crédito'] });
+igual('extrato do BB só com o logo: o banco pelo cabeçalho "Extrato de Conta Corrente / Cliente / Agência-dígito Conta-dígito"', [d.acao, /BANCO DO BRASIL/.test((d.caminho || []).join('\\'))], ['ARQUIVAR', true]);
 // 12a. PGDAS-D: 01. DAS do Simples, competência = o período de apuração, o documento pelo conteúdo
 const PGDAS_DECL = 'Programa Gerador do Documento de Arrecadação do Simples Nacional – Declaratório\nPGDAS-D\nDeclaração\nNº da Declaração: 06934601202302001\nCNPJ Básico: 06.934.601\nCNPJ Matriz: 06.934.601/0001-58\nNome Empresarial: JANIO JOSE DE ALMEIDA\nPeríodo de Apuração (PA): 02/2023\nReceita Bruta do PA (RPA) - Competência 10.000,00';
 d = d27({ nome: 'PGDASD-DECLARACAO-06934601202302001 02-2023.pdf', texto: [PGDAS_DECL] });
