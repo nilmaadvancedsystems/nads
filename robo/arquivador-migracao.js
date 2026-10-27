@@ -106,7 +106,7 @@ function decidirPeloMapa(entrada, ctx, d) {
   if (d.clienteDaPasta) doConteudo = null;   // o cliente vem da pasta (abaixo); o conteúdo já foi conferido
   if (doConteudo == null && !d.clienteDaPasta) {
     const texto = Array.isArray(entrada.texto) ? entrada.texto.slice(0, 3).join('\n') : String(entrada.texto || entrada.txt || '');
-    const cods = [...new Set(R.documentosDoTexto(texto).flatMap(x => R.clientesDoDoc(x.doc, cad)))];
+    const cods = [...new Set(R.documentosDoTexto(texto, true).flatMap(x => R.clientesDoDoc(x.doc, cad)))];
     if (cods.length === 1) { doConteudo = cods[0]; ev.push('CNPJ/CPF do cliente no conteúdo'); }
     else if (cods.length > 1) { if (pista && cods.includes(pista.codigo)) { doConteudo = pista.codigo; ev.push('o CNPJ do cliente da pasta está no conteúdo (com outros)'); } else return R.comMotivoDoCodigo(Object.assign({}, d, { motivo: 'CLIENTE_AMBIGUO', evidencias: ev.concat('o conteúdo traz mais de um cliente: ' + cods.join(', ')) })); }
   }
@@ -145,7 +145,7 @@ function clientePelaPasta(entrada, ctx, d) {
   if (!cli) return null;
   // o que o conteúdo traz: os CNPJ/CPF de clientes (o texto do PDF, o XML)
   const texto = entrada.xml ? String(entrada.xml) : Array.isArray(entrada.texto) ? entrada.texto.slice(0, 3).join('\n') : String(entrada.texto || entrada.txt || entrada.ofx || '');
-  const outros = [...new Set(R.documentosDoTexto(texto).flatMap(x => R.clientesDoDoc(x.doc, cad)))].filter(c => c !== pista.codigo);
+  const outros = [...new Set(R.documentosDoTexto(texto, true).flatMap(x => R.clientesDoDoc(x.doc, cad)))].filter(c => c !== pista.codigo);
   const raiz = c => { const x = cad.porCod.get(c); return x && x.doc && x.doc.length === 14 ? x.doc.slice(0, 8) : null; };
   if (outros.length && !(d.motivo === 'CLIENTE_AMBIGUO' && raiz(pista.codigo) && outros.every(c => raiz(c) === raiz(pista.codigo)))) return null;
   const confirmados = new Map(ctx.confirmados || []);

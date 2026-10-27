@@ -167,9 +167,9 @@ function cpfValido(d) {
 /**
  * Todos os CNPJ/CPF de um texto, na ordem em que aparecem (só os de dígito verificador certo). CNPJ formatado ou com 14
  * dígitos soltos; CPF só formatado (11 dígitos soltos é qualquer coisa: telefone, conta). 03: nunca montar um CNPJ
- * juntando dígitos do nome.
+ * juntando dígitos do nome. `grudados`: também o CNPJ formatado colado no número de antes (abaixo).
  */
-function documentosDoTexto(t) {
+function documentosDoTexto(t, grudados) {
   const s = String(t || '');
   const achados = [];
   const re = /(?<![\d./-])(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}|\d{3}\.\d{3}\.\d{3}-\d{2}|\d{14})(?![\d])/g;
@@ -183,6 +183,14 @@ function documentosDoTexto(t) {
   while ((m = re15.exec(s))) {
     const d = m.slice(1, 6).join('');
     if (cnpjValido(d)) achados.push({ doc: d, pos: m.index });
+  }
+  // o CNPJ formatado grudado no número de antes (27/10/2026: o recibo do SEDIF da DeSTDA imprime a inscrição estadual e o
+  // CNPJ colados, "680737193000101.884.649/0001-85"): a máscara já diz onde ele começa. Só com `grudados` (o documento sem
+  // título conhecido e a pasta de origem da migração): o DANFE da HELLO também cola, e lá vale a decisão do 2º lote do Vitor
+  const reGrudado = grudados ? /(?<=\d)(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2})(?![\d])/g : null;
+  while (reGrudado && (m = reGrudado.exec(s))) {
+    const d = so(m[1]);
+    if (cnpjValido(d) && !achados.some(a => a.doc === d && Math.abs(a.pos - m.index) <= 1)) achados.push({ doc: d, pos: m.index });
   }
   return achados.sort((a, b) => a.pos - b.pos);
 }
@@ -804,21 +812,22 @@ const REGRAS_PDF = [
   { tipo: 'NFC-e PDF', setor: 'FISCAL', re: /DANFE NFC-E|DOCUMENTO AUXILIAR DA NOTA FISCAL DE CONSUMIDOR|PORTALNFCE|\/NFCE\b|CONSUMIDOR NAO IDENTIFICADO/, fonte: '05d §1 (NFC-e em PDF)', campos: u => camposDeNota(u) },
   { tipo: 'NF-e PDF', setor: 'FISCAL', re: /\bDANFE\b|DOCUMENTO AUXILIAR DA NOTA FISCAL ELETRONICA/, fonte: '05d §1', campos: u => camposDeNota(u) },
   { tipo: 'CT-e PDF', setor: 'FISCAL', re: /\bDACTE\b|DOCUMENTO AUXILIAR DO CONHECIMENTO DE TRANSPORTE/, fonte: '05d §1', campos: u => camposDeNota(u) },
-  { tipo: 'NFS-e PDF', setor: 'FISCAL', re: /\bDANFSE\b|NOTA FISCAL DE SERVICOS? ELETRONICA|\bNFS-E\b/, fonte: '05d §1 (NFS-e)', campos: u => camposDeNfse(u) },
+  { tipo: 'NFS-e PDF', setor: 'FISCAL', re: /\bDANFSE\b|^\s*DANFSE\s*V\d|DOCUMENTO\s*AUXILIAR\s*DA\s*NFS-E|NOTA FISCAL DE SERVICOS? ELETRONICA|\bNFS-E\b/, fonte: '05d §1 (NFS-e)', campos: u => camposDeNfse(u) },
   // relatório mensal de notas (05d §1: emitidas em EMITIDOS\RELATÓRIO MENSAL\[ANO]; recebidas em RECEBIDOS\RELATÓRIO MENSAL)
   { tipo: 'RELATORIO DE NOTAS', setor: 'FISCAL', re: /^[\s\S]{0,300}(NOTAS FISCAIS (DE )?(SAIDA|ENTRADA|CONSUMIDOR ELETRONICA)|RELATORIO DE CUPOM|RELATORIO (MENSAL )?DE NOTAS (FISCAIS )?(EMITIDAS|RECEBIDAS))/, fonte: '05d §1 (Relatório Mensal de Notas Emitidas/Recebidas)',
     campos: u => ({ recebidas: /^[\s\S]{0,300}(NOTAS FISCAIS (DE )?ENTRADA|NOTAS (FISCAIS )?RECEBIDAS)/.test(u), periodo: periodoEscrito(u) || periodoLivre(u.slice(0, 1500)) }) },
   // ---- folha e societário (04b) ----
   { tipo: 'CARTAO CNPJ', setor: 'FOLHA_SOCIETARIO', re: /COMPROVANTE DE INSCRICAO E DE SITUACAO CADASTRAL/, fonte: '04b (Documentos Constitutivos)', campos: () => ({}) },
   { tipo: 'DOC CONSTITUTIVO', setor: 'FOLHA_SOCIETARIO', re: /^[\s\S]{0,600}(CONTRATO SOCIAL|ALTERACAO CONTRATUAL|ATO CONSTITUTIVO|ESTATUTO SOCIAL|ATA DA? (ASSEMBLEIA|REUNIAO))/, fonte: '04b (Documentos Constitutivos)', campos: () => ({}) },
-  { tipo: 'CERTIDAO', setor: 'FOLHA_SOCIETARIO', re: /^[\s\S]{0,800}(CERTIDAO (NEGATIVA|POSITIVA|CONJUNTA|DE REGULARIDADE|DE DEBITOS)|CERTIFICADO DE REGULARIDADE DO FGTS)/, fonte: '04b (Certidões)',
+  { tipo: 'CERTIDAO', setor: 'FOLHA_SOCIETARIO', re: /^[\s\S]{0,800}(CERTIDAO (NEGATIVA|POSITIVA|CONJUNTA|DE REGULARIDADE|DE DEBITOS)|CERTIFICADO\s+DE\s+REGULARIDADE\s+DO\s+FGTS)/, fonte: '04b (Certidões)',
     campos: u => ({ orgao: /FGTS|CAIXA ECONOMICA/.test(u) ? 'FGTS' : /TRABALHISTA|\bCNDT\b|JUSTICA DO TRABALHO/.test(u) ? 'TRABALHISTA' : /RECEITA FEDERAL|PROCURADORIA-GERAL DA FAZENDA|DIVIDA ATIVA DA UNIAO|TRIBUTOS FEDERAIS/.test(u) ? 'FEDERAL' : /PREFEITURA|MUNICIPIO DE|MUNICIPAL/.test(u) ? 'MUNICIPAL' : /ESTADO D[EO]|SECRETARIA DE ESTADO|FAZENDA ESTADUAL|SEFAZ/.test(u) ? 'ESTADUAL' : null,
-      data: dataBr(linhaApos(u, /EMITIDA (AS|EM)|DATA DA EMISSAO|EMISSAO:|EMITIDA/, 160)) }) },
+      data: dataDaCertidao(u) }) },
   // documentos POR FUNCIONÁRIO (Vitor, 23/10/2026): <cliente>\DEPARTAMENTO PESSOAL\FUNCIONÁRIOS\<NOME>\<tipo> <data>.pdf
   { tipo: 'DP FUNCIONARIO', setor: 'FOLHA_SOCIETARIO', re: /^[\s\S]{0,800}(ATESTADO DE SAUDE OCUPACIONAL|TERMO DE RESCISAO DO CONTRATO DE TRABALHO|AVISO DE FERIAS|RECIBO DE FERIAS|AVISO PREVIO|CONTRATO (INDIVIDUAL )?DE TRABALHO|CONTRATO DE EXPERIENCIA|FICHA DE REGISTRO DE EMPREGADO)/, fonte: 'DP por funcionário (Vitor, 23/10/2026)',
     campos: u => camposDoFuncionario(u) },
-  { tipo: 'FOLHA', setor: 'FOLHA_SOCIETARIO', re: /^[\s\S]{0,800}(FOLHA DE PAGAMENTO|RECIBO DE PAGAMENTO DE SALARIO|HOLERITE|RECIBO DE FERIAS|RECIBO DE 13|RESUMO DA FOLHA)/, fonte: '04b (Folha)',
-    campos: u => ({ competencia: competenciaSolta(linhaApos(u, /COMPETENCIA|REFERENCIA|MES\/ANO|PERIODO/, 120)) || competenciaSolta(u.slice(0, 800)) }) },
+  // 27/10/2026 (Vitor, os exemplos do DP): o holerite "Demonstrativo de Pagamento de Salário" (o "Ref.:10/2026" é a competência)
+  { tipo: 'FOLHA', setor: 'FOLHA_SOCIETARIO', re: /^[\s\S]{0,800}(FOLHA DE PAGAMENTO|RECIBO DE PAGAMENTO DE SALARIO|DEMONSTRATIVO DE PAGAMENTO DE SALARIO|HOLERITE|RECIBO DE FERIAS|RECIBO DE 13|RESUMO DA FOLHA)/, fonte: '04b (Folha)',
+    campos: u => ({ competencia: competenciaSolta(linhaApos(u, /COMPETENCIA|REFERENCIA|MES\/ANO|PERIODO|\bREF\.?:/, 120)) || competenciaSolta(u.slice(0, 800)) }) },
   // ---- contábil (04; Dicionário §6.1) ----
   { tipo: 'BALANCETE', setor: 'CONTABIL', re: /^[\s\S]{0,800}((?<!DT\.\s?)BALANCETE|ESCRITURACAO CONTABIL DIGITAL|\bECD\b|BALANCO PATRIMONIAL)/, fonte: '04 (Balancete e ECD)',
     campos: u => { const p = periodoEscrito(u) || periodoLivre(u); const a = /(?:EXERCICIO|ANO)[^0-9]{0,15}(20\d{2})/.exec(u.slice(0, 1500)); return { ano: p ? p.ate.ano : a ? +a[1] : null }; } },
@@ -841,6 +850,8 @@ const REGRAS_PDF = [
   { tipo: 'COMPROVANTE', setor: 'CONTABIL', re: /COMPROVANTE\s+(DE\s+)?(PAGAMENTO|TRANSFERENCIA|PIX|AGENDAMENTO|TITULOS|OPERACAO|TRANSACAO)|PIX (ENVIADO|REALIZADO)\s*\n.*COMPROVANTE/, fonte: 'Dicionário §6.1 e §6.1.1', campos: u => camposDeComprovante(u) },
   { tipo: 'FATURA CARTAO', setor: 'CONTABIL', re: /FATURA DO CARTAO|EXTRATO DE CARTAO DE CREDITO|FATURA MASTERCARD|FATURA VISA|RESUMO DA FATURA/, fonte: '04 (fatura de cartão → fallback extrato avulso)',
     campos: u => ({ competencia: competenciaSolta(linhaApos(u, /VENCIMENTO/, 60)) || (dataBr(linhaApos(u, /VENCIMENTO/, 60)) ? (d => ({ mes: +d.slice(3, 5), ano: +d.slice(6) }))(dataBr(linhaApos(u, /VENCIMENTO/, 60))) : null) }) },
+  // o boleto (ficha de compensação) que o cliente paga (27/10/2026): 04, Pag. Fornecedores — Fatura (decidirBoleto)
+  { tipo: 'BOLETO FORNECEDOR', setor: 'CONTABIL', re: /^(?=[\s\S]*(BENEFICIARIO|CEDENTE))(?=[\s\S]*(PAGADOR|SACADO))(?![\s\S]*SALDO ANTERIOR)[\s\S]*\d{5}\.\d{5}\s+\d{5}\.\d{6}\s+\d{5}\.\d{6}\s+\d\s+\d{14}(?!\d)/, fonte: '04 (Pag. Fornecedores — Fatura)', campos: u => camposDoBoleto(u) },
   { tipo: 'EXTRATO', setor: 'CONTABIL', re: /EXTRATO EXPORTADO NO DIA|EXTRATO (DE |DA )?(CONTA|C\/C|MENSAL|CONSOLIDADO|FINANCEIRO|POR PERIODO|BANCARIO)|EXTRATOMENSAL|EXTRATO HISTORICO|EXTRATO DE: AG|EXTRATO CONTA CORRENTE|RELATORIO DE MOVIMENTACOES|SALDO FINAL DO PERIODO|SALDO ANTERIOR[\s\S]{0,4000}SALDO/, fonte: 'Dicionário §6.1; 04 (Bancários)', campos: u => camposDeExtrato(u) },
 ];
 
@@ -851,18 +862,34 @@ const REGRAS_PDF = [
 function camposDoFuncionario(u) {
   const doc = /ATESTADO DE SAUDE OCUPACIONAL/.test(u) ? 'ASO' : /TERMO DE RESCISAO/.test(u) ? 'Rescisão' : /AVISO DE FERIAS|RECIBO DE FERIAS/.test(u) ? 'Férias'
     : /AVISO PREVIO/.test(u) ? 'Aviso prévio' : /CONTRATO (INDIVIDUAL )?DE TRABALHO|CONTRATO DE EXPERIENCIA/.test(u) ? 'Contrato' : 'Admissão';
-  const m = /\b(?:FUNCIONARIO|EMPREGADO|TRABALHADOR|COLABORADOR)\b[^\n]{0,60}\n?\s*([A-Z][A-Z ]{4,80}?)\s+(?:CPF:?\s*)?\d{3}\.\d{3}\.\d{3}-\d{2}/.exec(u);
+  // o aviso de férias do sistema do DP (27/10/2026): "Funcionário:CTPS/Série/UF:\nELIECIO SOARES DA COSTA//MG", sem o CPF
+  const m = /\b(?:FUNCIONARIO|EMPREGADO|TRABALHADOR|COLABORADOR)\b[^\n]{0,60}\n?\s*([A-Z][A-Z ]{4,80}?)\s+(?:CPF:?\s*)?\d{3}\.\d{3}\.\d{3}-\d{2}/.exec(u)
+    || /\bFUNCIONARIO:\s*CTPS\/SERIE\/UF:?\s*\n\s*([A-Z][A-Z ]{4,80}?)\s*\/\//.exec(u);
   let nome = m ? m[1].replace(/\s+/g, ' ').trim() : null;
   if (nome && (nome.split(' ').length < 2 || /\b(CPF|DATA|NASC|NOME|FUNCAO|SETOR)\b/.test(nome))) nome = null;
   const dataApos = re => { const i = u.search(re); if (i < 0) return null; const d = /(\d{2})\/(\d{2})\/(20\d{2})/.exec(u.slice(i, i + 400)); return d ? d[1] + '/' + d[2] + '/' + d[3] : null; };
   const data = doc === 'ASO' ? dataApos(/EXAMES? COMPLEMENTARES|NOME DO EXAME/) || dataApos(/\bDATA:/)
     : doc === 'Rescisão' ? dataApos(/DATA DE AFASTAMENTO/)
-    : doc === 'Férias' ? dataApos(/PERIODO DE (GOZO|FERIAS)|INICIO D[AE]S? FERIAS/)
+    : doc === 'Férias' ? dataApos(/PERIODO DE (GOZO|FERIAS)|PERIODO A SER GOZADO|INICIO D[AE]S? FERIAS/)
     : doc === 'Aviso prévio' ? dataApos(/DATA DO AVISO|AVISO EM|EM\s+\d{2}\/\d{2}\/20\d{2}/)
     : dataApos(/DATA DE ADMISSAO|ADMITIDO EM|ADMISSAO:/);
   return { doc, nome, data };
 }
 
+/**
+ * A data de emissão da certidão (04b: [DATA] = a emissão, nunca a validade). 27/10/2026, as certidões da migração que caíam
+ * em COMPETENCIA_AUSENTE: a trabalhista diz "Expedição:", a estadual de MG "Data de emissão" (na linha de baixo), a municipal
+ * de Taiobeiras só por extenso no fim ("Prefeitura Municipal de Taiobeiras, Segunda-feira, 2 de Março de 2026") e o CRF do
+ * FGTS só a validade ("Validade:22/09/2022 a 21/10/2022": o certificado é emitido no 1º dia dela).
+ */
+function dataDaCertidao(u) {
+  const d = dataBr(linhaApos(u, /EMITIDA (AS|EM)|DATA DA EMISSAO|DATA DE EMISSAO|EMISSAO:|EXPEDICAO:|EXPEDIDA EM|EMITIDA/, 160));
+  if (d) return d;
+  const v = /VALIDADE:?\s*(\d{2}\/\d{2}\/20\d{2})\s*A\s*\d{2}\/\d{2}\/20\d{2}/.exec(u);
+  if (v) return dataBr(v[1]);
+  const x = /PREFEITURA MUNICIPAL DE [A-Z ]+,\s*(?:[A-Z-]+,\s*)?(\d{1,2}) DE (JANEIRO|FEVEREIRO|MARCO|ABRIL|MAIO|JUNHO|JULHO|AGOSTO|SETEMBRO|OUTUBRO|NOVEMBRO|DEZEMBRO) DE (20\d{2})/.exec(u);
+  return x ? dois(+x[1]) + '-' + dois(mesDoNome(x[2])) + '-' + x[3] : null;
+}
 function anoCalendario(u) {
   const m = /ANO[- ]CALENDARIO[^0-9]{0,20}(20\d{2})/.exec(u) || /PERIODO[^0-9]{0,30}\d{2}\/\d{2}\/(20\d{2})/.exec(u) || /EXERCICIO[^0-9]{0,20}(20\d{2})/.exec(u);
   if (!m) return null;
@@ -904,11 +931,20 @@ function camposDeNota(u) {
 function camposDeNfse(u) {
   // a NFS-e da Prefeitura de Taiobeiras (a de honorários da Nilma, 27/10/2026): "Nº da Nota Fiscal\n849" e, no canhoto,
   // "A NOTA FISCAL Nº 849, EMITIDA EM 17/02/2022"
-  const numero = (/NUMERO DA NFS-E[^0-9]{0,30}(\d{1,15})/.exec(u) || /NFS-E\s*N[O°º.]*\s*:?\s*(\d{1,15})/.exec(u) || /NUMERO DA NOTA[^0-9]{0,20}(\d{1,15})/.exec(u)
-    || /N[º°O]\.?\s*DA NOTA FISCAL\s*:?\s*(\d{1,15})/.exec(u) || /NOTA FISCAL N[º°O]\.?\s*(\d{1,15}),?\s*EMITIDA EM/.exec(u) || [])[1] || null;
-  const emissao = dataBr(linhaApos(u, /DATA E HORA DA EMISSAO|DATA DA EMISSAO|EMISSAO DA NFS-E|DATA DE EMISSAO|EMITIDA EM/, 120)) || dataBr(linhaApos(u, /DATA FATO GERADOR/, 80));
-  const comp = competenciaSolta(linhaApos(u, /COMPETENCIA DA NFS-E|COMPETENCIA/, 80));
-  return { numero: numero ? String(+numero) : null, emissao, competencia: comp, cancelada: /CANCELAD[AO]/.test(u.slice(0, 1500)) };
+  // 27/10/2026 (os ~700 da migração com "nº ou data da NFS-e não lidos"): o número depois do rótulo nunca é uma data (Montes
+  // Claros imprime o número ANTES do rótulo e a data do serviço depois: "202200000000002\nNúmero da NFS-e\n07/12/2022"); o
+  // layout da Síntese (Divisa Alegre) só traz o número no canhoto ("Nº da NFS-e/Ano do exercício\n1/2020")
+  // o DANFSe v2.0 da NFS-e nacional sai do pdf.js sem os espaços ("NÚMERODANFS-e\n74", "DATAE HORADAEMISSÃODANFS-e")
+  const numero = (/NUMERO\s*DA\s*NFS-E[^0-9]{0,30}(\d{1,15})(?![\d/])/.exec(u) || /(?:^|\n)\s*(\d{1,15})\s*\n\s*NUMERO DA NFS-E/.exec(u) || /NFS-E\s*N[O°º.]*\s*:?\s*(\d{1,15})/.exec(u) || /NUMERO DA NOTA[^0-9]{0,20}(\d{1,15})/.exec(u)
+    || /N[º°O]\.?\s*DA NOTA FISCAL\s*:?\s*(\d{1,15})/.exec(u) || /NOTA FISCAL N[º°O]\.?\s*(\d{1,15}),?\s*EMITIDA EM/.exec(u) || /N[º°O]\.?\s*DA NFS-E\s*\/\s*ANO DO EXERCICIO\s*(\d{1,10})\s*\/\s*20\d{2}/.exec(u) || [])[1] || null;
+  const emissao = dataBr(linhaApos(u, /DATA\s*E\s*HORA\s*DA\s*EMISSAO|DATA DA EMISSAO|EMISSAO DA NFS-E|DATA DE EMISSAO|DT\.? DE EMISSAO|EMITIDA EM/, 120)) || dataBr(linhaApos(u, /DATA FATO GERADOR/, 80))
+    || dataBr(linhaApos(u, /DATA DE EMISSAO/, 400));
+  const comp = competenciaSolta(linhaApos(u, /COMPETENCIA\s*DA\s*NFS-E|COMPETENCIA/, 80));
+  // o que a leitura de antes (até 27/10/2026) já lia: o que ela não lia e tem o XML da chave arquivado continua indo ao lado do
+  // XML (o 2º lote do Vitor, que o reprocesso em produção está aplicando); as leituras novas só valem para o resto
+  const antes = !!((/NUMERO DA NFS-E[^0-9]{0,30}(d{1,15})/.exec(u) || /NFS-Es*N[O°º.]*s*:?s*(d{1,15})/.exec(u) || /NUMERO DA NOTA[^0-9]{0,20}(d{1,15})/.exec(u) || /N[º°O].?s*DA NOTA FISCALs*:?s*(d{1,15})/.exec(u) || /NOTA FISCAL N[º°O].?s*(d{1,15}),?s*EMITIDA EM/.exec(u))
+    && (dataBr(linhaApos(u, /DATA E HORA DA EMISSAO|DATA DA EMISSAO|EMISSAO DA NFS-E|DATA DE EMISSAO|EMITIDA EM/, 120)) || dataBr(linhaApos(u, /DATA FATO GERADOR/, 80))));
+  return { numero: numero ? String(+numero) : null, emissao, competencia: comp, cancelada: /CANCELAD[AO]/.test(u.slice(0, 1500)), lidoAntes: antes };
 }
 
 /** Prestador e tomador de uma NFS-e em PDF: o 1º CNPJ é o do prestador (emitente), o seguinte o do tomador. */
@@ -1273,7 +1309,7 @@ function clienteDoPdf(u, bruto, entrada, ctx, ev, regra, campos) {
   // num extrato, o CNPJ de quem pagou/recebeu aparece no lançamento: só vale o do cabeçalho / fora dos lançamentos
   // relatório de maquininha traz o CNPJ do estabelecimento depois dos filtros (Cielo): limite maior
   const limite = regra.tipo === 'MAQUININHAS' ? 2500 : CONTA ? 800 : regra.tipo === 'BALANCETE' ? 1500 : Infinity;
-  const docs = documentosDoTexto(bruto).filter(d => !ESCRITORIO.has(d.doc) && d.pos <= limite && !(CONTA && LINHA_DE_LANCAMENTO.test(linhaDe(d.pos))));
+  const docs = documentosDoTexto(bruto, regra.tipo === '?').filter(d => !ESCRITORIO.has(d.doc) && d.pos <= limite && !(CONTA && LINHA_DE_LANCAMENTO.test(linhaDe(d.pos))));
   const sub = clienteDaPasta(entrada.rel, cad);
   // Guia de DCTFWeb/FGTS: o CNPJ/CPF do contribuinte vem no nome do arquivo ("GuiaPagamento_<CNPJ>_<MMAAAA>_…").
   const docNome = (/(?:^|_)(\d{14}|\d{11})_/.exec(entrada.nome) || [])[1];
@@ -1416,14 +1452,100 @@ function clienteDoPagamento(rel, bruto, cad, ev, porHash, pagador) {
 }
 /** O cliente pagador de um comprovante: o CNPJ/CPF cujo rótulo mais próximo antes dele é Pagador/Sacado/Correntista (um cliente só). */
 function pagadorDoComprovante(bruto, cad) {
+  const achados = clientesDoRotulo(bruto, cad, /^(PAGADOR|SACADO|CORRENTISTA)$/);
+  return achados.size === 1 ? [...achados][0] : null;
+}
+/** Os clientes cujo CNPJ/CPF tem, como rótulo mais próximo antes dele, um dos rótulos de `re` (Pagador, Beneficiário…). */
+function clientesDoRotulo(bruto, cad, re) {
   const achados = new Set();
   for (const d of documentosDoTexto(bruto)) {
     const antes = norm(bruto.slice(Math.max(0, d.pos - 160), d.pos));
     const rotulos = [...antes.matchAll(/\b(PAGADOR|SACADO|CORRENTISTA|BENEFICIARIO|CEDENTE|FAVORECIDO|SACADOR)\b/g)];
     const ult = rotulos.length ? rotulos[rotulos.length - 1][1] : null;
-    if (/^(PAGADOR|SACADO|CORRENTISTA)$/.test(ult || '')) clientesDoDoc(d.doc, cad).forEach(c => achados.add(c));
+    if (re.test(ult || '')) clientesDoDoc(d.doc, cad).forEach(c => achados.add(c));
   }
-  return achados.size === 1 ? [...achados][0] : null;
+  return achados;
+}
+
+/**
+ * O boleto (a ficha de compensação) que o cliente recebe para pagar (27/10/2026, os exemplos do DP: o boleto de honorários
+ * da Nilma para o PEDRO JORGE): 04, "Pag. Fornecedores — Fatura": CONTÁBIL\PAGAMENTOS DE FORNECEDORES\[ANO]\[MÊS]\
+ * [FORNECEDOR]\Fatura_[FORNECEDOR]_R$[VALOR]_[MÊS E ANO].pdf, a competência é o mês do VENCIMENTO (04, 05/10/2026). O cliente é
+ * o pagador (sacado) pelo CNPJ/CPF; sem ele, a pasta de origem — nunca quando a pasta é a do beneficiário (o boleto que o
+ * próprio cliente emitiu é a receber, não pagamento dele). O fornecedor é o beneficiário (cedente); o valor, o do código de
+ * barras (os 10 últimos dígitos da linha digitável), senão o impresso.
+ */
+const LINHA_DIGITAVEL = /(\d{5})\.(\d{5})\s+(\d{5})\.(\d{6})\s+(\d{5})\.(\d{6})\s+(\d)\s+(\d{14})(?!\d)/;
+function camposDoBoleto(u) {
+  const ld = LINHA_DIGITAVEL.exec(u);
+  const cents = ld ? +ld[8].slice(4) : 0;
+  let valor = cents > 0 ? 'R$' + Math.floor(cents / 100) + ',' + dois(cents % 100) : null;
+  if (!valor) valor = valorBr(linhaApos(u, /VALOR (DO )?DOCUMENTO|VALOR COBRADO|\bVALOR\b/, 80));
+  const venc = dataBr(linhaApos(u, /VENCIMENTO/, 80));
+  return { valor, vencimento: venc, competencia: venc ? { mes: +venc.slice(3, 5), ano: +venc.slice(6) } : null, beneficiarios: beneficiariosDoBoleto(u) };
+}
+/**
+ * Os nomes que podem ser o beneficiário de um boleto, na ordem do texto. O pdf.js embaralha a ficha de compensação (cada
+ * banco de um jeito), então só vale o nome que vem colado no CPF/CNPJ dele ("FUNDO AEROVIARIO-ANAC CPF/CNPJ: 08.471.457/0001-96",
+ * "NILMA DIAS OLIVEIRA CPF: 032.318.376-00…") e, na linha logo abaixo do rótulo "Beneficiário", só a razão social que termina
+ * num sufixo societário ("PACTUAL CONSULTORIA E FOMENTO LTDAR$2377…" = PACTUAL CONSULTORIA E FOMENTO LTDA). Nome com número,
+ * endereço ou rótulo da ficha não vale (fica em NÃO IDENTIFICADOS, VOCABULARIO_AUSENTE): pasta de fornecedor errada é pior.
+ */
+const ROTULO_DA_FICHA = /\b(AGENCIA|CODIGO|NOSSO|NUMERO|DOCUMENTO|ESPECIE|QUANTIDADE|CARTEIRA|VENCIMENTO|VALOR|LOCAL|PAGAMENTO|PAGADOR|SACADO|SACADOR|AVALISTA|BENEFICIARIO|CEDENTE|ENDERECO|DATA|INSTRUCOES|RECIBO|AUTENTICACAO|MECANICA|COBRANCA|DESCONTO|JUROS|MULTA|ACRESCIMOS|DEDUCOES|USO|BANCO|ACEITE|PROCESSAMENTO|CPF|CNPJ)\b/;
+const ENDERECO = /\b(RUA|AV|AVENIDA|ESTRADA|QUADRA|QD|LOTE|SALA|BLOCO|CONJ|CEP|BAIRRO|ROD|RODOVIA|TRAVESSA|PRACA|KM|ZONA|S\s?N)\b|[ -](AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)$/;
+function nomeDeBeneficiarioValido(t) {
+  const n = String(t || '').replace(/[\s:—–-]+$/g, '').replace(/^[\s:—–-]+/g, '').trim();
+  if (!/^[A-Z][A-Z &.,'\/-]{3,90}$/.test(n) || !/[A-Z]{3}/.test(n) || ROTULO_DA_FICHA.test(n) || ENDERECO.test(n) || /\bNAO (DISPONIVEL|INFORMADO)\b/.test(n)) return null;
+  return nomeSeguro(semAcento(nomeNormalizado(n))).toUpperCase() || null;
+}
+function beneficiariosDoBoleto(u) {
+  const out = [];
+  for (const m of u.matchAll(/(?:^|\n)([^\n]*?)\s*-?\s*\b(?:CPF\s*\/\s*CNPJ|CNPJ\s*\/\s*CPF|CNPJ|CPF)\s*:?\s*(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}|\d{3}\.\d{3}\.\d{3}-\d{2})/g)) {
+    let bruto1 = m[1];
+    // o nome quebrado em duas linhas ("CONSELHO REGIONAL DE ENGENHARIA E\nAGRONOMIA DE MINAS GERAIS\nCNPJ: …")
+    const antesDaLinha = m.index > 0 && m[0][0] === '\n' ? u.slice(0, m.index).split('\n').pop() : null;
+    if (antesDaLinha && /\b(E|DE|DA|DO|DOS|DAS|&)$/.test(antesDaLinha.trim()) && nomeDeBeneficiarioValido(antesDaLinha)) bruto1 = antesDaLinha.trim() + ' ' + bruto1;
+    const nome = nomeDeBeneficiarioValido(bruto1.replace(/^.*\b(?:SACADOR\s*\/\s*AVALISTA|SACADO\s*\/\s*PAGADOR|PAGADOR|SACADO|BENEFICIARIO|CEDENTE)\b\s*:?/, ''));
+    // o rótulo mais próximo antes (na mesma linha ou logo acima): "PAGADOR\nJANICELME DA SILVEIRA - CPF: …" é o pagador
+    const rots = [...u.slice(Math.max(0, m.index - 80), m.index + m[0].length).matchAll(/\b(SACADOR|AVALISTA|PAGADOR|SACADO|BENEFICIARIO|CEDENTE)\b/g)];
+    const rotulo = rots.length && /^(SACADOR|AVALISTA|PAGADOR|SACADO)$/.test(rots[rots.length - 1][1]) ? 'pagador' : null;
+    if (nome) out.push({ nome, rotulo, doc: so(m[2]) });
+  }
+  for (const m of u.matchAll(/(?:^|\n)[^\n]{0,20}(?:BENEFICIARIO|CEDENTE)[^\n]{0,60}\n([^\n]+)/g)) {
+    const corte = /^(.*?\b(?:LTDA|EIRELI|S\.?\/?A|EPP|ME))(?![A-Z])/.exec(m[1].replace(/\s*(?:R\$|\d).*$/, '').trim()) || /^(.*?\b(?:LTDA|EIRELI|EPP))/.exec(m[1]);
+    const nome = corte && nomeDeBeneficiarioValido(corte[1]);
+    if (nome) out.push({ nome, rotulo: 'beneficiario' });
+  }
+  return out;
+}
+function decidirBoleto(campos, entrada, u, bruto, ctx, ev, porHash) {
+  const cad = ctx.cadastro;
+  const base = { tipo: 'BOLETO FORNECEDOR', setor: 'CONTABIL', fonte: '04 (Pag. Fornecedores — Fatura; competência = mês do vencimento)' };
+  ev.push('boleto: ficha de compensação (linha digitável, beneficiário e pagador)');
+  const doBenef = clientesDoRotulo(bruto, cad, /^(BENEFICIARIO|CEDENTE)$/);
+  let c = porHash ? { cliente: porHash, conf: 0.97, como: 'hash' } : null;
+  if (!c) { const p = pagadorDoComprovante(bruto, cad); if (p != null && !doBenef.has(p)) { c = { cliente: p, conf: 0.95, como: 'doc' }; ev.push('cliente pelo CNPJ/CPF do pagador (sacado)'); } }
+  if (!c) {
+    // a pasta de origem (e, na pasta que junta matriz e filiais, a filial do CNPJ no conteúdo, senão a matriz), como no
+    // pagamento de fornecedor (27/10/2026); nunca quando ela é a do beneficiário
+    const evp = [];
+    const r = clienteDoPagamento(entrada.rel || entrada.nome, bruto, cad, evp, null, false);
+    if (r.c && !doBenef.has(r.c.cliente)) { c = r.c; ev.push.apply(ev, evp.map(x => 'cliente: ' + x)); }
+  }
+  if (!c) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: doBenef.size ? 'TIPO_NAO_RECONHECIDO' : 'CLIENTE_NAO_LOCALIZADO', confianca: 0.3, evidencias: ev.concat(doBenef.size ? 'o cliente ' + [...doBenef].join(', ') + ' é o beneficiário: boleto a receber, sem regra' : 'nem o pagador nem a pasta de origem dizem o cliente') });
+  Object.assign(base, { cliente: c.cliente, comoCliente: c.como });
+  // o fornecedor: o primeiro beneficiário lido que não é o pagador nem o próprio cliente
+  const cli = cad.porCod.get(c.cliente);
+  const ehCliente = n => cli && [cli.razao].concat(cli.outrosNomes || []).some(r => chaveNome(nomeNormalizado(r)) === chaveNome(n) || chaveNome(r).startsWith(chaveNome(n)));
+  // (o nome colado no CPF/CNPJ do próprio cliente é a linha do pagador: "PEDRO JORGE SANTOS\nSOUZA\nCPF: 595…")
+  const benef = (campos.beneficiarios || []).find(b => b.rotulo !== 'pagador' && !ehCliente(b.nome) && !(b.doc && clientesDoDoc(b.doc, cad).includes(c.cliente)));
+  campos.fornecedor = benef ? benef.nome : null;
+  if (!campos.fornecedor) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'VOCABULARIO_AUSENTE', confianca: 0.5, evidencias: ev.concat('o beneficiário do boleto não foi lido (04: Fornecedores)') });
+  if (!campos.valor) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'VALOR_AUSENTE', confianca: 0.5 });
+  if (!campos.competencia) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5, evidencias: ev.concat('o vencimento do boleto não foi lido') });
+  const comp = campos.competencia;
+  const ext = (/\.[a-z0-9]+$/i.exec(entrada.nome) || ['.pdf'])[0].toLowerCase();
+  return Object.assign(base, { acao: 'ARQUIVAR', confianca: c.conf, competencia: comp, caminho: ['CONTÁBIL', 'PAGAMENTOS DE FORNECEDORES', String(comp.ano), dois(comp.mes), campos.fornecedor], nomeFinal: 'Fatura_' + campos.fornecedor + '_' + campos.valor + '_' + mesAno(comp) + ext });
 }
 /** O beneficiário de um comprovante de pagamento (o "Nome/Razão Social" depois de Beneficiário/Cedente, o Favorecido, o Convênio), como nome de pasta. */
 function beneficiarioDoComprovante(u) {
@@ -1608,6 +1730,7 @@ function decidirPdf(entrada, ctx, ev, porHash) {
     ev.push('§6.1.1: título "Comprovante" com saldo corrente → extrato');
     return montarContabil(r2, r2.campos(u), u, bruto, entrada, ctx, ev, porHash);
   }
+  if (regra.tipo === 'BOLETO FORNECEDOR') return decidirBoleto(campos, entrada, u, bruto, ctx, ev, porHash);
   if (regra.setor === 'CONTABIL') return montarContabil(regra, campos, u, bruto, entrada, ctx, ev, porHash);
   // o relatório da DEFIS do Alterdata (27/10/2026): o cliente é o do "CNPJ Matriz" (as filiais da declaração vêm depois)
   let doMatriz = null;
@@ -1685,7 +1808,10 @@ function decidirPdf(entrada, ctx, ev, porHash) {
       return Object.assign(base, { acao: 'ARQUIVAR', confianca: c.conf, competencia: f, fiscal: ['LIVROS', String(f.ano)], nomeFinal: nm });
     }
     case 'NFC-e PDF': case 'NF-e PDF': case 'CT-e PDF': return montarNotaPdf(regra, campos, u, bruto, base, c, ctx, ev);
-    case 'NFS-e PDF': return montarNfsePdf(campos, u, bruto, base, c, ctx, ev);
+    case 'NFS-e PDF': {
+      if (!campos.lidoAntes) { const ev2 = ev.slice(); const px = pdfPeloXmlDaChave(entrada, u, ctx, ev2); if (px) return Object.assign({ evidencias: ev2 }, px); }
+      return montarNfsePdf(campos, u, bruto, base, c, ctx, ev);
+    }
     case 'RELATORIO DE NOTAS': {
       const p = campos.periodo;
       if (!p || p.de.mes !== p.ate.mes || p.de.ano !== p.ate.ano) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5, evidencias: ev.concat('relatório de notas sem período de um mês') });
@@ -1695,6 +1821,13 @@ function decidirPdf(entrada, ctx, ev, porHash) {
       return Object.assign(base, { acao: 'ARQUIVAR', confianca: Math.min(c.conf, 0.95), competencia: comp, fiscal: ['DOCS', lado, 'RELATÓRIO MENSAL', String(comp.ano)], nomeFinal: mesAno(comp) + ' - RELATORIO NOTAS ' + (campos.recebidas ? 'RECEBIDAS' : 'EMITIDAS') + ' - ' + nomeNormalizado(cli ? cli.razao : '') + '.pdf' });
     }
     case 'DP FUNCIONARIO': {
+      // o sistema do DP nomeia o arquivo "<CPF do funcionário><NOME>.pdf" (27/10/2026, "04034148659ELIECIO SOARES DA COSTA.pdf"):
+      // vale o nome quando o CPF confere (dígito) e o nome está escrito no documento
+      if (!campos.nome) {
+        const pn = /^(\d{11})\s*-?\s*([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ ]{4,80})\.pdf$/i.exec(String(nomeOrig || ''));
+        const nn = pn && norm(pn[2]).replace(/\s+/g, ' ').trim();
+        if (pn && cpfValido(pn[1]) && nn.split(' ').length >= 2 && textoDeNome(u).includes(' ' + nn + ' ')) { campos.nome = nn; ev.push('nome do funcionário pelo nome do arquivo (CPF + nome), também escrito no documento'); }
+      }
       if (!campos.nome) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'VOCABULARIO_AUSENTE', confianca: 0.5, tipo: 'DP FUNCIONARIO ' + campos.doc, evidencias: ev.concat('nome do funcionário não lido no documento') });
       if (!campos.data) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5, tipo: 'DP FUNCIONARIO ' + campos.doc, evidencias: ev.concat('data do ' + campos.doc + ' não lida') });
       ev.push('funcionário: ' + campos.nome + ' · ' + campos.doc + ' de ' + campos.data);
@@ -1768,9 +1901,16 @@ function montarNfsePdf(campos, u, bruto, base, c, ctx, ev) {
   if (!emissor && prestador) {
     const d = docs.find(x => x.doc === prestador);
     const depois = bruto.slice(d.pos, d.pos + 400).split('\n').map(s => s.trim());
-    const r = depois.find(s => /^(NOME|RAZAO|RAZÃO)/i.test(s));
-    emissor = r ? r.replace(/^[^:]*:\s*/, '') : null;
+    // "Razão Social: X" logo antes do CNPJ do prestador (o layout de Taiobeiras/Itaobim) vale primeiro
+    const rsAntes = /RAZ[AÃ]O SOCIAL\s*:\s*([^\n]+)\n[^]{0,300}$/i.exec(bruto.slice(Math.max(0, d.pos - 300), d.pos));
+    const ir = rsAntes ? -1 : depois.findIndex(s => /^(NOME|RAZAO|RAZÃO)/i.test(s));
+    if (rsAntes) emissor = rsAntes[1].trim(); else
+    // "Nome/ NomeEmpresarial" (o DANFSe nacional) é só o rótulo: o nome vem na linha de baixo
+    emissor = ir < 0 ? null : /:/.test(depois[ir]) ? depois[ir].replace(/^[^:]*:\s*/, '') : (depois[ir + 1] || null);
+    if (emissor && /^(NOME|RAZAO|RAZÃO|E-?MAIL|MUNIC)/i.test(emissor)) emissor = null;
     if (!emissor) { const antes = bruto.slice(Math.max(0, d.pos - 200), d.pos).split('\n').map(s => s.trim()).filter(s => /[A-Za-z]{3}/.test(s) && !/CNPJ|CPF|INSCRI|ENDERE|PRESTADOR|DADOS/i.test(s)); emissor = antes.pop() || null; }
+    // a nota recebida: o emissor nunca é o próprio cliente (o tomador)
+    if (emissor && cli.razao && chaveNome(nomeNormalizado(emissor)) === chaveNome(nomeNormalizado(cli.razao))) emissor = null;
   }
   if (!emissor) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'EMITENTE_INDETERMINADO', confianca: 0.5 });
   const comp = campos.competencia || { mes: +campos.emissao.slice(3, 5), ano: +campos.emissao.slice(6) };
