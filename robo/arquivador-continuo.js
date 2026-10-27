@@ -291,6 +291,34 @@ function iniciar(opcoes) {
     const n = p[p.length - 1];
     return ehPasta || (!n.startsWith('_nao_identificados') && n !== 'desktop.ini');
   };
+  /**
+   * As pastas vazias da origem (27/10/2026, Vitor: "pq não apagou as pastas?"): o robô só move arquivos, então depois da
+   * migração sobraram 59 das 67 pastas da Claudio Secretario só com subpastas. Remove, de baixo para cima, a pasta SEM
+   * NENHUM arquivo (rmdir só apaga pasta vazia: nada de conteúdo se perde) e parada há mais de 1 dia; nunca a raiz nem as
+   * de fora da leitura (NÃO IDENTIFICADOS, "_…", CLAUDE FAVOR NÃO MEXER). O desktop.ini sozinho conta como vazia.
+   */
+  async function limparPastasVazias(raiz) {
+    const UM_DIA = 864e5, agora = Date.now();
+    let removidas = 0;
+    const limpar = async (rel) => {
+      const abs = rel ? path.join(raiz, rel) : raiz;
+      let es; try { es = await fs.promises.readdir(abs, { withFileTypes: true }); } catch (e) { return false; }
+      // a data antes de limpar as de dentro (remover uma subpasta muda a data da mãe)
+      let st; try { st = await fs.promises.stat(abs); } catch (e) { return false; }
+      let vazia = true;
+      for (const e of es) {
+        const r = rel ? rel + '\\' + e.name : e.name;
+        if (e.isDirectory()) { if (!incluir(r, true) || !(await limpar(r))) vazia = false; }
+        else if (e.name.toLowerCase() !== 'desktop.ini') vazia = false;
+      }
+      if (!vazia || !rel) return false;
+      if (agora - st.mtimeMs < UM_DIA) return false;
+      try { const ini = path.join(abs, 'desktop.ini'); if (fs.existsSync(ini)) await fs.promises.unlink(ini); await fs.promises.rmdir(abs); removidas++; return true; } catch (e) { return false; }
+    };
+    await limpar('');
+    if (removidas) { o.log('pastas vazias removidas da origem: ' + removidas); atividade('Removeu ' + removidas + ' pasta(s) vazia(s) da Claudio Secretario', 'só pastas sem nenhum arquivo, paradas há mais de 1 dia'); }
+    return removidas;
+  }
   /** As origens: a do Drive e as locais do config (origensExtras: a entrada local; o resto igual, NÃO IDENTIFICADOS no G:). */
   function origensDe(cfg) {
     const out = [{ id: 'G:', raiz: o.origem, principal: true }];
@@ -672,6 +700,8 @@ function iniciar(opcoes) {
           if (ids.has(extra)) delete estado.decididos[k];
         }
         salvar();
+        // a passada inteira terminou: as pastas que ficaram vazias saem da Claudio Secretario (27/10/2026)
+        if (cfg.emProducao) { try { await limparPastasVazias(o.origem); } catch (e) { o.log('não limpei as pastas vazias:', e.message); } }
       }
     } catch (err) { if (leitura && leitura.inteira) ultimaInteiraEm = 0; o.log('erro no ciclo:', err.message); atividade('O arquivador novo deu erro', err.message, true); acomp.erro(err.message); resumo.esperando = 'erro: ' + err.message; }
     finally {
@@ -979,7 +1009,7 @@ function iniciar(opcoes) {
     // para os testes: o ritmo e a varredura
     _medirRitmo: (v, a) => medirRitmo(v, a), _ritmo: () => ({ nivel: nivelRitmo, proximoCicloEm, folgados }),
     _listar: async (raiz) => { const out = []; for await (const p of andarEmFluxo(raiz || o.origem)) out.push(...p); return out; },
-    _modoAnunciado: () => modoAnunciado, _contarPasta: () => { if (estado.contagem) delete estado.contagem['G:']; return contarPasta(); }, _contados: () => contados('G:'),
+    _modoAnunciado: () => modoAnunciado, _limparPastasVazias: r => limparPastasVazias(r || o.origem), _contarPasta: () => { if (estado.contagem) delete estado.contagem['G:']; return contarPasta(); }, _contados: () => contados('G:'),
     _mudados: () => mudados, _decididos: () => estado.decididos, _recentes: () => recentes, _grupos: () => gruposNi, _conferirNaoIdentificados: f => conferirNaoIdentificados(f), _lembrar: e => lembrarGrupo(e),
     parar: () => { parado = true; if (pedidos) pedidos.parar(); if (timer) clearInterval(timer); if (timerContagem) clearInterval(timerContagem); clearTimeout(acordar); if (observador) observador.close(); soltarTrava(); void acomp.parar(); },
   };
