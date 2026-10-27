@@ -110,9 +110,21 @@ function decidirPeloMapa(entrada, ctx, d) {
     if (cods.length === 1) { doConteudo = cods[0]; ev.push('CNPJ/CPF do cliente no conteúdo'); }
     else if (cods.length > 1) { if (pista && cods.includes(pista.codigo)) { doConteudo = pista.codigo; ev.push('o CNPJ do cliente da pasta está no conteúdo (com outros)'); } else return R.comMotivoDoCodigo(Object.assign({}, d, { motivo: 'CLIENTE_AMBIGUO', evidencias: ev.concat('o conteúdo traz mais de um cliente: ' + cods.join(', ')) })); }
   }
-  if (doConteudo != null && pista && pista.codigo !== doConteudo) return R.comMotivoDoCodigo(Object.assign({}, d, { motivo: 'PISTA_DA_PASTA_DIVERGE', evidencias: ev.concat('o conteúdo diz o cliente ' + doConteudo + ', a pasta de origem diz ' + pista.codigo + ' (' + pista.como + ')') }));
+  // o conteúdo × a pasta (Vitor, 26/10/2026): o CNPJ de OUTRA empresa cliente no conteúdo vence a pasta (o documento da 429 na
+  // pasta da 434 é da 429); o CPF de uma pessoa (sócio, IRPF…) fica na empresa da pasta: o IRPF em SOCIETÁRIO\IMPOSTOS\IRPF\ANO,
+  // o documento pessoal (tipo não reconhecido) em SOCIETÁRIO\DOCUMENTOS DE SÓCIOS
+  let socio = false;
+  if (doConteudo != null && pista && pista.codigo !== doConteudo) {
+    const dc = cad.porCod.get(doConteudo), dp = cad.porCod.get(pista.codigo);
+    if (dc && dc.doc.length === 14) ev.push('o conteúdo traz o CNPJ de outra empresa cliente (' + doConteudo + '): ele vence a pasta de origem (' + pista.codigo + ') (Vitor, 26/10/2026)');
+    else if (dc && dc.doc.length === 11 && dp && dp.doc.length === 14 && pista.forte) { socio = true; ev.push('o conteúdo só traz o CPF de uma pessoa (' + doConteudo + '): fica na empresa da pasta de origem (' + pista.codigo + ') (Vitor, 26/10/2026)'); doConteudo = pista.codigo; }
+    else return R.comMotivoDoCodigo(Object.assign({}, d, { motivo: 'PISTA_DA_PASTA_DIVERGE', evidencias: ev.concat('o conteúdo diz o cliente ' + doConteudo + ', a pasta de origem diz ' + pista.codigo + ' (' + pista.como + ')') }));
+  }
+  if (socio) { const s = documentoDeSocio(entrada, ctx, d, pista, ev); if (s) return s; }
   let cliente = null, como = null, conf = 0;
-  if (doConteudo != null) { cliente = doConteudo; como = d.comoCliente || 'doc'; conf = pista ? 0.95 : 0.9; if (pista) ev.push('o cliente do conteúdo confere com a pasta de origem'); }
+  if (doConteudo != null && socio) { cliente = doConteudo; como = 'pastaConferida'; conf = 0.9; }
+  else if (doConteudo != null && pista && pista.codigo !== doConteudo) { cliente = doConteudo; como = 'doc'; conf = 0.9; }
+  else if (doConteudo != null) { cliente = doConteudo; como = d.comoCliente || 'doc'; conf = pista ? 0.95 : 0.9; if (pista) ev.push('o cliente do conteúdo confere com a pasta de origem'); }
   else if (pista && pista.forte) { cliente = pista.codigo; como = 'pastaConferida'; conf = 0.9; ev.push(pista.como); }
   if (cliente == null) return R.comMotivoDoCodigo(Object.assign({}, d, { motivo: 'CLIENTE_NAO_LOCALIZADO', evidencias: ev.concat(pista ? 'a pasta de origem só traz o código (' + pista.como + '), sem o nome do cadastro' : 'nem o conteúdo nem a pasta de origem dizem o cliente') }));
   // a competência: o nome do arquivo ("04-2024.pdf"), senão as pastas de origem ("…\2024\04\"), senão o conteúdo
@@ -128,6 +140,28 @@ function decidirPeloMapa(entrada, ctx, d) {
   if (b.erro) return R.comMotivoDoCodigo(Object.assign({}, d, { cliente, motivo: 'VOCABULARIO_AUSENTE', evidencias: ev.concat(b.erro) }));
   return R.finalizar(Object.assign({ acao: 'ARQUIVAR', cliente, comoCliente: como, confianca: conf, tipo: tipo.id.replace(/_/g, ' '), setor: tipo.setor, competencia: comp && comp.ano ? comp : null,
     anoPista: pastaComp, nomeOriginal: nome, evidencias: ev, fonte: 'mapa da migração (pasta de origem)', ocr: entrada.ocr || null, pelaMigracao: t.pasta }, b), ctx);
+}
+
+/**
+ * O documento de uma pessoa (o CPF do sócio) na pasta da empresa (Vitor, 26/10/2026): o IRPF ("<CPF>-IRPF-<exercício>-<ano-
+ * calendário>-…", ou "Declaração de Ajuste Anual" no conteúdo) em SOCIETÁRIO\IMPOSTOS\IRPF\<ano-calendário>, na raiz do ano da
+ * entrega; o que as regras não reconheceram em SOCIETÁRIO\DOCUMENTOS DE SÓCIOS (sem pasta de ano; a raiz pelo ano do nome ou da
+ * pasta de origem); o resto (um contrato social com o CPF do sócio) segue o tipo da pasta, na empresa. Nome original.
+ */
+function documentoDeSocio(entrada, ctx, d, pista, ev) {
+  const nome = entrada.nome || path.win32.basename(String(entrada.rel || 'arquivo'));
+  const u = R.norm(Array.isArray(entrada.texto) ? entrada.texto.slice(0, 3).join('\n') : String(entrada.texto || ''));
+  const base = { acao: 'ARQUIVAR', cliente: pista.codigo, comoCliente: 'pastaConferida', confianca: 0.9, setor: 'FOLHA_SOCIETARIO', nomeOriginal: nome, nomeFinal: nome, evidencias: ev, ocr: entrada.ocr || null, anoPista: R.anoDaPasta(entrada.rel || '') };
+  const irpf = /IRPF/i.test(nome) || /DECLARACAO DE AJUSTE ANUAL|IMPOSTO SOBRE A RENDA\s*-\s*PESSOA FISICA/.test(u);
+  if (irpf) {
+    const m = /IRPF[-_ ](20\d{2})[-_ ](20\d{2})/i.exec(nome), c = /ANO-?CALENDARIO[^0-9]{0,20}(20\d{2})/.exec(u), x = /EXERCICIO[^0-9]{0,20}(20\d{2})/.exec(u);
+    const ano = m ? +m[2] : c ? +c[1] : x ? +x[1] - 1 : null;
+    if (!ano) return R.comMotivoDoCodigo(Object.assign({}, d, { cliente: pista.codigo, motivo: 'COMPETENCIA_AUSENTE', evidencias: ev.concat('o ano-calendário do IRPF não foi lido') }));
+    return R.finalizar(Object.assign(base, { tipo: 'IRPF', caminho: ['SOCIETÁRIO', 'IMPOSTOS', 'IRPF', String(ano)], competencia: { ano }, fonte: '04b (IRPF); Vitor, 26/10/2026' }), ctx);
+  }
+  if (!['TIPO_NAO_RECONHECIDO', 'CONTEUDO_SEM_TEXTO', 'CONTEUDO_ILEGIVEL'].includes(d.motivo)) return null;
+  const a = /(?:^|[^0-9])(20\d{2})(?![0-9])/.exec(nome.replace(/\.[a-z0-9]+$/i, ''));
+  return R.finalizar(Object.assign(base, { tipo: 'DOCUMENTO DE SOCIO', caminho: ['SOCIETÁRIO', 'DOCUMENTOS DE SÓCIOS'], competencia: a ? { ano: +a[1] } : null, fonte: '04b (Documentos de Sócios); Vitor, 26/10/2026' }), ctx);
 }
 
 /**
