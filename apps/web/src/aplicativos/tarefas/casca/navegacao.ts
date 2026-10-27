@@ -248,12 +248,16 @@ export const caminhoDaEmpresa = (rotaEmpresa: string, competencia: string) => BA
 /** Uma página da empresa aberta: /tarefas/minhas-empresas/empresa/<código>/<página> (tarefas, visao, drive, as ferramentas do Fiscal). */
 export const caminhoDaPaginaDaEmpresa = (rotaEmpresa: string, pagina: string) => BASE + '/minhas-empresas/empresa/' + rotaEmpresa + '/' + pagina;
 
-/** Os setores em que dá para abrir uma empresa (27/10/2026: "variando de cada setor (tirando dp)"); todos veem os dois. */
+/** Os setores em que dá para abrir uma empresa (27/10/2026: "variando de cada setor (tirando dp)"). */
 export type SetorDaEmpresa = 'contabil' | 'fiscal';
 export const SETORES_DA_EMPRESA: readonly { valor: SetorDaEmpresa; rotulo: string }[] = [
   { valor: 'contabil', rotulo: 'Contábil' },
   { valor: 'fiscal', rotulo: 'Fiscal' },
 ];
+/** Os setores que a pessoa abre (27/10/2026: "e só o setor que ele participa"): o dela; o admin, os dois; o DP, nenhum. */
+export function setoresDe(op: Operador): typeof SETORES_DA_EMPRESA[number][] {
+  return SETORES_DA_EMPRESA.filter(s => op.admin || op.departamento === s.valor);
+}
 /**
  * As páginas da empresa aberta, na barra lateral (27/10/2026: "vai abrir a parte de tarefas, visão geral, dentre outras
  * informações na barra lateral como a pagina do drive dela"): as Tarefas do mês, a Visão geral, a pasta no Drive e, no
