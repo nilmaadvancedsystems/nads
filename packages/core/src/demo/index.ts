@@ -247,6 +247,7 @@ export function conferenciaComDemo<R extends RepoConferencia>(real: R): R {
     assinar(f) { const parar = real.assinar(f); ouvintes.add(f); return () => { parar(); ouvintes.delete(f); }; },
     versao: () => real.versao() + ver,
     restaurarExemplos: () => real.restaurarExemplos(),
+    gravacao: real.gravacao,
   };
   return Object.assign(w, aviso(real)) as unknown as R;
 }

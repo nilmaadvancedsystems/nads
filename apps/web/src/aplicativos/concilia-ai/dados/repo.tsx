@@ -24,6 +24,14 @@ export function useVersaoDoRepo(): number {
   return useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
 }
 
+const nada = () => () => {};
+const nenhuma = () => null;
+/** A gravação grande subindo para o banco (null = nada), ouvida à parte: não redesenha as notas a cada pedaço. */
+export function useGravacaoNaNuvem(): conferencia.GravacaoNaNuvem | null {
+  const g = useRepo().gravacao;
+  return useSyncExternalStore(g ? g.assinar : nada, g ? g.atual : nenhuma, g ? g.atual : nenhuma);
+}
+
 /** A empresa (ou null se nunca foi aberta), sempre a versão mais nova. */
 export function useEmpresaGuardada(nome: string | null): Empresa | null {
   const repo = useRepo();

@@ -41,7 +41,9 @@ export function useJanela(ref: RefObject<HTMLElement | null>, fechar: (() => voi
     const entrar = window.setTimeout(() => {
       if (!el.isConnected || el.contains(document.activeElement)) return;
       // o primeiro campo de digitar; sem campo, o primeiro botão (o ×)
-      const lista = focaveis(el);
+      // o que está dentro de [data-sem-foco-inicial] não ganha o foco sozinho (27/10/2026: a busca da empresa no menu ☰ "só
+      // fica vermelho se eu clicar")
+      const lista = focaveis(el).filter(f => !f.closest('[data-sem-foco-inicial]'));
       const primeiro = lista.find(f => f.matches('input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),select,textarea')) || lista[0];
       if (primeiro) primeiro.focus({ preventScroll: true });
       else { if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '-1'); el.focus({ preventScroll: true }); }
