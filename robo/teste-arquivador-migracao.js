@@ -98,7 +98,7 @@ const inut = '<procInutNFe><inutNFe><infInut Id="ID3126"><tpAmb>1</tpAmb><xServ>
 d = R.decidir({ nome: 'x-InutNFe.xml', rel: 'IMPORTAÇÃO\\x-InutNFe.xml', xml: inut }, ctx);
 igual('inutilização: XML\\NFC-e\\INUTILIZAÇÕES, o nome com a data e a faixa', [d.acao, d.cliente, d.destinoRelativo, d.nomeFinal], ['ARQUIVAR', 10, '10 - DORNAS HAVANA LTDA\\FISCAL\\SIMPLES NACIONAL\\12. XML\\NFC-e\\INUTILIZAÇÕES', '14-03-2026 - INUTILIZACAO NFC-e 2130803 A 2130805 SERIE 1.xml']);
 d = decidirMig('0010 - DORNAS HAVANA LTDA - ME\\DEPARTAMENTO FISCAL\\DESTDA\\2024\\04-2024.pdf', 'recibo de entrega\nCNPJ 03.149.551/0001-00');
-igual('o conteúdo diz outro cliente que a pasta: NÃO IDENTIFICADOS', [d.acao, d.motivo], ['NAO_IDENTIFICADO', 'PISTA_DA_PASTA_DIVERGE']);
+igual('o conteúdo traz o CNPJ de outra empresa cliente: ele vence a pasta de origem (Vitor, 26/10/2026)', [d.acao, d.cliente], ['ARQUIVAR', 66]);
 d = decidirMig('0066 - ADERLEI DOS SANTOS & CIA LTDA - EPP\\DEPARTAMENTO FISCAL\\DESTDA\\2026\\02-2026.pdf', 'recibo de entrega sem titulo conhecido');
 igual('DESTDA num cliente do Presumido: a árvore do regime não tem a pasta', [d.acao, d.motivo], ['NAO_IDENTIFICADO', 'TIPO_INCOMPATIVEL_COM_REGIME']);
 // 23/10/2026 (Vitor): o documento ANTIGO de quando a empresa era de outro regime: a pasta do regime da época pelo tipo
