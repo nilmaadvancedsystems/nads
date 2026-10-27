@@ -63,7 +63,7 @@ export function useEmpresaNaLateral(aberta: { codigo: number | null; nome: strin
     escolherDestacado: () => { if (achadas[ativo]) escolher(achadas[ativo]); },
     /** clicar na empresa do campo: mostra ou esconde os setores dela */
     alternarSetores: () => setMostrarSetores(m => !m),
-    /** a lupa ao lado da empresa: volta para a busca */
+    /** o "Trocar empresa" da lista: volta para a busca */
     trocar: () => { setBuscando(true); setMostrarSetores(false); setBusca(''); },
     /** Esc na busca: desiste de trocar (volta a empresa de antes, se tinha) */
     desistir: () => { setBusca(''); setMostrarSetores(false); if (atual) setBuscando(false); },

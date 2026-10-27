@@ -1,6 +1,7 @@
 // View da escolha da empresa no alto do menu ☰, entre o N e o × (27/10/2026: "faça no estilo do nads"): as peças da
-// empresa das ferramentas do Fiscal. Com a empresa escolhida, o botão com borda com o código e o nome (fica o tempo todo;
-// o clique mostra o "Abrir no …" de cada setor da pessoa) e a lupa ao lado, que troca; sem ela, a busca curta e a lista
+// empresa das ferramentas do Fiscal. Com a empresa escolhida, ela fica no jeito dos itens do menu (sem borda; 27/10/2026:
+// "ainda considero como destoante da UI geral"), o tempo todo; o clique mostra o "Abrir no …" de cada setor da pessoa e
+// o "Trocar empresa". Sem ela, a busca curta e a lista
 // embaixo (↑ ↓ e Enter escolhem; Esc desiste). O campo não ganha o foco sozinho ao abrir o menu (só fica vermelho com o
 // clique). O DP não vê a escolha.
 import { Icone } from '@nads/ui';
@@ -13,14 +14,11 @@ export function EmpresaNaLateral({ aberta, aoAbrir }: { aberta: { codigo: number
   return (
     <div className="empresa-no-menu" data-sem-foco-inicial>
       {!vm.buscando && vm.atual ? (
-        <span className="empresa-no-menu-atual">
-          <button type="button" className="btn btn-outline empresa-da-barra" title={'Abrir ' + vm.atual.nome} aria-expanded={vm.mostrarSetores} onClick={vm.alternarSetores}>
-            <Icone nome="briefcase" width={16} height={16} />
-            <span className="empresa-da-barra-nome">{vm.atual.codigo != null && <><b>{vm.atual.codigo}</b> · </>}{vm.atual.nome}</span>
-            <Icone nome="caretDown" width={12} height={12} />
-          </button>
-          <button type="button" className="icon-btn" title="Trocar a empresa" aria-label="Trocar a empresa" onClick={vm.trocar}><Icone nome="search" width={16} height={16} /></button>
-        </span>
+        <button type="button" className="drawer-item empresa-no-menu-atual" title={'Abrir ' + vm.atual.nome} aria-expanded={vm.mostrarSetores} onClick={vm.alternarSetores}>
+          <Icone nome="briefcase" width={16} height={16} />
+          <span className="empresa-no-menu-nome">{vm.atual.codigo != null && <b>{vm.atual.codigo} · </b>}{vm.atual.nome}</span>
+          <Icone nome="caretDown" width={12} height={12} />
+        </button>
       ) : (
         <label className="busca-curta">
           <Icone nome="search" width={16} height={16} />
@@ -59,6 +57,10 @@ export function EmpresaNaLateral({ aberta, aoAbrir }: { aberta: { codigo: number
               <span className="popover-texto">Abrir no {s.rotulo}</span>
             </button>
           ))}
+          <hr className="popover-sep" />
+          <button type="button" className="popover-item" role="menuitem" onClick={vm.trocar}>
+            <Icone nome="search" width={16} height={16} /><span className="popover-texto">Trocar empresa</span>
+          </button>
         </div>
       )}
     </div>
