@@ -260,6 +260,9 @@ igual('PGDAS-D declaração: 01. DAS\\MM-AAAA - PGDAS-D DECLARACAO.pdf, raiz do 
 // o layout de 2021: o título quebrado em duas linhas e o período "01/06/2021 a 30/06/2021" (Torra Torra; 27/10/2026)
 d = d27({ nome: 'PGDASD-DECLARACAO-06934601202106001.pdf', texto: ['Programa Gerador do Documento de Arrecadação\ndo Simples Nacional - Declaratório\nDeclaração Original\nPeríodo de Apuração:01/06/2021 a 30/06/2021\n.\n1. Identificação do Contribuinte\nCNPJ Matriz:06.934.601/0001-58\nNome empresarial:JANIO JOSE DE ALMEIDA\nNº da Declaração:06934601202106001'] });
 igual('PGDAS-D de 2021: o título em duas linhas', destino(d).concat(d.anoRaiz), ['ARQUIVAR', null, '152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\01. DAS', '06-2021 - PGDAS-D DECLARACAO.pdf', 2021]);
+// o recibo de 2021: o PA na tabela, grudado no número da apuração ("06/2021" + "06934601202106001")
+d = d27({ nome: 'PGDASD-RECIBO-06934601202106001.pdf', texto: ['RECIBO DE ENTREGA DA APURAÇÃO NO PGDAS-D\nDeclaração Original\n1. Informações do Contribuinte\nNome EmpresarialCNPJ da Matriz\nJANIO JOSE DE ALMEIDA06.934.601/0001-58\n2. Resumo da Apuração\nPeríodo de\nApuração\n06/202106934601202106001R$ 55.271,36R$ 3.857,48'] });
+igual('PGDAS-D recibo de 2021: o PA da tabela', destino(d), ['ARQUIVAR', null, '152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\01. DAS', '06-2021 - PGDAS-D RECIBO.pdf']);
 const PGDAS_REC = 'Recibo de Entrega da Apuração\nPGDAS-D\nCNPJ Básico: 06.934.601\nNome Empresarial: JANIO JOSE DE ALMEIDA\nPeríodo de Apuração: 03/2023\nNúmero da Declaração: 06934601202303001\nData/hora da transmissão: 20/04/2023 10:11:12';
 d = d27({ nome: 'PGDASD-RECIBO-06934601202303001.pdf', texto: [PGDAS_REC] });
 igual('PGDAS-D recibo só com o CNPJ básico (um cliente só bate): 03-2023 - PGDAS-D RECIBO.pdf', destino(d), ['ARQUIVAR', null, '152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\01. DAS', '03-2023 - PGDAS-D RECIBO.pdf']);

@@ -750,7 +750,9 @@ const REGRAS_PDF = [
   // até" e o PGDAS-D não: com ele, é DAS; a DEFIS (que pode citar o PGDAS-D) também fica de fora
   { tipo: 'PGDAS-D', setor: 'FISCAL', re: /^(?![\s\S]*PAGAR (ESTE DOCUMENTO )?ATE)(?![\s\S]{0,600}(\bDEFIS\b|SOCIOECONOMICAS))[\s\S]{0,1500}?(PROGRAMA\s+GERADOR\s+DO\s+DOCUMENTO\s+DE\s+ARRECADACAO\s+DO\s+SIMPLES\s+NACIONAL|\bPGDAS-?D\b|RECIBO DE ENTREGA DA APURACAO|EXTRATO DO SIMPLES NACIONAL)/, fonte: 'PGDAS-D (Vitor, 27/10/2026); 05a (01. DAS)',
     campos: u => {
-      const pa = /PERIODO DE APURACAO\s*(?:\(PA\))?\s*:?\s*(?:\d{2}\/)?(0[1-9]|1[0-2])\/(20\d{2})/.exec(u) || /\bPA\)?\s*:\s*(0[1-9]|1[0-2])\/(20\d{2})/.exec(u);
+      // o recibo de 2021 traz o PA numa tabela, grudado no número da apuração: "06/2021" + CNPJ básico + "2021" "06" + seq
+      const pa = /PERIODO DE APURACAO\s*(?:\(PA\))?\s*:?\s*(?:\d{2}\/)?(0[1-9]|1[0-2])\/(20\d{2})/.exec(u) || /\bPA\)?\s*:\s*(0[1-9]|1[0-2])\/(20\d{2})/.exec(u)
+        || /(0[1-9]|1[0-2])\/(20\d{2})\d{8}\2\1\d{3}/.exec(u);
       // o documento pelo conteúdo: o recibo e o extrato têm título próprio; sem nenhum dos dois, é a declaração
       const docs = [/RECIBO DE ENTREGA DA APURACAO/.test(u) && 'RECIBO', /EXTRATO DO SIMPLES NACIONAL/.test(u) && 'EXTRATO'].filter(Boolean);
       return { competencia: pa ? { mes: +pa[1], ano: +pa[2] } : null, docs: docs.length ? docs : ['DECLARACAO'] };
@@ -1440,6 +1442,14 @@ function decidirPdf(entrada, ctx, ev, porHash) {
     case 'PGDAS-D': {
       // 27/10/2026 (Vitor): FISCAL\SIMPLES NACIONAL\01. DAS\MM-AAAA - PGDAS-D DECLARACAO|RECIBO|EXTRATO.pdf, a competência é o
       // período de apuração (não é declaração anual); o regime é o do cadastro (fora do Simples: o que a árvore faz com o DAS)
+      // sem o PA no conteúdo: o do nome do arquivo (o número da declaração "03238183202106001" = CNPJ básico + AAAA + MM +
+      // seq; ou "REF. 10.2024", "02-2023")
+      if (!campos.competencia) {
+        const n = String(nomeOrig || '');
+        const m = /(?<!\d)\d{8}(20\d{2})(0[1-9]|1[0-2])\d{3}(?!\d)/.exec(n), r = /(?:REF\.?\s*|\b)(0[1-9]|1[0-2])[.\-\/](20\d{2})\b/i.exec(n);
+        if (m) campos.competencia = { mes: +m[2], ano: +m[1] }; else if (r) campos.competencia = { mes: +r[1], ano: +r[2] };
+        if (campos.competencia) ev.push('período de apuração pelo nome do arquivo');
+      }
       if (!campos.competencia) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5, evidencias: ev.concat('período de apuração do PGDAS-D não lido') });
       let doc = campos.docs.length === 1 ? campos.docs[0] : null;
       if (!doc) { const n = norm(nomeOrig); const pn = campos.docs.filter(x => n.includes(x)); if (pn.length === 1) { doc = pn[0]; ev.push('o nome do arquivo desempata: ' + doc); } }
