@@ -38,10 +38,16 @@ export interface RepoConferenciaFirestore extends c.RepoConferencia {
   definirAviso(fn: Aviso): void;
 }
 
-/** Até quanto vai num lote (o Firestore aceita até 10 MiB por lote). */
-const LIMITE_DO_LOTE = 8_000_000;
+/**
+ * Até quanto vai numa gravação. Medido com a planilha real da 237 (23.884 saídas, 3,6 MB): num lote só, o Firestore
+ * não respondia nem dava erro — a gravação ficava presa e as seguintes da aba (de qualquer empresa) ficavam atrás.
+ * Cada parte (até ~700 KB) vai sozinha; o principal por último.
+ */
+const LIMITE_DO_LOTE = 950_000;
 /** Novas tentativas quando o banco recusa (ms). */
 const TENTATIVAS = [5_000, 20_000, 60_000];
+/** Gravação sem resposta do banco por este tempo: avisa (o Firestore pode ficar sem responder em vez de dar erro). */
+const DEMORA = 45_000;
 
 type Bruta = Partial<c.Empresa> & { nome: string };
 
@@ -184,8 +190,13 @@ export function criarRepoConferenciaFirestore(): RepoConferenciaFirestore {
     const esta = (filas.get(nome) || Promise.resolve()).then(async () => {
       // já há uma versão mais nova desta empresa na tela? é ela que vai (vem logo atrás na fila)
       if (dados[nome] && dados[nome] !== e) return;
-      await gravarAgora(e);
-      if (naoSalvas.delete(nome)) avisar('"' + nome + '" foi salva na nuvem.', 'ok');
+      let demorou = false;
+      const vigia = setTimeout(() => {
+        demorou = true;
+        avisar('A gravação de "' + nome + '" está demorando (o banco ainda não confirmou). Não feche a aba; se passar de alguns minutos, recarregue a página e confira.');
+      }, DEMORA);
+      try { await gravarAgora(e); } finally { clearTimeout(vigia); }
+      if (naoSalvas.delete(nome) || demorou) avisar('"' + nome + '" foi salva na nuvem.', 'ok');
     }).catch(err => {
       naoSalvas.add(nome);
       const proxima = TENTATIVAS[tentativa];
