@@ -556,6 +556,8 @@ const T_COMPRA = "RELATÓRIO DE NOTAS DE COMPRA - (CONCLUIDAS)\nEmpresa: SUPERME
 igual('"RELATÓRIO DE NOTAS DE COMPRA" sem período impresso: recebidas, o mês de 90% das datas soltas (as de chegada; a de emissão vem colada)', d17('RelatorioEntradas.pdf', { texto: [T_COMPRA] }, '').nomeFinal, '05-2026 - RELATORIO NOTAS RECEBIDAS - SUPERMERCADO CENTRAL DE BARREIROS.pdf');
 igual('... com as datas todas do mesmo mês: RELATÓRIO MENSAL das recebidas', so17(d17('RelatorioEntradas.pdf', { texto: [T_COMPRA.replace(/\/04\/2026/g, '/05/2026')] }, '')), ['ARQUIVAR', null, '360 - SUPERMERCADO CENTRAL DE BARREIROS LTDA\\FISCAL\\SIMPLES NACIONAL\\03. DOCUMENTOS FISCAIS\\RECEBIDOS\\RELATÓRIO MENSAL\\2026', '05-2026 - RELATORIO NOTAS RECEBIDAS - SUPERMERCADO CENTRAL DE BARREIROS.pdf']);
 
+igual('a provisão anual de impostos ("524 Prov. imposto 2025.pdf"): REGISTRO DE LIVROS\\(001) ANO, nome original (04)', so17(d17('446Prov.Imposto2025.pdf', { texto: ['SPIROU CONSULTORIA E INVESTIMENTOS LTDA\nCNPJ 41.228.638/0001-61\nPROVISAO IRPJ CSLL PIS COFINS 2025\nJANEIRO 1.000,00'] }, 'FERNANDO\\446 SPIROU CONSULTORIA\\')), ['ARQUIVAR', null, '446 - SPIROU CONSULTORIA E INVESTIMENTOS LTDA\\CONTÁBIL\\REGISTRO DE LIVROS\\(001) 2025', '446Prov.Imposto2025.pdf']);
+
 // ---------- 11. PRODUCAO de verdade, numa pasta temporária (nunca no Drive) ----------
 (async () => {
   const sb = fs.mkdtempSync(path.join(os.tmpdir(), 'teste-arqnovo-prod-'));
