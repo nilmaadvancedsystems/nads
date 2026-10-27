@@ -43,6 +43,13 @@ export function EmpresaTarefas({ rota, parte }: { rota: string; parte: 'tarefas'
               <p className="stat-texto" title={vm.ultimo?.quandoCompleto}>{vm.ultimo ? vm.ultimo.quando : '—'}</p>
               {vm.ultimo && <p className="hint">por {vm.ultimo.por}</p>}
             </div>
+            <div className="stat">
+              <p className="stat-label">Progresso</p>
+              <p className="stat-value">{vm.porcentagem}%</p>
+              <span className="tarefas-barra larga" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={vm.porcentagem} aria-label="Etapas feitas">
+                <span className={vm.paradas ? 'parada' : undefined} style={{ width: vm.porcentagem + '%' }} />
+              </span>
+            </div>
             <div className="stat"><p className="stat-label">Paradas</p><p className={'stat-value' + (vm.paradas ? ' cor-entrada' : '')}>{vm.paradas}</p></div>
           </div>
       ) : (

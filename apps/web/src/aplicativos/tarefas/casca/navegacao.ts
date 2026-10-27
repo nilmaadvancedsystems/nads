@@ -12,7 +12,7 @@ export const BASE = '/tarefas';
 /** O site do admin (Painel do robô, Uso do sistema, Sistema e agentes, Feedbacks; 22/10/2026); depois, admin.nilmacontabilidade.com. */
 export const URL_DO_ADMIN = 'https://admin-nilma.web.app';
 
-export type IdAplicacao = 'minhas-empresas' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'financeiro' | 'entregas' | 'area-cliente';
+export type IdAplicacao = 'inicio' | 'minhas-empresas' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'financeiro' | 'entregas' | 'area-cliente';
 
 export interface Pagina {
   id: string; rotulo: string; icone: NomeIcone; titulo: string; /** a logo da marca no lugar do ícone, na lateral */ marca?: 'fgts';
@@ -26,9 +26,12 @@ export interface Aplicacao {
 }
 
 export const APLICACOES: readonly Aplicacao[] = [
-  { id: 'minhas-empresas', nome: 'Minhas empresas', icone: 'briefcase', grupo: 'Rotinas', pronta: true, paginas: [
-    // o Início (27/10/2026): os avisos do escritório e a última empresa em que a pessoa mexeu, com o progresso dela
+  // o Início (27/10/2026): os avisos do escritório e a última empresa em que a pessoa mexeu, com o progresso dela. Uma tela
+  // à parte (27/10/2026: "pq o minhas empresas ta junto do inicio?"): /tarefas/inicio, pelo "Início" da gaveta ☰
+  { id: 'inicio', nome: 'Início', icone: 'home', grupo: 'Rotinas', pronta: true, paginas: [
     { id: 'inicio', rotulo: 'Início', icone: 'home', titulo: 'Início' },
+  ] },
+  { id: 'minhas-empresas', nome: 'Minhas empresas', icone: 'briefcase', grupo: 'Rotinas', pronta: true, paginas: [
     // o painel do progresso das empresas (27/10/2026: "a parte de minhas empresas vai virar um dashboard de progresso")
     { id: 'empresas', rotulo: 'Empresas', icone: 'list', titulo: 'Minhas empresas' },
     { id: 'insights', rotulo: 'Insights', icone: 'barChart', titulo: 'Insights', emDesenvolvimento: true },
@@ -190,7 +193,7 @@ export const caminhoDaPagina = (app: IdAplicacao, pagina: string) => BASE + '/' 
 /** Onde a Tarefas abre (a pessoa escolhe na Minha página, a janela do avatar › Aparência e telas; neste navegador). */
 export const CHAVE_INICIO = 'nads-tarefas-inicio';
 export const INICIOS: readonly { valor: string; rotulo: string; caminho: string }[] = [
-  { valor: 'inicio', rotulo: 'Início', caminho: BASE + '/minhas-empresas/inicio' },
+  { valor: 'inicio', rotulo: 'Início', caminho: BASE + '/inicio' },
   { valor: 'empresas', rotulo: 'Minhas empresas', caminho: BASE + '/minhas-empresas/empresas' },
   { valor: 'drive', rotulo: 'Drive', caminho: BASE + '/drive/pastas' },
   { valor: 'gmail', rotulo: 'Gmail', caminho: BASE + '/contato/caixa' },
@@ -245,27 +248,25 @@ export const caminhoDaEmpresa = (rotaEmpresa: string, competencia: string) => BA
 /** Uma página da empresa aberta: /tarefas/minhas-empresas/empresa/<código>/<página> (tarefas, visao, drive, as ferramentas do Fiscal). */
 export const caminhoDaPaginaDaEmpresa = (rotaEmpresa: string, pagina: string) => BASE + '/minhas-empresas/empresa/' + rotaEmpresa + '/' + pagina;
 
-/** Os setores em que dá para abrir uma empresa (27/10/2026: "variando de cada setor (tirando dp)"). */
+/** Os setores em que dá para abrir uma empresa (27/10/2026: "variando de cada setor (tirando dp)"); todos veem os dois. */
 export type SetorDaEmpresa = 'contabil' | 'fiscal';
 export const SETORES_DA_EMPRESA: readonly { valor: SetorDaEmpresa; rotulo: string }[] = [
   { valor: 'contabil', rotulo: 'Contábil' },
   { valor: 'fiscal', rotulo: 'Fiscal' },
 ];
-/** Os setores que a pessoa abre: o dela (o admin, os dois). O DP fica de fora. */
-export function setoresDe(op: Operador): SetorDaEmpresa[] {
-  return SETORES_DA_EMPRESA.map(s => s.valor).filter(s => op.admin || op.departamento === s);
-}
-
 /**
  * As páginas da empresa aberta, na barra lateral (27/10/2026: "vai abrir a parte de tarefas, visão geral, dentre outras
  * informações na barra lateral como a pagina do drive dela"): as Tarefas do mês, a Visão geral, a pasta no Drive e, no
  * Fiscal, as ferramentas que trabalham com uma empresa (já com ela escolhida).
  */
+// a empresa abre na Visão geral, o painel dela (27/10/2026: "abrir o contabil com a empresa selecionada e o dashboard dela
+// aparecer")
 export function paginasDaEmpresa(dep: string): Pagina[] {
   return [
-    { id: 'tarefas', rotulo: 'Tarefas', icone: 'checklist', titulo: 'Tarefas' },
     { id: 'visao', rotulo: 'Visão geral', icone: 'barChart', titulo: 'Visão geral' },
-    { id: 'drive', rotulo: 'Drive', icone: 'pasta', titulo: 'Drive' },
+    { id: 'tarefas', rotulo: 'Tarefas', icone: 'checklist', titulo: 'Tarefas' },
+    // sem título: o Drive encosta nas bordas, com o nome da pasta no alto (como na aplicação Drive)
+    { id: 'drive', rotulo: 'Drive', icone: 'pasta', titulo: '' },
     ...(dep === 'fiscal' ? [
       { id: 'rateio-frete', rotulo: 'Rateio de frete', icone: 'caminhao', titulo: 'Rateio de frete' },
       { id: 'simples', rotulo: 'Simples Nacional', icone: 'recibo', titulo: 'Calculadora do Simples Nacional' },

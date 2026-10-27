@@ -1,6 +1,7 @@
-// View do topo da barra lateral de Minhas empresas (27/10/2026): o botão "Escolher empresa ▾" (com a empresa aberta, o
-// código e o nome dela), que abre a busca, o setor e o Abrir; e os Avisos do escritório, que levam ao Início. Só as peças
-// do catálogo (menu suspenso, busca curta, lista de achados, segmentado, botões).
+// View do topo da barra lateral (27/10/2026): o seletor da empresa, no jeito do seletor de equipe do Vercel/Notion (o
+// ícone, em cima o código e o setor, embaixo o nome em até duas linhas, e o ▾), que abre a busca, o setor e o Abrir. Os
+// avisos ficam só no Início ("pra que eu quero aviso aqui?"). Só as peças do catálogo (menu suspenso, busca curta, lista
+// de achados, segmentado, botões).
 import { Icone, MenuSuspenso, Segmentado } from '@nads/ui';
 import { useEmpresaNaLateral } from './useEmpresaNaLateral';
 
@@ -10,21 +11,13 @@ function PainelDeEscolher({ vm, fechar }: { vm: Vm; fechar: () => void }) {
   const aberta = vm.achadas.length > 0;
   return (
     <div className="escolher-empresa-painel">
+      <p className="hint">1. A empresa</p>
       {vm.escolhida ? (
-        <>
-          <div className="escolher-empresa-escolhida">
-            <Icone nome="briefcase" width={16} height={16} />
-            <span title={vm.escolhida.nome}>{vm.escolhida.codigo != null && <b>{vm.escolhida.codigo} · </b>}{vm.escolhida.nome}</span>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={vm.trocar}>Trocar</button>
-          </div>
-          {vm.setores.length > 0 && <Segmentado valor={vm.setor} onMudar={vm.setSetor} opcoes={vm.setores} />}
-          <div className="escolher-empresa-pe">
-            <button type="button" className="btn btn-outline" onClick={fechar}>Cancelar</button>
-            <button type="button" className="btn btn-primary" onClick={() => vm.abrir(fechar)} autoFocus>
-              <Icone nome="play" width={16} height={16} />Abrir
-            </button>
-          </div>
-        </>
+        <div className="escolher-empresa-escolhida">
+          <Icone nome="briefcase" width={16} height={16} />
+          <span title={vm.escolhida.nome}>{vm.escolhida.codigo != null && <b>{vm.escolhida.codigo} · </b>}{vm.escolhida.nome}</span>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={vm.trocar}>Trocar</button>
+        </div>
       ) : (
         <>
           <label className="busca-curta">
@@ -38,7 +31,7 @@ function PainelDeEscolher({ vm, fechar }: { vm: Vm; fechar: () => void }) {
                 else if (e.key === 'Enter') { e.preventDefault(); vm.escolherDestacado(); }
               }} />
           </label>
-          {aberta ? (
+          {aberta && (
             <ul className="nf-achados" id="empresa-na-lateral" role="listbox" aria-label="Empresas encontradas">
               {vm.achadas.map((e, i) => (
                 <li key={String(e.codigo) + e.nome}>
@@ -50,9 +43,19 @@ function PainelDeEscolher({ vm, fechar }: { vm: Vm; fechar: () => void }) {
                 </li>
               ))}
             </ul>
-          ) : <p className="hint">{vm.busca.trim() ? 'Nenhuma empresa com esse código ou nome.' : 'Digite o código do ERP ou parte do nome.'}</p>}
+          )}
+          {!aberta && vm.busca.trim() && <p className="hint">Nenhuma empresa com esse código ou nome.</p>}
         </>
       )}
+      <p className="hint">2. O setor</p>
+      <Segmentado valor={vm.setor} onMudar={vm.setSetor} opcoes={[...vm.setores]} />
+      <div className="escolher-empresa-pe">
+        <button type="button" className="btn btn-outline" onClick={fechar}>Cancelar</button>
+        <button type="button" className="btn btn-primary" disabled={!vm.escolhida} onClick={() => vm.abrir(fechar)} autoFocus={!!vm.escolhida}
+          title={vm.escolhida ? undefined : 'Escolha a empresa primeiro'}>
+          <Icone nome="play" width={16} height={16} />Abrir
+        </button>
+      </div>
     </div>
   );
 }
@@ -60,16 +63,18 @@ function PainelDeEscolher({ vm, fechar }: { vm: Vm; fechar: () => void }) {
 export function EmpresaNaLateral({ aberta }: { aberta: { codigo: number | null; nome: string } | null }) {
   const vm = useEmpresaNaLateral(aberta);
   return (
-    <>
-      {vm.podeEscolher && (
-        <MenuSuspenso icone="briefcase" rotulo={<span className="escolher-empresa-nome">{vm.rotulo}</span>} className="btn btn-outline escolher-empresa"
-          titulo="Abrir uma empresa" dica={vm.aberta ? 'Trocar a empresa' : 'Escolher a empresa e o setor'} largura={340}
-          conteudo={fechar => <PainelDeEscolher vm={vm} fechar={fechar} />} />
-      )}
-      <button type="button" className="subnav-item" onClick={vm.verAvisos} title="Os avisos do escritório">
-        <Icone nome="alert" width={16} height={16} /><span>Avisos</span>
-        {vm.avisos > 0 && <span className="subnav-contador">{vm.avisos}</span>}
-      </button>
-    </>
+    <MenuSuspenso semSeta className={'seletor-empresa' + (vm.aberta ? ' com-empresa' : '')} titulo="Abrir uma empresa"
+      dica={vm.aberta ? 'Trocar a empresa' : 'Escolher a empresa e o setor'} largura={340}
+      rotulo={
+        <>
+          <span className="seletor-empresa-icone" aria-hidden="true"><Icone nome={vm.aberta ? 'predio' : 'search'} width={16} height={16} /></span>
+          <span className="seletor-empresa-texto">
+            <span className="seletor-empresa-rotulo">{vm.detalhe}</span>
+            <span className="seletor-empresa-nome">{vm.rotulo}</span>
+          </span>
+          <Icone nome="caretDown" width={12} height={12} />
+        </>
+      }
+      conteudo={fechar => <PainelDeEscolher vm={vm} fechar={fechar} />} />
   );
 }

@@ -36,7 +36,8 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
     paginas: comAbas ? (a?.paginas || []).map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, ativa: p.id === pagina })) : [],
     /** a aba do alto (o Cadastro): a página, mantendo a competência */
     onPagina: (id: string) => navegar(caminhoDaPagina(app, id) + search),
-    aplicacoes: aplicacoesDe(op).map(x => ({ id: x.id, nome: x.nome, icone: x.icone, grupo: x.grupo, marca: x.marca, ativo: x.id === app })),
+    // o Início já tem o item dele no alto da gaveta
+    aplicacoes: aplicacoesDe(op).filter(x => x.id !== 'inicio').map(x => ({ id: x.id, nome: x.nome, icone: x.icone, grupo: x.grupo, marca: x.marca, ativo: x.id === app })),
     // páginas da mesma aplicação mantêm a competência escolhida (fica na URL)
     // a página em desenvolvimento não abre: só o aviso (21/10/2026)
     onSecao: (id: string) => {

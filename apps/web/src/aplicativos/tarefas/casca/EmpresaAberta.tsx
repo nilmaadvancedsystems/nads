@@ -1,6 +1,6 @@
 // Rota da empresa aberta: /tarefas/minhas-empresas/empresa/:empresa/:pagina (dentro de Minhas empresas; 27/10/2026). Na
 // barra lateral, as páginas dela no setor (Tarefas, Visão geral, Drive e, no Fiscal, as ferramentas); no cabeçalho, o
-// cartão com o código e o CNPJ. Sem a página, as Tarefas. O LCDPR da 62 (16/10/2026) virou a rotina do Contábil dela: o
+// cartão com o código e o CNPJ. Sem a página, a Visão geral. O LCDPR da 62 (16/10/2026) virou a rotina do Contábil dela: o
 // endereço antigo (…/empresa/:empresa/lcdpr/:pagina) volta para a empresa.
 import { Navigate, useLocation, useParams } from 'react-router';
 import { NaEspera, pedaco } from '../../../comum/pedaco';
@@ -17,17 +17,17 @@ const AntecipacaoIcms = pedaco(() => import('../telas/fiscal/antecipacao/Antecip
 
 function PaginaDaEmpresa({ rota, pagina }: { rota: string; pagina: string }) {
   switch (pagina) {
-    case 'visao': return <EmpresaTarefas rota={rota} parte="visao" />;
-    case 'drive': return <ExploradorDoDrive />;
+    case 'tarefas': return <EmpresaTarefas rota={rota} parte="tarefas" />;
+    case 'drive': return <ExploradorDoDrive naEmpresa />;
     case 'rateio-frete': return <RateioDeFrete />;
     case 'simples': return <CalculadoraDoSimples />;
     case 'antecipacao-es': return <AntecipacaoIcms />;
-    default: return <EmpresaTarefas rota={rota} parte="tarefas" />;
+    default: return <EmpresaTarefas rota={rota} parte="visao" />;
   }
 }
 
 export function EmpresaAberta() {
-  const { empresa: rota = '', pagina = 'tarefas', lcdpr } = useParams();
+  const { empresa: rota = '', pagina = 'visao', lcdpr } = useParams();
   const { search } = useLocation();
   const vm = useEmpresaAberta(rota, pagina);
   if (lcdpr != null) return <Navigate to={BASE + '/minhas-empresas/empresa/' + rota + search} replace />;

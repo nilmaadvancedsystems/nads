@@ -39,7 +39,9 @@ function guardarPreferencias(p: Preferencias) {
 
 const quando = (iso: string | null) => (iso ? new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '');
 
-export function useExploradorDoDrive() {
+/** naEmpresa: dentro da empresa aberta (27/10/2026: "o layout ta todo porco"), já na pasta dela: a árvore começa fechada
+ * (a barra lateral da empresa já está ao lado) e abrir ou fechar ali não muda a escolha do Drive. */
+export function useExploradorDoDrive({ naEmpresa = false }: { naEmpresa?: boolean } = {}) {
   const repo = useDriveDoEntregas();
   const { toast } = useRetorno();
   const navegar = useNavigate();
@@ -49,6 +51,8 @@ export function useExploradorDoDrive() {
   const [ancora, setAncora] = useState<string | null>(null);
   const [pedidos, setPedidos] = useState<PedidoNaTela[]>([]);
   const [pref, setPref] = useState<Preferencias>(lerPreferencias);
+  const [arvoreNaEmpresa, setArvoreNaEmpresa] = useState(false);
+  const comArvore = naEmpresa ? arvoreNaEmpresa : pref.arvore;
   // na árvore: o que a pessoa abriu e o que fechou (o caminho da pasta aberta já nasce aberto)
   const [abertos, setAbertos] = useState<Set<string>>(new Set());
   const [fechados, setFechados] = useState<Set<string>>(new Set());
@@ -77,7 +81,7 @@ export function useExploradorDoDrive() {
   // a árvore: o caminho da pasta aberta fica aberto (ela também, como no GitHub), a não ser que a pessoa feche
   const noCaminho = useMemo(() => new Set([cliente, ...caminho.map(x => x.i)].filter(Boolean)), [cliente, caminho]);
   const estaAberto = (id: string) => !fechados.has(id) && (abertos.has(id) || noCaminho.has(id));
-  const arvore = pref.arvore ? e.linhasDaArvore(e.buscarClientes(mapa.clientes, ''), estaAberto, c => repo.itens(c), true) : [];
+  const arvore = comArvore ? e.linhasDaArvore(e.buscarClientes(mapa.clientes, ''), estaAberto, c => repo.itens(c), true) : [];
 
   function mudarPref(p: Partial<Preferencias>) {
     setPref(atual => { const nova = { ...atual, ...p }; guardarPreferencias(nova); return nova; });
@@ -243,8 +247,8 @@ export function useExploradorDoDrive() {
     avancar: () => { void navegar(1); },
 
     // árvore
-    mostrarArvore: pref.arvore,
-    alternarArvore: () => mudarPref({ arvore: !pref.arvore }),
+    mostrarArvore: comArvore,
+    alternarArvore: () => (naEmpresa ? setArvoreNaEmpresa(a => !a) : mudarPref({ arvore: !pref.arvore })),
     /** o Explorador ocupando a tela inteira (sem o cabeçalho e as laterais do nads) */
     telaCheia: pref.telaCheia,
     alternarTelaCheia: () => mudarPref({ telaCheia: !pref.telaCheia }),

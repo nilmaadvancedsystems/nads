@@ -9,7 +9,7 @@ import { PainelDeEntregas } from '../telas/entregas/PainelDeEntregas';
 import { Solicitacoes } from '../telas/entregas/Solicitacoes';
 import { RotaDeEntregas } from '../telas/entregas/RotaDeEntregas';
 import { CascaTarefas } from './CascaTarefas';
-import { aplicacao, aplicacoesDe, caminhoDaPagina, type IdAplicacao } from './navegacao';
+import { aplicacao, aplicacoesDe, BASE, caminhoDaPagina, type IdAplicacao } from './navegacao';
 import { useOperador, type Operador } from './operador';
 
 // cada tela é um pedaço à parte (revisão da UI, 18/10/2026: o pacote inicial tinha 4 MB): baixa quando a pessoa abre a
@@ -52,7 +52,8 @@ const ImportarExtrato = pedaco(() => import('../telas/financeiro/ImportarExtrato
 
 function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
   switch (app) {
-    case 'minhas-empresas': return pagina === 'inicio' ? <Inicio /> : pagina === 'insights' ? <Insights /> : <MinhasEmpresas />;
+    case 'inicio': return <Inicio />;
+    case 'minhas-empresas': return pagina === 'insights' ? <Insights /> : <MinhasEmpresas />;
     case 'contabil': return pagina === 'configuracoes' ? <ConfiguracoesContabil /> : <VisaoContabil pagina={pagina} />;
     // as Empresas, o Painel, a Visão geral e as Paradas do Fiscal saíram (27/10/2026): ficam as ferramentas
     case 'fiscal': return pagina === 'sintegra' ? <PaginaSintegra /> : pagina === 'faturamento' ? <FaturamentoDosClientes /> : pagina === 'simples' ? <CalculadoraDoSimples /> : pagina === 'rateio-frete' ? <RateioDeFrete /> : pagina === 'antecipacao-es' ? <AntecipacaoIcms /> : <Reinf />;
@@ -71,9 +72,12 @@ function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
 }
 
 export function AplicacaoAberta() {
-  const { app = '', pagina = '' } = useParams();
+  const { app = '', pagina: naUrl = '' } = useParams();
+  // o Início é /tarefas/inicio (sem página no endereço); o endereço de antes (minhas-empresas/inicio) leva para lá
+  const pagina = app === 'inicio' && !naUrl ? 'inicio' : naUrl;
   const op = useOperador().operador as Operador;
   // o Mandei entrou na Área do Cliente (19/10/2026): os links antigos levam para lá, na mesma página
+  if (app === 'minhas-empresas' && pagina === 'inicio') return <Navigate to={BASE + '/inicio'} replace />;
   if (app === 'mandei') return <Navigate to={caminhoDaPagina('area-cliente', pagina === 'central' ? 'central' : 'meus')} replace />;
   const a = aplicacoesDe(op).find(x => x.id === app);
   if (!a) return <Navigate to={caminhoDaPagina('minhas-empresas', 'empresas')} replace />;

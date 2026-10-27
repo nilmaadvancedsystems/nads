@@ -57,8 +57,8 @@ export function useEmpresaAberta(rota: string, pagina: string) {
   return {
     empresa,
     valida,
-    /** a primeira página (as Tarefas), mantendo o endereço, quando a pedida não existe no setor */
-    paginaInicial: caminhoDaPaginaDaEmpresa(rota, 'tarefas') + seguir(),
+    /** a primeira página (a Visão geral), mantendo o endereço, quando a pedida não existe no setor */
+    paginaInicial: caminhoDaPaginaDaEmpresa(rota, 'visao') + seguir(),
     casca: empresa ? {
       codigo: empresa.codigo, nome: empresa.nome, rota,
       paginas, pagina,
