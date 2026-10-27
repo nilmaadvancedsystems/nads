@@ -27,17 +27,4 @@ export function useAvisoDosMeusFeedbacks() {
   // os ids em resolvendo dizem tudo
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [marca]);
-
-  // o andamento do Resolver (26/10/2026): cada passo novo que o Claude do PC do Vitor escreve aparece uma vez no topo
-  const comAndamento = repo.meus().filter(f => f.andamento.length);
-  const passos = comAndamento.map(f => f.id + ':' + f.andamento.length).join(',');
-  useEffect(() => {
-    const ja = avisados();
-    const novos = comAndamento.filter(f => !ja.includes(f.id + ':' + f.andamento.length));
-    if (!novos.length) return;
-    for (const f of novos) aviso({ tom: f.estado === 'pronto' ? 'ok' : 'info', titulo: 'Andamento do seu pedido', texto: f.andamento[f.andamento.length - 1].texto });
-    try { localStorage.setItem(CHAVE, JSON.stringify([...ja, ...novos.map(f => f.id + ':' + f.andamento.length)].slice(-300))); } catch { /* avisa de novo na próxima */ }
-  // a contagem de passos de cada um diz tudo
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [passos]);
 }
