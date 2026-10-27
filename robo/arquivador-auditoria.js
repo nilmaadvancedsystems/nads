@@ -230,7 +230,7 @@ const anoDaParte = p => (/^((?:19|20)\d{2})$/.exec(p) || [])[1];
  */
 // empresas do mesmo dono (Vitor, 23/10/2026): o cruzamento entre elas não é ERRADO-CLIENTE; vale o conteúdo
 const MESMO_DONO = [[55, 174]];
-const ANUAIS = /^(DEFIS|DIRF|ECF|BALANCETE|INFORME DE RENDIMENTOS)$/;   // ficam no ano da ENTREGA (Vitor, 23/10/2026)
+const ANUAIS = /^(DEFIS|DIRF|ECF|BALANCETE)$/;   // ficam no ano da ENTREGA (Vitor, 23/10/2026); o INFORME DE RENDIMENTOS fica no ano-base (Vitor, 26/10/2026), como nas regras
 const COM_EXTENSAO = /\.(pdf|xml|ofx|txt|xlsx|xls|csv|zip|rar|7z|jpe?g|png|docx?|pfx|p12)$/i;
 function analisarLocal(sub, nome, cli) {
   // a rotina antiga deixou PASTAS com nome de arquivo ("…\NFC-e\09-2026_NFC-e_31411.xml\09-2026_NFC-e_31411.xml",
@@ -577,10 +577,12 @@ async function conferirConteudo(item, buf, ctx, cad, raiz) {
     const nomeSug = c.nomeFinal || d1.nomeFinal;
     const sug = destinoDe(d1, X);
     info.decisao += ' → ' + (ano !== ctx.anoRaiz ? ano + '\\' : '') + c.destinoRelativo;
-    // as declarações anuais ficam no ano da ENTREGA (Vitor, 23/10/2026): as regras dão o ano-calendário; a entrega é o seguinte
+    // as declarações anuais ficam no ano da ENTREGA (Vitor, 23/10/2026): o anoRaiz das regras JÁ é o da entrega (o do recibo,
+    // ou o seguinte ao ano-calendário; arquivador-regras, "ano da entrega"). 26/10/2026: somar +1 aqui de novo mandava
+    // "2025 - DEFIS.pdf" (exercício 2026, ano-calendário 2025), certo em 2026, para 2027 (305 achados falsos)
     const anual = ANUAIS.test(d1.tipo || '');
-    const anoCerto = anual && d1.anoRaiz ? ano + 1 : ano;
-    if (anoCerto !== ctx.anoRaiz) ach('ERRADO-ANO', (anual ? 'declaração/livro anual do ano-calendário ' + ano + ' (entregue em ' + anoCerto + ')' : 'a competência é de ' + ano) + ' (raiz ' + ctx.anoRaiz + ')', anual ? String(sug).replace('\\' + ano + '\\', '\\' + anoCerto + '\\') : sug, anual ? 0.7 : Math.min(d1.confianca, 0.95), 'conteúdo: ' + (d1.evidencias || []).filter(x => /raiz do ano|compet/i.test(x)).slice(0, 2).join('; '));
+    const anoCerto = ano;
+    if (anoCerto !== ctx.anoRaiz) ach('ERRADO-ANO', (anual ? 'declaração/livro anual entregue em ' + anoCerto : 'a competência é de ' + ano) + ' (raiz ' + ctx.anoRaiz + ')', anual ? String(sug).replace('\\' + ano + '\\', '\\' + anoCerto + '\\') : sug, anual ? 0.7 : Math.min(d1.confianca, 0.95), 'conteúdo: ' + (d1.evidencias || []).filter(x => /raiz do ano|compet/i.test(x)).slice(0, 2).join('; '));
     else if (N(subAtual[0] || '') === 'DEPARTAMENTO PESSOAL' && N(subAtual[2] || '') === 'FGTS' && d1.tipo === 'FGTS') {
       // o FGTS fica em DEPARTAMENTO PESSOAL\MM\FGTS, com o nome do robô (Vitor, 23/10/2026): o cliente confere, nada a corrigir
       return { achados, info, sha: sha(buf) };
@@ -656,7 +658,8 @@ async function auditar(opcoes) {
     for (const x of loc.achados) novo(x.g, a.p, reg.codigo, x.problema, sugAbs(x.sugestao, x.nomeNovo), x.conf, x.ev, 'nome/pasta', x.pastaArquivo ? { pastaFora: partes[0] + '\\' + x.pastaArquivo } : null);
     // o ano: a raiz é a do ano da competência (Vitor, 23/10/2026)
     // as declarações anuais ficam no ano da ENTREGA (Vitor, 23/10/2026): o ano-calendário + 1 (não se lê o recibo aqui)
-    const anual = ANUAIS.test(loc.tipo);
+    // o balancete do mês ("Balancete 292 2026-01.xlsx") não é o anual: fica no ano da competência (26/10/2026: ia para 2027)
+    const anual = ANUAIS.test(loc.tipo) && !(loc.comp && loc.comp.mes);
     const anoCerto = loc.comp && loc.comp.ano ? (anual ? loc.comp.ano + 1 : loc.comp.ano) : null;
     if (anoCerto && anoCerto !== anoRaiz) {
       novo('ERRADO-ANO', a.p, reg.codigo, (anual ? 'declaração/livro anual do ano-calendário ' + loc.comp.ano + ' (entregue em ' + anoCerto + ')' : 'competência ' + (loc.comp.mes ? dois(loc.comp.mes) + '-' : '') + loc.comp.ano) + ' na raiz ' + anoRaiz, W.join(W.dirname(raiz), String(anoCerto), a.p), anual ? (loc.tipo === 'BALANCETE' ? 0.7 : 0.85) : loc.compDe === 'nome' ? 0.9 : 0.85, anual ? 'ano da entrega = ano-calendário + 1 (Vitor, 23/10/2026: "no ano da entrega")' : 'pelo ' + (loc.compDe || '?') + '; regra da raiz pelo ano da competência (arquivador-regras, 23/10/2026)');
