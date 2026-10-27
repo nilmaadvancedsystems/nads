@@ -65,7 +65,7 @@ export function CascaTarefas({ app, pagina, telaInteira, larga, empresa, childre
       onEmpresa={vm.trocarPessoa} aplicativos={vm.aplicacoes} onAplicativo={vm.onAplicacao}
       // escolher a empresa e o setor, no alto do menu ☰, entre o N e o × (27/10/2026: "era para ficar aqui a escolha de
       // empresa"); abrir fecha o menu
-      topoDaGaveta={fechar => <EmpresaNaLateral aberta={empresa || null} aoAbrir={fechar} />}
+      topoDaGaveta={fechar => <EmpresaNaLateral aoAbrir={fechar} />}
       cartaoNoTopo={empresa ? <CartaoDaEmpresa empresa={empresa} /> : undefined}
       topoDireita={<AvatarDaPessoa vm={vm} abrirFeedback={() => setFeedback(true)} />}
       // os Feedbacks de volta na gaveta, junto do Admin (Vitor, 26/10/2026: "coloque a aba de feedbacks no meu usuário")
