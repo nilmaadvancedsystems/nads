@@ -26,6 +26,7 @@ export * from './regras/honorarios';
 export * from './regras/etiquetasDaFolha';
 export * from './regras/etiquetasDoEnvelope';
 export * from './regras/protocoloDeTributos';
+export * from './regras/controleDeTributos';
 export * from './regras/protocolosDoAno';
 export * from './regras/prazosDoDp';
 export * from './regras/despesasDoBalancete';
