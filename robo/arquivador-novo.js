@@ -217,6 +217,12 @@ function ocrDe(hash, buffer) {
   return require('./arquivador-ocr').ocrDoPdf(buffer);
 }
 
+/**
+ * O pacote de transmissão do Sintegra para a SEFAZ (o TED): tem extensão .zip, mas não é zip — o cabeçalho "02CL_PADRAO
+ * CONV57/95 …" e o conteúdo comprimido no formato da SEFAZ (27/10/2026: 225 parados, o contínuo achava que estavam chegando).
+ */
+const ehTedSintegra = b => !!b && b.length > 11 && b.slice(0, 11).toString('latin1') === '02CL_PADRAO';
+
 /** O que as regras precisam de cada formato. */
 async function montarEntrada(nome, rel, buffer, op) {
   const e = { nome, rel, hash: sha(buffer), tamanho: buffer.length };
@@ -242,6 +248,7 @@ async function montarEntrada(nome, rel, buffer, op) {
     case 'ofx': e.ofx = buffer.toString('latin1'); break;
     case 'txt': e.txt = buffer.slice(0, 64 * 1024).toString('latin1'); break;
     case 'xlsx': case 'xls': case 'csv': e.planilha = linhasDaPlanilha(buffer, nome); break;
+    case 'zip': if (ehTedSintegra(buffer)) e.tedSintegra = true; break;
     default: break;
   }
   return e;
@@ -447,7 +454,7 @@ async function executar(opcoes) {
   const juntas = Math.max(1, +opcoes.leiturasJuntas || 8);
   const leituras = new Map();
   const preparar = async (rel, b) => {
-    if (/\.(zip|rar|7z)$/i.test(rel)) return { b };
+    if (/\.(zip|rar|7z)$/i.test(rel) && !ehTedSintegra(b)) return { b };
     try { return { b, entrada: await montarEntrada(path.basename(rel), rel, b, { adiarOcr: !!opcoes.adiarOcr }) }; } catch (e) { return { b, erroEntrada: e }; }
   };
   const adiantar = i => { if (i < arquivos.length && !leituras.has(i)) leituras.set(i, fs.promises.readFile(path.join(opcoes.origem, arquivos[i])).then(b => preparar(arquivos[i], b), e => ({ e }))); };
@@ -464,7 +471,7 @@ async function executar(opcoes) {
     const buffer = lido.b;
     const t1 = Date.now();
     const pai = { rel, hash: sha(buffer), tamanho: buffer.length };
-    if (/\.(zip|rar|7z)$/i.test(rel)) {
+    if (/\.(zip|rar|7z)$/i.test(rel) && !ehTedSintegra(buffer)) {
       let lista;
       try { lista = membros(path.basename(rel), buffer, caminho); }
       catch (e) { itens.push(Object.assign(pai, { acao: 'NAO_IDENTIFICADO', motivo: /FERRAMENTA/.test(e.message) ? 'FERRAMENTA_EXTRACAO_AUSENTE' : 'ARQUIVO_COMPACTADO_CORROMPIDO', confianca: 0, evidencias: [e.message] })); continue; }
@@ -874,7 +881,7 @@ async function reprocessarNaoIdentificados(opcoes) {
 /** O trabalhador do Tesseract segura o processo vivo: fecha no fim de cada execução (se o OCR foi usado). */
 async function encerrarOcr() { const k = require.resolve('./arquivador-ocr'); if (require.cache[k]) await require('./arquivador-ocr').encerrar(); }
 
-module.exports = { reprocessarNaoIdentificados, arquivosDosNaoIdentificados, rotaDoReprocesso, atualizarCadastro, encerrarOcr, executar, aprenderContas, lerContas, varrer, abrirZip, membros, montarEntrada, textoDoPdf, carregarCadastro, indiceDoManifesto, caminhoArquivado, conferirDestino, conteudoXml, raizDoAno, relatorioTexto, planos, CONTROLE };
+module.exports = { ehTedSintegra, reprocessarNaoIdentificados, arquivosDosNaoIdentificados, rotaDoReprocesso, atualizarCadastro, encerrarOcr, executar, aprenderContas, lerContas, varrer, abrirZip, membros, montarEntrada, textoDoPdf, carregarCadastro, indiceDoManifesto, caminhoArquivado, conferirDestino, conteudoXml, raizDoAno, relatorioTexto, planos, CONTROLE };
 
 if (require.main === module) {
   const a = process.argv.slice(2);
