@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  barrasPorTipo, buscarClientesDoFormulario, caminhoDoArquivo, filtrarItens, lerCadastroDoFormulario, lerItemDoArquivador, lerPedidoDoArquivador, grupoDoTipo, lerPainelDoArquivador, lerParteDoDia, progressoDaPassada, resumoDoDia, situacaoDoArquivador,
+  barrasPorTipo, buscarClientesDoFormulario, csvDoHistorico, diasDoPeriodo, intervaloDoPeriodo, lerMesDoArquivador, mesesDoPeriodo, situacoesDoHistorico, totaisDoPeriodo, caminhoDoArquivo, filtrarItens, lerCadastroDoFormulario, lerItemDoArquivador, lerPedidoDoArquivador, grupoDoTipo, lerPainelDoArquivador, lerParteDoDia, progressoDaPassada, resumoDoDia, situacaoDoArquivador,
   type PainelDoArquivador,
 } from '.';
 
@@ -30,7 +30,7 @@ describe('o arquivador novo (Admin › Arquivador)', () => {
     expect(p.config?.tiposProducao).toEqual(['XML', '3']);
     expect(p.ritmo).toBe(12.5);
     expect(p.pasta?.lista.map(x => x.situacao)).toEqual(['lendo', 'fila']);
-    expect(p.hoje.porAcao).toEqual({ arquivou: 3, arquivaria: 0, jaArquivado: 0, naoIdentificado: 2, fica: 0, erro: 0 });
+    expect(p.hoje.porAcao).toEqual({ arquivou: 3, arquivaria: 0, jaArquivado: 0, naoIdentificado: 2, fica: 0, erro: 0, descartado: 0 });
     expect(p.hoje.porTipo).toEqual({ DAS: 2 });
     expect(p.hoje.clientes).toEqual([{ codigo: '58', nome: 'A', n: 3 }]);
     expect(p.ultimos[0].evidencias).toEqual(['CNPJ']);
@@ -58,20 +58,25 @@ describe('o arquivador novo (Admin › Arquivador)', () => {
   });
 
   it('o resumo do dia em linguagem simples (produção)', () => {
+    const pend = (m: string, n: number) => Array.from({ length: n }, (_, i) => ({ id: m + i, acao: 'naoIdentificado', motivo: m }));
     const p = painel({ hoje: contagem({
-      porAcao: { arquivou: 312, naoIdentificado: 8, fica: 1, jaArquivado: 4 }, totalDeClientes: 41,
-      porMotivo: { CLIENTE_NAO_LOCALIZADO: 5, CLIENTE_AMBIGUO: 3, CONTEUDO_SEM_TEXTO: 1 }, pastasNovas: ['592 - ALFA LTDA', '593 - BETA ME'],
-    }) });
-    expect(resumoDoDia(p)).toBe('Hoje arquivei 312 arquivos de 41 clientes. 9 ficaram para você resolver (5 sem CNPJ cadastrado, 3 com duas empresas possíveis e 1 escaneado sem leitura). '
+      porAcao: { arquivou: 312, naoIdentificado: 80, fica: 1, jaArquivado: 4 }, totalDeClientes: 41,
+      porMotivo: { CLIENTE_NAO_LOCALIZADO: 50 }, pastasNovas: ['592 - ALFA LTDA', '593 - BETA ME'],
+    }), pendentes: [...pend('CLIENTE_NAO_LOCALIZADO', 5), ...pend('CLIENTE_AMBIGUO', 3), ...pend('CONTEUDO_SEM_TEXTO', 1)], pendentesTotal: 9 });
+    // o que está para resolver AGORA (a pasta NÃO IDENTIFICADOS), não as decisões do dia
+    expect(resumoDoDia(p)).toBe('Hoje arquivei 312 arquivos de 41 clientes. 9 estão para você resolver agora (5 sem CNPJ cadastrado, 3 com duas empresas possíveis e 1 escaneado sem leitura). '
       + '4 já estavam arquivados (o mesmo conteúdo na pasta do cliente). Criei 2 pastas novas: 592 - ALFA LTDA e 593 - BETA ME.');
   });
 
   it('o resumo em simulação fala no condicional; dia vazio também tem frase', () => {
     const sim = painel({ config: { modo: 'simulacao' }, hoje: contagem({ porAcao: { arquivaria: 1 }, totalDeClientes: 1 }) });
-    expect(resumoDoDia(sim)).toBe('Hoje eu arquivaria (simulação) 1 arquivo de 1 cliente. Nada ficou para você resolver.');
-    expect(resumoDoDia(painel())).toBe('Hoje ainda não chegou nada para arquivar.');
-    const comResto = painel({ hoje: contagem({ porAcao: { arquivou: 1, naoIdentificado: 6 }, porMotivo: { A: 2, B: 1, C: 1, D: 1, E: 1 } }) });
-    expect(resumoDoDia(comResto)).toContain('6 ficaram para você resolver (2 a, 1 b, 1 c e 2 por outros motivos).');
+    expect(resumoDoDia(sim)).toBe('Hoje eu arquivaria (simulação) 1 arquivo de 1 cliente. Nada para resolver.');
+    expect(resumoDoDia(painel())).toBe('Hoje ainda não chegou nada para arquivar. Nada para resolver.');
+    const um = (m: string) => ({ id: m + Math.random(), acao: 'naoIdentificado', motivo: m });
+    const comResto = painel({ hoje: contagem({ porAcao: { arquivou: 1, naoIdentificado: 6 } }), pendentes: [um('A'), um('A'), um('B'), um('C'), um('D'), um('E')], pendentesTotal: 6 });
+    expect(resumoDoDia(comResto)).toContain('6 estão para você resolver agora (2 a, 1 b, 1 c e 2 por outros motivos).');
+    // o dia teve não identificados, mas a pasta está vazia: nada para resolver
+    expect(resumoDoDia(painel({ hoje: contagem({ porAcao: { arquivou: 5, naoIdentificado: 80 } }), pendentes: [], pendentesTotal: 0 }))).toBe('Hoje arquivei 5 arquivos. Nada para resolver.');
   });
 
   it('o progresso da passada: "1.240 de 17.158" e a previsão pelo ritmo', () => {
@@ -131,5 +136,52 @@ describe('o arquivador novo (Admin › Arquivador)', () => {
     const rel = String.raw`2026-10\a.pdf`, naPasta = String.raw`NÃO IDENTIFICADOS\X\2026-10\a.pdf`;
     expect(caminhoDoArquivo(lerItemDoArquivador({ rel, naPasta, hash: 'h' }))).toBe(naPasta);
     expect(caminhoDoArquivo(lerItemDoArquivador({ rel }))).toBe(rel);
+  });
+
+  it('o período do histórico: o intervalo, os dias e os meses', () => {
+    expect(intervaloDoPeriodo('hoje', '2026-10-23')).toMatchObject({ de: '2026-10-23', ate: '2026-10-23' });
+    expect(intervaloDoPeriodo('7d', '2026-11-03')).toMatchObject({ de: '2026-10-28', ate: '2026-11-03' });
+    // nunca antes do começo do arquivador novo
+    expect(intervaloDoPeriodo('30d', '2026-10-23')).toMatchObject({ de: '2026-10-21' });
+    expect(intervaloDoPeriodo('mes', '2026-11-15')).toMatchObject({ de: '2026-11-01', ate: '2026-11-15' });
+    expect(intervaloDoPeriodo('intervalo', '2026-11-15', { de: '2026-11-20', ate: '2026-11-02' })).toMatchObject({ de: '2026-11-02', ate: '2026-11-15' });
+    expect(intervaloDoPeriodo('tudo', '2026-11-15').de).toBe('2026-10-21');
+    const p = intervaloDoPeriodo('intervalo', '2026-12-31', { de: '2026-10-30', ate: '2026-11-02' });
+    expect(diasDoPeriodo(p)).toEqual(['2026-11-02', '2026-11-01', '2026-10-31', '2026-10-30']);
+    expect(mesesDoPeriodo(p)).toEqual(['2026-11', '2026-10']);
+  });
+
+  it('os totais do período pelos resumos dos meses (a contagem de cada dia)', () => {
+    const m = lerMesDoArquivador({ mes: '2026-10', dias: { '2026-10-22': { arquivou: 10, aMao: 2, jaArquivado: 4, naoIdentificado: 3, descartado: 1 }, '2026-10-23': { arquivou: 5, fica: 1 }, xx: { arquivou: 99 } }, porCliente: { 58: { nome: 'A', n: 15 } } });
+    expect(m?.clientes).toEqual([{ codigo: '58', nome: 'A', n: 15 }]);
+    expect(Object.keys(m!.dias)).toEqual(['2026-10-22', '2026-10-23']);
+    const t = totaisDoPeriodo(intervaloDoPeriodo('intervalo', '2026-10-31', { de: '2026-10-23', ate: '2026-10-31' }), [m]);
+    expect([t.arquivados, t.naoIdentificado, t.dias]).toEqual([5, 1, 1]);
+    const tudo = totaisDoPeriodo(intervaloDoPeriodo('tudo', '2026-10-31'), [m, null]);
+    expect([tudo.arquivados, tudo.aMao, tudo.jaArquivado, tudo.naoIdentificado, tudo.descartado]).toEqual([15, 2, 4, 4, 1]);
+    expect(lerMesDoArquivador(null)).toBeNull();
+  });
+
+  it('a situação no histórico: arquivado, à mão, duplicado, descartado e o não identificado pendente ou resolvido', () => {
+    const it_ = (o: Record<string, unknown>) => lerItemDoArquivador(o);
+    const itens = [
+      it_({ id: 'aaaa1111bbbb2222-1', hash: 'aaaa1111bbbb2222', acao: 'arquivou', em: '2026-10-23T10:00:00Z', destino: '58 - A\\FISCAL\\x.pdf', porQuem: 'Vitor' }),
+      it_({ id: 'aaaa1111bbbb2222-0', acao: 'naoIdentificado', em: '2026-10-22T19:00:00Z', rel: '2026-09\\X\\x.pdf', motivo: 'CLIENTE_AMBIGUO' }),
+      it_({ id: 'cccc-0', acao: 'naoIdentificado', em: '2026-10-22T19:00:00Z', rel: '2026-09\\X\\y.pdf' }),
+      it_({ id: 'dddd-0', acao: 'naoIdentificado', em: '2026-10-22T19:00:00Z', rel: '2026-09\\X\\z.pdf' }),
+      it_({ id: 'e-0', acao: 'jaArquivado', em: '2026-10-22T19:00:00Z' }), it_({ id: 'f-0', acao: 'descartado', em: '2026-10-22T19:00:00Z' }), it_({ id: 'g-0', acao: 'arquivou', em: '2026-10-22T19:00:00Z' }),
+    ];
+    const pend = [it_({ id: 'p1', acao: 'naoIdentificado', rel: '2026-09\\X\\y.pdf' })];
+    const s = situacoesDoHistorico(itens, pend, true);
+    const porId = (id: string) => itens.find(x => x.id === id)!;
+    expect(s.get(porId('aaaa1111bbbb2222-1'))?.rotulo).toBe('Arquivado à mão por Vitor');
+    expect(s.get(porId('aaaa1111bbbb2222-0'))).toMatchObject({ situacao: 'resolvido', resolvidoPara: '58 - A\\FISCAL\\x.pdf' });
+    expect(s.get(porId('aaaa1111bbbb2222-0'))?.rotulo).toMatch(/^Não identificado → resolvido em \d{2}\/10$/);
+    expect(s.get(porId('cccc-0'))).toMatchObject({ situacao: 'naoIdentificado', pendenteId: 'p1' });
+    expect(s.get(porId('dddd-0'))?.situacao).toBe('resolvido');   // não está mais na pasta (a lista de pendentes é a completa)
+    expect(situacoesDoHistorico(itens, pend, false).get(porId('dddd-0'))?.situacao).toBe('naoIdentificado');
+    expect([s.get(porId('e-0'))?.rotulo, s.get(porId('f-0'))?.rotulo, s.get(porId('g-0'))?.rotulo]).toEqual(['Duplicado — já estava na pasta', 'Descartado', 'Arquivado']);
+    const csv = csvDoHistorico(itens.slice(0, 1), s);
+    expect(csv.split('\r\n')[1]).toContain('Arquivado à mão por Vitor');
   });
 });

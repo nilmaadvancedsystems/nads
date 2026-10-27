@@ -57,9 +57,15 @@ const valeNoIndice = k => chaveValida(k) || /^NFSE:\d{11,14}:\d+$/.test(String(k
  * de = 'doc' (o XML do documento), 'evento' (estava em EVENTOS) ou 'outro' (PDF etc.: só o cliente vale).
  */
 function lerDestino(arquivo, raiz) {
-  const r = String(raiz || R.RAIZ_CLIENTES).replace(/\\+$/, '') + '\\';
+  let r = String(raiz || R.RAIZ_CLIENTES).replace(/\\+$/, '') + '\\';
   const a = String(arquivo || '').replace(/\//g, '\\');
-  if (a.slice(0, r.length).toLowerCase() !== r.toLowerCase()) return null;
+  // a raiz de outro ano (23/10/2026: G:\Meu Drive\2024\… é irmã de G:\Meu Drive\2026\)
+  if (a.slice(0, r.length).toLowerCase() !== r.toLowerCase()) {
+    const m = /^(.*\\)\d{4}\\$/.exec(r);
+    const o = m && new RegExp('^' + m[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(\\d{4})\\\\', 'i').exec(a);
+    if (!o) return null;
+    r = m[1] + o[1] + '\\';
+  }
   const partes = a.slice(r.length).split('\\').filter(Boolean);
   if (partes.length < 2) return null;
   const m = /^(\d{1,4}) - /.exec(partes[0]);
@@ -73,6 +79,10 @@ function lerDestino(arquivo, raiz) {
 }
 
 const PESO = { doc: 3, evento: 2, outro: 1 };
+// as subpastas repetem muito (FISCAL\SIMPLES NACIONAL\12. XML\NF-e…): um array só para cada uma (23/10/2026, a carga de
+// 320 mil arquivos)
+const SUBS = new Map();
+const subUnica = sub => { if (!sub || !sub.length) return null; const k = sub.join('\\'); let s = SUBS.get(k); if (!s) { s = Object.freeze(sub.slice()); SUBS.set(k, s); } return s; };
 
 /** O índice em memória. anotar() grava na hora em chaves.jsonl (quando persistir). */
 class Indice {
@@ -82,6 +92,7 @@ class Indice {
   juntar(ch, cliente, sub, de, fonte) {
     ch = chaveDoIndice(ch);
     if (!valeNoIndice(ch) || cliente == null || !Number.isFinite(+cliente)) return false;
+    sub = subUnica(sub);
     let lista = this.mapa.get(ch);
     if (!lista) this.mapa.set(ch, lista = []);
     const atual = lista.find(x => x.cliente === +cliente);
@@ -115,17 +126,8 @@ class Indice {
   }
 }
 
-function linhasJson(arquivo, f) {
-  let texto = '';
-  try { texto = fs.readFileSync(arquivo, 'utf8'); } catch (e) { return 0; }
-  let n = 0;
-  for (const l of texto.split(/\r?\n/)) {
-    if (!l.trim()) continue;
-    let r; try { r = JSON.parse(l); } catch (e) { try { r = JSON.parse(l.replace(/\\/g, '/')); } catch (e2) { continue; } }
-    n++; f(r);
-  }
-  return n;
-}
+// em pedaços (o diário do contínuo passa de 100 MB com a carga do SIEG; 23/10/2026)
+const linhasJson = (arquivo, f) => require('./arquivador-conteudos').cadaLinha(arquivo, f);
 
 /**
  * Monta o índice com o que já está no PC (nada do G: é aberto).

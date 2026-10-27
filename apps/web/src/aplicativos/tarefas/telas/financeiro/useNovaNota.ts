@@ -9,7 +9,7 @@ import { useOperador } from '../../casca/operador';
 import { contatosDoEntregas, dadosDaEmpresaNoEntregas, empresasNovas, repoDoCadastro } from '../../dados/fonte';
 import { consultarCnpj } from '../../dados/receita';
 import { useNfse } from '../../dados/repo';
-import { dataBr, descricaoPadrao, documentoFormatado, foneSoDigitos, hoje, isoDaData, previaDoIss, valorDigitado, valorNoCampo } from './formatosDaNota';
+import { dataBr, documentoFormatado, foneSoDigitos, hoje, isoDaData, previaDoIss, valorDigitado, valorNoCampo } from './formatosDaNota';
 
 type Cliente = empresas.EmpresaDoEscritorio;
 
@@ -47,9 +47,15 @@ export function useNovaNota(fechar: () => void, nota?: nfse.NotaFiscal, inicial?
   const [email, setEmail] = useState(nota?.tomador.email || '');
   const [fone, setFone] = useState(nota?.tomador.fone || '');
   const [valor, setValor] = useState(nota ? valorNoCampo(nota.servico.valor) : inicial ? valorNoCampo(inicial.valor) : '');
-  // a data do serviço dos Honorários é o último dia da competência; a descrição, a que a nota real do escritório usa
+  // a data do serviço dos Honorários é o último dia da competência; a descrição sai do modelo das Configurações (23/10/2026),
+  // com a competência dos Honorários ou a do mês anterior ao de hoje (sem modelo: "Serviços Contábeis Ref. 09/2026")
   const [data, setData] = useState(dataBr(nota?.servico.competencia || (inicial ? nfse.competenciaDaNota(inicial.competencia) : '') || hoje()));
-  const [descricao, setDescricao] = useState(nota?.servico.descricao || (inicial ? 'Serviços Contábeis Ref. ' + inicial.competencia.slice(5) + '/' + inicial.competencia.slice(0, 4) : '') || descricaoPadrao());
+  const descricaoMontada = nfse.descricaoDaNota(config.descricao, inicial?.competencia || nfse.competenciaAnterior(hoje()));
+  const [descricao, setDescricaoBruta] = useState(nota?.servico.descricao || descricaoMontada);
+  // a configuração pode chegar depois de a janela abrir: enquanto ninguém mexeu na descrição, ela segue o modelo
+  const descricaoMexida = useRef(!!nota?.servico.descricao);
+  const setDescricao = (v: string) => { descricaoMexida.current = true; setDescricaoBruta(v); };
+  useEffect(() => { if (!descricaoMexida.current) setDescricaoBruta(descricaoMontada); }, [descricaoMontada]);
   const [erros, setErros] = useState<string[]>([]);
   const [salvando, setSalvando] = useState(false);
   // a escolha mais nova vale: se trocar de cliente antes de a leitura do anterior chegar, a antiga é descartada

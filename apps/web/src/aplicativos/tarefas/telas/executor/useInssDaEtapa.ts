@@ -128,6 +128,8 @@ export function useInssDaEtapa(chave: string, meses: readonly string[], balancet
         // a guia do mês: baixada, sem a baixa, paga depois do período, ou o PDF não trouxe
         baixa: !m.guia ? 'sem-guia' as const : baixa ? (baixa.lancamento ? 'ok' as const : 'falta' as const) : m.guia.pagaEm > ultimoDia || !m.guia.pagaEm ? 'depois' as const : 'fora' as const,
         pagaEm: m.guia ? dataBR(m.guia.pagaEm) : '',
+        // a baixa achada pelo "ref" ou pela data, com outro valor (o lançamento com várias contrapartidas; 26/10/2026)
+        baixaComOutroValor: baixa?.lancamento && baixa.outroValor ? reais(-baixa.lancamento.valor) : '',
         // o banco em que a guia foi paga, pelo comprovante (Vitor, 15/10/2026): o nome curto e o logo
         banco: m.guia?.banco ? bancoDaGuia(m.guia.banco) : null,
       };

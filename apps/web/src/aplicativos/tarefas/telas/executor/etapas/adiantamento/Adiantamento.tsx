@@ -9,6 +9,7 @@ import { FaixaQueAbre } from '../../../../../../comum/FaixaQueAbre';
 import { useColunaAjustavel, ValorNaGrade } from '../../../../../../comum/GradeDosMeses';
 import { useAdiantamento } from './useAdiantamento';
 import { ConsultaDeNotas, useAbasDaConsulta } from '../consulta/ConsultaDeNotas';
+import { BotaoSemMovimento } from '../../partes/BotaoSemMovimento';
 
 export function Adiantamento({ lado = 'fornecedores' }: { lado?: 'fornecedores' | 'clientes' }) {
   const vm = useAdiantamento(lado);
@@ -25,10 +26,16 @@ export function Adiantamento({ lado = 'fornecedores' }: { lado?: 'fornecedores' 
         <div><h2 className="page-title">{Nome}</h2></div>
         {/* o mês do lado errado, no cabeçalho (Vitor, 07/10/2026: "escreva só '… está credor' e o botão"): o Corrigi tira o
             razão, para importar o corrigido */}
-        {vm.credores.length > 0 && (
+        {vm.mostrarSemMovimento && (
           <div className="btn-row" style={{ alignItems: 'center' }}>
-            <span className="badge badge-warn" title={'Saldo ' + vm.errado + ' em ' + vm.credores.join(', ')}>{Nome} está {vm.errado}</span>
-            <button type="button" className="btn btn-primary" onClick={vm.tirar}>Corrigi, irei reimportar</button>
+            {vm.credores.length > 0 && !vm.semMovimento && (
+              <>
+                <span className="badge badge-warn" title={'Saldo ' + vm.errado + ' em ' + vm.credores.join(', ')}>{Nome} está {vm.errado}</span>
+                <button type="button" className="btn btn-primary" onClick={vm.tirar}>Corrigi, irei reimportar</button>
+              </>
+            )}
+            {/* Vitor, 26/10/2026: a conta não mexeu mais; marcado, a etapa não cobra nada (clicar de novo desfaz) */}
+            <BotaoSemMovimento marcado={vm.semMovimento} onClick={vm.alternarSemMovimento} />
           </div>
         )}
       </header>

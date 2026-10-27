@@ -4,7 +4,7 @@
 // resultado na mensagem flutuante. Embaixo, os arquivos importados, com Excluir.
 import { demo, empresas, extrator as x, tarefas } from '@nads/core';
 import { useRetorno } from '@nads/ui';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useSessao } from '../../casca/sessao';
 import { useCadastroDaEmpresa } from '../../dados/repo';
@@ -100,6 +100,14 @@ export function useImportacao() {
   const movimentos = useMemo(() => new Map<string, x.MovimentoDoExtrato>(), [s.empresa, primeiro, competenciaDeTeste]);
   const extratosSemSaldo = useMemo(() => x.extratosSemSaldoAnterior(s.empresa, primeiro), [s.empresa, primeiro]);
   const extratosParaReler = useMemo(() => x.extratosParaReler(s.empresa), [s.empresa]);
+  const extratosParaRelerPeloDrive = useMemo(() => x.extratosParaRelerPeloDrive(s.empresa), [s.empresa]);
+  // o mesmo lançamento em dois extratos do mesmo banco (a página da virada do mês nos dois PDFs): a cópia a mais sai, sozinha
+  // (Vitor, 26/10/2026: o Stone da 183 com os de 31/01 "duas vezes no extrato")
+  const { aplicar } = s;
+  useEffect(() => {
+    const bancoDe = (a: x.ArquivoImportado) => x.bancoDoArquivo(a, primeiro);
+    if (x.tirarSobreposicaoDosExtratos(s.empresa, bancoDe, new Date()).tirados) aplicar(e => x.tirarSobreposicaoDosExtratos(e, bancoDe, new Date()).empresa);
+  }, [s.empresa, primeiro, aplicar]);
   const [mensagem, setMensagemBruta] = useState<Mensagem | null>(null);
   const [seqMensagem, setSeq] = useState(0);
   const setMensagem = (m: Mensagem | null) => { setMensagemBruta(m); setSeq(v => v + 1); };
@@ -420,6 +428,8 @@ export function useImportacao() {
     extratosSemSaldo,
     /** os extratos do Drive lidos por um leitor mais velho: o useDriveDaLinha relê sozinho (Vitor, 14/10/2026) */
     extratosParaReler,
+    /** os importados do computador lidos por um leitor mais velho: o useDriveDaLinha relê pelo PDF do mês no Drive (26/10/2026) */
+    extratosParaRelerPeloDrive,
     relerExtrato: (arquivoId: string, lido: x.ArquivoLido) => s.aplicar(e => x.relerExtrato(e, arquivoId, lido, new Date())),
     /** quem marca o mês como sem movimento quando o extrato importado não teve movimento */
     aoSemMovimento: (fn: (banco: string, meses: string[]) => void) => { aoSemMovimento.current = fn; },

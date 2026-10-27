@@ -29,7 +29,10 @@ const LIMITE_ABRIR = 15 * 1024 * 1024;
 const BYTES_POR_PARTE = 512 * 1024;          // em base64: ~683 KB por documento
 const VIDA_MS = 30 * 60 * 1000;
 const LIMPAR_A_CADA_MS = 5 * 60 * 1000;
-const TIPOS = ['abrir', 'previa', 'arquivar', 'descartar'];
+// grupoPrevia / grupo (23/10/2026, a migração: "Para resolver" em grupos pela causa e pela pasta de origem): o mesmo
+// cliente e tipo para o GRUPO inteiro; a competência de cada arquivo pelo nome ou pelas pastas de origem (ou a do pedido)
+const TIPOS = ['abrir', 'previa', 'arquivar', 'descartar', 'grupoPrevia', 'grupo'];
+const EXEMPLOS_DA_PREVIA = 3;
 const MIME = { pdf: 'application/pdf', xml: 'text/xml', txt: 'text/plain', ofx: 'text/plain', csv: 'text/csv', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp',
   xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', xls: 'application/vnd.ms-excel', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', doc: 'application/msword', zip: 'application/zip' };
 
@@ -75,6 +78,14 @@ function emPartes(buffer, tamanho) {
 const mimeDe = nome => MIME[((/\.([a-z0-9]+)$/i.exec(nome || '') || [])[1] || '').toLowerCase()] || 'application/octet-stream';
 
 /** A escolha do admin para a decisão manual (arquivar, prévia, descartar). */
+/** A competência de um arquivo do grupo: a do pedido, senão o nome do arquivo, senão as pastas de origem ("AAAA-MM" ou "AAAA"). */
+function competenciaDoArquivo(pedida, rel) {
+  if (pedida) return String(pedida);
+  const R = require('./arquivador-regras');
+  const nome = path.win32.basename(String(rel || ''));
+  const c = R.competenciaDoNome(nome) || R.anoDaPasta(rel);
+  return c ? c.ano + (c.mes ? '-' + String(c.mes).padStart(2, '0') : '') : null;
+}
 function escolhaDoPedido(p) {
   if (p.tipo === 'descartar') return { descartar: true, por: corta(p.pedidoPor || 'admin', 80) };
   return { codigo: Number(p.codigo), tipoDoc: String(p.tipoDoc || 'AUTO'), competencia: p.competencia ? String(p.competencia) : null, por: corta(p.pedidoPor || 'admin', 80) };
@@ -85,8 +96,11 @@ function respostaDoItem(it, clientes) {
   const raiz = clientes ? String(clientes).replace(/\\+$/, '') + '\\' : null;
   const curto = p => {
     let t = String(p || '').replace(/ \(neste lote\)$/, '');
-    if (raiz && t.toLowerCase().startsWith(raiz.toLowerCase())) t = t.slice(raiz.length);
-    return t.replace(/^[A-Z]:\\Meu Drive\\\d{4}\\/i, '');
+    if (raiz && t.toLowerCase().startsWith(raiz.toLowerCase())) return t.slice(raiz.length);
+    // outra raiz de ano (23/10/2026): fica o ano na frente ("2024\10 - DORNAS…\…")
+    const base = raiz ? path.win32.dirname(raiz.replace(/\\+$/, '')) + '\\' : null;
+    if (base && t.toLowerCase().startsWith(base.toLowerCase())) return t.slice(base.length);
+    return t.replace(/^[A-Z]:\\Meu Drive\\/i, '');
   };
   return {
     acao: it.acao, erro: it.erro ? corta(it.erro, 300) : null, naoAplicado: it.naoAplicado ? corta(it.naoAplicado, 200) : null,
@@ -159,10 +173,44 @@ function criar(opcoes) {
     return { status: 'feito', resposta: r };
   }
 
+  /**
+   * O grupo (Para resolver em grupos): grupoPrevia = os primeiros arquivos em simulação; grupo = todos, um por um, pelo
+   * mesmo executor (com a trava), e, com "lembrar", a decisão vira regra do mapa da migração para os próximos da pasta.
+   */
+  async function tratarGrupo(id, p) {
+    const g = o.grupo ? o.grupo(String(p.hash || '')) : null;
+    if (!g || !g.arquivos.length) return { status: 'erro', erro: 'o grupo não está mais em NÃO IDENTIFICADOS (atualize a página)' };
+    const previa = p.tipo === 'grupoPrevia';
+    const lista = previa ? g.arquivos.slice(0, EXEMPLOS_DA_PREVIA) : g.arquivos.slice();
+    const exemplos = [];
+    let feitos = 0, erros = 0, primeiroErro = null;
+    for (const a of lista) {
+      const c = caminhoDoPedido(o.origem, a.rel);
+      if (c.erro || !fs.existsSync(c.abs)) { erros++; if (!primeiroErro) primeiroErro = a.nome + ': saiu da pasta'; continue; }
+      const pp = Object.assign({}, p, { tipo: previa ? 'previa' : 'arquivar', rel: a.rel, hash: a.hash, competencia: competenciaDoArquivo(p.competencia, c.ni || a.rel) });
+      let r;
+      try { r = await decidir(id, pp, c, !previa); } catch (e) { r = { status: 'erro', erro: e.message }; }
+      if (previa) exemplos.push(Object.assign({ nome: corta(a.nome, 200), competencia: pp.competencia || null, erro: r.erro || null }, r.resposta || {}));
+      else if (r.status === 'feito') feitos++;
+      else { erros++; if (!primeiroErro) primeiroErro = corta(a.nome + ': ' + (r.erro || 'erro'), 300); }
+    }
+    if (previa) return { status: exemplos.some(x => !x.erro) ? 'pronto' : 'erro', erro: exemplos.every(x => x.erro) ? (exemplos[0] && exemplos[0].erro) || 'as regras não chegaram a um destino' : null, resposta: { total: g.arquivos.length, exemplos } };
+    // lembrar: a pasta de origem do grupo vira regra (o cliente pela pasta do cliente; o tipo pela pasta do grupo)
+    let lembrou = false;
+    if (p.lembrar === true && feitos > 0 && o.lembrar) { try { lembrou = !!o.lembrar({ pasta: g.pasta, cliente: Number(p.codigo), tipoDoc: String(p.tipoDoc || ''), por: corta(p.pedidoPor || 'admin', 80) }); } catch (e) { o.log('pedido ' + id + ': não lembrei a decisão do grupo:', e.message); } }
+    return { status: feitos ? 'feito' : 'erro', erro: feitos ? null : primeiroErro || 'nenhum arquivo do grupo foi arquivado', resposta: { total: lista.length, feitos, erros, primeiroErro, lembrou } };
+  }
+
   async function tratar(id, p) {
     try {
       if (!p || !TIPOS.includes(p.tipo)) { await responder(id, { status: 'erro', erro: 'tipo de pedido desconhecido' }); return; }
       await responder(id, { status: 'trabalhando' });
+      if (p.tipo === 'grupo' || p.tipo === 'grupoPrevia') {
+        const r = await tratarGrupo(id, p);
+        await responder(id, r);
+        o.log('pedido ' + id + ' (' + p.tipo + ', ' + (p.pedidoPor || '?') + '): ' + r.status + (r.resposta ? ' ' + JSON.stringify({ total: r.resposta.total, feitos: r.resposta.feitos, erros: r.resposta.erros }) : '') + (r.erro ? ' — ' + r.erro : ''));
+        return;
+      }
       const c = caminhoDoPedido(o.origem, p.rel);
       if (c.erro) { await responder(id, { status: 'erro', erro: c.erro }); return; }
       if (!fs.existsSync(c.abs)) { await responder(id, { status: 'erro', erro: 'o arquivo não está mais em ' + c.rel + ' (já saiu da pasta?)' }); return; }
@@ -227,4 +275,4 @@ function criar(opcoes) {
   };
 }
 
-module.exports = { criar, caminhoDoPedido, hashConfere, emPartes, mimeDe, escolhaDoPedido, respostaDoItem, clientesDoCadastro, LIMITE_ABRIR, BYTES_POR_PARTE, VIDA_MS };
+module.exports = { criar, caminhoDoPedido, hashConfere, emPartes, mimeDe, escolhaDoPedido, respostaDoItem, clientesDoCadastro, competenciaDoArquivo, LIMITE_ABRIR, BYTES_POR_PARTE, VIDA_MS, TIPOS };

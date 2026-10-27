@@ -118,7 +118,7 @@ describe('check automático', () => {
     expect(verificar(etapa('extratos'), '2026-08', [arq('banco', '2026-08-05'), arq('sistema', '2026-08-20')]).ok).toBe(true);
   });
   it('manual: passa', () => {
-    expect(verificar(etapa('fechamento'), '2026-08', []).ok).toBe(true);
+    expect(verificar(etapa('cheque-especial'), '2026-08', []).ok).toBe(true);
   });
 });
 

@@ -4,6 +4,17 @@
 // Drive). Só com o login do Entregas. O remetente vem sugerido (os e-mails do cadastro do cliente no Entregas e os que a
 // pessoa já usou aqui) e o período tem os atalhos do mês (Vitor, 13/10/2026: "puxa do e-mail para ajudar a preencher" e
 // as datas no campo do sistema). ViewModel (useBuscarNoEmail) e View (JanelaBuscarNoEmail) juntos: são só desta tela.
+// No modo comprovantes (a aba Comprovantes, Vitor, 26/10/2026): o banco da linha, sem a leitura do extrato; o anexo
+// escolhido vai para o Drive (a pasta COMPROVANTES do mês), do mesmo jeito do extrato: Enviar para o Drive e a janela fecha.
+// Mais rápido (Vitor, 26/10/2026: "anexar o arquivo está demorando muito"): o anexo trazido fica guardado (abrir de novo é na
+// hora) e, achados os anexos, os do mês já vêm sendo trazidos enquanto a pessoa olha a lista.
+
+/** os anexos já trazidos (ou chegando) nesta aba do navegador: o mesmo anexo não vai ao robô duas vezes */
+const trazidos = new Map<string, Promise<ArrayBuffer>>();
+const chaveDoAnexo = (a: creditor.AnexoDoEmail) => a.caixa + '|' + a.mensagemId + '|' + a.anexoId;
+/** quantos dos primeiros anexos do mês vêm antes do clique, e até que tamanho */
+const ANTES_DO_CLIQUE = 2;
+const MAIOR_ANTES_DO_CLIQUE = 8 * 1024 * 1024;
 import { creditor as cr, extrator as x, type creditor } from '@nads/core';
 import { BotaoFechar, CampoData, classeDaJanela, Icone, LogoGmail, Segmentado } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
@@ -47,7 +58,8 @@ export interface LidoDoAnexo { lancamentos: number; meses: string[]; semMoviment
 
 /** importar: a linha, o arquivo e os meses que ele cobre (os lidos na prévia; senão, o mês da busca) */
 export function useBuscarNoEmail(importar: (linha: Linha, fs: File[], meses: string[]) => void, pedirLogin: (depois: () => void) => void, codigo: number | null,
-  lerDoAnexo?: (nome: string, conteudo: ArrayBuffer) => Promise<LidoDoAnexo>) {
+  lerDoAnexo?: (nome: string, conteudo: ArrayBuffer) => Promise<LidoDoAnexo>, opcoes: { comprovantes?: boolean } = {}) {
+  const comprovantes = !!opcoes.comprovantes;
   const { drive, acesso } = useDriveDaBusca();
   const [e, setE] = useState<Estado | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -57,6 +69,24 @@ export function useBuscarNoEmail(importar: (linha: Linha, fs: File[], meses: str
   useEffect(() => soltar, []);
   const muda = (m: Partial<Estado>) => setE(x => (x ? { ...x, ...m } : x));
   const existe = !!drive.buscarNoEmail && !!drive.trazerDoEmail;
+  /** traz o anexo uma vez só (o que deu erro sai da lista, para tentar de novo) */
+  function trazer(a: creditor.AnexoDoEmail): Promise<ArrayBuffer> {
+    const k = chaveDoAnexo(a);
+    let p = trazidos.get(k);
+    if (!p && drive.trazerDoEmail) {
+      p = drive.trazerDoEmail(a).catch(err => { trazidos.delete(k); throw err; });
+      trazidos.set(k, p);
+      // guarda os últimos 12 (os arquivos ficam na memória da aba)
+      while (trazidos.size > 12) trazidos.delete(trazidos.keys().next().value as string);
+    }
+    return p || Promise.reject(new Error('A busca no e-mail não está ligada.'));
+  }
+  /** os primeiros anexos do mês (e do banco, no extrato) já vêm, um de cada vez, enquanto a pessoa olha a lista */
+  function trazerAntes(r: creditor.AnexoDoEmail[], linha: Linha, mes: string) {
+    const doBanco = cr.separarPeloBanco(r, cr.bancoDaLinha(linha.nome, linha.id)).doBanco;
+    const primeiros = cr.separarPeloMes(doBanco, mes).doMes.filter(a => a.tamanho <= MAIOR_ANTES_DO_CLIQUE).slice(0, ANTES_DO_CLIQUE);
+    void primeiros.reduce((fila, a) => fila.then(() => trazer(a)).then(() => undefined, () => undefined), Promise.resolve());
+  }
 
   function abrir(linha: Linha, mes: string) {
     const ir = () => {
@@ -86,6 +116,7 @@ export function useBuscarNoEmail(importar: (linha: Linha, fs: File[], meses: str
     try {
       const r = await drive.buscarNoEmail({ remetente: e.remetente, de, ate }, passo => muda({ passo }));
       muda({ buscando: false, resultados: r, passo: '' });
+      trazerAntes(r, e.linha, e.mes);
     } catch (err) { muda({ buscando: false, erro: mensagemDeErro(err), passo: '' }); }
   }
 
@@ -95,7 +126,7 @@ export function useBuscarNoEmail(importar: (linha: Linha, fs: File[], meses: str
     soltar();
     setPreview({ anexo: a, carregando: true, erro: '' });
     try {
-      const conteudo = await drive.trazerDoEmail(a);
+      const conteudo = await trazer(a);
       const bytes = new Uint8Array(conteudo);
       const pdf = x.ehPdf(bytes) || /\.pdf$/i.test(a.nome);
       let url: string | undefined;
@@ -122,7 +153,7 @@ export function useBuscarNoEmail(importar: (linha: Linha, fs: File[], meses: str
 
 
   return {
-    existe, estado: e, abrir, fechar: () => { soltar(); setPreview(null); setE(null); }, muda, preview, ver: (a: creditor.AnexoDoEmail) => { void ver(a); }, importarAberto,
+    existe, estado: e, abrir, fechar: () => { soltar(); setPreview(null); setE(null); }, muda, preview, comprovantes, ver: (a: creditor.AnexoDoEmail) => { void ver(a); }, importarAberto,
     atalho: (a: Atalho) => { if (e && a !== 'outro') muda({ atalho: a, ...periodoDoAtalho(e.mes, a) }); },
     buscar: () => { void buscar(); },
   };
@@ -142,7 +173,7 @@ export function JanelaBuscarNoEmail({ vm }: { vm: Vm }) {
     <div className="modal-overlay" role="presentation" onClick={() => { if (!ocupado) vm.fechar(); }}>
       <div className={classeDaJanela({})} role="dialog" aria-modal="true" aria-labelledby="tituloEmail" style={{ maxWidth: 'min(1180px, 96vw)', width: '100%', textAlign: 'left', padding: 20 }} onClick={ev => ev.stopPropagation()}>
         <BotaoFechar canto disabled={ocupado} onClick={vm.fechar} />
-        <h3 id="tituloEmail">Buscar no e-mail · {e.linha.nome} · {rotuloDoMes(e.mes)}</h3>
+        <h3 id="tituloEmail">{(vm.comprovantes ? 'Buscar comprovantes no e-mail · ' : 'Buscar no e-mail · ') + e.linha.nome + ' · ' + rotuloDoMes(e.mes)}</h3>
         <form style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 14 }} onSubmit={ev => { ev.preventDefault(); vm.buscar(); }}>
           <div className="field" style={{ margin: 0 }}>
             <label htmlFor="fRemetente" style={ROTULO}>Remetente</label>
@@ -162,7 +193,7 @@ export function JanelaBuscarNoEmail({ vm }: { vm: Vm }) {
             <span style={ROTULO}>Recebido</span>
             <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
               <Segmentado<Atalho> valor={e.atalho} onMudar={vm.atalho} opcoes={[
-                { valor: 'mes', rotulo: 'Mês do extrato' }, { valor: 'seguinte', rotulo: 'Mês seguinte' }, { valor: 'dois', rotulo: 'Os dois' }, { valor: 'outro', rotulo: 'Outro', oculta: e.atalho !== 'outro' },
+                { valor: 'mes', rotulo: vm.comprovantes ? 'Mês do comprovante' : 'Mês do extrato' }, { valor: 'seguinte', rotulo: 'Mês seguinte' }, { valor: 'dois', rotulo: 'Os dois' }, { valor: 'outro', rotulo: 'Outro', oculta: e.atalho !== 'outro' },
               ]} />
               <span style={{ width: 118 }}><CampoData valor={e.de} rotulo="Recebido de" onMudar={v => vm.muda({ de: v, atalho: 'outro' })} onEnter={vm.buscar} /></span>
               <span className="hint">até</span>
@@ -242,20 +273,26 @@ function PreviewDoAnexo({ vm }: { vm: Vm }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <b style={{ flex: 1, minWidth: 0, wordBreak: 'break-word' }}>{p.anexo.nome}</b>
-        <button type="button" className="btn btn-primary" disabled={!p.conteudo} onClick={vm.importarAberto}>
-          <LogoGmail />Importar este
-        </button>
+        {vm.comprovantes ? (
+          <button type="button" className="btn btn-primary" disabled={!p.conteudo} onClick={vm.importarAberto}>
+            <Icone nome="upload" />Enviar para o Drive
+          </button>
+        ) : (
+          <button type="button" className="btn btn-primary" disabled={!p.conteudo} onClick={vm.importarAberto}>
+            <LogoGmail />Importar este
+          </button>
+        )}
       </div>
       {p.carregando && <p className="hint"><span className="btn-spinner" /> Trazendo o anexo…</p>}
       {p.erro && <p className="hint ext-neg">{p.erro}</p>}
-      {!p.carregando && p.conteudo && (
+      {!vm.comprovantes && !p.carregando && p.conteudo && (
         <p className="hint" style={{ margin: 0 }}>
           {p.semMovimento ? 'Sem movimento' + (meses ? ' em ' + meses : '')
             : p.lancamentos ? p.lancamentos + ' lançamentos · ' + meses : 'O nads não achou lançamentos neste arquivo.'}
         </p>
       )}
       {p.url && <iframe title={'Prévia de ' + p.anexo.nome} src={p.url} style={{ width: '100%', height: '46vh', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface-2)' }} />}
-      {!!p.primeiros?.length && (
+      {!vm.comprovantes && !!p.primeiros?.length && (
         <div className="table-wrap" style={{ maxHeight: p.url ? 160 : '50vh', overflow: 'auto' }}>
           <table className="table-compact">
             <thead><tr><th>Data</th><th>Histórico</th><th className="num">Valor</th></tr></thead>

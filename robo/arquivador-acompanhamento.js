@@ -11,7 +11,15 @@
 //     erros com o que fazer, os alertas de agora e o último lado a lado.
 //   robo/arquivadorNovo/dias/{AAAA-MM-DD}-{n}   o histórico do dia em partes de até ~700 KB (a busca da aba Arquivados);
 //                                          só a parte que mudou é regravada, junto com o documento principal; as de mais
-//                                          de DIAS_GUARDADOS dias o próprio robô apaga (no banco e no PC), na virada do dia.
+//                                          de DIAS_GUARDADOS dias (24 meses) o próprio robô apaga (no banco e no PC).
+//   robo/arquivadorResumo                  o resumo pequeno para a janela do Arquivador no Drive da Tarefas (23/10/2026), que o
+//                                          contábil também lê: o modo, o que está fazendo, o último sinal, os números de hoje,
+//                                          quantos estão para resolver e o último arquivado (o tipo, o cliente e o nome final
+//                                          padronizado — nunca o nome original do arquivo; o de funcionário, nem o final).
+//   robo/arquivadorNovo/meses/{AAAA-MM}  o resumo do mês (Vitor, 23/10/2026: "um acompanhamento de todo período"): as
+//                                          contagens por ação (com os descartados e os arquivados à mão), por tipo e por
+//                                          cliente, e as de cada dia (dias.{AAAA-MM-DD}), para a visão do período não ter de
+//                                          baixar todos os dias. As contagens de cada dia ficam no PC (continuo\resumo-dias.json).
 //
 // No PC fica uma cópia do que foi publicado (continuo\acompanhamento.json) e o histórico do dia (continuo\arquivados-
 // AAAA-MM-DD.jsonl), para o robô reiniciar sem perder as listas nem a contagem.
@@ -32,9 +40,17 @@ const MAX_CHEGANDO = 40;
 const MAX_EVIDENCIAS = 8;
 const MAX_EVIDENCIAS_HISTORICO = 4;
 const MAX_CLIENTES = 15;
-const BYTES_POR_PARTE = 700 * 1024;
+// o tamanho das partes do histórico: 250 KB desde 24/10/2026 (era 700 KB; 23/10/2026, o robô perdeu o banco às 13:18 com
+// a parte aberta de 700 KB regravada a cada 45 s); os dias de antes continuam com 700 KB (as partes no banco são dessas)
+const bytesDaParte = dia => (String(dia) >= '2026-10-24' ? 250 * 1024 : 700 * 1024);
+// cada gravação no banco desiste depois de PRAZO_MS (nunca prende nada); a parte aberta do histórico vai no máximo a cada
+// HISTORICO_MS; numa volta, no máximo MAX_BYTES_POR_VEZ de histórico; falhou, espera (30 s, 1, 2, 4… até 10 min)
+const PRAZO_MS = 20 * 1000;
+const HISTORICO_MS = 3 * 60 * 1000;
+const MAX_BYTES_POR_VEZ = 400 * 1024;
+const PAUSA_MAX_MS = 10 * 60 * 1000;
 const JANELA_RITMO_MS = 10 * 60 * 1000;
-const DIAS_GUARDADOS = 31;
+const DIAS_GUARDADOS = 730;   // 24 meses (23/10/2026: era 31)
 
 // ---------------------------------------------------------------------------------------------------------------------
 // puras (teste-arquivador-acompanhamento.js)
@@ -47,6 +63,11 @@ const MOTIVOS = {
   CONTEUDO_SEM_TEXTO: ['Escaneado sem leitura', 'É uma imagem sem texto e a leitura (OCR) não bastou. Peça o PDF original ao cliente ou arquive à mão.'],
   CONTEUDO_ILEGIVEL: ['Escaneado ilegível', 'A leitura (OCR) saiu ruim. Peça uma cópia melhor ou arquive à mão.'],
   CONFIANCA_ABAIXO_DO_LIMIAR: ['Pouca certeza', 'O robô achou um destino, mas sem certeza suficiente. Confira a sugestão e mova o arquivo, se estiver certa.'],
+  // a raiz pelo ano e a migração (23/10/2026)
+  ANO_INDETERMINADO: ['Sem o ano', 'Nem o documento nem as pastas de origem dizem o ano (a pasta G:\\Meu Drive\\<ano>). O robô não põe em 2026 por padrão: escolha o ano em "Arquivar em…".'],
+  ANO_FORA_DA_FAIXA: ['Ano fora da faixa', 'O ano do documento é antes de 2015 ou depois do ano atual. Confira a data e arquive à mão.'],
+  PASTA_DO_ANO_SEM_CNPJ: ['Pasta do ano sem o CNPJ', 'A pasta do cliente nesse ano ainda não existe e o arquivo não traz o CNPJ dele (a pasta só nasce com o CNPJ conferido). Arquive o grupo à mão: a pasta nasce e os próximos vão sozinhos.'],
+  PISTA_DA_PASTA_DIVERGE: ['Pasta e conteúdo divergem', 'A pasta de origem diz um cliente e o conteúdo diz outro. Abra o arquivo e escolha o certo.'],
   COMPETENCIA_AUSENTE: ['Sem a competência', 'Não achou o mês do documento. Ponha o mês no nome do arquivo (ex.: 01-2026) ou arquive à mão.'],
   VENCIMENTO_AUSENTE: ['Sem o vencimento', 'Não achou o vencimento da guia. Arquive à mão.'],
   VALOR_AUSENTE: ['Sem o valor', 'Não achou o valor do documento. Arquive à mão.'],
@@ -68,7 +89,9 @@ const MOTIVOS = {
   ARQUIVO_COMPACTADO_CORROMPIDO: ['Compactado corrompido', 'O .zip/.rar não abre. Peça o arquivo de novo.'],
   FERRAMENTA_EXTRACAO_AUSENTE: ['Sem o programa para abrir', 'Falta o programa para abrir este compactado no PC (WinRAR/7-Zip).'],
   ARQUIVO_INACESSIVEL: ['Arquivo travado', 'O arquivo está aberto em outro programa ou ainda sincronizando. Feche-o; o robô tenta de novo sozinho.'],
-  TIPO_XML_NAO_TRATADO: ['XML sem regra', 'Este tipo de XML ainda não tem regra. Arquive à mão.'],
+  TIPO_XML_NAO_TRATADO: ['Sem regra para este tipo de XML', 'Este tipo de XML ainda não tem regra. Arquive à mão; se for comum, peça a regra.'],
+  SEM_MOTIVO_REGISTRADO: ['Está na pasta sem o motivo registrado', 'O arquivo está em NÃO IDENTIFICADOS, mas não tem linha no índice (_nao_identificados.jsonl). Abra e arquive à mão.'],
+  DESCARTE_CONFIRMADO: ['Descartado', 'Foi para a quarentena por decisão do responsável (nunca é apagado direto).'],
   VIDEO_OU_AUDIO: ['Vídeo ou áudio', 'Vídeo e áudio ficam na pasta: não são arquivados.'],
   IDENTICO_JA_ARQUIVADO: ['Já arquivado', 'O mesmo conteúdo já está na pasta do cliente.'],
 };
@@ -125,7 +148,8 @@ function acaoDoItem(x, modoRes) {
   if (x.acao === 'AGUARDANDO_ORIGINAL') return 'aguardando';
   const aplicado = modoRes === 'PRODUCAO' && !x.naoAplicado;
   if (x.acao === 'ARQUIVAR') return aplicado ? 'arquivou' : 'arquivaria';
-  if (x.acao === 'JA_ARQUIVADO' || x.acao === 'DESCARTAR') return 'jaArquivado';   // descarte confirmado: saiu da pasta para a quarentena
+  if (x.acao === 'JA_ARQUIVADO') return 'jaArquivado';
+  if (x.acao === 'DESCARTAR') return 'descartado';   // descarte confirmado: saiu da pasta para a quarentena
   if (x.acao === 'NAO_IDENTIFICADO') return 'naoIdentificado';
   return 'fica';
 }
@@ -156,11 +180,12 @@ function itemCompacto(x, modoRes, em, historico) {
     ocr: x.ocr ? { confianca: x.ocr.confianca == null ? null : Math.round(x.ocr.confianca), segundos: x.ocr.ms ? Math.round(x.ocr.ms / 1000) : null, erro: x.ocr.erro ? corta(x.ocr.erro, 120) : null } : null,
     dentroDe: x.dentroDe ? corta(path.win32.basename(x.dentroDe), 140) : null,
   };
+  if (x.decididoPor) it.porQuem = corta(x.decididoPor, 80);
   if (acao === 'naoIdentificado' || acao === 'fica') {
     it.motivo = x.motivo || null;
     // o hash e o caminho na pasta: o site manda de volta nos pedidos (abrir, arquivar em…, descartar; arquivador-pedidos.js)
     it.hash = x.hash || null;
-    it.motivoTexto = motivoLegivel(x.motivo);
+    it.motivoTexto = motivoLegivel(x.motivo) + (x.motivo === 'TIPO_XML_NAO_TRATADO' && x.tipo ? ' (' + String(x.tipo).replace(/^XML\s*/i, '') + ')' : '');
     it.sugestao = corta(sugestao(x), 260);
     if (x.destinoSugerido) it.destinoSugerido = corta(destinoCurto(x.destinoSugerido), 300);
   }
@@ -169,10 +194,11 @@ function itemCompacto(x, modoRes, em, historico) {
   return it;
 }
 
-function contagemVazia(chave) { return { chave, porAcao: { arquivou: 0, arquivaria: 0, jaArquivado: 0, naoIdentificado: 0, fica: 0, erro: 0 }, porTipo: {}, porCliente: {}, porMotivo: {}, pastasNovas: [] }; }
+function contagemVazia(chave) { return { chave, porAcao: { arquivou: 0, arquivaria: 0, jaArquivado: 0, naoIdentificado: 0, fica: 0, erro: 0, descartado: 0 }, aMao: 0, porTipo: {}, porCliente: {}, porMotivo: {}, pastasNovas: [] }; }
 /** Soma um item (compacto) na contagem do dia ou do mês. */
 function somar(c, it) {
   c.porAcao[it.acao] = (c.porAcao[it.acao] || 0) + 1;
+  if (it.acao === 'arquivou' && it.porQuem) c.aMao = (c.aMao || 0) + 1;
   if (it.acao === 'arquivou' || it.acao === 'arquivaria') {
     const t = it.tipo || 'OUTROS';
     c.porTipo[t] = (c.porTipo[t] || 0) + 1;
@@ -184,7 +210,44 @@ function somar(c, it) {
 /** A contagem como vai para o banco: os clientes viram a lista dos que mais receberam (e quantos são ao todo). */
 function contagemPublicada(c) {
   const clientes = Object.entries(c.porCliente).map(([codigo, v]) => ({ codigo, nome: v.nome, n: v.n })).sort((a, b) => b.n - a.n || a.codigo.localeCompare(b.codigo));
-  return { chave: c.chave, porAcao: c.porAcao, porTipo: c.porTipo, porMotivo: c.porMotivo, pastasNovas: c.pastasNovas, clientes: clientes.slice(0, MAX_CLIENTES), totalDeClientes: clientes.length };
+  return { chave: c.chave, porAcao: c.porAcao, aMao: c.aMao || 0, porTipo: c.porTipo, porMotivo: c.porMotivo, pastasNovas: c.pastasNovas, clientes: clientes.slice(0, MAX_CLIENTES), totalDeClientes: clientes.length };
+}
+
+/**
+ * O resumo pequeno da janela do Drive (robo/arquivadorResumo): sem nome de arquivo original (o contábil lê), só o nome
+ * final padronizado do último arquivado, e nem esse quando é documento de funcionário (o nome da pessoa).
+ */
+function resumoParaODrive(st, em, maquina) {
+  const h = st.hoje || contagemVazia('');
+  const u = (st.ultimos || []).find(x => x.acao === 'arquivou') || null;
+  const dp = u && /^DP FUNCIONARIO/i.test(u.tipo || '');
+  return {
+    em, maquina,
+    modo: st.config ? st.config.modo : null, emProducao: !!(st.config && st.config.emProducao),
+    situacao: st.situacao || 'ok', esperando: st.esperando || null, lento: st.lento || null, progresso: (st.leitura && st.leitura.texto) || null,
+    pasta: st.pasta ? { naPasta: st.pasta.naPasta || 0, chegando: st.pasta.chegando || 0, naFila: st.pasta.naFila || 0, sendoLidos: st.pasta.sendoLidos || 0 } : null,
+    hoje: { dia: h.chave, arquivados: h.porAcao.arquivou || 0, aMao: h.aMao || 0, clientes: Object.keys(h.porCliente || {}).length, jaArquivado: h.porAcao.jaArquivado || 0, descartados: h.porAcao.descartado || 0, erros: h.porAcao.erro || 0 },
+    paraResolver: st.pendentesTotal == null ? (st.pendentes || []).length : st.pendentesTotal,
+    ultimo: u ? { em: u.em, tipo: u.tipo || null, cliente: u.cliente || null, clienteNome: u.clienteNome || null, nomeFinal: dp ? null : (u.nomeFinal || null) } : null,
+  };
+}
+
+/**
+ * O resumo de um mês a partir das contagens de cada dia (resumo-dias.json): as somas por ação, os arquivados à mão, por
+ * tipo e por cliente (todos), as pastas novas e a contagem por ação de cada dia (a visão do período soma estas).
+ */
+function resumoDoMes(mes, porDia, em) {
+  const out = { mes, em, porAcao: {}, aMao: 0, porTipo: {}, porCliente: {}, porMotivo: {}, pastasNovas: [], dias: {} };
+  for (const [dia, c] of Object.entries(porDia || {}).filter(([d]) => d.slice(0, 7) === mes).sort()) {
+    out.dias[dia] = Object.assign({}, c.porAcao, { aMao: c.aMao || 0 });
+    for (const [k, n] of Object.entries(c.porAcao || {})) out.porAcao[k] = (out.porAcao[k] || 0) + n;
+    out.aMao += c.aMao || 0;
+    for (const [k, n] of Object.entries(c.porTipo || {})) out.porTipo[k] = (out.porTipo[k] || 0) + n;
+    for (const [k, n] of Object.entries(c.porMotivo || {})) out.porMotivo[k] = (out.porMotivo[k] || 0) + n;
+    for (const [k, v] of Object.entries(c.porCliente || {})) { const a = out.porCliente[k] || (out.porCliente[k] = { nome: v.nome || '', n: 0 }); a.n += v.n; if (!a.nome && v.nome) a.nome = v.nome; }
+    for (const p of c.pastasNovas || []) if (!out.pastasNovas.includes(p) && out.pastasNovas.length < 50) out.pastasNovas.push(p);
+  }
+  return out;
 }
 
 /** Os arquivos da pasta separados pela situação: chegando (ainda mudando), na fila (prontos), sendo lidos, parados (já decididos). */
@@ -211,8 +274,11 @@ function situacaoDaPasta(v, agora) {
   }
   const ordem = { lendo: 0, chegando: 1, fila: 2, original: 3 };
   lista.sort((a, b) => ordem[a.situacao] - ordem[b.situacao] || a.desde.localeCompare(b.desde));
+  // a leitura em fluxo (23/10/2026) manda só uma amostra da lista e os números de tudo em v.contagem
+  const c = v.contagem || null;
   return {
-    naPasta: vistos.length, chegando, naFila, sendoLidos, parados, esperandoOriginal,
+    naPasta: c ? c.naPasta : vistos.length, chegando: c ? c.chegando : chegando, naFila: c ? c.naFila : naFila, sendoLidos,
+    parados: c ? c.parados : parados, esperandoOriginal: c ? c.esperandoOriginal : esperandoOriginal,
     lista: lista.slice(0, MAX_CHEGANDO).map(x => ({ nome: corta(path.win32.basename(x.rel), 140), rel: corta(x.rel, 260), tam: x.tam, desde: x.desde, situacao: x.situacao })),
   };
 }
@@ -246,6 +312,8 @@ function alertas(estado, agora) {
   const out = [];
   if (estado.situacao === 'sem-drive') out.push({ tipo: 'drive', tom: 'erro', titulo: 'O Google Drive (G:) está fora do ar', texto: 'O robô parou de ler a pasta Claudio Secretario e espera o Drive voltar.', oQueFazer: 'Abra o Google Drive no PC do robô e confira se o G: aparece.' });
   if (estado.situacao === 'esperando' && estado.esperando) out.push({ tipo: 'esperando', tom: 'aviso', titulo: 'Esperando para continuar', texto: estado.esperando.charAt(0).toUpperCase() + estado.esperando.slice(1) + '.', oQueFazer: 'Nada: ele continua sozinho quando a outra execução terminar.' });
+  if (estado.leitura && estado.leitura.texto) out.push({ tipo: 'leitura', tom: 'info', titulo: estado.leitura.texto.split(' · ')[0], texto: estado.leitura.texto.split(' · ').slice(1).join(' · ') || 'Lendo a pasta Claudio Secretario.', oQueFazer: null });
+  if (estado.lento) out.push({ tipo: 'drive-lento', tom: 'aviso', titulo: 'Google Drive lento: indo devagar', texto: estado.lento, oQueFazer: 'Nada: o robô volta ao ritmo normal sozinho quando o Drive responder rápido. Se demorar muito, reinicie o Google Drive no PC do robô.' });
   if (estado.erroDoCiclo && agora - Date.parse(estado.erroDoCiclo.em) < 30 * 60000) out.push({ tipo: 'ciclo', tom: 'erro', titulo: 'A última volta do arquivador deu erro', texto: estado.erroDoCiclo.texto, oQueFazer: classificarErro(estado.erroDoCiclo.texto).oQueFazer });
   const lentos = (estado.ultimos || []).filter(x => x.ocr && x.ocr.segundos != null && x.ocr.segundos >= 60 && agora - Date.parse(x.em) < 3600e3).length;
   if (lentos) out.push({ tipo: 'ocr', tom: 'aviso', titulo: lentos === 1 ? 'Um PDF escaneado demorou mais de 1 minuto para ler' : lentos + ' PDFs escaneados demoraram mais de 1 minuto para ler', texto: 'A leitura por OCR é lenta nos escaneados grandes.', oQueFazer: 'Se a fila crescer, peça os PDFs originais em vez dos escaneados.' });
@@ -262,11 +330,12 @@ const hojeLocal = (t) => { const d = new Date(t); return d.getFullYear() + '-' +
  * Devolve as entradas que o contínuo chama: situacao, varredura, lendo, decisoes, erro, config, ladoALado, parar.
  */
 function criar(opcoes) {
-  const o = Object.assign({ log: () => {}, agora: () => Date.now(), freioMs: FREIO_MS }, opcoes);
+  const o = Object.assign({ log: () => {}, agora: () => Date.now(), freioMs: FREIO_MS, prazoMs: PRAZO_MS, historicoMs: HISTORICO_MS }, opcoes);
   const arqEstado = path.join(o.controle, 'acompanhamento.json');
   const arqDia = dia => path.join(o.controle, 'arquivados-' + dia + '.jsonl');
   let st = (() => { try { return JSON.parse(fs.readFileSync(arqEstado, 'utf8')); } catch (e) { return null; } })() || {};
   st = Object.assign({ ultimos: [], pendentes: [], erros: [], marcas: [], passada: null, situacao: 'ok', esperando: null, erroDoCiclo: null, pasta: null, config: null, ladoALado: null, hoje: null, mes: null }, st);
+  st.leitura = null;   // a leitura de antes de desligar não vale mais
   const agora0 = o.agora();
   if (!st.hoje || st.hoje.chave !== hojeLocal(agora0)) st.hoje = contagemVazia(hojeLocal(agora0));
   if (!st.mes || st.mes.chave !== hojeLocal(agora0).slice(0, 7)) st.mes = contagemVazia(hojeLocal(agora0).slice(0, 7));
@@ -278,13 +347,35 @@ function criar(opcoes) {
       let tam = 0;
       for (const l of fs.readFileSync(arqDia(chave), 'utf8').split('\n')) {
         if (!l.trim()) continue;
-        if (tam + l.length > BYTES_POR_PARTE) { dia.partes.push([]); tam = 0; }
+        if (tam + l.length > bytesDaParte(chave)) { dia.partes.push([]); tam = 0; }
         dia.partes[dia.partes.length - 1].push(JSON.parse(l)); tam += l.length;
       }
     } catch (e) { /* dia novo */ }
     dia.tam = dia.partes[dia.partes.length - 1].reduce((s, x) => s + JSON.stringify(x).length, 0);
+    // a parte aberta vai de novo uma vez (o fim do dia que talvez não tenha subido antes de o robô parar)
+    if (dia.partes[dia.partes.length - 1].length) dia.sujas.add(dia.partes.length - 1);
   }
   carregarDia(st.hoje.chave);
+  // as contagens de hoje recontadas do histórico do dia, que é o registro (26/10/2026: o robô religado com o acompanhamento
+  // de outro dia mostrava "Hoje: 0" com 543 arquivados no histórico)
+  if (dia.partes.some(p => p.length)) { const c = contagemVazia(st.hoje.chave); for (const p of dia.partes) for (const x of p) somar(c, x); st.hoje = c; }
+  // e os erros que o histórico do dia já mostra decididos depois saem da lista
+  { const ultima = new Map(); for (const p of dia.partes) for (const x of p) if (x.rel) ultima.set(x.rel, x.acao); st.erros = (st.erros || []).filter(e => !e.rel || !ultima.has(e.rel) || ultima.get(e.rel) === 'erro'); }
+  // as contagens de cada dia (para o resumo do mês): as que já estão no PC, mais as dos dias que só têm o histórico
+  // (arquivados-AAAA-MM-DD.jsonl), contadas uma vez; o dia de hoje é sempre o st.hoje
+  const arqResumo = path.join(o.controle, 'resumo-dias.json');
+  let porDia = (() => { try { return JSON.parse(fs.readFileSync(arqResumo, 'utf8')); } catch (e) { return {}; } })();
+  const mesesSujos = new Set([st.hoje.chave.slice(0, 7)]);
+  try {
+    for (const f of fs.readdirSync(o.controle)) {
+      const m = /^arquivados-(\d{4}-\d{2}-\d{2})\.jsonl$/.exec(f);
+      if (!m || porDia[m[1]] || m[1] === st.hoje.chave) continue;
+      const c = contagemVazia(m[1]);
+      for (const l of fs.readFileSync(path.join(o.controle, f), 'utf8').split('\n')) { if (!l.trim()) continue; try { somar(c, JSON.parse(l)); } catch (e) { /* linha ruim */ } }
+      porDia[m[1]] = c; mesesSujos.add(m[1].slice(0, 7));
+    }
+  } catch (e) { /* sem histórico no PC */ }
+  let resumoDoHoje = '';
 
   let ultimaGravacao = 0, timer = null, avisouErro = false, parado = false, limpar = true;
   const assinatura = () => JSON.stringify([st.pasta && [st.pasta.naPasta, st.pasta.chegando, st.pasta.naFila, st.pasta.sendoLidos, st.pasta.lista.map(x => x.rel + x.situacao)], st.passada]);
@@ -292,7 +383,7 @@ function criar(opcoes) {
 
   function virarDia(t) {
     const h = hojeLocal(t);
-    if (st.hoje.chave !== h) { st.hoje = contagemVazia(h); carregarDia(h); limpar = true; }
+    if (st.hoje.chave !== h) { porDia[st.hoje.chave] = JSON.parse(JSON.stringify(st.hoje)); mesesSujos.add(st.hoje.chave.slice(0, 7)); if (dia.sujas.size) diasPendentes.push(dia); st.hoje = contagemVazia(h); carregarDia(h); historicoEm = 0; limpar = true; }
     if (st.mes.chave !== h.slice(0, 7)) st.mes = contagemVazia(h.slice(0, 7));
   }
 
@@ -313,27 +404,78 @@ function criar(opcoes) {
       pendentesTotal: st.pendentesTotal == null ? st.pendentes.length : st.pendentesTotal,
       erros: st.erros,
       alertas: alertas(st, t),
+      grupos: st.grupos || [],
       ladoALado: st.ladoALado,
       historico: { dia: dia.chave, partes: dia.partes.length, itens: dia.partes.reduce((s, p) => s + p.length, 0) },
     };
   }
 
+  // 23/10/2026: uma gravação por vez (a de antes ainda no ar: não começa outra), cada uma com prazo, e a fila do banco
+  // nunca acumula (o que ainda não voltou de uma volta que desistiu segura as próximas); falhou, pausa e tenta depois
+  let gravando = false, deNovo = false, noBanco = 0, falhas = 0, pausaAte = 0, historicoEm = 0;
+  const diasPendentes = [];
+  const comPrazo = (p) => {
+    noBanco++;
+    const fim = Promise.resolve(p).finally(() => { noBanco--; });
+    let t;
+    return Promise.race([fim, new Promise((_, rej) => { t = setTimeout(() => rej(new Error('o banco não respondeu em ' + Math.round(o.prazoMs / 1000) + ' s')), o.prazoMs); })])
+      .finally(() => clearTimeout(t));
+  };
+  const depois = (ms) => { if (timer || parado) return; timer = setTimeout(() => { void gravar(); }, Math.max(1000, ms)); if (timer.unref) timer.unref(); };
   async function gravar() {
     timer = null;
+    if (gravando) { deNovo = true; return; }
     ultimaGravacao = o.agora();
     const painel = montar();
     try { fs.writeFileSync(arqEstado + '.tmp', JSON.stringify(Object.assign({}, st, { marcas: st.marcas.slice(-400) }))); fs.renameSync(arqEstado + '.tmp', arqEstado); } catch (e) { o.log('acompanhamento: não gravei o estado:', e.message); }
     if (!o.db) return;
+    if (o.agora() < pausaAte || noBanco > 0) { depois(Math.max(pausaAte - o.agora(), o.freioMs)); return; }
+    gravando = true;
     try {
       const ref = o.db.collection('robo').doc('arquivadorNovo');
-      await ref.set({ painel }, { mergeFields: ['painel'] });
-      for (const n of [...dia.sujas]) {
-        await ref.collection('dias').doc(dia.chave + '-' + n).set({ dia: dia.chave, parte: n, em: painel.em, itens: dia.partes[n] || [] });
-        dia.sujas.delete(n);
+      await comPrazo(ref.set({ painel }, { mergeFields: ['painel'] }));
+      // o resumo da janela do Drive (o contábil lê; 23/10/2026)
+      await comPrazo(o.db.collection('robo').doc('arquivadorResumo').set(resumoParaODrive(st, painel.em, painel.maquina)));
+      // o fim do dia que terminou (o que ainda não tinha subido na virada)
+      while (diasPendentes.length) {
+        const d = diasPendentes[0];
+        for (const n of [...d.sujas].sort((a, b) => a - b)) { await comPrazo(ref.collection('dias').doc(d.chave + '-' + n).set({ dia: d.chave, parte: n, em: painel.em, itens: d.partes[n] || [] })); d.sujas.delete(n); }
+        diasPendentes.shift();
       }
-      avisouErro = false;
-    } catch (e) { if (!avisouErro) { o.log('acompanhamento: não publiquei:', e.message); avisouErro = true; } }
-    if (limpar) { limpar = false; await limparAntigos(); }
+      // o histórico: as partes fechadas uma vez; a aberta no máximo a cada HISTORICO_MS; até MAX_BYTES_POR_VEZ por volta
+      const ultima = dia.partes.length - 1;
+      let bytes = 0;
+      for (const n of [...dia.sujas].sort((a, b) => a - b)) {
+        const aberta = n === ultima;
+        if (aberta && o.agora() - historicoEm < o.historicoMs) continue;
+        const itens = dia.partes[n] || [];
+        const tam = JSON.stringify(itens).length;
+        if (bytes && bytes + tam > MAX_BYTES_POR_VEZ) break;
+        await comPrazo(ref.collection('dias').doc(dia.chave + '-' + n).set({ dia: dia.chave, parte: n, em: painel.em, itens }));
+        dia.sujas.delete(n); bytes += tam;
+        if (aberta) historicoEm = o.agora();
+      }
+      // o que ficou para depois (a aberta antes do tempo, ou o limite da volta): outra volta mais tarde
+      if (dia.sujas.size) depois(dia.sujas.has(ultima) && dia.sujas.size === 1 ? o.historicoMs - (o.agora() - historicoEm) : o.freioMs);
+      // o resumo do mês: o de hoje mudou (ou há meses da volta do histórico do PC)
+      const h = JSON.stringify(st.hoje);
+      if (h !== resumoDoHoje) { porDia[st.hoje.chave] = JSON.parse(h); mesesSujos.add(st.hoje.chave.slice(0, 7)); }
+      if (mesesSujos.size) {
+        try { fs.writeFileSync(arqResumo + '.tmp', JSON.stringify(porDia)); fs.renameSync(arqResumo + '.tmp', arqResumo); } catch (e) { o.log('acompanhamento: não gravei o resumo dos dias:', e.message); }
+        for (const mes of [...mesesSujos]) { await comPrazo(ref.collection('meses').doc(mes).set(resumoDoMes(mes, porDia, painel.em))); mesesSujos.delete(mes); }
+        resumoDoHoje = h;
+      }
+      avisouErro = false; falhas = 0;
+      if (limpar) { limpar = false; await limparAntigos(); }
+    } catch (e) {
+      falhas++;
+      pausaAte = o.agora() + Math.min(PAUSA_MAX_MS, 30000 * 2 ** (falhas - 1));
+      if (!avisouErro) { o.log('acompanhamento: não publiquei (' + e.message + '); tento de novo em ' + Math.round((pausaAte - o.agora()) / 1000) + ' s'); avisouErro = true; }
+      depois(pausaAte - o.agora());
+    } finally {
+      gravando = false;
+      if (deNovo) { deNovo = false; depois(o.freioMs); }
+    }
   }
   /** O histórico de mais de DIAS_GUARDADOS dias: as partes no banco (até 50 por vez) e os arquivos do PC. */
   async function limparAntigos() {
@@ -342,8 +484,8 @@ function criar(opcoes) {
     try {
       const col = o.db && o.db.collection('robo').doc('arquivadorNovo').collection('dias');
       if (!col || typeof col.where !== 'function') return;
-      const snap = await col.where('dia', '<', limite).limit(50).get();
-      for (const d of snap.docs) await d.ref.delete();
+      const snap = await comPrazo(col.where('dia', '<', limite).limit(50).get());
+      for (const d of snap.docs) await comPrazo(d.ref.delete());
     } catch (e) { o.log('acompanhamento: não limpei o histórico antigo:', e.message); }
   }
   /** O freio: no máximo uma gravação a cada freioMs (a mudança no meio espera a próxima). */
@@ -372,7 +514,7 @@ function criar(opcoes) {
       virarDia(t);
       const antes = assinatura();
       st.pasta = situacaoDaPasta(Object.assign({ lendo: st.lendoAgora || [] }, v), t);
-      st.passada = avancarPassada(st.passada, (v.pendentes || []).length, t);
+      st.passada = avancarPassada(st.passada, v.faltam != null ? v.faltam : (v.pendentes || []).length, t);
       // a varredura roda a cada minuto: só grava quando a pasta mudou, ou a cada BATIMENTO_MS (o sinal de vida da página)
       if (assinatura() !== antes || t - ultimaGravacao >= BATIMENTO_MS) publicar();
     }),
@@ -399,13 +541,16 @@ function criar(opcoes) {
         somar(st.hoje, it); somar(st.mes, it);
         st.marcas.push(t);
         if (st.passada && !st.passada.fim) st.passada.feitos++;
+        // o que deu erro e foi decidido depois (27/10/2026: o Drive caiu 1 min às 03:53 e a nova tentativa arquivou os 57)
+        // sai da lista de erros
+        if (it.acao !== 'erro' && it.rel && st.erros.length) st.erros = st.erros.filter(e => e.rel !== it.rel);
         if (it.acao === 'erro') st.erros.unshift(it);
         else if (it.acao === 'naoIdentificado' || it.acao === 'fica') st.pendentes.unshift(it);
         else st.ultimos.unshift(it);
         const h = itemCompacto(x, modoRes, em, true);
         linhas.push(JSON.stringify(h));
         const s = linhas[linhas.length - 1].length;
-        if (dia.tam + s > BYTES_POR_PARTE && dia.partes[dia.partes.length - 1].length) { dia.partes.push([]); dia.tam = 0; }
+        if (dia.tam + s > bytesDaParte(dia.chave) && dia.partes[dia.partes.length - 1].length) { dia.partes.push([]); dia.tam = 0; }
         dia.partes[dia.partes.length - 1].push(h); dia.tam += s;
         dia.sujas.add(dia.partes.length - 1);
       }
@@ -431,7 +576,16 @@ function criar(opcoes) {
      * reprocessamentos tiravam a maioria da pasta). itens = [{ rel, nome, motivo, confianca, cliente, chave, em, hash }]
      * do que está hoje em NÃO IDENTIFICADOS; o "fica" (na origem) continua enquanto o arquivo estiver lá (existe(rel)).
      */
-    naoIdentificados: seguro('naoIdentificados', (itens, existe) => {
+    /** o Drive lento (23/10/2026): o texto do ritmo reduzido, ou null no ritmo normal */
+    ritmo: seguro('ritmo', (texto) => { const t = texto || null; if (st.lento !== t) { st.lento = t; publicar(); } }),
+    /** os grupos de NÃO IDENTIFICADOS (23/10/2026): [{ id, motivo, pasta, n, exemplos, sugestao }], os maiores primeiro */
+    grupos: seguro('grupos', (gs) => {
+      const novos = (gs || []).map(g => ({ id: g.id, motivo: g.motivo, motivoTexto: motivoLegivel(g.motivo), pasta: corta(g.pasta, 260), n: g.n, exemplos: (g.exemplos || []).slice(0, 3).map(x => ({ nome: corta(x.nome, 140), rel: corta(x.rel, 400), hash: x.hash })), sugestao: g.sugestao || null }));
+      if (JSON.stringify(novos) !== JSON.stringify(st.grupos || [])) { st.grupos = novos; publicar(); }
+    }),
+    /** a leitura da pasta agora (23/10/2026): { texto: "Lendo a pasta: 37.000 de ~100.000 arquivos · …", filas, porMinuto } ou null */
+    leitura: seguro('leitura', (l) => { const antes = st.leitura && st.leitura.texto; st.leitura = l || null; if ((l && l.texto) !== antes) publicar(); }),
+    naoIdentificados: seguro('naoIdentificados', (itens, existe, aoContar) => {
       const daPasta = (itens || []).map(x => Object.assign(itemCompacto(Object.assign({ acao: 'NAO_IDENTIFICADO' }, x), 'PRODUCAO', x.em || new Date(o.agora()).toISOString(), false), { naPasta: x.naPasta || null }));
       const ficam = st.pendentes.filter(p => p.acao === 'fica' && (!existe || existe(p.rel)));
       const todos = daPasta.concat(ficam).sort((a, b) => String(b.em).localeCompare(String(a.em)));
@@ -439,13 +593,14 @@ function criar(opcoes) {
       st.pendentes = todos.slice(0, MAX_PENDENTES);
       st.pendentesTotal = todos.length;
       if (antes !== JSON.stringify([st.pendentesTotal, st.pendentes.map(p => p.id)])) publicar();
+      if (aoContar) aoContar(st.pendentesTotal);
     }),
     ladoALado: seguro('ladoALado', (r) => { st.ladoALado = Object.assign({}, r, { exemplos: (r.exemplos || []).slice(0, 20) }); publicar(); }),
     /** grava o que falta agora (ao desligar) */
-    parar: async () => { try { if (timer) { clearTimeout(timer); timer = null; } await gravar(); } catch (e) { /* desligando */ } parado = true; },
+    parar: async () => { try { if (timer) { clearTimeout(timer); timer = null; } historicoEm = 0; pausaAte = 0; await gravar(); } catch (e) { /* desligando */ } parado = true; },
     /** para os testes */
     _montar: montar, _gravar: gravar, _estado: () => st, _dia: () => dia,
   };
 }
 
-module.exports = { criar, MOTIVOS, motivoLegivel, sugestao, evidenciaLegivel, classificarErro, acaoDoItem, itemCompacto, contagemVazia, somar, contagemPublicada, situacaoDaPasta, ritmo, avancarPassada, alertas, destinoCurto, FREIO_MS };
+module.exports = { criar, MOTIVOS, motivoLegivel, sugestao, evidenciaLegivel, classificarErro, acaoDoItem, itemCompacto, contagemVazia, somar, contagemPublicada, resumoDoMes, resumoParaODrive, situacaoDaPasta, ritmo, avancarPassada, alertas, destinoCurto, FREIO_MS };

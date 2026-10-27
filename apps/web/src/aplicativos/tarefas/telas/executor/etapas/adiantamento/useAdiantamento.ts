@@ -21,7 +21,11 @@ export function useAdiantamento(lado: t.LadoDoAdiantamento = 'fornecedores') {
   const { aviso } = useRetorno();
   const meses = s.meses;
   // o razão fica guardado (Vitor, 15/10/2026: voltou, está onde parou)
-  const [proprio, setRazao] = useGuardado<{ nome: string; r: t.RazaoDaConta } | null>(useChaveDaEtapa('adiantamento-' + lado) + '|razao', null);
+  const chave = useChaveDaEtapa('adiantamento-' + lado);
+  const [proprio, setRazao] = useGuardado<{ nome: string; r: t.RazaoDaConta } | null>(chave + '|razao', null);
+  // "Não houve mais movimento" (Vitor, 26/10/2026): a pessoa diz que a conta não mexeu mais; a etapa não cobra o razão nem
+  // a correção do mês do lado errado. Clicar de novo desfaz
+  const [semMovimento, setSemMovimento] = useGuardado<boolean>(chave + '|sem-mais-movimento', false);
   // o da Importação (o upload único dos razões; 16/10/2026), quando a etapa não tem o próprio
   const contabil = useContabilDaEmpresa(s.nome, s.codigo);
   const daImportacao = contabil.razaoDoTipo(lado === 'fornecedores' ? 'adiantamento-fornecedores' : 'adiantamento-clientes');
@@ -53,12 +57,15 @@ export function useAdiantamento(lado: t.LadoDoAdiantamento = 'fornecedores') {
   const cobertura = razao ? t.coberturaDoRazao(razao.r, meses) : null;
   const rotulo = (m: string) => t.rotuloNumericoCompetencia(m);
   // na Tarefa: o razão importado e nenhum mês credor
-  const faltam = !razao ? ['Importar o razão do ' + nome]
+  const faltam = semMovimento ? [] : !razao ? ['Importar o razão do ' + nome]
     : credores.length ? ['Corrigir o saldo ' + errado + ' do adiantamento em ' + credores.map(rotulo).join(', ')] : [];
   useRequisitosDaEtapa({ pronto: !faltam.length, faltam });
 
   return {
     lado, nome, errado,
+    semMovimento, alternarSemMovimento: () => setSemMovimento(x => !x),
+    /** o botão aparece quando a etapa ainda cobra algo (ou já foi marcado, para desfazer) */
+    mostrarSemMovimento: semMovimento || !razao || credores.length > 0,
     periodo: t.rotuloDoPeriodo([...meses]),
     razao: razao ? { nome: razao.nome, resumo: doPeriodo.reduce((n, m) => n + m.lancamentos.length, 0) + ' lançamentos · ' + t.rotuloDoPeriodo([...meses]) } : null,
     importar: (f: File | undefined) => { void importar(f); },

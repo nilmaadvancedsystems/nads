@@ -75,7 +75,7 @@ const esc = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt
 const codigo5 = (n: number) => String(n).padStart(5, '0');
 
 /** O que é comum aos dois: a folha, a logo, o título grande à direita e a tabela de linhas finas. */
-function documento(p: { titulo: string; ano: number; deitado: boolean; logo: { definicao: string; uso: string }; cabecalho: string; corpo: string; pe: string; css: string }): string {
+function documento(p: { titulo: string; ano: number; deitado: boolean; logo: { definicao: string; uso: string }; cabecalho: string; corpo: string; css: string }): string {
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${esc(p.titulo)} ${p.ano}</title>
 <style>
   @page{size:A4${p.deitado ? ' landscape' : ''};margin:8mm}
@@ -94,24 +94,19 @@ function documento(p: { titulo: string; ano: number; deitado: boolean; logo: { d
   td{border-bottom:.3mm solid #000;height:6mm;padding:0 1mm;vertical-align:bottom;white-space:nowrap;text-align:center;font-weight:700}
   td.cod{text-align:left}
   td.nome{text-align:left;font-weight:400;overflow:hidden;text-overflow:ellipsis;font-size:7pt}
-  .pe{margin-top:3mm;font-size:6.5pt;color:#555}
 ${p.css}
 </style></head><body>
 ${p.logo.definicao}<div class="topo"><span class="logo">${p.logo.uso}</span><span class="titulo">${esc(p.titulo)} ${p.ano}</span></div>
 <table><thead>${p.cabecalho}</thead><tbody>${p.corpo}</tbody></table>
-<p class="pe">${p.pe}</p>
 </body></html>`;
 }
-
-const empresas = (n: number) => n + (n === 1 ? ' empresa' : ' empresas');
 
 /** O protocolo de extratos, A4 em pé. logo: a da Nilma (colorida, para o fundo branco): o desenho e o uso */
 export function htmlDoProtocoloDeExtratos(p: { ano: number; linhas: readonly LinhaDoAno[]; logo: { definicao: string; uso: string } }): string {
   const cabecalho = `<tr><th class="cod">COD.</th><th class="nome">RAZÃO SOCIAL</th>${MESES_DO_PROTOCOLO.map(m => `<th>${m}</th>`).join('')}</tr>`;
   const corpo = p.linhas.map(l => `<tr><td class="cod">${codigo5(l.codigo)}</td><td class="nome">${esc(l.nome)}</td>${l.meses.map(v => `<td>${esc(v)}</td>`).join('')}</tr>`).join('');
   return documento({ titulo: 'Protocolo de Extratos', ano: p.ano, deitado: false, logo: p.logo, cabecalho, corpo,
-    css: '  th.nome{width:66mm}',
-    pe: empresas(p.linhas.length) + '. OK = o extrato do mês chegou (marcado na Pendências, pelo e-mail ou pela pasta do Drive); S/M = sem movimento; - = a empresa não manda extrato. Em branco: para preencher à mão.' });
+    css: '  th.nome{width:66mm}' });
 }
 
 /** O protocolo da REINF, A4 deitado: duas casas por mês (Fiscal e DP). */
@@ -120,6 +115,5 @@ export function htmlDoProtocoloDaReinf(p: { ano: number; linhas: readonly LinhaD
     + `<tr>${MESES_DO_PROTOCOLO.map(() => '<th class="lado">FISCAL</th><th class="lado">DP</th>').join('')}</tr>`;
   const corpo = p.linhas.map(l => `<tr><td class="cod">${codigo5(l.codigo)}</td><td class="nome">${esc(l.nome)}</td>${l.meses.map(([f, d]) => `<td>${esc(f)}</td><td class="dp">${esc(d)}</td>`).join('')}</tr>`).join('');
   return documento({ titulo: 'Protocolo REINF', ano: p.ano, deitado: true, logo: p.logo, cabecalho, corpo,
-    css: '  th.nome{width:62mm}\n  th.lado{font-size:5pt;padding:.5mm 0}\n  td.dp{border-right:.3mm solid #000}',
-    pe: empresas(p.linhas.length) + '. E = a REINF do mês transmitida pelo Fiscal; P = feita pelo DP; - = a empresa não tem a REINF daquele lado. Em branco: para preencher à mão.' });
+    css: '  th.nome{width:62mm}\n  th.lado{font-size:5pt;padding:.5mm 0}\n  td.dp{border-right:.3mm solid #000}' });
 }

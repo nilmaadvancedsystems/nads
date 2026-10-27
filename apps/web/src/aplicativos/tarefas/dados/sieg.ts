@@ -37,7 +37,8 @@ export type TipoDePedidoSieg = 'saidas' | 'contagem' | 'xmls' | 'xmlsCliente' | 
 export interface RepoSieg {
   exemplos: boolean;
   /** o robô do SIEG: ligado (com as credenciais) e quando bateu o ponto */
-  robo(): { carregado: boolean; ligado: boolean; motivo: string; em: string };
+  /** o robô do SIEG: ligado, o último sinal (em), o que está fazendo agora ('livre' = nada) e quantos pedidos esperam */
+  robo(): { carregado: boolean; ligado: boolean; motivo: string; em: string; situacao: string; naFila: number };
   contagem(codigo: string, competencia: string): { carregada: boolean; dados: t.sieg.ContagemSieg | null };
   /** as contagens e as saídas de todos os clientes do mês, numa consulta só (o Painel do Fiscal; 09/10/2026), pelo código */
   doMes(competencia: string): { carregado: boolean; contagens: Map<string, t.sieg.ContagemSieg>; saidas: Map<string, t.sieg.SaidasSieg> };
@@ -77,7 +78,7 @@ function xmlsDeExemplo(competencia: string): Pick<t.sieg.NotasSieg, 'emitidas' |
   const cli = { doc: '44555666000172', nome: 'CLIENTE EXEMPLO (TESTE)' };
   const forn = { doc: '77888999000163', nome: 'FORNECEDOR EXEMPLO (TESTE)' };
   return {
-    resumo: 3,
+    resumo: 5,
     emitidas: [
       { tipo: 'NF-e', chave: 'T1', numero: 'T901', serie: '1', data: dia(3), emitente: eu, destinatario: cli, valor: 1500,
         itens: [{ ncm: '21069090', cfop: '5102', cst: '000', cest: '', valor: 1000, icms: 180, cstPis: '01' }, { ncm: '22021000', cfop: '5405', cst: '060', cest: '0300700', valor: 500, cstPis: '04' }] },
@@ -93,6 +94,18 @@ function xmlsDeExemplo(competencia: string): Pick<t.sieg.NotasSieg, 'emitidas' |
       { tipo: 'NF-e', chave: 'T4', numero: 'T502', serie: '1', data: dia(8), emitente: forn, destinatario: eu, valor: 1536, frete: 500, desconto: 0,
         itens: [{ ncm: '39241000', cfop: '2102', cst: '000', cest: '', valor: 600, icms: 72 }, { ncm: '39241000', cfop: '2403', cst: '010', cest: '', valor: 200, st: 20, ipi: 10 },
           { ncm: '69120000', cfop: '2403', cst: '010', cest: '', valor: 100, st: 6 }, { ncm: '70134900', cfop: '2403', cst: '060', cest: '', valor: 100 }] },
+      // os CT-e do Rateio de frete (23/10/2026: o frete vem do CT-e): o da T502 (os números da planilha), um que leva duas
+      // notas e um de antes do resumo 5 (sem as notas: a pessoa marca)
+      { tipo: 'CT-e', chave: 'T7', numero: 'T701', serie: '1', data: dia(8), emitente: { doc: '33444555000166', nome: 'TRANSPORTADORA EXEMPLO (TESTE)' }, destinatario: eu, valor: 500, icms: 60, cfop: '2353', nfes: ['T4'] },
+      { tipo: 'CT-e', chave: 'T8', numero: 'T702', serie: '1', data: dia(9), emitente: { doc: '33444555000166', nome: 'TRANSPORTADORA EXEMPLO (TESTE)' }, destinatario: eu, valor: 180.37, icms: 21.64, cfop: '2353', nfes: ['T3', 'T6'] },
+      { tipo: 'CT-e', chave: 'T9', numero: 'T703', serie: '1', data: dia(12), emitente: { doc: '88999000000111', nome: 'RAPIDO LOG (TESTE)' }, destinatario: eu, valor: 90, cfop: '2353' },
+      // a antecipação do ICMS do ES (22/10/2026): uma compra de SP a 7% com IPI, por CST, e uma com ICMS-ST
+      { tipo: 'NF-e', chave: 'T6', numero: 'T213719', serie: '1', data: dia(6), emitente: { doc: '61222333000144', nome: 'AUTOPECAS SP (TESTE)' }, destinatario: eu, valor: 7902.76,
+        itens: [{ ncm: '87083090', cfop: '6102', cst: '000', cest: '', valor: 4433.52, ipi: 144.08, bc: 4433.52, aliq: 7, icms: 310.35 },
+          { ncm: '87089990', cfop: '6102', cst: '500', cest: '', valor: 1400.5, ipi: 45.51, bc: 1400.5, aliq: 7, icms: 98.04 },
+          { ncm: '84213100', cfop: '6102', cst: '100', cest: '', valor: 1820, ipi: 59.15, bc: 1820, aliq: 4, icms: 72.8 }] },
+      { tipo: 'NF-e', chave: 'T7', numero: 'T15093', serie: '1', data: dia(18), emitente: { doc: '61222333000144', nome: 'AUTOPECAS SP (TESTE)' }, destinatario: eu, valor: 1312.4,
+        itens: [{ ncm: '40111000', cfop: '6403', cst: '010', cest: '1600100', valor: 1100, bc: 1100, aliq: 12, icms: 132, st: 80.4 }] },
       // uma NFS-e tomada com INSS e IRRF/PIS/COFINS/CSLL retidos (a REINF: R-2010 e R-4020)
       { tipo: 'NFS-e', chave: '', numero: 'T88', serie: '', data: dia(15), emitente: forn, destinatario: eu, valor: 4000, nbs: '1.0501.10.00',
         descricao: 'Limpeza e conservação (TESTE)', retencoes: [{ imposto: 'INSS', valor: 440 }, { imposto: 'IRRF', valor: 60 }, { imposto: 'PIS', valor: 26 }, { imposto: 'COFINS', valor: 120 }, { imposto: 'CSLL', valor: 40 }] },
@@ -113,7 +126,7 @@ export function criarSiegMemoria(): RepoSieg {
   const agora = () => new Date().toISOString();
   return {
     exemplos: true,
-    robo: () => ({ carregado: true, ligado: true, motivo: '', em: agora() }),
+    robo: () => ({ carregado: true, ligado: true, motivo: '', em: agora(), situacao: 'livre', naFila: 0 }),
     contagem: (codigo, competencia) => ({
       carregada: true,
       dados: contadasAgora.get(codigo + '_' + competencia)

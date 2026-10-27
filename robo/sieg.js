@@ -55,15 +55,31 @@ function cnpjOk(d) {
  * (CPF de 10 dígitos vira 11, CNPJ de 13 vira 14), e só se o dígito verificador bate. Devolve '' quando não serve.
  * CPF vai com 11 dígitos no CnpjEmit/CnpjDest (a própria mensagem do SIEG diz que aceita).
  */
-function normalizarDocumento(valor) {
+function normalizarDocumento(valor, enquadramento) {
   const d = soDigitos(typeof valor === 'number' ? Math.trunc(valor) : valor);
   if (!d) return '';
   if (d.length === 14 && cnpjOk(d)) return d;
   if (d.length === 11 && cpfOk(d)) return d;
   if (d.length < 11 && cpfOk(d.padStart(11, '0'))) return d.padStart(11, '0');
   if (d.length > 11 && d.length < 14 && cnpjOk(d.padStart(14, '0'))) return d.padStart(14, '0');
+  // produtor rural (enquadramento Física): o cadastro veio do Toriba com o número de 14 dígitos do produtor (CAEPF: 9 da base do
+  // CPF + 3 de sequência + 2 dígitos) e o SIEG só aceita CPF ou CNPJ. Sem ser CNPJ válido, o CPF sai da base (23/10/2026, o Vitor
+  // aprovou). Não consegui validar o dígito do CAEPF (as fórmulas de CNPJ e de CPF não fecham nos 6 casos do cadastro), então
+  // a regra é só o enquadramento. O robô avisa no painel (soComDocumento) para gravar o CPF no Cadastro.
+  if (d.length === 14 && /^f[ií]sica$/i.test(String(enquadramento || '').trim())) return cpfDaBase(d.slice(0, 9));
   return '';
 }
+/** O CPF de 11 dígitos a partir dos 9 primeiros (a base), com os dois dígitos verificadores calculados. */
+function cpfDaBase(base) {
+  let cpf = base;
+  for (const t of [9, 10]) {
+    let soma = 0;
+    for (let i = 0; i < t; i++) soma += Number(cpf[i]) * (t + 1 - i);
+    cpf += (soma * 10 % 11) % 10;
+  }
+  return cpfOk(cpf) ? cpf : '';
+}
+const comMascaraCpf = c => c.slice(0, 3) + '.' + c.slice(3, 6) + '.' + c.slice(6, 9) + '-' + c.slice(9);
 const SEM_DOC = cod => 'Cliente ' + cod + ' sem CNPJ/CPF válido no cadastro — corrija em Cadastro';
 // o código do cliente no Alterdata: nos clientes do Entregas ele está em codigoOrigem (07/10/2026: com `codigo` só, a
 // contagem não achava ninguém)
@@ -363,7 +379,7 @@ async function xmlsJaNoDrive(codigo, nomeDaPasta, competencia, db) {
     if (/\.xml$/i.test(n)) lerArquivo(path.join(pasta, n));
     else if (/^SIEG .*\.zip$/i.test(n)) { try { xmls.push(...lerZip(await fs.promises.readFile(path.join(pasta, n)))); } catch (_) { /* .zip quebrado */ } }
   }
-  const CACHE = path.join(process.env.LOCALAPPDATA || __dirname, 'nads-robo', 'xmls-do-drive');
+  const CACHE = path.join(require('./pastas-locais').ROBO, 'xmls-do-drive');   // fora do AppData (26/10/2026)
   await fs.promises.mkdir(CACHE, { recursive: true }).catch(() => {});
   await Promise.all(Array.from({ length: 32 }, async () => {
     for (let x = aLer.shift(); x; x = aLer.shift()) {
@@ -454,8 +470,10 @@ function iniciarSieg({ db, log }) {
     return () => {};
   }
   let situacao = 'livre';
+  // quantos pedidos esperam na fila (a tela mostra enquanto a pessoa espera; 26/10/2026)
+  let naFila = 0;
   painel.fazendoPor('sieg', () => (situacao === 'livre' ? null : 'SIEG: ' + situacao));
-  const ponto = () => estadoRef.set({ em: new Date().toISOString(), ligado: true, motivo: null, situacao }, { merge: true }).catch(() => {});
+  const ponto = () => estadoRef.set({ em: new Date().toISOString(), ligado: true, motivo: null, situacao, naFila }, { merge: true }).catch(() => {});
   ponto();
   const relogio = setInterval(ponto, 60 * 1000);
 
@@ -492,14 +510,79 @@ function iniciarSieg({ db, log }) {
   // o pedido que chega enquanto o robô atende outro não pode ficar esquecido (08/10/2026: o 380 do Gustavo ficou parado
   // porque chegou durante o 62): ao terminar, olha a fila de novo
   let chegouOutro = false;
+  // sem o Google Drive deste PC aberto (26/10/2026: 59 erros "a pasta do Drive deste PC não está em…" às 3h35; o Drive só
+  // abriu às 13h06): o pedido de XMLs não dá erro, fica na fila e é atendido quando a pasta aparecer (o relógio de 10 em
+  // 10 minutos tenta de novo); e os que já deram esse erro nos últimos 3 dias voltam para a fila sozinhos quando o Drive
+  // volta. Os outros pedidos (saídas, contagem) não precisam do Drive e seguem.
+  const ERRO_SEM_DRIVE = 'a pasta do Drive deste PC não está em';
+  const driveAberto = () => fs.existsSync(PASTA_DO_DRIVE);
+  let avisouSemDrive = 0;
+  let devolveuEm = 0;
+  async function devolverOsQueEsperavamODrive() {
+    if (!driveAberto() || Date.now() - devolveuEm < 10 * 60 * 1000) return;
+    devolveuEm = Date.now();
+    const desde = new Date(Date.now() - 3 * 864e5).toISOString();
+    const s = await db.collection('pedidosSieg').where('status', '==', 'erro').limit(300).get();
+    const voltam = s.docs.filter(d => String(d.data().erro || '').startsWith(ERRO_SEM_DRIVE) && String(d.data().erroEm || '') >= desde);
+    for (const d of voltam) await d.ref.update({ status: 'pendente', erro: null, andamento: '' });
+    if (voltam.length) {
+      log('SIEG: o Drive deste PC abriu -', voltam.length, 'pedidos de XMLs que deram erro sem ele voltaram para a fila');
+      painel.atividade('sieg', 'O Drive deste PC abriu: ' + voltam.length + ' pedidos de XMLs voltaram para a fila', 'eles tinham dado erro porque o Google Drive estava fechado');
+    }
+  }
+  // A ordem da fila (26/10/2026): primeiro a nota que alguém abriu na tela (zipFaltam), depois os pedidos das pessoas
+  // (saídas, contagem, XMLs), por último os da madrugada; dentro de cada um, o mais antigo primeiro. Os repetidos (o mesmo
+  // tipo, empresa e mês: a madrugada de 3 noites devolvida de uma vez quando o Drive abriu) vão juntos: fica o mais novo,
+  // que é o que a tela acompanha, com a prioridade do mais urgente deles; os outros fecham como concluídos ("juntadoCom").
+  // Os de XMLs ficam esperando se o Drive deste PC não estiver aberto (sem mexer neles).
+  const JUNTAVEIS = new Set(['saidas', 'contagem', 'xmls']);
+  const urgencia = p => (p.tipo === 'zipFaltam' ? 0 : p.madrugada || p.criadoPorUid === 'robo' ? 2 : 1);
+  async function proximoPedido() {
+    const s = await db.collection('pedidosSieg').where('status', '==', 'pendente').limit(500).get();
+    const semDrive = !driveAberto();
+    const vale = s.docs.filter(d => !(semDrive && (d.data().tipo === 'xmls' || d.data().tipo === 'xmlsCliente')));
+    if (vale.length < s.docs.length && Date.now() - avisouSemDrive > 60 * 60 * 1000) {
+      avisouSemDrive = Date.now();
+      log('SIEG: pedidos de XMLs esperando o Google Drive deste PC abrir (' + PASTA_DO_DRIVE + ')');
+      painel.atividade('sieg', 'Pedidos de XMLs esperando o Google Drive deste PC abrir', 'a pasta ' + PASTA_DO_DRIVE + ' não está aberta; o robô baixa assim que ela aparecer', { aviso: true });
+    }
+    const grupos = new Map();
+    const candidatos = [];
+    for (const d of vale) {
+      const p = d.data();
+      const tipo = p.tipo || 'saidas';
+      if (!JUNTAVEIS.has(tipo)) { candidatos.push({ d, u: urgencia(p) }); continue; }
+      const k = tipo + '|' + soDigitos(p.codigo) + '|' + p.competencia;
+      if (!grupos.has(k)) grupos.set(k, []);
+      grupos.get(k).push(d);
+    }
+    let juntados = 0;
+    for (const g of grupos.values()) {
+      g.sort((a, b) => String(b.data().criadoEm || '').localeCompare(String(a.data().criadoEm || '')));
+      const fica = g[0];
+      for (const d of g.slice(1)) {
+        await d.ref.update({ status: 'concluido', concluidoEm: new Date().toISOString(), andamento: '', juntadoCom: fica.id }).catch(() => {});
+        juntados++;
+      }
+      candidatos.push({ d: fica, u: Math.min(...g.map(x => urgencia(x.data()))) });
+    }
+    if (juntados) log('SIEG: ' + juntados + ' pedidos repetidos (mesmo tipo, empresa e mês) foram juntos com o mais novo');
+    candidatos.sort((a, b) => a.u - b.u || String(a.d.data().criadoEm || '').localeCompare(String(b.d.data().criadoEm || '')));
+    naFila = Math.max(0, candidatos.length - 1);
+    ponto();
+    return candidatos.length ? candidatos[0].d : null;
+  }
+
   async function atenderPedidos() {
     if (ocupado) { chegouOutro = true; return; }
     ocupado = true;
     chegouOutro = false;
     try {
       await apagarZipsVelhos().catch(err => log('SIEG: não consegui apagar os .zip velhos -', err.message));
-      const snap = await db.collection('pedidosSieg').where('status', '==', 'pendente').limit(5).get();
-      for (const d of snap.docs) {
+      await devolverOsQueEsperavamODrive().catch(err => log('SIEG: não consegui devolver os pedidos que esperavam o Drive -', err.message));
+      // um pedido por vez, e a fila é relida depois de cada um (26/10/2026: "ta bugado ou demora muito para puxar a nota":
+      // a nota de uma tela esperava atrás de 176 pedidos de XMLs da madrugada). Cada volta escolhe o mais urgente.
+      for (let d = await proximoPedido(), voltas = 0; d && voltas < 1000; d = await proximoPedido(), voltas++) {
         const p = d.data();
         const id = soDigitos(p.codigo) + '_' + p.competencia;
         situacao = 'baixando as saídas de ' + p.codigo;
@@ -511,7 +594,7 @@ function iniciarSieg({ db, log }) {
             const lista = [];
             (await require('./clientes-cache').clientesAtivos(db)).forEach(x => lista.push(x.data()));
             const cli = lista.find(x => codigoDe(x) === soDigitos(p.codigo));
-            cnpj = normalizarDocumento(cli && cli.documento);
+            cnpj = normalizarDocumento(cli && cli.documento, cli && cli.enquadramento);
             if (!cnpj) throw new Error(SEM_DOC(soDigitos(p.codigo)));
           }
           // "Baixar XMLs do SIEG" (07/10/2026): todos os XMLs do mês na pasta do cliente (Drive deste PC) e o resumo no banco
@@ -741,7 +824,7 @@ function iniciarSieg({ db, log }) {
         }
       }
     } catch (err) { log('SIEG: não consegui ler os pedidos -', err.message); }
-    finally { situacao = 'livre'; ocupado = false; if (chegouOutro) setTimeout(atenderPedidos, 0); }
+    finally { situacao = 'livre'; naFila = 0; ponto(); ocupado = false; if (chegouOutro) setTimeout(atenderPedidos, 0); }
   }
   const pararPedidos = db.collection('pedidosSieg').where('status', '==', 'pendente').onSnapshot(s => { if (!s.empty) atenderPedidos(); }, err => log('SIEG: pedidos -', err.message));
 
@@ -753,7 +836,19 @@ function iniciarSieg({ db, log }) {
     for (const x of ativos) {
       const cod = codigoDe(x);
       if (!cod) continue;
-      if (normalizarDocumento(x.documento)) { bons.push(x); continue; }
+      const doc = normalizarDocumento(x.documento, x.enquadramento);
+      if (doc) {
+        bons.push(x);
+        // CPF calculado do número de produtor rural: pede para gravar o certo no Cadastro (um aviso por dia)
+        if (doc !== normalizarDocumento(x.documento)) {
+          try {
+            await db.collection('siegAvisos').doc(cod + '_' + dia).create({ codigo: cod, dia, em: new Date().toISOString(), cpfCalculado: true });
+            painel.atividade('sieg', 'Cliente ' + cod + ': usei o CPF ' + comMascaraCpf(doc) + ' calculado do número de produtor rural — confira e grave o CPF no Cadastro', 'documento no cadastro: ' + String(x.documento), { aviso: true });
+            log('SIEG: cliente', cod, '- CPF', doc, 'calculado do número de produtor rural', soDigitos(x.documento));
+          } catch (err) { /* já avisou hoje */ }
+        }
+        continue;
+      }
       try {
         await db.collection('siegAvisos').doc(cod + '_' + dia).create({ codigo: cod, dia, em: new Date().toISOString() });
         painel.atividade('sieg', SEM_DOC(cod), 'documento no cadastro: ' + (x.documento == null || x.documento === '' ? '(vazio)' : String(x.documento)), { aviso: true });
@@ -784,8 +879,8 @@ function iniciarSieg({ db, log }) {
           if (chegouOutro) { ocupado = false; await atenderPedidos(); ocupado = true; }
           situacao = 'contando ' + codigoDe(cli) + ' (' + comp + ')';
           try {
-            const r = await contagemDoMes(c, normalizarDocumento(cli.documento), comp);
-            await db.collection('siegContagens').doc(codigoDe(cli) + '_' + comp).set({ codigo: codigoDe(cli), cnpj: normalizarDocumento(cli.documento), competencia: comp, em: new Date().toISOString(), ...r });
+            const r = await contagemDoMes(c, normalizarDocumento(cli.documento, cli.enquadramento), comp);
+            await db.collection('siegContagens').doc(codigoDe(cli) + '_' + comp).set({ codigo: codigoDe(cli), cnpj: normalizarDocumento(cli.documento, cli.enquadramento), competencia: comp, em: new Date().toISOString(), ...r });
           } catch (err) { log('SIEG: contagem de', codigoDe(cli), '-', err.message); }
         }
       }

@@ -15,10 +15,14 @@ export interface DocsDoArquivadorNovo {
 
 /** O histórico de um dia (as partes juntas, o mais novo primeiro). */
 export interface DiaDoArquivador { dia: string; carregado: boolean; erro: string; itens: entregas.ItemDoArquivador[] }
+/** O resumo de um mês (robo/arquivadorNovo/meses/{AAAA-MM}); mes null: o mês sem nada (ou o robô ainda não publica). */
+export interface MesCarregado { mes: string; carregado: boolean; erro: string; resumo: entregas.MesDoArquivador | null }
 
 /** Um pedido novo ao robô (o repositório põe quem pediu e a hora). */
 export interface NovoPedidoDoArquivador {
   tipo: entregas.TipoDoPedido; rel: string; hash: string; nome?: string; codigo?: number; tipoDoc?: string; competencia?: string;
+  /** o pedido de grupo: a decisão vira regra do mapa da migração (os próximos da mesma pasta saem sozinhos) */
+  lembrar?: boolean;
 }
 
 export interface RepoArquivadorNovo {
@@ -36,6 +40,8 @@ export interface RepoArquivadorNovo {
   acompanhar(): () => void;
   /** o histórico de um dia ('AAAA-MM-DD'): pede ao banco na primeira vez; o de hoje é relido quando o painel avisa que cresceu */
   dia(dia: string): DiaDoArquivador;
+  /** o resumo de um mês ('AAAA-MM'): pede ao banco na primeira vez; o do mês corrente é relido a cada 5 min */
+  mes(mes: string): MesCarregado;
   assinar(aoMudar: () => void): () => void;
   versao(): number;
 }
@@ -81,7 +87,7 @@ function itemDeExemplo(i: number, em: string, acao: entregas.AcaoDoArquivador = 
     id: 'ex-' + i, em, nome: m.nome.replace('{n}', n), rel: '2026-10\\' + m.nome.replace('{n}', n), acao, tipo: m.tipo, cliente: cod, clienteNome: nome,
     confianca: m.conf, destino: pastaCliente + '\\' + m.pasta + '\\' + final, nomeFinal: final,
     copias: [], pastaNova: '', evidencias: [...m.ev], ocr: m.ocr ? { confianca: 81, segundos: 14, erro: '' } : null, dentroDe: i % 9 === 4 ? 'xmls-outubro.zip' : '',
-    motivo: '', motivoTexto: '', sugestao: '', destinoSugerido: '', erro: '', erroTipo: '', erroTitulo: '', oQueFazer: '', naoAplicado: '', hash: '', naPasta: '',
+    motivo: '', motivoTexto: '', sugestao: '', destinoSugerido: '', erro: '', erroTipo: '', erroTitulo: '', oQueFazer: '', naoAplicado: '', hash: '', naPasta: '', porQuem: '',
   };
 }
 
@@ -101,9 +107,18 @@ const PENDENTES: readonly Partial<entregas.ItemDoArquivador>[] = [
 
 function vazioDoItem(): entregas.ItemDoArquivador {
   return { id: '', em: '', nome: '', rel: '', acao: 'naoIdentificado', tipo: '', cliente: '', clienteNome: '', confianca: null, destino: '', nomeFinal: '', copias: [], pastaNova: '', evidencias: [], ocr: null, dentroDe: '',
-    motivo: '', motivoTexto: '', sugestao: '', destinoSugerido: '', erro: '', erroTipo: '', erroTitulo: '', oQueFazer: '', naoAplicado: '', hash: '', naPasta: '' };
+    motivo: '', motivoTexto: '', sugestao: '', destinoSugerido: '', erro: '', erroTipo: '', erroTitulo: '', oQueFazer: '', naoAplicado: '', hash: '', naPasta: '', porQuem: '' };
 }
 
+/** Os grupos de Para resolver dos exemplos (a migração: as pastas antigas por cliente). */
+const GRUPOS_DE_EXEMPLO: entregas.GrupoParaResolver[] = [
+  { id: 'g-destda', motivo: 'TIPO_NAO_RECONHECIDO', motivoTexto: 'Tipo de documento desconhecido', pasta: '0010 - DORNAS HAVANA LTDA - ME\\DEPARTAMENTO FISCAL\\DES - BH', n: 312,
+    exemplos: ['12-2023.pdf', '01-2024.pdf', '02-2024.pdf'].map((nome, i) => ({ nome, rel: 'NÃO IDENTIFICADOS\\20261023-NOVO\\0010 - DORNAS HAVANA LTDA - ME\\DEPARTAMENTO FISCAL\\DES - BH\\' + nome, hash: 'gx' + i })), sugestao: { codigo: 10, tipoDoc: null } },
+  { id: 'g-escaneados', motivo: 'CONTEUDO_SEM_TEXTO', motivoTexto: 'Escaneado sem leitura', pasta: '0049 - POSTO DE COMBUSTIVEL ALTA FLORESTA LTDA - EPP\\DOCUMENTO CONSTITUTIVOS', n: 88,
+    exemplos: ['CNH Digital (22).pdf', 'contrato 2019.pdf', 'alteracao.pdf'].map((nome, i) => ({ nome, rel: 'NÃO IDENTIFICADOS\\20261023-NOVO\\0049 - POSTO\\' + nome, hash: 'gy' + i })), sugestao: { codigo: 49, tipoDoc: 'DOC_CONSTITUTIVO' } },
+  { id: 'g-ano', motivo: 'ANO_INDETERMINADO', motivoTexto: 'Sem o ano', pasta: '0055 - TORRA TORRA LTDA - ME\\CERTIDÕES', n: 41,
+    exemplos: ['CND - FEDERAL.pdf', 'CND ESTADUAL.pdf', 'FGTS.pdf'].map((nome, i) => ({ nome, rel: 'NÃO IDENTIFICADOS\\20261023-NOVO\\0055 - TORRA TORRA LTDA - ME\\CERTIDÕES\\' + nome, hash: 'gz' + i })), sugestao: { codigo: 55, tipoDoc: null } },
+];
 /** O painel de exemplo: a primeira passada (a pilha antiga da pasta) em andamento, em produção. */
 export function painelDeExemplo(agora = Date.now()): entregas.PainelDoArquivador {
   const ha = (min: number) => new Date(agora - min * 60000).toISOString();
@@ -128,7 +143,8 @@ export function painelDeExemplo(agora = Date.now()): entregas.PainelDoArquivador
   const clientesHoje = CLIENTES.map(([codigo, nome], i) => ({ codigo, nome, n: Math.max(4, Math.round(arquivouHoje / (i + 2.2) / 2.1)) })).sort((a, b) => b.n - a.n);
   const contagem = (chave: string, f: number, extra: Partial<entregas.ContagemDoArquivador>): entregas.ContagemDoArquivador => ({
     chave,
-    porAcao: { arquivou: Math.round(arquivouHoje * f), arquivaria: 0, jaArquivado: Math.round(54 * f), naoIdentificado: Math.round(8 * f), fica: Math.round(1 * f), erro: Math.round(3 * f) },
+    porAcao: { arquivou: Math.round(arquivouHoje * f), arquivaria: 0, jaArquivado: Math.round(54 * f), naoIdentificado: Math.round(8 * f), fica: Math.round(1 * f), erro: Math.round(3 * f), descartado: Math.round(1 * f) },
+    aMao: Math.round(2 * f),
     porTipo: Object.fromEntries(Object.entries(porTipo).map(([k, v]) => [k, Math.round(v * f)])),
     porMotivo: { CLIENTE_NAO_LOCALIZADO: Math.round(4 * f), CLIENTE_AMBIGUO: Math.round(2 * f), CONTEUDO_SEM_TEXTO: Math.round(1 * f), CONFIANCA_ABAIXO_DO_LIMIAR: Math.round(1 * f), PDF_COMPOSTO_NAO_SEPARADO: Math.round(1 * f) },
     pastasNovas: [], clientes: clientesHoje.map(c => ({ ...c, n: Math.round(c.n * f) })), totalDeClientes: Math.round(41 * Math.min(f, 3.4)),
@@ -150,6 +166,7 @@ export function painelDeExemplo(agora = Date.now()): entregas.PainelDoArquivador
     hoje: contagem(hojeLocal(agora), 1, { pastasNovas: ['593 - OFICINA BETA EXEMPLO ME', '591 - CLÍNICA EXEMPLO S/S'] }),
     mes: contagem(hojeLocal(agora).slice(0, 7), 1, { pastasNovas: ['593 - OFICINA BETA EXEMPLO ME', '591 - CLÍNICA EXEMPLO S/S'] }),
     ultimos, pendentes, erros,
+    grupos: GRUPOS_DE_EXEMPLO,
     alertas: [{ tipo: 'ocr', tom: 'aviso', titulo: 'Um PDF escaneado demorou mais de 1 minuto para ler', texto: 'A leitura por OCR é lenta nos escaneados grandes.', oQueFazer: 'Se a fila crescer, peça os PDFs originais em vez dos escaneados.' }],
     ladoALado: {
       dia: hojeLocal(agora - 864e5), rotinaArquivou: 214, iguais: 188, pastaIgualNomeDiferente: 14, diferentes: 5, novoNaoIdentificou: 4, novoNaoViu: 3,
@@ -167,9 +184,35 @@ export function diaDeExemplo(dia: string, agora = Date.now()): entregas.ItemDoAr
   const p = painelDeExemplo(agora);
   const hoje = dia === hojeLocal(agora);
   const base = hoje ? agora : Date.parse(dia + 'T18:00:00');
-  const mais = Array.from({ length: hoje ? 96 : 60 }, (_, i) => itemDeExemplo(i + (hoje ? 24 : 300), new Date(base - (hoje ? 12 : 0) * 60000 - i * 3.1 * 60000).toISOString(), i % 17 === 9 ? 'jaArquivado' : 'arquivou'));
+  const mais = Array.from({ length: hoje ? 96 : 60 }, (_, i) => itemDeExemplo(i + (hoje ? 24 : 300), new Date(base - (hoje ? 12 : 0) * 60000 - i * 3.1 * 60000).toISOString(), i % 17 === 9 ? 'jaArquivado' : 'arquivou'))
+    // os exemplos do histórico do período (23/10/2026): à mão, descartado, e o não identificado que foi resolvido depois
+    .map((x, i) => (i % 23 === 5 ? { ...x, porQuem: 'Vitor' } : i % 29 === 7 ? { ...x, acao: 'descartado' as const, destino: '', porQuem: 'Vitor' } : x))
+    // o id e o hash de cada dia (como os do robô: o hash do conteúdo e a hora)
+    .map(x => ({ ...x, id: x.id + '@' + dia, hash: x.hash || ('ex' + dia.replace(/-/g, '') + x.id.replace(/\D/g, '')).padEnd(16, '0').slice(0, 16) }));
+  if (!hoje && mais.length > 12) {
+    const resolvido = mais[3];
+    mais.push({ ...resolvido, id: resolvido.id + '-ni', acao: 'naoIdentificado', em: new Date(Date.parse(resolvido.em) - 90 * 60000).toISOString(), destino: '', motivo: 'CLIENTE_AMBIGUO', motivoTexto: 'Duas empresas possíveis', sugestao: 'Escolha o cliente certo.' });
+  }
   return (hoje ? [...p.ultimos, ...p.pendentes, ...p.erros, ...mais] : [...mais, ...p.pendentes.slice(0, 3).map(x => ({ ...x, id: x.id + '-' + dia, em: new Date(base - 200 * 60000).toISOString() }))])
     .sort((a, b) => b.em.localeCompare(a.em));
+}
+
+/** O resumo do mês dos exemplos: as contagens de cada dia, dos dias de exemplo (do começo do arquivador até hoje). */
+const mesesDeExemplo = new Map<string, entregas.MesDoArquivador | null>();
+export function mesDeExemplo(mes: string, agora = Date.now()): entregas.MesDoArquivador | null {
+  const hoje = hojeLocal(agora);
+  if (mes > hoje.slice(0, 7)) return null;
+  if (mesesDeExemplo.has(mes) && mes !== hoje.slice(0, 7)) return mesesDeExemplo.get(mes) ?? null;
+  const dias: Record<string, entregas.ContagemDoDia> = {};
+  const p = entregas.intervaloDoPeriodo('tudo', hoje);
+  for (const dia of entregas.diasDoPeriodo(p).filter(d => d.slice(0, 7) === mes)) {
+    const c = { arquivou: 0, arquivaria: 0, jaArquivado: 0, naoIdentificado: 0, fica: 0, erro: 0, descartado: 0, aMao: 0 };
+    for (const x of diaDeExemplo(dia, agora)) { c[x.acao]++; if (x.acao === 'arquivou' && x.porQuem) c.aMao++; }
+    dias[dia] = c;
+  }
+  const r = entregas.lerMesDoArquivador({ mes, em: new Date(agora).toISOString(), dias, porAcao: {}, porCliente: {} });
+  mesesDeExemplo.set(mes, r);
+  return r;
 }
 
 // o robô de mentira dos exemplos: o conteúdo do arquivo aberto e o destino da prévia (só para ver a tela; o de verdade
@@ -240,6 +283,7 @@ export function criarArquivadorNovoMemoria(): RepoArquivadorNovo {
       if (!d) { d = { dia, carregado: true, erro: '', itens: diaDeExemplo(dia) }; dias.set(dia, d); }
       return d;
     },
+    mes(mes) { return { mes, carregado: true, erro: '', resumo: mesDeExemplo(mes) }; },
     cadastroDoFormulario: () => ({ carregado: true, em: new Date().toISOString(), clientes, tipos: TIPOS_DE_EXEMPLO }),
     async pedir(n) {
       const id = 'ex-pedido-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -259,6 +303,20 @@ export function criarArquivadorNovoMemoria(): RepoArquivadorNovo {
         if (n.tipo === 'descartar') {
           tirarDaLista(n.rel);
           responder(id, { ...base, status: 'feito', resposta: { acao: 'DESCARTAR', destino: 'QUARENTENA\\' + nome, nomeFinal: nome, situacao: '', pastaNova: '', copias: [], motivo: '', evidencias: ['descartado no nads (exemplo)'], cliente: '', clienteNome: '', tipo: 'DESCARTE' } });
+          return;
+        }
+        if (n.tipo === 'grupoPrevia' || n.tipo === 'grupo') {
+          const g = GRUPOS_DE_EXEMPLO.find(x => x.id === n.hash);
+          const tipoG = TIPOS_DE_EXEMPLO.find(t => t.id === n.tipoDoc);
+          if (!g || !tipoG || tipoG.id === 'AUTO') { responder(id, { ...base, status: 'erro', erro: g ? 'escolha o tipo (exemplo)' : 'o grupo não está mais em NÃO IDENTIFICADOS' }); return; }
+          const pastaG = n.codigo + ' - ' + nomeDe(n.codigo);
+          const vazia = { acao: '', destino: '', nomeFinal: '', situacao: '', pastaNova: '', copias: [], motivo: '', evidencias: [], cliente: String(n.codigo), clienteNome: nomeDe(n.codigo), tipo: tipoG.id };
+          if (n.tipo === 'grupoPrevia') {
+            const exemplos = g.exemplos.map(x => { const ano = (/(20\d{2})/.exec(x.nome) || [])[1] || (n.competencia || '').slice(0, 4); return { nome: x.nome, competencia: n.competencia || ano, destino: ano ? ano + '\\' + pastaG + '\\' + (PASTA_DE_EXEMPLO[tipoG.id] || ((c: string) => 'CONTÁBIL\\OUTROS DOCUMENTOS\\' + c.slice(-4) + '\\' + x.nome))('01-' + ano) : '', pastaNova: ano && ano !== '2026' ? ano + '\\' + pastaG : '', acao: ano ? 'ARQUIVAR' : 'NAO_IDENTIFICADO', erro: ano ? '' : 'sem o ano no nome nem nas pastas de origem: escolha a competência do grupo' }; });
+            responder(id, { ...base, status: 'pronto', resposta: { ...vazia, total: g.n, exemplos } });
+            return;
+          }
+          responder(id, { ...base, status: 'feito', resposta: { ...vazia, total: g.n, feitos: g.n, erros: 0, primeiroErro: '', lembrou: !!n.lembrar } });
           return;
         }
         const tipo = TIPOS_DE_EXEMPLO.find(t => t.id === n.tipoDoc);

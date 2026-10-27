@@ -147,6 +147,13 @@ button.arq-linha:focus-visible{outline:2px solid var(--accent);outline-offset:-2
 .arq-filtros{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px;}
 .arq-filtros .busca-curta.larga{flex:1 1 240px;width:auto;margin:0;}
 .arq-filtros .select-compact{width:auto;max-width:min(260px,100%);flex:0 1 auto;}
+/* Arquivados: o período e os totais (23/10/2026) */
+.arq-totais{margin-bottom:12px;}
+button.admin-numero[aria-pressed="true"]{border-color:var(--tom,var(--accent));box-shadow:inset 0 0 0 1px var(--tom,var(--accent));}
+.arq-pe{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;}
+.arq-detalhe-acoes{margin-bottom:12px;}
+.arq-filtros input[type="date"].select-compact{min-width:150px;}
+
 .arq-caminho{font-size:var(--fs-12);overflow-wrap:anywhere;min-width:200px;}
 .arq-config > div{grid-template-columns:200px minmax(0,1fr);}
 @media (max-width:640px){
@@ -181,6 +188,14 @@ button.arq-linha:focus-visible{outline:2px solid var(--accent);outline-offset:-2
 .arq-em-previa svg{vertical-align:-2px;}
 .arq-em-destino{font-weight:600;}
 .arq-em-botoes{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;}
+/* Para resolver em grupos (23/10/2026): a chave Sim/Não com o texto, os exemplos da prévia, a pasta do grupo */
+.arq-em-chave{display:flex;align-items:center;gap:10px;font-size:var(--fs-13);}
+.arq-em-exemplos{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;}
+.arq-em-exemplos li{display:flex;flex-direction:column;gap:2px;}
+.arq-em-erro{color:var(--danger-ink);}
+.arq-grupo-pasta{margin:0;font-size:var(--fs-13);overflow-wrap:anywhere;}
+.arq-grupo-exemplos{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:var(--fs-13);}
+.arq-grupo-exemplos svg{vertical-align:-2px;}
 .arq-visor{position:fixed;inset:0;z-index:80;display:flex;flex-direction:column;background:var(--bg);}
 .arq-visor-topo{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--header-bg);}
 .arq-visor-nome{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-14);}

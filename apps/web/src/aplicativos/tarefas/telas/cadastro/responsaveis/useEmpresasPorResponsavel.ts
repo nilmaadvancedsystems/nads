@@ -6,6 +6,7 @@
 import { empresas, formatos, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useOperador } from '../../../casca/operador';
+import { empresasNovas } from '../../../dados/fonte';
 import { useAcesso, useGravarCadastro, useTodosOsCadastros } from '../../../dados/repo';
 
 export type Dep = empresas.cadastro.DepartamentoDoResponsavel;
@@ -26,7 +27,8 @@ export function useEmpresasPorResponsavel() {
     ativos.filter(p => p.departamento === d.id || (p.papeis as string[]).includes(d.id)).map(p => p.nome).sort((a, b) => a.localeCompare(b, 'pt-BR'))])) as Record<Dep, string[]>;
   const nomeDaEquipe = (bruto: string) => ativos.find(p => igual(p.nome, bruto))?.nome || '';
 
-  const linhas = empresas.EMPRESAS_COM_DP.map(e => {
+  // a lista do escritório e as cadastradas pelo nads (26/10/2026: "acabei de cadastrar uma empresa e ela não aparece aqui")
+  const linhas = [...empresas.EMPRESAS_COM_DP, ...empresasNovas()].map(e => {
     const c = todos.porId.get(formatos.slug(e.nome)) || null;
     const daPlanilhaBruto = empresas.clienteDoDp(e.codigo)?.responsavel || '';
     const daPlanilha = daPlanilhaBruto ? nomeDaEquipe(daPlanilhaBruto) || daPlanilhaBruto.split('.').map(x => x.charAt(0) + x.slice(1).toLowerCase()).join('.') : '';

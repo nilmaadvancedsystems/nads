@@ -175,3 +175,32 @@ export function htmlDoFaturamento(p: { titulo: string; linhas: readonly LinhaDoF
 <tbody>${p.linhas.map(l => `<tr><td class="t">${l.codigo}</td><td class="t">${esc(l.nome)}</td><td class="t">${esc(l.regime)}</td>${cs.map(c => `<td>${brl(l.meses[c]?.valor ?? null)}</td>`).join('')}<td class="total">${brl(l.total)}</td><td>${l.variacao == null ? '' : String(l.variacao).replace('.', ',')}</td></tr>`).join('')}</tbody></table>
 </body></html>`;
 }
+
+/**
+ * A curva ABC dos compradores (23/10/2026, o painel do faturamento detalhado: "procura referências… e usa como base"):
+ * do maior ao menor, o acumulado em % do total; A até 80%, B até 95%, C o resto (o que passa da linha entra na classe
+ * dela). E a concentração: quanto o maior e os 5 maiores pesam.
+ */
+export type ClasseAbc = 'A' | 'B' | 'C';
+export interface CurvaAbc<T> {
+  linhas: (T & { pct: number; acumulado: number; classe: ClasseAbc })[];
+  porClasse: Record<ClasseAbc, { clientes: number; valor: number; pct: number }>;
+  maior: number;
+  cinco: number;
+}
+export function curvaAbc<T extends { valor: number }>(itens: readonly T[]): CurvaAbc<T> {
+  const total = itens.reduce((s, x) => s + Math.round(x.valor * 100), 0) / 100;
+  const ordem = [...itens].sort((a, b) => b.valor - a.valor);
+  let antes = 0;
+  const linhas = ordem.map(x => {
+    const pct = total ? (x.valor / total) * 100 : 0;
+    const classe: ClasseAbc = antes < 80 ? 'A' : antes < 95 ? 'B' : 'C';
+    antes += pct;
+    return { ...x, pct: Math.round(pct * 10) / 10, acumulado: Math.round(antes * 10) / 10, classe };
+  });
+  const porClasse = { A: { clientes: 0, valor: 0, pct: 0 }, B: { clientes: 0, valor: 0, pct: 0 }, C: { clientes: 0, valor: 0, pct: 0 } };
+  for (const l of linhas) { const c = porClasse[l.classe]; c.clientes++; c.valor = Math.round((c.valor + l.valor) * 100) / 100; }
+  for (const c of Object.values(porClasse)) c.pct = total ? Math.round((c.valor / total) * 1000) / 10 : 0;
+  const soma = (n: number) => (total ? Math.round((ordem.slice(0, n).reduce((s, x) => s + x.valor, 0) / total) * 1000) / 10 : 0);
+  return { linhas, porClasse, maior: soma(1), cinco: soma(5) };
+}

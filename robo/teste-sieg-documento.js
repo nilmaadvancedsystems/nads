@@ -10,11 +10,19 @@ function igual(nome, obtido, esperado) {
   if (obtido !== esperado) { falhas++; console.log('FALHOU  ' + nome + '\n        obtido:   ' + JSON.stringify(obtido) + '\n        esperado: ' + JSON.stringify(esperado)); }
 }
 
-// os quatro do print, como estão no cadastro: nenhum vai ao SIEG
+// os quatro do print, como estão no cadastro: sem o enquadramento Física não vão ao SIEG
 igual('555 (14 dígitos, DV errado)', n('42460727600569'), '');
 igual('228', n('42460727600307'), '');
 igual('226', n('42460727600216'), '');
 igual('179', n('36932930600245'), '');
+igual('Jurídica não deriva CPF', n('42460727600569', 'Jurídica'), '');
+// com enquadramento Física (produtor rural), o CPF sai dos 9 primeiros dígitos (aprovado pelo Vitor em 23/10/2026)
+igual('555 Física', n('42460727600569', 'Física'), '42460727615');
+igual('228 Física', n('42460727600307', 'Física'), '42460727615');
+igual('226 Física', n('42460727600216', 'física'), '42460727615');
+igual('179 Física', n('36932930600245', 'Fisica'), '36932930668');
+igual('CNPJ válido de Física continua CNPJ', n('11222333000181', 'Física'), '11222333000181');
+igual('Física com 13 dígitos não deriva', n('4246072760056', 'Física'), '');
 
 // CNPJ válido, com e sem máscara
 igual('CNPJ com máscara', n('11.222.333/0001-81'), '11222333000181');

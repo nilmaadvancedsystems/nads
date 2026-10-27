@@ -1,7 +1,7 @@
 // Minhas empresas: a barra de cima, no jeito da do GitHub (competência no lugar do "main ▾", quantas
 // empresas, Insights; à direita a busca curta com atalho "/", Situação ▾ e "Iniciar ▾", que abre
 // o painel para escolher a empresa, em partes/PainelIniciar) e a lista (clicar no título da coluna ordena; clicar na linha abre a página da empresa). Os números por situação ficam em Insights.
-import { Icone, MenuSuspenso, useCarregando, useEntradaAnimada, useLinhasQueSeMovem, Vazio } from '@nads/ui';
+import { Icone, MenuSuspenso, Segmentado, useCarregando, useEntradaAnimada, useLinhasQueSeMovem, Vazio } from '@nads/ui';
 import { useEffect, useRef } from 'react';
 import { EmDesenvolvimento } from '../em-desenvolvimento/EmDesenvolvimento';
 import { PainelIniciar } from './partes/PainelIniciar';
@@ -53,6 +53,8 @@ export function MinhasEmpresas() {
         <MenuSuspenso icone="calendar" rotulo={vm.rotuloCompetencia} titulo="Competência" dica="Trocar a competência"
           itens={vm.competencias.map(c => ({ rotulo: c.rotulo, marcado: c.valor === vm.competencia, onClick: () => vm.setCompetencia(c.valor) }))} />
         {/* o número de empresas e os Insights saíram daqui por enquanto (Vitor, 05/10/2026) */}
+        {/* só as da pessoa; o admin e o diretor podem ver todas (26/10/2026) */}
+        {vm.podeVerTodas && <Segmentado valor={vm.escopo} onMudar={vm.setEscopo} opcoes={[{ valor: 'minhas', rotulo: 'Minhas' }, { valor: 'todas', rotulo: 'Todas' }]} />}
 
         <span className="tarefas-barra-espaco" />
 
@@ -72,7 +74,8 @@ export function MinhasEmpresas() {
       </div>
 
       {/* a tabela aparece na hora; as linhas entram quando o banco responde (a barra do topo termina) */}
-      {!vm.carregando && vm.total === 0 ? <Vazio icone="briefcase" titulo="Nenhuma empresa nesta situação">
+      {!vm.carregando && vm.total === 0 ? <Vazio icone="briefcase" titulo={vm.filtrandoPorResponsavel && !vm.busca && !vm.situacao ? 'Nenhuma empresa no seu nome' : 'Nenhuma empresa nesta situação'}
+        texto={vm.filtrandoPorResponsavel && !vm.busca && !vm.situacao ? 'Aqui aparecem as empresas em que você é o responsável no seu setor e as que ainda não têm responsável (Cadastro › Empresas por responsável).' : undefined}>
         {/* a saída do vazio (revisão da UI, 18/10/2026) */}
         {(vm.busca || vm.situacao) && <button type="button" className="btn btn-outline" onClick={vm.limparFiltros}>Limpar a busca e a situação</button>}
       </Vazio> : (

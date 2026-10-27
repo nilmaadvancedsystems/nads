@@ -5,11 +5,12 @@
 //                                parados), a passada (feitos de total), o ritmo, as contagens do dia e do mês, os últimos
 //                                arquivos com o porquê, os não identificados com o motivo e a sugestão, os erros com o que
 //                                fazer, os alertas de agora e o último lado a lado com a rotina antiga.
-//   robo/arquivadorNovo/dias/{AAAA-MM-DD}-{n}   o histórico do dia, em partes ({ dia, parte, em, itens }).
+//   robo/arquivadorNovo/dias/{AAAA-MM-DD}-{n}   o histórico do dia, em partes ({ dia, parte, em, itens }); 24 meses.
+//   robo/arquivadorNovo/meses/{AAAA-MM}        o resumo do mês (por ação, tipo e cliente) e a contagem de cada dia.
 // Aqui só a leitura e as contas (o resumo do dia em palavras, o progresso, os grupos de tipo); quem lê o banco é o
 // repositório da tela.
 
-export type AcaoDoArquivador = 'arquivou' | 'arquivaria' | 'jaArquivado' | 'naoIdentificado' | 'fica' | 'erro';
+export type AcaoDoArquivador = 'arquivou' | 'arquivaria' | 'jaArquivado' | 'naoIdentificado' | 'fica' | 'erro' | 'descartado';
 
 /** Um arquivo decidido: o que era, o que o robô fez, para onde foi e por quê. */
 export interface ItemDoArquivador {
@@ -30,12 +31,16 @@ export interface ItemDoArquivador {
   naoAplicado: string;
   /** os não identificados: o hash que o robô confere nos pedidos e o caminho na pasta Claudio Secretario */
   hash: string; naPasta: string;
+  /** arquivado (ou descartado) à mão no site: quem decidiu */
+  porQuem: string;
 }
 
 export interface ClienteDaContagem { codigo: string; nome: string; n: number }
 export interface ContagemDoArquivador {
   chave: string;
   porAcao: Record<AcaoDoArquivador, number>;
+  /** dos arquivados, os decididos à mão no site */
+  aMao: number;
   porTipo: Record<string, number>;
   porMotivo: Record<string, number>;
   pastasNovas: string[];
@@ -57,6 +62,23 @@ export interface LadoALado {
   dia: string; rotinaArquivou: number; iguais: number; pastaIgualNomeDiferente: number; diferentes: number; novoNaoIdentificou: number; novoNaoViu: number;
   exemplos: ExemploDoLadoALado[];
 }
+/**
+ * Um grupo de "Para resolver" (23/10/2026, a migração: os não identificados podem virar milhares): os da mesma causa e da
+ * mesma pasta de origem (sem as pastas de ano e mês), com 3 exemplos e a sugestão (o cliente pela pasta, o tipo pelo mapa).
+ */
+export interface GrupoParaResolver {
+  id: string; motivo: string; motivoTexto: string; pasta: string; n: number;
+  exemplos: { nome: string; rel: string; hash: string }[];
+  sugestao: { codigo: number | null; tipoDoc: string | null } | null;
+}
+export function lerGrupoParaResolver(d: Obj): GrupoParaResolver {
+  const s = d.sugestao ? obj(d.sugestao) : null;
+  return {
+    id: txt(d.id), motivo: txt(d.motivo), motivoTexto: txt(d.motivoTexto) || txt(d.motivo), pasta: txt(d.pasta), n: num(d.n),
+    exemplos: lista(d.exemplos).map(x => ({ nome: txt(x.nome), rel: txt(x.rel), hash: txt(x.hash) })).filter(x => x.rel),
+    sugestao: s ? { codigo: typeof s.codigo === 'number' ? s.codigo : null, tipoDoc: s.tipoDoc ? txt(s.tipoDoc) : null } : null,
+  };
+}
 export interface PainelDoArquivador {
   em: string; maquina: string; config: ConfigDoArquivador | null;
   /** ok | sem-drive | esperando */
@@ -69,6 +91,8 @@ export interface PainelDoArquivador {
   /** quantos estão hoje em NÃO IDENTIFICADOS (a lista mostra até 80) */
   pendentesTotal?: number;
   alertas: AlertaDoArquivador[];
+  /** Para resolver em grupos (os maiores primeiro; até 150) */
+  grupos: GrupoParaResolver[];
   ladoALado: LadoALado | null;
   historico: { dia: string; partes: number; itens: number };
 }
@@ -80,7 +104,7 @@ const num = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const numOuNulo = (v: unknown) => (v == null || v === '' || !Number.isFinite(Number(v)) ? null : Number(v));
 const lista = (v: unknown): Obj[] => (Array.isArray(v) ? v.map(obj) : []);
 const textos = (v: unknown): string[] => (Array.isArray(v) ? v.map(txt).filter(Boolean) : []);
-const ACOES: readonly AcaoDoArquivador[] = ['arquivou', 'arquivaria', 'jaArquivado', 'naoIdentificado', 'fica', 'erro'];
+const ACOES: readonly AcaoDoArquivador[] = ['arquivou', 'arquivaria', 'jaArquivado', 'naoIdentificado', 'fica', 'erro', 'descartado'];
 
 /** Um item como veio do banco. */
 export function lerItemDoArquivador(d: Obj): ItemDoArquivador {
@@ -93,7 +117,7 @@ export function lerItemDoArquivador(d: Obj): ItemDoArquivador {
     ocr: o ? { confianca: numOuNulo(o.confianca), segundos: numOuNulo(o.segundos), erro: txt(o.erro) } : null, dentroDe: txt(d.dentroDe),
     motivo: txt(d.motivo), motivoTexto: txt(d.motivoTexto), sugestao: txt(d.sugestao), destinoSugerido: txt(d.destinoSugerido),
     erro: txt(d.erro), erroTipo: txt(d.erroTipo), erroTitulo: txt(d.erroTitulo), oQueFazer: txt(d.oQueFazer), naoAplicado: txt(d.naoAplicado),
-    hash: txt(d.hash), naPasta: txt(d.naPasta),
+    hash: txt(d.hash), naPasta: txt(d.naPasta), porQuem: txt(d.porQuem),
   };
 }
 
@@ -104,6 +128,7 @@ function lerContagem(v: unknown): ContagemDoArquivador {
   return {
     chave: txt(d.chave),
     porAcao: Object.fromEntries(ACOES.map(a => [a, num(pa[a])])) as Record<AcaoDoArquivador, number>,
+    aMao: num(d.aMao),
     porTipo: mapa(d.porTipo), porMotivo: mapa(d.porMotivo), pastasNovas: textos(d.pastasNovas),
     clientes: lista(d.clientes).map(c => ({ codigo: txt(c.codigo), nome: txt(c.nome), n: num(c.n) })).filter(c => c.codigo),
     totalDeClientes: num(d.totalDeClientes),
@@ -136,6 +161,7 @@ export function lerPainelDoArquivador(doc: Obj | null | undefined): PainelDoArqu
     hoje: lerContagem(d.hoje), mes: lerContagem(d.mes),
     ultimos: lista(d.ultimos).map(lerItemDoArquivador), pendentes: lista(d.pendentes).map(lerItemDoArquivador), erros: lista(d.erros).map(lerItemDoArquivador),
     pendentesTotal: typeof d.pendentesTotal === 'number' ? d.pendentesTotal : lista(d.pendentes).length,
+    grupos: lista(d.grupos).map(lerGrupoParaResolver).filter(g => g.id && g.n > 0),
     alertas: lista(d.alertas).map(a => ({ tipo: txt(a.tipo), tom: a.tom === 'erro' ? 'erro' as const : 'aviso' as const, titulo: txt(a.titulo), texto: txt(a.texto), oQueFazer: txt(a.oQueFazer) })).filter(a => a.titulo),
     ladoALado: l ? {
       dia: txt(l.dia), rotinaArquivou: num(l.rotinaArquivou), iguais: num(l.iguais), pastaIgualNomeDiferente: num(l.pastaIgualNomeDiferente), diferentes: num(l.diferentes),
@@ -237,18 +263,28 @@ export function resumoDoDia(p: PainelDoArquivador): string {
       : 'arquivei ' + plural(feitos, 'arquivo', 'arquivos');
     frases.push('Hoje ' + verbo + (h.totalDeClientes ? ' de ' + plural(h.totalDeClientes, 'cliente', 'clientes') : '') + '.');
   }
-  const resolver = h.porAcao.naoIdentificado + h.porAcao.fica;
+  // o que está para resolver AGORA (o que está hoje em NÃO IDENTIFICADOS), não as decisões do dia (23/10/2026: o
+  // reprocessamento resolve depois, e o resumo continuava dizendo "80 ficaram para você resolver")
+  const resolver = paraResolverAgora(p);
   if (resolver) {
-    const motivos = Object.entries(h.porMotivo).sort((a, b) => b[1] - a[1]);
+    const porMotivo: Record<string, number> = {};
+    for (const x of p.pendentes) if (x.motivo) porMotivo[x.motivo] = (porMotivo[x.motivo] || 0) + 1;
+    const motivos = Object.entries(porMotivo).sort((a, b) => b[1] - a[1]);
     const partes = motivos.slice(0, 3).map(([m, n]) => mil(n) + ' ' + noResumo(m, n));
     const resto = resolver - motivos.slice(0, 3).reduce((s, [, n]) => s + n, 0);
     if (resto > 0 && partes.length) partes.push(mil(resto) + (resto === 1 ? ' por outro motivo' : ' por outros motivos'));
-    frases.push(plural(resolver, 'ficou', 'ficaram') + ' para você resolver' + (partes.length ? ' (' + listaEmPalavras(partes) + ')' : '') + '.');
-  } else if (feitos) frases.push('Nada ficou para você resolver.');
+    frases.push(plural(resolver, 'está', 'estão') + ' para você resolver agora' + (partes.length ? ' (' + listaEmPalavras(partes) + ')' : '') + '.');
+  } else frases.push('Nada para resolver.');
   if (h.porAcao.jaArquivado) frases.push(plural(h.porAcao.jaArquivado, 'já estava arquivado', 'já estavam arquivados') + ' (o mesmo conteúdo na pasta do cliente).');
   if (h.pastasNovas.length) frases.push((simulando ? 'Criaria ' : 'Criei ') + plural(h.pastasNovas.length, 'pasta nova', 'pastas novas') + ': ' + listaEmPalavras(h.pastasNovas.slice(0, 4)) + (h.pastasNovas.length > 4 ? ' e outras' : '') + '.');
   if (h.porAcao.erro) frases.push(plural(h.porAcao.erro, 'arquivo deu erro', 'arquivos deram erro') + ': veja a aba Erros.');
   return frases.join(' ');
+}
+
+/** Quantos estão para resolver agora: o que está hoje em NÃO IDENTIFICADOS (a mesma conta em todo lugar). */
+export function paraResolverAgora(p: PainelDoArquivador | null | undefined): number {
+  if (!p) return 0;
+  return typeof p.pendentesTotal === 'number' ? p.pendentesTotal : p.pendentes.length;
 }
 
 export interface ProgressoDaPassada { feitos: number; total: number; pct: number; faltam: number; terminou: boolean; previsao: string }
@@ -299,17 +335,138 @@ export function filtrarItens(itens: readonly ItemDoArquivador[], f: FiltroDoArqu
 
 /** Os rótulos de cada ação (o selo da lista). */
 export const ROTULO_DA_ACAO: Record<AcaoDoArquivador, string> = {
-  arquivou: 'Arquivado', arquivaria: 'Arquivaria (simulação)', jaArquivado: 'Já estava arquivado', naoIdentificado: 'Não identificado', fica: 'Ficou na pasta', erro: 'Erro',
+  arquivou: 'Arquivado', arquivaria: 'Arquivaria (simulação)', jaArquivado: 'Já estava arquivado', naoIdentificado: 'Não identificado', fica: 'Ficou na pasta', erro: 'Erro', descartado: 'Descartado',
 };
+
+// ---------------------------------------------------------------------------------------------------------------------
+// o histórico do período (Vitor, 23/10/2026: "eu quero também ter um acompanhamento de todo período, o que foi arquivado
+// ou não" e "na parte de 'arquivados' tem arquivos escritos como não identificados")
+// ---------------------------------------------------------------------------------------------------------------------
+/** O primeiro dia do arquivador novo (o "desde o começo"). */
+export const INICIO_DO_ARQUIVADOR = '2026-10-21';
+
+/** As contagens de um dia no resumo do mês. */
+export type ContagemDoDia = Record<AcaoDoArquivador, number> & { aMao: number };
+/** O resumo de um mês (robo/arquivadorNovo/meses/{AAAA-MM}). */
+export interface MesDoArquivador {
+  mes: string; em: string; porAcao: Record<AcaoDoArquivador, number>; aMao: number;
+  porTipo: Record<string, number>; clientes: ClienteDaContagem[]; pastasNovas: string[];
+  dias: Record<string, ContagemDoDia>;
+}
+const contagemDoDia = (v: unknown): ContagemDoDia => { const d = obj(v); return Object.assign(Object.fromEntries(ACOES.map(a => [a, num(d[a])])), { aMao: num(d.aMao) }) as ContagemDoDia; };
+/** O resumo do mês como veio do banco (null sem o documento: o mês sem nada, ou o robô ainda não publica). */
+export function lerMesDoArquivador(d: Obj | null | undefined): MesDoArquivador | null {
+  if (!d || !d.mes) return null;
+  const pc = obj(d.porCliente);
+  return {
+    mes: txt(d.mes), em: txt(d.em), porAcao: contagemDoDia(d.porAcao), aMao: num(d.aMao),
+    porTipo: Object.fromEntries(Object.entries(obj(d.porTipo)).map(([k, n]) => [k, num(n)]).filter(([, n]) => (n as number) > 0)),
+    clientes: Object.entries(pc).map(([codigo, v]) => ({ codigo, nome: txt(obj(v).nome), n: num(obj(v).n) })).filter(c => c.n > 0).sort((a, b) => b.n - a.n || a.codigo.localeCompare(b.codigo)),
+    pastasNovas: textos(d.pastasNovas),
+    dias: Object.fromEntries(Object.entries(obj(d.dias)).filter(([k]) => /^\d{4}-\d{2}-\d{2}$/.test(k)).map(([k, v]) => [k, contagemDoDia(v)])),
+  };
+}
+
+export type TipoDePeriodo = 'hoje' | '7d' | '30d' | 'mes' | 'intervalo' | 'tudo';
+export interface PeriodoDoArquivador { tipo: TipoDePeriodo; de: string; ate: string }
+const diaMais = (dia: string, n: number) => { const [a, m, d] = dia.split('-').map(Number); const t = new Date(a, m - 1, d + n); return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0'); };
+/** O intervalo (de, até, inclusive) de um período, com "hoje" no dia local de hoje. */
+export function intervaloDoPeriodo(tipo: TipoDePeriodo, hoje: string, livre?: { de: string; ate: string }): PeriodoDoArquivador {
+  const ini = INICIO_DO_ARQUIVADOR;
+  const max = (a: string, b: string) => (a > b ? a : b);
+  if (tipo === 'hoje') return { tipo, de: hoje, ate: hoje };
+  if (tipo === '7d') return { tipo, de: max(ini, diaMais(hoje, -6)), ate: hoje };
+  if (tipo === '30d') return { tipo, de: max(ini, diaMais(hoje, -29)), ate: hoje };
+  if (tipo === 'mes') return { tipo, de: max(ini, hoje.slice(0, 8) + '01'), ate: hoje };
+  if (tipo === 'intervalo') {
+    let de = livre?.de && /^\d{4}-\d{2}-\d{2}$/.test(livre.de) ? livre.de : hoje, ate = livre?.ate && /^\d{4}-\d{2}-\d{2}$/.test(livre.ate) ? livre.ate : hoje;
+    if (de > ate) [de, ate] = [ate, de];
+    return { tipo, de: max(ini, de), ate: ate > hoje ? hoje : ate };
+  }
+  return { tipo, de: ini, ate: hoje };
+}
+/** Os dias do intervalo, do mais novo para o mais velho. */
+export function diasDoPeriodo(p: PeriodoDoArquivador): string[] {
+  const out: string[] = [];
+  for (let d = p.ate; d >= p.de && out.length < 1000; d = diaMais(d, -1)) out.push(d);
+  return out;
+}
+/** Os meses (AAAA-MM) que o intervalo toca. */
+export function mesesDoPeriodo(p: PeriodoDoArquivador): string[] {
+  return [...new Set(diasDoPeriodo(p).map(d => d.slice(0, 7)))];
+}
+export interface TotaisDoPeriodo { arquivados: number; aMao: number; jaArquivado: number; naoIdentificado: number; descartado: number; erro: number; simulados: number; dias: number }
+/** Os totais do período pelos resumos dos meses (a contagem de cada dia), sem baixar o histórico dos dias. */
+export function totaisDoPeriodo(p: PeriodoDoArquivador, meses: readonly (MesDoArquivador | null)[]): TotaisDoPeriodo {
+  const t: TotaisDoPeriodo = { arquivados: 0, aMao: 0, jaArquivado: 0, naoIdentificado: 0, descartado: 0, erro: 0, simulados: 0, dias: 0 };
+  for (const m of meses) for (const [dia, c] of Object.entries(m?.dias ?? {})) {
+    if (dia < p.de || dia > p.ate) continue;
+    t.dias++; t.arquivados += c.arquivou; t.aMao += c.aMao; t.jaArquivado += c.jaArquivado; t.naoIdentificado += c.naoIdentificado + c.fica;
+    t.descartado += c.descartado; t.erro += c.erro; t.simulados += c.arquivaria;
+  }
+  return t;
+}
+
+/** A situação de um arquivo no histórico (o selo): o que importa, não o tipo do documento. */
+export type SituacaoNoHistorico = 'arquivado' | 'aMao' | 'duplicado' | 'naoIdentificado' | 'resolvido' | 'descartado' | 'simulado' | 'erro';
+export interface SituacaoDoItem { situacao: SituacaoNoHistorico; rotulo: string; tom: 'ok' | 'aviso' | 'erro' | 'neutro'; resolvidoEm: string; resolvidoPara: string; pendenteId: string }
+const chaveDoItem = (x: ItemDoArquivador) => (x.hash || x.id.split('-')[0] || '').slice(0, 16);
+const relDoItem = (x: { rel: string }) => semAcento(x.rel).toLowerCase();
+/**
+ * A situação de cada item do histórico. Não identificado: ainda pendente (está em Para resolver: pendenteId) ou resolvido
+ * (o mesmo conteúdo foi arquivado, descartado ou já estava na pasta depois: "resolvido em DD/MM", para onde foi; ou não
+ * está mais em NÃO IDENTIFICADOS, quando a lista de pendentes é a completa).
+ */
+export function situacoesDoHistorico(itens: readonly ItemDoArquivador[], pendentes: readonly ItemDoArquivador[], pendentesCompletos: boolean): Map<ItemDoArquivador, SituacaoDoItem> {
+  const saida = new Map<string, ItemDoArquivador>();
+  for (const x of itens) if (x.acao === 'arquivou' || x.acao === 'jaArquivado' || x.acao === 'descartado') {
+    const k = chaveDoItem(x); const atual = saida.get(k);
+    if (k && (!atual || x.em < atual.em)) saida.set(k, x);
+  }
+  const pendPorRel = new Map(pendentes.map(p => [relDoItem(p), p]));
+  const out = new Map<ItemDoArquivador, SituacaoDoItem>();
+  const data = (iso: string) => { const t = new Date(iso); return Number.isFinite(t.getTime()) ? String(t.getDate()).padStart(2, '0') + '/' + String(t.getMonth() + 1).padStart(2, '0') : ''; };
+  for (const x of itens) {
+    const base = { resolvidoEm: '', resolvidoPara: '', pendenteId: '' };
+    if (x.acao === 'arquivou') out.set(x, { ...base, situacao: x.porQuem ? 'aMao' : 'arquivado', rotulo: x.porQuem ? 'Arquivado à mão por ' + x.porQuem : 'Arquivado', tom: 'ok' });
+    else if (x.acao === 'jaArquivado') out.set(x, { ...base, situacao: 'duplicado', rotulo: 'Duplicado — já estava na pasta', tom: 'neutro' });
+    else if (x.acao === 'descartado') out.set(x, { ...base, situacao: 'descartado', rotulo: x.porQuem ? 'Descartado por ' + x.porQuem : 'Descartado', tom: 'neutro' });
+    else if (x.acao === 'arquivaria') out.set(x, { ...base, situacao: 'simulado', rotulo: 'Arquivaria (simulação)', tom: 'neutro' });
+    else if (x.acao === 'erro') out.set(x, { ...base, situacao: 'erro', rotulo: 'Erro', tom: 'erro' });
+    else {
+      const depois = saida.get(chaveDoItem(x));
+      const pend = pendPorRel.get(relDoItem(x));
+      if (depois && depois.em > x.em) out.set(x, { ...base, situacao: 'resolvido', rotulo: 'Não identificado → resolvido em ' + data(depois.em), tom: 'neutro', resolvidoEm: depois.em, resolvidoPara: depois.acao === 'descartado' ? 'Descartado (quarentena)' : depois.destino });
+      else if (pend) out.set(x, { ...base, situacao: 'naoIdentificado', rotulo: 'Não identificado — para resolver', tom: 'aviso', pendenteId: pend.id });
+      else if (pendentesCompletos) out.set(x, { ...base, situacao: 'resolvido', rotulo: 'Não identificado → resolvido', tom: 'neutro' });
+      else out.set(x, { ...base, situacao: 'naoIdentificado', rotulo: 'Não identificado', tom: 'aviso' });
+    }
+  }
+  return out;
+}
+
+/** O CSV do período (separador ";", como o Excel em português abre), com a situação e o destino. */
+export function csvDoHistorico(itens: readonly ItemDoArquivador[], situacoes: Map<ItemDoArquivador, SituacaoDoItem>): string {
+  const c = (v: string) => (/[;"\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v);
+  const linhas = [['Quando', 'Arquivo', 'Situação', 'Tipo', 'Cliente', 'Destino', 'Motivo', 'Quem decidiu', 'Veio de'].join(';')];
+  for (const x of itens) {
+    const s = situacoes.get(x);
+    linhas.push([x.em, x.nome, s?.rotulo || ROTULO_DA_ACAO[x.acao], x.tipo, x.cliente ? x.cliente + (x.clienteNome ? ' - ' + x.clienteNome : '') : '', x.destino || s?.resolvidoPara || '', x.motivoTexto, x.porQuem, x.rel].map(v => c(String(v ?? ''))).join(';'));
+  }
+  return '\uFEFF' + linhas.join('\r\n') + '\r\n';
+}
 
 // ---------------------------------------------------------------------------------------------------------------------
 // os pedidos ao robô (Para resolver: abrir o arquivo, a prévia, arquivar em…, descartar; 23/10/2026)
 // ---------------------------------------------------------------------------------------------------------------------
-export type TipoDoPedido = 'abrir' | 'previa' | 'arquivar' | 'descartar';
+export type TipoDoPedido = 'abrir' | 'previa' | 'arquivar' | 'descartar' | 'grupoPrevia' | 'grupo';
 export type SituacaoDoPedido = 'pendente' | 'trabalhando' | 'pronto' | 'feito' | 'erro';
+export interface ExemploDaPreviaDoGrupo { nome: string; competencia: string; destino: string; pastaNova: string; acao: string; erro: string }
 export interface RespostaDoPedido {
   acao: string; destino: string; nomeFinal: string; situacao: string; pastaNova: string; copias: string[]; motivo: string; evidencias: string[];
   cliente: string; clienteNome: string; tipo: string;
+  /** o pedido de grupo: quantos no grupo, os exemplos da prévia, os arquivados e os que deram erro, e se a decisão foi lembrada */
+  total?: number; exemplos?: ExemploDaPreviaDoGrupo[]; feitos?: number; erros?: number; primeiroErro?: string; lembrou?: boolean;
 }
 export interface PedidoDoArquivador {
   id: string; tipo: TipoDoPedido; status: SituacaoDoPedido; erro: string;
@@ -317,7 +474,7 @@ export interface PedidoDoArquivador {
   /** abrir: o arquivo em partes (pedidosArquivador/{id}/partes/{n}, base64) */
   arquivo: { nome: string; mime: string; tamanho: number; partes: number } | null;
 }
-const TIPOS_DE_PEDIDO: readonly TipoDoPedido[] = ['abrir', 'previa', 'arquivar', 'descartar'];
+const TIPOS_DE_PEDIDO: readonly TipoDoPedido[] = ['abrir', 'previa', 'arquivar', 'descartar', 'grupoPrevia', 'grupo'];
 const SITUACOES: readonly SituacaoDoPedido[] = ['pendente', 'trabalhando', 'pronto', 'feito', 'erro'];
 
 /** Um pedido como veio do banco (o robô responde no próprio documento). */
@@ -331,6 +488,10 @@ export function lerPedidoDoArquivador(id: string, d: Obj | null | undefined): Pe
     resposta: r ? {
       acao: txt(r.acao), destino: txt(r.destino), nomeFinal: txt(r.nomeFinal), situacao: txt(r.situacao), pastaNova: txt(r.pastaNova), copias: textos(r.copias),
       motivo: txt(r.motivo), evidencias: textos(r.evidencias), cliente: txt(r.cliente), clienteNome: txt(r.clienteNome), tipo: txt(r.tipo),
+      ...(r.total != null ? {
+        total: num(r.total), feitos: num(r.feitos), erros: num(r.erros), primeiroErro: txt(r.primeiroErro), lembrou: r.lembrou === true,
+        exemplos: lista(r.exemplos).map(x => ({ nome: txt(x.nome), competencia: txt(x.competencia), destino: txt(x.destino), pastaNova: txt(x.pastaNova), acao: txt(x.acao), erro: txt(x.erro) })),
+      } : {}),
     } : null,
     arquivo: a ? { nome: txt(a.nome), mime: txt(a.mime) || 'application/octet-stream', tamanho: num(a.tamanho), partes: num(a.partes) } : null,
   };

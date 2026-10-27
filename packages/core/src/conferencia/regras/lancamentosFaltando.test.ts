@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { historicoDaLinha, historicoDaNota, lancamentosFaltando, nomeLancamentosFaltando } from './lancamentosFaltando';
+import { historicoDaLinha, historicoDaNota, lancamentosFaltando, nomeLancamentosFaltando, semPadrao, textoPadrao } from './lancamentosFaltando';
 import type { LinhaRazao, NotaAlvo, ResultadoVerificacao } from './verificarConta';
 
 const TXT_B = 'CLIENTE A LTDA 00014 Pelos Serviços Prestados conf. Nota Fiscal nº 000000000000190/000000000000190 -11222333000100 -CLIENTE A LTDA';
@@ -22,6 +22,14 @@ describe('os lançamentos das notas faltando (Vitor, 22/10/2026)', () => {
     expect(historicoDaNota('Pelo valor do mês', { numero: '7', doc: '', nome: 'CLIENTE C LTDA' })).toBe('conf. NF nº 7 - CLIENTE C LTDA');
   });
 
+  it('o complemento vai sem o texto padrão do código: o Alterdata põe o padrão sozinho (23/10/2026)', () => {
+    const p = textoPadrao([historicoDaLinha(TXT_A)!.texto, historicoDaLinha(TXT_B)!.texto]);
+    expect(p).toBe('Pelos Serviços Prestados conf. Nota Fiscal nº');
+    expect(semPadrao('Pelos Serviços Prestados conf. Nota Fiscal nº 000000000000246/000000000000246 -CLIENTE', p)).toBe('000000000000246/000000000000246 -CLIENTE');
+    expect(textoPadrao(['Pelo valor do mês'])).toBe('');
+    expect(semPadrao('Outro texto', p)).toBe('Outro texto');
+  });
+
   const linha = (txt: string, contra: string, data: string, valor = 100): LinhaRazao => ({ txt, contra, data, valor, sinal: 1 });
   const nota = (numero: string, nome: string, doc: string, valor: number, tipo: 'Entrada' | 'Saída' = 'Saída'): NotaAlvo =>
     ({ numero, nome, doc, valor, tipo, data: '14/07/2026', comp: '2026-07', cfop: '5102', lanc: '', desc: '' });
@@ -40,10 +48,10 @@ describe('os lançamentos das notas faltando (Vitor, 22/10/2026)', () => {
     expect(r.lancamentos).toEqual([
       {
         automatico: '', data: '14/07/2026', debito: '63080', credito: '75001', valor: 800, codHistorico: '00014', documento: '246',
-        historico: 'Pelos Serviços Prestados conf. Nota Fiscal nº 000000000000246/000000000000246 -04555666000177 -CLIENTE B LTDA',
+        historico: '000000000000246/000000000000246 -04555666000177 -CLIENTE B LTDA',
       },
       // a nota sem CNPJ: o do participante no razão
-      expect.objectContaining({ debito: '98228', credito: '75001', valor: 1300, documento: '247', historico: 'Pelos Serviços Prestados conf. Nota Fiscal nº 000000000000247/000000000000247 -11222333000100 -CLIENTE A' }),
+      expect.objectContaining({ debito: '98228', credito: '75001', valor: 1300, documento: '247', historico: '000000000000247/000000000000247 -11222333000100 -CLIENTE A' }),
     ]);
     expect(r.semConta.map(n => n.numero)).toEqual(['248']);
   });

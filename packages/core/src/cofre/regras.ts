@@ -25,4 +25,28 @@ export function metaDosSegredos(s: SegredosDaEmpresa): { temGov: boolean; temCer
 }
 
 /** "07/10/2026" de "2026-10-07". */
+/**
+ * O navegador e o sistema, do userAgent, em palavras: "Chrome no Windows", "Edge no Windows", "Safari no iPhone". O que
+ * não reconhece fica de fora ("Windows", "Navegador desconhecido").
+ */
+export function navegadorDoUserAgent(ua: string): string {
+  const u = String(ua || '');
+  // a ordem importa: o Edge e o Opera também dizem "Chrome"; o Chrome também diz "Safari"
+  const navegador = /Edg(e|A|iOS)?\//.test(u) ? 'Edge' : /OPR\/|Opera/.test(u) ? 'Opera' : /Firefox\/|FxiOS\//.test(u) ? 'Firefox'
+    : /SamsungBrowser\//.test(u) ? 'Samsung Internet' : /Chrome\/|CriOS\//.test(u) ? 'Chrome' : /Safari\//.test(u) ? 'Safari' : '';
+  const sistema = /iPhone/.test(u) ? 'iPhone' : /iPad/.test(u) ? 'iPad' : /Android/.test(u) ? 'Android' : /Windows/.test(u) ? 'Windows'
+    : /Mac OS X|Macintosh/.test(u) ? 'Mac' : /CrOS/.test(u) ? 'Chromebook' : /Linux/.test(u) ? 'Linux' : '';
+  return navegador && sistema ? navegador + ' no ' + sistema : navegador || sistema || 'Navegador desconhecido';
+}
+
+/** A cidade do IP para mostrar: "Montes Claros/MG" no Brasil, "Lisboa (PT)" fora; '' sem cidade. */
+export function cidadeDoIp(d: { cidade?: unknown; uf?: unknown; pais?: unknown }): string {
+  const cidade = String(d.cidade || '').trim();
+  if (!cidade) return '';
+  const pais = String(d.pais || '').trim().toUpperCase();
+  const uf = String(d.uf || '').trim().toUpperCase();
+  if (pais && pais !== 'BR') return cidade + ' (' + pais + ')';
+  return uf ? cidade + '/' + uf : cidade;
+}
+
 export const dataBr = (iso: string) => (/^\d{4}-\d{2}-\d{2}/.test(iso) ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4) : '');

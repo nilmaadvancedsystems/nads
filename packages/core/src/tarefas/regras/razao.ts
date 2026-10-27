@@ -113,8 +113,23 @@ export interface MesDoRazao {
   diasCredor: string[];
 }
 
+/**
+ * A grade do Alterdata exportada ordenada por outra coluna (o Valor): o Saldo vem somado nessa ordem, e o caixa aparecia
+ * credor sem estar (Vitor, 23/10/2026: "por que o caixa tá estourado sem tá estourado?"). Põe na ordem das datas (no mesmo
+ * dia, a do arquivo) e refaz o saldo a partir do de antes do primeiro lançamento, que não depende da ordem. Em ordem, fica
+ * como veio.
+ */
+export function naOrdemDasDatas(r: RazaoDaConta): RazaoDaConta {
+  const ls = r.lancamentos;
+  if (!ls.some((l, i) => i > 0 && l.data < ls[i - 1].data)) return r;
+  let s = r.saldoInicial;
+  const lancamentos = ls.slice().sort((a, b) => a.data.localeCompare(b.data)).map(l => { s = centavos(s + l.valor); return { ...l, saldo: s }; });
+  return { ...r, lancamentos, saldoFinal: s, inicio: lancamentos[0].data, fim: lancamentos[lancamentos.length - 1].data };
+}
+
 /** Os meses pedidos (o período da etapa), cada um com os lançamentos dele e os saldos; o razão pode ter meses a mais. */
-export function mesesDoRazao(r: RazaoDaConta, meses: readonly string[]): MesDoRazao[] {
+export function mesesDoRazao(razao: RazaoDaConta, meses: readonly string[]): MesDoRazao[] {
+  const r = naOrdemDasDatas(razao);
   return meses.map(mes => {
     const lancamentos = r.lancamentos.filter(l => l.data.slice(0, 7) === mes);
     const antes = r.lancamentos.filter(l => l.data.slice(0, 7) < mes);
@@ -125,6 +140,20 @@ export function mesesDoRazao(r: RazaoDaConta, meses: readonly string[]): MesDoRa
     const diasCredor = [...fimDoDia].filter(([, s]) => s > 0).map(([d]) => d);
     return { mes, lancamentos, saldoInicial, saldoFinal: lancamentos.length ? lancamentos[lancamentos.length - 1].saldo : saldoInicial, diasCredor };
   });
+}
+
+/** Um mês em que o razão não bate com o balancete: os dois saldos do fim do mês, no sinal do razão (credor = positivo). */
+export interface DiferencaDoRazao { mes: string; razao: number; balancete: number }
+
+/**
+ * Os meses em que o saldo do razão não bate com o do balancete dinâmico da empresa (Vitor, 26/10/2026: o razão de outra
+ * empresa, com a mesma conta e o mesmo nome de arquivo, gerou pagamentos "nada a ver" e deixou de fora os meses certos). Só
+ * os meses que o balancete tem. O balancete vem com o sinal do dinâmico (devedor positivo); o razão, credor positivo.
+ */
+export function razaoContraOBalancete(razao: RazaoDaConta, saldosDoBalancete: Record<string, number>, meses: readonly string[]): DiferencaDoRazao[] {
+  return mesesDoRazao(razao, meses.filter(m => m in saldosDoBalancete))
+    .map(m => ({ mes: m.mes, razao: Math.round(m.saldoFinal * 100) / 100, balancete: Math.round(-saldosDoBalancete[m.mes] * 100) / 100 }))
+    .filter(x => Math.abs(x.razao - x.balancete) > 0.01);
 }
 
 // ─── Pontos de atenção do caixa (Vitor, 05/10/2026) ───────────────────────────────────────────────────────────────────

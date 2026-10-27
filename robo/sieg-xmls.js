@@ -61,17 +61,25 @@ function cstDoItem(det) {
 
 /**
  * Um item da NF-e: o NCM, o CFOP, o CST/CSOSN, o CEST e o valor; e (13/10/2026, a apuração do Presumido e do Real) o ICMS
- * destacado, o ICMS-ST, o IPI e o CST do PIS, só quando têm (para o resumo não crescer à toa).
+ * destacado, o ICMS-ST, o IPI e o CST do PIS, só quando têm (para o resumo não crescer à toa). Desde o resumo 4
+ * (22/10/2026, a antecipação do ICMS do ES): a base e a alíquota do ICMS e as despesas do item (frete, seguro e outras,
+ * menos o desconto), também só quando têm.
  */
 function itemDoXml(det) {
   const it = { ncm: tag(det, 'NCM'), cfop: tag(det, 'CFOP'), cst: cstDoItem(det), cest: tag(det, 'CEST'), valor: num(tag(det, 'vProd')) };
   const icmsBloco = tag(det, 'ICMS');
   const icms = num(tag(icmsBloco, 'vICMS')), st = num(tag(icmsBloco, 'vICMSST')), ipi = num(tag(tag(det, 'IPI'), 'vIPI'));
   const cstPis = tag(tag(det, 'PIS'), 'CST');
+  const prod = tag(det, 'prod');
+  const bc = num(tag(icmsBloco, 'vBC')), aliq = num(tag(icmsBloco, 'pICMS'));
+  const desp = num(num(tag(prod, 'vFrete')) + num(tag(prod, 'vSeg')) + num(tag(prod, 'vOutro')) - num(tag(prod, 'vDesc')));
   if (icms) it.icms = icms;
   if (st) it.st = st;
   if (ipi) it.ipi = ipi;
   if (cstPis) it.cstPis = cstPis;
+  if (bc) it.bc = bc;
+  if (aliq) it.aliq = aliq;
+  if (desp) it.desp = desp;
   return it;
 }
 
@@ -95,10 +103,16 @@ function resumoDaNota(xml) {
   }
   if (t === 'cte') {
     const ide = tag(xml, 'ide');
-    return {
+    const r = {
       tipo: 'CT-e', chave: /Id="CTe(\d{44})"/.exec(xml)[1], numero: tag(ide, 'nCT'), serie: tag(ide, 'serie'), data: data(tag(ide, 'dhEmi')),
       emitente: pessoa(tag(xml, 'emit')), destinatario: pessoa(primeira(xml, 'dest', 'rem')), valor: num(primeira(xml, 'vTPrest', 'vRec')), cfop: tag(ide, 'CFOP'),
     };
+    // as NF-e que o CT-e transporta (infDoc/infNFe/chave) e o ICMS do CT-e (23/10/2026: o Rateio de frete pelo CT-e), só quando têm
+    const nfes = [...new Set(blocos(tag(xml, 'infDoc'), 'infNFe').map(b => tag(b, 'chave')).filter(Boolean))];
+    const icms = num(tag(tag(xml, 'imp'), 'vICMS'));
+    if (nfes.length) r.nfes = nfes;
+    if (icms) r.icms = icms;
+    return r;
   }
   if (t === 'nfse') {
     const ret = {
@@ -152,7 +166,8 @@ function zipDe(arquivos) {
   return Buffer.concat([...locais, dir, fim]);
 }
 
-/** A versão do resumo (2 = os itens com o ICMS, o ICMS-ST, o IPI e o CST do PIS; 13/10/2026; 3 = o frete e o desconto da NF-e; 22/10/2026). */
-const VERSAO_DO_RESUMO = 3;
+/** A versão do resumo (2 = os itens com o ICMS, o ICMS-ST, o IPI e o CST do PIS; 13/10/2026; 3 = o frete e o desconto da NF-e; 22/10/2026; 4 = a base, a alíquota e as despesas do item; 22/10/2026;
+ * 5 = as NF-e que o CT-e transporta e o ICMS do CT-e; 23/10/2026). */
+const VERSAO_DO_RESUMO = 5;
 
 module.exports = { VERSAO_DO_RESUMO, tipoDoXml, tipoDeNota, nomeDoArquivo, resumoDaNota, zipDe, crc32 };

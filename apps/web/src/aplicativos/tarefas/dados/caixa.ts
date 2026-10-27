@@ -18,6 +18,9 @@ export interface RascunhoDeLancamento {
 /** o que a tela manda gravar de uma conta do plano: sem id é nova */
 export type RascunhoDeConta = Omit<financeiro.ContaDoPlano, 'id'> & { id?: string };
 
+/** o que a tela manda gravar de uma importação (o id vem da tela, porque as linhas já levam o id dela) */
+export type NovaImportacao = Omit<financeiro.ImportacaoDeExtrato, 'importadoEm' | 'importadoPor'>;
+
 export interface RepoCaixa {
   readonly exemplos: boolean;
   /** todos os lançamentos (ao vivo), por data e id */
@@ -29,6 +32,17 @@ export interface RepoCaixa {
   excluirLancamento(id: string): Promise<void>;
   /** cria (sem id) ou altera; devolve o id */
   salvarConta(c: RascunhoDeConta): Promise<string>;
+  /** o extrato do banco (23/10/2026, à parte do Caixa): as linhas importadas (ao vivo), por data */
+  extrato(): ListaAoVivo<financeiro.LancamentoDoBanco>;
+  /** as importações de extrato (ao vivo), da mais nova para a mais velha */
+  importacoes(): ListaAoVivo<financeiro.ImportacaoDeExtrato>;
+  /**
+   * grava uma importação: só as linhas que ainda não estão no banco (o id é fixo, então o mesmo extrato não duplica);
+   * devolve quantas entraram e quantas já estavam
+   */
+  importarExtrato(i: NovaImportacao, linhas: financeiro.LancamentoDoBanco[], quem: string): Promise<{ novas: number; repetidas: number }>;
+  /** apaga a importação e as linhas que vieram nela */
+  desfazerImportacao(id: string): Promise<void>;
   assinar(aoMudar: () => void): () => void;
   versao(): number;
 }
@@ -58,6 +72,14 @@ export function criarCaixaMemoria(): RepoCaixa {
     l('ex-5', 0, 'S', 'Lanche da equipe (EXEMPLO)', 48.75),
   ];
   const ordenados = <T,>(xs: T[]) => [...xs];
+  let extrato: financeiro.LancamentoDoBanco[] = [
+    { id: 'exb-1', data: DIA(5), historico: 'PIX RECEBIDO COMERCIO EXEMPLO (EXEMPLO)', valor: 1200, tipo: 'E', banco: 'Sicoob', importacao: 'exi-1' },
+    { id: 'exb-2', data: DIA(4), historico: 'TARIFA DO PACOTE (EXEMPLO)', valor: 39.9, tipo: 'S', banco: 'Sicoob', importacao: 'exi-1' },
+    { id: 'exb-3', data: DIA(2), historico: 'PAGAMENTO DE BOLETO (EXEMPLO)', valor: 310, tipo: 'S', banco: 'Sicoob', importacao: 'exi-1' },
+  ];
+  let importacoes: financeiro.ImportacaoDeExtrato[] = [
+    { id: 'exi-1', banco: 'Sicoob', marca: 'sicoob', rotuloDaConta: 'Ag. 3144 · C/C 12.345-6', arquivo: 'extrato-exemplo.pdf', de: DIA(5), ate: DIA(2), quantos: 3, entradas: 1200, saidas: 349.9, saldoFinal: 4850.1, importadoEm: AGORA(), importadoPor: 'Exemplo' },
+  ];
   return {
     exemplos: true,
     lancamentos: () => ({ carregada: true, lista: ordenados(lancamentos), erro: '' }),
@@ -81,6 +103,21 @@ export function criarCaixaMemoria(): RepoCaixa {
       plano = plano.some(x => x.id === id) ? plano.map(x => (x.id === id ? nova : x)) : [...plano, nova];
       mudou();
       return id;
+    },
+    extrato: () => ({ carregada: true, lista: [...extrato].sort((a, b) => a.data.localeCompare(b.data) || a.id.localeCompare(b.id)), erro: '' }),
+    importacoes: () => ({ carregada: true, lista: [...importacoes].sort((a, b) => b.importadoEm.localeCompare(a.importadoEm)), erro: '' }),
+    async importarExtrato(i, linhas, quem) {
+      const ja = new Set(extrato.map(x => x.id));
+      const novas = linhas.filter(x => !ja.has(x.id));
+      extrato = [...extrato, ...novas];
+      importacoes = [{ ...i, quantos: novas.length, importadoEm: AGORA(), importadoPor: quem }, ...importacoes];
+      mudou();
+      return { novas: novas.length, repetidas: linhas.length - novas.length };
+    },
+    async desfazerImportacao(id) {
+      extrato = extrato.filter(x => x.importacao !== id);
+      importacoes = importacoes.filter(x => x.id !== id);
+      mudou();
     },
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,

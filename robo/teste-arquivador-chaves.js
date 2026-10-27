@@ -321,10 +321,110 @@ try {
     { arquivo: 'fica.xml', caminho_relativo: '2026-09\\X', motivo: 'CLIENTE_AMBIGUO', timestamp: '2026-10-22T19:00:00Z' },
     { arquivo: 'saiu.xml', caminho_relativo: '2026-09\\X', motivo: 'CLIENTE_NAO_LOCALIZADO', timestamp: '2026-10-22T19:00:01Z' },
     { arquivo: 'fica.xml', caminho_relativo: '2026-09\\X', motivo: 'EVENTO_SEM_ORIGINAL', chave: 'k', timestamp: '2026-10-22T21:00:00Z' }].map(x => JSON.stringify(x)).join('\n') + '\n');
+  fs.writeFileSync(path.join(oP, 'NÃO IDENTIFICADOS', '20261022-NOVO', '2026-09', 'X', 'orfao.pdf'), 'pdf');
   const vP = C.iniciar(Object.assign({}, baseC, { origem: oP, controle: kP }));
   await vP.ciclo(); vP.parar();
   const acP = JSON.parse(fs.readFileSync(path.join(kP, 'continuo', 'acompanhamento.json'), 'utf8'));
-  igual('Para resolver: só o que ainda está na pasta, com o motivo mais novo', [acP.pendentes.map(x => [x.nome, x.motivo]), acP.pendentesTotal], [[['fica.xml', 'EVENTO_SEM_ORIGINAL']], 1]);
+  igual('Para resolver: o que está na pasta (com o motivo mais novo; sem linha no índice, entra assim mesmo)', [acP.pendentes.map(x => [x.nome, x.motivo]), acP.pendentesTotal], [[['orfao.pdf', 'SEM_MOTIVO_REGISTRADO'], ['fica.xml', 'EVENTO_SEM_ORIGINAL']], 2]);
+
+  // ---------- 15. o ritmo pelo Google Drive e a varredura pela lista anterior + fs.watch (23/10/2026) ----------
+  {
+    const sr = path.join(tmp, 'ritmo'); const oR = path.join(sr, 'origem'), kR = path.join(sr, 'controle');
+    fs.mkdirSync(path.join(oR, '2026-10'), { recursive: true }); fs.mkdirSync(kR, { recursive: true });
+    fs.writeFileSync(path.join(kR, 'config.json'), JSON.stringify({ modo: 'simulacao', estavelMs: 0 }));
+    fs.writeFileSync(path.join(oR, '2026-10', 'a.xml'), '<a/>'); fs.writeFileSync(path.join(oR, '2026-10', 'b.xml'), '<b/>');
+    const vR = C.iniciar(Object.assign({}, baseC, { origem: oR, controle: kR, arvoreGrande: 0, umaVez: false }));
+    vR._medirRitmo(70000, null);
+    // 26/10/2026: o primeiro degrau não espaça mais os lotes (a migração); só o segundo espera 1 min
+    igual('ritmo: varredura de 70 s → lote de 20, sem pausa', [vR._ritmo().nivel, vR._ritmo().proximoCicloEm > Date.now() + 1000], [1, false]);
+    vR._medirRitmo(5000, 12000);
+    igual('ritmo: 12 s por arquivo → lote de 10 e 1 min entre os lotes', [vR._ritmo().nivel, vR._ritmo().proximoCicloEm > Date.now() + 50000], [2, true]);
+    vR._medirRitmo(1000, 500); vR._medirRitmo(1000, 500);
+    igual('ritmo: dois ciclos rápidos ainda não voltam', vR._ritmo().nivel, 2);
+    vR._medirRitmo(1000, 500);
+    igual('ritmo: o terceiro rápido volta um degrau', vR._ritmo().nivel, 1);
+    const r1 = await vR.ciclo();
+    igual('ritmo: no primeiro degrau o ciclo não espera', /Google Drive lento/.test(r1.esperando || ''), false);
+    // a leitura em fluxo (23/10/2026): pasta por pasta, sem as pastas de fora (NÃO IDENTIFICADOS, "_", CLAUDE FAVOR NÃO MEXER)
+    fs.mkdirSync(path.join(oR, 'NÃO IDENTIFICADOS', 'x'), { recursive: true }); fs.writeFileSync(path.join(oR, 'NÃO IDENTIFICADOS', 'x', 'n.xml'), '<n/>');
+    fs.mkdirSync(path.join(oR, '_tmp'), { recursive: true }); fs.writeFileSync(path.join(oR, '_tmp', 't.xml'), '<t/>');
+    fs.mkdirSync(path.join(oR, 'CLAUDE FAVOR NÃO MEXER'), { recursive: true }); fs.writeFileSync(path.join(oR, 'CLAUDE FAVOR NÃO MEXER', 'm.xml'), '<m/>');
+    igual('leitura em fluxo: só o que vale', (await vR._listar()).sort(), ['2026-10\\a.xml', '2026-10\\b.xml']);
+    // o fs.watch guarda o nome do que mudou (a próxima volta confere só isso)
+    fs.writeFileSync(path.join(oR, '2026-10', 'c.xml'), '<c/>');
+    await new Promise(r => setTimeout(r, 800));
+    igual('fs.watch: o nome do que chegou', [...vR._mudados()].some(n => /c\.xml$/.test(n)), true);
+    vR.parar();
+  }
+  // ---------- 16. mover, não copiar; "já arquivado" pelo índice de conteúdo, sem abrir o destino (23/10/2026) ----------
+  {
+    const sm = path.join(tmp, 'mover');
+    const oM = path.join(sm, 'origem'), cM = path.join(sm, '2026'), kM = path.join(sm, 'controle');
+    for (const p2 of PASTAS) fs.mkdirSync(path.join(cM, p2), { recursive: true });
+    fs.mkdirSync(path.join(oM, 'lote'), { recursive: true }); fs.mkdirSync(kM, { recursive: true });
+    fs.writeFileSync(path.join(kM, 'config.json'), JSON.stringify({ modo: 'producao', tiposProducao: 'todos', moverNaoIdentificados: true, estavelMs: 0 }));
+    const velho = new Date(Date.now() - 3600e3);
+    const pôr = (rel, txt) => { const f = path.join(oM, rel); fs.writeFileSync(f, txt); fs.utimesSync(f, velho, velho); return f; };
+    const XC = cte(CH1, 1234, '06934601000158');
+    const original = pôr('lote\\' + CH1 + '-cte.xml', XC);
+    const ino = fs.statSync(original).ino;
+    const baseM = Object.assign({}, baseC, { origem: oM, controle: kM, clientes: cM, controleAntigo: path.join(sm, 'sem-rotina') });
+    const vM = C.iniciar(baseM);
+    await vM.ciclo(); vM.parar();
+    const pastaC = path.join(cM, '152 - JANIO JOSE DE ALMEIDA', 'FISCAL', 'SIMPLES NACIONAL', '12. XML', 'CT-e');
+    const alvo = path.join(pastaC, '10-2026_CT-e_1234.xml');
+    const man = fs.readFileSync(path.join(kM, 'MANIFESTO', 'manifesto.jsonl'), 'utf8').trim().split('\n').map(JSON.parse);
+    igual('mover: o original foi para o destino por rename (o mesmo arquivo), sem cópia na quarentena', [fs.existsSync(original), fs.existsSync(alvo), fs.statSync(alvo).ino === ino, fs.existsSync(path.join(kM, 'QUARENTENA')), man[0].movido, !!man[0].conteudo_xml], [false, true, true, false, true, true]);
+    // o mesmo documento de novo (o SIEG repete; aqui com BOM, bytes diferentes): já arquivado sem abrir o destino
+    pôr('lote\\' + CH1 + '-repetido.xml', '\uFEFF' + XC);
+    const lidos = [];
+    const rf = fs.readFileSync, prf = fs.promises.readFile;
+    fs.readFileSync = function (f, ...r) { if (String(f).startsWith(cM)) lidos.push(String(f)); return rf.call(fs, f, ...r); };
+    fs.promises.readFile = function (f, ...r) { if (String(f).startsWith(cM)) lidos.push(String(f)); return prf.call(fs.promises, f, ...r); };
+    let lM;
+    try { const v2 = C.iniciar(baseM); await v2.ciclo(); v2.parar(); lM = fs.readFileSync(path.join(kM, 'continuo', fs.readdirSync(path.join(kM, 'continuo')).find(f => /^decisoes-/.test(f))), 'utf8').trim().split('\n').map(JSON.parse); }
+    finally { fs.readFileSync = rf; fs.promises.readFile = prf; }
+    const rep = lM.find(l => /repetido/.test(l.rel));
+    igual('já arquivado pelo índice: sem abrir o destino no G:; o repetido foi para a quarentena', [rep && rep.acao, lidos.length, fs.existsSync(path.join(oM, 'lote', CH1 + '-repetido.xml')), fs.readdirSync(pastaC).filter(n => /\.xml$/.test(n)).length], ['JA_ARQUIVADO', 0, false, 1]);
+    // a origem LOCAL (outro disco, simulado pela raiz diferente não dá aqui): o config aceita a lista
+    igual('config: origensExtras vira lista', C.lerConfig(path.join(sm, 'nao-existe.json'), { origensExtras: 'C:\\nads\\entrada' }).origensExtras, ['C:\\nads\\entrada']);
+  }
+  // ---------- 17. a entrada local: as mesmas regras, o não identificado no NÃO IDENTIFICADOS do G: ----------
+  {
+    const se = path.join(tmp, 'entrada');
+    const oG = path.join(se, 'G'), loc = path.join(se, 'local'), cE = path.join(se, '2026'), kE = path.join(se, 'controle');
+    for (const p2 of PASTAS) fs.mkdirSync(path.join(cE, p2), { recursive: true });
+    for (const d of [oG, loc, kE]) fs.mkdirSync(d, { recursive: true });
+    fs.writeFileSync(path.join(kE, 'config.json'), JSON.stringify({ modo: 'producao', tiposProducao: 'todos', moverNaoIdentificados: true, estavelMs: 0, origensExtras: [loc] }));
+    const velho = new Date(Date.now() - 3600e3);
+    const f1 = path.join(loc, CH2 + '-cte.xml'); fs.writeFileSync(f1, cte(CH2, 1235, '06934601000158')); fs.utimesSync(f1, velho, velho);
+    const f2 = path.join(loc, 'sem-regra.bin'); fs.writeFileSync(f2, 'xx'); fs.utimesSync(f2, velho, velho);
+    const vE = C.iniciar(Object.assign({}, baseC, { origem: oG, controle: kE, clientes: cE, controleAntigo: path.join(se, 'sem-rotina') }));
+    await vE.ciclo(); vE.parar();
+    const niG = path.join(oG, 'NÃO IDENTIFICADOS');
+    const niArqs = []; (function andar(d) { try { for (const e of fs.readdirSync(d, { withFileTypes: true })) { if (e.isDirectory()) andar(path.join(d, e.name)); else niArqs.push(e.name); } } catch (e) { /* sem pasta */ } })(niG);
+    igual('entrada local: arquivou, o não identificado foi para o NÃO IDENTIFICADOS do G:, a local ficou vazia', [fs.existsSync(path.join(cE, '152 - JANIO JOSE DE ALMEIDA', 'FISCAL', 'SIMPLES NACIONAL', '12. XML', 'CT-e', '10-2026_CT-e_1235.xml')), niArqs.includes('sem-regra.bin'), fs.readdirSync(loc)], [true, true, []]);
+  }
+  // ---------- 18. os "já decididos" que saíram da pasta são esquecidos na passada inteira ----------
+  {
+    const sd = path.join(tmp, 'poda');
+    const oD = path.join(sd, 'origem'), kD = path.join(sd, 'controle');
+    fs.mkdirSync(oD, { recursive: true }); fs.mkdirSync(kD, { recursive: true });
+    fs.writeFileSync(path.join(kD, 'config.json'), JSON.stringify({ modo: 'simulacao', estavelMs: 0 }));
+    const velho = new Date(Date.now() - 3600e3);
+    for (const n of ['a.txt', 'b.txt']) { const f = path.join(oD, n); fs.writeFileSync(f, n); fs.utimesSync(f, velho, velho); }
+    const vD = C.iniciar(Object.assign({}, baseC, { origem: oD, controle: kD }));
+    await vD.ciclo();
+    const antes = Object.keys(vD._decididos()).length;
+    fs.unlinkSync(path.join(oD, 'a.txt'));
+    await new Promise(r => setTimeout(r, 20));
+    await vD.ciclo(); vD.parar();
+    igual('poda: o que saiu da pasta sai do estado', [antes, Object.keys(vD._decididos()).map(k => k.split('|')[0])], [2, ['b.txt']]);
+  }
+  {
+    const vR = { parar: () => {} };
+    vR.parar();
+  }
 } catch (e) { falhas++; console.log('FALHOU com erro:', e.stack); }
 finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 console.log((falhas ? falhas + ' FALHA(S) em ' : 'ok: ') + total + ' testes');

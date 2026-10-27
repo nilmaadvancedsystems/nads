@@ -93,6 +93,41 @@ export interface EstadoDoArquivador {
   situacao: string;
   desligadoEm: string;
   rotina: RotinaRodando | null;
+  /** o que está HOJE em NÃO IDENTIFICADOS (o arquivador novo conta; null: o robô ainda não conta) */
+  paraResolver: { agora: number; em: string } | null;
+  /** o arquivador NOVO (robo/arquivadorResumo; 23/10/2026: "isso tem que puxar dados do robô"); null: sem o resumo */
+  novo: ResumoDoArquivadorNovo | null;
+}
+
+/** O resumo pequeno do arquivador novo que o robô do PC publica para esta janela (sem nome original de arquivo). */
+export interface ResumoDoArquivadorNovo {
+  em: string; modo: string; emProducao: boolean;
+  /** ok | sem-drive | esperando (com o motivo) */
+  situacao: string; esperando: string;
+  /** o Google Drive lento: o robô reduziu o lote e espaçou os ciclos (o texto do ritmo), ou vazio no ritmo normal */
+  lento: string;
+  /** a leitura da pasta agora: "Lendo a pasta: 37.000 de ~100.000 arquivos · 1.234 na fila (G:) · 300/min · faltam ~4 h", ou vazio */
+  progresso: string;
+  pasta: { naPasta: number; chegando: number; naFila: number; sendoLidos: number } | null;
+  hoje: { dia: string; arquivados: number; aMao: number; clientes: number; jaArquivado: number; descartados: number; erros: number };
+  paraResolver: number;
+  /** o último arquivado: o tipo, o cliente e o nome final padronizado (o de funcionário vem sem o nome) */
+  ultimo: { em: string; tipo: string; cliente: string; clienteNome: string; nomeFinal: string } | null;
+}
+const txt = (v: unknown) => (v == null ? '' : String(v));
+const num = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+const obj = (v: unknown): Record<string, unknown> => (v && typeof v === 'object' ? (v as Record<string, unknown>) : {});
+/** O resumo como veio do banco (null sem o documento). */
+export function lerResumoDoArquivadorNovo(d: Record<string, unknown> | null | undefined): ResumoDoArquivadorNovo | null {
+  if (!d || !d.em) return null;
+  const p = d.pasta ? obj(d.pasta) : null, h = obj(d.hoje), u = d.ultimo ? obj(d.ultimo) : null;
+  return {
+    em: txt(d.em), modo: txt(d.modo), emProducao: d.emProducao === true, situacao: txt(d.situacao) || 'ok', esperando: txt(d.esperando), lento: txt(d.lento), progresso: txt(d.progresso),
+    pasta: p ? { naPasta: num(p.naPasta), chegando: num(p.chegando), naFila: num(p.naFila), sendoLidos: num(p.sendoLidos) } : null,
+    hoje: { dia: txt(h.dia), arquivados: num(h.arquivados), aMao: num(h.aMao), clientes: num(h.clientes), jaArquivado: num(h.jaArquivado), descartados: num(h.descartados), erros: num(h.erros) },
+    paraResolver: num(d.paraResolver),
+    ultimo: u && u.em ? { em: txt(u.em), tipo: txt(u.tipo), cliente: txt(u.cliente), clienteNome: txt(u.clienteNome), nomeFinal: txt(u.nomeFinal) } : null,
+  };
 }
 
 export interface RepoArquivador {
@@ -133,7 +168,13 @@ export function criarArquivadorMemoria(quem: () => { nome: string } | null): Rep
   const ETAPAS = ['Ler a pasta Claudio Secretario', 'Identificar o cliente de cada arquivo', 'Mover para as pastas dos clientes', 'Conferir e registrar'];
   return {
     exemplos: true,
-    estado: () => ({ carregado: true, semPermissao: false, em: agora(), situacao: pedidos.some(p => p.status === 'processando') ? 'rodando' : 'livre', desligadoEm: '', rotina }),
+    estado: () => ({ carregado: true, semPermissao: false, em: agora(), situacao: pedidos.some(p => p.status === 'processando') ? 'rodando' : 'livre', desligadoEm: '', rotina, paraResolver: { agora: 0, em: agora() },
+      novo: {
+        em: new Date(Date.now() - 40 * 1000).toISOString(), modo: 'producao', emProducao: true, situacao: 'ok', esperando: '', lento: '', progresso: '',
+        pasta: { naPasta: 3, chegando: 1, naFila: 0, sendoLidos: 0 },
+        hoje: { dia: agora().slice(0, 10), arquivados: 59, aMao: 1, clientes: 14, jaArquivado: 12, descartados: 0, erros: 0 }, paraResolver: 0,
+        ultimo: { em: new Date(Date.now() - 6 * 60000).toISOString(), tipo: 'XML NF-e', cliente: '380', clienteNome: 'LEONARDO EXEMPLO ME', nomeFinal: '10-2026_NF-e_7261.xml' },
+      } }),
     conversa: () => ({
       carregada: true, atualizadaEm: rotina ? agora() : '', sessao: 'exemplo',
       mensagens: rotina ? [

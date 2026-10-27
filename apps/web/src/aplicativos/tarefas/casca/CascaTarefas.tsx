@@ -6,7 +6,9 @@ import { useAvisoDeBloqueio } from '../../../comum/modoDesenvolvedor';
 import { URL_DO_ADMIN, type IdAplicacao } from './navegacao';
 import { useCascaTarefas } from './useCascaTarefas';
 import { JanelaDeFeedback } from '../telas/feedback/JanelaDeFeedback';
+import { ItemDosFeedbacks, JanelaDosFeedbacks } from '../telas/feedback/FeedbacksDoNads';
 import { AvisoDeCertificados } from './AvisoDeCertificados';
+import { useAvisoDosMeusFeedbacks } from './useAvisoDosMeusFeedbacks';
 
 /** O link discreto "Admin" no pé da gaveta ☰ (só o admin): abre o site do admin numa aba nova (os Feedbacks, o Painel do robô, o Uso e o Sistema moraram aqui; 22/10/2026). */
 function ItemDoAdmin({ fechar }: { fechar: () => void }) {
@@ -37,15 +39,20 @@ export function CascaTarefas({ app, pagina, telaInteira, larga, children }: { ap
   const vm = useCascaTarefas(app, pagina);
   const trilha = useTrilhaDoTopo();
   const [feedback, setFeedback] = useState(false);
+  const [feedbacks, setFeedbacks] = useState(false);
   useAvisoDeBloqueio();
+  // o feedback que o admin pôs em Resolvendo: avisa quem mandou (26/10/2026)
+  useAvisoDosMeusFeedbacks();
   return (
     <Casca sistema="Tarefas" temaNaGaveta={false} empresa={vm.empresa} versao={vm.versao} trilha={trilha} secoes={vm.secoes} paginas={vm.paginas} titulo={telaInteira ? '' : vm.titulo}
       lateral={telaInteira || vm.comAbas ? 'nenhuma' : undefined} larga={telaInteira || larga}
       acoes={telaInteira ? undefined : <LugarDasAcoes />} onSecao={vm.onSecao} onPagina={vm.onPagina} onInicio={vm.inicio} onAplicativos={vm.inicio}
       onEmpresa={vm.trocarPessoa} aplicativos={vm.aplicacoes} onAplicativo={vm.onAplicacao}
       topoDireita={<AvatarDaPessoa vm={vm} abrirFeedback={() => setFeedback(true)} />}
-      peDaGaveta={vm.admin ? fechar => <ItemDoAdmin fechar={fechar} /> : undefined}>
+      // os Feedbacks de volta na gaveta, junto do Admin (Vitor, 26/10/2026: "coloque a aba de feedbacks no meu usuário")
+      peDaGaveta={vm.admin ? fechar => <><ItemDosFeedbacks abrir={() => { fechar(); setFeedbacks(true); }} /><ItemDoAdmin fechar={fechar} /></> : undefined}>
       {feedback && <JanelaDeFeedback fechar={() => setFeedback(false)} />}
+      {feedbacks && <JanelaDosFeedbacks fechar={() => setFeedbacks(false)} />}
       {/* os certificados vencidos ou vencendo (19/10/2026): só o admin */}
       <AvisoDeCertificados ligado={vm.admin} />
       {children}

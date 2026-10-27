@@ -15,6 +15,7 @@
 //   - arquivamentos/{execucao}/detalhe/tudo (só leitura, quando pedem): o relatório e a mensagem final da execução.
 import { addDoc as addDocBruto, collection, doc, getDoc, limit, onSnapshot, orderBy, query, updateDoc as updateDocBruto } from 'firebase/firestore';
 import type { ConversaDaRotina, DetalheDaExecucao, EstadoDoArquivador, ExecucaoPublicada, MensagemParaOClaude, PedidoDeArquivo, RepoArquivador, ResultadoDoArquivamento, RotinaRodando } from './arquivador';
+import { lerResumoDoArquivadorNovo } from './arquivador';
 import { bancoDoEntregas } from './entregas.firestore';
 import { guardar, guardarPedido } from '../../../comum/modoDesenvolvedor';
 
@@ -42,7 +43,7 @@ export function criarArquivadorFirestore(quem: () => Quem): RepoArquivador {
   let ver = 0;
   const ouvintes = new Set<() => void>();
   const mudou = () => { ver++; for (const f of ouvintes) f(); };
-  let estado: EstadoDoArquivador = { carregado: false, semPermissao: false, em: '', situacao: '', desligadoEm: '', rotina: null };
+  let estado: EstadoDoArquivador = { carregado: false, semPermissao: false, em: '', situacao: '', desligadoEm: '', rotina: null, paraResolver: null, novo: null };
   let execucoes: ExecucaoPublicada[] = [];
   let conversa: ConversaDaRotina = { carregada: false, atualizadaEm: '', sessao: '', mensagens: [], relatorio: null, agentes: [] };
   let escritas: MensagemParaOClaude[] = [];
@@ -55,6 +56,11 @@ export function criarArquivadorFirestore(quem: () => Quem): RepoArquivador {
   function ouvir() {
     if (ouvindo || !quem()) return;
     ouvindo = true;
+    // o arquivador NOVO (o resumo pequeno, que o contábil lê; 23/10/2026): sem permissão (regra ainda não publicada), fica de fora
+    onSnapshot(doc(db, 'robo', 'arquivadorResumo'), s => {
+      estado = { ...estado, novo: lerResumoDoArquivadorNovo(s.exists() ? s.data() : null) };
+      mudou();
+    }, () => { estado = { ...estado, novo: null }; mudou(); });
     onSnapshot(doc(db, 'robo', 'arquivador'), s => {
       const d = s.data() || {};
       const r = d.rotina as Record<string, unknown> | null | undefined;
@@ -62,7 +68,9 @@ export function criarArquivadorFirestore(quem: () => Quem): RepoArquivador {
         ativa: !!r.ativa, execucao: texto(r.execucao), inicio: texto(r.inicio), modo: texto(r.modo), fase: texto(r.fase),
         ultimoSinalEm: texto(r.ultimoSinalEm), deUmPedido: !!r.deUmPedido,
       } : null;
-      estado = { ...estado, carregado: true, em: texto(d.em), situacao: texto(d.situacao), desligadoEm: texto(d.desligadoEm), rotina };
+      const pr = d.paraResolver as Record<string, unknown> | null | undefined;
+      const paraResolver = pr && Number.isFinite(Number(pr.agora)) ? { agora: Number(pr.agora), em: texto(pr.em) } : null;
+      estado = { ...estado, carregado: true, em: texto(d.em), situacao: texto(d.situacao), desligadoEm: texto(d.desligadoEm), rotina, paraResolver };
       mudou();
     }, () => { estado = { ...estado, carregado: true, semPermissao: true }; mudou(); });
     onSnapshot(query(collection(db, 'solicitacoesArquivo'), orderBy('criadoEm', 'desc'), limit(5)), s => {

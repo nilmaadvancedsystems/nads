@@ -2,8 +2,7 @@
 // afins"). Só o admin e o diretor. De cima para baixo: os dois robôs (ligado ou não, onde roda, a versão e o que está
 // fazendo agora), os erros das últimas 24 h em destaque, as filas de pedidos, o que foi arquivado hoje e no mês (com o
 // caminho para Admin › Arquivador) e a atividade dos últimos 7 dias, com o filtro por tipo e por erro.
-import { Alerta, Dica, Esqueleto, Icone, Vazio, useCarregando } from '@nads/ui';
-import { Link } from 'react-router';
+import { Alerta, Dica, Esqueleto, Vazio, useCarregando } from '@nads/ui';
 import { CartaoDoRobo } from './partes/CartaoDoRobo';
 import { LinhaDoTempoDoRobo } from './partes/LinhaDoTempoDoRobo';
 import { usePainelDoRobo } from './usePainelDoRobo';
@@ -19,7 +18,6 @@ export function PainelDoRobo() {
   if (vm.semPermissao) {
     return <Vazio icone="lock" titulo="Sem acesso ao painel do robô" texto="Só o administrador e o diretor veem o que o robô está fazendo." />;
   }
-  const a = vm.arquivados;
   return (
     <section className="robo-painel">
       <div className="robo-grade">
@@ -66,44 +64,6 @@ export function PainelDoRobo() {
               ))}
             </tbody>
           </table></div>
-        )}
-      </div>
-
-      {/* o que foi arquivado */}
-      <div className="card">
-        <div className="card-head">
-          <h3>Arquivados{vm.mesDosArquivados ? ' em ' + vm.mesDosArquivados : ''}</h3>
-          {vm.podeAbrirArquivo && (
-            <Link className="btn btn-outline" to={vm.caminhoDoArquivo}><Icone nome="arquivo" width={16} height={16} />Abrir o Arquivador</Link>
-          )}
-        </div>
-        {vm.carregando ? <Esqueleto linhas={2} numeros={4} /> : !a ? (
-          <Vazio compacto icone="arquivo" texto="O robô do PC ainda não publicou o que foi arquivado (sai junto com o painel, depois que ele for atualizado)." />
-        ) : (
-          <>
-            <div className="stat-grid dp-numeros robo-numeros">
-              <div className="stat painel-numero painel-ok"><span className="painel-numero-icone" aria-hidden="true"><Icone nome="checkCircle" width={16} height={16} /></span><p className="stat-label">Arquivados hoje</p><p className="stat-value num">{num(a.hoje)}</p></div>
-              <div className="stat painel-numero painel-info"><span className="painel-numero-icone" aria-hidden="true"><Icone nome="arquivo" width={16} height={16} /></span><p className="stat-label">Arquivados no mês</p><p className="stat-value num">{num(a.noMes)}</p></div>
-              <div className="stat painel-numero painel-neutro"><span className="painel-numero-icone" aria-hidden="true"><Icone nome="clock" width={16} height={16} /></span><p className="stat-label">Organizações no mês</p><p className="stat-value num">{num(a.execucoesNoMes)}</p></div>
-              <div className="stat painel-numero painel-aviso"><span className="painel-numero-icone" aria-hidden="true"><Icone nome="alert" width={16} height={16} /></span><p className="stat-label">Não identificados no mês</p><p className="stat-value num">{num(a.naoIdentificadosNoMes)}</p></div>
-            </div>
-            {a.execucoes.length ? (
-              <div className="table-wrap robo-execucoes"><table className="table-compact">
-                <thead><tr><th>Quando</th><th className="num">Arquivados</th><th className="num">Clientes</th><th className="num">Não identificados</th><th>Execução</th></tr></thead>
-                <tbody>
-                  {a.execucoes.map(x => (
-                    <tr key={x.id}>
-                      <td>{entregas.quandoNoPainel(x.em, vm.agora)}</td>
-                      <td className="num">{num(x.arquivados)}</td>
-                      <td className="num">{num(x.clientes)}</td>
-                      <td className="num">{x.naoIdentificados ? <span className="badge badge-suave badge-warn">{num(x.naoIdentificados)}</span> : '—'}</td>
-                      <td className="fraco">{x.id}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table></div>
-            ) : <p className="hint">Nenhuma organização neste mês ainda.</p>}
-          </>
         )}
       </div>
 

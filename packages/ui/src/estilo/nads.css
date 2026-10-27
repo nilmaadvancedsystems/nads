@@ -1691,7 +1691,20 @@ td.cad-acoes .menu-seta{display:none;}
 .cad-sugestoes-lista li{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--border-muted, var(--border));}
 .cad-sugestoes-lista li:first-child{border-top:none;}
 .cad-lista td{vertical-align:middle;}
-.cad-bancos-da-linha{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px 12px;}
+.cad-bancos-da-linha{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px;}
+/* o logo do banco na lista do Cadastro (26/10/2026): colorido, 26 px, o fundo transparente e sem borda ("fundo do banco
+   transparente, sem essa borda branca") */
+.cad-banco-logo{position:relative;display:inline-flex;align-items:center;justify-content:center;flex:none;width:26px;height:26px;background:none;}
+.cad-banco-logo img,.cad-banco-logo svg{width:26px !important;height:26px !important;object-fit:contain;border-radius:5px;}
+.cad-banco-qtd{position:absolute;top:-6px;right:-6px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--ink);color:var(--surface);
+  font-size:10px;font-weight:700;line-height:16px;text-align:center;}
+/* a lista ocupa a tela até embaixo e rola por dentro, com o cabeçalho preso (26/10/2026: "caber na tela inteira e não fica flutuando") */
+/* uma rolagem só, a da página (26/10/2026: "pra que 2 scrolls?"): a tabela não rola por dentro; o cabeçalho fica preso no topo */
+.cad-lista-rolagem{overflow:visible;max-height:none;}
+.cad-lista-rolagem .cad-lista{width:100%;}
+.cad-lista th:nth-child(4),.cad-lista td:nth-child(4){min-width:210px;}
+.cad-lista th:last-child,.cad-lista td:last-child{width:1%;white-space:nowrap;}
+.cad-lista-rolagem thead th{position:sticky;top:0;z-index:1;background:var(--surface-2,var(--surface));}
 .cad-bancos-da-linha.do-robo .cad-banco-mini{color:var(--ink-muted);}
 .cad-banco-mini{display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-13);white-space:nowrap;}
 .cad-banco-mini .add-banco-logo{width:16px;height:16px;}
@@ -2561,7 +2574,14 @@ html:not([data-animacoes=todas]) .modal-ok-barra{display:none;}
    Uma janela grande por cima da tela, como as Configurações do Notion: à esquerda a pessoa, a busca e os tópicos; à
    direita o tópico aberto (o título em cima, o conteúdo rolando por baixo) */
 .pessoal-fundo{z-index:90;}
-.pessoal-janela{display:flex;width:min(1080px,94vw);height:min(760px,88vh);background:var(--surface);border:1px solid var(--border);
+/* a janela nítida (26/10/2026: "ta em baixa resolução"): o desfoque do fundo fica numa camada de trás (::before), não no
+   pai da janela (dentro de um backdrop-filter o Chrome desenha o texto sem o antisserrilhado de subpixel), e o tamanho
+   cai em pixel par (com vw/vh a janela parava em meio pixel e o texto borrava) */
+.pessoal-fundo{-webkit-backdrop-filter:none;backdrop-filter:none;}
+.pessoal-fundo::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+  -webkit-backdrop-filter:blur(var(--fundo-janela-desfoque));backdrop-filter:blur(var(--fundo-janela-desfoque));}
+.pessoal-janela{--janela-l:min(1080px,94vw);--janela-a:min(760px,88vh);
+  display:flex;width:var(--janela-l);width:round(down,var(--janela-l),2px);height:var(--janela-a);height:round(down,var(--janela-a),2px);background:var(--surface);border:1px solid var(--border);
   border-radius:12px;box-shadow:var(--shadow-lg);overflow:hidden;}
 .pessoal-lado{width:248px;flex:none;display:flex;flex-direction:column;gap:8px;padding:12px 8px;background:var(--surface-2);border-right:1px solid var(--border);overflow:auto;}
 .pessoal-quem{display:flex;align-items:center;gap:10px;padding:6px 8px 8px;}
@@ -2824,7 +2844,7 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 .usuarios-seta{width:16px;height:16px;color:var(--ink-muted);}
 @media (max-width:900px){
 }
-.usuario-janela{width:min(900px,94vw);height:min(700px,88vh);}
+.usuario-janela{--janela-l:min(900px,94vw);--janela-a:min(700px,88vh);}
 .usuario-lado{width:220px;}
 .usuario-quem{display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 8px;text-align:center;}
 .usuario-quem b{font-size:var(--fs-14);word-break:break-word;}
@@ -3007,7 +3027,7 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 .arquivador-hero-nota{margin:10px 0 0;font-size:var(--fs-12);color:var(--ink-muted);max-width:420px;line-height:1.5;}
 .arquivador-hero-barra{width:min(360px,100%) !important;margin-top:14px;}
 /* a janela do arquivador maior (Vitor, 05/10/2026: "pode aumentar") */
-.usuario-janela.arquivador-janela{width:min(1180px,96vw);height:min(860px,92vh);}
+.usuario-janela.arquivador-janela{--janela-l:min(1180px,96vw);--janela-a:min(860px,92vh);}
 /* Arquivar agora › as etapas do lote (os agentes que a rotina despachou): pronto com visto, rodando girando */
 .arquivador-etapas{list-style:none;margin:18px 0 0;padding:0;width:min(560px,100%);display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px 16px;text-align:left;font-size:var(--fs-12);}
 .arquivador-etapas li{display:flex;align-items:center;gap:8px;min-width:0;color:var(--ink-muted);}
@@ -3131,6 +3151,9 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 .pt-tarefa-acoes .hint svg,.pt-tarefa .imp-faixa-corpo > .hint svg{width:13px;height:13px;vertical-align:-2px;}
 .pt-tarefa .imp-faixa-corpo{gap:12px;}
 .pt-janela .imp-conf-topo .page-title{display:none;}
+/* a janela de importar do Fiscal (23/10/2026: "a janela tá bem pequena e a tabela não dá para ver"): quase a tela toda */
+.pessoal-janela.usuario-janela.pt-janela{--janela-l:min(1400px,96vw);--janela-a:min(900px,92vh);}
+.pt-janela .table-wrap td{white-space:nowrap;}
 /* o painel de cada tarefa do Fiscal (só peças do catálogo: Stat, rank, tabela, Alerta, gh-blank) */
 .graf-painel{display:flex;flex-direction:column;gap:12px;}
 .graf-painel > .stat-grid{margin-bottom:0;}
@@ -3211,7 +3234,7 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .resp-pendentes-texto{display:flex;flex-direction:column;gap:2px;min-width:0;}
 .resp-pendentes-texto .hint{margin:0;font-size:var(--fs-12);}
 /* As empresas da pessoa (Usuários › janela, a janela Empresas por responsável e a Minha página; 07/10/2026) */
-.resp-janela{width:min(1100px,96vw);}
+.resp-janela{--janela-l:min(1100px,96vw);}
 .emp-pessoa{display:flex;flex-direction:column;gap:10px;}
 .emp-pessoa-busca{max-width:340px;}
 .emp-pessoa-vazio{margin:8px 0;}
@@ -3227,7 +3250,6 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .emp-pessoa-ic{width:12px;height:12px;vertical-align:-2px;margin-right:3px;color:var(--warn);}
 .emp-pessoa-acoes{display:inline-flex;gap:6px;flex:none;}
 .emp-pessoa-acoes .btn{height:28px;padding:0 10px;font-size:var(--fs-12);}
-.emp-sem{display:flex;flex-direction:column;gap:6px;}
 /* DP › Obrigações numa tabela só e compacta (07/10/2026: "muito grande e com espaço sobrando"; "unifique") */
 .dp-tabela td{padding-top:6px;padding-bottom:6px;}
 .dp-tabela .dp-cliente-nome{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:var(--fs-13);}
@@ -4325,15 +4347,18 @@ html[data-animacoes=nenhuma] .toggle-knob,html[data-animacoes=nenhuma] .toggle-t
 /* Fiscal › Rateio de frete (22/10/2026) */
 .rateio-frete{display:flex;flex-direction:column;gap:12px;}
 .rateio-frete > .card{margin:0;}
-.rateio-frete .busca-curta.rateio-frete-empresa{width:320px;}
-.btn.rateio-frete-empresa{max-width:360px;}
-.rateio-frete-empresa-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.rateio-frete-busca{position:relative;}
-.rateio-frete-busca .nf-achados{position:absolute;left:0;width:420px;top:100%;margin-top:4px;z-index:30;box-shadow:var(--shadow-lg);background:var(--surface);}
+/* a empresa na barra (Rateio de frete e Simples Nacional; 23/10/2026: uma peça só, fiscal/partes/EmpresaDaBarra.tsx) */
+.busca-curta.empresa-da-barra{width:320px;max-width:100%;}
+.btn.empresa-da-barra{max-width:360px;min-width:0;}
+.empresa-da-barra-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.empresa-da-barra-busca{position:relative;max-width:100%;}
+.empresa-da-barra-busca .nf-achados{position:absolute;left:0;width:min(420px,calc(100vw - 32px));top:100%;margin-top:4px;z-index:30;box-shadow:var(--shadow-lg);background:var(--surface);}
 .rateio-frete-notas tbody tr,.rateio-frete-abre{cursor:pointer;}
 .rateio-frete-valores{display:flex;flex-wrap:wrap;align-items:center;gap:8px 24px;margin-bottom:12px;}
 .rateio-frete-valores label{display:inline-flex;align-items:center;gap:8px;font-size:var(--fs-13);color:var(--ink-muted);}
 .rateio-frete-valores .fin-valor-edita{width:130px;color:var(--ink);font-weight:600;}
+.rateio-frete-icms{font-size:var(--fs-13);color:var(--ink-muted);}
+.rateio-frete-icms b{color:var(--ink);margin-left:6px;}
 .rateio-frete-explica{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px;}
 .rateio-frete-corpo{margin:0 0 12px;}
 .rateio-frete td .fin-valor-edita{width:100%;min-width:90px;}
@@ -4745,7 +4770,7 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .fin-painel-linha{margin:8px 0 12px;font-size:var(--fs-14,14px);}
 .fin-painel-grande{font-size:var(--fs-24,24px);margin-right:4px;}
 .fin-painel .rank-val .fraco{font-weight:400;margin-left:4px;}
-@media (max-width:900px){.fin-painel-colunas{grid-template-columns:1fr;}}
+@media (max-width:900px){.fin-painel-colunas,.fin-painel-tres{grid-template-columns:1fr;}}
 /* Devedores, Resultado, Conciliação e o Reajuste (22/10/2026) */
 .fin-meses{display:flex;flex-wrap:wrap;gap:4px;}
 .fin-meses .chip-f{font-size:var(--fs-12,12px);}
@@ -4792,6 +4817,22 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .fin-painel .card>h3{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
 .fin-painel .card>h3 .steps{margin:0;}
 .fin-conc-arquivo{min-width:260px;}
+/* Financeiro › Importar extrato (23/10/2026): as linhas da prévia e os botões */
+.fin-extrato-linhas{max-height:420px;overflow:auto;}
+.fin-extrato-acoes{margin-top:12px;padding:0;}
+/* o logo do banco no lugar do nome (23/10/2026), a conta do extrato e a janela flutuante do extrato */
+.fin-logo{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;flex:none;}
+.fin-logo > svg,.fin-logo .logo-img{width:22px;height:22px;border-radius:5px;}
+.fin-conta{display:inline-flex;align-items:center;gap:8px;font-size:var(--fs-13);white-space:nowrap;}
+.fin-conta-ok{width:16px;height:16px;flex:none;color:var(--success);}
+.registro-caminho .fin-logo{margin-right:2px;}
+.modal.registro-novo.fin-extrato-janela{max-width:880px;width:calc(100vw - 48px);max-height:calc(100vh - 48px);}
+.fin-extrato-janela .registro-corpo{display:flex;flex-direction:column;gap:12px;overflow:auto;}
+.fin-extrato-janela .fin-extrato-linhas{max-height:none;}
+.fin-extrato-numeros{grid-template-columns:repeat(4,minmax(0,1fr));margin:0;}
+@media (max-width:700px){.fin-extrato-numeros{grid-template-columns:repeat(2,minmax(0,1fr));}}
+.fin-painel-dica{margin:-8px 0 0;}
+.fin-painel-tres{grid-template-columns:repeat(3,minmax(0,1fr));}
 .fin-reajuste-lista{max-height:300px;overflow:auto;margin-top:8px;}
 .fin-lista td{vertical-align:middle;}
 .fin-direita{text-align:right;white-space:nowrap;}
@@ -5045,21 +5086,39 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .faturamento-nome{max-width:280px;overflow:hidden;text-overflow:ellipsis;}
 .faturamento-tabela tfoot td{border-top:2px solid var(--border);position:sticky;bottom:0;background:var(--surface);}
 .faturamento-subiu{color:var(--ok,#1E8E3E);}
+/* a tabela do Faturamento (23/10/2026): o código e o cliente parados na rolagem para o lado (no celular também), o
+   regime pequeno embaixo do nome, o total e a variação logo depois do cliente */
+.faturamento-tabela .fat-fixa{position:sticky;background:var(--surface);z-index:1;}
+.faturamento-tabela thead .fat-fixa,.faturamento-tabela tfoot .fat-fixa{z-index:2;}
+.faturamento-tabela .fat-fixa-cod{left:0;min-width:56px;}
+.faturamento-tabela .fat-fixa-nome{left:56px;box-shadow:inset -1px 0 0 var(--border);}
+.faturamento-tabela thead th{position:sticky;top:0;z-index:1;background:var(--surface-2);}
+.faturamento-tabela thead th.fat-fixa{z-index:3;}
+.fat-linha:hover .fat-fixa{background:var(--hover-bg);}
+.fat-regime{display:block;font-size:11px;color:var(--ink-muted);line-height:1.2;}
+.fat-col-total{border-left:1px solid var(--border);}
+.fat-maior-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;display:block;}
+@media (max-width:700px){.faturamento-nome{max-width:160px;}}
 .faturamento-caiu{color:var(--danger);}
 /* o faturamento detalhado de um cliente (22/10/2026): a linha clicável e a janela */
 .fat-linha{cursor:pointer;}
 .fat-linha:hover td{background:var(--hover-bg);}
 .fat-nome-btn{border:none;background:none;padding:0;font:inherit;color:var(--ink);cursor:pointer;text-align:left;max-width:100%;overflow:hidden;text-overflow:ellipsis;}
 .fat-linha:hover .fat-nome-btn{text-decoration:underline;}
-.modal.fat-detalhe{width:min(1100px,calc(100vw - 32px));max-width:none;max-height:calc(100vh - 48px);overflow:auto;display:flex;flex-direction:column;gap:14px;padding:18px 20px;}
+/* a janela do faturamento detalhado na tela inteira, com os blocos um embaixo do outro (23/10/2026: "não tá usando o
+   layout da tela inteira, e não gostei desse layout side by side") */
+.modal.fat-detalhe{width:calc(100vw - 48px);max-width:1240px;max-height:calc(100vh - 48px);display:flex;flex-direction:column;padding:0;}
+.fat-detalhe-corpo-geral{overflow:auto;display:flex;flex-direction:column;gap:14px;}
+.fat-detalhe-corpo-geral>*{flex-shrink:0;}
+.fat-detalhe-sobre{margin:0;font-size:var(--fs-13,13px);}
 .fat-detalhe-topo{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
 .fat-detalhe p{padding:0;}
 .fat-detalhe-topo h3{margin:0;padding:0;border:none;font-size:var(--fs-16,16px);}
 .fat-detalhe-topo p{margin:4px 0 0;font-size:var(--fs-13,13px);}
 .fat-detalhe .stat-grid{margin:0;}
-.fat-detalhe-corpo{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:14px;align-items:start;}
+.fat-detalhe-corpo{display:flex;flex-direction:column;gap:14px;}
 .fat-detalhe .card{margin:0;}
-.fat-detalhe-meses .table-wrap{max-height:420px;overflow:auto;}
+.fat-detalhe-meses .table-wrap{max-height:none;overflow:auto;}
 .fat-mes{cursor:pointer;}
 .fat-mes:hover td{background:var(--hover-bg);}
 .fat-mes-escolhido td{background:var(--surface-2);}
@@ -5067,6 +5126,30 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .fat-detalhe-mes{display:flex;flex-direction:column;gap:8px;}
 .fat-detalhe-mes>p{margin:0;font-size:var(--fs-13,13px);}
 .fat-detalhe-sub{font-weight:600;font-size:var(--fs-13,13px);margin:6px 0 0;}
+/* as notas do mês no faturamento detalhado (23/10/2026): a barra (por comprador ou CFOP e a busca), os grupos que abrem */
+.fat-notas{display:flex;flex-direction:column;gap:10px;}
+.fat-notas>p{margin:0;font-size:var(--fs-13,13px);}
+.fat-notas-barra{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.fat-notas-barra .busca-curta{flex:1;min-width:220px;max-width:380px;}
+.fat-notas-barra .busca-curta svg{width:16px;height:16px;flex:none;}
+.fat-grupos{display:flex;flex-direction:column;max-height:520px;overflow:auto;border:1px solid var(--border);border-radius:var(--radius,8px);}
+.fat-grupo{border-bottom:1px solid var(--border);}
+.fat-grupo:last-child{border-bottom:none;}
+.fat-grupo-linha{all:unset;box-sizing:border-box;cursor:pointer;width:100%;display:grid;grid-template-columns:14px minmax(0,1fr) auto auto;grid-template-rows:auto 3px;gap:4px 12px;align-items:center;padding:9px 12px;font-size:var(--fs-13,13px);}
+.fat-grupo-linha:hover{background:var(--hover-bg);}
+.fat-grupo-linha:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;}
+.fat-grupo-linha>svg{width:14px;height:14px;color:var(--ink-muted);}
+.fat-grupo.aberto>.fat-grupo-linha{background:var(--surface-2);}
+.fat-grupo-nome{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.fat-grupo-barra{grid-column:2 / 5;height:3px;border-radius:2px;background:var(--surface-3);overflow:hidden;}
+.fat-grupo-barra>span{display:block;height:100%;border-radius:2px;background:var(--info,#3b82f6);}
+.fat-grupo-notas{margin:0 12px 10px 38px;max-height:320px;overflow:auto;}
+.fat-nota{cursor:pointer;}
+.fat-nota:hover td{background:var(--hover-bg);}
+.fat-mais{align-self:flex-start;}
+.fat-sem-dado{margin:4px 0 0;font-size:var(--fs-12,12px);}
+.fat-detalhe-evolucao .cert-barras{min-height:180px;}
+.fat-detalhe-evolucao .cert-barra-num{white-space:nowrap;}
 .fat-detalhe-despesas{display:flex;flex-direction:column;gap:8px;}
 .fat-detalhe-despesas>p{margin:0;font-size:var(--fs-13,13px);}
 .fat-destaques{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;}
@@ -5074,13 +5157,24 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .fat-destaque b{font-size:var(--fs-14,14px);}
 @media (max-width:900px){.fat-detalhe-corpo{grid-template-columns:1fr;}}
 /* Fiscal › Simples: a calculadora do Simples Nacional (22/10/2026) */
-.simples-calc{display:flex;flex-direction:column;gap:12px;max-width:1040px;}
-.simples-calc-empresa{min-width:320px;max-width:480px;flex:1 1 320px;}
-.simples-calc-busca{position:relative;}
-.simples-calc-busca .nf-achados{position:absolute;left:0;right:0;top:100%;margin-top:4px;z-index:30;box-shadow:var(--shadow-lg);background:var(--surface);}
+.simples-calc{display:flex;flex-direction:column;gap:12px;}
 .simples-calc-tabela{max-height:none;}
 .simples-calc-faixas{border:1px solid var(--border);border-radius:6px;overflow:hidden;}
 .simples-calc-faixas > .imp-faixa:first-child{border-top:none;}
+/* Fiscal › Antecipação ICMS-ES (22/10/2026) */
+.antecipacao{display:flex;flex-direction:column;gap:12px;}
+.antecipacao-empresa{position:relative;width:340px;max-width:100%;}
+.antecipacao-empresa.registro-busca{padding:2px 4px 2px 12px;}
+.antecipacao-empresa .registro-busca input,.antecipacao-empresa .registro-busca input:focus{font-size:var(--fs-14);padding:5px 0;box-shadow:none;border:0;}
+.antecipacao-empresa .nf-escolhido{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-14);}
+.antecipacao-achados{position:absolute;left:0;right:0;top:calc(100% + 4px);margin:0;z-index:20;box-shadow:var(--shadow-md,0 6px 18px rgba(0,0,0,.12));}
+.antecipacao-dados{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:4px 24px;}
+.ent-dados dd.antecipacao-aliquota{display:flex;align-items:center;gap:6px;white-space:nowrap;}
+.antecipacao-aliquota .fin-valor-edita{width:64px;}
+.antecipacao-tabela{max-height:calc(100vh - 300px);overflow:auto;}
+.antecipacao-tabela td,.antecipacao-tabela th{white-space:nowrap;}
+.antecipacao-fornecedor{max-width:220px;overflow:hidden;text-overflow:ellipsis;}
+.antecipacao-tabela tfoot td{border-top:2px solid var(--border);position:sticky;bottom:0;background:var(--surface);}
 /* Cadastro › a empresa › Fiscal (Heverton, 21/10/2026): os documentos e as planilhas, os parcelamentos */
 .fis-docs-acoes{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;}
 .fis-docs-acoes .btn svg{width:16px;height:16px;}
@@ -5114,3 +5208,59 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .arquivador-ultima{display:flex;flex-direction:column;gap:8px;align-self:stretch;margin-top:12px;}
 .arquivador-ultima > p{margin:0;font-size:var(--fs-12);}
 .arquivador-progresso .arquivador-hero h3{margin:0;padding:0;border:none;background:none;}
+
+/* a Variação (23/10/2026): a seta e o %, verde quando é bom, vermelho quando é ruim */
+.variacao{font-size:var(--fs-12,12px);font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums;}
+.variacao-boa{color:var(--success);}
+.variacao-ruim{color:var(--destructive);}
+/* o número do Stat com a variação embaixo (o "contra o mês anterior") */
+.stat-comparacao{display:flex;align-items:center;gap:6px;margin-top:4px;font-size:var(--fs-12,12px);color:var(--ink-muted);}
+
+.rateio-frete-titulo{display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:var(--fs-13,13px);}
+/* a barra do Faturamento numa linha só em 1366 px (23/10/2026) */
+.faturamento .tarefas-barra-topo .busca-curta{width:170px;}
+/* na janela do faturamento detalhado, os blocos não encolhem (a grade dos números sumia com 2 px; 23/10/2026) */
+.modal.fat-detalhe>header,.modal.fat-detalhe>footer{flex-shrink:0;}
+/* no celular (23/10/2026): os números do Faturamento, do detalhe e do Simples dois por linha, a busca na largura toda */
+@media (max-width:600px){.faturamento .stat-grid,.fat-detalhe .stat-grid,.simples-calc .stat-grid{grid-template-columns:1fr 1fr;}.faturamento .stat-value,.fat-detalhe .stat-value,.simples-calc .stat-value{font-size:var(--fs-16,16px);}.faturamento .stat,.fat-detalhe .stat,.simples-calc .stat{padding:12px;}.faturamento .tarefas-barra-topo .busca-curta{width:100%;}.modal.fat-detalhe{width:calc(100vw - 16px);}}
+.faturamento .stat,.fat-detalhe .stat,.simples-calc .stat{min-width:0;overflow:hidden;}
+/* o painel do faturamento detalhado (23/10/2026: as referências dos painéis de faturamento por cliente): a evolução em
+   barras, o mix NF-e × NFC-e numa barra só e as classes da curva ABC (A verde, B âmbar, C cinza) */
+.fat-detalhe-evolucao{display:flex;flex-direction:column;gap:10px;}
+.fat-detalhe-evolucao .cert-barras{height:160px;}
+.fat-mix{display:flex;align-items:center;gap:16px;flex-wrap:wrap;font-size:var(--fs-13,13px);}
+.fat-mix-barra{flex:1 1 200px;height:8px;border-radius:4px;overflow:hidden;background:var(--ink-muted);max-width:420px;}
+.fat-mix-barra>span{display:block;height:100%;background:var(--info,#3b82f6);}
+.fat-abc{margin:4px 0;}
+.fat-abc-classes{display:inline-flex;gap:10px;align-items:center;font-size:var(--fs-14,14px);}
+.badge.fat-classe-A{background:color-mix(in srgb,var(--success) 18%,transparent);color:var(--success);}
+.badge.fat-classe-B{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn);}
+.badge.fat-classe-C{background:var(--surface-3);color:var(--ink-muted);}
+.rank-nome .badge{margin-right:4px;font-size:10px;padding:0 5px;}
+
+/* o espelho da nota (23/10/2026: conferir a nota pelo app): a janela, a chave com a consulta e os itens rolando */
+.modal.registro-novo.espelho-nota{max-width:960px;width:calc(100vw - 48px);max-height:calc(100vh - 48px);}
+.espelho-corpo{overflow:auto;display:flex;flex-direction:column;gap:12px;}
+.espelho-corpo>*{flex-shrink:0;}
+.espelho-chave{display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.espelho-chave .texto-copiavel{letter-spacing:.02em;}
+.espelho-chave .btn svg{width:14px;height:14px;}
+.espelho-totais{margin:0;}
+.espelho-itens{max-height:none;}
+/* a nota original (23/10/2026): a janela larga (os produtos com a descrição), o corpo rolando por dentro */
+.modal.registro-novo.danfe-janela{max-width:1240px;width:calc(100vw - 48px);max-height:calc(100vh - 48px);}
+.danfe-corpo{overflow:auto;display:flex;flex-direction:column;gap:12px;}
+.danfe-corpo>*{flex-shrink:0;}
+.danfe-corpo .stat-grid.espelho-totais{grid-template-columns:repeat(7,minmax(0,1fr));}
+@media (max-width:900px){.danfe-corpo .stat-grid.espelho-totais{grid-template-columns:repeat(2,minmax(0,1fr));}}
+.danfe-itens{max-height:none;}
+.danfe-itens td,.danfe-itens th{white-space:nowrap;}
+.danfe-itens td.danfe-descricao{white-space:normal;min-width:260px;}
+.danfe-pessoa{display:block;}
+.danfe-endereco{display:block;font-size:var(--fs-12,12px);margin-top:2px;}
+.danfe-info{white-space:pre-wrap;}
+.registro-caminho .badge{margin-left:8px;}
+.stat-grid.espelho-totais{grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;}
+.espelho-totais .stat{padding:8px 12px;min-height:0;}
+.espelho-totais .stat-value{font-size:var(--fs-14,14px);margin-top:2px;}
+@media (max-width:700px){.stat-grid.espelho-totais{grid-template-columns:repeat(2,minmax(0,1fr));}}

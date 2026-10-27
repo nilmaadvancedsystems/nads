@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as XLSX from 'xlsx';
-import { atencaoDoHistorico, atencoesDoMes, coberturaDoRazao, mesesCredores, mesesErrados, saldoErrado, sobrasDaFolha, razaoDeTeste, dataDoRazao, lerRazao, lerRazaoDoArquivo, mesesDoRazao, precisaDoCreditor, valorComLado } from './razao';
+import { atencaoDoHistorico, atencoesDoMes, coberturaDoRazao, mesesCredores, mesesErrados, saldoErrado, sobrasDaFolha, razaoDeTeste, dataDoRazao, lerRazao, naOrdemDasDatas, lerRazaoDoArquivo, mesesDoRazao, precisaDoCreditor, valorComLado } from './razao';
 import { caixaDeTeste, inssDeTeste, razaoDaFolhaDeTeste } from './deTeste';
 import { chaveDaSugestao, codigoDaConta, conferirInss, contrapartidaDaSugestao, linhasDoAlterdata } from './inss';
 import { ROTINA_CONTABIL } from '../rotinas/contabil';
@@ -31,6 +31,17 @@ describe('razão da conciliação do Alterdata', () => {
     expect(dataDoRazao('11/02/2026')).toBe('2026-02-11');
     const r = lerRazao([CAB, ['', '', 'Total', '', '', '', 10, '', '', 0, ''], ['', '', '11/02/2026', '', '40007', 'Rescisoes a Pagar', '10,13', '00118', 'INSS', '2.915,04', '']]);
     expect(r.lancamentos.map(l => [l.data, l.valor, l.saldo])).toEqual([['2026-02-11', 10.13, 2915.04]]);
+  });
+  it('a grade exportada ordenada pelo Valor: o mês a mês volta para a ordem das datas e refaz o saldo (23/10/2026)', () => {
+    // o caixa com 100 D antes; a grade pelo Valor, do maior para o menor: o Saldo do Alterdata vem somado nessa ordem
+    const linha = (data: string, valor: number, saldo: number) => ['', '', data, '', '10501', 'Banco', valor, '', 'mov', saldo, ''];
+    const r = naOrdemDasDatas(lerRazao([CAB, linha('20/01/2026', 150, 50), linha('05/01/2026', 30, 80), linha('05/01/2026', -40, 40), linha('10/02/2026', -60, -20)]));
+    expect(r.lancamentos.map(l => [l.data, l.valor, l.saldo])).toEqual([
+      ['2026-01-05', 30, -70], ['2026-01-05', -40, -110], ['2026-01-20', 150, 40], ['2026-02-10', -60, -20],
+    ]);
+    expect([r.saldoInicial, r.saldoFinal, r.inicio, r.fim]).toEqual([-100, -20, '2026-01-05', '2026-02-10']);
+    // na ordem das datas o caixa só fica credor em 20/01 (de verdade); na ordem do arquivo, "credor" no dia 05
+    expect(mesesDoRazao(lerRazao([CAB, linha('20/01/2026', 150, 50), linha('05/01/2026', 30, 80), linha('05/01/2026', -40, 40), linha('10/02/2026', -60, -20)]), ['2026-01']).map(m => [m.saldoFinal, m.diasCredor])).toEqual([[40, ['2026-01-20']]]);
   });
   it('planilha que não é razão: avisa', () => {
     expect(() => lerRazao([['Conta', 'Saldo'], ['Caixa', 10]])).toThrow(/colunas do razão/);

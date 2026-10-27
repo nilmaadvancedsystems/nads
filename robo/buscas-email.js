@@ -8,7 +8,10 @@
 //       assunto, em, trecho }] } (no máximo MAX_RESULTADOS; trecho = o começo do corpo, para a tela achar o mês);
 //   { tipo: 'trazer', caixa, mensagemId, anexoId, nome, status: 'pendente', ... }
 //     → o robô confere que o anexo é um dos que ele mesmo listou numa busca desta pessoa, baixa e põe o conteúdo em
-//       pedaços em buscasEmail/{id}/partes/{n} ({ dados: base64 }); { status: 'pronto', partes, tamanho }.
+//       pedaços em buscasEmail/{id}/partes/{n} ({ n, bytes }: binário, 26/10/2026; antes { dados: base64 }); { status: 'pronto',
+//       partes, tamanho, formato: 'bytes' }.
+// Mais rápido (Vitor, 26/10/2026: "anexar o arquivo está demorando muito"): os pedaços em binário (o base64 era 33% maior),
+// gravados 4 de cada vez (antes, um depois do outro), e o trazer não espera as buscas (duas filas; o trazer, 2 de cada vez).
 // Nada fica guardado: o pedido e os pedaços somem em DURA_MS. Só admin ou contábil pede (regras do Firestore); cada um
 // lê só o seu. Nada é enviado, apagado ou marcado no Gmail.
 const { ouvir } = require('./ouvinte');
@@ -19,7 +22,9 @@ const { podeLer } = require('./gmail-client');
 const DURA_MS = 30 * 60 * 1000;
 const MAX_RESULTADOS = 40;
 const MAX_MENSAGENS = 60;
-const PEDACO = 700000;
+// o pedaço em binário (o documento do Firestore vai até 1 MiB)
+const PEDACO = 900000;
+const JUNTOS = 4;
 const MAX_ANEXO = 15 * 1024 * 1024;
 const CAIXAS = ['robo', 'contabil'];
 const EXTENSOES = /\.(pdf|ofx|xlsx?|csv|txt)$/i;
@@ -87,10 +92,10 @@ function iniciarBuscasEmail(db, log, getGmail) {
     const a = (await gmail.users.messages.attachments.get({ userId: 'me', messageId: p.mensagemId, id: p.anexoId })).data;
     const buffer = Buffer.from(String(a.data || '').replace(/-/g, '+').replace(/_/g, '/'), 'base64');
     if (!buffer.length || buffer.length > MAX_ANEXO) throw new Error('anexo vazio ou grande demais');
-    const b64 = buffer.toString('base64');
-    const n = Math.ceil(b64.length / PEDACO);
-    for (let i = 0; i < n; i++) await ref.collection('partes').doc(String(i)).set({ n: i, dados: b64.slice(i * PEDACO, (i + 1) * PEDACO) });
-    await ref.update({ status: 'pronto', partes: n, tamanho: buffer.length, prontoEm: new Date().toISOString() });
+    const n = Math.ceil(buffer.length / PEDACO);
+    const gravar = i => ref.collection('partes').doc(String(i)).set({ n: i, bytes: buffer.subarray(i * PEDACO, (i + 1) * PEDACO) });
+    for (let i = 0; i < n; i += JUNTOS) await Promise.all(Array.from({ length: Math.min(JUNTOS, n - i) }, (_, k) => gravar(i + k)));
+    await ref.update({ status: 'pronto', partes: n, tamanho: buffer.length, formato: 'bytes', prontoEm: new Date().toISOString() });
     log('anexo do e-mail para o nads:', p.nome || p.anexoId, '(' + buffer.length + ' bytes) para', p.criadoPor || 'alguém');
   }
 
@@ -119,15 +124,23 @@ function iniciarBuscasEmail(db, log, getGmail) {
     } catch (e) {}
   }
 
-  const fila = [];
-  let ocupado = false;
-  async function andar() {
-    if (ocupado) return;
-    ocupado = true;
-    try { while (fila.length) await atender(fila.shift()); } finally { ocupado = false; }
+  // duas filas: o trazer (a pessoa esperando o anexo) não fica atrás de uma busca; 2 anexos de cada vez
+  const filas = { buscar: [], trazer: [] };
+  const rodando = { buscar: 0, trazer: 0 };
+  const LIMITE = { buscar: 1, trazer: 2 };
+  function andar(t) {
+    while (rodando[t] < LIMITE[t] && filas[t].length) {
+      const d = filas[t].shift();
+      rodando[t]++;
+      atender(d).finally(() => { rodando[t]--; andar(t); });
+    }
   }
   ouvir('buscas no e-mail', () => pedidos.where('status', '==', 'pendente'), snap => {
-    snap.docChanges().forEach(ch => { if (ch.type === 'added') { fila.push(ch.doc); andar(); } });
+    snap.docChanges().forEach(ch => {
+      if (ch.type !== 'added') return;
+      const t = (ch.doc.data() || {}).tipo === 'trazer' ? 'trazer' : 'buscar';
+      filas[t].push(ch.doc); andar(t);
+    });
   }, log);
   limpar();
   setInterval(limpar, 5 * 60 * 1000);

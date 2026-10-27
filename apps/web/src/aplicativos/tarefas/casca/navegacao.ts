@@ -62,6 +62,8 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'rateio-frete', rotulo: 'Rateio de frete', icone: 'caminhao', titulo: 'Rateio de frete' },
     // a calculadora do Simples Nacional, a planilha do Fiscal preenchida com o SIEG e a folha do DP (Heverton, 22/10/2026)
     { id: 'simples', rotulo: 'Simples Nacional', icone: 'recibo', titulo: 'Calculadora do Simples Nacional' },
+    // a antecipação do ICMS do ES (Heverton, 22/10/2026: a planilha "Antecipação ICMS-ES", com as notas do SIEG)
+    { id: 'antecipacao-es', rotulo: 'Antecipação ICMS-ES', icone: 'fileSearch', titulo: 'Antecipação de ICMS — ES' },
   ] },
   // o DP (Vitor, 06/10/2026: o Checklist Folha "seria a rotina do dp"): as empresas com a rotina do DP, o painel da
   // planilha (números, gráficos, o progresso por responsável e as obrigações de cada cliente), a visão e as paradas
@@ -107,10 +109,12 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'caixa', rotulo: 'Caixa', icone: 'dinheiro', titulo: 'Movimento de caixa' },
     // os honorários dos clientes, por competência (19/10/2026, fase 2 do Financeiro)
     { id: 'honorarios', rotulo: 'Honorários', icone: 'recibo', titulo: 'Honorários' },
-    // os itens 2 e 7 da lista do Painel (22/10/2026): quem deve e a conciliação com o extrato; o Resultado por conta virou
-    // um botão do Painel, numa janela flutuante ("a aba de resultado vai virar um botão no painel")
+    // os itens 2 e 7 da lista do Painel (22/10/2026): quem deve e o extrato do banco; o Resultado por conta virou um botão
+    // do Painel, numa janela flutuante ("a aba de resultado vai virar um botão no painel"). A conciliação virou o
+    // importador do extrato (23/10/2026: "vai se tornar um importador de extrato que vai trazer os dados e informações
+    // para o dashboard inicial"); o endereço antigo /financeiro/conciliacao abre o importador
     { id: 'devedores', rotulo: 'Devedores', icone: 'alert', titulo: 'Devedores' },
-    { id: 'conciliacao', rotulo: 'Conciliação', icone: 'fileSearch', titulo: 'Conciliação com o extrato' },
+    { id: 'extrato', rotulo: 'Importar extrato', icone: 'fileUp', titulo: 'Importar extrato do banco' },
     { id: 'plano', rotulo: 'Plano de contas', icone: 'list', titulo: 'Plano de contas' },
     { id: 'notas', rotulo: 'Notas fiscais', icone: 'recibo', titulo: 'Notas fiscais' },
     { id: 'configuracoes', rotulo: 'Configurações', icone: 'settings', titulo: 'Configurações do emissor' },
@@ -140,15 +144,14 @@ export const APLICACOES: readonly Aplicacao[] = [
  */
 export const podeMexerNoCadastro = (op: Operador | null) => !!op && (op.admin || op.nivel === 'diretor' || op.nivel === 'senior');
 
-/** As aplicações que a pessoa vê: Fiscal só para o Fiscal; Contábil e Drive só para o Contábil; Gmail para os dois (admin vê tudo). */
+/** As aplicações que a pessoa vê: Fiscal só para o Fiscal; Contábil só para o Contábil; Drive para todos; Gmail para os dois (admin vê tudo). */
 export function aplicacoesDe(op: Operador): Aplicacao[] {
   return APLICACOES.filter(a =>
     (a.id !== 'fiscal' || op.admin || op.departamento === 'fiscal') &&
     (a.id !== 'dp' || op.admin || op.departamento === 'dp') &&
     (a.id !== 'contabil' || op.admin || op.departamento === 'contabil') &&
-    // o Drive do robô: as regras do Entregas só deixam o admin e o contábil lerem; o Gmail (01/10/2026): o contábil
-    // e o fiscal (cada um vê a caixa da Nilma e a do próprio setor)
-    (a.id !== 'drive' || op.admin || op.departamento === 'contabil') &&
+    // o Drive do robô: para toda a equipe (26/10/2026: "libera o drive para todos os usuarios"); o Gmail (01/10/2026): o
+    // contábil e o fiscal (cada um vê a caixa da Nilma e a do próprio setor)
     (a.id !== 'contato' || op.admin || op.departamento === 'contabil' || op.departamento === 'fiscal') &&
     // o Cadastro (empresas e equipe): o admin, o diretor (Vitor, 05/10/2026) e o sênior (19/10/2026)
     (a.id !== 'cadastro' || podeMexerNoCadastro(op)) &&
@@ -232,8 +235,7 @@ export function inicioEscolhido(): string {
 }
 export function caminhoDoInicio(op: { departamento: string; admin: boolean }): string {
   const i = INICIOS.find(x => x.valor === inicioEscolhido()) || INICIOS[0];
-  // o Drive e o Gmail têm dono (departamento): sem acesso, abre em Minhas empresas
-  if (i.valor === 'drive' && !op.admin && op.departamento !== 'contabil') return INICIOS[0].caminho;
+  // o Gmail tem dono (departamento): sem acesso, abre em Minhas empresas
   if (i.valor === 'gmail' && !op.admin && op.departamento !== 'contabil' && op.departamento !== 'fiscal') return INICIOS[0].caminho;
   return i.caminho;
 }

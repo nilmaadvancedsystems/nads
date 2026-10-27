@@ -1,6 +1,6 @@
 // O tópico "XMLs do cliente" da janela de importar (08/10/2026): a área de soltar (a dos certificados), o que foi lido e,
 // depois de mandar, o andamento do robô com as peças da janela do SIEG (a barra, os números e os passos).
-import { BotaoAcao, CampoArquivo, Icone } from '@nads/ui';
+import { Alerta, BotaoAcao, CampoArquivo, Icone } from '@nads/ui';
 import { useRef, useState } from 'react';
 import { useXmlsDoCliente } from '../useXmlsDoCliente';
 
@@ -67,6 +67,7 @@ export function XmlsDoCliente({ codigo, competencia, saidas = false }: { codigo:
             </ol>
           )}
           {a.resultado && <p className="hint" style={{ margin: 0 }}>{a.resultado}</p>}
+          {a.semSaidas && <Alerta naLinha titulo={a.semSaidas.titulo} texto={a.semSaidas.texto} />}
           {(a.pronto || a.erro) && <div className="sieg-acoes"><button type="button" className="btn btn-outline" onClick={vm.limpar}><Icone nome="upload" />Mandar outros</button></div>}
         </div>
       )}

@@ -9,15 +9,17 @@ import { BotaoDeTeste, type ItemDeTeste } from '../../../../../comum/BotaoDeTest
 import { useColunaAjustavel, ValorNaGrade } from '../../../../../comum/GradeDosMeses';
 import { TabelaCaixaNoBanco, TabelaNotasNoCaixa } from '../etapas/caixabancos/CaixaNoBanco';
 
-type Linha = Razao['lancamentos'][number];
+// a linha dos pontos de atenção pode vir com a sugestão de conta (Vitor, 23/10/2026)
+type Linha = Razao['lancamentos'][number] & { sugestao?: string; sugestoes?: string };
 
 function TabelaDeLancamentos({ linhas, saldoAnterior }: { linhas: Linha[]; saldoAnterior?: string }) {
+  const comSugestao = linhas.some(l => l.sugestao);
   return (
     <div className="imp-mov">
       <table className="table-compact">
-        <thead><tr><th>Data</th><th>Contrapartida</th><th>Histórico</th><th className="num">Débito</th><th className="num">Crédito</th><th className="num">Saldo</th></tr></thead>
+        <thead><tr><th>Data</th><th>Contrapartida</th><th>Histórico</th><th className="num">Débito</th><th className="num">Crédito</th><th className="num">Saldo</th>{comSugestao && <th>Sugestão de conta</th>}</tr></thead>
         <tbody>
-          {saldoAnterior != null && <tr className="imp-mov-anterior"><td colSpan={5}>Saldo anterior</td><td className="num">{saldoAnterior}</td></tr>}
+          {saldoAnterior != null && <tr className="imp-mov-anterior"><td colSpan={5}>Saldo anterior</td><td className="num">{saldoAnterior}</td>{comSugestao && <td />}</tr>}
           {linhas.map(l => (
             <tr key={l.id}>
               <td style={{ whiteSpace: 'nowrap' }}>{l.data}</td>
@@ -26,6 +28,7 @@ function TabelaDeLancamentos({ linhas, saldoAnterior }: { linhas: Linha[]; saldo
               <td className="num">{l.debito}</td>
               <td className="num">{l.credito}</td>
               <td className={'num' + (l.credor ? ' ext-neg' : '')}>{l.saldo}</td>
+              {comSugestao && <td className="wrap" title={l.sugestoes || undefined}>{l.sugestao || '—'}</td>}
             </tr>
           ))}
         </tbody>

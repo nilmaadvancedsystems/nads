@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as XLSX from 'xlsx';
-import { linhasDoDemonstrativo, nomeDoDemonstrativo, planilhaDoDemonstrativo, type ContaDoPlano, type LancamentoDeCaixa } from './index';
+import { htmlDoDemonstrativo, LINHAS_DA_FOLHA_DO_CAIXA, linhasDoDemonstrativo, nomeDoDemonstrativo, planilhaDoDemonstrativo, type ContaDoPlano, type LancamentoDeCaixa } from './index';
 
 const l = (id: string, data: string, tipo: 'E' | 'S', valor: number, obs?: string): LancamentoDeCaixa => ({ id, data, descricao: 'Item ' + id, valor, tipo, observacoes: obs, origem: 'nads', criadoEm: '', criadoPor: '' });
 const conta: ContaDoPlano = { id: 'c', codigo: '4.1.01', descricao: 'Honorários', tipo: 'RECEITA', nivel: 3, pai: null, ativo: true, movimentavel: true };
@@ -31,5 +31,19 @@ describe('o demonstrativo de caixa', () => {
     expect(ws['D5'].v).toBe(100.2);
     expect(String(ws['D5'].z)).toContain('R$');
     expect(nomeDoDemonstrativo('2026-10-01', '2026-10-19')).toBe('Caixa 2026-10-01 a 2026-10-19.xlsx');
+  });
+});
+
+describe('o demonstrativo de caixa para imprimir (23/10/2026)', () => {
+  it('a folha deitada, os lançamentos, as linhas em branco até encher, os totais e o saldo final', () => {
+    const h = htmlDoDemonstrativo(entrada(false));
+    expect(h).toContain('size:A4 landscape');
+    expect(h).toContain('Demonstrativo de Caixa — 01/10/2026 a 19/10/2026');
+    expect(h).toContain('<td class="c">02/10/2026</td><td>Item 1</td><td>4.1.01 Honorários</td>');
+    expect(h).toContain('R$ 500,10');
+    expect(h).toContain('R$ 570,15');
+    expect(h.match(/<tr><td>&nbsp;<\/td>/g)?.length).toBe(LINHAS_DA_FOLHA_DO_CAIXA - 2);
+    expect(h).not.toContain('Observações');
+    expect(htmlDoDemonstrativo(entrada(true))).toContain('Há filtro de busca');
   });
 });

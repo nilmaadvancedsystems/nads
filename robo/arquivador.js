@@ -24,6 +24,9 @@
 //
 // Uso: node arquivador.js     (fica rodando; o iniciar-arquivador.cmd liga no boot)
 require('./fuso.js');
+// as leituras do G: em paralelo (o arquivador novo confere 16 arquivos de cada vez; o padrão do Node são 4 de uma vez para
+// tudo, disco e DNS juntos). Precisa vir antes de qualquer operação assíncrona de disco (23/10/2026)
+if (!process.env.UV_THREADPOOL_SIZE) process.env.UV_THREADPOOL_SIZE = '24';
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -68,6 +71,24 @@ const fila = db.collection('solicitacoesArquivo');
 const estadoRef = db.collection('robo').doc('arquivador');
 
 let estado = { situacao: 'livre', pedidoId: null, desde: agora(), mensagem: null };
+// o vigia do banco (23/10/2026: às 13:18 o robô perdeu todas as conexões com o Firestore e ficou parado até alguém
+// religar): o ponto de cada minuto é a prova de vida do banco; mais de BANCO_MUDO_MS sem ele voltar, o robô sai com o
+// código 4 e o arquivador-laco.cmd religa em 30 s, com um cliente novo do Firestore
+const BANCO_MUDO_MS = 5 * 60 * 1000;
+let bancoRespondeuEm = Date.now();
+let vigiadoEm = Date.now();
+function vigiarOBanco() {
+  // o laço do Node esteve parado (código síncrono longo): o ponto nem teve a chance de sair; recomeça a contar (23/10/2026)
+  if (Date.now() - vigiadoEm > 2 * 60 * 1000) bancoRespondeuEm = Date.now();
+  vigiadoEm = Date.now();
+  const mudo = Date.now() - bancoRespondeuEm;
+  if (mudo < BANCO_MUDO_MS) return;
+  log('o banco (Firestore) não responde há ' + Math.round(mudo / 60000) + ' min: saio para o laço religar com uma conexão nova');
+  try { if (continuo) continuo.parar(); } catch (e) { /* saindo */ }
+  setTimeout(() => process.exit(4), 2000);
+}
+// o que está HOJE em NÃO IDENTIFICADOS (o arquivador novo conta; 23/10/2026): vai no ponto de cada minuto
+let paraResolver = null;
 function baterPonto() {
   // junto com o ponto, se a rotina está rodando por fora (a tarefa das 9h ou alguém rodando à mão): o nads mostra no
   // "Arquivar agora" do Drive (05/10/2026). Vai no mesmo ponto de cada minuto — nenhuma gravação a mais.
@@ -76,7 +97,8 @@ function baterPonto() {
   // a organização rodando por fora do botão (a das 9h), no painel do robô
   painel.fazendo('rotina', rotina && rotina.ativa && !rotina.deUmPedido
     ? 'Organizando o Drive (rotina das 9h' + (rotina.fase ? ', fase ' + rotina.fase : '') + ')' : null);
-  estadoRef.set(Object.assign({ em: agora(), pc: os.hostname(), rotina }, estado), { merge: true })
+  estadoRef.set(Object.assign({ em: agora(), pc: os.hostname(), rotina }, paraResolver ? { paraResolver } : {}, estado), { merge: true })
+    .then(() => { bancoRespondeuEm = Date.now(); })
     .catch(err => log('não consegui bater o ponto:', err.message));
 }
 function mudarEstado(novo) {
@@ -638,6 +660,7 @@ async function iniciar() {
   }
   mudarEstado({ situacao: 'livre' });
   setInterval(baterPonto, 60 * 1000);
+  setInterval(vigiarOBanco, 60 * 1000);
 
   await publicar(null);
   setInterval(() => publicar(null), PUBLICAR_A_CADA_MS);
@@ -661,7 +684,7 @@ async function iniciar() {
   // relatório lado a lado. Produção só por tipo, pela chave do config (robo/arquivadorNovo ou config.json no controle).
   // Nunca roda junto com um pedido do botão (ocupado) nem com a rotina antiga. ARQUIVADOR_NOVO=0 não liga.
   if (process.env.ARQUIVADOR_NOVO !== '0') {
-    try { continuo = require('./arquivador-continuo').iniciar({ db, painel, log: (...m) => log('[novo]', ...m), ocupado: () => ocupado }); }
+    try { continuo = require('./arquivador-continuo').iniciar({ db, painel, log: (...m) => log('[novo]', ...m), ocupado: () => ocupado, aoContarPendentes: p => { paraResolver = p; } }); }
     catch (err) { log('o arquivador novo não ligou:', err.message); painel.modulo('arquivador-novo', 'Arquivador novo (por evento)', false, err.message); }
   }
   log('arquivador ligado em', os.hostname(), '— rotina em', RAIZ);
@@ -686,6 +709,9 @@ async function iniciar() {
   catch (err) { log('SIEG desligado:', err.message); painel.modulo('sieg', 'SIEG', false, err.message); }
   // a Área do Cliente (16/10/2026): o espelho de cada link secreto e as caixas de chamados e de arquivos do cliente; aqui
   // porque o arquivo do cliente vai para a pasta dele no G: deste PC
+  // o vigia do Google Drive (26/10/2026): o G: sumido por mais de 10 min reinicia o Drive (no máximo a cada 30 min)
+  try { require('./drive-vigia').iniciar({ log, painel }); }
+  catch (err) { log('vigia do Google Drive não ligou:', err.message); }
   painel.modulo('area-cliente', 'Área do Cliente', true);
   try { require('./area-cliente').iniciarAreaDoCliente(db, log); }
   catch (err) { log('Área do Cliente não ligou:', err.message); painel.modulo('area-cliente', 'Área do Cliente', false, err.message); }

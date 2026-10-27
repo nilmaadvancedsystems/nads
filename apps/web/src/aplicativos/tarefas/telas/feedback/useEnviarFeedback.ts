@@ -14,16 +14,22 @@ export function useEnviarFeedback(fechar: () => void) {
   const { pathname } = useLocation();
   const [texto, setTexto] = useState('');
   const [imagem, setImagem] = useState('');
+  // os anexos além do print (26/10/2026: "mais de um arquivo, para enviar junto")
+  const [arquivos, setArquivos] = useState<File[]>([]);
   const [prioridade, setPrioridade] = useState<PrioridadeDoFeedback>('media');
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState('');
   return {
     texto, setTexto, imagem, setImagem, prioridade, setPrioridade, enviando, erro,
+    arquivos,
+    anexar: (fs: File[]) => setArquivos(a => [...a, ...fs.filter(f => !a.some(x => x.name === f.name && x.size === f.size))]),
+    tirarArquivo: (i: number) => setArquivos(a => a.filter((_, k) => k !== i)),
     async enviar() {
       if (!texto.trim()) { setErro('Escreva o que quer melhorar.'); return; }
       setEnviando(true);
       try {
-        await repo.enviar({ texto: texto.trim().slice(0, 4000), imagem, tela: pathname, versao: VERSAO_SISTEMA, prioridade });
+        const anexos = await Promise.all(arquivos.map(async f => ({ nome: f.name, bytes: new Uint8Array(await f.arrayBuffer()) })));
+        await repo.enviar({ texto: texto.trim().slice(0, 4000), imagem, tela: pathname, versao: VERSAO_SISTEMA, prioridade, arquivos: anexos });
         toast('Feedback enviado. Obrigado!');
         fechar();
       } catch (e) {

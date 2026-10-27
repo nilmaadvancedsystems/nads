@@ -6,6 +6,7 @@ import { financeiro } from '@nads/core';
 import { baixarBytes } from '@nads/ui';
 import { useMemo, useState } from 'react';
 import { useCaixa } from '../../dados/repo';
+import { imprimirHtml } from '../dp/imprimirHtml';
 import { dataBr, hoje, isoDaData } from './formatosDaNota';
 
 export type PeriodoRapido = 'este-mes' | 'mes-passado' | 'este-ano' | 'outro';
@@ -76,6 +77,11 @@ export function useCaixaFinanceiro() {
       if (!resumo) return;
       const e = { de: deIso, ate: ateIso, saldoInicial: resumo.saldoInicial, itens: linhas, filtrado: !!q || tipoFiltro !== 'todos' };
       baixarBytes(financeiro.planilhaDoDemonstrativo(e), financeiro.nomeDoDemonstrativo(deIso, ateIso), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    },
+    /** imprimir direto, no desenho da planilha do escritório (23/10/2026: "essa planilha para impressão direto") */
+    imprimir() {
+      if (!resumo) return;
+      imprimirHtml(financeiro.htmlDoDemonstrativo({ de: deIso, ate: ateIso, saldoInicial: resumo.saldoInicial, itens: linhas, filtrado: !!q || tipoFiltro !== 'todos' }));
     },
     /** "Usar no lançamento": fecha a contagem (ou a calculadora) e abre um lançamento novo com o valor */
     usarCedulas(valor: number) { setContando(false); setAberto({ valor }); },

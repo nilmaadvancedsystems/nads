@@ -23,6 +23,12 @@ const textoDe = entrada => (Array.isArray(entrada.texto) ? entrada.texto.slice(0
 /** o banco do extrato/comprovante: pelo conteúdo (fora das linhas de lançamento) ou pelo nome do arquivo, como as regras */
 const bancoDe = entrada => R.bancoDoTexto(textoDe(entrada), true) || R.bancoDoNome(entrada.nome || '');
 
+/** O nome com a competência na frente: "04-2024.pdf" vira "04-2024.pdf"; "Recibo DAPI.pdf" vira "04-2024 - Recibo DAPI.pdf". */
+const comData = (comp, base, ext) => {
+  const prefixo = comp && comp.mes ? mesAno(comp) : comp && comp.ano ? String(comp.ano) : '';
+  if (!prefixo) return base + ext;
+  return /^\d{1,2}[-. _]?\d{4}$|^\d{4}[-. _]?\d{1,2}$|^\d{4}$/.test(base.trim()) ? prefixo + ext : prefixo + ' - ' + base + ext;
+};
 /** A nota: o PDF em DOCUMENTOS FISCAIS\<lado>; o XML na pasta XML do modelo (o nome que o XML já traz, como as regras). */
 function nota({ comp, ext, base, nome, entrada }, lado) {
   if (ext === '.xml') {
@@ -44,7 +50,8 @@ const TIPOS = [
   { id: 'DARF', rotulo: 'DARF (Receita Federal)', precisa: 'mes', aceita: /^DARF$/, setor: 'FISCAL', montar: ({ comp, ext, base }) => ({ fiscal: ['DARF'], nomeFinal: mesAno(comp) + ' - DARF - ' + base + ext }) },
   { id: 'DAE', rotulo: 'DAE (estadual)', precisa: 'mes', aceita: /^DAE$/, setor: 'FISCAL', montar: ({ comp, ext, base }) => ({ fiscal: ['DAE'], nomeFinal: mesAno(comp) + ' - DAE - ' + base + ext }) },
   { id: 'DAM', rotulo: 'DAM (municipal)', precisa: 'mes', aceita: /^DAM$/, setor: 'FISCAL', montar: ({ comp, ext, base }) => ({ fiscal: ['DAM'], nomeFinal: mesAno(comp) + ' - DAM - ' + base + ext }) },
-  { id: 'FGTS', rotulo: 'FGTS', precisa: 'mes', aceita: /^FGTS$/, setor: 'FOLHA_SOCIETARIO', montar: ({ comp, ext }) => ({ caminho: ['SOCIETÁRIO', 'IMPOSTOS', 'FGTS', String(comp.ano)], nomeFinal: mesAno(comp) + ext }) },
+  // 23/10/2026 (Vitor): DEPARTAMENTO PESSOAL\<MM>\FGTS, como o robô do FGTS grava
+  { id: 'FGTS', rotulo: 'FGTS', precisa: 'mes', aceita: /^FGTS$/, setor: 'FOLHA_SOCIETARIO', montar: ({ comp, ext }) => ({ caminho: ['DEPARTAMENTO PESSOAL', dois(comp.mes), 'FGTS'], nomeFinal: 'FGTS ' + mesAno(comp) + ext }) },
   { id: 'NOTA_RECEBIDA', rotulo: 'Nota fiscal recebida (NF-e, NFS-e, CT-e)', precisa: 'mes', aceita: /^(NF-e|NFS-e|CT-e) PDF$|^XML (NF-e|NFS-e|CT-e)/, setor: 'FISCAL', montar: a => nota(a, 'RECEBIDOS') },
   { id: 'NOTA_EMITIDA', rotulo: 'Nota fiscal emitida (NF-e, NFS-e, NFC-e)', precisa: 'mes', aceita: /^(NF-e|NFS-e|NFC-e) PDF$|^XML (NF-e|NFS-e|NFC-e)/, setor: 'FISCAL', montar: a => nota(a, 'EMITIDOS') },
   { id: 'EXTRATO', rotulo: 'Extrato bancário', precisa: 'mes', aceita: /^EXTRATO/, setor: 'CONTABIL', montar: ({ comp, ext, entrada }) => { const b = bancoDe(entrada); return b ? { caminho: ['CONTÁBIL', 'EXTRATOS', String(comp.ano), dois(comp.mes), 'BANCÁRIOS', b], nomeFinal: mesAno(comp) + ext } : { erro: 'o banco não foi lido: ponha o nome do banco no nome do arquivo ou escolha "Outros documentos"' }; } },
@@ -55,6 +62,17 @@ const TIPOS = [
   { id: 'ECF', rotulo: 'ECF', precisa: 'ano', aceita: /^ECF$/, setor: 'FISCAL', montar: ({ comp, ext }) => ({ fiscal: ['ECF'], nomeFinal: comp.ano + ' - ECF' + ext }) },
   { id: 'BALANCETE', rotulo: 'Balancete e livros contábeis', precisa: 'ano', aceita: /^BALANCETE$/, setor: 'CONTABIL', montar: ({ comp, nome }) => ({ caminho: ['CONTÁBIL', 'REGISTRO DE LIVROS', '(001) ' + comp.ano], nomeFinal: nome }) },
   { id: 'DOC_CONSTITUTIVO', rotulo: 'Contrato social e documentos constitutivos', precisa: null, aceita: /^(DOC CONSTITUTIVO|CARTAO CNPJ)$/, setor: 'FOLHA_SOCIETARIO', montar: ({ nome }) => ({ caminho: ['SOCIETÁRIO', 'DOCUMENTOS CONSTITUTIVOS'], nomeFinal: nome }) },
+  // os tipos que a migração trouxe (23/10/2026: as pastas antigas "DEPARTAMENTO FISCAL\DESTDA\2024\…"), pela árvore do
+  // Dicionário (a pasta de cada um no regime do cliente; o regime que não tem a pasta deixa em NÃO IDENTIFICADOS)
+  { id: 'DESTDA', rotulo: 'DeSTDA', precisa: 'mes', aceita: /^DESTDA$/, setor: 'FISCAL', montar: ({ comp, ext, base }) => ({ fiscal: ['DESTDA'], nomeFinal: comData(comp, base, ext) }) },
+  { id: 'SINTEGRA', rotulo: 'Sintegra', precisa: 'mes', aceita: /^SINTEGRA$/, setor: 'FISCAL', montar: ({ comp, ext, base }) => ({ fiscal: ['SINTEGRA'], nomeFinal: comData(comp, base, ext) }) },
+  { id: 'SPED_FISCAL', rotulo: 'SPED Fiscal (arquivo ou recibo)', precisa: 'mes', aceita: /^SPED FISCAL$/, setor: 'FISCAL', montar: ({ comp, ext, base }) => ({ fiscal: ['SPEDF'], nomeFinal: comData(comp, base, ext) }) },
+  { id: 'SPED_CONTRIBUICOES', rotulo: 'SPED Contribuições (arquivo ou recibo)', precisa: 'mes', aceita: /^SPED CONTRIBUI/, setor: 'FISCAL', montar: ({ comp, ext, base }) => ({ fiscal: ['SPEDC'], nomeFinal: comData(comp, base, ext) }) },
+  { id: 'DAPI', rotulo: 'DAPI', precisa: 'mes', aceita: /^DAPI$/, setor: 'FISCAL', montar: ({ comp, ext, base }) => ({ fiscal: ['DAPI'], nomeFinal: comData(comp, base, ext) }) },
+  { id: 'MIT', rotulo: 'MIT', precisa: 'mes', aceita: /^MIT$/, setor: 'FISCAL', montar: ({ comp, ext, base }) => ({ fiscal: ['MIT'], nomeFinal: comData(comp, base, ext) }) },
+  { id: 'PARCELAMENTO', rotulo: 'Parcelamento', precisa: 'ano', aceita: /^PARCELAMENTO$/, setor: 'FISCAL', montar: ({ comp, ext, base }) => ({ fiscal: ['PARC'], nomeFinal: comData(comp, base, ext) }) },
+  { id: 'RESTITUICAO', rotulo: 'Restituição', precisa: 'ano', aceita: /^RESTITUI/, setor: 'FISCAL', montar: ({ comp, ext, base }) => ({ fiscal: ['REST'], nomeFinal: comData(comp, base, ext) }) },
+  { id: 'CERTIFICADO_DIGITAL', rotulo: 'Certificado digital', precisa: null, aceita: /^CERTIFICADO DIGITAL$/, setor: 'FOLHA_SOCIETARIO', montar: ({ nome }) => ({ caminho: ['SOCIETÁRIO', 'CERTIFICADO DIGITAL'], nomeFinal: nome }) },
   { id: 'OUTROS', rotulo: 'Outros documentos (contábil)', precisa: 'ano', aceita: /^OUTROS DOCUMENTOS$/, setor: 'CONTABIL', montar: ({ comp, nome }) => ({ caminho: ['CONTÁBIL', 'OUTROS DOCUMENTOS', String(comp.ano)], nomeFinal: nome }) },
 ];
 const PORID = new Map(TIPOS.map(t => [t.id, t]));
@@ -110,8 +128,11 @@ function decidirManual(entrada, ctx, escolha) {
   const nome = entrada.nome || path.basename(String(entrada.rel || 'arquivo'));
   const b = tipo.montar({ comp, ext: extDe(nome), base: baseDe(nome), nome, entrada });
   if (b.erro) return ni('VOCABULARIO_AUSENTE', b.erro, { decididoPor: por, cliente: codigo, tipo: tipo.id });
+  // a raiz do ano (23/10/2026): a competência que o admin deu; num tipo sem período (contrato social), o ano das pastas de
+  // origem e, sem ele, o ano atual — é a decisão do admin, não um padrão do robô
+  const anoPista = comp ? null : (R.anoDaPasta(entrada.rel || '') || { ano: (ctx.hoje ? new Date(ctx.hoje) : new Date()).getFullYear() });
   const d2 = R.finalizar(Object.assign({ acao: 'ARQUIVAR', cliente: cli.codigo, comoCliente: 'hash', confianca: 1, tipo: tipo.id === 'NOTA_RECEBIDA' || tipo.id === 'NOTA_EMITIDA' ? 'NOTA PDF' : tipo.id.replace(/_/g, ' '), setor: tipo.setor,
-    competencia: comp, nomeOriginal: nome, decididoPor: por, evidencias: [quem + ' (o destino do tipo pela árvore do Dicionário)'], fonte: 'decisão do admin no nads' }, b), ctx);
+    competencia: comp, anoPista, nomeOriginal: nome, decididoPor: por, evidencias: [quem + ' (o destino do tipo pela árvore do Dicionário)'], fonte: 'decisão do admin no nads' }, b), ctx);
   d2.decididoPor = por;
   return d2;
 }

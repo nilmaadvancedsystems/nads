@@ -173,3 +173,35 @@ export function gruposDaNota(n: NotaDoSieg, por: AgruparPor = 'tributacao'): Gru
 export function rateioDosNcms(g: GrupoDaNota, frete: number, desconto: number): Rateio {
   return ratear({ total: g.valor, frete, desconto, linhas: g.ncms.map(x => ({ rotulo: x.ncm, valor: x.valor, ipi: x.ipi })) });
 }
+
+// ---------- pelo CT-e (23/10/2026: "preciso que o rateio seja da CTE não da nota dos produtos que vão ser transportados") ----------
+
+export interface RateioDoCte {
+  /** o valor do CT-e (a prestação, vTPrest) que se reparte */
+  valor: number;
+  /** as NF-e que ele leva, com a parte de cada uma no total dos produtos e o frete dela */
+  notas: { chave: string; numero: string; emitente: string; produtos: number; pct: number; frete: number }[];
+  /** os itens das notas juntos, pela tributação (ou pelo CFOP), para o rateio e o detalhe pelos NCMs */
+  grupos: GrupoDaNota[];
+  /** o valor do CT-e pelas tributações: a soma bate com o CT-e */
+  rateio: Rateio;
+}
+
+/**
+ * O frete de um CT-e repartido pelas NF-e que ele transporta, na proporção dos produtos de cada uma, e pelas tributações
+ * dos itens delas (base = valor + IPI + frete). `valor` vazio = o do CT-e. Cada repartição fecha no centavo com o CT-e.
+ */
+export function rateioDoCte(cte: Pick<NotaDoSieg, 'valor'>, notas: readonly NotaDoSieg[], por: AgruparPor = 'tributacao', valor?: number): RateioDoCte {
+  const v = centavos(valor ?? (Number(cte.valor) || 0));
+  const produtos = notas.map(n => centavos((n.itens || []).reduce((t, i) => t + (Number(i.valor) || 0), 0)));
+  const soma = centavos(produtos.reduce((t, p) => t + p, 0));
+  const fretes = repartir(v, produtos);
+  const juntas: NotaDoSieg | null = notas.length ? { ...notas[0], itens: notas.flatMap(n => n.itens || []) } : null;
+  const grupos = juntas ? gruposDaNota(juntas, por) : [];
+  return {
+    valor: v,
+    notas: notas.map((n, i) => ({ chave: n.chave, numero: n.numero, emitente: n.emitente.nome, produtos: produtos[i], pct: soma ? (produtos[i] * 100) / soma : 0, frete: fretes[i] })),
+    grupos,
+    rateio: ratear({ total: soma, frete: v, desconto: 0, linhas: grupos }),
+  };
+}

@@ -689,6 +689,15 @@ igual('extrato: banco que a empresa ainda não tem vira o nome do arquivo',
   en.caminhoDoExtratoNoIndice(itensDoMapa, 'cli', en.extratoDoNome('Extrato NUBANK 05-2026.ofx')),
   { existente: 'b5', faltam: ['NUBANK'], caminho: 'CONTÁBIL/EXTRATOS/2026/05/BANCÁRIOS/NUBANK', nomeFinal: '05-2026.ofx' });
 
+// --- o comprovante da aba Comprovantes direto na pasta do banco, igual ao extrato (27/10/2026) ---
+igual('comprovante: o nome da aba Comprovantes', en.comprovanteDoNome('Comprovante BANCO DO BRASIL 02-2026 - TITULOS PAGOS FEV2026 (2).pdf'),
+  { banco: 'BANCO DO BRASIL', mes: '02', ano: '2026', ext: '.pdf', original: 'TITULOS PAGOS FEV2026 (2).pdf' });
+igual('comprovante: o extrato não é comprovante', en.comprovanteDoNome('Extrato SICOOB 06-2026.pdf'), null);
+igual('comprovante: o nome solto não é', en.comprovanteDoNome('COMPROVANTE - SICOOB - pix.pdf'), null);
+igual('comprovante: na pasta COMPROVANTES do mês, com o nome da pasta do banco que a empresa usa, e o nome original',
+  en.caminhoDoExtratoNoIndice(itensDoMapa, 'cli', en.comprovanteDoNome('Comprovante SICOOB 05-2026 - pix fornecedor.pdf'), 'COMPROVANTES', 'pix fornecedor.pdf'),
+  { existente: 'm5', faltam: ['COMPROVANTES', 'BANCOOB'], caminho: 'CONTÁBIL/EXTRATOS/2026/05/COMPROVANTES/BANCOOB', nomeFinal: 'pix fornecedor.pdf' });
+
 // --- a guia DAS/DAE na Área do Cliente (envios-do-nads.js) ---
 const envioGuia = { guia: 'DAS', vencimento: '20/10/2026', valor: '1.234,56', codigo: 58, competencia: '2026-09', criadoPorUid: 'u1' };
 igual('guia do envio: conferida', en.guiaDoEnvio(envioGuia), { tipo: 'DAS', vencimento: '20/10/2026', valor: 1234.56, valorTexto: '1.234,56', codigo: '58', competencia: '2026-09' });
@@ -775,10 +784,17 @@ const nfeItensT = '<nfeProc><NFe><infNFe Id="NFe31260919449248000162550010000102
 igual('SIEG: o resumo da NF-e com o item', sxT.resumoDaNota(nfeItensT).itens, [{ ncm: '21069090', cfop: '5102', cst: '000', cest: '1704900', valor: 100.5 }]);
 // os itens com o ICMS, o ICMS-ST, o IPI e o CST do PIS (13/10/2026: a apuração do Presumido e do Real)
 const nfeImpostosT = nfeItensT.replace('<ICMS><ICMS00><orig>0</orig><CST>00</CST></ICMS00></ICMS>', '<ICMS><ICMS10><orig>0</orig><CST>10</CST><vBC>100.50</vBC><vICMS>18.09</vICMS><vICMSST>7.20</vICMSST></ICMS10></ICMS><IPI><IPITrib><CST>50</CST><vIPI>5.03</vIPI></IPITrib></IPI><PIS><PISAliq><CST>01</CST><vPIS>0.65</vPIS></PISAliq></PIS>');
-igual('SIEG: o item com ICMS, ST, IPI e o CST do PIS', sxT.resumoDaNota(nfeImpostosT).itens, [{ ncm: '21069090', cfop: '5102', cst: '010', cest: '1704900', valor: 100.5, icms: 18.09, st: 7.2, ipi: 5.03, cstPis: '01' }]);
+igual('SIEG: o item com ICMS, ST, IPI e o CST do PIS', sxT.resumoDaNota(nfeImpostosT).itens, [{ ncm: '21069090', cfop: '5102', cst: '010', cest: '1704900', valor: 100.5, icms: 18.09, st: 7.2, ipi: 5.03, cstPis: '01', bc: 100.5 }]);
+// a base, a alíquota e as despesas do item (22/10/2026: a antecipação do ICMS do ES)
+const nfeBaseT = nfeItensT.replace('<vProd>100.50</vProd>', '<vProd>100.50</vProd><vFrete>10.00</vFrete><vOutro>2.00</vOutro><vDesc>1.50</vDesc>').replace('<ICMS><ICMS00><orig>0</orig><CST>00</CST></ICMS00></ICMS>', '<ICMS><ICMS00><orig>1</orig><CST>00</CST><vBC>111.00</vBC><pICMS>4.0000</pICMS><vICMS>4.44</vICMS></ICMS00></ICMS>');
+igual('SIEG: o item com a base, a alíquota e as despesas', sxT.resumoDaNota(nfeBaseT).itens, [{ ncm: '21069090', cfop: '5102', cst: '100', cest: '1704900', valor: 100.5, icms: 4.44, bc: 111, aliq: 4, desp: 10.5 }]);
 // o frete e o desconto da nota (22/10/2026: o Rateio de frete)
 const nfeFreteT = nfeItensT.replace('<vNF>100.50</vNF>', '<vFrete>12.30</vFrete><vDesc>2.00</vDesc><vNF>110.80</vNF>');
 igual('SIEG: o frete e o desconto da NF-e', [sxT.resumoDaNota(nfeFreteT).frete, sxT.resumoDaNota(nfeFreteT).desconto, sxT.resumoDaNota(nfeItensT).frete], [12.3, 2, undefined]);
+// as NF-e do CT-e e o ICMS dele (23/10/2026: o Rateio de frete pelo CT-e)
+const cteT = '<cteProc><CTe><infCte Id="CTe31260919449248000162570010000000011000000017"><ide><CFOP>6353</CFOP><nCT>1</nCT><serie>1</serie><dhEmi>2026-09-05T10:00:00-03:00</dhEmi></ide><emit><CNPJ>19449248000162</CNPJ><xNome>TRANSP</xNome></emit><rem><CNPJ>22222222000122</CNPJ><xNome>REM</xNome></rem><dest><CNPJ>11111111000111</CNPJ><xNome>DEST</xNome></dest><vPrest><vTPrest>500.00</vTPrest><vRec>500.00</vRec></vPrest><imp><ICMS><ICMS00><CST>00</CST><vBC>500.00</vBC><pICMS>12.00</pICMS><vICMS>60.00</vICMS></ICMS00></ICMS></imp><infCTeNorm><infDoc><infNFe><chave>31260922222222000122550010000020751000020751</chave></infNFe><infNFe><chave>31260922222222000122550010000020761000020761</chave></infNFe></infDoc></infCTeNorm></infCte></CTe></cteProc>';
+const cteR = sxT.resumoDaNota(cteT);
+igual('SIEG: o CT-e com as NF-e que transporta e o ICMS', [cteR.tipo, cteR.valor, cteR.icms, cteR.nfes], ['CT-e', 500, 60, ['31260922222222000122550010000020751000020751', '31260922222222000122550010000020761000020761']]);
 igual('SIEG: o nome do arquivo da NF-e', sxT.nomeDoArquivo(nfeItensT), '31260919449248000162550010000102701620070002-nfe.xml');
 igual('SIEG: o cancelamento no resumo', sxT.resumoDaNota(cancT), { cancela: '31260919449248000162550010000102701620070002' });
 // o tipo de nota de qualquer XML, a nota ou o evento (pelo modelo na chave; 08/10/2026: o Drive como atalho)

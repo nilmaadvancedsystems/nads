@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { competenciasDoPeriodo, faturamentoDasSaidas, linhasDoFaturamento, mesesDoDetalhe, planilhaDoFaturamento, resumoDasEmitidas, type NotasSieg, type SaidasSieg } from '.';
+import { competenciasDoPeriodo, curvaAbc, faturamentoDasSaidas, linhasDoFaturamento, mesesDoDetalhe, planilhaDoFaturamento, resumoDasEmitidas, type NotasSieg, type SaidasSieg } from '.';
 
 const saida = (codigo: string, competencia: string, ...valores: number[]): SaidasSieg => ({ codigo, competencia, em: '', series: valores.map((valor, i) => ({ modelo: '55', serie: String(i + 1), numeros: [], canceladas: [], valor })) });
 
@@ -53,5 +53,16 @@ describe('o faturamento detalhado de um cliente (22/10/2026)', () => {
     expect(r).toMatchObject({ quantidade: 3, canceladas: 1, valor: 180 });
     expect(r.porCliente).toEqual([{ nome: 'ALFA', doc: '11', valor: 150, notas: 2 }, { nome: 'Consumidor (sem identificação)', doc: '', valor: 30, notas: 1 }]);
     expect(r.porCfop).toEqual([{ cfop: '5102', valor: 140 }, { cfop: '5405', valor: 40 }]);
+  });
+});
+
+describe('a curva ABC dos compradores', () => {
+  it('A até 80% do acumulado, B até 95%, C o resto, e a concentração', () => {
+    const r = curvaAbc([{ nome: 'c', valor: 10 }, { nome: 'a', valor: 70 }, { nome: 'b', valor: 15 }, { nome: 'd', valor: 5 }]);
+    expect(r.linhas.map(l => [l.nome, l.classe, l.acumulado])).toEqual([['a', 'A', 70], ['b', 'A', 85], ['c', 'B', 95], ['d', 'C', 100]]);
+    expect(r.porClasse.A).toEqual({ clientes: 2, valor: 85, pct: 85 });
+    expect(r.maior).toBe(70);
+    expect(r.cinco).toBe(100);
+    expect(curvaAbc([]).maior).toBe(0);
   });
 });

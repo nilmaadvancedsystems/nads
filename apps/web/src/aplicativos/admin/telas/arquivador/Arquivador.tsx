@@ -6,7 +6,8 @@
 // Só peças do catálogo: o topo do arquivador, as abas sublinhadas, o número do painel, a rosca com legenda, o ranking com a
 // marca, a lista com o detalhe ao lado, o ícone do arquivo, os dados em linhas, a busca, a seleção, o Alerta e o Vazio.
 import { Alerta, Dica, Esqueleto, Icone, RoscaComLegenda, Segmentado, Vazio, useCarregando } from '@nads/ui';
-import { useEffect, useRef, type ReactNode } from 'react';
+import type { entregas } from '@nads/core';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ArquivarEm } from './partes/ArquivarEm';
 import { DetalheDoArquivo } from './partes/DetalheDoArquivo';
 import { LinhaDoArquivo, ListaComDetalhe } from './partes/ListaComDetalhe';
@@ -15,6 +16,7 @@ import { TopoDoArquivador } from './partes/TopoDoArquivador';
 import { VisorDoArquivo } from './partes/VisorDoArquivo';
 import { useArquivadorAdmin, type AbaDoArquivador } from './useArquivadorAdmin';
 import { useResolver } from './useResolver';
+import { useGrupos } from './useGrupos';
 
 type Vm = ReturnType<typeof useArquivadorAdmin>;
 const TOM_DO_NUMERO = { ok: 'painel-ok', aviso: 'painel-aviso', erro: 'painel-laranja', neutro: 'painel-neutro' } as const;
@@ -184,6 +186,47 @@ function Lista({ vm, titulo, dica, vazio }: { vm: Vm; titulo: string; dica: stri
  * Descartar; o visor por cima. Tudo pedido ao robô do PC.
  */
 function Resolver({ vm }: { vm: Vm }) {
+  // um a um (a lista de sempre) ou em grupos (pela causa e pela pasta de origem; 23/10/2026, a migração)
+  const [modo, setModo] = useState<'um' | 'grupos'>('um');
+  const grupos = vm.grupos;
+  const escolha = grupos.length > 0 && (
+    <span className="card-head-ctl"><Segmentado valor={modo} opcoes={[{ valor: 'um', rotulo: 'Um a um' }, { valor: 'grupos', rotulo: 'Em grupos · ' + grupos.length.toLocaleString('pt-BR') }]} onMudar={setModo} /></span>
+  );
+  if (modo === 'grupos' && grupos.length) return <ResolverEmGrupos grupos={grupos} escolha={escolha} />;
+  return <ResolverUmAUm vm={vm} escolha={escolha} />;
+}
+
+/** Para resolver em grupos: a lista dos grupos (os maiores primeiro), o detalhe com os exemplos e o Arquivar o grupo em…. */
+function ResolverEmGrupos({ grupos, escolha }: { grupos: readonly entregas.GrupoParaResolver[]; escolha: ReactNode }) {
+  const g = useGrupos(grupos);
+  const linhas = g.grupos.map(x => ({
+    id: x.id, nome: x.n.toLocaleString('pt-BR') + (x.n === 1 ? ' arquivo · ' : ' arquivos · ') + x.motivoTexto, formato: 'ZIP' as const, apoio: x.pasta,
+    selo: { rotulo: x.sugestao?.codigo != null ? 'Cliente ' + x.sugestao.codigo : 'Sem sugestão', tom: (x.sugestao?.codigo != null ? 'ok' : 'neutro') as 'ok' | 'neutro' },
+    confianca: '', tomConfianca: 'neutro' as const, hora: '', andamento: g.andamento(x.id),
+  }));
+  const a = g.aberto;
+  const detalhe = a ? (
+    <div className="arq-detalhe">
+      <h4>{a.n.toLocaleString('pt-BR')} {a.n === 1 ? 'arquivo' : 'arquivos'} · {a.motivoTexto}</h4>
+      <p className="fraco arq-grupo-pasta">{a.pasta}</p>
+      <ul className="arq-grupo-exemplos">{a.exemplos.map(x => <li key={x.rel}><Icone nome="arquivo" width={14} height={14} /> {x.nome}</li>)}</ul>
+      {a.sugestao && <p className="hint">Sugestão: {a.sugestao.codigo != null ? 'cliente ' + a.sugestao.codigo + ' (pela pasta de origem)' : ''}{a.sugestao.codigo != null && a.sugestao.tipoDoc ? ' · ' : ''}{a.sugestao.tipoDoc ? 'tipo ' + a.sugestao.tipoDoc + ' (pelo mapa da migração)' : ''}</p>}
+      {g.formulario && <ArquivarEm f={g.formulario} />}
+    </div>
+  ) : null;
+  return (
+    <div className="card">
+      <div className="card-head">
+        <h3>Para resolver em grupos<Dica texto="Os não identificados da mesma causa e da mesma pasta de origem juntos, os maiores primeiro. Escolha o cliente e o tipo para o grupo inteiro: a competência sai do nome ou das pastas de cada arquivo, o robô mostra 3 exemplos antes e, com Lembrar, os próximos da mesma pasta vão sozinhos." /></h3>
+        {escolha}
+      </div>
+      <ListaComDetalhe rotulo="Grupos para resolver" linhas={linhas} aberto={a?.id ?? ''} onAbrir={id => g.abrir(id)} onFechar={g.fechar} detalhe={detalhe}
+        vazio={<Vazio compacto icone="checkCircle" titulo="Nenhum grupo para resolver" texto="O robô arquivou tudo sozinho." />} />
+    </div>
+  );
+}
+
+function ResolverUmAUm({ vm, escolha }: { vm: Vm; escolha: ReactNode }) {
   const r = useResolver(vm.pendentes);
   const linhas = vm.linhas.filter(l => !r.feitos.has(l.id)).map(l => ({ ...l, andamento: r.andamento(l.id) }));
   const x = vm.itemBruto && !r.feitos.has(vm.itemBruto.id) && vm.pendentes.some(p => p.id === vm.itemBruto!.id) ? vm.itemBruto : null;
@@ -220,6 +263,7 @@ function Resolver({ vm }: { vm: Vm }) {
       <div className="card-head">
         <h3>Para resolver<Dica texto="Os arquivos que o robô não arquivou sozinho, os mais novos primeiro, com o motivo e o que fazer. Abra o arquivo, escolha o cliente, o tipo e a competência (o robô mostra o destino antes de arquivar) ou descarte; marque vários para fazer em lote. Tudo vai como pedido ao robô do PC." /></h3>
         {vm.pendentes.length > linhas.length && <span className="card-head-ctl fraco">{vm.pendentes.length - linhas.length} resolvido(s) agora</span>}
+        {escolha}
       </div>
       <ListaComDetalhe rotulo="Para resolver" linhas={linhas} aberto={x?.id ?? ''} onAbrir={id => vm.abrir(id)}
         onFechar={() => { if (f) f.fechar(); vm.abrir(null); }} detalhe={detalhe} topo={topo} marcar={{ marcados: r.marcados, alternar: r.alternar }}
@@ -229,18 +273,56 @@ function Resolver({ vm }: { vm: Vm }) {
   );
 }
 
+/** Baixa um arquivo de texto (o CSV do período). */
+function baixar({ nome, conteudo }: { nome: string; conteudo: string }) {
+  const url = URL.createObjectURL(new Blob([conteudo], { type: 'text/csv;charset=utf-8' }));
+  const a = document.createElement('a');
+  a.href = url; a.download = nome;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/**
+ * Arquivados (23/10/2026: "um acompanhamento de todo período" e "na parte de arquivados tem arquivos escritos como não
+ * identificados"): o período (hoje, 7 dias, 30 dias, o mês, um intervalo ou desde o começo), os totais dele, e a lista
+ * pela SITUAÇÃO — o padrão só com o que foi arquivado (pelo robô ou à mão); os duplicados, os não identificados (os
+ * pendentes levam ao Para resolver; os resolvidos dizem para onde foram) e os descartados no filtro.
+ */
 function Arquivados({ vm }: { vm: Vm }) {
   const f = vm.filtro;
   const h = vm.historico;
+  const pd = vm.periodoDoHistorico;
   return (
     <div className="card">
       <div className="card-head">
-        <h3>Arquivados<Dica texto="Tudo o que o robô decidiu no dia: o que arquivou, o que já estava arquivado, o que ficou para resolver e os erros. Clique num arquivo para ver o porquê." /></h3>
+        <h3>Arquivados<Dica texto="O que o robô arquivou no período (e o que foi arquivado à mão no site). Os duplicados, os não identificados e os descartados ficam no filtro de situação. Clique num arquivo para ver o porquê." /></h3>
+        <span className="card-head-ctl fraco num">{pd.texto}</span>
       </div>
       <div className="arq-filtros">
+        <Segmentado valor={pd.tipo} opcoes={pd.opcoes} onMudar={pd.setTipo} />
+        {pd.tipo === 'intervalo' && (
+          <>
+            <input type="date" className="select-compact" aria-label="De" min={pd.minimo} max={pd.maximo} value={pd.livre.de} onChange={e => pd.setDe(e.target.value)} />
+            <input type="date" className="select-compact" aria-label="Até" min={pd.minimo} max={pd.maximo} value={pd.livre.ate} onChange={e => pd.setAte(e.target.value)} />
+          </>
+        )}
+      </div>
+      {vm.totais.length > 0 && (
+        <div className="stat-grid dp-numeros admin-numeros arq-totais">
+          {vm.totais.map(n => (
+            <button key={n.id} type="button" className={'stat painel-numero admin-numero ' + TOM_DO_NUMERO[n.tom]} onClick={() => f.setSituacao(n.situacao)} aria-pressed={f.situacao === n.situacao}>
+              <span className="painel-numero-icone" aria-hidden="true"><Icone nome={n.icone} width={16} height={16} /></span>
+              <p className="stat-label">{n.rotulo}</p>
+              <p className="stat-value num">{n.valor}</p>
+            </button>
+          ))}
+        </div>
+      )}
+      {vm.totaisDosDias && <p className="hint">Os totais contam só os dias já baixados (o resumo do mês ainda não chegou do robô).</p>}
+      <div className="arq-filtros">
         <label className="busca-curta larga"><Icone nome="search" width={16} height={16} /><input type="text" placeholder="Buscar pelo nome, cliente ou pasta" aria-label="Buscar nos arquivados" value={f.busca} onChange={e => f.setBusca(e.target.value)} /></label>
-        <select className="select-compact" aria-label="Dia" value={f.dia} onChange={e => f.setDia(e.target.value)}>
-          {f.opcoesDia.map(o => <option key={o.valor} value={o.valor}>{o.rotulo}</option>)}
+        <select className="select-compact" aria-label="Situação" value={f.situacao} onChange={e => f.setSituacao(e.target.value as typeof f.situacao)}>
+          {f.opcoesSituacao.map(o => <option key={o.valor} value={o.valor}>{o.rotulo}</option>)}
         </select>
         <select className="select-compact" aria-label="Cliente" value={f.cliente} onChange={e => f.setCliente(e.target.value)}>
           <option value="">Todos os clientes</option>
@@ -250,17 +332,27 @@ function Arquivados({ vm }: { vm: Vm }) {
           <option value="">Todos os tipos</option>
           {f.opcoesTipo.map(o => <option key={o.valor} value={o.valor}>{o.rotulo}</option>)}
         </select>
-        <select className="select-compact" aria-label="O que o robô fez" value={f.acao} onChange={e => f.setAcao(e.target.value as typeof f.acao)}>
-          <option value="">Tudo</option>
-          {f.opcoesAcao.map(o => <option key={o.valor} value={o.valor}>{o.rotulo}</option>)}
-        </select>
         {f.ativo && <button type="button" className="btn btn-ghost" onClick={f.limpar}>Limpar</button>}
+        <span className="tarefas-barra-espaco" />
+        <button type="button" className="btn btn-outline" onClick={() => baixar(vm.csvDoPeriodo())} disabled={!vm.linhas.length}><Icone nome="download" width={16} height={16} />Exportar CSV</button>
       </div>
       {h && !h.carregado ? <Esqueleto linhas={6} /> : h?.erro ? <Alerta naLinha titulo="Não deu para ler o histórico" texto={h.erro} /> : (
         <ListaComDetalhe rotulo="Arquivados" linhas={vm.linhas} aberto={vm.aberto?.id ?? ''} onAbrir={id => vm.abrir(id)} onFechar={() => vm.abrir(null)}
-          detalhe={vm.aberto ? <DetalheDoArquivo d={vm.aberto} /> : null}
-          vazio={<Vazio compacto icone="arquivo" titulo={f.ativo ? 'Nada com esses filtros' : 'Nada arquivado neste dia'} texto={f.ativo ? 'Tente outra busca ou limpe os filtros.' : 'O robô não decidiu nenhum arquivo neste dia.'} />}
-          pe={<p className="hint num">{vm.linhas.length.toLocaleString('pt-BR')} de {vm.totalDaLista.toLocaleString('pt-BR')}{vm.maisQueOMaximo ? ' (mostra os 300 mais novos: use a busca)' : ''}</p>} />
+          detalhe={vm.aberto ? (
+            <>
+              {vm.resolverAberto && (
+                <div className="arq-detalhe-acoes"><button type="button" className="btn btn-primary" onClick={vm.resolverAberto}><Icone nome="alert" width={16} height={16} />Resolver em Para resolver</button></div>
+              )}
+              <DetalheDoArquivo d={vm.aberto} />
+            </>
+          ) : null}
+          vazio={<Vazio compacto icone="arquivo" titulo={f.ativo ? 'Nada com esses filtros' : 'Nada arquivado no período'} texto={f.ativo ? 'Tente outra busca ou limpe os filtros.' : 'O robô não arquivou nenhum arquivo nestes dias.'} />}
+          pe={(
+            <div className="arq-pe">
+              <p className="hint num">{vm.linhas.length.toLocaleString('pt-BR')} de {vm.totalDaLista.toLocaleString('pt-BR')} decididos {pd.diasLidos === 1 ? 'no dia' : 'nos ' + pd.diasLidos + ' dias'} mais novos{vm.maisQueOMaximo ? ' (mostra os 300 mais novos: use a busca)' : ''}</p>
+              {pd.faltamDias > 0 && <button type="button" className="btn btn-outline" onClick={pd.carregarMais}>Mais {Math.min(7, pd.faltamDias)} {Math.min(7, pd.faltamDias) === 1 ? 'dia' : 'dias'} ({pd.faltamDias.toLocaleString('pt-BR')} no período)</button>}
+            </div>
+          )} />
       )}
     </div>
   );

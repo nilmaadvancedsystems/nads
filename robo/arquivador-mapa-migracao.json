@@ -1,0 +1,27 @@
+{
+  "_sobre": "O mapa da migração do arquivador novo (Vitor, 23/10/2026: as pastas antigas de cada cliente subindo para a Claudio Secretario). Pela PASTA DE ORIGEM, nunca por CNPJ adivinhado. 'tipos': a parte do caminho de origem (sem acento, maiúscula, sem as pastas de ano e mês) → o tipo do formulário 'Arquivar em…' (arquivador-manual.js); vale só quando o conteúdo não decidiu (tipo não reconhecido, escaneado, formato sem regra) e o cliente vem do conteúdo ou da pasta do cliente (código E nome conferidos). 'clientes': a pasta → o código (null = a pasta não dá o cliente; com 'matriz' e 'filiais', a pasta que junta matriz e filiais, e 'peloNome' a palavra do nome do arquivo que diz o código, 27/10/2026). 'semPista': nomes de pasta que não são cliente (pessoas da equipe, áreas). As decisões do admin por grupo (Para resolver) ficam em %LOCALAPPDATA%\\nads\\arquivador-novo\\mapa-migracao.json e valem junto com este arquivo.",
+  "tipos": [
+    { "pasta": "DEPARTAMENTO FISCAL\\DESTDA", "tipoDoc": "DESTDA" },
+    { "pasta": "DEPARTAMENTO FISCAL\\SINTEGRA", "tipoDoc": "SINTEGRA" },
+    { "pasta": "DEPARTAMENTO FISCAL\\SPED FISCAL", "tipoDoc": "SPED_FISCAL" },
+    { "pasta": "DEPARTAMENTO FISCAL\\SPED CONTRIBUICAO", "tipoDoc": "SPED_CONTRIBUICOES" },
+    { "pasta": "DEPARTAMENTO FISCAL\\SPED CONTRIBUICOES", "tipoDoc": "SPED_CONTRIBUICOES" },
+    { "pasta": "DEPARTAMENTO FISCAL\\DAE DE ICMS", "tipoDoc": "DAE" },
+    { "pasta": "DEPARTAMENTO FISCAL\\DARF", "tipoDoc": "DARF" },
+    { "pasta": "DEPARTAMENTO FISCAL\\DAPI", "tipoDoc": "DAPI" },
+    { "pasta": "DEPARTAMENTO FISCAL\\MIT", "tipoDoc": "MIT" },
+    { "pasta": "DEPARTAMENTO FISCAL\\SOLICITACAO DE RESTITUICAO", "tipoDoc": "RESTITUICAO" },
+    { "pasta": "PARCELAMENTO", "tipoDoc": "PARCELAMENTO" },
+    { "pasta": "DOCUMENTO CONSTITUTIVOS", "tipoDoc": "DOC_CONSTITUTIVO" },
+    { "pasta": "DOCUMENTOS CONSTITUTIVOS", "tipoDoc": "DOC_CONSTITUTIVO" },
+    { "pasta": "CERTIFICADO DIGITAL", "tipoDoc": "CERTIFICADO_DIGITAL" },
+    { "pasta": "EXTRATOS", "tipoDoc": "EXTRATO", "nome": "EXTRAT" },
+    { "pasta": "EXTRATOS BANCARIOS", "tipoDoc": "EXTRATO", "nome": "EXTRAT" }
+  ],
+  "clientes": [
+    { "pasta": "413 BRAZILIAN FILIAIS 414. 418. 453", "cliente": null, "matriz": 413, "filiais": [414, 418, 453], "porque": "a matriz e as filiais na mesma pasta: o cliente só pelo conteúdo; o pagamento de fornecedor vai para a filial do CNPJ no conteúdo, senão para a matriz 413 (Vitor, 27/10/2026)" },
+    { "pasta": "415 LAVICA EMPREEND. FLORESTAIS FILAL 416", "cliente": null, "porque": "a matriz e a filial na mesma pasta: o cliente só pelo conteúdo" },
+    { "pasta": "408 OURO VERDE MINERACAO FILIAIS 409 E 410", "cliente": null, "matriz": 408, "filiais": [409, 410], "peloNome": { "OV": 408, "OV1": 409, "OV3": 410 }, "porque": "a matriz e as filiais na mesma pasta: pelo nome do arquivo, OV = 408, OV1 = 409, OV3 = 410 e o código no começo do nome (408Balancete…) (Vitor, 27/10/2026); senão só pelo conteúdo" }
+  ],
+  "semPista": ["FERNANDO", "ADIVANIA", "IMPORTACAO", "OUTROS", "NOVA PASTA", "DEPARTAMENTO FISCAL", "DEPARTEMENTO CONTABIL", "NOTA FISCAL", "EXTRATOS", "EXTRATOS BANCARIOS", "ADICIONADOS", "IMPORTADOS", "SAIDAS", "SAIDA", "ENTRADAS", "ENTRADA"]
+}

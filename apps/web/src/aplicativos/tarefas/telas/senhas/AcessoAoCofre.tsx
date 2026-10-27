@@ -8,6 +8,10 @@ import { TelaDeBloqueio } from './TelaDeBloqueio';
 import { useCofre } from './useCofre';
 
 const quando = (iso?: string) => (iso ? new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '');
+/** de onde o login entrou por último: o navegador, o IP, a cidade do IP e quando (26/10/2026: "quero que apareça o IP", e
+ *  "a localização de cidade") */
+const deOnde = (a?: { em: string; ip: string; cidade?: string; navegador: string }, desde = 'último acesso') =>
+  (a ? [a.navegador, 'IP ' + (a.ip || 'não informado'), ...(a.cidade ? [a.cidade] : []), desde + ' ' + quando(a.em)].join(' · ') : 'Sem acesso registrado ainda (aparece na próxima vez que o cofre abrir nele)');
 const dia = (iso?: string) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '');
 
 export function AcessoAoCofre() {
@@ -47,7 +51,7 @@ export function AcessoAoCofre() {
               return (
                 <li key={p.id}>
                   <FotoDaPessoa foto={f.foto} iniciais={f.iniciais} />
-                  <span className="cofre-pessoa-texto"><b>{p.nome}</b><span className="fraco">pediu em {quando(p.criadaEm)}</span></span>
+                  <span className="cofre-pessoa-texto"><b>{p.nome}</b><span className="fraco">pediu em {quando(p.criadaEm)}</span>{p.ultimoAcesso && <span className="fraco">{deOnde(p.ultimoAcesso, 'pedido em')}</span>}</span>
                   <span className="cofre-pedidos-acoes">
                     <button type="button" className="btn btn-primary" disabled={vm.ocupado} onClick={() => void vm.liberar(p)}><Icone nome="check" />Liberar</button>
                     <button type="button" className="btn btn-outline" disabled={vm.ocupado} onClick={() => void vm.recusar(p)}>Recusar</button>
@@ -91,6 +95,7 @@ export function AcessoAoCofre() {
                     <span className="cofre-pessoa-texto">
                       <b>{eu ? 'Este computador' : 'Login ' + (i + 1)}</b>
                       <span className="fraco">Liberado por {p.liberadoPor || '—'} em {quando(p.liberadoEm)}</span>
+                      <span className="fraco">{deOnde(p.ultimoAcesso)}</span>
                     </span>
                     {!eu && <button type="button" className="btn btn-ghost cofre-pessoa-tirar" disabled={vm.ocupado} onClick={() => void vm.tirarAcesso(p)}>Tirar o acesso</button>}
                   </li>

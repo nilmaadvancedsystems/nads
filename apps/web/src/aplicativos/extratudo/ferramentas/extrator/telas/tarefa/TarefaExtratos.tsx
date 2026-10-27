@@ -23,6 +23,7 @@ import { JanelaHistoricoDePedidos, JanelaPedirExtratos } from './JanelaPedirExtr
 import { caminhoNaFerramenta } from '../../../../casca/caminho';
 import { useBancosOk } from './useBancosOk';
 import { ConfirmarBancos } from './ConfirmarBancos';
+import { ComprovantesNaImportacao } from './ComprovantesNaImportacao';
 import { useDriveDaLinha } from './useDriveDaLinha';
 import { JanelaBuscarNoEmail, useBuscarNoEmail } from './JanelaBuscarNoEmail';
 import { useRecebidosPorEmail } from './useRecebidosPorEmail';
@@ -574,9 +575,11 @@ function SeletorDeCompetencia({ vm, naTarefa, trocar, periodoDaTarefa, encerrar 
  * Conferência, as notas e os serviços. Dentro da Tarefas, ficam no cabeçalho dela, por cima do checklist; aberta
  * sozinha, em cima da página. O balancete foi para a Conferência fiscal, o primeiro passo dela (Vitor, 13/10/2026).
  */
-type AbaImportacao = 'bancos' | 'contabil' | conferencia.PaginaImportacao;
+type AbaImportacao = 'bancos' | 'comprovantes' | 'contabil' | conferencia.PaginaImportacao;
 const ABAS_DA_IMPORTACAO: { id: AbaImportacao; rotulo: string; icone: AbaDaEtapa['icone'] }[] = [
   { id: 'bancos', rotulo: 'Bancos', icone: 'landmark' },
+  // os comprovantes do período: buscar no e-mail, mandar para o Drive e ver (Vitor, 26/10/2026)
+  { id: 'comprovantes', rotulo: 'Comprovantes', icone: 'recibo' },
   // o balancete dinâmico (o primeiro passo: monta a Tarefa) e os razões das contas de uma vez (Vitor, 16/10/2026)
   { id: 'contabil', rotulo: 'Balancete e razões', icone: 'scale' },
   { id: 'entradas', rotulo: 'Entradas', icone: 'arrowDown' },
@@ -728,6 +731,7 @@ export function TarefaExtratos() {
         </nav>
       )}
       {aba === 'contabil' ? <div data-destaque="contabil"><ContabilNaImportacao nome={s.nome} codigo={s.codigo} meses={mesesDaEtapa} /></div>
+        : aba === 'comprovantes' ? <div data-destaque="comprovantes-aba"><ComprovantesNaImportacao meses={mesesDaEtapa} bancos={vm.bancos.filter(b => b.id !== 'banco')} competencia={vm.competencia} pedirLogin={d.pedirLogin} avisar={vm.avisar} avisarErro={vm.avisarErro} /></div>
         : aba !== 'bancos' ? <div data-destaque="importacao"><ImportacaoNaEtapa nome={s.nome} tipo={aba} prestaServico={vm.prestaServico} meses={mesesDaEtapa} /></div> : (<>
       <div className={'imp-topo' + (ocupadoGeral ? ' travado' : '')} aria-busy={ocupadoGeral}>
         {/* à esquerda, como o "⎇ main ▾  6 Branches" do GitHub: a competência e o número de bancos */}
@@ -999,26 +1003,7 @@ export function TarefaExtratos() {
       </div>
 
       {/* o resultado: uma barrinha por cima da tela; o que deu certo some em 2,7 s, erro fica até o × */}
-      <MensagemFlutuante id="impAviso" className="imp-aviso" chave={vm.seqMensagem} onFechar={vm.fecharMensagem}
-        duracao={vm.mensagem?.tom === 'erro' ? null : 2700}>
-        {vm.mensagem && <Aviso m={vm.mensagem} onFechar={vm.fecharMensagem} />}
-      </MensagemFlutuante>
 
-      {d.login.aberto && (
-        <div className="modal-overlay" role="presentation" onClick={d.login.fechar}>
-          <div className="modal drive-login" role="dialog" aria-modal="true" aria-labelledby="tituloDrive" onClick={e => e.stopPropagation()}>
-            <h3 id="tituloDrive">Entrar no Entregas</h3>
-            <p className="drive-login-texto">Com a conta Google do escritório. Fica guardado neste computador: é só uma vez.</p>
-            <div className="drive-login-google">
-              <BotaoGoogle entrando={d.login.entrando} onClick={d.login.entrar} />
-            </div>
-            {d.login.erro && <p className="hint drive-login-erro">{d.login.erro}</p>}
-            <div className="modal-actions">
-              <button type="button" className="btn btn-outline" onClick={d.login.fechar}>Voltar</button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {d.escolha && (
         <div className="modal-overlay" role="presentation" onClick={d.fecharEscolha}>
@@ -1071,6 +1056,27 @@ export function TarefaExtratos() {
                 </tbody>
               </table>
             </div>}
+          </div>
+        </div>
+      )}
+      {/* o aviso do topo (Bancos e Comprovantes) */}
+      <MensagemFlutuante id="impAviso" className="imp-aviso" chave={vm.seqMensagem} onFechar={vm.fecharMensagem}
+        duracao={vm.mensagem?.tom === 'erro' ? null : 2700}>
+        {vm.mensagem && <Aviso m={vm.mensagem} onFechar={vm.fecharMensagem} />}
+      </MensagemFlutuante>
+      {/* o login do Drive (Bancos e Comprovantes) */}
+      {d.login.aberto && (
+        <div className="modal-overlay" role="presentation" onClick={d.login.fechar}>
+          <div className="modal drive-login" role="dialog" aria-modal="true" aria-labelledby="tituloDrive" onClick={e => e.stopPropagation()}>
+            <h3 id="tituloDrive">Entrar no Entregas</h3>
+            <p className="drive-login-texto">Com a conta Google do escritório. Fica guardado neste computador: é só uma vez.</p>
+            <div className="drive-login-google">
+              <BotaoGoogle entrando={d.login.entrando} onClick={d.login.entrar} />
+            </div>
+            {d.login.erro && <p className="hint drive-login-erro">{d.login.erro}</p>}
+            <div className="modal-actions">
+              <button type="button" className="btn btn-outline" onClick={d.login.fechar}>Voltar</button>
+            </div>
           </div>
         </div>
       )}

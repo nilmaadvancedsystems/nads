@@ -3,7 +3,10 @@
 // MM/AAAA"; uma linha por empresa do grupo, com o código e a razão social, as colunas dos tributos e DATA, S, D, R e
 // ENTREGUE E-MAIL para preencher à mão. O que o nads já sabe (as guias entregues pelo Entregas na competência: o valor de
 // cada tributo, a data da entrega e se o comprovante foi por e-mail) já vem preenchido. A4 deitado; as linhas não se
-// partem entre páginas e o cabeçalho da tabela se repete em cada página.
+// partem entre páginas e o cabeçalho da tabela se repete em cada página. No fim de todo protocolo, a Retificação
+// (23/10/2026: "todo final de protocolo de controle de tributos precisa ter a parte de retificação"): o quadro para
+// preencher à mão o que foi retificado (a empresa, o tributo, a competência, o valor de antes e o novo, o motivo, a data
+// e o visto), sem se partir entre páginas.
 import { competenciaParaEtiqueta } from './etiquetasDaFolha';
 
 export interface ColunaDoProtocolo {
@@ -41,6 +44,9 @@ export const GRUPOS_DO_PROTOCOLO: readonly GrupoDoProtocolo[] = [
     PARCELAMENTO,
   ] },
 ];
+/** quantas linhas em branco a Retificação tem no fim do protocolo */
+export const LINHAS_DA_RETIFICACAO = 6;
+
 export const grupoDoProtocolo = (id: string) => GRUPOS_DO_PROTOCOLO.find(g => g.id === id) || GRUPOS_DO_PROTOCOLO[0];
 
 /** Uma guia entregue (do Entregas): os itens, a data e se o comprovante foi por e-mail */
@@ -125,10 +131,22 @@ export function htmlDoProtocolo(p: { competencia: string; grupo: GrupoDoProtocol
   th.sdr{width:6mm}
   td.mail{text-align:center}
   th.mail{width:16mm}
-  .pe{margin-top:3mm;font-size:6.5pt;color:#555}
+  .retificacao{margin-top:5mm;break-inside:avoid;page-break-inside:avoid}
+  .retificacao h2{margin:0 0 1.5mm;font-size:10pt;font-weight:700;letter-spacing:.5pt}
+  .retificacao td{height:7mm}
+  .retificacao th.ret-cod{width:12mm}
+  .retificacao th.ret-nome{width:52mm}
+  .retificacao th.ret-trib{width:24mm}
+  .retificacao th.ret-comp{width:18mm}
+  .retificacao th.ret-valor{width:24mm}
+  .retificacao th.ret-data{width:16mm}
+  .retificacao th.ret-visto{width:20mm}
 </style></head><body>
 ${p.logo.definicao}<div class="topo"><span class="logo">${p.logo.uso}</span><span class="selo">${esc(p.grupo.selo)}</span><span class="titulo"><b>Protocolo de Entrega de Tributos</b><span>Ref: ${esc(ref)}</span></span></div>
 <table><thead>${cab}</thead><tbody>${corpo}</tbody></table>
-<p class="pe">${p.linhas.length} ${p.linhas.length === 1 ? 'empresa' : 'empresas'}. Os valores e as datas preenchidos vêm das guias entregues pelo Entregas nesta competência; o resto é para preencher à mão.</p>
+<section class="retificacao"><h2>RETIFICAÇÃO</h2>
+<table><thead><tr><th class="ret-cod">COD.</th><th class="ret-nome">RAZÃO SOCIAL</th><th class="ret-trib">TRIBUTO</th><th class="ret-comp">COMPETÊNCIA</th><th class="ret-valor">VALOR ANTERIOR</th><th class="ret-valor">VALOR RETIFICADO</th><th>MOTIVO</th><th class="ret-data">DATA</th><th class="ret-visto">VISTO</th></tr></thead>
+<tbody>${'<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td class="data">&nbsp;&nbsp;/&nbsp;&nbsp;</td><td></td></tr>'.repeat(LINHAS_DA_RETIFICACAO)}</tbody></table>
+</section>
 </body></html>`;
 }

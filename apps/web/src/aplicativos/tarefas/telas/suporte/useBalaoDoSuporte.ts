@@ -42,7 +42,8 @@ export function useBalaoDoSuporte() {
   const [comecou, setComecou] = useState(() => guardado?.comecou ?? 0);
   const [escolhas, setEscolhas] = useState<string[]>(() => guardado?.escolhas ?? []);
   const [resolvido, setResolvido] = useState(() => guardado?.resolvido ?? false);
-  const [arquivo, setArquivo] = useState<File | null>(null);
+  // vários arquivos (Vitor, 26/10/2026: "só tá dando para anexar somente 1")
+  const [arquivos, setArquivos] = useState<File[]>([]);
   const [frase, setFrase] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [enviado, setEnviado] = useState(() => guardado?.enviado ?? false);
@@ -88,7 +89,7 @@ export function useBalaoDoSuporte() {
     setComecou(0);
     setMarcadas([]);
     setBotoes([]);
-    setEscolhas([]); setResolvido(false); setArquivo(null); setFrase(''); setEnviado(false); setPedido(''); setErro('');
+    setEscolhas([]); setResolvido(false); setArquivos([]); setFrase(''); setEnviado(false); setPedido(''); setErro('');
   }
 
   function escolher(id: string) {
@@ -99,18 +100,18 @@ export function useBalaoDoSuporte() {
   }
 
   async function enviar() {
-    if (!arquivo && !frase.trim()) { setErro('Anexe o arquivo (ou escreva um comentário).'); return; }
+    if (!arquivos.length && !frase.trim()) { setErro('Anexe o arquivo (ou escreva um comentário).'); return; }
     setEnviando(true); setErro('');
     try {
       const caminho = s.caminhoDaConversa(ctx, escolhas);
-      const bytes = arquivo ? new Uint8Array(await arquivo.arrayBuffer()) : null;
+      const lidos = await Promise.all(arquivos.map(async f => ({ nome: f.name, bytes: new Uint8Array(await f.arrayBuffer()) })));
       const id = await repo.enviarBug({
         // a mensagem no formato de sempre (Vitor, 21/10/2026: "chegue para mim em um padrão")
-        texto: s.mensagemDoBug(ctx, escolhas, frase, arquivo ? arquivo.name : '').slice(0, 4000),
+        texto: s.mensagemDoBug(ctx, escolhas, frase, arquivos.map(f => f.name).join(', ')).slice(0, 4000),
         tela: pathname + (rotuloDaTela ? ' · ' + [onde?.etapa, onde?.aba].filter(Boolean).join(' › ') : ''),
         versao: VERSAO_SISTEMA, caminho,
         contexto: { empresa: ctx.empresa, codigo: ctx.codigo, tela: ctx.rotuloDaTela, meses: ctx.meses },
-        arquivo: arquivo && bytes ? { nome: arquivo.name, bytes } : null,
+        arquivos: lidos,
       });
       setPedido(s.codigoDoPedido(id));
       setEnviado(true);
@@ -135,7 +136,11 @@ export function useBalaoDoSuporte() {
     confirmar: () => { if (marcadas.length) escolher(marcadas[0].slice(0, 2) + marcadas.map(id => id.slice(2)).join(s.SEPARADOR)); },
     resolveu: () => setResolvido(true),
     naoResolveu: () => { lerBotoes(); setEscolhas(e => [...e, s.NAO_RESOLVEU]); },
-    arquivo, setArquivo, frase, setFrase,
+    /** os arquivos anexados: escolher junta aos que já estão (o mesmo nome não entra duas vezes); o × tira um */
+    arquivos,
+    anexar: (fs: File[]) => setArquivos(a => [...a, ...fs.filter(f => !a.some(x => x.name === f.name && x.size === f.size))]),
+    tirarArquivo: (i: number) => setArquivos(a => a.filter((_, k) => k !== i)),
+    frase, setFrase,
     enviar: () => { void enviar(); },
     /** começa de novo (Vitor, 21/10/2026: "deixa o botão de nova conversa") */
     novaConversa: () => { recomecar(); lerBotoes(true); },

@@ -68,7 +68,10 @@ const c = A.contagemVazia('2026-10-22');
 A.somar(c, it); A.somar(c, it); A.somar(c, ni);
 A.somar(c, A.itemCompacto(Object.assign({}, arq, { cliente: 58, clienteNome: 'B', tipo: 'XML NF-e', criarPastaCliente: false }), 'SIMULACAO', EM, false));
 const pub = A.contagemPublicada(c);
-igual('por ação', pub.porAcao, { arquivou: 2, arquivaria: 1, jaArquivado: 0, naoIdentificado: 1, fica: 0, erro: 0 });
+igual('por ação', pub.porAcao, { arquivou: 2, arquivaria: 1, jaArquivado: 0, naoIdentificado: 1, fica: 0, erro: 0, descartado: 0 });
+// o resumo do mês (23/10/2026): a soma dos dias, os arquivados à mão e a contagem de cada dia
+const rm = A.resumoDoMes('2026-10', { '2026-10-22': { porAcao: { arquivou: 3, naoIdentificado: 1 }, aMao: 1, porTipo: { DAS: 3 }, porCliente: { 58: { nome: 'A', n: 3 } }, pastasNovas: ['58 - A'] }, '2026-10-23': { porAcao: { arquivou: 2, descartado: 1 }, aMao: 0, porTipo: { DAS: 2 }, porCliente: { 58: { nome: 'A', n: 2 } } }, '2026-09-30': { porAcao: { arquivou: 9 } } }, 'x');
+igual('resumo do mês: somas, à mão e os dias do mês', [rm.porAcao, rm.aMao, rm.porTipo, rm.porCliente, Object.keys(rm.dias)], [{ arquivou: 5, naoIdentificado: 1, descartado: 1 }, 1, { DAS: 5 }, { 58: { nome: 'A', n: 5 } }, ['2026-10-22', '2026-10-23']]);
 igual('por tipo', pub.porTipo, { COMPROVANTE: 2, 'XML NF-e': 1 });
 igual('clientes: o que mais recebeu primeiro', pub.clientes.map(x => x.codigo + ':' + x.n), ['380:2', '58:1']);
 igual('total de clientes e a pasta nova uma vez só', [pub.totalDeClientes, pub.pastasNovas], [2, ['380 - LEONARDO EXEMPLO ME']]);
@@ -128,10 +131,45 @@ try {
     igual('grava a parte 0 do dia', parte && parte.dados.itens.length, 2);
     const antes = gravados.length;
     await ac._gravar();
-    igual('a parte que não mudou não é regravada', gravados.length - antes, 1);
+    igual('a parte que não mudou não é regravada', gravados.slice(antes).map(g => g.caminho), ['robo/arquivadorNovo', 'robo/arquivadorResumo']);
+    // o resumo da janela do Drive (o contábil lê): sem o nome original do arquivo
+    const res = gravados.filter(g => g.caminho === 'robo/arquivadorResumo').pop();
+    igual('resumo do Drive: o modo, a situação, os números de hoje e o último sem o nome original', [res.dados.modo, res.dados.situacao, res.dados.hoje.arquivados, res.dados.paraResolver, res.dados.ultimo && Object.keys(res.dados.ultimo).includes('nome')], ['producao', 'sem-drive', 1, 1, false]);
+    // 23/10/2026: o banco que não responde (o robô perdeu o Firestore às 13:18) não prende a gravação nem acumula a fila
+    {
+      const pedidos = [];
+      const travado = { collection: () => ({ doc: () => ({ set: () => { pedidos.push(1); return new Promise(() => {}); }, collection: () => ({ doc: () => ({ set: () => { pedidos.push(1); return new Promise(() => {}); } }) }) }) }) };
+      const dirT = fs.mkdtempSync(path.join(os.tmpdir(), 'teste-acomp-'));
+      let agoraT = T;
+      const acT = A.criar({ db: travado, controle: dirT, origem: 'G:\\x', agora: () => agoraT, prazoMs: 50 });
+      const t0 = Date.now();
+      await acT._gravar();
+      igual('banco travado: a gravação desiste no prazo', [Date.now() - t0 < 2000, pedidos.length], [true, 1]);
+      agoraT += 10 * 60000;   // passou a pausa, mas o pedido de antes ainda não voltou: não manda outro
+      await acT._gravar();
+      igual('banco travado: o que não voltou segura as próximas (a fila não acumula)', pedidos.length, 1);
+      await acT.parar();
+    }
+    // a parte aberta do histórico vai no máximo a cada 3 min (era a cada 45 s, com até 700 KB)
+    {
+      const g = [];
+      const docT = (c) => ({ set: async () => { g.push(c); }, collection: (n) => ({ doc: (id) => docT(c + '/' + n + '/' + id) }) });
+      const dbT = { collection: (n) => ({ doc: (id) => docT(n + '/' + id) }) };
+      const dirT = fs.mkdtempSync(path.join(os.tmpdir(), 'teste-acomp-'));
+      let agoraT = T;
+      const acT = A.criar({ db: dbT, controle: dirT, origem: 'G:\\x', agora: () => agoraT });
+      acT.decisoes([arq], 'PRODUCAO'); await acT._gravar();
+      const partes = () => g.filter(c => /\/dias\//.test(c)).length;
+      const antes = partes();
+      agoraT += 60000; acT.decisoes([Object.assign({}, arq, { hash: 'outro' })], 'PRODUCAO'); await acT._gravar();
+      igual('histórico: a parte aberta não é regravada antes de 3 min', partes() - antes, 0);
+      agoraT += 3 * 60000; await acT._gravar();
+      igual('histórico: depois de 3 min, vai', partes() - antes, 1);
+      await acT.parar();
+    }
     // a varredura igual à anterior não grava de novo (só o batimento de 10 min)
     const g4 = [];
-    const db4 = { collection: () => ({ doc: () => ({ set: async (d) => { g4.push(d); }, collection: () => ({ doc: () => ({ set: async () => {} }) }) }) }) };
+    const db4 = { collection: () => ({ doc: () => ({ set: async (d) => { if (d.painel) g4.push(d); }, collection: () => ({ doc: () => ({ set: async () => {} }) }) }) }) };
     let agora4 = T;
     const ac4 = A.criar({ db: db4, controle: fs.mkdtempSync(path.join(os.tmpdir(), 'teste-acomp-')), origem: 'G:\\x', agora: () => agora4, freioMs: 0 });
     const v4 = () => ({ vistos: [{ rel: 'a.pdf', tam: 1, mtime: T - 600000 }], pendentes: ['a.pdf'], mapa: new Map(), estavelMs: 45000 });
@@ -143,9 +181,9 @@ try {
     igual('varredura igual depois de 10 min: o batimento grava', g4.length, 2);
     ac4.varredura({ vistos: [], pendentes: [], mapa: new Map() }); await espera();
     igual('a pasta mudou: grava', g4.length, 3);
-    // a limpeza do histórico de mais de 31 dias (no PC e no banco), na primeira gravação e a cada virada do dia
+    // a limpeza do histórico de mais de 24 meses (no PC e no banco), na primeira gravação e a cada virada do dia
     const dir5 = fs.mkdtempSync(path.join(os.tmpdir(), 'teste-acomp-'));
-    fs.writeFileSync(path.join(dir5, 'arquivados-2026-08-01.jsonl'), '{}\n');
+    fs.writeFileSync(path.join(dir5, 'arquivados-2024-08-01.jsonl'), '{}\n');
     fs.writeFileSync(path.join(dir5, 'arquivados-2026-10-20.jsonl'), '{}\n');
     const apagados = [], filtros = [];
     const col5 = { doc: () => ({ set: async () => {} }), where: (c, op, v) => { filtros.push([c, op, v]); return { limit: () => ({ get: async () => ({ docs: [{ ref: { delete: async () => { apagados.push('2026-08-01-0'); } } }] }) }) }; } };
@@ -153,7 +191,7 @@ try {
     const ac5 = A.criar({ db: db5, controle: dir5, origem: 'G:\\x', agora: () => T });
     await ac5._gravar();
     igual('limpeza: o arquivo velho do PC sai, o recente fica', fs.readdirSync(dir5).filter(f => /^arquivados-/.test(f)), ['arquivados-2026-10-20.jsonl']);
-    igual('limpeza: no banco, as partes de antes de 31 dias', [filtros[0] && filtros[0][0], filtros[0] && filtros[0][1], apagados.length], ['dia', '<', 1]);
+    igual('limpeza: no banco, as partes de antes de 24 meses', [filtros[0] && filtros[0][0], filtros[0] && filtros[0][1], apagados.length], ['dia', '<', 1]);
     igual('o PC guarda o estado e o histórico', [fs.existsSync(path.join(tmp, 'acompanhamento.json')), fs.readdirSync(tmp).some(f => /^arquivados-.*\.jsonl$/.test(f))], [true, true]);
     // religar: as listas e o histórico voltam do PC
     const ac2 = A.criar({ db: null, controle: tmp, origem: 'G:\\x', agora: () => agora });

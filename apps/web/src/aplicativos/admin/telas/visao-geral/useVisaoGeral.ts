@@ -28,6 +28,8 @@ export function useVisaoGeral() {
   const itens = entregas.saudeDoBanco({ resumo: banco.resumo, uso: entregas.lerUsoDeHoje(saude?.uso), sinais, filas, errosDaFila: saude?.erros || [] }, agora);
   const problemas = itens.filter(i => i.tom === 'erro' || i.tom === 'aviso');
   const ligados = robos.filter(r => r.tom === 'ok').length;
+  // o que está HOJE em NÃO IDENTIFICADOS (a mesma conta da aba Para resolver; sem o robô atualizado, "—")
+  const paraResolver = painel.pc?.paraResolver ?? null;
 
   return {
     carregando: !painel.carregado,
@@ -41,6 +43,7 @@ export function useVisaoGeral() {
       { id: 'robos', rotulo: 'Robôs ligados', valor: ligados + ' de ' + robos.length, tom: ligados === robos.length ? 'ok' : robos.some(r => r.tom === 'erro') ? 'erro' : 'aviso', icone: 'robo', pagina: 'robo' },
       { id: 'erros', rotulo: 'Erros em 24 h', valor: String(erros.length), tom: erros.length ? 'erro' : 'ok', icone: 'alert', pagina: 'robo' },
       { id: 'filas', rotulo: 'Filas atrasadas', valor: String(atrasadas.length), tom: atrasadas.some(f => f.tom === 'erro') ? 'erro' : atrasadas.length ? 'aviso' : 'ok', icone: 'clock', pagina: 'robo' },
+      { id: 'resolver', rotulo: 'Para resolver agora', valor: paraResolver ? (paraResolver.agora ? paraResolver.agora.toLocaleString('pt-BR') : 'Nada') : '—', tom: paraResolver && paraResolver.agora ? 'aviso' : 'ok', icone: paraResolver && paraResolver.agora ? 'alert' : 'checkCircle', pagina: 'arquivador' },
       { id: 'feedbacks', rotulo: 'Feedbacks altos novos', valor: String(altos.length), tom: altos.length ? 'aviso' : 'ok', icone: 'mensagem', pagina: 'feedbacks' },
       { id: 'banco', rotulo: 'Banco: itens de atenção', valor: String(problemas.length), tom: problemas.some(i => i.tom === 'erro') ? 'erro' : problemas.length ? 'aviso' : 'ok', icone: 'escudo', pagina: 'banco' },
     ] as const,

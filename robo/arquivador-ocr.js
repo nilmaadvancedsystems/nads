@@ -14,24 +14,41 @@ const path = require('path');
 
 const PAGINAS = +(process.env.OCR_PAGINAS || 2);
 const TEMPO_MS = +(process.env.OCR_TEMPO_MS || 90000);
+const JUNTOS = Math.max(1, +(process.env.OCR_JUNTOS || 3));   // trabalhadores ao mesmo tempo (26/10/2026; o PC tem 4 núcleos)
 const ESCALA = 2.2;   // ~200 dpi numa página A4: o Tesseract lê bem a partir de ~150 dpi
 
 let pdfjs = null;
-let trabalhador = null;
+const livres = [];       // os trabalhadores parados
+const fila = [];         // quem espera um trabalhador
+let criados = 0;
 
 async function carregarPdfjs() {
   if (!pdfjs) pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
   return pdfjs;
 }
 
-/** Um trabalhador do Tesseract por processo, reaproveitado (criar custa ~1–2 s). */
+/**
+ * Até JUNTOS trabalhadores do Tesseract, reaproveitados (criar custa ~1–2 s); cada um lê um PDF por vez, então vários
+ * escaneados são lidos ao mesmo tempo (26/10/2026: um por vez segurava o lote inteiro).
+ */
 async function obterTrabalhador() {
-  if (trabalhador) return trabalhador;
-  const { createWorker } = require('tesseract.js');
-  // o pacote de idioma traz por.traineddata.gz; langPath é a pasta, gzip: true, e nada de cache fora daqui
-  const langPath = path.join(path.dirname(require.resolve('@tesseract.js-data/por/package.json')), '4.0.0_best_int');
-  trabalhador = await createWorker('por', 1, { langPath, gzip: true, cacheMethod: 'none', logger: () => {}, errorHandler: () => {} });
-  return trabalhador;
+  if (livres.length) return livres.pop();
+  if (criados < JUNTOS) {
+    criados++;
+    try {
+      const { createWorker } = require('tesseract.js');
+      // o pacote de idioma traz por.traineddata.gz; langPath é a pasta, gzip: true, e nada de cache fora daqui
+      const langPath = path.join(path.dirname(require.resolve('@tesseract.js-data/por/package.json')), '4.0.0_best_int');
+      return await createWorker('por', 1, { langPath, gzip: true, cacheMethod: 'none', logger: () => {}, errorHandler: () => {} });
+    } catch (e) { criados--; throw e; }
+  }
+  return new Promise(r => fila.push(r));
+}
+function devolver(w) { const prox = fila.shift(); if (prox) prox(w); else livres.push(w); }
+/** O trabalhador que passou do prazo pode ter ficado no meio de uma página: descarta e abre a vaga. */
+function descartar(w) {
+  criados--; w.terminate().catch(() => {});
+  const prox = fila.shift(); if (prox) obterTrabalhador().then(prox, () => { /* fica sem: o próximo tenta de novo */ });
 }
 
 /** A página i do PDF como PNG (rotacao em graus: 0, 90, 270 para página escaneada de lado). */
@@ -56,13 +73,13 @@ const util = t => String(t || '').replace(/[^A-Za-zÀ-ú0-9]/g, '').length;
 async function ocrDoPdf(buffer, opcoes) {
   const o = Object.assign({ paginas: PAGINAS, tempoMs: TEMPO_MS }, opcoes);
   const inicio = Date.now();
-  let tarefa = null;
+  let tarefa = null, w = null, perdido = false;
   try {
+    w = await obterTrabalhador();   // fora do prazo: a espera na fila não conta (e o trabalhador sempre volta)
     return await comPrazo((async () => {
       const lib = await carregarPdfjs();
       tarefa = lib.getDocument({ data: new Uint8Array(buffer), verbosity: 0, isEvalSupported: false });
       const doc = await tarefa.promise;
-      const w = await obterTrabalhador();
       const paginas = [];
       const confs = [];
       for (let i = 1; i <= Math.min(o.paginas, doc.numPages); i++) {
@@ -81,11 +98,11 @@ async function ocrDoPdf(buffer, opcoes) {
     })(), o.tempoMs);
   } catch (e) {
     // tempo esgotado: o trabalhador pode ter ficado no meio de uma página; descarta e cria outro na próxima vez
-    if (/OCR passou/.test(e.message) && trabalhador) { const t = trabalhador; trabalhador = null; t.terminate().catch(() => {}); }
+    if (/OCR passou/.test(e.message) && w) { perdido = true; descartar(w); }
     return { paginas: [], total: 0, confianca: 0, ms: Date.now() - inicio, erro: e.message };
-  } finally { if (tarefa) tarefa.destroy().catch(() => {}); }
+  } finally { if (tarefa) tarefa.destroy().catch(() => {}); if (w && !perdido) devolver(w); }
 }
 
-async function encerrar() { if (trabalhador) { const t = trabalhador; trabalhador = null; await t.terminate().catch(() => {}); } }
+async function encerrar() { const ws = livres.splice(0); criados -= ws.length; await Promise.all(ws.map(w => w.terminate().catch(() => {}))); }
 
-module.exports = { ocrDoPdf, encerrar, PAGINAS, TEMPO_MS };
+module.exports = { ocrDoPdf, encerrar, PAGINAS, TEMPO_MS, JUNTOS };

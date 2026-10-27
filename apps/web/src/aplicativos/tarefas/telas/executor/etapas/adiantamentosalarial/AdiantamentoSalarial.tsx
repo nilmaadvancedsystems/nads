@@ -4,13 +4,18 @@
 import { CampoArquivo, Icone } from '@nads/ui';
 import { useId } from 'react';
 import { useAdiantamentoSalarial } from './useAdiantamentoSalarial';
+import { BotaoSemMovimento } from '../../partes/BotaoSemMovimento';
 
 export function AdiantamentoSalarial() {
   const vm = useAdiantamentoSalarial();
   const id = useId();
   return (
     <section>
-      <header className="topbar"><div><h2 className="page-title">Adiantamento salarial</h2></div></header>
+      <header className="topbar">
+        <div><h2 className="page-title">Adiantamento salarial</h2></div>
+        {/* Vitor, 26/10/2026: a conta não mexeu mais; marcado, a etapa não cobra nada (clicar de novo desfaz) */}
+        {vm.mostrarSemMovimento && <div className="btn-row"><BotaoSemMovimento marcado={vm.semMovimento} onClick={vm.alternarSemMovimento} /></div>}
+      </header>
       <div className="imp-lista">
         <div className={'imp-bloco' + (vm.ok ? ' imp-ok' : '')}>
           <div className="imp-linha">
@@ -32,6 +37,8 @@ export function AdiantamentoSalarial() {
                     aria-label="Importar no meu Sistema"><Icone nome="download" /></button>
                 </div>
               )}
+              {/* zerou em todos os meses: o Ok padrão (o selo, como nos Bancos) */}
+              {vm.ok && <span className="badge badge-ok" title="O Adiantamento salarial zerou em todos os meses do período">Ok</span>}
               <div className="imp-grupo" aria-label="Razão do Adiantamento salarial">
                 <span className="imp-rotulo">Razão</span>
                 {vm.temRazao ? (

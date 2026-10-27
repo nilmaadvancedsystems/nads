@@ -4,6 +4,7 @@
 // e o banco (a contrapartida é o banco) fica de fora. Só sugere: a pessoa confere e corrige no Alterdata.
 import { normalizarTexto } from '../../formatos';
 import type { LancamentoDoRazao } from './razao';
+import { casa, palavrasDoNome } from './sugestaoDeConta';
 
 /** Um lançamento do extrato: data 'aaaa-mm-dd', valor em centavos (+ entrou, − saiu), o histórico e o banco (o nome e a marca). */
 export interface LancamentoDoExtrato { data: string; valor: number; historico: string; banco: string; marca?: string }
@@ -93,6 +94,15 @@ export function notasNoCaixa(caixa: readonly LancamentoDoRazao[], meses: readonl
   return out.sort((a, b) => (a.como === b.como ? 0 : a.como === 'nf' ? -1 : 1) || a.nota.nome.localeCompare(b.nota.nome));
 }
 
+/** As palavras do banco e da contabilidade que não dizem para quem foi o pagamento. */
+const SEM_NOME = new Set([
+  'enviado', 'recebido', 'transf', 'transferencia', 'realizada', 'ted', 'banco', 'sicoob', 'credinor', 'pgto', 'dup', 'titulo',
+  'fatura', 'darf', 'gps', 'salario', 'salarios', 'salarial', 'adiant', 'adiantamento', 'compra', 'compras', 'nota', 'fiscal',
+  'conf', 'pelo', 'pela', 'valor', 'vista', 'liquidas', 'fornecedores', 'fornecedor', 'clientes', 'ordenados',
+]);
+/** O que o lançamento diz de quem recebeu ("Pix … ***.437.336-** Adiant salarial Gabriel" → gabriel). */
+const nomesDo = (texto: string) => palavrasDoNome(texto).filter(p => p.length >= 4 && !SEM_NOME.has(p));
+
 /** O pagamento do banco que passou pelo caixa: a entrada vinda do banco e a saída para o fornecedor, o mesmo valor. */
 export interface PassouPeloCaixa { entrada: LancamentoDoRazao; saida: LancamentoDoRazao; nfs: string[] }
 
@@ -112,6 +122,7 @@ export function passouPeloCaixa(caixa: readonly LancamentoDoRazao[], meses: read
   for (const e of entradas) {
     const nfsE = nfsDoHistorico(e.historico);
     const pagamento = PAGAMENTO.test(normalizarTexto(e.historico));
+    const nomesE = nomesDo(e.historico);
     const c = Math.round(-e.valor * 100);
     const pares = saidas
       .filter(s => !usadas.has(s) && Math.abs(Math.round(s.valor * 100) - c) <= 1 && Math.abs(dia(s.data) - dia(e.data)) <= 3)
@@ -120,7 +131,12 @@ export function passouPeloCaixa(caixa: readonly LancamentoDoRazao[], meses: read
         const nfs = [...new Set([...nfsDoHistorico(s.historico), ...nfsE])].filter(n => numeros(e.historico).includes(n) && numeros(s.historico).includes(n));
         return { s, nfs, nota: (nfs.length ? 4 : 0) + (s.data === e.data ? 2 : 0) - Math.abs(dia(s.data) - dia(e.data)) };
       })
-      .filter(x => x.nfs.length > 0 || pagamento)
+      // a mesma NF nos dois; sem ela, o PIX que diz para quem foi só com o nome batendo, e o que não diz nada só no mesmo dia
+      // (Vitor, 23/10/2026: o "Adiant salarial Gabriel" virou o pagamento de uma compra de insumos de dois dias antes —
+      // "faz isso só quando for a mesma data, se tiver sem descrição clara; caso contrário nem coloque como sugestão")
+      .filter(x => x.nfs.length > 0 || (pagamento && (nomesE.length
+        ? nomesDo(x.s.historico + ' ' + x.s.nomeContrapartida).some(a => nomesE.some(w => casa(w, a) || casa(a, w)))
+        : x.s.data === e.data)))
       .sort((a, b) => b.nota - a.nota);
     if (!pares.length) continue;
     usadas.add(pares[0].s);
