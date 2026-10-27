@@ -1,7 +1,10 @@
 // A janela flutuante de uma empresa no Cadastro, por cima da lista: no topo, "‹ Empresas" (voltar), a empresa
 // e o ✕; na lateral, as abas dela; no meio, a aba aberta. Esc ou clicar fora fecha.
+// A mesma janela abre pelo cartão da empresa no cabeçalho (27/10/2026: "era pra seguir o layout do cadastro"), por cima
+// da tela e sem mexer no endereço (local); para quem não mexe no Cadastro, só a aba Dados da empresa, com o que veio
+// de fora (soLeitura), sem editar nada.
 import { BotaoFechar, Icone, useEntradaAnimada, useIndicador, useJanela } from '@nads/ui';
-import { Fragment, useEffect, useRef } from 'react';
+import { Fragment, useEffect, useRef, type ReactNode } from 'react';
 import { ContasBancarias } from '../bancos/ContasBancarias';
 import { ContasPadrao } from '../contas-padrao/ContasPadrao';
 import { DadosDaEmpresa, ParametrosContabeis, ParametrosFiscais } from '../empresa/DadosDaEmpresa';
@@ -50,8 +53,14 @@ function ResumoDoCadastro({ vm }: { vm: ReturnType<typeof useJanelaDaEmpresa> })
   );
 }
 
-export function JanelaDaEmpresa({ rota, aba }: { rota: string; aba: string }) {
-  const vm = useJanelaDaEmpresa(rota, aba);
+export function JanelaDaEmpresa({ rota, aba, local, soLeitura }: {
+  rota: string; aba: string;
+  local?: { irPara: (id: string) => void; fechar: () => void };
+  /** quem não mexe no Cadastro: no lugar das abas, só esta (a Dados da empresa, sem editar) */
+  soLeitura?: ReactNode;
+}) {
+  const vm = useJanelaDaEmpresa(rota, aba, local);
+  const abas = soLeitura ? vm.abas.filter(a => a.id === 'empresa').map(a => ({ ...a, ativa: true, pendente: 0 })) : vm.abas;
   const { fechar } = vm;
 
   // a página de trás não rola com a janela aberta
@@ -70,13 +79,15 @@ export function JanelaDaEmpresa({ rota, aba }: { rota: string; aba: string }) {
 
   return (
     // data-volta-para: ao fechar, a janela encolhe de volta para a linha desta empresa na lista (mesmo aberta por link)
-    <div className="cad-janela-fundo" data-volta-para={vm.empresa.codigo != null ? '[data-empresa="' + vm.empresa.codigo + '"]' : undefined}
+    <div className="cad-janela-fundo" data-volta-para={!local && vm.empresa.codigo != null ? '[data-empresa="' + vm.empresa.codigo + '"]' : undefined}
       onMouseDown={e => { if (e.target === e.currentTarget) fechar(); }}>
       <div ref={janela} className="cad-janela" role="dialog" aria-modal="true" aria-label={'Cadastro de ' + vm.empresa.nome}>
         <header className="cad-janela-topo">
-          <button type="button" className="btn btn-ghost" onClick={fechar} title="Voltar para a lista de empresas">
-            <Icone nome="chevronLeft" />Empresas
-          </button>
+          {!local && (
+            <button type="button" className="btn btn-ghost" onClick={fechar} title="Voltar para a lista de empresas">
+              <Icone nome="chevronLeft" />Empresas
+            </button>
+          )}
           <span className="cad-janela-empresa">
             <b className="num">{vm.empresa.codigo ?? '—'}</b>
             <span className="cad-janela-nome">{vm.empresa.nome}</span>
@@ -87,10 +98,10 @@ export function JanelaDaEmpresa({ rota, aba }: { rota: string; aba: string }) {
         </header>
         <div className="cad-janela-corpo">
           <nav ref={abasInd} className="cad-janela-abas com-indicador" aria-label="Abas da empresa">
-            {vm.abas.map((a, i) => (
+            {abas.map((a, i) => (
               <Fragment key={a.id}>
                 {/* o nome do grupo, quando muda (Dados · Bancos · Contabilidade · Acessos · Registro) */}
-                {(i === 0 || vm.abas[i - 1].grupo !== a.grupo) && <span className="cad-janela-grupo">{a.grupo}</span>}
+                {(i === 0 || abas[i - 1].grupo !== a.grupo) && <span className="cad-janela-grupo">{a.grupo}</span>}
                 <button type="button" className={'cad-janela-aba' + (a.ativa ? ' ativa' : '')} aria-current={a.ativa ? 'page' : undefined}
                   onClick={() => vm.irPara(a.id)} title={a.pendente ? (a.pendente === 1 ? 'Falta 1 item' : 'Faltam ' + a.pendente + ' itens') : undefined}>
                   <Icone nome={a.icone} />{a.rotulo}
@@ -102,10 +113,12 @@ export function JanelaDaEmpresa({ rota, aba }: { rota: string; aba: string }) {
           <div ref={conteudoDaAba} className="cad-janela-conteudo">
             {/* o título da página, como no Notion: "Contábil · Parâmetros" */}
             {vm.abaAberta && <h2 className="cfg-titulo">{vm.abaAberta.grupo !== 'Empresa' && <span className="fraco">{vm.abaAberta.grupo} · </span>}{vm.abaAberta.rotulo}</h2>}
-            {vm.aba === 'empresa' && <ResumoDoCadastro vm={vm} />}
-            <Aba rota={rota} aba={vm.aba} />
-            {/* o link da Área do Cliente (Vitor, 16/10/2026): gerar, copiar, WhatsApp, trocar e revogar */}
-            {vm.aba === 'empresa' && vm.empresa.codigo != null && <LinkDoClienteNaEmpresa codigo={vm.empresa.codigo} nome={vm.empresa.nome} />}
+            {soLeitura || <>
+              {vm.aba === 'empresa' && <ResumoDoCadastro vm={vm} />}
+              <Aba rota={rota} aba={vm.aba} />
+              {/* o link da Área do Cliente (Vitor, 16/10/2026): gerar, copiar, WhatsApp, trocar e revogar */}
+              {vm.aba === 'empresa' && vm.empresa.codigo != null && <LinkDoClienteNaEmpresa codigo={vm.empresa.codigo} nome={vm.empresa.nome} />}
+            </>}
           </div>
         </div>
       </div>

@@ -10,7 +10,8 @@ import { useCadastro, useRegimesDoEntregas } from '../../../dados/repo';
 
 export interface ItemDoResumo { id: string; rotulo: string; tem: boolean; texto: string; aba: string }
 
-export function useJanelaDaEmpresa(rota: string, aba: string) {
+/** local: a janela aberta por cima de outra tela (o cartão da empresa no cabeçalho; 27/10/2026), sem mexer no endereço */
+export function useJanelaDaEmpresa(rota: string, aba: string, local?: { irPara: (id: string) => void; fechar: () => void }) {
   useRegimesDoEntregas();
   const navegar = useNavigate();
   // o CadastroAberto só abre a janela quando a empresa está na lista
@@ -40,7 +41,7 @@ export function useJanelaDaEmpresa(rota: string, aba: string) {
       itens,
       completos: itens.filter(i => i.tem).length,
     },
-    irPara: (id: string) => navegar(caminhoDoCadastro(rota, id), { replace: true }),
-    fechar: () => navegar(caminhoDoCadastro(null)),
+    irPara: local ? local.irPara : (id: string) => navegar(caminhoDoCadastro(rota, id), { replace: true }),
+    fechar: local ? local.fechar : () => navegar(caminhoDoCadastro(null)),
   };
 }

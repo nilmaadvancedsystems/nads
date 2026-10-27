@@ -102,8 +102,10 @@ export function Casca(p: {
   acimaDoCabecalho?: ReactNode;
   /** o canto direito do cabeçalho, como os botões do GitHub (ex.: os grupos da rotina e o perfil, no executor) */
   topoDireita?: ReactNode;
-  /** em cima das seções, na barra lateral (a Tarefas: escolher a empresa e os avisos; 27/10/2026) */
+  /** em cima das seções, na barra lateral */
   topoDaLateral?: ReactNode;
+  /** no alto da gaveta ☰, entre o N e o × (a Tarefas: escolher a empresa; 27/10/2026); recebe o fechar da gaveta */
+  topoDaGaveta?: (fechar: () => void) => ReactNode;
   /** no cabeçalho, logo depois do nome do sistema (a Tarefas: o cartão da empresa aberta, com o código e o CNPJ; 27/10/2026) */
   cartaoNoTopo?: ReactNode;
   /** nome da lista da esquerda, para leitor de tela (padrão "Seções") */
@@ -273,6 +275,7 @@ export function Casca(p: {
         <aside ref={gavetaEl} className="drawer" role="dialog" aria-modal="true" aria-label="Menu">
           <div className="drawer-head">
             <span className="brand-mark" aria-hidden="true"><MarcaN /></span>
+            {p.topoDaGaveta && <div className="drawer-head-meio">{p.topoDaGaveta(fecharGaveta)}</div>}
             <BotaoFechar rotulo="Fechar menu" onClick={fecharGaveta} />
           </div>
           <button className="drawer-item" type="button" onClick={() => { fecharGaveta(); (p.onAplicativos || p.onInicio)(); }}>

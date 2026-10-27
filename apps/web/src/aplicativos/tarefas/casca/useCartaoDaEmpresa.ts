@@ -1,20 +1,19 @@
 // ViewModel do cartão da empresa aberta no cabeçalho (CartaoDaEmpresa) e da janela flutuante com os dados dela (27/10/2026:
-// "quando eu clicar e para abrir uma janela flutuante dos dados da empresa não ir para o cadastro"): o nome, o código e o
-// CNPJ (o do Cadastro ou o do Entregas), o regime, os responsáveis e o que o Entregas e a Receita têm dela. Só ler; quem
-// mexe no Cadastro tem, no pé da janela, o atalho para lá.
+// "quando eu clicar e para abrir uma janela flutuante dos dados da empresa não ir para o cadastro"; "era pra seguir o
+// layout do cadastro"): a janela do Cadastro, por cima da tela, na aba aberta (começa em Dados da empresa). Quem não mexe
+// no Cadastro vê só os dados (o regime, os responsáveis e o que o Entregas e a Receita têm dela), sem editar.
 import { empresas, tarefas } from '@nads/core';
 import { useState } from 'react';
-import { useNavigate } from 'react-router';
 import { useCadastro, useDadosDaEmpresaNoEntregas } from '../dados/repo';
-import { caminhoDoCadastro, podeMexerNoCadastro } from './navegacao';
+import { podeMexerNoCadastro } from './navegacao';
 import { useOperador } from './operador';
 
 export function useCartaoDaEmpresa(empresa: { codigo: number | null; nome: string; rota: string }) {
-  const navegar = useNavigate();
   const op = useOperador().operador;
   const c = useCadastro(empresa.nome, empresa.codigo);
   const doEntregas = useDadosDaEmpresaNoEntregas(empresa.codigo);
-  const [aberta, setAberta] = useState(false);
+  /** a aba da janela aberta (null: fechada) */
+  const [aba, setAba] = useState<string | null>(null);
   const d = doEntregas.dados;
   const r = d?.receita || null;
   const cnpj = c.cadastro.cnpj || d?.documento || '';
@@ -42,11 +41,10 @@ export function useCartaoDaEmpresa(empresa: { codigo: number | null; nome: strin
   return {
     nome: empresa.nome,
     doc: [empresa.codigo != null ? 'Código ' + empresa.codigo : '', docFormatado ? tipoDoc + ' ' + docFormatado : ''].filter(Boolean).join(' · '),
-    aberta, abrir: () => setAberta(true), fechar: () => setAberta(false),
+    aba, abrir: () => setAba('empresa'), irPara: (id: string) => setAba(id), fechar: () => setAba(null),
     carregando: !c.carregada || !doEntregas.carregado,
     linhas,
-    /** o atalho para o Cadastro, no pé da janela (só quem mexe nele) */
+    /** a janela inteira do Cadastro, com todas as abas (só quem mexe nele) */
     podeEditar: pode,
-    editar: () => { setAberta(false); navegar(caminhoDoCadastro(empresa.rota)); },
   };
 }

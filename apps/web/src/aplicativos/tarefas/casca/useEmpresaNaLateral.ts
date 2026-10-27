@@ -1,4 +1,4 @@
-// ViewModel do topo da barra lateral de Minhas empresas (27/10/2026: "encima onde está vazio vai ser pra selecionar uma
+// ViewModel do seletor da empresa, no alto do menu ☰ (27/10/2026: "encima onde está vazio vai ser pra selecionar uma
 // empresa para mecher nela, ao fazer isso vai ser escolhido uma empresa e entrar no setor vai confirmar vai abrir ela,
 // variando de cada setor (tirando dp)"): a busca da empresa (código ou nome), o setor (Contábil ou Fiscal, sempre à vista)
 // e o Abrir, que leva à Visão geral da empresa naquele setor (o painel dela).
@@ -13,7 +13,7 @@ import { useOperador, type Operador } from './operador';
 /** Quantas empresas a busca mostra. */
 const ACHADAS = 8;
 
-export function useEmpresaNaLateral(aberta: { codigo: number | null; nome: string } | null) {
+export function useEmpresaNaLateral(aberta: { codigo: number | null; nome: string } | null, aoAbrir?: () => void) {
   const repo = useRepo();
   const navegar = useNavigate();
   const op = useOperador().operador as Operador;
@@ -48,6 +48,7 @@ export function useEmpresaNaLateral(aberta: { codigo: number | null; nome: strin
       const url = caminhoDaPaginaDaEmpresa(empresas.rotaDaEmpresa(escolhida), 'visao') + (setor !== op.departamento ? '?dep=' + setor : '');
       limpar();
       fechar();
+      aoAbrir?.();
       navegar(url);
     },
   };

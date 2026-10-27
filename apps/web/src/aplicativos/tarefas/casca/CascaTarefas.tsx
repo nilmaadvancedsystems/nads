@@ -63,9 +63,9 @@ export function CascaTarefas({ app, pagina, telaInteira, larga, empresa, childre
       lateral={telaInteira || vm.comAbas ? 'nenhuma' : undefined} larga={telaInteira || larga}
       acoes={telaInteira || (empresa && !titulo) ? undefined : <LugarDasAcoes />} onSecao={empresa ? empresa.onPagina : vm.onSecao} onPagina={vm.onPagina} onInicio={vm.inicio} onAplicativos={vm.inicio}
       onEmpresa={vm.trocarPessoa} aplicativos={vm.aplicacoes} onAplicativo={vm.onAplicacao}
-      // o topo da barra lateral, em todas as aplicações (27/10/2026: no Fiscal, "encima onde está vazio vai ser pra selecionar
-      // uma empresa"): escolher a empresa e o setor, e os avisos
-      topoDaLateral={<EmpresaNaLateral aberta={empresa || null} />}
+      // escolher a empresa e o setor, no alto do menu ☰, entre o N e o × (27/10/2026: "era para ficar aqui a escolha de
+      // empresa"); abrir fecha o menu
+      topoDaGaveta={fechar => <EmpresaNaLateral aberta={empresa || null} aoAbrir={fechar} />}
       cartaoNoTopo={empresa ? <CartaoDaEmpresa empresa={empresa} /> : undefined}
       topoDireita={<AvatarDaPessoa vm={vm} abrirFeedback={() => setFeedback(true)} />}
       // os Feedbacks de volta na gaveta, junto do Admin (Vitor, 26/10/2026: "coloque a aba de feedbacks no meu usuário")

@@ -1,4 +1,4 @@
-// View do topo da barra lateral (27/10/2026): o seletor da empresa, no jeito do seletor de equipe do Vercel/Notion (o
+// View do seletor da empresa, no alto do menu ☰ entre o N e o × (27/10/2026): no jeito do seletor de equipe do Vercel/Notion (o
 // ícone, em cima o código e o setor, embaixo o nome em até duas linhas, e o ▾), que abre a busca, o setor e o Abrir. Os
 // avisos ficam só no Início ("pra que eu quero aviso aqui?"). Só as peças do catálogo (menu suspenso, busca curta, lista
 // de achados, segmentado, botões).
@@ -60,11 +60,11 @@ function PainelDeEscolher({ vm, fechar }: { vm: Vm; fechar: () => void }) {
   );
 }
 
-export function EmpresaNaLateral({ aberta }: { aberta: { codigo: number | null; nome: string } | null }) {
-  const vm = useEmpresaNaLateral(aberta);
+export function EmpresaNaLateral({ aberta, aoAbrir }: { aberta: { codigo: number | null; nome: string } | null; aoAbrir?: () => void }) {
+  const vm = useEmpresaNaLateral(aberta, aoAbrir);
   return (
     <MenuSuspenso semSeta className={'seletor-empresa' + (vm.aberta ? ' com-empresa' : '')} titulo="Abrir uma empresa"
-      dica={vm.aberta ? 'Trocar a empresa' : 'Escolher a empresa e o setor'} largura={340}
+      dica={vm.aberta ? 'Trocar a empresa' : 'Escolher a empresa e o setor'}
       rotulo={
         <>
           <span className="seletor-empresa-icone" aria-hidden="true"><Icone nome={vm.aberta ? 'predio' : 'search'} width={16} height={16} /></span>
