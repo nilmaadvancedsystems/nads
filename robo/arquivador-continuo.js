@@ -399,7 +399,8 @@ function iniciar(opcoes) {
   /** zip ainda chegando: o diretório central não está lá. */
   function zipInteiro(raiz, rel) {
     if (!/\.zip$/i.test(rel)) return true;
-    try { A.abrirZip(fs.readFileSync(path.join(raiz, rel))); return true; } catch (e) { return false; }
+    // o pacote de transmissão do Sintegra (TED) tem extensão .zip e nunca abre como zip: não está "chegando" (27/10/2026)
+    try { const b = fs.readFileSync(path.join(raiz, rel)); if (A.ehTedSintegra(b)) return true; A.abrirZip(b); return true; } catch (e) { return false; }
   }
 
   // ---------------------------------------------------------------------------------------------------------------------

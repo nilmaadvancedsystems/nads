@@ -926,6 +926,8 @@ function decidir(entrada, ctx) {
   const fim = o => finalizar(Object.assign({ evidencias: ev, nomeOriginal: nome, ocr: entrada.ocr || null, anoPista: anoDaPasta(rel) || competenciaDaPasta(rel), anoEntrega: anoDaEntrega(entrada) }, o), ctx);
   if (VIDEO_AUDIO.test(nome)) return { acao: 'IGNORAR', motivo: 'VIDEO_OU_AUDIO', confianca: 1, evidencias: ['Dicionário §1: vídeo/áudio fica na origem'] };
   if (entrada.hash && HASH_DESCARTE[entrada.hash]) return { acao: 'DESCARTAR', motivo: 'DESCARTE_CONFIRMADO', confianca: 1, tipo: 'DESCARTE', evidencias: ['descarte confirmado pelo responsável (' + HASH_DESCARTE[entrada.hash] + '): vai para a quarentena, nunca é apagado direto'] };
+  // o pacote de transmissão do Sintegra para a SEFAZ (o TED: extensão .zip, mas sem ser zip; Vitor, 27/10/2026)
+  if (entrada.tedSintegra) return fim(decidirTedSintegra(entrada, ctx, ev));
   if (CONTEINER.test(nome)) return { acao: 'CONTEINER', motivo: null, confianca: 1, evidencias: ['Dicionário §1: compactado é extraído, cada arquivo vira item'] };
   const cad = ctx.cadastro;
 
@@ -1384,6 +1386,24 @@ function decidirFornecedor(pg, entrada, u, bruto, ctx, ev, porHash) {
   if (!comp) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5, evidencias: ev.concat('sem a data no começo do nome, o mês na pasta de origem ou o vencimento no conteúdo') });
   // o nome original fica (já traz a data, o fornecedor, a NF e o valor)
   return Object.assign(base, { acao: 'ARQUIVAR', confianca: c.conf, competencia: comp, caminho: ['CONTÁBIL', 'PAGAMENTOS DE FORNECEDORES', String(comp.ano), dois(comp.mes), pg.fornecedor], nomeFinal: entrada.nome });
+}
+
+/**
+ * O pacote de transmissão do Sintegra (TED, "02CL_PADRAO CONV57/95 …" + o conteúdo comprimido no formato da SEFAZ; não abre
+ * como zip). 27/10/2026 (Vitor): 05. SINTEGRA, "MM-AAAA - TRANSMISSAO.zip" (ao lado do "MM-AAAA.txt"), sem abrir; o cliente
+ * pela pasta de origem ("0010 - DORNAS …\DEPARTAMENTO FISCAL\SINTEGRA\2026\02-2026.zip") e a competência pelo nome ou pela pasta.
+ */
+function decidirTedSintegra(entrada, ctx, ev) {
+  const rel = entrada.rel || entrada.nome;
+  const base = { tipo: 'SINTEGRA', setor: 'FISCAL', fonte: 'Sintegra, pacote de transmissão (Vitor, 27/10/2026); 05a (Sintegra)' };
+  ev.push('pacote de transmissão do Sintegra (TED): o cabeçalho "02CL_PADRAO", sem abrir');
+  const sub = clienteDaPasta(rel, ctx.cadastro);
+  if (!sub) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_NAO_LOCALIZADO', confianca: 0.3, evidencias: ev.concat('a pasta de origem não diz o cliente (o pacote não traz o CNPJ legível)') });
+  ev.push(sub.como);
+  const pasta = anoDaPasta(rel) || competenciaDaPasta(rel);
+  const comp = competenciaDoNome(entrada.nome) || (pasta && pasta.mes ? { mes: pasta.mes, ano: pasta.ano } : null);
+  if (!comp) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5, cliente: sub.codigo, evidencias: ev.concat('sem o MM-AAAA no nome nem o mês na pasta de origem') });
+  return Object.assign(base, { acao: 'ARQUIVAR', cliente: sub.codigo, comoCliente: sub.forte ? 'pastaConferida' : 'pasta', confianca: 0.9, competencia: comp, fiscal: ['SINTEGRA'], nomeFinal: mesAno(comp) + ' - TRANSMISSAO.zip' });
 }
 
 function decidirPdf(entrada, ctx, ev, porHash) {
