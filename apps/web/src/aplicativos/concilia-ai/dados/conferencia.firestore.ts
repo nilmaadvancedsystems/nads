@@ -9,7 +9,8 @@
 // cedo demais seria regravada vazia). E a empresa grande (Vitor, 27/10/2026: "as saídas da 237 não estão ficando
 // armazenadas" — 24 mil cupons, o documento passava de 1 MB e a gravação falhava): as listas grandes vão em pedaços em
 // empresas/{slug}/notas (core conferencia/regras/partes.ts), o documento principal guarda onde estão (notasEmPartes); os
-// pedaços só são regravados quando as notas mudam, e a empresa só aparece na tela com todos os pedaços lidos.
+// pedaços só são regravados quando as notas mudam, e a empresa só aparece na tela com todos os pedaços lidos. Enquanto
+// eles sobem, `gravacao` conta quantos já chegaram (a janela do andamento) e o navegador pede confirmação para sair da página.
 // Este é o ÚNICO arquivo do nads que fala com o Firebase (a trava scripts/conexoes.mjs garante).
 import { conferencia as c, formatos } from '@nads/core';
 import { initializeApp } from 'firebase/app';
@@ -62,6 +63,14 @@ export function criarRepoConferenciaFirestore(): RepoConferenciaFirestore {
   // uma gravação de cada vez por empresa (a de agora espera a anterior)
   const filaDeGravar = new Map<string, Promise<void>>();
 
+  // o andamento da gravação grande (a tela ouve à parte: não redesenha as notas a cada pedaço)
+  let andamento: c.GravacaoNaNuvem | null = null;
+  let pendentes = 0;
+  const ouvintesDaGravacao = new Set<() => void>();
+  const mudouGravacao = () => { for (const f of ouvintesDaGravacao) f(); };
+  // fechar ou atualizar a página com gravação pendente perde o que não chegou: o navegador pergunta antes
+  window.addEventListener('beforeunload', ev => { if (pendentes > 0) { ev.preventDefault(); ev.returnValue = ''; } });
+
   async function gravarAgora(e: c.Empresa) {
     const slug = formatos.slug(e.nome);
     const ref = doc(db, 'empresas', slug);
@@ -71,25 +80,39 @@ export function criarRepoConferenciaFirestore(): RepoConferenciaFirestore {
       return;
     }
     const emPartes: c.NotasEmPartes = {};
+    // primeiro o que mudou (para saber de quantos pedaços é a gravação), depois a subida
+    const novas: { lista: c.ListaGrande; json: string; versao: string; pedacos: unknown[][]; qtd: number }[] = [];
     for (const lista of c.LISTAS_GRANDES) {
       const itens = (e[lista] || []) as unknown[];
       if (!itens.length) continue;
       const json = JSON.stringify(itens);
-      const k = slug + '|' + lista;
-      const antes = nosPedacos.get(k);
+      const antes = nosPedacos.get(slug + '|' + lista);
       if (antes && antes.json === json) { emPartes[lista] = { versao: antes.versao, partes: antes.partes, qtd: antes.qtd }; continue; }
-      const versao = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-      const pedacos = c.dividirEmPartes(itens);
-      // os pedaços antes do documento principal: quem lê o principal novo já acha todos
-      await Promise.all(pedacos.map((itensDoPedaco, n) => setDoc(doc(db, 'empresas', slug, 'notas', c.idDoPedaco(lista, versao, n)), { itens: itensDoPedaco })));
-      nosPedacos.set(k, { json, versao, partes: pedacos.length, qtd: itens.length });
-      emPartes[lista] = { versao, partes: pedacos.length, qtd: itens.length };
+      novas.push({ lista, json, versao: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), pedacos: c.dividirEmPartes(itens), qtd: itens.length });
     }
-    const principal = paraGravar(e);
-    for (const lista of Object.keys(emPartes)) principal[lista] = [];
-    principal.notasEmPartes = emPartes;
-    await setDoc(ref, principal);
-    await apagarPedacosVelhos(slug, emPartes);
+    // a janela do andamento: os pedaços novos + o documento principal
+    const total = novas.reduce((s, n) => s + n.pedacos.length, 0);
+    if (total) { andamento = { empresa: e.nome, notas: novas.reduce((s, n) => s + n.qtd, 0), feitos: 0, total: total + 1 }; mudouGravacao(); }
+    const chegou = () => { if (andamento) { andamento = { ...andamento, feitos: andamento.feitos + 1 }; mudouGravacao(); } };
+    try {
+      for (const n of novas) {
+        // os pedaços antes do documento principal: quem lê o principal novo já acha todos
+        await Promise.all(n.pedacos.map((itensDoPedaco, i) => setDoc(doc(db, 'empresas', slug, 'notas', c.idDoPedaco(n.lista, n.versao, i)), { itens: itensDoPedaco }).then(chegou)));
+        nosPedacos.set(slug + '|' + n.lista, { json: n.json, versao: n.versao, partes: n.pedacos.length, qtd: n.qtd });
+        emPartes[n.lista] = { versao: n.versao, partes: n.pedacos.length, qtd: n.qtd };
+      }
+      const principal = paraGravar(e);
+      for (const lista of Object.keys(emPartes)) principal[lista] = [];
+      principal.notasEmPartes = emPartes;
+      await setDoc(ref, principal);
+      chegou();
+      await apagarPedacosVelhos(slug, emPartes);
+      if (total && andamento) { andamento = { ...andamento, feitos: andamento.total, pronto: true }; mudouGravacao(); }
+    } catch (err) {
+      // o erro vai para o aviso de sempre (gravar); a janela sai
+      if (total) { andamento = null; mudouGravacao(); }
+      throw err;
+    }
   }
 
   /** apaga os pedaços que não são das versões de agora (os de antes de mudar as notas) */
@@ -102,8 +125,10 @@ export function criarRepoConferenciaFirestore(): RepoConferenciaFirestore {
   function gravar(e: c.Empresa) {
     const slug = formatos.slug(e.nome);
     const anterior = filaDeGravar.get(slug) || Promise.resolve();
+    pendentes++;
     const esta = anterior.then(() => gravarAgora(e))
-      .catch(err => avisar('Não deu para salvar "' + e.nome + '" na nuvem: ' + (err?.message || err)));
+      .catch(err => avisar('Não deu para salvar "' + e.nome + '" na nuvem: ' + (err?.message || err)))
+      .finally(() => { pendentes--; });
     filaDeGravar.set(slug, esta);
   }
 
@@ -197,5 +222,10 @@ export function criarRepoConferenciaFirestore(): RepoConferenciaFirestore {
     versao: () => ver,
     restaurarExemplos() { /* só existe no modo exemplos */ },
     definirAviso(fn) { avisar = fn; },
+    gravacao: {
+      atual: () => andamento,
+      pendente: () => pendentes > 0,
+      assinar(fn) { ouvintesDaGravacao.add(fn); return () => { ouvintesDaGravacao.delete(fn); }; },
+    },
   };
 }
