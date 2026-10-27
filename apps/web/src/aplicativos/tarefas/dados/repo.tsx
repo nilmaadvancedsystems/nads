@@ -4,7 +4,7 @@ import type { empresas, entregas, tarefas, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { RepoAcesso } from './acesso';
-import { assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, dadosDaEmpresaNoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDaAreaCliente, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDoPainelRobo, repoDaIA, repoDeFeedback, repoDeUso, repoDeParcelamentos, repoDeCategoriasDp, repoDeLegislacaoDp, repoDoLcdpr, repoDoArquivador, repoDosAgentes, repoDoFgts, repoDeNfse, repoDoCaixa, repoDeHonorarios, repoDoSieg, repoPessoal, repoDoCofre } from './fonte';
+import { assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, dadosDaEmpresaNoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDaAreaCliente, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDoPainelRobo, repoDaIA, repoDeFeedback, repoDeAvisos, repoDeUso, repoDeParcelamentos, repoDeCategoriasDp, repoDeLegislacaoDp, repoDoLcdpr, repoDoArquivador, repoDosAgentes, repoDoFgts, repoDeNfse, repoDoCaixa, repoDeHonorarios, repoDoSieg, repoPessoal, repoDoCofre } from './fonte';
 import type { RepoCofre } from './cofre';
 import type { RepoAgentes } from './agentes';
 import type { RepoSieg } from './sieg';
@@ -267,6 +267,13 @@ export function useLcdpr(): RepoLcdpr {
 /** Os feedbacks (enviar; o admin vê todos), ao vivo. */
 export function useFeedback(): RepoFeedback {
   const repo = repoDeFeedback();
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  return repo;
+}
+
+/** O mural de avisos do escritório (o Início), ao vivo. */
+export function useAvisos() {
+  const repo = repoDeAvisos();
   useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
   return repo;
 }

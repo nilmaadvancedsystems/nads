@@ -265,7 +265,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   }
 
   const ultimo = meses[meses.length - 1] || competencia;
-  const voltar = () => navegar(lista + '?competencia=' + ultimo);
+  const voltar = () => navegar(lista + 'competencia=' + ultimo);
   const rotuloCurto = (c: string) => t.rotuloCurtoCompetencia(c);
 
   /** Confere e marca a etapa em cada mês que falta (no período, todos de uma vez); o que não passou vira aviso. */

@@ -102,6 +102,10 @@ export function Casca(p: {
   acimaDoCabecalho?: ReactNode;
   /** o canto direito do cabeçalho, como os botões do GitHub (ex.: os grupos da rotina e o perfil, no executor) */
   topoDireita?: ReactNode;
+  /** em cima das seções, na barra lateral (a Tarefas: escolher a empresa e os avisos; 27/10/2026) */
+  topoDaLateral?: ReactNode;
+  /** no cabeçalho, logo depois do nome do sistema (a Tarefas: o cartão da empresa aberta, com o código e o CNPJ; 27/10/2026) */
+  cartaoNoTopo?: ReactNode;
   /** nome da lista da esquerda, para leitor de tela (padrão "Seções") */
   rotuloLateral?: string;
   /**
@@ -241,6 +245,7 @@ export function Casca(p: {
                 {p.empresa && <span className="gh-sep">/</span>}
               </>
             )}
+            {p.cartaoNoTopo && !noOutro && <span className="gh-cartao-topo">{p.cartaoNoTopo}</span>}
             {p.empresa && <button className="brand-tag" id="brandTagEmpresa" type="button" title={p.empresa.nome} onClick={p.onEmpresa}>{p.empresa.codigo}</button>}
             {p.trilha?.map((t, i) => (
               <span key={t.rotulo} style={{ display: 'contents' }}>
@@ -314,6 +319,7 @@ export function Casca(p: {
       ) : (
       <div className={'layout' + (oculta ? ' sidebar-oculta' : '')}>
         <nav className="subnav" id="subnav" aria-label={p.rotuloLateral || 'Seções'}>
+          {p.topoDaLateral && <div className="subnav-topo">{p.topoDaLateral}</div>}
           <div ref={lateralInd} className="subnav-itens com-indicador">
             {p.secoes.filter(s => !(naEtapa && s.foraDaEtapa)).map(s => {
               const sep = grupoAnt !== null && s.grupo !== grupoAnt;

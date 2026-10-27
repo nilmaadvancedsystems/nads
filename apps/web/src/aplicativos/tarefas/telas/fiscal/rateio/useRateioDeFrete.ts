@@ -7,6 +7,7 @@
 // faz a planilha à mão. As contas: core tarefas.sieg.rateioDoCte e ratear (em centavos, a soma bate com o CT-e).
 import { empresas as emp, tarefas as t } from '@nads/core';
 import { useState } from 'react';
+import { useSearchParams } from 'react-router';
 import { competenciasDaTela } from '../../../casca/navegacao';
 import { useRepo, useSieg } from '../../../dados/repo';
 
@@ -33,7 +34,9 @@ export function useRateioDeFrete() {
   const repo = useRepo();
   const sieg = useSieg();
   const [fonte, setFonte] = useState<Fonte>('cte');
-  const [codigo, setCodigo] = useState<number | null>(null);
+  // a empresa aberta em Minhas empresas (27/10/2026) chega já escolhida, pelo endereço (?empresa=código)
+  const [params] = useSearchParams();
+  const [codigo, setCodigo] = useState<number | null>(() => Number(params.get('empresa')) || null);
   const [busca, setBusca] = useState('');
   const [ativo, setAtivo] = useState(0);
   const [competencia, setCompetencia] = useState(() => competenciasDaTela(1)[0]);

@@ -29,6 +29,7 @@ export * from './regras/protocoloDeTributos';
 export * from './regras/protocolosDoAno';
 export * from './regras/prazosDoDp';
 export * from './regras/despesasDoBalancete';
+export * from './regras/inicio';
 export { idDaExecucao, type RepoTarefas } from './repo';
 export { criarRepoTarefasMemoria, execucoesDeExemplo, execucoesVariadas, type GuardaTarefas } from './repo.memoria';
 export * from './reinf/reinf';

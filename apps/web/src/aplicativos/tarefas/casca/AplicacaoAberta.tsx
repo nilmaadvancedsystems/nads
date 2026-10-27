@@ -14,7 +14,6 @@ import { useOperador, type Operador } from './operador';
 
 // cada tela é um pedaço à parte (revisão da UI, 18/10/2026: o pacote inicial tinha 4 MB): baixa quando a pessoa abre a
 // página, com o Esqueleto no lugar enquanto chega (comum/pedaco.tsx). As da Entregas ainda vêm no pacote inicial.
-const PainelDoFiscal = pedaco(() => import('../telas/fiscal/painel/PainelDoFiscal'), 'PainelDoFiscal');
 const UsuariosDoNads = pedaco(() => import('../telas/cadastro/usuarios/UsuariosDoNads'), 'UsuariosDoNads');
 const VisaoContabil = pedaco(() => import('../telas/contabil/VisaoContabil'), 'VisaoContabil');
 const ConfiguracoesContabil = pedaco(() => import('../telas/contabil/configuracoes/ConfiguracoesContabil'), 'ConfiguracoesContabil');
@@ -22,6 +21,7 @@ const ExploradorDoDrive = pedaco(() => import('../telas/drive/ExploradorDoDrive'
 const CaixaDoRobo = pedaco(() => import('../telas/gmail/CaixaDoRobo'), 'CaixaDoRobo');
 const HistoricoDoRobo = pedaco(() => import('../telas/gmail/HistoricoDoRobo'), 'HistoricoDoRobo');
 const MinhasEmpresas = pedaco(() => import('../telas/empresas/MinhasEmpresas'), 'MinhasEmpresas');
+const Inicio = pedaco(() => import('../telas/inicio/Inicio'), 'Inicio');
 const Insights = pedaco(() => import('../telas/insights/Insights'), 'Insights');
 const EmDesenvolvimento = pedaco(() => import('../telas/em-desenvolvimento/EmDesenvolvimento'), 'EmDesenvolvimento');
 const Reinf = pedaco(() => import('../telas/fiscal/reinf/Reinf'), 'Reinf');
@@ -52,9 +52,10 @@ const ImportarExtrato = pedaco(() => import('../telas/financeiro/ImportarExtrato
 
 function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
   switch (app) {
-    case 'minhas-empresas': return pagina === 'insights' ? <Insights /> : <MinhasEmpresas />;
+    case 'minhas-empresas': return pagina === 'inicio' ? <Inicio /> : pagina === 'insights' ? <Insights /> : <MinhasEmpresas />;
     case 'contabil': return pagina === 'configuracoes' ? <ConfiguracoesContabil /> : <VisaoContabil pagina={pagina} />;
-    case 'fiscal': return pagina === 'empresas' ? <MinhasEmpresas /> : pagina === 'painel' ? <PainelDoFiscal /> : pagina === 'reinf' ? <Reinf /> : pagina === 'sintegra' ? <PaginaSintegra /> : pagina === 'faturamento' ? <FaturamentoDosClientes /> : pagina === 'simples' ? <CalculadoraDoSimples /> : pagina === 'rateio-frete' ? <RateioDeFrete /> : pagina === 'antecipacao-es' ? <AntecipacaoIcms /> : <VisaoContabil pagina={pagina} dep="fiscal" />;
+    // as Empresas, o Painel, a Visão geral e as Paradas do Fiscal saíram (27/10/2026): ficam as ferramentas
+    case 'fiscal': return pagina === 'sintegra' ? <PaginaSintegra /> : pagina === 'faturamento' ? <FaturamentoDosClientes /> : pagina === 'simples' ? <CalculadoraDoSimples /> : pagina === 'rateio-frete' ? <RateioDeFrete /> : pagina === 'antecipacao-es' ? <AntecipacaoIcms /> : <Reinf />;
     case 'dp': return ABAS_DO_PAINEL.includes(pagina as AbaDoPainel) ? <PainelDoDp aba={pagina as AbaDoPainel} /> : pagina === 'configuracoes' ? <ConfiguracoesDoDp /> : pagina === 'fgts' ? <FgtsDoDp /> : pagina === 'legislacao' ? <LegislacaoDoDp /> : <VisaoContabil pagina={pagina} dep="dp" />;
     case 'senhas': return pagina === 'acesso' ? <AcessoAoCofre /> : pagina === 'gov' ? <ContasGov /> : pagina === 'certificados' ? <Certificados /> : <SenhasDasEmpresas />;
     case 'cadastro': return <UsuariosDoNads />;

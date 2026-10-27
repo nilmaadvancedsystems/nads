@@ -109,6 +109,6 @@ export function useEmpresa(rota: string) {
     acao: ACAO[situacao],
     abrirExecutor: () => navegar(comDep(caminhoDoExecutor(empresas.rotaDaEmpresa(empresa), competencia))),
     abrirCompetencia: (c: string) => navegar(comDep(caminhoDaEmpresa(empresas.rotaDaEmpresa(empresa), c))),
-    voltar: () => navegar(lista + '?competencia=' + competencia),
+    voltar: () => navegar(lista + 'competencia=' + competencia),
   };
 }
