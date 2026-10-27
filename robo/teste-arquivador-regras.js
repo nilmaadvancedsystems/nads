@@ -233,6 +233,81 @@ igual('código com duas pastas no Drive: não escolhe', R.decidir({ nome: 'n.xml
 const cadZ2 = R.montarCadastro(j.linhas, ['591 - ZELO AGROINDUSTRIAIS LTDA']);
 igual('pasta nova quando o Drive já tem a mesma empresa com outro código: não cria a segunda', R.decidir({ nome: 'n.xml', rel: 'n.xml', xml: nfe('53636418000156', '99999999000191', '1', '2026-08-05T10:00:00-03:00') }, { cadastro: cadZ2 }).motivo, 'PASTA_EXISTE_COM_OUTRO_CODIGO');
 
+// ---------- 12. decisões do Vitor (27/10/2026): PGDAS-D, DEFIS do Alterdata, pagamentos de fornecedores, a 408 OURO VERDE ----------
+const MIG = require('./arquivador-migracao');
+const OV = { regime: 'Presumido', outrosNomes: ['OURO V E S F EIRELI'] };   // o extrato do BB só traz "OURO V E S F EIRELI"
+const LINHAS27 = LINHAS.concat([
+  { codigo: 700, razao: 'ACSSP ADM PROMOCAO DE VENDAS LTDA', doc: '35.418.593/0001-95', regime: 'Simples' },
+  { codigo: 411, razao: 'MINAS FORESTRY LTDA', doc: '12.345.678/0001-95', regime: 'Presumido' },
+  { codigo: 413, razao: 'BRAZILIAN FLORESTAL LTDA', doc: '23.456.789/0001-95', regime: 'Presumido' },
+  { codigo: 414, razao: 'BRAZILIAN FLORESTAL LTDA', doc: '23.456.789/0002-76', regime: 'Presumido' },
+  { codigo: 418, razao: 'BRAZILIAN FLORESTAL LTDA', doc: '23.456.789/0003-57', regime: 'Presumido' },
+  { codigo: 453, razao: 'BRAZILIAN FLORESTAL LTDA', doc: '23.456.789/0004-38', regime: 'Presumido' },
+  { codigo: 591, razao: 'ZELO AGROINDUSTRIAS LTDA', doc: '53.636.418/0001-56', regime: 'Simples' },
+  Object.assign({ codigo: 408, razao: 'OURO VERDE MINERACAO LTDA', doc: '34.567.891/0001-84' }, OV),
+  Object.assign({ codigo: 409, razao: 'OURO VERDE MINERACAO LTDA', doc: '34.567.891/0002-65' }, OV),
+  Object.assign({ codigo: 410, razao: 'OURO VERDE MINERACAO LTDA', doc: '34.567.891/0003-46' }, OV),
+]);
+const cad27 = R.montarCadastro(LINHAS27, PASTAS.concat(LINHAS27.filter(l => l.codigo >= 408).map(l => l.codigo + ' - ' + l.razao)));
+cad27.mapaMigracao = MIG.carregar({});   // o versionado (as pastas que juntam matriz e filiais)
+const d27 = e => R.decidir(Object.assign({ rel: e.nome }, e), { cadastro: cad27, hoje: new Date(2026, 9, 27) });
+const destino = x => [x.acao, x.motivo || null, x.destinoRelativo || null, x.nomeFinal || null];
+
+// 12a. PGDAS-D: 01. DAS do Simples, competência = o período de apuração, o documento pelo conteúdo
+const PGDAS_DECL = 'Programa Gerador do Documento de Arrecadação do Simples Nacional – Declaratório\nPGDAS-D\nDeclaração\nNº da Declaração: 06934601202302001\nCNPJ Básico: 06.934.601\nCNPJ Matriz: 06.934.601/0001-58\nNome Empresarial: JANIO JOSE DE ALMEIDA\nPeríodo de Apuração (PA): 02/2023\nReceita Bruta do PA (RPA) - Competência 10.000,00';
+d = d27({ nome: 'PGDASD-DECLARACAO-06934601202302001 02-2023.pdf', texto: [PGDAS_DECL] });
+igual('PGDAS-D declaração: 01. DAS\\MM-AAAA - PGDAS-D DECLARACAO.pdf, raiz do ano do PA', destino(d).concat(d.anoRaiz), ['ARQUIVAR', null, '152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\01. DAS', '02-2023 - PGDAS-D DECLARACAO.pdf', 2023]);
+// o layout de 2021: o título quebrado em duas linhas e o período "01/06/2021 a 30/06/2021" (Torra Torra; 27/10/2026)
+d = d27({ nome: 'PGDASD-DECLARACAO-06934601202106001.pdf', texto: ['Programa Gerador do Documento de Arrecadação\ndo Simples Nacional - Declaratório\nDeclaração Original\nPeríodo de Apuração:01/06/2021 a 30/06/2021\n.\n1. Identificação do Contribuinte\nCNPJ Matriz:06.934.601/0001-58\nNome empresarial:JANIO JOSE DE ALMEIDA\nNº da Declaração:06934601202106001'] });
+igual('PGDAS-D de 2021: o título em duas linhas', destino(d).concat(d.anoRaiz), ['ARQUIVAR', null, '152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\01. DAS', '06-2021 - PGDAS-D DECLARACAO.pdf', 2021]);
+// o recibo de 2021: o PA na tabela, grudado no número da apuração ("06/2021" + "06934601202106001")
+d = d27({ nome: 'PGDASD-RECIBO-06934601202106001.pdf', texto: ['RECIBO DE ENTREGA DA APURAÇÃO NO PGDAS-D\nDeclaração Original\n1. Informações do Contribuinte\nNome EmpresarialCNPJ da Matriz\nJANIO JOSE DE ALMEIDA06.934.601/0001-58\n2. Resumo da Apuração\nPeríodo de\nApuração\n06/202106934601202106001R$ 55.271,36R$ 3.857,48'] });
+igual('PGDAS-D recibo de 2021: o PA da tabela', destino(d), ['ARQUIVAR', null, '152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\01. DAS', '06-2021 - PGDAS-D RECIBO.pdf']);
+const PGDAS_REC = 'Recibo de Entrega da Apuração\nPGDAS-D\nCNPJ Básico: 06.934.601\nNome Empresarial: JANIO JOSE DE ALMEIDA\nPeríodo de Apuração: 03/2023\nNúmero da Declaração: 06934601202303001\nData/hora da transmissão: 20/04/2023 10:11:12';
+d = d27({ nome: 'PGDASD-RECIBO-06934601202303001.pdf', texto: [PGDAS_REC] });
+igual('PGDAS-D recibo só com o CNPJ básico (um cliente só bate): 03-2023 - PGDAS-D RECIBO.pdf', destino(d), ['ARQUIVAR', null, '152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\01. DAS', '03-2023 - PGDAS-D RECIBO.pdf']);
+const PGDAS_EXT = 'Extrato do Simples Nacional\nPeríodo de Apuração (PA): 10/2024\nCNPJ Matriz: 06.934.601/0001-58\nNome empresarial: JANIO JOSE DE ALMEIDA\nInformações da Declaração';
+igual('PGDAS-D extrato: 10-2024 - PGDAS-D EXTRATO.pdf', d27({ nome: 'PGDASD-EXTRATO REF. 10.2024.pdf', texto: [PGDAS_EXT] }).nomeFinal, '10-2024 - PGDAS-D EXTRATO.pdf');
+const PGDAS_DOIS = PGDAS_EXT + '\nRecibo de Entrega da Apuração';
+igual('PGDAS-D com recibo e extrato no conteúdo: o nome do arquivo desempata; sem ele, VOCABULARIO_AUSENTE', [d27({ nome: 'PGDASD-RECIBO-1.pdf', texto: [PGDAS_DOIS] }).nomeFinal, d27({ nome: 'pgdas.pdf', texto: [PGDAS_DOIS] }).motivo], ['10-2024 - PGDAS-D RECIBO.pdf', 'VOCABULARIO_AUSENTE']);
+d = d27({ nome: 'PGDASD-EXTRATO.pdf', texto: [PGDAS_EXT.replace(/06.934.601\/0001-58/, '11.426.314/0001-77').replace('10/2024', '09/2026')] });
+igual('PGDAS-D de cliente do Presumido no ano corrente: TIPO_INCOMPATIVEL_COM_REGIME (como o DAS)', [d.tipo, d.motivo], ['PGDAS-D', 'TIPO_INCOMPATIVEL_COM_REGIME']);
+igual('a guia do DAS ("Pagar este documento até") que cita o PGDAS-D continua DAS', d27({ nome: 'das.pdf', texto: [DAS + '\nGerado pelo PGDAS-D'] }).nomeFinal, '09-2026.pdf');
+
+// 12b. relatório da DEFIS do Alterdata: 14. DEFIS, cliente do CNPJ Matriz, raiz do ano da entrega (a emissão)
+const ALTERDATA = 'Declaração Anual do Simples Nacional - DASN Ano Calendário: Alterdata Tecnologia em Informática Ltda. 2025Emissão: 09/02/2026 17:19:15Página: 00001 00371ACSSP ADM PROMOCAO DE VENDAS LTDA 1. Identificação do Contribuinte CNPJ Matriz: 35.418.593/0001-95 Nome Empresarial: 1.1 CNPJ das Filiais Presentes nesta declaração: 06.934.601/0001-58 2. Informações Econômico-Fiscais';
+d = d27({ nome: 'ACSSP F.pdf', rel: 'DEFIS 2025.zip\\DEFIS 2025\\ACSSP F.pdf', texto: [ALTERDATA] });
+igual('DEFIS do Alterdata: 14. DEFIS\\AAAA - DEFIS ALTERDATA.pdf do CNPJ Matriz, raiz do ano da emissão', destino(d).concat(d.anoRaiz), ['ARQUIVAR', null, '700 - ACSSP ADM PROMOCAO DE VENDAS LTDA\\FISCAL\\SIMPLES NACIONAL\\14. DEFIS', '2025 - DEFIS ALTERDATA.pdf', 2026]);
+d = d27({ nome: 'BIG LANCHES F.pdf', texto: [ALTERDATA.replace('Ltda. 2025Emissão: 09/02/2026 17:19:15', 'Ltda. 2024')] });
+igual('... sem a emissão: o ano-calendário + 1', [d.nomeFinal, d.anoRaiz], ['2024 - DEFIS ALTERDATA.pdf', 2025]);
+d = d27({ nome: 'defis.pdf', texto: ['Declaração de Informações Socioeconômicas e Fiscais (DEFIS)\nAno-calendário 2025\nCNPJ 06.934.601/0001-58 JANIO JOSE DE ALMEIDA'] });
+igual('a DEFIS do portal continua "AAAA - DEFIS.pdf"', [d.tipo, d.destinoRelativo, d.nomeFinal], ['DEFIS', '152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\14. DEFIS', '2025 - DEFIS.pdf']);
+
+// 12c. pagamentos de fornecedores: CONTÁBIL\PAGAMENTOS DE FORNECEDORES\[ANO]\[MÊS]\[FORNECEDOR], o nome original
+const NOMES_PG = ['28-04-2025 POSTO 116 NF18203 R$4.107,85.pdf', '10-04-2025 RR PNEUS NF12279 E 1546 R$3.023,10.pdf', 'NF 128286 Mason Equipamento R$ 42.762,19.pdf', 'NFSE 08 MARCIA LAZZARO R$2.500,00.pdf', 'FATURAS Nº 32270 TRILHA TURISMO R$ 2.229,67..pdf', '29-09-2026 COMERCIAL ALVES NF58812 R$37,68.pdf'];
+igual('fornecedor: o trecho entre a data/"NF nnn" e o "R$", em maiúsculas', NOMES_PG.map(n => (R.pagamentoDeFornecedor({ nome: n, rel: 'X\\Comprovantes e NFs\\' + n }) || {}).fornecedor), ['POSTO 116', 'RR PNEUS', 'MASON EQUIPAMENTO', 'MARCIA LAZZARO', 'TRILHA TURISMO', 'COMERCIAL ALVES']);
+const P413 = 'FERNANDO\\413 BRAZILIAN filiais 414.  418. 453\\Comprovantes e Pagtos\\NFs e Boletos\\';
+d = d27({ nome: NOMES_PG[0], rel: P413 + NOMES_PG[0], texto: ['DANFE\nDOCUMENTO AUXILIAR DA NOTA FISCAL ELETRÔNICA\nPOSTO 116 LTDA\nDESTINATÁRIO BRAZILIAN FLORESTAL LTDA 23.456.789/0001-95'] });
+igual('pasta 413 (matriz e filiais), sem CNPJ de filial no conteúdo: a matriz 413, mês da data do nome, nome original', destino(d), ['ARQUIVAR', null, '413 - BRAZILIAN FLORESTAL LTDA\\CONTÁBIL\\PAGAMENTOS DE FORNECEDORES\\2025\\04\\POSTO 116', NOMES_PG[0]]);
+d = d27({ nome: NOMES_PG[2], rel: P413 + NOMES_PG[2], texto: ['BOLETO\nPagador: BRAZILIAN FLORESTAL LTDA CNPJ 23.456.789/0003-57\nVencimento: 15/05/2025\nValor 42.762,19'] });
+igual('... o CNPJ da filial 418 no conteúdo: a 418; sem data no nome nem mês na pasta, o vencimento', destino(d), ['ARQUIVAR', null, '418 - BRAZILIAN FLORESTAL LTDA\\CONTÁBIL\\PAGAMENTOS DE FORNECEDORES\\2025\\05\\MASON EQUIPAMENTO', NOMES_PG[2]]);
+d = d27({ nome: NOMES_PG[3], rel: 'FERNANDO\\411 MINAS FORESTRY\\2025\\04\\Comprovantes e NFs\\' + NOMES_PG[3], texto: [' '] });
+igual('escaneado sem texto na pasta "411 MINAS FORESTRY\\2025\\04": a 411, o mês da pasta de origem', destino(d), ['ARQUIVAR', null, '411 - MINAS FORESTRY LTDA\\CONTÁBIL\\PAGAMENTOS DE FORNECEDORES\\2025\\04\\MARCIA LAZZARO', NOMES_PG[3]]);
+d = d27({ nome: NOMES_PG[5], rel: '591 - ZELO AGROINDUSTRIAS LTDA\\2026\\09.2026\\Comprovantes e NFs\\' + NOMES_PG[5], texto: [COMP.replace(/LEONARDO MENDES MARQUES/g, 'ZELO AGROINDUSTRIAS LTDA')] });
+igual('comprovante bancário de fornecedor na pasta de pagamentos: PAGAMENTOS DE FORNECEDORES, não EXTRATOS\\COMPROVANTES', destino(d), ['ARQUIVAR', null, '591 - ZELO AGROINDUSTRIAS LTDA\\CONTÁBIL\\PAGAMENTOS DE FORNECEDORES\\2026\\09\\COMERCIAL ALVES', NOMES_PG[5]]);
+d = d27({ nome: NOMES_PG[1], texto: [COMP] });
+igual('... fora da pasta de pagamentos, o mesmo nome segue o conteúdo (EXTRATOS\\…\\COMPROVANTES\\SICOOB)', destino(d), ['ARQUIVAR', null, '380 - LEONARDO MENDES MARQUES\\CONTÁBIL\\EXTRATOS\\2026\\02\\COMPROVANTES\\SICOOB', 'Comprovantes 02-2026.pdf']);
+d = d27({ nome: NOMES_PG[4], rel: 'FERNANDO\\411 MINAS FORESTRY\\Comprovantes e NFs\\' + NOMES_PG[4], texto: ['FATURA 32270\nTRILHA TURISMO LTDA\nTotal 2.229,67'] });
+igual('sem data no nome, sem mês na pasta e sem vencimento: NAO_IDENTIFICADO/COMPETENCIA_AUSENTE', [d.acao, d.motivo, d.tipo, d.cliente], ['NAO_IDENTIFICADO', 'COMPETENCIA_AUSENTE', 'FATURA FORNECEDOR', 411]);
+
+// 12d. a 408 OURO VERDE e as filiais 409 e 410 na mesma pasta: "OV" = 408, "OV1" = 409, "OV3" = 410, "408Balancete…" = 408
+const P408 = 'FERNANDO\\408 OURO VERDE MINERAÇÃO filiais 409 e 410\\2025\\02.2025\\';
+igual('pasta 408/409/410: o cliente pelo nome do arquivo', ['BB 02.2025 OV1.pdf', 'BNB 01.2025 ov3.pdf', 'BB Aplic. 02.2025 OV.pdf', '408Balancete2025.pdf', 'BB 02.2025.pdf'].map(n => (R.clienteDaPasta(P408 + n, cad27) || {}).codigo || null), [409, 410, 408, 408, null]);
+const EXT_OV = 'SISBB - SISTEMA DE INFORMACOES BANCO DO BRASIL\nEXTRATO DE CONTA CORRENTE\nCliente: OURO V E S F EIRELI\nAgência: 2705-7 Conta corrente: 26345-1\nPeríodo: 01/02/2025 a 28/02/2025\nSALDO ANTERIOR 1.000,00';
+d = d27({ nome: 'BB 02.2025 OV1.pdf', rel: P408 + 'BB 02.2025 OV1.pdf', texto: [EXT_OV] });
+igual('extrato do BB só com "OURO V E S F EIRELI" e "OV1" no nome: a 409 (o resto como as regras já fazem)', destino(d), ['ARQUIVAR', null, '409 - OURO VERDE MINERACAO LTDA\\CONTÁBIL\\EXTRATOS\\2025\\02\\BANCÁRIOS\\BANCO DO BRASIL', '02-2025.pdf']);
+igual('... sem "OV" no nome continua CLIENTE_AMBIGUO', d27({ nome: 'BB 02.2025.pdf', rel: P408 + 'BB 02.2025.pdf', texto: [EXT_OV] }).motivo, 'CLIENTE_AMBIGUO');
+
 // ---------- 11. PRODUCAO de verdade, numa pasta temporária (nunca no Drive) ----------
 (async () => {
   const sb = fs.mkdtempSync(path.join(os.tmpdir(), 'teste-arqnovo-prod-'));

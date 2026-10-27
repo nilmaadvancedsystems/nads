@@ -23,7 +23,7 @@ function partesSemData(rel) { return R.partesDoCaminho(rel).slice(0, -1).filter(
 
 /**
  * O mapa: o versionado + o do controle (as decisões do admin por grupo). opcoes: { controle, arquivo (o versionado) }.
- * → { tipoDaOrigem(rel), clienteDaPasta(parte), semPista(parte), anotar(entrada), estatistica }
+ * → { tipoDaOrigem(rel), clienteDaPasta(parte), grupoDaPasta(parte), semPista(parte), anotar(entrada), estatistica }
  */
 function carregar(opcoes) {
   opcoes = opcoes || {};
@@ -34,7 +34,10 @@ function carregar(opcoes) {
   const tipos = [].concat(local.tipos || [], base.tipos || []).map(t => Object.assign({}, t, { _k: k(t.pasta) })).filter(t => t._k && t.tipoDoc)
     .sort((a, b) => b._k.length - a._k.length);   // a mais específica primeiro
   const clientes = new Map();
-  for (const c of [].concat(base.clientes || [], local.clientes || [])) if (c && c.pasta) clientes.set(k(c.pasta), { cliente: c.cliente == null ? null : +c.cliente, porque: c.porque || 'mapa da migração' });
+  // a pasta que junta matriz e filiais (27/10/2026): cliente null com matriz, filiais e, quando o Vitor decidiu, a palavra do
+  // nome do arquivo que diz qual (peloNome: { "OV1": 409 }); quem lê é o R.clienteDaPasta e o pagamento de fornecedor
+  for (const c of [].concat(base.clientes || [], local.clientes || [])) if (c && c.pasta) clientes.set(k(c.pasta), { cliente: c.cliente == null ? null : +c.cliente, porque: c.porque || 'mapa da migração',
+    matriz: c.cliente == null && c.matriz != null ? +c.matriz : null, filiais: (c.filiais || []).map(Number), peloNome: c.peloNome ? Object.fromEntries(Object.entries(c.peloNome).map(([t, v]) => [R.norm(t), +v])) : null });
   const semPista = new Set((base.semPista || []).concat(local.semPista || []).map(k));
   return {
     estatistica: { tipos: tipos.length, clientes: clientes.size, semPista: semPista.size, local: !!localArq && fs.existsSync(localArq) },
@@ -48,6 +51,8 @@ function carregar(opcoes) {
     },
     /** undefined = o mapa não fala desta pasta; null = ela não dá o cliente; { cliente, porque } */
     clienteDaPasta(parte) { const c = clientes.get(k(parte)); return c === undefined ? undefined : c.cliente == null ? null : c; },
+    /** A pasta que junta matriz e filiais: { matriz, filiais, peloNome, porque } ou null. */
+    grupoDaPasta(parte) { const c = clientes.get(k(parte)); return c && c.cliente == null && c.matriz != null ? { matriz: c.matriz, filiais: c.filiais, peloNome: c.peloNome, porque: c.porque } : null; },
     semPista(parte) { return semPista.has(k(parte)); },
     /** A decisão do admin para um grupo (Para resolver): grava no mapa do controle. { pasta, cliente?, tipoDoc?, por } */
     anotar(e) {
