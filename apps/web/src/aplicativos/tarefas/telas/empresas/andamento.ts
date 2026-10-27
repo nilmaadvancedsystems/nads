@@ -32,6 +32,29 @@ export type EscopoDasEmpresas = 'minhas' | 'todas';
 const ORDEM: Record<t.SituacaoGeral, number> = { parada: 0, 'em-andamento': 1, 'nao-iniciada': 2, concluida: 3 };
 export const ACAO: Record<t.SituacaoGeral, string> = { parada: 'Retomar', 'em-andamento': 'Continuar', 'nao-iniciada': 'Iniciar', concluida: 'Ver' };
 
+/**
+ * As empresas da pessoa num setor (26/10/2026): ela é a responsável do setor no Cadastro (no Fiscal, sem escolha, o da
+ * planilha do DP), ou a empresa ainda não tem responsável. Usado por Minhas empresas e pela busca do menu ☰ (27/10/2026:
+ * "só é para aparecer as empresas que a pessoa tem").
+ */
+export function useEmpresasDaPessoa() {
+  const op = useOperador().operador as Operador;
+  const cadastros = useTodosOsCadastros();
+  const equipe = useAcesso().equipe().lista.filter(p => p.ativo).map(p => p.nome);
+  const nomes = nomesDaPessoa(op.nome, equipe);
+  const responsavelDe = (emp: { nome: string; codigo: number | null }, dep: 'fiscal' | 'contabil') => {
+    const r = cadastros.porId.get(formatos.slug(emp.nome))?.responsaveis?.[dep] || '';
+    return r || (dep === 'fiscal' ? empresas.clienteDoDp(emp.codigo)?.responsavel || '' : '');
+  };
+  return {
+    /** o admin e o diretor podem ver todas (26/10/2026) */
+    podeVerTodas: !!op.admin || op.nivel === 'diretor',
+    carregada: cadastros.carregada,
+    /** a empresa sem responsável no setor aparece para todos do setor; a que tem, só para o responsável */
+    e: (emp: { nome: string; codigo: number | null }, dep: 'fiscal' | 'contabil') => { const r = responsavelDe(emp, dep); return !r || nomes.some(n => igual(n, r)); },
+  };
+}
+
 export function useAndamento() {
   useRegimesDoEntregas(); // o regime do Entregas, quando chega
   const repo = useRepo();
@@ -49,23 +72,14 @@ export function useAndamento() {
   // dependendo do setor dela"): as que têm ela como responsável do setor no Cadastro (no Fiscal, sem escolha, o da
   // planilha), como em Cadastro › Empresas por responsável. O admin e o diretor podem ver todas (?escopo=todas). O DP não
   // tem responsável por empresa no nads: lista todas.
-  const cadastros = useTodosOsCadastros();
-  const equipe = useAcesso().equipe().lista.filter(p => p.ativo).map(p => p.nome);
-  const podeVerTodas = !!op.admin || op.nivel === 'diretor';
+  const daPessoa = useEmpresasDaPessoa();
+  const podeVerTodas = daPessoa.podeVerTodas;
   const escopo: EscopoDasEmpresas = podeVerTodas && params.get('escopo') === 'todas' ? 'todas' : 'minhas';
   const temResponsavel = dep === 'fiscal' || dep === 'contabil';
   const filtrar = escopo === 'minhas' && temResponsavel;
-  const nomes = nomesDaPessoa(op.nome, equipe);
-  const responsavelDe = (emp: { nome: string; codigo: number | null }) => {
-    const r = cadastros.porId.get(formatos.slug(emp.nome))?.responsaveis?.[dep as 'fiscal' | 'contabil'] || '';
-    return r || (dep === 'fiscal' ? empresas.clienteDoDp(emp.codigo)?.responsavel || '' : '');
-  };
-  // a empresa sem responsável no setor aparece para todos do setor (26/10/2026: "não tem nada no cadastro"); a que tem,
-  // só para o responsável
-  const daPessoa = (emp: { nome: string; codigo: number | null }) => { const r = responsavelDe(emp); return !r || nomes.some(n => igual(n, r)); };
 
   // as empresas da rotina: o DP, os clientes da planilha do DP; o Contábil e o Fiscal, a lista do escritório
-  const linhas = rotinaDoDep ? t.empresasDaRotina(dep, repo.listarEmpresas()).filter(emp => !filtrar || daPessoa(emp)).map(emp => {
+  const linhas = rotinaDoDep ? t.empresasDaRotina(dep, repo.listarEmpresas()).filter(emp => !filtrar || daPessoa.e(emp, dep as 'fiscal' | 'contabil')).map(emp => {
     const ex = porNome.get(emp.nome) || null;
     // a rotina da empresa (16/10/2026): no Contábil, a 62 (com o LCDPR) conta 1 etapa só
     const rotina = t.rotinaDaEmpresa(dep, emp.codigo) || rotinaDoDep;
@@ -102,7 +116,7 @@ export function useAndamento() {
     /** a competência veio no endereço (voltou de outra tela): não pergunta de novo */
     competenciaEscolhida: params.has('competencia'),
     params, setParams, mudar,
-    carregando: !carregada || (filtrar && !cadastros.carregada),
+    carregando: !carregada || (filtrar && !daPessoa.carregada),
     linhas,
     /** minhas ou todas: quem pode escolher, a escolha e se o setor tem responsável por empresa */
     podeVerTodas: podeVerTodas && temResponsavel,
