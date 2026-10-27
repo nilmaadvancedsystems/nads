@@ -78,6 +78,33 @@ Site publicado (https://nads-nilma.web.app): **mesmo Firestore da conferencia-ni
 save = set do documento inteiro em `empresas/{slug}`, lista = CLIENTES + banco. Diferença proposital: nada
 grava antes da primeira carga. Local (`npm run dev`): repositório em memória com exemplos.
 
+### Empresa grande: as notas em partes (27/10/2026)
+
+**O erro** (Vitor: "as saídas da 237, quando eu atualizo, ela exclui automático"): a empresa inteira ia num documento
+só, e o Firestore recusa documento acima de **1 MiB** (~4 a 5 mil notas, somando entradas, saídas e serviços de todos
+os meses). O SDK desfazia a gravação e a tela voltava ao que estava no servidor: as notas importadas "sumiam" e,
+dali em diante, nada daquela empresa gravava. O aviso de erro era um toast de 3,6 s. O conferencia.html antigo tem
+o mesmo limite. Reproduzido no emulador do Firestore com 12.000 saídas: o `set` do documento inteiro é recusado.
+
+Com a planilha real da 237 (`SA_DAS_237.xls`, jan–ago/2026): **23.884 saídas** (40 linhas repetidas idênticas no
+relatório; ficam 23.844), e a empresa daria **3,6 MB** (3,5× o limite). Pior: com esse tamanho o Firestore **não responde
+nem dá erro** — a gravação fica presa, sem aviso nenhum, e as gravações seguintes da aba (de qualquer empresa) ficam
+atrás dela até recarregar. Por isso cada parte vai numa gravação separada (até ~950 KB) e, se o banco não confirmar
+em 45 s, a tela avisa. Com o conserto, a 237 grava as 23.844 saídas em 6 partes em ~10 s e outra aba relê em <1 s.
+
+**Como ficou** (regras puras em `packages/core/src/conferencia/regras/partes.ts`, com teste):
+- cabe em ~900 KB → um documento só, como sempre (o conferencia.html continua lendo);
+- não cabe → as listas de notas (saídas, entradas, serviços), da maior para a menor, vão para
+  `empresas/{slug}/partes/{versão}-{lista}-{n}` (até ~700 KB cada) e o principal guarda `notasEmPartes`
+  (a versão e quantas partes/notas tem cada lista). As partes vão antes e o principal por último; quem lê só aceita
+  as partes da versão que o principal aponta, completas. Mudança que não mexe nas notas não regrava as partes.
+  As partes mais velhas que a versão gravada são apagadas depois (nunca as de outra aba, mais novas);
+- o que foi importado não some: uma gravação por vez por empresa; se o banco recusar, a tela fica com o que a pessoa
+  fez, o aviso fica na tela (o de erro, 8 s), tenta de novo em 5 s, 20 s e 60 s, e o navegador pergunta antes de
+  fechar a aba com algo sem salvar. Empresa cujas notas não chegaram não grava (não regrava as notas vazias).
+- **Atenção:** uma empresa em partes **não deve ser mexida no conferencia.html antigo** (ele só vê o documento
+  principal, com as listas vazias).
+
 ## Código morto do original (não copiado)
 
 `somaServDaConta`, `somaNfeDaConta`, `contaPorCfops`, `impPrecisaBalancete`, `vcOndeNota`, `contadorSubnav`

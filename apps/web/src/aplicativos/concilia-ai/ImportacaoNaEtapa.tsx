@@ -18,8 +18,9 @@ import { Importacao } from './telas/importacao/Importacao';
  */
 export function ImportacaoNaEtapa({ nome, tipo, prestaServico, meses }: { nome: string; tipo: c.PaginaImportacao; prestaServico: boolean | null; meses?: readonly string[] }) {
   const repo = repoDaConferencia();
-  const { toast } = useRetorno();
-  useEffect(() => { avisarErrosDoBanco(repo, toast); }, [repo, toast]);
+  const { aviso } = useRetorno();
+  // os erros do banco ficam na tela (o toast sumia em 3,6 s e ninguém via que a gravação tinha sido recusada)
+  useEffect(() => { avisarErrosDoBanco(repo, (texto, tom) => aviso({ tom: tom === 'ok' ? 'ok' : 'erro', titulo: tom === 'ok' ? 'Salvo na nuvem' : 'Banco da Conferência', texto })); }, [repo, aviso]);
   return <RepoProvider repo={repo}><DaEmpresa nome={nome} tipo={tipo} prestaServico={prestaServico} meses={meses} /></RepoProvider>;
 }
 

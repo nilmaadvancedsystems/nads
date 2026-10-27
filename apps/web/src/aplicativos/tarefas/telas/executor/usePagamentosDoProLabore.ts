@@ -33,6 +33,9 @@ export function usePagamentosDoProLabore(empresa: string, codigo: number | null,
   const debito = contaDoItem.split(' — ')[0].trim();
   const pagamentos = useMemo(() => (razao ? t.pagamentosDoProLabore(razao.razao) : []), [razao]);
 
+  // sem a conta do crédito não baixa (Vitor, 23/10/2026)
+  const podeExportar = pagamentos.length > 0 && !!conta.trim() && !!debito;
+
   async function importar(f: File | null) {
     if (!f) return;
     try {
@@ -51,9 +54,12 @@ export function usePagamentosDoProLabore(empresa: string, codigo: number | null,
     diaUtil, escolherDiaUtil: (n: number) => gravar({ diaUtil: n }),
     /** quantos pagamentos faltam para o razão zerar e o total (só no título do botão) */
     qtd: pagamentos.length, total: formatos.reais(pagamentos.reduce((s, p) => s + p.valor, 0)),
-    podeExportar: pagamentos.length > 0 && !!conta && !!debito,
+    podeExportar,
+    /** há pagamentos para baixar, mas falta a conta do crédito: o campo fica marcado e o baixar travado */
+    faltaConta: pagamentos.length > 0 && !conta.trim(),
     /** o .xls de importação do Alterdata: D Pró-labore a pagar, C a conta escolhida, no dia útil escolhido do mês seguinte */
     baixarXls: () => {
+      if (!podeExportar) return;
       const bytes = creditor.planilhaDeImportacao(pagamentos.map(p => ({
         automatico: '', data: t.dataDoPagamentoDoProLabore(p.competencia, diaUtil), debito, credito: conta, codHistorico: '', historico: p.historico, valor: p.valor,
         documento: '', tipo: 'principal' as const, tituloId: 0,
