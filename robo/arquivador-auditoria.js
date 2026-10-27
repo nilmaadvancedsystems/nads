@@ -196,7 +196,8 @@ const NOMES = {
   COMPROVANTES: re('^Comprovantes ' + MA + SUF + '\\.pdf$'),
   RECEBIMENTO: re('^[A-Z0-9 ]+ ' + MA + SUF + '\\.(pdf|xlsx|xls|csv)$'),
   AVULSO: re('^EXTRATO_[A-Z0-9 ]+_' + MA + SUF + '\\.\\w+$'),
-  DAS: re('^' + MA + SUF + '\\.pdf$'),
+  // o PGDAS-D fica com o DAS do mês (Vitor, 27/10/2026): "MM-AAAA - PGDAS-D DECLARACAO|RECIBO|EXTRATO.pdf"
+  DAS: re('^' + MA + '( - PGDAS-D (DECLARACAO|RECIBO|EXTRATO))?' + SUF + '\\.pdf$'),
   GUIA: re('^' + MA + ' - (DARF|DAE|DAM|GPS|DAS)\\b.*\\.pdf$'),
   XML: re('^' + MA + '_(NF-e|NFC-e|CT-e|CT-e OS|NFS-e|MDF-e)_[^_]+' + SUF + '\\.xml$'),
   EVENTO: re('^(\\d{2})-' + MA + ' - .+ (NF-e|NFC-e|CT-e|CT-e OS|NFS-e|MDF-e) .+\\.xml$'),
