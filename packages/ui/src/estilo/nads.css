@@ -5298,3 +5298,34 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .espelho-totais .stat{padding:8px 12px;min-height:0;}
 .espelho-totais .stat-value{font-size:var(--fs-14,14px);margin-top:2px;}
 @media (max-width:700px){.stat-grid.espelho-totais{grid-template-columns:repeat(2,minmax(0,1fr));}}
+
+/* ---------------------------------- Fiscal › Controle de tributos (27/10/2026) ----------------------------------
+   A folha do Protocolo de Entrega de Tributos na tela: a tabela larga rola de lado com o código e a empresa parados à
+   esquerda; os valores são campos (o valor editável); a conferência é um quadradinho que vira OK (verde) ou — */
+.ctrl-tributos{display:flex;flex-direction:column;gap:12px;}
+.ctrl-rola{max-height:min(640px,70vh);overflow:auto;}
+.ctrl-tabela{min-width:1100px;}
+.ctrl-tabela thead th{position:sticky;top:0;z-index:2;background:var(--surface-2);white-space:nowrap;}
+.ctrl-tabela .ctrl-cod{width:56px;position:sticky;left:0;z-index:1;background:var(--surface);}
+.ctrl-tabela .ctrl-nome{min-width:220px;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;position:sticky;left:56px;z-index:1;background:var(--surface);}
+.ctrl-tabela thead .ctrl-cod,.ctrl-tabela thead .ctrl-nome{z-index:3;background:var(--surface-2);}
+.ctrl-tabela .ctrl-cod .fin-valor-edita{width:64px;}
+.ctrl-tabela td.num .fin-valor-edita{width:96px;text-align:right;}
+.ctrl-tabela .ctrl-data .fin-valor-edita{width:96px;text-align:center;}
+.ctrl-tabela .ctrl-ref .fin-valor-edita{width:96px;}
+.ctrl-tabela .fin-valor-edita::placeholder{color:var(--ink-muted);opacity:.7;}
+.ctrl-tabela .fin-valor-edita[readonly]{cursor:default;}
+.ctrl-mk{width:44px;text-align:center;}
+.ctrl-acao{width:40px;text-align:right;}
+.ctrl-marca{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;padding:0;border:1px solid var(--border);
+  border-radius:6px;background:var(--surface);color:var(--ink-muted);font:inherit;font-size:var(--fs-13);cursor:pointer;}
+.ctrl-marca svg{width:14px;height:14px;}
+.ctrl-marca:hover:not(:disabled){border-color:var(--ink-muted);}
+.ctrl-marca:disabled{cursor:default;}
+.ctrl-marca-ok{border-color:var(--success);background:color-mix(in srgb,var(--success) 16%,transparent);color:var(--success);}
+.ctrl-marca-na{color:var(--ink-muted);background:var(--surface-2);}
+.ctrl-entrega{min-width:120px;}
+.ctrl-entrega-feita{border-color:var(--success);}
+.ctrl-linha-entregue td{background:color-mix(in srgb,var(--success) 5%,transparent);}
+.ctrl-linha-entregue td.ctrl-cod,.ctrl-linha-entregue td.ctrl-nome{background:color-mix(in srgb,var(--success) 5%,var(--surface));}
+.ctrl-tabela tfoot td{position:sticky;bottom:0;background:var(--surface-2);font-weight:600;border-top:2px solid var(--border);}
