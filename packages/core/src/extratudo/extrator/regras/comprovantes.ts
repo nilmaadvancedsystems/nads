@@ -45,6 +45,30 @@ export function comprovantesDoBanco(lista: readonly ComprovanteNoDrive[], alvo: 
   return lista.filter(c => (alvo && c.banco === alvo) || (!c.banco && unicoBanco));
 }
 
+/**
+ * O mês do comprovante ('aaaa-mm'), entre os meses do período (Vitor, 27/10/2026: "Upar todos no Drive", vários arquivos de uma
+ * vez, cada um no seu mês): a primeira data do nome ("Comprovante 02-06-2026 13h05.pdf"; ou o "06-2026") que cai no período;
+ * sem ela, a primeira data do texto do PDF que cai. null = não deu para saber.
+ */
+export function mesDoComprovante(nome: string, texto: string, meses: readonly string[]): string | null {
+  const noPeriodo = (a: number, m: number) => { const x = a + '-' + String(m).padStart(2, '0'); return meses.includes(x) ? x : null; };
+  const datas = (t: string) => {
+    const out: string[] = [];
+    const re = /(?<!\d)(\d{1,2})[/.-](\d{1,2})[/.-](20\d{2})(?!\d)|(?<!\d)(20\d{2})-(\d{2})-(\d{2})(?!\d)/g;
+    let m;
+    while ((m = re.exec(t))) {
+      const x = m[3] ? noPeriodo(Number(m[3]), Number(m[2])) : noPeriodo(Number(m[4]), Number(m[5]));
+      if (x) out.push(x);
+    }
+    return out;
+  };
+  const doNome = datas(nome)[0];
+  if (doNome) return doNome;
+  const mesAno = /(?<!\d)(\d{2})[-_.](20\d{2})(?!\d)/.exec(nome);
+  const peloMes = mesAno && noPeriodo(Number(mesAno[2]), Number(mesAno[1]));
+  return peloMes || datas(texto)[0] || null;
+}
+
 /** O nome com que o comprovante vai para o Drive: o "COMPROVANTE" e o banco na frente (o robô do arquivamento acha a pasta). */
 export function nomeDoComprovante(nome: string, banco = ''): string {
   const n = String(nome || 'comprovante.pdf').trim();

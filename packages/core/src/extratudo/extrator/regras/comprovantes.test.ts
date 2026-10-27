@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ItemDrive } from '../../creditor/regras/drive';
-import { comprovantesDoBanco, comprovantesNoDrive, nomeDoComprovante } from './comprovantes';
+import { comprovantesDoBanco, comprovantesNoDrive, mesDoComprovante, nomeDoComprovante } from './comprovantes';
 
 const d = (i: string, n: string, p: string): ItemDrive => ({ i, n, p, t: 'd' });
 const f = (i: string, n: string, p: string, s = 1000): ItemDrive => ({ i, n, p, t: 'f', s, m: '2026-02-10T10:00:00Z' });
@@ -26,5 +26,18 @@ describe('os comprovantes no Drive (26/10/2026)', () => {
     expect(comprovantesNoDrive(itens, null, ['2026-02'])).toEqual({ '2026-02': [] });
     expect([nomeDoComprovante('pix.pdf'), nomeDoComprovante('Comprovante Itau.pdf'), nomeDoComprovante('TITULOS PAGOS FEV2026.pdf', 'Bradesco'), nomeDoComprovante('pix bradesco.pdf', 'Bradesco')])
       .toEqual(['COMPROVANTE - pix.pdf', 'Comprovante Itau.pdf', 'COMPROVANTE - BRADESCO - TITULOS PAGOS FEV2026.pdf', 'COMPROVANTE - pix bradesco.pdf']);
+  });
+});
+
+describe('o mês do comprovante (vários de uma vez)', () => {
+  const meses = ['2026-05', '2026-06'];
+  it('pela data do nome, só no período', () => {
+    expect(mesDoComprovante('Comprovante 02-06-2026 13h05.pdf', '', meses)).toBe('2026-06');
+    expect(mesDoComprovante('Comprovante 02-07-2026.pdf', 'pago em 15/05/2026', meses)).toBe('2026-05');
+  });
+  it('pelo mês e ano do nome, ou pelo texto do PDF; sem nada, null', () => {
+    expect(mesDoComprovante('05-2026 pix.pdf', '', meses)).toBe('2026-05');
+    expect(mesDoComprovante('pix.pdf', 'Data: 10/06/2026', meses)).toBe('2026-06');
+    expect(mesDoComprovante('pix.pdf', '', meses)).toBeNull();
   });
 });

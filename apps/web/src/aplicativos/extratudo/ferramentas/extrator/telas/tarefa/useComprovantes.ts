@@ -5,10 +5,13 @@
 // importar com as opções do extrato (do computador, buscar no Drive, buscar no e-mail). O que vai para o Drive passa pelo
 // robô; enquanto ele grava, o mês mostra o Drive com a rodinha, e a pasta é lida de novo quando ele termina.
 import { creditor as cr, extrator as x } from '@nads/core';
+import workerDoPdf from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import { useEffect, useRef, useState } from 'react';
 import { useSessao } from '../../casca/sessao';
 import { useDrive } from '../../dados/repo';
 import { useBuscarNoEmail, type LidoDoAnexo } from './JanelaBuscarNoEmail';
+
+x.definirWorkerDoPdf(workerDoPdf);
 
 const mensagemDeErro = (e: unknown) => (e instanceof Error ? e.message : String(e));
 // o comprovante não tem lançamentos para ler: a prévia mostra só o PDF
@@ -86,6 +89,33 @@ export function useComprovantes(meses: readonly string[], bancos: readonly Banco
   }, pedirLogin, s.codigo, semLeitura, { comprovantes: true });
   const porMes = x.comprovantesNoDrive(pasta?.itens || [], pasta?.raiz || null, meses);
   const unico = bancos.length === 1;
+  const doBanco = (b: BancoDosComprovantes, m: string) => x.comprovantesDoBanco(porMes[m] || [], cr.bancoDaLinha(b.nome, b.id), unico);
+
+  /**
+   * Vários comprovantes de uma vez (Vitor, 27/10/2026: "Upar todos no Drive / Upar restante, igual a outra tela"): cada um no
+   * seu mês, pela data do nome ou do PDF; os restantes = só os dos meses que ainda não têm comprovante no Drive.
+   */
+  async function todosDoComputador(b: BancoDosComprovantes, fs: File[], restantes: boolean) {
+    if (!fs.length) return;
+    const semMes: string[] = [];
+    const pulados: string[] = [];
+    const porMesDoArquivo = new Map<string, File[]>();
+    for (const f of fs) {
+      let texto = '';
+      try {
+        const bytes = new Uint8Array(await f.arrayBuffer());
+        if (x.ehPdf(bytes)) texto = (await x.itensDoPdf(bytes)).flat().map(i => i.texto).join(' ');
+      } catch { /* sem texto: fica o nome */ }
+      const mes = x.mesDoComprovante(f.name, texto, meses);
+      if (!mes) { semMes.push(f.name); continue; }
+      if (restantes && doBanco(b, mes).length) { pulados.push(f.name); continue; }
+      porMesDoArquivo.set(mes, [...(porMesDoArquivo.get(mes) || []), f]);
+    }
+    for (const [mes, lista] of porMesDoArquivo) await mandar(b, lista, mes);
+    if (semMes.length) avisarErro('Não achei o mês de ' + (semMes.length === 1 ? 'um comprovante' : semMes.length + ' comprovantes'),
+      semMes.join(', ') + ': sem data do período no nome nem no PDF. Importe pelo mês, na grade.');
+    if (pulados.length) avisar((pulados.length === 1 ? '1 comprovante ficou' : pulados.length + ' comprovantes ficaram') + ' de fora: o mês já tem comprovante no Drive (' + pulados.join(', ') + ').');
+  }
 
   return {
     lendo, erro, entrou: pode, buscaExiste: em.existe, em,
@@ -94,6 +124,8 @@ export function useComprovantes(meses: readonly string[], bancos: readonly Banco
       const linhas = meses.map(m => ({ mes: m, rotulo: rotuloDoMes(m), arquivos: x.comprovantesDoBanco(porMes[m] || [], alvo, unico), enviando: (mandando[b.id + '|' + m] || []).length > 0 }));
       return { ...b, meses: linhas, comArquivo: linhas.filter(l => l.arquivos.length).length };
     }),
+    /** todos de uma vez, do computador (restantes: só os meses sem comprovante no Drive) */
+    todosDoComputador: (b: BancoDosComprovantes, fs: File[], restantes: boolean) => { void todosDoComputador(b, fs, restantes); },
     /** as opções do mês sem comprovante (as mesmas do extrato) */
     doComputador: (b: BancoDosComprovantes, fs: File[], mes: string) => { void mandar(b, fs, mes); },
     buscarNoDrive: () => comLogin(() => { void ler(true); }),

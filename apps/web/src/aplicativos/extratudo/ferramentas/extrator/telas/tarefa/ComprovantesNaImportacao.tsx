@@ -33,6 +33,15 @@ export function ComprovantesNaImportacao({ meses, bancos, competencia, pedirLogi
               <span className="imp-ico imp-logo"><LogoBanco banco={b.marca} cor={b.comArquivo > 0} /></span>
               <div className="imp-txt"><span><b>{b.nome}</b>{b.conta && <span className="imp-conta">{b.conta}</span>}</span></div>
               <div className="imp-resumo">{vm.lendo && <div><span><span className="btn-spinner" /> Lendo o Drive</span></div>}</div>
+              {/* todos os meses de uma vez (Vitor, 27/10/2026: "igual a outra tela", o Extrato da aba Bancos) */}
+              {b.meses.length > 1 && b.comArquivo < b.meses.length && (
+                <div className="imp-grupos">
+                  <div className="imp-grupo" aria-label="Comprovantes (todos os meses)">
+                    <span className="imp-rotulo">Comprovante</span>
+                    <ImportarComprovantesTodos restantes={b.comArquivo > 0} onArquivos={fs => vm.todosDoComputador(b, fs, b.comArquivo > 0)} onDrive={vm.buscarNoDrive} />
+                  </div>
+                </div>
+              )}
             </div>
             <MesesDosComprovantes vm={vm} b={b} competencia={competencia} onVer={ver} />
           </div>
@@ -81,6 +90,29 @@ function MesesDosComprovantes({ vm, b, competencia, onVer }: { vm: VmComprovante
         </tbody>
       </table>
     </div>
+  );
+}
+
+/** Todos os meses de uma vez, como o Extrato da aba Bancos: do computador (cada arquivo no seu mês) ou do Drive. */
+function ImportarComprovantesTodos({ restantes, onArquivos, onDrive }: { restantes: boolean; onArquivos: (fs: File[]) => void; onDrive: () => void }) {
+  const arquivo = useRef<HTMLInputElement>(null);
+  return (
+    <>
+      <MenuSuspenso rotulo="" icone="upload" className="gh-topo-btn gh-topo-menu" direita
+        dica={restantes ? 'Importar os comprovantes dos meses que faltam' : 'Importar os comprovantes de todos os meses'}
+        conteudo={fechar => (
+          <>
+            <button type="button" className="popover-item" role="menuitem" onClick={() => { fechar(); arquivo.current?.click(); }}>
+              <Icone nome="upload" /><span className="popover-texto">{restantes ? 'Importar os restantes do computador' : 'Importar do computador'}</span>
+            </button>
+            <button type="button" className="popover-item" role="menuitem" onClick={() => { fechar(); onDrive(); }}>
+              <LogoDrive cor /><span className="popover-texto">{restantes ? 'Adicionar restantes do Drive' : 'Todos pelo Drive'}</span>
+            </button>
+          </>
+        )} />
+      <input ref={arquivo} type="file" multiple accept={ACEITAR} className="sr-only" tabIndex={-1} aria-hidden="true"
+        onChange={ev => { const fs = Array.from(ev.target.files || []); ev.target.value = ''; onArquivos(fs); }} />
+    </>
   );
 }
 
