@@ -179,4 +179,4 @@ function iniciarSuporteClaude({ db, log = console.log }) {
   return parar;
 }
 
-module.exports = { iniciarSuporteClaude };
+module.exports = { iniciarSuporteClaude, pedacosDoBug };

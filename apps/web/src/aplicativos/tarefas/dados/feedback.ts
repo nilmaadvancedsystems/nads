@@ -7,8 +7,31 @@
 /** resolvendo (Vitor, 26/10/2026): o admin está resolvendo; quem mandou é avisado */
 export type SituacaoDoFeedback = 'novo' | 'visto' | 'resolvendo' | 'feito';
 
+/** Um passo do andamento da resolução pelo Claude do PC do Vitor (o botão Resolver; 26/10/2026). */
+export interface PassoDaResolucao { em: string; texto: string }
+
+/**
+ * A resolução pelo Claude do PC do Vitor (Vitor, 26/10/2026: "um botão de resolver, onde você usa um chat aqui da minha
+ * máquina… mande um feedback no chat do usuário do progresso"; 27/10/2026: "a versão com o seu ok"): o admin clica em
+ * Resolver (status 'resolver' no banco: a fila), o robô do PC (robo/resolver.js) pega, passa para Resolvendo e escreve o
+ * andamento; o Claude corrige numa cópia do nads e para em aprovar (o card mostra o que mudou e o Publicar); o admin
+ * clica em Publicar (status 'publicar') e o robô publica (publicando → pronto). Ou: precisa (precisa do Vitor) ou erro.
+ */
+export interface ResolucaoDoFeedback {
+  estado: 'fila' | 'trabalhando' | 'aprovar' | 'publicando' | 'pronto' | 'precisa' | 'erro';
+  andamento: PassoDaResolucao[];
+  resumo: string;
+  /** os arquivos que o Claude mudou (o que o Publicar leva) */
+  mudancas: string[];
+}
+
 /** Um feedback de quem mandou (o aviso do Resolvendo): o que a regra deixa a pessoa ler dos seus. */
-export interface MeuFeedback { id: string; texto: string; status: SituacaoDoFeedback; criadoEm: string }
+export interface MeuFeedback {
+  id: string; texto: string; status: SituacaoDoFeedback; criadoEm: string;
+  /** o andamento da resolução pelo Claude (o balão do suporte mostra para quem mandou) */
+  andamento: PassoDaResolucao[];
+  estado: ResolucaoDoFeedback['estado'] | '';
+}
 
 /** A prioridade que quem manda escolhe (Vitor, 19/10/2026: feedbacks com "prioridade"). */
 export type PrioridadeDoFeedback = 'baixa' | 'media' | 'alta';
@@ -64,6 +87,8 @@ export interface Feedback {
   /** o bug: a análise do robô ('pendente' → 'analisando' → 'pronta' ou 'erro') e o report */
   analise: 'pendente' | 'analisando' | 'pronta' | 'erro' | '';
   relatorio: string;
+  /** a resolução pelo Claude do PC do Vitor (o botão Resolver); null = não pediu */
+  resolucao: ResolucaoDoFeedback | null;
 }
 
 /** O bug mandado pelo balão do suporte. */
@@ -88,6 +113,10 @@ export interface RepoFeedback {
   /** todos os feedbacks (só o admin lê); pedir já começa a ouvir */
   todos(): { carregados: boolean; lista: Feedback[] };
   marcar(id: string, status: SituacaoDoFeedback): Promise<void>;
+  /** o Resolver: o Claude do PC do Vitor resolve (corrige, publica) e conta o andamento para quem mandou */
+  resolver(id: string): Promise<void>;
+  /** o Publicar: o admin aprova a correção que o Claude fez, e o robô do PC publica */
+  publicarResolucao(id: string): Promise<void>;
   /** os feedbacks de quem está usando (a regra deixa ler os seus); pedir já começa a ouvir */
   meus(): MeuFeedback[];
   assinar(aoMudar: () => void): () => void;
@@ -100,7 +129,7 @@ export function criarFeedbackMemoria(quem: () => string): RepoFeedback {
   const mudou = () => { ver++; for (const f of ouvintes) f(); };
   // uns de exemplo, para ver a lista do admin com as prioridades (nada vai para o banco)
   const ha = (h: number) => new Date(Date.now() - h * 3600000).toISOString();
-  const base = { imagem: '', versao: '', email: '', status: 'novo' as const, tipo: 'feedback' as const, caminho: '', empresa: '', arquivo: null, arquivos: [], analise: '' as const, relatorio: '' };
+  const base = { imagem: '', versao: '', email: '', status: 'novo' as const, tipo: 'feedback' as const, caminho: '', empresa: '', arquivo: null, arquivos: [], analise: '' as const, relatorio: '', resolucao: null };
   let lista: Feedback[] = [
     { id: 'fx-1', ...base, nome: 'Vitor', tela: '/tarefas/cadastro/empresas', criadoEm: ha(3), prioridade: 'alta', texto: 'No Cadastro, o sênior precisa trocar o regime sem pedir para o diretor.' },
     { id: 'fx-2', ...base, nome: 'Clara', tela: '/tarefas/minhas-empresas/empresas', criadoEm: ha(1), prioridade: 'baixa', texto: 'Seria bom a lista de empresas lembrar o filtro quando eu volto.' },
@@ -116,7 +145,7 @@ export function criarFeedbackMemoria(quem: () => string): RepoFeedback {
     async enviar({ arquivos: anexos = [], ...f }) {
       lista = [{ id: 'f' + Date.now(), ...f, nome: quem(), email: '', criadoEm: new Date().toISOString(), status: 'novo', tipo: 'feedback', caminho: '', empresa: '',
         arquivo: anexos[0] ? { nome: anexos[0].nome, tamanho: anexos[0].bytes.length, partes: 1 } : null,
-        arquivos: anexos.map((a, i) => ({ nome: a.nome, tamanho: a.bytes.length, de: i, partes: 1 })), analise: '', relatorio: '' }, ...lista];
+        arquivos: anexos.map((a, i) => ({ nome: a.nome, tamanho: a.bytes.length, de: i, partes: 1 })), analise: '', relatorio: '', resolucao: null }, ...lista];
       mudou();
     },
     async enviarBug(b) {
@@ -125,7 +154,7 @@ export function criarFeedbackMemoria(quem: () => string): RepoFeedback {
         id, texto: b.texto, imagem: '', tela: b.tela, versao: b.versao, nome: quem(), email: '', criadoEm: new Date().toISOString(),
         status: 'novo', prioridade: 'alta', tipo: 'bug', caminho: b.caminho, empresa: b.contexto.empresa,
         arquivo: b.arquivos[0] ? { nome: b.arquivos[0].nome, tamanho: b.arquivos[0].bytes.length, partes: 1 } : null,
-        arquivos: b.arquivos.map((a, i) => ({ nome: a.nome, tamanho: a.bytes.length, de: i, partes: 1 })), analise: 'pendente', relatorio: '',
+        arquivos: b.arquivos.map((a, i) => ({ nome: a.nome, tamanho: a.bytes.length, de: i, partes: 1 })), analise: 'pendente', relatorio: '', resolucao: null,
       }, ...lista];
       mudou();
       return id;
@@ -133,7 +162,10 @@ export function criarFeedbackMemoria(quem: () => string): RepoFeedback {
     async arquivoDoBug() { return null; },
     todos: () => ({ carregados: true, lista }),
     async marcar(id, status) { lista = lista.map(x => (x.id === id ? { ...x, status } : x)); mudou(); },
-    meus: () => lista.filter(x => x.nome === quem()).map(x => ({ id: x.id, texto: x.texto, status: x.status, criadoEm: x.criadoEm })),
+    // nos exemplos não há o PC do Vitor: fica na fila
+    async resolver(id) { lista = lista.map(x => (x.id === id ? { ...x, status: 'resolvendo', resolucao: { estado: 'fila', andamento: [], resumo: '', mudancas: [] } } : x)); mudou(); },
+    async publicarResolucao(id) { lista = lista.map(x => (x.id === id && x.resolucao ? { ...x, resolucao: { ...x.resolucao, estado: 'publicando' } } : x)); mudou(); },
+    meus: () => lista.filter(x => x.nome === quem()).map(x => ({ id: x.id, texto: x.texto, status: x.status, criadoEm: x.criadoEm, andamento: x.resolucao?.andamento || [], estado: x.resolucao?.estado || '' })),
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,
   };

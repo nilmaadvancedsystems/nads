@@ -122,7 +122,15 @@ export function useBalaoDoSuporte() {
     }
   }
 
+  // o andamento dos pedidos desta pessoa que o Claude do PC do Vitor está resolvendo (o botão Resolver; 26/10/2026), os
+  // dos últimos 14 dias, o mais novo por último (como num chat)
+  const atualizacoes = repo.meus()
+    .filter(f => f.andamento.length && Date.now() - Date.parse(f.andamento[f.andamento.length - 1].em || f.criadoEm) < 14 * 864e5)
+    .sort((a, b) => (a.andamento[a.andamento.length - 1].em || '').localeCompare(b.andamento[b.andamento.length - 1].em || ''))
+    .map(f => ({ id: f.id, pedido: s.codigoDoPedido(f.id), texto: f.texto.length > 70 ? f.texto.slice(0, 70) + '…' : f.texto, passos: f.andamento.map(p => p.texto), estado: f.estado }));
   return {
+    /** o andamento dos pedidos desta pessoa que o Claude está resolvendo */
+    atualizacoes,
     // sem o "Nova conversa" (Vitor, 21/10/2026): a conversa que terminou (resolveu ou foi enviada) recomeça ao abrir de novo
     aberto, abrir: () => { const terminou = resolvido || enviado; if (terminou) recomecar(); lerBotoes(terminou); setAberto(true); }, fechar: () => setAberto(false),
     /** o título: a empresa e a tela de onde a pessoa está */

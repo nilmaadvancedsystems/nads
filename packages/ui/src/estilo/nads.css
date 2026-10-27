@@ -4977,6 +4977,8 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .suporte-msg.suporte-eu{align-self:flex-end;border-radius:14px 14px 4px 14px;background:var(--accent);border-color:var(--accent);color:var(--on-accent);}
 .suporte-passos{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;}
 .suporte-capsulas{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;}
+/* o andamento do Resolver na janela do feedback (26/10/2026) */
+.feedback-andamento{margin:6px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:2px;}
 .suporte-capsulas .badge{cursor:pointer;border:0;padding:5px 10px;font-size:var(--fs-12);display:inline-flex;align-items:center;gap:4px;}
 .suporte-capsulas .badge svg{width:12px;height:12px;}
 /* a resposta ainda não escolhida: o fundo e a borda das bolhas do balão (Vitor, 21/10/2026: "os botões estão com cores

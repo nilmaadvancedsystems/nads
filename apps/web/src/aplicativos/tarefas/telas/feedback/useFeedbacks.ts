@@ -50,6 +50,10 @@ export function useFeedbacks() {
     /** a imagem aberta em tamanho grande */
     aberta, setAberta,
     marcar: (id: string, status: SituacaoDoFeedback) => void repo.marcar(id, status),
+    /** o Resolver: o Claude do PC do Vitor resolve e conta o andamento para quem mandou (26/10/2026) */
+    resolver: (id: string) => void repo.resolver(id),
+    /** o Publicar: aprova a correção que o Claude fez (o robô do PC publica) */
+    publicarResolucao: (id: string) => void repo.publicarResolucao(id),
     /** o arquivo do bug, para baixar (o que a pessoa mandou pelo balão) */
     baixarArquivoDoBug: async (id: string, i = 0) => { const a = await repo.arquivoDoBug(id, i); if (a) baixarBytes(a.bytes, a.nome, 'application/octet-stream'); },
   };

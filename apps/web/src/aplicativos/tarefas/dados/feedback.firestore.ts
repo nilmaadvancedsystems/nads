@@ -4,7 +4,7 @@
 import { Bytes, collection, doc, getDocs, limit, onSnapshot, orderBy, query, where, setDoc as setDocBruto, updateDoc as updateDocBruto } from 'firebase/firestore';
 import { entregas } from '@nads/core';
 import { bancoDoEntregas } from './entregas.firestore';
-import { ehPrioridade, type Feedback, type MeuFeedback, type RepoFeedback, type SituacaoDoFeedback } from './feedback';
+import { ehPrioridade, type Feedback, type MeuFeedback, type RepoFeedback, type ResolucaoDoFeedback, type SituacaoDoFeedback } from './feedback';
 import { guardar, guardarPedido } from '../../../comum/modoDesenvolvedor';
 
 // a trava do modo desenvolvedor: com o modo ligado, nada é gravado
@@ -14,6 +14,24 @@ const setDoc = guardarPedido(setDocBruto) as typeof setDocBruto;
 type Quem = { uid: string; email: string; nome: string } | null;
 const texto = (v: unknown) => (v == null ? '' : String(v));
 const STATUS: readonly SituacaoDoFeedback[] = ['novo', 'visto', 'resolvendo', 'feito'];
+
+/**
+ * O status no banco → o da tela; 'resolver' (o botão Resolver, 26/10/2026) é a fila do Claude do PC do Vitor e 'publicar'
+ * (o Publicar, 27/10/2026) é a aprovação da correção: na tela, os dois são Resolvendo. A regra deixa o admin mudar só o
+ * status, e por isso os pedidos vão por ele.
+ */
+const situacao = (s: unknown): SituacaoDoFeedback => (s === 'resolver' || s === 'publicar' ? 'resolvendo' : STATUS.includes(s as SituacaoDoFeedback) ? s as SituacaoDoFeedback : 'novo');
+const ESTADOS: readonly ResolucaoDoFeedback['estado'][] = ['fila', 'trabalhando', 'aprovar', 'publicando', 'pronto', 'precisa', 'erro'];
+/** a resolução (o robô do PC grava em resolucao; o status 'resolver' sem ela ainda é a fila) */
+function resolucaoDo(x: Record<string, unknown>): ResolucaoDoFeedback | null {
+  const r = x.resolucao && typeof x.resolucao === 'object' ? x.resolucao as Record<string, unknown> : null;
+  if (!r) return x.status === 'resolver' ? { estado: 'fila', andamento: [], resumo: '', mudancas: [] } : null;
+  const andamento = Array.isArray(r.andamento) ? (r.andamento as Record<string, unknown>[]).map(p => ({ em: texto(p.em), texto: texto(p.texto) })).filter(p => p.texto) : [];
+  const estado = ESTADOS.includes(r.estado as ResolucaoDoFeedback['estado']) ? r.estado as ResolucaoDoFeedback['estado'] : 'trabalhando';
+  const mudancas = Array.isArray(r.mudancas) ? (r.mudancas as unknown[]).map(texto).filter(Boolean) : [];
+  // aprovada e ainda não pega pelo robô: já é o Publicando
+  return { estado: x.status === 'publicar' && estado === 'aprovar' ? 'publicando' : estado, andamento, resumo: texto(r.resumo), mudancas };
+}
 
 export function criarFeedbackFirestore(quem: () => Quem): RepoFeedback {
   const db = bancoDoEntregas();
@@ -88,7 +106,7 @@ export function criarFeedbackFirestore(quem: () => Quem): RepoFeedback {
               const x = d.data();
               return {
                 id: d.id, texto: texto(x.texto), imagem: texto(x.imagem), tela: texto(x.tela), versao: texto(x.versao), nome: texto(x.nome),
-                email: texto(x.email), criadoEm: texto(x.criadoEm), status: (STATUS.includes(x.status) ? x.status : 'novo') as SituacaoDoFeedback,
+                email: texto(x.email), criadoEm: texto(x.criadoEm), status: situacao(x.status),
                 prioridade: ehPrioridade(x.prioridade) ? x.prioridade : null,
                 tipo: x.tipo === 'bug' ? 'bug' as const : 'feedback' as const, caminho: texto(x.caminho),
                 empresa: x.contexto && typeof x.contexto === 'object' ? texto((x.contexto as { empresa?: unknown }).empresa) : '',
@@ -100,6 +118,7 @@ export function criarFeedbackFirestore(quem: () => Quem): RepoFeedback {
                   : [],
                 analise: (['pendente', 'analisando', 'pronta', 'erro'].includes(x.analise) ? x.analise : '') as Feedback['analise'],
                 relatorio: texto(x.relatorio),
+                resolucao: resolucaoDo(x),
               };
             }),
           };
@@ -109,6 +128,8 @@ export function criarFeedbackFirestore(quem: () => Quem): RepoFeedback {
       return todos;
     },
     async marcar(id, status) { await updateDoc(doc(db, 'feedbacks', id), { status }); },
+    async resolver(id) { await updateDoc(doc(db, 'feedbacks', id), { status: 'resolver' }); },
+    async publicarResolucao(id) { await updateDoc(doc(db, 'feedbacks', id), { status: 'publicar' }); },
     // os seus (Vitor, 26/10/2026: o aviso do Resolvendo): a regra deixa cada um ler os que mandou (uid); sem orderBy, para
     // não pedir índice composto
     meus() {
@@ -118,7 +139,7 @@ export function criarFeedbackFirestore(quem: () => Quem): RepoFeedback {
         const estes: { uid: string; lista: MeuFeedback[] } = { uid: q.uid, lista: [] };
         meus = estes;
         onSnapshot(query(collection(db, 'feedbacks'), where('uid', '==', q.uid), limit(200)), s => {
-          estes.lista = s.docs.map(d => { const x = d.data(); return { id: d.id, texto: texto(x.texto), status: (STATUS.includes(x.status) ? x.status : 'novo') as SituacaoDoFeedback, criadoEm: texto(x.criadoEm) }; });
+          estes.lista = s.docs.map(d => { const x = d.data(); const r = resolucaoDo(x); return { id: d.id, texto: texto(x.texto), status: situacao(x.status), criadoEm: texto(x.criadoEm), andamento: r?.andamento || [], estado: r?.estado || '' }; });
           mudou();
         }, () => { estes.lista = []; mudou(); });
       }

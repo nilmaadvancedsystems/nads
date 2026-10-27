@@ -77,6 +77,14 @@ export function BalaoDoSuporte() {
           <div className="suporte-msg">
             {vm.nomeDaPessoa ? 'Oi, ' + vm.nomeDaPessoa + '!' : 'Oi!'} Sou o suporte de leitura do nads. Me diga o que aconteceu que eu te guio.
           </div>
+          {/* o andamento dos pedidos que o Claude do PC do Vitor está resolvendo (o botão Resolver dos Feedbacks; 26/10/2026) */}
+          {vm.atualizacoes.map(a => (
+            <div key={a.id} className="suporte-msg">
+              <span className="suporte-msg-titulo">Sobre o seu pedido {a.pedido}</span>
+              <span className="suporte-msg-dica">"{a.texto}"</span>
+              <ol className="suporte-passos">{a.passos.map((p, i) => <li key={i}>{p}</li>)}</ol>
+            </div>
+          ))}
           {vm.conversa.map((f, i) => (
             <div key={i} className="suporte-troca">
               <FalaDoSuporte passo={f.passo} />

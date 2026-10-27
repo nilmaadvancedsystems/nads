@@ -10,6 +10,8 @@ import { useFeedbacks } from './useFeedbacks';
 
 const SELO = { novo: 'badge-warn', visto: 'badge-neutral', resolvendo: 'badge-suave badge-warn', feito: 'badge-ok' } as const;
 const NOME = { novo: 'Novo', visto: 'Visto', resolvendo: 'Resolvendo', feito: 'Feito' } as const;
+/** o estado da resolução pelo Claude do PC do Vitor (o botão Resolver) */
+const ESTADO_DA_RESOLUCAO = { fila: 'Na fila do Claude (o robô do PC do Vitor precisa estar ligado)', trabalhando: 'O Claude está resolvendo', aprovar: 'Corrigido: esperando o seu ok para publicar', publicando: 'Publicando a correção', pronto: 'Resolvido e publicado', precisa: 'O Claude precisa da sua análise', erro: 'O Claude não conseguiu resolver' } as const;
 export const ICONE_DO_FILTRO = { novo: 'envelope', visto: 'olho', resolvendo: 'clock', feito: 'check', '': 'relatorio', bug: 'alert' } as const;
 const ANALISE = { pendente: 'Na fila do robô', analisando: 'O robô está investigando', pronta: '', erro: 'O robô não conseguiu analisar', '': '' } as const;
 const VEREDITO = { erro: { selo: 'badge-bad', rotulo: 'Erro do sistema' }, analise: { selo: 'badge-warn', rotulo: 'Precisa da sua análise' } } as const;
@@ -75,7 +77,7 @@ export function ListaDosFeedbacks({ vm }: { vm: ReturnType<typeof useFeedbacks> 
           ))}
         </ul>
       )}
-      {vm.aberto && <JanelaDoFeedback f={vm.aberto} fechar={vm.fecharAberto} ampliar={vm.setAberta} marcar={vm.marcar} baixar={(id, i) => { void vm.baixarArquivoDoBug(id, i); }} />}
+      {vm.aberto && <JanelaDoFeedback f={vm.aberto} fechar={vm.fecharAberto} ampliar={vm.setAberta} marcar={vm.marcar} resolver={vm.resolver} publicar={vm.publicarResolucao} baixar={(id, i) => { void vm.baixarArquivoDoBug(id, i); }} />}
       {vm.aberta && (
         <div className="modal-overlay pessoal-fundo feedback-zoom" onMouseDown={() => vm.setAberta('')}>
           <img src={vm.aberta} alt="O print do feedback" />
@@ -87,8 +89,9 @@ export function ListaDosFeedbacks({ vm }: { vm: ReturnType<typeof useFeedbacks> 
 
 /** A solicitação inteira numa janela flutuante por cima da lista: o print (clicar amplia), o texto, quem, quando, a tela
  * e a versão; embaixo Visto / Feito / Reabrir. O Esc fecha só esta janela. */
-function JanelaDoFeedback({ f, fechar, ampliar, marcar, baixar }: {
+function JanelaDoFeedback({ f, fechar, ampliar, marcar, resolver, publicar, baixar }: {
   f: NonNullable<ReturnType<typeof useFeedbacks>['aberto']>; fechar: () => void; ampliar: (img: string) => void; marcar: (id: string, s: SituacaoDoFeedback) => void;
+  resolver: (id: string) => void; publicar: (id: string) => void;
   baixar: (id: string, i: number) => void;
 }) {
   // revisão da UI, 16/10/2026: Esc, foco preso e o foco de volta pela peça useJanela (antes, um Esc à mão por janela)
@@ -122,6 +125,15 @@ function JanelaDoFeedback({ f, fechar, ampliar, marcar, baixar }: {
           ))}
           {/* o report do robô do suporte (termina em "Realmente, isso é erro do sistema" ou "Precisa da sua análise") */}
           {f.tipo === 'bug' && (f.relatorio ? <p className="feedback-txt feedback-relatorio">{f.relatorio}</p> : <p className="hint">{ANALISE[f.analise] || 'Sem report ainda.'}</p>)}
+          {/* o Resolver (26/10/2026): o que o Claude do PC do Vitor está fazendo, passo a passo, e o resumo no fim */}
+          {f.resolucao && (
+            <div className="feedback-txt">
+              <b>{ESTADO_DA_RESOLUCAO[f.resolucao.estado]}</b>
+              {f.resolucao.andamento.length > 0 && <ul className="feedback-andamento">{f.resolucao.andamento.map((p, i) => <li key={i}><span className="fraco">{p.em ? new Date(p.em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''}</span> {p.texto}</li>)}</ul>}
+              {f.resolucao.resumo && <p className="feedback-txt feedback-relatorio">{f.resolucao.resumo}</p>}
+              {f.resolucao.mudancas.length > 0 && <p className="hint">O que mudou: {f.resolucao.mudancas.join(', ')}</p>}
+            </div>
+          )}
           <span className="fraco feedback-onde">{f.tela}{f.versao ? ' · ' + f.versao : ''}</span>
         </div>
         <footer className="usuario-pe">
@@ -129,6 +141,10 @@ function JanelaDoFeedback({ f, fechar, ampliar, marcar, baixar }: {
           {f.status === 'novo' && <button type="button" className="btn btn-outline" onClick={() => marcar(f.id, 'visto')}><Icone nome="olho" />Visto</button>}
           {/* Resolvendo (Vitor, 26/10/2026): quem mandou é avisado no Tarefas */}
           {(f.status === 'novo' || f.status === 'visto') && <button type="button" className="btn btn-outline" title="Avisa quem mandou que está sendo resolvido" onClick={() => marcar(f.id, 'resolvendo')}><Icone nome="clock" />Resolvendo</button>}
+          {/* o Resolver (Vitor, 26/10/2026): o Claude do PC do Vitor lê o pedido e os arquivos, corrige, publica e conta o andamento no chat de quem mandou */}
+          {(f.status === 'novo' || f.status === 'visto' || (f.status === 'resolvendo' && !f.resolucao) || f.resolucao?.estado === 'erro' || f.resolucao?.estado === 'precisa') && <button type="button" className="btn btn-outline" title="O Claude do PC do Vitor investiga e corrige numa cópia do nads; você aprova antes de publicar. Quem mandou acompanha no chat do suporte." onClick={() => resolver(f.id)}><Icone nome="zap" />{f.resolucao ? 'Resolver de novo' : 'Resolver'}</button>}
+          {/* o Publicar (27/10/2026): a correção do Claude só vai para o ar com o ok do admin */}
+          {f.resolucao?.estado === 'aprovar' && <button type="button" className="btn btn-primary" title="Publica a correção que o Claude fez (o robô do PC do Vitor junta, empurra e publica o site)" onClick={() => publicar(f.id)}><Icone nome="upload" />Publicar</button>}
           {f.status !== 'feito' && <button type="button" className="btn btn-primary" onClick={() => marcar(f.id, 'feito')}><Icone nome="check" />Feito</button>}
           {f.status === 'feito' && <button type="button" className="btn btn-outline" onClick={() => marcar(f.id, 'novo')}>Reabrir</button>}
         </footer>
