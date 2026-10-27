@@ -448,7 +448,10 @@ const LAYOUTS = [   // cabeçalho/título próprio do layout: vale no texto todo
   ['BRADESCO', /^EXTRATO DE: AG: \| CC:/m], ['BRADESCO', /ALO BRADESCO|BRADESCO NET EMPRESA|TITULOS PAGOS POR CONTA CREDITO/],
   ['MERCADO PAGO', /LIBERACAO DE DINHEIRO|DETALHE DOS MOVIMENTOS/], ['GETNET', /EXTRATO DE VENDAS POR CARTOES/],
   ['INFINITEPAY', /^INFINITE ID\b/m], ['REDE', /EXTRATO PARA SIMPLES CONFERENCIA|TOTAL BRUTO REDE|TAXAS REDE|^REDE CONSOLIDADO/m],
-  ['BANCO DO BRASIL', /^[\s\S]{0,150}RENDE FACIL/], ['CAIXA', /CONTA CORRENTE PESSOA (JURIDICA|FISICA) CAIXA/],
+  ['BANCO DO BRASIL', /^[\s\S]{0,150}RENDE FACIL/],
+  // o extrato do internet banking do BB (o nome do banco só no logo; 27/10/2026, a 407 DUDA HOME): "EXTRATO DE CONTA
+  // CORRENTE / CLIENTE: … / AGENCIA: 2705-7 CONTA: 28265-0", a agência e a conta com o dígito
+  ['BANCO DO BRASIL', /^\s*EXTRATO DE CONTA CORRENTE\s*\n\s*CLIENTE:?.*\n\s*AGENCIA:\s*\d{4}-[\dX]\s+CONTA:\s*[\d.]+-[\dX]\b/m], ['CAIXA', /CONTA CORRENTE PESSOA (JURIDICA|FISICA) CAIXA/],
   ['CAIXA', /CONTA:\s*\d{4}\s*[/|]\s*\d{3,4}\s*[/|]\s*\d{12}-\d/],   // agência/operação/conta da Caixa ("3411/1292/000578855317-9")
   ['BANCO DO BRASIL', /^CONSULTAS - (EXTRATO|EMISSAO DE COMPROVANTES)|^G\d{16}$|DT\. BALANCETE/m], ['BNB', /\bFNE\b|INTERNET BANKING BNB|BNB\.GOV\.BR/],
 ];
@@ -464,8 +467,14 @@ function bancoDoTexto(texto, soConta) {
   const tudo = norm(texto);
   const u = tudo.slice(0, 2500);
   for (const [b, re] of LAYOUTS) if (re.test(tudo)) return b;
+  // o campo "INSTITUIÇÃO" do cabeçalho vale antes de tudo; sem ele, a instituição que aparece PRIMEIRO (27/10/2026: o
+  // extrato da Stone da 407 foi para NUBANK pelo "NU PAGAMENTOS S.A." das contrapartes dos Pix)
+  const inst = /\bINSTITUICAO\s*:?\s*\n?\s*([^\n]+)/.exec(u);
+  if (inst) { for (const [b, re] of ASSINATURAS.concat(BANCOS)) if (re.test(inst[1])) return b; }
   const semLancamentos = tudo.split('\n').filter(l => !LINHA_DE_LANCAMENTO.test(l)).join('\n');
-  for (const [b, re] of ASSINATURAS) if (re.test(semLancamentos)) return b;
+  let primeira = null;
+  for (const [b, re] of ASSINATURAS) { const m = re.exec(semLancamentos); if (m && (!primeira || m.index < primeira.pos)) primeira = { banco: b, pos: m.index }; }
+  if (primeira) return primeira.banco;
   let melhor = null;
   const linhas = u.split('\n');
   let pos = 0;
@@ -893,7 +902,10 @@ function camposDeNota(u) {
   return { chave: ch && ch.length === 44 ? ch : null, emissao, cancelada: /CANCELAD[AO]/.test(u.slice(0, 1500)) };
 }
 function camposDeNfse(u) {
-  const numero = (/NUMERO DA NFS-E[^0-9]{0,30}(\d{1,15})/.exec(u) || /NFS-E\s*N[O°º.]*\s*:?\s*(\d{1,15})/.exec(u) || /NUMERO DA NOTA[^0-9]{0,20}(\d{1,15})/.exec(u) || [])[1] || null;
+  // a NFS-e da Prefeitura de Taiobeiras (a de honorários da Nilma, 27/10/2026): "Nº da Nota Fiscal\n849" e, no canhoto,
+  // "A NOTA FISCAL Nº 849, EMITIDA EM 17/02/2022"
+  const numero = (/NUMERO DA NFS-E[^0-9]{0,30}(\d{1,15})/.exec(u) || /NFS-E\s*N[O°º.]*\s*:?\s*(\d{1,15})/.exec(u) || /NUMERO DA NOTA[^0-9]{0,20}(\d{1,15})/.exec(u)
+    || /N[º°O]\.?\s*DA NOTA FISCAL\s*:?\s*(\d{1,15})/.exec(u) || /NOTA FISCAL N[º°O]\.?\s*(\d{1,15}),?\s*EMITIDA EM/.exec(u) || [])[1] || null;
   const emissao = dataBr(linhaApos(u, /DATA E HORA DA EMISSAO|DATA DA EMISSAO|EMISSAO DA NFS-E|DATA DE EMISSAO|EMITIDA EM/, 120)) || dataBr(linhaApos(u, /DATA FATO GERADOR/, 80));
   const comp = competenciaSolta(linhaApos(u, /COMPETENCIA DA NFS-E|COMPETENCIA/, 80));
   return { numero: numero ? String(+numero) : null, emissao, competencia: comp, cancelada: /CANCELAD[AO]/.test(u.slice(0, 1500)) };
@@ -947,8 +959,11 @@ function decidir(entrada, ctx) {
     return fim({ acao: 'ARQUIVAR', cliente: cli, comoCliente: 'doc', confianca: 0.97, tipo: 'CERTIFICADO DIGITAL', setor: 'FOLHA_SOCIETARIO', caminho: ['SOCIETÁRIO', 'CERTIFICADO DIGITAL'], nomeFinal: nome, fonte: '04b (Certificado Digital)' });
   }
   if (e === 'txt') return fim(decidirTxt(entrada, ctx, ev));
-  if (e === 'pdf') return fim(decidirPdf(entrada, ctx, ev, porHash));
+  // 27/10/2026 (Vitor): o que o conteúdo do PDF não decide pode ir pelo XML da mesma chave ou pelo nome do comprovante do banco
+  if (e === 'pdf') return fim(pdfSemDecisao(decidirPdf(entrada, ctx, ev, porHash), entrada, ctx, ev, porHash));
   if (['xlsx', 'xls', 'csv'].includes(e)) return fim(decidirPlanilha(entrada, ctx, ev, porHash));
+  // a imagem lida por OCR (27/10/2026): o comprovante de pagamento escaneado
+  if (/^(jpe?g|png)$/.test(e) && entrada.texto) return fim(decidirImagem(entrada, ctx, ev, porHash));
   if (porHash) return fim({ acao: 'NAO_IDENTIFICADO', motivo: 'HASH_CONFIRMADO_SEM_REGRA_DE_DESTINO', confianca: 0.5, cliente: porHash });
   return fim({ acao: 'NAO_IDENTIFICADO', motivo: 'FORMATO_SEM_REGRA', confianca: 0, evidencias: ev.concat('extensão .' + (e || '?') + ' sem regra determinística (imagem, Word, etc.)') });
 }
@@ -1352,7 +1367,8 @@ function pagamentoDeFornecedor(entrada) {
   const data = dm && +dm[1] >= 1 && +dm[1] <= 31 && +dm[2] >= 1 && +dm[2] <= 12 && anoOk(+dm[3]) ? { mes: +dm[2], ano: +dm[3] } : null;
   if (!data && !new RegExp('^' + DOC_DO_FORNECEDOR + '|\\s(?:NFS-?E|NF-?E|NF)\\s*\\d').test(base)) return null;
   // o fornecedor: o trecho entre a data / o "NF nnn" do começo e o próximo "NF nnn" ou o "R$"
-  let s = base.replace(/^\d{2}-\d{2}-\d{4}\s+/, '').replace(new RegExp('^' + DOC_DO_FORNECEDOR + '+(?:\\s*(?:E|,|/|-)\\s*\\d+)*\\s+'), '');
+  // "BOLETO LUSO BRASIL NF60236 R$454,00" (27/10/2026, a 415 LAVICA): a palavra BOLETO do começo é o tipo, não o fornecedor
+  let s = base.replace(/^\d{2}-\d{2}-\d{4}\s+/, '').replace(new RegExp('^' + DOC_DO_FORNECEDOR + '+(?:\\s*(?:E|,|/|-)\\s*\\d+)*\\s+'), '').replace(/^BOLETOS?\s+(?=[A-Z])/, '');
   const corte = s.search(new RegExp('\\s' + DOC_DO_FORNECEDOR + '|\\s*R\\$'));
   if (corte >= 0) s = s.slice(0, corte);
   return { fornecedor: nomeSeguro(semAcento(nomeNormalizado(s))).toUpperCase(), data };
@@ -1362,19 +1378,9 @@ function decidirFornecedor(pg, entrada, u, bruto, ctx, ev, porHash) {
   const rel = entrada.rel || entrada.nome;
   const base = { tipo: 'FATURA FORNECEDOR', setor: 'CONTABIL', fonte: 'pagamentos de fornecedores (Vitor, 27/10/2026); 04 (Pag. Fornecedores)' };
   ev.push('pagamento de fornecedor pelo padrão do nome (data/NF/R$) e pela pasta de pagamentos da origem');
-  // o cliente: o da pasta de origem; na pasta que junta matriz e filiais (o mapa), a filial cujo CNPJ está no conteúdo, senão a matriz
-  let c = porHash ? { cliente: porHash, conf: 0.97, como: 'hash' } : null;
-  if (!c) { const sub = clienteDaPasta(rel, cad); if (sub) { c = { cliente: sub.codigo, conf: sub.forte ? 0.9 : 0.8, como: sub.forte ? 'pastaConferida' : 'pasta' }; ev.push(sub.como); } }
-  if (!c) {
-    const g = grupoDaPasta(rel, cad);
-    if (g && g.matriz != null && cad.porCod.has(g.matriz)) {
-      const fil = [...new Set(documentosDoTexto(bruto).flatMap(d => clientesDoDoc(d.doc, cad)))].filter(x => (g.filiais || []).includes(x));
-      if (fil.length > 1) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_AMBIGUO', confianca: 0.4, evidencias: ev.concat('o conteúdo traz o CNPJ de mais de uma filial da pasta "' + g.parte + '": ' + fil.join(', ')) });
-      if (fil.length === 1) { c = { cliente: fil[0], conf: 0.93, como: 'doc' }; ev.push('pasta "' + g.parte + '": a filial ' + fil[0] + ' pelo CNPJ no conteúdo'); }
-      else { c = { cliente: g.matriz, conf: 0.9, como: 'pastaConferida' }; ev.push('pasta "' + g.parte + '": sem o CNPJ de uma filial no conteúdo, a matriz ' + g.matriz); }
-    }
-  }
-  if (!c) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_NAO_LOCALIZADO', confianca: 0.3, evidencias: ev.concat('a pasta de origem não diz o cliente') });
+  const r = clienteDoPagamento(rel, bruto, cad, ev, porHash, false);
+  if (r.erro) return Object.assign(base, r.erro);
+  const c = r.c;
   Object.assign(base, { cliente: c.cliente, comoCliente: c.como });
   if (!pg.fornecedor) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'VOCABULARIO_AUSENTE', confianca: 0.5, evidencias: ev.concat('o nome do fornecedor não foi lido no nome do arquivo (04: Fornecedores)') });
   // o mês: a data do começo do nome; sem ela, o mês da pasta de origem; sem ele, o vencimento no conteúdo
@@ -1386,6 +1392,173 @@ function decidirFornecedor(pg, entrada, u, bruto, ctx, ev, porHash) {
   if (!comp) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5, evidencias: ev.concat('sem a data no começo do nome, o mês na pasta de origem ou o vencimento no conteúdo') });
   // o nome original fica (já traz a data, o fornecedor, a NF e o valor)
   return Object.assign(base, { acao: 'ARQUIVAR', confianca: c.conf, competencia: comp, caminho: ['CONTÁBIL', 'PAGAMENTOS DE FORNECEDORES', String(comp.ano), dois(comp.mes), pg.fornecedor], nomeFinal: entrada.nome });
+}
+
+/**
+ * O cliente de um pagamento (27/10/2026): com `pagador`, o do CNPJ do pagador no conteúdo primeiro (o comprovante do Berizal);
+ * depois o da pasta de origem; na pasta que junta matriz e filiais (o mapa: 413, 415…), a filial cujo CNPJ está no conteúdo,
+ * senão a matriz. → { c: { cliente, conf, como } } ou { erro: { acao, motivo, confianca, evidencias } }.
+ */
+function clienteDoPagamento(rel, bruto, cad, ev, porHash, pagador) {
+  if (porHash) return { c: { cliente: porHash, conf: 0.97, como: 'hash' } };
+  if (pagador) { const p = pagadorDoComprovante(bruto, cad); if (p != null) { ev.push('cliente pelo CNPJ do pagador'); return { c: { cliente: p, conf: 0.95, como: 'doc' } }; } }
+  const sub = clienteDaPasta(rel, cad);
+  if (sub) { ev.push(sub.como); return { c: { cliente: sub.codigo, conf: sub.forte ? 0.9 : 0.8, como: sub.forte ? 'pastaConferida' : 'pasta' } }; }
+  const g = grupoDaPasta(rel, cad);
+  if (g && g.matriz != null && cad.porCod.has(g.matriz)) {
+    const fil = [...new Set(documentosDoTexto(bruto).flatMap(d => clientesDoDoc(d.doc, cad)))].filter(x => (g.filiais || []).includes(x));
+    if (fil.length > 1) return { erro: { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_AMBIGUO', confianca: 0.4, evidencias: ev.concat('o conteúdo traz o CNPJ de mais de uma filial da pasta "' + g.parte + '": ' + fil.join(', ')) } };
+    if (fil.length === 1) { ev.push('pasta "' + g.parte + '": a filial ' + fil[0] + ' pelo CNPJ no conteúdo'); return { c: { cliente: fil[0], conf: 0.93, como: 'doc' } }; }
+    ev.push('pasta "' + g.parte + '": sem o CNPJ de uma filial no conteúdo, a matriz ' + g.matriz);
+    return { c: { cliente: g.matriz, conf: 0.9, como: 'pastaConferida' } };
+  }
+  return { erro: { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_NAO_LOCALIZADO', confianca: 0.3, evidencias: ev.concat(pagador ? 'nem o CNPJ do pagador nem a pasta de origem dizem o cliente' : 'a pasta de origem não diz o cliente') } };
+}
+/** O cliente pagador de um comprovante: o CNPJ/CPF cujo rótulo mais próximo antes dele é Pagador/Sacado/Correntista (um cliente só). */
+function pagadorDoComprovante(bruto, cad) {
+  const achados = new Set();
+  for (const d of documentosDoTexto(bruto)) {
+    const antes = norm(bruto.slice(Math.max(0, d.pos - 160), d.pos));
+    const rotulos = [...antes.matchAll(/\b(PAGADOR|SACADO|CORRENTISTA|BENEFICIARIO|CEDENTE|FAVORECIDO|SACADOR)\b/g)];
+    const ult = rotulos.length ? rotulos[rotulos.length - 1][1] : null;
+    if (/^(PAGADOR|SACADO|CORRENTISTA)$/.test(ult || '')) clientesDoDoc(d.doc, cad).forEach(c => achados.add(c));
+  }
+  return achados.size === 1 ? [...achados][0] : null;
+}
+/** O beneficiário de um comprovante de pagamento (o "Nome/Razão Social" depois de Beneficiário/Cedente, o Favorecido, o Convênio), como nome de pasta. */
+function beneficiarioDoComprovante(u) {
+  const limpa = s => {
+    const t = String(s || '').replace(/\(?\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}\)?/g, ' ').replace(/^[\s:—–-]+|[\s:—–-]+$/g, '').trim();
+    return /[A-Z]{3}/.test(t) ? nomeSeguro(semAcento(nomeNormalizado(t))).toUpperCase() || null : null;
+  };
+  const i = u.search(/BENEFICIARIO|CEDENTE/);
+  if (i >= 0) {
+    // só o bloco do beneficiário: o "Nome/Razão Social" do Sacador Avalista e do Pagador logo abaixo não valem
+    let bloco = u.slice(i, i + 500);
+    const fim = bloco.slice(12).search(/\b(SACADOR|PAGADOR|SACADO)\b/);
+    if (fim >= 0) bloco = bloco.slice(0, fim + 12);
+    const m = /NOME\s*\/\s*RAZAO\s*SOCIAL\s*:?[ \t]*([^\n]+)/.exec(bloco);
+    if (m && limpa(m[1])) return limpa(m[1]);
+  }
+  for (const re of [/\b(?:BENEFICIARIO|FAVORECIDO|CEDENTE)\s*:[ \t]*([^\n]+)/, /\bCONVENIO\s*:?[ \t]*(?:\d+[ \t]+)?([A-Z][^\n]*)/]) { const m = re.exec(u); if (m && limpa(m[1])) return limpa(m[1]); }
+  return null;
+}
+/** A data do pagamento (efetivação, pagamento, débito, transferência) → "DD-MM-AAAA" ou null; e o valor pago como impresso ("1.400,00"). */
+function dataDoPagamento(u) {
+  for (const r of [/DATA DE EFETIVACAO/, /DATA DO PAGAMENTO/, /DATA DO DEBITO/, /DATA DA TRANSFERENCIA/]) { const d = dataBr(linhaApos(u, r, 60)); if (d) return d; }
+  return null;
+}
+function valorPago(u) {
+  const m = /VALOR PAGO[^0-9\n]{0,15}(\d{1,3}(?:\.\d{3})*,\d{2})/.exec(u) || /VALOR (?:TOTAL|DO DEBITO)[^0-9\n]{0,15}(\d{1,3}(?:\.\d{3})*,\d{2})/.exec(u);
+  return m ? m[1] : null;
+}
+
+/**
+ * A imagem escaneada (27/10/2026, Vitor: os "Imagem (10).jpg" do Posto Berizal, lidos por OCR no arquivador-novo.js): o
+ * "Comprovante de Pagamento" (Gerenciador CAIXA) vai para CONTÁBIL\PAGAMENTOS DE FORNECEDORES\[ANO]\[MÊS]\[BENEFICIÁRIO]\ do
+ * cliente pagador (o CNPJ do pagador, senão a pasta de origem), com o nome "DD-MM-AAAA BENEFICIÁRIO R$ VALOR.jpg" (a data da
+ * efetivação, o valor pago). Outra imagem segue sem regra, como antes.
+ */
+function decidirImagem(entrada, ctx, ev, porHash) {
+  const nome = String(entrada.nome || '');
+  const ext = ((/\.[a-z0-9]+$/i.exec(nome) || ['.jpg'])[0]).toLowerCase();
+  const bruto = Array.isArray(entrada.texto) ? entrada.texto.join('\n') : String(entrada.texto || '');
+  const u = norm(bruto);
+  const semRegra = () => (porHash ? { acao: 'NAO_IDENTIFICADO', motivo: 'HASH_CONFIRMADO_SEM_REGRA_DE_DESTINO', confianca: 0.5, cliente: porHash }
+    : { acao: 'NAO_IDENTIFICADO', motivo: u.replace(/\s/g, '').length < 40 ? 'FORMATO_SEM_REGRA' : 'TIPO_NAO_RECONHECIDO', confianca: 0, evidencias: ev.concat(u.replace(/\s/g, '').length < 40 ? 'imagem sem texto lido (OCR) e sem regra determinística' : 'imagem lida por OCR, mas não é comprovante de pagamento') });
+  if (!/COMPROVANTE DE PAGAMENTO/.test(u)) return semRegra();
+  const base = { tipo: 'COMPROVANTE FORNECEDOR', setor: 'CONTABIL', fonte: 'comprovante de pagamento escaneado (Vitor, 27/10/2026); 04 (Pag. Fornecedores)' };
+  ev.push('imagem: comprovante de pagamento (texto por OCR)');
+  const r = clienteDoPagamento(entrada.rel || nome, bruto, ctx.cadastro, ev, porHash, true);
+  if (r.erro) return Object.assign(base, r.erro);
+  Object.assign(base, { cliente: r.c.cliente, comoCliente: r.c.como });
+  const benef = beneficiarioDoComprovante(u), data = dataDoPagamento(u), valor = valorPago(u);
+  if (!benef) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'VOCABULARIO_AUSENTE', confianca: 0.5, evidencias: ev.concat('o beneficiário do pagamento não foi lido') });
+  if (!data) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5, evidencias: ev.concat('a data de efetivação/pagamento não foi lida') });
+  if (!valor) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'VALOR_AUSENTE', confianca: 0.5, evidencias: ev.concat('o valor pago não foi lido') });
+  const comp = { mes: +data.slice(3, 5), ano: +data.slice(6) };
+  return Object.assign(base, { acao: 'ARQUIVAR', confianca: r.c.conf, competencia: comp, caminho: ['CONTÁBIL', 'PAGAMENTOS DE FORNECEDORES', String(comp.ano), dois(comp.mes), benef], nomeFinal: data + ' ' + benef + ' R$ ' + valor + ext });
+}
+
+/**
+ * O comprovante exportado do internet banking com o nome "N - DDMMAAAA - Pagamento - V.pdf" (27/10/2026, Vitor: os do Posto
+ * Berizal): PAGAMENTOS DE FORNECEDORES\[ANO]\[MÊS]\[BENEFICIÁRIO]\, o nome original; o mês e o ano pela data do nome; o
+ * beneficiário pelo conteúdo (o texto, ou o OCR do escaneado); o cliente pelo CNPJ do pagador, senão pela pasta de origem.
+ * Só quando o conteúdo não decidiu (o PDF não vira outra coisa que já se arquivava).
+ */
+const NOME_PAGAMENTO_BANCO = /^\d+ - (\d{2})(\d{2})(\d{4}) - Pagamento - [\d.]+,\d{2}\.pdf$/i;
+function decidirPagamentoPdf(entrada, u, bruto, ctx, ev, porHash) {
+  const m = NOME_PAGAMENTO_BANCO.exec(String(entrada.nome || ''));
+  if (!m || +m[1] < 1 || +m[1] > 31 || +m[2] < 1 || +m[2] > 12 || !anoOk(+m[3])) return null;
+  const base = { tipo: 'COMPROVANTE FORNECEDOR', setor: 'CONTABIL', fonte: 'comprovante de pagamento do banco (Vitor, 27/10/2026); 04 (Pag. Fornecedores)' };
+  ev.push('comprovante de pagamento pelo nome "N - DDMMAAAA - Pagamento - V" (o mês pela data do nome)');
+  const r = clienteDoPagamento(entrada.rel || entrada.nome, bruto, ctx.cadastro, ev, porHash, true);
+  if (r.erro) return Object.assign(base, r.erro);
+  Object.assign(base, { cliente: r.c.cliente, comoCliente: r.c.como });
+  const benef = beneficiarioDoComprovante(u);
+  if (!benef) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'VOCABULARIO_AUSENTE', confianca: 0.5, evidencias: ev.concat('o beneficiário (convênio, favorecido, cedente) não foi lido no conteúdo') });
+  const comp = { mes: +m[2], ano: +m[3] };
+  return Object.assign(base, { acao: 'ARQUIVAR', confianca: r.c.conf, competencia: comp, caminho: ['CONTÁBIL', 'PAGAMENTOS DE FORNECEDORES', String(comp.ano), dois(comp.mes), benef], nomeFinal: entrada.nome });
+}
+
+/**
+ * O PDF da nota cuja chave está no índice com o XML já arquivado (27/10/2026, Vitor: ~3.900 da HELLO NUTRITION, Torra Torra,
+ * Fito, Antonia's, 463): vai para a MESMA pasta do XML, com o MESMO nome do XML e a extensão .pdf (o XML em mais de um cliente,
+ * como a nota entre clientes: o PDF em todos). A chave pelo nome do arquivo (44 dígitos; a NFS-e nacional, 50) e pelo
+ * conteúdo. O nome do XML sai da chave como o classificarXml o monta ("MM-AAAA_NF-e_<nº>.xml": o mês/ano de emissão, o
+ * modelo e o número estão na chave). O evento ("…-procEventoNFe.pdf") não entra: o índice não guarda o nome do XML do evento.
+ */
+function nfseNacionalValida(ch) {
+  if (!/^\d{50}$/.test(ch) || !/^(0[1-9]|1[0-2])$/.test(ch.slice(38, 40))) return false;
+  return ch[8] === '2' ? cnpjValido(ch.slice(9, 23)) : ch[8] === '1' ? cpfValido(ch.slice(12, 23)) : false;
+}
+function chavesDoPdf(nome, u) {
+  const K = require('./arquivador-chaves');
+  const out = [];
+  for (const m of String(nome || '').matchAll(/(?<!\d)(\d{44})(?!\d)/g)) if (K.chaveValida(m[1])) out.push(m[1]);
+  for (const m of String(nome || '').matchAll(/(?<!\d)(\d{50})(?!\d)/g)) if (nfseNacionalValida(m[1])) out.push(m[1]);
+  const ch = (/(?<!\d)(\d{4}(?: ?\d{4}){10})(?!\d)/.exec(u) || [])[1];
+  if (ch && K.chaveValida(so(ch))) out.push(so(ch));
+  const n50 = /CHAVE\s*DE\s*ACESSO\s*DA\s*NFS-?E\s*(\d{50})/.exec(u);
+  if (n50 && nfseNacionalValida(n50[1])) out.push(n50[1]);
+  return [...new Set(out)];
+}
+function xmlDaChave(ch) {
+  if (ch.length === 50) { const comp = { mes: +ch.slice(38, 40), ano: 2000 + +ch.slice(36, 38) }; return { tipo: 'NFS-e', comp, nome: mesAno(comp) + '_NFS-e_' + (+ch.slice(23, 36)) }; }
+  const t = { 55: 'NF-e', 65: 'NFC-e', 57: 'CT-e', 67: 'CT-e OS' }[ch.slice(20, 22)];
+  if (!t) return null;
+  const comp = { mes: +ch.slice(4, 6), ano: 2000 + +ch.slice(2, 4) };
+  return { tipo: t === 'CT-e OS' ? 'CT-e' : t, comp, nome: mesAno(comp) + '_' + t + '_' + (+ch.slice(25, 34)) };
+}
+function pdfPeloXmlDaChave(entrada, u, ctx, ev) {
+  if (!ctx.chaves || typeof ctx.chaves.achar !== 'function') return null;
+  const nome = String(entrada.nome || '');
+  if (/EVENTO/i.test(nome) || /(?<!\d)\d{52}(?!\d)/.test(nome) || /\bEVENTO\b|CANCELAMENTO DE NF-?E|CARTA DE CORRECAO/.test(u.slice(0, 400))) return null;
+  const cad = ctx.cadastro;
+  for (const ch of chavesDoPdf(nome, u)) {
+    const x = xmlDaChave(ch);
+    if (!x) continue;
+    const orig = ctx.chaves.achar(ch).filter(o => o.de === 'doc' && o.sub && o.sub.length && cad.porCod.has(o.cliente));
+    if (!orig.length) continue;
+    // o cliente da pasta de origem primeiro (o PDF costuma estar na pasta de um deles)
+    const sub = clienteDaPasta(entrada.rel || nome, cad);
+    if (sub) orig.sort((a, b) => (b.cliente === sub.codigo) - (a.cliente === sub.codigo));
+    ev.push('chave ' + ch + ': o XML está arquivado em ' + orig.map(o => o.cliente + ' (' + o.sub.join('\\') + ')').join(', ') + '; o PDF vai ao lado, com o nome do XML');
+    return { acao: 'ARQUIVAR', cliente: orig[0].cliente, comoCliente: 'chave', confianca: 0.95, copias: orig.slice(1).map(o => ({ cliente: o.cliente, comoCliente: 'chave', caminho: o.sub })),
+      tipo: x.tipo + ' PDF', setor: 'FISCAL', caminho: orig[0].sub, nomeFinal: x.nome + '.pdf', chave: ch, competencia: x.comp, fonte: 'índice de chaves: o PDF ao lado do XML (Vitor, 27/10/2026)' };
+  }
+  return null;
+}
+
+/** O PDF que o conteúdo não decidiu (27/10/2026): a nota pelo XML da mesma chave; o comprovante "N - DDMMAAAA - Pagamento". */
+function pdfSemDecisao(d, entrada, ctx, ev, porHash) {
+  if (!d || d.acao !== 'NAO_IDENTIFICADO' || d.motivo === 'PDF_COMPOSTO_NAO_SEPARADO') return d;
+  const paginas = Array.isArray(entrada.texto) ? entrada.texto : [String(entrada.texto || '')];
+  const bruto = paginas.slice(0, 3).join('\n');
+  const u = norm(bruto);
+  const ev2 = ev.concat('o conteúdo não decidiu (' + d.motivo + ')');
+  const n = pdfPeloXmlDaChave(entrada, u, ctx, ev2) || decidirPagamentoPdf(entrada, u, bruto, ctx, ev2, porHash);
+  return n ? Object.assign({ evidencias: ev2 }, n) : d;
 }
 
 /**
@@ -1443,6 +1616,12 @@ function decidirPdf(entrada, ctx, ev, porHash) {
     if (m == null) return { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_NAO_LOCALIZADO', confianca: 0.3, tipo: regra.tipo, setor: regra.setor, evidencias: ev.concat('o CNPJ Matriz ' + campos.cnpjMatriz + ' não é de um cliente só do cadastro') };
     doMatriz = { cliente: m, conf: 0.96, como: 'doc' };
     ev.push('cliente pelo CNPJ Matriz do relatório');
+  }
+  // a NFS-e emitida pelo escritório (honorários) em PDF (27/10/2026): como o XML (21/10/2026), na pasta do escritório E uma
+  // cópia na do tomador (montarNfsePdf); o CNPJ do escritório nunca é o cliente pelo caminho comum
+  if (!porHash && regra.tipo === 'NFS-e PDF') {
+    const { prestador } = papeisDaNfse(u, documentosDoTexto(bruto));
+    if (prestador && ESCRITORIO.has(prestador) && ctx.cadastro.porDoc.has(prestador)) { doMatriz = { cliente: [...ctx.cadastro.porDoc.get(prestador)][0], conf: 0.97, como: 'doc' }; ev.push('NFS-e emitida pelo escritório: na pasta dele e uma cópia na do tomador'); }
   }
   const c = porHash ? { cliente: porHash, conf: 0.97, como: 'hash' } : doMatriz || (regra.tipo === 'RELATORIO DE NOTAS' && clienteDoRelatorio(u, entrada, ctx, ev)) || clienteDoPdf(u, bruto, entrada, ctx, ev, regra, campos);
   if (!c.cliente) return { acao: 'NAO_IDENTIFICADO', motivo: c.motivo, confianca: 0.3, tipo: regra.tipo, setor: regra.setor, evidencias: ev.concat(c.candidatos ? 'candidatos ' + c.candidatos.join(', ') : []) };
@@ -1572,8 +1751,17 @@ function montarNotaPdf(regra, campos, u, bruto, base, c, ctx, ev) {
 function montarNfsePdf(campos, u, bruto, base, c, ctx, ev) {
   const cad = ctx.cadastro;
   const docs = documentosDoTexto(bruto).filter(d => !ESCRITORIO.has(d.doc) || true);
-  const { prestador } = papeisDaNfse(u, docs);
+  const { prestador, tomador } = papeisDaNfse(u, docs);
   if (!campos.numero || !campos.emissao) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'VOCABULARIO_AUSENTE', confianca: 0.5, evidencias: ev.concat('nº ou data da NFS-e não lidos') });
+  // emitida pelo escritório (27/10/2026): a cópia no tomador, como nota recebida (o isento, em CONTÁBIL\NOTAS DE SERVIÇO RECEBIDAS)
+  const copias = [];
+  if (prestador && ESCRITORIO.has(prestador) && tomador) {
+    const t = unico(clientesDoDoc(tomador, cad).filter(x => x !== c.cliente));
+    const ct = t != null ? cad.porCod.get(t) : null;
+    const comp0 = campos.competencia || { mes: +campos.emissao.slice(3, 5), ano: +campos.emissao.slice(6) };
+    if (ct) copias.push(ct.regime === 'ISENTA' ? { cliente: t, comoCliente: 'doc', caminho: ['CONTÁBIL', 'NOTAS DE SERVIÇO RECEBIDAS', String(comp0.ano), dois(comp0.mes)] } : { cliente: t, comoCliente: 'doc', fiscal: ['DOCS', 'RECEBIDOS'] });
+  }
+  if (copias.length) base.copias = copias;
   const cli = cad.porCod.get(c.cliente) || {};
   const emitida = prestador && (prestador === cli.doc || clientesDoDoc(prestador, cad).includes(c.cliente));
   let emissor = emitida ? cli.razao : null;

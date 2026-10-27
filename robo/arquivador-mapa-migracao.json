@@ -20,7 +20,7 @@
   ],
   "clientes": [
     { "pasta": "413 BRAZILIAN FILIAIS 414. 418. 453", "cliente": null, "matriz": 413, "filiais": [414, 418, 453], "porque": "a matriz e as filiais na mesma pasta: o cliente só pelo conteúdo; o pagamento de fornecedor vai para a filial do CNPJ no conteúdo, senão para a matriz 413 (Vitor, 27/10/2026)" },
-    { "pasta": "415 LAVICA EMPREEND. FLORESTAIS FILAL 416", "cliente": null, "porque": "a matriz e a filial na mesma pasta: o cliente só pelo conteúdo" },
+    { "pasta": "415 LAVICA EMPREEND. FLORESTAIS FILAL 416", "cliente": null, "matriz": 415, "filiais": [416], "porque": "a matriz e a filial na mesma pasta: o cliente só pelo conteúdo; o pagamento de fornecedor vai para a 416 pelo CNPJ no conteúdo, senão para a matriz 415, como a 413 (Vitor, 27/10/2026)" },
     { "pasta": "408 OURO VERDE MINERACAO FILIAIS 409 E 410", "cliente": null, "matriz": 408, "filiais": [409, 410], "peloNome": { "OV": 408, "OV1": 409, "OV3": 410 }, "porque": "a matriz e as filiais na mesma pasta: pelo nome do arquivo, OV = 408, OV1 = 409, OV3 = 410 e o código no começo do nome (408Balancete…) (Vitor, 27/10/2026); senão só pelo conteúdo" }
   ],
   "semPista": ["FERNANDO", "ADIVANIA", "IMPORTACAO", "OUTROS", "NOVA PASTA", "DEPARTAMENTO FISCAL", "DEPARTEMENTO CONTABIL", "NOTA FISCAL", "EXTRATOS", "EXTRATOS BANCARIOS", "ADICIONADOS", "IMPORTADOS", "SAIDAS", "SAIDA", "ENTRADAS", "ENTRADA"]
