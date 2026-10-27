@@ -530,7 +530,7 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
       // mês e a 2ª dentro é do mês do extrato
       const dataDoLanc = segunda && pelaDtMovimento ? segunda
         : periodo && segunda && !dataAtual.startsWith(periodo) && segunda.startsWith(periodo) ? segunda : dataAtual;
-      ultimo = { data: dataDoLanc, valor: c, historico: h || '(sem histórico)' };
+      ultimo = { data: dataDoLanc, valor: c, historico: h || '(sem histórico)', ...(dataDoLanc !== dataAtual ? { balancete: dataAtual } : {}) };
       ultimaY = l.y;
       // a Dt. movimento no mês seguinte: o lançamento vem no extrato do outro mês (senão entraria duas vezes; o saldo
       // anterior do extrato seguinte já é o de antes dele)

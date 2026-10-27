@@ -134,8 +134,21 @@ export function conferenciaDoBanco(e: EmpresaExtrator, banco: string, primeiro: 
       && m.data !== l.data && Math.abs(diaDe(m.data) - diaDe(l.data)) <= DIAS_ATE_O_ESTORNO);
     if (par) { cheque.linhas.add(l); cheque.linhas.add(par); pareados.add(l); pareados.add(par); }
   }
+  // o que o razão lançou e estornou no mesmo dia, na mesma contrapartida, e o banco não mostra (Vitor, 27/10/2026: na 237,
+  // o "ENVIO TED" e o "DEV. TED" de 18.800,00 em 02/02 — "o banco não lançou a entrada e o estorno no extrato, que dá na
+  // mesma do meu razão"): se anulam, não é pendência
+  const anulados = new Set<LancamentoDoArquivo>();
+  for (const p of porMes) {
+    const soDoRazao = p.linhas.filter(l => !l.extrato && l.sistema && (l.situacao === 'amais' || l.situacao === 'duplicado')).map(l => l.sistema as LancamentoDoArquivo)
+      .filter(s => !cheque.linhas.has(s) && !ajustes.has(s));
+    for (const s of soDoRazao) {
+      if (anulados.has(s)) continue;
+      const par = soDoRazao.find(o => o !== s && !anulados.has(o) && o.data === s.data && o.valor === -s.valor && (o.conta || '') === (s.conta || ''));
+      if (par) { anulados.add(s); anulados.add(par); }
+    }
+  }
   const pendencias = porMes
-    .map(p => ({ mes: p.mes, linhas: p.linhas.filter(l => !(l.situacao === 'amais' && l.sistema && (cheque.linhas.has(l.sistema) || ajustes.has(l.sistema)))) }))
+    .map(p => ({ mes: p.mes, linhas: p.linhas.filter(l => !(l.sistema && !l.extrato && anulados.has(l.sistema)) && !(l.situacao === 'amais' && l.sistema && (cheque.linhas.has(l.sistema) || ajustes.has(l.sistema)))) }))
     .filter(p => p.linhas.length > 0);
   return { completo, pendencias, negativos, faltamCheque: negativos.filter(n => !cheque.cobertos.has(n.data)), cheque, ajustes };
 }

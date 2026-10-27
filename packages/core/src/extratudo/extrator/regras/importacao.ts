@@ -13,9 +13,10 @@ import { dataBR } from './texto';
  * letra ("O8FEV2026"; 20/10/2026); 6 = o Sicoob do SISBR com o valor e o C/D em linhas soltas, o "- R$" do Stone e o extrato
  * do mais novo para o mais velho (26/10/2026); 7 = o nome do Pix do Stone no lançamento dele (não no de cima) e o saldo de
  * abertura pela coluna Saldo, quando o extrato não imprime o saldo anterior (26/10/2026); 8 = o quadro do limite do BB (Custo
- * Efetivo Total, Valor total devido…) fora e o depósito bloqueado com o "*" solto fora (26/10/2026).
+ * Efetivo Total, Valor total devido…) fora e o depósito bloqueado com o "*" solto fora (26/10/2026); 9 = a Dt. balancete
+ * guardada no lançamento do BB "Consultas" que vai pela Dt. movimento (27/10/2026).
  */
-export const VERSAO_DO_LEITOR = 8;
+export const VERSAO_DO_LEITOR = 9;
 
 export function empresaNova(nome: string): EmpresaExtrator {
   return { nome, arquivos: [], auditoria: [] };
@@ -194,6 +195,17 @@ export function tirarSobreposicaoDosExtratos(e: EmpresaExtrator, bancoDe: (a: Ar
       if (!s?.size) continue;
       novos.set(a.id, a.lancamentos.filter((_, i) => !s.has(i)));
       tirados += s.size;
+    }
+  }
+  // o lançamento do BB "Consultas" que foi pela Dt. movimento e que outro extrato do mesmo banco já traz na Dt. balancete
+  // dele, com o mesmo valor: é o mesmo, do mês do balancete (Vitor, 27/10/2026: a devolução de juros de 30/04 que o PDF de
+  // abril traz em 30/04 e o de maio, pela Dt. movimento, em 04/05 — "é do mês 04, também não entra")
+  for (const arqs of porBanco.values()) {
+    for (const a of arqs) {
+      const atuais = novos.get(a.id) || a.lancamentos;
+      const fica = atuais.filter(l => !(l.balancete && l.balancete.slice(0, 7) !== l.data.slice(0, 7) && arqs.some(b => b !== a
+        && (novos.get(b.id) || b.lancamentos).some(m => m.data === l.balancete && m.valor === l.valor && !m.balancete))));
+      if (fica.length !== atuais.length) { novos.set(a.id, fica); tirados += atuais.length - fica.length; }
     }
   }
   if (!tirados) return { empresa: e, tirados: 0 };
