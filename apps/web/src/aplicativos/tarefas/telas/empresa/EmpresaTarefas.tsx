@@ -1,16 +1,15 @@
-// A página de uma empresa na Tarefas (os insights dela). Voltar é pela trilha da barra de cima. Em cima: a bolinha e o nome, a
-// competência e o botão para abrir o executor; os números da competência; as etapas com quem fez,
-// quando e por que parou; o histórico dos últimos meses (clicar abre aquele mês); e os arquivos que o
-// Extrator tem da empresa.
+// As páginas da empresa aberta na Tarefas (27/10/2026: a empresa abre com as páginas na barra lateral; o nome, o código e o
+// CNPJ ficam no cartão do cabeçalho). No cabeçalho, só "Tarefas" e o cartão (o desenho de 27/10/2026). Em cima: a situação, a competência e o botão
+// para abrir o executor. Nas Tarefas, as etapas do mês com quem fez, quando e por que parou; na Visão geral, os números da
+// competência, o histórico dos últimos meses (clicar abre aquele mês) e os arquivos que o Extrator tem da empresa.
 import { tarefas } from '@nads/core';
 import { Esqueleto, Icone, MenuSuspenso, useCarregando, Vazio } from '@nads/ui';
 import { Navigate } from 'react-router';
-import { TrilhaDoTopo } from '../../../../comum/topo';
 import { BASE } from '../../casca/navegacao';
 import { EmDesenvolvimento } from '../em-desenvolvimento/EmDesenvolvimento';
 import { useEmpresa } from './useEmpresa';
 
-export function EmpresaTarefas({ rota }: { rota: string }) {
+export function EmpresaTarefas({ rota, parte }: { rota: string; parte: 'tarefas' | 'visao' }) {
   const vm = useEmpresa(rota);
   useCarregando(vm.pronta && (vm.carregando || vm.carregandoExtratos || vm.historico.some(h => h.carregando)));
   if (!vm.empresa) return <Navigate to={BASE} replace />;
@@ -18,14 +17,11 @@ export function EmpresaTarefas({ rota }: { rota: string }) {
 
   return (
     <section className="empresa-tarefas">
-      {/* voltar é pela barra de cima: Tarefas / Vitor / Minhas empresas / 292 · … */}
-      <TrilhaDoTopo itens={[{ rotulo: 'Minhas empresas', titulo: 'Voltar para Minhas empresas', onClick: vm.voltar }, { rotulo: (vm.empresa.codigo != null ? vm.empresa.codigo + ' · ' : '') + vm.empresa.nome }]} />
 
       <div className="empresa-cabeca">
         <div className="empresa-quem">
           <span className={'bolinha-sit ' + vm.situacao} title={vm.rotuloSituacao} role="img" aria-label={vm.rotuloSituacao} />
           <div>
-            <h2>{vm.empresa.codigo != null ? vm.empresa.codigo + ' · ' : ''}{vm.empresa.nome}</h2>
             <p className="hint">{vm.rotuloSituacao}{(tarefas.regimeDaEmpresa(vm.empresa.codigo) || vm.empresa.regime) ? ' · ' + (tarefas.regimeDaEmpresa(vm.empresa.codigo) || vm.empresa.regime) : ''}</p>
           </div>
         </div>
@@ -38,8 +34,7 @@ export function EmpresaTarefas({ rota }: { rota: string }) {
         </div>
       </div>
 
-      {vm.carregando ? <Esqueleto numeros={3} linhas={5} /> : (
-        <>
+      {vm.carregando ? <Esqueleto numeros={3} linhas={5} /> : parte === 'visao' ? (
           <div className="stat-grid empresa-numeros">
             <div className="stat"><p className="stat-label">Etapas</p><p className="stat-value">{vm.feitas}<span className="hint"> de {vm.total}</span></p></div>
             <div className="stat"><p className="stat-label">Etapa atual</p><p className="stat-texto">{vm.etapaAtual || '—'}</p></div>
@@ -48,9 +43,16 @@ export function EmpresaTarefas({ rota }: { rota: string }) {
               <p className="stat-texto" title={vm.ultimo?.quandoCompleto}>{vm.ultimo ? vm.ultimo.quando : '—'}</p>
               {vm.ultimo && <p className="hint">por {vm.ultimo.por}</p>}
             </div>
+            <div className="stat">
+              <p className="stat-label">Progresso</p>
+              <p className="stat-value">{vm.porcentagem}%</p>
+              <span className="tarefas-barra larga" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={vm.porcentagem} aria-label="Etapas feitas">
+                <span className={vm.paradas ? 'parada' : undefined} style={{ width: vm.porcentagem + '%' }} />
+              </span>
+            </div>
             <div className="stat"><p className="stat-label">Paradas</p><p className={'stat-value' + (vm.paradas ? ' cor-entrada' : '')}>{vm.paradas}</p></div>
           </div>
-
+      ) : (
           <div className="card">
             <div className="card-head"><h3>Etapas de {vm.rotuloCompetencia}</h3></div>
             <div className="table-wrap">
@@ -70,9 +72,9 @@ export function EmpresaTarefas({ rota }: { rota: string }) {
               </table>
             </div>
           </div>
-        </>
       )}
 
+      {parte === 'visao' && <>
       <div className="card">
         <div className="card-head"><h3>Últimos meses</h3></div>
         <div className="table-wrap">
@@ -116,6 +118,7 @@ export function EmpresaTarefas({ rota }: { rota: string }) {
           </div>
         )}
       </div>
+      </>}
     </section>
   );
 }

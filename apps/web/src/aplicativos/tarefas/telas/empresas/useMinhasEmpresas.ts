@@ -103,8 +103,12 @@ export function useMinhasEmpresas() {
       ...l,
       quando: l.ultimaVez ? t.quandoFoi(l.ultimaVez, new Date()) : '',
       quandoCompleto: l.ultimaVez ? new Date(l.ultimaVez).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '',
+      porcentagem: t.porcentagemDe(l.concluidas, l.total),
     })),
     total: linhas.length,
+    /** o painel do progresso (27/10/2026: "minhas empresas vai virar um dashboard de progresso das empresas"): as da pessoa
+     * (ou todas), sem a busca e a situação */
+    resumo: t.resumoDoProgresso(a.linhas),
     abrir,
     /** a página da empresa (insights dela) */
     abrirEmpresa: (rota: string) => navegar(comDep(caminhoDaEmpresa(rota, a.competencia))),

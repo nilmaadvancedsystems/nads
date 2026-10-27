@@ -646,6 +646,62 @@ td > .gh-blank.compacto{white-space:normal;}
 
 /* ---------------------------------- barra lateral: grupos, rodapé (tema + ocultar) e travas ---------------------------------- */
 .subnav-itens{display:flex;flex-direction:column;gap:2px;}
+/* o topo da barra lateral da Tarefas (27/10/2026): escolher a empresa (e o setor) e os avisos do escritório */
+.subnav-topo{display:flex;flex-direction:column;gap:4px;padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid var(--border);}
+.sidebar-oculta .subnav-topo{display:none;}
+.seletor-empresa{display:flex;align-items:center;gap:10px;width:100%;min-width:0;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--ink);text-align:left;cursor:pointer;font:inherit;}
+.seletor-empresa:hover{background:var(--hover-bg);}
+.seletor-empresa > svg{flex:none;color:var(--ink-faint);}
+.seletor-empresa-icone{display:flex;align-items:center;justify-content:center;width:32px;height:32px;flex:none;border:1px solid var(--border);border-radius:6px;color:var(--ink-muted);}
+.seletor-empresa-texto{display:flex;flex-direction:column;gap:1px;flex:1;min-width:0;}
+.seletor-empresa-rotulo{font-size:var(--fs-12);color:var(--ink-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.seletor-empresa-nome{font-size:var(--fs-13);font-weight:600;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;}
+.seletor-empresa:not(.com-empresa) .seletor-empresa-nome{font-weight:500;color:var(--ink-muted);}
+.escolher-empresa-painel{display:flex;flex-direction:column;gap:8px;padding:12px;}
+.escolher-empresa-painel > .hint{margin:4px 0 0;font-weight:500;}
+.escolher-empresa-painel .steps{display:flex;width:100%;}
+.escolher-empresa-painel .step-pill{flex:1;justify-content:center;}
+.subnav-topo > .popover-wrap{display:block;width:100%;}
+/* o seletor no alto do menu ☰, entre o N e o × (27/10/2026): ocupa o meio; a escolha abre embaixo, na largura do meio */
+.drawer-head-meio{flex:1;min-width:0;margin:0 8px;}
+.drawer-head-meio > .popover-wrap{display:block;width:100%;}
+/* a escolha abre na largura da gaveta (do N ao ×) e por cima dos itens dela */
+.drawer-head-meio .popover{left:-48px;right:-48px;width:auto;min-width:0;}
+.drawer-head:has(.drawer-head-meio){position:relative;z-index:50;margin-bottom:24px;}
+.escolher-empresa-painel .busca-curta{width:100%;}
+.escolher-empresa-painel .nf-achados{position:static;box-shadow:none;max-height:260px;overflow:auto;}
+.escolher-empresa-escolhida{display:flex;align-items:center;gap:8px;font-size:var(--fs-13);min-width:0;padding:8px;border:1px solid var(--border);border-radius:6px;}
+.escolher-empresa-escolhida span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.escolher-empresa-pe{display:flex;justify-content:flex-end;gap:8px;margin-top:4px;}
+/* o cartão da empresa aberta no cabeçalho: o prédio, o nome e, embaixo, o código e o CNPJ; o clique abre o Cadastro */
+.gh-cartao-topo{display:flex;min-width:0;margin-left:8px;}
+.cartao-empresa{display:flex;align-items:center;gap:10px;min-width:0;padding:4px 10px 4px 4px;border:1px solid transparent;border-radius:8px;background:none;color:var(--ink);text-align:left;cursor:pointer;}
+.cartao-empresa:hover{border-color:var(--border);background:var(--hover-bg);}
+.cartao-empresa-icone{display:flex;align-items:center;justify-content:center;width:32px;height:32px;flex:none;border:1px solid var(--border);border-radius:6px;color:var(--ink-muted);}
+.cartao-empresa-texto{display:flex;flex-direction:column;min-width:0;}
+.cartao-empresa-nome{font-size:var(--fs-13);font-weight:600;max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cartao-empresa-doc{font-size:var(--fs-12);color:var(--ink-faint);white-space:nowrap;}
+/* o Início (27/10/2026): o mural de avisos e a última empresa */
+.inicio-grade{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:16px;align-items:start;}
+@media (max-width:900px){.inicio-grade{grid-template-columns:minmax(0,1fr);}}
+.mural-lista{list-style:none;margin:0;padding:0;}
+.mural-aviso{display:flex;gap:10px;padding:12px 16px;border-top:1px solid var(--border);}
+.mural-aviso:first-child{border-top:0;}
+.mural-aviso-corpo{flex:1;min-width:0;}
+.mural-aviso-texto{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:var(--fs-14);}
+.mural-novo{display:flex;flex-direction:column;gap:8px;padding:12px 16px;border-top:1px solid var(--border);}
+.mural-novo textarea{width:100%;min-height:64px;resize:vertical;}
+.mural-novo-pe{display:flex;align-items:center;justify-content:flex-end;gap:8px;}
+.ultima-empresa{display:flex;flex-direction:column;gap:10px;padding:16px;}
+.ultima-empresa-nome{margin:0;font-size:var(--fs-16);font-weight:600;}
+.progresso-linha{display:flex;align-items:center;gap:8px;}
+.progresso-linha .tarefas-barra{flex:1;}
+.tabela-empresas .progresso-linha .tarefas-barra{flex:none;}
+/* o número do painel de Minhas empresas que filtra a lista pela situação (27/10/2026) */
+.stat.stat-filtro{text-align:left;font:inherit;color:inherit;cursor:pointer;border:0;border-right:1px solid var(--border);border-bottom:1px solid var(--border);border-radius:0;}
+.stat.stat-filtro:hover{background:var(--hover-bg);}
+.stat.stat-filtro.ativo{box-shadow:inset 0 -2px 0 var(--ink);}
+.stat-label .bolinha-sit{margin-right:6px;}
 .subnav-sep{border:0;border-top:1px solid var(--border);margin:8px 0;}
 /* o nome do grupo (Ativo, Passivo…) em cima das seções dele, como os títulos da barra lateral do GitHub */
 .subnav-titulo{margin:0;padding:4px 10px 2px;font-size:var(--fs-12);font-weight:500;color:var(--ink-faint);}

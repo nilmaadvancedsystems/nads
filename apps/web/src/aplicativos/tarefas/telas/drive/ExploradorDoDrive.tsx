@@ -223,8 +223,8 @@ function Ano({ vm }: { vm: VmDrive }) {
   return <MenuSuspenso icone="calendar" rotulo={vm.ano} titulo="Pasta do ano" dica="A pasta do ano no Drive" itens={[{ rotulo: vm.ano, marcado: true, onClick: vm.irParaRaiz }]} />;
 }
 
-export function ExploradorDoDrive() {
-  const vm = useExploradorDoDrive();
+export function ExploradorDoDrive({ naEmpresa = false }: { naEmpresa?: boolean } = {}) {
+  const vm = useExploradorDoDrive({ naEmpresa });
   const envio = useEnvioAoSecretario(vm.pastaCliente);
   const { toast } = useRetorno();
   useCarregando(vm.carregando);

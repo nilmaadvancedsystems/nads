@@ -36,13 +36,15 @@ export const rotasTarefas: RouteObject[] = [
     path: BASE,
     element: <AppTarefas />,
     children: [
-      // onde a Tarefas abre: a pessoa escolhe na Minha página › Aparência e telas (padrão: Minhas empresas)
+      // onde a Tarefas abre: a pessoa escolhe na Minha página › Aparência e telas (padrão: o Início, 27/10/2026)
       { index: true, element: <Inicio /> },
       { path: 'executar/:empresa/:competencia', element: <NaEspera inteira><Executor /></NaEspera> },
       { path: 'minhas-empresas/empresa/:empresa', element: <NaEspera inteira><EmpresaAberta /></NaEspera> },
       // o endereço antigo do LCDPR na página da empresa (16/10/2026): volta para a página da empresa (o LCDPR agora é a
       // etapa do executor)
-      { path: 'minhas-empresas/empresa/:empresa/lcdpr/:pagina', element: <NaEspera inteira><EmpresaAberta /></NaEspera> },
+      { path: 'minhas-empresas/empresa/:empresa/lcdpr/:lcdpr', element: <NaEspera inteira><EmpresaAberta /></NaEspera> },
+      // as páginas da empresa aberta (27/10/2026): Tarefas, Visão geral, Drive e, no Fiscal, as ferramentas
+      { path: 'minhas-empresas/empresa/:empresa/:pagina', element: <NaEspera inteira><EmpresaAberta /></NaEspera> },
       // a lista e a janela usam o mesmo componente: a lista (e a busca dela) fica montada atrás da janela
       { path: 'cadastro/empresas', element: <NaEspera inteira><CadastroAberto /></NaEspera> },
       { path: 'cadastro/empresas/:empresa/:aba', element: <NaEspera inteira><CadastroAberto /></NaEspera> },

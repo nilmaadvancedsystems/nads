@@ -1,6 +1,6 @@
 // Minhas empresas: a barra de cima, no jeito da do GitHub (competência no lugar do "main ▾", quantas
 // empresas, Insights; à direita a busca curta com atalho "/", Situação ▾ e "Iniciar ▾", que abre
-// o painel para escolher a empresa, em partes/PainelIniciar) e a lista (clicar no título da coluna ordena; clicar na linha abre a página da empresa). Os números por situação ficam em Insights.
+// o painel para escolher a empresa, em partes/PainelIniciar), o painel do progresso (27/10/2026) e a lista (clicar no título da coluna ordena; clicar na linha abre a página da empresa). Os números por situação ficam em Insights.
 import { Icone, MenuSuspenso, Segmentado, useCarregando, useEntradaAnimada, useLinhasQueSeMovem, Vazio } from '@nads/ui';
 import { useEffect, useRef } from 'react';
 import { EmDesenvolvimento } from '../em-desenvolvimento/EmDesenvolvimento';
@@ -73,6 +73,26 @@ export function MinhasEmpresas() {
           conteudo={fechar => <PainelIniciar vm={vm} fechar={fechar} />} />
       </div>
 
+      {/* o painel do progresso do mês (27/10/2026): o quanto das etapas está feito e as empresas por situação; clicar numa
+          situação filtra a lista */}
+      <div className="stat-grid empresa-numeros">
+        <div className="stat">
+          <p className="stat-label">Progresso do mês</p>
+          <p className="stat-value">{vm.carregando ? '—' : vm.resumo.porcentagem + '%'}</p>
+          <span className="tarefas-barra larga" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={vm.resumo.porcentagem} aria-label="Etapas feitas no mês">
+            <span style={{ width: (vm.carregando ? 0 : vm.resumo.porcentagem) + '%' }} />
+          </span>
+          {!vm.carregando && <p className="hint">{vm.resumo.etapasFeitas} de {vm.resumo.etapasTotal} etapas</p>}
+        </div>
+        {vm.situacoes.map(s => (
+          <button key={s.valor} type="button" className={'stat stat-filtro' + (vm.situacao === s.valor ? ' ativo' : '')} aria-pressed={vm.situacao === s.valor}
+            title={vm.situacao === s.valor ? 'Mostrar todas' : 'Mostrar só as ' + s.rotulo.toLowerCase()} onClick={() => vm.setSituacao(vm.situacao === s.valor ? '' : s.valor)}>
+            <p className="stat-label"><span className={'bolinha-sit ' + s.valor} />{s.rotulo}</p>
+            <p className="stat-value">{vm.carregando ? '—' : vm.resumo.porSituacao[s.valor]}</p>
+          </button>
+        ))}
+      </div>
+
       {/* a tabela aparece na hora; as linhas entram quando o banco responde (a barra do topo termina) */}
       {!vm.carregando && vm.total === 0 ? <Vazio icone="briefcase" titulo={vm.filtrandoPorResponsavel && !vm.busca && !vm.situacao ? 'Nenhuma empresa no seu nome' : 'Nenhuma empresa nesta situação'}
         texto={vm.filtrandoPorResponsavel && !vm.busca && !vm.situacao ? 'Aqui aparecem as empresas em que você é o responsável no seu setor e as que ainda não têm responsável (Cadastro › Empresas por responsável).' : undefined}>
@@ -84,6 +104,7 @@ export function MinhasEmpresas() {
             <thead><tr>
               <Titulo vm={vm} coluna="codigo" rotulo="Código" />
               <Titulo vm={vm} coluna="nome" rotulo="Empresa" />
+              <th>Progresso</th>
               <th />
               <th />
             </tr></thead>
@@ -99,6 +120,12 @@ export function MinhasEmpresas() {
                     </span>
                   </td>
                   <td>{l.nome}</td>
+                  <td className="num" title={l.concluidas + ' de ' + l.total + ' etapas'}>
+                    <span className="progresso-linha">
+                      <span className="tarefas-barra"><span className={l.situacao === 'parada' ? 'parada' : undefined} style={{ width: l.porcentagem + '%' }} /></span>
+                      <span className="fraco">{l.concluidas}/{l.total}</span>
+                    </span>
+                  </td>
                   <td className="fraco">{l.etapaAtual}</td>
                   <td className="fraco num" title={l.quandoCompleto || undefined}>{l.quando}</td>
                 </tr>

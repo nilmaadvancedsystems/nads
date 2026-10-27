@@ -10,6 +10,7 @@
 // Cada número pode ser trocado à mão e a tela diz de onde veio. As contas são as da planilha (core sieg.calculadora).
 import { empresas as emp, tarefas as t } from '@nads/core';
 import { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router';
 import { competenciasDaTela } from '../../../casca/navegacao';
 import { useExecucoes, useExecucoesDoPeriodo, useFgts, useRepo, useSieg } from '../../../dados/repo';
 
@@ -46,7 +47,9 @@ export function useCalculadoraDoSimples() {
   const repo = useRepo();
   const sieg = useSieg();
   const fgts = useFgts();
-  const [codigo, setCodigo] = useState<number | null>(null);
+  // a empresa aberta em Minhas empresas (27/10/2026) chega já escolhida, pelo endereço (?empresa=código)
+  const [params] = useSearchParams();
+  const [codigo, setCodigo] = useState<number | null>(() => Number(params.get('empresa')) || null);
   const [busca, setBusca] = useState('');
   const [ativo, setAtivo] = useState(0);
   const [competencia, setCompetenciaBruta] = useState(() => competenciasDaTela(1)[0]);

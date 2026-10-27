@@ -100,7 +100,7 @@ export function useEmpresa(rota: string) {
     competencias: competencias.map(c => ({ valor: c, rotulo: t.rotuloCompetencia(c) })),
     setCompetencia: (c: string) => setParams({ competencia: c }),
     situacao, rotuloSituacao: t.ROTULO_SITUACAO_GERAL[situacao],
-    feitas: p.concluidas, total: p.total,
+    feitas: p.concluidas, total: p.total, porcentagem: t.porcentagemDe(p.concluidas, p.total),
     etapaAtual: situacao === 'nao-iniciada' || !proxima ? '' : proxima.nome,
     paradas: etapas.filter(e => e.cor === 'parada').length,
     ultimo: ultimo ? { por: ultimo.por, quando: t.quandoFoi(ultimo.em, agora), quandoCompleto: dataHora(ultimo.em) } : null,
@@ -109,6 +109,6 @@ export function useEmpresa(rota: string) {
     acao: ACAO[situacao],
     abrirExecutor: () => navegar(comDep(caminhoDoExecutor(empresas.rotaDaEmpresa(empresa), competencia))),
     abrirCompetencia: (c: string) => navegar(comDep(caminhoDaEmpresa(empresas.rotaDaEmpresa(empresa), c))),
-    voltar: () => navegar(lista + '?competencia=' + competencia),
+    voltar: () => navegar(lista + 'competencia=' + competencia),
   };
 }

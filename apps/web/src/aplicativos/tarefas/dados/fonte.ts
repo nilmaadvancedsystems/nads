@@ -38,6 +38,8 @@ import { criarAreaClienteFirestore } from './areaCliente.firestore';
 import { criarLcdprMemoria, type RepoLcdpr } from './lcdpr';
 import { criarLcdprFirestore } from './lcdpr.firestore';
 import { criarFeedbackFirestore } from './feedback.firestore';
+import { criarAvisosFirestore } from './avisos.firestore';
+import { criarAvisosMemoria, type RepoAvisos } from './avisos';
 import { criarUsoMemoria, type RepoUso } from './uso';
 import { criarUsoFirestore } from './uso.firestore';
 import { criarParcelamentosMemoria, type RepoParcelamentos } from './parcelamentos';
@@ -424,6 +426,14 @@ export function repoDeFeedback(): RepoFeedback {
       : criarFeedbackMemoria(() => { try { return localStorage.getItem('nads-tarefas-operador') || ''; } catch { return ''; } });
   }
   return feedback;
+}
+
+let avisos: RepoAvisos | null = null;
+
+/** O mural de avisos do escritório (o Início): no banco, a coleção nadsAvisos do Entregas; nos exemplos, na memória. */
+export function repoDeAvisos(): RepoAvisos {
+  if (!avisos) avisos = noBanco ? criarAvisosFirestore() : criarAvisosMemoria();
+  return avisos;
 }
 
 let parcelamentos: RepoParcelamentos | null = null;
