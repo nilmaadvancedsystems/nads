@@ -2,8 +2,8 @@
 // à esquerda Novos / Vistos / Feitos / Todos; à direita cada feedback com o print (clicar amplia), o texto, quem,
 // quando, a tela e a versão; Visto e Feito. A prioridade (Vitor, 19/10/2026) no selo suave, com o filtro (Todas, Alta,
 // Média, Baixa) e a ordem (Mais novos ou Prioridade) em cima da lista.
-import { BotaoFechar, Esqueleto, Icone, Segmentado, useJanela, Vazio } from '@nads/ui';
-import { useRef } from 'react';
+import { BotaoFechar, Esqueleto, Icone, Segmentado, useJanela, Vazio, BotaoAcao } from '@nads/ui';
+import { useRef, useState } from 'react';
 import { JanelaLateral, type TopicoDaJanela } from '../janela/JanelaLateral';
 import { PRIORIDADES, type PrioridadeDoFeedback, type SituacaoDoFeedback } from '../../dados/feedback';
 import { useFeedbacks } from './useFeedbacks';
@@ -75,7 +75,7 @@ export function ListaDosFeedbacks({ vm }: { vm: ReturnType<typeof useFeedbacks> 
           ))}
         </ul>
       )}
-      {vm.aberto && <JanelaDoFeedback f={vm.aberto} fechar={vm.fecharAberto} ampliar={vm.setAberta} marcar={vm.marcar} baixar={(id, i) => { void vm.baixarArquivoDoBug(id, i); }} />}
+      {vm.aberto && <JanelaDoFeedback f={vm.aberto} fechar={vm.fecharAberto} ampliar={vm.setAberta} marcar={vm.marcar} baixar={(id, i) => { void vm.baixarArquivoDoBug(id, i); }} baixarTudo={vm.baixarTudo} />}
       {vm.aberta && (
         <div className="modal-overlay pessoal-fundo feedback-zoom" onMouseDown={() => vm.setAberta('')}>
           <img src={vm.aberta} alt="O print do feedback" />
@@ -87,10 +87,12 @@ export function ListaDosFeedbacks({ vm }: { vm: ReturnType<typeof useFeedbacks> 
 
 /** A solicitação inteira numa janela flutuante por cima da lista: o print (clicar amplia), o texto, quem, quando, a tela
  * e a versão; embaixo Visto / Feito / Reabrir. O Esc fecha só esta janela. */
-function JanelaDoFeedback({ f, fechar, ampliar, marcar, baixar }: {
+function JanelaDoFeedback({ f, fechar, ampliar, marcar, baixar, baixarTudo }: {
   f: NonNullable<ReturnType<typeof useFeedbacks>['aberto']>; fechar: () => void; ampliar: (img: string) => void; marcar: (id: string, s: SituacaoDoFeedback) => void;
   baixar: (id: string, i: number) => void;
+  baixarTudo: (id: string) => Promise<void>;
 }) {
+  const [zipando, setZipando] = useState(false);
   // revisão da UI, 16/10/2026: Esc, foco preso e o foco de volta pela peça useJanela (antes, um Esc à mão por janela)
   const janela = useRef<HTMLDivElement>(null);
   useJanela(janela, fechar);
@@ -116,6 +118,13 @@ function JanelaDoFeedback({ f, fechar, ampliar, marcar, baixar }: {
             <p className="feedback-txt"><b>{f.empresa || '—'}</b>{f.caminho ? ' · ' + f.caminho : ''}</p>
           )}
           <p className="feedback-txt">{f.texto}</p>
+          {/* tudo num .zip (Vitor, 27/10/2026): a pasta com o número do ticket e o nome da pessoa, com o print e os arquivos */}
+          {f.arquivos.length > 0 && (
+            <BotaoAcao className="btn btn-outline" carregando={zipando} textoCarregando="Juntando os arquivos"
+              onClick={() => { setZipando(true); void baixarTudo(f.id).finally(() => setZipando(false)); }}>
+              <Icone nome="download" />Baixar tudo (.zip)
+            </BotaoAcao>
+          )}
           {/* todos os arquivos (do bug ou anexados ao feedback), cada um no seu botão (26/10/2026) */}
           {f.arquivos.length > 0 && f.arquivos.map((a, i) => (
             <button key={i} type="button" className="btn btn-outline" onClick={() => baixar(f.id, i)}><Icone nome="download" />{a.nome}</button>

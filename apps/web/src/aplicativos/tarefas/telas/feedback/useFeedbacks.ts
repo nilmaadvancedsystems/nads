@@ -1,7 +1,7 @@
 // ViewModel dos Feedbacks (o pé da gaveta ☰, só o admin): os feedbacks da equipe (o print, o texto, quem, quando, de qual
 // tela e a prioridade), com o filtro Novos / Vistos / Feitos / Todos e o Visto / Feito. A prioridade (Vitor, 19/10/2026):
 // filtrar por Alta, Média ou Baixa e ordenar pelos mais novos ou pela prioridade.
-import { suporte } from '@nads/core';
+import { suporte, tarefas } from '@nads/core';
 import { baixarBytes } from '@nads/ui';
 import { useState } from 'react';
 import { ordenarPorPrioridade, PRIORIDADES, type PrioridadeDoFeedback, type SituacaoDoFeedback } from '../../dados/feedback';
@@ -52,5 +52,35 @@ export function useFeedbacks() {
     marcar: (id: string, status: SituacaoDoFeedback) => void repo.marcar(id, status),
     /** o arquivo do bug, para baixar (o que a pessoa mandou pelo balão) */
     baixarArquivoDoBug: async (id: string, i = 0) => { const a = await repo.arquivoDoBug(id, i); if (a) baixarBytes(a.bytes, a.nome, 'application/octet-stream'); },
+    /**
+     * Tudo o que a pessoa mandou num .zip (Vitor, 27/10/2026: "com o nome da pasta como nome do ticket e nome da pessoa"):
+     * a pasta e o .zip "#COOK7D - Felipe Souza", com o print e os arquivos.
+     */
+    baixarTudo: async (id: string) => {
+      const f = todos.lista.find(x => x.id === id);
+      if (!f) return;
+      const limpo = (s: string) => s.replace(/[\\/:*?"<>|]+/g, '_').replace(/\s+/g, ' ').trim();
+      const pasta = limpo(suporte.codigoDoPedido(f.id) + ' - ' + (f.nome || f.email || 'sem nome'));
+      const arquivos: { nome: string; bytes: Uint8Array }[] = [];
+      const usados = new Set<string>();
+      const nomeLivre = (nome: string) => {
+        let n = limpo(nome) || 'arquivo', k = 2;
+        // dois arquivos com o mesmo nome: o segundo ganha " (2)" antes da extensão
+        while (usados.has(n.toLowerCase())) { const numero = k++; n = limpo(nome).replace(/(\.[^.]*)?$/, m => ' (' + numero + ')' + m); }
+        usados.add(n.toLowerCase());
+        return n;
+      };
+      if (f.imagem.startsWith('data:image/')) {
+        const bin = atob(f.imagem.split(',')[1] || '');
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        arquivos.push({ nome: pasta + '/' + nomeLivre('print.jpg'), bytes });
+      }
+      for (let i = 0; i < f.arquivos.length; i++) {
+        const a = await repo.arquivoDoBug(id, i);
+        if (a) arquivos.push({ nome: pasta + '/' + nomeLivre(a.nome), bytes: a.bytes });
+      }
+      if (arquivos.length) baixarBytes(tarefas.zipSemCompressao(arquivos), pasta + '.zip', 'application/zip');
+    },
   };
 }
