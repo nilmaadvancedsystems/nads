@@ -467,8 +467,14 @@ function bancoDoTexto(texto, soConta) {
   const tudo = norm(texto);
   const u = tudo.slice(0, 2500);
   for (const [b, re] of LAYOUTS) if (re.test(tudo)) return b;
+  // o campo "INSTITUIÇÃO" do cabeçalho vale antes de tudo; sem ele, a instituição que aparece PRIMEIRO (27/10/2026: o
+  // extrato da Stone da 407 foi para NUBANK pelo "NU PAGAMENTOS S.A." das contrapartes dos Pix)
+  const inst = /\bINSTITUICAO\s*:?\s*\n?\s*([^\n]+)/.exec(u);
+  if (inst) { for (const [b, re] of ASSINATURAS.concat(BANCOS)) if (re.test(inst[1])) return b; }
   const semLancamentos = tudo.split('\n').filter(l => !LINHA_DE_LANCAMENTO.test(l)).join('\n');
-  for (const [b, re] of ASSINATURAS) if (re.test(semLancamentos)) return b;
+  let primeira = null;
+  for (const [b, re] of ASSINATURAS) { const m = re.exec(semLancamentos); if (m && (!primeira || m.index < primeira.pos)) primeira = { banco: b, pos: m.index }; }
+  if (primeira) return primeira.banco;
   let melhor = null;
   const linhas = u.split('\n');
   let pos = 0;
