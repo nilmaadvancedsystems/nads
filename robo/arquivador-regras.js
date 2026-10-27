@@ -748,7 +748,7 @@ const REGRAS_PDF = [
     } },
   // o PGDAS-D (declaração, recibo e extrato): 01. DAS com o período de apuração. A guia do DAS traz "Pagar este documento
   // até" e o PGDAS-D não: com ele, é DAS; a DEFIS (que pode citar o PGDAS-D) também fica de fora
-  { tipo: 'PGDAS-D', setor: 'FISCAL', re: /^(?![\s\S]*PAGAR (ESTE DOCUMENTO )?ATE)(?![\s\S]{0,600}(\bDEFIS\b|SOCIOECONOMICAS))[\s\S]{0,1500}?(PROGRAMA GERADOR DO DOCUMENTO DE ARRECADACAO DO SIMPLES NACIONAL|\bPGDAS-?D\b|RECIBO DE ENTREGA DA APURACAO|EXTRATO DO SIMPLES NACIONAL)/, fonte: 'PGDAS-D (Vitor, 27/10/2026); 05a (01. DAS)',
+  { tipo: 'PGDAS-D', setor: 'FISCAL', re: /^(?![\s\S]*PAGAR (ESTE DOCUMENTO )?ATE)(?![\s\S]{0,600}(\bDEFIS\b|SOCIOECONOMICAS))[\s\S]{0,1500}?(PROGRAMA\s+GERADOR\s+DO\s+DOCUMENTO\s+DE\s+ARRECADACAO\s+DO\s+SIMPLES\s+NACIONAL|\bPGDAS-?D\b|RECIBO DE ENTREGA DA APURACAO|EXTRATO DO SIMPLES NACIONAL)/, fonte: 'PGDAS-D (Vitor, 27/10/2026); 05a (01. DAS)',
     campos: u => {
       const pa = /PERIODO DE APURACAO\s*(?:\(PA\))?\s*:?\s*(?:\d{2}\/)?(0[1-9]|1[0-2])\/(20\d{2})/.exec(u) || /\bPA\)?\s*:\s*(0[1-9]|1[0-2])\/(20\d{2})/.exec(u);
       // o documento pelo conteúdo: o recibo e o extrato têm título próprio; sem nenhum dos dois, é a declaração
