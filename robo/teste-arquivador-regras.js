@@ -312,6 +312,73 @@ d = d27({ nome: 'BB 02.2025 OV1.pdf', rel: P408 + 'BB 02.2025 OV1.pdf', texto: [
 igual('extrato do BB só com "OURO V E S F EIRELI" e "OV1" no nome: a 409 (o resto como as regras já fazem)', destino(d), ['ARQUIVAR', null, '409 - OURO VERDE MINERACAO LTDA\\CONTÁBIL\\EXTRATOS\\2025\\02\\BANCÁRIOS\\BANCO DO BRASIL', '02-2025.pdf']);
 igual('... sem "OV" no nome continua CLIENTE_AMBIGUO', d27({ nome: 'BB 02.2025.pdf', rel: P408 + 'BB 02.2025.pdf', texto: [EXT_OV] }).motivo, 'CLIENTE_AMBIGUO');
 
+// ---------- 13. decisões do Vitor (27/10/2026, 2º lote): o PDF da nota pelo XML da chave, os comprovantes do Berizal, a 415 LAVICA, a NFS-e da Nilma ----------
+const K = require('./arquivador-chaves');
+const comDv = b => { let s = 0, p = 2; for (let i = b.length - 1; i >= 0; i--) { s += +b[i] * p; p = p === 9 ? 2 : p + 1; } const r = s % 11; return b + (r < 2 ? 0 : 11 - r); };
+const LINHAS28 = LINHAS27.concat([
+  { codigo: 237, razao: 'POSTO DE COMBUSTIVEIS BERIZAL LTDA', doc: '17.713.597/0001-14', regime: 'Presumido' },
+  { codigo: 415, razao: 'LAVICA EMPREENDIMENTOS FLORESTAIS LTDA', doc: '45.678.912/0001-55', regime: 'Presumido' },
+  { codigo: 416, razao: 'LAVICA EMPREENDIMENTOS FLORESTAIS LTDA - FILIAL 02', doc: '45.678.912/0002-36', regime: 'Presumido' },
+  { codigo: 544, razao: 'HELLO NUTRITION COMERCIO DE ALIMENTOS E BEBIDAS LTDA', doc: '34.192.587/0001-08', regime: 'Simples' },
+  { codigo: 545, razao: 'HELLO NUTRITION COMERCIO DE ALIMENTOS E BEBIDAS LTDA', doc: '34.192.587/0002-80', regime: 'Simples' },
+]);
+const cad28 = R.montarCadastro(LINHAS28, PASTAS.concat(LINHAS28.filter(l => l.codigo >= 237 && !PASTAS.some(p => p.startsWith(l.codigo + ' - '))).map(l => l.codigo + ' - ' + l.razao)));
+cad28.mapaMigracao = MIG.carregar({});
+const XML_NFE = ['FISCAL', 'SIMPLES NACIONAL', '12. XML', 'NF-e'], XML_NFSE = ['FISCAL', 'SIMPLES NACIONAL', '12. XML', 'NFS-e'];
+const CH_HELLO = comDv('312602' + '34192587000280' + '55' + '002' + '000001316' + '1' + '11395121');
+const CH_NFSE = '3168002' + '2' + '2' + '27872981000113' + '2600000003244' + '2602' + '000105201' + '1';
+const idx = new K.Indice();
+idx.juntar(CH_HELLO, 545, XML_NFE, 'doc', 'teste');
+idx.juntar(CH_NFSE, 284, XML_NFSE, 'doc', 'teste');
+idx.juntar(CH_NFSE, 152, XML_NFSE, 'doc', 'teste');
+const d28 = (e, comChaves) => R.decidir(Object.assign({ rel: e.nome }, e), Object.assign({ cadastro: cad28, hoje: new Date(2026, 9, 27) }, comChaves === false ? {} : { chaves: comChaves || idx }));
+
+// 13a. o PDF da nota com o XML da mesma chave já arquivado: a pasta e o nome do XML, com .pdf
+const DANFE_HELLO = 'NF-e\nRECEBEMOS DE HELLO NUTRITION COMERCIO DE ALIMENTOS E BEBIDAS LTDA OS PRODUTOS CONSTANTES NA NOTA FISCAL INDICADA AO LADO.\nCHAVE DE ACESSO\nDANFE\nDOCUMENTO AUXILIAR\nDA NOTA FISCAL\nELETRÔNICA\n15151706611834.192.587/0002-80\nOutras Entradas - Retorno Simbolico de Deposito Temporario\n135260405866604 - 01/02/2026 10:59:31\n' + CH_HELLO.replace(/(\d{4})(?=\d)/g, '$1 ') + '\nNº 000.001.316\nHELLO NUTRITION COMERCIO\nDE ALIMENTOS E BEBIDAS LTDA';
+const REL_HELLO = 'IMPORTAÇÃO\\0544 - HELLO NUTRITION COMERCIO DE ALIMENTOS E BEBIDAS LTDA - ME (MATRIZ)\\2026\\02\\022026.zip\\022026/FILIAL 02\\';
+d = d28({ nome: '35260234192587000280550020000013161.pdf', rel: REL_HELLO + '35260234192587000280550020000013161.pdf', texto: [DANFE_HELLO] });
+igual('PDF da nota (nome com a chave cortada, a chave no conteúdo) com o XML arquivado: a pasta e o nome do XML', destino(d).concat(d.anoRaiz), ['ARQUIVAR', null, '545 - HELLO NUTRITION COMERCIO DE ALIMENTOS E BEBIDAS LTDA\\FISCAL\\SIMPLES NACIONAL\\12. XML\\NF-e', '02-2026_NF-e_1316.pdf', 2026]);
+igual('... o " - Copia" vai para o mesmo destino e nome (o idêntico vira JA_ARQUIVADO no conferirDestino)', destino(d28({ nome: '35260234192587000280550020000013161 - Copia.pdf', rel: REL_HELLO + 'x - Copia.pdf', texto: [DANFE_HELLO] })), destino(d));
+const sem = d28({ nome: '35260234192587000280550020000013161.pdf', rel: REL_HELLO + 'x.pdf', texto: [DANFE_HELLO] }, new K.Indice()), hoje = d28({ nome: '35260234192587000280550020000013161.pdf', rel: REL_HELLO + 'x.pdf', texto: [DANFE_HELLO] }, false);
+igual('... sem o XML no índice: NAO_IDENTIFICADO com o motivo de hoje', [sem.acao, sem.motivo], [hoje.acao, hoje.motivo]);
+d = d28({ nome: CH_HELLO + '-nfe.pdf', texto: [' '] });
+igual('a chave no nome ("<chave>-nfe.pdf"), escaneado sem texto: pelo nome', [d.acao, d.destinoRelativo, d.nomeFinal], ['ARQUIVAR', '545 - HELLO NUTRITION COMERCIO DE ALIMENTOS E BEBIDAS LTDA\\FISCAL\\SIMPLES NACIONAL\\12. XML\\NF-e', '02-2026_NF-e_1316.pdf']);
+const DANFSE = 'DANFSev1.0\nDocumentoAuxiliardaNFS-e\nMUNICIPIODETAIOBEIRAS\nChavedeAcessodaNFS-e\n' + CH_NFSE + '\nNúmerodaNFS-e\n2600000003244\nCompetênciadaNFS-e\n28/02/2026\nPrestadordoServiço\nCNPJ/ CPF/ NIF\n27.872.981/0001-13\nNILMACONTABILIDADELTDA\nTOMADORDOSERVIÇO\nCNPJ/ CPF/ NIF\n06.934.601/0001-58';
+d = d28({ nome: CH_NFSE.slice(0, 49) + ' ' + CH_NFSE.slice(49) + '.pdf', rel: 'IMPORTAÇÃO\\0152 - JANIO JOSE DE ALMEIDA\\2026\\02\\x.pdf', texto: [DANFSE] });
+igual('NFS-e nacional (chave de 50 no conteúdo) com o XML na 152 e na 284: nas duas, a da pasta de origem primeiro', [d.acao, d.destinoRelativo, d.nomeFinal, d.copias.map(c => c.destinoRelativo)], ['ARQUIVAR', '152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\12. XML\\NFS-e', '02-2026_NFS-e_2600000003244.pdf', ['284 - NILMA CONTABILIDADE LTDA\\FISCAL\\SIMPLES NACIONAL\\12. XML\\NFS-e']]);
+d = d28({ nome: '110111' + CH_HELLO + '01-procEventoNFe.pdf', texto: ['CANCELAMENTO DE NF-e\nNão possui valor fiscal, simples representação do evento indicado abaixo\n' + CH_HELLO.replace(/(\d{4})(?=\d)/g, '$1 ') + '\n110111Cancelamento'] });
+igual('o PDF do evento não usa o XML do original (o índice não guarda o nome do XML do evento)', d.acao, 'NAO_IDENTIFICADO');
+
+// 13b. Posto Berizal (237): o comprovante escaneado (OCR) e o "N - DDMMAAAA - Pagamento - V.pdf" em PAGAMENTOS DE FORNECEDORES
+const OCR_CAIXA = 'Gerenciador CAI-XA\nGERENCIADOR\nCAIXA\nComprovante de Pagamento de Boleto\nVia Internet Banking CAIXA\nBanco Recebedor: CAIXA ECONÔMICA FEDERAL\nPagador Final / Efetivo\nCPF/CNPJ: 17.713.597/0001-14\nNome: POSTO DE COMBUSTIVEIS BERIZAL LT\nInstituição Emissora - Nome do Banco: BANCO COOPERATIVO DO BRASIL S.A.\nBeneficiário original / Cedente\nNome Fantasia: NILMA DIAS OLIVEIRA\nNome/Razão Social: NILMA DIAS OLIVEIRA\nCPF/CNP)I: 27.872.981/0001-13\nSacador Avalista\nNome/Razão Social: POSTO DE COMBUSTIVEIS BERIZAL LTDA ME\nCPF/CNPJ: 17.713.597/0001-14\nPagador Sacado\nNome/Razão Social: POSTO DE COMBUSTIVEIS BERIZAL LTDA ME\nCPF/CNPJ: 17.713.597/0001-14\nData do Vencimento: 10/02/2026\nData de Efetivação / Agendamento: 09/02/2026\nValor Nominal do Boleto: 1.400,00\nValor Calculado (R$): 1.400,00\nValor Pago (R$): 1.400,00\nCódigo da operação: 59884063245';
+const REL_BER = 'IMPORTAÇÃO\\0237 - POSTO DE COMBUSTIVEL BERIZAL LTDA - ME\\2026\\02\\Descompactado(s) com sucesso\\BOLETOS E COMPROVANTES FEVEREIRO.rar\\';
+d = d28({ nome: 'Imagem (10).jpg', rel: REL_BER + 'Imagem (10).jpg', texto: [OCR_CAIXA], ocr: { confianca: 88 } });
+igual('imagem do comprovante (OCR): cliente pelo CNPJ do pagador, "DD-MM-AAAA BENEFICIÁRIO R$ VALOR.jpg", mês da efetivação', destino(d).concat(d.confianca), ['ARQUIVAR', null, '237 - POSTO DE COMBUSTIVEIS BERIZAL LTDA\\CONTÁBIL\\PAGAMENTOS DE FORNECEDORES\\2026\\02\\NILMA DIAS OLIVEIRA', '09-02-2026 NILMA DIAS OLIVEIRA R$ 1.400,00.jpg', 0.9]);
+d = d28({ nome: 'Imagem (11).jpg', rel: REL_BER + 'Imagem (11).jpg', texto: [OCR_CAIXA.replace(/Nome Fantasia: NILMA DIAS OLIVEIRA\nNome\/Razão Social: NILMA DIAS OLIVEIRA\n/, '')], ocr: { confianca: 88 } });
+igual('... sem o beneficiário lido: VOCABULARIO_AUSENTE', [d.acao, d.motivo], ['NAO_IDENTIFICADO', 'VOCABULARIO_AUSENTE']);
+d = d28({ nome: 'Imagem (13).jpg', rel: REL_BER + 'Imagem (13).jpg', texto: ['RECIBO DO PAGADOR SICOOB 756-0\nBeneficiário MAXTELL FIBRA LTDA Vencimento 10/02/2026\nPagador: POSTO BERIZAL CPF/CNPJ: 17.713.597/0001-14\nFicha de Compensação'], ocr: { confianca: 73 } });
+igual('imagem de boleto (não é comprovante de pagamento): fica sem regra', [d.acao, d.motivo], ['NAO_IDENTIFICADO', 'TIPO_NAO_RECONHECIDO']);
+igual('imagem sem texto (sem OCR): FORMATO_SEM_REGRA, como antes', d28({ nome: 'Imagem.jpg', rel: REL_BER + 'Imagem.jpg' }).motivo, 'FORMATO_SEM_REGRA');
+const BB_DEBITO = 'SISBB  -  SISTEMA DE INFORMACOES BANCO DO BRASIL\n03/03/2026  -   AUTO ATENDIMENTO   -    17.01.17\n        COMPROVANTE DE DEBITO AUTOMATICO\nCLIENTE: POSTO DE COMBUSTIVEIS BER\nAGENCIA: 2705-7      CONTA:        22.294-1\nCONVENIO: 012695       BB SEGUROS\nDATA PREVISTA DO DEBITO:              03.02.2026\nDATA DO DEBITO:                       03.02.2026\nVALOR DO DEBITO R$                        313,29\nHISTORICO LANCAMENTO:  DEBITO AUTORIZADO';
+const REL_BER_PDF = 'IMPORTAÇÃO\\0237 - POSTO DE COMBUSTIVEL BERIZAL LTDA - ME\\2026\\02\\Comprovantes\\';
+d = d28({ nome: '4 - 03022026 - Pagamento - 313,29.pdf', rel: REL_BER_PDF + '4 - 03022026 - Pagamento - 313,29.pdf', texto: [BB_DEBITO] });
+igual('"N - DDMMAAAA - Pagamento - V.pdf" (débito automático do BB): pela pasta 0237, o convênio é o beneficiário, nome original', destino(d), ['ARQUIVAR', null, '237 - POSTO DE COMBUSTIVEIS BERIZAL LTDA\\CONTÁBIL\\PAGAMENTOS DE FORNECEDORES\\2026\\02\\BB SEGUROS', '4 - 03022026 - Pagamento - 313,29.pdf']);
+d = d28({ nome: '9 - 10022026 - Pagamento - 167,09.pdf', rel: REL_BER_PDF + '9 - 10022026 - Pagamento - 167,09.pdf', texto: [BB_DEBITO.replace(/CONVENIO: 012695       BB SEGUROS\n/, '')] });
+igual('... sem o beneficiário no conteúdo: VOCABULARIO_AUSENTE', [d.acao, d.motivo, d.tipo], ['NAO_IDENTIFICADO', 'VOCABULARIO_AUSENTE', 'COMPROVANTE FORNECEDOR']);
+
+// 13c. 415 LAVICA e a filial 416 na mesma pasta: o pagamento de fornecedor como o da 413
+const P415 = 'FERNANDO\\415 LAVICA EMPREEND. FLORESTAIS filal 416\\Comprovantes\\NFs e Boletos\\';
+const BOL_LUSO = 'BOLETO LUSO BRASIL NF60236 R$454,00.pdf';
+d = d28({ nome: BOL_LUSO, rel: P415 + BOL_LUSO, texto: ['Boleto\nBeneficiário LUSO BRASIL LTDA\nVencimento: 10/03/2025\nValor 454,00'] });
+igual('pasta 415/416 sem CNPJ da filial: a matriz 415; "BOLETO" no começo do nome não entra no fornecedor', destino(d), ['ARQUIVAR', null, '415 - LAVICA EMPREENDIMENTOS FLORESTAIS LTDA\\CONTÁBIL\\PAGAMENTOS DE FORNECEDORES\\2025\\03\\LUSO BRASIL', BOL_LUSO]);
+d = d28({ nome: BOL_LUSO, rel: P415 + BOL_LUSO, texto: ['Boleto\nPagador LAVICA EMPREENDIMENTOS FLORESTAIS LTDA CNPJ 45.678.912/0002-36\nVencimento: 10/03/2025'] });
+igual('... o CNPJ da filial 416 no conteúdo: a 416', d.cliente, 416);
+
+// 13d. a NFS-e de honorários da Nilma em PDF (o layout da Prefeitura de Taiobeiras): na 284 E no tomador
+const NFSE_NILMA = '\nAlíquota\nPREFEITURA MUNICIPAL DE TAIOBEIRAS\nSECRETARIA MUNICIPAL DE RECEITAS E CADASTRO\nRazão Social: NILMA DIAS OLIVEIRA - ME\nEndereço: TRAVESSA MARTINHO REGO, 000030, SALA 101/105 - CENTRO\nInscrição Estadual: ..... - Inscrição Municipal: 250517/6308 -  CPF/CNPJ: 27.872.981/0001-13\nNOTA FISCAL DE SERVIÇOS ELETRÔNICA - NFSe\nNº da Nota Fiscal\n855\n TOMADOR DE SERVIÇOS\nAVENIDA AFONSO PENA\nEndereço\n39998-000\nCEP\nSECRETARIA MUNICIPAL DE RECEITAS E CADASTRO\n03.149.551/0001-00\nRazão Social\nADERLEI DOS SANTOS & CIA LTDA EPP\nValorValor ServiçoQuant.Un.Descrição do Serviço\nCPF/CNPJ\nData de Emissão\n17/02/2022\nNúmero RPS\ne28a41fcbbc6538a6313a4775af0accd\nNome Fantasia: NILMA CONTABILIDADE\nPRESTADOR DE SERVIÇO\nGerado em\n17/02/2022 09:59:42\nRECEBI(EMOS) DA EMPRESA: NILMA DIAS OLIVEIRA - ME A NOTA FISCAL Nº 855, EMITIDA EM 17/02/2022 NO VALOR R$ 1.237,00';
+d = d28({ nome: 'ADERLEI DOS SANTOS & CIA LTDA.pdf', rel: 'FERNANDO\\NFSE NILMA CONTABILIDADE\\2022\\01-2022\\ADERLEI DOS SANTOS & CIA LTDA.pdf', texto: [NFSE_NILMA] });
+igual('NFS-e da Nilma (Taiobeiras, "Nº da Nota Fiscal"): na 284 (EMITIDOS) e uma cópia no tomador (RECEBIDOS)', [d.acao, d.destinoRelativo, d.nomeFinal, d.copias.map(c => c.destinoRelativo), d.anoRaiz], ['ARQUIVAR', '284 - NILMA CONTABILIDADE LTDA\\FISCAL\\SIMPLES NACIONAL\\03. DOCUMENTOS FISCAIS\\EMITIDOS', '17-02-2022 - NFS-e 855 - NILMA CONTABILIDADE.pdf', ['66 - ADERLEI SANTOS E CIA\\FISCAL\\LUCRO PRESUMIDO\\03. DOCUMENTOS FISCAIS\\RECEBIDOS'], 2022]);
+
 // ---------- 11. PRODUCAO de verdade, numa pasta temporária (nunca no Drive) ----------
 (async () => {
   const sb = fs.mkdtempSync(path.join(os.tmpdir(), 'teste-arqnovo-prod-'));
@@ -341,6 +408,17 @@ igual('... sem "OV" no nome continua CLIENTE_AMBIGUO', d27({ nome: 'BB 02.2025.p
     igual('produção: o mesmo conteúdo de novo é JA_ARQUIVADO (sem " (1)")', r2.itens.find(i => i.nome === 'nfse-nilma-de-novo.xml').acao, 'JA_ARQUIVADO');
     igual('produção: tipo fora da lista liberada fica na origem', (await A.executar(Object.assign({}, base, { tiposProducao: ['NFC-e PDF'], arquivos: ['foto.jpg'] }))).itens[0].naoAplicado, 'tipo ainda em simulação');
   } finally { fs.rmSync(sb, { recursive: true, force: true }); }
+  // 13e. a imagem lida de verdade pelo Tesseract (27/10/2026): um comprovante gerado aqui, em PNG, passa pelo montarEntrada
+  try {
+    const { createCanvas } = require('@napi-rs/canvas');
+    const linhas = ['Comprovante de Pagamento de Boleto', 'Pagador Final / Efetivo', 'CPF/CNPJ: 17.713.597/0001-14', 'Beneficiario original / Cedente', 'Nome/Razao Social: NILMA DIAS OLIVEIRA', 'Pagador Sacado', 'CPF/CNPJ: 17.713.597/0001-14', 'Data de Efetivacao / Agendamento: 09/02/2026', 'Valor Pago (R$): 1.400,00'];
+    const cv = createCanvas(1400, 60 + linhas.length * 60), g = cv.getContext('2d');
+    g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height); g.fillStyle = '#000'; g.font = '34px sans-serif';
+    linhas.forEach((l, i) => g.fillText(l, 40, 70 + i * 60));
+    const ent = await A.montarEntrada('Imagem (10).png', REL_BER + 'Imagem (10).png', cv.toBuffer('image/png'));
+    const di = R.decidir(ent, { cadastro: cad28, hoje: new Date(2026, 9, 27) });
+    igual('imagem PNG lida pelo Tesseract: o comprovante vai para PAGAMENTOS DE FORNECEDORES com o nome montado', [di.acao, di.destinoRelativo, di.nomeFinal], ['ARQUIVAR', '237 - POSTO DE COMBUSTIVEIS BERIZAL LTDA\\CONTÁBIL\\PAGAMENTOS DE FORNECEDORES\\2026\\02\\NILMA DIAS OLIVEIRA', '09-02-2026 NILMA DIAS OLIVEIRA R$ 1.400,00.png']);
+  } finally { await A.encerrarOcr(); }
   console.log((falhas ? falhas + ' FALHA(S) em ' : 'ok: ') + total + ' testes');
   process.exit(falhas ? 1 : 0);
 })().catch(e => { console.log('FALHOU com erro:', e.stack); process.exit(1); });
