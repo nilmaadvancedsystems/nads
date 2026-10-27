@@ -328,6 +328,7 @@ function clientesDoDoc(doc, cad) {
 /** Cliente pela pasta (ou contêiner) onde o arquivo estava: "356 A7 …", "2026-09\GRANMIX …", "SIEG 2026-09 - <nome>.zip". */
 function clienteDaPasta(rel, cad) {
   const partes = partesDoCaminho(rel).slice(0, -1);
+  const nomeArq = partesDoCaminho(rel).slice(-1)[0] || '';
   const mapa = cad.mapaMigracao || null;
   for (const parte of partes.reverse()) {
     if (/^\d{4}-\d{2}$/.test(parte) || /^\d{6}/.test(parte)) continue;
@@ -336,7 +337,14 @@ function clienteDaPasta(rel, cad) {
     // OUTROS…) e pasta que junta matriz e filiais não dão o cliente
     if (/^\d{1,2}$/.test(parte) || /^\d{1,2}[.\-_ ]\d{4}$/.test(parte) || /^(19|20)\d{2}\b/.test(parte)) continue;
     const pm = mapa ? mapa.clienteDaPasta(parte) : undefined;
-    if (pm !== undefined) { if (pm === null) continue; if (cad.porCod.has(pm.cliente)) return { codigo: pm.cliente, como: 'pasta "' + parte + '" = cliente ' + pm.cliente + ' (' + pm.porque + ')', forte: true }; continue; }
+    if (pm === null) {
+      // 27/10/2026 (Vitor): na pasta que junta matriz e filiais, o nome do arquivo pode dizer qual (o mapa: "OV1" = 409)
+      const g = typeof mapa.grupoDaPasta === 'function' ? mapa.grupoDaPasta(parte) : null;
+      const c = g ? codigoDoGrupoPeloNome(nomeArq, g) : null;
+      if (c != null && cad.porCod.has(c)) return { codigo: c, como: 'pasta "' + parte + '" com "' + nomeArq + '": o nome do arquivo diz o cliente ' + c + ' (Vitor, 27/10/2026)', forte: true };
+      continue;
+    }
+    if (pm !== undefined) { if (cad.porCod.has(pm.cliente)) return { codigo: pm.cliente, como: 'pasta "' + parte + '" = cliente ' + pm.cliente + ' (' + pm.porque + ')', forte: true }; continue; }
     if (mapa && mapa.semPista(parte)) continue;
     const m = /^(\d{1,4})\b/.exec(parte);
     if (m && cad.porCod.has(+m[1])) {
@@ -362,6 +370,32 @@ function clienteDaPasta(rel, cad) {
     }
   }
   return null;
+}
+
+/**
+ * A pasta da migração que junta matriz e filiais (o mapa: { matriz, filiais, peloNome }), a mais funda do caminho:
+ * { parte, matriz, filiais, peloNome, porque } ou null (27/10/2026).
+ */
+function grupoDaPasta(rel, cad) {
+  const mapa = cad && cad.mapaMigracao;
+  if (!mapa || typeof mapa.grupoDaPasta !== 'function') return null;
+  for (const parte of partesDoCaminho(rel).slice(0, -1).reverse()) { const g = mapa.grupoDaPasta(parte); if (g) return Object.assign({ parte }, g); }
+  return null;
+}
+/**
+ * O código do grupo pelo nome do arquivo (Vitor, 27/10/2026, a 408 OURO VERDE e as filiais 409 e 410): a palavra do mapa
+ * (peloNome: "OV" = 408, "OV1" = 409, "OV3" = 410, sem diferenciar maiúsculas) ou o código do grupo no começo do nome
+ * ("408Balancete2025.pdf"). Só no grupo que tem peloNome; mais de um código no nome não decide.
+ */
+function codigoDoGrupoPeloNome(nome, g) {
+  if (!g || !g.peloNome) return null;
+  const base = norm(String(nome || '').replace(/\.[a-z0-9]{2,4}$/i, ''));
+  const codigos = [g.matriz].concat(g.filiais || []).filter(c => c != null);
+  const achados = new Set();
+  const ini = /^(\d{1,4})(?!\d)/.exec(base);
+  if (ini && codigos.includes(+ini[1])) achados.add(+ini[1]);
+  for (const t of base.split(/[^A-Z0-9]+/)) if (Object.prototype.hasOwnProperty.call(g.peloNome, t)) achados.add(+g.peloNome[t]);
+  return achados.size === 1 ? [...achados][0] : null;
 }
 
 /** Razão social do cadastro escrita no texto, inteira e única (03: "nome exato e único", só sem CNPJ no documento). */
@@ -703,6 +737,24 @@ function camposDaGuia(u) {
  * destino; campo obrigatório ausente vira motivo (Dicionário §4.3, "Dados ausentes").
  */
 const REGRAS_PDF = [
+  // ---- 27/10/2026 (Vitor): o relatório da DEFIS do Alterdata e o PGDAS-D, antes do DAS (o título do PGDAS-D contém o dele) ----
+  // o relatório da DEFIS que o Alterdata gera (um PDF por cliente, "Declaração Anual do Simples Nacional - DASN"): em 14. DEFIS
+  // como a DEFIS do portal, com nome próprio; o ano-calendário vem colado depois do nome do Alterdata ("… Ltda. 2025Emissão:")
+  { tipo: 'DEFIS ALTERDATA', setor: 'FISCAL', re: /DECLARACAO ANUAL DO SIMPLES NACIONAL\s*-\s*DASN\b(?!\s*-?\s*SIMEI)[\s\S]{0,400}ALTERDATA/, fonte: 'relatório da DEFIS do Alterdata (Vitor, 27/10/2026)',
+    campos: u => {
+      const a = /ANO[- ]CALENDARIO[^0-9]{0,80}?(20\d{2})/.exec(u), em = /EMISSAO:?\s*\d{2}\/\d{2}\/(20\d{2})/.exec(u);
+      const m = /CNPJ MATRIZ:?\s*(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}|\d{14})/.exec(u);
+      return { ano: a ? +a[1] : null, anoEmissao: em ? +em[1] : null, cnpjMatriz: m ? so(m[1]) : null };
+    } },
+  // o PGDAS-D (declaração, recibo e extrato): 01. DAS com o período de apuração. A guia do DAS traz "Pagar este documento
+  // até" e o PGDAS-D não: com ele, é DAS; a DEFIS (que pode citar o PGDAS-D) também fica de fora
+  { tipo: 'PGDAS-D', setor: 'FISCAL', re: /^(?![\s\S]*PAGAR (ESTE DOCUMENTO )?ATE)(?![\s\S]{0,600}(\bDEFIS\b|SOCIOECONOMICAS))[\s\S]{0,1500}?(PROGRAMA GERADOR DO DOCUMENTO DE ARRECADACAO DO SIMPLES NACIONAL|\bPGDAS-?D\b|RECIBO DE ENTREGA DA APURACAO|EXTRATO DO SIMPLES NACIONAL)/, fonte: 'PGDAS-D (Vitor, 27/10/2026); 05a (01. DAS)',
+    campos: u => {
+      const pa = /PERIODO DE APURACAO\s*(?:\(PA\))?\s*:?\s*(?:\d{2}\/)?(0[1-9]|1[0-2])\/(20\d{2})/.exec(u) || /\bPA\)?\s*:\s*(0[1-9]|1[0-2])\/(20\d{2})/.exec(u);
+      // o documento pelo conteúdo: o recibo e o extrato têm título próprio; sem nenhum dos dois, é a declaração
+      const docs = [/RECIBO DE ENTREGA DA APURACAO/.test(u) && 'RECIBO', /EXTRATO DO SIMPLES NACIONAL/.test(u) && 'EXTRATO'].filter(Boolean);
+      return { competencia: pa ? { mes: +pa[1], ano: +pa[2] } : null, docs: docs.length ? docs : ['DECLARACAO'] };
+    } },
   // ---- guias fiscais (05a, 05d §4) ----
   { tipo: 'DAS', setor: 'FISCAL', re: /DOCUMENTO DE ARRECADACAO DO SIMPLES NACIONAL|\bDAS\s+DE\s+PARCELAMENTO\b/, fonte: '05a',
     campos: u => Object.assign(camposDaGuia(u), { parcelamento: /PARCELAMENTO/.test(u) }) },
@@ -1220,7 +1272,7 @@ function clienteDoPdf(u, bruto, entrada, ctx, ev, regra, campos) {
   }
   if (candidatos.length > 1 && sub && candidatos.includes(sub.codigo)) { ev.push('CNPJ do documento e ' + sub.como); return { cliente: sub.codigo, conf: 0.93, como: 'doc' }; }
   if (candidatos.length > 1 && docNome) { const c = unico(clientesDoDoc(docNome, cad)); if (c && candidatos.includes(c)) { ev.push('CNPJ do nome da guia'); return { cliente: c, conf: 0.97, como: 'doc' }; } }
-  if (candidatos.length > 1 && /^(DAS|DARF|DAE|DAM|FGTS|DEFIS|ECF|DIRF|BALANCETE|CARTAO CNPJ|CERTIDAO|LIVRO_FISCAL|RELATORIO LJ)$/.test(regra.tipo)) {
+  if (candidatos.length > 1 && /^(DAS|PGDAS-D|DARF|DAE|DAM|FGTS|DEFIS|DEFIS ALTERDATA|ECF|DIRF|BALANCETE|CARTAO CNPJ|CERTIDAO|LIVRO_FISCAL|RELATORIO LJ)$/.test(regra.tipo)) {
     // guia/declaração: o contribuinte é o primeiro CNPJ/CPF do documento (é o campo do cabeçalho)
     candidatos.sort((a, b) => porDoc.get(a) - porDoc.get(b));
     ev.push('contribuinte = 1º CNPJ/CPF do documento'); return { cliente: candidatos[0], conf: 0.9, como: 'doc' };
@@ -1277,10 +1329,68 @@ function clienteDoRelatorio(u, entrada, ctx, ev) {
   return null;
 }
 
+/**
+ * Pagamento de FORNECEDOR (Vitor, 27/10/2026): comprovante, NF, boleto ou fatura que o cliente guarda nas pastas de
+ * pagamentos ("Comprovantes e Pagtos\NFs e Boletos", "Comprovantes e NFs"), com o nome no padrão do escritório: a data
+ * DD-MM-AAAA e/ou "NF nnn"/"NFSE nn"/"FATURAS Nº nnn", o fornecedor e o valor ("28-04-2025 POSTO 116 NF18203 R$4.107,85.pdf").
+ * Fora da árvore de EXTRATOS (o comprovante bancário continua em EXTRATOS\…\COMPROVANTES\[BANCO]). → { fornecedor, data } ou null.
+ */
+const PASTA_DE_PAGAMENTOS = /\b(COMPROVANTES|PAGTOS|NFS E BOLETOS)\b/;
+const DOC_DO_FORNECEDOR = '(?:NFS-?E|NF-?E|NF|FATURAS?|BOLETOS?)\\s*(?:N[O°º.]*\\s*)?\\d';
+function pagamentoDeFornecedor(entrada) {
+  const nome = String(entrada.nome || '');
+  if (!/\.pdf$/i.test(nome)) return null;
+  const pastas = partesDoCaminho(entrada.rel || nome).slice(0, -1).map(p => norm(p).replace(/[^A-Z0-9 ]+/g, ' ').replace(/ +/g, ' ').trim());
+  if (!pastas.some(p => PASTA_DE_PAGAMENTOS.test(p)) || pastas.includes('EXTRATOS')) return null;
+  const base = norm(nome.replace(/\.[a-z0-9]{2,4}$/i, '')).replace(/\s+/g, ' ').trim();
+  if (!/R\$\s*\d/.test(base)) return null;
+  const dm = /^(\d{2})-(\d{2})-(\d{4})\s/.exec(base);
+  const data = dm && +dm[1] >= 1 && +dm[1] <= 31 && +dm[2] >= 1 && +dm[2] <= 12 && anoOk(+dm[3]) ? { mes: +dm[2], ano: +dm[3] } : null;
+  if (!data && !new RegExp('^' + DOC_DO_FORNECEDOR + '|\\s(?:NFS-?E|NF-?E|NF)\\s*\\d').test(base)) return null;
+  // o fornecedor: o trecho entre a data / o "NF nnn" do começo e o próximo "NF nnn" ou o "R$"
+  let s = base.replace(/^\d{2}-\d{2}-\d{4}\s+/, '').replace(new RegExp('^' + DOC_DO_FORNECEDOR + '+(?:\\s*(?:E|,|/|-)\\s*\\d+)*\\s+'), '');
+  const corte = s.search(new RegExp('\\s' + DOC_DO_FORNECEDOR + '|\\s*R\\$'));
+  if (corte >= 0) s = s.slice(0, corte);
+  return { fornecedor: nomeSeguro(semAcento(nomeNormalizado(s))).toUpperCase(), data };
+}
+function decidirFornecedor(pg, entrada, u, bruto, ctx, ev, porHash) {
+  const cad = ctx.cadastro;
+  const rel = entrada.rel || entrada.nome;
+  const base = { tipo: 'FATURA FORNECEDOR', setor: 'CONTABIL', fonte: 'pagamentos de fornecedores (Vitor, 27/10/2026); 04 (Pag. Fornecedores)' };
+  ev.push('pagamento de fornecedor pelo padrão do nome (data/NF/R$) e pela pasta de pagamentos da origem');
+  // o cliente: o da pasta de origem; na pasta que junta matriz e filiais (o mapa), a filial cujo CNPJ está no conteúdo, senão a matriz
+  let c = porHash ? { cliente: porHash, conf: 0.97, como: 'hash' } : null;
+  if (!c) { const sub = clienteDaPasta(rel, cad); if (sub) { c = { cliente: sub.codigo, conf: sub.forte ? 0.9 : 0.8, como: sub.forte ? 'pastaConferida' : 'pasta' }; ev.push(sub.como); } }
+  if (!c) {
+    const g = grupoDaPasta(rel, cad);
+    if (g && g.matriz != null && cad.porCod.has(g.matriz)) {
+      const fil = [...new Set(documentosDoTexto(bruto).flatMap(d => clientesDoDoc(d.doc, cad)))].filter(x => (g.filiais || []).includes(x));
+      if (fil.length > 1) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_AMBIGUO', confianca: 0.4, evidencias: ev.concat('o conteúdo traz o CNPJ de mais de uma filial da pasta "' + g.parte + '": ' + fil.join(', ')) });
+      if (fil.length === 1) { c = { cliente: fil[0], conf: 0.93, como: 'doc' }; ev.push('pasta "' + g.parte + '": a filial ' + fil[0] + ' pelo CNPJ no conteúdo'); }
+      else { c = { cliente: g.matriz, conf: 0.9, como: 'pastaConferida' }; ev.push('pasta "' + g.parte + '": sem o CNPJ de uma filial no conteúdo, a matriz ' + g.matriz); }
+    }
+  }
+  if (!c) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_NAO_LOCALIZADO', confianca: 0.3, evidencias: ev.concat('a pasta de origem não diz o cliente') });
+  Object.assign(base, { cliente: c.cliente, comoCliente: c.como });
+  if (!pg.fornecedor) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'VOCABULARIO_AUSENTE', confianca: 0.5, evidencias: ev.concat('o nome do fornecedor não foi lido no nome do arquivo (04: Fornecedores)') });
+  // o mês: a data do começo do nome; sem ela, o mês da pasta de origem; sem ele, o vencimento no conteúdo
+  let comp = pg.data;
+  if (comp) ev.push('mês pela data no começo do nome');
+  const pasta = anoDaPasta(rel) || competenciaDaPasta(rel);
+  if (!comp && pasta && pasta.mes) { comp = { mes: pasta.mes, ano: pasta.ano }; ev.push('mês pela pasta de origem (' + mesAno(comp) + ')'); }
+  if (!comp) { const v = dataBr(linhaApos(u, /VENCIMENTO/, 60)); if (v) { comp = { mes: +v.slice(3, 5), ano: +v.slice(6) }; ev.push('mês pelo vencimento no conteúdo (' + v + ')'); } }
+  if (!comp) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5, evidencias: ev.concat('sem a data no começo do nome, o mês na pasta de origem ou o vencimento no conteúdo') });
+  // o nome original fica (já traz a data, o fornecedor, a NF e o valor)
+  return Object.assign(base, { acao: 'ARQUIVAR', confianca: c.conf, competencia: comp, caminho: ['CONTÁBIL', 'PAGAMENTOS DE FORNECEDORES', String(comp.ano), dois(comp.mes), pg.fornecedor], nomeFinal: entrada.nome });
+}
+
 function decidirPdf(entrada, ctx, ev, porHash) {
   const paginas = Array.isArray(entrada.texto) ? entrada.texto : [String(entrada.texto || '')];
   const bruto = paginas.slice(0, 3).join('\n');
   const u = norm(bruto);
+  // 27/10/2026 (Vitor): o pagamento de fornecedor vale pelo nome e pela pasta de origem, mesmo sem texto (escaneado)
+  const pg = pagamentoDeFornecedor(entrada);
+  if (pg) return decidirFornecedor(pg, entrada, u, bruto, ctx, ev, porHash);
   if (u.replace(/\s/g, '').length < 40) return { acao: 'NAO_IDENTIFICADO', motivo: 'CONTEUDO_SEM_TEXTO', confianca: 0, tipo: 'PDF', evidencias: ev.concat('PDF sem camada de texto (escaneado): sem OCR, o robô não lê; a rotina antiga lia a imagem (Dicionário §12)'), cliente: porHash || null };
   // Santander: título, competência e titular costumam estar na página 2 (Dicionário §6.1.2) — já está em `bruto`
   const regra = REGRAS_PDF.find(r => r.re.test(u));
@@ -1304,7 +1414,15 @@ function decidirPdf(entrada, ctx, ev, porHash) {
     return montarContabil(r2, r2.campos(u), u, bruto, entrada, ctx, ev, porHash);
   }
   if (regra.setor === 'CONTABIL') return montarContabil(regra, campos, u, bruto, entrada, ctx, ev, porHash);
-  const c = porHash ? { cliente: porHash, conf: 0.97, como: 'hash' } : (regra.tipo === 'RELATORIO DE NOTAS' && clienteDoRelatorio(u, entrada, ctx, ev)) || clienteDoPdf(u, bruto, entrada, ctx, ev, regra, campos);
+  // o relatório da DEFIS do Alterdata (27/10/2026): o cliente é o do "CNPJ Matriz" (as filiais da declaração vêm depois)
+  let doMatriz = null;
+  if (!porHash && regra.tipo === 'DEFIS ALTERDATA' && campos.cnpjMatriz) {
+    const m = unico(clientesDoDoc(campos.cnpjMatriz, ctx.cadastro));
+    if (m == null) return { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_NAO_LOCALIZADO', confianca: 0.3, tipo: regra.tipo, setor: regra.setor, evidencias: ev.concat('o CNPJ Matriz ' + campos.cnpjMatriz + ' não é de um cliente só do cadastro') };
+    doMatriz = { cliente: m, conf: 0.96, como: 'doc' };
+    ev.push('cliente pelo CNPJ Matriz do relatório');
+  }
+  const c = porHash ? { cliente: porHash, conf: 0.97, como: 'hash' } : doMatriz || (regra.tipo === 'RELATORIO DE NOTAS' && clienteDoRelatorio(u, entrada, ctx, ev)) || clienteDoPdf(u, bruto, entrada, ctx, ev, regra, campos);
   if (!c.cliente) return { acao: 'NAO_IDENTIFICADO', motivo: c.motivo, confianca: 0.3, tipo: regra.tipo, setor: regra.setor, evidencias: ev.concat(c.candidatos ? 'candidatos ' + c.candidatos.join(', ') : []) };
   const base = { cliente: c.cliente, comoCliente: c.como, setor: regra.setor, tipo: regra.tipo, fonte: regra.fonte, nomeArquivo: entrada.nome };
   const nomeOrig = entrada.nome;
@@ -1318,6 +1436,22 @@ function decidirPdf(entrada, ctx, ev, porHash) {
       if (!campos.valor || !campos.vencimento) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: !campos.valor ? 'VALOR_AUSENTE' : 'VENCIMENTO_AUSENTE', confianca: 0.5 });
       const ma = comp.mes ? mesAno(comp) : String(comp.ano);
       return Object.assign(base, { acao: 'ARQUIVAR', confianca: c.conf, competencia: comp, fiscal: [regra.tipo], nomeFinal: ma + ' - ' + regra.tipo + ' ' + campos.tributo + ' - VALOR ' + campos.valor + ' - VENCIMENTO ' + campos.vencimento + '.pdf' });
+    }
+    case 'PGDAS-D': {
+      // 27/10/2026 (Vitor): FISCAL\SIMPLES NACIONAL\01. DAS\MM-AAAA - PGDAS-D DECLARACAO|RECIBO|EXTRATO.pdf, a competência é o
+      // período de apuração (não é declaração anual); o regime é o do cadastro (fora do Simples: o que a árvore faz com o DAS)
+      if (!campos.competencia) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5, evidencias: ev.concat('período de apuração do PGDAS-D não lido') });
+      let doc = campos.docs.length === 1 ? campos.docs[0] : null;
+      if (!doc) { const n = norm(nomeOrig); const pn = campos.docs.filter(x => n.includes(x)); if (pn.length === 1) { doc = pn[0]; ev.push('o nome do arquivo desempata: ' + doc); } }
+      if (!doc) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'VOCABULARIO_AUSENTE', confianca: 0.5, evidencias: ev.concat('o conteúdo traz ' + campos.docs.join(' e ') + ' do PGDAS-D e o nome do arquivo não desempata') });
+      return Object.assign(base, { acao: 'ARQUIVAR', confianca: c.conf, competencia: campos.competencia, fiscal: ['DAS'], nomeFinal: mesAno(campos.competencia) + ' - PGDAS-D ' + doc + '.pdf' });
+    }
+    case 'DEFIS ALTERDATA': {
+      // 27/10/2026 (Vitor): 14. DEFIS\AAAA - DEFIS ALTERDATA.pdf (AAAA = ano-calendário), na raiz do ano da entrega: o da emissão
+      // do relatório, senão o ano-calendário + 1 (ANUAIS); a DEFIS do portal continua "AAAA - DEFIS.pdf"
+      if (!campos.ano) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5, evidencias: ev.concat('ano-calendário do relatório não lido') });
+      if (campos.anoEmissao && campos.anoEmissao >= campos.ano) ev.push('o ano da entrega pela emissão do relatório (' + campos.anoEmissao + ')');
+      return Object.assign(base, { acao: 'ARQUIVAR', confianca: c.conf, caminho: ['FISCAL', 'SIMPLES NACIONAL', '14. DEFIS'], nomeFinal: campos.ano + ' - DEFIS ALTERDATA.pdf', competencia: { ano: campos.ano } }, campos.anoEmissao ? { anoEntrega: campos.anoEmissao } : {});
     }
     case 'FGTS': {
       if (!campos.competencia) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5 });
@@ -1602,7 +1736,7 @@ function pastasDoAno(cad, ano) {
   return cad._porAno.get(ano);
 }
 /** O ano da raiz: o da competência do documento; sem ela, o das pastas de origem (a migração, as pastas de mês do robô). */
-const ANUAIS = new Set(['DEFIS', 'DIRF', 'ECF', 'BALANCETE', 'DMED', 'DIMOB']);
+const ANUAIS = new Set(['DEFIS', 'DEFIS ALTERDATA', 'DIRF', 'ECF', 'BALANCETE', 'DMED', 'DIMOB']);
 /** A data de entrega escrita no recibo ("Data e hora da transmissão: 27/03/2026", "entregue em …"): o ano, ou null. */
 function anoDaEntrega(entrada) {
   const t = norm(Array.isArray(entrada && entrada.texto) ? entrada.texto.slice(0, 3).join('\n') : String((entrada && (entrada.texto || entrada.txt)) || ''));
@@ -1715,7 +1849,7 @@ module.exports = {
   LIMIAR, RAIZ_CLIENTES, ARVORE, REGRAS_PDF, BANCOS, ANUAIS, ofxCompetencia, anoDaEntrega, ANO_MINIMO, ANO_DAS_PASTAS, anoDaPasta, pastasDoAno, partesDoCaminho, comMotivoDoCodigo,
   semAcento, norm, chaveNome, nomeNormalizado, nomeSeguro, so, dataBr, valorBr, competenciaSolta, competenciaDoNome, competenciaDaPasta, periodoEscrito,
   cnpjValido, cpfValido, documentosDoTexto, raizesDoTexto, mascarasDoTexto,
-  regimeCanonico, montarCadastro, comAnosEMapa, clientesDoDoc, clienteDaPasta, clientesPeloNomeNoTexto,
+  regimeCanonico, montarCadastro, comAnosEMapa, clientesDoDoc, clienteDaPasta, grupoDaPasta, pagamentoDeFornecedor, clientesPeloNomeNoTexto,
   confirmado, pastaParecida, bancoDoTexto, bancoDoNome, lerXml, classificarXml, camposDaGuia,
   contasDoTexto, clientePelaConta, decidir, perfilDoDocumento, tipoDoDestino,
   // a decisão do admin no nads (arquivador-manual.js) passa pelo mesmo último passo: a árvore do regime e a pasta do cliente
