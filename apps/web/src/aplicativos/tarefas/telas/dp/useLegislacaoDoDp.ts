@@ -1,14 +1,13 @@
 // DP › Legislação (Vitor, 14/10/2026: "importa as legislações em uma aba no DP"): os textos de consulta que vieram do Toriba
 // (core empresas/legislacaoDp.ts) e os cadastrados no nads (Vitor, 14/10/2026: "coloque o botão de cadastro de legislação";
 // banco legislacaoDp/{id}: as novas e as do Toriba editadas, por cima do texto do core). A busca procura no assunto e no
-// texto; clicar abre o texto na janela lateral; o DP e o admin cadastram e editam.
+// texto; clicar abre a janela do assunto, numa tela só (Vitor, 28/10/2026: o texto e o editar juntos, o lápis no alto e o ✓ e o ✕
+// só enquanto edita); o DP e o admin cadastram e editam.
 import { empresas } from '@nads/core';
 import { useMemo, useState } from 'react';
 import { useRetorno } from '@nads/ui';
 import { useOperador } from '../../casca/operador';
 import { useLegislacaoDp } from '../../dados/repo';
-
-export type TopicoDaLegislacao = 'texto' | 'observacoes' | 'editar';
 
 /** Uma legislação na tela: a do Toriba (id 'toriba-<n>', editada ou não) ou a cadastrada no nads. */
 export interface LegislacaoNaTela {
@@ -34,7 +33,6 @@ export function useLegislacaoDoDp() {
   const podeEditar = !!op && (op.admin || op.departamento === 'dp');
   const [busca, setBusca] = useState('');
   const [aberta, setAberta] = useState<string | null>(null);
-  const [topico, setTopico] = useState<TopicoDaLegislacao>('texto');
   const [rascunho, setRascunho] = useState<Rascunho | null>(null);
   const [salvando, setSalvando] = useState(false);
   const doBanco = repo.lista();
@@ -64,13 +62,17 @@ export function useLegislacaoDoDp() {
   const valido = !!rascunho && rascunho.assunto.trim().length > 0 && rascunho.texto.trim().length > 0;
 
   return {
-    busca, setBusca, itens, total: todas.length, item, topico, setTopico, podeEditar,
-    abrir(id: string) { setAberta(id); setTopico('texto'); setRascunho(null); },
+    busca, setBusca, itens, total: todas.length, item, podeEditar,
+    /** editando: o lápis foi clicado (ou é uma nova) */
+    editando: !!rascunho,
+    abrir(id: string) { setAberta(id); setRascunho(null); },
     fechar() { setAberta(null); setRascunho(null); },
-    /** o botão "Nova legislação": a janela já no formulário */
-    nova() { setAberta('nova'); setRascunho({ id: null, assunto: '', texto: '', observacoes: '' }); setTopico('editar'); },
-    /** o tópico Editar da janela, com o texto atual */
-    editar() { if (item) { setRascunho({ id: item.id, assunto: item.assunto, texto: item.texto, observacoes: item.observacoes }); setTopico('editar'); } },
+    /** o botão "Nova legislação": a janela já editando */
+    nova() { setAberta('nova'); setRascunho({ id: null, assunto: '', texto: '', observacoes: '' }); },
+    /** o lápis: os campos no lugar do texto */
+    editar() { if (item) setRascunho({ id: item.id, assunto: item.assunto, texto: item.texto, observacoes: item.observacoes }); },
+    /** o ✕: a nova fecha; a editada volta ao texto */
+    cancelar() { if (rascunho && !rascunho.id) setAberta(null); setRascunho(null); },
     rascunho, valido, salvando,
     mudar(campo: 'assunto' | 'texto' | 'observacoes', valor: string) { setRascunho(r => (r ? { ...r, [campo]: valor } : r)); },
     async salvar() {
@@ -79,12 +81,14 @@ export function useLegislacaoDoDp() {
       try {
         const id = await repo.salvar({ id: rascunho.id || undefined, assunto: rascunho.assunto.trim(), texto: rascunho.texto.trim(), observacoes: rascunho.observacoes.trim(), data: item?.data || undefined });
         toast(rascunho.id ? 'Legislação salva.' : 'Legislação cadastrada.');
-        setAberta(id); setRascunho(null); setTopico('texto');
+        setAberta(id); setRascunho(null);
       } catch (e) {
         toast('Não deu para salvar: ' + (e instanceof Error ? e.message : String(e)));
       } finally { setSalvando(false); }
     },
     /** 'aaaa-mm-dd' → 'dd/mm/aaaa' */
     data: (iso: string) => (iso ? iso.split('-').reverse().join('/') : ''),
+    /** o começo do texto, numa linha, para a tabela */
+    trecho: (t: string) => { const u = t.replace(/\s+/g, ' ').trim(); return u.length > 110 ? u.slice(0, 110).trimEnd() + '…' : u; },
   };
 }

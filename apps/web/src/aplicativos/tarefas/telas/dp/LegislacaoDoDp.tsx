@@ -1,25 +1,18 @@
 // DP › Legislação (Vitor, 14/10/2026: "importa as legislações em uma aba no DP"): a lista dos assuntos (os do Toriba e os
-// cadastrados no nads), com a busca; clicar no assunto abre o texto legal (e as observações, quando há) na janela lateral,
-// como nas Configurações. O DP e o admin cadastram ("Nova legislação", no canto) e editam (o tópico Editar da janela).
-import { Icone, useEntradaAnimada } from '@nads/ui';
-import { JanelaLateral, type TopicoDaJanela } from '../janela/JanelaLateral';
-import { useLegislacaoDoDp, type TopicoDaLegislacao } from './useLegislacaoDoDp';
+// cadastrados no nads), com a busca e o começo de cada texto; clicar no assunto abre a janela dele, numa tela só (Vitor,
+// 28/10/2026: "texto legal e editar em uma tela só; o lápis em outro lugar, para ter mais tela; salvar e cancelar só quando
+// o lápis é clicado, um check e um cancelar"). O DP e o admin cadastram ("Nova legislação", no canto) e editam (o lápis).
+import { BotaoFechar, BotaoIcone, Icone, useEntradaAnimada, useJanela } from '@nads/ui';
+import { useRef } from 'react';
+import { useLegislacaoDoDp } from './useLegislacaoDoDp';
+
+type Vm = ReturnType<typeof useLegislacaoDoDp>;
 
 export function LegislacaoDoDp() {
   const vm = useLegislacaoDoDp();
   // o DP animado (14/10/2026): a lista entra em cascata ao abrir e ao buscar
   const lista = useEntradaAnimada<HTMLDivElement>('tbody > tr', [vm.busca], 'lista');
-  const l = vm.item;
-  const r = vm.rascunho;
-  const nova = !!r && !r.id;
-  const topicos: TopicoDaJanela<TopicoDaLegislacao>[] = nova
-    ? [{ id: 'editar', rotulo: 'Nova legislação', icone: 'plus' }]
-    : [
-      { id: 'texto', rotulo: 'Texto legal', icone: 'scale' },
-      ...(l?.observacoes ? [{ id: 'observacoes' as const, rotulo: 'Observações', icone: 'fileText' as const }] : []),
-      ...(vm.podeEditar ? [{ id: 'editar' as const, rotulo: 'Editar', icone: 'lapis' as const }] : []),
-    ];
-  const mudarTopico = (t: TopicoDaLegislacao) => (t === 'editar' ? vm.editar() : vm.setTopico(t));
+  const nova = !!vm.rascunho && !vm.rascunho.id;
   return (
     <section className="dp-painel">
       <div className="tarefas-barra-topo dp-filtros-linha">
@@ -44,11 +37,15 @@ export function LegislacaoDoDp() {
         {vm.itens.length ? (
           <div className="table-wrap" ref={lista}>
             <table className="dp-tabela">
-              <thead><tr><th>Assunto</th><th>Cadastrada em</th></tr></thead>
+              <thead><tr><th>Assunto</th><th>Editada por</th><th>Cadastrada em</th></tr></thead>
               <tbody>
                 {vm.itens.map(x => (
                   <tr key={x.id} className="dp-linha-abre" onClick={() => vm.abrir(x.id)} title={'Abrir ' + x.assunto}>
-                    <td><strong>{x.assunto}</strong>{x.origem === 'nads' && <span className="badge badge-neutral dp-selo-mudado">nova</span>}</td>
+                    <td>
+                      <strong>{x.assunto}</strong>{x.origem === 'nads' && <span className="badge badge-neutral dp-selo-mudado">nova</span>}
+                      <div className="fraco">{vm.trecho(x.texto)}</div>
+                    </td>
+                    <td className="fraco">{x.atualizadoPor || '—'}</td>
                     <td className="num fraco">{vm.data(x.data)}</td>
                   </tr>
                 ))}
@@ -58,48 +55,76 @@ export function LegislacaoDoDp() {
         ) : <p className="fraco dp-vazio">Nada com "{vm.busca}".</p>}
       </section>
 
-      {(l || nova) && (
-        <JanelaLateral rotulo={nova || !l ? 'Nova legislação' : l.assunto} topicos={topicos} topico={vm.topico} mudar={mudarTopico} fechar={vm.fechar}
-          resumo={nova || !l ? (
-            <div className="usuario-quem"><b>Nova legislação</b><span className="fraco">Fica na lista do DP para todos</span></div>
-          ) : (
-            <div className="usuario-quem">
-              <b>{l.assunto}</b>
-              <span className="fraco">Cadastrada em {vm.data(l.data)}{l.origem === 'Toriba' ? ' (Toriba)' : ''}</span>
-              {l.atualizadoPor && <span className="fraco">Editada por {l.atualizadoPor}</span>}
-            </div>
-          )}
-          pe={vm.topico === 'editar' && r ? (
-            <>
-              <span className="tarefas-barra-espaco" />
-              <button type="button" className="btn btn-outline" onClick={() => (nova ? vm.fechar() : vm.setTopico('texto'))}>Cancelar</button>
-              <button type="button" className="btn btn-primary" disabled={!vm.valido || vm.salvando} onClick={() => void vm.salvar()}>
-                {vm.salvando ? <span className="btn-spinner" aria-hidden="true" /> : <Icone nome="check" width={16} height={16} />}{nova ? 'Cadastrar' : 'Salvar'}
-              </button>
-            </>
-          ) : undefined}>
-          {vm.topico === 'editar' && r ? (
-            <section className="card pessoal-cartao">
-              <div className="field">
-                <label htmlFor="leg-assunto">Assunto</label>
-                <input id="leg-assunto" type="text" value={r.assunto} onChange={e => vm.mudar('assunto', e.target.value)} maxLength={200} autoFocus />
-              </div>
-              <div className="field">
-                <label htmlFor="leg-texto">Texto legal</label>
-                <textarea id="leg-texto" rows={14} value={r.texto} onChange={e => vm.mudar('texto', e.target.value)} />
-              </div>
-              <div className="field">
-                <label htmlFor="leg-obs">Observações</label>
-                <textarea id="leg-obs" rows={3} value={r.observacoes} onChange={e => vm.mudar('observacoes', e.target.value)} />
-              </div>
-            </section>
-          ) : l && (
-            <section className="card pessoal-cartao">
-              <div className="gm-texto-corpo">{vm.topico === 'observacoes' ? l.observacoes : l.texto}</div>
-            </section>
-          )}
-        </JanelaLateral>
-      )}
+      {(vm.item || nova) && <JanelaDaLegislacao vm={vm} nova={nova} />}
     </section>
+  );
+}
+
+/** A janela do assunto: o título e quem cadastrou no alto, com o lápis (ou o ✓ e o ✕ enquanto edita); o texto embaixo, na tela toda. */
+function JanelaDaLegislacao({ vm, nova }: { vm: Vm; nova: boolean }) {
+  const janela = useRef<HTMLDivElement>(null);
+  useJanela(janela, vm.fechar);
+  const l = vm.item;
+  const r = vm.rascunho;
+  const titulo = nova || !l ? 'Nova legislação' : l.assunto;
+  return (
+    <div className="modal-overlay pessoal-fundo" onMouseDown={e => { if (e.target === e.currentTarget) vm.fechar(); }}>
+      <div ref={janela} className="pessoal-janela usuario-janela" role="dialog" aria-modal="true" aria-label={titulo}>
+        <section className="pessoal-conteudo">
+          <header className="pessoal-topo">
+            <div className="usuario-quem">
+              <h2>{titulo}</h2>
+              {nova || !l ? <span className="fraco">Fica na lista do DP para todos</span> : (
+                <span className="fraco">
+                  Cadastrada em {vm.data(l.data)}{l.origem === 'Toriba' ? ' (Toriba)' : ''}{l.atualizadoPor ? ' · editada por ' + l.atualizadoPor : ''}
+                </span>
+              )}
+            </div>
+            <span className="tarefas-barra-espaco" />
+            {r ? (
+              <>
+                <BotaoIcone icone="check" titulo={nova ? 'Cadastrar' : 'Salvar'} disabled={!vm.valido || vm.salvando} onClick={() => void vm.salvar()} />
+                <BotaoIcone icone="x" titulo="Cancelar" disabled={vm.salvando} onClick={vm.cancelar} />
+              </>
+            ) : (
+              <>
+                {vm.podeEditar && <BotaoIcone icone="lapis" titulo="Editar" onClick={vm.editar} />}
+                <BotaoFechar onClick={vm.fechar} />
+              </>
+            )}
+          </header>
+          <div className="pessoal-rola">
+            {r ? (
+              <section className="card pessoal-cartao">
+                <div className="field">
+                  <label htmlFor="leg-assunto">Assunto</label>
+                  <input id="leg-assunto" type="text" value={r.assunto} onChange={e => vm.mudar('assunto', e.target.value)} maxLength={200} autoFocus />
+                </div>
+                <div className="field">
+                  <label htmlFor="leg-texto">Texto legal</label>
+                  <textarea id="leg-texto" rows={16} value={r.texto} onChange={e => vm.mudar('texto', e.target.value)} />
+                </div>
+                <div className="field">
+                  <label htmlFor="leg-obs">Observações</label>
+                  <textarea id="leg-obs" rows={3} value={r.observacoes} onChange={e => vm.mudar('observacoes', e.target.value)} />
+                </div>
+              </section>
+            ) : l && (
+              <>
+                <section className="card pessoal-cartao">
+                  <div className="gm-texto-corpo">{l.texto}</div>
+                </section>
+                {l.observacoes && (
+                  <section className="card pessoal-cartao">
+                    <div className="card-head"><h3>Observações</h3></div>
+                    <div className="gm-texto-corpo">{l.observacoes}</div>
+                  </section>
+                )}
+              </>
+            )}
+          </div>
+        </section>
+      </div>
+    </div>
   );
 }
