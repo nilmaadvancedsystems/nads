@@ -80,6 +80,8 @@ const SEM_DECISAO_PELO_CONTEUDO = new Set(['TIPO_NAO_RECONHECIDO', 'CONTEUDO_SEM
  * ou null quando a pasta não diz nada.
  */
 function decidir(entrada, ctx, d) {
+  // a conta do documento está em dois clientes do cadastro (Vitor, 28/10/2026): fica CLIENTE_AMBIGUO, a pasta não desempata
+  if (d && d.contaAmbigua) return null;
   return clientePelaPasta(entrada, ctx, d) || decidirPeloMapa(entrada, ctx, d);
 }
 function decidirPeloMapa(entrada, ctx, d) {

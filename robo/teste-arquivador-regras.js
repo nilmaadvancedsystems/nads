@@ -606,6 +606,99 @@ igual('declaração de inventário (PDF) e balanço em planilha: PAPÉIS DE TRAB
 igual('pró-labore: DEPARTAMENTO PESSOAL\\MM\\PRÓ-LABORE, o mês do nome, nome original (antes do pagamento de fornecedor)', so18(d18('PROLABORE MARCELO JAN-2025 MINAS R$1.351,02.pdf', { texto: ['RECIBO DE PRO LABORE\nMINAS FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA\nCNPJ 37.405.977/0001-07'] }, 'FERNANDO\\411 MINAS FORESTRY\\2025\\01.2025\\Comprovantes e NFs\\')), ['ARQUIVAR', null, '411 - MINAS FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA\\DEPARTAMENTO PESSOAL\\01\\PRÓ-LABORE', 'PROLABORE MARCELO JAN-2025 MINAS R$1.351,02.pdf']);
 igual('recibo da DEISS: FISCAL\\<regime>\\08. DAM\\DECLARAÇÕES, nome original', so18(d18('Recibo DEISS - 04.2023.pdf', { texto: ['RECIBO DE ENTREGA DA DECLARACAO\nB LIMA SERVICOS MEDICOS LTDA\nCNPJ 48.765.236/0001-45\nCOMPETENCIA 04/2023'] }, '0481 - B LIMA SERVICOS MEDICOS LTDA - ME\\DEPARTAMENTO FISCAL\\DEISS - MOC\\')), ['ARQUIVAR', null, '481 - B LIMA SERVICOS MEDICOS LTDA\\FISCAL\\SIMPLES NACIONAL\\08. DAM\\DECLARAÇÕES', 'Recibo DEISS - 04.2023.pdf']);
 
+// ---------- 19. o cliente pela conta bancária do cadastro (Vitor, 28/10/2026): conta por conta, para separar matriz e filiais ----------
+const CAD19 = require('./arquivador-cadastro');
+const j19 = CAD19.juntar({
+  entregas: [
+    { codigoOrigem: '413', nome: 'BRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA', documento: '33117361000171', enquadramento: 'Real', contasBancarias: [{ banco: 'bb', agencia: '183-X', conta: '39440-8', origem: 'drive' }] },
+    { codigoOrigem: '418', nome: 'BRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA - FILIAL 03', documento: '33117361000333', enquadramento: 'Real' },
+    { codigoOrigem: '407', nome: 'DUDA HOME LTDA', documento: '41.000.000/0001-00', enquadramento: 'Simples', contasBancarias: [{ banco: 'bb', agencia: '2705-7', conta: '28265-0' }, { banco: 'stone', agencia: '0001', conta: '9558283' }] },
+    { codigoOrigem: '408', nome: 'OURO VERDE MINERACAO LTDA', documento: '22.000.000/0001-24', enquadramento: 'Presumido', contasBancarias: [{ banco: 'bnb', agencia: '217', conta: '14.172-2' }] },
+    { codigoOrigem: '409', nome: 'OURO VERDE MINERACAO LTDA - FILIAL 02', documento: '22.000.000/0002-05', enquadramento: 'Presumido', contasBancarias: [{ banco: 'bnb', agencia: '217', conta: '14.172-2' }] },
+  ],
+  nads: [
+    { codigo: 418, nome: 'BRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA - FILIAL 03', regime: 'Real', bancos: [{ id: 'bb-183-400001', marca: 'banco-do-brasil', nome: 'Banco do Brasil', agencia: '0183-X', conta: '40.000-1' }, { id: 'itau-1', marca: 'itau', nome: 'Itaú' }], socios: [{ nome: 'FULANO DE TAL', cpf: '529.982.247-25' }] },
+    { codigo: 175, nome: 'SUPERMERCADO SAO JORGE LTDA', regime: 'Simples', bancos: [{ marca: 'caixa', nome: 'Caixa', agencia: '3411', conta: '1292.000577985298-3' }] },
+  ],
+});
+const cad19 = R.montarCadastro(j19.linhas, ['413 - BRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA', '418 - BRAZILIAN FORESTRY FILIAL 03', '407 - DUDA HOME LTDA', '408 - OURO VERDE MINERACAO LTDA', '409 - OURO VERDE MINERACAO LTDA - FILIAL 02', '175 - SUPERMERCADO SAO JORGE LTDA']);
+cad19.mapaMigracao = MIG.carregar({});
+const ctx19 = { cadastro: cad19, hoje: new Date(2026, 9, 28) };
+const d19 = (nome, e, rel) => { const ent = Object.assign({ nome, rel: (rel || '') + nome }, e || {}); const d = R.decidir(ent, ctx19); return d.acao === 'NAO_IDENTIFICADO' ? (MIG.decidir(ent, ctx19, d) || d) : d; };
+const cli19 = d => [d.acao, d.cliente || null, d.motivo || null];
+// o cache do cadastro: as contas do Entregas e do nads com o código, normalizadas; a sem número fica de fora; os sócios do nads
+igual('cadastro: as contas do Entregas e do nads com o código, só os dígitos, sem zeros à esquerda, o dígito separado', cad19.porCod.get(418).contas.map(c => [c.banco, c.agencia && c.agencia.base, c.agencia && c.agencia.dv, c.conta.base, c.conta.dv]), [['BANCO DO BRASIL', '183', 'X', '40000', '1']]);
+igual('... a conta da Stone sem o dígito e a agência 0001', cad19.porCod.get(407).contas.map(c => [c.banco, c.agencia.base, c.conta.base, c.conta.dv]), [['BANCO DO BRASIL', '2705', '28265', '0'], ['STONE', '1', '9558283', null]]);
+igual('... os sócios do Cadastro do nads (nome e CPF)', cad19.porCod.get(418).socios, [{ nome: 'FULANO DE TAL', cpf: '52998224725' }]);
+igual('normalização: "2705-7", "0001", "13.009817-5", "183-X", "abc"', ['2705-7', '0001', '13.009817-5', '183-x', 'abc'].map(R.numeroDeConta), [{ base: '2705', dv: '7' }, { base: '1', dv: null }, { base: '13009817', dv: '5' }, { base: '183', dv: 'X' }, null]);
+igual('mesma conta: com e sem o dígito, o dígito diferente, a operação da Caixa na frente', [['95582839', '9558283'], ['28265-0', '282650'], ['28265-0', '28265'], ['28265-0', '28265-1'], ['000577985298-3', '1292.000577985298-3'], ['14.172-2', '41.172-2']].map(([a, b]) => R.mesmaConta(R.numeroDeConta(a), R.numeroDeConta(b))), [true, true, true, false, true, false]);
+// a agência e a conta lidas nos layouts dos bancos
+const ac19 = (t, ext) => R.contasDoDocumento(t, ext !== false).map(x => [x.agencia ? x.agencia.base : null, x.conta.base + (x.conta.dv ? '-' + x.conta.dv : '')]);
+igual('layout BB: "Agência: 2705-7 Conta: 28265-0"', ac19('EXTRATO DE CONTA CORRENTE\nCliente: DUDA HOME LTDA\nAgência: 2705-7 Conta: 28265-0'), [['2705', '28265-0']]);
+igual('layout BB: "Ag. 2705-7 C/C 26345-1"', ac19('BANCO DO BRASIL\nAg. 2705-7 C/C 26345-1\nPeríodo 01/02/2025'), [['2705', '26345-1']]);
+igual('layout Stone: "AGENCIA 0001 CONTA 95582839"', ac19('STONE INSTITUICAO DE PAGAMENTO S.A.\nAGENCIA 0001 CONTA 95582839\nEXTRATO'), [['1', '95582839']]);
+igual('layout Caixa: "3411 | 1292 | 000577985345-9" e "3411/1292/000578855317-9" (agência, operação, conta)', [ac19('CAIXA ECONOMICA FEDERAL\nAgência | Operação | Conta\n3411 | 1292 | 000577985345-9'), ac19('Conta: 3411/1292/000578855317-9')], [[['3411', '577985345-9']], [['3411', '578855317-9']]]);
+igual('layout Bradesco: "AG: 02557 | CC: 0030590-1"; BNB: "Agência/Conta Corrente: 060 - SALINAS/000011887-9"', [ac19('EXTRATO DE: AG: 02557 | CC: 0030590-1'), ac19('BANCO DO NORDESTE\nAgência/Conta Corrente: 060 - SALINAS/000011887-9')], [[['2557', '30590-1']], [['60', '11887-9']]]);
+igual('layout do .txt do BB (rótulo, espaços e a conta na linha de baixo)', ac19('Extrato conta corrente\nAgência                       101-5\nConta corrente                75225-8 SPIROU CONSULT E INV LTDA'), [['101', '75225-8']]);
+igual('comprovante: a conta do recebedor fica de fora, só a do pagador', ac19('COMPROVANTE DE TRANSFERENCIA\nDados de quem pagou\nPagador: DUDA HOME LTDA\nAgência: 2705-7 Conta: 28265-0\nDados do recebedor\nRecebedor: FULANO\nAgência: 1234 Conta: 99999-9', false), [['2705', '28265-0']]);
+igual('extrato: a conta da linha de lançamento fica de fora ("TED … AG 1234 CC 5678-9")', ac19('Agência: 2705-7 Conta: 28265-0\n10/02/2025 TED RECEBIDA AG 1234 CC 5678-9 100,00'), [['2705', '28265-0']]);
+// a decisão: a conta que bate com UM cliente decide (matriz ou filial), vence a pasta e o grupo, não o CNPJ escrito no documento
+const P413_19 = 'FERNANDO\\413 BRAZILIAN filiais 414.  418. 453\\2025\\02.2025\\';
+const EXT19 = c => 'SISBB - SISTEMA DE INFORMACOES BANCO DO BRASIL\nEXTRATO DE CONTA CORRENTE\nCliente: BRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA\nAgência: 183-X Conta corrente: ' + c + '\nPeríodo: 01/02/2025 a 28/02/2025\nSALDO ANTERIOR 1.000,00';
+igual('extrato na pasta da matriz 413 com a conta da filial 418 (cadastro do nads): a 418, vence a pasta e o grupo', cli19(d19('BB 02.2025.pdf', { texto: [EXT19('40000-1')] }, P413_19)), ['ARQUIVAR', 418, null]);
+igual('... com a conta da matriz (cadastro do Entregas): a 413', cli19(d19('BB 02.2025.pdf', { texto: [EXT19('39440-8')] }, P413_19)), ['ARQUIVAR', 413, null]);
+igual('... o destino na pasta da filial, em BANCÁRIOS\\BANCO DO BRASIL', d19('BB 02.2025.pdf', { texto: [EXT19('40000-1')] }, P413_19).destinoRelativo, '418 - BRAZILIAN FORESTRY FILIAL 03\\CONTÁBIL\\EXTRATOS\\2025\\02\\BANCÁRIOS\\BANCO DO BRASIL');
+igual('... a conta da 418 mas o CNPJ da matriz escrito no documento: vale o CNPJ (413)', cli19(d19('BB 02.2025.pdf', { texto: [EXT19('40000-1').replace('\nAgência', '\nCNPJ: 33.117.361/0001-71\nAgência')] }, P413_19)), ['ARQUIVAR', 413, null]);
+igual('... conta que não está no cadastro: segue como antes (a matriz do grupo)', cli19(d19('BB 02.2025.pdf', { texto: [EXT19('55555-5')] }, P413_19)), ['ARQUIVAR', 413, null]);
+igual('a mesma conta em dois clientes do cadastro (408 e 409): CLIENTE_AMBIGUO, nem a pasta nem o grupo desempatam', cli19(d19('BNB 02.2025.pdf', { texto: ['BANCO DO NORDESTE DO BRASIL S.A.\nEXTRATO DE CONTA CORRENTE\nCliente: OURO VERDE MINERACAO LTDA\nAgência: 217 Conta: 14.172-2\nPeríodo: 01/02/2025 a 28/02/2025'] }, 'FERNANDO\\408 OURO VERDE MINERACAO FILIAIS 409 E 410\\2025\\02.2025\\')), ['NAO_IDENTIFICADO', null, 'CLIENTE_AMBIGUO']);
+igual('... com o CNPJ da filial escrito no documento: a 409', cli19(d19('BNB 02.2025.pdf', { texto: ['BANCO DO NORDESTE DO BRASIL S.A.\nEXTRATO DE CONTA CORRENTE\nCliente: OURO VERDE MINERACAO LTDA - CNPJ 22.000.000/0002-05\nAgência: 217 Conta: 14.172-2\nPeríodo: 01/02/2025 a 28/02/2025'] }, 'FERNANDO\\408 OURO VERDE MINERACAO FILIAIS 409 E 410\\2025\\02.2025\\')), ['ARQUIVAR', 409, null]);
+igual('extrato da Stone "AGENCIA 0001 CONTA 95582839" (cadastro sem o dígito): a 407', cli19(d19('extrato stone fev.pdf', { texto: ['STONE INSTITUICAO DE PAGAMENTO S.A.\nEXTRATO DE CONTA\nAGENCIA 0001 CONTA 95582839\nPeríodo: 01/02/2025 a 28/02/2025\nSaldo 10,00'] }, 'CLIENTES\\')), ['ARQUIVAR', 407, null]);
+igual('extrato da Caixa "3411 | 1292 | 000577985298-3" (o nads com a operação na frente): a 175', cli19(d19('caixa.pdf', { texto: ['CAIXA ECONOMICA FEDERAL\nEXTRATO POR PERIODO\nAgência | Operação | Conta\n3411 | 1292 | 000577985298-3\nPeríodo: 01/02/2025 a 28/02/2025\nSALDO ANTERIOR 10,00'] }, 'CLIENTES\\')), ['ARQUIVAR', 175, null]);
+igual('comprovante do BB da conta da filial: a 418', cli19(d19('comprovante.pdf', { texto: ['SISBB - SISTEMA DE INFORMACOES BANCO DO BRASIL\n03/02/2025 - AUTO ATENDIMENTO\nCOMPROVANTE DE PAGAMENTO DE TITULOS\nCLIENTE: BRAZILIAN FORESTRY EMPREENDIMENTOS\nAGENCIA: 183-X CONTA: 40.000-1\nDATA DO PAGAMENTO 03/02/2025\nVALOR TOTAL 100,00'] }, P413_19)), ['ARQUIVAR', 418, null]);
+// o OFX: <BRANCHID>/<ACCTID>
+const OFX19 = c => '<OFX><BANKID>001</BANKID><BRANCHID>183-X</BRANCHID><ACCTID>' + c + '</ACCTID><DTSTART>20250201</DTSTART><DTEND>20250228</DTEND><STMTTRN><DTPOSTED>20250210</DTPOSTED></STMTTRN></OFX>';
+igual('OFX na pasta 413 com <ACCTID> da filial: a 418', cli19(d19('extrato.ofx', { ofx: OFX19('40000-1') }, P413_19)), ['ARQUIVAR', 418, null]);
+igual('... com <ACCTID> sem o traço (400001): a 418; a conta da matriz: a 413', [d19('extrato.ofx', { ofx: OFX19('400001') }, P413_19).cliente, d19('extrato.ofx', { ofx: OFX19('39440-8') }, P413_19).cliente], [418, 413]);
+igual('... OFX com a conta de dois clientes: CLIENTE_AMBIGUO', cli19(d19('extrato.ofx', { ofx: '<OFX><BANKID>004</BANKID><BRANCHID>217</BRANCHID><ACCTID>141722</ACCTID><DTSTART>20250201</DTSTART><DTEND>20250228</DTEND><STMTTRN><DTPOSTED>20250210</DTPOSTED></STMTTRN></OFX>' }, 'FERNANDO\\408 OURO VERDE MINERACAO FILIAIS 409 E 410\\2025\\02.2025\\')), ['NAO_IDENTIFICADO', null, 'CLIENTE_AMBIGUO']);
+// a conta em dois clientes, mas a pasta de origem é de um só deles (a 413 × a 363, que o robô aprendeu de um extrato na pasta errada)
+const j19c = CAD19.juntar({ entregas: [
+  { codigoOrigem: '413', nome: 'BRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA', documento: '33117361000171', enquadramento: 'Real', contasBancarias: [{ banco: 'bb', agencia: '183-X', conta: '39440-8', origem: 'drive' }] },
+  { codigoOrigem: '363', nome: 'OUTRA EMPRESA LTDA', enquadramento: 'Simples', contasBancarias: [{ banco: 'bb', agencia: '183-X', conta: '39440-8', origem: 'drive' }] },
+] });
+const cad19c = R.montarCadastro(j19c.linhas, ['413 - BRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA', '363 - OUTRA EMPRESA LTDA']);
+cad19c.mapaMigracao = MIG.carregar({});
+igual('conta em dois clientes (413 e 363), na pasta da 413: a 413 (a pasta é de um só deles); fora das pastas: CLIENTE_AMBIGUO', [R.decidir({ nome: 'BB 02.2025.pdf', rel: P413_19 + 'BB 02.2025.pdf', texto: [EXT19('39440-8')] }, { cadastro: cad19c, hoje: new Date(2026, 9, 28) }).cliente, R.decidir({ nome: 'BB 02.2025.pdf', rel: 'CLIENTES\BB 02.2025.pdf', texto: [EXT19('39440-8')] }, { cadastro: cad19c, hoje: new Date(2026, 9, 28) }).motivo], [413, 'CLIENTE_AMBIGUO']);
+// o .txt do BB
+igual('extrato do BB em .txt com a conta da filial: a 418', cli19(d19('EXTRATO BB.txt', { txt: 'Extrato conta corrente\r\n----\r\nCliente - Cliente atual\r\n----\r\nAgência                       183-X\r\nConta corrente                40000-1 BRAZILIAN FORESTRY\r\nPeríodo do extrato            02/2025\r\n----\r\nLançamentos\r\n   03/02/2025   Saldo Anterior   100,00 C\r\n' }, P413_19)), ['ARQUIVAR', 418, null]);
+
+// os extratos novos de 28/10/2026 (NÃO IDENTIFICADOS\20261028-NOVO): o BB com o período grudado na conta, o BNB do internet
+// banking, o app do Santander; as contas da MORONI (579, matriz; a 585 filial não tem conta) postas pelo Vitor
+const j19b = CAD19.juntar({
+  entregas: [
+    { codigoOrigem: '579', nome: 'MORONI & XAVIER AUTOPECAS LTDA', documento: '62.768.139/0001-37', enquadramento: 'Simples', contasBancarias: [{ banco: 'bb', agencia: '2705-7', conta: '40282-6', origem: 'drive' }, { banco: 'bnb', agencia: '60', conta: '68653-2', origem: 'vitor' }] },
+    { codigoOrigem: '585', nome: 'MORONI & XAVIER AUTOPECAS LTDA - FILIAL', documento: '62.768.139/0002-18', enquadramento: 'Simples' },
+    // a conta do BNB da MORONI que o robô aprendeu do extrato que o Vitor pôs na pasta da 299
+    { codigoOrigem: '299', nome: 'TEOBALDO MENDES DE OLIVEIRA LTDA - FILIAL 02', documento: '11.426.314/0002-58', enquadramento: 'Simples', contasBancarias: [{ banco: 'bnb', agencia: '60', conta: '68653-2', origem: 'drive' }, { banco: 'nubank', agencia: '2557', conta: '35095-8', origem: 'drive' }] },
+  ],
+  nads: [{ codigo: 492, nome: 'VERSATIL LTDA', regime: 'Simples', bancos: [{ marca: 'santander', nome: 'Santander', agencia: '1699', conta: '13002429-4' }] }],
+});
+const cad19b = R.montarCadastro(j19b.linhas, ['579 - MORONI & XAVIER AUTOPECAS LTDA', '585 - MORONI & XAVIER AUTOPECAS LTDA - FILIAL', '299 - TEOBALDO MENDES DE OLIVEIRA LTDA - FILIAL 02', '492 - VERSATIL LTDA']);
+cad19b.mapaMigracao = MIG.carregar({});
+const ctx19b = { cadastro: cad19b, hoje: new Date(2026, 9, 28) };
+const d19b = (nome, e, rel) => { const ent = Object.assign({ nome, rel: (rel || '') + nome }, e || {}); const d = R.decidir(ent, ctx19b); return d.acao === 'NAO_IDENTIFICADO' ? (MIG.decidir(ent, ctx19b, d) || d) : d; };
+const P299 = '0299 - TEOBALDO MENDES DE OLIVEIRA LTDA - EPP (FILIAL 02)\\';
+const BB_MORONI = '\nEXTRATO DE CONTA CORRENTE\nCliente:MORONI X A LTDA\nAgência: 2705-7 Conta: 40282-6Período: 01 a 31/07/2026\nLançamentos\nDiaDocumentoValorLoteHistórico\n10/06/20260,00 (+)Saldo Anterior\n06/07/2026200,00 (+)1439740659334442441\nPix - Recebido\n04/07 06:59 62768139000137 MORONI & XA\n06/07/2026143,05 (-)13113871870801063835\nTarifa Pacote de Serviços\n06/07/202656,95 (-)9903\nBB Rende Fácil\n06/07/20260,00 (+)13113Saldo do dia';
+const BNB_MORONI = 'Extrato de Conta Corrente\nTITULAR: MORONI & XAVIER AUTOPECAS LTDA\nAGÊNCIA:60 / CONTA:68653-2\nPeríodo: 01/08/2026 até 31/08/2026\nSaldo anterior 0,21 C\nAGOSTO/2026\nDataHistóricoDocumentoValor R$\n05/08/2026\nRECEBIMENTO VIA PIX\n1197113.800,00 C\n05/08/2026TARIFA PACOTE DE TARIFAS822728,00 D';
+igual('BB novo (o período grudado na conta, "40282-6Período: 01 a 31/07/2026"): o layout do BB e o período "DD A DD/MM/AAAA"', [R.bancoDoTexto(BB_MORONI, true), (x => x && [x.de.dia, x.de.mes, x.ate.dia, x.ate.mes, x.ate.ano])(R.periodoEscrito(BB_MORONI))], ['BANCO DO BRASIL', [1, 7, 31, 7, 2026]]);
+igual('... "PERIODO: DD/MM/AAAA ATE DD/MM/AAAA" continua', (x => [x.de.mes, x.ate.dia, x.ate.mes])(R.periodoEscrito(BNB_MORONI)), [8, 31, 8]);
+igual('extrato do BB da MORONI na pasta da 299 (o Vitor pôs lá): a 579 pela conta 2705-7/40282-6, julho, BANCO DO BRASIL', so18(d19b('BANCO DO BRASIL EXTRATO.pdf', { texto: [BB_MORONI] }, P299)), ['ARQUIVAR', null, '579 - MORONI & XAVIER AUTOPECAS LTDA\\CONTÁBIL\\EXTRATOS\\2026\\07\\BANCÁRIOS\\BANCO DO BRASIL', '07-2026.pdf']);
+igual('extrato do BNB da MORONI ("bancodonordeste3.pdf", sem o nome do banco): a 579 pela conta 60/68653-2, agosto, BNB', so18(d19b('bancodonordeste3.pdf', { texto: [BNB_MORONI] }, P299)), ['ARQUIVAR', null, '579 - MORONI & XAVIER AUTOPECAS LTDA\\CONTÁBIL\\EXTRATOS\\2026\\08\\BANCÁRIOS\\BNB', '08-2026.pdf']);
+igual('... a conta está também na 299 (aprendida pelo robô), mas só na 579 foi posta por uma pessoa: a 579', d19b('bancodonordeste3.pdf', { texto: [BNB_MORONI] }, P299).evidencias.some(e => /posta por uma pessoa/.test(e)), true);
+igual('... a conta aprendida (origem drive) não decide sem o banco do documento', R.clientesPelasContas([{ agencia: R.numeroDeConta('2557'), conta: R.numeroDeConta('35095-8') }], null, cad19b).clientes, []);
+igual('... e decide com o banco lido (o mesmo do cadastro)', R.clientesPelasContas([{ agencia: R.numeroDeConta('2557'), conta: R.numeroDeConta('35095-8') }], 'NUBANK', cad19b).clientes, [299]);
+igual('extrato do app do Santander ("VERSATIL LTDAAGENCIA: 1699CONTA: 130024294", "PERIODOS:"): EXTRATO da 492 pela conta', so18(d19b('extrato-pj-06_10_2026-19h57m43s07.pdf', { texto: ['APLICATIVO SANTANDER EMPRESAS\nVERSATIL LTDAAGÊNCIA: 1699CONTA: 130024294\nPERÍODOS: 01/09/2026 A 30/09/2026DATA/HORA: 06/10/2026 ÀS 19H57\nSALDO DISPONÍVEL PARA USO: R$ 1.287,94\nDATAHISTÓRICODOCUMENTOVALOR (R$)SALDO (R$)\n30/09/2026PIX RECEBIDO 0612481964360,00-11.135,94'] })), ['ARQUIVAR', null, '492 - VERSATIL LTDA\\CONTÁBIL\\EXTRATOS\\2026\\09\\BANCÁRIOS\\SANTANDER', '09-2026.pdf']);
+igual('a agência e a conta no nome do arquivo ("Entradas_Saidas_ag3155cc990348_01-09-26.pdf")', R.contasDoNome('Entradas_Saidas_ag3155cc990348_01-09-26.pdf').map(x => [x.agencia.base, x.conta.base]), [['3155', '990348']]);
+
 // ---------- 11. PRODUCAO de verdade, numa pasta temporária (nunca no Drive) ----------
 (async () => {
   const sb = fs.mkdtempSync(path.join(os.tmpdir(), 'teste-arqnovo-prod-'));
