@@ -764,6 +764,20 @@ igual('a agência e a conta no nome do arquivo ("Entradas_Saidas_ag3155cc990348_
   igual('o titular abreviado "OURO VERDE MIN E FLORESTAS" (a fantasia da filial 409) na pasta da Vera: o grupo, sem conta a matriz 408', d22('Caixa Economica 05.2025 OV.pdf', 'FERNANDO\\417 VERA REFLORESTAMENTO EIRELI\\2025\\05.2025\\', 'CAIXA ECONOMICA FEDERAL\nEXTRATO POR PERIODO\nCLIENTE: OURO VERDE MIN E FLORESTAS LTDA\nPERIODO: 01/05/2025 A 31/05/2025\nSALDO ANTERIOR 10,00').cliente, 408);
   igual('... e o contrário continua: "TITULAR: VERA REFLORESTAMENTOS LTDA" na pasta da 408 vai para a 417', d22('BNB 07.2025 ov2.pdf', 'FERNANDO\\408 OURO VERDE MINERAÇÃO filiais 409 e 410\\2025\\07.2025\\', 'BANCO DO NORDESTE\nEXTRATO DE CONTA CORRENTE\nTITULAR: VERA REFLORESTAMENTOS LTDA\nAGENCIA: 217 CONTA: 16.820-5\nPERIODO: 01/07/2025 A 31/07/2025\nSALDO ANTERIOR 1,00').cliente, 417);
 }
+// a conta da empresa no Inter com a titular pessoa física que não é cliente (Vitor, 28/10/2026: a 463); o PDF com várias notas; a Olaria
+{
+  const j23 = CAD19.juntar({ entregas: [{ codigoOrigem: '463', nome: 'CENTRO DE ODONTOLOGIA ESTETICA LTDA', documento: '45.430.981/0001-45', enquadramento: 'Simples', contasBancarias: [{ banco: 'inter', agencia: '0001-9', conta: '8835592-6', origem: 'vitor' }] }] });
+  const c23 = R.montarCadastro(j23.linhas, ['463 - CENTRO DE ODONTOLOGIA ESTETICA LTDA']);
+  c23.mapaMigracao = MIG.carregar({});
+  const x23 = { cadastro: c23, hoje: new Date(2026, 9, 28) };
+  const T23 = 'SOLICITADO EM: 16/09/2024 - 10H05\nLARISSA EVELLYN SOUZA MENDES\nCPF/CNPJ: 529.982.247-25, INSTITUICAO: BANCO INTER, AGENCIA: 0001-9, CONTA: 8835592-6\nPERIODO: 01/07/2024 A 31/07/2024\nSALDO TOTAL\nR$ 28.316,84';
+  igual('o CPF de uma pessoa que não é cliente no cabeçalho não tira o extrato da empresa dona da conta (463)', (d => [d.acao, d.cliente])(R.decidir({ nome: 'Extrato-01-07-2024-a-31-07-2024.pdf', rel: 'CLIENTES\\Extrato-01-07-2024-a-31-07-2024.pdf', texto: [T23] }, x23)), ['ARQUIVAR', 463]);
+  igual('"NFe_Export_229.txt" e "erros.txt" do emissor: DESCARTAR', ['NFe_Export_229.txt', 'erros.txt'].map(n => R.decidir({ nome: n, rel: 'IMPORTAÇÃO\\0514 - OLARIA\\' + n, txt: 'qualquer' }, x23).acao), ['DESCARTAR', 'DESCARTAR']);
+  const NF23 = n => 'DANFE\nDOCUMENTO AUXILIAR DA NOTA FISCAL ELETRONICA\nCHAVE DE ACESSO\n3126 0945 4309 8100 0145 5500 1000 00' + n + ' 1000 0000 0000\nCENTRO DE ODONTOLOGIA ESTETICA LTDA 45.430.981/0001-45\nDATA DA EMISSAO 10/09/2026';
+  const dc = R.decidir({ nome: '00009250001-CLIENTE X.pdf', rel: 'IMPORTAÇÃO\\00009250001-CLIENTE X.pdf', texto: [NF23('9250'), NF23('9251'), NF23('9252')] }, x23);
+  const d1 = R.decidir({ nome: '00009250001-CLIENTE X.pdf', rel: 'IMPORTAÇÃO\\00009250001-CLIENTE X.pdf', texto: [NF23('9250')] }, x23);
+  igual('PDF com 3 notas: o mesmo destino da 1ª nota sozinha, nome original; sem a 1ª decidida, continua na origem (Vitor, 28/10/2026)', [dc.acao === (d1.acao === 'ARQUIVAR' ? 'ARQUIVAR' : 'FICA'), dc.acao !== 'ARQUIVAR' || (dc.nomeFinal === '00009250001-CLIENTE X.pdf' && dc.destinoRelativo === d1.destinoRelativo)], [true, true]);
+}
 // ---------- 11. PRODUCAO de verdade, numa pasta temporária (nunca no Drive) ----------
 (async () => {
   const sb = fs.mkdtempSync(path.join(os.tmpdir(), 'teste-arqnovo-prod-'));
