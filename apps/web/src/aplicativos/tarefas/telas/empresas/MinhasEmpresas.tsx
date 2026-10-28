@@ -2,7 +2,7 @@
 // lugar do "main ▾"; à direita a busca curta com atalho "/" e Situação ▾), as empresas por situação, a lista (clicar no
 // título da coluna ordena; clicar na linha abre a página da empresa), as etapas paradas e, no Contábil, os históricos do
 // Creditor. O "Iniciar", o Progresso do mês e os Insights saíram (27/10/2026).
-import { Icone, MenuSuspenso, type NomeIcone, Segmentado, useCarregando, useEntradaAnimada, useLinhasQueSeMovem, Vazio } from '@nads/ui';
+import { Icone, MenuSuspenso, Segmentado, useCarregando, useEntradaAnimada, useLinhasQueSeMovem, Vazio } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
 import { EmDesenvolvimento } from '../em-desenvolvimento/EmDesenvolvimento';
 import { LIMITE, useMinhasEmpresas, type Coluna } from './useMinhasEmpresas';
@@ -14,11 +14,12 @@ import { ConfiguracoesContabil } from '../contabil/configuracoes/ConfiguracoesCo
 
 
 /** A cor e o ícone de cada situação no número (os tons do painel do DP). */
-const TOM_DA_SITUACAO: Record<string, { tom: string; icone: NomeIcone }> = {
-  parada: { tom: 'laranja', icone: 'alert' },
-  'em-andamento': { tom: 'aviso', icone: 'clock' },
-  'nao-iniciada': { tom: 'neutro', icone: 'list' },
-  concluida: { tom: 'ok', icone: 'check' },
+// os números sem ícone (Vitor, 28/10/2026: "não gostei desses ícones, remove eles"): só a cor da situação
+const TOM_DA_SITUACAO: Record<string, { tom: string }> = {
+  parada: { tom: 'laranja' },
+  'em-andamento': { tom: 'aviso' },
+  'nao-iniciada': { tom: 'neutro' },
+  concluida: { tom: 'ok' },
 };
 
 /** Título de coluna que ordena: clicar ordena por ela (crescente), clicar de novo inverte; a setinha cinza só aparece depois do clique. */
@@ -93,7 +94,6 @@ export function MinhasEmpresas() {
         {vm.situacoes.map(s => (
           <button key={s.valor} type="button" className={'stat stat-filtro painel-numero painel-' + TOM_DA_SITUACAO[s.valor].tom + (vm.situacao === s.valor ? ' ativo' : '')} aria-pressed={vm.situacao === s.valor}
             title={vm.situacao === s.valor ? 'Mostrar todas' : 'Mostrar só as ' + s.rotulo.toLowerCase()} onClick={() => vm.setSituacao(vm.situacao === s.valor ? '' : s.valor)}>
-            <span className="painel-numero-icone" aria-hidden="true"><Icone nome={TOM_DA_SITUACAO[s.valor].icone} /></span>
             <p className="stat-label">{s.rotulo}</p>
             <p className="stat-value">{vm.carregando ? '—' : vm.resumo.porSituacao[s.valor]}</p>
           </button>
