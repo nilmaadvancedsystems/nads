@@ -3565,6 +3565,10 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .painel-roxo{--tom:var(--roxo);--tom-fundo:var(--roxo-soft);--tom-icone:var(--roxo-soft);--tom-borda:var(--roxo-soft);}
 .painel-ciano{--tom:var(--ciano);--tom-fundo:var(--ciano-soft);--tom-icone:var(--ciano-soft);--tom-borda:var(--ciano-soft);}
 .painel-neutro{--tom:var(--ink);--tom-fundo:var(--surface);--tom-icone:var(--surface-3);--tom-borda:var(--border);}
+/* o número que filtra, colorido (Minhas empresas; 28/10/2026): a cor fica no hover; o escolhido ganha a borda na cor dele */
+.stat.stat-filtro.painel-numero{border:1px solid var(--tom-borda,var(--border));}
+.stat.stat-filtro.painel-numero:hover{background:var(--tom-fundo,var(--surface));filter:brightness(1.08);}
+.stat.stat-filtro.painel-numero.ativo{box-shadow:inset 0 0 0 1px var(--tom,var(--ink));border-color:var(--tom,var(--ink));}
 /* a coluna CNPJ/CPF das Configurações do DP: só os dígitos e o copiar */
 .dp-documento{white-space:nowrap;cursor:default;}
 /* o CNPJ/CPF digitado na linha, quando não há em lugar nenhum (Sávio, 20/10/2026) */
