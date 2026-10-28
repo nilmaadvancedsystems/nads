@@ -4944,6 +4944,42 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .fin-valor{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;}
 .fin-valor-entrada{color:var(--success);}
 .fin-valor-saida{color:var(--destructive);}
+/* Financeiro › Contas a pagar (28/10/2026: "o Contas a Pagar do Toriba, no nads"): a vencida em vermelho na lista, a parcela,
+   o clipe dos anexos; na janela, os campos e as dicas; no Painel, o aviso das que vencem (todo ícone com o tamanho dele) */
+.cp-lista tr.cp-vencida td{color:var(--destructive);}
+.cp-lista tr.cp-vencida td .fraco,.cp-lista tr.cp-vencida td .emp-cod{color:var(--destructive);}
+.cp-parcela{margin-left:6px;font-size:var(--fs-12);}
+.cp-clipe{display:inline-flex;align-items:center;margin-left:6px;width:14px;height:14px;color:var(--ink-muted);vertical-align:-2px;}
+.cp-clipe svg{width:14px;height:14px;}
+.cp-pago-em{margin-left:6px;font-size:var(--fs-12);white-space:nowrap;}
+.cp-janela .pessoal-linha-controle{flex-wrap:wrap;justify-content:flex-end;}
+.cp-janela .pessoal-linha-controle .file-picker{text-align:left;}
+.cp-campo{width:280px;max-width:100%;}
+.cp-campo-curto{width:140px;}
+.cp-campo-linha{width:360px;max-width:100%;font-variant-numeric:tabular-nums;}
+.cp-dica{display:flex;align-items:center;gap:6px;margin:0 0 12px;}
+.cp-dica svg{width:14px;height:14px;flex:none;}
+.cp-dica .link-btn{margin-left:4px;}
+.cp-novo-fornecedor{margin:0 -16px;padding:0 16px;background:var(--surface-2);border-top:1px solid var(--border);}
+.cp-anexo{display:inline-flex;align-items:center;gap:6px;min-width:0;word-break:break-all;}
+.cp-anexo svg{width:14px;height:14px;flex:none;color:var(--ink-muted);}
+.cp-observacoes{border-color:var(--border);background:var(--input-bg);}
+.cp-resumo-icone{display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:50%;background:var(--surface);border:1px solid var(--border);color:var(--ink-muted);}
+.cp-resumo-icone svg{width:24px;height:24px;}
+.cp-aviso{margin:0;}
+.cp-aviso h3{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.cp-aviso-titulo{display:inline-flex;align-items:center;gap:8px;}
+.cp-aviso-titulo svg{width:16px;height:16px;flex:none;color:var(--ink-muted);}
+.cp-aviso-vencidas{border-color:var(--destructive);}
+.cp-aviso-vencidas .cp-aviso-titulo svg{color:var(--destructive);}
+.cp-aviso-resumo{font-size:var(--fs-13);font-weight:400;}
+.cp-aviso-lista{list-style:none;margin:8px 0 12px;padding:0;}
+.cp-aviso-item{display:flex;align-items:center;gap:12px;padding:6px 0;border-top:1px solid var(--border);font-size:var(--fs-14);}
+.cp-aviso-item:first-child{border-top:none;}
+.cp-aviso-dia{width:44px;flex:none;color:var(--ink-muted);}
+.cp-aviso-nome{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cp-aviso-vencida,.cp-aviso-vencida .cp-aviso-dia{color:var(--destructive);}
+.cp-aviso-hoje .cp-aviso-dia{color:var(--warn);font-weight:600;}
 /* a contagem de cédulas */
 .fin-cedulas{display:grid;grid-template-columns:1fr 1fr;gap:8px 28px;}
 .fin-cedulas-grupo{display:flex;flex-direction:column;gap:4px;min-width:0;}

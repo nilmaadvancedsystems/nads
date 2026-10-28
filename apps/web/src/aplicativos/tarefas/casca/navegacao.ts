@@ -115,6 +115,9 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'caixa', rotulo: 'Caixa', icone: 'dinheiro', titulo: 'Movimento de caixa' },
     // os honorários dos clientes, por competência (19/10/2026, fase 2 do Financeiro)
     { id: 'honorarios', rotulo: 'Honorários', icone: 'recibo', titulo: 'Honorários' },
+    // as contas a pagar e os fornecedores (28/10/2026: "o Contas a Pagar do Toriba, no nads"); o pagamento vira a saída no Caixa
+    { id: 'pagar', rotulo: 'Contas a pagar', icone: 'codigoBarras', titulo: 'Contas a pagar' },
+    { id: 'fornecedores', rotulo: 'Fornecedores', icone: 'predio', titulo: 'Fornecedores' },
     // os itens 2 e 7 da lista do Painel (22/10/2026): quem deve e o extrato do banco; o Resultado por conta virou um botão
     // do Painel, numa janela flutuante ("a aba de resultado vai virar um botão no painel"). A conciliação virou o
     // importador do extrato (23/10/2026: "vai se tornar um importador de extrato que vai trazer os dados e informações

@@ -1,7 +1,8 @@
 // Financeiro › Painel (22/10/2026: "no financeiro, faça um dashboard de entradas, saídas dentre outros"): o período e
 // quatro números (entradas, saídas, resultado, saldo do caixa hoje); para onde foi e de onde veio o dinheiro, por conta do
 // plano (com o extrato do banco importado somado, 23/10/2026); os honorários do mês passado, o banco (o saldo de cada um)
-// e as notas emitidas no período. O mês a mês saiu (23/10/2026). Só as peças do catálogo (Segmentado, Stat, Cartão,
+// e as notas emitidas no período. O mês a mês saiu (23/10/2026). O aviso das contas a pagar (28/10/2026): as vencidas em
+// vermelho, as de hoje e as dos próximos 7 dias, com o link para lá. Só as peças do catálogo (Segmentado, Stat, Cartão,
 // Ranking, Vazio).
 import { formatos } from '@nads/core';
 import { Icone, LogoBanco, Segmentado, Stat, useCarregando, Vazio } from '@nads/ui';
@@ -34,7 +35,7 @@ export function PainelFinanceiro({ comResultado }: { comResultado?: boolean }) {
   const [resultado, setResultado] = useState(!!comResultado);
   const vm = usePainelFinanceiro();
   useCarregando(vm.carregando);
-  const n = vm.numeros, h = vm.honorarios;
+  const n = vm.numeros, h = vm.honorarios, p = vm.pagar;
   return (
     <section className="fin-painel">
       <div className="tarefas-barra-topo">
@@ -57,6 +58,34 @@ export function PainelFinanceiro({ comResultado }: { comResultado?: boolean }) {
         {n.saldoBanco != null && <Stat rotulo="Saldo no banco" valor={reais(n.saldoBanco)} cor={n.saldoBanco < 0 ? 'saida' : undefined} />}
       </div>
       {vm.dicas && <p className="hint fin-painel-dica">Entradas: {vm.dicas.entradas} · Saídas: {vm.dicas.saidas}</p>}
+
+      {/* o aviso das contas a pagar: só quando há o que avisar */}
+      {p.carregado && p.linhas.length > 0 && (
+        <div className={'card cp-aviso' + (p.vencidas.length ? ' cp-aviso-vencidas' : '')}>
+          <h3>
+            <span className="cp-aviso-titulo"><Icone nome={p.vencidas.length ? 'alert' : 'calendar'} />Contas a pagar</span>
+            <span className="fraco cp-aviso-resumo">
+              {p.vencidas.length > 0 && <b className="fin-valor-saida">{p.vencidas.length} {p.vencidas.length === 1 ? 'vencida' : 'vencidas'} · {reais(p.totalVencido)}</b>}
+              {p.vencidas.length > 0 && (p.hoje.length + p.proximas.length) > 0 && ' · '}
+              {(p.hoje.length + p.proximas.length) > 0 && <>{p.hoje.length + p.proximas.length} a vencer {p.hoje.length ? 'hoje e ' : ''}nos próximos 7 dias · {reais(p.totalDaSemana)}</>}
+            </span>
+          </h3>
+          <ul className="cp-aviso-lista">
+            {p.linhas.map(l => (
+              <li key={l.id} className={'cp-aviso-item cp-aviso-' + l.quando}>
+                <span className="num cp-aviso-dia">{l.quando === 'hoje' ? 'Hoje' : l.vencimento}</span>
+                <span className="cp-aviso-nome">{l.fornecedor}</span>
+                <span className="num">{l.valor}</span>
+                {l.quando === 'vencida' && <span className="badge badge-bad">Vencida</span>}
+              </li>
+            ))}
+          </ul>
+          <div className="btn-row">
+            {p.vencidas.length > 0 && <button type="button" className="btn btn-outline btn-danger" onClick={() => vm.irParaAsContas(true)}>Ver as vencidas</button>}
+            <button type="button" className="btn btn-outline" onClick={() => vm.irParaAsContas(false)}>Abrir Contas a pagar</button>
+          </div>
+        </div>
+      )}
 
       {!vm.carregando && !n.lancamentos ? (
         <Vazio icone="dinheiro" titulo="Nenhum lançamento neste período">
