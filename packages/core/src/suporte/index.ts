@@ -263,3 +263,56 @@ export function vereditoDoReport(texto: string): Veredito | null {
   if (fim.endsWith(sem(VEREDITOS.analise))) return 'analise';
   return null;
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+// A leitura do bug por quem resolve (Vitor, 28/10/2026: "melhorar algo para o usuário interpretar de forma melhor? tá muito
+// bagunçado" — o leitor do feedback): a mensagem volta em campos (o que a pessoa disse à parte) e o report sem o veredito
+// repetido (ele já está no selo); quando o robô não conseguiu investigar, o motivo em português e o erro técnico à parte.
+// ---------------------------------------------------------------------------------------------------------------------
+
+const ROTULOS_DO_BUG = ['Página', 'Empresa', 'Período', 'Problema', 'Procedimentos', 'Botão', 'Banco', 'Mês', 'O que aconteceu', 'Arquivo', 'Comentário'];
+
+export interface MensagemDoBugLida { campos: { rotulo: string; valor: string }[]; comentario: string }
+
+/** A mensagem do bug (mensagemDoBug) de volta em campos; o comentário à parte (pode ter várias linhas). Texto livre = comentário. */
+export function lerMensagemDoBug(texto: string): MensagemDoBugLida {
+  const campos: { rotulo: string; valor: string }[] = [];
+  const soltas: string[] = [];
+  let comentario: string[] | null = null;
+  for (const linha of (texto || '').split('\n')) {
+    const rotulo = ROTULOS_DO_BUG.find(r => linha.startsWith(r + ': '));
+    if (rotulo === 'Comentário') { comentario = [linha.slice(rotulo.length + 2)]; continue; }
+    if (rotulo && !comentario) { campos.push({ rotulo, valor: linha.slice(rotulo.length + 2).trim() }); continue; }
+    (comentario || soltas).push(linha);
+  }
+  return { campos, comentario: [...soltas, ...(comentario || [])].join('\n').trim() };
+}
+
+const NAO_INVESTIGOU = 'O robô do suporte não conseguiu investigar:';
+
+export interface ReportLido {
+  /** o report sem a última linha do veredito */
+  corpo: string;
+  /** o robô não conseguiu investigar */
+  falhou: boolean;
+  /** por quê, em português (falhou) */
+  motivo: string;
+  /** o erro técnico (falhou), para quem for consertar o robô */
+  detalhe: string;
+}
+
+/** O report do robô para ler: sem o veredito repetido e, quando ele não investigou, o motivo explicado. */
+export function lerReport(texto: string): ReportLido {
+  const linhas = (texto || '').trim().split('\n');
+  const ultima = sem(linhas[linhas.length - 1] || '').replace(/[.\s*_]+$/, '');
+  if (ultima === sem(VEREDITOS.erro) || ultima === sem(VEREDITOS.analise)) linhas.pop();
+  const corpo = linhas.join('\n').trim();
+  if (!corpo.startsWith(NAO_INVESTIGOU)) return { corpo, falhou: false, motivo: '', detalhe: '' };
+  const detalhe = corpo.slice(NAO_INVESTIGOU.length).trim();
+  const motivo = /oauth|authenticat|login|401/i.test(detalhe)
+    ? 'O login do Claude no computador do robô expirou. Entre de novo no Claude nesse computador para o robô voltar a investigar; este pedido fica para você analisar.'
+    : /timeout|timed out|tempo/i.test(detalhe)
+      ? 'A investigação passou do tempo e o robô desistiu. Este pedido fica para você analisar.'
+      : 'Deu um erro no robô do suporte. Este pedido fica para você analisar.';
+  return { corpo, falhou: true, motivo, detalhe };
+}

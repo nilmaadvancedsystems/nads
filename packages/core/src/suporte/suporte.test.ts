@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { caminhoDaConversa, codigoDoPedido, mensagemDoBug, NAO_RESOLVEU, nomeDoBotao, ondeEsta, OUTRO, passoDoSuporte, telaPeloRotulo, vereditoDoReport, type ContextoDoSuporte } from './index';
+import { caminhoDaConversa, codigoDoPedido, lerMensagemDoBug, lerReport, mensagemDoBug, NAO_RESOLVEU, nomeDoBotao, ondeEsta, OUTRO, passoDoSuporte, telaPeloRotulo, vereditoDoReport, type ContextoDoSuporte } from './index';
 
 const ctx: ContextoDoSuporte = {
   tela: 'bancos', rotuloDaTela: 'Bancos', pagina: 'Importação › Bancos', empresa: 'EMPRESA EXEMPLO', codigo: 1,
@@ -92,5 +92,24 @@ describe('suporte de leitura: a conversa por cápsulas', () => {
     expect(vereditoDoReport('A causa é…\n\n**Realmente, isso é erro do sistema.**')).toBe('erro');
     expect(vereditoDoReport('O usuário quer outro fluxo.\nPrecisa da sua análise')).toBe('analise');
     expect(vereditoDoReport('sem final')).toBeNull();
+  });
+});
+
+describe('a leitura do bug por quem resolve (28/10/2026)', () => {
+  it('a mensagem volta em campos, com o comentário à parte', () => {
+    const m = mensagemDoBug(ctx, ['outro'], 'o botão bugou\nduas vezes', '');
+    const l = lerMensagemDoBug(m);
+    expect(l.campos.map(c => c.rotulo)).toEqual(['Página', 'Empresa', 'Período', 'Problema', 'Procedimentos']);
+    expect(l.campos[0]).toEqual({ rotulo: 'Página', valor: 'Importação › Bancos' });
+    expect(l.comentario).toBe('o botão bugou\nduas vezes');
+    // texto livre (os antigos): tudo é o comentário
+    expect(lerMensagemDoBug('não abriu')).toEqual({ campos: [], comentario: 'não abriu' });
+  });
+  it('o report sem o veredito repetido; o robô que não investigou explica o motivo', () => {
+    expect(lerReport('Olhei o extrato.\n\nRealmente, isso é erro do sistema')).toEqual({ corpo: 'Olhei o extrato.', falhou: false, motivo: '', detalhe: '' });
+    const r = lerReport('O robô do suporte não conseguiu investigar: o Claude saiu com 1: Failed to authenticate: OAuth session expired\n\nPrecisa da sua análise');
+    expect(r.falhou).toBe(true);
+    expect(r.motivo).toContain('login do Claude');
+    expect(r.detalhe).toBe('o Claude saiu com 1: Failed to authenticate: OAuth session expired');
   });
 });
