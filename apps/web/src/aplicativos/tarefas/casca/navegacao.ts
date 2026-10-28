@@ -71,6 +71,8 @@ export const APLICACOES: readonly Aplicacao[] = [
     // a folha do Protocolo de Entrega de Tributos preenchida na tela (27/10/2026: "vamos implementar essa planilha de
     // controle como modulo do fiscal")
     { id: 'controle-tributos', rotulo: 'Controle de tributos', icone: 'checklist', titulo: 'Controle de tributos' },
+    // o Relatório geral (28/10/2026: a planilha RELATORIO EMPRESA 2026 no estilo das Obrigações do DP, com a REINF)
+    { id: 'relatorio', rotulo: 'Relatório geral', icone: 'painel', titulo: 'Relatório geral' },
   ] },
   // o DP (Vitor, 06/10/2026: o Checklist Folha "seria a rotina do dp"): as empresas com a rotina do DP, o painel da
   // planilha (números, gráficos, o progresso por responsável e as obrigações de cada cliente), a visão e as paradas
