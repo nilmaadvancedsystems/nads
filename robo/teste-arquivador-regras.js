@@ -884,6 +884,16 @@ igual('a agência e a conta no nome do arquivo ("Entradas_Saidas_ag3155cc990348_
   // a 410: "OV 03", "OV3", "ov 3" na pasta da 408
   igual('a 410 pelo nome na pasta da 408: "OV 03", "OV3", "ov 3", "OV03"; OV1 = 409; OV = 408', ['BNB 01.2025 OV 03.pdf', 'BNB 01.2025 OV3.pdf', 'BB 02.2025 ov 3.pdf', 'BB 02.2025 OV03.pdf', 'BNB 01.2025 OV1.pdf', 'BB 02.2025 OV.pdf'].map(n => (R.clienteDaPasta(F + '408 OURO VERDE MINERAÇÃO filiais 409 e 410\\2025\\02.2025\\' + n, c26) || {}).codigo), [410, 410, 410, 410, 409, 408]);
 }
+// a imagem que nenhuma regra decide depois do OCR: DESCARTAR (Vitor, 28/10/2026); sem OCR, o PDF e a imagem reconhecida continuam
+{
+  const di = (nome, e) => { const en = Object.assign({ nome, rel: '0010 - DORNAS HAVANA LTDA - ME\\OUTROS\\' + nome }, e); return R.descarteDaImagem(en, R.decidir(en, ctx)); };
+  const OCR = { ocr: { confianca: 80, ms: 10, erro: null } };
+  igual('imagem com OCR e sem regra (foto qualquer): DESCARTAR, IMAGEM_NAO_IDENTIFICADA', (d => [d.acao, d.motivo])(di('Imagem (10).jpg', Object.assign({ texto: ['uma foto de uma parede sem documento nenhum escrito aqui'] }, OCR))), ['DESCARTAR', 'IMAGEM_NAO_IDENTIFICADA']);
+  igual('... a imagem com OCR que não leu texto: DESCARTAR também', di('foto.png', OCR).acao, 'DESCARTAR');
+  igual('... sem OCR (desligado) ou com erro no OCR: continua NAO_IDENTIFICADO', [di('foto.jpg', {}).acao, di('foto.jpg', { ocr: { confianca: 0, erro: 'falhou' } }).acao], ['NAO_IDENTIFICADO', 'NAO_IDENTIFICADO']);
+  igual('... o PDF sem regra continua NAO_IDENTIFICADO', di('carta.pdf', Object.assign({ texto: ['Prezados, segue a carta de apresentação da empresa para os devidos fins.'] }, OCR)).acao, 'NAO_IDENTIFICADO');
+  igual('... a imagem de um comprovante que a regra reconhece (sem o beneficiário) não é descartada', di('comp.jpg', Object.assign({ texto: ['Comprovante de Pagamento\nData do pagamento 09/02/2026\nValor 10,00'] }, OCR)).acao !== 'DESCARTAR', true);
+}
 // ---------- 11. PRODUCAO de verdade, numa pasta temporária (nunca no Drive) ----------
 (async () => {
   const sb = fs.mkdtempSync(path.join(os.tmpdir(), 'teste-arqnovo-prod-'));

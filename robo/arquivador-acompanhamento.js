@@ -93,6 +93,7 @@ const MOTIVOS = {
   TIPO_XML_NAO_TRATADO: ['Sem regra para este tipo de XML', 'Este tipo de XML ainda não tem regra. Arquive à mão; se for comum, peça a regra.'],
   SEM_MOTIVO_REGISTRADO: ['Está na pasta sem o motivo registrado', 'O arquivo está em NÃO IDENTIFICADOS, mas não tem linha no índice (_nao_identificados.jsonl). Abra e arquive à mão.'],
   DESCARTE_CONFIRMADO: ['Descartado', 'Foi para a quarentena por decisão do responsável (nunca é apagado direto).'],
+  IMAGEM_NAO_IDENTIFICADA: ['Imagem descartada', 'Imagem que nenhuma regra reconheceu depois do OCR: foi para a quarentena (nada é apagado; Vitor, 28/10/2026).'],
   VIDEO_OU_AUDIO: ['Vídeo ou áudio', 'Vídeo e áudio ficam na pasta: não são arquivados.'],
   IDENTICO_JA_ARQUIVADO: ['Já arquivado', 'O mesmo conteúdo já está na pasta do cliente.'],
 };

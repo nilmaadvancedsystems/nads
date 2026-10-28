@@ -1221,6 +1221,18 @@ function decidirReciboSped(entrada, ctx, ev, porHash) {
  * já tinha ou o da pasta de origem (a matriz, na pasta que junta matriz e filiais). Nome original em todos.
  */
 const NI_PELO_NOME = new Set(['TIPO_NAO_RECONHECIDO', 'VOCABULARIO_AUSENTE', 'BANCO_AUSENTE', 'CLIENTE_NAO_LOCALIZADO', 'COMPETENCIA_AUSENTE', 'ANO_INDETERMINADO', 'CONTRATO_SEM_NUMERO', 'FORMATO_SEM_REGRA', 'CONTEUDO_SEM_TEXTO', 'CONTEUDO_ILEGIVEL', 'CONFIANCA_ABAIXO_DO_LIMIAR']);
+/**
+ * A imagem que nenhuma regra decide (Vitor, 28/10/2026): a .jpg/.jpeg/.png que, DEPOIS do OCR, continua sem tipo (não é comprovante,
+ * boleto, nota, documento de funcionário de uma pasta "Docs <Nome>" nem certificado; nem o conteúdo nem o nome decidem) vai para
+ * DESCARTAR (IMAGEM_NAO_IDENTIFICADA: a quarentena, nada é apagado). Só a imagem; sem OCR (desligado ou com erro), continua NI.
+ * Chamada depois das regras E do mapa da migração (arquivador-novo.decidirUm).
+ */
+function descarteDaImagem(entrada, d) {
+  if (!d || d.acao !== 'NAO_IDENTIFICADO' || d.tipo || d.cliente != null && d.motivo === 'HASH_CONFIRMADO_SEM_REGRA_DE_DESTINO') return d;
+  if (!/\.(jpe?g|png)$/i.test(String(entrada.nome || '')) || !entrada.ocr || entrada.ocr.erro || entrada.precisaOcr) return d;
+  if (!['TIPO_NAO_RECONHECIDO', 'FORMATO_SEM_REGRA'].includes(d.motivo)) return d;
+  return { acao: 'DESCARTAR', motivo: 'IMAGEM_NAO_IDENTIFICADA', confianca: 1, tipo: 'DESCARTE', cliente: d.cliente || null, evidencias: (d.evidencias || []).concat('imagem que nenhuma regra decide depois do OCR (' + d.motivo + '): vai para a quarentena, nada é apagado (Vitor, 28/10/2026)') };
+}
 // os documentos pessoais de quem não é cliente nem sócio, na pasta de downloads do Fernando (Vitor, 28/10/2026, lote 8, item 6:
 // "FERNANDO\downloads\Nando\…": a certidão de casamento, o documento do comprador e do vendedor, o IRPF e os informes de pessoas de
 // fora): DESCARTAR (a quarentena, nunca apagado). O que traz o CNPJ/CPF de um cliente ou o CPF de um sócio do cadastro continua
@@ -3129,7 +3141,7 @@ module.exports = {
   cnpjValido, cpfValido, documentosDoTexto, raizesDoTexto, mascarasDoTexto,
   regimeCanonico, montarCadastro, comAnosEMapa, clientesDoDoc, clienteDaPasta, grupoDaPasta, pagamentoDeFornecedor, clientesPeloNomeNoTexto,
   confirmado, pastaParecida, bancoDoTexto, bancoDoNome, lerXml, classificarXml, camposDaGuia,
-  contasDoTexto, clientePelaConta, numeroDeConta, mesmaConta, bancoDoCadastro, contasDoDocumento, contasDoNome, clientesPelasContas, decidir, decidir0, pelaPastaENome, perfilDoDocumento, tipoDoDestino,
+  contasDoTexto, clientePelaConta, numeroDeConta, mesmaConta, bancoDoCadastro, contasDoDocumento, contasDoNome, clientesPelasContas, decidir, decidir0, descarteDaImagem, pelaPastaENome, perfilDoDocumento, tipoDoDestino,
   // a decisão do admin no nads (arquivador-manual.js) passa pelo mesmo último passo: a árvore do regime e a pasta do cliente
   finalizar,
 };
