@@ -31,7 +31,7 @@ describe('o sinal do balancete dinâmico (de sempre × pela natureza)', () => {
       expect(credoresNoPeriodo(d, '2026-02', 'clientes').map(x => x.codigo)).toEqual(['102']);
     });
     it(nome + ': como balancete, o fornecedor credor sai C e a receita C', () => {
-      const b = lerBalanceteDinamicoComoContas(rows);
+      const b = lerBalanceteDinamicoComoContas(rows as unknown as string[][]);
       expect(b?.contas['321'].dc).toBe('C');
       expect(b?.contas['322'].dc).toBe('D');
       expect(b?.contas['4'].dc).toBe('C');
