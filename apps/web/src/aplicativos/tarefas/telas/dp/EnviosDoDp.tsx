@@ -1,12 +1,13 @@
 // DP › Envios (27/10/2026: "uma aba de envios, onde vai ser enviado para o gmail do cliente arquivos que já foram
 // arquivados nas pastas dos clientes… com um clique de botão num formato padrão via VM do google"). Como o FGTS Digital:
 // os filtros numa linha; a tabela com os documentos do mês que estão na pasta, os e-mails do cadastro e o envio como selo;
-// na linha, Enviar (ou Enviar de novo); clicar nos arquivos abre a janela do cliente para desmarcar algum antes de enviar.
+// na linha, Enviar (ou Enviar de novo); clicar no cliente ou nos arquivos abre a janela dele, com os arquivos do mês (desmarcar
+// algum, ou "Enviar só este") e o que já foi enviado, de todos os meses (28/10/2026).
 // Em cima, Enviar todos os prontos (com a confirmação: são e-mails para muitos clientes de uma vez).
 import { BotaoAcao, Esqueleto, Icone, MenuSuspenso, SeletorMes, useCarregando, useEntradaAnimada } from '@nads/ui';
 import { JanelaLateral } from '../janela/JanelaLateral';
 import { MenuDeFiltro } from './MenuDeFiltro';
-import { useEnviosDoDp, type FiltroDoEnvio, type SituacaoDoEnvio } from './useEnviosDoDp';
+import { situacaoDoEnvio, useEnviosDoDp, type FiltroDoEnvio, type SituacaoDoEnvio } from './useEnviosDoDp';
 
 const hora = (iso: string) => (iso ? new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '');
 const tamanho = (b: number) => (b >= 1048576 ? (b / 1048576).toFixed(1).replace('.', ',') + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB');
@@ -72,7 +73,11 @@ export function EnviosDoDp() {
                   return (
                     <tr key={l.codigo} className={'dp-linha' + (l.situacao === 'enviado' ? ' feita' : '')}>
                       <td className="num fraco">{l.codigo}</td>
-                      <td className="dp-cliente"><span className="dp-cliente-nome" title={l.nome}>{l.nome}</span></td>
+                      <td className="dp-cliente">
+                        <button type="button" className="fgts-situacao dp-envio-cliente" title={'Arquivos e envios de ' + l.nome} onClick={() => vm.abrir(l.codigo, l.arquivos.length ? 'arquivos' : 'enviados')}>
+                          <span className="dp-cliente-nome">{l.nome}</span>
+                        </button>
+                      </td>
                       <td>{l.responsavel || <span className="fraco">—</span>}</td>
                       <td>
                         {l.arquivos.length ? (
@@ -85,7 +90,7 @@ export function EnviosDoDp() {
                       <td className="fraco">{l.emails.length ? <span title={l.emails.join('\n')}>{l.emails[0]}{l.emails.length > 1 ? ' +' + (l.emails.length - 1) : ''}</span> : '—'}</td>
                       <td>
                         {e ? (
-                          <button type="button" className="fgts-situacao" title={e.erro || (e.para.length ? 'para ' + e.para.join(', ') : '')} onClick={() => vm.abrir(l.codigo)}>
+                          <button type="button" className="fgts-situacao" title={(e.erro || (e.para.length ? 'para ' + e.para.join(', ') : '')) + ' · ver o que já foi enviado'} onClick={() => vm.abrir(l.codigo, 'enviados')}>
                             <span className={selo.classe}>{selo.rotulo}</span>
                             <span className="fraco">{hora(e.enviadoEm || e.criadoEm)}</span>
                           </button>
@@ -110,39 +115,63 @@ export function EnviosDoDp() {
       </section>
 
       {aberto && (
-        <JanelaLateral rotulo={aberto.nome} topicos={[{ id: 'arquivos', rotulo: 'Arquivos do mês', icone: 'clipe' }]} topico="arquivos" mudar={() => undefined} fechar={vm.fechar} classe="fgts-janela" resumo={(
-          <div className="usuario-quem"><span className="emp-cod">{aberto.codigo}</span><b>{aberto.nome}</b></div>
-        )}>
-          <div className="card">
-            <h3>Documentos do DP · {mes}</h3>
-            {aberto.arquivos.length ? (
-              <ul className="dp-envio-arquivos">
-                {aberto.arquivos.map(a => (
-                  <li key={a.id}>
-                    <label>
-                      <input type="checkbox" checked={vm.marcado(aberto.codigo, a.id)} onChange={() => vm.alternarArquivo(aberto.codigo, a.id)} />
-                      <span><b>{a.nome}</b><span className="fraco dp-envio-pasta">{a.pasta}{a.tamanho ? ' · ' + tamanho(a.tamanho) : ''}</span></span>
-                    </label>
-                  </li>
-                ))}
-              </ul>
-            ) : <p className="hint">Nenhum documento do DP de {mes} na pasta do cliente.</p>}
-            <p className="fraco">Para: {aberto.emails.length ? aberto.emails.join(', ') : 'sem e-mail no cadastro'}</p>
-            {podeEnviar(aberto.situacao) && (
-              <BotaoAcao className="btn btn-primary" disabled={!aberto.escolhidos.length} carregando={vm.fazendo('enviar:' + aberto.codigo)} textoCarregando="Pedindo…" onClick={() => void vm.enviar(aberto.codigo)}>
-                <Icone nome="aviao" />{(aberto.situacao === 'enviado' ? 'Enviar de novo · ' : 'Enviar · ') + aberto.escolhidos.length + (aberto.escolhidos.length === 1 ? ' arquivo' : ' arquivos')}
-              </BotaoAcao>
-            )}
-          </div>
-          {aberto.envio && (
+        <JanelaLateral rotulo={aberto.nome} topico={vm.aba} mudar={vm.setAba} fechar={vm.fechar} classe="fgts-janela"
+          topicos={[
+            { id: 'arquivos', rotulo: 'Arquivos do mês', icone: 'clipe', contador: aberto.arquivos.length },
+            { id: 'enviados', rotulo: 'Enviados', icone: 'aviao', contador: vm.historico?.length ?? 0 },
+          ]}
+          resumo={<div className="usuario-quem"><span className="emp-cod">{aberto.codigo}</span><b>{aberto.nome}</b></div>}>
+          {vm.aba === 'arquivos' ? (
             <div className="card">
-              <h3>Último envio</h3>
-              <div className="fgts-pedido">
-                <span className={SELO[aberto.situacao].classe}>{SELO[aberto.situacao].rotulo}</span>
-                <span className="fraco">pedido por {aberto.envio.criadoPor} · {hora(aberto.envio.criadoEm)}</span>
-                {aberto.envio.erro && <p className="fgts-pedido-erro">{aberto.envio.erro}</p>}
-                {aberto.envio.status === 'enviado' && <p>Enviado em {hora(aberto.envio.enviadoEm)} para {aberto.envio.para.join(', ')}: {aberto.envio.enviados.join(', ')}</p>}
-              </div>
+              <h3>Documentos do DP · {mes}</h3>
+              {aberto.arquivos.length ? (
+                <ul className="dp-envio-arquivos">
+                  {aberto.arquivos.map(a => (
+                    <li key={a.id}>
+                      <label>
+                        <input type="checkbox" checked={vm.marcado(aberto.codigo, a.id)} onChange={() => vm.alternarArquivo(aberto.codigo, a.id)} />
+                        <span><b>{a.nome}</b><span className="fraco dp-envio-pasta">{a.pasta}{a.tamanho ? ' · ' + tamanho(a.tamanho) : ''}</span></span>
+                      </label>
+                      {/* um documento só (28/10/2026: "a opção de enviar um único documento") */}
+                      <BotaoAcao className="btn btn-ghost dp-envio-um" disabled={!vm.podeEnviar(aberto.codigo)} carregando={vm.fazendo('enviar:' + aberto.codigo + ':' + a.id)} textoCarregando="Pedindo…"
+                        onClick={() => void vm.enviarArquivo(aberto.codigo, a.id)}><Icone nome="aviao" />Enviar só este</BotaoAcao>
+                    </li>
+                  ))}
+                </ul>
+              ) : <p className="hint">Nenhum documento do DP de {mes} na pasta do cliente.</p>}
+              <p className="fraco">Para: {aberto.emails.length ? aberto.emails.join(', ') : 'sem e-mail no cadastro'}</p>
+              {aberto.arquivos.length > 0 && (
+                <BotaoAcao className="btn btn-primary" disabled={!aberto.escolhidos.length || !vm.podeEnviar(aberto.codigo)} carregando={vm.fazendo('enviar:' + aberto.codigo)} textoCarregando="Pedindo…" onClick={() => void vm.enviar(aberto.codigo)}>
+                  <Icone nome="aviao" />{'Enviar os marcados · ' + aberto.escolhidos.length + (aberto.escolhidos.length === 1 ? ' arquivo' : ' arquivos')}
+                </BotaoAcao>
+              )}
+            </div>
+          ) : (
+            <div className="card">
+              <h3>O que já foi enviado</h3>
+              {vm.historico == null ? <Esqueleto linhas={3} /> : !vm.historico.length ? <p className="hint">Nada enviado para este cliente ainda.</p> : (
+                <ul className="dp-envio-historico">
+                  {vm.historico.map(e => {
+                    const sit = SELO[situacaoDoEnvio(e, 1, 1)];
+                    return (
+                      <li key={e.id}>
+                        <div className="dp-envio-historico-topo">
+                          <span className={sit.classe}>{sit.rotulo}</span>
+                          <b>{e.competencia.split('-').reverse().join('/')}</b>
+                          <span className="fraco">{hora(e.enviadoEm || e.criadoEm)} · pedido por {e.criadoPor || '—'}</span>
+                        </div>
+                        {e.erro && <p className="fgts-pedido-erro">{e.erro}</p>}
+                        {e.status === 'enviado' && (
+                          <>
+                            <p className="fraco">Para {e.para.join(', ')}</p>
+                            <ul className="dp-envio-historico-arquivos">{e.enviados.map(n => <li key={n}><Icone nome="clipe" />{n}</li>)}</ul>
+                          </>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </div>
           )}
         </JanelaLateral>

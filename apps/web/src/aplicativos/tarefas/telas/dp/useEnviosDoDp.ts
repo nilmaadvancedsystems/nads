@@ -14,6 +14,7 @@ import { useClientesDoDp } from './useClientesDoDp';
 
 export type SituacaoDoEnvio = 'sem-arquivos' | 'sem-email' | 'pronto' | 'fila' | 'enviando' | 'enviado' | 'erro';
 export type FiltroDoEnvio = 'todos' | 'prontos' | 'enviados' | 'problemas' | 'sem-arquivos';
+export type AbaDaJanela = 'arquivos' | 'enviados';
 
 export function situacaoDoEnvio(e: EnvioDoDp | undefined, arquivos: number, emails: number): SituacaoDoEnvio {
   if (e?.status === 'pendente') return 'fila';
@@ -48,6 +49,14 @@ export function useEnviosDoDp() {
   const [busca, setBusca] = useState('');
   const [responsavel, setResponsavel] = useState('');
   const [aberto, setAberto] = useState<number | null>(null);
+  // a aba da janela do cliente: os arquivos do mês ou o que já foi enviado (28/10/2026: "ver o que já foi enviado")
+  const [aba, setAba] = useState<AbaDaJanela>('arquivos');
+  // o histórico do cliente aberto, de todos os meses (null = lendo)
+  const [historico, setHistorico] = useState<{ codigo: number; lista: EnvioDoDp[] } | null>(null);
+  useEffect(() => {
+    if (aberto == null) return;
+    return repo.historico(aberto, lista => setHistorico({ codigo: aberto, lista }));
+  }, [aberto, repo]);
   const [enviandoTodos, setEnviandoTodos] = useState(false);
   // o que cada linha está fazendo ("enviar:<código>"): o botão dela mostra que trabalha e trava
   const [fazendo, setFazendo] = useState<ReadonlySet<string>>(new Set());
@@ -107,10 +116,11 @@ export function useEnviosDoDp() {
     }
   });
 
-  async function pedir(l: Linha) {
-    if (!l.escolhidos.length) return;
-    await repo.enviar({ codigo: l.codigo, empresa: l.nome, competencia, arquivos: l.escolhidos.map(a => a.id) });
+  async function pedir(l: Linha, arquivos: readonly ArquivoDoDp[] = l.escolhidos) {
+    if (!arquivos.length) return;
+    await repo.enviar({ codigo: l.codigo, empresa: l.nome, competencia, arquivos: arquivos.map(a => a.id) });
   }
+  const podeEnviar = (l: Linha) => l.emails.length > 0 && l.situacao !== 'fila' && l.situacao !== 'enviando';
 
   return {
     exemplos: repo.exemplos,
@@ -136,6 +146,18 @@ export function useEnviosDoDp() {
         catch (e) { toast('Não consegui pedir: ' + (e instanceof Error ? e.message : String(e))); }
       });
     },
+    /** um documento só (28/10/2026: "a opção de enviar um único documento") */
+    async enviarArquivo(codigo: number, id: string) {
+      const l = todas.find(x => x.codigo === codigo);
+      const a = l?.arquivos.find(x => x.id === id);
+      if (!l || !a || !podeEnviar(l)) return;
+      await comLinha('enviar:' + codigo + ':' + id, async () => {
+        try { await pedir(l, [a]); toast('Pedido ao robô: ' + a.nome + ' para ' + l.nome + '.'); }
+        catch (e) { toast('Não consegui pedir: ' + (e instanceof Error ? e.message : String(e))); }
+      });
+    },
+    /** o cliente pode receber agora (tem e-mail e não está com o robô) */
+    podeEnviar: (codigo: number) => { const l = todas.find(x => x.codigo === codigo); return !!l && podeEnviar(l); },
     /** todos os prontos (com arquivo e e-mail, ainda não enviados), depois de confirmar */
     async enviarTodos() {
       if (enviandoTodos || !prontos.length) return;
@@ -153,8 +175,11 @@ export function useEnviosDoDp() {
     },
     /** o cliente aberto na janela (os arquivos para marcar e o último envio) */
     aberto: aberto != null ? todas.find(l => l.codigo === aberto) || null : null,
-    abrir: (codigo: number) => setAberto(codigo),
-    fechar: () => setAberto(null),
+    abrir: (codigo: number, na: AbaDaJanela = 'arquivos') => { setAba(na); setAberto(codigo); },
+    fechar: () => { setAberto(null); setHistorico(null); },
+    aba, setAba,
+    /** o que já foi pedido para o cliente aberto, de todos os meses (null = lendo) */
+    historico: historico && historico.codigo === aberto ? historico.lista : null,
     marcado: (codigo: number, id: string) => !fora.get(codigo)?.has(id),
     alternarArquivo: (codigo: number, id: string) => setFora(m => {
       const n = new Map(m);
