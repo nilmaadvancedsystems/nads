@@ -5,11 +5,9 @@
 import { Icone, MenuSuspenso, Segmentado, useCarregando, useEntradaAnimada, useLinhasQueSeMovem, Vazio } from '@nads/ui';
 import { useEffect, useRef } from 'react';
 import { EmDesenvolvimento } from '../em-desenvolvimento/EmDesenvolvimento';
-import { EtapasParadas } from './partes/EtapasParadas';
 import { LIMITE, useMinhasEmpresas, type Coluna } from './useMinhasEmpresas';
 import { JanelaDaCompetencia } from './partes/JanelaDaCompetencia';
 import { TransferenciasPendentes } from '../cadastro/responsaveis/TransferenciasPendentes';
-import { ConfiguracoesContabil } from '../contabil/configuracoes/ConfiguracoesContabil';
 
 
 /** Título de coluna que ordena: clicar ordena por ela (crescente), clicar de novo inverte; a setinha cinza só aparece depois do clique. */
@@ -126,10 +124,7 @@ export function MinhasEmpresas() {
           {vm.total > LIMITE && <p className="hint" style={{ padding: '8px 16px' }}>Mostrando {LIMITE} de {vm.total}. Use a busca ou a situação.</p>}
         </div>
       )}
-
-      <EtapasParadas dep={vm.departamento} />
-      {/* os históricos do Creditor, os mesmos para todas as empresas (eram o Contábil › Configurações) */}
-      {vm.departamento === 'contabil' && <ConfiguracoesContabil />}
+      {/* as etapas paradas e os históricos do Creditor foram para Justificativas e Configurações, no menu de cima (28/10/2026) */}
     </section>
   );
 }

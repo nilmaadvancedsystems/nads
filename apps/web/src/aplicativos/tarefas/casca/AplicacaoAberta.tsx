@@ -20,6 +20,8 @@ const ExploradorDoDrive = pedaco(() => import('../telas/drive/ExploradorDoDrive'
 const CaixaDoRobo = pedaco(() => import('../telas/gmail/CaixaDoRobo'), 'CaixaDoRobo');
 const HistoricoDoRobo = pedaco(() => import('../telas/gmail/HistoricoDoRobo'), 'HistoricoDoRobo');
 const MinhasEmpresas = pedaco(() => import('../telas/empresas/MinhasEmpresas'), 'MinhasEmpresas');
+const Justificativas = pedaco(() => import('../telas/empresas/Justificativas'), 'Justificativas');
+const ConfiguracoesContabil = pedaco(() => import('../telas/contabil/configuracoes/ConfiguracoesContabil'), 'ConfiguracoesContabil');
 const Inicio = pedaco(() => import('../telas/inicio/Inicio'), 'Inicio');
 const EmDesenvolvimento = pedaco(() => import('../telas/em-desenvolvimento/EmDesenvolvimento'), 'EmDesenvolvimento');
 const Reinf = pedaco(() => import('../telas/fiscal/reinf/Reinf'), 'Reinf');
@@ -52,7 +54,7 @@ const ImportarExtrato = pedaco(() => import('../telas/financeiro/ImportarExtrato
 function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
   switch (app) {
     case 'inicio': return <Inicio />;
-    case 'minhas-empresas': return <MinhasEmpresas />;
+    case 'minhas-empresas': return pagina === 'justificativas' ? <Justificativas /> : pagina === 'configuracoes' ? <ConfiguracoesContabil /> : <MinhasEmpresas />;
     // as Empresas, o Painel, a Visão geral e as Paradas do Fiscal saíram (27/10/2026): ficam as ferramentas
     case 'fiscal': return pagina === 'sintegra' ? <PaginaSintegra /> : pagina === 'faturamento' ? <FaturamentoDosClientes /> : pagina === 'simples' ? <CalculadoraDoSimples /> : pagina === 'rateio-frete' ? <RateioDeFrete /> : pagina === 'antecipacao-es' ? <AntecipacaoIcms /> : pagina === 'controle-tributos' ? <ControleDeTributos /> : <Reinf />;
     case 'dp': return ABAS_DO_PAINEL.includes(pagina as AbaDoPainel) ? <PainelDoDp aba={pagina as AbaDoPainel} /> : pagina === 'configuracoes' ? <ConfiguracoesDoDp /> : pagina === 'fgts' ? <FgtsDoDp /> : pagina === 'legislacao' ? <LegislacaoDoDp /> : <VisaoContabil pagina={pagina} dep="dp" />;
