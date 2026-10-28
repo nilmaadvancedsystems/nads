@@ -142,7 +142,7 @@ export function MinhasEmpresas() {
           {vm.total > LIMITE && <p className="hint" style={{ padding: '8px 16px' }}>Mostrando {LIMITE} de {vm.total}. Use a busca ou a situação.</p>}
         </div>
       )}
-      {janela === 'justificativas' && <JanelaDeMinhasEmpresas titulo="Justificativas" icone="clock" fechar={() => setJanela(null)}><EtapasParadas dep={vm.departamento} /></JanelaDeMinhasEmpresas>}
+      {janela === 'justificativas' && <JanelaDeMinhasEmpresas titulo={'Etapas paradas em ' + vm.rotuloCompetencia} icone="clock" tabela fechar={() => setJanela(null)}><EtapasParadas dep={vm.departamento} naJanela /></JanelaDeMinhasEmpresas>}
       {janela === 'configuracoes' && <JanelaDeMinhasEmpresas titulo="Configurações" icone="settings" fechar={() => setJanela(null)}><ConfiguracoesContabil /></JanelaDeMinhasEmpresas>}
     </section>
   );
