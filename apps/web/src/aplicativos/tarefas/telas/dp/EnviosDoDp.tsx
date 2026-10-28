@@ -9,6 +9,7 @@
 import { BotaoAcao, ConfigLinha, ConfigSecao, Esqueleto, Icone, MenuSuspenso, NumeroQueConta, SeletorMes, useCarregando, useEntradaAnimada } from '@nads/ui';
 import { useState } from 'react';
 import { JanelaLateral } from '../janela/JanelaLateral';
+import { JanelaDoLote } from './JanelaDoLote';
 import { MenuDeFiltro } from './MenuDeFiltro';
 import { situacaoDoEnvio, useEnviosDoDp, type FiltroDoEnvio, type SituacaoDoEnvio } from './useEnviosDoDp';
 
@@ -34,6 +35,7 @@ export function EnviosDoDp() {
   const vm = useEnviosDoDp();
   // o aviso do campo de e-mail da janela ("E-mail inválido.")
   const [erroDoEmail, setErroDoEmail] = useState('');
+  const [loteAberto, setLoteAberto] = useState(false);
   useCarregando(vm.carregando);
   const tabela = useEntradaAnimada<HTMLDivElement>('tbody > tr', [vm.carregando, vm.competencia, vm.filtro], 'lista');
   const c = vm.contagem;
@@ -93,6 +95,8 @@ export function EnviosDoDp() {
           <span className="badge badge-neutral">{vm.linhas.length}</span>
           <span className="hint">{c.enviados} {c.enviados === 1 ? 'enviado' : 'enviados'} · {c.prontos} {c.prontos === 1 ? 'pronto' : 'prontos'}</span>
           <span className="tarefas-barra-espaco" />
+          {/* o lote (28/10/2026: "subo um lote de arquivos, esses arquivos são lidos e organizados para dispará-los em lote") */}
+          <button type="button" className="btn btn-outline" onClick={() => setLoteAberto(true)}><Icone nome="upload" />Subir lote</button>
           <button type="button" className="btn btn-outline" onClick={() => vm.setEditandoModelo(true)}><Icone nome="envelope" />Modelo do e-mail</button>
           {vm.marcadas > 0 ? (
             <BotaoAcao carregando={vm.enviandoTodos} textoCarregando="Pedindo…" onClick={() => void vm.enviarMarcadas()}>
@@ -244,6 +248,8 @@ export function EnviosDoDp() {
           )}
         </JanelaLateral>
       )}
+      {loteAberto && <JanelaDoLote fechar={() => setLoteAberto(false)} />}
+
       {vm.editandoModelo && (
         <JanelaLateral rotulo="Modelo do e-mail" topicos={[{ id: 'modelo', rotulo: 'E-mail ao cliente', icone: 'envelope' }]} topico="modelo" mudar={() => undefined}
           fechar={() => vm.setEditandoModelo(false)} classe="fgts-janela" resumo={<div className="usuario-quem"><b>DP › Envios</b></div>}>

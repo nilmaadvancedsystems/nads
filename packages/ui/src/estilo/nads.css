@@ -3612,6 +3612,21 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 /* o e-mail da linha abre a aba E-mail da janela (28/10/2026): o lápis aparece ao passar o mouse */
 .dp-envio-email > svg{width:12px;height:12px;flex:none;opacity:0;color:var(--ink-muted);}
 .dp-envio-email:hover > svg,.dp-envio-email:focus-visible > svg{opacity:1;}
+/* o lote do DP (28/10/2026): subir, revisar por cliente e disparar */
+.dp-lote-texto{padding:0 16px;margin:4px 0 10px;font-size:var(--fs-12);}
+.dp-lote-subir{padding:0 16px 16px;}
+.dp-lote-topo{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding-right:16px;}
+.dp-lote-topo h3{margin-right:4px;}
+.tarefas-barra.fgts-barra.dp-lote-barra{margin:0 16px 10px;width:calc(100% - 32px);}
+.dp-lote-lista{list-style:none;margin:0;padding:0 16px 12px;display:flex;flex-direction:column;gap:2px;}
+.dp-lote-arquivo{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:var(--fs-13);min-width:0;}
+.dp-lote-nome{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.dp-lote-falta{display:flex;flex-direction:column;gap:6px;padding:10px 0;border-top:1px solid var(--border);font-size:var(--fs-13);}
+.dp-lote-falta:first-child{border-top:0;}
+.dp-lote-falta-nome{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.dp-lote-falta-nome b{overflow-wrap:anywhere;}
+.dp-lote-falta-campos{display:flex;flex-wrap:wrap;align-items:center;gap:8px;}
+.dp-lote-cliente{max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .fgts-janela .card > .fraco,.fgts-janela .card > .hint{padding:0 16px;margin:4px 0 10px;font-size:var(--fs-12);}
 .fgts-janela .card > .btn{margin:0 16px 14px;}
 
