@@ -237,6 +237,18 @@ main.main{min-width:0;}
 /* ---------------------------------- formulários ---------------------------------- */
 .field{margin-bottom:16px;}
 .field label{display:block;font-size:var(--fs-14);font-weight:600;margin-bottom:6px;}
+.field .field-rotulo{display:block;font-size:var(--fs-14);font-weight:600;margin-bottom:6px;}
+/* escolher uma pessoa da equipe com a foto de perfil (o "Delegar para" do delegador; 28/10/2026): o menu do nads no lugar
+   do select (no celular, a lista do sistema não mostra foto) */
+.pessoa-foto{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;flex:none;border-radius:50%;overflow:hidden;
+  border:1px solid var(--border);background:var(--surface-3);color:var(--ink);font-size:10px;font-weight:600;}
+.pessoa-foto img{width:100%;height:100%;object-fit:cover;display:block;}
+.pessoa-escolhida{display:inline-flex;align-items:center;gap:8px;min-width:0;}
+.pessoa-escolhida > span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.field .popover-wrap{display:block;}
+.btn.pessoa-botao{width:100%;justify-content:space-between;}
+.pessoa-escolhida-fixa{min-height:36px;display:flex;align-items:center;}
+.pessoa-lista{display:flex;flex-direction:column;max-height:min(60vh,360px);overflow:auto;min-width:240px;}
 /* senha, e-mail, telefone, número, busca e o campo sem type com o mesmo visual, sem peso (:where) para as classes próprias
    (.nf-entrada, .usuario-campo, .pessoal-form…) continuarem valendo (revisão da UI, 16/10/2026: a Senha do login saía com o
    desenho do navegador) */

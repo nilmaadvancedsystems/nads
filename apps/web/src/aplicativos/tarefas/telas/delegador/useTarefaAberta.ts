@@ -3,7 +3,7 @@
 // anexos), Parecer (os comentários) e Histórico (a linha do tempo das mudanças). Salvar grava e volta para a lista;
 // Cancelar volta sem gravar (pergunta se mudou algo); Excluir só para quem criou (ou o admin). Na tarefa que já existe os
 // anexos sobem e saem na hora; na nova, ficam esperando o Salvar.
-import { empresas as emp, entregas, tarefas } from '@nads/core';
+import { empresas as emp, entregas, tarefas, usuarios } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
 import { useState } from 'react';
 import { useOperador } from '../../casca/operador';
@@ -59,8 +59,12 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
   const podeMudar = ehNova || (!!tarefa && d.podeMudar(tarefa, uid));
 
   // a equipe ativa no "Delegar para" (quem já é o responsável fica, mesmo desativado)
-  const equipe = acesso.equipe().lista.filter(u => u.ativo || u.uid === r.responsavel?.uid).map(u => ({ uid: u.uid, nome: u.nome + (u.uid === uid ? ' (você)' : '') }));
-  if (r.responsavel && !equipe.some(p => p.uid === r.responsavel?.uid)) equipe.unshift({ uid: r.responsavel.uid, nome: r.responsavel.nome });
+  // com a foto de perfil (a do Entregas, usuarios.fotoPerfil) e as iniciais para quem não tem (28/10/2026: "a escolha tem
+  // que ser um dropdown com foto de perfil")
+  const docs = acesso.equipe().docs;
+  const pessoa = (u: { uid: string; nome: string }) => ({ uid: u.uid, nome: u.nome, voce: u.uid === uid, foto: String(docs[u.uid]?.fotoPerfil || '') || null, iniciais: usuarios.iniciais(u.nome) });
+  const equipe = acesso.equipe().lista.filter(u => u.ativo || u.uid === r.responsavel?.uid).map(pessoa);
+  if (r.responsavel && !equipe.some(p => p.uid === r.responsavel?.uid)) equipe.unshift(pessoa(r.responsavel));
 
   const achadas = busca.trim() ? emp.buscarEmpresas(empresas, busca).slice(0, 8) : [];
   const escolherEmpresa = (e: { codigo: number | null; nome: string }) => { mudar({ cliente: { codigo: e.codigo, nome: e.nome } }); setBusca(''); setAtivo(0); };
