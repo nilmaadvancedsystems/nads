@@ -3594,6 +3594,9 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .dp-envio-arquivos input{margin-top:3px;flex:none;}
 .dp-envio-arquivos b{display:block;font-weight:600;overflow-wrap:anywhere;}
 .dp-envio-pasta{display:block;font-size:var(--fs-11);overflow-wrap:anywhere;}
+/* o Modelo do e-mail (28/10/2026): a prévia com um cliente da lista */
+.dp-envio-previa{padding:0 16px 14px;font-size:var(--fs-13);}
+.dp-envio-previa p{margin:8px 0 0;white-space:pre-wrap;color:var(--ink-muted);}
 .fgts-janela .card > .fraco,.fgts-janela .card > .hint{padding:0 16px;margin:4px 0 10px;font-size:var(--fs-12);}
 .fgts-janela .card > .btn{margin:0 16px 14px;}
 

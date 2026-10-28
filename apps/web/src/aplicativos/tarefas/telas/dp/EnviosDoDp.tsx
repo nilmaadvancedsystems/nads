@@ -4,7 +4,9 @@
 // na linha, Enviar (ou Enviar de novo); clicar no cliente ou nos arquivos abre a janela dele, com os arquivos do mês (desmarcar
 // algum, ou "Enviar só este") e o que já foi enviado, de todos os meses (28/10/2026).
 // Em cima, Enviar todos os prontos (com a confirmação: são e-mails para muitos clientes de uma vez).
-import { BotaoAcao, Esqueleto, Icone, MenuSuspenso, SeletorMes, useCarregando, useEntradaAnimada } from '@nads/ui';
+// 28/10/2026 ("com seleção de quais vou enviar, no estilo do fgts"): o painel do robô do FGTS (o progresso do mês, Agora e
+// Na fila), a caixinha de cada cliente com Enviar marcadas, e o Modelo do e-mail (como o E-mail ao cliente da NFS-e).
+import { BotaoAcao, ConfigLinha, ConfigSecao, Esqueleto, Icone, MenuSuspenso, NumeroQueConta, SeletorMes, useCarregando, useEntradaAnimada } from '@nads/ui';
 import { JanelaLateral } from '../janela/JanelaLateral';
 import { MenuDeFiltro } from './MenuDeFiltro';
 import { situacaoDoEnvio, useEnviosDoDp, type FiltroDoEnvio, type SituacaoDoEnvio } from './useEnviosDoDp';
@@ -50,21 +52,60 @@ export function EnviosDoDp() {
           itens={SITUACOES.map(o => ({ rotulo: o.rotulo + ' (' + c[o.valor] + ')', marcado: o.valor === vm.filtro, onClick: () => vm.setFiltro(o.valor) }))} />
       </div>
 
+      {/* o robô agora, como o do FGTS: o progresso do mês, com quem está e a fila */}
+      <section className="card fgts-robo-painel">
+        <div className="fgts-robo-cabeca">
+          <h3 className="dp-titulo">Robô</h3>
+          <span className="tarefas-barra-espaco" />
+          <span className="hint"><b className="num"><NumeroQueConta texto={String(vm.progresso.enviados)} /></b> de <b className="num">{vm.progresso.total}</b> com arquivos enviados em {mes}</span>
+        </div>
+        <span className="tarefas-barra fgts-barra" role="progressbar" aria-valuemin={0} aria-valuemax={vm.progresso.total} aria-valuenow={vm.progresso.enviados} aria-label="Clientes com os documentos enviados">
+          <span style={{ width: (vm.progresso.total ? Math.min(100, (vm.progresso.enviados / vm.progresso.total) * 100) : 0) + '%' }} />
+        </span>
+        <div className="fgts-robo-agora">
+          <span className="hint fgts-robo-rotulo">Agora</span>
+          {vm.roboAgora ? (
+            <>
+              <span className="num fraco">{vm.roboAgora.codigo}</span>
+              <b>{vm.roboAgora.nome}</b>
+              <span className={SELO.enviando.classe}>{SELO.enviando.rotulo}</span>
+              <span className="fraco">{hora(vm.roboAgora.desde)}</span>
+            </>
+          ) : <span className="fraco">parado</span>}
+        </div>
+        {vm.fila.length > 0 && (
+          <div className="fgts-robo-agora">
+            <span className="hint fgts-robo-rotulo">Na fila · {vm.fila.length}</span>
+            <span className="fgts-fila">
+              {vm.fila.slice(0, 6).map(f => <span key={f.codigo} className="badge badge-neutral" title={f.nome}>{f.codigo}</span>)}
+              {vm.fila.length > 6 && <span className="hint">+{vm.fila.length - 6}</span>}
+            </span>
+          </div>
+        )}
+      </section>
+
       <section className="card dp-lista">
         <div className="dp-lista-topo">
           <h3 className="dp-titulo">Envios de {mes}</h3>
           <span className="badge badge-neutral">{vm.linhas.length}</span>
           <span className="hint">{c.enviados} {c.enviados === 1 ? 'enviado' : 'enviados'} · {c.prontos} {c.prontos === 1 ? 'pronto' : 'prontos'}</span>
           <span className="tarefas-barra-espaco" />
-          <BotaoAcao carregando={vm.enviandoTodos} textoCarregando="Pedindo…" disabled={!vm.prontos} onClick={() => void vm.enviarTodos()}>
-            <Icone nome="aviao" />Enviar todos os prontos{vm.prontos ? ' · ' + vm.prontos : ''}
-          </BotaoAcao>
+          <button type="button" className="btn btn-outline" onClick={() => vm.setEditandoModelo(true)}><Icone nome="envelope" />Modelo do e-mail</button>
+          {vm.marcadas > 0 ? (
+            <BotaoAcao carregando={vm.enviandoTodos} textoCarregando="Pedindo…" onClick={() => void vm.enviarMarcadas()}>
+              <Icone nome="aviao" />Enviar marcadas · {vm.marcadas}
+            </BotaoAcao>
+          ) : (
+            <BotaoAcao carregando={vm.enviandoTodos} textoCarregando="Pedindo…" disabled={!vm.prontos} onClick={() => void vm.enviarTodos()}>
+              <Icone nome="aviao" />Enviar todos os prontos{vm.prontos ? ' · ' + vm.prontos : ''}
+            </BotaoAcao>
+          )}
         </div>
         {vm.carregando ? <Esqueleto linhas={8} /> : !vm.linhas.length ? <p className="hint dp-vazio">Nenhum cliente com esses filtros.</p> : (
           <div className="table-wrap" ref={tabela}>
             <table className="dp-tabela fgts-tabela">
               <thead>
-                <tr><th>Cód.</th><th>Cliente</th><th>Responsável</th><th>Arquivos do mês</th><th>E-mail</th><th>Envio</th><th /></tr>
+                <tr><th className="fgts-marca"><input type="checkbox" checked={vm.todasMarcadas} onChange={e => vm.marcarTodas(e.target.checked)} aria-label="Marcar todas" title="Marcar todas da tela" /></th><th>Cód.</th><th>Cliente</th><th>Responsável</th><th>Arquivos do mês</th><th>E-mail</th><th>Envio</th><th /></tr>
               </thead>
               <tbody>
                 {vm.linhas.map(l => {
@@ -72,6 +113,9 @@ export function EnviosDoDp() {
                   const e = l.envio;
                   return (
                     <tr key={l.codigo} className={'dp-linha' + (l.situacao === 'enviado' ? ' feita' : '')}>
+                      <td className="fgts-marca">
+                        <input type="checkbox" checked={vm.marcada(l.codigo)} disabled={!l.podeMarcar} onChange={() => vm.alternarMarca(l.codigo)} aria-label={'Marcar ' + l.nome} />
+                      </td>
                       <td className="num fraco">{l.codigo}</td>
                       <td className="dp-cliente">
                         <button type="button" className="fgts-situacao dp-envio-cliente" title={'Arquivos e envios de ' + l.nome} onClick={() => vm.abrir(l.codigo, l.arquivos.length ? 'arquivos' : 'enviados')}>
@@ -174,6 +218,30 @@ export function EnviosDoDp() {
               )}
             </div>
           )}
+        </JanelaLateral>
+      )}
+      {vm.editandoModelo && (
+        <JanelaLateral rotulo="Modelo do e-mail" topicos={[{ id: 'modelo', rotulo: 'E-mail ao cliente', icone: 'envelope' }]} topico="modelo" mudar={() => undefined}
+          fechar={() => vm.setEditandoModelo(false)} classe="fgts-janela" resumo={<div className="usuario-quem"><b>DP › Envios</b></div>}>
+          <ConfigSecao titulo="E-mail ao cliente">
+            <ConfigLinha titulo="Assunto" descricao="Pode usar {cliente}, {competencia} e {mes}. Vazio volta ao padrão.">
+              <input key={'assunto|' + vm.modelo.assunto} type="text" className="nf-entrada largo" aria-label="Assunto do e-mail" maxLength={200}
+                defaultValue={vm.modelo.assunto} placeholder={vm.modelo.padrao.assunto}
+                onBlur={e => { if (e.target.value.trim() !== vm.modelo.assunto) void vm.gravarModelo({ assunto: e.target.value, texto: vm.modelo.texto }); }} />
+            </ConfigLinha>
+            <ConfigLinha titulo="Texto" descricao="O mesmo vale aqui: {cliente}, {competencia} e {mes}. A lista dos arquivos vai depois, no cartão dos anexos. Vazio volta ao padrão.">
+              <textarea key={'texto|' + vm.modelo.texto} className="nf-entrada nf-texto largo" rows={8} aria-label="Texto do e-mail" maxLength={5000}
+                defaultValue={vm.modelo.texto} placeholder={vm.modelo.padrao.texto}
+                onBlur={e => { if (e.target.value.trim() !== vm.modelo.texto) void vm.gravarModelo({ assunto: vm.modelo.assunto, texto: e.target.value }); }} />
+            </ConfigLinha>
+          </ConfigSecao>
+          <div className="card">
+            <h3>Prévia</h3>
+            <div className="dp-envio-previa">
+              <b>{vm.previa.assunto}</b>
+              <p>{vm.previa.texto}</p>
+            </div>
+          </div>
         </JanelaLateral>
       )}
     </section>
