@@ -101,7 +101,8 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
 
   // os clientes como valem hoje (a planilha com o que mudou no Cadastro e nas Configurações do DP)
   const todas = doDp.clientes.map(c => {
-    const ex = porNome.get(c.nomeNaTela) || null;    const temAlguma = c.obrigacoes.length > 0;
+    const ex = porNome.get(c.nomeNaTela) || null;
+    const temAlguma = c.obrigacoes.length > 0;
     const estadoDe = (etapa: string, tem: boolean): EstadoDaObrigacao => {
       if (!tem) return 'nao-tem';
       const est = t.estadoDa(ex, etapa);
