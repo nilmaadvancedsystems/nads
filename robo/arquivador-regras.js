@@ -1085,6 +1085,8 @@ function decidir0(entrada, ctx) {
   if (e === 'txt') {
     // o extrato do internet banking do BB exportado em texto (27/10/2026: ~260 nas pastas do FERNANDO, "EXTRATO BB C.C.
     // JANEIRO-2025 SPIROU.txt"): 04, Bancários/Aplicações "[MÊS E ANO].[ext]" — o mesmo caminho do PDF, a extensão .txt fica
+    // a exportação e o log de erros do emissor (Vitor, 28/10/2026: os "NFe_Export_229.txt" e "erros.txt" da Olaria TK): descarte
+    if (/^(NFe_Export_\d+|erros)\.txt$/i.test(nome)) return { acao: 'DESCARTAR', motivo: 'DESCARTE_CONFIRMADO', confianca: 1, tipo: 'DESCARTE', evidencias: ['exportação/log de erros do emissor ("' + nome + '"): vai para a quarentena, nunca apagado (Vitor, 28/10/2026)'] };
     const dt = decidirTxt(entrada, ctx, ev);
     const t0 = norm(String(entrada.txt || '').slice(0, 3000));
     if (dt.motivo === 'FORMATO_SEM_REGRA' && /^\s*=*\s*EXTRATO CONTA CORRENTE\b|BANCO DO BRASIL S\.?A\.?\s*\n\s*AUTO-ATENDIMENTO/m.test(t0)) {
@@ -2315,6 +2317,12 @@ function decidirPdf(entrada, ctx, ev, porHash) {
   if (paginas.length > 1 && ['DAS', 'DARF', 'DAE', 'DAM', 'FGTS', 'NF-e PDF', 'NFS-e PDF', 'CT-e PDF', 'NFC-e PDF', 'CERTIDAO'].includes(regra.tipo)) {
     const titulos = paginas.filter(p => regra.re.test(norm(p))).length;
     const venc = new Set(paginas.map(p => camposDaGuia(norm(p)).vencimento).filter(Boolean));
+    // as notas juntas num PDF só (Vitor, 28/10/2026: os "00009250001-BRAZIL E AMORIM SUPERMERCADOS LTDA.pdf" da Fito): ARQUIVAR INTEIRO
+    // na pasta das notas do mês (a da 1ª nota: EMITIDOS ou RECEBIDOS), nome original, sem separar as páginas
+    if (titulos > 2 && /^(NF-e|NFC-e|CT-e|NFS-e) PDF$/.test(regra.tipo) && !entrada.primeiraDoComposto) {
+      const d1 = decidirPdf(Object.assign({}, entrada, { texto: [paginas[0]], primeiraDoComposto: true }), ctx, ev, porHash);
+      if (d1 && d1.acao === 'ARQUIVAR') return Object.assign(d1, { nomeFinal: entrada.nome, evidencias: (d1.evidencias || ev).concat(titulos + ' notas num PDF só: arquivado inteiro pela 1ª, nome original (Vitor, 28/10/2026)') });
+    }
     if (titulos > 2 || (regra.tipo.startsWith('DA') && venc.size > 1)) return { acao: 'FICA', motivo: 'PDF_COMPOSTO_NAO_SEPARADO', confianca: 0.5, tipo: regra.tipo, setor: regra.setor, evidencias: ev.concat(titulos + ' páginas com o título ' + regra.tipo + ': o robô não separa PDF (02-SEPARADOR)') };
   }
   if (regra.tipo === 'COMPROVANTE' && campos.pareceExtrato) {
