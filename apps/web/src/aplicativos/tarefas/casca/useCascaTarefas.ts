@@ -38,7 +38,8 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
     /** a aba do alto (o Cadastro): a página, mantendo a competência */
     onPagina: (id: string) => navegar(caminhoDaPagina(app, id) + search),
     // o Início já tem o item dele no alto da gaveta
-    aplicacoes: aplicacoesDe(op).filter(x => x.id !== 'inicio').map(x => ({ id: x.id, nome: x.nome, icone: x.icone, grupo: x.grupo, marca: x.marca, ativo: x.id === app })),
+    // as Configurações saem da lista: ficam no pé da gaveta, só com o ícone da engrenagem (Vitor, 28/10/2026)
+    aplicacoes: aplicacoesDe(op).filter(x => x.id !== 'inicio' && x.id !== 'cadastro').map(x => ({ id: x.id, nome: x.nome, icone: x.icone, grupo: x.grupo, marca: x.marca, ativo: x.id === app })),
     // páginas da mesma aplicação mantêm a competência escolhida (fica na URL)
     // a página em desenvolvimento não abre: só o aviso (21/10/2026)
     onSecao: (id: string) => {
@@ -46,6 +47,8 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
       if (p?.emDesenvolvimento) { aviso({ tom: 'info', titulo: p.rotulo + ': em desenvolvimento', texto: 'Esta tela ainda não está liberada.' }); return; }
       navegar(caminhoDaPagina(app, id) + search);
     },
+    /** a engrenagem do pé da gaveta: a pessoa tem as Configurações? (o sênior, o diretor e o admin) e se está nelas */
+    configuracoes: aplicacoesDe(op).some(x => x.id === 'cadastro') ? { ativa: app === 'cadastro' } : null,
     onAplicacao: (id: string) => { const x = aplicacao(id); if (x) navegar(caminhoDaPagina(x.id, x.paginas[0].id)); },
     inicio: () => navegar(BASE),
     trocarPessoa: () => escolher(null),
