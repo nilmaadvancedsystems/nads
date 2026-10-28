@@ -3582,6 +3582,8 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .dp-numeros{gap:10px;}
 .stat.painel-numero{position:relative;border:1px solid var(--tom-borda,var(--border));border-radius:10px;margin:0;background:var(--tom-fundo,var(--surface));padding:14px 16px 14px 56px;min-height:76px;}
 .painel-numero .stat-value{color:var(--tom,var(--ink));}
+/* o número sem o ícone (Minhas empresas, 28/10/2026): sem o espaço dele à esquerda */
+.stat.painel-numero:not(:has(.painel-numero-icone)){padding-left:16px;}
 .painel-numero-icone{position:absolute;left:14px;top:16px;width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--tom-icone,var(--surface-3));color:var(--tom,var(--ink-muted));}
 .painel-numero-icone svg{width:16px;height:16px;}
 .painel-info{--tom:var(--info);--tom-fundo:var(--info-soft);--tom-icone:var(--info-soft);--tom-borda:var(--info-soft);}
