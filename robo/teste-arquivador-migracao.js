@@ -57,7 +57,10 @@ igual('a pasta de 2024 que nasceu vale para o próximo (não nasce de novo)', [d
 d = R.decidir({ nome: 'n3.xml', rel: 'n3.xml', xml: nfe('36462778000160', '99999999000191', 7, '2012-05-10T10:00:00-03:00') }, ctx);
 igual('ano antes de 2015: NÃO IDENTIFICADOS', [d.acao, d.motivo], ['NAO_IDENTIFICADO', 'ANO_FORA_DA_FAIXA']);
 d = R.decidir({ nome: 'contrato.pdf', rel: '0010 - DORNAS HAVANA LTDA - ME\\DOCUMENTO CONSTITUTIVOS\\contrato.pdf', texto: ['CONTRATO SOCIAL\nDORNAS HAVANA LTDA\nCNPJ 36.462.778/0001-60'] }, ctx);
-igual('sem competência nem ano na pasta: NÃO IDENTIFICADOS (nunca 2026 por padrão)', [d.acao, d.motivo, d.cliente], ['NAO_IDENTIFICADO', 'ANO_INDETERMINADO', 10]);
+// o documento da empresa sem o ano no documento, no nome e na pasta: a raiz do ano atual (Vitor, 28/10/2026, lote 8, item 3); o resto continua sem ano
+igual('contrato social sem competência nem ano na pasta: a raiz do ano atual (lote 8)', [d.acao, d.anoRaiz, d.cliente], ['ARQUIVAR', new Date().getFullYear(), 10]);
+d = R.decidir({ nome: 'nota.pdf', rel: '0010 - DORNAS HAVANA LTDA - ME\\OUTROS\\nota.pdf', texto: ['BALANCETE\nDORNAS HAVANA LTDA\nCNPJ 36.462.778/0001-60'] }, ctx);
+igual('o balancete sem ano: NÃO IDENTIFICADOS (nunca 2026 por padrão)', [d.acao, d.motivo, d.cliente], ['NAO_IDENTIFICADO', 'COMPETENCIA_AUSENTE', 10]);
 
 // a pasta EXTRATOS só dá EXTRATO ao arquivo com "extrato" no nome
 igual('mapa: "…\\EXTRATOS\\2022\\01\\Extrato bb 01.2022.pdf" = EXTRATO; o comprovante na mesma pasta, não', [(mapa.tipoDaOrigem('0010 - DORNAS\\EXTRATOS\\2022\\01\\Extrato bb 01.2022.pdf') || {}).tipoDoc, mapa.tipoDaOrigem('0010 - DORNAS\\EXTRATOS\\2022\\01\\Comprovante pix.pdf')], ['EXTRATO', null]);
