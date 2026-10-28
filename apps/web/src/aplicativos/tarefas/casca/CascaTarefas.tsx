@@ -1,5 +1,5 @@
 // View da casca da Tarefas (a Casca comum do nads). telaInteira: sem a barra lateral e sem o título (o Drive).
-import { Casca, MenuSuspenso, type NomeIcone } from '@nads/ui';
+import { BotaoIcone, Casca, MenuSuspenso, type NomeIcone } from '@nads/ui';
 import { useState, type ReactNode } from 'react';
 import { LugarDasAcoes, useTrilhaDoTopo } from '../../../comum/topo';
 import { useAvisoDeBloqueio } from '../../../comum/modoDesenvolvedor';
@@ -55,9 +55,15 @@ export function CascaTarefas({ app, pagina, telaInteira, semLateral, larga, empr
       onEmpresa={vm.trocarPessoa} aplicativos={vm.aplicacoes} onAplicativo={vm.onAplicacao}
       cartaoNoTopo={empresa ? <CartaoDaEmpresa empresa={empresa} /> : undefined}
       topoDireita={<AvatarDaPessoa vm={vm} />}
-      // os Feedbacks de volta na gaveta (Vitor, 26/10/2026: "coloque a aba de feedbacks no meu usuário"); o link Admin saiu:
-      // as páginas do admin moram nas Configurações (28/10/2026)
-      peDaGaveta={vm.admin ? fechar => <ItemDosFeedbacks abrir={() => { fechar(); setFeedbacks(true); }} /> : undefined}>
+      // o pé da gaveta (Vitor, 28/10/2026: "deixe dois ícones, um com o e-mail e outro com a engrenagem, somente com os
+      // ícones"): os Feedbacks (só o admin) e as Configurações (quem tem), lado a lado
+      peDaGaveta={vm.admin || vm.configuracoes ? fechar => (
+        <div className="drawer-icones">
+          {vm.admin && <ItemDosFeedbacks abrir={() => { fechar(); setFeedbacks(true); }} />}
+          {vm.configuracoes && <BotaoIcone icone="settings" titulo="Configurações" aria-pressed={vm.configuracoes.ativa}
+            onClick={() => { fechar(); vm.onAplicacao('cadastro'); }} />}
+        </div>
+      ) : undefined}>
       {feedbacks && <JanelaDosFeedbacks fechar={() => setFeedbacks(false)} />}
       {/* os certificados vencidos ou vencendo (19/10/2026): só o admin */}
       <AvisoDeCertificados ligado={vm.admin} />
