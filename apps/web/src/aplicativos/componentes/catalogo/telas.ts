@@ -26,6 +26,8 @@ export const TELAS: Tela[] = [
   { id: 't-entrar', app: 'Tarefas', nome: 'Entrar' },
   { id: 't-empresas', app: 'Tarefas', nome: 'Minhas empresas' },
   { id: 't-inicio', app: 'Tarefas', nome: 'Início (avisos e a última empresa)' },
+  // o delegador de tarefas (28/10/2026, o "Minhas Tarefas" do Toriba): pelo perfil e pelo correio do pé do menu ☰
+  { id: 't-central-tarefas', app: 'Tarefas', nome: 'Central de tarefas (o delegador)' },
   { id: 't-senhas', app: 'Tarefas', nome: 'Senhas (gov.br e certificados)' },
   { id: 't-dp-fgts', app: 'Tarefas', nome: 'DP › FGTS Digital' },
   { id: 't-dp-resumo', app: 'Tarefas', nome: 'DP › Resumo' },
