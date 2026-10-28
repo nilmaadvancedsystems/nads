@@ -315,21 +315,26 @@ function htmlDoDisparo(o) {
 // A NFS-e autorizada para o tomador (15/10/2026, nfse-email.js): o texto da configuração (Financeiro › Configurações ›
 // E-mail ao cliente), um cartão com os números da nota e os dois arquivos anexados, na mesma moldura.
 // { assunto, texto, cliente, numero, valor, competencia, chave, anexos: [{ nome, tamanho }], semValor, assinatura, caixa } -> { html, imagens }
-function htmlDaNfse(o) {
-  const imagens = [];
+// Os arquivos anexados, um por linha (a sigla da extensão, o nome, o tamanho), num cartão: a NFS-e e o envio do DP.
+function cartaoDosAnexos(imagens, anexos) {
   const iconeAnexo = imagem(imagens, PASTA_ICONES, 'anexo', 16, 'display:inline-block;vertical-align:middle;margin-right:8px') || '';
   const kb = t => (t >= 1048576 ? (t / 1048576).toFixed(1).replace('.', ',') + ' MB' : Math.max(1, Math.round((t || 0) / 1024)) + ' KB');
-  const linha = (rotulo, valor, k) => '<tr><td style="padding:6px 0;' + (k ? 'border-top:1px solid ' + COR.borda + ';' : '') + 'font:13px/18px ' + FONTE + ';color:' + COR.suave + '">' + esc(rotulo) + '</td>' +
-    '<td align="right" style="padding:6px 0;' + (k ? 'border-top:1px solid ' + COR.borda + ';' : '') + 'font:600 14px/18px ' + FONTE + ';color:' + COR.tinta + ';overflow-wrap:anywhere">' + esc(valor) + '</td></tr>';
-  const dados = [['Número', o.numero], ['Valor', o.valor], ['Competência', o.competencia], ['Chave de acesso', o.chave]].filter(d => d[1]);
-  const nota = cartao('A nota', '<table role="presentation" width="100%" cellpadding="0" cellspacing="0">' + dados.map((d, k) => linha(d[0], d[1], k)).join('') + '</table>');
-  const arquivos = (o.anexos || []).map((a, k) => {
+  const arquivos = (anexos || []).map((a, k) => {
     const ext = (String(a.nome || '').match(/\.([a-z0-9]{2,5})$/i) || [, 'arq'])[1].toUpperCase();
     return '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="' + (k ? 'margin-top:10px' : '') + '"><tr>' +
       '<td width="54" style="vertical-align:middle"><table role="presentation" width="42" height="42" cellpadding="0" cellspacing="0" style="background:' + COR.vinhoClaro + ';border-radius:9px"><tr><td align="center" valign="middle" style="height:42px;font:800 11px/1 ' + FONTE + ';color:' + COR.vinho + ';letter-spacing:.03em">' + esc(ext.slice(0, 4)) + '</td></tr></table></td>' +
       '<td style="vertical-align:middle"><div style="font:600 14px/20px ' + FONTE + ';color:' + COR.tinta + ';overflow-wrap:anywhere">' + esc(a.nome) + '</div>' +
       '<div style="font:12px/16px ' + FONTE + ';color:' + COR.suave + ';margin-top:2px">' + (a.tamanho ? kb(a.tamanho) + ' · ' : '') + 'está no fim deste e-mail.</div></td></tr></table>';
   }).join('');
+  return arquivos ? cartao('Arquivos anexados', arquivos, iconeAnexo) : '';
+}
+
+function htmlDaNfse(o) {
+  const imagens = [];
+  const linha = (rotulo, valor, k) => '<tr><td style="padding:6px 0;' + (k ? 'border-top:1px solid ' + COR.borda + ';' : '') + 'font:13px/18px ' + FONTE + ';color:' + COR.suave + '">' + esc(rotulo) + '</td>' +
+    '<td align="right" style="padding:6px 0;' + (k ? 'border-top:1px solid ' + COR.borda + ';' : '') + 'font:600 14px/18px ' + FONTE + ';color:' + COR.tinta + ';overflow-wrap:anywhere">' + esc(valor) + '</td></tr>';
+  const dados = [['Número', o.numero], ['Valor', o.valor], ['Competência', o.competencia], ['Chave de acesso', o.chave]].filter(d => d[1]);
+  const nota = cartao('A nota', '<table role="presentation" width="100%" cellpadding="0" cellspacing="0">' + dados.map((d, k) => linha(d[0], d[1], k)).join('') + '</table>');
   const aviso = o.semValor
     ? '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px"><tr><td style="padding:10px 14px;border-radius:8px;background:' + COR.faltaClaro + ';border:1px solid ' + COR.faltaBorda + ';font:600 14px/20px ' + FONTE + ';color:' + COR.falta + '">Nota de teste (homologação): sem valor fiscal.</td></tr></table>'
     : '';
@@ -337,10 +342,28 @@ function htmlDaNfse(o) {
     imagens, assinatura: o.assinatura, caixa: o.caixa, chip: 'NFS-e', sobre: o.cliente || '',
     previa: String(o.texto || '').replace(/\s+/g, ' ').trim().slice(0, 140),
     titulo: o.assunto || ('NFS-e ' + (o.numero || '')),
-    corpo: aviso + paragrafos(o.texto) + nota + (arquivos ? cartao('Arquivos anexados', arquivos, iconeAnexo) : ''),
+    corpo: aviso + paragrafos(o.texto) + nota + cartaoDosAnexos(imagens, o.anexos),
     rodape: 'Mensagem enviada pelo sistema do escritório quando a nota fiscal foi emitida.',
   });
   return { html, imagens };
 }
 
-module.exports = { htmlDaCobranca, htmlDoDisparo, htmlDaNfse, textoDoPrazo, progresso, PASTA_LOGOS, PASTA_ICONES };
+// O envio do DP ao cliente (DP › Envios, 27/10/2026, envios-do-dp.js): os documentos do mês que já estão na pasta do
+// cliente, num texto padrão, com a lista dos arquivos anexados, na mesma moldura.
+// { assunto, cliente, mes, anexos: [{ nome, tamanho }], assinatura, caixa } -> { html, imagens, texto }
+function htmlDoEnvioDp(o) {
+  const imagens = [];
+  const abertura = 'Olá!\n\nSeguem em anexo os documentos do Departamento Pessoal' + (o.cliente ? ' de ' + o.cliente : '') + ' referentes a ' + o.mes + '.';
+  const fecho = 'Qualquer dúvida, é só responder este e-mail.';
+  const texto = abertura + '\n\n' + (o.anexos || []).map(a => '- ' + a.nome).join('\n') + '\n\n' + fecho;
+  const html = moldura({
+    imagens, assinatura: o.assinatura, caixa: o.caixa, chip: 'DP', sobre: o.cliente || '',
+    previa: 'Documentos do Departamento Pessoal de ' + o.mes,
+    titulo: o.assunto || ('Documentos do DP · ' + o.mes),
+    corpo: paragrafos(abertura + '\n\n' + fecho) + cartaoDosAnexos(imagens, o.anexos),
+    rodape: 'Mensagem enviada pelo sistema do escritório com os documentos do mês.',
+  });
+  return { html, imagens, texto };
+}
+
+module.exports = { htmlDaCobranca, htmlDoDisparo, htmlDaNfse, htmlDoEnvioDp, textoDoPrazo, progresso, PASTA_LOGOS, PASTA_ICONES };

@@ -78,6 +78,8 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'visao', rotulo: 'Visão geral', icone: 'barChart', titulo: 'Visão geral' },
     // a guia do FGTS Digital pelo robô da nuvem, com o certificado do escritório (Vitor, 07/10/2026)
     { id: 'fgts', rotulo: 'FGTS Digital', icone: 'fileDown', titulo: 'FGTS Digital', marca: 'fgts' },
+    // os documentos do mês que já estão na pasta do cliente, por e-mail pelo robô da nuvem (27/10/2026: "uma aba de envios")
+    { id: 'envios', rotulo: 'Envios', icone: 'envelope', titulo: 'Envios ao cliente' },
     // os parâmetros de cada cliente (Vitor, 06/10/2026: "quero que o dp tenha a própria aba de configurações")
     // os textos de consulta que vieram do Toriba (Vitor, 14/10/2026: "importa as legislações em uma aba no DP")
     { id: 'legislacao', rotulo: 'Legislação', icone: 'scale', titulo: 'Legislação' },

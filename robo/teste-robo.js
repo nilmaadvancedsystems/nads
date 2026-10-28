@@ -830,6 +830,34 @@ igual('razão social da irmã no assunto: é dela', (r.desempatarPorNome(fitos, 
 igual('razão social da dona do e-mail: é dela', (r.desempatarPorNome(fitos, 'Arquivos 09/2026 - Fito Indústria e Comércio de Alimentos LTDA') || {}).id, '292');
 igual('sem nome no assunto: não decide pelo nome', r.desempatarPorNome(fitos, 'Faturas'), null);
 
+// ---------- DP › Envios: os documentos do DP de cada mês na pasta do cliente ----------
+{
+  const dp = require('./envios-do-dp');
+  const di2 = require('./drive-indice');
+  const itens = [
+    { i: 'dp', n: 'DEPARTAMENTO PESSOAL', p: 'R', t: 'd' }, { i: 'm10', n: '10', p: 'dp', t: 'd' }, { i: 'fg', n: 'FGTS', p: 'm10', t: 'd' },
+    { i: 'a1', n: 'FGTS 10-2026.pdf', p: 'fg', t: 'f', s: 1200 }, { i: 'a2', n: 'Resumo.pdf', p: 'm10', t: 'f', s: 300 },
+    { i: 'fu', n: 'FUNCIONÁRIOS', p: 'dp', t: 'd' }, { i: 'jo', n: 'JOAO', p: 'fu', t: 'd' }, { i: 'a3', n: 'ASO 01-10-2026.pdf', p: 'jo', t: 'f' },
+    { i: 'so', n: 'SOCIETÁRIO', p: 'R', t: 'd' }, { i: 'fp', n: 'FOLHA DE PAGAMENTO', p: 'so', t: 'd' }, { i: 'y', n: '2026', p: 'fp', t: 'd' },
+    { i: 'y9', n: '09', p: 'y', t: 'd' }, { i: 'a4', n: 'Holerites.pdf', p: 'y9', t: 'f', s: 50 }, { i: 'g1', n: 'Planilha', p: 'y9', t: 'g' },
+    { i: 'fi', n: 'FISCAL', p: 'R', t: 'd' }, { i: 'sn', n: 'SIMPLES NACIONAL', p: 'fi', t: 'd' }, { i: 'da', n: '16. DARF', p: 'sn', t: 'd' },
+    { i: 'a5', n: '10-2026 - DARF INSS - VALOR 1.234,56 - VENCIMENTO 20-11-2026.pdf', p: 'da', t: 'f' },
+    { i: 'a6', n: '10-2026 - DARF IRPJ - VALOR 10,00 - VENCIMENTO 30-11-2026.pdf', p: 'da', t: 'f' },
+    { i: 'a7', n: 'solto.pdf', p: 'dp', t: 'f' },
+  ];
+  const porMes = dp.arquivosDoDpNaPasta(itens, 'R', '2026', di2.caminhos, di2.chaveDeNome);
+  igual('DP: o mês junta a pasta do mês, a FGTS e a DARF do INSS', (porMes.get('2026-10') || []).map(a => a.i), ['a2', 'a1', 'a5']);
+  igual('DP: a folha vai pelo ano e mês da pasta', (porMes.get('2026-09') || []).map(a => a.i), ['a4']);
+  igual('DP: a pasta onde o arquivo está vai junto', (porMes.get('2026-10') || [])[1].c, 'DEPARTAMENTO PESSOAL/10/FGTS');
+  igual('DP: FUNCIONÁRIOS, DARF de outro tributo, Google Docs e arquivo solto ficam de fora', [...porMes.keys()].sort(), ['2026-09', '2026-10']);
+  igual('DP: sem escolha vão todos', dp.escolhidos([{ i: 'x' }, { i: 'y' }], []).map(a => a.i), ['x', 'y']);
+  igual('DP: só vai o escolhido que está na lista (nunca um id de fora)', dp.escolhidos([{ i: 'x' }, { i: 'y' }], ['y', 'zzz']).map(a => a.i), ['y']);
+  igual('DP: o mês por extenso', dp.mesPorExtenso('2026-03'), 'março de 2026');
+  igual('DP: os três meses recentes (virando o ano)', dp.mesesRecentes(new Date(Date.UTC(2027, 0, 15))), ['2027-01', '2026-12', '2026-11']);
+  const email = require('./email-html').htmlDoEnvioDp({ assunto: 'Documentos <DP>', cliente: 'TESTE & CIA', mes: 'outubro de 2026', anexos: [{ nome: 'FGTS 10-2026.pdf', tamanho: 2048 }] });
+  igual('DP: o e-mail lista o anexo e escapa o HTML', [email.html.includes('FGTS 10-2026.pdf'), email.html.includes('TESTE &amp; CIA'), email.texto.includes('- FGTS 10-2026.pdf')], [true, true, true]);
+}
+
 // os testes que leem PDF são assíncronos: o resultado espera por eles
 esperarExtratos.then(() => {
   console.log(falhas ? '\n' + falhas + ' de ' + total + ' testes FALHARAM' : total + ' testes, todos passaram');

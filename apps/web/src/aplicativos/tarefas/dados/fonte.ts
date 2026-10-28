@@ -15,6 +15,8 @@ import { criarGmailFirestore } from './gmail.firestore';
 import { criarArquivadorMemoria, type RepoArquivador } from './arquivador';
 import { criarFgtsMemoria, type RepoFgts } from './fgts';
 import { criarFgtsFirestore } from './fgts.firestore';
+import { criarEnviosDpMemoria, type RepoEnviosDp } from './enviosDp';
+import { criarEnviosDpFirestore } from './enviosDp.firestore';
 import { criarCaixaMemoria, type RepoCaixa } from './caixa';
 import { criarCaixaFirestore } from './caixa.firestore';
 import { criarHonorariosMemoria, type RepoHonorarios } from './honorarios';
@@ -360,6 +362,14 @@ let fgts: RepoFgts | null = null;
 export function repoDoFgts(): RepoFgts {
   if (!fgts) fgts = noBanco ? criarFgtsFirestore(() => { const q = quemPede(); return q ? { nome: q.nome, uid: q.uid } : null; }) : criarFgtsMemoria();
   return fgts;
+}
+
+let enviosDp: RepoEnviosDp | null = null;
+
+/** O DP › Envios (27/10/2026): os documentos do DP de cada mês nas pastas e os envios aos clientes pelo robô da nuvem. */
+export function repoDeEnviosDp(): RepoEnviosDp {
+  if (!enviosDp) enviosDp = noBanco ? criarEnviosDpFirestore(quemPede) : criarEnviosDpMemoria();
+  return enviosDp;
 }
 
 let notasFiscais: RepoNfse | null = null;
