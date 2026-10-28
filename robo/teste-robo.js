@@ -871,6 +871,10 @@ igual('sem nome no assunto: não decide pelo nome', r.desempatarPorNome(fitos, '
   igual('DP: o boleto de janeiro vai com o DP de dezembro do ano anterior', (porMesB.get('2025-12') || []).map(a => a.i), ['b6']);
   const m = dp.mensagemDoEnvio({ assunto: 'DP {competencia} - {cliente} {xyz}', texto: '' }, { cliente: 'ACME', competencia: '10/2026', mes: 'outubro de 2026' });
   igual('DP: o modelo troca os campos, deixa o que não conhece, e o texto vazio vira o padrão', [m.assunto, m.texto.startsWith('Olá, ACME!'), m.texto.includes('outubro de 2026')], ['DP 10/2026 - ACME {xyz}', true, true]);
+  // o e-mail do Cadastro do nads manda; o do Entregas só sem ele (28/10/2026)
+  igual('DP: o e-mail do Cadastro do nads vale no lugar do Entregas', dp.paraQuem([{ contato: { email: ' Novo@Cliente.com ' } }], { email: 'velho@x.com' }), ['novo@cliente.com']);
+  igual('DP: sem e-mail no nads, vão os do Entregas (sem repetir)', dp.paraQuem([{ contato: {} }], { email: 'a@x.com', emails: ['B@x.com', 'a@x.com'] }), ['a@x.com', 'b@x.com']);
+  igual('DP: e-mail inválido não conta', dp.paraQuem([{ contato: { email: 'sem-arroba' } }], { email: 'ruim' }), []);
 }
 
 // os testes que leem PDF são assíncronos: o resultado espera por eles

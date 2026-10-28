@@ -7,6 +7,7 @@
 // 28/10/2026 ("com seleção de quais vou enviar, no estilo do fgts"): o painel do robô do FGTS (o progresso do mês, Agora e
 // Na fila), a caixinha de cada cliente com Enviar marcadas, e o Modelo do e-mail (como o E-mail ao cliente da NFS-e).
 import { BotaoAcao, ConfigLinha, ConfigSecao, Esqueleto, Icone, MenuSuspenso, NumeroQueConta, SeletorMes, useCarregando, useEntradaAnimada } from '@nads/ui';
+import { useState } from 'react';
 import { JanelaLateral } from '../janela/JanelaLateral';
 import { MenuDeFiltro } from './MenuDeFiltro';
 import { situacaoDoEnvio, useEnviosDoDp, type FiltroDoEnvio, type SituacaoDoEnvio } from './useEnviosDoDp';
@@ -31,6 +32,8 @@ const SITUACOES: { valor: FiltroDoEnvio; rotulo: string }[] = [
 
 export function EnviosDoDp() {
   const vm = useEnviosDoDp();
+  // o aviso do campo de e-mail da janela ("E-mail inválido.")
+  const [erroDoEmail, setErroDoEmail] = useState('');
   useCarregando(vm.carregando);
   const tabela = useEntradaAnimada<HTMLDivElement>('tbody > tr', [vm.carregando, vm.competencia, vm.filtro], 'lista');
   const c = vm.contagem;
@@ -131,7 +134,13 @@ export function EnviosDoDp() {
                           </button>
                         ) : <span className="fraco">—</span>}
                       </td>
-                      <td className="fraco">{l.emails.length ? <span title={l.emails.join('\n')}>{l.emails[0]}{l.emails.length > 1 ? ' +' + (l.emails.length - 1) : ''}</span> : '—'}</td>
+                      <td className="fraco">
+                        {/* mudar o e-mail daqui (28/10/2026: "mudar o gmail do cliente direto do envios") */}
+                        <button type="button" className="fgts-situacao dp-envio-email" title={(l.emails.join('\n') || 'Sem e-mail') + ' · mudar o e-mail'} onClick={() => vm.abrir(l.codigo, 'email')}>
+                          {l.emails.length ? <span>{l.emails[0]}{l.emails.length > 1 ? ' +' + (l.emails.length - 1) : ''}</span> : <span className="badge badge-parada">Pôr e-mail</span>}
+                          <Icone nome="lapis" />
+                        </button>
+                      </td>
                       <td>
                         {e ? (
                           <button type="button" className="fgts-situacao" title={(e.erro || (e.para.length ? 'para ' + e.para.join(', ') : '')) + ' · ver o que já foi enviado'} onClick={() => vm.abrir(l.codigo, 'enviados')}>
@@ -163,6 +172,7 @@ export function EnviosDoDp() {
           topicos={[
             { id: 'arquivos', rotulo: 'Arquivos do mês', icone: 'clipe', contador: aberto.arquivos.length },
             { id: 'enviados', rotulo: 'Enviados', icone: 'aviao', contador: vm.historico?.length ?? 0 },
+            { id: 'email', rotulo: 'E-mail', icone: 'envelope', alerta: !aberto.emails.length },
           ]}
           resumo={<div className="usuario-quem"><span className="emp-cod">{aberto.codigo}</span><b>{aberto.nome}</b></div>}>
           {vm.aba === 'arquivos' ? (
@@ -183,13 +193,27 @@ export function EnviosDoDp() {
                   ))}
                 </ul>
               ) : <p className="hint">Nenhum documento do DP de {mes} na pasta do cliente.</p>}
-              <p className="fraco">Para: {aberto.emails.length ? aberto.emails.join(', ') : 'sem e-mail no cadastro'}</p>
+              <p className="fraco">Para: {aberto.emails.length ? aberto.emails.join(', ') : 'sem e-mail no cadastro'} · <button type="button" className="link-btn" onClick={() => vm.setAba('email')}>mudar</button></p>
               {aberto.arquivos.length > 0 && (
                 <BotaoAcao className="btn btn-primary" disabled={!aberto.escolhidos.length || !vm.podeEnviar(aberto.codigo)} carregando={vm.fazendo('enviar:' + aberto.codigo)} textoCarregando="Pedindo…" onClick={() => void vm.enviar(aberto.codigo)}>
                   <Icone nome="aviao" />{'Enviar os marcados · ' + aberto.escolhidos.length + (aberto.escolhidos.length === 1 ? ' arquivo' : ' arquivos')}
                 </BotaoAcao>
               )}
             </div>
+          ) : vm.aba === 'email' ? (
+            <ConfigSecao titulo="E-mail do cliente">
+              <ConfigLinha titulo="E-mail do cadastro" descricao="O mesmo de Cadastro › Dados da empresa: é para onde os envios vão. Vazio tira." aviso={erroDoEmail || undefined}>
+                <input key={'email|' + aberto.codigo + '|' + aberto.emailDoCadastro} type="email" className="nf-entrada largo" aria-label={'E-mail de ' + aberto.nome}
+                  defaultValue={aberto.emailDoCadastro} placeholder="nome@empresa.com.br" autoFocus
+                  onBlur={e => setErroDoEmail(vm.definirEmail(aberto.codigo, e.target.value))}
+                  onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} />
+              </ConfigLinha>
+              {aberto.emailsDoEntregas.length > 0 && (
+                <ConfigLinha titulo="No cadastro do Entregas" descricao={aberto.emailDoCadastro ? 'Não são usados: vale o e-mail do cadastro acima.' : 'Usados enquanto o cadastro acima estiver sem e-mail.'}>
+                  <span className="cfg-valor">{aberto.emailsDoEntregas.join(', ')}</span>
+                </ConfigLinha>
+              )}
+            </ConfigSecao>
           ) : (
             <div className="card">
               <h3>O que já foi enviado</h3>

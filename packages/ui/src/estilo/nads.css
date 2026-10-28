@@ -3597,6 +3597,9 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 /* o Modelo do e-mail (28/10/2026): a prévia com um cliente da lista */
 .dp-envio-previa{padding:0 16px 14px;font-size:var(--fs-13);}
 .dp-envio-previa p{margin:8px 0 0;white-space:pre-wrap;color:var(--ink-muted);}
+/* o e-mail da linha abre a aba E-mail da janela (28/10/2026): o lápis aparece ao passar o mouse */
+.dp-envio-email > svg{width:12px;height:12px;flex:none;opacity:0;color:var(--ink-muted);}
+.dp-envio-email:hover > svg,.dp-envio-email:focus-visible > svg{opacity:1;}
 .fgts-janela .card > .fraco,.fgts-janela .card > .hint{padding:0 16px;margin:4px 0 10px;font-size:var(--fs-12);}
 .fgts-janela .card > .btn{margin:0 16px 14px;}
 

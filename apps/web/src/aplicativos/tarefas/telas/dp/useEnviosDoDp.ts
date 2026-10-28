@@ -14,7 +14,7 @@ import { useClientesDoDp } from './useClientesDoDp';
 
 export type SituacaoDoEnvio = 'sem-arquivos' | 'sem-email' | 'pronto' | 'fila' | 'enviando' | 'enviado' | 'erro';
 export type FiltroDoEnvio = 'todos' | 'prontos' | 'enviados' | 'problemas' | 'sem-arquivos';
-export type AbaDaJanela = 'arquivos' | 'enviados';
+export type AbaDaJanela = 'arquivos' | 'enviados' | 'email';
 
 export function situacaoDoEnvio(e: EnvioDoDp | undefined, arquivos: number, emails: number): SituacaoDoEnvio {
   if (e?.status === 'pendente') return 'fila';
@@ -86,13 +86,17 @@ export function useEnviosDoDp() {
     .map(c => {
       const cod = String(c.codigo);
       const arquivos = lista.porCodigo.get(cod) || NADA;
-      // nos exemplos não há cadastro do Entregas: um e-mail inventado, para a tela andar
-      const emails = emailsDe.get(cod) || (repo.exemplos ? ['financeiro@exemplo.com.br'] : []);
+      // o e-mail do Cadastro do nads manda (28/10/2026: "quando eu altero no cadastro da empresa o gmail não altera lá no
+      // envios"), como o regime; o do Entregas só sem ele (o robô escolhe igual: robo/envios-do-dp.js paraQuem)
+      const doCadastro = (c.cadastro?.contato?.email || '').trim().toLowerCase();
+      const doEntregas = emailsDe.get(cod) || (repo.exemplos ? ['financeiro@exemplo.com.br'] : []);
+      const emails = doCadastro ? [doCadastro] : doEntregas;
+      const origemDoEmail: '' | 'cadastro' | 'entregas' = doCadastro ? 'cadastro' : doEntregas.length ? 'entregas' : '';
       const envio = envios.porCodigo.get(cod);
       const desmarcados = fora.get(c.codigo);
       const escolhidos = desmarcados ? arquivos.filter(a => !desmarcados.has(a.id)) : arquivos;
       return {
-        codigo: c.codigo, nome: c.nomeNaTela, responsavel: nomeDe(c.responsavel), arquivos, escolhidos, emails, envio,
+        codigo: c.codigo, nome: c.nomeNaTela, responsavel: nomeDe(c.responsavel), arquivos, escolhidos, emails, origemDoEmail, emailDoCadastro: doCadastro, emailsDoEntregas: doEntregas, envio,
         situacao: situacaoDoEnvio(envio, arquivos.length, emails.length), ex: porNome.get(c.nomeNaTela) || null,
       };
     })
@@ -216,6 +220,8 @@ export function useEnviosDoDp() {
     abrir: (codigo: number, na: AbaDaJanela = 'arquivos') => { setAba(na); setAberto(codigo); },
     fechar: () => { setAberto(null); setHistorico(null); },
     aba, setAba,
+    /** grava o e-mail no Cadastro da empresa (o mesmo de Cadastro › Dados da empresa); devolve o erro ('' = ok) */
+    definirEmail: (codigo: number, email: string) => doDp.definirEmail(codigo, email),
     /** o que já foi pedido para o cliente aberto, de todos os meses (null = lendo) */
     historico: historico && historico.codigo === aberto ? historico.lista : null,
     marcado: (codigo: number, id: string) => !fora.get(codigo)?.has(id),
