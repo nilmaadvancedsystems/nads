@@ -20,9 +20,11 @@ function FolhaNaLinha({ valor, informar, travado }: { valor: number | null; info
   const [texto, setTexto] = useState<string | null>(null);
   if (texto == null) {
     return (
-      <button type="button" className="btn btn-ghost dp-folha" disabled={travado} title="O total da folha do mês (salários, pró-labore e encargos)"
+      <button type="button" className="btn btn-ghost dp-folha" disabled={travado} title={valor != null ? 'O total da folha do mês (salários, pró-labore e encargos)' : 'Informar o total da folha do mês'}
+        aria-label={valor != null ? undefined : 'Informar o total da folha do mês'}
         onClick={() => setTexto(valor != null ? valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '')}>
-        {valor != null ? <span className="num">{formatos.reais(valor)}</span> : <span className="fraco">Informar</span>}
+        {/* sem valor, só o + (Vitor, 28/10/2026: "o Informar, troque por um ícone de +") */}
+        {valor != null ? <span className="num">{formatos.reais(valor)}</span> : <Icone nome="plus" />}
       </button>
     );
   }
@@ -185,27 +187,29 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
               {/* o gerador de etiquetas da folha (Savio, 15/10/2026): pergunta a competência e a data de pagamento e imprime em A4 */}
               {aba === 'obrigacoes' && <BotaoIcone icone="printer" titulo="Etiquetas da folha" onClick={etiquetas.abrir} />}
             </div>
-          <section className="card dp-lista">
+          <section className="card dp-lista dp-lista-fixa">
             {vm.quantas === 0 ? <p className="hint dp-vazio">Nenhum cliente com esses filtros.</p> : (
               <div className="table-wrap" ref={tabela}>
                 <table className="dp-tabela">
                   <thead>
+                    {/* o cabeçalho reestruturado (Vitor, 28/10/2026): Cód., Cliente, Folha do mês e Situação ocupam as duas linhas, alinhados
+                        embaixo; em cima, só os grupos das obrigações (a Entrega cobre o Entregue e o Onde); fica fixo ao rolar a página */}
                     <tr className="dp-cabeca-grupo">
-                      <th colSpan={3} />
+                      <th rowSpan={2}>Cód.</th>
+                      <th rowSpan={2}>Cliente</th>
+                      <th rowSpan={2} className="num" title="O total da folha do mês (o Fiscal vê ao lado do faturamento)">Folha do mês</th>
                       {vm.gruposDeColunas.map(g => <th key={g.rotulo} colSpan={g.colunas} className="dp-ob-grupo dp-ob-primeira">{g.rotulo}</th>)}
-                      <th />
+                      <th rowSpan={2}>Situação</th>
                     </tr>
                     <tr>
-                      <th>Cód.</th><th>Cliente</th><th className="num" title="O total da folha do mês (o Fiscal vê ao lado do faturamento)">Folha do mês</th>
                       {vm.colunas.map(o => <th key={o.id} className={'dp-ob' + (vm.primeiras.has(o.id) ? ' dp-ob-primeira' : '')} title={o.nome}>{o.rotulo}</th>)}
-                      <th className="dp-onde">Onde</th>
-                      <th>Situação</th>
+                      <th className="dp-ob dp-onde-cab">Onde</th>
                     </tr>
                   </thead>
                   <tbody>
                     {vm.grupos.map(g => (
                       <Fragment key={g.nome || 'todos'}>
-                        {g.nome && <tr className="dp-grupo"><td colSpan={4 + vm.colunas.length}>{g.nome} <span className="hint">{g.feitas}/{g.linhas.length} concluídos</span></td></tr>}
+                        {g.nome && <tr className="dp-grupo"><td colSpan={5 + vm.colunas.length}>{g.nome} <span className="hint">{g.feitas}/{g.linhas.length} concluídos</span></td></tr>}
                         {g.linhas.map(c => (
                           <tr key={c.chave} className={'dp-linha' + (c.concluida ? ' feita' : '')}>
                             <td className="num fraco">{c.codigo}</td>
