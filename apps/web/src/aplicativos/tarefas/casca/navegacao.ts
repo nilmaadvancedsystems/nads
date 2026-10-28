@@ -79,7 +79,7 @@ export const APLICACOES: readonly Aplicacao[] = [
     // barra lateral"); em Obrigações, uma tabela só, com as colunas agrupadas (Folha, eSocial, Guias, REINF, Entrega)
     { id: 'resumo', rotulo: 'Resumo', icone: 'painel', titulo: 'Resumo do mês' },
     { id: 'obrigacoes', rotulo: 'Obrigações', icone: 'checklist', titulo: 'Obrigações do mês' },
-    { id: 'visao', rotulo: 'Visão geral', icone: 'barChart', titulo: 'Visão geral' },
+    // a Visão geral saiu do DP (Vitor, 28/10/2026: "remove essa aba"); o link antigo cai no Resumo
     // a guia do FGTS Digital pelo robô da nuvem, com o certificado do escritório (Vitor, 07/10/2026)
     { id: 'fgts', rotulo: 'FGTS Digital', icone: 'fileDown', titulo: 'FGTS Digital', marca: 'fgts' },
     // os parâmetros de cada cliente (Vitor, 06/10/2026: "quero que o dp tenha a própria aba de configurações")
