@@ -94,7 +94,7 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
         <MenuDeFiltro rotulo="Pendente em" valor={f.pendenteEm} mudar={v => f.setPendenteEm(v as typeof f.pendenteEm)} opcoes={f.partes} todos="Todas as partes" />
         <button type="button" className={'btn btn-outline' + (algumAvancado ? ' ativo' : '')} aria-pressed={avancados} onClick={() => setAvancados(a => !a)}
           title={avancados ? 'Esconder os filtros avançados' : 'Filtros avançados: movimento, enquadramento, entrega e agrupamento'}
-          aria-label="Filtros avançados"><Icone nome="filtro" /></button>
+          aria-label="Filtros avançados"><Icone nome="funil" /></button>
         {f.algum && <button type="button" className="btn btn-ghost dp-limpar" onClick={f.limpar}><Icone nome="x" />Limpar filtros</button>}
       </div>
       {avancados && (
@@ -149,10 +149,11 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
             <DecimoNaLista ano={doDecimo?.ano || hoje.getFullYear()} parcela={mesDaCompetencia === 11 ? '1' : '2'}
               busca={f.busca} responsavel={f.responsavel} status={f.statusDoDecimo} desligar={() => setDecimo(false)} />
           ) : (
-          <section className="card dp-lista">
+          <>
             {/* o topo da tabela (Vitor, 28/10/2026): sem o título, a contagem e o Agrupar por (o agrupamento fica no filtro de cima);
-                à direita, a busca e os botões só com o ícone: o Excel e a impressora das etiquetas */}
-            <div className="dp-lista-topo">
+                à direita, a busca e os botões só com o ícone: o Excel e a impressora das etiquetas; fora da caixa da tabela ("tira
+                essa borda maior") */}
+            <div className="tarefas-barra-topo dp-filtros-linha">
               {temDecimo && (
                 <>
                   <span className="hint">13º salário</span>
@@ -169,6 +170,7 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
               {/* o gerador de etiquetas da folha (Savio, 15/10/2026): pergunta a competência e a data de pagamento e imprime em A4 */}
               {aba === 'obrigacoes' && <BotaoIcone icone="printer" titulo="Etiquetas da folha" onClick={etiquetas.abrir} />}
             </div>
+          <section className="card dp-lista">
             {vm.quantas === 0 ? <p className="hint dp-vazio">Nenhum cliente com esses filtros.</p> : (
               <div className="table-wrap" ref={tabela}>
                 <table className="dp-tabela">
@@ -215,7 +217,7 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
                               </td>
                             ))}
                             <td className="dp-onde fraco">{c.entrega || '—'}</td>
-                            <td><span className={'badge ' + (c.concluida ? 'badge-ok' : c.parada ? 'badge-parada' : 'andamento' in c && c.andamento ? 'badge-warn' : 'badge-neutral')}>{c.situacao}</span></td>
+                            <td><span className={'badge ' + (c.concluida ? 'badge-ok' : c.parada ? 'badge-parada' : 'andamento' in c && c.andamento ? 'badge-warn badge-cheia' : 'badge-neutral')}>{c.situacao}</span></td>
                           </tr>
                         ))}
                       </Fragment>
@@ -225,6 +227,7 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
               </div>
             )}
           </section>
+          </>
           )}
         </>
       )}

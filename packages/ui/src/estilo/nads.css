@@ -1055,6 +1055,8 @@ table.vc-tabela .vc-mut{color:var(--ink-muted);max-width:180px;overflow:hidden;t
 .app-card-nome{font-size:var(--fs-14);font-weight:600;}
 .app-card-desc{font-size:var(--fs-13);line-height:1.4;color:var(--ink-muted);}
 .badge-warn{color:var(--warn);border-color:var(--warn);background:none;}
+/* a pílula cheia do Em andamento (Vitor, 28/10/2026: "deixe a pílula preenchida"), como o Ok */
+.badge-warn.badge-cheia{color:var(--bg);background:var(--warn);font-weight:600;}
 .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-top:16px;}
 .form-grid .field{margin-bottom:0;}
 .form-grid .hint{margin-top:4px;}

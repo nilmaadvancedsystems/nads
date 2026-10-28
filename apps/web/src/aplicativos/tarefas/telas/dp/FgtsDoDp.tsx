@@ -115,7 +115,7 @@ export function FgtsDoDp() {
         <div className="fgts-robo-cabeca">
           <h3 className="dp-titulo">Rotina FGTS</h3>
           {r.carregado && (
-            <span className={'badge ' + (emAndamento ? 'badge-warn' : r.ligado ? 'badge-ok' : 'badge-bad')}>
+            <span className={'badge ' + (emAndamento ? 'badge-warn badge-cheia' : r.ligado ? 'badge-ok' : 'badge-bad')}>
               <span className={'bolinha-sit ' + (emAndamento ? 'em-andamento' : r.ligado ? 'concluida' : 'parada')} aria-hidden="true" />
               {emAndamento ? 'Em andamento' : r.ligado ? 'Ligada' : 'Desligada'}
             </span>

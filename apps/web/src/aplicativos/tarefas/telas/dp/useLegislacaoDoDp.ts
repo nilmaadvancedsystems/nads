@@ -87,8 +87,5 @@ export function useLegislacaoDoDp() {
       } finally { setSalvando(false); }
     },
     /** 'aaaa-mm-dd' → 'dd/mm/aaaa' */
-    data: (iso: string) => (iso ? iso.split('-').reverse().join('/') : ''),
-    /** o começo do texto, numa linha, para a tabela */
-    trecho: (t: string) => { const u = t.replace(/\s+/g, ' ').trim(); return u.length > 110 ? u.slice(0, 110).trimEnd() + '…' : u; },
-  };
+    data: (iso: string) => (iso ? iso.split('-').reverse().join('/') : ''),  };
 }
