@@ -3570,6 +3570,9 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .painel-roxo{--tom:var(--roxo);--tom-fundo:var(--roxo-soft);--tom-icone:var(--roxo-soft);--tom-borda:var(--roxo-soft);}
 .painel-ciano{--tom:var(--ciano);--tom-fundo:var(--ciano-soft);--tom-icone:var(--ciano-soft);--tom-borda:var(--ciano-soft);}
 .painel-neutro{--tom:var(--ink);--tom-fundo:var(--surface);--tom-icone:var(--surface-3);--tom-borda:var(--border);}
+/* a janela das Justificativas e das Configurações (Minhas empresas; 28/10/2026): o título dos cartões de dentro sem o risco do título da janela */
+.janela-minhas-empresas .card h3{padding:0;border:0;}
+.janela-minhas-empresas .card{margin-top:0 !important;}
 /* o número que filtra, colorido (Minhas empresas; 28/10/2026): a cor fica no hover; o escolhido ganha a borda na cor dele */
 .stat.stat-filtro.painel-numero{border:1px solid var(--tom-borda,var(--border));}
 .stat.stat-filtro.painel-numero:hover{background:var(--tom-fundo,var(--surface));filter:brightness(1.08);}

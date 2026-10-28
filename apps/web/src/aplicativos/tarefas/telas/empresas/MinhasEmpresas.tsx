@@ -3,11 +3,14 @@
 // título da coluna ordena; clicar na linha abre a página da empresa), as etapas paradas e, no Contábil, os históricos do
 // Creditor. O "Iniciar", o Progresso do mês e os Insights saíram (27/10/2026).
 import { Icone, MenuSuspenso, type NomeIcone, Segmentado, useCarregando, useEntradaAnimada, useLinhasQueSeMovem, Vazio } from '@nads/ui';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { EmDesenvolvimento } from '../em-desenvolvimento/EmDesenvolvimento';
 import { LIMITE, useMinhasEmpresas, type Coluna } from './useMinhasEmpresas';
 import { JanelaDaCompetencia } from './partes/JanelaDaCompetencia';
 import { TransferenciasPendentes } from '../cadastro/responsaveis/TransferenciasPendentes';
+import { EtapasParadas } from './partes/EtapasParadas';
+import { JanelaDeMinhasEmpresas } from './partes/JanelaDeMinhasEmpresas';
+import { ConfiguracoesContabil } from '../contabil/configuracoes/ConfiguracoesContabil';
 
 
 /** A cor e o ícone de cada situação no número (os tons do painel do DP). */
@@ -32,6 +35,8 @@ function Titulo({ vm, coluna, rotulo }: { vm: ReturnType<typeof useMinhasEmpresa
 export function MinhasEmpresas() {
   const vm = useMinhasEmpresas();
   const campoBusca = useRef<HTMLInputElement>(null);
+  // as Justificativas e as Configurações, em janela pelos botões da barra (28/10/2026)
+  const [janela, setJanela] = useState<'justificativas' | 'configuracoes' | null>(null);
   useCarregando(vm.carregando);
   // as linhas chegam em cascata quando o banco responde
   // tela com muitas caixas (Vitor, 01/10/2026: "tudo que tiver muita box pode reduzir"): a lista inteira só acende rápido
@@ -65,6 +70,9 @@ export function MinhasEmpresas() {
         {vm.podeVerTodas && <Segmentado valor={vm.escopo} onMudar={vm.setEscopo} opcoes={[{ valor: 'minhas', rotulo: 'Minhas' }, { valor: 'todas', rotulo: 'Todas' }]} />}
 
         <span className="tarefas-barra-espaco" />
+
+        <button type="button" className="icon-btn" title="Justificativas: as etapas paradas, com o motivo" aria-label="Justificativas" onClick={() => setJanela('justificativas')}><Icone nome="clock" /></button>
+        {vm.departamento === 'contabil' && <button type="button" className="icon-btn" title="Configurações: os históricos do Creditor" aria-label="Configurações" onClick={() => setJanela('configuracoes')}><Icone nome="settings" /></button>}
 
         <label className="busca-curta">
           <Icone nome="search" />
@@ -134,7 +142,8 @@ export function MinhasEmpresas() {
           {vm.total > LIMITE && <p className="hint" style={{ padding: '8px 16px' }}>Mostrando {LIMITE} de {vm.total}. Use a busca ou a situação.</p>}
         </div>
       )}
-      {/* as etapas paradas e os históricos do Creditor foram para Justificativas e Configurações, no menu de cima (28/10/2026) */}
+      {janela === 'justificativas' && <JanelaDeMinhasEmpresas titulo="Justificativas" icone="clock" fechar={() => setJanela(null)}><EtapasParadas dep={vm.departamento} /></JanelaDeMinhasEmpresas>}
+      {janela === 'configuracoes' && <JanelaDeMinhasEmpresas titulo="Configurações" icone="settings" fechar={() => setJanela(null)}><ConfiguracoesContabil /></JanelaDeMinhasEmpresas>}
     </section>
   );
 }
