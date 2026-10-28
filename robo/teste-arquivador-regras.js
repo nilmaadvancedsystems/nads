@@ -359,7 +359,7 @@ igual('o PDF do evento não usa o XML do original (o índice não guarda o nome 
 const OCR_CAIXA = 'Gerenciador CAI-XA\nGERENCIADOR\nCAIXA\nComprovante de Pagamento de Boleto\nVia Internet Banking CAIXA\nBanco Recebedor: CAIXA ECONÔMICA FEDERAL\nPagador Final / Efetivo\nCPF/CNPJ: 17.713.597/0001-14\nNome: POSTO DE COMBUSTIVEIS BERIZAL LT\nInstituição Emissora - Nome do Banco: BANCO COOPERATIVO DO BRASIL S.A.\nBeneficiário original / Cedente\nNome Fantasia: NILMA DIAS OLIVEIRA\nNome/Razão Social: NILMA DIAS OLIVEIRA\nCPF/CNP)I: 27.872.981/0001-13\nSacador Avalista\nNome/Razão Social: POSTO DE COMBUSTIVEIS BERIZAL LTDA ME\nCPF/CNPJ: 17.713.597/0001-14\nPagador Sacado\nNome/Razão Social: POSTO DE COMBUSTIVEIS BERIZAL LTDA ME\nCPF/CNPJ: 17.713.597/0001-14\nData do Vencimento: 10/02/2026\nData de Efetivação / Agendamento: 09/02/2026\nValor Nominal do Boleto: 1.400,00\nValor Calculado (R$): 1.400,00\nValor Pago (R$): 1.400,00\nCódigo da operação: 59884063245';
 const REL_BER = 'IMPORTAÇÃO\\0237 - POSTO DE COMBUSTIVEL BERIZAL LTDA - ME\\2026\\02\\Descompactado(s) com sucesso\\BOLETOS E COMPROVANTES FEVEREIRO.rar\\';
 d = d28({ nome: 'Imagem (10).jpg', rel: REL_BER + 'Imagem (10).jpg', texto: [OCR_CAIXA], ocr: { confianca: 88 } });
-igual('imagem do comprovante (OCR): cliente pelo CNPJ do pagador, "DD-MM-AAAA BENEFICIÁRIO R$ VALOR.jpg", mês da efetivação', destino(d).concat(d.confianca), ['ARQUIVAR', null, '237 - POSTO DE COMBUSTIVEIS BERIZAL LTDA\\CONTÁBIL\\PAGAMENTOS DE FORNECEDORES\\HONORÁRIOS CONTÁBEIS\\2026', '02-2026 - HONORÁRIOS R$ 1.400,00.jpg', 0.9]);
+igual('imagem do comprovante (OCR): cliente pelo CNPJ do pagador, "DD-MM-AAAA BENEFICIÁRIO R$ VALOR.jpg", mês da efetivação', destino(d).concat(d.confianca), ['ARQUIVAR', null, '237 - POSTO DE COMBUSTIVEIS BERIZAL LTDA\\CONTÁBIL\\PAGAMENTOS DE FORNECEDORES\\2026\\02\\NILMA DIAS OLIVEIRA', '09-02-2026 NILMA DIAS OLIVEIRA R$ 1.400,00.jpg', 0.9]);
 d = d28({ nome: 'Imagem (11).jpg', rel: REL_BER + 'Imagem (11).jpg', texto: [OCR_CAIXA.replace(/Nome Fantasia: NILMA DIAS OLIVEIRA\nNome\/Razão Social: NILMA DIAS OLIVEIRA\n/, '')], ocr: { confianca: 88 } });
 igual('... sem o beneficiário lido: VOCABULARIO_AUSENTE', [d.acao, d.motivo], ['NAO_IDENTIFICADO', 'VOCABULARIO_AUSENTE']);
 d = d28({ nome: 'Imagem (13).jpg', rel: REL_BER + 'Imagem (13).jpg', texto: ['RECIBO DO PAGADOR SICOOB 756-0\nBeneficiário MAXTELL FIBRA LTDA Vencimento 10/02/2026\nPagador: POSTO BERIZAL CPF/CNPJ: 17.713.597/0001-14\nFicha de Compensação'], ocr: { confianca: 73 } });
@@ -706,7 +706,9 @@ igual('a agência e a conta no nome do arquivo ("Entradas_Saidas_ag3155cc990348_
   const cadH = R.montarCadastro([{ codigo: 506, razao: 'FAST EMPREENDIMENTOS AERONAUTICO LTDA', doc: '50.899.177/0001-40', regime: 'Presumido' }], ['506 - FAST EMPREENDIMENTOS AERONAUTICO LTDA']);
   cadH.mapaMigracao = MIG.carregar({});
   const dH = R.decidir({ nome: '20-04-2026 NILMA CONTADORA NF3368 FAST R$680,00.pdf', rel: 'FERNANDO\\506 FAST EMPREENDIMENTOS AERONAUTICO\\2026\\04.2026\\Comprovantes e pagtos\\20-04-2026 NILMA CONTADORA NF3368 FAST R$680,00.pdf', texto: ['qualquer coisa'] }, { cadastro: cadH, hoje: new Date(2026, 9, 28) });
-  igual('honorários da NILMA CONTADORA pelo nome do pagamento: HONORÁRIOS CONTÁBEIS\\2026, "04-2026 - HONORÁRIOS R$ 680,00.pdf"', [dH.acao, dH.destinoRelativo, dH.nomeFinal], ['ARQUIVAR', '506 - FAST EMPREENDIMENTOS AERONAUTICO LTDA\\CONTÁBIL\\PAGAMENTOS DE FORNECEDORES\\HONORÁRIOS CONTÁBEIS\\2026', '04-2026 - HONORÁRIOS R$ 680,00.pdf']);
+  igual('comprovante de honorários pelo nome (sem BOLETO/FATURA): a regra normal, PAGAMENTOS DE FORNECEDORES\\ANO\\MÊS\\<beneficiário> (Vitor, 28/10/2026: "apenas os boletos")', [dH.acao, dH.destinoRelativo], ['ARQUIVAR', '506 - FAST EMPREENDIMENTOS AERONAUTICO LTDA\\CONTÁBIL\\PAGAMENTOS DE FORNECEDORES\\2026\\04\\NILMA CONTADORA']);
+  const dHb = R.decidir({ nome: 'BOLETO NILMA CONT NF2497 BOA VISTAII MG R$600,00.pdf', rel: 'FERNANDO\\506 FAST EMPREENDIMENTOS AERONAUTICO\\2026\\04.2026\\Comprovantes e pagtos\\BOLETO NILMA CONT NF2497 BOA VISTAII MG R$600,00.pdf', texto: ['qualquer coisa'] }, { cadastro: cadH, hoje: new Date(2026, 9, 28) });
+  igual('o BOLETO de honorários pelo nome: HONORÁRIOS CONTÁBEIS\\ANO, "MM-AAAA - HONORÁRIOS R$ VALOR.pdf"', [dHb.acao, dHb.destinoRelativo, dHb.nomeFinal], ['ARQUIVAR', '506 - FAST EMPREENDIMENTOS AERONAUTICO LTDA\\CONTÁBIL\\PAGAMENTOS DE FORNECEDORES\\HONORÁRIOS CONTÁBEIS\\2026', '04-2026 - HONORÁRIOS R$ 600,00.pdf']);
 }
 // ---------- 20. o lote 6 e as decisões do Vitor de 28/10/2026: pelo nome e pela pasta, quando o conteúdo não decide ----------
 {
@@ -736,6 +738,20 @@ igual('a agência e a conta no nome do arquivo ("Entradas_Saidas_ag3155cc990348_
   igual('NFS-e da Prefeitura de São Paulo (Loggi): o número e a data no bloco depois dos rótulos', (x => [x.numero, x.emissao])(R.REGRAS_PDF.find(r => r.tipo === 'NFS-e PDF').campos(R.norm(LOGGI))), ['156579', '16-02-2026']);
 }
 
+// as respostas do Vitor (28/10/2026, 2ª leva)
+{
+  const c21 = R.montarCadastro([
+    { codigo: 411, razao: 'MINAS FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA', doc: '37.405.977/0001-07', regime: 'Presumido' },
+    { codigo: 413, razao: 'BRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA', doc: '33.117.361/0001-71', regime: 'Real' },
+    { codigo: 279, razao: 'ALMEIDA & SOUZA PRODUTOS ALIMENTICIOS LTDA', doc: '11.222.333/0001-81', regime: 'Simples' },
+  ], ['411 - MINAS FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA', '413 - BRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA', '279 - ALMEIDA & SOUZA PRODUTOS ALIMENTICIOS LTDA']);
+  c21.mapaMigracao = MIG.carregar({});
+  const d21 = (nome, rel, e) => R.decidir(Object.assign({ nome, rel: rel + nome, texto: ['texto sem titulo conhecido'] }, e || {}), { cadastro: c21, hoje: new Date(2026, 9, 28) });
+  igual('a NFS-e de honorários não vai para HONORÁRIOS CONTÁBEIS (Vitor, 28/10/2026: só o boleto)', /HONORÁRIOS CONTÁBEIS/.test(d21('NFSE 2504 NILMA CONTADORA MINAS R$600,00.pdf', 'FERNANDO\\411 MINAS FORESTRY\\2025\\01.2025\\Comprovantes e NFs\\').destinoRelativo || ''), false);
+  igual('Fazenda Renascer sem ano no nome, na pasta e no texto: VENDA DE ATIVOS\\2021\\FAZENDA RENASCER, raiz 2021', (x => [x.destinoRelativo, x.anoRaiz])(d21('MATRICULA - 4532 $ 2.796.138,68.pdf', 'FERNANDO\\413 BRAZILIAN filiais 414.  418. 453\\Documentos da Faz. Renascer\\Renascer Siderpa\\')), ['413 - BRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA\\CONTÁBIL\\VENDA DE ATIVOS\\2021\\FAZENDA RENASCER', 2021]);
+  igual('faturamento em PDF: CONTÁBIL\\RELATÓRIOS ALTERDATA, nome original', d21('FATURAMENTO - MARCOS 21 e 22 - 02.pdf', '0279 - ALMEIDA & SOUZA PRODUTOS ALIMENTICIOS LTDA - ME\\OUTROS\\2022\\').destinoRelativo, '279 - ALMEIDA & SOUZA PRODUTOS ALIMENTICIOS LTDA\\CONTÁBIL\\RELATÓRIOS ALTERDATA');
+  igual('o cartão CNPJ no meio de outro documento (o contrato da Junta) não faz dele cartão CNPJ', R.REGRAS_PDF.find(x => x.re.test(R.norm('CONTRATO SOCIAL\n' + 'CLAUSULA\n'.repeat(120) + 'COMPROVANTE DE INSCRICAO E DE SITUACAO CADASTRAL'))).tipo !== 'CARTAO CNPJ', true);
+}
 // ---------- 11. PRODUCAO de verdade, numa pasta temporária (nunca no Drive) ----------
 (async () => {
   const sb = fs.mkdtempSync(path.join(os.tmpdir(), 'teste-arqnovo-prod-'));
@@ -774,7 +790,7 @@ igual('a agência e a conta no nome do arquivo ("Entradas_Saidas_ag3155cc990348_
     linhas.forEach((l, i) => g.fillText(l, 40, 70 + i * 60));
     const ent = await A.montarEntrada('Imagem (10).png', REL_BER + 'Imagem (10).png', cv.toBuffer('image/png'));
     const di = R.decidir(ent, { cadastro: cad28, hoje: new Date(2026, 9, 27) });
-    igual('imagem PNG lida pelo Tesseract: o comprovante vai para PAGAMENTOS DE FORNECEDORES com o nome montado', [di.acao, di.destinoRelativo, di.nomeFinal], ['ARQUIVAR', '237 - POSTO DE COMBUSTIVEIS BERIZAL LTDA\\CONTÁBIL\\PAGAMENTOS DE FORNECEDORES\\HONORÁRIOS CONTÁBEIS\\2026', '02-2026 - HONORÁRIOS R$ 1.400,00.png']);
+    igual('imagem PNG lida pelo Tesseract: o comprovante vai para PAGAMENTOS DE FORNECEDORES com o nome montado', [di.acao, di.destinoRelativo, di.nomeFinal], ['ARQUIVAR', '237 - POSTO DE COMBUSTIVEIS BERIZAL LTDA\\CONTÁBIL\\PAGAMENTOS DE FORNECEDORES\\2026\\02\\NILMA DIAS OLIVEIRA', '09-02-2026 NILMA DIAS OLIVEIRA R$ 1.400,00.png']);
   } finally { await A.encerrarOcr(); }
   console.log((falhas ? falhas + ' FALHA(S) em ' : 'ok: ') + total + ' testes');
   process.exit(falhas ? 1 : 0);
