@@ -18,8 +18,7 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
   // as páginas que a pessoa vê
   const a = aplicacoesDe(op).find(x => x.id === app) ?? aplicacao(app);
   // o Cadastro também com a barra lateral (14/10/2026: "cadê a barra?"), como os outros módulos; as abas no alto não voltam
-  // Minhas empresas com as páginas no menu de cima (Empresas, Justificativas, Configurações; Vitor, 28/10/2026)
-  const comAbas = app === 'minhas-empresas';
+  const comAbas = false;
   const pessoal = usePessoal();
   const acesso = useAcesso();
   // o modo desenvolvedor (no avatar): só ver, sem alterar (Vitor, 06/10/2026)

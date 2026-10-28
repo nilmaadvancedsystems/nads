@@ -36,10 +36,8 @@ export const APLICACOES: readonly Aplicacao[] = [
     // uma tela só, sem a barra lateral (27/10/2026: "coloque paradas e configuracoes tudo em uma so tela aqui nesse
     // inicial, remove a barra lateral"): a lista, as etapas paradas e os históricos do Creditor. Os Insights saíram
     { id: 'empresas', rotulo: 'Empresas', icone: 'list', titulo: 'Minhas empresas' },
-    // o menu de cima (Vitor, 28/10/2026: "coloque um menu superior (Empresas/Justificativas/Configurações)"): as etapas
-    // paradas com o motivo e os históricos do Creditor saem de baixo da lista e ganham página própria
-    { id: 'justificativas', rotulo: 'Justificativas', icone: 'clock', titulo: 'Justificativas' },
-    { id: 'configuracoes', rotulo: 'Configurações', icone: 'settings', titulo: 'Configurações' },
+    // as Justificativas e as Configurações abrem em janela, pelos botões da barra da lista (Vitor, 28/10/2026: "remover esse
+    // menu superior e colocar uns ícones de botões de justificativas e configurações aparecer uma popup")
   ] },
   // o Contábil saiu da gaveta (27/10/2026): a Visão geral foi removida e as Paradas e as Configurações foram para
   // Minhas empresas; os links antigos (/tarefas/contabil/...) caem lá
