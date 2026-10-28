@@ -126,6 +126,22 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
               <div className="card-head"><h3>Situação do mês</h3></div>
               <RoscaComLegenda fatias={ORDEM_DASH.map(s => ({ id: s, rotulo: ROTULO_DASH[s], valor: vm.dash.contagem[s], tom: TOM_DASH[s] }))}
                 total={vm.numeros[0].valor} subtitulo="clientes" ativa={null} onEscolher={() => undefined} />
+              {/* na mesma caixa (Vitor, 28/10/2026: "aprimore, mas sem criar outra box"): o quanto do mês já foi, só de quem tem movimento */}
+              {(() => {
+                const k = vm.dash.contagem;
+                const comMovimento = k.atrasada + k.pendente + k.feita;
+                const pct = comMovimento ? Math.round((k.feita / comMovimento) * 100) : 0;
+                return (
+                  <div className="dp-situacao-andamento">
+                    <span className="dp-pessoa-topo"><b>Andamento do mês</b><span className="num">{pct}%</span></span>
+                    <span className="dp-pessoa-barra"><span style={{ width: pct + '%' }} /></span>
+                    <span className="hint">
+                      {k.feita} de {comMovimento} {comMovimento === 1 ? 'cliente com movimento concluído' : 'clientes com movimento concluídos'}
+                      {k.atrasada ? ' · ' + k.atrasada + (k.atrasada === 1 ? ' atrasado' : ' atrasados') : ' · nenhum atrasado'}
+                    </span>
+                  </div>
+                );
+              })()}
             </section>
             <section className="card dp-progresso">
               <h3 className="dp-titulo">Progresso por responsável</h3>
@@ -176,12 +192,12 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
                 <table className="dp-tabela">
                   <thead>
                     <tr className="dp-cabeca-grupo">
-                      <th colSpan={4} />
+                      <th colSpan={3} />
                       {vm.gruposDeColunas.map(g => <th key={g.rotulo} colSpan={g.colunas} className="dp-ob-grupo dp-ob-primeira">{g.rotulo}</th>)}
                       <th />
                     </tr>
                     <tr>
-                      <th>Cód.</th><th>Cliente</th><th>Responsável</th><th className="num" title="O total da folha do mês (o Fiscal vê ao lado do faturamento)">Folha do mês</th>
+                      <th>Cód.</th><th>Cliente</th><th className="num" title="O total da folha do mês (o Fiscal vê ao lado do faturamento)">Folha do mês</th>
                       {vm.colunas.map(o => <th key={o.id} className={'dp-ob' + (vm.primeiras.has(o.id) ? ' dp-ob-primeira' : '')} title={o.nome}>{o.rotulo}</th>)}
                       <th className="dp-onde">Onde</th>
                       <th>Situação</th>
@@ -190,12 +206,14 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
                   <tbody>
                     {vm.grupos.map(g => (
                       <Fragment key={g.nome || 'todos'}>
-                        {g.nome && <tr className="dp-grupo"><td colSpan={5 + vm.colunas.length}>{g.nome} <span className="hint">{g.feitas}/{g.linhas.length} concluídos</span></td></tr>}
+                        {g.nome && <tr className="dp-grupo"><td colSpan={4 + vm.colunas.length}>{g.nome} <span className="hint">{g.feitas}/{g.linhas.length} concluídos</span></td></tr>}
                         {g.linhas.map(c => (
                           <tr key={c.chave} className={'dp-linha' + (c.concluida ? ' feita' : '')}>
                             <td className="num fraco">{c.codigo}</td>
-                            <td className="dp-cliente"><span className="dp-cliente-nome" title={c.nomeNaTela}>{c.nomeNaTela}</span></td>
-                            <td>{c.responsavel ? c.responsavelNome : <span className="fraco">—</span>}</td>
+                            <td className="dp-cliente dp-cliente-inteiro">
+                              <span className="dp-cliente-nome">{c.nomeNaTela}</span>
+                              <span className="dp-cliente-info">{c.responsavel ? c.responsavelNome : 'Sem responsável'}</span>
+                            </td>
                             <td className="num">{c.obrigacoes.some(o => o.id === 'folha' && o.estado !== 'nao-tem')
                               ? <FolhaNaLinha valor={vm.folhaDe(c.codigo)} informar={v => vm.informarFolha(c.codigo, v)} travado={vm.carregando} />
                               : <span className="fraco">—</span>}</td>

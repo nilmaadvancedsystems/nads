@@ -10,7 +10,7 @@ import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { competenciasDoDp, guardarCompetenciaDoDp } from '../../casca/navegacao';
 import { useOperador, type Operador } from '../../casca/operador';
-import { useCategoriasDp, useExecucoes, useRepo } from '../../dados/repo';
+import { useAcesso, useCategoriasDp, useExecucoes, useRepo } from '../../dados/repo';
 import { useClientesDoDp } from './useClientesDoDp';
 
 /** Como cada obrigação está no mês: não tem, a fazer, feita, parada. */
@@ -98,6 +98,13 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
   // o que o dashboard do Resumo escolheu para a lista: uma situação (a rosca) ou uma parte da rotina (a barra), nunca as duas
   const [situacaoEscolhida, setSituacaoEscolhida] = useState<SituacaoDoDash | null>(null);
   const [parteEscolhida, setParteEscolhida] = useState<ParteDoDp | null>(null);
+  // a equipe do cadastro: no Progresso por responsável, só quem é do DP (e o "Sem responsável"); quem está no cadastro com
+  // outro departamento sai (Vitor, 28/10/2026: "remove desse relatório"). Sem a equipe carregada, todos aparecem.
+  const equipe = useAcesso().equipe();
+  const primeiroNome = (n: string) => n.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim().split(/[\s.]+/)[0] || '';
+  const foraDoDp = new Set(equipe.carregada ? equipe.lista.filter(u => u.departamento && u.departamento !== 'dp').map(u => primeiroNome(u.nome)) : []);
+  const doDpTambem = new Set(equipe.carregada ? equipe.lista.filter(u => u.departamento === 'dp').map(u => primeiroNome(u.nome)) : []);
+  const noProgresso = (nome: string) => nome === SEM_RESPONSAVEL || doDpTambem.has(primeiroNome(nome)) || !foraDoDp.has(primeiroNome(nome));
 
   // os clientes como valem hoje (a planilha com o que mudou no Cadastro e nas Configurações do DP)
   const todas = doDp.clientes.map(c => {
@@ -281,7 +288,7 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
       const deles = filtradas.filter(c => c.responsavelNome === r);
       const feitos = deles.filter(c => c.concluida).length;
       return { nome: r, total: deles.length, feitos, pct: deles.length ? Math.round((feitos / deles.length) * 100) : 0, parados: deles.filter(c => c.parada).length };
-    }).filter(r => r.total > 0),
+    }).filter(r => r.total > 0 && noProgresso(r.nome)),
     colunas: ordem.map(id => coluna[id]).filter(o => !parte || parte.obrigacoes.includes(o.id)),
     grupos: agrupar === 'nenhum'
       ? [{ nome: '', linhas: linhasDaParte, feitas: 0 }]
