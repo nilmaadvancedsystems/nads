@@ -20,6 +20,7 @@ import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import { Buffer } from 'node:buffer';
 import path from 'node:path';
+import { pegarAVez } from './publicacao.mjs';
 
 const raiz = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..');
 const web = path.join(raiz, 'apps', 'web');
@@ -94,6 +95,9 @@ if (soExemplos && !canal) {
   console.error('sites: --exemplos só com --canal (o site no ar do ' + ids.join(', ') + ' não pode perder o banco).');
   process.exit(1);
 }
+
+// no ar, uma conversa de cada vez e só do que está no servidor (scripts/publicacao.mjs; 28/10/2026); a prévia (canal) não precisa
+if (!canal) await pegarAVez();
 
 const pagina = (arquivo, trocas) => Object.entries(trocas).reduce((t, [a, b]) => t.split(a).join(b), fs.readFileSync(path.join(web, 'sites', arquivo), 'utf8'));
 
