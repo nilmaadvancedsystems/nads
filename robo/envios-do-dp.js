@@ -93,6 +93,17 @@ function escolhidos(lista, pedidos) {
   return ids.size ? lista.filter(a => ids.has(a.i)) : lista.slice();
 }
 
+// Para quem vai: o e-mail do Cadastro do nads (cadastro/{empresa}.contato.email; com mais de um documento do mesmo código,
+// o primeiro que tiver), senão os do Entregas (clientes: email + emails). Em minúsculas, sem repetir.
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+function paraQuem(cadastrosDoNads, clienteDoEntregas) {
+  const limpo = e => String(e || '').trim().toLowerCase();
+  const doNads = (cadastrosDoNads || []).map(c => limpo(c && c.contato && c.contato.email)).find(e => EMAIL.test(e));
+  if (doNads) return [doNads];
+  const c = clienteDoEntregas || {};
+  return [...new Set([c.email].concat(Array.isArray(c.emails) ? c.emails : []).map(limpo).filter(e => EMAIL.test(e)))];
+}
+
 // "2026-10" -> "outubro de 2026"
 function mesPorExtenso(comp) {
   return MESES[Number(comp.slice(5, 7)) - 1] + ' de ' + comp.slice(0, 4);
@@ -172,7 +183,10 @@ async function atenderEnvioDp(p, ctx) {
   let cliente = null;
   ativos.forEach(d => { if (!cliente && String(d.data().codigoOrigem || '').trim() === codigo) cliente = d.data(); });
   if (!cliente) throw new Error('o cliente ' + codigo + ' não está no cadastro (ou está inativo)');
-  const para = [...new Set([cliente.email].concat(Array.isArray(cliente.emails) ? cliente.emails : []).filter(Boolean).map(e => String(e).trim().toLowerCase()))];
+  // o e-mail do Cadastro do nads manda (28/10/2026: "quando eu altero no cadastro da empresa o gmail não altera lá no
+  // envios"), como o regime; o do Entregas só quando o nads não tem
+  const doNads = (await db.collection('cadastro').where('codigo', '==', Number(codigo)).limit(2).get()).docs.map(d => d.data());
+  const para = paraQuem(doNads, cliente);
   if (!para.length) throw new Error('o cliente não tem e-mail no cadastro');
   if (!dentroDoLimite()) throw new Error('limite de ' + MAX_ENVIOS_POR_HORA + ' envios do DP por hora atingido; tente mais tarde');
 
@@ -199,5 +213,5 @@ async function atenderEnvioDp(p, ctx) {
 module.exports = {
   gravarArquivosDoDp, atenderEnvioDp,
   // puras, pro teste
-  competenciaDoDp, arquivosDoDpNaPasta, escolhidos, mesPorExtenso, mesesRecentes, mesAnterior, mensagemDoEnvio, MODELO_PADRAO, COLECAO,
+  competenciaDoDp, arquivosDoDpNaPasta, escolhidos, paraQuem, mesPorExtenso, mesesRecentes, mesAnterior, mensagemDoEnvio, MODELO_PADRAO, COLECAO,
 };
