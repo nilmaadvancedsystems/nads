@@ -19,6 +19,6 @@ export function useDepartamentoDaTela() {
     comDep: (url: string) => (outro ? url + (url.includes('?') ? '&' : '?') + 'dep=' + dep : url),
     /** a lista para onde voltar: o DP, ou Minhas empresas (no Fiscal de quem é de outro setor, com ?dep=fiscal; as
      * Empresas do módulo Fiscal saíram em 27/10/2026). Já vem com o "?": acrescente os outros com "&". */
-    lista: outro && dep === 'dp' ? caminhoDaPagina('dp', 'resumo') + '?' : caminhoDaPagina('minhas-empresas', 'empresas') + (outro ? '?dep=' + dep + '&' : '?'),
+    lista: outro && dep === 'dp' ? caminhoDaPagina('dp', 'obrigacoes') + '?' : caminhoDaPagina('minhas-empresas', 'empresas') + (outro ? '?dep=' + dep + '&' : '?'),
   };
 }

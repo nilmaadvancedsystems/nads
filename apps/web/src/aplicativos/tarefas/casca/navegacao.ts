@@ -71,8 +71,9 @@ export const APLICACOES: readonly Aplicacao[] = [
   { id: 'dp', nome: 'Departamento Pessoal', icone: 'usuario', grupo: 'Rotinas', pronta: true, paginas: [
     // tudo no tabelão (Vitor, 06/10/2026: "sem a parte de checklist"); as páginas na barra lateral ("eu ainda quero uma
     // barra lateral"); em Obrigações, uma tabela só, com as colunas agrupadas (Folha, eSocial, Guias, REINF, Entrega)
+    // as Obrigações viram o Início, a primeira página: o DP já abre nela (Vitor, 28/10/2026)
+    { id: 'obrigacoes', rotulo: 'Início', icone: 'home', titulo: 'Início' },
     { id: 'resumo', rotulo: 'Resumo', icone: 'painel', titulo: 'Resumo do mês' },
-    { id: 'obrigacoes', rotulo: 'Obrigações', icone: 'checklist', titulo: 'Obrigações do mês' },
     // a Visão geral saiu do DP (Vitor, 28/10/2026: "remove essa aba"); o link antigo cai no Resumo
     // a guia do FGTS Digital pelo robô da nuvem, com o certificado do escritório (Vitor, 07/10/2026)
     { id: 'fgts', rotulo: 'FGTS Digital', icone: 'fileDown', titulo: 'FGTS Digital', marca: 'fgts' },

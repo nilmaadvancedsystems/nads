@@ -3145,6 +3145,9 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 .dp-pessoa-barra{height:6px;border-radius:3px;background:var(--hover-bg);overflow:hidden;}
 .dp-pessoa-barra span{display:block;height:100%;border-radius:3px;background:var(--success);}
 .dp-pessoa .hint{margin:0;font-size:var(--fs-12);}
+/* o andamento do mês dentro da Situação do mês (28/10/2026): na mesma caixa, separado da rosca só por uma linha */
+.dp-situacao-andamento{display:flex;flex-direction:column;gap:6px;margin-top:auto;padding:12px 16px 16px;border-top:1px solid var(--border);}
+.dp-situacao-andamento .hint{margin:0;font-size:var(--fs-12);}
 .dp-lista{padding:0;overflow:hidden;}
 .dp-lista-topo{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
 .dp-lista-topo .dp-titulo{margin:0;}
@@ -3340,6 +3343,9 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .dp-tabela td,.dp-tabela th{padding-left:8px;padding-right:8px;}
 .dp-tabela .badge{font-size:var(--fs-11);padding:1px 7px;}
 .dp-tabela .dp-cliente-nome{max-width:205px;}
+/* Obrigações do DP: o nome inteiro, sem o "…" (Vitor, 28/10/2026), e o responsável embaixo, discreto */
+.dp-tabela .dp-cliente-inteiro{min-width:240px;}
+.dp-tabela .dp-cliente-inteiro .dp-cliente-nome{max-width:none;white-space:normal;overflow:visible;text-overflow:clip;}
 .cofre-dev{margin:0 0 10px;color:var(--warn);font-size:var(--fs-13);}
 /* Senhas › Contas gov.br: a prévia da importação da planilha */
 .cofre-previa{margin:0 0 16px;padding:0;overflow:hidden;}
