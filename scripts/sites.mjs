@@ -105,7 +105,9 @@ for (const id of ids) {
   const s = SITES[id];
   // a pasta que o site publica (firebase.json); a prévia de outro aplicativo no mesmo site usa a pasta dele
   const saida = path.join(web, 'dist-sites', s.pasta || id);
-  // as peças (assets/) das versões anteriores ficam no site por 30 dias: uma aba aberta antes da publicação pede os
+  // as peças (assets/) das versões anteriores ficam no site por 15 dias (eram 30; Vitor, 28/10/2026: "pode reduzir as
+  // versões antigas, de 15 dias para trás" — cada publicação do Tarefas tinha ~950 MB de peças antigas e o espaço do
+  // Firebase encheu): uma aba aberta antes da publicação pede os
   // pedaços da versão dela (o leitor de PDF, por exemplo) e, sem eles, dava "Failed to fetch dynamically imported
   // module" (Vitor, 01/10/2026). Guardadas em dist-sites/.assets-<site>, com a data de quando saíram pela 1ª vez.
   // na pasta principal, mesmo publicando de uma cópia; antes de gerar, as peças do que está no ar entram também (de onde
@@ -188,10 +190,10 @@ function guardarPecas(de, para) {
     if (!fs.existsSync(destino)) { try { fs.copyFileSync(de + path.sep + f, destino); } catch (e) { if (e.code !== 'ENOENT') throw e; } }
   }
 }
-/** Põe de volta as peças antigas que a versão nova não tem; as de mais de 30 dias saem de vez. */
+/** Põe de volta as peças antigas que a versão nova não tem; as de mais de 15 dias saem de vez. */
 function devolverPecas(de, para) {
   if (!fs.existsSync(de)) return;
-  const limite = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const limite = Date.now() - 15 * 24 * 60 * 60 * 1000;
   let devolvidas = 0;
   for (const f of fs.readdirSync(de)) {
     const origem = path.join(de, f);
