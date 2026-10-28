@@ -778,6 +778,18 @@ igual('a agência e a conta no nome do arquivo ("Entradas_Saidas_ag3155cc990348_
   const d1 = R.decidir({ nome: '00009250001-CLIENTE X.pdf', rel: 'IMPORTAÇÃO\\00009250001-CLIENTE X.pdf', texto: [NF23('9250')] }, x23);
   igual('PDF com 3 notas: o mesmo destino da 1ª nota sozinha, nome original; sem a 1ª decidida, continua na origem (Vitor, 28/10/2026)', [dc.acao === (d1.acao === 'ARQUIVAR' ? 'ARQUIVAR' : 'FICA'), dc.acao !== 'ARQUIVAR' || (dc.nomeFinal === '00009250001-CLIENTE X.pdf' && dc.destinoRelativo === d1.destinoRelativo)], [true, true]);
 }
+// a aplicação do BB da 174 ARMARINHO na pasta da 55 (28/10/2026, texto real): APLICAÇÕES\BANCO DO BRASIL pela conta do cadastro
+{
+  const j24 = CAD19.juntar({ entregas: [
+    { codigoOrigem: '55', nome: 'TORRA TORRA LTDA', documento: '03.238.183/0001-76', enquadramento: 'Simples' },
+    { codigoOrigem: '174', nome: 'ARMARINHO E PAPELARIA TAIOBEIRAS LTDA', documento: '11.360.291/0001-45', enquadramento: 'Simples', contasBancarias: [{ banco: 'bb', agencia: '2705-7', conta: '24915-7', origem: 'drive' }] },
+  ] });
+  const c24 = R.montarCadastro(j24.linhas, ['55 - TORRA TORRA LTDA', '174 - ARMARINHO E PAPELARIA TAIOBEIRAS LTDA']);
+  c24.mapaMigracao = MIG.carregar({});
+  const T24 = "Resumo do mês - Julho/2024\nSaldo bruto em 28/06/2024R$ 90.739,91\nAplicações no mês:R$ 115.796,77\nResgates líquidos no mês:R$ 104.004,73\nIR sobre resgates no mês:R$ 16,86\nIOF sobre resgates no mês:R$ 8,44\nRendimentos no mês:R$ 87,05\nSaldo bruto em 31/07/2024:R$ 102.593,70\nHistórico de movimentação\nDataHistóricoCapitalRendimento*IRIOFValor Líquido\n28/06/2024Saldo AnteriorR$ 90.698,93R$ 40,98R$ 0,00R$ 0,00R$ 0,00\n01/07/2024ResgateR$ 674,34R$ 0,47R$ 0,09R$ 0,06R$ 674,66\n01/07/2024ResgateR$ 35.820,51R$ 23,92R$ 4,52R$ 3,82R$ 35.836,09\n02/07/2024ResgateR$ 204,30R$ 0,14R$ 0,02R$ 0,01R$ 204,41\n03/07/2024AplicaçãoR$ 984,20R$ 0,00R$ 0,00R$ 0,00R$ 984,20\n04/07/2024AplicaçãoR$ 358,40R$ 0,00R$ 0,00R$ 0,00\n\n15/07/2024ResgateR$ 2.432,83R$ 2,58R$ 0,58R$ 0,00R$ 2.434,83\n16/07/2024AplicaçãoR$ 75.431,14R$ 0,00R$ 0,00R$ 0,00R$ 75.431,14\n17/07/2024AplicaçãoR$ 16.920,73R$ 0,00R$ 0,00R$ 0,00R$ 16.920,73\nBB RENDE FÁCIL\nDados do Cliente\nAgência\n2705-7\nConta\n24915-7\nCliente\nARMARINHO E PAPELARIA TAIOBEIRAS\nLTDA-ME\nCNP";
+  const d24 = R.decidir({ nome: '0724.pdf', rel: '0055 - TORRA TORRA LTDA - ME\\EXTRATOS\\NILMA CONTABILIDADE 19.09.zip\\NILMA CONTABILIDADE 19.09\\ARMARINHO\\APLICACAO\\0724.pdf', texto: [T24] }, { cadastro: c24, hoje: new Date(2026, 9, 28) });
+  igual('aplicação do BB "RESUMO DO MES - JULHO/2024 / SALDO BRUTO EM" na pasta da 55: APLICAÇÕES\\BANCO DO BRASIL da 174 pela conta', [d24.acao, d24.destinoRelativo, d24.nomeFinal], ['ARQUIVAR', '174 - ARMARINHO E PAPELARIA TAIOBEIRAS LTDA\\CONTÁBIL\\EXTRATOS\\2024\\07\\APLICAÇÕES\\BANCO DO BRASIL', '07-2024.pdf']);
+}
 // ---------- 11. PRODUCAO de verdade, numa pasta temporária (nunca no Drive) ----------
 (async () => {
   const sb = fs.mkdtempSync(path.join(os.tmpdir(), 'teste-arqnovo-prod-'));
