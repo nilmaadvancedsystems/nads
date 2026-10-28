@@ -74,6 +74,8 @@ export function useEmpresa(rota: string) {
       id: e.id, n: i + 1, nome: e.nome, rotulo: ROTULO_ETAPA[s], cor: COR_ETAPA[s], atual: proxima?.id === e.id,
       por: est?.por || '', quando: est ? t.quandoFoi(est.em, agora) : '', quandoCompleto: est ? dataHora(est.em) : '',
       motivo: [motivo, est?.observacao].filter(Boolean).join(' — '),
+      /** parada (interrompida), com a justificativa: vai para a Visão geral (28/10/2026) */
+      parada: s === 'interrompida',
     };
   });
 
