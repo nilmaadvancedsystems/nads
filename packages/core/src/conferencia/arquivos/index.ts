@@ -3,6 +3,7 @@
 // classificarGrupo/lerBalancete (~L1585-1617), lerServicos (~L4275), vcLerRazao (~L3901).
 import * as XLSX from 'xlsx';
 import { comp, normExportado, num } from '../../formatos';
+import { credoraPelaNatureza, dinamicoPelaNatureza } from '../../formatos/sinalDoDinamico';
 import type { Conta, Grupo, Nota, NotaServico, TipoServico } from '../tipos';
 import type { LinhaRazao } from '../regras/verificarConta';
 
@@ -137,12 +138,15 @@ export function lerBalanceteDinamicoComoContas(rows: Linhas): { contas: Record<s
   const ultimo = [...meses].reverse().find(m => linhas.some(r => Math.abs(valor(r[m.i])) >= 0.005)) || meses[meses.length - 1];
   const m: Record<string, Conta> = {};
   let grupoAtual: Grupo | '' = '';
+  // o dinâmico pela natureza (Passivo e Receita com o credor positivo; Vitor, 28/10/2026): o sinal deles se troca
+  const classe = (r: readonly unknown[]) => (cCla >= 0 ? String(r[cCla] ?? '').trim() : '');
+  const pelaNatureza = cCla >= 0 && dinamicoPelaNatureza(linhas.map(r => ({ classificacao: classe(r), valores: meses.map(x => valor(r[x.i])) })));
   linhas.forEach((r, i) => {
     const codigo = String(r[cCod]).trim();
     const nome = String(r[cDes] ?? '').trim() || codigo;
-    const cla = cCla >= 0 ? String(r[cCla] ?? '').trim() : '';
+    const cla = classe(r);
     if (cla && !cla.includes('.')) { const g = classificarGrupo(nome); if (g) grupoAtual = g; }
-    const saldo = Math.round(valor(r[ultimo.i]) * 100) / 100;
+    const saldo = Math.round(valor(r[ultimo.i]) * (pelaNatureza && credoraPelaNatureza(cla) ? -1 : 1) * 100) / 100;
     const prox = linhas[i + 1];
     const sintetica = !!cla && !!prox && cCla >= 0 && String(prox[cCla] ?? '').trim().startsWith(cla + '.');
     m[codigo] = { codigo, nome: nome.slice(0, 70), valor: Math.abs(saldo), dc: saldo < 0 ? 'C' : 'D', grupo: grupoAtual || 'Outros', ordem: i, sintetica };

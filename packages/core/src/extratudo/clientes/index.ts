@@ -4,6 +4,7 @@
 // para o cliente responder. Os conferidos passam para o mês seguinte. TypeScript puro: quem chama guarda o estado.
 import * as XLSX from 'xlsx';
 import { normalizarTexto } from '../../formatos';
+import { credoraPelaNatureza, dinamicoPelaNatureza } from '../../formatos/sinalDoDinamico';
 import type { Conta } from '../../conferencia/tipos';
 import type { LadoDaConta, RazaoDaMarca } from './razao';
 import { baixasGuardadas, faltaDaNota, type BaixaAceita } from './sugestaoDeBaixa';
@@ -89,6 +90,14 @@ export function lerBalanceteDinamico(rows: readonly (readonly unknown[])[]): Bal
       saldoAnterior: cAnt >= 0 ? numero(r[cAnt]) : 0,
       saldos: Object.fromEntries(meses.map(m => [m.mes, numero(r[m.i])])),
     });
+  }
+  // o dinâmico pela natureza (Passivo e Receita com o credor positivo) volta para o de sempre: devedor +, credor −
+  if (dinamicoPelaNatureza(linhas.map(l => ({ classificacao: l.classificacao, valores: [l.saldoAnterior, ...Object.values(l.saldos)] })))) {
+    for (const l of linhas) {
+      if (!credoraPelaNatureza(l.classificacao)) continue;
+      l.saldoAnterior = -l.saldoAnterior || 0;
+      for (const m of Object.keys(l.saldos)) l.saldos[m] = -l.saldos[m] || 0;
+    }
   }
   return { meses: meses.map(m => m.mes), linhas };
 }
