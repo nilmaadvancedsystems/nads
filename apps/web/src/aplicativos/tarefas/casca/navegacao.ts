@@ -128,9 +128,9 @@ export const APLICACOES: readonly Aplicacao[] = [
   // as páginas do site do admin, as mesmas telas, aqui dentro (o link Admin da gaveta saiu)
   { id: 'cadastro', nome: 'Configurações', icone: 'settings', grupo: 'Escritório', pronta: true, paginas: [
     { id: 'empresas', rotulo: 'Empresas', icone: 'briefcase', titulo: 'Empresas', secao: 'Cadastro' },
-    // a organização nova (Vitor, 13/10/2026: "reveja a estrutura inteira do cadastro"): a Equipe (as pessoas e a proteção
-    // do login)
-    { id: 'usuarios', rotulo: 'Equipe', icone: 'usuario', titulo: 'Equipe', secao: 'Cadastro' },
+    // a organização nova (Vitor, 13/10/2026: "reveja a estrutura inteira do cadastro"): os Usuários (as pessoas e a proteção
+    // do login; era "Equipe" até 28/10/2026: "troque a palavra equipe p/ Usuários")
+    { id: 'usuarios', rotulo: 'Usuários', icone: 'usuario', titulo: 'Usuários', secao: 'Cadastro' },
     ...PAGINAS_DO_ADMIN.map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, titulo: p.titulo, secao: 'Admin', soAdmin: true })),
   ] },
   // a Área do Cliente (Vitor, 16/10/2026): o lado do escritório do site que o cliente abre pelo link secreto. Com o
