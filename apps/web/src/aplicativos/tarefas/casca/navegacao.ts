@@ -65,6 +65,9 @@ export const APLICACOES: readonly Aplicacao[] = [
     // tributos ("remove a tela de controle de tributos, e pegue os dados de lá"): os links antigos caem no Simples
     { id: 'relatorio-simples', rotulo: 'Relatório Simples', icone: 'painel', titulo: 'Relatório Simples' },
     { id: 'relatorio-presumido', rotulo: 'Relatório Presumido', icone: 'painel', titulo: 'Relatório Presumido' },
+    // as guias que nem toda empresa tem, fora do Relatório (28/10/2026: "arroz, parcelamento, não é toda empresa que tem")
+    { id: 'particularidades-simples', rotulo: 'Particularidades Simples', icone: 'fileSearch', titulo: 'Particularidades Simples' },
+    { id: 'particularidades-presumido', rotulo: 'Particularidades Presumido', icone: 'fileSearch', titulo: 'Particularidades Presumido' },
   ] },
   // o DP (Vitor, 06/10/2026: o Checklist Folha "seria a rotina do dp"): as empresas com a rotina do DP, o painel da
   // planilha (números, gráficos, o progresso por responsável e as obrigações de cada cliente), a visão e as paradas
