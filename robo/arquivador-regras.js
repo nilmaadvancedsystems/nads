@@ -874,7 +874,7 @@ const REGRAS_PDF = [
   { tipo: 'RELATORIO DE NOTAS', setor: 'FISCAL', re: /^[\s\S]{0,300}(NOTAS DE (ENTRADA|SAIDA) POR PERIODO|NOTAS FISCAIS (DE )?(SAIDA|ENTRADA|CONSUMIDOR ELETRONICA)|NOTAS FISCAIS (EMITIDAS|SINTETICO)|RELATORIO DE CUPOM|RELATORIO (MENSAL )?DE NOTAS (FISCAIS )?(EMITIDAS|RECEBIDAS)|NF-E, NFC-E E SAT \(RESUMO\)|RELATORIO DE COMPRAS|RELATORIO DE NOTAS DE COMPRA|^\s*MAPA RESUMO\s*\n\s*INTERVALO|\n\s*NFC?E\s*\n\s*MES:\s*\d{1,2}\s*ANO:\s*20\d{2})/, fonte: '05d §1 (Relatório Mensal de Notas Emitidas/Recebidas)',
     campos: u => ({ recebidas: /^[\s\S]{0,300}(NOTAS DE ENTRADA POR PERIODO|NOTAS FISCAIS (DE )?ENTRADA|NOTAS (FISCAIS )?RECEBIDAS|RELATORIO DE COMPRAS|RELATORIO DE NOTAS DE COMPRA)/.test(u), periodo: periodoEscrito(u) || periodoDoRelatorio(u) || periodoLivre(u.slice(0, 1500)) || periodoPelasDatas(u) }) },
   // ---- folha e societário (04b) ----
-  { tipo: 'CARTAO CNPJ', setor: 'FOLHA_SOCIETARIO', re: /COMPROVANTE DE INSCRICAO E DE SITUACAO\s+CADASTRAL/, fonte: '04b (Documentos Constitutivos)', campos: () => ({}) },
+  { tipo: 'CARTAO CNPJ', setor: 'FOLHA_SOCIETARIO', re: /^(?![\s\S]*JUNTA COMERCIAL[\s\S]{0,600}CERTIFICO (O )?(REGISTRO|ARQUIVAMENTO))[\s\S]{0,800}COMPROVANTE DE INSCRICAO E DE SITUACAO\s+CADASTRAL/, fonte: '04b (Documentos Constitutivos)', campos: () => ({}) },
   // a inscrição estadual (Vitor, 27/10/2026): SOCIETÁRIO\INSCRIÇÕES\, sem pasta de ano, nome original; o comprovante da SEFAZ/MG e a
   // consulta do Cadastro Centralizado de Contribuintes (SVRS); a raiz do ano é a da emissão (a data com a hora)
   { tipo: 'INSCRICAO ESTADUAL', setor: 'FOLHA_SOCIETARIO', re: /COMPROVANTE DE INSCRICAO ESTADUAL|INFORMACAO DA IE COMO DESTINATARIO|CADASTRO CENTRALIZADO DE CONTRIBUINTE/, fonte: 'inscrição estadual (Vitor, 27/10/2026)',
@@ -1157,6 +1157,8 @@ function decidir(entrada, ctx) {
 }
 // (a) as planilhas de controle sem ano no caminho: CONTÁBIL\RELATÓRIOS ALTERDATA\ ("aqui não vem o ano, então não precisa caminho")
 const PLANILHA_DE_CONTROLE = /^(MOVIMENTO (CONTABIL|BANCARIO)|PLANILHA DE FORNECEDOR|CALCULO (ICMS|SERVICOS?)|ST$|DISTRIBUICAO DE LUCROS|PORCENTAGEM|MODELO DFC|FA[RT]+URAMENTO\b|CONTROLE MENSAL)/;
+// o ano da compra da fazenda quando nem o nome, nem a pasta, nem o contrato dizem (Vitor, 28/10/2026: a Renascer, 2021)
+const ANO_DA_FAZENDA = { RENASCER: 2021 };
 const CONCESSIONARIA = /\b(CEMIG|COELBA|NEOENERGIA|COPASA|EMBASA|SAAE|ENERGISA|2W TELECOM|VIVO|CLARO)\b/;
 function pelaPastaENome(entrada, ctx, d) {
   const cad = ctx.cadastro;
@@ -1189,7 +1191,7 @@ function pelaPastaENome(entrada, ctx, d) {
   const faz = pastas.map(p => /^DOCUMENTOS DA FAZ(?:ENDA)?\.? ([A-Z][A-Z ]+?)(?:\.(?:RAR|ZIP|7Z))?$/.exec(p)).find(Boolean);
   if (faz) {
     const contrato = dataDe(/CONTRATO[\s\S]{0,400}?(\d{2})\/(\d{2})\/(20\d{2})/);
-    const a = ano(anoNome, pastaAno && pastaAno.ano, contrato && contrato.ano);
+    const a = ano(anoNome, pastaAno && pastaAno.ano, contrato && contrato.ano, ANO_DA_FAZENDA[faz[1].trim()]);
     if (!a) return null;
     return fim({ tipo: 'VENDA DE ATIVOS', setor: 'CONTABIL', caminho: ['CONTÁBIL', 'VENDA DE ATIVOS', String(a), 'FAZENDA ' + faz[1].trim()], competencia: { ano: a } }, 'documento da compra da fazenda ("Documentos da Faz. ' + faz[1].trim() + '")');
   }
@@ -1240,7 +1242,7 @@ function pelaPastaENome(entrada, ctx, d) {
   }
   // (a) a planilha de controle
   // (só a planilha; o PDF só no cálculo do ICMS ST: o "Faturamento PJ 01.09.2022.pdf" é outra coisa)
-  if (PLANILHA_DE_CONTROLE.test(n) && (/\.(xlsx?|xlsm|csv|ods)$/i.test(nome) || /^CALCULO ICMS/.test(n))) {
+  if (PLANILHA_DE_CONTROLE.test(n) && (/\.(xlsx?|xlsm|csv|ods)$/i.test(nome) || /^(CALCULO ICMS|FA[RT]+URAMENTO\b)/.test(n))) {
     const a = ano(anoNome, pastaAno && pastaAno.ano, anoArq);
     if (!a) return null;
     return fim({ tipo: 'PLANILHA DE CONTROLE', setor: 'CONTABIL', caminho: ['CONTÁBIL', 'RELATÓRIOS ALTERDATA'], competencia: { ano: a } }, 'planilha de controle (o ano ' + (a === anoNome ? 'do nome' : pastaAno && a === pastaAno.ano ? 'da pasta' : 'da data do arquivo') + ', sem a pasta do ano)');
@@ -2728,7 +2730,7 @@ function anoDoDestino(d, ctx) {
  * 03 regra 5: a confiança é a do elo mais fraco; abaixo de 0.85 → NAO_IDENTIFICADO.
  */
 /**
- * Os honorários do escritório (Vitor, 28/10/2026): o boleto, a fatura e o comprovante cujo beneficiário é a Nilma ("NILMA DIAS
+ * Os honorários do escritório (Vitor, 28/10/2026): só o boleto e a fatura de cobrança (o comprovante não) cujo beneficiário é a Nilma ("NILMA DIAS
  * OLIVEIRA", "NILMA CONTABILIDADE", "NILMA CONTADORA", "NILMA CONT"), que as regras de pagamento a fornecedor mandavam para
  * PAGAMENTOS DE FORNECEDORES\ANO\MÊS\NILMA…: <cliente>\CONTÁBIL\PAGAMENTOS DE FORNECEDORES\HONORÁRIOS CONTÁBEIS\ANO\, os meses
  * juntos, "MM-AAAA - HONORÁRIOS R$ VALOR.ext" (o mês do vencimento ou do pagamento, o valor do documento). A NFS-e de honorários
@@ -2738,13 +2740,17 @@ function honorariosDoEscritorio(d) {
   const c = d.caminho;
   if (!Array.isArray(c) || c[0] !== 'CONTÁBIL' || c[1] !== 'PAGAMENTOS DE FORNECEDORES' || c.length < 5 || !/^NILMA\b/.test(norm(c[4]))) return;
   if (!d.competencia || !d.competencia.mes || !d.competencia.ano) return;
-  if (/^N?FS-?E\b/.test(norm(String(d.nomeOriginal || '')))) return;   // a NFS-e de honorários não (a 284 e a cópia no tomador)
+  // só o boleto e a fatura de cobrança (Vitor, 28/10/2026: "apenas os boletos vão para a pasta de honorários, pois vai ficar ruim
+  // para verificar"): o comprovante de pagamento e a NFS-e seguem a regra de sempre
+  const nomeU = norm(String(d.nomeOriginal || ''));
+  if (/^N?FS-?E\b/.test(nomeU) || !(d.tipo === 'BOLETO FORNECEDOR' || /\b(BOLETOS?|FATURAS?)\b/.test(nomeU))) return;
+  const nfse = null;
   const v = /R\$\s?([\d.]+,\d{2})/.exec(String(d.nomeFinal || '')) || /R\$\s?([\d.]+,\d{2})/.exec(String(d.nomeOriginal || ''));
   if (!v) return;
   const ext = ((/\.[a-z0-9]+$/i.exec(String(d.nomeFinal || d.nomeOriginal || '')) || ['.pdf'])[0]).toLowerCase();
   d.evidencias.push('honorários do escritório (beneficiário ' + c[4] + '): HONORÁRIOS CONTÁBEIS\\ANO do cliente (Vitor, 28/10/2026)');
   d.caminho = ['CONTÁBIL', 'PAGAMENTOS DE FORNECEDORES', 'HONORÁRIOS CONTÁBEIS', String(d.competencia.ano)];
-  d.nomeFinal = dois(d.competencia.mes) + '-' + d.competencia.ano + ' - HONORÁRIOS R$ ' + v[1] + ext;
+  d.nomeFinal = dois(d.competencia.mes) + '-' + d.competencia.ano + (nfse ? ' - NFS-e HONORÁRIOS ' + +nfse[1] + ext : ' - HONORÁRIOS R$ ' + v[1] + ext);
   d.tipo = 'HONORARIOS CONTABEIS';
 }
 function finalizar(d, ctx) {
