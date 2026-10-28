@@ -10,7 +10,6 @@ import { ItemDosFeedbacks, JanelaDosFeedbacks } from '../telas/feedback/Feedback
 import { AvisoDeCertificados } from './AvisoDeCertificados';
 import { useAvisoDosMeusFeedbacks } from './useAvisoDosMeusFeedbacks';
 import { CartaoDaEmpresa } from './CartaoDaEmpresa';
-import { EmpresaNaLateral } from './EmpresaNaLateral';
 
 /** O link discreto "Admin" no pé da gaveta ☰ (só o admin): abre o site do admin numa aba nova (os Feedbacks, o Painel do robô, o Uso e o Sistema moraram aqui; 22/10/2026). */
 function ItemDoAdmin({ fechar }: { fechar: () => void }) {
@@ -64,9 +63,6 @@ export function CascaTarefas({ app, pagina, telaInteira, semLateral, larga, empr
       lateral={telaInteira || semLateral || (vm.comAbas && !empresa) ? 'nenhuma' : undefined} larga={telaInteira || larga}
       acoes={telaInteira || (empresa && !titulo) ? undefined : <LugarDasAcoes />} onSecao={empresa ? empresa.onPagina : vm.onSecao} onPagina={vm.onPagina} onInicio={vm.inicio} onAplicativos={vm.inicio}
       onEmpresa={vm.trocarPessoa} aplicativos={vm.aplicacoes} onAplicativo={vm.onAplicacao}
-      // escolher a empresa e o setor, no alto do menu ☰, entre o N e o × (27/10/2026: "era para ficar aqui a escolha de
-      // empresa"); abrir fecha o menu
-      topoDaGaveta={fechar => <EmpresaNaLateral aberta={empresa ? { codigo: empresa.codigo, nome: empresa.nome, rota: empresa.rota } : null} aoAbrir={fechar} />}
       cartaoNoTopo={empresa ? <CartaoDaEmpresa empresa={empresa} /> : undefined}
       topoDireita={<AvatarDaPessoa vm={vm} abrirFeedback={() => setFeedback(true)} />}
       // os Feedbacks de volta na gaveta, junto do Admin (Vitor, 26/10/2026: "coloque a aba de feedbacks no meu usuário")

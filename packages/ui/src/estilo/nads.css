@@ -643,17 +643,6 @@ td > .gh-blank.compacto{white-space:normal;}
 
 /* ---------------------------------- barra lateral: grupos, rodapé (tema + ocultar) e travas ---------------------------------- */
 .subnav-itens{display:flex;flex-direction:column;gap:2px;}
-/* abrir uma empresa, no alto do menu ☰ entre o N e o × (27/10/2026): a busca curta das ferramentas do Fiscal no meio; a
-   lista abre embaixo, presa à linha do topo (do N ao ×) e por cima dos itens da gaveta */
-.drawer-head-meio{flex:1;min-width:0;margin:0 8px;}
-.drawer-head:has(.drawer-head-meio){position:relative;z-index:50;margin-bottom:24px;}
-.empresa-no-menu{position:static;}
-.empresa-no-menu .busca-curta{width:100%;}
-/* a empresa escolhida no jeito dos itens do menu: sem borda, a mesma fonte e o mesmo fundo ao passar o mouse */
-.drawer-item.empresa-no-menu-atual{gap:8px;min-height:32px;padding:4px 8px;color:var(--ink);font:inherit;font-size:var(--fs-14);cursor:pointer;text-align:left;}
-.empresa-no-menu-nome{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.empresa-no-menu-nome b{font-weight:600;}
-.empresa-no-menu-lista{top:calc(100% + 6px);left:0;right:0;min-width:0;list-style:none;margin:0;max-height:min(60vh,360px);overflow:auto;}
 /* o cartão da empresa aberta no cabeçalho: o prédio, o nome e, embaixo, o código e o CNPJ; o clique abre a janela do Cadastro */
 .gh-cartao-topo{display:flex;min-width:0;margin-left:8px;}
 .cartao-empresa{display:flex;align-items:center;gap:10px;min-width:0;padding:4px 10px 4px 4px;border:1px solid transparent;border-radius:8px;background:none;color:var(--ink);text-align:left;cursor:pointer;}
