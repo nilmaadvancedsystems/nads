@@ -3345,6 +3345,13 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .dp-tabela .dp-cliente-nome{max-width:205px;}
 /* Obrigações do DP: o nome inteiro, sem o "…" (Vitor, 28/10/2026), e o responsável embaixo, discreto */
 .dp-tabela .dp-cliente-inteiro{min-width:240px;}
+/* o cabeçalho das Obrigações (28/10/2026): fixo ao rolar a página (a caixa e a tabela cortam com clip, que não vira uma
+   caixa de rolagem e deixa o sticky valer para a página), as colunas de duas linhas alinhadas embaixo e o Onde como as outras */
+.dp-lista.dp-lista-fixa,.dp-lista-fixa .table-wrap{overflow:clip;}
+.dp-lista-fixa .dp-tabela thead{position:sticky;top:0;z-index:4;}
+.dp-lista-fixa .dp-tabela thead th{position:static;}
+.dp-tabela .dp-cabeca-grupo th[rowspan]{vertical-align:bottom;padding-top:8px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.dp-tabela thead th.dp-onde-cab{width:auto;text-align:left;padding-left:8px;padding-right:8px;}
 .dp-tabela .dp-cliente-inteiro .dp-cliente-nome{max-width:none;white-space:normal;overflow:visible;text-overflow:clip;}
 .cofre-dev{margin:0 0 10px;color:var(--warn);font-size:var(--fs-13);}
 /* Senhas › Contas gov.br: a prévia da importação da planilha */
