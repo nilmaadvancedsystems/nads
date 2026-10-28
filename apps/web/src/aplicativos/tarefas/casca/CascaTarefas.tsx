@@ -5,7 +5,6 @@ import { LugarDasAcoes, useTrilhaDoTopo } from '../../../comum/topo';
 import { useAvisoDeBloqueio } from '../../../comum/modoDesenvolvedor';
 import { URL_DO_ADMIN, type IdAplicacao } from './navegacao';
 import { useCascaTarefas } from './useCascaTarefas';
-import { JanelaDeFeedback } from '../telas/feedback/JanelaDeFeedback';
 import { ItemDosFeedbacks, JanelaDosFeedbacks } from '../telas/feedback/FeedbacksDoNads';
 import { AvisoDeCertificados } from './AvisoDeCertificados';
 import { useAvisoDosMeusFeedbacks } from './useAvisoDosMeusFeedbacks';
@@ -20,14 +19,15 @@ function ItemDoAdmin({ fechar }: { fechar: () => void }) {
   );
 }
 
-/** O avatar no canto do cabeçalho (como o do Entregas e o do GitHub): as iniciais; aberto, a Minha página e sair. */
-function AvatarDaPessoa({ vm, abrirFeedback }: { vm: ReturnType<typeof useCascaTarefas>; abrirFeedback: () => void }) {
+/**
+ * O avatar no canto do cabeçalho (como o do Entregas e o do GitHub): as iniciais; aberto, a Minha página e sair. Sem o
+ * "Enviar feedback" (Vitor, 28/10/2026: "para enviar, deixe só o balão"; para ver, só o pé do menu lateral).
+ */
+function AvatarDaPessoa({ vm }: { vm: ReturnType<typeof useCascaTarefas> }) {
   return (
     <MenuSuspenso rotulo={vm.perfil.foto ? <img className="gh-avatar-foto" src={vm.perfil.foto} alt="" /> : vm.perfil.iniciais} className={'gh-avatar' + (vm.naPessoal ? ' ativo' : '')} dica={vm.perfil.nome} titulo={vm.perfil.nome} direita animado
       itens={[
         { rotulo: 'Minha conta', icone: 'usuario', onClick: () => vm.abrirPessoal('conta') },
-        // o print e o que melhorar (Vitor, 07/10/2026)
-        { rotulo: 'Enviar feedback', icone: 'envelope', onClick: abrirFeedback },
         // só ver tudo, sem alterar nada (Vitor, 06/10/2026)
         { rotulo: 'Modo desenvolvedor', icone: 'settings', marcado: vm.dev, onClick: () => vm.setDev(!vm.dev) },
         'separador',
@@ -53,7 +53,6 @@ export function CascaTarefas({ app, pagina, telaInteira, semLateral, larga, empr
   const secoes = empresa ? empresa.paginas.map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, grupo: 1, ativa: p.id === empresa.pagina })) : vm.secoes;
   const titulo = empresa ? empresa.paginas.find(p => p.id === empresa.pagina)?.titulo || '' : vm.titulo;
   const trilha = useTrilhaDoTopo();
-  const [feedback, setFeedback] = useState(false);
   const [feedbacks, setFeedbacks] = useState(false);
   useAvisoDeBloqueio();
   // o feedback que o admin pôs em Resolvendo: avisa quem mandou (26/10/2026)
@@ -64,10 +63,9 @@ export function CascaTarefas({ app, pagina, telaInteira, semLateral, larga, empr
       acoes={telaInteira || (empresa && !titulo) ? undefined : <LugarDasAcoes />} onSecao={empresa ? empresa.onPagina : vm.onSecao} onPagina={vm.onPagina} onInicio={vm.inicio} onAplicativos={vm.inicio}
       onEmpresa={vm.trocarPessoa} aplicativos={vm.aplicacoes} onAplicativo={vm.onAplicacao}
       cartaoNoTopo={empresa ? <CartaoDaEmpresa empresa={empresa} /> : undefined}
-      topoDireita={<AvatarDaPessoa vm={vm} abrirFeedback={() => setFeedback(true)} />}
+      topoDireita={<AvatarDaPessoa vm={vm} />}
       // os Feedbacks de volta na gaveta, junto do Admin (Vitor, 26/10/2026: "coloque a aba de feedbacks no meu usuário")
       peDaGaveta={vm.admin ? fechar => <><ItemDosFeedbacks abrir={() => { fechar(); setFeedbacks(true); }} /><ItemDoAdmin fechar={fechar} /></> : undefined}>
-      {feedback && <JanelaDeFeedback fechar={() => setFeedback(false)} />}
       {feedbacks && <JanelaDosFeedbacks fechar={() => setFeedbacks(false)} />}
       {/* os certificados vencidos ou vencendo (19/10/2026): só o admin */}
       <AvisoDeCertificados ligado={vm.admin} />
