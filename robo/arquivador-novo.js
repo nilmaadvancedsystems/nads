@@ -262,7 +262,8 @@ async function montarEntrada(nome, rel, buffer, op) {
       if (o.paginas.length && o.paginas.join('').replace(/\s/g, '').length >= 40) e.texto = o.paginas;
       break;
     }
-    default: break;
+    // sem extensão e pequeno (27/10/2026: o registro de envio do emissor, "env-lot=…-env-sinc-lot.xml"): o texto vai para as regras
+    default: if (!ext && buffer.length < 4096) e.semExtensao = buffer.toString('latin1'); break;
   }
   return e;
 }

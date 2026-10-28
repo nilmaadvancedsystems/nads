@@ -116,7 +116,7 @@ igual('DESTDA de 2021 de um cliente hoje do Presumido: na pasta do Simples (a De
   igual('o conteúdo com o CNPJ de outro cliente: a pasta não vale', d3.acao === 'NAO_IDENTIFICADO' ? !MIG.clientePelaPasta(e2, ctx21, d3) || MIG.clientePelaPasta(e2, ctx21, d3).cliente !== 10 : Number(d3.cliente) !== 10, true);
 }
 d = decidirMig('0010 - DORNAS HAVANA LTDA - ME\\DEPARTAMENTO FISCAL\\DES - BH\\2023\\12-2023.pdf', 'recibo de entrega da declaracao municipal sem titulo conhecido pelas regras');
-igual('pasta sem equivalente no mapa (DES - BH): fica como as regras deixaram', [d.acao, d.motivo], ['NAO_IDENTIFICADO', 'TIPO_NAO_RECONHECIDO']);
+igual('a pasta DES - BH (declaração do ISS): <regime>\\DAM\\DECLARAÇÕES, nome original (Vitor, 27/10/2026)', [d.acao, d.destinoRelativo, d.nomeFinal], ['ARQUIVAR', '10 - DORNAS HAVANA LTDA\\FISCAL\\SIMPLES NACIONAL\\08. DAM\\DECLARAÇÕES', '12-2023.pdf']);
 {
   const ctx24 = { cadastro: montar({ 2024: ['10 - DORNAS HAVANA LTDA'] }), hoje: new Date(2026, 9, 23) };
   const e = { nome: 'DAE ICMS ANTECIPADO REF. 10.2024.pdf', rel: '0010 - DORNAS HAVANA LTDA - ME\\ADIVANIA\\Impostos\\DAE ICMS ANTECIPADO REF. 10.2024.pdf', texto: ['x'] };
