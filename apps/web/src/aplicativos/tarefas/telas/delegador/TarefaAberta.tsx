@@ -1,7 +1,7 @@
 // A tarefa aberta na Central, no lugar da lista (28/10/2026, o cadastro de tarefas do Toriba): "‹ Voltar", o número e o
 // status, e as abas Tarefa / Parecer / Histórico. Em Tarefa, o formulário (título, descrição, cliente vinculado, "Delegar
 // para", prioridade, prazo, status, as datas) e o painel Anexos; no pé, Excluir (só quem criou) e Cancelar / Salvar.
-import { Alerta, BotaoAcao, CampoData, Esqueleto, Icone, Segmentado, Vazio } from '@nads/ui';
+import { Alerta, BotaoAcao, CampoData, Esqueleto, Icone, MenuSuspenso, Segmentado, Vazio } from '@nads/ui';
 import { useEffect, useId, type RefObject } from 'react';
 import { EmpresaDaBarra } from '../fiscal/partes/EmpresaDaBarra';
 import { AnexosDaTarefa } from './partes/AnexosDaTarefa';
@@ -35,11 +35,8 @@ function FormularioDaTarefa({ vm }: { vm: Vm }) {
             : <div onKeyDown={e => { if (e.key === 'Escape' && vm.empresa.achadas.length) e.preventDefault(); }}><EmpresaDaBarra vm={vm.empresa} id={id + '-empresas'} /></div>}
         </div>
         <div className="field">
-          <label htmlFor={id + '-responsavel'}>Delegar para</label>
-          <select id={id + '-responsavel'} value={r.responsavel?.uid || ''} disabled={so} onChange={e => vm.setResponsavel(e.target.value)}>
-            <option value="">Escolha a pessoa</option>
-            {vm.equipe.map(p => <option key={p.uid} value={p.uid}>{p.nome}</option>)}
-          </select>
+          <span className="field-rotulo" id={id + '-responsavel'}>Delegar para</span>
+          <EscolherPessoa vm={vm} so={so} rotuloId={id + '-responsavel'} />
         </div>
         <div className="field">
           <label htmlFor={id + '-prioridade'}>Prioridade</label>
@@ -95,6 +92,37 @@ function ParecerDaTarefa({ vm }: { vm: Vm }) {
  * saida: a Central pergunta por aqui antes de largar a tarefa (o Esc, o ×, clicar fora, trocar de aba): se mudou algo,
  * a janela "Descartar as mudanças?".
  */
+type Pessoa = ReturnType<typeof useTarefaAberta>['equipe'][number];
+
+/** a foto de perfil (ou as iniciais) de uma pessoa da equipe, redonda */
+function FotoDaPessoa({ p }: { p: Pessoa }) {
+  return <span className="pessoa-foto" aria-hidden="true">{p.foto ? <img src={p.foto} alt="" /> : p.iniciais}</span>;
+}
+
+/** o "Delegar para": o menu do nads com a foto de cada pessoa (no celular, no lugar da lista do sistema) */
+function EscolherPessoa({ vm, so, rotuloId }: { vm: ReturnType<typeof useTarefaAberta>; so: boolean; rotuloId: string }) {
+  const atual = vm.equipe.find(p => p.uid === vm.rascunho.responsavel?.uid) || null;
+  const rotulo = atual
+    ? <span className="pessoa-escolhida"><FotoDaPessoa p={atual} /><span>{atual.nome}{atual.voce && <span className="fraco"> (você)</span>}</span></span>
+    : <span className="pessoa-escolhida fraco">Escolha a pessoa</span>;
+  if (so) return <div className="pessoa-escolhida-fixa" aria-labelledby={rotuloId}>{rotulo}</div>;
+  return (
+    <MenuSuspenso rotulo={rotulo} className="btn btn-outline pessoa-botao" titulo="Delegar para" dica="Escolher para quem delegar"
+      conteudo={fechar => (
+        <div className="pessoa-lista" role="listbox" aria-labelledby={rotuloId}>
+          {vm.equipe.map(p => (
+            <button key={p.uid} type="button" className="popover-item" role="option" aria-selected={p.uid === atual?.uid}
+              onClick={() => { vm.setResponsavel(p.uid); fechar(); }}>
+              <FotoDaPessoa p={p} />
+              <span className="popover-texto">{p.nome}{p.voce && <span className="fraco"> (você)</span>}</span>
+              {p.uid === atual?.uid && <Icone nome="check" width={16} height={16} />}
+            </button>
+          ))}
+        </div>
+      )} />
+  );
+}
+
 export function TarefaAberta({ alvo, voltar, criada, saida }: {
   alvo: string; voltar: () => void; criada: (paraMim: boolean) => void; saida: RefObject<((depois: () => void) => void) | null>;
 }) {
