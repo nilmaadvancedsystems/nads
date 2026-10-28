@@ -2,7 +2,7 @@
 // à esquerda Novos / Vistos / Feitos / Todos; à direita cada feedback com o print (clicar amplia), o texto, quem,
 // quando, a tela e a versão; Visto e Feito. A prioridade (Vitor, 19/10/2026) no selo suave, com o filtro (Todas, Alta,
 // Média, Baixa) e a ordem (Mais novos ou Prioridade) em cima da lista.
-import { BotaoFechar, Esqueleto, Icone, Segmentado, useJanela, Vazio, BotaoAcao } from '@nads/ui';
+import { Alerta, BotaoFechar, Esqueleto, Icone, Segmentado, useJanela, Vazio, BotaoAcao } from '@nads/ui';
 import { useRef, useState } from 'react';
 import { JanelaLateral, type TopicoDaJanela } from '../janela/JanelaLateral';
 import { PRIORIDADES, type PrioridadeDoFeedback, type SituacaoDoFeedback } from '../../dados/feedback';
@@ -115,10 +115,20 @@ function JanelaDoFeedback({ f, fechar, ampliar, marcar, baixar, baixarTudo, copi
               <img src={f.imagem} alt="O print do feedback" />
             </button>
           )}
-          {f.tipo === 'bug' && (
-            <p className="feedback-txt"><b>{f.empresa || '—'}</b>{f.caminho ? ' · ' + f.caminho : ''}</p>
-          )}
-          <p className="feedback-txt">{f.texto}</p>
+          {/* o bug em blocos (Vitor, 28/10/2026: "melhorar para o usuário interpretar, tá muito bagunçado"): o que a pessoa
+              disse, onde foi e o que o robô achou; o feedback comum fica no texto */}
+          {f.lido ? (
+            <>
+              <section className="feedback-bloco">
+                <p className="feedback-rotulo">O que a pessoa disse</p>
+                <p className="feedback-txt feedback-disse">{f.lido.comentario || 'Sem comentário.'}</p>
+              </section>
+              <section className="feedback-bloco">
+                <p className="feedback-rotulo">Onde foi</p>
+                <dl className="ent-dados">{f.lido.campos.map(c => <div key={c.rotulo}><dt>{c.rotulo}</dt><dd>{c.valor}</dd></div>)}</dl>
+              </section>
+            </>
+          ) : <p className="feedback-txt">{f.texto}</p>}
           {/* todos os arquivos (do bug ou anexados ao feedback), cada um no seu botão (26/10/2026) */}
           {f.arquivos.length > 0 && f.arquivos.map((a, i) => (
             <button key={i} type="button" className="btn btn-outline" onClick={() => baixar(f.id, i)}><Icone nome="download" />{a.nome}</button>
@@ -132,8 +142,18 @@ function JanelaDoFeedback({ f, fechar, ampliar, marcar, baixar, baixarTudo, copi
             </BotaoAcao>
           )}
           {/* o report do robô do suporte (termina em "Realmente, isso é erro do sistema" ou "Precisa da sua análise") */}
-          {f.tipo === 'bug' && (f.relatorio ? <p className="feedback-txt feedback-relatorio">{f.relatorio}</p> : <p className="hint">{ANALISE[f.analise] || 'Sem report ainda.'}</p>)}
-          <span className="fraco feedback-onde">{f.tela}{f.versao ? ' · ' + f.versao : ''}</span>
+          {f.lido && (
+            <section className="feedback-bloco">
+              <p className="feedback-rotulo">O que o robô achou</p>
+              {!f.lido.report ? <p className="hint">{ANALISE[f.analise] || 'Sem report ainda.'}</p>
+                : f.lido.report.falhou ? (
+                  <Alerta naLinha titulo="O robô não conseguiu investigar" texto={f.lido.report.motivo}>
+                    <p className="hint feedback-detalhe">Erro: {f.lido.report.detalhe}</p>
+                  </Alerta>
+                ) : <p className="feedback-txt feedback-relatorio">{f.lido.report.corpo}</p>}
+            </section>
+          )}
+          {!f.lido && <span className="fraco feedback-onde">{f.tela}{f.versao ? ' · ' + f.versao : ''}</span>}
         </div>
         <footer className="usuario-pe">
           {/* o texto da solicitação, para colar (Vitor, 27/10/2026) */}
