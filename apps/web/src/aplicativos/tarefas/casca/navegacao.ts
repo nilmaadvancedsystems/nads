@@ -14,7 +14,7 @@ export const BASE = '/tarefas';
 export type IdAplicacao = 'inicio' | 'minhas-empresas' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'financeiro' | 'entregas' | 'area-cliente';
 
 export interface Pagina {
-  id: string; rotulo: string; icone: NomeIcone; titulo: string; /** a logo da marca no lugar do ícone, na lateral */ marca?: 'fgts' | 'simples' | 'receita';
+  id: string; rotulo: string; icone: NomeIcone; titulo: string; /** a logo da marca no lugar do ícone, na lateral */ marca?: 'fgts';
   /** apagada na lateral; o clique avisa que está em desenvolvimento e não abre (Vitor, 21/10/2026) */
   emDesenvolvimento?: boolean;
   /** só o admin vê (as páginas do Admin nas Configurações; 28/10/2026) */
@@ -57,18 +57,17 @@ export const APLICACOES: readonly Aplicacao[] = [
     // o rateio do frete e do desconto de uma nota pelas tributações (Heverton, 22/10/2026: a planilha "RATEIO - FRETE")
     { id: 'rateio-frete', rotulo: 'Rateio de frete', icone: 'caminhao', titulo: 'Rateio de frete' },
     // a calculadora do Simples Nacional, a planilha do Fiscal preenchida com o SIEG e a folha do DP (Heverton, 22/10/2026)
-    { id: 'simples', rotulo: 'Simples Nacional', icone: 'recibo', titulo: 'Calculadora do Simples Nacional', marca: 'simples' },
+    { id: 'simples', rotulo: 'Simples Nacional', icone: 'recibo', titulo: 'Calculadora do Simples Nacional' },
     // a antecipação do ICMS do ES (Heverton, 22/10/2026: a planilha "Antecipação ICMS-ES", com as notas do SIEG)
     { id: 'antecipacao-es', rotulo: 'Antecipação ICMS-ES', icone: 'fileSearch', titulo: 'Antecipação de ICMS — ES' },
     // o Relatório (28/10/2026: a planilha RELATORIO EMPRESA 2026 no estilo das Obrigações do DP, com a REINF), um por regime
     // ("lucro presumido e simples são diferentes, deixa cada um separado pelo menu lateral"); tomou o lugar do Controle de
     // tributos ("remove a tela de controle de tributos, e pegue os dados de lá"): os links antigos caem no Simples
-    { id: 'relatorio-simples', rotulo: 'Relatório Simples', icone: 'painel', titulo: 'Relatório Simples', marca: 'simples' },
-    { id: 'relatorio-presumido', rotulo: 'Relatório Presumido', icone: 'painel', titulo: 'Relatório Presumido', marca: 'receita' },
-    // as páginas do Simples com o símbolo do Simples Nacional no lugar do ícone (28/10/2026: "coloque esse ícone em tudo o que é menu do simples"); as do Presumido com o da Receita Federal
+    { id: 'relatorio-simples', rotulo: 'Relatório Simples', icone: 'painel', titulo: 'Relatório Simples' },
+    { id: 'relatorio-presumido', rotulo: 'Relatório Presumido', icone: 'painel', titulo: 'Relatório Presumido' },
     // as guias que nem toda empresa tem, fora do Relatório (28/10/2026: "arroz, parcelamento, não é toda empresa que tem")
-    { id: 'particularidades-simples', rotulo: 'Particularidades Simples', icone: 'fileSearch', titulo: 'Particularidades Simples', marca: 'simples' },
-    { id: 'particularidades-presumido', rotulo: 'Particularidades Presumido', icone: 'fileSearch', titulo: 'Particularidades Presumido', marca: 'receita' },
+    { id: 'particularidades-simples', rotulo: 'Particularidades Simples', icone: 'fileSearch', titulo: 'Particularidades Simples' },
+    { id: 'particularidades-presumido', rotulo: 'Particularidades Presumido', icone: 'fileSearch', titulo: 'Particularidades Presumido' },
   ] },
   // o DP (Vitor, 06/10/2026: o Checklist Folha "seria a rotina do dp"): as empresas com a rotina do DP, o painel da
   // planilha (números, gráficos, o progresso por responsável e as obrigações de cada cliente), a visão e as paradas

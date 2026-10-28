@@ -6,7 +6,7 @@ import { cleanInlineStyles } from 'animejs';
 import { animar, ENTRAR, entrar, revelarTitulo, sairComo, useIndicador } from './animacao';
 import { useAbasParaAEtapa, useAlturaNaEtapa } from './etapa';
 import { Icone, MarcaN, type NomeIcone } from './icones';
-import { LogoDrive, LogoFgts, LogoGmail, LogoReceitaFederal, LogoSimplesNacional } from './logos';
+import { LogoDrive, LogoFgts, LogoGmail } from './logos';
 import { SeletorTema } from './tema';
 import { atualizarVersao, useVersaoNova } from './versaoNova';
 import { BotaoFechar } from './componentes';
@@ -15,7 +15,7 @@ import { useJanela } from './janela';
 /** caixa: no lugar do ícone, uma caixinha de checklist (vazia, marcada ou parada) — as etapas de uma tarefa */
 /** titulo: o nome do grupo, em cima da primeira seção dele (Ativo, Passivo…) */
 /** foraDaEtapa: a seção some quando o aplicativo está inteiro dentro de uma etapa (ex.: a Importação da Conferência, que foi para a primeira etapa) */
-export interface SecaoCasca { id: string; rotulo: string; icone: NomeIcone; grupo: number; ativa?: boolean; travada?: boolean; caixa?: 'vazia' | 'marcada' | 'parada'; titulo?: string; foraDaEtapa?: boolean; apagada?: boolean; /** a logo da marca no lugar do ícone (o FGTS Digital no DP; o Simples Nacional e a Receita Federal no Fiscal) */ marca?: 'fgts' | 'simples' | 'receita' }
+export interface SecaoCasca { id: string; rotulo: string; icone: NomeIcone; grupo: number; ativa?: boolean; travada?: boolean; caixa?: 'vazia' | 'marcada' | 'parada'; titulo?: string; foraDaEtapa?: boolean; apagada?: boolean; /** a logo da marca no lugar do ícone (o FGTS Digital no DP) */ marca?: 'fgts' }
 /** contador: o número ao lado do nome, como o "Issues 12" do GitHub (ex.: "2/7") */
 /** ponto: o pontinho vermelho de "falta configurar" ao lado do nome (Vitor, 08/10/2026); o texto vai na dica */
 export interface PaginaCasca { id: string; rotulo: string; icone: NomeIcone; ativa?: boolean; travada?: boolean; oculta?: boolean; contador?: string; ponto?: string }
@@ -331,7 +331,7 @@ export function Casca(p: {
                   {comeca && s.titulo && <p className={'subnav-titulo' + (sep ? ' depois' : '')}>{s.titulo}</p>}
                   <button type="button" className={'subnav-item' + (s.ativa ? ' active' : '') + (s.travada ? ' is-locked' : '') + (s.apagada ? ' apagada' : '')}
                     aria-current={s.ativa ? 'page' : undefined} aria-disabled={s.travada ? 'true' : undefined} title={s.rotulo} onClick={() => p.onSecao(s.id)}>
-                    {s.caixa ? <span className={'subnav-caixa ' + s.caixa} aria-hidden="true">{s.caixa === 'marcada' && <Icone nome="check" />}</span> : s.marca === 'fgts' ? <span className="subnav-marca" aria-hidden="true"><LogoFgts cor /></span> : s.marca === 'simples' ? <span className="subnav-marca" aria-hidden="true"><LogoSimplesNacional /></span> : s.marca === 'receita' ? <span className="subnav-marca" aria-hidden="true"><LogoReceitaFederal /></span> : <Icone nome={s.icone} />}
+                    {s.caixa ? <span className={'subnav-caixa ' + s.caixa} aria-hidden="true">{s.caixa === 'marcada' && <Icone nome="check" />}</span> : s.marca === 'fgts' ? <span className="subnav-marca" aria-hidden="true"><LogoFgts cor /></span> : <Icone nome={s.icone} />}
                     <span>{s.rotulo}</span>
                   </button>
                 </span>
