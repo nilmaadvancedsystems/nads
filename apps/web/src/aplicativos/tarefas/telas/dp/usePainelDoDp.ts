@@ -5,7 +5,6 @@
 // Tudo roda no tabelão (Vitor, 06/10/2026: "quero que tudo rode no tabelão, sem a parte de checklist"): clicar na
 // bolinha da obrigação marca a etapa como feita (com quem e quando, como o executor grava); clicar de novo desfaz.
 import { empresas, tarefas as t } from '@nads/core';
-import type { NomeIcone } from '@nads/ui';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { competenciasDoDp, guardarCompetenciaDoDp } from '../../casca/navegacao';
@@ -253,16 +252,16 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
     // de pendentes"; 08/10: "quero que colora todos"): o tom diz o que é (azul o total, verde o feito, amarelo o que falta,
     // o vermelho do nads a folha; laranja o pró-labore, roxo o sem movimento, ciano a REINF)
     numeros: [
-      { rotulo: 'Clientes', valor: filtradas.length, dica: '', tom: 'info', icone: 'briefcase' },
-      { rotulo: 'Concluídos', valor: concluidas, dica: comMovimento ? Math.round((concluidas / comMovimento) * 100) + '% dos com movimento' : '', tom: 'ok', icone: 'check' },
-      { rotulo: 'Pendentes', valor: contagemDash.pendente + contagemDash.atrasada, dica: contagemDash.atrasada ? contagemDash.atrasada + ' atrasados' : '', tom: 'aviso', icone: 'clock' },
-      { rotulo: 'Com folha', valor: filtradas.filter(c => c.movimento === 'Folha').length, dica: '', tom: 'marca', icone: 'usuario' },
-      { rotulo: 'Pró-labore', valor: filtradas.filter(c => c.movimento === 'Pró-Labore').length, dica: '', tom: 'laranja', icone: 'usuario' },
-      { rotulo: 'Sem movimento', valor: contagemDash.sem, dica: '', tom: 'roxo', icone: 'list' },
+      { rotulo: 'Clientes', valor: filtradas.length, dica: '', tom: 'info' },
+      { rotulo: 'Concluídos', valor: concluidas, dica: comMovimento ? Math.round((concluidas / comMovimento) * 100) + '% dos com movimento' : '', tom: 'ok' },
+      { rotulo: 'Pendentes', valor: contagemDash.pendente + contagemDash.atrasada, dica: contagemDash.atrasada ? contagemDash.atrasada + ' atrasados' : '', tom: 'aviso' },
+      { rotulo: 'Com folha', valor: filtradas.filter(c => c.movimento === 'Folha').length, dica: '', tom: 'marca' },
+      { rotulo: 'Pró-labore', valor: filtradas.filter(c => c.movimento === 'Pró-Labore').length, dica: '', tom: 'laranja' },
+      { rotulo: 'Sem movimento', valor: contagemDash.sem, dica: '', tom: 'roxo' },
       // a REINF (21/10/2026: "fica como 19 sendo que não marcou nada"): antes contava quem TEM a REINF e parecia feito;
       // agora as transmitidas, de quantas há
-      { rotulo: 'REINF transmitidas', valor: reinf.feitas, dica: 'de ' + reinf.total + ' com REINF', tom: 'ciano', icone: 'fileUp' },
-    ] as { rotulo: string; valor: number; dica: string; tom: TomDoNumero; icone: NomeIcone }[],
+      { rotulo: 'REINF transmitidas', valor: reinf.feitas, dica: 'de ' + reinf.total + ' com REINF', tom: 'ciano' },
+    ] as { rotulo: string; valor: number; dica: string; tom: TomDoNumero }[],
     /** o dashboard do Resumo no padrão do Certificados (Savio, 15/10/2026) */
     dash: {
       contagem: contagemDash,
