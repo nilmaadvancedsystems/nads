@@ -2,7 +2,7 @@
 // à esquerda Novos / Vistos / Feitos / Todos; à direita cada feedback com o print (clicar amplia), o texto, quem,
 // quando, a tela e a versão; Visto e Feito. A prioridade (Vitor, 19/10/2026) no selo suave, com o filtro (Todas, Alta,
 // Média, Baixa) e a ordem (Mais novos ou Prioridade) em cima da lista.
-import { Alerta, BotaoFechar, Esqueleto, Icone, Segmentado, useJanela, Vazio, BotaoAcao } from '@nads/ui';
+import { Alerta, BotaoFechar, BotaoIcone, Esqueleto, Icone, Segmentado, useJanela, Vazio, BotaoAcao } from '@nads/ui';
 import { useRef, useState } from 'react';
 import { JanelaLateral, type TopicoDaJanela } from '../janela/JanelaLateral';
 import { PRIORIDADES, type PrioridadeDoFeedback, type SituacaoDoFeedback } from '../../dados/feedback';
@@ -170,12 +170,8 @@ function JanelaDoFeedback({ f, fechar, ampliar, marcar, baixar, baixarTudo, copi
   );
 }
 
-/** O item Feedbacks no pé da gaveta ☰ (só o admin), com quantos novos. */
+/** Os Feedbacks no pé da gaveta ☰ (só o admin): só o ícone do envelope (28/10/2026), com quantos novos no título. */
 export function ItemDosFeedbacks({ abrir }: { abrir: () => void }) {
   const novos = useFeedbacks().filtros[0].qtd;
-  return (
-    <button type="button" className="drawer-item" onClick={abrir}>
-      <Icone nome="envelope" />Feedbacks{novos > 0 && <span className="menu-contador drawer-contador">{novos}</span>}
-    </button>
-  );
+  return <BotaoIcone icone="envelope" titulo={'Feedbacks' + (novos > 0 ? ' (' + novos + (novos === 1 ? ' novo)' : ' novos)') : '')} onClick={abrir} />;
 }
