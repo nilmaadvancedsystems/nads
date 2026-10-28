@@ -544,7 +544,7 @@ function bancoDoTexto(texto, soConta) {
   // o comprovante de pagamento do DAE da Fazenda de Minas (28/10/2026, os "ARRECADACAO_*.pdf" e os "Comprovante ICMS - NF …"): o banco
   // é o código no começo da autenticação ("1 2705 03092018 786560 15980" = banco 001, agência 2705, data, NSU e valor)
   // (o de 2025: "AGENCIA: 3144 BANCO: 756 NSU: 259339")
-  const dae = /FAZENDA DE MINAS GERAIS\s*\n\s*COMPROVANTE DE PAGAMENTO D[AE]S? RECEITAS ESTADUAIS[\s\S]*?(?:\n\s*(\d{1,3}) \d{4} \d{8} \d{3,} \d+\s*(?:\n|$)|AGENCIA:\s*\d{3,5}\s+BANCO:\s*(\d{3})\s+NSU)/.exec(tudo);
+  const dae = /FAZENDA DE MINAS GERAIS\s*\n\s*COMPROVANTE DE PAGAMENTO D[AE]S? RECEITAS ESTADUAIS[\s\S]*?(?:\n\s*(\d{1,3}) \d{4} \d{8} \d{3,} \d+\s*(?:\n|$)|AGENCIA:\s*\d{3,5}\s+BANCO:\s*(\d{1,3})\s+NSU)/.exec(tudo);
   if (dae && !dae[1]) dae[1] = dae[2];
   if (dae && BANCO_POR_CODIGO[dae[1].padStart(3, '0')]) return BANCO_POR_CODIGO[dae[1].padStart(3, '0')];
   for (const [b, re] of LAYOUTS) if (re.test(tudo)) return b;
@@ -1302,7 +1302,9 @@ function pelaPastaENome(entrada, ctx, d) {
   // (2) as taxas do IBAMA, do CCIR (GRU) e a TFAMG: PAGAMENTOS DE FORNECEDORES\ANO\MÊS\<ÓRGÃO>
   const taxa = (/\b(IBAMA|CCIR|TFAMG)\b/.exec(n) || [])[1];
   if (taxa) {
-    const m = mesDe();
+    // a TFAMG é trimestral ("TFAMG 32022.pdf", "TFAMG - 1º TRIMESTRE 2025.pdf"): o último mês do trimestre
+    const tri = taxa === 'TFAMG' ? /TFAMG\s*-?\s*([1-4])\s*(20\d{2})(?!\d)/.exec(n) || /([1-4])\s*[O°º]?\s*TRIMESTRE\s*(?:DE\s*)?(20\d{2})/.exec(n) : null;
+    const m = mesDe() || (tri ? { mes: +tri[1] * 3, ano: +tri[2] } : null);
     if (!m) return null;
     return fim({ tipo: 'TAXA ' + taxa, setor: 'CONTABIL', caminho: ['CONTÁBIL', 'PAGAMENTOS DE FORNECEDORES', String(m.ano), dois(m.mes), taxa], competencia: { mes: m.mes, ano: m.ano } }, 'taxa ' + taxa);
   }
