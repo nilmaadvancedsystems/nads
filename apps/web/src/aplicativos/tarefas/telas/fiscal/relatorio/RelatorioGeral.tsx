@@ -1,9 +1,8 @@
 // Fiscal › Relatório Simples / Relatório Presumido (28/10/2026: "monte a tabela nesse estilo do dp"; cada regime numa
 // página do menu lateral; no lugar do Controle de tributos): a barra das Obrigações do DP (a competência e os filtros em
 // menus), em cima da tabela a busca, o Excel e a impressora do protocolo; a tabela com as colunas agrupadas — as guias com
-// o valor em reais, as conferências e a REINF na bolinha do DP, a data e a entrega — e o total. As guias que nem toda
-// empresa tem (o arroz e o parcelamento) ficam nas Particularidades; as Observações e a Retificação saíram por enquanto
-// (28/10/2026). Só peças que já existem.
+// o valor em reais, as conferências e a REINF na bolinha do DP, a data e a entrega — e o total. As Observações e a
+// Retificação saíram por enquanto (28/10/2026). Só peças que já existem.
 import { baixarBytes, BotaoIcone, Esqueleto, Icone, LogoExcel, MenuSuspenso, useCarregando } from '@nads/ui';
 import { MenuDeFiltro } from '../../dp/MenuDeFiltro';
 import { Entrega, Valor } from './PartesDoRelatorio';
@@ -134,7 +133,7 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
               <button type="button" className="btn btn-outline" disabled={vm.pagina.atual >= vm.pagina.paginas - 1} onClick={vm.pagina.proxima}>Próxima<Icone nome="chevronRight" /></button>
             </div>
           )}
-          <p className="hint">Arroz e parcelamento ficam nas Particularidades. Nos valores: o número em reais, "-" quando não tem guia ou "0". Em cinza, o que o Entregas já entregou. Nas conferências: clique para OK, de novo para "não se aplica" (–) e de novo para limpar. A REINF transmite como na tela da REINF.</p>
+          <p className="hint">Nos valores: o número em reais, "-" quando não tem guia ou "0". Em cinza, o que o Entregas já entregou. Nas conferências: clique para OK, de novo para "não se aplica" (–) e de novo para limpar. A REINF transmite como na tela da REINF.</p>
         </>
       )}
     </section>

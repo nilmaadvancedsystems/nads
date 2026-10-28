@@ -20,15 +20,6 @@ import { mmaaaa, quandoDaReinf, useAcoesDaReinf } from '../reinf/useAcoesDaReinf
 /** O regime da página: o grupo do controle e o regime do Cadastro que entra nele. */
 export type RegimeDoRelatorio = 'sn' | 'lp';
 const REGIME_DO_CADASTRO: Record<RegimeDoRelatorio, string> = { sn: 'Simples', lp: 'Presumido' };
-/**
- * As guias que nem toda empresa tem (28/10/2026: "arroz, parcelamento, não é toda empresa que tem"): saem do Relatório e
- * ficam nas Particularidades (Particularidades Simples e Particularidades Presumido, no menu lateral).
- */
-const PARTICULARES: Record<RegimeDoRelatorio, readonly string[]> = { sn: ['icms-arroz', 'parc'], lp: ['parc'] };
-/** O Relatório (as guias de todo mês, as conferências, a REINF e a entrega) ou as Particularidades (só as guias de poucas). */
-export type ModoDoRelatorio = 'relatorio' | 'particularidades';
-/** 'aaaa-mm' do mês anterior */
-const mesAnterior = (c: string) => { const [a, m] = c.split('-').map(Number); return m === 1 ? (a - 1) + '-12' : a + '-' + String(m - 1).padStart(2, '0'); };
 
 /** As partes da tabela (o título do grupo de colunas e o filtro Pendente em). */
 export type ParteDoRelatorio = 'guias' | 'conferencias' | 'reinf' | 'entrega';
@@ -66,7 +57,7 @@ const mesmoConteudo = (a: t.LinhaDoControle, b: t.LinhaDoControle) => {
 /** A REINF da linha: não tem, pendente ou transmitida, com a dica (até quando, a última, as retificadas). */
 export interface ReinfDaLinha { tem: boolean; transmitida: boolean; retificada: boolean; dica: string; dicaRetificar: string }
 
-export function useRelatorioGeral(regime: RegimeDoRelatorio, modo: ModoDoRelatorio = 'relatorio') {
+export function useRelatorioGeral(regime: RegimeDoRelatorio) {
   const { toast } = useRetorno();
   const op = useOperador().operador;
   const podeGravar = !!op && (op.admin || op.departamento === 'fiscal');
@@ -80,12 +71,8 @@ export function useRelatorioGeral(regime: RegimeDoRelatorio, modo: ModoDoRelator
   const reinf = useAcoesDaReinf(competencia);
   const grupo = t.grupoDoControle(regime);
   const mes = repo.doMes(competencia);
-  // as Particularidades: quem teve valor numa delas neste mês ou no anterior; "Todas as empresas" para pôr uma nova
-  const doAnterior = repo.doMes(mesAnterior(competencia));
-  const [soComParticularidade, setSoComParticularidade] = useState(true);
-  const particulares = PARTICULARES[regime];
-  /** as colunas de guia da página: as de todo mês no Relatório, as particulares nas Particularidades */
-  const colunas = grupo.colunas.filter(c => (modo === 'particularidades') === particulares.includes(c.id));
+  /** as colunas de guia: todas do grupo (o arroz e o parcelamento voltaram para a tabela, 28/10/2026) */
+  const colunas = grupo.colunas;
   const [busca, setBusca] = useState('');
   const [status, setStatus] = useState('');
   const [pendenteEm, setPendenteEm] = useState('');
@@ -137,14 +124,11 @@ export function useRelatorioGeral(regime: RegimeDoRelatorio, modo: ModoDoRelator
     if (grupo.marcas.some(m => !l.marcas[m.id])) pendencias.add('conferencias');
     if (r.tem && !transmitida) pendencias.add('reinf');
     if (!l.entregue) pendencias.add('entrega');
-    const antes = doAnterior.linhas.get(e.codigo);
-    const temParticularidade = particulares.some(id => !!(l.valores[id] || '').trim() || !!(antes?.valores[id] || '').trim());
-    return { ...e, linha: l, sugestao: sugestoes.get(e.codigo), reinf: r, situacao, rotuloSituacao: t.ROTULO_SITUACAO_GERAL[situacao], pendencias, temParticularidade };
+    return { ...e, linha: l, sugestao: sugestoes.get(e.codigo), reinf: r, situacao, rotuloSituacao: t.ROTULO_SITUACAO_GERAL[situacao], pendencias };
   });
 
   const q = semAcento(busca.trim());
   const linhas = todas.filter(r => (!q || semAcento(r.nome).includes(q) || String(r.codigo).startsWith(q))
-    && (modo !== 'particularidades' || !soComParticularidade || r.temParticularidade)
     && (!status || (status === 'pendentes' ? r.situacao !== 'concluida' : r.situacao === status))
     && (!entrega || (entrega === 'falta' ? !r.linha.entregue : r.linha.entregue === entrega))
     && (!pendenteEm || r.pendencias.has(pendenteEm as ParteDoRelatorio)));
@@ -171,13 +155,10 @@ export function useRelatorioGeral(regime: RegimeDoRelatorio, modo: ModoDoRelator
   }
 
   return {
-    carregando: !mes.carregada || lista.carregando || (modo === 'particularidades' && !doAnterior.carregada),
+    carregando: !mes.carregada || lista.carregando,
     exemplos: repo.exemplos,
     podeGravar,
-    titulo: (modo === 'particularidades' ? 'Particularidades ' : 'Relatório ') + (regime === 'sn' ? 'Simples' : modo === 'particularidades' ? 'Presumido' : 'Lucro Presumido'),
-    /** Particularidades: só as empresas que têm (o padrão) ou todas, para pôr uma nova */
-    soComParticularidade, setSoComParticularidade: (s: boolean) => { setSoComParticularidade(s); setPagina(0); },
-    nomesParticulares: grupo.colunas.filter(c => particulares.includes(c.id)).map(c => c.rotulo),
+    titulo: 'Relatório ' + (regime === 'sn' ? 'Simples' : 'Lucro Presumido'),
     competencia,
     competencias: competencias.map(c => ({ valor: c, rotulo: t.rotuloCompetencia(c) })),
     setCompetencia: (c: string) => { const n = new URLSearchParams(params); n.set('competencia', c); setParams(n); },
@@ -243,11 +224,6 @@ export function useRelatorioGeral(regime: RegimeDoRelatorio, modo: ModoDoRelator
     },
     exportar() {
       const marca = (m: string | undefined) => (m === 'ok' ? 'OK' : m === 'na' ? '—' : '');
-      if (modo === 'particularidades') {
-        const cab = ['Cód.', 'Cliente', ...colunas.map(c => c.rotulo)];
-        const vs = linhas.map(r => [r.codigo, r.nome, ...colunas.map(c => r.linha.valores[c.id] || '')]);
-        return { bytes: t.planilhaXlsx('Particularidades ' + competencia.slice(5, 7) + '-' + competencia.slice(0, 4), cab, vs), nome: 'Fiscal particularidades ' + (regime === 'sn' ? 'Simples' : 'Presumido') + ' ' + competencia + '.xlsx' };
-      }
       const cabecalho = ['Cód.', 'Cliente', ...colunas.map(c => c.rotulo), ...grupo.marcas.map(m => m.dica), 'REINF', 'Retificada', 'Data', 'Entregue', 'Situação'];
       const valores = linhas.map(r => [
         r.codigo, r.nome, ...colunas.map(c => r.linha.valores[c.id] || ''), ...grupo.marcas.map(m => marca(r.linha.marcas[m.id])),

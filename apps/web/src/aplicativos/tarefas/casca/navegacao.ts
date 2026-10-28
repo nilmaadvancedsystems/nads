@@ -50,7 +50,8 @@ export const APLICACOES: readonly Aplicacao[] = [
     // removidas"): a empresa se abre por Minhas empresas, escolhendo o setor; ficam as ferramentas do Fiscal
     // o menu em duas partes (28/10/2026: "separa nessa ordem: Empresas … Ferramentas: o restante"): em Empresas, o Relatório
     // de cada regime (a planilha RELATORIO EMPRESA 2026 no estilo das Obrigações do DP, com a REINF; "lucro presumido e
-    // simples são diferentes, deixa cada um separado"; tomou o lugar do Controle de tributos: os links antigos caem no Simples)
+    // simples são diferentes, deixa cada um separado"; tomou o lugar do Controle de tributos: os links antigos caem no Simples;
+    // as Particularidades voltaram para a tabela dele, 28/10/2026: os links delas caem no Relatório do regime)
     { id: 'relatorio-simples', rotulo: 'Simples Nacional', icone: 'painel', titulo: 'Relatório Simples', secao: 'Empresas' },
     { id: 'relatorio-presumido', rotulo: 'Lucro Presumido', icone: 'painel', titulo: 'Relatório Lucro Presumido', secao: 'Empresas' },
     // as Ferramentas: a REINF (o fluxo do Notion do Heverton)
@@ -66,9 +67,6 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'simples', rotulo: 'Calculadora do Simples', icone: 'recibo', titulo: 'Calculadora do Simples Nacional', secao: 'Ferramentas' },
     // a antecipação do ICMS do ES (Heverton, 22/10/2026: a planilha "Antecipação ICMS-ES", com as notas do SIEG)
     { id: 'antecipacao-es', rotulo: 'Antecipação ICMS-ES', icone: 'fileSearch', titulo: 'Antecipação de ICMS — ES', secao: 'Ferramentas' },
-    // as guias que nem toda empresa tem, fora do Relatório (28/10/2026: "arroz, parcelamento, não é toda empresa que tem")
-    { id: 'particularidades-simples', rotulo: 'Particularidades Simples', icone: 'fileSearch', titulo: 'Particularidades Simples', secao: 'Ferramentas' },
-    { id: 'particularidades-presumido', rotulo: 'Particularidades Presumido', icone: 'fileSearch', titulo: 'Particularidades Presumido', secao: 'Ferramentas' },
   ] },
   // o DP (Vitor, 06/10/2026: o Checklist Folha "seria a rotina do dp"): as empresas com a rotina do DP, o painel da
   // planilha (números, gráficos, o progresso por responsável e as obrigações de cada cliente), a visão e as paradas
