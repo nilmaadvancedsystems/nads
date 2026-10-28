@@ -1,5 +1,5 @@
 // DP › Legislação (Vitor, 14/10/2026: "importa as legislações em uma aba no DP"): a lista dos assuntos (os do Toriba e os
-// cadastrados no nads), com a busca e o começo de cada texto; clicar no assunto abre a janela dele, numa tela só (Vitor,
+// cadastrados no nads), com a busca; clicar no assunto abre a janela dele, numa tela só (Vitor,
 // 28/10/2026: "texto legal e editar em uma tela só; o lápis em outro lugar, para ter mais tela; salvar e cancelar só quando
 // o lápis é clicado, um check e um cancelar"). O DP e o admin cadastram ("Nova legislação", no canto) e editam (o lápis).
 import { BotaoFechar, BotaoIcone, Icone, useEntradaAnimada, useJanela } from '@nads/ui';
@@ -43,7 +43,6 @@ export function LegislacaoDoDp() {
                   <tr key={x.id} className="dp-linha-abre" onClick={() => vm.abrir(x.id)} title={'Abrir ' + x.assunto}>
                     <td>
                       <strong>{x.assunto}</strong>{x.origem === 'nads' && <span className="badge badge-neutral dp-selo-mudado">nova</span>}
-                      <div className="fraco">{vm.trecho(x.texto)}</div>
                     </td>
                     <td className="fraco">{x.atualizadoPor || '—'}</td>
                     <td className="num fraco">{vm.data(x.data)}</td>

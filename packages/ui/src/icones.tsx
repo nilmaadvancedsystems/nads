@@ -46,6 +46,8 @@ const ICONS = {
   caretDown: '<path transform="scale(1.5)" fill="currentColor" stroke="none" d="m4.427 7.427 3.396 3.396a.25.25 0 0 0 .354 0l3.396-3.396A.25.25 0 0 0 11.396 7H4.604a.25.25 0 0 0-.177.427Z"/>',
   play: '<path d="M7 4.5v15l12-7.5Z"/>',
   filtro: '<path d="M3 5.5h18"/><path d="M6.5 12h11"/><path d="M10 18.5h4"/>',
+  // o funil (Vitor, 28/10/2026: "coloca outro ícone de filtro", nos filtros avançados do DP)
+  funil: '<path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/>',
   ordenar: '<path d="m3 8 4-4 4 4"/><path d="M7 4v16"/><path d="m21 16-4 4-4-4"/><path d="M17 20V4"/>',
   copiar: '<rect x="8.5" y="8.5" width="12" height="12" rx="2"/><path d="M15.5 8.5v-3a2 2 0 0 0-2-2h-8a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h3"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
