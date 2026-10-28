@@ -4,7 +4,7 @@
 // com as obrigações do mês (– não tem, vazio a fazer, ✓ feita, ! parada). Tudo roda aqui: clicar na bolinha marca a
 // obrigação como feita, clicar de novo desfaz (sem o checklist).
 import { formatos } from '@nads/core';
-import { baixarBytes, BarrasEmColuna, Esqueleto, Icone, Interruptor, MenuSuspenso, NumeroQueConta, RoscaComLegenda, Segmentado, useCarregando, useEntradaAnimada, type TomDoPainel } from '@nads/ui';
+import { baixarBytes, Esqueleto, Icone, Interruptor, MenuSuspenso, NumeroQueConta, RoscaComLegenda, Segmentado, useCarregando, useEntradaAnimada, type TomDoPainel } from '@nads/ui';
 import { Fragment, useState } from 'react';
 import { DecimoNaLista } from './DecimoTerceiro';
 import { JanelaDasEtiquetas } from './JanelaDasEtiquetas';
@@ -104,34 +104,28 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
             ))}
           </div>
 
-          {/* o dashboard no padrão de Senhas › Certificados (Savio, 15/10/2026): a rosca da situação e as barras do que falta em cada
-              parte da rotina; os cartões de quem pede atenção e a lista "Ainda faltam" saíram (Vitor, 28/10/2026) */}
+          {/* o dashboard no padrão de Senhas › Certificados (Savio, 15/10/2026): a rosca da situação e, ao lado, o progresso por
+              responsável; as barras do que falta em cada parte, os cartões de quem pede atenção e a lista "Ainda faltam" saíram (Vitor, 28/10/2026) */}
           <div className="cert-dash">
             <section className="card cert-dash-bloco">
               <div className="card-head"><h3>Situação do mês</h3></div>
               <RoscaComLegenda fatias={ORDEM_DASH.map(s => ({ id: s, rotulo: ROTULO_DASH[s], valor: vm.dash.contagem[s], tom: TOM_DASH[s] }))}
                 total={vm.numeros[0].valor} subtitulo="clientes" ativa={null} onEscolher={() => undefined} />
             </section>
-            <section className="card cert-dash-bloco">
-              <div className="card-head"><h3>O que falta em cada parte da rotina</h3></div>
-              <BarrasEmColuna ativa={null} onEscolher={() => undefined}
-                colunas={vm.dash.porParte.map(p => ({ chave: p.id, rotulo: p.rotulo, total: p.faltam, aviso: true, leitura: p.faltam + (p.faltam === 1 ? ' cliente falta' : ' clientes faltam') + ' em ' + p.rotulo }))} />
+            <section className="card dp-progresso">
+              <h3 className="dp-titulo">Progresso por responsável</h3>
+              <div className="dp-progresso-grade">
+                {vm.progresso.map(p => (
+                  <button key={p.nome} type="button" className={'dp-pessoa' + (f.responsavel === p.nome ? ' ativa' : '')}
+                    onClick={() => f.setResponsavel(f.responsavel === p.nome ? '' : p.nome)} title={'Filtrar a lista: ' + p.nome}>
+                    <span className="dp-pessoa-topo"><b>{p.nome}</b><span className="num">{p.feitos}/{p.total}</span></span>
+                    <span className="dp-pessoa-barra"><span style={{ width: p.pct + '%' }} /></span>
+                    <span className="hint">{p.pct}% concluído{p.parados ? ' · ' + p.parados + (p.parados === 1 ? ' parada' : ' paradas') : ''}</span>
+                  </button>
+                ))}
+              </div>
             </section>
           </div>
-
-          <section className="card dp-progresso">
-            <h3 className="dp-titulo">Progresso por responsável</h3>
-            <div className="dp-progresso-grade">
-              {vm.progresso.map(p => (
-                <button key={p.nome} type="button" className={'dp-pessoa' + (f.responsavel === p.nome ? ' ativa' : '')}
-                  onClick={() => f.setResponsavel(f.responsavel === p.nome ? '' : p.nome)} title={'Filtrar a lista: ' + p.nome}>
-                  <span className="dp-pessoa-topo"><b>{p.nome}</b><span className="num">{p.feitos}/{p.total}</span></span>
-                  <span className="dp-pessoa-barra"><span style={{ width: p.pct + '%' }} /></span>
-                  <span className="hint">{p.pct}% concluído{p.parados ? ' · ' + p.parados + (p.parados === 1 ? ' parada' : ' paradas') : ''}</span>
-                </button>
-              ))}
-            </div>
-          </section>
         </>
       ) : (
         <>
