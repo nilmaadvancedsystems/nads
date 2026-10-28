@@ -32,7 +32,8 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
     titulo: a?.paginas.find(p => p.id === pagina)?.titulo || a?.nome || '',
     // o Cadastro com as páginas em abas no alto (Empresas, Usuários, Configurações; Vitor, 05/10/2026), sem a barra lateral
     comAbas,
-    secoes: comAbas ? [] : (a?.paginas || []).map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, marca: p.marca, grupo: 1, ativa: p.id === pagina, travada: !!p.emDesenvolvimento })),
+    // os blocos com nome (as Configurações: Cadastro e Admin; 28/10/2026): o nome em cima da primeira página de cada um
+    secoes: comAbas ? [] : (a?.paginas || []).map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, marca: p.marca, grupo: p.secao ? 1 + [...new Set(a?.paginas.map(x => x.secao))].indexOf(p.secao) : 1, titulo: p.secao, ativa: p.id === pagina, travada: !!p.emDesenvolvimento })),
     paginas: comAbas ? (a?.paginas || []).map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, ativa: p.id === pagina })) : [],
     /** a aba do alto (o Cadastro): a página, mantendo a competência */
     onPagina: (id: string) => navegar(caminhoDaPagina(app, id) + search),

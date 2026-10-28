@@ -32,6 +32,8 @@ import { criarIAMemoria, type RepoIA } from './ia';
 import { criarIAFirestore } from './ia.firestore';
 import { criarFeedbackMemoria, type RepoFeedback } from './feedback';
 import { criarCategoriasDpMemoria, type RepoCategoriasDp } from './categoriasDp';
+import { criarControleTributosMemoria, type RepoControleTributos } from './controleTributos';
+import { criarControleTributosFirestore } from './controleTributos.firestore';
 import { criarCategoriasDpFirestore } from './categoriasDp.firestore';
 import { criarLegislacaoDpMemoria, type RepoLegislacaoDp } from './legislacaoDp';
 import { criarLegislacaoDpFirestore } from './legislacaoDp.firestore';
@@ -460,6 +462,14 @@ let usoDoSistema: RepoUso | null = null;
 export function repoDeUso(): RepoUso {
   if (!usoDoSistema) usoDoSistema = noBanco ? criarUsoFirestore(() => quemPede()?.nome || '') : criarUsoMemoria();
   return usoDoSistema;
+}
+
+let controleTributos: RepoControleTributos | null = null;
+
+/** O controle de tributos do Fiscal: no banco, controleTributos e controleTributosFolha; nos exemplos, na memória. */
+export function repoDoControleTributos(): RepoControleTributos {
+  if (!controleTributos) controleTributos = noBanco ? criarControleTributosFirestore(() => quemPede()?.nome || '') : criarControleTributosMemoria();
+  return controleTributos;
 }
 
 let categoriasDp: RepoCategoriasDp | null = null;

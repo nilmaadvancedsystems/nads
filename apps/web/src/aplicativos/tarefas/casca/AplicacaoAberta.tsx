@@ -11,18 +11,18 @@ import { RotaDeEntregas } from '../telas/entregas/RotaDeEntregas';
 import { CascaTarefas } from './CascaTarefas';
 import { aplicacao, aplicacoesDe, BASE, caminhoDaPagina, type IdAplicacao } from './navegacao';
 import { useOperador, type Operador } from './operador';
+import type { IdPaginaAdmin } from '../../admin/casca/navegacao';
 
 // cada tela é um pedaço à parte (revisão da UI, 18/10/2026: o pacote inicial tinha 4 MB): baixa quando a pessoa abre a
 // página, com o Esqueleto no lugar enquanto chega (comum/pedaco.tsx). As da Entregas ainda vêm no pacote inicial.
 const UsuariosDoNads = pedaco(() => import('../telas/cadastro/usuarios/UsuariosDoNads'), 'UsuariosDoNads');
+const TelaDoAdmin = pedaco(() => import('../telas/configuracoes/TelaDoAdmin'), 'TelaDoAdmin');
 const VisaoContabil = pedaco(() => import('../telas/contabil/VisaoContabil'), 'VisaoContabil');
-const ConfiguracoesContabil = pedaco(() => import('../telas/contabil/configuracoes/ConfiguracoesContabil'), 'ConfiguracoesContabil');
 const ExploradorDoDrive = pedaco(() => import('../telas/drive/ExploradorDoDrive'), 'ExploradorDoDrive');
 const CaixaDoRobo = pedaco(() => import('../telas/gmail/CaixaDoRobo'), 'CaixaDoRobo');
 const HistoricoDoRobo = pedaco(() => import('../telas/gmail/HistoricoDoRobo'), 'HistoricoDoRobo');
 const MinhasEmpresas = pedaco(() => import('../telas/empresas/MinhasEmpresas'), 'MinhasEmpresas');
 const Inicio = pedaco(() => import('../telas/inicio/Inicio'), 'Inicio');
-const Insights = pedaco(() => import('../telas/insights/Insights'), 'Insights');
 const EmDesenvolvimento = pedaco(() => import('../telas/em-desenvolvimento/EmDesenvolvimento'), 'EmDesenvolvimento');
 const Reinf = pedaco(() => import('../telas/fiscal/reinf/Reinf'), 'Reinf');
 const PainelDoDp = pedaco(() => import('../telas/dp/PainelDoDp'), 'PainelDoDp');
@@ -36,6 +36,8 @@ const LegislacaoDoDp = pedaco(() => import('../telas/dp/LegislacaoDoDp'), 'Legis
 const PaginaSintegra = pedaco(() => import('../telas/fiscal/sintegra/PaginaSintegra'), 'PaginaSintegra');
 const FaturamentoDosClientes = pedaco(() => import('../telas/fiscal/faturamento/FaturamentoDosClientes'), 'FaturamentoDosClientes');
 const AntecipacaoIcms = pedaco(() => import('../telas/fiscal/antecipacao/AntecipacaoIcms'), 'AntecipacaoIcms');
+const RelatorioGeral = pedaco(() => import('../telas/fiscal/relatorio/RelatorioGeral'), 'RelatorioGeral');
+const ControleDeTributos = pedaco(() => import('../telas/fiscal/controle/ControleDeTributos'), 'ControleDeTributos');
 const RateioDeFrete = pedaco(() => import('../telas/fiscal/rateio/RateioDeFrete'), 'RateioDeFrete');
 const CalculadoraDoSimples = pedaco(() => import('../telas/fiscal/simples/CalculadoraDoSimples'), 'CalculadoraDoSimples');
 const ConfiguracoesDoDp = pedaco(() => import('../telas/dp/ConfiguracoesDoDp'), 'ConfiguracoesDoDp');
@@ -54,13 +56,13 @@ const ImportarExtrato = pedaco(() => import('../telas/financeiro/ImportarExtrato
 function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
   switch (app) {
     case 'inicio': return <Inicio />;
-    case 'minhas-empresas': return pagina === 'insights' ? <Insights /> : <MinhasEmpresas />;
-    case 'contabil': return pagina === 'configuracoes' ? <ConfiguracoesContabil /> : <VisaoContabil pagina={pagina} />;
+    case 'minhas-empresas': return <MinhasEmpresas />;
     // as Empresas, o Painel, a Visão geral e as Paradas do Fiscal saíram (27/10/2026): ficam as ferramentas
-    case 'fiscal': return pagina === 'sintegra' ? <PaginaSintegra /> : pagina === 'faturamento' ? <FaturamentoDosClientes /> : pagina === 'simples' ? <CalculadoraDoSimples /> : pagina === 'rateio-frete' ? <RateioDeFrete /> : pagina === 'antecipacao-es' ? <AntecipacaoIcms /> : <Reinf />;
+    case 'fiscal': return pagina === 'sintegra' ? <PaginaSintegra /> : pagina === 'faturamento' ? <FaturamentoDosClientes /> : pagina === 'simples' ? <CalculadoraDoSimples /> : pagina === 'rateio-frete' ? <RateioDeFrete /> : pagina === 'antecipacao-es' ? <AntecipacaoIcms /> : pagina === 'controle-tributos' ? <ControleDeTributos /> : pagina === 'relatorio' ? <RelatorioGeral /> : <Reinf />;
     case 'dp': return ABAS_DO_PAINEL.includes(pagina as AbaDoPainel) ? <PainelDoDp aba={pagina as AbaDoPainel} /> : pagina === 'configuracoes' ? <ConfiguracoesDoDp /> : pagina === 'fgts' ? <FgtsDoDp /> : pagina === 'envios' ? <EnviosDoDp /> : pagina === 'legislacao' ? <LegislacaoDoDp /> : <VisaoContabil pagina={pagina} dep="dp" />;
     case 'senhas': return pagina === 'acesso' ? <AcessoAoCofre /> : pagina === 'gov' ? <ContasGov /> : pagina === 'certificados' ? <Certificados /> : <SenhasDasEmpresas />;
-    case 'cadastro': return <UsuariosDoNads />;
+    // as Configurações (28/10/2026): a Equipe e as páginas do admin (as Empresas têm rota própria, CadastroAberto)
+    case 'cadastro': return pagina === 'usuarios' ? <UsuariosDoNads /> : <TelaDoAdmin pagina={pagina as IdPaginaAdmin} />;
     // a Área do Cliente com o Mandei junto (19/10/2026): Chamados, Recebidos, Meus tickets e a Central de tickets
     case 'area-cliente': return pagina === 'recebidos' ? <RecebidosDoCliente /> : pagina === 'meus' || pagina === 'central' ? <Mandei pagina={pagina} /> : <ChamadosDoCliente />;
     case 'financeiro': return pagina === 'painel' ? <PainelFinanceiro /> : pagina === 'devedores' ? <Devedores /> : pagina === 'resultado' ? <PainelFinanceiro comResultado /> : pagina === 'extrato' || pagina === 'conciliacao' ? <ImportarExtrato /> : pagina === 'configuracoes' ? <ConfiguracoesDoFinanceiro /> : pagina === 'caixa' ? <Caixa /> : pagina === 'honorarios' ? <Honorarios /> : pagina === 'plano' ? <PlanoDeContas /> : <NotasFiscais />;
@@ -89,7 +91,7 @@ export function AplicacaoAberta() {
   if (!a.paginas.some(p => p.id === pagina && !p.emDesenvolvimento)) return <Navigate to={caminhoDaPagina(a.id, (a.paginas.find(p => !p.emDesenvolvimento) || a.paginas[0]).id)} replace />;
   return (
     <TopoProvider>
-      <CascaTarefas app={a.id} pagina={pagina} telaInteira={a.id === 'drive'} larga>
+      <CascaTarefas app={a.id} pagina={pagina} telaInteira={a.id === 'drive'} semLateral={a.id === 'minhas-empresas'} larga>
         <NaEspera><Tela app={a.id} pagina={pagina} /></NaEspera>
       </CascaTarefas>
     </TopoProvider>

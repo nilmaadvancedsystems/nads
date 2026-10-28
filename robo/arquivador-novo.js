@@ -204,17 +204,19 @@ function linhasDaPlanilha(buffer, nome) {
 // buffer fica preso até a leitura acabar); o lote do OCR usa o resultado e o tira daqui
 const OCR_ADIANTADOS = 60;
 const ocrAdiantado = new Map();
-function adiantarOcr(hash, buffer) {
+// imagem: o OCR da imagem (27/10/2026), com os mesmos trabalhadores
+const lerPorOcr = (buffer, imagem) => (imagem ? require('./arquivador-ocr').ocrDaImagem(buffer) : require('./arquivador-ocr').ocrDoPdf(buffer));
+function adiantarOcr(hash, buffer, imagem) {
   if (ocrAdiantado.has(hash) || ocrAdiantado.size >= OCR_ADIANTADOS) return;
-  const p = require('./arquivador-ocr').ocrDoPdf(buffer);
+  const p = lerPorOcr(buffer, imagem);
   ocrAdiantado.set(hash, p);
   // o que ninguém veio buscar (a passada parou antes do lote do OCR) sai em 30 min e abre a vaga
   p.then(() => { const t = setTimeout(() => { if (ocrAdiantado.get(hash) === p) ocrAdiantado.delete(hash); }, 30 * 60000); if (t.unref) t.unref(); });
 }
-function ocrDe(hash, buffer) {
+function ocrDe(hash, buffer, imagem) {
   const p = ocrAdiantado.get(hash);
   if (p) { ocrAdiantado.delete(hash); return p; }
-  return require('./arquivador-ocr').ocrDoPdf(buffer);
+  return lerPorOcr(buffer, imagem);
 }
 
 /**
@@ -249,7 +251,19 @@ async function montarEntrada(nome, rel, buffer, op) {
     case 'txt': e.txt = buffer.slice(0, 64 * 1024).toString('latin1'); break;
     case 'xlsx': case 'xls': case 'csv': e.planilha = linhasDaPlanilha(buffer, nome); break;
     case 'zip': if (ehTedSintegra(buffer)) e.tedSintegra = true; break;
-    default: break;
+    // a imagem escaneada (27/10/2026, Vitor: os comprovantes "Imagem (10).jpg" do Posto Berizal) é lida por OCR, como o PDF
+    // escaneado: na fila do OCR do contínuo (adiarOcr) ou na hora
+    case 'jpg': case 'jpeg': case 'png': {
+      // só imagem de verdade (JPEG FF D8, PNG 89 50 4E 47): o resto nem vai ao Tesseract
+      if (!OCR_LIGADO || !(buffer.length > 8 && ((buffer[0] === 0xff && buffer[1] === 0xd8) || buffer.readUInt32BE(0) === 0x89504e47))) break;
+      if (op && op.adiarOcr) { e.precisaOcr = true; adiantarOcr(e.hash, buffer, true); break; }
+      const o = await ocrDe(e.hash, buffer, true);
+      e.ocr = { confianca: o.confianca, ms: o.ms, erro: o.erro || null };
+      if (o.paginas.length && o.paginas.join('').replace(/\s/g, '').length >= 40) e.texto = o.paginas;
+      break;
+    }
+    // sem extensão e pequeno (27/10/2026: o registro de envio do emissor, "env-lot=…-env-sinc-lot.xml"): o texto vai para as regras
+    default: if (!ext && buffer.length < 4096) e.semExtensao = buffer.toString('latin1'); break;
   }
   return e;
 }

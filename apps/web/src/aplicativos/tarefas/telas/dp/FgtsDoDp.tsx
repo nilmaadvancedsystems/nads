@@ -87,11 +87,13 @@ export function FgtsDoDp() {
   const aberto = vm.aberto;
   const pedidoAberto = aberto?.pedido;
   const agora = vm.roboAgora;
+  // a rotina rodando: uma guia sendo emitida agora ou na fila (só aí a barra de progresso aparece; Vitor, 28/10/2026)
+  const emAndamento = !!agora || vm.fila.length > 0;
   const qtdSituacao: Record<FiltroFgts, number> = { todos: c.todos, faltam: c.faltam, emitidas: c.emitidas, problemas: c.problemas };
   return (
     <section className="dp-painel">
       {r.carregado && !r.ligado && (
-        <Alerta naLinha className="fgts-robo" titulo="Robô do FGTS desligado" texto={r.motivo || 'Sem o certificado do escritório na máquina do robô.'} />
+        <Alerta naLinha className="fgts-robo" titulo="Rotina FGTS desligada" texto={r.motivo || 'Sem o certificado do escritório na máquina do robô.'} />
       )}
       <div className="tarefas-barra-topo dp-filtros-linha">
         {/* a barra no padrão do resto do app (revisão da UI, 16/10/2026): a busca de lupa e os filtros em menus numa linha */}
@@ -107,20 +109,27 @@ export function FgtsDoDp() {
           itens={SITUACOES.map(o => ({ rotulo: o.rotulo + ' (' + qtdSituacao[o.valor] + ')', marcado: o.valor === vm.filtro, onClick: () => vm.setFiltro(o.valor) }))} />
       </div>
 
-      {/* o robô agora: ligado, com quem está, o último passo, a verificação e a fila */}
+      {/* a Rotina FGTS (o robô; Vitor, 28/10/2026: "ao invés de robô, Rotina FGTS"): o selo diz na hora se está ligada,
+          desligada ou em andamento; a barra só enquanto emite; quem está agora, a verificação e a fila */}
       <section className="card fgts-robo-painel">
         <div className="fgts-robo-cabeca">
-          <h3 className="dp-titulo">Robô</h3>
-          {r.carregado && (r.ligado
-            ? <span className="fgts-robo-linha"><span className="bolinha-sit concluida" aria-hidden="true" />Ligado{r.certificado ? ' · certificado até ' + data(r.certificado.validade) : ''}</span>
-            : <span className="fgts-robo-linha"><span className="bolinha-sit parada" aria-hidden="true" />Desligado</span>)}
+          <h3 className="dp-titulo">Rotina FGTS</h3>
+          {r.carregado && (
+            <span className={'badge ' + (emAndamento ? 'badge-warn' : r.ligado ? 'badge-ok' : 'badge-bad')}>
+              <span className={'bolinha-sit ' + (emAndamento ? 'em-andamento' : r.ligado ? 'concluida' : 'parada')} aria-hidden="true" />
+              {emAndamento ? 'Em andamento' : r.ligado ? 'Ligada' : 'Desligada'}
+            </span>
+          )}
+          {r.ligado && r.certificado && <span className="hint">certificado até {data(r.certificado.validade)}</span>}
           <span className="tarefas-barra-espaco" />
           <span className="hint"><b className="num"><NumeroQueConta texto={String(c.emitidas)} /></b> de <b className="num">{c.todos}</b> emitidas em {mes}{vm.totalEmitido ? <> · <b className="num">R$ {vm.totalEmitido}</b></> : null}</span>
         </div>
-        <span className="tarefas-barra fgts-barra" role="progressbar" aria-valuemin={0} aria-valuemax={c.todos} aria-valuenow={c.emitidas} aria-label="Guias emitidas">
-          <span style={{ width: (c.todos ? (c.emitidas / c.todos) * 100 : 0) + '%' }} />
-        </span>
-        <div className="fgts-robo-agora">
+        {emAndamento && (
+          <span className="tarefas-barra fgts-barra" role="progressbar" aria-valuemin={0} aria-valuemax={c.todos} aria-valuenow={c.emitidas} aria-label="Guias emitidas">
+            <span style={{ width: (c.todos ? (c.emitidas / c.todos) * 100 : 0) + '%' }} />
+          </span>
+        )}
+        {(agora || r.ligado) && <div className="fgts-robo-agora">
           <span className="hint fgts-robo-rotulo">Agora</span>
           {agora ? (
             <>
@@ -134,8 +143,8 @@ export function FgtsDoDp() {
                 : <button type="button" className="btn btn-outline" onClick={() => vm.abrir(agora.pedidoId)}>Ver passos</button>}
               <BotaoAcao className="btn btn-ghost" carregando={vm.fazendo('cancelar:' + agora.pedidoId)} textoCarregando="Cancelando…" onClick={() => void vm.cancelar(agora.pedidoId)}><Icone nome="x" />Cancelar</BotaoAcao>
             </>
-          ) : <span className="fraco">parado</span>}
-        </div>
+          ) : <span className="fraco">Nenhuma guia sendo emitida agora</span>}
+        </div>}
         {vm.fila.length > 0 && (
           <div className="fgts-robo-agora">
             <span className="hint fgts-robo-rotulo">Na fila · {vm.fila.length}</span>

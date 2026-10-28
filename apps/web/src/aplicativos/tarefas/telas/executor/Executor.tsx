@@ -3,7 +3,8 @@
 // caixinha marcada = feita; clicar numa anterior volta para ela e tira o check). A página é só a ferramenta da
 // etapa, com a altura toda. No canto direito do cabeçalho, como os botões do GitHub (Vitor, 01/10/2026: os botões do pé
 // atrapalhavam a ferramenta): os grupos da rotina num menu só (como o "+ ▾"), as saídas da etapa (⚠ ▾), ✕ Interromper,
-// ? (o que falta) ou → Próximo, e o perfil.
+// ? (o que falta) e o perfil. Sem a seta do Próximo (Vitor, 28/10/2026: "remova essa seta e dê um check"): tudo ok, a etapa
+// ganha o check na lateral e a próxima aparece liberada; o clique nela marca esta feita e segue.
 import { AberturaN, Alerta, Casca, destacarNaTela, Icone, MenuSuspenso, useCarregando, useFerramentaNaEtapa, type NomeIcone } from '@nads/ui';
 import { demo } from '@nads/core';
 import { useEffect, useRef, useState } from 'react';
@@ -168,12 +169,21 @@ export function Executor() {
   // o checklist da esquerda: só as etapas do grupo da vez (os outros grupos ficam nos botões do canto); tudo pronto, todas
   // sem dia negativo (a Importação disse), o Cheque especial nem aparece; ao seguir, ele fica dispensado (Vitor, 02/10/2026)
   const semCheque = vm.etapa?.id === 'extratos' && requisitos?.url === urlDaFerramenta && requisitos?.precisaChequeEspecial === false;
-  const checklist = vm.etapas.filter(e => !e.oculta && !(semCheque && e.id === 'cheque-especial')).filter(e => !vm.etapa || e.secao === vm.etapa.secao).map(e => ({
+  // tudo ok na etapa da vez (Vitor, 28/10/2026): o check automático e a próxima etapa revelada, para a pessoa clicar
+  const botoesDaEtapa = vm.etapa && telaPronta && !vm.interrompendo && saida.state !== 'blocked' && !vm.revendo;
+  const liberada = !!botoesDaEtapa && !faltam && requisitosConhecidos && !vm.conferindo;
+  const visiveis = vm.etapas.filter(e => !e.oculta && !(semCheque && e.id === 'cheque-especial'));
+  const nDaVez = vm.etapas.find(x => x.daVez)?.n ?? 0;
+  const proxima = liberada ? visiveis.find(e => e.n > nDaVez && e.situacao !== 'feita') || null : null;
+  /** o clique na próxima etapa liberada: marca a da vez feita (ela vira a da vez); nas outras, o de sempre */
+  const abrirEtapa = (id: string) => { if (proxima && id === proxima.id) void vm.proximo(semCheque); else vm.abrirEtapa(id); };
+  // a lista do grupo da vez e, se a próxima é de outro grupo, ela embaixo (com o nome do grupo dela)
+  const checklist = visiveis.filter(e => !vm.etapa || e.secao === vm.etapa.secao || e.id === proxima?.id).map(e => ({
     // em lote é tudo de uma vez (Vitor, 02/10/2026: "não fica 8/9, são os 9"): só o nome da etapa, sem a contagem de meses
     id: e.id, rotulo: e.nome, icone: 'check' as const, grupo: e.grupo, titulo: e.secao, ativa: e.atual,
-    caixa: e.situacao === 'feita' ? 'marcada' as const : e.situacao === 'interrompida' ? 'parada' as const : 'vazia' as const,
-    // as da frente que ainda não foram feitas: mais apagadas
-    apagada: !!vm.etapa && e.n > (vm.etapas.find(x => x.daVez)?.n ?? 0) && e.situacao !== 'feita',
+    caixa: e.situacao === 'feita' || (e.daVez && liberada) ? 'marcada' as const : e.situacao === 'interrompida' ? 'parada' as const : 'vazia' as const,
+    // as da frente que ainda não foram feitas: mais apagadas; a próxima, liberada, revelada
+    apagada: !!vm.etapa && e.n > nDaVez && e.situacao !== 'feita' && e.id !== proxima?.id,
   }));
 
   // os grupos da rotina num menu só (como o "+ ▾" do GitHub): o ícone do grupo da vez e, aberto, todos (os da frente travados)
@@ -183,11 +193,13 @@ export function Executor() {
     // separa a Preparação e o Fechamento do meio (Ativo, Passivo, Resultado)
     if (i > 0 && (i === 1 || i === vm.grupos.length - 1)) itensDosGrupos.push('separador');
     // feito: check verde; o da vez: o check de sempre; os da frente: apagados (Vitor, 05/10/2026)
-    itensDosGrupos.push({ rotulo: g.nome, icone: ICONE_DO_GRUPO[g.nome] || 'list', marcado: g.atual, feito: g.feito, aberto: g.visto, desabilitado: g.travado, onClick: () => vm.abrirGrupo(g.nome) });
+    // o grupo da próxima etapa liberada: destravado, o clique segue para ela
+    const daProxima = !!proxima && g.travado && proxima.secao === g.nome;
+    itensDosGrupos.push({ rotulo: g.nome, icone: ICONE_DO_GRUPO[g.nome] || 'list', marcado: g.atual, feito: g.feito, aberto: g.visto, desabilitado: g.travado && !daProxima,
+      onClick: () => (daProxima ? void vm.proximo(semCheque) : vm.abrirGrupo(g.nome)) });
   });
   // o Em lote voltou para a tela da Importação (Vitor, 05/10/2026): o menu é só o dos grupos
   const emLote = null;
-  const botoesDaEtapa = vm.etapa && telaPronta && !vm.interrompendo && saida.state !== 'blocked' && !vm.revendo;
 
   const topo = (
     <>
@@ -207,10 +219,11 @@ export function Executor() {
             dica={'Para seguir, falta: ' + itensQueFaltam.length} titulo="Para seguir, falta" direita largura={380}
             conteudo={fechar => <ListaDoQueFalta itens={itensQueFaltam} onResolver={resolver} fechar={fechar} />} />
         )}
-        {botoesDaEtapa && !faltam && requisitosConhecidos && (
+        {/* a última etapa da rotina, tudo ok: sem próxima para clicar, o check conclui */}
+        {botoesDaEtapa && !faltam && requisitosConhecidos && !proxima && (
           <button type="button" className="gh-topo-btn gh-topo-proximo" disabled={vm.conferindo} onClick={() => { void vm.proximo(semCheque); }}
-            title={vm.conferindo ? 'Conferindo…' : 'Próximo (confere e segue para a próxima etapa)'} aria-label="Próximo">
-            {vm.conferindo ? <span className="btn-spinner" /> : <Icone nome="arrowDown" style={{ transform: 'rotate(-90deg)' }} />}
+            title={vm.conferindo ? 'Conferindo…' : 'Concluir a rotina'} aria-label="Concluir">
+            {vm.conferindo ? <span className="btn-spinner" /> : <Icone nome="check" />}
           </button>
         )}
         {/* modo desenvolvedor (Vitor, 06/10/2026): o ⚡ dos dados de teste e o Avançar azul (vai para a próxima etapa sem marcar nada) */}
@@ -223,11 +236,6 @@ export function Executor() {
               // recomeçar a rotina do zero (Vitor, 06/10/2026: "uma função de apagar início no raio")
               { rotulo: 'Apagar início (recomeçar a rotina)', icone: 'repeat' as NomeIcone, perigo: true, onClick: () => { void vm.apagarInicio(); } },
             ]} />
-        )}
-        {vm.dev && vm.temAvancar && (
-          <button type="button" className="gh-topo-btn gh-topo-proximo dev" onClick={vm.avancar} title="Avançar (modo desenvolvedor: só ver, não marca nada)" aria-label="Avançar">
-            <Icone nome="arrowDown" style={{ transform: 'rotate(-90deg)' }} />
-          </button>
         )}
       </nav>
       <span className="gh-topo-sep" aria-hidden="true" />
@@ -276,7 +284,7 @@ export function Executor() {
       empresa={{ codigo: (vm.empresa.codigo != null ? vm.empresa.codigo + ' · ' : '') + vm.empresa.nome, nome: '' }}
 
       versao={casca.versao} secoes={checklist} paginas={vm.tela && abasDaTela ? abasDaTela.paginas : abas} titulo=""
-      onSecao={vm.abrirEtapa} onPagina={vm.tela && abasDaTela ? abasDaTela.abrir : abrirAba} onInicio={vm.sair} onAplicativos={casca.inicio}
+      onSecao={abrirEtapa} onPagina={vm.tela && abasDaTela ? abasDaTela.abrir : abrirAba} onInicio={vm.sair} onAplicativos={casca.inicio}
       onEmpresa={vm.abrirEmpresa} aplicativos={casca.aplicacoes} onAplicativo={casca.onAplicacao}>
       {vm.carregando ? null : !vm.etapa ? (
         <div className="executor-fim" ref={fim}>
@@ -359,7 +367,7 @@ export function Executor() {
                 <h4>{vm.etapa.conferir ? 'O que conferir' : 'Feito no sistema'}</h4>
                 {vm.etapa.conferir ? (
                   <ul className="executor-conferir">{vm.etapa.conferir.map(c => <li key={c}>{c}</li>)}</ul>
-                ) : <p>Faça esta etapa no Alterdata e clique em Próximo.</p>}
+                ) : <p>Faça esta etapa no Alterdata e clique na próxima etapa, ao lado.</p>}
               </div>
             )}
           </div>

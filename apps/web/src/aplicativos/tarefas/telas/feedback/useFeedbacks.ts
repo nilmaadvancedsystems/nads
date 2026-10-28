@@ -7,6 +7,13 @@ import { useState } from 'react';
 import { ordenarPorPrioridade, PRIORIDADES, type PrioridadeDoFeedback, type SituacaoDoFeedback } from '../../dados/feedback';
 import { useFeedback } from '../../dados/repo';
 
+/** O bug em blocos para quem resolve: o comentário, os campos (mais a tela e a versão) e o report sem o veredito repetido. */
+function lerOBug(f: { texto: string; relatorio: string; tela: string; versao: string }) {
+  const m = suporte.lerMensagemDoBug(f.texto);
+  const campos = [...m.campos, { rotulo: 'Tela', valor: f.tela }, { rotulo: 'Versão', valor: f.versao }].filter(c => c.valor);
+  return { comentario: m.comentario, campos, report: f.relatorio ? suporte.lerReport(f.relatorio) : null };
+}
+
 export function useFeedbacks() {
   const repo = useFeedback();
   const todos = repo.todos();
@@ -19,7 +26,9 @@ export function useFeedbacks() {
   const [aberto, setAberto] = useState('');
   const { toast } = useRetorno();
   const comQuando = (f: (typeof todos.lista)[number]) => ({
-    ...f, veredito: f.tipo === 'bug' ? suporte.vereditoDoReport(f.relatorio) : null, pedido: f.tipo === 'bug' ? suporte.codigoDoPedido(f.id) : '', quando: f.criadoEm ? new Date(f.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '',
+    ...f, veredito: f.tipo === 'bug' ? suporte.vereditoDoReport(f.relatorio) : null,
+    // o bug para ler (28/10/2026): o que a pessoa disse, onde foi (os campos, com a tela e a versão) e o report do robô
+    lido: f.tipo === 'bug' ? lerOBug(f) : null, pedido: f.tipo === 'bug' ? suporte.codigoDoPedido(f.id) : '', quando: f.criadoEm ? new Date(f.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '',
   });
   const doAberto = todos.lista.find(f => f.id === aberto);
   const conta = (s: SituacaoDoFeedback) => todos.lista.filter(f => f.status === s).length;

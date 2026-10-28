@@ -1,14 +1,25 @@
-// Minhas empresas: a barra de cima, no jeito da do GitHub (competência no lugar do "main ▾", quantas
-// empresas, Insights; à direita a busca curta com atalho "/", Situação ▾ e "Iniciar ▾", que abre
-// o painel para escolher a empresa, em partes/PainelIniciar), o painel do progresso (27/10/2026) e a lista (clicar no título da coluna ordena; clicar na linha abre a página da empresa). Os números por situação ficam em Insights.
-import { Icone, MenuSuspenso, Segmentado, useCarregando, useEntradaAnimada, useLinhasQueSeMovem, Vazio } from '@nads/ui';
-import { useEffect, useRef } from 'react';
+// Minhas empresas, uma tela só (27/10/2026), sem a barra lateral: a barra de cima, no jeito da do GitHub (competência no
+// lugar do "main ▾"; à direita a busca curta com atalho "/" e Situação ▾), as empresas por situação, a lista (clicar no
+// título da coluna ordena; clicar na linha abre a página da empresa), as etapas paradas e, no Contábil, os históricos do
+// Creditor. O "Iniciar", o Progresso do mês e os Insights saíram (27/10/2026).
+import { Icone, MenuSuspenso, type NomeIcone, Segmentado, useCarregando, useEntradaAnimada, useLinhasQueSeMovem, Vazio } from '@nads/ui';
+import { useEffect, useRef, useState } from 'react';
 import { EmDesenvolvimento } from '../em-desenvolvimento/EmDesenvolvimento';
-import { PainelIniciar } from './partes/PainelIniciar';
 import { LIMITE, useMinhasEmpresas, type Coluna } from './useMinhasEmpresas';
 import { JanelaDaCompetencia } from './partes/JanelaDaCompetencia';
 import { TransferenciasPendentes } from '../cadastro/responsaveis/TransferenciasPendentes';
+import { EtapasParadas } from './partes/EtapasParadas';
+import { JanelaDeMinhasEmpresas } from './partes/JanelaDeMinhasEmpresas';
+import { ConfiguracoesContabil } from '../contabil/configuracoes/ConfiguracoesContabil';
 
+
+/** A cor e o ícone de cada situação no número (os tons do painel do DP). */
+const TOM_DA_SITUACAO: Record<string, { tom: string; icone: NomeIcone }> = {
+  parada: { tom: 'laranja', icone: 'alert' },
+  'em-andamento': { tom: 'aviso', icone: 'clock' },
+  'nao-iniciada': { tom: 'neutro', icone: 'list' },
+  concluida: { tom: 'ok', icone: 'check' },
+};
 
 /** Título de coluna que ordena: clicar ordena por ela (crescente), clicar de novo inverte; a setinha cinza só aparece depois do clique. */
 function Titulo({ vm, coluna, rotulo }: { vm: ReturnType<typeof useMinhasEmpresas>; coluna: Coluna; rotulo: string }) {
@@ -24,6 +35,8 @@ function Titulo({ vm, coluna, rotulo }: { vm: ReturnType<typeof useMinhasEmpresa
 export function MinhasEmpresas() {
   const vm = useMinhasEmpresas();
   const campoBusca = useRef<HTMLInputElement>(null);
+  // as Justificativas e as Configurações, em janela pelos botões da barra (28/10/2026)
+  const [janela, setJanela] = useState<'justificativas' | 'configuracoes' | null>(null);
   useCarregando(vm.carregando);
   // as linhas chegam em cascata quando o banco responde
   // tela com muitas caixas (Vitor, 01/10/2026: "tudo que tiver muita box pode reduzir"): a lista inteira só acende rápido
@@ -58,6 +71,9 @@ export function MinhasEmpresas() {
 
         <span className="tarefas-barra-espaco" />
 
+        <button type="button" className="icon-btn" title="Justificativas: as etapas paradas, com o motivo" aria-label="Justificativas" onClick={() => setJanela('justificativas')}><Icone nome="clock" /></button>
+        {vm.departamento === 'contabil' && <button type="button" className="icon-btn" title="Configurações: os históricos do Creditor" aria-label="Configurações" onClick={() => setJanela('configuracoes')}><Icone nome="settings" /></button>}
+
         <label className="busca-curta">
           <Icone nome="search" />
           <input ref={campoBusca} type="text" placeholder="Buscar empresa" aria-label="Buscar empresa (nome ou código)"
@@ -69,25 +85,16 @@ export function MinhasEmpresas() {
           className={'btn btn-outline' + (vm.situacao ? ' ativo' : '')}
           itens={[{ rotulo: 'Todas', marcado: !vm.situacao, onClick: () => vm.setSituacao('') },
             ...vm.situacoes.map(s => ({ rotulo: s.rotulo, marcado: s.valor === vm.situacao, onClick: () => vm.setSituacao(s.valor) }))]} />
-        <MenuSuspenso icone="play" rotulo="Iniciar" className="btn btn-primary" classeAberto="botao-apagado" direita largura={400} dica="Escolher a empresa para iniciar"
-          conteudo={fechar => <PainelIniciar vm={vm} fechar={fechar} />} />
       </div>
 
-      {/* o painel do progresso do mês (27/10/2026): o quanto das etapas está feito e as empresas por situação; clicar numa
-          situação filtra a lista */}
-      <div className="stat-grid empresa-numeros">
-        <div className="stat">
-          <p className="stat-label">Progresso do mês</p>
-          <p className="stat-value">{vm.carregando ? '—' : vm.resumo.porcentagem + '%'}</p>
-          <span className="tarefas-barra larga" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={vm.resumo.porcentagem} aria-label="Etapas feitas no mês">
-            <span style={{ width: (vm.carregando ? 0 : vm.resumo.porcentagem) + '%' }} />
-          </span>
-          {!vm.carregando && <p className="hint">{vm.resumo.etapasFeitas} de {vm.resumo.etapasTotal} etapas</p>}
-        </div>
+      {/* as empresas por situação; clicar numa situação filtra a lista (o Progresso do mês saiu; 27/10/2026) */}
+      {/* coloridos como os do Departamento Pessoal (Vitor, 28/10/2026: "dá um feedback visual melhor de paradas, em andamento") */}
+      <div className="stat-grid dp-numeros empresa-numeros">
         {vm.situacoes.map(s => (
-          <button key={s.valor} type="button" className={'stat stat-filtro' + (vm.situacao === s.valor ? ' ativo' : '')} aria-pressed={vm.situacao === s.valor}
+          <button key={s.valor} type="button" className={'stat stat-filtro painel-numero painel-' + TOM_DA_SITUACAO[s.valor].tom + (vm.situacao === s.valor ? ' ativo' : '')} aria-pressed={vm.situacao === s.valor}
             title={vm.situacao === s.valor ? 'Mostrar todas' : 'Mostrar só as ' + s.rotulo.toLowerCase()} onClick={() => vm.setSituacao(vm.situacao === s.valor ? '' : s.valor)}>
-            <p className="stat-label"><span className={'bolinha-sit ' + s.valor} />{s.rotulo}</p>
+            <span className="painel-numero-icone" aria-hidden="true"><Icone nome={TOM_DA_SITUACAO[s.valor].icone} /></span>
+            <p className="stat-label">{s.rotulo}</p>
             <p className="stat-value">{vm.carregando ? '—' : vm.resumo.porSituacao[s.valor]}</p>
           </button>
         ))}
@@ -135,6 +142,8 @@ export function MinhasEmpresas() {
           {vm.total > LIMITE && <p className="hint" style={{ padding: '8px 16px' }}>Mostrando {LIMITE} de {vm.total}. Use a busca ou a situação.</p>}
         </div>
       )}
+      {janela === 'justificativas' && <JanelaDeMinhasEmpresas titulo="Justificativas" icone="clock" fechar={() => setJanela(null)}><EtapasParadas dep={vm.departamento} /></JanelaDeMinhasEmpresas>}
+      {janela === 'configuracoes' && <JanelaDeMinhasEmpresas titulo="Configurações" icone="settings" fechar={() => setJanela(null)}><ConfiguracoesContabil /></JanelaDeMinhasEmpresas>}
     </section>
   );
 }

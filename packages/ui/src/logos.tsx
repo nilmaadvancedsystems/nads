@@ -268,6 +268,16 @@ export function LogoInss({ cor }: { cor?: boolean }) {
  * O logo do FGTS Digital (Vitor, 21/10/2026: "muda a logo do FGTS para essa que te mandei"), redesenhado da imagem: o canto
  * verde em L, o triângulo amarelo e o meio círculo azul, todos cortados pela diagonal (a folha dobrada). Quadrado.
  */
+/** O ícone do Excel (o quadrado verde com o X), no botão de exportar a tabela (Vitor, 28/10/2026: "coloca um ícone do excel"). */
+export function LogoExcel() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="2" y="2" width="20" height="20" rx="4" fill="#107C41" />
+      <path d="M8 7.5l8 9M16 7.5l-8 9" stroke="#FFF" strokeWidth="2.2" strokeLinecap="round" fill="none" />
+    </svg>
+  );
+}
+
 export function LogoFgts({ cor }: { cor?: boolean }) {
   return (
     <svg viewBox="24 24 132 132" width="100%" height="100%" aria-hidden="true" style={cinzaSeNao(cor)}>

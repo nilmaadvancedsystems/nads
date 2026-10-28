@@ -103,6 +103,33 @@ async function ocrDoPdf(buffer, opcoes) {
   } finally { if (tarefa) tarefa.destroy().catch(() => {}); if (w && !perdido) devolver(w); }
 }
 
+/**
+ * Texto de uma IMAGEM (.jpg/.png) por OCR, com os mesmos trabalhadores e o mesmo prazo do PDF (27/10/2026, Vitor: os
+ * comprovantes escaneados do Posto Berizal vêm como "Imagem (10).jpg"): { paginas: [texto], total: 1, confianca, ms, erro }.
+ * Leitura ruim (< 55%) tenta de novo com a rotação automática do Tesseract e fica com a melhor. Nunca lança.
+ */
+async function ocrDaImagem(buffer, opcoes) {
+  const o = Object.assign({ tempoMs: TEMPO_MS }, opcoes);
+  const inicio = Date.now();
+  let w = null, perdido = false;
+  try {
+    w = await obterTrabalhador();
+    return await comPrazo((async () => {
+      let melhor = null;
+      for (const op of [{}, { rotateAuto: true }]) {
+        const r = await w.recognize(buffer, op);
+        const c = typeof r.data.confidence === 'number' ? r.data.confidence : 0;
+        if (!melhor || c > melhor.c) melhor = { t: r.data.text || '', c };
+        if (melhor.c >= 55) break;
+      }
+      return { paginas: [melhor.t], total: 1, confianca: Math.round(melhor.c), ms: Date.now() - inicio };
+    })(), o.tempoMs);
+  } catch (e) {
+    if (/OCR passou/.test(e.message) && w) { perdido = true; descartar(w); }
+    return { paginas: [], total: 0, confianca: 0, ms: Date.now() - inicio, erro: e.message };
+  } finally { if (w && !perdido) devolver(w); }
+}
+
 async function encerrar() { const ws = livres.splice(0); criados -= ws.length; await Promise.all(ws.map(w => w.terminate().catch(() => {}))); }
 
-module.exports = { ocrDoPdf, encerrar, PAGINAS, TEMPO_MS, JUNTOS };
+module.exports = { ocrDoPdf, ocrDaImagem, encerrar, PAGINAS, TEMPO_MS, JUNTOS };

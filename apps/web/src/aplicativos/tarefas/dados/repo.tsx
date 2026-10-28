@@ -4,7 +4,7 @@ import type { empresas, entregas, tarefas, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { RepoAcesso } from './acesso';
-import { assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, dadosDaEmpresaNoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDaAreaCliente, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDoPainelRobo, repoDaIA, repoDeFeedback, repoDeAvisos, repoDeUso, repoDeParcelamentos, repoDeCategoriasDp, repoDeLegislacaoDp, repoDoLcdpr, repoDoArquivador, repoDosAgentes, repoDoFgts, repoDeEnviosDp, repoDeNfse, repoDoCaixa, repoDeHonorarios, repoDoSieg, repoPessoal, repoDoCofre } from './fonte';
+import { assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, dadosDaEmpresaNoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDaAreaCliente, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDoPainelRobo, repoDaIA, repoDeFeedback, repoDeAvisos, repoDeUso, repoDeParcelamentos, repoDeCategoriasDp, repoDoControleTributos, repoDeLegislacaoDp, repoDoLcdpr, repoDoArquivador, repoDosAgentes, repoDoFgts, repoDeEnviosDp, repoDeNfse, repoDoCaixa, repoDeHonorarios, repoDoSieg, repoPessoal, repoDoCofre } from './fonte';
 import type { RepoCofre } from './cofre';
 import type { RepoAgentes } from './agentes';
 import type { RepoSieg } from './sieg';
@@ -22,6 +22,7 @@ import type { RepoFeedback } from './feedback';
 import type { RepoUso } from './uso';
 import type { RepoParcelamentos } from './parcelamentos';
 import type { RepoCategoriasDp } from './categoriasDp';
+import type { RepoControleTributos } from './controleTributos';
 import type { RepoLegislacaoDp } from './legislacaoDp';
 import type { RepoAreaCliente } from './areaCliente';
 import type { RepoLcdpr } from './lcdpr';
@@ -240,6 +241,13 @@ export function useAgentes(): RepoAgentes {
 /** O arquivador (o "Arquivar agora"), ao vivo: o ponto do PC e os últimos pedidos. */
 export function useArquivador(): RepoArquivador {
   const repo = repoDoArquivador();
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  return repo;
+}
+
+/** O controle de tributos do Fiscal, ao vivo (o mês pedido). */
+export function useControleTributos(): RepoControleTributos {
+  const repo = repoDoControleTributos();
   useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
   return repo;
 }

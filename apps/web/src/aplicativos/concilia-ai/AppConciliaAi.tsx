@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { Outlet } from 'react-router';
 import { avisarErrosDoBanco, repoDaConferencia } from './dados/fonte';
 import { RepoProvider } from './dados/repo';
+import { GravacaoNaNuvem } from './casca/GravacaoNaNuvem';
 
 export function AppConciliaAi() {
   const repo = repoDaConferencia();
@@ -12,6 +13,7 @@ export function AppConciliaAi() {
   return (
     <RepoProvider repo={repo}>
       <Outlet />
+      <GravacaoNaNuvem />
     </RepoProvider>
   );
 }
