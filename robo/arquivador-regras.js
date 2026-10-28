@@ -1709,7 +1709,7 @@ function decidirPlanilha(entrada, ctx, ev, porHash) {
   // 2018…", "TRIBUTADO.xls") → CONTÁBIL\PAPÉIS DE TRABALHO\ANO\, nome original; o cliente pela pasta de origem (03); o ano pelo
   // nome, senão pela pasta; o nome com o código de OUTRO cliente ("lançamentos 509") fica
   // (27/10/2026, Vitor) a declaração de inventário e o balanço em planilha ("BALANÇO 2021 - DORNAS HAVANA.xlsx") também
-  if (/DEPRECIA[CÇ][AÃ]O/.test(norm(entrada.nome)) || /^PLANILHA SIMPLES NACIONAL|^TRIBUTADO\.|DECLARACAO DE INVENTARIO|^BALANCO\b/.test(nome)) {
+  if (/DEPRECIA[CÇ][AÃ]O/.test(norm(entrada.nome)) || /^PLANILHA SIMPLES NACIONAL|^TRIBUTADO\.|DECLARACAO DE INVENTARIO|^INVENTARIO\b|^BALANCO\b/.test(nome)) {
     const base = { tipo: 'PAPEL DE TRABALHO', setor: 'CONTABIL', fonte: 'papéis de trabalho (Vitor, 27/10/2026; 04)' };
     const c = porHash ? { cliente: porHash, conf: 0.97, como: 'hash' } : clientePelaPastaOuGrupo(entrada.rel || entrada.nome, entrada.nome, cad, ev);
     if (!c) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_NAO_LOCALIZADO', confianca: 0.3, evidencias: ev.concat('a pasta de origem não diz o cliente') });
@@ -2501,7 +2501,8 @@ function decidirPdf(entrada, ctx, ev, porHash) {
   // a declaração municipal do ISS (DEISS de Montes Claros, DES de BH; Vitor, 27/10/2026): <regime>\DAM\DECLARAÇÕES\, nome original
   if (/\bDEISS\b|\bDES\s*-?\s*BH\b/.test(norm(entrada.rel || entrada.nome))) return decidirSimples(entrada, u, bruto, ctx, ev, porHash, { tipo: 'DECLARACAO ISS', setor: 'FISCAL', mes: true, fiscal: ['DAM', 'DECLARAÇÕES'] });
   // a declaração de inventário (Vitor, 27/10/2026): CONTÁBIL\PAPÉIS DE TRABALHO\ANO\, nome original
-  if (/DECLARA[CÇ][AÃ]O DE INVENT[AÁ]RIO/.test(norm(entrada.nome))) return decidirSimples(entrada, u, bruto, ctx, ev, porHash, { tipo: 'PAPEL DE TRABALHO', setor: 'CONTABIL', mes: false, caminho: comp => ['CONTÁBIL', 'PAPÉIS DE TRABALHO', String(comp.ano)] });
+  // (28/10/2026) o inventário pelo nome ("Inventario 31.12.2023-1-5..pdf"; Vitor, 27/10/2026: inventário/balanço → PAPÉIS DE TRABALHO)
+  if (/DECLARA[CÇ][AÃ]O DE INVENT[AÁ]RIO|^INVENT[AÁ]RIO\b/.test(norm(entrada.nome))) return decidirSimples(entrada, u, bruto, ctx, ev, porHash, { tipo: 'PAPEL DE TRABALHO', setor: 'CONTABIL', mes: false, caminho: comp => ['CONTÁBIL', 'PAPÉIS DE TRABALHO', String(comp.ano)] });
   const pg = pagamentoDeFornecedor(entrada);
   // a nota sem data no nome cujo XML da chave está arquivado continua ao lado do XML (o 2º lote do Vitor)
   if (pg && pg.semData) { const ev2 = ev.slice(); const px = pdfPeloXmlDaChave(entrada, u, ctx, ev2); if (px) return Object.assign({ evidencias: ev2 }, px); }
@@ -2514,7 +2515,8 @@ function decidirPdf(entrada, ctx, ev, porHash) {
   if (!regra && /INSCRI[CÇ][AÃ]O ESTADUAL|\bINSC\.? ESTADUAL\b/i.test(norm(entrada.nome))) regra = REGRAS_PDF.find(r => r.tipo === 'INSCRICAO ESTADUAL');
   // a provisão anual de impostos do sistema do escritório ("358Prov2025.pdf", "524 Prov. imposto 2025.pdf"): 04, papel de trabalho
   // anual em REGISTRO DE LIVROS\(001) [ANO]\ junto do balancete, nome original (27/10/2026: 23 em NÃO IDENTIFICADOS)
-  if (!regra && /^\d{0,4}\s*PROV\.?\s*(IMPOSTOS?)?\s*20\d{2}\b/.test(norm(entrada.nome).replace(/\.[A-Z]{3,4}$/, ''))) regra = REGRAS_PDF.find(r => r.tipo === 'BALANCETE');
+  // (28/10/2026) também "413ProvisãodeImposto2025.pdf" e "506-Prov. Imposto 2025.pdf" (o traço e a palavra inteira)
+  if (!regra && /^\d{0,4}\s*-?\s*PROV(?:\.|ISAO)?\s*(?:DE\s*)?(IMPOSTOS?)?\s*20\d{2}\b/.test(norm(entrada.nome).replace(/\.[A-Z]{3,4}$/, ''))) regra = REGRAS_PDF.find(r => r.tipo === 'BALANCETE');
   // a DRE ("292DRE03.2025.pdf", "DRE _2025.pdf"; Vitor, 27/10/2026): REGISTRO DE LIVROS\(001) ANO\, como o balancete, nome original
   if (!regra && (/(?:^|[^A-Z])DRE(?:[^A-Z]|$)/.test(norm(entrada.nome)) || /DEMONSTRA[CÇ]AO D[OE]S? RESULTADOS? DO EXERCICIO/.test(u.slice(0, 800)))) regra = REGRAS_PDF.find(r => r.tipo === 'BALANCETE');
   if (!regra) {
