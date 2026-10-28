@@ -469,7 +469,11 @@ async function executar(opcoes) {
   const leituras = new Map();
   const preparar = async (rel, b) => {
     if (/\.(zip|rar|7z)$/i.test(rel) && !ehTedSintegra(b)) return { b };
-    try { return { b, entrada: await montarEntrada(path.basename(rel), rel, b, { adiarOcr: !!opcoes.adiarOcr }) }; } catch (e) { return { b, erroEntrada: e }; }
+    let entrada;
+    try { entrada = await montarEntrada(path.basename(rel), rel, b, { adiarOcr: !!opcoes.adiarOcr }); } catch (e) { return { b, erroEntrada: e }; }
+    // a data do arquivo (28/10/2026: a raiz do ano da planilha de controle sem ano no nome nem na pasta)
+    try { entrada.dataArquivo = (await fs.promises.stat(path.join(opcoes.origem, rel))).mtime.toISOString(); } catch (e) { /* membro de zip: sem data */ }
+    return { b, entrada };
   };
   const adiantar = i => { if (i < arquivos.length && !leituras.has(i)) leituras.set(i, fs.promises.readFile(path.join(opcoes.origem, arquivos[i])).then(b => preparar(arquivos[i], b), e => ({ e }))); };
   for (let i = 0; i < arquivos.length; i++) {
