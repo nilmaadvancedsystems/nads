@@ -60,11 +60,11 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'simples', rotulo: 'Simples Nacional', icone: 'recibo', titulo: 'Calculadora do Simples Nacional' },
     // a antecipação do ICMS do ES (Heverton, 22/10/2026: a planilha "Antecipação ICMS-ES", com as notas do SIEG)
     { id: 'antecipacao-es', rotulo: 'Antecipação ICMS-ES', icone: 'fileSearch', titulo: 'Antecipação de ICMS — ES' },
-    // a folha do Protocolo de Entrega de Tributos preenchida na tela (27/10/2026: "vamos implementar essa planilha de
-    // controle como modulo do fiscal")
-    { id: 'controle-tributos', rotulo: 'Controle de tributos', icone: 'checklist', titulo: 'Controle de tributos' },
-    // o Relatório geral (28/10/2026: a planilha RELATORIO EMPRESA 2026 no estilo das Obrigações do DP, com a REINF)
-    { id: 'relatorio', rotulo: 'Relatório geral', icone: 'painel', titulo: 'Relatório geral' },
+    // o Relatório (28/10/2026: a planilha RELATORIO EMPRESA 2026 no estilo das Obrigações do DP, com a REINF), um por regime
+    // ("lucro presumido e simples são diferentes, deixa cada um separado pelo menu lateral"); tomou o lugar do Controle de
+    // tributos ("remove a tela de controle de tributos, e pegue os dados de lá"): os links antigos caem no Simples
+    { id: 'relatorio-simples', rotulo: 'Relatório Simples', icone: 'painel', titulo: 'Relatório Simples' },
+    { id: 'relatorio-presumido', rotulo: 'Relatório Presumido', icone: 'painel', titulo: 'Relatório Presumido' },
   ] },
   // o DP (Vitor, 06/10/2026: o Checklist Folha "seria a rotina do dp"): as empresas com a rotina do DP, o painel da
   // planilha (números, gráficos, o progresso por responsável e as obrigações de cada cliente), a visão e as paradas
