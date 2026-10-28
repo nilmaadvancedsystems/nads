@@ -875,6 +875,24 @@ igual('sem nome no assunto: não decide pelo nome', r.desempatarPorNome(fitos, '
   igual('DP: o e-mail do Cadastro do nads vale no lugar do Entregas', dp.paraQuem([{ contato: { email: ' Novo@Cliente.com ' } }], { email: 'velho@x.com' }), ['novo@cliente.com']);
   igual('DP: sem e-mail no nads, vão os do Entregas (sem repetir)', dp.paraQuem([{ contato: {} }], { email: 'a@x.com', emails: ['B@x.com', 'a@x.com'] }), ['a@x.com', 'b@x.com']);
   igual('DP: e-mail inválido não conta', dp.paraQuem([{ contato: { email: 'sem-arroba' } }], { email: 'ruim' }), []);
+  // o lote do DP (28/10/2026): a leitura do arquivador, a escolha na revisão, os grupos e os valores
+  const L = require('./lote-dp');
+  igual('lote: o valor da guia vira número', [L.valorNumero('R$1234,56'), L.valorNumero('1.234,56'), L.valorNumero('')], [1234.56, 1234.56, null]);
+  igual('lote: o tributo da DARF pelo nome final', L.tributoDoNome('10-2026 - DARF INSS - VALOR R$165,33 - VENCIMENTO 19-11-2026.pdf'), 'INSS');
+  const leit = L.leituraDe({ acao: 'ARQUIVAR', cliente: 191, clienteNome: 'PEDRO', tipo: 'FGTS', competencia: { mes: 10, ano: 2026 }, nomeFinal: 'FGTS 10-2026.pdf', anoRaiz: 2026, pastaCliente: '191 - PEDRO', caminho: ['DEPARTAMENTO PESSOAL', '10', 'FGTS'] }, { valor: 'R$129,68', vencimento: '19-11-2026' }, { texto: ['GUIA'] });
+  igual('lote: a leitura leva o cliente, a competência, o valor e a pasta', [leit.cliente, leit.competencia, leit.valor, leit.destino.join('/')], [191, '2026-10', 'R$129,68', '2026/191 - PEDRO/DEPARTAMENTO PESSOAL/10/FGTS']);
+  const pastaL = c => (c === 191 ? '191 - PEDRO' : '');
+  const lote = [
+    { nome: 'FGTS.pdf', leitura: leit },
+    { nome: 'guia.pdf', leitura: { cliente: 191, tipo: 'DARF', tributo: 'INSS', competencia: '2026-10', valor: 'R$165,33', nomeFinal: 'n.pdf', destino: ['2026', '191 - PEDRO', 'FISCAL', 'PESSOA FISICA', '02. DARF'] } },
+    { nome: 'scan.pdf', leitura: { cliente: null, tipo: '', competencia: '' }, escolha: { cliente: 191, tipo: 'FOLHA', competencia: '2026-10' } },
+    { nome: 'x.pdf', leitura: { cliente: 191, competencia: '2026-10' }, fora: true },
+    { nome: 'sem.pdf', leitura: { cliente: null, competencia: '' } },
+  ];
+  const gL = L.grupos(lote, pastaL);
+  igual('lote: um grupo por cliente e competência; o fora e o não identificado ficam de fora', [[...gL.porChave.keys()], gL.fora.map(a => a.nome)], [['191_2026-10'], ['x.pdf', 'sem.pdf']]);
+  igual('lote: o escolhido à mão vai para a pasta do DP do mês, com o nome original', gL.porChave.get('191_2026-10')[2].vai.destino.join('/'), '2026/191 - PEDRO/DEPARTAMENTO PESSOAL/10/FOLHA');
+  igual('lote: os valores do mês (FGTS e DARF do INSS)', L.valoresDoGrupo(gL.porChave.get('191_2026-10')), { fgts: 129.68, darf: 165.33 });
 }
 
 // os testes que leem PDF são assíncronos: o resultado espera por eles

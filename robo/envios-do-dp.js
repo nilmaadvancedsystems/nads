@@ -180,29 +180,16 @@ async function atenderEnvioDp(p, ctx) {
   if (total > MAX_BYTES) throw new Error('os arquivos passam de 18 MB juntos (' + (total / 1048576).toFixed(1).replace('.', ',') + ' MB); desmarque alguns');
 
   const ativos = await ctx.clientesAtivos();
-  let cliente = null;
-  ativos.forEach(d => { if (!cliente && String(d.data().codigoOrigem || '').trim() === codigo) cliente = d.data(); });
-  if (!cliente) throw new Error('o cliente ' + codigo + ' não está no cadastro (ou está inativo)');
-  // o e-mail do Cadastro do nads manda (28/10/2026: "quando eu altero no cadastro da empresa o gmail não altera lá no
-  // envios"), como o regime; o do Entregas só quando o nads não tem
-  const doNads = (await db.collection('cadastro').where('codigo', '==', Number(codigo)).limit(2).get()).docs.map(d => d.data());
-  const para = paraQuem(doNads, cliente);
-  if (!para.length) throw new Error('o cliente não tem e-mail no cadastro');
+  const { cliente, para } = await destinatarios(db, codigo, ativos);
   if (!dentroDoLimite()) throw new Error('limite de ' + MAX_ENVIOS_POR_HORA + ' envios do DP por hora atingido; tente mais tarde');
 
   const anexos = [];
   for (const a of vao) {
     const r = await ctx.getDrive().files.get({ fileId: a.i, alt: 'media' }, { responseType: 'arraybuffer', timeout: 120000 });
-    const ext = (String(a.n).match(/\.([a-z0-9]{2,5})$/i) || [, ''])[1].toLowerCase();
-    anexos.push({ nome: a.n, mime: MIME[ext] || 'application/octet-stream', buffer: Buffer.from(r.data) });
+    anexos.push({ nome: a.n, mime: mimeDe(a.n), buffer: Buffer.from(r.data) });
   }
   const nome = String(cliente.nome || p.empresa || '').trim();
-  const competencia = comp.slice(5) + '/' + comp.slice(0, 4);
-  const modelo = (await db.collection('config').doc('envioDp').get()).data() || {};
-  const { assunto, texto } = mensagemDoEnvio(modelo, { cliente: nome, competencia, mes: mesPorExtenso(comp) });
-  const visual = require('./email-html').htmlDoEnvioDp({ assunto, texto, cliente: nome, competencia, anexos: anexos.map(a => ({ nome: a.nome, tamanho: a.buffer.length })), assinatura: ctx.assinatura, caixa: ctx.caixa });
-  const gmailId = await ctx.enviar({ para: para.join(', '), assunto, corpo: texto + '\n\n' + anexos.map(a => '- ' + a.nome).join('\n'), html: visual.html, imagens: visual.imagens, anexos });
-  enviosRecentes.push(Date.now());
+  const { gmailId, assunto } = await mandarEmailDoDp(db, { comp, nome, para, anexos }, ctx);
   ctx.log('DP: documentos de', comp, 'enviados a', codigo, nome, '(' + anexos.length + ' arquivo(s), para ' + para.join(', ') + ')');
   return {
     status: 'enviado', enviadoEm: new Date().toISOString(), gmailId, para, assunto,
@@ -210,8 +197,36 @@ async function atenderEnvioDp(p, ctx) {
   };
 }
 
+const mimeDe = nome => MIME[(String(nome).match(/\.([a-z0-9]{2,5})$/i) || [, ''])[1].toLowerCase()] || 'application/octet-stream';
+
+// O cliente do Entregas (ativo, pelo código) e para quem vai: o e-mail do Cadastro do nads manda (28/10/2026: "quando eu
+// altero no cadastro da empresa o gmail não altera lá no envios"), como o regime; o do Entregas só quando o nads não tem.
+// ativos: o snapshot dos clientes ativos (clientes-cache). Também o lote do DP (lote-dp.js).
+async function destinatarios(db, codigo, ativos) {
+  let cliente = null;
+  ativos.forEach(d => { if (!cliente && String(d.data().codigoOrigem || '').trim() === String(codigo)) cliente = d.data(); });
+  if (!cliente) throw new Error('o cliente ' + codigo + ' não está no cadastro (ou está inativo)');
+  const doNads = (await db.collection('cadastro').where('codigo', '==', Number(codigo)).limit(2).get()).docs.map(d => d.data());
+  const para = paraQuem(doNads, cliente);
+  if (!para.length) throw new Error('o cliente não tem e-mail no cadastro');
+  return { cliente, para };
+}
+
+// O e-mail do DP no modelo (config/envioDp) com os anexos já em memória, pela caixa do robô. ctx: { enviar, assinatura,
+// caixa }. Conta no freio por hora. Também o lote do DP (lote-dp.js).
+async function mandarEmailDoDp(db, { comp, nome, para, anexos }, ctx) {
+  if (!dentroDoLimite()) throw new Error('limite de ' + MAX_ENVIOS_POR_HORA + ' envios do DP por hora atingido; tente mais tarde');
+  const competencia = comp.slice(5) + '/' + comp.slice(0, 4);
+  const modelo = (await db.collection('config').doc('envioDp').get()).data() || {};
+  const { assunto, texto } = mensagemDoEnvio(modelo, { cliente: nome, competencia, mes: mesPorExtenso(comp) });
+  const visual = require('./email-html').htmlDoEnvioDp({ assunto, texto, cliente: nome, competencia, anexos: anexos.map(a => ({ nome: a.nome, tamanho: a.buffer.length })), assinatura: ctx.assinatura, caixa: ctx.caixa });
+  const gmailId = await ctx.enviar({ para: para.join(', '), assunto, corpo: texto + '\n\n' + anexos.map(a => '- ' + a.nome).join('\n'), html: visual.html, imagens: visual.imagens, anexos });
+  enviosRecentes.push(Date.now());
+  return { gmailId, assunto };
+}
+
 module.exports = {
-  gravarArquivosDoDp, atenderEnvioDp,
+  gravarArquivosDoDp, atenderEnvioDp, destinatarios, mandarEmailDoDp, mimeDe, MAX_BYTES,
   // puras, pro teste
   competenciaDoDp, arquivosDoDpNaPasta, escolhidos, paraQuem, mesPorExtenso, mesesRecentes, mesAnterior, mensagemDoEnvio, MODELO_PADRAO, COLECAO,
 };

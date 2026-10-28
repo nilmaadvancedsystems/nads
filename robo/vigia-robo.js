@@ -1029,6 +1029,15 @@ async function iniciar() {
   // "Buscar no e-mail" do nads (Bancos): o remetente e o período, e o anexo escolhido em pedaços (Vitor, 13/10/2026).
   try { require('./buscas-email').iniciarBuscasEmail(db, log, getGmail); }
   catch (err) { log('buscar no e-mail desligado:', err.message); }
+  // o lote do DP (28/10/2026): os arquivos que a tela sobe, lidos pelo arquivador, disparados por cliente e gravados no Drive
+  if (process.env.USAR_DRIVE_API === '1') {
+    try {
+      require('./lote-dp').iniciarLoteDp(db, {
+        log, caixa: CAIXA, enviar: dados => enviar(dados), config: () => configDaCobranca(),
+        getDrive: () => require('./drive-indice').getDrive(),
+      });
+    } catch (err) { log('lote do DP desligado:', err.message); }
+  }
   // Mapa da pasta do ano no Drive (explorador do Pendências, status pela
   // pasta) e "abrir arquivo" pelo app. Só onde o robô fala com o Drive pela
   // API — na nuvem. Ver drive-indice.js e abrir-do-drive.js.

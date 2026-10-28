@@ -17,6 +17,8 @@ import { criarFgtsMemoria, type RepoFgts } from './fgts';
 import { criarFgtsFirestore } from './fgts.firestore';
 import { criarEnviosDpMemoria, type RepoEnviosDp } from './enviosDp';
 import { criarEnviosDpFirestore } from './enviosDp.firestore';
+import { criarLoteDpMemoria, type RepoLoteDp } from './loteDp';
+import { criarLoteDpFirestore } from './loteDp.firestore';
 import { criarCaixaMemoria, type RepoCaixa } from './caixa';
 import { criarCaixaFirestore } from './caixa.firestore';
 import { criarHonorariosMemoria, type RepoHonorarios } from './honorarios';
@@ -372,6 +374,14 @@ let enviosDp: RepoEnviosDp | null = null;
 export function repoDeEnviosDp(): RepoEnviosDp {
   if (!enviosDp) enviosDp = noBanco ? criarEnviosDpFirestore(quemPede) : criarEnviosDpMemoria();
   return enviosDp;
+}
+
+let loteDp: RepoLoteDp | null = null;
+
+/** O lote do DP › Envios (28/10/2026): os arquivos que a tela sobe, lidos pelo robô, revisados e disparados por cliente. */
+export function repoDoLoteDp(): RepoLoteDp {
+  if (!loteDp) loteDp = noBanco ? criarLoteDpFirestore(quemPede) : criarLoteDpMemoria();
+  return loteDp;
 }
 
 let notasFiscais: RepoNfse | null = null;
