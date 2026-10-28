@@ -34,8 +34,9 @@ export const ACAO: Record<t.SituacaoGeral, string> = { parada: 'Retomar', 'em-an
 
 /**
  * As empresas da pessoa num setor (26/10/2026): ela é a responsável do setor no Cadastro (no Fiscal, sem escolha, o da
- * planilha do DP), ou a empresa ainda não tem responsável. Usado por Minhas empresas e pela busca do menu ☰ (27/10/2026:
- * "só é para aparecer as empresas que a pessoa tem").
+ * planilha do DP). A empresa sem responsável no setor não aparece para ninguém em "Minhas" (28/10/2026: "a pessoa não deve
+ * ver as empresas que não estão ligadas a ela"); o admin e o diretor a veem em "Todas". Usado por Minhas empresas e pela
+ * busca do menu ☰ (27/10/2026: "só é para aparecer as empresas que a pessoa tem").
  */
 export function useEmpresasDaPessoa() {
   const op = useOperador().operador as Operador;
@@ -50,8 +51,8 @@ export function useEmpresasDaPessoa() {
     /** o admin e o diretor podem ver todas (26/10/2026) */
     podeVerTodas: !!op.admin || op.nivel === 'diretor',
     carregada: cadastros.carregada,
-    /** a empresa sem responsável no setor aparece para todos do setor; a que tem, só para o responsável */
-    e: (emp: { nome: string; codigo: number | null }, dep: 'fiscal' | 'contabil') => { const r = responsavelDe(emp, dep); return !r || nomes.some(n => igual(n, r)); },
+    /** só a empresa em que a pessoa é a responsável do setor (a sem responsável fica de fora) */
+    e: (emp: { nome: string; codigo: number | null }, dep: 'fiscal' | 'contabil') => { const r = responsavelDe(emp, dep); return !!r && nomes.some(n => igual(n, r)); },
   };
 }
 
