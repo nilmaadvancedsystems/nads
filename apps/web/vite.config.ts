@@ -2,6 +2,7 @@ import react from '@vitejs/plugin-react';
 import fs from 'node:fs';
 import path from 'node:path';
 import { defineConfig, type Plugin } from 'vite';
+import { tituloDoAplicativo } from './src/nomesDosAplicativos';
 
 // versao.json ao lado do site: a página aberta confere de tempos em tempos e, se saiu versão nova,
 // avisa para atualizar (AvisoDeVersaoNova, no @nads/ui). Assim uma aba aberta antes da publicação
@@ -16,6 +17,13 @@ function versaoDoSite(): Plugin {
       this.emitFile({ type: 'asset', fileName: 'versao.json', source: JSON.stringify({ versao }) });
     },
   };
+}
+
+// O título da aba já no index.html de cada site (Vitor, 28/10/2026): antes, todos saíam com "Concilia aí — Nilma" e só
+// trocavam quando o app abria; sem aplicativo (o npm run dev com todos), só "Nilma".
+function tituloDoSite(): Plugin {
+  const titulo = tituloDoAplicativo(process.env.VITE_APLICATIVO || '');
+  return { name: 'nads-titulo', transformIndexHtml: html => html.replace(/<title>[^<]*<\/title>/, '<title>' + titulo + '</title>') };
 }
 
 // O OCR (Tesseract, src/comum/ocr.ts): o worker, o motor e o português servidos pelo próprio site em /ocr/ (nada vem
@@ -90,7 +98,7 @@ const BIBLIOTECAS = [
 // base '/': as rotas são caminhos de verdade (ex.: /901/movimento/relatorio), então os
 // arquivos precisam ser referenciados a partir da raiz do site, não do caminho da página.
 export default defineConfig({
-  plugins: [react(), versaoDoSite(), ...(ROTAS_DO_SITE ? [rotasProprias()] : [arquivosDoOcr()])],
+  plugins: [react(), versaoDoSite(), tituloDoSite(), ...(ROTAS_DO_SITE ? [rotasProprias()] : [arquivosDoOcr()])],
   build: { rolldownOptions: { treeshake: SEM_EFEITO_NO_CORE, output: { codeSplitting: { groups: BIBLIOTECAS } } } },
   base: '/',
   server: { port: 5178 },

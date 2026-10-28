@@ -26,32 +26,33 @@ import { rotasExtratudo } from './aplicativos/extratudo/rotas';
 import { rotasTarefas } from './aplicativos/tarefas/rotas';
 import { rotasMandei } from './aplicativos/mandei/rotas';
 import { ErroDaTela } from './comum/ErroDaTela';
+import { NOMES_DOS_APLICATIVOS, tituloDoAplicativo } from './nomesDosAplicativos';
 
 const SO = import.meta.env.VITE_APLICATIVO || '';
 const TODOS = !SO;
 const APLICATIVOS: Record<string, { nome: string; rotas: RouteObject[]; raiz: string }> = {
-  'concilia-ai': { nome: 'Concilia aí', rotas: SO === 'concilia-ai' ? rotasConciliaAi : [], raiz: '/' },
-  conciliadorzinho: { nome: 'Conciliadorzinho', rotas: SO === 'conciliadorzinho' ? rotasConciliadorzinho : [], raiz: '/conciliadorzinho' },
+  'concilia-ai': { nome: NOMES_DOS_APLICATIVOS['concilia-ai'], rotas: SO === 'concilia-ai' ? rotasConciliaAi : [], raiz: '/' },
+  conciliadorzinho: { nome: NOMES_DOS_APLICATIVOS['conciliadorzinho'], rotas: SO === 'conciliadorzinho' ? rotasConciliadorzinho : [], raiz: '/conciliadorzinho' },
   // o catálogo de todas as peças do nads (Vitor, 02/10/2026), num link à parte
-  componentes: { nome: 'Componentes', rotas: SO === 'componentes' ? rotasComponentes : [], raiz: '/componentes' },
-  extratudo: { nome: 'Extratudo', rotas: SO === 'extratudo' ? rotasExtratudo : [], raiz: '/extratudo' },
+  componentes: { nome: NOMES_DOS_APLICATIVOS['componentes'], rotas: SO === 'componentes' ? rotasComponentes : [], raiz: '/componentes' },
+  extratudo: { nome: NOMES_DOS_APLICATIVOS['extratudo'], rotas: SO === 'extratudo' ? rotasExtratudo : [], raiz: '/extratudo' },
   // extrato do banco → .xls no layout do escritório, num link à parte e sem banco de dados (Vitor, 06/10/2026)
-  conversor: { nome: 'Conversor', rotas: SO === 'conversor' ? rotasConversor : [], raiz: '/conversor' },
+  conversor: { nome: NOMES_DOS_APLICATIVOS['conversor'], rotas: SO === 'conversor' ? rotasConversor : [], raiz: '/conversor' },
   // o formulário do cliente (o link do ticket do Mandei, Vitor, 07/10/2026), num site próprio
-  mandei: { nome: 'Mandei', rotas: SO === 'mandei' ? rotasMandei : [], raiz: '/mandei' },
+  mandei: { nome: NOMES_DOS_APLICATIVOS['mandei'], rotas: SO === 'mandei' ? rotasMandei : [], raiz: '/mandei' },
   // a Área do Cliente (Vitor, 16/10/2026): o link secreto de cada empresa, sem senha, num site próprio (fora da Tarefas)
-  cliente: { nome: 'Área do Cliente', rotas: SO === 'cliente' ? rotasCliente : [], raiz: '/cliente' },
+  cliente: { nome: NOMES_DOS_APLICATIVOS['cliente'], rotas: SO === 'cliente' ? rotasCliente : [], raiz: '/cliente' },
   // o site só para admin (Vitor, 21/10/2026); no build do site, o rotasDoAdmin.tsx entra no lugar deste arquivo
-  admin: { nome: 'Admin', rotas: SO === 'admin' ? rotasAdmin : [], raiz: '/admin' },
+  admin: { nome: NOMES_DOS_APLICATIVOS['admin'], rotas: SO === 'admin' ? rotasAdmin : [], raiz: '/admin' },
   // a Tarefas leva junto o Extratudo e a Conferência (a etapa Conferência fiscal): as ferramentas da etapa abrem
   // no mesmo endereço (o login do Entregas fica guardado no navegador; em outro endereço, dentro do iframe, o Brave apaga)
-  tarefas: { nome: 'Tarefas', rotas: SO === 'tarefas' ? [...rotasTarefas, ...rotasExtratudo, ...rotasConciliaAiNaTarefa, ...rotasMandei] : [], raiz: '/tarefas' },
+  tarefas: { nome: NOMES_DOS_APLICATIVOS['tarefas'], rotas: SO === 'tarefas' ? [...rotasTarefas, ...rotasExtratudo, ...rotasConciliaAiNaTarefa, ...rotasMandei] : [], raiz: '/tarefas' },
 };
 
 const so = APLICATIVOS[SO];
 // a tela que quebra mostra o ErroDaTela (revisão da UI, 18/10/2026), em todas as rotas de cima
 const comErro = (rs: RouteObject[]): RouteObject[] => rs.map(r => (r.errorElement ? r : { ...r, errorElement: <ErroDaTela /> }));
-if (so) document.title = so.nome + ' — Nilma';
+if (so) document.title = tituloDoAplicativo(SO);
 
 export const roteador = createBrowserRouter(comErro(so
   ? [...so.rotas, ...(so.raiz !== '/' ? [{ path: '/', element: <Navigate to={so.raiz} replace /> }] : []), { path: '*', element: <Navigate to={so.raiz} replace /> }]
