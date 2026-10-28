@@ -58,6 +58,8 @@ function juntar({ planilha = [], entregas = [], nads = [] }) {
       ativo: x.en ? x.en.ativo !== false : true,
       nomeEntregas: (x.en && x.en.nome) || '',
       contas: contasDe(x),
+      // os bancos do cliente, também os sem o número da conta (o Cadastro do nads só com a marca; a trava do banco, 28/10/2026)
+      bancos: (((x.en && x.en.contasBancarias) || []).map(c => c && c.banco)).concat(((x.na && x.na.bancos) || []).map(b => b && (b.marca || b.nome))).filter(Boolean),
       socios: ((x.na && x.na.socios) || []).map(p => ({ nome: String(p.nome || '').trim(), cpf: doc(p.cpf) })).filter(p => p.cpf.length === 11),
     });
   }

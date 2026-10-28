@@ -89,6 +89,9 @@ function competenciaSolta(t) {
   if (m) return { mes: +m[1], ano: +m[2] };
   m = /\b(JANEIRO|FEVEREIRO|MARCO|ABRIL|MAIO|JUNHO|JULHO|AGOSTO|SETEMBRO|OUTUBRO|NOVEMBRO|DEZEMBRO|JAN|FEV|MAR|ABR|MAI|JUN|JUL|AGO|SET|OUT|NOV|DEZ)\s*(?:DE\s*)?[/.,-]?\s*(20\d{2})/.exec(u);
   if (m) return { mes: mesDoNome(m[1]), ano: +m[2] };
+  // o nome do mês por extenso grudado no rótulo (o fundo do BB, 28/10/2026: "MES/ANO REFERENCIAJANEIRO/2025")
+  m = /(JANEIRO|FEVEREIRO|MARCO|ABRIL|MAIO|JUNHO|JULHO|AGOSTO|SETEMBRO|OUTUBRO|NOVEMBRO|DEZEMBRO)\s*(?:DE\s*)?[/.,-]?\s*(20\d{2})/.exec(u);
+  if (m) return { mes: mesDoNome(m[1]), ano: +m[2] };
   return null;
 }
 
@@ -324,6 +327,8 @@ function montarCadastro(linhas, pastas) {
       if (!vistas.has(k)) { vistas.add(k); contas.push(x); }
     }
     porCod.get(codigo).contas = contas.filter(x => x.codigo === codigo);
+    // os bancos do cliente no cadastro, com ou sem o número da conta (a trava do banco, Vitor, 28/10/2026)
+    porCod.get(codigo).bancos = new Set([].concat(l.bancos || []).map(bancoDoCadastro).filter(Boolean).concat(porCod.get(codigo).contas.map(x => x.banco).filter(Boolean)));
     if (l.socios && l.socios.length) porCod.get(codigo).socios = l.socios;
   }
   const cad = { porCod, porDoc, porRaiz, porNome, porNomeEntregas, contas };
@@ -485,6 +490,23 @@ const LINHA_DE_LANCAMENTO = /\b(REM|DES|REMET|DEST|FAVORECIDO|PIX|TED|DOC|TRANSF
 // Assinaturas de layout (o texto do banco não traz o nome): aprendidas com os extratos já arquivados e com a pasta
 // EXEMPLOS DE ARQUIVOS da rotina (Dicionário §1, "Regra de identificação por exemplos").
 const LAYOUTS = [   // cabeçalho/título próprio do layout: vale no texto todo
+  // ---- os layouts dos NÃO IDENTIFICADOS (28/10/2026, Vitor: "algo definitivo"), antes dos outros: o fundo do BB traz "PARA SIMPLES
+  // CONFERENCIA", que é da Rede ----
+  // o fundo do BB ("EXTRATOS - INVESTIMENTOS FUNDOS - MENSAL", "EXTRATO UNIFICADO DE FUNDOS") e o Rende Fácil ("BB RENDE FACIL /
+  // DADOS DO CLIENTE" no fim da página); a conta corrente do BB "CLIENTE - CONTA ATUAL"
+  ['BANCO DO BRASIL', /^\s*EXTRATOS? - INVESTIMENTOS FUNDOS|EXTRATO UNIFICADO DE FUNDOS|BB RENDE FACIL\s*\n\s*DADOS DO CLIENTE|^\s*CLIENTE - CONTA ATUAL\s*$/m],
+  // a Caixa: "EXTRATO POR PERIODO … DATA MOV. / NR. DOC." (o internet banking) e "AGENCIA: 03411 PRODUTO: 1292 CONTA: 000578855376-4"
+  ['CAIXA', /^\s*EXTRATO POR PERIODO\s*\n[\s\S]{0,400}?DATA MOV\.\s*\n?\s*NR\.\s*\n?\s*DOC\.|AGENCIA:\s*\d{4,5}\s+PRODUTO:\s*\d{3,4}\s+CONTA:\s*\d|CONTA:\s*\n?\s*\d{4,5}\s*[/|]\s*\d{3,4}\s*[/|]\s*\d{8,12}-\d/m],
+  // o Itaú: o extrato mensal ("EXTRATOMENSAL / AG 5237 CC 99884-3"; o "[B0033]" do nome não é o banco) e o do aplicativo
+  // ("NOME / <titular> / AGENCIA/CONTA / 5237 - 99801-7")
+  ['ITAU', /^\s*EXTRATOMENSAL\s*\n\s*AG \d{4} CC \d+-\d|^\s*NOME\s*\n[^\n]+\n\s*AGENCIA\/CONTA\s*\n\s*\d{4} - \d{4,7}-\d/m],
+  // o Sicredi ("AGENCIA 3155CONTA0099034-8 CNPJ … / SALDO TOTALLIMITE DA CONTA"), o BTG ("CONTA CORRENTE - PJ / PDF GERADO EM") e o
+  // Santander ("INTERNET BANKING EMPRESARIAL / <titular>AGENCIA: 3504 CONTA: 130098175")
+  ['SICREDI', /^\s*AGENCIA \d{4}\s*CONTA\s*\d{5,}-\d\s*CNPJ [\d./-]+[\s\S]{0,300}SALDO TOTAL\s*LIMITE DA CONTA/m],
+  ['BTG PACTUAL', /^\s*CONTA CORRENTE - PJ\s*\n\s*PDF GERADO EM:/m],
+  // o Bradesco "EXTRATO MENSAL / POR PERIODO … EXTRATO DE: AG: 5666 | CC: 0013657-3 | ENTRE 01/01/2026 E 31/01/2026" (não é o BB)
+  ['BRADESCO', /^\s*EXTRATO DE: AG: \d{3,5} \| CC: [\d-]+ \| ENTRE /m],
+  ['SANTANDER', /^\s*INTERNET BANKING EMPRESARIAL\s*\n[^\n]*AGENCIA: \d{4} CONTA: \d{6,}/m],
   ['BRADESCO', /^EXTRATO DE: AG: \| CC:/m], ['BRADESCO', /ALO BRADESCO|BRADESCO NET EMPRESA|TITULOS PAGOS POR CONTA CREDITO/],
   ['MERCADO PAGO', /LIBERACAO DE DINHEIRO|DETALHE DOS MOVIMENTOS/], ['GETNET', /EXTRATO DE VENDAS POR CARTOES/],
   ['INFINITEPAY', /^INFINITE ID\b/m], ['REDE', /EXTRATO PARA SIMPLES CONFERENCIA|TOTAL BRUTO REDE|TAXAS REDE|^REDE CONSOLIDADO/m],
@@ -494,7 +516,7 @@ const LAYOUTS = [   // cabeçalho/título próprio do layout: vale no texto todo
   // o extrato do internet banking do BB (o nome do banco só no logo; 27/10/2026, a 407 DUDA HOME): "EXTRATO DE CONTA
   // CORRENTE / CLIENTE: … / AGENCIA: 2705-7 CONTA: 28265-0", a agência e a conta com o dígito
   // (o nome do cliente às vezes vem na linha de baixo do rótulo: "Cliente:\nLARISSA E SOUZA MENDES\nAgência: 2705-7 Conta: …")
-  ['BANCO DO BRASIL', /^\s*EXTRATO DE CONTA CORRENTE\s*\n\s*CLIENTE:?.*\n(?:[^\n]{3,80}\n)?\s*AGENCIA:\s*\d{4}-[\dX]\s+CONTA:\s*[\d.]+-[\dX](?![\d])/m], ['CAIXA', /CONTA CORRENTE PESSOA (JURIDICA|FISICA) CAIXA/],
+  ['BANCO DO BRASIL', /^\s*EXTRATO DE CONTA CORRENTE\s*\n\s*CLIENTE:?.*\n(?:[^\n]{0,80}\n)?\s*AGENCIA:\s*\d{4}-[\dX]\s+CONTA:\s*[\d.]+-[\dX](?![\d])/m], ['CAIXA', /CONTA CORRENTE PESSOA (JURIDICA|FISICA) CAIXA/],
   // o extrato do internet banking do BNB (28/10/2026, a 579 MORONI): "EXTRATO DE CONTA CORRENTE / TITULAR: … / AGENCIA:60 / CONTA:68653-2"
   ['BNB', /^\s*EXTRATO DE CONTA CORRENTE\s*\n\s*TITULAR:.*\n\s*AGENCIA:\s*\d{1,4}\s*\/\s*CONTA:\s*[\d.]+-[\dX](?![\d])/m],
   ['CAIXA', /CONTA:\s*\d{4}\s*[/|]\s*\d{3,4}\s*[/|]\s*\d{12}-\d/],   // agência/operação/conta da Caixa ("3411/1292/000578855317-9")
@@ -511,6 +533,12 @@ const SO_MAQUININHA = new Set(['CIELO', 'REDE', 'GETNET', 'SUMUP', 'BIGCARD']);
 function bancoDoTexto(texto, soConta) {
   const tudo = norm(texto);
   const u = tudo.slice(0, 2500);
+  // o comprovante de pagamento do DAE da Fazenda de Minas (28/10/2026, os "ARRECADACAO_*.pdf" e os "Comprovante ICMS - NF …"): o banco
+  // é o código no começo da autenticação ("1 2705 03092018 786560 15980" = banco 001, agência 2705, data, NSU e valor)
+  // (o de 2025: "AGENCIA: 3144 BANCO: 756 NSU: 259339")
+  const dae = /FAZENDA DE MINAS GERAIS\s*\n\s*COMPROVANTE DE PAGAMENTO D[AE]S? RECEITAS ESTADUAIS[\s\S]*?(?:\n\s*(\d{1,3}) \d{4} \d{8} \d{3,} \d+\s*(?:\n|$)|AGENCIA:\s*\d{3,5}\s+BANCO:\s*(\d{3})\s+NSU)/.exec(tudo);
+  if (dae && !dae[1]) dae[1] = dae[2];
+  if (dae && BANCO_POR_CODIGO[dae[1].padStart(3, '0')]) return BANCO_POR_CODIGO[dae[1].padStart(3, '0')];
   for (const [b, re] of LAYOUTS) if (re.test(tudo)) return b;
   // o campo "INSTITUIÇÃO" do cabeçalho vale antes de tudo; sem ele, a instituição que aparece PRIMEIRO (27/10/2026: o
   // extrato da Stone da 407 foi para NUBANK pelo "NU PAGAMENTOS S.A." das contrapartes dos Pix)
@@ -873,8 +901,8 @@ const REGRAS_PDF = [
   // relatório mensal de notas (05d §1: emitidas em EMITIDOS\RELATÓRIO MENSAL\[ANO]; recebidas em RECEBIDOS\RELATÓRIO MENSAL)
   // 27/10/2026 (os relatórios dos sistemas dos clientes na migração): o GDOOR ("NF-e, NFC-e e SAT (Resumo)", "Relatório de
   // Compras"), o "Notas fiscais emitidas/sintético" e o "Mapa Resumo" (Intervalo colado), o "NFCe / Mês: 2 Ano: 2026"
-  { tipo: 'RELATORIO DE NOTAS', setor: 'FISCAL', re: /^[\s\S]{0,300}(NOTAS DE (ENTRADA|SAIDA) POR PERIODO|NOTAS FISCAIS (DE )?(SAIDA|ENTRADA|CONSUMIDOR ELETRONICA)|NOTAS FISCAIS (EMITIDAS|SINTETICO)|RELATORIO DE CUPOM|RELATORIO (MENSAL )?DE NOTAS (FISCAIS )?(EMITIDAS|RECEBIDAS)|NF-E, NFC-E E SAT \(RESUMO\)|RELATORIO DE COMPRAS|RELATORIO DE NOTAS DE COMPRA|^\s*MAPA RESUMO\s*\n\s*INTERVALO|\n\s*NFC?E\s*\n\s*MES:\s*\d{1,2}\s*ANO:\s*20\d{2})/, fonte: '05d §1 (Relatório Mensal de Notas Emitidas/Recebidas)',
-    campos: u => ({ recebidas: /^[\s\S]{0,300}(NOTAS DE ENTRADA POR PERIODO|NOTAS FISCAIS (DE )?ENTRADA|NOTAS (FISCAIS )?RECEBIDAS|RELATORIO DE COMPRAS|RELATORIO DE NOTAS DE COMPRA)/.test(u), periodo: periodoEscrito(u) || periodoDoRelatorio(u) || periodoLivre(u.slice(0, 1500)) || periodoPelasDatas(u) }) },
+  { tipo: 'RELATORIO DE NOTAS', setor: 'FISCAL', re: /^[\s\S]{0,300}(NOTAS DE (ENTRADA|SAIDA) POR PERIODO|NOTAS FISCAIS (DE )?(SAIDA|ENTRADA|CONSUMIDOR ELETRONICA)|NOTAS FISCAIS (EMITIDAS|SINTETICO)|RELATORIO DE CUPOM|RELATORIO (MENSAL )?DE NOTAS (FISCAIS )?(EMITIDAS|RECEBIDAS)|NF-E, NFC-E E SAT \(RESUMO\)|RELATORIO DE COMPRAS|RELATORIO DE NOTAS DE COMPRA|^\s*MAPA RESUMO\s*\n\s*INTERVALO|\n\s*NFC?E\s*\n\s*MES:\s*\d{1,2}\s*ANO:\s*20\d{2}|RELATORIO DE VENDAS ?- ?NFC-?E|RELATORIO DE VENDAS POR PERIODO \[DADOS DA PISTA\]\s*\n?\s*\[PONTO DE VENDA: NFCE\])/, fonte: '05d §1 (Relatório Mensal de Notas Emitidas/Recebidas; o relatório de vendas das NFC-e, 28/10/2026)',
+    campos: u => ({ recebidas: /^[\s\S]{0,300}(NOTAS DE ENTRADA POR PERIODO|NOTAS FISCAIS (DE )?ENTRADA|NOTAS (FISCAIS )?RECEBIDAS|RELATORIO DE COMPRAS|RELATORIO DE NOTAS DE COMPRA)/.test(u), periodo: periodoEscrito(u) || periodoDoRelatorio(u) || periodoLivre(u.slice(0, 1500)) || periodoPelasDatas(u) || periodoPelasDatas(u, true) }) },
   // ---- folha e societário (04b) ----
   { tipo: 'CARTAO CNPJ', setor: 'FOLHA_SOCIETARIO', re: /^(?![\s\S]*JUNTA COMERCIAL[\s\S]{0,600}CERTIFICO (O )?(REGISTRO|ARQUIVAMENTO))[\s\S]{0,800}COMPROVANTE DE INSCRICAO E DE SITUACAO\s+CADASTRAL/, fonte: '04b (Documentos Constitutivos)', campos: () => ({}) },
   // a inscrição estadual (Vitor, 27/10/2026): SOCIETÁRIO\INSCRIÇÕES\, sem pasta de ano, nome original; o comprovante da SEFAZ/MG e a
@@ -912,14 +940,22 @@ const REGRAS_PDF = [
     } },
   { tipo: 'OPERACAO DE CREDITO', setor: 'CONTABIL', re: /^(?![\s\S]{0,200}EXTRATO DE CONTA CORRENTE)[\s\S]{0,1500}(EXTRATO DE (EMPRESTIMOS?|OPERACAO DE CREDITO)|EVOLUCAO CONTRATUAL|CONTRATO DE (EMPRESTIMO|FINANCIAMENTO)|CEDULA DE CREDITO BANCARIO|DADOS DA CONTRATACAO|GIRO PRONAMPE)/, fonte: '04 (Op. Crédito)', campos: () => ({}) },
   { tipo: 'RECEBIMENTO DE CLIENTES', setor: 'CONTABIL', re: /RELATORIO DE RECEBIMENTOS|TITULOS LIQUIDADOS|TITULOS BAIXADOS|TITULOS PAGOS POR CONTA CREDITO|RELATORIO DE COBRANCA|CREDITOS? DE LIQUIDACAO|CRED\.? LIQUIDACAO/, fonte: 'Dicionário §6.1', campos: u => camposDeExtrato(u) },
-  { tipo: 'MAQUININHAS', setor: 'CONTABIL', re: /^[\s\S]{0,300}FILTROS SELECIONADOS[\s\S]{0,200}QUANTIDADE DE VENDAS|RELATORIO DE VENDAS|LISTA DE VENDAS|EXTRATO DE VENDAS|EXTRATO DE LIQUIDACAO|EXTRATO DE RECEBIVEIS|RESUMO DE VENDAS|VENDAS POR BANDEIRA|CONCILIACAO DE (VENDAS|RECEBIVEIS)|RELATORIO DE CONCILIACAO/, fonte: 'Dicionário §6.1', campos: u => camposDeExtrato(u) },
-  { tipo: 'APLICACOES', setor: 'CONTABIL', re: /^[\s\S]{0,300}RESUMO DO MES - [A-Z]+\/\d{4}\s*\n\s*SALDO BRUTO EM[\s\S]{0,200}APLICACOES NO MES|EXTRATO DE APLICAC|EXTRATO DE INVESTIMENTO|EXTRATO INVESTIMENTOS FINANCEIROS|EXTRATO DE FUNDOS|POSICAO DE INVESTIMENTO|RENDIMENTOS DE APLICAC|INVESTIMENTOS BRADESCO|TOTAL APLICADO|^[\s\S]{0,150}RENDE FACIL|^[\s\S]{0,600}(OUROCAP|BRASILCAP|TITULO DE CAPITALIZACAO)/, fonte: 'Dicionário §6.1; 04 (capitalização)', campos: u => camposDeExtrato(u) },
+  { tipo: 'MAQUININHAS', setor: 'CONTABIL', re: /^[\s\S]{0,300}FILTROS SELECIONADOS[\s\S]{0,200}QUANTIDADE DE VENDAS|RELATORIO DE VENDAS(?! ?- ?NFC-?E| POR PERIODO| ?- ?PRODUTO)|LISTA DE VENDAS|EXTRATO DE VENDAS|EXTRATO DE LIQUIDACAO|EXTRATO DE RECEBIVEIS|RESUMO DE VENDAS|VENDAS POR BANDEIRA|CONCILIACAO DE (VENDAS|RECEBIVEIS)|RELATORIO DE CONCILIACAO/, fonte: 'Dicionário §6.1', campos: u => camposDeExtrato(u) },
+  { tipo: 'APLICACOES', setor: 'CONTABIL', re: /^[\s\S]{0,300}RESUMO DO MES - [A-Z]+\/\d{4}\s*\n\s*SALDO BRUTO EM[\s\S]{0,200}APLICACOES NO MES|EXTRATO DE APLICAC|EXTRATO DE INVESTIMENTO|EXTRATO INVESTIMENTOS FINANCEIROS|EXTRATO DE FUNDOS|POSICAO DE INVESTIMENTO|^[\s\S]{0,300}RENDIMENTOS DE APLICAC|INVESTIMENTOS BRADESCO|TOTAL APLICADO|^[\s\S]{0,150}RENDE FACIL|^[\s\S]{0,600}(OUROCAP|BRASILCAP|TITULO DE CAPITALIZACAO)/, fonte: 'Dicionário §6.1; 04 (capitalização)', campos: u => camposDeExtrato(u) },
+  // os layouts de aplicação dos NÃO IDENTIFICADOS (28/10/2026): o fundo do BB ("EXTRATOS - INVESTIMENTOS FUNDOS", "EXTRATO UNIFICADO
+  // DE FUNDOS"), o Rende Fácil ("EXTRATO DETALHADO POR APLICACAO", "RESUMO DO DIA* / SALDO BRUTO EM") e o RDC do Sicoob ("EXTRATO DE
+  // APROPRIACAO DIARIA")
+  { tipo: 'APLICACOES', setor: 'CONTABIL', re: /^[\s\S]{0,200}EXTRATOS? - INVESTIMENTOS FUNDOS|EXTRATO UNIFICADO DE FUNDOS|^[\s\S]{0,100}EXTRATO DETALHADO POR APLICACAO|^[\s\S]{0,100}RESUMO DO DIA\*?\s*\n\s*SALDO BRUTO EM|EXTRATO DE APROPRIACAO DIARIA/, fonte: 'Dicionário §6.1; 04 (Aplicações; os layouts de 28/10/2026)', campos: u => camposDeExtrato(u) },
   { tipo: 'COMPROVANTE', setor: 'CONTABIL', re: /COMPROVANTE\s+(DE\s+)?(PAGAMENTO|TRANSFERENCIA|PIX|AGENDAMENTO|TITULOS|OPERACAO|TRANSACAO)|PIX (ENVIADO|REALIZADO)\s*\n.*COMPROVANTE/, fonte: 'Dicionário §6.1 e §6.1.1', campos: u => camposDeComprovante(u) },
   { tipo: 'FATURA CARTAO', setor: 'CONTABIL', re: /FATURA DO CARTAO|EXTRATO DE CARTAO DE CREDITO|FATURA MASTERCARD|FATURA VISA|RESUMO DA FATURA/, fonte: '04 (fatura de cartão → fallback extrato avulso)',
     campos: u => ({ competencia: competenciaSolta(linhaApos(u, /VENCIMENTO/, 60)) || (dataBr(linhaApos(u, /VENCIMENTO/, 60)) ? (d => ({ mes: +d.slice(3, 5), ano: +d.slice(6) }))(dataBr(linhaApos(u, /VENCIMENTO/, 60))) : null) }) },
   // o boleto (ficha de compensação) que o cliente paga (27/10/2026): 04, Pag. Fornecedores — Fatura (decidirBoleto)
   { tipo: 'BOLETO FORNECEDOR', setor: 'CONTABIL', re: /^(?=[\s\S]*(BENEFICIARIO|CEDENTE))(?=[\s\S]*(PAGADOR|SACADO))(?![\s\S]*SALDO ANTERIOR)[\s\S]*\d{5}\.\d{5}\s+\d{5}\.\d{6}\s+\d{5}\.\d{6}\s+\d\s+\d{14}(?!\d)/, fonte: '04 (Pag. Fornecedores — Fatura)', campos: u => camposDoBoleto(u) },
   { tipo: 'EXTRATO', setor: 'CONTABIL', re: /^[\s\S]{0,400}INSTITUICAO: [^\n,]{2,40}, AGENCIA: [\d-]+, CONTA: [\d.-]+|EXTRATO EXPORTADO NO DIA|^[\s\S]{0,200}APLICATIVO SANTANDER EMPRESAS[\s\S]{0,300}PERIODOS?:|EXTRATO (DE |DA )?(CONTA|C\/C|MENSAL|CONSOLIDADO|FINANCEIRO|POR PERIODO|BANCARIO)|EXTRATOMENSAL|EXTRATO HISTORICO|EXTRATO DE: AG|EXTRATO CONTA CORRENTE|RELATORIO DE MOVIMENTACOES|SALDO FINAL DO PERIODO|SALDO ANTERIOR[\s\S]{0,4000}SALDO/, fonte: 'Dicionário §6.1; 04 (Bancários)', campos: u => camposDeExtrato(u) },
+  // os layouts de extrato dos NÃO IDENTIFICADOS (28/10/2026): o BB "CLIENTE - CONTA ATUAL / … / PERIODO DO EXTRATO", a Caixa "EXTRATO /
+  // LANCAMENTOS DE 01/01/2025 A 31/01/2025", o BTG "CONTA CORRENTE - PJ / PDF GERADO EM", o Santander "INTERNET BANKING EMPRESARIAL /
+  // <titular>AGENCIA: … CONTA: …", o Itaú do aplicativo "NOME / … / AGENCIA/CONTA / 5237 - 99801-7" e o Sicredi "SALDO TOTALLIMITE DA CONTA"
+  { tipo: 'EXTRATO', setor: 'CONTABIL', re: /^[\s\S]{0,300}\n\s*CLIENTE - CONTA ATUAL\s*\n|(?:^|\n)\s*EXTRATO\s*\n\s*LANCAMENTOS DE \d{2}\/\d{2}\/\d{4} A \d{2}\/|^\s*CONTA CORRENTE - PJ\s*\n\s*PDF GERADO EM:|^\s*INTERNET BANKING EMPRESARIAL\s*\n[^\n]*AGENCIA: \d{4} CONTA: \d{6,}|^\s*NOME\s*\n[^\n]+\n\s*AGENCIA\/CONTA\s*\n\s*\d{4} - \d{4,7}-\d|SALDO TOTAL\s*LIMITE DA CONTA[\s\S]{0,300}LANCAMENTOS DO PERIODO/, fonte: 'Dicionário §6.1; 04 (Bancários; os layouts de 28/10/2026)', campos: u => camposDeExtrato(u) },
 ];
 
 /**
@@ -974,10 +1010,11 @@ function periodoDoRelatorio(u) {
   return null;
 }
 /** Sem período impresso: o mês de 90% ou mais das datas listadas (no mínimo 5), como um período de um mês. */
-function periodoPelasDatas(u) {
+// grudadas: a data colada no número da nota ("74030/05/2026", o relatório de vendas das NFC-e, 28/10/2026)
+function periodoPelasDatas(u, grudadas) {
   const c = {};
   let n = 0;
-  for (const m of u.matchAll(/(?<!\d)(\d{2})\/(\d{2})\/(20\d{2})/g)) { if (+m[2] < 1 || +m[2] > 12) continue; const k = m[3] + '-' + m[2]; c[k] = (c[k] || 0) + 1; n++; }
+  for (const m of u.matchAll(grudadas ? /(\d{2})\/(\d{2})\/(20\d{2})/g : /(?<!\d)(\d{2})\/(\d{2})\/(20\d{2})/g)) { if (+m[2] < 1 || +m[2] > 12) continue; const k = m[3] + '-' + m[2]; c[k] = (c[k] || 0) + 1; n++; }
   const top = Object.entries(c).sort((a, b) => b[1] - a[1])[0];
   if (!top || n < 5 || top[1] < n * 0.9) return null;
   const ano = +top[0].slice(0, 4), mes = +top[0].slice(5);
@@ -989,7 +1026,10 @@ function periodoLivre(u) {
   return m ? { de: { dia: +m[1], mes: +m[2], ano: +m[3] }, ate: { dia: +m[4], mes: +m[5], ano: +m[6] } } : null;
 }
 function camposDeExtrato(u) {
-  const p = periodoEscrito(u) || periodoLivre(u.slice(0, 1500));
+  // as duas datas grudadas antes do rótulo (a aplicação do Bradesco, 28/10/2026: "01/06/202530/06/2025ATE / PERIODO DE:")
+  const g = /(\d{2})\/(\d{2})\/(20\d{2})\s*(\d{2})\/(\d{2})\/(20\d{2})\s*ATE\s*\n\s*PERIODO DE/.exec(u.slice(0, 3000));
+  const pg = g && +g[2] >= 1 && +g[2] <= 12 && +g[5] >= 1 && +g[5] <= 12 ? { de: { dia: +g[1], mes: +g[2], ano: +g[3] }, ate: { dia: +g[4], mes: +g[5], ano: +g[6] } } : null;
+  const p = periodoEscrito(u) || pg || periodoLivre(u.slice(0, 1500));
   if (p) return { periodo: p, competencia: { mes: p.ate.mes, ano: p.ate.ano }, variosMeses: (p.de.ano * 12 + p.de.mes) !== (p.ate.ano * 12 + p.ate.mes) && !(p.de.dia >= 25 && (p.ate.ano * 12 + p.ate.mes) - (p.de.ano * 12 + p.de.mes) === 1) };
   let c = competenciaSolta(linhaApos(u, /MES\/ANO|MES DE REFERENCIA|\bMES:|COMPETENCIA|REFERENCIA|PERIODO/, 120));
   if (!c) {
@@ -1405,7 +1445,8 @@ function decidirOfx(entrada, ctx, ev) {
   if (!cliente) return { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_NAO_LOCALIZADO', confianca: 0.3, tipo: 'EXTRATO OFX', setor: 'CONTABIL' };
   let nomeFinal = mesAno(comp) + '.ofx';
   if (p.de) nomeFinal = mesAno(p.de) + ' A ' + mesAno(comp) + '.ofx';   // 04: extrato consolidado (vários meses de verdade)
-  return { acao: 'ARQUIVAR', cliente, comoCliente: como, confianca: conf, tipo: 'EXTRATO', setor: 'CONTABIL', competencia: comp, caminho: ['CONTÁBIL', 'EXTRATOS', String(comp.ano), dois(comp.mes), 'BANCÁRIOS', banco], nomeFinal, fonte: 'Dicionário §6.1.4; 04 (Bancários)' };
+  // o banco do OFX é sempre o do conteúdo (BANKID/ORG): a trava do banco olha só se o cliente tem esse banco
+  return { acao: 'ARQUIVAR', cliente, comoCliente: como, confianca: conf, tipo: 'EXTRATO', setor: 'CONTABIL', competencia: comp, caminho: ['CONTÁBIL', 'EXTRATOS', String(comp.ano), dois(comp.mes), 'BANCÁRIOS', banco], nomeFinal, bancoPeloConteudo: true, fonte: 'Dicionário §6.1.4; 04 (Bancários)' };
 }
 
 /**
@@ -1563,10 +1604,26 @@ function decidirPlanilha(entrada, ctx, ev, porHash) {
     ev.push(mBal ? 'nome do arquivo do Alterdata (código e mês)' : 'título "Balancete"');
     return { acao: 'ARQUIVAR', cliente: cli, comoCliente: porDoc ? 'doc' : 'nome', confianca: conf, tipo: 'BALANCETE', setor: 'CONTABIL', caminho: ['CONTÁBIL', 'REGISTRO DE LIVROS', '(001) ' + ano], nomeFinal: entrada.nome, fonte: '04 (Balancete e ECD)' };
   }
+  // o extrato do banco exportado em planilha (28/10/2026: "Banco Sicoob 09-2025.xls" da 443, as colunas "DATA LANCAMENTO | VALOR
+  // LANCAMENTO | DESCRICAO HISTORICO"): 04, Bancários, como o PDF — "MM-AAAA.xls" em EXTRATOS\ANO\MÊS\BANCÁRIOS\<BANCO>; o banco pelo
+  // nome do arquivo ou da pasta; o cliente pela pasta de origem (a planilha não traz o titular); o mês pelo nome, senão pelas datas
+  const cab = linhas.slice(0, 3).map(norm).join('\n');
+  const bancoPl = bancoDoNome(entrada.nome) || bancoDoNome(partesDoCaminho(entrada.rel).slice(-2, -1)[0] || '');
+  if (/\bDATA( DO)? LANCAMENTO\b/.test(cab) && /\bHISTORICO\b/.test(cab) && /\bVALOR\b/.test(cab) && bancoPl && !SO_MAQUININHA.has(bancoPl)) {
+    const base = { tipo: 'EXTRATO', setor: 'CONTABIL', fonte: 'extrato do banco em planilha (28/10/2026; 04, Bancários)' };
+    const c = porHash ? { cliente: porHash, conf: 0.97, como: 'hash' } : clientePelaPastaOuGrupo(entrada.rel || entrada.nome, entrada.nome, cad, ev);
+    if (!c) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_NAO_LOCALIZADO', confianca: 0.3, evidencias: ev.concat('extrato em planilha: a pasta de origem não diz o cliente') });
+    let comp = competenciaDoNome(entrada.nome);
+    if (!comp) { const pd = periodoPelasDatas((entrada.planilha || []).map(l => (l || []).join(' | ')).join('\n')); if (pd) comp = { mes: pd.ate.mes, ano: pd.ate.ano }; }
+    if (!comp) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5, cliente: c.cliente });
+    ev.push('extrato do ' + bancoPl + ' em planilha (colunas de lançamento; o banco pelo nome)');
+    return Object.assign(base, { acao: 'ARQUIVAR', cliente: c.cliente, comoCliente: c.como, confianca: Math.min(c.conf, 0.9), competencia: comp, caminho: ['CONTÁBIL', 'EXTRATOS', String(comp.ano), dois(comp.mes), 'BANCÁRIOS', bancoPl], nomeFinal: mesAno(comp) + ext0, bancoPeloConteudo: bancoDoTexto(u) === bancoPl });
+  }
   if (ehMaquininha(u)) {
     // Dicionário §6.1.3: planilha sem título, colunas de conciliação de cartão = maquininha
     ev.push('§6.1.3: colunas de conciliação de maquininha');
-    const operadora = bancoDoTexto(u) || bancoDoNome(entrada.nome);
+    // (28/10/2026) a operadora também pela pasta ("…\Cielo\Recebiveis 01.2025.xlsx")
+    const operadora = bancoDoTexto(u) || bancoDoNome(entrada.nome) || bancoDoNome(partesDoCaminho(entrada.rel).slice(-2, -1)[0] || '');
     const linhasTxt = (entrada.planilha || []).map(l => (l || []).join(' | '));
     const texto = linhasTxt.join('\n');
     // o cliente: CNPJ da planilha; senão a razão social que aparece na maioria das linhas (nome do comprador também
@@ -1691,9 +1748,14 @@ function contasDoDocumento(texto, extrato) {
     out.push({ agencia: ag ? numeroDeConta(ag) : null, conta, pos: i });
   };
   const CT = '(\\d[\\d.]{2,17}(?:-[\\dX])?)(?![\\d])';
-  for (const m of u.matchAll(/(?<![\d.])(\d{4})\s*[|/]\s*(\d{3,4})\s*[|/]\s*(\d{8,13}-\d)(?![\d])/g)) add(m, m[1], m[3]);
+  // (28/10/2026) a agência da Caixa com 5 dígitos e a conta com 8 ("01830 | 3701 | 000581389273-3", "3411 | 003 | 00001641-9")
+  for (const m of u.matchAll(/(?<![\d.])(\d{4,5})\s*[|/]\s*(\d{3,4})\s*[|/]\s*(\d{8,13}-\d)(?![\d])/g)) add(m, m[1], m[3]);
   for (const m of u.matchAll(new RegExp('\\bAGENCIA\\s*[/|]\\s*CONTA(?: CORRENTE)?[^\\d\\n]{0,40}\\n?\\s*(\\d{1,5}(?:-[\\dX])?)(?:\\s*-\\s*[A-Z][A-Z ]{1,30})?\\s*[/|]\\s*' + CT, 'g'))) add(m, m[1], m[2]);
-  for (const m of u.matchAll(new RegExp('(?:\\b(?:AGENCIA|AG|COOPERATIVA|COOP)|(?<=[A-Z])AGENCIA)\\b\\.?(?:\\s*N[O°º]\\.?)?\\s*:?\\s*(\\d{1,5}(?:-[\\dX])?)(?![\\d.])\\s*[,;|/-]?\\s*(?:[A-Z][A-Z ]{0,25}\\s)?(?:CONTA(?: CORRENTE)?|C/C|CC)\\b\\.?(?:\\s*N[O°º]\\.?)?\\s*:?\\s*' + CT, 'g'))) add(m, m[1], m[2]);
+  // o Itaú do aplicativo (28/10/2026): "AGENCIA/CONTA / 5237 - 99801-7"
+  for (const m of u.matchAll(/\bAGENCIA\s*\/\s*CONTA\s*\n?\s*(\d{4})\s+-\s+(\d{4,9}-[\dX])(?![\d])/g)) add(m, m[1], m[2]);
+  // (28/10/2026) o número grudado no rótulo ("AGENCIA2705-7 / CONTA CORRENTE22294-1", "AGENCIA 3155CONTA0099034-8") e o produto da
+  // Caixa entre a agência e a conta ("AGENCIA: 03411 PRODUTO: 1292 CONTA: 000578855376-4")
+  for (const m of u.matchAll(new RegExp('(?:\\b(?:AGENCIA|AG|COOPERATIVA|COOP)|(?<=[A-Z])AGENCIA)(?:\\b|(?=\\d))\\.?(?:\\s*N[O°º]\\.?)?\\s*:?\\s*(\\d{1,5}(?:-[\\dX])?)(?![\\d.])\\s*[,;|/-]?\\s*(?:(?:PRODUTO|OPERACAO|OP)\\.?:?\\s*\\d{3,4}\\s+)?(?:[A-Z][A-Z ]{0,25}\\s)?(?:CONTA(?: CORRENTE)?|C/C|CC)(?:\\b|(?=\\d))\\.?(?:\\s*N[O°º]\\.?)?\\s*:?\\s*' + CT, 'g'))) add(m, m[1], m[2]);
   for (const m of u.matchAll(/(?<![\d.|/])(\d{4,5})\s*\|\s*(\d{5,13}-[\dX])(?![\d])/g)) add(m, m[1], m[2]);
   for (const m of u.matchAll(new RegExp('\\b(?:CONTA(?: CORRENTE)?|C/C)\\s*:\\s*(\\d[\\d.]{2,17}-[\\dX])(?![\\d])', 'g'))) add(m, null, m[1]);
   return out.sort((a, b) => a.pos - b.pos);
@@ -1749,7 +1811,12 @@ function clientesPeloNomeAbreviado(titular, cad) {
   const tok = s => textoDeNome(s).trim().split(/\s+/).filter(w => w && !fora.has(w));
   const t = tok(titular);
   if (t.length < 3) return [];
-  const bate = nome => { const n = tok(nome); return n.length === t.length && t.every((w, i) => n[i] === w || (w.length >= 3 && n[i].startsWith(w))); };
+  // (28/10/2026) as iniciais do BB ("CONSTRUTORA I O V LTDA" = CONSTRUTORA E INCORPORADORA OURO VERDE, "MINAS F E F EIRELI" = MINAS
+  // FORESTRY EMPREENDIMENTOS FLORESTAIS): a letra sozinha é o começo da palavra, a primeira palavra vem inteira (3 letras ou mais) e o
+  // nome do cadastro vale com ou sem os conectivos (E, DE, DA, DO, DOS, DAS)
+  const CONECTIVO = /^(E|DE|DA|DO|DOS|DAS)$/;
+  const igual = (n) => n.length === t.length && t[0].length >= 3 && t.every((w, i) => n[i] === w || ((w.length >= 3 || (w.length === 1 && i > 0)) && n[i].startsWith(w)));
+  const bate = nome => { const n = tok(nome); return igual(n) || igual(n.filter(w => !CONECTIVO.test(w))); };
   return [...cad.porCod.values()].filter(c => c.ativo !== false && [c.razao, c.fantasia].concat(c.outrosNomes || []).some(x => x && bate(x))).map(c => c.codigo);
 }
 const PELA_CONTA_DO_CADASTRO = ['EXTRATO', 'APLICACOES', 'COMPROVANTE', 'RECEBIMENTO DE CLIENTES', 'MAQUININHAS'];
@@ -1809,8 +1876,14 @@ function clienteDoPdf0(u, bruto, entrada, ctx, ev, regra, campos) {
   }
 
   // papéis: comprovante = titular da conta ("Cliente:" no cabeçalho); nota = emitente × destinatário (03)
+  let titularLido = null;
   if (regra.tipo === 'COMPROVANTE' || regra.tipo === 'EXTRATO' || regra.tipo === 'APLICACOES' || regra.tipo === 'RECEBIMENTO DE CLIENTES' || regra.tipo === 'MAQUININHAS') {
-    const tit = /\b(?:CLIENTE|TITULAR|CORRENTISTA|NOME DO PAGADOR|NOME)\s*:\s*([A-Z0-9&. -]{6,})/.exec(u) || /\bCONTA(?: CORRENTE)?\s*:?\s*[\d.]+-[\dX]\s*\/?\s*([A-Z][A-Z0-9&. -]{5,})/.exec(u);
+    // (28/10/2026) e os titulares grudados: o Santander "INTERNET BANKING EMPRESARIAL / A7 COMERCIO DE VEICULOS LTDAAGENCIA: 3504", o
+    // Sicredi "CONTA0099034-8 CNPJ 45.430.981/0001-45CENTRO DE …", o Itaú do aplicativo "NOME / G.A.S SERVICOS … / AGENCIA/CONTA"
+    const tit = /\b(?:CLIENTE|TITULAR|CORRENTISTA|NOME DO PAGADOR|NOME)\s*:\s*([A-Z0-9&. -]{6,})/.exec(u) || /\bCONTA(?: CORRENTE)?\s*:?\s*[\d.]+-[\dX]\s*\/?\s*([A-Z][A-Z0-9&. -]{5,})/.exec(u)
+      || /^\s*INTERNET BANKING EMPRESARIAL\s*\n\s*([A-Z0-9][A-Z0-9&. -]{4,}?)AGENCIA:/m.exec(u) || /CONTA\s*\d{5,}-\d\s*CNPJ [\d./-]{14,18}([A-Z][A-Z0-9&. -]{5,})/.exec(u)
+      || /^\s*NOME\s*\n\s*([A-Z0-9][A-Z0-9&. -]{5,})\s*\n\s*AGENCIA\/CONTA/m.exec(u);
+    if (tit) titularLido = tit[1].trim();
     if (tit) {
       // o nome do titular que bate com a matriz e as filiais (mesma raiz de CNPJ; 28/10/2026, "OURO VERDE MIN E FLORESTAS" = 408/409):
       // vale a matriz (a conta já desempatou acima); o nome de OUTRO cliente vence a pasta de origem (os "Caixa Economica OV" na pasta da Vera)
@@ -1861,8 +1934,11 @@ function clienteDoPdf0(u, bruto, entrada, ctx, ev, regra, campos) {
   const porRaiz = [...new Set(raizes.flatMap(r => [...cad.porRaiz.get(r)]))];
   if (porRaiz.length === 1) { ev.push('raiz do CNPJ impressa'); return { cliente: porRaiz[0], conf: 0.92, como: 'doc' }; }
   // a razão social do cabeçalho primeiro (no corpo de um extrato aparecem os nomes de quem pagou/recebeu)
-  const noCabecalho = clientesPeloNomeNoTexto(bruto.slice(0, 700), cad);
-  const nomes = noCabecalho.length === 1 ? noCabecalho : clientesPeloNomeNoTexto(bruto.slice(0, 4000), cad);
+  // (28/10/2026) no extrato/aplicação com o titular lido (que não é cliente): os outros nomes do texto são de quem pagou ou recebeu
+  // ("PIX - ENVIADO / VERA REFLORESTAMENTOS" no extrato da Minas): não decidem; fica a pasta de origem
+  const soTitular = titularLido && CONTA;
+  const noCabecalho = soTitular ? [] : clientesPeloNomeNoTexto(bruto.slice(0, 700), cad);
+  const nomes = soTitular ? [] : noCabecalho.length === 1 ? noCabecalho : clientesPeloNomeNoTexto(bruto.slice(0, 4000), cad);
   for (const mk of mascarasDoTexto(bruto)) {
     const bate = [...cad.porCod.values()].filter(c => c.doc.length === 14 && [...mk].every((ch, i) => ch === '*' || ch === c.doc[i])).map(c => c.codigo);
     const ambos = bate.filter(c => nomes.includes(c));
@@ -2300,7 +2376,8 @@ function decidirPdf(entrada, ctx, ev, porHash) {
   if (pg) return decidirFornecedor(pg, entrada, u, bruto, ctx, ev, porHash);
   if (u.replace(/\s/g, '').length < 40) return { acao: 'NAO_IDENTIFICADO', motivo: 'CONTEUDO_SEM_TEXTO', confianca: 0, tipo: 'PDF', evidencias: ev.concat('PDF sem camada de texto (escaneado): sem OCR, o robô não lê; a rotina antiga lia a imagem (Dicionário §12)'), cliente: porHash || null };
   // Santander: título, competência e titular costumam estar na página 2 (Dicionário §6.1.2) — já está em `bruto`
-  let regra = REGRAS_PDF.find(r => r.re.test(u));
+  // a DRE pelo título do conteúdo (28/10/2026: a "572DRE.2025-01.pdf" lida como aplicação pela linha dos rendimentos)
+  let regra = /^[\s\S]{0,800}DEMONSTRACAO D[OE]S? RESULTADOS? DO EXERCICIO/.test(u) && !/^[\s\S]{0,300}(EXTRATO|COMPROVANTE)/.test(u) ? REGRAS_PDF.find(r => r.tipo === 'BALANCETE') : REGRAS_PDF.find(r => r.re.test(u));
   // a inscrição estadual pelo nome do arquivo ("Inscrição Estadual Brazilian IE 35612260253.pdf"), quando o conteúdo não diz outro tipo
   if (!regra && /INSCRI[CÇ][AÃ]O ESTADUAL|\bINSC\.? ESTADUAL\b/i.test(norm(entrada.nome))) regra = REGRAS_PDF.find(r => r.tipo === 'INSCRICAO ESTADUAL');
   // a provisão anual de impostos do sistema do escritório ("358Prov2025.pdf", "524 Prov. imposto 2025.pdf"): 04, papel de trabalho
@@ -2586,7 +2663,10 @@ function montarContabil(regra, campos, u, bruto, entrada, ctx, ev, porHash) {
   }
   // banco: cabeçalho fora dos lançamentos; senão o nome do arquivo (confiança menor)
   let banco = bancoDoTexto(bruto, regra.tipo !== 'MAQUININHAS');
-  const doNome = bancoDoNome(entrada.nome);
+  let doNome = bancoDoNome(entrada.nome);
+  // o código "[B0033]" do nome ("Extrato Mensal [B0033]_Janeiro2022.pdf") perde para o layout do conteúdo (28/10/2026: é o extrato
+  // mensal do Itaú, "EXTRATOMENSAL / AG 5237 CC …")
+  if (banco && doNome && banco !== doNome && !bancoDoNome(String(entrada.nome || '').replace(/\[B0?\d{3}\]/gi, ' '))) { ev.push('o banco pelo layout do conteúdo (' + banco + '), não pelo código do nome do arquivo'); doNome = banco; }
   const reNome = doNome && (BANCOS.find(b => b[0] === doNome) || [])[1];
   if (banco && doNome && banco !== doNome && reNome && reNome.test(norm(bruto))) { ev.push('banco do nome do arquivo, também escrito no documento: ' + doNome); banco = doNome; }
   if (banco && doNome && banco !== doNome) {
@@ -2594,17 +2674,21 @@ function montarContabil(regra, campos, u, bruto, entrada, ctx, ev, porHash) {
     return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'BANCO_DIVERGENTE', confianca: 0.6, evidencias: ev.concat('conteúdo: ' + banco + ' × nome do arquivo: ' + doNome) });
   }
   let confBanco = 0.97;
+  // a trava do banco (Vitor, 28/10/2026): só o banco lido no conteúdo (ou o da conta lida no conteúdo) arquiva sozinho
+  let bancoPeloConteudo = !!banco;
   if (!banco) { banco = bancoDoNome(entrada.nome) || bancoDoNome(partesDoCaminho(entrada.rel).slice(-2, -1)[0] || ''); confBanco = 0.88; if (banco) ev.push('banco pelo nome do arquivo'); }
   if (!banco && PELA_CONTA_DO_CADASTRO.includes(regra.tipo)) {
     // sem o nome do banco no texto nem no arquivo (28/10/2026: o extrato do BNB "bancodonordeste3.pdf"): o banco da conta do
     // cadastro que decidiu o cliente — a agência e a conta lidas batem com uma conta só dele, de um banco só
     const bancos = [...new Set(((ctx.cadastro && ctx.cadastro.contas) || []).filter(x => x.codigo === c.cliente && x.banco && contasDoArquivo(bruto, entrada, regra.tipo !== 'COMPROVANTE').some(d => mesmaConta(d.conta, x.conta) && (!d.agencia || !x.agencia || d.agencia.base === x.agencia.base))).map(x => x.banco))];
-    if (bancos.length === 1) { banco = bancos[0]; confBanco = 0.9; ev.push('banco pela conta do cadastro (' + banco + ')'); }
+    if (bancos.length === 1) { banco = bancos[0]; confBanco = 0.9; ev.push('banco pela conta do cadastro (' + banco + ')'); bancoPeloConteudo = ((ctx.cadastro && ctx.cadastro.contas) || []).some(x => x.codigo === c.cliente && x.banco === banco && contasDoDocumento(bruto, regra.tipo !== 'COMPROVANTE').some(d => mesmaConta(d.conta, x.conta) && (!d.agencia || !x.agencia || d.agencia.base === x.agencia.base))); }
     // sem agência e conta no texto: todas as contas do cliente no cadastro são de um banco só
     const doCli = [...new Set(((ctx.cadastro && ctx.cadastro.contas) || []).filter(x => x.codigo === c.cliente && x.banco).map(x => x.banco))];
     if (!banco && doCli.length === 1 && regra.tipo === 'EXTRATO') { banco = doCli[0]; confBanco = 0.88; ev.push('banco: o cliente só tem conta no ' + banco + ' no cadastro (o extrato não diz o banco)'); }
   }
   if (!banco) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'BANCO_AUSENTE', confianca: 0.5 });
+  // o banco pelo nome do arquivo, confirmado pela agência e conta lidas no conteúdo, que são do cliente nesse banco no cadastro
+  if (!bancoPeloConteudo && ((ctx.cadastro && ctx.cadastro.contas) || []).some(x => x.codigo === c.cliente && x.banco === banco && contasDoDocumento(bruto, regra.tipo !== 'COMPROVANTE').some(d => mesmaConta(d.conta, x.conta) && (!d.agencia || !x.agencia || d.agencia.base === x.agencia.base)))) { bancoPeloConteudo = true; ev.push('a conta lida no conteúdo é do cliente no ' + banco + ' (cadastro)'); }
   let comp = campos.competencia, confComp = 0.97;
   if (!comp) { comp = competenciaDoNome(entrada.nome); confComp = 0.88; if (comp) ev.push('competência pelo nome do arquivo'); }
   if (!comp) { comp = competenciaDaPasta(entrada.rel); confComp = 0.8; if (comp) ev.push('competência pela pasta do mês'); }
@@ -2613,6 +2697,8 @@ function montarContabil(regra, campos, u, bruto, entrada, ctx, ev, porHash) {
   const pastaComp = (r => (r && r.mes ? r : null))(anoDaPasta(entrada.rel || ''));
   if (!comp && pastaComp) { comp = { mes: pastaComp.mes, ano: pastaComp.ano }; confComp = 0.88; ev.push('competência pela pasta de origem (' + mesAno(comp) + ')'); }
   if (comp && pastaComp && (pastaComp.mes !== comp.mes || pastaComp.ano !== comp.ano)) ev.push('o período do conteúdo (' + mesAno(comp) + ') difere do da pasta de origem (' + mesAno(pastaComp) + '): vale o do conteúdo');
+  // (28/10/2026) sem o período escrito, no nome e na pasta: o mês de 90% ou mais das datas dos lançamentos (como no OFX)
+  if (!comp && (regra.tipo === 'EXTRATO' || regra.tipo === 'APLICACOES')) { const pd = periodoPelasDatas(u); if (pd) { comp = { mes: pd.ate.mes, ano: pd.ate.ano }; confComp = 0.88; ev.push('competência pelas datas dos lançamentos (' + mesAno(comp) + ')'); } }
   if (!comp) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5 });
   const conf = Math.min(c.conf, confBanco, confComp);
   const ano = String(comp.ano), mes = dois(comp.mes), ma = mesAno(comp);
@@ -2621,7 +2707,7 @@ function montarContabil(regra, campos, u, bruto, entrada, ctx, ev, porHash) {
   if (pasta) {
     let nomeFinal = (regra.tipo === 'COMPROVANTE' ? 'Comprovantes ' : '') + ma + ext;
     if (regra.tipo === 'EXTRATO' && campos.variosMeses && campos.periodo) nomeFinal = mesAno(campos.periodo.de) + ' A ' + ma + ext;   // 04: extrato consolidado
-    return Object.assign(base, { acao: 'ARQUIVAR', confianca: conf, competencia: comp, caminho: ['CONTÁBIL', 'EXTRATOS', ano, mes, pasta, banco], nomeFinal });
+    return Object.assign(base, { acao: 'ARQUIVAR', confianca: conf, competencia: comp, caminho: ['CONTÁBIL', 'EXTRATOS', ano, mes, pasta, banco], nomeFinal, bancoPeloConteudo });
   }
   if (regra.tipo === 'RECEBIMENTO DE CLIENTES') return Object.assign(base, { acao: 'ARQUIVAR', confianca: conf, competencia: comp, caminho: ['CONTÁBIL', 'RECEBIMENTO DE CLIENTES', ano, mes], nomeFinal: banco + ' ' + ma + ext });
   if (regra.tipo === 'FATURA CARTAO') return Object.assign(base, { acao: 'ARQUIVAR', confianca: conf, competencia: comp, caminho: ['CONTÁBIL', 'EXTRATOS', ano, mes], nomeFinal: 'EXTRATO_' + banco + '_' + ma + ext });
@@ -2790,6 +2876,30 @@ function honorariosDoEscritorio(d) {
   d.nomeFinal = dois(d.competencia.mes) + '-' + d.competencia.ano + (nfse ? ' - NFS-e HONORÁRIOS ' + +nfse[1] + ext : ' - HONORÁRIOS R$ ' + v[1] + ext);
   d.tipo = 'HONORARIOS CONTABEIS';
 }
+/**
+ * A trava do banco (Vitor, 28/10/2026: "o cliente nem tem o banco e está lá uma pasta com o nome de outro banco e um extrato que não
+ * condiz"): o extrato, a aplicação e o comprovante bancário (CONTÁBIL\EXTRATOS\ANO\MÊS\BANCÁRIOS|APLICAÇÕES|COMPROVANTES\<BANCO>) só
+ * vão sozinhos quando tudo concorda:
+ *   1. o banco veio do conteúdo (o layout, o campo INSTITUIÇÃO, o código do banco do OFX, o cabeçalho, a conta lida que é de um banco
+ *      só no cadastro); só pelo nome do arquivo ou pela pasta: BANCO_AUSENTE;
+ *   2. o cliente tem bancos no cadastro (Entregas contasBancarias, nads bancos) e o banco lido não está entre eles:
+ *      BANCO_NAO_CADASTRADO_NO_CLIENTE (a pasta do banco não nasce);
+ *   3. o cliente só pela pasta de origem (sem a conta, o CNPJ ou o titular no conteúdo): só com o banco lido entre os do cliente.
+ * O arquivo confirmado pelo responsável (o hash, o admin no nads) não passa pela trava.
+ */
+const PASTA_DO_BANCO = new Set(['BANCÁRIOS', 'APLICAÇÕES', 'COMPROVANTES']);
+function travaDoBanco(d, cli) {
+  const c = d.caminho || [];
+  if (d.comoCliente === 'hash' || c[0] !== 'CONTÁBIL' || c[1] !== 'EXTRATOS' || !PASTA_DO_BANCO.has(c[4]) || !c[5]) return null;
+  const banco = c[5];
+  if (d.bancoPeloConteudo !== true) return { acao: 'NAO_IDENTIFICADO', motivo: 'BANCO_AUSENTE', bancoSugerido: banco, evidencias: (d.evidencias || []).concat('o banco (' + banco + ') só pelo nome do arquivo ou pela pasta de origem: não basta para arquivar sozinho (Vitor, 28/10/2026)') };
+  const bancos = cli.bancos || new Set();
+  const peloConteudo = ['conta', 'doc', 'nome'].includes(d.comoCliente);
+  if ((bancos.size || !peloConteudo) && !bancos.has(banco)) {
+    return { acao: 'NAO_IDENTIFICADO', motivo: 'BANCO_NAO_CADASTRADO_NO_CLIENTE', bancoSugerido: banco, evidencias: (d.evidencias || []).concat('o cliente ' + cli.codigo + ' não tem conta no banco ' + banco + ' no cadastro' + (bancos.size ? ' (tem: ' + [...bancos].join(', ') + ')' : ' (nenhum banco cadastrado)') + (peloConteudo ? '' : '; o cliente só pela pasta de origem') + ': a pasta do banco não nasce sozinha (Vitor, 28/10/2026)') };
+  }
+  return null;
+}
 function finalizar(d, ctx) {
   const cad = ctx.cadastro;
   d.evidencias = d.evidencias || [];
@@ -2797,6 +2907,8 @@ function finalizar(d, ctx) {
   if (cli) d.clienteNome = cli.razao;
   if (d.acao !== 'ARQUIVAR') return comMotivoDoCodigo(d);
   if (!cli) return comMotivoDoCodigo(Object.assign(d, { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_NAO_LOCALIZADO' }));
+  const trava = travaDoBanco(d, cli);
+  if (trava) return comMotivoDoCodigo(Object.assign(d, trava));
   honorariosDoEscritorio(d);
   // a raiz do ano (23/10/2026): a competência; sem ela, o ano das pastas de origem; sem nenhum, NÃO IDENTIFICADOS (nunca 2026 por padrão)
   const anoMax = (ctx.hoje ? new Date(ctx.hoje) : new Date()).getFullYear();
@@ -2841,7 +2953,7 @@ function finalizar(d, ctx) {
 const CODIGOS = {
   CLIENTE_NAO_LOCALIZADO: 'E101', CLIENTE_AMBIGUO: 'E102', EVENTO_SEM_ORIGINAL: 'E103', REGIME_INDEFINIDO: 'E104', SETOR_INDETERMINADO: 'E105', CONFIANCA_ABAIXO_DO_LIMIAR: 'E106',
   REGIME_SEM_ESPECIALISTA: 'E108', ANO_INDETERMINADO: 'E308', ANO_FORA_DA_FAIXA: 'E309', PASTA_DO_ANO_SEM_CNPJ: 'E110', PISTA_DA_PASTA_DIVERGE: 'E111', VOCABULARIO_AUSENTE: 'E201', TIPO_INCOMPATIVEL_COM_REGIME: 'E202', EMITENTE_INDETERMINADO: 'E205',
-  COMPETENCIA_AUSENTE: 'E303', VALOR_AUSENTE: 'E304', BANCO_AUSENTE: 'E305', CONTEUDO_ILEGIVEL: 'E307', CONTEUDO_SEM_TEXTO: 'E307', MENSAGEM_DA_SEFAZ: 'E402',
+  COMPETENCIA_AUSENTE: 'E303', VALOR_AUSENTE: 'E304', BANCO_AUSENTE: 'E305', BANCO_NAO_CADASTRADO_NO_CLIENTE: 'E306', CONTEUDO_ILEGIVEL: 'E307', CONTEUDO_SEM_TEXTO: 'E307', MENSAGEM_DA_SEFAZ: 'E402',
   IDENTICO_JA_ARQUIVADO: 'E401', PDF_COMPOSTO_NAO_SEPARADO: 'E701', FERRAMENTA_EXTRACAO_AUSENTE: 'E703', ARQUIVO_COMPACTADO_CORROMPIDO: 'E704',
 };
 function comMotivoDoCodigo(d) { if (d.motivo) d.codigo = CODIGOS[d.motivo] || null; return d; }

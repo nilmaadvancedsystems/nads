@@ -17,7 +17,7 @@ function igual(nome, obtido, esperado) {
 }
 
 const LINHAS = [
-  { codigo: 10, razao: 'DORNAS HAVANA LTDA', doc: '36.462.778/0001-60', regime: 'Simples' },
+  { codigo: 10, razao: 'DORNAS HAVANA LTDA', doc: '36.462.778/0001-60', regime: 'Simples', bancos: ['bradesco', 'sicoob'] },   // os bancos do cadastro (a trava do banco, 28/10/2026)
   { codigo: 66, razao: 'ADERLEI DOS SANTOS & CIA LTDA', doc: '03.149.551/0001-00', regime: 'Presumido' },
   { codigo: 161, razao: 'FERNANDO EXEMPLO DA SILVA', doc: '11.426.314/0001-77', regime: 'Simples' },
   { codigo: 413, razao: 'BRAZILIAN FLORESTAL LTDA', doc: '11.536.337/0001-70', regime: 'Presumido' },
