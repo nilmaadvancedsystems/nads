@@ -174,7 +174,7 @@ export function useRelatorioGeral(regime: RegimeDoRelatorio, modo: ModoDoRelator
     carregando: !mes.carregada || lista.carregando || (modo === 'particularidades' && !doAnterior.carregada),
     exemplos: repo.exemplos,
     podeGravar,
-    titulo: (modo === 'particularidades' ? 'Particularidades ' : 'Relatório ') + (regime === 'sn' ? 'Simples' : 'Presumido'),
+    titulo: (modo === 'particularidades' ? 'Particularidades ' : 'Relatório ') + (regime === 'sn' ? 'Simples' : modo === 'particularidades' ? 'Presumido' : 'Lucro Presumido'),
     /** Particularidades: só as empresas que têm (o padrão) ou todas, para pôr uma nova */
     soComParticularidade, setSoComParticularidade: (s: boolean) => { setSoComParticularidade(s); setPagina(0); },
     nomesParticulares: grupo.colunas.filter(c => particulares.includes(c.id)).map(c => c.rotulo),
