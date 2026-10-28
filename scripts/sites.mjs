@@ -18,11 +18,22 @@
 // Entregas só o site do Extratudo (o site das Pendências, entregas-2e5e2, nunca entra aqui).
 import { execSync } from 'node:child_process';
 import fs from 'node:fs';
+import { Buffer } from 'node:buffer';
 import path from 'node:path';
 
 const raiz = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..');
 const web = path.join(raiz, 'apps', 'web');
 const url = site => 'https://' + site + '.web.app';
+const SITE_DO_NADS = /^https:\/\/[a-z0-9-]+\.web\.app$/;
+
+// a pasta principal do nads (a cópia limpa de publicar é um worktree: as peças guardadas ficam na principal, a mesma para
+// todas; Vitor, 28/10/2026: "corrige isso pra não ficar acontecendo" — publicado de uma cópia, o site perdia as peças antigas)
+const principal = (() => {
+  try {
+    const comum = execSync('git rev-parse --path-format=absolute --git-common-dir', { cwd: raiz, encoding: 'utf8' }).trim();
+    return path.basename(comum) === '.git' ? path.dirname(comum) : raiz;
+  } catch { return raiz; }
+})();
 
 /**
  * id → site do Firebase e o que vai nele:
@@ -93,8 +104,13 @@ for (const id of ids) {
   // as peças (assets/) das versões anteriores ficam no site por 30 dias: uma aba aberta antes da publicação pede os
   // pedaços da versão dela (o leitor de PDF, por exemplo) e, sem eles, dava "Failed to fetch dynamically imported
   // module" (Vitor, 01/10/2026). Guardadas em dist-sites/.assets-<site>, com a data de quando saíram pela 1ª vez.
-  const guardadas = path.join(web, 'dist-sites', '.assets-' + (s.pasta || id));
-  if (s.tipo === 'app' && !canal) guardarPecas(path.join(saida, 'assets'), guardadas);
+  // na pasta principal, mesmo publicando de uma cópia; antes de gerar, as peças do que está no ar entram também (de onde
+  // quer que tenha sido publicado)
+  const guardadas = path.join(principal, 'apps', 'web', 'dist-sites', '.assets-' + (s.pasta || id));
+  if (s.tipo === 'app' && !canal) {
+    guardarPecas(path.join(saida, 'assets'), guardadas);
+    await guardarPecasDoAr(url(s.site), guardadas);
+  }
   fs.rmSync(saida, { recursive: true, force: true });
   if (s.tipo === 'app') {
     const banco = s.banco && !soExemplos;
@@ -120,13 +136,52 @@ if (canal) {
   }
   process.exit(0);
 }
+/**
+ * As peças da versão que está no ar, baixadas do próprio site (28/10/2026): do index.html, cada .js e .css que ele cita e,
+ * dentro deles, os pedaços que eles importam ("./Executor-abc.js", "assets/x.css"). Só as que ainda não estão guardadas.
+ * O site devolve o index.html (200) para arquivo que não existe: o que vier em HTML não é peça. Sem rede, segue sem elas.
+ */
+/* global fetch, AbortSignal -- os do Node 18+ */
+async function guardarPecasDoAr(site, para) {
+  // só o próprio site que está sendo publicado (a trava das conexões confere isto)
+  if (!SITE_DO_NADS.test(site)) return;
+  const PECA = /(?:\.\/|\/?assets\/)([\w.~-]+\.(?:js|css|woff2?|ttf|png|svg|jpe?g|webp|wasm|mjs))(?=["'`?#)\s])/g;
+  const baixar = async caminho => {
+    const r = await fetch(site + '/' + caminho, { signal: AbortSignal.timeout(20000) });
+    if (!r.ok || /text\/html/.test(r.headers.get('content-type') || '')) return null;
+    return Buffer.from(await r.arrayBuffer());
+  };
+  try {
+    const html = await (await fetch(site + '/', { signal: AbortSignal.timeout(20000) })).text();
+    const fila = [...new Set([...html.matchAll(PECA)].map(m => m[1]))];
+    const vistas = new Set(fila);
+    fs.mkdirSync(para, { recursive: true });
+    let novas = 0;
+    while (fila.length && vistas.size < 5000) {
+      const lote = fila.splice(0, 8);
+      await Promise.all(lote.map(async nome => {
+        const destino = path.join(para, nome);
+        let dados = fs.existsSync(destino) ? fs.readFileSync(destino) : null;
+        if (!dados) {
+          dados = await baixar('assets/' + nome).catch(() => null);
+          if (!dados) return;
+          fs.writeFileSync(destino, dados);
+          novas++;
+        }
+        if (/\.(js|mjs|css)$/.test(nome)) for (const m of dados.toString('utf8').matchAll(PECA)) if (!vistas.has(m[1])) { vistas.add(m[1]); fila.push(m[1]); }
+      }));
+    }
+    if (novas) console.log('sites: ' + novas + ' peças do que está no ar em ' + site + ' guardadas (para as abas abertas antes)');
+  } catch (e) { console.log('sites: não li as peças de ' + site + ' (' + (e && e.message) + '); segue com as guardadas'); }
+}
+
 /** Guarda as peças da versão que está no ar (só as que ainda não estavam guardadas: a data é a de quando saíram). */
 function guardarPecas(de, para) {
   if (!fs.existsSync(de)) return;
   fs.mkdirSync(para, { recursive: true });
   for (const f of fs.readdirSync(de)) {
     const destino = path.join(para, f);
-    if (!fs.existsSync(destino)) fs.copyFileSync(de + path.sep + f, destino);
+    if (!fs.existsSync(destino)) { try { fs.copyFileSync(de + path.sep + f, destino); } catch (e) { if (e.code !== 'ENOENT') throw e; } }
   }
 }
 /** Põe de volta as peças antigas que a versão nova não tem; as de mais de 30 dias saem de vez. */
@@ -136,9 +191,12 @@ function devolverPecas(de, para) {
   let devolvidas = 0;
   for (const f of fs.readdirSync(de)) {
     const origem = path.join(de, f);
-    if (fs.statSync(origem).mtimeMs < limite) { fs.rmSync(origem); continue; }
-    const destino = path.join(para, f);
-    if (!fs.existsSync(destino)) { fs.copyFileSync(origem, destino); devolvidas++; }
+    // outra publicação ao mesmo tempo pode ter tirado a peça no meio (28/10/2026: o ENOENT do copyfile): segue sem ela
+    try {
+      if (fs.statSync(origem).mtimeMs < limite) { fs.rmSync(origem, { force: true }); continue; }
+      const destino = path.join(para, f);
+      if (!fs.existsSync(destino)) { fs.copyFileSync(origem, destino); devolvidas++; }
+    } catch (e) { if (e.code !== 'ENOENT') throw e; }
   }
   if (devolvidas) console.log('sites: ' + devolvidas + ' peças de versões anteriores continuam no site (abas abertas antes desta publicação)');
 }

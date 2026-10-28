@@ -76,6 +76,10 @@ const ONDE_PODE_FETCH_VERSAO = /[\\/]packages[\\/]ui[\\/]src[\\/]versaoNova\.tsx
 // Entregas (Apps Script em script.google.com/macros/s/…), o mesmo que o Entregas usa para trocar a senha; só nesse
 // arquivo, só nessa linha, e o arquivo confere o endereço (SERVICO_DE_CONTAS) antes de chamar
 const ONDE_PODE_FETCH_CONTAS = /[\\/]tarefas[\\/]dados[\\/]convite\.firestore\.ts$/;
+// o publicar (scripts/sites.mjs, no PC de quem publica; não vai para o app) lê as peças do PRÓPRIO site que está publicando,
+// para elas não sumirem da hospedagem (28/10/2026, ao corrigir o "Esta tela não abriu" a pedido do Vitor): só nesse
+// arquivo, só "fetch(site + '/'", e o arquivo confere que é um endereço https://<site>.web.app antes de chamar
+const ONDE_PODE_FETCH_SITES = /[\\/]scripts[\\/]sites\.mjs$/;
 
 const achados = [];
 // robo/: o robô do escritório (Gmail, Drive, avisos, arquivador, SIEG, FGTS), movido do Entregas para cá a pedido do
@@ -125,6 +129,7 @@ varrer(raiz, p => {
       // o aviso de versão nova lê só o /versao.json do próprio site (mesmo endereço; liberado pelo usuário em 01/10/2026)
       if (re === TEXTOS_REDE[0] && ONDE_PODE_FETCH_VERSAO.test(p) && l.includes("fetch('/versao.json?t=' + Date.now()")) continue;
       if (re === TEXTOS_REDE[0] && ONDE_PODE_FETCH_CONTAS.test(p) && l.includes('fetch(c.contasUrl,') && fs.readFileSync(p, 'utf8').includes('c.contasUrl.startsWith(SERVICO_DE_CONTAS)')) continue;
+      if (re === TEXTOS_REDE[0] && ONDE_PODE_FETCH_SITES.test(p) && l.includes("fetch(site + '/'") && fs.readFileSync(p, 'utf8').includes('SITE_DO_NADS.test(site)')) continue;
       achados.push(rel + ':' + (i + 1) + ': chamada de rede ("' + re.source + '")');
     }
   });
