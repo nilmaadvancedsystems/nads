@@ -58,8 +58,8 @@ export function CascaTarefas({ app, pagina, telaInteira, semLateral, larga, empr
   // o feedback que o admin pôs em Resolvendo: avisa quem mandou (26/10/2026)
   useAvisoDosMeusFeedbacks();
   return (
-    <Casca sistema="Tarefas" temaNaGaveta={false} empresa={vm.empresa} versao={vm.versao} trilha={trilha} secoes={secoes} paginas={vm.paginas} titulo={telaInteira ? '' : titulo}
-      lateral={telaInteira || semLateral || vm.comAbas ? 'nenhuma' : undefined} larga={telaInteira || larga}
+    <Casca sistema="Tarefas" temaNaGaveta={false} empresa={vm.empresa} versao={vm.versao} trilha={trilha} secoes={secoes} paginas={empresa ? [] : vm.paginas} titulo={telaInteira ? '' : titulo}
+      lateral={telaInteira || semLateral || (vm.comAbas && !empresa) ? 'nenhuma' : undefined} larga={telaInteira || larga}
       acoes={telaInteira || (empresa && !titulo) ? undefined : <LugarDasAcoes />} onSecao={empresa ? empresa.onPagina : vm.onSecao} onPagina={vm.onPagina} onInicio={vm.inicio} onAplicativos={vm.inicio}
       onEmpresa={vm.trocarPessoa} aplicativos={vm.aplicacoes} onAplicativo={vm.onAplicacao}
       cartaoNoTopo={empresa ? <CartaoDaEmpresa empresa={empresa} /> : undefined}
