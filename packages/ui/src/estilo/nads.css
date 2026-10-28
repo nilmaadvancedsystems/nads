@@ -1055,6 +1055,8 @@ table.vc-tabela .vc-mut{color:var(--ink-muted);max-width:180px;overflow:hidden;t
 .app-card-nome{font-size:var(--fs-14);font-weight:600;}
 .app-card-desc{font-size:var(--fs-13);line-height:1.4;color:var(--ink-muted);}
 .badge-warn{color:var(--warn);border-color:var(--warn);background:none;}
+/* a pílula cheia do Em andamento (Vitor, 28/10/2026: "deixe a pílula preenchida"), como o Ok */
+.badge-warn.badge-cheia{color:var(--bg);background:var(--warn);font-weight:600;}
 .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-top:16px;}
 .form-grid .field{margin-bottom:0;}
 .form-grid .hint{margin-top:4px;}
@@ -3555,6 +3557,17 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .fgts-nome{min-width:200px;}
 .fgts-cnpj{white-space:nowrap;}
 .fgts-acoes{align-items:center;}
+
+/* DP › Envios (27/10/2026): os documentos do mês da pasta do cliente, por e-mail pelo robô da nuvem */
+.dp-envio-qtd > svg{width:14px;height:14px;flex:none;color:var(--ink-muted);}
+.dp-envio-arquivos{list-style:none;margin:0;padding:0 16px 8px;display:flex;flex-direction:column;gap:2px;}
+.dp-envio-arquivos label{display:flex;align-items:flex-start;gap:10px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:var(--fs-13);}
+.dp-envio-arquivos label:hover{background:var(--hover-bg);}
+.dp-envio-arquivos input{margin-top:3px;flex:none;}
+.dp-envio-arquivos b{display:block;font-weight:600;overflow-wrap:anywhere;}
+.dp-envio-pasta{display:block;font-size:var(--fs-11);overflow-wrap:anywhere;}
+.fgts-janela .card > .fraco,.fgts-janela .card > .hint{padding:0 16px;margin:4px 0 10px;font-size:var(--fs-12);}
+.fgts-janela .card > .btn{margin:0 16px 14px;}
 
 /* Os painéis coloridos dos números (DP › Resumo; Sávio, 07/10/2026): cada número no tom do que ele é, com o ícone */
 .dp-numeros{gap:10px;}
