@@ -60,6 +60,12 @@ export function criarEnviosDpFirestore(quem: () => entregas.Quem | null): RepoEn
       }
       return doMes.get(competencia)!;
     },
+    historico(codigo, chegou) {
+      // só igualdade (sem orderBy, que pediria um índice): a ordem é feita aqui
+      return onSnapshot(query(collection(db, 'solicitacoesEmail'), where('tipo', '==', 'envioDp'), where('codigo', '==', String(codigo))), s => {
+        chegou(s.docs.map(x => envioDoBanco(x.id, x.data())).sort((a, b) => b.criadoEm.localeCompare(a.criadoEm)));
+      }, () => chegou([]));
+    },
     async enviar({ codigo, empresa, competencia, arquivos }) {
       const q = quem();
       if (!q) throw new Error('Sem login.');
