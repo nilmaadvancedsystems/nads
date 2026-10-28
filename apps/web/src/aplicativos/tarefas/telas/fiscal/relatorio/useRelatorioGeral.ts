@@ -36,6 +36,13 @@ const STATUS = [
   ...(['nao-iniciada', 'em-andamento', 'concluida'] as const).map(v => ({ valor: v, rotulo: t.ROTULO_SITUACAO_GERAL[v] })),
 ];
 const ENTREGAS = [{ valor: 'falta', rotulo: 'Falta' }, ...t.ENTREGAS_DO_CONTROLE.filter(e => e.valor).map(e => ({ valor: e.valor as string, rotulo: e.rotulo }))];
+// quantas empresas por página (28/10/2026: "um filtro que o usuário escolhe quantas empresas tem por página"); 0 = todas.
+// Fica guardado neste navegador.
+const POR_PAGINA = [25, 50, 100, 0] as const;
+const CHAVE_POR_PAGINA = 'nads-relatorio-por-pagina';
+function porPaginaGuardado(): number {
+  try { const s = localStorage.getItem(CHAVE_POR_PAGINA); const n = Number(s); return s !== null && (POR_PAGINA as readonly number[]).includes(n) ? n : 25; } catch { return 25; }
+}
 const semAcento = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 /** dd/mm/aaaa ↔ AAAA-MM-DD */
@@ -68,6 +75,8 @@ export function useRelatorioGeral(regime: RegimeDoRelatorio) {
   const [status, setStatus] = useState('');
   const [pendenteEm, setPendenteEm] = useState('');
   const [entrega, setEntrega] = useState('');
+  const [porPagina, setPorPagina] = useState(porPaginaGuardado);
+  const [pagina, setPagina] = useState(0);
 
   // as empresas do regime no Cadastro do nads (o do Entregas, quando o nads não tem)
   const empresas = useMemo(() => lista.linhas
@@ -121,6 +130,10 @@ export function useRelatorioGeral(regime: RegimeDoRelatorio) {
     && (!status || (status === 'pendentes' ? r.situacao !== 'concluida' : r.situacao === status))
     && (!entrega || (entrega === 'falta' ? !r.linha.entregue : r.linha.entregue === entrega))
     && (!pendenteEm || r.pendencias.has(pendenteEm as ParteDoRelatorio)));
+  // a página: a busca e os filtros correm todas as empresas, e só depois a lista se divide em páginas
+  const paginas = porPagina ? Math.max(1, Math.ceil(linhas.length / porPagina)) : 1;
+  const atual = Math.min(pagina, paginas - 1);
+  const daPagina = porPagina ? linhas.slice(atual * porPagina, (atual + 1) * porPagina) : linhas;
   const totais = grupo.colunas.map(c => {
     const v = linhas.reduce((s, r) => s + t.numeroDoControle(r.linha.valores[c.id] || ''), 0);
     return { id: c.id, valor: v ? brl(v) : '—' };
@@ -153,15 +166,22 @@ export function useRelatorioGeral(regime: RegimeDoRelatorio) {
     competencias: competencias.map(c => ({ valor: c, rotulo: t.rotuloCompetencia(c) })),
     setCompetencia: (c: string) => { const n = new URLSearchParams(params); n.set('competencia', c); setParams(n); },
     filtros: {
-      busca, setBusca, status, setStatus, pendenteEm, setPendenteEm, entrega, setEntrega,
+      // trocar a busca ou um filtro volta para a primeira página
+      busca, setBusca: (b: string) => { setBusca(b); setPagina(0); }, status, setStatus: (s: string) => { setStatus(s); setPagina(0); },
+      pendenteEm, setPendenteEm: (p: string) => { setPendenteEm(p); setPagina(0); }, entrega, setEntrega: (e: string) => { setEntrega(e); setPagina(0); },
+      porPagina, porPaginaOpcoes: POR_PAGINA.map(n => ({ valor: n, rotulo: n ? String(n) : 'Todas' })),
+      setPorPagina: (n: number) => { setPorPagina(n); setPagina(0); try { localStorage.setItem(CHAVE_POR_PAGINA, String(n)); } catch { /* sem armazenamento: só agora */ } },
       statusOpcoes: STATUS, partes: PARTES, entregas: ENTREGAS,
       algum: !!(busca || status || pendenteEm || entrega),
-      limpar: () => { setBusca(''); setStatus(''); setPendenteEm(''); setEntrega(''); },
+      limpar: () => { setBusca(''); setStatus(''); setPendenteEm(''); setEntrega(''); setPagina(0); },
     },
     grupo,
     /** as colunas das guias com o nome curto (o parcelamento é a última) */
     guias: grupo.colunas.map(c => ({ id: c.id, rotulo: CURTO[c.id] || c.rotulo, nome: c.rotulo })),
-    total: todas.length, linhas, faltam: linhas.filter(r => r.situacao !== 'concluida').length, totais,
+    /** a página da lista: '1–25 de 166', a anterior e a próxima */
+    pagina: { atual, paginas, de: daPagina.length ? atual * (porPagina || linhas.length) + 1 : 0, ate: atual * (porPagina || linhas.length) + daPagina.length,
+      anterior: () => setPagina(Math.max(0, atual - 1)), proxima: () => setPagina(Math.min(paginas - 1, atual + 1)) },
+    total: todas.length, linhas: daPagina, achadas: linhas.length, faltam: linhas.filter(r => r.situacao !== 'concluida').length, totais,
     /** um campo de valor: guarda como fica na tela (1.234,50, — ou 0) */
     mudarValor(codigo: number, coluna: string, texto: string) {
       const l = linhaDe(codigo);

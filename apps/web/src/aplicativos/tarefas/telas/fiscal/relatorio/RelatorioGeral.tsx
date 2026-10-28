@@ -28,6 +28,9 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
         <MenuDeFiltro rotulo="Status" valor={f.status} mudar={f.setStatus} opcoes={f.statusOpcoes} />
         <MenuDeFiltro rotulo="Pendente em" valor={f.pendenteEm} mudar={f.setPendenteEm} opcoes={f.partes} todos="Todas as partes" />
         <MenuDeFiltro rotulo="Entrega" valor={f.entrega} mudar={f.setEntrega} opcoes={f.entregas} />
+        {/* quantas empresas por página (28/10/2026); a busca sempre corre todas as empresas */}
+        <MenuSuspenso rotulo={'Por página: ' + (f.porPagina || 'Todas')} titulo="Empresas por página" dica="Quantas empresas por página" className="btn btn-outline"
+          itens={f.porPaginaOpcoes.map(o => ({ rotulo: o.rotulo, marcado: o.valor === f.porPagina, onClick: () => f.setPorPagina(o.valor) }))} />
         {f.algum && <button type="button" className="btn btn-ghost dp-limpar" onClick={f.limpar}><Icone nome="x" />Limpar filtros</button>}
       </div>
       {vm.exemplos && <p className="hint drive-aviso">Dados de exemplo: o que se escreve fica só nesta aba.</p>}
@@ -42,7 +45,7 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
                 <Icone nome="download" />Preencher com o Entregas ({vm.comSugestaoParaUsar})
               </button>
             )}
-            <span className="hint">{vm.faltam ? vm.faltam + (vm.faltam === 1 ? ' falta' : ' faltam') + ' de ' + vm.linhas.length : 'tudo feito'}</span>
+            <span className="hint">{vm.faltam ? vm.faltam + (vm.faltam === 1 ? ' falta' : ' faltam') + ' de ' + vm.achadas : 'tudo feito'}</span>
             <span className="tarefas-barra-espaco" />
             <label className="busca-curta">
               <Icone nome="search" />
@@ -122,6 +125,14 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
                 </div>
               )}
           </section>
+          {vm.pagina.paginas > 1 && (
+            <div className="tarefas-barra-topo dp-filtros-linha">
+              <span className="tarefas-barra-espaco" />
+              <span className="hint">{vm.pagina.de}–{vm.pagina.ate} de {vm.achadas} · página {vm.pagina.atual + 1} de {vm.pagina.paginas}</span>
+              <button type="button" className="btn btn-outline" disabled={vm.pagina.atual === 0} onClick={vm.pagina.anterior}><Icone nome="chevronLeft" />Anterior</button>
+              <button type="button" className="btn btn-outline" disabled={vm.pagina.atual >= vm.pagina.paginas - 1} onClick={vm.pagina.proxima}>Próxima<Icone nome="chevronRight" /></button>
+            </div>
+          )}
           <p className="hint">Nos valores: o número em reais, "-" quando não tem guia ou "0". Em cinza, o que o Entregas já entregou. Nas conferências: clique para OK, de novo para "não se aplica" (–) e de novo para limpar. A REINF transmite como na tela da REINF.</p>
           <Observacoes vm={vm} />
           <Retificacao vm={vm} />
