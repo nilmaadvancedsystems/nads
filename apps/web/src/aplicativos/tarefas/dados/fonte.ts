@@ -6,7 +6,7 @@
 // Quem está trabalhando: no banco, o login com as contas do Entregas (entregas.firestore.ts, 30/09/2026);
 // nos exemplos, a pessoa escolhe o nome na lista da equipe (não há login).
 // O repositório e a sessão são criados uma vez, quando alguém abre a Tarefas. O do Cadastro, quando alguém abre o Cadastro.
-import { demo, empresas, entregas, extrator, formatos, tarefas } from '@nads/core';
+import { demo, empresas, entregas, extrator, formatos, tarefas, usuarios } from '@nads/core';
 import { criarAcessoMemoria, type RepoAcesso } from './acesso';
 import { criarAcessoFirestore } from './acesso.firestore';
 import { criarDriveFirestore } from './drive.firestore';
@@ -44,6 +44,8 @@ import { criarLcdprFirestore } from './lcdpr.firestore';
 import { criarFeedbackFirestore } from './feedback.firestore';
 import { criarAvisosFirestore } from './avisos.firestore';
 import { criarAvisosMemoria, type RepoAvisos } from './avisos';
+import { criarTarefasDelegadasMemoria, type RepoTarefasDelegadas } from './tarefasDelegadas';
+import { criarTarefasDelegadasFirestore } from './tarefasDelegadas.firestore';
 import { criarUsoMemoria, type RepoUso } from './uso';
 import { criarUsoFirestore } from './uso.firestore';
 import { criarParcelamentosMemoria, type RepoParcelamentos } from './parcelamentos';
@@ -446,6 +448,26 @@ let avisos: RepoAvisos | null = null;
 export function repoDeAvisos(): RepoAvisos {
   if (!avisos) avisos = noBanco ? criarAvisosFirestore() : criarAvisosMemoria();
   return avisos;
+}
+
+let tarefasDelegadas: RepoTarefasDelegadas | null = null;
+
+/**
+ * O delegador de tarefas (28/10/2026, o "Minhas Tarefas" do Toriba): no banco, a coleção nadsTarefasDelegadas do Entregas
+ * (quem está é o login); nos exemplos, na memória (quem está é a pessoa escolhida na lista da equipe, com o uid de exemplo).
+ */
+export function repoDeTarefasDelegadas(): RepoTarefasDelegadas {
+  if (!tarefasDelegadas) {
+    tarefasDelegadas = noBanco
+      ? criarTarefasDelegadasFirestore(() => { const q = quemPede(); return q ? { uid: q.uid, nome: q.nome } : null; })
+      : criarTarefasDelegadasMemoria(() => {
+        let nome = '';
+        try { nome = localStorage.getItem('nads-tarefas-operador') || ''; } catch { /* sem storage */ }
+        const u = usuarios.EQUIPE_EXEMPLO.find(x => x.nome === nome);
+        return u ? { uid: u.uid, nome: u.nome } : nome ? { uid: nome, nome } : null;
+      });
+  }
+  return tarefasDelegadas;
 }
 
 let parcelamentos: RepoParcelamentos | null = null;

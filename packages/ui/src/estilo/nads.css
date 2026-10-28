@@ -5383,3 +5383,71 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .ctrl-linha-entregue td{background:color-mix(in srgb,var(--success) 5%,transparent);}
 .ctrl-linha-entregue td.ctrl-cod,.ctrl-linha-entregue td.ctrl-nome{background:color-mix(in srgb,var(--success) 5%,var(--surface));}
 .ctrl-tabela tfoot td{position:sticky;bottom:0;background:var(--surface-2);font-weight:600;border-top:2px solid var(--border);}
+
+/* ---------------------------------- O delegador de tarefas (28/10/2026) ----------------------------------
+   A Central de tarefas (o "Minhas Tarefas" do Toriba) no layout da janela do Cadastro: as abas à esquerda com quantas tem,
+   a barra e a tabela no meio; a tarefa aberta no lugar da lista (o formulário, os anexos, o parecer e o histórico). E o
+   correio no pé do menu ☰ (a caixa de entrada com o número das tarefas em aberto). Só as variáveis do tema; nada anima. */
+.badge.badge-suave.badge-info{background:var(--info-soft);color:var(--info);}
+.cad-janela.tdl-central{width:min(1240px,100%);}
+.tdl-aba-qtd{margin-left:auto;min-width:20px;height:18px;padding:0 6px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;
+  font-size:var(--fs-11);font-weight:700;background:var(--surface-3);color:var(--ink-muted);font-variant-numeric:tabular-nums;}
+.cad-janela-aba.ativa .tdl-aba-qtd{background:var(--accent-soft);color:var(--accent-ink);}
+.tdl-barra .busca-curta{width:240px;}
+.tdl-tabela{max-height:none;}
+.tdl-tabela th,.tdl-tabela td{white-space:nowrap;}
+.tdl-linha{cursor:pointer;}
+.tdl-linha:hover td{background:var(--hover-bg);}
+.tdl-tabela td.tdl-titulo{white-space:normal;min-width:240px;}
+.tdl-abrir{display:inline-flex;align-items:baseline;gap:8px;padding:0;border:0;background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer;}
+.tdl-abrir:hover .tdl-titulo-texto{text-decoration:underline;}
+.tdl-abrir:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px;}
+.tdl-titulo-texto{font-weight:600;}
+.tdl-contas{display:inline-flex;gap:10px;margin-left:10px;white-space:nowrap;vertical-align:middle;}
+.tdl-conta{display:inline-flex;align-items:center;gap:3px;font-size:var(--fs-12);}
+.tdl-atrasada{color:var(--danger);font-weight:600;}
+.tdl-cliente{max-width:240px;overflow:hidden;text-overflow:ellipsis;}
+.tdl-tarefa{display:flex;flex-direction:column;gap:16px;}
+.tdl-tarefa-topo{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.tdl-tarefa-titulo{margin:0;font-size:var(--fs-20);font-weight:650;}
+.tdl-tarefa-pe{display:flex;align-items:center;gap:8px;padding-top:16px;border-top:1px solid var(--border);}
+.tdl-form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 16px;}
+.tdl-form .field{margin-bottom:0;}
+.tdl-campo-largo{grid-column:1 / -1;}
+.tdl-rotulo{display:block;font-size:var(--fs-14);font-weight:600;margin-bottom:6px;}
+.tdl-rotulo .fraco{font-weight:400;}
+.tdl-form .empresa-da-barra-busca .busca-curta{width:min(420px,100%);}
+.tdl-form .empresa-da-barra{max-width:100%;}
+.tdl-anexos{border:1px solid var(--border);border-radius:8px;padding:14px 16px;background:var(--surface);}
+.tdl-anexos-topo{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.tdl-anexos-topo .file-picker{width:auto;}
+.tdl-secao{margin:0;font-size:var(--fs-14);font-weight:600;}
+.tdl-secao .fraco{font-weight:400;}
+.tdl-anexos-lista{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;}
+.tdl-anexo{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--border);}
+.tdl-anexo-texto{flex:1;min-width:0;display:flex;flex-direction:column;}
+.tdl-anexo-texto .hint{margin-top:0;}
+.tdl-anexo-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-13);}
+.tdl-parecer{display:flex;flex-direction:column;gap:16px;}
+.tdl-parecer .field{margin-bottom:0;}
+.tdl-parecer-pe{display:flex;justify-content:flex-end;margin-top:8px;}
+.tdl-tempo{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;}
+.tdl-tempo-item{position:relative;display:grid;grid-template-columns:14px minmax(0,1fr);gap:10px;padding-bottom:14px;}
+.tdl-tempo-item:not(:last-child)::before{content:'';position:absolute;left:3px;top:16px;bottom:0;width:2px;background:var(--border);}
+.tdl-tempo-ponto{width:8px;height:8px;margin-top:6px;border-radius:50%;background:var(--border-strong);}
+.tdl-pareceres .tdl-tempo-ponto{background:var(--accent);}
+.tdl-tempo-quem{margin:0;display:flex;align-items:baseline;gap:8px;font-size:var(--fs-13);}
+.tdl-tempo-quem .fraco{font-size:var(--fs-12);}
+.tdl-tempo-texto{margin:2px 0 0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:var(--fs-13);}
+.tdl-pareceres .tdl-tempo-texto{margin-top:4px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface-2);}
+.tdl-correio{position:relative;display:inline-flex;}
+.tdl-correio-qtd{position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;display:inline-flex;align-items:center;
+  justify-content:center;font-size:var(--fs-11);font-weight:700;line-height:1;background:var(--accent);color:var(--on-accent);
+  box-shadow:0 0 0 2px var(--drawer-bg,var(--bg));pointer-events:none;font-variant-numeric:tabular-nums;}
+@media (max-width:760px){
+  .tdl-form{grid-template-columns:minmax(0,1fr);}
+  .tdl-barra .busca-curta{width:100%;}
+  .tdl-cliente{max-width:140px;}
+  .tdl-tabela td.tdl-titulo{min-width:180px;}
+  .tdl-tarefa-pe{flex-wrap:wrap;}
+}
