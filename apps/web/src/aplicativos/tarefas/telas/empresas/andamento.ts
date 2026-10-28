@@ -76,7 +76,9 @@ export function useAndamento() {
   const daPessoa = useEmpresasDaPessoa();
   const podeVerTodas = daPessoa.podeVerTodas;
   const escopo: EscopoDasEmpresas = podeVerTodas && params.get('escopo') === 'todas' ? 'todas' : 'minhas';
-  const temResponsavel = dep === 'fiscal' || dep === 'contabil';
+  // o Contábil sempre com todas, sem o Minhas/Todas (Vitor, 28/10/2026: "sempre vai ser todas por enquanto, ainda não temos
+  // a relação"; "pode até remover esse filtro"): só o Fiscal filtra pelo responsável
+  const temResponsavel = dep === 'fiscal';
   const filtrar = escopo === 'minhas' && temResponsavel;
 
   // as empresas da rotina: o DP, os clientes da planilha do DP; o Contábil e o Fiscal, a lista do escritório

@@ -8,7 +8,6 @@ import { EmDesenvolvimento } from '../em-desenvolvimento/EmDesenvolvimento';
 import { LIMITE, useMinhasEmpresas, type Coluna } from './useMinhasEmpresas';
 import { JanelaDaCompetencia } from './partes/JanelaDaCompetencia';
 import { TransferenciasPendentes } from '../cadastro/responsaveis/TransferenciasPendentes';
-import { EtapasParadas } from './partes/EtapasParadas';
 import { JanelaDeMinhasEmpresas } from './partes/JanelaDeMinhasEmpresas';
 import { ConfiguracoesContabil } from '../contabil/configuracoes/ConfiguracoesContabil';
 
@@ -36,8 +35,8 @@ function Titulo({ vm, coluna, rotulo }: { vm: ReturnType<typeof useMinhasEmpresa
 export function MinhasEmpresas() {
   const vm = useMinhasEmpresas();
   const campoBusca = useRef<HTMLInputElement>(null);
-  // as Justificativas e as Configurações, em janela pelos botões da barra (28/10/2026)
-  const [janela, setJanela] = useState<'justificativas' | 'configuracoes' | null>(null);
+  // as Configurações em janela, pelo botão da barra (28/10/2026); as Justificativas foram para a Visão geral da empresa
+  const [janela, setJanela] = useState<'configuracoes' | null>(null);
   useCarregando(vm.carregando);
   // as linhas chegam em cascata quando o banco responde
   // tela com muitas caixas (Vitor, 01/10/2026: "tudo que tiver muita box pode reduzir"): a lista inteira só acende rápido
@@ -72,7 +71,6 @@ export function MinhasEmpresas() {
 
         <span className="tarefas-barra-espaco" />
 
-        <button type="button" className="icon-btn" title="Justificativas: as etapas paradas, com o motivo" aria-label="Justificativas" onClick={() => setJanela('justificativas')}><Icone nome="clock" /></button>
         {vm.departamento === 'contabil' && <button type="button" className="icon-btn" title="Configurações: os históricos do Creditor" aria-label="Configurações" onClick={() => setJanela('configuracoes')}><Icone nome="settings" /></button>}
 
         <label className="busca-curta">
@@ -142,7 +140,6 @@ export function MinhasEmpresas() {
           {vm.total > LIMITE && <p className="hint" style={{ padding: '8px 16px' }}>Mostrando {LIMITE} de {vm.total}. Use a busca ou a situação.</p>}
         </div>
       )}
-      {janela === 'justificativas' && <JanelaDeMinhasEmpresas titulo={'Etapas paradas em ' + vm.rotuloCompetencia} icone="clock" tabela fechar={() => setJanela(null)}><EtapasParadas dep={vm.departamento} naJanela /></JanelaDeMinhasEmpresas>}
       {janela === 'configuracoes' && <JanelaDeMinhasEmpresas titulo="Configurações" icone="settings" fechar={() => setJanela(null)}><ConfiguracoesContabil /></JanelaDeMinhasEmpresas>}
     </section>
   );
