@@ -752,6 +752,18 @@ igual('a agência e a conta no nome do arquivo ("Entradas_Saidas_ag3155cc990348_
   igual('faturamento em PDF: CONTÁBIL\\RELATÓRIOS ALTERDATA, nome original', d21('FATURAMENTO - MARCOS 21 e 22 - 02.pdf', '0279 - ALMEIDA & SOUZA PRODUTOS ALIMENTICIOS LTDA - ME\\OUTROS\\2022\\').destinoRelativo, '279 - ALMEIDA & SOUZA PRODUTOS ALIMENTICIOS LTDA\\CONTÁBIL\\RELATÓRIOS ALTERDATA');
   igual('o cartão CNPJ no meio de outro documento (o contrato da Junta) não faz dele cartão CNPJ', R.REGRAS_PDF.find(x => x.re.test(R.norm('CONTRATO SOCIAL\n' + 'CLAUSULA\n'.repeat(120) + 'COMPROVANTE DE INSCRICAO E DE SITUACAO CADASTRAL'))).tipo !== 'CARTAO CNPJ', true);
 }
+// o nome do titular de OUTRO cliente vence a pasta de origem (Vitor, 28/10/2026: os "Caixa Economica OV" na pasta da Vera)
+{
+  const c22 = R.montarCadastro([
+    { codigo: 408, razao: 'OURO VERDE MINERACAO LTDA', fantasia: '********', doc: '27.119.416/0001-80', regime: 'Presumido' },
+    { codigo: 409, razao: 'OURO VERDE MINERACAO LTDA', fantasia: 'OURO VERDE MINERACAO E FLORESTAS', doc: '27.119.416/0002-60', regime: 'Presumido' },
+    { codigo: 417, razao: 'VERA REFLORESTAMENTOS LTDA', doc: '39.435.173/0001-78', regime: 'Simples' },
+  ], ['408 - OURO VERDE MINERACAO LTDA', '409 - OURO VERDE MINERACAO LTDA - FILIAL 02', '417 - VERA REFLORESTAMENTOS LTDA']);
+  c22.mapaMigracao = MIG.carregar({});
+  const d22 = (nome, rel, t) => R.decidir({ nome, rel: rel + nome, texto: [t] }, { cadastro: c22, hoje: new Date(2026, 9, 28) });
+  igual('o titular abreviado "OURO VERDE MIN E FLORESTAS" (a fantasia da filial 409) na pasta da Vera: o grupo, sem conta a matriz 408', d22('Caixa Economica 05.2025 OV.pdf', 'FERNANDO\\417 VERA REFLORESTAMENTO EIRELI\\2025\\05.2025\\', 'CAIXA ECONOMICA FEDERAL\nEXTRATO POR PERIODO\nCLIENTE: OURO VERDE MIN E FLORESTAS LTDA\nPERIODO: 01/05/2025 A 31/05/2025\nSALDO ANTERIOR 10,00').cliente, 408);
+  igual('... e o contrário continua: "TITULAR: VERA REFLORESTAMENTOS LTDA" na pasta da 408 vai para a 417', d22('BNB 07.2025 ov2.pdf', 'FERNANDO\\408 OURO VERDE MINERAÇÃO filiais 409 e 410\\2025\\07.2025\\', 'BANCO DO NORDESTE\nEXTRATO DE CONTA CORRENTE\nTITULAR: VERA REFLORESTAMENTOS LTDA\nAGENCIA: 217 CONTA: 16.820-5\nPERIODO: 01/07/2025 A 31/07/2025\nSALDO ANTERIOR 1,00').cliente, 417);
+}
 // ---------- 11. PRODUCAO de verdade, numa pasta temporária (nunca no Drive) ----------
 (async () => {
   const sb = fs.mkdtempSync(path.join(os.tmpdir(), 'teste-arqnovo-prod-'));

@@ -1736,6 +1736,18 @@ function daPastaEntre(clientes, rel, cad) {
   const x = clientes.filter(c => daPasta.includes(c));
   return x.length === 1 ? x[0] : null;
 }
+/**
+ * O titular abreviado pelo banco ("OURO VERDE MIN E FLORESTAS LTDA" = OURO VERDE MINERACAO E FLORESTAS, 28/10/2026): as mesmas
+ * palavras, na ordem, cada uma o começo da palavra do nome do cadastro (razão, fantasia ou outros nomes); 3 palavras ou mais.
+ */
+function clientesPeloNomeAbreviado(titular, cad) {
+  const fora = new Set(['LTDA', 'ME', 'EPP', 'EIRELI', 'SA', 'S', 'A', 'CIA', 'FILIAL', 'MATRIZ']);
+  const tok = s => textoDeNome(s).trim().split(/\s+/).filter(w => w && !fora.has(w));
+  const t = tok(titular);
+  if (t.length < 3) return [];
+  const bate = nome => { const n = tok(nome); return n.length === t.length && t.every((w, i) => n[i] === w || (w.length >= 3 && n[i].startsWith(w))); };
+  return [...cad.porCod.values()].filter(c => c.ativo !== false && [c.razao, c.fantasia].concat(c.outrosNomes || []).some(x => x && bate(x))).map(c => c.codigo);
+}
 const PELA_CONTA_DO_CADASTRO = ['EXTRATO', 'APLICACOES', 'COMPROVANTE', 'RECEBIMENTO DE CLIENTES', 'MAQUININHAS'];
 
 /** O cliente de um PDF: CNPJ/CPF do texto > raiz/máscara > razão social escrita > pasta de origem. */
@@ -1796,7 +1808,22 @@ function clienteDoPdf0(u, bruto, entrada, ctx, ev, regra, campos) {
   if (regra.tipo === 'COMPROVANTE' || regra.tipo === 'EXTRATO' || regra.tipo === 'APLICACOES' || regra.tipo === 'RECEBIMENTO DE CLIENTES' || regra.tipo === 'MAQUININHAS') {
     const tit = /\b(?:CLIENTE|TITULAR|CORRENTISTA|NOME DO PAGADOR|NOME)\s*:\s*([A-Z0-9&. -]{6,})/.exec(u) || /\bCONTA(?: CORRENTE)?\s*:?\s*[\d.]+-[\dX]\s*\/?\s*([A-Z][A-Z0-9&. -]{5,})/.exec(u);
     if (tit) {
-      const n = unico(clientesPeloNomeNoTexto(tit[1], cad));
+      // o nome do titular que bate com a matriz e as filiais (mesma raiz de CNPJ; 28/10/2026, "OURO VERDE MIN E FLORESTAS" = 408/409):
+      // vale a matriz (a conta já desempatou acima); o nome de OUTRO cliente vence a pasta de origem (os "Caixa Economica OV" na pasta da Vera)
+      let peloNome = [...new Set(clientesPeloNomeNoTexto(tit[1], cad))];
+      const abreviado = !peloNome.length;
+      if (abreviado) peloNome = clientesPeloNomeAbreviado(tit[1], cad);
+      const raizes = new Set(peloNome.map(x => ((cad.porCod.get(x) || {}).doc || '').slice(0, 8)));
+      const matrizes = peloNome.filter(x => ((cad.porCod.get(x) || {}).doc || '').slice(8, 12) === '0001');
+      // a conta já arquivada (contas.json) numa das empresas do mesmo nome desempata; sem ela, a matriz
+      const daRaiz = r => (r && cad.porRaiz.has(r) ? [...cad.porRaiz.get(r)] : []);
+      const aprendida = peloNome.length ? clientePelaConta(bruto, bancoDoTexto(bruto) || bancoDoNome(entrada.nome), ctx, entrada.hash) : null;
+      const r0 = peloNome.length ? ((cad.porCod.get(peloNome[0]) || {}).doc || '').slice(0, 8) : '';
+      let n = aprendida != null && raizes.size === 1 && daRaiz(r0).includes(aprendida) ? aprendida
+        : peloNome.length === 1 ? peloNome[0] : abreviado && peloNome.length > 1 && raizes.size === 1 && !raizes.has('') && matrizes.length === 1 ? matrizes[0] : null;
+      // o nome de uma filial, sem "FILIAL" no titular, vale o grupo: sem a conta, a matriz da mesma raiz (Vitor, 28/10/2026)
+      const dN = n != null ? ((cad.porCod.get(n) || {}).doc || '') : '';
+      if (abreviado && n !== aprendida && !/FILIAL/.test(tit[1]) && dN.length === 14 && dN.slice(8, 12) !== '0001' && cad.porRaiz.has(dN.slice(0, 8))) { const m = [...cad.porRaiz.get(dN.slice(0, 8))].filter(x => ((cad.porCod.get(x) || {}).doc || '').slice(8, 12) === '0001'); if (m.length === 1) n = m[0]; }
       if (n) { ev.push('titular da conta no cabeçalho: ' + tit[1].trim()); return { cliente: n, conf: candidatos.length <= 1 || candidatos.includes(n) ? 0.95 : 0.88, como: 'nome' }; }
     }
   }
