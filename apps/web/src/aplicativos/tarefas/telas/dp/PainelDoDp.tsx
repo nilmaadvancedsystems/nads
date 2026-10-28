@@ -4,13 +4,13 @@
 // com as obrigações do mês (– não tem, vazio a fazer, ✓ feita, ! parada). Tudo roda aqui: clicar na bolinha marca a
 // obrigação como feita, clicar de novo desfaz (sem o checklist).
 import { formatos } from '@nads/core';
-import { baixarBytes, Esqueleto, Icone, Interruptor, MenuSuspenso, NumeroQueConta, RoscaComLegenda, Segmentado, useCarregando, useEntradaAnimada, type TomDoPainel } from '@nads/ui';
+import { baixarBytes, BotaoIcone, Esqueleto, Icone, Interruptor, LogoExcel, MenuSuspenso, NumeroQueConta, RoscaComLegenda, useCarregando, useEntradaAnimada, type TomDoPainel } from '@nads/ui';
 import { Fragment, useState } from 'react';
 import { DecimoNaLista } from './DecimoTerceiro';
 import { JanelaDasEtiquetas } from './JanelaDasEtiquetas';
 import { useEtiquetasDaFolha } from './useEtiquetasDaFolha';
 import { MenuDeFiltro } from './MenuDeFiltro';
-import { ROTULO_DASH, usePainelDoDp, type AbaDoPainel, type Agrupar, type EstadoDaObrigacao, type SituacaoDoDash } from './usePainelDoDp';
+import { ROTULO_DASH, usePainelDoDp, type AbaDoPainel, type EstadoDaObrigacao, type SituacaoDoDash } from './usePainelDoDp';
 
 /**
  * O total da folha do mês na linha do cliente (Vitor, 07/10/2026: "trazer quanto é gasto em folha do DP"): mostra o valor
@@ -48,14 +48,17 @@ const MARCA: Record<EstadoDaObrigacao, { simbolo: string; dica: string }> = {
 // a rosca do Resumo (Savio, 15/10/2026): a ordem e a cor de cada situação
 const ORDEM_DASH: SituacaoDoDash[] = ['atrasada', 'pendente', 'feita', 'sem'];
 const TOM_DASH: Record<SituacaoDoDash, TomDoPainel> = { atrasada: 'perigo', pendente: 'aviso', feita: 'ok', sem: 'neutro' };
-const AGRUPAR: { valor: Agrupar; rotulo: string }[] = [{ valor: 'nenhum', rotulo: 'Nenhum' }, { valor: 'responsavel', rotulo: 'Responsável' }, { valor: 'agrupamento', rotulo: 'Agrupamento' }];
 
 export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
   const vm = usePainelDoDp(aba);
   const f = vm.filtros;
   // as etiquetas da folha (Savio, 15/10/2026): a janela com a competência e a data de pagamento, e a impressão
   const etiquetas = useEtiquetasDaFolha(vm.competencia);
-  // o 13º salário (Vitor, 13/10/2026): o interruptor ao lado do Agrupar por, só em novembro (1ª parcela) e dezembro (2ª)
+  // os filtros avançados (Vitor, 28/10/2026: "reduza esses filtros, coloque um ícone de filtro"): Movimento, Enquadramento,
+  // Entrega e Agrupamento numa segunda linha, que o funil abre e fecha
+  const [avancados, setAvancados] = useState(false);
+  const algumAvancado = !!(f.movimento || f.enquadramento || f.entrega || f.agrupamento);
+  // o 13º salário (Vitor, 13/10/2026): o interruptor no topo da tabela, só em novembro (1ª parcela) e dezembro (2ª)
   const [decimo, setDecimo] = useState(false);
   // o mês do 13º: o da competência escolhida, se for novembro ou dezembro; se não, o de hoje (em novembro a lista ainda
   // abre em outubro, e a 1ª parcela é desse novembro)
@@ -69,27 +72,39 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
   useCarregando(vm.carregando);
   // o DP animado (Vitor, 14/10/2026: "quero animar o DP inteiro"): a tabela entra em cascata ao abrir e ao trocar a aba
   const tabela = useEntradaAnimada<HTMLDivElement>('tbody > tr', [aba, vm.carregando], 'lista');
+  // a busca fica no topo da tabela, ao lado do Excel e da impressora (Vitor, 28/10/2026); sem a tabela (o Resumo, o 13º), na barra
+  const busca = (
+    <label className="busca-curta">
+      <Icone nome="search" />
+      <input type="text" value={f.busca} onChange={e => f.setBusca(e.target.value)} placeholder="Buscar cliente" aria-label="Buscar cliente (nome ou código)"
+        onKeyDown={e => { if (e.key === 'Escape') f.setBusca(''); }} />
+    </label>
+  );
+  const buscaNaTabela = !vm.resumo && !mostrarDecimo;
   return (
     <section className="dp-painel">
       <div className="tarefas-barra-topo dp-filtros-linha">
         {/* a barra no padrão do resto do app (revisão da UI, 16/10/2026): a competência, a busca de lupa e os filtros em menus numa linha */}
         <MenuSuspenso icone="calendar" rotulo={vm.competencias.find(c => c.valor === vm.competencia)?.rotulo ?? vm.competencia} titulo="Competência" dica="Trocar a competência"
           itens={vm.competencias.map(c => ({ rotulo: c.rotulo, marcado: c.valor === vm.competencia, onClick: () => vm.setCompetencia(c.valor) }))} />
-        <label className="busca-curta">
-          <Icone nome="search" />
-          <input type="text" value={f.busca} onChange={e => f.setBusca(e.target.value)} placeholder="Buscar cliente" aria-label="Buscar cliente (nome ou código)"
-            onKeyDown={e => { if (e.key === 'Escape') f.setBusca(''); }} />
-        </label>
+        {!buscaNaTabela && busca}
         <MenuDeFiltro rotulo="Responsável" valor={f.responsavel} mudar={f.setResponsavel} opcoes={f.responsaveis} />
-        <MenuDeFiltro rotulo="Movimento" valor={f.movimento} mudar={f.setMovimento} opcoes={f.movimentos} />
-        <MenuDeFiltro rotulo="Enquadramento" valor={f.enquadramento} mudar={f.setEnquadramento} opcoes={f.enquadramentos} />
         {/* um Status só, com a situação da coluna (21/10/2026: "preciso de um filtro melhor de status") */}
         <MenuDeFiltro rotulo="Status" valor={f.status} mudar={v => f.setStatus(v as typeof f.status)} opcoes={f.statusOpcoes} />
         <MenuDeFiltro rotulo="Pendente em" valor={f.pendenteEm} mudar={v => f.setPendenteEm(v as typeof f.pendenteEm)} opcoes={f.partes} todos="Todas as partes" />
-        <MenuDeFiltro rotulo="Entrega" valor={f.entrega} mudar={f.setEntrega} opcoes={f.entregas} />
-        <MenuDeFiltro rotulo="Agrupamento" valor={f.agrupamento} mudar={f.setAgrupamento} opcoes={f.agrupamentos} direita />
+        <button type="button" className={'btn btn-outline' + (algumAvancado ? ' ativo' : '')} aria-pressed={avancados} onClick={() => setAvancados(a => !a)}
+          title={avancados ? 'Esconder os filtros avançados' : 'Filtros avançados: movimento, enquadramento, entrega e agrupamento'}
+          aria-label="Filtros avançados"><Icone nome="filtro" /></button>
         {f.algum && <button type="button" className="btn btn-ghost dp-limpar" onClick={f.limpar}><Icone nome="x" />Limpar filtros</button>}
       </div>
+      {avancados && (
+        <div className="tarefas-barra-topo dp-filtros-linha">
+          <MenuDeFiltro rotulo="Movimento" valor={f.movimento} mudar={f.setMovimento} opcoes={f.movimentos} />
+          <MenuDeFiltro rotulo="Enquadramento" valor={f.enquadramento} mudar={f.setEnquadramento} opcoes={f.enquadramentos} />
+          <MenuDeFiltro rotulo="Entrega" valor={f.entrega} mudar={f.setEntrega} opcoes={f.entregas} />
+          <MenuDeFiltro rotulo="Agrupamento" valor={f.agrupamento} mudar={f.setAgrupamento} opcoes={f.agrupamentos} />
+        </div>
+      )}
 
       {vm.carregando ? <Esqueleto numeros={4} linhas={6} /> : vm.resumo ? (
         <>
@@ -135,25 +150,24 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
               busca={f.busca} responsavel={f.responsavel} status={f.statusDoDecimo} desligar={() => setDecimo(false)} />
           ) : (
           <section className="card dp-lista">
+            {/* o topo da tabela (Vitor, 28/10/2026): sem o título, a contagem e o Agrupar por (o agrupamento fica no filtro de cima);
+                à direita, a busca e os botões só com o ícone: o Excel e a impressora das etiquetas */}
             <div className="dp-lista-topo">
-              <h3 className="dp-titulo">{vm.tituloDaParte}</h3>
-              <span className="badge badge-neutral">{vm.quantas}</span>
-              {vm.faltam > 0 ? <span className="hint">{vm.faltam} {vm.faltam === 1 ? 'falta' : 'faltam'}</span> : <span className="hint">tudo feito</span>}
-              <span className="tarefas-barra-espaco" />
-              {/* a tabela atual em Excel (Vitor, 07/10/2026) */}
-              <button type="button" className="btn btn-outline" onClick={() => { const x = vm.exportar(); baixarBytes(x.bytes, x.nome, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); }}>
-                <Icone nome="download" />Exportar Excel
-              </button>
-              {/* o gerador de etiquetas da folha (Savio, 15/10/2026): pergunta a competência e a data de pagamento e imprime em A4 */}
-              {aba === 'obrigacoes' && <button type="button" className="btn btn-outline" onClick={etiquetas.abrir}><Icone nome="printer" />Etiquetas da folha</button>}
-              <span className="hint">Agrupar por</span>
-              <Segmentado valor={f.agrupar} opcoes={AGRUPAR} onMudar={f.setAgrupar} />
               {temDecimo && (
                 <>
                   <span className="hint">13º salário</span>
                   <Interruptor ligado={false} onMudar={() => setDecimo(true)} rotulo={'Mostrar o 13º salário (' + (mesDaCompetencia === 11 ? '1ª' : '2ª') + ' parcela)'} />
                 </>
               )}
+              <span className="tarefas-barra-espaco" />
+              {busca}
+              {/* a tabela atual em Excel (Vitor, 07/10/2026) */}
+              <button type="button" className="icon-btn" title="Exportar a tabela para o Excel" aria-label="Exportar a tabela para o Excel"
+                onClick={() => { const x = vm.exportar(); baixarBytes(x.bytes, x.nome, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); }}>
+                <LogoExcel />
+              </button>
+              {/* o gerador de etiquetas da folha (Savio, 15/10/2026): pergunta a competência e a data de pagamento e imprime em A4 */}
+              {aba === 'obrigacoes' && <BotaoIcone icone="printer" titulo="Etiquetas da folha" onClick={etiquetas.abrir} />}
             </div>
             {vm.quantas === 0 ? <p className="hint dp-vazio">Nenhum cliente com esses filtros.</p> : (
               <div className="table-wrap" ref={tabela}>
