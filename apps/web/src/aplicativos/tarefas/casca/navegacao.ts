@@ -6,11 +6,10 @@
 // com as abas dela: /tarefas/cadastro/empresas/<empresa>/<aba>.
 import { tarefas as t, type uso } from '@nads/core';
 import type { NomeIcone } from '@nads/ui';
+import { PAGINAS_DO_ADMIN } from '../../admin/casca/navegacao';
 import type { Operador } from './operador';
 
 export const BASE = '/tarefas';
-/** O site do admin (Painel do robô, Uso do sistema, Sistema e agentes, Feedbacks; 22/10/2026); depois, admin.nilmacontabilidade.com. */
-export const URL_DO_ADMIN = 'https://admin-nilma.web.app';
 
 export type IdAplicacao = 'inicio' | 'minhas-empresas' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'financeiro' | 'entregas' | 'area-cliente';
 
@@ -18,6 +17,10 @@ export interface Pagina {
   id: string; rotulo: string; icone: NomeIcone; titulo: string; /** a logo da marca no lugar do ícone, na lateral */ marca?: 'fgts';
   /** apagada na lateral; o clique avisa que está em desenvolvimento e não abre (Vitor, 21/10/2026) */
   emDesenvolvimento?: boolean;
+  /** só o admin vê (as páginas do Admin nas Configurações; 28/10/2026) */
+  soAdmin?: boolean;
+  /** o nome do bloco na barra lateral, em cima da primeira página dele (Cadastro, Admin) */
+  secao?: string;
 }
 export interface Aplicacao {
   id: IdAplicacao; nome: string; icone: NomeIcone; paginas: Pagina[]; pronta: boolean;
@@ -43,15 +46,6 @@ export const APLICACOES: readonly Aplicacao[] = [
   ] },
   // o Contábil saiu da gaveta (27/10/2026): a Visão geral foi removida e as Paradas e as Configurações foram para
   // Minhas empresas; os links antigos (/tarefas/contabil/...) caem lá
-  { id: 'cadastro', nome: 'Cadastro', icone: 'grade', grupo: 'Escritório', pronta: true, paginas: [
-    { id: 'empresas', rotulo: 'Empresas', icone: 'briefcase', titulo: 'Empresas' },
-    // a organização nova (Vitor, 13/10/2026: "reveja a estrutura inteira do cadastro"): a Equipe (as pessoas e a proteção
-    // do login) e os Robôs e agentes (a saúde dos robôs, o que eles fazem e os agentes do Claude, que antes ficavam em
-    // Configurações e em Agentes; os links antigos levam para cá)
-    { id: 'usuarios', rotulo: 'Equipe', icone: 'usuario', titulo: 'Equipe' },
-    // Sistema e agentes, Painel do robô e Uso do sistema foram para o site do admin (/admin; Vitor, 22/10/2026: "tira tudo
-    // do Tarefas"); os endereços antigos caem em Empresas
-  ] },
   // o Fiscal no mesmo modelo do Contábil (Vitor, 05/10/2026): as empresas com a rotina do Fiscal, a visão e as paradas
   { id: 'fiscal', nome: 'Fiscal', icone: 'recibo', grupo: 'Rotinas', pronta: true, paginas: [
     // Empresas, Painel, Visão geral e Paradas saíram (27/10/2026: "essas abas que estão marcadas de vermelho vão ser
@@ -126,6 +120,16 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'notas', rotulo: 'Notas fiscais', icone: 'recibo', titulo: 'Notas fiscais' },
     { id: 'configuracoes', rotulo: 'Configurações', icone: 'settings', titulo: 'Configurações do emissor' },
   ] },
+  // as Configurações (Vitor, 28/10/2026: "Cadastro, esse admin, colocar tudo em um botão Configurações; todos esses botões
+  // dos menus nessa tela"): o Cadastro (Empresas e Equipe; o endereço continua /tarefas/cadastro/...) e, só para o admin,
+  // as páginas do site do admin, as mesmas telas, aqui dentro (o link Admin da gaveta saiu)
+  { id: 'cadastro', nome: 'Configurações', icone: 'settings', grupo: 'Escritório', pronta: true, paginas: [
+    { id: 'empresas', rotulo: 'Empresas', icone: 'briefcase', titulo: 'Empresas', secao: 'Cadastro' },
+    // a organização nova (Vitor, 13/10/2026: "reveja a estrutura inteira do cadastro"): a Equipe (as pessoas e a proteção
+    // do login)
+    { id: 'usuarios', rotulo: 'Equipe', icone: 'usuario', titulo: 'Equipe', secao: 'Cadastro' },
+    ...PAGINAS_DO_ADMIN.map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, titulo: p.titulo, secao: 'Admin', soAdmin: true })),
+  ] },
   // a Área do Cliente (Vitor, 16/10/2026): o lado do escritório do site que o cliente abre pelo link secreto. Com o
   // Mandei junto (19/10/2026: "unifique área do cliente e o mandei"): o que o cliente manda (Chamados, Recebidos) e os
   // tickets que o escritório manda ao cliente (Meus tickets, a Central de todos); /tarefas/mandei/* leva para cá
@@ -164,6 +168,8 @@ export function aplicacoesDe(op: Operador): Aplicacao[] {
     (a.id !== 'cadastro' || podeMexerNoCadastro(op)) &&
     // o Financeiro (as notas fiscais do escritório): o admin e o diretor (15/10/2026)
     (a.id !== 'financeiro' || op.admin || op.nivel === 'diretor'))
+    // as páginas só do admin (as do Admin, nas Configurações) ficam de fora para os outros
+    .map(a => (op.admin || !a.paginas.some(p => p.soAdmin) ? a : { ...a, paginas: a.paginas.filter(p => !p.soAdmin) }))
     // na gaveta, um grupo depois do outro: Rotinas, Comunicação, Escritório
     .sort((x, y) => ORDEM_DOS_GRUPOS.indexOf(x.grupo) - ORDEM_DOS_GRUPOS.indexOf(y.grupo));
 }
