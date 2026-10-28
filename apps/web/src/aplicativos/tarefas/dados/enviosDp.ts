@@ -33,8 +33,21 @@ export interface EnvioDoDp {
   enviadoEm: string;
 }
 
+/**
+ * O modelo do e-mail (config/envioDp, 28/10/2026: "que nem o de emissão do financeiro"): o assunto e o texto, com {cliente},
+ * {competencia} ("10/2026") e {mes} ("outubro de 2026"); vazio = o padrão. O mesmo padrão do robô (robo/envios-do-dp.js).
+ */
+export interface ModeloDoEnvio { assunto: string; texto: string }
+export const MODELO_PADRAO_DO_ENVIO: ModeloDoEnvio = {
+  assunto: 'Documentos do Departamento Pessoal · {competencia} · {cliente}',
+  texto: 'Olá, {cliente}!\n\nSeguem em anexo os documentos do Departamento Pessoal referentes a {mes}.\n\nQualquer dúvida, é só responder este e-mail.\n\nAtenciosamente,\nNilma Contabilidade',
+};
+
 export interface RepoEnviosDp {
   exemplos: boolean;
+  /** o modelo do e-mail como está no banco (vazio = o padrão) */
+  modelo(): { carregado: boolean } & ModeloDoEnvio;
+  gravarModelo(m: ModeloDoEnvio): Promise<void>;
   /** os documentos do DP do mês, por código do cliente (o que o robô achou nas pastas) */
   arquivos(competencia: string): { carregados: boolean; porCodigo: ReadonlyMap<string, readonly ArquivoDoDp[]> };
   /** os envios do mês: o mais novo de cada cliente */
@@ -56,6 +69,7 @@ export function criarEnviosDpMemoria(): RepoEnviosDp {
   // todos os pedidos (o histórico), na ordem em que foram feitos
   const todos: EnvioDoDp[] = [];
   const listas = new Map<string, Map<string, ArquivoDoDp[]>>();
+  let modelo: ModeloDoEnvio = { assunto: '', texto: '' };
   const agora = () => new Date().toISOString();
   function listaDe(competencia: string) {
     if (!listas.has(competencia)) {
@@ -76,6 +90,8 @@ export function criarEnviosDpMemoria(): RepoEnviosDp {
   }
   return {
     exemplos: true,
+    modelo: () => ({ carregado: true, ...modelo }),
+    async gravarModelo(m) { modelo = { ...m }; mudou(); },
     arquivos: competencia => ({ carregados: true, porCodigo: listaDe(competencia) }),
     envios: competencia => ({ carregados: true, porCodigo: envios.get(competencia) || new Map() }),
     historico(codigo, chegou) {
