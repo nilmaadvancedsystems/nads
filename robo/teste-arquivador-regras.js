@@ -1007,11 +1007,12 @@ igual('a agência e a conta no nome do arquivo ("Entradas_Saidas_ag3155cc990348_
     { codigo: 356, razao: 'A7 COMERCIO DE VEICULOS LTDA', doc: '13.728.235/0001-46', regime: 'Presumido' },
     { codigo: 277, razao: 'G.A.S SERVICOS LABORATORIAIS LTDA', doc: '27.361.015/0001-31', regime: 'Simples' },
     { codigo: 291, razao: 'G.A.S SAUDE DE DIVISA ALEGRE LTDA', doc: '29.412.290/0001-62', regime: 'Simples' },
+    { codigo: 49, razao: 'POSTO DE COMBUSTIVEIS ALTA FLORESTA LTDA - EPP', doc: '04.156.301/0001-60', regime: 'Presumido' },
     { codigo: 6, razao: 'CLIENTE SEIS EXEMPLO LTDA', doc: '36.462.778/0001-60', regime: 'Simples' },   // existe de propósito: a pasta "06-26" (mês-ano) não pode virar o código 6
     { codigo: 237, razao: 'POSTO DE COMBUSTIVEIS BERIZAL LTDA', doc: '17.713.597/0001-14', regime: 'Presumido' },
     { codigo: 137, razao: 'FLORENCIO MENDES DE OLIVEIRA', doc: '369.329.306-68', regime: 'Física' },
     { codigo: 179, razao: 'FLORENCIO MENDES DE OLIVEIRA', doc: '369.329.306-68', regime: 'Física' },
-  ], ['10 - DORNAS HAVANA LTDA - ME', '55 - TORRA TORRA LTDA', '505 - LISA COSTA AME LTDA', '292 - FITO INDUSTRIA E COMERCIO DE ALIMENTOS LTDA', '443 - SU SEDUCAO MODA INTIMA LTDA - ME', '356 - A7 COMERCIO DE VEICULOS LTDA - ME', '277 - G.A.S SERVICOS LABORATORIAIS LTDA - ME', '291 - G.A.S SAUDE DE DIVISA ALEGRE LTDA - ME', '6 - CLIENTE SEIS EXEMPLO LTDA', '237 - POSTO DE COMBUSTIVEIS BERIZAL LTDA', '137 - FLORENCIO MENDES DE OLIVEIRA', '179 - FLORENCIO MENDES DE OLIVEIRA']);
+  ], ['10 - DORNAS HAVANA LTDA - ME', '55 - TORRA TORRA LTDA', '505 - LISA COSTA AME LTDA', '292 - FITO INDUSTRIA E COMERCIO DE ALIMENTOS LTDA', '443 - SU SEDUCAO MODA INTIMA LTDA - ME', '356 - A7 COMERCIO DE VEICULOS LTDA - ME', '277 - G.A.S SERVICOS LABORATORIAIS LTDA - ME', '291 - G.A.S SAUDE DE DIVISA ALEGRE LTDA - ME', '6 - CLIENTE SEIS EXEMPLO LTDA', '49 - POSTO DE COMBUSTIVEIS ALTA FLORESTA LTDA - EPP', '237 - POSTO DE COMBUSTIVEIS BERIZAL LTDA', '137 - FLORENCIO MENDES DE OLIVEIRA', '179 - FLORENCIO MENDES DE OLIVEIRA']);
   cad21.mapaMigracao = MIG.carregar({});
   const d21 = (nome, texto, rel, extra) => R.decidir(Object.assign({ nome, rel: (rel || '') + nome, texto: [texto] }, extra || {}), { cadastro: cad21, hoje: new Date(2026, 9, 29) });
   // B1. a CDT estadual cita "lavratura de escritura pública" no item 2: não é escritura
@@ -1050,6 +1051,18 @@ igual('a agência e a conta no nome do arquivo ("Entradas_Saidas_ag3155cc990348_
   igual('B4: a pasta do código 237 e o emitente 237 concordem: a NFC-e vai para a 237, mesmo com o destinatário em 137 e 179', sx21('NFe31260617713597000114650010002120791003761570Proc.xml', X_BERIZAL_NFCE, REL_B4), ['ARQUIVAR', null, '237 - POSTO DE COMBUSTIVEIS BERIZAL LTDA\\FISCAL\\LUCRO PRESUMIDO\\14. XML\\NFC-e', '06-2026_NFC-e_212079.xml']);
   igual('B4: sem pasta que confirme, o destinatário ambíguo (137/179) continua NÃO IDENTIFICADO', x21('NFe31260617713597000114650010002120791003761570Proc.xml', X_BERIZAL_NFCE, '').motivo, 'CLIENTE_AMBIGUO');
   igual('B4: a pasta de OUTRO cliente (10) não decide: continua NÃO IDENTIFICADO, nunca na pasta errada', x21('NFe31260617713597000114650010002120791003761570Proc.xml', X_BERIZAL_NFCE, '0010 - DORNAS HAVANA LTDA - ME\\2026\\06\\06-26\\').motivo, 'CLIENTE_AMBIGUO');
+  const P_DEFIS_REGINALDA = [["ENTRADA",null,null,"DRE - REGINALDA -  JANEIRO A DEZEMBRO 2020"],["COMPRA COMER.",null,302810.51,"PERIODO","SALARIO"],["USO E CONSUMO",null,122426.34,44197,20907]];   // 0010 DORNAS, "DEFIS.xlsx" com o título de outra pessoa
+  const P_DEFIS_MODELO = [["ENTRADA",null,null,"DRE - DORNAS HAVANA -  JANEIRO A DEZEMBRO 2024"],["COMPRA COMER.",null,25441.71,"PERIODO","SALARIO"],["USO E CONSUMO",null,101693.96,45292,23289]];   // o "DRE - DORNAS HAVANA - JANEIRO A DEZEMBRO 2024" que está em 14 pastas (hash 12996202)
+  const P_DEFIS_SEM_ANO = [["ENTRADA",null,null,"DRE - FLAVIA TORRA TORRA -  JANEIRO A DEZEMBRO 2021"],["COMPRA COMER.",null,0,"PERIODO","SALARIO"],["USO E CONSUMO",null,0,44197,0]];   // 0055 TORRA TORRA, "DEFIS.xlsx"
+  // B5. "DEFIS - AAAA.xlsx": o título "DRE - DORNAS HAVANA" é o modelo copiado em 14 pastas; vale a pasta do cliente. Sem o ano no nome, o ano vem do título e o cliente precisa de duas fontes
+  const p21 = (nome, rel, planilha) => R.decidir({ nome, rel: rel + nome, planilha }, { cadastro: cad21, hoje: new Date(2026, 9, 29) });
+  const R_049 = '0049 - POSTO DE COMBUSTIVEL ALTA FLORESTA LTDA - EPP\\OUTROS\\';
+  igual('B5: "DEFIS - 2024.xlsx" na pasta da 49 com o título copiado da Dornas (10): arquivada na 49', [p21('DEFIS - 2024.xlsx', R_049, P_DEFIS_MODELO).acao, p21('DEFIS - 2024.xlsx', R_049, P_DEFIS_MODELO).cliente, p21('DEFIS - 2024.xlsx', R_049, P_DEFIS_MODELO).nomeFinal], ['ARQUIVAR', 49, '2024 - DEFIS PLANILHA.xlsx']);
+  igual('B5: a evidência diz que o título é de outro cliente e vale a pasta', p21('DEFIS - 2024.xlsx', R_049, P_DEFIS_MODELO).evidencias.some(e => /modelo copiado; vale a pasta/.test(e)), true);
+  igual('B5: se o nome do arquivo diz a Dornas (10) e a pasta é a 49, continua ambíguo (nunca chuta)', p21('DEFIS - 2024 DORNAS HAVANA.xlsx', R_049, P_DEFIS_MODELO).motivo, 'CLIENTE_AMBIGUO');
+  igual('B5: a própria Dornas (10) com o título da Dornas continua indo para a 10', [p21('DEFIS - 2024.xlsx', '0010 - DORNAS HAVANA LTDA - ME\\OUTROS\\', P_DEFIS_MODELO).acao, p21('DEFIS - 2024.xlsx', '0010 - DORNAS HAVANA LTDA - ME\\OUTROS\\', P_DEFIS_MODELO).cliente], ['ARQUIVAR', 10]);
+  igual('B5: "DEFIS.xlsx" sem ano no nome, título da própria cliente (55): o ano do título, 2021', [p21('DEFIS.xlsx', '0055 - TORRA TORRA LTDA - ME\\OUTROS\\', P_DEFIS_SEM_ANO).acao, p21('DEFIS.xlsx', '0055 - TORRA TORRA LTDA - ME\\OUTROS\\', P_DEFIS_SEM_ANO).cliente, p21('DEFIS.xlsx', '0055 - TORRA TORRA LTDA - ME\\OUTROS\\', P_DEFIS_SEM_ANO).nomeFinal], ['ARQUIVAR', 55, '2021 - DEFIS PLANILHA.xlsx']);
+  igual('B5: "DEFIS.xlsx" sem ano no nome, título de uma pessoa que não é cliente (REGINALDA) na pasta da 10: só a pasta diz o cliente, fica NÃO IDENTIFICADO', p21('DEFIS.xlsx', '0010 - DORNAS HAVANA LTDA - ME\\OUTROS\\', P_DEFIS_REGINALDA).motivo, 'CLIENTE_AMBIGUO');
   // ---- fim da seção 21 ----
 }
 // ---------- 11. PRODUCAO de verdade, numa pasta temporária (nunca no Drive) ----------

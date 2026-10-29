@@ -1828,7 +1828,16 @@ function decidirPlanilha(entrada, ctx, ev, porHash) {
   // a planilha de apoio da DEFIS (Vitor, 27/10/2026: "DEFIS - 2025 A7 MOBILE.xlsx", do "DEFIS 2025.zip"): 14. DEFIS do cliente,
   // "AAAA - DEFIS PLANILHA" (AAAA = o ano-calendário do nome), na raiz do ano da entrega (ano + 1); o cliente pelo CNPJ da
   // planilha, pelo nome no arquivo contra o cadastro ou pela pasta de origem
-  const mDefis = /^DEFIS\s*-?\s*(20\d{2})\b\s*-?\s*(.*)$/.exec(nome.replace(/\.[A-Z0-9]{2,4}$/, '').trim());
+  // 29/10/2026 (B5): o nome pode vir sem o ano ("DEFIS.xlsx", "DEFIS - NADIA FERREIRA.xlsx"): o ano-calendário é o do título ("JANEIRO A DEZEMBRO 2024")
+  const mDefis0 = /^DEFIS\b\s*-?\s*(.*)$/.exec(nome.replace(/\.[A-Z0-9]{2,4}$/, '').trim());
+  let mDefis = null;
+  if (mDefis0) {
+    const resto0 = mDefis0[1], ma = /(?<![\d.])(20\d{2})(?!\d)/.exec(resto0);
+    const anoTit = (/JANEIRO A DEZEMBRO\s+(20\d{2})\b/.exec(u) || [])[1];
+    const resto = (ma ? resto0.replace(ma[0], ' ') : resto0).replace(/\s+/g, ' ').replace(/^[\s-]+|[\s-]+$/g, '').trim();
+    if (ma || anoTit) { mDefis = [mDefis0[0], ma ? ma[1] : anoTit, resto]; mDefis.semAnoNoNome = !ma; }
+  }
+  if (mDefis0 && !mDefis) return { acao: 'NAO_IDENTIFICADO', motivo: 'ANO_INDETERMINADO', confianca: 0.5, tipo: 'DEFIS PLANILHA', setor: 'FISCAL', evidencias: ev.concat('planilha da DEFIS sem o ano no nome nem em "JANEIRO A DEZEMBRO AAAA" do título') };
   if (mDefis) {
     const base = { tipo: 'DEFIS PLANILHA', setor: 'FISCAL', fonte: 'planilha de apoio da DEFIS (Vitor, 27/10/2026)' };
     let cli = unico(documentosDoTexto((entrada.planilha || []).map(l => (l || []).join(' | ')).join('\n')).flatMap(d => clientesDoDoc(d.doc, cad))), como = 'doc', conf = 0.95;
@@ -1838,9 +1847,15 @@ function decidirPlanilha(entrada, ctx, ev, porHash) {
     const doNomeArq = mDefis[2].trim() ? clientePeloNomeCurto(mDefis[2], cad) : null;
     const sub = clienteDaPasta(entrada.rel || entrada.nome, cad), daPasta = sub && sub.forte ? sub.codigo : null;
     if (cli == null) {
-      const votos = [doTitulo, doNomeArq, daPasta].filter(x => x != null);
+      // o título que nomeia OUTRO cliente é o modelo copiado de uma pasta para outra (o mesmo "DRE - DORNAS HAVANA" em 14 pastas): só vale
+      // quando o nome do arquivo ou o CNPJ o confirmam; com a pasta conferida (código e nome) e o nome do arquivo sem outro cliente, vale a pasta
+      let tituloVale = doTitulo;
+      if (doTitulo != null && daPasta != null && doTitulo !== daPasta && (doNomeArq == null || doNomeArq === daPasta)) { tituloVale = null; ev.push('o título da planilha ("DRE - ' + tit[1].trim() + '") é de outro cliente (' + doTitulo + '): modelo copiado; vale a pasta de origem (' + daPasta + ')'); }
+      const votos = [tituloVale, doNomeArq, daPasta].filter(x => x != null);
+      // sem o ano no nome, o ano vem do título, que pode ser o do modelo copiado: aí o cliente precisa de duas fontes que concordem
+      if (mDefis.semAnoNoNome && new Set(votos).size === 1 && votos.length < 2) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_AMBIGUO', confianca: 0.4, evidencias: ev.concat('sem o ano no nome do arquivo, o ano é o do título da planilha e só uma fonte diz o cliente (' + votos[0] + '): o título pode ser de um modelo copiado') });
       if (new Set(votos).size > 1) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_AMBIGUO', confianca: 0.4, evidencias: ev.concat('o título da planilha, o nome do arquivo e a pasta de origem dizem clientes diferentes: ' + [...new Set(votos)].join(', ')) });
-      if (votos.length) { cli = votos[0]; como = daPasta != null && cli === daPasta ? 'pastaConferida' : 'nome'; conf = votos.length >= 2 ? 0.92 : 0.88; ev.push('cliente pelo ' + (doTitulo != null ? 'título da planilha' : doNomeArq != null ? 'nome no arquivo' : 'pasta de origem') + (votos.length >= 2 ? ' (confere com ' + (votos.length - 1) + ' outra fonte)' : '')); }
+      if (votos.length) { cli = votos[0]; como = daPasta != null && cli === daPasta ? 'pastaConferida' : 'nome'; conf = votos.length >= 2 ? 0.92 : 0.88; ev.push('cliente pelo ' + (tituloVale != null ? 'título da planilha' : doNomeArq != null ? 'nome no arquivo' : 'pasta de origem') + (votos.length >= 2 ? ' (confere com ' + (votos.length - 1) + ' outra fonte)' : '')); }
     }
     if (cli == null) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_NAO_LOCALIZADO', confianca: 0.3, evidencias: ev.concat('o nome no arquivo não é de um cliente só do cadastro') });
     return Object.assign(base, { acao: 'ARQUIVAR', cliente: cli, comoCliente: como, confianca: conf, competencia: { ano: +mDefis[1] }, caminho: ['FISCAL', 'SIMPLES NACIONAL', '14. DEFIS'], nomeFinal: mDefis[1] + ' - DEFIS PLANILHA' + ext0 });
