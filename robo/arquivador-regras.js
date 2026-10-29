@@ -691,11 +691,10 @@ function classificarNotasNfse(raiz) {
   }
   // um prestador só e um mês só; senão não é a exportação de um cliente num mês, e fica para olhar
   if (new Set(itens.map(i => i.prest)).size !== 1 || new Set(itens.map(i => mesAnoIso(i.data))).size !== 1) return null;
-  if (new Set(itens.map(i => i.num)).size !== itens.length) return null;
   const emit = [itens[0].prest];
   if (itens.length === 1) return { tipo: 'NFS-e', sub: '', nome: mesAnoIso(itens[0].data) + '_NFS-e_' + itens[0].num + '.xml', emit, partes: emit.concat(itens[0].toma.length === 14 || itens[0].toma.length === 11 ? [itens[0].toma] : []), data: itens[0].data, chave: chaveDaNfse(emit[0], itens[0].num) };
   const nums = itens.map(i => i.num);
-  return { tipo: 'NFS-e', sub: '', nome: mesAnoIso(itens[0].data) + '_NFS-e_' + Math.min(...nums) + ' A ' + Math.max(...nums) + '.xml', emit, partes: emit, data: itens[0].data, lote: itens.length };
+  return { tipo: 'NFS-e', sub: '', nome: mesAnoIso(itens[0].data) + '_NFS-e_' + (Math.min(...nums) === Math.max(...nums) ? Math.min(...nums) : Math.min(...nums) + ' A ' + Math.max(...nums)) + '.xml', emit, partes: emit, data: itens[0].data, lote: itens.length };
 }
 function _classificarXml(raiz) {
   const tag = raiz.tag;

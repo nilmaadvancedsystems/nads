@@ -1038,7 +1038,7 @@ igual('a agência e a conta no nome do arquivo ("Entradas_Saidas_ag3155cc990348_
   igual('B3b: a exportação do mês com várias notas do mesmo prestador (277, "NFSE.xml") vai inteira, com a faixa no nome', sx21('NFSE.xml', lote(nfseN(7, '10', '27361015000131'), nfseN(8, '12', '27361015000131'), nfseN(9, '20', '27361015000131')), '0277 - G.A.S SERVICOS LABORATORIAIS LTDA - ME\\2026\\06\\Adicionados\\'), ['ARQUIVAR', null, '277 - G.A.S SERVICOS LABORATORIAIS LTDA - ME\\FISCAL\\SIMPLES NACIONAL\\12. XML\\NFS-e', '06-2020_NFS-e_7 A 9.xml']);
   igual('B3b: exportação com dois prestadores não é arquivada', R.classificarXml(lote(nfseN(7, '10'), nfseN(8, '12', '27361015000131'))).erro, 'TIPO_XML_NAO_TRATADO');
   igual('B3b: exportação com meses diferentes não é arquivada', R.classificarXml(lote(nfseN(7, '10'), nfseN(8, '12').replace('2020-06-12', '2020-07-12'))).erro, 'TIPO_XML_NAO_TRATADO');
-  igual('B3b: exportação com número repetido não é arquivada', R.classificarXml(lote(nfseN(7, '10'), nfseN(7, '12'))).erro, 'TIPO_XML_NAO_TRATADO');
+  igual('B3b: a nota substituída repete o número (459 duas vezes no 291 de fev/2026): a exportação continua inteira', R.classificarXml(lote(nfseN(7, '10'), nfseN(8, '11'), nfseN(8, '12'))).nome, '06-2020_NFS-e_7 A 8.xml');
   // ---- fim da seção 21 ----
 }
 // ---------- 11. PRODUCAO de verdade, numa pasta temporária (nunca no Drive) ----------
