@@ -966,7 +966,7 @@ const REGRAS_PDF = [
   { tipo: 'NFC-e PDF', setor: 'FISCAL', re: /DANFE NFC-E|DOCUMENTO AUXILIAR DA NOTA FISCAL DE CONSUMIDOR|PORTALNFCE|\/NFCE\b|CONSUMIDOR NAO IDENTIFICADO/, fonte: '05d §1 (NFC-e em PDF)', campos: u => camposDeNota(u) },
   { tipo: 'NF-e PDF', setor: 'FISCAL', re: /\bDANFE\b|DOCUMENTO AUXILIAR DA NOTA FISCAL ELETRONICA/, fonte: '05d §1', campos: u => camposDeNota(u) },
   { tipo: 'CT-e PDF', setor: 'FISCAL', re: /\bDACTE\b|DOCUMENTO AUXILIAR DO CONHECIMENTO DE TRANSPORTE/, fonte: '05d §1', campos: u => camposDeNota(u) },
-  { tipo: 'NFS-e PDF', setor: 'FISCAL', re: /^[\s\S]{0,100}NUMERO DA NOTA\s*\n\s*\d{1,9}\s*\n\s*\d{2}\/\d{2}\/20\d{2}\s*\n\s*DATA DA EMISSAO[\s\S]{0,600}PRESTADOR DE SERVICOS[\s\S]{0,1500}TOMADOR DE SERVICOS|\bDANFSE\b|^\s*DANFSE\s*V\d|DOCUMENTO\s*AUXILIAR\s*DA\s*NFS-E|NOTA FISCAL DE SERVICOS? ELETRONICA|\bNFS-E\b/, fonte: '05d §1 (NFS-e)', campos: u => camposDeNfse(u) },
+  { tipo: 'NFS-e PDF', setor: 'FISCAL', re: /^[\s\S]{0,100}NUMERO DA NOTA\s*\n\s*\d{1,9}\s*\n\s*\d{2}\/\d{2}\/20\d{2}\s*\n\s*DATA DA EMISSAO[\s\S]{0,600}PRESTADOR DE SERVICOS[\s\S]{0,1500}TOMADOR DE SERVICOS|\bDANFSE\b|^\s*DANFSE\s*V\d|DOCUMENTO\s*AUXILIAR\s*DA\s*NFS-E|^\s*IDENTIFICACAO DA NFS-E|^(?![\s\S]{0,1200}(TERMO DE CANCELAMENTO|INSTRUCAO NORMATIVA|\bNFTS\b))(?=[\s\S]*\bTOMADOR)[\s\S]*?(NOTA FISCAL DE SERVICOS? ELETRONICA|\bNFS-E\b)/, fonte: '05d §1 (NFS-e; o título solto só vale com TOMADOR no texto: o termo de credenciamento, a senha, o e-mail e a fatura que citam "NFS-e" não são nota, 29/10/2026)', campos: u => camposDeNfse(u) },
   // relatório mensal de notas (05d §1: emitidas em EMITIDOS\RELATÓRIO MENSAL\[ANO]; recebidas em RECEBIDOS\RELATÓRIO MENSAL)
   // 27/10/2026 (os relatórios dos sistemas dos clientes na migração): o GDOOR ("NF-e, NFC-e e SAT (Resumo)", "Relatório de
   // Compras"), o "Notas fiscais emitidas/sintético" e o "Mapa Resumo" (Intervalo colado), o "NFCe / Mês: 2 Ano: 2026"
@@ -978,7 +978,7 @@ const REGRAS_PDF = [
   { tipo: 'RELATORIO DE VENDAS', setor: 'FISCAL', re: /^[\s\S]{0,40}(RELATORIO DE VENDAS POR PERIODO\s*\n\s*PERIODO:|VENDAS POR PERIODO\s*\n[^\n]{3,80}\n\s*DATA INICIAL:)/, fonte: 'relatório de vendas do posto (Vitor, 28/10/2026)',
     campos: u => ({ periodo: periodoEscrito(u) || periodoLivre(u.slice(0, 1500)) }) },
   // ---- folha e societário (04b) ----
-  { tipo: 'CARTAO CNPJ', setor: 'FOLHA_SOCIETARIO', re: /^(?![\s\S]*JUNTA COMERCIAL[\s\S]{0,600}CERTIFICO (O )?(REGISTRO|ARQUIVAMENTO))[\s\S]{0,800}COMPROVANTE DE INSCRICAO E DE SITUACAO\s+CADASTRAL/, fonte: '04b (Documentos Constitutivos)', campos: () => ({}) },
+  { tipo: 'CARTAO CNPJ', setor: 'FOLHA_SOCIETARIO', re: /^(?![\s\S]*JUNTA COMERCIAL[\s\S]{0,600}CERTIFICO (O )?(REGISTRO|ARQUIVAMENTO))(?![\s\S]{0,800}TERMO DE CREDENCIAMENTO)[\s\S]{0,800}COMPROVANTE DE INSCRICAO E DE SITUACAO\s+CADASTRAL/, fonte: '04b (Documentos Constitutivos)', campos: () => ({}) },
   // a inscrição estadual (Vitor, 27/10/2026): SOCIETÁRIO\INSCRIÇÕES\, sem pasta de ano, nome original; o comprovante da SEFAZ/MG e a
   // consulta do Cadastro Centralizado de Contribuintes (SVRS); a raiz do ano é a da emissão (a data com a hora)
   { tipo: 'INSCRICAO ESTADUAL', setor: 'FOLHA_SOCIETARIO', re: /COMPROVANTE DE INSCRICAO ESTADUAL|INFORMACAO DA IE COMO DESTINATARIO|CADASTRO CENTRALIZADO DE CONTRIBUINTE/, fonte: 'inscrição estadual (Vitor, 27/10/2026)',
@@ -1130,6 +1130,25 @@ function camposDeNota(u) {
   const emissao = dataBr(linhaApos(u, /DATA (DA |DE )?EMISSAO|\bEMISSAO\b/, 80)) || dataBr(u.slice(0, 1500));
   return { chave: ch && ch.length === 44 ? ch : null, emissao, cancelada: /CANCELAD[AO]/.test(u.slice(0, 1500)) };
 }
+/** A chave de acesso (50 dígitos) da NFS-e nacional escrita no texto: "Chave de Acesso da NFS-e Nacional: …", "Chave de acesso Ambiente de Dados Nacional: …". */
+function chaveNfseDoTexto(u) {
+  const m = /CHAVE DE ACESSO(?: DA NFS-E(?: NACIONAL)?| AMBIENTE DE DADOS NACIONAL)?\s*:?\s*(\d{50})(?!\d)/.exec(u);
+  return m ? m[1] : null;
+}
+/** Taiobeiras ("Razão Social:" … "Número RPS\n132"): o número da nota é o do RPS, desde que feche com o fim do nNFSe da chave (… "2600000000132" = 26 + 132). */
+function numeroPeloRps(u) {
+  const m = /(?:^|\n)\s*NUMERO RPS\s*\n\s*(\d{1,11})\s*(?:\n|$)/.exec(u);
+  if (!m) return null;
+  const ch = chaveNfseDoTexto(u);
+  if (ch && +ch.slice(25, 36) !== +m[1]) return null;
+  return [null, m[1]];
+}
+/** O DANFSe de prefeitura que só traz a chave (Extrema): o número é o nNFSe da chave (13 dígitos depois dos 23 do local, ambiente, tipo e CNPJ do emitente). */
+function numeroPelaChave(u) {
+  if (!/CHAVE DE ACESSO DA NFS-E NACIONAL\s*:?\s*\d{50}/.test(u)) return null;
+  const ch = chaveNfseDoTexto(u);
+  return ch && +ch.slice(23, 36) > 0 ? [null, String(+ch.slice(23, 36))] : null;
+}
 function camposDeNfse(u) {
   // a NFS-e da Prefeitura de Taiobeiras (a de honorários da Nilma, 27/10/2026): "Nº da Nota Fiscal\n849" e, no canhoto,
   // "A NOTA FISCAL Nº 849, EMITIDA EM 17/02/2022"
@@ -1140,10 +1159,16 @@ function camposDeNfse(u) {
   // a Prefeitura de São Paulo (28/10/2026, as da Loggi na HELLO): os rótulos em bloco e depois o código, o RPS, o número e a data
   const sp = /NUMERO DA NOTA\s*\n\s*DATA E HORA DE EMISSAO\s*\n\s*CODIGO DE VERIFICACAO\s*\n[^\n]*\n(?:\s*RPS[^\n]*\n)?\s*(\d{4,9})\s*\n\s*(\d{2}\/\d{2}\/20\d{2})/.exec(u);
   const numero = (sp || /NUMERO\s*DA\s*NFS-E[^0-9]{0,30}(\d{1,15})(?![\d/])/.exec(u) || /(?:^|\n)\s*(\d{1,15})\s*\n\s*NUMERO DA NFS-E/.exec(u) || /NFS-E\s*N[O°º.]*\s*:?\s*(\d{1,15})/.exec(u) || /NUMERO DA NOTA[^0-9]{0,20}(\d{1,15})/.exec(u)
-    || /N[º°O]\.?\s*DA NOTA FISCAL\s*:?\s*(\d{1,15})/.exec(u) || /NOTA FISCAL N[º°O]\.?\s*(\d{1,15}),?\s*EMITIDA EM/.exec(u) || /N[º°O]\.?\s*DA NFS-E\s*\/\s*ANO DO EXERCICIO\s*(\d{1,10})\s*\/\s*20\d{2}/.exec(u) || [])[1] || null;
+    || /N[º°O]\.?\s*DA NOTA FISCAL\s*:?\s*(\d{1,15})/.exec(u) || /NOTA FISCAL N[º°O]\.?\s*(\d{1,15}),?\s*EMITIDA EM/.exec(u) || /N[º°O]\.?\s*DA NFS-E\s*\/\s*ANO DO EXERCICIO\s*(\d{1,10})\s*\/\s*20\d{2}/.exec(u)
+    // B6 (29/10/2026): Janaúba ("Nº NOTA: 301/2025"); Taiobeiras no layout "Razão Social:" ("Número RPS" é o número da nota, e tem de fechar com o fim da chave
+    // de acesso); Extrema e os outros DANFSe de prefeitura sem o rótulo do número: o nNFSe da chave de acesso da NFS-e nacional
+    || /N[º°O]\.? NOTA:\s*(\d{1,15})\s*\/\s*20\d{2}/.exec(u) || numeroPeloRps(u) || numeroPelaChave(u) || [])[1] || null;
   // o recibo de SP sem o título (28/10/2026, a HELLO): "NUMERO DA NOTA / 1826 / 28/02/2026 / DATA DA EMISSAO"
   const rec = /NUMERO DA NOTA\s*\n\s*\d{1,9}\s*\n\s*(\d{2}\/\d{2}\/20\d{2})\s*\n\s*DATA DA EMISSAO/.exec(u);
+  // B6 (29/10/2026): o PDF das prefeituras que cola as palavras ("DATADEEMISSÃO", Brasília/Campinas/Taiobeiras), o de Janaúba ("Data e Hora de Emissão:" +
+  // "Competência da NFS-e:" na frente do valor) e o de Extrema ("Emissão (Horário de Brasília)"); a data de baixo só entra se as de cima não leram
   const emissao = (sp ? sp[2].replace(/\//g, '-') : null) || (rec ? rec[1].replace(/\//g, '-') : null) || dataBr(linhaApos(u, /DATA\s*E\s*HORA\s*DA\s*EMISSAO|DATA DA EMISSAO|EMISSAO DA NFS-E|DATA DE EMISSAO|DT\.? DE EMISSAO|EMITIDA EM/, 120)) || dataBr(linhaApos(u, /DATA FATO GERADOR/, 80))
+    || dataBr(linhaApos(u, /DATA\s*D[EA]\s*EMISSAO|EMISSAO \(HORARIO DE BRASILIA\)/, 60)) || dataBr(linhaApos(u, /DATA\s*E\s*HORA\s*DE\s*EMISSAO:/, 120))
     || dataBr(linhaApos(u, /DATA DE EMISSAO/, 400));
   const comp = competenciaSolta(linhaApos(u, /COMPETENCIA\s*DA\s*NFS-E|COMPETENCIA/, 80));
   // o que a leitura de antes (até 27/10/2026) já lia: o que ela não lia e tem o XML da chave arquivado continua indo ao lado do
@@ -2897,10 +2922,45 @@ function montarNotaPdf(regra, campos, u, bruto, base, c, ctx, ev) {
   return Object.assign(base, { acao: 'ARQUIVAR', confianca: Math.min(c.conf, ehEmitente ? 0.95 : 0.88), tipo: tipo + ' PDF', competencia: { mes: +data.slice(3, 5), ano: +data.slice(6) }, fiscal: pivo ? ['DOCS', lado] : pasta, nomeFinal: pivo ? base.nomeArquivo : nm, evidencias: ev.concat('05d §1: ' + lado + ' (emitente da chave ' + (ehEmitente ? '=' : '≠') + ' cliente)') });
 }
 
+/** O nome do prestador nos layouts de prefeitura em que ele fica num lugar fixo (a leitura genérica pega o do tomador ou o endereço da prefeitura). */
+function emissorDoLayout(bruto, dPrestador) {
+  // palavras coladas (Brasília, Campinas, Taiobeiras): "PRESTADORDOSERVIÇO\nRAZÃOSOCIAL\n<NOME>\nNOMEFANTASIA"
+  let m = /PRESTADOR\s*DO\s*SERVI[ÇC]O\s*\n\s*RAZ[ÃA]O\s*SOCIAL\s*\n\s*([^\n]{3,})/i.exec(bruto);
+  if (m && !/^(NOME|CNPJ|INSCRI|ENDERE)/i.test(m[1].trim())) return m[1].trim();
+  // Extrema: "PRESTADOR DE SERVIÇOS\nRazão Social\nDOCALOG LTDA\nNome Fantasia…"
+  m = /PRESTADOR DE SERVI[ÇC]OS\s*\n\s*Raz[ãa]o Social\s*\n\s*([^\n]{3,})/.exec(bruto);
+  if (m && !/^(NOME|CNPJ|INSCRI|ENDERE)/i.test(m[1].trim())) return m[1].trim();
+  // Janaúba, Coração de Jesus, Águas Vermelhas ("Secretaria Municipal da Fazenda"): o nome é a linha logo antes do CNPJ do prestador
+  if (dPrestador && /^\s*Secretaria Municipal da Fazenda/i.test(bruto) && /PRESTADOR DE SERVI[ÇC]OS/i.test(bruto)) {
+    const antes = bruto.slice(Math.max(0, dPrestador.pos - 160), dPrestador.pos).split('\n').map(s => s.trim()).filter(Boolean);
+    const nome = antes.pop();
+    if (nome && /[A-Za-z]{4}/.test(nome) && !/:|INSCRI|FONE|ENDERE|E-?MAIL|SIMPLES|CNPJ|CPF/i.test(nome) && !/\d{3,}/.test(nome)) return nome;
+  }
+  return null;
+}
+/** O "emissor" lido que na verdade é endereço ou o próprio tomador (cliente) não vale: a nota fica para olhar. */
+function emissorInvalido(emissor, cli) {
+  if (!emissor) return true;
+  if (/\b(PRA[ÇC]A|RUA|AVENIDA|AV\.|RODOVIA|CEP|BAIRRO)\b|\d{5}-?\d{3}/i.test(emissor)) return true;
+  const sem = s => norm(s).replace(/[^A-Z0-9]/g, '');
+  return !!(cli && cli.razao && sem(emissor).length >= 10 && (sem(emissor) === sem(cli.razao) || sem(cli.razao).startsWith(sem(emissor).slice(0, 14)) && sem(emissor).startsWith(sem(cli.razao).slice(0, 14))));
+}
 function montarNfsePdf(campos, u, bruto, base, c, ctx, ev) {
   const cad = ctx.cadastro;
   const docs = documentosDoTexto(bruto).filter(d => !ESCRITORIO.has(d.doc) || true);
-  const { prestador, tomador } = papeisDaNfse(u, docs);
+  let { prestador, tomador } = papeisDaNfse(u, docs);
+  // Janaúba, Coração de Jesus, Águas Vermelhas (B6, 29/10/2026): o 1º CNPJ do PDF é o da Secretaria da Fazenda no cabeçalho; o prestador é o 1º
+  // depois do título "PRESTADOR DE SERVIÇOS" e o tomador o 1º depois de "TOMADOR DE SERVIÇOS"
+  if (/^\s*SECRETARIA MUNICIPAL DA FAZENDA/.test(u)) {
+    const iP = bruto.search(/PRESTADOR DE SERVI[ÇC]OS/i), iT = bruto.search(/TOMADOR DE SERVI[ÇC]OS/i);
+    const dp = iP >= 0 && iT > iP ? docs.find(x => x.pos > iP && x.pos < iT) : null, dt = iT >= 0 ? docs.find(x => x.pos > iT) : null;
+    if (dp && dt) { prestador = dp.doc; tomador = dt.doc; }
+  }
+  // Extrema: o CNPJ do prestador vem colado na inscrição municipal ("53.129.610/0001-560021825"), a leitura por máscara não o vê
+  if (!prestador) {
+    const m = /PRESTADOR DE SERVI[ÇC]OS[\s\S]{0,400}?CPF\/CNPJ[^\n]*\n(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2})/.exec(bruto);
+    if (m && cnpjValido(so(m[1]))) { prestador = so(m[1]); docs.push({ doc: prestador, pos: bruto.indexOf(m[1]) }); }
+  }
   if (!campos.numero) { const n = /(?:^|[^A-Z])N?F?S-?E\s*N?[º°O.]*\s*(\d{1,9})(?!\d)/i.exec(String(base.nomeArquivo || '').replace(/\.[a-z0-9]+$/i, '')); if (n) { campos.numero = String(+n[1]); ev.push('o número da NFS-e pelo nome do arquivo (o texto não traz)'); } }
   if (!campos.numero || !campos.emissao) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'VOCABULARIO_AUSENTE', confianca: 0.5, evidencias: ev.concat('nº ou data da NFS-e não lidos') });
   // emitida pelo escritório (27/10/2026): a cópia no tomador, como nota recebida (o isento, em CONTÁBIL\NOTAS DE SERVIÇO RECEBIDAS)
@@ -2917,6 +2977,8 @@ function montarNfsePdf(campos, u, bruto, base, c, ctx, ev) {
   let emissor = emitida ? cli.razao : null;
   // a Prefeitura de São Paulo (28/10/2026, a HELLO: o nome saía "CÓDIGO DE VERIFICAÇÃO"): os rótulos em bloco e o nome na linha depois
   // da do CNPJ do prestador
+  // B6 (29/10/2026): o nome do prestador num lugar fixo nos layouts de Brasília/Campinas/Taiobeiras (palavras coladas), Extrema e Janaúba/Coração de Jesus/Águas Vermelhas
+  if (!emissor && prestador) emissor = emissorDoLayout(bruto, docs.find(x => x.doc === prestador));
   if (!emissor && prestador) { const m = /PRESTADOR DE SERVI[ÇC]OS\s*\n(?:[^\n]*\n){1,3}?\s*ENDERE[ÇC]O:\s*\n\s*[\d./-]{11,}[^\n]*\n\s*([^\n]{4,})/i.exec(bruto); if (m && !/^(NOME|RAZ|ENDERE|CPF|INSCRI|C[OÓ]DIGO)/i.test(m[1].trim())) emissor = m[1].trim(); }
   if (!emissor && prestador) {
     const d = docs.find(x => x.doc === prestador);
@@ -2932,6 +2994,7 @@ function montarNfsePdf(campos, u, bruto, base, c, ctx, ev) {
     // a nota recebida: o emissor nunca é o próprio cliente (o tomador)
     if (emissor && cli.razao && chaveNome(nomeNormalizado(emissor)) === chaveNome(nomeNormalizado(cli.razao))) emissor = null;
   }
+  if (!emitida && emissorInvalido(emissor, cli)) emissor = null;
   if (!emissor) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'EMITENTE_INDETERMINADO', confianca: 0.5 });
   const comp = campos.competencia || { mes: +campos.emissao.slice(3, 5), ano: +campos.emissao.slice(6) };
   const nm = campos.emissao + ' - NFS-e ' + campos.numero + ' - ' + nomeNormalizado(emissor) + (campos.cancelada ? ' - CANCELADA' : '') + '.pdf';
