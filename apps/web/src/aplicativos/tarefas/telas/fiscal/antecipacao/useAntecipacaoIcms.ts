@@ -7,7 +7,9 @@
 // O período (26/10/2026: "melhore o filtro de mês e ano"): Mês (um mês), Ano (escolhe só o ano: janeiro a dezembro, ou até
 // o mês de hoje no ano corrente) ou 12 meses (até o mês escolhido); nunca um mês que ainda não começou; fica no endereço
 // (?periodo=…&mes=… ou &ano=…). Os meses sem os XMLs do SIEG são pedidos ao robô sozinhos, uma vez por aba (26/10/2026:
-// "resolva o problema de não puxar do sieg"), e o aviso diz o que o robô está fazendo, a fila e o erro, se der.
+// "resolva o problema de não puxar do sieg"), e o aviso diz o que o robô está fazendo, a fila e o erro, se der. Enquanto
+// baixa, a barra com quantos meses já chegaram dos pedidos e o tempo que falta, pela média dos que já vieram (29/10/2026:
+// "isso aqui demora muito, e não tem um feedback de porcentagem nem nada").
 import { empresas as emp, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useState } from 'react';
@@ -27,6 +29,10 @@ const mesDeHoje = () => { const d = new Date(); return d.getFullYear() + '-' + S
 const PERIODOS = new Set(['mes', 'ano', '12m']);
 // os meses já pedidos ao robô nesta aba (empresa_mês): não pede de novo a cada volta à tela
 const pedidosNestaAba = new Set<string>();
+// os meses acompanhados por empresa nesta aba (os pedidos daqui e os que já estavam na fila) e quando começou: a barra
+const acompanhados = new Map<string, { meses: Set<string>; desde: number }>();
+// sem nenhum mês pronto ainda, a conta usa ~40 s por mês (o portal leva de 10 s a 1 min por mês)
+const SEGUNDOS_POR_MES = 40;
 const regimePorExtenso = (r: string) => ({ Simples: 'Simples Nacional', Presumido: 'Lucro Presumido', Real: 'Lucro Real' } as Record<string, string>)[r] || r;
 
 export function useAntecipacaoIcms() {
@@ -92,6 +98,26 @@ export function useAntecipacaoIcms() {
     })();
   }, [chaveFaltaPedir, empresa?.codigo, sieg, aviso]);
 
+  // a barra: dos meses acompanhados no período, quantos já chegaram; o que falta, pela média dos que vieram
+  const chaveDaEmpresa = empresa?.codigo != null ? String(empresa.codigo) : '';
+  const acompanhado = chaveDaEmpresa ? acompanhados.get(chaveDaEmpresa) || { meses: new Set<string>(), desde: Date.now() } : null;
+  if (acompanhado) {
+    for (const m of [...pedidos.map(x => x.mes), ...faltaPedir]) acompanhado.meses.add(m);
+    if (acompanhado.meses.size) acompanhados.set(chaveDaEmpresa, acompanhado);
+  }
+  const doPeriodo = acompanhado ? competencias.filter(m => acompanhado.meses.has(m)) : [];
+  const chegaram = doPeriodo.filter(m => !semXml.includes(m)).length;
+  const faltam = doPeriodo.length - chegaram;
+  // tudo chegou: a próxima leva começa do zero
+  if (acompanhado && doPeriodo.length && !faltam) acompanhados.delete(chaveDaEmpresa);
+  // o mês que está baixando conta pela porcentagem dele (o robô diz de passo em passo)
+  const noMes = Math.min(0.99, (pedidos.find(x => x.p?.status === 'processando')?.p?.pct || 0) / 100);
+  const porMes = chegaram && acompanhado ? (Date.now() - acompanhado.desde) / 1000 / chegaram : SEGUNDOS_POR_MES;
+  const minutos = Math.max(1, Math.round((faltam * porMes) / 60));
+  const progresso = doPeriodo.length && faltam && pedidos.length
+    ? { pct: Math.round(((chegaram + noMes) / doPeriodo.length) * 100), texto: chegaram + ' de ' + doPeriodo.length + (doPeriodo.length === 1 ? ' mês baixado' : ' meses baixados') + ' · ' + (minutos === 1 ? 'falta' : 'faltam') + ' uns ' + minutos + ' min' + (robo.naFila > faltam ? ' (há pedidos de outras telas na fila: pode demorar mais)' : '') }
+    : null;
+
   /** o que dizer enquanto os XMLs não chegam: o robô fora do ar, o que ele está fazendo e a fila, ou o erro */
   function situacaoDoRobo(): string {
     if (comErro.length && !pedidos.length) return 'O robô não conseguiu baixar ' + comErro.map(x => s.mesCurto(x.mes)).join(', ') + ': ' + (comErro[0].p?.erro || 'erro sem detalhe') + '.';
@@ -145,6 +171,8 @@ export function useAntecipacaoIcms() {
     pedindo: pedidos.length > 0 || faltaPedir.length > 0,
     comErro: comErro.length > 0 && !pedidos.length,
     situacaoDoRobo: situacaoDoRobo(),
+    /** a barra dos meses pedidos: a porcentagem e "2 de 5 meses baixados · faltam uns 3 min" (null sem nada baixando) */
+    progresso,
     antigos: antigos.map(s.mesCurto),
     roboLigado: sieg.robo().ligado,
     async pedirXmls() {

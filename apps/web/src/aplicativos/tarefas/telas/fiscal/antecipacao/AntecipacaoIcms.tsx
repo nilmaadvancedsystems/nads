@@ -90,6 +90,13 @@ export function AntecipacaoIcms() {
           {vm.semXml.length > 0 && (
             <Alerta naLinha titulo={'Sem os XMLs do SIEG em ' + vm.semXml.map(m => m.rotulo).join(', ')}
               texto={vm.pedindo || vm.comErro ? vm.situacaoDoRobo : 'As notas desses meses não entram até o robô baixar os XMLs (o mesmo "Baixar XMLs do SIEG" da rotina).'}>
+              {vm.progresso && (
+                <span className="progresso-linha">
+                  <span className="tarefas-barra larga" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={vm.progresso.pct} aria-label={vm.progresso.texto}><span style={{ width: vm.progresso.pct + '%' }} /></span>
+                  <span className="num">{vm.progresso.pct}%</span>
+                </span>
+              )}
+              {vm.progresso && <p className="hint">{vm.progresso.texto}</p>}
               {!vm.pedindo && <button type="button" className="btn btn-outline" disabled={!vm.roboLigado} title={vm.roboLigado ? undefined : 'O robô do SIEG está desligado'} onClick={() => void vm.pedirXmls()}><Icone nome="download" width={16} height={16} />{vm.comErro ? 'Pedir de novo' : 'Pedir ao robô'}</button>}
             </Alerta>
           )}
