@@ -226,6 +226,16 @@ function ocrDe(hash, buffer, imagem) {
 const ehTedSintegra = b => !!b && b.length > 11 && b.slice(0, 11).toString('latin1') === '02CL_PADRAO';
 
 /** O que as regras precisam de cada formato. */
+/** O texto de um RTF: tira os grupos de controle (fonte, cor, estilo), os comandos e as chaves; \'e9 vira "é"; \par e \line viram quebra de linha. */
+function textoDoRtf(buffer) {
+  let s = buffer.toString('latin1');
+  s = s.replace(/\{\\\*[^{}]*\}/g, '').replace(/\{\\(fonttbl|colortbl|stylesheet|info|header|footer)(?:[^{}]|\{[^{}]*\})*\}/g, '');
+  s = s.replace(/\\'([0-9a-f]{2})/gi, (_, h) => String.fromCharCode(parseInt(h, 16)));
+  s = s.replace(/\\u(-?\d+)\??/g, (_, n) => String.fromCharCode(+n < 0 ? +n + 65536 : +n));
+  s = s.replace(/\\(par|line|row)\b ?/g, '\n').replace(/\\(tab|cell)\b ?/g, ' ');
+  s = s.replace(/\\[a-z]+-?\d* ?/gi, '').replace(/[{}]/g, '').replace(/\\([\\{}])/g, '$1');
+  return s.replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n').trim();
+}
 async function montarEntrada(nome, rel, buffer, op) {
   const e = { nome, rel, hash: sha(buffer), tamanho: buffer.length };
   const ext = (/\.([a-z0-9]+)$/i.exec(nome) || [])[1];
@@ -248,6 +258,8 @@ async function montarEntrada(nome, rel, buffer, op) {
     }
     case 'xml': e.xml = textoDoXml(buffer); break;
     case 'ofx': e.ofx = buffer.toString('latin1'); break;
+    // o RTF dos termos e demonstrativos do Alterdata ("292TermoDRE11.2025.rtf"): o texto sem os comandos do RTF, como se fosse a página de um PDF
+    case 'rtf': if (/^\s*\{\\rtf/.test(buffer.slice(0, 16).toString('latin1'))) { e.texto = [textoDoRtf(buffer)]; e.paginas = 1; } break;
     case 'txt': e.txt = buffer.slice(0, 64 * 1024).toString('latin1'); break;
     case 'xlsx': case 'xls': case 'csv': e.planilha = linhasDaPlanilha(buffer, nome); break;
     case 'zip': if (ehTedSintegra(buffer)) e.tedSintegra = true; break;
@@ -901,7 +913,7 @@ async function reprocessarNaoIdentificados(opcoes) {
 /** O trabalhador do Tesseract segura o processo vivo: fecha no fim de cada execução (se o OCR foi usado). */
 async function encerrarOcr() { const k = require.resolve('./arquivador-ocr'); if (require.cache[k]) await require('./arquivador-ocr').encerrar(); }
 
-module.exports = { ehTedSintegra, reprocessarNaoIdentificados, arquivosDosNaoIdentificados, rotaDoReprocesso, atualizarCadastro, encerrarOcr, executar, aprenderContas, lerContas, varrer, abrirZip, membros, montarEntrada, textoDoPdf, carregarCadastro, indiceDoManifesto, caminhoArquivado, conferirDestino, conteudoXml, raizDoAno, relatorioTexto, planos, CONTROLE };
+module.exports = { textoDoRtf, ehTedSintegra, reprocessarNaoIdentificados, arquivosDosNaoIdentificados, rotaDoReprocesso, atualizarCadastro, encerrarOcr, executar, aprenderContas, lerContas, varrer, abrirZip, membros, montarEntrada, textoDoPdf, carregarCadastro, indiceDoManifesto, caminhoArquivado, conferirDestino, conteudoXml, raizDoAno, relatorioTexto, planos, CONTROLE };
 
 if (require.main === module) {
   const a = process.argv.slice(2);

@@ -1327,6 +1327,8 @@ function decidir0(entrada, ctx) {
     }
     return fim(dp);
   }
+  // o RTF do livro/demonstrativo contábil (29/10/2026: "292TermoDRE11.2025.rtf"): lido como o PDF, só quando o cabeçalho é de livro (NIRE e título); o resto continua sem regra
+  if (e === 'rtf' && Array.isArray(entrada.texto) && ehLivroContabil(norm(entrada.texto.join('\n')))) return fim(decidirPdf(entrada, ctx, ev, porHash));
   if (['xlsx', 'xls', 'csv'].includes(e)) return fim(decidirPlanilha(entrada, ctx, ev, porHash));
   // a imagem lida por OCR (27/10/2026): o comprovante de pagamento escaneado
   if (/^(jpe?g|png)$/.test(e) && entrada.texto) return fim(decidirImagem(entrada, ctx, ev, porHash));
@@ -2954,6 +2956,24 @@ function decidirSimples(entrada, u, bruto, ctx, ev, porHash, o) {
   if (o.fiscal) out.fiscal = o.fiscal; else out.caminho = o.caminho(comp);
   return out;
 }
+/**
+ * O livro ou o demonstrativo contábil (Diário, Razão, termo de abertura/encerramento, balanço, DRE, Análise Econômica e Financeira): o cabeçalho traz a razão social, o CNPJ,
+ * o NIRE e o período. Só com o NIRE e o título do livro nos primeiros 1.500 caracteres (o razão-relatório do Alterdata não tem NIRE e segue a regra dele).
+ */
+function ehLivroContabil(u) {
+  const topo = String(u || '').slice(0, 1500);
+  return /\bNIRE\b/.test(topo) && /\b(DIARIO|RAZAO|LIVRO DIARIO|LIVRO RAZAO|TERMO DE (ABERTURA|ENCERRAMENTO)|IMPORTA A PRESENTE (DEMONSTRACAO|BALANCO)|BALANCO PATRIMONIAL|DEMONSTRACAO D[OE]S? RESULTADOS?|ANALISE ECONOMICA E FINANCEIRA)\b/.test(topo);
+}
+/** O ano do livro: o fim do período escrito ("de 01/01/2023 até 31/12/2023"), "Diário de janeiro de 2020", ou a data do termo ("TAIOBEIRAS, 30 DE NOVEMBRO DE 2025"). */
+function anoDoLivro(u) {
+  const topo = String(u || '').slice(0, 3000);
+  let m = /\bDE\s+(\d{2})\/(\d{2})\/(20\d{2})\s+(?:ATE|A)\s+(\d{2})\/(\d{2})\/(20\d{2})/.exec(topo);
+  if (m && anoOk(+m[6])) return +m[6];
+  m = /\b(?:DIARIO|RAZAO)\s+DE\s+[A-Z]+\s+DE\s+(20\d{2})/.exec(topo);
+  if (m && anoOk(+m[1])) return +m[1];
+  m = /\b\d{1,2}\s+DE\s+(?:JANEIRO|FEVEREIRO|MARCO|ABRIL|MAIO|JUNHO|JULHO|AGOSTO|SETEMBRO|OUTUBRO|NOVEMBRO|DEZEMBRO)\s+DE\s+(20\d{2})/.exec(topo);
+  return m && anoOk(+m[1]) ? +m[1] : null;
+}
 function decidirPdf(entrada, ctx, ev, porHash) {
   const paginas = Array.isArray(entrada.texto) ? entrada.texto : [String(entrada.texto || '')];
   const bruto = paginas.slice(0, 3).join('\n');
@@ -2982,6 +3002,8 @@ function decidirPdf(entrada, ctx, ev, porHash) {
   if (!regra && /^\d{0,4}\s*-?\s*PROV(?:\.|ISAO)?\s*(?:DE\s*)?(IMPOSTOS?)?\s*20\d{2}\b/.test(norm(entrada.nome).replace(/\.[A-Z]{3,4}$/, ''))) regra = REGRAS_PDF.find(r => r.tipo === 'BALANCETE');
   // a DRE ("292DRE03.2025.pdf", "DRE _2025.pdf"; Vitor, 27/10/2026): REGISTRO DE LIVROS\(001) ANO\, como o balancete, nome original
   if (!regra && (/(?:^|[^A-Z])DRE(?:[^A-Z]|$)/.test(norm(entrada.nome)) || /DEMONSTRA[CÇ]AO D[OE]S? RESULTADOS? DO EXERCICIO/.test(u.slice(0, 800)))) regra = REGRAS_PDF.find(r => r.tipo === 'BALANCETE');
+  // o livro e o demonstrativo contábil (29/10/2026, Vitor: "nos livros tem literalmente o nome e CNPJ"): o cabeçalho traz a razão social, o CNPJ, o NIRE e o período
+  if (!regra && ehLivroContabil(u)) regra = REGRAS_PDF.find(r => r.tipo === 'BALANCETE');
   if (!regra) {
     const c = clienteDoPdf(u, bruto, entrada, ctx, ev, { tipo: '?' }, {});
     return { acao: 'NAO_IDENTIFICADO', motivo: 'TIPO_NAO_RECONHECIDO', confianca: 0.3, tipo: 'PDF', cliente: c.cliente || porHash || null, evidencias: ev.concat('nenhum título conhecido no cabeçalho') };
@@ -3350,6 +3372,7 @@ function montarContabil(regra, campos, u, bruto, entrada, ctx, ev, porHash) {
   }
   if (regra.tipo === 'BALANCETE') {
     let ano = campos.ano;
+    if (!ano && ehLivroContabil(u)) { ano = anoDoLivro(u); if (ano) ev.push('livro/demonstrativo contábil (cabeçalho com CNPJ e NIRE): o ano do período escrito (' + ano + ')'); }
     if (!ano) { const n = /(20\d{2})/.exec(entrada.nome); if (n) { ano = +n[1]; ev.push('ano pelo nome do arquivo'); } }
     if (!ano) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5 });
     return Object.assign(base, { acao: 'ARQUIVAR', confianca: c.conf, competencia: { ano }, caminho: ['CONTÁBIL', 'REGISTRO DE LIVROS', '(001) ' + ano], nomeFinal: entrada.nome });
@@ -3701,7 +3724,7 @@ function tipoDoDestino(destino) {
 
 module.exports = {
   LIMIAR, RAIZ_CLIENTES, ARVORE, REGRAS_PDF, BANCOS, ANUAIS, ofxCompetencia, anoDaEntrega, ANO_MINIMO, ANO_DAS_PASTAS, anoDaPasta, pastasDoAno, partesDoCaminho, comMotivoDoCodigo,
-  semAcento, norm, chaveNome, nomeNormalizado, nomeSeguro, so, dataBr, valorBr, competenciaSolta, competenciaDoNome, competenciaDaPasta, periodoEscrito,
+  ehLivroContabil, anoDoLivro, semAcento, norm, chaveNome, nomeNormalizado, nomeSeguro, so, dataBr, valorBr, competenciaSolta, competenciaDoNome, competenciaDaPasta, periodoEscrito,
   cnpjValido, cpfValido, documentosDoTexto, raizesDoTexto, mascarasDoTexto,
   regimeCanonico, montarCadastro, comAnosEMapa, clientesDoDoc, clienteDaPasta, grupoDaPasta, pagamentoDeFornecedor, clientesPeloNomeNoTexto,
   confirmado, pastaParecida, bancoDoTexto, bancoDoNome, lerXml, classificarXml, camposDaGuia,

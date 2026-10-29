@@ -1265,6 +1265,33 @@ igual('a agência e a conta no nome do arquivo ("Entradas_Saidas_ag3155cc990348_
     const di = R.decidir(ent, { cadastro: cad28, hoje: new Date(2026, 9, 27) });
     igual('imagem PNG lida pelo Tesseract: o comprovante vai para PAGAMENTOS DE FORNECEDORES com o nome montado', [di.acao, di.destinoRelativo, di.nomeFinal], ['ARQUIVAR', '237 - POSTO DE COMBUSTIVEIS BERIZAL LTDA\\CONTÁBIL\\PAGAMENTOS DE FORNECEDORES\\2026\\02\\NILMA DIAS OLIVEIRA', '09-02-2026 NILMA DIAS OLIVEIRA R$ 1.400,00.png']);
   } finally { await A.encerrarOcr(); }
+  // =====================================================================================================================
+  // 31. as decisões do Vitor de 29/10/2026 (2ª leva): os livros e demonstrativos contábeis pelo cabeçalho (razão social, CNPJ, NIRE, período)
+  // =====================================================================================================================
+  const C30 = JSON.parse(fs.readFileSync(path.join(__dirname, 'teste-arquivador-casos-30.json'), 'utf8'));
+  const cad30 = R.montarCadastro([
+    { codigo: 292, razao: 'FITO INDUSTRIA E COMERCIO DE ALIMENTOS LTDA', doc: '19.449.248/0001-62', regime: 'Presumido' },
+    { codigo: 309, razao: 'FITO ALIMENTOS EIRELI', doc: '26.124.295/0001-00', regime: 'Simples' },
+    { codigo: 356, razao: 'A7 COMERCIO DE VEICULOS LTDA', doc: '13.728.235/0001-46', regime: 'Simples' },
+    { codigo: 55, razao: 'TORRA TORRA LTDA', doc: '03.238.183/0001-76', regime: 'Simples' },
+  ], ['292 - FITO INDUSTRIA E COMERCIO DE ALIMENTOS LTDA - EPP (MATRIZ)', '309 - FITO ALIMENTOS EIRELI', '356 - A7 COMERCIO DE VEICULOS LTDA - ME', '55 - TORRA TORRA LTDA']);
+  cad30.mapaMigracao = MIG.carregar({});
+  const ctx30 = { cadastro: cad30, hoje: new Date(2026, 9, 29) };
+  const livro30 = (k, rel, extra) => R.decidir(Object.assign({ nome: C30[k].nome, rel: rel + C30[k].nome, texto: C30[k].texto }, extra || {}), ctx30);
+  const sai30 = d => [d.acao, d.cliente, d.destinoRelativo, d.competencia && d.competencia.ano];
+  igual('livro: o Termo de DRE da Fito (292; cabeçalho com CNPJ e NIRE): REGISTRO DE LIVROS\\(001) 2025 pelo CNPJ, o ano da data do termo', sai30(livro30('termoDRE292', 'FERNANDO\\292 FITO INDUSTRIA E COMERCIO\\2025\\')), ['ARQUIVAR', 292, '292 - FITO INDUSTRIA E COMERCIO DE ALIMENTOS LTDA - EPP (MATRIZ)\\CONTÁBIL\\REGISTRO DE LIVROS\\(001) 2025', 2025]);
+  igual('livro: o Diário de janeiro de 2020 da Fito (309): o CNPJ do cabeçalho, o ano do título do livro', sai30(livro30('diario309', 'FERNANDO\\309 FITO EIRELI - Simples\\')), ['ARQUIVAR', 309, '309 - FITO ALIMENTOS EIRELI\\CONTÁBIL\\REGISTRO DE LIVROS\\(001) 2020', 2020]);
+  igual('livro: o Termo de DRE da A7 (356)', sai30(livro30('termoDRE356', 'FERNANDO\\356 A7 COMERCIO E LOCADORA DE VEICULOS\\2025\\')), ['ARQUIVAR', 356, '356 - A7 COMERCIO DE VEICULOS LTDA - ME\\CONTÁBIL\\REGISTRO DE LIVROS\\(001) 2025', 2025]);
+  igual('livro: a Análise Econômica e Financeira de 01/01/2024 até 31/12/2024 da Torra Torra, na pasta "Livros com registro na JUCEMG": o CNPJ do cabeçalho e o ano do período', sai30(livro30('analise', '20261026-NOVO\\FERNANDO\\Livros com registro na JUCEMG\\55 - Torra Torra\\2024\\')), ['ARQUIVAR', 55, '55 - TORRA TORRA LTDA\\CONTÁBIL\\REGISTRO DE LIVROS\\(001) 2024', 2024]);
+  igual('livro: o CNPJ do cabeçalho vence a pasta (o termo da Fito 292 na pasta da A7): não arquiva na pasta errada', livro30('termoDRE292', 'FERNANDO\\356 A7 COMERCIO E LOCADORA DE VEICULOS\\2025\\').cliente === 356, false);
+  igual('livro: sem o NIRE no cabeçalho não é livro registrado (o razão-relatório do Alterdata segue a regra dele)', ehLivroDe(C30.termoDRE356.texto.join(' ').replace(/NIRE:/g, 'XXXX:')), false);
+  function ehLivroDe(t) { return R.ehLivroContabil(R.norm(t)); }
+  // o RTF do termo (Alterdata): o texto sem os comandos do RTF, lido como o PDF
+  const rtfTermo = '{\\rtf1\\ansi\\ansicpg1252{\\fonttbl{\\f0\\froman Times New Roman;}}{\\*\\generator Alterdata;}\\pard FITO INDUSTRIA E COMERCIO DE ALIMENTOS LTDA\\par CNPJ: 19.449.248/0001-62\\par NIRE: 31600638109 Data: 14/05/2019\\par Di\\\'e1rio: 0 Folha: 37\\par IMPORTA A PRESENTE DEMONSTRA\\\'c7\\\'c3O DE RESULTADO COM LUCRO DE 1.835.633,40\\par TAIOBEIRAS, 30 DE NOVEMBRO DE 2025\\par}';
+  const entRtf = await A.montarEntrada('292TermoDRE11.2025.rtf', 'FERNANDO\\292 FITO INDUSTRIA E COMERCIO\\2025\\292TermoDRE11.2025.rtf', Buffer.from(rtfTermo, 'latin1'));
+  igual('RTF: o texto sai sem os comandos, com os acentos (\\\'e1 = á)', /Diário: 0 Folha: 37/.test(entRtf.texto[0]) && /DEMONSTRAÇÃO DE RESULTADO/.test(entRtf.texto[0]) && !/rtf|fonttbl|generator/.test(entRtf.texto[0]), true);
+  igual('RTF: o Termo de DRE em RTF da Fito (292) é arquivado como o PDF', sai30(R.decidir(entRtf, ctx30)), ['ARQUIVAR', 292, '292 - FITO INDUSTRIA E COMERCIO DE ALIMENTOS LTDA - EPP (MATRIZ)\\CONTÁBIL\\REGISTRO DE LIVROS\\(001) 2025', 2025]);
+  igual('RTF que não é livro continua sem regra (FORMATO_SEM_REGRA)', R.decidir(Object.assign({}, entRtf, { nome: 'lista.rtf', rel: 'lista.rtf', texto: ['Lista de contatos'] }), ctx30).motivo, 'FORMATO_SEM_REGRA');
   console.log((falhas ? falhas + ' FALHA(S) em ' : 'ok: ') + total + ' testes');
   process.exit(falhas ? 1 : 0);
 })().catch(e => { console.log('FALHOU com erro:', e.stack); process.exit(1); });
