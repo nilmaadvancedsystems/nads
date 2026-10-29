@@ -5543,3 +5543,34 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .rel-tabela .rel-campo::placeholder{color:var(--ink-faint);}
 .rel-tabela .ctrl-entrega{width:100%;min-width:0;height:26px;padding:0 2px;font-size:var(--fs-12);}
 .rel-tabela tfoot td{font-size:var(--fs-12);padding-left:8px;padding-right:8px;}
+
+/* Fiscal › Relatório Simples / Presumido (29/10/2026: "melhore esse dropdown e procure melhorar esse tabelão
+   visualmente"): a entrega vira a etiqueta com o menu do nads (Falta tracejada, entregue verde, Não se aplica apagada);
+   as linhas mais baixas e listradas, a concluída com a faixa verde à esquerda, o total destacado e o "dd/mm/aaaa" só ao
+   escrever (antes aparecia em todas as linhas sem data) */
+.rel-tabela col.rel-ent{width:112px;}
+.rel-tabela tbody td{padding-top:4px;padding-bottom:4px;}
+/* o campo tinha 32px por causa do min-height de todo input (a linha ficava alta): fica com os 26px dele */
+.rel-tabela .rel-campo{min-height:0;}
+.rel-tabela tbody tr:nth-child(even) td{background:color-mix(in srgb,var(--surface-2) 55%,transparent);}
+.rel-tabela tbody tr:hover td{background:var(--hover-bg);}
+.rel-tabela .dp-linha.feita td:first-child{box-shadow:inset 3px 0 0 var(--success);}
+.rel-tabela .rel-molde:not(:focus)::placeholder{color:transparent;}
+.rel-tabela tfoot td{border-top:2px solid var(--border);background:var(--surface-2);font-weight:600;font-variant-numeric:tabular-nums;padding-top:8px;padding-bottom:8px;}
+/* o total à direita, como os valores de cima; o que não cabe ganha … (o valor inteiro fica na dica) */
+.rel-tabela tfoot td.rel-total{text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-left:4px;padding-right:8px;}
+.rel-tabela .rel-ent .popover-wrap{display:flex;justify-content:center;}
+.rel-entrega{display:inline-flex;align-items:center;gap:4px;max-width:100%;height:24px;padding:0 7px;border:1px solid var(--border);border-radius:999px;
+  background:transparent;color:var(--ink-muted);font:inherit;font-size:var(--fs-12);font-weight:500;line-height:1;white-space:nowrap;cursor:pointer;
+  transition:background-color .12s,border-color .12s,color .12s;}
+.rel-entrega svg{width:13px;height:13px;flex:none;}
+.rel-entrega .menu-seta{width:10px;height:10px;opacity:.7;}
+.rel-entrega-texto{min-width:0;overflow:hidden;text-overflow:ellipsis;}
+button.rel-entrega:hover{border-color:var(--border-strong);background:var(--hover-bg);color:var(--ink);}
+button.rel-entrega[aria-expanded="true"]{border-color:var(--accent);color:var(--ink);}
+button.rel-entrega:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+.rel-entrega-falta{border-style:dashed;}
+.rel-entrega-feita{border-color:color-mix(in srgb,var(--success) 45%,transparent);background:var(--success-soft);color:var(--success-ink);}
+button.rel-entrega-feita:hover{border-color:var(--success);background:color-mix(in srgb,var(--success) 22%,transparent);color:var(--success-ink);}
+.rel-entrega-nao{border-color:transparent;background:var(--surface-2);color:var(--ink-faint);}
+.rel-entrega.leitura{cursor:default;}

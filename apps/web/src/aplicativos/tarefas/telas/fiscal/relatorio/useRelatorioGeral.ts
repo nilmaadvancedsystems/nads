@@ -43,7 +43,8 @@ function porPaginaGuardado(): number {
   try { const s = localStorage.getItem(CHAVE_POR_PAGINA); const n = Number(s); return s !== null && (POR_PAGINA as readonly number[]).includes(n) ? n : 25; } catch { return 25; }
 }
 const semAcento = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+// o total sem o "R$" (29/10/2026: na coluna de 70px, "R$ 38.016,39" passava para a vizinha; o cabeçalho já diz "Guias (R$)")
+const brl = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 /** dd/mm/aaaa ↔ AAAA-MM-DD */
 export const dataBr = (iso: string) => (iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4) : '');
 const dataIso = (br: string) => { const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(br); return m ? m[3] + '-' + m[2] + '-' + m[1] : ''; };
