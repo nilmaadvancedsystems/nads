@@ -1419,10 +1419,10 @@ function pelaPastaENome(entrada, ctx, d) {
   }
   // (6) os outros contratos (locação, comodato, fornecimento, o contrato da empresa com terceiros): SOCIETÁRIO\CONTRATOS\ANO, nome original.
   // Ficam de fora (NÃO IDENTIFICADOS) os que têm destino próprio ou dúvida: o contrato social e as alterações, o câmbio, o empréstimo, o
-  // financiamento e a cédula (OPERAÇÕES DE CRÉDITO), a compra de fazenda, veículo e trator (VENDA DE ATIVOS), os lotes, o arrendamento
+  // financiamento e a cédula (OPERAÇÕES DE CRÉDITO), os lotes e quadras (a compra de veículo, fazenda e trator VAI para CONTRATOS, decisão do Vitor), o arrendamento
   // mercantil, o trabalhista (DP) e o contrato de banco só com número
   if (!ehPlanilhaNome && !/\.(txt|pfx|xml|ofx)$/i.test(nome) && (/^(\d+\s*[-.]?\s*)?CONTRATO\b/.test(n) || /^[\s\S]{0,200}\bCONTRATO (PARTICULAR )?DE (LOCACAO|COMODATO|PARCERIA|FRANQUIA|REPRESENTACAO|FORNECIMENTO)\b/.test(u))
-    && !/SOCIAL|ALTERACAO|CONSTITUICAO|CONSOLIDAD|TRANSF\w* (DE )?EIRELI|CAMBIO|MUTUO|EMPRESTIMO|FINANC|CEDULA|CREDITO|PRONAMPE|\bBNB\b|SICOOB|\bCAIXA\b|BRADESCO|\bITAU\b|SANTANDER|\d+ MIL\b|COMPRA|VENDA|\bFAZ\b|FAZENDA|LOTE|QUADRA|TRATOR|ARRENDAMENTO|CONSORCIO|TRABALHO|EXPERIENCIA|ESTAGIO|PARCELA|RECIBO|QUITACAO|TRATAMENTO|DISTRATO|\bROF\b|CONTRATO N[º°RO]{0,2}\.? ?\d|CONTRATO \d{5,}/.test(n)) {
+    && !/SOCIAL|ALTERACAO|CONSTITUICAO|CONSOLIDAD|TRANSF\w* (DE )?EIRELI|CAMBIO|MUTUO|EMPRESTIMO|FINANC|CEDULA|CREDITO|PRONAMPE|\bBNB\b|SICOOB|\bCAIXA\b|BRADESCO|\bITAU\b|SANTANDER|\d+ MIL\b|LOTE|QUADRA|ARRENDAMENTO|CONSORCIO|TRABALHO|EXPERIENCIA|ESTAGIO|PARCELA|RECIBO|QUITACAO|TRATAMENTO|DISTRATO|\bROF\b|CONTRATO N[º°RO]{0,2}\.? ?\d|CONTRATO \d{5,}/.test(n)) {
     const dt = dataDe(/(\d{2})\/(\d{2})\/(20\d{2})/);
     const a = ano(anoNome, anoCurtoDoNome, dt && dt.ano, pastaAno && pastaAno.ano, anoArq);
     if (!a) return null;
