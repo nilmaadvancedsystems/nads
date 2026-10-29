@@ -52,7 +52,18 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
   const [busca, setBusca] = useState('');
   const [ativo, setAtivo] = useState(0);
 
-  const mudar = (p: Partial<Rascunho>) => { setR(x => ({ ...x, ...p })); setErro(''); };
+  // a tarefa que chega do banco depois de aberta (a lista ainda carregava, ou outra pessoa mudou; 29/10/2026: "não salva
+  // nada"): enquanto a pessoa não mexeu no formulário, ele acompanha o banco
+  const [base, setBase] = useState(tarefa?.atualizadaEm ?? '');
+  const [editou, setEditou] = useState(false);
+  if (tarefa && !editou && tarefa.atualizadaEm !== base) {
+    setBase(tarefa.atualizadaEm);
+    const novo = d.rascunhoDe(tarefa);
+    setR(novo);
+    setPrazoTexto(d.prazoParaTela(novo.prazo));
+  }
+
+  const mudar = (p: Partial<Rascunho>) => { setR(x => ({ ...x, ...p })); setEditou(true); setErro(''); };
   const prazo = d.prazoDaTela(prazoTexto);
   const final: Rascunho = { ...r, prazo: prazo ?? r.prazo };
   const mudou = ehNova
@@ -105,7 +116,7 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
     maiorTitulo: d.MAIOR_TITULO,
     maiorDescricao: d.MAIOR_DESCRICAO,
     prazoTexto,
-    setPrazo: (v: string) => { setPrazoTexto(v); setErro(''); },
+    setPrazo: (v: string) => { setPrazoTexto(v); setEditou(true); setErro(''); },
     prazoInvalido: prazo === null,
     prioridades: d.PRIORIDADES,
     setPrioridade: (v: string) => { if (d.ehPrioridade(v)) mudar({ prioridade: v }); },
