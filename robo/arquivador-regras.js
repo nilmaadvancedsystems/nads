@@ -1411,6 +1411,8 @@ function decidir1(entrada, ctx) {
 const PLANILHA_DE_CONTROLE = /^(MOVIMENTO (CONTABIL|BANCARIO)|PLANILHA DE FORNECEDOR|CALCULO (ICMS|SERVICOS?)|ST$|DISTRIBUICAO DE LUCROS|PORCENTAGEM|MODELO DFC|FA[RT]+URAMENTO\b|CONTROLE MENSAL)/;
 // os clientes cujas planilhas soltas vão para CONTÁBIL\RELATÓRIOS ALTERDATA (Vitor, 28/10/2026: a 536, CDL de Taiobeiras)
 const PLANILHA_SOLTA_CLIENTES = new Set([536]);
+// os clientes cujos PDFs escaneados "CCF<data>.pdf" são escrituras de terrenos (Vitor, 29/10/2026: a 584, Empreendimentos Imobiliários)
+const CLIENTES_DE_ESCRITURA_ESCANEADA = new Set([584]);
 // o ano da compra da fazenda quando nem o nome, nem a pasta, nem o contrato dizem (Vitor, 28/10/2026: a Renascer, 2021)
 const ANO_DA_FAZENDA = { RENASCER: 2021 };
 const CONCESSIONARIA = /\b(CEMIG|COELBA|NEOENERGIA|COPASA|EMBASA|SAAE|ENERGISA|2W TELECOM|VIVO|CLARO)\b/;
@@ -1546,6 +1548,27 @@ function pelaPastaENome(entrada, ctx, d) {
   // (c) os documentos de funcionário numa pasta "Docs <Nome>" ("Docs Veronica": a ficha, o diploma, a foto): a pasta decide
   if (pastas.some(p => /^DOCS? (?!(ECF|SPED|FISCA|CONTAB|EMPRESA|SOCIO|CADASTRO|BANCO)\b)[A-Z]{3,}( [A-Z]{2,})?$/.test(p)))
     return fim({ tipo: 'DOCUMENTO DE FUNCIONARIO', setor: 'FOLHA_SOCIETARIO', caminho: ['DEPARTAMENTO PESSOAL', 'FUNCIONÁRIOS', 'DOCUMENTOS FUNCIONARIOS'], competencia: (a => a ? { ano: a } : null)(ano(anoNome, pastaAno && pastaAno.ano, anoArq)) }, 'documento de funcionário na pasta "Docs <nome>"');
+  // a escritura, a matrícula e a certidão de matrícula/inteiro teor do imóvel (Vitor, 29/10/2026: "joga as escrituras no societário"): SOCIETÁRIO\ESCRITURAS\[ANO],
+  // nome original, o cliente da pasta de origem conferida; o ano quando a data é legível (no nome ou no texto), senão sem a subpasta do ano. NÃO é venda de ativos.
+  // Os boletos, as taxas e os recibos de cartório (pedido de matrículas, averbação) continuam sendo pagamento a fornecedor
+  {
+    const pagamento = /BOLETO|TAXA|PEDIDO|AVERBA|RECIBO|COMPROVANTE|PAGAMENTO|GUIA|ITBI|CARTORIO|EMOLUMENTO|HONORARIO|NOTA FISCAL|\bNF\b/;
+    const topoEsc = u.slice(0, 2500), semTexto = u.replace(/\s/g, '').length < 40;
+    const reciboCartorio = /(RECIBO|COMPROVANTE)[\s\S]{0,500}(EMOL|TFJ|PIX|PAGAMENTO|PRENOTACAO)/.test(u.slice(0, 1800));
+    const peloConteudo = !semTexto && !reciboCartorio && (/ESCRITURA (PUBLICA|DE (COMPRA E VENDA|VENDA E COMPRA|DOACAO|CESSAO|PERMUTA))|\bTRASLADO\b[\s\S]{0,400}ESCRITURA|CERTIDAO DE INTEIRO TEOR|CERTIDAO DE MATRICULA|REGISTRO GERAL DE IMOVEIS/.test(topoEsc));
+    const peloNome = !pagamento.test(n.replace(/\bESCRITURA E CERTIDAO\b/, 'ESCRITURA')) && /^(\d+\s*[-.]?\s*)?(TRASLADO\b[\s\S]*\bESCRITURA\b|ESCRITURA\b)/.test(n);
+    const ccf = /^CCF\d{8}/.test(n) && extNome === 'pdf' && semTexto && CLIENTES_DE_ESCRITURA_ESCANEADA.has((cliente() || {}).cliente);
+    if ((/^(pdf|docx?|odt)$/.test(extNome)) && (peloConteudo || peloNome || ccf)) {
+      const x = cliente();
+      if (x && ['pastaConferida', 'doc', 'conta', 'hash'].includes(x.como)) {
+        const noTexto = (/NO ANO DE\s+(20\d{2})/.exec(u) || [])[1] || ((dataDe(/(\d{2})\/(\d{2})\/(20\d{2})/) || {}).ano);
+        const aEsc = ano(anoNome, noTexto);
+        const aRaiz = aEsc || ano(pastaAno && pastaAno.ano, anoArq) || anoAtual;
+        return fim({ cliente: x.cliente, comoCliente: x.como, confianca: x.conf, tipo: 'ESCRITURA', setor: 'FOLHA_SOCIETARIO', caminho: ['SOCIETÁRIO', 'ESCRITURAS'].concat(aEsc ? [String(aEsc)] : []), competencia: { ano: aRaiz } },
+          'escritura/matrícula do imóvel (SOCIETÁRIO\\ESCRITURAS' + (aEsc ? '\\' + aEsc : ', sem ano legível') + '; Vitor, 29/10/2026)' + (ccf ? '; o terreno escaneado da pasta da ' + x.cliente : ''));
+      }
+    }
+  }
   // a compra do imóvel rural: tudo de "Documentos da Faz. <Nome>" (as matrículas, o contrato, os juros) em VENDA DE ATIVOS\ANO\FAZENDA <NOME>
   const faz = pastas.map(p => /^DOCUMENTOS DA FAZ(?:ENDA)?\.? ([A-Z][A-Z ]+?)(?:\.(?:RAR|ZIP|7Z))?$/.exec(p)).find(Boolean);
   if (faz) {
@@ -3335,8 +3358,9 @@ function montarContabil(regra, campos, u, bruto, entrada, ctx, ev, porHash) {
     return Object.assign(base, { acao: 'ARQUIVAR', confianca: c.conf, tipo: mutuo ? 'OPERACAO DE CREDITO' : 'OPERACAO DE CAMBIO', competencia: { ano: campos.ano }, caminho: mutuo ? ['CONTÁBIL', 'OPERAÇÕES DE CRÉDITO', String(campos.ano), 'EMPRÉSTIMO', campos.banco, campos.numero] : ['CONTÁBIL', 'OPERAÇÕES DE CÂMBIO', String(campos.ano), campos.banco, campos.numero], nomeFinal: entrada.nome });
   }
   if (regra.tipo === 'VENDA DE ATIVOS') {
-    if (!campos.ano) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5, evidencias: ev.concat('a data da lavratura da escritura não foi lida') });
-    return Object.assign(base, { acao: 'ARQUIVAR', confianca: c.conf, competencia: { ano: campos.ano }, caminho: ['CONTÁBIL', 'VENDA DE ATIVOS', String(campos.ano)], nomeFinal: entrada.nome });
+    // (Vitor, 29/10/2026: "joga as escrituras no societário") a escritura pública vai para SOCIETÁRIO\ESCRITURAS\[ANO da lavratura]; sem a data legível, sem a subpasta do ano (o ano da raiz é o das pastas de origem)
+    ev.push('escritura pública: SOCIETÁRIO\\ESCRITURAS' + (campos.ano ? '\\' + campos.ano : ', sem ano legível') + ' (não é venda de ativos; Vitor, 29/10/2026)');
+    return Object.assign(base, { acao: 'ARQUIVAR', confianca: c.conf, tipo: 'ESCRITURA', setor: 'FOLHA_SOCIETARIO', competencia: campos.ano ? { ano: campos.ano } : null, caminho: ['SOCIETÁRIO', 'ESCRITURAS'].concat(campos.ano ? [String(campos.ano)] : []), nomeFinal: entrada.nome });
   }
   if (regra.tipo === 'OPERACAO DE CREDITO') {
     // 04: OPERAÇÕES DE CRÉDITO\[ANO]\[TIPO]\[BANCO]\[Nº CONTRATO]\CONTRATO.pdf. Só o CONTRATO/comprovante da contratação, com
