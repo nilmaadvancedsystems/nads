@@ -23,6 +23,8 @@ import { criarCaixaMemoria, type RepoCaixa } from './caixa';
 import { criarCaixaFirestore } from './caixa.firestore';
 import { criarHonorariosMemoria, type RepoHonorarios } from './honorarios';
 import { criarHonorariosFirestore } from './honorarios.firestore';
+import { criarContasPagarMemoria, type RepoContasPagar } from './contasPagar';
+import { criarContasPagarFirestore } from './contasPagar.firestore';
 import { criarNfseMemoria, type RepoNfse } from './nfse';
 import { criarNfseFirestore } from './nfse.firestore';
 import { criarEntregasDeDocumentosMemoria, type RepoEntregasDeDocumentos } from './entregasDeDocumentos';
@@ -408,6 +410,14 @@ let honorarios: RepoHonorarios | null = null;
 export function repoDeHonorarios(): RepoHonorarios {
   if (!honorarios) honorarios = noBanco ? criarHonorariosFirestore() : criarHonorariosMemoria();
   return honorarios;
+}
+
+let contasPagar: RepoContasPagar | null = null;
+
+/** As contas a pagar do escritório (28/10/2026: "o Contas a Pagar do Toriba, no nads"): os fornecedores e as contas. */
+export function repoDeContasPagar(): RepoContasPagar {
+  if (!contasPagar) contasPagar = noBanco ? criarContasPagarFirestore() : criarContasPagarMemoria();
+  return contasPagar;
 }
 
 let entregasDeDocumentos: RepoEntregasDeDocumentos | null = null;

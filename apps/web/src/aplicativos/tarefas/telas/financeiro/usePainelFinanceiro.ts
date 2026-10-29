@@ -3,12 +3,13 @@
 // para onde vai e de onde vem o dinheiro (por conta do plano), os honorários do mês passado (recebidos e em aberto) e as
 // notas fiscais do período. O extrato do banco importado (23/10/2026: "um importador de extrato que vai trazer os dados e
 // informações para o dashboard inicial") entra somado nas entradas e saídas (cada banco como uma linha em "de onde veio"
-// e "para onde foi") e dá o saldo do banco; o mês a mês saiu (23/10/2026: "remova essa parte de mês a mês").
+// e "para onde foi") e dá o saldo do banco; o mês a mês saiu (23/10/2026: "remova essa parte de mês a mês"). O aviso das
+// contas a pagar (28/10/2026: "as que vencem hoje e nos próximos 7 dias, e as vencidas em vermelho"), com o link para lá.
 import { financeiro, formatos, type nfse } from '@nads/core';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { caminhoDaPagina } from '../../casca/navegacao';
-import { useCaixa, useHonorarios, useNfse } from '../../dados/repo';
+import { useCaixa, useContasPagar, useHonorarios, useNfse } from '../../dados/repo';
 import { imprimirHtml } from '../dp/imprimirHtml';
 import { hoje } from './formatosDaNota';
 
@@ -29,6 +30,9 @@ export function usePainelFinanceiro() {
   const notas = useNfse().notas();
   const extrato = caixa.extrato();
   const importacoes = caixa.importacoes();
+  const pagar = useContasPagar();
+  const contasAPagar = pagar.contas();
+  const fornecedores = pagar.fornecedores();
   const navegar = useNavigate();
   const [periodo, setPeriodo] = useState<PeriodoDoPainel>('este-mes');
   const dia = hoje();
@@ -51,6 +55,8 @@ export function usePainelFinanceiro() {
   const temBanco = extrato.lista.length > 0;
   const competencia = financeiro.competenciaAnterior(dia);
   const honorarios = useMemo(() => financeiro.situacaoDaCompetencia(contratos.lista, recebimentos.lista, competencia), [contratos.lista, recebimentos.lista, competencia]);
+  const aviso = useMemo(() => financeiro.avisoDeVencimento(contasAPagar.lista, dia), [contasAPagar.lista, dia]);
+  const nomeDe = (id: string) => financeiro.nomeDoFornecedor(fornecedores.lista.find(f => f.id === id)) || 'Fornecedor';
   const notasDoPeriodo = notas.lista.filter(n => emitida(n) && n.servico.competencia >= de && n.servico.competencia <= ate);
   return {
     carregando: !lanc.carregada || !plano.carregada,
@@ -81,6 +87,16 @@ export function usePainelFinanceiro() {
     ultimaImportacao: importacoes.lista[0] ? { banco: importacoes.lista[0].banco, quando: new Date(importacoes.lista[0].importadoEm).toLocaleDateString('pt-BR') } : null,
     honorarios: { competencia: financeiro.competenciaBr(competencia), carregado: contratos.carregada && recebimentos.carregada, ...honorarios, pct: honorarios.previsto ? Math.round((honorarios.recebido / honorarios.previsto) * 100) : 0 },
     notas: { carregada: notas.carregada, quantas: notasDoPeriodo.length, valor: notasDoPeriodo.reduce((s, n) => s + Math.round(n.servico.valor * 100), 0) / 100 },
+    /** as contas a pagar: as vencidas, as de hoje e as dos próximos 7 dias (as não pagas), cada uma com o fornecedor */
+    pagar: {
+      carregado: contasAPagar.carregada, ...aviso,
+      linhas: [...aviso.vencidas, ...aviso.hoje, ...aviso.proximas].slice(0, 8).map(c => ({
+        id: c.id, fornecedor: nomeDe(c.fornecedorId), valor: formatos.reais(c.valor), vencimento: c.vencimento.slice(8, 10) + '/' + c.vencimento.slice(5, 7),
+        quando: c.vencimento < dia ? 'vencida' as const : c.vencimento === dia ? 'hoje' as const : 'proxima' as const,
+      })),
+    },
+    /** a página das contas a pagar; com vencidas, já filtrada nelas */
+    irParaAsContas: (vencidas: boolean) => navegar(caminhoDaPagina('financeiro', 'pagar') + (vencidas ? '?situacao=vencida' : '')),
     ir: (pagina: 'caixa' | 'honorarios' | 'notas' | 'extrato') => navegar(caminhoDaPagina('financeiro', pagina)),
   };
 }
