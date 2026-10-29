@@ -80,16 +80,12 @@ export function AntecipacaoIcms() {
       </div>
       {vm.exemplos && <p className="hint drive-aviso">Dados de exemplo: as notas de entrada do SIEG são inventadas (TESTE) e o que se marca fica só neste navegador.</p>}
       {!vm.empresa ? (
-        <Vazio icone="briefcase" titulo="Escolha a empresa" texto="Digite o código do ERP ou parte do nome. As notas de entrada de fora do estado vêm dos XMLs do SIEG de cada mês do período." />
+        <Vazio icone="briefcase" titulo="Escolha a empresa" texto="Digite o código do ERP ou parte do nome." />
       ) : vm.carregando ? <Esqueleto linhas={8} numeros={5} /> : (
         <>
-          <p className="hint">
-            {vm.rotuloDoPeriodo}.{vm.mesAberto && ' O mês de hoje ainda está em andamento: as notas dele vão chegando até o fim do mês.'} Fonte: os XMLs do SIEG (as NF-e recebidas com CFOP 6xxx, sem as canceladas). Base da antecipação = valor da operação
-            (produto, despesas e IPI); ICMS interno = base × alíquota interna; antecipação = ICMS interno − ICMS destacado.
-          </p>
           {vm.semXml.length > 0 && (
             <Alerta naLinha titulo={'Sem os XMLs do SIEG em ' + vm.semXml.map(m => m.rotulo).join(', ')}
-              texto={vm.pedindo || vm.comErro ? vm.situacaoDoRobo : 'As notas desses meses não entram até o robô baixar os XMLs (o mesmo "Baixar XMLs do SIEG" da rotina).'}>
+              texto={vm.pedindo || vm.comErro ? vm.situacaoDoRobo : undefined}>
               {vm.progresso && (
                 <span className="progresso-linha">
                   <span className="tarefas-barra larga" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={vm.progresso.pct} aria-label={vm.progresso.texto}><span style={{ width: vm.progresso.pct + '%' }} /></span>
@@ -99,9 +95,6 @@ export function AntecipacaoIcms() {
               {vm.progresso && <p className="hint">{vm.progresso.texto}</p>}
               {!vm.pedindo && <button type="button" className="btn btn-outline" disabled={!vm.roboLigado} title={vm.roboLigado ? undefined : 'O robô do SIEG está desligado'} onClick={() => void vm.pedirXmls()}><Icone nome="download" width={16} height={16} />{vm.comErro ? 'Pedir de novo' : 'Pedir ao robô'}</button>}
             </Alerta>
-          )}
-          {vm.antigos.length > 0 && (
-            <p className="hint">Em {vm.antigos.join(', ')} os XMLs foram baixados antes de o robô guardar a base e a alíquota de cada item: a alíquota interestadual é estimada pelo ICMS (marcada com *). Baixe os XMLs de novo para os números exatos.</p>
           )}
           <section className="card antecipacao-dados">
             <dl className="ent-dados">
