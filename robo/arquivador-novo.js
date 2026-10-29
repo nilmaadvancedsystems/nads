@@ -249,13 +249,16 @@ const ehTedSintegra = b => !!b && b.length > 11 && b.slice(0, 11).toString('lati
 /** O que as regras precisam de cada formato. */
 /** O texto de um RTF: tira os grupos de controle (fonte, cor, estilo), os comandos e as chaves; \'e9 vira "é"; \par e \line viram quebra de linha. */
 function textoDoRtf(buffer) {
-  let s = buffer.toString('latin1');
+  let s = buffer.toString('latin1').replace(/\r?\n/g, '');   // a quebra de linha do arquivo RTF não conta (só o \\par): "Demonstra\r\nção" é "Demonstração"
   s = s.replace(/\{\\\*[^{}]*\}/g, '').replace(/\{\\(fonttbl|colortbl|stylesheet|info|header|footer)(?:[^{}]|\{[^{}]*\})*\}/g, '');
   s = s.replace(/\\'([0-9a-f]{2})/gi, (_, h) => String.fromCharCode(parseInt(h, 16)));
   s = s.replace(/\\u(-?\d+)\??/g, (_, n) => String.fromCharCode(+n < 0 ? +n + 65536 : +n));
   s = s.replace(/\\(par|line|row)\b ?/g, '\n').replace(/\\(tab|cell)\b ?/g, ' ');
   s = s.replace(/\\[a-z]+-?\d* ?/gi, '').replace(/[{}]/g, '').replace(/\\([\\{}])/g, '$1');
-  return s.replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n').trim();
+  s = s.replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n').trim();
+  const i = s.search(/\bCNPJ\s*:/i);
+  if (i > 0) { const ini = s.lastIndexOf('\n', Math.max(0, i - 2)); s = s.slice(Math.max(0, s.lastIndexOf('\n', ini - 1) + 1)); }
+  return s;
 }
 async function montarEntrada(nome, rel, buffer, op) {
   const e = { nome, rel, hash: sha(buffer), tamanho: buffer.length };
@@ -281,7 +284,17 @@ async function montarEntrada(nome, rel, buffer, op) {
     case 'ofx': e.ofx = buffer.toString('latin1'); break;
     // o RTF dos termos e demonstrativos do Alterdata ("292TermoDRE11.2025.rtf"): o texto sem os comandos do RTF, como se fosse a página de um PDF
     case 'rtf': if (/^\s*\{\\rtf/.test(buffer.slice(0, 16).toString('latin1'))) { e.texto = [textoDoRtf(buffer)]; e.paginas = 1; } break;
-    case 'txt': e.txt = buffer.slice(0, 64 * 1024).toString('latin1'); break;
+    case 'txt': {
+      const u8 = buffer.slice(0, 64 * 1024).toString('utf8');
+      e.txt = u8.includes('\uFFFD') ? buffer.slice(0, 64 * 1024).toString('latin1') : u8;
+      // os meses de todos os lançamentos do extrato em texto ("13/03/2025 RENTAB…"): { 'AAAA-MM': n } (o arquivo todo, não só o começo)
+      if (/EXTRATO DE\s*:/i.test(e.txt.slice(0, 600).normalize('NFD').replace(/[\u0300-\u036f]/g, ''))) {
+        const todo = buffer.toString('latin1'), meses = {};
+        for (const m of todo.matchAll(/^\s*(\d{2})\/(\d{2})\/(\d{4})\s+(?!SALDO)\S/gm)) { const k = m[3] + '-' + m[2]; meses[k] = (meses[k] || 0) + 1; }
+        e.txtMeses = meses;
+      }
+      break;
+    }
     case 'xlsx': case 'xls': case 'csv': e.planilha = linhasDaPlanilha(buffer, nome); break;
     case 'zip': if (ehTedSintegra(buffer)) e.tedSintegra = true; break;
     // a imagem escaneada (27/10/2026, Vitor: os comprovantes "Imagem (10).jpg" do Posto Berizal) é lida por OCR, como o PDF
