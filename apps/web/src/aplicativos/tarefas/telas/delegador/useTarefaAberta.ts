@@ -8,19 +8,19 @@ import { baixarBytes, useRetorno } from '@nads/ui';
 import { useState } from 'react';
 import { useOperador } from '../../casca/operador';
 import { useAcesso, useRepo, useTarefasDelegadas } from '../../dados/repo';
-import type { ArquivoParaAnexar } from '../../dados/tarefasDelegadas';
+import { bytesDoAnexo, encolherAnexo } from '../../dados/encolherAnexo';
+import { tamanhoDoArquivo, type ArquivoParaAnexar } from '../../dados/tarefasDelegadas';
 
 const d = tarefas.delegadas;
 type Rascunho = tarefas.delegadas.Rascunho;
 export type AbaDaTarefa = 'tarefa' | 'parecer' | 'historico';
 
 const quando = (iso: string) => (iso ? new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '');
-const tipoDoArquivo = (ext: string) => (ext === 'pdf' ? 'application/pdf' : ext === 'txt' ? 'text/plain' : 'application/octet-stream');
+const tipoDoArquivo = (ext: string) =>
+  (ext === 'pdf' ? 'application/pdf' : ext === 'txt' ? 'text/plain' : ext === 'webp' ? 'image/webp' : 'application/octet-stream');
 
-/** Lê os arquivos escolhidos (os bytes, para subir). */
-async function lerArquivos(fs: File[]): Promise<ArquivoParaAnexar[]> {
-  return Promise.all(fs.map(async f => ({ nome: f.name, bytes: new Uint8Array(await f.arrayBuffer()) })));
-}
+/** Lê os arquivos escolhidos, já encolhidos para gastar o mínimo no banco (a imagem em WebP, o resto em gzip). */
+const lerArquivos = (fs: File[]): Promise<ArquivoParaAnexar[]> => Promise.all(fs.map(encolherAnexo));
 
 /**
  * alvo: o id da tarefa ou 'nova'. voltar: para a lista. criada: depois de criar (paraMim: a tarefa ficou com quem criou).
@@ -130,14 +130,14 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
 
     // ---- os anexos: na nova, esperando o Salvar; na que existe, sobem na hora
     anexos: ehNova
-      ? pendentes.map((a, i) => ({ id: 'p' + i, nome: a.nome, detalhe: entregas.tamanhoLegivel(a.bytes.length) + ' · vai ao salvar' }))
+      ? pendentes.map((a, i) => ({ id: 'p' + i, nome: a.nome, detalhe: entregas.tamanhoLegivel(tamanhoDoArquivo(a)) + ' · vai ao salvar' }))
       : (tarefa?.anexos || []).map(a => ({ id: a.id, nome: a.nome, detalhe: [a.extensao.toUpperCase(), entregas.tamanhoLegivel(a.tamanho), quando(a.em), a.por].filter(Boolean).join(' · ') })),
     limiteDosAnexos: 'Até ' + d.MAIS_ANEXOS + ' arquivos de ' + d.MAIOR_ANEXO / 1024 / 1024 + ' MB cada (' + d.MAIOR_TOTAL_DE_ANEXOS / 1024 / 1024 + ' MB por tarefa).',
     anexando: ocupado === 'anexar',
     async anexar(fs: File[]) {
       if (!fs.length) return;
       const arquivos = await lerArquivos(fs);
-      const problema = d.problemaDosAnexos(arquivos.map(a => ({ nome: a.nome, tamanho: a.bytes.length })), ehNova ? pendentes.map(a => ({ tamanho: a.bytes.length })) : tarefa?.anexos || []);
+      const problema = d.problemaDosAnexos(arquivos.map(a => ({ nome: a.nome, tamanho: tamanhoDoArquivo(a) })), ehNova ? pendentes.map(a => ({ tamanho: tamanhoDoArquivo(a) })) : tarefa?.anexos || []);
       if (problema) { toast(problema); return; }
       if (ehNova) { setPendentes(p => [...p, ...arquivos]); return; }
       if (!tarefa) return;
@@ -157,7 +157,7 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
       try { await repo.tirarAnexo(tarefa.id, id); toast('Arquivo tirado.'); } catch (e) { toast('Não tirei: ' + (e instanceof Error ? e.message : String(e))); }
     },
     async baixarAnexo(id: string) {
-      if (ehNova) { const a = pendentes.find((_, i) => 'p' + i === id); if (a) baixarBytes(a.bytes, a.nome, tipoDoArquivo(d.extensaoDe(a.nome))); return; }
+      if (ehNova) { const a = pendentes.find((_, i) => 'p' + i === id); if (a) baixarBytes(await bytesDoAnexo(a.bytes, a.gzip), a.nome, tipoDoArquivo(d.extensaoDe(a.nome))); return; }
       const a = tarefa?.anexos.find(x => x.id === id);
       if (!tarefa || !a) return;
       try {
