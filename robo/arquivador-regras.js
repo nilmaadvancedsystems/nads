@@ -848,7 +848,8 @@ const REGRAS_PDF = [
       const inst = /INSTITUICAO AUTORIZADA A OPERAR NO MERCADO DE CAMBIO[\s\S]{0,300}/.exec(u);
       return { numero: m ? m[1] : null, ano: m ? +m[4] : null, banco: inst ? bancoDoTexto(inst[0], true) : null, mutuo: /\bMUTUO\b/.test(u) };
     } },
-  { tipo: 'VENDA DE ATIVOS', setor: 'CONTABIL', re: /^[\s\S]{0,1500}ESCRITURA PUBLICA/, fonte: '04 (Venda de Ativos: escritura de imóvel)',
+  // a CDT/CND estadual cita "lavratura de escritura pública" no texto: quem abre pela certidão não é escritura (29/10/2026)
+  { tipo: 'VENDA DE ATIVOS', setor: 'CONTABIL', re: /^(?![\s\S]{0,500}CERTIDAO (DE DEBITOS|NEGATIVA|POSITIVA|CONJUNTA|DE REGULARIDADE|DE SITUACAO|DE QUITACAO))[\s\S]{0,1500}ESCRITURA PUBLICA/, fonte: '04 (Venda de Ativos: escritura de imóvel)',
     campos: u => { const m = /SAIBAM[\s\S]{0,500}?\((\d{2})\/(\d{2})\/(20\d{2})\)/.exec(u) || /LAVRAD[AO][\s\S]{0,200}?(\d{2})\/(\d{2})\/(20\d{2})/.exec(u); return { ano: m ? +m[3] : null }; } },
   // ---- 27/10/2026 (Vitor): o relatório da DEFIS do Alterdata e o PGDAS-D, antes do DAS (o título do PGDAS-D contém o dele) ----
   // o relatório da DEFIS que o Alterdata gera (um PDF por cliente, "Declaração Anual do Simples Nacional - DASN"): em 14. DEFIS

@@ -996,6 +996,15 @@ igual('a agência e a conta no nome do arquivo ("Entradas_Saidas_ag3155cc990348_
   const CRED_MUTUO = { texto: ['SISBB\nTRANSFERENCIA ENTRE CONTAS CORRENTES\nVALOR: 50.000,00\nDATA: 24/02/2025'] };
   igual('... a planilha do mútuo e o comprovante de crédito do mútuo não são o contrato: não vão para EMPRÉSTIMO', [d29('Emprestimo Mutuo Ouro Verde.xlsx', 'FERNANDO\\408 OURO VERDE MINERAÇÃO filiais 409 e 410\\2026\\', { planilha: [['x']] }).acao, /EMPRÉSTIMO$/.test(d29('24-02-2025 CREDITO MUTUO CARLO X KOPEK.pdf', 'FERNANDO\\568 BRAZILIAN COFFEE LTDA\\2025\\02.2025\\', CRED_MUTUO).destinoRelativo || '')], ['NAO_IDENTIFICADO', false]);
 }
+// ---------- 21. NÃO IDENTIFICADOS (29/10/2026, reprocesso-ni-7): os bugs B1 a B12, cada um com o texto real de um arquivo ----------
+{
+  const d21 = (nome, texto, rel, extra) => R.decidir(Object.assign({ nome, rel: (rel || '') + nome, texto: [texto] }, extra || {}), { cadastro: cad15, hoje: new Date(2026, 9, 29) });
+  // B1. a CDT estadual cita "lavratura de escritura pública" no item 2: não é escritura
+  const T_CDT_REAL = "SECRETARIA DE ESTADO DE FAZENDA DE MINAS GERAIS\nCertidão de Débitos Tributários\nNegativa\nData de emissão\n25/06/2026\nData de validade\n23/09/2026\nRazão Social\nDORNAS HAVANA LTDA\nCNPJ\n01.884.649/0001-85\nRessalvado o direito de a Fazenda Pública Estadual cobrar e inscrever quaisquer dívidas de responsabilidade do sujeito passivo acima\nidentificado que vierem a ser apuradas, é certificado que:\n1. Não constam débitos relativos a tributos administrados pela Fazenda Pública Estadual e/ou Advocacia Geral do Estado;\n2. No caso de utilização para lavratura de escritura pública ou registro de formal de partilha, de carta de ajudicação expedida em autos\nde inventário ou de arrolamento, de sentença em ação de separação judicial, divórcio ou de partilha de bens na união estável e de\nescritura pública de  doação de  bens  imóveis, esta  certidão somente terá  validade se  acompanhada da  Certidão de  Pagamento /\nDesoneração do ITCD, prevista no artigo 39 do Decreto 43.981/2005.\nCertidão válida para todos os estabelecimentos da empresa.\nPágina 1 de 1";
+  igual('B1: a CDT estadual com "escritura pública" no item 2 é CERTIDÃO (não VENDA DE ATIVOS)', so15(d21('CDT Estadual.pdf', T_CDT_REAL, '0010 - DORNAS HAVANA LTDA - ME\\CERTIDÕES\\')), ['ARQUIVAR', null, '10 - DORNAS HAVANA LTDA - ME\\SOCIETÁRIO\\CERTIDÕES\\ESTADUAL', '25-06-2026.pdf']);
+  igual('B1: a escritura de verdade continua VENDA DE ATIVOS', so15(d21('Escritura.pdf', 'LIVRO 123\nESCRITURA PUBLICA DE COMPRA E VENDA\nSAIBAM quantos esta escritura virem que aos dez dias do mês (10/03/2025) compareceram DORNAS HAVANA LTDA CNPJ 01.884.649/0001-85', '0010 - DORNAS HAVANA LTDA - ME\\IMOVEIS\\'))[2], '10 - DORNAS HAVANA LTDA - ME\\CONTÁBIL\\VENDA DE ATIVOS\\2025');
+  // ---- fim da seção 21 ----
+}
 // ---------- 11. PRODUCAO de verdade, numa pasta temporária (nunca no Drive) ----------
 (async () => {
   const sb = fs.mkdtempSync(path.join(os.tmpdir(), 'teste-arqnovo-prod-'));
