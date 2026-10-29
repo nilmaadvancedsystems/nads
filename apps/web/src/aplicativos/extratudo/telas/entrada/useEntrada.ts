@@ -4,6 +4,7 @@ import { empresas } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useNavigate } from 'react-router';
 import { useEscolherEmpresa } from '../../../../comum/useEscolherEmpresa';
+import { useEmpresasDaConta } from '../../../tarefas/casca/useEmpresasDaConta';
 import { caminho } from '../../ferramentas/extrator/casca/caminho';
 import { PAGINA_INICIAL } from '../../ferramentas/extrator/casca/navegacao';
 import { useRepo, useVersaoDoRepo } from '../../ferramentas/extrator/dados/repo';
@@ -22,7 +23,9 @@ export function useEntrada() {
     navegar(caminho(empresas.rotaDaEmpresa(x) + '/' + (pronta ? 'conferencia/resultado' : PAGINA_INICIAL)));
   }
 
-  const busca = useEscolherEmpresa(repo.listarEmpresas(), entrar);
+  // só as empresas de quem é o responsável (o admin e o diretor, todas; 29/10/2026)
+  const permitidas = useEmpresasDaConta();
+  const busca = useEscolherEmpresa(permitidas.filtrar(repo.listarEmpresas()), entrar);
 
   return {
     ...busca,

@@ -15,6 +15,7 @@ import { caminho } from './caminho';
 import { CascaConciliador } from './CascaConciliador';
 import { idDaPagina, SECAO, type IdEtapa } from './navegacao';
 import { SessaoProvider, useSessao } from './sessao';
+import { SoMinhaEmpresa } from '../../tarefas/casca/SoMinhaEmpresa';
 
 function Tela() {
   const s = useSessao();
@@ -40,7 +41,7 @@ export function EmpresaAberta() {
   if (!empresa) return <Navigate to={caminho()} replace />;
   const rota = empresas.rotaDaEmpresa(empresa);
   if (secao !== SECAO || !pagina || param !== rota) return <Navigate to={caminho(rota + '/' + idDaPagina(secao === SECAO && pagina ? pagina as IdEtapa : 'bandeiras'))} replace />;
-  return (
+  const tela = (
     // key = empresa: trocar de empresa começa do zero (nada é guardado)
     <SessaoProvider key={rota} empresa={empresa} rota={rota} etapa={pagina as IdEtapa}>
       <TopoProvider>
@@ -50,4 +51,5 @@ export function EmpresaAberta() {
       </TopoProvider>
     </SessaoProvider>
   );
+  return <SoMinhaEmpresa empresa={empresa} voltar={caminho()}>{tela}</SoMinhaEmpresa>;
 }
