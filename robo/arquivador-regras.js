@@ -658,15 +658,48 @@ const chaveDaNfse = (prestador, n) => (prestador && n != null && String(n) !== '
 function classificarXml(textoXml) {
   const raiz = lerXml(textoXml);
   if (!raiz) return { erro: 'CONTEUDO_ILEGIVEL' };
-  const r = _classificarXml(raiz);
+  // o envelope de NF-e do SCI/Alterdata (B3, 29/10/2026): <NFeDFe><procNFe>…</procNFe>[<procEventoNFe>]</NFeDFe> e <ListaGeralSCI><nfeProc>…</nfeProc></ListaGeralSCI>
+  // com UMA nota só dentro: desembrulha e trata como nfeProc (a chave e os documentos saem da própria nota). Mais de uma nota: não é o caso.
+  let r = null, envelope = false;
+  if (ENVELOPES_NFE.includes(raiz.tag)) {
+    const notas = [...todos(raiz, 'infNFe')];
+    const dentro = primeiro(raiz, 'procNFe') || primeiro(raiz, 'nfeProc') || primeiro(raiz, 'NFe');
+    if (notas.length === 1 && dentro) {
+      r = _classificarXml({ tag: 'nfeProc', filhos: dentro.tag === 'NFe' ? [dentro] : dentro.filhos, texto: '' });
+      envelope = !!r;
+      if (r && [...todos(raiz, 'tpEvento')].some(x => x.texto.trim() === '110111')) r.canceladaNoEnvelope = true;
+    }
+  }
+  if (!envelope) r = _classificarXml(raiz);
   if (!r) return { erro: 'TIPO_XML_NAO_TRATADO', tag: raiz.tag };
   r.nomes = nomesDe(raiz);
   // a chave de acesso (índice de chaves, 23/10/2026): do evento, a do documento a que ele se refere; da nota, a dela
   if (!r.chave) r.chave = ((/Id="(?:NFe|CTe|MDFe)(\d{44})"/.exec(String(textoXml))) || [])[1] || txt(raiz, 'protNFe/infProt/chNFe', 'protCTe/infProt/chCTe', 'protMDFe/infProt/chMDFe') || null;
   return r;
 }
+const ENVELOPES_NFE = ['NFeDFe', 'ListaGeralSCI'];
+/** NFS-e do layout <notas><nfse> (SINTESE, Divisa Alegre e outros; B3b, 29/10/2026): o arquivo é a exportação do mês, com uma ou mais notas do mesmo prestador. */
+function classificarNotasNfse(raiz) {
+  const lista = raiz.filhos.filter(f => f.tag === 'nfse');
+  if (!lista.length || lista.length !== raiz.filhos.length) return null;
+  const itens = [];
+  for (const n of lista) {
+    const num = txt(n, 'numero'), d = txt(n, 'dataEmissao');
+    const prest = so(txt(n, 'prestadorServico/cnpj', 'prestadorServico/cpfCnpj') || '');
+    if (!num || !/^\d+$/.test(num) || !mesAnoIso(d) || !(prest.length === 14 || prest.length === 11)) return null;
+    itens.push({ num: +num, data: d, prest, toma: so(txt(n, 'tomadorServico/cpfCnpj', 'tomadorServico/cnpj', 'tomadorServico/cpf') || '') });
+  }
+  // um prestador só e um mês só; senão não é a exportação de um cliente num mês, e fica para olhar
+  if (new Set(itens.map(i => i.prest)).size !== 1 || new Set(itens.map(i => mesAnoIso(i.data))).size !== 1) return null;
+  if (new Set(itens.map(i => i.num)).size !== itens.length) return null;
+  const emit = [itens[0].prest];
+  if (itens.length === 1) return { tipo: 'NFS-e', sub: '', nome: mesAnoIso(itens[0].data) + '_NFS-e_' + itens[0].num + '.xml', emit, partes: emit.concat(itens[0].toma.length === 14 || itens[0].toma.length === 11 ? [itens[0].toma] : []), data: itens[0].data, chave: chaveDaNfse(emit[0], itens[0].num) };
+  const nums = itens.map(i => i.num);
+  return { tipo: 'NFS-e', sub: '', nome: mesAnoIso(itens[0].data) + '_NFS-e_' + Math.min(...nums) + ' A ' + Math.max(...nums) + '.xml', emit, partes: emit, data: itens[0].data, lote: itens.length };
+}
 function _classificarXml(raiz) {
   const tag = raiz.tag;
+  if (tag === 'notas') return classificarNotasNfse(raiz);
   // a inutilização de numeração (Vitor, 23/10/2026): o XML do cliente (o emitente), em <XML>\<modelo>\INUTILIZAÇÕES
   if (/^(procInut|inut|retInut)(NFe|CTe)$/.test(tag)) {
     const pedido = primeiro(raiz, 'inutNFe') || primeiro(raiz, 'inutCTe') || (/^inut/.test(tag) ? raiz : null);
@@ -1538,6 +1571,8 @@ function decidirXml(entrada, ctx, ev) {
     return { acao: 'DESCARTAR', motivo: 'MENSAGEM_DA_SEFAZ', confianca: 1, tipo: 'DESCARTE', setor: 'FISCAL', evidencias: ['mensagem trocada com a SEFAZ (' + (info.tag || '?') + ', ' + entrada.nome + '): não é documento do cliente; vai para a quarentena, nunca apagada (Vitor, 23/10/2026)'] };
   }
   if (info.erro) return { acao: 'NAO_IDENTIFICADO', motivo: info.erro, confianca: 0, tipo: 'XML ' + (info.tag || '?'), setor: 'FISCAL' };
+  if (info.canceladaNoEnvelope) ev.push('envelope do SCI (NFeDFe) com o evento de cancelamento (110111) junto da nota: arquivado como a nota, na pasta da NF-e');
+  if (info.lote) ev.push('exportação do mês com ' + info.lote + ' NFS-e do mesmo prestador, arquivada inteira');
   const cad = ctx.cadastro;
   let cand = [];
   for (const d of info.partes) for (const c of clientesDoDoc(d, cad)) if (!cand.includes(c)) cand.push(c);
