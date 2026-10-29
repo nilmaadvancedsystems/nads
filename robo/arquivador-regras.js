@@ -964,7 +964,7 @@ const REGRAS_PDF = [
     campos: u => ({ livro: /REGISTRO DE ENTRADAS/.test(u) ? 'REGISTRO DE ENTRADAS' : /REGISTRO DE SAIDAS/.test(u) ? 'REGISTRO DE SAIDAS' : 'APURACAO ICMS', periodo: periodoEscrito(u) || periodoLivre(u) }) },
   // ---- documentos fiscais em PDF (05d §1) ----
   { tipo: 'NFC-e PDF', setor: 'FISCAL', re: /DANFE NFC-E|DOCUMENTO AUXILIAR DA NOTA FISCAL DE CONSUMIDOR|PORTALNFCE|\/NFCE\b|CONSUMIDOR NAO IDENTIFICADO/, fonte: '05d §1 (NFC-e em PDF)', campos: u => camposDeNota(u) },
-  { tipo: 'NF-e PDF', setor: 'FISCAL', re: /\bDANFE\b|DOCUMENTO AUXILIAR DA NOTA FISCAL ELETRONICA/, fonte: '05d §1', campos: u => camposDeNota(u) },
+  { tipo: 'NF-e PDF', setor: 'FISCAL', re: /^(?![\s\S]{0,800}DENUNCIA ESPONTANEA)[\s\S]*?(\bDANFE\b|DOCUMENTO AUXILIAR DA NOTA FISCAL ELETRONICA)/, fonte: '05d §1 (a denúncia espontânea à SEFAZ cita a DANFE, mas não é nota; 29/10/2026)', campos: u => camposDeNota(u) },
   { tipo: 'CT-e PDF', setor: 'FISCAL', re: /\bDACTE\b|DOCUMENTO AUXILIAR DO CONHECIMENTO DE TRANSPORTE/, fonte: '05d §1', campos: u => camposDeNota(u) },
   { tipo: 'NFS-e PDF', setor: 'FISCAL', re: /^[\s\S]{0,100}NUMERO DA NOTA\s*\n\s*\d{1,9}\s*\n\s*\d{2}\/\d{2}\/20\d{2}\s*\n\s*DATA DA EMISSAO[\s\S]{0,600}PRESTADOR DE SERVICOS[\s\S]{0,1500}TOMADOR DE SERVICOS|\bDANFSE\b|^\s*DANFSE\s*V\d|DOCUMENTO\s*AUXILIAR\s*DA\s*NFS-E|^\s*IDENTIFICACAO DA NFS-E|^(?![\s\S]{0,1200}(TERMO DE CANCELAMENTO|INSTRUCAO NORMATIVA|\bNFTS\b))(?=[\s\S]*\bTOMADOR)[\s\S]*?(NOTA FISCAL DE SERVICOS? ELETRONICA|\bNFS-E\b)/, fonte: '05d §1 (NFS-e; o título solto só vale com TOMADOR no texto: o termo de credenciamento, a senha, o e-mail e a fatura que citam "NFS-e" não são nota, 29/10/2026)', campos: u => camposDeNfse(u) },
   // relatório mensal de notas (05d §1: emitidas em EMITIDOS\RELATÓRIO MENSAL\[ANO]; recebidas em RECEBIDOS\RELATÓRIO MENSAL)
@@ -1126,7 +1126,13 @@ function camposDeComprovante(u) {
 function camposDeNota(u) {
   // chave de acesso: 44 dígitos, em blocos de 4 separados por espaço (nunca começa no meio de outro número)
   const chave = (/(?<!\d)(\d{4}(?: ?\d{4}){10})(?!\d)/.exec(u) || [])[1];
-  const ch = chave ? so(chave) : null;
+  let ch = chave ? so(chave) : null;
+  // B7 (29/10/2026): a chave pontuada do DACTE ("35.2304.19.209.905/0002-85-57-001-000.001.096-100.001.255-0") e a em blocos de 4 com ponto
+  // ("3125.0223.8872.…"): 44 dígitos com . / - entre eles, e só vale com o dígito verificador da chave certo
+  if (!ch || ch.length !== 44) {
+    const K = require('./arquivador-chaves');
+    for (const m of u.matchAll(/(?<![\d.\/-])\d(?:[ .\/-]?\d){43}(?![ .\/-]?\d)/g)) { const d = so(m[0]); if (d.length === 44 && K.chaveValida(d)) { ch = d; break; } }
+  }
   const emissao = dataBr(linhaApos(u, /DATA (DA |DE )?EMISSAO|\bEMISSAO\b/, 80)) || dataBr(u.slice(0, 1500));
   return { chave: ch && ch.length === 44 ? ch : null, emissao, cancelada: /CANCELAD[AO]/.test(u.slice(0, 1500)) };
 }
@@ -2907,6 +2913,8 @@ function montarNotaPdf(regra, campos, u, bruto, base, c, ctx, ev) {
   // o download do SIEG/portal nomeia "<chave> - <RAZÃO SOCIAL DO EMITENTE>.pdf": a razão vem do nome quando a chave confere
   const peloNome = /^(\d{44}) - (.+)\.pdf$/i.exec(base.nomeArquivo || '');
   if (!emissor && peloNome && peloNome[1] === ch) emissor = peloNome[2];
+  // o DACTE (B7, 29/10/2026): o nome do emitente é a linha depois de "Nº. DOCUMENTO n / SÉRIE n"; a leitura genérica pegaria a linha do endereço antes do CNPJ
+  if (!emissor && tipo === 'CT-e') { const m = /N[º°]\.? DOCUMENTO\s+\d+\s*\n+\s*S[ÉE]RIE\s+\d+\s*\n+\s*([^\n]{4,})\n/i.exec(bruto); if (m) emissor = m[1].trim(); }
   if (!emissor) {
     // razão social do emitente: a linha que vem logo antes do CNPJ dele no texto
     const docs = documentosDoTexto(bruto);
@@ -2914,6 +2922,7 @@ function montarNotaPdf(regra, campos, u, bruto, base, c, ctx, ev) {
     if (d) { const antes = bruto.slice(Math.max(0, d.pos - 200), d.pos).split('\n').map(s => s.trim()).filter(s => /[A-Za-z]{3}/.test(s) && !/CNPJ|INSCRI|ENDERE|RUA|AV\.|BAIRRO|CEP|FONE|PROTOCOLO|AUTORIZA|CHAVE|DANFE|NATUREZA|EMISS|ENTRADA|SA[IÍ]DA/i.test(s)); emissor = antes.pop() || null; }
   }
   if (!emissor) { const m = /RECEBEMOS DE\s+(.{4,90}?)\s+OS PRODUTOS/.exec(u); if (m) { emissor = m[1]; ev.push('o emissor pelo canhoto da DANFE'); } }
+  if (!ehEmitente && emissor && emissorInvalido(emissor, cad.porCod.get(c.cliente))) emissor = null;   // endereço ou o próprio cliente lidos como emissor (29/10/2026)
   if (!emissor) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'VOCABULARIO_AUSENTE', confianca: 0.5, evidencias: ev.concat('razão social do emissor não lida') });
   const agro = tipo === 'NF-e' ? (/CARVAO VEGETAL|\bCARVAO\b/.test(u) ? 'CARVÃO' : /\bCAFE (EM GRAO|CRU|BENEFICIADO|ARABICA|CONILON)/.test(u) ? 'CAFÉ' : /\b(BOVINOS?|GADO|NOVILH[AO]S?|BEZERR[AO]S?)\b/.test(u) ? 'GADO' : null) : null;
   const pasta = ['DOCS', lado].concat(campos.cancelada ? ['CANCELADAS'] : tipo === 'CT-e' ? ['ESPECÍFICOS', 'TRANSPORTES', 'CT-E'] : agro ? ['ESPECÍFICOS', 'AGRO', agro] : []);
@@ -2942,6 +2951,7 @@ function emissorDoLayout(bruto, dPrestador) {
 function emissorInvalido(emissor, cli) {
   if (!emissor) return true;
   if (/\b(PRA[ÇC]A|RUA|AVENIDA|AV\.|RODOVIA|CEP|BAIRRO)\b|\d{5}-?\d{3}/i.test(emissor)) return true;
+  if (/\b(INSC|INSCRI[ÇC][AÃ]O|ESTADUAL|SUBST|TRIBUT[AÁ]RI[AO]|CNPJ|CPF|PROTOCOLO|CHAVE|NATUREZA|DESTINAT[AÁ]RIO|REMETENTE)\b/i.test(emissor)) return true;   // rótulo de campo lido como nome
   const sem = s => norm(s).replace(/[^A-Z0-9]/g, '');
   return !!(cli && cli.razao && sem(emissor).length >= 10 && (sem(emissor) === sem(cli.razao) || sem(cli.razao).startsWith(sem(emissor).slice(0, 14)) && sem(emissor).startsWith(sem(cli.razao).slice(0, 14))));
 }
