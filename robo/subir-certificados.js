@@ -277,6 +277,14 @@ async function main() {
   for (const i of itens) totais[i.situacao] = (totais[i.situacao] || 0) + 1;
   console.log('csv: ' + saida);
   console.log('totais: ' + Object.entries(totais).sort((a, b) => ordem[a[0]] - ordem[b[0]]).map(([k, v]) => k + ' ' + v).join(' · ') + ' · total ' + itens.length);
+  // --json <arquivo>: o pacote que a tela Senhas › Importar certificados aceita (o mesmo formato do pacote do Toriba), com os
+  // que sobem; a senha vai dentro (o arquivo é para subir e apagar)
+  const json = arg('--json', null);
+  if (json) {
+    const certificados = itens.filter(i => i.situacao === 'subir').map(i => ({ nome: i.empresa, codigo: i.codigo, cnpj: i.documento, nomeArquivo: i.nome, arquivo: i.buf.toString('base64'), senha: i.senha }));
+    fs.writeFileSync(json, JSON.stringify({ certificados }, null, 1), 'utf8');
+    console.log('pacote: ' + json + ' (' + certificados.length + ' certificados)');
+  }
   if (!APLICAR) { console.log('Simulação: nada foi gravado no banco. Para gravar: NADS_CODIGO_COFRE=... node subir-certificados.js ... --aplicar'); return; }
 
   // 5. gravar no cofre (igual à tela: useSegredos.salvarCert + useCofre.salvar)
