@@ -113,10 +113,18 @@ export function useLoteDoDp() {
     }
   });
 
+  // os salvos para enviar depois (29/10/2026: "tenha a opção só de salvar para enviar posteriormente"): os lotes que
+  // subiram e nunca foram disparados. Já ficam no banco com os pedaços dos arquivos (o robô só apaga os pedaços depois de
+  // enviar), e o robô só dispara o que a pessoa pediu (status 'disparar'), então salvar é só não disparar agora.
+  const salvos = lotes.lista.filter(l => ['pendente', 'lendo', 'lido'].includes(l.status) && !l.resultados.length);
+
   return {
     exemplos: repo.exemplos,
     carregando: !lotes.carregados,
     lotes: lotes.lista,
+    salvos,
+    /** o lote aberto ainda não foi disparado (dá para salvar para depois) */
+    podeSalvar: !!atual && salvos.some(l => l.id === atual.id),
     atual,
     escolherLote: setEscolhido,
     arquivos: lista,
@@ -165,6 +173,11 @@ export function useLoteDoDp() {
     async tirar(arquivo: ArquivoDoLote, fora: boolean) {
       if (!atual) return;
       try { await repo.tirar(atual.id, arquivo.id, fora); } catch (e) { toast('Não consegui: ' + (e instanceof Error ? e.message : String(e))); }
+    },
+    /** guarda o lote aberto para disparar depois: nada sai agora */
+    salvar() {
+      if (!atual) return;
+      toast('Lote salvo. Ele fica em "Salvos" com os arquivos; nada é enviado até você abrir e disparar.');
     },
     /** dispara o lote (os clientes ainda não enviados), depois de confirmar */
     async disparar() {
