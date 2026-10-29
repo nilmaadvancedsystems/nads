@@ -362,7 +362,21 @@ function clientesDoDoc(doc, cad) {
 }
 
 /** Cliente pela pasta (ou contêiner) onde o arquivo estava: "356 A7 …", "2026-09\GRANMIX …", "SIEG 2026-09 - <nome>.zip". */
+/**
+ * A pasta de origem que dá o cliente. (29/10/2026) A subpasta mais funda que só tem o nome do cliente ("SU SEDUÇÃO MODA INTIMA LTDA.rar") não tira a força da
+ * pasta de cima que traz o código e o nome conferidos ("0443 - SU SEDUÇÃO MODA INTIMA LTDA - ME"), quando as duas dizem o MESMO cliente.
+ */
 function clienteDaPasta(rel, cad) {
+  const r = clienteDaPasta1(rel, cad);
+  if (!r || r.forte) return r;
+  const partes = partesDoCaminho(rel);
+  for (let k = partes.length - 1; k >= 2; k--) {
+    const acima = clienteDaPasta1(partes.slice(0, k).concat('x').join(String.fromCharCode(92)), cad);
+    if (acima && acima.forte && acima.codigo === r.codigo) return Object.assign({}, acima, { como: r.como + '; confere com ' + acima.como });
+  }
+  return r;
+}
+function clienteDaPasta1(rel, cad) {
   const partes = partesDoCaminho(rel).slice(0, -1);
   const nomeArq = partesDoCaminho(rel).slice(-1)[0] || '';
   const mapa = cad.mapaMigracao || null;
@@ -662,7 +676,20 @@ const chaveDaNfse = (prestador, n) => (prestador && n != null && String(n) !== '
 /** O que o XML é: { tipo, sub, nome, emit, partes, evento, nomes, competencia } ou { erro }. */
 function classificarXml(textoXml) {
   const raiz = lerXml(textoXml);
-  if (!raiz) return { erro: 'CONTEUDO_ILEGIVEL' };
+  if (!raiz) return classificarRetEventoQuebrado(textoXml) || { erro: 'CONTEUDO_ILEGIVEL' };
+  // a distribuição de DF-e (retDistDFeInt, a consulta ao Ambiente Nacional; 29/10/2026): o documento vem dentro, em <docZip> (gzip em base64).
+  // Com UM documento só (a nota completa, procNFe/procCTe ou o evento), vale o que ele diz: o mesmo emitente, destinatário, data, número e chave.
+  // Resumo (resNFe) ou mais de um documento não tem como ser tratado aqui
+  if (raiz.tag === 'retDistDFeInt') {
+    const docs = [...todos(raiz, 'docZip')];
+    if (docs.length === 1) {
+      let dentro = null;
+      try { dentro = require('zlib').gunzipSync(Buffer.from(docs[0].texto.replace(/\s+/g, ''), 'base64')).toString('utf8'); } catch (e) { dentro = null; }
+      const r = dentro && /^\s*<(nfeProc|procNFe|cteProc|procEvento|procCTe)/.test(dentro) ? classificarXml(dentro) : null;
+      if (r && !r.erro) { r.distribuicao = true; return r; }
+    }
+    return { erro: 'TIPO_XML_NAO_TRATADO', tag: raiz.tag };
+  }
   // o envelope de NF-e do SCI/Alterdata (B3, 29/10/2026): <NFeDFe><procNFe>…</procNFe>[<procEventoNFe>]</NFeDFe> e <ListaGeralSCI><nfeProc>…</nfeProc></ListaGeralSCI>
   // com UMA nota só dentro: desembrulha e trata como nfeProc (a chave e os documentos saem da própria nota). Mais de uma nota: não é o caso.
   let r = null, envelope = false;
@@ -684,6 +711,22 @@ function classificarXml(textoXml) {
   return r;
 }
 const ENVELOPES_NFE = ['NFeDFe', 'ListaGeralSCI'];
+/**
+ * O retorno de evento da SEFAZ que o emissor gravou quebrado ("<retEvento>…</nfeProc>", sem a tag de abertura do envelope; 29/10/2026: os
+ * "…Proc.xml" de 457 bytes do Posto Berizal): não é XML bem formado, mas a chave, o tipo do evento e a data estão escritos. Só o evento com a chave
+ * de 44 dígitos, o código do evento e a data do registro; o emitente da chave é o cliente.
+ */
+function classificarRetEventoQuebrado(texto) {
+  const t = String(texto || '');
+  if (!/^\s*(<\?xml[^>]*\?>\s*)?<retEvento\b/.test(t)) return null;
+  const g = n => { const m = new RegExp('<' + n + '>([^<]+)</' + n + '>').exec(t); return m ? m[1].trim() : null; };
+  const ch = g('chNFe') || g('chCTe'), desc = g('xEvento'), d = g('dhRegEvento'), cStat = g('cStat');
+  if (!(ch && /^\d{44}$/.test(ch) && desc && diaIso(d) && /^13[5-6]$/.test(String(cStat)))) return null;
+  const modelo = ch.slice(20, 22);
+  const tipo = modelo === '57' || modelo === '67' ? 'CT-e' : modelo === '58' ? 'MDF-e' : 'NF-e';
+  const emitChave = [ch.slice(6, 20)];
+  return { tipo, sub: 'EVENTOS', nome: diaIso(d) + ' - ' + nomeEvento(desc) + ' ' + tipo + ' ' + numChave(ch) + '.xml', emit: emitChave, partes: emitChave, evento: true, data: d, chave: ch, nomes: {}, quebrado: true };
+}
 /** NFS-e do layout <notas><nfse> (SINTESE, Divisa Alegre e outros; B3b, 29/10/2026): o arquivo é a exportação do mês, com uma ou mais notas do mesmo prestador. */
 function classificarNotasNfse(raiz) {
   const lista = raiz.filhos.filter(f => f.tag === 'nfse');
@@ -1710,7 +1753,7 @@ function decidirXml(entrada, ctx, ev) {
   if (!String(entrada.xml == null ? '' : entrada.xml).replace(/[\u0000﻿\s]+/g, '')) {
     return { acao: 'DESCARTAR', motivo: 'CONTEUDO_ILEGIVEL', confianca: 1, tipo: 'DESCARTE', setor: 'FISCAL', evidencias: ['XML vazio (' + (entrada.tamanho != null ? entrada.tamanho + ' bytes, ' : '') + 'só quebra de linha, espaço ou bytes zero): não há documento; vai para a quarentena, nunca apagado'] };
   }
-  const info = classificarXml(entrada.xml);
+  let info = classificarXml(entrada.xml);
   if (info.erro === 'TIPO_XML_NAO_TRATADO' && (MENSAGEM_SEFAZ.test(info.tag || '') || NOME_MENSAGEM_SEFAZ.test(entrada.nome || ''))) {
     return { acao: 'DESCARTAR', motivo: 'MENSAGEM_DA_SEFAZ', confianca: 1, tipo: 'DESCARTE', setor: 'FISCAL', evidencias: ['mensagem trocada com a SEFAZ (' + (info.tag || '?') + ', ' + entrada.nome + '): não é documento do cliente; vai para a quarentena, nunca apagada (Vitor, 23/10/2026)'] };
   }
@@ -1718,6 +1761,11 @@ function decidirXml(entrada, ctx, ev) {
   if (info.canceladaNoEnvelope) ev.push('envelope do SCI (NFeDFe) com o evento de cancelamento (110111) junto da nota: vai para CANCELADAS, não como nota normal (Vitor, 29/10/2026)');
   if (info.lote) ev.push('exportação do mês com ' + info.lote + ' NFS-e do mesmo prestador, arquivada inteira');
   const cad = ctx.cadastro;
+  // o CPF de um sócio não vence o CNPJ (29/10/2026): se o emitente ou o destinatário com CNPJ é cliente, o CPF de um sócio dele que aparece na
+  // nota (o destinatário pessoa física, o produtor) não puxa a nota para a pasta do sócio nem a leva para uma segunda pasta
+  const cpfsDosSocios = new Set();
+  for (const d of info.partes) if (d.length === 14) for (const c of clientesDoDoc(d, cad)) for (const so of ((cad.porCod.get(c) || {}).socios || [])) if (so && so.cpf) cpfsDosSocios.add(String(so.cpf).replace(/D/g, ''));
+  if (cpfsDosSocios.size && info.partes.some(d => d.length === 14 && clientesDoDoc(d, cad).length)) info = Object.assign({}, info, { partes: info.partes.filter(d => d.length === 14 || !cpfsDosSocios.has(d)) });
   let cand = [];
   for (const d of info.partes) for (const c of clientesDoDoc(d, cad)) if (!cand.includes(c)) cand.push(c);
   if (info.partes.includes('27872981000113') && !info.emit.includes('27872981000113')) cand = cand.filter(c => !clientesDoDoc('27872981000113', cad).includes(c));
@@ -1946,7 +1994,10 @@ const ehMaquininha = u => /TARIFA|TAXA|BANDEIRA|\bNSU\b|\bMDR\b/.test(u) && /(DE
  */
 function clientePeloNomeCurto(resto, cad) {
   const achados = clientesPeloNomeCurto(resto, cad);
-  return achados.length === 1 ? achados[0] : null;
+  if (achados.length === 1) return achados[0];
+  // (29/10/2026) o nome curto que casa com um cliente ativo e com outros já inativos ("LISA" = a 505 ativa e a pessoa física 386 inativa) é o ativo
+  const ativos = achados.filter(c => (cad.porCod.get(c) || {}).ativo !== false);
+  return achados.length > 1 && ativos.length === 1 ? ativos[0] : null;
 }
 function clientesPeloNomeCurto(resto, cad) {
   const ws = textoDeNome(resto).trim().split(' ').filter(w => w.length >= 2 && !/^(LTDA|ME|EPP|EIRELI|DE|DA|DO|E)$/.test(w));
@@ -1970,6 +2021,14 @@ function clientePelaPastaOuGrupo(rel, nome, cad, ev) {
   ev.push('pasta "' + g.parte + '": sem o código no nome, a matriz ' + g.matriz);
   return { cliente: g.matriz, conf: 0.9, como: 'pastaConferida' };
 }
+/** O ano de uma planilha de apoio da DEFIS pelos dados: a coluna do período (a 4ª) traz a data em série do Excel de janeiro (01/01/AAAA) na primeira linha de dados. */
+function anoDaPlanilhaDefis(planilha) {
+  for (const l of (planilha || []).slice(1, 6)) {
+    const v = l && l[3];
+    if (typeof v === 'number' && v > 36500 && v < 60000) { const d = new Date(Date.UTC(1899, 11, 30) + v * 86400000); return d.getUTCMonth() === 0 && d.getUTCDate() === 1 ? d.getUTCFullYear() : null; }
+  }
+  return null;
+}
 function decidirPlanilha(entrada, ctx, ev, porHash) {
   const cad = ctx.cadastro;
   const linhas = (entrada.planilha || []).slice(0, 12).map(l => (l || []).join(' | '));
@@ -1985,8 +2044,12 @@ function decidirPlanilha(entrada, ctx, ev, porHash) {
   if (mDefis0) {
     const resto0 = mDefis0[1], ma = /(?<![\d.])(20\d{2})(?!\d)/.exec(resto0);
     const anoTit = (/JANEIRO A DEZEMBRO\s+(20\d{2})\b/.exec(u) || [])[1];
+    // (29/10/2026) o ano-calendário também está nos dados: a primeira linha de dados é janeiro ("PERIODO" = 01/01/AAAA, a data em série do Excel). Vale mais que o título
+    // (o modelo copiado de um ano para outro: "JANEIRO A DEZEMBRO 2020" na planilha de 2021) e dispensa a segunda fonte do cliente
+    const anoDados = anoDaPlanilhaDefis(entrada.planilha);
     const resto = (ma ? resto0.replace(ma[0], ' ') : resto0).replace(/\s+/g, ' ').replace(/^[\s-]+|[\s-]+$/g, '').trim();
-    if (ma || anoTit) { mDefis = [mDefis0[0], ma ? ma[1] : anoTit, resto]; mDefis.semAnoNoNome = !ma; }
+    if (ma && anoDados && +ma[1] !== anoDados) return { acao: 'NAO_IDENTIFICADO', motivo: 'ANO_INDETERMINADO', confianca: 0.5, tipo: 'DEFIS PLANILHA', setor: 'FISCAL', evidencias: ev.concat('o ano no nome do arquivo (' + ma[1] + ') não é o dos dados da planilha (' + anoDados + ')') };
+    if (ma || anoTit || anoDados) { mDefis = [mDefis0[0], ma ? ma[1] : anoDados ? String(anoDados) : anoTit, resto]; mDefis.semAnoNoNome = !ma && !anoDados; mDefis.anoDosDados = !!anoDados; }
   }
   if (mDefis0 && !mDefis) return { acao: 'NAO_IDENTIFICADO', motivo: 'ANO_INDETERMINADO', confianca: 0.5, tipo: 'DEFIS PLANILHA', setor: 'FISCAL', evidencias: ev.concat('planilha da DEFIS sem o ano no nome nem em "JANEIRO A DEZEMBRO AAAA" do título') };
   if (mDefis) {
@@ -2009,7 +2072,9 @@ function decidirPlanilha(entrada, ctx, ev, porHash) {
       if (votos.length) { cli = votos[0]; como = daPasta != null && cli === daPasta ? 'pastaConferida' : 'nome'; conf = votos.length >= 2 ? 0.92 : 0.88; ev.push('cliente pelo ' + (tituloVale != null ? 'título da planilha' : doNomeArq != null ? 'nome no arquivo' : 'pasta de origem') + (votos.length >= 2 ? ' (confere com ' + (votos.length - 1) + ' outra fonte)' : '')); }
     }
     if (cli == null) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_NAO_LOCALIZADO', confianca: 0.3, evidencias: ev.concat('o nome no arquivo não é de um cliente só do cadastro') });
-    return Object.assign(base, { acao: 'ARQUIVAR', cliente: cli, comoCliente: como, confianca: conf, competencia: { ano: +mDefis[1] }, caminho: ['FISCAL', 'SIMPLES NACIONAL', '14. DEFIS'], nomeFinal: mDefis[1] + ' - DEFIS PLANILHA' + ext0 });
+    // (29/10/2026, Vitor) a planilha da DEFIS é relatório do FISCAL: FISCAL\<regime>\RELATÓRIOS ALTERDATA\<ano-calendário> (não a 14. DEFIS, que é da declaração, nem o RELATÓRIOS ALTERDATA do contábil)
+    const regimeDefis = (cad.porCod.get(cli) || {}).regime || 'SIMPLES NACIONAL';
+    return Object.assign(base, { acao: 'ARQUIVAR', cliente: cli, comoCliente: como, confianca: conf, competencia: { ano: +mDefis[1] }, caminho: ['FISCAL', regimeDefis, 'RELATÓRIOS ALTERDATA', String(mDefis[1])], nomeFinal: mDefis[1] + ' - DEFIS PLANILHA' + ext0 });
   }
   // o papel de trabalho (Vitor, 27/10/2026; 04): a depreciação e as planilhas de controle do Simples ("PLANILHA SIMPLES NACIONAL
   // 2018…", "TRIBUTADO.xls") → CONTÁBIL\PAPÉIS DE TRABALHO\ANO\, nome original; o cliente pela pasta de origem (03); o ano pelo
