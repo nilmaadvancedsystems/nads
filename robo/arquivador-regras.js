@@ -888,8 +888,30 @@ const REGRAS_PDF = [
       const c = camposDaGuia(u);
       const trib = /TFAMG/.test(u) ? 'TFAMG' : /IPVA/.test(u) ? 'IPVA' : /TAXA/.test(u) && !/ICMS/.test(u) ? 'TAXA' : 'ICMS';
       if (!c.competencia) { const m = /(\d{2})\/(\d{4})/.exec(linhaApos(u, /MES ANO DE REFERENCIA/, 400)); if (m) c.competencia = { mes: +m[1], ano: +m[2] }; }
+      // o DAE do SIARE (B2, 29/10/2026): o PDF traz os rótulos primeiro e os valores bem depois, então "Mês Ano de Referência" fica longe de "08 / 2022".
+      // (1) o mês/ano é a única linha "MM / AAAA" (com espaços em volta da barra); (2) senão, o "Período Ref." ("01 a 30/09/2024") se for o mesmo em
+      // todas as linhas (o DAE consolidado); valores diferentes: não chuta.
+      if (!c.competencia) {
+        const unico = lista => (lista.length && new Set(lista.map(x => x.mes + '/' + x.ano)).size === 1 ? lista[0] : null);
+        const linhas = [...u.matchAll(/(?:^|\n)\s*(0[1-9]|1[0-2]) \/ (20\d{2})[ \t]*(?=\n|$)/g)].map(m => ({ mes: +m[1], ano: +m[2] }));
+        const refs = [...u.matchAll(/(?<![\d/])\d{2} A \d{2}\/(0[1-9]|1[0-2])\/(20\d{2})(?![\d/])/g)].map(m => ({ mes: +m[1], ano: +m[2] }));
+        const ref = unico(linhas) || unico(refs);
+        if (ref) c.competencia = { mes: ref.mes, ano: ref.ano };
+      }
+      // o vencimento do SIARE: o rótulo "Validade" vem antes e não deixa a data por perto; a linha do "Histórico" traz "01 a 31/08/2022  105706  04/10/2022",
+      // e a data aparece repetida logo antes de "Pague nos bancos" (no consolidado, junto do "Pague com PIX")
+      if (!c.vencimento) {
+        const m = /(?<![\d/])\d{2} A \d{2}\/\d{2}\/20\d{2}\s+\S+\s+(\d{2}\/\d{2}\/20\d{2})/.exec(u) || /(\d{2}\/\d{2}\/20\d{2})\n\1\nPAGUE NOS BANCOS/.exec(u) || /PAGUE COM PIX\n(\d{2}\/\d{2}\/20\d{2})\n/.exec(u);
+        if (m) c.vencimento = dataBr(m[1]);
+      }
+      // o valor do SIARE: o "TOTAL" do rótulo fica longe do número; o "Histórico" repete o total com ponto decimal ("… 04/10/2022   1023.77  0.00  0.00  1023.77")
+      if (!c.valor) {
+        const m = /\bTOTAL:\s+\d+\.\d{2}\s+\d+\.\d{2}\s+\d+\.\d{2}\s+(\d+)\.(\d{2})(?![\d.])/.exec(u)
+          || /(?<![\d/])\d{2} A \d{2}\/\d{2}\/20\d{2}\s+\S+\s+\d{2}\/\d{2}\/20\d{2}\s+\d+\.\d{2}\s+\d+\.\d{2}\s+\d+\.\d{2}\s+(\d+)\.(\d{2})(?![\d.])/.exec(u);
+        if (m) c.valor = 'R$' + m[1] + ',' + m[2];
+      }
       if (!c.competencia && trib === 'TFAMG') { const m = /TRIMESTRE\s+(20\d{2})/.exec(u); if (m) c.ano = +m[1]; }
-      return Object.assign(c, { tributo: trib, parcelamento: /PARCELAMENTO/.test(u) });
+      return Object.assign(c, { tributo: trib, parcelamento: /PARCELAMENTO/.test(u.replace(/AUTUACAO,? DIVIDA ATIVA E PARCELAMENTO/g, " ")) })   /* "Nº Documento (autuação, dívida ativa e parcelamento)" é o rótulo do campo, em todo DAE do SIARE */;
     } },
   { tipo: 'DAM', setor: 'FISCAL', re: /DOCUMENTO DE ARRECADACAO MUNICIPAL|\bDAM\b.*PREFEITURA|PREFEITURA[\s\S]{0,300}\bDAM\b/, fonte: '05d §4',
     campos: u => Object.assign(camposDaGuia(u), { tributo: /ITBI/.test(u) ? 'ITBI' : /\bISS/.test(u) ? 'ISS' : /IPTU/.test(u) ? 'IPTU' : /TAXA/.test(u) ? 'TAXA' : null }) },
