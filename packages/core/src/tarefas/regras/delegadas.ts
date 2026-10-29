@@ -15,8 +15,11 @@ export interface Pessoa { uid: string; nome: string }
 export interface ClienteVinculado { codigo: number | null; nome: string }
 /** Uma linha do parecer ou do histórico: quem (o nome), quando (ISO) e o texto. */
 export interface Nota { por: string; em: string; texto: string }
-/** Um anexo: o arquivo vai em pedaços no banco; aqui só o que a lista mostra. */
-export interface Anexo { id: string; nome: string; extensao: string; tamanho: number; em: string; por: string; partes: number }
+/**
+ * Um anexo: o arquivo vai em pedaços no banco; aqui só o que a lista mostra. tamanho = o do arquivo (o que a pessoa baixa);
+ * gzip = os pedaços estão em gzip (descomprime ao baixar; sem o campo, os bytes são o próprio arquivo).
+ */
+export interface Anexo { id: string; nome: string; extensao: string; tamanho: number; em: string; por: string; partes: number; gzip?: true }
 
 export interface TarefaDelegada {
   id: string;
@@ -90,6 +93,9 @@ export const MAIOR_ANEXO = 10 * 1024 * 1024;
 export const MAIOR_TOTAL_DE_ANEXOS = 30 * 1024 * 1024;
 export const MAIS_ANEXOS = 20;
 export const MAIOR_NOME_DE_ANEXO = 160;
+/** a imagem anexada vira WebP com o lado maior até 2000 px (o print e a foto de documento seguem legíveis) */
+export const MAIOR_LADO_DA_IMAGEM = 2000;
+export const QUALIDADE_DA_IMAGEM = 0.8;
 
 /** O texto pronto para gravar: sem espaços sobrando nas pontas e sem linhas em branco repetidas. */
 export function limparTexto(texto: string): string {
@@ -171,6 +177,30 @@ export function nomeDoAnexo(nome: string): string {
   if (limpo.length <= MAIOR_NOME_DE_ANEXO) return limpo || 'arquivo';
   const ext = extensaoDe(limpo);
   return ext ? limpo.slice(0, MAIOR_NOME_DE_ANEXO - ext.length - 1) + '.' + ext : limpo.slice(0, MAIOR_NOME_DE_ANEXO);
+}
+
+const IMAGENS = new Set(['jpg', 'jpeg', 'png', 'bmp', 'webp']);
+// o que já vem comprimido (o gzip quase não tira nada): compactados, Office novo, áudio, vídeo e as imagens que não redesenho
+const JA_COMPRIMIDOS = new Set(['zip', 'rar', '7z', 'gz', 'tgz', 'bz2', 'xz', 'xlsx', 'xlsm', 'docx', 'pptx', 'odt', 'ods', 'odp',
+  'mp3', 'm4a', 'ogg', 'mp4', 'mov', 'avi', 'mkv', 'webm', 'gif', 'heic', 'heif']);
+
+/**
+ * Como o anexo gasta menos no banco: 'imagem' (redesenha em WebP, menor), 'gzip' (sem perda: PDF, XML, TXT, planilha
+ * antiga...) ou 'nada' (já vem comprimido).
+ */
+export function comoEncolher(nome: string): 'imagem' | 'gzip' | 'nada' {
+  const ext = extensaoDe(nome);
+  if (IMAGENS.has(ext)) return 'imagem';
+  return JA_COMPRIMIDOS.has(ext) ? 'nada' : 'gzip';
+}
+
+/** Vale guardar o encolhido só se tirou pelo menos 5% (senão fica o original, sem o trabalho de abrir). */
+export const valeEncolher = (original: number, encolhido: number) => encolhido > 0 && encolhido <= original * 0.95;
+
+/** O nome da imagem que virou WebP (foto.PNG → foto.webp). */
+export function nomeDaImagemEncolhida(nome: string): string {
+  const ext = extensaoDe(nome);
+  return (ext ? nome.slice(0, -ext.length - 1) : nome) + '.webp';
 }
 
 /**
@@ -397,7 +427,7 @@ export function lerTarefa(id: string, x: Record<string, unknown>): TarefaDelegad
     criadaPor: lerPessoa(x.criadaPor), responsavel: lerPessoa(x.responsavel),
     criadaEm: texto(x.criadaEm), concluidaEm: texto(x.concluidaEm), atualizadaEm: texto(x.atualizadaEm) || texto(x.criadaEm),
     pareceres: lerNotas(x.pareceres), historico: lerNotas(x.historico),
-    anexos: anexos.map(a => ({ id: texto(a.id), nome: texto(a.nome), extensao: texto(a.extensao), tamanho: Number(a.tamanho) || 0, em: texto(a.em), por: texto(a.por), partes: Number(a.partes) || 0 }))
+    anexos: anexos.map(a => ({ id: texto(a.id), nome: texto(a.nome), extensao: texto(a.extensao), tamanho: Number(a.tamanho) || 0, em: texto(a.em), por: texto(a.por), partes: Number(a.partes) || 0, ...(a.gzip === true ? { gzip: true as const } : {}) }))
       .filter(a => a.id && a.partes > 0),
   };
 }
