@@ -57,6 +57,17 @@ export function useContasAPagar() {
     conta: c, fornecedor: nomeDe(c.fornecedorId), contaDoPlano: c.conta ? contasDoPlano.get(c.conta) : undefined, situacao: financeiro.situacaoDaConta(c, dia),
   }));
   const totais = financeiro.totaisDasContas(lista, dia);
+  // os números coloridos do alto, no padrão do DP (29/10/2026): com os outros filtros e sem o da situação, que é o próprio
+  // número (clicar num deles filtra a lista)
+  const semSituacao = periodoValido ? financeiro.filtrarContas(contas.lista, { ...filtro, situacao: 'todas' }, dia, nomeDe) : [];
+  const t = financeiro.totaisDasContas(semSituacao, dia);
+  const quantasNa = (s: financeiro.SituacaoDaConta) => semSituacao.filter(c => financeiro.situacaoDaConta(c, dia) === s).length;
+  const numeros: { situacao: financeiro.FiltroDeSituacao; rotulo: string; valor: number; quantas: number }[] = [
+    { situacao: 'todas', rotulo: 'Total', valor: t.valor, quantas: semSituacao.length },
+    { situacao: 'aberta', rotulo: 'A vencer', valor: Math.round((t.aPagar - t.vencido) * 100) / 100, quantas: quantasNa('aberta') },
+    { situacao: 'vencida', rotulo: 'Vencido', valor: t.vencido, quantas: quantasNa('vencida') },
+    { situacao: 'paga', rotulo: 'Pago', valor: t.pago, quantas: quantasNa('paga') },
+  ];
   // as contas do plano que alguma conta a pagar usa (o menu do filtro fica curto)
   const contasUsadas = [...new Set(contas.lista.map(c => c.conta).filter((x): x is string => !!x))]
     .map(id => contasDoPlano.get(id)).filter((c): c is financeiro.ContaDoPlano => !!c).sort((a, b) => financeiro.compararCodigos(a.codigo, b.codigo));
@@ -90,7 +101,7 @@ export function useContasAPagar() {
     situacao, setSituacao, busca, setBusca,
     filtrando: !!fornecedor || !!conta || situacao !== 'todas' || !!busca.trim(),
     limparFiltros() { setFornecedor(''); setConta(''); setSituacao('todas'); setBusca(''); },
-    linhas, totais,
+    linhas, totais, numeros,
     aberta, abrir: (a: ContaAberta) => setAberta(a), fechar: () => setAberta(null),
     /** o .xlsx com exatamente o que está na tela (os filtros e a busca) */
     exportar() {

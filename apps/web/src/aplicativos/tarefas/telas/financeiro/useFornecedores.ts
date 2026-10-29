@@ -1,14 +1,15 @@
 // ViewModel de Financeiro › Fornecedores (28/10/2026: "o cadastro de fornecedores do Toriba, no nads"): a busca, o filtro
-// (Ativos, Todos), as linhas (com a conta contábil que o fornecedor traz e quantas contas a pagar ele tem) e a janela do
+// (Ativos, Inativos ou Todos), as linhas (com a conta contábil que o fornecedor traz e quantas contas a pagar ele tem) e a janela do
 // fornecedor (novo ou aberto para alterar).
 import { financeiro } from '@nads/core';
 import { useMemo, useState } from 'react';
 import { useCaixa, useContasPagar } from '../../dados/repo';
 
-export type FiltroDeFornecedores = 'ativos' | 'todos';
+/** vazio = todos (o MenuDeFiltro do DP volta ao vazio no Todos) */
+export type FiltroDeFornecedores = '' | 'ativos' | 'inativos';
 export const FILTROS_DE_FORNECEDORES: { valor: FiltroDeFornecedores; rotulo: string }[] = [
   { valor: 'ativos', rotulo: 'Ativos' },
-  { valor: 'todos', rotulo: 'Todos' },
+  { valor: 'inativos', rotulo: 'Inativos' },
 ];
 
 /** a janela do fornecedor: sem id é novo */
@@ -31,7 +32,7 @@ export function useFornecedores() {
   const q = busca.trim().toLowerCase();
   const qd = busca.replace(/\D/g, '');
   const linhas = fornecedores.lista
-    .filter(f => (filtro === 'todos' || f.ativo) && (!q || (f.razaoSocial + ' ' + f.nomeFantasia).toLowerCase().includes(q) || (qd.length >= 3 && f.documento.includes(qd))))
+    .filter(f => (!filtro || (filtro === 'ativos') === f.ativo) && (!q || (f.razaoSocial + ' ' + f.nomeFantasia).toLowerCase().includes(q) || (qd.length >= 3 && f.documento.includes(qd))))
     .map(f => {
       const conta = plano.lista.find(c => c.id === financeiro.contaPadraoDoFornecedor(f, plano.lista));
       return { fornecedor: f, nome: financeiro.nomeDoFornecedor(f), conta, contas: quantas.get(f.id) || 0 };
