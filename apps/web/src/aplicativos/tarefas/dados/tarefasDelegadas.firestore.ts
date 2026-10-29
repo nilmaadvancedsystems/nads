@@ -15,11 +15,26 @@ import { anexoDe, conferirAnexos, type ArquivoParaAnexar, type RepoTarefasDelega
 import { bytesDoAnexo } from './encolherAnexo';
 import { guardar, guardarPedido } from '../../../comum/modoDesenvolvedor';
 
+// o erro do banco em português (29/10/2026: a tela mostrava "Missing or insufficient permissions." e parecia que o Salvar
+// não fazia nada); o que não está aqui segue com a mensagem que veio
+const ERROS_DO_BANCO: Record<string, string> = {
+  'permission-denied': 'o banco recusou a gravação (a regra das tarefas no Entregas não deixou)',
+  unavailable: 'sem conexão com o banco; confira a internet e tente de novo',
+  'not-found': 'a tarefa não existe mais no banco',
+  'deadline-exceeded': 'o banco demorou demais para responder; tente de novo',
+};
+function emPortugues<A extends unknown[], R>(gravar: (...a: A) => Promise<R>): (...a: A) => Promise<R> {
+  return (...a: A) => gravar(...a).catch((e: unknown) => {
+    const codigo = String((e as { code?: unknown })?.code || '');
+    throw new Error(ERROS_DO_BANCO[codigo] || (e instanceof Error ? e.message : String(e)), { cause: e });
+  });
+}
+
 // a trava do modo desenvolvedor: com o modo ligado, criar é recusado (é mandar para alguém) e o resto finge que gravou
-const criarDoc = guardarPedido(setDocBruto) as typeof setDocBruto;
-const setDoc = guardar(setDocBruto) as typeof setDocBruto;
-const updateDoc = guardar(updateDocBruto) as typeof updateDocBruto;
-const deleteDoc = guardar(deleteDocBruto) as typeof deleteDocBruto;
+const criarDoc = emPortugues(guardarPedido(setDocBruto)) as typeof setDocBruto;
+const setDoc = emPortugues(guardar(setDocBruto)) as typeof setDocBruto;
+const updateDoc = emPortugues(guardar(updateDocBruto)) as typeof updateDocBruto;
+const deleteDoc = emPortugues(guardar(deleteDocBruto)) as typeof deleteDocBruto;
 
 const d = tarefas.delegadas;
 type TarefaDelegada = tarefas.delegadas.TarefaDelegada;
