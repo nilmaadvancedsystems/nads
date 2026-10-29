@@ -202,7 +202,7 @@ const NOMES = {
   XML: re('^' + MA + '_(NF-e|NFC-e|CT-e|CT-e OS|NFS-e|MDF-e)_[^_]+' + SUF + '\\.xml$'),
   EVENTO: re('^(\\d{2})-' + MA + ' - .+ (NF-e|NFC-e|CT-e|CT-e OS|NFS-e|MDF-e) .+\\.xml$'),
   NOTA_PDF: re('^(\\d{2})-' + MA + ' - (NF-e|NFC-e|CT-e|CT-e OS|NFS-e|MDF-e)\\b.*\\.pdf$'),
-  RELATORIO: re('^(?:' + MA + '|((?:19|20)\\d{2})) - RELATORIO NOTAS (EMITIDAS|RECEBIDAS)\\b.*\\.pdf$'),
+  RELATORIO: re('^(?:' + MA + '|((?:19|20)\\d{2})) - RELATORIO (?:NOTAS (?:EMITIDAS|RECEBIDAS)|VENDAS)\\b.*\\.pdf$'),
   MES_TXT: re('^' + MA + '(?: A ' + MA + ')?' + SUF + '(?: - .+)?\\.(txt|pdf|zip)$'),
   LIVRO: re('^' + MA + '(?: A ' + MA + ')? - .+\\.(pdf|txt)$'),
   ANUAL: re('^((?:19|20)\\d{2}) - (RECIBO )?(DEFIS|DIRF|ECF)\\b.*\\.(pdf|txt)$'),
