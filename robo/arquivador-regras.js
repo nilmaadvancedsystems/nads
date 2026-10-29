@@ -913,6 +913,9 @@ function camposDaGuia(u) {
  * destino; campo obrigatório ausente vira motivo (Dicionário §4.3, "Dados ausentes").
  */
 const REGRAS_PDF = [
+  // a declaração e o recibo do IRPF do sócio solto na pasta do cliente (Vitor, 29/10/2026): SOCIETÁRIO\SÓCIOS\IRPF\ANO-CALENDÁRIO, nome original, na pasta do cliente onde estava
+  { tipo: 'IRPF', setor: 'CONTABIL', re: /^[\s\S]{0,700}(IMPOSTO SOBRE A RENDA\s*-?\s*PESSOA FISICA|MODULO DE IMPRESSAO DE DECLARACOES ASSINADAS)/, fonte: 'IRPF do sócio (Vitor, 29/10/2026)',
+    campos: u => { const a = /ANO[- ]?CALENDARIO\s*:?\s*(20\d{2})/.exec(u), e = /EXERCICIO\s*:?\s*(20\d{2})/.exec(u); return { ano: a ? +a[1] : e ? +e[1] - 1 : null }; } },
   // o "Relatório do Super Simples" (conferência do Simples do Alterdata; Vitor, 27/10/2026): FISCAL\<regime>\RELATÓRIOS ALTERDATA\
   // ANO\, nome original; o ano é o da competência do relatório ("Período:01/01/2021a31/01/2021")
   { tipo: 'RELATORIO ALTERDATA', setor: 'FISCAL', re: /^[\s\S]{0,800}RELATORIO DE CONFERENCIA DO SIMPLES NACIONAL/, fonte: 'relatório de conferência do Simples do Alterdata (Vitor, 27/10/2026)',
@@ -3372,6 +3375,16 @@ function montarContabil(regra, campos, u, bruto, entrada, ctx, ev, porHash) {
     if (!campos.numero || !campos.ano) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'CONTRATO_SEM_NUMERO', confianca: 0.5, evidencias: ev.concat('o número ou a data do contrato de câmbio não foram lidos') });
     ev.push(mutuo ? 'contrato de câmbio de mútuo (empréstimo): Op. Crédito (Vitor, 27/10/2026)' : 'contrato de câmbio: Op. Câmbio (04)');
     return Object.assign(base, { acao: 'ARQUIVAR', confianca: c.conf, tipo: mutuo ? 'OPERACAO DE CREDITO' : 'OPERACAO DE CAMBIO', competencia: { ano: campos.ano }, caminho: mutuo ? ['CONTÁBIL', 'OPERAÇÕES DE CRÉDITO', String(campos.ano), 'EMPRÉSTIMO', campos.banco, campos.numero] : ['CONTÁBIL', 'OPERAÇÕES DE CÂMBIO', String(campos.ano), campos.banco, campos.numero], nomeFinal: entrada.nome });
+  }
+  if (regra.tipo === 'IRPF') {
+    // o cliente é o da pasta de origem conferida (código e nome): o CPF no documento é o do sócio, não o do cliente; se o CPF é de OUTRO cliente cadastrado, não decide
+    const pasta = clienteDaPasta(entrada.rel || '', ctx.cadastro);
+    if (!pasta || !pasta.forte) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_NAO_LOCALIZADO', confianca: 0.3, evidencias: ev.concat('IRPF: a pasta de origem não dá o cliente com código e nome conferidos') });
+    if (c.cliente != null && c.cliente !== pasta.codigo) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_AMBIGUO', confianca: 0.4, evidencias: ev.concat('IRPF: o documento aponta o cliente ' + c.cliente + ' e a pasta de origem o ' + pasta.codigo) });
+    const ano = campos.ano || ((m => m ? +m[2] : null)(/IRPF-(?:A-)?(20\d{2})-(20\d{2})/i.exec(entrada.nome)));
+    if (!ano) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5, cliente: pasta.codigo, evidencias: ev.concat('IRPF: o ano-calendário não foi lido') });
+    ev.push('IRPF do sócio na pasta do cliente ' + pasta.codigo + ': SOCIETÁRIO\\SÓCIOS\\IRPF\\' + ano + ' (ano-calendário; Vitor, 29/10/2026)');
+    return Object.assign(base, { acao: 'ARQUIVAR', cliente: pasta.codigo, comoCliente: 'pastaConferida', confianca: 0.9, setor: 'FOLHA_SOCIETARIO', competencia: { ano }, caminho: ['SOCIETÁRIO', 'SÓCIOS', 'IRPF', String(ano)], nomeFinal: entrada.nome });
   }
   if (regra.tipo === 'VENDA DE ATIVOS') {
     // (Vitor, 29/10/2026: "joga as escrituras no societário") a escritura pública vai para SOCIETÁRIO\ESCRITURAS\[ANO da lavratura]; sem a data legível, sem a subpasta do ano (o ano da raiz é o das pastas de origem)

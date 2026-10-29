@@ -1331,6 +1331,21 @@ igual('a agência e a conta no nome do arquivo ("Entradas_Saidas_ag3155cc990348_
   igual('relatório fiscal: a conferência de ST da Fito 292 (PDF, 01/2025): FISCAL\\LUCRO PRESUMIDO\\RELATÓRIOS ALTERDATA\\2025, nome original', ((d0) => [d0.acao, d0.cliente, d0.destinoRelativo, d0.nomeFinal])(f30('012025.pdf', '20261026-NOVO\\FERNANDO\\292 FITO INDUSTRIA E COMERCIO\\SAIDAS 2025\\122025.zip\\', { texto: ST292 })), ['ARQUIVAR', 292, '292 - FITO INDUSTRIA E COMERCIO DE ALIMENTOS LTDA - EPP (MATRIZ)\\FISCAL\\LUCRO PRESUMIDO\\RELATÓRIOS ALTERDATA\\2025', '012025.pdf']);
   igual('relatório fiscal: a mesma conferência em planilha (as primeiras linhas), na pasta conferida da 309 (Simples): FISCAL\\SIMPLES NACIONAL\\RELATÓRIOS ALTERDATA\\2025', ((d0) => [d0.acao, d0.cliente, d0.destinoRelativo])(f30('Conferencia ST 2025.xlsx', 'FERNANDO\\309 FITO ALIMENTOS EIRELI\\', { planilha: [['Relatório de Conferência de Substituição Tributária - Todos os Estados'], ['FITO ALIMENTOS EIRELI ME (00309)']] })), ['ARQUIVAR', 309, '309 - FITO ALIMENTOS EIRELI\\FISCAL\\SIMPLES NACIONAL\\RELATÓRIOS ALTERDATA\\2025']);
   igual('relatório contábil (estoque) continua em CONTÁBIL\\RELATÓRIOS ALTERDATA', ((d0) => [d0.acao, d0.destinoRelativo])(f30('Estoque 2025.xlsx', 'FERNANDO\\309 FITO ALIMENTOS EIRELI\\', { planilha: [['Relatório de Estoque por Grupo']] })), ['ARQUIVAR', '309 - FITO ALIMENTOS EIRELI\\CONTÁBIL\\RELATÓRIOS ALTERDATA']);
+  // ---------------------------------------------------------------------------------------------------------------------
+  // 34. o IRPF do sócio solto na pasta do cliente (Vitor, 29/10/2026): SOCIETÁRIO\\SÓCIOS\\IRPF\\ANO-CALENDÁRIO, na pasta do cliente onde estava
+  // ---------------------------------------------------------------------------------------------------------------------
+  const cad34 = R.montarCadastro([
+    { codigo: 360, razao: 'SUPERMERCADO CENTRAL DE BARREIROS LTDA', doc: cnpjCom('360000000001'), regime: 'Simples' },
+    { codigo: 434, razao: 'CONSTRUNOVO LTDA', doc: cnpjCom('434000000001'), regime: 'Simples' },
+    { codigo: 463, razao: 'CENTRO DE ODONTOLOGIA ESTETICA LTDA', doc: cnpjCom('463000000001'), regime: 'Simples' },
+  ], ['360 - SUPERMERCADO CENTRAL DE BARREIROS LTDA - EPP', '434 - CONSTRUNOVO LTDA - ME', '463 - CENTRO DE ODONTOLOGIA ESTETICA LTDA - ME']);
+  cad34.mapaMigracao = MIG.carregar({});
+  const i34 = (k, rel) => R.decidir({ nome: C30[k].nome, rel: rel + C30[k].nome, texto: C30[k].texto }, { cadastro: cad34, hoje: new Date(2026, 9, 29) });
+  const s34 = d => [d.acao, d.cliente, d.destinoRelativo, d.anoRaiz];
+  igual('IRPF: a declaração do sócio (ano-calendário 2021, exercício 2022) na pasta da 360: SOCIETÁRIO\\SÓCIOS\\IRPF\\2021, na raiz do exercício 2022, nome original', s34(i34('irpfDecl360', '20261023-NOVO\\0360 - SUPERMERCADO CENTRAL DE BARREIROS LTDA - EPP\\OUTROS\\')), ['ARQUIVAR', 360, '360 - SUPERMERCADO CENTRAL DE BARREIROS LTDA - EPP\\SOCIETÁRIO\\SÓCIOS\\IRPF\\2021', 2022]);
+  igual('IRPF: o recibo de entrega na pasta da 434: o mesmo destino', s34(i34('irpfRecibo434', '20261023-NOVO\\0434 - CONSTRUNOVO LTDA - ME\\OUTROS\\')).slice(0, 3), ['ARQUIVAR', 434, '434 - CONSTRUNOVO LTDA - ME\\SOCIETÁRIO\\SÓCIOS\\IRPF\\2021']);
+  igual('IRPF: a cópia do MIDAS (sem o ano-calendário no texto) pelo ano do nome "IRPF-A-2021-2020"', s34(i34('irpfMidas463', 'DEPARTEMENTO CONTABIL\\IRPF\\2021\\0463 - CENTRO DE ODONTOLOGIA ESTETICA LTDA - ME\\')).slice(0, 3), ['ARQUIVAR', 463, '463 - CENTRO DE ODONTOLOGIA ESTETICA LTDA - ME\\SOCIETÁRIO\\SÓCIOS\\IRPF\\2020']);
+  igual('IRPF: sem a pasta de origem conferida (fora de pasta de cliente) não arquiva', i34('irpfDecl360', 'DOWNLOADS\\').acao, 'NAO_IDENTIFICADO');
   console.log((falhas ? falhas + ' FALHA(S) em ' : 'ok: ') + total + ' testes');
   process.exit(falhas ? 1 : 0);
 })().catch(e => { console.log('FALHOU com erro:', e.stack); process.exit(1); });
