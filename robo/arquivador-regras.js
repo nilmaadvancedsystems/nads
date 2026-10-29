@@ -2367,6 +2367,18 @@ function decidirFornecedor(pg, entrada, u, bruto, ctx, ev, porHash) {
     pg = Object.assign({}, pg, { fornecedor: doBoleto ? doBoleto.nome : (doNome && /[A-Z]{3}/.test(doNome) ? doNome : null) });
     ev.push('sem data no nome: o mês pela pasta de origem; o fornecedor ' + (doBoleto ? 'pelo beneficiário do boleto' : 'pelo nome do arquivo') + ' (Vitor, 27/10/2026)');
   }
+  // B11 (29/10/2026): o nome do arquivo não traz o fornecedor: o do conteúdo — o beneficiário do boleto (nunca o pagador nem o próprio cliente) ou, na DANFE,
+  // o emitente do canhoto ("Recebemos de X os produtos…"). Só o nome que passa na validação de nome de fornecedor; senão fica para olhar.
+  if (!pg.fornecedor && u) {
+    const cli = cad.porCod.get(c.cliente) || {};
+    const ehDoCliente = n => [cli.razao].concat(cli.outrosNomes || []).filter(Boolean).some(r => chaveNome(nomeNormalizado(r)) === chaveNome(n) || chaveNome(r).startsWith(chaveNome(n)));
+    const regraBoleto = REGRAS_PDF.find(x => x.tipo === 'BOLETO FORNECEDOR');
+    const doBoleto = regraBoleto.re.test(u) ? beneficiariosDoBoleto(u).find(b => b.rotulo !== 'pagador' && !ehDoCliente(b.nome) && !(b.doc && clientesDoDoc(b.doc, cad).includes(c.cliente))) : null;
+    const mCan = !doBoleto ? /RECEBEMOS DE\s+(.{4,90}?)\s+OS PRODUTOS/.exec(u) : null;
+    const doCanhoto = mCan ? nomeDeBeneficiarioValido(mCan[1]) : null;
+    const lido = doBoleto ? doBoleto.nome : doCanhoto && !ehDoCliente(doCanhoto) ? doCanhoto : null;
+    if (lido) { pg = Object.assign({}, pg, { fornecedor: lido }); ev.push('o fornecedor lido no conteúdo (' + (doBoleto ? 'beneficiário do boleto' : 'emitente do canhoto da DANFE') + '): o nome do arquivo não o traz'); }
+  }
   if (!pg.fornecedor) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'VOCABULARIO_AUSENTE', confianca: 0.5, evidencias: ev.concat('o nome do fornecedor não foi lido no nome do arquivo (04: Fornecedores)') });
   // o mês: a data do começo do nome; sem ela, o mês da pasta de origem; sem ele, o vencimento no conteúdo
   let comp = pg.data;
