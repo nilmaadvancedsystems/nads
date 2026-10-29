@@ -159,7 +159,7 @@ function carregarIndices(raiz, log) {
 // ---------------------------------------------------------------------------------------------------------------------
 const ARVORE_COMPLETA = {
   'SIMPLES NACIONAL': ['01. DAS', '02. DAE', '03. DOCUMENTOS FISCAIS', '04. DeSTDA', '05. SINTEGRA', '06. PARCELAMENTOS', '07. RESTITUIÇÃO', '08. DAM', '09. REEMBOLSO', '10. RESSARCIMENTO', '11. COMPENSAÇÃO', '12. XML', '13. LIVROS FISCAIS', '14. DEFIS', '15. DIRF', '16. DARF'],
-  'LUCRO PRESUMIDO': ['01. SPED FISCAL', '02. SPED CONTRIBUIÇÕES', '03. DOCUMENTOS FISCAIS', '04. MIT', '05. DARF', '06. DAE', '07. DAPI', '08. PARCELAMENTOS', '09. RESTITUIÇÃO', '10. DAM', '11. REEMBOLSO', '12. RESSARCIMENTO', '13. COMPENSAÇÃO', '14. XML', '15. LIVROS FISCAIS', '16. ECF', '17. DIRF'],
+  'LUCRO PRESUMIDO': ['01. SPED FISCAL', '02. SPED CONTRIBUIÇÕES', '03. DOCUMENTOS FISCAIS', '04. MIT', '05. DARF', '06. DAE', '07. DAPI', '08. PARCELAMENTOS', '09. RESTITUIÇÃO', '10. DAM', '11. REEMBOLSO', '12. RESSARCIMENTO', '13. COMPENSAÇÃO', '14. XML', '15. LIVROS FISCAIS', '16. ECF', '17. DIRF', 'SINTEGRA'],   // sem número: nasce com o nome do tipo (Vitor, 29/10/2026; o Berizal entrega o Sintegra no Presumido)
   'LUCRO REAL': ['01. SPED FISCAL', '02. SPED CONTRIBUIÇÕES', '03. DOCUMENTOS FISCAIS', '04. DARF', '05. DAE', '06. DAPI', '07. PARCELAMENTOS', '08. RESTITUIÇÃO', '09. CONTROLES', '10. DAM', '11. REEMBOLSO', '12. RESSARCIMENTO', '13. COMPENSAÇÃO', '14. XML', '15. LIVROS FISCAIS', '16. ECF', '17. DIRF'],
   ISENTA: ['01. DOCUMENTOS FISCAIS', '02. DARF', '03. DAE', '04. DAM', '05. PARCELAMENTOS', '06. RESTITUIÇÃO', '07. REEMBOLSO', '08. RESSARCIMENTO', '09. COMPENSAÇÃO', '10. XML', '11. DIRF'],
   'PESSOA FISICA': ['01. DOCUMENTOS FISCAIS', '02. DARF', '03. DAE', '04. DAM', '05. PARCELAMENTOS', '06. XML'],
@@ -202,7 +202,7 @@ const NOMES = {
   XML: re('^' + MA + '_(NF-e|NFC-e|CT-e|CT-e OS|NFS-e|MDF-e)_[^_]+' + SUF + '\\.xml$'),
   EVENTO: re('^(\\d{2})-' + MA + ' - .+ (NF-e|NFC-e|CT-e|CT-e OS|NFS-e|MDF-e) .+\\.xml$'),
   NOTA_PDF: re('^(\\d{2})-' + MA + ' - (NF-e|NFC-e|CT-e|CT-e OS|NFS-e|MDF-e)\\b.*\\.pdf$'),
-  RELATORIO: re('^(?:' + MA + '|((?:19|20)\\d{2})) - RELATORIO NOTAS (EMITIDAS|RECEBIDAS)\\b.*\\.pdf$'),
+  RELATORIO: re('^(?:' + MA + '|((?:19|20)\\d{2})) - RELATORIO (?:NOTAS (?:EMITIDAS|RECEBIDAS)|VENDAS)\\b.*\\.pdf$'),
   MES_TXT: re('^' + MA + '(?: A ' + MA + ')?' + SUF + '(?: - .+)?\\.(txt|pdf|zip)$'),
   LIVRO: re('^' + MA + '(?: A ' + MA + ')? - .+\\.(pdf|txt)$'),
   ANUAL: re('^((?:19|20)\\d{2}) - (RECIBO )?(DEFIS|DIRF|ECF)\\b.*\\.(pdf|txt)$'),

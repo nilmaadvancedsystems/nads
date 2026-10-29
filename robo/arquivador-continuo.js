@@ -297,7 +297,7 @@ function iniciar(opcoes) {
    * NENHUM arquivo (rmdir só apaga pasta vazia: nada de conteúdo se perde) e parada há mais de 1 dia; nunca a raiz nem as
    * de fora da leitura (NÃO IDENTIFICADOS, "_…", CLAUDE FAVOR NÃO MEXER). O desktop.ini sozinho conta como vazia.
    */
-  async function limparPastasVazias(raiz) {
+  async function limparPastasVazias(raiz, nome = 'Claudio Secretario') {
     const UM_DIA = 864e5, agora = Date.now();
     let removidas = 0;
     const limpar = async (rel) => {
@@ -316,7 +316,7 @@ function iniciar(opcoes) {
       try { const ini = path.join(abs, 'desktop.ini'); if (fs.existsSync(ini)) await fs.promises.unlink(ini); await fs.promises.rmdir(abs); removidas++; return true; } catch (e) { return false; }
     };
     await limpar('');
-    if (removidas) { o.log('pastas vazias removidas da origem: ' + removidas); atividade('Removeu ' + removidas + ' pasta(s) vazia(s) da Claudio Secretario', 'só pastas sem nenhum arquivo, paradas há mais de 1 dia'); }
+    if (removidas) { o.log('pastas vazias removidas da ' + nome + ': ' + removidas); atividade('Removeu ' + removidas + ' pasta(s) vazia(s) da ' + nome, 'só pastas sem nenhum arquivo, paradas há mais de 1 dia'); }
     return removidas;
   }
   /** As origens: a do Drive e as locais do config (origensExtras: a entrada local; o resto igual, NÃO IDENTIFICADOS no G:). */
@@ -702,6 +702,9 @@ function iniciar(opcoes) {
         salvar();
         // a passada inteira terminou: as pastas que ficaram vazias saem da Claudio Secretario (27/10/2026)
         if (cfg.emProducao) { try { await limparPastasVazias(o.origem); } catch (e) { o.log('não limpei as pastas vazias:', e.message); } }
+        // e as de dentro da NÃO IDENTIFICADOS, que esvaziam quando o reprocesso arquiva o que estava lá (29/10/2026, Vitor:
+        // "ele ta removendo as pastas vazias?"); a pasta do dia fica, porque guarda o _nao_identificados.jsonl
+        if (cfg.emProducao) { try { await limparPastasVazias(path.join(o.origem, 'NÃO IDENTIFICADOS'), 'NÃO IDENTIFICADOS'); } catch (e) { o.log('não limpei as pastas vazias da NÃO IDENTIFICADOS:', e.message); } }
       }
     } catch (err) { if (leitura && leitura.inteira) ultimaInteiraEm = 0; o.log('erro no ciclo:', err.message); atividade('O arquivador novo deu erro', err.message, true); acomp.erro(err.message); resumo.esperando = 'erro: ' + err.message; }
     finally {
