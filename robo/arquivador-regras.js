@@ -372,6 +372,9 @@ function clienteDaPasta(rel, cad) {
     // pasta (o mapa da migração) vale primeiro; pasta de pessoa da equipe ou de área (FERNANDO, ADIVANIA, IMPORTAÇÃO,
     // OUTROS…) e pasta que junta matriz e filiais não dão o cliente
     if (/^\d{1,2}$/.test(parte) || /^\d{1,2}[.\-_ ]\d{4}$/.test(parte) || /^(19|20)\d{2}\b/.test(parte)) continue;
+    // "06-26", "03.26", "04_26": mês-ano com o ano de dois dígitos (a pasta do Berizal "06-26" dava o cliente 6; 29/10/2026)
+    const mmaa = /^(0[1-9]|1[0-2])[.\-_ \/](\d{2})$/.exec(parte);
+    if (mmaa && +mmaa[2] >= 15 && +mmaa[2] <= 40) continue;
     const pm = mapa ? mapa.clienteDaPasta(parte) : undefined;
     if (pm === null) {
       // 27/10/2026 (Vitor): na pasta que junta matriz e filiais, o nome do arquivo pode dizer qual (o mapa: "OV1" = 409)
