@@ -3,15 +3,17 @@
 //     do cliente, que o robô da nuvem grava a cada releitura da pasta (robo/envios-do-dp.js);
 //   - solicitacoesEmail: o pedido { tipo: 'envioDp', status: 'pendente', competencia, codigo, empresa, arquivos,
 //     criadoEm, criadoPor, criadoPorEmail, criadoPorUid } (só o admin e o DP criam); o robô responde no próprio pedido
-//     (status enviado ou erro, para, enviados, enviadoEm).
-import { addDoc as addDocBruto, collection, doc, onSnapshot, query, where } from 'firebase/firestore';
+//     (status enviado ou erro, para, enviados, enviadoEm);
+//   - config/envioDp: o modelo do e-mail { assunto, texto, atualizadoEm, atualizadoPor } (o DP e o admin gravam; 28/10/2026).
+import { addDoc as addDocBruto, collection, doc, onSnapshot, query, setDoc as setDocBruto, where } from 'firebase/firestore';
 import type { entregas } from '@nads/core';
-import { guardarPedido } from '../../../comum/modoDesenvolvedor';
+import { guardar, guardarPedido } from '../../../comum/modoDesenvolvedor';
 import { bancoDoEntregas } from './entregas.firestore';
-import type { ArquivoDoDp, EnvioDoDp, RepoEnviosDp } from './enviosDp';
+import type { ArquivoDoDp, EnvioDoDp, ModeloDoEnvio, RepoEnviosDp } from './enviosDp';
 
 // a trava do modo desenvolvedor (comum/modoDesenvolvedor.ts): com o modo ligado, só ver — nada é pedido
 const addDoc = guardarPedido(addDocBruto) as typeof addDocBruto;
+const setDoc = guardar(setDocBruto) as typeof setDocBruto;
 const texto = (v: unknown) => (v == null ? '' : String(v));
 const textos = (v: unknown) => (Array.isArray(v) ? v.map(texto) : []);
 
@@ -29,9 +31,27 @@ export function criarEnviosDpFirestore(quem: () => entregas.Quem | null): RepoEn
   const mudou = () => { ver++; for (const f of ouvintes) f(); };
   const listas = new Map<string, { carregados: boolean; porCodigo: ReadonlyMap<string, readonly ArquivoDoDp[]> }>();
   const doMes = new Map<string, { carregados: boolean; porCodigo: ReadonlyMap<string, EnvioDoDp> }>();
+  let modelo: { carregado: boolean } & ModeloDoEnvio = { carregado: false, assunto: '', texto: '' };
+  let ouvindoModelo = false;
 
   return {
     exemplos: false,
+    modelo() {
+      if (!ouvindoModelo) {
+        ouvindoModelo = true;
+        onSnapshot(doc(db, 'config', 'envioDp'), s => {
+          const d = s.data() || {};
+          modelo = { carregado: true, assunto: texto(d.assunto), texto: texto(d.texto) };
+          mudou();
+        }, () => { modelo = { carregado: true, assunto: '', texto: '' }; mudou(); });
+      }
+      return modelo;
+    },
+    async gravarModelo(m) {
+      const q = quem();
+      if (!q) throw new Error('Sem login.');
+      await setDoc(doc(db, 'config', 'envioDp'), { assunto: m.assunto.trim().slice(0, 200), texto: m.texto.trim().slice(0, 5000), atualizadoEm: new Date().toISOString(), atualizadoPor: q.nome });
+    },
     arquivos(competencia) {
       if (!listas.has(competencia)) {
         listas.set(competencia, { carregados: false, porCodigo: new Map() });
@@ -59,6 +79,12 @@ export function criarEnviosDpFirestore(quem: () => entregas.Quem | null): RepoEn
         }, () => { doMes.set(competencia, { carregados: true, porCodigo: new Map() }); mudou(); });
       }
       return doMes.get(competencia)!;
+    },
+    historico(codigo, chegou) {
+      // só igualdade (sem orderBy, que pediria um índice): a ordem é feita aqui
+      return onSnapshot(query(collection(db, 'solicitacoesEmail'), where('tipo', '==', 'envioDp'), where('codigo', '==', String(codigo))), s => {
+        chegou(s.docs.map(x => envioDoBanco(x.id, x.data())).sort((a, b) => b.criadoEm.localeCompare(a.criadoEm)));
+      }, () => chegou([]));
     },
     async enviar({ codigo, empresa, competencia, arquivos }) {
       const q = quem();

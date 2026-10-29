@@ -59,6 +59,17 @@ function caminhoDoPedido(origem, rel) {
   return { rel: dentro, abs, ni };
 }
 
+/** O arquivo da Claudio Secretario que o robô já moveu para NÃO IDENTIFICADOS\<dia>\<o mesmo caminho>: o caminho novo, ou null. */
+function movidoParaNi(origem, rel) {
+  let dias = [];
+  try { dias = fs.readdirSync(path.win32.join(origem, 'NÃO IDENTIFICADOS'), { withFileTypes: true }).filter(d => d.isDirectory()).map(d => d.name).sort().reverse(); } catch (e) { return null; }
+  for (const dia of dias.slice(0, 30)) {
+    const c = caminhoDoPedido(origem, 'NÃO IDENTIFICADOS\\' + dia + '\\' + rel);
+    if (!c.erro && fs.existsSync(c.abs)) return c;
+  }
+  return null;
+}
+
 /** O hash do pedido confere? O da lista (sha1 do caminho dentro de NÃO IDENTIFICADOS) ou o sha256 do conteúdo. */
 function hashConfere(pedidoHash, ni, buffer) {
   const h = String(pedidoHash || '').toLowerCase();
@@ -211,8 +222,11 @@ function criar(opcoes) {
         o.log('pedido ' + id + ' (' + p.tipo + ', ' + (p.pedidoPor || '?') + '): ' + r.status + (r.resposta ? ' ' + JSON.stringify({ total: r.resposta.total, feitos: r.resposta.feitos, erros: r.resposta.erros }) : '') + (r.erro ? ' — ' + r.erro : ''));
         return;
       }
-      const c = caminhoDoPedido(o.origem, p.rel);
+      let c = caminhoDoPedido(o.origem, p.rel);
       if (c.erro) { await responder(id, { status: 'erro', erro: c.erro }); return; }
+      // o item da lista com o caminho de antes (ainda na Claudio Secretario) e o arquivo já movido para NÃO IDENTIFICADOS\<dia>\
+      // pelo robô: procura lá, do dia mais novo para o mais velho (28/10/2026: "o arquivo não está mais em 0299 - TEOBALDO…")
+      if (!fs.existsSync(c.abs) && !c.ni) { const m = movidoParaNi(o.origem, c.rel); if (m) c = m; }
       if (!fs.existsSync(c.abs)) { await responder(id, { status: 'erro', erro: 'o arquivo não está mais em ' + c.rel + ' (já saiu da pasta?)' }); return; }
       const r = p.tipo === 'abrir' ? await abrir(id, p, c) : await decidir(id, p, c, p.tipo === 'arquivar' || p.tipo === 'descartar');
       await responder(id, r);
@@ -275,4 +289,4 @@ function criar(opcoes) {
   };
 }
 
-module.exports = { criar, caminhoDoPedido, hashConfere, emPartes, mimeDe, escolhaDoPedido, respostaDoItem, clientesDoCadastro, competenciaDoArquivo, LIMITE_ABRIR, BYTES_POR_PARTE, VIDA_MS, TIPOS };
+module.exports = { criar, caminhoDoPedido, movidoParaNi, hashConfere, emPartes, mimeDe, escolhaDoPedido, respostaDoItem, clientesDoCadastro, competenciaDoArquivo, LIMITE_ABRIR, BYTES_POR_PARTE, VIDA_MS, TIPOS };

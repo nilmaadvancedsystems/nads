@@ -1,209 +1,218 @@
-// ViewModel de Fiscal › Relatório geral (28/10/2026: "cria um botão nesse menu lateral chamado relatório geral e monte a
-// tabela nesse estilo do dp"; o modelo é a planilha "RELATORIO EMPRESA 2026"): uma linha por empresa, com as colunas
-// agrupadas como as Obrigações do DP — as guias do Simples e do Lucro Presumido, o parcelamento, as conferências, a REINF e
-// a entrega — e a situação do mês. Os dados são os mesmos do Controle de tributos (o que se marca aqui aparece lá) e da
-// REINF, com as mesmas ações dela: clicar na bolinha transmite (de novo, desfaz) e a do lado marca a retificação.
-// Os valores e a entrega se escrevem no Controle de tributos: aqui a bolinha mostra se já tem.
+// ViewModel do Relatório do Fiscal (28/10/2026: a planilha "RELATORIO EMPRESA 2026" no estilo das Obrigações do DP), uma
+// página por regime no menu lateral ("lucro presumido e simples são diferentes, deixa cada um separado"): o Relatório
+// Simples (só as empresas do Simples Nacional no Cadastro) e o Relatório Presumido (só as do Presumido). Tomou o lugar do
+// Controle de tributos ("remove a tela de controle de tributos, e pegue os dados de lá"): os mesmos dados no banco
+// (controleTributos e controleTributosFolha) — os valores em reais, a data, as conferências, a entrega, as sugestões do
+// Entregas e a impressão do protocolo (as observações e a retificação saíram por enquanto). A coluna da REINF saiu
+// (29/10/2026: "a parte do R das conferencias ja e a reinf"). Quem grava o controle: o Fiscal e o admin; o resto da equipe só vê.
 import { tarefas as t } from '@nads/core';
+import { logoNilmaParaImprimir, useRetorno } from '@nads/ui';
+import { useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { competenciasDaTela } from '../../../casca/navegacao';
 import { useOperador } from '../../../casca/operador';
-import { useControleTributos } from '../../../dados/repo';
+import { FOLHA_VAZIA } from '../../../dados/controleTributos';
+import { useControleTributos, useEntregasDeDocumentos, useGmailDoEntregas } from '../../../dados/repo';
 import { useListaDoCadastro } from '../../cadastro/escolher/useListaDoCadastro';
-import { useRetorno } from '@nads/ui';
-import { useRef, useState } from 'react';
-import { mmaaaa, quandoDaReinf, useAcoesDaReinf } from '../reinf/useAcoesDaReinf';
+import { imprimirHtml } from '../../dp/imprimirHtml';
 
-/** Como cada casa está no mês: não tem, a fazer, feita (a mesma bolinha do DP). */
-export type EstadoDaCasa = 'nao-tem' | 'a-fazer' | 'feita';
-/** O que a casa faz ao clicar: nada (só mostra), a conferência do Controle, a REINF ou a retificação. */
-export type AcaoDaCasa = 'ver' | 'marca' | 'reinf' | 'retificar';
-export interface Casa { id: string; estado: EstadoDaCasa; acao: AcaoDaCasa; dica: string; /** conta na situação */ conta: boolean }
-export interface ColunaDoRelatorio { id: string; rotulo: string; nome: string }
-export type ParteDoRelatorio = 'sn' | 'lp' | 'parc' | 'reinf' | 'entrega';
-type Agrupar = 'nenhum' | 'regime';
+/** O regime da página: o grupo do controle e o regime do Cadastro que entra nele. */
+export type RegimeDoRelatorio = 'sn' | 'lp';
+const REGIME_DO_CADASTRO: Record<RegimeDoRelatorio, string> = { sn: 'Simples', lp: 'Presumido' };
 
+/** As partes da tabela (o título do grupo de colunas e o filtro Pendente em). */
+export type ParteDoRelatorio = 'guias' | 'conferencias' | 'entrega';
+const PARTES: readonly { valor: ParteDoRelatorio; rotulo: string }[] = [
+  { valor: 'guias', rotulo: 'Guias' }, { valor: 'conferencias', rotulo: 'Conferências' }, { valor: 'entrega', rotulo: 'Entrega' },
+];
 // os nomes curtos no título da coluna (o nome inteiro fica na dica), como o DP
 const CURTO: Record<string, string> = {
   das: 'DAS', 'icms-ant': 'Antec.', 'icms-arroz': 'Arroz', 'icms-dif': 'Dif. uso', 'icms-dif-ativo': 'Dif. ativo', 'st-ent': 'ST ent.', 'st-sai': 'ST saí.',
   pis: 'PIS', cofins: 'COFINS', irpj: 'IRPJ', csll: 'CSLL', icms: 'ICMS', iss: 'ISS', parc: 'Parc.',
 };
-const SN = t.grupoDoControle('sn');
-const LP = t.grupoDoControle('lp');
-const guiasDe = (g: t.GrupoDoControle) => g.colunas.filter(c => c.id !== 'parc');
-const colunasDe = (g: t.GrupoDoControle): ColunaDoRelatorio[] => [
-  ...guiasDe(g).map(c => ({ id: g.id + ':' + c.id, rotulo: CURTO[c.id] || c.rotulo, nome: c.rotulo })),
-  ...g.marcas.map(m => ({ id: g.id + ':mk:' + m.id, rotulo: m.rotulo, nome: m.dica })),
-];
-const PARTES: readonly { id: ParteDoRelatorio; rotulo: string; colunas: ColunaDoRelatorio[] }[] = [
-  { id: 'sn', rotulo: 'Simples Nacional', colunas: colunasDe(SN) },
-  { id: 'lp', rotulo: 'Lucro Presumido', colunas: colunasDe(LP) },
-  { id: 'parc', rotulo: 'Parcel.', colunas: [{ id: 'parc', rotulo: 'Parc.', nome: 'Parcelamento' }] },
-  { id: 'reinf', rotulo: 'REINF', colunas: [{ id: 'reinf', rotulo: 'REINF', nome: 'EFD-REINF transmitida' }, { id: 'retif', rotulo: 'Retif.', nome: 'REINF retificada na competência' }] },
-  { id: 'entrega', rotulo: 'Entrega', colunas: [{ id: 'entregue', rotulo: 'Entregue', nome: 'Entregue ao cliente' }] },
-];
-const ONDE: Record<string, string> = Object.fromEntries(t.ENTREGAS_DO_CONTROLE.map(e => [e.valor, e.rotulo]));
 const STATUS = [
   { valor: 'pendentes', rotulo: 'Pendentes' },
   ...(['nao-iniciada', 'em-andamento', 'concluida'] as const).map(v => ({ valor: v, rotulo: t.ROTULO_SITUACAO_GERAL[v] })),
 ];
-const semAcento = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-
-/** O valor da guia na bolinha: em branco = a fazer; "—" = não tem; o valor (ou "0") = feita. */
-function casaDoValor(id: string, nome: string, v: string | undefined): Casa {
-  const x = (v || '').trim();
-  if (!x) return { id, estado: 'a-fazer', acao: 'ver', dica: nome + ': em branco (escreva no Controle de tributos)', conta: true };
-  if (x === '—') return { id, estado: 'nao-tem', acao: 'ver', dica: nome + ': não tem no mês', conta: false };
-  return { id, estado: 'feita', acao: 'ver', dica: nome + ': ' + (x === '0' ? 'zero' : 'R$ ' + x), conta: true };
+const ENTREGAS = [{ valor: 'falta', rotulo: 'Falta' }, ...t.ENTREGAS_DO_CONTROLE.filter(e => e.valor).map(e => ({ valor: e.valor as string, rotulo: e.rotulo }))];
+// quantas empresas por página (28/10/2026: "um filtro que o usuário escolhe quantas empresas tem por página"); 0 = todas.
+// Fica guardado neste navegador.
+const POR_PAGINA = [25, 50, 100, 0] as const;
+const CHAVE_POR_PAGINA = 'nads-relatorio-por-pagina';
+function porPaginaGuardado(): number {
+  try { const s = localStorage.getItem(CHAVE_POR_PAGINA); const n = Number(s); return s !== null && (POR_PAGINA as readonly number[]).includes(n) ? n : 25; } catch { return 25; }
 }
+const semAcento = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+/** dd/mm/aaaa ↔ AAAA-MM-DD */
+export const dataBr = (iso: string) => (iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4) : '');
+const dataIso = (br: string) => { const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(br); return m ? m[3] + '-' + m[2] + '-' + m[1] : ''; };
+/** o mesmo conteúdo (sem quem e quando gravou) */
+const mesmoConteudo = (a: t.LinhaDoControle, b: t.LinhaDoControle) => {
+  const c = (l: t.LinhaDoControle) => JSON.stringify([l.grupo, l.data, l.entregue, Object.entries(l.valores).sort(), Object.entries(l.marcas).sort()]);
+  return c(a) === c(b);
+};
 
-export function useRelatorioGeral() {
-  const op = useOperador().operador;
+export function useRelatorioGeral(regime: RegimeDoRelatorio) {
   const { toast } = useRetorno();
-  // como o Controle de tributos: quem grava as conferências é o Fiscal e o admin; a REINF segue a tela da REINF
+  const op = useOperador().operador;
   const podeGravar = !!op && (op.admin || op.departamento === 'fiscal');
   const [params, setParams] = useSearchParams();
   const competencias = competenciasDaTela(12);
   const competencia = competencias.includes(params.get('competencia') || '') ? (params.get('competencia') as string) : competencias[0];
   const repo = useControleTributos();
   const lista = useListaDoCadastro();
-  const reinf = useAcoesDaReinf(competencia);
+  const entregas = useEntregasDeDocumentos();
+  const gmail = useGmailDoEntregas();
+  const grupo = t.grupoDoControle(regime);
   const mes = repo.doMes(competencia);
+  /** as colunas de guia: todas do grupo (o arroz e o parcelamento voltaram para a tabela, 28/10/2026) */
+  const colunas = grupo.colunas;
   const [busca, setBusca] = useState('');
-  const [enquadramento, setEnquadramento] = useState('');
   const [status, setStatus] = useState('');
   const [pendenteEm, setPendenteEm] = useState('');
   const [entrega, setEntrega] = useState('');
-  const [agrupar, setAgrupar] = useState<Agrupar>('nenhum');
+  const [porPagina, setPorPagina] = useState(porPaginaGuardado);
+  const [pagina, setPagina] = useState(0);
 
-  // as empresas: as do Simples e do Lucro Presumido (o regime do Cadastro, como o Controle) e as que têm a REINF
-  const doCadastro = new Map(lista.linhas.filter(l => l.codigo != null).map(l => [l.codigo as number, l]));
-  const codigos = new Set<number>();
-  for (const l of doCadastro.values()) if ([...SN.regimes, ...LP.regimes].includes(l.regime)) codigos.add(l.codigo as number);
-  for (const e of t.EMPRESAS_REINF) codigos.add(e.codigo);
+  // as empresas do regime no Cadastro do nads (o do Entregas, quando o nads não tem)
+  const empresas = useMemo(() => lista.linhas
+    .filter(l => l.codigo != null && l.regime === REGIME_DO_CADASTRO[regime])
+    .map(l => ({ codigo: l.codigo as number, nome: l.nome }))
+    .sort((a, b) => a.codigo - b.codigo), [lista.linhas, regime]);
+
+  // as guias que o Entregas entregou na competência, ligadas ao código pelo cliente do Entregas (a sugestão em cinza)
+  const doMes = entregas.doMes(competencia);
+  const codigoDoCliente = new Map(gmail.clientes().lista.map(c => [c.id, Number(c.codigo)]));
+  const guiasEntregues: t.GuiaEntregue[] = doMes.lista.flatMap(e => {
+    const codigo = e.clienteId ? codigoDoCliente.get(e.clienteId) : undefined;
+    return codigo && e.status === 'confirmada' ? [{ codigo, itens: e.itens, em: e.confirmadoEm, porEmail: e.comprovantePorEmail || e.canal === 'email' }] : [];
+  });
+  const sugestoes = t.sugestoesDoEntregas(grupo, empresas, guiasEntregues);
 
   // o que acabou de ser gravado vale até o banco devolver (dois cliques seguidos não perdem o primeiro)
-  const gravadas = useRef(new Map<number, t.LinhaDoControle>());
-  const linhaDe = (codigo: number, grupo: t.GrupoDoControleId) => {
-    const minha = gravadas.current.get(codigo);
+  const gravadas = useRef(new Map<string, t.LinhaDoControle>());
+  const linhaDe = (codigo: number) => {
+    const id = t.idDaLinhaDoControle(competencia, codigo);
+    const minha = gravadas.current.get(id);
     const doBanco = mes.linhas.get(codigo);
-    if (minha && doBanco && JSON.stringify(minha.marcas) === JSON.stringify(doBanco.marcas)) gravadas.current.delete(codigo);
-    return gravadas.current.get(codigo) || doBanco || t.linhaEmBranco(competencia, codigo, grupo);
+    if (minha && doBanco && mesmoConteudo(minha, doBanco)) gravadas.current.delete(id);
+    return gravadas.current.get(id) || doBanco || t.linhaEmBranco(competencia, codigo, grupo.id);
   };
 
-  const todas = [...codigos].map(codigo => {
-    const cad = doCadastro.get(codigo);
-    const nome = cad?.nome || t.EMPRESAS_REINF.find(e => e.codigo === codigo)?.nome || String(codigo);
-    const regime = cad?.regime || '';
-    const grupo: t.GrupoDoControleId | null = SN.regimes.includes(regime) ? 'sn' : LP.regimes.includes(regime) ? 'lp' : null;
-    const l = linhaDe(codigo, grupo || 'sn');
-    const casas: Casa[] = [];
-    for (const g of [SN, LP]) {
-      const doGrupo = grupo === g.id;
-      for (const c of guiasDe(g)) {
-        casas.push(doGrupo ? casaDoValor(g.id + ':' + c.id, c.rotulo, l.valores[c.id]) : { id: g.id + ':' + c.id, estado: 'nao-tem', acao: 'ver', dica: 'Não é do ' + g.rotulo, conta: false });
-      }
-      for (const m of g.marcas) {
-        const id = g.id + ':mk:' + m.id;
-        if (!doGrupo) { casas.push({ id, estado: 'nao-tem', acao: 'ver', dica: 'Não é do ' + g.rotulo, conta: false }); continue; }
-        const mk = l.marcas[m.id] || '';
-        casas.push({ id, estado: mk === 'ok' ? 'feita' : mk === 'na' ? 'nao-tem' : 'a-fazer', acao: 'marca', conta: mk !== 'na',
-          dica: m.dica + ': ' + (mk === 'ok' ? 'conferido' : mk === 'na' ? 'não se aplica' : 'falta') + ' (clique: OK → não se aplica → em branco)' });
-      }
-    }
-    casas.push(grupo ? casaDoValor('parc', 'Parcelamento', l.valores.parc) : { id: 'parc', estado: 'nao-tem', acao: 'ver', dica: 'Parcelamento: sem regime no Cadastro', conta: false });
-    // a REINF: as mesmas ações da tela da REINF
-    const est = reinf.estados[codigo];
-    if (est) {
-      const feita = t.situacaoReinf(est, competencia) === 'transmitida';
-      const info = (est.transmitidoAte ? 'transmitido até ' + mmaaaa(est.transmitidoAte) : 'nunca transmitida') + (est.ultima ? ' · última: ' + quandoDaReinf(est.ultima.em) + ', ' + est.ultima.por : '');
-      casas.push({ id: 'reinf', estado: feita ? 'feita' : 'a-fazer', acao: 'reinf', conta: true,
-        dica: 'REINF ' + (feita ? 'transmitida (clique para desfazer)' : 'pendente (clique quando transmitir)') + ' · ' + info });
-      const ret = est.retificadas.includes(competencia);
-      casas.push({ id: 'retif', estado: ret ? 'feita' : 'a-fazer', acao: 'retificar', conta: false,
-        dica: ret ? 'Retificada nesta competência (clique para tirar)' : 'Retificou esta competência? Clique para marcar' + (est.retificadas.length ? ' · retificadas: ' + est.retificadas.map(mmaaaa).join(', ') : '') });
-    } else {
-      casas.push({ id: 'reinf', estado: 'nao-tem', acao: 'ver', dica: 'Não tem REINF no Fiscal', conta: false });
-      casas.push({ id: 'retif', estado: 'nao-tem', acao: 'ver', dica: 'Não tem REINF no Fiscal', conta: false });
-    }
-    // a entrega: a do Controle de tributos
-    const entregue = l.entregue;
-    casas.push(!grupo ? { id: 'entregue', estado: 'nao-tem', acao: 'ver', dica: 'Entrega: sem regime no Cadastro', conta: false }
-      : entregue === 'nao' ? { id: 'entregue', estado: 'nao-tem', acao: 'ver', dica: 'Entrega: não se aplica', conta: false }
-        : { id: 'entregue', estado: entregue ? 'feita' : 'a-fazer', acao: 'ver', conta: true,
-          dica: entregue ? 'Entregue por ' + ONDE[entregue] + (l.data ? ' em ' + l.data.split('-').reverse().join('/') : '') : 'Falta entregar (escolha no Controle de tributos)' });
-    // a situação: concluída quando entregou (ou não se aplica) e a REINF que tem está transmitida; começada se tem algo
-    const contam = casas.filter(c => c.conta);
-    const feitas = contam.filter(c => c.estado === 'feita').length;
-    const reinfOk = !est || casas.find(c => c.id === 'reinf')?.estado === 'feita';
-    const entregaOk = !grupo || !!entregue;
-    const concluida = reinfOk && entregaOk;
-    const situacao: t.SituacaoGeral = concluida ? 'concluida' : feitas > 0 || t.situacaoDaLinha(l) !== 'branco' ? 'em-andamento' : 'nao-iniciada';
-    return {
-      codigo, nome, regime: grupo ? (grupo === 'sn' ? SN.rotulo : LP.rotulo) : 'Sem regime', grupo, linha: l, casas,
-      onde: entregue && entregue !== 'nao' ? ONDE[entregue] : '', situacao, rotuloSituacao: t.ROTULO_SITUACAO_GERAL[situacao],
-    };
+  const todas = empresas.map(e => {
+    const l = linhaDe(e.codigo);
+    // a situação: concluída quando entregou (ou não se aplica); começada se tem algo (a REINF é o R das conferências)
+    const doControle = t.situacaoDaLinha(l);
+    const situacao: t.SituacaoGeral = l.entregue ? 'concluida' : doControle !== 'branco' ? 'em-andamento' : 'nao-iniciada';
+    const pendencias = new Set<ParteDoRelatorio>();
+    if (colunas.some(c => !(l.valores[c.id] || '').trim())) pendencias.add('guias');
+    if (grupo.marcas.some(m => !l.marcas[m.id])) pendencias.add('conferencias');
+    if (!l.entregue) pendencias.add('entrega');
+    return { ...e, linha: l, sugestao: sugestoes.get(e.codigo), situacao, rotuloSituacao: t.ROTULO_SITUACAO_GERAL[situacao], pendencias };
   });
 
   const q = semAcento(busca.trim());
-  const pendente = PARTES.find(p => p.id === pendenteEm) || null;
-  const filtradas = todas.filter(r => (!q || semAcento(r.nome).includes(q) || String(r.codigo).startsWith(q))
-    && (!enquadramento || r.regime === enquadramento)
+  const linhas = todas.filter(r => (!q || semAcento(r.nome).includes(q) || String(r.codigo).startsWith(q))
     && (!status || (status === 'pendentes' ? r.situacao !== 'concluida' : r.situacao === status))
-    && (!entrega || (entrega === 'falta' ? r.grupo && !r.linha.entregue : r.linha.entregue === entrega))
-    && (!pendente || r.casas.some(c => pendente.colunas.some(k => k.id === c.id) && c.conta && c.estado === 'a-fazer')))
-    .sort((a, b) => a.codigo - b.codigo);
+    && (!entrega || (entrega === 'falta' ? !r.linha.entregue : r.linha.entregue === entrega))
+    && (!pendenteEm || r.pendencias.has(pendenteEm as ParteDoRelatorio)));
+  // a página: a busca e os filtros correm todas as empresas, e só depois a lista se divide em páginas
+  const paginas = porPagina ? Math.max(1, Math.ceil(linhas.length / porPagina)) : 1;
+  const atual = Math.min(pagina, paginas - 1);
+  const daPagina = porPagina ? linhas.slice(atual * porPagina, (atual + 1) * porPagina) : linhas;
+  const totais = colunas.map(c => {
+    const v = linhas.reduce((s, r) => s + t.numeroDoControle(r.linha.valores[c.id] || ''), 0);
+    return { id: c.id, valor: v ? brl(v) : '—' };
+  });
+  // as linhas que ganham alguma coisa com a sugestão do Entregas
+  const paraPreencher = todas.flatMap(r => {
+    const nova = r.sugestao ? t.preencherComSugestao(r.linha, r.sugestao) : r.linha;
+    return JSON.stringify(nova) !== JSON.stringify(r.linha) ? [nova] : [];
+  });
 
-  // as partes que alguém da lista tem (sem Simples na lista, as colunas do Simples saem)
-  const partes = PARTES.filter(p => (p.id !== 'sn' && p.id !== 'lp') || filtradas.some(r => r.grupo === p.id));
-  const colunas = partes.flatMap(p => p.colunas);
-  const visiveis = new Set(colunas.map(c => c.id));
-  const linhas = filtradas.map(r => ({ ...r, casas: r.casas.filter(c => visiveis.has(c.id)) }));
-  const grupos = agrupar === 'nenhum' ? [{ nome: '', linhas }]
-    : [SN.rotulo, LP.rotulo, 'Sem regime'].map(nome => ({ nome, linhas: linhas.filter(r => r.regime === nome) })).filter(g => g.linhas.length);
-
-  function virarMarca(codigo: number, casa: string) {
+  async function gravar(l: t.LinhaDoControle) {
     if (!podeGravar) return;
-    const r = todas.find(x => x.codigo === codigo);
-    if (!r?.grupo) return;
-    const marca = casa.split(':mk:')[1];
-    const l = r.linha;
-    const proxima = t.PROXIMA_MARCA[l.marcas[marca] || ''];
-    const marcas = { ...l.marcas };
-    if (proxima) marcas[marca] = proxima; else delete marcas[marca];
-    const nova = { ...l, grupo: r.grupo, marcas, atualizadoEm: undefined, atualizadoPor: undefined };
-    gravadas.current.set(codigo, nova);
-    repo.salvarLinha(nova).catch(() => { gravadas.current.delete(codigo); toast('Não deu para guardar: confira a internet e tente de novo'); });
+    const nova = { ...l, grupo: grupo.id, atualizadoEm: undefined, atualizadoPor: undefined };
+    const id = t.idDaLinhaDoControle(l.competencia, l.codigo);
+    gravadas.current.set(id, nova);
+    try { await repo.salvarLinha(nova); } catch { gravadas.current.delete(id); toast('Não deu para guardar: confira a internet e tente de novo'); }
   }
 
   return {
     carregando: !mes.carregada || lista.carregando,
     exemplos: repo.exemplos,
     podeGravar,
+    titulo: 'Relatório ' + (regime === 'sn' ? 'Simples' : 'Lucro Presumido'),
     competencia,
     competencias: competencias.map(c => ({ valor: c, rotulo: t.rotuloCompetencia(c) })),
     setCompetencia: (c: string) => { const n = new URLSearchParams(params); n.set('competencia', c); setParams(n); },
     filtros: {
-      busca, setBusca, enquadramento, setEnquadramento, status, setStatus, pendenteEm, setPendenteEm, entrega, setEntrega,
-      enquadramentos: [SN.rotulo, LP.rotulo, 'Sem regime'], statusOpcoes: STATUS,
-      partes: PARTES.map(p => ({ valor: p.id, rotulo: p.id === 'parc' ? 'Parcelamento' : p.rotulo })),
-      entregas: [{ valor: 'falta', rotulo: 'Falta' }, ...t.ENTREGAS_DO_CONTROLE.filter(e => e.valor).map(e => ({ valor: e.valor, rotulo: e.rotulo }))],
-      agrupar, setAgrupar,
-      algum: !!(busca || enquadramento || status || pendenteEm || entrega),
-      limpar: () => { setBusca(''); setEnquadramento(''); setStatus(''); setPendenteEm(''); setEntrega(''); },
+      // trocar a busca ou um filtro volta para a primeira página
+      busca, setBusca: (b: string) => { setBusca(b); setPagina(0); }, status, setStatus: (s: string) => { setStatus(s); setPagina(0); },
+      pendenteEm, setPendenteEm: (p: string) => { setPendenteEm(p); setPagina(0); }, entrega, setEntrega: (e: string) => { setEntrega(e); setPagina(0); },
+      porPagina, porPaginaOpcoes: POR_PAGINA.map(n => ({ valor: n, rotulo: n ? String(n) : 'Todas' })),
+      setPorPagina: (n: number) => { setPorPagina(n); setPagina(0); try { localStorage.setItem(CHAVE_POR_PAGINA, String(n)); } catch { /* sem armazenamento: só agora */ } },
+      statusOpcoes: STATUS, partes: PARTES, entregas: ENTREGAS,
+      algum: !!(busca || status || pendenteEm || entrega),
+      limpar: () => { setBusca(''); setStatus(''); setPendenteEm(''); setEntrega(''); setPagina(0); },
     },
-    partes, colunas, primeiras: new Set(partes.map(p => p.colunas[0].id)),
-    grupos, quantas: linhas.length, faltam: linhas.filter(r => r.situacao !== 'concluida').length,
-    clicar(codigo: number, c: Casa) {
-      if (c.acao === 'marca') virarMarca(codigo, c.id);
-      else if (c.acao === 'reinf') { if (c.estado === 'feita') reinf.desfazer(codigo); else reinf.transmitir(codigo); }
-      else if (c.acao === 'retificar') reinf.retificar(codigo);
+    grupo,
+    /** as colunas das guias da página, com o nome curto */
+    guias: colunas.map(c => ({ id: c.id, rotulo: CURTO[c.id] || c.rotulo, nome: c.rotulo })),
+    /** a página da lista: '1–25 de 166', a anterior e a próxima */
+    pagina: { atual, paginas, de: daPagina.length ? atual * (porPagina || linhas.length) + 1 : 0, ate: atual * (porPagina || linhas.length) + daPagina.length,
+      anterior: () => setPagina(Math.max(0, atual - 1)), proxima: () => setPagina(Math.min(paginas - 1, atual + 1)) },
+    total: todas.length, linhas: daPagina, achadas: linhas.length, faltam: linhas.filter(r => r.situacao !== 'concluida').length, totais,
+    /** um campo de valor: guarda como fica na tela (1.234,50, — ou 0) */
+    mudarValor(codigo: number, coluna: string, texto: string) {
+      const l = linhaDe(codigo);
+      const v = t.valorDoControle(texto);
+      if ((l.valores[coluna] || '') === v) return;
+      const valores = { ...l.valores };
+      if (v) valores[coluna] = v; else delete valores[coluna];
+      void gravar({ ...l, valores });
+    },
+    mudarData(codigo: number, br: string) {
+      const l = linhaDe(codigo);
+      const iso = br.trim() ? dataIso(br) : '';
+      if (br.trim() && !iso) { toast('A data fica dd/mm/aaaa'); return; }
+      if (iso !== l.data) void gravar({ ...l, data: iso });
+    },
+    /** a conferência anda em volta: em branco → OK → não se aplica → em branco */
+    virarMarca(codigo: number, marca: string) {
+      const l = linhaDe(codigo);
+      const proxima = t.PROXIMA_MARCA[l.marcas[marca] || ''];
+      const marcas = { ...l.marcas };
+      if (proxima) marcas[marca] = proxima; else delete marcas[marca];
+      void gravar({ ...l, marcas });
+    },
+    mudarEntrega(codigo: number, e: t.EntregaDoControle) {
+      const l = linhaDe(codigo);
+      // entregou sem data: a de hoje
+      const data = e && e !== 'nao' && !l.data ? new Date().toISOString().slice(0, 10) : l.data;
+      void gravar({ ...l, entregue: e, data });
+    },
+    comSugestaoParaUsar: paraPreencher.length,
+    /** passa as sugestões do Entregas para os campos em branco (o que a pessoa escreveu fica) */
+    async usarSugestoes() {
+      const mudar = paraPreencher;
+      for (const l of mudar) await gravar(l);
+      toast(mudar.length === 1 ? '1 empresa preenchida com o Entregas' : mudar.length + ' empresas preenchidas com o Entregas');
+    },
+    imprimir() {
+      imprimirHtml(t.htmlDoControle({ competencia, grupo, empresas, linhas: mes.linhas, folha: FOLHA_VAZIA, logo: logoNilmaParaImprimir('colorida') }));
+      toast('Protocolo pronto: escolha a impressora');
     },
     exportar() {
-      const ROTULO: Record<EstadoDaCasa, string> = { 'nao-tem': '—', 'a-fazer': 'A fazer', feita: 'Feita' };
-      const cabecalho = ['Cód.', 'Cliente', 'Regime', ...colunas.map(c => c.nome), 'Onde', 'Situação'];
-      const valores = linhas.map(r => [r.codigo, r.nome, r.regime, ...r.casas.map(c => ROTULO[c.estado]), r.onde, r.rotuloSituacao]);
-      return { bytes: t.planilhaXlsx('Relatório ' + competencia.slice(5, 7) + '-' + competencia.slice(0, 4), cabecalho, valores), nome: 'Fiscal relatório geral ' + competencia + '.xlsx' };
+      const marca = (m: string | undefined) => (m === 'ok' ? 'OK' : m === 'na' ? '—' : '');
+      const cabecalho = ['Cód.', 'Cliente', ...colunas.map(c => c.rotulo), ...grupo.marcas.map(m => m.dica), 'Data', 'Entregue', 'Situação'];
+      const valores = linhas.map(r => [
+        r.codigo, r.nome, ...colunas.map(c => r.linha.valores[c.id] || ''), ...grupo.marcas.map(m => marca(r.linha.marcas[m.id])),
+        dataBr(r.linha.data), t.ENTREGAS_DO_CONTROLE.find(e => e.valor === r.linha.entregue)?.rotulo || '', r.rotuloSituacao,
+      ]);
+      return { bytes: t.planilhaXlsx(grupo.rotulo + ' ' + competencia.slice(5, 7) + '-' + competencia.slice(0, 4), cabecalho, valores), nome: 'Fiscal relatório ' + (regime === 'sn' ? 'Simples' : 'Presumido') + ' ' + competencia + '.xlsx' };
     },
   };
 }
+export type VmRelatorio = ReturnType<typeof useRelatorioGeral>;

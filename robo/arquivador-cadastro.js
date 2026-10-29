@@ -22,7 +22,13 @@ const doc = s => { const d = so(s); return d.length === 10 ? '0' + d : d.length 
 
 /**
  * planilha: [{ codigo, razao, fantasia, doc, ie, regime }]; entregas: [{ codigoOrigem, nome, nomeFantasia, documento,
- * enquadramento, ativo }]; nads: [{ codigo, nome, regime }]. Devolve { linhas (para R.montarCadastro), divergencias }.
+ * enquadramento, ativo, contasBancarias }]; nads: [{ codigo, nome, regime, bancos, socios }]. Devolve { linhas (para
+ * R.montarCadastro), divergencias }.
+ *
+ * As contas bancárias (Vitor, 28/10/2026: o cliente do extrato, do comprovante e da aplicação sai da conta, para separar matriz
+ * e filiais): as do Entregas (clientes.contasBancarias [{ banco, agencia, conta }]) e as do Cadastro do nads (cadastro.bancos
+ * [{ marca, agencia, conta }], Cadastro › Empresas › Bancos), com o código; R.montarCadastro normaliza (só os dígitos, sem zeros
+ * à esquerda, o dígito separado e opcional). Os sócios do Cadastro do nads (cadastro.socios [{ nome, cpf }]) vão junto.
  */
 function juntar({ planilha = [], entregas = [], nads = [] }) {
   const porCod = new Map();
@@ -51,6 +57,10 @@ function juntar({ planilha = [], entregas = [], nads = [] }) {
       fonteRegime: x.na && x.na.regime ? 'nads' : x.en && x.en.enquadramento ? 'entregas' : x.pl && x.pl.regime ? 'planilha' : null,
       ativo: x.en ? x.en.ativo !== false : true,
       nomeEntregas: (x.en && x.en.nome) || '',
+      contas: contasDe(x),
+      // os bancos do cliente, também os sem o número da conta (o Cadastro do nads só com a marca; a trava do banco, 28/10/2026)
+      bancos: (((x.en && x.en.contasBancarias) || []).map(c => c && c.banco)).concat(((x.na && x.na.bancos) || []).map(b => b && (b.marca || b.nome))).filter(Boolean),
+      socios: ((x.na && x.na.socios) || []).map(p => ({ nome: String(p.nome || '').trim(), cpf: doc(p.cpf) })).filter(p => p.cpf.length === 11),
     });
   }
   // o mesmo CNPJ em dois códigos (cadastro duplicado) e nomes iguais em códigos diferentes (matriz/filiais sem "FILIAL")
@@ -62,6 +72,13 @@ function juntar({ planilha = [], entregas = [], nads = [] }) {
   for (const [d, cs] of porDoc) if (cs.length > 1) divergencias.push({ codigo: cs[0], tipo: 'CNPJ_EM_DOIS_CODIGOS', detalhe: d + ' nos códigos ' + cs.join(', ') });
   for (const [, cs] of porNome) if (cs.length > 1) divergencias.push({ codigo: cs[0], tipo: 'MESMO_NOME', detalhe: 'códigos ' + cs.join(', ') + ' com a mesma razão social (a pasta de origem não desempata)' });
   return { linhas, divergencias };
+}
+
+/** As contas bancárias de um código: Entregas e nads, só as que têm o número da conta. */
+function contasDe(x) {
+  const en = ((x.en && x.en.contasBancarias) || []).map(c => ({ banco: c.banco, agencia: c.agencia, conta: c.conta, fonte: 'entregas', origem: c.origem || null }));
+  const na = ((x.na && x.na.bancos) || []).map(b => ({ banco: b.marca || b.nome, agencia: b.agencia, conta: b.conta, fonte: 'nads' }));
+  return en.concat(na).filter(c => c && c.conta && /\d/.test(String(c.conta)));
 }
 
 /** A planilha da rotina antiga (só leitura). */
@@ -76,11 +93,11 @@ function lerPlanilha(arquivo) {
   }));
 }
 
-/** Lê o banco (Entregas `clientes` e nads `cadastro`, só os campos usados) e grava o cache. */
+/** Lê o banco (Entregas `clientes` e nads `cadastro`, só os campos usados, com as contas bancárias e os sócios) e grava o cache. */
 async function atualizar(db, cacheArq) {
   const [cli, cad] = await Promise.all([
-    db.collection('clientes').select('codigoOrigem', 'nome', 'nomeFantasia', 'documento', 'enquadramento', 'ativo').get(),
-    db.collection('cadastro').select('codigo', 'nome', 'regime').get(),
+    db.collection('clientes').select('codigoOrigem', 'nome', 'nomeFantasia', 'documento', 'enquadramento', 'ativo', 'contasBancarias').get(),
+    db.collection('cadastro').select('codigo', 'nome', 'regime', 'bancos', 'socios').get(),
   ]);
   const dados = { em: new Date().toISOString(), entregas: cli.docs.map(d => d.data()), nads: cad.docs.map(d => d.data()) };
   fs.mkdirSync(path.dirname(cacheArq), { recursive: true });

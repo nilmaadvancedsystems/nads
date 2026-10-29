@@ -854,8 +854,45 @@ igual('sem nome no assunto: não decide pelo nome', r.desempatarPorNome(fitos, '
   igual('DP: só vai o escolhido que está na lista (nunca um id de fora)', dp.escolhidos([{ i: 'x' }, { i: 'y' }], ['y', 'zzz']).map(a => a.i), ['y']);
   igual('DP: o mês por extenso', dp.mesPorExtenso('2026-03'), 'março de 2026');
   igual('DP: os três meses recentes (virando o ano)', dp.mesesRecentes(new Date(Date.UTC(2027, 0, 15))), ['2027-01', '2026-12', '2026-11']);
-  const email = require('./email-html').htmlDoEnvioDp({ assunto: 'Documentos <DP>', cliente: 'TESTE & CIA', mes: 'outubro de 2026', anexos: [{ nome: 'FGTS 10-2026.pdf', tamanho: 2048 }] });
-  igual('DP: o e-mail lista o anexo e escapa o HTML', [email.html.includes('FGTS 10-2026.pdf'), email.html.includes('TESTE &amp; CIA'), email.texto.includes('- FGTS 10-2026.pdf')], [true, true, true]);
+  const email = require('./email-html').htmlDoEnvioDp({ assunto: 'Documentos <DP>', texto: 'Olá!\n\nSeguem os documentos.', cliente: 'TESTE & CIA', competencia: '10/2026', anexos: [{ nome: 'FGTS 10-2026.pdf', tamanho: 2048 }] });
+  igual('DP: o e-mail tem o texto, o cartão dos dados e o anexo, com o HTML escapado', [email.html.includes('FGTS 10-2026.pdf'), email.html.includes('TESTE &amp; CIA'), email.html.includes('Seguem os documentos.'), email.html.includes('1 arquivo')], [true, true, true, true]);
+  // o boleto do escritório (28/10/2026): só BOLETO ou Fatura_ nas pastas da Nilma, no mês anterior ao da pasta
+  const boleto = [
+    { i: 'ct', n: 'CONTÁBIL', p: 'R', t: 'd' }, { i: 'pf', n: 'PAGAMENTOS DE FORNECEDORES', p: 'ct', t: 'd' }, { i: 'pa', n: '2026', p: 'pf', t: 'd' },
+    { i: 'p11', n: '11', p: 'pa', t: 'd' }, { i: 'ni', n: 'NILMA DIAS OLIVEIRA', p: 'p11', t: 'd' },
+    { i: 'b1', n: 'Fatura_NILMA DIAS OLIVEIRA_R$250,00_11-2026.pdf', p: 'ni', t: 'f' },
+    { i: 'nc', n: 'BOLETO NILMA CONTADOR', p: 'p11', t: 'd' }, { i: 'b2', n: 'BOLETO NILMA CONTADOR NF3301 R$900,00.pdf', p: 'nc', t: 'f' },
+    { i: 'b3', n: '09-11-2026 NILMA CONTADOR R$900,00.jpg', p: 'nc', t: 'f' }, { i: 'b4', n: 'NFSE 3301 NILMA CONTADOR R$900,00.pdf', p: 'nc', t: 'f' },
+    { i: 'po', n: 'POSTO 116', p: 'p11', t: 'd' }, { i: 'b5', n: 'BOLETO POSTO 116.pdf', p: 'po', t: 'f' },
+    { i: 'p01', n: '01', p: 'pa', t: 'd' }, { i: 'nj', n: 'NILMA CONT', p: 'p01', t: 'd' }, { i: 'b6', n: 'BOLETO NILMA CONT.pdf', p: 'nj', t: 'f' },
+  ];
+  const porMesB = dp.arquivosDoDpNaPasta(boleto, 'R', '2026', di2.caminhos, di2.chaveDeNome);
+  igual('DP: o boleto e a fatura da Nilma vão no mês anterior; o comprovante, a NFS-e e outro fornecedor ficam de fora', (porMesB.get('2026-10') || []).map(a => a.i).sort(), ['b1', 'b2']);
+  igual('DP: o boleto de janeiro vai com o DP de dezembro do ano anterior', (porMesB.get('2025-12') || []).map(a => a.i), ['b6']);
+  const m = dp.mensagemDoEnvio({ assunto: 'DP {competencia} - {cliente} {xyz}', texto: '' }, { cliente: 'ACME', competencia: '10/2026', mes: 'outubro de 2026' });
+  igual('DP: o modelo troca os campos, deixa o que não conhece, e o texto vazio vira o padrão', [m.assunto, m.texto.startsWith('Olá, ACME!'), m.texto.includes('outubro de 2026')], ['DP 10/2026 - ACME {xyz}', true, true]);
+  // o e-mail do Cadastro do nads manda; o do Entregas só sem ele (28/10/2026)
+  igual('DP: o e-mail do Cadastro do nads vale no lugar do Entregas', dp.paraQuem([{ contato: { email: ' Novo@Cliente.com ' } }], { email: 'velho@x.com' }), ['novo@cliente.com']);
+  igual('DP: sem e-mail no nads, vão os do Entregas (sem repetir)', dp.paraQuem([{ contato: {} }], { email: 'a@x.com', emails: ['B@x.com', 'a@x.com'] }), ['a@x.com', 'b@x.com']);
+  igual('DP: e-mail inválido não conta', dp.paraQuem([{ contato: { email: 'sem-arroba' } }], { email: 'ruim' }), []);
+  // o lote do DP (28/10/2026): a leitura do arquivador, a escolha na revisão, os grupos e os valores
+  const L = require('./lote-dp');
+  igual('lote: o valor da guia vira número', [L.valorNumero('R$1234,56'), L.valorNumero('1.234,56'), L.valorNumero('')], [1234.56, 1234.56, null]);
+  igual('lote: o tributo da DARF pelo nome final', L.tributoDoNome('10-2026 - DARF INSS - VALOR R$165,33 - VENCIMENTO 19-11-2026.pdf'), 'INSS');
+  const leit = L.leituraDe({ acao: 'ARQUIVAR', cliente: 191, clienteNome: 'PEDRO', tipo: 'FGTS', competencia: { mes: 10, ano: 2026 }, nomeFinal: 'FGTS 10-2026.pdf', anoRaiz: 2026, pastaCliente: '191 - PEDRO', caminho: ['DEPARTAMENTO PESSOAL', '10', 'FGTS'] }, { valor: 'R$129,68', vencimento: '19-11-2026' }, { texto: ['GUIA'] });
+  igual('lote: a leitura leva o cliente, a competência, o valor e a pasta', [leit.cliente, leit.competencia, leit.valor, leit.destino.join('/')], [191, '2026-10', 'R$129,68', '2026/191 - PEDRO/DEPARTAMENTO PESSOAL/10/FGTS']);
+  const pastaL = c => (c === 191 ? '191 - PEDRO' : '');
+  const lote = [
+    { nome: 'FGTS.pdf', leitura: leit },
+    { nome: 'guia.pdf', leitura: { cliente: 191, tipo: 'DARF', tributo: 'INSS', competencia: '2026-10', valor: 'R$165,33', nomeFinal: 'n.pdf', destino: ['2026', '191 - PEDRO', 'FISCAL', 'PESSOA FISICA', '02. DARF'] } },
+    { nome: 'scan.pdf', leitura: { cliente: null, tipo: '', competencia: '' }, escolha: { cliente: 191, tipo: 'FOLHA', competencia: '2026-10' } },
+    { nome: 'x.pdf', leitura: { cliente: 191, competencia: '2026-10' }, fora: true },
+    { nome: 'sem.pdf', leitura: { cliente: null, competencia: '' } },
+  ];
+  const gL = L.grupos(lote, pastaL);
+  igual('lote: um grupo por cliente e competência; o fora e o não identificado ficam de fora', [[...gL.porChave.keys()], gL.fora.map(a => a.nome)], [['191_2026-10'], ['x.pdf', 'sem.pdf']]);
+  igual('lote: o escolhido à mão vai para a pasta do DP do mês, com o nome original', gL.porChave.get('191_2026-10')[2].vai.destino.join('/'), '2026/191 - PEDRO/DEPARTAMENTO PESSOAL/10/FOLHA');
+  igual('lote: os valores do mês (FGTS e DARF do INSS)', L.valoresDoGrupo(gL.porChave.get('191_2026-10')), { fgts: 129.68, darf: 165.33 });
 }
 
 // os testes que leem PDF são assíncronos: o resultado espera por eles

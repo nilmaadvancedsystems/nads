@@ -33,12 +33,27 @@ export interface EnvioDoDp {
   enviadoEm: string;
 }
 
+/**
+ * O modelo do e-mail (config/envioDp, 28/10/2026: "que nem o de emissão do financeiro"): o assunto e o texto, com {cliente},
+ * {competencia} ("10/2026") e {mes} ("outubro de 2026"); vazio = o padrão. O mesmo padrão do robô (robo/envios-do-dp.js).
+ */
+export interface ModeloDoEnvio { assunto: string; texto: string }
+export const MODELO_PADRAO_DO_ENVIO: ModeloDoEnvio = {
+  assunto: 'Documentos do Departamento Pessoal · {competencia} · {cliente}',
+  texto: 'Olá, {cliente}!\n\nSeguem em anexo os documentos do Departamento Pessoal referentes a {mes}.\n\nQualquer dúvida, é só responder este e-mail.\n\nAtenciosamente,\nNilma Contabilidade',
+};
+
 export interface RepoEnviosDp {
   exemplos: boolean;
+  /** o modelo do e-mail como está no banco (vazio = o padrão) */
+  modelo(): { carregado: boolean } & ModeloDoEnvio;
+  gravarModelo(m: ModeloDoEnvio): Promise<void>;
   /** os documentos do DP do mês, por código do cliente (o que o robô achou nas pastas) */
   arquivos(competencia: string): { carregados: boolean; porCodigo: ReadonlyMap<string, readonly ArquivoDoDp[]> };
   /** os envios do mês: o mais novo de cada cliente */
   envios(competencia: string): { carregados: boolean; porCodigo: ReadonlyMap<string, EnvioDoDp> };
+  /** tudo o que já foi pedido para o cliente, de todos os meses, o mais novo primeiro (28/10/2026: "ver o que já foi enviado") */
+  historico(codigo: number, chegou: (lista: EnvioDoDp[]) => void): () => void;
   /** pede ao robô o e-mail com estes arquivos (os ids da lista do mês) */
   enviar(dados: { codigo: number; empresa: string; competencia: string; arquivos: readonly string[] }): Promise<void>;
   assinar(f: () => void): () => void;
@@ -51,7 +66,10 @@ export function criarEnviosDpMemoria(): RepoEnviosDp {
   const ouvintes = new Set<() => void>();
   const mudou = () => { ver++; for (const f of ouvintes) f(); };
   const envios = new Map<string, Map<string, EnvioDoDp>>();
+  // todos os pedidos (o histórico), na ordem em que foram feitos
+  const todos: EnvioDoDp[] = [];
   const listas = new Map<string, Map<string, ArquivoDoDp[]>>();
+  let modelo: ModeloDoEnvio = { assunto: '', texto: '' };
   const agora = () => new Date().toISOString();
   function listaDe(competencia: string) {
     if (!listas.has(competencia)) {
@@ -72,15 +90,29 @@ export function criarEnviosDpMemoria(): RepoEnviosDp {
   }
   return {
     exemplos: true,
+    modelo: () => ({ carregado: true, ...modelo }),
+    async gravarModelo(m) { modelo = { ...m }; mudou(); },
     arquivos: competencia => ({ carregados: true, porCodigo: listaDe(competencia) }),
     envios: competencia => ({ carregados: true, porCodigo: envios.get(competencia) || new Map() }),
+    historico(codigo, chegou) {
+      const mandar = () => chegou(todos.filter(e => e.codigo === String(codigo)).sort((a, b) => b.criadoEm.localeCompare(a.criadoEm)));
+      ouvintes.add(mandar);
+      mandar();
+      return () => { ouvintes.delete(mandar); };
+    },
     async enviar({ codigo, empresa, competencia, arquivos }) {
       const cod = String(codigo);
       const nomes = (listaDe(competencia).get(cod) || []).filter(a => arquivos.includes(a.id)).map(a => a.nome);
       const base: EnvioDoDp = { id: 'ex-' + cod + '-' + Date.now(), codigo: cod, empresa, competencia, status: 'pendente', erro: '', para: [], enviados: [], criadoEm: agora(), criadoPor: 'exemplo', enviadoEm: '' };
       const doMes = envios.get(competencia) || new Map<string, EnvioDoDp>();
       envios.set(competencia, doMes);
-      const por = (m: Partial<EnvioDoDp>) => { doMes.set(cod, { ...(doMes.get(cod) || base), ...m }); mudou(); };
+      const por = (m: Partial<EnvioDoDp>) => {
+        const novo = { ...(doMes.get(cod)?.id === base.id ? doMes.get(cod)! : base), ...m };
+        doMes.set(cod, novo);
+        const k = todos.findIndex(e => e.id === base.id);
+        if (k >= 0) todos[k] = novo; else todos.push(novo);
+        mudou();
+      };
       por(base);
       setTimeout(() => por({ status: 'processando' }), 700);
       setTimeout(() => por(codigo % 7 === 0

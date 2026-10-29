@@ -26,6 +26,8 @@ export const TELAS: Tela[] = [
   { id: 't-entrar', app: 'Tarefas', nome: 'Entrar' },
   { id: 't-empresas', app: 'Tarefas', nome: 'Minhas empresas' },
   { id: 't-inicio', app: 'Tarefas', nome: 'Início (avisos e a última empresa)' },
+  // o delegador de tarefas (28/10/2026, o "Minhas Tarefas" do Toriba): pelo perfil e pelo correio do pé do menu ☰
+  { id: 't-central-tarefas', app: 'Tarefas', nome: 'Central de tarefas (o delegador)' },
   { id: 't-senhas', app: 'Tarefas', nome: 'Senhas (gov.br e certificados)' },
   { id: 't-dp-fgts', app: 'Tarefas', nome: 'DP › FGTS Digital' },
   { id: 't-dp-resumo', app: 'Tarefas', nome: 'DP › Resumo' },
@@ -36,7 +38,7 @@ export const TELAS: Tela[] = [
   { id: 't-fiscal-rateio', app: 'Tarefas', nome: 'Fiscal › Rateio de frete' },
   { id: 't-fiscal-faturamento', app: 'Tarefas', nome: 'Fiscal › Faturamento (e o detalhe do cliente)' },
   { id: 't-fiscal-simples', app: 'Tarefas', nome: 'Fiscal › Simples Nacional (calculadora)' },
-  { id: 't-fiscal-controle', app: 'Tarefas', nome: 'Fiscal › Controle de tributos' },
+  { id: 't-fiscal-controle', app: 'Tarefas', nome: 'Fiscal › Relatório Simples / Presumido (a Retificação)' },
   { id: 't-financeiro-painel', app: 'Tarefas', nome: 'Financeiro › Painel (e o Resultado por conta)' },
   { id: 't-financeiro-honorarios', app: 'Tarefas', nome: 'Financeiro › Honorários (e o Reajuste)' },
   { id: 't-financeiro-devedores', app: 'Tarefas', nome: 'Financeiro › Devedores' },

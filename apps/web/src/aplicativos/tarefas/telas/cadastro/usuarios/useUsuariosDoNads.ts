@@ -83,7 +83,7 @@ export function useUsuariosDoNads() {
     // em grupos (sem busca, em Todos): quem está online agora, o resto da equipe e os inativos
     grupos: filtro !== 'todos' || q ? [{ titulo: '', itens: linhas }] : [
       { titulo: 'Online agora', itens: linhas.filter(p => p.online) },
-      { titulo: 'Equipe', itens: linhas.filter(p => p.ativo && !p.online) },
+      { titulo: 'Usuários', itens: linhas.filter(p => p.ativo && !p.online) },
       { titulo: 'Inativos', itens: linhas.filter(p => !p.ativo) },
     ].filter(g => g.itens.length),
     // as janelas: a da pessoa (os dados ao vivo) e a de criar o acesso

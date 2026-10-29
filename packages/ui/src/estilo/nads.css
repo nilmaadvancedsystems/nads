@@ -237,6 +237,18 @@ main.main{min-width:0;}
 /* ---------------------------------- formulários ---------------------------------- */
 .field{margin-bottom:16px;}
 .field label{display:block;font-size:var(--fs-14);font-weight:600;margin-bottom:6px;}
+.field .field-rotulo{display:block;font-size:var(--fs-14);font-weight:600;margin-bottom:6px;}
+/* escolher uma pessoa da equipe com a foto de perfil (o "Delegar para" do delegador; 28/10/2026): o menu do nads no lugar
+   do select (no celular, a lista do sistema não mostra foto) */
+.pessoa-foto{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;flex:none;border-radius:50%;overflow:hidden;
+  border:1px solid var(--border);background:var(--surface-3);color:var(--ink);font-size:10px;font-weight:600;}
+.pessoa-foto img{width:100%;height:100%;object-fit:cover;display:block;}
+.pessoa-escolhida{display:inline-flex;align-items:center;gap:8px;min-width:0;}
+.pessoa-escolhida > span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.field .popover-wrap{display:block;}
+.btn.pessoa-botao{width:100%;justify-content:space-between;}
+.pessoa-escolhida-fixa{min-height:36px;display:flex;align-items:center;}
+.pessoa-lista{display:flex;flex-direction:column;max-height:min(60vh,360px);overflow:auto;min-width:240px;}
 /* senha, e-mail, telefone, número, busca e o campo sem type com o mesmo visual, sem peso (:where) para as classes próprias
    (.nf-entrada, .usuario-campo, .pessoal-form…) continuarem valendo (revisão da UI, 16/10/2026: a Senha do login saía com o
    desenho do navegador) */
@@ -3145,6 +3157,9 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 .dp-pessoa-barra{height:6px;border-radius:3px;background:var(--hover-bg);overflow:hidden;}
 .dp-pessoa-barra span{display:block;height:100%;border-radius:3px;background:var(--success);}
 .dp-pessoa .hint{margin:0;font-size:var(--fs-12);}
+/* o andamento do mês dentro da Situação do mês (28/10/2026): na mesma caixa, separado da rosca só por uma linha */
+.dp-situacao-andamento{display:flex;flex-direction:column;gap:6px;margin-top:auto;padding:12px 16px 16px;border-top:1px solid var(--border);}
+.dp-situacao-andamento .hint{margin:0;font-size:var(--fs-12);}
 .dp-lista{padding:0;overflow:hidden;}
 .dp-lista-topo{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
 .dp-lista-topo .dp-titulo{margin:0;}
@@ -3340,6 +3355,16 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .dp-tabela td,.dp-tabela th{padding-left:8px;padding-right:8px;}
 .dp-tabela .badge{font-size:var(--fs-11);padding:1px 7px;}
 .dp-tabela .dp-cliente-nome{max-width:205px;}
+/* Obrigações do DP: o nome inteiro, sem o "…" (Vitor, 28/10/2026), e o responsável embaixo, discreto */
+.dp-tabela .dp-cliente-inteiro{min-width:240px;}
+/* o cabeçalho das Obrigações (28/10/2026): fixo ao rolar a página (a caixa e a tabela cortam com clip, que não vira uma
+   caixa de rolagem e deixa o sticky valer para a página), as colunas de duas linhas alinhadas embaixo e o Onde como as outras */
+.dp-lista.dp-lista-fixa,.dp-lista-fixa .table-wrap{overflow:clip;}
+.dp-lista-fixa .dp-tabela thead{position:sticky;top:0;z-index:4;}
+.dp-lista-fixa .dp-tabela thead th{position:static;}
+.dp-tabela .dp-cabeca-grupo th[rowspan]{vertical-align:bottom;padding-top:8px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.dp-tabela thead th.dp-onde-cab{width:auto;text-align:left;padding-left:8px;padding-right:8px;}
+.dp-tabela .dp-cliente-inteiro .dp-cliente-nome{max-width:none;white-space:normal;overflow:visible;text-overflow:clip;}
 .cofre-dev{margin:0 0 10px;color:var(--warn);font-size:var(--fs-13);}
 /* Senhas › Contas gov.br: a prévia da importação da planilha */
 .cofre-previa{margin:0 0 16px;padding:0;overflow:hidden;}
@@ -3503,6 +3528,9 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 /* os Feedbacks numa janela flutuante, abertos no pé da gaveta ☰ (07/10/2026) */
 .feedbacks-janela{width:min(980px,96vw);}
 .drawer-foot .drawer-item{margin:0 0 8px;}
+/* o pé da gaveta da Tarefas (28/10/2026): os Feedbacks e as Configurações só com o ícone, lado a lado */
+.drawer-icones{display:flex;gap:4px;margin:0 0 8px;}
+.drawer-icones .icon-btn[aria-pressed="true"]{background:var(--hover-bg);}
 /* clicar no feedback abre a solicitação numa janela (07/10/2026); na lista, o texto em duas linhas */
 .feedback-abre{width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;}
 .feedback-abre:hover{border-color:var(--border-strong);}
@@ -3561,11 +3589,44 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 /* DP › Envios (27/10/2026): os documentos do mês da pasta do cliente, por e-mail pelo robô da nuvem */
 .dp-envio-qtd > svg{width:14px;height:14px;flex:none;color:var(--ink-muted);}
 .dp-envio-arquivos{list-style:none;margin:0;padding:0 16px 8px;display:flex;flex-direction:column;gap:2px;}
-.dp-envio-arquivos label{display:flex;align-items:flex-start;gap:10px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:var(--fs-13);}
+.dp-envio-arquivos > li{display:flex;align-items:center;gap:8px;}
+.dp-envio-arquivos label{flex:1;min-width:0;display:flex;align-items:flex-start;gap:10px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:var(--fs-13);}
+.dp-envio-um{flex:none;height:28px;font-size:var(--fs-12);}
+.dp-envio-cliente{max-width:100%;}
+.dp-envio-cliente:hover .dp-cliente-nome{text-decoration:underline;}
+.dp-envio-historico{list-style:none;margin:0;padding:0 16px 12px;display:flex;flex-direction:column;}
+.dp-envio-historico > li{padding:10px 0;border-top:1px solid var(--border);font-size:var(--fs-13);}
+.dp-envio-historico > li:first-child{border-top:0;}
+.dp-envio-historico-topo{display:flex;flex-wrap:wrap;align-items:center;gap:8px;}
+.dp-envio-historico p{margin:6px 0 0;}
+.dp-envio-historico-arquivos{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:2px;}
+.dp-envio-historico-arquivos li{display:flex;align-items:center;gap:6px;overflow-wrap:anywhere;}
+.dp-envio-historico-arquivos svg{width:13px;height:13px;flex:none;color:var(--ink-muted);}
 .dp-envio-arquivos label:hover{background:var(--hover-bg);}
 .dp-envio-arquivos input{margin-top:3px;flex:none;}
 .dp-envio-arquivos b{display:block;font-weight:600;overflow-wrap:anywhere;}
 .dp-envio-pasta{display:block;font-size:var(--fs-11);overflow-wrap:anywhere;}
+/* o Modelo do e-mail (28/10/2026): a prévia com um cliente da lista */
+.dp-envio-previa{padding:0 16px 14px;font-size:var(--fs-13);}
+.dp-envio-previa p{margin:8px 0 0;white-space:pre-wrap;color:var(--ink-muted);}
+/* o e-mail da linha abre a aba E-mail da janela (28/10/2026): o lápis aparece ao passar o mouse */
+.dp-envio-email > svg{width:12px;height:12px;flex:none;opacity:0;color:var(--ink-muted);}
+.dp-envio-email:hover > svg,.dp-envio-email:focus-visible > svg{opacity:1;}
+/* o lote do DP (28/10/2026): subir, revisar por cliente e disparar */
+.dp-lote-texto{padding:0 16px;margin:4px 0 10px;font-size:var(--fs-12);}
+.dp-lote-subir{padding:0 16px 16px;}
+.dp-lote-topo{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding-right:16px;}
+.dp-lote-topo h3{margin-right:4px;}
+.tarefas-barra.fgts-barra.dp-lote-barra{margin:0 16px 10px;width:calc(100% - 32px);}
+.dp-lote-lista{list-style:none;margin:0;padding:0 16px 12px;display:flex;flex-direction:column;gap:2px;}
+.dp-lote-arquivo{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:var(--fs-13);min-width:0;}
+.dp-lote-nome{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.dp-lote-falta{display:flex;flex-direction:column;gap:6px;padding:10px 0;border-top:1px solid var(--border);font-size:var(--fs-13);}
+.dp-lote-falta:first-child{border-top:0;}
+.dp-lote-falta-nome{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.dp-lote-falta-nome b{overflow-wrap:anywhere;}
+.dp-lote-falta-campos{display:flex;flex-wrap:wrap;align-items:center;gap:8px;}
+.dp-lote-cliente{max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .fgts-janela .card > .fraco,.fgts-janela .card > .hint{padding:0 16px;margin:4px 0 10px;font-size:var(--fs-12);}
 .fgts-janela .card > .btn{margin:0 16px 14px;}
 
@@ -3573,6 +3634,8 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .dp-numeros{gap:10px;}
 .stat.painel-numero{position:relative;border:1px solid var(--tom-borda,var(--border));border-radius:10px;margin:0;background:var(--tom-fundo,var(--surface));padding:14px 16px 14px 56px;min-height:76px;}
 .painel-numero .stat-value{color:var(--tom,var(--ink));}
+/* o número sem o ícone (Minhas empresas, 28/10/2026): sem o espaço dele à esquerda */
+.stat.painel-numero:not(:has(.painel-numero-icone)){padding-left:16px;}
 .painel-numero-icone{position:absolute;left:14px;top:16px;width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--tom-icone,var(--surface-3));color:var(--tom,var(--ink-muted));}
 .painel-numero-icone svg{width:16px;height:16px;}
 .painel-info{--tom:var(--info);--tom-fundo:var(--info-soft);--tom-icone:var(--info-soft);--tom-borda:var(--info-soft);}
@@ -3585,7 +3648,10 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .painel-neutro{--tom:var(--ink);--tom-fundo:var(--surface);--tom-icone:var(--surface-3);--tom-borda:var(--border);}
 /* a janela das Justificativas e das Configurações (Minhas empresas; 28/10/2026): o título dos cartões de dentro sem o risco do título da janela */
 .janela-minhas-empresas .card h3{padding:0;border:0;}
-.janela-minhas-empresas .card{margin-top:0 !important;}
+.janela-minhas-empresas .card{margin-top:0 !important;border:0;background:none;box-shadow:none;padding:0;}
+.modal.janela-minhas-empresas.janela-com-tabela{max-width:min(1000px,calc(100vw - 32px));}
+.janela-com-tabela table{width:100%;}
+.janela-com-tabela thead th{position:sticky;top:0;background:var(--surface);z-index:1;}
 /* o número que filtra, colorido (Minhas empresas; 28/10/2026): a cor fica no hover; o escolhido ganha a borda na cor dele */
 .stat.stat-filtro.painel-numero{border:1px solid var(--tom-borda,var(--border));}
 .stat.stat-filtro.painel-numero:hover{background:var(--tom-fundo,var(--surface));filter:brightness(1.08);}
@@ -4890,6 +4956,45 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .fin-valor{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;}
 .fin-valor-entrada{color:var(--success);}
 .fin-valor-saida{color:var(--destructive);}
+/* Financeiro › Contas a pagar (28/10/2026: "o Contas a Pagar do Toriba, no nads"): a vencida em vermelho na lista, a parcela,
+   o clipe dos anexos; na janela, os campos e as dicas; no Painel, o aviso das que vencem (todo ícone com o tamanho dele) */
+.cp-lista tr.cp-vencida td{color:var(--destructive);}
+.cp-lista tr.cp-vencida td .fraco,.cp-lista tr.cp-vencida td .emp-cod{color:var(--destructive);}
+.cp-parcela{margin-left:6px;font-size:var(--fs-12);}
+.cp-clipe{display:inline-flex;align-items:center;margin-left:6px;width:14px;height:14px;color:var(--ink-muted);vertical-align:-2px;}
+.cp-clipe svg{width:14px;height:14px;}
+.cp-pago-em{margin-left:6px;font-size:var(--fs-12);white-space:nowrap;}
+/* as Contas a pagar no layout do DP (29/10/2026): o Pagar só com o ícone, na ponta da linha */
+.cp-lista .cp-acao{width:1%;text-align:right;padding-top:2px;padding-bottom:2px;}
+.cp-lista .fin-corta{max-width:280px;}
+.cp-janela .pessoal-linha-controle{flex-wrap:wrap;justify-content:flex-end;}
+.cp-janela .pessoal-linha-controle .file-picker{text-align:left;}
+.cp-campo{width:280px;max-width:100%;}
+.cp-campo-curto{width:140px;}
+.cp-campo-linha{width:360px;max-width:100%;font-variant-numeric:tabular-nums;}
+.cp-dica{display:flex;align-items:center;gap:6px;margin:0 0 12px;}
+.cp-dica svg{width:14px;height:14px;flex:none;}
+.cp-dica .link-btn{margin-left:4px;}
+.cp-novo-fornecedor{margin:0 -16px;padding:0 16px;background:var(--surface-2);border-top:1px solid var(--border);}
+.cp-anexo{display:inline-flex;align-items:center;gap:6px;min-width:0;word-break:break-all;}
+.cp-anexo svg{width:14px;height:14px;flex:none;color:var(--ink-muted);}
+.cp-observacoes{border-color:var(--border);background:var(--input-bg);}
+.cp-resumo-icone{display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:50%;background:var(--surface);border:1px solid var(--border);color:var(--ink-muted);}
+.cp-resumo-icone svg{width:24px;height:24px;}
+.cp-aviso{margin:0;}
+.cp-aviso h3{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.cp-aviso-titulo{display:inline-flex;align-items:center;gap:8px;}
+.cp-aviso-titulo svg{width:16px;height:16px;flex:none;color:var(--ink-muted);}
+.cp-aviso-vencidas{border-color:var(--destructive);}
+.cp-aviso-vencidas .cp-aviso-titulo svg{color:var(--destructive);}
+.cp-aviso-resumo{font-size:var(--fs-13);font-weight:400;}
+.cp-aviso-lista{list-style:none;margin:8px 0 12px;padding:0;}
+.cp-aviso-item{display:flex;align-items:center;gap:12px;padding:6px 0;border-top:1px solid var(--border);font-size:var(--fs-14);}
+.cp-aviso-item:first-child{border-top:none;}
+.cp-aviso-dia{width:44px;flex:none;color:var(--ink-muted);}
+.cp-aviso-nome{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cp-aviso-vencida,.cp-aviso-vencida .cp-aviso-dia{color:var(--destructive);}
+.cp-aviso-hoje .cp-aviso-dia{color:var(--warn);font-weight:600;}
 /* a contagem de cédulas */
 .fin-cedulas{display:grid;grid-template-columns:1fr 1fr;gap:8px 28px;}
 .fin-cedulas-grupo{display:flex;flex-direction:column;gap:4px;min-width:0;}
@@ -5347,3 +5452,94 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .ctrl-linha-entregue td{background:color-mix(in srgb,var(--success) 5%,transparent);}
 .ctrl-linha-entregue td.ctrl-cod,.ctrl-linha-entregue td.ctrl-nome{background:color-mix(in srgb,var(--success) 5%,var(--surface));}
 .ctrl-tabela tfoot td{position:sticky;bottom:0;background:var(--surface-2);font-weight:600;border-top:2px solid var(--border);}
+
+/* ---------------------------------- O delegador de tarefas (28/10/2026) ----------------------------------
+   A Central de tarefas (o "Minhas Tarefas" do Toriba) no layout da janela do Cadastro: as abas à esquerda com quantas tem,
+   a barra e a tabela no meio; a tarefa aberta no lugar da lista (o formulário, os anexos, o parecer e o histórico). E o
+   correio no pé do menu ☰ (a caixa de entrada com o número das tarefas em aberto). Só as variáveis do tema; nada anima. */
+.badge.badge-suave.badge-info{background:var(--info-soft);color:var(--info);}
+.cad-janela.tdl-central{width:min(1240px,100%);}
+.tdl-aba-qtd{margin-left:auto;min-width:20px;height:18px;padding:0 6px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;
+  font-size:var(--fs-11);font-weight:700;background:var(--surface-3);color:var(--ink-muted);font-variant-numeric:tabular-nums;}
+.cad-janela-aba.ativa .tdl-aba-qtd{background:var(--accent-soft);color:var(--accent-ink);}
+.tdl-barra .busca-curta{width:240px;}
+.tdl-tabela{max-height:none;}
+.tdl-tabela th,.tdl-tabela td{white-space:nowrap;}
+.tdl-linha{cursor:pointer;}
+.tdl-linha:hover td{background:var(--hover-bg);}
+.tdl-tabela td.tdl-titulo{white-space:normal;min-width:240px;}
+.tdl-abrir{display:inline-flex;align-items:baseline;gap:8px;padding:0;border:0;background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer;}
+.tdl-abrir:hover .tdl-titulo-texto{text-decoration:underline;}
+.tdl-abrir:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px;}
+.tdl-titulo-texto{font-weight:600;}
+.tdl-contas{display:inline-flex;gap:10px;margin-left:10px;white-space:nowrap;vertical-align:middle;}
+.tdl-conta{display:inline-flex;align-items:center;gap:3px;font-size:var(--fs-12);}
+.tdl-atrasada{color:var(--danger);font-weight:600;}
+.tdl-cliente{max-width:240px;overflow:hidden;text-overflow:ellipsis;}
+.tdl-tarefa{display:flex;flex-direction:column;gap:16px;}
+.tdl-tarefa-topo{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.tdl-tarefa-titulo{margin:0;font-size:var(--fs-20);font-weight:650;}
+.tdl-tarefa-pe{display:flex;align-items:center;gap:8px;padding-top:16px;border-top:1px solid var(--border);}
+.tdl-form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 16px;}
+.tdl-form .field{margin-bottom:0;}
+.tdl-campo-largo{grid-column:1 / -1;}
+.tdl-rotulo{display:block;font-size:var(--fs-14);font-weight:600;margin-bottom:6px;}
+.tdl-rotulo .fraco{font-weight:400;}
+.tdl-form .empresa-da-barra-busca .busca-curta{width:min(420px,100%);}
+.tdl-form .empresa-da-barra{max-width:100%;}
+.tdl-anexos{border:1px solid var(--border);border-radius:8px;padding:14px 16px;background:var(--surface);}
+.tdl-anexos-topo{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.tdl-anexos-topo .file-picker{width:auto;}
+.tdl-secao{margin:0;font-size:var(--fs-14);font-weight:600;}
+.tdl-secao .fraco{font-weight:400;}
+.tdl-anexos-lista{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;}
+.tdl-anexo{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--border);}
+.tdl-anexo-texto{flex:1;min-width:0;display:flex;flex-direction:column;}
+.tdl-anexo-texto .hint{margin-top:0;}
+.tdl-anexo-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-13);}
+.tdl-parecer{display:flex;flex-direction:column;gap:16px;}
+.tdl-parecer .field{margin-bottom:0;}
+.tdl-parecer-pe{display:flex;justify-content:flex-end;margin-top:8px;}
+.tdl-tempo{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;}
+.tdl-tempo-item{position:relative;display:grid;grid-template-columns:14px minmax(0,1fr);gap:10px;padding-bottom:14px;}
+.tdl-tempo-item:not(:last-child)::before{content:'';position:absolute;left:3px;top:16px;bottom:0;width:2px;background:var(--border);}
+.tdl-tempo-ponto{width:8px;height:8px;margin-top:6px;border-radius:50%;background:var(--border-strong);}
+.tdl-pareceres .tdl-tempo-ponto{background:var(--accent);}
+.tdl-tempo-quem{margin:0;display:flex;align-items:baseline;gap:8px;font-size:var(--fs-13);}
+.tdl-tempo-quem .fraco{font-size:var(--fs-12);}
+.tdl-tempo-texto{margin:2px 0 0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:var(--fs-13);}
+.tdl-pareceres .tdl-tempo-texto{margin-top:4px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface-2);}
+.tdl-correio{position:relative;display:inline-flex;}
+.tdl-correio-qtd{position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;display:inline-flex;align-items:center;
+  justify-content:center;font-size:var(--fs-11);font-weight:700;line-height:1;background:var(--accent);color:var(--on-accent);
+  box-shadow:0 0 0 2px var(--drawer-bg,var(--bg));pointer-events:none;font-variant-numeric:tabular-nums;}
+@media (max-width:760px){
+  .tdl-form{grid-template-columns:minmax(0,1fr);}
+  .tdl-barra .busca-curta{width:100%;}
+  .tdl-cliente{max-width:140px;}
+  .tdl-tabela td.tdl-titulo{min-width:180px;}
+  .tdl-tarefa-pe{flex-wrap:wrap;}
+}
+
+/* Fiscal › Relatório Simples / Presumido (29/10/2026: "tem algum jeito de fazer caber?"): a tabela cabe na largura da
+   tela, sem rolar de lado — colunas de largura fixa e estreitas, o cliente fica com o que sobra (cortado com …), os
+   valores são o campo sem caixa ocupando a célula (a borda só ao passar o mouse e ao escrever), a letra um pouco menor */
+.rel-geral .dp-lista .table-wrap{overflow-x:visible;}
+.rel-tabela{table-layout:fixed;width:100%;}
+.rel-tabela td,.rel-tabela th{padding-left:4px;padding-right:4px;}
+.rel-tabela col.rel-cod{width:40px;}
+.rel-tabela col.rel-guia{width:70px;}
+.rel-tabela col.rel-mk,.rel-tabela col.rel-sit{width:30px;}
+.rel-tabela col.rel-data{width:86px;}
+.rel-tabela col.rel-ent{width:90px;}
+.rel-tabela .dp-ob{width:auto;min-width:0;}
+.rel-tabela .dp-cliente-nome{max-width:none;}
+.rel-tabela thead tr:last-child th{white-space:normal;line-height:1.2;overflow:hidden;text-overflow:ellipsis;}
+.rel-tabela .rel-campo{display:block;width:100%;min-width:0;height:26px;padding:0 3px;border:1px solid transparent;border-radius:4px;
+  background:transparent;font-size:var(--fs-12);font-variant-numeric:tabular-nums;}
+.rel-tabela .rel-data .rel-campo{text-align:center;}
+.rel-tabela .rel-campo:hover:not([readonly]){border-color:var(--border);}
+.rel-tabela .rel-campo:focus{border-color:var(--accent);background:var(--surface);outline:none;}
+.rel-tabela .rel-campo::placeholder{color:var(--ink-faint);}
+.rel-tabela .ctrl-entrega{width:100%;min-width:0;height:26px;padding:0 2px;font-size:var(--fs-12);}
+.rel-tabela tfoot td{font-size:var(--fs-12);padding-left:8px;padding-right:8px;}

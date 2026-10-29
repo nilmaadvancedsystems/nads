@@ -6,7 +6,7 @@
 // Quem está trabalhando: no banco, o login com as contas do Entregas (entregas.firestore.ts, 30/09/2026);
 // nos exemplos, a pessoa escolhe o nome na lista da equipe (não há login).
 // O repositório e a sessão são criados uma vez, quando alguém abre a Tarefas. O do Cadastro, quando alguém abre o Cadastro.
-import { demo, empresas, entregas, extrator, formatos, tarefas } from '@nads/core';
+import { demo, empresas, entregas, extrator, formatos, tarefas, usuarios } from '@nads/core';
 import { criarAcessoMemoria, type RepoAcesso } from './acesso';
 import { criarAcessoFirestore } from './acesso.firestore';
 import { criarDriveFirestore } from './drive.firestore';
@@ -17,10 +17,14 @@ import { criarFgtsMemoria, type RepoFgts } from './fgts';
 import { criarFgtsFirestore } from './fgts.firestore';
 import { criarEnviosDpMemoria, type RepoEnviosDp } from './enviosDp';
 import { criarEnviosDpFirestore } from './enviosDp.firestore';
+import { criarLoteDpMemoria, type RepoLoteDp } from './loteDp';
+import { criarLoteDpFirestore } from './loteDp.firestore';
 import { criarCaixaMemoria, type RepoCaixa } from './caixa';
 import { criarCaixaFirestore } from './caixa.firestore';
 import { criarHonorariosMemoria, type RepoHonorarios } from './honorarios';
 import { criarHonorariosFirestore } from './honorarios.firestore';
+import { criarContasPagarMemoria, type RepoContasPagar } from './contasPagar';
+import { criarContasPagarFirestore } from './contasPagar.firestore';
 import { criarNfseMemoria, type RepoNfse } from './nfse';
 import { criarNfseFirestore } from './nfse.firestore';
 import { criarEntregasDeDocumentosMemoria, type RepoEntregasDeDocumentos } from './entregasDeDocumentos';
@@ -44,6 +48,8 @@ import { criarLcdprFirestore } from './lcdpr.firestore';
 import { criarFeedbackFirestore } from './feedback.firestore';
 import { criarAvisosFirestore } from './avisos.firestore';
 import { criarAvisosMemoria, type RepoAvisos } from './avisos';
+import { criarTarefasDelegadasMemoria, type RepoTarefasDelegadas } from './tarefasDelegadas';
+import { criarTarefasDelegadasFirestore } from './tarefasDelegadas.firestore';
 import { criarUsoMemoria, type RepoUso } from './uso';
 import { criarUsoFirestore } from './uso.firestore';
 import { criarParcelamentosMemoria, type RepoParcelamentos } from './parcelamentos';
@@ -374,6 +380,14 @@ export function repoDeEnviosDp(): RepoEnviosDp {
   return enviosDp;
 }
 
+let loteDp: RepoLoteDp | null = null;
+
+/** O lote do DP › Envios (28/10/2026): os arquivos que a tela sobe, lidos pelo robô, revisados e disparados por cliente. */
+export function repoDoLoteDp(): RepoLoteDp {
+  if (!loteDp) loteDp = noBanco ? criarLoteDpFirestore(quemPede) : criarLoteDpMemoria();
+  return loteDp;
+}
+
 let notasFiscais: RepoNfse | null = null;
 
 /** O emissor de NFS-e do financeiro (15/10/2026): as notas de honorários, a configuração e o token, emitidas pelo robô da nuvem. */
@@ -396,6 +410,14 @@ let honorarios: RepoHonorarios | null = null;
 export function repoDeHonorarios(): RepoHonorarios {
   if (!honorarios) honorarios = noBanco ? criarHonorariosFirestore() : criarHonorariosMemoria();
   return honorarios;
+}
+
+let contasPagar: RepoContasPagar | null = null;
+
+/** As contas a pagar do escritório (28/10/2026: "o Contas a Pagar do Toriba, no nads"): os fornecedores e as contas. */
+export function repoDeContasPagar(): RepoContasPagar {
+  if (!contasPagar) contasPagar = noBanco ? criarContasPagarFirestore() : criarContasPagarMemoria();
+  return contasPagar;
 }
 
 let entregasDeDocumentos: RepoEntregasDeDocumentos | null = null;
@@ -446,6 +468,26 @@ let avisos: RepoAvisos | null = null;
 export function repoDeAvisos(): RepoAvisos {
   if (!avisos) avisos = noBanco ? criarAvisosFirestore() : criarAvisosMemoria();
   return avisos;
+}
+
+let tarefasDelegadas: RepoTarefasDelegadas | null = null;
+
+/**
+ * O delegador de tarefas (28/10/2026, o "Minhas Tarefas" do Toriba): no banco, a coleção nadsTarefasDelegadas do Entregas
+ * (quem está é o login); nos exemplos, na memória (quem está é a pessoa escolhida na lista da equipe, com o uid de exemplo).
+ */
+export function repoDeTarefasDelegadas(): RepoTarefasDelegadas {
+  if (!tarefasDelegadas) {
+    tarefasDelegadas = noBanco
+      ? criarTarefasDelegadasFirestore(() => { const q = quemPede(); return q ? { uid: q.uid, nome: q.nome } : null; })
+      : criarTarefasDelegadasMemoria(() => {
+        let nome = '';
+        try { nome = localStorage.getItem('nads-tarefas-operador') || ''; } catch { /* sem storage */ }
+        const u = usuarios.EQUIPE_EXEMPLO.find(x => x.nome === nome);
+        return u ? { uid: u.uid, nome: u.nome } : nome ? { uid: nome, nome } : null;
+      });
+  }
+  return tarefasDelegadas;
 }
 
 let parcelamentos: RepoParcelamentos | null = null;

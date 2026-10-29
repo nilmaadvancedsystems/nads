@@ -469,7 +469,11 @@ async function executar(opcoes) {
   const leituras = new Map();
   const preparar = async (rel, b) => {
     if (/\.(zip|rar|7z)$/i.test(rel) && !ehTedSintegra(b)) return { b };
-    try { return { b, entrada: await montarEntrada(path.basename(rel), rel, b, { adiarOcr: !!opcoes.adiarOcr }) }; } catch (e) { return { b, erroEntrada: e }; }
+    let entrada;
+    try { entrada = await montarEntrada(path.basename(rel), rel, b, { adiarOcr: !!opcoes.adiarOcr }); } catch (e) { return { b, erroEntrada: e }; }
+    // a data do arquivo (28/10/2026: a raiz do ano da planilha de controle sem ano no nome nem na pasta)
+    try { entrada.dataArquivo = (await fs.promises.stat(path.join(opcoes.origem, rel))).mtime.toISOString(); } catch (e) { /* membro de zip: sem data */ }
+    return { b, entrada };
   };
   const adiantar = i => { if (i < arquivos.length && !leituras.has(i)) leituras.set(i, fs.promises.readFile(path.join(opcoes.origem, arquivos[i])).then(b => preparar(arquivos[i], b), e => ({ e }))); };
   for (let i = 0; i < arquivos.length; i++) {
@@ -519,6 +523,8 @@ async function decidirUm(nome, rel, buffer, ctx, pronta) {
   let d = ctx.manual && ctx.manual[rel] ? require('./arquivador-manual').decidirManual(entrada, ctx, ctx.manual[rel]) : R.decidir(entrada, ctx);
   // a migração (23/10/2026): o que o conteúdo não decidiu, a pasta de origem pode decidir (o mapa da migração)
   if (!(ctx.manual && ctx.manual[rel]) && d.acao === 'NAO_IDENTIFICADO') { try { const m = require('./arquivador-migracao').decidir(entrada, ctx, d); if (m) d = m; } catch (e) { d.evidencias = (d.evidencias || []).concat('mapa da migração: ' + e.message); } }
+  // a imagem que nem as regras nem o mapa decidiram, depois do OCR: DESCARTAR (Vitor, 28/10/2026)
+  if (!(ctx.manual && ctx.manual[rel])) d = R.descarteDaImagem(entrada, d);
   if (d.acao === 'ARQUIVAR') { d.raiz = raizDoAno(ctx.clientes, d.anoRaiz); for (const cp of d.copias || []) cp.raiz = raizDoAno(ctx.clientes, cp.anoRaiz || d.anoRaiz); }
   const item = { rel, nome, hash: entrada.hash, decididoPor: d.decididoPor || null, acao: d.acao, motivo: d.motivo || null, codigo: d.codigo || null, confianca: d.confianca, tipo: d.tipo || null, setor: d.setor || null,
     cliente: d.cliente || null, clienteNome: d.clienteNome || null, destinoRelativo: d.destinoRelativo || null, nomeFinal: d.nomeFinal || null, destinoSugerido: d.destinoSugerido || null,

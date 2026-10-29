@@ -48,31 +48,34 @@ export const APLICACOES: readonly Aplicacao[] = [
   { id: 'fiscal', nome: 'Fiscal', icone: 'recibo', grupo: 'Rotinas', pronta: true, paginas: [
     // Empresas, Painel, Visão geral e Paradas saíram (27/10/2026: "essas abas que estão marcadas de vermelho vão ser
     // removidas"): a empresa se abre por Minhas empresas, escolhendo o setor; ficam as ferramentas do Fiscal
-    // a REINF (o fluxo do Notion do Heverton)
-    { id: 'reinf', rotulo: 'REINF', icone: 'fileUp', titulo: 'REINF' },
+    // o menu em duas partes (28/10/2026: "separa nessa ordem: Empresas … Ferramentas: o restante"): em Empresas, o Relatório
+    // de cada regime (a planilha RELATORIO EMPRESA 2026 no estilo das Obrigações do DP, com a REINF; "lucro presumido e
+    // simples são diferentes, deixa cada um separado"; tomou o lugar do Controle de tributos: os links antigos caem no Simples;
+    // as Particularidades voltaram para a tabela dele, 28/10/2026: os links delas caem no Relatório do regime)
+    { id: 'relatorio-simples', rotulo: 'Simples Nacional', icone: 'painel', titulo: 'Relatório Simples', secao: 'Empresas' },
+    { id: 'relatorio-presumido', rotulo: 'Lucro Presumido', icone: 'painel', titulo: 'Relatório Lucro Presumido', secao: 'Empresas' },
+    // as Ferramentas: a REINF (o fluxo do Notion do Heverton)
+    { id: 'reinf', rotulo: 'REINF', icone: 'fileUp', titulo: 'REINF', secao: 'Ferramentas' },
     // o leitor do SINTEGRA (Vitor, 15/10/2026: "montar um leitor de sintegra")
-    { id: 'sintegra', rotulo: 'SINTEGRA', icone: 'fileText', titulo: 'Leitor do SINTEGRA' },
+    { id: 'sintegra', rotulo: 'SINTEGRA', icone: 'fileText', titulo: 'Leitor do SINTEGRA', secao: 'Ferramentas' },
     // a relação de faturamento dos clientes (Heverton, 20/10/2026; o usuário decidiu em 21/10: a receita de cada cliente)
-    { id: 'faturamento', rotulo: 'Faturamento', icone: 'dinheiro', titulo: 'Faturamento dos clientes' },
+    { id: 'faturamento', rotulo: 'Faturamento', icone: 'dinheiro', titulo: 'Faturamento dos clientes', secao: 'Ferramentas' },
     // o rateio do frete e do desconto de uma nota pelas tributações (Heverton, 22/10/2026: a planilha "RATEIO - FRETE")
-    { id: 'rateio-frete', rotulo: 'Rateio de frete', icone: 'caminhao', titulo: 'Rateio de frete' },
-    // a calculadora do Simples Nacional, a planilha do Fiscal preenchida com o SIEG e a folha do DP (Heverton, 22/10/2026)
-    { id: 'simples', rotulo: 'Simples Nacional', icone: 'recibo', titulo: 'Calculadora do Simples Nacional' },
+    { id: 'rateio-frete', rotulo: 'Rateio de frete', icone: 'caminhao', titulo: 'Rateio de frete', secao: 'Ferramentas' },
+    // a calculadora do Simples Nacional, a planilha do Fiscal preenchida com o SIEG e a folha do DP (Heverton, 22/10/2026);
+    // "Calculadora do Simples" no menu, para não repetir o Simples Nacional de Empresas
+    { id: 'simples', rotulo: 'Calculadora do Simples', icone: 'recibo', titulo: 'Calculadora do Simples Nacional', secao: 'Ferramentas' },
     // a antecipação do ICMS do ES (Heverton, 22/10/2026: a planilha "Antecipação ICMS-ES", com as notas do SIEG)
-    { id: 'antecipacao-es', rotulo: 'Antecipação ICMS-ES', icone: 'fileSearch', titulo: 'Antecipação de ICMS — ES' },
-    // a folha do Protocolo de Entrega de Tributos preenchida na tela (27/10/2026: "vamos implementar essa planilha de
-    // controle como modulo do fiscal")
-    { id: 'controle-tributos', rotulo: 'Controle de tributos', icone: 'checklist', titulo: 'Controle de tributos' },
-    // o Relatório geral (28/10/2026: a planilha RELATORIO EMPRESA 2026 no estilo das Obrigações do DP, com a REINF)
-    { id: 'relatorio', rotulo: 'Relatório geral', icone: 'painel', titulo: 'Relatório geral' },
+    { id: 'antecipacao-es', rotulo: 'Antecipação ICMS-ES', icone: 'fileSearch', titulo: 'Antecipação de ICMS — ES', secao: 'Ferramentas' },
   ] },
   // o DP (Vitor, 06/10/2026: o Checklist Folha "seria a rotina do dp"): as empresas com a rotina do DP, o painel da
   // planilha (números, gráficos, o progresso por responsável e as obrigações de cada cliente), a visão e as paradas
   { id: 'dp', nome: 'Departamento Pessoal', icone: 'usuario', grupo: 'Rotinas', pronta: true, paginas: [
     // tudo no tabelão (Vitor, 06/10/2026: "sem a parte de checklist"); as páginas na barra lateral ("eu ainda quero uma
     // barra lateral"); em Obrigações, uma tabela só, com as colunas agrupadas (Folha, eSocial, Guias, REINF, Entrega)
+    // as Obrigações viram o Início, a primeira página: o DP já abre nela (Vitor, 28/10/2026)
+    { id: 'obrigacoes', rotulo: 'Início', icone: 'home', titulo: 'Início' },
     { id: 'resumo', rotulo: 'Resumo', icone: 'painel', titulo: 'Resumo do mês' },
-    { id: 'obrigacoes', rotulo: 'Obrigações', icone: 'checklist', titulo: 'Obrigações do mês' },
     // a Visão geral saiu do DP (Vitor, 28/10/2026: "remove essa aba"); o link antigo cai no Resumo
     // a guia do FGTS Digital pelo robô da nuvem, com o certificado do escritório (Vitor, 07/10/2026)
     { id: 'fgts', rotulo: 'FGTS Digital', icone: 'fileDown', titulo: 'FGTS Digital', marca: 'fgts' },
@@ -112,6 +115,9 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'caixa', rotulo: 'Caixa', icone: 'dinheiro', titulo: 'Movimento de caixa' },
     // os honorários dos clientes, por competência (19/10/2026, fase 2 do Financeiro)
     { id: 'honorarios', rotulo: 'Honorários', icone: 'recibo', titulo: 'Honorários' },
+    // as contas a pagar e os fornecedores (28/10/2026: "o Contas a Pagar do Toriba, no nads"); o pagamento vira a saída no Caixa
+    { id: 'pagar', rotulo: 'Contas a pagar', icone: 'codigoBarras', titulo: 'Contas a pagar' },
+    { id: 'fornecedores', rotulo: 'Fornecedores', icone: 'predio', titulo: 'Fornecedores' },
     // os itens 2 e 7 da lista do Painel (22/10/2026): quem deve e o extrato do banco; o Resultado por conta virou um botão
     // do Painel, numa janela flutuante ("a aba de resultado vai virar um botão no painel"). A conciliação virou o
     // importador do extrato (23/10/2026: "vai se tornar um importador de extrato que vai trazer os dados e informações
@@ -127,9 +133,9 @@ export const APLICACOES: readonly Aplicacao[] = [
   // as páginas do site do admin, as mesmas telas, aqui dentro (o link Admin da gaveta saiu)
   { id: 'cadastro', nome: 'Configurações', icone: 'settings', grupo: 'Escritório', pronta: true, paginas: [
     { id: 'empresas', rotulo: 'Empresas', icone: 'briefcase', titulo: 'Empresas', secao: 'Cadastro' },
-    // a organização nova (Vitor, 13/10/2026: "reveja a estrutura inteira do cadastro"): a Equipe (as pessoas e a proteção
-    // do login)
-    { id: 'usuarios', rotulo: 'Equipe', icone: 'usuario', titulo: 'Equipe', secao: 'Cadastro' },
+    // a organização nova (Vitor, 13/10/2026: "reveja a estrutura inteira do cadastro"): os Usuários (as pessoas e a proteção
+    // do login; era "Equipe" até 28/10/2026: "troque a palavra equipe p/ Usuários")
+    { id: 'usuarios', rotulo: 'Usuários', icone: 'usuario', titulo: 'Usuários', secao: 'Cadastro' },
     ...PAGINAS_DO_ADMIN.map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, titulo: p.titulo, secao: 'Admin', soAdmin: true })),
   ] },
   // a Área do Cliente (Vitor, 16/10/2026): o lado do escritório do site que o cliente abre pelo link secreto. Com o

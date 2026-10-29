@@ -3,7 +3,7 @@
 // lista própria, juntada por último no catálogo (index.ts): assim cada uma é a última do seu tipo e os códigos das peças
 // de antes (as janelas, as do Arquivador) não mudam. Peça nova entra no fim daqui.
 import { BotaoFechar, Icone, Segmentado, Variacao } from '@nads/ui';
-import { MarcaDoControle } from '../../tarefas/telas/fiscal/controle/ControleDeTributos';
+import { MarcaDoControle } from '../../tarefas/telas/fiscal/relatorio/PartesDoRelatorio';
 import type { Peca } from './tipos';
 
 export const PECAS_DAS_TELAS_NOVAS: Peca[] = [
@@ -72,7 +72,7 @@ export const PECAS_DAS_TELAS_NOVAS: Peca[] = [
         </div>
         <footer className="registro-pe"><span className="fraco">1 item</span><span className="tarefas-barra-espaco" /><button type="button" className="btn btn-outline">Fechar</button></footer>
       </div>) },
-  { id: 'controle-tributos', tipo: 'tabelas', nome: 'Folha de controle (valores, conferências e entrega)', descricao: 'A folha do Protocolo de Entrega de Tributos na tela: o código e a empresa parados à esquerda, um campo de valor por tributo (em cinza, o que o Entregas já entregou), a data, as conferências (o quadradinho: vazio → OK → —) e a entrega (Impresso, WhatsApp, E-mail); a linha entregue fica verde', componente: 'MarcaDoControle (fiscal/controle)', classes: ['table-compact ctrl-tabela', 'ctrl-marca', 'ctrl-marca ctrl-marca-ok', 'ctrl-marca ctrl-marca-na', 'pessoal-select ctrl-entrega', 'ctrl-linha-entregue'], telas: ['t-fiscal-controle'], largo: true,
+  { id: 'controle-tributos', tipo: 'tabelas', nome: 'Folha de controle (valores, conferências e entrega)', descricao: 'A folha do Protocolo de Entrega de Tributos na tela: o código e a empresa parados à esquerda, um campo de valor por tributo (em cinza, o que o Entregas já entregou), a data, as conferências (o quadradinho: vazio → OK → —) e a entrega (Impresso, WhatsApp, E-mail); a linha entregue fica verde', componente: 'MarcaDoControle (fiscal/relatorio)', classes: ['table-compact ctrl-tabela', 'ctrl-marca', 'ctrl-marca ctrl-marca-ok', 'ctrl-marca ctrl-marca-na', 'pessoal-select ctrl-entrega', 'ctrl-linha-entregue'], telas: ['t-fiscal-controle'], largo: true,
     uso: '<td className="ctrl-mk"><MarcaDoControle marca={linha.marcas.dctf} rotulo="DCTF" pode={podeGravar} aoVirar={virar} /></td>',
     demo: () => (
       <div className="table-wrap" style={{ width: '100%' }}><table className="table-compact ctrl-tabela" style={{ minWidth: 0 }}>

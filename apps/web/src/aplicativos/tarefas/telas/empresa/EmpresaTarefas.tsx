@@ -75,6 +75,31 @@ export function EmpresaTarefas({ rota, parte }: { rota: string; parte: 'tarefas'
       )}
 
       {parte === 'visao' && <>
+      {/* as justificativas da empresa no mês: as etapas paradas, com o motivo (Vitor, 28/10/2026: "remove esse botão de
+          justificativa e deixe na visão geral da empresa"; era o botão de Minhas empresas) */}
+      {!vm.carregando && (
+        <div className="card">
+          <div className="card-head"><h3>Justificativas de {vm.rotuloCompetencia}</h3></div>
+          {vm.etapas.some(e => e.parada) ? (
+            <div className="table-wrap">
+              <table>
+                <thead><tr><th>Etapa</th><th>Motivo</th><th>Quem</th><th>Quando</th></tr></thead>
+                <tbody>
+                  {vm.etapas.filter(e => e.parada).map(e => (
+                    <tr key={e.id}>
+                      <td><span className="bolinha-sit parada" />{e.nome}</td>
+                      <td className="wrap">{e.motivo || '—'}</td>
+                      <td className="fraco">{e.por}</td>
+                      <td className="fraco num" title={e.quandoCompleto || undefined}>{e.quando}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : <Vazio compacto icone="checkCircle" texto="Nenhuma etapa parada nesta competência." />}
+        </div>
+      )}
+
       <div className="card">
         <div className="card-head"><h3>Últimos meses</h3></div>
         <div className="table-wrap">

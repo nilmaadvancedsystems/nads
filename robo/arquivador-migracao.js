@@ -80,6 +80,8 @@ const SEM_DECISAO_PELO_CONTEUDO = new Set(['TIPO_NAO_RECONHECIDO', 'CONTEUDO_SEM
  * ou null quando a pasta não diz nada.
  */
 function decidir(entrada, ctx, d) {
+  // a conta do documento está em dois clientes do cadastro (Vitor, 28/10/2026): fica CLIENTE_AMBIGUO, a pasta não desempata
+  if (d && d.contaAmbigua) return null;
   return clientePelaPasta(entrada, ctx, d) || decidirPeloMapa(entrada, ctx, d);
 }
 function decidirPeloMapa(entrada, ctx, d) {
@@ -143,7 +145,9 @@ function decidirPeloMapa(entrada, ctx, d) {
   const b = tipo.montar({ comp: comp || {}, ext, base, nome, entrada });
   if (b.erro) return R.comMotivoDoCodigo(Object.assign({}, d, { cliente, motivo: 'VOCABULARIO_AUSENTE', evidencias: ev.concat(b.erro) }));
   return R.finalizar(Object.assign({ acao: 'ARQUIVAR', cliente, comoCliente: como, confianca: conf, tipo: tipo.id.replace(/_/g, ' '), setor: tipo.setor, competencia: comp && comp.ano ? comp : null,
-    anoPista: pastaComp, nomeOriginal: nome, evidencias: ev, fonte: 'mapa da migração (pasta de origem)', ocr: entrada.ocr || null, pelaMigracao: t.pasta }, b), ctx);
+    anoPista: pastaComp, nomeOriginal: nome, evidencias: ev, fonte: 'mapa da migração (pasta de origem)', ocr: entrada.ocr || null, pelaMigracao: t.pasta,
+    // documento constitutivo com o cliente dado pela pasta conferida (código e nome): o OCR fraco não o barra (Vitor, 29/10/2026)
+    ocrFracoOk: tipo.id === 'DOC_CONSTITUTIVO' && !!pista && !!pista.forte && cliente === pista.codigo }, b), ctx);
 }
 
 /**
@@ -165,7 +169,8 @@ function documentoDeSocio(entrada, ctx, d, pista, ev) {
   }
   if (!['TIPO_NAO_RECONHECIDO', 'CONTEUDO_SEM_TEXTO', 'CONTEUDO_ILEGIVEL'].includes(d.motivo)) return null;
   const a = /(?:^|[^0-9])(20\d{2})(?![0-9])/.exec(nome.replace(/\.[a-z0-9]+$/i, ''));
-  return R.finalizar(Object.assign(base, { tipo: 'DOCUMENTO DE SOCIO', caminho: ['SOCIETÁRIO', 'DOCUMENTOS DE SÓCIOS'], competencia: a ? { ano: +a[1] } : null, fonte: '04b (Documentos de Sócios); Vitor, 26/10/2026' }), ctx);
+  // o documento pessoal do sócio com OCR fraco, na pasta da empresa que o cadastro confere (código e nome): não é barrado pelo OCR (Vitor, 29/10/2026)
+  return R.finalizar(Object.assign(base, { tipo: 'DOCUMENTO DE SOCIO', caminho: ['SOCIETÁRIO', 'DOCUMENTOS DE SÓCIOS'], competencia: a ? { ano: +a[1] } : null, fonte: '04b (Documentos de Sócios); Vitor, 26/10/2026', ocrFracoOk: !!pista.forte }), ctx);
 }
 
 /**

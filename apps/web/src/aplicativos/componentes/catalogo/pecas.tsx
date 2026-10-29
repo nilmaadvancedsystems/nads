@@ -41,8 +41,19 @@ import { ListaDaSaude } from '../../tarefas/telas/cadastro/configuracoes/ListaDa
 import { resumoDeExemplo } from '../../admin/dados/saudeBanco';
 import '../../admin/admin.css';
 import '../../cliente/cliente.css';
+import { CorreioDeTarefas } from '../../tarefas/telas/delegador/partes/CorreioDeTarefas';
+import { SeloDaPrioridade, SeloDoStatus } from '../../tarefas/telas/delegador/partes/SelosDaTarefa';
+import { TabelaDeTarefas, type LinhaDaTabelaDeTarefas } from '../../tarefas/telas/delegador/partes/TabelaDeTarefas';
+import { LinhaDoTempoDaTarefa } from '../../tarefas/telas/delegador/partes/LinhaDoTempoDaTarefa';
+import { AnexosDaTarefa } from '../../tarefas/telas/delegador/partes/AnexosDaTarefa';
 
 const nada = () => undefined;
+/** As linhas de exemplo da tabela da Central de tarefas (o delegador, 28/10/2026). */
+const TAREFAS_DE_EXEMPLO: LinhaDaTabelaDeTarefas[] = [
+  { id: '1', numero: 1, titulo: 'Conferir o balancete de setembro', status: { rotulo: 'Pendente', tom: 'warn' }, prioridade: { valor: 'alta', rotulo: 'Alta' }, prazo: '26/10/2026', atrasada: true, cliente: '292 · EXEMPLO COMERCIO DE ALIMENTOS LTDA', pessoa: 'Vitor', anexos: 1, pareceres: 1 },
+  { id: '2', numero: 2, titulo: 'Mandar a guia do DAS para o cliente', status: { rotulo: 'Em andamento', tom: 'info' }, prioridade: { valor: 'urgente', rotulo: 'Urgente' }, prazo: '29/10/2026', atrasada: false, cliente: '14 · ALFA COMERCIO LTDA', pessoa: 'Heverton', anexos: 0, pareceres: 0 },
+  { id: '3', numero: 3, titulo: 'Atualizar o cadastro dos sócios', status: { rotulo: 'Pendente', tom: 'warn' }, prioridade: { valor: 'normal', rotulo: 'Normal' }, prazo: '', atrasada: false, cliente: '', pessoa: 'Você mesmo', anexos: 0, pareceres: 0 },
+];
 /** A calculadora do catálogo, funcionando pelas teclas da tela. */
 function DemoDaCalculadora() {
   const [e, setE] = useState<financeiro.EstadoDaCalculadora>(financeiro.CALCULADORA_INICIAL);
@@ -737,6 +748,8 @@ export const PECAS_BASE: Peca[] = [
   // a empresa aberta em Minhas empresas (27/10/2026): o cartão no cabeçalho e a escolha no topo da barra lateral
   { id: 'cartao-empresa', tipo: 'cabecalhos', nome: 'Cartão da empresa (cabeçalho)', descricao: 'O prédio, o nome e, embaixo, o código e o CNPJ; o clique abre a janela da empresa do Cadastro por cima da tela (quem não mexe no Cadastro: só os dados)', classes: ['gh-cartao-topo', 'cartao-empresa', 'cartao-empresa-icone', 'cartao-empresa-nome', 'cartao-empresa-doc'], telas: ['t-empresa'],
     demo: () => <button type="button" className="cartao-empresa"><span className="cartao-empresa-icone" aria-hidden="true"><Icone nome="predio" width={18} height={18} /></span><span className="cartao-empresa-texto"><span className="cartao-empresa-nome">FITO INDUSTRIA E COMERCIO DE ALIMENTOS LTDA</span><span className="cartao-empresa-doc num">Código 292 · CNPJ 19.449.248/0001-62</span></span></button> },
+  { id: 'escolher-pessoa', tipo: 'menus', nome: 'Escolher pessoa (com a foto)', descricao: 'O menu do nads no lugar do select: a foto de perfil (ou as iniciais), o nome e o ✓ na escolhida; o "Delegar para" do delegador', classes: ['pessoa-botao', 'pessoa-escolhida', 'pessoa-foto', 'pessoa-lista', 'field-rotulo'], telas: ['t-inicio'],
+    demo: () => <div className="popover" style={{ position: 'static', width: 240 }}><div className="pessoa-lista"><button type="button" className="popover-item"><span className="pessoa-foto" aria-hidden="true">CL</span><span className="popover-texto">Clara</span></button><button type="button" className="popover-item"><span className="pessoa-foto" aria-hidden="true">HE</span><span className="popover-texto">Heverton</span><Icone nome="check" width={16} height={16} /></button></div></div> },
   { id: 'mural-avisos', tipo: 'listas', nome: 'Mural de avisos (Início)', descricao: 'Os avisos do escritório, os fixados em cima, com quem e quando; o admin e o diretor fixam, apagam e escrevem no pé', classes: ['mural-lista', 'mural-aviso', 'mural-aviso-texto', 'mural-novo', 'mural-novo-pe'], telas: ['t-inicio'], largo: true,
     demo: () => <div className="card" style={{ width: '100%' }}><ul className="mural-lista"><li className="mural-aviso"><div className="mural-aviso-corpo"><p className="mural-aviso-texto">Sexta-feira o escritório fecha às 16h.</p><p className="hint">Vitor · há 4 horas</p></div><button type="button" className="icon-btn" title="Fixar no alto"><Icone nome="mapaPin" width={16} height={16} /></button></li></ul></div> },
   { id: 'stat-filtro', tipo: 'graficos', nome: 'Número que filtra (painel de Minhas empresas)', descricao: 'O número da situação que, clicado, filtra a lista (de novo, mostra todas)', classes: ['stat stat-filtro', 'ativo'], telas: ['t-empresas'],
@@ -1076,4 +1089,46 @@ export const PECAS_BASE: Peca[] = [
     } },
   { id: 'admin-numero', tipo: 'cartoes', nome: 'Número do painel que abre a página (site do admin)', descricao: 'O número em painel colorido (painel-numero) como link: clicar abre a página dele (Robôs ligados → Robô, Feedbacks altos novos → Feedbacks). O tom segue a situação: verde tudo certo, âmbar atenção, laranja erro', classes: ['stat painel-numero admin-numero', 'admin-numeros', 'painel-ok', 'painel-aviso', 'painel-laranja'], telas: ['a-visao-geral', 'a-arquivador'], largo: true,
     demo: () => <div className="stat-grid dp-numeros admin-numeros" style={{ width: '100%' }}>{([['Robôs ligados', '2 de 2', 'ok', 'robo'], ['Erros em 24 h', '3', 'laranja', 'alert'], ['Filas atrasadas', '1', 'aviso', 'clock'], ['Feedbacks altos novos', '0', 'ok', 'mensagem']] as [string, string, string, NomeIcone][]).map(([r, v, tom, ic]) => <a key={r} href="#" onClick={e => e.preventDefault()} className={'stat painel-numero admin-numero painel-' + tom}><span className="painel-numero-icone" aria-hidden="true"><Icone nome={ic} width={16} height={16} /></span><p className="stat-label">{r}</p><p className="stat-value num">{v}</p></a>)}</div> },
+  // o delegador de tarefas (28/10/2026: "preciso montar um delegador de tarefas, esse é o antigo do Toriba"); cada peça no
+  // fim do seu tipo (os códigos das outras não mudam)
+  { id: 'jn-central-tarefas', tipo: 'janelas', nome: 'Central de tarefas (o delegador)', descricao: 'A janela flutuante no layout da janela do Cadastro (o usuário pediu "seguir o layout do cadastro"), aberta pelo perfil (Central de tarefas) ou pelo correio do pé do menu ☰: o nome e o × no topo; à esquerda Minhas tarefas, Delegadas por mim e Concluídas, com quantas tem; no meio a barra (Nova tarefa, a busca "O que você procura?", o status e o Exportar .xlsx/.csv) e a tabela. Clicar na linha abre a tarefa no lugar da lista, com "‹ Voltar" e as abas Tarefa / Parecer / Histórico. Sem animação própria', classes: ['cad-janela-fundo', 'cad-janela tdl-central', 'cad-janela-abas', 'cad-janela-aba', 'tdl-aba-qtd', 'tdl-barra'], telas: ['t-central-tarefas'], largo: true,
+    demo: () => (
+      <div className="cad-janela tdl-central cat-parado" style={{ maxWidth: 900, width: '100%', height: 'auto' }}>
+        <div className="cad-janela-topo"><span className="cad-janela-empresa"><Icone nome="checklist" width={18} height={18} /><span className="cad-janela-nome">Central de tarefas</span></span><BotaoFechar onClick={nada} /></div>
+        <div className="cad-janela-corpo">
+          <nav className="cad-janela-abas">{([['Minhas tarefas', 'caixaEntrada', 2], ['Delegadas por mim', 'aviao', 1], ['Concluídas', 'checkCircle', 0]] as [string, NomeIcone, number][]).map(([a, ic, n], i) => <button key={a} type="button" className={'cad-janela-aba' + (i === 0 ? ' ativa' : '')}><Icone nome={ic} width={16} height={16} />{a}{n > 0 && <span className="tdl-aba-qtd">{n}</span>}</button>)}</nav>
+          <div className="cad-janela-conteudo">
+            <div className="tarefas-barra-topo tdl-barra"><button type="button" className="btn btn-primary"><Icone nome="plus" width={16} height={16} />Nova tarefa</button><label className="busca-curta"><Icone nome="search" width={16} height={16} /><input type="text" placeholder="O que você procura?" /></label></div>
+            <TabelaDeTarefas linhas={TAREFAS_DE_EXEMPLO.slice(0, 2)} colunaDaPessoa="Quem delegou" abrir={nada} />
+          </div>
+        </div>
+      </div>
+    ) },
+  { id: 'correio-de-tarefas', tipo: 'botoes', nome: 'Correio das tarefas (pé do menu ☰)', descricao: 'Ao lado da engrenagem, para toda a equipe: o ícone da caixa de entrada (o envelope é dos Feedbacks do admin) com o número das tarefas em aberto da pessoa (pendente ou em andamento) no cantinho; sem nenhuma, só o ícone. O título diz "Minhas tarefas (N em aberto)". Abre a Central em Minhas tarefas', componente: 'CorreioDeTarefas', classes: ['drawer-icones', 'icon-btn', 'tdl-correio', 'tdl-correio-qtd'], telas: TAREFAS,
+    uso: '<CorreioDeTarefas emAberto={3} titulo="Minhas tarefas (3 em aberto)" abrir={abrir} />',
+    demo: () => <div className="drawer-icones"><CorreioDeTarefas emAberto={3} titulo="Minhas tarefas (3 em aberto)" abrir={nada} /><CorreioDeTarefas emAberto={0} titulo="Minhas tarefas (0 em aberto)" abrir={nada} /><BotaoIcone icone="settings" titulo="Configurações" /></div> },
+  { id: 'selo-da-tarefa', tipo: 'selos', nome: 'Status e prioridade da tarefa (Central de tarefas)', descricao: 'O status no selo suave com a bolinha na cor da legenda do Toriba — Pendente amarelo, Em andamento azul (badge-info, novo), Concluída verde, Cancelada cinza — e a prioridade: Urgente vermelho e Alta amarelo no selo; Normal e Baixa só no texto, para a lista não virar um mar de selos', componente: 'SeloDoStatus · SeloDaPrioridade', classes: ['badge badge-suave', 'badge-warn', 'badge-info', 'badge-ok', 'badge-neutral', 'badge-bad'], telas: ['t-central-tarefas'],
+    demo: () => (
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+        <SeloDoStatus rotulo="Pendente" tom="warn" /><SeloDoStatus rotulo="Em andamento" tom="info" /><SeloDoStatus rotulo="Concluída" tom="ok" /><SeloDoStatus rotulo="Cancelada" tom="neutral" />
+        <SeloDaPrioridade valor="urgente" rotulo="Urgente" /><SeloDaPrioridade valor="alta" rotulo="Alta" /><SeloDaPrioridade valor="normal" rotulo="Normal" /><SeloDaPrioridade valor="baixa" rotulo="Baixa" />
+      </div>
+    ) },
+  { id: 'tabela-de-tarefas', tipo: 'tabelas', nome: 'Tabela da Central de tarefas', descricao: 'As colunas do "Minhas Tarefas" do Toriba: Status (a bolinha), Título (o número em cinza, e o clipe e o balão com quantos anexos e pareceres tem), Prioridade, Prazo (vermelho quando atrasada), Cliente (corta com … e mostra inteiro no título) e a pessoa — Quem delegou (Minhas), Responsável (Delegadas) ou de/para quem (Concluídas). A linha inteira abre a tarefa; o título é o botão do teclado. As atrasadas e as urgentes em cima, depois o prazo', componente: 'TabelaDeTarefas', classes: ['table-wrap tdl-tabela', 'table-compact', 'tdl-linha', 'tdl-abrir', 'tdl-conta', 'tdl-atrasada', 'tdl-cliente'], telas: ['t-central-tarefas'], largo: true,
+    uso: '<TabelaDeTarefas linhas={vm.linhas} colunaDaPessoa={vm.colunaDaPessoa} abrir={vm.abrir} />',
+    demo: () => <div style={{ width: '100%' }}><TabelaDeTarefas linhas={TAREFAS_DE_EXEMPLO} colunaDaPessoa="Quem delegou" abrir={nada} /></div> },
+  { id: 'linha-do-tempo-da-tarefa', tipo: 'listas', nome: 'Histórico e pareceres da tarefa', descricao: 'A linha do tempo da tarefa aberta, a mais nova em cima: o ponto ligado ao de baixo por um fio, quem (negrito) e quando, e o texto embaixo (quebra a linha, nunca corta). No Histórico, cada mudança (criou, delegou de X para Y, mudou o status, o prazo, a prioridade, anexou, tirou, escreveu um parecer); nos Pareceres, o ponto na cor da marca e o texto numa caixinha', componente: 'LinhaDoTempoDaTarefa', classes: ['tdl-tempo', 'tdl-tempo-item', 'tdl-tempo-ponto', 'tdl-tempo-quem', 'tdl-tempo-texto', 'tdl-pareceres'], telas: ['t-central-tarefas'], largo: true,
+    demo: () => (
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 24, width: '100%' }}>
+        <LinhaDoTempoDaTarefa vazio="" itens={[{ id: '3', por: 'Nilma', quando: '28/10/2026 09:12', texto: 'Mudou o status de Pendente para Em andamento' }, { id: '2', por: 'Vitor', quando: '27/10/2026 16:40', texto: 'Delegou para Nilma' }, { id: '1', por: 'Vitor', quando: '27/10/2026 16:40', texto: 'Criou a tarefa' }]} />
+        <LinhaDoTempoDaTarefa comentario vazio="" itens={[{ id: '1', por: 'Vitor', quando: '27/10/2026 16:45', texto: 'Deixei o extrato anexado. A tarifa do dia 30 não entrou.' }]} />
+      </div>
+    ) },
+  { id: 'anexos-da-tarefa', tipo: 'listas', nome: 'Anexos da tarefa', descricao: 'O painel Anexos da tarefa (como o do Toriba: anexar, ver, apagar e baixar): o Escolher arquivos (vários de uma vez), o limite (20 arquivos de 10 MB, 30 MB por tarefa) e a lista com o ícone do formato, o nome e, embaixo, a extensão, o tamanho, quando e quem; à direita Baixar e Tirar (pede confirmação). Na tarefa nova, os arquivos esperam o Salvar', componente: 'AnexosDaTarefa', classes: ['tdl-anexos', 'tdl-anexos-topo', 'tdl-anexos-lista', 'tdl-anexo', 'file-picker', 'cli-arquivo'], telas: ['t-central-tarefas'], largo: true,
+    demo: () => (
+      <div style={{ width: '100%' }}>
+        <AnexosDaTarefa id="cat-anexos-tarefa" podeMudar anexando={false} anexar={nada} baixar={nada} tirar={nada} limite="Até 20 arquivos de 10 MB cada (30 MB por tarefa)."
+          anexos={[{ id: 'a', nome: 'extrato-sicoob-09-2026.pdf', detalhe: 'PDF · 182 KB · 27/10/2026 16:44 · Vitor' }, { id: 'b', nome: 'conferencia.xlsx', detalhe: 'XLSX · 24 KB · 28/10/2026 09:10 · Nilma' }]} />
+      </div>
+    ) },
 ];

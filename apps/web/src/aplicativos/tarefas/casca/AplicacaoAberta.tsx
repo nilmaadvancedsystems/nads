@@ -37,7 +37,6 @@ const PaginaSintegra = pedaco(() => import('../telas/fiscal/sintegra/PaginaSinte
 const FaturamentoDosClientes = pedaco(() => import('../telas/fiscal/faturamento/FaturamentoDosClientes'), 'FaturamentoDosClientes');
 const AntecipacaoIcms = pedaco(() => import('../telas/fiscal/antecipacao/AntecipacaoIcms'), 'AntecipacaoIcms');
 const RelatorioGeral = pedaco(() => import('../telas/fiscal/relatorio/RelatorioGeral'), 'RelatorioGeral');
-const ControleDeTributos = pedaco(() => import('../telas/fiscal/controle/ControleDeTributos'), 'ControleDeTributos');
 const RateioDeFrete = pedaco(() => import('../telas/fiscal/rateio/RateioDeFrete'), 'RateioDeFrete');
 const CalculadoraDoSimples = pedaco(() => import('../telas/fiscal/simples/CalculadoraDoSimples'), 'CalculadoraDoSimples');
 const ConfiguracoesDoDp = pedaco(() => import('../telas/dp/ConfiguracoesDoDp'), 'ConfiguracoesDoDp');
@@ -52,20 +51,22 @@ const PlanoDeContas = pedaco(() => import('../telas/financeiro/PlanoDeContas'), 
 const PainelFinanceiro = pedaco(() => import('../telas/financeiro/PainelFinanceiro'), 'PainelFinanceiro');
 const Devedores = pedaco(() => import('../telas/financeiro/Devedores'), 'Devedores');
 const ImportarExtrato = pedaco(() => import('../telas/financeiro/ImportarExtrato'), 'ImportarExtrato');
+const ContasAPagar = pedaco(() => import('../telas/financeiro/ContasAPagar'), 'ContasAPagar');
+const Fornecedores = pedaco(() => import('../telas/financeiro/Fornecedores'), 'Fornecedores');
 
 function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
   switch (app) {
     case 'inicio': return <Inicio />;
     case 'minhas-empresas': return <MinhasEmpresas />;
     // as Empresas, o Painel, a Visão geral e as Paradas do Fiscal saíram (27/10/2026): ficam as ferramentas
-    case 'fiscal': return pagina === 'sintegra' ? <PaginaSintegra /> : pagina === 'faturamento' ? <FaturamentoDosClientes /> : pagina === 'simples' ? <CalculadoraDoSimples /> : pagina === 'rateio-frete' ? <RateioDeFrete /> : pagina === 'antecipacao-es' ? <AntecipacaoIcms /> : pagina === 'controle-tributos' ? <ControleDeTributos /> : pagina === 'relatorio' ? <RelatorioGeral /> : <Reinf />;
+    case 'fiscal': return pagina === 'sintegra' ? <PaginaSintegra /> : pagina === 'faturamento' ? <FaturamentoDosClientes /> : pagina === 'simples' ? <CalculadoraDoSimples /> : pagina === 'rateio-frete' ? <RateioDeFrete /> : pagina === 'antecipacao-es' ? <AntecipacaoIcms /> : pagina === 'relatorio-presumido' || pagina === 'particularidades-presumido' ? <RelatorioGeral regime="lp" /> : pagina === 'relatorio-simples' || pagina === 'relatorio' || pagina === 'controle-tributos' || pagina === 'particularidades-simples' ? <RelatorioGeral regime="sn" /> : <Reinf />;
     case 'dp': return ABAS_DO_PAINEL.includes(pagina as AbaDoPainel) ? <PainelDoDp aba={pagina as AbaDoPainel} /> : pagina === 'configuracoes' ? <ConfiguracoesDoDp /> : pagina === 'fgts' ? <FgtsDoDp /> : pagina === 'envios' ? <EnviosDoDp /> : pagina === 'legislacao' ? <LegislacaoDoDp /> : <VisaoContabil pagina={pagina} dep="dp" />;
     case 'senhas': return pagina === 'acesso' ? <AcessoAoCofre /> : pagina === 'gov' ? <ContasGov /> : pagina === 'certificados' ? <Certificados /> : <SenhasDasEmpresas />;
     // as Configurações (28/10/2026): a Equipe e as páginas do admin (as Empresas têm rota própria, CadastroAberto)
     case 'cadastro': return pagina === 'usuarios' ? <UsuariosDoNads /> : <TelaDoAdmin pagina={pagina as IdPaginaAdmin} />;
     // a Área do Cliente com o Mandei junto (19/10/2026): Chamados, Recebidos, Meus tickets e a Central de tickets
     case 'area-cliente': return pagina === 'recebidos' ? <RecebidosDoCliente /> : pagina === 'meus' || pagina === 'central' ? <Mandei pagina={pagina} /> : <ChamadosDoCliente />;
-    case 'financeiro': return pagina === 'painel' ? <PainelFinanceiro /> : pagina === 'devedores' ? <Devedores /> : pagina === 'resultado' ? <PainelFinanceiro comResultado /> : pagina === 'extrato' || pagina === 'conciliacao' ? <ImportarExtrato /> : pagina === 'configuracoes' ? <ConfiguracoesDoFinanceiro /> : pagina === 'caixa' ? <Caixa /> : pagina === 'honorarios' ? <Honorarios /> : pagina === 'plano' ? <PlanoDeContas /> : <NotasFiscais />;
+    case 'financeiro': return pagina === 'painel' ? <PainelFinanceiro /> : pagina === 'devedores' ? <Devedores /> : pagina === 'resultado' ? <PainelFinanceiro comResultado /> : pagina === 'extrato' || pagina === 'conciliacao' ? <ImportarExtrato /> : pagina === 'configuracoes' ? <ConfiguracoesDoFinanceiro /> : pagina === 'caixa' ? <Caixa /> : pagina === 'honorarios' ? <Honorarios /> : pagina === 'pagar' ? <ContasAPagar /> : pagina === 'fornecedores' ? <Fornecedores /> : pagina === 'plano' ? <PlanoDeContas /> : <NotasFiscais />;
     // a entrega de documentos aos clientes, trazida do Entregas (16/10/2026)
     case 'entregas': return pagina === 'painel' ? <PainelDeEntregas /> : pagina === 'solicitacoes' ? <Solicitacoes /> : pagina === 'nova' ? <NovaEntrega /> : <RotaDeEntregas />;
     case 'drive': return <ExploradorDoDrive />;

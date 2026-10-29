@@ -8,11 +8,16 @@
 //        DEPARTAMENTO PESSOAL/<MM>/...                  o FGTS e o resto do mês (FUNCIONÁRIOS fica de fora: não é do mês)
 //        SOCIETÁRIO/FOLHA DE PAGAMENTO/<AAAA>/<MM>/...  a folha, os holerites, o pró-labore
 //        FISCAL/.../MM-AAAA - DARF INSS ...             a DARF do INSS (DCTFWeb), onde o arquivador guarda
+//        CONTÁBIL/PAGAMENTOS DE FORNECEDORES/<AAAA>/<MM>/<pasta da Nilma>/  o boleto do escritório (28/10/2026: "o boleto do
+//          escritório fica na do contábil"): só o que tem BOLETO no nome ou começa com Fatura_ (o comprovante do que o cliente
+//          já pagou e a NFS-e ficam de fora), no mês ANTERIOR ao da pasta (a fatura de 11 vai com o DP de 10)
 //   2. o envio: o pedido solicitacoesEmail { tipo: 'envioDp', competencia, codigo, arquivos: [ids] } (só o admin e o DP,
 //      nas regras do banco e aqui de novo pelo cadastro de quem pediu). Só vão os arquivos que estão na lista do mês
 //      desse cliente (nunca um id qualquer do Drive); o robô baixa pela API do Drive (só leitura) e manda pela caixa do
 //      robô (nilmacontabilidade) para os e-mails do cadastro do cliente, no modelo padrão (email-html.htmlDoEnvioDp).
-//      A Entrega das Obrigações a tela marca quando vê o envio feito (useEnviosDoDp).
+//      O assunto e o texto vêm de config/envioDp ({ assunto, texto }, editados em DP › Envios › Modelo do e-mail, com
+//      {cliente}, {competencia} e {mes}; vazio = o padrão), como o e-mail da NFS-e. A Entrega das Obrigações a tela marca
+//      quando vê o envio feito (useEnviosDoDp).
 const { FieldValue } = require('firebase-admin/firestore');
 
 const COLECAO = 'dpArquivos';
@@ -36,7 +41,32 @@ function competenciaDoDp(c, ano) {
     const m = /^(0[1-9]|1[0-2])-(20\d{2}) - DARF INSS\b/.exec(c[c.length - 1]);
     if (m) return m[2] + '-' + m[1];
   }
+  if (c[0] === 'CONTABIL' && c[1] === 'PAGAMENTOS DE FORNECEDORES' && c.length >= 6 && /^20\d{2}$/.test(c[2]) && MES.test(c[3]) && /NILMA/.test(c[4])) {
+    const nome = c[c.length - 1];
+    if (/BOLETO/.test(nome) || /^FATURA_/.test(nome)) return mesAnterior(c[2] + '-' + c[3]);
+  }
   return null;
+}
+
+// "2026-01" -> "2025-12"
+function mesAnterior(comp) {
+  const d = new Date(Date.UTC(Number(comp.slice(0, 4)), Number(comp.slice(5, 7)) - 2, 1));
+  return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0');
+}
+
+// O modelo do e-mail (config/envioDp), como o da NFS-e: vazio = o padrão; {cliente}, {competencia} ("10/2026") e {mes}
+// ("outubro de 2026") trocados pelos dados (o que não conhece fica como está).
+const MODELO_PADRAO = {
+  assunto: 'Documentos do Departamento Pessoal · {competencia} · {cliente}',
+  texto: 'Olá, {cliente}!\n\nSeguem em anexo os documentos do Departamento Pessoal referentes a {mes}.\n\nQualquer dúvida, é só responder este e-mail.\n\nAtenciosamente,\nNilma Contabilidade',
+};
+function mensagemDoEnvio(cfg, campos) {
+  const t = x => (typeof x === 'string' ? x.trim() : '');
+  const encher = modelo => modelo.replace(/\{(\w+)\}/g, (tudo, nome) => (Object.prototype.hasOwnProperty.call(campos, nome) ? campos[nome] : tudo));
+  return {
+    assunto: encher(t(cfg && cfg.assunto) || MODELO_PADRAO.assunto).replace(/\s+/g, ' ').trim().slice(0, 200),
+    texto: encher(t(cfg && cfg.texto) || MODELO_PADRAO.texto).replace(/\r\n?/g, '\n').trim().slice(0, 5000),
+  };
 }
 
 // Os arquivos do DP na pasta de um cliente, por mês: Map('2026-10' -> [{ i, n, c, s }]) — c é a pasta onde está
@@ -61,6 +91,17 @@ function arquivosDoDpNaPasta(itens, raizId, ano, caminhos, chaveDeNome) {
 function escolhidos(lista, pedidos) {
   const ids = new Set((Array.isArray(pedidos) ? pedidos : []).map(String));
   return ids.size ? lista.filter(a => ids.has(a.i)) : lista.slice();
+}
+
+// Para quem vai: o e-mail do Cadastro do nads (cadastro/{empresa}.contato.email; com mais de um documento do mesmo código,
+// o primeiro que tiver), senão os do Entregas (clientes: email + emails). Em minúsculas, sem repetir.
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+function paraQuem(cadastrosDoNads, clienteDoEntregas) {
+  const limpo = e => String(e || '').trim().toLowerCase();
+  const doNads = (cadastrosDoNads || []).map(c => limpo(c && c.contato && c.contato.email)).find(e => EMAIL.test(e));
+  if (doNads) return [doNads];
+  const c = clienteDoEntregas || {};
+  return [...new Set([c.email].concat(Array.isArray(c.emails) ? c.emails : []).map(limpo).filter(e => EMAIL.test(e)))];
 }
 
 // "2026-10" -> "outubro de 2026"
@@ -139,25 +180,16 @@ async function atenderEnvioDp(p, ctx) {
   if (total > MAX_BYTES) throw new Error('os arquivos passam de 18 MB juntos (' + (total / 1048576).toFixed(1).replace('.', ',') + ' MB); desmarque alguns');
 
   const ativos = await ctx.clientesAtivos();
-  let cliente = null;
-  ativos.forEach(d => { if (!cliente && String(d.data().codigoOrigem || '').trim() === codigo) cliente = d.data(); });
-  if (!cliente) throw new Error('o cliente ' + codigo + ' não está no cadastro (ou está inativo)');
-  const para = [...new Set([cliente.email].concat(Array.isArray(cliente.emails) ? cliente.emails : []).filter(Boolean).map(e => String(e).trim().toLowerCase()))];
-  if (!para.length) throw new Error('o cliente não tem e-mail no cadastro');
+  const { cliente, para } = await destinatarios(db, codigo, ativos);
   if (!dentroDoLimite()) throw new Error('limite de ' + MAX_ENVIOS_POR_HORA + ' envios do DP por hora atingido; tente mais tarde');
 
   const anexos = [];
   for (const a of vao) {
     const r = await ctx.getDrive().files.get({ fileId: a.i, alt: 'media' }, { responseType: 'arraybuffer', timeout: 120000 });
-    const ext = (String(a.n).match(/\.([a-z0-9]{2,5})$/i) || [, ''])[1].toLowerCase();
-    anexos.push({ nome: a.n, mime: MIME[ext] || 'application/octet-stream', buffer: Buffer.from(r.data) });
+    anexos.push({ nome: a.n, mime: mimeDe(a.n), buffer: Buffer.from(r.data) });
   }
   const nome = String(cliente.nome || p.empresa || '').trim();
-  const mes = mesPorExtenso(comp);
-  const assunto = 'Documentos do Departamento Pessoal · ' + comp.slice(5) + '/' + comp.slice(0, 4) + (nome ? ' · ' + nome : '');
-  const visual = require('./email-html').htmlDoEnvioDp({ assunto, cliente: nome, mes, anexos: anexos.map(a => ({ nome: a.nome, tamanho: a.buffer.length })), assinatura: ctx.assinatura, caixa: ctx.caixa });
-  const gmailId = await ctx.enviar({ para: para.join(', '), assunto, corpo: visual.texto, html: visual.html, imagens: visual.imagens, anexos });
-  enviosRecentes.push(Date.now());
+  const { gmailId, assunto } = await mandarEmailDoDp(db, { comp, nome, para, anexos }, ctx);
   ctx.log('DP: documentos de', comp, 'enviados a', codigo, nome, '(' + anexos.length + ' arquivo(s), para ' + para.join(', ') + ')');
   return {
     status: 'enviado', enviadoEm: new Date().toISOString(), gmailId, para, assunto,
@@ -165,8 +197,36 @@ async function atenderEnvioDp(p, ctx) {
   };
 }
 
+const mimeDe = nome => MIME[(String(nome).match(/\.([a-z0-9]{2,5})$/i) || [, ''])[1].toLowerCase()] || 'application/octet-stream';
+
+// O cliente do Entregas (ativo, pelo código) e para quem vai: o e-mail do Cadastro do nads manda (28/10/2026: "quando eu
+// altero no cadastro da empresa o gmail não altera lá no envios"), como o regime; o do Entregas só quando o nads não tem.
+// ativos: o snapshot dos clientes ativos (clientes-cache). Também o lote do DP (lote-dp.js).
+async function destinatarios(db, codigo, ativos) {
+  let cliente = null;
+  ativos.forEach(d => { if (!cliente && String(d.data().codigoOrigem || '').trim() === String(codigo)) cliente = d.data(); });
+  if (!cliente) throw new Error('o cliente ' + codigo + ' não está no cadastro (ou está inativo)');
+  const doNads = (await db.collection('cadastro').where('codigo', '==', Number(codigo)).limit(2).get()).docs.map(d => d.data());
+  const para = paraQuem(doNads, cliente);
+  if (!para.length) throw new Error('o cliente não tem e-mail no cadastro');
+  return { cliente, para };
+}
+
+// O e-mail do DP no modelo (config/envioDp) com os anexos já em memória, pela caixa do robô. ctx: { enviar, assinatura,
+// caixa }. Conta no freio por hora. Também o lote do DP (lote-dp.js).
+async function mandarEmailDoDp(db, { comp, nome, para, anexos }, ctx) {
+  if (!dentroDoLimite()) throw new Error('limite de ' + MAX_ENVIOS_POR_HORA + ' envios do DP por hora atingido; tente mais tarde');
+  const competencia = comp.slice(5) + '/' + comp.slice(0, 4);
+  const modelo = (await db.collection('config').doc('envioDp').get()).data() || {};
+  const { assunto, texto } = mensagemDoEnvio(modelo, { cliente: nome, competencia, mes: mesPorExtenso(comp) });
+  const visual = require('./email-html').htmlDoEnvioDp({ assunto, texto, cliente: nome, competencia, anexos: anexos.map(a => ({ nome: a.nome, tamanho: a.buffer.length })), assinatura: ctx.assinatura, caixa: ctx.caixa });
+  const gmailId = await ctx.enviar({ para: para.join(', '), assunto, corpo: texto + '\n\n' + anexos.map(a => '- ' + a.nome).join('\n'), html: visual.html, imagens: visual.imagens, anexos });
+  enviosRecentes.push(Date.now());
+  return { gmailId, assunto };
+}
+
 module.exports = {
-  gravarArquivosDoDp, atenderEnvioDp,
+  gravarArquivosDoDp, atenderEnvioDp, destinatarios, mandarEmailDoDp, mimeDe, MAX_BYTES,
   // puras, pro teste
-  competenciaDoDp, arquivosDoDpNaPasta, escolhidos, mesPorExtenso, mesesRecentes, COLECAO,
+  competenciaDoDp, arquivosDoDpNaPasta, escolhidos, paraQuem, mesPorExtenso, mesesRecentes, mesAnterior, mensagemDoEnvio, MODELO_PADRAO, COLECAO,
 };

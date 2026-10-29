@@ -40,3 +40,5 @@ export * from './regras/adiantamentoSalarial';
 export * as sieg from './sieg';
 export * as sintegra from './sintegra';
 export * as painel from './painel';
+// o delegador de tarefas (28/10/2026, o "Minhas Tarefas" do Toriba): tarefas.delegadas.*
+export * as delegadas from './regras/delegadas';
