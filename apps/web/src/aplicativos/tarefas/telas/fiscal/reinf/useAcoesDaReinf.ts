@@ -2,7 +2,7 @@
 // Relatório geral (28/10/2026: "coloca uma coluna de reinf, e duplica as funções do app reinf"). O estado de cada empresa
 // começa pelo Notion do Heverton e fica guardado neste navegador (por enquanto, sem o banco).
 // Transmitir também marca a REINF do mês no DP (a aba REINF do Painel do DP) e avisa no celular o responsável do DP
-// daquele cliente (Vitor, 07/10/2026); Desfazer tira a marca, se foi o Fiscal que pôs.
+// daquele cliente (Vitor, 07/10/2026); Desfazer tira a marca, seja quem for que pôs (29/10/2026: a do Toriba ficava).
 import { tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useState } from 'react';
@@ -37,7 +37,10 @@ export function useAcoesDaReinf(competencia: string) {
   const doDp = useClientesDoDp(competencia);
   function marcarNoDp(codigo: number, desfazer: boolean): string {
     const c = doDp.clientes.find(x => x.codigo === codigo);
-    if (!c || !dp.carregada) return '';
+    if (!c || !dp.carregada) {
+      aviso({ tom: 'erro', titulo: 'A REINF não foi marcada no DP', texto: codigo + (c ? ': o DP de ' + mmaaaa(competencia) + ' ainda não carregou; tente de novo.' : ': a empresa não está no DP.') });
+      return '';
+    }
     const ex = dp.execucoes.find(e => e.empresa === c.nomeNaTela) || t.execucaoNova(c.nomeNaTela, codigo, competencia, 'dp');
     if (desfazer) {
       const r = t.reinfDesfeitaPeloFiscal(ex, op.nome, new Date());
@@ -45,7 +48,7 @@ export function useAcoesDaReinf(competencia: string) {
       return '';
     }
     const resp = nomeDaPessoa(c.responsavel || '');
-    if (t.estadoDa(ex, 'dp-reinf')?.situacao === 'feita') return resp;
+    if (t.reinfJaMarcadaPeloFiscal(ex)) return resp;
     const r = t.reinfPeloFiscal(ex, op.nome, resp, new Date());
     repo.gravar(r.execucao, r.evento);
     return resp;

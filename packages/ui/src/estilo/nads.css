@@ -5520,3 +5520,26 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
   .tdl-tabela td.tdl-titulo{min-width:180px;}
   .tdl-tarefa-pe{flex-wrap:wrap;}
 }
+
+/* Fiscal › Relatório Simples / Presumido (29/10/2026: "tem algum jeito de fazer caber?"): a tabela cabe na largura da
+   tela, sem rolar de lado — colunas de largura fixa e estreitas, o cliente fica com o que sobra (cortado com …), os
+   valores são o campo sem caixa ocupando a célula (a borda só ao passar o mouse e ao escrever), a letra um pouco menor */
+.rel-geral .dp-lista .table-wrap{overflow-x:visible;}
+.rel-tabela{table-layout:fixed;width:100%;}
+.rel-tabela td,.rel-tabela th{padding-left:4px;padding-right:4px;}
+.rel-tabela col.rel-cod{width:40px;}
+.rel-tabela col.rel-guia{width:70px;}
+.rel-tabela col.rel-mk,.rel-tabela col.rel-sit{width:30px;}
+.rel-tabela col.rel-data{width:86px;}
+.rel-tabela col.rel-ent{width:90px;}
+.rel-tabela .dp-ob{width:auto;min-width:0;}
+.rel-tabela .dp-cliente-nome{max-width:none;}
+.rel-tabela thead tr:last-child th{white-space:normal;line-height:1.2;overflow:hidden;text-overflow:ellipsis;}
+.rel-tabela .rel-campo{display:block;width:100%;min-width:0;height:26px;padding:0 3px;border:1px solid transparent;border-radius:4px;
+  background:transparent;font-size:var(--fs-12);font-variant-numeric:tabular-nums;}
+.rel-tabela .rel-data .rel-campo{text-align:center;}
+.rel-tabela .rel-campo:hover:not([readonly]){border-color:var(--border);}
+.rel-tabela .rel-campo:focus{border-color:var(--accent);background:var(--surface);outline:none;}
+.rel-tabela .rel-campo::placeholder{color:var(--ink-faint);}
+.rel-tabela .ctrl-entrega{width:100%;min-width:0;height:26px;padding:0 2px;font-size:var(--fs-12);}
+.rel-tabela tfoot td{font-size:var(--fs-12);padding-left:8px;padding-right:8px;}

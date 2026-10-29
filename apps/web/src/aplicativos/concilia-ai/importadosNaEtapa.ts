@@ -6,13 +6,14 @@ import { modoDesenvolvedor } from '../../comum/modoDesenvolvedor';
 import { useSyncExternalStore } from 'react';
 import { repoDaConferencia } from './dados/fonte';
 
-export function useImportadosDaConferencia(nome: string): c.JaImportado | null {
+/** meses: o período da Tarefa; o tipo marcado "sem movimento" nele conta como importado (Clara, 29/10/2026). */
+export function useImportadosDaConferencia(nome: string, meses?: readonly string[]): c.JaImportado | null {
   const repo = repoDaConferencia();
   useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
   if (!repo.pronto()) return null;
   const achada = repo.empresaPelaRota(formatos.slug(nome));
   const e = repo.obter(achada?.nome || nome);
-  return e ? c.jaImportado(e) : { balancete: false, entradas: false, saidas: false, tomados: false, prestados: false };
+  return e ? c.resolvidoNoPeriodo(e, meses) : { balancete: false, entradas: false, saidas: false, tomados: false, prestados: false };
 }
 
 /** As contas do balancete importado na Conferência (a etapa Contabilização da Folha monta o checklist com elas). null = carregando. */

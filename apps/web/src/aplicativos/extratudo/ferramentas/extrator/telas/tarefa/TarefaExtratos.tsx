@@ -647,10 +647,10 @@ export function TarefaExtratos() {
   const { ok: bancosOk, correcoes, situacoes, exportarFaltas } = useBancosOk(vm, ponte, ocupadoGeral);
   // os requisitos para seguir (o botão de avançar da Tarefas só aparece com tudo pronto): cada banco Ok e, na
   // Conferência, Balancete, Entradas, Saídas, Tomados e (se presta serviço) Prestados importados
-  const importados = useImportadosDaConferencia(s.nome);
   // o balancete dinâmico é obrigatório na Importação (16/10/2026): ele monta a Tarefa
   const contabil = useContabilDaEmpresa(s.nome, s.codigo);
   const mesesDaEtapa = vm.periodo.length > 1 ? vm.periodo : [vm.competencia];
+  const importados = useImportadosDaConferencia(s.nome, mesesDaEtapa);
   const semMovimentoNoPeriodo = (banco: string) => mesesDaEtapa.every(m => (vm.periodo.length > 1 ? ponte.semMovimentoPorMes[m] || [] : ponte.semMovimento).includes(banco));
   const diasSemCheque = (banco: string) => { const t = situacoes[banco]; return t && t.tipo === 'falta-cheque' ? t.faltam.length : 0; };
   // algum banco fecha negativo no período: a etapa Cheque especial aparece; sem nenhum, a Tarefas a pula (Vitor, 02/10/2026)

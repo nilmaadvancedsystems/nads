@@ -4,10 +4,10 @@
 // recebe a empresa, devolve a empresa nova. Quem guarda é o repositório.
 import { nomeNorm } from '../formatos';
 import { SV } from './tabelas/servicos';
-import type { Conta, Empresa, EstadoVerificacao, FiltroMovimento, Nota, NotaServico, RegistroImportacao, TipoNotaFiscal, TipoServico } from './tipos';
+import type { Conta, Empresa, TipoDeNotas, EstadoVerificacao, FiltroMovimento, Nota, NotaServico, RegistroImportacao, TipoNotaFiscal, TipoServico } from './tipos';
 import { registrarHist, registrarMarcaChecklist } from './regras/auditoria';
 import { verifChave } from './regras/conciliacao';
-import { contasDaNatureza, empresaNuncaAberta } from './regras/empresa';
+import { chaveDoPeriodo, contasDaNatureza, empresaNuncaAberta } from './regras/empresa';
 import { assinaturaBalancete, type ModoImportacao } from './regras/importacao';
 import { catFixa } from './regras/servicos';
 import type { TipoVista } from './regras/vendaVista';
@@ -83,6 +83,17 @@ export function apagarNotas(e: Empresa, tipo: TipoNotaFiscal, agora: Date): Empr
   return produzir(e, x => {
     x.importHistorico.push({ ts: agora.toISOString(), tipo: ROTULO_TIPO[tipo], qtd: x[tipo].length, acao: 'excluido' });
     x[tipo] = [];
+  });
+}
+
+/** Marca (ou desmarca) que a empresa não teve notas daquele tipo no período (Clara, 29/10/2026). */
+export function marcarSemNotas(e: Empresa, tipo: TipoDeNotas, meses: readonly string[], sem: boolean): Empresa {
+  const chave = chaveDoPeriodo(meses);
+  if (!chave) return e;
+  return produzir(e, x => {
+    const m = { ...(x.semNotasNoPeriodo || {}) };
+    if (sem) m[tipo] = chave; else delete m[tipo];
+    if (Object.keys(m).length) x.semNotasNoPeriodo = m; else delete x.semNotasNoPeriodo;
   });
 }
 

@@ -6,12 +6,11 @@ import { tarefas as t } from '@nads/core';
 import { Icone } from '@nads/ui';
 
 /** O campo de valor da tabela: escreve à vontade e guarda ao sair (Enter também sai) */
-/** estreito: o campo na largura da coluna da tabela do relatório (as guias e a data lado a lado) */
+/** estreito: o campo ocupa a célula da tabela do relatório, sem caixa em volta (29/10/2026: a tabela cabe na tela) */
 export function Valor({ valor, sugestao, rotulo, pode, aoSalvar, largo, estreito }: { valor: string; sugestao?: string; rotulo: string; pode: boolean; aoSalvar: (v: string) => void; largo?: boolean; estreito?: boolean }) {
   return (
-    <input key={valor} type="text" className={'fin-valor-edita' + (largo ? '' : ' num')} defaultValue={valor} placeholder={sugestao || ''} aria-label={rotulo}
+    <input key={valor} type="text" className={'fin-valor-edita' + (largo ? '' : ' num') + (estreito ? ' rel-campo' : '')} defaultValue={valor} placeholder={sugestao || ''} aria-label={rotulo}
       title={sugestao && !valor ? 'Do Entregas: ' + sugestao : undefined} readOnly={!pode}
-      style={estreito ? { width: 92, minWidth: 0 } : undefined}
       onBlur={e => { if (e.target.value !== valor) aoSalvar(e.target.value); }}
       onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); if (e.key === 'Escape') { e.currentTarget.value = valor; e.currentTarget.blur(); } }} />
   );

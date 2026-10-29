@@ -161,12 +161,20 @@ export interface Empresa {
   verifConta: Record<string, EstadoVerificacao>;
   /** resposta de "Esta empresa presta serviços?" (undefined = ainda não perguntado) */
   prestaServico?: boolean;
+  /**
+   * As notas que a empresa não teve no período da Tarefa (Clara, 29/10/2026: "a empresa não tem saída e exige ela para
+   * sair da etapa"): tipo → o período marcado ("2026-01..2026-09"). Só vale no mesmo período; no próximo, pede de novo.
+   */
+  semNotasNoPeriodo?: Partial<Record<TipoDeNotas, string>>;
   /** Apagar ao sair (padrão ligado) */
   autoLimparBalancete: boolean;
   avisoBalPendente?: boolean;
   balanceteAssinatura?: Record<string, string>;
   balanceteAssinaturaTs?: string;
 }
+
+/** Os tipos de nota da Importação (sem o balancete). */
+export type TipoDeNotas = 'entradas' | 'saidas' | 'tomados' | 'prestados';
 
 /** Empresa da lista de entrada: [código ERP, nome, regime]. */
 export interface EmpresaDaLista {

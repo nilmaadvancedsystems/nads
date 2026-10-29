@@ -163,10 +163,19 @@ export function reinfPeloFiscal(ex: Execucao, por: string, avisar: string, agora
   return { execucao: { ...r.execucao, etapas }, evento: { ...r.evento, observacao: 'REINF transmitida pelo Fiscal' + (avisar ? '; avisar ' + avisar : '') } };
 }
 
-/** O Fiscal desfez a transmissão: a REINF do DP volta a fazer, se foi o Fiscal que marcou. */
-export function reinfDesfeitaPeloFiscal(ex: Execucao, por: string, agora: Date): { execucao: Execucao; evento: Evento } | null {
+/**
+ * O Fiscal transmitiu a REINF e a do DP já está feita pelo Fiscal: não grava de novo. Feita por outro (a importação do
+ * Toriba marcou a REINF de setembro), a marca passa a ser a do Fiscal (29/10/2026: "quando eu clico em transmitir no
+ * fiscal ele não conta no DP que foi transmitido ou removido").
+ */
+export function reinfJaMarcadaPeloFiscal(ex: Execucao): boolean {
   const e = ex.etapas['dp-reinf'];
-  if (!e || !e.por.endsWith('(Fiscal)')) return null;
+  return !!e && e.situacao === 'feita' && e.por.endsWith('(Fiscal)');
+}
+
+/** O Fiscal desfez a transmissão: a REINF do DP volta a fazer, seja quem for que marcou (a REINF é do Fiscal). */
+export function reinfDesfeitaPeloFiscal(ex: Execucao, por: string, agora: Date): { execucao: Execucao; evento: Evento } | null {
+  if (!ex.etapas['dp-reinf']) return null;
   return voltarPara(ex, 'dp-reinf', por + ' (Fiscal)', agora);
 }
 
