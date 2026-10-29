@@ -26,15 +26,25 @@ export function useEmpresasPorResponsavel() {
   const opcoes = Object.fromEntries(cad.DEPARTAMENTOS_DO_RESPONSAVEL.map(d => [d.id,
     ativos.filter(p => p.departamento === d.id || (p.papeis as string[]).includes(d.id)).map(p => p.nome).sort((a, b) => a.localeCompare(b, 'pt-BR'))])) as Record<Dep, string[]>;
   const nomeDaEquipe = (bruto: string) => ativos.find(p => igual(p.nome, bruto))?.nome || '';
+  /**
+   * Se o nome escolhido é de alguém da equipe daquele departamento (29/10/2026: a 356 estava com o Savio, do DP, e a 581
+   * com o Fernando, que não está na equipe, no Contábil; não apareciam para escolher a Clara e a troca pedia o aceite de
+   * quem não é do Contábil). Fora da equipe, a empresa fica sem responsável ali (foraDaEquipe guarda quem era).
+   */
+  const daEquipeDoDep = (dep: Dep, nome: string) => opcoes[dep].some(n => igual(n, nome) || igual(n.split('.')[0], nome));
 
   // a lista do escritório e as cadastradas pelo nads (26/10/2026: "acabei de cadastrar uma empresa e ela não aparece aqui")
   const linhas = [...empresas.EMPRESAS_COM_DP, ...empresasNovas()].map(e => {
     const c = todos.porId.get(formatos.slug(e.nome)) || null;
     const daPlanilhaBruto = empresas.clienteDoDp(e.codigo)?.responsavel || '';
     const daPlanilha = daPlanilhaBruto ? nomeDaEquipe(daPlanilhaBruto) || daPlanilhaBruto.split('.').map(x => x.charAt(0) + x.slice(1).toLowerCase()).join('.') : '';
-    const responsaveis = { fiscal: c?.responsaveis?.fiscal || '', contabil: c?.responsaveis?.contabil || '' } as Record<Dep, string>;
+    const escolhidos = { fiscal: c?.responsaveis?.fiscal || '', contabil: c?.responsaveis?.contabil || '' } as Record<Dep, string>;
+    const valeNoDep = (d: Dep) => !escolhidos[d] || daEquipeDoDep(d, escolhidos[d]);
+    const responsaveis = { fiscal: valeNoDep('fiscal') ? escolhidos.fiscal : '', contabil: valeNoDep('contabil') ? escolhidos.contabil : '' } as Record<Dep, string>;
+    /** quem estava escolhido mas não é da equipe do departamento (a empresa fica sem responsável ali) */
+    const foraDaEquipe = { fiscal: valeNoDep('fiscal') ? '' : escolhidos.fiscal, contabil: valeNoDep('contabil') ? '' : escolhidos.contabil } as Record<Dep, string>;
     return {
-      chave: (e.codigo ?? '') + e.nome, codigo: e.codigo, nome: e.nome, regime: e.regime, responsaveis,
+      chave: (e.codigo ?? '') + e.nome, codigo: e.codigo, nome: e.nome, regime: e.regime, responsaveis, foraDaEquipe,
       transferencias: (c?.transferencias || {}) as Partial<Record<Dep, empresas.cadastro.TransferenciaDeResponsavel>>,
       /** o responsável que vale hoje (o escolhido; no Fiscal, sem escolha, o da planilha) e se veio da planilha */
       atual: { fiscal: responsaveis.fiscal || daPlanilha, contabil: responsaveis.contabil } as Record<Dep, string>,
