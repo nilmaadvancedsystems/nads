@@ -196,8 +196,29 @@ function linhasDaPlanilha(buffer, nome) {
   console.error = () => {};   // o xlsx reclama de zip "Bad uncompressed size" e lê assim mesmo
   try {
     const XLSX = require('xlsx');
-    const wb = /\.csv$/i.test(nome) ? XLSX.read(buffer.toString('utf8'), { type: 'string' }) : XLSX.read(buffer, { type: 'buffer', sheetRows: 15 });
-    return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 }).slice(0, 15);
+    const ehCsv = /\.csv$/i.test(nome);
+    const lerCsv = () => XLSX.read((s => (s.includes('\uFFFD') ? buffer.toString('latin1') : s))(buffer.toString('utf8')), { type: 'string', raw: true });
+    const wb = ehCsv ? lerCsv() : XLSX.read(buffer, { type: 'buffer', sheetRows: 15 });
+    const linhas = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true }).slice(0, 15);
+    // o extrato em planilha: os meses de TODOS os lançamentos (a planilha lida é só o começo; o mês da pasta pode estar errado e o arquivo pode juntar vários meses).
+    // linhas.meses = { 'AAAA-MM': quantidade } (sem a linha de saldo anterior); só quando o começo parece extrato (Data + Lançamento/Histórico + Valor/Crédito/Débito/Saldo)
+    const topo = linhas.map(l => (l || []).join(' ')).join(' ').toUpperCase();
+    if (/\bDATA\b/.test(topo) && /(LAN[CÇ]AMENTO|HIST[OÓ]RICO|DESCRI)/.test(topo) && /(VALOR|CR[EÉ]DITO|D[EÉ]BITO|SALDO)/.test(topo)) {
+      const cheio = ehCsv ? wb : XLSX.read(buffer, { type: 'buffer' });
+      const todas = XLSX.utils.sheet_to_json(cheio.Sheets[cheio.SheetNames[0]], { header: 1, raw: true });
+      const meses = {};
+      for (const l of todas) {
+        if (!l || /SALDO (ANTERIOR|BLOQUEADO)/i.test(l.join(' '))) continue;
+        for (const c of l.slice(0, 3)) {
+          let a = null, m = null;
+          if (typeof c === 'string' && /^\s*\d{2}\/\d{2}\/\d{4}\s*$/.test(c)) { m = +c.slice(3, 5); a = +c.slice(6, 10); }
+          else if (typeof c === 'number' && c > 40000 && c < 60000) { const d = new Date(Date.UTC(1899, 11, 30) + c * 86400000); a = d.getUTCFullYear(); m = d.getUTCMonth() + 1; }
+          if (a && m >= 1 && m <= 12) { const k = a + '-' + String(m).padStart(2, '0'); meses[k] = (meses[k] || 0) + 1; break; }
+        }
+      }
+      linhas.meses = meses;
+    }
+    return linhas;
   } catch (e) { return []; } finally { console.error = erro; }
 }
 // o OCR adiantado do escaneado que foi para a fila: { hash: Promise<resultado> }, no máximo OCR_ADIANTADOS pendentes (o
@@ -226,6 +247,19 @@ function ocrDe(hash, buffer, imagem) {
 const ehTedSintegra = b => !!b && b.length > 11 && b.slice(0, 11).toString('latin1') === '02CL_PADRAO';
 
 /** O que as regras precisam de cada formato. */
+/** O texto de um RTF: tira os grupos de controle (fonte, cor, estilo), os comandos e as chaves; \'e9 vira "é"; \par e \line viram quebra de linha. */
+function textoDoRtf(buffer) {
+  let s = buffer.toString('latin1').replace(/\r?\n/g, '');   // a quebra de linha do arquivo RTF não conta (só o \\par): "Demonstra\r\nção" é "Demonstração"
+  s = s.replace(/\{\\\*[^{}]*\}/g, '').replace(/\{\\(fonttbl|colortbl|stylesheet|info|header|footer)(?:[^{}]|\{[^{}]*\})*\}/g, '');
+  s = s.replace(/\\'([0-9a-f]{2})/gi, (_, h) => String.fromCharCode(parseInt(h, 16)));
+  s = s.replace(/\\u(-?\d+)\??/g, (_, n) => String.fromCharCode(+n < 0 ? +n + 65536 : +n));
+  s = s.replace(/\\(par|line|row)\b ?/g, '\n').replace(/\\(tab|cell)\b ?/g, ' ');
+  s = s.replace(/\\[a-z]+-?\d* ?/gi, '').replace(/[{}]/g, '').replace(/\\([\\{}])/g, '$1');
+  s = s.replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n').trim();
+  const i = s.search(/\bCNPJ\s*:/i);
+  if (i > 0) { const ini = s.lastIndexOf('\n', Math.max(0, i - 2)); s = s.slice(Math.max(0, s.lastIndexOf('\n', ini - 1) + 1)); }
+  return s;
+}
 async function montarEntrada(nome, rel, buffer, op) {
   const e = { nome, rel, hash: sha(buffer), tamanho: buffer.length };
   const ext = (/\.([a-z0-9]+)$/i.exec(nome) || [])[1];
@@ -248,7 +282,19 @@ async function montarEntrada(nome, rel, buffer, op) {
     }
     case 'xml': e.xml = textoDoXml(buffer); break;
     case 'ofx': e.ofx = buffer.toString('latin1'); break;
-    case 'txt': e.txt = buffer.slice(0, 64 * 1024).toString('latin1'); break;
+    // o RTF dos termos e demonstrativos do Alterdata ("292TermoDRE11.2025.rtf"): o texto sem os comandos do RTF, como se fosse a página de um PDF
+    case 'rtf': if (/^\s*\{\\rtf/.test(buffer.slice(0, 16).toString('latin1'))) { e.texto = [textoDoRtf(buffer)]; e.paginas = 1; } break;
+    case 'txt': {
+      const u8 = buffer.slice(0, 64 * 1024).toString('utf8');
+      e.txt = u8.includes('\uFFFD') ? buffer.slice(0, 64 * 1024).toString('latin1') : u8;
+      // os meses de todos os lançamentos do extrato em texto ("13/03/2025 RENTAB…"): { 'AAAA-MM': n } (o arquivo todo, não só o começo)
+      if (/EXTRATO DE\s*:/i.test(e.txt.slice(0, 600).normalize('NFD').replace(/[\u0300-\u036f]/g, ''))) {
+        const todo = buffer.toString('latin1'), meses = {};
+        for (const m of todo.matchAll(/^\s*(\d{2})\/(\d{2})\/(\d{4})\s+(?!SALDO)\S/gm)) { const k = m[3] + '-' + m[2]; meses[k] = (meses[k] || 0) + 1; }
+        e.txtMeses = meses;
+      }
+      break;
+    }
     case 'xlsx': case 'xls': case 'csv': e.planilha = linhasDaPlanilha(buffer, nome); break;
     case 'zip': if (ehTedSintegra(buffer)) e.tedSintegra = true; break;
     // a imagem escaneada (27/10/2026, Vitor: os comprovantes "Imagem (10).jpg" do Posto Berizal) é lida por OCR, como o PDF
@@ -901,7 +947,7 @@ async function reprocessarNaoIdentificados(opcoes) {
 /** O trabalhador do Tesseract segura o processo vivo: fecha no fim de cada execução (se o OCR foi usado). */
 async function encerrarOcr() { const k = require.resolve('./arquivador-ocr'); if (require.cache[k]) await require('./arquivador-ocr').encerrar(); }
 
-module.exports = { ehTedSintegra, reprocessarNaoIdentificados, arquivosDosNaoIdentificados, rotaDoReprocesso, atualizarCadastro, encerrarOcr, executar, aprenderContas, lerContas, varrer, abrirZip, membros, montarEntrada, textoDoPdf, carregarCadastro, indiceDoManifesto, caminhoArquivado, conferirDestino, conteudoXml, raizDoAno, relatorioTexto, planos, CONTROLE };
+module.exports = { textoDoRtf, ehTedSintegra, reprocessarNaoIdentificados, arquivosDosNaoIdentificados, rotaDoReprocesso, atualizarCadastro, encerrarOcr, executar, aprenderContas, lerContas, varrer, abrirZip, membros, montarEntrada, textoDoPdf, carregarCadastro, indiceDoManifesto, caminhoArquivado, conferirDestino, conteudoXml, raizDoAno, relatorioTexto, planos, CONTROLE };
 
 if (require.main === module) {
   const a = process.argv.slice(2);
