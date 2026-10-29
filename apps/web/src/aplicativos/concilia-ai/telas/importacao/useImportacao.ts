@@ -62,7 +62,10 @@ export function useImportacao(tipo: TipoImp, mesesDaEtapa?: readonly string[]) {
   const erro = (titulo: string, texto: string) => setMensagem({ tom: 'erro', titulo, textos: texto ? [{ texto }] : [] });
 
   const ja = c.jaImportado(e)[tipo];
-  const mostrarCaixa = !ja || reimportando;
+  // a empresa sem notas daquele tipo no período da Tarefa (Clara, 29/10/2026): marca "sem movimento" e a etapa segue
+  const tipoNotas = tipo !== 'balancete' && mesesDaEtapa?.length ? tipo : null;
+  const semMovimento = !!tipoNotas && !ja && c.semNotasDoPeriodo(e, mesesDaEtapa)[tipoNotas];
+  const mostrarCaixa = (!ja || reimportando) && !semMovimento;
 
   function limparArquivo() { setArquivo(null); }
   function terminar() { setCarregando(false); }
@@ -243,6 +246,15 @@ export function useImportacao(tipo: TipoImp, mesesDaEtapa?: readonly string[]) {
     });
   }
 
+  // ---------- sem movimento no período (as notas) ----------
+  const nomeDoTipo = tipoNotas ? CONFIG[tipoNotas].titulo.replace(/^Importar /, '') : '';
+  function marcarSemMovimento(sem: boolean) {
+    if (!tipoNotas || !mesesDaEtapa) return;
+    s.aplicar(x => c.marcarSemNotas(x, tipoNotas, mesesDaEtapa, sem));
+    setMensagemBruta(null); limparArquivo();
+    toast(sem ? 'Marcado: sem ' + nomeDoTipo + ' em ' + rotuloDoPeriodo(mesesDaEtapa) + '.' : 'Desmarcado: importe as ' + nomeDoTipo + ' do período.');
+  }
+
   // ---------- Apagar ao sair (balancete) ----------
   const autoLimpar = e.autoLimparBalancete !== false;
   function definirAutoLimpar(ligado: boolean) {
@@ -262,6 +274,8 @@ export function useImportacao(tipo: TipoImp, mesesDaEtapa?: readonly string[]) {
     boasVindas: tipo === 'balancete' && e.avisoBalPendente === true, autoLimpar, definirAutoLimpar, alternarAutoLimpar: () => definirAutoLimpar(!autoLimpar),
     plano, alternarGrupo: (g: c.Grupo) => setFiltroGrupos(f => (f.indexOf(g) > -1 ? f.filter(x => x !== g) : f.concat(g))),
     notas, servicos,
+    podeMarcarSemMovimento: !!tipoNotas && !ja, semMovimento, nomeDoTipo, periodo: rotuloDoPeriodo(mesesDaEtapa),
+    marcarSemMovimento: () => marcarSemMovimento(true), desfazerSemMovimento: () => marcarSemMovimento(false),
   };
 }
 
