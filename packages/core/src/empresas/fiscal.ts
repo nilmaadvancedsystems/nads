@@ -1,0 +1,191 @@
+// Os parâmetros do Fiscal de cada empresa, das planilhas "Clientes - Fiscal" (29/10/2026): o segmento e se a empresa tem
+// monofásico, ICMS-ST, antecipação do ICMS, DIFAL, retenções, benefício fiscal, parcelamento e declarações adicionais.
+// Vieram as abas da Fabiana, do Heverton e do Gustavo; as da Nilma e da Adivania ainda estavam vazias. "0", "-" e "Não"
+// nos textos valem vazio. Onde a planilha do Gustavo escreveu o que é no lugar do Sim (Retenções "ISS", Declarações
+// "DEISS"), vale Sim e o texto vai para as Observações; o segmento fora dos três ("Associação") vai para as Especificidades.
+// O que alguém muda em Fiscal › Parâmetros fica no Cadastro (cadastro.fiscal) e vale por cima da planilha.
+// Gerado da planilha; para mudar uma empresa, mude a linha dela aqui.
+import { PARAMETROS_FISCAIS, SEGMENTOS_FISCAIS, type ParametroFiscalSimNao, type ParametrosDoFiscal, type SegmentoFiscal } from './cadastro/tipos';
+
+// [código, segmentos (C = comércio, I = indústria, S = serviço), sim ou não (1 = sim, 0 = não, - = em branco, na ordem de
+// PARAMETROS_FISCAIS), de quem é a aba, especificidades, observações]
+type Linha = [number, string, string, string, string?, string?];
+const LINHAS: readonly Linha[] = [
+  [10,"CIS","01111000","HEVERTON"], // DORNAS HAVANA LTDA
+  [15,"S","00000000","FABIANA"], // CERAMICA FORTALEZA LTDA
+  [37,"S","00001000","FABIANA"], // LOTERIAS FREITAS & MENDES LTDA
+  [40,"CI","01110000","FABIANA"], // MADEIREIRA E MARCENARIA MIRANDA LTDA
+  [43,"C","01110000","FABIANA"], // ORGANIZACAO ALVES & ARAUJO CONFECCOES LTDA
+  [49,"C","11110000","HEVERTON"], // POSTO DE COMBUSTIVEIS ALTA FLORESTA LTDA
+  [51,"C","00000000","GUSTAVO"], // ROSILENE MARQUES MARTINS
+  [55,"C","01110000","HEVERTON"], // TORRA TORRA LTDA
+  [65,"C","11100000","GUSTAVO"], // MERCEARIA LAGOA GRANDE LTDA
+  [66,"C","11100000","GUSTAVO","Posto de Gasolina",""], // ADERLEI DOS SANTOS & CIA LTDA
+  [81,"I","00010000","FABIANA"], // CERAMICA MINAS FORTE LTDA
+  [83,"C","01110000","FABIANA"], // GRIFFIN ARTIGOS DO VESTUARIO E ACESSORIOS LTDA
+  [86,"C","01110000","HEVERTON"], // BIBOKA EMBALAGENS LTDA
+  [96,"C","10000000","GUSTAVO"], // BIG LANCHES DE TAIOBEIRAS LTDA
+  [101,"C","11110000","GUSTAVO"], // CAULIM ALVES DE SOUZA LTDA
+  [149,"C","00000000","GUSTAVO"], // ROSILENE MARQUES MARTINS  - FILIAL
+  [152,"S","00000000","GUSTAVO"], // JANIO JOSE DE ALMEIDA
+  [174,"C","01110000","HEVERTON"], // ARMARINHO E PAPELARIA TAIOBEIRAS LTDA
+  [175,"C","01110000","FABIANA"], // CONSTRU-G MIRANDA MATERIAIS DE CONSTRUCAO LTDA
+  [183,"C","00110000","HEVERTON"], // CLEIA CRUZ DE OLIVEIRA - CPF 033.911.646.38
+  [205,"S","00000000","GUSTAVO"], // ADEMILSON OLIVEIRA CRUZ
+  [207,"C","11000000","GUSTAVO"], // BMJ SOM AUTOMOTIVO LTDA
+  [231,"C","11000000","GUSTAVO"], // AUTO GIRO PECAS E ACESSORIOS LTDA
+  [237,"C","11110000","HEVERTON"], // POSTO DE COMBUSTIVEIS BERIZAL LTDA
+  [249,"S","00011000","FABIANA"], // LOTERIAS TAIOBEIRAS LTDA
+  [250,"I","00000010","GUSTAVO"], // BRASAO INDUSTRIA FLORESTAL LTDA
+  [265,"S","00010000","FABIANA"], // ALTA FLORESTA TRANSPORTES LTDA
+  [277,"S","00001000","HEVERTON"], // G.A.S SERVICOS LABORATORIAIS LTDA
+  [279,"C","11110010","HEVERTON"], // ALMEIDA & SOUZA PRODUTOS ALIMENTICIOS LTDA
+  [284,"S","00010000","FABIANA"], // NILMA CONTABILIDADE LTDA
+  [285,"S","00000000","GUSTAVO"], // CRUZ E COELHO SERVICOS MEDICOS LTDA
+  [286,"S","00010000","FABIANA"], // CRIATIVA EDUCACAO E TREINAMENTO LTDA
+  [287,"S","00010000","FABIANA"], // CRIATIVA PRESTACOES DE SERVICOS EDUCACIONAIS LTDA
+  [288,"C","00100000","GUSTAVO"], // VOLPONI COMERCIO DE ACESSORIOS LTDA
+  [291,"S","00001000","HEVERTON"], // G.A.S SAUDE DE DIVISA ALEGRE LTDA
+  [292,"CI","01111101","HEVERTON"], // FITO INDUSTRIA E COMERCIO DE ALIMENTOS LTDA
+  [298,"C","11110010","HEVERTON"], // TEOBALDO MENDES DE OLIVEIRA LTDA
+  [299,"C","11110010","HEVERTON"], // TEOBALDO MENDES DE OLIVEIRA LTDA - FILIAL 02
+  [300,"C","11110000","HEVERTON"], // TEOBALDO MENDES DE OLIVEIRA LTDA - FILIAL 03
+  [307,"C","00100000","GUSTAVO"], // REGINALDA PEREIRA DA SILVA SOUSA 14920571690
+  [309,"C","01110000","FABIANA"], // FITO ALIMENTOS LTDA
+  [310,"S","00000000","GUSTAVO"], // MOR LABORATORIO NUTRICIONAL LTDA
+  [313,"C","11110000","FABIANA"], // EMPORIO DAS CARNES LTDA
+  [326,"S","00010000","FABIANA"], // LEONEL RODRIGUES REPRESENTACOES LTDA
+  [343,"C","01110000","FABIANA"], // RAIZZ EMPORIO DA SAUDE LTDA
+  [345,"C","11110000","FABIANA"], // EMPREENDIMENTO OLIVEIRA E COSTA LTDA
+  [356,"CS","00111010","HEVERTON"], // A7 COMERCIO DE VEICULOS LTDA
+  [360,"C","11110000","HEVERTON"], // SUPERMERCADO CENTRAL DE BARREIROS LTDA
+  [362,"C","00100000","GUSTAVO"], // VERA LUCIA DE OLIVEIRA
+  [363,"C","01110000","FABIANA"], // GS EMPREENDIMENTOS COMERCIAIS LTDA
+  [366,"C","00000000","GUSTAVO"], // SOLUS REFLORESTAMENTO LTDA
+  [368,"I","00010000","FABIANA"], // CERAMICA MINAS FORTE LTDA - FILIAL 02
+  [371,"","00000000","GUSTAVO","Associação",""], // ACSSP ADM PROMOCAO DE VENDAS LTDA
+  [380,"CS","11111000","HEVERTON"], // LEONARDO MENDES MARQUES LTDA
+  [381,"C","11100000","GUSTAVO"], // ORGANIZACOES FURTADO LTDA
+  [388,"C","11100000","GUSTAVO"], // ORGANIZACOES PINK BIJOUX LTDA
+  [393,"S","00010000","FABIANA"], // INFANCY SERVICOS PEDIATRICOS LTDA
+  [407,"C","01110000","HEVERTON"], // DUDA HOME DE TAIOBEIRAS LTDA
+  [423,"C","00000000","GUSTAVO"], // GUGA INDUSTRIA & COMERCIO DE RACAO ANIMAL LTDA
+  [429,"C","11110010","HEVERTON"], // POSTO DE COMBUSTIVEIS ANDRIELE LIMITADA
+  [433,"C","00000000","GUSTAVO"], // GUGA INDUSTRIA & COMERCIO DE RACAO ANIMAL LTDA
+  [434,"C","01110010","HEVERTON"], // CONSTRUNOVO LTDA
+  [443,"CI","01110000","HEVERTON"], // SU SEDUCAO MODA INTIMA LTDA
+  [444,"CS","00111000","HEVERTON"], // GALPAO VEICULOS E LOCADORA LTDA
+  [448,"C","01110000","FABIANA"], // GRANMIX COMERCIO DE ALIMENTOS LTDA - FILIAL 02
+  [449,"C","01110000","FABIANA"], // GRANMIX COMERCIO DE ALIMENTOS LTDA - MATRIZ
+  [450,"C","01110000","FABIANA"], // ACO FORTE METAIS LTDA
+  [455,"S","00000000","HEVERTON"], // CENTRO DE ODONTOLOGIA E SAUDE DE TAIOBEIRAS LTDA
+  [457,"S","00000000","GUSTAVO"], // LOCADORA DANUBIO AZUL LTDA
+  [461,"S","00000000","GUSTAVO"], // UNIVERSO CENTRO DE EDUCACAO INFANTIL LTDA
+  [463,"S","00000001","HEVERTON"], // CENTRO DE ODONTOLOGIA ESTETICA LTDA
+  [465,"S","00000000","FABIANA"], // FSS SERVICOS MEDICOS LTDA
+  [467,"S","00000010","GUSTAVO"], // CATVAN TECNOLOGIA LTDA
+  [468,"S","00001101","FABIANA"], // CONSTRUTORA E INCORPORADORA OURO VERDE LTDA
+  [470,"C","00000000","GUSTAVO"], // BALAO MAGICO KIDS LTDA
+  [477,"C","00000000","GUSTAVO"], // MINAS MAIS VARIEDADES LTDA
+  [479,"C","00100000","GUSTAVO"], // ME ATACADO LTDA
+  [481,"S","00000001","HEVERTON"], // B LIMA SERVICOS MEDICOS LTDA
+  [482,"S","00000000","FABIANA"], // VICTOR ARAUJO SERVICOS MEDICOS LTDA
+  [485,"S","00000000","GUSTAVO"], // XTREME ACADEMIA ESPECIALIZADA LTDA
+  [489,"I","01110000","FABIANA"], // MARISFRUTAS LTDA
+  [492,"C","00110000","HEVERTON"], // VERSATIL LTDA
+  [493,"C","00110000","HEVERTON"], // ANTONIA'S LTDA
+  [501,"I","00010000","FABIANA"], // CERAMICA FORTALEZA LTDA - FILIAL
+  [502,"S","00000000","FABIANA"], // VSPOSITO SERVICOS MEDICOS LTDA
+  [503,"S","00000000","FABIANA"], // AMPLA SERVICOS DE SAUDE LTDA
+  [505,"C","00110000","HEVERTON"], // LISA COSTA AME LTDA
+  [508,"CS","01110000","FABIANA"], // PRIME ESTETICA AVANCADA LTDA
+  [511,"C","00110000","HEVERTON"], // VISUAL KIDS LTDA
+  [515,"S","00000000","HEVERTON"], // A7 MOBILE LTDA
+  [519,"S","00000001","GUSTAVO","","Declarações adicionais: DES/BH"], // DARLENE DE FREITAS C VOLPONI LTDA
+  [521,"S","00000000","GUSTAVO"], // GALDUS PROJETOS INDUSTRIAIS LTDA
+  [526,"S","00000000","GUSTAVO"], // C&R ESCOLA DE IDIOMAS LTDA
+  [527,"C","01110000","HEVERTON"], // GL MATERIAIS DE CONSTRUCAO LTDA
+  [528,"C","01110000","FABIANA"], // MIKAEL DOUGLAS A DE OLIVEIRA
+  [532,"CS","01110010","HEVERTON"], // POUSADA, RESTAURANTE E PANIFICADORA JM- JOAO MANOEL LTDA
+  [538,"C","01110010","FABIANA"], // SENA PARTICIPACOES LTDA
+  [540,"S","00000010","FABIANA"], // CREATIVE COMPANY LTDA
+  [541,"S","00000000","FABIANA"], // AGRIENERGY FERTIAGRO LTDA
+  [542,"S","00000000","FABIANA"], // FELIPE ANDRADE ACADEMIA ESPECIALIZADA LTDA
+  [543,"S","00000000","FABIANA"], // FELIPE ANDRADE ACADEMIA ESPECIALIZADA LTDA
+  [544,"C","00110000","HEVERTON"], // HELLO NUTRITION COMERCIO DE ALIMENTOS E BEBIDAS LTDA
+  [545,"C","00110000","HEVERTON"], // HELLO NUTRITION COMERCIO DE ALIMENTOS E BEBIDAS LTDA
+  [549,"S","00000000","GUSTAVO"], // BOOZE PUB LTDA
+  [550,"S","00000000","FABIANA"], // PRIME FISIOTERAPIA E CONSULTORIOS MEDICOS ESPECIAL
+  [551,"S","00000000","FABIANA"], // MURILLO MENDES DE OLIVEIRA
+  [552,"C","01110000","HEVERTON"], // CONSTRULAR MATERIAIS DE PINTURA E CONSTRUCAO LTDA
+  [553,"S","00000000","FABIANA"], // GLM ODONTOLOGIA LTDA
+  [562,"C","11110000","GUSTAVO"], // GERLANE ALVES SOARES
+  [564,"C","00110000","HEVERTON"], // HELLO NUTRITION COMERCIO DE ALIMENTOS E BEBIDAS LTDA - FILIAL
+  [565,"C","00000000","GUSTAVO"], // DJALMA MOREIRA DE AGUIAR
+  [578,"CS","11110000","FABIANA"], // ELITE HIDRAULICA E SOLDAS LTDA
+  [579,"C","11110000","HEVERTON"], // MORONI & XAVIER AUTOPECAS LTDA
+  [581,"C","01110000","FABIANA"], // BC SAUDE LTDA
+  [583,"C","00000000","GUSTAVO"], // EMPORIO VERDE DISTRIBUIDORA LTDA
+  [585,"C","00110000","HEVERTON"], // MORONI & XAVIER AUTOPECAS LTDA - FILIAL
+  [589,"S","00000001","FABIANA"], // CREATIVE DIGITAL LTDA
+  [591,"S","00000000","FABIANA"], // AAP INTERMEDIACOES LTDA
+  [593,"C","01110000","HEVERTON"], // CONSTRUTOP MATERIAIS DE CONSTRUCAO LTDA
+  [596,"C","11100000","GUSTAVO"], // ORGANIZACOES FURTADO LTDA - FILIAL
+  [597,"C","11110000","GUSTAVO"], // CONSTRU UNIAO MATERIAIS DE CONSTRUCAO LTDA
+  [598,"C","11000000","GUSTAVO"], // IMPERIO DAS PIZZAS TAIOBEIRAS LTDA
+  [599,"C","01110000","HEVERTON"], // BIBOKA EMBALAGENS LTDA - FILIAL
+  [600,"S","00000000","FABIANA"], // ALVES CRUZ ACADEMIA PREMIUM LTDA
+  [602,"S","00001000","GUSTAVO","","Retenções: ISS"], // ZELO AGROINDUSTRIAS LTDA - MATRIZ
+  [603,"C","11110000","FABIANA"], // WB SUSHI LTDA
+  [605,"S","00000000","HEVERTON"], // LL CENTRO ESTETICO LTDA
+  [606,"S","00000001","GUSTAVO","","Declarações adicionais: DEISS"], // EMILLY MARQUES ARQUITETURA LTDA
+  [607,"S","00001000","GUSTAVO","","Retenções: ISS"], // ZELO AGROINDUSTRIAS LTDA - FILIAL TAIOBEIRAS
+  [608,"S","00001000","GUSTAVO","","Retenções: ISS"], // ZELO AGROINDUSTRIAS LTDA - FILIAL C. SALES
+  [609,"S","00001000","GUSTAVO","","Retenções: ISS"], // ZELO AGROINDUSTRIAS LTDA - FILIAL SJP
+  [610,"C","11110000","HEVERTON"], // GAS TAIOBEIRAS LTDA
+  [613,"S","00000000","GUSTAVO"], // CAMPO E GESTAO AGROASSESSORIA LTDA
+  [614,"S","00000000","GUSTAVO"], // CASA VEREDAS BAR LTDA
+];
+
+const LETRA: Record<string, SegmentoFiscal> = { C: 'comercio', I: 'industria', S: 'servico' };
+
+/** Os parâmetros da planilha do Fiscal, já no formato do Cadastro. */
+export interface ParametrosFiscaisDaPlanilha extends ParametrosDoFiscal {
+  /** de quem é a aba da planilha (quem preencheu) */
+  aba: string;
+}
+
+const POR_CODIGO = new Map<number, ParametrosFiscaisDaPlanilha>(LINHAS.map(([codigo, segmentos, bits, aba, especificidades, observacoes]) => {
+  const p: ParametrosFiscaisDaPlanilha = { aba, segmentos: SEGMENTOS_FISCAIS.map(s => s.id).filter(id => [...segmentos].some(l => LETRA[l] === id)) };
+  PARAMETROS_FISCAIS.forEach((x, i) => { if (bits[i] === '1' || bits[i] === '0') p[x.id] = bits[i] === '1'; });
+  if (especificidades) p.especificidades = especificidades;
+  if (observacoes) p.observacoes = observacoes;
+  return [codigo, p];
+}));
+
+/** Quantas empresas a planilha do Fiscal traz. */
+export const EMPRESAS_NA_PLANILHA_DO_FISCAL = POR_CODIGO.size;
+
+/** Os parâmetros do Fiscal da planilha, pelo código do ERP (null = a empresa não está na planilha). */
+export function parametrosFiscaisDaPlanilha(codigo: number | null | undefined): ParametrosFiscaisDaPlanilha | null {
+  return codigo == null ? null : POR_CODIGO.get(codigo) || null;
+}
+
+type Campo = keyof ParametrosDoFiscal;
+const CAMPOS: readonly Campo[] = ['segmentos', ...PARAMETROS_FISCAIS.map(p => p.id as ParametroFiscalSimNao), 'especificidades', 'observacoes'];
+
+/** Os parâmetros que valem: o mudado no Cadastro e, sem ele, o da planilha. Também diz de onde veio cada um. */
+export function parametrosFiscaisQueValem(codigo: number | null | undefined, doCadastro: ParametrosDoFiscal | undefined): {
+  valores: ParametrosDoFiscal;
+  origem: Partial<Record<Campo, 'cadastro' | 'planilha'>>;
+  aba: string;
+} {
+  const planilha = parametrosFiscaisDaPlanilha(codigo);
+  const valores: ParametrosDoFiscal = {};
+  const origem: Partial<Record<Campo, 'cadastro' | 'planilha'>> = {};
+  for (const k of CAMPOS) {
+    if (doCadastro && doCadastro[k] !== undefined) { (valores as Record<string, unknown>)[k] = doCadastro[k]; origem[k] = 'cadastro'; }
+    else if (planilha && planilha[k] !== undefined) { (valores as Record<string, unknown>)[k] = planilha[k]; origem[k] = 'planilha'; }
+  }
+  return { valores, origem, aba: planilha?.aba || '' };
+}
