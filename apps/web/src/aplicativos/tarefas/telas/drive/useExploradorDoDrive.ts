@@ -8,7 +8,8 @@ import { entregas as e } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { useDriveDoEntregas } from '../../dados/repo';
+import { useDriveDoEntregas, useRepo } from '../../dados/repo';
+import { useEmpresasPermitidas } from '../empresas/andamento';
 
 const PRAZO_MS = 90 * 1000;
 const PRAZO_ZIP_MS = 3 * 60 * 1000;
@@ -57,8 +58,19 @@ export function useExploradorDoDrive({ naEmpresa = false }: { naEmpresa?: boolea
   const [abertos, setAbertos] = useState<Set<string>>(new Set());
   const [fechados, setFechados] = useState<Set<string>>(new Set());
 
-  const mapa = repo.mapa();
-  const cliente = params.get('c') || '';
+  // só as pastas das empresas da pessoa (29/10/2026: "se eu não sou encarregado dela não tem porque eu ter acesso")
+  const permitidas = useEmpresasPermitidas();
+  const doEscritorio = useRepo().listarEmpresas();
+  const codigos = permitidas.filtra ? permitidas.filtrar(doEscritorio).map(x => String(x.codigo)).join(',') : '';
+  const mapaTodo = repo.mapa();
+  const mapa = useMemo(() => {
+    if (!permitidas.filtra) return mapaTodo;
+    const ok = new Set(codigos.split(','));
+    return { ...mapaTodo, clientes: mapaTodo.clientes.filter(c => ok.has(c.codigo)) };
+  }, [mapaTodo, codigos, permitidas.filtra]);
+  // a pasta de outra pessoa não abre nem pelo endereço (?c=)
+  const pedido = params.get('c') || '';
+  const cliente = pedido && (!permitidas.filtra || mapa.clientes.some(x => x.id === pedido)) ? pedido : '';
   const pastaCliente = mapa.clientes.find(x => x.id === cliente) || null;
   const pasta = params.get('p') || cliente;
   const conteudo = cliente ? repo.itens(cliente) : { carregados: true, itens: [] as e.ItemDoDrive[] };

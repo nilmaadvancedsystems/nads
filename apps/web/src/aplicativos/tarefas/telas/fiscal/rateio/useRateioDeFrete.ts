@@ -6,6 +6,7 @@
 // notas e pelas tributações dos itens; clicar numa tributação abre o frete dela pelos NCMs. Sem XML, "digite os valores"
 // faz a planilha à mão. As contas: core tarefas.sieg.rateioDoCte e ratear (em centavos, a soma bate com o CT-e).
 import { empresas as emp, tarefas as t } from '@nads/core';
+import { useEmpresasPermitidas } from '../../empresas/andamento';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { competenciasDaTela } from '../../../casca/navegacao';
@@ -55,7 +56,7 @@ export function useRateioDeFrete() {
   const [digitadas, setDigitadas] = useState<LinhaDigitada[]>(LINHAS_INICIAIS);
 
   // (1) a empresa
-  const empresas = repo.listarEmpresas().filter(e => e.codigo != null);
+  const empresas = useEmpresasPermitidas().filtrar(repo.listarEmpresas()).filter(e => e.codigo != null);
   const empresa = codigo != null ? empresas.find(e => e.codigo === codigo) || null : null;
   const q = busca.trim();
   const achadas = q ? emp.buscarEmpresas(empresas, q).slice(0, 8) : [];

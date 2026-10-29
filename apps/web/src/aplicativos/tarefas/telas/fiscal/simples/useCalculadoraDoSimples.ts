@@ -9,6 +9,7 @@
 //     Digital; a CPP se digita (o nads não guarda).
 // Cada número pode ser trocado à mão e a tela diz de onde veio. As contas são as da planilha (core sieg.calculadora).
 import { empresas as emp, tarefas as t } from '@nads/core';
+import { useEmpresasPermitidas } from '../../empresas/andamento';
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { competenciasDaTela } from '../../../casca/navegacao';
@@ -57,7 +58,7 @@ export function useCalculadoraDoSimples() {
   const [servicoEscolhido, setServicoEscolhido] = useState<t.sieg.Anexo | null>(null);
   const [digitados, setDigitados] = useState<Partial<Record<CampoDoSimples, number>>>({});
 
-  const empresas = repo.listarEmpresas().filter(e => e.codigo != null);
+  const empresas = useEmpresasPermitidas().filtrar(repo.listarEmpresas()).filter(e => e.codigo != null);
   const empresa = codigo != null ? empresas.find(e => e.codigo === codigo) || null : null;
   const regimeDe = (e: { codigo: number | null; regime: string }) => t.regimeDaEmpresa(e.codigo) || e.regime || '';
   const q = busca.trim();

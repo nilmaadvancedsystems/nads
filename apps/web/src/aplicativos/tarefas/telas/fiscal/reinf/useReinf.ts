@@ -2,6 +2,7 @@
 // uma, a busca, o filtro (Todas / Pendentes / Transmitidas) e as ações (Transmitir, Desfazer, Retificar), que ficam em
 // useAcoesDaReinf (o Relatório geral usa as mesmas).
 import { tarefas as t } from '@nads/core';
+import { useEmpresasPermitidas } from '../../empresas/andamento';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { competenciasDaTela } from '../../../casca/navegacao';
@@ -22,7 +23,8 @@ export function useReinf() {
   const [filtro, setFiltro] = useState<Filtro>('todas');
 
   const nomes = new Map(repo.listarEmpresas().map(e => [e.codigo, e.nome]));
-  const lista = t.EMPRESAS_REINF.map(e => ({ ...e, nome: nomes.get(e.codigo) || e.nome, estado: acoes.estados[e.codigo] }));
+  const permitidas = useEmpresasPermitidas();
+  const lista = t.EMPRESAS_REINF.filter(e => permitidas.pode({ codigo: e.codigo, nome: nomes.get(e.codigo) || e.nome })).map(e => ({ ...e, nome: nomes.get(e.codigo) || e.nome, estado: acoes.estados[e.codigo] }));
   const resumo = t.resumoReinf(lista.map(l => l.estado), competencia);
   const q = busca.trim().toLowerCase();
   const linhas = lista

@@ -56,6 +56,27 @@ export function useEmpresasDaPessoa() {
   };
 }
 
+/**
+ * As empresas que a pessoa pode abrir em qualquer tela que escolhe empresa (29/10/2026: "se eu não sou encarregado dela
+ * não tem porque eu ter acesso a ela"; "se não é encarregado não deve nem ver"): o admin e o diretor, todas; no Fiscal e no
+ * Contábil, só as que ela é a responsável do setor no Cadastro (sem nenhuma marcada, nenhuma); o DP ainda não tem o
+ * responsável por empresa, então vê todas.
+ * carregada: o Cadastro (de onde vem o responsável) já chegou; antes disso a lista filtrada sai vazia.
+ */
+export function useEmpresasPermitidas() {
+  const op = useOperador().operador;
+  const daPessoa = useEmpresasDaPessoa();
+  const setor = op?.departamento === 'fiscal' || op?.departamento === 'contabil' ? op.departamento : null;
+  const filtra = !daPessoa.podeVerTodas && !!setor;
+  const pode = (e: { nome: string; codigo: number | null }) => !filtra || !setor || daPessoa.e(e, setor);
+  return {
+    filtra,
+    carregada: !filtra || daPessoa.carregada,
+    pode,
+    filtrar: <T extends { nome: string; codigo: number | null }>(lista: readonly T[]): T[] => (filtra ? lista.filter(pode) : [...lista]),
+  };
+}
+
 export function useAndamento() {
   useRegimesDoEntregas(); // o regime do Entregas, quando chega
   const repo = useRepo();
@@ -76,9 +97,9 @@ export function useAndamento() {
   const daPessoa = useEmpresasDaPessoa();
   const podeVerTodas = daPessoa.podeVerTodas;
   const escopo: EscopoDasEmpresas = podeVerTodas && params.get('escopo') === 'todas' ? 'todas' : 'minhas';
-  // o Contábil sempre com todas, sem o Minhas/Todas (Vitor, 28/10/2026: "sempre vai ser todas por enquanto, ainda não temos
-  // a relação"; "pode até remover esse filtro"): só o Fiscal filtra pelo responsável
-  const temResponsavel = dep === 'fiscal';
+  // o Fiscal e o Contábil filtram pelo responsável do setor no Cadastro (29/10/2026: "se não é encarregado não deve nem
+  // ver"; antes o Contábil ficava com todas); o DP ainda não tem o responsável por empresa
+  const temResponsavel = dep === 'fiscal' || dep === 'contabil';
   const filtrar = escopo === 'minhas' && temResponsavel;
 
   // as empresas da rotina: o DP, os clientes da planilha do DP; o Contábil e o Fiscal, a lista do escritório

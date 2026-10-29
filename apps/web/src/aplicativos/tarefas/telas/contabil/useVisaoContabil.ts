@@ -3,6 +3,7 @@
 import { tarefas as t } from '@nads/core';
 import { useSearchParams } from 'react-router';
 import { useExecucoes, useRepo } from '../../dados/repo';
+import { useEmpresasPermitidas } from '../empresas/andamento';
 import { competenciasDaTela, competenciasDoDp, guardarCompetenciaDoDp } from '../../casca/navegacao';
 
 export function useVisaoContabil(dep: 'contabil' | 'fiscal' | 'dp' = 'contabil') {
@@ -13,8 +14,12 @@ export function useVisaoContabil(dep: 'contabil' | 'fiscal' | 'dp' = 'contabil')
   const meses = dep === 'dp' ? competenciasDoDp(12) : { lista: competenciasDaTela(12), padrao: competenciasDaTela(1)[0] };
   const competencias = meses.lista;
   const competencia = competencias.includes(params.get('competencia') || '') ? (params.get('competencia') as string) : meses.padrao;
-  const { execucoes, carregada } = useExecucoes(competencia, dep);
-  const daRotina = t.empresasDaRotina(dep, repo.listarEmpresas());
+  // só as empresas da pessoa (29/10/2026; o admin e o diretor, todas)
+  const permitidas = useEmpresasPermitidas();
+  const doMes = useExecucoes(competencia, dep);
+  const carregada = doMes.carregada && permitidas.carregada;
+  const execucoes = doMes.execucoes.filter(ex => permitidas.pode({ nome: ex.empresa, codigo: ex.codigo }));
+  const daRotina = permitidas.filtrar(t.empresasDaRotina(dep, repo.listarEmpresas()));
   const totalEmpresas = daRotina.length;
   // a rotina de cada empresa (16/10/2026): no Contábil, a 62 (com o LCDPR) só tem a etapa LCDPR
   const rotinaDe = (codigo: number | null) => t.rotinaDaEmpresa(dep, codigo) || rotina;

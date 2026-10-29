@@ -162,6 +162,7 @@ export function Executor() {
   // é interromper, com a justificativa; trocar de mês ou período dentro do executor não conta
   const saida = useBlocker(({ currentLocation, nextLocation }) =>
     !vm.dev && !!vm.etapa && !vm.interrompendo && !guia.saindo.current && currentLocation.pathname !== nextLocation.pathname && !nextLocation.pathname.startsWith(BASE + '/executar/'));
+  if (vm.esperandoEmpresa) return null;
   if (!vm.empresa) return <Navigate to={BASE} replace />;
   // o mês faz parte de um período prometido (vários meses): abre o período
   if (vm.irParaPeriodo) return <Navigate to={vm.irParaPeriodo} replace />;

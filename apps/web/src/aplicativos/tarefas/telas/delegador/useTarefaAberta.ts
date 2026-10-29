@@ -10,6 +10,7 @@ import { useOperador } from '../../casca/operador';
 import { useAcesso, useRepo, useTarefasDelegadas } from '../../dados/repo';
 import { bytesDoAnexo, encolherAnexo } from '../../dados/encolherAnexo';
 import { tamanhoDoArquivo, type ArquivoParaAnexar } from '../../dados/tarefasDelegadas';
+import { useEmpresasPermitidas } from '../empresas/andamento';
 
 const d = tarefas.delegadas;
 type Rascunho = tarefas.delegadas.Rascunho;
@@ -28,7 +29,8 @@ const lerArquivos = (fs: File[]): Promise<ArquivoParaAnexar[]> => Promise.all(fs
 export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraMim: boolean) => void) {
   const repo = useTarefasDelegadas();
   const acesso = useAcesso();
-  const empresas = useRepo().listarEmpresas();
+  // o cliente vinculado: só as empresas da pessoa (29/10/2026)
+  const empresas = useEmpresasPermitidas().filtrar(useRepo().listarEmpresas());
   const admin = !!useOperador().operador?.admin;
   const { toast, modal } = useRetorno();
   const eu = repo.eu();

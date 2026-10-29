@@ -20,6 +20,7 @@ import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
 import { apagarTiques } from './useChecklistDaFolha';
 import { useEscopoDoGuardado, useVersaoDoGuardado } from '../../../../comum/guardado';
 import { dinamicoDaEmpresa } from '../../../../comum/contabilDaEmpresa';
+import { useEmpresasPermitidas } from '../empresas/andamento';
 
 /**
  * Onde cada aplicativo mora. O Extratudo vem junto no site da Tarefas (mesmo endereço: o login do Entregas
@@ -50,7 +51,11 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   const [dev] = useModoDesenvolvedor();
   // a rotina do departamento de quem está trabalhando (Contábil ou Fiscal)
   const { dep, comDep, lista } = useDepartamentoDaTela();
-  const empresa = empresas.empresaPelaRota(repo.listarEmpresas(), rotaEmpresa);
+  // a empresa de outra pessoa não abre nem pelo endereço (29/10/2026: "se não é encarregado não deve nem ver"); até o
+  // Cadastro chegar (de onde vem o responsável), nenhuma: a tela espera, sem mostrar
+  const permitidas = useEmpresasPermitidas();
+  const achada = empresas.empresaPelaRota(repo.listarEmpresas(), rotaEmpresa);
+  const empresa = achada && permitidas.carregada && permitidas.pode(achada) ? achada : null;
   // a da empresa (16/10/2026): no Contábil, a 62 (com o LCDPR) tem só a etapa LCDPR
   const rotina = t.rotinaDaEmpresa(dep, empresa?.codigo) || t.ROTINA_CONTABIL;
   // as seções da rotina, na ordem (Preparação, Ativo, Passivo, Resultado, Fechamento)
@@ -384,6 +389,8 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   }
 
   return {
+    /** o Cadastro ainda não chegou: não dá para saber se a empresa é da pessoa */
+    esperandoEmpresa: !permitidas.carregada,
     bancosDaEmpresa,
     departamento: rotina.departamento,
     grupos, abrirGrupo,

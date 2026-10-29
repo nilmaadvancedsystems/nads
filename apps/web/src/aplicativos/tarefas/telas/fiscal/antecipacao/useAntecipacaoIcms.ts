@@ -9,6 +9,7 @@
 // (?periodo=…&mes=… ou &ano=…). Os meses sem os XMLs do SIEG são pedidos ao robô sozinhos, uma vez por aba (26/10/2026:
 // "resolva o problema de não puxar do sieg"), e o aviso diz o que o robô está fazendo, a fila e o erro, se der.
 import { empresas as emp, tarefas as t } from '@nads/core';
+import { useEmpresasPermitidas } from '../../empresas/andamento';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
@@ -52,7 +53,7 @@ export function useAntecipacaoIcms() {
   const competencia = periodo === 'ano' ? (anoEscolhido === anoDeHoje ? hoje : anoEscolhido + '-12') : mesEscolhido;
   const mudarParams = (mudar: (n: URLSearchParams) => void) => setParams(p => { const n = new URLSearchParams(p); mudar(n); return n; }, { replace: true });
 
-  const lista = repo.listarEmpresas();
+  const lista = useEmpresasPermitidas().filtrar(repo.listarEmpresas());
   const codigo = Number(params.get('empresa')) || null;
   const empresa = codigo != null ? lista.find(e => e.codigo === codigo) || null : null;
   const achados = busca.trim() ? emp.buscarEmpresas(lista, busca).slice(0, 8) : [];

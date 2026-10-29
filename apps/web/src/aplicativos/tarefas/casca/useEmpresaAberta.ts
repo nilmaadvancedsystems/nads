@@ -9,6 +9,7 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router';
 import { useDriveDoEntregas, useRepo } from '../dados/repo';
 import { useDepartamentoDaTela } from './departamento';
 import { caminhoDaPaginaDaEmpresa, paginasDaEmpresa } from './navegacao';
+import { useEmpresasPermitidas } from '../telas/empresas/andamento';
 
 /** as páginas que trabalham com uma empresa só e a recebem pelo endereço (?empresa=código) */
 const FERRAMENTAS = new Set(['rateio-frete', 'simples', 'antecipacao-es']);
@@ -20,7 +21,11 @@ export function useEmpresaAberta(rota: string, pagina: string) {
   const { search } = useLocation();
   const [params, setParams] = useSearchParams();
   const { dep } = useDepartamentoDaTela();
-  const empresa = empresas.empresaPelaRota(repo.listarEmpresas(), rota);
+  // a empresa de outra pessoa não abre nem pelo endereço (29/10/2026: "se não é encarregado não deve nem ver"); até o
+  // Cadastro chegar (de onde vem o responsável), nenhuma: a tela espera, sem mostrar
+  const permitidas = useEmpresasPermitidas();
+  const achada = empresas.empresaPelaRota(repo.listarEmpresas(), rota);
+  const empresa = achada && permitidas.carregada && permitidas.pode(achada) ? achada : null;
   const paginas = paginasDaEmpresa(dep);
   const valida = paginas.some(p => p.id === pagina);
   const mapa = drive.mapa();
@@ -55,6 +60,8 @@ export function useEmpresaAberta(rota: string, pagina: string) {
   };
 
   return {
+    /** o Cadastro ainda não chegou: não dá para saber se a empresa é da pessoa */
+    esperando: !permitidas.carregada,
     empresa,
     valida,
     /** a primeira página (a Visão geral), mantendo o endereço, quando a pedida não existe no setor */

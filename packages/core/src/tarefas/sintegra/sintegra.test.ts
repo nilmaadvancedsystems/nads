@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Nota } from '../../conferencia/tipos';
 import type { NotaDoSieg } from '../sieg';
-import { chaveDaNota, conferirComAlterdata, conferirComSieg, documentoValido, lerSintegra, resumirSintegra } from './index';
+import { chaveDaNota, conferirComAlterdata, conferirComSieg, documentoValido, lerSintegra, notasDosRelatorios, resumirSintegra } from './index';
 
 // monta uma linha de 126 posições a partir dos campos (texto à esquerda com espaços; número à direita com zeros)
 const t = (s: string, n: number) => s.slice(0, n).padEnd(n, ' ');
@@ -131,5 +131,17 @@ describe('ajudantes', () => {
   });
   it('a chave ignora os zeros do número e da série', () => {
     expect(chaveDaNota(FORNECEDOR, '55', '001', '000123')).toBe(chaveDaNota(FORNECEDOR, '55', '1', '123'));
+  });
+});
+
+describe('notasDosRelatorios', () => {
+  const n = (x: Partial<Nota>): Nota => ({ cfop: '5102', lanc: '1', valor: 10, numero: '1', nome: '', data: '05/09/2026', desc: '', doc: '', exportado: '', comp: '2026-09', ...x });
+  it('só as do mês (a sem data fica) e sem repetir o relatório que subiu duas vezes', () => {
+    const entradas = [n({ cfop: '1102', lanc: '7' }), n({ lanc: '8', comp: '2026-08', data: '30/08/2026' }), n({ lanc: '9', comp: '', data: '' })];
+    const r = notasDosRelatorios([entradas, entradas, [n({ lanc: '10' })]], '2026-09');
+    expect(r.map(x => x.lanc)).toEqual(['7', '9', '10']);
+  });
+  it('sem competência, todas', () => {
+    expect(notasDosRelatorios([[n({ comp: '2026-08' })]], '')).toHaveLength(1);
   });
 });

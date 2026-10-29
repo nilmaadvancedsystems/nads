@@ -31,6 +31,7 @@ export function EmpresaAberta() {
   const { search } = useLocation();
   const vm = useEmpresaAberta(rota, pagina);
   if (lcdpr != null) return <Navigate to={BASE + '/minhas-empresas/empresa/' + rota + search} replace />;
+  if (vm.esperando) return null;
   if (!vm.casca) return <Navigate to={BASE} replace />;
   if (!vm.valida) return <Navigate to={vm.paginaInicial} replace />;
   return (
