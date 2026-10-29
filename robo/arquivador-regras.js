@@ -1421,7 +1421,12 @@ const CONCESSIONARIA = /\b(CEMIG|COELBA|NEOENERGIA|COPASA|EMBASA|SAAE|ENERGISA|2
 const CLIENTES_DE_AERONAVE = new Set([506]);
 // o relatório gerado pelo sistema do cliente ou do escritório (estoque, inventário, conferência de ST, notas lançadas do ISS, plano de contas, relatório do Alterdata,
 // registros fiscais de NF-e/NFC-e, faturamento): vai para CONTÁBIL\RELATÓRIOS ALTERDATA (Vitor, 29/10/2026: regra geral para planilha e relatório)
-const RELATORIO_DO_SISTEMA = /RELATORIO DE ESTOQUE|ESTOQUE POR GRUPO|INVENTARIO DE (PRODUTOS|ESTOQUE)|RELATORIO DE CONFERENCIA DE SUBSTITUICAO TRIBUTARIA|RELATORIO DE NOTAS FISCAIS LANCADAS|ALTERDATA[\s\S]{0,300}RELATORIO|RELATORIO POR NIVEL|REGISTROS FISCAIS NF|RELATORIO DE FATURAMENTO|RELATORIO DE RECUPERACAO|\bECONET\b/;
+// (29/10/2026, Vitor) os relatórios do sistema FISCAL (registro e apuração de ICMS, ISS do Alterdata, recuperação de créditos, conferência de ST, Econet, NF-e/NFC-e do mês) vão para
+// FISCAL\<regime>\RELATÓRIOS ALTERDATA\ANO, como a DEFIS; "planilha e relatório → CONTÁBIL\RELATÓRIOS ALTERDATA" fica só para os relatórios contábeis
+const RELATORIO_FISCAL_DO_SISTEMA = /RELATORIO DE CONFERENCIA DE SUBSTITUICAO TRIBUTARIA|CONFERENCIA DE (ST|SUBSTITUICAO TRIBUTARIA)|RELATORIO DE NOTAS FISCAIS LANCADAS|REGISTROS? FISCAIS? (DE )?NF|REGISTRO DE APURACAO D[OE] ICMS|APURACAO D[OE] ICMS|RELATORIO DE (APURACAO|ISS|ISSQN)|RELATORIO DE RECUPERACAO|\bECONET\b|RELATORIO DE (NF-?E|NFC-?E)\b/;
+const RELATORIO_DO_SISTEMA = /RELATORIO DE ESTOQUE|ESTOQUE POR GRUPO|INVENTARIO DE (PRODUTOS|ESTOQUE)|ALTERDATA[\s\S]{0,300}RELATORIO|RELATORIO POR NIVEL|RELATORIO DE FATURAMENTO/;
+/** O caminho do relatório fiscal no regime do cliente (o mesmo do relatório de conferência do Simples do Alterdata). */
+const caminhoRelatorioFiscal = (cad, cod, ano) => { const r = (cad.porCod.get(cod) || {}).regime; return r ? ['FISCAL', r, 'RELATÓRIOS ALTERDATA', String(ano)] : null; };
 /**
  * A planilha que tem destino próprio ou trava e NÃO vai para RELATÓRIOS ALTERDATA pela regra geral (29/10/2026): o extrato, a conciliação, o recebível de
  * maquininha e a fatura de cartão (o banco manda), a DEFIS e o balancete (têm a regra deles).
@@ -1752,15 +1757,26 @@ function pelaPastaENome(entrada, ctx, d) {
     const x = cliente();
     if (x && ['pastaConferida', 'doc', 'conta', 'hash'].includes(x.como) && !doOutroCliente((entrada.planilha || []).slice(0, 25).map(l => (l || []).join(' | ')).join('\n'), x.cliente)) {
       const a = anoOuAtual(anoNome, anoCurtoDoNome, pastaAno && pastaAno.ano, anoArq);
+      const topoPl = norm((entrada.planilha || []).slice(0, 8).map(l => (l || []).join(' ')).join(' '));
+      if (RELATORIO_FISCAL_DO_SISTEMA.test(n + ' ' + topoPl)) {
+        const cf = caminhoRelatorioFiscal(cad, x.cliente, a);
+        if (!cf) return null;
+        return fim({ tipo: 'RELATORIO FISCAL', setor: 'FISCAL', caminho: cf, competencia: { ano: a } }, 'relatório fiscal do sistema em planilha (FISCAL\\<regime>\\RELATÓRIOS ALTERDATA\\' + a + '; Vitor, 29/10/2026)');
+      }
       return fim({ tipo: 'PLANILHA DE CONTROLE', setor: 'CONTABIL', caminho: ['CONTÁBIL', 'RELATÓRIOS ALTERDATA'], competencia: { ano: a } }, 'planilha (RELATÓRIOS ALTERDATA, regra geral para planilha e relatório)§29');
     }
   }
-  if (extNome === 'pdf' && RELATORIO_DO_SISTEMA.test(u.slice(0, 1500))) {
+  if (extNome === 'pdf' && (RELATORIO_DO_SISTEMA.test(u.slice(0, 1500)) || RELATORIO_FISCAL_DO_SISTEMA.test(u.slice(0, 1500)))) {
     const x = cliente();
     if (x && ['pastaConferida', 'doc', 'conta', 'hash'].includes(x.como) && !doOutroCliente(bruto, x.cliente)
       && (documentosDoTexto(bruto).some(y => clientesDoDoc(y.doc, cad).includes(x.cliente)) || clientesPeloNomeNoTexto(bruto.slice(0, 1500), cad).includes(x.cliente))) {
       const p = periodoEscrito(u) || periodoLivre(u.slice(0, 1500));
       const a = anoOuAtual(p && p.ate.ano, anoNome, pastaAno && pastaAno.ano, anoArq);
+      if (RELATORIO_FISCAL_DO_SISTEMA.test(u.slice(0, 1500)) && !RELATORIO_DO_SISTEMA.test(u.slice(0, 1500))) {
+        const cf = caminhoRelatorioFiscal(cad, x.cliente, a);
+        if (!cf) return null;
+        return fim({ tipo: 'RELATORIO FISCAL', setor: 'FISCAL', caminho: cf, competencia: { ano: a } }, 'relatório fiscal do sistema (FISCAL\\<regime>\\RELATÓRIOS ALTERDATA\\' + a + '; Vitor, 29/10/2026)');
+      }
       return fim({ tipo: 'RELATORIO DO SISTEMA', setor: 'CONTABIL', caminho: ['CONTÁBIL', 'RELATÓRIOS ALTERDATA'], competencia: { ano: a } }, 'relatório do sistema (RELATÓRIOS ALTERDATA, regra geral para planilha e relatório)§29');
     }
   }
