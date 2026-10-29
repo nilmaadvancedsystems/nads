@@ -1602,6 +1602,11 @@ function pelaPastaENome(entrada, ctx, d) {
 const MENSAGEM_SEFAZ = /^(Envelope|Body|nfeDadosMsg|nfeResultMsg|cteDadosMsg|cteResultMsg|mdfeDadosMsg|mdfeResultMsg|(cons|retCons)(Sit|StatServ|Reci|Cad)(NFe|CTe|Cte|MDFe)?|(envi|retEnvi)(NFe|CTe|Cte|MDFe)|consMDFeNaoEnc|retConsMDFeNaoEnc|(env|retEnv)Evento|retInut(NFe|CTe)Pendente|resEvento|RetornoConsulta)$/;   // resEvento/RetornoConsulta: Vitor, 27/10/2026
 const NOME_MENSAGEM_SEFAZ = /-(ped-sta|sta|env-lot|pro-lot|rec|pro-rec|ped-rec|ped-sit|sit|ped-can|ped-cce|soap|ped-sta-soap|ped-inu|env-cce|env-canc)\.xml$/i;
 function decidirXml(entrada, ctx, ev) {
+  // B12 (29/10/2026): o XML vazio ("-procNfe.xml" com só CRLF, 2 bytes; ou sem conteúdo nenhum) não tem documento: vai para a quarentena (nunca é apagado)
+  // (ou zerado: o arquivo todo de bytes 0, que o disco devolve quando a cópia não terminou)
+  if (!String(entrada.xml == null ? '' : entrada.xml).replace(/[\u0000﻿\s]+/g, '')) {
+    return { acao: 'DESCARTAR', motivo: 'CONTEUDO_ILEGIVEL', confianca: 1, tipo: 'DESCARTE', setor: 'FISCAL', evidencias: ['XML vazio (' + (entrada.tamanho != null ? entrada.tamanho + ' bytes, ' : '') + 'só quebra de linha, espaço ou bytes zero): não há documento; vai para a quarentena, nunca apagado'] };
+  }
   const info = classificarXml(entrada.xml);
   if (info.erro === 'TIPO_XML_NAO_TRATADO' && (MENSAGEM_SEFAZ.test(info.tag || '') || NOME_MENSAGEM_SEFAZ.test(entrada.nome || ''))) {
     return { acao: 'DESCARTAR', motivo: 'MENSAGEM_DA_SEFAZ', confianca: 1, tipo: 'DESCARTE', setor: 'FISCAL', evidencias: ['mensagem trocada com a SEFAZ (' + (info.tag || '?') + ', ' + entrada.nome + '): não é documento do cliente; vai para a quarentena, nunca apagada (Vitor, 23/10/2026)'] };
