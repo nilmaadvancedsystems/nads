@@ -2441,7 +2441,9 @@ const ROTULO_DA_FICHA = /\b(AGENCIA|CODIGO|NOSSO|NUMERO|DOCUMENTO|ESPECIE|QUANTI
 const ENDERECO = /\b(RUA|AV|AVENIDA|ESTRADA|QUADRA|QD|LOTE|SALA|BLOCO|CONJ|CEP|BAIRRO|ROD|RODOVIA|TRAVESSA|PRACA|KM|ZONA|S\s?N)\b|[ /-](AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)$/;
 function nomeDeBeneficiarioValido(t) {
   const n = String(t || '').replace(/[\s:—–-]+$/g, '').replace(/^[\s:—–-]+/g, '').trim();
-  if (!/^[A-Z][A-Z &.,'\/-]{3,90}$/.test(n) || !/[A-Z]{3}/.test(n) || ROTULO_DA_FICHA.test(n) || ENDERECO.test(n) || /\bNAO (DISPONIVEL|INFORMADO)\b/.test(n)) return null;
+  // "AGENCIA NACIONAL DE MINERACAO" (o boleto da CEFEM) é nome; "AGENCIA / CODIGO DO CEDENTE" é rótulo da ficha (29/10/2026)
+  const semAgencia = n.replace(/^AGENCIA (?=(NACIONAL|REGULADORA|BRASILEIRA|ESTADUAL|MUNICIPAL|DE) [A-Z])/, 'AGENC. ');
+  if (!/^[A-Z][A-Z &.,'\/-]{3,90}$/.test(n) || !/[A-Z]{3}/.test(n) || ROTULO_DA_FICHA.test(semAgencia) || ENDERECO.test(n) || /\bNAO (DISPONIVEL|INFORMADO)\b/.test(n)) return null;
   return nomeSeguro(semAcento(nomeNormalizado(n))).toUpperCase() || null;
 }
 function beneficiariosDoBoleto(u) {
@@ -2461,6 +2463,12 @@ function beneficiariosDoBoleto(u) {
     const corte = /^(.*?\b(?:LTDA|EIRELI|S\.?\/?A|EPP|ME))(?![A-Z])/.exec(m[1].replace(/\s*(?:R\$|\d).*$/, '').trim()) || /^(.*?\b(?:LTDA|EIRELI|EPP))/.exec(m[1]);
     const nome = corte && nomeDeBeneficiarioValido(corte[1]);
     if (nome) out.push({ nome, rotulo: 'beneficiario' });
+  }
+  // B8 (29/10/2026): o nome logo abaixo do rótulo, com o CNPJ depois do hífen ("LONAX PAY - 06.951.711/0001-28", "Operador Nacional do Registro - 37.318.313/0001-00")
+  // ou na linha seguinte ("Aegro\n23.706.398/0001-81"); o CNPJ formatado é o que garante que a linha é o beneficiário e não outro campo da ficha
+  for (const m of u.matchAll(/(?:^|\n)[^\n]{0,30}\b(?:BENEFICIARIO|CEDENTE)\b[^\n]{0,60}\n\s*([^\n]{3,90}?)(?:\s+-\s+|\s*\n\s*)(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2})/g)) {
+    const nome = nomeDeBeneficiarioValido(m[1]);
+    if (nome && !out.some(o => o.nome === nome)) out.push({ nome, rotulo: 'beneficiario', doc: so(m[2]) });
   }
   return out;
 }
