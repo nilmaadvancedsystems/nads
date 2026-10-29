@@ -2,15 +2,17 @@
 // está no nads lê; quem cria é o criadaPor (o próprio login); mudam o criador e o responsável; apagam o criador e o
 // admin. Cada pessoa ouve só as dela (o campo pessoas: o uid de quem criou e o do responsável). Os anexos vão em pedaços
 // de até 900 KB em nadsTarefasDelegadas/{id}/partes/{anexo}-{n} (como os dos feedbacks), sem Storage; a lista deles fica
-// no documento. O número da tarefa é o maior que existe + 1 (duas criadas no mesmo segundo podem repetir o número: é só
-// o rótulo, o id é o do documento). Sem a regra no ar, o banco recusa: a lista fica vazia com o aviso.
+// no documento; o arquivo já chega encolhido (a imagem em WebP, o resto em gzip: encolherAnexo.ts). O número da tarefa
+// é o maior que existe + 1 (duas criadas no mesmo segundo podem repetir o número: é só o rótulo, o id é o do documento).
+// Sem a regra no ar, o banco recusa: a lista fica vazia com o aviso.
 import {
   arrayUnion, Bytes, collection, deleteDoc as deleteDocBruto, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, setDoc as setDocBruto,
   updateDoc as updateDocBruto, where, type Unsubscribe,
 } from 'firebase/firestore';
 import { entregas, tarefas } from '@nads/core';
 import { bancoDoEntregas } from './entregas.firestore';
-import { conferirAnexos, type ArquivoParaAnexar, type RepoTarefasDelegadas } from './tarefasDelegadas';
+import { anexoDe, conferirAnexos, type ArquivoParaAnexar, type RepoTarefasDelegadas } from './tarefasDelegadas';
+import { bytesDoAnexo } from './encolherAnexo';
 import { guardar, guardarPedido } from '../../../comum/modoDesenvolvedor';
 
 // a trava do modo desenvolvedor: com o modo ligado, criar é recusado (é mandar para alguém) e o resto finge que gravou
@@ -47,8 +49,7 @@ export function criarTarefasDelegadasFirestore(quem: () => Pessoa | null): RepoT
       const anexoId = doc(collection(db, COLECAO)).id;
       const pedacos = entregas.partesDoArquivo(a.bytes);
       for (let n = 0; n < pedacos.length; n++) await setDoc(parte(id, anexoId, n), { dados: Bytes.fromUint8Array(pedacos[n]) });
-      const nome = d.nomeDoAnexo(a.nome);
-      anexos.push({ id: anexoId, nome, extensao: d.extensaoDe(nome), tamanho: a.bytes.length, em, por, partes: pedacos.length });
+      anexos.push(anexoDe(a, { id: anexoId, em, por, partes: pedacos.length }));
     }
     return anexos;
   }
@@ -157,7 +158,7 @@ export function criarTarefasDelegadasFirestore(quem: () => Pessoa | null): RepoT
       const bytes = new Uint8Array(pedacos.reduce((s, p) => s + p.length, 0));
       let k = 0;
       for (const p of pedacos) { bytes.set(p, k); k += p.length; }
-      return bytes;
+      return bytesDoAnexo(bytes, a.gzip);
     },
     async excluir(id) {
       const t = daTarefa(id);

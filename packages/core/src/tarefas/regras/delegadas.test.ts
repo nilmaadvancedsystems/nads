@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  atrasada, buscar, celulaDoCsv, comAnexos, comParecer, contarAbas, daAba, emAberto, extensaoDe, historicoDaCriacao, historicoDaMudanca, lerTarefa,
+  atrasada, buscar, celulaDoCsv, comAnexos, comoEncolher, nomeDaImagemEncolhida, valeEncolher, comParecer, contarAbas, daAba, emAberto, extensaoDe, historicoDaCriacao, historicoDaMudanca, lerTarefa,
   linhasDaPlanilha, MAIOR_ANEXO, MAIOR_HISTORICO, MAIOR_TITULO, MAIS_ANEXOS, MAIS_PARECERES, mudar, mudouAlgo, noHistorico, nomeDoAnexo, nova, ordenar,
   pessoasDaTarefa, podeExcluir, podeMudar, prazoDaTela, prazoParaTela, prazoValido, problemaDaTarefa, problemaDoParecer, problemaDosAnexos,
   rascunhoDe, rascunhoVazio, semAnexo, statusDaAba, type Rascunho, type TarefaDelegada,
@@ -227,5 +227,32 @@ describe('ler do banco e exportar', () => {
     expect(celulaDoCsv('a;b')).toBe('"a;b"');
     expect(celulaDoCsv('diz "oi"')).toBe('"diz ""oi"""');
     expect(celulaDoCsv(12)).toBe('12');
+  });
+});
+
+describe('encolher os anexos', () => {
+  it('imagem redesenha, o já comprimido fica, o resto vai em gzip', () => {
+    expect(comoEncolher('print.PNG')).toBe('imagem');
+    expect(comoEncolher('foto.jpeg')).toBe('imagem');
+    expect(comoEncolher('planilha.xlsx')).toBe('nada');
+    expect(comoEncolher('notas.zip')).toBe('nada');
+    expect(comoEncolher('animado.gif')).toBe('nada');
+    expect(comoEncolher('nota.xml')).toBe('gzip');
+    expect(comoEncolher('balancete.pdf')).toBe('gzip');
+    expect(comoEncolher('sem-extensao')).toBe('gzip');
+  });
+  it('só vale se tirou 5%', () => {
+    expect(valeEncolher(1000, 950)).toBe(true);
+    expect(valeEncolher(1000, 960)).toBe(false);
+    expect(valeEncolher(1000, 0)).toBe(false);
+  });
+  it('a imagem encolhida vira .webp', () => {
+    expect(nomeDaImagemEncolhida('Print 1.PNG')).toBe('Print 1.webp');
+    expect(nomeDaImagemEncolhida('foto')).toBe('foto.webp');
+  });
+  it('lê o gzip do banco só quando é true', () => {
+    const base = { id: 'a', nome: 'n.xml', extensao: 'xml', tamanho: 10, em: EM, por: 'Nilma', partes: 1 };
+    expect(lerTarefa('t', { anexos: [{ ...base, gzip: true }] }).anexos[0].gzip).toBe(true);
+    expect('gzip' in lerTarefa('t', { anexos: [{ ...base, gzip: 'sim' }] }).anexos[0]).toBe(false);
   });
 });

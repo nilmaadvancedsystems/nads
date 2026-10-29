@@ -4964,6 +4964,9 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .cp-clipe{display:inline-flex;align-items:center;margin-left:6px;width:14px;height:14px;color:var(--ink-muted);vertical-align:-2px;}
 .cp-clipe svg{width:14px;height:14px;}
 .cp-pago-em{margin-left:6px;font-size:var(--fs-12);white-space:nowrap;}
+/* as Contas a pagar no layout do DP (29/10/2026): o Pagar só com o ícone, na ponta da linha */
+.cp-lista .cp-acao{width:1%;text-align:right;padding-top:2px;padding-bottom:2px;}
+.cp-lista .fin-corta{max-width:280px;}
 .cp-janela .pessoal-linha-controle{flex-wrap:wrap;justify-content:flex-end;}
 .cp-janela .pessoal-linha-controle .file-picker{text-align:left;}
 .cp-campo{width:280px;max-width:100%;}

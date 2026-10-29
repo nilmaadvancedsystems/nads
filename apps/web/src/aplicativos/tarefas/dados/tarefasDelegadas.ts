@@ -3,13 +3,26 @@
 // como os dos feedbacks. Interface + a versão de exemplo (na memória, com 4 tarefas); a do banco é
 // tarefasDelegadas.firestore.ts (coleção nadsTarefasDelegadas do Entregas). As regras são do core (tarefas.delegadas).
 import { tarefas } from '@nads/core';
+import { bytesDoAnexo } from './encolherAnexo';
 
 const d = tarefas.delegadas;
 type TarefaDelegada = tarefas.delegadas.TarefaDelegada;
 type Pessoa = tarefas.delegadas.Pessoa;
 
-/** Um arquivo escolhido para anexar (o nome e os bytes). */
-export interface ArquivoParaAnexar { nome: string; bytes: Uint8Array }
+/**
+ * Um arquivo escolhido para anexar, já encolhido (encolherAnexo): os bytes que vão ao banco, o tamanho do arquivo que a
+ * pessoa baixa (sem ele, o dos bytes) e gzip = os bytes estão em gzip.
+ */
+export interface ArquivoParaAnexar { nome: string; bytes: Uint8Array; tamanho?: number; gzip?: boolean }
+
+/** O tamanho do arquivo (o que os limites contam e a lista mostra). */
+export const tamanhoDoArquivo = (a: ArquivoParaAnexar) => a.tamanho ?? a.bytes.length;
+
+/** O anexo para a lista do documento (o gzip só entra quando é: o banco não aceita undefined). */
+export const anexoDe = (a: ArquivoParaAnexar, o: { id: string; em: string; por: string; partes: number }): tarefas.delegadas.Anexo => {
+  const nome = d.nomeDoAnexo(a.nome);
+  return { id: o.id, nome, extensao: d.extensaoDe(nome), tamanho: tamanhoDoArquivo(a), em: o.em, por: o.por, partes: o.partes, ...(a.gzip ? { gzip: true as const } : {}) };
+};
 
 export interface RepoTarefasDelegadas {
   exemplos: boolean;
@@ -36,7 +49,7 @@ export interface RepoTarefasDelegadas {
 
 /** Confere os arquivos antes de subir (lança o erro com o motivo). */
 export function conferirAnexos(t: Pick<TarefaDelegada, 'anexos'> | null, arquivos: readonly ArquivoParaAnexar[]): void {
-  const problema = d.problemaDosAnexos(arquivos.map(a => ({ nome: a.nome, tamanho: a.bytes.length })), t?.anexos || []);
+  const problema = d.problemaDosAnexos(arquivos.map(a => ({ nome: a.nome, tamanho: tamanhoDoArquivo(a) })), t?.anexos || []);
   if (problema) throw new Error(problema);
 }
 
@@ -83,8 +96,7 @@ export function criarTarefasDelegadasMemoria(quem: () => Pessoa | null): RepoTar
   const subir = (arquivos: readonly ArquivoParaAnexar[], por: string, em: string) => arquivos.map(a => {
     const id = 'ax-' + idNovo();
     bytes.set(id, a.bytes);
-    const nome = d.nomeDoAnexo(a.nome);
-    return { id, nome, extensao: d.extensaoDe(nome), tamanho: a.bytes.length, em, por, partes: 1 };
+    return anexoDe(a, { id, em, por, partes: 1 });
   });
   return {
     exemplos: true,
@@ -130,7 +142,10 @@ export function criarTarefasDelegadasMemoria(quem: () => Pessoa | null): RepoTar
       bytes.delete(anexoId);
       trocar(d.semAnexo(daTarefa(id), anexoId, eu().nome, new Date().toISOString()));
     },
-    async baixarAnexo(_id, anexoId) { return bytes.get(anexoId) || null; },
+    async baixarAnexo(id, anexoId) {
+      const b = bytes.get(anexoId);
+      return b ? bytesDoAnexo(b, daTarefa(id).anexos.find(x => x.id === anexoId)?.gzip) : null;
+    },
     async excluir(id) {
       for (const a of daTarefa(id).anexos) bytes.delete(a.id);
       lista = lista.filter(t => t.id !== id);
