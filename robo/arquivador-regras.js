@@ -889,11 +889,11 @@ const REGRAS_PDF = [
       const trib = /TFAMG/.test(u) ? 'TFAMG' : /IPVA/.test(u) ? 'IPVA' : /TAXA/.test(u) && !/ICMS/.test(u) ? 'TAXA' : 'ICMS';
       if (!c.competencia) { const m = /(\d{2})\/(\d{4})/.exec(linhaApos(u, /MES ANO DE REFERENCIA/, 400)); if (m) c.competencia = { mes: +m[1], ano: +m[2] }; }
       // o DAE do SIARE (B2, 29/10/2026): o PDF traz os rótulos primeiro e os valores bem depois, então "Mês Ano de Referência" fica longe de "08 / 2022".
-      // (1) o mês/ano é a única linha "MM / AAAA" (com espaços em volta da barra); (2) senão, o "Período Ref." ("01 a 30/09/2024") se for o mesmo em
+      // (1) o mês/ano é a única linha "MM / AAAA"; (2) senão, o "Período Ref." ("01 a 30/09/2024") se for o mesmo em
       // todas as linhas (o DAE consolidado); valores diferentes: não chuta.
       if (!c.competencia) {
         const unico = lista => (lista.length && new Set(lista.map(x => x.mes + '/' + x.ano)).size === 1 ? lista[0] : null);
-        const linhas = [...u.matchAll(/(?:^|\n)\s*(0[1-9]|1[0-2]) \/ (20\d{2})[ \t]*(?=\n|$)/g)].map(m => ({ mes: +m[1], ano: +m[2] }));
+        const linhas = [...u.matchAll(/(?:^|\n)\s*(0[1-9]|1[0-2]) ?\/ ?(20\d{2})[ \t]*(?=\n|$)/g)].map(m => ({ mes: +m[1], ano: +m[2] }));
         const refs = [...u.matchAll(/(?<![\d/])\d{2} A \d{2}\/(0[1-9]|1[0-2])\/(20\d{2})(?![\d/])/g)].map(m => ({ mes: +m[1], ano: +m[2] }));
         const ref = unico(linhas) || unico(refs);
         if (ref) c.competencia = { mes: ref.mes, ano: ref.ano };
