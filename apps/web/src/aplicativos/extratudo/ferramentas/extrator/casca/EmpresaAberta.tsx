@@ -15,6 +15,7 @@ import { caminho } from './caminho';
 import { CascaExtrator } from './CascaExtrator';
 import { PAGINA_INICIAL, paginaPorId } from './navegacao';
 import { SessaoProvider, useSessao } from './sessao';
+import { SoMinhaEmpresa } from '../../../../tarefas/casca/SoMinhaEmpresa';
 
 function Tela() {
   const s = useSessao();
@@ -44,7 +45,7 @@ export function EmpresaAberta() {
     const pronta = !!guardada && guardada.arquivos.some(a => a.lado === 'banco') && guardada.arquivos.some(a => a.lado === 'sistema');
     return <Navigate to={caminho(rota + '/' + (paginaPorId(id) ? id : pronta ? 'conferencia/resultado' : PAGINA_INICIAL))} replace />;
   }
-  return (
+  const tela = (
     // key = empresa: trocar de empresa zera a sessão
     <SessaoProvider key={achada.nome} nome={achada.nome} rota={rota} codigo={achada.codigo} pagina={id}>
       <TopoProvider>
@@ -54,4 +55,5 @@ export function EmpresaAberta() {
       </TopoProvider>
     </SessaoProvider>
   );
+  return <SoMinhaEmpresa empresa={achada} voltar={caminho()}>{tela}</SoMinhaEmpresa>;
 }

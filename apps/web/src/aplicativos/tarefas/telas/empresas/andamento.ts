@@ -39,17 +39,24 @@ export const ACAO: Record<t.SituacaoGeral, string> = { parada: 'Retomar', 'em-an
  * busca do menu ☰ (27/10/2026: "só é para aparecer as empresas que a pessoa tem").
  */
 export function useEmpresasDaPessoa() {
-  const op = useOperador().operador as Operador;
+  return useEmpresasDoOperador(useOperador().operador as Operador);
+}
+
+/**
+ * O mesmo, para quem passa o operador (o Concilia aí, o Conciliadorzinho e o Extratudo, que não ficam dentro da Tarefas:
+ * o operador vem da conta da trava). null = sem conta (os exemplos desses aplicativos): vê todas, como antes.
+ */
+export function useEmpresasDoOperador(op: Operador | null) {
   const cadastros = useTodosOsCadastros();
   const equipe = useAcesso().equipe().lista.filter(p => p.ativo).map(p => p.nome);
-  const nomes = nomesDaPessoa(op.nome, equipe);
+  const nomes = op ? nomesDaPessoa(op.nome, equipe) : [];
   const responsavelDe = (emp: { nome: string; codigo: number | null }, dep: 'fiscal' | 'contabil') => {
     const r = cadastros.porId.get(formatos.slug(emp.nome))?.responsaveis?.[dep] || '';
     return r || (dep === 'fiscal' ? empresas.clienteDoDp(emp.codigo)?.responsavel || '' : '');
   };
   return {
     /** o admin e o diretor podem ver todas (26/10/2026) */
-    podeVerTodas: !!op.admin || op.nivel === 'diretor',
+    podeVerTodas: !op || !!op.admin || op.nivel === 'diretor',
     carregada: cadastros.carregada,
     /** só a empresa em que a pessoa é a responsável do setor (a sem responsável fica de fora) */
     e: (emp: { nome: string; codigo: number | null }, dep: 'fiscal' | 'contabil') => { const r = responsavelDe(emp, dep); return !!r && nomes.some(n => igual(n, r)); },
@@ -64,8 +71,12 @@ export function useEmpresasDaPessoa() {
  * carregada: o Cadastro (de onde vem o responsável) já chegou; antes disso a lista filtrada sai vazia.
  */
 export function useEmpresasPermitidas() {
-  const op = useOperador().operador;
-  const daPessoa = useEmpresasDaPessoa();
+  return useEmpresasPermitidasDoOperador(useOperador().operador);
+}
+
+/** O mesmo, com o operador passado (os aplicativos fora da Tarefas; null = sem conta: todas). */
+export function useEmpresasPermitidasDoOperador(op: Operador | null) {
+  const daPessoa = useEmpresasDoOperador(op);
   const setor = op?.departamento === 'fiscal' || op?.departamento === 'contabil' ? op.departamento : null;
   const filtra = !daPessoa.podeVerTodas && !!setor;
   const pode = (e: { nome: string; codigo: number | null }) => !filtra || !setor || daPessoa.e(e, setor);

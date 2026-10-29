@@ -8,6 +8,7 @@ import { Ajuste } from '../telas/ajuste/Ajuste';
 import { caminho } from './caminho';
 import { CascaCheque } from './CascaCheque';
 import { PAGINA_INICIAL, paginaPorId } from './navegacao';
+import { SoMinhaEmpresa } from '../../../../tarefas/casca/SoMinhaEmpresa';
 
 export function EmpresaAberta() {
   const { empresa: param = '', secao = '', pagina = '' } = useParams();
@@ -16,7 +17,7 @@ export function EmpresaAberta() {
   const rota = empresas.rotaDaEmpresa(empresa);
   const id = secao + '/' + pagina;
   if (!paginaPorId(id) || param !== rota) return <Navigate to={caminho(rota + '/' + (paginaPorId(id) ? id : PAGINA_INICIAL))} replace />;
-  return (
+  const tela = (
     // key = empresa: trocar de empresa começa do zero (nada é guardado)
     <TopoProvider key={rota}>
       <CascaCheque empresa={empresa} rota={rota} pagina={id}>
@@ -24,4 +25,5 @@ export function EmpresaAberta() {
       </CascaCheque>
     </TopoProvider>
   );
+  return <SoMinhaEmpresa empresa={empresa} voltar={caminho()}>{tela}</SoMinhaEmpresa>;
 }
