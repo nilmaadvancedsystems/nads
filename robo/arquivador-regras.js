@@ -685,7 +685,7 @@ function classificarXml(textoXml) {
     if (docs.length === 1) {
       let dentro = null;
       try { dentro = require('zlib').gunzipSync(Buffer.from(docs[0].texto.replace(/\s+/g, ''), 'base64')).toString('utf8'); } catch (e) { dentro = null; }
-      const r = dentro && /^\s*<(nfeProc|procNFe|cteProc|procEvento|procCTe)/.test(dentro) ? classificarXml(dentro) : null;
+      const r = dentro && /^\s*(<\?xml[^>]*\?>\s*)?<(nfeProc|procNFe|cteProc|procEvento|procCTe)/.test(dentro) ? classificarXml(dentro) : null;
       if (r && !r.erro) { r.distribuicao = true; return r; }
     }
     return { erro: 'TIPO_XML_NAO_TRATADO', tag: raiz.tag };

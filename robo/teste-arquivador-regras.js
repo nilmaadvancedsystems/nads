@@ -83,6 +83,25 @@ igual('nome de pasta com 0026/0027 (& e apóstrofo gravados pelo robô do Gmail)
 d = decidir({ nome: 'm.xml', xml: nfe('11426314000258', '99999999000191', '1', '2026-08-05T10:00:00-03:00') });
 igual('XML de outro estabelecimento da mesma raiz: CLIENTE_AMBIGUO (03)', d.motivo, 'CLIENTE_AMBIGUO');
 igual('XML quebrado: NAO_IDENTIFICADO/CONTEUDO_ILEGIVEL', decidir({ nome: 'q.xml', xml: '<a><b></a>' }).motivo, 'CONTEUDO_ILEGIVEL');
+// (29/10/2026) a distribuição de DF-e: "20260407135742-dist-dfe.xml" da Torra Torra, um <docZip> (gzip em base64) com a nota inteira: vale o que a nota diz
+const nfeDentro = nfe('11426314000177', '99999999000191', '580860', '2026-03-05T10:00:00-03:00');
+const dist = '<?xml version="1.0" encoding="UTF-8"?><retDistDFeInt xmlns="http://www.portalfiscal.inf.br/nfe" versao="1.01"><tpAmb>1</tpAmb><cStat>138</cStat><xMotivo>Documento localizado</xMotivo><loteDistDFeInt><docZip NSU="000000000006247" schema="procNFe_v4.00.xsd">' + zlib.gzipSync(Buffer.from(nfeDentro)).toString('base64') + '</docZip></loteDistDFeInt></retDistDFeInt>';
+d = decidir({ nome: '20260407135742-dist-dfe.xml', xml: dist });
+igual('XML da distribuição de DF-e com UMA nota dentro: arquiva pelo emitente/destinatário da nota (380), nome pelo mês e número', [d.acao, d.cliente, d.destinoRelativo, d.nomeFinal], ['ARQUIVAR', 380, '380 - LEONARDO MENDES MARQUES\\FISCAL\\LUCRO PRESUMIDO\\14. XML\\NF-e', '03-2026_NF-e_580860.xml']);
+d = decidir({ nome: 'dist2.xml', xml: dist.replace('</loteDistDFeInt>', '<docZip NSU="2" schema="resNFe_v1.01.xsd">AAAA</docZip></loteDistDFeInt>') });
+igual('... com mais de um documento dentro: continua NÃO IDENTIFICADO (não adivinha)', [d.acao, d.motivo], ['NAO_IDENTIFICADO', 'TIPO_XML_NAO_TRATADO']);
+// o retorno de evento que o emissor gravou quebrado (o "NFe3126…Proc.xml" de 457 bytes do Posto Berizal): a chave e o evento estão escritos; o emitente da chave é o cliente
+const retQuebrado = '<retEvento versao="1.00"><infEvento Id="ID131260590773563"><tpAmb>1</tpAmb><cStat>135</cStat><xMotivo>Evento registrado e vinculado a NF-e</xMotivo><chNFe>31260811426314000177550010000101431439862028</chNFe><tpEvento>110111</tpEvento><xEvento>CANCELAMENTO</xEvento><nSeqEvento>1</nSeqEvento><dhRegEvento>2026-09-01T13:06:45-03:00</dhRegEvento><nProt>131260590773563</nProt></infEvento></retEvento></nfeProc>';
+d = decidir({ nome: 'NFe31260811426314000177550010000101431439862028Proc.xml', xml: retQuebrado });
+igual('retorno de evento de cancelamento quebrado (sem a abertura do envelope): EVENTOS do cliente da chave, com o nome do evento', [d.acao, d.cliente, d.destinoRelativo, d.nomeFinal], ['ARQUIVAR', 380, '380 - LEONARDO MENDES MARQUES\\FISCAL\\LUCRO PRESUMIDO\\14. XML\\NF-e\\EVENTOS', '01-09-2026 - CANCELAMENTO NF-e 10143.xml']);
+igual('... sem o protocolo de registro (cStat que não é 135/136) não é evento registrado: continua ilegível', decidir({ nome: 'x.xml', xml: retQuebrado.replace('<cStat>135</cStat>', '<cStat>999</cStat>') }).motivo, 'CONTEUDO_ILEGIVEL');
+// o CPF de um sócio não vence o CNPJ: a NF-e do 380 para o CPF do sócio (que também é cliente, pessoa física 475) fica só no 380
+cad.porCod.get(380).socios = [{ nome: 'ADERLEI DOS SANTOS', cpf: '62752170653' }];
+d = decidir({ nome: 'cpf.xml', xml: nfe('11426314000177', '62752170653', '77', '2026-08-05T10:00:00-03:00') });
+igual('NF-e do 380 com o CPF do sócio (cliente PF 475) como destinatário: só o 380 (o CNPJ manda; sem cópia para o CPF do sócio)', [d.acao, d.cliente, d.copias.length], ['ARQUIVAR', 380, 0]);
+cad.porCod.get(380).socios = [];
+d = decidir({ nome: 'cpf.xml', xml: nfe('11426314000177', '62752170653', '77', '2026-08-05T10:00:00-03:00') });
+igual('... sem ser sócio dele, o cliente PF 475 recebe a cópia (regra das duas clientes)', [d.acao, d.cliente, d.copias.map(c => c.cliente)], ['ARQUIVAR', 380, [475]]);
 d = decidir({ nome: 'mei.xml', xml: nfe('11222333000181', '99999999000191', '5', '2026-08-05T10:00:00-03:00') });
 igual('cliente MEI no fiscal: FICA na origem (05: sem especialista)', [d.acao, d.motivo], ['FICA', 'REGIME_SEM_ESPECIALISTA']);
 d = decidir({ nome: 'sem.xml', xml: nfe('45997418000153', '99999999000191', '5', '2026-08-05T10:00:00-03:00') });
