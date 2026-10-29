@@ -18,6 +18,8 @@
 // O arquivo abre e baixa pelo link temporário que o robô devolve (navegação, não fetch).
 // E a proteção do login e a equipe (2026-09-30), em aplicativos/tarefas/dados/acesso.firestore.ts: config/nads,
 // nadsPedidos (+codigo), nadsSessoes e usuarios (cargo, papéis, ativo; só o admin grava).
+// E a trava de acesso (pedido do escritório em 29/10/2026): o Concilia aí, o Conciliadorzinho e o Extratudo
+// entram com o login do Entregas e leem SÓ o próprio usuarios/{uid}, em <app>/dados/entregas.firestore.ts.
 // Esta checagem falha se:
 //  1. aparecer dependência de rede fora do permitido (só "firebase", e só no apps/web);
 //  2. código fora de apps/web/src/aplicativos/<app>/dados/*.firestore.ts importar/usar Firebase;

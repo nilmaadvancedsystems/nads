@@ -38,7 +38,7 @@ Conta antiga, sem departamento/nível: continua funcionando pelos `roles`. O pai
 
 | Recurso | Libera |
 |---|---|
-| Conferência, Cheque especial, Conciliadorzinho | Contábil (e Admin) |
+| Conferência, Cheque especial, Conciliadorzinho, Extrator, Creditor | Contábil (e Admin) |
 | Gerenciar a equipe, auditoria da equipe | Admin |
 | Telas de admin do Entregas (clientes, ajustes) | Admin |
 | Honorários | Office boy (e Admin) |
@@ -46,6 +46,17 @@ Conta antiga, sem departamento/nível: continua funcionando pelos `roles`. O pai
 | Fiscal / LCDPR | Fiscal (e Admin) |
 
 Admin pode tudo; conta desativada não pode nada.
+
+### A trava nos aplicativos (29/10/2026)
+
+O **Concilia aí**, o **Conciliadorzinho** e o **Extratudo** conferem esta tabela na entrada
+(`apps/web/src/comum/trava`). No site ligado ao banco, pedem o nome e a senha do Entregas e só abrem para quem
+tem o papel (Conferência → `conferencia`; Conciliadorzinho → `conciliadorzinho`; Extratudo → pelo menos um de
+`extrator`, `cheque-especial`, `creditor`). Quem entrou sem o papel vê "Sem acesso" e o botão de sair.
+Nos exemplos (`npm run dev`, prévias e os sites `--mode exemplos`) não há login e a trava fica aberta.
+Dentro do Entregas (iframe), o Extratudo também não pede: a pessoa já entrou lá.
+
+A trava é da tela: quem protege os dados de verdade são as regras de cada banco.
 
 ## Na equipe de hoje
 

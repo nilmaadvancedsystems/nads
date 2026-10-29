@@ -1,6 +1,7 @@
 // Rotas do Conciliadorzinho: /conciliadorzinho (escolher a empresa) e
 // /conciliadorzinho/<código da empresa>/conciliacao/<etapa>.
 import type { RouteObject } from 'react-router';
+import { AppConciliadorzinho } from './AppConciliadorzinho';
 import { BASE } from './casca/caminho';
 import { EmpresaAberta } from './casca/EmpresaAberta';
 import { Entrada } from './telas/entrada/Entrada';
@@ -8,6 +9,7 @@ import { Entrada } from './telas/entrada/Entrada';
 export const rotasConciliadorzinho: RouteObject[] = [
   {
     path: BASE,
+    element: <AppConciliadorzinho />,
     children: [
       { index: true, element: <Entrada /> },
       { path: ':empresa/:secao/:pagina', element: <EmpresaAberta /> },
