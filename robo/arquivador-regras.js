@@ -103,6 +103,8 @@ function periodoEscrito(t) {
     // "Movimentações desde o dia 01/01/2026 até o dia 31/07/2026" (Caixa)
     new RegExp('(?:PERIODO|EXTRATO\\s+(?:DE|DO\\s+PERIODO)|MOVIMENTACAO\\s+DE|MOVIMENTACOES\\s+DESDE|REFERENCIA)[^0-9\\n]{0,40}' + D + '[^0-9\\n]{1,25}?' + D),
     new RegExp('DATA\\s+INICIAL[^0-9\\n]{0,10}' + D + '[\\s\\S]{0,60}?DATA\\s+FINAL[^0-9\\n]{0,10}' + D),
+    // "Emitidos em: 01/02/2026 a 28/02/2026 - Não Canceladas" (o relatório "Notas Fiscais" do sistema do cliente; Vitor, 29/10/2026)
+    new RegExp('EMITIDOS\\s+EM:?\\s*' + D + '\\s*(?:A|ATE)\\s*' + D),
   ];
   for (const re of res) {
     const m = re.exec(u);
@@ -115,6 +117,16 @@ function periodoEscrito(t) {
   const m = /PERIODO\s*:?\s*(\d{1,2})\s*(?:A|ATE|-)\s*(\d{1,2})[/.-](\d{2})[/.-](\d{4})(?![\d/])/.exec(u);
   if (m && +m[3] >= 1 && +m[3] <= 12 && anoOk(+m[4]) && +m[1] >= 1 && +m[1] <= +m[2]) return { de: { dia: +m[1], mes: +m[3], ano: +m[4] }, ate: { dia: +m[2], mes: +m[3], ano: +m[4] } };
   return null;
+}
+
+/** O período do "Livro Fiscal de Saída/Entrada" do posto ("… POSTO CURRAL DE DENTRO 28/02/2026 a 01/02/2026"): as duas datas depois do título, na ordem que vier (a menor é o começo). */
+function periodoLivroInvertido(t) {
+  const m = /LIVRO FISCAL DE (?:SAIDA|ENTRADA)[\s\S]{0,160}?(\d{2})\/(\d{2})\/(20\d{2})\s*(?:A|ATE)\s*(\d{2})\/(\d{2})\/(20\d{2})/.exec(norm(t));
+  if (!m) return null;
+  const a = { dia: +m[1], mes: +m[2], ano: +m[3] }, b = { dia: +m[4], mes: +m[5], ano: +m[6] };
+  if (a.mes < 1 || a.mes > 12 || b.mes < 1 || b.mes > 12 || !anoOk(a.ano) || !anoOk(b.ano)) return null;
+  const chave = x => x.ano * 10000 + x.mes * 100 + x.dia;
+  return chave(a) <= chave(b) ? { de: a, ate: b } : { de: b, ate: a };
 }
 
 /** Competência pelo nome do arquivo: "07-2026", "07.2026", "072026", "202607", "SETEMBRO 2026", "AGO2026". */
@@ -774,7 +786,8 @@ function _classificarXml(raiz) {
     const n = txt(inf, 'ide/nNF'), d = txt(inf, 'ide/dhEmi', 'ide/dEmi');
     if (!tipo || !n || !mesAnoIso(d)) return null;
     const emit = docsDe(achar(inf, 'emit')).slice(0, 1);
-    return { tipo, sub: '', nome: mesAnoIso(d) + '_' + tipo + '_' + (+n) + '.xml', emit, partes: emit.concat(docsDe(achar(inf, 'dest'))), data: d };
+    // a transportadora (transp/transporta) não entra em `partes` (não é parte da nota); fica à parte, para o caso em que ela é o único cliente presente (os 30 XML da Raízen na pasta da 49; 29/10/2026)
+    return { tipo, sub: '', nome: mesAnoIso(d) + '_' + tipo + '_' + (+n) + '.xml', emit, partes: emit.concat(docsDe(achar(inf, 'dest'))), transporta: docsDe(achar(inf, 'transp/transporta')).slice(0, 1), data: d };
   }
   if (tag === 'cteProc' || tag === 'CTe') {
     const inf = primeiro(raiz, 'infCte');
@@ -1009,8 +1022,10 @@ const REGRAS_PDF = [
   { tipo: 'ECF', setor: 'FISCAL', re: /ESCRITURACAO CONTABIL FISCAL|\bECF\b.*RECIBO|RECIBO DE ENTREGA.*\bECF\b/, fonte: '05b/05c',
     campos: u => ({ ano: anoCalendario(u), recibo: /RECIBO/.test(u.slice(0, 600)) }) },
   // ---- livros fiscais (05d §1c) ----
-  { tipo: 'LIVRO_FISCAL', setor: 'FISCAL', re: /REGISTRO DE ENTRADAS|REGISTRO DE SAIDAS|REGISTRO DE APURACAO DO ICMS|APURACAO DO ICMS|RELATORIO DE APURACAO DE ICMS/, fonte: '05d §1c',
-    campos: u => ({ livro: /REGISTRO DE ENTRADAS/.test(u) ? 'REGISTRO DE ENTRADAS' : /REGISTRO DE SAIDAS/.test(u) ? 'REGISTRO DE SAIDAS' : 'APURACAO ICMS', periodo: periodoEscrito(u) || periodoLivre(u) }) },
+  // (29/10/2026) o "Livro Fiscal de Saída/Entrada" do sistema do posto ("Exibindo: NFC-e | NF-e | Série-D | Reduções Z / Livro Fiscal de Saída <FANTASIA> 28/02/2026 a 01/02/2026", o período às vezes
+  // com as datas invertidas): é o registro de saídas/entradas, na mesma pasta LIVROS FISCAIS\ANO
+  { tipo: 'LIVRO_FISCAL', setor: 'FISCAL', re: /REGISTRO DE ENTRADAS|REGISTRO DE SAIDAS|REGISTRO DE APURACAO DO ICMS|APURACAO DO ICMS|RELATORIO DE APURACAO DE ICMS|^[\s\S]{0,200}\bLIVRO FISCAL DE (SAIDA|ENTRADA)\b/, fonte: '05d §1c',
+    campos: u => ({ livro: /REGISTRO DE ENTRADAS|^[\s\S]{0,200}\bLIVRO FISCAL DE ENTRADA\b/.test(u) ? 'REGISTRO DE ENTRADAS' : /REGISTRO DE SAIDAS|^[\s\S]{0,200}\bLIVRO FISCAL DE SAIDA\b/.test(u) ? 'REGISTRO DE SAIDAS' : 'APURACAO ICMS', periodo: periodoEscrito(u) || periodoLivre(u) || periodoLivroInvertido(u) }) },
   // ---- documentos fiscais em PDF (05d §1) ----
   { tipo: 'NFC-e PDF', setor: 'FISCAL', re: /DANFE NFC-E|DOCUMENTO AUXILIAR DA NOTA FISCAL DE CONSUMIDOR|PORTALNFCE|\/NFCE\b|CONSUMIDOR NAO IDENTIFICADO/, fonte: '05d §1 (NFC-e em PDF)', campos: u => camposDeNota(u) },
   // o evento de cancelamento da NF-e em PDF (B10, 29/10/2026; "CANCELAMENTO DE NF-e / Não possui valor fiscal, simples representação do evento"): vai como as
@@ -1022,7 +1037,7 @@ const REGRAS_PDF = [
   // relatório mensal de notas (05d §1: emitidas em EMITIDOS\RELATÓRIO MENSAL\[ANO]; recebidas em RECEBIDOS\RELATÓRIO MENSAL)
   // 27/10/2026 (os relatórios dos sistemas dos clientes na migração): o GDOOR ("NF-e, NFC-e e SAT (Resumo)", "Relatório de
   // Compras"), o "Notas fiscais emitidas/sintético" e o "Mapa Resumo" (Intervalo colado), o "NFCe / Mês: 2 Ano: 2026"
-  { tipo: 'RELATORIO DE NOTAS', setor: 'FISCAL', re: /^[\s\S]{0,300}(NOTAS DE (ENTRADA|SAIDA) POR PERIODO|NOTAS FISCAIS (DE )?(SAIDA|ENTRADA|CONSUMIDOR ELETRONICA)|NOTAS FISCAIS (EMITIDAS|SINTETICO)|RELATORIO DE CUPOM|RELATORIO (MENSAL )?DE NOTAS (FISCAIS )?(EMITIDAS|RECEBIDAS)|NF-E, NFC-E E SAT \(RESUMO\)|RELATORIO DE COMPRAS|RELATORIO DE NOTAS DE COMPRA|^\s*MAPA RESUMO\s*\n\s*INTERVALO|\n\s*NFC?E\s*\n\s*MES:\s*\d{1,2}\s*ANO:\s*20\d{2}|RELATORIO DE VENDAS ?- ?NFC-?E|RELATORIO DE VENDAS POR PERIODO \[DADOS DA PISTA\]\s*\n?\s*\[PONTO DE VENDA: NFCE\])/, fonte: '05d §1 (Relatório Mensal de Notas Emitidas/Recebidas; o relatório de vendas das NFC-e, 28/10/2026)',
+  { tipo: 'RELATORIO DE NOTAS', setor: 'FISCAL', re: /^[\s\S]{0,300}(NOTAS DE (ENTRADA|SAIDA) POR PERIODO|NOTAS FISCAIS (DE )?(SAIDA|ENTRADA|CONSUMIDOR ELETRONICA)|NOTAS FISCAIS (EMITIDAS|SINTETICO)|NOTAS FISCAIS\s*\n[^\n]{3,100}\n\s*EMITIDOS EM:?\s*\d{2}\/\d{2}\/20\d{2}\s*(A|ATE)\s*\d{2}\/|RELATORIO DE CUPOM|RELATORIO (MENSAL )?DE NOTAS (FISCAIS )?(EMITIDAS|RECEBIDAS)|NF-E, NFC-E E SAT \(RESUMO\)|RELATORIO DE COMPRAS|RELATORIO DE NOTAS DE COMPRA|^\s*MAPA RESUMO\s*\n\s*INTERVALO|\n\s*NFC?E\s*\n\s*MES:\s*\d{1,2}\s*ANO:\s*20\d{2}|RELATORIO DE VENDAS ?- ?NFC-?E|RELATORIO DE VENDAS POR PERIODO \[DADOS DA PISTA\]\s*\n?\s*\[PONTO DE VENDA: NFCE\])/, fonte: '05d §1 (Relatório Mensal de Notas Emitidas/Recebidas; o relatório de vendas das NFC-e, 28/10/2026)',
     campos: u => ({ recebidas: /^[\s\S]{0,300}(NOTAS DE ENTRADA POR PERIODO|NOTAS FISCAIS (DE )?ENTRADA|NOTAS (FISCAIS )?RECEBIDAS|RELATORIO DE COMPRAS|RELATORIO DE NOTAS DE COMPRA)/.test(u), periodo: periodoEscrito(u) || periodoDoRelatorio(u) || periodoLivre(u.slice(0, 1500)) || periodoPelasDatas(u) || periodoPelasDatas(u, true) }) },
   // o relatório de vendas do posto (Vitor, 28/10/2026, decisão 4; o Sagaline "Relatório de Vendas por Período / Período: 01/06/2026-30/06/2026"
   // e o WebPosto "Vendas por Período / Data Inicial: … / Data Final: …"): FISCAL\<regime>\03. DOCUMENTOS FISCAIS\EMITIDOS\RELATÓRIO MENSAL\ANO.
@@ -1273,6 +1288,8 @@ function decidir0(entrada, ctx) {
   const porHash = entrada.hash && HASH_CONFIRMADO[entrada.hash] ? confirmado(HASH_CONFIRMADO[entrada.hash], NOME_DO_HASH[HASH_CONFIRMADO[entrada.hash]], ctx.cadastro)
     : (entrada.hash && ctx.confirmados && ctx.confirmados.get(entrada.hash)) || null;
 
+  // o Excel 2003 em XML (SpreadsheetML; 29/10/2026): lido como planilha, não como documento fiscal
+  if ((e === 'xml' || e === 'xmls') && entrada.planilhaXml) return fim(decidirPlanilha(entrada, ctx, ev, porHash));
   if (e === 'xml') return fim(decidirXml(entrada, ctx, ev));
   if (e === 'ofx') return fim(decidirOfx(entrada, ctx, ev));
   if (e === 'pfx' || e === 'p12') {
@@ -1348,12 +1365,42 @@ function decidir0(entrada, ctx) {
   // o registro de envio do emissor, sem extensão ("env-lot=2026-02-12-…-env-sinc-lot.xml"; Vitor, 27/10/2026): descarte, como os da
   // MADEIREIRA (a quarentena, nunca apagado)
   if (!e && /^\s*env-lot=\S+\.xml\s*$/i.test(String(entrada.semExtensao || ''))) return { acao: 'DESCARTAR', motivo: 'DESCARTE_CONFIRMADO', confianca: 1, tipo: 'DESCARTE', evidencias: ['registro de envio do emissor ("env-lot=…", sem extensão): vai para a quarentena, nunca é apagado (Vitor, 27/10/2026)'] };
+  // a DMED gerada (Vitor, 29/10/2026: o arquivo .DEC e o recibo .REC): FISCAL\<regime>\DMED\ANO-CALENDÁRIO, nome original
+  if (e === 'dec' || e === 'rec') { const dm = decidirDmed(entrada, ctx, ev, porHash); if (dm) return fim(dm); }
   if (e === 'rec' || e === 'qrp') { const sa = decidirSpedAnual(entrada, ctx, ev, porHash); if (sa) return fim(sa); const r = decidirReciboSped(entrada, ctx, ev, porHash); if (r) return fim(r); }
   if (porHash) return fim({ acao: 'NAO_IDENTIFICADO', motivo: 'HASH_CONFIRMADO_SEM_REGRA_DE_DESTINO', confianca: 0.5, cliente: porHash });
   return fim({ acao: 'NAO_IDENTIFICADO', motivo: 'FORMATO_SEM_REGRA', confianca: 0, evidencias: ev.concat('extensão .' + (e || '?') + ' sem regra determinística (imagem, Word, etc.)') });
 }
 
-const CERTIFICADO_ARQUIVA = false;   // 04b (SOCIETÁRIO\CERTIFICADO DIGITAL) desligada em 29/10/2026: o certificado vai para a quarentena
+/**
+ * A DMED gerada (Vitor, 29/10/2026): o arquivo da declaração (.DEC, "DMED|2023|2022|N|…" e "DECPJ|<CNPJ>|<razão>|") e o recibo (.REC) vão para
+ * FISCAL\<regime>\DMED\<ano-calendário>, nome original. O CNPJ e os anos vêm do nome "<CNPJ>-Dmed-<exercício>-<ano-calendário>-ORIGI-NORMAL" (o .REC só
+ * tem isso) ou, no .DEC, do conteúdo; o exercício é o ano-calendário + 1. O cliente é o do CNPJ, e a pasta de origem, quando é de cliente, tem de confirmar.
+ */
+function decidirDmed(entrada, ctx, ev, porHash) {
+  const nome = String(entrada.nome || '');
+  const dec = String(entrada.dec || '');
+  const mNome = /^(\d{14})-DMED-(20\d{2})-(20\d{2})(?:-|\.)/i.exec(nome);
+  const mDec = /^DMED\|(20\d{2})\|(20\d{2})\|/.exec(dec);
+  if (!mNome && !mDec) return null;
+  const base = { tipo: 'DMED', setor: 'FISCAL', fonte: 'DMED gerada: .DEC e recibo .REC (Vitor, 29/10/2026)' };
+  const cnpj = mNome ? mNome[1] : ((/\bDECPJ\|(\d{14})\|/.exec(dec) || [])[1] || null);
+  const exercicio = +(mNome ? mNome[2] : mDec[1]), anoCal = +(mNome ? mNome[3] : mDec[2]);
+  if (mNome && mDec && (+mDec[1] !== exercicio || +mDec[2] !== anoCal)) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'ANO_INDETERMINADO', confianca: 0.5, evidencias: ev.concat('os anos do nome (' + exercicio + '/' + anoCal + ') não são os do conteúdo (' + mDec[1] + '/' + mDec[2] + ')') });
+  if (exercicio !== anoCal + 1 || !anoOk(anoCal)) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'ANO_INDETERMINADO', confianca: 0.5, evidencias: ev.concat('DMED com exercício ' + exercicio + ' e ano-calendário ' + anoCal + ' (o exercício é o ano-calendário + 1)') });
+  const cad = ctx.cadastro;
+  if (!cnpj || !cnpjValido(cnpj)) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_NAO_LOCALIZADO', confianca: 0.3, evidencias: ev.concat('a DMED não traz o CNPJ do declarante no nome nem no conteúdo') });
+  const cli = unico(clientesDoDoc(cnpj, cad));
+  if (cli == null) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_NAO_LOCALIZADO', confianca: 0.3, evidencias: ev.concat('o CNPJ da DMED (' + cnpj + ') não é de um cliente só do cadastro') });
+  const sub = clienteDaPasta(entrada.rel || nome, cad);
+  if (sub && sub.codigo !== cli) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_AMBIGUO', confianca: 0.4, cliente: cli, evidencias: ev.concat('o CNPJ da DMED é do cliente ' + cli + ', e a pasta de origem é do ' + sub.codigo) });
+  const regime = (cad.porCod.get(cli) || {}).regime;
+  if (!regime || !ARVORE[regime]) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'VOCABULARIO_AUSENTE', confianca: 0.5, cliente: cli, evidencias: ev.concat('o cliente ' + cli + ' não tem regime com pasta no cadastro') });
+  ev.push('CNPJ ' + cnpj + ' no ' + (mNome ? 'nome do arquivo' : 'conteúdo') + (sub ? ' e ' + sub.como : '') + '; exercício ' + exercicio + ', ano-calendário ' + anoCal);
+  return Object.assign(base, { acao: 'ARQUIVAR', cliente: cli, comoCliente: 'doc', confianca: sub ? 0.97 : 0.95, competencia: { ano: anoCal }, caminho: ['FISCAL', regime, 'DMED', String(anoCal)], nomeFinal: nome });
+}
+
+const CERTIFICADO_ARQUIVA = false;  // 04b (SOCIETÁRIO\CERTIFICADO DIGITAL) desligada em 29/10/2026: o certificado vai para a quarentena
 const unico = arr => { const s = [...new Set(arr)]; return s.length === 1 ? s[0] : null; };
 
 /**
@@ -1733,7 +1780,10 @@ function pelaPastaENome(entrada, ctx, d) {
   }
   // (lote 6, e) o DAJE (custas do cartório): PAGAMENTOS DE FORNECEDORES\ANO\MÊS\DAJE; a DCF: FISCAL\<regime>\03. DOCUMENTOS FISCAIS
   if (/^DAJE\b/.test(n) || /^[\s\S]{0,1500}\bDAJE\b/.test(u) && /CARTORIO/.test(u)) {
-    const m = mesDe();
+    // (29/10/2026, Vitor: "DAJE → pagamento a fornecedor") sem o mês no nome nem na pasta ("MAT_4610_-_daje_…" na pasta "NOTAS E BOLETOS FREEDOM JUN-2025"): o mês do "PAGÁVEL ATÉ" da guia;
+    // "DATA DE EMISSÃO / PAGÁVEL ATÉ" trazem as duas datas seguidas, e a segunda é o vencimento
+    const dd = /(\d{2})\/(\d{2})\/(20\d{2})\s+(\d{2})\/(\d{2})\/(20\d{2})/.exec(u.slice(0, 3000));
+    const m = mesDe() || (dd && /DOCUMENTO DE ARRECADACAO JUDICIAL E EXTRAJUDICIAL/.test(u) && +dd[5] >= 1 && +dd[5] <= 12 && anoOk(+dd[6]) ? { mes: +dd[5], ano: +dd[6] } : null);
     if (!m) return null;
     return fim({ tipo: 'DAJE', setor: 'CONTABIL', caminho: ['CONTÁBIL', 'PAGAMENTOS DE FORNECEDORES', String(m.ano), dois(m.mes), 'DAJE'], competencia: { mes: m.mes, ano: m.ano } }, 'DAJE (custas do cartório)');
   }
@@ -1844,6 +1894,14 @@ function decidirXml(entrada, ctx, ev) {
   if (info.erro === 'TIPO_XML_NAO_TRATADO' && (MENSAGEM_SEFAZ.test(info.tag || '') || NOME_MENSAGEM_SEFAZ.test(entrada.nome || ''))) {
     return { acao: 'DESCARTAR', motivo: 'MENSAGEM_DA_SEFAZ', confianca: 1, tipo: 'DESCARTE', setor: 'FISCAL', evidencias: ['mensagem trocada com a SEFAZ (' + (info.tag || '?') + ', ' + entrada.nome + '): não é documento do cliente; vai para a quarentena, nunca apagada (Vitor, 23/10/2026)'] };
   }
+  // (Vitor, 29/10/2026) dois XML do próprio sistema emissor, sem documento fiscal dentro: o cadastro do emitente ("EMITENTE-AAAAMMDD-HHMM-<CNPJ>.xml", raiz <sistema>) e o evento de
+  // cancelamento que nunca foi transmitido (raiz <evento>, chave de acesso vazia e protocolo 0): quarentena, nunca apagados
+  if (info.erro === 'TIPO_XML_NAO_TRATADO' && info.tag === 'sistema' && /^EMITENTE-/i.test(entrada.nome || '')) {
+    return { acao: 'DESCARTAR', motivo: 'DESCARTE_CONFIRMADO', confianca: 1, tipo: 'DESCARTE', setor: 'FISCAL', evidencias: ['XML do sistema emissor com o cadastro do emitente (raiz <sistema>, "' + entrada.nome + '"): não é documento fiscal; vai para a quarentena, nunca apagado (Vitor, 29/10/2026)'] };
+  }
+  if (info.erro === 'TIPO_XML_NAO_TRATADO' && info.tag === 'evento' && /<chNFe>\s*<\/chNFe>|<chNFe\s*\/>/.test(entrada.xml) && /<nProt>\s*0+\s*<\/nProt>/.test(entrada.xml)) {
+    return { acao: 'DESCARTAR', motivo: 'DESCARTE_CONFIRMADO', confianca: 1, tipo: 'DESCARTE', setor: 'FISCAL', evidencias: ['evento de cancelamento sem chave de acesso e com protocolo 0 ("' + entrada.nome + '"): não houve cancelamento de nota nenhuma; vai para a quarentena, nunca apagado (Vitor, 29/10/2026)'] };
+  }
   if (info.erro) return { acao: 'NAO_IDENTIFICADO', motivo: info.erro, confianca: 0, tipo: 'XML ' + (info.tag || '?'), setor: 'FISCAL' };
   if (info.canceladaNoEnvelope) ev.push('envelope do SCI (NFeDFe) com o evento de cancelamento (110111) junto da nota: vai para CANCELADAS, não como nota normal (Vitor, 29/10/2026)');
   if (info.lote) ev.push('exportação do mês com ' + info.lote + ' NFS-e do mesmo prestador, arquivada inteira');
@@ -1898,7 +1956,11 @@ function decidirXml(entrada, ctx, ev) {
       return { acao: 'ARQUIVAR', cliente: vale[0].cliente, comoCliente: 'chave', confianca: 0.95, copias, tipo: 'XML ' + info.tipo + ' EVENTOS', setor: 'FISCAL', caminho: c0, fiscal: c0 ? null : fiscal, nomeFinal: info.nome, chave: info.chave, fonte: 'índice de chaves (manifestos e decisões)', competencia: info.data ? { mes: +info.data.slice(5, 7), ano: +info.data.slice(0, 4) } : null };
     }
   }
+  // 29/10/2026 (Vitor): a NF-e de outros (a Raízen vende para outros postos) cuja TRANSPORTADORA é o cliente da pasta de origem: o único cliente presente é a
+  // transportadora E a pasta é dele. Só este caso (nada de cliente no emitente nem no destinatário, não é evento, a pasta confere): a nota vai para o XML dele.
+  const transportadoraDaPasta = !cand.length && !info.evento && !info.canceladaNoEnvelope && sub && (info.transporta || []).some(d => clientesDoDoc(d, cad).includes(sub.codigo));
   if (cliente != null) { /* já decidido acima */ }
+  else if (transportadoraDaPasta) { cliente = sub.codigo; conf = 0.95; como = 'doc'; ev.push('o único cliente da nota é a transportadora (CNPJ ' + info.transporta[0] + ') e a pasta de origem é dele (' + sub.como + '): a nota de terceiros em que o cliente transportou vai para o XML dele (Vitor, 29/10/2026)'); }
   else if (!cand.length && info.evento && sub) { cliente = sub.codigo; conf = 0.88; como = 'pasta'; ev.push('evento órfão: cliente da subpasta (03), ' + sub.como); }
   else if (!cand.length) {
     // 03: raiz do CNPJ igual à de cliente(s), sufixo diferente (matriz/filial não cadastrada) → CLIENTE_AMBIGUO, não "não localizado"
@@ -2086,6 +2148,14 @@ function clientePeloNomeCurto(resto, cad) {
   const ativos = achados.filter(c => (cad.porCod.get(c) || {}).ativo !== false);
   return achados.length > 1 && ativos.length === 1 ? ativos[0] : null;
 }
+/** O nome curto que casa com a matriz e as filiais do mesmo CNPJ-raiz: o cliente é a matriz (ordem 0001). Qualquer outra dúvida: null. */
+function matrizPeloNomeCurto(resto, cad) {
+  const achados = clientesPeloNomeCurto(resto, cad).map(c => cad.porCod.get(c)).filter(c => c && c.ativo !== false);
+  if (achados.length < 2 || achados.some(c => !c.doc || String(c.doc).replace(/D/g, '').length !== 14)) return null;
+  const raizes = new Set(achados.map(c => String(c.doc).replace(/D/g, '').slice(0, 8)));
+  const matrizes = achados.filter(c => String(c.doc).replace(/D/g, '').slice(8, 12) === '0001');
+  return raizes.size === 1 && matrizes.length === 1 ? matrizes[0].codigo : null;
+}
 function clientesPeloNomeCurto(resto, cad) {
   const ws = textoDeNome(resto).trim().split(' ').filter(w => w.length >= 2 && !/^(LTDA|ME|EPP|EIRELI|DE|DA|DO|E)$/.test(w));
   if (!ws.length || ws.join('').length < 4) return [];
@@ -2145,13 +2215,17 @@ function decidirPlanilha(entrada, ctx, ev, porHash) {
     // a razão social no título da planilha ("DRE - ALDINEI MIRANDA ARAUJO ME - JANEIRO A DEZEMBRO 2025")
     const tit = /\bDRE\s*-\s*(.+?)\s*-\s*JANEIRO A DEZEMBRO/.exec(u);
     const doTitulo = tit ? (unico(clientesPeloNomeNoTexto(tit[1], cad)) || clientePeloNomeCurto(tit[1], cad)) : null;
-    const doNomeArq = mDefis[2].trim() ? clientePeloNomeCurto(mDefis[2], cad) : null;
+    // (29/10/2026, Vitor) o nome curto de matriz e filial ("ROSILENE" = a 51 e a filial 149) é o cliente da MATRIZ: a DEFIS é uma só, da empresa
+    const doNomeArq = mDefis[2].trim() ? (clientePeloNomeCurto(mDefis[2], cad) || matrizPeloNomeCurto(mDefis[2], cad)) : null;
     const sub = clienteDaPasta(entrada.rel || entrada.nome, cad), daPasta = sub && sub.forte ? sub.codigo : null;
     if (cli == null) {
       // o título que nomeia OUTRO cliente é o modelo copiado de uma pasta para outra (o mesmo "DRE - DORNAS HAVANA" em 14 pastas): só vale
       // quando o nome do arquivo ou o CNPJ o confirmam; com a pasta conferida (código e nome) e o nome do arquivo sem outro cliente, vale a pasta
       let tituloVale = doTitulo;
       if (doTitulo != null && daPasta != null && doTitulo !== daPasta && (doNomeArq == null || doNomeArq === daPasta)) { tituloVale = null; ev.push('o título da planilha ("DRE - ' + tit[1].trim() + '") é de outro cliente (' + doTitulo + '): modelo copiado; vale a pasta de origem (' + daPasta + ')'); }
+      // (29/10/2026, Vitor) sem pasta de cliente (a DEFIS solta num compactado), o nome do arquivo com o nome inteiro de um cliente (2 palavras ou mais, "EMPORIO VERDE") vence o título da
+      // planilha de OUTRO cliente: o título é o modelo copiado ("DRE - PEREIRA RUAS…" na planilha do Empório Verde)
+      if (daPasta == null && doNomeArq != null && tituloVale != null && tituloVale !== doNomeArq && textoDeNome(mDefis[2]).trim().split(' ').filter(w => w.length >= 2).length >= 2) { ev.push('o título da planilha ("DRE - ' + tit[1].trim() + '", cliente ' + tituloVale + ') é o modelo copiado de outro cliente: vale o nome inteiro no arquivo (' + doNomeArq + '; Vitor, 29/10/2026)'); tituloVale = null; }
       const votos = [tituloVale, doNomeArq, daPasta].filter(x => x != null);
       // sem o ano no nome, o ano vem do título, que pode ser o do modelo copiado: aí o cliente precisa de duas fontes que concordem
       if (mDefis.semAnoNoNome && new Set(votos).size === 1 && votos.length < 2) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_AMBIGUO', confianca: 0.4, evidencias: ev.concat('sem o ano no nome do arquivo, o ano é o do título da planilha e só uma fonte diz o cliente (' + votos[0] + '): o título pode ser de um modelo copiado') });
@@ -2247,12 +2321,18 @@ function decidirPlanilha(entrada, ctx, ev, porHash) {
   }
   const cab = linhas.slice(0, 3).map(norm).join('\n');
   const bancoPl = bancoDoNome(entrada.nome) || bancoDoNome(partesDoCaminho(entrada.rel).slice(-2, -1)[0] || '');
-  if (/\bDATA( DO)? LANCAMENTO\b/.test(cab) && /\bHISTORICO\b/.test(cab) && /\bVALOR\b/.test(cab) && bancoPl && !SO_MAQUININHA.has(bancoPl)) {
+  // (29/10/2026, Vitor) o extrato da CDL (536) "EXTRATO CONTA CORRENTE / DATA | HISTÓRICO | VALOR", sem o banco nem a conta no conteúdo: o banco pelo nome do arquivo ou da pasta (SICOOB), como nos
+  // PDFs; a trava do banco no cadastro (o cliente tem esse banco) continua valendo
+  if ((/\bDATA( DO)? LANCAMENTO\b/.test(cab) || /^EXTRATO CONTA CORRENTE\b[\s\S]{0,60}\bDATA\b/.test(cab)) && /\bHISTORICO\b/.test(cab) && /\bVALOR\b/.test(cab) && bancoPl && !SO_MAQUININHA.has(bancoPl)) {
     const base = { tipo: 'EXTRATO', setor: 'CONTABIL', fonte: 'extrato do banco em planilha (28/10/2026; 04, Bancários)' };
-    const c = porHash ? { cliente: porHash, conf: 0.97, como: 'hash' } : clientePelaPastaOuGrupo(entrada.rel || entrada.nome, entrada.nome, cad, ev);
+    let c = porHash ? { cliente: porHash, conf: 0.97, como: 'hash' } : clientePelaPastaOuGrupo(entrada.rel || entrada.nome, entrada.nome, cad, ev);
     if (!c) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_NAO_LOCALIZADO', confianca: 0.3, evidencias: ev.concat('extrato em planilha: a pasta de origem não diz o cliente') });
+    // a pasta da 536 ("536 CDL DE TAIOBEIRAS") não confere com a razão do cadastro: a decisão do Vitor é por cliente, o código da pasta vale (como nas planilhas soltas dela)
+    if (c.como === 'pasta' && PLANILHA_SOLTA_CLIENTES.has(c.cliente)) { c = { cliente: c.cliente, conf: 0.9, como: 'pastaConferida' }; ev.push('o código ' + c.cliente + ' da pasta de origem vale (a pasta não repete a razão do cadastro; decisão por cliente, Vitor, 29/10/2026)'); }
     let comp = competenciaDoNome(entrada.nome);
     if (!comp) { const pd = periodoPelasDatas((entrada.planilha || []).map(l => (l || []).join(' | ')).join('\n')); if (pd) comp = { mes: pd.ate.mes, ano: pd.ate.ano }; }
+    // sem o mês no nome: o mês de todos os lançamentos da planilha, quando é um só (a virada do extrato, com 1 ou 2 lançamentos ao lado de um mês cheio, não conta)
+    if (!comp) { const ms = (entrada.planilha && entrada.planilha.meses) || {}, maior = Math.max(0, ...Object.values(ms)), ks = Object.keys(ms).filter(k => !(ms[k] <= 2 && maior >= 20)); if (ks.length === 1) { comp = { ano: +ks[0].slice(0, 4), mes: +ks[0].slice(5) }; ev.push('competência pelas datas de todos os lançamentos (' + mesAno(comp) + ')'); } }
     if (!comp) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5, cliente: c.cliente });
     ev.push('extrato do ' + bancoPl + ' em planilha (colunas de lançamento; o banco pelo nome)');
     return Object.assign(base, { acao: 'ARQUIVAR', cliente: c.cliente, comoCliente: c.como, confianca: Math.min(c.conf, 0.9), competencia: comp, caminho: ['CONTÁBIL', 'EXTRATOS', String(comp.ano), dois(comp.mes), 'BANCÁRIOS', bancoPl], nomeFinal: mesAno(comp) + ext0, bancoPeloConteudo: bancoDoTexto(u) === bancoPl, bancoPeloNomeOk: !bancoDoTexto(u) || bancoDoTexto(u) === bancoPl });
@@ -2652,6 +2732,25 @@ function pagamentoDeFornecedor(entrada) {
   const corte = s.search(new RegExp('\\s' + DOC_DO_FORNECEDOR + '|\\s*R\\$|\\s+R\\d[\\d.]*,\\d{2}'));
   if (corte >= 0) s = s.slice(0, corte);
   return { fornecedor: nomeSeguro(semAcento(nomeNormalizado(s))).toUpperCase(), data };
+}
+/**
+ * O recibo de cartório (Vitor, 29/10/2026: "recibos de cartório → pagamento a fornecedor"): CONTÁBIL\PAGAMENTOS DE FORNECEDORES\ANO\MM\CARTORIO\, nome original; o cliente e o mês pelo
+ * caminho de sempre do pagamento (decidirFornecedor). Vale o conteúdo (o recibo do Registro de Imóveis ou do Ofício de Notas, com "Recebemos de"/emolumentos) ou o nome
+ * ("CARTORIO … R$…", "Taxa cartório"). O protocolo eletrônico e a escritura NÃO são recibo; a guia DAJE tem a regra dela (pasta DAJE, em pelaPastaENome).
+ */
+function pagamentoDeCartorio(entrada, u) {
+  const nome = String(entrada.nome || '');
+  if (!/\.pdf$/i.test(nome)) return null;
+  const n = norm(nome.replace(/\.pdf$/i, '')).replace(/_/g, ' ');
+  const topo = String(u || '').slice(0, 3000);
+  if (/ESCRITURA PUBLICA|CERTIDAO DE (INTEIRO TEOR|MATRICULA|ONUS)|PROTOCOLO ELETRONICO DE TITULO|E-PROTOCOLO/.test(topo.slice(0, 600))) return null;
+  if (/\bDAJE\b/.test(n) || /DOCUMENTO DE ARRECADACAO JUDICIAL E EXTRAJUDICIAL/.test(topo)) return null;
+  const reciboNoConteudo = /^[\s\S]{0,500}(REGISTRO DE IMOVEIS|OFICIO DE (NOTAS|REGISTRO)|CARTORIO|TABELIAO|SERVENTIA)[\s\S]{0,1500}\bRECIBO\b/.test(topo) && /RECEBEMOS DE|VALOR RECEBIDO|EMOLUMENTOS/.test(topo);
+  const pelaNome = /^(TAXA )?CARTORIO\b/.test(n) && (/R\$?\s*\d[\d.]*,\d{2}/.test(n) || /\b(RECIBO|TAXA)\b/.test(n));
+  if (!reciboNoConteudo && !pelaNome) return null;
+  const dm = /^(\d{2})-(\d{2})-(\d{4})\s/.exec(norm(nome));
+  const data = dm && +dm[1] >= 1 && +dm[1] <= 31 && +dm[2] >= 1 && +dm[2] <= 12 && anoOk(+dm[3]) ? { mes: +dm[2], ano: +dm[3] } : null;
+  return { fornecedor: 'CARTORIO', data, base: n };
 }
 /** O fornecedor pelo nome do boleto/NF sem data: tira o tipo do começo, o valor, a parcela, o trimestre e o número solto do fim. */
 function fornecedorDoNomeSemData(base) {
@@ -3125,6 +3224,9 @@ function decidirPdf(entrada, ctx, ev, porHash) {
   // a nota sem data no nome cujo XML da chave está arquivado continua ao lado do XML (o 2º lote do Vitor)
   if (pg && pg.semData) { const ev2 = ev.slice(); const px = pdfPeloXmlDaChave(entrada, u, ctx, ev2); if (px) return Object.assign({ evidencias: ev2 }, px); }
   if (pg) return decidirFornecedor(pg, entrada, u, bruto, ctx, ev, porHash);
+  // o recibo do cartório e a guia DAJE (Vitor, 29/10/2026): pagamento a fornecedor, na pasta CARTORIO do mês
+  const pgCartorio = pagamentoDeCartorio(entrada, u);
+  if (pgCartorio) return decidirFornecedor(pgCartorio, entrada, u, bruto, ctx, ev, porHash);
   if (u.replace(/\s/g, '').length < 40) return { acao: 'NAO_IDENTIFICADO', motivo: 'CONTEUDO_SEM_TEXTO', confianca: 0, tipo: 'PDF', evidencias: ev.concat('PDF sem camada de texto (escaneado): sem OCR, o robô não lê; a rotina antiga lia a imagem (Dicionário §12)'), cliente: porHash || null };
   // Santander: título, competência e titular costumam estar na página 2 (Dicionário §6.1.2) — já está em `bruto`
   // a DRE pelo título do conteúdo (28/10/2026: a "572DRE.2025-01.pdf" lida como aplicação pela linha dos rendimentos)

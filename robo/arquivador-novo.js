@@ -191,6 +191,10 @@ function textoDoXml(buffer) {
   const cab = buffer.slice(0, 200).toString('latin1');
   return /encoding=["']ISO-8859-1|encoding=["']windows-1252/i.test(cab) ? buffer.toString('latin1') : buffer.toString('utf8');
 }
+/** O Excel 2003 em XML (SpreadsheetML): a raiz <Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"> logo no começo do arquivo. */
+function ehSpreadsheetMl(buffer) {
+  return !!buffer && buffer.length > 100 && /<Workbook\b[^>]*urn:schemas-microsoft-com:office:spreadsheet/i.test(buffer.slice(0, 1500).toString('utf8'));
+}
 function linhasDaPlanilha(buffer, nome) {
   const erro = console.error;
   console.error = () => {};   // o xlsx reclama de zip "Bad uncompressed size" e lê assim mesmo
@@ -280,7 +284,9 @@ async function montarEntrada(nome, rel, buffer, op) {
       }
       break;
     }
-    case 'xml': e.xml = textoDoXml(buffer); break;
+    case 'xml': e.xml = textoDoXml(buffer); if (ehSpreadsheetMl(buffer)) { e.planilha = linhasDaPlanilha(buffer, nome); e.planilhaXml = true; } break;
+    // o Excel 2003 salvo como "Planilha XML" (SpreadsheetML; 29/10/2026: "BALANÇOS2020.xml", "Bradesco_12012024_102533.XMLS"): lido como a planilha
+    case 'xmls': if (ehSpreadsheetMl(buffer)) { e.planilha = linhasDaPlanilha(buffer, nome); e.planilhaXml = true; } break;
     case 'ofx': e.ofx = buffer.toString('latin1'); break;
     // o RTF dos termos e demonstrativos do Alterdata ("292TermoDRE11.2025.rtf"): o texto sem os comandos do RTF, como se fosse a página de um PDF
     case 'rtf': if (/^\s*\{\\rtf/.test(buffer.slice(0, 16).toString('latin1'))) { e.texto = [textoDoRtf(buffer)]; e.paginas = 1; } break;
@@ -297,6 +303,8 @@ async function montarEntrada(nome, rel, buffer, op) {
     }
     case 'xlsx': case 'xls': case 'csv': e.planilha = linhasDaPlanilha(buffer, nome); break;
     case 'zip': if (ehTedSintegra(buffer)) e.tedSintegra = true; break;
+    // a DMED gerada (.DEC; 29/10/2026): o começo do arquivo ("DMED|2023|2022|…", "DECPJ|<CNPJ>|…") diz o declarante e os anos
+    case 'dec': e.dec = buffer.slice(0, 4096).toString('latin1'); break;
     // a imagem escaneada (27/10/2026, Vitor: os comprovantes "Imagem (10).jpg" do Posto Berizal) é lida por OCR, como o PDF
     // escaneado: na fila do OCR do contínuo (adiarOcr) ou na hora
     case 'jpg': case 'jpeg': case 'png': {

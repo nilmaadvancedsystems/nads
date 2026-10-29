@@ -1388,6 +1388,119 @@ igual('a agência e a conta no nome do arquivo ("Entradas_Saidas_ag3155cc990348_
   const rtfDre = '{\\rtf1\\ansi{\\fonttbl{\\f0 Times;}}\\pard Empresa: BRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA\\par CNPJ: 33.117.361/0001-71 \\par Folha: 534\\par NIRE: 31212589194 Data: 29/03/2023\\par Demonstra\r\n\\\'e7\\\'e3o do Resultado - 01/01/2025 at\\\'e9 31/12/2025\\par Descri\\\'e7\\\'e3o Saldo Atual\\par}';
   const entDre = await A.montarEntrada('413DRE2025.rtf', REL413 + '2025\\Relatório2025\\413DRE2025.rtf', Buffer.from(rtfDre, 'latin1'));
   igual('RTF da DRE do Alterdata (a palavra quebrada pela quebra de linha do arquivo, "Demonstra⏎ção"): REGISTRO DE LIVROS\\(001) 2025 da 413', ((d0) => [d0.acao, d0.cliente, (d0.destinoRelativo || d0.motivo || "").replace(/^\d+ - [^\\]+\\/, '')])(R.decidir(entDre, ctx32)), ['ARQUIVAR', 413, 'CONTÁBIL\\REGISTRO DE LIVROS\\(001) 2025']);
+  // ---------------------------------------------------------------------------------------------------------------------
+  // 37. NÃO IDENTIFICADOS, segunda rodada (Vitor, 29/10/2026): cada decisão com o caso real (teste-arquivador-casos-31.json)
+  // ---------------------------------------------------------------------------------------------------------------------
+  const C31 = JSON.parse(fs.readFileSync(path.join(__dirname, 'teste-arquivador-casos-31.json'), 'utf8'));
+  const j37 = CAD19.juntar({
+    entregas: [
+      { codigoOrigem: '49', nome: 'POSTO DE COMBUSTIVEIS ALTA FLORESTA LTDA - EPP', documento: '04156301000160', enquadramento: 'Presumido' },
+      { codigoOrigem: '51', nome: 'ROSILENE MARQUES MARTINS', documento: '41738014000194', enquadramento: 'Simples' },
+      { codigoOrigem: '149', nome: 'ROSILENE MARQUES MARTINS - FILIAL', documento: '41738014000275', enquadramento: 'Simples' },
+      { codigoOrigem: '277', nome: 'G.A.S SERVICOS LABORATORIAIS LTDA - ME', documento: '27361015000131', enquadramento: 'Simples' },
+      { codigoOrigem: '291', nome: 'G.A.S SAUDE DE DIVISA ALEGRE LTDA - ME', documento: '29412290000162', enquadramento: 'Simples' },
+      { codigoOrigem: '407', nome: 'DUDA HOME DE TAIOBEIRAS LTDA - ME', documento: cnpjCom('407000000001'), enquadramento: 'Simples' },
+      { codigoOrigem: '443', nome: 'SU SEDUCAO MODA INTIMA LTDA - ME', documento: '42160712000118', enquadramento: 'Simples', contasBancarias: [{ banco: 'sicoob', agencia: '3144-5', conta: '50.783-0', origem: 'drive' }, { banco: 'bnb', agencia: '60', conta: '66352-4', origem: 'drive' }] },
+      { codigoOrigem: '522', nome: 'PEREIRA RUAS TRANSPORTE E LOGISTICA LTDA', documento: '20484857000131', enquadramento: 'Presumido' },
+      { codigoOrigem: '536', nome: 'ASSOCIACAO COMERCIAL E EMPRESARIAL DE TAIOBEIRAS', documento: cnpjCom('536000000001'), enquadramento: 'Simples', contasBancarias: [{ banco: 'sicoob', agencia: '3155', conta: '12345-6' }] },
+      { codigoOrigem: '583', nome: 'EMPORIO VERDE DISTRIBUIDORA LTDA', documento: '42096564000110', enquadramento: 'Simples' },
+    ],
+    nads: [],
+  });
+  const PASTAS37 = ['49 - POSTO DE COMBUSTIVEIS ALTA FLORESTA LTDA - EPP', '51 - ROSILENE MARQUES MARTINS', '149 - ROSILENE MARQUES MARTINS - FILIAL', '277 - G.A.S SERVICOS LABORATORIAIS LTDA - ME', '291 - G.A.S SAUDE DE DIVISA ALEGRE LTDA - ME', '407 - DUDA HOME DE TAIOBEIRAS LTDA - ME', '443 - SU SEDUCAO MODA INTIMA LTDA - ME', '522 - PEREIRA RUAS TRANSPORTE E LOGISTICA LTDA', '536 - ASSOCIACAO COMERCIAL E EMPRESARIAL DE TAIOBEIRAS', '583 - EMPORIO VERDE DISTRIBUIDORA LTDA'];
+  const cad37 = R.montarCadastro(j37.linhas, PASTAS37);
+  cad37.mapaMigracao = MIG.carregar({});
+  const ctx37 = { cadastro: cad37, hoje: new Date(2026, 9, 29) };
+  const sem37 = d => [d.acao, d.cliente, d.destinoRelativo ? d.destinoRelativo.replace(/^\d+ - [^\\]+\\/, '') : d.motivo, d.nomeFinal];
+  const pdf37 = (k, ctxx) => R.decidir({ nome: C31[k].nome, rel: C31[k].rel, texto: C31[k].texto }, ctxx || ctx37);
+  const pl37 = (k, ctxx, relExtra) => { const p = C31[k].planilha.slice(); if (C31[k].meses) p.meses = C31[k].meses; return R.decidir({ nome: C31[k].nome, rel: relExtra || C31[k].rel, planilha: p }, ctxx || ctx37); };
+
+  // (1 e 9) o relatório de notas emitidas continua em 03. DOCUMENTOS FISCAIS\EMITIDOS\RELATÓRIO MENSAL (o do sistema da Duda: "Notas Fiscais / Emitidos em: 01/02/2026 a 28/02/2026")
+  igual('relatório de notas emitidas da Duda (RNotas_Fiscais emitidas fevereiro): EMITIDOS\\RELATÓRIO MENSAL\\2026, "02-2026 - RELATORIO NOTAS EMITIDAS - …"', sem37(pdf37('notasDuda')), ['ARQUIVAR', 407, 'FISCAL\\SIMPLES NACIONAL\\03. DOCUMENTOS FISCAIS\\EMITIDOS\\RELATÓRIO MENSAL\\2026', '02-2026 - RELATORIO NOTAS EMITIDAS - DUDA HOME DE TAIOBEIRAS.pdf']);
+  igual('... o de abril (o nome nem diz "emitidas"): o mesmo destino, pelo conteúdo', sem37(pdf37('notasDudaAbril')).slice(0, 3), ['ARQUIVAR', 407, 'FISCAL\\SIMPLES NACIONAL\\03. DOCUMENTOS FISCAIS\\EMITIDOS\\RELATÓRIO MENSAL\\2026']);
+  igual('a regra dos relatórios do fiscal (RELATÓRIOS ALTERDATA) NÃO tira de lá o relatório mensal de notas emitidas (PDF com o título e "Relatório de NFC-e" no corpo)',
+    sem37(R.decidir({ nome: 'Relatorio mensal de notas emitidas.pdf', rel: 'IMPORTAÇÃO\\0407 - DUDA HOME DE TAIOBEIRAS LTDA - ME\\2026\\09\\Relatorio mensal de notas emitidas.pdf', texto: ['DUDA HOME DE TAIOBEIRAS LTDA\nRelatório mensal de notas emitidas\nPeríodo: 01/09/2026 a 30/09/2026\nRelatório de NFC-e e de NF-e do mês\nNúmero Cliente Dt.Emissão Tot.Nota'] }, ctx37)).slice(0, 3),
+    ['ARQUIVAR', 407, 'FISCAL\\SIMPLES NACIONAL\\03. DOCUMENTOS FISCAIS\\EMITIDOS\\RELATÓRIO MENSAL\\2026']);
+  igual('... e a planilha pelo nome ("Saidas 09.2026.xls", com "Relatório de NFC-e" no topo): também fica em EMITIDOS\\RELATÓRIO MENSAL',
+    sem37(R.decidir({ nome: 'Saidas 09.2026.xls', rel: 'IMPORTAÇÃO\\0407 - DUDA HOME DE TAIOBEIRAS LTDA - ME\\2026\\09\\Saidas 09.2026.xls', planilha: [['DUDA HOME DE TAIOBEIRAS LTDA'], ['Relatório de NFC-e'], ['Número', 'Cliente', 'Total']] }, ctx37)).slice(0, 3),
+    ['ARQUIVAR', 407, 'FISCAL\\SIMPLES NACIONAL\\03. DOCUMENTOS FISCAIS\\EMITIDOS\\RELATÓRIO MENSAL\\2026']);
+
+  // (2) a NF-e de outros (a Raízen vende a outro posto) em que o único cliente presente é a TRANSPORTADORA e a pasta de origem é dele: o XML dele; só este caso
+  const REL49 = '20261026-NOVO\\IMPORTAÇÃO\\0049 - POSTO DE COMBUSTIVEL ALTA FLORESTA LTDA - EPP\\2026\\05\\';
+  igual('Raízen → outro posto, a 49 é a transportadora, na pasta da 49: 49, FISCAL\\LUCRO PRESUMIDO\\14. XML\\NF-e, nome padrão', sem37(R.decidir({ nome: C31.xml49.nome, rel: REL49 + C31.xml49.nome, xml: C31.xml49.xml }, ctx37)), ['ARQUIVAR', 49, 'FISCAL\\LUCRO PRESUMIDO\\14. XML\\NF-e', '05-2026_NF-e_117630.xml']);
+  igual('... a mesma nota solta (fora da pasta da 49): não arquiva (CLIENTE_NAO_LOCALIZADO)', R.decidir({ nome: C31.xml49.nome, rel: '20261026-NOVO\\DOWNLOADS\\' + C31.xml49.nome, xml: C31.xml49.xml }, ctx37).motivo, 'CLIENTE_NAO_LOCALIZADO');
+  igual('... na pasta de OUTRO cliente (a 277): não arquiva (CLIENTE_NAO_LOCALIZADO)', R.decidir({ nome: C31.xml49.nome, rel: '20261026-NOVO\\0277 - G.A.S SERVICOS LABORATORIAIS LTDA - ME\\' + C31.xml49.nome, xml: C31.xml49.xml }, ctx37).motivo, 'CLIENTE_NAO_LOCALIZADO');
+  igual('... o evento de NF-e (o emitente não é cliente) não entra na regra da transportadora', /transportadora/.test(R.decidir({ nome: 'x-can.xml', rel: REL49 + 'x-can.xml', xml: '<procEventoNFe><evento><infEvento><CNPJ>33453598027838</CNPJ><chNFe>31260533453598027838550010001176301700353674</chNFe><dhEvento>2026-05-28T10:00:00-03:00</dhEvento><detEvento><descEvento>Cancelamento</descEvento></detEvento></infEvento></evento></procEventoNFe>' }, ctx37).evidencias.join(' ')), false);
+  igual('... se o destinatário também é cliente (a 277), a regra de antes manda (a 277 recebe; a transportadora não puxa a nota)', sem37(R.decidir({ nome: C31.xml49.nome, rel: REL49 + C31.xml49.nome, xml: C31.xml49.xml.replace('<CNPJ>53533185000166</CNPJ>', '<CNPJ>27361015000131</CNPJ>') }, ctx37)).slice(0, 2), ['ARQUIVAR', 277]);
+
+  // (3) a DMED gerada (.DEC e .REC): FISCAL\<regime>\DMED\ANO-CALENDÁRIO, nome original
+  const REL277 = '20261024-NOVO\\0277 - G.A.S SERVICOS LABORATORIAIS LTDA - ME\\DEPARTAMENTO FISCAL\\DMED\\2022\\';
+  igual('DMED .DEC (exercício 2023, ano-calendário 2022): FISCAL\\SIMPLES NACIONAL\\DMED\\2022, nome original', sem37(R.decidir({ nome: C31.dmedDec.nome, rel: REL277 + C31.dmedDec.nome, dec: C31.dmedDec.conteudo }, ctx37)), ['ARQUIVAR', 277, 'FISCAL\\SIMPLES NACIONAL\\DMED\\2022', C31.dmedDec.nome]);
+  igual('DMED .REC (o CNPJ e os anos no nome): o mesmo destino', sem37(R.decidir({ nome: C31.dmedRec.nome, rel: REL277 + C31.dmedRec.nome }, ctx37)), ['ARQUIVAR', 277, 'FISCAL\\SIMPLES NACIONAL\\DMED\\2022', C31.dmedRec.nome]);
+  igual('DMED: a raiz do ano é a da entrega (ano-calendário 2022 → raiz 2023)', R.decidir({ nome: C31.dmedRec.nome, rel: REL277 + C31.dmedRec.nome }, ctx37).anoRaiz, 2023);
+  igual('DMED na pasta de OUTRO cliente (a 291): CLIENTE_AMBIGUO, não arquiva', R.decidir({ nome: C31.dmedRec.nome, rel: REL277.replace('0277 - G.A.S SERVICOS LABORATORIAIS LTDA - ME', '0291 - G.A.S SAUDE DE DIVISA ALEGRE LTDA - ME') + C31.dmedRec.nome }, ctx37).motivo, 'CLIENTE_AMBIGUO');
+  igual('DMED com exercício que não é o ano-calendário + 1: ANO_INDETERMINADO', R.decidir({ nome: C31.dmedRec.nome.replace('Dmed-2023-2022', 'Dmed-2024-2022'), rel: REL277 + 'x' }, ctx37).motivo, 'ANO_INDETERMINADO');
+  const entDec = await A.montarEntrada(C31.dmedDec.nome, REL277 + C31.dmedDec.nome, Buffer.from(C31.dmedDec.conteudo, 'latin1'));
+  igual('montarEntrada lê o começo do .DEC (DMED|2023|2022|…) e a decisão sai dele', [/^DMED\|2023\|2022\|/.test(entDec.dec), R.decidir(entDec, ctx37).acao], [true, 'ARQUIVAR']);
+  igual('o .REC do SPED continua sendo do SPED (a regra da DMED só pega o nome "<CNPJ>-Dmed-AAAA-AAAA")', R.decidir({ nome: 'SPED00524_01_2025.REC', rel: 'FERNANDO\\49 - POSTO\\x\\SPED00524_01_2025.REC' }, ctx37).tipo !== 'DMED', true);
+
+  // (4) o extrato da CDL (536) em .xls sem banco nem conta no conteúdo: o banco pelo nome (SICOOB), só se a 536 tem o Sicoob no cadastro
+  const REL536 = '20261026-NOVO\\FERNANDO\\536 CDL DE TAIOBEIRAS\\2025\\03.2025\\';
+  igual('CDL: "EXTRATO BANCARIO SICOOB XLS.xls" (03.2025): CONTÁBIL\\EXTRATOS\\2025\\03\\BANCÁRIOS\\SICOOB, "03-2025.xls"', sem37(pl37('cdlSicoob', ctx37, REL536 + C31.cdlSicoob.nome)), ['ARQUIVAR', 536, 'CONTÁBIL\\EXTRATOS\\2025\\03\\BANCÁRIOS\\SICOOB', '03-2025.xls']);
+  igual('... sem o banco no nome nem na pasta ("EXTRATO BANCARIO JANEIRO 2025.xls"): continua NÃO IDENTIFICADO (a trava)', R.decidir({ nome: C31.cdlSemBanco.nome, rel: REL536.replace('03.2025', '01.2025') + C31.cdlSemBanco.nome, planilha: C31.cdlSemBanco.planilha }, ctx37).acao, 'NAO_IDENTIFICADO');
+  const cad37bb = R.montarCadastro(CAD19.juntar({ entregas: [{ codigoOrigem: '536', nome: 'ASSOCIACAO COMERCIAL E EMPRESARIAL DE TAIOBEIRAS', documento: cnpjCom('536000000001'), enquadramento: 'Simples', contasBancarias: [{ banco: 'bb', agencia: '1234', conta: '9999-9' }] }], nads: [] }).linhas, PASTAS37);
+  igual('... a 536 SEM o Sicoob no cadastro (só o BB): o banco do nome não vale, não arquiva (BANCO_NAO_CADASTRADO_NO_CLIENTE)', pl37('cdlSicoob', { cadastro: cad37bb, hoje: new Date(2026, 9, 29) }, REL536 + C31.cdlSicoob.nome).motivo, 'BANCO_NAO_CADASTRADO_NO_CLIENTE');
+  igual('... a mesma planilha na pasta de um cliente que não é a 536: o código da pasta dela não vale (não vira 536)', pl37('cdlSicoob', ctx37, '20261026-NOVO\\FERNANDO\\277 G.A.S\\2025\\03.2025\\' + C31.cdlSicoob.nome).cliente !== 536, true);
+
+  // (5) DEFIS sem cliente: "Rosilene" → a matriz (51); "Emporio Verde" → 583 (o título "DRE - PEREIRA RUAS…" é o modelo copiado); Aldinei/Delzito/Francino não estão no cadastro
+  const RELD = '20261024-NOVO\\DEFIS 2025.zip\\DEFIS 2025\\';
+  igual('DEFIS - 2025 ROSILENE: a matriz (51; a filial 149 tem o mesmo nome), FISCAL\\SIMPLES NACIONAL\\RELATÓRIOS ALTERDATA\\2025, "2025 - DEFIS PLANILHA.xlsx"', sem37(pl37('defisRosilene', ctx37, RELD + C31.defisRosilene.nome)), ['ARQUIVAR', 51, 'FISCAL\\SIMPLES NACIONAL\\RELATÓRIOS ALTERDATA\\2025', '2025 - DEFIS PLANILHA.xlsx']);
+  igual('DEFIS - 2025 EMPORIO VERDE: 583 (o nome inteiro no arquivo vence o título do modelo copiado, o da 522)', sem37(pl37('defisEmporio', ctx37, RELD + C31.defisEmporio.nome)), ['ARQUIVAR', 583, 'FISCAL\\SIMPLES NACIONAL\\RELATÓRIOS ALTERDATA\\2025', '2025 - DEFIS PLANILHA.xlsx']);
+  igual('DEFIS - 2025 ALDINEI: não está no cadastro, continua NÃO IDENTIFICADO (CLIENTE_NAO_LOCALIZADO)', pl37('defisAldinei', ctx37, RELD + C31.defisAldinei.nome).motivo, 'CLIENTE_NAO_LOCALIZADO');
+  const cad37so = R.montarCadastro(CAD19.juntar({ entregas: [{ codigoOrigem: '51', nome: 'ROSILENE MARQUES MARTINS', documento: '41738014000194', enquadramento: 'Simples' }, { codigoOrigem: '601', nome: 'ROSILENE MARQUES MARTINS', documento: cnpjCom('601000000001'), enquadramento: 'Simples' }], nads: [] }).linhas, ['51 - ROSILENE MARQUES MARTINS', '601 - ROSILENE MARQUES MARTINS']);
+  igual('... "Rosilene" em duas empresas de mesmo nome e CNPJs diferentes (não é matriz e filial): não escolhe, NÃO IDENTIFICADO',pl37('defisRosilene', { cadastro: cad37so, hoje: new Date(2026, 9, 29) }, RELD + C31.defisRosilene.nome).acao, 'NAO_IDENTIFICADO');
+
+  // (6) o Mercado Pago da 443: a conta (agência 1, conta 21351046353, lida do extrato em PDF de 03/2026) entra no cadastro; sem ela, a trava continua
+  const REL443 = '20261024-NOVO\\0443 - SU SEDUÇÃO MODA INTIMA LTDA - ME\\ADIVANIA\\2026\\Extratos Bancários\\';
+  igual('443 SEM a conta do Mercado Pago no cadastro: o extrato do Mercado Pago fica (BANCO_NAO_CADASTRADO_NO_CLIENTE)', pl37('mp443', ctx37, REL443 + C31.mp443.nome).motivo, 'BANCO_NAO_CADASTRADO_NO_CLIENTE');
+  const j37mp = CAD19.juntar({ entregas: [{ codigoOrigem: '443', nome: 'SU SEDUCAO MODA INTIMA LTDA - ME', documento: '42160712000118', enquadramento: 'Simples', contasBancarias: [{ banco: 'sicoob', agencia: '3144-5', conta: '50.783-0', origem: 'drive' }, { banco: 'bnb', agencia: '60', conta: '66352-4', origem: 'drive' }, { banco: 'mercado pago', agencia: '1', conta: '21351046353', origem: 'extrato' }] }], nads: [] });
+  const cad37mp = R.montarCadastro(j37mp.linhas, PASTAS37);
+  igual('443 COM a conta do Mercado Pago (banco "mercado pago", agência 1, conta 21351046353): CONTÁBIL\\EXTRATOS\\2026\\06\\BANCÁRIOS\\MERCADO PAGO, "06-2026.xls"', sem37(pl37('mp443', { cadastro: cad37mp, hoje: new Date(2026, 9, 29) }, REL443 + C31.mp443.nome)), ['ARQUIVAR', 443, 'CONTÁBIL\\EXTRATOS\\2026\\06\\BANCÁRIOS\\MERCADO PAGO', '06-2026.xls']);
+  igual('... o cadastro guarda o banco no formato de nome dos outros (MERCADO PAGO) e a conta lida', [cad37mp.porCod.get(443).bancos.has('MERCADO PAGO'), cad37mp.contas.some(x => x.codigo === 443 && x.banco === 'MERCADO PAGO' && x.conta.base === '21351046353')], [true, true]);
+  igual('... o extrato do Mercado Pago na pasta de OUTRO cliente (a 407, sem a conta) continua barrado', pl37('mp443', { cadastro: cad37mp, hoje: new Date(2026, 9, 29) }, '20261024-NOVO\\0407 - DUDA HOME DE TAIOBEIRAS LTDA - ME\\2026\\Extratos Bancários\\' + C31.mp443.nome).acao !== 'ARQUIVAR', true);
+
+  // (7) SpreadsheetML (Excel 2003 em XML) lido como planilha; o XML "sistema" EMITENTE-… e o evento sem chave com nProt 0 vão para DESCARTAR; o .ofc da 279 fica
+  const celula = v => '<Cell><Data ss:Type="String">' + String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</Data></Cell>';
+  const sml = '<?xml version="1.0" encoding="UTF-8"?>\n<?mso-application progid="Excel.Sheet"?>\n<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Extrato"><Table>' + BRADESCO_NET.map(l => '<Row>' + (l || []).map(v => v == null ? '<Cell/>' : celula(v)).join('') + '</Row>').join('') + '</Table></Worksheet></Workbook>';
+  const entSml = await A.montarEntrada('Bradesco_12012024_102533.XMLS', REL183 + 'Bradesco_12012024_102533.XMLS', Buffer.from(sml, 'utf8'));
+  igual('SpreadsheetML (.XMLS): as linhas lidas como a planilha', [entSml.planilhaXml, (entSml.planilha || []).some(l => (l || []).includes('Lançamento'))], [true, true]);
+  igual('SpreadsheetML (.XMLS) do Bradesco da 183 (conta 2557/7393-8 do cadastro): extrato BANCÁRIOS\\BRADESCO', s35(R.decidir(entSml, ctx35)).slice(0, 3), ['ARQUIVAR', 183, 'CONTÁBIL\\EXTRATOS\\2023\\01\\BANCÁRIOS\\BRADESCO']);
+  const entSmlXml = await A.montarEntrada('BALANÇOS2020.xml', '20261023-NOVO\\0055 - TORRA TORRA LTDA - ME\\OUTROS\\BALANÇOS2020.xml', Buffer.from(sml, 'utf8'));
+  igual('SpreadsheetML com extensão .xml: também planilha (não "TIPO_XML_NAO_TRATADO")', [entSmlXml.planilhaXml, R.decidir(entSmlXml, ctx35).motivo !== 'TIPO_XML_NAO_TRATADO'], [true, true]);
+  igual('um XML fiscal comum NÃO é lido como planilha', (await A.montarEntrada('a.xml', 'a.xml', Buffer.from(nfe('11426314000177', '99999999000191', '1', '2026-08-05T10:00:00-03:00'), 'utf8'))).planilhaXml, undefined);
+  igual('XML "sistema" EMITENTE-AAAAMMDD-HHMM-<CNPJ>.xml (cadastro do emitente, sem documento): DESCARTAR', [R.decidir({ nome: C31.emitente.nome, rel: C31.emitente.rel, xml: C31.emitente.xml }, ctx37).acao, R.decidir({ nome: C31.emitente.nome, rel: C31.emitente.rel, xml: C31.emitente.xml }, ctx37).motivo], ['DESCARTAR', 'DESCARTE_CONFIRMADO']);
+  igual('... a raiz <sistema> com outro nome de arquivo NÃO é descartada', R.decidir({ nome: 'x.xml', rel: 'x.xml', xml: C31.emitente.xml }, ctx37).acao, 'NAO_IDENTIFICADO');
+  igual('evento de cancelamento "-110111-1-Eve.xml" com chave de acesso vazia e nProt 0: DESCARTAR', R.decidir({ nome: C31.eventoVazio.nome, rel: C31.eventoVazio.rel, xml: C31.eventoVazio.xml }, ctx37).acao, 'DESCARTAR');
+  igual('... o mesmo evento COM a chave de acesso preenchida não é descartado por esta regra', R.decidir({ nome: C31.eventoVazio.nome, rel: C31.eventoVazio.rel, xml: C31.eventoVazio.xml.replace('<chNFe></chNFe>', '<chNFe>31260811426314000177550010000101431439862028</chNFe>') }, ctx37).acao !== 'DESCARTAR', true);
+  igual('... e com nProt de verdade (protocolo diferente de 0) também não', R.decidir({ nome: C31.eventoVazio.nome, rel: C31.eventoVazio.rel, xml: C31.eventoVazio.xml.replace('<nProt>0</nProt>', '<nProt>131260000012345</nProt>') }, ctx37).acao !== 'DESCARTAR', true);
+  const cad37o = R.montarCadastro(CAD19.juntar({ entregas: [{ codigoOrigem: '279', nome: 'ALMEIDA & SOUZA PRODUTOS ALIMENTICIOS LTDA - ME', documento: cnpjCom('279000000001'), enquadramento: 'Simples', contasBancarias: [{ banco: 'caixa', agencia: '3411', conta: '16419' }] }], nads: [] }).linhas, ['279 - ALMEIDA & SOUZA PRODUTOS ALIMENTICIOS LTDA - ME']);
+  igual('.ofc da 279 (BANKID 00104 ambíguo): fica NÃO IDENTIFICADO', R.decidir({ nome: C31.ofc279.nome, rel: C31.ofc279.rel }, { cadastro: cad37o, hoje: new Date(2026, 9, 29) }).acao, 'NAO_IDENTIFICADO');
+
+  // (8) recibo de cartório e guia DAJE → pagamento a fornecedor (CONTÁBIL\PAGAMENTOS DE FORNECEDORES\ANO\MM\CARTORIO, nome original)
+  igual('recibo do Registro de Imóveis (RECIBO CRI.pdf, 08.2025, pasta da 413): PAGAMENTOS DE FORNECEDORES\\2025\\08\\CARTORIO', sem37(pdf37('reciboCri', ctx32)), ['ARQUIVAR', 413, 'CONTÁBIL\\PAGAMENTOS DE FORNECEDORES\\2025\\08\\CARTORIO', 'RECIBO CRI.pdf']);
+  igual('recibo do Ofício de Notas (CARTORIO 15º SB 1288 … RECIBO R$55,46, 04.2026): 2026\\04\\CARTORIO', sem37(pdf37('cartorio15', ctx32)).slice(0, 3), ['ARQUIVAR', 413, 'CONTÁBIL\\PAGAMENTOS DE FORNECEDORES\\2026\\04\\CARTORIO']);
+  igual('o Pix para o cartório (CARTORIO AVERBAR … R$65,31, 03.2026): também', sem37(pdf37('cartorioPix', ctx32)).slice(0, 3), ['ARQUIVAR', 413, 'CONTÁBIL\\PAGAMENTOS DE FORNECEDORES\\2026\\03\\CARTORIO']);
+  igual('recibo "CARTORIO RGI R$ 1.223,42" (03.2026): também', sem37(pdf37('cartorioRgi', ctx32)).slice(0, 3), ['ARQUIVAR', 413, 'CONTÁBIL\\PAGAMENTOS DE FORNECEDORES\\2026\\03\\CARTORIO']);
+  igual('guia DAJE da 572 (a regra de sempre do DAJE, pasta DAJE; sem o mês no nome nem na pasta, vale o "pagável até" 27/06/2025): 2025\\06\\DAJE', sem37(pdf37('daje', ctx32)), ['ARQUIVAR', 572, 'CONTÁBIL\\PAGAMENTOS DE FORNECEDORES\\2025\\06\\DAJE', 'daje_1187002032214 - AVERBAÇÃO R$ 97,52.pdf']);
+  igual('... outra DAJE (MAT_4610, R$ 1.805,16, o nome não começa por DAJE): o mesmo mês e pasta', sem37(pdf37('dajeMat', ctx32)).slice(0, 3), ['ARQUIVAR', 572, 'CONTÁBIL\\PAGAMENTOS DE FORNECEDORES\\2025\\06\\DAJE']);
+  igual('o protocolo eletrônico do cartório (e-Protocolo) NÃO é recibo: continua NÃO IDENTIFICADO', pdf37('protocoloCri', ctx32).acao, 'NAO_IDENTIFICADO');
+
+  // (10, os óbvios) o "Livro Fiscal de Saída" do sistema do posto ("Exibindo: NFC-e | NF-e | Série-D | Reduções Z", período com as datas invertidas): FISCAL\<regime>\15. LIVROS FISCAIS\ANO, "MM-AAAA - REGISTRO DE SAIDAS.pdf"
+  const cad37l = R.montarCadastro(CAD19.juntar({ entregas: [{ codigoOrigem: '66', nome: 'ADERLEI DOS SANTOS & CIA LTDA - EPP', documento: '03149551000100', enquadramento: 'Presumido' }, { codigoOrigem: '429', nome: 'POSTO DE COMBUSTIVEIS ANDRIELE LIMITADA - EPP', documento: '40299450000141', enquadramento: 'Presumido' }], nads: [] }).linhas, ['66 - ADERLEI SANTOS E CIA', '429 - POSTO DE COMBUSTIVEIS ANDRIELE LIMITADA']);
+  const ctx37l = { cadastro: cad37l, hoje: new Date(2026, 9, 29) };
+  igual('Livro Fiscal de Saída do posto da 66 (28/02/2026 a 01/02/2026, datas invertidas): LIVROS FISCAIS\\2026, "02-2026 - REGISTRO DE SAIDAS.pdf"', sem37(pdf37('livroPosto66', ctx37l)), ['ARQUIVAR', 66, 'FISCAL\\LUCRO PRESUMIDO\\15. LIVROS FISCAIS\\2026', '02-2026 - REGISTRO DE SAIDAS.pdf']);
+  igual('... o da 429 (setembro)', sem37(pdf37('livroPosto429', ctx37l)), ['ARQUIVAR', 429, 'FISCAL\\LUCRO PRESUMIDO\\15. LIVROS FISCAIS\\2026', '09-2026 - REGISTRO DE SAIDAS.pdf']);
+  igual('... o Livro Fiscal de ENTRADA, com a data na ordem normal, vira REGISTRO DE ENTRADAS', sem37(R.decidir({ nome: 'ADERLEI_DOS_SANTOS_E_CIA_LTDA_EPP_03149551000100_Livro_Fiscal_03.pdf', rel: 'IMPORTAÇÃO\\0066 - ADERLEI DOS SANTOS & CIA LTDA - EPP\\2026\\03\\x.pdf', texto: ['Exibindo: NFC-e |NF-e |Série-D\nLivro Fiscal de Entrada\nPOSTO CURRAL DE DENTRO\n01/03/2026\na \n31/03/2026\nPeríodo'] }, ctx37l)).slice(3), ['03-2026 - REGISTRO DE ENTRADAS.pdf']);
   console.log((falhas ? falhas + ' FALHA(S) em ' : 'ok: ') + total + ' testes');
   process.exit(falhas ? 1 : 0);
 })().catch(e => { console.log('FALHOU com erro:', e.stack); process.exit(1); });
