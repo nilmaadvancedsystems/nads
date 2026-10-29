@@ -2152,6 +2152,53 @@ function decidirPlanilha(entrada, ctx, ev, porHash) {
   // o extrato do banco exportado em planilha (28/10/2026: "Banco Sicoob 09-2025.xls" da 443, as colunas "DATA LANCAMENTO | VALOR
   // LANCAMENTO | DESCRICAO HISTORICO"): 04, Bancários, como o PDF — "MM-AAAA.xls" em EXTRATOS\ANO\MÊS\BANCÁRIOS\<BANCO>; o banco pelo
   // nome do arquivo ou da pasta; o cliente pela pasta de origem (a planilha não traz o titular); o mês pelo nome, senão pelas datas
+  // o extrato do banco em planilha que traz o banco, a agência e a conta no cabeçalho (29/10/2026, Vitor: "elas têm o banco, a agência, a conta e o período"): "Bradesco Net
+  // Empresa / Extrato de: Agência: 2557 Conta: 7393-8" e as colunas Data | Lançamento | Crédito | Débito | Saldo. O cliente é o dono da conta no cadastro (matriz e filiais
+  // separadas); a conta que bate com o cadastro confirma o banco; o banco ou a conta que o cliente não tem continuam barrados (BANCO_NAO_CADASTRADO_NO_CLIENTE)
+  {
+    const cabLongo = norm(linhas.join('\n'));
+    const temColunas = /\bDATA\b/.test(cabLongo) && /\b(HISTORICO|LANCAMENTO|DESCRICAO)\b/.test(cabLongo) && /\b(VALOR|CREDITO|DEBITO|SALDO)\b/.test(cabLongo);
+    const textoPl = linhas.join('\n');
+    const bancoConteudo = bancoDoTexto(textoPl, true);
+    const bancoNome = bancoDoNome(entrada.nome) || bancoDoNome(partesDoCaminho(entrada.rel).slice(-2, -1)[0] || '');
+    const contasPl = contasDoDocumento(textoPl, true);
+    const banco = bancoConteudo || bancoNome;
+    if (temColunas && !ehMaquininha(u) && banco && !SO_MAQUININHA.has(banco) && (contasPl.length || bancoConteudo) && !/\bDATA( DO)? LANCAMENTO\b/.test(cabLongo.split('\n').slice(0, 3).join('\n'))) {
+      const base = { tipo: 'EXTRATO', setor: 'CONTABIL', fonte: 'extrato do banco em planilha com o banco e a conta no cabeçalho (29/10/2026; 04, Bancários)' };
+      if (bancoConteudo && bancoNome && bancoConteudo !== bancoNome) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'BANCO_DIVERGENTE', confianca: 0.6, evidencias: ev.concat('conteúdo: ' + bancoConteudo + ' × nome do arquivo ou pasta: ' + bancoNome) });
+      const pc = clientesPelasContas(contasPl, banco, cad);
+      let cli = pc.clientes.length === 1 ? pc.clientes[0] : null, como = cli != null ? 'conta' : null, conf = cli != null ? 0.97 : 0;
+      if (pc.clientes.length > 1) { const p = daPastaEntre(pc.clientes, entrada.rel, cad); if (p != null) { cli = p; como = 'conta'; conf = 0.95; } else return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_AMBIGUO', confianca: 0.4, contaAmbigua: true, evidencias: ev.concat('a conta está em ' + pc.clientes.length + ' clientes do cadastro: ' + pc.contas.join('; ')) }); }
+      if (cli != null) ev.push('a conta do extrato bate com o cadastro: ' + pc.contas.join('; '));
+      const sub = clienteDaPasta(entrada.rel || entrada.nome, cad);
+      if (cli != null && sub && sub.forte && sub.codigo !== cli) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_AMBIGUO', confianca: 0.4, cliente: cli, evidencias: ev.concat('a conta é do cliente ' + cli + ' e a pasta de origem, conferida, é a do ' + sub.codigo) });
+      if (cli == null) { const c = porHash ? { cliente: porHash, conf: 0.97, como: 'hash' } : clientePelaPastaOuGrupo(entrada.rel || entrada.nome, entrada.nome, cad, ev); if (!c) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_NAO_LOCALIZADO', confianca: 0.3, evidencias: ev.concat('extrato em planilha: nem a conta nem a pasta de origem dizem o cliente') }); cli = c.cliente; como = c.como; conf = Math.min(c.conf, 0.9); }
+      // o mês dos lançamentos (lidos na planilha toda) vale mais que o nome e que a pasta de origem; um mês só, senão o arquivo junta vários meses e fica para olhar
+      const mesesPl = (entrada.planilha && entrada.planilha.meses) || null;
+      let comp = null, consolidadoDe = null;
+      if (mesesPl && Object.keys(mesesPl).length) {
+        const maior = Math.max(...Object.values(mesesPl));
+        // o mês com 1 ou 2 lançamentos ao lado de um com 20 ou mais é a virada do extrato (o estorno, o lançamento do dia 1º), não outro mês
+        const ks = Object.keys(mesesPl).filter(k => !(mesesPl[k] <= 2 && maior >= 20));
+        ks.sort();
+        // vários meses seguidos: o extrato consolidado, como o do PDF ("MM-AAAA A MM-AAAA", na pasta do último mês); mês faltando no meio não é consolidado
+        const seq = ks.map(k => +k.slice(0, 4) * 12 + +k.slice(5) - 1);
+        if (ks.length > 1 && (ks.length > 12 || seq.some((v, i) => i && v !== seq[i - 1] + 1))) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5, cliente: cli, evidencias: ev.concat('o extrato junta lançamentos de ' + ks.length + ' meses não seguidos ou mais de 12 (' + ks.join(', ') + '): não é de um mês nem consolidado') });
+        comp = { ano: +ks[ks.length - 1].slice(0, 4), mes: +ks[ks.length - 1].slice(5) };
+        if (ks.length > 1) { consolidadoDe = { ano: +ks[0].slice(0, 4), mes: +ks[0].slice(5) }; ev.push('extrato consolidado de ' + ks.length + ' meses (' + mesAno(consolidadoDe) + ' a ' + mesAno(comp) + '), na pasta do último mês'); }
+        else ev.push('competência pelas datas de todos os lançamentos (' + mesAno(comp) + ')');
+        const doNome = competenciaDoNome(entrada.nome);
+        if (doNome && (doNome.mes !== comp.mes || doNome.ano !== comp.ano)) ev.push('o nome do arquivo diz ' + mesAno(doNome) + ', mas os lançamentos são de ' + mesAno(comp) + ': vale o conteúdo');
+      }
+      if (!comp) { const p = periodoEscrito(textoPl) || periodoLivre(textoPl); if (p && p.de.mes === p.ate.mes && p.de.ano === p.ate.ano) comp = { mes: p.ate.mes, ano: p.ate.ano }; }
+      if (!comp) comp = competenciaDoNome(entrada.nome);
+      if (!comp) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5, cliente: cli });
+      // o banco vale pelo conteúdo quando está escrito, ou quando a conta lida bate com a conta desse banco no cadastro do cliente
+      const contaBate = pc.clientes.length >= 1 && ((cad.contas || []).some(x => x.codigo === cli && (!x.banco || x.banco === banco) && contasPl.some(d => mesmaConta(d.conta, x.conta) && (!d.agencia || !x.agencia || d.agencia.base === x.agencia.base))));
+      ev.push('extrato do ' + banco + ' em planilha (' + (bancoConteudo ? 'o banco escrito no conteúdo' : 'o banco pelo nome; a conta lida bate com o cadastro') + ')');
+      return Object.assign(base, { acao: 'ARQUIVAR', cliente: cli, comoCliente: como, confianca: conf, competencia: comp, caminho: ['CONTÁBIL', 'EXTRATOS', String(comp.ano), dois(comp.mes), 'BANCÁRIOS', banco], nomeFinal: (consolidadoDe ? mesAno(consolidadoDe) + ' A ' : '') + mesAno(comp) + ext0, bancoPeloConteudo: !!bancoConteudo || contaBate, bancoPeloNomeOk: !bancoConteudo && !contaBate });
+    }
+  }
   const cab = linhas.slice(0, 3).map(norm).join('\n');
   const bancoPl = bancoDoNome(entrada.nome) || bancoDoNome(partesDoCaminho(entrada.rel).slice(-2, -1)[0] || '');
   if (/\bDATA( DO)? LANCAMENTO\b/.test(cab) && /\bHISTORICO\b/.test(cab) && /\bVALOR\b/.test(cab) && bancoPl && !SO_MAQUININHA.has(bancoPl)) {

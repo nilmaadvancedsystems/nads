@@ -196,8 +196,29 @@ function linhasDaPlanilha(buffer, nome) {
   console.error = () => {};   // o xlsx reclama de zip "Bad uncompressed size" e lê assim mesmo
   try {
     const XLSX = require('xlsx');
-    const wb = /\.csv$/i.test(nome) ? XLSX.read(buffer.toString('utf8'), { type: 'string' }) : XLSX.read(buffer, { type: 'buffer', sheetRows: 15 });
-    return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1 }).slice(0, 15);
+    const ehCsv = /\.csv$/i.test(nome);
+    const lerCsv = () => XLSX.read((s => (s.includes('\uFFFD') ? buffer.toString('latin1') : s))(buffer.toString('utf8')), { type: 'string', raw: true });
+    const wb = ehCsv ? lerCsv() : XLSX.read(buffer, { type: 'buffer', sheetRows: 15 });
+    const linhas = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true }).slice(0, 15);
+    // o extrato em planilha: os meses de TODOS os lançamentos (a planilha lida é só o começo; o mês da pasta pode estar errado e o arquivo pode juntar vários meses).
+    // linhas.meses = { 'AAAA-MM': quantidade } (sem a linha de saldo anterior); só quando o começo parece extrato (Data + Lançamento/Histórico + Valor/Crédito/Débito/Saldo)
+    const topo = linhas.map(l => (l || []).join(' ')).join(' ').toUpperCase();
+    if (/\bDATA\b/.test(topo) && /(LAN[CÇ]AMENTO|HIST[OÓ]RICO|DESCRI)/.test(topo) && /(VALOR|CR[EÉ]DITO|D[EÉ]BITO|SALDO)/.test(topo)) {
+      const cheio = ehCsv ? wb : XLSX.read(buffer, { type: 'buffer' });
+      const todas = XLSX.utils.sheet_to_json(cheio.Sheets[cheio.SheetNames[0]], { header: 1, raw: true });
+      const meses = {};
+      for (const l of todas) {
+        if (!l || /SALDO (ANTERIOR|BLOQUEADO)/i.test(l.join(' '))) continue;
+        for (const c of l.slice(0, 3)) {
+          let a = null, m = null;
+          if (typeof c === 'string' && /^\s*\d{2}\/\d{2}\/\d{4}\s*$/.test(c)) { m = +c.slice(3, 5); a = +c.slice(6, 10); }
+          else if (typeof c === 'number' && c > 40000 && c < 60000) { const d = new Date(Date.UTC(1899, 11, 30) + c * 86400000); a = d.getUTCFullYear(); m = d.getUTCMonth() + 1; }
+          if (a && m >= 1 && m <= 12) { const k = a + '-' + String(m).padStart(2, '0'); meses[k] = (meses[k] || 0) + 1; break; }
+        }
+      }
+      linhas.meses = meses;
+    }
+    return linhas;
   } catch (e) { return []; } finally { console.error = erro; }
 }
 // o OCR adiantado do escaneado que foi para a fila: { hash: Promise<resultado> }, no máximo OCR_ADIANTADOS pendentes (o

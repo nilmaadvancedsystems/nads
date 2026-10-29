@@ -1346,6 +1346,29 @@ igual('a agência e a conta no nome do arquivo ("Entradas_Saidas_ag3155cc990348_
   igual('IRPF: o recibo de entrega na pasta da 434: o mesmo destino', s34(i34('irpfRecibo434', '20261023-NOVO\\0434 - CONSTRUNOVO LTDA - ME\\OUTROS\\')).slice(0, 3), ['ARQUIVAR', 434, '434 - CONSTRUNOVO LTDA - ME\\SOCIETÁRIO\\SÓCIOS\\IRPF\\2021']);
   igual('IRPF: a cópia do MIDAS (sem o ano-calendário no texto) pelo ano do nome "IRPF-A-2021-2020"', s34(i34('irpfMidas463', 'DEPARTEMENTO CONTABIL\\IRPF\\2021\\0463 - CENTRO DE ODONTOLOGIA ESTETICA LTDA - ME\\')).slice(0, 3), ['ARQUIVAR', 463, '463 - CENTRO DE ODONTOLOGIA ESTETICA LTDA - ME\\SOCIETÁRIO\\SÓCIOS\\IRPF\\2020']);
   igual('IRPF: sem a pasta de origem conferida (fora de pasta de cliente) não arquiva', i34('irpfDecl360', 'DOWNLOADS\\').acao, 'NAO_IDENTIFICADO');
+  // ---------------------------------------------------------------------------------------------------------------------
+  // 35. o extrato do banco em planilha (xls/csv) com o banco, a agência e a conta no cabeçalho (Vitor, 29/10/2026): lido do conteúdo, conferido com o cadastro
+  // ---------------------------------------------------------------------------------------------------------------------
+  const j35 = CAD19.juntar({
+    entregas: [
+      { codigoOrigem: '183', nome: 'CLEIA CRUZ DE OLIVEIRA LTDA', documento: cnpjCom('183000000001'), enquadramento: 'Simples', contasBancarias: [{ banco: 'bradesco', agencia: '2557', conta: '7393-8' }] },
+      { codigoOrigem: '443', nome: 'SU SEDUCAO MODA INTIMA LTDA', documento: cnpjCom('443000000001'), enquadramento: 'Simples', contasBancarias: [{ banco: 'sicoob', agencia: '3155', conta: '99034-8' }] },
+    ],
+    nads: [],
+  });
+  const cad35 = R.montarCadastro(j35.linhas, ['183 - CLEIA CRUZ DE OLIVEIRA LTDA - ME', '443 - SU SEDUCAO MODA INTIMA LTDA - ME']);
+  cad35.mapaMigracao = MIG.carregar({});
+  const ctx35 = { cadastro: cad35, hoje: new Date(2026, 9, 29) };
+  const BRADESCO_NET = [[], [null, 'Bradesco Net Empresa'], [], [], [''], [''], ['Extrato de: Agência: 2557  Conta: 7393-8'], [''], ['Data', 'Lançamento', 'Dcto.', 'Crédito (R$)', 'Débito (R$)', 'Saldo (R$)'], ['30/12/2022', 'SALDO ANTERIOR', '', '', '', '1,00'], ['02/01/2023', 'RESGATE DE INVESTIMENTOS', '71658', '4.547,10', '', '4.548,10'], ['02/01/2023', 'VENDA CARTAO DE CREDITO', '9277882', '119,34', '', '4.667,44']];
+  const pl35 = (nome, rel, linhas, meses) => { const p = linhas.slice(); if (meses) p.meses = meses; let d = R.decidir({ nome, rel: rel + nome, planilha: p }, ctx35); return d; };
+  const REL183 = '20261023-NOVO\\0183 - CLEIA CRUZ DE OLIVEIRA LTDA - ME\\EXTRATOS\\2023\\12\\';
+  const s35 = d => [d.acao, d.cliente, d.motivo || (d.destinoRelativo && d.destinoRelativo.replace(/^\d+ - [^\\]+\\/, '')), d.nomeFinal];
+  const ANO23 = { '2023-01': 99, '2023-02': 60, '2023-03': 38, '2023-04': 49, '2023-05': 49, '2023-06': 37, '2023-07': 49, '2023-08': 56, '2023-09': 64, '2023-10': 70, '2023-11': 17, '2023-12': 14 };
+  igual('extrato Bradesco em planilha (o banco no conteúdo, a conta 2557/7393-8 do cadastro da 183) com 12 meses de lançamentos: consolidado, na pasta do último mês', s35(pl35('Bradesco_12012024_102425.XLS', REL183, BRADESCO_NET, ANO23)), ['ARQUIVAR', 183, 'CONTÁBIL\\EXTRATOS\\2023\\12\\BANCÁRIOS\\BRADESCO', '01-2023 A 12-2023.xls']);
+  igual('... um mês só (janeiro), na pasta "2023\\12" de origem: vale o mês dos lançamentos, não o da pasta', s35(pl35('Bradesco_12012024_102425.XLS', REL183, BRADESCO_NET, { '2023-01': 99, '2022-12': 1 })), ['ARQUIVAR', 183, 'CONTÁBIL\\EXTRATOS\\2023\\01\\BANCÁRIOS\\BRADESCO', '01-2023.xls']);
+  igual('... com meses faltando no meio (jan e jun): não é consolidado, NÃO IDENTIFICADO', pl35('Bradesco_12012024_102425.XLS', REL183, BRADESCO_NET, { '2023-01': 40, '2023-06': 40 }).motivo, 'COMPETENCIA_AUSENTE');
+  igual('... a conta lida que NÃO está no cadastro do cliente (a 443 só tem Sicoob) com o banco Bradesco: BANCO_NAO_CADASTRADO_NO_CLIENTE, sem criar pasta', pl35('Bradesco_12012024_102425.XLS', '20261023-NOVO\\0443 - SU SEDUCAO MODA INTIMA LTDA - ME\\EXTRATOS\\2023\\12\\', BRADESCO_NET.map(l => l.map(c => (typeof c === 'string' ? c.replace('7393-8', '55555-0') : c))), { '2023-01': 99 }).motivo, 'BANCO_NAO_CADASTRADO_NO_CLIENTE');
+  igual('... a conta da 183 numa planilha dentro da pasta da 443: o cliente é o da conta, e a pasta conferida de outro cliente barra (CLIENTE_AMBIGUO)', pl35('Bradesco_12012024_102425.XLS', '20261023-NOVO\\0443 - SU SEDUCAO MODA INTIMA LTDA - ME\\EXTRATOS\\2023\\12\\', BRADESCO_NET, { '2023-01': 99 }).motivo, 'CLIENTE_AMBIGUO');
   console.log((falhas ? falhas + ' FALHA(S) em ' : 'ok: ') + total + ' testes');
   process.exit(falhas ? 1 : 0);
 })().catch(e => { console.log('FALHOU com erro:', e.stack); process.exit(1); });
