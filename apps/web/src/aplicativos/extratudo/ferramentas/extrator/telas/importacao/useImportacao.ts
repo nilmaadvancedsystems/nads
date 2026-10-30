@@ -21,7 +21,7 @@ export interface ConfigCaixa {
   lado: x.Lado;
   titulo: string;
   icone: 'landmark' | 'list';
-  dica: string;
+  dica?: string;
   formato: string;
   aceitar: string;
   idArquivo: string;
@@ -31,7 +31,6 @@ export const CAIXAS: ConfigCaixa[] = [
   {
     lado: 'banco', titulo: 'Extratos bancários', icone: 'landmark', idArquivo: 'fExtrato',
     formato: 'PDF do banco (também aceita OFX e o escaneado: PDF ou foto, pelo OCR)', aceitar: x.EXTENSOES_EXTRATO.join(','),
-    dica: 'Pode escolher vários PDFs de uma vez. Lê data, histórico e valor de cada lançamento; o PDF não é guardado.',
   },
   {
     lado: 'sistema', titulo: 'Lançamentos contábeis', icone: 'list', idArquivo: 'fSistema',

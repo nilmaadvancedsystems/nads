@@ -55,7 +55,6 @@ export function useContas() {
   return {
     linhas,
     faltam: linhas.filter(l => !l.resolvido).length,
-    guardadas: linhas.filter(l => l.aprendida).length,
     /** as contas de clientes do balancete, para o menu de conta */
     contasClientes: s.contas.clientes,
     semBalancete: s.contas.carregada && s.contas.balancete.origem === 'nenhum',

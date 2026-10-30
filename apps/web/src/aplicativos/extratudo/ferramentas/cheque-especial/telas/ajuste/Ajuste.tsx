@@ -25,23 +25,20 @@ export function Ajuste({ empresa }: { empresa: empresas.EmpresaDoEscritorio }) {
           <CampoArquivo id="fSaldo" arquivo={vm.arquivo} onEscolher={f => { void vm.escolherArquivo(f); }} aceitar={vm.aceitar} />
           {vm.infoArquivo && <span className="hint">{vm.infoArquivo}</span>}
         </div>
-        <p className="hint">Colunas Data e Saldo (com C/D no final) · .csv, .xls ou .xlsx. Cada dia que fecha negativo gera o ajuste e, no dia seguinte, o estorno.</p>
+        <p className="hint">Colunas Data e Saldo (com C/D no final) · .csv, .xls ou .xlsx.</p>
 
         <div className="form-grid">
           <div className="field">
             <label htmlFor="fBanco">Conta bancária</label>
             <input type="text" id="fBanco" inputMode="numeric" placeholder="ex: 10509" autoComplete="off" value={vm.contaBanco} onChange={e => vm.setContaBanco(e.target.value)} />
-            <p className="hint">Debitada no ajuste, creditada no estorno.</p>
           </div>
           <div className="field">
             <label htmlFor="fCheque">Conta cheque especial</label>
             <input type="text" id="fCheque" inputMode="numeric" placeholder="ex: 90503" autoComplete="off" value={vm.contaCheque} onChange={e => vm.setContaCheque(e.target.value)} />
-            <p className="hint">Creditada no ajuste, debitada no estorno.</p>
           </div>
           <div className="field">
             <label htmlFor="fHistorico">Código do histórico</label>
             <input type="text" id="fHistorico" inputMode="numeric" placeholder="ex: 92029" autoComplete="off" value={vm.historico} onChange={e => vm.setHistorico(e.target.value)} />
-            <p className="hint">Usado nos dois lançamentos do par.</p>
           </div>
         </div>
 
