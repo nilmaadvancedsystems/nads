@@ -96,6 +96,8 @@ export function mesclarServicos(existentes: NotaServico[], novas: NotaServico[],
 // ---------- balancete ----------
 /** Plano de contas: menos que isso de semelhança com o último balancete = parece outra empresa. */
 export const BAL_SIMILARIDADE_MIN = 60;
+/** Os códigos em comum que a semelhança pede (ou todos os do plano menor, se ele tiver menos): menos que isso pesa contra. */
+export const BAL_COMUNS_MIN = 10;
 
 /** Impressão digital do plano: código → nome normalizado. */
 export function assinaturaBalancete(lista: Pick<Conta, 'codigo' | 'nome'>[]): Record<string, string> {
@@ -113,10 +115,15 @@ export interface VerificacaoBalancete {
 /**
  * Esse balancete é mesmo desta empresa? O arquivo não traz nome nem CNPJ, e o plano padrão
  * repete códigos entre empresas — então compara código + nome:
- * 1) as contas vinculadas no Cadastro precisam existir no arquivo (e com o mesmo nome);
- * 2) o plano precisa ser parecido com o do último balancete desta empresa.
- * Com o plano parecido, a conta vinculada que não veio no arquivo é só a conta sem saldo no mês (o Alterdata não lista),
- * não outra empresa: não avisa (29/10/2026, a 289: a 96081 da bonificação faltava e o plano era o mesmo). O nome trocado avisa sempre.
+ * 1) as contas vinculadas no Cadastro que vieram no arquivo precisam ter o mesmo nome do último balancete;
+ * 2) o plano precisa ser parecido com o do último balancete desta empresa: entre os códigos que estão nos dois, a % com
+ *    o mesmo nome. A conta que só um dos dois tem não pesa: o Alterdata não lista a conta sem saldo no mês, e ela some de
+ *    um balancete para o outro (30/10/2026: dividir pela união dos dois planos derrubava a % por falta de saldo). Com
+ *    menos de BAL_COMUNS_MIN códigos em comum (ou todos os do plano menor), a conta é sobre esse mínimo: pouco em comum
+ *    também é plano pouco parecido.
+ * A conta vinculada que não veio no arquivo, sozinha, é só a conta sem saldo no mês, não outra empresa: não avisa — nem
+ * sem balancete anterior (30/10/2026) nem com o plano parecido (29/10/2026, a 289: a 96081 da bonificação faltava e o
+ * plano era o mesmo). Ela entra na lista só junto com o plano pouco parecido. O nome trocado avisa sempre.
  */
 export function verificarBalancete(e: Empresa, lista: Conta[]): VerificacaoBalancete {
   const nova = assinaturaBalancete(lista);
@@ -130,20 +137,19 @@ export function verificarBalancete(e: Empresa, lista: Conta[]): VerificacaoBalan
   const codsV = Object.keys(vinc);
   let sim: number | null = null;
   if (ref) {
-    const uniao: Record<string, 1> = {};
-    let iguais = 0;
-    for (const k of Object.keys(ref)) { uniao[k] = 1; if (nova[k] === ref[k]) iguais++; }
-    for (const k of Object.keys(nova)) uniao[k] = 1;
-    sim = Math.round(iguais / Math.max(1, Object.keys(uniao).length) * 100);
+    const comuns = Object.keys(ref).filter(k => k in nova);
+    const iguais = comuns.filter(k => nova[k] === ref[k]).length;
+    const minimo = Math.min(BAL_COMUNS_MIN, Object.keys(ref).length, Object.keys(nova).length);
+    sim = Math.round(iguais / Math.max(1, comuns.length, minimo) * 100);
   }
-  const planoParecido = sim !== null && sim >= BAL_SIMILARIDADE_MIN;
+  const planoDiferente = sim !== null && sim < BAL_SIMILARIDADE_MIN;
   const ruins: string[] = [];
   for (const c of codsV) {
-    if (!(c in nova)) { if (!planoParecido) ruins.push(c + ' não existe neste arquivo'); }
+    if (!(c in nova)) { if (planoDiferente) ruins.push(c + ' não existe neste arquivo'); }
     else if (ref && ref[c] && ref[c] !== nova[c]) ruins.push(c + ' era "' + ref[c] + '" e aqui é "' + nomeNovo[c] + '"');
   }
   if (ruins.length) prob.push('<b>' + ruins.length + ' de ' + codsV.length + '</b> conta(s) vinculada(s) no Cadastro não batem: ' + escapar(ruins.slice(0, 3).join('; ')) + (ruins.length > 3 ? '…' : '') + '.');
-  if (sim !== null && !planoParecido) prob.push('Só <b>' + sim + '%</b> das contas batem com o último balancete importado desta empresa' +
+  if (planoDiferente) prob.push('Só <b>' + sim + '%</b> das contas batem com o último balancete importado desta empresa' +
     (e.balanceteAssinaturaTs ? ' (em ' + new Date(e.balanceteAssinaturaTs).toLocaleDateString('pt-BR') + ')' : '') + '.');
   return { problemas: prob, similaridade: sim };
 }

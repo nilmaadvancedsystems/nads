@@ -49,16 +49,16 @@ describe('separarPorTipo', () => {
 
 describe('verificarBalancete', () => {
   const plano = [conta('66005', 'Compras'), conta('66015', 'Fretes'), conta('31105', 'Energia Elétrica'), conta('11101', 'Caixa'), conta('11201', 'Banco')];
-  it('conta vinculada que não existe no arquivo é problema', () => {
+  it('sem balancete anterior, a conta vinculada fora do arquivo não é problema (é só a conta sem saldo no mês; 30/10/2026)', () => {
     const e = empresa({ naturezaConta: { 'Compra para comercialização': ['66005'] } });
-    const r = verificarBalancete(e, plano.filter(c => c.codigo !== '66005'));
-    expect(r.problemas.length).toBe(1);
-    expect(r.problemas[0]).toContain('66005 não existe neste arquivo');
-    expect(r.similaridade).toBeNull();
+    expect(verificarBalancete(e, plano.filter(c => c.codigo !== '66005'))).toEqual({ problemas: [], similaridade: null });
   });
   it('lançamento automático travado também conta como vínculo', () => {
-    const e = empresa({ dp: [{ lanc: '14', conta: '66099', nome: 'x', dc: 'D', travado: true }] });
-    expect(verificarBalancete(e, plano).problemas[0]).toContain('66099 não existe');
+    const ref = assinaturaBalancete([...plano, conta('66099', 'Despesas bancárias')]);
+    const e = empresa({ dp: [{ lanc: '14', conta: '66099', nome: 'x', dc: 'D', travado: true }], balanceteAssinatura: ref });
+    expect(verificarBalancete(e, [...plano, conta('66099', 'Aluguel')]).problemas[0]).toContain('66099 era');
+    // fora do arquivo, com o plano parecido: só sem saldo, não avisa
+    expect(verificarBalancete(e, plano).problemas).toEqual([]);
   });
   it('nome diferente do último balancete é problema', () => {
     const e = empresa({ naturezaConta: { F: ['66015'] }, balanceteAssinatura: assinaturaBalancete(plano) });
@@ -69,8 +69,23 @@ describe('verificarBalancete', () => {
   it('semelhança abaixo de 60% é problema', () => {
     const e = empresa({ balanceteAssinatura: assinaturaBalancete(plano) });
     const r = verificarBalancete(e, [conta('66005', 'Compras'), conta('90001', 'Outra'), conta('90002', 'Outra 2')]);
-    expect(r.similaridade).toBe(14); // 1 igual em 7 códigos
-    expect(r.problemas.some(p => p.indexOf('Só <b>14%</b>') === 0)).toBe(true);
+    expect(r.similaridade).toBe(33); // 1 código em comum, e o mínimo é 3 (o plano novo tem 3)
+    expect(r.problemas.some(p => p.indexOf('Só <b>33%</b>') === 0)).toBe(true);
+    // os mesmos códigos com outros nomes: outra empresa
+    expect(verificarBalancete(e, plano.map(c => ({ ...c, nome: c.nome + ' Ltda' }))).similaridade).toBe(0);
+  });
+  it('as contas que sumiram por falta de saldo não derrubam a semelhança (30/10/2026)', () => {
+    // o último balancete com 30 contas; o deste mês só com 12 delas (as outras sem saldo) e 3 novas (com saldo agora)
+    const grande = Array.from({ length: 30 }, (_, i) => conta(String(70000 + i), 'Conta ' + i));
+    const e = empresa({ naturezaConta: { X: ['70029'] }, balanceteAssinatura: assinaturaBalancete(grande) });
+    const doMes = [...grande.slice(0, 12), conta('80001', 'Nova 1'), conta('80002', 'Nova 2'), conta('80003', 'Nova 3')];
+    expect(verificarBalancete(e, doMes)).toEqual({ problemas: [], similaridade: 100 });
+    // planos grandes com poucos códigos em comum (menos que o mínimo): pouco parecido
+    const outra = [...grande.slice(0, 4), ...Array.from({ length: 26 }, (_, i) => conta(String(90000 + i), 'Outra ' + i))];
+    const r = verificarBalancete(e, outra);
+    expect(r.similaridade).toBe(40); // 4 iguais sobre o mínimo de 10
+    expect(r.problemas[0]).toContain('70029 não existe neste arquivo');
+    expect(r.problemas[1]).toContain('Só <b>40%</b>');
   });
   it('plano parecido com o último: a conta vinculada sem saldo no mês (fora do arquivo) não avisa (a 289, 29/10/2026)', () => {
     const e = empresa({ naturezaConta: { 'Entrada de bonificação, doação ou brinde': ['96081'] }, balanceteAssinatura: assinaturaBalancete(plano) });
