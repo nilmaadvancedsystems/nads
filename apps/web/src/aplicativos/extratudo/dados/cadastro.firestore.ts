@@ -8,7 +8,7 @@
 // A lógica fica no core (empresas.cadastro.criarRepoCadastro); aqui é só a porta.
 import type { empresas } from '@nads/core';
 import { getAuth } from 'firebase/auth';
-import { collection, doc, getFirestore, initializeFirestore, onSnapshot, writeBatch as writeBatchBruto, type Firestore } from 'firebase/firestore';
+import { collection, deleteField, doc, getFirestore, initializeFirestore, onSnapshot, writeBatch as writeBatchBruto, type Firestore } from 'firebase/firestore';
 import { appDoEntregas } from './drive.firestore';
 import { guardarLote } from '../../../comum/modoDesenvolvedor';
 
@@ -48,9 +48,13 @@ export function portaCadastroFirestore(): empresas.cadastro.PortaCadastro {
       }, falhou);
       return () => { parado = true; parar(); };
     },
-    async gravar(id, cadastro, plano) {
+    async gravarCampos(id, campos, apagar, plano) {
       const b = writeBatch(db);
-      b.set(doc(db, 'cadastro', id), cadastro);
+      // só os campos que mudaram, cada um inteiro (mergeFields: o resto do documento fica como está no banco, até o que
+      // esta versão não conhece; 30/10/2026, a mesma porta da Tarefas)
+      const dados: Record<string, unknown> = { ...campos };
+      for (const k of apagar) dados[k] = deleteField();
+      b.set(doc(db, 'cadastro', id), dados, { mergeFields: Object.keys(dados) });
       if (plano) b.set(doc(db, 'cadastro', id, 'plano', 'atual'), plano);
       await b.commit();
     },

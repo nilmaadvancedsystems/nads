@@ -278,8 +278,10 @@ export function portaCadastroComDemo(real: PortaCadastro): PortaCadastro {
       const pararDemo = ouvir(entregar);
       return () => { pararReal(); pararDemo(); };
     },
-    async gravar(id, cadastro, plano) {
-      if (id !== ID_DEMO) return real.gravar(id, cadastro, plano);
+    async gravarCampos(id, campos, apagar, plano) {
+      if (id !== ID_DEMO) return real.gravarCampos(id, campos, apagar, plano);
+      const cadastro: DocCadastro = { ...dados.cadastro, ...campos };
+      for (const k of apagar) delete (cadastro as Record<string, unknown>)[k];
       dados = { cadastro, plano: plano ?? dados.plano };
       gravar(CHAVES.cadastro, dados);
       avisar();

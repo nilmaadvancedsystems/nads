@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   avisoDaConta, bancosDoCadastroNa, buscarNoPlano, cadastroDoDocumento, cadastroVazio, compararPlanos, confirmarPontoDePartida,
-  comContasPadrao, criarRepoCadastro, criarRepoCadastroMemoria, definirCartao, definirContaPadrao, definirContato, definirDocumento, confirmarBancos, sugerirContaContabil, definirNotaDeHonorario, definirPagamentoDoProLabore, definirPrestaServico, definirRegime, regimeDoCadastro, definirSocios, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
+  comContasPadrao, criarRepoCadastro, criarRepoCadastroMemoria, gravacaoDoCadastro, portaCadastroMemoria, definirCartao, definirContaPadrao, definirContato, definirDocumento, confirmarBancos, sugerirContaContabil, definirNotaDeHonorario, definirPagamentoDoProLabore, definirPrestaServico, definirRegime, regimeDoCadastro, definirSocios, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
   bancosDoEntregasDoDocumento, bancosDoEntregasPorCodigo, contatosDoEntregasPorCodigo, contasDoEntregas, juntarComEntregas, sugestoesDoEntregas,
   lerPlanilhaDoPlano, linhasDoTexto, registrarPlano, planoDoBalancete, planoDoDocumento, pontoDePartida, primeiroBancoDoCadastro, reabrirConta, salvarConta, textoDoArquivo,
   type PlanoDeContas,
@@ -218,7 +218,7 @@ describe('repositório sem acesso ao banco', () => {
     const gravados: string[] = [];
     const negado = (_id: string, _ok: unknown, falhou: (e: Error) => void) => { queueMicrotask(() => falhou(new Error('Missing or insufficient permissions.'))); return () => {}; };
     const avisos: string[] = [];
-    const repo = criarRepoCadastro({ ouvirCadastro: negado, ouvirPlano: negado, ouvirTodos: (ok, falhou) => negado('', ok, falhou), gravar: async id => { gravados.push(id); } }, false);
+    const repo = criarRepoCadastro({ ouvirCadastro: negado, ouvirPlano: negado, ouvirTodos: (ok, falhou) => negado('', ok, falhou), gravarCampos: async id => { gravados.push(id); } }, false);
     repo.definirAviso(m => avisos.push(m));
     repo.cadastro('FITO', 292);
     await Promise.resolve();
@@ -238,7 +238,7 @@ describe('a lista de todos os cadastros quando a leitura falha (30/10/2026)', ()
       let tentativas = 0;
       const nada = (_id: string, _ok: unknown, _falhou: unknown) => () => {};
       const repo = criarRepoCadastro({
-        ouvirCadastro: nada, ouvirPlano: nada, gravar: async () => {},
+        ouvirCadastro: nada, ouvirPlano: nada, gravarCampos: async () => {},
         ouvirTodos: (chegou, falhou) => {
           tentativas++;
           const n = tentativas;
@@ -470,5 +470,34 @@ describe('os dados da empresa no Entregas (14/10/2026)', () => {
     expect(m.get(462)?.documento).toBe('11222333000181');
     expect(m.get(462)?.receita).toMatchObject({ razaoSocial: '3M EMPREENDIMENTOS', situacao: 'ATIVA', socios: ['FULANO'] });
     expect(m.has(7)).toBe(false);
+  });
+});
+
+describe('gravar só o que mudou no cadastro (30/10/2026)', () => {
+  it('os campos que mudaram, o que a pessoa tirou e o histórico só quando muda (ou na criação)', () => {
+    const antes = definirRegime(vazio(), 'Simples', 'V', AGORA);
+    const sim = definirCartao(antes, 'cartaoEmpresarial', true, 'V', AGORA);
+    const g = gravacaoDoCadastro(antes, sim);
+    expect(Object.keys(g.campos).sort()).toEqual(['atualizadoEm', 'cartaoEmpresarial', 'codigo', 'historico', 'nome']);
+    expect(g.apagar).toEqual([]);
+    expect(g.campos).not.toHaveProperty('regime');
+    expect(gravacaoDoCadastro(antes, definirRegime(antes, null, 'V', AGORA)).apagar).toEqual(['regime']);
+    expect(gravacaoDoCadastro(antes, antes).campos).toEqual({ nome: 'FITO', codigo: 292, atualizadoEm: documentoDoCadastro(antes).atualizadoEm });
+    expect(gravacaoDoCadastro(antes, antes, false).campos).toHaveProperty('historico');
+  });
+  it('o campo que esta versão não conhece fica no banco (a aba antiga não apaga o novo)', async () => {
+    const porta = portaCadastroMemoria({ cadastros: { fito: { nome: 'FITO', codigo: 292, historico: [], regime: 'Simples', campoDoFuturo: { a: 1 } } }, planos: {} });
+    const recebidos: { campos: Record<string, unknown>; apagar: readonly string[] }[] = [];
+    const repo = criarRepoCadastro({ ...porta, gravarCampos: (id, campos, apagar, plano) => { recebidos.push({ campos, apagar }); return porta.gravarCampos(id, campos, apagar, plano); } }, true);
+    repo.cadastro('FITO', 292);
+    await Promise.resolve(); await Promise.resolve();
+    expect(repo.carregada('FITO')).toBe(true);
+    repo.salvar('FITO', definirCartao(repo.cadastro('FITO', 292), 'vendeNoCartao', true, 'V', AGORA));
+    await Promise.resolve();
+    expect(recebidos[0].campos).not.toHaveProperty('regime');
+    let doc: Record<string, unknown> | null = null;
+    porta.ouvirCadastro('fito', d => { doc = d; }, () => {});
+    await Promise.resolve();
+    expect(doc).toMatchObject({ regime: 'Simples', vendeNoCartao: true, campoDoFuturo: { a: 1 } });
   });
 });
