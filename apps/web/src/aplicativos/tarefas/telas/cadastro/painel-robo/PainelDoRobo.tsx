@@ -37,7 +37,7 @@ export function PainelDoRobo() {
           </div>
           <LinhaDoTempoDoRobo itens={vm.erros} agora={vm.agora} />
         </div>
-      ) : <Alerta naLinha tom="ok" titulo="Nenhum erro nas últimas 24 horas" texto="Quando o robô der erro em alguma coisa, ele aparece aqui em destaque." />)}
+      ) : <Alerta naLinha tom="ok" titulo="Nenhum erro nas últimas 24 horas" />)}
 
       {/* as filas */}
       <div className="card">
