@@ -139,7 +139,6 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
           )}
         </section>
       )}
-      <p className="hint fr-legenda">Nos valores: o número em reais, "-" quando não tem guia ou "0". Em cinza, o que o Entregas já entregou. Nas conferências: clique para OK, de novo para "não se aplica" (–) e de novo para limpar.</p>
     </section>
   );
 }

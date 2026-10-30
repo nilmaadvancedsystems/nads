@@ -5836,6 +5836,20 @@ button.fr-entrega-feita:hover{border-color:var(--success);background:color-mix(i
   .fr-tabela tfoot td:first-child{left:0;z-index:3;}
 }
 
+/* o tabelão mais limpo (30/10/2026: "melhore o visual da parte do tabelão do fiscal"): o cliente com mais espaço (as
+   guias e a data um pouco mais estreitas), as linhas listradas de leve, a "Falta" discreta (só o texto apagado; a borda
+   ao passar o mouse), o total neutro e sem a legenda embaixo */
+.fr-tabela col.fr-c-cod{width:40px;}
+.fr-tabela col.fr-c-guia{width:68px;}
+.fr-tabela col.fr-c-data{width:80px;}
+.fr-tabela input[type="text"].fr-campo{padding:0 3px;}
+.fr-tabela tbody tr:nth-child(even) td{background:color-mix(in srgb,var(--ink) 2%,var(--surface));}
+.fr-tabela tbody tr:hover td{background:color-mix(in srgb,var(--ink) 5%,var(--surface));}
+.fr-entrega-falta{border-color:transparent;color:var(--ink-faint);}
+button.fr-entrega-falta:hover{border-style:dashed;border-color:var(--border-strong);}
+.fr-tabela tfoot td{background:var(--surface-2);}
+.fr-tabela thead tr:first-child th.fr-g{color:var(--ink-muted);}
+
 /* ---------------------------------- Fiscal › REINF e Antecipação ICMS-ES (30/10/2026) ----------------------------------
    O Fiscal refeito no jeito do site (como o Gmail): as duas telas com as mesmas peças — a barra de cima das outras telas,
    os números em cartões de canto 6px (na REINF eles filtram), e cada lista num .card com o título, a contagem, a busca e
