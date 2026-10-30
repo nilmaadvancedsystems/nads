@@ -5,7 +5,7 @@ import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode 
 import { cleanInlineStyles } from 'animejs';
 import { animar, ENTRAR, entrar, revelarTitulo, sairComo, useIndicador } from './animacao';
 import { useAbasParaAEtapa, useAlturaNaEtapa } from './etapa';
-import { Icone, MarcaN, type NomeIcone } from './icones';
+import { Icone, LogoNads, MarcaN, type NomeIcone } from './icones';
 import { LogoDrive, LogoFgts, LogoGmail } from './logos';
 import { SeletorTema } from './tema';
 import { atualizarVersao, useVersaoNova } from './versaoNova';
@@ -272,8 +272,7 @@ export function Casca(p: {
       {gaveta && (
         <aside ref={gavetaEl} className="drawer" role="dialog" aria-modal="true" aria-label="Menu">
           <div className="drawer-head">
-            {/* o N com o resto do nome: "nads" (30/10/2026: "coloca junto com o N o nome do Nads tipo N ads") */}
-            <span className="brand-mark drawer-marca" role="img" aria-label="nads"><MarcaN /><span className="drawer-marca-nome" aria-hidden="true">ads</span></span>
+            <span className="brand-mark"><LogoNads /></span>
             <BotaoFechar rotulo="Fechar menu" onClick={fecharGaveta} />
           </div>
           <button className="drawer-item" type="button" onClick={() => { fecharGaveta(); (p.onAplicativos || p.onInicio)(); }}>
