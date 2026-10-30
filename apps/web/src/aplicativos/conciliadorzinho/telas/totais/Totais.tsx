@@ -28,7 +28,6 @@ export function Totais() {
       <AcoesDoTopo>
         <button className="btn btn-outline" type="button" onClick={() => imprimir(vm.tituloPdf)}><Icone nome="impressora" />Baixar PDF</button>
       </AcoesDoTopo>
-      <p className="page-desc" style={{ marginTop: 0, marginBottom: 16 }}>Conferimos os totais antes de liberar os arquivos.</p>
       {vm.meses.map(m => (
         <div key={m.rotulo} className="card">
           <div className="card-head"><h3>{m.rotulo}</h3></div>

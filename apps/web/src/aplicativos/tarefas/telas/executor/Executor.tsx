@@ -269,7 +269,7 @@ export function Executor() {
     </div>
   ) : vm.revendo ? (
     <div className="alerta-linha">
-      <Alerta naLinha tom="ok" titulo={vm.etapa.nome + ' já foi concluída'} texto="Pode navegar e editar à vontade: ela continua concluída. Para refazer do começo, Editar.">
+      <Alerta naLinha tom="ok" titulo={vm.etapa.nome + ' já foi concluída'}>
         <div className="btn-row">
           <button type="button" className="btn btn-primary" onClick={() => { void vm.editar(); }}>Editar</button>
           <button type="button" className="btn" onClick={vm.voltarAEtapaDaVez}>Ir para a etapa da vez</button>
@@ -292,7 +292,6 @@ export function Executor() {
           <span className="executor-fim-onda" aria-hidden="true" />
           <Icone nome="checkCircle" />
           <h2>Tudo pronto em {vm.rotuloCompetencia}</h2>
-          <p className="hint">Todas as etapas desta empresa estão concluídas{vm.varios ? ' nos ' + vm.meses.length + ' meses' : ''}.</p>
           <div className="executor-fim-botoes">
             {vm.varios && <button type="button" className="btn btn-outline" onClick={vm.encerrarPeriodo}>Cancelar função</button>}
             <button type="button" className="btn btn-primary" onClick={vm.sair}>Voltar às empresas</button>
@@ -316,7 +315,6 @@ export function Executor() {
               <div className="gh-blank">
                 <Icone nome="link" />
                 <h4>{vm.ferramenta.nome}</h4>
-                <p>Esta etapa abre em outra aba.</p>
                 <a className="btn btn-primary" href={vm.ferramenta.url} target="_blank" rel="noreferrer">Abrir {vm.ferramenta.nome}</a>
               </div>
             ) : temChecklist && !folha.itens ? (

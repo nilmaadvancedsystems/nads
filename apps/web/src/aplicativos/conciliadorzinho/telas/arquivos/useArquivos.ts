@@ -36,8 +36,7 @@ export function useArquivos() {
   const soma = (f: (x: cz.ResultadoBandeira) => number) => bandeiras.reduce((t, b) => t + f(b.res), 0);
   const centavos = (n: number) => Math.round(n * 100) / 100;
 
-  let nota = 'Data, valor bruto e valor da taxa foram lidos diretamente do(s) extrato(s) de cada bandeira; o cruzamento com as notas fiscais usa a data, o valor bruto e o histórico (NF, CPF/CNPJ e cliente) lidos diretamente da planilha de vendas enviada. Quando duas bandeiras têm um lançamento com a mesma data e o mesmo valor, a bandeira com mais lançamentos no período recebe a nota fiscal primeiro.';
-  if (s.estado.excluidos.length) nota += ' Os lançamentos de ' + s.estado.excluidos.map(cz.rotuloMes).join(', ') + ' ficaram de fora porque a planilha de vendas enviada não cobre esse período.';
+  const nota = s.estado.excluidos.length ? 'Os lançamentos de ' + s.estado.excluidos.map(cz.rotuloMes).join(', ') + ' ficaram de fora porque a planilha de vendas enviada não cobre esse período.' : '';
 
   return {
     numeros: {

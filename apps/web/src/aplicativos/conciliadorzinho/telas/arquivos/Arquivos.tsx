@@ -43,12 +43,10 @@ export function Arquivos() {
         <span>Bruto: <strong className="num">{cz.brl(n.bruto)}</strong> · Taxas: <strong className="num">{cz.brl(n.taxas)}</strong> · paridade 1:1 confirmada por bandeira {vm.paridade}.</span>
       </p>
 
-      <h3 className="painel-titulo" style={{ margin: '24px 0 4px' }}>Por bandeira</h3>
-      <p className="hint" style={{ marginBottom: 12 }}>Cartões, taxas e notas encontradas.</p>
+      <h3 className="painel-titulo" style={{ margin: '24px 0 12px' }}>Por bandeira</h3>
       {vm.bandeiras.map(b => <CartaoDownload key={b.id} titulo={b.rotulo} resumo={b.resumo} rotuloXls="Baixar arquivo conciliado (Excel 97-2003)" xls={b.xls} csv={b.csv} />)}
 
-      <h3 className="painel-titulo" style={{ margin: '24px 0 4px' }}>Vendas sem cartão</h3>
-      <p className="hint" style={{ marginBottom: 12 }}>Não bateram com nenhum cartão. Separadas por mês.</p>
+      <h3 className="painel-titulo" style={{ margin: '24px 0 12px' }}>Vendas sem cartão</h3>
       {vm.saidas.length
         ? vm.saidas.map(sd => <CartaoDownload key={sd.chave} titulo={sd.rotulo} resumo={sd.resumo} rotuloXls="Baixar arquivo de saídas (Excel 97-2003)" xls={sd.xls} csv={sd.csv} />)
         : <p className="hint">Nenhuma venda ficou de fora — todas bateram com algum lançamento de cartão.</p>}
@@ -77,7 +75,7 @@ export function Arquivos() {
           </div>
         </div>
       )}
-      <p className="hint" style={{ marginTop: 16 }}>{vm.nota}</p>
+      {vm.nota && <p className="hint" style={{ marginTop: 16 }}>{vm.nota}</p>}
     </section>
   );
 }
