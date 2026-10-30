@@ -35,8 +35,11 @@ export interface RepoTarefasDelegadas {
   lista(): { carregadas: boolean; tarefas: TarefaDelegada[]; erro?: string };
   /** cria a tarefa (o rascunho já validado) e sobe os anexos; devolve o id */
   criar(r: tarefas.delegadas.Rascunho, anexos: ArquivoParaAnexar[]): Promise<string>;
-  /** grava o rascunho na tarefa (o histórico do que mudou vai junto) */
-  salvar(id: string, r: tarefas.delegadas.Rascunho): Promise<void>;
+  /**
+   * grava na tarefa só os campos que a pessoa mudou (tarefas.delegadas.mudancasDoRascunho), sobre a tarefa como está
+   * agora; o histórico só desses campos vai junto
+   */
+  salvar(id: string, mudancas: Partial<tarefas.delegadas.Rascunho>): Promise<void>;
   comentar(id: string, texto: string): Promise<void>;
   anexar(id: string, arquivos: ArquivoParaAnexar[]): Promise<void>;
   tirarAnexo(id: string, anexoId: string): Promise<void>;
@@ -121,10 +124,11 @@ export function criarTarefasDelegadasMemoria(quem: () => Pessoa | null): RepoTar
       mudou();
       return t.id;
     },
-    async salvar(id, r) {
-      const problema = d.problemaDaTarefa(r);
+    async salvar(id, mudancas) {
+      const t = daTarefa(id);
+      const problema = d.problemaDaTarefa(d.comMudancas(t, mudancas));
       if (problema) throw new Error(problema);
-      trocar(d.mudar(daTarefa(id), r, eu(), new Date().toISOString()));
+      trocar(d.gravacaoDasMudancas(t, mudancas, eu(), new Date().toISOString()).tarefa);
     },
     async comentar(id, texto) {
       const t = daTarefa(id);

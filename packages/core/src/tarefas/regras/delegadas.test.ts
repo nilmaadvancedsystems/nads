@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  atrasada, buscar, celulaDoCsv, comAnexos, comoEncolher, nomeDaImagemEncolhida, valeEncolher, comParecer, contarAbas, daAba, emAberto, extensaoDe, historicoDaCriacao, historicoDaMudanca, lerTarefa,
+  atrasada, buscar, celulaDoCsv, comAnexos, comMudancas, gravacaoDasMudancas, mudancasDoRascunho, comoEncolher, nomeDaImagemEncolhida, valeEncolher, comParecer, contarAbas, daAba, emAberto, extensaoDe, historicoDaCriacao, historicoDaMudanca, lerTarefa,
   linhasDaPlanilha, MAIOR_ANEXO, MAIOR_HISTORICO, MAIOR_TITULO, MAIS_ANEXOS, MAIS_PARECERES, mudar, mudouAlgo, noHistorico, nomeDoAnexo, nova, ordenar,
   pessoasDaTarefa, podeExcluir, podeMudar, prazoDaTela, prazoParaTela, prazoValido, problemaDaTarefa, problemaDoParecer, problemaDosAnexos,
   rascunhoDe, rascunhoVazio, semAnexo, statusDaAba, type Rascunho, type TarefaDelegada,
@@ -165,6 +165,38 @@ describe('histórico', () => {
     expect(h.length).toBe(MAIOR_HISTORICO);
     expect(h[0].texto).toBe('1');
     expect(h[h.length - 1].texto).toBe('nova');
+  });
+});
+
+describe('gravar só o que a pessoa mudou (30/10/2026)', () => {
+  it('as mudanças são só os campos diferentes do que ela abriu (os espaços das pontas não contam)', () => {
+    const t = tarefa({ cliente: { codigo: 292, nome: 'Exemplo' } });
+    const inicial = rascunhoDe(t);
+    expect(mudancasDoRascunho(inicial, { ...inicial, titulo: '  Conferir o balancete ' })).toEqual({});
+    expect(mudancasDoRascunho(inicial, { ...inicial, cliente: { codigo: 292, nome: 'Exemplo' } })).toEqual({});
+    expect(mudancasDoRascunho(inicial, { ...inicial, prioridade: 'alta', prazo: '2026-11-12' })).toEqual({ prioridade: 'alta', prazo: '2026-11-12' });
+    expect(mudancasDoRascunho(inicial, { ...inicial, responsavel: { ...NILMA } })).toEqual({});
+    expect(mudancasDoRascunho(inicial, { ...inicial, responsavel: CLARA })).toEqual({ responsavel: CLARA });
+  });
+  it('não desfaz o que outra pessoa mudou enquanto o formulário estava aberto', () => {
+    // a Nilma abriu a tarefa pendente com ela; enquanto isso o Vitor pôs em andamento e delegou para a Clara
+    const aberta = tarefa();
+    const noBanco = tarefa({ status: 'andamento', responsavel: CLARA, atualizadaEm: '2026-10-28T13:00:00.000Z' });
+    const m = mudancasDoRascunho(rascunhoDe(aberta), { ...rascunhoDe(aberta), prioridade: 'urgente' });
+    expect(comMudancas(noBanco, m)).toEqual({ ...rascunhoDe(noBanco), prioridade: 'urgente' });
+    const g = gravacaoDasMudancas(noBanco, m, NILMA, EM);
+    expect(g.campos).toEqual({ prioridade: 'urgente' });
+    expect(g.linhas.map(n => n.texto)).toEqual(['Mudou a prioridade de Normal para Urgente']);
+    expect(g.tarefa.status).toBe('andamento');
+    expect(g.tarefa.responsavel).toEqual(CLARA);
+  });
+  it('concluir grava a data de conclusão junto; o que já está igual no banco não grava nada', () => {
+    const t = tarefa();
+    const g = gravacaoDasMudancas(t, { status: 'concluida' }, NILMA, EM);
+    expect(g.campos).toEqual({ status: 'concluida', concluidaEm: EM });
+    const igual = gravacaoDasMudancas(tarefa({ status: 'concluida', concluidaEm: EM }), { status: 'concluida' }, NILMA, '2026-10-29T00:00:00Z');
+    expect(igual.campos).toEqual({});
+    expect(igual.linhas).toEqual([]);
   });
 });
 

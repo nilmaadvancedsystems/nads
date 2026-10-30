@@ -146,18 +146,18 @@ export function criarTarefasDelegadasFirestore(quem: () => Pessoa | null): RepoT
       await reler();
       return ref.id;
     },
-    async salvar(id, r) {
+    async salvar(id, mudancas) {
       const por = eu();
-      const problema = d.problemaDaTarefa(r);
-      if (problema) throw new Error(problema);
       const antes = await noBanco(id);
+      // só os campos que a pessoa mudou, sobre a tarefa como está no banco agora (30/10/2026: regravar o rascunho inteiro
+      // desfazia o status e o responsável que outra pessoa tinha mudado com o formulário aberto)
+      const problema = d.problemaDaTarefa(d.comMudancas(antes, mudancas));
+      if (problema) throw new Error(problema);
       const em = new Date().toISOString();
-      const linhas = d.historicoDaMudanca(antes, r, por.nome, em);
+      const { campos, linhas, tarefa: t } = d.gravacaoDasMudancas(antes, mudancas, por, em);
       if (!linhas.length) return;
-      const t = d.mudar(antes, r, por, em);
       await updateDoc(doc(db, COLECAO, id), {
-        titulo: t.titulo, descricao: t.descricao, cliente: t.cliente, prioridade: t.prioridade, prazo: t.prazo, status: t.status,
-        responsavel: t.responsavel, pessoas: d.pessoasDaTarefa(t), concluidaEm: t.concluidaEm, atualizadaEm: em, historico: historicoNovo(antes, linhas),
+        ...campos, ...('responsavel' in campos ? { pessoas: d.pessoasDaTarefa(t) } : {}), atualizadaEm: em, historico: historicoNovo(antes, linhas),
       });
       await reler();
     },

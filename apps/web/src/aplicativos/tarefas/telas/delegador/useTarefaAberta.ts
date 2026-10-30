@@ -40,7 +40,7 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
   const tarefa = ehNova ? null : todas.find(t => t.id === alvo) || null;
 
   // o rascunho começa da tarefa (ou vazio); o prazo fica no texto do CampoData (dd/mm/aaaa) até salvar
-  const [inicial] = useState<Rascunho>(() => (tarefa ? d.rascunhoDe(tarefa) : d.rascunhoVazio(null)));
+  const [inicial, setInicial] = useState<Rascunho>(() => (tarefa ? d.rascunhoDe(tarefa) : d.rascunhoVazio(null)));
   const [r, setR] = useState<Rascunho>(inicial);
   const [prazoTexto, setPrazoTexto] = useState(() => d.prazoParaTela(inicial.prazo));
   const [aba, setAba] = useState<AbaDaTarefa>('tarefa');
@@ -53,22 +53,28 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
   const [ativo, setAtivo] = useState(0);
 
   // a tarefa que chega do banco depois de aberta (a lista ainda carregava, ou outra pessoa mudou; 29/10/2026: "não salva
-  // nada"): enquanto a pessoa não mexeu no formulário, ele acompanha o banco
+  // nada"): o formulário acompanha o banco nos campos que a pessoa não mexeu, e o que ela mudou fica por cima (30/10/2026:
+  // antes ele parava de acompanhar no primeiro toque e o Salvar regravava tudo, desfazendo o status e o responsável que
+  // outra pessoa tinha mudado nesse meio-tempo)
   const [base, setBase] = useState(tarefa?.atualizadaEm ?? '');
-  const [editou, setEditou] = useState(false);
-  if (tarefa && !editou && tarefa.atualizadaEm !== base) {
+  if (tarefa && tarefa.atualizadaEm !== base) {
     setBase(tarefa.atualizadaEm);
+    const minhas = d.mudancasDoRascunho(inicial, { ...r, prazo: d.prazoDaTela(prazoTexto) ?? r.prazo });
     const novo = d.rascunhoDe(tarefa);
-    setR(novo);
-    setPrazoTexto(d.prazoParaTela(novo.prazo));
+    setInicial(novo);
+    setR({ ...novo, ...minhas });
+    // o prazo que a pessoa escreveu fica (mesmo pela metade); sem mexer, vem o do banco
+    if (prazoTexto === d.prazoParaTela(inicial.prazo)) setPrazoTexto(d.prazoParaTela(novo.prazo));
   }
 
-  const mudar = (p: Partial<Rascunho>) => { setR(x => ({ ...x, ...p })); setEditou(true); setErro(''); };
+  const mudar = (p: Partial<Rascunho>) => { setR(x => ({ ...x, ...p })); setErro(''); };
   const prazo = d.prazoDaTela(prazoTexto);
   const final: Rascunho = { ...r, prazo: prazo ?? r.prazo };
+  // o que a pessoa mudou desde que abriu: é só isso que o Salvar grava
+  const mudancas = ehNova ? {} : d.mudancasDoRascunho(inicial, final);
   const mudou = ehNova
     ? !!(r.titulo.trim() || r.descricao.trim() || r.cliente || r.responsavel || prazoTexto || pendentes.length || r.prioridade !== 'normal' || r.status !== 'pendente')
-    : !!tarefa && (d.mudouAlgo(tarefa, final) || prazo === null);
+    : !!tarefa && (Object.keys(mudancas).length > 0 || prazo === null);
   const podeMudar = ehNova || (!!tarefa && d.podeMudar(tarefa, uid));
 
   // a equipe ativa no "Delegar para" (quem já é o responsável fica, mesmo desativado)
@@ -134,7 +140,7 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
     maiorTitulo: d.MAIOR_TITULO,
     maiorDescricao: d.MAIOR_DESCRICAO,
     prazoTexto,
-    setPrazo: (v: string) => { setPrazoTexto(v); setEditou(true); setErro(''); },
+    setPrazo: (v: string) => { setPrazoTexto(v); setErro(''); },
     prazoInvalido: prazo === null,
     prioridades: d.PRIORIDADES,
     setPrioridade: (v: string) => { if (d.ehPrioridade(v)) mudar({ prioridade: v }); },
@@ -220,7 +226,7 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
             setParecer('');
           }
           // sem mudança, só volta (nada a gravar nem a pôr no histórico)
-          if (mudou) { await repo.salvar(tarefa.id, final); toast(parecerEscrito ? 'Tarefa e parecer salvos.' : 'Tarefa salva.'); }
+          if (mudou) { await repo.salvar(tarefa.id, mudancas); toast(parecerEscrito ? 'Tarefa e parecer salvos.' : 'Tarefa salva.'); }
           else if (parecerEscrito) toast('Parecer gravado.');
           voltar();
         }
