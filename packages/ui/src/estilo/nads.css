@@ -2848,30 +2848,6 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 .folha-check-link{flex:none;}
 .folha-check-aviso{display:flex;align-items:flex-start;gap:6px;margin-top:2px;font-size:var(--fs-12);color:var(--warn);}
 .folha-check-aviso svg{width:14px;height:14px;flex:none;margin-top:1px;}
-/* Fiscal › REINF: as ações à direita, numa linha; as retificadas em selos; o Retificar já marcado fica com a borda laranja */
-/* Fiscal › REINF, maior e mais limpa (30/10/2026): os números filtram, o andamento com barra, a tabela na altura da tela */
-.reinf{display:flex;flex-direction:column;gap:12px;}
-.reinf-numeros{margin:0;grid-template-columns:repeat(3,minmax(140px,1fr)) minmax(220px,1.4fr);}
-.reinf-numeros .stat{padding:12px 16px;}
-.reinf-numero-pendentes .stat-value{color:var(--warn);}
-.reinf-numero-transmitidas .stat-value{color:var(--success);}
-.reinf-andamento{display:flex;flex-direction:column;}
-.reinf-barra{display:block;height:6px;margin-top:8px;border-radius:999px;background:var(--surface-3);overflow:hidden;}
-.reinf-barra > span{display:block;height:100%;border-radius:inherit;background:var(--success);}
-.reinf-tabela-wrap{max-height:max(360px,calc(100dvh - 300px));}
-.reinf-tabela td{vertical-align:middle;}
-.reinf-cod{color:var(--ink-muted);font-weight:600;width:56px;}
-.reinf-nome{font-weight:500;}
-.reinf-feita td{background:color-mix(in srgb,var(--success) 4%,transparent);}
-.reinf-tabela .badge{display:inline-flex;align-items:center;gap:4px;}
-.reinf-acoes{white-space:nowrap;text-align:right;width:1%;}
-.reinf-acoes .btn + .btn{margin-left:4px;}
-.reinf-acoes .btn-sm{min-height:28px;height:28px;padding:2px 10px;font-size:var(--fs-12);gap:4px;}
-.reinf-acoes .btn-ghost{color:var(--ink-muted);}
-.reinf-acoes .btn-ghost.reinf-retificada{color:var(--warn);}
-.reinf-retificadas{display:inline-flex;flex-wrap:wrap;gap:4px;}
-.reinf-vazio{text-align:center;padding:24px;}
-@media (max-width:900px){.reinf-numeros{grid-template-columns:repeat(2,1fr);}}
 /* A barra do robô trabalhando (Gmail › Salvando no Drive, Enviando, Lendo; Vitor, 05/10/2026: "coloque animação nessa
    barra de progresso"): é carregamento, então anima em qualquer nível — a parte cheia anda até o número novo e um brilho
    corre por ela enquanto o robô trabalha. */
@@ -5347,35 +5323,6 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .simples-calc-tabela{max-height:none;}
 .simples-calc-faixas{border:1px solid var(--border);border-radius:6px;overflow:hidden;}
 .simples-calc-faixas > .imp-faixa:first-child{border-top:none;}
-/* Fiscal › Antecipação ICMS-ES (22/10/2026) */
-.antecipacao{display:flex;flex-direction:column;gap:12px;}
-.antecipacao-empresa{position:relative;width:340px;max-width:100%;}
-.antecipacao-empresa.registro-busca{padding:2px 4px 2px 12px;}
-.antecipacao-empresa .registro-busca input,.antecipacao-empresa .registro-busca input:focus{font-size:var(--fs-14);padding:5px 0;box-shadow:none;border:0;}
-.antecipacao-empresa .nf-escolhido{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-14);}
-.antecipacao-achados{position:absolute;left:0;right:0;top:calc(100% + 4px);margin:0;z-index:20;box-shadow:var(--shadow-md,0 6px 18px rgba(0,0,0,.12));}
-/* enxuta em 30/10/2026 ("tem muita informação e os layouts estão feios"): a empresa numa linha, três números neutros,
-   a situação num select pequeno com a cor dela, e as colunas do cálculo só com "Ver o cálculo" */
-.antecipacao-linha-empresa{display:flex;align-items:center;flex-wrap:wrap;gap:6px 18px;padding:10px 14px;border:1px solid var(--border);
-  border-radius:8px;background:var(--surface);font-size:var(--fs-13);}
-.antecipacao-razao{font-weight:600;font-size:var(--fs-14);}
-.antecipacao-dado{white-space:nowrap;}
-.antecipacao-aliquota{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
-.antecipacao-aliquota .fin-valor-edita{width:64px;}
-.antecipacao-numeros{margin-bottom:0;}
-.antecipacao-numeros .stat{padding:12px 16px;}
-.antecipacao-sub{margin:2px 0 0;font-size:var(--fs-12);color:var(--ink-muted);}
-.antecipacao-recolher{background:var(--accent-soft);}
-.antecipacao-recolher .stat-value{color:var(--accent-ink);}
-.antecipacao-filtros{margin:0;}
-.antecipacao-tabela{max-height:max(320px,calc(100dvh - 330px));overflow:auto;}
-.antecipacao-tabela td,.antecipacao-tabela th{white-space:nowrap;}
-.antecipacao-fornecedor{max-width:260px;overflow:hidden;text-overflow:ellipsis;}
-.antecipacao-tabela tfoot td{border-top:2px solid var(--border);position:sticky;bottom:0;background:var(--surface-2);font-weight:600;}
-.antecipacao-situacao.situacao-conferido{border-color:var(--success);color:var(--success-ink);background-color:var(--success-soft);}
-.antecipacao-situacao.situacao-revisar{border-color:var(--warn);color:var(--warn);background-color:var(--warn-soft);}
-.antecipacao-situacao.situacao-dispensado,.antecipacao-situacao.situacao-nao-se-aplica{color:var(--ink-muted);}
-.antecipacao-meses .table-wrap{max-height:none;}
 /* Cadastro › a empresa › Fiscal (Heverton, 21/10/2026): os documentos e as planilhas, os parcelamentos */
 .fis-docs-acoes{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;}
 .fis-docs-acoes .btn svg{width:16px;height:16px;}
@@ -5808,4 +5755,131 @@ html[data-sem-animacao] .mx-gaveta-fundo,html[data-sem-animacao] .mx-gaveta{anim
   .mx-gaveta{width:100%;border-left:0;}
   .mx-leitura-rola{padding:16px 16px 84px;}
   .mx-leitura-topo h2{font-size:var(--fs-18);}
+}
+/* ---------------------------------- Fiscal › REINF e Antecipação ICMS-ES (30/10/2026) ----------------------------------
+   O Fiscal refeito no jeito do site (como o Gmail): as duas telas com as mesmas peças — a barra de cima das outras telas,
+   os números em cartões de canto 6px (na REINF eles filtram), e cada lista num .card com o título, a contagem, a busca e
+   os filtros no topo dele; a tabela rola dentro do cartão com o cabeçalho grudado. No celular os números ficam dois a
+   dois e cada empresa da REINF vira um cartão; a tabela da Antecipação rola de lado. */
+.fxr{display:flex;flex-direction:column;gap:12px;}
+.fxr-topo{margin:0;}
+.fxr .btn-sm{min-height:30px;height:30px;padding:0 10px;font-size:var(--fs-12);gap:6px;}
+.fxr .btn-sm svg{width:14px;height:14px;}
+/* os números */
+.fxr-numeros{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) minmax(0,1.4fr);gap:12px;}
+.fxr-numeros-3{grid-template-columns:repeat(3,minmax(0,1fr));}
+.fxr-numero{appearance:none;display:flex;align-items:center;gap:12px;min-width:0;margin:0;padding:14px 16px;border:1px solid var(--border);border-radius:6px;
+  background:var(--surface);color:var(--ink);font:inherit;text-align:left;}
+button.fxr-numero{cursor:pointer;transition:border-color .12s ease,background-color .12s ease;}
+button.fxr-numero:hover{background:var(--surface-2);}
+button.fxr-numero:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+button.fxr-numero.active{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);background:color-mix(in srgb,var(--accent) 5%,var(--surface));}
+.fxr-numero-icone{flex:none;width:36px;height:36px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;background:var(--surface-3);color:var(--ink-muted);}
+.fxr-numero-icone svg{width:18px;height:18px;}
+.fxr-numero-pendentes .fxr-numero-icone{background:var(--warn-soft);color:var(--warn);}
+.fxr-numero-transmitidas .fxr-numero-icone{background:var(--success-soft);color:var(--success);}
+.fxr-numero-destaque .fxr-numero-icone{background:var(--accent-soft);color:var(--accent-ink);}
+.fxr-numero-destaque .fxr-numero-valor{color:var(--accent-ink);}
+.fxr-numero-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.fxr-numero-rotulo{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-12);color:var(--ink-muted);}
+.fxr-numero-valor{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-24);font-weight:600;line-height:1.2;font-variant-numeric:tabular-nums;}
+.fxr-numero-valor small{font-size:var(--fs-13);font-weight:400;color:var(--ink-muted);}
+.fxr-numero-sub{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-12);color:var(--ink-muted);}
+.fxr-barra{display:block;height:6px;margin-top:6px;border-radius:999px;background:var(--surface-3);overflow:hidden;}
+.fxr-barra > span{display:block;height:100%;border-radius:inherit;background:var(--success);transition:width .3s ease;}
+/* o cartão da lista */
+.fxr-cartao{margin:0;padding:0;overflow:clip;}
+.fxr-cartao-topo{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border);}
+.fxr-cartao-titulo{margin:0;font-size:var(--fs-14);font-weight:600;}
+.fxr-total{font-size:var(--fs-12);font-variant-numeric:tabular-nums;color:var(--ink-muted);}
+.fxr-busca{width:240px;}
+.fxr-cartao-topo .chip-f,.fxr-chips .chip-f{display:inline-flex;align-items:center;gap:6px;height:30px;}
+.fxr-chips{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--surface-2);}
+.fxr-ponto{flex:none;width:8px;height:8px;border-radius:50%;background:var(--ink-faint);}
+.fxr-chip-a-conferir .fxr-ponto{background:var(--info);}
+.fxr-chip-conferido .fxr-ponto{background:var(--success);}
+.fxr-chip-revisar .fxr-ponto{background:var(--warn);}
+/* a tabela dentro do cartão: rola nele, o cabeçalho grudado */
+.fxr-rola{overflow:auto;max-height:max(360px,calc(100dvh - 320px));}
+.fxr-rola-antecipacao{max-height:max(320px,calc(100dvh - 380px));}
+.fxr-tabela thead th{z-index:3;}
+.fxr-tabela td,.fxr-tabela th{white-space:nowrap;}
+.fxr-tabela tbody tr:hover{background:var(--hover-bg);}
+.fxr-tabela tfoot td{position:sticky;bottom:0;z-index:2;padding:8px 12px;border-top:1px solid var(--border);background:var(--surface-2);
+  font-size:var(--fs-13);font-weight:600;font-variant-numeric:tabular-nums;}
+/* REINF: a linha da empresa */
+.fxr-cod{width:64px;}
+.fxr-cod span{display:inline-block;min-width:32px;padding:0 6px;border-radius:4px;background:var(--surface-3);text-align:center;font-size:var(--fs-12);line-height:20px;color:var(--ink-muted);}
+.fxr-tabela td.fxr-nome{width:40%;min-width:220px;white-space:normal;font-weight:500;color:var(--ink);}
+.fxr-sit{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 9px;border-radius:999px;background:var(--surface-3);color:var(--ink-muted);
+  font-size:var(--fs-12);font-weight:500;white-space:nowrap;}
+.fxr-sit::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--warn);}
+.fxr-sit.ok{background:var(--success-soft);color:var(--success);font-weight:600;}
+.fxr-sit.ok::before{display:none;}
+.fxr-tabela td.fxr-ultima{font-size:var(--fs-12);color:var(--ink-muted);}
+.fxr-retificadas{display:inline-flex;flex-wrap:wrap;gap:4px;}
+.fxr-retif{display:inline-block;padding:0 7px;border-radius:999px;background:var(--warn-soft);color:var(--warn);font-size:var(--fs-11);font-weight:600;line-height:18px;}
+.fxr-feita td.fxr-nome{color:var(--ink-muted);}
+.fxr-acoes{width:1%;text-align:right;}
+.fxr-acoes .btn + .btn{margin-left:4px;}
+.fxr-acoes .btn-ghost{color:var(--ink-muted);}
+.fxr-acoes .btn-ghost.fxr-retificada{color:var(--warn);background:var(--warn-soft);}
+/* Antecipação: a busca da empresa na barra de cima, o cartão da empresa, a situação de cada linha com a cor dela */
+.fxr-empresa-busca{position:relative;width:340px;max-width:100%;}
+.fxr-empresa-busca.registro-busca,.fxr-empresa-busca .registro-busca{padding:2px 4px 2px 12px;border-radius:6px;}
+.fxr-empresa-busca .registro-busca input,.fxr-empresa-busca .registro-busca input:focus{padding:5px 0;border:0;box-shadow:none;font-size:var(--fs-14);}
+.fxr-empresa-busca .nf-escolhido{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-14);}
+.fxr-achados{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:20;margin:0;border-radius:6px;box-shadow:var(--shadow-md,0 6px 18px rgba(0,0,0,.12));}
+.fxr-exemplos{display:flex;align-items:center;gap:6px;margin:0;}
+.fxr-exemplos svg{flex:none;}
+.fxr-empresa{display:flex;align-items:center;gap:12px;padding:12px 16px;border:1px solid var(--border);border-radius:6px;background:var(--surface);}
+.fxr-empresa-icone{flex:none;width:36px;height:36px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;background:var(--surface-3);color:var(--ink-muted);}
+.fxr-empresa-icone svg{width:18px;height:18px;}
+.fxr-empresa-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.fxr-empresa-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-14);font-weight:600;}
+.fxr-empresa-dados{display:flex;flex-wrap:wrap;gap:2px 16px;font-size:var(--fs-12);}
+.fxr-empresa-dados > span{white-space:nowrap;}
+.fxr-empresa-dados .fraco,.fxr-aliquota .fraco{color:var(--ink-muted);}
+.fxr-aliquota{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:2px;padding-left:16px;border-left:1px solid var(--border);font-size:var(--fs-12);}
+.fxr-aliquota-valor{display:inline-flex;align-items:center;gap:4px;font-size:var(--fs-14);font-weight:600;}
+.fxr-aliquota .fin-valor-edita{width:64px;}
+.fxr-nf{font-weight:500;}
+.fxr-fornecedor{max-width:260px;overflow:hidden;text-overflow:ellipsis;}
+.fxr-calc{color:var(--ink-muted);background:color-mix(in srgb,var(--info) 4%,transparent);}
+.fxr-antecipacao{font-weight:600;color:var(--ink);}
+.fxr-situacao.situacao-conferido{border-color:var(--success);background-color:var(--success-soft);color:var(--success-ink);}
+.fxr-situacao.situacao-revisar{border-color:var(--warn);background-color:var(--warn-soft);color:var(--warn);}
+.fxr-situacao.situacao-dispensado,.fxr-situacao.situacao-nao-se-aplica{color:var(--ink-muted);}
+@media (max-width:1100px){
+  .fxr-numeros{grid-template-columns:repeat(3,minmax(0,1fr));}
+  .fxr-andamento{grid-column:1 / -1;}
+}
+@media (max-width:700px){
+  .fxr-numeros{gap:8px;}
+  .fxr-numeros-3{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .fxr-numeros-3 .fxr-numero:first-child{grid-column:1 / -1;}
+  .fxr-numero{padding:10px 12px;gap:10px;}
+  /* sem o ícone: os três da REINF lado a lado, e os valores da Antecipação inteiros */
+  .fxr-numero-icone{display:none;}
+  .fxr-numero-valor{font-size:var(--fs-20);}
+  .fxr-busca,.fxr-empresa-busca{width:100%;}
+  .fxr-cartao-topo,.fxr-chips{padding:10px 12px;}
+  .fxr-empresa{flex-wrap:wrap;}
+  .fxr-empresa-nome{white-space:normal;}
+  .fxr-aliquota{flex-direction:row;align-items:center;gap:8px;width:100%;padding:8px 0 0;border-left:0;border-top:1px solid var(--border);}
+  .fxr-rola{max-height:none;}
+  /* REINF: cada empresa vira um cartão (o Nº, o nome e a situação; as datas; as ações embaixo) */
+  .fxr-reinf thead{display:none;}
+  .fxr-reinf tbody tr{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:6px 10px;padding:12px;border-top:1px solid var(--border-muted);}
+  .fxr-reinf tbody tr:first-child{border-top:0;}
+  .fxr-reinf tbody td{display:block;width:auto;min-width:0;padding:0;border:0;text-align:left;}
+  .fxr-reinf td.fxr-nome{width:auto;min-width:0;}
+  .fxr-reinf .fxr-cod{grid-column:1;grid-row:1;}
+  .fxr-reinf .fxr-nome{grid-column:2;grid-row:1;}
+  .fxr-reinf .fxr-sit-td{grid-column:3;grid-row:1;}
+  .fxr-reinf .fxr-ate,.fxr-reinf .fxr-ultima,.fxr-reinf .fxr-retif-td{grid-column:1 / -1;display:flex;align-items:center;gap:8px;font-size:var(--fs-12);white-space:normal;}
+  .fxr-reinf td[data-rotulo]::before{content:attr(data-rotulo);flex:none;min-width:76px;color:var(--ink-faint);}
+  .fxr-reinf .fxr-acoes{grid-column:1 / -1;display:flex;gap:6px;margin-top:4px;}
+  .fxr-reinf .fxr-acoes .btn{flex:1;justify-content:center;}
+  .fxr-reinf .fxr-acoes .btn + .btn{margin-left:0;}
 }
