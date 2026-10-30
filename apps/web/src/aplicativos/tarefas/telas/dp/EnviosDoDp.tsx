@@ -147,7 +147,10 @@ export function EnviosDoDp() {
                       </td>
                       <td>
                         {e ? (
-                          <button type="button" className="fgts-situacao" title={(e.erro || (e.para.length ? 'para ' + e.para.join(', ') : '')) + ' · ver o que já foi enviado'} onClick={() => vm.abrir(l.codigo, 'enviados')}>
+                          <button type="button" className="fgts-situacao" title={(e.erro || (e.para.length ? 'para ' + e.para.join(', ') : ''))
+                            // só parte dos arquivos do mês foi (30/10/2026): ainda não é Enviado
+                            + (l.jaEnviados.enviados && !l.jaEnviados.completo ? ' · ' + l.jaEnviados.enviados + ' de ' + l.jaEnviados.total + ' arquivos já enviados' : '')
+                            + ' · ver o que já foi enviado'} onClick={() => vm.abrir(l.codigo, 'enviados')}>
                             <span className={selo.classe}>{selo.rotulo}</span>
                             <span className="fraco">{hora(e.enviadoEm || e.criadoEm)}</span>
                           </button>

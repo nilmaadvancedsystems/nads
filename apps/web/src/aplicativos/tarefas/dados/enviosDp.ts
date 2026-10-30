@@ -28,6 +28,8 @@ export interface EnvioDoDp {
   para: string[];
   /** os nomes dos arquivos que foram */
   enviados: string[];
+  /** os ids dos arquivos pedidos (da lista do mês; vazio = todos, como o robô faz) */
+  arquivos: string[];
   criadoEm: string;
   criadoPor: string;
   enviadoEm: string;
@@ -50,8 +52,11 @@ export interface RepoEnviosDp {
   gravarModelo(m: ModeloDoEnvio): Promise<void>;
   /** os documentos do DP do mês, por código do cliente (o que o robô achou nas pastas) */
   arquivos(competencia: string): { carregados: boolean; porCodigo: ReadonlyMap<string, readonly ArquivoDoDp[]> };
-  /** os envios do mês: o mais novo de cada cliente */
-  envios(competencia: string): { carregados: boolean; porCodigo: ReadonlyMap<string, EnvioDoDp> };
+  /**
+   * os envios do mês: o mais novo de cada cliente (porCodigo) e todos os do cliente no mês (todosPorCodigo, para saber se
+   * todos os arquivos já foram: "Enviar só este" manda um; 30/10/2026)
+   */
+  envios(competencia: string): { carregados: boolean; porCodigo: ReadonlyMap<string, EnvioDoDp>; todosPorCodigo: ReadonlyMap<string, readonly EnvioDoDp[]> };
   /** tudo o que já foi pedido para o cliente, de todos os meses, o mais novo primeiro (28/10/2026: "ver o que já foi enviado") */
   historico(codigo: number, chegou: (lista: EnvioDoDp[]) => void): () => void;
   /** pede ao robô o e-mail com estes arquivos (os ids da lista do mês) */
@@ -93,7 +98,11 @@ export function criarEnviosDpMemoria(): RepoEnviosDp {
     modelo: () => ({ carregado: true, ...modelo }),
     async gravarModelo(m) { modelo = { ...m }; mudou(); },
     arquivos: competencia => ({ carregados: true, porCodigo: listaDe(competencia) }),
-    envios: competencia => ({ carregados: true, porCodigo: envios.get(competencia) || new Map() }),
+    envios: competencia => {
+      const todosPorCodigo = new Map<string, EnvioDoDp[]>();
+      for (const e of todos) if (e.competencia === competencia) todosPorCodigo.set(e.codigo, [...(todosPorCodigo.get(e.codigo) || []), e]);
+      return { carregados: true, porCodigo: envios.get(competencia) || new Map(), todosPorCodigo };
+    },
     historico(codigo, chegou) {
       const mandar = () => chegou(todos.filter(e => e.codigo === String(codigo)).sort((a, b) => b.criadoEm.localeCompare(a.criadoEm)));
       ouvintes.add(mandar);
@@ -103,7 +112,7 @@ export function criarEnviosDpMemoria(): RepoEnviosDp {
     async enviar({ codigo, empresa, competencia, arquivos }) {
       const cod = String(codigo);
       const nomes = (listaDe(competencia).get(cod) || []).filter(a => arquivos.includes(a.id)).map(a => a.nome);
-      const base: EnvioDoDp = { id: 'ex-' + cod + '-' + Date.now(), codigo: cod, empresa, competencia, status: 'pendente', erro: '', para: [], enviados: [], criadoEm: agora(), criadoPor: 'exemplo', enviadoEm: '' };
+      const base: EnvioDoDp = { id: 'ex-' + cod + '-' + Date.now(), codigo: cod, empresa, competencia, status: 'pendente', erro: '', para: [], enviados: [], arquivos: [...arquivos], criadoEm: agora(), criadoPor: 'exemplo', enviadoEm: '' };
       const doMes = envios.get(competencia) || new Map<string, EnvioDoDp>();
       envios.set(competencia, doMes);
       const por = (m: Partial<EnvioDoDp>) => {

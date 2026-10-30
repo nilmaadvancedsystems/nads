@@ -166,6 +166,16 @@ export interface Execucao {
   retiradas?: string[];
   /** os valores que as etapas informam (07/10/2026: o DP informa o total da folha; o Fiscal lê ao lado do faturamento) */
   valores?: Record<string, number>;
+  /**
+   * a que instante se refere cada valor (ISO; informarValor): a hora de quem digitou, ou a do envio do lote de onde veio.
+   * Abrir um lote antigo não troca o valor que veio depois (30/10/2026)
+   */
+  valoresEm?: Record<string, string>;
+  /**
+   * quando cada etapa foi desfeita pela última vez (ISO; voltarPara): o desfazer apaga o estado da etapa, e o que marca
+   * sozinho (o envio do DP marca a Entrega) precisa saber que alguém a desfez depois (30/10/2026)
+   */
+  reabertas?: Record<string, string>;
 }
 
 export type TipoEvento = 'inicio' | 'feita' | 'dispensada' | 'interrompida' | 'verificacao-falhou' | 'sem-movimento' | 'com-movimento' | 'reaberta'
