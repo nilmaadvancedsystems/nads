@@ -4,8 +4,8 @@
 // do passo a passo do cálculo só com "Ver o cálculo"); os totais por mês, quando há mais de um; Imprimir (o relatório da
 // aba RELATÓRIO, A4 deitado). Enxuta em 30/10/2026 ("tem muita informação e os layouts estão feios"): o endereço e o
 // responsável ficam no relatório impresso, e os números saíram do arco-íris. Refeita no mesmo dia no jeito do site (o
-// Fiscal inteiro, como o Gmail): a empresa num cartão, os números nos cartões da REINF, e a tabela num .card com os
-// filtros no topo dele.
+// Fiscal inteiro, como o Gmail): a empresa numa linha só (num cartão), os números nos cartões da REINF, e a tabela num
+// .card com os filtros no topo dele.
 import { Alerta, BotaoIcone, Esqueleto, Icone, Segmentado, SeletorMes, useCarregando, Vazio } from '@nads/ui';
 import { ValorEditavel } from '../../financeiro/partes/ValorEditavel';
 import { useAntecipacaoIcms } from './useAntecipacaoIcms';

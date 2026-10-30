@@ -5819,7 +5819,7 @@ button.fxr-numero.active{border-color:var(--accent);box-shadow:inset 0 0 0 1px v
 .fxr-tabela td.fxr-ultima{font-size:var(--fs-12);color:var(--ink-muted);}
 .fxr-retificadas{display:inline-flex;flex-wrap:wrap;gap:4px;}
 .fxr-retif{display:inline-block;padding:0 7px;border-radius:999px;background:var(--warn-soft);color:var(--warn);font-size:var(--fs-11);font-weight:600;line-height:18px;}
-.fxr-feita td.fxr-nome{color:var(--ink-muted);}
+.fxr-feita td{background:color-mix(in srgb,var(--success) 4%,transparent);}
 .fxr-acoes{width:1%;text-align:right;}
 .fxr-acoes .btn + .btn{margin-left:4px;}
 .fxr-acoes .btn-ghost{color:var(--ink-muted);}
@@ -5832,15 +5832,15 @@ button.fxr-numero.active{border-color:var(--accent);box-shadow:inset 0 0 0 1px v
 .fxr-achados{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:20;margin:0;border-radius:6px;box-shadow:var(--shadow-md,0 6px 18px rgba(0,0,0,.12));}
 .fxr-exemplos{display:flex;align-items:center;gap:6px;margin:0;}
 .fxr-exemplos svg{flex:none;}
-.fxr-empresa{display:flex;align-items:center;gap:12px;padding:12px 16px;border:1px solid var(--border);border-radius:6px;background:var(--surface);}
-.fxr-empresa-icone{flex:none;width:36px;height:36px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;background:var(--surface-3);color:var(--ink-muted);}
+.fxr-empresa{display:flex;align-items:center;gap:12px;padding:8px 14px;border:1px solid var(--border);border-radius:6px;background:var(--surface);}
+.fxr-empresa-icone{flex:none;width:30px;height:30px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;background:var(--surface-3);color:var(--ink-muted);}
 .fxr-empresa-icone svg{width:18px;height:18px;}
-.fxr-empresa-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.fxr-empresa-txt{flex:1;min-width:0;display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 18px;}
 .fxr-empresa-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-14);font-weight:600;}
 .fxr-empresa-dados{display:flex;flex-wrap:wrap;gap:2px 16px;font-size:var(--fs-12);}
 .fxr-empresa-dados > span{white-space:nowrap;}
 .fxr-empresa-dados .fraco,.fxr-aliquota .fraco{color:var(--ink-muted);}
-.fxr-aliquota{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:2px;padding-left:16px;border-left:1px solid var(--border);font-size:var(--fs-12);}
+.fxr-aliquota{flex:none;display:flex;align-items:center;gap:8px;padding-left:16px;border-left:1px solid var(--border);font-size:var(--fs-12);}
 .fxr-aliquota-valor{display:inline-flex;align-items:center;gap:4px;font-size:var(--fs-14);font-weight:600;}
 .fxr-aliquota .fin-valor-edita{width:64px;}
 .fxr-nf{font-weight:500;}

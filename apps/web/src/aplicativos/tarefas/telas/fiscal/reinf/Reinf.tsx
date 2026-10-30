@@ -3,7 +3,8 @@
 // foi transmitida, a última transmissão (quando e quem), as retificadas — e as ações: Transmitir (ou Desfazer) e Retificar.
 // Maior e mais limpa em 30/10/2026 ("essa tela da reinf precisa ser maior e a deixe de maneira mais bonita"): a tabela ocupa
 // a altura da tela e os números viraram os filtros. Refeita no mesmo dia no jeito do site (o Fiscal inteiro, como o Gmail):
-// os números em cartões, a lista num .card com a busca no topo dele, e no celular cada empresa vira um cartão.
+// os números em cartões (ainda filtram; a linha transmitida em verde claro), a lista num .card com a busca no topo dele,
+// e no celular cada empresa vira um cartão.
 import { Icone, MenuSuspenso, Vazio } from '@nads/ui';
 import { useReinf } from './useReinf';
 
