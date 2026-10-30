@@ -984,7 +984,9 @@ const REGRAS_PDF = [
       if (!trib && /ESOCIAL|DOMESTIC/.test(u)) trib = 'ESOCIAL DOMESTICO';
       return Object.assign(c, { tributo: trib, parcelamento: /PARCELAMENTO|PGFN/.test(u) && !/DCTFWEB/.test(u) });
     } },
-  { tipo: 'DAE', setor: 'FISCAL', re: /DOCUMENTO DE ARRECADACAO ESTADUAL/, fonte: '05d §4',
+  // (30/10/2026, 4ª rodada) o DAE da SEFAZ da Bahia (as fazendas da 453, 568 e 572 em Cândido Sales): sem o título, abre por "CÓDIGO DA RECEITA / DATA DE VENCIMENTO" e a
+  // especificação da receita é ICMS (a taxa do INEMA, no mesmo modelo, fica de fora: não é ICMS)
+  { tipo: 'DAE', setor: 'FISCAL', re: /DOCUMENTO DE ARRECADACAO ESTADUAL|^[\s\S]{0,300}CODIGO DA RECEITA\s*\n?\s*\d{4}\s*\n?\s*DATA DE VENCIMENTO[\s\S]{0,400}ESPECIFICACAO DA RECEITA\s*\n?\s*ICMS\b/, fonte: '05d §4',
     campos: u => {
       const c = camposDaGuia(u);
       const trib = /TFAMG/.test(u) ? 'TFAMG' : /IPVA/.test(u) ? 'IPVA' : /TAXA/.test(u) && !/ICMS/.test(u) ? 'TAXA' : 'ICMS';
@@ -1027,8 +1029,16 @@ const REGRAS_PDF = [
         || /DE (\d{1,2}) DE (?:JANEIRO|FEVEREIRO|MARCO|ABRIL|MAIO|JUNHO|JULHO|AGOSTO|SETEMBRO|OUTUBRO|NOVEMBRO|DEZEMBRO) ()DE (20\d{2})/.exec(t)
         // o termo de autodenúncia da SEFAZ-MG: a data do termo vem colada no município, no fim ("17/05/2022TAIOBEIRAS"); as do começo são as do período do débito
         || /(\d{2})\/(\d{2})\/(20\d{2})(?=[A-Z]{4,})/.exec(u.slice(0, 6000)) || /(\d{2})\/(\d{2})\/(20\d{2})/.exec(t);
-      return { ano: m && anoOk(+m[3]) ? +m[3] : null };
+      // (Vitor, 30/10/2026, 4ª rodada, decisão 2) a negociação da PGFN (a "Consulta de Negociações" e o recibo "Informação da Negociação" do SISPAR) é parcelamento:
+      // 08. PARCELAMENTOS\DÍVIDA ATIVA\ANO, onde a rotina antiga guardava; a modalidade de dívida PREVIDENCIÁRIA (não a "NÃO PREVIDENCIÁRIA") em PREVIDENCIÁRIA\ANO
+      const negociacaoPgfn = /^[\s\S]{0,300}CONSULTA\s+DE NEGOCIACOES\s*\n\s*INFORMACOES GERAIS|^[\s\S]{0,200}INFORMACAO DA NEGOCIACAO\s*\n\s*NUMERO DA CONTA DE NEGOCIACAO[\s\S]{0,1500}PGFN/.test(u);
+      const modalidade = (/MODALIDADE:?\s*([\s\S]{0,160})/.exec(t) || [])[1] || '';
+      return { ano: m && anoOk(+m[3]) ? +m[3] : null, negociacaoPgfn, previdenciaria: negociacaoPgfn && /(?<!NAO\s)PREVIDENCIARI/.test(modalidade) };
     } },
+  // (Vitor, 30/10/2026, 4ª rodada, decisão 2) o recibo de adesão ao parcelamento do Simples Nacional (e o "Recibo de Alteração de Dívida" do mesmo parcelamento): FISCAL\<regime>\
+  // PARCELAMENTOS, como as parcelas do DAS de parcelamento (o Simples não tem subpasta na árvore), nome original; o ano pela confirmação do SERPRO (a data da adesão)
+  { tipo: 'PARCELAMENTO SIMPLES', setor: 'FISCAL', re: /^[\s\S]{0,600}RECIBO DE ADESAO AO PARCELAMENTO DO SIMPLES NACIONAL|^[\s\S]{0,400}PARCELAMENTO DO SIMPLES NACIONAL[\s\S]{0,600}RECIBO DE ALTERACAO DE DIVIDA/, fonte: 'parcelamento do Simples (Vitor, 30/10/2026)',
+    campos: u => { const m = /AGENTE RECEPTOR SERPRO\s*\n?\s*EM (\d{2})\/(\d{2})\/(20\d{2})/.exec(u); return { ano: m && anoOk(+m[3]) ? +m[3] : null }; } },
   { tipo: 'FGTS', setor: 'FOLHA_SOCIETARIO', re: /GUIA DO FGTS DIGITAL|\bGFD\b - GUIA DO FGTS/, fonte: '04b',
     campos: u => { const c = camposDaGuia(u); const m = /(\d{2})\/(\d{4})\s*MENSAL/.exec(u) || /COMPETENCIA[\s\S]{0,300}?(\d{2})\/(20\d{2})/.exec(u); if (m) c.competencia = { mes: +m[1], ano: +m[2] }; return c; } },
   // ---- declarações (05a, 05b, 05c) ----
@@ -1531,7 +1541,37 @@ function descarteDaImagem(entrada, d) {
 // "FERNANDO\downloads\Nando\…": a certidão de casamento, o documento do comprador e do vendedor, o IRPF e os informes de pessoas de
 // fora): DESCARTAR (a quarentena, nunca apagado). O que traz o CNPJ/CPF de um cliente ou o CPF de um sócio do cadastro continua
 const PASTA_DO_NANDO = /(?:^|\\)DOWNLOADS\\NANDO(?:\\|$)/i;
+// (Vitor, 30/10/2026, 4ª rodada, decisão 5) ficam em NÃO IDENTIFICADOS, nunca arquivados pela regra de outro documento: o parcelamento e a multa ambiental
+// (SEMAD, FEAM, IEF, IGAM: o termo de parcelamento/confissão, a simulação, o auto; a guia da parcela, não: abaixo), o crédito não tributário do Estado e a multa do DETRAN
+// (auto de infração, notificação). A TFAMG (taxa de fiscalização ambiental) é tributo e segue a regra dela. Os documentos de lançamentos (extrato,
+// comprovante do banco, maquininha, balancete) e as notas fiscais não entram: citam o órgão numa linha, não são o documento da multa
+const ORGAO_AMBIENTAL = /\b(SEMAD|FEAM|IEF|IGAM)\b|SECRETARIA (DE ESTADO|ESTADUAL) DE MEIO AMBIENTE|FUNDACAO ESTADUAL DO MEIO AMBIENTE|INSTITUTO ESTADUAL DE FLORESTAS/;
+const MULTA_OU_PARCELAMENTO = /\bMULTAS?\b|DANOS AMBIENTAIS|AUTO DE INFRACAO|PARCELAMENTO|CONFISSAO/;
+const MULTA_DO_DETRAN = /DETRAN[\s\S]{0,400}(AUTO DE INFRACAO|INFRACAO DE TRANSITO|NOTIFICACAO DE (AUTUACAO|PENALIDADE)|\bMULTAS?\b)|(AUTO DE INFRACAO|INFRACAO DE TRANSITO|NOTIFICACAO DE (AUTUACAO|PENALIDADE))[\s\S]{0,400}DETRAN/;
+const FICA_NI_FORA = /^(EXTRATO|APLICACOES|MAQUININHAS|BALANCETE|COMPROVANTE|RECEBIMENTO DE CLIENTES|FATURA CARTAO|NF-?E|NFC-?E|NFS-?E|CT-?E|MDF-?E|XML|DESCARTE)\b/;
+function ficaNiPorDecisao(entrada, d) {
+  if (!d || FICA_NI_FORA.test(String(d.tipo || ''))) return null;
+  const t = norm((Array.isArray(entrada.texto) ? entrada.texto.slice(0, 2).join('\n') : String(entrada.texto || entrada.txt || '')).slice(0, 3000));
+  const n = norm(String(entrada.nome || ''));
+  if (/\bTFAMG\b|TAXA DE CONTROLE E FISCALIZACAO AMBIENTAL/.test(t + ' ' + n)) return null;
+  const tudo = t + '\n' + n;
+  // a GUIA (DAE/DARF/DAM/DAS) da parcela de multa ambiental segue a decisão D3 de 29/10/2026 (o DAE do auto de infração parcelado da 413 em PARCELAMENTOS): aqui só o
+  // termo, a simulação, a confissão e o auto (pergunta em aberto ao Vitor: a guia também fica?)
+  const guia = /^(DAE|DARF|DAM|DAS)$/.test(String(d.tipo || ''));
+  const porque = /CREDITO NAO TRIBUTARIO/.test(tudo) ? 'crédito não tributário do Estado'
+    : !guia && ORGAO_AMBIENTAL.test(tudo) && MULTA_OU_PARCELAMENTO.test(tudo) ? 'parcelamento ou multa ambiental (SEMAD/FEAM/IEF)'
+      : MULTA_DO_DETRAN.test(tudo) || /\bMULTA\b[\s\S]{0,40}\bDETRAN\b|\bDETRAN\b[\s\S]{0,40}\bMULTA\b/.test(n) ? 'multa do DETRAN' : null;
+  if (!porque) return null;
+  // já NÃO IDENTIFICADO: fica, e o mapa da migração (a pasta "PARCELAMENTO" de origem) não o arquiva depois
+  if (d.acao === 'NAO_IDENTIFICADO') return Object.assign(d, { ficaNi: true, evidencias: (d.evidencias || []).concat(porque + ': fica em NÃO IDENTIFICADOS (Vitor, 30/10/2026)') });
+  return { acao: 'NAO_IDENTIFICADO', motivo: 'TIPO_NAO_RECONHECIDO', ficaNi: true, confianca: 0.3, tipo: d.tipo, setor: d.setor, cliente: d.cliente != null ? d.cliente : null,
+    evidencias: (d.evidencias || []).concat(porque + ': fica em NÃO IDENTIFICADOS, não vai pela regra de ' + (d.tipo || 'outro documento') + ' (Vitor, 30/10/2026)') };
+}
 function decidir(entrada, ctx) {
+  const d0 = decidir2(entrada, ctx);
+  return ficaNiPorDecisao(entrada, d0) || d0;
+}
+function decidir2(entrada, ctx) {
   const d = decidir1(entrada, ctx);
   if (!d || d.acao !== 'NAO_IDENTIFICADO' || d.cliente != null || !PASTA_DO_NANDO.test(entrada.rel || '')) return d;
   const cad = ctx.cadastro;
@@ -1563,13 +1603,18 @@ const CONCESSIONARIA = /\b(CEMIG|COELBA|NEOENERGIA|COPASA|EMBASA|SAAE|ENERGISA|2
 const CLIENTES_DE_AERONAVE = new Set([506]);
 // a fatura de locação emitida pelo cliente que vai para EMITIDOS\RELATÓRIO MENSAL\ANO (Vitor, 29/10/2026, 3ª rodada, decisão 11: "as faturas de locação da 417, da 572 e da 568"): o
 // EMITENTE da fatura (o CNPJ do cabeçalho) tem de ser um destes clientes; a fatura de outro emitente que está na pasta deles continua NÃO IDENTIFICADO
-const FATURA_LOCACAO_EMITIDA_CLIENTES = new Set([417, 572, 568]);
+// as operadoras de maquininha que o nome ou a pasta da planilha dizem (Vitor, 30/10/2026, 4ª rodada, decisão 3); o texto vem com espaço nas pontas e sem pontuação
+const OPERADORAS_MAQUININHA = [['STONE', / STONE( ?CODE)? /], ['CIELO', / CIELO /], ['REDE', / REDE /], ['PAGBANK', / PAGBANK | PAGSEGURO /], ['INFINITEPAY', / INFINITE ?PAY /],
+  ['GETNET', / GETNET /], ['SUMUP', / SUMUP /], ['MERCADO PAGO', / MERCADO ?PAGO /]];
+// (Vitor, 30/10/2026, 4ª rodada, decisão 1) e a da Ouro Preto (441): as faturas dela achadas nas pastas da Freedom (572) vão para a 441
+const FATURA_LOCACAO_EMITIDA_CLIENTES = new Set([417, 572, 568, 441]);
 // o relatório gerado pelo sistema do cliente ou do escritório (estoque, inventário, conferência de ST, notas lançadas do ISS, plano de contas, relatório do Alterdata,
 // registros fiscais de NF-e/NFC-e, faturamento): vai para CONTÁBIL\RELATÓRIOS ALTERDATA (Vitor, 29/10/2026: regra geral para planilha e relatório)
 // (29/10/2026, Vitor) os relatórios do sistema FISCAL (registro e apuração de ICMS, ISS do Alterdata, recuperação de créditos, conferência de ST, Econet, NF-e/NFC-e do mês) vão para
 // FISCAL\<regime>\RELATÓRIOS ALTERDATA\ANO, como a DEFIS; "planilha e relatório → CONTÁBIL\RELATÓRIOS ALTERDATA" fica só para os relatórios contábeis
 const RELATORIO_FISCAL_DO_SISTEMA = /RELATORIO DE CONFERENCIA DE SUBSTITUICAO TRIBUTARIA|CONFERENCIA DE (ST|SUBSTITUICAO TRIBUTARIA)|RELATORIO DE NOTAS FISCAIS LANCADAS|REGISTROS? FISCAIS? (DE )?NF|REGISTRO DE APURACAO D[OE] ICMS|APURACAO D[OE] ICMS|RELATORIO DE (APURACAO|ISS|ISSQN)|RELATORIO DE RECUPERACAO|\bECONET\b|RELATORIO DE (NF-?E|NFC-?E)\b/;
-const RELATORIO_DO_SISTEMA = /RELATORIO DE ESTOQUE|ESTOQUE POR GRUPO|INVENTARIO DE (PRODUTOS|ESTOQUE)|ALTERDATA[\s\S]{0,300}RELATORIO|RELATORIO POR NIVEL|RELATORIO DE FATURAMENTO/;
+// (30/10/2026, 4ª rodada) e os "Valores do Plano de Contas [Relatório Analítico]" do sistema da CDL (536): relatório contábil, como as planilhas soltas dela
+const RELATORIO_DO_SISTEMA = /RELATORIO DE ESTOQUE|ESTOQUE POR GRUPO|INVENTARIO DE (PRODUTOS|ESTOQUE)|ALTERDATA[\s\S]{0,300}RELATORIO|RELATORIO POR NIVEL|RELATORIO DE FATURAMENTO|VALORES DO PLANO DE CONTAS\s*\[?RELATORIO ANALITICO/;
 /** O caminho do relatório fiscal no regime do cliente (o mesmo do relatório de conferência do Simples do Alterdata). */
 const caminhoRelatorioFiscal = (cad, cod, ano) => { const r = (cad.porCod.get(cod) || {}).regime; return r ? ['FISCAL', r, 'RELATÓRIOS ALTERDATA', String(ano)] : null; };
 /**
@@ -1604,7 +1649,7 @@ function pelaPastaENome(entrada, ctx, d) {
     const x = o.cliente != null && !(d.cliente != null && d.comoCliente === 'doc' && d.cliente !== o.cliente) ? { cliente: o.cliente, como: o.comoCliente || 'nome', conf: 0.9 } : cliente();
     if (!x) return null;
     if (o.cliente == null || x.cliente !== o.cliente) { delete o.cliente; delete o.comoCliente; }
-    ev.push(porque.endsWith('§29') ? porque.slice(0, -3) + ' (Vitor, 29/10/2026)' : porque + ' (Vitor, 28/10/2026)');
+    ev.push(porque.endsWith('§30') ? porque.slice(0, -3) + ' (Vitor, 30/10/2026)' : porque.endsWith('§29') ? porque.slice(0, -3) + ' (Vitor, 29/10/2026)' : porque + ' (Vitor, 28/10/2026)');
     return finalizar(Object.assign({ acao: 'ARQUIVAR', cliente: x.cliente, comoCliente: x.como, confianca: Math.min(x.conf, 0.9), evidencias: ev, nomeOriginal: nome, nomeFinal: nome, ocr: entrada.ocr || null, anoPista: pastaAno, fonte: 'pelo nome e pela pasta de origem (Vitor, 28/10/2026)' }, o), ctx);
   };
   const mesDe = () => competenciaDoNome(nome) || (pastaAno && pastaAno.mes ? { mes: pastaAno.mes, ano: pastaAno.ano } : null) || (v => v ? { mes: +v.slice(3, 5), ano: +v.slice(6) } : null)(dataBr(linhaApos(u, /VENCIMENTO/, 60)));
@@ -1888,14 +1933,64 @@ function pelaPastaENome(entrada, ctx, d) {
       return fim({ tipo: inv ? 'PAPEL DE TRABALHO' : 'OUTROS DOCUMENTOS', setor: 'CONTABIL', caminho: ['CONTÁBIL', inv ? 'PAPÉIS DE TRABALHO' : 'OUTROS DOCUMENTOS', String(a)], competencia: { ano: a } }, inv ? 'declaração de inventário (PAPÉIS DE TRABALHO)§29' : 'declaração/procuração (OUTROS DOCUMENTOS)§29');
     }
   }
+  // (Vitor, 30/10/2026, 4ª rodada, decisão 3) a maquininha em planilha (o InfinitePay .csv, a Rede .xlsx, o PagBank e a Cielo .xls, a Stone .csv), na pasta conferida do
+  // cliente: CONTÁBIL\EXTRATOS\ANO\MÊS\MAQUININHAS\<OPERADORA>, "MM-AAAA.ext" (como os recebíveis em PDF; " - PRONTO" quando o nome diz que é a planilha pronta para importar,
+  // para não se confundir com a original do mesmo mês). A operadora pelo nome ou pela pasta (o conteúdo só com a assinatura própria da exportação, o "STONECODE"); o
+  // conteúdo não pode dizer outra operadora nem outro cliente. O mês pelo nome, senão pelo período escrito, senão pela pasta de origem
+  if (/^(xlsx?|xlsm|csv|ods)$/.test(extNome) && d.tipo !== 'EXTRATO' && !/\bEXTRATO\b/.test(n)) {
+    const linhasPl = (entrada.planilha || []).slice(0, 40).map(l => (l || []).join(' | '));
+    const topoPl = norm(linhasPl.slice(0, 5).join('\n'));
+    const ops = s => OPERADORAS_MAQUININHA.filter(([, re]) => re.test(' ' + s.replace(/[^A-Z0-9]+/g, ' ') + ' ')).map(([b]) => b);
+    const doNomeOuPasta = [...new Set(ops(n).concat(...pastas.slice(-2).map(ops)))];
+    const doTopo = ops(topoPl);
+    const op = doNomeOuPasta.length === 1 ? doNomeOuPasta[0] : !doNomeOuPasta.length && /\bSTONE ?CODE\b/.test(topoPl) ? 'STONE' : null;
+    if (op && doTopo.every(b => b === op)) {
+      const x = cliente();
+      if (x && ['pastaConferida', 'doc', 'conta', 'hash'].includes(x.como) && !doOutroCliente(linhasPl.join('\n'), x.cliente)) {
+        const pe = periodoEscrito(norm(linhasPl.join('\n')));
+        const doNome = competenciaDoNome(nome);
+        const comp = doNome || (pe ? { mes: pe.ate.mes, ano: pe.ate.ano } : null) || (pastaAno && pastaAno.mes ? { mes: pastaAno.mes, ano: pastaAno.ano } : null);
+        const diverge = doNome && pe && (pe.ate.mes !== doNome.mes || pe.ate.ano !== doNome.ano);
+        if (comp && !diverge) {
+          const pronto = /\bPRONTO\b/.test(n) ? ' - PRONTO' : '';
+          return fim({ tipo: 'MAQUININHAS', setor: 'CONTABIL', caminho: ['CONTÁBIL', 'EXTRATOS', String(comp.ano), dois(comp.mes), 'MAQUININHAS', op], competencia: comp, nomeFinal: mesAno(comp) + pronto + '.' + extNome },
+            'maquininha em planilha (' + op + ' pelo ' + (doNomeOuPasta.length ? 'nome ou pela pasta' : 'conteúdo') + ', o mês ' + mesAno(comp) + ')§30');
+        }
+      }
+    }
+  }
+  // (Vitor, 30/10/2026, 4ª rodada, decisão 4) o "Relatório de Notas Fiscais Lançadas" da prefeitura (o ISS de Divisa Alegre): o relatório é do PRESTADOR, o CNPJ que abre cada
+  // linha (seguido do CNPJ/CPF do tomador); o tomador que também é cliente (a 277) não o faz ambíguo. Um prestador só, cliente do cadastro, com a razão escrita: FISCAL\<regime>\
+  // RELATÓRIOS ALTERDATA\ANO dele (a regra do relatório fiscal do sistema), esteja na pasta de quem estiver; mais de um prestador ou nenhum: NÃO IDENTIFICADO
+  if (extNome === 'pdf' && /^[\s\S]{0,300}RELATORIO DE NOTAS FISCAIS LANCADAS[\s\S]{0,300}MUNICIPIO DE/.test(u)) {
+    const prest = new Set([...bruto.matchAll(/(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2})[ \t]*\n[ \t]*(?:\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}|\d{3}\.\d{3}\.\d{3}-\d{2})[ \t]*\n/g)].map(m => so(m[1])));
+    const cods = prest.size === 1 ? clientesDoDoc([...prest][0], cad) : [];
+    const cli = cods.length === 1 ? cad.porCod.get(cods[0]) : null;
+    const semPont = s => ' ' + s.replace(/[^A-Z0-9]+/g, ' ').trim() + ' ';   // "G.A.S SAUDE" = "G A S SAUDE"
+    if (cli && semPont(u).includes(semPont(norm(nomeNormalizado(cli.razao)).split(/\s+/).slice(0, 3).join(' ')))) {
+      // o ano e o mês pelas datas de emissão das linhas (um só), senão pela pasta de origem; com o mês, o nome leva o mês ("relatorio.pdf" de cada mês
+      // na mesma pasta do ano viraria "relatorio (2).pdf", "(3)"…); sem o mês, o nome original
+      const datas = [...u.matchAll(/\b\d{2}\/(\d{2})\/(20\d{2})\b/g)].filter(m => anoOk(+m[2]));
+      const anos = new Set(datas.map(m => +m[2])), meses = new Set(datas.map(m => m[2] + '-' + m[1]));
+      const a = anos.size === 1 ? [...anos][0] : pastaAno && pastaAno.ano;
+      const mes = meses.size === 1 ? +[...meses][0].slice(5) : pastaAno && pastaAno.mes && pastaAno.ano === a ? pastaAno.mes : null;
+      const cf = a ? caminhoRelatorioFiscal(cad, cli.codigo, a) : null;
+      if (cf && ARVORE[cf[1]]) {
+        const nomeF = mes ? mesAno({ mes, ano: a }) + ' - RELATORIO DE NOTAS FISCAIS LANCADAS.pdf' : nome;
+        ev.push('relatório de notas fiscais lançadas da prefeitura: o prestador de todas as linhas é o cliente ' + cli.codigo + ' (o CNPJ ' + [...prest][0] + '); FISCAL\\' + cf[1] + '\\RELATÓRIOS ALTERDATA\\' + a + ' (Vitor, 30/10/2026)');
+        return finalizar({ acao: 'ARQUIVAR', cliente: cli.codigo, comoCliente: 'doc', confianca: 0.9, tipo: 'RELATORIO FISCAL', setor: 'FISCAL', caminho: cf, competencia: mes ? { mes, ano: a } : { ano: a }, evidencias: ev, nomeOriginal: nome, nomeFinal: nomeF, ocr: entrada.ocr || null, anoPista: pastaAno, fonte: 'relatório de notas lançadas da prefeitura (Vitor, 30/10/2026)' }, ctx);
+      }
+    }
+  }
   // (5) a fatura de locação emitida pelo cliente (a "Receita de Locação" da 441: o CNPJ e o nome dele no cabeçalho): é receita,
-  // FISCAL\<regime>\03. DOCUMENTOS FISCAIS\EMITIDOS, nome original
+  // FISCAL\<regime>\03. DOCUMENTOS FISCAIS\EMITIDOS\RELATÓRIO MENSAL\ANO, nome original (Vitor, 30/10/2026, 4ª rodada, decisão 1: como as faturas da 417, 572 e 568;
+  // era EMITIDOS, sem o RELATÓRIO MENSAL\ANO)
   if (extNome === 'pdf' && /^[\s\S]{0,2500}FATURA DE LOCACAO/.test(u)) {
     const x = cliente(), cli = x && cad.porCod.get(x.cliente);
     if (cli && cli.doc && documentosDoTexto(bruto).some(y => y.doc === cli.doc) &&
        u.includes(norm(nomeNormalizado(cli.razao)).split(/\s+/).slice(0, 2).join(' ')) && pastas.some(p => /RECEITA|LOCACAO|FATURAMENTO/.test(p))) {
       const a = ano(anoNome, pastaAno && pastaAno.ano, dataDoDoc, anoArq);
-      if (a) return fim({ tipo: 'FATURA DE LOCACAO', setor: 'FISCAL', fiscal: ['DOCS', 'EMITIDOS'], competencia: { ano: a } }, 'fatura de locação emitida pelo cliente (receita: DOCUMENTOS FISCAIS\\EMITIDOS)§29');
+      if (a) return fim({ tipo: 'FATURA DE LOCACAO', setor: 'FISCAL', fiscal: ['DOCS', 'EMITIDOS', 'RELATÓRIO MENSAL', String(a)], competencia: { ano: a } }, 'fatura de locação emitida pelo cliente (receita: EMITIDOS\\RELATÓRIO MENSAL\\' + a + ')§30');
     }
   }
   // (5b) (Vitor, 29/10/2026, 3ª rodada, decisão 11) a fatura de locação emitida pela 417, pela 572 ou pela 568 (o modelo "FATURA DE LOCAÇÃO … CNPJ: <emitente> INS. EST.: … CONFORME LEI
@@ -1941,7 +2036,10 @@ function pelaPastaENome(entrada, ctx, d) {
         if (!cf) return null;
         return fim({ tipo: 'RELATORIO FISCAL', setor: 'FISCAL', caminho: cf, competencia: { ano: a } }, 'relatório fiscal do sistema (FISCAL\\<regime>\\RELATÓRIOS ALTERDATA\\' + a + '; Vitor, 29/10/2026)');
       }
-      return fim({ tipo: 'RELATORIO DO SISTEMA', setor: 'CONTABIL', caminho: ['CONTÁBIL', 'RELATÓRIOS ALTERDATA'], competencia: { ano: a } }, 'relatório do sistema (RELATÓRIOS ALTERDATA, regra geral para planilha e relatório)§29');
+      // (30/10/2026) os "Valores do Plano de Contas" da CDL, um por mês, com o mesmo nome ("VALORES POR PLANO DE CONTA.pdf") na mesma pasta sem o ano: o mês
+      // do período escrito vai na frente do nome (sem ele, "(2)", "(3)"… escondiam o mês); sem o mês, o nome original
+      const mensal = /VALORES DO PLANO DE CONTAS/.test(u.slice(0, 1500)) && p && p.de.mes === p.ate.mes && p.de.ano === p.ate.ano && !competenciaDoNome(nome);
+      return fim(Object.assign({ tipo: 'RELATORIO DO SISTEMA', setor: 'CONTABIL', caminho: ['CONTÁBIL', 'RELATÓRIOS ALTERDATA'], competencia: { ano: a } }, mensal ? { nomeFinal: mesAno(p.ate) + ' - ' + nome } : {}), 'relatório do sistema (RELATÓRIOS ALTERDATA, regra geral para planilha e relatório)§29');
     }
   }
   return null;
@@ -3553,14 +3651,25 @@ function decidirPdf(entrada, ctx, ev, porHash) {
       else ev.push('ano pelo registro na Junta Comercial');
       return Object.assign(base, { acao: 'ARQUIVAR', confianca: c.conf, caminho: ['SOCIETÁRIO', 'DOCUMENTOS CONSTITUTIVOS'], nomeFinal: nomeOrig }, ano ? { competencia: { ano } } : {});
     }
-    case 'DEBITO FISCAL': {
+    case 'DEBITO FISCAL': case 'PARCELAMENTO SIMPLES': {
       // (Vitor, 29/10/2026, 3ª rodada, decisão 10) FISCAL\<regime>\OUTROS DOCUMENTOS\ANO (o ofício fiscal já vai para lá), nome original; sem a data no documento, o ano do nome ou da pasta
+      // (Vitor, 30/10/2026, 4ª rodada, decisão 2) a negociação da PGFN em PARCELAMENTOS\DÍVIDA ATIVA\ANO (PREVIDENCIÁRIA\ANO, a modalidade previdenciária); o recibo do
+      // parcelamento do Simples em PARCELAMENTOS (sem subpasta: é onde estão as parcelas do DAS de parcelamento)
       const cli = ctx.cadastro.porCod.get(c.cliente) || {};
       if (!cli.regime || !ARVORE[cli.regime]) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: cli.regime === undefined ? 'VOCABULARIO_AUSENTE' : 'REGIME_INDEFINIDO', confianca: 0.5, evidencias: ev.concat('o cliente ' + c.cliente + ' não tem regime com pasta no cadastro') });
       const pa = anoDaPasta(entrada.rel || '') || competenciaDaPasta(entrada.rel || '');
       const an = (/(?:^|[^0-9])(20\d{2})(?![0-9])/.exec(String(nomeOrig || '').replace(/\.[a-z0-9]+$/i, '')) || [])[1];
       const ano = campos.ano || (an && anoOk(+an) ? +an : null) || (pa && pa.ano) || null;
       if (!ano) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'ANO_INDETERMINADO', confianca: 0.5, evidencias: ev.concat('a data do documento não foi lida, nem o ano no nome ou na pasta') });
+      if (regra.tipo === 'PARCELAMENTO SIMPLES') {
+        ev.push('recibo do parcelamento do Simples Nacional: PARCELAMENTOS do regime, nome original, o ano da adesão (Vitor, 30/10/2026)');
+        return Object.assign(base, { acao: 'ARQUIVAR', confianca: c.conf, competencia: { ano }, fiscal: ['PARC'], nomeFinal: nomeOrig });
+      }
+      if (campos.negociacaoPgfn) {
+        const sub = campos.previdenciaria ? 'PREVIDENCIÁRIA' : 'DÍVIDA ATIVA';
+        ev.push('negociação da PGFN: PARCELAMENTOS\\' + sub + '\\' + ano + ', nome original (Vitor, 30/10/2026)');
+        return Object.assign(base, { acao: 'ARQUIVAR', confianca: c.conf, competencia: { ano }, fiscal: ['PARC', sub, String(ano)], nomeFinal: nomeOrig });
+      }
       return Object.assign(base, { acao: 'ARQUIVAR', confianca: c.conf, competencia: { ano }, caminho: ['FISCAL', cli.regime, 'OUTROS DOCUMENTOS', String(ano)], nomeFinal: nomeOrig });
     }
     case 'INSCRICAO ESTADUAL': case 'OPCAO PELO REGIME': case 'INSCRICAO MUNICIPAL':

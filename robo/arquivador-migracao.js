@@ -82,6 +82,8 @@ const SEM_DECISAO_PELO_CONTEUDO = new Set(['TIPO_NAO_RECONHECIDO', 'CONTEUDO_SEM
 function decidir(entrada, ctx, d) {
   // a conta do documento está em dois clientes do cadastro (Vitor, 28/10/2026): fica CLIENTE_AMBIGUO, a pasta não desempata
   if (d && d.contaAmbigua) return null;
+  // o parcelamento/multa ambiental, o crédito não tributário e a multa do DETRAN (Vitor, 30/10/2026, decisão 5): ficam em NÃO IDENTIFICADOS, a pasta não decide
+  if (d && d.ficaNi) return null;
   return clientePelaPasta(entrada, ctx, d) || decidirPeloMapa(entrada, ctx, d);
 }
 function decidirPeloMapa(entrada, ctx, d) {
