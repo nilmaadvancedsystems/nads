@@ -14,7 +14,10 @@
 //   (1, 2, 4 e 8 s); só avisa se continuar, e uma vez só para todos os meses (não um aviso por mês).
 import { extrator as x, formatos, tarefas as t, type empresas, type usuarios } from '@nads/core';
 import { getApps, initializeApp } from 'firebase/app';
-import { collection, doc, getDoc, getDocs, getFirestore, initializeFirestore, onSnapshot, query, where, writeBatch as writeBatchBruto, type Firestore } from 'firebase/firestore';
+import {
+  arrayRemove, arrayUnion, collection, deleteField, doc, FieldPath, getDoc, getDocs, getFirestore, initializeFirestore, onSnapshot, query, where,
+  writeBatch as writeBatchBruto, type Firestore,
+} from 'firebase/firestore';
 import { bancoDoEntregas } from './entregas.firestore';
 import { guardarLote } from '../../../comum/modoDesenvolvedor';
 
@@ -103,15 +106,48 @@ export function criarRepoTarefasFirestore(lista: readonly empresas.EmpresaDoEscr
     return c;
   }
 
-  function lote(ex: t.Execucao, ev: t.Evento, comEstado: boolean) {
+  /**
+   * Só os campos que mudaram (30/10/2026, revisão dos dados): set com mergeFields grava esses caminhos e deixa o resto do
+   * documento como está no banco (os números da conferência informados um atrás do outro a partir da mesma cópia ficavam
+   * só com o último; o "Não se aplica" e o "Desmarcar", que esperam a janela, apagavam o que chegou com ela aberta). Os
+   * campos que dizem de quem é a execução vão sempre (a regra do banco e a busca por competência usam).
+   */
+  function soOQueMudou(ex: t.Execucao, mudancas: readonly t.MudancaDaExecucao[], em: string) {
+    const dados: Record<string, unknown> = { empresa: ex.empresa, codigo: ex.codigo, competencia: ex.competencia, departamento: ex.departamento, atualizadoEm: em };
+    const campos = ['empresa', 'codigo', 'competencia', 'departamento', 'atualizadoEm'].map(k => new FieldPath(k));
+    for (const m of mudancas) {
+      const v = 'apagar' in m ? deleteField() : 'juntar' in m ? arrayUnion(...m.juntar) : 'tirar' in m ? arrayRemove(...m.tirar) : m.valor;
+      const [campo, chave] = m.caminho;
+      if (chave === undefined) dados[campo] = v;
+      else dados[campo] = { ...(dados[campo] as Record<string, unknown> | undefined), [chave]: v };
+      campos.push(new FieldPath(...m.caminho));
+    }
+    return { dados, campos };
+  }
+
+  function lote(ex: t.Execucao, ev: t.Evento, comEstado: boolean, antes?: t.Execucao) {
     const c = carregar(ex.competencia, ex.departamento);
     if (!c.chegou) return; // antes de a competência chegar do banco, nunca grava
     const id = t.idDaExecucao(ex.empresa, ex.competencia, ex.departamento);
     const b = writeBatch(db);
     if (comEstado) {
-      c.execucoes.set(id, ex); // a tela já vê a mudança; o banco confirma pelo onSnapshot
-      mudou();
-      b.set(doc(db, COLECAO, id), { ...ex, atualizadoEm: new Date().toISOString() });
+      const em = new Date().toISOString();
+      const atual = c.execucoes.get(id);
+      if (antes && atual) {
+        // a execução já existe: só o que mudou desde a cópia de onde a mudança partiu, por cima da que está aqui
+        const mudancas = t.diferencaDaExecucao(antes, ex);
+        if (mudancas.length) {
+          c.execucoes.set(id, t.aplicarDiferenca(atual, mudancas)); // a tela já vê a mudança; o banco confirma pelo onSnapshot
+          mudou();
+          const { dados, campos } = soOQueMudou(ex, mudancas, em);
+          b.set(doc(db, COLECAO, id), dados, { mergeFields: campos });
+        }
+      } else {
+        // a primeira gravação do mês (ainda não existe no banco) ou quem não diz de onde partiu: o documento inteiro
+        c.execucoes.set(id, ex); // a tela já vê a mudança; o banco confirma pelo onSnapshot
+        mudou();
+        b.set(doc(db, COLECAO, id), { ...ex, atualizadoEm: em });
+      }
     }
     b.set(doc(collection(db, COLECAO, id, 'eventos')), ev);
     b.commit().catch((err: Error) => avisar('Não deu para salvar a tarefa de "' + ex.empresa + '" na nuvem: ' + err.message));
@@ -122,7 +158,7 @@ export function criarRepoTarefasFirestore(lista: readonly empresas.EmpresaDoEscr
     listarEmpresas: () => lista,
     execucoes: (competencia, departamento) => [...carregar(competencia, departamento).execucoes.values()],
     carregada: (competencia, departamento) => carregar(competencia, departamento).chegou,
-    gravar: (ex, ev) => lote(ex, ev, true),
+    gravar: (ex, ev, antes) => lote(ex, ev, true, antes),
     registrar: (ex, ev) => lote(ex, ev, false),
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,

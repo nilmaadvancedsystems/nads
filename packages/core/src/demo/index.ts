@@ -16,6 +16,7 @@ import type { Conta, Empresa as EmpresaConferencia, EmpresaDaLista } from '../co
 import type { RepoExtrator } from '../extratudo/extrator/repo';
 import type { ArquivoLido, EmpresaExtrator, Lancamento } from '../extratudo/extrator/tipos';
 import { idDaExecucao, type RepoTarefas } from '../tarefas/repo';
+import { aplicarDiferenca, diferencaDaExecucao } from '../tarefas/regras/gravacaoDaExecucao';
 import type { Execucao } from '../tarefas/tipos';
 
 export const EMPRESA_DEMO: EmpresaDoEscritorio = { codigo: 9999, nome: 'PERSONALY COMPANY', regime: 'Simples' };
@@ -175,9 +176,11 @@ export function tarefasComDemo<R extends RepoTarefas>(real: R): R {
     execucoes: (competencia, departamento) => [...real.execucoes(competencia, departamento),
       ...Object.values(dados).filter(e => e.competencia === competencia && e.departamento === departamento)],
     carregada: (competencia, departamento) => real.carregada(competencia, departamento),
-    gravar(ex, ev) {
-      if (!ehEmpresaDemo(ex.empresa)) { real.gravar(ex, ev); return; }
-      dados = { ...dados, [idDaExecucao(ex.empresa, ex.competencia, ex.departamento)]: ex };
+    gravar(ex, ev, antes) {
+      // a cópia de onde a mudança partiu vai junto: o banco grava só o que mudou (30/10/2026)
+      if (!ehEmpresaDemo(ex.empresa)) { real.gravar(ex, ev, antes); return; }
+      const id = idDaExecucao(ex.empresa, ex.competencia, ex.departamento);
+      dados = { ...dados, [id]: antes && dados[id] ? aplicarDiferenca(dados[id], diferencaDaExecucao(antes, ex)) : ex };
       gravar(CHAVES.tarefas, dados);
       avisar();
     },

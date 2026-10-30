@@ -7,6 +7,7 @@ export { ROTINA_DP } from './rotinas/dp';
 export { ROTINA_LCDPR } from './rotinas/lcdpr';
 export { rotinaDaEmpresa, rotinaDo } from './rotinas/rotinaDo';
 export * from './regras/execucao';
+export * from './regras/gravacaoDaExecucao';
 export * from './regras/verificacao';
 export * from './regras/competencias';
 export * from './regras/visao';
