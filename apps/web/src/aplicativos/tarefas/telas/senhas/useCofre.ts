@@ -229,6 +229,25 @@ export function useCofre() {
       if (!d || !aberta || aberta.dono !== id) return null;
       return c.decifrar<c.SegredosDaEmpresa>(aberta.chave, d);
     },
+    /**
+     * Muda os segredos de uma empresa a partir de como estão no banco agora (30/10/2026, revisão dos dados): parte recebe
+     * os segredos atuais (relidos e desembaralhados na hora de gravar) e devolve os novos; só a parte que a pessoa editou
+     * muda. Devolve o que foi gravado (null = não gravou). O documento que não abre com a chave do cofre para aqui, sem
+     * gravar por cima.
+     */
+    async mudar(empresa: string, codigo: number | null, parte: (atuais: c.SegredosDaEmpresa) => c.SegredosDaEmpresa, avisar = true): Promise<c.SegredosDaEmpresa | null> {
+      if (!aberta || aberta.dono !== id || !config || !eu) return null;
+      if (modoDesenvolvedor()) { toast(AVISO_DEV); return null; }
+      const gravado: { segredos: c.SegredosDaEmpresa | null } = { segredos: null };
+      const chave = aberta.chave, versao = config.versao, por = eu.nome;
+      await repo.mudarItem(formatos.slug(empresa), async d => {
+        const r = await c.docComSegredosMudados(chave, d, parte, { empresa, codigo, versao, atualizadoEm: agora(), atualizadoPor: por });
+        gravado.segredos = r.segredos;
+        return r.doc;
+      });
+      if (avisar) toast('Guardado no cofre.');
+      return gravado.segredos;
+    },
     async salvar(empresa: string, codigo: number | null, segredos: c.SegredosDaEmpresa, avisar = true) {
       if (!aberta || aberta.dono !== id || !config || !eu) return;
       if (modoDesenvolvedor()) { toast(AVISO_DEV); return; }

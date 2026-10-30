@@ -2,13 +2,14 @@
 // chave pública de cada pessoa e a cópia dela da chave do cofre) e cofre/{empresa} (os segredos embaralhados). As regras
 // deixam todo o escritório ler e gravar; o que é segredo já chega embaralhado (nem o banco consegue ler).
 import type { cofre } from '@nads/core';
-import { collection, deleteDoc as apagarBruto, doc, getDoc, onSnapshot, setDoc as gravarBruto, writeBatch } from 'firebase/firestore';
+import { collection, deleteDoc as apagarBruto, doc, getDoc, onSnapshot, runTransaction as transacaoBruta, setDoc as gravarBruto, writeBatch } from 'firebase/firestore';
 import { guardar, guardarLote } from '../../../comum/modoDesenvolvedor';
 import { bancoDoEntregas } from './entregas.firestore';
 import type { RepoCofre } from './cofre';
 
 const setDoc = guardar(gravarBruto) as typeof gravarBruto;
 const deleteDoc = guardar(apagarBruto) as typeof apagarBruto;
+const runTransaction = guardar(transacaoBruta) as typeof transacaoBruta;
 /** o Firestore não aceita undefined */
 const limpo = <T,>(o: T): T => JSON.parse(JSON.stringify(o)) as T;
 
@@ -50,6 +51,14 @@ export function criarCofreFirestore(eu: () => { uid: string; nome: string } | nu
     marcarAcesso: (id, acesso) => setDoc(doc(db, 'cofreChaves', id), { ultimoAcesso: limpo(acesso) }, { merge: true }),
     apagarChave: id => deleteDoc(doc(db, 'cofreChaves', id)),
     salvar: (id, d) => setDoc(doc(db, 'cofre', id), limpo(d)),
+    // lê e grava juntos (a transação): o que outra pessoa gravou no meio não se perde
+    async mudarItem(id, f) {
+      const ref = doc(db, 'cofre', id);
+      await runTransaction(db, async tx => {
+        const s = await tx.get(ref);
+        tx.set(ref, limpo(await f(s.exists() ? (s.data() as cofre.DocDoCofre) : null)));
+      });
+    },
     async salvarVarios(lista) {
       // o Firestore aceita até 500 por lote
       for (let i = 0; i < lista.length; i += 400) {
