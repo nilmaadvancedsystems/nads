@@ -33,7 +33,7 @@ export function rotuloDoControle(alvo: Element | null, tela: string, nomes: read
   if (marcado) return uso.rotuloLimpo(marcado, nomes);
   // nas Senhas (e na aba Senhas da empresa) nunca o texto do botão: só o rótulo acessível ou a dica
   const sensivel = tela.startsWith('senhas/') || tela === 'cadastro/empresas/senhas';
-  const daLista = !!el.closest('tbody, [role="row"], .gm-item');
+  const daLista = !!el.closest('tbody, [role="row"], .gm-item, .mx-linha');
   const acessivel = el.getAttribute('aria-label') || el.getAttribute('title') || '';
   const texto = (el.textContent || '').replace(/\s+/g, ' ').trim();
   const bruto = acessivel || (sensivel ? '' : texto.length <= TEXTO_CURTO && !daLista ? texto : '');
