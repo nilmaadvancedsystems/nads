@@ -145,3 +145,28 @@ export function dataHora(ts: string): string {
   const d = new Date(ts);
   return d.toLocaleDateString('pt-BR') + ' às ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
+
+/**
+ * O valor que a pessoa digitou num campo de reais (o mesmo do campo de valor do Relatório do Fiscal): "1.234,56", "1234,5",
+ * "R$ 10" e o ponto sozinho com uma ou duas casas como decimal ("1234.56" → 1234,56; 30/10/2026: o total da folha virava
+ * 123456). null quando não é número.
+ */
+export function numeroDigitado(texto: string): number | null {
+  const s = String(texto ?? '').trim().replace(/^R\$\s*/i, '').replace(/\s/g, '');
+  if (!s) return null;
+  const n = /^-?\d+\.\d{1,2}$/.test(s) ? Number(s) : Number(s.replace(/\./g, '').replace(',', '.'));
+  return Number.isFinite(n) ? n : null;
+}
+
+const DIA_EM_BRASILIA = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' });
+/**
+ * O dia ('AAAA-MM-DD') no horário de Brasília, de agora ou de um instante ISO (30/10/2026: cortar o ISO, que é UTC, dava o
+ * dia seguinte depois das 21h). A data sem hora ('2026-09-15') já é o dia e fica como está. '' para o que não é data.
+ */
+export function diaEmBrasilia(quando: Date | string = new Date()): string {
+  if (typeof quando === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(quando.trim())) return quando.trim();
+  const d = typeof quando === 'string' ? new Date(quando) : quando;
+  if (isNaN(d.getTime())) return '';
+  const p = Object.fromEntries(DIA_EM_BRASILIA.formatToParts(d).map(x => [x.type, x.value]));
+  return p.year + '-' + p.month + '-' + p.day;
+}

@@ -5,7 +5,7 @@
 // (controleTributos e controleTributosFolha) — os valores em reais, a data, as conferências, a entrega, as sugestões do
 // Entregas e a impressão do protocolo (as observações e a retificação saíram por enquanto). A coluna da REINF saiu
 // (29/10/2026: "a parte do R das conferencias ja e a reinf"). Quem grava o controle: o Fiscal e o admin; o resto da equipe só vê.
-import { tarefas as t } from '@nads/core';
+import { formatos, tarefas as t } from '@nads/core';
 import { logoNilmaParaImprimir, useRetorno } from '@nads/ui';
 import { useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
@@ -190,8 +190,8 @@ export function useRelatorioGeral(regime: RegimeDoRelatorio) {
     },
     mudarEntrega(codigo: number, e: t.EntregaDoControle) {
       const l = linhaDe(codigo);
-      // entregou sem data: a de hoje
-      const data = e && e !== 'nao' && !l.data ? new Date().toISOString().slice(0, 10) : l.data;
+      // entregou sem data: a de hoje, em Brasília (o ISO é UTC: depois das 21h dava o dia seguinte)
+      const data = e && e !== 'nao' && !l.data ? formatos.diaEmBrasilia() : l.data;
       void gravar({ ...l, entregue: e, data });
     },
     comSugestaoParaUsar: paraPreencher.length,
