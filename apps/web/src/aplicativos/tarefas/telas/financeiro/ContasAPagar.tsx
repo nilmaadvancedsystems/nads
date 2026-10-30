@@ -2,11 +2,13 @@
 // seguir o mesmo layout do dp"): em cima, o período do vencimento e os filtros em menus (o fornecedor, a conta contábil)
 // e o Nova conta; os números coloridos (Total, A vencer, Vencido, Pago), que filtram a lista ao clicar; no topo da tabela,
 // a busca e o Excel só com o ícone; e a lista, a vencida em vermelho. Clicar na linha abre a conta; o Pagar da linha abre
-// direto no Pagamento.
+// direto no Pagamento. O botão Fornecedores (ícone do prédio, ao lado do Nova conta) abre o cadastro numa janela (30/10/2026).
 import { financeiro, formatos } from '@nads/core';
 import { BotaoIcone, CampoData, Icone, LogoExcel, MenuSuspenso, useCarregando, Vazio, type NomeIcone } from '@nads/ui';
 import { MenuDeFiltro } from '../dp/MenuDeFiltro';
+import { useState } from 'react';
 import { dataBr } from './formatosDaNota';
+import { JanelaDosFornecedores } from './Fornecedores';
 import { JanelaDaContaAPagar } from './JanelaDaContaAPagar';
 import { useContasAPagar } from './useContasAPagar';
 
@@ -21,10 +23,12 @@ const DO_NUMERO: Record<financeiro.FiltroDeSituacao, { tom: 'neutro' | 'aviso' |
 
 export function ContasAPagar() {
   const vm = useContasAPagar();
+  const [fornecedores, setFornecedores] = useState(false);
   useCarregando(vm.carregando);
   const algumFiltro = !!vm.fornecedor || !!vm.conta || vm.situacao !== 'todas' || !!vm.busca.trim();
   return (
     <section className="dp-painel">
+      {fornecedores && <JanelaDosFornecedores fechar={() => setFornecedores(false)} />}
       {vm.aberta && <JanelaDaContaAPagar id={vm.aberta.id} topico={vm.aberta.topico} fechar={vm.fechar} />}
 
       <div className="tarefas-barra-topo dp-filtros-linha">
@@ -49,6 +53,7 @@ export function ContasAPagar() {
         {algumFiltro && <button type="button" className="btn btn-ghost dp-limpar" onClick={vm.limparFiltros}><Icone nome="x" />Limpar filtros</button>}
         <span className="tarefas-barra-espaco" />
         {vm.exemplos && <span className="badge badge-neutral">Exemplos</span>}
+        <button type="button" className="btn btn-outline" onClick={() => setFornecedores(true)} title="O cadastro dos fornecedores"><Icone nome="predio" />Fornecedores</button>
         <button type="button" className="btn btn-primary" onClick={() => vm.abrir({})}><Icone nome="plus" />Nova conta</button>
       </div>
       {vm.erro && <p className="registro-dica registro-dica-erro"><Icone nome="alert" />{vm.erro}</p>}

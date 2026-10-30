@@ -113,9 +113,9 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'painel', rotulo: 'Painel', icone: 'barChart', titulo: 'Painel financeiro' },
     // o Movimento de Caixa e o Plano de Contas que vieram do Toriba (19/10/2026), no início do Financeiro
     { id: 'caixa', rotulo: 'Caixa', icone: 'dinheiro', titulo: 'Movimento de caixa' },
-    // as contas a pagar e os fornecedores (28/10/2026: "o Contas a Pagar do Toriba, no nads"); o pagamento vira a saída no Caixa
+    // as contas a pagar (28/10/2026: "o Contas a Pagar do Toriba, no nads"). Os fornecedores viraram um botão dentro dela,
+    // numa janela (30/10/2026: "joga essa tela de fornecedores para um botão dentro de contas a pagar")
     { id: 'pagar', rotulo: 'Contas a pagar', icone: 'codigoBarras', titulo: 'Contas a pagar' },
-    { id: 'fornecedores', rotulo: 'Fornecedores', icone: 'predio', titulo: 'Fornecedores' },
     // o extrato do banco (23/10/2026: "vai se tornar um importador de extrato que vai trazer os dados e informações
     // para o dashboard inicial"); o endereço antigo /financeiro/conciliacao abre o importador. O Resultado por conta
     // virou um botão do Painel, numa janela flutuante (22/10/2026). Honorários e Devedores saíram do menu (30/10/2026)

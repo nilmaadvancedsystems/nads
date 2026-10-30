@@ -4995,6 +4995,9 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 /* as Contas a pagar no layout do DP (29/10/2026): o Pagar só com o ícone, na ponta da linha */
 .cp-lista .cp-acao{width:1%;text-align:right;padding-top:2px;padding-bottom:2px;}
 .cp-lista .fin-corta{max-width:280px;}
+/* a janela dos Fornecedores (30/10/2026), aberta pelo botão das Contas a pagar: a barra com o respiro da janela */
+.fornecedores-barra{padding:12px 16px;margin:0;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);z-index:2;}
+.janela-com-tabela .fornecedores-barra ~ table thead th{top:57px;}
 .cp-janela .pessoal-linha-controle{flex-wrap:wrap;justify-content:flex-end;}
 .cp-janela .pessoal-linha-controle .file-picker{text-align:left;}
 .cp-campo{width:280px;max-width:100%;}
