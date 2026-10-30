@@ -20,7 +20,7 @@ export function Devedores() {
           <input type="text" placeholder="Buscar cliente" aria-label="Buscar cliente (nome, código ou CNPJ)" value={vm.busca}
             onChange={e => vm.setBusca(e.target.value)} onKeyDown={e => { if (e.key === 'Escape') vm.setBusca(''); }} />
         </label>
-        <span className="fraco">De {vm.desde} a {vm.ate} (o mês sem recebimento conta como em aberto)</span>
+        <span className="fraco">De {vm.desde} a {vm.ate}</span>
         <span className="tarefas-barra-espaco" />
         {vm.exemplos && <span className="badge badge-neutral">Exemplos</span>}
       </div>

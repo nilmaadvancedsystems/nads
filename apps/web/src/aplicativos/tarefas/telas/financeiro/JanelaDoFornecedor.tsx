@@ -41,7 +41,6 @@ export function JanelaDoFornecedor({ id, fechar }: { id?: string; fechar: () => 
             </Propriedade>
             <Propriedade icone="check" rotulo="Ativo"><Interruptor ligado={vm.ativo} onMudar={() => vm.setAtivo(!vm.ativo)} rotulo="Fornecedor ativo" /></Propriedade>
           </div>
-          <p className="registro-dica"><Icone nome="list" />A conta contábil vem preenchida quando o fornecedor é escolhido numa conta a pagar.</p>
           {vm.erros.length > 0 && <ul className="registro-erros">{vm.erros.map(e => <li key={e}><Icone nome="alert" />{e}</li>)}</ul>}
         </div>
         <footer className="registro-pe">

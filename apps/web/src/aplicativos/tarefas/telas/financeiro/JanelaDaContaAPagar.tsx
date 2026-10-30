@@ -33,14 +33,14 @@ function TopicoConta({ vm }: { vm: VmJanelaDaContaAPagar }) {
           <div className="cp-novo-fornecedor">
             <Linha rotulo="Razão social"><input className="usuario-campo cp-campo" type="text" value={vm.novoRazao} onChange={e => vm.setNovoRazao(e.target.value)} aria-label="Razão social do fornecedor novo" autoFocus /></Linha>
             <Linha rotulo="Nome fantasia"><input className="usuario-campo cp-campo" type="text" value={vm.novoFantasia} onChange={e => vm.setNovoFantasia(e.target.value)} aria-label="Nome fantasia do fornecedor novo" /></Linha>
-            <Linha rotulo="CNPJ ou CPF" dica="Opcional."><input className="usuario-campo cp-campo" type="text" inputMode="numeric" value={vm.novoDocumento} onChange={e => vm.setNovoDocumento(e.target.value)} aria-label="CNPJ ou CPF do fornecedor novo" /></Linha>
-            <Linha rotulo="" dica="A conta contábil escolhida abaixo vira a do fornecedor.">
+            <Linha rotulo="CNPJ ou CPF"><input className="usuario-campo cp-campo" type="text" inputMode="numeric" value={vm.novoDocumento} onChange={e => vm.setNovoDocumento(e.target.value)} placeholder="Opcional" aria-label="CNPJ ou CPF do fornecedor novo" /></Linha>
+            <Linha rotulo="">
               <button type="button" className="btn btn-outline" onClick={() => vm.setCadastrando(false)}>Cancelar</button>
               <BotaoAcao className="btn btn-primary" carregando={vm.fazendo === 'fornecedor'} textoCarregando="Cadastrando…" onClick={() => void vm.cadastrarFornecedor()}><Icone nome="check" />Cadastrar</BotaoAcao>
             </Linha>
           </div>
         )}
-        <Linha rotulo="Conta contábil" dica="A conta do plano, para o controle e o relatório (não lança no Caixa).">
+        <Linha rotulo="Conta contábil">
           <select className="pessoal-select cp-campo" value={vm.conta} disabled={travada} onChange={e => vm.setConta(e.target.value)} aria-label="Conta contábil">
             <option value="">Sem conta</option>
             {vm.contas.map(c => <option key={c.id} value={c.id}>{c.codigo} · {c.descricao}</option>)}
@@ -50,11 +50,11 @@ function TopicoConta({ vm }: { vm: VmJanelaDaContaAPagar }) {
         <Linha rotulo="Emissão">{travada ? <span>{vm.emissao || '—'}</span> : <CampoData valor={vm.emissao} onMudar={vm.setEmissao} rotulo="Data de emissão" />}</Linha>
         <Linha rotulo="Vencimento">{travada ? <span>{vm.vencimento}</span> : <CampoData valor={vm.vencimento} onMudar={vm.setVencimento} rotulo="Vencimento" />}</Linha>
         <Linha rotulo="Valor"><input className="usuario-campo cp-campo-curto" type="text" inputMode="decimal" value={vm.valor} disabled={travada} onChange={e => vm.setValor(e.target.value)} placeholder="0,00" aria-label="Valor" /></Linha>
-        <Linha rotulo="Linha digitável" dica="Cole a linha ou anexe o boleto: o valor e o vencimento vêm sozinhos.">
+        <Linha rotulo="Linha digitável">
           <input className="usuario-campo cp-campo-linha" type="text" inputMode="numeric" value={vm.linha} disabled={travada} onChange={e => vm.setLinha(e.target.value)} onBlur={vm.lerLinhaDigitada} placeholder="Opcional" aria-label="Linha digitável" />
         </Linha>
         {!travada && (
-          <Linha rotulo="Boleto" dica={vm.novo ? 'O PDF fica na conta (na recorrência, na primeira parcela).' : 'O PDF sobe na hora e fica em Anexos.'}>
+          <Linha rotulo="Boleto">
             {vm.lendo ? <span className="fraco"><span className="btn-spinner" aria-hidden="true" />Lendo o boleto…</span>
               : <CampoArquivos id="cp-boleto" aceitar={ACEITA_NO_ANEXO} rotulo="Escolher o boleto" onEscolher={fs => void vm.escolherBoleto(fs[0])} />}
           </Linha>
@@ -64,7 +64,7 @@ function TopicoConta({ vm }: { vm: VmJanelaDaContaAPagar }) {
       </Cartao>
       {vm.novo && (
         <Cartao titulo="Recorrência">
-          <Linha rotulo="Despesa recorrente" dica="Cria as contas na hora, uma por mês, no mesmo dia do vencimento.">
+          <Linha rotulo="Despesa recorrente">
             <Interruptor ligado={vm.recorrente} onMudar={() => vm.setRecorrente(!vm.recorrente)} rotulo="Despesa recorrente" />
           </Linha>
           {vm.recorrente && (
@@ -80,7 +80,7 @@ function TopicoConta({ vm }: { vm: VmJanelaDaContaAPagar }) {
 
 function TopicoPagamento({ vm }: { vm: VmJanelaDaContaAPagar }) {
   const p = vm.existente?.pagamento;
-  if (!vm.existente) return <Cartao titulo="Pagamento"><Linha rotulo="Grave a conta primeiro" dica="Depois de gravada, a conta pode ser paga aqui." /></Cartao>;
+  if (!vm.existente) return <Cartao titulo="Pagamento"><Linha rotulo="Grave a conta primeiro" /></Cartao>;
   if (p) {
     return (
       <Cartao titulo="Pagamento">
@@ -88,8 +88,8 @@ function TopicoPagamento({ vm }: { vm: VmJanelaDaContaAPagar }) {
         <Linha rotulo="Valor pago"><span className="num">{formatos.reais(p.valorPago)}</span></Linha>
         {p.juros > 0 && <Linha rotulo="Juros"><span className="num">{formatos.reais(p.juros)}</span></Linha>}
         {p.desconto > 0 && <Linha rotulo="Desconto"><span className="num">{formatos.reais(p.desconto)}</span></Linha>}
-        {p.lancamentoId && <Linha rotulo="No Caixa" dica="Paga antes de 30/10/2026, quando o pagamento ainda lançava no Caixa."><span className="badge badge-ok">Saída lançada</span></Linha>}
-        <Linha rotulo="Comprovante" dica="Fica em Anexos.">
+        {p.lancamentoId && <Linha rotulo="No Caixa"><span className="badge badge-ok">Saída lançada</span></Linha>}
+        <Linha rotulo="Comprovante">
           <CampoArquivos id="cp-comprovante-pago" aceitar={ACEITA_NO_ANEXO} rotulo="Escolher o comprovante" onEscolher={fs => void vm.escolherComprovante(fs[0])} />
         </Linha>
         <Linha rotulo="Desfazer o pagamento" dica={p.lancamentoId ? 'A conta volta a ficar em aberto e a saída sai do Caixa.' : 'A conta volta a ficar em aberto.'}>
@@ -104,13 +104,13 @@ function TopicoPagamento({ vm }: { vm: VmJanelaDaContaAPagar }) {
       <Linha rotulo="Valor da conta"><span className="num">{formatos.reais(vm.existente.valor)}</span></Linha>
       <Linha rotulo="Juros"><input className="usuario-campo cp-campo-curto" type="text" inputMode="decimal" value={vm.juros} onChange={e => vm.setJuros(e.target.value)} placeholder="0,00" aria-label="Juros" /></Linha>
       <Linha rotulo="Desconto"><input className="usuario-campo cp-campo-curto" type="text" inputMode="decimal" value={vm.desconto} onChange={e => vm.setDesconto(e.target.value)} placeholder="0,00" aria-label="Desconto" /></Linha>
-      <Linha rotulo="Valor pago" dica="O valor da conta mais os juros, menos o desconto; dá para mudar.">
+      <Linha rotulo="Valor pago">
         <input className="usuario-campo cp-campo-curto" type="text" inputMode="decimal" value={vm.valorPago} onChange={e => vm.setValorPago(e.target.value)} placeholder="0,00" aria-label="Valor pago" />
       </Linha>
-      <Linha rotulo="Comprovante" dica={vm.comprovante ? vm.comprovante.nome + ' · sobe ao pagar' : 'Opcional; fica em Anexos.'}>
+      <Linha rotulo="Comprovante" dica={vm.comprovante ? vm.comprovante.nome + ' · sobe ao pagar' : undefined}>
         <CampoArquivos id="cp-comprovante" aceitar={ACEITA_NO_ANEXO} rotulo="Escolher o comprovante" onEscolher={fs => void vm.escolherComprovante(fs[0])} />
       </Linha>
-      <Linha rotulo="Pagar conta" dica="Marca a conta como paga (é só controle: não lança no Caixa).">
+      <Linha rotulo="Pagar conta">
         <BotaoAcao carregando={vm.fazendo === 'pagar'} textoCarregando="Pagando…" onClick={() => void vm.pagar()}><Icone nome="check" />Pagar conta</BotaoAcao>
       </Linha>
     </Cartao>
@@ -118,10 +118,10 @@ function TopicoPagamento({ vm }: { vm: VmJanelaDaContaAPagar }) {
 }
 
 function TopicoAnexos({ vm }: { vm: VmJanelaDaContaAPagar }) {
-  if (!vm.existente) return <Cartao titulo="Anexos"><Linha rotulo="Grave a conta primeiro" dica="O boleto escolhido em Conta sobe ao gravar." /></Cartao>;
+  if (!vm.existente) return <Cartao titulo="Anexos"><Linha rotulo="Grave a conta primeiro" /></Cartao>;
   return (
     <Cartao titulo="Anexos">
-      {!vm.anexos.length && <Linha rotulo="Nenhum anexo" dica="O boleto e o comprovante ficam aqui, para abrir e baixar depois." />}
+      {!vm.anexos.length && <Linha rotulo="Nenhum anexo" />}
       {vm.anexos.map(a => (
         <Linha key={a.id} rotulo={<span className="cp-anexo"><Icone nome="clipe" />{a.nome}</span>}
           dica={(a.tipo === 'boleto' ? 'Boleto' : 'Comprovante') + ' · ' + vm.tamanhoBr(a.tamanho) + ' · ' + a.enviadoPor + ', ' + vm.quando(a.enviadoEm)}>
@@ -140,7 +140,7 @@ function TopicoAnexos({ vm }: { vm: VmJanelaDaContaAPagar }) {
 
 function TopicoAuditor({ vm }: { vm: VmJanelaDaContaAPagar }) {
   const c = vm.existente;
-  if (!c) return <Cartao titulo="Auditor"><Linha rotulo="Lançado por" dica="Quem grava a conta, e quando, fica aqui." /></Cartao>;
+  if (!c) return <Cartao titulo="Auditor"><Linha rotulo="Lançado por">—</Linha></Cartao>;
   return (
     <Cartao titulo="Auditor">
       <Linha rotulo="Lançado por">{c.lancadoPor || '—'}</Linha>
@@ -190,7 +190,6 @@ export function JanelaDaContaAPagar({ id, topico, fechar }: { id?: string; topic
       {vm.topico === 'observacoes' && (
         <Cartao titulo="Observações">
           <textarea className="nf-texto cp-observacoes" rows={8} value={vm.observacoes} onChange={e => vm.setObservacoes(e.target.value)} placeholder="Anotações da conta (opcional)" aria-label="Observações" />
-          <p className="hint cp-dica">Grave para guardar.</p>
         </Cartao>
       )}
       {vm.topico === 'anexos' && <TopicoAnexos vm={vm} />}
