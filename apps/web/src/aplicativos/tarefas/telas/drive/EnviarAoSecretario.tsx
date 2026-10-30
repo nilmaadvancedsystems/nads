@@ -18,7 +18,6 @@ export function EnviarAoSecretario({ vm }: { vm: VmEnvio }) {
       <div ref={janela} className="modal envio-janela" role="dialog" aria-modal="true" aria-labelledby="envioTitulo">
         <h3 id="envioTitulo"><Icone nome="upload" />Enviar para o Claudio Secretário</h3>
         <div className="envio-corpo">
-          <p className="envio-dica">Os arquivos vão para a pasta <b>Claudio Secretario</b> do Drive. Na próxima rodada do arquivamento, cada um vai para a pasta do cliente.</p>
           <div className={'envio-soltar' + (soltando ? ' on' : '')}
             onDragOver={ev => { ev.preventDefault(); setSoltando(true); }} onDragLeave={() => setSoltando(false)} onDrop={soltar}>
             <CampoArquivos id="envioArquivos" aceitar="" rotulo={vm.arquivos.length ? 'Escolher mais arquivos' : 'Escolher arquivos (ou arraste para cá)'} onEscolher={vm.adicionar} />

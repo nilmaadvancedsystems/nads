@@ -14,7 +14,7 @@ export function MeusEnvios({ vm, abrirDestino }: { vm: VmEnvio; abrirDestino: (c
       <div ref={janela} className="modal envio-janela meus-envios" role="dialog" aria-modal="true" aria-labelledby="meusTitulo">
         <h3 id="meusTitulo"><Icone nome="upload" />Meus envios ao Claudio Secretário</h3>
         <div className="envio-corpo">
-          <p className="envio-dica">Os últimos 30 dias. Depois de cada rodada do arquivamento, aparece aqui para onde cada arquivo foi.</p>
+          <p className="envio-dica">Os últimos 30 dias.</p>
           {!vm.meusCarregados ? <Esqueleto linhas={3} /> : !vm.meus.length ? <p className="fraco">Você ainda não mandou nenhum arquivo.</p> : (
             <ul className="meus-lista">
               {vm.meus.map(x => (

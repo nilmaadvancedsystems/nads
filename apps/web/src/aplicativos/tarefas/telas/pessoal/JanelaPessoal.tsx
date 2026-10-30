@@ -69,7 +69,7 @@ function TrocarSenha({ salvar }: { salvar: (atual: string, nova: string, confirm
   const [salvando, setSalvando] = useState(false);
   if (!aberto) {
     return (
-      <ConfigLinha titulo="Senha" descricao="A mesma do Entregas.">
+      <ConfigLinha titulo="Senha">
         <button type="button" className="btn btn-outline" onClick={() => setAberto(true)}><Icone nome="lock" />Trocar senha</button>
       </ConfigLinha>
     );
@@ -106,7 +106,6 @@ function MinhaConta({ vm }: { vm: VmPessoal }) {
           <Foto foto={c.foto} iniciais={c.iniciais} grande />
           <div className="cfg-linha-texto">
             <span className="cfg-linha-titulo">{c.nome}</span>
-            <span className="cfg-linha-desc">Aparece no seu ícone, no canto do cabeçalho, e no Entregas (é a mesma conta).</span>
           </div>
           <div className="cfg-linha-controle">
             <CampoArquivo semCaixa semFoco ref={arquivo} aceitar="image/*" onEscolher={f => { if (f) c.trocarFoto(f); }} />
@@ -116,7 +115,7 @@ function MinhaConta({ vm }: { vm: VmPessoal }) {
             {c.foto && <button type="button" className="btn btn-ghost" disabled={c.salvandoFoto} onClick={c.tirarFoto}>Tirar a foto</button>}
           </div>
         </div>
-        <p className="cfg-linha-desc pessoal-icones-rotulo">Ou um ícone (os mesmos do Entregas)</p>
+        <p className="cfg-linha-desc pessoal-icones-rotulo">Ou um ícone</p>
         <div className="pessoal-icones" role="list">
           {c.icones.map(i => (
             <button key={i.nome} type="button" role="listitem" className={'pessoal-icone' + (c.foto === i.url ? ' on' : '')} title={i.nome}
@@ -127,19 +126,19 @@ function MinhaConta({ vm }: { vm: VmPessoal }) {
         </div>
       </ConfigSecao>
       <ConfigSecao titulo="Conta">
-        <ConfigLinha titulo="Nome" descricao="Como aparece nas tarefas e nos pedidos ao robô (e no Entregas).">
+        <ConfigLinha titulo="Nome">
           {c.comLogin ? <EditarNome atual={c.nome} salvar={c.trocarNome} /> : <span className="cfg-valor">{c.nome}</span>}
         </ConfigLinha>
-        <ConfigLinha titulo="E-mail" descricao="O login do Entregas, a mesma conta em todo o nads."><span className="cfg-valor">{c.email || '—'}</span></ConfigLinha>
+        <ConfigLinha titulo="E-mail"><span className="cfg-valor">{c.email || '—'}</span></ConfigLinha>
         <ConfigLinha titulo="Setor" descricao="Quem muda é um administrador."><span className="cfg-valor">{c.setor}</span></ConfigLinha>
         {c.comLogin && <TrocarSenha salvar={c.trocarSenha} />}
       </ConfigSecao>
       <ConfigSecao titulo="Preferências">
-        <ConfigLinha titulo="Tema" descricao="Claro, escuro ou o mesmo do computador. Fica guardado neste navegador."><SeletorTema /></ConfigLinha>
+        <ConfigLinha titulo="Tema"><SeletorTema /></ConfigLinha>
         <NivelDasAnimacoes />
       </ConfigSecao>
       <ConfigSecao titulo="Sessão">
-        <ConfigLinha titulo={c.sair} descricao="Sai deste navegador; para entrar de novo, o login do Entregas.">
+        <ConfigLinha titulo={c.sair}>
           <button type="button" className="btn btn-outline btn-danger" onClick={c.fazerSair}><Icone nome="logOut" />{c.sair}</button>
         </ConfigLinha>
       </ConfigSecao>
@@ -151,7 +150,7 @@ function Aplicativo({ vm }: { vm: VmPessoal }) {
   const a = vm.aplicativo;
   return (
     <ConfigSecao titulo="Atualização">
-      <ConfigLinha titulo="Versão" descricao="Uma versão só para o nads inteiro."><span className="cfg-valor num">{a.versao}</span></ConfigLinha>
+      <ConfigLinha titulo="Versão"><span className="cfg-valor num">{a.versao}</span></ConfigLinha>
       <ConfigLinha titulo="Versão nova" descricao={a.versaoNova ? 'Saiu a ' + a.versaoNova + '. Atualizar não perde o que está na tela.' : 'Você está na mais nova.'}>
         {a.versaoNova ? <button type="button" className="btn btn-primary" onClick={a.atualizar}><Icone nome="repeat" />Atualizar</button> : <span className="badge badge-ok">Em dia</span>}
       </ConfigLinha>

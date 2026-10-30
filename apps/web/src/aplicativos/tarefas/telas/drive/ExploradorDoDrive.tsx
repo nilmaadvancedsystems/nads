@@ -422,7 +422,6 @@ export function ExploradorDoDrive({ naEmpresa = false }: { naEmpresa?: boolean }
         </div>
         <aside className="card drive-sobre">
           <div className="card-head"><h3>Sobre</h3></div>
-          <p>A pasta {vm.ano} do Drive do escritório: uma pasta por cliente.</p>
           <ul className="drive-sobre-lista">
             <li><Icone nome="pasta" /><span><b>{vm.entradas.length}</b> clientes</span></li>
             {vm.atualizado && <li><Icone nome="clock" /><span>Mapa do robô de {vm.atualizado}</span></li>}

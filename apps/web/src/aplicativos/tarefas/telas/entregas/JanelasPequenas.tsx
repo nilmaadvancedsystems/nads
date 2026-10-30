@@ -48,7 +48,7 @@ export function JanelaAssinarNoCelular({ entrega }: { entrega: Entrega }) {
         <button type="button" className="btn btn-outline" disabled={!vm.link} onClick={() => void vm.copiar()}><Icone nome="copiar" />Copiar link</button>
         <button type="button" className="btn btn-outline" disabled={!vm.link} onClick={vm.whatsapp}><span className="ent-logo"><LogoWhatsApp /></span>Mandar no WhatsApp</button>
       </div>
-      <p className="hint">O cliente aponta a câmera pro código. O link vale uma vez só e expira em 2 horas.</p>
+      <p className="hint">O link vale uma vez só e expira em 2 horas.</p>
     </MolduraDaJanela>
   );
 }
@@ -57,7 +57,7 @@ export function JanelaLerGuia() {
   const video = useRef<HTMLVideoElement>(null);
   const vm = useLerGuia(video);
   return (
-    <MolduraDaJanela icone="codigoBarras" caminho="Rota" titulo="Ler guia" sub="Aponte pro código de barras ou pro QR do PIX da guia." onFechar={vm.fechar}>
+    <MolduraDaJanela icone="codigoBarras" caminho="Rota" titulo="Ler guia" onFechar={vm.fechar}>
       <video ref={video} className="ent-leitor" playsInline muted onClick={vm.tocarVideo} />
       <div className="ent-acoes-linha">
         <button type="button" className="btn btn-primary" onClick={vm.lerDaFoto}><Icone nome="camera" />Focar e ler</button>
@@ -73,7 +73,7 @@ export function JanelaLerGuia() {
 export function JanelaDaMeta() {
   const vm = useJanelaDaMeta();
   return (
-    <MolduraDaJanela icone="alvo" caminho="Painel" titulo="Meta do mês" sub="Quantas entregas confirmadas cada pessoa deve fazer por competência" onFechar={vm.fechar}
+    <MolduraDaJanela icone="alvo" caminho="Painel" titulo="Meta do mês" onFechar={vm.fechar}
       rodape={<><span className="tarefas-barra-espaco" /><BotaoAcao className="btn btn-primary" carregando={vm.salvando} textoCarregando="Salvando…" onClick={() => void vm.salvar()}>Salvar meta</BotaoAcao></>}>
       <div className="field">
         <label htmlFor="ent-meta">Entregas por pessoa</label>
@@ -101,7 +101,7 @@ export function JanelaParaCopiar({ titulo, texto }: { titulo: string; texto: str
   const campo = useRef<HTMLTextAreaElement>(null);
   useEffect(() => { campo.current?.focus(); campo.current?.select(); }, []);
   return (
-    <MolduraDaJanela icone="copiar" caminho="Entregas" titulo={titulo} sub="Selecione tudo e copie pra mandar onde quiser." onFechar={vm.fechar}>
+    <MolduraDaJanela icone="copiar" caminho="Entregas" titulo={titulo} onFechar={vm.fechar}>
       <div className="field"><textarea ref={campo} rows={12} readOnly value={texto} aria-label={titulo} /></div>
     </MolduraDaJanela>
   );

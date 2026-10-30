@@ -107,7 +107,6 @@ export function ChatIA({ rascunho, limparRascunho, irParaFaq }: { rascunho: stri
           <div className="ia-boas-vindas">
             <Icone nome="robo" />
             <h4>Pergunte à IA do escritório</h4>
-            <p className="fraco">Como usar a Tarefas e o Entregas, onde está um documento, o andamento de uma empresa… É a mesma IA do "Perguntar à IA" do Entregas, e as conversas aparecem nos dois.</p>
             {desligada && <p className="ia-aviso">A IA está desligada agora (o robô que responde não está de pé). Enquanto isso, veja as <button type="button" className="link-btn" onClick={irParaFaq}>Perguntas frequentes</button>.</p>}
             <div className="ia-sugestoes">
               {SUGESTOES.map(s => <button key={s} type="button" className="chip-f" disabled={desligada || vm.esperando} onClick={() => enviar(s)}>{s}</button>)}

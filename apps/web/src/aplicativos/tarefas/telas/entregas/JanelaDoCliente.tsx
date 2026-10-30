@@ -101,7 +101,7 @@ function Resumo({ vm }: { vm: Vm }) {
               {!vm.consulta && <button type="button" className="btn btn-outline" onClick={() => void vm.resolverLembrete(l.id)}><Icone nome="check" />Resolvido</button>}
             </li>
           ))}</ul>
-        ) : <p className="hint">Nenhum lembrete. O que você deixar aqui aparece pra quem for entregar, na hora de concluir a entrega.</p>}
+        ) : <p className="hint">Nenhum lembrete.</p>}
         {!vm.consulta && (
           <div className="ent-lembrete-novo">
             <textarea rows={2} maxLength={500} value={vm.lembreteNovo} onChange={e => vm.setLembreteNovo(e.target.value)} placeholder="Ex.: falar do honorário atrasado" aria-label="Novo lembrete" />
@@ -169,7 +169,7 @@ function Cadastro({ vm }: { vm: Vm }) {
       {vm.honorario.length > 0 && <Cartao titulo="Honorário" icone="dinheiro"><Dados linhas={vm.honorario} /></Cartao>}
       {vm.mostrarLink && (
         <Cartao titulo="Link do cliente" icone="link">
-          <p className="hint">{vm.temLink ? 'O cliente tem link próprio: vê as guias, confirma o recebimento e manda documentos.' : 'Este cliente ainda não tem link.'}</p>
+          {!vm.temLink && <p className="hint">Este cliente ainda não tem link.</p>}
           <button type="button" className="btn btn-outline" onClick={vm.abrirLink}><Icone nome="link" />{vm.temLink ? 'Abrir link do cliente' : 'Criar link do cliente'}</button>
         </Cartao>
       )}
@@ -240,12 +240,12 @@ function Acoes({ vm }: { vm: Vm }) {
     <button type="button" className={'btn ' + (perigo ? 'btn-danger' : 'btn-outline')} onClick={onClick}>{rotulo}<Icone nome="chevronRight" /></button>;
   return (
     <ConfigSecao titulo="Ações">
-      <ConfigLinha titulo="Corrigir localização" descricao="Acerta o ponto do cliente no mapa, que é o que ordena a rota.">{acao('Corrigir', vm.corrigirLocal)}</ConfigLinha>
-      <ConfigLinha titulo="Aglutinar com outra empresa" descricao="Mesma porta de outra empresa: as duas viram uma parada só e uma assinatura.">{acao('Aglutinar', vm.aglutinar)}</ConfigLinha>
-      <ConfigLinha titulo="Copiar dados" descricao="Nome, CNPJ, endereço e contato, prontos pra colar.">{acao('Copiar', () => void vm.copiarDados())}</ConfigLinha>
-      {vm.total > 0 && <ConfigLinha titulo="Exportar histórico" descricao="Planilha com todas as entregas deste cliente.">{acao('Exportar', vm.exportarHistorico)}</ConfigLinha>}
-      {vm.admin && <ConfigLinha titulo={vm.cliente.ativo ? 'Desativar cliente' : 'Reativar cliente'} descricao={vm.cliente.ativo ? 'Sai das listas e da rota. O histórico fica guardado.' : 'Volta pra carteira ativa e pras listas.'}>{acao(vm.cliente.ativo ? 'Desativar' : 'Reativar', () => void vm.ativar())}</ConfigLinha>}
-      {vm.admin && <ConfigLinha titulo="Levar os dados (LGPD)" descricao="Arquivo com tudo que o sistema tem deste cliente.">{acao('Baixar', () => void vm.levarDados())}</ConfigLinha>}
+      <ConfigLinha titulo="Corrigir localização">{acao('Corrigir', vm.corrigirLocal)}</ConfigLinha>
+      <ConfigLinha titulo="Aglutinar com outra empresa">{acao('Aglutinar', vm.aglutinar)}</ConfigLinha>
+      <ConfigLinha titulo="Copiar dados">{acao('Copiar', () => void vm.copiarDados())}</ConfigLinha>
+      {vm.total > 0 && <ConfigLinha titulo="Exportar histórico">{acao('Exportar', vm.exportarHistorico)}</ConfigLinha>}
+      {vm.admin && <ConfigLinha titulo={vm.cliente.ativo ? 'Desativar cliente' : 'Reativar cliente'} descricao={vm.cliente.ativo ? 'Sai das listas e da rota. O histórico fica guardado.' : undefined}>{acao(vm.cliente.ativo ? 'Desativar' : 'Reativar', () => void vm.ativar())}</ConfigLinha>}
+      {vm.admin && <ConfigLinha titulo="Levar os dados (LGPD)">{acao('Baixar', () => void vm.levarDados())}</ConfigLinha>}
       {vm.admin && <ConfigLinha titulo="Apagar dados pessoais" descricao="Tira telefone, e-mail, endereço e contatos, e desliga o link do cliente.">{acao('Apagar', () => void vm.apagarDados(), true)}</ConfigLinha>}
     </ConfigSecao>
   );

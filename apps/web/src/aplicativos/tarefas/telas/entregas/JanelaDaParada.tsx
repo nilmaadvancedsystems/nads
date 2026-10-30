@@ -111,7 +111,6 @@ function LinkDoClienteNaParada({ link }: { link: string }) {
     <details className="ent-dobra" onToggle={ev => setAberto((ev.target as HTMLDetailsElement).open)}>
       <summary className="hint"><Icone nome="qrCode" width={14} height={14} /> Mostrar o link do cliente</summary>
       {qr && <img className="ent-qr" src={qr} alt="QR do link do cliente" width={200} height={200} />}
-      <p className="hint ent-centro">O cliente aponta a câmera e guarda o link: guias, comprovantes e o que falta enviar.</p>
     </details>
   );
 }
