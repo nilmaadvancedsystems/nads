@@ -45,7 +45,6 @@ export function PainelDoFiscal() {
             <div className="dp-lista-topo">
               <h3 className="dp-titulo">Clientes do mês</h3>
               <span className="badge badge-neutral">{vm.quantas}</span>
-              <span className="hint">os números da rotina aparecem depois que ela é aberta no mês</span>
             </div>
             {vm.quantas === 0 ? <p className="hint dp-vazio">Nenhum cliente com esses filtros.</p> : (
               <div className="table-wrap">

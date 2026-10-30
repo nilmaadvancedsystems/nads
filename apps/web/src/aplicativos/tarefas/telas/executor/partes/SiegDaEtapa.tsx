@@ -126,7 +126,7 @@ export function SiegDaEtapa({ tipo, codigo, competencia }: { tipo: 'contagem' | 
                 <div className="sieg-situacao-topo">
                   <b>Situação na SEFAZ</b>
                   <span className="fraco">{vm.situacao?.trabalhando ? 'A VM está consultando: ' + vm.situacao.feitas + ' de ' + vm.situacao.total
-                    : vm.situacao?.resultado ? 'Consultada em ' + vm.situacao.quando : 'Confere nota a nota se está autorizada, cancelada ou denegada.'}</span>
+                    : vm.situacao?.resultado ? 'Consultada em ' + vm.situacao.quando : ''}</span>
                   <span className="tarefas-barra-espaco" />
                   <button type="button" className="btn btn-outline" disabled={!!vm.situacao?.trabalhando} onClick={() => void vm.consultarSituacao()}>
                     {vm.situacao?.trabalhando ? <span className="btn-spinner" aria-hidden="true" /> : <Icone nome="checkCircle" />}{vm.situacao?.resultado ? 'Consultar de novo' : 'Consultar na SEFAZ'}
@@ -161,7 +161,7 @@ export function SiegDaEtapa({ tipo, codigo, competencia }: { tipo: 'contagem' | 
                   </>
                 )}
               </div>
-              <p className="fraco sieg-quando">Baixadas do SIEG em {vm.saidas.quando}. O número que falta pode ser nota não enviada ao SIEG, inutilizada ou emitida fora.</p>
+              <p className="fraco sieg-quando">Baixadas do SIEG em {vm.saidas.quando}.</p>
             </div>
           ) : vm.saidasCarregadas ? <p className="fraco">As saídas deste mês ainda não foram baixadas do SIEG.</p> : <Esqueleto linhas={2} />}
           {vm.pedido?.status === 'erro' && <p className="sieg-aviso"><Icone nome="alert" />O robô não conseguiu: {vm.pedido.erro}</p>}

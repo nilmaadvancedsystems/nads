@@ -99,7 +99,7 @@ function Veredito({ sieg, importadas, oQue }: { sieg: number | null; importadas:
 
 /** De onde vem a tabela de verificação: os XMLs do SIEG (08/10/2026) ou o relatório do Alterdata. */
 function Origem({ xml, quando }: { xml: boolean; quando?: string }) {
-  return <p className="hint" style={{ margin: '8px 0 4px' }}>{xml ? 'Dos XMLs do SIEG' + (quando ? ' (baixados em ' + quando + ')' : '') + ': item por item, como está na nota.' : 'Do relatório do Alterdata.'}</p>;
+  return <p className="hint" style={{ margin: '8px 0 4px' }}>{xml ? 'Dos XMLs do SIEG' + (quando ? ' (baixados em ' + quando + ')' : '') + '.' : 'Do relatório do Alterdata.'}</p>;
 }
 
 /** Os itens por NCM, CST e CEST (dos XMLs do SIEG, ou do relatório do Alterdata quando traz as colunas). */
@@ -158,12 +158,11 @@ function FaltamNoAlterdata({ faltam, oQue, baixar, baixando }: { faltam: readonl
 
 /** Os itens das notas emitidas com a tributação para revisar (09/10/2026: "erros de tributação apontados sozinhos"). */
 function ErrosDeTributacao({ erros }: { erros: readonly t.sieg.ErroDeTributacao[] }) {
-  if (!erros.length) return <Alerta naLinha tom="ok" titulo="Tributação das notas emitidas sem nada para revisar" texto="CST/CSOSN pelo regime, a substituição tributária e o CEST conferidos item por item nos XMLs." />;
+  if (!erros.length) return <Alerta naLinha tom="ok" titulo="Tributação das notas emitidas sem nada para revisar" />;
   const notas = new Set(erros.map(e => e.numero)).size;
   return (
     <>
-      <Alerta naLinha titulo={erros.length + (erros.length === 1 ? ' item para revisar' : ' itens para revisar') + ' em ' + notas + (notas === 1 ? ' nota' : ' notas')}
-        texto="Conferido nos XMLs: o CST/CSOSN pelo regime da empresa, o CFOP de substituição tributária e o CEST." />
+      <Alerta naLinha titulo={erros.length + (erros.length === 1 ? ' item para revisar' : ' itens para revisar') + ' em ' + notas + (notas === 1 ? ' nota' : ' notas')} />
       <div className="table-wrap table-compact">
         <table>
           <thead><tr><th>Nota</th><th>NCM</th><th>CFOP</th><th>CST</th><th>CEST</th><th>O que revisar</th></tr></thead>
@@ -191,7 +190,7 @@ function ValoresNotaANota({ c }: { c: t.sieg.ConferenciaDeValores | null }) {
     ['canceladas no SIEG e lançadas', c.canceladasLancadas, 'Tire do Alterdata (ou lance como cancelada).'],
     ['lançadas que não estão nos XMLs', c.semXml, 'Confira se a nota existe, se é deste mês ou se o número está certo.'],
   ];
-  if (!grupos.some(([, l]) => l.length)) return <Alerta naLinha tom="ok" titulo="Os valores batem nota a nota com os XMLs" texto="Nenhuma diferença de valor, nenhuma cancelada lançada e nada lançado fora dos XMLs." />;
+  if (!grupos.some(([, l]) => l.length)) return <Alerta naLinha tom="ok" titulo="Os valores batem nota a nota com os XMLs" />;
   return (
     <>
       {grupos.filter(([, l]) => l.length).map(([titulo, lista, texto]) => (
@@ -578,7 +577,6 @@ function FolhaTotal({ valor, informar }: { valor: number | null; informar?: (v: 
         <input className="field" inputMode="decimal" placeholder="Total da folha do mês (salários, pró-labore e encargos)" value={texto} onChange={e => setTexto(e.target.value)} style={{ maxWidth: 360 }} />
         <button type="submit" className="btn btn-primary" disabled={!valido || !informar}><Icone nome="check" />Salvar</button>
       </form>
-      <p className="hint">O Fiscal vê este valor ao lado do faturamento (Conferência de Faturamento × Notas Emitidas).</p>
     </>
   );
 }
@@ -847,7 +845,7 @@ function Corpo({ painel, vm, codigo, competencia, importar, valores, informar, a
       return <PgdasPrevia vm={vm} valores={valores} informar={informar} />;
     case 'interestaduais':
       if (!vm.entradas.qtd) return vazio('entradas');
-      if (!vm.interestaduais.qtd) return <Alerta naLinha tom="ok" titulo={'Nenhuma entrada de fora do estado em ' + comp} texto="Sem Antecipação, ST ou DIFAL das entradas neste mês." />;
+      if (!vm.interestaduais.qtd) return <Alerta naLinha tom="ok" titulo={'Nenhuma entrada de fora do estado em ' + comp} />;
       return (
         <>
           <div className="stat-grid">
@@ -882,7 +880,7 @@ function Corpo({ painel, vm, codigo, competencia, importar, valores, informar, a
       if (!vm.importado.tomados && !vm.importado.prestados) return vazio('tomados');
       const r = painel === 'iss-retido' ? vm.issRetido : vm.inssRetido;
       const imposto = painel === 'iss-retido' ? 'ISS' : 'INSS';
-      if (!r.qtd) return <Alerta naLinha tom="ok" titulo={'Nenhum ' + imposto + ' retido em ' + comp} texto="Nenhuma nota de serviço do mês tem retenção." />;
+      if (!r.qtd) return <Alerta naLinha tom="ok" titulo={'Nenhum ' + imposto + ' retido em ' + comp} />;
       return (
         <>
           <div className="stat-grid">
