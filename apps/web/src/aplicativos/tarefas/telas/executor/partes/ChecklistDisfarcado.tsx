@@ -145,7 +145,7 @@ function JanelaDeImportacao({ vm, empresa, codigo, competencia }: { vm: VmPainel
   ];
   return (
     <JanelaLateral rotulo="Importar do Alterdata" topicos={topicos} topico={imp.atual} mudar={vm.trocarRelatorio} fechar={vm.fecharImportacao} classe="pt-janela"
-      resumo={<div className="usuario-quem"><b>Importar do Alterdata</b><span className="fraco">Vai para a Conferência da empresa: o Contábil já usa.</span></div>}>
+      resumo={<div className="usuario-quem"><b>Importar do Alterdata</b></div>}>
       {imp.atual === 'xmls' ? <XmlsDoCliente codigo={codigo} competencia={competencia} /> : <ImportacaoNaEtapa key={imp.atual} nome={empresa} tipo={imp.atual} prestaServico={null} />}
     </JanelaLateral>
   );

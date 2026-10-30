@@ -17,7 +17,6 @@ export function JanelaDasEtiquetas({ vm }: { vm: VM }) {
       <div ref={janela} className="modal etq-janela" role="dialog" aria-modal="true" aria-labelledby="etqTitulo">
         <h3 id="etqTitulo"><Icone nome="fileText" />Etiquetas da folha</h3>
         <form className="etq-corpo" onSubmit={ev => { ev.preventDefault(); vm.imprimir(); }}>
-          <p className="etq-dica">Informe os dois textos que saem em cada etiqueta. A data sugerida é o 5º dia útil do mês seguinte (sábado conta); pode trocar.</p>
           <label className="etq-campo">
             <span>Informe a competência</span>
             <input type="text" value={vm.competencia} onChange={ev => vm.setCompetencia(ev.target.value)} placeholder="mm/aaaa" maxLength={20} autoFocus />

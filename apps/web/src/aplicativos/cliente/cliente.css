@@ -570,7 +570,6 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
 .cli-app .cli-visao .cli-v-guias:only-child{flex:1;}
 
 /* o envio rápido: o cartão com a frase curta embaixo do título */
-.cli-app .cli-v-enviar .card-head .hint{margin-top:2px;font-size:12.5px;}
 
 @media (max-width:767px){
   .cli-app .cli-veredito .page-title{font-size:21px;}

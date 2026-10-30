@@ -73,7 +73,7 @@ function JanelaDaLegislacao({ vm, nova }: { vm: Vm; nova: boolean }) {
           <header className="pessoal-topo">
             <div className="usuario-quem">
               <h2>{titulo}</h2>
-              {nova || !l ? <span className="fraco">Fica na lista do DP para todos</span> : (
+              {!nova && l && (
                 <span className="fraco">
                   Cadastrada em {vm.data(l.data)}{l.origem === 'Toriba' ? ' (Toriba)' : ''}{l.atualizadoPor ? ' · editada por ' + l.atualizadoPor : ''}
                 </span>

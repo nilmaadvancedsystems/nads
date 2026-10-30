@@ -12,7 +12,7 @@ export function ConfiguracoesContabil() {
           <Icone nome="hash" />
           <div>
             <h3>Históricos do Creditor</h3>
-            <p className="fraco">Os códigos de histórico do arquivo de importação do Creditor. Valem para todas as empresas.</p>
+            <p className="fraco">Valem para todas as empresas.</p>
           </div>
         </div>
         <div className="form-grid">

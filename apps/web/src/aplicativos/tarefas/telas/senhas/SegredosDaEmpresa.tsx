@@ -54,8 +54,8 @@ export function SegredosDaEmpresa({ vm: cofre, empresa, codigo, parte }: { vm: V
       {/* o código de acesso do Simples Nacional (Heverton, 20/10/2026): no cofre, embaralhado como a senha gov.br */}
       {(parte === 'simples' || parte === 'tudo') && (
         <Cartao titulo="Simples Nacional">
-          <Linha rotulo="Código de acesso" dica="Os 12 números que o portal do Simples pede"><Senha valor={vm.simples.codigo} onMudar={v => vm.setSimples({ ...vm.simples, codigo: v })} rotulo="Código de acesso do Simples Nacional" /></Linha>
-          <Linha rotulo="CPF do responsável" dica="O portal pede junto com o CNPJ e o código">
+          <Linha rotulo="Código de acesso"><Senha valor={vm.simples.codigo} onMudar={v => vm.setSimples({ ...vm.simples, codigo: v })} rotulo="Código de acesso do Simples Nacional" /></Linha>
+          <Linha rotulo="CPF do responsável">
             <span className="cofre-senha">
               <input type="text" inputMode="numeric" className="pessoal-select" value={vm.simples.cpf} onChange={e => vm.setSimples({ ...vm.simples, cpf: e.target.value })} aria-label="CPF do responsável" placeholder="Só os números" autoComplete="off" />
               <BotaoIcone icone="copiar" titulo="Copiar" onClick={() => { void navigator.clipboard.writeText(vm.simples.cpf.replace(/\D/g, '')).then(() => toast('Copiado.')); }} />

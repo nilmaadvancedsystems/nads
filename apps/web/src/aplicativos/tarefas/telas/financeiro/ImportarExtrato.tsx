@@ -52,7 +52,7 @@ function JanelaDoExtrato({ vm }: { vm: Vm }) {
             <Stat rotulo="Saídas" valor={a.saidas} cor="saida" grande={false} />
             <Stat rotulo="Saldo no fim" valor={a.saldoFinal ?? '—'} grande={false} />
           </div>
-          {a.linhas.length ? <TabelaDoExtrato linhas={a.linhas} /> : <p className="fraco">Nenhum lançamento novo nesta importação (todos já estavam importados antes).</p>}
+          {a.linhas.length ? <TabelaDoExtrato linhas={a.linhas} /> : <p className="fraco">Nenhum lançamento novo nesta importação.</p>}
         </div>
         <div className="modal-actions">
           <button type="button" className={'btn ' + (vm.desfazendo === a.id ? 'btn-primary' : 'btn-outline')} onClick={() => void vm.desfazer(a.id)}>
@@ -120,7 +120,7 @@ export function ImportarExtrato() {
           </div>
         </>
       ) : !vm.lendo && !vm.erro && !vm.bloqueio && (
-        <Vazio icone="fileUp" titulo="Escolha o extrato do banco" texto="PDF, OFX, planilha ou foto. O nads confere de quem é a conta (só as da Nilma, cadastradas em Contas bancárias) e leva as entradas, as saídas e o saldo do banco para o Painel, à parte do Caixa. Importar o mesmo extrato de novo não duplica. O arquivo não fica guardado." />
+        <Vazio icone="fileUp" titulo="Escolha o extrato do banco" texto="PDF, OFX, planilha ou foto." />
       )}
 
       <div className="card">

@@ -87,7 +87,7 @@ export function Inicio(props: DaCasca & { empresa: string; contato: AreaCliente[
         <div className="cli-coluna">
           <section className="card cli-v-enviar">
             <div className="card-head">
-              <div><h3>Enviar documento</h3><p className="hint">Extratos, notas e comprovantes vão direto para o escritório.</p></div>
+              <h3>Enviar documento</h3>
             </div>
             <Enviar {...props} />
           </section>

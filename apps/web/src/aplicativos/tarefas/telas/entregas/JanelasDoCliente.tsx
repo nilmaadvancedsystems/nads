@@ -102,7 +102,6 @@ export function JanelaLinkDoCliente({ clienteId }: { clienteId: string }) {
       {vm.avisoDoGrupo && <p className="registro-dica"><Icone nome="ajuda" />{vm.avisoDoGrupo}</p>}
       {vm.tem ? (
         <>
-          <p className="hint">Página só dele, sem senha: guias dos últimos meses, comprovante de cada entrega e os documentos que ainda faltam. O link é sempre o mesmo — mande uma vez.</p>
           {vm.grupo && <p className="hint">{vm.grupo}</p>}
           {vm.visto && <p className="hint">{vm.visto}</p>}
           <div className="ent-acoes-linha">
@@ -121,7 +120,7 @@ export function JanelaLinkDoCliente({ clienteId }: { clienteId: string }) {
         </>
       ) : (
         <>
-          <p className="hint">Este cliente ainda não tem link. Criar gera uma página só dele, sem senha, com as guias, os comprovantes de entrega e os documentos que faltam.</p>
+          <p className="hint">Este cliente ainda não tem link.</p>
           {vm.admin
             ? <BotaoAcao className="btn btn-primary" carregando={vm.criando} textoCarregando="Criando…" onClick={() => void vm.criar(false)}><Icone nome="link" />Criar link</BotaoAcao>
             : <p className="hint">Só admin cria o link.</p>}

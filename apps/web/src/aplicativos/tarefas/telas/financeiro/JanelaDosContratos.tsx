@@ -51,7 +51,6 @@ export function JanelaDosContratos({ fechar }: { fechar: () => void }) {
               ))}
             </ul>
           )}
-          <p className="registro-dica">O valor é o honorário mensal. Clientes parados (inativos) não entram na lista do mês.</p>
         </div>
         <footer className="registro-pe">
           <span className="tarefas-barra-espaco" />

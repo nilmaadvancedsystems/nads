@@ -55,7 +55,7 @@ export function JanelaDoFaturamento({ cliente, competencias, rotuloDoPeriodo, an
 
         {/* a evolução (o gráfico de barras dos painéis de faturamento): clicar no mês escolhe as notas dele; embaixo, o mix */}
         <section className="card fat-detalhe-evolucao">
-          <h3>Evolução <span className="fraco">· clique no mês para ver as notas dele</span></h3>
+          <h3>Evolução</h3>
           <BarrasEmColuna colunas={vm.barras} ativa={vm.mes?.competencia ?? null} onEscolher={vm.escolher} />
           {vm.semDado > 0 && <p className="fraco fat-sem-dado">{vm.semDado === 1 ? '1 mês' : vm.semDado + ' meses'} do período sem dado no SIEG (no período Ano, aparecem vazios)</p>}
           {/* o mix numa barra só, as duas partes com a legenda de bolinha */}

@@ -24,23 +24,23 @@ export function ConfiguracaoLcdpr() {
       {vm.erro && <p className="registro-dica registro-dica-erro nf-exemplos"><Icone nome="alert" />{vm.erro}</p>}
 
       <ConfigSecao titulo="Produtor">
-        <ConfigLinha titulo="CPF/CNPJ do produtor" descricao="O CT-e só entra quando o destinatário é este documento (o frete pago pela trading fica de fora).">
+        <ConfigLinha titulo="CPF/CNPJ do produtor">
           {campo('cpfProdutor', vm.cpf, 'CPF/CNPJ do produtor', 'numeric')}
         </ConfigLinha>
       </ConfigSecao>
 
       <ConfigSecao titulo="Padrões do lançamento">
-        <ConfigLinha titulo="Conta credora" descricao="A contrapartida de todo lançamento.">
+        <ConfigLinha titulo="Conta credora">
           {campo('contaCredoraPadrao', vm.contaCredora, 'Conta credora', 'numeric')}
         </ConfigLinha>
         <ConfigLinha titulo="Tipo de documento">{escolha('tipoDocPadrao', vm.tipoDoc, 'Tipo de documento')}</ConfigLinha>
-        <ConfigLinha titulo="Imóvel" descricao="Quando a IE do destinatário da nota não está em Tabelas de apoio › IE → imóvel.">{escolha('imovelPadrao', vm.imovel, 'Imóvel')}</ConfigLinha>
+        <ConfigLinha titulo="Imóvel">{escolha('imovelPadrao', vm.imovel, 'Imóvel')}</ConfigLinha>
         <ConfigLinha titulo="Tipo de lançamento">{escolha('tipoLancPadrao', vm.tipoLanc, 'Tipo de lançamento')}</ConfigLinha>
-        <ConfigLinha titulo="Categoria do CT-e" descricao="Todo CT-e é frete: vai para esta categoria.">{escolha('categoriaFretesCTe', vm.categoriaCte, 'Categoria do CT-e')}</ConfigLinha>
+        <ConfigLinha titulo="Categoria do CT-e">{escolha('categoriaFretesCTe', vm.categoriaCte, 'Categoria do CT-e')}</ConfigLinha>
       </ConfigSecao>
 
       <ConfigSecao titulo="Backup e limpeza">
-        <ConfigLinha titulo="Exportar backup" descricao="As regras e os cadastros num arquivo .json.">
+        <ConfigLinha titulo="Exportar backup">
           <button type="button" className="btn btn-outline" onClick={vm.exportarBackup}><Icone nome="download" />Exportar</button>
         </ConfigLinha>
         <ConfigLinha titulo="Importar backup" descricao="Troca as regras e os cadastros pelos do arquivo (vale para todos que usam o LCDPR).">

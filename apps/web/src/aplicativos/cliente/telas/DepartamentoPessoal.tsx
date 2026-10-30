@@ -157,7 +157,6 @@ export function DepartamentoPessoal(props: DaCasca) {
       <div className="cli-titulo">
         <div>
           <h1 className="page-title">Departamento pessoal</h1>
-          <p className="page-desc">Seus funcionários, os pedidos de admissão e a programação de férias.</p>
         </div>
         <div className="cli-acoes">
           <button type="button" className="btn btn-primary" onClick={() => void abrirPedido('admissao', vm.novaAdmissao())}><Icone nome="plus" width={16} height={16} />Solicitar admissão</button>

@@ -57,7 +57,6 @@ export function PreviaAnimacoes() {
     <div className="previa-anim">
       <header className="previa-anim-topo">
         <h1>Prévia das animações</h1>
-        <p className="fraco">Escolha um jeito: ele já passa a valer no app todo, neste navegador. Depois me diga qual fica de vez.</p>
         <div className="previa-anim-jeitos" role="radiogroup" aria-label="Jeito de animar">
           {JEITOS.map(j => (
             <button key={j.id} type="button" role="radio" aria-checked={jeito === j.id} className={'card previa-anim-jeito' + (jeito === j.id ? ' on' : '')} onClick={() => escolher(j.id)}>
@@ -87,7 +86,6 @@ export function PreviaAnimacoes() {
       <section className="card previa-anim-logo">
         <div>
           <h3>A logo</h3>
-          <p className="fraco">A abertura do app: o contorno do N se desenha, as metades pousam dentro dele e "Nilma" se revela. A inteira passa no primeiro acesso do dia; nas outras vezes, a curta. O vidro é o N sobre uma área que está carregando (a ferramenta de uma etapa).</p>
         </div>
         <div className="previa-anim-botoes">
           <button type="button" className="btn btn-primary" onClick={() => verLogo('inteira')}><Icone nome="play" />Abertura inteira</button>
@@ -99,7 +97,6 @@ export function PreviaAnimacoes() {
       <div ref={pagina} className="card previa-anim-pagina">
         {logo?.jeito === 'vidro' && <AberturaN key={'v' + logo.vez} vidro />}
         <h3>Uma página</h3>
-        <p className="fraco">É assim que o conteúdo chega quando você troca de página ou de etapa. As abas abaixo têm o fundo que desliza; os números contam quando mudam.</p>
         <Segmentado valor={aba} onMudar={setAba} opcoes={[{ valor: 'contabil', rotulo: 'Contábil' }, { valor: 'fiscal', rotulo: 'Fiscal' }, { valor: 'pessoal', rotulo: 'Departamento pessoal' }]} />
         <div className="stats-row previa-anim-stats">
           <Stat rotulo="Empresas" valor={String(numeros.empresas)} />

@@ -55,7 +55,6 @@ export function ContasBancarias({ rota }: { rota: string }) {
               <button type="button" className="btn btn-outline" onClick={vm.incluirTodas}>Incluir todas</button>
             )}
           </div>
-          <p className="hint">Bancos e contas que o robô aprendeu pelo Drive e pelos extratos, e que não estão aqui.</p>
           <ul className="cad-sugestoes-lista">
             {vm.sugestoes.map(s => (
               <li key={s.chave}>

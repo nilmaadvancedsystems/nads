@@ -25,14 +25,13 @@ function ComPdf({ vm }: { vm: Vm }) {
     <>
       <div className="card">
         <h3>Escolha o PDF</h3>
-        <p className="sub">O arquivo fica neste computador; nada sobe para a nuvem.</p>
         <CampoArquivo id="ferramentas-pdf" arquivo={p?.arquivo ?? null} aceitar=".pdf" onEscolher={f => void vm.escolherPdf(f)} />
         {p ? <p className="hint">{p.arquivo.name} · {p.total} página{p.total === 1 ? '' : 's'}</p> : <p className="hint">Escolha um PDF para começar.</p>}
       </div>
       {p && vm.ferramenta === 'separar' && (
         <div className="card">
           <h3>Separar em arquivos</h3>
-          <p className="sub">Cada grupo de páginas vira um PDF. Separe os grupos com ponto e vírgula; dentro de um grupo, use vírgula e traço.</p>
+          <p className="sub">Separe os grupos com ponto e vírgula; dentro de um grupo, use vírgula e traço.</p>
           <label className="hint" htmlFor="ferramentas-grupos">Grupos de páginas</label>
           <input id="ferramentas-grupos" type="text" value={vm.grupos} placeholder="1-3; 4-6" onChange={e => vm.setGrupos(e.target.value)} />
           <div className="btn-row">
@@ -45,7 +44,6 @@ function ComPdf({ vm }: { vm: Vm }) {
       {p && vm.ferramenta === 'paginas' && (
         <div className="card">
           <h3>Girar ou tirar páginas</h3>
-          <p className="sub">Escreva as páginas (por exemplo 2, 4-6). O resultado é um PDF novo; o original fica como está.</p>
           <label className="hint" htmlFor="ferramentas-paginas">Páginas</label>
           <input id="ferramentas-paginas" type="text" value={vm.paginas} placeholder="2, 4-6" onChange={e => vm.setPaginas(e.target.value)} />
           <label className="hint" htmlFor="ferramentas-graus">Giro (no sentido do relógio)</label>
@@ -63,7 +61,6 @@ function ComPdf({ vm }: { vm: Vm }) {
       {p && vm.ferramenta === 'imagens' && (
         <div className="card">
           <h3>PDF em imagem</h3>
-          <p className="sub">Cada página vira um PNG, para ver ou mandar. Um PDF grande pode levar alguns segundos.</p>
           <div className="btn-row">
             <BotaoAcao className="btn btn-primary" carregando={vm.ocupado} onClick={vm.gerarImagens}>Converter as páginas</BotaoAcao>
             {vm.imagens.length > 1 && <button type="button" className="btn btn-outline" onClick={vm.baixarTodasAsImagens}>Baixar todas</button>}
@@ -83,7 +80,6 @@ function ComPdf({ vm }: { vm: Vm }) {
       {p && vm.ferramenta === 'texto' && (
         <div className="card">
           <h3>PDF em texto</h3>
-          <p className="sub">Pega o texto que o PDF tem, página após página. Um PDF que é foto (digitalizado) não tem texto.</p>
           <div className="btn-row">
             <BotaoAcao className="btn btn-primary" carregando={vm.ocupado} onClick={vm.gerarTexto}>Extrair o texto</BotaoAcao>
             {vm.texto && vm.texto.trim() !== '' && <button type="button" className="btn btn-outline" onClick={vm.baixarTexto}>Baixar .txt</button>}
@@ -101,7 +97,6 @@ function Juntar({ vm }: { vm: Vm }) {
   return (
     <div className="card">
       <h3>Juntar PDFs</h3>
-      <p className="sub">Escolha os arquivos e ponha na ordem: sai um PDF só, com as páginas de cada um.</p>
       <CampoArquivos id="ferramentas-juntar" aceitar=".pdf" rotulo="Escolher PDFs" onEscolher={vm.adicionarParaJuntar} />
       {vm.juntar.length > 0 && (
         <ol className="ferramentas-lista">
@@ -127,7 +122,6 @@ function Planilha({ vm }: { vm: Vm }) {
   return (
     <div className="card">
       <h3>Converter planilha</h3>
-      <p className="sub">xls, xlsx, ods ou csv viram xlsx ou csv. O csv sai com ponto e vírgula, que o Excel em português abre certo.</p>
       <CampoArquivo id="ferramentas-planilha" arquivo={vm.planilha} aceitar=".xls,.xlsx,.ods,.csv" onEscolher={vm.setPlanilha} />
       <Segmentado<ferramentas.planilha.FormatoDeSaida> valor={vm.destino} onMudar={vm.setDestino} opcoes={[
         { valor: 'xlsx', rotulo: 'Excel (.xlsx)' },

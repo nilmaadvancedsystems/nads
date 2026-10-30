@@ -39,7 +39,6 @@ export function Documentos(props: DaCasca) {
       <div className="cli-titulo">
         <div>
           <h1 className="page-title">Central de documentos</h1>
-          <p className="page-desc">Relatórios, certidões, declarações e guias que o escritório deixou para você.</p>
         </div>
         <div className="cli-acoes">
           <button type="button" className="btn btn-primary" onClick={enviar}><Icone nome="upload" width={16} height={16} />Enviar documento</button>

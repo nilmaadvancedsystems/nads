@@ -85,7 +85,7 @@ export function AcessoAoCofre() {
         </ul>
         {doAberto && (
           <div className="cofre-logins">
-            <div className="cofre-logins-titulo"><b>Logins ativos de {doAberto.nome}</b><span className="fraco">cada login é um navegador com a chave do cofre</span></div>
+            <div className="cofre-logins-titulo"><b>Logins ativos de {doAberto.nome}</b></div>
             <ul>
               {doAberto.logins.map((p, i) => {
                 const eu = p.id === vm.meuId;

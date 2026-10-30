@@ -82,8 +82,6 @@ export function JanelaDoLote({ fechar }: { fechar: () => void }) {
       {topico === 'novo' ? (
         <div className="card">
           <h3>Subir um lote</h3>
-          <p className="hint dp-lote-texto">Escolha as guias (FGTS, DARF) e os relatórios da folha de vários clientes de uma vez. O robô lê cada arquivo e
-            separa por cliente e competência; você revisa e dispara, ou salva para disparar depois. Depois do disparo, cada arquivo vai para a pasta do cliente no Drive.</p>
           <div className="dp-lote-subir">
             {vm.subindo
               ? <p className="hint">Subindo {vm.subindo.feitos} de {vm.subindo.total}…</p>
@@ -93,7 +91,6 @@ export function JanelaDoLote({ fechar }: { fechar: () => void }) {
       ) : topico === 'salvos' ? (vm.carregando ? <Esqueleto linhas={3} /> : (
         <div className="card">
           <h3>Salvos para enviar depois{vm.salvos.length ? ' · ' + vm.salvos.length : ''}</h3>
-          <p className="hint dp-lote-texto">Os lotes que subiram e ainda não foram disparados. Ficam guardados com os arquivos; nada é enviado até você abrir e disparar.</p>
           {vm.salvos.length ? (
             <ul className="dp-lote-lista">
               {vm.salvos.map(l => (

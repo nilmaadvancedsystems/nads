@@ -82,7 +82,7 @@ export function JanelaNovaNota({ fechar, nota, inicial }: { fechar: () => void; 
           )}
           {vm.escolhido
             ? vm.lendoCliente && <p className="registro-dica">Lendo o que o nads tem do cliente…</p>
-            : !vm.busca && <p className="registro-dica">Digite o código ou o nome do cliente. Quem não é cliente: preencha o CPF ou CNPJ e o nome abaixo.</p>}
+            : !vm.busca && <p className="registro-dica">Quem não é cliente: preencha o CPF ou CNPJ e o nome abaixo.</p>}
 
           <div className="registro-props">
             <Propriedade icone="hash" rotulo="CPF ou CNPJ">

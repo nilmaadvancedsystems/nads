@@ -15,10 +15,7 @@ export function GuiaParaSubir({ guia, codigo, competencia, enviadas, marcar }: {
   const [sobre, setSobre] = useState(false);
   return (
     <div className="xmls-cliente">
-      <p className="hint" style={{ margin: 0 }}>
-        O PDF do {guia} do mês vai para a pasta do cliente no Drive (pelo Claudio Secretario: o arquivamento leva para o lugar certo).
-        {enviadas > 0 && <> <span className="badge badge-ok">{enviadas === 1 ? '1 guia enviada' : enviadas + ' guias enviadas'}</span></>}
-      </p>
+      {enviadas > 0 && <p className="hint" style={{ margin: 0 }}><span className="badge badge-ok">{enviadas === 1 ? '1 guia enviada' : enviadas + ' guias enviadas'}</span></p>}
       <CampoArquivo semCaixa semFoco multiplo ref={input} aceitar=".pdf,application/pdf" onEscolherVarios={soltar} />
       <button type="button" className={'cert-soltar compacto' + (sobre ? ' sobre' : '')} onClick={() => input.current?.click()}
         onDragOver={ev => { ev.preventDefault(); setSobre(true); }} onDragLeave={() => setSobre(false)}

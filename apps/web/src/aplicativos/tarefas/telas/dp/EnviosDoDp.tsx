@@ -209,7 +209,7 @@ export function EnviosDoDp() {
             </div>
           ) : vm.aba === 'email' ? (
             <ConfigSecao titulo="E-mail do cliente">
-              <ConfigLinha titulo="E-mail do cadastro" descricao="O mesmo de Cadastro › Dados da empresa: é para onde os envios vão. Vazio tira." aviso={erroDoEmail || undefined}>
+              <ConfigLinha titulo="E-mail do cadastro" aviso={erroDoEmail || undefined}>
                 <input key={'email|' + aberto.codigo + '|' + aberto.emailDoCadastro} type="email" className="nf-entrada largo" aria-label={'E-mail de ' + aberto.nome}
                   defaultValue={aberto.emailDoCadastro} placeholder="nome@empresa.com.br" autoFocus
                   onBlur={e => setErroDoEmail(vm.definirEmail(aberto.codigo, e.target.value))}

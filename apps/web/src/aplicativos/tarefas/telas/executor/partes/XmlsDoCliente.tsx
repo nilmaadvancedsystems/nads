@@ -13,9 +13,6 @@ export function XmlsDoCliente({ codigo, competencia, saidas = false }: { codigo:
   const a = vm.andamento;
   return (
     <div className="xmls-cliente">
-      <p className="hint" style={{ margin: 0 }}>{saidas
-        ? 'Os XMLs das notas que o cliente emitiu (soltos ou num .zip): o robô fica com os desta empresa, lança na conferência e na sequência das saídas e salva no Drive só os que ainda não estão lá.'
-        : 'Os XMLs que o cliente mandou (soltos ou num .zip): o robô fica com os desta empresa, lança as notas no nads (as tabelas de verificação e a sequência das saídas) e salva no Drive só os que ainda não estão lá.'}</p>
       {/* direto da pasta do cliente no Drive (09/10/2026): a pasta do ano (o arquivado) e o Claudio Secretario */}
       {!a && (
         <div className="xmls-cliente-lidos">

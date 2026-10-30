@@ -6,7 +6,6 @@ export function Bandeiras() {
   const vm = useBandeiras();
   return (
     <section>
-      <p className="page-desc" style={{ marginBottom: 16 }}>Quais operadoras entram nesta conciliação.</p>
       <div className="bandeira-grid">
         {vm.opcoes.map(b => (
           <label key={b.id} className={'bandeira-opcao' + (b.marcada ? ' on' : '')}>

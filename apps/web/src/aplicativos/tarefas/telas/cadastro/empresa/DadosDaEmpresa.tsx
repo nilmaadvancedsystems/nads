@@ -65,7 +65,7 @@ export function DadosDaEmpresa({ rota }: { rota: string }) {
 
       {/* o contato da empresa (Vitor, 07/10/2026): o Mandei manda as perguntas de Clientes e Fornecedores para os dois */}
       <ConfigSecao titulo="Contato">
-        <ConfigLinha titulo="E-mail" descricao="Para onde o Mandei manda as perguntas de clientes e fornecedores."
+        <ConfigLinha titulo="E-mail"
           aviso={erroDoContato && erroDoContato.startsWith('E-mail') ? erroDoContato : undefined}>
           <label className="busca-curta" title="O e-mail da empresa">
             <Icone nome="envelope" />
@@ -73,7 +73,7 @@ export function DadosDaEmpresa({ rota }: { rota: string }) {
               onBlur={e => setErroDoContato(vm.definirContato('email', e.target.value))} onKeyDown={enter} />
           </label>
         </ConfigLinha>
-        <ConfigLinha titulo="WhatsApp" descricao="Com o DDD. Com os dois, o link chega pelos dois."
+        <ConfigLinha titulo="WhatsApp"
           aviso={erroDoContato && erroDoContato.startsWith('WhatsApp') ? erroDoContato : undefined}>
           <label className="busca-curta" title="O WhatsApp da empresa, com o DDD">
             <Icone nome="mensagem" />
@@ -94,7 +94,7 @@ export function DadosDaEmpresa({ rota }: { rota: string }) {
           <button type="button" className="btn" disabled={novo} onClick={() => setNovo(true)}><Icone nome="plus" />Adicionar sócio</button>
         </>
       )}>
-        {!linhas.length ? <ConfigLinha titulo="Nenhum sócio" descricao="A etapa Bancos usa o nome e o CPF para achar as transferências para eles." /> : linhas.map((so, i) => (
+        {!linhas.length ? <ConfigLinha titulo="Nenhum sócio" /> : linhas.map((so, i) => (
           <div key={i + '|' + so.nome + '|' + so.cpf} className="cfg-linha cfg-socio">
             <input type="text" aria-label="Nome do sócio" defaultValue={so.nome} placeholder="Nome completo" autoFocus={i >= vm.socios.length}
               onBlur={e => { if (e.target.value.trim() !== so.nome) mudar(i, 'nome', e.target.value); }} onKeyDown={enter} />
@@ -120,20 +120,20 @@ export function ParametrosContabeis({ rota }: { rota: string }) {
   return (
     <>
       <ConfigSecao titulo="Cartões">
-        <ConfigLinha titulo="Cartão empresarial" descricao="Compras no cartão de crédito da empresa: a etapa Cartões quebra a fatura no razão do cartão.">
+        <ConfigLinha titulo="Cartão empresarial">
           {chave('cartaoEmpresarial', 'Cartão empresarial')}
         </ConfigLinha>
-        <ConfigLinha titulo="Vende no cartão" descricao="Vendas pelas maquininhas: a etapa Cartões concilia com as notas.">
+        <ConfigLinha titulo="Vende no cartão">
           {chave('vendeNoCartao', 'Vende no cartão')}
         </ConfigLinha>
       </ConfigSecao>
       <ConfigSecao titulo="Recebimentos e honorários">
         {/* o Creditor (Vitor, 08/10/2026): a empresa recebe liquidação de cobrança do banco (CRÉD.LIQ.COBRANÇA) */}
-        <ConfigLinha titulo="Liquidação de cobrança (Creditor)" descricao="O banco credita as cobranças liquidadas no caixa: a etapa Creditor entra todo mês.">
+        <ConfigLinha titulo="Liquidação de cobrança (Creditor)">
           {chave('credLiquidacao', 'Liquidação de cobrança')}
         </ConfigLinha>
         {/* de quais bancos vem o relatório (Vitor, 14/10/2026: "checks, Bradesco e Sicoob"): o importar automático procura esses */}
-        <ConfigLinha titulo="Relatório de liquidação" descricao="De quais bancos vem o relatório: o Importar automático do Creditor procura os marcados e avisa o que faltar.">
+        <ConfigLinha titulo="Relatório de liquidação">
           <span style={{ display: 'inline-flex', gap: 16 }}>
             {empresas.cadastro.BANCOS_DO_RELATORIO.map(b => (
               <label key={b.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
@@ -144,7 +144,7 @@ export function ParametrosContabeis({ rota }: { rota: string }) {
           </span>
         </ConfigLinha>
         {/* a nota de honorário (Vitor, 07/10/2026): sem nota, a etapa Honorários pede o Extrato por cobrança */}
-        <ConfigLinha titulo="Emite nota de honorário" descricao="Sem nota, a etapa Honorários lança as cobranças pelo Extrato por cobrança.">
+        <ConfigLinha titulo="Emite nota de honorário">
           <Interruptor ligado={vm.emiteNotaHonorario === true} rotulo="Emite nota de honorário" onMudar={() => vm.definirNotaDeHonorario(vm.emiteNotaHonorario !== true)} />
         </ConfigLinha>
       </ConfigSecao>
@@ -161,12 +161,12 @@ export function ParametrosFiscais({ rota }: { rota: string }) {
     <>
     <ConfigSecao titulo="Tributação">
       {/* o regime (13/10/2026: "no cadastro da empresa tenha os regimes, aí muda na rotina") */}
-      <ConfigLinha titulo="Regime tributário" descricao="Define as etapas da rotina do Fiscal (PGDAS, DAS-MEI, ICMS, PIS/COFINS, IRPJ/CSLL)."
+      <ConfigLinha titulo="Regime tributário"
         aviso={vm.receitaDiscorda ? 'Na Receita: ' + vm.receitaDiscorda + '. Confira.' : undefined}>
         <MenuSuspenso rotulo={vm.regime ?? (vm.regimePadrao || 'Escolher')} className="btn btn-ghost" titulo="Regime tributário" direita largura={200}
           itens={vm.regimes.map(r => ({ rotulo: r, marcado: (vm.regime ?? vm.regimePadrao) === r, onClick: () => { if (vm.regime !== r) vm.definirRegime(r); } }))} />
       </ConfigLinha>
-      <ConfigLinha titulo="Presta serviços" descricao="Mostra a aba Prestados na Importação e os serviços prestados na Conferência.">
+      <ConfigLinha titulo="Presta serviços">
         <Interruptor ligado={vm.prestaServico === true} rotulo="Presta serviços" onMudar={() => vm.definirPrestaServico(vm.prestaServico !== true)} />
       </ConfigLinha>
     </ConfigSecao>
@@ -195,7 +195,7 @@ function ParametrosDaPlanilhaDoFiscal({ vm }: { vm: ReturnType<typeof useDadosDa
         </span>
       </ConfigLinha>
       {vm.parametrosFiscais.map(p => (
-        <ConfigLinha key={p.id} titulo={p.rotulo} descricao={p.descricao + ' ' + deOnde(p.id)}>
+        <ConfigLinha key={p.id} titulo={p.rotulo} descricao={deOnde(p.id)}>
           <Interruptor ligado={vm.fiscal[p.id] === true} rotulo={p.rotulo} onMudar={() => vm.definirFiscal(p.id, vm.fiscal[p.id] !== true)} />
         </ConfigLinha>
       ))}

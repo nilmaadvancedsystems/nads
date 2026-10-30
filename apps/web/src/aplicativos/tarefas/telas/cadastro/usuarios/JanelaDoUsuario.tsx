@@ -53,7 +53,7 @@ export function JanelaDoUsuario({ vm }: { vm: VmUsuarios }) {
       {topico === 'empresas' && <EmpresasDaPessoa pessoa={p.nome} />}
       {topico === 'cargo' && (
         <Cartao titulo="Cargo">
-          <Linha rotulo="Departamento" dica="A rotina que a pessoa faz na Tarefas.">
+          <Linha rotulo="Departamento">
             <select className="pessoal-select" value={p.departamento || ''} disabled={!vm.admin} aria-label="Departamento"
               onChange={ev => void vm.mudarCargo(p, (ev.target.value || null) as usuarios.Departamento | null, p.nivel)}>
               <option value="">—</option>
@@ -72,7 +72,7 @@ export function JanelaDoUsuario({ vm }: { vm: VmUsuarios }) {
       {topico === 'papeis' && (
         <Cartao titulo="Papéis">
           {vm.papeis.map(x => (
-            <Linha key={x.id} rotulo={x.rotulo} dica={x.dica}>
+            <Linha key={x.id} rotulo={x.rotulo}>
               <Interruptor ligado={p.papeis.includes(x.id)} onMudar={() => void vm.alternarPapel(p, x.id)} rotulo={x.rotulo + ' de ' + p.nome} />
             </Linha>
           ))}
@@ -81,16 +81,16 @@ export function JanelaDoUsuario({ vm }: { vm: VmUsuarios }) {
       {topico === 'acesso' && (
         <>
           <Cartao titulo="Conta">
-            <Linha rotulo="No nads" dica="Online = o nads dela está aberto agora (ele avisa a cada 3 minutos).">
+            <Linha rotulo="No nads">
               <span className="usuarios-estado"><span className={'usuarios-ponto' + (p.online ? ' ok' : '')} aria-hidden="true" />{p.presenca}</span>
             </Linha>
-            <Linha rotulo="Conta ativa" dica="Desativada, a pessoa não entra no nads nem no Entregas.">
+            <Linha rotulo="Conta ativa">
               <Interruptor ligado={p.ativo} onMudar={() => void vm.ativar(p)} rotulo={(p.ativo ? 'Desativar ' : 'Ativar ') + p.nome} />
             </Linha>
           </Cartao>
           {vm.admin && (
             <Cartao titulo="Senha">
-              <Linha rotulo="Nova senha" dica="Gera um link que vale 24 horas e uma vez: a pessoa abre e escolhe a senha nova. Mande pelo WhatsApp ou e-mail.">
+              <Linha rotulo="Nova senha" dica="Vale 24 horas e uma vez só.">
                 {vm.linkDeSenha(p.uid)
                   ? <LinkDoConvite link={vm.linkDeSenha(p.uid)} copiar={() => vm.copiar(vm.linkDeSenha(p.uid))} />
                   : <button type="button" className="btn btn-outline" disabled={vm.gerandoSenha} onClick={() => void vm.gerarLinkDeSenha(p)}>
@@ -154,17 +154,17 @@ export function JanelaNovoUsuario({ fechar }: { fechar: () => void }) {
       )}>
       {vm.link && (
         <Cartao titulo="Link de cadastro">
-          <Linha rotulo="Mande para a pessoa" dica="Vale 24 horas e uma vez só. Ela escolhe o nome e a senha e já entra com o cargo e os papéis escolhidos aqui.">
+          <Linha rotulo="Mande para a pessoa" dica="Vale 24 horas e uma vez só.">
             <LinkDoConvite link={vm.link} copiar={vm.copiar} />
           </Linha>
         </Cartao>
       )}
       {topico === 'dados' && (
         <Cartao titulo="Dados">
-          <Linha rotulo="Nome" dica="Como a pessoa entra no nads e no Entregas.">
+          <Linha rotulo="Nome">
             <input className="usuario-campo" type="text" aria-label="Nome" value={vm.nome} onChange={ev => vm.setNome(ev.target.value)} placeholder="Ex.: Maria Souza" autoComplete="off" autoFocus />
           </Linha>
-          <Linha rotulo="Senha" dica="Pelo menos 6 caracteres; a pessoa troca depois em Minha conta.">
+          <Linha rotulo="Senha" dica="Pelo menos 6 caracteres.">
             <input className="usuario-campo" type="password" aria-label="Senha" value={vm.senha} onChange={ev => vm.setSenha(ev.target.value)} autoComplete="new-password"
               onKeyDown={ev => { if (ev.key === 'Enter') setTopico('cargo'); }} />
           </Linha>
@@ -172,7 +172,7 @@ export function JanelaNovoUsuario({ fechar }: { fechar: () => void }) {
       )}
       {topico === 'cargo' && (
         <Cartao titulo="Cargo">
-          <Linha rotulo="Departamento" dica="A rotina que a pessoa faz na Tarefas.">
+          <Linha rotulo="Departamento">
             <select className="pessoal-select" value={vm.departamento} onChange={ev => vm.setDepartamento(ev.target.value as typeof vm.departamento)} aria-label="Departamento">
               <option value="">Escolha…</option>
               {vm.departamentos.map(d => <option key={d.id} value={d.id}>{d.rotulo}</option>)}

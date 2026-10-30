@@ -31,7 +31,6 @@ export function UsoDoSistema() {
         <div className="card uso-telas">
           <h3>As telas, da mais usada à menos</h3>
           <p className="uso-explica">
-            <span>Clique em <b>Ver os botões</b> para abrir a tela com cada botão pintado:</span>
             <span className="uso-cor calor-5">verde = usam</span>
             <span className="uso-cor calor-0">vermelho = ninguém usa</span>
           </p>
