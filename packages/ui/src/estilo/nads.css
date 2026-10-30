@@ -5809,3 +5809,117 @@ html[data-sem-animacao] .mx-gaveta-fundo,html[data-sem-animacao] .mx-gaveta{anim
   .mx-leitura-rola{padding:16px 16px 84px;}
   .mx-leitura-topo h2{font-size:var(--fs-18);}
 }
+
+/* ---------------------------------- Fiscal › Relatório Simples / Presumido (30/10/2026) ----------------------------------
+   "a tabela é feia e pesada"; o Fiscal refeito "parecendo parte do site" (o mesmo caminho do Gmail): uma barra só em cima
+   (a competência e os filtros em menus; à direita a busca, o Excel e a impressora), a tabela num .card com o andamento e o
+   "Preencher com o Entregas" no topo. A tabela: linhas baixas sem listras, os grupos separados por um fio, o cabeçalho
+   parado no alto e o total parado embaixo da caixa que rola, as conferências em bolinhas pequenas, a entrega numa
+   etiqueta com o logo e a situação num ponto. Só as variáveis do tema (escuro e claro); no celular a tabela rola de lado
+   com o código e o cliente parados à esquerda. Prefixo fr- (as regras antigas .rel-/.ctrl- ficam para quem ainda usa). */
+.fr{display:flex;flex-direction:column;gap:12px;}
+.fr .tarefas-barra-topo.fr-topo{margin:0;}
+.fr .drive-aviso,.fr > .hint{margin:0;}
+.fr-busca{width:240px;}
+.fr .btn-sm{min-height:28px;height:28px;padding:0 10px;font-size:var(--fs-12);gap:6px;}
+.fr .btn-sm svg{width:14px;height:14px;}
+/* o cartão: o topo com o título, o andamento e o preencher; a caixa que rola; o pé com as páginas */
+.fr-cartao{margin:0;padding:0;overflow:clip;}
+.fr-cartao-topo{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--border);}
+.fr-cartao-titulo{margin:0;font-size:var(--fs-14);font-weight:600;}
+.fr-andamento{display:inline-flex;align-items:center;gap:8px;min-width:0;font-size:var(--fs-12);color:var(--ink-muted);font-variant-numeric:tabular-nums;}
+.fr-andamento b{color:var(--ink);font-weight:600;}
+.fr-andamento-barra{flex:none;width:96px;height:6px;border-radius:999px;background:var(--surface-3);overflow:hidden;}
+.fr-andamento-barra i{display:block;height:100%;border-radius:inherit;background:var(--success);}
+.fr-qtd{min-width:18px;height:18px;padding:0 5px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;
+  background:var(--accent-soft);color:var(--accent-ink);font-size:var(--fs-11);font-weight:700;font-variant-numeric:tabular-nums;}
+.fr-cartao-pe{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 16px;border-top:1px solid var(--border);}
+.fr-cartao-pe .hint{margin:0;}
+.fr-rola{max-height:max(360px,calc(100dvh - 300px));overflow:auto;overscroll-behavior:contain;}
+.fr-legenda{font-size:var(--fs-12);}
+/* a tabela: largura fixa por coluna (o cliente fica com o que sobra) */
+.fr-tabela{width:100%;min-width:1060px;table-layout:fixed;border-collapse:separate;border-spacing:0;font-size:var(--fs-13);}
+.fr-tabela col.fr-c-cod{width:44px;}
+.fr-tabela col.fr-c-guia{width:74px;}
+.fr-tabela col.fr-c-mk{width:32px;}
+.fr-tabela col.fr-c-data{width:86px;}
+.fr-tabela col.fr-c-ent{width:68px;}
+.fr-tabela col.fr-c-sit{width:36px;}
+.fr-tabela th,.fr-tabela td{padding:0 6px;height:34px;border-bottom:1px solid var(--border);background:var(--surface);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:middle;}
+.fr-tabela .fr-num{text-align:right;font-variant-numeric:tabular-nums;}
+.fr-tabela .fr-centro{text-align:center;padding:0 2px;text-overflow:clip;}
+.fr-tabela .fr-g{border-left:1px solid var(--border);}
+.fr-tabela td:has(> .fr-campo){padding:0 2px;}
+/* o cabeçalho: parado no alto da caixa; o grupo numa linha fina em maiúsculas */
+.fr-tabela thead th{position:sticky;z-index:3;background:var(--surface-2);font-size:var(--fs-11);font-weight:600;color:var(--ink-muted);text-align:left;}
+.fr-tabela thead tr:first-child th{top:0;height:24px;border-bottom:0;font-size:10.5px;letter-spacing:.03em;text-transform:uppercase;color:var(--ink-faint);}
+.fr-tabela thead tr:last-child th{top:24px;height:30px;}
+.fr-tabela thead th.fr-num{text-align:right;}
+.fr-tabela thead th.fr-centro{text-align:center;}
+/* as linhas */
+.fr-tabela tbody tr:hover td{background:color-mix(in srgb,var(--ink) 4%,var(--surface));}
+.fr-cod{color:var(--ink-faint);font-size:var(--fs-12);}
+.fr-cliente span{font-weight:500;color:var(--ink);}
+.fr-tabela tbody tr.fr-feita td:first-child{box-shadow:inset 3px 0 0 var(--success);}
+.fr-tabela tbody tr.fr-feita .fr-cliente span{color:var(--ink-muted);}
+/* o campo: o texto na célula, a caixa só ao passar o mouse e ao escrever */
+.fr-tabela input[type="text"].fr-campo{display:block;width:100%;min-width:0;min-height:0;height:26px;padding:0 4px;border:1px solid transparent;border-radius:6px;
+  background:transparent;box-shadow:none;font-size:var(--fs-13);font-variant-numeric:tabular-nums;color:var(--ink);}
+.fr-tabela .fr-data input[type="text"].fr-campo{text-align:center;}
+.fr-tabela input[type="text"].fr-campo:hover:not([readonly]){border-color:var(--border);}
+.fr-tabela input[type="text"].fr-campo:focus{border-color:var(--accent);background:var(--surface);outline:none;box-shadow:inset 0 0 0 1px var(--accent);}
+.fr-tabela input[type="text"].fr-campo[readonly]{cursor:default;}
+.fr-tabela .fr-campo::placeholder{color:var(--ink-faint);opacity:.75;}
+.fr-tabela .fr-molde:not(:focus)::placeholder{color:transparent;}
+/* a conferência: a bolinha pequena */
+.fr-marca{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;padding:0;border:1.5px solid var(--border-strong);border-radius:50%;
+  background:transparent;color:var(--ink-faint);font:inherit;font-size:var(--fs-11);font-weight:700;line-height:1;vertical-align:middle;}
+button.fr-marca{cursor:pointer;}
+button.fr-marca:hover{border-color:var(--ink);}
+button.fr-marca:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.fr-marca.a-fazer{opacity:.6;}
+.fr-marca.feita{border-color:var(--success);background:var(--success);color:#fff;}
+.fr-marca.nao-tem{border-color:transparent;background:var(--surface-3);}
+.fr-marca svg{stroke-width:3;}
+/* a situação: o ponto (vazio, amarelo começada, verde concluída) */
+.fr-sit{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;border:1.5px solid var(--border-strong);vertical-align:middle;opacity:.7;}
+.fr-sit.em-andamento{border-color:var(--warn);background:var(--warn-soft);opacity:1;}
+.fr-sit.concluida{width:18px;height:18px;border-color:var(--success);background:var(--success);color:#fff;opacity:1;}
+.fr-sit svg{stroke-width:3;}
+/* a entrega: a etiqueta com o logo */
+.fr-tabela .popover-wrap{display:inline-flex;vertical-align:middle;}
+.fr-entrega{display:inline-flex;align-items:center;justify-content:center;gap:3px;height:24px;min-width:52px;max-width:100%;padding:0 6px;border:1px solid var(--border);border-radius:999px;
+  background:transparent;color:var(--ink-muted);font:inherit;font-size:var(--fs-12);font-weight:500;line-height:1;white-space:nowrap;vertical-align:middle;cursor:pointer;}
+.fr-entrega .menu-seta{width:10px;height:10px;opacity:.6;}
+.fr-entrega .ctrl-entrega-sinal,.fr-entrega .ctrl-entrega-sinal svg,.fr-entrega .ctrl-entrega-sinal .logo-img{width:15px;height:15px;}
+.fr-entrega .ctrl-entrega-texto{color:inherit;}
+button.fr-entrega:hover{border-color:var(--border-strong);background:var(--hover-bg);color:var(--ink);}
+button.fr-entrega[aria-expanded="true"]{border-color:var(--accent);color:var(--ink);}
+button.fr-entrega:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+.fr-entrega-falta{border-style:dashed;}
+.fr-entrega-feita{border-color:color-mix(in srgb,var(--success) 45%,transparent);background:var(--success-soft);color:var(--success-ink);}
+button.fr-entrega-feita:hover{border-color:var(--success);background:color-mix(in srgb,var(--success) 22%,transparent);}
+.fr-entrega-nao{border-color:transparent;background:var(--surface-3);color:var(--ink-faint);}
+.fr-entrega.leitura{cursor:default;}
+/* o total: parado no pé da caixa, em destaque */
+.fr-tabela tfoot td{position:sticky;bottom:0;z-index:2;height:36px;border-top:1px solid var(--border-strong);border-bottom:0;
+  background:color-mix(in srgb,var(--accent) 6%,var(--surface-2));font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;}
+.fr-tabela tfoot td.fr-zero{color:var(--ink-faint);font-weight:500;}
+.fr-total-qtd{margin-left:6px;font-size:var(--fs-11);font-weight:500;color:var(--ink-muted);}
+@media (max-width:760px){
+  .fr-busca{width:100%;order:10;}
+  .fr-cartao-topo{padding:10px 12px;}
+  .fr-andamento-barra{width:64px;}
+  .fr-rola{max-height:calc(100dvh - 220px);}
+  .fr-tabela col.fr-c-cliente{width:140px;}
+  .fr-tabela col.fr-c-cod{width:40px;}
+  .fr-tabela{min-width:960px;}
+  .fr-cartao-pe .tarefas-barra-espaco{display:none;}
+  /* o código e o cliente parados à esquerda ao rolar de lado */
+  .fr-tabela tbody td:nth-child(1),.fr-tabela tbody td:nth-child(2),.fr-tabela thead tr:last-child th:nth-child(-n+2){position:sticky;z-index:1;}
+  .fr-tabela tbody td:nth-child(1),.fr-tabela thead tr:last-child th:nth-child(1){left:0;}
+  .fr-tabela tbody td:nth-child(2),.fr-tabela thead tr:last-child th:nth-child(2){left:40px;box-shadow:1px 0 0 var(--border);}
+  .fr-tabela thead tr:last-child th:nth-child(-n+2){z-index:4;}
+  .fr-tabela thead tr:first-child th:first-child{position:sticky;left:0;z-index:4;}
+  .fr-tabela tfoot td:first-child{left:0;z-index:3;}
+}

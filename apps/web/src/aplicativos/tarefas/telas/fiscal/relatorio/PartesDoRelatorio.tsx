@@ -10,7 +10,7 @@ import { Icone, LogoGmail, LogoWhatsApp, MenuSuspenso } from '@nads/ui';
 /** molde: o formato ("dd/mm/aaaa") que aparece só ao escrever, para a coluna não ficar cheia dele (29/10/2026) */
 export function Valor({ valor, sugestao, molde, rotulo, pode, aoSalvar, largo, estreito }: { valor: string; sugestao?: string; molde?: string; rotulo: string; pode: boolean; aoSalvar: (v: string) => void; largo?: boolean; estreito?: boolean }) {
   return (
-    <input key={valor} type="text" className={'fin-valor-edita' + (largo ? '' : ' num') + (estreito ? ' rel-campo' : '') + (!sugestao && molde ? ' rel-molde' : '')}
+    <input key={valor} type="text" className={'fin-valor-edita' + (largo ? '' : ' num') + (estreito ? ' fr-campo' : '') + (!sugestao && molde ? ' fr-molde' : '')}
       defaultValue={valor} placeholder={sugestao || molde || ''} aria-label={rotulo}
       title={sugestao && !valor ? 'Do Entregas: ' + sugestao : undefined} readOnly={!pode}
       onBlur={e => { if (e.target.value !== valor) aoSalvar(e.target.value); }}
@@ -37,11 +37,14 @@ function SinalDaEntrega({ valor }: { valor: t.EntregaDoControle }) {
   return <span className="ctrl-entrega-texto">{valor === 'nao' ? '—' : 'Falta'}</span>;
 }
 
-/** A entrega: o Menu suspenso do catálogo (o select não mostra os logos), flutuante porque a tabela rola */
+/**
+ * A entrega: a etiqueta da tabela (30/10/2026, o relatório refeito): "Falta" tracejada, entregue com o logo em verde,
+ * "não se aplica" apagada; o Menu suspenso do catálogo (o select não mostra os logos), flutuante porque a tabela rola.
+ */
 export function Entrega({ valor, pode, rotulo, aoMudar }: { valor: t.EntregaDoControle; pode: boolean; rotulo: string; aoMudar: (e: t.EntregaDoControle) => void }) {
   const nome = t.ENTREGAS_DO_CONTROLE.find(o => o.valor === valor)?.rotulo || 'Falta';
-  const classe = 'btn btn-outline ctrl-entrega' + (valor ? ' ctrl-entrega-feita' : '');
-  if (!pode) return <span className={classe + ' ctrl-entrega-fixa'} title={rotulo + ': ' + nome} aria-label={rotulo + ': ' + nome}><SinalDaEntrega valor={valor} /></span>;
+  const classe = 'fr-entrega ' + (valor === 'nao' ? 'fr-entrega-nao' : valor ? 'fr-entrega-feita' : 'fr-entrega-falta');
+  if (!pode) return <span className={classe + ' leitura'}title={rotulo + ': ' + nome} aria-label={rotulo + ': ' + nome}><SinalDaEntrega valor={valor} /></span>;
   return (
     <MenuSuspenso className={classe} flutuante compacto titulo={rotulo} dica={rotulo + ': ' + nome}
       rotulo={<><SinalDaEntrega valor={valor} /><span className="sr-only">{rotulo + ': ' + nome}</span></>}
