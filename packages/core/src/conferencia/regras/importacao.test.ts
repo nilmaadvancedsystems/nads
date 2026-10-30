@@ -72,6 +72,14 @@ describe('verificarBalancete', () => {
     expect(r.similaridade).toBe(14); // 1 igual em 7 códigos
     expect(r.problemas.some(p => p.indexOf('Só <b>14%</b>') === 0)).toBe(true);
   });
+  it('plano parecido com o último: a conta vinculada sem saldo no mês (fora do arquivo) não avisa (a 289, 29/10/2026)', () => {
+    const e = empresa({ naturezaConta: { 'Entrada de bonificação, doação ou brinde': ['96081'] }, balanceteAssinatura: assinaturaBalancete(plano) });
+    expect(verificarBalancete(e, plano)).toEqual({ problemas: [], similaridade: 100 });
+    // plano diferente: aí avisa as duas coisas
+    const r = verificarBalancete(e, [conta('11101', 'Caixa'), conta('90001', 'Outra')]);
+    expect(r.problemas[0]).toContain('96081 não existe neste arquivo');
+    expect(r.problemas[1]).toContain('Só <b>');
+  });
   it('mesmo plano: sem problema e 100%', () => {
     const e = empresa({ naturezaConta: { X: ['31105'] }, balanceteAssinatura: assinaturaBalancete(plano) });
     expect(verificarBalancete(e, plano)).toEqual({ problemas: [], similaridade: 100 });

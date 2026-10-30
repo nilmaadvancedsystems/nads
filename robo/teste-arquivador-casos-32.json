@@ -1,0 +1,569 @@
+{
+ "cdlFev": {
+  "nome": "EXTRATO BANCÁRIO FEVEREIRO XLS 25.xls",
+  "rel": "FERNANDO\\536 CDL DE TAIOBEIRAS\\2025\\02.2025\\EXTRATO BANCÁRIO FEVEREIRO XLS 25.xls",
+  "planilha": [
+   [
+    "EXTRATO CONTA CORRENTE"
+   ],
+   [],
+   [
+    "DATA",
+    "DOCUMENTO",
+    "HISTÓRICO",
+    "VALOR"
+   ],
+   [
+    "31/01/2025",
+    null,
+    "SALDO ANTERIOR",
+    "13.075,14C"
+   ],
+   [
+    "31/01/2025",
+    null,
+    "SALDO BLOQUEADO ANTERIOR",
+    "0,00*"
+   ],
+   [
+    "03/02/2025",
+    "31    ",
+    "DEP.DINHEIRO",
+    "333,00C"
+   ],
+   [
+    "03/02/2025",
+    "003.250",
+    "CHEQUE COMPE INTEGRADA",
+    "500,00D"
+   ],
+   [
+    "03/02/2025",
+    "1241708",
+    "CRÉD.LIQUIDAÇÃO COBRANÇA",
+    "123,82C"
+   ],
+   [
+    "03/02/2025",
+    "1242242",
+    "TARIFA COBRANÇA",
+    "0,99D"
+   ],
+   [
+    "",
+    "",
+    "SALDO DO DIA ===== >",
+    "13.030,97C"
+   ],
+   [
+    "04/02/2025",
+    "21    ",
+    "DEP.DINHEIRO",
+    "48,00C"
+   ],
+   [
+    "",
+    "",
+    "CPF: 159.184.276-00",
+    ""
+   ],
+   [
+    "",
+    "",
+    "ENVELOPE: 1900524826",
+    ""
+   ],
+   [
+    "04/02/2025",
+    "22    ",
+    "DEP.DINHEIRO",
+    "70,00C"
+   ],
+   [
+    "",
+    "",
+    "CPF: 159.184.276-00",
+    ""
+   ]
+  ],
+  "meses": {
+   "2025-02": 112
+  }
+ },
+ "cdlMai": {
+  "nome": "EXTRATO BANCARIO XLS.xlsx",
+  "rel": "FERNANDO\\536 CDL DE TAIOBEIRAS\\2025\\05.2025\\EXTRATO BANCARIO XLS.xlsx",
+  "planilha": [
+   [
+    "EXTRATO CONTA CORRENTE"
+   ],
+   [
+    "DATA",
+    "DOCUMENTO",
+    "HISTÓRICO",
+    "VALOR"
+   ],
+   [
+    "30/05/2025",
+    "1402144",
+    "TARIFA COBRANÇA",
+    "- 105,45 D"
+   ],
+   [
+    "30/05/2025",
+    "1401611",
+    "CRÉD.LIQUIDAÇÃO COBRANÇA",
+    "489,70 C"
+   ],
+   [
+    "30/05/2025",
+    "71    ",
+    "DEP.CHEQUE BLOQ.1D",
+    "800,00 *"
+   ],
+   [
+    "",
+    "",
+    "CPF: 159.184.276-00",
+    ""
+   ],
+   [
+    "",
+    "",
+    "ENVELOPE: 0042368084",
+    ""
+   ],
+   [
+    "",
+    "",
+    "",
+    ""
+   ],
+   [
+    "30/05/2025",
+    "4030",
+    "CRED.TRANSF.CONTAS INTERCREDIS",
+    "795,20 C"
+   ],
+   [
+    "",
+    "",
+    "REM.: FEDERACAO DAS CAMARAS DE DIRIGENTE",
+    ""
+   ],
+   [
+    "",
+    "",
+    "REPASSE BDMG",
+    ""
+   ],
+   [
+    null,
+    null,
+    "SALDO DO DIA",
+    "26.322,80 C"
+   ],
+   [
+    "29/05/2025",
+    "1400183",
+    "TARIFA COBRANÇA",
+    "- 3,96 D"
+   ],
+   [
+    "29/05/2025",
+    "1399744",
+    "CRÉD.LIQUIDAÇÃO COBRANÇA",
+    "445,00 C"
+   ],
+   [
+    "29/05/2025",
+    "003.416",
+    "CHEQUE COMPE INTEGRADA",
+    "- 380,00 D"
+   ]
+  ],
+  "meses": {
+   "2025-05": 123
+  }
+ },
+ "extratoInter455": {
+  "nome": "Extrato-01-12-2022-a-31-12-2022.pdf",
+  "rel": "0455 - CENTRO DE ODONTOLOGIA E SAUDE DE TAIOBEIRAS LTDA - ME\\EXTRATOS\\2022\\12\\Extrato-01-12-2022-a-31-12-2022.pdf",
+  "texto": [
+   "\nExtrato Conta Corrente PJ\n11/01/2023 - 19:39\nSaldo Total (bloq + disp):\nSaldo Bloqueado:\nSaldo Disponível para\nR$\nR$ 226,33\nR$\nOs dados a seguir têm como base 11/01/2023 às 19:39 e estão sujeitos a alterações.\nData\nLançamento\nLançamentosValorSaldo\n01/12/2022TED RECEBIDA - 197  260760 PAGAR.ME PAGAMENTOS S.A.R$ 106.48R$ 4,933.10\n01/12/2022PIX ENVIADO - Cp :60746948-JAIRO MENDES TEIXEIRA-R$ 100.00R$ 4,833.10\n05/12/2022PIX ENVIADO - Cp :00000000-ODONTO & MEDIC DE MONTES CLAROS LIMIT-R$ 1,108.00R$ 3,725.10\n05/12/2022PIX ENVIADO - Cp :18236120-Paulo Eduardo Sarmento David-R$ 905.40R$ 2,819.70\n05/12/2022PIX ENVIADO - Cp :18236120-Rita de Cássia Sarmento Neta-R$ 1,526.08R$ 1,293.62\n05/12/2022TED RECEBIDA - 197  260760 PAGAR.ME PAGAMENTOS S.A.R$ 291.02R$ 1,584.64\n06/12/2022TED RECEBIDA - 197  260760 PAGAR.ME PAGAMENTOS S.A.R$ 614.38R$ 2,199.02\n07/12/2022TED RECEBIDA - 197  260760 PAGAR.ME PAGAMENTOS S.A.R$ 242.62R$ 2,441.64\n07/12/2022PIX ENVIADO - Cp :18236120-Tyelle Cruz Nascimento-R$ 1,212.00R$ 1,229.64\n07/12/2022PAGAMENTO DE TITULO - pagamento-R$ 79.90R$ 1,149.74\n07/12/2022PIX RECEBIDO - Cp :60701190-SORAYA JULIE VELOSO FARIASR$ 110.00R$ 1,259.74\n08/12/2022PIX ENVIADO - Cp :18236120-Paulo Eduardo Sarmento David-R$ 145.20R$ 1,114.54\n08/12/2022PIX RECEBIDO - Cp :00000000-FRANCINO H LUCASR$ 110.00R$ 1,224.54\n08/12/2022TED RECEBIDA - 197  260760 PAGAR.ME PAGAMENTOS S.A.R$ 322.79R$ 1,547.33\n09/12/2022PIX RECEBIDO - Cp :00000000-ANA CARLA LIMA DOS SANTOSR$ 110.00R$ 1,657.33\n12/12/2022PIX RECEBIDO - Cp :00000000-LUCY GOUVEIA DIASR$ 490.00R$ 2,147.33\n13/12/2022PIX RECEBIDO - Cp :00360305-ELENICE MOREIRA REIS SOARESR$ 220.00R$ 2,367.33\n13/12/2022PIX RECEBIDO - Cp :60701190-CLEONICE MACHADO M VIEIRAR$ 300.00R$ 2,667.33\n13/12/2022TED RECEBIDA - 197  260760 PAGAR.ME PAGAMENTOS S.A.R$ 315.55R$ 2,982.88\n13/12/2022PIX ENVIADO - Cp :18236120-Rita de Cássia Sarmento Neta-R$ 211.74R$ 2,771.14\n13/12/2022PAGAMENTO DE CONVENIO - pagamento-R$ 604.80R$ 2,166.34\n13/12/2022PIX RECEBIDO - Cp :60746948-ACO FORTE METAIS LTDAR$ 500.00R$ 2,666.34\n13/12/2022PIX RECEBIDO - Cp :18236120-ANA CARLA LIMA DOS SANTOS FAGUNDES 04R$ 300.00R$ 2,966.34\n14/12/2022TED RECEBIDA - 197  260760 PAGAR.ME PAGAMENTOS S.A.R$ 841.20R$ 3,807.54\n14/12/2022PAGAMENTO DE TITULO - pagamento-R$ 1,495.64R$ 2,311.90\n14/12/2022PAGAMENTO DE CONVENIO - pagamento-R$ 581.76R$ 1,730.14\n14/12/2022PAGAMENTO DE CONVENIO - pagamento-R$ 151.50R$ 1,578.64\n14/12/2022PAGAMENTO DE CONVENIO - pagamento-R$ 130.61R$ 1,448.03\n14/12/2022PIX ENVIADO - Cp :00360305-EDUARDO ANTONIO DA CRUZ-R$ 226.00R$ 1,222.03\nR$\nR$ 0,00\nR$ 226,33\nNome:\nAgência:\nCENTRO DE ODONTOLOGIA E SAUDE DE TA\n0001-9Conta:214989585Tipo:Conta Corrente\nCnpj:43999386000108\nPágina 1 de 1",
+   "\nData\nLançamento\nLançamentosValorSaldo\n15/12/2022TED RECEBIDA - 197  260760 PAGAR.ME PAGAMENTOS S.A.R$ 1,064.80R$ 2,286.83\n15/12/2022PIX RECEBIDO - Cp :00000000-WILIANY ARIADNA MENDESR$ 400.00R$ 2,686.83\n16/12/2022TED RECEBIDA - 197  260760 PAGAR.ME PAGAMENTOS S.A.R$ 1,666.51R$ 4,353.34\n16/12/2022PIX RECEBIDO - Cp :00000000-SONIA DE CASSIA SANTOSR$ 150.00R$ 4,503.34\n16/12/2022PIX RECEBIDO - Cp :00000000-SONIA DE CASSIA SANTOSR$ 151.00R$ 4,654.34\n19/12/2022TED RECEBIDA - 197  260760 PAGAR.ME PAGAMENTOS S.A.R$ 3,481.97R$ 8,136.31\n19/12/2022PIX RECEBIDO - Cp :00000000-MARIA MENDES MEIRELESR$ 110.00R$ 8,246.31\n19/12/2022PAGAMENTO DE TITULO - pagamento-R$ 502.80R$ 7,743.51\n19/12/2022PAGAMENTO DE TITULO - pagamento-R$ 142.67R$ 7,600.84\n19/12/2022PIX ENVIADO - Cp :00360305-EDUARDO ANTONIO DA CRUZ-R$ 100.00R$ 7,500.84\n19/12/2022PIX ENVIADO - Cp :00000000-ODONTO & MEDIC DE MONTES CLAROS LIMIT-R$ 399.00R$ 7,101.84\n19/12/2022PIX ENVIADO - Cp :18236120-Paulo Eduardo Sarmento David-R$ 116.00R$ 6,985.84\n20/12/2022PIX RECEBIDO - Cp :00000000-JUCIMARA F MIRANDAR$ 110.00R$ 7,095.84\n20/12/2022PIX RECEBIDO - Cp :60746948-JOAQUIM DE AMORIMR$ 110.00R$ 7,205.84\n21/12/2022TED RECEBIDA - 197  260760 PAGAR.ME PAGAMENTOS S.A.R$ 1,432.07R$ 8,637.91\n21/12/2022PIX ENVIADO - Cp :18236120-Rita de Cássia Sarmento Neta-R$ 3,490.51R$ 5,147.40\n21/12/2022PIX ENVIADO - Cp :18236120-Rita de Cássia Sarmento Neta-R$ 216.94R$ 4,930.46\n21/12/2022PIX ENVIADO - Cp :18236120-Paulo Eduardo Sarmento David-R$ 1,311.30R$ 3,619.16\n21/12/2022PIX RECEBIDO - Cp :21866694-ESPACO GOURMET BAR E RESTAURANTE LTDAR$ 200.00R$ 3,819.16\n22/12/2022PAGAMENTO DE TITULO - pagamento-R$ 416.25R$ 3,402.91\n22/12/2022PIX RECEBIDO - Cp :60746948-SIMONY OLIVEIRA DA SILVAALMEIDAR$ 160.00R$ 3,562.91\n22/12/2022PAGAMENTO DE TITULO - pagamento-R$ 88.78R$ 3,474.13\n22/12/2022PIX ENVIADO - Cp :18236120-Danniell Ferreira Costa-R$ 488.00R$ 2,986.13\n23/12/2022PIX ENVIADO - Cp :90400888-NADSON D APARECIDA RODRIGUES VIEIRA-R$ 600.00R$ 2,386.13\nCanais de Atendimento Inter\n3003 4070 - Capitais e regiões metropolitanas\n0800 940 0007 - Demais localidades\nVisite nosso site: bancointer.com.br\nPara reclamações, elogios, sugestões ou cancelamento de produtos e serviços:\nSAC: 0800 940 9999 (opção 09) - Deficiente de Fala e Audição 0800 979 7099\nOuvidoria: 0800 940 7772\nSede Banco Inter: Av. Barbacena, 1219 - Santo Agostinho - CEP: 30.190-924 - Belo Horizonte/MG\nPágina 2 de 2"
+  ]
+ },
+ "livroIss10": {
+  "nome": "Relatorio - NFSe.pdf",
+  "rel": "IMPORTAÇÃO\\0010 - DORNAS HAVANA LTDA - ME\\2026\\02\\Relatorio - NFSe.pdf",
+  "texto": [
+   "\nTermo de Abertura\n.....................................................................................\nResponsável pela Empresa\nEste  livro  contém  folhas  numeradas  de  1  a  3  eletronicamente  e  serviu  para  o  REGISTRO  DE  NOTAS  FISCAIS  DESERVIÇOS  PRESTADOS,  NO  PERÍODO  DE  01/02/2026  À  28/02/2026,  da  empresa  DORNAS  HAVANA  LTDACNPJ/CPF: 01.884.649/0001-85Inscrição Municipal: 060598/2161\nExercício: 01/02/2026 - 28/02/2026\nPrefeitura Municipal de Taiobeiras\nPagina 1\n............................................................................., 02 de Março de 2026",
+   "\nPrestador: 060598/2161 - 01.884.649/0001-85 - DORNAS HAVANA LTDACompetência: 02/2026\nNFSe\nCompet.\nEmissão\nCódigo\nServiço\nRegime deTributação\nValor Serviço\nDesconto\nBase de\nCálculo\nValor ISS\nSituação\nRetido\nTomador\nPrestado\nMunicípio\nSimples\n127\n2/2026\n733.504.946-68 - Marcelo Silveira Machado\n11/02/2026\n14.01 (4.01%)\nMicroempresaMunicipal\n250,00\n0,00\n250,00\n10,03\nAtiva\nNão\nSim\nSim\n128\n2/2026\n380.806.008-56 - GUSTAVO QUIRINOFERREIRA\n20/02/2026\n14.01 (4.01%)\nMicroempresaMunicipal\n153,00\n0,00\n153,00\n6,14\nAtiva\nNão\nSim\nSim\nTotal Competência\nQuantidade:\n2\nValor Serviços:\n403,00\nDedução:\n0,00\nBase Cálculo:\n403,00\nISSQN:\n16,17\nTotal Sem Recolhimento\nQuantidade:\n2\nValor Serviços:\n403,00\nDedução:\n0,00\nBase Cálculo:\n403,00\nISSQN:\n16,17\nTotal Ativas\nQuantidade:\n2\nValor Serviços:\n403,00\nDedução:\n0,00\nBase Cálculo:\n403,00\nISSQN:\n16,17\nTotal ISSQN Retido\nQuantidade:\n0\nValor Serviços:\n0,00\nDedução:\n0,00\nBase Cálculo:\n0,00\nISSQN:\n0,00\nTotal Subst./Canceladas\nQuantidade:\n0\nValor Serviços:\n0,00\nDedução:\n0,00\nBase Cálculo:\n0,00\nISSQN:\n0,00\nTotal ISSQN Normal\nQuantidade:\n0\nValor Serviços:\n0,00\nDedução:\n0,00\nBase Cálculo:\n0,00\nISSQN:\n0,00\nPagina 2\nTotal Geral\nQuantidade:\n2\nValor Serviços:\n403,00\nDedução:\n0,00\nBase Cálculo:\n403,00\nISSQN:\n16,17\nTotal Sem Recolhimento\nQuantidade:\n2\nValor Serviços:\n403,00\nDedução:\n0,00\nBase Cálculo:\n403,00\nISSQN:\n16,17\nTotal ISSQN Retido\nQuantidade:\n0\nValor Serviços:\n0,00\nDedução:\n0,00\nBase Cálculo:\n0,00\nISSQN:\n0,00\nTotal ISSQN Normal\nQuantidade:\n0\nValor Serviços:\n0,00\nDedução:\n0,00\nBase Cálculo:\n0,00\nISSQN:\n0,00\nTotal Subst./Canceladas\nQuantidade:\n0\nValor Serviços:\n0,00\nDedução:\n0,00\nBase Cálculo:\n0,00\nISSQN:\n0,00\nTotal Ativas\nQuantidade:\n2\nValor Serviços:\n403,00\nDedução:\n0,00\nBase Cálculo:\n403,00\nISSQN:\n16,17"
+  ]
+ },
+ "livroIss356": {
+  "nome": "Relatorio - NFSe.pdf",
+  "rel": "IMPORTAÇÃO\\0356 - A7 COMERCIO DE VEICULOS LTDA - ME\\2026\\02\\Relatorio - NFSe.pdf",
+  "texto": [
+   "\nTermo de Abertura\n.....................................................................................\nResponsável pela Empresa\nEste  livro  contém  folhas  numeradas  de  1  a  3  eletronicamente  e  serviu  para  o  REGISTRO  DE  NOTAS  FISCAIS  DESERVIÇOS  PRESTADOS,  NO  PERÍODO  DE  01/02/2026  À  28/02/2026,  da  empresa  A7  COMERCIO  DE  VEICULOS  LTDACNPJ/CPF: 13.728.235/0001-46Inscrição Municipal: 170114/5713\nExercício: 01/02/2026 - 28/02/2026\nPrefeitura Municipal de Taiobeiras\nPagina 1\n............................................................................., 02 de Março de 2026",
+   "\nPrestador: 170114/5713 - 13.728.235/0001-46 - A7 COMERCIO DE VEICULOS LTDACompetência: 02/2026\nNFSe\nCompet.\nEmissão\nCódigo\nServiço\nRegime deTributação\nValor Serviço\nDesconto\nBase de\nCálculo\nValor ISS\nSituação\nRetido\nTomador\nPrestado\nMunicípio\nSimples\n132\n2/2026\n387.068.225-68 - MANOEL DEMAGALHAES SILVA\n08/02/2026\n10.05 (3.00%)\nMicroempresaMunicipal\n3.418,58\n0,00\n3.418,58\n102,56\nAtiva\nNão\nNão\nSim\n133\n2/2026\n31.872.495/0001-72 - BANCO C6 S.A\n13/02/2026\n10.05 (3.00%)\nMicroempresaMunicipal\n21.800,10\n0,00\n21.800,10\n654,00\nAtiva\nNão\nNão\nSim\n134\n2/2026\n59.588.111/0001-03 - BANCOVOTORANTIM S.A.\n23/02/2026\n10.05 (3.00%)\nMicroempresaMunicipal\n4.137,57\n0,00\n4.137,57\n124,13\nAtiva\nNão\nNão\nSim\nTotal Competência\nQuantidade:\n3\nValor Serviços:\n29.356,25\nDedução:\n0,00\nBase Cálculo:\n29.356,25\nISSQN:\n880,69\nTotal Sem Recolhimento\nQuantidade:\n0\nValor Serviços:\n0,00\nDedução:\n0,00\nBase Cálculo:\n0,00\nISSQN:\n0,00\nTotal Ativas\nQuantidade:\n3\nValor Serviços:\n29.356,25\nDedução:\n0,00\nBase Cálculo:\n29.356,25\nISSQN:\n880,69\nTotal ISSQN Retido\nQuantidade:\n0\nValor Serviços:\n0,00\nDedução:\n0,00\nBase Cálculo:\n0,00\nISSQN:\n0,00\nTotal Subst./Canceladas\nQuantidade:\n0\nValor Serviços:\n0,00\nDedução:\n0,00\nBase Cálculo:\n0,00\nISSQN:\n0,00\nTotal ISSQN Normal\nQuantidade:\n3\nValor Serviços:\n29.356,25\nDedução:\n0,00\nBase Cálculo:\n29.356,25\nISSQN:\n880,69\nPagina 2\nTotal Geral\nQuantidade:\n3\nValor Serviços:\n29.356,25\nDedução:\n0,00\nBase Cálculo:\n29.356,25\nISSQN:\n880,69\nTotal Sem Recolhimento\nQuantidade:\n0\nValor Serviços:\n0,00\nDedução:\n0,00\nBase Cálculo:\n0,00\nISSQN:\n0,00\nTotal ISSQN Retido\nQuantidade:\n0\nValor Serviços:\n0,00\nDedução:\n0,00\nBase Cálculo:\n0,00\nISSQN:\n0,00\nTotal ISSQN Normal\nQuantidade:\n3\nValor Serviços:\n29.356,25\nDedução:\n0,00\nBase Cálculo:\n29.356,25\nISSQN:\n880,69\nTotal Subst./Canceladas\nQuantidade:\n0\nValor Serviços:\n0,00\nDedução:\n0,00\nBase Cálculo:\n0,00\nISSQN:\n0,00\nTotal Ativas\nQuantidade:\n3\nValor Serviços:\n29.356,25\nDedução:\n0,00\nBase Cálculo:\n29.356,25\nISSQN:\n880,69"
+  ]
+ },
+ "notasLancadas291": {
+  "nome": "Relatorio - NFSe.pdf",
+  "rel": "IMPORTAÇÃO\\0291 - G.A.S SAUDE DE DIVISA ALEGRE LTDA - ME\\2026\\02\\Relatorio - NFSe.pdf",
+  "texto": [
+   "\nRELATÓRIO DE NOTAS FISCAIS LANÇADAS\nPágina 1 de\n2\nMUNICÍPIO DE DIVISA ALEGRE\n01613073000111\ntributosdivisaalegre@yahoo.com\n   CNPJ:\n(33) 3755-8187\nCentro - 39995-000\n   Rua Alfredo Luiz Bahia, nº 04\nDE:\n0,00\nTotal de ISS R.:\n0,00\nTotal de IRRF:\n0,00\nTotal de INSS:\nATÉ:\nTotal de ISS:\n166,25\n8.312,40\nTotal Valor NFe:\nTotal de PIS:\n0,00\n0,00\nTotal de COFINS:\n0,00\nTotal de CSLL:\nTotal Outros:\n0,00\nNome/Razão Social - Prestador\nCodígo\nNº NFE\nData Emissão\nValor NFe\nValor ISS R.\nCNPJ/CPF - Tomador\nStatus\nNome/Razão Social - Tomador\nValor ISS\nCNPJ/CPF - Prestador\nValor IRRF\nValor INSS\nVlr SEST/SENAT\nValor PIS\nValor CSLL\nValor Cofins\nOutros\n29.412.290/0001-62\n557.139.986-49\nCLOTIDES DE FATIMA OLIVEIRA\nG.A.S SAUDE DE DIVISA ALEGRE LTDA\n50,00\n0,00\n25394\n451\n1,00\n02/02/2026\nSimples\n0,00\n0,00\n0,00\n0,00\n0,00\n0,00\n0,00\n29.412.290/0001-62\n27.361.015/0001-31\nPREFEITURA MUNICIPAL DE DIVISA ALEGRE\nG.A.S SAUDE DE DIVISA ALEGRE LTDA\n247,00\n0,00\n25442\n452\n4,94\n04/02/2026\nSimples\n0,00\n0,00\n0,00\n0,00\n0,00\n0,00\n0,00\n29.412.290/0001-62\n27.361.015/0001-31\nPREFEITURA MUNICIPAL DE DIVISA ALEGRE\nG.A.S SAUDE DE DIVISA ALEGRE LTDA\n397,80\n0,00\n25443\n453\n7,96\n04/02/2026\nSimples\n0,00\n0,00\n0,00\n0,00\n0,00\n0,00\n0,00\n29.412.290/0001-62\n27.361.015/0001-31\nPREFEITURA MUNICIPAL DE DIVISA ALEGRE\nG.A.S SAUDE DE DIVISA ALEGRE LTDA\n271,00\n0,00\n25444\n454\n5,42\n04/02/2026\nSimples\n0,00\n0,00\n0,00\n0,00\n0,00\n0,00\n0,00\n29.412.290/0001-62\n27.361.015/0001-31\nPREFEITURA MUNICIPAL DE DIVISA ALEGRE\nG.A.S SAUDE DE DIVISA ALEGRE LTDA\n247,40\n0,00\n25445\n455\n4,95\n04/02/2026\nSimples\n0,00\n0,00\n0,00\n0,00\n0,00\n0,00\n0,00\n29.412.290/0001-62\n27.361.015/0001-31\nPREFEITURA MUNICIPAL DE DIVISA ALEGRE\nG.A.S SAUDE DE DIVISA ALEGRE LTDA\n2.413,00\n0,00\n25548\n456\n48,26\n11/02/2026\nSimples\n0,00\n0,00\n0,00\n0,00\n0,00\n0,00\n0,00\n29.412.290/0001-62\n27.361.015/0001-31\nPREFEITURA MUNICIPAL DE DIVISA ALEGRE\nG.A.S SAUDE DE DIVISA ALEGRE LTDA\n1.520,50\n0,00\n25549\n457\n30,41\n11/02/2026\nSimples\n0,00\n0,00\n0,00\n0,00\n0,00\n0,00\n0,00\n29.412.290/0001-62\n27.361.015/0001-31\nPREFEITURA MUNICIPAL DE DIVISA ALEGRE\nG.A.S SAUDE DE DIVISA ALEGRE LTDA\n1.077,70\n0,00\n25550\n458\n21,55\n11/02/2026\nSimples\n0,00\n0,00\n0,00\n0,00\n0,00\n0,00\n0,00\n29.412.290/0001-62\n24.829.441/0002-40\nPOSTO JR FAISAO S/A\nG.A.S SAUDE DE DIVISA ALEGRE LTDA\n65,00\n0,00\n25579\n459\n1,30\n12/02/2026\nSubstituida\n0,00\n0,00\n0,00\n0,00\n0,00\n0,00\n0,00\n29.412.290/0001-62\n24.829.441/0002-40\nPOSTO JR FAISAO S/A\nG.A.S SAUDE DE DIVISA ALEGRE LTDA\n65,00\n0,00\n25590\n459\n1,30\n12/02/2026\nSimples\n0,00\n0,00\n0,00\n0,00\n0,00\n0,00\n0,00\n29.412.290/0001-62\n24.829.441/0001-69\nPOSTO JR FAISAO S/A\nG.A.S SAUDE DE DIVISA ALEGRE LTDA\n154,00\n0,00\n25580\n460\n3,08\n12/02/2026\nCancelada\n0,00\n0,00\n0,00\n0,00\n0,00\n0,00\n0,00\n29.412.290/0001-62\n037.751.426-81\nIONE SILVA DIAS\nG.A.S SAUDE DE DIVISA ALEGRE LTDA\n540,00\n0,00\n25583\n461\n10,80\n12/02/2026\nSimples\n0,00\n0,00\n0,00\n0,00\n0,00\n0,00\n0,00\n29.412.290/0001-62\n24.829.441/0001-69\nPOSTO JR FAISAO S/A\nG.A.S SAUDE DE DIVISA ALEGRE LTDA\n178,00\n0,00\n25591\n462\n3,56\n13/02/2026\nSimples\n0,00\n0,00\n0,00\n0,00\n0,00\n0,00\n0,00\n29.412.290/0001-62\n535.121.466-00\nROSA  NIZIA ANTUNES SPOSITOS BRITO\nG.A.S SAUDE DE DIVISA ALEGRE LTDA\n920,00\n0,00\n25643\n463\n18,40\n20/02/2026\nSimples\n0,00\n0,00\n0,00\n0,00\n0,00\n0,00\n0,00\n29.412.290/0001-62\n086.918.846-14\nCristiane Gonçalves Santos Inácio\nG.A.S SAUDE DE DIVISA ALEGRE LTDA\n265,00\n0,00\n25687\n464\n5,30\n24/02/2026\nSimples\n0,00\n0,00\n0,00\n0,00\n0,00\n0,00\n0,00",
+   "\nRELATÓRIO DE NOTAS FISCAIS LANÇADAS\nPágina 2 de\n2\nMUNICÍPIO DE DIVISA ALEGRE\n01613073000111\ntributosdivisaalegre@yahoo.com\n   CNPJ:\n(33) 3755-8187\nCentro - 39995-000\n   Rua Alfredo Luiz Bahia, nº 04\nDE:\n0,00\nTotal de ISS R.:\n0,00\nTotal de IRRF:\n0,00\nTotal de INSS:\nATÉ:\nTotal de ISS:\n166,25\n8.312,40\nTotal Valor NFe:\nTotal de PIS:\n0,00\n0,00\nTotal de COFINS:\n0,00\nTotal de CSLL:\nTotal Outros:\n0,00\nNome/Razão Social - Prestador\nCodígo\nNº NFE\nData Emissão\nValor NFe\nValor ISS R.\nCNPJ/CPF - Tomador\nStatus\nNome/Razão Social - Tomador\nValor ISS\nCNPJ/CPF - Prestador\nValor IRRF\nValor INSS\nVlr SEST/SENAT\nValor PIS\nValor CSLL\nValor Cofins\nOutros\n29.412.290/0001-62\n503.531.106-63\nAlZENILTON SILVA\nG.A.S SAUDE DE DIVISA ALEGRE LTDA\n95,00\n0,00\n25691\n465\n1,90\n24/02/2026\nSimples\n0,00\n0,00\n0,00\n0,00\n0,00\n0,00\n0,00\n29.412.290/0001-62\n557.139.986-49\nCLOTIDES DE FATIMA OLIVEIRA\nG.A.S SAUDE DE DIVISA ALEGRE LTDA\n25,00\n0,00\n25692\n466\n0,50\n24/02/2026\nSimples\n0,00\n0,00\n0,00\n0,00\n0,00\n0,00\n0,00"
+  ]
+ },
+ "fitoCanc": {
+  "nome": "00009736001-SUPERMERCADO JJJ MIRANDA LTDA.pdf",
+  "rel": "IMPORTAÇÃO\\0292 - FITO INDUSTRIA E COMERCIO DE ALIMENTOS LTDA - EPP (MATRIZ)\\2026\\06\\NF-e SAIDA\\00009736001-SUPERMERCADO JJJ MIRANDA LTDA.pdf",
+  "texto": [
+   "Chave de Acesso - NF-e\nCancelamento de NF-e\nChave de Acesso  Cancelamento - NF-e\nProtocolo de Autorização NF-eProtocolo de Cancelamento\nJustificativa\nOrgãoSequência\nMotivo\nData e Hora do Pedido de CancelamentoData e Hora do Registro de Cancelamento\n11/06/2026 09:06:49"
+  ]
+ },
+ "canc237": {
+  "nome": "cancelamento.pdf",
+  "rel": "IMPORTAÇÃO\\0237 - POSTO DE COMBUSTIVEL BERIZAL LTDA - ME\\2026\\03\\Nova pasta\\cancelamento.pdf",
+  "texto": [
+   "CANCELAMENTO DE NF-e\nNão possui valor fiscal. Simples representação do evento indicado abaixo.\nCONSULTE A AUTENTICIDADE NO SITE DA SEFAZ AUTORIZADORA\nMODELO\nCHAVE DE ACESSO\nSÉRIENÚMEROMÊS/ANO DA EMISSÃO\nÓRGÃOAMBIENTEDATA E HORÁRIO DO EVENTO\nEVENTODESCRIÇÃO DO EVENTOSEQUÊNCIA DO EVENTOVERSÃO DO EVENTO\nDATA E HORÁRIO DO REGISTROPROTOCOLOSTATUS\nNOTA FISCAL ELETRÔNICA - NF-e\nCARTA DE CORREÇÃO ELETRÔNICA\n5500100000868703/26\n3126 0317 7135 9700 0114 5500 1000 0086 8714 3574 3379\n31PRODUÇÃO19/03/2026 10:51:37\n110111Cancelamento1\n135 - Evento registrado e vinculado a NF-e.13126739035501419/03/2026 10:51:36\nNOME / RAZÃO SOCIALCNPJ / CPF\nENDEREÇOBAIRROCEP\nMUNICÍPIOFONE / FAXESTADOINSCRIÇÃO ESTADUAL\nNOME / RAZÃO SOCIALCNPJ / CPF\nENDEREÇOBAIRROCEP\nMUNICÍPIOFONE / FAXESTADOINSCRIÇÃO ESTADUAL\nEMITENTE\nDESTINATÁRIO / REMETENTE\nPOSTO DE COMBUSTIVEIS BERIZAL LTDA17.713.597/0001-14\nPC JOAO FERREIRA SOUTO 8 CENTRO39555-000\nBERIZALMG(38)3845-81310021115040057\nPREFEITURA MUNICIPAL DE BERIZAL01.614.602/0001-00\nRUA LUIZ OTAVIO FRANCO 18  CENTRO39555-000\nBERIZALMG(38)3845-8120\nJUSTIFICATIVA\nDADOS INCOERENTES\nDATA E HORA DA IMPRESSÃO: 19/03/2026  10:51:46"
+  ]
+ },
+ "cceA7": {
+  "nome": "CARTA DE CORREÇÃO - NF 2023 (TONINHO AUTO CENTER).pdf",
+  "rel": "IMPORTAÇÃO\\0356 - A7 COMERCIO DE VEICULOS LTDA - ME\\2026\\06\\Descompactado(s) com sucesso\\CARTA DE CORREÇÃO - NF 2023 (TONINHO AUTO CENTER).pdf",
+  "texto": [
+   "CARTA DE CORREÇÃO ELETRÔNICA\nNão possui valor fiscal, simples representação do evento indicado abaixo\nCONSULTE A AUTENCIDADE DO EVENTO DE CARTA DE CORREÇÃO ELETRÔNICA NO SITE DA SEFAZ AUTORIZADORA\nMODELO\nCHAVE DE ACESSO\nSÉRIENÚMEROMÊS/ANO DE EMISSÃO\nÓRGÃOAMBIENTEDATA E HORÁRIO DO EVENTO\nEVENTODESCRIÇÃO DO EVENTOSEQUÊNCIA DO EVENTOVERSÃO DO EVENTO\nDATA E HORÁRIO DO REGISTROPROTOCOLOSTATUS\nNOTA FISCAL ELETRÔNICA - NF-e\nCARTA DE CORREÇÃO ELETRÔNICA\n5500100000202306/26\n3126 0628 4494 6200 0100 5500 1000 0020 2315 7128 4960\n31PRODUÇÃO02/06/2026 09:18:00\n110110Carta de Correcao11.00\n135 - Evento registrado e vinculado a NF-e.13126759871576502/06/2026 09:19:50\nCÓDIGO BARRA DA CHAVE DE ACESSO\nNOME / RAZÃO SOCIALCNPJ / CPF\nENDEREÇOBAIRROCEP\nMUNICÍPIOFONE / FAXESTADOINSCRIÇÃO ESTADUAL\nNOME / RAZÃO SOCIALCNPJ / CPF\nENDEREÇOBAIRROCEP\nMUNICÍPIOFONE / FAXESTADOINSCRIÇÃO ESTADUAL\nEMITENTE\nDESTINATÁRIO / REMETENTE\nTONINHO AUTO CENTER28.449.462/0001-00\nAVENIDA DO CONTORNO 739 CENTRO39550-000\nTAIOBEIRASMG(38)3845-38390030261810057\nA7COMERCIO DE VEICULOS LTDA13.728.235/0001-46\nRUA CAICARA 1000 ESCRITORIO CENTRO39550-000\nTAIOBEIRASMG(38)9832-00000017812670090\nCONDIÇÕES DE USO\nA Carta de Correcao e disciplinada pelo paragrafo 1o-A do art. 7o do Convenio S/N, de 15 de dezembro de 1970 e pode ser utilizada\npara regularizacao de erro ocorrido na emissao de documento fiscal, desde que o erro nao esteja relacionado com:\n I - as variaveis que determinam o valor do imposto tais como: base de calculo, aliquota, diferenca de preco, quantidade, valor da\noperacao ou da prestacao; II - a correcao de dados cadastrais que implique mudanca do remetente ou do destinatario; III - a data de\nemissao ou de saida.\nCarta de Correcao\nINCLUIR DADOS DO CARRO: MOBI LIKE BRANCO 2023/2023 PLACA SHK-1B94\nDATA E HORA DA IMPRESSÃO: 02/06/2026  09:19:51SFCI - Sayro Technology"
+  ]
+ },
+ "opcao443": {
+  "nome": "ComprovanteOpcaoRegime.pdf",
+  "rel": "0443 - SU SEDUÇÃO MODA INTIMA LTDA - ME\\ADIVANIA\\2025\\ComprovanteOpcaoRegime.pdf",
+  "texto": [
+   " \n \n \n \nOpção pelo Regime de Apuração de Receitas\nCNPJ: 42160712\nEmpresa: SU SEDUCAO MODA INTIMA LTDA\nOpção pelo Regime de Apuração de Receitas\nCNPJ do estabelecimento matriz:42.160.712/0001-18\nAno-calendário:2025\nRegime escolhido:Competência\nIP:138.121.48.89\nData e hora:18/12/2024 às 18:03h"
+  ]
+ },
+ "credConstrutop": {
+  "nome": "CREDENCIAMENTO.pdf",
+  "rel": "0593 - CONSTRUTOP MATERIAIS DE CONSTRUCAO LTDA - ME\\OUTROS\\CREDENCIAMENTO.pdf",
+  "texto": [
+   "\nPREFEITURA MUNICIPAL DE TAIOBEIRAS\n\nPRAÇA DA MATRIZ, 145 - CENTRO TAIOBEIRAS - MG CEP.: 39550-000\nCNPJ :18.017.384/0001-10\nEMAIL : receitaecadastro@taiobeiras.mg.gov.br   TEL. FIXO : (38)3845-3266\n18/03/2026 13:14:49\nTERMO DE CREDENCIAMENTO PRESTADOR / SUBSTITUTO\nDADOS DO CONTRIBUINTE\nCONSTRUTOP MATERIAIS DE CONSTRUÇÃO LTDA\nRua CONRADO ROCHA, nº: 000932 - SANTOS CRUZEIRO\nRAZÃO\nENDEREÇO:CEP:39550-000\nBAIRROCIDADEESTADO\nCNPJ:INSC.TELEFONE:\nEMAILCELULAR:\nSANTOS CRUZEIRO\n65.385.342/0001-12\nconstrutoptaio@gmail.com(38)99912-4791\n170326/7220\nTaiobeirasMinas Gerais\n004741500 - COMERCIO VAREJISTA DE TINTAS E MATERIAIS PARA PINTURA\n004742300 - COMERCIO VAREJISTA DE MATERIAIS ELÉTRICOS\n004744001 - COMERCIO VAREJISTA DE FERRAGENS E FERRAMENTAS\n004744003 - COMERCIO VAREJISTA DE MATERIAIS HIDRÁULICOS\n004744099 - COMERCIO VAREJISTA DE MATERIAIS DE CONSTRUÇÃO EM GERAL\n007732201 - ALUGUEL DE MÁQUINAS E EQUIPAMENTOS PARA CONSTRUÇÃO SEM OPERADOR, EXCETO ANDAIMES\n007732202 - ALUGUEL DE ANDAIMES\nATIVIDADES\nSERVIÇOS\n3.04 - . Locação, sublocação, arrendamento, direito de passagem ou permissão de uso, compartilhado ou não, de ferrovia, rodovia,\nO contribuinte acima identificado solicita credenciamento para emissão de Nota Fiscal de Serviços Eletrônica e deverá\napresentar as cópias  dos seguintes documentos:\n\n-  Contrato  Social  e  Alterações  e/ou  Requerimento  de  Empresário  e/ou  Certificado  de  Micro  Empreendedor  Individual\ne/ou  Estatuto  Social/Ata;\n\n- Comprovante de Inscrição e de Situação Cadastral - CNPJ;\n\n- Cartão de Inscrição Estadual;\n\n- Comprovante da Inscrição no Simples Nacional;\n\n- Certificado da condição de Micro Empreendedor Individual;\n\n- Livros de Registros de Prestação de Serviços;\n\n- Nº do telefone para contato (celular e fixo);   (       ) _____________-___________\n\n- NOTAS FISCAIS A SEREM APRESENTADAS: Notas Fiscais de Prestação de Serviços não emitidas ou formulários\ncontínuos em branco;\n\n-  As  empresas  recém  criadas  nos  últimos  30  dias  e  que  tenham  se  cadastrado  na  Prefeitura,  ficarão  isentas  da\napresentação  dos  documentos  acima  citados  sendo  necessário  somente  apresentar  Termo;\n\n- Termo impresso e assinado em 2 (duas) vias.\n\nOBS:   O   acesso   ao   sistema   será   liberado   assim   que   o   município   analisar   todas   as   documentações\nAUDITOR / RESPONSÁVEL\nCONTRIBUINTE/ RESPONSÁVEL\nPrefeitura Municipal de Taiobeiras, ......... /......... / 2026",
+   "\nTERMO DE CREDENCIAMENTO PRESTADOR / SUBSTITUTO\nDADOS DO CONTRIBUINTE\nCONSTRUTOP MATERIAIS DE CONSTRUÇÃO LTDA\nRua CONRADO ROCHA, nº: 000932 - SANTOS CRUZEIRO\nRAZÃO\nENDEREÇO:CEP:39550-000\nBAIRROCIDADEESTADO\nCNPJ:INSC.TELEFONE:\nEMAILCELULAR:\nSANTOS CRUZEIRO\n65.385.342/0001-12\nconstrutoptaio@gmail.com(38)99912-4791\n170326/7220\nTaiobeirasMinas Gerais\napresentadas.\n\nAguarde o recebimento do e-mail de confirmação de deferimento para poder fazer o login no sistema!\nAUDITOR / RESPONSÁVEL\nCONTRIBUINTE/ RESPONSÁVEL\nPrefeitura Municipal de Taiobeiras, ......... /......... / 2026"
+  ]
+ },
+ "credTorra": {
+  "nome": "nfe_comprovante_cadastro.pdf",
+  "rel": "0055 - TORRA TORRA LTDA - ME\\OUTROS\\nfe_comprovante_cadastro.pdf",
+  "texto": [
+   "\nPREFEITURA MUNICIPAL DE TAIOBEIRAS\nSECRETARIA MUNICIPAL DE RECEITAS E CADASTRO\n04/03/2022 16:01:46\nTERMO DE CREDENCIAMENTO PARA EMISSÃO DE NOTA FISCAL\nDADOS DO CONTRIBUINTE\nFLAVIA FERREIRA ALVES EIRELI\nRUA GUAICURUS, nº: 000400\nRAZÃO\nENDEREÇO:CEP:39550000\nBAIRRO\nCIDADEESTADO\nCNPJ:INSC.INSC. ESTADUAL:\nSITE DA\nEMAILSIMPLES NACIONAL:\nNOSSA SENHORA DE FATIMA\n03238183000176\nnilmacontabilidade@gmail.comSim\n300699/268768028806.00-58\nTAIOBEIRASMINAS GERAIS\nTELEFONE\nATIVIDADES\n000000464 - COMERCIO VAREJISTA  ARTIGOS DE ARMARINHO\n001813099 - IMPRESSÃO DE MATERIAL PARA OUTROS USOS\n004511101 - COMERCIO A VAREJO DE AUTOMÓVEIS, CAMIONETAS E UTILITÁRIOS NOVOS\n004511102 - COMERCIO A VAREJO DE AUTOMÓVEIS, CAMIONETAS E UTILITÁRIOS USADOS\n004511104 - COMÉRCIO POR ATACADO DE CAMINHÕES NOVOS E USADOS\n004511105 - COMÉRCIO POR ATACADO DE REBOQUES E SEMI-REBOQUES NOVOS E USADOS\n004511106 - COMÉRCIO POR ATACADO DE ÔNIBUS E MICROÔNIBUS NOVOS E USADOS\n004530703 - COMERCIO A VAREJO DE PEÇAS E ACESSÓRIOS NOVOS PARA VEÍCULOS AUTOMOTORES\n004530705 - COMERCIO A VAREJO DE PNEUMÁTICOS E CÂMARAS-DE-AR\n004641901 - COMÉRCIO ATACADISTA DE TECIDOS\n004641902 - COMÉRCIO ATACADISTA DE ARTIGOS DE CAMA, MESA E BANHO\n004645101 - COMÉRCIO ATACADISTA DE INSTRUMENTOS E MATERIAIS PARA USO MÉDICO, CIRÚRGICO, HOSPITALAR E DE\n004649405 - COMÉRCIO ATACADISTA DE ARTIGOS DE TAPEÇARIA; PERSIANAS E CORTINAS\n004664800 - COMÉRCIO ATACADISTA DE MÁQUINAS, APARELHOS E EQUIPAMENTOS PARA USO ODONTO-MÉDICO-HOSPITALAR;\n004712100 - COMERCIO VAREJISTA DE MERCADORIAS EM GERAL, COM PREDOMINÂNCIA DE PRODUTOS ALIMENTÍCIOS -\n004713002 - LOJAS DE VARIEDADES, EXCETO LOJAS DE DEPARTAMENTOS OU MAGAZINES\n004721104 - COMERCIO VAREJISTA DE DOCES, BALAS, BOMBONS E SEMELHANTES\n004723700 - COMERCIO VAREJISTA DE BEBIDAS\n004741500 - COMERCIO VAREJISTA DE TINTAS E MATERIAIS PARA PINTURA\n004743100 - COMERCIO VAREJISTA DE VIDROS\n004744001 - COMERCIO VAREJISTA DE FERRAGENS E FERRAMENTAS\n004744002 - COMERCIO VAREJISTA DE MADEIRA E ARTEFATOS\n004744005 - COMERCIO VAREJISTA DE MATERIAIS DE CONSTRUÇÃO NÃO ESPECIFICADOS ANTERIORMENTE\n004744099 - COMERCIO VAREJISTA DE MATERIAIS DE CONSTRUÇÃO EM GERAL\n004751201 - COMERCIO VAREJISTAESPECIALIZADO DE EQUIPAMENTO E SUPRIMENTO DE INFORMÁTICA\n004751202 - RECARGA DE CARTUCHOS PARA EQUIPAMENTOS DE INFORMATICA\n004752100 - COMERCIO VAREJISTA ESPECIALIZADO DE EQUIPAMENTOS DE TELEFONIA E COMUNICAÇÃO\n004753900 - COMERCIO VAREJISTA ESPECIALIZADO DE ELETRODOMÉSTICOS E EQUIPAMENTOS DE ÁUDIO E VÍDEO\nCOMPLEMENTO:\nSANDRO GONÇALVES DAVID\nCONTRIBUINTE/ RESPONSÁVEL\nTAIOBEIRAS, ......... /......... / 2022",
+   "\nTERMO DE CREDENCIAMENTO PARA EMISSÃO DE NOTA FISCAL\nNOTAS FISCAIS A SEREM APRESENTADAS: 0 À 0\nO contribuinte acima identificado solicita credenciamento para emissão de Nota Fiscal de Serviços Eletrônica (NFS-e) e\ndeverá apresentar no Protocolo da Prefeitura Municipal de Taiobeiras-MG os seguintes documentos:\n\n - Comprovante de Inscrição e de Situação Cadastral - CNPJ;\n\n - Comprovante de Inscrição no Simples Nacional;\n\n - Certificado da condição de Micro Empreendedor Individual;\n\n- Cartão de Inscrição Estadual se possuir;\n\n -  Contrato Social e Alterações ou Contrato Social consolidado e/ou Requerimento de Empresário e/ou Estatuto Social\ne Ata;\n\n- Enquadramento como ME ou EPP;\nSERVIÇOS\n004754701 - COMERCIO VAREJISTA DE MÓVEIS\n004755501 - COMERCIO VAREJISTA DE TECIDOS\n004755502 - COMERCIO VAREJISTA DE ARTIGOS DE ARMARINHO\n004755503 - COMERCIO VAREJISTA DE ARTIGOS DE CAMA, MESA E BANHO\n004756300 - COMERCIO VAREJISTA ESPECIALIZADO DE INSTRUMENTOS MUSICAIS E ACESSÓRIOS\n004757100 - COMERCIO VAREJISTA ESPECIALIZADO DE PEÇAS E ACESSÓRIOS PARA APARELHOS ELETROELETRÔNICOS PARA USO\n004759801 - COMERCIO VAREJISTA DE ARTIGOS DE TAPEÇARIA, CORTINAS E PERSIANAS\n004759899 - COMERCIO VAREJISTA DE OUTROS ARTIGOS DE USO DOMÉSTICO NÃO ESPECIFICADOS ANTERIORMENTE\n004761001 - COMERCIO VAREJISTA DE LIVROS\n004761003 - COMERCIO VAREJISTA DE ARTIGOS DE PAPELARIA\n004762800 - COMERCIO VAREJISTA DE DISCOS, CDS, DVDS E FITAS\n004763602 - COMERCIO VAREJISTA DE ARTIGOS ESPORTIVOS\n004763603 - COMERCIO VAREJISTA DE BICICLETAS E TRICICLOS; PEÇAS E ACESSÓRIOS\n004763604 - COMERCIO VAREJISTA DE ARTIGOS DE CAÇA, PESCA E CAMPING\n004772500 - COMERCIO VAREJISTA DE COSMÉTICOS, PRODUTOS DE PERFUMARIA E DE HIGIENE PESSOAL\n004773300 - COMERCIO VAREJISTA DE ARTIGOS MÉDICOS E ORTOPÉDICOS\n004781400 - COMERCIO VAREJISTA DE ARTIGOS DO VESTUÁRIO E ACESSÓRIOS\n004782201 - COMERCIO VAREJISTA DE CALÇADOS\n004782202 - COMERCIO VAREJISTA DE ARTIGOS DE VIAGEM\n004789001 - COMERCIO VAREJISTA DE SUVENIRES, BIJUTERIAS E ARTESANATOS\n004789003 - COMERCIO VAREJISTA DE OBJETOS DE ARTE\n004789007 - COMERCIO VAREJISTA DE EQUIPAMENTOS PARA ESCRITÓRIO\n004789008 - COMERCIO VAREJISTA DE ARTIGOS FOTOGRÁFICOS E PARA FILMAGEM\n004789099 - COMERCIO VAREJISTA DE OUTROS PRODUTOS NÃO ESPECIFICADOS ANTERIORMENTE\n008219901 - FOTOCÓPIAS\n008219999 - PREPARAÇÃO DE DOCUMENTOS E SERVIÇOS ESPECIALIZADOS DE APOIO ADMINISTRATIVO NÃO ESPECIFICADOS\n13.03 - Reprografia, microfilmagem e digitalização.\n13.04 - Composição gráfica, fotocomposição, clicheria, zincografia, litografia, fotolitografia.\n17.02 - Datilografia, digitação, estenografia, expediente, secretaria em geral e congêneres\nSANDRO GONÇALVES DAVID\nCONTRIBUINTE/ RESPONSÁVEL\nTAIOBEIRAS, ......... /......... / 2022"
+  ]
+ },
+ "fichaMoroni": {
+  "nome": "Ficha cadastral prefeitura.pdf",
+  "rel": "0579 - MORONI & XAVIER AUTOPEÇAS LTDA - ME (MATRIZ)\\OUTROS\\Ficha cadastral prefeitura.pdf",
+  "texto": [
+   "INICIAL\nX\n1\nALTERAÇÃO DE:\nPARA:\n3 - RAZÃO SOCIAL4 - SOCIOSSÓCIOS\nNº.:\nNº.:\nUF:\nNº.:\nUF:\nNº.:\nUF:\n1 - ENDEREÇO\nDADOS DA FIRMA\nMORONI & XAVIER AUTOPECAS LTDA - MERAZÃO SOCIAL:\nLOGRADOURO:\nCNPJ:62.768.139/0001-37\n005307640.00-88\nCPF:043.183.989-19CART. IDENTIDADE:4751744SSP:SC\nREG. NA JUCEMG:INSC.MUNICIPAL:\nNOME:\nLOGRADOURO:\n45.30-7-03 - Comércio a varejo de peças e acessórios novos para veículos automotores\nCONTADOR:\nINSC. ESTADUAL:\nSECRETARIA MUNICIPAL DE FINANÇAS\nDEPARTAMENTO DE RECEITA E CADASTRO TÉCNICO / FISCALIZAÇÃO\nFICHA CADASTRAL DAS FIRMAS DO MUNICÍPIO DE TAIOBEIRAS-MG\nDEFINITIVA EM:PARALIZAÇÃO PROVISÓRIA EM: \nRUA SÃO ROMÃO, Nº 906, VILA FORMOSA\nAV DO CONTORNO, Nº 3495, SAGRADA FAMILIA\nFONE:\nINÍCIO ATIVIDADE:17/09/2025ÁREA:\n2 - ATIVIDADE\n3495\nCOMPLEMENTO:\nAV DO CONTORNO\nBAIRRO:SAGRADA FAMILIA\nATIVIDADE PRINCIPAL:\nHORÁRIO DE FUNCIONAMENTO:AS\nCAPITAL INICIAL:100000,00Nº.   FUNCIONÁRIOS:\nTAIOBEIRAS\nDADOS DOS SÓCIOS\nNOME:CLAUDIO GILBERTO MORONI FILHO\nLOGRADOURO:RUA SÃO ROMÃO906\n4751744SSP:SCCNPJ:CPF:043.183.989-19\nVILA FORMOSACIDADE:\nCIDADE:\n______________________________________________\nASSINATURA DO RESPONSÁVEL\nOBSERVAÇÕES:\n__________________________________________\nINDEFERIDO\nASSINATURA DO FISCAL \nBAIRRO:\nNOME:\nLOGRADOURO:\nCART. IDENTIDADE:\nRUA SÃO ROMÃO906\n \nE-MAIL:MORONIEXAVIER@GMAIL.COM\nBAIRRO:TAIOBEIRASMGVILA FORMOSACIDADE:\nPARECER DA VIGILÂNCIA SANITÁRIA\nPARECER DO FISCAL DE TRIBUTOS \nDEFERIDO\nDADOS DO RESPONSÁVEL\nCLAUDIO GILBERTO MORONI FILHO\nCNPJ:CPF:043.183.989-19CART. IDENTIDADE:4751744SSP:SC\nBAIRRO:MG\nINDEFERIDO\nASSINATURA DO FISCAL \n__________________________________________\nCNPJ:CPF:\nDEFERIDO\nOBSERVAÇÕES:\nCART. IDENTIDADE:SSP:\nTAIOBEIRAS - MG, 31 DE MARÇO DE 2026"
+  ]
+ },
+ "fichaLLna610": {
+  "nome": "ficha cadastral prefeitura.pdf",
+  "rel": "0610 - GAS TAIOBEIRAS LTDA - ME\\OUTROS\\ficha cadastral prefeitura.pdf",
+  "texto": [
+   "X INICIAL\nX\nALTERAÇÃO DE:\nPARA:\n3 - RAZÃO SOCIAL4 - SOCIOSSÓCIOS\nNº.:\nNº.:\nUF:\nNº.:\nUF:\nNº.:\nUF:\n1 - ENDEREÇO\nDADOS DA FIRMA\nLL CENTRO ESTETICO LTDA - MERAZÃO SOCIAL:\nLOGRADOURO:\nCNPJ:68.118.490/0001-69CPF:124.585.606-52CART. IDENTIDADE:MG-17.496.808SSP:MG\nREG. NA JUCEMG:INSC.MUNICIPAL:\nNOME:\nLOGRADOURO:\n96.02-5-02 - Atividades de estética e outros serviços de cuidados com a beleza\nCONTADOR:\nINSC. ESTADUAL:\nSECRETARIA MUNICIPAL DE FINANÇAS\nDEPARTAMENTO DE RECEITA E CADASTRO TÉCNICO / FISCALIZAÇÃO\nFICHA CADASTRAL DAS FIRMAS DO MUNICÍPIO DE TAIOBEIRAS-MG\nDEFINITIVA EM:PARALIZAÇÃO PROVISÓRIA EM: \nFONE:\nINÍCIO ATIVIDADE:21/07/2026ÁREA:\n2 - ATIVIDADE\n178\nCOMPLEMENTO:\nRUA SALINAS\nBAIRRO:SANTOS CRUZEIRO\nATIVIDADE PRINCIPAL:\nHORÁRIO DE FUNCIONAMENTO:AS\nCAPITAL INICIAL:30000,00Nº.   FUNCIONÁRIOS:\nTAIOBEIRAS\nDADOS DOS SÓCIOS\nNOME:LETICIA KARENN SOUZA MENDES\nLOGRADOURO:RUA SALINAS172\nMG13699618SSP:MGCNPJ:CPF:113.361.096-02\nCENTROCIDADE:\nCIDADE:\n______________________________________________\nASSINATURA DO RESPONSÁVEL\nOBSERVAÇÕES:\n__________________________________________\nINDEFERIDO\nASSINATURA DO FISCAL \nBAIRRO:\nNOME:\nLOGRADOURO:\nCART. IDENTIDADE:\nRUA SALINAS172\n \nE-MAIL:\nBAIRRO:TAIOBEIRASMGCENTROCIDADE:\nPARECER DA VIGILÂNCIA SANITÁRIA\nPARECER DO FISCAL DE TRIBUTOS \nDEFERIDO\nDADOS DO RESPONSÁVEL\nLARISSA EVELLYN SOUZA MENDES\nCNPJ:CPF:108.683.346-50CART. IDENTIDADE:10868334650PC:MG\nBAIRRO:MG\nINDEFERIDO\nASSINATURA DO FISCAL \n__________________________________________\nCNPJ:CPF:\nDEFERIDO\nOBSERVAÇÕES:\nCART. IDENTIDADE:SSP:\nTAIOBEIRAS - MG, 21 DE JULHO DE 2026"
+  ]
+ },
+ "comprovanteBB413": {
+  "nome": "Comprovante_22-10-2024_124905.pdf",
+  "rel": "FERNANDO\\413 BRAZILIAN filiais 414.  418. 453\\2025\\02.2025\\Comprovantes pagtos\\Comprovante_22-10-2024_124905.pdf",
+  "texto": [
+   "22/10/2024    -  BANCO  DO  BRASIL  -   12:48:46\n018300183                                   0002\n\n     AGENDAMENTO DE PAGAMENTO DE TITULOS\n\nCLIENTE: BRAZILIAN F E F LTDA\nAGENCIA: 0183-X          CONTA:         39.440-8\n================================================\nITAU UNIBANCO S.A.\n------------------------------------------------\n34191090080276504093272800060005900000000395000\nBENEFICIARIO:\nMIT CAR MINAS LTDA\nNOME FANTASIA:\nMIT CAR MINAS LTDA\nCNPJ: 01.477.664/0001-09\nBENEFICIARIO FINAL:\nMIT CAR MINAS LTDA\nCNPJ: 01.477.664/0001-09\nPAGADOR:\nBRAZILIAN FORESTRY EMPREENDIME\nCNPJ: 33.117.361/0003-33\n------------------------------------------------\nNR. DOCUMENTO                             22.401\nDATA DE VENCIMENTO                    22/02/2025\nDATA DO PAGAMENTO                     24/02/2025\nVALOR DO DOCUMENTO                      3.950,00\nVALOR COBRADO                           3.950,00\n================================================\nPAGAMENTO AGENDADO.\nA quitaao efetiva desse debito  dependera  da\nvalidaao  das  condioes  de  pagamento junto\nao beneficiario  e  da existencia de saldo  na\nsua conta-corrente as 23:45h da data escolhida.\nO comprovante definitivo somente sera  emitido\napos a quitaao.\n================================================\nCentral de Atendimento BB\n4004 0001 Capitais e regioes metropolitanas\n0800 729 0001 Demais localidades.\nConsultas, informacoes e servicos transacionais.\n\nSAC BB\n0800 729 0722\nInformacoes, reclamacoes, cancelamento de\nprodutos e servicos.\n\nOuvidoria\n0800 729 5678\nReclamacoes nao solucionadas nos canais\nhabituais agencia, SAC e demais canais de\natendimento.\n\nAtendimento a Deficientes Auditivos ou de Fala\n0800 729 0088\nInformacoes, reclamacoes,cancelamento de cartao,\noutros produtos e servicos de Ouvidoria."
+  ]
+ },
+ "transfLavica": {
+  "nome": "Comprovante_04-08-2026_202823.pdf",
+  "rel": "FERNANDO\\415 LAVICA EMPREEND. FLORESTAIS filal 416\\2026\\08.2026\\Comprovantes pagtos\\NFs e Boletos\\Comprovante_04-08-2026_202823.pdf",
+  "texto": [
+   "SISBB - SISTEMA DE INFORMAÇÕES BANCO DO BRASIL \n            -   AUTOATENDIMENTO  -             \n\n      TRANSFERÊNCIA ENTRE CONTAS CORRENTES\n\nCLIENTE: CARLO ROVEGNO\nAGÊNCIA: 4349-4    CONTA: 7589-2\n================================================\nFAVORECIDO\nAGÊNCIA: 3519-X    CONTA: 32601-1\nCLIENTE: LAVICA ASSESSORIA IMOBILI\nVALOR: 100.000,00\nDATA: 04/08/2026\n------------------------------------------------"
+  ]
+ },
+ "intimacao434": {
+  "nome": "TERMO DE INTIMAÇÃO N° 100000134453137.pdf",
+  "rel": "0434 - CONSTRUNOVO LTDA - ME\\TERMO DE INTIMAÇÃO N° 100000134453137.pdf",
+  "texto": [
+   "MINISTÉRIO DA FAZENDA\nSecretaria da Receita Federal do Brasil\nDelegacia da Receita Federal do Brasil - DRF GOVERNADOR VALADARES\nTERMO DE INTIMAÇÃO N° 100000134453137 em 11/03/2026\nCNPJ: 40.470.754/0001-20\nNOME EMPRESARIAL: CONSTRUNOVO LTDA\nO contribuinte acima identificado está devedor dos tributos mostrados na tabela Discriminação dos Débitos e fica intimado a\nregularizar sua situação fiscal até o dia 29/05/2026.\n- Como pagar à vista:\nPara fazer seu pagamento, selecione os tributos na tabela abaixo e clique no botão DARF numerado. No caso do DAS, clique no\nbotão ao lado de cada débito.\n- O que pode acontecer se os débitos não forem regularizados:\nO contribuinte estará sujeito a:\n1) inclusão no Cadastro Informativo de Créditos não Quitados do Setor Público Federal (Cadin) no prazo de 45 (quarenta e\ncinco) dias, contado da data de emissão desta intimação, conforme a soma dos prazos previstos nos §§ 2º e 3º do art. 2º da Lei\nnº 10.522/2002;\n2) inscrição dos débitos em Dívida Ativa da União, para fins de cobrança judicial, com a possibilidade de penhora ou arresto de\nbens, e acréscimo de até 20% relativos aos encargos da Procuradoria Geral da Fazenda Nacional (Lei nº 6.830/1980, e Decreto-\nLei nº 1.025/1969), após a expiração do prazo concedido para pagamento;\n3)  encaminhamento ao  Ministério Público Federal  de  Representação Fiscal para Fins Penais nos  casos em  que  deixou de\nrecolher aos cofres públicos tributo ou contribuição social descontado ou cobrado de terceiros (inciso II do art. 2º da Lei nº\n8.137/1990).\n- Se ainda restarem dúvidas:\nAcesse o link a seguir para as orientações sobre o que fazer:\nhttps://www.gov.br/receitafederal/pt-br/assuntos/orientacao-tributaria/cobrancas-e-intimacoes/intimacoes-dctf/sief-cobranca-\nintimacoes-fiscel\nDISCRIMINAÇÃO DOS DÉBITOS\nPA/EX\nCÓD.\nREC.\nGR-TRIB (*)CNO/CEI\nDATA\nVENC.\nVALOR\nDECLARADO/\nLANÇADO (R$)\nSALDO\nDEVEDOR\n(R$)\n01-01/20261099-01CP SEGURADO 20/02/2026178,31178,31\n(*) Grupo de tributo e, quando cabível, Número de Auto de Infração/Notificação de Lançamento ou CNPJ da Incorporação/Prestador/SCP.\n \nv250122-4.1.0\n14/04/2026, 07:58Regularização de Débitos - Aviso de Cobrança\nhttps://cav.receita.fazenda.gov.br/eCAC/Aplicacao.aspx?id=000061/1"
+  ]
+ },
+ "rsf434": {
+  "nome": "RelatórioSituaçãoFiscal-40470754000120-20260821.pdf",
+  "rel": "0434 - CONSTRUNOVO LTDA - ME\\RelatórioSituaçãoFiscal-40470754000120-20260821.pdf",
+  "texto": [
+   "MINISTÉRIO DA FAZENDA\nPor meio do Portal de Serviços da Receita Federal\nSECRETARIA ESPECIAL DA RECEITA FEDERAL DO BRASIL\nCNPJ do certificado: 27.872.981/0001-13\nPROCURADORIA-GERAL DA FAZENDA NACIONAL\n21/08/2026 14:37:56\nINFORMAÇÕES DE APOIO PARA EMISSÃO DE CERTIDÃO\nCNPJ: \n40.470.754 - CONSTRUNOVO LTDA\nDados Cadastrais da Matriz ______________________________________________________________________________________CNPJ: 40.470.754/0001-20UA de Domicílio: \nARF ALMENARA-MG\nCódigo da UA: \n06.103.03\nEndereço: \nR CEARA,202\nBairro: \nCAMPO NOVO\nCEP: \n39990-000\nMunicípio: \nAGUAS VERMELHAS\nUF: \nMG\nResponsável: \n104.980.056-74 - ANDRIELE FERREIRA\nSituação: \nATIVA\n\nNatureza Jurídica: \n206-2 - SOCIEDADE EMPRESARIA LIMITADA\nData de Abertura: \n19/01/2021\nCNAE: \n4744-0/99 - Comércio varejista de materiais de construção em geral\nPorte da Empresa: \nMICRO EMPRESA\n\nOpção pelo Simples NacionalInclusão\nExclusão\n19/01/2021\n31/12/2026\nSócios e Administradores ________________________________________________________________________________________CPF/CNPJ\nNome\nQualificação\nSituação Cadastral\nCap. Social\nCap. Votante\n104.980.056-74\nANDRIELE FERREIRA\nSÓCIO-ADMINISTRADOR\nREGULAR\n100,00%\nCertidão Emitida ________________________________________________________________________________________________CNPJ: 40.470.754/0001-20Certidão Positiva com Efeitos de Negativa:  2876.4BC4.85AD.E9D4\nEmissão: \n20/01/2024\nData de Validade: \n18/07/2024\n_____________________________________ Diagnóstico Fiscal na Receita Federal _____________________________________Pendência - Débito (SIEF) _______________________________________________________________________________________CNPJ: 40.470.754/0001-20Receita\nPA/Exerc.\nDt. Vcto\nVl. Original\nSdo. Devedor\nMulta\nJuros\nSdo. Dev. Cons.\nSituação\n1099-01 - CP-SEGUR.\n08/2025\n19/09/2025\n166,98\n166,98\n33,39\n20,73\n221,10\nDEVEDOR\n1099-01 - CP-SEGUR.\n09/2025\n20/10/2025\n166,98\n166,98\n33,39\n18,60\n218,97\nDEVEDOR\n1099-01 - CP-SEGUR.\n10/2025\n19/11/2025\n166,98\n166,98\n33,39\n16,84\n217,21\nDEVEDOR\n1099-01 - CP-SEGUR.\n11/2025\n19/12/2025\n166,98\n166,98\n33,39\n14,81\n215,18\nDEVEDOR\n1099-01 - CP-SEGUR.\n12/2025\n19/01/2026\n166,98\n166,98\n33,39\n12,87\n213,24\nDEVEDOR\n1099-01 - CP-SEGUR.\n01/2026\n20/02/2026\n178,31\n178,31\n35,66\n11,96\n225,93\nDEVEDOR\n1099-01 - CP-SEGUR.\n02/2026\n20/03/2026\n178,31\n178,31\n35,66\n9,80\n223,77\nDEVEDOR\n1099-01 - CP-SEGUR.\n03/2026\n20/04/2026\n178,31\n178,31\n35,66\n7,86\n221,83\nDEVEDOR\nPágina: 1 / \n3",
+   "MINISTÉRIO DA FAZENDA\nPor meio do Portal de Serviços da Receita Federal\nSECRETARIA ESPECIAL DA RECEITA FEDERAL DO BRASIL\nCNPJ do certificado: 27.872.981/0001-13\nPROCURADORIA-GERAL DA FAZENDA NACIONAL\n21/08/2026 14:37:56\nINFORMAÇÕES DE APOIO PARA EMISSÃO DE CERTIDÃO\nCNPJ: \n40.470.754 - CONSTRUNOVO LTDA\n1099-01 - CP-SEGUR.\n04/2026\n20/05/2026\n178,31\n178,31\n35,66\n5,95\n219,92\nDEVEDOR\n1099-01 - CP-SEGUR.\n05/2026\n19/06/2026\n178,31\n178,31\n35,66\n3,95\n217,92\nDEVEDOR\n1099-01 - CP-SEGUR.\n06/2026\n20/07/2026\n178,31\n178,31\n18,82\n1,78\n198,91\nDEVEDOR\n          SIMPLES NAC.\n12/2023\n22/01/2024\n1.768,91\n120,03\n24,00\n38,10\n182,13\nDEVEDOR\n          SIMPLES NAC.\n02/2024\n20/03/2024\n2.232,00\n2.232,00\n446,40\n672,27\n3.350,67\nDEVEDOR\n          SIMPLES NAC.\n03/2024\n22/04/2024\n12,02\n10,30\n2,06\n3,01\n15,37\nDEVEDOR\n          SIMPLES NAC.\n04/2024\n20/05/2024\n1.420,89\n1.420,89\n284,17\n403,53\n2.108,59\nDEVEDOR\n          SIMPLES NAC.\n05/2024\n20/06/2024\n1.291,80\n1.291,80\n258,36\n356,66\n1.906,82\nDEVEDOR\n          SIMPLES NAC.\n06/2024\n22/07/2024\n710,12\n710,12\n142,02\n189,60\n1.041,74\nDEVEDOR\n          SIMPLES NAC.\n07/2024\n20/08/2024\n1.041,40\n1.041,40\n208,28\n268,99\n1.518,67\nDEVEDOR\n          SIMPLES NAC.\n08/2024\n20/09/2024\n1.516,79\n1.516,79\n303,35\n379,04\n2.199,18\nDEVEDOR\n          SIMPLES NAC.\n10/2024\n21/11/2024\n2.444,42\n2.444,42\n488,88\n568,81\n3.502,11\nDEVEDOR\n          SIMPLES NAC.\n12/2024\n21/01/2025\n582,83\n582,83\n116,56\n124,31\n823,70\nDEVEDOR\n          SIMPLES NAC.\n03/2025\n22/04/2025\n505,68\n505,68\n101,13\n92,64\n699,45\nDEVEDOR\n          SIMPLES NAC.\n06/2025\n21/07/2025\n944,85\n944,85\n188,97\n139,83\n1.273,65\nDEVEDOR\n          SIMPLES NAC.\n07/2025\n20/08/2025\n570,54\n570,54\n114,10\n77,82\n762,46\nDEVEDOR\n          SIMPLES NAC.\n08/2025\n22/09/2025\n699,64\n699,64\n139,92\n86,89\n926,45\nDEVEDOR\n          SIMPLES NAC.\n09/2025\n20/10/2025\n87,67\n87,67\n17,53\n9,76\n114,96\nDEVEDOR\n          SIMPLES NAC.\n10/2025\n21/11/2025\n350,00\n350,00\n70,00\n35,31\n455,31\nDEVEDOR\n          SIMPLES NAC.\n02/2026\n20/03/2026\n117,60\n117,60\n23,52\n6,46\n147,58\nDEVEDOR\n          SIMPLES NAC.\n03/2026\n20/04/2026\n37,21\n37,21\n7,44\n1,64\n46,29\nDEVEDOR\n          SIMPLES NAC.\n05/2026\n22/06/2026\n144,47\n144,47\n28,60\n3,20\n176,27\nDEVEDOR\n          SIMPLES NAC.\n06/2026\n20/07/2026\n207,15\n207,15\n21,87\n2,07\n231,09\nDEVEDOR\nDébito com Exigibilidade Suspensa (SIEF) ________________________________________________________________________CNPJ: 40.470.754/0001-20Receita\nPA/Exerc.\nDt. Vcto\nVl.Original\nSdo.Devedor\nSituação\n1099-01 - CP-SEGUR.\n07/2026\n20/08/2026\n178,31\n178,31\nA ANALISAR-A VENCER\nPendência - Processo Fiscal (SIEF) ______________________________________________________________________________CNPJ: 40.470.754/0001-20Processo\nSituação\nLocalização\n10641.320.989/2025-40\nDEVEDOR\nSETOR PROC ELETRONICO REFIS DRF GVS MG\n__________________________ Diagnóstico Fiscal na Procuradoria-Geral da Fazenda Nacional _________________________\nPágina: 2 / \n3"
+  ]
+ },
+ "pgfnMitra": {
+  "nome": "14534682.pdf",
+  "rel": "FERNANDO\\358 - MITRA TRANSPORTE E SERVIÇOS LTDA\\2025\\14534682.pdf",
+  "texto": [
+   "CONSULTA DE NEGOCIAÇÕES\nInformações Gerais\nNúmero da\nNegociação:\n14534682Nome Contribuinte\nMITRA\nFLORESTAL\nNegociações:\n0086 -\nTRANSACAO\nPOR ADESAO\n- EDITAL\nPGDAU N\n11/2025,\nPRORROGADO\nPELO EDITAL\nPGDAU N\n01/2026\nData da\nConsolidação:\n19/12/2025\nData da\nAdesão:\n19/12/2025\n- 16:44\nCPF/CNPJ\nContribuinte:\n22.633.579/0001-\n62\nModalidade:\n0048 -\nDEMAIS\nDEBITOS\nPESSOA\nNATURAL, ME\nE EPP\nPEQUENO\nVALOR\nREDUCAO ATE\n50 ATE 12\nMESES\nNº do recibo:00000000000000000000\nSituação:\nENCERRADA\nPOR\nLIQUIDACAO\nPrincipal:2.440,23\nTipo de\nNegociação:\nAcordo de\nTransação\nData do\nDeferimento:\n27/12/2025\nData da\nSituação:\n27/12/2025Multa:488,03\nData\nLiquidação\nNeg.:\n-\nData Recurso\nOptante:\n-\nQuantidade\nde\nPrestações:\n1Juros:1.339,43\nData\nComunicação\nao Optante:\n-\nData Envio\nComunicação:\n-\nOptante de\ndébito\nautomático:\nNãoEncargos/Honorários:426,75\nData da\nRescisão:\n-\nData da\nInadimplência:\n-\nHonorários:0,00\nImpedimento\nda Rescisão:\nNão\nData da\nvalidação:\n-\nProcuradoria Geral da Fazenda Nacional\nSessão: 19:15\nData e Hora de login: 08/05/2026 16:41:44\nUsuário: 22.633.579/0001-62 - MITRA TRANSPORTES E SERVICOS EIRELI\nProdução - 2.5.2 (BUILD 1)\nConsultaDébito automáticoCapacidade de pagamento\nDeclaração de ReceitaSair\nAdesãoEmissão de Documento\nPGFN\nSistema de\nParcelamentos e\noutras Negociações\nPGFN\nSistema de\nParcelamentos e\noutras Negociações",
+   "Valor Consolidado:4.694,46\nImpedimento\nda Liquidação:\nNão\nSaldo Devedor sem\nJuros:\n0,00\nSaldo Devedor com\nJuros:\n0,00\nTransferência\nde saldo da\nconta:\n4280154\nDébitos\nDemonstrativo de Consolidação\nCréditos Informados\nPagamentos\nPrestações\nOcorrências\nItemDataTipoNúmeroPrincipalMultaJurosEncargos/HonoráriosTotal\n126/12/2025Documento de Arrecadação71725353114721502.440,20488,011.339,51426,744.694,46\nRetornar"
+  ]
+ },
+ "pta10": {
+  "nome": "PTA - 59.000074803-85.pdf",
+  "rel": "0010 - DORNAS HAVANA LTDA - ME\\OUTROS\\PTA - 59.000074803-85.pdf",
+  "texto": [
+   "\nFLUXO: 1ª VIA: UNIDADE ADMINISTRATIVA EMITENTE / PTA               2ª VIA: UNIDADE ADMINISTRATIVA EMITENTE > CONTRIBUINTE\nSECRETARIA DE ESTADO DE\nFAZENDA DE MINAS GERAIS\nNÚMERO DE IDENTIFICAÇÃO\nDA AUTODENÚNCIA:\n59.000074803-85\nTERMO DE AUTODENÚNCIA\nEXTRATO DE DÉBITO ELETRÔNICO\n1/2\nPÁGINA\nIDENTIFICAÇÃO DO(S) SUJEITO(S) PASSIVO(S)\nNOME/NOME EMPRESARIAL:\nCEP:UF:MUNICÍPIO:\nBAIRRO:\nENDEREÇO:\nDISTRITO/POVOADO:\nDORNAS HAVANA LTDA\n39550000MGTAIOBEIRAS\nAVE BANDEIRANTES, 320\nSANTOS CRUZEIROS\nCNPJ/CPF:01.884.649/0001-85\nCOMPLEMENTO:\nINS EST:680737193.00-01\nNATUREZA:CREDITO TRIBUTARIO NAO CONTENCIOSO\nOCORRÊNCIA\nICMS - OPERACAO DE CIRCULACAO DE MERCADORIA\n\tALIQUOTA\n\t\t01.001.003 - Antecipacao de Imposto\nDEMONSTRATIVO DO CRÉDITO TRIBUTÁRIO\nOCORRÊNCIARECEITAREFERÊNCIAVENCIMENTOVALORJUROS\n3228 ICMS01/05/2019 a 31/05/201902/07/2019R$ 108,88R$ 14,71\n4606 MM.ICMS01/05/2019 a 31/05/201902/07/2019R$ 54,44R$ 7,35\n01.001.003\nTOTALR$ 163,32R$ 22,06\nTOTAL GERALR$ 185,38\nCRÉDITO TRIBUTÁRIO CONSOLIDADO POR RECEITA\nCÓDIGO DE RECEITAVALORJUROS\n4606 MM.ICMSR$54,44R$7,35\n3228 ICMSR$108,88R$14,71\nTOTALR$ 163,32R$ 22,06\nTOTAL GERALR$ 185,38\nVALOR ATUAL DO CRÉDITO TRIBUTÁRIO: R$ 185,38\n(CENTO E OITENTA E CINCO REAIS E TRINTA E OITO CENTAVOS)\nValor do Crédito Tributário decorrido o prazo de 30 (trinta) dias, contados da data de formalização desta Autodenúncia.\nAplicável no caso de falta de pagamento ou perda do parcelamento, conforme disposto nos §§ 4º e 5º do caput do art. 56, da Lei nº 6.763/75.\nOs juros de mora serão recalculados até o efetivo pagamento, nos termos da Resolução N° 2.880/97.\nVALOR ATUAL DO CRÉDITO TRIBUTÁRIO COM REDUÇÃO: R$ 138,41\n(CENTO E TRINTA E OITO REAIS E QUARENTA E UM CENTAVOS)\nValor calculado com multas e respectivos juros reduzidos, em conformidade com o inciso I do art. 56 da Lei nº 6.763/75, para pagamento à vista na data de\nformalização desta Autodenúncia.\nOs juros de mora serão recalculados até o efetivo pagamento, nos termos da Resolução nº 2.880/97.\nFalta de recolhimento ou recolhimento a menor do ICMS devido a título de antecipação tributária, resultante da aplicação de percentual relativo à diferença entre\na alíquota interna e a interestadual devida na entrada de mercadoria destinada à industrialização ou à comercialização, ou na utilização de serviço em operação ou\nprestação oriunda de outra unidade da Federação, conforme previsto no art. 42, §14 do RICMS.\nRELATÓRIO\nLEI ESTAD 6.763 de 26/12/1975 - Artigo 6, Par. 5º, Al. f\nLEI ESTAD 6.763 de 26/12/1975 - Artigo 16, Inc. IX\nLEI ESTAD 6.763 de 26/12/1975 - Artigo 16, Inc. XIII\nDEC.ESTAD 43.080 de 13/12/2002 - Artigo 42, Par. 14\nDEC.ESTAD 43.080 de 13/12/2002 - Artigo 85, Par. 9º, Inc. IV\nDEC.ESTAD 43.080 de 13/12/2002 - Artigo 222, Par. 4º\nBASE LEGAL / INFRINGÊNCIA\nPENALIDADE\nLEI ESTAD 6.763 de 26/12/1975 - Artigo 56, Inc. I, Par. 4º, It. I\nLEI ESTAD 6.763 de 26/12/1975 - Artigo 56, Inc. I, c\nRESPONSÁVEL PELA AUTODENÚNCIA: EDSON DE SOUZA MARTINS\nTERMO DE AUTODENÚNCIA EMITIDO POR PROCESSAMENTO ELETRÔNICO NOS TERMOS DO ART. 87-A DO RPTA\nLOCAL:DATA:\n17/05/2022TAIOBEIRAS\nO presente Termo constitui confissão irrevogável e irretratável do crédito tributário, nos termos dos arts. 389,394 e 395 do Código de Processo Civil.\nNos termos do art. 7º da Lei nº 13.470/00 e art. 18 da Lei nº 13.512/00, declara estar ciente que a falta de pagamento nos prazos estabelecidos na legislação ou o\ndescumprimento do parcelamento implicará majoração da multa de mora até o limite estabelecido para a multa de revalidação aplicável (inciso II, c/c o § 2º do\nMOD.XX.XX.XX-SIARE – DD/MM/YYYY",
+   "\nFLUXO: 1ª VIA: UNIDADE ADMINISTRATIVA EMITENTE / PTA               2ª VIA: UNIDADE ADMINISTRATIVA EMITENTE > CONTRIBUINTE\nSECRETARIA DE ESTADO DE\nFAZENDA DE MINAS GERAIS\nNÚMERO DE IDENTIFICAÇÃO\nDA AUTODENÚNCIA:\n59.000074803-85\nTERMO DE AUTODENÚNCIA\nEXTRATO DE DÉBITO ELETRÔNICO\n2/2\nPÁGINA\nart. 56), observada a redução (item 2 do § 10 do art. 53) previstos na Lei nº 6.763/75, podendo, ainda, ocorrer:\n1) A exigibilidade de multa por descumprimento de obrigação acessória, conforme dispõem os arts. 210 e 210-A da Lei nº 6.763/1975;\n2) Inscrição do crédito tributário em Dívida Ativa, cobrança judicial ou protesto nos termos da legislação vigente.\nMOD.XX.XX.XX-SIARE – DD/MM/YYYY"
+  ]
+ },
+ "pta2de10": {
+  "nome": "PTA 2 - 59.000074803-85.pdf",
+  "rel": "0010 - DORNAS HAVANA LTDA - ME\\OUTROS\\PTA 2 - 59.000074803-85.pdf",
+  "texto": [
+   "25/02/2023, 09:33SIARE - Sistema Integrado de Administração da Receita Estadual\nhttps://www2.fazenda.mg.gov.br/sol/ctrl/SOL/AUTORREG/AUTORREG_CONS_HISTORICO_DET#EDITAR1/1\nAjuda\nDetalhamento da Autorregularização\nDados da Autorregularização\nOcorrênciaReceitaReferênciaVencimentoValorJuros\nExportar\nInconsistências\n01.001.003 - Antecipacao de Imposto3228 - ICMS01/05/2019 a 31/05/201902/07/2019108,8814,71\n01.001.003 - Antecipacao de Imposto4606 - MM.ICMS01/05/2019 a 31/05/201902/07/201954,447,35\nTOTAL\nR$\n163,32\nR$\n22,06\nTOTAL\nGERAL\nR$\n185,38\nNome Empresarial:\nDORNAS HAVANA LTDA\nCNPJ:\n01.884.649/0001-85\nMalha Fiscal:\nAntecipação Simples Nacional\nLote:\n12\nNúmero do PTA:\n59.000074803-85\nData PTA:\n17/05/2022\nSituação do PTA:\nQUITADO\nDetalhes da Autorregularização\n2  R egistro(s) <  1 de 1  >   \n1\n Ir"
+  ]
+ },
+ "extratoDebitos279": {
+  "nome": "extrato-debitos-15668171.pdf",
+  "rel": "0279 - ALMEIDA & SOUZA PRODUTOS ALIMENTICIOS LTDA - ME\\extrato-debitos-15668171.pdf",
+  "texto": [
+   " 0610800UA Jurisdição:ALMEIDA & SOUZA PRODUTOS ALIMENTICIOS LTDANome Empresarial: 27.545.832/0001-40CNPJ: \nPágina  de 11\n21/08/2026\nExtrato de Débitos da Comunicação Nº: 15668171\nMINISTÉRIO DA FAZENDA\nSecretaria da Receita Federal do Brasil\n(*) (A) Ação/Processo Judicial - (P) Processo - (PG) Pagamento - (D) DCOMP - (DP) Depósito - (PA) Parcelamento - (AI) Auto de Infração - (PFN) Processo PFN - (ND) Número da Declaração - (NT) Número da Notificação\nINFORMAÇÃO DECLARADA\nAMORTIZAÇÃO / VALIDAÇÃO /\nVINCULAÇÃO\nPERÍODO\nAPURAÇÃO\nCÓDIGO\nRECEITA\nDATA\nVENCIMENTO\nVALOR\nBRUTO\nTIPO /\nTRIBUTO\nAÇÃO / PROCESSO / DCOMP /\nPARCELAMENTO (*)\nVALOR\nORIGINÁRIO\nSITUAÇÃOOCORRÊNCIAS (*)\nVALOR\nAMORTIZADO\nSALDO\nSIMPLES NACIONAL\n01/05/2026SN22/06/20268.018,28IRPJ649,38DEVEDOR0,00649,38\nCSLL413,24DEVEDOR0,00413,24\nINSS4.958,89DEVEDOR0,004.958,89\nCOFINS1.147,09DEVEDOR0,001.147,09\nPIS248,50DEVEDOR0,00248,50\nICMSMG601,18DEVEDOR0,00601,18"
+  ]
+ },
+ "pgfnRecibo532": {
+  "nome": "Recibo Parcelamento - PGFN SISPAR.pdf",
+  "rel": "0532 - POUSADA, RESTAURANTE E PANIFICADORA JM - JOAO MANOEL LTDA - ME\\PARCELAMENTO\\PGFN - SISPAR\\Recibo Parcelamento - PGFN SISPAR.pdf",
+  "texto": [
+   "1 / 4\nINFORMAÇÃO DA NEGOCIAÇÃO\nNúmero da conta de negociação: 16531124\nCNPJ : 54.811.429/0001-98\nNome : POUSADA, RESTAURANTE E PANIFICADORA JM -JOAO MANOEL\nNegociação: 0092 - TRANSACAO POR ADESAO EDITAL PGDAU 062026\nModalidade: 0129 - SIMPLES NACIONAL PESSOA JURIDICA ATE 60 PRESTACOES SEM REDUCAO\nConforme as informações prestadas em 13/07/2026, o contribuinte acima indicado realizou, no âmbito da PGFN, adesão à negociação prevista na EDITAL PGDAU N 06,\nDE 01 DE JUNHO DE 2026. LEI N. 13.988, DE 2020., consolidada na conta acima indicada e nos seguintes termos:\nDÍVIDAS NEGOCIADAS\nDÍVIDA\nDEVEDOR\nPRINCIPAL\nCÓDIGO DE\nRECEITA\nDATA DE\nCONSOLIDAÇÃO\nPRINCIPALMULTAJUROSENCARGO LEGALTOTAL\n604260755746854.811.429/0001-98150713/07/2026 1.685,60 337,11 192,61 221,53 2.436,85\nValores atualizados para a data de consolidação e sem desconto.\nTodos os valores em Reais (R$)\nCAPACIDADE DE PAGAMENTO\nRECIBO DE ADESÃO E CONSOLIDAÇÃO DE NEGOCIAÇÃO",
+   "2 / 4\nVALOR DA DÍVIDA NA DATA DA ADESÃOCAPACIDADE DE PAGAMENTO EM 60 MESESPERMITE APLICAÇÃO DE DESCONTODESCONTO MÁXIMO POSSÍVEL\n 7.001,92 18.939,80Não 0,00 %\nTodos os valores em Reais (R$)\nDEMONSTRATIVO DE CONSOLIDAÇÃO\nDEMONSTRATIVOPRINCIPALMULTAJUROSENCARGO LEGALCONSOLIDADO\nTotal sem desconto 1.685,60 337,11 192,61 221,53 2.436,85\nEntrada 101,13 20,22 11,55 13,29 146,19\nDesconto 0,00 0,00 0,00 0,00 0,00\nCréditos PF/BCN 0,00 0,00 0,00 0,00 0,00\nTotal a pagar 1.685,60 337,11 192,61 221,53 2.436,85\nTodos os valores em Reais (R$)\nDEMONSTRATIVO DE DESCONTO POR DÍVIDA\nDÍVIDA\nVALOR\nCONSOLIDADO\nDESCONTOS\nVALOR\nCONSOLIDADO\nDESCONTO\nEFETIVO\nPRINCIPALMULTAJUROSENCARGO LEGALTOTAL\n6042607557468 2.436,85 0,00 0,00 0,00 0,00 0,00 2.436,85 0,00%\nTotais 2.436,85 0,00 0,00 0,00 0,00 0,00 2.436,85 0,00%\nTodos os valores em Reais (R$)"
+  ]
+ },
+ "faturaVera411": {
+  "nome": "FATURADELOCAOVERA  Nº06 R$15.100,00.pdf",
+  "rel": "FERNANDO\\411 MINAS FORESTRY\\2026\\09.2026\\Comprovantes e NFs\\FATURADELOCAOVERA  Nº06 R$15.100,00.pdf",
+  "texto": [
+   "CLIENTE:\nCNPJ/CPF:I.E:\nENDEREÇO:  FAZ TAPERA, S/N, A 24.2 KM DA MARGEM DIREITA DO KM 47 DA MG-602 \nBAIRRO:\nNº: \nS/NCEP:39.540-000\nCIDADE:  ESTADO:MG\nVEICULO :    \nNº DE SERIE:  M115755168\nUn.Quant.ValorAlíquotaValor Total\nH60,4 R$         250,00 0,00 R$        15.100,00 \n0,00\n R$                         -   \n0,00\n R$                         -   \n0,00 R$                     -   \n0,00 R$                     -   \nPORCETAGEMDIAS\n5%0 R$                         -   \nINSSIRCSLLCOFINSDESCONTOISS A RECOLHERBASE DE CÁLCULO\n R$                -    R$                 -    R$                      -    R$                    -    R$                     -    R$                     -    R$            15.100,00 \n006/2026EMITIDA EM:VALOR: R$        15.100,00 \nANO: 2025TRATOR AGRICOLA BM 115 - TP 21\nCNPJ: 39.435.173/0001-78 INS. EST.:003868509.00-83\nCONFORME LEI COMPLEMENTAR\nROD LMG 626 QUE LIGA TAIOBEIRAS A CURRAL DE\nDENTRO, S/N-ZONA INDUSTRIAL - TAIOBEIRAS -MG                               \nCEP: 39550-000\nNº 116/2003\nMINAS FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA\nUF: MG\n003753492.00-51\nMARCA: VALTRA\nENCARGOS COBRADOS NESTA FATURA\nMULTA POR \nATRASO\nTOTAL DE ENCARGOS\nPIS\nDEMONSTRATIVO DOS TRIBUTOS FEDERAL E MUNICIPAL\n37.405.977/0001-07\nSÃO JOÃO DO PARAISO\nZONA RURAL\nDescrição do Serviço\nLOCAÇÃO DE EQUIPAMENTO NO PRAZO DE 17/08/2026 Á \n31/08/2026\nDATA DO RECEBIMENTO :........../............/............        ASSINATURA DO DESTINATÁRIO :.................................................................\n R$                                   -   \nRECEBI(EMOS) DE: VERA REFLORESTAMENTOS LTDA - ME\n FATURA DE LOCAÇÃO Nº.:\nVERA R EIRELI\n23/09/2026\nCHAVE PIX: 39.435.173/0001-78 \nCONTA CORRENTE: 28681-8\nBANCO DO BRASIL- 01\nAGÊNCIA: 2705-7\nOBSERVAÇÃO\n R$                                                                  15.100,00 \nATIVIDADE NÃO SUJEITA AO ISSQN - LC 116/03 31/07/03\nVALOR TOTAL \nFATURA:\n R$                                                                  15.100,00 \nTOTAL DEDUÇÕES: R$                                                                               -   \nVALOR LIQUIDO \nFATURA:\nNÚMERO\n006/2026\nFATURA DE LOCAÇÃO\nDATA DE EMISSÃO\nVERA REFLORESTAMENTOS LTDA - ME\nATIVIDADE SEM INCIDENCIA DO ISSQN \nTEL.: (31) 99799-1500 \nfinanceiro@verareflorestamentos.com.br\nDATA DE VENCIMENTO\n23/09/202608/10/2026"
+  ]
+ },
+ "faturaOuroPreto572": {
+  "nome": "OURO PRETO FATURA LOCAÇÃO Nº01 R$20.440,00.pdf",
+  "rel": "FERNANDO\\572 FREEDOM REFORESTING LTDA\\2025\\10.2025\\Comprovantes e NFs\\OURO PRETO FATURA LOCAÇÃO Nº01 R$20.440,00.pdf",
+  "texto": [
+   "CLIENTE:\nCNPJ/CPF:\nENDEREÇO: COMPLEMENTO: Sala 3218\nBAIRRO:\nNº: \n156CEP:20.040-901\nCIDADE:  ESTADO:MG\nVEICULO :    \nVEICULO :    \nCHASSI: \nVEICULO :PATROL - MOTONIVELADORA FIATALLIS MOD. FG70  \nSERIE: 87M0024030421017\nUn.Quant.ValorAlíquotaValor Total\nUn.1 R$    15.255,00 0,00 R$        15.255,00 \nUn.1 R$      3.960,00 0,00\n R$              3.960,00 \nUn.1 R$      1.225,00 0,00\n R$              1.225,00 \n0,00 R$                      -   \n0,00 R$                      -   \nPORCETAGEMDIAS\n5%0 R$                        -   \nINSSIRCSLLCOFINSDESCONTOISS A RECOLHERBASE DE CÁLCULO\n R$               -    R$                 -    R$                     -    R$                      -    R$                    -    R$                    -    R$            20.440,00 \n01EMITIDA EM:VALOR: R$        20.440,00 \n PÁ CARREGADEIRAANO: 2021UF: MG\n    MARCA: CATERPILARSERIE DIANTEIRA: 25003538-966C-25U03538  PARTE TRASEIRA: 4K8181G-NU58NON\nTRATOR PNEU 4297ANO: 2021UF: MG\nMARCA:MASSEY \nNÚMERO\n1\nFATURA DE LOCAÇÃO\nDATA DE EMISSÃO\nOURO PRETO REFLORESTAMENTOS LTDA\nATIVIDADE SEM INCIDENCIA DO ISSQN \nCNPJ: 41.809.794/0001-16 INS. EST.: 40381730077CONFORME LEI COMPLEMENTAR\nROD LMG 626 QUE LIGA TAIOBEIRAS A CURRAL DE\n DENTRO, S/B; ZONA INDUSTRIAL, TAIOBEIRAS - MG / Cep \n39.550-000\nNº 116/2003\n57.338.982/0001-43\nDATA DO RECEBIMENTO :........../............/............        ASSINATURA DO DESTINATÁRIO :.................................................................\n R$                                         -   \nPIS\nDEMONSTRATIVO DOS TRIBUTOS FEDERAL E MUNICIPAL\nOBSERVAÇÃO\n R$                                                                    20.440,00 \nRECEBI(EMOS) DE: OURO PRETO REFLORESTAMENTOS LTDA\nATIVIDADE NÃO SUJEITA AO ISSQN - LC 116/03 31/07/03\nVALOR TOTAL FATURA: R$                                                                    20.440,00 \nTOTAL DEDUÇÕES:\n FATURA DE LOCAÇÃO Nº.:\nVALOR LIQUIDO FATURA:\nCONTA CORRENTE: 29443-8\nLOCAÇÃO DE EQUIPAMENTO PATROL NO PRAZO DE \n01/05/2025 Á 31/07/2025\nDescrição do Serviço\nLOCAÇÃO DE EQUIPAMENTO PÁ CARREGADEIRA NO PRAZO \nDE 01/05/2025 Á 31/07/2025\nOURO PRETO\nBANCO DO BRASIL- 01\nAGÊNCIA: 2705-7\nLOCAÇÃO DE EQUIPAMENTO TRATOR DE PNEU NO PRAZO \nDE 01/05/2025 Á 31/07/2025\nENCARGOS COBRADOS NESTA FATURA\nMULTA POR \nATRASO\nTOTAL DE ENCARGOS\nMARCA: KOMATSU\n26/09/2025\nCHAVE PIX: 41.809.794/0001-16\nTEL.: (31) 99799-1500 financeiro@verareflorestamentos.com.br\nANO: 1993UF: MG\nDATA DE VENCIMENTO\n26/09/2025\nRIO DE JANEIRO\nCENTRO\n06/10/2025\nFREEDOM REFORESTING LTDA\nAV RIO BRANCO\n R$                                                                                 -   "
+  ]
+ },
+ "balancos2020": {
+  "nome": "BALANÇOS2020.xml",
+  "rel": "0055 - TORRA TORRA LTDA - ME\\OUTROS\\BALANÇOS2020.xml",
+  "planilha": [
+   [
+    "FLAVIA FERREIRA ALVES EIRELI-ME\nRUA GUAICURUS, 400 - SAGRADA FAMILIA - TAIOBEIRAS (MG) - 39550-000  \nTelefone: (38)3845-1553   Fax: (38)3845-1553"
+   ],
+   [
+    "Inventário"
+   ],
+   [
+    ""
+   ],
+   [
+    null,
+    "ANO:",
+    null,
+    2020,
+    null,
+    null,
+    null,
+    null,
+    "CONTROLE:",
+    null,
+    "B",
+    null
+   ],
+   [
+    "",
+    "Código",
+    null,
+    null,
+    null,
+    "",
+    "Descrição do produto",
+    null,
+    null,
+    null,
+    null,
+    null
+   ],
+   [
+    null,
+    "",
+    null,
+    null,
+    null,
+    null,
+    "",
+    null,
+    null,
+    null,
+    null,
+    null
+   ],
+   [
+    "",
+    "6050",
+    null,
+    null,
+    "",
+    null,
+    "GIZ ESCOLAR COLORIDO CONICO DELTA",
+    null,
+    null,
+    null,
+    null,
+    null
+   ],
+   [
+    null,
+    "",
+    null,
+    null,
+    null,
+    null,
+    "",
+    null,
+    null,
+    null,
+    null,
+    null
+   ],
+   [
+    "",
+    "6051",
+    null,
+    null,
+    "",
+    null,
+    "CANETA COMPACTO TOP2000PRETA",
+    null,
+    null,
+    null,
+    null,
+    null
+   ],
+   [
+    null,
+    "",
+    null,
+    null,
+    null,
+    null,
+    "",
+    null,
+    null,
+    null,
+    null,
+    null
+   ],
+   [
+    "",
+    "6054",
+    null,
+    null,
+    "",
+    null,
+    "GIZ LIQUIDO BRANCO",
+    null,
+    null,
+    null,
+    null,
+    null
+   ],
+   [
+    null,
+    "",
+    null,
+    null,
+    null,
+    null,
+    "",
+    null,
+    null,
+    null,
+    null,
+    null
+   ],
+   [
+    "",
+    "6055",
+    null,
+    null,
+    "",
+    null,
+    "ESTILETE METAL LARGO 18MM BLISTER JOCAR",
+    null,
+    null,
+    null,
+    null,
+    null
+   ],
+   [
+    null,
+    "",
+    null,
+    null,
+    null,
+    null,
+    "",
+    null,
+    null,
+    null,
+    null,
+    null
+   ],
+   [
+    "",
+    "6057",
+    null,
+    null,
+    "",
+    null,
+    "CARBONO 2000 PRETO HELIOS",
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  ],
+  "meses": {},
+  "planilhaXml": true
+ },
+ "getnet429": {
+  "nome": "Getnet 01.2025.pdf",
+  "rel": "FERNANDO\\429 POSTO COMBUSTIIVEL ANDRIELE\\2025\\Getnet\\Getnet 01.2025.pdf",
+  "texto": [
+   "\nO que vendi - Detalhamento das Vendas\nRazão Social: POSTO DE COMBUSTIVEIS ANDRIELE LIMITADA\nCód. Estabelecimento: 12422736\nCNPJ/CPF: 40.299.450/0001-41\nPeríodo: 01/01/2025 a 31/01/2025\nNúmero do Terminal: Não informado\nTipo de Moeda: Real\n > O que vendi\n Dados do Estabelecimento\nCartão(ões): MASTERCARD CRÉDITO, MASTERCARD DÉBITO, VISA CRÉDITO, VISA DÉBITO, ELO CRÉDITO, ELO DÉBITO, AMEX CRÉDITO,\nHIPERCARD CRÉDITO\nModalidade(s): Crédito à vista, Crédito parcelado Lojista, Crédito parcelado Emissor, Débito, Carnê, Recorrente, Parcelado BNDES, Crediário\nPor onde Vendi: POS, TEF, E-Commerce, Troca de arquivos, SuperGet, IATA\n > Detalhamento das Vendas\nCód.\nEstabelecimento\nCartões\nData/Hora\nda Venda\nData Prevista\ndo 1º\nPagamento\nNúmero do Cartão\nNúmero da\nAutorização\nNúmero do\nComprovante\nde Vendas\nNúmero do\nTerminal\nDescrição do Lançamento\nTotal de\nParcelas\nValor Bruto\nValor Bruto:R$ 57.971,15Valor da Taxa e/ou Tarifa:- R$ 678,98Valor Líquido:R$ 57.292,17\nEmissor Cartão\nValor da Taxa\ne/ou Tarifa\nValor Líquido\n12422736\nMASTERCARD DÉBITO01/01/2025 06:39:3802/01/2025550209******680073304500001853113883102VENDA DEBITO A VISTA1R$ 50,03NACIONAL- R$ 0,56R$ 49,47\n12422736\nMASTERCARD DÉBITO01/01/2025 08:46:0502/01/2025550209******659319609700001853313883102VENDA DEBITO A VISTA1R$ 30,00NACIONAL- R$ 0,34R$ 29,66\n12422736\nELO DÉBITO01/01/2025 08:51:5602/01/2025506722******502774569800001853513883102VENDA DEBITO A VISTA1R$ 15,00NACIONAL- R$ 0,24R$ 14,76\n12422736\nVISA DÉBITO01/01/2025 09:11:3302/01/2025439267******846183394100001853713883102VENDA DEBITO A VISTA1R$ 100,00NACIONAL- R$ 1,10R$ 98,90\n12422736\nVISA DÉBITO01/01/2025 09:38:4402/01/2025439267******238697832800001853913883102VENDA DEBITO A VISTA1R$ 100,00NACIONAL- R$ 1,10R$ 98,90\n12422736\nMASTERCARD DÉBITO01/01/2025 09:53:2802/01/2025550209******213962286100001854113883102VENDA DEBITO A VISTA1R$ 50,00NACIONAL- R$ 0,56R$ 49,44\n12422736\nVISA DÉBITO01/01/2025 09:55:1502/01/2025417402******9073MY1YKW00001854313883102VENDA DEBITO A VISTA1R$ 100,00NACIONAL- R$ 1,10R$ 98,90\n12422736\nVISA DÉBITO01/01/2025 09:56:3702/01/2025439267******171008542700001854513883102VENDA DEBITO A VISTA1R$ 20,00NACIONAL- R$ 0,22R$ 19,78\n12422736\nELO DÉBITO01/01/2025 09:59:2002/01/2025506722******203110273200001854713883102VENDA DEBITO A VISTA1R$ 30,00NACIONAL- R$ 0,48R$ 29,52\n12422736\nMASTERCARD DÉBITO01/01/2025 10:04:2902/01/2025523284******0888M3327800001854913883102VENDA DEBITO A VISTA1R$ 73,70NACIONAL- R$ 0,83R$ 72,87\n12422736\nMASTERCARD DÉBITO01/01/2025 10:13:1302/01/2025515487******167401923100001855113883102VENDA DEBITO A VISTA1R$ 34,00NACIONAL- R$ 0,38R$ 33,62\n12422736\nMASTERCARD DÉBITO01/01/2025 10:17:4402/01/2025589916******4740M5390500001855313883102VENDA DEBITO A VISTA1R$ 100,00NACIONAL- R$ 1,12R$ 98,88\n12422736\nVISA DÉBITO01/01/2025 10:25:0602/01/2025439267******624827137000001855513883102VENDA DEBITO A VISTA1R$ 101,50NACIONAL- R$ 1,12R$ 100,38\n12422736\nMASTERCARD DÉBITO01/01/2025 10:47:0802/01/2025541674******783370058700001855713883102VENDA DEBITO A VISTA1R$ 20,00NACIONAL- R$ 0,22R$ 19,78\n12422736\nMASTERCARD DÉBITO01/01/2025 11:06:4102/01/2025589916******1062M3604900001856113883102VENDA DEBITO A VISTA1R$ 80,00NACIONAL- R$ 0,90R$ 79,10\n12422736\nMASTERCARD DÉBITO01/01/2025 11:21:5202/01/2025589916******8295M7878400001856313883102VENDA DEBITO A VISTA1R$ 155,04NACIONAL- R$ 1,74R$ 153,30\n12422736\nMASTERCARD DÉBITO01/01/2025 11:30:1002/01/2025550209******209273818600001856713883102VENDA DEBITO A VISTA1R$ 50,00NACIONAL- R$ 0,56R$ 49,44\n12422736\nVISA DÉBITO01/01/2025 12:32:1502/01/2025439267******831627291900001856913883102VENDA DEBITO A VISTA1R$ 30,00NACIONAL- R$ 0,33R$ 29,67\n12422736\nELO DÉBITO01/01/2025 12:46:0602/01/2025506722******043437491500001857113883102VENDA DEBITO A VISTA1R$ 30,00NACIONAL- R$ 0,48R$ 29,52\n12422736\nMASTERCARD DÉBITO01/01/2025 12:50:5602/01/2025550209******659306607000001857313883102VENDA DEBITO A VISTA1R$ 60,00NACIONAL- R$ 0,67R$ 59,33\n12422736\nELO DÉBITO01/01/2025 13:15:0902/01/2025506722******350256854800001857513883102VENDA DEBITO A VISTA1R$ 30,00NACIONAL- R$ 0,48R$ 29,52\n12422736\nMASTERCARD DÉBITO01/01/2025 13:42:0802/01/2025550209******013517229900001857713883102VENDA DEBITO A VISTA1R$ 25,00NACIONAL- R$ 0,28R$ 24,72\n12422736\nELO DÉBITO01/01/2025 13:49:4302/01/2025506722******367476788700001857913883102VENDA DEBITO A VISTA1R$ 33,00NACIONAL- R$ 0,53R$ 32,47\n12422736\nMASTERCARD DÉBITO01/01/2025 13:56:5502/01/2025589916******7589M8089000001858113883102VENDA DEBITO A VISTA1",
+   "\nO que vendi - Detalhamento das Vendas\nRazão Social: POSTO DE COMBUSTIVEIS ANDRIELE LIMITADA\nCód. Estabelecimento: 12422736\nCNPJ/CPF: 40.299.450/0001-41\nPeríodo: 01/01/2025 a 31/01/2025\nNúmero do Terminal: Não informado\nTipo de Moeda: Real\n > O que vendi\n Dados do Estabelecimento\nCartão(ões): MASTERCARD CRÉDITO, MASTERCARD DÉBITO, VISA CRÉDITO, VISA DÉBITO, ELO CRÉDITO, ELO DÉBITO, AMEX CRÉDITO,\nHIPERCARD CRÉDITO\nModalidade(s): Crédito à vista, Crédito parcelado Lojista, Crédito parcelado Emissor, Débito, Carnê, Recorrente, Parcelado BNDES, Crediário\nPor onde Vendi: POS, TEF, E-Commerce, Troca de arquivos, SuperGet, IATA\n > Detalhamento das Vendas\nCód.\nEstabelecimento\nCartões\nData/Hora\nda Venda\nData Prevista\ndo 1º\nPagamento\nNúmero do Cartão\nNúmero da\nAutorização\nNúmero do\nComprovante\nde Vendas\nNúmero do\nTerminal\nDescrição do Lançamento\nTotal de\nParcelas\nValor Bruto\nValor Bruto:R$ 57.971,15Valor da Taxa e/ou Tarifa:- R$ 678,98Valor Líquido:R$ 57.292,17\nEmissor Cartão\nValor da Taxa\ne/ou Tarifa\nValor Líquido\n12422736\nELO DÉBITO03/01/2025 14:36:3206/01/2025650407******012487695500001885513883102VENDA DEBITO A VISTA1R$ 100,00NACIONAL- R$ 1,60R$ 98,40\n12422736\nMASTERCARD DÉBITO03/01/2025 14:42:2206/01/2025525663******185729897300001885713883102VENDA DEBITO A VISTA1R$ 20,00NACIONAL- R$ 0,22R$ 19,78\n12422736\nMASTERCARD DÉBITO03/01/2025 14:47:3106/01/2025223115******302579965900001885913883102VENDA DEBITO A VISTA1R$ 80,00NACIONAL- R$ 0,90R$ 79,10\n12422736\nVISA DÉBITO03/01/2025 15:05:1406/01/2025439267******852615073300001886113883102VENDA DEBITO A VISTA1R$ 20,00NACIONAL- R$ 0,22R$ 19,78\n12422736\nMASTERCARD DÉBITO03/01/2025 15:07:1506/01/2025516292******102990936600001886313883102VENDA DEBITO A VISTA1R$ 20,00NACIONAL- R$ 0,22R$ 19,78\n12422736\nVISA DÉBITO03/01/2025 15:08:5406/01/2025439267******749119801400001886513883102VENDA DEBITO A VISTA1R$ 30,00NACIONAL- R$ 0,33R$ 29,67\n12422736\nVISA DÉBITO03/01/2025 15:19:1406/01/2025439267******122734965100001886713883102VENDA DEBITO A VISTA1R$ 49,99NACIONAL- R$ 0,55R$ 49,44\n12422736\nMASTERCARD DÉBITO03/01/2025 15:24:0406/01/2025230744******433895634900001886913883102VENDA DEBITO A VISTA1R$ 30,00NACIONAL- R$ 0,34R$ 29,66\n12422736\nVISA DÉBITO03/01/2025 16:08:0406/01/2025482481******745731858500001887113883102VENDA DEBITO A VISTA1R$ 33,00NACIONAL- R$ 0,36R$ 32,64\n12422736\nMASTERCARD DÉBITO03/01/2025 16:16:0506/01/2025589916******443240408500001887313883102VENDA DEBITO A VISTA1R$ 150,00NACIONAL- R$ 1,68R$ 148,32\n12422736\nMASTERCARD DÉBITO03/01/2025 16:20:0906/01/2025550209******710504449300001887513883102VENDA DEBITO A VISTA1R$ 50,00NACIONAL- R$ 0,56R$ 49,44\n12422736\nELO DÉBITO03/01/2025 16:34:0506/01/2025506722******792955770400001887713883102VENDA DEBITO A VISTA1R$ 50,00NACIONAL- R$ 0,80R$ 49,20\n12422736\nMASTERCARD DÉBITO03/01/2025 16:35:0006/01/2025515487******167405039600001887913883102VENDA DEBITO A VISTA1R$ 20,00NACIONAL- R$ 0,22R$ 19,78\n12422736\nVISA DÉBITO03/01/2025 16:38:2406/01/2025485464******903425990800001888113883102VENDA DEBITO A VISTA1R$ 50,00NACIONAL- R$ 0,55R$ 49,45\n12422736\nVISA DÉBITO03/01/2025 16:46:1806/01/2025439267******333177515600001888313883102VENDA DEBITO A VISTA1R$ 50,00NACIONAL- R$ 0,55R$ 49,45\n12422736\nMASTERCARD DÉBITO03/01/2025 17:16:0706/01/2025516292******768205252900001888513883102VENDA DEBITO A VISTA1R$ 70,00NACIONAL- R$ 0,78R$ 69,22\n12422736\nELO DÉBITO03/01/2025 17:26:2406/01/2025506722******344851213700001888713883102VENDA DEBITO A VISTA1R$ 100,00NACIONAL- R$ 1,60R$ 98,40\n12422736\nVISA DÉBITO03/01/2025 17:31:1506/01/2025402383******088110702000001888913883102VENDA DEBITO A VISTA1R$ 50,00NACIONAL- R$ 0,55R$ 49,45\n12422736\nELO DÉBITO03/01/2025 18:02:2406/01/2025506722******248416265000001889113883102VENDA DEBITO A VISTA1R$ 55,07NACIONAL- R$ 0,88R$ 54,19\n12422736\nMASTERCARD DÉBITO03/01/2025 18:10:4206/01/2025550209******828865724700001889313883102VENDA DEBITO A VISTA1R$ 50,00NACIONAL- R$ 0,56R$ 49,44\n12422736\nVISA DÉBITO03/01/2025 18:12:1206/01/2025439267******892432911600001889513883102VENDA DEBITO A VISTA1R$ 33,00NACIONAL- R$ 0,36R$ 32,64\n12422736\nMASTERCARD DÉBITO03/01/2025 18:16:5406/01/2025589916******643856112400001889713883102VENDA DEBITO A VISTA1R$ 150,00NACIONAL- R$ 1,68R$ 148,32\n12422736\nMASTERCARD DÉBITO03/01/2025 18:17:1406/01/2025514945******705856099300001889913883102VENDA DEBITO A VISTA1R$ 20,00NACIONAL- R$ 0,22R$ 19,78\n12422736\nMASTERCARD DÉBITO03/01/2025 18:35:0706/01/2025589916******179258342200001890113883102VENDA DEBITO A VISTA1R$ 100,"
+  ]
+ },
+ "cieloResumo49": {
+  "nome": "Recebiveis 01.2025.pdf",
+  "rel": "FERNANDO\\49 POSTO ALTA FLORESTA\\2025\\Cielo\\Recebiveis 01.2025.pdf",
+  "texto": [
+   "Recebíveis ResumoData de pagamento 01/01/2025 à 31/01/2025\n                       Informações de acesso:\nUsuário: VALTER MENDES NOGUEIRA\nEstabelecimento: 1105540151\nCPF/CNPJ: 04.156.301/0001-60\nTipo de visualização: Raiz de CPF/CNPJ\nFiltros:Estabelecimento: Todos estabelecimentosVisualizar por: Bandeira e Tipo de lançamento\nTotalizador\nQuantidade de transações\nValor bruto\nTaxa/tarifa\nValor líquido\n1531\nR$ 99.446,80\n-R$ 1.150,84\nR$ 98.295,96\nLista de lançamentos\nData de pagamento\n                     Bandeira                     \n                Tipo de lançamento                \nQuantidade de\ntransações\n   Valor bruto    \n   Taxa/tarifa    \n  Valor líquido   \nAgrupamento\n(Entradas/Saídas)\n02/01/2025\n                            Visa                            \n                        Venda débito                        \n           18            \n   R$ 1.007,00    \n     -R$ 8,66     \n    R$ 998,34     \n                     Entradas                     \n02/01/2025\n                            Visa                            \n                       Venda crédito                        \n            2            \n     R$ 65,00     \n     -R$ 1,01     \n     R$ 63,99     \n                     Entradas                     \n02/01/2025\n                         Mastercard                         \n                        Venda débito                        \n           18            \n   R$ 1.184,40    \n    -R$ 10,20     \n   R$ 1.174,20    \n                     Entradas                     \n02/01/2025\n                         Mastercard                         \n                       Venda crédito                        \n           19            \n   R$ 1.124,51    \n    -R$ 17,54     \n   R$ 1.106,97    \n                     Entradas                     \n02/01/2025\n                         Mastercard                         \n                      Venda parcelada                       \n            1            \n    R$ 140,00     \n     -R$ 3,25     \n    R$ 136,75     \n                     Entradas                     \n02/01/2025\n                            Elo                             \n                        Venda débito                        \n           14            \n   R$ 1.142,00    \n     -R$ 9,82     \n   R$ 1.132,18    \n                     Entradas                     \n02/01/2025\n                            Elo                             \n                       Venda crédito                        \n            4            \n    R$ 694,50     \n    -R$ 10,98     \n    R$ 683,52     \n                     Entradas                     \n03/01/2025\n                            Visa                            \n                        Venda débito                        \n            8            \n    R$ 592,79     \n     -R$ 5,10     \n    R$ 587,69     \n                     Entradas                     \n03/01/2025\n                            Visa                            \n                       Venda crédito                        \n            7            \n    R$ 293,04     \n     -R$ 4,58     \n    R$ 288,46     \n                     Entradas                     \n03/01/2025\n                         Mastercard                         \n                        Venda débito                        \n           24            \n   R$ 1.302,24    \n    -R$ 11,20     \n   R$ 1.291,04    \n                     Entradas                     \n03/01/2025\n                         Mastercard                         \n                       Venda crédito                        \n           10            \n    R$ 378,87     \n     -R$ 5,91     \n    R$ 372,96     \n                     Entradas                     \n03/01/2025\n                            Elo                             \n                        Venda débito                        \n           11            \n    R$ 485,28     \n     -R$ 4,16     \n    R$ 481,12     \n                     Entradas                     \n03/01/2025\n                            Elo                             \n                       Venda crédito                        \n            3            \n    R$ 248,70     \n     -R$ 3,93     \n    R$ 244,77     \n                     Entradas                     \n06/01/2025\n                            Visa                            \n                        Venda débito                        \n           41            \n   R$ 3.219,17    \n    -R$ 27,69     \n   R$ 3.191,48    \n                     Entradas                     \n06/01/2025\n                            Visa                     ",
+   "Data de pagamento\n                     Bandeira                     \n                Tipo de lançamento                \nQuantidade de\ntransações\n   Valor bruto    \n   Taxa/tarifa    \n  Valor líquido   \nAgrupamento\n(Entradas/Saídas)\n07/01/2025\n                         Mastercard                         \n                        Venda débito                        \n           11            \n    R$ 461,97     \n     -R$ 3,97     \n    R$ 458,00     \n                     Entradas                     \n07/01/2025\n                         Mastercard                         \n                       Venda crédito                        \n           16            \n   R$ 1.552,09    \n    -R$ 24,22     \n   R$ 1.527,87    \n                     Entradas                     \n07/01/2025\n                            Elo                             \n                        Venda débito                        \n            8            \n    R$ 405,03     \n     -R$ 3,48     \n    R$ 401,55     \n                     Entradas                     \n07/01/2025\n                            Elo                             \n                       Venda crédito                        \n            2            \n     R$ 43,00     \n     -R$ 0,68     \n     R$ 42,32     \n                     Entradas                     \n08/01/2025\n                            Visa                            \n                        Venda débito                        \n           15            \n   R$ 1.389,09    \n    -R$ 11,94     \n   R$ 1.377,15    \n                     Entradas                     \n08/01/2025\n                            Visa                            \n                       Venda crédito                        \n            5            \n    R$ 521,46     \n     -R$ 8,13     \n    R$ 513,33     \n                     Entradas                     \n08/01/2025\n                         Mastercard                         \n                        Venda débito                        \n            5            \n    R$ 106,00     \n     -R$ 0,92     \n    R$ 105,08     \n                     Entradas                     \n08/01/2025\n                         Mastercard                         \n                       Venda crédito                        \n           12            \n    R$ 532,32     \n     -R$ 8,31     \n    R$ 524,01     \n                     Entradas                     \n08/01/2025\n                            Elo                             \n                        Venda débito                        \n           12            \n   R$ 1.462,05    \n    -R$ 12,57     \n   R$ 1.449,48    \n                     Entradas                     \n08/01/2025\n                            Elo                             \n                       Venda crédito                        \n            1            \n     R$ 10,00     \n     -R$ 0,16     \n     R$ 9,84      \n                     Entradas                     \n09/01/2025\n                            Visa                            \n                        Venda débito                        \n            9            \n   R$ 1.200,03    \n    -R$ 10,32     \n   R$ 1.189,71    \n                     Entradas                     \n09/01/2025\n                            Visa                            \n                       Venda crédito                        \n            2            \n    R$ 120,00     \n     -R$ 1,87     \n    R$ 118,13     \n                     Entradas                     \n09/01/2025\n                         Mastercard                         \n                        Venda débito                        \n            9            \n    R$ 608,00     \n     -R$ 5,24     \n    R$ 602,76     \n                     Entradas                     \n09/01/2025\n                         Mastercard                         \n                       Venda crédito                        \n            8            \n    R$ 500,48     \n     -R$ 7,81     \n    R$ 492,67     \n                     Entradas                     \n09/01/2025\n                            Elo                             \n                        Venda débito                        \n            6            \n    R$ 351,00     \n     -R$ 3,01     \n    R$ 347,99     \n                     Entradas                     \n09/01/2025\n                            Elo                             \n                       Venda crédito                        \n            1            \n    R$ 634,54     \n    -R$ 10,03     \n    R$ 624,51     \n                     Entradas                  "
+  ]
+ },
+ "cieloDetalhe49": {
+  "nome": "Recebiveis_cielo_detalhe-20250601-20250630-1-1-pdf.pdf",
+  "rel": "FERNANDO\\49 POSTO ALTA FLORESTA\\2025\\Recebiveis_cielo_detalhe-20250601-20250630-1-1-pdf.pdf",
+  "texto": [
+   "Esse relatório não deve ser utilizado como documento fiscal.\nDocumento emitido em 05/08/2025\nPágina 1 de 60\nLista de Lançamentos\nTotalizador\nFiltros:\nData de pagamento: 01/06/2025 à 30/06/2025\nEstabelecimento: Todos os Estabelecimentos\nTipo de lançamento: Todos os lançamentos\nBandeiras: Todas as bandeiras\nStatus: Todos os status\nQuantidade de \nlançamentos\nValor brutoTaxa/tarifaValor líquido\n1813R$ 114.732,96-R$ 1.077,33R$ 113.655,63\nData de pagamentoData do lançamentoEstabelecimentoTipo de lançamentoForma de pagamentoBandeiraValor brutoValor Taxa/TarifaValor líquidoStatus de pagamento\n02/06/202530/01/20251105540151Venda parceladaCrédito parcelado loja 04/05MastercardR$ 196,40-R$ 4,56R$ 191,84Pago\n02/06/202530/04/20251105540151Venda créditoCrédito à vistaVisaR$ 10,00-R$ 0,16R$ 9,84Pago\n02/06/202530/04/20251105540151Venda créditoCrédito à vistaVisaR$ 50,00-R$ 0,78R$ 49,22Pago\n02/06/202530/04/20251105540151Venda créditoCrédito à vistaVisaR$ 251,00-R$ 3,92R$ 247,08Pago\n02/06/202530/04/20251105540151Venda créditoCrédito à vistaMastercardR$ 20,00-R$ 0,31R$ 19,69Pago\n02/06/202530/04/20251105540151Venda créditoCrédito à vistaMastercardR$ 60,00-R$ 0,94R$ 59,06Pago\n02/06/202530/04/20251105540151Venda créditoCrédito à vistaMastercardR$ 40,00-R$ 0,62R$ 39,38Pago\n02/06/202530/04/20251105540151Venda créditoCrédito à vistaMastercardR$ 40,00-R$ 0,62R$ 39,38Pago\n02/06/202530/04/20251105540151Venda créditoCrédito à vistaMastercardR$ 100,00-R$ 1,56R$ 98,44Pago\n02/06/202530/04/20251105540151Venda créditoCrédito à vistaEloR$ 80,00-R$ 1,26R$ 78,74Pago\n02/06/202530/04/20251105540151Venda créditoCrédito à vistaEloR$ 20,00-R$ 0,32R$ 19,68Pago\n02/06/202501/05/20251105540151Venda créditoCrédito à vistaMastercardR$ 20,00-R$ 0,31R$ 19,69Pago\n02/06/202501/05/20251105540151Venda créditoCrédito à vistaMastercardR$ 53,20-R$ 0,83R$ 52,37Pago\n02/06/202501/05/20251105540151Venda créditoCrédito à vistaMastercardR$ 33,25-R$ 0,52R$ 32,73Pago\n02/06/202501/05/20251105540151Venda créditoCrédito à vistaEloR$ 50,00-R$ 0,79R$ 49,21Pago\n02/06/202501/05/20251105540151Venda créditoCrédito à vistaMastercardR$ 40,00-R$ 0,62R$ 39,38Pago\n02/06/202501/05/20251105540151Venda créditoCrédito à vistaEloR$ 429,13-R$ 6,78R$ 422,35Pago\n02/06/202501/05/20251105540151Venda créditoCrédito à vistaMastercardR$ 30,00-R$ 0,47R$ 29,53Pago\nRecebíveis Detalhado - Lançamentos\nInformações de acesso:\nUsuário: VALTER MENDES NOGUEIRA\nEstabelecimento: 1105540151\nCPF/CNPJ: 04.156.301/0001-60\nTipo de visualização: Raiz de CPF/CNPJ",
+   "Esse relatório não deve ser utilizado como documento fiscal.\nDocumento emitido em 05/08/2025\nPágina 2 de 60\nData de pagamentoData do lançamentoEstabelecimentoTipo de lançamentoForma de pagamentoBandeiraValor brutoValor Taxa/TarifaValor líquidoStatus de pagamento\n02/06/202501/05/20251105540151Venda créditoCrédito à vistaMastercardR$ 20,00-R$ 0,31R$ 19,69Pago\n02/06/202502/05/20251105540151Venda créditoCrédito à vistaVisaR$ 65,00-R$ 1,01R$ 63,99Pago\n02/06/202502/05/20251105540151Venda créditoCrédito à vistaVisaR$ 100,00-R$ 1,56R$ 98,44Pago\n02/06/202502/05/20251105540151Venda créditoCrédito à vistaMastercardR$ 30,00-R$ 0,47R$ 29,53Pago\n02/06/202502/05/20251105540151Venda créditoCrédito à vistaMastercardR$ 120,00-R$ 1,87R$ 118,13Pago\n02/06/202502/05/20251105540151Venda créditoCrédito à vistaMastercardR$ 100,00-R$ 1,56R$ 98,44Pago\n02/06/202502/05/20251105540151Venda créditoCrédito à vistaMastercardR$ 50,00-R$ 0,78R$ 49,22Pago\n02/06/202502/05/20251105540151Venda créditoCrédito à vistaMastercardR$ 20,00-R$ 0,31R$ 19,69Pago\n02/06/202502/05/20251105540151Venda créditoCrédito à vistaEloR$ 330,00-R$ 5,21R$ 324,79Pago\n02/06/202502/05/20251105540151Venda créditoCrédito à vistaEloR$ 100,00-R$ 1,58R$ 98,42Pago\n02/06/202530/05/20251105540151Venda débitoDébito à vistaVisaR$ 77,10-R$ 0,66R$ 76,44Pago\n02/06/202530/05/20251105540151Venda débitoDébito à vistaVisaR$ 30,00-R$ 0,26R$ 29,74Pago\n02/06/202530/05/20251105540151Venda débitoDébito à vistaVisaR$ 100,00-R$ 0,86R$ 99,14Pago\n02/06/202530/05/20251105540151Venda débitoDébito à vistaVisaR$ 100,00-R$ 0,86R$ 99,14Pago\n02/06/202530/05/20251105540151Venda débitoDébito à vistaVisaR$ 50,00-R$ 0,43R$ 49,57Pago\n02/06/202530/05/20251105540151Venda débitoDébito à vistaVisaR$ 100,00-R$ 0,86R$ 99,14Pago\n02/06/202530/05/20251105540151Venda débitoDébito à vistaVisaR$ 100,00-R$ 0,86R$ 99,14Pago\n02/06/202530/05/20251105540151Venda débitoDébito à vistaEloR$ 50,00-R$ 0,43R$ 49,57Pago\n02/06/202530/05/20251105540151Venda débitoDébito à vistaEloR$ 66,49-R$ 0,57R$ 65,92Pago\n02/06/202530/05/20251105540151Venda débitoDébito à vistaEloR$ 20,00-R$ 0,17R$ 19,83Pago\n02/06/202530/05/20251105540151Venda débitoDébito à vistaEloR$ 66,03-R$ 0,57R$ 65,46Pago\n02/06/202530/05/20251105540151Venda débitoDébito à vistaEloR$ 20,00-R$ 0,17R$ 19,83Pago\n02/06/202530/05/20251105540151Venda débitoDébito à vistaMastercardR$ 15,00-R$ 0,13R$ 14,87Pago\n02/06/202530/05/20251105540151Venda débitoDébito à vistaEloR$ 50,00-R$ 0,43R$ 49,57Pago\n02/06/202530/05/20251105540151Venda débitoDébito à vistaEloR$ 30,00-R$ 0,26R$ 29,74Pago\n02/06/202530/05/20251105540151Venda débitoDébito à vistaEloR$ 50,00-R$ 0,43R$ 49,57Pago\n02/06/202530/05/20251105540151Venda débitoDébito à vistaEloR$ 100,00-R$ 0,86R$ 99,14Pago\n02/06/202530/05/20251105540151Venda débitoDébito à vistaEloR$ 30,00-R$ 0,26R$ 29,74Pago\n02/06/202530/05/20251105540151Venda débitoDébito à vistaEloR$ 100,00-R$ 0,86R$ 99,14Pago\n02/06/202530/05/20251105540151Venda débitoDébito à vistaEloR$ 50,00-R$ 0,43R$ 49,57Pago\n02/06/202530/05/20251105540151Venda débitoDébito à vistaEloR$ 60,00-R$ 0,52R$ 59,48Pago"
+  ]
+ }
+}

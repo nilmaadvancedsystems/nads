@@ -4651,6 +4651,8 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .ent-modo{margin-bottom:16px;}
 .ent-marcas{display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;}
 .ent-marca{display:inline-flex;align-items:center;gap:8px;font-size:var(--fs-14);color:var(--ink);cursor:pointer;margin-bottom:8px;}
+/* dentro do .field, o ".field label" (bloco, negrito) ganhava: a caixa grudava no texto (30/10/2026) */
+.field .ent-marca{display:inline-flex;font-weight:400;margin:0 0 8px;}
 .ent-marca svg{width:16px;height:16px;color:var(--ink-muted);}
 .ent-marca-falha svg{color:var(--warn);}
 .ent-combo{position:relative;}
@@ -5449,6 +5451,12 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .ctrl-marca-na{color:var(--ink-muted);background:var(--surface-2);}
 .ctrl-entrega{min-width:120px;}
 .ctrl-entrega-feita{border-color:var(--success);}
+.ctrl-entrega-fixa{cursor:default;}
+.ctrl-entrega-sinal{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;flex:none;}
+.ctrl-entrega-sinal svg,.ctrl-entrega-sinal .logo-img{width:16px;height:16px;}
+.ctrl-entrega-texto{color:var(--ink-muted);}
+.ctrl-entrega-item{display:inline-flex;align-items:center;gap:8px;}
+.ctrl-entrega-item .ctrl-entrega-texto{width:16px;flex:none;visibility:hidden;overflow:hidden;}
 .ctrl-linha-entregue td{background:color-mix(in srgb,var(--success) 5%,transparent);}
 .ctrl-linha-entregue td.ctrl-cod,.ctrl-linha-entregue td.ctrl-nome{background:color-mix(in srgb,var(--success) 5%,var(--surface));}
 .ctrl-tabela tfoot td{position:sticky;bottom:0;background:var(--surface-2);font-weight:600;border-top:2px solid var(--border);}
@@ -5531,7 +5539,7 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .rel-tabela col.rel-guia{width:70px;}
 .rel-tabela col.rel-mk,.rel-tabela col.rel-sit{width:30px;}
 .rel-tabela col.rel-data{width:86px;}
-.rel-tabela col.rel-ent{width:90px;}
+.rel-tabela col.rel-ent{width:72px;}
 .rel-tabela .dp-ob{width:auto;min-width:0;}
 .rel-tabela .dp-cliente-nome{max-width:none;}
 .rel-tabela thead tr:last-child th{white-space:normal;line-height:1.2;overflow:hidden;text-overflow:ellipsis;}
@@ -5541,5 +5549,41 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .rel-tabela .rel-campo:hover:not([readonly]){border-color:var(--border);}
 .rel-tabela .rel-campo:focus{border-color:var(--accent);background:var(--surface);outline:none;}
 .rel-tabela .rel-campo::placeholder{color:var(--ink-faint);}
-.rel-tabela .ctrl-entrega{width:100%;min-width:0;height:26px;padding:0 2px;font-size:var(--fs-12);}
+.rel-tabela .ctrl-entrega{width:100%;min-width:0;min-height:26px;height:26px;padding:0 4px 0 6px;justify-content:space-between;gap:2px;font-size:var(--fs-12);font-weight:400;}
+.rel-tabela .rel-ent .popover-wrap{display:block;width:100%;}
 .rel-tabela tfoot td{font-size:var(--fs-12);padding-left:8px;padding-right:8px;}
+
+/* Fiscal › Relatório Simples / Presumido (29/10/2026: "melhore esse dropdown e procure melhorar esse tabelão
+   visualmente"): a entrega vira a etiqueta com o menu do nads (Falta tracejada, entregue verde, Não se aplica apagada);
+   as linhas mais baixas e listradas, a concluída com a faixa verde à esquerda, o total destacado e o "dd/mm/aaaa" só ao
+   escrever (antes aparecia em todas as linhas sem data) */
+.rel-tabela col.rel-ent{width:112px;}
+.rel-tabela tbody td{padding-top:4px;padding-bottom:4px;}
+/* o campo tinha 32px por causa do min-height de todo input (a linha ficava alta): fica com os 26px dele */
+.rel-tabela .rel-campo{min-height:0;}
+.rel-tabela tbody tr:nth-child(even) td{background:color-mix(in srgb,var(--surface-2) 55%,transparent);}
+.rel-tabela tbody tr:hover td{background:var(--hover-bg);}
+.rel-tabela .dp-linha.feita td:first-child{box-shadow:inset 3px 0 0 var(--success);}
+.rel-tabela .rel-molde:not(:focus)::placeholder{color:transparent;}
+.rel-tabela tfoot td{border-top:2px solid var(--border);background:var(--surface-2);font-weight:600;font-variant-numeric:tabular-nums;padding-top:8px;padding-bottom:8px;}
+/* o total à direita, como os valores de cima; o que não cabe ganha … (o valor inteiro fica na dica) */
+.rel-tabela tfoot td.rel-total{text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-left:4px;padding-right:8px;}
+.rel-tabela .rel-ent .popover-wrap{display:flex;justify-content:center;}
+.rel-entrega{display:inline-flex;align-items:center;gap:4px;max-width:100%;height:24px;padding:0 7px;border:1px solid var(--border);border-radius:999px;
+  background:transparent;color:var(--ink-muted);font:inherit;font-size:var(--fs-12);font-weight:500;line-height:1;white-space:nowrap;cursor:pointer;
+  transition:background-color .12s,border-color .12s,color .12s;}
+.rel-entrega svg{width:13px;height:13px;flex:none;}
+.rel-entrega .menu-seta{width:10px;height:10px;opacity:.7;}
+.rel-entrega-texto{min-width:0;overflow:hidden;text-overflow:ellipsis;}
+button.rel-entrega:hover{border-color:var(--border-strong);background:var(--hover-bg);color:var(--ink);}
+button.rel-entrega[aria-expanded="true"]{border-color:var(--accent);color:var(--ink);}
+button.rel-entrega:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+.rel-entrega-falta{border-style:dashed;}
+.rel-entrega-feita{border-color:color-mix(in srgb,var(--success) 45%,transparent);background:var(--success-soft);color:var(--success-ink);}
+button.rel-entrega-feita:hover{border-color:var(--success);background:color-mix(in srgb,var(--success) 22%,transparent);color:var(--success-ink);}
+.rel-entrega-nao{border-color:transparent;background:var(--surface-2);color:var(--ink-faint);}
+.rel-entrega.leitura{cursor:default;}
+
+/* DP › Obrigações (29/10/2026: "quando for marcado a REINF o check fique azul"): a REINF transmitida pelo Fiscal sai em
+   azul, para não se confundir com as obrigações feitas no DP (verdes) */
+.dp-marca.reinf.feita{background:var(--info-soft);color:var(--info);}

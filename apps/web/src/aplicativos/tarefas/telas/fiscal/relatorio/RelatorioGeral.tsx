@@ -59,7 +59,8 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
             </button>
             <BotaoIcone icone="printer" titulo="Imprimir o protocolo de entrega" onClick={vm.imprimir} />
           </div>
-          <section className="card dp-lista">
+          {/* o cabeçalho fica parado no alto ao rolar (dp-lista-fixa, o mesmo das Obrigações do DP) */}
+          <section className="card dp-lista dp-lista-fixa">
             {!vm.total ? <p className="hint dp-vazio">Nenhuma empresa do {g.rotulo} no Cadastro: as empresas entram pelo regime.</p>
               : !vm.linhas.length ? <p className="hint dp-vazio">Nenhum cliente com esses filtros.</p> : (
                 <div className="table-wrap">
@@ -107,7 +108,7 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
                             );
                           })}
                           <td className="dp-ob dp-ob-primeira rel-data">
-                            <Valor estreito valor={dataBr(r.linha.data)} sugestao={r.sugestao?.data ? dataBr(r.sugestao.data) : 'dd/mm/aaaa'} rotulo={'Data de ' + r.nome} pode={vm.podeGravar} aoSalvar={v => vm.mudarData(r.codigo, v)} />
+                            <Valor estreito valor={dataBr(r.linha.data)} sugestao={r.sugestao?.data ? dataBr(r.sugestao.data) : undefined} molde="dd/mm/aaaa" rotulo={'Data de ' + r.nome} pode={vm.podeGravar} aoSalvar={v => vm.mudarData(r.codigo, v)} />
                           </td>
                           <td className="dp-ob rel-ent"><Entrega valor={r.linha.entregue} pode={vm.podeGravar} rotulo={'Entrega de ' + r.nome} aoMudar={e => vm.mudarEntrega(r.codigo, e)} /></td>
                           <td className="dp-ob rel-sit"><span className={'dp-marca ' + (r.situacao === 'concluida' ? 'feita' : r.situacao === 'em-andamento' ? 'parada' : 'a-fazer')} title={r.rotuloSituacao} aria-label={r.rotuloSituacao}>{r.situacao === 'concluida' ? '✓' : r.situacao === 'em-andamento' ? '…' : ''}</span></td>
@@ -117,7 +118,7 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
                     <tfoot>
                       <tr>
                         <td colSpan={2}><b>Total</b></td>
-                        {vm.totais.map((x, i) => <td key={x.id} className={'num' + (i === 0 ? ' dp-ob-primeira' : '')}>{x.valor}</td>)}
+                        {vm.totais.map((x, i) => <td key={x.id} className={'num rel-total' + (i === 0 ? ' dp-ob-primeira' : '')} title={x.valor === '—' ? undefined : 'R$ ' + x.valor}>{x.valor}</td>)}
                         <td colSpan={g.marcas.length + 3} />
                       </tr>
                     </tfoot>

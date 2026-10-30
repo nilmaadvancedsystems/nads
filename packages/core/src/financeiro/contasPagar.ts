@@ -1,6 +1,6 @@
 // As contas a pagar do escritório (28/10/2026: "o Contas a Pagar do Toriba, no nads"): os fornecedores (com a conta do
 // plano que já vem na conta), as contas (fornecedor, conta contábil, documento, emissão, vencimento, valor), o pagamento
-// (data, valor pago, juros, desconto; vira a saída no Caixa), a recorrência ("cria as parcelas na hora": uma por mês, no
+// (data, valor pago, juros, desconto; só controle, não lança no Caixa desde 30/10/2026), a recorrência ("cria as parcelas na hora": uma por mês, no
 // mesmo dia), os anexos (o boleto e o comprovante), a situação (Em aberto, Vencida, Paga, pelas datas), o aviso de
 // vencimento do Painel e o relatório em planilha. Puro: sem banco e sem tela.
 // O banco é financeiroFornecedores/{id} e financeiroContasPagar/{id} (apps/web/.../dados/contasPagar.firestore.ts).

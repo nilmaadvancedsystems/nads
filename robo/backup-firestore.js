@@ -41,6 +41,9 @@ const CAMPOS_DE_PROVA = ['assinatura', 'foto'];
 // adivinhacao.
 function serializar(valor) {
   if (valor === null || valor === undefined) return null;
+  // bytes (os anexos em pedacos do nads, desde 27/10/2026) viram base64: tratados como objeto, cada byte virava uma
+  // chave (900 mil por pedaco) e o backup estourava a memoria ("JavaScript heap out of memory", 29/10/2026)
+  if (Buffer.isBuffer(valor) || valor instanceof Uint8Array) return { __tipo: 'bytes', base64: Buffer.from(valor).toString('base64') };
   if (Array.isArray(valor)) return valor.map(serializar);
   if (typeof valor === 'object') {
     if (typeof valor.toDate === 'function') return { __tipo: 'timestamp', valor: valor.toDate().toISOString() };
@@ -94,7 +97,9 @@ function salvarProvas(destino, entregaId, competencia, anexos, resumo) {
   return salvos;
 }
 
-async function lerColecao(ref, contador, destino, resumoProvas, ehEntregas) {
+// escrever(id, registro): cada documento vai direto para o arquivo, sem guardar a colecao inteira na memoria (a
+// maquina da nuvem e uma e2-micro, 1 GB); sem ele, a colecao volta inteira (as subcolecoes de um documento)
+async function lerColecao(ref, contador, destino, resumoProvas, ehEntregas, escrever) {
   const snap = await ref.get();
   const docs = {};
   for (const doc of snap.docs) {
@@ -115,9 +120,9 @@ async function lerColecao(ref, contador, destino, resumoProvas, ehEntregas) {
       }
       if (Object.keys(subcolecoes).length) registro.subcolecoes = subcolecoes;
     }
-    docs[doc.id] = registro;
+    if (escrever) escrever(doc.id, registro); else docs[doc.id] = registro;
   }
-  return docs;
+  return escrever ? snap.size : docs;
 }
 
 async function main() {
@@ -143,15 +148,29 @@ async function main() {
   }
 
   const colecoes = await db.listCollections();
-  const backup = { projeto: 'entregas-2e5e2', feitoEm: new Date().toISOString(), colecoes: {} };
-
-  for (const col of colecoes) {
-    process.stderr.write('lendo ' + col.id + '... ');
-    backup.colecoes[col.id] = await lerColecao(col, contador, destino, resumoProvas, col.id === 'entregas');
-    process.stderr.write(Object.keys(backup.colecoes[col.id]).length + ' documentos\n');
-  }
-  backup.totalDeDocumentos = contador.docs;
-  fs.writeFileSync(caminho, JSON.stringify(backup, null, 1));
+  // o mesmo JSON de antes ({ projeto, feitoEm, colecoes: { id: { docId: registro } }, totalDeDocumentos }), escrito aos
+  // poucos num arquivo temporario: so com tudo lido ele vira o do dia (um backup pela metade nao conta como feito)
+  const temporario = caminho + '.parcial';
+  const fd = fs.openSync(temporario, 'w');
+  const w = t => fs.writeSync(fd, t);
+  try {
+    w('{\n "projeto": "entregas-2e5e2",\n "feitoEm": ' + JSON.stringify(new Date().toISOString()) + ',\n "colecoes": {');
+    let primeiraCol = true;
+    for (const col of colecoes) {
+      process.stderr.write('lendo ' + col.id + '... ');
+      w((primeiraCol ? '' : ',') + '\n  ' + JSON.stringify(col.id) + ': {');
+      primeiraCol = false;
+      let primeiroDoc = true;
+      const n = await lerColecao(col, contador, destino, resumoProvas, col.id === 'entregas', (id, registro) => {
+        w((primeiroDoc ? '' : ',') + '\n   ' + JSON.stringify(id) + ': ' + JSON.stringify(registro));
+        primeiroDoc = false;
+      });
+      w('\n  }');
+      process.stderr.write(n + ' documentos\n');
+    }
+    w('\n },\n "totalDeDocumentos": ' + contador.docs + '\n}\n');
+  } finally { fs.closeSync(fd); }
+  fs.renameSync(temporario, caminho);
 
   const kb = (fs.statSync(caminho).size / 1024).toFixed(0);
   console.log('OK:', caminho);

@@ -40,7 +40,7 @@ function TopicoConta({ vm }: { vm: VmJanelaDaContaAPagar }) {
             </Linha>
           </div>
         )}
-        <Linha rotulo="Conta contábil" dica="A conta do plano onde a saída entra no Caixa.">
+        <Linha rotulo="Conta contábil" dica="A conta do plano, para o controle e o relatório (não lança no Caixa).">
           <select className="pessoal-select cp-campo" value={vm.conta} disabled={travada} onChange={e => vm.setConta(e.target.value)} aria-label="Conta contábil">
             <option value="">Sem conta</option>
             {vm.contas.map(c => <option key={c.id} value={c.id}>{c.codigo} · {c.descricao}</option>)}
@@ -88,11 +88,11 @@ function TopicoPagamento({ vm }: { vm: VmJanelaDaContaAPagar }) {
         <Linha rotulo="Valor pago"><span className="num">{formatos.reais(p.valorPago)}</span></Linha>
         {p.juros > 0 && <Linha rotulo="Juros"><span className="num">{formatos.reais(p.juros)}</span></Linha>}
         {p.desconto > 0 && <Linha rotulo="Desconto"><span className="num">{formatos.reais(p.desconto)}</span></Linha>}
-        <Linha rotulo="No Caixa" dica="A saída que o pagamento criou, na conta contábil da conta.">{p.lancamentoId ? <span className="badge badge-ok">Saída lançada</span> : <span className="fraco">—</span>}</Linha>
+        {p.lancamentoId && <Linha rotulo="No Caixa" dica="Paga antes de 30/10/2026, quando o pagamento ainda lançava no Caixa."><span className="badge badge-ok">Saída lançada</span></Linha>}
         <Linha rotulo="Comprovante" dica="Fica em Anexos.">
           <CampoArquivos id="cp-comprovante-pago" aceitar={ACEITA_NO_ANEXO} rotulo="Escolher o comprovante" onEscolher={fs => void vm.escolherComprovante(fs[0])} />
         </Linha>
-        <Linha rotulo="Desfazer o pagamento" dica="A conta volta a ficar em aberto e a saída sai do Caixa.">
+        <Linha rotulo="Desfazer o pagamento" dica={p.lancamentoId ? 'A conta volta a ficar em aberto e a saída sai do Caixa.' : 'A conta volta a ficar em aberto.'}>
           <BotaoAcao className="btn btn-outline btn-danger" carregando={vm.fazendo === 'desfazer'} textoCarregando="Desfazendo…" onClick={() => void vm.desfazerPagamento()}><Icone nome="repeat" />Desfazer</BotaoAcao>
         </Linha>
       </Cartao>
@@ -110,7 +110,7 @@ function TopicoPagamento({ vm }: { vm: VmJanelaDaContaAPagar }) {
       <Linha rotulo="Comprovante" dica={vm.comprovante ? vm.comprovante.nome + ' · sobe ao pagar' : 'Opcional; fica em Anexos.'}>
         <CampoArquivos id="cp-comprovante" aceitar={ACEITA_NO_ANEXO} rotulo="Escolher o comprovante" onEscolher={fs => void vm.escolherComprovante(fs[0])} />
       </Linha>
-      <Linha rotulo="Pagar conta" dica="Marca a conta como paga e lança a saída no Caixa, na conta contábil da conta.">
+      <Linha rotulo="Pagar conta" dica="Marca a conta como paga (é só controle: não lança no Caixa).">
         <BotaoAcao carregando={vm.fazendo === 'pagar'} textoCarregando="Pagando…" onClick={() => void vm.pagar()}><Icone nome="check" />Pagar conta</BotaoAcao>
       </Linha>
     </Cartao>
