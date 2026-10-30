@@ -45,6 +45,9 @@ export function useAntecipacaoIcms() {
   const [ativo, setAtivo] = useState(0);
   const [mes, setMes] = useState('');
   const [situacao, setSituacao] = useState<t.sieg.SituacaoDaAntecipacao | ''>('');
+  // as colunas do passo a passo do cálculo (base da NF, base da antecipação, ICMS interno): escondidas até pedir (30/10/2026:
+  // "tem muita informação")
+  const [verCalculo, setVerCalculo] = useState(false);
 
   // o período, no endereço: o mês de trabalho por padrão, e nunca depois do mês de hoje
   const hoje = mesDeHoje();
@@ -168,6 +171,7 @@ export function useAntecipacaoIcms() {
     linhas, totais: s.totaisDaAntecipacao(linhas), total: todas.length,
     mes, setMes, mesesDasLinhas: resumo.porMes.map(m => ({ valor: m.mes, rotulo: rotuloDoMes(m.mes) + '/' + m.mes.slice(0, 4) })),
     situacao, setSituacao,
+    verCalculo, alternarCalculo: () => setVerCalculo(v => !v),
     // a alíquota interna (sem = a padrão do ES)
     aliquota, aliquotaPadrao: aliquotaGravada == null,
     mudarAliquota(texto: string) {
