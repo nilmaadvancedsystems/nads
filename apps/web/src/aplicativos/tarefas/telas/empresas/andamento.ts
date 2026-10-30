@@ -66,6 +66,10 @@ export function useEmpresasDoOperador(op: Operador | null) {
     falhou: cadastros.falhou,
     /** só a empresa em que a pessoa é a responsável do setor (a sem responsável fica de fora) */
     e: (emp: { nome: string; codigo: number | null }, dep: 'fiscal' | 'contabil') => { const r = responsavelDe(emp, dep); return !!r && nomes.some(n => igual(n, r)); },
+    /** quem o Cadastro diz que é o responsável do setor ('' = ninguém), para o aviso dizer o que foi conferido */
+    responsavel: responsavelDe,
+    /** quantas empresas o Cadastro trouxe (0 com a leitura certa quer dizer que ela veio vazia) */
+    noCadastro: cadastros.porId.size,
   };
 }
 
@@ -92,6 +96,14 @@ export function useEmpresasPermitidasDoOperador(op: Operador | null) {
     /** não deu para ler quem é o responsável (está tentando de novo): não dá para dizer que a empresa é de outra pessoa */
     falhou: filtra && daPessoa.falhou,
     pode,
+    /**
+     * O que foi conferido, para o aviso de "não é o responsável" (30/10/2026: a Clara barrada nas empresas que o admin deu a
+     * ela): quem entrou, o setor, quem o Cadastro diz que é o responsável e quantas empresas o Cadastro trouxe.
+     */
+    explicar: (e: { nome: string; codigo: number | null }) => ({
+      voce: op?.nome || '', setor: setor === 'fiscal' ? 'Fiscal' : setor === 'contabil' ? 'Contábil' : '',
+      responsavel: setor ? daPessoa.responsavel(e, setor) : '', noCadastro: daPessoa.noCadastro,
+    }),
     filtrar: <T extends { nome: string; codigo: number | null }>(lista: readonly T[]): T[] => (filtra ? lista.filter(pode) : [...lista]),
   };
 }
