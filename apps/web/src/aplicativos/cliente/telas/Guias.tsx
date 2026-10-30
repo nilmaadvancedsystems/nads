@@ -24,7 +24,6 @@ export function Guias(props: DaCasca) {
       <div className="cli-titulo">
         <div>
           <h1 className="page-title">Guias e obrigações</h1>
-          <p className="page-desc">Os vencimentos dos impostos e das obrigações da sua empresa no mês.</p>
         </div>
         <SeletorMes valor={vm.mes} onMudar={vm.mudarMes} rotulo="Mês" max={vm.ultimo} />
       </div>
