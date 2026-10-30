@@ -100,7 +100,8 @@ export function useEmpresa(rota: string) {
     pronta: true as const, empresa, departamento: op.departamento, carregando, competencia,
     rotuloCompetencia: t.rotuloCompetencia(competencia),
     competencias: competencias.map(c => ({ valor: c, rotulo: t.rotuloCompetencia(c) })),
-    setCompetencia: (c: string) => setParams({ competencia: c }),
+    // troca só a competência: o ?dep= (a rotina de outro setor) fica, como no abrirCompetencia (30/10/2026)
+    setCompetencia: (c: string) => setParams(p => { const n = new URLSearchParams(p); n.set('competencia', c); return n; }),
     situacao, rotuloSituacao: t.ROTULO_SITUACAO_GERAL[situacao],
     feitas: p.concluidas, total: p.total, porcentagem: t.porcentagemDe(p.concluidas, p.total),
     etapaAtual: situacao === 'nao-iniciada' || !proxima ? '' : proxima.nome,
