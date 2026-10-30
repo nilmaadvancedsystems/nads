@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   avisoDaConta, bancosDoCadastroNa, buscarNoPlano, cadastroDoDocumento, cadastroVazio, compararPlanos, confirmarPontoDePartida,
   comContasPadrao, criarRepoCadastro, criarRepoCadastroMemoria, definirCartao, definirContaPadrao, definirContato, definirDocumento, confirmarBancos, sugerirContaContabil, definirNotaDeHonorario, definirPagamentoDoProLabore, definirPrestaServico, definirRegime, regimeDoCadastro, definirSocios, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
@@ -228,6 +228,35 @@ describe('repositório sem acesso ao banco', () => {
     repo.salvar('FITO', confirmarPontoDePartida(repo.cadastro('FITO', 292), pontoDePartida(292), 'V', AGORA));
     expect(gravados).toEqual([]);
     expect(avisos).toHaveLength(1);
+  });
+});
+
+describe('a lista de todos os cadastros quando a leitura falha (30/10/2026)', () => {
+  it('fica marcada como falha (não como "chegou vazia") e tenta de novo até chegar', async () => {
+    vi.useFakeTimers();
+    try {
+      let tentativas = 0;
+      const nada = (_id: string, _ok: unknown, _falhou: unknown) => () => {};
+      const repo = criarRepoCadastro({
+        ouvirCadastro: nada, ouvirPlano: nada, gravar: async () => {},
+        ouvirTodos: (chegou, falhou) => {
+          tentativas++;
+          const n = tentativas;
+          queueMicrotask(() => (n === 1 ? falhou(new Error('Missing or insufficient permissions.')) : chegou([{ id: 'fito', doc: { nome: 'FITO', codigo: 292, historico: [], responsaveis: { contabil: 'Clara' } } }])));
+          return () => {};
+        },
+      }, false);
+      repo.todos();
+      await Promise.resolve();
+      expect(repo.todos()).toMatchObject({ carregada: true, falhou: true });
+      expect(repo.todos().porId.size).toBe(0);
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(tentativas).toBe(2);
+      expect(repo.todos().falhou).toBe(false);
+      expect(repo.todos().porId.get('fito')?.responsaveis?.contabil).toBe('Clara');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
