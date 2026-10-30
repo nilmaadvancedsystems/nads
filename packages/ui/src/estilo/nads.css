@@ -5531,7 +5531,7 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .rel-tabela col.rel-guia{width:70px;}
 .rel-tabela col.rel-mk,.rel-tabela col.rel-sit{width:30px;}
 .rel-tabela col.rel-data{width:86px;}
-.rel-tabela col.rel-ent{width:90px;}
+.rel-tabela col.rel-ent{width:108px;}
 .rel-tabela .dp-ob{width:auto;min-width:0;}
 .rel-tabela .dp-cliente-nome{max-width:none;}
 .rel-tabela thead tr:last-child th{white-space:normal;line-height:1.2;overflow:hidden;text-overflow:ellipsis;}
@@ -5541,5 +5541,5 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .rel-tabela .rel-campo:hover:not([readonly]){border-color:var(--border);}
 .rel-tabela .rel-campo:focus{border-color:var(--accent);background:var(--surface);outline:none;}
 .rel-tabela .rel-campo::placeholder{color:var(--ink-faint);}
-.rel-tabela .ctrl-entrega{width:100%;min-width:0;height:26px;padding:0 2px;font-size:var(--fs-12);}
+.rel-tabela .ctrl-entrega{width:100%;min-width:0;min-height:26px;height:26px;padding:0 18px 0 5px;line-height:24px;background-position:right 2px center;background-size:14px;font-size:var(--fs-12);}
 .rel-tabela tfoot td{font-size:var(--fs-12);padding-left:8px;padding-right:8px;}

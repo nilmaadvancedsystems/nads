@@ -27,9 +27,10 @@ export function MarcaDoControle({ marca, rotulo, pode, aoVirar }: { marca: t.Mar
   );
 }
 
+/** A entrega: a Seleção do catálogo (select-compact, com o triângulo); 30/10/2026: era a pessoal-select, que apagava o triângulo */
 export function Entrega({ valor, pode, rotulo, aoMudar }: { valor: t.EntregaDoControle; pode: boolean; rotulo: string; aoMudar: (e: t.EntregaDoControle) => void }) {
   return (
-    <select className={'pessoal-select ctrl-entrega' + (valor ? ' ctrl-entrega-feita' : '')} value={valor} disabled={!pode} aria-label={rotulo}
+    <select className={'select-compact ctrl-entrega' + (valor ? ' ctrl-entrega-feita' : '')} value={valor} disabled={!pode} aria-label={rotulo}
       onChange={e => aoMudar(e.target.value as t.EntregaDoControle)}>
       {t.ENTREGAS_DO_CONTROLE.map(o => <option key={o.valor} value={o.valor}>{o.rotulo}</option>)}
     </select>
