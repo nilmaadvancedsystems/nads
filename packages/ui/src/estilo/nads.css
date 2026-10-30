@@ -5849,6 +5849,8 @@ button.fr-entrega-feita:hover{border-color:var(--success);background:color-mix(i
   .fr-tabela thead tr:last-child th:nth-child(-n+2){z-index:4;}
   .fr-tabela thead tr:first-child th:first-child{position:sticky;left:0;z-index:4;}
   .fr-tabela tfoot td:first-child{left:0;z-index:3;}
+}
+
 /* ---------------------------------- Fiscal › REINF e Antecipação ICMS-ES (30/10/2026) ----------------------------------
    O Fiscal refeito no jeito do site (como o Gmail): as duas telas com as mesmas peças — a barra de cima das outras telas,
    os números em cartões de canto 6px (na REINF eles filtram), e cada lista num .card com o título, a contagem, a busca e
@@ -5975,6 +5977,8 @@ button.fxr-numero.active{border-color:var(--accent);box-shadow:inset 0 0 0 1px v
   .fxr-reinf .fxr-acoes{grid-column:1 / -1;display:flex;gap:6px;margin-top:4px;}
   .fxr-reinf .fxr-acoes .btn{flex:1;justify-content:center;}
   .fxr-reinf .fxr-acoes .btn + .btn{margin-left:0;}
+}
+
 /* ------------------------- Fiscal › Calculadora do Simples e Rateio de frete (30/10/2026) -------------------------
    "refazendo o fiscal inteiro": as duas ferramentas de cálculo no modelo do Gmail, para parecer parte do site. A barra
    de cima é a das outras telas; cada bloco é um .card sem enchimento, com o topo (título, dica, contagem e as ações à
