@@ -5574,3 +5574,7 @@ button.rel-entrega:focus-visible{outline:2px solid var(--accent);outline-offset:
 button.rel-entrega-feita:hover{border-color:var(--success);background:color-mix(in srgb,var(--success) 22%,transparent);color:var(--success-ink);}
 .rel-entrega-nao{border-color:transparent;background:var(--surface-2);color:var(--ink-faint);}
 .rel-entrega.leitura{cursor:default;}
+
+/* DP › Obrigações (29/10/2026: "quando for marcado a REINF o check fique azul"): a REINF transmitida pelo Fiscal sai em
+   azul, para não se confundir com as obrigações feitas no DP (verdes) */
+.dp-marca.reinf.feita{background:var(--info-soft);color:var(--info);}
