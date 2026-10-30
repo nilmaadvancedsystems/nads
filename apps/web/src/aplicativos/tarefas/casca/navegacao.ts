@@ -11,7 +11,7 @@ import type { Operador } from './operador';
 
 export const BASE = '/tarefas';
 
-export type IdAplicacao = 'inicio' | 'minhas-empresas' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'financeiro' | 'entregas' | 'area-cliente' | 'minhas-tarefas';
+export type IdAplicacao = 'inicio' | 'minhas-empresas' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'financeiro' | 'entregas' | 'area-cliente' | 'minhas-tarefas' | 'ferramentas';
 
 export interface Pagina {
   id: string; rotulo: string; icone: NomeIcone; titulo: string; /** a logo da marca no lugar do ícone, na lateral */ marca?: 'fgts';
@@ -140,6 +140,12 @@ export const APLICACOES: readonly Aplicacao[] = [
     // do login; era "Equipe" até 28/10/2026: "troque a palavra equipe p/ Usuários")
     { id: 'usuarios', rotulo: 'Usuários', icone: 'usuario', titulo: 'Usuários', secao: 'Cadastro' },
     ...PAGINAS_DO_ADMIN.map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, titulo: p.titulo, secao: 'Admin', soAdmin: true })),
+  ] },
+  // as Ferramentas (30/10/2026: "um botão de Ferramentas ao lado da engrenagem"): utilitários de documentos que rodam no
+  // navegador (PDF: separar, juntar, girar, tirar páginas, virar imagem ou texto; planilhas). Sem entrada na gaveta: o botão
+  // fica no pé dela (useCascaTarefas.ferramentas), para todos
+  { id: 'ferramentas', nome: 'Ferramentas', icone: 'wrench', grupo: 'Escritório', pronta: true, paginas: [
+    { id: 'documentos', rotulo: 'Documentos', icone: 'fileText', titulo: 'Ferramentas de documentos' },
   ] },
   // a Área do Cliente (Vitor, 16/10/2026): o lado do escritório do site que o cliente abre pelo link secreto. Com o
   // Mandei junto (19/10/2026: "unifique área do cliente e o mandei"): o que o cliente manda (Chamados, Recebidos) e os

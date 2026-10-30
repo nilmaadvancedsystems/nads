@@ -66,6 +66,8 @@ export function CascaTarefas({ app, pagina, telaInteira, semLateral, larga, empr
       peDaGaveta={vm.admin || vm.configuracoes ? fechar => (
         <div className="drawer-icones">
           {vm.admin && <ItemDosFeedbacks abrir={() => { fechar(); setFeedbacks(true); }} />}
+          <BotaoIcone icone="wrench" titulo="Ferramentas" aria-pressed={vm.ferramentas.ativa}
+            onClick={() => { fechar(); vm.onAplicacao('ferramentas'); }} />
           {vm.configuracoes && <BotaoIcone icone="settings" titulo="Configurações" aria-pressed={vm.configuracoes.ativa}
             onClick={() => { fechar(); vm.onAplicacao('cadastro'); }} />}
         </div>
