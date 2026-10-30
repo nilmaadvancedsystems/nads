@@ -48,20 +48,33 @@ export function useEmpresasDaPessoa() {
  */
 export function useEmpresasDoOperador(op: Operador | null) {
   const cadastros = useTodosOsCadastros();
-  const equipe = useAcesso().equipe().lista.filter(p => p.ativo).map(p => p.nome);
+  const daEquipe = useAcesso().equipe();
+  const ativos = daEquipe.lista.filter(p => p.ativo);
+  const equipe = ativos.map(p => p.nome);
   const nomes = op ? nomesDaPessoa(op.nome, equipe) : [];
+  /**
+   * O escolhido no Cadastro vale só se é da equipe daquele departamento (a mesma regra de Empresas por responsável,
+   * daEquipeDoDep, 29/10/2026): fora dela (o Savio, do DP, no Fiscal), a empresa fica sem responsável ali e, no Fiscal,
+   * vale o da planilha (30/10/2026: aparecer para quem a planilha diz). Sem a equipe lida, vale o escolhido, como antes.
+   */
+  const daEquipeDoDep = (dep: 'fiscal' | 'contabil', nome: string) => !ativos.length
+    || ativos.some(p => (p.departamento === dep || (p.papeis as string[]).includes(dep)) && (igual(p.nome, nome) || igual(p.nome.split('.')[0], nome)));
   // o cadastro pelo nome e, se o nome não bate (o Concilia aí e o Extratudo têm a lista deles), pelo código do ERP
   const cadastroDe = (emp: { nome: string; codigo: number | null }) => cadastros.porId.get(formatos.slug(emp.nome))
     || (emp.codigo != null ? [...cadastros.porId.values()].find(c => c.codigo === emp.codigo) : undefined);
   const responsavelDe = (emp: { nome: string; codigo: number | null }, dep: 'fiscal' | 'contabil') => {
-    const r = cadastroDe(emp)?.responsaveis?.[dep] || '';
+    const escolhido = cadastroDe(emp)?.responsaveis?.[dep] || '';
+    const r = escolhido && daEquipeDoDep(dep, escolhido) ? escolhido : '';
     return r || (dep === 'fiscal' ? empresas.clienteDoDp(emp.codigo)?.responsavel || '' : '');
   };
   return {
     /** o admin e o diretor podem ver todas (26/10/2026) */
     podeVerTodas: !op || !!op.admin || op.nivel === 'diretor',
-    /** o Cadastro chegou de verdade (a lista que falhou não conta: vazia, ela barraria todo mundo; 30/10/2026) */
-    carregada: cadastros.carregada && !cadastros.falhou,
+    /**
+     * o Cadastro chegou de verdade (a lista que falhou não conta: vazia, ela barraria todo mundo; 30/10/2026), e a equipe
+     * (quem é de cada departamento decide se o escolhido vale)
+     */
+    carregada: cadastros.carregada && !cadastros.falhou && daEquipe.carregada,
     /** a leitura do Cadastro falhou e está tentando de novo */
     falhou: cadastros.falhou,
     /** só a empresa em que a pessoa é a responsável do setor (a sem responsável fica de fora) */
