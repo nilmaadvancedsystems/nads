@@ -4,5 +4,5 @@ import { useLeitorSintegra } from './useLeitorSintegra';
 
 export function SintegraDaEtapa({ codigo, competencia }: { codigo: string; competencia: string }) {
   const vm = useLeitorSintegra({ codigo, competencia });
-  return <div className="sintegra-na-etapa"><LeitorSintegra vm={vm} id={'sintegra-' + codigo + '-' + competencia} /></div>;
+  return <div className="fs-etapa"><LeitorSintegra vm={vm} id={'sintegra-' + codigo + '-' + competencia} /></div>;
 }
