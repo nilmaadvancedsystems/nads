@@ -741,6 +741,8 @@ export interface BancoParaConfirmar {
 /**
  * Grava os bancos marcados como o cadastro da empresa, cada um com a conta contábil (obrigatória; com o plano importado,
  * tem de ser uma conta dele que recebe lançamento). A conta do ponto de partida guarda o id; a nova precisa de agência e conta.
+ * Com o plano vindo de um balancete, a conta que não está nele não trava (30/10/2026): o balancete só lista as contas com
+ * saldo no mês, e o banco parado não aparece; fica o aviso leve da linha (avisoDaConta).
  */
 export function confirmarBancos(c: CadastroDaEmpresa, linhas: readonly BancoParaConfirmar[], partida: readonly ContaBancaria[], plano: PlanoDeContas | null, por: string, agora: Date): ResultadoCadastro {
   if (c.bancos) return { cadastro: c, erro: 'Os bancos desta empresa já estão no Cadastro.' };
@@ -755,7 +757,7 @@ export function confirmarBancos(c: CadastroDaEmpresa, linhas: readonly BancoPara
     if (!antes && (!agencia || !conta)) return { cadastro: c, erro: nome + ': preencha a agência e a conta.' };
     if (!contaContabil) return { cadastro: c, erro: nome + ': informe a conta contábil.' };
     const aviso = avisoDaConta(contaContabil, plano);
-    if (aviso) return { cadastro: c, erro: nome + ': ' + aviso };
+    if (aviso && !foraDoBalancete(contaContabil, plano)) return { cadastro: c, erro: nome + ': ' + aviso };
     const id = antes ? antes.id : idDaConta(marca, agencia, conta);
     if (bancos.some(b => b.id === id)) return { cadastro: c, erro: nome + ': essa conta está duas vezes na lista.' };
     const nova: ContaBancaria = { ...(antes || { id, marca, nome }), id, contaContabil };
@@ -965,10 +967,22 @@ export function comContasPadrao(c: CadastroDaEmpresa, novas: ContasPadrao, por: 
   return registrar({ ...c, contasPadrao: { contas, nomes } }, por, agora, 'Mudou conta padrão', detalhe);
 }
 
-/** Aviso de uma conta usada no cadastro que não bate com o plano atual (null = tudo certo ou sem plano). */
+/**
+ * A conta não está no plano, e o plano veio de um balancete: o balancete só lista as contas com saldo no mês, então ela
+ * pode existir e só estar sem saldo (30/10/2026). Não trava nada; o aviso é leve.
+ */
+export function foraDoBalancete(codigo: string | undefined, plano: PlanoDeContas | null): boolean {
+  return !!codigo && plano?.origem === 'balancete' && !contaNoPlano(plano, codigo);
+}
+
+/**
+ * Aviso de uma conta usada no cadastro que não bate com o plano atual (null = tudo certo ou sem plano). Com o plano do
+ * balancete, a conta que não está nele é só "sem saldo neste balancete" (foraDoBalancete): aviso leve, não erro.
+ */
 export function avisoDaConta(codigo: string | undefined, plano: PlanoDeContas | null, nomeAntes?: string): string | null {
   if (!codigo || !plano) return null;
   const c = contaNoPlano(plano, codigo);
+  if (!c && plano.origem === 'balancete') return 'A conta ' + codigo + ' está sem saldo neste balancete (ele só lista as contas com saldo no mês): confira se é ela mesma.';
   if (!c) return 'A conta ' + codigo + ' não está no plano de contas.';
   if (c.sintetica) return 'A conta ' + codigo + ' é sintética (não recebe lançamento).';
   if (nomeAntes && nomeNorm(nomeAntes) !== nomeNorm(c.nome)) return 'Mudou de nome no plano: era "' + nomeAntes + '".';
