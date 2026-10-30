@@ -12,6 +12,10 @@ import { useEmpresasPermitidas } from '../../empresas/andamento';
 
 export type AbaDoSintegra = 'resumo' | 'sieg' | 'alterdata' | 'layout';
 
+/** o CFOP bate com o Alterdata: o mesmo valor e o mesmo número de notas */
+const cfopBate = (x: { valorSintegra: number; valorAlterdata: number; notasSintegra: number; notasAlterdata: number }) =>
+  !(Math.round((x.valorSintegra - x.valorAlterdata) * 100) / 100) && x.notasSintegra === x.notasAlterdata;
+
 export function useLeitorSintegra(daEtapa?: { codigo: string; competencia: string }) {
   const { toast } = useRetorno();
   const repo = useRepo();
@@ -67,12 +71,20 @@ export function useLeitorSintegra(daEtapa?: { codigo: string; competencia: strin
     return t.sintegra.conferirComAlterdata(arq, entradas, saidas);
   }, [arq, lidas, competencia, relatorios.length, doRelatorio]);
 
+  // o número de cada aba (30/10/2026, o visual novo: a aba diz quanto tem para olhar)
+  const pendenciasSieg = comSieg ? comSieg.soNoSieg.length + comSieg.soNoSintegra.length + comSieg.valorDiferente.length + comSieg.situacaoDiferente.length : null;
+  const pendenciasAlterdata = comAlterdata ? comAlterdata.soNoAlterdata.length + comAlterdata.soNoSintegra.length + comAlterdata.porCfop.filter(x => !cfopBate(x)).length : null;
+
   return {
     arquivo, arq, cab, resumo, avisos, aba, setAba, naEtapa: !!daEtapa,
     empresa: empresa ? empresa.codigo + ' · ' + empresa.nome : '',
     competencia, rotuloCompetencia: competencia ? t.rotuloCompetencia(competencia) : '',
-    comSieg, temSieg: !!siegDados,
-    comAlterdata,
+    comSieg, temSieg: !!siegDados, pendenciasSieg,
+    comAlterdata, pendenciasAlterdata,
+    /** a comparação por CFOP com o Alterdata, com a diferença e se bate */
+    cfopsAlterdata: (comAlterdata?.porCfop || []).map(x => ({ ...x, dif: Math.round((x.valorSintegra - x.valorAlterdata) * 100) / 100, bate: cfopBate(x) })),
+    /** os registros do arquivo (10, 11, 50…) com quantas linhas de cada */
+    registros: arq ? Object.entries(arq.contagem).sort(([x], [y]) => x.localeCompare(y)).map(([tipo, quantos]) => ({ tipo, quantos })) : [],
     /** de onde vieram as notas do Alterdata: os relatórios subidos aqui ou as importadas na Conferência */
     alterdataDosRelatorios: relatorios.length > 0,
     relatorios: relatorios.map((r, i) => ({ id: String(i), nome: r.nome, detalhe: r.notas.length + (r.notas.length === 1 ? ' nota' : ' notas') })),

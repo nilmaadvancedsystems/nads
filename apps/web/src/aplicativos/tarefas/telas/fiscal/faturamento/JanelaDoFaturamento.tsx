@@ -21,15 +21,26 @@ export function JanelaDoFaturamento({ cliente, competencias, rotuloDoPeriodo, an
       {vm.vendo && <EspelhoDaNota nota={vm.vendo} codigo={cliente.codigo} competencia={vm.mes?.competencia} fechar={vm.fecharNota} />}
       {/* no desenho da janela do Financeiro (o Resultado por conta; 23/10/2026: "agora tá muito grande… faça no estilo do
           financeiro"): o caminho no topo, o corpo rolando por dentro e o Fechar no pé; até 1240 px, só a altura que precisa */}
-      <div ref={janela} className="modal registro-novo fat-detalhe" role="dialog" aria-modal="true" aria-labelledby="fatDetalheTitulo">
+      <div ref={janela} className="modal registro-novo fat-detalhe fs-det" role="dialog" aria-modal="true" aria-labelledby="fatDetalheTitulo">
         <header className="registro-topo">
           <span className="registro-caminho" id="fatDetalheTitulo"><Icone nome="dinheiro" />Faturamento<Icone nome="chevronRight" /><b>{cliente.codigo} · {cliente.nome}</b></span>
           <BotaoFechar onClick={fechar} />
         </header>
         <div className="registro-corpo fat-detalhe-corpo-geral">
-        <p className="fraco fat-detalhe-sobre">{cliente.regime || 'Sem regime'} · {rotuloDoPeriodo} · NF-e e NFC-e emitidas no SIEG, sem as canceladas</p>
+        {/* quem é e de onde vêm os números (30/10/2026, o visual novo do Fiscal): o nome grande e as fichas embaixo */}
+        <div className="fs-det-cabeca">
+          <span className="fs-det-cod num">{cliente.codigo}</span>
+          <div className="fs-det-nome">
+            <h2>{cliente.nome}</h2>
+            <p className="fs-det-fichas">
+              <span className="badge badge-neutral">{cliente.regime || 'Sem regime'}</span>
+              <span className="badge badge-neutral">{rotuloDoPeriodo}</span>
+              <span className="fs-det-fonte">NF-e e NFC-e emitidas no SIEG, sem as canceladas</span>
+            </p>
+          </div>
+        </div>
 
-        <div className="stat-grid fin-numeros">
+        <div className="stat-grid fin-numeros fs-det-numeros">
           {/* o número em cima e o detalhe embaixo, pequeno (23/10/2026: os rótulos longos quebravam no celular) */}
           <Stat rotulo="Total no período" valor={'R$ ' + brl(vm.numeros.total)} sub={vm.numeros.mesesComDado + (vm.numeros.mesesComDado === 1 ? ' mês com dado' : ' meses com dado')} />
           {vm.numeros.ultimo && (
@@ -47,10 +58,14 @@ export function JanelaDoFaturamento({ cliente, competencias, rotuloDoPeriodo, an
           <h3>Evolução <span className="fraco">· clique no mês para ver as notas dele</span></h3>
           <BarrasEmColuna colunas={vm.barras} ativa={vm.mes?.competencia ?? null} onEscolher={vm.escolher} />
           {vm.semDado > 0 && <p className="fraco fat-sem-dado">{vm.semDado === 1 ? '1 mês' : vm.semDado + ' meses'} do período sem dado no SIEG (no período Ano, aparecem vazios)</p>}
-          <div className="fat-mix" aria-label="NF-e e NFC-e no período">
-            <span className="fat-mix-barra" aria-hidden="true"><span style={{ width: vm.numeros.mix.pctNfe + '%' }} /></span>
-            <span><b>NF-e</b> {vm.numeros.mix.pctNfe}% · R$ {brl(vm.numeros.mix.nfe)}</span>
-            <span><b>NFC-e</b> {vm.numeros.mix.pctNfce}% · R$ {brl(vm.numeros.mix.nfce)}</span>
+          {/* o mix numa barra só, as duas partes com a legenda de bolinha */}
+          <div className="fs-mix" aria-label="NF-e e NFC-e no período">
+            <span className="fs-mix-barra" aria-hidden="true">
+              <span className="fs-mix-nfe" style={{ width: vm.numeros.mix.pctNfe + '%' }} />
+              <span className="fs-mix-nfce" style={{ width: vm.numeros.mix.pctNfce + '%' }} />
+            </span>
+            <span className="fs-mix-item"><i className="fs-mix-nfe" /><b>NF-e</b> {vm.numeros.mix.pctNfe}% · R$ {brl(vm.numeros.mix.nfe)}</span>
+            <span className="fs-mix-item"><i className="fs-mix-nfce" /><b>NFC-e</b> {vm.numeros.mix.pctNfce}% · R$ {brl(vm.numeros.mix.nfce)}</span>
           </div>
         </section>
 
