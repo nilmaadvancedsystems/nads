@@ -121,7 +121,7 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
                   </tbody>
                   <tfoot>
                     <tr>
-                      <td colSpan={2}>Total <span className="fr-total-qtd">{vm.achadas} {vm.achadas === 1 ? 'empresa' : 'empresas'}</span></td>
+                      <td colSpan={2}>Total</td>
                       {vm.totais.map((x, i) => <td key={x.id} className={'fr-num' + (i === 0 ? ' fr-g' : '') + (x.valor === '—' ? ' fr-zero' : '')} title={x.valor === '—' ? undefined : 'R$ ' + x.valor}>{x.valor}</td>)}
                       <td colSpan={g.marcas.length + 3} className="fr-g" />
                     </tr>
