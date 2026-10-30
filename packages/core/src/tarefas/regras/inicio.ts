@@ -37,6 +37,16 @@ export function ordenarAvisos<T extends Pick<AvisoDoEscritorio, 'em' | 'fixado'>
   return [...lista].sort((a, b) => Number(!!b.fixado) - Number(!!a.fixado) || b.em.localeCompare(a.em));
 }
 
+/**
+ * O mural junta os avisos mais novos (a leitura com limite) com os fixados (lidos à parte: 30/10/2026, o fixado antigo
+ * saía da leitura dos mais novos e sumia do mural). O mesmo aviso nas duas fica uma vez, como está nos mais novos (a
+ * leitura que chega primeiro quando alguém fixa ou desafixa).
+ */
+export function juntarAvisos<T extends Pick<AvisoDoEscritorio, 'id'>>(recentes: readonly T[], fixados: readonly T[]): T[] {
+  const ids = new Set(recentes.map(a => a.id));
+  return [...recentes, ...fixados.filter(a => !ids.has(a.id))];
+}
+
 /** O resumo do progresso das empresas (o painel de Minhas empresas). */
 export interface ResumoDoProgresso {
   empresas: number;

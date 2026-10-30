@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { limparAviso, MAIOR_AVISO, ordenarAvisos, porcentagemDe, problemaDoAviso, resumoDoProgresso } from './inicio';
+import { juntarAvisos, limparAviso, MAIOR_AVISO, ordenarAvisos, porcentagemDe, problemaDoAviso, resumoDoProgresso } from './inicio';
 
 describe('avisos do escritório', () => {
   it('limpa as pontas e as linhas em branco repetidas', () => {
@@ -17,6 +17,13 @@ describe('avisos do escritório', () => {
       { id: 'c', em: '2026-09-01T10:00:00Z', fixado: true },
     ];
     expect(ordenarAvisos(l).map(x => x.id)).toEqual(['c', 'b', 'a']);
+  });
+  it('o fixado antigo (fora dos mais novos) entra no mural, uma vez só', () => {
+    const recentes = [{ id: 'n1', em: '2026-10-29T10:00:00Z', fixado: false }, { id: 'f2', em: '2026-10-28T10:00:00Z', fixado: true }];
+    const fixados = [{ id: 'f2', em: '2026-10-28T10:00:00Z', fixado: true }, { id: 'f-velho', em: '2026-01-05T10:00:00Z', fixado: true }];
+    expect(ordenarAvisos(juntarAvisos(recentes, fixados)).map(x => x.id)).toEqual(['f2', 'f-velho', 'n1']);
+    // desafixado: os mais novos já dizem que não está fixado
+    expect(juntarAvisos([{ id: 'f2', em: '', fixado: false }], [{ id: 'f2', em: '', fixado: true }])).toEqual([{ id: 'f2', em: '', fixado: false }]);
   });
 });
 
