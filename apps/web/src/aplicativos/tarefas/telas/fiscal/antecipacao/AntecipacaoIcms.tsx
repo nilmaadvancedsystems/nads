@@ -1,8 +1,9 @@
 // Fiscal › Antecipação ICMS-ES (Heverton, 22/10/2026: a planilha "Antecipação ICMS-ES"): a empresa e o período em cima;
-// os dados da empresa; o resumo (as NF-e, o valor, o ICMS destacado, a antecipação, o a recolher e a alíquota interna,
-// editável); a contagem por situação, que filtra; a tabela da aba CÁLCULO com a situação de cada linha; os totais por mês;
-// Imprimir (o relatório da aba RELATÓRIO, A4 deitado). Só as peças do catálogo (busca de cliente com lista, Segmentado,
-// SeletorMes, números em painéis, valor editável, chips, seleção compacta, Tabela padrão, dados em linhas, Alerta, Vazio).
+// a linha da empresa (razão social, CNPJ, IE, regime e a alíquota interna, editável); três números (as NF-e, a antecipação
+// e o a recolher); a contagem por situação, que filtra; a tabela da aba CÁLCULO com a situação de cada linha (as colunas
+// do passo a passo do cálculo só com "Ver o cálculo"); os totais por mês, quando há mais de um; Imprimir (o relatório da
+// aba RELATÓRIO, A4 deitado). Enxuta em 30/10/2026 ("tem muita informação e os layouts estão feios"): o endereço e o
+// responsável ficam no relatório impresso, e os números saíram do arco-íris.
 import { Alerta, BotaoIcone, Esqueleto, Icone, Segmentado, SeletorMes, useCarregando, Vazio } from '@nads/ui';
 import { ValorEditavel } from '../../financeiro/partes/ValorEditavel';
 import { useAntecipacaoIcms } from './useAntecipacaoIcms';
@@ -55,17 +56,33 @@ function BuscaDaEmpresa({ vm }: { vm: Vm }) {
   );
 }
 
+/** A linha da empresa: o que identifica (para conferir que é a certa) e a alíquota interna, editável, no canto. */
+function LinhaDaEmpresa({ vm }: { vm: Vm }) {
+  const d = vm.dadosDaEmpresa;
+  const partes = [
+    d.cnpj && { rotulo: 'CNPJ', valor: d.cnpj },
+    d.inscricaoEstadual && { rotulo: 'IE', valor: d.inscricaoEstadual },
+    d.regime && { rotulo: 'Regime', valor: d.regime },
+    d.municipio && { rotulo: '', valor: d.municipio },
+  ].filter(Boolean) as { rotulo: string; valor: string }[];
+  return (
+    <div className="antecipacao-linha-empresa">
+      <span className="antecipacao-razao" title={d.endereco || undefined}>{d.razaoSocial}</span>
+      {partes.map(p => <span key={p.rotulo + p.valor} className="antecipacao-dado">{p.rotulo && <span className="fraco">{p.rotulo} </span>}<span className="num">{p.valor}</span></span>)}
+      <span className="tarefas-barra-espaco" />
+      <span className="antecipacao-aliquota" title={vm.aliquotaPadrao ? 'A alíquota padrão do ES' : 'A alíquota desta empresa'}>
+        <span className="fraco">Alíquota interna</span>
+        <ValorEditavel valor={vm.aliquota} rotulo="Alíquota interna do ES (%)" aoSalvar={vm.mudarAliquota} />%
+      </span>
+    </div>
+  );
+}
+
 export function AntecipacaoIcms() {
   const vm = useAntecipacaoIcms();
   useCarregando(vm.carregando);
   const r = vm.resumo;
-  const numeros: { rotulo: string; valor: string; tom: string; icone: Parameters<typeof Icone>[0]['nome']; dica?: string }[] = [
-    { rotulo: 'Total de NF-e', valor: String(r.notas), tom: 'info', icone: 'fileText', dica: r.linhas + (r.linhas === 1 ? ' linha' : ' linhas') + ' (uma por CFOP, CST e alíquota da nota)' },
-    { rotulo: 'Valor das operações', valor: brl(r.valorOperacao), tom: 'neutro', icone: 'dinheiro' },
-    { rotulo: 'ICMS destacado', valor: brl(r.icmsDestacado), tom: 'roxo', icone: 'recibo' },
-    { rotulo: 'Antecipação calculada', valor: brl(r.antecipacao), tom: 'laranja', icone: 'barChart', dica: 'A soma da coluna Antecipação (todas as linhas)' },
-    { rotulo: 'A recolher', valor: brl(r.aRecolher), tom: 'marca', icone: 'alvo', dica: 'Sem as linhas Dispensado e Não se aplica' },
-  ];
+  const calc = vm.verCalculo;
   return (
     <section className="antecipacao">
       <div className="tarefas-barra-topo">
@@ -81,7 +98,7 @@ export function AntecipacaoIcms() {
       {vm.exemplos && <p className="hint drive-aviso">Dados de exemplo: as notas de entrada do SIEG são inventadas (TESTE) e o que se marca fica só neste navegador.</p>}
       {!vm.empresa ? (
         <Vazio icone="briefcase" titulo="Escolha a empresa" texto="Digite o código do ERP ou parte do nome." />
-      ) : vm.carregando ? <Esqueleto linhas={8} numeros={5} /> : (
+      ) : vm.carregando ? <Esqueleto linhas={8} numeros={3} /> : (
         <>
           {vm.semXml.length > 0 && (
             <Alerta naLinha titulo={'Sem os XMLs do SIEG em ' + vm.semXml.map(m => m.rotulo).join(', ')}
@@ -96,61 +113,55 @@ export function AntecipacaoIcms() {
               {!vm.pedindo && <button type="button" className="btn btn-outline" disabled={!vm.roboLigado} title={vm.roboLigado ? undefined : 'O robô do SIEG está desligado'} onClick={() => void vm.pedirXmls()}><Icone nome="download" width={16} height={16} />{vm.comErro ? 'Pedir de novo' : 'Pedir ao robô'}</button>}
             </Alerta>
           )}
-          <section className="card antecipacao-dados">
-            <dl className="ent-dados">
-              <div><dt>Razão social</dt><dd>{vm.dadosDaEmpresa.razaoSocial}</dd></div>
-              {vm.dadosDaEmpresa.cnpj && <div><dt>CNPJ</dt><dd className="num">{vm.dadosDaEmpresa.cnpj}</dd></div>}
-              {vm.dadosDaEmpresa.inscricaoEstadual && <div><dt>Inscrição estadual</dt><dd className="num">{vm.dadosDaEmpresa.inscricaoEstadual}</dd></div>}
-              {vm.dadosDaEmpresa.regime && <div><dt>Regime</dt><dd>{vm.dadosDaEmpresa.regime}</dd></div>}
-            </dl>
-            <dl className="ent-dados">
-              {vm.dadosDaEmpresa.endereco && <div><dt>Endereço</dt><dd>{vm.dadosDaEmpresa.endereco}</dd></div>}
-              {vm.dadosDaEmpresa.municipio && <div><dt>Município/UF</dt><dd>{vm.dadosDaEmpresa.municipio}</dd></div>}
-              {vm.dadosDaEmpresa.responsavel && <div><dt>Responsável</dt><dd>{vm.dadosDaEmpresa.responsavel}</dd></div>}
-              <div>
-                <dt>Alíquota interna ES</dt>
-                <dd className="antecipacao-aliquota">
-                  <ValorEditavel valor={vm.aliquota} rotulo="Alíquota interna do ES (%)" aoSalvar={vm.mudarAliquota} />%
-                  <span className="fraco">{vm.aliquotaPadrao ? 'a padrão' : 'desta empresa'}</span>
-                </dd>
-              </div>
-            </dl>
-          </section>
-          <div className="stat-grid dp-numeros">
-            {numeros.map(n => (
-              <div key={n.rotulo} className={'stat painel-numero painel-' + n.tom} title={n.dica}>
-                <span className="painel-numero-icone" aria-hidden="true"><Icone nome={n.icone} width={18} height={18} /></span>
-                <p className="stat-label">{n.rotulo}</p>
-                <p className="stat-value num">{n.valor}</p>
-              </div>
-            ))}
+          <LinhaDaEmpresa vm={vm} />
+          <div className="stat-grid antecipacao-numeros">
+            <div className="stat" title={r.linhas + (r.linhas === 1 ? ' linha' : ' linhas') + ' (uma por CFOP, CST e alíquota da nota)'}>
+              <p className="stat-label">NF-e de fora do estado</p>
+              <p className="stat-value num">{r.notas}</p>
+              <p className="antecipacao-sub num">{brl(r.valorOperacao)} em operações · ICMS {brl(r.icmsDestacado)}</p>
+            </div>
+            <div className="stat" title="A soma da coluna Antecipação (todas as linhas)">
+              <p className="stat-label">Antecipação calculada</p>
+              <p className="stat-value num">{brl(r.antecipacao)}</p>
+            </div>
+            <div className="stat antecipacao-recolher" title="Sem as linhas Dispensado e Não se aplica">
+              <p className="stat-label">A recolher</p>
+              <p className="stat-value num">{brl(r.aRecolher)}</p>
+            </div>
           </div>
           {!vm.total ? (
             <Vazio icone="fileText" titulo="Nenhuma nota de entrada de fora do estado" texto="Nos XMLs do SIEG deste período não há NF-e recebida com CFOP 6xxx." />
           ) : (
             <>
-              <div className="chip-row">
-                <span className="chip-lbl">Situação</span>
-                <button type="button" className={'chip-f' + (!vm.situacao ? ' on' : '')} onClick={() => vm.setSituacao('')}>Todas ({vm.total})</button>
-                {vm.situacoes.map(x => (
+              <div className="chip-row antecipacao-filtros">
+                <button type="button" className={'chip-f' + (!vm.situacao ? ' on' : '')} onClick={() => vm.setSituacao('')}>Todas <span className="gh-counter">{vm.total}</span></button>
+                {vm.situacoes.filter(x => r.porSituacao[x.id] || vm.situacao === x.id).map(x => (
                   <button key={x.id} type="button" className={'chip-f' + (vm.situacao === x.id ? ' on' : '')} onClick={() => vm.setSituacao(vm.situacao === x.id ? '' : x.id)}>
-                    {x.rotulo} ({r.porSituacao[x.id]})
+                    {x.rotulo} <span className="gh-counter">{r.porSituacao[x.id]}</span>
                   </button>
                 ))}
                 <span className="tarefas-barra-espaco" />
-                <span className="chip-lbl">Mês</span>
-                <select className="select-compact" value={vm.mes} onChange={e => vm.setMes(e.target.value)} aria-label="Mês da nota">
-                  <option value="">Todos</option>
-                  {vm.mesesDasLinhas.map(m => <option key={m.valor} value={m.valor}>{m.rotulo}</option>)}
-                </select>
+                {vm.mesesDasLinhas.length > 1 && (
+                  <select className="select-compact select-mini" value={vm.mes} onChange={e => vm.setMes(e.target.value)} aria-label="Mês da nota">
+                    <option value="">Todos os meses</option>
+                    {vm.mesesDasLinhas.map(m => <option key={m.valor} value={m.valor}>{m.rotulo}</option>)}
+                  </select>
+                )}
+                <button type="button" className={'chip-f' + (calc ? ' on' : '')} aria-pressed={calc} onClick={vm.alternarCalculo}
+                  title="Mostrar a base do ICMS da NF, a base da antecipação e o ICMS interno">
+                  {calc ? 'Esconder o cálculo' : 'Ver o cálculo'}
+                </button>
               </div>
               <div className="table-wrap antecipacao-tabela">
                 <table className="table-compact">
                   <thead>
                     <tr>
                       <th>NF-e</th><th>Data</th><th>Fornecedor</th><th>CFOP</th><th>CST</th>
-                      <th className="num">Valor da operação</th><th className="num">Base ICMS NF</th><th className="num">Alíq. inter.</th><th className="num">ICMS destacado</th>
-                      <th className="num">Base antecipação</th><th className="num">ICMS interno</th><th className="num">Antecipação</th><th>Situação</th>
+                      <th className="num">Valor da operação</th>
+                      {calc && <th className="num">Base ICMS NF</th>}
+                      <th className="num">Alíq.</th><th className="num">ICMS destacado</th>
+                      {calc && <><th className="num">Base antecipação</th><th className="num">ICMS interno</th></>}
+                      <th className="num">Antecipação</th><th>Situação</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -162,14 +173,14 @@ export function AntecipacaoIcms() {
                         <td className="num" title={'CFOP do fornecedor: ' + l.cfopDoFornecedor}>{l.cfop}</td>
                         <td className="num">{l.cst}</td>
                         <td className="num">{brl(l.valorOperacao)}</td>
-                        <td className="num">{brl(l.baseNf)}</td>
+                        {calc && <td className="num">{brl(l.baseNf)}</td>}
                         <td className="num" title={l.aliquotaEstimada ? 'Estimada pelo ICMS e pela base (XML baixado antes da versão 4 do resumo do robô)' : undefined}>{pct(l.aliquotaInterestadual)}{l.aliquotaEstimada ? '*' : ''}</td>
                         <td className="num">{brl(l.icmsDestacado)}</td>
-                        <td className="num">{brl(l.baseAntecipacao)}</td>
-                        <td className="num">{brl(l.icmsInterno)}</td>
+                        {calc && <><td className="num">{brl(l.baseAntecipacao)}</td><td className="num">{brl(l.icmsInterno)}</td></>}
                         <td className="num"><b>{brl(l.antecipacao)}</b></td>
                         <td>
-                          <select className="select-compact" value={l.situacao} onChange={e => vm.marcar(l.id, e.target.value as typeof l.situacao)} aria-label={'Situação da NF-e ' + l.numero}
+                          <select className={'select-compact select-mini antecipacao-situacao situacao-' + l.situacao} value={l.situacao}
+                            onChange={e => vm.marcar(l.id, e.target.value as typeof l.situacao)} aria-label={'Situação da NF-e ' + l.numero}
                             title={l.marca ? 'Marcado por ' + l.marca.por + ' em ' + new Date(l.marca.em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : l.motivo ? 'Sugerido: ' + l.motivo : 'Ainda não marcado'}>
                             {vm.situacoes.map(x => <option key={x.id} value={x.id}>{x.rotulo}</option>)}
                           </select>
@@ -179,35 +190,37 @@ export function AntecipacaoIcms() {
                   </tbody>
                   <tfoot>
                     <tr>
-                      <td colSpan={5}><b>Total ({vm.totais.notas} NF-e, {vm.totais.linhas} {vm.totais.linhas === 1 ? 'linha' : 'linhas'})</b></td>
-                      <td className="num"><b>{brl(vm.totais.valorOperacao)}</b></td>
-                      <td className="num"><b>{brl(vm.totais.baseNf)}</b></td>
+                      <td colSpan={5}>Total · {vm.totais.notas} NF-e, {vm.totais.linhas} {vm.totais.linhas === 1 ? 'linha' : 'linhas'}</td>
+                      <td className="num">{brl(vm.totais.valorOperacao)}</td>
+                      {calc && <td className="num">{brl(vm.totais.baseNf)}</td>}
                       <td />
-                      <td className="num"><b>{brl(vm.totais.icmsDestacado)}</b></td>
-                      <td className="num"><b>{brl(vm.totais.baseAntecipacao)}</b></td>
-                      <td className="num"><b>{brl(vm.totais.icmsInterno)}</b></td>
-                      <td className="num"><b>{brl(vm.totais.antecipacao)}</b></td>
-                      <td className="fraco" title="Sem Dispensado e Não se aplica">a recolher {brl(vm.totais.aRecolher)}</td>
+                      <td className="num">{brl(vm.totais.icmsDestacado)}</td>
+                      {calc && <><td className="num">{brl(vm.totais.baseAntecipacao)}</td><td className="num">{brl(vm.totais.icmsInterno)}</td></>}
+                      <td className="num">{brl(vm.totais.antecipacao)}</td>
+                      {/* o a recolher está no número de cima */}
+                      <td />
                     </tr>
                   </tfoot>
                 </table>
               </div>
-              <section className="card">
-                <div className="dp-lista-topo"><h3 className="dp-titulo">Totais por mês</h3><span className="hint">pela data da nota</span></div>
-                <div className="table-wrap">
-                  <table className="table-compact">
-                    <thead><tr><th>Mês</th><th className="num">NF-e</th><th className="num">Valor das operações</th><th className="num">ICMS destacado</th><th className="num">Antecipação</th><th className="num">A recolher</th></tr></thead>
-                    <tbody>
-                      {vm.porMes.map(m => (
-                        <tr key={m.mes}>
-                          <td>{m.rotulo}</td><td className="num">{m.notas}</td><td className="num">{brl(m.valorOperacao)}</td><td className="num">{brl(m.icmsDestacado)}</td>
-                          <td className="num">{brl(m.antecipacao)}</td><td className="num"><b>{brl(m.aRecolher)}</b></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
+              {vm.porMes.length > 1 && (
+                <section className="card antecipacao-meses">
+                  <div className="dp-lista-topo"><h3 className="dp-titulo">Por mês</h3><span className="hint">pela data da nota</span></div>
+                  <div className="table-wrap">
+                    <table className="table-compact">
+                      <thead><tr><th>Mês</th><th className="num">NF-e</th><th className="num">Valor das operações</th><th className="num">ICMS destacado</th><th className="num">Antecipação</th><th className="num">A recolher</th></tr></thead>
+                      <tbody>
+                        {vm.porMes.map(m => (
+                          <tr key={m.mes}>
+                            <td>{m.rotulo}</td><td className="num">{m.notas}</td><td className="num">{brl(m.valorOperacao)}</td><td className="num">{brl(m.icmsDestacado)}</td>
+                            <td className="num">{brl(m.antecipacao)}</td><td className="num"><b>{brl(m.aRecolher)}</b></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              )}
             </>
           )}
         </>

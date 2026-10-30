@@ -460,7 +460,7 @@ export type ItemMenu = { rotulo: ReactNode; icone?: NomeIcone; marcado?: boolean
  * preenchido (padrão do app todo). Fecha ao escolher, ao clicar
  * fora e no Esc. Em vez de `itens`, pode receber `conteudo` (ex.: uma lista com busca), que ganha o `fechar`.
  */
-export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn-outline', classeAberto, itens, conteudo, direita, acima, largura, setaAntes, semSeta, animado, flutuante }: {
+export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn-outline', classeAberto, itens, conteudo, direita, acima, largura, setaAntes, semSeta, animado, flutuante, compacto }: {
   rotulo: ReactNode;
   icone?: NomeIcone;
   titulo?: string;
@@ -485,6 +485,8 @@ export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn
    * Mandei saía cortado dentro da tabela). Acompanha o botão ao rolar; perto da borda de baixo, abre para cima.
    */
   flutuante?: boolean;
+  /** o menu pequeno, para as linhas das tabelas (30/10/2026: "esse dropdown muito grande") */
+  compacto?: boolean;
 }) {
   const [aberto, setAberto] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -537,7 +539,7 @@ export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn
       </button>
       {aberto && (() => {
         const menu = (
-        <div ref={pop} className={'popover menu-pop' + (direita ? ' direita' : '') + (acima ? ' acima' : '') + (animado ? ' animado' : '') + (flutuante ? ' flutuante' : '')} data-entrada-propria={animado ? '' : undefined} role="menu" aria-label={titulo}
+        <div ref={pop} className={'popover menu-pop' + (direita ? ' direita' : '') + (acima ? ' acima' : '') + (animado ? ' animado' : '') + (flutuante ? ' flutuante' : '') + (compacto ? ' compacto' : '')} data-entrada-propria={animado ? '' : undefined} role="menu" aria-label={titulo}
           style={{ ...(largura ? { width: largura } : {}), ...(flutuante ? { position: 'fixed', right: 'auto', left: lugar?.left ?? -9999, top: lugar?.top ?? 'auto', bottom: lugar?.bottom ?? 'auto', visibility: lugar ? undefined : 'hidden' } : {}) }}>
           {/* sem título em cima (Vitor, 02/10/2026): o título fica só para o leitor de tela */}
           {itens?.map((it, i) => it === 'separador' ? <hr key={i} className="popover-sep" /> : (

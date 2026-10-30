@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aplicacoesDe, podeMexerNoCadastro } from './navegacao';
+import { aplicacoesDe, podeMexerNoCadastro, podeVerOFinanceiro } from './navegacao';
 import type { Operador } from './operador';
 
 const op = (nivel: Operador['nivel'], admin = false): Operador => ({ nome: 'X', departamento: 'contabil', nivel, admin });
@@ -23,8 +23,15 @@ describe('o Cadastro por nível (Vitor, 19/10/2026: o sênior vê e mexe no cada
     expect(cadastroDe(op('pleno'))).toBeUndefined();
   });
 
-  it('o Financeiro continua só com o admin e o diretor', () => {
-    expect(aplicacoesDe(op('senior')).some(a => a.id === 'financeiro')).toBe(false);
-    expect(aplicacoesDe(op('diretor')).some(a => a.id === 'financeiro')).toBe(true);
+  it('o Financeiro só com o Sávio e a Nilma, pelo nome; o admin e o diretor não entram pelo papel (30/10/2026)', () => {
+    const vê = (o: Operador) => aplicacoesDe(o).some(a => a.id === 'financeiro');
+    expect(vê({ ...op('diretor', true), nome: 'Sávio' })).toBe(true);
+    expect(vê({ ...op('diretor', true), nome: 'Savio' })).toBe(true);
+    expect(vê({ ...op('diretor'), nome: 'Nilma' })).toBe(true);
+    expect(vê({ ...op('pleno'), nome: 'NILMA' })).toBe(true);
+    expect(vê(op('diretor', true))).toBe(false);
+    expect(vê(op('diretor'))).toBe(false);
+    expect(vê({ ...op('senior', true), nome: 'Vitor' })).toBe(false);
+    expect(podeVerOFinanceiro(null)).toBe(false);
   });
 });

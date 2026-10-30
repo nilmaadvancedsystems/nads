@@ -120,9 +120,9 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'painel', rotulo: 'Painel', icone: 'barChart', titulo: 'Painel financeiro' },
     // o Movimento de Caixa e o Plano de Contas que vieram do Toriba (19/10/2026), no início do Financeiro
     { id: 'caixa', rotulo: 'Caixa', icone: 'dinheiro', titulo: 'Movimento de caixa' },
-    // as contas a pagar e os fornecedores (28/10/2026: "o Contas a Pagar do Toriba, no nads"); o pagamento vira a saída no Caixa
+    // as contas a pagar (28/10/2026: "o Contas a Pagar do Toriba, no nads"). Os fornecedores viraram um botão dentro dela,
+    // numa janela (30/10/2026: "joga essa tela de fornecedores para um botão dentro de contas a pagar")
     { id: 'pagar', rotulo: 'Contas a pagar', icone: 'codigoBarras', titulo: 'Contas a pagar' },
-    { id: 'fornecedores', rotulo: 'Fornecedores', icone: 'predio', titulo: 'Fornecedores' },
     // o extrato do banco (23/10/2026: "vai se tornar um importador de extrato que vai trazer os dados e informações
     // para o dashboard inicial"); o endereço antigo /financeiro/conciliacao abre o importador. O Resultado por conta
     // virou um botão do Painel, numa janela flutuante (22/10/2026). Honorários e Devedores saíram do menu (30/10/2026)
@@ -166,6 +166,15 @@ export const APLICACOES: readonly Aplicacao[] = [
  */
 export const podeMexerNoCadastro = (op: Operador | null) => !!op && (op.admin || op.nivel === 'diretor' || op.nivel === 'senior');
 
+/** Quem vê o Financeiro: só o Sávio e a Nilma, pelo nome (30/10/2026: "remova o acesso de admin ao financeiro e deixe o acesso
+ * apenas para o usuario Savio e Nilma"). O admin e o diretor não entram mais só pelo papel. Sem acento e sem caixa, o primeiro nome. */
+const DONOS_DO_FINANCEIRO = ['savio', 'nilma'];
+export const podeVerOFinanceiro = (op: Operador | null) => {
+  if (!op) return false;
+  const primeiro = op.nome.normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase().split(/[\s.]+/)[0];
+  return DONOS_DO_FINANCEIRO.includes(primeiro);
+};
+
 /** As aplicações que a pessoa vê: Fiscal só para o Fiscal; Contábil só para o Contábil; Drive para todos; Gmail para os dois (admin vê tudo). */
 export function aplicacoesDe(op: Operador): Aplicacao[] {
   return APLICACOES.filter(a =>
@@ -177,8 +186,8 @@ export function aplicacoesDe(op: Operador): Aplicacao[] {
     (a.id !== 'contato' || op.admin || op.departamento === 'contabil' || op.departamento === 'fiscal') &&
     // o Cadastro (empresas e equipe): o admin, o diretor (Vitor, 05/10/2026) e o sênior (19/10/2026)
     (a.id !== 'cadastro' || podeMexerNoCadastro(op)) &&
-    // o Financeiro (as notas fiscais do escritório): o admin e o diretor (15/10/2026)
-    (a.id !== 'financeiro' || op.admin || op.nivel === 'diretor'))
+    // o Financeiro (as notas fiscais do escritório): só o Sávio e a Nilma (30/10/2026; antes, o admin e o diretor)
+    (a.id !== 'financeiro' || podeVerOFinanceiro(op)))
     // as páginas só do admin (as do Admin, nas Configurações) ficam de fora para os outros
     .map(a => (op.admin || !a.paginas.some(p => p.soAdmin) ? a : { ...a, paginas: a.paginas.filter(p => !p.soAdmin) }))
     // na gaveta, um grupo depois do outro: Rotinas, Comunicação, Escritório
