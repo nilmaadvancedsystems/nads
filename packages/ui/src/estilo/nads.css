@@ -4463,26 +4463,12 @@ html[data-animacoes=nenhuma] .toggle-knob,html[data-animacoes=nenhuma] .toggle-t
 .sintegra-linha-dif td{background:var(--danger-soft);}
 .sintegra-corpo{padding:16px;}
 .sintegra-na-etapa{margin-top:12px;padding-top:12px;border-top:1px solid var(--border);}
-/* Fiscal › Rateio de frete (22/10/2026) */
-.rateio-frete{display:flex;flex-direction:column;gap:12px;}
-.rateio-frete > .card{margin:0;}
 /* a empresa na barra (Rateio de frete e Simples Nacional; 23/10/2026: uma peça só, fiscal/partes/EmpresaDaBarra.tsx) */
 .busca-curta.empresa-da-barra{width:320px;max-width:100%;}
 .btn.empresa-da-barra{max-width:360px;min-width:0;}
 .empresa-da-barra-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .empresa-da-barra-busca{position:relative;max-width:100%;}
 .empresa-da-barra-busca .nf-achados{position:absolute;left:0;width:min(420px,calc(100vw - 32px));top:100%;margin-top:4px;z-index:30;box-shadow:var(--shadow-lg);background:var(--surface);}
-.rateio-frete-notas tbody tr,.rateio-frete-abre{cursor:pointer;}
-.rateio-frete-valores{display:flex;flex-wrap:wrap;align-items:center;gap:8px 24px;margin-bottom:12px;}
-.rateio-frete-valores label{display:inline-flex;align-items:center;gap:8px;font-size:var(--fs-13);color:var(--ink-muted);}
-.rateio-frete-valores .fin-valor-edita{width:130px;color:var(--ink);font-weight:600;}
-.rateio-frete-icms{font-size:var(--fs-13);color:var(--ink-muted);}
-.rateio-frete-icms b{color:var(--ink);margin-left:6px;}
-.rateio-frete-explica{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px;}
-.rateio-frete-corpo{margin:0 0 12px;}
-.rateio-frete td .fin-valor-edita{width:100%;min-width:90px;}
-.rateio-frete tfoot td{border-top:2px solid var(--border);}
-.rateio-frete-dica{margin:8px 0 0;}
 /* Gmail: a lista num painel como o do Gmail (14/10/2026: "era pra resolver as bordas do gmail que ficam sem nada e só
    acabam"): o fundo do painel, os cantos redondos e as linhas fechando nas bordas dele; overflow:clip para o rótulo do
    grupo continuar grudando no alto ao rolar a página */
@@ -5323,6 +5309,35 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .simples-calc-tabela{max-height:none;}
 .simples-calc-faixas{border:1px solid var(--border);border-radius:6px;overflow:hidden;}
 .simples-calc-faixas > .imp-faixa:first-child{border-top:none;}
+/* Fiscal › Antecipação ICMS-ES (22/10/2026) */
+.antecipacao{display:flex;flex-direction:column;gap:12px;}
+.antecipacao-empresa{position:relative;width:340px;max-width:100%;}
+.antecipacao-empresa.registro-busca{padding:2px 4px 2px 12px;}
+.antecipacao-empresa .registro-busca input,.antecipacao-empresa .registro-busca input:focus{font-size:var(--fs-14);padding:5px 0;box-shadow:none;border:0;}
+.antecipacao-empresa .nf-escolhido{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-14);}
+.antecipacao-achados{position:absolute;left:0;right:0;top:calc(100% + 4px);margin:0;z-index:20;box-shadow:var(--shadow-md,0 6px 18px rgba(0,0,0,.12));}
+/* enxuta em 30/10/2026 ("tem muita informação e os layouts estão feios"): a empresa numa linha, três números neutros,
+   a situação num select pequeno com a cor dela, e as colunas do cálculo só com "Ver o cálculo" */
+.antecipacao-linha-empresa{display:flex;align-items:center;flex-wrap:wrap;gap:6px 18px;padding:10px 14px;border:1px solid var(--border);
+  border-radius:8px;background:var(--surface);font-size:var(--fs-13);}
+.antecipacao-razao{font-weight:600;font-size:var(--fs-14);}
+.antecipacao-dado{white-space:nowrap;}
+.antecipacao-aliquota{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
+.antecipacao-aliquota .fin-valor-edita{width:64px;}
+.antecipacao-numeros{margin-bottom:0;}
+.antecipacao-numeros .stat{padding:12px 16px;}
+.antecipacao-sub{margin:2px 0 0;font-size:var(--fs-12);color:var(--ink-muted);}
+.antecipacao-recolher{background:var(--accent-soft);}
+.antecipacao-recolher .stat-value{color:var(--accent-ink);}
+.antecipacao-filtros{margin:0;}
+.antecipacao-tabela{max-height:max(320px,calc(100dvh - 330px));overflow:auto;}
+.antecipacao-tabela td,.antecipacao-tabela th{white-space:nowrap;}
+.antecipacao-fornecedor{max-width:260px;overflow:hidden;text-overflow:ellipsis;}
+.antecipacao-tabela tfoot td{border-top:2px solid var(--border);position:sticky;bottom:0;background:var(--surface-2);font-weight:600;}
+.antecipacao-situacao.situacao-conferido{border-color:var(--success);color:var(--success-ink);background-color:var(--success-soft);}
+.antecipacao-situacao.situacao-revisar{border-color:var(--warn);color:var(--warn);background-color:var(--warn-soft);}
+.antecipacao-situacao.situacao-dispensado,.antecipacao-situacao.situacao-nao-se-aplica{color:var(--ink-muted);}
+.antecipacao-meses .table-wrap{max-height:none;}
 /* Cadastro › a empresa › Fiscal (Heverton, 21/10/2026): os documentos e as planilhas, os parcelamentos */
 .fis-docs-acoes{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;}
 .fis-docs-acoes .btn svg{width:16px;height:16px;}
@@ -5364,7 +5379,6 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 /* o número do Stat com a variação embaixo (o "contra o mês anterior") */
 .stat-comparacao{display:flex;align-items:center;gap:6px;margin-top:4px;font-size:var(--fs-12,12px);color:var(--ink-muted);}
 
-.rateio-frete-titulo{display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:var(--fs-13,13px);}
 /* a barra do Faturamento numa linha só em 1366 px (23/10/2026) */
 .faturamento .tarefas-barra-topo .busca-curta{width:170px;}
 /* na janela do faturamento detalhado, os blocos não encolhem (a grade dos números sumia com 2 px; 23/10/2026) */
@@ -5995,4 +6009,110 @@ button.fxr-numero.active{border-color:var(--accent);box-shadow:inset 0 0 0 1px v
   .fxr-reinf .fxr-acoes{grid-column:1 / -1;display:flex;gap:6px;margin-top:4px;}
   .fxr-reinf .fxr-acoes .btn{flex:1;justify-content:center;}
   .fxr-reinf .fxr-acoes .btn + .btn{margin-left:0;}
+/* ------------------------- Fiscal › Calculadora do Simples e Rateio de frete (30/10/2026) -------------------------
+   "refazendo o fiscal inteiro": as duas ferramentas de cálculo no modelo do Gmail, para parecer parte do site. A barra
+   de cima é a das outras telas; cada bloco é um .card sem enchimento, com o topo (título, dica, contagem e as ações à
+   direita) e a tabela encostada nas bordas; os totais no pé com o fundo do cabeçalho. Na calculadora, o resultado num
+   cartão à direita (o DAS grande, as alíquotas e o RBT12 com a barra até o teto) e a conta à esquerda, em grupos; no
+   rateio, os números do CT-e em faixa. Cantos de 6px e só os tokens de cor (escuro e claro). */
+.fc{display:flex;flex-direction:column;gap:12px;}
+.fc .btn-sm{height:30px;padding:0 10px;font-size:var(--fs-12);gap:6px;}
+.fc .btn-sm svg{width:14px;height:14px;}
+.fc-topo{flex-wrap:wrap;gap:8px;margin:0;}
+.fc-exemplo{margin:0;}
+.fc-avisos{display:flex;flex-direction:column;gap:8px;}
+.fc-avisos > *{margin:0;}
+/* o cartão: o topo e a tabela encostada nas bordas */
+.fc-cartao{margin:0;padding:0;overflow:clip;}
+.fc-cartao > .gh-blank{margin:0;}
+.fc-cartao-topo{display:flex;align-items:center;flex-wrap:wrap;gap:8px 10px;min-height:52px;padding:10px 16px;border-bottom:1px solid var(--border);}
+.fc-cartao-titulo{display:inline-flex;align-items:center;gap:6px;margin:0;font-size:var(--fs-14);font-weight:600;}
+.fc-cartao-titulo .fraco{font-weight:400;color:var(--ink-muted);}
+.fc-contagem{font-size:var(--fs-12);font-variant-numeric:tabular-nums;color:var(--ink-muted);}
+.fc-acoes{display:inline-flex;align-items:center;flex-wrap:wrap;gap:6px;margin-left:auto;}
+.fc-busca{width:260px;}
+.fc-sub{font-size:var(--fs-12);color:var(--ink-muted);}
+.fc-rotulo{font-size:var(--fs-12);color:var(--ink-muted);}
+.fc-tabela{max-height:none;border:0;border-radius:0;background:transparent;}
+.fc-tabela thead th{padding-top:8px;padding-bottom:8px;}
+.fc-tabela tbody td{padding-top:7px;padding-bottom:7px;}
+.fc-tabela tfoot td{padding:9px 12px;border-top:1px solid var(--border);background:var(--surface-2);font-size:var(--fs-13);font-weight:600;font-variant-numeric:tabular-nums;}
+.fc-tabela :is(th,td):first-child{padding-left:16px;}
+.fc-tabela :is(th,td):last-child{padding-right:12px;}
+.fc-acao{width:1%;white-space:nowrap;text-align:right;}
+.fc-acao .icon-btn{vertical-align:middle;}
+.fc-seta{width:16px;height:16px;vertical-align:middle;color:var(--ink-faint);transition:transform .12s ease,color .12s ease;}
+/* as linhas que se escolhem (o CT-e, a nota, a tributação que abre os NCMs) */
+.fc-clicavel tbody tr:not(:has(td[colspan])){cursor:pointer;}
+.fc-clicavel tbody tr:hover{background:var(--hover-bg);}
+.fc-clicavel tbody tr:hover .fc-seta{color:var(--ink-muted);transform:translateX(2px);}
+.fc-clicavel tbody tr:focus-visible{outline:none;box-shadow:inset 0 0 0 2px var(--accent);}
+.fc-tabela tbody tr.fc-marcada{background:color-mix(in srgb,var(--accent) 8%,var(--surface));}
+.fc-tabela tbody tr.fc-marcada td:first-child{box-shadow:inset 3px 0 0 var(--accent);}
+.fc-marcada .fc-seta,.fc-clicavel tbody tr.fc-marcada:hover .fc-seta{color:var(--accent);transform:rotate(90deg);}
+.fc-corpo{display:flex;flex-direction:column;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border);}
+.fc-corpo:last-child{border-bottom:0;}
+.fc-corpo > *{margin:0;}
+.fc-corpo-busca{background:var(--surface-2);}
+.fc-pe{display:flex;align-items:center;gap:8px;margin:0;padding:10px 16px;border-top:1px solid var(--border);font-size:var(--fs-12);color:var(--ink-muted);}
+/* a calculadora: a conta à esquerda e o resultado à direita */
+.fc-grade{display:grid;grid-template-columns:minmax(0,1fr) 320px;grid-template-areas:"conta resumo";align-items:start;gap:12px;}
+.fc-conta{grid-area:conta;}
+.fc-resumo{grid-area:resumo;position:sticky;top:12px;display:flex;flex-direction:column;}
+.fc-resumo-das{display:flex;flex-direction:column;gap:4px;padding:18px 18px 16px;border-bottom:1px solid var(--border);background:var(--surface-2);}
+.fc-das{font-size:28px;font-weight:700;line-height:1.2;font-variant-numeric:tabular-nums;letter-spacing:-.01em;color:var(--ink);}
+.fc-resumo-item{display:flex;flex-direction:column;gap:3px;padding:14px 18px;border-bottom:1px solid var(--border);}
+.fc-resumo-item:last-child{border-bottom:0;}
+.fc-resumo-valor{font-size:var(--fs-20);font-weight:600;line-height:1.3;font-variant-numeric:tabular-nums;}
+.fc-medidor{display:block;height:6px;margin:6px 0 2px;border-radius:999px;background:var(--surface-3);overflow:hidden;}
+.fc-medidor i{display:block;height:100%;min-width:2px;border-radius:inherit;background:var(--info);}
+.fc-medidor.atencao i{background:var(--warn);}
+.fc-medidor.passou i{background:var(--danger);}
+/* a conta: os grupos (os 12 meses, Mercadorias, Serviços) e as linhas sem valor apagadas */
+.fc-grupo th{position:static;padding:7px 16px;text-align:left;border-top:1px solid var(--border);border-bottom:1px solid var(--border);background:var(--surface-2);
+  font-size:var(--fs-11);font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-muted);}
+.fc-grupo th span{font-weight:500;letter-spacing:0;text-transform:none;color:var(--ink-faint);}
+.fc-tabela tbody tr.fc-grupo:first-child th{border-top:0;}
+.fc-tabela tbody tr.fc-grupo + tr td{border-top:0;}
+.fc-tabela tbody tr.fc-grupo:hover{background:none;}
+.fc-zerada td:first-child,.fc-zerada .fin-valor-edita{color:var(--ink-muted);}
+.fc-conta .fin-valor-edita{font-weight:600;}
+.fc-faixas{border-top:1px solid var(--border);}
+.fc-faixas > .imp-faixa:first-child{border-top:none;}
+.fc-faixas .imp-faixa-barra{padding:10px 16px;}
+.fc-faixas .imp-faixa:last-child:not(.aberta) .imp-faixa-barra{border-radius:0;}
+.fc-faixas .imp-faixa-corpo{padding:12px 16px 16px;}
+/* o rateio: o CT-e escolhido e os números dele em faixa */
+.fc-cte{flex-wrap:nowrap;}
+.fc-cte-icone{flex:none;width:36px;height:36px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;background:var(--accent-soft);color:var(--accent-ink);}
+.fc-cte-icone svg{width:18px;height:18px;}
+.fc-cte-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.fc-cte-txt .fc-sub{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.fc-valores{display:flex;flex-wrap:wrap;align-items:stretch;border-bottom:1px solid var(--border);}
+.fc-valores:last-child{border-bottom:0;}
+.fc-valor{display:flex;flex-direction:column;justify-content:center;gap:2px;min-width:150px;padding:10px 16px;border-right:1px solid var(--border);}
+.fc-valor > b{font-size:var(--fs-16);font-weight:600;line-height:34px;}
+.fc-valor .fin-valor-edita{width:150px;margin-left:-8px;font-size:var(--fs-16);font-weight:600;text-align:left;}
+.fc-valor-acao{border-right:0;}
+.fc-digitadas td .fin-valor-edita{width:100%;min-width:90px;}
+.fc-digitadas td:first-child .fin-valor-edita{text-align:left;}
+/* tela média: o resultado em cima da conta, os números lado a lado; no celular, dois a dois e a busca larga */
+@media (max-width:1100px){
+  .fc-grade{grid-template-columns:minmax(0,1fr);grid-template-areas:"resumo" "conta";}
+  .fc-resumo{position:static;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));}
+  .fc-resumo-das{grid-column:1 / -1;border-bottom:0;}
+  .fc-resumo-item,.fc-resumo-item:last-child{border-bottom:0;border-top:1px solid var(--border);box-shadow:-1px 0 0 var(--border);}
+}
+@media (max-width:640px){
+  .fc-topo > *{max-width:100%;}
+  .fc-busca{width:100%;}
+  .fc-resumo-das{padding:14px 14px 12px;}
+  .fc-resumo-item{padding:12px 14px;}
+  .fc-resumo-item:last-child:nth-child(even){grid-column:1 / -1;}
+  .fc-resumo-valor{font-size:var(--fs-18);}
+  .fc-das{font-size:var(--fs-24);}
+  .fc-cte{flex-wrap:wrap;}
+  .fc-valor{flex:1 1 30%;min-width:0;padding:10px 12px;border-bottom:1px solid var(--border);}
+  .fc-valor .fin-valor-edita{width:100%;}
+  .fc-conta tbody td:first-child{min-width:11em;}
 }
