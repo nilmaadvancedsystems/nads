@@ -1,8 +1,11 @@
 // O extrato do banco no Financeiro (23/10/2026: "a parte de conciliação não vai existir, ela vai se tornar um importador
 // de extrato que vai trazer os dados e informações para o dashboard inicial"; guardado à parte do Caixa, para não
 // duplicar o que já foi lançado nele). Os lançamentos lidos do extrato (pelo Extrator) viram linhas do banco com um id
-// fixo (o banco, a data, o valor, o histórico e a ordem entre os iguais): importar o mesmo extrato de novo não duplica.
-// O saldo do banco é o do fim do último extrato de cada banco. Puro: sem banco e sem tela.
+// fixo (a conta bancária, a data, o valor, o histórico e a ordem entre os iguais): importar o mesmo extrato de novo não
+// duplica. O saldo do banco é o do fim do último extrato de cada conta bancária. Puro: sem banco e sem tela.
+// 30/10/2026: o id e o saldo eram pelo nome do banco, e a PJ e a PF no mesmo banco (as duas no Sicoob) colidiam — a linha
+// igual da outra conta não gravava e os saldos das duas se juntavam. Agora são pela conta bancária do Cadastro; a linha
+// gravada com o id de antes (pelo nome) continua reconhecida como "já estava" (separarJaImportadas), para não duplicar.
 import type { TipoDeLancamento } from './index';
 
 /** uma linha do extrato do banco (financeiroBanco/{id}) */
@@ -21,6 +24,8 @@ export interface LancamentoDoBanco {
   /** a conta bancária do Cadastro (Nilma Contabilidade › Contas bancárias) e a do plano de contas do financeiro */
   contaBancaria?: string;
   conta?: string;
+  /** o id de antes de 30/10/2026 (pelo nome do banco): só para reconhecer a linha já gravada com ele; não se grava */
+  idAntigo?: string;
 }
 
 /** uma importação de extrato (financeiroBancoImportacoes/{id}) */
@@ -62,22 +67,44 @@ function hash(s: string): string {
 const chaveDoBanco = (banco: string) => banco.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'banco';
 
 /**
- * As linhas do extrato prontas para guardar: o id é fixo (banco, data, valor, histórico e a ordem entre as linhas
- * iguais), então importar o mesmo extrato de novo regrava as mesmas linhas. Linha sem data ou com valor zero fica de fora.
+ * As linhas do extrato prontas para guardar: o id é fixo (a conta bancária, data, valor, histórico e a ordem entre as
+ * linhas iguais), então importar o mesmo extrato de novo regrava as mesmas linhas. Linha sem data ou com valor zero fica
+ * de fora. Sem a conta bancária, o id é pelo nome do banco (o de antes); com ela, a linha leva também o id antigo.
  */
-export function linhasDoExtrato(lidas: readonly LinhaLida[], banco: string, importacao: string): LancamentoDoBanco[] {
+export function linhasDoExtrato(lidas: readonly LinhaLida[], banco: string, importacao: string, contaBancaria?: string): LancamentoDoBanco[] {
   const vistos = new Map<string, number>();
   const nome = banco.trim() || 'Banco';
+  const daConta = contaBancaria?.trim() || '';
   const out: LancamentoDoBanco[] = [];
   for (const l of lidas) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(l.data) || !Math.round(l.valor)) continue;
     const historico = l.historico.replace(/\s+/g, ' ').trim();
-    const base = chaveDoBanco(nome) + '|' + l.data + '|' + Math.round(l.valor) + '|' + historico.toUpperCase();
-    const n = (vistos.get(base) || 0) + 1;
-    vistos.set(base, n);
-    out.push({ id: 'b_' + hash(base + '|' + n), data: l.data, historico, valor: emReais(l.valor), tipo: l.valor < 0 ? 'S' : 'E', banco: nome, importacao });
+    const resto = l.data + '|' + Math.round(l.valor) + '|' + historico.toUpperCase();
+    const n = (vistos.get(resto) || 0) + 1;
+    vistos.set(resto, n);
+    const antigo = 'b_' + hash(chaveDoBanco(nome) + '|' + resto + '|' + n);
+    out.push({
+      id: daConta ? 'b_' + hash('conta:' + daConta + '|' + resto + '|' + n) : antigo, data: l.data, historico, valor: emReais(l.valor), tipo: l.valor < 0 ? 'S' : 'E',
+      banco: nome, importacao, ...(daConta ? { contaBancaria: daConta, idAntigo: antigo } : {}),
+    });
   }
   return out;
+}
+
+/**
+ * As linhas que já estão gravadas (repetidas) e as que faltam (novas). Já está: o mesmo id, ou o id antigo (pelo nome do
+ * banco, de antes de 30/10/2026) gravado na mesma conta bancária — ou numa linha de antes de guardar a conta. O id antigo
+ * gravado na outra conta do mesmo banco não conta: era a colisão da PJ com a PF.
+ */
+export function separarJaImportadas(linhas: readonly LancamentoDoBanco[], gravadas: readonly Pick<LancamentoDoBanco, 'id' | 'contaBancaria'>[]): { novas: LancamentoDoBanco[]; repetidas: LancamentoDoBanco[] } {
+  const porId = new Map(gravadas.map(g => [g.id, g]));
+  const novas: LancamentoDoBanco[] = [], repetidas: LancamentoDoBanco[] = [];
+  for (const l of linhas) {
+    const antiga = l.idAntigo ? porId.get(l.idAntigo) : undefined;
+    const ja = porId.has(l.id) || (!!antiga && (!antiga.contaBancaria || antiga.contaBancaria === l.contaBancaria));
+    (ja ? repetidas : novas).push(l);
+  }
+  return { novas, repetidas };
 }
 
 /** o saldo no fim do extrato: o último saldo do dia impresso, ou o saldo anterior mais o movimento; sem nada, undefined */
@@ -97,15 +124,24 @@ export function resumoDoExtrato(linhas: readonly LancamentoDoBanco[]): { de: str
   return { de: datas[0] || '', ate: datas.at(-1) || '', quantos: linhas.length, entradas: soma('E'), saidas: soma('S') };
 }
 
-/** o saldo de cada banco: o do extrato que vai mais longe (com saldo); do maior para o menor nome */
-export function saldosNoBanco(importacoes: readonly ImportacaoDeExtrato[]): { banco: string; saldo: number; ate: string }[] {
-  const porBanco = new Map<string, ImportacaoDeExtrato>();
+/** o saldo de uma conta bancária no painel; chave = a conta bancária do Cadastro (ou o nome do banco, nas de antes) */
+export interface SaldoNoBanco { chave: string; banco: string; conta?: string; marca?: string; saldo: number; ate: string }
+
+/**
+ * O saldo de cada conta bancária: o do extrato que vai mais longe (com saldo). Pela conta bancária (a PJ e a PF no mesmo
+ * banco ficam separadas); a importação de antes de guardar a conta vai pelo nome do banco. Em ordem de banco e de conta.
+ */
+export function saldosNoBanco(importacoes: readonly ImportacaoDeExtrato[]): SaldoNoBanco[] {
+  const porConta = new Map<string, ImportacaoDeExtrato>();
+  const chave = (i: ImportacaoDeExtrato) => i.contaBancaria || 'banco:' + i.banco;
   for (const i of importacoes) {
     if (i.saldoFinal == null) continue;
-    const atual = porBanco.get(i.banco);
-    if (!atual || i.ate > atual.ate || (i.ate === atual.ate && i.importadoEm > atual.importadoEm)) porBanco.set(i.banco, i);
+    const atual = porConta.get(chave(i));
+    if (!atual || i.ate > atual.ate || (i.ate === atual.ate && i.importadoEm > atual.importadoEm)) porConta.set(chave(i), i);
   }
-  return [...porBanco.values()].map(i => ({ banco: i.banco, saldo: i.saldoFinal!, ate: i.ate })).sort((a, b) => a.banco.localeCompare(b.banco, 'pt-BR'));
+  return [...porConta.values()]
+    .map((i): SaldoNoBanco => ({ chave: chave(i), banco: i.banco, ...(i.rotuloDaConta ? { conta: i.rotuloDaConta } : {}), ...(i.marca ? { marca: i.marca } : {}), saldo: i.saldoFinal!, ate: i.ate }))
+    .sort((a, b) => a.banco.localeCompare(b.banco, 'pt-BR') || (a.conta || '').localeCompare(b.conta || '', 'pt-BR'));
 }
 
 // ─── de quem é o extrato (23/10/2026: "quero que ele identifique o banco que foi importado pelo pdf/conta, caso não seja da

@@ -82,8 +82,8 @@ export function usePainelFinanceiro() {
     } : null,
     saidasPorConta: financeiro.totaisPorConta(todos, 'S', de, ate, contas),
     entradasPorConta: financeiro.totaisPorConta(todos, 'E', de, ate, contas),
-    /** o banco: o saldo de cada um (no fim do último extrato) e a última importação */
-    bancos: saldos.map(s => ({ ...s, marca: importacoes.lista.find(i => i.banco === s.banco && i.marca)?.marca || (s.banco === 'Efí' ? 'efi' : s.banco === 'Sicoob' ? 'sicoob' : ''), saldoBr: formatos.reais(s.saldo), ateBr: s.ate.slice(8, 10) + '/' + s.ate.slice(5, 7) + '/' + s.ate.slice(0, 4) })),
+    /** o banco: o saldo de cada conta bancária (no fim do último extrato; a PJ e a PF no mesmo banco, cada uma) e a última importação */
+    bancos: saldos.map(s => ({ ...s, marca: s.marca || importacoes.lista.find(i => i.banco === s.banco && i.marca)?.marca || (s.banco === 'Efí' ? 'efi' : s.banco === 'Sicoob' ? 'sicoob' : ''), saldoBr: formatos.reais(s.saldo), ateBr: s.ate.slice(8, 10) + '/' + s.ate.slice(5, 7) + '/' + s.ate.slice(0, 4) })),
     ultimaImportacao: importacoes.lista[0] ? { banco: importacoes.lista[0].banco, quando: new Date(importacoes.lista[0].importadoEm).toLocaleDateString('pt-BR') } : null,
     honorarios: { competencia: financeiro.competenciaBr(competencia), carregado: contratos.carregada && recebimentos.carregada, ...honorarios, pct: honorarios.previsto ? Math.round((honorarios.recebido / honorarios.previsto) * 100) : 0 },
     notas: { carregada: notas.carregada, quantas: notasDoPeriodo.length, valor: notasDoPeriodo.reduce((s, n) => s + Math.round(n.servico.valor * 100), 0) / 100 },

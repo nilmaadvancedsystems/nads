@@ -1,7 +1,7 @@
 // O caixa do escritório (19/10/2026: "o Movimento de Caixa e o Plano de Contas do Toriba, no nads"): os lançamentos de
 // entrada e saída (financeiroCaixa) e o plano de contas (financeiroPlano), no banco do Entregas. Só o admin e o diretor.
 // Interface + a versão de exemplo; a do banco é caixa.firestore.ts.
-import type { financeiro } from '@nads/core';
+import { financeiro } from '@nads/core';
 import type { ListaAoVivo } from './agentes';
 
 /** o que a tela manda gravar de um lançamento: sem id é novo; o resto (origem, quem criou) o repositório guarda */
@@ -37,8 +37,9 @@ export interface RepoCaixa {
   /** as importações de extrato (ao vivo), da mais nova para a mais velha */
   importacoes(): ListaAoVivo<financeiro.ImportacaoDeExtrato>;
   /**
-   * grava uma importação: só as linhas que ainda não estão no banco (o id é fixo, então o mesmo extrato não duplica);
-   * devolve quantas entraram e quantas já estavam
+   * grava uma importação: só as linhas que ainda não estão no banco (o id é fixo, então o mesmo extrato não duplica;
+   * financeiro.separarJaImportadas); quantos, entradas e saídas da importação são os das linhas gravadas nela; devolve
+   * quantas entraram e quantas já estavam
    */
   importarExtrato(i: NovaImportacao, linhas: financeiro.LancamentoDoBanco[], quem: string): Promise<{ novas: number; repetidas: number }>;
   /** apaga a importação e as linhas que vieram nela */
@@ -107,10 +108,10 @@ export function criarCaixaMemoria(): RepoCaixa {
     extrato: () => ({ carregada: true, lista: [...extrato].sort((a, b) => a.data.localeCompare(b.data) || a.id.localeCompare(b.id)), erro: '' }),
     importacoes: () => ({ carregada: true, lista: [...importacoes].sort((a, b) => b.importadoEm.localeCompare(a.importadoEm)), erro: '' }),
     async importarExtrato(i, linhas, quem) {
-      const ja = new Set(extrato.map(x => x.id));
-      const novas = linhas.filter(x => !ja.has(x.id));
-      extrato = [...extrato, ...novas];
-      importacoes = [{ ...i, quantos: novas.length, importadoEm: AGORA(), importadoPor: quem }, ...importacoes];
+      const { novas } = financeiro.separarJaImportadas(linhas, extrato);
+      const r = financeiro.resumoDoExtrato(novas);
+      extrato = [...extrato, ...novas.map(l => { const c = { ...l }; delete c.idAntigo; return c; })];
+      importacoes = [{ ...i, quantos: r.quantos, entradas: r.entradas, saidas: r.saidas, importadoEm: AGORA(), importadoPor: quem }, ...importacoes];
       mudou();
       return { novas: novas.length, repetidas: linhas.length - novas.length };
     },

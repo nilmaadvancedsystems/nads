@@ -3,9 +3,12 @@
 //     toribaId?, criadoEm, criadoPor, atualizadoEm?, atualizadoPor?}; ao vivo (a coleção toda, uns 3.700 lançamentos);
 //   - financeiroPlano/{id}: {codigo, descricao, tipo, nivel, pai, ativo, movimentavel}; ao vivo;
 //   - financeiroBanco/{id}: o extrato do banco (23/10/2026, à parte do Caixa) {data, historico, valor, tipo, banco,
-//     importacao}; o id é fixo (core financeiro.linhasDoExtrato), então o mesmo extrato não duplica; ao vivo;
+//     importacao, contaBancaria?, conta?}; o id é fixo pela conta bancária (core financeiro.linhasDoExtrato; antes de
+//     30/10/2026, pelo nome do banco: financeiro.separarJaImportadas reconhece os dois), então o mesmo extrato não duplica;
+//     ao vivo;
 //   - financeiroBancoImportacoes/{id}: {banco, arquivo, de, ate, quantos, entradas, saidas, saldoFinal?, importadoEm,
-//     importadoPor}; ao vivo.
+//     importadoPor}; o período é o do arquivo; quantos, entradas e saídas são as linhas que esta importação gravou (as
+//     que já estavam ficam de fora, como no desfazer); ao vivo.
 import { financeiro } from '@nads/core';
 import { addDoc, collection, deleteDoc as deleteDocBruto, doc, onSnapshot, setDoc as setDocBruto, writeBatch as writeBatchBruto } from 'firebase/firestore';
 import { guardar, guardarLote } from '../../../comum/modoDesenvolvedor';
@@ -138,8 +141,8 @@ export function criarCaixaFirestore(): RepoCaixa {
     },
     async importarExtrato(i, linhas, quem) {
       // só as linhas que ainda não estão no banco (a lista ao vivo já está carregada: a tela mostra as repetidas antes)
-      const ja = new Set((extrato?.lista ?? []).map(x => x.id));
-      const novas = linhas.filter(x => !ja.has(x.id));
+      const { novas } = financeiro.separarJaImportadas(linhas, extrato?.lista ?? []);
+      const r = financeiro.resumoDoExtrato(novas);
       for (let k = 0; k < novas.length; k += POR_LOTE) {
         const b = writeBatch(db);
         for (const l of novas.slice(k, k + POR_LOTE)) {
@@ -152,7 +155,7 @@ export function criarCaixaFirestore(): RepoCaixa {
       }
       await setDoc(doc(db, 'financeiroBancoImportacoes', i.id), {
         banco: i.banco, ...(i.marca ? { marca: i.marca } : {}), ...(i.contaBancaria ? { contaBancaria: i.contaBancaria } : {}), ...(i.conta ? { conta: i.conta } : {}),
-        ...(i.rotuloDaConta ? { rotuloDaConta: i.rotuloDaConta } : {}), arquivo: i.arquivo, de: i.de, ate: i.ate, quantos: novas.length, entradas: i.entradas, saidas: i.saidas,
+        ...(i.rotuloDaConta ? { rotuloDaConta: i.rotuloDaConta } : {}), arquivo: i.arquivo, de: i.de, ate: i.ate, quantos: r.quantos, entradas: r.entradas, saidas: r.saidas,
         ...(i.saldoFinal != null ? { saldoFinal: i.saldoFinal } : {}), importadoEm: new Date().toISOString(), importadoPor: quem,
       });
       return { novas: novas.length, repetidas: linhas.length - novas.length };

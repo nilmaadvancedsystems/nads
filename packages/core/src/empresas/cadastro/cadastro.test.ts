@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   avisoDaConta, bancosDoCadastroNa, buscarNoPlano, cadastroDoDocumento, cadastroVazio, compararPlanos, confirmarPontoDePartida,
-  comContasPadrao, criarRepoCadastro, criarRepoCadastroMemoria, gravacaoDoCadastro, portaCadastroMemoria, definirCartao, definirContaPadrao, definirContato, definirDocumento, confirmarBancos, sugerirContaContabil, definirNotaDeHonorario, definirPagamentoDoProLabore, definirPrestaServico, definirRegime, regimeDoCadastro, definirSocios, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
+  comContasPadrao, foraDoBalancete, criarRepoCadastro, criarRepoCadastroMemoria, gravacaoDoCadastro, portaCadastroMemoria, definirCartao, definirContaPadrao, definirContato, definirDocumento, confirmarBancos, sugerirContaContabil, definirNotaDeHonorario, definirPagamentoDoProLabore, definirPrestaServico, definirRegime, regimeDoCadastro, definirSocios, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
   bancosDoEntregasDoDocumento, bancosDoEntregasPorCodigo, contatosDoEntregasPorCodigo, contasDoEntregas, juntarComEntregas, sugestoesDoEntregas,
   lerPlanilhaDoPlano, linhasDoTexto, registrarPlano, planoDoBalancete, planoDoDocumento, pontoDePartida, primeiroBancoDoCadastro, reabrirConta, salvarConta, textoDoArquivo,
   type PlanoDeContas,
@@ -95,6 +95,17 @@ describe('confirmar os bancos na Importação (21/10/2026)', () => {
     expect(confirmarBancos(vazio(), [L('nubank', 'nubank', '10504', false)], partida, plano, 'Vitor', AGORA).erro).toBe('Marque os bancos que a empresa tem.');
     // o banco novo, com agência e conta, entra com o id da conta
     expect(confirmarBancos(vazio(), [L(null, 'itau', '10501', true, '0412', '99887-7')], partida, null, 'Vitor', AGORA).cadastro.bancos?.[0].id).toBe('itau-0412-998877');
+  });
+  it('com o plano do balancete, o banco sem saldo no mês (fora dele) não trava: aviso leve (30/10/2026)', () => {
+    const doBalancete = { ...plano, origem: 'balancete' as const };
+    const r = confirmarBancos(vazio(), [L('nubank', 'nubank', '10599')], partida, doBalancete, 'Vitor', AGORA);
+    expect(r.erro).toBeNull();
+    expect(r.cadastro.bancos?.[0].contaContabil).toBe('10599');
+    expect(avisoDaConta('10599', doBalancete)).toMatch(/sem saldo neste balancete/);
+    expect(foraDoBalancete('10599', doBalancete)).toBe(true);
+    expect(foraDoBalancete('10599', plano)).toBe(false);
+    // a sintética continua travando, mesmo no plano do balancete
+    expect(confirmarBancos(vazio(), [L('nubank', 'nubank', '105')], partida, doBalancete, 'Vitor', AGORA).erro).toBe('Nubank: A conta 105 é sintética (não recebe lançamento).');
   });
   it('a conta contábil sugerida pelo nome no plano: só quando bate uma', () => {
     expect([sugerirContaContabil(plano, 'nubank'), sugerirContaContabil(plano, 'sicoob'), sugerirContaContabil(plano, 'caixa'), sugerirContaContabil(null, 'nubank')]).toEqual(['10504', '10501', '', '']);
