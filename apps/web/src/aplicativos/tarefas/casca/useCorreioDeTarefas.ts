@@ -41,7 +41,7 @@ export function useCorreioDeTarefas() {
     const novas = recebidas.filter(t => !ja.includes(t.id));
     if (!novas.length) return;
     if (novas.length === 1) aviso({ tom: 'info', icone: 'caixaEntrada', titulo: 'Tarefa nova para você', texto: novas[0].criadaPor.nome + ' delegou: "' + curto(novas[0].titulo) + '"' });
-    else aviso({ tom: 'info', icone: 'caixaEntrada', titulo: novas.length + ' tarefas novas para você', texto: 'De ' + [...new Set(novas.map(t => t.criadaPor.nome))].join(', ') + '. Abra o correio para ver.' });
+    else aviso({ tom: 'info', icone: 'caixaEntrada', titulo: novas.length + ' tarefas novas para você', texto: 'De ' + [...new Set(novas.map(t => t.criadaPor.nome))].join(', ') + '. Abra Minhas tarefas (no Escritório) para ver.' });
     guardar(uid, [...ja, ...novas.map(t => t.id)]);
   // os ids das recebidas (e quem está) dizem tudo
   // eslint-disable-next-line react-hooks/exhaustive-deps

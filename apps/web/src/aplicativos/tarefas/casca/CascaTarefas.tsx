@@ -1,6 +1,6 @@
 // View da casca da Tarefas (a Casca comum do nads). telaInteira: sem a barra lateral e sem o título (o Drive).
 import { BotaoIcone, Casca, MenuSuspenso, type NomeIcone } from '@nads/ui';
-import { Suspense, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { LugarDasAcoes, useTrilhaDoTopo } from '../../../comum/topo';
 import { useAvisoDeBloqueio } from '../../../comum/modoDesenvolvedor';
 import type { IdAplicacao } from './navegacao';
@@ -9,13 +9,7 @@ import { ItemDosFeedbacks, JanelaDosFeedbacks } from '../telas/feedback/Feedback
 import { AvisoDeCertificados } from './AvisoDeCertificados';
 import { useAvisoDosMeusFeedbacks } from './useAvisoDosMeusFeedbacks';
 import { CartaoDaEmpresa } from './CartaoDaEmpresa';
-import { pedaco } from '../../../comum/pedaco';
-import { CorreioDeTarefas } from '../telas/delegador/partes/CorreioDeTarefas';
-import type { AbaDaCentral } from '../telas/delegador/useCentralDeTarefas';
 import { useCorreioDeTarefas } from './useCorreioDeTarefas';
-
-// a Central de tarefas só baixa quando a pessoa abre (pelo perfil ou pelo correio)
-const CentralDeTarefas = pedaco(() => import('../telas/delegador/CentralDeTarefas'), 'CentralDeTarefas');
 
 /**
  * O avatar no canto do cabeçalho (como o do Entregas e o do GitHub): as iniciais; aberto, a Minha página e sair. Sem o
@@ -27,7 +21,7 @@ function AvatarDaPessoa({ vm, abrirCentral }: { vm: ReturnType<typeof useCascaTa
     <MenuSuspenso rotulo={vm.perfil.foto ? <img className="gh-avatar-foto" src={vm.perfil.foto} alt="" /> : vm.perfil.iniciais} className={'gh-avatar' + (vm.naPessoal ? ' ativo' : '')} dica={vm.perfil.nome} titulo={vm.perfil.nome} direita animado
       itens={[
         { rotulo: 'Minha conta', icone: 'usuario', onClick: () => vm.abrirPessoal('conta') },
-        { rotulo: 'Central de tarefas', icone: 'checklist', onClick: abrirCentral },
+        { rotulo: 'Minhas tarefas', icone: 'checklist', onClick: abrirCentral },
         // só ver tudo, sem alterar nada (Vitor, 06/10/2026)
         { rotulo: 'Modo desenvolvedor', icone: 'settings', marcado: vm.dev, onClick: () => vm.setDev(!vm.dev) },
         'separador',
@@ -54,10 +48,8 @@ export function CascaTarefas({ app, pagina, telaInteira, semLateral, larga, empr
   const titulo = empresa ? empresa.paginas.find(p => p.id === empresa.pagina)?.titulo || '' : vm.titulo;
   const trilha = useTrilhaDoTopo();
   const [feedbacks, setFeedbacks] = useState(false);
-  // a Central de tarefas aberta (em qual aba) ou fechada
-  const [central, setCentral] = useState<AbaDaCentral | null>(null);
-  // o número do correio e o aviso da tarefa nova (28/10/2026)
-  const correio = useCorreioDeTarefas();
+  // o aviso da tarefa nova (28/10/2026); a Central virou o módulo Minhas tarefas (30/10/2026), sem o correio no pé do menu
+  useCorreioDeTarefas();
   useAvisoDeBloqueio();
   // o feedback que o admin pôs em Resolvendo: avisa quem mandou (26/10/2026)
   useAvisoDosMeusFeedbacks();
@@ -67,21 +59,18 @@ export function CascaTarefas({ app, pagina, telaInteira, semLateral, larga, empr
       acoes={telaInteira || (empresa && !titulo) ? undefined : <LugarDasAcoes />} onSecao={empresa ? empresa.onPagina : vm.onSecao} onPagina={vm.onPagina} onInicio={vm.inicio} onAplicativos={vm.inicio}
       onEmpresa={vm.trocarPessoa} aplicativos={vm.aplicacoes} onAplicativo={vm.onAplicacao}
       cartaoNoTopo={empresa ? <CartaoDaEmpresa empresa={empresa} /> : undefined}
-      topoDireita={<AvatarDaPessoa vm={vm} abrirCentral={() => setCentral('minhas')} />}
+      topoDireita={<AvatarDaPessoa vm={vm} abrirCentral={() => vm.onAplicacao('minhas-tarefas')} />}
       // o pé da gaveta (Vitor, 28/10/2026: "deixe dois ícones, um com o e-mail e outro com a engrenagem, somente com os
-      // ícones"): o correio das tarefas (todos; 28/10/2026, o delegador), os Feedbacks (só o admin) e as Configurações (quem
-      // tem), lado a lado. Com o correio, o pé aparece para toda a equipe
-      peDaGaveta={fechar => (
+      // ícones"): os Feedbacks (só o admin) e as Configurações (quem tem), lado a lado. O correio das tarefas saiu (30/10/2026:
+      // as tarefas viraram o módulo Minhas tarefas, no Escritório)
+      peDaGaveta={vm.admin || vm.configuracoes ? fechar => (
         <div className="drawer-icones">
-          <CorreioDeTarefas emAberto={correio.emAberto} titulo={correio.titulo} abrir={() => { fechar(); setCentral('minhas'); }} />
           {vm.admin && <ItemDosFeedbacks abrir={() => { fechar(); setFeedbacks(true); }} />}
           {vm.configuracoes && <BotaoIcone icone="settings" titulo="Configurações" aria-pressed={vm.configuracoes.ativa}
             onClick={() => { fechar(); vm.onAplicacao('cadastro'); }} />}
         </div>
-      )}>
+      ) : undefined}>
       {feedbacks && <JanelaDosFeedbacks fechar={() => setFeedbacks(false)} />}
-      {/* enquanto a Central baixa, nada aparece (a barra do topo anda) */}
-      {central && <Suspense fallback={null}><CentralDeTarefas aba={central} fechar={() => setCentral(null)} /></Suspense>}
       {/* os certificados vencidos ou vencendo (19/10/2026): só o admin */}
       <AvisoDeCertificados ligado={vm.admin} />
       {children}
