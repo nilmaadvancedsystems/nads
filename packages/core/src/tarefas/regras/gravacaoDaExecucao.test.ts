@@ -13,8 +13,8 @@ describe('a diferença da execução (30/10/2026)', () => {
     expect(diferencaDaExecucao(ex, ex)).toEqual([]);
     const f = fazer(ex, 'razao', 'Vitor', AGORA).execucao;
     expect(diferencaDaExecucao(ex, f)).toEqual([{ caminho: ['etapas', 'razao'], valor: f.etapas.razao }]);
-    expect(diferencaDaExecucao(ex, informarValor(ex, 'x', 'fiscalXmls', 12, 'V', AGORA).execucao)).toEqual([{ caminho: ['valores', 'fiscalXmls'], valor: 12 }]);
-    expect(diferencaDaExecucao(ex, voltarPara(ex, 'extratos', 'V', AGORA).execucao)).toEqual([{ caminho: ['etapas', 'extratos'], apagar: true }]);
+    expect(diferencaDaExecucao(ex, informarValor(ex, 'x', 'fiscalXmls', 12, 'V', AGORA).execucao)).toEqual([{ caminho: ['valores', 'fiscalXmls'], valor: 12 }, { caminho: ['valoresEm', 'fiscalXmls'], valor: AGORA.toISOString() }]);
+    expect(diferencaDaExecucao(ex, voltarPara(ex, 'extratos', 'V', AGORA).execucao)).toEqual([{ caminho: ['etapas', 'extratos'], apagar: true }, { caminho: ['reabertas', 'extratos'], valor: AGORA.toISOString() }]);
     expect(diferencaDaExecucao(ex, marcarSemMovimento(ex, 'extratos', 'sicoob', true, 'V', AGORA).execucao)).toEqual([{ caminho: ['semMovimento'], juntar: ['sicoob'] }]);
     const comBanco = { ...ex, semMovimento: ['sicoob', 'bb'] };
     expect(diferencaDaExecucao(comBanco, marcarSemMovimento(comBanco, 'extratos', 'bb', false, 'V', AGORA).execucao)).toEqual([{ caminho: ['semMovimento'], tirar: ['bb'] }]);
