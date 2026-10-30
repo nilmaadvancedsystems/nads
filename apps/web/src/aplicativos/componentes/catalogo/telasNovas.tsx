@@ -72,7 +72,7 @@ export const PECAS_DAS_TELAS_NOVAS: Peca[] = [
         </div>
         <footer className="registro-pe"><span className="fraco">1 item</span><span className="tarefas-barra-espaco" /><button type="button" className="btn btn-outline">Fechar</button></footer>
       </div>) },
-  { id: 'controle-tributos', tipo: 'tabelas', nome: 'Folha de controle (valores, conferências e entrega)', descricao: 'A folha do Protocolo de Entrega de Tributos na tela: o código e a empresa parados à esquerda, um campo de valor por tributo (em cinza, o que o Entregas já entregou), a data, as conferências (o quadradinho: vazio → OK → —) e a entrega (Impresso, WhatsApp, E-mail); a linha entregue fica verde', componente: 'MarcaDoControle (fiscal/relatorio)', classes: ['table-compact ctrl-tabela', 'ctrl-marca', 'ctrl-marca ctrl-marca-ok', 'ctrl-marca ctrl-marca-na', 'pessoal-select ctrl-entrega', 'ctrl-linha-entregue'], telas: ['t-fiscal-controle'], largo: true,
+  { id: 'controle-tributos', tipo: 'tabelas', nome: 'Folha de controle (valores, conferências e entrega)', descricao: 'A folha do Protocolo de Entrega de Tributos na tela: o código e a empresa parados à esquerda, um campo de valor por tributo (em cinza, o que o Entregas já entregou), a data, as conferências (o quadradinho: vazio → OK → —) e a entrega (Impresso, WhatsApp, E-mail); a linha entregue fica verde', componente: 'MarcaDoControle (fiscal/relatorio)', classes: ['table-compact ctrl-tabela', 'ctrl-marca', 'ctrl-marca ctrl-marca-ok', 'ctrl-marca ctrl-marca-na', 'select-compact ctrl-entrega', 'ctrl-linha-entregue'], telas: ['t-fiscal-controle'], largo: true,
     uso: '<td className="ctrl-mk"><MarcaDoControle marca={linha.marcas.dctf} rotulo="DCTF" pode={podeGravar} aoVirar={virar} /></td>',
     demo: () => (
       <div className="table-wrap" style={{ width: '100%' }}><table className="table-compact ctrl-tabela" style={{ minWidth: 0 }}>
@@ -80,10 +80,10 @@ export const PECAS_DAS_TELAS_NOVAS: Peca[] = [
         <tbody>
           <tr className="ctrl-linha-entregue"><td className="ctrl-cod num">279</td><td className="ctrl-nome">ALMEIDA &amp; SOUZA LTDA</td><td className="num"><input className="fin-valor-edita num" defaultValue="2.595,81" aria-label="DAS" /></td><td className="num"><input className="fin-valor-edita num" defaultValue="—" aria-label="ICMS-ST" /></td><td className="ctrl-data"><input className="fin-valor-edita" defaultValue="15/09/2026" aria-label="Data" /></td>
             <td className="ctrl-mk"><MarcaDoControle marca="ok" rotulo="S" pode aoVirar={() => undefined} /></td><td className="ctrl-mk"><MarcaDoControle marca="ok" rotulo="D" pode aoVirar={() => undefined} /></td><td className="ctrl-mk"><MarcaDoControle marca="na" rotulo="R" pode aoVirar={() => undefined} /></td>
-            <td><select className="pessoal-select ctrl-entrega ctrl-entrega-feita" defaultValue="zap" aria-label="Entregue"><option value="zap">WhatsApp</option></select></td></tr>
+            <td><select className="select-compact ctrl-entrega ctrl-entrega-feita" defaultValue="zap" aria-label="Entregue"><option value="zap">WhatsApp</option></select></td></tr>
           <tr><td className="ctrl-cod num">356</td><td className="ctrl-nome">A7 COMÉRCIO DE VEÍCULOS LTDA</td><td className="num"><input className="fin-valor-edita num" placeholder="931,81" aria-label="DAS" /></td><td className="num"><input className="fin-valor-edita num" aria-label="ICMS-ST" /></td><td className="ctrl-data"><input className="fin-valor-edita" placeholder="dd/mm/aaaa" aria-label="Data" /></td>
             <td className="ctrl-mk"><MarcaDoControle marca="" rotulo="S" pode aoVirar={() => undefined} /></td><td className="ctrl-mk"><MarcaDoControle marca="" rotulo="D" pode aoVirar={() => undefined} /></td><td className="ctrl-mk"><MarcaDoControle marca="" rotulo="R" pode aoVirar={() => undefined} /></td>
-            <td><select className="pessoal-select ctrl-entrega" defaultValue="" aria-label="Entregue"><option value="">Falta</option></select></td></tr>
+            <td><select className="select-compact ctrl-entrega" defaultValue="" aria-label="Entregue"><option value="">Falta</option></select></td></tr>
         </tbody>
       </table></div>) },
 ];
