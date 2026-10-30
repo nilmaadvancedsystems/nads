@@ -58,10 +58,11 @@ export function CentralDeTarefas({ aba, fechar }: { aba: AbaDaCentral; fechar: (
   );
 }
 
-function ListaDaCentral({ vm }: { vm: ReturnType<typeof useCentralDeTarefas> }) {
+/** A lista (a barra e a tabela). semTitulo: no módulo Minhas tarefas, o título já vem da casca. */
+export function ListaDaCentral({ vm, semTitulo }: { vm: ReturnType<typeof useCentralDeTarefas>; semTitulo?: boolean }) {
   return (
     <>
-      <h2 className="cfg-titulo">{vm.abas.find(a => a.ativa)?.rotulo}</h2>
+      {!semTitulo && <h2 className="cfg-titulo">{vm.abas.find(a => a.ativa)?.rotulo}</h2>}
       <div className="tarefas-barra-topo tdl-barra">
         <button type="button" className="btn btn-primary" onClick={vm.nova}><Icone nome="plus" width={16} height={16} />Nova tarefa</button>
         <label className="busca-curta">
