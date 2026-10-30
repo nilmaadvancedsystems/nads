@@ -64,7 +64,7 @@ function SeletorConta({ l, grupos, onMudar }: { l: Linha; grupos: GrupoDeContas[
           {g.contas.map(a => <option key={a.codigo} value={a.codigo}>{a.nome} · {a.codigo}</option>)}
         </optgroup>
       ))}
-      {l.foraDoPlano && <option value={l.conta}>{l.conta} — fora do plano (ou sintética)</option>}
+      {l.foraDoPlano && <option value={l.conta}>{l.conta} — {l.motivoFora}</option>}
     </select>
   );
 }
