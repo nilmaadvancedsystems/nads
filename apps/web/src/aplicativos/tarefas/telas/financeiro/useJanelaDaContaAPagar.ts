@@ -3,8 +3,9 @@
 // "Despesa recorrente" com a quantidade), o pagamento, as observações, os anexos e o Auditor. O fornecedor traz a conta
 // contábil dele; o fornecedor novo se cadastra ali mesmo. O boleto em PDF é lido no navegador (financeiro.lerBoleto): o
 // valor, o vencimento e a linha digitável vêm sozinhos. A recorrência cria as N contas na hora, uma por mês, no mesmo dia.
-// Pagar conta grava o pagamento e cria a saída no Caixa, com a conta contábil da conta (como o Receber dos Honorários: se
-// gravar o pagamento falhar, tira a saída que acabou de criar); Desfazer o pagamento tira a saída do Caixa. Paga, a conta
+// Pagar conta só grava o pagamento: o Contas a pagar é controle e não lança no Caixa (30/10/2026: "Nao joga no caixa, serve
+// apenas pra controle"); a conta contábil fica para o relatório. A paga antes disso tem a saída no Caixa: Desfazer o
+// pagamento e Excluir ainda tiram essa saída. Paga, a conta
 // só muda as observações e os anexos. Excluir uma parcela pergunta "só esta" ou "esta e as próximas" (as em aberto).
 import { extrator, financeiro, formatos } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
@@ -213,7 +214,7 @@ export function useJanelaDaContaAPagar(id: string | undefined, topicoInicial: To
       // paga: sobe na hora; ainda não paga, sobe junto com o Pagar conta
       if (id && paga) { if (await anexarAgora(id, { ...lido, tipo: 'comprovante' })) toast('Comprovante anexado.'); } else setComprovante(lido);
     },
-    /** Pagar conta: a saída no Caixa e, depois, o pagamento na conta; se o pagamento falhar, a saída sai */
+    /** Pagar conta: grava o pagamento na conta (não lança no Caixa) */
     async pagar() {
       if (!existente) return;
       const p = { data: isoDaData(dataPg), valorPago: valorDigitado(valorPago), juros: valorDigitado(juros), desconto: valorDigitado(desconto) };
@@ -221,37 +222,32 @@ export function useJanelaDaContaAPagar(id: string | undefined, topicoInicial: To
       setErros(problemas);
       if (problemas.length) return;
       setFazendo('pagar');
-      let lancamentoId: string | undefined;
       try {
-        lancamentoId = await caixa.salvarLancamento({
-          data: p.data, descricao: financeiro.descricaoDoPagamento(financeiro.nomeDoFornecedor(fornecedores.find(f => f.id === existente.fornecedorId)), existente.documento, existente.recorrencia),
-          valor: p.valorPago, tipo: 'S', conta: existente.conta, observacoes: 'Contas a pagar, ID ' + existente.numero,
-        }, quem);
-        await repo.definirPagamento(existente.id, { ...p, lancamentoId, por: quem, em: new Date().toISOString() });
+        await repo.definirPagamento(existente.id, { ...p, por: quem, em: new Date().toISOString() });
       } catch (e) {
-        if (lancamentoId) await caixa.excluirLancamento(lancamentoId).catch(() => undefined);
         setErros([mensagem(e, 'Não consegui gravar o pagamento.')]);
         setFazendo('');
         return;
       }
       if (comprovante) { await anexarAgora(existente.id, { ...comprovante, tipo: 'comprovante' }); setComprovante(null); }
       setFazendo('');
-      toast('Conta paga e lançada no Caixa.');
+      toast('Conta paga.');
     },
-    /** Desfazer o pagamento: a conta volta a ficar em aberto e a saída sai do Caixa (se o Caixa falhar, o pagamento volta) */
+    /** Desfazer o pagamento: a conta volta a ficar em aberto; a paga antes de 30/10/2026 tem a saída no Caixa, que sai junto */
     async desfazerPagamento() {
       const antigo = existente?.pagamento;
       if (!existente || !antigo) return;
       const ok = await modal<boolean>({
         icone: 'alert', titulo: 'Desfazer o pagamento?',
-        texto: `A conta volta a ficar em aberto e a saída de ${formatos.reais(antigo.valorPago)} sai do Caixa.` + (existente.anexos.some(a => a.tipo === 'comprovante') ? ' O comprovante continua anexado.' : ''),
+        texto: 'A conta volta a ficar em aberto.' + (antigo.lancamentoId ? ` A saída de ${formatos.reais(antigo.valorPago)} que ela tinha no Caixa sai junto.` : '') + (existente.anexos.some(a => a.tipo === 'comprovante') ? ' O comprovante continua anexado.' : ''),
         botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Desfazer', valor: true, variante: 'btn-danger' }],
       });
       if (!ok) return;
       setFazendo('desfazer');
       try {
         await repo.definirPagamento(existente.id, null);
-        if (antigo.lancamentoId && caixa.lancamentos().lista.some(x => x.id === antigo.lancamentoId)) {
+        // não confere na lista do Caixa: ela pode ainda não ter sido lida nesta página (aí a saída ficava no Caixa)
+        if (antigo.lancamentoId) {
           try { await caixa.excluirLancamento(antigo.lancamentoId); } catch (e) { await repo.definirPagamento(existente.id, antigo).catch(() => undefined); throw e; }
         }
         setValorPago(valorNoCampo(existente.valor)); setJuros(''); setDesconto('');
@@ -266,7 +262,7 @@ export function useJanelaDaContaAPagar(id: string | undefined, topicoInicial: To
       if (!existente) return;
       const r = existente.recorrencia;
       const resumo = `ID ${existente.numero} · ${financeiro.nomeDoFornecedor(fornecedores.find(f => f.id === existente.fornecedorId)) || 'sem fornecedor'} · ${formatos.reais(existente.valor)}.`;
-      const doCaixa = paga ? ' Ela está paga: a saída do Caixa também sai.' : '';
+      const doCaixa = paga && existente.pagamento?.lancamentoId ? ' Ela tem a saída no Caixa: a saída também sai.' : '';
       const qual = await modal<'esta' | 'proximas' | null>(r ? {
         icone: 'alert', titulo: 'Excluir a ' + financeiro.rotuloDaParcela(r) + '?',
         texto: resumo + ' Esta e as próximas: as parcelas seguintes que ainda não foram pagas.' + doCaixa,
@@ -281,7 +277,7 @@ export function useJanelaDaContaAPagar(id: string | undefined, topicoInicial: To
       setFazendo('excluir');
       try {
         await repo.excluirContas(sairao.map(c => c.id));
-        const lancamentos = sairao.map(c => c.pagamento?.lancamentoId).filter((x): x is string => !!x && caixa.lancamentos().lista.some(l => l.id === x));
+        const lancamentos = sairao.map(c => c.pagamento?.lancamentoId).filter((x): x is string => !!x);
         for (const l of lancamentos) await caixa.excluirLancamento(l).catch(() => toast('A saída do Caixa não saiu: apague no Caixa.'));
         toast(sairao.length > 1 ? sairao.length + ' contas excluídas.' : 'Conta excluída.');
         fechar();

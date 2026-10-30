@@ -1,7 +1,7 @@
 // ViewModel do Drive (a pasta do ano, pelo mapa do robô do Entregas), no jeito do Explorador de Arquivos do Windows:
 // a árvore das pastas à esquerda (abre sob demanda), a barra de endereço (voltar, avançar, acima, a trilha), a lista em
-// Detalhes (Nome, Data de modificação, Tipo, Tamanho; clicar no título ordena) ou em Ícones, a seleção (clique,
-// Ctrl e Shift) e a barra de status. A pasta aberta fica na URL (?c=<pasta do cliente>&p=<pasta>), então o voltar do
+// Detalhes (Nome, Data de modificação, Tipo, Tamanho; clicar no título ordena) ou em Ícones, a seleção (a caixinha de
+// cada linha e a do título, Ctrl e Shift) e a barra de status. A pasta aberta fica na URL (?c=<pasta do cliente>&p=<pasta>), então o voltar do
 // navegador funciona. Os pedidos ao robô (abrir, baixar, .zip) recomeçam o prazo a cada avanço que ele informa.
 // A exibição, a árvore, a tela cheia e a ordem ficam guardadas neste navegador (localStorage; se ele recusar, vale o padrão).
 import { entregas as e } from '@nads/core';
@@ -214,6 +214,10 @@ export function useExploradorDoDrive({ naEmpresa = false }: { naEmpresa?: boolea
     estaMarcado: (id: string) => marcados.has(id),
     selecionar,
     selecionarTodos: () => setMarcados(new Set(entradas.map(x => x.id))),
+    /** a caixinha do título: todos marcados, alguns (o traço) ou nenhum; o clique marca todos ou tira todos */
+    todosMarcados: entradas.length > 0 && selecionadas.length === entradas.length,
+    algunsMarcados: selecionadas.length > 0 && selecionadas.length < entradas.length,
+    alternarTodos: () => { setMarcados(selecionadas.length === entradas.length ? new Set() : new Set(entradas.map(x => x.id))); setAncora(null); },
     limparSelecao: () => { setMarcados(new Set()); setAncora(null); },
     tamanhoMarcado: e.tamanhoLegivel(bytesMarcados),
 
@@ -281,18 +285,21 @@ export function useExploradorDoDrive({ naEmpresa = false }: { naEmpresa?: boolea
       if (!it) return Promise.reject(new Error('arquivo não encontrado'));
       return pedirLink({ modo: 'abrir', fileId: it.i, nome: it.n }, '"' + it.n + '"').catch(falhou('abrir "' + it.n + '"'));
     },
-    /** o link de download da seleção: um arquivo; uma pasta (.zip dela); vários arquivos (um .zip) */
-    linkDosMarcados(): Promise<string> {
+    /**
+     * Os downloads da seleção, como no Explorador (30/10/2026: "podendo selecionar vários e baixar"): os arquivos num
+     * só (um arquivo vem como é; vários, num .zip) e cada pasta marcada no .zip dela. aoChegar recebe cada link pronto.
+     */
+    baixarMarcados(aoChegar: (url: string) => void): Promise<void> {
       const pastas = selecionadas.filter(x => x.pasta);
       const arquivos = selecionadas.filter(x => !x.pasta).map(x => porId.get(x.id)).filter((x): x is e.ItemDoDrive => !!x);
-      if (pastas.length === 1 && !arquivos.length) return pedirLink(e.pedidoDaPasta({ i: pastas[0].id, n: pastas[0].nome }), 'a pasta "' + pastas[0].nome + '"').catch(falhou('juntar a pasta'));
-      if (!arquivos.length) { toast('Baixe uma pasta de cada vez (ou marque só arquivos).'); return Promise.reject(new Error('várias pastas')); }
-      if (pastas.length) toast('As pastas marcadas ficaram de fora: baixe cada pasta sozinha.');
-      if (arquivos.length === 1) return pedirLink({ modo: 'baixar', fileId: arquivos[0].i, nome: arquivos[0].n }, '"' + arquivos[0].n + '"').catch(falhou('baixar'));
-      const pedido = e.pedidoDeZip(arquivos, (pastaAtual?.n || 'arquivos') + '.zip');
-      if (!pedido) return Promise.reject(new Error('nada para baixar'));
-      if (arquivos.length > e.MAX_NO_ZIP) toast('Só os ' + e.MAX_NO_ZIP + ' primeiros vão no .zip.');
-      return pedirLink(pedido, arquivos.length + ' arquivos').catch(falhou('juntar os arquivos'));
+      const links: Promise<string>[] = pastas.map(p => pedirLink(e.pedidoDaPasta({ i: p.id, n: p.nome }), 'a pasta "' + p.nome + '"').catch(falhou('juntar a pasta "' + p.nome + '"')));
+      if (arquivos.length === 1) links.push(pedirLink({ modo: 'baixar', fileId: arquivos[0].i, nome: arquivos[0].n }, '"' + arquivos[0].n + '"').catch(falhou('baixar')));
+      const pedido = arquivos.length > 1 ? e.pedidoDeZip(arquivos, (pastaAtual?.n || 'arquivos') + '.zip') : null;
+      if (pedido) {
+        if (arquivos.length > e.MAX_NO_ZIP) toast('Só os ' + e.MAX_NO_ZIP + ' primeiros vão no .zip.');
+        links.push(pedirLink(pedido, arquivos.length + ' arquivos').catch(falhou('juntar os arquivos')));
+      }
+      return Promise.allSettled(links.map(l => l.then(aoChegar))).then(() => undefined);
     },
     /** o link do .zip da pasta aberta */
     podeBaixarPasta: !!cliente && !!pastaAtual,

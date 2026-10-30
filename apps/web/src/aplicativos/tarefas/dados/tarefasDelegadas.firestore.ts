@@ -5,15 +5,18 @@
 // no documento; o arquivo já chega encolhido (a imagem em WebP, o resto em gzip: encolherAnexo.ts). O número da tarefa
 // é o maior que existe + 1 (duas criadas no mesmo segundo podem repetir o número: é só o rótulo, o id é o do documento).
 // Sem a regra no ar, o banco recusa: a lista fica vazia com o aviso.
+// A tela não depende só do ouvinte (29/10/2026: "a tela inteira do minhas tarefas ta bugado não salva nada"; o Gustavo
+// salvou às 17:28 vendo ainda o Savio como responsável, que já tinha devolvido a tarefa às 17:27): o que muda parte da
+// tarefa como está no banco agora, e depois de cada gravação a lista é relida do banco.
 import {
-  arrayUnion, Bytes, collection, deleteDoc as deleteDocBruto, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, setDoc as setDocBruto,
+  arrayUnion, Bytes, collection, deleteDoc as deleteDocBruto, doc, getDoc, getDocFromServer, getDocs, getDocsFromServer, limit, onSnapshot, orderBy, query, setDoc as setDocBruto,
   updateDoc as updateDocBruto, where, type Unsubscribe,
 } from 'firebase/firestore';
 import { entregas, tarefas } from '@nads/core';
 import { bancoDoEntregas } from './entregas.firestore';
 import { anexoDe, conferirAnexos, type ArquivoParaAnexar, type RepoTarefasDelegadas } from './tarefasDelegadas';
 import { bytesDoAnexo } from './encolherAnexo';
-import { guardar, guardarPedido } from '../../../comum/modoDesenvolvedor';
+import { guardar, guardarPedido, modoDesenvolvedor } from '../../../comum/modoDesenvolvedor';
 
 // o erro do banco em português (29/10/2026: a tela mostrava "Missing or insufficient permissions." e parecia que o Salvar
 // não fazia nada); o que não está aqui segue com a mensagem que veio
@@ -55,6 +58,30 @@ export function criarTarefasDelegadasFirestore(quem: () => Pessoa | null): RepoT
     if (!t) throw new Error('a tarefa não está mais na sua lista');
     return t;
   };
+  const daPessoa = (uid: string) => query(collection(db, COLECAO), where('pessoas', 'array-contains', uid), limit(500));
+  /** a tarefa como está no banco agora (sem o banco, a da lista) */
+  async function noBanco(id: string): Promise<TarefaDelegada> {
+    try {
+      const s = await getDocFromServer(doc(db, COLECAO, id));
+      if (!s.exists()) throw new Error('a tarefa não existe mais');
+      return d.lerTarefa(s.id, s.data());
+    } catch (e) {
+      if (e instanceof Error && e.message === 'a tarefa não existe mais') throw e;
+      return daTarefa(id);
+    }
+  }
+  /** relê a lista do banco depois de gravar (se o ouvinte parou, a tela não fica com o que era antes) */
+  async function reler() {
+    const q = quem();
+    // no modo desenvolvedor nada foi ao banco: reler apagaria da tela o que a pessoa fez
+    if (!q || !estado || estado.uid !== q.uid || modoDesenvolvedor()) return;
+    try {
+      const s = await getDocsFromServer(daPessoa(q.uid));
+      if (estado?.uid !== q.uid) return;
+      estado = { uid: q.uid, carregadas: true, tarefas: s.docs.map(x => d.lerTarefa(x.id, x.data())) };
+      mudou();
+    } catch { /* sem rede: fica o que o ouvinte trouxer */ }
+  }
   const parte = (id: string, anexoId: string, n: number) => doc(db, COLECAO, id, 'partes', anexoId + '-' + n);
 
   /** sobe os pedaços de cada arquivo e devolve a lista dos anexos (para o documento) */
@@ -84,7 +111,7 @@ export function criarTarefasDelegadasFirestore(quem: () => Pessoa | null): RepoT
         const este: NonNullable<typeof estado> = { uid: q.uid, carregadas: false, tarefas: [] };
         estado = este;
         // sem orderBy (a ordem é a do core): a busca por um campo só não pede índice composto
-        parar = onSnapshot(query(collection(db, COLECAO), where('pessoas', 'array-contains', q.uid), limit(500)), s => {
+        parar = onSnapshot(daPessoa(q.uid), s => {
           if (estado !== este) return;
           estado = { uid: q.uid, carregadas: true, tarefas: s.docs.map(x => d.lerTarefa(x.id, x.data())) };
           mudou();
@@ -116,13 +143,14 @@ export function criarTarefasDelegadasFirestore(quem: () => Pessoa | null): RepoT
         const novos = await subir(ref.id, anexos, por.nome, em);
         await updateDoc(ref, { anexos: novos, historico: arrayUnion(...novos.map(a => d.historicoDoAnexo('anexou', a.nome, por.nome, em))), atualizadaEm: em });
       }
+      await reler();
       return ref.id;
     },
     async salvar(id, r) {
       const por = eu();
       const problema = d.problemaDaTarefa(r);
       if (problema) throw new Error(problema);
-      const antes = daTarefa(id);
+      const antes = await noBanco(id);
       const em = new Date().toISOString();
       const linhas = d.historicoDaMudanca(antes, r, por.nome, em);
       if (!linhas.length) return;
@@ -131,30 +159,33 @@ export function criarTarefasDelegadasFirestore(quem: () => Pessoa | null): RepoT
         titulo: t.titulo, descricao: t.descricao, cliente: t.cliente, prioridade: t.prioridade, prazo: t.prazo, status: t.status,
         responsavel: t.responsavel, pessoas: d.pessoasDaTarefa(t), concluidaEm: t.concluidaEm, atualizadaEm: em, historico: historicoNovo(antes, linhas),
       });
+      await reler();
     },
     async comentar(id, texto) {
       const por = eu();
-      const t = daTarefa(id);
+      const t = await noBanco(id);
       const problema = d.problemaDoParecer(texto, t);
       if (problema) throw new Error(problema);
       const em = new Date().toISOString();
       await updateDoc(doc(db, COLECAO, id), {
         pareceres: arrayUnion({ por: por.nome, em, texto: d.limparTexto(texto) }), historico: historicoNovo(t, [d.historicoDoParecer(por.nome, em)]), atualizadaEm: em,
       });
+      await reler();
     },
     async anexar(id, arquivos) {
       const por = eu();
-      const t = daTarefa(id);
+      const t = await noBanco(id);
       conferirAnexos(t, arquivos);
       const em = new Date().toISOString();
       const novos = await subir(id, arquivos, por.nome, em);
       await updateDoc(doc(db, COLECAO, id), {
         anexos: arrayUnion(...novos), historico: historicoNovo(t, novos.map(a => d.historicoDoAnexo('anexou', a.nome, por.nome, em))), atualizadaEm: em,
       });
+      await reler();
     },
     async tirarAnexo(id, anexoId) {
       const por = eu();
-      const t = daTarefa(id);
+      const t = await noBanco(id);
       const a = t.anexos.find(x => x.id === anexoId);
       if (!a) return;
       const em = new Date().toISOString();
@@ -163,6 +194,7 @@ export function criarTarefasDelegadasFirestore(quem: () => Pessoa | null): RepoT
         anexos: t.anexos.filter(x => x.id !== anexoId), historico: historicoNovo(t, [d.historicoDoAnexo('tirou', a.nome, por.nome, em)]), atualizadaEm: em,
       });
       for (let n = 0; n < a.partes; n++) await deleteDoc(parte(id, anexoId, n));
+      await reler();
     },
     async baixarAnexo(id, anexoId) {
       const a = daTarefa(id).anexos.find(x => x.id === anexoId);
@@ -180,6 +212,7 @@ export function criarTarefasDelegadasFirestore(quem: () => Pessoa | null): RepoT
       // os pedaços antes (a regra deles olha a tarefa, que ainda existe), depois a tarefa
       for (const a of t.anexos) for (let n = 0; n < a.partes; n++) await deleteDoc(parte(id, a.id, n));
       await deleteDoc(doc(db, COLECAO, id));
+      await reler();
     },
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,

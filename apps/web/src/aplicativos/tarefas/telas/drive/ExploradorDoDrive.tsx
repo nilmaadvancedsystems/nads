@@ -3,7 +3,9 @@
 // a busca com o T e Enviar ▾), o card com a lista dos clientes e o Sobre ao lado. Abriu um cliente: o navegador de
 // arquivos — à esquerda, o painel com as pastas e os arquivos dele (a aberta marcada, com a pasta aberta) e, à direita, a
 // trilha (CLIENTE / PASTA /, copiar, Enviar ▾ e o ⋯ com o Baixar) e o card com a lista (com o ".."); o painel e a lista
-// rolam cada um por si, até o fim da janela. Com itens marcados, uma faixa: quantos, Baixar e Limpar. Um clique abre (a pasta entra; o
+// rolam cada um por si, até o fim da janela. A caixinha de cada linha marca (a do título marca todos; 30/10/2026: "assim
+// como se faz no explorer, podendo selecionar vários e baixar"). Com itens marcados, uma faixa: quantos, Baixar e Limpar
+// (várias pastas: um .zip de cada; os arquivos juntos num .zip). Um clique na linha abre (a pasta entra; o
 // arquivo abre numa aba nova, que nasce no clique e recebe o link quando o robô termina); Ctrl e Shift marcam; o botão
 // direito abre o menu (MenuDeContexto); arrastar arquivos, ou Enviar, manda para o Claudio Secretário. Tela cheia cobre
 // o nads (Esc sai). "T" vai para a busca, como no GitHub.
@@ -120,7 +122,7 @@ function Lista({ vm, aoMenu, acima, baixarMarcados, faixaFora }: { vm: VmDrive; 
           <>
             <h3>{m} {m === 1 ? 'selecionado' : 'selecionados'}{vm.tamanhoMarcado ? ' · ' + vm.tamanhoMarcado : ''}</h3>
             <span className="tarefas-barra-espaco" />
-            <button type="button" className="btn btn-outline" onClick={baixarMarcados}><Icone nome="download" />Baixar</button>
+            <button type="button" className="btn btn-outline" onClick={baixarMarcados}><Icone nome="download" width={16} height={16} />{m > 1 || vm.marcados.some(x => x.pasta) ? 'Baixar (.zip)' : 'Baixar'}</button>
             <button type="button" className="btn btn-ghost" onClick={vm.limparSelecao}>Limpar</button>
           </>
         ) : null}
@@ -134,6 +136,11 @@ function Lista({ vm, aoMenu, acima, baixarMarcados, faixaFora }: { vm: VmDrive; 
         <table ref={linhasQueSeMovem}>
           <thead>
             <tr>
+              <th className="lcdpr-marca">
+                <input type="checkbox" aria-label={vm.todosMarcados ? 'Desmarcar todos' : 'Marcar todos'} title={vm.todosMarcados ? 'Desmarcar todos' : 'Marcar todos'}
+                  checked={vm.todosMarcados} disabled={!vm.entradas.length} onChange={vm.alternarTodos}
+                  ref={el => { if (el) el.indeterminate = vm.algunsMarcados; }} />
+              </th>
               {COLUNAS_DA_LISTA.map(c => (
                 <th key={c.id} className={'th-sort' + (c.num ? ' num' : '')} onClick={() => vm.ordenarPor(c.id)}
                   aria-sort={vm.coluna === c.id ? (vm.desc ? 'descending' : 'ascending') : undefined}>
@@ -145,11 +152,17 @@ function Lista({ vm, aoMenu, acima, baixarMarcados, faixaFora }: { vm: VmDrive; 
           <tbody>
             {acima && (
               <tr className="linha-abre" tabIndex={0} onClick={vm.subir} onKeyDown={ev => { if (ev.key === 'Enter') vm.subir(); }} title="A pasta de cima">
+                <td className="lcdpr-marca" />
                 <td colSpan={COLUNAS_DA_LISTA.length}><span className="drive-nome"><Icone nome="pasta" className="drive-ico pasta" />..</span></td>
               </tr>
             )}
             {vm.entradas.map(x => (
               <tr key={x.id} {...linha(x)}>
+                {/* a caixinha marca sem abrir (como a do Explorador do Windows); o clique na linha continua abrindo */}
+                <td className="lcdpr-marca" onClick={ev => ev.stopPropagation()}>
+                  <input type="checkbox" aria-label={'Marcar ' + x.nome} checked={vm.estaMarcado(x.id)}
+                    onChange={ev => vm.selecionar(x.id, { ctrl: true, shift: (ev.nativeEvent as globalThis.MouseEvent).shiftKey })} />
+                </td>
                 <td className="drive-col-nome"><span className="drive-nome" title={x.nome}><IconeDaEntrada x={x} /><span>{x.nome}{x.onde && <span className="fraco drive-onde">{x.onde}</span>}</span></span></td>
                 <td className="fraco">{x.tipo}{!x.pasta && x.bytes ? ' · ' + vm.tamanho(x.bytes) : ''}</td>
                 <td className="fraco num" title={vm.quando(x.data)}>{relativo(x.data)}</td>
@@ -262,7 +275,8 @@ export function ExploradorDoDrive({ naEmpresa = false }: { naEmpresa?: boolean }
     if (Math.abs(dx) > 1) d.animate([{ translate: dx + 'px 0' }, { translate: '0 0' }], { duration: 440, easing: 'cubic-bezier(0.32, 0.72, 0, 1)' });
     if (vm.mostrarArvore && painel.current) animar(painel.current, { opacity: [0, 1], translateX: [-56, 0], duration: 440, ease: GAVETA, onComplete: a => { cleanInlineStyles(a); } });
   }, [vm.mostrarArvore]);
-  const baixarMarcados = () => { atual.current.linkDosMarcados().then(url => { baixar(url); atual.current.limparSelecao(); }, () => {}); };
+  // cada download sai quando o robô termina o dele (as pastas, um .zip cada; os arquivos, juntos)
+  const baixarMarcados = () => { void atual.current.baixarMarcados(baixar).then(() => atual.current.limparSelecao()); };
   const baixarPasta = () => { atual.current.linkDaPasta().then(baixar, () => {}); };
   const copiar = (texto: string, oque: string) => {
     navigator.clipboard.writeText(texto).then(() => toast(oque + ' copiado.'), () => toast('Não consegui copiar (o navegador não deixou).'));
@@ -286,7 +300,6 @@ export function ExploradorDoDrive({ naEmpresa = false }: { naEmpresa?: boolean }
     v.selecionarParaMenu(x.id);
     const varios = v.estaMarcado(x.id) && v.marcados.length > 1 ? v.marcados : [x];
     const n = varios.length;
-    const soPastas = n > 1 && varios.every(i => i.pasta);
     const baixarRotulo = n > 1 ? 'Baixar ' + n + ' itens (.zip)' : x.pasta ? 'Baixar pasta (.zip)' : 'Baixar';
     // enxuto (Vitor, 06/10/2026: "muitos botões com funções idênticas"): sem a fileira de ícones (repetia a lista), sem
     // Propriedades, Copiar caminho, Selecionar tudo (é o Ctrl+A) e Enviar (é o botão Enviar ▾, não é do item)
@@ -294,7 +307,7 @@ export function ExploradorDoDrive({ naEmpresa = false }: { naEmpresa?: boolean }
       ...pontoDoMenu(ev),
       linhas: [
         { rotulo: 'Abrir', icone: x.pasta ? 'pasta' : 'arquivo', atalho: 'Enter', desabilitado: n > 1, onClick: () => abrir(atual.current, x) },
-        { rotulo: baixarRotulo, icone: 'download', desabilitado: soPastas, onClick: baixarMarcados },
+        { rotulo: baixarRotulo, icone: 'download', onClick: baixarMarcados },
         'separador',
         { rotulo: n > 1 ? 'Copiar nomes' : 'Copiar nome', icone: 'copiar', onClick: () => copiar(nomes(varios), n > 1 ? 'Nomes' : 'Nome') },
       ],

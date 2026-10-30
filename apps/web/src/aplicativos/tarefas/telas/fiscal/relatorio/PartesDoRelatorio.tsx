@@ -3,7 +3,7 @@
 // na tela nova"): o campo de valor, a conferência (a peça do catálogo) e a entrega. As Observações e a Retificação saíram
 // por enquanto (28/10/2026: "remove isso por enquanto, irei pensar melhor como podemos implementar").
 import { tarefas as t } from '@nads/core';
-import { Icone, MenuSuspenso, type ItemMenu, type NomeIcone } from '@nads/ui';
+import { Icone, LogoGmail, LogoWhatsApp, MenuSuspenso } from '@nads/ui';
 
 /** O campo de valor da tabela: escreve à vontade e guarda ao sair (Enter também sai) */
 /** estreito: o campo ocupa a célula da tabela do relatório, sem caixa em volta (29/10/2026: a tabela cabe na tela) */
@@ -29,25 +29,25 @@ export function MarcaDoControle({ marca, rotulo, pode, aoVirar }: { marca: t.Mar
   );
 }
 
-/** O ícone de cada jeito de entregar (Não se aplica fica sem) */
-const ICONE_DA_ENTREGA: Record<t.EntregaDoControle, NomeIcone | undefined> = { '': 'clock', impresso: 'printer', zap: 'mensagem', email: 'envelope', nao: undefined };
+/** O sinal da entrega no lugar do nome (30/10/2026: "coloque o símbolo do Gmail, WhatsApp ao invés dos nomes") */
+function SinalDaEntrega({ valor }: { valor: t.EntregaDoControle }) {
+  if (valor === 'zap') return <span className="ctrl-entrega-sinal"><LogoWhatsApp /></span>;
+  if (valor === 'email') return <span className="ctrl-entrega-sinal"><LogoGmail /></span>;
+  if (valor === 'impresso') return <span className="ctrl-entrega-sinal"><Icone nome="printer" width={16} height={16} /></span>;
+  return <span className="ctrl-entrega-texto">{valor === 'nao' ? '—' : 'Falta'}</span>;
+}
 
-/**
- * A entrega (29/10/2026: "melhore esse dropdown"): no lugar do select do navegador, a etiqueta com o ícone e o menu do nads
- * (o mesmo dos filtros, com o ✓ no escolhido). Falta fica tracejada; entregue, verde; Não se aplica, apagada. O menu
- * abre por cima da página (flutuante), para não ficar cortado pela tabela.
- */
+/** A entrega: o Menu suspenso do catálogo (o select não mostra os logos), flutuante porque a tabela rola */
 export function Entrega({ valor, pode, rotulo, aoMudar }: { valor: t.EntregaDoControle; pode: boolean; rotulo: string; aoMudar: (e: t.EntregaDoControle) => void }) {
-  const atual = t.ENTREGAS_DO_CONTROLE.find(o => o.valor === valor) ?? t.ENTREGAS_DO_CONTROLE[0];
-  const classe = 'rel-entrega rel-entrega-' + (valor === '' ? 'falta' : valor === 'nao' ? 'nao' : 'feita');
-  const icone = ICONE_DA_ENTREGA[atual.valor];
-  const texto = <span className="rel-entrega-texto">{atual.rotulo}</span>;
-  if (!pode) return <span className={classe + ' leitura'} title={rotulo + ': ' + atual.rotulo}>{icone && <Icone nome={icone} />}{texto}</span>;
-  const item = (o: (typeof t.ENTREGAS_DO_CONTROLE)[number]): ItemMenu => ({ rotulo: o.rotulo, icone: ICONE_DA_ENTREGA[o.valor] ?? 'x', marcado: o.valor === valor, onClick: () => { if (o.valor !== valor) aoMudar(o.valor); } });
-  const [falta, ...jeitos] = t.ENTREGAS_DO_CONTROLE;
-  const nao = jeitos.filter(o => o.valor === 'nao');
+  const nome = t.ENTREGAS_DO_CONTROLE.find(o => o.valor === valor)?.rotulo || 'Falta';
+  const classe = 'btn btn-outline ctrl-entrega' + (valor ? ' ctrl-entrega-feita' : '');
+  if (!pode) return <span className={classe + ' ctrl-entrega-fixa'} title={rotulo + ': ' + nome} aria-label={rotulo + ': ' + nome}><SinalDaEntrega valor={valor} /></span>;
   return (
-    <MenuSuspenso className={classe} icone={icone} rotulo={texto} titulo={rotulo} dica={rotulo + ': ' + atual.rotulo} flutuante direita largura={180}
-      itens={[item(falta), 'separador', ...jeitos.filter(o => o.valor !== 'nao').map(item), 'separador', ...nao.map(item)]} />
+    <MenuSuspenso className={classe} flutuante titulo={rotulo} dica={rotulo + ': ' + nome}
+      rotulo={<><SinalDaEntrega valor={valor} /><span className="sr-only">{rotulo + ': ' + nome}</span></>}
+      itens={t.ENTREGAS_DO_CONTROLE.map(o => ({
+        rotulo: <span className="ctrl-entrega-item"><SinalDaEntrega valor={o.valor} />{o.rotulo}</span>,
+        marcado: o.valor === valor, onClick: () => { if (o.valor !== valor) aoMudar(o.valor); },
+      }))} />
   );
 }
