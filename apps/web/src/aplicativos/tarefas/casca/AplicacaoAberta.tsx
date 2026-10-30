@@ -19,6 +19,7 @@ const UsuariosDoNads = pedaco(() => import('../telas/cadastro/usuarios/UsuariosD
 const TelaDoAdmin = pedaco(() => import('../telas/configuracoes/TelaDoAdmin'), 'TelaDoAdmin');
 const VisaoContabil = pedaco(() => import('../telas/contabil/VisaoContabil'), 'VisaoContabil');
 const ExploradorDoDrive = pedaco(() => import('../telas/drive/ExploradorDoDrive'), 'ExploradorDoDrive');
+const PaginaDeTarefas = pedaco(() => import('../telas/delegador/PaginaDeTarefas'), 'PaginaDeTarefas');
 const CaixaDoRobo = pedaco(() => import('../telas/gmail/CaixaDoRobo'), 'CaixaDoRobo');
 const HistoricoDoRobo = pedaco(() => import('../telas/gmail/HistoricoDoRobo'), 'HistoricoDoRobo');
 const MinhasEmpresas = pedaco(() => import('../telas/empresas/MinhasEmpresas'), 'MinhasEmpresas');
@@ -70,6 +71,8 @@ function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
     case 'entregas': return pagina === 'painel' ? <PainelDeEntregas /> : pagina === 'solicitacoes' ? <Solicitacoes /> : pagina === 'nova' ? <NovaEntrega /> : <RotaDeEntregas />;
     case 'drive': return <ExploradorDoDrive />;
     case 'contato': return pagina === 'historico' ? <HistoricoDoRobo /> : <CaixaDoRobo />;
+    // a Central de tarefas como módulo (30/10/2026); cada aba é uma página (a lista começa de novo ao trocar)
+    case 'minhas-tarefas': return <PaginaDeTarefas key={pagina} aba={pagina === 'delegadas' || pagina === 'concluidas' ? pagina : 'minhas'} />;
     default: return <EmDesenvolvimento nome={aplicacao(app)?.nome || app} />;
   }
 }
@@ -91,7 +94,7 @@ export function AplicacaoAberta() {
   if (!a.paginas.some(p => p.id === pagina && !p.emDesenvolvimento)) return <Navigate to={caminhoDaPagina(a.id, (a.paginas.find(p => !p.emDesenvolvimento) || a.paginas[0]).id)} replace />;
   return (
     <TopoProvider>
-      <CascaTarefas app={a.id} pagina={pagina} telaInteira={a.id === 'drive'} semLateral={a.id === 'minhas-empresas'} larga>
+      <CascaTarefas app={a.id} pagina={pagina} telaInteira={a.id === 'drive'} semLateral={a.id === 'minhas-empresas' || a.id === 'contato'} larga>
         <NaEspera><Tela app={a.id} pagina={pagina} /></NaEspera>
       </CascaTarefas>
     </TopoProvider>

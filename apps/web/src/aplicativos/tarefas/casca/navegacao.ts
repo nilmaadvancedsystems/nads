@@ -11,7 +11,7 @@ import type { Operador } from './operador';
 
 export const BASE = '/tarefas';
 
-export type IdAplicacao = 'inicio' | 'minhas-empresas' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'financeiro' | 'entregas' | 'area-cliente';
+export type IdAplicacao = 'inicio' | 'minhas-empresas' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'financeiro' | 'entregas' | 'area-cliente' | 'minhas-tarefas';
 
 export interface Pagina {
   id: string; rotulo: string; icone: NomeIcone; titulo: string; /** a logo da marca no lugar do ícone, na lateral */ marca?: 'fgts';
@@ -96,6 +96,13 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'painel', rotulo: 'Painel', icone: 'painel', titulo: 'Painel do mês' },
     // as Solicitações (16/10/2026, "cadê as solicitações"): a aba do Entregas, logo depois do Painel como lá
     { id: 'solicitacoes', rotulo: 'Solicitações', icone: 'envelope', titulo: 'Solicitações' },
+  ] },
+  // as tarefas delegadas (30/10/2026: "quero que o minhas tarefas vire um modulo do escritorio"): a Central de tarefas, que
+  // abria numa janela pelo perfil e pelo correio do pé do menu, vira um módulo como os outros; todo o escritório
+  { id: 'minhas-tarefas', nome: 'Minhas tarefas', icone: 'checklist', grupo: 'Escritório', pronta: true, paginas: [
+    { id: 'minhas', rotulo: 'Minhas tarefas', icone: 'caixaEntrada', titulo: 'Minhas tarefas' },
+    { id: 'delegadas', rotulo: 'Delegadas por mim', icone: 'aviao', titulo: 'Delegadas por mim' },
+    { id: 'concluidas', rotulo: 'Concluídas', icone: 'checkCircle', titulo: 'Tarefas concluídas' },
   ] },
   // as senhas gov.br e os certificados digitais, no cofre com a chave por pessoa (Vitor, 07/10/2026); todo o escritório
   { id: 'senhas', nome: 'Senhas', icone: 'lock', grupo: 'Escritório', pronta: true, paginas: [
