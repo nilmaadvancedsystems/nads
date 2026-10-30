@@ -8,6 +8,7 @@ import { Compras } from '../telas/compras/Compras';
 import { caminho } from './caminho';
 import { CascaCartoes } from './CascaCartoes';
 import { PAGINA_INICIAL, paginaPorId } from './navegacao';
+import { SoMinhaEmpresa } from '../../../../tarefas/casca/SoMinhaEmpresa';
 
 export function EmpresaAberta() {
   const { empresa: param = '', secao = '', pagina = '' } = useParams();
@@ -17,7 +18,7 @@ export function EmpresaAberta() {
   const rota = empresas.rotaDaEmpresa(empresa);
   const id = secao + '/' + pagina;
   if (!paginaPorId(id) || param !== rota) return <Navigate to={caminho(rota + '/' + (paginaPorId(id) ? id : PAGINA_INICIAL)) + search} replace />;
-  return (
+  const tela = (
     // key = empresa: trocar de empresa começa do zero (a fatura fica só na tela)
     <TopoProvider key={rota}>
       <CascaCartoes empresa={empresa} rota={rota} pagina={id}>
@@ -25,4 +26,5 @@ export function EmpresaAberta() {
       </CascaCartoes>
     </TopoProvider>
   );
+  return <SoMinhaEmpresa empresa={empresa} voltar={caminho()}>{tela}</SoMinhaEmpresa>;
 }

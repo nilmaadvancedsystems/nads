@@ -2,7 +2,7 @@
 // o resumo por CFOP, a conferência com o SIEG, com o Alterdata e o que o validador recusaria. Usado na página SINTEGRA do
 // Fiscal e no item "Entradas x SINTEGRA" da rotina (o ViewModel é o useLeitorSintegra).
 import { formatos, tarefas as t } from '@nads/core';
-import { Alerta, CampoArquivo, Segmentado } from '@nads/ui';
+import { Alerta, BotaoIcone, CampoArquivo, CampoArquivos, IconeDeArquivo, Segmentado, formatoPeloNome } from '@nads/ui';
 import type { AbaDoSintegra, VmLeitorSintegra } from './useLeitorSintegra';
 
 const reais = (n: number) => 'R$ ' + formatos.brl(n);
@@ -32,7 +32,7 @@ export function LeitorSintegra({ vm, id }: { vm: VmLeitorSintegra; id: string })
           ]} />
           {vm.aba === 'resumo' && vm.resumo && <Resumo r={vm.resumo} />}
           {vm.aba === 'sieg' && <ComSieg vm={vm} />}
-          {vm.aba === 'alterdata' && <ComAlterdata vm={vm} />}
+          {vm.aba === 'alterdata' && <ComAlterdata vm={vm} id={id + '-alterdata'} />}
           {vm.aba === 'layout' && <Layout a={a} />}
         </>
       )}
@@ -99,12 +99,46 @@ function ComSieg({ vm }: { vm: VmLeitorSintegra }) {
   );
 }
 
-function ComAlterdata({ vm }: { vm: VmLeitorSintegra }) {
-  if (!vm.empresa) return <p className="hint sintegra-vazio">Não achei a empresa do arquivo no cadastro.</p>;
-  if (!vm.comAlterdata) return <p className="hint sintegra-vazio">Importe as Entradas e as Saídas de {vm.rotuloCompetencia} do Alterdata para conferir.</p>;
+/**
+ * Os relatórios do Alterdata para comparar (29/10/2026): o de Entradas e o de Saídas (.xls/.xlsx/.csv, os mesmos que a
+ * Conferência importa), vários de uma vez; a lista com o nome e quantas notas do mês, e o Tirar.
+ */
+function RelatoriosDoAlterdata({ vm, id }: { vm: VmLeitorSintegra; id: string }) {
+  return (
+    <section className="tdl-anexos" aria-label="Relatórios do Alterdata">
+      <div className="tdl-anexos-topo">
+        <h3 className="tdl-secao">Relatórios do Alterdata{vm.relatorios.length > 0 && <span className="fraco"> · {vm.notasDosRelatorios} notas de {vm.rotuloCompetencia}</span>}</h3>
+        <CampoArquivos id={id} aceitar=".xls,.xlsx,.csv" rotulo="Subir Entradas e Saídas" onEscolher={fs => void vm.lerRelatorios(fs)} />
+      </div>
+      <p className="hint">
+        {vm.alterdataDosRelatorios ? 'Comparando com os relatórios abaixo.' : 'Sem relatório aqui, comparo com as Entradas e Saídas importadas na Conferência.'}
+      </p>
+      {vm.relatorios.length > 0 && (
+        <ul className="tdl-anexos-lista">
+          {vm.relatorios.map(r => (
+            <li key={r.id} className="tdl-anexo">
+              <IconeDeArquivo formato={formatoPeloNome(r.nome)} tamanho={28} />
+              <span className="tdl-anexo-texto">
+                <span className="tdl-anexo-nome">{r.nome}</span>
+                <span className="hint">{r.detalhe}</span>
+              </span>
+              <BotaoIcone icone="lixeira" titulo={'Tirar ' + r.nome} pequeno onClick={() => vm.tirarRelatorio(r.id)} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function ComAlterdata({ vm, id }: { vm: VmLeitorSintegra; id: string }) {
+  const relatorios = <RelatoriosDoAlterdata vm={vm} id={id} />;
+  if (!vm.empresa && !vm.alterdataDosRelatorios) return <>{relatorios}<p className="hint sintegra-vazio">Não achei a empresa do arquivo no cadastro: suba os relatórios do Alterdata para comparar.</p></>;
+  if (!vm.comAlterdata) return <>{relatorios}<p className="hint sintegra-vazio">Suba os relatórios de Entradas e Saídas de {vm.rotuloCompetencia} do Alterdata (ou importe na Conferência) para conferir.</p></>;
   const c = vm.comAlterdata;
   return (
     <>
+      {relatorios}
       <div className="table-wrap">
         <table className="dp-tabela sintegra-tabela">
           <caption>Por CFOP</caption>

@@ -123,7 +123,7 @@ export function ContasAPagar() {
                     </td>
                     <td className="cp-acao">
                       {!c.pagamento && (
-                        <BotaoIcone icone="dinheiro" titulo="Pagar a conta (lança a saída no Caixa)" pequeno
+                        <BotaoIcone icone="dinheiro" titulo="Pagar a conta" pequeno
                           onClick={e => { e.stopPropagation(); vm.abrir({ id: c.id, topico: 'pagamento' }); }} onKeyDown={e => e.stopPropagation()} />
                       )}
                     </td>

@@ -9,7 +9,7 @@ import { Fragment, useState } from 'react';
 import { DecimoNaLista } from './DecimoTerceiro';
 import { JanelaDasEtiquetas } from './JanelaDasEtiquetas';
 import { useEtiquetasDaFolha } from './useEtiquetasDaFolha';
-import { MenuDeFiltro } from './MenuDeFiltro';
+import { MenuDeFiltroVarios } from './MenuDeFiltro';
 import { ROTULO_DASH, usePainelDoDp, type AbaDoPainel, type EstadoDaObrigacao, type SituacaoDoDash } from './usePainelDoDp';
 
 /**
@@ -59,7 +59,7 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
   // os filtros avançados (Vitor, 28/10/2026: "reduza esses filtros, coloque um ícone de filtro"): Movimento, Enquadramento,
   // Entrega e Agrupamento numa segunda linha, que o funil abre e fecha
   const [avancados, setAvancados] = useState(false);
-  const algumAvancado = !!(f.movimento || f.enquadramento || f.entrega || f.agrupamento);
+  const algumAvancado = !!(f.movimento.length || f.enquadramento.length || f.entrega.length || f.agrupamento.length);
   // o 13º salário (Vitor, 13/10/2026): o interruptor no topo da tabela, só em novembro (1ª parcela) e dezembro (2ª)
   const [decimo, setDecimo] = useState(false);
   // o mês do 13º: o da competência escolhida, se for novembro ou dezembro; se não, o de hoje (em novembro a lista ainda
@@ -90,10 +90,10 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
         <MenuSuspenso icone="calendar" rotulo={vm.competencias.find(c => c.valor === vm.competencia)?.rotulo ?? vm.competencia} titulo="Competência" dica="Trocar a competência"
           itens={vm.competencias.map(c => ({ rotulo: c.rotulo, marcado: c.valor === vm.competencia, onClick: () => vm.setCompetencia(c.valor) }))} />
         {!buscaNaTabela && busca}
-        <MenuDeFiltro rotulo="Responsável" valor={f.responsavel} mudar={f.setResponsavel} opcoes={f.responsaveis} />
-        {/* um Status só, com a situação da coluna (21/10/2026: "preciso de um filtro melhor de status") */}
-        <MenuDeFiltro rotulo="Status" valor={f.status} mudar={v => f.setStatus(v as typeof f.status)} opcoes={f.statusOpcoes} />
-        <MenuDeFiltro rotulo="Pendente em" valor={f.pendenteEm} mudar={v => f.setPendenteEm(v as typeof f.pendenteEm)} opcoes={f.partes} todos="Todas as partes" />
+        <MenuDeFiltroVarios rotulo="Responsável" valores={f.responsavel} mudar={f.setResponsavel} opcoes={f.responsaveis} />
+        {/* o Status com a situação da coluna (21/10/2026: "preciso de um filtro melhor de status"); pode marcar mais de um */}
+        <MenuDeFiltroVarios rotulo="Status" valores={f.status} mudar={f.setStatus} opcoes={f.statusOpcoes} />
+        <MenuDeFiltroVarios rotulo="Pendente em" valores={f.pendenteEm} mudar={f.setPendenteEm} opcoes={f.partes} todos="Todas as partes" />
         <button type="button" className={'btn btn-outline' + (algumAvancado ? ' ativo' : '')} aria-pressed={avancados} onClick={() => setAvancados(a => !a)}
           title={avancados ? 'Esconder os filtros avançados' : 'Filtros avançados: movimento, enquadramento, entrega e agrupamento'}
           aria-label="Filtros avançados"><Icone nome="funil" /></button>
@@ -101,10 +101,10 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
       </div>
       {avancados && (
         <div className="tarefas-barra-topo dp-filtros-linha">
-          <MenuDeFiltro rotulo="Movimento" valor={f.movimento} mudar={f.setMovimento} opcoes={f.movimentos} />
-          <MenuDeFiltro rotulo="Enquadramento" valor={f.enquadramento} mudar={f.setEnquadramento} opcoes={f.enquadramentos} />
-          <MenuDeFiltro rotulo="Entrega" valor={f.entrega} mudar={f.setEntrega} opcoes={f.entregas} />
-          <MenuDeFiltro rotulo="Agrupamento" valor={f.agrupamento} mudar={f.setAgrupamento} opcoes={f.agrupamentos} />
+          <MenuDeFiltroVarios rotulo="Movimento" valores={f.movimento} mudar={f.setMovimento} opcoes={f.movimentos} />
+          <MenuDeFiltroVarios rotulo="Enquadramento" valores={f.enquadramento} mudar={f.setEnquadramento} opcoes={f.enquadramentos} />
+          <MenuDeFiltroVarios rotulo="Entrega" valores={f.entrega} mudar={f.setEntrega} opcoes={f.entregas} />
+          <MenuDeFiltroVarios rotulo="Agrupamento" valores={f.agrupamento} mudar={f.setAgrupamento} opcoes={f.agrupamentos} />
         </div>
       )}
 
@@ -148,8 +148,8 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
               <h3 className="dp-titulo">Progresso por responsável</h3>
               <div className="dp-progresso-grade">
                 {vm.progresso.map(p => (
-                  <button key={p.nome} type="button" className={'dp-pessoa' + (f.responsavel === p.nome ? ' ativa' : '')}
-                    onClick={() => f.setResponsavel(f.responsavel === p.nome ? '' : p.nome)} title={'Filtrar a lista: ' + p.nome}>
+                  <button key={p.nome} type="button" className={'dp-pessoa' + (f.responsavel.includes(p.nome) ? ' ativa' : '')}
+                    onClick={() => f.setResponsavel(f.responsavel.includes(p.nome) ? [] : [p.nome])} title={'Filtrar a lista: ' + p.nome}>
                     <span className="dp-pessoa-topo"><b>{p.nome}</b><span className="num">{p.feitos}/{p.total}</span></span>
                     <span className="dp-pessoa-barra"><span style={{ width: p.pct + '%' }} /></span>
                     <span className="hint">{p.pct}% concluído{p.parados ? ' · ' + p.parados + (p.parados === 1 ? ' parada' : ' paradas') : ''}</span>
@@ -164,7 +164,7 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
 
           {mostrarDecimo ? (
             <DecimoNaLista ano={doDecimo?.ano || hoje.getFullYear()} parcela={mesDaCompetencia === 11 ? '1' : '2'}
-              busca={f.busca} responsavel={f.responsavel} status={f.statusDoDecimo} desligar={() => setDecimo(false)} />
+              busca={f.busca} responsavel={f.responsavel.length === 1 ? f.responsavel[0] : ''} status={f.statusDoDecimo} desligar={() => setDecimo(false)} />
           ) : (
           <>
             {/* o topo da tabela (Vitor, 28/10/2026): sem o título, a contagem e o Agrupar por (o agrupamento fica no filtro de cima);
@@ -224,7 +224,7 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
                               <td key={o.id} className={'dp-ob' + (vm.primeiras.has(o.id) ? ' dp-ob-primeira' : '')}>
                                 {o.estado === 'nao-tem' ? <span className="dp-marca nao-tem" title="não tem no mês">–</span> : o.id === 'reinf' ? (
                                   // a REINF é o Fiscal que transmite (Vitor, 07/10/2026): no DP só aparece se já foi
-                                  <span className={'dp-marca leitura ' + o.estado} title={o.estado === 'feita' ? 'Transmitida pelo Fiscal' + (o.quem ? ': ' + o.quem : '') : 'Aguardando o Fiscal transmitir'}
+                                  <span className={'dp-marca leitura reinf ' + o.estado} title={o.estado === 'feita' ? 'Transmitida pelo Fiscal' + (o.quem ? ': ' + o.quem : '') : 'Aguardando o Fiscal transmitir'}
                                     aria-label={'REINF de ' + c.nomeNaTela + (o.estado === 'feita' ? ': transmitida' : ': não transmitida')}>
                                     {o.estado === 'feita' ? '✓' : ''}
                                   </span>

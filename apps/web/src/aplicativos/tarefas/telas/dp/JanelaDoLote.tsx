@@ -3,7 +3,8 @@
 // do lote, aberta pelo botão "Subir lote" do Envios. "Subir lote": a caixa de escolher os arquivos. "Lote": a leitura do robô
 // (o andamento), a revisão (um cartão por cliente e competência, com os arquivos, o tipo e o valor que o robô leu; os não
 // identificados com o cliente, o tipo e a competência para escolher, ou Tirar do lote) e o Disparar (um e-mail por cliente;
-// depois, o resultado de cada um: enviado para quem, gravado em que pasta do Drive, ou o erro).
+// depois, o resultado de cada um: enviado para quem, gravado em que pasta do Drive, ou o erro). "Salvos" (29/10/2026: "tenha a
+// opção só de salvar para enviar posteriormente"): os lotes ainda não disparados, para abrir, revisar e disparar depois.
 import { BotaoAcao, CampoArquivos, Esqueleto, Icone, MenuSuspenso, SeletorMes } from '@nads/ui';
 import { useState } from 'react';
 import type { ArquivoDoLote } from '../../dados/loteDp';
@@ -64,7 +65,7 @@ function LinhaDoArquivo({ vm, a, mexe }: { vm: VmLoteDoDp; a: ArquivoDoLote; mex
 
 export function JanelaDoLote({ fechar }: { fechar: () => void }) {
   const vm = useLoteDoDp();
-  const [topico, setTopico] = useState<'lote' | 'novo'>(vm.lotes.length ? 'lote' : 'novo');
+  const [topico, setTopico] = useState<'lote' | 'salvos' | 'novo'>(vm.lotes.length ? 'lote' : 'novo');
   const lote = vm.atual;
   const s = lote ? STATUS_DO_LOTE[lote.status] || { classe: 'badge badge-neutral', rotulo: lote.status } : null;
   // depois de disparado, ainda dá para corrigir quem deu erro e disparar de novo (o robô pula quem já recebeu)
@@ -74,6 +75,7 @@ export function JanelaDoLote({ fechar }: { fechar: () => void }) {
     <JanelaLateral rotulo="Lote do DP" topico={topico} mudar={setTopico} fechar={fechar} classe="fgts-janela"
       topicos={[
         { id: 'lote', rotulo: 'Lote', icone: 'clipe', contador: lote ? lote.total : 0 },
+        { id: 'salvos', rotulo: 'Salvos', icone: 'clock', contador: vm.salvos.length },
         { id: 'novo', rotulo: 'Subir lote', icone: 'upload' },
       ]}
       resumo={<div className="usuario-quem"><b>DP › Envios</b>{lote && <span className="fraco">lote de {hora(lote.criadoEm)}</span>}</div>}>
@@ -81,14 +83,30 @@ export function JanelaDoLote({ fechar }: { fechar: () => void }) {
         <div className="card">
           <h3>Subir um lote</h3>
           <p className="hint dp-lote-texto">Escolha as guias (FGTS, DARF) e os relatórios da folha de vários clientes de uma vez. O robô lê cada arquivo e
-            separa por cliente e competência; você revisa e dispara. Depois do disparo, cada arquivo vai para a pasta do cliente no Drive.</p>
+            separa por cliente e competência; você revisa e dispara, ou salva para disparar depois. Depois do disparo, cada arquivo vai para a pasta do cliente no Drive.</p>
           <div className="dp-lote-subir">
             {vm.subindo
               ? <p className="hint">Subindo {vm.subindo.feitos} de {vm.subindo.total}…</p>
               : <CampoArquivos id="dp-lote-arquivos" aceitar=".pdf" rotulo="Escolher os arquivos (PDF)" onEscolher={fs => { void vm.subir(fs).then(() => setTopico('lote')); }} />}
           </div>
         </div>
-      ) : vm.carregando ? <Esqueleto linhas={4} /> : !lote ? (
+      ) : topico === 'salvos' ? (vm.carregando ? <Esqueleto linhas={3} /> : (
+        <div className="card">
+          <h3>Salvos para enviar depois{vm.salvos.length ? ' · ' + vm.salvos.length : ''}</h3>
+          <p className="hint dp-lote-texto">Os lotes que subiram e ainda não foram disparados. Ficam guardados com os arquivos; nada é enviado até você abrir e disparar.</p>
+          {vm.salvos.length ? (
+            <ul className="dp-lote-lista">
+              {vm.salvos.map(l => (
+                <li key={l.id} className="dp-lote-arquivo">
+                  <span className="dp-lote-nome">Lote de {hora(l.criadoEm)} · {l.total} {l.total === 1 ? 'arquivo' : 'arquivos'}</span>
+                  <span className={(STATUS_DO_LOTE[l.status] || STATUS_DO_LOTE.lido).classe}>{STATUS_DO_LOTE[l.status]?.rotulo || l.status}</span>
+                  <button type="button" className="link-btn" onClick={() => { vm.escolherLote(l.id); setTopico('lote'); }}>Abrir</button>
+                </li>
+              ))}
+            </ul>
+          ) : <p className="hint dp-lote-texto">Nenhum lote salvo.</p>}
+        </div>
+      )) : vm.carregando ? <Esqueleto linhas={4} /> : !lote ? (
         <div className="card"><p className="hint dp-lote-texto">Nenhum lote ainda. Em "Subir lote", escolha os arquivos.</p></div>
       ) : (
         <>
@@ -100,6 +118,9 @@ export function JanelaDoLote({ fechar }: { fechar: () => void }) {
               {vm.lotes.length > 1 && (
                 <MenuSuspenso rotulo="Outros lotes" className="btn btn-ghost" titulo="Lotes" direita
                   itens={vm.lotes.slice(0, 10).map(l => ({ rotulo: hora(l.criadoEm) + ' · ' + l.total + ' arquivos · ' + (STATUS_DO_LOTE[l.status]?.rotulo || l.status), marcado: l.id === lote.id, onClick: () => vm.escolherLote(l.id) }))} />
+              )}
+              {vm.podeSalvar && (
+                <button type="button" className="btn btn-outline" onClick={() => { vm.salvar(); setTopico('salvos'); }}><Icone nome="clock" />Salvar para enviar depois</button>
               )}
               {mexe && (
                 <BotaoAcao carregando={vm.disparando} textoCarregando="Pedindo…" disabled={!vm.paraDisparar} onClick={() => void vm.disparar()}>

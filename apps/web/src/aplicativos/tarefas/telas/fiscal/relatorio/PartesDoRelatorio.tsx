@@ -3,15 +3,16 @@
 // na tela nova"): o campo de valor, a conferência (a peça do catálogo) e a entrega. As Observações e a Retificação saíram
 // por enquanto (28/10/2026: "remove isso por enquanto, irei pensar melhor como podemos implementar").
 import { tarefas as t } from '@nads/core';
-import { Icone } from '@nads/ui';
+import { Icone, LogoGmail, LogoWhatsApp, MenuSuspenso } from '@nads/ui';
 
 /** O campo de valor da tabela: escreve à vontade e guarda ao sair (Enter também sai) */
-/** estreito: o campo na largura da coluna da tabela do relatório (as guias e a data lado a lado) */
-export function Valor({ valor, sugestao, rotulo, pode, aoSalvar, largo, estreito }: { valor: string; sugestao?: string; rotulo: string; pode: boolean; aoSalvar: (v: string) => void; largo?: boolean; estreito?: boolean }) {
+/** estreito: o campo ocupa a célula da tabela do relatório, sem caixa em volta (29/10/2026: a tabela cabe na tela) */
+/** molde: o formato ("dd/mm/aaaa") que aparece só ao escrever, para a coluna não ficar cheia dele (29/10/2026) */
+export function Valor({ valor, sugestao, molde, rotulo, pode, aoSalvar, largo, estreito }: { valor: string; sugestao?: string; molde?: string; rotulo: string; pode: boolean; aoSalvar: (v: string) => void; largo?: boolean; estreito?: boolean }) {
   return (
-    <input key={valor} type="text" className={'fin-valor-edita' + (largo ? '' : ' num')} defaultValue={valor} placeholder={sugestao || ''} aria-label={rotulo}
+    <input key={valor} type="text" className={'fin-valor-edita' + (largo ? '' : ' num') + (estreito ? ' rel-campo' : '') + (!sugestao && molde ? ' rel-molde' : '')}
+      defaultValue={valor} placeholder={sugestao || molde || ''} aria-label={rotulo}
       title={sugestao && !valor ? 'Do Entregas: ' + sugestao : undefined} readOnly={!pode}
-      style={estreito ? { width: 92, minWidth: 0 } : undefined}
       onBlur={e => { if (e.target.value !== valor) aoSalvar(e.target.value); }}
       onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); if (e.key === 'Escape') { e.currentTarget.value = valor; e.currentTarget.blur(); } }} />
   );
@@ -28,11 +29,25 @@ export function MarcaDoControle({ marca, rotulo, pode, aoVirar }: { marca: t.Mar
   );
 }
 
+/** O sinal da entrega no lugar do nome (30/10/2026: "coloque o símbolo do Gmail, WhatsApp ao invés dos nomes") */
+function SinalDaEntrega({ valor }: { valor: t.EntregaDoControle }) {
+  if (valor === 'zap') return <span className="ctrl-entrega-sinal"><LogoWhatsApp /></span>;
+  if (valor === 'email') return <span className="ctrl-entrega-sinal"><LogoGmail /></span>;
+  if (valor === 'impresso') return <span className="ctrl-entrega-sinal"><Icone nome="printer" width={16} height={16} /></span>;
+  return <span className="ctrl-entrega-texto">{valor === 'nao' ? '—' : 'Falta'}</span>;
+}
+
+/** A entrega: o Menu suspenso do catálogo (o select não mostra os logos), flutuante porque a tabela rola */
 export function Entrega({ valor, pode, rotulo, aoMudar }: { valor: t.EntregaDoControle; pode: boolean; rotulo: string; aoMudar: (e: t.EntregaDoControle) => void }) {
+  const nome = t.ENTREGAS_DO_CONTROLE.find(o => o.valor === valor)?.rotulo || 'Falta';
+  const classe = 'btn btn-outline ctrl-entrega' + (valor ? ' ctrl-entrega-feita' : '');
+  if (!pode) return <span className={classe + ' ctrl-entrega-fixa'} title={rotulo + ': ' + nome} aria-label={rotulo + ': ' + nome}><SinalDaEntrega valor={valor} /></span>;
   return (
-    <select className={'pessoal-select ctrl-entrega' + (valor ? ' ctrl-entrega-feita' : '')} value={valor} disabled={!pode} aria-label={rotulo}
-      onChange={e => aoMudar(e.target.value as t.EntregaDoControle)}>
-      {t.ENTREGAS_DO_CONTROLE.map(o => <option key={o.valor} value={o.valor}>{o.rotulo}</option>)}
-    </select>
+    <MenuSuspenso className={classe} flutuante titulo={rotulo} dica={rotulo + ': ' + nome}
+      rotulo={<><SinalDaEntrega valor={valor} /><span className="sr-only">{rotulo + ': ' + nome}</span></>}
+      itens={t.ENTREGAS_DO_CONTROLE.map(o => ({
+        rotulo: <span className="ctrl-entrega-item"><SinalDaEntrega valor={o.valor} />{o.rotulo}</span>,
+        marcado: o.valor === valor, onClick: () => { if (o.valor !== valor) aoMudar(o.valor); },
+      }))} />
   );
 }

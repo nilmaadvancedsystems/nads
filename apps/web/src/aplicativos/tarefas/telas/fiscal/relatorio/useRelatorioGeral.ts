@@ -3,8 +3,8 @@
 // Simples (só as empresas do Simples Nacional no Cadastro) e o Relatório Presumido (só as do Presumido). Tomou o lugar do
 // Controle de tributos ("remove a tela de controle de tributos, e pegue os dados de lá"): os mesmos dados no banco
 // (controleTributos e controleTributosFolha) — os valores em reais, a data, as conferências, a entrega, as sugestões do
-// Entregas e a impressão do protocolo (as observações e a retificação saíram por enquanto) — e, junto, a REINF com as ações da tela da REINF
-// (transmitir, desfazer, retificar). Quem grava o controle: o Fiscal e o admin; o resto da equipe só vê.
+// Entregas e a impressão do protocolo (as observações e a retificação saíram por enquanto). A coluna da REINF saiu
+// (29/10/2026: "a parte do R das conferencias ja e a reinf"). Quem grava o controle: o Fiscal e o admin; o resto da equipe só vê.
 import { tarefas as t } from '@nads/core';
 import { logoNilmaParaImprimir, useRetorno } from '@nads/ui';
 import { useMemo, useRef, useState } from 'react';
@@ -15,16 +15,15 @@ import { FOLHA_VAZIA } from '../../../dados/controleTributos';
 import { useControleTributos, useEntregasDeDocumentos, useGmailDoEntregas } from '../../../dados/repo';
 import { useListaDoCadastro } from '../../cadastro/escolher/useListaDoCadastro';
 import { imprimirHtml } from '../../dp/imprimirHtml';
-import { mmaaaa, quandoDaReinf, useAcoesDaReinf } from '../reinf/useAcoesDaReinf';
 
 /** O regime da página: o grupo do controle e o regime do Cadastro que entra nele. */
 export type RegimeDoRelatorio = 'sn' | 'lp';
 const REGIME_DO_CADASTRO: Record<RegimeDoRelatorio, string> = { sn: 'Simples', lp: 'Presumido' };
 
 /** As partes da tabela (o título do grupo de colunas e o filtro Pendente em). */
-export type ParteDoRelatorio = 'guias' | 'conferencias' | 'reinf' | 'entrega';
+export type ParteDoRelatorio = 'guias' | 'conferencias' | 'entrega';
 const PARTES: readonly { valor: ParteDoRelatorio; rotulo: string }[] = [
-  { valor: 'guias', rotulo: 'Guias' }, { valor: 'conferencias', rotulo: 'Conferências' }, { valor: 'reinf', rotulo: 'REINF' }, { valor: 'entrega', rotulo: 'Entrega' },
+  { valor: 'guias', rotulo: 'Guias' }, { valor: 'conferencias', rotulo: 'Conferências' }, { valor: 'entrega', rotulo: 'Entrega' },
 ];
 // os nomes curtos no título da coluna (o nome inteiro fica na dica), como o DP
 const CURTO: Record<string, string> = {
@@ -44,7 +43,8 @@ function porPaginaGuardado(): number {
   try { const s = localStorage.getItem(CHAVE_POR_PAGINA); const n = Number(s); return s !== null && (POR_PAGINA as readonly number[]).includes(n) ? n : 25; } catch { return 25; }
 }
 const semAcento = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+// o total sem o "R$" (29/10/2026: na coluna de 70px, "R$ 38.016,39" passava para a vizinha; o cabeçalho já diz "Guias (R$)")
+const brl = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 /** dd/mm/aaaa ↔ AAAA-MM-DD */
 export const dataBr = (iso: string) => (iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4) : '');
 const dataIso = (br: string) => { const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(br); return m ? m[3] + '-' + m[2] + '-' + m[1] : ''; };
@@ -53,9 +53,6 @@ const mesmoConteudo = (a: t.LinhaDoControle, b: t.LinhaDoControle) => {
   const c = (l: t.LinhaDoControle) => JSON.stringify([l.grupo, l.data, l.entregue, Object.entries(l.valores).sort(), Object.entries(l.marcas).sort()]);
   return c(a) === c(b);
 };
-
-/** A REINF da linha: não tem, pendente ou transmitida, com a dica (até quando, a última, as retificadas). */
-export interface ReinfDaLinha { tem: boolean; transmitida: boolean; retificada: boolean; dica: string; dicaRetificar: string }
 
 export function useRelatorioGeral(regime: RegimeDoRelatorio) {
   const { toast } = useRetorno();
@@ -68,7 +65,6 @@ export function useRelatorioGeral(regime: RegimeDoRelatorio) {
   const lista = useListaDoCadastro();
   const entregas = useEntregasDeDocumentos();
   const gmail = useGmailDoEntregas();
-  const reinf = useAcoesDaReinf(competencia);
   const grupo = t.grupoDoControle(regime);
   const mes = repo.doMes(competencia);
   /** as colunas de guia: todas do grupo (o arroz e o parcelamento voltaram para a tabela, 28/10/2026) */
@@ -107,24 +103,14 @@ export function useRelatorioGeral(regime: RegimeDoRelatorio) {
 
   const todas = empresas.map(e => {
     const l = linhaDe(e.codigo);
-    const est = reinf.estados[e.codigo];
-    const transmitida = !!est && t.situacaoReinf(est, competencia) === 'transmitida';
-    const retificada = !!est && est.retificadas.includes(competencia);
-    const r: ReinfDaLinha = !est ? { tem: false, transmitida: false, retificada: false, dica: 'Não tem REINF no Fiscal', dicaRetificar: 'Não tem REINF no Fiscal' } : {
-      tem: true, transmitida, retificada,
-      dica: 'REINF ' + (transmitida ? 'transmitida (clique para desfazer)' : 'pendente (clique quando transmitir)') + ' · '
-        + (est.transmitidoAte ? 'transmitido até ' + mmaaaa(est.transmitidoAte) : 'nunca transmitida') + (est.ultima ? ' · última: ' + quandoDaReinf(est.ultima.em) + ', ' + est.ultima.por : ''),
-      dicaRetificar: retificada ? 'Retificada nesta competência (clique para tirar)' : 'Retificou esta competência? Clique para marcar' + (est.retificadas.length ? ' · retificadas: ' + est.retificadas.map(mmaaaa).join(', ') : ''),
-    };
-    // a situação: concluída quando entregou (ou não se aplica) e a REINF que tem está transmitida; começada se tem algo
+    // a situação: concluída quando entregou (ou não se aplica); começada se tem algo (a REINF é o R das conferências)
     const doControle = t.situacaoDaLinha(l);
-    const situacao: t.SituacaoGeral = !!l.entregue && (!r.tem || transmitida) ? 'concluida' : doControle !== 'branco' || transmitida || retificada ? 'em-andamento' : 'nao-iniciada';
+    const situacao: t.SituacaoGeral = l.entregue ? 'concluida' : doControle !== 'branco' ? 'em-andamento' : 'nao-iniciada';
     const pendencias = new Set<ParteDoRelatorio>();
     if (colunas.some(c => !(l.valores[c.id] || '').trim())) pendencias.add('guias');
     if (grupo.marcas.some(m => !l.marcas[m.id])) pendencias.add('conferencias');
-    if (r.tem && !transmitida) pendencias.add('reinf');
     if (!l.entregue) pendencias.add('entrega');
-    return { ...e, linha: l, sugestao: sugestoes.get(e.codigo), reinf: r, situacao, rotuloSituacao: t.ROTULO_SITUACAO_GERAL[situacao], pendencias };
+    return { ...e, linha: l, sugestao: sugestoes.get(e.codigo), situacao, rotuloSituacao: t.ROTULO_SITUACAO_GERAL[situacao], pendencias };
   });
 
   const q = semAcento(busca.trim());
@@ -208,9 +194,6 @@ export function useRelatorioGeral(regime: RegimeDoRelatorio) {
       const data = e && e !== 'nao' && !l.data ? new Date().toISOString().slice(0, 10) : l.data;
       void gravar({ ...l, entregue: e, data });
     },
-    // a REINF: as mesmas ações da tela da REINF
-    alternarReinf: (codigo: number, transmitida: boolean) => (transmitida ? reinf.desfazer(codigo) : reinf.transmitir(codigo)),
-    retificarReinf: reinf.retificar,
     comSugestaoParaUsar: paraPreencher.length,
     /** passa as sugestões do Entregas para os campos em branco (o que a pessoa escreveu fica) */
     async usarSugestoes() {
@@ -224,10 +207,9 @@ export function useRelatorioGeral(regime: RegimeDoRelatorio) {
     },
     exportar() {
       const marca = (m: string | undefined) => (m === 'ok' ? 'OK' : m === 'na' ? '—' : '');
-      const cabecalho = ['Cód.', 'Cliente', ...colunas.map(c => c.rotulo), ...grupo.marcas.map(m => m.dica), 'REINF', 'Retificada', 'Data', 'Entregue', 'Situação'];
+      const cabecalho = ['Cód.', 'Cliente', ...colunas.map(c => c.rotulo), ...grupo.marcas.map(m => m.dica), 'Data', 'Entregue', 'Situação'];
       const valores = linhas.map(r => [
         r.codigo, r.nome, ...colunas.map(c => r.linha.valores[c.id] || ''), ...grupo.marcas.map(m => marca(r.linha.marcas[m.id])),
-        r.reinf.tem ? (r.reinf.transmitida ? 'Transmitida' : 'Pendente') : '—', r.reinf.retificada ? 'Sim' : '',
         dataBr(r.linha.data), t.ENTREGAS_DO_CONTROLE.find(e => e.valor === r.linha.entregue)?.rotulo || '', r.rotuloSituacao,
       ]);
       return { bytes: t.planilhaXlsx(grupo.rotulo + ' ' + competencia.slice(5, 7) + '-' + competencia.slice(0, 4), cabecalho, valores), nome: 'Fiscal relatório ' + (regime === 'sn' ? 'Simples' : 'Presumido') + ' ' + competencia + '.xlsx' };

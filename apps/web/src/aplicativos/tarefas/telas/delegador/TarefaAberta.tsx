@@ -148,12 +148,15 @@ export function TarefaAberta({ alvo, voltar, criada, saida }: {
         <span className="tarefas-barra-espaco" />
         <Segmentado valor={vm.aba} opcoes={vm.abas} onMudar={vm.setAba} />
       </div>
-      {vm.erro && <Alerta naLinha titulo={vm.erro} />}
+      {/* na aba Tarefa, o erro fica junto do Salvar (29/10/2026: no alto do formulário, longe do botão, ninguém via e
+          parecia que o Salvar não gravava) */}
+      {vm.erro && vm.aba !== 'tarefa' && <Alerta naLinha titulo={vm.erro} />}
       {!vm.podeMudar && <p className="hint">Só quem criou a tarefa e o responsável mudam esta tarefa.</p>}
       {vm.aba === 'tarefa' && <FormularioDaTarefa vm={vm} />}
       {vm.aba === 'parecer' && <ParecerDaTarefa vm={vm} />}
       {vm.aba === 'historico' && (vm.ehNova ? <Vazio compacto icone="clock" titulo="O histórico começa quando a tarefa é salva" />
         : <LinhaDoTempoDaTarefa itens={vm.historico} vazio="Nada no histórico" />)}
+      {vm.erro && vm.aba === 'tarefa' && <Alerta naLinha titulo={vm.erro} />}
       {vm.aba === 'tarefa' && vm.podeMudar && (
         <div className="tdl-tarefa-pe">
           {vm.podeExcluir && (

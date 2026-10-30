@@ -54,8 +54,8 @@ const semPermissao = (e: unknown) => /permission|insufficient/i.test(String((e a
 /** O Entregas publicado, a única página de fora que pode responder pelo Drive. */
 const ENTREGAS = 'https://nilmaadvancedsystems.github.io';
 
-/** Está dentro do Entregas (iframe)? Pelo endereço de quem está por fora. */
-function dentroDoEntregas(): boolean {
+/** Está dentro do Entregas (iframe)? Pelo endereço de quem está por fora. (A trava do AppExtratudo também usa.) */
+export function dentroDoEntregas(): boolean {
   if (window.parent === window) return false;
   let origem = window.location.ancestorOrigins?.[0] || '';
   if (!origem) { try { origem = document.referrer ? new URL(document.referrer).origin : ''; } catch { origem = ''; } }

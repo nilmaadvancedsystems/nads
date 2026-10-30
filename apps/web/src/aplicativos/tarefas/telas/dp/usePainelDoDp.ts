@@ -83,17 +83,19 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
   const coluna: Record<string, { id: string; rotulo: string; nome: string }> = { ...COLUNA, ...Object.fromEntries(categorias.map(c => [c.id, { id: c.id, rotulo: c.rotulo, nome: c.nome }])) };
 
   const [busca, setBusca] = useState('');
-  const [responsavel, setResponsavel] = useState('');
-  const [movimento, setMovimento] = useState('');
-  const [enquadramento, setEnquadramento] = useState('');
+  // os filtros de escolha (29/10/2026: "tenha como selecionar mais de um filtro"): cada um é a lista do que está marcado;
+  // vazia = todos. Dentro de um filtro, basta uma das escolhas; entre filtros, todos têm de valer
+  const [responsavel, setResponsavel] = useState<string[]>([]);
+  const [movimento, setMovimento] = useState<string[]>([]);
+  const [enquadramento, setEnquadramento] = useState<string[]>([]);
   // o Status (21/10/2026: "preciso de um filtro melhor de status, onde coloque concluída, não iniciada, em andamento etc."):
-  // um só, com a situação da coluna. Pendentes é o de antes (tudo o que não está concluído); os outros, a Situação da linha
-  const [status, setStatus] = useState<'' | 'pendentes' | t.SituacaoGeral | 'nada'>('');
-  const [agrupamento, setAgrupamento] = useState('');
+  // Pendentes é o de antes (tudo o que não está concluído); os outros, a Situação da linha
+  const [status, setStatus] = useState<string[]>([]);
+  const [agrupamento, setAgrupamento] = useState<string[]>([]);
   const [agrupar, setAgrupar] = useState<Agrupar>('nenhum');
-  const [pendenteEm, setPendenteEm] = useState<'' | ParteDoDp>('');
+  const [pendenteEm, setPendenteEm] = useState<string[]>([]);
   // o filtro de Entrega (Vitor, 07/10/2026: como chega ao cliente)
-  const [entrega, setEntrega] = useState('');
+  const [entrega, setEntrega] = useState<string[]>([]);
   // o que o dashboard do Resumo escolheu para a lista: uma situação (a rosca) ou uma parte da rotina (a barra), nunca as duas
   const [situacaoEscolhida, setSituacaoEscolhida] = useState<SituacaoDoDash | null>(null);
   const [parteEscolhida, setParteEscolhida] = useState<ParteDoDp | null>(null);
@@ -142,11 +144,11 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
 
   const achadas = busca.trim() ? new Set(empresas.buscarEmpresas(todas.map(c => ({ codigo: c.codigo, nome: c.nomeNaTela, regime: c.enquadramento })), busca).map(e => e.codigo)) : null;
   // o filtro Pendente em (Vitor, 07/10/2026): só quem ainda tem o que fazer naquela parte
-  const pendente = partes.find(p => p.id === pendenteEm) || null;
-  const filtradas = todas.filter(c => (!pendente || c.obrigacoes.some(o => pendente.obrigacoes.includes(o.id) && o.estado !== 'nao-tem' && o.estado !== 'feita'))
-    && (!achadas || achadas.has(c.codigo)) && (!responsavel || c.responsavelNome === responsavel) && (!entrega || c.entrega === entrega)
-    && (!movimento || c.movimento === movimento) && (!enquadramento || c.enquadramento === enquadramento)
-    && (!agrupamento || c.agrupamento === agrupamento) && (!status || (status === 'pendentes' ? !c.concluida : c.situacaoId === status)))
+  const pendentesEm = partes.filter(p => pendenteEm.includes(p.id));
+  const filtradas = todas.filter(c => (!pendentesEm.length || pendentesEm.some(pendente => c.obrigacoes.some(o => pendente.obrigacoes.includes(o.id) && o.estado !== 'nao-tem' && o.estado !== 'feita')))
+    && (!achadas || achadas.has(c.codigo)) && (!responsavel.length || responsavel.includes(c.responsavelNome)) && (!entrega.length || entrega.includes(c.entrega))
+    && (!movimento.length || movimento.includes(c.movimento)) && (!enquadramento.length || enquadramento.includes(c.enquadramento))
+    && (!agrupamento.length || agrupamento.includes(c.agrupamento)) && (!status.length || status.some(s => (s === 'pendentes' ? !c.concluida : c.situacaoId === s))))
     .sort((a, b) => a.nomeNaTela.localeCompare(b.nomeNaTela, 'pt-BR'));
 
   // a tabela em grupos (por responsável ou agrupamento), cada um com quantos já fecharam
@@ -300,7 +302,7 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
       busca, setBusca, responsavel, setResponsavel, movimento, setMovimento, enquadramento, setEnquadramento,
       status, setStatus, agrupamento, setAgrupamento, agrupar, setAgrupar,
       /** o Status para o 13º (lá só há pendentes e concluídas) */
-      statusDoDecimo: (status === 'pendentes' ? 'pendentes' : status === 'concluida' ? 'concluidas' : '') as '' | 'pendentes' | 'concluidas',
+      statusDoDecimo: (status.length === 1 && status[0] === 'pendentes' ? 'pendentes' : status.length === 1 && status[0] === 'concluida' ? 'concluidas' : '') as '' | 'pendentes' | 'concluidas',
       /** as opções do Status, com quantos clientes em cada (Pendentes = tudo o que não está concluído) */
       statusOpcoes: [
         { valor: 'pendentes', rotulo: 'Pendentes (' + todas.filter(c => !c.concluida).length + ')' },
@@ -315,8 +317,8 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
       pendenteEm, setPendenteEm, entrega, setEntrega,
       entregas: contar(todas.map(c => c.entrega).filter(Boolean)).map(x => x.rotulo),
       partes: partes.map(p => ({ valor: p.id, rotulo: p.rotulo })),
-      algum: !!(busca || responsavel || movimento || enquadramento || status || agrupamento || pendenteEm || entrega),
-      limpar: () => { setBusca(''); setResponsavel(''); setMovimento(''); setEnquadramento(''); setStatus(''); setAgrupamento(''); setPendenteEm(''); setEntrega(''); },
+      algum: !!(busca || responsavel.length || movimento.length || enquadramento.length || status.length || agrupamento.length || pendenteEm.length || entrega.length),
+      limpar: () => { setBusca(''); setResponsavel([]); setMovimento([]); setEnquadramento([]); setStatus([]); setAgrupamento([]); setPendenteEm([]); setEntrega([]); },
     },
     /** a tabela que está na tela (com os filtros e a ordem dela), em Excel (Vitor, 07/10/2026) */
     exportar() {

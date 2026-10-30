@@ -358,7 +358,7 @@ export const PECAS_BASE: Peca[] = [
     demo: () => <div className="field" style={{ width: 260 }}><label htmlFor="cat-f1">Agência</label><input id="cat-f1" type="text" placeholder="Ex.: 3001" /></div> },
   { id: 'select', tipo: 'campos', nome: 'Seleção', descricao: 'Com o triângulo do GitHub; a compacta tem o mesmo tamanho (só a largura acompanha o texto)', classes: ['field select', 'select-compact'], telas: ['t-empresa-lcdpr', 'c-cadastro', 'e-conferencia', 'c-relatorio', 'a-arquivador'],
     demo: () => <><select defaultValue="cfop" style={{ width: 180 }}><option value="cfop">CFOP (A-Z)</option><option>Fornecedor (A-Z)</option></select><select className="select-compact" defaultValue="a"><option value="a">Todas</option></select></> },
-  { id: 'checkbox', tipo: 'campos', nome: 'Checkbox', descricao: '18 px; o ✓ é desenhado para 18 px', classes: ['input[type=checkbox]', 'chk-auto'], telas: ['c-naturezas', 'c-relatorio', 't-exec-folha'],
+  { id: 'checkbox', tipo: 'campos', nome: 'Checkbox', descricao: '18 px; o ✓ é desenhado para 18 px', classes: ['input[type=checkbox]', 'chk-auto'], telas: ['c-naturezas', 'c-relatorio', 't-exec-folha', 't-drive'],
     demo: () => <><input type="checkbox" /><input type="checkbox" defaultChecked /><input type="checkbox" disabled /><input type="checkbox" className="chk-auto" defaultChecked /></> },
   { id: 'interruptor', tipo: 'campos', nome: 'Interruptor', componente: 'Interruptor', classes: ['toggle-switch'], telas: ['c-consulta', 'a-sistema'], demo: () => <InterruptorVivo /> },
   { id: 'data', tipo: 'campos', nome: 'Data (dd/mm/aaaa)', componente: 'CampoData', classes: ['data-mask'], telas: ['c-consulta', 'e-cheque', 'c-cliente-dp'], demo: () => <DataVivo /> },

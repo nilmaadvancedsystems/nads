@@ -2,7 +2,8 @@
 // dados dela, e melhorando a parametrização no estilo do Notion; parametrizações por setor"). Três telas:
 //   - DadosDaEmpresa (Empresa): a identificação e a situação na Receita (o que o Entregas já tem), o contato e os sócios;
 //   - ParametrosContabeis (Contábil › Parâmetros): os cartões, a liquidação de cobrança e a nota de honorário;
-//   - ParametrosFiscais (Fiscal › Parâmetros): o regime tributário e se presta serviços.
+//   - ParametrosFiscais (Fiscal › Parâmetros): o regime tributário, se presta serviços e os parâmetros da planilha do
+//     Fiscal (29/10/2026: segmento, monofásico, ICMS-ST, antecipação, DIFAL, retenções, benefício, parcelamento…).
 // Cada opção numa linha solta (ConfigLinha): o nome, a descrição curta e o controle à direita.
 import { empresas } from '@nads/core';
 import { BotaoIcone, ConfigLinha, ConfigSecao, Icone, Interruptor, MenuSuspenso, useCarregando } from '@nads/ui';
@@ -157,6 +158,7 @@ export function ParametrosFiscais({ rota }: { rota: string }) {
   useCarregando(vm.carregando);
   if (vm.carregando) return null;
   return (
+    <>
     <ConfigSecao titulo="Tributação">
       {/* o regime (13/10/2026: "no cadastro da empresa tenha os regimes, aí muda na rotina") */}
       <ConfigLinha titulo="Regime tributário" descricao="Define as etapas da rotina do Fiscal (PGDAS, DAS-MEI, ICMS, PIS/COFINS, IRPJ/CSLL)."
@@ -167,6 +169,42 @@ export function ParametrosFiscais({ rota }: { rota: string }) {
       <ConfigLinha titulo="Presta serviços" descricao="Mostra a aba Prestados na Importação e os serviços prestados na Conferência.">
         <Interruptor ligado={vm.prestaServico === true} rotulo="Presta serviços" onMudar={() => vm.definirPrestaServico(vm.prestaServico !== true)} />
       </ConfigLinha>
+    </ConfigSecao>
+    <ParametrosDaPlanilhaDoFiscal vm={vm} />
+    </>
+  );
+}
+
+/**
+ * Fiscal › Parâmetros › a planilha do Fiscal (29/10/2026): o segmento, os de sim ou não e os textos livres. O que veio da
+ * planilha aparece assim, e "Voltar à planilha" desfaz tudo o que foi mudado aqui.
+ */
+function ParametrosDaPlanilhaDoFiscal({ vm }: { vm: ReturnType<typeof useDadosDaEmpresa> }) {
+  const mudado = Object.values(vm.origemDoFiscal).includes('cadastro');
+  const deOnde = (campo: keyof typeof vm.origemDoFiscal) => vm.origemDoFiscal[campo] === 'planilha' ? 'Da planilha' + (vm.abaDoFiscal ? ' (' + vm.abaDoFiscal.charAt(0) + vm.abaDoFiscal.slice(1).toLowerCase() + ')' : '') + '.'
+    : vm.origemDoFiscal[campo] === 'cadastro' ? 'Mudado aqui.' : 'Ainda não informado.';
+  const enter = (e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') e.currentTarget.blur(); };
+  return (
+    <ConfigSecao titulo="Parâmetros do Fiscal" acao={mudado ? <button type="button" className="btn btn-ghost" onClick={vm.voltarFiscalAPlanilha}>Voltar à planilha</button> : undefined}>
+      <ConfigLinha titulo="Segmento" descricao={deOnde('segmentos')}>
+        <span className="usuarios-papeis">
+          {vm.segmentosFiscais.map(s => {
+            const on = (vm.fiscal.segmentos || []).includes(s.id);
+            return <button key={s.id} type="button" className={'chip-f' + (on ? ' on' : '')} aria-pressed={on} onClick={() => vm.alternarSegmento(s.id)}>{s.rotulo}</button>;
+          })}
+        </span>
+      </ConfigLinha>
+      {vm.parametrosFiscais.map(p => (
+        <ConfigLinha key={p.id} titulo={p.rotulo} descricao={p.descricao + ' ' + deOnde(p.id)}>
+          <Interruptor ligado={vm.fiscal[p.id] === true} rotulo={p.rotulo} onMudar={() => vm.definirFiscal(p.id, vm.fiscal[p.id] !== true)} />
+        </ConfigLinha>
+      ))}
+      {(['especificidades', 'observacoes'] as const).map(k => (
+        <ConfigLinha key={k} titulo={k === 'especificidades' ? 'Especificidades' : 'Observações'} descricao={deOnde(k)}>
+          <input key={k + '|' + (vm.fiscal[k] || '')} type="text" aria-label={k === 'especificidades' ? 'Especificidades' : 'Observações'} defaultValue={vm.fiscal[k] || ''}
+            maxLength={vm.maxTextoDoFiscal} placeholder="—" onBlur={e => vm.definirFiscal(k, e.target.value)} onKeyDown={enter} />
+        </ConfigLinha>
+      ))}
     </ConfigSecao>
   );
 }

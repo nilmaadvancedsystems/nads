@@ -115,6 +115,8 @@ export interface VerificacaoBalancete {
  * repete códigos entre empresas — então compara código + nome:
  * 1) as contas vinculadas no Cadastro precisam existir no arquivo (e com o mesmo nome);
  * 2) o plano precisa ser parecido com o do último balancete desta empresa.
+ * Com o plano parecido, a conta vinculada que não veio no arquivo é só a conta sem saldo no mês (o Alterdata não lista),
+ * não outra empresa: não avisa (29/10/2026, a 289: a 96081 da bonificação faltava e o plano era o mesmo). O nome trocado avisa sempre.
  */
 export function verificarBalancete(e: Empresa, lista: Conta[]): VerificacaoBalancete {
   const nova = assinaturaBalancete(lista);
@@ -126,12 +128,6 @@ export function verificarBalancete(e: Empresa, lista: Conta[]): VerificacaoBalan
   for (const k of Object.keys(e.naturezaConta || {})) for (const c of contasDaNatureza(e, k)) vinc[c] = 1;
   for (const l of e.dp || []) if (l.travado && l.conta) vinc[l.conta] = 1;
   const codsV = Object.keys(vinc);
-  const ruins: string[] = [];
-  for (const c of codsV) {
-    if (!(c in nova)) ruins.push(c + ' não existe neste arquivo');
-    else if (ref && ref[c] && ref[c] !== nova[c]) ruins.push(c + ' era "' + ref[c] + '" e aqui é "' + nomeNovo[c] + '"');
-  }
-  if (ruins.length) prob.push('<b>' + ruins.length + ' de ' + codsV.length + '</b> conta(s) vinculada(s) no Cadastro não batem: ' + escapar(ruins.slice(0, 3).join('; ')) + (ruins.length > 3 ? '…' : '') + '.');
   let sim: number | null = null;
   if (ref) {
     const uniao: Record<string, 1> = {};
@@ -139,9 +135,16 @@ export function verificarBalancete(e: Empresa, lista: Conta[]): VerificacaoBalan
     for (const k of Object.keys(ref)) { uniao[k] = 1; if (nova[k] === ref[k]) iguais++; }
     for (const k of Object.keys(nova)) uniao[k] = 1;
     sim = Math.round(iguais / Math.max(1, Object.keys(uniao).length) * 100);
-    if (sim < BAL_SIMILARIDADE_MIN) prob.push('Só <b>' + sim + '%</b> das contas batem com o último balancete importado desta empresa' +
-      (e.balanceteAssinaturaTs ? ' (em ' + new Date(e.balanceteAssinaturaTs).toLocaleDateString('pt-BR') + ')' : '') + '.');
   }
+  const planoParecido = sim !== null && sim >= BAL_SIMILARIDADE_MIN;
+  const ruins: string[] = [];
+  for (const c of codsV) {
+    if (!(c in nova)) { if (!planoParecido) ruins.push(c + ' não existe neste arquivo'); }
+    else if (ref && ref[c] && ref[c] !== nova[c]) ruins.push(c + ' era "' + ref[c] + '" e aqui é "' + nomeNovo[c] + '"');
+  }
+  if (ruins.length) prob.push('<b>' + ruins.length + ' de ' + codsV.length + '</b> conta(s) vinculada(s) no Cadastro não batem: ' + escapar(ruins.slice(0, 3).join('; ')) + (ruins.length > 3 ? '…' : '') + '.');
+  if (sim !== null && !planoParecido) prob.push('Só <b>' + sim + '%</b> das contas batem com o último balancete importado desta empresa' +
+    (e.balanceteAssinaturaTs ? ' (em ' + new Date(e.balanceteAssinaturaTs).toLocaleDateString('pt-BR') + ')' : '') + '.');
   return { problemas: prob, similaridade: sim };
 }
 

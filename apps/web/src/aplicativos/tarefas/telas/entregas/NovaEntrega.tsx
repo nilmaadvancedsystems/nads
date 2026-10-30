@@ -238,7 +238,7 @@ function PlanilhaDeDocumentos({ vm }: { vm: Vm }) {
             {vm.linhas.map(l => (
               <tr key={l.chave}>
                 <td>{l.outro
-                  ? <input type="text" data-foco="outro-nome" placeholder="Nome do documento" aria-label="Nome do outro documento" value={l.rotulo === 'Outro documento' ? '' : l.rotulo} onChange={e => vm.mudarOutro(e.target.value)} />
+                  ? <input type="text" data-foco="outro-nome" placeholder="Nome do documento" aria-label="Nome do outro documento" value={vm.outroTexto} onChange={e => vm.mudarOutro(e.target.value)} />
                   : l.rotulo}</td>
                 <td>{l.semValor ? <span className="fraco">sem valor</span> : (
                   <input type="text" inputMode="decimal" className="num" data-foco={l.chave} placeholder="R$ 0,00" aria-label={'Valor de ' + l.rotulo} value={l.valor}

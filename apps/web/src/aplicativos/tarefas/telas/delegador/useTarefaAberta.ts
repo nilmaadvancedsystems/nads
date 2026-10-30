@@ -10,6 +10,7 @@ import { useOperador } from '../../casca/operador';
 import { useAcesso, useRepo, useTarefasDelegadas } from '../../dados/repo';
 import { bytesDoAnexo, encolherAnexo } from '../../dados/encolherAnexo';
 import { tamanhoDoArquivo, type ArquivoParaAnexar } from '../../dados/tarefasDelegadas';
+import { useEmpresasPermitidas } from '../empresas/andamento';
 
 const d = tarefas.delegadas;
 type Rascunho = tarefas.delegadas.Rascunho;
@@ -28,7 +29,8 @@ const lerArquivos = (fs: File[]): Promise<ArquivoParaAnexar[]> => Promise.all(fs
 export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraMim: boolean) => void) {
   const repo = useTarefasDelegadas();
   const acesso = useAcesso();
-  const empresas = useRepo().listarEmpresas();
+  // o cliente vinculado: só as empresas da pessoa (29/10/2026)
+  const empresas = useEmpresasPermitidas().filtrar(useRepo().listarEmpresas());
   const admin = !!useOperador().operador?.admin;
   const { toast, modal } = useRetorno();
   const eu = repo.eu();
@@ -50,7 +52,18 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
   const [busca, setBusca] = useState('');
   const [ativo, setAtivo] = useState(0);
 
-  const mudar = (p: Partial<Rascunho>) => { setR(x => ({ ...x, ...p })); setErro(''); };
+  // a tarefa que chega do banco depois de aberta (a lista ainda carregava, ou outra pessoa mudou; 29/10/2026: "não salva
+  // nada"): enquanto a pessoa não mexeu no formulário, ele acompanha o banco
+  const [base, setBase] = useState(tarefa?.atualizadaEm ?? '');
+  const [editou, setEditou] = useState(false);
+  if (tarefa && !editou && tarefa.atualizadaEm !== base) {
+    setBase(tarefa.atualizadaEm);
+    const novo = d.rascunhoDe(tarefa);
+    setR(novo);
+    setPrazoTexto(d.prazoParaTela(novo.prazo));
+  }
+
+  const mudar = (p: Partial<Rascunho>) => { setR(x => ({ ...x, ...p })); setEditou(true); setErro(''); };
   const prazo = d.prazoDaTela(prazoTexto);
   const final: Rascunho = { ...r, prazo: prazo ?? r.prazo };
   const mudou = ehNova
@@ -69,10 +82,28 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
   const achadas = busca.trim() ? emp.buscarEmpresas(empresas, busca).slice(0, 8) : [];
   const escolherEmpresa = (e: { codigo: number | null; nome: string }) => { mudar({ cliente: { codigo: e.codigo, nome: e.nome } }); setBusca(''); setAtivo(0); };
 
-  /** pergunta antes de largar o que mudou; sem mudança, segue direto */
+  // o parecer escrito e ainda não gravado (29/10/2026: "o parecer não fica gravado"): quem escrevia e clicava em Salvar,
+  // no ‹ Voltar ou fechava a Central perdia o texto sem aviso; agora o Salvar grava junto e o sair pergunta
+  const parecerEscrito = !ehNova && !!tarefa && podeMudar && !!parecer.trim();
+
+  /** grava o parecer escrito; false = não gravou (o motivo já foi para o toast) */
+  async function gravarParecer(): Promise<boolean> {
+    if (!tarefa) return false;
+    const problema = d.problemaDoParecer(parecer, tarefa);
+    if (problema) { toast(problema); return false; }
+    setOcupado('parecer');
+    try { await repo.comentar(tarefa.id, parecer); setParecer(''); return true; } catch (e) { toast('Não gravei o parecer: ' + (e instanceof Error ? e.message : String(e))); return false; } finally { setOcupado(''); }
+  }
+
+  /** pergunta antes de largar o que mudou (e o parecer escrito); sem mudança, segue direto */
   async function largar(depois: () => void) {
-    if (mudou && podeMudar) {
-      const ok = await modal({ icone: 'alert', titulo: 'Descartar as mudanças?', texto: 'O que você mudou nesta tarefa não foi salvo.',
+    if (parecerEscrito && !mudou) {
+      const r = await modal<'' | 'descartar' | 'gravar'>({ icone: 'alert', titulo: 'Gravar o parecer?', texto: 'O parecer que você escreveu ainda não foi gravado.',
+        botoes: [{ rotulo: 'Continuar editando', valor: '', variante: 'btn-outline' }, { rotulo: 'Descartar', valor: 'descartar', variante: 'btn-outline' },
+          { rotulo: 'Gravar parecer', valor: 'gravar', variante: 'btn-primary' }] });
+      if (!r || (r === 'gravar' && !(await gravarParecer()))) return;
+    } else if ((mudou || parecerEscrito) && podeMudar) {
+      const ok = await modal({ icone: 'alert', titulo: 'Descartar as mudanças?', texto: parecerEscrito ? 'O que você mudou nesta tarefa e o parecer não foram salvos.' : 'O que você mudou nesta tarefa não foi salvo.',
         botoes: [{ rotulo: 'Continuar editando', valor: false, variante: 'btn-outline' }, { rotulo: 'Descartar', valor: true, variante: 'btn-primary' }] });
       if (!ok) return;
     }
@@ -103,7 +134,7 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
     maiorTitulo: d.MAIOR_TITULO,
     maiorDescricao: d.MAIOR_DESCRICAO,
     prazoTexto,
-    setPrazo: (v: string) => { setPrazoTexto(v); setErro(''); },
+    setPrazo: (v: string) => { setPrazoTexto(v); setEditou(true); setErro(''); },
     prazoInvalido: prazo === null,
     prioridades: d.PRIORIDADES,
     setPrioridade: (v: string) => { if (d.ehPrioridade(v)) mudar({ prioridade: v }); },
@@ -181,8 +212,16 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
           toast(paraMim ? 'Tarefa criada.' : 'Tarefa delegada para ' + final.responsavel?.nome + '.');
           criada(paraMim);
         } else if (tarefa) {
+          // o parecer escrito vai junto (primeiro: se não gravar, a pessoa fica na tarefa com o texto)
+          if (parecerEscrito) {
+            const problemaDoParecer = d.problemaDoParecer(parecer, tarefa);
+            if (problemaDoParecer) { setErro(problemaDoParecer); setAba('parecer'); return; }
+            await repo.comentar(tarefa.id, parecer);
+            setParecer('');
+          }
           // sem mudança, só volta (nada a gravar nem a pôr no histórico)
-          if (mudou) { await repo.salvar(tarefa.id, final); toast('Tarefa salva.'); }
+          if (mudou) { await repo.salvar(tarefa.id, final); toast(parecerEscrito ? 'Tarefa e parecer salvos.' : 'Tarefa salva.'); }
+          else if (parecerEscrito) toast('Parecer gravado.');
           voltar();
         }
       } catch (e) { setErro('Não salvei: ' + (e instanceof Error ? e.message : String(e))); } finally { setOcupado(''); }
@@ -205,13 +244,7 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
     parecer, setParecer,
     maiorParecer: d.MAIOR_PARECER,
     escrevendo: ocupado === 'parecer',
-    async escreverParecer() {
-      if (!tarefa) return;
-      const problema = d.problemaDoParecer(parecer, tarefa);
-      if (problema) { toast(problema); return; }
-      setOcupado('parecer');
-      try { await repo.comentar(tarefa.id, parecer); setParecer(''); } catch (e) { toast('Não gravei o parecer: ' + (e instanceof Error ? e.message : String(e))); } finally { setOcupado(''); }
-    },
+    async escreverParecer() { await gravarParecer(); },
 
     // ---- o histórico, o mais novo em cima
     historico: (tarefa?.historico || []).map((h, i) => ({ id: String(i), por: h.por, quando: quando(h.em), texto: h.texto })).reverse(),

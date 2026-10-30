@@ -1,7 +1,8 @@
 // Fiscal › Relatório Simples / Relatório Presumido (28/10/2026: "monte a tabela nesse estilo do dp"; cada regime numa
 // página do menu lateral; no lugar do Controle de tributos): a barra das Obrigações do DP (a competência e os filtros em
 // menus), em cima da tabela a busca, o Excel e a impressora do protocolo; a tabela com as colunas agrupadas — as guias com
-// o valor em reais, as conferências e a REINF na bolinha do DP, a data e a entrega — e o total. As Observações e a
+// o valor em reais, as conferências na bolinha do DP (o R é a REINF: saiu a coluna da REINF, 29/10/2026), a data e a
+// entrega — e o total. As Observações e a
 // Retificação saíram por enquanto (28/10/2026). Só peças que já existem.
 import { baixarBytes, BotaoIcone, Esqueleto, Icone, LogoExcel, MenuSuspenso, useCarregando } from '@nads/ui';
 import { MenuDeFiltro } from '../../dp/MenuDeFiltro';
@@ -58,27 +59,33 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
             </button>
             <BotaoIcone icone="printer" titulo="Imprimir o protocolo de entrega" onClick={vm.imprimir} />
           </div>
-          <section className="card dp-lista">
+          {/* o cabeçalho fica parado no alto ao rolar (dp-lista-fixa, o mesmo das Obrigações do DP) */}
+          <section className="card dp-lista dp-lista-fixa">
             {!vm.total ? <p className="hint dp-vazio">Nenhuma empresa do {g.rotulo} no Cadastro: as empresas entram pelo regime.</p>
               : !vm.linhas.length ? <p className="hint dp-vazio">Nenhum cliente com esses filtros.</p> : (
                 <div className="table-wrap">
-                  <table className="dp-tabela">
+                  <table className="dp-tabela rel-tabela">
+                    {/* as larguras das colunas (o cabeçalho tem duas linhas: a tabela fixa lê as larguras daqui); o cliente fica com o resto */}
+                    <colgroup>
+                      <col className="rel-cod" /><col />
+                      {vm.guias.map(c => <col key={c.id} className="rel-guia" />)}
+                      {g.marcas.map(m => <col key={m.id} className="rel-mk" />)}
+                      <col className="rel-data" /><col className="rel-ent" /><col className="rel-sit" />
+                    </colgroup>
                     <thead>
                       <tr className="dp-cabeca-grupo">
                         <th colSpan={2} />
                         <th colSpan={vm.guias.length} className="dp-ob-grupo dp-ob-primeira">Guias (R$)</th>
                         <th colSpan={g.marcas.length} className="dp-ob-grupo dp-ob-primeira">Conferências</th>
-                        <th colSpan={2} className="dp-ob-grupo dp-ob-primeira">REINF</th>
                         <th colSpan={2} className="dp-ob-grupo dp-ob-primeira">Entrega</th>
                         <th />
                       </tr>
                       <tr>
-                        <th>Cód.</th><th>Cliente</th>
-                        {vm.guias.map((c, i) => <th key={c.id} className={'dp-ob' + (i === 0 ? ' dp-ob-primeira' : '')} title={c.nome}>{c.rotulo}</th>)}
+                        <th className="rel-cod">Cód.</th><th>Cliente</th>
+                        {vm.guias.map((c, i) => <th key={c.id} className={'dp-ob rel-guia' + (i === 0 ? ' dp-ob-primeira' : '')} title={c.nome}>{c.rotulo}</th>)}
                         {g.marcas.map((m, i) => <th key={m.id} className={'dp-ob' + (i === 0 ? ' dp-ob-primeira' : '')} title={m.dica}>{m.rotulo}</th>)}
-                        <th className="dp-ob dp-ob-primeira" title="EFD-REINF transmitida">REINF</th><th className="dp-ob" title="REINF retificada na competência">Retif.</th>
-                        <th className="dp-ob dp-ob-primeira">Data</th><th className="dp-ob">Entregue</th>
-                        <th>Situação</th>
+                        <th className="dp-ob dp-ob-primeira rel-data">Data</th><th className="dp-ob rel-ent">Entregue</th>
+                        <th className="dp-ob rel-sit" title="Situação">Sit.</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -87,7 +94,7 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
                           <td className="num fraco">{r.codigo}</td>
                           <td className="dp-cliente"><span className="dp-cliente-nome" title={r.nome}>{r.nome}</span></td>
                           {vm.guias.map((c, i) => (
-                            <td key={c.id} className={'num' + (i === 0 ? ' dp-ob-primeira' : '')}>
+                            <td key={c.id} className={'num rel-guia' + (i === 0 ? ' dp-ob-primeira' : '')}>
                               <Valor estreito valor={r.linha.valores[c.id] || ''} sugestao={r.sugestao?.valores[c.id]} rotulo={c.nome + ' de ' + r.nome} pode={vm.podeGravar} aoSalvar={v => vm.mudarValor(r.codigo, c.id, v)} />
                             </td>
                           ))}
@@ -100,25 +107,19 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
                               </td>
                             );
                           })}
-                          <td className="dp-ob dp-ob-primeira">
-                            <Bolinha estado={!r.reinf.tem ? 'nao-tem' : r.reinf.transmitida ? 'feita' : 'a-fazer'} dica={r.reinf.dica} pode={r.reinf.tem} clicar={() => vm.alternarReinf(r.codigo, r.reinf.transmitida)} />
+                          <td className="dp-ob dp-ob-primeira rel-data">
+                            <Valor estreito valor={dataBr(r.linha.data)} sugestao={r.sugestao?.data ? dataBr(r.sugestao.data) : undefined} molde="dd/mm/aaaa" rotulo={'Data de ' + r.nome} pode={vm.podeGravar} aoSalvar={v => vm.mudarData(r.codigo, v)} />
                           </td>
-                          <td className="dp-ob">
-                            <Bolinha estado={!r.reinf.tem ? 'nao-tem' : r.reinf.retificada ? 'feita' : 'a-fazer'} dica={r.reinf.dicaRetificar} pode={r.reinf.tem} clicar={() => vm.retificarReinf(r.codigo)} />
-                          </td>
-                          <td className="dp-ob dp-ob-primeira">
-                            <Valor estreito valor={dataBr(r.linha.data)} sugestao={r.sugestao?.data ? dataBr(r.sugestao.data) : 'dd/mm/aaaa'} rotulo={'Data de ' + r.nome} pode={vm.podeGravar} aoSalvar={v => vm.mudarData(r.codigo, v)} />
-                          </td>
-                          <td className="dp-ob"><Entrega valor={r.linha.entregue} pode={vm.podeGravar} rotulo={'Entrega de ' + r.nome} aoMudar={e => vm.mudarEntrega(r.codigo, e)} /></td>
-                          <td><span className={'badge ' + (r.situacao === 'concluida' ? 'badge-ok' : r.situacao === 'em-andamento' ? 'badge-warn' : 'badge-neutral')}>{r.rotuloSituacao}</span></td>
+                          <td className="dp-ob rel-ent"><Entrega valor={r.linha.entregue} pode={vm.podeGravar} rotulo={'Entrega de ' + r.nome} aoMudar={e => vm.mudarEntrega(r.codigo, e)} /></td>
+                          <td className="dp-ob rel-sit"><span className={'dp-marca ' + (r.situacao === 'concluida' ? 'feita' : r.situacao === 'em-andamento' ? 'parada' : 'a-fazer')} title={r.rotuloSituacao} aria-label={r.rotuloSituacao}>{r.situacao === 'concluida' ? '✓' : r.situacao === 'em-andamento' ? '…' : ''}</span></td>
                         </tr>
                       ))}
                     </tbody>
                     <tfoot>
                       <tr>
                         <td colSpan={2}><b>Total</b></td>
-                        {vm.totais.map((x, i) => <td key={x.id} className={'num' + (i === 0 ? ' dp-ob-primeira' : '')}>{x.valor}</td>)}
-                        <td colSpan={g.marcas.length + 5} />
+                        {vm.totais.map((x, i) => <td key={x.id} className={'num rel-total' + (i === 0 ? ' dp-ob-primeira' : '')} title={x.valor === '—' ? undefined : 'R$ ' + x.valor}>{x.valor}</td>)}
+                        <td colSpan={g.marcas.length + 3} />
                       </tr>
                     </tfoot>
                   </table>
@@ -133,7 +134,7 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
               <button type="button" className="btn btn-outline" disabled={vm.pagina.atual >= vm.pagina.paginas - 1} onClick={vm.pagina.proxima}>Próxima<Icone nome="chevronRight" /></button>
             </div>
           )}
-          <p className="hint">Nos valores: o número em reais, "-" quando não tem guia ou "0". Em cinza, o que o Entregas já entregou. Nas conferências: clique para OK, de novo para "não se aplica" (–) e de novo para limpar. A REINF transmite como na tela da REINF.</p>
+          <p className="hint">Nos valores: o número em reais, "-" quando não tem guia ou "0". Em cinza, o que o Entregas já entregou. Nas conferências: clique para OK, de novo para "não se aplica" (–) e de novo para limpar.</p>
         </>
       )}
     </section>

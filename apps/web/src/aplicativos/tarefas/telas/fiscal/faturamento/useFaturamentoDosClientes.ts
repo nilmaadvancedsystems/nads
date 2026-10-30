@@ -5,6 +5,7 @@
 // Exporta para o Excel e imprime. Fica no Fiscal porque o dado é do Fiscal (o SIEG, a mesma fonte do Painel) e a tela
 // das Solicitações, onde o pedido nasceu, é da Entregas.
 import { empresas as emp, tarefas as t } from '@nads/core';
+import { useEmpresasPermitidas } from '../../empresas/andamento';
 import { useRetorno } from '@nads/ui';
 import { useState } from 'react';
 import { competenciasDaTela } from '../../../casca/navegacao';
@@ -27,7 +28,8 @@ export function useFaturamentoDosClientes() {
   const competencias = f.competenciasDoPeriodo(periodo, competencia);
   // cada mês numa consulta só (todos os clientes; a mesma do Painel do Fiscal)
   const meses = competencias.map(c => sieg.doMes(c));
-  const empresas = repo.listarEmpresas().filter(e => e.codigo != null).map(e => ({ codigo: e.codigo as number, nome: e.nome, regime: e.regime || '' }));
+  const permitidas = useEmpresasPermitidas();
+  const empresas = permitidas.filtrar(repo.listarEmpresas()).filter(e => e.codigo != null).map(e => ({ codigo: e.codigo as number, nome: e.nome, regime: e.regime || '' }));
   const todas = f.linhasDoFaturamento(empresas, competencias, c => sieg.doMes(c).saidas);
   const q = busca.trim();
   const achadas = q ? new Set(emp.buscarEmpresas(todas, q).map(e => e.codigo)) : null;

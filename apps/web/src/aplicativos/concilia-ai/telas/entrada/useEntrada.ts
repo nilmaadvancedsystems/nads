@@ -5,6 +5,7 @@ import { conferencia as c, empresas } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useNavigate } from 'react-router';
 import { useEscolherEmpresa } from '../../../../comum/useEscolherEmpresa';
+import { useEmpresasDaConta } from '../../../tarefas/casca/useEmpresasDaConta';
 import { useRepo, useVersaoDoRepo } from '../../dados/repo';
 import { caminho } from '../../casca/caminho';
 
@@ -26,11 +27,13 @@ export function useEntrada() {
     navegar(caminho(empresas.rotaDaEmpresa(x) + '/' + t.secao + '/' + t.pagina));
   }
 
-  const busca = useEscolherEmpresa(repo.listarEmpresas(), entrar);
+  // só as empresas de quem é o responsável (o admin e o diretor, todas; 29/10/2026)
+  const permitidas = useEmpresasDaConta();
+  const busca = useEscolherEmpresa(permitidas.filtrar(repo.listarEmpresas()), entrar);
 
   return {
     ...busca,
-    carregando: !repo.pronto(),
+    carregando: !repo.pronto() || !permitidas.carregada,
     exemplos: repo.exemplos,
     restaurarExemplos: () => { repo.restaurarExemplos(); toast('Exemplos restaurados.'); },
   };

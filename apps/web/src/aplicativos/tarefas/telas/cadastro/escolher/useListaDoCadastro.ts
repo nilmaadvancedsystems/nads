@@ -7,6 +7,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { caminhoDoCadastro } from '../../../casca/navegacao';
 import { useBancosDoEntregas, useRegimesDoEntregas, useTodosOsCadastros } from '../../../dados/repo';
+import { useEmpresasPermitidas } from '../../empresas/andamento';
 
 const cad = empresas.cadastro;
 
@@ -54,7 +55,8 @@ export function useListaDoCadastro() {
   const [situacao, setSituacao] = useState<Situacao>('');
 
   // a lista do escritório com as empresas cadastradas pelo nads (Nova empresa)
-  const linhas = useMemo<LinhaEmpresa[]>(() => [...demo.comEmpresaDemo(empresas.EMPRESAS, demo.EMPRESA_DEMO), ...cad.empresasCadastradasNoNads(todos.porId.values())
+  const permitidas = useEmpresasPermitidas();
+  const doEscritorio = useMemo<LinhaEmpresa[]>(() => [...demo.comEmpresaDemo(empresas.EMPRESAS, demo.EMPRESA_DEMO), ...cad.empresasCadastradasNoNads(todos.porId.values())
     .filter(n => !empresas.EMPRESAS.some(e => e.nome === n.nome))].map(x => {
     const c = todos.porId.get(formatos.slug(x.nome)) || null;
     const doRobo = x.codigo != null ? entregas.porCodigo.get(x.codigo) : undefined;
@@ -80,6 +82,8 @@ export function useListaDoCadastro() {
       ]),
     };
   }), [todos.porId, entregas.porCodigo]);
+  // só as empresas da pessoa (29/10/2026; o admin e o diretor, todas)
+  const linhas = permitidas.filtrar(doEscritorio);
 
   const achadas = useMemo(() => {
     const q = busca.trim();

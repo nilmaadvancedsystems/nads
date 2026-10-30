@@ -39,20 +39,60 @@ export const ACAO: Record<t.SituacaoGeral, string> = { parada: 'Retomar', 'em-an
  * busca do menu ☰ (27/10/2026: "só é para aparecer as empresas que a pessoa tem").
  */
 export function useEmpresasDaPessoa() {
-  const op = useOperador().operador as Operador;
+  return useEmpresasDoOperador(useOperador().operador as Operador);
+}
+
+/**
+ * O mesmo, para quem passa o operador (o Concilia aí, o Conciliadorzinho e o Extratudo, que não ficam dentro da Tarefas:
+ * o operador vem da conta da trava). null = sem conta (os exemplos desses aplicativos): vê todas, como antes.
+ */
+export function useEmpresasDoOperador(op: Operador | null) {
   const cadastros = useTodosOsCadastros();
   const equipe = useAcesso().equipe().lista.filter(p => p.ativo).map(p => p.nome);
-  const nomes = nomesDaPessoa(op.nome, equipe);
+  const nomes = op ? nomesDaPessoa(op.nome, equipe) : [];
+  // o cadastro pelo nome e, se o nome não bate (o Concilia aí e o Extratudo têm a lista deles), pelo código do ERP
+  const cadastroDe = (emp: { nome: string; codigo: number | null }) => cadastros.porId.get(formatos.slug(emp.nome))
+    || (emp.codigo != null ? [...cadastros.porId.values()].find(c => c.codigo === emp.codigo) : undefined);
   const responsavelDe = (emp: { nome: string; codigo: number | null }, dep: 'fiscal' | 'contabil') => {
-    const r = cadastros.porId.get(formatos.slug(emp.nome))?.responsaveis?.[dep] || '';
+    const r = cadastroDe(emp)?.responsaveis?.[dep] || '';
     return r || (dep === 'fiscal' ? empresas.clienteDoDp(emp.codigo)?.responsavel || '' : '');
   };
   return {
     /** o admin e o diretor podem ver todas (26/10/2026) */
-    podeVerTodas: !!op.admin || op.nivel === 'diretor',
-    carregada: cadastros.carregada,
+    podeVerTodas: !op || !!op.admin || op.nivel === 'diretor',
+    /** o Cadastro chegou de verdade (a lista que falhou não conta: vazia, ela barraria todo mundo; 30/10/2026) */
+    carregada: cadastros.carregada && !cadastros.falhou,
+    /** a leitura do Cadastro falhou e está tentando de novo */
+    falhou: cadastros.falhou,
     /** só a empresa em que a pessoa é a responsável do setor (a sem responsável fica de fora) */
     e: (emp: { nome: string; codigo: number | null }, dep: 'fiscal' | 'contabil') => { const r = responsavelDe(emp, dep); return !!r && nomes.some(n => igual(n, r)); },
+  };
+}
+
+/**
+ * As empresas que a pessoa pode abrir em qualquer tela que escolhe empresa (29/10/2026: "se eu não sou encarregado dela
+ * não tem porque eu ter acesso a ela"; "se não é encarregado não deve nem ver"): o admin e o diretor, todas; no Fiscal e no
+ * Contábil, só as que ela é a responsável do setor no Cadastro (sem nenhuma marcada, nenhuma); o DP ainda não tem o
+ * responsável por empresa, então vê todas.
+ * carregada: o Cadastro (de onde vem o responsável) já chegou; antes disso a lista filtrada sai vazia.
+ */
+export function useEmpresasPermitidas() {
+  return useEmpresasPermitidasDoOperador(useOperador().operador);
+}
+
+/** O mesmo, com o operador passado (os aplicativos fora da Tarefas; null = sem conta: todas). */
+export function useEmpresasPermitidasDoOperador(op: Operador | null) {
+  const daPessoa = useEmpresasDoOperador(op);
+  const setor = op?.departamento === 'fiscal' || op?.departamento === 'contabil' ? op.departamento : null;
+  const filtra = !daPessoa.podeVerTodas && !!setor;
+  const pode = (e: { nome: string; codigo: number | null }) => !filtra || !setor || daPessoa.e(e, setor);
+  return {
+    filtra,
+    carregada: !filtra || daPessoa.carregada,
+    /** não deu para ler quem é o responsável (está tentando de novo): não dá para dizer que a empresa é de outra pessoa */
+    falhou: filtra && daPessoa.falhou,
+    pode,
+    filtrar: <T extends { nome: string; codigo: number | null }>(lista: readonly T[]): T[] => (filtra ? lista.filter(pode) : [...lista]),
   };
 }
 
@@ -76,9 +116,9 @@ export function useAndamento() {
   const daPessoa = useEmpresasDaPessoa();
   const podeVerTodas = daPessoa.podeVerTodas;
   const escopo: EscopoDasEmpresas = podeVerTodas && params.get('escopo') === 'todas' ? 'todas' : 'minhas';
-  // o Contábil sempre com todas, sem o Minhas/Todas (Vitor, 28/10/2026: "sempre vai ser todas por enquanto, ainda não temos
-  // a relação"; "pode até remover esse filtro"): só o Fiscal filtra pelo responsável
-  const temResponsavel = dep === 'fiscal';
+  // o Fiscal e o Contábil filtram pelo responsável do setor no Cadastro (29/10/2026: "se não é encarregado não deve nem
+  // ver"; antes o Contábil ficava com todas); o DP ainda não tem o responsável por empresa
+  const temResponsavel = dep === 'fiscal' || dep === 'contabil';
   const filtrar = escopo === 'minhas' && temResponsavel;
 
   // as empresas da rotina: o DP, os clientes da planilha do DP; o Contábil e o Fiscal, a lista do escritório
