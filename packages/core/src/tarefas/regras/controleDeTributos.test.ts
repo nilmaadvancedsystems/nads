@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { linhasDoProtocolo } from './protocoloDeTributos';
 import { grupoDoControle, htmlDoControle, linhaEmBranco, numeroDoControle, preencherComSugestao, situacaoDaLinha, sugestoesDoEntregas, valorDoControle } from './controleDeTributos';
 
 const logo = { definicao: '<svg id="def"></svg>', uso: '<svg><use href="#x"/></svg>' };
@@ -8,6 +9,7 @@ describe('o controle de tributos do Fiscal (27/10/2026)', () => {
     expect(valorDoControle('1234,5')).toBe('1.234,50');
     expect(valorDoControle('2.595,81')).toBe('2.595,81');
     expect(valorDoControle('49.63')).toBe('49,63');
+    expect(valorDoControle('1234.56')).toBe('1.234,56');
     expect(valorDoControle('R$ 10')).toBe('10,00');
     expect(valorDoControle('-')).toBe('—');
     expect(valorDoControle('Ø')).toBe('0');
@@ -33,6 +35,14 @@ describe('o controle de tributos do Fiscal (27/10/2026)', () => {
     expect(junta.valores).toEqual({ das: '99,00', 'st-ent': '20,50' });
     expect(junta.data).toBe('2026-09-15');
     expect(junta.entregue).toBe('email');
+  });
+
+  it('a data da entrega é o dia em Brasília (o confirmadoEm é UTC; 30/10/2026)', () => {
+    const sn = grupoDoControle('sn');
+    // 22h30 de 15/09 em Brasília = 01h30 de 16/09 em UTC
+    const guias = [{ codigo: 7, itens: [{ tipo: 'DAS', valor: 100 }], em: '2026-09-16T01:30:00.000Z', porEmail: false }];
+    expect(sugestoesDoEntregas(sn, [{ codigo: 7, nome: 'A' }], guias).get(7)?.data).toBe('2026-09-15');
+    expect(linhasDoProtocolo(sn, [{ codigo: 7, nome: 'A' }], guias, true)[0].data).toBe('15/09');
   });
 
   it('a situação da linha', () => {

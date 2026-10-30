@@ -1,6 +1,6 @@
 // O mural de avisos no banco do Entregas (coleção nadsAvisos; regra em firestore.rules): toda a equipe no nads lê; só o
 // admin e o diretor criam, fixam e apagam. Sem a regra no ar, o banco recusa: o mural fica vazio e publicar avisa o erro.
-import { collection, deleteDoc as deleteDocBruto, doc, limit, onSnapshot, orderBy, query, setDoc as setDocBruto, updateDoc as updateDocBruto } from 'firebase/firestore';
+import { collection, deleteDoc as deleteDocBruto, doc, limit, onSnapshot, orderBy, query, setDoc as setDocBruto, updateDoc as updateDocBruto, where, type QuerySnapshot } from 'firebase/firestore';
 import { tarefas as t } from '@nads/core';
 import { bancoDoEntregas } from './entregas.firestore';
 import type { RepoAvisos } from './avisos';
@@ -12,6 +12,7 @@ const updateDoc = guardar(updateDocBruto) as typeof updateDocBruto;
 const deleteDoc = guardar(deleteDocBruto) as typeof deleteDocBruto;
 
 const texto = (v: unknown) => (v == null ? '' : String(v));
+const avisosDe = (s: QuerySnapshot): t.AvisoDoEscritorio[] => s.docs.map(d => { const x = d.data(); return { id: d.id, texto: texto(x.texto), por: texto(x.por), em: texto(x.em), fixado: x.fixado === true }; });
 
 export function criarAvisosFirestore(): RepoAvisos {
   const db = bancoDoEntregas();
@@ -24,14 +25,20 @@ export function criarAvisosFirestore(): RepoAvisos {
     lista() {
       if (!estado) {
         estado = { carregados: false, avisos: [] };
-        onSnapshot(query(collection(db, 'nadsAvisos'), orderBy('em', 'desc'), limit(50)), s => {
-          estado = { carregados: true, avisos: s.docs.map(d => { const x = d.data(); return { id: d.id, texto: texto(x.texto), por: texto(x.por), em: texto(x.em), fixado: x.fixado === true }; }) };
+        // os 50 mais novos e, à parte, os fixados (30/10/2026: o fixado antigo saía dos 50 e sumia do mural); só igualdade
+        // nos fixados, sem orderBy, que pediria um índice. O mural abre quando as duas leituras chegam (ou falham).
+        const lidas: { recentes: t.AvisoDoEscritorio[] | null; fixados: t.AvisoDoEscritorio[] | null } = { recentes: null, fixados: null };
+        const juntar = () => {
+          estado = { carregados: lidas.recentes != null && lidas.fixados != null, avisos: t.juntarAvisos(lidas.recentes || [], lidas.fixados || []) };
           mudou();
-        }, e => {
+        };
+        const falhou = (qual: 'recentes' | 'fixados') => (e: unknown) => {
           console.warn('O mural de avisos não abriu:', e instanceof Error ? e.message : e);
-          estado = { carregados: true, avisos: [] };
-          mudou();
-        });
+          lidas[qual] = [];
+          juntar();
+        };
+        onSnapshot(query(collection(db, 'nadsAvisos'), orderBy('em', 'desc'), limit(50)), s => { lidas.recentes = avisosDe(s); juntar(); }, falhou('recentes'));
+        onSnapshot(query(collection(db, 'nadsAvisos'), where('fixado', '==', true)), s => { lidas.fixados = avisosDe(s); juntar(); }, falhou('fixados'));
       }
       return estado;
     },

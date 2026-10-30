@@ -7,6 +7,7 @@
 // (23/10/2026: "todo final de protocolo de controle de tributos precisa ter a parte de retificação"): o quadro para
 // preencher à mão o que foi retificado (a empresa, o tributo, a competência, o valor de antes e o novo, o motivo, a data
 // e o visto), sem se partir entre páginas.
+import { diaEmBrasilia } from '../../formatos';
 import { competenciaParaEtiqueta } from './etiquetasDaFolha';
 
 export interface ColunaDoProtocolo {
@@ -91,7 +92,9 @@ export function linhasDoProtocolo(grupo: GrupoDoProtocolo, empresas: readonly Em
     }
     const valores: Record<string, string> = {};
     for (const [id, s] of somas) valores[id] = s.valor > 0 ? brl(s.valor) : '✓';
-    const data = ultima ? ultima.slice(8, 10) + '/' + ultima.slice(5, 7) : '';
+    // o dia da entrega em Brasília (o confirmadoEm é UTC: depois das 21h, cortar o texto dava o dia seguinte)
+    const dia = ultima ? diaEmBrasilia(ultima) : '';
+    const data = dia ? dia.slice(8, 10) + '/' + dia.slice(5, 7) : '';
     return { codigo: e.codigo, nome: e.nome, valores, data, email: email ? 'Sim' : '' };
   });
 }

@@ -16,10 +16,14 @@ export type SituacaoDoEnvio = 'sem-arquivos' | 'sem-email' | 'pronto' | 'fila' |
 export type FiltroDoEnvio = 'todos' | 'prontos' | 'enviados' | 'problemas' | 'sem-arquivos';
 export type AbaDaJanela = 'arquivos' | 'enviados' | 'email';
 
-export function situacaoDoEnvio(e: EnvioDoDp | undefined, arquivos: number, emails: number): SituacaoDoEnvio {
+/**
+ * A situação do cliente pelo envio mais novo. Enviado só com todos os arquivos do mês já enviados (completo, somando os
+ * envios do mês; 30/10/2026: "Enviar só este" com 1 de 4 deixava Enviado e marcava a Entrega): com parte, fica pronto.
+ */
+export function situacaoDoEnvio(e: EnvioDoDp | undefined, arquivos: number, emails: number, completo = true): SituacaoDoEnvio {
   if (e?.status === 'pendente') return 'fila';
   if (e?.status === 'processando') return 'enviando';
-  if (e?.status === 'enviado') return 'enviado';
+  if (e?.status === 'enviado' && completo) return 'enviado';
   if (!arquivos) return 'sem-arquivos';
   if (!emails) return 'sem-email';
   if (e?.status === 'erro') return 'erro';
@@ -93,11 +97,13 @@ export function useEnviosDoDp() {
       const emails = doCadastro ? [doCadastro] : doEntregas;
       const origemDoEmail: '' | 'cadastro' | 'entregas' = doCadastro ? 'cadastro' : doEntregas.length ? 'entregas' : '';
       const envio = envios.porCodigo.get(cod);
+      // os arquivos do mês que já foram, somando os envios do mês (o mais novo pode ter levado só um)
+      const jaEnviados = t.arquivosJaEnviados(arquivos.map(a => a.id), envios.todosPorCodigo.get(cod) || []);
       const desmarcados = fora.get(c.codigo);
       const escolhidos = desmarcados ? arquivos.filter(a => !desmarcados.has(a.id)) : arquivos;
       return {
-        codigo: c.codigo, nome: c.nomeNaTela, responsavel: nomeDe(c.responsavel), arquivos, escolhidos, emails, origemDoEmail, emailDoCadastro: doCadastro, emailsDoEntregas: doEntregas, envio,
-        situacao: situacaoDoEnvio(envio, arquivos.length, emails.length), ex: porNome.get(c.nomeNaTela) || null,
+        codigo: c.codigo, nome: c.nomeNaTela, responsavel: nomeDe(c.responsavel), arquivos, escolhidos, emails, origemDoEmail, emailDoCadastro: doCadastro, emailsDoEntregas: doEntregas, envio, jaEnviados,
+        situacao: situacaoDoEnvio(envio, arquivos.length, emails.length, jaEnviados.completo), ex: porNome.get(c.nomeNaTela) || null,
       };
     })
     // marcar para o lote: tem arquivo e e-mail e não está com o robô
@@ -115,17 +121,18 @@ export function useEnviosDoDp() {
   const comArquivos = doResponsavel.filter(l => l.arquivos.length > 0).length;
   const modelo = repo.modelo();
 
-  // O envio feito marca a Entrega do mês (quem pediu, quando o robô mandou). Só uma vez: quem desfez a Entrega depois do
-  // envio decide (a etapa mexida depois do envio fica como está).
+  // O envio feito marca a Entrega do mês (quem pediu, quando o robô mandou), quando todos os arquivos do mês já foram. Só
+  // uma vez: quem desfez a Entrega depois do envio decide (a etapa mexida ou desfeita depois do envio fica como está; o
+  // desfazer apaga a etapa e guarda quando foi, em reabertas: t.envioMarcaAEtapa). Só com a lista dos arquivos e os envios
+  // lidos (sem a lista, zero arquivos pareceria tudo enviado).
   const entreguesMarcadas = useRef(new Set<string>());
   useEffect(() => {
-    if (!carregada || !doDp.carregado) return;
+    if (!carregada || !doDp.carregado || !lista.carregados || !envios.carregados) return;
     for (const l of todas) {
       const e = l.envio;
-      if (!e || e.status !== 'enviado' || !e.enviadoEm || entreguesMarcadas.current.has(e.id)) continue;
-      const est = t.estadoDa(l.ex, 'dp-envio');
+      if (!e || l.situacao !== 'enviado' || !e.enviadoEm || entreguesMarcadas.current.has(e.id)) continue;
       entreguesMarcadas.current.add(e.id);
-      if (est && est.em >= e.enviadoEm) continue;
+      if (!t.envioMarcaAEtapa(l.ex, 'dp-envio', e.enviadoEm)) continue;
       const ex = l.ex || t.execucaoNova(l.nome, l.codigo, competencia, 'dp');
       const r = t.fazer(ex, 'dp-envio', e.criadoPor || op.nome, new Date(e.enviadoEm));
       tarefas.gravar(r.execucao, r.evento);

@@ -90,11 +90,13 @@ export function useLoteDoDp() {
   })).sort((a, b) => a.codigo - b.codigo || a.competencia.localeCompare(b.competencia));
 
   // os valores de cada cliente enviado vão para a execução do DP do mês (uma vez por lote e cliente; o valor que já está
-  // igual não grava de novo)
+  // igual não grava de novo). Abrir um lote antigo não regrava o valor de um lote mais novo nem o corrigido à mão
+  // (30/10/2026): cada valor guarda o envio de onde veio (valoresEm) e só o envio mais novo troca (t.valoresDoLoteQueVao)
   useExecucoes(grupos[0]?.competencia || atual?.resultados[0]?.competencia || '2026-01', 'dp');
   const gravados = useRef(new Set<string>());
   useEffect(() => {
     if (!atual || atual.status !== 'disparado') return;
+    const deTodosOsLotes = lotes.lista.flatMap(l => l.resultados);
     for (const r of atual.resultados) {
       const marca = atual.id + ':' + r.chave;
       if (r.status !== 'enviado' || !Object.keys(r.valores).length || gravados.current.has(marca)) continue;
@@ -103,10 +105,12 @@ export function useLoteDoDp() {
       if (!nome) continue;
       gravados.current.add(marca);
       let ex = tarefas.execucoes(r.competencia, 'dp').find(x => x.empresa === nome) || t.execucaoNova(nome, r.codigo, r.competencia, 'dp');
-      for (const [chave, valor] of Object.entries(r.valores)) {
+      // o instante do valor é o do envio do lote (sem ele, agora)
+      const doEnvio = r.enviadoEm && !isNaN(Date.parse(r.enviadoEm)) ? new Date(r.enviadoEm) : new Date();
+      for (const [chave, valor] of Object.entries(t.valoresDoLoteQueVao(r, deTodosOsLotes, ex))) {
         const v = VALORES[chave];
-        if (!v || ex.valores?.[chave] === valor) continue;
-        const g = t.informarValor(ex, v.etapa, chave, valor, op.nome, new Date());
+        if (!v) continue;
+        const g = t.informarValor(ex, v.etapa, chave, valor, op.nome, doEnvio);
         tarefas.gravar(g.execucao, g.evento);
         ex = g.execucao;
       }

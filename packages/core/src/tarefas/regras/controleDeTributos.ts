@@ -3,6 +3,7 @@
 // Lucro Presumido): uma linha por empresa do grupo com o valor de cada tributo, a data, as conferências (S, D e R no
 // Simples; DCTF, SPC, SPI, SPR e DAPI no Presumido) e como a guia foi entregue; no fim, as observações e a retificação.
 // O que o Entregas já entregou na competência vem como sugestão (o mesmo cálculo do protocolo impresso).
+import { diaEmBrasilia, numeroDigitado } from '../../formatos';
 import { competenciaParaEtiqueta } from './etiquetasDaFolha';
 import { linhasDoProtocolo, type ColunaDoProtocolo, type EmpresaDoProtocolo, type GrupoDoProtocolo, type GuiaEntregue } from './protocoloDeTributos';
 
@@ -95,8 +96,8 @@ export function valorDoControle(texto: string): string {
   if (/^[0Øø]$/.test(t)) return '0';
   const limpo = t.replace(/^R\$\s*/i, '').replace(/\s/g, '');
   if (!/^\d{1,3}(\.\d{3})*(,\d{1,2})?$|^\d+(,\d{1,2})?$|^\d+\.\d{1,2}$/.test(limpo)) return t.slice(0, 30);
-  const n = /^\d+\.\d{1,2}$/.test(limpo) ? Number(limpo) : Number(limpo.replace(/\./g, '').replace(',', '.'));
-  return Number.isFinite(n) ? n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : t.slice(0, 30);
+  const n = numeroDigitado(limpo);
+  return n != null ? n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : t.slice(0, 30);
 }
 /** O número do texto (para os totais): "1.234,50" → 1234.5; traço, zero e anotação → 0 */
 export function numeroDoControle(texto: string): number {
@@ -114,7 +115,8 @@ export function sugestoesDoEntregas(grupo: GrupoDoControle, empresas: readonly E
   for (const l of linhasDoProtocolo(comoProtocolo, empresas, guias, true)) {
     const valores = Object.fromEntries(Object.entries(l.valores).filter(([, v]) => v !== '✓'));
     if (!Object.keys(valores).length && !l.data) continue;
-    r.set(l.codigo, { valores, data: l.data ? (ultima.get(l.codigo) || '').slice(0, 10) : '', email: l.email === 'Sim' });
+    // o dia da última entrega em Brasília (o confirmadoEm é UTC)
+    r.set(l.codigo, { valores, data: l.data ? diaEmBrasilia(ultima.get(l.codigo) || '') : '', email: l.email === 'Sim' });
   }
   return r;
 }

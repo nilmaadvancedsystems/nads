@@ -20,7 +20,7 @@ const textos = (v: unknown) => (Array.isArray(v) ? v.map(texto) : []);
 function envioDoBanco(id: string, d: Record<string, unknown>): EnvioDoDp {
   return {
     id, codigo: texto(d.codigo), empresa: texto(d.empresa), competencia: texto(d.competencia), status: texto(d.status), erro: texto(d.erro),
-    para: textos(d.para), enviados: textos(d.enviados), criadoEm: texto(d.criadoEm), criadoPor: texto(d.criadoPor), enviadoEm: texto(d.enviadoEm),
+    para: textos(d.para), enviados: textos(d.enviados), arquivos: textos(d.arquivos), criadoEm: texto(d.criadoEm), criadoPor: texto(d.criadoPor), enviadoEm: texto(d.enviadoEm),
   };
 }
 
@@ -30,7 +30,7 @@ export function criarEnviosDpFirestore(quem: () => entregas.Quem | null): RepoEn
   const ouvintes = new Set<() => void>();
   const mudou = () => { ver++; for (const f of ouvintes) f(); };
   const listas = new Map<string, { carregados: boolean; porCodigo: ReadonlyMap<string, readonly ArquivoDoDp[]> }>();
-  const doMes = new Map<string, { carregados: boolean; porCodigo: ReadonlyMap<string, EnvioDoDp> }>();
+  const doMes = new Map<string, { carregados: boolean; porCodigo: ReadonlyMap<string, EnvioDoDp>; todosPorCodigo: ReadonlyMap<string, readonly EnvioDoDp[]> }>();
   let modelo: { carregado: boolean } & ModeloDoEnvio = { carregado: false, assunto: '', texto: '' };
   let ouvindoModelo = false;
 
@@ -68,15 +68,16 @@ export function criarEnviosDpFirestore(quem: () => entregas.Quem | null): RepoEn
     },
     envios(competencia) {
       if (!doMes.has(competencia)) {
-        doMes.set(competencia, { carregados: false, porCodigo: new Map() });
+        doMes.set(competencia, { carregados: false, porCodigo: new Map(), todosPorCodigo: new Map() });
         // só igualdade (sem orderBy, que pediria um índice): o mais novo de cada cliente escolhido aqui
         onSnapshot(query(collection(db, 'solicitacoesEmail'), where('tipo', '==', 'envioDp'), where('competencia', '==', competencia)), s => {
           const todos = s.docs.map(x => envioDoBanco(x.id, x.data())).sort((a, b) => a.criadoEm.localeCompare(b.criadoEm));
           const porCodigo = new Map<string, EnvioDoDp>();
-          for (const e of todos) porCodigo.set(e.codigo, e);
-          doMes.set(competencia, { carregados: true, porCodigo });
+          const todosPorCodigo = new Map<string, EnvioDoDp[]>();
+          for (const e of todos) { porCodigo.set(e.codigo, e); todosPorCodigo.set(e.codigo, [...(todosPorCodigo.get(e.codigo) || []), e]); }
+          doMes.set(competencia, { carregados: true, porCodigo, todosPorCodigo });
           mudou();
-        }, () => { doMes.set(competencia, { carregados: true, porCodigo: new Map() }); mudou(); });
+        }, () => { doMes.set(competencia, { carregados: true, porCodigo: new Map(), todosPorCodigo: new Map() }); mudou(); });
       }
       return doMes.get(competencia)!;
     },
