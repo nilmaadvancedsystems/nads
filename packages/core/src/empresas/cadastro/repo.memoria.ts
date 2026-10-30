@@ -48,7 +48,9 @@ export function portaCadastroMemoria(inicial?: Guardado): PortaCadastro {
     ouvirCadastro: (id, aoChegar) => ouvir('c:' + id, () => aoChegar(g.cadastros[id] || null)),
     ouvirPlano: (id, aoChegar) => ouvir('p:' + id, () => aoChegar(g.planos[id] || null)),
     ouvirTodos: aoChegar => ouvir('todos', () => aoChegar(Object.entries(g.cadastros).map(([id, doc]) => ({ id, doc })))),
-    async gravar(id, cadastro, plano) {
+    async gravarCampos(id, campos, apagar, plano) {
+      const cadastro = { ...(g.cadastros[id] || {}), ...campos };
+      for (const k of apagar) delete cadastro[k];
       g.cadastros[id] = cadastro;
       if (plano) g.planos[id] = plano;
       if (!inicial) guardar(g);

@@ -308,6 +308,23 @@ export function documentoDoCadastro(c: CadastroDaEmpresa): Record<string, unknow
   };
 }
 
+/**
+ * O que gravar do cadastro (30/10/2026, revisão dos dados): só os campos do documento que mudaram de `antes` (o cadastro
+ * como estava) para `depois`. Antes o documento inteiro era regravado a partir do que esta versão do nads conhece: a aba
+ * aberta com uma versão antiga apagava os campos novos (o `fiscal`), e cada Salvar podia voltar o que outra pessoa tinha
+ * mudado em outro campo. campos: o que pôr (o campo inteiro); apagar: o que a pessoa tirou de propósito (estava e não
+ * está mais). O nome, o código e a data vão sempre; o histórico, quando muda ou quando o documento ainda não existe (a
+ * regra do banco pede os dois na criação).
+ */
+export function gravacaoDoCadastro(antes: CadastroDaEmpresa, depois: CadastroDaEmpresa, existe = true): { campos: Record<string, unknown>; apagar: string[] } {
+  const a = documentoDoCadastro(antes), d = documentoDoCadastro(depois);
+  const campos: Record<string, unknown> = { nome: d.nome, codigo: d.codigo, atualizadoEm: d.atualizadoEm };
+  for (const k of Object.keys(d)) if (!(k in campos) && JSON.stringify(a[k]) !== JSON.stringify(d[k])) campos[k] = d[k];
+  if (!existe) campos.historico = d.historico;
+  const apagar = Object.keys(a).filter(k => !(k in d));
+  return { campos, apagar };
+}
+
 /** O documento `cadastro/{slug}/plano/atual` conferido (null = a empresa ainda não tem plano). */
 export function planoDoDocumento(doc: Record<string, unknown> | null | undefined): PlanoDeContas | null {
   if (!doc || !Array.isArray(doc.contas)) return null;

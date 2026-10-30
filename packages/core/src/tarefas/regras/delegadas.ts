@@ -387,6 +387,45 @@ export function mudar(antes: TarefaDelegada, r: Rascunho, por: Pessoa, em: strin
   };
 }
 
+// gravar só o que a pessoa mudou (30/10/2026, revisão dos dados): o formulário parava de seguir o banco quando a pessoa
+// mexia nele, e o Salvar regravava todos os campos do rascunho; o status ou o responsável que outra pessoa tinha mudado
+// nesse meio-tempo voltavam ao que era, e o histórico punha a volta no nome de quem salvou
+
+/** O que a pessoa mudou no formulário: só os campos do rascunho diferentes do que ela abriu (vazio = nada). */
+export function mudancasDoRascunho(inicial: Rascunho, r: Rascunho): Partial<Rascunho> {
+  const m: Partial<Rascunho> = {};
+  if (limparTexto(r.titulo) !== limparTexto(inicial.titulo)) m.titulo = r.titulo;
+  if (limparTexto(r.descricao) !== limparTexto(inicial.descricao)) m.descricao = r.descricao;
+  if (!mesmoCliente(clienteLimpo(inicial.cliente), clienteLimpo(r.cliente))) m.cliente = r.cliente;
+  if (r.prioridade !== inicial.prioridade) m.prioridade = r.prioridade;
+  if (r.prazo !== inicial.prazo) m.prazo = r.prazo;
+  if (r.status !== inicial.status) m.status = r.status;
+  if ((r.responsavel?.uid || '') !== (inicial.responsavel?.uid || '')) m.responsavel = r.responsavel;
+  return m;
+}
+
+/** O rascunho da tarefa como está agora com as mudanças da pessoa por cima (o resto fica como está no banco). */
+export const comMudancas = (t: TarefaDelegada, m: Partial<Rascunho>): Rascunho => ({ ...rascunhoDe(t), ...m });
+
+const CAMPOS_DA_MUDANCA = ['titulo', 'descricao', 'cliente', 'prioridade', 'prazo', 'status', 'responsavel', 'concluidaEm'] as const;
+export type CampoDaMudanca = typeof CAMPOS_DA_MUDANCA[number];
+
+/**
+ * A gravação das mudanças da pessoa sobre a tarefa como está no banco agora: os campos que mudam de fato (só os que a
+ * pessoa mexeu, e a data de conclusão quando o status muda), as linhas do histórico só desses campos e a tarefa já mudada.
+ * Sem mudança (a pessoa voltou atrás, ou outra pessoa já tinha feito o mesmo), nada a gravar: linhas vazias.
+ */
+export function gravacaoDasMudancas(antes: TarefaDelegada, m: Partial<Rascunho>, por: Pessoa, em: string): {
+  campos: Partial<Pick<TarefaDelegada, CampoDaMudanca>>; linhas: Nota[]; tarefa: TarefaDelegada;
+} {
+  const r = comMudancas(antes, m);
+  const linhas = historicoDaMudanca(antes, r, por.nome, em);
+  const tarefa = mudar(antes, r, por, em);
+  const campos: Record<string, unknown> = {};
+  for (const k of CAMPOS_DA_MUDANCA) if (JSON.stringify(tarefa[k]) !== JSON.stringify(antes[k])) campos[k] = tarefa[k];
+  return { campos: campos as Partial<Pick<TarefaDelegada, CampoDaMudanca>>, linhas, tarefa };
+}
+
 export function comParecer(t: TarefaDelegada, texto: string, por: string, em: string): TarefaDelegada {
   return { ...t, pareceres: [...t.pareceres, { por, em, texto: limparTexto(texto) }], historico: noHistorico(t.historico, [historicoDoParecer(por, em)]), atualizadaEm: em };
 }

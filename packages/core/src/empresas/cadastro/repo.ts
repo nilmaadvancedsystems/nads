@@ -3,7 +3,7 @@
 // uma vez só; quem fala com o banco é a "porta": no site, os dados/cadastro.firestore.ts de cada aplicativo
 // (a Tarefas e o Extratudo); nos exemplos, a porta em memória (repo.memoria.ts).
 import { slug } from '../../formatos';
-import { cadastroDoDocumento, cadastroVazio, documentoDoCadastro, planoDoDocumento } from './regras';
+import { cadastroDoDocumento, cadastroVazio, gravacaoDoCadastro, planoDoDocumento } from './regras';
 import type { CadastroDaEmpresa, PlanoDeContas } from './tipos';
 
 type Doc = Record<string, unknown> | null;
@@ -16,8 +16,12 @@ export interface PortaCadastro {
   ouvirPlano(id: string, aoChegar: (doc: Doc) => void, aoFalhar: (err: Error) => void): () => void;
   /** ouve todos os cadastros (sem os planos): para a lista de empresas */
   ouvirTodos(aoChegar: (docs: { id: string; doc: Record<string, unknown> }[]) => void, aoFalhar: (err: Error) => void): () => void;
-  /** grava o cadastro e, se vier, o plano (juntos, num lote) */
-  gravar(id: string, cadastro: Record<string, unknown>, plano?: Record<string, unknown>): Promise<void>;
+  /**
+   * grava só estes campos do cadastro (cada um inteiro; os outros ficam como estão no banco, inclusive os que esta versão
+   * não conhece), tira os de `apagar` e, se vier, troca o plano (juntos, num lote). 30/10/2026: antes era o documento
+   * inteiro (gravar), e a aba antiga apagava os campos novos
+   */
+  gravarCampos(id: string, campos: Record<string, unknown>, apagar: readonly string[], plano?: Record<string, unknown>): Promise<void>;
 }
 
 export interface RepoCadastro {
@@ -58,6 +62,8 @@ interface Carga {
   planoChegou: boolean;
   /** a leitura falhou: vazio e sem gravar */
   falhou: boolean;
+  /** o documento já existe no banco (a primeira gravação leva o histórico junto) */
+  existe: boolean;
 }
 
 export function criarRepoCadastro(porta: PortaCadastro, exemplos: boolean): RepoCadastro {
@@ -107,7 +113,7 @@ export function criarRepoCadastro(porta: PortaCadastro, exemplos: boolean): Repo
       if (pronta.codigo == null && codigo != null) pronta.codigo = codigo;
       return pronta;
     }
-    const c: Carga = { codigo, cadastro: cadastroVazio(nome, codigo), cadastroChegou: false, plano: null, planoChegou: false, falhou: false };
+    const c: Carga = { codigo, cadastro: cadastroVazio(nome, codigo), cadastroChegou: false, plano: null, planoChegou: false, falhou: false, existe: false };
     cargas.set(nome, c);
     const id = slug(nome);
     const falhou = (err: Error) => {
@@ -121,6 +127,7 @@ export function criarRepoCadastro(porta: PortaCadastro, exemplos: boolean): Repo
     };
     porta.ouvirCadastro(id, doc => {
       c.cadastro = cadastroDoDocumento(nome, c.codigo, doc);
+      c.existe = !!doc;
       c.cadastroChegou = true;
       mudou();
     }, falhou);
@@ -138,10 +145,13 @@ export function criarRepoCadastro(porta: PortaCadastro, exemplos: boolean): Repo
     const carga = carregar(nome);
     if (!chegou(carga)) return; // antes de a empresa chegar do banco, nunca grava
     if (carga.falhou) { avisar('O cadastro de "' + nome + '" não está disponível (entre com a conta do Entregas).'); return; }
+    const antes = carga.cadastro;
     carga.cadastro = { ...c, codigo: c.codigo ?? carga.codigo };
     if (p) carga.plano = p;
     mudou(); // a tela já vê a mudança; o banco confirma pelo ouvinte
-    porta.gravar(slug(nome), documentoDoCadastro(carga.cadastro), p ? { ...p } : undefined)
+    // só o que mudou (30/10/2026): o resto do documento fica como está no banco
+    const { campos, apagar } = gravacaoDoCadastro(antes, carga.cadastro, carga.existe);
+    porta.gravarCampos(slug(nome), campos, apagar, p ? { ...p } : undefined)
       .catch((err: Error) => avisar('Não deu para salvar o cadastro de "' + nome + '" na nuvem: ' + err.message));
   }
 

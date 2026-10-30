@@ -124,8 +124,8 @@ export function useImportarCertificados(cofre: VmCofre) {
       try {
         for (const x of prontos) {
           const e = x.empresa as EmpresaDoCertificado;
-          const atual = (await cofre.ler(e.nome)) || {};
-          await cofre.salvar(e.nome, e.codigo, { ...atual, certificado: { nomeArquivo: x.nomeArquivo, arquivo: x.arquivo, senha: x.senha, validade: x.validade, ...(x.titular ? { titular: x.titular } : {}) } }, false);
+          // sobre os segredos como estão no banco na hora de gravar (30/10/2026): a senha gov.br trocada no meio fica
+          await cofre.mudar(e.nome, e.codigo, atual => ({ ...atual, certificado: { nomeArquivo: x.nomeArquivo, arquivo: x.arquivo, senha: x.senha, validade: x.validade, ...(x.titular ? { titular: x.titular } : {}) } }), false);
           n++;
           setFila(f => f.filter(y => y.id !== x.id));
         }

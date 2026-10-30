@@ -1,6 +1,7 @@
 // As regras do cofre que não são criptografia: a situação do certificado (vencido, vencendo, em dia) e o que fica às
 // claras no documento de uma empresa.
-import type { SegredosDaEmpresa } from './tipos';
+import { cifrar, decifrar } from './cripto';
+import type { DocDoCofre, SegredosDaEmpresa } from './tipos';
 
 export type SituacaoDoCertificado = 'sem' | 'vencido' | 'vence' | 'ok';
 
@@ -50,3 +51,16 @@ export function cidadeDoIp(d: { cidade?: unknown; uf?: unknown; pais?: unknown }
 }
 
 export const dataBr = (iso: string) => (/^\d{4}-\d{2}-\d{2}/.test(iso) ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4) : '');
+
+/**
+ * O documento da empresa com só a parte editada mudada (30/10/2026, revisão dos dados: cada Salvar gravava os segredos que
+ * a tela tinha lido ao abrir, e quem salvava por último voltava a senha que o outro tinha trocado). Desembaralha o
+ * documento como está no banco agora (null = ainda não existe), aplica `parte` e embaralha de novo, com o que fica às
+ * claras. A chave que não abre o documento erra (e nada é gravado por cima).
+ */
+export async function docComSegredosMudados(chave: CryptoKey, atual: DocDoCofre | null, parte: (atuais: SegredosDaEmpresa) => SegredosDaEmpresa,
+  o: { empresa: string; codigo: number | null; versao: number; atualizadoEm: string; atualizadoPor: string }): Promise<{ doc: DocDoCofre; segredos: SegredosDaEmpresa }> {
+  const atuais = atual ? await decifrar<SegredosDaEmpresa>(chave, atual) : {};
+  const segredos = parte(atuais || {});
+  return { segredos, doc: { ...o, ...(await cifrar(chave, segredos)), ...metaDosSegredos(segredos) } };
+}

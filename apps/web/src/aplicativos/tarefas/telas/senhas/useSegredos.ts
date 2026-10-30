@@ -1,9 +1,21 @@
 // ViewModel dos segredos de uma empresa (a janela do módulo Senhas e a aba Senhas do Cadastro): lê do cofre aberto,
 // guarda o que a pessoa edita e grava embaralhado. O certificado: o .pfx em base64, a senha e a validade.
-import { cofre as c } from '@nads/core';
+// O documento acompanha o banco (30/10/2026, revisão dos dados): antes os segredos eram lidos uma vez só e cada Salvar
+// gravava {segredos lidos ao abrir + a parte editada}; quem salvava por último voltava a senha que o outro tinha trocado.
+// Agora cada Salvar relê e desembaralha o documento na hora de gravar e muda só a parte editada (cofre.mudar), e a tela
+// segue o banco nas partes que a pessoa não está editando.
+import { cofre as c, formatos } from '@nads/core';
 import { useRetorno } from '@nads/ui';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { VmCofre } from './useCofre';
+
+// cada parte do formulário como os segredos gravados a mostram
+const formGov = (v: c.SegredosDaEmpresa) => ({ login: v.gov?.login || '', senha: v.gov?.senha || '', obs: v.gov?.obs || '' });
+const formSimples = (v: c.SegredosDaEmpresa) => ({ codigo: v.simples?.codigo || '', cpf: v.simples?.cpf || '', obs: v.simples?.obs || '' });
+const formCert = (v: c.SegredosDaEmpresa) => ({ nomeArquivo: v.certificado?.nomeArquivo || '', arquivo: v.certificado?.arquivo || '', senha: v.certificado?.senha || '',
+  validade: c.dataBr(v.certificado?.validade || ''), titular: v.certificado?.titular || '', obs: v.certificado?.obs || '' });
+const igual = (a: object, b: object) => JSON.stringify(a) === JSON.stringify(b);
+type Parte = 'gov' | 'simples' | 'cert';
 
 const dataIso = (br: string) => (/^\d{2}\/\d{2}\/\d{4}$/.test(br) ? br.slice(6) + '-' + br.slice(3, 5) + '-' + br.slice(0, 2) : '');
 
@@ -19,17 +31,30 @@ export function useSegredos(cofre: VmCofre, empresa: string, codigo: number | nu
   // a leitura do .pfx com a senha (07/10/2026): a validade e o titular saem do próprio certificado
   const [leitura, setLeitura] = useState<{ lendo: boolean; erro: string }>({ lendo: false, erro: '' });
   const aberto = cofre.estado === 'aberto';
-  const itemVersao = cofre.itens.get(empresa) ? 1 : 0;
+  // a versão do documento no banco (o cofre é guardado pelo slug do nome; antes procurava pelo nome e quase nunca achava)
+  const doc = cofre.itens.get(formatos.slug(empresa));
+  const itemVersao = doc ? doc.versao + '|' + doc.atualizadoEm : '';
+  // o que está na tela agora (para seguir o banco sem desfazer o que a pessoa está editando)
+  const agora = useRef({ empresa: '', segredos, gov, simples, cert });
+  useEffect(() => { agora.current = { ...agora.current, segredos, gov, simples, cert }; });
+  /** os segredos novos do banco: a parte que a pessoa não mexeu (ou a de `forcar`) passa a mostrar o que está lá */
+  function seguir(v: c.SegredosDaEmpresa, forcar: readonly Parte[] = []) {
+    const { segredos: antes, gov: g, simples: si, cert: ce } = agora.current;
+    if (forcar.includes('gov') || igual(g, formGov(antes))) setGov(formGov(v));
+    if (forcar.includes('simples') || igual(si, formSimples(antes))) setSimples(formSimples(v));
+    if (forcar.includes('cert') || igual(ce, formCert(antes))) setCert(formCert(v));
+    setSegredos(v);
+    agora.current = { ...agora.current, segredos: v };
+  }
   useEffect(() => {
     if (!aberto) return;
     let vale = true;
     void cofre.ler(empresa).then(s => {
       if (!vale) return;
-      const v = s || {};
-      setSegredos(v);
-      setGov({ login: v.gov?.login || '', senha: v.gov?.senha || '', obs: v.gov?.obs || '' });
-      setSimples({ codigo: v.simples?.codigo || '', cpf: v.simples?.cpf || '', obs: v.simples?.obs || '' });
-      setCert({ nomeArquivo: v.certificado?.nomeArquivo || '', arquivo: v.certificado?.arquivo || '', senha: v.certificado?.senha || '', validade: c.dataBr(v.certificado?.validade || ''), titular: v.certificado?.titular || '', obs: v.certificado?.obs || '' });
+      // outra empresa: o formulário inteiro é o dela
+      const outra = agora.current.empresa !== empresa;
+      agora.current = { ...agora.current, empresa };
+      seguir(s || {}, outra ? ['gov', 'simples', 'cert'] : []);
       setCarregado(true);
     }).catch(() => { if (vale) setCarregado(true); });
     return () => { vale = false; };
@@ -71,24 +96,24 @@ export function useSegredos(cofre: VmCofre, empresa: string, codigo: number | nu
       const arquivo = c.paraBase64(await f.arrayBuffer());
       setCert(x => ({ ...x, nomeArquivo: f.name, arquivo }));
     },
+    // cada Salvar muda só a sua parte, sobre os segredos como estão no banco na hora de gravar (30/10/2026)
     async salvarSimples() {
       const codigo = simples.codigo.replace(/\s/g, '');
       const cpf = simples.cpf.replace(/\D/g, '');
-      const novo: c.SegredosDaEmpresa = { ...segredos, simples: codigo ? { codigo, ...(cpf ? { cpf } : {}), ...(simples.obs.trim() ? { obs: simples.obs.trim() } : {}) } : undefined };
-      await cofre.salvar(empresa, codigoDaEmpresa, novo);
-      setSegredos(novo);
-      setSimples({ codigo, cpf, obs: simples.obs.trim() });
+      const parte = codigo ? { codigo, ...(cpf ? { cpf } : {}), ...(simples.obs.trim() ? { obs: simples.obs.trim() } : {}) } : undefined;
+      const novo = await cofre.mudar(empresa, codigoDaEmpresa, atuais => ({ ...atuais, simples: parte }));
+      if (novo) seguir(novo, ['simples']);
     },
     async salvarGov() {
-      const novo: c.SegredosDaEmpresa = { ...segredos, gov: gov.login || gov.senha ? { login: gov.login.trim(), senha: gov.senha, ...(gov.obs.trim() ? { obs: gov.obs.trim() } : {}) } : undefined };
-      await cofre.salvar(empresa, codigo, novo);
-      setSegredos(novo);
+      const parte = gov.login || gov.senha ? { login: gov.login.trim(), senha: gov.senha, ...(gov.obs.trim() ? { obs: gov.obs.trim() } : {}) } : undefined;
+      const novo = await cofre.mudar(empresa, codigo, atuais => ({ ...atuais, gov: parte }));
+      if (novo) seguir(novo, ['gov']);
     },
     async salvarCert() {
       const validade = dataIso(cert.validade);
-      const novo: c.SegredosDaEmpresa = { ...segredos, certificado: cert.arquivo ? { nomeArquivo: cert.nomeArquivo, arquivo: cert.arquivo, senha: cert.senha, validade, ...(cert.titular ? { titular: cert.titular } : {}), ...(cert.obs.trim() ? { obs: cert.obs.trim() } : {}) } : undefined };
-      await cofre.salvar(empresa, codigo, novo);
-      setSegredos(novo);
+      const parte = cert.arquivo ? { nomeArquivo: cert.nomeArquivo, arquivo: cert.arquivo, senha: cert.senha, validade, ...(cert.titular ? { titular: cert.titular } : {}), ...(cert.obs.trim() ? { obs: cert.obs.trim() } : {}) } : undefined;
+      const novo = await cofre.mudar(empresa, codigo, atuais => ({ ...atuais, certificado: parte }));
+      if (novo) seguir(novo, ['cert']);
     },
     /** exclui o certificado do cofre, com a confirmação (Vitor, 07/10/2026); a senha gov.br fica */
     async excluirCert() {
@@ -97,10 +122,9 @@ export function useSegredos(cofre: VmCofre, empresa: string, codigo: number | nu
         texto: (segredos.certificado.nomeArquivo || 'O certificado') + ' sai do cofre. Não dá para desfazer.',
         botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Excluir', valor: true, variante: 'btn-danger' }] });
       if (!ok) return;
-      const novo: c.SegredosDaEmpresa = { ...segredos, certificado: undefined };
-      await cofre.salvar(empresa, codigo, novo);
-      setSegredos(novo);
-      setCert({ nomeArquivo: '', arquivo: '', senha: '', validade: '', titular: '', obs: '' });
+      // depois da janela: relido na hora de gravar (o que chegou com ela aberta fica)
+      const novo = await cofre.mudar(empresa, codigo, atuais => ({ ...atuais, certificado: undefined }));
+      if (novo) seguir(novo, ['cert']);
     },
     /** o .pfx de volta, para baixar */
     arquivoParaBaixar(): { nome: string; dados: Uint8Array<ArrayBuffer> } | null {

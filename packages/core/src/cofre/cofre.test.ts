@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   cifrar, decifrar, destrancar, destrancarComCodigo, metaDosSegredos, normalizarCodigo, novaChaveDoCofre, novoCodigoDeRecuperacao,
-  cidadeDoIp, navegadorDoUserAgent, novoParDaPessoa, situacaoDoCertificado, trancarComCodigo, trancarPara, type SegredosDaEmpresa,
+  cidadeDoIp, docComSegredosMudados, navegadorDoUserAgent, novoParDaPessoa, situacaoDoCertificado, trancarComCodigo, trancarPara, type SegredosDaEmpresa,
 } from './index';
 
 const SEGREDOS: SegredosDaEmpresa = {
@@ -74,5 +74,26 @@ describe('o navegador de cada login (26/10/2026)', () => {
     expect(cidadeDoIp({ cidade: 'Lisboa', uf: '11', pais: 'pt' })).toBe('Lisboa (PT)');
     expect(cidadeDoIp({ cidade: 'Taiobeiras' })).toBe('Taiobeiras');
     expect(cidadeDoIp({ cidade: '', uf: 'MG', pais: 'BR' })).toBe('');
+  });
+});
+
+describe('mudar só a parte editada (30/10/2026)', () => {
+  const quem = (n: number) => ({ empresa: 'FITO', codigo: 292, versao: 1, atualizadoEm: '2026-10-30T12:0' + n + ':00Z', atualizadoPor: 'V' });
+  it('duas pessoas salvando partes diferentes a partir da mesma leitura: as duas ficam', async () => {
+    const chave = await novaChaveDoCofre();
+    const aberto = (await docComSegredosMudados(chave, null, () => SEGREDOS, quem(0))).doc;
+    // a Ana troca a senha gov.br; a Bia, que abriu antes, troca o certificado: cada uma sobre o documento como está
+    const daAna = (await docComSegredosMudados(chave, aberto, s => ({ ...s, gov: { login: '000.000.000-00', senha: 'nova-da-ana' } }), quem(1))).doc;
+    const daBia = await docComSegredosMudados(chave, daAna, s => ({ ...s, certificado: { ...s.certificado!, senha: '9999' } }), quem(2));
+    const final = await decifrar<SegredosDaEmpresa>(chave, daBia.doc);
+    expect(final.gov?.senha).toBe('nova-da-ana');
+    expect(final.certificado?.senha).toBe('9999');
+    expect(daBia.segredos).toEqual(final);
+    expect(daBia.doc).toMatchObject({ temGov: true, temCertificado: true, validade: '2027-01-31', atualizadoPor: 'V' });
+  });
+  it('o documento que a chave não abre não vira um documento vazio', async () => {
+    const outra = await novaChaveDoCofre();
+    const doc = (await docComSegredosMudados(await novaChaveDoCofre(), null, () => SEGREDOS, quem(0))).doc;
+    await expect(docComSegredosMudados(outra, doc, s => ({ ...s, gov: undefined }), quem(1))).rejects.toBeTruthy();
   });
 });
