@@ -43,7 +43,7 @@ export function Entrega({ valor, pode, rotulo, aoMudar }: { valor: t.EntregaDoCo
   const classe = 'btn btn-outline ctrl-entrega' + (valor ? ' ctrl-entrega-feita' : '');
   if (!pode) return <span className={classe + ' ctrl-entrega-fixa'} title={rotulo + ': ' + nome} aria-label={rotulo + ': ' + nome}><SinalDaEntrega valor={valor} /></span>;
   return (
-    <MenuSuspenso className={classe} flutuante titulo={rotulo} dica={rotulo + ': ' + nome}
+    <MenuSuspenso className={classe} flutuante compacto titulo={rotulo} dica={rotulo + ': ' + nome}
       rotulo={<><SinalDaEntrega valor={valor} /><span className="sr-only">{rotulo + ': ' + nome}</span></>}
       itens={t.ENTREGAS_DO_CONTROLE.map(o => ({
         rotulo: <span className="ctrl-entrega-item"><SinalDaEntrega valor={o.valor} />{o.rotulo}</span>,

@@ -103,6 +103,11 @@ a{color:var(--accent);}
 .popover-item .logo-img{width:16px;height:16px;flex:none;object-fit:contain;}
 .popover-item:hover{background:var(--hover-bg);}
 .popover-item.perigo,.popover-item.perigo svg{color:var(--destructive);}
+/* o menu pequeno (MenuSuspenso compacto), o das linhas das tabelas (30/10/2026: "esse dropdown muito grande") */
+.popover.compacto{min-width:0;padding:4px;border-radius:8px;}
+.popover.compacto .popover-item{min-height:26px;padding:3px 8px;gap:6px;font-size:var(--fs-13);}
+.popover.compacto .popover-marca{width:14px;}
+.popover.compacto .popover-marca svg{width:12px;height:12px;}
 .popover-item.perigo:hover{background:var(--destructive-soft);}
 /* ---------------------------------- seletor de mês ---------------------------------- */
 .seletor-mes{display:inline-flex;align-items:center;gap:4px;}
@@ -370,6 +375,8 @@ tr.bad td{background:var(--danger-soft);}
 .chip-sep{width:1px;height:20px;background:var(--border);margin:0 4px;flex:none;}
 /* a seleção compacta tem o tamanho da normal (Vitor, 02/10/2026: "deixa as seleções no tamanho do CFOP (A-Z)"); só a largura se ajusta ao texto */
 .select-compact{width:auto;min-width:150px;}
+/* a seleção pequena, dentro das linhas das tabelas (30/10/2026: "no fiscal nas tabelas, estou achando esse dropdown muito grande") */
+select.select-mini{min-width:0;min-height:26px;height:26px;padding:2px 26px 2px 8px;font-size:var(--fs-12);border-radius:6px;background-position:right 6px center;}
 .input-search-btn{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:28px;height:24px;border:none;border-radius:6px;
   background:none;color:var(--ink-muted);display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;}
 .input-search-btn:hover{background:var(--hover-bg);color:var(--ink);}
@@ -2842,10 +2849,29 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 .folha-check-aviso{display:flex;align-items:flex-start;gap:6px;margin-top:2px;font-size:var(--fs-12);color:var(--warn);}
 .folha-check-aviso svg{width:14px;height:14px;flex:none;margin-top:1px;}
 /* Fiscal › REINF: as ações à direita, numa linha; as retificadas em selos; o Retificar já marcado fica com a borda laranja */
-.reinf-filtros{margin:0;}
-.reinf-acoes{white-space:nowrap;text-align:right;}
-.reinf-acoes .btn + .btn{margin-left:6px;}
+/* Fiscal › REINF, maior e mais limpa (30/10/2026): os números filtram, o andamento com barra, a tabela na altura da tela */
+.reinf{display:flex;flex-direction:column;gap:12px;}
+.reinf-numeros{margin:0;grid-template-columns:repeat(3,minmax(140px,1fr)) minmax(220px,1.4fr);}
+.reinf-numeros .stat{padding:12px 16px;}
+.reinf-numero-pendentes .stat-value{color:var(--warn);}
+.reinf-numero-transmitidas .stat-value{color:var(--success);}
+.reinf-andamento{display:flex;flex-direction:column;}
+.reinf-barra{display:block;height:6px;margin-top:8px;border-radius:999px;background:var(--surface-3);overflow:hidden;}
+.reinf-barra > span{display:block;height:100%;border-radius:inherit;background:var(--success);}
+.reinf-tabela-wrap{max-height:max(360px,calc(100dvh - 300px));}
+.reinf-tabela td{vertical-align:middle;}
+.reinf-cod{color:var(--ink-muted);font-weight:600;width:56px;}
+.reinf-nome{font-weight:500;}
+.reinf-feita td{background:color-mix(in srgb,var(--success) 4%,transparent);}
+.reinf-tabela .badge{display:inline-flex;align-items:center;gap:4px;}
+.reinf-acoes{white-space:nowrap;text-align:right;width:1%;}
+.reinf-acoes .btn + .btn{margin-left:4px;}
+.reinf-acoes .btn-sm{min-height:28px;height:28px;padding:2px 10px;font-size:var(--fs-12);gap:4px;}
+.reinf-acoes .btn-ghost{color:var(--ink-muted);}
+.reinf-acoes .btn-ghost.reinf-retificada{color:var(--warn);}
 .reinf-retificadas{display:inline-flex;flex-wrap:wrap;gap:4px;}
+.reinf-vazio{text-align:center;padding:24px;}
+@media (max-width:900px){.reinf-numeros{grid-template-columns:repeat(2,1fr);}}
 /* A barra do robô trabalhando (Gmail › Salvando no Drive, Enviando, Lendo; Vitor, 05/10/2026: "coloque animação nessa
    barra de progresso"): é carregamento, então anima em qualquer nível — a parte cheia anda até o número novo e um brilho
    corre por ela enquanto o robô trabalha. */
@@ -5328,13 +5354,28 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .antecipacao-empresa .registro-busca input,.antecipacao-empresa .registro-busca input:focus{font-size:var(--fs-14);padding:5px 0;box-shadow:none;border:0;}
 .antecipacao-empresa .nf-escolhido{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-14);}
 .antecipacao-achados{position:absolute;left:0;right:0;top:calc(100% + 4px);margin:0;z-index:20;box-shadow:var(--shadow-md,0 6px 18px rgba(0,0,0,.12));}
-.antecipacao-dados{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:4px 24px;}
-.ent-dados dd.antecipacao-aliquota{display:flex;align-items:center;gap:6px;white-space:nowrap;}
+/* enxuta em 30/10/2026 ("tem muita informação e os layouts estão feios"): a empresa numa linha, três números neutros,
+   a situação num select pequeno com a cor dela, e as colunas do cálculo só com "Ver o cálculo" */
+.antecipacao-linha-empresa{display:flex;align-items:center;flex-wrap:wrap;gap:6px 18px;padding:10px 14px;border:1px solid var(--border);
+  border-radius:8px;background:var(--surface);font-size:var(--fs-13);}
+.antecipacao-razao{font-weight:600;font-size:var(--fs-14);}
+.antecipacao-dado{white-space:nowrap;}
+.antecipacao-aliquota{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
 .antecipacao-aliquota .fin-valor-edita{width:64px;}
-.antecipacao-tabela{max-height:calc(100vh - 300px);overflow:auto;}
+.antecipacao-numeros{margin-bottom:0;}
+.antecipacao-numeros .stat{padding:12px 16px;}
+.antecipacao-sub{margin:2px 0 0;font-size:var(--fs-12);color:var(--ink-muted);}
+.antecipacao-recolher{background:var(--accent-soft);}
+.antecipacao-recolher .stat-value{color:var(--accent-ink);}
+.antecipacao-filtros{margin:0;}
+.antecipacao-tabela{max-height:max(320px,calc(100dvh - 330px));overflow:auto;}
 .antecipacao-tabela td,.antecipacao-tabela th{white-space:nowrap;}
-.antecipacao-fornecedor{max-width:220px;overflow:hidden;text-overflow:ellipsis;}
-.antecipacao-tabela tfoot td{border-top:2px solid var(--border);position:sticky;bottom:0;background:var(--surface);}
+.antecipacao-fornecedor{max-width:260px;overflow:hidden;text-overflow:ellipsis;}
+.antecipacao-tabela tfoot td{border-top:2px solid var(--border);position:sticky;bottom:0;background:var(--surface-2);font-weight:600;}
+.antecipacao-situacao.situacao-conferido{border-color:var(--success);color:var(--success-ink);background-color:var(--success-soft);}
+.antecipacao-situacao.situacao-revisar{border-color:var(--warn);color:var(--warn);background-color:var(--warn-soft);}
+.antecipacao-situacao.situacao-dispensado,.antecipacao-situacao.situacao-nao-se-aplica{color:var(--ink-muted);}
+.antecipacao-meses .table-wrap{max-height:none;}
 /* Cadastro › a empresa › Fiscal (Heverton, 21/10/2026): os documentos e as planilhas, os parcelamentos */
 .fis-docs-acoes{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;}
 .fis-docs-acoes .btn svg{width:16px;height:16px;}
@@ -5452,7 +5493,7 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .ctrl-marca:disabled{cursor:default;}
 .ctrl-marca-ok{border-color:var(--success);background:color-mix(in srgb,var(--success) 16%,transparent);color:var(--success);}
 .ctrl-marca-na{color:var(--ink-muted);background:var(--surface-2);}
-.ctrl-entrega{min-width:120px;}
+.ctrl-entrega{min-width:64px;min-height:26px;height:26px;padding:2px 8px;gap:6px;font-size:var(--fs-12);}
 .ctrl-entrega-feita{border-color:var(--success);}
 .ctrl-entrega-fixa{cursor:default;}
 .ctrl-entrega-sinal{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;flex:none;}
