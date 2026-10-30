@@ -119,8 +119,8 @@ export function PainelFinanceiro({ comResultado }: { comResultado?: boolean }) {
           {vm.bancos.length ? (
             <div className="rank">
               {vm.bancos.map(b => (
-                <div key={b.banco} className="rank-item">
-                  <span className="rank-nome fin-conta"><span className="fin-logo" aria-hidden="true"><LogoBanco banco={b.marca} cor /></span>{b.banco} <span className="fraco">até {b.ateBr}</span></span><span className={'rank-val num' + (b.saldo < 0 ? ' fin-valor-saida' : '')}>{b.saldoBr}</span>
+                <div key={b.chave} className="rank-item">
+                  <span className="rank-nome fin-conta"><span className="fin-logo" aria-hidden="true"><LogoBanco banco={b.marca} cor /></span>{b.banco}{b.conta ? ' · ' + b.conta : ''} <span className="fraco">até {b.ateBr}</span></span><span className={'rank-val num' + (b.saldo < 0 ? ' fin-valor-saida' : '')}>{b.saldoBr}</span>
                 </div>
               ))}
             </div>
