@@ -29,8 +29,9 @@ function FolhaNaLinha({ valor, informar, travado }: { valor: number | null; info
     );
   }
   const gravar = () => {
-    const v = Number(texto.replace(/\./g, '').replace(',', '.'));
-    if (texto.trim() !== '' && Number.isFinite(v) && v >= 0) informar(v);
+    // o mesmo parse do campo de valor do Relatório do Fiscal: "1234.56" é 1.234,56 (não 123456; 30/10/2026)
+    const v = formatos.numeroDigitado(texto);
+    if (v != null && v >= 0) informar(v);
     setTexto(null);
   };
   return (
