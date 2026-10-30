@@ -7,11 +7,15 @@
 //     em}, anexos: [{id, tipo 'boleto'|'comprovante', nome, tamanho, partes, enviadoEm, enviadoPor}], lancadoEm, lancadoPor,
 //     atualizadoEm?, atualizadoPor?}; ao vivo;
 //   - financeiroContasPagar/{id}/anexos/{anexo}: {tipo, nome, tamanho, partes, enviadoEm, enviadoPor} e
-//     .../anexos/{anexo}/partes/{n}: {dados: Bytes} (os pedaços do arquivo, como o envio do Drive; lidos só ao abrir).
+//     .../anexos/{anexo}/partes/{n}: {dados: Bytes} (os pedaços do arquivo, como o envio do Drive; lidos só ao abrir);
+//   - financeiroContasPagar/_numeracao: {ultimo} — o último número dado (30/10/2026: o número saía da lista desta tela, e
+//     duas pessoas lançando juntas pegavam o mesmo). Fica na mesma coleção (as mesmas regras) e não entra na lista.
+// O número sai numa transação com o contador; a lista de anexos muda no banco (arrayUnion ao anexar; ao tirar, numa
+// transação que tira pelo id), não a partir da lista desta tela, para um anexo não apagar o outro.
 import { entregas as e, financeiro } from '@nads/core';
 import {
-  Bytes, collection, deleteDoc as deleteDocBruto, deleteField, doc, getDocs, onSnapshot, setDoc as setDocBruto, updateDoc as updateDocBruto,
-  writeBatch as writeBatchBruto,
+  arrayUnion, Bytes, collection, deleteDoc as deleteDocBruto, deleteField, doc, getDocs, onSnapshot, runTransaction as runTransactionBruto, setDoc as setDocBruto,
+  updateDoc as updateDocBruto, writeBatch as writeBatchBruto,
 } from 'firebase/firestore';
 import { guardar, guardarLote } from '../../../comum/modoDesenvolvedor';
 import type { ListaAoVivo } from './agentes';
@@ -22,6 +26,10 @@ const setDoc = guardar(setDocBruto) as typeof setDocBruto;
 const updateDoc = guardar(updateDocBruto) as typeof updateDocBruto;
 const deleteDoc = guardar(deleteDocBruto) as typeof deleteDocBruto;
 const writeBatch = ((...a: Parameters<typeof writeBatchBruto>) => guardarLote(writeBatchBruto(...a))) as typeof writeBatchBruto;
+// a transação com a trava do modo desenvolvedor (no modo, não grava e devolve undefined)
+const runTransaction = guardar(runTransactionBruto) as typeof runTransactionBruto;
+/** o contador dos números das contas (na mesma coleção; fora da lista) */
+const NUMERACAO = '_numeracao';
 const texto = (v: unknown) => (v == null ? '' : String(v));
 const numero = (v: unknown) => Number(v) || 0;
 const centavos = (v: number) => Math.round(v * 100) / 100;
@@ -101,7 +109,7 @@ export function criarContasPagarFirestore(): RepoContasPagar {
       if (!contas) {
         contas = { carregada: false, lista: [], erro: '' };
         onSnapshot(collection(db, 'financeiroContasPagar'), s => {
-          contas = { carregada: true, lista: s.docs.map(x => contaDoBanco(x.id, x.data())).sort(financeiro.porVencimento), erro: '' };
+          contas = { carregada: true, lista: s.docs.filter(x => x.id !== NUMERACAO).map(x => contaDoBanco(x.id, x.data())).sort(financeiro.porVencimento), erro: '' };
           mudou();
         }, err => { contas = { carregada: true, lista: [], erro: erroDe(err) }; mudou(); });
       }
@@ -124,21 +132,22 @@ export function criarContasPagarFirestore(): RepoContasPagar {
     },
     async criarContas(rs, quem) {
       const agora = new Date().toISOString();
-      let n = financeiro.proximoNumero(lista()) - 1;
-      const b = writeBatch(db);
-      const ids: string[] = [];
-      for (const r of rs) {
-        const ref = doc(collection(db, 'financeiroContasPagar'));
-        ids.push(ref.id);
-        b.set(ref, {
-          numero: ++n, fornecedorId: r.fornecedorId, documento: r.documento.trim(), emissao: r.emissao, vencimento: r.vencimento, valor: centavos(r.valor),
+      const refs = rs.map(() => doc(collection(db, 'financeiroContasPagar')));
+      const contador = doc(db, 'financeiroContasPagar', NUMERACAO);
+      // o número numa transação com o contador: quem lança junto pega o seguinte (o banco refaz a transação que
+      // perdeu). Sem contador ainda, ou atrás da lista (as do Toriba), começa do maior número da lista
+      await runTransaction(db, async t => {
+        const c = await t.get(contador);
+        const ultimo = Math.max(numero(c.data()?.ultimo), financeiro.proximoNumero(lista()) - 1);
+        rs.forEach((r, k) => t.set(refs[k], {
+          numero: ultimo + k + 1, fornecedorId: r.fornecedorId, documento: r.documento.trim(), emissao: r.emissao, vencimento: r.vencimento, valor: centavos(r.valor),
           ...(r.conta ? { conta: r.conta } : {}), ...(r.linhaDigitavel ? { linhaDigitavel: r.linhaDigitavel } : {}),
           ...(r.observacoes?.trim() ? { observacoes: r.observacoes.trim() } : {}), ...(r.recorrencia ? { recorrencia: { ...r.recorrencia } } : {}),
           anexos: [], lancadoEm: agora, lancadoPor: quem,
-        });
-      }
-      await b.commit();
-      return ids;
+        }));
+        t.set(contador, { ultimo: ultimo + rs.length });
+      });
+      return refs.map(r => r.id);
     },
     async alterarConta(r, quem) {
       await updateDoc(doc(db, 'financeiroContasPagar', r.id), {
@@ -173,7 +182,8 @@ export function criarContasPagarFirestore(): RepoContasPagar {
         // os pedaços primeiro; o documento do anexo e a lista da conta só depois que tudo subiu
         for (let i = 0; i < partes.length; i++) await setDoc(doc(ref, 'partes', String(i)), { dados: Bytes.fromUint8Array(partes[i]) });
         await setDoc(ref, { tipo: anexo.tipo, nome: anexo.nome, tamanho: anexo.tamanho, partes: anexo.partes, enviadoEm: anexo.enviadoEm, enviadoPor: anexo.enviadoPor });
-        await updateDoc(doc(db, 'financeiroContasPagar', id), { anexos: [...conta.anexos, anexo].map(anexoParaOBanco) });
+        // acrescenta no banco (não a partir da lista desta tela: o anexo que outra pessoa pôs junto fica)
+        await updateDoc(doc(db, 'financeiroContasPagar', id), { anexos: arrayUnion(anexoParaOBanco(anexo)) });
       } catch (err) {
         await apagarAnexo(id, ref.id).catch(() => undefined);
         throw err;
@@ -181,8 +191,15 @@ export function criarContasPagarFirestore(): RepoContasPagar {
       return anexo;
     },
     async tirarAnexo(id, anexoId) {
-      const conta = lista().find(x => x.id === id);
-      if (conta) await updateDoc(doc(db, 'financeiroContasPagar', id), { anexos: conta.anexos.filter(a => a.id !== anexoId).map(anexoParaOBanco) });
+      // tira pelo id, do que está no banco (numa transação): o anexo gravado pode ter campos que esta tela não lê, e
+      // o arrayRemove só tira o igual em tudo
+      const ref = doc(db, 'financeiroContasPagar', id);
+      await runTransaction(db, async t => {
+        const s = await t.get(ref);
+        if (!s.exists()) return;
+        const anexos: unknown[] = Array.isArray(s.data().anexos) ? s.data().anexos : [];
+        t.update(ref, { anexos: anexos.filter(a => texto(objeto(a)?.id) !== anexoId) });
+      });
       await apagarAnexo(id, anexoId);
     },
     async bytesDoAnexo(id, anexoId) {
