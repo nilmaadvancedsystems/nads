@@ -26,7 +26,10 @@ export const ZONAS: readonly { valor: Zona; rotulo: string }[] = [
 ];
 export const rotuloDaZona = (z: string) => ZONAS.find(x => x.valor === z)?.rotulo || '';
 
-/** Os documentos que se entregam (DOC_TIPOS do Entregas; os sem valor não pedem o R$; a multa pede o funcionário). */
+/**
+ * Os documentos que se entregam (DOC_TIPOS do Entregas; os sem valor não pedem o R$; a multa pede o funcionário). O eSocial
+ * pede o valor (30/10/2026: "na aba eSocial não tem como digitar valor").
+ */
 export interface TipoDeDocumento { chave: string; rotulo: string; semValor?: boolean; pedeFuncionario?: boolean }
 export const TIPOS_DE_DOCUMENTO: readonly TipoDeDocumento[] = [
   { chave: 'das', rotulo: 'DAS' },
@@ -44,7 +47,7 @@ export const TIPOS_DE_DOCUMENTO: readonly TipoDeDocumento[] = [
   { chave: 'ferias', rotulo: 'Férias' },
   { chave: 'folha_pagamento', rotulo: 'Folha de Pagamento', semValor: true },
   { chave: 'prolabore', rotulo: 'Prólabore', semValor: true },
-  { chave: 'esocial', rotulo: 'eSocial', semValor: true },
+  { chave: 'esocial', rotulo: 'eSocial' },
 ];
 export const tipoPelaChave = (chave: string) => TIPOS_DE_DOCUMENTO.find(t => t.chave === chave) || null;
 export const tipoPeloRotulo = (rotulo: string) => TIPOS_DE_DOCUMENTO.find(t => t.rotulo === rotulo) || null;

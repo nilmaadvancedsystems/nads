@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   clienteCombina, clienteDaRotaDoDocumento, entregaDoDocumento, linhasDoPainel, numerosDoMes, rotaPadraoDoDocumento, rotuloDaCompetencia,
   rotuloDaSituacao, situacaoNoMes, subtituloDaLinhaDoPainel, totalDosItens, valorDigitado, motivoComToque, motivoPadrao, competenciaAnterior,
-  ultimasCompetencias, documentoFormatado, type ClienteDaRota, type Entrega,
+  ultimasCompetencias, documentoFormatado, tipoPelaChave, type ClienteDaRota, type Entrega,
 } from './documentos';
 import {
   ajustarDiaUtil, barrasDaLinha, clienteDoPdf, codigoDePagamentoDoPdf, competenciaDoPdf, dadosDoPdf, doMesDaGuia, dvMod10, feriadosNacionais,
@@ -65,6 +65,11 @@ describe('leitura do banco e formatos', () => {
 });
 
 describe('busca, valores e motivos', () => {
+  it('o eSocial pede o valor (30/10/2026); honorário e prólabore continuam sem', () => {
+    expect(tipoPelaChave('esocial')?.semValor).toBeFalsy();
+    expect(tipoPelaChave('honorario')?.semValor).toBe(true);
+    expect(tipoPelaChave('prolabore')?.semValor).toBe(true);
+  });
   it('busca por nome sem acento, código e parte do CNPJ', () => {
     expect(clienteCombina({ nome: 'ORÇAMENTO EXEMPLO', codigoOrigem: '', documento: '' }, 'orcamento')).toBe(true);
     expect(clienteCombina(A, '22233')).toBe(true);
