@@ -50,14 +50,20 @@ export function useEmpresasDoOperador(op: Operador | null) {
   const cadastros = useTodosOsCadastros();
   const equipe = useAcesso().equipe().lista.filter(p => p.ativo).map(p => p.nome);
   const nomes = op ? nomesDaPessoa(op.nome, equipe) : [];
+  // o cadastro pelo nome e, se o nome não bate (o Concilia aí e o Extratudo têm a lista deles), pelo código do ERP
+  const cadastroDe = (emp: { nome: string; codigo: number | null }) => cadastros.porId.get(formatos.slug(emp.nome))
+    || (emp.codigo != null ? [...cadastros.porId.values()].find(c => c.codigo === emp.codigo) : undefined);
   const responsavelDe = (emp: { nome: string; codigo: number | null }, dep: 'fiscal' | 'contabil') => {
-    const r = cadastros.porId.get(formatos.slug(emp.nome))?.responsaveis?.[dep] || '';
+    const r = cadastroDe(emp)?.responsaveis?.[dep] || '';
     return r || (dep === 'fiscal' ? empresas.clienteDoDp(emp.codigo)?.responsavel || '' : '');
   };
   return {
     /** o admin e o diretor podem ver todas (26/10/2026) */
     podeVerTodas: !op || !!op.admin || op.nivel === 'diretor',
-    carregada: cadastros.carregada,
+    /** o Cadastro chegou de verdade (a lista que falhou não conta: vazia, ela barraria todo mundo; 30/10/2026) */
+    carregada: cadastros.carregada && !cadastros.falhou,
+    /** a leitura do Cadastro falhou e está tentando de novo */
+    falhou: cadastros.falhou,
     /** só a empresa em que a pessoa é a responsável do setor (a sem responsável fica de fora) */
     e: (emp: { nome: string; codigo: number | null }, dep: 'fiscal' | 'contabil') => { const r = responsavelDe(emp, dep); return !!r && nomes.some(n => igual(n, r)); },
   };
@@ -83,6 +89,8 @@ export function useEmpresasPermitidasDoOperador(op: Operador | null) {
   return {
     filtra,
     carregada: !filtra || daPessoa.carregada,
+    /** não deu para ler quem é o responsável (está tentando de novo): não dá para dizer que a empresa é de outra pessoa */
+    falhou: filtra && daPessoa.falhou,
     pode,
     filtrar: <T extends { nome: string; codigo: number | null }>(lista: readonly T[]): T[] => (filtra ? lista.filter(pode) : [...lista]),
   };

@@ -38,9 +38,10 @@ export interface RepoCadastro {
   salvar(nome: string, c: CadastroDaEmpresa): void;
   /**
    * Todos os cadastros (sem os planos), por id (slug do nome), para a lista de empresas. Pedir já começa a ouvir.
-   * carregada = já chegou (ou falhou: aí vem vazio).
+   * carregada = já chegou (ou falhou: aí vem vazio). falhou = a leitura deu erro e ainda não voltou: o vazio NÃO quer
+   * dizer "nenhuma empresa tem responsável" (30/10/2026: a Clara barrada nas empresas dela). A leitura tenta de novo sozinha.
    */
-  todos(): { carregada: boolean; porId: ReadonlyMap<string, CadastroDaEmpresa> };
+  todos(): { carregada: boolean; falhou: boolean; porId: ReadonlyMap<string, CadastroDaEmpresa> };
   /** troca o plano (e grava o cadastro junto, com o registro no histórico) */
   salvarPlano(nome: string, p: PlanoDeContas, c: CadastroDaEmpresa): void;
   assinar(aoMudar: () => void): () => void;
@@ -61,11 +62,44 @@ interface Carga {
 
 export function criarRepoCadastro(porta: PortaCadastro, exemplos: boolean): RepoCadastro {
   const cargas = new Map<string, Carga>();
-  let lista: { carregada: boolean; porId: ReadonlyMap<string, CadastroDaEmpresa> } | null = null;
+  let lista: { carregada: boolean; falhou: boolean; porId: ReadonlyMap<string, CadastroDaEmpresa> } | null = null;
+  /** as tentativas seguidas que falharam (a próxima espera mais: 2 s, 5 s, 15 s, depois 30 s) */
+  let falhasDaLista = 0;
   let ver = 0;
   const ouvintes = new Set<() => void>();
   let avisar = (m: string) => console.warn(m);
   const mudou = () => { ver++; for (const f of ouvintes) f(); };
+
+  /**
+   * Ouve a lista de todos os cadastros. Se a leitura falha (a permissão negada num carregamento cedo demais, a rede), a
+   * lista fica marcada como falha (vazia, mas sem fingir que chegou) e tenta de novo depois de um tempo.
+   */
+  function ouvirALista(): void {
+    let parou = false;
+    let parar: () => void = () => {};
+    parar = porta.ouvirTodos(docs => {
+      const m = new Map<string, CadastroDaEmpresa>();
+      for (const { id, doc } of docs) {
+        const nome = typeof doc.nome === 'string' ? doc.nome : id;
+        m.set(id, cadastroDoDocumento(nome, typeof doc.codigo === 'number' ? doc.codigo : null, doc));
+      }
+      falhasDaLista = 0;
+      lista = { carregada: true, falhou: false, porId: m };
+      mudou();
+    }, err => {
+      if (parou) return;
+      parou = true;
+      parar();
+      // o que já tinha chegado continua valendo enquanto tenta de novo; sem nada, a lista fica marcada como falha
+      const tinha = lista && lista.carregada && !lista.falhou ? lista.porId : null;
+      lista = tinha ? { carregada: true, falhou: false, porId: tinha } : { carregada: true, falhou: true, porId: new Map() };
+      mudou();
+      if (!/permission|insufficient/i.test(err.message) && falhasDaLista === 0) avisar('Não consegui ler a lista do cadastro na nuvem: ' + err.message);
+      const espera = [2000, 5000, 15000][falhasDaLista] ?? 30000;
+      falhasDaLista++;
+      globalThis.setTimeout(ouvirALista, espera);
+    });
+  }
 
   function carregar(nome: string, codigo: number | null = null): Carga {
     const pronta = cargas.get(nome);
@@ -127,20 +161,8 @@ export function criarRepoCadastro(porta: PortaCadastro, exemplos: boolean): Repo
     disponivel: nome => !carregar(nome).falhou,
     todos() {
       if (!lista) {
-        lista = { carregada: false, porId: new Map() };
-        porta.ouvirTodos(docs => {
-          const m = new Map<string, CadastroDaEmpresa>();
-          for (const { id, doc } of docs) {
-            const nome = typeof doc.nome === 'string' ? doc.nome : id;
-            m.set(id, cadastroDoDocumento(nome, typeof doc.codigo === 'number' ? doc.codigo : null, doc));
-          }
-          lista = { carregada: true, porId: m };
-          mudou();
-        }, err => {
-          lista = { carregada: true, porId: new Map() };
-          mudou();
-          if (!/permission|insufficient/i.test(err.message)) avisar('Não consegui ler a lista do cadastro na nuvem: ' + err.message);
-        });
+        lista = { carregada: false, falhou: false, porId: new Map() };
+        ouvirALista();
       }
       return lista;
     },
