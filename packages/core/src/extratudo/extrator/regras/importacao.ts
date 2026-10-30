@@ -291,14 +291,65 @@ export function pedacosPorMes(a: ArquivoImportado): ArquivoImportado[] {
 /**
  * O tamanho de um arquivo importado no banco não pode passar de 1 MB (o limite do documento do Firestore): o razão grande
  * (Vitor, 26/10/2026: o do BB da 237, 6.891 lançamentos, 1,2 MB) não gravava — a tela mostrava, e ele sumia depois de
- * uns minutos ou ao trocar de aba. Acima disto, o arquivo é guardado cortado por mês.
+ * uns minutos ou ao trocar de aba. Acima disto, o arquivo é guardado cortado por mês; o mês que ainda passa (30/10/2026:
+ * o de um posto com milhares de lançamentos no mês) é cortado em dias seguidos, cada pedaço com o saldo anterior dele.
  */
 export const TAMANHO_PARA_CORTAR = 700_000;
-const tamanho = (a: ArquivoImportado) => JSON.stringify(a).length;
+/** O tamanho no banco: os bytes do JSON em UTF-8 (o acento conta 2). */
+export const bytesNoBanco = (v: unknown) => new TextEncoder().encode(JSON.stringify(v)).length;
+const tamanho = (a: ArquivoImportado) => bytesNoBanco(a);
 
-/** O arquivo, ou os pedaços dele por mês quando ele é grande demais para um documento do banco. */
+/**
+ * O pedaço de um mês ainda grande demais, cortado em dias seguidos que caibam (os lançamentos de cada dia na ordem do
+ * arquivo; o dia sozinho grande demais, em partes). Cada pedaço leva o saldo anterior dele (o do mês mais os lançamentos
+ * dos pedaços de antes) e os saldos dos dias dele. O que cabe volta como está.
+ */
+function cortarPorDias(p: ArquivoImportado): ArquivoImportado[] {
+  if (tamanho(p) <= TAMANHO_PARA_CORTAR) return [p];
+  const fixo = tamanho({ ...p, lancamentos: [] });
+  const cabe = Math.max(1, TAMANHO_PARA_CORTAR - fixo);
+  const peso = (l: Lancamento) => bytesNoBanco(l) + 1;
+  // os blocos: um por dia; o dia que sozinho não cabe, em partes
+  const blocos: Lancamento[][] = [];
+  for (const dia of [...new Set(p.lancamentos.map(l => l.data))].sort()) {
+    let bloco: Lancamento[] = [], soma = 0;
+    for (const l of p.lancamentos.filter(x => x.data === dia)) {
+      if (bloco.length && soma + peso(l) > cabe) { blocos.push(bloco); bloco = []; soma = 0; }
+      bloco.push(l); soma += peso(l);
+    }
+    if (bloco.length) blocos.push(bloco);
+  }
+  // os pedaços: os blocos seguidos enquanto cabem
+  const grupos: Lancamento[][] = [];
+  let atual: Lancamento[] = [], soma = 0;
+  for (const b of blocos) {
+    const pb = b.reduce((t, l) => t + peso(l), 0);
+    if (atual.length && soma + pb > cabe) { grupos.push(atual); atual = []; soma = 0; }
+    atual = atual.concat(b); soma += pb;
+  }
+  if (atual.length) grupos.push(atual);
+  // o saldo do dia vai no último pedaço que tem o dia
+  const ultimoDoDia = new Map<string, number>();
+  grupos.forEach((g, k) => { for (const l of g) ultimoDoDia.set(l.data, k); });
+  let antes = 0;
+  return grupos.map((lancamentos, k) => {
+    const saldosDoDia = p.saldosDoDia?.filter(s => ultimoDoDia.get(s.data) === k);
+    const pedaco: ArquivoImportado = {
+      ...p, id: p.id + '|' + (k + 1), lancamentos,
+      ...(p.saldoAnterior != null ? { saldoAnterior: p.saldoAnterior + antes } : {}),
+      ...(p.saldosDoDia ? { saldosDoDia: saldosDoDia || [] } : {}),
+    };
+    antes += lancamentos.reduce((t, l) => t + l.valor, 0);
+    return pedaco;
+  });
+}
+
+/**
+ * O arquivo, ou os pedaços dele quando ele é grande demais para um documento do banco: por mês e, o mês que ainda não
+ * cabe, em dias seguidos (cortarPorDias). Cada pedaço fica abaixo de TAMANHO_PARA_CORTAR.
+ */
 export function caberNoBanco(a: ArquivoImportado): ArquivoImportado[] {
-  return tamanho(a) > TAMANHO_PARA_CORTAR ? pedacosPorMes(a) : [a];
+  return tamanho(a) > TAMANHO_PARA_CORTAR ? pedacosPorMes(a).flatMap(cortarPorDias) : [a];
 }
 
 /**

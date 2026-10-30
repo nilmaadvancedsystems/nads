@@ -13,7 +13,7 @@ export { ehOfx, lancamentosDoOfx } from './regras/ofx';
 export { conferir, totais, rotuloSituacao, csvConferencia, PARECIDO_MESMO_DIA, PARECIDO_OUTRO_DIA, PARECIDO_DUPLICADO } from './regras/conferencia';
 export {
   empresaNova, normalizarEmpresa, lancamentosDe, periodo, rotuloPeriodo, competencias, jaTemNoPeriodo, soNovos,
-  importar, excluirArquivo, excluirMesesDoArquivo, linhasAuditoria, extratosParaReler, extratosParaRelerPeloDrive, leituraCobreOArquivo, tirarSobreposicaoDosExtratos, relerExtrato, VERSAO_DO_LEITOR, type ResultadoImportacao,
+  importar, excluirArquivo, excluirMesesDoArquivo, bytesNoBanco, linhasAuditoria, extratosParaReler, extratosParaRelerPeloDrive, leituraCobreOArquivo, tirarSobreposicaoDosExtratos, relerExtrato, VERSAO_DO_LEITOR, type ResultadoImportacao,
 } from './regras/importacao';
 export { EXTENSOES_EXTRATO, EXTENSOES_SISTEMA, EXTENSOES_IMAGEM, abasDaPlanilha, lerArquivo } from './arquivos/leitura';
 export { definirWorkerDoPdf, definirOcr, ehPdf, itensDoPdf, type Ocr } from './arquivos/pdf';
@@ -34,7 +34,7 @@ export { lancamentosParaOSistema, lancamentosDoQueFaltaNoRazao, type PendenteDoB
 export { acharExtratoNoDrive, mensagemDaBuscaDoExtrato, type ContaProcurada } from './regras/drive';
 export { comprovantesDoBanco, comprovantesNoDrive, mesDoComprovante, nomeDoComprovante, nomeDoComprovanteDoMes, type ComprovanteNoDrive } from './regras/comprovantes';
 export { linhaDoRecebido, type ExtratoRecebido, type LinhaParaRecebido } from './regras/recebidos';
-export { gravacao, semMudanca, empresaDoBanco, type Gravacao, type DocEmpresaExtrator } from './regras/banco';
+export { gravacao, semMudanca, empresaDoBanco, lotesDaGravacao, LIMITE_DO_DOCUMENTO, type Gravacao, type DocEmpresaExtrator } from './regras/banco';
 export { criarRepoExtratorMemoria, type Guarda } from './repo.memoria';
 export {
   assuntoDoPedido, competenciaDoPedido, competenciasPorExtenso, linkDoWhatsApp, mesPorExtenso, rotuloDoBanco, telefoneParaWhatsApp, textoDoPedido,
