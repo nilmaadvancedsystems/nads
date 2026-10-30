@@ -4651,6 +4651,8 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .ent-modo{margin-bottom:16px;}
 .ent-marcas{display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;}
 .ent-marca{display:inline-flex;align-items:center;gap:8px;font-size:var(--fs-14);color:var(--ink);cursor:pointer;margin-bottom:8px;}
+/* dentro do .field, o ".field label" (bloco, negrito) ganhava: a caixa grudava no texto (30/10/2026) */
+.field .ent-marca{display:inline-flex;font-weight:400;margin:0 0 8px;}
 .ent-marca svg{width:16px;height:16px;color:var(--ink-muted);}
 .ent-marca-falha svg{color:var(--warn);}
 .ent-combo{position:relative;}
