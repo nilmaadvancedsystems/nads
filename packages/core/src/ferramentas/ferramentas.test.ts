@@ -2,7 +2,7 @@ import { PDFDocument } from 'pdf-lib';
 import * as XLSX from 'xlsx';
 import { describe, expect, it } from 'vitest';
 import { contarPaginas, girarPaginas, juntarPdfs, paginasDoTexto, removerPaginas, separarPdf } from './pdf';
-import { converterPlanilha, formatoDaPlanilha } from './planilha';
+import { converterPlanilha, formatoDaPlanilha, numeroDoCsv } from './planilha';
 
 /** Um PDF com n páginas em branco (para testar a contagem e as páginas copiadas). */
 async function pdfCom(n: number): Promise<Uint8Array> {
@@ -74,6 +74,40 @@ describe('a planilha', () => {
     expect(volta.nome).toBe('tabela.csv');
     const texto = new TextDecoder().decode(volta.bytes).replace('\uFEFF', '');
     expect(texto.trim().split(/\r?\n/)).toEqual(['nome;valor', 'Ana;10', 'Beto;20']);
+  });
+
+  it('lê o csv do Excel em português sem trocar valores, datas nem os zeros da frente', () => {
+    const csv = new TextEncoder().encode('Data;CNPJ;Valor\n10/05/2026;01234567000189;1.234,56\n13/05/2026;00012345678;1234,5\n');
+    const xlsx = converterPlanilha(csv, 'extrato.csv', 'xlsx');
+    const aba = XLSX.read(xlsx.bytes, { type: 'array' }).Sheets.Sheet1;
+    expect(aba.C2.v).toBe(1234.56);
+    expect(aba.C3.v).toBe(1234.5);
+    expect(aba.B2.v).toBe('01234567000189');
+    expect(aba.B3.v).toBe('00012345678');
+    expect(aba.A2.v).toBe(46152); // 10/05/2026 no Excel
+    expect(aba.A3.v).toBe(46155);
+    // e de volta para o csv: como estava, com a vírgula no decimal
+    const texto = new TextDecoder().decode(converterPlanilha(xlsx.bytes, 'extrato.xlsx', 'csv').bytes).replace('﻿', '');
+    expect(texto.trim().split(/\r?\n/)).toEqual(['Data;CNPJ;Valor', '10/05/2026;01234567000189;1234,56', '13/05/2026;00012345678;1234,5']);
+  });
+
+  it('o csv de saída tem a data em dd/mm/aaaa e o número com vírgula (o Excel em português lê como número)', () => {
+    const aba = XLSX.utils.aoa_to_sheet([['Data', 'Valor', 'Fração'], [46300, 1234.56, 0.5]]);
+    aba.A2.z = XLSX.SSF.get_table()[14];
+    aba.B2.z = '#,##0.00';
+    const livro = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(livro, aba, 'A');
+    const bytes = new Uint8Array(XLSX.write(livro, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer);
+    const texto = new TextDecoder().decode(converterPlanilha(bytes, 'b.xlsx', 'csv').bytes).replace('﻿', '');
+    expect(texto.trim().split(/\r?\n/)).toEqual(['Data;Valor;Fração', '05/10/2026;1.234,56;0,5']);
+  });
+
+  it('o csv com vírgula de separador tem o ponto no decimal', () => {
+    expect(numeroDoCsv('1234.56', ',')).toBe(1234.56);
+    expect(numeroDoCsv('1.234,56', ';')).toBe(1234.56);
+    expect(numeroDoCsv('-0,5', ';')).toBe(-0.5);
+    expect(numeroDoCsv('0123', ';')).toBeNull();
+    expect(numeroDoCsv('1.5', ';')).toBeNull();
   });
 
   it('recusa o que não é planilha', () => {
