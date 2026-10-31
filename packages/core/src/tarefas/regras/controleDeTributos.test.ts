@@ -45,6 +45,15 @@ describe('o controle de tributos do Fiscal (27/10/2026)', () => {
     expect(linhasDoProtocolo(sn, [{ codigo: 7, nome: 'A' }], guias, true)[0].data).toBe('15/09');
   });
 
+  it('a data sugerida é a da última guia do grupo, não a de outra guia do cliente (o FGTS do DP; 31/10/2026)', () => {
+    const sn = grupoDoControle('sn');
+    const guias = [
+      { codigo: 7, itens: [{ tipo: 'DAS', valor: 100 }], em: '2026-09-15T13:00:00.000Z', porEmail: false },
+      { codigo: 7, itens: [{ tipo: 'FGTS', valor: 300 }], em: '2026-09-20T13:00:00.000Z', porEmail: true },
+    ];
+    expect(sugestoesDoEntregas(sn, [{ codigo: 7, nome: 'A' }], guias).get(7)).toEqual({ valores: { das: '100,00' }, data: '2026-09-15', email: false });
+  });
+
   it('a situação da linha', () => {
     const b = linhaEmBranco('2026-09', 1, 'lp');
     expect(situacaoDaLinha(undefined)).toBe('branco');

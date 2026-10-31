@@ -5,7 +5,7 @@
 // chaves do próprio CT-e; o CT-e baixado antes do resumo 5 não as tem, e a pessoa marca as notas) e o valor do CT-e pelas
 // notas e pelas tributações dos itens; clicar numa tributação abre o frete dela pelos NCMs. Sem XML, "digite os valores"
 // faz a planilha à mão. As contas: core tarefas.sieg.rateioDoCte e ratear (em centavos, a soma bate com o CT-e).
-import { empresas as emp, tarefas as t } from '@nads/core';
+import { empresas as emp, formatos, tarefas as t } from '@nads/core';
 import { useEmpresasPermitidas } from '../../empresas/andamento';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
@@ -16,12 +16,9 @@ const r = t.sieg;
 export type Fonte = 'cte' | 'manual';
 type Campo = 'total' | 'frete' | 'desconto';
 
-/** "1.234,56", "1234.56" ou "1234,5" → número (vazio = 0). */
+/** "1.234,56", "1234.56", "1234,5" ou "1.500" (o ponto de milhar: R$ 1.500, não 1,50; 31/10/2026) → número (vazio = 0). */
 export function numero(texto: string): number {
-  const s = String(texto || '').trim().replace(/\s|R\$/g, '');
-  if (!s) return 0;
-  const v = Number(s.includes(',') ? s.replace(/\./g, '').replace(',', '.') : s);
-  return Number.isFinite(v) ? v : 0;
+  return formatos.numeroDigitado(texto) ?? 0;
 }
 /** dd/mm/aaaa → aaaammdd (para ordenar) */
 const ordemDaData = (d: string) => d.split('/').reverse().join('');

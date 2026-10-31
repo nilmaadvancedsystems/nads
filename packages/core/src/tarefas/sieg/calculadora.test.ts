@@ -72,4 +72,9 @@ describe('a calculadora do Simples (a planilha do Fiscal, 22/10/2026)', () => {
     expect(fatorR(meses, 500000)).toMatchObject({ fator: 25.92, anexo: 'V' });
     expect(fatorR(meses, 0)).toMatchObject({ fator: null, anexo: null });
   });
+
+  it('o Fator R na beira dos 28%: os 28% exatos são Anexo III; 27,996% ainda é V (31/10/2026)', () => {
+    expect(fatorR([{ salario: 27996, fgts: 0, cpp: 0 }], 100000)).toMatchObject({ fator: 27.99, anexo: 'V' });
+    expect(fatorR([{ salario: 28000, fgts: 0, cpp: 0 }], 100000)).toMatchObject({ fator: 28, anexo: 'III' });
+  });
 });

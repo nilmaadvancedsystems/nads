@@ -1,6 +1,7 @@
 // A legislação do DP cadastrada no nads (Vitor, 14/10/2026: "coloque o botão de cadastro de legislação"): as novas e as do
 // Toriba editadas (que ficam por cima do texto do core), em legislacaoDp/{id} do Entregas (o DP e o admin gravam; a equipe
 // lê). Interface + a versão de exemplo; a do banco é legislacaoDp.firestore.ts.
+import { formatos } from '@nads/core';
 
 /** O documento do banco: id 'toriba-<n>' = uma das do Toriba editada; outro id = uma nova. */
 export interface LegislacaoNoBanco {
@@ -26,7 +27,8 @@ export interface RepoLegislacaoDp {
   versao(): number;
 }
 
-const hoje = () => new Date().toISOString().slice(0, 10);
+// o dia em Brasília (o ISO é UTC: depois das 21h dava amanhã; 31/10/2026)
+const hoje = () => formatos.diaEmBrasilia();
 
 export function criarLegislacaoDpMemoria(): RepoLegislacaoDp {
   let ver = 0;
