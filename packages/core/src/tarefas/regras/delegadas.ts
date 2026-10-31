@@ -4,7 +4,7 @@
 // status, quem criou e quem é o responsável, os pareceres (os comentários), o histórico das mudanças e os anexos.
 // Aqui só as regras (TypeScript puro): validar, ordenar, filtrar por aba, buscar, montar o histórico de cada mudança e ler
 // o documento do banco. A gravação é do repositório da Tarefas (dados/tarefasDelegadas*.ts).
-import { nomeNorm } from '../../formatos';
+import { diaEmBrasilia, nomeNorm } from '../../formatos';
 
 export type Prioridade = 'baixa' | 'normal' | 'alta' | 'urgente';
 export type Status = 'pendente' | 'andamento' | 'cancelada' | 'concluida';
@@ -477,7 +477,8 @@ export function lerTarefa(id: string, x: Record<string, unknown>): TarefaDelegad
 
 export const CABECALHO_DA_PLANILHA = ['Nº', 'Status', 'Título', 'Prioridade', 'Prazo', 'Cliente', 'Responsável', 'Delegada por', 'Criada em', 'Concluída em', 'Descrição'] as const;
 
-const dataDoIso = (iso: string) => (iso ? prazoParaTela(iso.slice(0, 10)) : '');
+// o dia em Brasília (31/10/2026: cortar o ISO, que é UTC, dava o dia seguinte para a tarefa criada ou concluída depois das 21h)
+const dataDoIso = (iso: string) => (iso ? prazoParaTela(diaEmBrasilia(iso)) : '');
 
 /** As linhas da planilha (o .xlsx e o .csv do Exportar), na ordem da lista. */
 export function linhasDaPlanilha(lista: readonly TarefaDelegada[]): (string | number)[][] {

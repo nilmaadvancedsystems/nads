@@ -256,6 +256,9 @@ describe('ler do banco e exportar', () => {
   it('as linhas da planilha e a célula do CSV', () => {
     const l = linhasDaPlanilha([tarefa({ numero: 4, prazo: '2026-11-10', cliente: { codigo: 292, nome: 'Exemplo' }, status: 'concluida', concluidaEm: EM })]);
     expect(l[0]).toEqual([4, 'Concluída', 'Conferir o balancete', 'Normal', '10/11/2026', '292 · Exemplo', 'Nilma', 'Vitor', '28/10/2026', '28/10/2026', '']);
+    // criada e concluída às 22h de Brasília (01h do dia seguinte em UTC): a planilha mostra o dia daqui
+    const noite = linhasDaPlanilha([tarefa({ criadaEm: '2026-10-29T01:30:00.000Z', status: 'concluida', concluidaEm: '2026-10-30T01:00:00.000Z' })]);
+    expect(noite[0].slice(8, 10)).toEqual(['28/10/2026', '29/10/2026']);
     expect(celulaDoCsv('a;b')).toBe('"a;b"');
     expect(celulaDoCsv('diz "oi"')).toBe('"diz ""oi"""');
     expect(celulaDoCsv(12)).toBe('12');

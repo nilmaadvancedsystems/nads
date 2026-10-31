@@ -2,6 +2,7 @@
 // avisos, o contato, a empresa na Receita, as últimas entregas, o histórico mês a mês com o Protocolo e o Extrato), quem
 // costuma receber (os nomes num toque), a dica de horário que o histórico ensina, os papéis com validade, e o link do
 // cliente (portais/{token}: a projeção das entregas que a página cliente.html mostra, com o PIX do escritório). Puro.
+import { diaEmBrasilia } from '../formatos';
 import {
   dataBr, dataHoraDaEntrega, dinheiro, documentoFormatado, quandoFoi, rotuloDaCompetencia, rotuloDoCliente, textoDosItens, totalDosItens,
   ultimasCompetencias, type ClienteDaRota, type Entrega, type MudancaNaReceita,
@@ -105,13 +106,14 @@ export function kpisDoCliente(c: ClienteDaRota, historico: readonly Entrega[], m
   const ultima = historico.find(e => e.status === 'confirmada');
   const k: KpiDoCliente[] = [
     { rotulo: 'Entregas', valor: String(historico.length), sub: meses ? 'em ' + meses + (meses === 1 ? ' mês' : ' meses') : 'nenhuma ainda' },
-    { rotulo: 'Última entrega', valor: ultima ? dataBr(ultima.confirmadoEm) : '—', sub: ultima ? ultima.itens.map(i => i.tipo).filter(Boolean).slice(0, 3).join(', ') : '' },
+    { rotulo: 'Última entrega', valor: ultima ? dataBr(diaEmBrasilia(ultima.confirmadoEm || '')) : '—', sub: ultima ? ultima.itens.map(i => i.tipo).filter(Boolean).slice(0, 3).join(', ') : '' },
     { rotulo: 'Este mês', valor: entregues ? entregues + (entregues === 1 ? ' entregue' : ' entregues') : naRota ? 'na rota' : 'nada ainda', sub: naRota && entregues ? naRota + ' ainda na rota' : rotuloDaCompetencia(comp) },
   ];
   if (c.honorarioForma) {
+    // o mês da entrega em Brasília (31/10/2026: a do último dia depois das 21h, cortada do ISO em UTC, caía no mês seguinte)
     const tipos = tiposQueContamComoHonorario(c.honorarioForma);
     const ok = honorarioPrecisaVisita(c.honorarioForma)
-      ? historico.some(e => e.status === 'confirmada' && String(e.confirmadoEm || '').slice(0, 7) === comp && e.itens.some(i => tipos.includes(i.tipo)))
+      ? historico.some(e => e.status === 'confirmada' && diaEmBrasilia(String(e.confirmadoEm || '')).slice(0, 7) === comp && e.itens.some(i => tipos.includes(i.tipo)))
       : null;
     k.push({
       rotulo: 'Honorário', valor: ok === null ? c.honorarioForma : ok ? 'Entregue' : 'Pendente',
