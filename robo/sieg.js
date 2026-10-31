@@ -527,6 +527,23 @@ function iniciarSieg({ db, log }) {
     log('SIEG: retomando o pedido', d.id, 'que ficou pela metade');
     d.ref.update({ status: 'pendente', andamento: '' }).catch(() => {});
   })).catch(() => {});
+  // e no meio do Drive por trás (31/10/2026: com a fila do Drive, um lote pode deixar uns minutos de XMLs para gravar): o
+  // "Baixar XMLs" dos últimos 2 dias que não terminou de gravar volta para a fila (o portal baixa de novo em segundos e só
+  // grava o que falta). O dos XMLs do cliente não volta (os pedaços que ele mandou já foram apagados): fica o aviso.
+  db.collection('pedidosSieg').where('drive.pronto', '==', false).limit(100).get().then(s => {
+    const desde = new Date(Date.now() - 2 * 864e5).toISOString();
+    for (const d of s.docs) {
+      const p = d.data();
+      if (String(p.concluidoEm || '') < desde) continue;
+      if (p.tipo === 'xmls') {
+        log('SIEG: o pedido', d.id, 'de', p.codigo, p.competencia, 'não terminou de gravar no Drive: volta para a fila');
+        d.ref.update({ status: 'pendente', andamento: '', drive: null }).catch(() => {});
+      } else {
+        log('SIEG: o pedido', d.id, 'de', p.codigo, p.competencia, 'não terminou de gravar no Drive (' + (p.drive && p.drive.feitos) + ' de ' + (p.drive && p.drive.total) + ')');
+        d.ref.update({ 'drive.pronto': true, 'drive.erro': 'o robô reiniciou antes de terminar de gravar no Drive' }).catch(() => {});
+      }
+    }
+  }).catch(err => log('SIEG: não consegui conferir o Drive por trás dos pedidos -', err.message));
 
   // uma coisa por vez (o limite é por API Key): os pedidos do nads passam na frente da contagem da noite
   let ocupado = false;
