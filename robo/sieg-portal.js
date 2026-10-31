@@ -22,6 +22,7 @@ const EMPRESA = process.env.SIEG_EMPRESA || '12865';
 const APP = 'https://app.sieg.com';
 const TIPOS = [['NF-e', 10], ['NFC-e', 30], ['CT-e', 20], ['NFS-e', 60], ['CF-e', 40]];
 const SEM_LOGIN = 'o portal do SIEG pediu login de novo';
+const SEM_NADA = 'o portal do SIEG não mandou um .zip';
 
 const soDigitos = v => String(v || '').replace(/\D/g, '');
 const ultimoDia = comp => { const [a, m] = comp.split('-').map(Number); return comp + '-' + String(new Date(a, m, 0).getDate()).padStart(2, '0'); };
@@ -77,12 +78,34 @@ async function zipDoPeriodo(cookie, doc, tipo, competencia, sinal) {
     body: JSON.stringify({ clientId: id, fiscalDocumentType: tipo, cnpjRole: 1, periodType: 1, startDate: competencia + '-01', endDate: ultimoDia(competencia), includeEvents: true, folderStructure: 1, fileType: 1 }),
     signal: sinal ? AbortSignal.any([sinal, AbortSignal.timeout(10 * 60000)]) : AbortSignal.timeout(10 * 60000),
   });
+  return zipDaResposta(r, cookie, sinal);
+}
+
+/**
+ * O .zip da resposta do portal, ou null sem documentos (204). Desde 30/10/2026 o "baixar período" não manda mais o .zip
+ * direto: responde { downloadUrl: "https://down2.sieg.com/api/download/zip-stream?req=…" } e o .zip vem desse endereço, com
+ * a mesma sessão (sem ela, a página de login). Até 31/10 o robô dava "o portal do SIEG não mandou um .zip" e caía na API:
+ * o 380 de 10/2026 levou 310 s em vez de uns 15 (31/10/2026: "Quero que melhore a velocidade do sieg"). A página de login
+ * no lugar do .zip é a sessão vencida (SEM_LOGIN: o robô pega a do perfil e tenta de novo).
+ */
+async function zipDaResposta(r, cookie, sinal, buscar = fetch, seguiu = false) {
   if (r.status === 204) return null;
   if (r.status === 401 || r.status === 403 || /auth\.sieg\.com/.test(r.url)) throw new Error(SEM_LOGIN);
   if (!r.ok) throw new Error('o portal do SIEG respondeu ' + r.status);
+  const tipo = String((r.headers && r.headers.get('content-type')) || '');
+  if (/json/i.test(tipo)) {
+    const texto = await r.text();
+    let j = null;
+    try { j = JSON.parse(texto); } catch (_) { /* não era JSON */ }
+    const url = j && (j.downloadUrl || j.DownloadUrl || j.url);
+    if (seguiu || !url || !/^https:\/\/[\w.-]+\.sieg\.com\//.test(String(url))) throw new Error(SEM_NADA + ' (' + texto.slice(0, 120) + ')');
+    const z = await buscar(String(url), { headers: { Cookie: cookie, Referer: APP + '/' }, signal: sinal ? AbortSignal.any([sinal, AbortSignal.timeout(10 * 60000)]) : AbortSignal.timeout(10 * 60000) });
+    return zipDaResposta(z, cookie, sinal, buscar, true);
+  }
   const buf = Buffer.from(await r.arrayBuffer());
-  if (buf.length < 4 || buf.readUInt32LE(0) !== 0x04034b50) throw new Error('o portal do SIEG não mandou um .zip');
-  return buf;
+  if (buf.length >= 4 && buf.readUInt32LE(0) === 0x04034b50) return buf;
+  if (/html/i.test(tipo) && /login/i.test(buf.subarray(0, 4000).toString('utf8'))) throw new Error(SEM_LOGIN);
+  throw new Error(SEM_NADA + ' (' + (tipo || 'sem tipo') + ', ' + buf.length + ' bytes)');
 }
 
 // o ritmo do portal (08/10/2026: de 10 a 25 XMLs por segundo, mais uns 2 s para começar): só para a barra andar
@@ -142,10 +165,10 @@ async function xmlsPeloPortal(doc, competencia, aoAndar, lerZip, soTipos, espera
   const doDrive = new Set();
   let xmlsDoDrive = [];
   // a conferência com o Drive, junto com os downloads: o tipo que não mudou para de baixar
-  const conferido = reaproveitar ? reaproveitar.then(r => {
+  if (reaproveitar) reaproveitar.then(r => {
     for (const t of (r && r.tipos) || []) if (cancelar.has(t) && andamento.get(t) < 1) { doDrive.add(t); cancelar.get(t).abort(); }
     xmlsDoDrive = ((r && r.xmls) || []).filter(x => doDrive.has(sx.tipoDeNota(x)));
-  }).catch(() => {}) : Promise.resolve();
+  }).catch(() => {});
   try {
     const baixar = async ([nome, tipo]) => {
       const sinal = cancelar.get(nome).signal;
@@ -163,8 +186,11 @@ async function xmlsPeloPortal(doc, competencia, aoAndar, lerZip, soTipos, espera
       } catch (err) { if (!sinal.aborted) throw err; }
       finally { andamento.set(nome, 1); andar(texto(), somar()); }
     };
+    // sem esperar a conferência (31/10/2026: "Quero que melhore a velocidade do sieg"): ela só serve enquanto algum tipo
+    // ainda baixa (cancela o download dele e põe os XMLs do Drive no lugar, tudo no mesmo instante, antes de o download
+    // cancelado terminar). Com todos os tipos baixados ela não tem o que fazer, e esperar por ela era esperar a contagem
+    // da API (2 s num dia bom; em 31/10 às 6:31, 2 minutos sem resposta)
     await Promise.all(tipos.map(baixar));
-    await conferido;
   } finally { clearInterval(relogio); }
   if (xmlsDoDrive.length) juntar(xmlsDoDrive);
   await andar('Baixados ' + arquivos.size + ' XMLs', 1);
@@ -197,12 +223,17 @@ async function xmlsPorChaves(doc, chaves, lerZip) {
         body: JSON.stringify({ clientId: id, fiscalDocumentType: tipo, accessKeys: lista.slice(i, i + 500), fileType: 1 }),
         signal: AbortSignal.timeout(5 * 60000),
       });
-      let r = await pedir();
-      if (r.status === 401 || r.status === 403 || /auth\.sieg\.com/.test(r.url)) { cookie = await cookiesDoPortal(true); r = await pedir(); }
-      if (r.status === 204) continue;
-      if (!r.ok) throw new Error('o portal do SIEG respondeu ' + r.status);
-      const buf = Buffer.from(await r.arrayBuffer());
-      if (buf.length > 4 && buf.readUInt32LE(0) === 0x04034b50) xmls.push(...lerZip(buf));
+      // (31/10/2026: o mesmo leitor do "baixar período", para quando o portal mandar o endereço do .zip aqui também)
+      let buf;
+      try { buf = await zipDaResposta(await pedir(), cookie); }
+      catch (err) {
+        // como antes: o que não é .zip fica de fora (o que faltar sai do .zip do Drive)
+        if (err.message.startsWith(SEM_NADA)) continue;
+        if (!err.message.startsWith(SEM_LOGIN)) throw err;
+        cookie = await cookiesDoPortal(true);
+        buf = await zipDaResposta(await pedir(), cookie);
+      }
+      if (buf) xmls.push(...lerZip(buf));
     }
   }
   return xmls;
@@ -270,4 +301,4 @@ async function entrar() {
 
 if (require.main === module && process.argv[2] === 'entrar') entrar().catch(e => { console.error(e.message); process.exit(1); });
 
-module.exports = { xmlsPeloPortal, xmlsPorChaves, montarXmls, soDoCliente, SEM_LOGIN, PERFIL };
+module.exports = { xmlsPeloPortal, xmlsPorChaves, montarXmls, soDoCliente, zipDaResposta, SEM_LOGIN, SEM_NADA, PERFIL };

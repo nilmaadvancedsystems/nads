@@ -824,6 +824,22 @@ igual('SIEG: as saídas do resumo das notas', siegT.seriesDasNotas(siegT.saidasD
   { modelo: '65', serie: '2', numeros: [7], canceladas: [], valor: 3 },
 ]);
 
+// o portal do SIEG desde 30/10/2026: { downloadUrl } no lugar do .zip; a página de login é a sessão vencida
+const esperarSieg = (async () => {
+  const zipT = sxT.zipDe([{ nome: 'a.xml', xml: '<a/>' }]);
+  const json = o => new Response(JSON.stringify(o), { status: 200, headers: { 'content-type': 'application/json; charset=utf-8' } });
+  const pedidos = [];
+  const buscar = async (url, op) => { pedidos.push([url, op.headers.Cookie]); return new Response(zipT, { status: 200, headers: { 'content-type': 'application/zip' } }); };
+  const veio = await spT.zipDaResposta(json({ downloadUrl: 'https://down2.sieg.com/api/download/zip-stream?req=abc' }), 'COFRE.AUTH=x', null, buscar);
+  igual('SIEG portal: segue o downloadUrl com a sessão e devolve o .zip', [Buffer.isBuffer(veio) && veio.readUInt32LE(0) === 0x04034b50, pedidos], [true, [['https://down2.sieg.com/api/download/zip-stream?req=abc', 'COFRE.AUTH=x']]]);
+  igual('SIEG portal: o .zip direto (como antes) continua valendo', (await spT.zipDaResposta(new Response(zipT, { status: 200, headers: { 'content-type': 'application/zip' } }), '')).length, zipT.length);
+  igual('SIEG portal: 204 é mês sem documentos', await spT.zipDaResposta(new Response(null, { status: 204 }), ''), null);
+  const erro = async r => { try { await spT.zipDaResposta(r, '', null, async () => new Response('<html><title>SIEG - Login</title></html>', { status: 200, headers: { 'content-type': 'text/html' } })); return 'sem erro'; } catch (e) { return e.message.split(' (')[0]; } };
+  igual('SIEG portal: a página de login no lugar do .zip pede a sessão de novo', await erro(json({ downloadUrl: 'https://down2.sieg.com/x' })), spT.SEM_LOGIN);
+  igual('SIEG portal: endereço fora do SIEG não é seguido', await erro(json({ downloadUrl: 'https://outro.com/x' })), spT.SEM_NADA);
+  igual('SIEG portal: JSON sem endereço não é .zip', await erro(json({ mensagem: 'x' })), spT.SEM_NADA);
+})();
+
 // --- razão social vale mais que o nome fantasia (FITO, 01/10/2026) ---
 const fitos = [{ id: '292', nome: 'FITO INDUSTRIA E COMERCIO DE ALIMENTOS LTDA', nomeFantasia: 'FITO ALIMENTOS' }, { id: '309', nome: 'FITO ALIMENTOS LTDA', nomeFantasia: 'FITO ALIMENTOS', grupoLocal: '292' }];
 igual('razão social da irmã no assunto: é dela', (r.desempatarPorNome(fitos, 'Arquivos 09/2026 - Fito Alimentos LTDA') || {}).id, '309');
@@ -896,7 +912,7 @@ igual('sem nome no assunto: não decide pelo nome', r.desempatarPorNome(fitos, '
 }
 
 // os testes que leem PDF são assíncronos: o resultado espera por eles
-esperarExtratos.then(() => {
+Promise.all([esperarExtratos, esperarSieg]).then(() => {
   console.log(falhas ? '\n' + falhas + ' de ' + total + ' testes FALHARAM' : total + ' testes, todos passaram');
   process.exit(falhas ? 1 : 0);
 });
