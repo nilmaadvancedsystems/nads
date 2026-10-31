@@ -21,6 +21,10 @@ describe('o extrato que chegou por e-mail: em qual linha entra (08/10/2026)', ()
   it('sem banco lido e uma conta só: ela', () => {
     expect(linhaDoRecebido(r([]), [linhas[2]]).linha).toBe('bb-1');
   });
+  it('o banco lido não é o de nenhuma linha: não entra sozinho, a pessoa escolhe', () => {
+    expect(linhaDoRecebido(r(['itau']), [linhas[2]])).toEqual({ linha: null, candidatas: ['bb-1'] });
+    expect(linhaDoRecebido(r(['itau']), linhas)).toEqual({ linha: null, candidatas: ['sicoob-1', 'sicoob-2', 'bb-1'] });
+  });
   it('só a linha genérica Banco: entra nela', () => {
     expect(linhaDoRecebido(r(['itau']), [{ id: 'banco', nome: 'Banco' }]).linha).toBe('banco');
   });

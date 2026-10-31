@@ -40,6 +40,9 @@ export function linhaDoRecebido(r: ExtratoRecebido, linhas: readonly LinhaParaRe
   const doBanco = marcas.length
     ? reais.filter(l => marcas.includes(l.marca || '') || marcas.some(m => nomeNorm(l.nome).includes(nomeNorm(m.replace(/-/g, ' ')))))
     : reais;
+  // o banco lido não é o de nenhuma linha (o extrato do Itaú do sócio, e a empresa só tem o Sicoob): a pessoa escolhe.
+  // Antes, com uma linha só, ele entrava sozinho nela, como se fosse o extrato daquele banco (31/10/2026)
+  if (marcas.length && !doBanco.length) return { linha: null, candidatas: reais.map(l => l.id) };
   let candidatas = doBanco.length ? doBanco : reais;
   // duas contas do mesmo banco: a do número da conta lido no extrato (pelo fim do número, sem o dígito às vezes)
   if (candidatas.length > 1 && r.contas.length) {
