@@ -102,7 +102,7 @@ export function useFgtsDoDp() {
     competencia,
     competencias: competencias.map(c => ({ valor: c, rotulo: t.rotuloCompetencia(c) })),
     /** a competência do DP é a mesma em todas as páginas (21/10/2026) */
-    setCompetencia: (c: string) => { guardarCompetenciaDoDp(c); setCompetencia(c); },
+    setCompetencia: (c: string) => { guardarCompetenciaDoDp(c); setCompetencia(c); setMarcadas(new Set()); },
     filtro, setFiltro, busca, setBusca,
     responsavel, setResponsavel,
     responsaveis: [...new Set(todas.map(l => l.responsavel).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR')),
