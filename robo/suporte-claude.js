@@ -26,6 +26,10 @@ const PASTA = path.join(os.tmpdir(), 'nads-suporte');
 const LIMITE_MS = 15 * 60000;
 const ESPERA_DOS_PEDACOS_MS = 3 * 60000;
 
+// o login do Claude deste PC venceu (31/10/2026: "OAuth session expired" fez o bug virar 'erro' sem ninguém saber)
+const LOGIN_VENCIDO = /failed to authenticate|oauth|not logged in|please run \/login|invalid api key|authentication_error/i;
+const PAUSA_SEM_LOGIN_MS = 10 * 60000;
+
 const VEREDITOS = ['Realmente, isso é erro do sistema', 'Precisa da sua análise'];
 
 const INSTRUCOES = [
@@ -98,6 +102,7 @@ function iniciarSuporteClaude({ db, log = console.log }) {
   if (!fs.existsSync(CLAUDE)) { log('[suporte] sem o Claude neste PC (' + CLAUDE + '): desligado'); return () => {}; }
   const fila = db.collection('feedbacks').where('tipo', '==', 'bug').where('analise', '==', 'pendente');
   let ocupado = false;
+  let semLoginAte = 0;
   const esperando = [];
 
   async function investigar(ref) {
@@ -154,6 +159,13 @@ function iniciarSuporteClaude({ db, log = console.log }) {
       await ref.update({ analise: 'pronta', relatorio: relatorio.slice(0, 20000), analisadoEm: new Date().toISOString() });
       log('[suporte] report pronto', id);
     } catch (err) {
+      if (LOGIN_VENCIDO.test(err.message)) {
+        // sem login o bug não é do sistema: volta para a fila e espera alguém entrar de novo no Claude deste PC
+        semLoginAte = Date.now() + PAUSA_SEM_LOGIN_MS;
+        log('[suporte] o login do Claude deste PC venceu: entre de novo (claude auth login); o bug', id, 'volta para a fila');
+        await ref.update({ analise: 'pendente', analisandoEm: null, analisandoNo: null }).catch(() => {});
+        return;
+      }
       log('[suporte] não consegui investigar', id, err.message);
       await ref.update({ analise: 'erro', relatorio: 'O robô do suporte não conseguiu investigar: ' + err.message + '\n\nPrecisa da sua análise', analisadoEm: new Date().toISOString() }).catch(() => {});
     } finally {
@@ -164,6 +176,7 @@ function iniciarSuporteClaude({ db, log = console.log }) {
   // um de cada vez (o Claude investiga um bug por vez)
   async function proximo() {
     if (ocupado || !esperando.length) return;
+    if (Date.now() < semLoginAte) { setTimeout(() => void proximo(), semLoginAte - Date.now() + 1000); return; }
     ocupado = true;
     const ref = esperando.shift();
     try { await investigar(ref); } catch (err) { log('[suporte] erro:', err.message); }
@@ -171,12 +184,21 @@ function iniciarSuporteClaude({ db, log = console.log }) {
     void proximo();
   }
 
-  const parar = fila.onSnapshot(s => {
-    for (const d of s.docs) if (!esperando.some(r => r.id === d.id)) esperando.push(d.ref);
-    void proximo();
-  }, err => log('[suporte] a fila parou:', err.message));
+  // a fila volta sozinha quando a rede cai (30/10/2026: "a fila parou" e o suporte ficou surdo até reiniciar o robô)
+  let parado = false;
+  let pararFila = () => {};
+  function ouvir() {
+    pararFila = fila.onSnapshot(s => {
+      for (const d of s.docs) if (!esperando.some(r => r.id === d.id)) esperando.push(d.ref);
+      void proximo();
+    }, err => {
+      log('[suporte] a fila parou:', err.message, '— tento de novo em 1 minuto');
+      if (!parado) setTimeout(() => { if (!parado) ouvir(); }, 60000);
+    });
+  }
+  ouvir();
   log('[suporte] ligado (Claude ' + MODELO + ')');
-  return parar;
+  return () => { parado = true; pararFila(); };
 }
 
 module.exports = { iniciarSuporteClaude };
