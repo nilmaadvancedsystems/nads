@@ -8,7 +8,7 @@
 //   - a folha do Fator R, dos mesmos 12 meses: o salário que o DP informou na etapa Folha e o FGTS das guias do FGTS
 //     Digital; a CPP se digita (o nads não guarda).
 // Cada número pode ser trocado à mão e a tela diz de onde veio. As contas são as da planilha (core sieg.calculadora).
-import { empresas as emp, tarefas as t } from '@nads/core';
+import { empresas as emp, formatos, tarefas as t } from '@nads/core';
 import { useEmpresasPermitidas } from '../../empresas/andamento';
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
@@ -25,12 +25,10 @@ const ANEXOS_DA_MERCADORIA: readonly t.sieg.Anexo[] = ['I', 'II'];
 const ANEXOS_DO_SERVICO: readonly t.sieg.Anexo[] = ['III', 'IV', 'V'];
 const DO_SIMPLES = ['Simples', 'MEI'];
 const centavos = (v: number) => Math.round(v * 100) / 100;
-/** "1.234,56" → 1234.56 (vazio = null: volta ao número do nads) */
+/** "1.234,56" → 1234.56; "360.000" → 360000 (o ponto de milhar; antes virava 360, 31/10/2026); vazio = null: volta ao número do nads */
 const lerValor = (texto: string): number | null => {
-  const x = texto.trim().replace(/[R$\s]/g, '');
-  if (!x) return null;
-  const n = Number(x.includes(',') ? x.replace(/\./g, '').replace(',', '.') : x);
-  return Number.isFinite(n) && n >= 0 ? centavos(n) : null;
+  const n = formatos.numeroDigitado(texto);
+  return n != null && n >= 0 ? centavos(n) : null;
 };
 /** o mês antes de "AAAA-MM" */
 const mesAnterior = (c: string) => { const [a, m] = c.split('-').map(Number); const d = new Date(a, m - 2, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
