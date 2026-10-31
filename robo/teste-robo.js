@@ -824,6 +824,21 @@ igual('SIEG: as saídas do resumo das notas', siegT.seriesDasNotas(siegT.saidasD
   { modelo: '65', serie: '2', numeros: [7], canceladas: [], valor: 3 },
 ]);
 
+// a ordem da fila do SIEG (31/10/2026: "Quero que melhore a velocidade do sieg"): o "Contar agora" na frente dos XMLs, a
+// madrugada por último, e entre as pessoas um de cada uma por vez (o lote de 10 meses não segura o pedido único de outra)
+{
+  const fila = [
+    { p: { id: 'g1', tipo: 'xmls', criadoEm: '2026-10-29T15:58:34', criadoPorUid: 'gustavo' } },
+    { p: { id: 'g2', tipo: 'xmls', criadoEm: '2026-10-29T15:58:35', criadoPorUid: 'gustavo' } },
+    { p: { id: 'g3', tipo: 'xmls', criadoEm: '2026-10-29T15:58:36', criadoPorUid: 'gustavo' } },
+    { p: { id: 'h1', tipo: 'xmls', criadoEm: '2026-10-29T16:01:00', criadoPorUid: 'heverton' } },
+    { p: { id: 'm1', tipo: 'xmls', criadoEm: '2026-10-29T03:00:00', criadoPorUid: 'robo', madrugada: true } },
+    { p: { id: 'c1', tipo: 'contagem', criadoEm: '2026-10-29T16:05:00', criadoPorUid: 'heverton' } },
+    { p: { id: 'z1', tipo: 'zipFaltam', criadoEm: '2026-10-29T16:04:00', criadoPorUid: 'gustavo' } },
+  ].map(x => Object.assign(x, { u: siegT.urgenciaDoPedido(x.p) }));
+  igual('SIEG: a ordem da fila (contagem e zipFaltam, um de cada pessoa, a madrugada por último)', siegT.ordemDaFila(fila).map(x => x.p.id), ['z1', 'c1', 'g1', 'h1', 'g2', 'g3', 'm1']);
+  igual('SIEG: a fila de uma pessoa só segue a ordem de chegada', siegT.ordemDaFila(fila.filter(x => x.p.criadoPorUid === 'gustavo' && x.p.tipo === 'xmls').reverse()).map(x => x.p.id), ['g1', 'g2', 'g3']);
+}
 // o portal do SIEG desde 30/10/2026: { downloadUrl } no lugar do .zip; a página de login é a sessão vencida
 const esperarSieg = (async () => {
   const zipT = sxT.zipDe([{ nome: 'a.xml', xml: '<a/>' }]);
@@ -838,6 +853,10 @@ const esperarSieg = (async () => {
   igual('SIEG portal: a página de login no lugar do .zip pede a sessão de novo', await erro(json({ downloadUrl: 'https://down2.sieg.com/x' })), spT.SEM_LOGIN);
   igual('SIEG portal: endereço fora do SIEG não é seguido', await erro(json({ downloadUrl: 'https://outro.com/x' })), spT.SEM_NADA);
   igual('SIEG portal: JSON sem endereço não é .zip', await erro(json({ mensagem: 'x' })), spT.SEM_NADA);
+  // a conferência com o Drive que ficou sem serventia desiste antes de gastar a vez no limite de 5 contagens por minuto
+  let desistiu = '';
+  try { await siegT.contagemDoMes({}, '11222333000181', '2026-10', null, () => true); } catch (e) { desistiu = e.message; }
+  igual('SIEG: a contagem desiste sem chamar o SIEG', desistiu, 'a consulta não é mais necessária');
 })();
 
 // --- razão social vale mais que o nome fantasia (FITO, 01/10/2026) ---
