@@ -570,6 +570,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
       }
       return entrou;
     },
-    abrirEmpresa: () => { if (empresa) navegar(caminhoDaEmpresa(empresas.rotaDaEmpresa(empresa), ultimo)); },
+    // com o ?dep= (a rotina de outro setor), como as outras saídas do executor (31/10/2026: abria a página na rotina da pessoa)
+    abrirEmpresa: () => { if (empresa) navegar(comDep(caminhoDaEmpresa(empresas.rotaDaEmpresa(empresa), ultimo))); },
   };
 }
