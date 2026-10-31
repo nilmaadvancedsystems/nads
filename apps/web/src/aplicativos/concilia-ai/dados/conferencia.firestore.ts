@@ -53,6 +53,8 @@ export function criarRepoConferenciaFirestore(): RepoConferenciaFirestore {
 
   let dados: Record<string, c.Empresa> = {};
   let carregou = false;
+  /** as empresas que estão no banco mas não deu para ler (os pedaços não vieram): não se grava por cima delas */
+  const naoLidas = new Set<string>();
   let ver = 0;
   let avisar: Aviso = () => {};
   const ouvintes = new Set<() => void>();
@@ -179,11 +181,15 @@ export function criarRepoConferenciaFirestore(): RepoConferenciaFirestore {
     let mexeu = !carregou;
     for (const m of mudancas) {
       const nome = String(m.bruto.nome || m.id);
-      if (m.tipo === 'removed') { removidas.push(nome); mexeu = true; continue; }
+      if (m.tipo === 'removed') { removidas.push(nome); naoLidas.delete(nome); mexeu = true; continue; }
       // o eco do que esta aba acabou de salvar: o salvar() já pôs a empresa em `dados`
       if (m.pendente && dados[nome]) continue;
-      const bruto = await comAsNotas(m.id, m.bruto);
-      if (!bruto) continue;
+      // a empresa cujos pedaços não deu para ler (faltou pedaço, ou a leitura falhou) não derruba as outras do lote: antes, o
+      // erro de uma descartava o lote inteiro da primeira carga, e a tela abria sem as empresas (31/10/2026)
+      let bruto: Record<string, unknown> | null = null;
+      try { bruto = await comAsNotas(m.id, m.bruto); } catch (err) { avisar('Não consegui ler "' + nome + '" da nuvem: ' + ((err as Error)?.message || err)); }
+      if (!bruto) { if (!dados[nome]) naoLidas.add(nome); continue; }
+      naoLidas.delete(nome);
       atualizadas[nome] = c.normalizarEmpresa({ ...(bruto as Partial<c.Empresa>), nome });
       mexeu = true;
     }
@@ -194,7 +200,7 @@ export function criarRepoConferenciaFirestore(): RepoConferenciaFirestore {
     if (!carregou) {
       carregou = true;
       for (const nome of Object.keys(c.SEED)) {
-        if (dados[nome]) continue;
+        if (dados[nome] || naoLidas.has(nome)) continue;
         const e = c.normalizarEmpresa({ ...structuredClone(c.SEED[nome]), nome });
         dados[nome] = e;
         gravar(e);
@@ -211,6 +217,9 @@ export function criarRepoConferenciaFirestore(): RepoConferenciaFirestore {
     empresaPelaRota: rota => c.empresaPelaRota(c.CLIENTES, Object.keys(dados), rota),
     salvar(e) {
       if (!carregou) return; // antes da primeira carga, nunca grava
+      // a empresa que está no banco mas não foi lida (os pedaços não vieram): gravar seria pôr uma empresa vazia por cima
+      // da de verdade (o useAplicar começa da empresaNova quando o obter não acha)
+      if (naoLidas.has(e.nome) && !dados[e.nome]) { avisar('"' + e.nome + '" ainda não foi lida da nuvem: nada foi salvo. Atualize a página e tente de novo.'); return; }
       dados = { ...dados, [e.nome]: e };
       mudou();
       gravar(e);
