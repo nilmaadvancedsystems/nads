@@ -25,19 +25,22 @@ export function usePainelDoFiscal(empresa: string, codigo: string, competencia: 
   // o .zip das notas que faltam no Alterdata (08/10/2026: "3"): o robô pega as chaves no SIEG; quando entrega, baixa aqui
   const { toast } = useRetorno();
   const pedidoFaltam = codigo ? sieg.pedido(codigo, competencia, 'zipFaltam') : null;
-  const [pediuFaltam, setPediuFaltam] = useState(false);
+  // o pedido que já estava no banco no clique não é o desta vez (31/10/2026: com um pedido de antes já pronto, o .zip
+  // antigo baixava na hora, ou o erro antigo aparecia, e o novo era largado)
+  const [pediuFaltam, setPediuFaltam] = useState<{ antes: string } | null>(null);
   const baixouFaltam = useRef('');
-  const zipFaltam = pediuFaltam && pedidoFaltam?.status === 'concluido' && pedidoFaltam.zip && pedidoFaltam.id ? pedidoFaltam : null;
+  const novoFaltam = pediuFaltam && pedidoFaltam && pedidoFaltam.id !== pediuFaltam.antes ? pedidoFaltam : null;
+  const zipFaltam = novoFaltam?.status === 'concluido' && novoFaltam.zip && novoFaltam.id ? novoFaltam : null;
   useEffect(() => {
     if (!zipFaltam || baixouFaltam.current === zipFaltam.id) return;
     baixouFaltam.current = zipFaltam.id!;
-    setPediuFaltam(false);
+    setPediuFaltam(null);
     sieg.baixarZip(zipFaltam.zip!).then(b => baixarBytes(b, zipFaltam.zip!.nome, 'application/zip'))
       .catch(err => toast('Não consegui baixar o .zip: ' + (err instanceof Error ? err.message : String(err))));
   }, [zipFaltam, sieg, toast]);
   useEffect(() => {
-    if (pediuFaltam && pedidoFaltam?.status === 'erro') { setPediuFaltam(false); toast('O .zip das que faltam não saiu: ' + (pedidoFaltam.erro || 'o robô não conseguiu')); }
-  }, [pediuFaltam, pedidoFaltam, toast]);
+    if (novoFaltam?.status === 'erro') { setPediuFaltam(null); toast('O .zip das que faltam não saiu: ' + (novoFaltam.erro || 'o robô não conseguiu')); }
+  }, [novoFaltam, toast]);
   const doXml = useMemo(() => (xmlDados ? t.sieg.notasDoXml(xmlDados) : null), [xmlDados]);
   const n = lidas || VAZIO;
   const chave = (meses.length ? meses : [competencia]).join(',');
@@ -108,12 +111,12 @@ export function usePainelDoFiscal(empresa: string, codigo: string, competencia: 
     /** os outros meses do trimestre (Presumido): os valores que a rotina de cada mês guardou */
     outrosMeses,
     /** o .zip das notas que faltam no Alterdata: pedindo ao robô (até ele entregar e baixar) */
-    baixandoFaltam: pediuFaltam,
+    baixandoFaltam: !!pediuFaltam,
     async baixarFaltam(chaves: string[]) {
       if (!codigo || !chaves.length || pediuFaltam) return;
-      setPediuFaltam(true);
+      setPediuFaltam({ antes: pedidoFaltam?.id || '' });
       try { await sieg.pedirZipFaltam(codigo, competencia, chaves); }
-      catch (err) { setPediuFaltam(false); toast('Não consegui pedir o .zip: ' + (err instanceof Error ? err.message : String(err))); }
+      catch (err) { setPediuFaltam(null); toast('Não consegui pedir o .zip: ' + (err instanceof Error ? err.message : String(err))); }
     },
     /** o último "Baixar XMLs do SIEG" (quando e quantos), para dizer de onde vêm as tabelas */
     xml: xmlDados ? { quando: xmlDados.em ? new Date(xmlDados.em).toLocaleDateString('pt-BR') : '', arquivos: xmlDados.arquivos } : null,
