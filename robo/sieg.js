@@ -472,15 +472,21 @@ const competenciaDe = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padS
 // um de cada uma por vez: quem pede 10 meses de uma empresa (o 380 de 29/10: 10 pedidos, 37 min) não deixa o pedido único
 // de outra pessoa esperando o lote inteiro; os meses dele seguem na ordem, intercalados.
 const urgenciaDoPedido = p => (p.tipo === 'zipFaltam' || p.tipo === 'contagem' ? 0 : p.madrugada || p.criadoPorUid === 'robo' ? 2 : 1);
-/** Os candidatos ({ p: o pedido, u: a urgência }) na ordem em que o robô atende. */
-function ordemDaFila(candidatos) {
-  const quem = p => String(p.criadoPorUid || p.criadoPor || '');
+const quemPediu = p => String(p.criadoPorUid || p.criadoPor || '');
+/**
+ * Os candidatos ({ p: o pedido, u: a urgência }) na ordem em que o robô atende: em cada urgência, uma rodada com o pedido
+ * mais antigo de cada pessoa, depois a segunda… e, na rodada, primeiro quem foi atendido há mais tempo. ultimaVez: a vez
+ * (um número que só cresce) em que o robô atendeu cada pessoa (quemPediu) — sem isso, o 2º mês do lote voltava à frente
+ * do pedido de outra pessoa assim que o 1º saía da fila.
+ */
+function ordemDaFila(candidatos, ultimaVez) {
   const porData = (a, b) => String(a.p.criadoEm || '').localeCompare(String(b.p.criadoEm || ''));
   const lista = candidatos.slice().sort((a, b) => a.u - b.u || porData(a, b));
-  const vezes = new Map();
-  const vez = new Map();
-  for (const x of lista) { const k = x.u + '|' + quem(x.p); const n = vezes.get(k) || 0; vez.set(x, n); vezes.set(k, n + 1); }
-  return lista.sort((a, b) => a.u - b.u || vez.get(a) - vez.get(b) || porData(a, b));
+  const rodadas = new Map();
+  const rodada = new Map();
+  for (const x of lista) { const k = x.u + '|' + quemPediu(x.p); const n = rodadas.get(k) || 0; rodada.set(x, n); rodadas.set(k, n + 1); }
+  const atendido = x => (ultimaVez && ultimaVez.get(quemPediu(x.p))) || 0;
+  return lista.sort((a, b) => a.u - b.u || rodada.get(a) - rodada.get(b) || atendido(a) - atendido(b) || porData(a, b));
 }
 
 function iniciarSieg({ db, log }) {
@@ -593,6 +599,9 @@ function iniciarSieg({ db, log }) {
   // estiver aberto (sem mexer neles).
   const JUNTAVEIS = new Set(['saidas', 'contagem', 'xmls']);
   const urgencia = urgenciaDoPedido;
+  // a vez em que o robô atendeu cada pessoa (ordemDaFila)
+  const ultimaVez = new Map();
+  let vezes = 0;
   async function proximoPedido() {
     const s = await db.collection('pedidosSieg').where('status', '==', 'pendente').limit(500).get();
     const semDrive = !driveAberto();
@@ -623,10 +632,12 @@ function iniciarSieg({ db, log }) {
       candidatos.push({ d: fica, p: fica.data(), u: Math.min(...g.map(x => urgencia(x.data()))) });
     }
     if (juntados) log('SIEG: ' + juntados + ' pedidos repetidos (mesmo tipo, empresa e mês) foram juntos com o mais novo');
-    const fila = ordemDaFila(candidatos);
+    const fila = ordemDaFila(candidatos, ultimaVez);
     naFila = Math.max(0, fila.length - 1);
     ponto();
-    return fila.length ? fila[0].d : null;
+    if (!fila.length) return null;
+    ultimaVez.set(quemPediu(fila[0].p), ++vezes);
+    return fila[0].d;
   }
 
   async function atenderPedidos() {

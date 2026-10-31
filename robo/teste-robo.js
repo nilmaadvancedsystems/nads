@@ -837,6 +837,11 @@ igual('SIEG: as saídas do resumo das notas', siegT.seriesDasNotas(siegT.saidasD
     { p: { id: 'z1', tipo: 'zipFaltam', criadoEm: '2026-10-29T16:04:00', criadoPorUid: 'gustavo' } },
   ].map(x => Object.assign(x, { u: siegT.urgenciaDoPedido(x.p) }));
   igual('SIEG: a ordem da fila (contagem e zipFaltam, um de cada pessoa, a madrugada por último)', siegT.ordemDaFila(fila).map(x => x.p.id), ['z1', 'c1', 'g1', 'h1', 'g2', 'g3', 'm1']);
+  // depois de atender o 1º mês do Gustavo, o pedido do Heverton (que chegou depois) passa na frente do 2º mês
+  const semG1 = fila.filter(x => !['g1', 'z1', 'c1', 'm1'].includes(x.p.id));
+  igual('SIEG: a vez de cada pessoa conta quem o robô atendeu por último', siegT.ordemDaFila(semG1, new Map([['gustavo', 1]])).map(x => x.p.id), ['h1', 'g2', 'g3']);
+  igual('SIEG: atendido o Heverton, volta o Gustavo', siegT.ordemDaFila(semG1.filter(x => x.p.id !== 'h1'), new Map([['gustavo', 1], ['heverton', 2]])).map(x => x.p.id), ['g2', 'g3']);
+  igual('SIEG: sem ninguém atendido, a ordem de chegada', siegT.ordemDaFila(semG1, new Map()).map(x => x.p.id), ['g2', 'h1', 'g3']);
   igual('SIEG: a fila de uma pessoa só segue a ordem de chegada', siegT.ordemDaFila(fila.filter(x => x.p.criadoPorUid === 'gustavo' && x.p.tipo === 'xmls').reverse()).map(x => x.p.id), ['g1', 'g2', 'g3']);
 }
 // o portal do SIEG desde 30/10/2026: { downloadUrl } no lugar do .zip; a página de login é a sessão vencida
