@@ -56,6 +56,8 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'relatorio-presumido', rotulo: 'Lucro Presumido', icone: 'painel', titulo: 'Relatório Lucro Presumido', secao: 'Empresas' },
     // as Ferramentas: a REINF (o fluxo do Notion do Heverton)
     { id: 'reinf', rotulo: 'REINF', icone: 'fileUp', titulo: 'REINF', secao: 'Ferramentas' },
+    // o SIEG fora da rotina (31/10/2026: "coloca uma função de baixar do sieg q tinha na rotina … coloca um módulo la")
+    { id: 'sieg', rotulo: 'SIEG', icone: 'download', titulo: 'SIEG', secao: 'Ferramentas' },
     // o leitor do SINTEGRA (Vitor, 15/10/2026: "montar um leitor de sintegra")
     { id: 'sintegra', rotulo: 'SINTEGRA', icone: 'fileText', titulo: 'Leitor do SINTEGRA', secao: 'Ferramentas' },
     // a relação de faturamento dos clientes (Heverton, 20/10/2026; o usuário decidiu em 21/10: a receita de cada cliente)
@@ -308,6 +310,7 @@ export function paginasDaEmpresa(dep: string): Pagina[] {
     // sem título: o Drive encosta nas bordas, com o nome da pasta no alto (como na aplicação Drive)
     { id: 'drive', rotulo: 'Drive', icone: 'pasta', titulo: '' },
     ...(dep === 'fiscal' ? [
+      { id: 'sieg', rotulo: 'SIEG', icone: 'download', titulo: 'SIEG' },
       { id: 'rateio-frete', rotulo: 'Rateio de frete', icone: 'caminhao', titulo: 'Rateio de frete' },
       { id: 'simples', rotulo: 'Simples Nacional', icone: 'recibo', titulo: 'Calculadora do Simples Nacional' },
       { id: 'antecipacao-es', rotulo: 'Antecipação ICMS-ES', icone: 'fileSearch', titulo: 'Antecipação de ICMS — ES' },

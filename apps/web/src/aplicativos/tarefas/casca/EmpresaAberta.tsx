@@ -12,6 +12,7 @@ import { useEmpresaAberta } from './useEmpresaAberta';
 
 const ExploradorDoDrive = pedaco(() => import('../telas/drive/ExploradorDoDrive'), 'ExploradorDoDrive');
 const RateioDeFrete = pedaco(() => import('../telas/fiscal/rateio/RateioDeFrete'), 'RateioDeFrete');
+const BaixarDoSieg = pedaco(() => import('../telas/fiscal/sieg/BaixarDoSieg'), 'BaixarDoSieg');
 const CalculadoraDoSimples = pedaco(() => import('../telas/fiscal/simples/CalculadoraDoSimples'), 'CalculadoraDoSimples');
 const AntecipacaoIcms = pedaco(() => import('../telas/fiscal/antecipacao/AntecipacaoIcms'), 'AntecipacaoIcms');
 
@@ -20,6 +21,7 @@ function PaginaDaEmpresa({ rota, pagina }: { rota: string; pagina: string }) {
     case 'tarefas': return <EmpresaTarefas rota={rota} parte="tarefas" />;
     case 'drive': return <ExploradorDoDrive naEmpresa />;
     case 'rateio-frete': return <RateioDeFrete />;
+    case 'sieg': return <BaixarDoSieg />;
     case 'simples': return <CalculadoraDoSimples />;
     case 'antecipacao-es': return <AntecipacaoIcms />;
     default: return <EmpresaTarefas rota={rota} parte="visao" />;

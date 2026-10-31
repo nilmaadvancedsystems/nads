@@ -12,7 +12,7 @@ import { caminhoDaPaginaDaEmpresa, paginasDaEmpresa } from './navegacao';
 import { useEmpresasPermitidas } from '../telas/empresas/andamento';
 
 /** as páginas que trabalham com uma empresa só e a recebem pelo endereço (?empresa=código) */
-const FERRAMENTAS = new Set(['rateio-frete', 'simples', 'antecipacao-es']);
+const FERRAMENTAS = new Set(['sieg', 'rateio-frete', 'simples', 'antecipacao-es']);
 
 export function useEmpresaAberta(rota: string, pagina: string) {
   const repo = useRepo();
