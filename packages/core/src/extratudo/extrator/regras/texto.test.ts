@@ -14,6 +14,10 @@ describe('valores', () => {
     expect(['5,10D', '5.852,54C', '1.166,00d'].map(centavos)).toEqual([-510, 585254, -116600]);
     expect(['5,10D', '5.852,54C'].map(temSinal)).toEqual([true, true]);
   });
+  it('o sinal depois do R$ ("R$ -5,00", "R$-1.234,56", "R$ (5,00)") é saída', () => {
+    expect(['R$ -5,00', 'R$-1.234,56', 'R$ (5,00)', 'R$ 5,00', '-R$ 5,00'].map(centavos)).toEqual([-500, -123456, -500, 500, -500]);
+    expect(['R$ -5,00', 'R$-1.234,56', 'R$ 5,00'].map(temSinal)).toEqual([true, true, false]);
+  });
   it('mostra com o menos tipográfico', () => {
     expect(valorBR(-123456)).toBe('−1.234,56');
     expect(valorBR(5)).toBe('0,05');
