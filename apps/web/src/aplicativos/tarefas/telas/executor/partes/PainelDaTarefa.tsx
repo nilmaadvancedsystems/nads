@@ -219,7 +219,8 @@ function ValoresNotaANota({ c }: { c: t.sieg.ConferenciaDeValores | null }) {
 // ---------- o Presumido e o Real pelos XMLs (13/10/2026: "agora monte a rotina do lucro presumido e real") ----------
 
 type Informar = (chave: string, valor: number) => void;
-const lerReais = (s: string) => Number(s.replace(/\./g, '').replace(',', '.'));
+// o parse do campo de valor do nads (formatos.numeroDigitado): "1234.56" é 1.234,56, não 123456 (31/10/2026)
+const lerReais = (s: string) => formatos.numeroDigitado(s) ?? NaN;
 const emReais = (v: number | null | undefined) => (v != null ? v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '');
 const pctBr = (v: number) => v.toLocaleString('pt-BR') + '%';
 
@@ -430,7 +431,7 @@ function PgdasPrevia({ vm, valores, informar }: { vm: VmPainelDoFiscal; valores?
   const anexoMerc: t.sieg.Anexo = valores?.anexoMercadorias === 2 ? 'II' : 'I';
   const anexoServ: t.sieg.Anexo = valores?.anexoServicos === 4 ? 'IV' : valores?.anexoServicos === 5 ? 'V' : 'III';
   const [texto, setTexto] = useState(rbt12 != null ? rbt12.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '');
-  const lido = Number(texto.replace(/\./g, '').replace(',', '.'));
+  const lido = lerReais(texto);
   const valido = texto.trim() !== '' && Number.isFinite(lido) && lido >= 0;
   const s = vm.segregacao;
   const sv = vm.servicosDoMes;
@@ -566,7 +567,7 @@ function TabelaDeServicos({ linhas }: { linhas: readonly t.painel.ServicoNaVerif
 /** O DP informa o total da folha do mês (o Fiscal vê ao lado do faturamento). */
 function FolhaTotal({ valor, informar }: { valor: number | null; informar?: (v: number) => void }) {
   const [texto, setTexto] = useState(valor != null ? valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '');
-  const lido = Number(texto.replace(/\./g, '').replace(',', '.'));
+  const lido = lerReais(texto);
   const valido = texto.trim() !== '' && Number.isFinite(lido) && lido >= 0;
   return (
     <>
