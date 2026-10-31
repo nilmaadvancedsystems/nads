@@ -103,7 +103,8 @@ export function useBalaoDoSuporte() {
     if (!arquivos.length && !frase.trim()) { setErro('Anexe o arquivo (ou escreva um comentário).'); return; }
     setEnviando(true); setErro('');
     try {
-      const caminho = s.caminhoDaConversa(ctx, escolhas);
+      // a regra do banco aceita o caminho até 500 letras (o texto, até 4000): várias cápsulas marcadas passavam e o envio era recusado
+      const caminho = s.caminhoDaConversa(ctx, escolhas).slice(0, 500);
       const lidos = await Promise.all(arquivos.map(async f => ({ nome: f.name, bytes: new Uint8Array(await f.arrayBuffer()) })));
       const id = await repo.enviarBug({
         // a mensagem no formato de sempre (Vitor, 21/10/2026: "chegue para mim em um padrão")
