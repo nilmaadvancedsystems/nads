@@ -11,7 +11,7 @@
 // barra com quantos meses já chegaram e o tempo que falta, pela média dos que já vieram (29/10/2026:
 // "isso aqui demora muito, e não tem um feedback de porcentagem nem nada"). Sem os textos de explicação (29/10/2026: "tira
 // essas explicações").
-import { empresas as emp, tarefas as t } from '@nads/core';
+import { empresas as emp, formatos, tarefas as t } from '@nads/core';
 import { useEmpresasPermitidas } from '../../empresas/andamento';
 import { useRetorno } from '@nads/ui';
 import { useState } from 'react';
@@ -176,7 +176,8 @@ export function useAntecipacaoIcms() {
     aliquota, aliquotaPadrao: aliquotaGravada == null,
     mudarAliquota(texto: string) {
       if (!c.carregada || !empresa) return;
-      const v = texto.trim() ? Number(texto.replace('%', '').replace(/\./g, '').replace(',', '.')) : null;
+      // "7.5" é 7,5% (tirar o ponto dava 75%, que passava sem aviso; 31/10/2026); o que não é número dá o erro da alíquota
+      const v = texto.trim() ? formatos.numeroDigitado(texto.replace('%', '')) ?? NaN : null;
       const r = cad.definirAliquotaDaAntecipacao(c.cadastro, v, por, new Date());
       if ('erro' in r) { aviso({ titulo: 'Alíquota que não vale', texto: r.erro, tom: 'erro' }); return; }
       if (r !== c.cadastro) { c.salvar(r); toast(v == null ? 'Voltou à alíquota padrão (17%)' : 'Alíquota interna: ' + texto.trim().replace('%', '') + '%'); }
