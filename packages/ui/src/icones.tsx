@@ -137,18 +137,3 @@ export function MarcaN() {
     </svg>
   );
 }
-
-/**
- * A logo do nads: o N da Nilma e o "ads" na cor do texto, numa peça só (30/10/2026: "e pra ser a logo do nads", no topo do
- * menu ☰). As cores do N vêm do DefsMarca; o "ads" acompanha o tema (currentColor). Tamanho explícito: a altura, e a
- * largura sai da proporção.
- */
-export function LogoNads({ altura = 34 }: { altura?: number }) {
-  return (
-    <svg className="logo-nads" viewBox="0 0 2440 1176" width={Math.round(altura * 2440 / 1176)} height={altura} role="img" aria-label="nads">
-      <path fill="url(#nlRed)" d={CAMINHO_N} />
-      <path fill="url(#nlSilver)" transform="rotate(180 360 588)" d={CAMINHO_N} />
-      <text x="790" y="1150" fontSize="1050" fontWeight="700" letterSpacing="-40" fill="currentColor" aria-hidden="true">ads</text>
-    </svg>
-  );
-}

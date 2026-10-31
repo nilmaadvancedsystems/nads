@@ -1,6 +1,6 @@
 // @nads/ui — View compartilhada por todos os aplicativos do nads: o design-n1 em React.
 // O CSS vem de '@nads/ui/estilo.css' (src/estilo/nads.css, cópia fiel do visual da Conferência).
-export { Icone, DefsMarca, MarcaN, LogoNads, type NomeIcone } from './icones';
+export { Icone, DefsMarca, MarcaN, type NomeIcone } from './icones';
 export { logoNilmaParaImprimir, type LogoParaImprimir } from './logoParaImprimir';
 export { RetornoProvider, useRetorno, classeDaJanela, ordemDosBotoes, type Retorno, type OpcoesAviso, type OpcoesModal, type BotaoModal } from './retorno';
 export { useTema, SeletorTema, type Tema } from './tema';

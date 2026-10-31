@@ -2,7 +2,7 @@
 // de cada tipo dá o código (BT-01, BT-02…): peça nova entra no FIM do tipo, para os códigos não mudarem.
 import {
   Alerta, AnelDeContagem, BarrasEmColuna, BotaoAcao, BotaoFechar, Vazio, CartaoComAnel, RoscaComLegenda, ConfigLinha, ConfigSecao, Dica, MedalhaGov, classeDaJanela, ordemDosBotoes, BotaoIcone, CampoArquivos, CampoData, Esqueleto, Icone, Interruptor, LogoBanco, LogoDrive, LogoGmail, MapaDeCalor, Variacao,
-  LogoFgts, LogoGovernoMinas, LogoNads, LogoInss, LogoReceitaFederal, LogoSimplesNacional, LogoWhatsApp, MarcaN, MenuSuspenso, Segmentado, SeletorMes, SeletorTema, Stat, type NomeIcone, type OpcoesModal,
+  LogoFgts, LogoGovernoMinas, LogoInss, LogoReceitaFederal, LogoSimplesNacional, LogoWhatsApp, MarcaN, MenuSuspenso, Segmentado, SeletorMes, SeletorTema, Stat, type NomeIcone, type OpcoesModal,
 } from '@nads/ui';
 import { useState, type ReactNode } from 'react';
 import { CampoAssinatura, FORMATOS_DE_ARQUIVO, IconeDeArquivo } from '@nads/ui';
@@ -342,8 +342,6 @@ export const PECAS_BASE: Peca[] = [
     demo: () => <div className="cat-icones">{ICONES.map(n => <span key={n} className="cat-icone"><Icone nome={n} />{n}</span>)}</div> },
   { id: 'marca-n', tipo: 'icones', nome: 'O N da Nilma', componente: 'MarcaN', classes: ['brand-mark', 'auth-mark'], telas: TODAS,
     demo: () => <><span className="brand-mark"><MarcaN /></span><span className="auth-mark"><MarcaN /></span></> },
-  { id: 'logo-nads', tipo: 'logos', nome: 'A logo do nads', descricao: 'O N da Nilma e o "ads" na cor do texto, numa peça só (30/10/2026: "e pra ser a logo do nads"): no topo do menu ☰. Tamanho explícito pela altura (34 px por padrão); a largura sai da proporção', componente: 'LogoNads', classes: ['logo-nads'], telas: TODAS, uso: '<span className="brand-mark"><LogoNads /></span>',
-    demo: () => <span className="brand-mark"><LogoNads /></span> },
   { id: 'setas', tipo: 'icones', nome: 'Setas (▾ e ordenar)', descricao: 'O triângulo cheio do GitHub', classes: ['menu-seta', 'th-seta', 'imp-seta'], telas: TODAS,
     demo: () => <><Icone nome="caretDown" className="menu-seta" /><button className="imp-seta" type="button"><Icone nome="caretDown" /></button><button className="imp-seta aberta" type="button"><Icone nome="caretDown" /></button></> },
 
@@ -624,7 +622,7 @@ export const PECAS_BASE: Peca[] = [
     demo: () => (
       <div className="cat-moldura" style={{ maxWidth: 300 }}>
         <aside className="drawer cat-parado" style={{ position: 'static', height: 'auto', width: '100%' }}>
-          <div className="drawer-head"><span className="brand-mark"><LogoNads /></span><button className="drawer-x" type="button"><Icone nome="x" /></button></div>
+          <div className="drawer-head"><span className="brand-mark"><MarcaN /></span><button className="drawer-x" type="button"><Icone nome="x" /></button></div>
           <button className="drawer-item" type="button"><Icone nome="home" />Início</button>
           <hr className="drawer-sep" />
           {([['Minhas empresas', 'briefcase'], ['Contábil', 'checklist'], ['Cadastro', 'landmark'], ['Fiscal', 'fileText'], ['Drive', 'pasta'], ['Gmail', 'envelope']] as [string, NomeIcone][]).map(([n, i]) => <button key={n} className="drawer-item" type="button"><Icone nome={i} />{n}</button>)}
