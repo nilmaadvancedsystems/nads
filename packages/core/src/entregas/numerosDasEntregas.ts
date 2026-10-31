@@ -1,6 +1,7 @@
 // Os números do Painel do Entregas no nads (16/10/2026, a cópia fiel): o ranking da equipe na competência (e a meta por
 // pessoa, config/metas), as entregas confirmadas por dia, o mapa (as entregas com o lugar) e os clientes sem entrega
 // confirmada nas últimas 3 competências. Puro: sai do que o Painel já tem carregado.
+import { diaEmBrasilia } from '../formatos';
 import { clientesDeEntrega, dataHoraDaEntrega, quandoFoi, textoDosItens, type ClienteDaRota, type Entrega } from './documentos';
 
 /** As entregas confirmadas na competência por pessoa, a que mais fez primeiro. */
@@ -29,7 +30,8 @@ export function entregasPorDia(doMes: readonly Pick<Entrega, 'status' | 'confirm
   const m = new Map<string, number>();
   for (const e of doMes) {
     if (e.status !== 'confirmada') continue;
-    const dia = String(e.confirmadoEm || e.criadoEm || '').slice(0, 10);
+    // o dia em Brasília (31/10/2026: cortar o ISO, que é UTC, punha a entrega das 21h em diante no dia seguinte)
+    const dia = diaEmBrasilia(String(e.confirmadoEm || e.criadoEm || ''));
     if (dia) m.set(dia, (m.get(dia) || 0) + 1);
   }
   return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([dia, total]) => ({ dia, total }));
