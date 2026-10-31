@@ -921,6 +921,22 @@ const esperarSieg = (async () => {
   await fErro.acordar();
   igual('SIEG fila: o erro de um pedido não para os outros', fErro.ativos(), 0);
   igual('SIEG fila: a chave é a empresa e o mês', siegT.chaveDaPasta({ codigo: '0380', competencia: '2026-10' }), '0380|2026-10');
+
+  // sem esperar o Drive (31/10/2026): só quando o último resumo do mês está todo no que o portal trouxe agora
+  const nA = { chave: '1'.repeat(44), tipo: 'NF-e' };
+  const nB = { chave: '2'.repeat(44), tipo: 'NFC-e' };
+  const sB = { chave: '', tipo: 'NFS-e', numero: '15', emitente: { doc: '11.222.333/0001-81' }, data: '2026-10-05' };
+  const agoraT = { emitidas: [nA, sB], recebidas: [] };
+  igual('SIEG Drive: o último resumo todo no portal, não espera', siegT.cobreOUltimo({ emitidas: [nA], recebidas: [] }, agoraT), true);
+  igual('SIEG Drive: a NFS-e (sem chave) vale pelo número, prestador e data', siegT.cobreOUltimo({ emitidas: [Object.assign({}, sB, { emitente: { doc: '11222333000181' } })], recebidas: [] }, agoraT), true);
+  igual('SIEG Drive: nota que só o Drive tinha (a NFC-e de MG), espera', siegT.cobreOUltimo({ emitidas: [nA, nB], recebidas: [] }, agoraT), false);
+  igual('SIEG Drive: outra NFS-e do mesmo número, espera', siegT.cobreOUltimo({ emitidas: [Object.assign({}, sB, { data: '2026-10-06' })], recebidas: [] }, agoraT), false);
+  igual('SIEG Drive: o primeiro download do mês (sem resumo), espera', [siegT.cobreOUltimo(null, agoraT), siegT.cobreOUltimo({ codigo: '1' }, agoraT)], [false, false]);
+  // o que só o Drive tem entra no resumo; o que o portal já trouxe não entra duas vezes
+  const baixadoT = spT.montarXmls('19449248000162', [nfeItensT]);
+  const jT = siegT.juntarOsDoDrive('19449248000162', baixadoT, [nfeItensT, cancT]);
+  igual('SIEG Drive: o cancelamento que só o Drive tinha entra e marca a nota', [jT.extras, jT.baixado.arquivos.length, jT.baixado.resumo.emitidas.map(n => !!n.cancelada)], [1, 2, [true]]);
+  igual('SIEG Drive: nada a mais no Drive, o download fica como veio', siegT.juntarOsDoDrive('19449248000162', baixadoT, [nfeItensT]).baixado === baixadoT, true);
 })();
 
 // --- razão social vale mais que o nome fantasia (FITO, 01/10/2026) ---
