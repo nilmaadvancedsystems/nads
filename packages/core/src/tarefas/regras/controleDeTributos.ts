@@ -109,14 +109,13 @@ export function numeroDoControle(texto: string): number {
 /** As sugestões do Entregas por empresa: o valor de cada coluna e a data da última entrega (AAAA-MM-DD) */
 export function sugestoesDoEntregas(grupo: GrupoDoControle, empresas: readonly EmpresaDoProtocolo[], guias: readonly GuiaEntregue[]): Map<number, { valores: Record<string, string>; data: string; email: boolean }> {
   const comoProtocolo: GrupoDoProtocolo = { id: grupo.id, rotulo: grupo.rotulo, selo: grupo.selo, regimes: grupo.regimes, colunas: grupo.colunas };
-  const ultima = new Map<number, string>();
-  for (const g of guias) if (g.em && g.em > (ultima.get(g.codigo) || '')) ultima.set(g.codigo, g.em);
   const r = new Map<number, { valores: Record<string, string>; data: string; email: boolean }>();
   for (const l of linhasDoProtocolo(comoProtocolo, empresas, guias, true)) {
     const valores = Object.fromEntries(Object.entries(l.valores).filter(([, v]) => v !== '✓'));
     if (!Object.keys(valores).length && !l.data) continue;
-    // o dia da última entrega em Brasília (o confirmadoEm é UTC)
-    r.set(l.codigo, { valores, data: l.data ? diaEmBrasilia(ultima.get(l.codigo) || '') : '', email: l.email === 'Sim' });
+    // o dia da última entrega em Brasília (o confirmadoEm é UTC), só das guias do grupo: a guia de outro departamento (o
+    // FGTS do DP) entregue depois não muda a data dos tributos
+    r.set(l.codigo, { valores, data: l.em ? diaEmBrasilia(l.em) : '', email: l.email === 'Sim' });
   }
   return r;
 }

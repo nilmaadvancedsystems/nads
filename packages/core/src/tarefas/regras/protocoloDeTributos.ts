@@ -61,6 +61,8 @@ export interface LinhaDoProtocolo {
   valores: Record<string, string>;
   /** dd/mm da última entrega */
   data: string;
+  /** o instante (ISO) da última entrega com guia de alguma coluna; '' sem ela */
+  em?: string;
   email: string;
 }
 
@@ -95,7 +97,7 @@ export function linhasDoProtocolo(grupo: GrupoDoProtocolo, empresas: readonly Em
     // o dia da entrega em Brasília (o confirmadoEm é UTC: depois das 21h, cortar o texto dava o dia seguinte)
     const dia = ultima ? diaEmBrasilia(ultima) : '';
     const data = dia ? dia.slice(8, 10) + '/' + dia.slice(5, 7) : '';
-    return { codigo: e.codigo, nome: e.nome, valores, data, email: email ? 'Sim' : '' };
+    return { codigo: e.codigo, nome: e.nome, valores, data, em: ultima, email: email ? 'Sim' : '' };
   });
 }
 
