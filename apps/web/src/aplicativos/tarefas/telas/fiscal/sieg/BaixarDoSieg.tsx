@@ -42,7 +42,6 @@ export function BaixarDoSieg() {
         : (
           <>
             <SiegDaEtapa key={'c' + codigo + vm.competencia} tipo="contagem" codigo={codigo} competencia={vm.competencia} />
-            {vm.exemplos && vm.painel && <p className="hint fc-exemplo">Dados de exemplo: umas notas inventadas para mostrar a tela.</p>}
             {vm.carregando ? <Esqueleto linhas={6} numeros={4} /> : (
               <>
                 {vm.painel && <Numeros vm={vm} />}
@@ -66,14 +65,14 @@ function Numeros({ vm }: { vm: VmBaixarDoSieg }) {
   const canceladas = (n: number) => (n ? ' · ' + quantas(n, 'cancelada', 'canceladas') : '');
   return (
     <>
-      <div className="stat-grid fin-numeros">
+      <div className="stat-grid fin-numeros sieg-numeros">
         <Stat grande={false} rotulo="Saídas" valor={reais(a.saidas.valor)} sub={quantas(a.saidas.quantidade, 'nota', 'notas') + canceladas(a.saidas.canceladas)} />
         <Stat grande={false} rotulo="Entradas" valor={reais(a.entradas.valor)} sub={quantas(a.entradas.quantidade, 'nota', 'notas') + canceladas(a.entradas.canceladas)} />
         <Stat grande={false} rotulo="Serviços prestados" valor={reais(a.prestados.valor)} sub={quantas(a.prestados.quantidade, 'nota', 'notas') + canceladas(a.prestados.canceladas)} />
         <Stat grande={false} rotulo="Serviços tomados" valor={reais(a.tomados.valor)} sub={quantas(a.tomados.quantidade, 'nota', 'notas') + canceladas(a.tomados.canceladas)} />
         <Stat grande={false} rotulo="CT-e" valor={reais(a.ctes.valor)} sub={quantas(a.ctes.quantidade, 'conhecimento', 'conhecimentos') + canceladas(a.ctes.canceladas)} />
       </div>
-      <div className="stat-grid fin-numeros">
+      <div className="stat-grid fin-numeros sieg-numeros">
         <Stat grande={false} rotulo="ICMS das saídas" valor={reais(a.saidas.icms)} sub={'Nas entradas ' + reais(a.entradas.icms)} />
         <Stat grande={false} rotulo="ICMS-ST das entradas" valor={reais(a.entradas.st)} sub={'Nas saídas ' + reais(a.saidas.st)} />
         <Stat grande={false} rotulo="IPI das entradas" valor={reais(a.entradas.ipi)} sub={'Nas saídas ' + reais(a.saidas.ipi)} />
@@ -131,7 +130,7 @@ function DaAba({ vm }: { vm: VmBaixarDoSieg }) {
         {mercadoria && r.semItens > 0 && <p className="fc-pe">{quantas(r.semItens, 'nota veio', 'notas vieram')} sem os itens no resumo do SIEG: fora do CFOP e do CST.</p>}
       </section>
       {vm.servico && r.retencoes.length > 0 && (
-        <div className="stat-grid fin-numeros">
+        <div className="stat-grid fin-numeros sieg-numeros">
           {r.retencoes.map(x => <Stat key={x.imposto} grande={false} rotulo={'Retido · ' + x.imposto} valor={reais(x.valor)} />)}
         </div>
       )}
@@ -155,7 +154,7 @@ function Notas({ vm }: { vm: VmBaixarDoSieg }) {
         <span className="fc-acoes">
           <label className="busca-curta fc-busca">
             <Icone nome="search" width={16} height={16} />
-            <input type="text" placeholder="Número, data, nome, CNPJ ou valor" aria-label="Buscar a nota" value={vm.buscaDaNota} onChange={e => vm.setBuscaDaNota(e.target.value)} />
+            <input type="text" placeholder="Número, nome ou valor" aria-label="Buscar a nota" value={vm.buscaDaNota} onChange={e => vm.setBuscaDaNota(e.target.value)} />
           </label>
         </span>
       </header>
