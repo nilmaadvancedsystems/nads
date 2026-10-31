@@ -862,6 +862,65 @@ const esperarSieg = (async () => {
   let desistiu = '';
   try { await siegT.contagemDoMes({}, '11222333000181', '2026-10', null, () => true); } catch (e) { desistiu = e.message; }
   igual('SIEG: a contagem desiste sem chamar o SIEG', desistiu, 'a consulta não é mais necessária');
+
+  // os trabalhadores da fila (31/10/2026): até 2 pedidos juntos, a mesma empresa e mês nunca juntos, ninguém pega o mesmo
+  const dormirT = ms => new Promise(r => setTimeout(r, ms));
+  const filaT = (lista, paralelo, demora = () => 20) => {
+    const pendentes = lista.map(x => Object.assign({}, x));
+    const rodando = new Set();
+    const chaves = new Set();
+    const r = { max: 0, juntos: [], feitos: [], dobrados: 0 };
+    const t = siegT.criarTrabalhadores({
+      paralelo,
+      // a leitura do banco demora e pode ainda ver o que foi pego (como o Firestore antes do "processando" chegar)
+      escolher: async (ocupadas, pegos) => { await dormirT(3); const x = pendentes.find(p => !pegos.has(p.id) && !ocupadas.has(p.chave)); return x || null; },
+      atender: async x => {
+        if (rodando.has(x.id)) r.dobrados++;
+        if (chaves.has(x.chave)) r.juntos.push(x.id);
+        rodando.add(x.id); chaves.add(x.chave);
+        r.max = Math.max(r.max, rodando.size);
+        await dormirT(demora(x));
+        pendentes.splice(pendentes.findIndex(p => p.id === x.id), 1);
+        rodando.delete(x.id); chaves.delete(x.chave);
+        r.feitos.push(x.id);
+      },
+    });
+    return { t, r, pendentes };
+  };
+  const seis = [['a', '380|2026-10'], ['b', '309|2026-10'], ['c', '380|2026-10'], ['d', '207|2026-09'], ['e', '380|2026-09'], ['f', '309|2026-10']].map(([id, chave]) => ({ id, chave }));
+  const f2 = filaT(seis, 2);
+  const t0 = Date.now();
+  await f2.t.acordar();
+  const ms2 = Date.now() - t0;
+  igual('SIEG fila: com 2, todos atendidos, uma vez cada', f2.r.feitos.slice().sort(), ['a', 'b', 'c', 'd', 'e', 'f']);
+  igual('SIEG fila: com 2, nunca mais de 2 juntos, nenhum pego duas vezes', [f2.r.max, f2.r.dobrados], [2, 0]);
+  igual('SIEG fila: a mesma empresa e mês nunca juntos', f2.r.juntos, []);
+  igual('SIEG fila: a mesma empresa e mês na ordem de chegada', f2.r.feitos.filter(x => x === 'a' || x === 'c'), ['a', 'c']);
+  igual('SIEG fila: livre depois de esvaziar', f2.t.ativos(), 0);
+  const f1 = filaT(seis, 1);
+  const t1 = Date.now();
+  await f1.t.acordar();
+  const ms1 = Date.now() - t1;
+  igual('SIEG fila: com 1, um por vez (como antes)', [f1.r.max, f1.r.feitos], [1, ['a', 'b', 'c', 'd', 'e', 'f']]);
+  igual('SIEG fila: com 2 leva perto da metade do tempo de 1', ms2 < ms1 * 0.75, true);
+  // um pedido só da mesma empresa: o 2º trabalhador não tem o que pegar e sai; o 1º faz os dois
+  const fMesma = filaT([{ id: 'x', chave: '1|2026-10' }, { id: 'y', chave: '1|2026-10' }], 2);
+  await fMesma.t.acordar();
+  igual('SIEG fila: dois da mesma empresa e mês, um depois do outro', [fMesma.r.max, fMesma.r.feitos], [1, ['x', 'y']]);
+  // o pedido que chega com os dois ocupados é pego por quem terminar primeiro (acordar de novo não abre um 3º)
+  const fChega = filaT([{ id: 'p', chave: '1|x' }, { id: 'q', chave: '2|x' }], 2, x => (x.id === 'p' ? 200 : 20));
+  const fim = fChega.t.acordar();
+  await dormirT(10);
+  fChega.pendentes.push({ id: 'r', chave: '3|x' });
+  fChega.t.acordar();
+  await fim;
+  igual('SIEG fila: o que chegou com os dois ocupados também é atendido, sem passar de 2', [fChega.r.feitos, fChega.r.max], [['q', 'r', 'p'], 2]);
+  // o erro num pedido não para o trabalhador
+  const fErro = siegT.criarTrabalhadores({ paralelo: 2, escolher: (() => { const l = [{ id: '1', chave: 'a' }, { id: '2', chave: 'b' }, { id: '3', chave: 'c' }]; return async (o, pg) => l.find(x => !pg.has(x.id) && !x.feito) || null; })(),
+    atender: async x => { x.feito = true; if (x.id === '1') throw new Error('falhou'); }, log: () => {} });
+  await fErro.acordar();
+  igual('SIEG fila: o erro de um pedido não para os outros', fErro.ativos(), 0);
+  igual('SIEG fila: a chave é a empresa e o mês', siegT.chaveDaPasta({ codigo: '0380', competencia: '2026-10' }), '0380|2026-10');
 })();
 
 // --- razão social vale mais que o nome fantasia (FITO, 01/10/2026) ---

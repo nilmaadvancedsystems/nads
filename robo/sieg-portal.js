@@ -37,8 +37,11 @@ let sessao = null;
 // 14 minutos): o Chrome às vezes não abre de primeira (o perfil ainda preso pelo anterior)
 // uma abertura do Chrome por vez: os tipos que baixam juntos e pedem sessão nova esperam a mesma
 let abrindo = null;
-async function cookiesDoPortal(renovar) {
+// recusada: a sessão que o portal recusou (31/10/2026, dois pedidos ao mesmo tempo): se outro pedido já trocou por uma nova,
+// usa a nova em vez de abrir o Chrome de novo
+async function cookiesDoPortal(renovar, recusada) {
   if (abrindo) return abrindo;
+  if (renovar && sessao && recusada && sessao !== recusada) return sessao;
   if (renovar) { sessao = null; try { fs.unlinkSync(SESSAO); } catch (_) { /* não tinha */ } }
   if (sessao) return sessao;
   try { sessao = fs.readFileSync(SESSAO, 'utf8').trim() || null; } catch (_) { /* ainda não guardou */ }
@@ -174,12 +177,13 @@ async function xmlsPeloPortal(doc, competencia, aoAndar, lerZip, soTipos, espera
       const sinal = cancelar.get(nome).signal;
       try {
         let zip;
-        try { zip = await zipDoPeriodo(cookie, doc, tipo, competencia, sinal); }
+        const usada = cookie;
+        try { zip = await zipDoPeriodo(usada, doc, tipo, competencia, sinal); }
         catch (err) {
           if (sinal.aborted) return;
           // a sessão guardada venceu: pega a do perfil (o Chrome) e tenta uma vez mais
           if (!err.message.startsWith(SEM_LOGIN)) throw err;
-          cookie = await cookiesDoPortal(true);
+          cookie = await cookiesDoPortal(true, usada);
           zip = await zipDoPeriodo(cookie, doc, tipo, competencia, sinal);
         }
         if (zip && !doDrive.has(nome)) juntar(lerZip(zip));
@@ -230,7 +234,7 @@ async function xmlsPorChaves(doc, chaves, lerZip) {
         // como antes: o que não é .zip fica de fora (o que faltar sai do .zip do Drive)
         if (err.message.startsWith(SEM_NADA)) continue;
         if (!err.message.startsWith(SEM_LOGIN)) throw err;
-        cookie = await cookiesDoPortal(true);
+        cookie = await cookiesDoPortal(true, cookie);
         buf = await zipDaResposta(await pedir(), cookie);
       }
       if (buf) xmls.push(...lerZip(buf));
