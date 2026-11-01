@@ -1671,6 +1671,74 @@ igual('a agência e a conta no nome do arquivo ("Entradas_Saidas_ag3155cc990348_
   igual('39.6: ... o DAE da taxa do INEMA (não é ICMS): continua NÃO IDENTIFICADO', d39('inema572').acao, 'NAO_IDENTIFICADO');
   // (4ª rodada, grupos óbvios) os "Valores do Plano de Contas [Relatório Analítico]" da CDL (536): CONTÁBIL\RELATÓRIOS ALTERDATA, com o mês na frente do nome
   igual('39.7: o relatório do plano de contas da CDL de abril: CONTÁBIL\\RELATÓRIOS ALTERDATA, "04-2025 - VALORES POR PLANO DE CONTA.pdf"', s39(d39('planoContas536')).slice(0, 4), ['ARQUIVAR', 536, 'CONTÁBIL\\RELATÓRIOS ALTERDATA', '04-2025 - VALORES POR PLANO DE CONTA.pdf']);
+
+  // ---------------------------------------------------------------------------------------------------------------------
+  // 40. NÃO IDENTIFICADOS de 01/11/2026: as regras do Vitor que falhavam nos casos reais (teste-arquivador-casos-34.json) e o protocolo do Sintegra; o
+  // cadastro da seção 39 com os clientes destes casos (CNPJ, regime e a conta da Caixa da 511 de verdade)
+  // ---------------------------------------------------------------------------------------------------------------------
+  const C34 = JSON.parse(fs.readFileSync(path.join(__dirname, 'teste-arquivador-casos-34.json'), 'utf8'));
+  const E40 = E39.concat([
+    ['309', 'FITO ALIMENTOS LTDA', '26124295000100', 'Simples', []], ['343', 'RAIZZ EMPORIO DA SAUDE LTDA', '32468347000150', 'Simples', []],
+    ['448', 'GRANMIX COMERCIO DE ALIMENTOS LTDA - FILIAL 02', '28704876000219', 'Simples', []], ['449', 'GRANMIX COMERCIO DE ALIMENTOS LTDA - MATRIZ', '28704876000308', 'Simples', []],
+    ['492', 'VERSATIL LTDA', '49437322000191', 'Simples', []], ['493', "ANTONIA'S LTDA", '49495532000136', 'Simples', []],
+    ['511', 'VISUAL KIDS LTDA', '51927438000150', 'Simples', [['caixa', '3411', '579516138-8']]], ['514', 'OLARIA E TRANSPORTES TK LTDA', '52197402000121', 'Simples', []],
+    ['584', 'EMPREENDIMENTOS IMOBILIARIOS M&A LTDA', '63533881000126', 'Presumido', []], ['463', 'CENTRO DE ODONTOLOGIA ESTETICA LTDA', '45430981000145', 'Simples', []],
+  ]);
+  // como no cadastro de verdade: no Entregas a matriz e as filiais da Brazilian têm o mesmo nome ("BRAZILIAN FORESTRY EMPREENDIMENTOS"), o nome completo vem do nads
+  const NADS40 = [['413', 'BRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA'], ['418', 'BRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA - FILIAL 03'], ['453', 'BRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA - FILIAL 04']];
+  const E40e = E40.map(x => (NADS40.some(([c]) => c === x[0]) ? [x[0], 'BRAZILIAN FORESTRY EMPREENDIMENTOS'].concat(x.slice(2)) : x));
+  const linhas40 = CAD19.juntar({ entregas: E40e.map(([c, n, d, r, cb]) => ({ codigoOrigem: c, nome: n, nomeFantasia: FANTASIA39[c] || '', documento: d, enquadramento: r, contasBancarias: cb.map(([banco, agencia, conta]) => ({ banco, agencia, conta })) })), nads: NADS40.map(([c, n]) => ({ codigo: +c, regime: 'Real', nome: n })) }).linhas;
+  const cad40 = R.montarCadastro(linhas40, E40.map(([c, n]) => c + ' - ' + n));
+  cad40.mapaMigracao = MIG.carregar({});
+  const ctx40 = { cadastro: cad40, hoje: new Date(2026, 10, 1) };
+  const e40 = (k, extra) => { const c = C34[k]; return Object.assign({ nome: c.nome, rel: c.rel }, c.texto ? { texto: c.texto } : {}, extra || {}); };
+  const d40 = (k, extra) => { const e = e40(k, extra); let d = R.decidir(e, ctx40); if (d.acao === 'NAO_IDENTIFICADO') { const m = MIG.decidir(e, ctx40, d); if (m) d = m; } return d; };
+  // (1) a declaração de inventário (Vitor, 27/10/2026: PAPÉIS DE TRABALHO\ANO): o nome com a data grudada e a pasta "INVENTÁRIO - DEFIS - REINF"
+  igual('40.1: "INVENTÁRIO20220127.pdf" da 10 (o "\\b" não separava o O do 2; "inventariado em 31/12/2021"): PAPÉIS DE TRABALHO\\2021, nome original', s39(d40('inventario10')), ['ARQUIVAR', 10, 'CONTÁBIL\\PAPÉIS DE TRABALHO\\2021', 'INVENTÁRIO20220127.pdf', 2021]);
+  igual('40.1: ... sem a data do inventário no texto: o ano da data grudada no nome (2022)', s39(d40('inventario10', { texto: [C34.inventario10.texto[0].replace(/inventariado em [\d/]+/, 'inventariado')] })).slice(2), ['CONTÁBIL\\PAPÉIS DE TRABALHO\\2022', 'INVENTÁRIO20220127.pdf', 2022]);
+  igual('40.1: "INVENTARIOS ROTATIVOS.pdf" (outra palavra) não entra pela regra do nome', /PAPÉIS DE TRABALHO/.test(String(d40('inventario10', { nome: 'INVENTARIOS ROTATIVOS.pdf', texto: ['ROTATIVO DE ESTOQUE'] }).destinoRelativo || '')), false);
+  igual('40.2: "DECLARAÇÃO DE INVENTARIO 2023.docx" da 493 na pasta "INVENTÁRIO - DEFIS - REINF": o DEFIS da pasta não a barra, PAPÉIS DE TRABALHO\\2023', s39(d40('declInventario493')), ['ARQUIVAR', 493, 'CONTÁBIL\\PAPÉIS DE TRABALHO\\2023', 'DECLARAÇÃO DE INVENTARIO 2023.docx', 2023]);
+  igual('40.2: ... outra declaração na mesma pasta do DEFIS continua de fora de OUTROS DOCUMENTOS', /OUTROS DOCUMENTOS/.test(String(d40('declInventario493', { nome: 'DECLARAÇÃO DE FATURAMENTO 2023.docx', rel: C34.declInventario493.rel.replace(/[^\\]+$/, 'DECLARAÇÃO DE FATURAMENTO 2023.docx') }).destinoRelativo || '')), false);
+  // (2) os relatórios do sistema fiscal (Vitor, 29/10/2026: FISCAL\<regime>\RELATÓRIOS ALTERDATA\ANO)
+  igual('40.3: "Conferência de Antecipação MG" da 309: FISCAL\\SIMPLES NACIONAL\\RELATÓRIOS ALTERDATA\\2026, nome original', s39(d40('antecipacao309')), ['ARQUIVAR', 309, 'FISCAL\\SIMPLES NACIONAL\\RELATÓRIOS ALTERDATA\\2026', 'Relatorio Antecipação - 05.2026.pdf', 2026]);
+  igual('40.3: ... a memória de cálculo da 292 sem período nem ano no nome: o ano da emissão impressa (13/05/2022)', s39(d40('memoria292')).slice(0, 3), ['ARQUIVAR', 292, 'FISCAL\\LUCRO PRESUMIDO\\RELATÓRIOS ALTERDATA\\2022']);
+  igual('40.4: Registro de Apuração do ICMS da 449 (o CNPJ grudado na inscrição estadual): RELATÓRIOS ALTERDATA\\2026', s39(d40('apuracao449')).slice(0, 3), ['ARQUIVAR', 449, 'FISCAL\\SIMPLES NACIONAL\\RELATÓRIOS ALTERDATA\\2026']);
+  igual('40.4: ... o mesmo relatório com o CNPJ de outro cliente grudado: não vai para a 449', d40('apuracao449', { texto: [C34.apuracao449.texto[0].replace('28.704.876/0003-08', '32.468.347/0001-50')] }).cliente === 449 && d40('apuracao449', { texto: [C34.apuracao449.texto[0].replace('28.704.876/0003-08', '32.468.347/0001-50')] }).acao === 'ARQUIVAR', false);
+  igual('40.5: Relatório de Monofásicos da 511: RELATÓRIOS ALTERDATA\\2026', s39(d40('monofasicos511')).slice(0, 3), ['ARQUIVAR', 511, 'FISCAL\\SIMPLES NACIONAL\\RELATÓRIOS ALTERDATA\\2026']);
+  // (3) o relatório mensal de notas do emissor (05d §1; lote 8: EMITIDOS\RELATÓRIO MENSAL\ANO), um por modelo
+  const RM40 = 'FISCAL\\SIMPLES NACIONAL\\03. DOCUMENTOS FISCAIS\\EMITIDOS\\RELATÓRIO MENSAL\\2026';
+  igual('40.6: "Relatório NFe (55)" da 511 ("Mês de referência: Setembro/2026"): RELATÓRIO MENSAL, o modelo no nome', s39(d40('relNfe511')), ['ARQUIVAR', 511, RM40, '09-2026 - RELATORIO NOTAS EMITIDAS NF-e - VISUAL KIDS.pdf', 2026]);
+  igual('40.6: ... o "Relatório NFCe (65)" do mesmo mês não vira "(1)" do da NF-e', d40('relNfce511').nomeFinal, '09-2026 - RELATORIO NOTAS EMITIDAS NFC-e - VISUAL KIDS.pdf');
+  igual('40.6: "RELAÇÃO DE NFC-e - 01/09/2026 a 30/09/2026" da 492 (Relatorio_Fiscal.pdf): RELATÓRIO MENSAL 09-2026', s39(d40('relFiscal492')), ['ARQUIVAR', 492, RM40, '09-2026 - RELATORIO NOTAS EMITIDAS NFC-e - VERSATIL.pdf', 2026]);
+  // (4) o extrato da Caixa lido por OCR (Vitor, 28/10/2026: corrigir os layouts de extrato): "Conta 3411 / 1292.000579516138-8", a conta do cadastro da 511
+  igual('40.7: o banco do extrato da Caixa por OCR (o rótulo "Conta" sem os dois-pontos e o ponto antes da conta)', R.bancoDoTexto(C34.caixaOcr511.texto[0], true), 'CAIXA');
+  igual('40.7: ... a 511, EXTRATOS\\2025\\04\\BANCÁRIOS\\CAIXA, "04-2025.pdf"', s39(d40('caixaOcr511')), ['ARQUIVAR', 511, 'CONTÁBIL\\EXTRATOS\\2025\\04\\BANCÁRIOS\\CAIXA', '04-2025.pdf', 2025]);
+  igual('40.7: ... a conta da Caixa lida do documento', R.contasDoDocumento(C34.caixaOcr511.texto[0], true).map(c => c.conta.base + '-' + c.conta.dv), ['579516138-8']);
+  // (5) o evento de cancelamento da NF-e impresso pela consulta do Portal (B10/3ª rodada: CANCELADAS)
+  igual('40.8: "Evento cancelamento NF 241.pdf" da 443 (consulta do Portal da NF-e, ID110111): EMITIDOS\\CANCELADAS pela chave e pela data do evento', s39(d40('cancelPortal443')), ['ARQUIVAR', 443, 'FISCAL\\SIMPLES NACIONAL\\03. DOCUMENTOS FISCAIS\\EMITIDOS\\CANCELADAS', '08-06-2026 - CANCELAMENTO NF-e 241 - SU SEDUCAO MODA INTIMA.pdf', 2026]);
+  igual('40.8: ... o mesmo modelo de outro evento (Ciência da operação, 210210) não entra', d40('cancelPortal443', { texto: [C34.cancelPortal443.texto[0].replace(/ID110111/g, 'ID210210')] }).acao === 'ARQUIVAR' && /CANCELADAS/.test(d40('cancelPortal443', { texto: [C34.cancelPortal443.texto[0].replace(/ID110111/g, 'ID210210')] }).destinoRelativo || ''), false);
+  // (6) o protocolo de entrega do Sintegra (padrão novo, 01/11/2026): 05. SINTEGRA, "MM-AAAA - PROTOCOLO.pdf", o cliente pelo CNPJ do protocolo
+  igual('40.9: protocolo do Sintegra da 343 (o CNPJ grudado na inscrição estadual, "Período de Referência" na linha de cima): 05. SINTEGRA, "05-2026 - PROTOCOLO.pdf"', s39(d40('sintegra343')), ['ARQUIVAR', 343, 'FISCAL\\SIMPLES NACIONAL\\05. SINTEGRA', '05-2026 - PROTOCOLO.pdf', 2026]);
+  igual('40.9: ... o da 514 de julho', s39(d40('sintegra514')).slice(0, 4), ['ARQUIVAR', 514, 'FISCAL\\SIMPLES NACIONAL\\05. SINTEGRA', '07-2026 - PROTOCOLO.pdf']);
+  igual('40.9: ... na pasta de outro cliente (a 309): vale o CNPJ do protocolo (a 343)', d40('sintegra343', { rel: 'IMPORTAÇÃO\\FABIANA\\0309 - FITO ALIMENTOS LTDA - Ok\\05-2026.pdf' }).cliente, 343);
+  igual('40.9: ... o CNPJ de quem não é cliente: não vira PROTOCOLO de ninguém', d40('sintegra343', { texto: [C34.sintegra343.texto[0].replace('32.468.347/0001-50', '33.000.167/0001-01')] }).nomeFinal === '05-2026 - PROTOCOLO.pdf', false);
+  // (7) a conta de consumo (Vitor, 28/10/2026, lote 6: PAGAMENTOS\ANO\MÊS\<concessionária>) com o cliente ambíguo entre a matriz e as filiais (a DANFE da energia elétrica, o CNPJ
+  // ilegível no OCR): o cliente da pasta do grupo, a matriz 413
+  // o OCR do caso real ("COELBA R$116,42.pdf") só deixa a raiz do CNPJ e o nome cortado: a nota fica ambígua entre a matriz e as três filiais
+  igual('40.10: "COELBA R$116,42.pdf" na pasta do grupo da 413 (ambíguo entre 413/414/418/453): PAGAMENTOS DE FORNECEDORES\\2025\\01\\COELBA da matriz, nome original', s39(d40('coelba413')), ['ARQUIVAR', 413, 'CONTÁBIL\\PAGAMENTOS DE FORNECEDORES\\2025\\01\\COELBA', 'COELBA R$116,42.pdf', 2025]);
+  igual('40.10: ... pela regra nova (a evidência do cliente ambíguo)', d40('coelba413').evidencias.some(x => /cliente ambíguo entre a matriz e as filiais/.test(x)), true);
+  igual('40.10: ... com a raiz de um cliente de fora do grupo também no conteúdo (a 572): continua NÃO IDENTIFICADO', d40('coelba413', { texto: [C34.coelba413.texto[0] + '\nCNPJ 57.338.982 '] }).acao, 'NAO_IDENTIFICADO');
+  igual('40.10: ... e um PDF ambíguo que não é conta de consumo pelo nome não passa pela regra', d40('coelba413', { nome: 'NF 123 R$118,37.pdf', rel: C34.coelba413.rel.replace('NEOENERGIA R$118,37.pdf', 'NF 123 R$118,37.pdf') }).tipo === 'CONTA DE CONSUMO', false);
+  // (8) a alteração contratual da empresa com matriz e filiais (o mesmo nome no Entregas): a matriz (a regra da matriz do 5º lote), SOCIETÁRIO\DOCUMENTOS CONSTITUTIVOS
+  igual('40.11: "QUARTA ALTERAÇAO BRAZILIAN.pdf" (a razão social da matriz e das filiais 418/453 no Entregas): a matriz 413, DOCUMENTOS CONSTITUTIVOS, raiz 2021 (o arquivamento na Junta)', s39(d40('contrato413')), ['ARQUIVAR', 413, 'SOCIETÁRIO\\DOCUMENTOS CONSTITUTIVOS', 'QUARTA ALTERAÇAO BRAZILIAN.pdf', 2021]);
+  igual('40.11: ... a mesma alteração na pasta conferida de uma filial (418): vale a pasta, não a matriz', d40('contrato413', { rel: '0418 - BRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA - FILIAL 03\\CONTRATO SOCIAL\\QUARTA ALTERAÇAO BRAZILIAN.pdf' }).cliente, 418);
+  // (9) o "CCF<data>.pdf" escaneado da 584 (Vitor, 29/10/2026: são escrituras de terrenos): depois do OCR o texto existe, e a regra continua valendo
+  const ocr40 = { ocr: { confianca: 93, ms: 1, erro: null } };
+  igual('40.12: "CCF08052026.pdf" da 584 lido por OCR (a certidão de inteiro teor da matrícula): SOCIETÁRIO\\ESCRITURAS\\2022', s39(d40('ccf584', ocr40)).slice(0, 3), ['ARQUIVAR', 584, 'SOCIETÁRIO\\ESCRITURAS\\2022']);
+  igual('40.12: ... o mesmo "CCF" de outro cliente (a pasta da 572) não entra pela regra da 584', d40('ccf584', Object.assign({ rel: 'FERNANDO\\572 FREEDOM REFORESTING LTDA\\DOC\\CCF08052026.pdf', texto: ['texto qualquer lido por OCR sem título de documento conhecido nenhum'] }, ocr40)).tipo === 'ESCRITURA', false);
+  igual('40.12: ... e o recibo de cartório escaneado com nome CCF continua fora das escrituras', d40('ccf584', Object.assign({ texto: ['RECIBO\nRecebemos de EMPREENDIMENTOS IMOBILIARIOS a importância referente a EMOLUMENTOS e TFJ do registro'] }, ocr40)).tipo === 'ESCRITURA', false);
+  // (10) a certidão de quitação plena da Prefeitura de Belo Horizonte (a CND municipal de lá; 04b Certidões): SOCIETÁRIO\CERTIDÕES\MUNICIPAL, a data da emissão ('Emissão em:')
+  igual('40.13: CND municipal de BH da 463 ("CERTIDÃO DE QUITACAO PLENA", "Emissão em: 04/07/2023"): CERTIDÕES\\MUNICIPAL, 04-07-2023.pdf', s39(d40('cndPbh463')), ['ARQUIVAR', 463, 'SOCIETÁRIO\\CERTIDÕES\\MUNICIPAL', '04-07-2023.pdf', 2023]);
   console.log((falhas ? falhas + ' FALHA(S) em ' : 'ok: ') + total + ' testes');
   process.exit(falhas ? 1 : 0);
 })().catch(e => { console.log('FALHOU com erro:', e.stack); process.exit(1); });
