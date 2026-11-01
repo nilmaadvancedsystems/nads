@@ -973,7 +973,8 @@ function iniciarSieg({ db, log }) {
           const jaTem = new Set([...(await noDrive).nomes, ...(await fs.promises.readdir(pasta).catch(() => []))]);
           return lista.filter(a => !jaTem.has(a.nome));
         };
-        // sem esperar o Drive, ainda não se sabe quantos faltam: o total vai com todos e é acertado por trás
+        // sem esperar o Drive, ainda não se sabe quantos faltam: o total vai com todos e é acertado por trás; até lá o pedido
+        // fica com drive.conferindo (31/10/2026: a tela mostrava "Salvando no Drive por trás (0 de 747)" e depois "de 175")
         let faltam = semEsperarODrive ? null : await faltamNoDrive(arquivos);
         numeros.jaSalvos = faltam ? arquivos.length - faltam.length : 0;
         const comoFica = f => ({ pasta: !f || f.length ? onde : 'o Drive do cliente (já estava tudo lá)', zip: !f || f.length ? nomeDoZip : '' });
@@ -981,7 +982,7 @@ function iniciarSieg({ db, log }) {
         // concluído agora e o Drive termina por trás, contando em drive { total, feitos, pronto }
         await d.ref.update({
           status: 'concluido', concluidoEm: new Date().toISOString(), andamento: '', pct: 100, fase: 'pronto', numeros,
-          drive: { total: faltam ? faltam.length : arquivos.length, feitos: 0, pronto: !!faltam && !faltam.length },
+          drive: { total: faltam ? faltam.length : arquivos.length, feitos: 0, pronto: !!faltam && !faltam.length, ...(faltam ? {} : { conferindo: true }) },
           // nada novo: não grava no Claudio Secretario (já estava tudo arquivado ou lá)
           resultado: { arquivos: arquivos.length, novos: 0, jaSalvos: numeros.jaSalvos, ...comoFica(faltam), emitidas: resumo.emitidas.length, recebidas: resumo.recebidas.length },
         });
@@ -1004,7 +1005,7 @@ function iniciarSieg({ db, log }) {
             faltam = await faltamNoDrive(arquivos);
             numeros.jaSalvos = arquivos.length - faltam.length;
             const fica = comoFica(faltam);
-            await d.ref.update({ 'drive.total': faltam.length, 'drive.pronto': !faltam.length, 'numeros.jaSalvos': numeros.jaSalvos, 'numeros.xmls': arquivos.length,
+            await d.ref.update({ 'drive.total': faltam.length, 'drive.pronto': !faltam.length, 'drive.conferindo': false, 'numeros.jaSalvos': numeros.jaSalvos, 'numeros.xmls': arquivos.length,
               'resultado.jaSalvos': numeros.jaSalvos, 'resultado.arquivos': arquivos.length, 'resultado.pasta': fica.pasta, 'resultado.zip': fica.zip }).catch(() => {});
           }
           // em paralelo (48 por vez; 16 levavam 34 s para 1292 XMLs): o andamento do Drive no máximo a cada 1 s

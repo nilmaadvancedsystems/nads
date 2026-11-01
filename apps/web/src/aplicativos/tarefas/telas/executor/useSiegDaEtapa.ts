@@ -83,7 +83,9 @@ export function useSiegDaEtapa(tipo: 'contagem' | 'saidas', codigo: string, comp
       xmls: janela === 'xmls',
       // o que o robô está fazendo agora (ex.: "Recebidas · NF-e (120 XMLs até agora)")
       // pronto para a pessoa e o Drive ainda gravando por trás (09/10/2026): o passo do Drive segue andando
-      detalhe: driveAndando ? 'Salvando no Drive por trás (' + driveAndando.feitos + ' de ' + driveAndando.total + '): pode seguir'
+      // (31/10/2026) sem ter esperado a leitura do Drive, o robô ainda não sabe quantos faltam: "0 de 747" e depois "de 175"
+      detalhe: driveAndando?.conferindo ? 'Conferindo o que já está no Drive (por trás): pode seguir'
+        : driveAndando ? 'Salvando no Drive por trás (' + driveAndando.feitos + ' de ' + driveAndando.total + '): pode seguir'
         : pJanela?.drive?.erro ? 'O Drive parou (' + pJanela.drive.erro + '): o próximo pedido salva o que faltou'
           : pJanela?.status === 'processando' && pJanela.andamento && !['emitidas', 'recebidas'].includes(pJanela.andamento) ? pJanela.andamento : '',
       passos: passos.map((texto, i) => (driveAndando && texto === 'Salvando na pasta do cliente no Drive'

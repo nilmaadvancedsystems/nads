@@ -16,7 +16,7 @@ export interface PedidoSieg {
   fase?: 'baixando' | 'entregando' | 'nads' | 'drive' | 'pronto';
   numeros?: { xmls: number; novos: number; jaSalvos: number; doDrive: number; doCliente?: number; deOutros?: number };
   /** o Drive por trás (09/10/2026): o pedido já está pronto para a pessoa e o robô ainda grava os XMLs novos */
-  drive?: { total: number; feitos: number; pronto: boolean; erro?: string };
+  drive?: { total: number; feitos: number; pronto: boolean; erro?: string; /** ainda conferindo o que já está no Drive: o total não vale (31/10/2026) */ conferindo?: boolean };
 }
 
 /** A situação das notas na SEFAZ (15/10/2026): o pedido e o que o robô da VM achou, nota a nota, pela chave. */
