@@ -11,7 +11,8 @@
 //     erros com o que fazer, os alertas de agora e o último lado a lado.
 //   robo/arquivadorNovo/dias/{AAAA-MM-DD}-{n}   o histórico do dia em partes de até ~700 KB (a busca da aba Arquivados);
 //                                          só a parte que mudou é regravada, junto com o documento principal; as de mais
-//                                          de DIAS_GUARDADOS dias (24 meses) o próprio robô apaga (no banco e no PC).
+//                                          de DIAS_NO_BANCO dias (90; 01/11/2026) o robô apaga do banco e as de mais de
+//                                          DIAS_GUARDADOS (24 meses), do PC.
 //                                          Os "já estavam arquivados" vão só até MAX_JA_ARQUIVADOS_NO_BANCO por dia
 //                                          (01/11/2026); os outros ficam só no arquivo do dia no PC (a contagem tem todos).
 //   robo/arquivadorResumo                  o resumo pequeno para a janela do Arquivador no Drive da Tarefas (23/10/2026), que o
@@ -58,6 +59,11 @@ const DIAS_GUARDADOS = 730;   // 24 meses (23/10/2026: era 31)
 // além da contagem, que continua inteira (o painel, o resumo do mês e o arquivo do dia no PC contam todos). Passou do teto,
 // o item vai só para o arquivados-AAAA-MM-DD.jsonl do PC.
 const MAX_JA_ARQUIVADOS_NO_BANCO = 300;
+// 01/11/2026: no banco, o histórico de cada arquivo fica DIAS_NO_BANCO dias (ARQUIVADOR_DIAS_NO_BANCO troca); o arquivo do
+// dia no PC continua DIAS_GUARDADOS (24 meses) e o resumo de cada mês (meses/{AAAA-MM}, as contagens) não é apagado. Com
+// 24 meses no banco, um dia comum (de 3 a 13 MB de partes) passaria de 1 GB em menos de um ano.
+const DIAS_NO_BANCO = Math.max(7, Number(process.env.ARQUIVADOR_DIAS_NO_BANCO) || 90);
+const MAX_APAGADOS_POR_VEZ = 2000;
 
 // ---------------------------------------------------------------------------------------------------------------------
 // puras (teste-arquivador-acompanhamento.js)
@@ -339,7 +345,7 @@ const hojeLocal = (t) => { const d = new Date(t); return d.getFullYear() + '-' +
  * Devolve as entradas que o contínuo chama: situacao, varredura, lendo, decisoes, erro, config, ladoALado, parar.
  */
 function criar(opcoes) {
-  const o = Object.assign({ log: () => {}, agora: () => Date.now(), freioMs: FREIO_MS, prazoMs: PRAZO_MS, historicoMs: HISTORICO_MS }, opcoes);
+  const o = Object.assign({ log: () => {}, agora: () => Date.now(), freioMs: FREIO_MS, prazoMs: PRAZO_MS, historicoMs: HISTORICO_MS, diasNoBanco: DIAS_NO_BANCO }, opcoes);
   const arqEstado = path.join(o.controle, 'acompanhamento.json');
   const arqDia = dia => path.join(o.controle, 'arquivados-' + dia + '.jsonl');
   let st = (() => { try { return JSON.parse(fs.readFileSync(arqEstado, 'utf8')); } catch (e) { return null; } })() || {};
@@ -508,11 +514,17 @@ function criar(opcoes) {
   async function limparAntigos() {
     const limite = hojeLocal(o.agora() - DIAS_GUARDADOS * 864e5);
     try { for (const f of fs.readdirSync(o.controle)) { const m = /^arquivados-(\d{4}-\d{2}-\d{2})\.jsonl$/.exec(f); if (m && m[1] < limite) fs.unlinkSync(path.join(o.controle, f)); } } catch (e) { /* segue */ }
+    // no banco, só os últimos o.diasNoBanco dias; de 50 em 50, até MAX_APAGADOS_POR_VEZ (um dia de releitura tem 1.000 partes)
+    const limiteDoBanco = hojeLocal(o.agora() - o.diasNoBanco * 864e5);
     try {
       const col = o.db && o.db.collection('robo').doc('arquivadorNovo').collection('dias');
       if (!col || typeof col.where !== 'function') return;
-      const snap = await comPrazo(col.where('dia', '<', limite).limit(50).get());
-      for (const d of snap.docs) await comPrazo(d.ref.delete());
+      for (let apagados = 0; apagados < MAX_APAGADOS_POR_VEZ;) {
+        const snap = await comPrazo(col.where('dia', '<', limiteDoBanco).limit(50).get());
+        for (const d of snap.docs) await comPrazo(d.ref.delete());
+        apagados += snap.docs.length;
+        if (snap.docs.length < 50) break;
+      }
     } catch (e) { o.log('acompanhamento: não limpei o histórico antigo:', e.message); }
   }
   /** O freio: no máximo uma gravação a cada freioMs (a mudança no meio espera a próxima). */
@@ -631,4 +643,4 @@ function criar(opcoes) {
   };
 }
 
-module.exports = { MAX_JA_ARQUIVADOS_NO_BANCO, criar, MOTIVOS, motivoLegivel, sugestao, evidenciaLegivel, classificarErro, acaoDoItem, itemCompacto, contagemVazia, somar, contagemPublicada, resumoDoMes, resumoParaODrive, situacaoDaPasta, ritmo, avancarPassada, alertas, destinoCurto, FREIO_MS };
+module.exports = { MAX_JA_ARQUIVADOS_NO_BANCO, DIAS_NO_BANCO, criar, MOTIVOS, motivoLegivel, sugestao, evidenciaLegivel, classificarErro, acaoDoItem, itemCompacto, contagemVazia, somar, contagemPublicada, resumoDoMes, resumoParaODrive, situacaoDaPasta, ritmo, avancarPassada, alertas, destinoCurto, FREIO_MS };

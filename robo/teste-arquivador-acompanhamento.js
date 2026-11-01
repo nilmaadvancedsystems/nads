@@ -191,7 +191,18 @@ try {
     const ac5 = A.criar({ db: db5, controle: dir5, origem: 'G:\\x', agora: () => T });
     await ac5._gravar();
     igual('limpeza: o arquivo velho do PC sai, o recente fica', fs.readdirSync(dir5).filter(f => /^arquivados-/.test(f)), ['arquivados-2026-10-20.jsonl']);
-    igual('limpeza: no banco, as partes de antes de 24 meses', [filtros[0] && filtros[0][0], filtros[0] && filtros[0][1], apagados.length], ['dia', '<', 1]);
+    // 01/11/2026: no banco, só os últimos DIAS_NO_BANCO dias (o PC continua 24 meses)
+    const limiteDoBanco = new Date(T - A.DIAS_NO_BANCO * 864e5).toLocaleDateString('en-CA');
+    igual('limpeza: no banco, as partes de antes de DIAS_NO_BANCO dias', [filtros[0] && filtros[0][0], filtros[0] && filtros[0][1], filtros[0] && filtros[0][2], apagados.length], ['dia', '<', limiteDoBanco, 1]);
+    // um dia de releitura (1.000 partes) sai de 50 em 50 na mesma volta, até 2.000
+    {
+      let sobram = 120; const lotes = [];
+      const col8 = { doc: () => ({ set: async () => {} }), where: () => ({ limit: (n) => ({ get: async () => { const k = Math.min(n, sobram); lotes.push(k); return { docs: Array.from({ length: k }, () => ({ ref: { delete: async () => { sobram--; } } })) }; } }) }) };
+      const db8 = { collection: () => ({ doc: () => ({ set: async () => {}, collection: () => col8 }) }) };
+      const ac8 = A.criar({ db: db8, controle: fs.mkdtempSync(path.join(os.tmpdir(), 'teste-acomp-')), origem: 'G:\\x', agora: () => T });
+      await ac8._gravar();
+      igual('limpeza: as partes velhas saem de 50 em 50 até acabar', [lotes, sobram], [[50, 50, 20], 0]);
+    }
     igual('o PC guarda o estado e o histórico', [fs.existsSync(path.join(tmp, 'acompanhamento.json')), fs.readdirSync(tmp).some(f => /^arquivados-.*\.jsonl$/.test(f))], [true, true]);
     // religar: as listas e o histórico voltam do PC
     const ac2 = A.criar({ db: null, controle: tmp, origem: 'G:\\x', agora: () => agora });
