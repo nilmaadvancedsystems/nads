@@ -209,6 +209,27 @@ try {
     const d3 = ac3._dia();
     igual('2.500 itens: mais de uma parte, nenhuma passa de 700 KB', [d3.partes.length > 1, d3.partes.every(pp => JSON.stringify(pp).length < 760 * 1024)], [true, true]);
     igual('as listas do painel têm teto', ac3._montar().ultimos.length, 50);
+    // 01/11/2026: os "já arquivados" do dia no banco têm teto (a releitura da pasta inteira encheu o banco); a contagem e o
+    // arquivo do PC continuam com todos, e quem não é "já arquivado" vai sempre
+    {
+      const dir6 = fs.mkdtempSync(path.join(os.tmpdir(), 'teste-acomp-'));
+      const teto = A.MAX_JA_ARQUIVADOS_NO_BANCO;
+      const ja = Array.from({ length: teto + 50 }, (_, i) => Object.assign({}, arq, { hash: 'j' + i, rel: 'j' + i + '.pdf', acao: 'JA_ARQUIVADO' }));
+      const ac6 = A.criar({ db: null, controle: dir6, origem: 'G:\\x', agora: () => agora });
+      ac6.decisoes(ja, 'PRODUCAO');
+      ac6.decisoes([Object.assign({}, arq, { hash: 'depois', rel: 'depois.pdf' })], 'PRODUCAO');
+      const noBanco = () => ac6._dia().partes.flat();
+      const m6 = ac6._montar();
+      igual('teto dos já arquivados: no banco, só até o teto; o arquivado de depois vai', [noBanco().filter(x => x.acao === 'jaArquivado').length, noBanco().filter(x => x.acao === 'arquivou').length, m6.historico.jaArquivadosForaDoBanco], [teto, 1, 50]);
+      igual('teto dos já arquivados: a contagem do dia tem todos', [m6.hoje.porAcao.jaArquivado, m6.hoje.porAcao.arquivou], [teto + 50, 1]);
+      const linhasDoPc = fs.readFileSync(path.join(dir6, fs.readdirSync(dir6).find(f => /^arquivados-/.test(f))), 'utf8').trim().split('\n').length;
+      igual('teto dos já arquivados: o arquivo do PC tem todos', linhasDoPc, teto + 51);
+      // religado: as partes relidas do PC respeitam o teto e a contagem volta inteira
+      const ac7 = A.criar({ db: null, controle: dir6, origem: 'G:\\x', agora: () => agora });
+      const m7 = ac7._montar();
+      igual('teto dos já arquivados, religado: partes com o teto, contagem inteira', [ac7._dia().partes.flat().length, m7.historico.jaArquivadosForaDoBanco, m7.hoje.porAcao.jaArquivado], [teto + 1, 50, teto + 50]);
+      try { fs.rmSync(dir6, { recursive: true, force: true }); } catch (e) { /* temporário */ }
+    }
     fim();
   }
 } catch (e) { falhas++; console.log('ERRO', e.stack); fim(); }

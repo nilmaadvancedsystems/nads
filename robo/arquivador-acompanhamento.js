@@ -12,6 +12,8 @@
 //   robo/arquivadorNovo/dias/{AAAA-MM-DD}-{n}   o histórico do dia em partes de até ~700 KB (a busca da aba Arquivados);
 //                                          só a parte que mudou é regravada, junto com o documento principal; as de mais
 //                                          de DIAS_GUARDADOS dias (24 meses) o próprio robô apaga (no banco e no PC).
+//                                          Os "já estavam arquivados" vão só até MAX_JA_ARQUIVADOS_NO_BANCO por dia
+//                                          (01/11/2026); os outros ficam só no arquivo do dia no PC (a contagem tem todos).
 //   robo/arquivadorResumo                  o resumo pequeno para a janela do Arquivador no Drive da Tarefas (23/10/2026), que o
 //                                          contábil também lê: o modo, o que está fazendo, o último sinal, os números de hoje,
 //                                          quantos estão para resolver e o último arquivado (o tipo, o cliente e o nome final
@@ -51,6 +53,11 @@ const MAX_BYTES_POR_VEZ = 400 * 1024;
 const PAUSA_MAX_MS = 10 * 60 * 1000;
 const JANELA_RITMO_MS = 10 * 60 * 1000;
 const DIAS_GUARDADOS = 730;   // 24 meses (23/10/2026: era 31)
+// 01/11/2026 (o banco chegou a 1.009 MB de 1 GB): os "já estavam arquivados" de um dia no banco têm teto. Numa releitura da
+// pasta inteira eles são quase tudo (26 e 27/10: 1.849 partes, ~410 MB, de 85 a 93% "já arquivado") e não dizem nada
+// além da contagem, que continua inteira (o painel, o resumo do mês e o arquivo do dia no PC contam todos). Passou do teto,
+// o item vai só para o arquivados-AAAA-MM-DD.jsonl do PC.
+const MAX_JA_ARQUIVADOS_NO_BANCO = 300;
 
 // ---------------------------------------------------------------------------------------------------------------------
 // puras (teste-arquivador-acompanhamento.js)
@@ -342,27 +349,45 @@ function criar(opcoes) {
   if (!st.hoje || st.hoje.chave !== hojeLocal(agora0)) st.hoje = contagemVazia(hojeLocal(agora0));
   if (!st.mes || st.mes.chave !== hojeLocal(agora0).slice(0, 7)) st.mes = contagemVazia(hojeLocal(agora0).slice(0, 7));
   // o histórico do dia (as partes): relido do arquivo do PC ao ligar
-  let dia = { chave: st.hoje.chave, partes: [[]], sujas: new Set() };
+  let dia = { chave: st.hoje.chave, partes: [[]], sujas: new Set(), jaNoBanco: 0, jaForaDoBanco: 0 };
+  /** O item vai para as partes do dia no banco? O "já arquivado" só até o teto do dia (os outros, sempre). Conta os dois. */
+  function vaiProBanco(d, x) {
+    if (x.acao !== 'jaArquivado') return true;
+    if (d.jaNoBanco < MAX_JA_ARQUIVADOS_NO_BANCO) { d.jaNoBanco++; return true; }
+    d.jaForaDoBanco++;
+    return false;
+  }
+  /**
+   * Relê o dia do arquivo do PC (as partes do banco, com o teto dos "já arquivados"). Devolve a contagem e a última ação
+   * de cada arquivo tiradas de TODAS as linhas (também as que passaram do teto e não estão nas partes).
+   */
   function carregarDia(chave) {
-    dia = { chave, partes: [[]], sujas: new Set() };
+    dia = { chave, partes: [[]], sujas: new Set(), jaNoBanco: 0, jaForaDoBanco: 0 };
+    const lido = { linhas: 0, contagem: contagemVazia(chave), ultimaAcao: new Map() };
     try {
       let tam = 0;
       for (const l of fs.readFileSync(arqDia(chave), 'utf8').split('\n')) {
         if (!l.trim()) continue;
+        const x = JSON.parse(l);
+        lido.linhas++;
+        somar(lido.contagem, x);
+        if (x.rel) lido.ultimaAcao.set(x.rel, x.acao);
+        if (!vaiProBanco(dia, x)) continue;
         if (tam + l.length > bytesDaParte(chave)) { dia.partes.push([]); tam = 0; }
-        dia.partes[dia.partes.length - 1].push(JSON.parse(l)); tam += l.length;
+        dia.partes[dia.partes.length - 1].push(x); tam += l.length;
       }
     } catch (e) { /* dia novo */ }
     dia.tam = dia.partes[dia.partes.length - 1].reduce((s, x) => s + JSON.stringify(x).length, 0);
     // a parte aberta vai de novo uma vez (o fim do dia que talvez não tenha subido antes de o robô parar)
     if (dia.partes[dia.partes.length - 1].length) dia.sujas.add(dia.partes.length - 1);
+    return lido;
   }
-  carregarDia(st.hoje.chave);
+  const lidoAoLigar = carregarDia(st.hoje.chave);
   // as contagens de hoje recontadas do histórico do dia, que é o registro (26/10/2026: o robô religado com o acompanhamento
-  // de outro dia mostrava "Hoje: 0" com 543 arquivados no histórico)
-  if (dia.partes.some(p => p.length)) { const c = contagemVazia(st.hoje.chave); for (const p of dia.partes) for (const x of p) somar(c, x); st.hoje = c; }
+  // de outro dia mostrava "Hoje: 0" com 543 arquivados no histórico) — de todas as linhas do arquivo do PC
+  if (lidoAoLigar.linhas) st.hoje = lidoAoLigar.contagem;
   // e os erros que o histórico do dia já mostra decididos depois saem da lista
-  { const ultima = new Map(); for (const p of dia.partes) for (const x of p) if (x.rel) ultima.set(x.rel, x.acao); st.erros = (st.erros || []).filter(e => !e.rel || !ultima.has(e.rel) || ultima.get(e.rel) === 'erro'); }
+  { const ultima = lidoAoLigar.ultimaAcao; st.erros = (st.erros || []).filter(e => !e.rel || !ultima.has(e.rel) || ultima.get(e.rel) === 'erro'); }
   // as contagens de cada dia (para o resumo do mês): as que já estão no PC, mais as dos dias que só têm o histórico
   // (arquivados-AAAA-MM-DD.jsonl), contadas uma vez; o dia de hoje é sempre o st.hoje
   const arqResumo = path.join(o.controle, 'resumo-dias.json');
@@ -408,7 +433,7 @@ function criar(opcoes) {
       alertas: alertas(st, t),
       grupos: st.grupos || [],
       ladoALado: st.ladoALado,
-      historico: { dia: dia.chave, partes: dia.partes.length, itens: dia.partes.reduce((s, p) => s + p.length, 0) },
+      historico: { dia: dia.chave, partes: dia.partes.length, itens: dia.partes.reduce((s, p) => s + p.length, 0), jaArquivadosForaDoBanco: dia.jaForaDoBanco || 0 },
     };
   }
 
@@ -551,6 +576,7 @@ function criar(opcoes) {
         else st.ultimos.unshift(it);
         const h = itemCompacto(x, modoRes, em, true);
         linhas.push(JSON.stringify(h));
+        if (!vaiProBanco(dia, h)) continue;   // o arquivo do PC fica com ele; o banco, só com a contagem
         const s = linhas[linhas.length - 1].length;
         if (dia.tam + s > bytesDaParte(dia.chave) && dia.partes[dia.partes.length - 1].length) { dia.partes.push([]); dia.tam = 0; }
         dia.partes[dia.partes.length - 1].push(h); dia.tam += s;
@@ -605,4 +631,4 @@ function criar(opcoes) {
   };
 }
 
-module.exports = { criar, MOTIVOS, motivoLegivel, sugestao, evidenciaLegivel, classificarErro, acaoDoItem, itemCompacto, contagemVazia, somar, contagemPublicada, resumoDoMes, resumoParaODrive, situacaoDaPasta, ritmo, avancarPassada, alertas, destinoCurto, FREIO_MS };
+module.exports = { MAX_JA_ARQUIVADOS_NO_BANCO, criar, MOTIVOS, motivoLegivel, sugestao, evidenciaLegivel, classificarErro, acaoDoItem, itemCompacto, contagemVazia, somar, contagemPublicada, resumoDoMes, resumoParaODrive, situacaoDaPasta, ritmo, avancarPassada, alertas, destinoCurto, FREIO_MS };
