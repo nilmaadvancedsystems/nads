@@ -777,7 +777,9 @@ function iniciarSieg({ db, log }) {
     const s = await db.collection('pedidosSieg').where('status', '==', 'pendente').limit(500).get();
     const semDrive = !driveAberto();
     const vale = s.docs.filter(d => !pegos.has(d.id) && !(semDrive && (d.data().tipo === 'xmls' || d.data().tipo === 'xmlsCliente')));
-    if (vale.length < s.docs.length && Date.now() - avisouSemDrive > 60 * 60 * 1000) {
+    // (31/10/2026) só quando é o Drive que segura: com dois trabalhadores, o pedido que o outro já pegou (pegos) também fica de
+    // fora e o aviso "esperando o Google Drive" saía com o Drive aberto (visto no ensaio)
+    if (semDrive && s.docs.some(d => d.data().tipo === 'xmls' || d.data().tipo === 'xmlsCliente') && Date.now() - avisouSemDrive > 60 * 60 * 1000) {
       avisouSemDrive = Date.now();
       log('SIEG: pedidos de XMLs esperando o Google Drive deste PC abrir (' + PASTA_DO_DRIVE + ')');
       painel.atividade('sieg', 'Pedidos de XMLs esperando o Google Drive deste PC abrir', 'a pasta ' + PASTA_DO_DRIVE + ' não está aberta; o robô baixa assim que ela aparecer', { aviso: true });
