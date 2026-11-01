@@ -1798,7 +1798,8 @@ function pelaPastaENome(entrada, ctx, d) {
     const vendas = /^(RELAT\.?|REALT\.?|RELATORIO)\s*-?\s*(DE\s+)?VENDAS?\b|^VENDAS?\b/.test(n);
     const compras = !vendas && (/^(RELAT\.?|REALT\.?|RELATORIO)\s*-?\s*(DE\s+)?COMP(RAS?)?\b|^COMPRAS?\b/.test(n) || /^[\s\S]{0,600}\bCOMPRA NO PERIODO\b/.test(u));
     // só o PDF que nenhuma regra tipou (o relatório de vendas do posto tem a regra dele: um mês só)
-    if ((vendas || compras) && (!d.tipo || d.tipo === 'PDF')) {
+    // e com o período no cabeçalho (o relatório do sistema); o formulário do banco ("QUADRO IV - RELAÇÃO DE COMPRAS / FORNECEDORES", na pasta CADASTRO BANCARIO) não é
+    if ((vendas || compras) && (!d.tipo || d.tipo === 'PDF') && /PERIODO/.test(u.slice(0, 800)) && !/\bQUADRO\b/.test(u.slice(0, 400)) && !pastas.some(p => /CADASTRO BANCARIO/.test(p))) {
       const x = cliente();
       const cli = umEscrito(bruto.slice(0, 1500));
       const confere = x && cli != null && x.cliente === cli;
@@ -4346,7 +4347,11 @@ function montarContabil(regra, campos, u, bruto, entrada, ctx, ev, porHash) {
       const pistaOp = anoDaPasta(entrada.rel || '');
       // (Vitor, 01/11/2026, decisão 11) o ano: o da data de contratação, senão o do nº da cédula, senão o nome e a pasta de origem
       const anoOp = (dataOp ? +dataOp.slice(6) : 0) || anoCedula || (anoNomeOp && anoOk(+anoNomeOp) ? +anoNomeOp : 0) || (pistaOp && pistaOp.ano) || null;
-      if (anoOp) {
+      // o que só a decisão de 01/11 passou a arquivar (o extrato da operação, o ano só pelo nº da cédula) pede o cliente pelo conteúdo (CNPJ, conta, arquivo, ou a razão social
+      // conferindo com a pasta): a pasta de origem sozinha não basta (a cédula "…- Andriele.pdf" na pasta da 434 não diz de quem é)
+      const soPelaDecisaoNova = (ehExtratoOp && !ehContrato) || (!dataOp && anoCedula && !(anoNomeOp && anoOk(+anoNomeOp)) && !(pistaOp && pistaOp.ano));
+      const fonteForte = ['doc', 'conta', 'hash'].includes(c.como) || nomeEPasta;
+      if (anoOp && (!soPelaDecisaoNova || fonteForte)) {
         if (ehExtratoOp && !ehContrato) ev.push('extrato da operação de crédito: a pasta do contrato (Vitor, 01/11/2026)');
         else if (!dataOp && anoCedula) ev.push('o ano pelo nº da cédula (' + anoCedula + '; Vitor, 01/11/2026)');
         ev.push('contrato de crédito sem ' + [!num && 'o nº', !tipoOp && 'o tipo', !bancoOp && 'o banco', !dataOp && 'a data'].filter(Boolean).join(', ') + ' escritos: OPERAÇÕES DE CRÉDITO\\ANO\\' + (tipoOp || 'EMPRÉSTIMO') + (bancoOp ? '\\' + bancoOp : '') + ', nome original (Vitor, 29/10/2026)');
