@@ -961,6 +961,12 @@ const esperarSieg = (async () => {
   igual('SIEG madrugada: o primeiro download do mês (sem resumo) baixa', [siegT.contagemDoUltimoDownload(null, c137), siegT.semMudancaNoSieg(null, c137, c137)], [null, false]);
   igual('SIEG madrugada: quem fecha continua sem pedido', siegT.completoNoNads(contDe({ NFe: 1 }, {}), { emitidas: [], recebidas: [{ tipo: 'NF-e' }] }), true);
   igual('SIEG madrugada: contagem sem os números não é igual a nada', [siegT.mesmaContagem(c137, {}), siegT.mesmaContagem(c137, c137)], [false, true]);
+
+  // a pasta EVENTOS junta todos os meses: o evento com data de antes do mês não é lido (o 380 de 10/2026: 3918 → 667 arquivos)
+  igual('SIEG Drive: evento de antes do mês fica de fora', siegT.eventoDeAntes('29-09-2026 - CIENCIA DA OPERACAO NF-e 155769.xml', '2026-10'), true);
+  igual('SIEG Drive: evento do mês e de depois são lidos', [siegT.eventoDeAntes('01-10-2026 - CANCELAMENTO NF-e 1.xml', '2026-10'), siegT.eventoDeAntes('03-11-2026 - CIENCIA DA OPERACAO NF-e 1.xml', '2026-10')], [false, false]);
+  igual('SIEG Drive: de outro ano conta o ano', [siegT.eventoDeAntes('15-12-2025 - X.xml', '2026-01'), siegT.eventoDeAntes('15-01-2027 - X.xml', '2026-12')], [true, false]);
+  igual('SIEG Drive: sem a data no nome, lê (como antes)', [siegT.eventoDeAntes('31260919449248000162550010000102701620070002-evento-110111-1.xml', '2026-10'), siegT.eventoDeAntes('', '2026-10')], [false, false]);
 })();
 
 // --- razão social vale mais que o nome fantasia (FITO, 01/10/2026) ---

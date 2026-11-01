@@ -309,6 +309,16 @@ async function xmlsDoMes(c, doc, competencia, aoAndar) {
   return { arquivos: [...arquivos].map(([nome, xml]) => ({ nome, xml })), resumo, contagem };
 }
 
+// A pasta EVENTOS do ano junta os eventos de todos os meses, com a data do evento no nome ("29-10-2026 - CIENCIA DA OPERACAO
+// NF-e 155769.xml"; conferido em 31/10/2026: 5496 de 5496 eventos com data, de 7 clientes, têm no nome o mês do dhEvento). O
+// download de um mês só traz eventos de notas emitidas nele, e o evento não vem antes da nota: o evento com data de antes do
+// mês não está no download e não precisa ser lido (o 380 de 10/2026 lia 3918 arquivos para 572 XMLs do mês). Sem a data no
+// nome, lê como antes.
+function eventoDeAntes(nome, competencia) {
+  const m = /^(\d{2})-(\d{2})-(\d{4})\b/.exec(String(nome || ''));
+  return !!m && m[3] + '-' + m[2] < competencia;
+}
+
 /**
  * Os XMLs do mês que já estão no Drive (Vitor, 09/10/2026: "verificar se os arquivos estão na pasta 2026 e, se não
  * tiver lá, verifica no Claudio Secretario"). A rotina das 9h arquiva o que o robô salva em Claudio Secretario/AAAA-MM/
@@ -346,7 +356,7 @@ async function xmlsJaNoDrive(codigo, nomeDaPasta, competencia, db) {
             for (const it of filhos.get(pasta.i) || []) {
               if (it.t === 'd') { andar(it, [...caminho, it.n], eventos || /eventos/i.test(it.n)); continue; }
               if (!/\.xml$/i.test(it.n)) continue;
-              if (eventos || it.n.startsWith(mes + '-' + ano)) lerArquivo(path.join(base, ...caminho, it.n), it.i + '_' + String(it.m || '').replace(/\D/g, ''));
+              if (eventos ? !eventoDeAntes(it.n, competencia) : it.n.startsWith(mes + '-' + ano)) lerArquivo(path.join(base, ...caminho, it.n), it.i + '_' + String(it.m || '').replace(/\D/g, ''));
             }
           };
           andar(pastaXml, [], false);
@@ -370,8 +380,9 @@ async function xmlsJaNoDrive(codigo, nomeDaPasta, competencia, db) {
             const f = path.join(dir, it.name);
             if (it.isDirectory()) { await andar(f, eventos || /eventos/i.test(it.name)); continue; }
             if (!/\.xml$/i.test(it.name)) continue;
-            // as notas do mês pelo nome ("09-2026_…"); os eventos, todos (o do mês fica pela chave, abaixo)
-            if (eventos || it.name.startsWith(mes + '-' + ano)) lerArquivo(f);
+            // as notas do mês pelo nome ("09-2026_…"); os eventos, os do mês e de depois (eventoDeAntes; o do mês fica pela
+            // chave, abaixo)
+            if (eventos ? !eventoDeAntes(it.name, competencia) : it.name.startsWith(mes + '-' + ano)) lerArquivo(f);
           }
         };
         await andar(xml, false);
@@ -1222,4 +1233,4 @@ function iniciarSieg({ db, log }) {
   return () => { clearInterval(relogio); clearInterval(relogioNoite); clearInterval(relogioDaFila); pararPedidos(); };
 }
 
-module.exports = { ordemDaFila, urgenciaDoPedido, criarTrabalhadores, chaveDaPasta, cobreOUltimo, juntarOsDoDrive, mesmaContagem, completoNoNads, contagemDoUltimoDownload, semMudancaNoSieg, PARALELO, normalizarDocumento, xmlsJaNoDrive, seriesDasNotas, saidasDoResumo, iniciarSieg, lerXml, xmlsDaResposta, lerZip, periodo, contagemDoMes, saidasDoMes, xmlsDoMes, resumoQueCabe, chamar, lerCredenciais };
+module.exports = { eventoDeAntes, ordemDaFila, urgenciaDoPedido, criarTrabalhadores, chaveDaPasta, cobreOUltimo, juntarOsDoDrive, mesmaContagem, completoNoNads, contagemDoUltimoDownload, semMudancaNoSieg, PARALELO, normalizarDocumento, xmlsJaNoDrive, seriesDasNotas, saidasDoResumo, iniciarSieg, lerXml, xmlsDaResposta, lerZip, periodo, contagemDoMes, saidasDoMes, xmlsDoMes, resumoQueCabe, chamar, lerCredenciais };
