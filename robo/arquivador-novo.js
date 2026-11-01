@@ -287,7 +287,8 @@ async function montarEntrada(nome, rel, buffer, op) {
     case 'xml': e.xml = textoDoXml(buffer); if (ehSpreadsheetMl(buffer)) { e.planilha = linhasDaPlanilha(buffer, nome); e.planilhaXml = true; } break;
     // o Excel 2003 salvo como "Planilha XML" (SpreadsheetML; 29/10/2026: "BALANÇOS2020.xml", "Bradesco_12012024_102533.XMLS"): lido como a planilha
     case 'xmls': if (ehSpreadsheetMl(buffer)) { e.planilha = linhasDaPlanilha(buffer, nome); e.planilhaXml = true; } break;
-    case 'ofx': e.ofx = buffer.toString('latin1'); break;
+    // o .ofc (OFC, o extrato da Caixa/Inter no formato antigo do Money; Vitor, 30/10/2026): lido como o OFX
+    case 'ofx': case 'ofc': e.ofx = buffer.toString('latin1'); break;
     // o RTF dos termos e demonstrativos do Alterdata ("292TermoDRE11.2025.rtf"): o texto sem os comandos do RTF, como se fosse a página de um PDF
     case 'rtf': if (/^\s*\{\\rtf/.test(buffer.slice(0, 16).toString('latin1'))) { e.texto = [textoDoRtf(buffer)]; e.paginas = 1; } break;
     case 'txt': {
