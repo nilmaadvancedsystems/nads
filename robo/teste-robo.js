@@ -937,6 +937,30 @@ const esperarSieg = (async () => {
   const jT = siegT.juntarOsDoDrive('19449248000162', baixadoT, [nfeItensT, cancT]);
   igual('SIEG Drive: o cancelamento que só o Drive tinha entra e marca a nota', [jT.extras, jT.baixado.arquivos.length, jT.baixado.resumo.emitidas.map(n => !!n.cancelada)], [1, 2, [true]]);
   igual('SIEG Drive: nada a mais no Drive, o download fica como veio', siegT.juntarOsDoDrive('19449248000162', baixadoT, [nfeItensT]).baixado === baixadoT, true);
+
+  // a madrugada não repete o mês que não mudou (31/10/2026): o 137 (o SIEG conta 1 NF-e recebida, a API entrega 0) e o 54
+  // (668 NFC-e só no Drive) eram pedidos toda noite
+  const zeros = () => ({ NFe: 0, NFCe: 0, CTe: 0, NFSe: 0, CFe: 0 });
+  const contDe = (rec, emi, em) => ({ emitidas: Object.assign(zeros(), emi), recebidas: Object.assign(zeros(), rec), em });
+  const c137 = contDe({ NFe: 1 }, {}, '2026-10-31T07:22:42.273Z');
+  const n137 = { em: '2026-10-31T07:22:42.314Z', arquivos: 0, emitidas: [], recebidas: [] };
+  igual('SIEG madrugada: o 137 não fecha pela regra de antes (1 contada, 0 no nads)', siegT.completoNoNads(c137, n137), false);
+  igual('SIEG madrugada: resumo de antes de 31/10 usa a contagem gravada junto com ele', siegT.contagemDoUltimoDownload(n137, c137).recebidas.NFe, 1);
+  igual('SIEG madrugada: o SIEG conta hoje o mesmo que antes do último download, não baixa', siegT.semMudancaNoSieg(n137, c137, contDe({ NFe: 1 }, {})), true);
+  igual('SIEG madrugada: nota nova de verdade (2 NF-e recebidas), baixa', siegT.semMudancaNoSieg(n137, c137, contDe({ NFe: 2 }, {})), false);
+  igual('SIEG madrugada: nota nova de outro tipo (a NFS-e emitida), baixa', siegT.semMudancaNoSieg(n137, c137, contDe({ NFe: 1 }, { NFSe: 1 })), false);
+  igual('SIEG madrugada: sem conseguir contar agora, baixa (como antes)', siegT.semMudancaNoSieg(n137, c137, null), false);
+  // a contagem gravada longe do resumo (o "Contar agora" de outro dia) não diz o que havia no download: baixa
+  igual('SIEG madrugada: contagem de outra hora não vale como a do download', siegT.contagemDoUltimoDownload(n137, Object.assign({}, c137, { em: '2026-10-29T12:00:00Z' })), null);
+  // o resumo novo guarda a contagem de antes do download (contagemSieg): vale ela, mesmo com a siegContagens de outra hora
+  const n54 = { em: '2026-11-01T07:40:00Z', emitidas: Array.from({ length: 668 }, () => ({ tipo: 'NFC-e' })), recebidas: [], contagemSieg: contDe({}, { NFe: 120 }) };
+  const c54 = contDe({}, { NFe: 120 }, '2026-11-02T04:00:00Z');
+  igual('SIEG madrugada: o 54 (NFC-e só no Drive) não fecha pela regra de antes', siegT.completoNoNads(c54, n54), false);
+  igual('SIEG madrugada: o 54 sem nota nova no SIEG não baixa', siegT.semMudancaNoSieg(n54, c54, contDe({}, { NFe: 120 })), true);
+  igual('SIEG madrugada: o 54 com uma NF-e nova baixa', siegT.semMudancaNoSieg(n54, c54, contDe({}, { NFe: 121 })), false);
+  igual('SIEG madrugada: o primeiro download do mês (sem resumo) baixa', [siegT.contagemDoUltimoDownload(null, c137), siegT.semMudancaNoSieg(null, c137, c137)], [null, false]);
+  igual('SIEG madrugada: quem fecha continua sem pedido', siegT.completoNoNads(contDe({ NFe: 1 }, {}), { emitidas: [], recebidas: [{ tipo: 'NF-e' }] }), true);
+  igual('SIEG madrugada: contagem sem os números não é igual a nada', [siegT.mesmaContagem(c137, {}), siegT.mesmaContagem(c137, c137)], [false, true]);
 })();
 
 // --- razão social vale mais que o nome fantasia (FITO, 01/10/2026) ---

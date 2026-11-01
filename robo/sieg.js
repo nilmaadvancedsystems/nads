@@ -586,6 +586,53 @@ function cobreOUltimo(ultimo, resumo) {
   return [...ultimo.emitidas, ...ultimo.recebidas].every(n => tem.has(idDaNota(n)));
 }
 
+// ---------- a madrugada não repete o mês que não mudou (31/10/2026) ----------
+// A madrugada pedia de novo, toda noite, o mês anterior de quem não fechava "as notas do nads = a contagem do SIEG", tipo
+// por tipo. Dois casos nunca fecham: (1) o SIEG conta uma nota que a API não entrega (a NFS-e recebida "1" de uns 36
+// clientes fora do portal, 404 no portal e 0 XMLs na API: 137, 145, 152, 313, 348…; noites de 29, 30 e 31/10, ~1 a 2 min
+// cada) e (2) o Drive tem notas que o SIEG não tem (a NFC-e de MG: o 54 com 668 no nads e 0 no SIEG). E depois do dia 10 a
+// contagem do mês anterior não é refeita à noite: a siegContagens desse mês é a que o próprio download gravou, então a
+// comparação dava sempre o mesmo "não fecha". Agora o resumo guarda a contagem do SIEG de antes do download (contagemSieg)
+// e a madrugada conta o mês de novo (2 contagens, que custam bem menos que um download): se o SIEG conta hoje o mesmo que
+// contava antes do último download, não há nota nova e o mês não é baixado de novo. Nota nova de verdade muda a contagem.
+const TIPOS_DA_CONTAGEM = ['NFe', 'NFCe', 'CTe', 'NFSe', 'CFe'];
+/** Só os números da contagem ({ emitidas, recebidas }, os 5 tipos), ou null. */
+function soAContagem(x) {
+  if (!x || !x.emitidas || !x.recebidas) return null;
+  const g = o => Object.fromEntries(TIPOS_DA_CONTAGEM.map(k => [k, Number(o[k]) || 0]));
+  return { emitidas: g(x.emitidas), recebidas: g(x.recebidas) };
+}
+/** As duas contagens são iguais em todos os tipos, emitidas e recebidas. */
+function mesmaContagem(a, b) {
+  const x = soAContagem(a);
+  const y = soAContagem(b);
+  return !!x && !!y && ['emitidas', 'recebidas'].every(g => TIPOS_DA_CONTAGEM.every(k => x[g][k] === y[g][k]));
+}
+/**
+ * As notas do nads (siegNotas) já têm, tipo por tipo, o que a contagem do SIEG diz (a regra de antes de 31/10/2026).
+ */
+function completoNoNads(cont, notas) {
+  if (!cont || !notas || !Array.isArray(notas.emitidas)) return false;
+  const tem = {};
+  for (const n of [...notas.emitidas, ...(notas.recebidas || [])]) tem[n.tipo] = (tem[n.tipo] || 0) + 1;
+  const CHAVE = { 'NF-e': 'NFe', 'NFC-e': 'NFCe', 'CT-e': 'CTe', 'NFS-e': 'NFSe', 'CF-e': 'CFe' };
+  return Object.keys(CHAVE).every(t => (tem[t] || 0) === ((cont.emitidas || {})[CHAVE[t]] || 0) + ((cont.recebidas || {})[CHAVE[t]] || 0));
+}
+/**
+ * A contagem do SIEG de antes do último download do mês: a que o resumo guardou (contagemSieg) ou, nos resumos de antes de
+ * 31/10/2026, a siegContagens que o próprio download gravou junto com o resumo (a mesma hora, com 2 min de folga). null quando
+ * não se sabe (aí a madrugada baixa, como antes).
+ */
+function contagemDoUltimoDownload(notas, cont) {
+  if (!notas) return null;
+  if (soAContagem(notas.contagemSieg)) return soAContagem(notas.contagemSieg);
+  const t = Date.parse(notas.em || '');
+  const u = Date.parse((cont && cont.em) || '');
+  return Number.isFinite(t) && Number.isFinite(u) && Math.abs(t - u) <= 120000 ? soAContagem(cont) : null;
+}
+/** O mês não mudou no SIEG desde o último download: a contagem de agora é a de antes dele. agora null (não deu para contar): mudou. */
+const semMudancaNoSieg = (notas, cont, agora) => !!agora && mesmaContagem(agora, contagemDoUltimoDownload(notas, cont));
+
 function iniciarSieg({ db, log }) {
   const estadoRef = db.collection('robo').doc('sieg');
   const { c, faltam } = lerCredenciais();
@@ -898,9 +945,13 @@ function iniciarSieg({ db, log }) {
         await andar('nads', 'Lendo as notas no nads', 0, true);
         if (!doCliente) await db.collection('siegContagens').doc(id).set({ codigo: soDigitos(p.codigo), cnpj, competencia: p.competencia, em: new Date().toISOString(), ...contagem });
         const onde = 'Claudio Secretario/' + p.competencia + '/' + nomeDaPasta;
+        // a contagem do SIEG de antes do download (a madrugada compara com ela: semMudancaNoSieg). Só vale a de antes: uma
+        // contagem feita depois de começar a baixar poderia contar uma nota que o download não pegou. A API conta logo
+        // antes de baixar; no portal vale a da madrugada que criou o pedido, ou a que estava gravada quando o pedido começou
+        const contagemSieg = soAContagem(peloPortal || doCliente ? (p.contagemSieg || cont) : contagem);
         await db.collection('siegNotas').doc(id).set(resumoQueCabe({
           codigo: soDigitos(p.codigo), competencia: p.competencia, em: new Date().toISOString(), pasta: onde, zip: zip ? nomeDoZip : '', arquivos: arquivos.length, novos: arquivos.length,
-          emitidas: resumo.emitidas, recebidas: resumo.recebidas, resumo: sx.VERSAO_DO_RESUMO,
+          emitidas: resumo.emitidas, recebidas: resumo.recebidas, resumo: sx.VERSAO_DO_RESUMO, ...(contagemSieg ? { contagemSieg } : {}),
         }));
         // e a sequência das saídas (a Conferência de Saídas lê daqui, sem outro pedido)
         await db.collection('siegSaidas').doc(id).set({ codigo: soDigitos(p.codigo), cnpj, competencia: p.competencia, em: new Date().toISOString(), series: seriesDasNotas(saidasDoResumo(resumo.emitidas)) });
@@ -935,7 +986,7 @@ function iniciarSieg({ db, log }) {
               log('SIEG: XMLs de', p.codigo, '-', j.extras, 'que estavam só no Drive entraram no resumo (depois de entregar o .zip)');
               await db.collection('siegNotas').doc(id).set(resumoQueCabe({
                 codigo: soDigitos(p.codigo), competencia: p.competencia, em: new Date().toISOString(), pasta: onde, zip: nomeDoZip, arquivos: arquivos.length, novos: arquivos.length,
-                emitidas: resumo.emitidas, recebidas: resumo.recebidas, resumo: sx.VERSAO_DO_RESUMO,
+                emitidas: resumo.emitidas, recebidas: resumo.recebidas, resumo: sx.VERSAO_DO_RESUMO, ...(contagemSieg ? { contagemSieg } : {}),
               })).catch(err => log('SIEG: não consegui juntar ao resumo de', p.codigo, 'o que só o Drive tinha -', err.message));
               await db.collection('siegSaidas').doc(id).set({ codigo: soDigitos(p.codigo), cnpj, competencia: p.competencia, em: new Date().toISOString(), series: seriesDasNotas(saidasDoResumo(resumo.emitidas)) }).catch(() => {});
             }
@@ -1093,6 +1144,7 @@ function iniciarSieg({ db, log }) {
     contando = true;
     chegouOutro = false;
     contouEm = dia;
+    const contouDesde = hoje.toISOString();
     try {
       const comps = [competenciaDe(hoje)];
       if (hoje.getDate() <= 10) comps.push(competenciaDe(new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1)));
@@ -1115,7 +1167,7 @@ function iniciarSieg({ db, log }) {
       painel.atividade('sieg', 'Contagem da madrugada pronta', comCnpj.length + ' clientes em ' + comps.join(' e '));
     } catch (err) { log('SIEG: contagem da noite falhou -', err.message); painel.erro('sieg', 'A contagem da madrugada falhou', err.message); }
     finally { daNoite = ''; contando = false; ponto(); }
-    await xmlsDaMadrugada().catch(err => log('SIEG: XMLs da madrugada falharam -', err.message));
+    await xmlsDaMadrugada(contouDesde).catch(err => log('SIEG: XMLs da madrugada falharam -', err.message));
   }
 
   /**
@@ -1125,31 +1177,41 @@ function iniciarSieg({ db, log }) {
    * na fila de uma vez (31/10/2026) e os trabalhadores atendem PARALELO deles ao mesmo tempo (antes: um, e o próximo só era
    * criado quando o anterior terminava).
    */
-  async function xmlsDaMadrugada() {
+  async function xmlsDaMadrugada(contouDesde) {
     const hoje = new Date();
     const comp = competenciaDe(new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1));
     const ativos = [];
     (await require('./clientes-cache').clientesAtivos(db)).forEach(d => ativos.push(d.data()));
     const comCnpj = await soComDocumento(ativos);
-    const CHAVE = { 'NF-e': 'NFe', 'NFC-e': 'NFCe', 'CT-e': 'CTe', 'NFS-e': 'NFSe', 'CF-e': 'CFe' };
     let feitos = 0;
+    let semMudanca = 0;
     for (const cli of comCnpj) {
       const id = codigoDe(cli) + '_' + comp;
       const cont = (await db.collection('siegContagens').doc(id).get()).data();
       if (!cont) continue;
-      const esperado = t => ((cont.emitidas || {})[CHAVE[t]] || 0) + ((cont.recebidas || {})[CHAVE[t]] || 0);
-      if (!Object.keys(CHAVE).some(t => esperado(t) > 0)) continue;
+      if (!TIPOS_DA_CONTAGEM.some(k => ((cont.emitidas || {})[k] || 0) + ((cont.recebidas || {})[k] || 0) > 0)) continue;
       const notas = (await db.collection('siegNotas').doc(id).get()).data();
-      if (notas && Array.isArray(notas.emitidas)) {
-        const tem = {};
-        for (const n of [...notas.emitidas, ...(notas.recebidas || [])]) tem[n.tipo] = (tem[n.tipo] || 0) + 1;
-        if (Object.keys(CHAVE).every(t => (tem[t] || 0) === esperado(t))) continue;
+      if (completoNoNads(cont, notas)) continue;
+      // não fecha: o SIEG mudou desde o último download? (semMudancaNoSieg, acima). A contagem desta noite já serve (até o
+      // dia 10 o mês anterior também é contado); depois do dia 10, conta agora, só este cliente
+      let agora = null;
+      if (contagemDoUltimoDownload(notas, cont)) {
+        if (contouDesde && String(cont.em || '') >= contouDesde) agora = soAContagem(cont);
+        else {
+          daNoite = 'conferindo ' + codigoDe(cli) + ' (' + comp + ')';
+          agora = await contagemDoMes(c, normalizarDocumento(cli.documento, cli.enquadramento), comp).catch(err => { log('SIEG: contagem de', codigoDe(cli), comp, '-', err.message); return null; });
+          daNoite = '';
+        }
+        if (semMudancaNoSieg(notas, cont, agora)) { semMudanca++; continue; }
       }
-      // o pedido, como se fosse do nads (a tela mostra "XMLs baixados" de manhã); o ouvinte da fila já começa a atender
+      // o pedido, como se fosse do nads (a tela mostra "XMLs baixados" de manhã); o ouvinte da fila já começa a atender.
+      // Leva a contagem de agora: é a de antes do download, que o resumo guarda (contagemSieg)
       await db.collection('pedidosSieg').add({ status: 'pendente', tipo: 'xmls', codigo: codigoDe(cli), competencia: comp, madrugada: true,
-        criadoEm: new Date().toISOString(), criadoPor: 'Robô (madrugada)', criadoPorUid: 'robo' });
+        criadoEm: new Date().toISOString(), criadoPor: 'Robô (madrugada)', criadoPorUid: 'robo', ...(agora ? { contagemSieg: agora } : {}) });
       feitos++;
     }
+    daNoite = '';
+    if (semMudanca) log('SIEG: madrugada -', semMudanca, 'clientes sem nota nova no SIEG desde o último download de', comp, '(não baixados de novo)');
     // e espera a fila esvaziar
     if (feitos) await atenderPedidos();
     log('SIEG: XMLs da madrugada prontos -', feitos, 'clientes em', comp);
@@ -1160,4 +1222,4 @@ function iniciarSieg({ db, log }) {
   return () => { clearInterval(relogio); clearInterval(relogioNoite); clearInterval(relogioDaFila); pararPedidos(); };
 }
 
-module.exports = { ordemDaFila, urgenciaDoPedido, criarTrabalhadores, chaveDaPasta, cobreOUltimo, juntarOsDoDrive, PARALELO, normalizarDocumento, xmlsJaNoDrive, seriesDasNotas, saidasDoResumo, iniciarSieg, lerXml, xmlsDaResposta, lerZip, periodo, contagemDoMes, saidasDoMes, xmlsDoMes, resumoQueCabe, chamar, lerCredenciais };
+module.exports = { ordemDaFila, urgenciaDoPedido, criarTrabalhadores, chaveDaPasta, cobreOUltimo, juntarOsDoDrive, mesmaContagem, completoNoNads, contagemDoUltimoDownload, semMudancaNoSieg, PARALELO, normalizarDocumento, xmlsJaNoDrive, seriesDasNotas, saidasDoResumo, iniciarSieg, lerXml, xmlsDaResposta, lerZip, periodo, contagemDoMes, saidasDoMes, xmlsDoMes, resumoQueCabe, chamar, lerCredenciais };
