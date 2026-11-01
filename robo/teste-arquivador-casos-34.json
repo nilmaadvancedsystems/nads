@@ -1,118 +1,1116 @@
 {
- "inventario10": {
-  "nome": "INVENTÁRIO20220127.pdf",
-  "rel": "0010 - DORNAS HAVANA LTDA - ME\\OUTROS\\INVENTÁRIO20220127.pdf",
+ "inventario429": {
+  "nome": "relinventario 01-2025.pdf",
+  "rel": "FERNANDO\\429 POSTO COMBUSTIIVEL ANDRIELE\\2025\\Estoque\\relinventario 01-2025.pdf",
   "texto": [
-   "] DECLARAÇÃO DE INVENTÁRIO\nPE A RSA Er AoA 3) E Go ara VEDA Ai 02 Sa EE: ES ANA RR\n\nDeclaro para os devidos fins a que se fizerem necessários que o\nvalor total do estoque de mercadorias de minha empresa: DORNAS\nHAVANA LTDA, inventariado em 31/12/2021] é de\nn$ 111.338 10 :\n\nDeclaro ainda que o detalhamento de produtos em estoque\nnesta data foi entregue à Nilma Contabilidade em formato digital\npara a devida contabilização e que o valor total dos produtos em\narquivo corresponde fielmente ao valor aqui declarado.\n\nPor expressão da verdade e para efeitos legais firmo a presente.\n\nPEA\nLocal/Data: | Quero Sj ds disnmáo cu SO\ne XY\nO Z\nResponsável pela resa\n"
+   "CODDESCRIÇÃO DO PRODUTOESTOQUECUSTO\nINVENTÁRIO DE PRODUTOS\nEXIBINDO:  COMBUSTÍVEIS E PRODUTOS  \nPOSTO JM JOAO MANOEL\nTOTAL\n31/01/2025\nData Base\n_______________________________________________________________________________________________________________\n___________________________________________________\nRELAÇÃO DE COMBUSTÍVEIS (CONFORME LMC):  TOTAL (R$)VOLUME (LT)CUSTO\n1.368,515,52417.559,75DIESEL COMUM\n2.976,625,720117.026,45DIESEL S10\n2.799,193,818610.688,93ETANOL COMUM\n5.402,255,354428.925,55GASOLINA COMUM\nTOTAL DOS COMBUSTÍVEIS ->64.200,69 R$\n_______________________________________________________________________________________________________________\n___________________________________________________\n \n  0001DIVERSOS\n0161ADITIVO COMB FLEX TREATMENT TECBRIL3,0015,0045,00\n0162ADITIVO. TEC COOL CONC. TROP. ORG. ROSA TECBRIL1,009,179,17\n0184AG 68 FILTRO COMBUSTIVEL6,006,9741,82\n0106AGUA DESMINERALIZADA 1LT13,002,9638,48\n0218AGUA DESMINERALIZADA HI TECH-LT3,005,0015,00\n0155AGUA PARA BATERIA -RADNAQ18,004,6784,06\n0174AP 7108 ELEMENTO FILTRANTE DO AR SECO PESADO3,0051,41154,23\n0171AP 9834 ELEMENTO FILTRANTE DO AR SECO1,0077,0077,00\n0149ARBOR POWER 2T 500ML8,0019,61156,88\n0113ARL 4147 AR SECO LEVE2,0011,4822,96\n0114ARL 4150 FILTRO AR SECO LEVE2,0010,8121,62\n0115ARL 6096 FILTRO AR SECO LEVE2,0010,7521,50\n0116ARL 8834 FILTRO AR SECO LEVE15,007,9439,70\n0163ARLA 32 BALDE 20L ARLABRAS=ARLAFLOR5,0089,90449,50\n0117ARM 408/1 ELEMENTO FILTRANTE DO AR3,008,4325,29\n0190ARS 839 FILTRO AR SECO SECUNDARIO1,0036,6336,63\n0196ARS 9839 FILTRO AR RADIAL SEAL1,0086,4386,43\n0175AS 805 ELEMENTO FILTRANTE DO AR SECO SECUND3,0045,17135,51\n0172AS 820 ELEMENTO FILTRANTE DO AR SECO SECUND3,0062,75188,25\n0226BARDAHL PROMAX MA CL-4 SAE 15W40-20 LITROS1,00351,02351,02\n0100CASTROL 20W-50 4T 1L3,0015,9747,91\n0101CASTROL STIHL 20X500ML57,0019,391.105,23\n0160DEITON HIDRA 20LT1,00264,70264,70\n0118DEITON ORION CI 4 15W40 BD 20LT1,00298,00298,00\n0143DEITON TASA ATF 24X1LT13,0019,28250,64\n0145DESENGRIPANTE AMARELO PEQUENO7,007,0049,00\n0102ESTOPA BRANCA67,002,90194,30\n0176FC 161 ELEMENTO FILTRANTE BOSCH4,0027,00108,00\n0169FC 165 FILTRO DO OLEO COMBUSTIVEL4,0021,0084,00\n0144FLUIDO BOSCH DOT 3 20X5002,0018,4836,96\n0141FLUIDO FREIO DOT3 - VARGA RCLF00021 - 30X500 ML2,0020,2240,44\n0142FLUIDO FREIO DOT4 - VARGA RCLF00054 - 20X500 ML1,0037,6737,67\n0119GI 04/7 FILTRO COMBUSTIVEL INJECAO ELETRONICA3,0011,1833,54\n0120GI 40/7 FILTRO DE COMBUSTIVEL IJECAO2,0012,5025,00\n0177GL 41 FILTRO DE COMBUSTIVEL INJEÇAO ELETRONICA2,0024,0048,00\n0231GRAFITE AEROSSOIS TECBRIL 12,300 ML5,0014,1670,80\n0121GRAXA BRANCA 10X80GR P/CORRENTE MOTO10,004,3043,00\n0221GRAXA CHASSIS UNIGRAX CA2 BD 20 KG1,00319,90319,90\n0225GRAXA UNIGRAX AZUL CA 2-BD 18 KG1,00280,79280,79\n0224GT-OIL LH ISO VG 68-20 LITROS1,00190,60190,60\nPage 1 of 3Op: 02 - PABLOsexta-feira - 29 de maio de 2026D-link Sistemas e Automação.",
+   "CODDESCRIÇÃO DO PRODUTOESTOQUECUSTO\nINVENTÁRIO DE PRODUTOS\nEXIBINDO:  COMBUSTÍVEIS E PRODUTOS  \nPOSTO JM JOAO MANOEL\nTOTAL\n31/01/2025\nData Base\n0211GT-OIL LONG LIFE 15W40 API SL 1 LITRO5,0016,0280,10\n0227GT-OIL MAX TURBO 15W40 API CH4-20 LITROS2,00290,82581,64\n0214GT-OIL SUPER SL 20W50 1 LITRO4,0015,0460,16\n0178GU 86 FILTRO DO COMBUSTIVEL2,004,809,60\n0167LIMPA CONTATO TECBRIL 12X300ML12,0012,89154,68\n0222LION GEAR P GL 90 20LT BD3,00329,90989,70\n0232LION PLUS HD CH4 15W40 20 LTS1,00309,00309,00\n0103LUBRAX ESSENTIAL 2T FC 40X500ML12,0012,63151,56\n0123LUCHETI GRAXA CHASSIS 2 CX 12X900GR5,0018,3391,65\n0124MOBIL21,0023,50493,50\n0105PARAFLU 1LT9,0017,45157,05\n0228PARAFLU 3004-BIO FL.P/USO ORG.LG.LIFE ROSA LT1,0016,0416,04\n0219PARAFLU 3016-BIO FL.P/USO.HIBD LG.LIFE VERDE LT7,0016,03112,21\n0125PEL 119 ELEM. FILTRO LUBRIFICANTE2,008,5017,00\n0192PEL 2002 FILTRO LUBRIFICANTE1,0023,2923,29\n0126PETRONAS SELENIA PERFORM SN+ 5W30 CX24X13,0057,50172,50\n0203PETRONAS SPRINTA 2 TEMPO11,0013,51148,61\n0127PETRONAS SPRINTA F300 4T API SL 20W50 CX 24X120,0019,95399,00\n0128PETRONAS SPRINTA F500 4T API SL 10W30 CX 24X13,0023,3369,99\n0199PETRONAS SYNTIUM 800 AM APISL 15W4042,0021,88918,96\n0179PETRONAS SYNTIUM 800 SE SP 10W305,0030,00150,00\n0187PETRONAS TUTELA  100 SAE 90 1L47,0024,391.146,33\n0152PETRONAS TUTELA  100 SAE 90 20L39,00133,555.208,45\n0189PETRONAS TUTELA 100 EP 140 1L24,0031,46755,04\n0188PETRONAS TUTELA 100 EP 140 20 LITROS3,00605,001.815,00\n0186PETRONAS TUTELA ALFA 2 K 1 KG16,0035,21563,36\n0223PETRONAS TUTELA COOLANT 332,0016,8333,66\n0230PETRONAS TUTELA TASA 1 LITRO9,0024,16217,44\n0165PETRONAS TUTELA TASA CX 24X500ML10,0012,94129,40\n0153PETRONAS URANIA 1000 3 LITROS5,0085,77428,85\n0131PETRONAS URANIA 1000 CH4 15W40 CX 24X126,0023,33606,58\n0197PETRONAS URANIA 1000E 15W4069,0021,461.480,74\n0207PETRONAS URANIA 3000 SE BD20L3,00352,001.056,00\n0170PL 519 FILTRO LUBRIFICANTE PAPEL1,0029,0029,00\n0193PSD 920/2 FILTRO BLINDADO COMBUSTIVEL SEPARADOR1,0081,5281,52\n0195PSD 981 FILTRO BLINDADO DE COMBUSTIVEL1,00133,00133,00\n0173PSL 123 FILTRO LUBRIFICANTE3,0035,33105,99\n0194PSL 283 FILTRO LUBRICANTE1,0056,9056,90\n0133PSL 45 FILTRO LUBRIFICANTE BLINDADO1,0011,1811,18\n0134PSL 47 FLTRO LUBRIFICANTE BLINDADO10,007,2572,50\n0135PSL 55 FILTRO LUBRIFICANTE BLINDADO1,0010,3310,33\n0136PSL 619 FILTRO LUBRIFICANTE BLINDADO3,007,9823,94\n0156REDUZ AGUA DESMINERALIZADA20,002,0140,20\n0137SELENIA K 15W40 SN 24X120,0025,05501,00\n0229SELENIA K 15W40 SP 24X15,0024,96124,80\n0157SUN DESENGRIPANTE CARLUB9,004,1737,53\n0204TEC FRESH REVOLUTION MISTO GEL6,0027,20163,20\n0180TM1 FILTRO BLINDADO PSL 34M2,0014,1728,34\n0138TM2 FILTRO BLINDADO PSL 34MP1,0013,5313,53\n0181TM3 FILTRO BLINDADO PSL 34MP2,0012,5425,08\nPage 2 of 3Op: 02 - PABLOsexta-feira - 29 de maio de 2026D-link Sistemas e Automação.",
+   "CODDESCRIÇÃO DO PRODUTOESTOQUECUSTO\nINVENTÁRIO DE PRODUTOS\nEXIBINDO:  COMBUSTÍVEIS E PRODUTOS  \nPOSTO JM JOAO MANOEL\nTOTAL\n31/01/2025\nData Base\n0182TM4 FILTRO BLINDADO PSL 20M2,0013,4726,94\n0183TM5 FILTRO BLINDADO PSL 55M1,0012,2012,20\n0107UNIGRAX 10KG1,00125,67125,67\n0108UNIGRAX 18KG1,00167,83167,83\n0146YPF  HIPOIDAL 901,0020,9720,97\n0109YPF ELAION F30 15W40 1LT4,0022,6390,52\n0110YPF ELAION F50 5W30 1LT1,0018,9118,91\n0158YPF HELICODIAL R14026,0012,66329,16\n0159YPF HIPODIAL 85W14031,0014,10437,10\n0112YPF SUPER SL 20W50 1LT3,0021,3163,93\n  TOTAL DIVERSOS ->26.826,89 R$\n_______________________________________________________________________________________________________________\n___________________________________________________\nTOTAL PRODUTOS ->\nTOTAL GERAL ->\nR$ 26.826,89\nR$ 64.200,69\nR$ 91.027,58\nTOTAL COMBUSTÍVEL ->\nPage 3 of 3Op: 02 - PABLOsexta-feira - 29 de maio de 2026D-link Sistemas e Automação."
   ]
  },
- "declInventario493": {
-  "nome": "DECLARAÇÃO DE INVENTARIO 2023.docx",
-  "rel": "0493 - ANTONIA'S LTDA - ME\\OUTROS\\INVENTÁRIO - DEFIS - REINF\\DECLARAÇÃO DE INVENTARIO 2023.docx"
- },
- "antecipacao309": {
-  "nome": "Relatorio Antecipação - 05.2026.pdf",
-  "rel": "IMPORTAÇÃO\\FABIANA\\0309 - FITO ALIMENTOS LTDA - Ok\\Relatorio Antecipação - 05.2026.pdf",
+ "foto237SemData": {
+  "nome": "Imagem (16).jpg",
+  "rel": "IMPORTAÇÃO\\0237 - POSTO DE COMBUSTIVEL BERIZAL LTDA - ME\\2026\\02\\Descompactado(s) com sucesso\\BOLETOS E COMPROVANTES FEVEREIRO.rar\\Imagem (16).jpg",
   "texto": [
-   "Emissão: 15:58\nConferência de Antecipação MGPágina: 1\n11/06/2026\nNILMA DIAS OLIVEIRA ME\nFITO ALIMENTOS LTDA  (00309)\nDataNúmero\nValor a recolher\nCod. FornecedorValor da operaçãoICMS interestadualBase indexadaICMS interno\n08/05/2026821188056,00966,728645,461556,1809040976000162\n589,46\n27/05/20262010114645,401757,4515717,012829,0605768542000122\n1071,61\nTotal ICMS interestadual:2.724,17\n4.385,24\n1.661,07\nTotal ICMS interno:\nTotal a recolher:"
+   "[pm 10:24 Banco do Brasil\n09/02/2026 - BANCO DO BRASIL - 19:24:09\n278502705 9081\n\nCOMPROVANTE DE PAGAMENTO DE TITULOS\n\nCLIENTE: POSTO DE COMBUSTIVEIS BER\n\nAGENCIA: 2765-7 CONTA: 22.294-1\n\nBCO BRADESCO S.A.\n\n23793516009000001044834001880508113500006506000\n\nBENEFICIARIO:\n\nPETROSERRA DISTRIBUIDORA DE PE\n\nNOME FANTASIA:\n\nPETROSERRA DISTRIBUIDORA DE PETROLE\n\nCNPJ: 61.557,.353/0001-50\n\nBENEFICIARIO FINAL:\n\nPETROSERRA DISTRIBUIDORA DE PETROLE\n\nCNPJ: B1.557,.353/0001-50\n\nPAGADOR:\n\nPOSTO DE COMBUSTIVEIS BERIZAL LTDA\n\nCNPJ: 17.713,597/0001-14\n\nNR. DOCUMENTO 20.901\n: DATA DE VENCIMENTO 67/02/2026\n\nDATA DO PAGAMENTO 69/02/2026\n\nVALOR DO DOCUMENTO 65.069,00\n\nVALOR COBRADO 65.869,00\n\nNR. AUTENTICACÃO E.ABA.EAF.12D.E63,.39E\n\nCentral de Atendimento BB\n\n4604 0001 Capitais e regioes metropolitanas\n\n0806 729 GOB1 Demais localidades,\n\nConsultas, informacoes e servicos transacionais.\n\nSAC BB\n\n0806 729 60722\n\nInformacoes, reclamacoes, cancelamento de\n\nprodutos e servicos.\n\nOuvidoria\n\n986A 729 5678\n\nReclamacoes não selvcionadas nos canais\n\nhabituais agencia, SAC e demais canais de\n\natendimento,\n\nAtendimento à Deficientes Auditivos ou de Fala\n\n0860 7239 0088\n\nInformacoes, peclamaçoes, cancelamento de cartao,\n\noutros produtos e servicos de Ouvidoria.\n\n: f %23—- 11\nhttps://autoatendimento.bb.com.br/apf-apj-autoatendimento/index.html?v=3.14.4H/template/-2Fapf-apj-central-pagamentos%23-2Fpagamentos /\n"
+  ],
+  "ocr": {
+   "confianca": 83,
+   "ms": 49306,
+   "erro": null
+  }
+ },
+ "foto237SemValor": {
+  "nome": "Imagem (24).jpg",
+  "rel": "IMPORTAÇÃO\\0237 - POSTO DE COMBUSTIVEL BERIZAL LTDA - ME\\2026\\02\\Descompactado(s) com sucesso\\BOLETOS E COMPROVANTES FEVEREIRO.rar\\Imagem (24).jpg",
+  "texto": [
+   "mn EA\n/ : ES\n13/02/2026, 12:31 Banco do Brasil E),\n13/02/2026 - BANCO DO BRASIL - 121300755\n270502705 0081\nCOMPROVANTE DE PAGAMENTO DE TITULOS\nCLIENTE: POSTO DE COMBUSTIVEIS BER\nAGENCIA: 2765-7 CONTA: 22.294-1\nBCO BRADESCO S.A.\n237935160090000018047127001880502613560004247008\nBENEFICIARIO:\nPETROSERRA DISTRIBUIDORA DE PE\nNOME FANTASIA:\nPETROSERRA DISTRIBUIDORA DE PETROLE\nCNPJ: 61.557.353/0001-50\nBENEFICIARIO FINAL:\nPETROSERRA DISTRIBUIDORA DE PETROLE\nCNPJ: 81.557.353/0001-50\nPAGADOR :\nPOSTO DE COMBUSTIVEIS BERIZAL LTDA :\nCNPJ: 17.713.597/0001-14\nNR. DOCUMENTO PARNCICE)\nDATA DE VENCIMENTO 13/92/2026\nDATA DO PAGAMENTO 13/02/2026\nVALOR DO DOCUMENTO 42.470,00\nVALOR COBRADO 42.479,00\nNR. AUTENTICAÇÃO 8.481. 6CD.AES.BOE.GAS\nCentral de Atendimento BB\n4004 0001 Capitais e regioes metropolitanas\ne806 729 0001 Demais localidades.\nConsultas, informacoes e servicos transacionais.\nSAC BB\n0806 729 0722\nInformacoes, reclamacoes, cancelamento de\nprodutos e servicos.\nOuvidoria\n0RBB 729 5678\nReclamações não solucionadas nos canais\nhabituais agencia, SAC e demais canais de\natendimento.\nAtendimento a Deficientes Auditivos ou de Fala\n0ECB 729 0B88\nInformacoes, reclamacoes, cancelamento de cartao,\noutros produtos e servicos de Ouvidoria.\nsia taatennimenta? bb com br/anf-api-autoatendimento/index.html?v=3.14.4!/template/-2Fapf-api-central-pagamentos%/23-2F pagamentos 11\n"
+  ],
+  "ocr": {
+   "confianca": 76,
+   "ms": 85974,
+   "erro": null
+  }
+ },
+ "boleto237SemValor": {
+  "nome": "Imagem (31).jpg",
+  "rel": "IMPORTAÇÃO\\0237 - POSTO DE COMBUSTIVEL BERIZAL LTDA - ME\\2026\\06\\Descompactado(s) com sucesso\\BOLETO E COMPROVANTES DIGITALLIZADOS.rar\\BOLETO E COMPROVANTES DIGITALLIZADOS\\Imagem (31).jpg",
+  "texto": [
+   "Recibo do Pagador :\nSs) PETROSERRA DISTRIBUIDORA DE PETROLEO LTDA - CNPJ: 01.557.353/0001-50 - ROD BR 116, KM 706, S/N - JEQ À\nBR 116 KM 706, O SUISSA | \"\nPETROSERRA 15205-331 JEQUIÉ BA \"\nBradesco 237-2 23793.51600 90000.010B36 50001.880504 6 14800001198000\nBeneficiário Agência/Código Beneficiário Vencimento\nPETROSERRA DISTRIBUIDORA DE PETROLEO LTDA - CNPJ: 01.557.353/0001-: 3516-5/0018805-0 17/06/2026\nData do Documento Número do Documento Espécie Doc. Aceite Data do Processamento Nosso Número\n12/06/2026 001000072283-1 DM N 12/06/2026 09/00000108350-6\no9 R$ 11.980,00\nPagador CPF/CNPJ do Pagador\nPOSTO DE COMBUSTIVEIS BERIZAL LTDA(530) CNPJ: 17.713.597/0001-14\nPRACA JOAO FERREIRA SOUTO, 8 CENTRO Código da Baixa\n39555-000  BERIZAL MG 09/000001 08350-6\nSacador/Avalista é\nRecebimento através do cheque núm. do banco Autenticação mecânica\nEsta quitação só terá validade após o pagamento do cheque pelo\nbanco sacado.\n: mm | \"\nFu Bradesco 237 23/93.51600 90000.010836 50001.880504 6 14800001198000\nLocal de Pagamento . Vencimento\n« — PAGAR PREFERENCIALMENTE NAS AGÊNCIAS BRADESCO OU BRADESCO EXPRESSO 17/06/2026\n— Beneficiário Agência/Código Beneficiário\nPETROSERRA DISTRIBUIDORA DE PETROLEO LTDA - CNPJ: 01.557.353/0001-50 - ROD BR 116, KM 706, S/N - JEQUIÉ, BA - CEP: 452 3516-5/0018805-0\nData do Documento Número do Documento Espécie Doc. Aceite Data do Processamento Nosso Número\n12/06/2026 001000072283-1 DM N 12/06/2026 09/00000108350-6\noo R$ 11.980,00\nInstruções (Todas as informações deste bloqueto são de exclusiva responsabilidade do beneficiário.) -) Desconto/Abatimento\nCobrar juros de R$ 27,55 por dia de atraso\n* Não conceder Desconto/Abatimento. Não Receber CHEQUE p/ quitação deste (-) Outras deduções\nboleto.\nCobrar juros de R$ 27,55 por dia de atraso para pagamento a partir do Vencimento. (+) Mora / Multa / Juros\n(+) Outros Acréscimos\n(=) Valor Cobrado\nPagador CPF/CNPJ do Pagador\nPOSTO DE COMBUSTIVEIS BERIZAL LTDA(530) CNPJ: 17.713.597/0001-14\nPRACA JOAO FERREIRA SOUTO, 8 CENTRO Ú Código de Baixa .\n39555-000 BERIZAL MG ! Í\nSacador/Avalista 09/00000108350-6\nh, Autenticação mecânica Ficha de Compensação\n[L\n; j ..Chave de segurança: YSEL9UJVI/YBLIMOO o rmememmememnemêm—&————)\nOperação realizada com sucesso conforme: as informações fornecidas pelo cliente.\nSAC CAIXA: 0800 726 0101 | : iefp dos\nPessoas com deficiência auditiva: 0800 726 2492 ;\nOuvidoria: 0800 725 7474 de ;\nAIô CAIXA: 0800 104 0104 [18 :\nSOOU EE AERETR dis AE SSNAO je\nPLACAS eREIDETOT PRESIDE NAS E A SATO OCS Ta\ndoe [Ae io an mande o E nao vã\npt gos tENA DEI IE E Wo ERnenO ch Teori va go\n| 3 17/06/2026, 18:1C€\nof! Vie REA\n"
+  ],
+  "ocr": {
+   "confianca": 78,
+   "ms": 124698,
+   "erro": null
+  }
+ },
+ "nfseTaio760": {
+  "nome": "NFSE 760 PROGEO CONSULTORIA.pdf",
+  "rel": "FERNANDO\\411 MINAS FORESTRY\\2025\\02.2025\\Comprovantes e NFs\\NFSE 760 PROGEO CONSULTORIA.pdf",
+  "texto": [
+   "r NOTA FISCAL DE SERVIÇOS ELETRÔNICA - NFSe E ES E rá e\n. Prefeitura Municipal de Taiobeiras CIRCO\nCodigo de Verificação para Autenticação: 1a67a7267 PBP\nEndereço: Teiobeiras, Minas Gerais, MG, 39850-000 TAB Ro\nCNPJ: 18.017.384/0001-10, E-mail: receltsecadastroeialobeiras.mg.gov.br ci inçõoA\nData Fato Gerador Exigibilidade de ISS Regime Tributário Número RPS Nº da Nota Fiscal\n03/02/2025 Exigivel Meroempresa Municipal A\nTipo de Recolhimento — | Simples Tocal de Prestação Local de Recolhimento 760\nNão Retido Optante 3168002 - Taiobeiras - MG 3168002 - Taiobeiras - MG\nPRESTADOR\nRazão Social: PROGEO CONSULTORIA E SERVIÇOS EM MEIO AMBIENTE LTDA\nNome Fantasia: PROGEO DP\nEndereço: Rua SANTO ANTONIO, 000280, - SAGRADA FAMILIA e\nTaiobeiras - MG - CEP: 39550000\nE-mail: e. = FONE): 1... = Sit: o.\nInscrição Estadual: ........ - Inscrição Municipal: 011106/4205 - CPF/CNPJ: 08.405.669/0001-75\nTOMADOR\nRazão Social: MINAS FORESTRY EMPREENDIMENTOS FLORESTAIS EIRELI\nEndereço: FAZ FAZENDA TAPERA, SN, - ZONA RURAL\nSÃO JOÃO DO PARAÍSO - MG - CEP: 39540-000\nE-mail: ... - Fone:\nInscrição Estadual: 0037534920051 - Inscrição Municipal: 0018167 - CPF/CNPJ: 37.405.977/0001-07\nSERVIÇO\n17.01 - ASSESSORIA OU CONSULTORIA DE QUALQUER NATUREZA\nDISCRIMINAÇÃO DOS SERVIÇOS\nPrestação de serviço referente ao Registro junto ao CREA com Responsável Técnico.\nVALOR SERVIÇO (R$)| peDUÇÕES (R$)|] DESCONTOINCONDICIONAL (R$)| BASE CÁLCULO (R$) ALÍQUOTA (%) ISS (RS)\n506,00 0,00 0,00 506,00 2.00 10,12\nDEMONSTRATIVO DOS TRIBUTOS FEDERAIS DESCONTO (R$) ouTRAS (R$) VALOR LÍQUIDO (?5)\nINSS (RS) 1R (R$) CSLL (RS) COFINS (RS) PIS (RS) EA EO\n0,00 0,00 0,00 09,00 0,00 0,00 0,00 506,00\nOUTRAS INFORMAÇÕES\n(Valor Líquido = Valor Serviço - INSS - IR - CSLL - Outras Retenções - COFINS - PIS - Descontos Diversos - ISS Retido - Desconto Incondicional)\nMicroempresas e as Empresas de Pequeno Porte optantes pelo Simples Nacional estão enquadradas no Art. 23 da LC 123/2006.\nConsulte a autenticidade deste documento acessando o site http:/Mww.taiobeiras.mg.gov.br\n"
+  ],
+  "ocr": {
+   "confianca": 84,
+   "ms": 69210,
+   "erro": null
+  }
+ },
+ "nfseTaioNilma2947": {
+  "nome": "NFSE 2947 NILMA CONTADORA MINAS R$645,00.pdf",
+  "rel": "FERNANDO\\411 MINAS FORESTRY\\2025\\10.2025\\NFs e Coprovantes\\NFSE 2947 NILMA CONTADORA MINAS R$645,00.pdf",
+  "texto": [
+   "TIA - oa a |\nCE NOTA FISCAL DE SERVIÇOS ELETRÔNICA - NFSe ERC\na Prefeitura Municipal de Taiobeiras ESTA\ntio AA:\nCodigo de Verificação para Autenticação: 98314aa74 HA 4 Pao a]\nEndereço: Taiobeiras, Minas Gerais, MG, 39550-000 [TEA\nCNP: 18.017.384/0001-10, E-mail: receitaecadestroGteiobeiras. mg gov.br Emitido em TrToDons 06:23:44\nData Fato Gerador Exigibilidade de ISS Regime Tributário Número RPS Serie RPS Nº da Nota Fiscal\n1710/2025 Exigivel Microempresa Municipal . .\nTipo de Recolhimento Simples Local de Prestação Local de Recolhimento 2947\nNão Retido Optante 3168002 - Taiobeiras - MG 3168002 - Taiobeiras - MG\nPRESTADOR\nRazão Social: NILMA DIAS OLIVEIRA - ME\nW Nome Fantasia: NILMA CONTABILIDADE\nN Endereço: Travessa MARTINHO REGO, 000030, SALA 101/105- CENTRO\n\" Taiobeiras - MG - CEP: 39550000\nNilma e-mai: Jo. Fone: o... - Celular o. - Sites\n= inscrição Estadual: ........ - Inscrição Municipal: 250517/6308 - CPF/CNPJ: 27.872.981/0001-13\nTOMADOR\nRazão Social: MINAS FORESTRY EMPREENDIMENTOS FLORESTAIS EIRELI\nEndereço: FAZ FAZENDA TAPERA, SN, - ZONA RURAL\nSÃO JOÃO DO PARAÍSO - MG - CEP: 39540-000\nE-mail: ....... - Fone: - Celular: .......\nInscrição Estadual: 0037534920051 - Inscrição Municipal: 0018167 - CPF/CNPJ: 37.405.977/0001-07\nSERVIÇO\n17.18 - CONTABILIDADE, INCLUSIVE SERVIÇOS TÉCNICOS E AUXILIARES.\nDISCRIMINAÇÃO DOS SERVIÇOS\n[Serviços Contábeis Ref. 09/2025\nOBSERVAÇÃO\nValor aproximados de tributos: 105,91\nFonte: IBPT\nVALOR SERVIÇO (R$)| pDEDUÇÕES (R$)] DESCONTOINCONDICIONAL (R$) BASE CÁLCULO (R$) ALÍQUOTA (%) 1ss (R$)\n645,00 0,00 0,00 645,00 318 20,51\nDEMONSTRATIVO DOS TRIBUTOS FEDERAIS DESCONTO (R$) outras — (RS) VALOR LÍQUIDO (?5)\nINSS (R$) IR (R$) CSLL (R$)| COFINS (R$)| PIS (R$) CONDICIONAL RETENÇÕES\n0,00 0,00 0,00 0,00 0,00 0,00 0,00 645,00\nOUTRAS INFORMAÇÕES\n(Valor Líquido = Valor Serviço - INSS - IR - CSLL - Outras Retenções - COFINS - PIS - Descontos Diversos - ISS Retido - Desconto Incondicional)\nMicroempresas e as Empresas de Pequeno Porte optantes pelo Simples Nacional estão enquadradas no Art. 23 da LC 123/2006.\nConsulte a autenticidade deste documento acessando o site http:/www.taiobeiras.mg.gov.br\n"
+  ],
+  "ocr": {
+   "confianca": 83,
+   "ms": 50667,
+   "erro": null
+  }
+ },
+ "nfseTaioSpirou820": {
+  "nome": "NFSE 820 PROGEO CREA SPIROU R$506,00.pdf",
+  "rel": "FERNANDO\\446 SPIROU CONSULTORIA\\2025\\05.2025\\PAGAMENTO E NF SPIROU MAIO-2025\\NFSE 820 PROGEO CREA SPIROU R$506,00.pdf",
+  "texto": [
+   "SE NOTA FISCAL DE SERVIÇOS ELETRÔNICA - NFSe EX AZ]\nÀ Prefeitura Municipal de Taiobeiras a Ate eo\nCodigo de Verificação para Autenticação: 09fccd5bb refe Tine .\nEndereço: Teiobeiras, Minas Gerais, MG, 39550-000 rt furos\nData Fato Gerador Exigibilidade de ISS Regime Tributário Nº da Nota Fiscal\n02/05/2026 Exigivel Microempresa Municipal\nTipo de Recolhimento Simples Nacional Local de Prestação Local de Recolhimento 820\nNão Retido Optante 3168002 - Taiobeiras - MG 3168002 - Taiobeiras - MG\nPRESTADOR\nRazão Social: PROGEO CONSULTORIA E SERVIÇOS EM MEIO AMBIENTE LTDA\nNome Fantasia: PROGEO\nEndereço: Rua SANTO ANTONIO, 000280, - SAGRADA FAMILIA\nTaiobeiras - MG - CEP: 39550000\nE-mail - Fone: - Site:\nInscrição Estadual: ........ - Inscrição Municipal: 011106/4205 - CPF/CNPJ: 08.405.669/0001-75\nTOMADOR\nRazão Social: SPIROU CONSULTORIA E INVESTIMENTOS LTDA\nEndereço: FAZENDA DO GATO, S/N, - ZONA RURAL\nSÃO JOÃO DO PARAISO - MG - CEP: 39540-000\nE-mail - Fone:\nInscrição Estadual: - Inscrição Municipal: - CPF/CNPJ: 41.228.638/0001-61\nSERVIÇO\n17.01 - ASSESSORIA OU CONSULTORIA DE QUALQUER NATUREZA\nDISCRIMINAÇÃO DOS SERVIÇOS\nVALORSERVIÇO (R$) pDEDUÇÕES (R$)) DESCONTOINCONDICIONAL (R$)| BASE CÁLCULO (R$) ALÍQUOTA (%) ISS (RS)\n506,00 0,00 0,00 506,00 2.00 10,12\nDEMONSTRATIVO DOS TRIBUTOS FEDERAIS DESCONTO (RS) OUTRAS VALOR LÍQUIDO(RS)\nINSS (R$) IR (RS) este (Rs)| corins (RS) PIS (R$) CONDICIONAL RETENÇÕES\n0,00 0,00 0,00 0,00 0,00 0,00 0,00 506,00\nOUTRAS INFORMAÇÕES\n(Valor Líquido = Valor Serviço - INSS - IR - CSLL - COFINS - PIS - Descontos Diversos - 158 Retido - Desconto Incondicional)\nMicroempresas e as Empresas de Pequeno Porte optantes pelo Simples Nacional estão enquadradas no Art. 23 da LC 123/2006.\nConsulte a autenticidade deste documento acessando o site http://Wwww.taiobeiras.mg.gov.br\n"
+  ],
+  "ocr": {
+   "confianca": 87,
+   "ms": 72157,
+   "erro": null
+  }
+ },
+ "neoenergia453": {
+  "nome": "NEOENERGIA R$171,72.pdf",
+  "rel": "FERNANDO\\413 BRAZILIAN filiais 414.  418. 453\\2026\\01.2026\\Comprovantes\\NFs e Boletos\\NEOENERGIA R$171,72.pdf",
+  "texto": [
+   "Consumo-TUSDkWh          100,00  0,75539085             75,53              4,02             75,53 20,50            15,49  0,56048000 \nConsumo-TEkWh          100,00  0,37365215             37,36              1,97             37,36 20,50             7,65  0,27724000 \nAcrés. Band. AMARELA             1,68              0,08              1,68 20,50             0,34 \nIlum. Púb. Municipal             8,50 \nParc3/30 *184312            48,65 \nwww.neoenergia.com|Ligue grátis 116\n DANFE - DOCUMENTO AUXILIAR DA NOTA FISCAL DE ENERGIA ELÉTRICA ELETRÔNICA \n COMPANHIA DE ELETRICIDADE DO ESTADO DA BAHIA\n AV.EDGARD SANTOS, 300, CABULA VI, SALVADOR, BAHIA CEP 41181-900\n CNPJ 15.139.629/0001-94 INSCRIÇÃO ESTADUAL 00478696\n CLASSIFICAÇÃO: B1 RESIDENCIAL -RESIDENCIAL TIPO DE FORNECIMENTO: Conv. Monômia - Trifásico\n Tarifa Social de Energia Elétrica - Lei 10.438, de 26/04/02\n NOME DO CLIENTE:\n BRAZILIAN FORESTRY EMPREENDIMENTOS FLORE\n CNPJ: 33.117.***/****-**  Inscrição Estadual:  18642****\n ENDEREÇO:\n PO PORTO STA CRUZ 9999 S/N\n RURAL-PORTO SANTA CRUZ/PORTO SANTA CRUZ\n 45157-000 CANDIDO SALES BA\nCÓDIGO DA INSTALAÇÃO\n60239933\nCÓDIGO DO CLIENTE\n7080172880\n DATAS DE LEITURAS LEITURA ANTERIOR 11/12/2025 LEITURA ATUAL 10/01/2026 N° DE DIAS  30 PRÓXIMA LEITURA 07/02/2026\n NOTA FISCAL N° 929924843 - SÉRIE 000 / DATA DE EMISSÃO: 10/01/2026\n Consulte pela Chave de Acesso em:\n https://dfe-portal.svrs.rs.gov.br/Nf3e/consulta\n chave de acesso:\n 2926 0115 1396 2900 0194 6600 0929 9248 4310 5330 4875\n Protocolo de autorização: 3292600001882454 - 11/01/2026 às 03:25:03\nREF:MÊS/ANO\n01/2026\nVENCIMENTO\n20/01/2026\nTOTAL A PAGAR R$\n           171,72 \nCadastra-se e receba a sua fatura por e-mail, utilizando o QR code no verso da fatura.\nTRIBUTO BASE DE     ALÍQUOTA    VALOR (R$)\n                 CÁLCULO (R$)      (%)\n PIS            91,08    1,19             1,08 \n COFINS            91,08    5,48             4,99 \n ICMS           114,57   20,50            23,48 \nCONSUMO / kWh\n                                         CONSUMO FATURADO          N°DIAS FAT\nJAN26        100 30\nDEZ25        314 24\nNOV25        238 31\nOUT25        459 30\nSET25        100 29\nAGO25        100 33\nJUL25        100 33\nJUN25        100 28\nMAI25        100 31\nABR25        100 29\nMAR25        100 29\nFEV25        100 32\nJAN25        100 28\nMEDIDORGRANDEZASPOSTOSLEITURALEITURACONST.CONSUMO\nHORÁRIOSANTERIORATUALMEDIDORkWh\n 1224700640  Energia Ativa            Único         7.570,00 7.667,00    1,00000          97,00   \n 1224700640  Energia Reativa          Único         2.420,00 2.601,00    1,00000         181,00   \nRESERVADO AO FISCO\nAté a emissão desta fatura você não possui débitos para esse código de cliente.Parabéns por manter suas contas em dia! Conte\nsempre  com  a  gente.  Este  comunicado  não  contempla  débitos  em  discussão  judicial.A  compensação  do  pagamento  ocorrerá  em\naté 3 dias úteis, após data do pagamento.\nITAU                PAGÁVEL EM QUALQUER REDE BANCÁRIA\n 34191.09925   08921.452937   85832.220009   6   13320000017172\n PAGADOR | CPF/CNPJ | ENDEREÇO\n BRAZILIAN FORESTRY EMPREENDIMENTOS FLORE 33.117.***/****-**\n PO PORTO STA CRUZ 9999 S/N RURAL-PORTO SANTA CRUZ/PORTO SANTA CRUZ 45157-000 CANDIDO SALES BA\n NOSSO NÚMERO\n 109920892145\n N° DO DOCUMENTO\n 20724802\n CÓDIGO DO CLIENTE\n 7080172880\n DATA DE VENCIMENTO\n 20/01/2026\n VALOR DO DOCUMENTO\n            171,72 \n BENEFICIÁRIO\n COMPANHIA DE ELETRICIDADE DO ESTADO DA BAHIA          CNPJ 15.139.629/0001-94\n AV.EDGARD SANTOS, 300, CABULA VI, SALVADOR, BAHIA CEP 41181-900\n AGÊNCIA/CODIGO CEDENTE 2938/58322-\n- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\nINFORMAÇÕES IMPORTANTES\nFaturado pelo mínimo da fase - Custo de Disponibilidade,Artigo 98, Resolução ANEEL414/2010.\nNa data da leitura a bandeira em vigor é a Verde. Mais informações  em www.aneel.gov.br.\nO dia da leitura irá mudar, a próxima conta poderá ter de 15 a 47 dias de consumo Art.260-REN ANEEL 1000/21)\nA fatura pode ser emitida com base na leitura informada pelo cliente.\nA Iluminação Pública é de responsabilidade da Prefeitura.\n01/2026\n CÓDIGO DO CLIENTE 7080172880 VENCIMENTO 20/01/2026 TOTAL A PAGAR R$            171,72 \n PARA CADASTRAR SUA CONTA EM DÉBITO AUTOMÁTICO, UTILIZE O CÓDIGO DO CLIENTE.\n1/1\nPAGUE COM PIX\nTOTAL           171,72 \n ITENS DA FATURAUNID.QUANT.PREÇO UNIT.VALORPIS/ BASE CALC.ALÍQUOTAICMS (R$)TARIFA\n  COM TRIB.(R$)(R$)COFINS(R$) ICMS(R$) ICMS(%)UNIT(R$)",
+   "Fale com a gente! | Nossos Canais de Atendimento\nTELEATENDIMENTO: Emergencial 116 | Comercial 0800 276 0116     \n(Ligação gratuita de telefones fixos e móveis)                          \nAtendimento ao deficiente auditivo ou de fala: 0800 701 0155            \nOuvidoria: 0800 071 7676                                                \nAgência Nacional de Energia Elétrica - ANEEL 167                        \n(Ligação gratuita de telefones fixos e móveis)                          \nINFORMAÇÕES IMPORTANTES\nTodo Consumidor pode solicitar a apuração dos indicadores de\ncontinuidade e limites aplicáveis (DIC, FIC, DMIC e DICRI). As\ninformações podem ser consultadas a qualquer tempo, basta\nacessar:  www.neoenergia.com - Na Agência Virtual.\nDIC - NÚMERO DE HORAS SEM ENERGIA\nFIC - NÚMERO DE VEZES SEM ENERGIA\nDMIC - DURAÇÃO MÁXIMA DE INTERRUPÇÃO CONTÍNUA\nDICRI - DURAÇÃO DE INTERRUPÇÃO EM DIA CRÍTICO\nINFORMAÇÕES IMPORTANTES\nO Cliente é compensado quando há violação na continuidade\nindividual ou do nível de tensão de fornecimento.\nPagamento em atraso gera multa 2%(Res.1.000/ANEEL),\njuros 1% a.m (lei 10.438/02) e atualização monetária no\npróximo mês.\nO cliente é compensado quando há descumprimento do prazo\ndefinido para  os padrões de atendimento comercial.\nRegras para cobrança da contribuição para custeio de serviço\nde  iluminação pública(COSIP) estão à disposição site\nwww.neoenergia.com/Poder Público/Contribuição de\nIluminação Pública.\nAs informações suplementares estão disponíveis no site\nwww.neoenergia.com - Na Agência Virtual, ou nas lojas de\natendimento.\nAs condições gerais de fornecimento (Resolução ANEEL 414/2010), tarifas, produtos, serviços prestados e tributos se encontram\nà disposição, para consulta em nossas unidades de atendimento e no site www.neoenergia.com\nACESSE WWW.NEOENERGIA.COM E CONFIRA NOSSO AVISO DE PRIVACIDADE.\n DANFE - DOCUMENTO AUXILIAR DA NOTA\n FISCAL DE ENERGIA ELÉTRICA ELETRÔNICA\n NOME DO CLIENTE:\n BRAZILIAN FORESTRY EMPREENDIMENTOS FLORE\n ENDEREÇO:\n PO PORTO STA CRUZ 9999 S/N\n RURAL-PORTO SANTA CRUZ/PORTO SANTA CRUZ\n 45157-000 CANDIDO SALES BA"
   ]
  },
- "memoria292": {
-  "nome": "Memória de calculo - Fito Comercio.pdf",
-  "rel": "0292 - FITO INDUSTRIA E COMERCIO DE ALIMENTOS LTDA - EPP (MATRIZ)\\DEPARTAMENTO FISCAL\\DAE DE ICMS\\Memória de calculo - Fito Comercio.pdf",
+ "coelbOcr453": {
+  "nome": "COELB - Energia  R$121,89.pdf",
+  "rel": "FERNANDO\\413 BRAZILIAN filiais 414.  418. 453\\2025\\08.2025\\Comprovantes e pagtos\\NFs e Boletos\\COELB - Energia  R$121,89.pdf",
   "texto": [
-   "FITO INDUSTRIA E COMERCIO DE ALIMENTOS LTDA  (00292)\nEmissão: 09:41\n13/05/2022\nConferência de Antecipação MG\nPágina: 1\nNúmero\nData\nCod. Fornecedor\nValor da operação  ICMS interestadual\nBase indexada  ICMS interno\nValor a recolher\n786\n17/08/2021  27.785.059/0001-99\n3.846,94\nR$             \n461,63\nR$                    \n4.128,43\nR$      \n743,12\nR$         \n281,49\nR$                                  \n75479\n17/09/2021  05.740.789/0001-30\n4.927,51\nR$             \n591,30\nR$                    \n5.288,06\nR$      \n951,85\nR$         \n360,55\nR$                                  \n43717\n13/12/2021  73.379.380/0001-90\n15.314,98\nR$           \n1.837,80\nR$                 \n16.435,59\nR$    \n2.958,41\nR$      \n1.120,61\nR$                               \n78870\n24/02/2022  05.740.789/0001-30\n5.169,80\nR$             \n620,38\nR$                    \n5.548,07\nR$      \n998,65\nR$         \n378,27\nR$                                  \nTotal ICMS interestadual:\n3.511,11\nR$      \nTotal ICMS interno:\n5.652,03\nR$      \nTotal a recolher:\n2.140,92\nR$     \n \nFITO INDUSTRIA E COMERCIO DE ALIMENTOS LTDA  (00292)\nEmissão: 09:41\n13/05/2022\nConferência de Antecipação MG\nPágina: 1\nNúmero\nData\nCod. Fornecedor\nValor da operação  "
+   "o . DANFE - DOCUMENTO AUXILIAR DA NOTA FISCAL DE ENERGIA ELÉTRICA ELETRÔNICA mn\n« Neoenergia COMPANHIA DE ELETRICIDADE DO ESTADO DA BAHIA\nCoelba AV.EDGARD SANTOS, 300, CABULA VI, SALVADOR, BAHIA CEP 41181-900\neceneeei contido Srde dis CNPJ 15.139.629/0001-94 INSCRIÇÃO ESTADUAL 00478696\nNONE DO CLIENTE: MUs—p— e essas\nBRAZILIAN FORESTRY EMPREENDIMENTOS FLORE CO0GODA NSTALAÇÃO O E So E)\nCNPJ: 33.117.\"\"tPe1.t* Inscrição Estadual: 18642\"\"** 60239933 SAIA vor rScAL No BOTAGAB1O - SÉRIE 000/ DATA DE EMISSÃO: 2608/2025\nENDEREÇO: e IS AERAEE — Consune pela Chave de Acesso em\nPO PORTO STA CRUZ 9999 S/N E A Aco <R\nRURAL-PORTO SANTA CRUZIPORTO SANTA CRUZ CONGO DO CLIENTE Fã oa E EEE SPAS\n45157-000 CANDIDO SALES BA aa So e de acesso:\n7080172880 | ARMA E 20250815 1306 2000 0104 0600 0857 464 16104567 2223\nLET AEE É conciso auoização 3202500065S60722 - 27/08/2028 às 04:54 16\nREF:MES/ANO TOTAL APAGAR RS VENCIMENTO TTAHO\n08/2025 121,89 04/09/2025 | [E] [35H\nCLASSIFICAÇÃO: B1 RESIDENCIAL -RESIDENCIAL TIPO DE FORNECIMENTO: Conv. Monômia - Trifásico\nCadastra-se e receba a sua fatura por e-mail, utilizando o QR code no verso da fatura.\nLEITURA ANTERIOR 17/07/2025 | LEITURA ATUAL 19/08/2025 PRÓXIMA LEITURA 17/09/2025\nITENS DA FATURA UNID, QUANT. PREÇO UNIT. VALOR Ps BASE CALC. | jALÍQUOT! 1CMS (R$) TARIFA RIBUTO| BASE DE JQUOTA| VALOR (R$)\nOM TRIB.(RS) (RS) COFINS(RS) 1CMSIRS) | icMs(%) UNITIRS) CALCULO(RS)| (%)\n»onsumo-TUSD em 100.00] 0,75232770| 7523 ss) 7523 2050 1644] 0,5604800] e. im.” sm\njonsumo-TE an 100,00] 0,37213697 37,21 1,85 21 2050 72] 027724000 ” ea ss 40\nés. Band. VERMELHA 253 o12| 2553 20,50 051 os am aca\nvós. Bd VERMELHA-P2 608 02 so 205 12]\nlium. Púb. Municipal 201\nITAIPU-A21-L10438/02 217\n- —uani s——\nAGO pç OS\no —  \"\nCET — oo\nnes\n5 e o\nwo — à\n(SON —— o E\no ES\n[SO N——p o EN\nNov AE 1% >\nom pmEME m »\nsem: E 15\n[2 NM RS E E RS RS E a a | CS\nMEDIDOR Postos | emma | iemora | const coNsuMo\nHoRáRIOS | anTERIOR ATUAL |  mEDIDOR om\nTaT006ÃO | Energia Riva [7 E ET 7200000 Ex\n1224700640 | Energia Reativa Unico 1867700 204400 100000 13600\nAté a emissão desta fatura você não possui débitos ise código de cliente Parabéns por manter suas contas em dia! Conte\nBempre com a gente. Ee comunicado não contempla débitos em diecussão judicial À contperisação do pagamento pcormerá e\nté 3 dias úteis, após data do pagamento.\nINFORMAÇÕES IMPORTANTES\natuado pêlo minimo da fase - Custo de Disponitilidade Arigo 98. Resolução ANEEL 14/2010,\nNa data da leitura a bandeira vigente é a VERMELHA P2. Informações www.aneel.gov.br.\nNo valor do consumo faturado está incluído o ajuste na(s) ho (ões) CAT de - 3 RM.CRT de-22kWh\nO dia da leitura irá mudar, a próxima conta poderá ter de 15 a 47 dias de consumo Art.260-REN ANEEL 1000/21)\nÀ fatura pode ser emitida com base na leitura informada pelo cliente.\nAlluminação Pública é de responsabilidade da Prefeitura.\n08/2025 CÓDIGO DO CLIENTE 7080172880 vencimento 04/09/2025 | totAL A PAGAR R$ 121,89\nMTAU PAGÁVEL EM QUALQUER REDE BANCÁRIA.\nPAGUE COM PIX\nBRAD FORESTAY ENPREENDNMENTOS FLORE 3 17 =rrono\" EFE TE)\nOPORTO Th criz nas o MA, FOTO Si CREIZACA DSAVIA CE entr 40o CaMcInO axis ão É E\nNOSSO NÚMERO. Nº DO DOCUMENTO [CÓDIGO DO CLIENTE | DATA DE VENCIMENTO [VALOR DO DOCUMENTO. TAIS A Fr\nEE EAAÃES\nfemencáROo É RE ÁTIIA\n(CoMPANHA DE ELETRCIDADE DO ESTADO DABAMIA — GNPU 15.80 2800t4 aLREo ALLO\n[NVEDGARD SANTOS, 100. CABULAVL SALVADOR, SAMA CEP 4 161.000, Req PIE aro)\n[REEVES Cara Os vao ear\nEFA\nE co lidos\n"
+  ],
+  "ocr": {
+   "confianca": 62,
+   "ms": 81944,
+   "erro": null
+  }
+ },
+ "alteracao408": {
+  "nome": "04ª Alteracao Contratual _aprovada_01112023.pdf",
+  "rel": "FERNANDO\\408 OURO VERDE MINERAÇÃO filiais 409 e 410\\Contrato Social\\04ª Alteracao Contratual _aprovada_01112023.pdf",
+  "texto": [
+   "\nNº DO PROTOCOLO (Uso da Junta Comercial)\nNIRE (da sede ou filial, quando a\nsede for em outra UF)\nCódigo da Natureza\nJurídica\nNº de Matrícula do Agente\nAuxiliar do Comércio\n 1 - REQUERIMENTO\n312125575192062\nMinistério da Economia\nSecretaria de Governo Digital\nDepartamento Nacional de Registro Empresarial e Integração\nSecretaria de Estado de Fazenda de Minas Gerais\nNome: __________________________________________\nAssinatura: ______________________________________\nTelefone de Contato: ______________________________\nData\nLocal\nRepresentante Legal da Empresa / Agente Auxiliar do Comércio:\nNome:\nrequer a V.Sª o deferimento do seguinte ato:\n(da Empresa ou do Agente Auxiliar do Comércio)\nNº DE\nVIAS\nCÓDIGO\nDO ATO\nCÓDIGO DO\nEVENTO\nQTDEDESCRIÇÃO DO ATO / EVENTO\nOURO VERDE MINERACAO E FLORESTAS LTDA\n002ALTERACAO\nCONSOLIDACAO DE CONTRATO/ESTATUTO\nALTERACAO DE ENDERECO DENTRO DO MESMO MUNICIPIO\n1\n1\n051\n2211\nTAIOBEIRAS\n26 OUTUBRO 2023\nNº FCN/REMP\nMGP2300994004\n1\nILMO(A). SR.(A) PRESIDENTE DA Junta Comercial do Estado de Minas Gerais\n 2 - USO DA JUNTA COMERCIAL\nDECISÃO SINGULARDECISÃO COLEGIADA\nDECISÃO COLEGIADA\nDECISÃO SINGULAR\nOBSERVAÇÕES\nNome(s) Empresarial(ais) igual(ais) ou semelhante(s):\nSIM\n_____________________________________\n_____________________________________\n_____________________________________\n_____________________________________\n_____________________________________\n_____________________________________\n_____________________________________\n_____________________________________\n_____________________________________\nSIM\n_____________________________________\nNÃO\n___/___/_____     ____________________\nDataResponsávelResponsávelData\n___/___/_____     ____________________\nNÃO\nProcesso em Ordem\nÀ decisão\n___/___/_____\nData\n____________________\nResponsável\nResponsávelData\n___/___/_____       __________________\nProcesso em exigência. (Vide despacho em folha anexa)\nProcesso deferido. Publique-se e arquive-se.\nProcesso indeferido. Publique-se.\nProcesso em exigência. (Vide despacho em folha anexa)\nProcesso indeferido. Publique-se.\n2ª Exigência                     3ª Exigência                     4ª Exigência                   5ª Exigência\nProcesso deferido. Publique-se e arquive-se.\n___/___/_____\nData\n____________________            ____________________            ____________________\nVogalVogalVogal\nPresidente da ______ Turma\n2ª Exigência                      3ª Exigência                     4ª Exigência                   5ª Exigência\nJunta Comercial do Estado de Minas Gerais\nCertifico o registro sob o nº 10970913 em 31/10/2023 da Empresa OURO VERDE MINERACAO E FLORESTAS LTDA, Nire 31212557519 e\nprotocolo 236212079 - 30/10/2023. Autenticação: E117613FC75C680FCA8B12351E87E67826BE0. Marinely de Paula Bomfim - Secretária-Geral.\nPara validar este documento, acesse http://www.jucemg.mg.gov.br e informe nº do protocolo 23/621.207-9 e o código de segurança iwDm Esta\ncópia foi autenticada digitalmente e assinada em 01/11/2023 por Marinely de Paula Bomfim  Secretária-Geral.\npág. 1/10",
+   "\nRegistro Digital\nCapa de Processo\nJUNTA COMERCIAL DO ESTADO DE MINAS GERAIS\nNúmero do Protocolo\n23/621.207-9\nIdentificação do Processo\nNúmero do Processo Módulo Integrador\nMGP2300994004\nData\n30/10/2023\n030.777.319-16VITOR ALEXANDRE MORONI\nNomeCPF\nIdentificação do(s) Assinante(s)\nPágina 1 de 1\nJunta Comercial do Estado de Minas Gerais\nCertifico o registro sob o nº 10970913 em 31/10/2023 da Empresa OURO VERDE MINERACAO E FLORESTAS LTDA, Nire 31212557519 e\nprotocolo 236212079 - 30/10/2023. Autenticação: E117613FC75C680FCA8B12351E87E67826BE0. Marinely de Paula Bomfim - Secretária-Geral.\nPara validar este documento, acesse http://www.jucemg.mg.gov.br e informe nº do protocolo 23/621.207-9 e o código de segurança iwDm Esta\ncópia foi autenticada digitalmente e assinada em 01/11/2023 por Marinely de Paula Bomfim  Secretária-Geral.\npág. 2/10",
+   "OURO VERDE MINERAÇÃO E FLORESTAS LTDA \nCNPJ Nº 27.119.416/0001-80 NIRE: 31212557519 em 24/09/2021 \nRua Bocaiúva nº 6.278 – Sala 01 – Bairro Planalto - CEP 39.550-000 \nTAIOBEIRAS/MINAS GERAIS \n............................................................................................................................................. \nQUARTA ALTERAÇÃO CONTRATUAL \nMOTIVO: Alteração de endereço da matriz e Consolidação do Contrato Social \nVITOR  ALEXANDRE  MORONI,  brasileiro,  empresário,  casado  sob  o  regime  de  comunhão \nparcial de bens , nascido à 26/08/1980, portador do RG nº 3.744.066 expedido pelo SSP/SC, CPF nº \n030.777.319-16,  residente  e  domiciliado  á  Rua  José dos  Santos  Sarmento,  nº  426  -    Bairro  Nossa \nSenhora de Fátima, CEP 39.550-000 – Taiobeiras/Minas Gerais. \nPROINVEST CONSULTORIA E INVESTIMENTOS LTDA, pessoa jurídica de direito privado, \ncom  sede  à  Avenida  Rio  Branco  nº  156,  Sala  3217,  Centro,  CEP  20.040-901,  Rio  de  Janeiro/RJ  , \ninscrita no CNPJ sob nº 43.364.570/0001-73 com registro na JUCERJA sob NIRE nº 33.2.1152361-2 \nem    01/09/2021,    neste    ato,    representada    pela    representante    legal/administradora: DILMA \nBARBOSA DO AMARAL, nacionalidade brasileira, administradora, solteira, nascida à 26/02/1964, \nportadora do documento de identidade nº 061662714 expedida pelo IFP/RJ, CPF nº 755.465.237-00, \nresidente e domiciliada à Avenida das Américas, nº 4.319  - Bloco K-03 Apto 204 – Barra da Tijuca \n–  Rio  de  Janeiro/RJ,  CEP  22.631-004,  únicos  sócios componentes  da  Sociedade  Empresária \nLimitada  que  gira  nesta  praça  sob  a  denominação  social  de: OURO  VERDE  MINERAÇÃO  E \nFLORESTAS  LTDA,  com  sede  à \nAvenida  do  Contorno  nº  6.278  –  Sala  01  –  Bairro  Planalto  -  CEP \n39.550-000,  Taiobeiras/Minas  Gerais,  inscrita  no  CNPJ  sob  nº \nCNPJ  Nº  27.119.416/0001-80  e  na  Junta \nComercial  do  Estado  de  Minas  Gerais  sob  NIRE:  31212557519  em  24/09/2021  e  filiais  à:  1)  \nFazenda  Nove  Fios,  a  23-KM  da  Margem  Direita  do  KM-47  da  MG-602,  s/n  ,  Bairro  Zona  Rural, \nCEP 39.540-000, São João do Paraíso/Minas Gerais, NIRE 3190274829-2 e CNPJ:27.119.416/0002-\n60.  2)  Fazenda  Holy  Wood,  s/n  Km  22  Margem  Direita do  KM  47  da  MG  602,  Zona  Rural,  CEP \n39540-000,  São  João  do Paraíso/Minas  Gerais,  NIRE  3190284935-8    e    CNPJ  nº  27.119.416/0004-\n22. 3) Fazenda Gameleira, s/n BR 251 de Salinas sentido a BR 116 entra a esquerda no Trevo para C. \nSeca, seguindo aprox. 5 Km – zona rural – CEP 39. 560-000 – Salinas/MG, NIRE 3190290402-2  e  \nCNPJ  nº  27.119.416/0005-03;  4)Fazenda  Renascer,  s/n  -  Estrada  Municipal  Cândido  Sales  a \nMachado  Mineiro  –  zona  rural  –  CEP  45.157-000  –  Cândido  Sales  /BA  ,  NIRE  2990206611-5    e  \nCNPJ  nº    27.119.416/0006-94,  resolvem  alterar  o  seu  contrato  social    ,  a  qual  se  regerá,  doravante, \npelo presente CONTRATO SOCIAL ao qual se obrigam mutuamente todos os sócios:\n \nALTERAÇÃO: \nCLÁUSULA   PRIMEIRA: Fica   o   endereço   da   sede   da   matriz   inscrita   no   CNPJ sob   nº \n27.119.416/0001-80, NIRE 3121255719 de 24/09/2021  alterado para a Rua Bocaíuva, 162 – Centro \n– CEP 39550-000 – Município de Taiobeiras/Minas Gerais. \nA   vista   das   modificações   ora   ajustadas,consolida-se   o   contrato   social,   na   modalidade   de\n \nempresa individual de responsabilidade limitada, com a seguinte redação: \nJunta Comercial do Estado de Minas Gerais\nCertifico o registro sob o nº 10970913 em 31/10/2023 da Empresa OURO VERDE MINERACAO E FLORESTAS LTDA, Nire 31212557519 e\nprotocolo 236212079 - 30/10/2023. Autenticação: E117613FC75C680FCA8B12351E87E67826BE0. Marinely de Paula Bomfim - Secretária-Geral.\nPara validar este documento, acesse http://www.jucemg.mg.gov.br e informe nº do protocolo 23/621.207-9 e o código de segurança iwDm Esta\ncópia foi autenticada digitalmente e assinada em 01/11/2023 por Marinely de Paula Bomfim  Secretária-Geral.\npág. 3/10"
   ]
  },
- "apuracao449": {
-  "nome": "REGISTRO DE APURACAO DE ICMS.pdf",
-  "rel": "IMPORTAÇÃO\\FABIANA\\0449 - GRANMIX COMERCIO TAIOBEIRAS (0003-08) - Ok\\REGISTRO DE APURACAO DE ICMS.pdf",
+ "alteracao413": {
+  "nome": "05ª QUINTA ALTERAÇAO CONTRATUAL 30032021.pdf",
+  "rel": "FERNANDO\\413 BRAZILIAN filiais 414.  418. 453\\CONTRATO SOCIAL\\05ª QUINTA ALTERAÇAO CONTRATUAL 30032021.pdf",
   "texto": [
-   "REGISTRO DE APURAÇÃO DE ICMS\nEmpresa:\nInsc. Est.:\nFolha:\nCNPJ:\nMês ou Período/Ano:\nGRANMIX \n003047844029428.704.876/0003-08\n01/05/2026 a 31/05/20261\nValor ContábilCod. FiscalD/C ICMS\nENTRADAS\nBase Cálculo\n1102936,5224,86920,24\n140359,580,000,00\nSUBTOTAL\n996,1024,86920,24\n21028.969,93716,817.637,08\nSUBTOTAL\n8.969,93716,817.637,08\nSUBTOTAL9.966,03741,678.557,32\nValor ContábilCod. FiscalD/C ICMS\nSAÍDAS\nBase Cálculo\n51022.509,430,000,00\n5405785,100,000,00\nSUBTOTAL\n3.294,530,000,00\nSUBTOTAL3.294,530,000,00\nSALDO DEVEDOR (DÉBITO - CRÉDITO)\n-741,67\nLJ SISTEMAS"
+   "Junta Comercial do Estado do Rio de Janeiro\nEmpresa: BRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA\nNIRE: 332.1072025-2 Protocolo: 00-2021/081640-6 Data do protocolo: 26/03/2021\nCERTIFICO O ARQUIVAMENTO em 29/03/2021 SOB O NÚMERO 00004041194 e demais constantes do\ntermo de autenticação.\nAutenticação: C071748FBE41C25B46473923BC8E4B3252182729015F6BA1D4EE86902EE93964\nPara validar o documento acesse http://www.jucerja.rj.gov.br/servicos/chanceladigital, informe o nº de protocolo.\nPag. 01/12\nNIRE / ArquivamentoCNPJEndereço / Endereço completo no exteriorBairroMunicipioEstado\n0000404119433.117.361/0001-71Avenida Rio Branco 156CentroRio de JaneiroRJ\nxxxxxxxxxxxxx.xxx.xxx/xxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxx.xxx.xxx/xxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxx.xxx.xxx/xxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxx.xxx.xxx/xxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxx.xxx.xxx/xxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxx.xxx.xxx/xxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxx.xxx.xxx/xxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxx.xxx.xxx/xxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxx.xxx.xxx/xxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxx.xxx.xxx/xxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxx.xxx.xxx/xxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxx.xxx.xxx/xxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxx.xxx.xxx/xxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxx.xxx.xxx/xxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxx.xxx.xxx/xxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxx.xxx.xxx/xxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxx.xxx.xxx/xxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxx.xxx.xxx/xxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxx.xxx.xxx/xxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxx.xxx.xxx/xxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxx.xxx.xxx/xxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nCERTIFICO O DEFERIMENTO POR LUICE DE LEANDRO SOB O NÚMERO E DATA ABAIXO:\nObservação:\n12\nNº de Páginas\n1/1\nCapa Nº Páginas\nSECRETÁRIO GERAL\nBernardo Feijó Sampaio Berwanger\nDeferido em 29/03/2021 e arquivado em 29/03/2021\nNIRE (DA SEDE OU DA FILIAL QUANDO A SEDE FOR EM OUTRA UF)\n33.2.1072025-2\nTipo Jurídico\nSociedade empresária  limitada\nPorte Empresarial\nNormal\nJUCERJA\nÚtimo arquivamento:\n00004010806 - 04/02/2021\nNIRE: 33.2.1072025-2\nBRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA \nBoleto(s): \nHash: EECC1710-65C1-45CA-A423-F6BB26C2E5E2\nOrgãoCalculadoPago\nJunta414,00414,00\nDNRC0,00\n0,00\nNº do Protocolo\n00-2021/081640-6\nTERMO DE AUTENTICAÇÃO\nNome\nBRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA\nCódigo AtoEventos\n002\nCódQtde.Descrição do Ato / Evento\n0211Alteração / Alteração de Dados (Exceto Nome Empresarial)\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+   "Junta Comercial do Estado do Rio de Janeiro\nEmpresa: BRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA\nNIRE: 332.1072025-2 Protocolo: 00-2021/081640-6 Data do protocolo: 26/03/2021\nCERTIFICO O ARQUIVAMENTO em 29/03/2021 SOB O NÚMERO 00004041194 e demais constantes do\ntermo de autenticação.\nAutenticação: C071748FBE41C25B46473923BC8E4B3252182729015F6BA1D4EE86902EE93964\nPara validar o documento acesse http://www.jucerja.rj.gov.br/servicos/chanceladigital, informe o nº de protocolo.\nPag. 02/12\nCódigo \ndo Ato\n29/03/2021\nxx/xx/xxxx\nxx/xx/xxxx\nxx/xx/xxxx\nxx/xx/xxxx\nxx/xx/xxxx\nxx/xx/xxxx\nxx/xx/xxxx\nxx/xx/xxxx\nxx/xx/xxxx\nPresidência da República\nSecretaria de Micro e Pequena Empresa\nSecretaria de Racionalização e Simplificação\nDepartamento de Registro Empresarial e Integração\nJunta Comercial do Estado do Rio de Janeiro\nNIRE (DA SEDE OU DA FILIAL QUANDO A SEDE FOR EM OUTRA UF)\n33.2.1072025-2\nTipo Jurídico\nSociedade empresária  limitada\nPorte Empresarial\nNormal\nNº do Protocolo\n26/03/2021 15:57:00\nJUCERJA\nÚltimo arquivamento:\nBRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA\nNIRE: 33.2.1072025-2\nBoleto(s): 103650769\nHash: EECC1710-65C1-45CA-A423-F6BB26C2E5E2\n00004010806 - 04/02/2021\n0 0 - 2 0 2 1 / 0 8 1 6 4 0 - 6 \nOrgãoCalculadoPago\nJunta414,00414,00\nDREI0,000,00\nREQUERIMENTO\nIlmo Sr. Presidente da Junta Comercial do Estado do Rio de Janeiro\nBRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA\nrequer a v. sa o deferimento do seguinte ato:\n002\nCódigo \nEvento\nDescrição do ato / Descrição do eventoQtde.\n0211Alteração / Alteração de Dados (Exceto Nome Empresarial)\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nRequerente\nNome:Alessandro Sousa Nogueira\nAssinatura: ASSINADO DIGITALMENTE\nTelefone de contato:2124215047\nE-mail:sandrocontador@ig.com.br\nTipo de documento:Digital\nData de criação:26/03/2021\nData da 1ª entrada:26/03/2021\nRio de Janeiro\nLocal\n26/03/2021\nData\n00-2021/081640-6\nÚltimos Retornos",
+   "Junta Comercial do Estado do Rio de Janeiro\nEmpresa: BRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA\nNIRE: 332.1072025-2 Protocolo: 00-2021/081640-6 Data do protocolo: 26/03/2021\nCERTIFICO O ARQUIVAMENTO em 29/03/2021 SOB O NÚMERO 00004041194 e demais constantes do termo de\nautenticação.\nAutenticação: C071748FBE41C25B46473923BC8E4B3252182729015F6BA1D4EE86902EE93964\nPara validar o documento acesse http://www.jucerja.rj.gov.br/servicos/chanceladigital, informe o nº de protocolo.\nPag. 03/12"
   ]
  },
- "monofasicos511": {
-  "nome": "RelatorioMonofasicos.pdf",
-  "rel": "IMPORTAÇÃO\\0511 - VISUAL KIDS LTDA - ME\\2026\\06\\RelatorioMonofasicos.pdf",
+ "vendaTrator408": {
+  "nome": "Venda trator 03-06-2026 Depreciação.pdf",
+  "rel": "FERNANDO\\408 OURO VERDE MINERAÇÃO filiais 409 e 410\\2026\\06.2026\\Venda trator 03-06-2026 Depreciação.pdf",
   "texto": [
-   "RELATÓRIO DE MONOFÁSICOS\nEmpresa: VISUAL KIDS LTDA\nCNPJ: 51927438000150\nTAIOBEIRAS\nValor Total: R$ 20,50\nID_PRODUTOPRODUTOQUANTIDADETOTAL\n1194CONJ.BODY M L RIB. P G C FRASES E MIJAO RIB. VIRA-PE1R$ 20,50"
+   "\nRECEBEMOS DE KOPEK FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA OS PRODUTOS E/OU SERVIÇOS CONSTANTES DA\nNOTA FISCAL ELETRÔNICA INDICADA ABAIXO. EMISSÃO: 08/04/2026 VALOR TOTAL: R$ 55.000,00 DESTINATÁRIO: OURO VERDE\nMINERACAO LTDA - RUA BOCAIUVA, 162 CENTRO Taiobeiras-MG\nNF-e\nNº. 000.000.007\nSérie 001\nDATA DE RECEBIMENTOIDENTIFICAÇÃO E ASSINATURA DO RECEBEDOR\n\nIDENTIFICAÇÃO DO EMITENTE\nKOPEK FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA\nFAZENDA HOLY WOOD, S/N\nZONA RURAL - 39540-000\nSao Joao do Paraiso - MG\nFone: (38)8837-8681\n\nDANFE\nDocumento Auxiliar da\nNota Fiscal Eletrônica\n0 - ENTRADA\n1 - SAÍDA\n1\nNº. 000.000.007\nSérie 001\nFolha 1/1\n\nCHAVE DE ACESSO\n3126 0411 0775 4100 0134 5500 1000 0000 0710 0272 1950\nConsulta de autenticidade no portal nacional da NF-e\nwww.nfe.fazenda.gov.br/portal ou no site da Sefaz Autorizadora\nNATUREZA DA OPERAÇÃO\nVenda de bem do Ativo imobilizado\nPROTOCOLO DE AUTORIZAÇÃO DE USO\n131267481604166  -  22/04/2026 14:27:18\nINSCRIÇÃO ESTADUAL\n0038926240053\nINSCRIÇÃO MUNICIPAL\n\nINSCRIÇÃO ESTADUAL DO SUBST. TRIBUT.\n\nCNPJ / CPF\n11.077.541/0001-34\nDESTINATÁRIO / REMETENTE\nNOME / RAZÃO SOCIAL\nOURO VERDE MINERACAO LTDA\nCNPJ / CPF\n27.119.416/0001-80\nDATA DA EMISSÃO\n08/04/2026\nENDEREÇO\nRUA BOCAIUVA, 162\nBAIRRO / DISTRITO\nCENTRO\nCEP\n39550-000\nDATA DA SAÍDA/ENTRADA\n\nMUNICÍPIO\nTaiobeiras\nUF\nMG\nFONE\n\nINSCRIÇÃO ESTADUAL\n0029148630047\nHORA DA SAÍDA/ENTRADA\n\nFATURA / DUPLICATA\nDinheiro\nNum.\n001\nVenc.\n22/05/2026\nValorR$ 55.000,00\nCÁLCULO DO IMPOSTO\nBASE DE CÁLC. DO ICMS\n0,00\nVALOR DO ICMS\n0,00\nBASE DE CÁLC. ICMS S.T.\n0,00\nVALOR DO ICMS SUBST.\n0,00\nV. IMP. IMPORTAÇÃO\n0,00\nV. ICMS UF REMET.\n0,00\nV. FCP UF DEST.\n0,00\nV. TOTAL PRODUTOS\n55.000,00\nVALOR DO FRETE\n0,00\nVALOR DO SEGURO\n0,00\nDESCONTO\n0,00\nOUTRAS DESPESAS\n0,00\nVALOR TOTAL IPI\n0,00\nV. ICMS UF DEST.\n0,00\nTRIBUTOS APROXIMADOS\n0,00\nV. TOTAL DA NOTA\n55.000,00\nTRANSPORTADOR / VOLUMES TRANSPORTADOS\nNOME / RAZÃO SOCIAL\n\nFRETE\n9-Sem Transporte\nCÓDIGO ANTT\n\nPLACA DO VEÍCULO\n\nUF\n\nCNPJ / CPF\n\nENDEREÇO\n\nMUNICÍPIO\n\nUF\n\nINSCRIÇÃO ESTADUAL\n\nQUANTIDADEESPÉCIE\n\nMARCA\n\nNUMERAÇÃO\n\nPESO BRUTO\n\nPESO LÍQUIDO\n\nDADOS DOS PRODUTOS / SERVIÇOS\n\nCÓDIGO\nPRODUTO\nDESCRIÇÃO DO PRODUTO / SERVIÇONCM/SHO/CSTCFOPUNQUANT\nVALOR\nUNIT\nVALOR\nTOTAL\nVALOR\nDESC\nB.CÁLC\nICMS\nVALOR\nICMS\nVALOR\nIPI\nALÍQ.\nICMS\nALÍQ.\nIPI\n07.01.2761TRATOR AGRICOLA MF4283 4RM - SERIE:\n4283/382899, MARCA: MASSEY - USADO\n\n870195900/415551UN1,00055.000,0055.000,000,000,000,000,000,000,00\nDADOS ADICIONAIS\nINFORMAÇÕES COMPLEMENTARES\nBem usado pertencente ao ativo imobilizado por mais de 12 meses\nNão incidência do ICMS Base legal: RICMS/2023 - Parte Geral - Artigo 153, Inciso XII.\nXML: 2921 0435 9537 2700 0178 5500 1000 0000 0410 0046 0000\nRESERVADO AO FISCO\n"
   ]
  },
- "relNfe511": {
-  "nome": "Relatorio_NFe_2026-09.pdf",
-  "rel": "IMPORTAÇÃO\\0511 - VISUAL KIDS LTDA - ME\\2026\\09\\Relatorio_NFe_2026-09.pdf",
+ "mutuoKopek412": {
+  "nome": "24-02-2025 CREDITO MUTUO CARLO X KOPEK.pdf",
+  "rel": "FERNANDO\\412 KOPEK FORESTRY\\2025\\02.2025\\Comprovantes e NFs\\24-02-2025 CREDITO MUTUO CARLO X KOPEK.pdf",
   "texto": [
-   "Relatório NFe (55)\nCNPJ: 51927438000150     Razão Social: VISUAL KIDS LTDA\nFantasia: VISUAL KIDS     Município: TAIOBEIRAS\nMês de referência: Setembro/2026\nPrimeira NFe-\nÚltima NFe-\nTotal NFe Emitidas0\nNFe Canceladas0\nNFe Inutilizadas0\nNFe Denegadas0\nNFe Não Autorizadas0\nNFe Autorizadas0\nTotal Valor AutorizadasR$ 0,00\nCANCELADA (0)\n(nenhum registro)\nINUTILIZADA (0)\n(nenhum registro)\nDENEGADA (0)\n(nenhum registro)\nNAO AUTORIZADA (0)\n(nenhum registro)"
+   "SISBB - SISTEMA DE INFORMAÇÕES BANCO DO BRASIL \n            -   AUTOATENDIMENTO  -             \n\n      TRANSFERÊNCIA ENTRE CONTAS CORRENTES\n\nCLIENTE: CARLO ROVEGNO\nAGÊNCIA: 4349-4    CONTA: 7589-2\n================================================\nFAVORECIDO\nAGÊNCIA: 4210-2    CONTA: 116281-0\nCLIENTE: KOPEK FORESTRY EMP FLORES\nVALOR: 50.000,00\nDATA: 24/02/2025\n------------------------------------------------"
   ]
  },
- "relNfce511": {
-  "nome": "Relatorio_NFCe_2026-09.pdf",
-  "rel": "IMPORTAÇÃO\\0511 - VISUAL KIDS LTDA - ME\\2026\\09\\Relatorio_NFCe_2026-09.pdf",
+ "adubosMinas411": {
+  "nome": "28-11-2025 ADUBOS REAL NF     R$1.350,00.pdf",
+  "rel": "FERNANDO\\411 MINAS FORESTRY\\2025\\11.2025\\Comprovante e NFs\\28-11-2025 ADUBOS REAL NF     R$1.350,00.pdf",
   "texto": [
-   "Relatório NFCe (65)\nCNPJ: 51927438000150     Razão Social: VISUAL KIDS LTDA\nFantasia: VISUAL KIDS     Município: TAIOBEIRAS\nMês de referência: Setembro/2026\nPrimeiro NFCe15236\nÚltimo NFCe15727\nNFCe Cancelados0\nNFCe Inutilizados0\nNFCe Denegados0\nNFCe Autorizados492\nTotal Valor AutorizadosR$ 46.702,40\nCANCELADO (0)\n(nenhum registro)\nINUTILIZADO (0)\n(nenhum registro)\nDENEGADO (0)\n(nenhum registro)\nAUTORIZADO (492)\nNFCE_NUMERODATA_VENDANFCE_DH_AUTORIZACAONFCE_CHAVE_ACESSONFCE_PROTOCOLONFCE_STATUSNFCE_ENVIOVALOR_FINAL\n152362026-09-0101/09/2026 13:02:1531260951927438000150650010000152361924911072131262126150203AUTORIZADONORMAL80\n152372026-09-0101/09/2026 13:03:5631260951927438000150650010000152371082251595131262126170522AUTORIZADONORMAL317"
+   "                \n \n SISBB - SISTEMA DE INFORMACOES BANCO DO BRASIL \n      28/11/2025 AUTO-ATENDIMENTO 09:49:59      \n \n           CLIENTE: MINAS F E F EIRELI          \n        AGENCIA: 101-5    CONTA: 73891-3        \n \n      TRANSFERÊNCIA ENTRE CONTAS CORRENTES\n \nCLIENTE: MINAS F E F EIRELI\nAGENCIA: 101-5    CONTA: 73891-3\n================================================\nFAVORECIDO\nAGENCIA: 4478-4    CONTA: 6129-8\nCLIENTE: ADUBOS REAL LTDA\nVALOR: 1.350,00\nDATA: 28/11/2025\n------------------------------------------------\n            \n28/11/2025, 09:50Banco do Brasil\nhttps://autoatendimento2.bb.com.br/apf-apj-autoatendimento/index.html?v=3.10.0#/template/~2Fapf-apj-central-transferencias%23~2Ftemplate~2...1/2",
+   "28/11/2025, 09:50Banco do Brasil\nhttps://autoatendimento2.bb.com.br/apf-apj-autoatendimento/index.html?v=3.10.0#/template/~2Fapf-apj-central-transferencias%23~2Ftemplate~2...2/2"
   ]
  },
- "relFiscal492": {
-  "nome": "Relatorio_Fiscal.pdf",
-  "rel": "IMPORTAÇÃO\\0492 - VERSATIL LTDA - ME\\2026\\09\\Relatorio_Fiscal.pdf",
+ "emprestimoBB237": {
+  "nome": "Emprestimo BB - Posto Berizal.pdf",
+  "rel": "FERNANDO\\237 POSTO BERIZAL\\Emprestimo BB - Posto Berizal.pdf",
   "texto": [
-   "\nVERSATIL - 49.437.322/0001-91\nTV MARTINHO REGO - CENTRO - TAIOBEIRAS, MINAS GERAIS\n(38) 9133-2266Telefone:Data:06/10/2026 09:22\nRELAÇÃO DE NFC-e - 01/09/2026 a 30/09/2026\nNúmeroCNPJ/CPFDestinatárioSérieDataStatusTotal (R$)\n97001/09/261CONSUMIDOR FINAL-Autorizado195,00\n97101/09/261CONSUMIDOR FINAL-Autorizado263,00\n97201/09/261CONSUMIDOR FINAL-Autorizado177,00\n97302/09/261CONSUMIDOR FINAL-Autorizado50,00\n97402/09/261CONSUMIDOR FINAL-Autorizado85,00\n97504/09/261CONSUMIDOR FINAL-Autorizado35,00\n97604/09/261CONSUMIDOR FINAL-Autorizado90,00\n97704/09/261CONSUMIDOR FINAL-Autorizado178,00\n97804/09/261CONSUMIDOR FINAL-Autorizado165,00\n97904/09/261CONSUMIDOR FINAL-Autorizado189,00\n98004/09/261CONSUMIDOR FINAL-Autorizado100,00\n98104/09/261CONSUMIDOR FINAL-Autorizado161,00\n98204/09/261CONSUMIDOR FINAL-Autorizado339,00\n98304/09/261CONSUMIDOR FINAL-Autorizado116,00\n98404/09/261CONSUMIDOR FINAL-Autoriz"
+   "PROPOSTA DE UTILIZAÇÃO DE CRÉDITO - BB GIRO EMPRESA\nContrato nr. 270.508.930, de 24/03/2022.\n«1 FINANCIADOR:\nBANCO DO BRASIL S.A. CNPJ: 00.000.000/0001-91\nAgência: TAIOBEIRAS-MG Prefixo-dv: 2705-7\na. FINANCIADO:\nRazão ou denominação social: POSTO DE COMBUSTIVEIS BERIZAL\nLTDA\nCNPJ: 17.713.597/0001-14 Conta Corrente: 000.022.294-1\nEndereço: PRACA JOAO FERREIRA SOUTO 8, CENTRO\nCidade: BERIZAL-MG CEP: 39.555-000\n3: DADOS DA PROPOSTA:\n3.1. Valor da PROPOSTA: R$100.000,00 (cem mil reais)\n3.2. Vencimento: 15/04/2025\nFÉ: Priso: 37 meses e 8 dias\n3.4. Encargos Financeiros:\nSobretaxa efetiva 10,1% a.a.\n\n3. COMISSÃO FLAT de 0,5% (CINCO DECIMOS por cento),\ncalculada sobre o valor do crédito concedido.\n4. UTILIZAÇÃO DO LIMITE - O(A) FINANCIADO(A) com base no\nContrato de Abertura de Crédito - BB Giro Empresa supra\nreferido, solicita a utilização do( s) valor(es) acima\nrelacionado(s) para reforço de seu Capital de Giro.\nSs FORMA DE PAGAMENTO DO PRINCIPAL - Sem prejuízo do\nvencimento estipulado no item 3 da Introdução do Contrato de\nAbertura de Crédito - BB GIRO EMPRESA, Nr. 270.508.930, de\n24/03/2022, e das exigibilidades previstas nas demais\ncláusulas, inclusive encargos financeiros, o(a)\nFINANCIADO(A) obriga-se a pagar ao FINANCIADOR a dívida\nresultante desta proposta para utilização de recursos em\n36(trinta e seis) parcelas de capital com os seguintes\nvencimentos e valores nominais: em 15/05/2022,\nR$2.777,77 (dois mil setecentos e setenta e sete reais e\nsetenta e sete centavos), em 15/06/2022, R$2.777,77 (dois ]\nmil setecentos e setenta e sete reais e setenta e sete\ncentavos), em 15/07/2022, R$2.777,77 (dois mil setecentos e\nsetenta e sete reais e setenta e sete centavos), em\n15/08/2022, R$2.777,77 (dois mil setecentos e setenta e sete\nreais e setenta e sete centavos), em 15/09/2022,\nR$2.777,77 (dois mil setecentos e setenta e sete reais e\nsetenta e sete centavos), em 15/10/2022, R$2.777,77 (dois\nmil setecentos e setenta e sete reais e setenta e sete\ncentavos), em 15/11/2022, R$2.777,77 (dois mil setecentos e\nsetenta e sete reais e setenta e sete centavos), em\n15/12/2022, R$2.777,77 (dois mil setecentos e setenta e sete\nreais e setenta e sete centavos), em 15/01/2023,\nR$2.777,77 (dois mil setecentos e setenta e sete reais e\n\n11) - continua na pagina 2 -\n\nfc /\n"
+  ],
+  "ocr": {
+   "confianca": 92,
+   "ms": 79548,
+   "erro": null
+  }
+ },
+ "cet429": {
+  "nome": "CET.pdf",
+  "rel": "FERNANDO\\429 POSTO COMBUSTIIVEL ANDRIELE\\Emprestimo\\CET.pdf",
+  "texto": [
+   "Total a Desembolsar do Cartão FNE\nR$ 21.000,00\nTarifa de Cadastro\nR$ 0,00\nIOF - previsão\nR$ 183,28\nTarifa de Contratação\nR$ 210,00\nCustos totais\nR$ 393,28\nValor Líquido do Montante a Desembolsar\nR$ 20.606,72\nData do Desembolso27/06/2024\nNúmero de Prestações de Principal a Pagar21\nPrevisão de Pagamento da 1ª Parcela de Principal15/11/2024\nVencimento Final15/07/2026\nPeriodicidade de Pagamento de Principal\nMENSAL\nPrevisão de Pagamento da 1ª Parcela de Juro15/08/2024\nQuantidade de pagamentos de JURO antes da 1ª prestação PRINCIPAL\n3\nPeriodicidade de Pagamento de Juros na Carência\nMENSAL\nValor a Desembolsar com Recursos Internos\nR$ 10.500,00\nTaxa Juro para Crédito Recursos Internos (% a.a)\n16,7652%\nTaxa Juro para Crédito Recursos Internos (% a.m)\n1,3000%\nValor a Desembolsar de GIRO-Recurso FNE\nR$ 10.500,00\nTaxa Juros Fixos para FNE GIRO-Parte FNE (% a.a)\n9,4575%\nTaxa Juros Fixos para FNE GIRO-Parte FNE (% a.m)\n0,7559%\nR$ 0,00\n0,0000%\n0,0000%\nCusto Efetivo Total (CET) ao ano (%)15,0606%\nCusto Efetivo Total (CET) ao mês (%)1,1759%\nCusto Efetivo Total (CET) ao ano (%)       -  Fluxos considerados \nno cálculo da CET (desembolsos/reembolsos) constam no \ndemonstrativo anexo.\n15,06%\nSalinas - MG27/06/2024\nLocalData\nAs condições desta simulação representam as bases negociais vigentes nesta data.\nPOSTO DE COMBUSTIVEIS ANDRIELE LIMITADA\nNome do Cliente\nAssinatura do Cliente\nAssinatura (s) do (s) avalista (s)\nDeclaro ter ciência da possibilidade de escolha da metodologia de cálculo dos encargos financeiros\nincidentes sobre os financiamentos de operações de crédito não rural com recursos dos Fundos\nConstitucionais de Financiamento, prevista no parágrafo 2º do artigo 2º da Resolução CMN nº 5.013, tendo\nOPTADO pela utilização nesta operação da TAXA DE JUROS PREFIXADA, mencionada no inciso II do caput\ndo artigo 2º desta Resolução.\nCálculo do Custo Efetivo Total - CET\nDESEMBOLSO DE FNE GIRO - JURO PREFIXADO_ CARTÃO BNB\nValor dos Custos Incidentes \n(Valor do crédito a desembolsar, deduzido dos custos",
+   "Página 1 de 1\nCLIENTE\nTipo de Simulação\nDATADA\nCONTRATAÇÃO\n27/06/2024\nCET (% a.a)\nValor Total\n%  em   relação   ao\ntotal devido\n21.000,0085,020%\nCUSTOS TOTAIS\n3.700,0514,980%\n1-JURO\n3.306,7713,388%\n2-IOF\n183,280,742%\n3-TARIFA DE CADASTRO\n0,000,000%\n4-Tarifa de Contratação\n210,000,850%\nTOTAL A PAGAR\n24.700,05100,000%\nSEQ DATA\nVALOR\nLIBERADO\nCUSTOS\nESTIMADOS\nJUROSPRINCIPAL\nPRESTAÇÕES\n(Principale\nEncargos)\nRESULTADODO\nFLUXO FINANCEIRO\nTOTAIS21.000,00393,283.306,7721.000,0024.306,771,1759%\n27/06/202421.000,00\n393,28\n0,000,000,0020.606,72\n115/08/20240,00\n0,00\n132,620,00132,62-132,62\n215/09/20240,00\n0,00\n83,160,0083,16-83,16\n315/10/20240,00\n0,00\n79,370,0079,37-79,37\n415/11/20240,00\n0,00\n688,88500,001.188,88-1.188,88\n515/12/20240,00\n0,00\n249,85924,051.173,90-1.173,90\n615/01/2025\n0,00\n0,00\n199,37970,931.170,30-1.170,30\n715/02/20250,00\n0,00\n199,41977,051.176,46-1.176,46\n815/03/20250,00\n0,00\n173,71983,261.156,97-1.156,97\n915/04/20250,00\n0,00\n172,85989,541.162,39-1.162,39\n1015/05/20250,00\n0,00\n157,30995,901.153,20-1.153,20\n1115/06/20250,00\n0,00\n155,011.002,351.157,36-1.157,36\n1215/07/2025\n0,00\n0,00\n139,831.008,881.148,71-1.148,71\n1315/08/20250,00\n0,00\n136,111.015,501.151,61-1.151,61\n1415/09/20250,00\n0,00\n121,291.022,201.143,49-1.143,49\n1515/10/20250,00\n0,00\n112,531.028,991.141,52-1.141,52\n1615/11/20250,00\n0,00\n103,331.035,861.139,19-1.139,19\n1715/12/2025\n0,00\n0,00\n87,881.042,831.130,71-1.130,71\n1815/01/20260,00\n0,00\n78,491.049,891.128,38-1.128,38\n1915/02/20260,00\n0,00\n68,651.057,031.125,68-1.125,68\n2015/03/2026\n0,00\n0,00\n53,831.064,281.118,11-1.118,11\n2115/04/20260,00\n0,00\n45,431.071,611.117,04-1.117,04\n2215/05/20260,00\n0,00\n33,681.079,041.112,72-1.112,72\n2315/06/2026\n0,00\n0,00\n22,551.086,571.109,12-1.109,12\n2415/07/20260,00\n0,00\n11,641.094,241.105,88-1.105,88\nDeclaro ter  ciência da possibilidade de escolha da metodologia de cálculo dos  encargos financeiros  incidentes sobre osfinanciamentos  de operações  de\ncrédito  não  rural  com  recursos  dos  Fundos  Constitucionais  de  Financiamento,  prevista  no  parágrafo  2º  do  artigo  2º  da  Resolução  CMN  nº  5.013,  tendo\nOPTADO pela utilização nesta operação da TAXA DE JUROS PREFIXADA, mencionada no inciso II do caput do artigo 2º desta Resolução.\nTOTAL LIBERADO (FNE + RECIN)\nDESEMBOLSO   DE   FNE   GIRO   -   JURO   PREFIXADO_\nCARTÃO BNB\nANEXO DA INFORMAÇÃO SOBRE O CUSTO EFETIVO TOTAL - FLUXO DA OPERAÇÃO\nPOSTO DE COMBUSTIVEIS ANDRIELE LIMITADA\n15,06%"
   ]
  },
- "caixaOcr511": {
-  "nome": "Comprovante_2025-07-14_152447.pdf",
-  "rel": "0511 - VISUAL KIDS LTDA - ME\\EXTRATOS BANCÁRIOS\\2025\\Comprovante_2025-07-14_152447.pdf",
+ "lote468": {
+  "nome": "01 CONTRATO- QUADRA 567 LOTE 1.pdf",
+  "rel": "FERNANDO\\468 CONST. INC. OURO VERDE\\2025\\05.2025\\01 CONTRATO- QUADRA 567 LOTE 1.pdf",
   "texto": [
-   "\" PESSOAL\nCAIXA\nExtrato por período\nCliente VISUAL KIDS LTDA\nConta 3411 / 1292.000579516138-8\nData 14/07/2025 - 15:24\nMês Abril\nPeríodo dos lançamentos 01/04/2025 até 30/04/2025\nLançamentos NrDoc — Histórico/Complemento Favorecido CPF/CNP) Valor Saldo\n30/04/2025 - 07:32:11 000503 CIEL MC CC 214,11C 21.886,68 C\n30/04/2025 - 10:29:39 301029 CRED PIX QR COD EST Lidiane Correa Dos **904.809/0*** 70,00 C 21.956,68 C\n30/04/2025 - 10:29:39 301029 TAR PIX 0,62 D 21.956,06 C\n30/04/2025 - 16:58:12 301658 CRED PIX QR COD EST Karine Pereira de ***,873,916**+* 36,00 C 21.992,06 C\n30/04/2025 - 16:58:12 301658 TAR PIX 0,32D 21.991,74 C\n30/04/2025 - 00:00:00 000000 SALDO DIA 0,00 C 21.991,74 C\n29/04/2025 - "
+   "QUADRO RESUMO DO INSTRUMENTO PARTICULAR DE COMPROMISSO DE VENDA E COMPRA.\nDE IMÓVEL EOUTRAS AVENÇAS.\n) Loteamento Nilton Junior\nCOMERCIALMENTE IDENTIFICADO como “LOTEAMENTO NILTON JUNIOR\"\nLOCALIZAÇÃO DO LOTEAMENTO: MUNICIPIO DE TAIOBEIRAS — MINAS GERAIS\nLOTEAMENTO REGISTRADO NO CRI DE TAIOBEIRAS - MG\nSOB O Nº 2352 Registro no CRI em 16/07/2002\nCONTRATO \" 558“LOTE Nº “1” QUADRA “567” “Matrícula “-\" —\nMedidas / Confronto\nFrente: RUA Rua Deícula Ferreira - 10.00 metros.\nFundo: LOTE Lote 24 - 10.00 metros.\nEsquerda: — LOTE Rua Maurício Miranda Ferreira - 30.00 metros.\nDireita: LOTE Lote 2 - 30.00 meiros.\nÁrea Total do lote: 300.00m?\n1.2) LOTEAMENTO nos termos da Lei Federal nº 6766/79 e aprovado junto à Prefeitura de\nTaiobeiras-MG.\n1) — DADOS DO(S) COMPROMISSÁRIO (S) COMPRADOR(ES)\n1º COMPRADOR\nNome: CONSTRUTORA E INCORPORADORA OURO VERDE LTDA\n1.E: 004326384.00-10 CNPJ/MF: 46.151.327/0001-65\nEndereço Residencial: Avenida do Contorno, 6278 - Bairro: Planalto\nCidade: Taiobeiras - 39.550-000,\nUM) DADOS DA PROMITENTE VENDEDORA\nPROMITENTE VENDEDORA:\nLOTEAMENTO NILTON JUNIOR LTDA, na forma do seu contrato social, inscrita no CNPJ/MF\n47.727.503/0001-27, com sede na Avenida da Saudade,130 sala 101 Centro - CEP\n39.550-000 - Taiobeiras (MG), neste ato representado pelos seus sócios administradores,\nBruno Rodrigues da Rocha, brasileiro, solteiro, empresário, portador do RG nº MG\n13.892.936, expedido pela PC/MG, inscrito no CPF/MF sob o nº 074.886.266-80, e/ou o Sr.\nLeonardo Rodrigues da Rocha, brasileiro, casado, empresário, portador do RG nº MG\n10.948.998, expedido pela SSP/MG, inscrito no CPF/MF sob o nº 036.427.146-92.\nPágina 1 10 :\nFr.\n"
+  ],
+  "ocr": {
+   "confianca": 91,
+   "ms": 111461,
+   "erro": null
+  }
+ },
+ "lote575": {
+  "nome": "Contrato_lote0009_quadra595.pdf",
+  "rel": "FERNANDO\\575 BDV LTDA\\2025\\Contrato_lote0009_quadra595.pdf",
+  "texto": [
+   "UADRO RESUMO DO INSTRUMENTO PARTICULAR DE COMPROMISSO DE VENDA E COMPRA\nDE IMÓVEL EOUTRAS AVENÇAS.\nD) Loteamento Nilton Junior\nCOMERCIALMENTE IDENTIFICADO como \"LOTEAMENTO NILTON JUNIOR\"\nLOCALIZAÇÃO DO LOTEAMENTO: MUNICIPIO DE TAIOBEIRAS — MINAS GERAIS\nLOTEAMENTO REGISTRADO NO CRI DE TAIOBEIRAS - MG\nSOB O Nº 2352 Registro no CRI em 16/07/2002\nCONTRATO \" 1109“LOTE Nº “0009” QUADRA “595” “Matrícula “-\" —\nMedidas / Confronto\n\nFrente: RUA Rua Clemente Israel das Virgens - 10.00 metros.\n\nFundo: LOTE Lote 0024 - 10.00 metros.\n\nEsquerda: — LOTE Lote 0008 - 30.00 metros.\n\nDireita: LOTE Lote 0010 - 30.00 metros.\n\nÁrea Total do lote: 300.00m?\n\n1.2) LOTEAMENTO nos termos da Lei Federal nº 6766/79 e aprovado junto à Prefeitura de\n\nTaiobeiras-MG.\n\n\") DADOS DO(S) COMPROMISSÁRIO (S) COMPRADOR(ES)\n\n1º COMPRADOR\n\nNome: BDV LTDA\n\nLE: INSENTA CNPJ/MF: 62.183.562/0001-75\n\nEndereço Residencial: ROD LMG 626 TAIOBEIRAS C DENTRO KM 03, 00 - Bairro: ZONA\n\nINDUSTRIAL\n\nCidade: Taiobeiras - 39.550-000,\n\n0) DADOS DA PROMITENTE VENDEDORA\n\nPROMITENTE VENDEDORA:\n\nLOTEAMENTO NILTON JUNIOR LTDA, na forma do seu contrato social, inscrita no CNPJ/MF\n\n47.727.503/0001-27, com sede na Avenida da Saudade,130 sala 101 Centro - CEP\n\n39.550-000 — Taiobeiras (MG), neste ato representado pelos seus sócios administradores,\n\nESPÓLIO DE LEONARDO RODRIGUES DA ROCHA, representado por sua inventariante LUCY\n\nGOUVEIA DIAS, brasileira, viúva, portadora do CPF nº. 012.057.316-44 e RG nº MG-11.576.694\n\nSSP-MG, residente e domiciliada na Rua José Santos Sarmento, nº 180, bairro Nossa\nPágina 1 de 10\n"
+  ],
+  "ocr": {
+   "confianca": 91,
+   "ms": 113879,
+   "erro": null
+  }
+ },
+ "acordo168": {
+  "nome": "168 - ACORDO OURO VERDE - LEV. EIA RIMA.pdf",
+  "rel": "FERNANDO\\408 OURO VERDE MINERAÇÃO filiais 409 e 410\\2025\\Contratos de Serviços Tomados\\168 - ACORDO OURO VERDE - LEV. EIA RIMA.pdf",
+  "texto": [
+   " \n \nPROPOSTA COMERCIAL DE PRESTAÇÃO DE \nSERVIÇOS N°: 168/ 2025 \n \n \n \n \n \n \nAPRESENTAÇÃO  \n \n \nA ProGeo  Consultoria  e  Serviços  em \nMeio Ambiente, sediada na Rua Santo Antônio, \n280, Sagrada Família, Taiobeiras – Minas Gerais, \nCNPJ: 08.405.669/0001-75 é uma empresa de \nconsultoria ambiental composta por uma equipe \nmultidisciplinar, com mais de 17 anos de atuação \nem  diversos  projetos  e  licenciamentos para \nregularização  ambiental por  toda  a  região, \nutilizamos toda nossa capacidade para entregar \naos nossos clientes um trabalho de excelência, \nsempre  embasado  em  métodos  científicos  e \nlegislações vigentes ao licenciamento ambiental.  \n \n \n  ",
+   " \n \nSOLICITANTE \nOuro Verde Mineração Ltda \nCNPJ: 27.119.416/0002-60 \nFazendas Nove Fios e Holy Wood \n \n \nI – ESCOPO \nSerão disponibilizados os seguintes serviços: \nLevantamento  Planialtimétrico  e  Aerofotogramétrico  de  aproximadamente  231 hectares,  através  de \naerolevantamento com utilização de Laser Scanner com sensor lidar embarcado em drone, com objetivo \nde obter o Modelo Digital de Terreno com precisão menor que 10 cm. A área total compõe as 4 áreas das \nADA’s/ampliações, bem como das áreas de mineração em andamento, conforme as localizações do mapa a \nseguir, localizadas na região de São João do Paraíso, Minas Gerais. Conforme Figura 1, apresentando as \ndelimitações do Objeto sobre a imagem de satélite.  \nPara atendimento a informação complementar feita pelo equipe técnica da URA, será entregue o mapa a equipe \nda Hidroflor que fara a complementação dos projetos e protocolo na URA. \n \n \n \n \n \n \n \n \n \n \n \n \n \n \n \nDescrição dos serviços técnicos e produtos a serem entregues:  \n \n1.1 Levantamento aéreo com utilização de Laser Scanner com sensor lidar embarcado em drone Matrice 300;  \n1.2 Geração da nuvem de pontos bruta (modelo digital de superfície – MDS) em formato LAS;  \n1.3 Geração da nuvem de pontos filtrada (modelo digital de terreno - MDT) em formato LAS;  \n1.4 Geração das curvas de nível conforme levantamento realizado;  \n1.5 Elaboração do mapa altimétrico georreferenciado;  \n1.6 Fornecimento do mapa altimétrico nos formatos DWG, PDF;  \n1.7 Apresentação do mapa de uso atual do solo sobre base topográfica, localizando cavas em operação, \nencostas em operação, cavas exauridas, encostas exauridas, áreas em recuperação, bacias de decantação, \nestradas, pilhas de estéril com taludes, infraestrutura e etc;  \n1.8 Apresentação  do  projeto  de  cada  pilha  de  estéril  na  situação  atual  (delimitar  área  ocupada,  mapa \ntopográfico atual, seções, volume e localização de estruturas de drenagem e contenção de sedimentos).  ",
+   " \n \n1.9 Apresentação do Projeto de Projeção Pós Recuperação (mapa topográfico futuro, estruturas de drenagem \npluvial, e contenção de sedimentos, áreas revegetadas);  \n1.10 Apresentação da Anotação de Responsabilidade Técnica (ART). \n \nTodo o serviço será feito em parceria com a equipe da empresa CPE tecnologia que fará o levantamento \ncom o Laser Scanner com Sensor Lidar e o processamento e entrega do arquivo bruto onde a Progeo \nfará a edição e montagem dos mapas. \n \n \nII – HONORÁRIOS \nPara realização dos serviços propostos no escopo, fica definido o valor de  \n \nCPE Tecnologia:  R$ 17.613,00 (Dezessete mil seiscentos e treze reais).  \n \nPROGEO:  R$ 10.000,00 (Dez mil reais). \n \nTOTAL R$ 27.613,00 ( Vinte e sete mil seiscentos e treze reais).  \n \n \nIII – CONDIÇÃO DE PAGAMENTO \nPagamento poderá ser efetuado da seguinte forma ou a combinar; \n \nParcela Valor Prazo \n1 R$ 3.451,00 Assinatura da Proposta \n2 R$ 3.451,00 1 mês do fechamento \n3 R$ 3.451,00 2 meses do fechamento \n4 R$ 3.451,00 3 meses do fechamento \n5 R$ 3.451,00 4 meses do fechamento \n6 R$ 3.451,00 5 meses do fechamento \n7 R$ 3.451,00 6 meses do fechamento \n8 R$ 3.451,00 7 meses do fechamento \nSoma: R$ 27.608,00 \n \n \nV – RESPONSABILIDADE DA CONTRATADA \nCampo primeira etapa – prazo estimado de 20 dias \n \n➢ Levantamento de campo; \n➢ Coleta de dados, voos \n \nEscritório segunda etapa - prazo estimado de 30 dias: "
   ]
  },
- "cancelPortal443": {
-  "nome": "Evento cancelamento NF 241.pdf",
-  "rel": "0443 - SU SEDUÇÃO MODA INTIMA LTDA - ME\\ADIVANIA\\2026\\06\\Saídas\\XML\\NFE\\Evento cancelamento NF 241.pdf",
+ "estoque356": {
+  "nome": "ESTOQUE CONSOLIDADO (ANO BASE 2025).pdf",
+  "rel": "IMPORTAÇÃO\\0356 - A7 COMERCIO DE VEICULOS LTDA - ME\\ESTOQUE CONSOLIDADO (ANO BASE 2025).pdf",
   "texto": [
-   "Cancelamento\nOrgão Recepção do Evento\n31 - MINAS GERAIS\nAmbiente\n1 - Produção\nVersão\n1.00\nChave de Acesso\n31260642160712000118550010000002411012651343\nId do Evento\nID1101113126064216071200011855001000000241101265134301\nAutor Evento (CNPJ / CPF)\n42.160.712/0001-18\nData Evento\n08/06/2026 às 16:01:25-03:00\nTipo de Evento\n110111 - Cancelamento pelo Emitente\nSequencial do Evento\n1\nDetalhes do Evento\nDescrição do Evento\nCancelamento\nVersão\n1.00\nJustificativa do Cancelamento\nNOTA EMITIDA COM PRODUTO ERRADO\nProtocolo da NF-e\n131267613403633\nAutorização pela SEFAZ\nMensagem de Autorização\n135 - Evento registrado e vinculado a NF-e.\nProtocolo\n131267616297464\nData/Hora Autorização\n08/06/2026 às 16:02:26-03:00"
+   "13.728.235/0001-46\nDESCRIÇÃOUNIDADE ESTOQUE \nSAIDA (JAN)\nAPURADO\nVALOR \nUNITÁRIO\nVALOR TOTAL\n00050\nENTRADA \n(PRÓPRIO)\n11/12/2024611\nVEICULO USADO: COROLLA XEI 2.0 FLEX \nPRATA/ PLACA: EXY-1B32 / ANO: 2012-2012\nUNIDADE 1160.000,00R$       60.000,00R$          \n00068\nENTRADA \n(PRÓPRIO)\n03/07/2025805\nVEICULO USADO: F-350 P / PLACA: QMD-\n9A68 / ANO: 2018-2019\nUNIDADE 11165.000,00R$     165.000,00R$        \n00076\nENTRADA \n(PRÓPRIO)\n28/08/2025852\nVEICULO USADO: ONIX 1.4 MT ACTIVE \nPRETO / PLACA: BW W -2A63 / ANO: \n2019/2019\nUNIDADE 1158.000,00R$       58.000,00R$          \n00081\nENTRADA \n(PRÓPRIO)\n23/09/2025863\nVEICULO USADO: STRADA FREEDOM CD \n1.3 BRANCA / PLACA: SYU-0I93 / ANO: 2024-\n2024\nUNIDADE 11100.256,00R$     100.256,00R$        \n00083\nENTRADA \n(PRÓPRIO)\n07/11/2025873\nVEICULO USADO: STRADA FREEDOM CD \n1.3 BRANCA / PLACA: SIN-6G23 / ANO: 2023-\n2024\nUNIDADE 1194.825,50R$       94.825,50R$          \n00055\nENTRADA \n(PRÓPRIO)\n26/11/2025878\nVEICULO USADO: TUCSON GLS AUT PRATA \n/ PLACA: OXI-5D67 / ANO: 2014-2015\nUNIDADE 1150.000,00R$       50.000,00R$          \n00068\nSAÍDA (PRÓPRIO)\n03/07/2025805879\nVEICULO USADO: F-350 P / PLACA: QMD-\n9A68 / ANO: 2018-2019\nUNIDADE 10165.000,00R$     -R$                     \n00076\nSAÍDA (PRÓPRIO)\n28/08/2025852880\nVEICULO USADO: ONIX 1.4 MT ACTIVE \nPRETO / PLACA: BW W -2A63 / ANO: \n2019/2019\nUNIDADE 1063.000,00R$       -R$                     \n00084\nENTRADA \n(PRÓPRIO)\n04/11/2025881\nVEICULO USADO: STRADA FREEDOM CD \n1.3 BRANCA / PLACA: TCO-8B03 / ANO: 2024-\n2025\nUNIDADE 1198.794,50R$       98.794,50R$          \n00085\nENTRADA \n(PRÓPRIO)\n23/12/2025882\nVEICULO USADO: ONIX 1.4 MT LT PRETO / \nPLACA: FFZ-8632 / ANO: 2013/2014\nUNIDADE 1134.000,00R$       34.000,00R$          \n660.876,00R$                        \n__________________________________________________________\nAssinatura do Responsável \nA7 COMÉRCIO DE VEICULOS LTDA\nCÓDIGOTIPO\nDATA DE \nENTRADA\nNF DE \nENTRADA\nNF DE \nSAÍDA\nINSCRIÇÃO ESTADUAL0017812670090"
   ]
  },
- "sintegra343": {
-  "nome": "05-2026.pdf",
-  "rel": "IMPORTAÇÃO\\FABIANA\\0343 - RAIZZ EMPORIO DA SAUDE - Ok\\05-2026.pdf",
+ "estoque524": {
+  "nome": "Estoque072026.pdf",
+  "rel": "FERNANDO\\524 CARRETAO POSTO DE COMBUSTIVEIS LTDA\\2026\\Estoque072026.pdf",
   "texto": [
-   "SINTEGRA\nSistema Integrado de Informações sobre Operações\nInterestaduais com Mercadorias e Serviços\nGovernos\nEstaduais\nProtocolo Sintegra:\n0608329216\nPeríodo de Referência:\n01/05/2026 a 31/05/2026\nFinalidade:\n1 - Normal\nNatureza da Operação:\n3 - Totalidade das operações do informante\nRazão Social\nCidadeEstado\nCNPJInscrição Estadual\nResponsávelTelefone\nEndereço\nNome do Arquivo\nCRC do DocumentoTamanho do Arquivo (bytes)Data do ArquivoTipo de DocumentoVersão Validador\nRAIZZ EMPORIO DA SAUDE LTDA\nTaiobeirasMG\n32.468.347/0001-500033555450026 \nNILMA DIAS OLIVEIRA003838452074\nR RIO PARDO, 00759\nC:\\Users\\cont\\Desktop\\EMPRESAS\\IMPORTAÇÃO\\FABIANA\\0343 - ok\\32468347000150_09062026172117.zip\n6022A3CA32.17409/06/2026  17:22:12Convênio ICMS5.4.0\nResumo dos Registros do Arquivo\nTipo de Registro   Registros com Advertência   Registros sem Advertência   Total de Registros\n10011\n11011\n5001717\n5101313\n53011\n540125125\n55000\n56000\n57000\n60000\n616600660\n70000\n71000\n74000\n7590662752\n76000\n77000\n85000\n86000\n880184184\n90011\nTotais7501.0051.755\nValores Totais por Registro\nRegistro 50Valor ContábilBase de CálculoICMS\nRegistro 51Valor ContábilIPI\nRegistro 53Desp. AcessóriasBase de CálculoICMS Retido\nRegistro 54Valor TotalBase de CálculoDesconto  Desp. Acessórias\nRegistro 60AValor ContábilBase de CálculoICMS\nRegistro 61Valor ContábilBase de CálculoICMS\nRegistro 70Valor ContábilBase de CálculoICMS\nEntrada10.007,098.177,871.029,20\nSaída0,000,000,00\nEntrada10.007,090,00\nSaída0,000,00\nEntrada0,00191,9617,36\nSaída0,000,000,00\nEntrada9.989,738.177,870,000,00\nSaída0,000,000,000,00\n0,000,000,00\n34.662,210,000,00\nEntrada0,000,000,00\nSaída0,000,000,00\nO arquivo recepcionado está sujeito a verificações posteriores.\nCarimbo de Recepção do Arquivo\nSomente por o carimbo se o arquivo for aceito pelo programa de recepção.\nArquivo enviado para:\nSecretaria de Estado da Fazenda de Minas Gerais\nem 09/06/2026 às 17:22:11\nProtocolo TED: 0551185\nChave Transmissão: 56852243\nRemetente: \nE-mail: nilmacontabilidade@gmail.com"
+   "CARRETAO POSTO DE COMBUSTIVEIS LTDA\nINVENTÁRIO DO ESTOQUE/GRUPO\nCNPJ: 53.997.059/0001-62 - DATA: 31/08/2026 - PREÇO CONSIDERADO: PREÇO MÉDIO\nCr\nGRUPO: ADITIVOS\nProduto — Descrição NM Unid Est Depósito Est.Pista Est. Troca Est. Geral CustoUn. — Custo Total\n23 FLUXO ADIT DIESEL TRUCK FORCE 24X200 ERRO, CREA EO UERR CELA e EE BIO NS E GHES:\n24 FLUXO ADIT FLEX FORMULA 24X200 38111900 CX a o o z 47 12,98 610,06\n22 FLUXO AGUA BI-DESMINERALIZADA 12X1 : 28539080 SETOR ESSES ATE DO E EASTTO NORA 0 ET 3,98 BT SEE\n21 FLUXO CONCENT FLUA PLUS ROSA 12X1 38249941 CX 24 o o 24 7,98 191,52\nQTDE: 04 TOTAL GRUPO: 140 o o 140 1.499,20\nGRUPO: ARLA\nProduto Descrição NCM Unid. Est Depósito Est Pista = Est Troca — Est. Geral CustoUn — Custo Total\n9 ARLA 32- TOP - 20LT 31021070 BD E [DESSE EEE: EO. 91,676 EEONNIA\n10 ARLA REDUX32 GRANEL PRODUCAO 31021010 LT 1.667,871 o o 1.667,871 2,30 3.836,10\nQTDE: 02 TOTAL GRUPO: — 1.667,871 o o 1.667,871 3.836,10\nGRUPO: COMBUSTIVEIS\nProduto Descrição é NCM Unid. — Est. Depósito Est. Pista — Est. Troca Est Geral ——CustoUn — CustoTotal\nE2ETANOE CONT ss ss SE TRA EE EEOTTORO PERDAS 2395 2 RO O E ES 2 SS a 7 RSS DODIDITTOS\n1 GASOLINA COMUM = 27101259 L 4.360,172 = o 4.360,172 5,455 23.784,74\n4 OLEO DIESEL COMUM : CEEE 2 TOA ENCESES,676/08 EA RREEREINLEEECIS.8T6,88 5,75 33.792,06\n3 OLEO DIESEL S10 27101921 L 2.786,67 o o 2.786,67 6,255 17.430,62\nQTDE: 04 TOTAL GRUPO: 15.361,932 o o 15.361,932 82.840,42\nGRUPO: OLEOS LUBRIFICATES\nProduto Descrição NCM Unid. — Est Depósito Est Pista — Est. Troca Est. Geral CustoUn — Custo Total\nÉ 19 FLUXO FLUIDO P/ FREIOS DOT 3 24X500 E TESS 190000 OX EE o OA Ea IS o onça ELSE ELSE OL A AÇE\n20 FLUXO FLUIDO P/ FREIOS DOT 4 24X500 38190000 — CX 24 eo o 24 15,98 383,52\n1 15 HEXXLUB MAXX PERF 15W40 CI4 24X1 EA soe OEIADI EIS Elo ESSAS IRS SSI RS SE Sa So a o o A a oo o pião\n17 HEXXLUB SAE 140 GL4 24X1 27101932 CX 48 o o 48 23,98 1.151,04\nB 16 HEXXLUB SAE 90 GLA 24X1 EEE EEE 271 01932 5 OX TISS AS ERES AS RES CEE AS ASTIETE TIS AS AT SERES\n18 HEXXLUB TASA ATF TIPO A 24X1 27101932 CX 48 TE o 48 22,59 1.084,32\n[2 125 IPAVIRTUS VG 68 HD 1X20 EEE 2710132 EBD ESA DAR LI EE ÇA TEN ESA Da STA JESISSANE LO UE SSCSA E To A becsatoo\nQTDE: 07 = TOTAL GRUPO: 269 o o 269 7.233,90\nQTDE: 17 TOTALGERAL: 17,438,803 o o 17.438,803 95.409,63\no o Co Co o o oo poa Io DO o CC Io A Io CI a o o os o do Sa a an Oo\nInfinite ERP 1.0.5.28R103 (Relatórios>Produtos>Inventário do Estoque) Page 1 of 1 13/08/2026 12:21:49\nScanned with\n(EB camScanner\n"
+  ],
+  "ocr": {
+   "confianca": 61,
+   "ms": 95734,
+   "erro": null
+  }
+ },
+ "balancoTorra55": {
+  "nome": "BALANÇO 2021 - FLAVIA - TORRA TORRA.pdf",
+  "rel": "0055 - TORRA TORRA LTDA - ME\\OUTROS\\BALANÇO 2021 - FLAVIA - TORRA TORRA.pdf",
+  "texto": [
+   "COMPRAS\n717.957,36\nR$      \n \nSAIDAS\n901.120,19\nR$      \n \nESTOQUE INICIAL\n125.784,29\nR$      \n \nESTOQUE FINAL\n238.500,00\nR$      \n \nESTOQUE INICIAL\n125.784,29\nR$      \n \nCOMPRAS\n717.957,36\nR$      \n \nESTOQUE FINAL\n238.500,00\nR$      \n \nCMV\n605.241,65\nR$      \n \nLUCRO BRUTO\n295.878,54\nR$      \n \nPORCENTAGEM\n67,17\n                    \n \nSIMPLES NACIONAL\n-\nR$                    \n \nIRPJ - DAS\n-\nR$                    \n \nICMS - DIFAL\n-\nR$                    \n \nICMS - ANTECIPADO\n-\nR$                    \n \nICMS - ST\n-\nR$                    \n \nFOLHA/PRO-LABORE\n-\nR$                    \n \nINSS\n-\nR$                    \n \nFGTS\n-\nR$                    \n \nFÉRIAS\n-\nR$                    \n \n13º\n-\nR$                    \n \nJUROS\n-\nR$                    \n \nHONORARIO\n-\nR$                    \n \nOUTRAS DESPESAS\n-\nR$                    \n \nTOTAL\n-\nR$                    \n \nSALDO CAIXA - DEFIS\n-\nR$                    \n \nEMPRESTIMOS\n-\nR$                    \n \nLUCRO DISTRIBUIDO\n72.089,62\nR$        \n \nCAIXA\n111.073,21\nR$      \n \nBALANÇO\nFLAVIA - TORRA TORRA\n2021"
   ]
  },
- "sintegra514": {
-  "nome": "07-2026.pdf",
-  "rel": "IMPORTAÇÃO\\0514 - OLARIA E TRANSPORTE TK LTDA - ME\\2026\\07\\07-2026.pdf",
+ "balancoDuda55": {
+  "nome": "BALANÇO 2021 - DUDAHOME.pdf",
+  "rel": "0407 - DUDA HOME DE TAIOBEIRAS LTDA - ME\\OUTROS\\BALANÇO 2021 - DUDAHOME.pdf",
   "texto": [
-   "SINTEGRA\nSistema Integrado de Informações sobre Operações\nInterestaduais com Mercadorias e Serviços\nGovernos\nEstaduais\nProtocolo Sintegra:\n3306248025\nPeríodo de Referência:\n01/07/2026 a 31/07/2026\nFinalidade:\n1 - Normal\nNatureza da Operação:\n3 - Totalidade das operações do informante\nRazão Social\nCidadeEstado\nCNPJInscrição Estadual\nResponsávelTelefone\nEndereço\nNome do Arquivo\nCRC do DocumentoTamanho do Arquivo (bytes)Data do ArquivoTipo de DocumentoVersão Validador\nOLARIA E TRANSPORTES TK LTDA\nTaiobeirasMG\n52.197.402/0001-210047155640077 \nNILMA DIAS OLIVEIRA003838452074\nVL LAGOA GRANDE, 00504\nC:\\Users\\cont\\Desktop\\EMPRESAS\\IMPORTAÇÃO\\0514 - OLARIA E TRANSPORTE TK LTDA - ME\\2026\\07\\07-2026.zip\n486BD07E9.27018/08/2026  14:16:36Convênio ICMS5.4.0\nResumo dos Registros do Arquivo\nTipo de Registro   Registros com Advertência   Registros sem Advertência   Total de Registros\n10011\n11011\n5005757\n5105757\n53000\n5408282\n55000\n56000\n57000\n60000\n61000\n70000\n71000\n74000\n7503232\n76000\n77000\n85000\n86000\n8801212\n90011\nTotais0243243\nValores Totais por Registro\nRegistro 50Valor ContábilBase de CálculoICMS\nRegistro 51Valor ContábilIPI\nRegistro 53Desp. AcessóriasBase de CálculoICMS Retido\nRegistro 54Valor TotalBase de CálculoDesconto  Desp. Acessórias\nRegistro 60AValor ContábilBase de CálculoICMS\nRegistro 61Valor ContábilBase de CálculoICMS\nRegistro 70Valor ContábilBase de CálculoICMS\nEntrada37.834,8012,002,16\nSaída290.800,000,000,00\nEntrada37.834,800,00\nSaída290.800,000,00\nEntrada0,000,000,00\nSaída0,000,000,00\nEntrada37.924,8012,0090,000,00\nSaída290.800,000,000,000,00\n0,000,000,00\n0,000,000,00\nEntrada0,000,000,00\nSaída0,000,000,00\nO arquivo recepcionado está sujeito a verificações posteriores.\nCarimbo de Recepção do Arquivo\nSomente por o carimbo se o arquivo for aceito pelo programa de recepção.\nArquivo enviado para:\nSecretaria de Estado da Fazenda de Minas Gerais\nem 18/08/2026 às 14:16:34\nProtocolo TED: 1149014\nChave Transmissão: 39340842\nRemetente: \nE-mail: nilmacontabilidade@gmail.com"
+   "COMPRAS\n118.121,85\nR$   \n \nSAIDAS\n93.676,33\nR$     \n \nESTOQUE INICIAL\n5.259,12\nR$     \n \nESTOQUE FINAL\n60.111,71\nR$   \n \nESTOQUE INICIAL\n5.259,12\nR$        \n \nCOMPRAS\n118.121,85\nR$   \n \nESTOQUE FINAL\n60.111,71\nR$   \n \nCMV\n63.269,26\nR$   \n \nLUCRO BRUTO\n30.407,07\nR$     \n \nPORCENTAGEM\n67,54\n                  \n \nSIMPLES NACIONAL\n3.265,52\nR$        \n \nICMS - DIFAL\n29,93\nR$             \n \nICMS - ANTECIPADO\n9.659,02\nR$     \n \nICMS - ST\n421,49\nR$         \n \nFOLHA/PRO-LABORE\n11.699,05\nR$     \n \nINSS\n1.445,95\nR$        \n \nFGTS\n-\nR$               \n \nFÉRIAS\n-\nR$               \n \n13º\n-\nR$                 \n \nJUROS\n57,71\nR$             \n \nHONORARIO\n1.890,25\nR$     \n \nOUTRAS DESPESAS\n-\nR$               \n \nTOTAL\n28.468,92\nR$     \n \nSALDO CAIXA - DEFIS\n54.331,05\nR$     \n \nPRONAMP\n-\nR$                 \n \nEMPRESTIMOS\n-\nR$               \n \nCAIXA\n1.416,61\nR$     \n \nBALANÇO\nDUDAHOME\n2021"
   ]
  },
- "coelba413": {
-  "nome": "COELBA R$116,42.pdf",
-  "rel": "FERNANDO\\413 BRAZILIAN filiais 414.  418. 453\\2025\\01.2025\\Comprovantes de pagamentos\\NF e Boletos\\COELBA R$116,42.pdf",
+ "tllfZelo": {
+  "nome": "TLLF ZELO AGROINDUSTRIAS R$ 117,17.pdf",
+  "rel": "FERNANDO\\591 - ZELO AGROINDUSTRIAIS LTDA\\2026\\08.2026\\Comprovantes e NFs\\TLLF ZELO AGROINDUSTRIAS R$ 117,17.pdf",
   "texto": [
-   "| N . DANFE - DOCUMENTO AUXILIAR DA NOTA FISCAL DE ENERGIA ELÉTRICA ELETRÔNICA m\n« coenergia COMPANHIA DE ELETRICIDADE DO ESTADO DA BAHIA\nCoelba AV.EDGARD SANTOS, 300, CABULA VI, SALVADOR, BAHIA CEP 41181-900\n'www.neoenergia.com|Ligue grátis 116 CNPJ 15.139.629/0001-94 INSCRIÇÃO ESTADUAL 00478696\nRED CEE o ento ore PO O Tu mA A A A\nBRAZILIAN FORESTRY EMPREENDIMENTOS FLORE CÓDIGO DA INSTALAÇÃO: O] E IO|\nCNPJ: 33.117. \"/fes. Inscrição Estadual: 18642\" 60239933 EE Sao os  NOTAFISCALN 840542012 - SÉRIE 000! DATA DE EMISSÃO: 16/01/2025\nENDEREÇO: ELE TA É Consuno pela Chave de Acesso em:\nPO PORTO STA CRUZ 9999 S/N ds Ea \"\nRURAL-PORTO SANTA CRUZIPORTO SANTA CRUZ cónIGO DO CLIENTE & AA Ez iapelans poteimia gos Aebiciatecnada\n45157-000 CANDIDO SALES BA 7080172880 cerco E chave de acesso:\nDe Er | DEN É 20260116 1300 2000 0194 0600 a84o 5429 1270 7790 5352\neba ASA, TS\nREF.MES/ANO, TOTAL A PAGAR R$ VENCIMENTO ee ET O\n01/2025 116,42 27/01/2025 | [Mn] ASS\nLEITURA ANTERIOR 19/12/2024 | — LEITURA ATUAL 16/01/2025 PRÓXIMA LEITURA 17/02/2025\nITENS DA FATURA UNID. QUANT. |PREÇO UNIT. VALOR PIS BASE CALC. | jALÍQUOTS 1CMS (R$) TARIFA RIBUTO| BASEDE tos VALOR (R$)\nOM TRIB.(RS) (RS) COFINS(RS) ICMS(RS) JICMS(%) UNITIRS) CÁLCULO (R$)\nonsumo-TUSD 100.00] 0,69577000)| 69,57 2,58) 6857 20,50 o.s2757000] | PIS 6,03 083 or\nsonsumo-TE 100,00] 0,38653000) 38,65 142 a865/ 2050 029313000] | COFINS) semp a 22\nllum. Púb. Municipal 8,20 ea cs a” ns\nSANS o 4002\nDEZM um 100 as\nnova — mo sx\nUm: —\nDoi o Ner—— o NNE\naco — 1%\nPO\nno — 1\n[OO me——— o E.\nE O)\nO —W\nFev\nE O NS RS ET RS ES E SS E o.\nMEDIDOR | GRANDEZAS Postos | tema temuRa | const consumo\nHORÁRIOS ANTERIOR ATUAL MEDIDOR Wo\nTaiToDEO | Erega Riva Uno Ex E 700000 000\n1226700640 | Energia Restva Ono 6500 500 100000 00\nAté desta você j débitos código de cliente éni r mante las Itas em dia! te\nBe pre coma dente Fera Smencada não SMEnS PSTA.BRSS código de, cliente Parah confpensação do pagamento ocorrerá e\neté 3 dias úteis, após data do pagamento.\nINFORMAÇÕES IMPORTANTES\nNa data da jeitura,a bandeira em vigor é a Verde. Mais informações. em ww .aneel gov.\nO dia da leitura irá mudar, a próxima conta poderá ter de 15 a 47 dias de consumo Art 260-REN ANEEL 1000/21)\nSam condições lóencasifalcas de valdando do mara, PESE a mr da 6x\n/ a ve medidor” ”\nAluminação Pública é de responsabilgade de Prelama, \" \"12900 Pelo mínimo da fase\n01/2025 CÓDIGO DO CLIENTE 7080172880 veNCIMENTO 27/01/2025 | ToTAL A PAGAR R$ 116,42\nPARA CADASTRAR SUA CONTA EM DÉBITO AUTOMÁTICO, UTILIZE O CÓDIGO DO CLIENTE.\nMAU PAGÁVEL EM QUALQUER REDE BANCÁRIA\nPANE CONSTA\nESSES NA Elst\nPOFORTO SU cur am6 uh FT PORTO BROS GALDPONFO RÁVIA NIE estexans CanoIDO ai en PERES,\nTAS Fans fcaSoro ea omoeveneeTo —  WioIcococNEno Er Big ST\nstnos ss. TecorTaneo areias ee SR TRE AÇÃES\nE nd EO ALON\n| AV EDGAR SANTOS, 200. CABULA Vi, SALVADOR, BAHIA CEP 41161-000 EEE Ro\n| AGENCIAIÇODIO CEDENTE 2086 60R IES ca DE\nBt DAREI ARA\nKERIA dor o\nTa SE\n[OP cafe:\n"
+   "\n\nPRAÇA DA MATRIZ, 145 - CENTRO TAIOBEIRAS - MG CEP.: 39550-000\nCNPJ :18.017.384/0001-10\nEMAIL : receitaecadastro@taiobeiras.mg.gov.br null\nDocumento de\nArrecadação\nMunicipal\nDAM\nPREFEITURA MUNICIPAL DE TAIOBEIRAS\nCálculos Gerais\nTLLF\nParc: 1 | Insc.:240826/7311 | Agp.: TLLF | Ano: 2026\nIdentificação do Contribuinte:\nCódigo Febraban:Exercício:Controle Parcela:\nInscrição Municipal :Data Emissão:Vencimento Original:Data Vencimento:\nZELO AGROINDUSTRIAS LTDA\nCPF / CNPJ :  53.636.418/0002-37\nRodovia LMG 626, S/N TAIOBEIRAS C DENTRO KM 03 ANEXO VIVEIRO - ZONA INDUSTRIAL - Taiobeiras - MG\nCEP.: 39550-000\n24/08/2026 10:42\n31/08/2026\n1 / 1\n00000302040\n2026\n240826/7311\n4439\n31/08/2026\nAutenticação Mecânica\nDOCUMENTO DE CAIXA - NÃO PERFURE OU RASURE O CÓDIGO DE BARRAS\n81650000001 2 17174439202 7 60831000000 5 00000302040 1\n81650000001 2 17174439202 7 60831000000 5 00000302040 1\nIdentificação do contribuinte:\nZELO AGROINDUSTRIAS LTDA\nCPF / CNPJ :  53.636.418/0002-37\nRodovia LMG 626, S/N TAIOBEIRAS C DENTRO KM 03 ANEXO VIVEIRO - ZONA INDUSTRIAL - Taiobeiras - MG CEP.: 39550-000\nCódigo Febraban:Exercício:Controle Parcela:\nInscrição Municipal:Data Emissão:Vencimento Original:Data Vencimento:\n00000302040\n240826/7311\n1 / 1\n44392026\n31/08/2026\nDiscriminação da Cobrança\nR$ 117,17\nTOTALDESCONTOVALOR A PAGAR\nTRIBUTO\nMULTACORREÇAOJUROSORIGEM\nLICENÇA PARA LOCALIZAÇAO E FUNCIONAMENTO117,170,00117,170,000,000,00117,17\nR$0,00R$117,17R$117,17R$0,00R$0,00R$0,00R$117,17\nInformações Adicionais  :  Cálculos Gerais\nR$ 117,17\n31/08/2026\nPagável em qualquer agência bancária do(s) banco(s):Banco do Brasil - Caixa Econômica - Casas Lotéricas\nNão Receber após o Vencimento\n- 01: NÃO RECEBER ESTA GUIA APÓS: 31/12/2026.\n PROCESSO N° :\n24/08/2026\nValor Total:\nValor Total\n Endereço Correspondência :\nParcela:\nParcela:"
   ]
  },
- "contrato413": {
-  "nome": "QUARTA ALTERAÇAO BRAZILIAN.pdf",
-  "rel": "FERNANDO\\413 BRAZILIAN filiais 414.  418. 453\\CONTRATO SOCIAL\\QUARTA ALTERAÇAO BRAZILIAN.pdf",
+ "damCandido453": {
+  "nome": "DAM CCAS APEs FAZ.RENASCER MAT4534 R$250,00.pdf",
+  "rel": "FERNANDO\\413 BRAZILIAN filiais 414.  418. 453\\2026\\05.2026\\Comprovantes Pagtos\\NFs e Boletos\\DAM CCAS APEs FAZ.RENASCER MAT4534 R$250,00.pdf",
   "texto": [
-   "Junta Comercial do Estado do Rio de Janeiro\nEmpresa: BRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA\nNIRE: 332.1072025-2 Protocolo: 00-2021/013599-9 Data do protocolo: 19/01/2021\nCERTIFICO O ARQUIVAMENTO em 04/02/2021 SOB O NÚMERO 00004010806 e demais constantes do\ntermo de autenticação.\nAutenticação: 8DBD7EF6FE0948DEE83A963640FD27F3DABBF153F5B02A7F7615714CDF2FCD1E\nPara validar o documento acesse http://www.jucerja.rj.gov.br/servicos/chanceladigital, informe o nº de protocolo.\nPag. 01/12\nNIRE / ArquivamentoCNPJEndereço / Endereço completo no exteriorBairroMunicipioEstado\n0000401080633.117.361/0001-71Avenida Rio Branco 156CentroRio de JaneiroRJ\nxxxxxxxxxxxxx.xxx.xxx/xxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxx.xxx.xxx/xxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxx.xxx.xxx/xxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxx.xxx.xxx/xxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxx.xxx.xxx/xxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxx.xxx.xxx/xxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nxxxxxxxxxxxxx.xxx.xxx/xxxx-xxxxxxxxxxxxxx"
+   "CONTRIBUINTE\nLOGRADOURO\nCÓDIGO DA RECEITADESCRIÇÃO DA RECEITA\nNÚMERO\nOBSERVAÇÕES\nVENCIMENTO\nVALOR DEVIDO - R$\nATUALIZAÇÃO MONETÁRIA - R$\nMULTA DE MORA - R$\nJUROS DE MORA - R$\nVALOR A PAGAR - R$\nCOMPLEMENTO\nDADOS PARA PAGAMENTO\n250,00\nBRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA28960\nS/N\nBAIRRO\nMUNICÍPIOU.F.\nESTRADA MUNICIPAL CANDIDO SALES A MACHADO MINEIRO\nZONA RURAL \nCÂNDIDO SALESBA\n99999900TAXA DE MEIO AMBIENTE\n29/05/2026\n250,00\nCPF/CNPJ\nCOMPOSIÇÃO DA RECEITA\nPREÇO PÚBLICO\n0,00\n33.117.361/0004-14\nFAZENDA RENASCER MATRICULA 4534\n610195DAM\nDAM DE RECEITAS DIVERSAS\nVIA BANCO\n VENCIMENTO\n81790000002.450000913202.730000460510.5\n29/05/202628960\n610195DAM \nPREFEITURA MUNICIPAL DE\nCANDIDO SALES\nVALOR DEVIDO (R$)\n250,00\nATUALIZAÇÃO MONETÁRIA (R$)\nMULTA (R$)\nJUROS (R$)TOTAL A PAGAR (R$)\n250,00\n60529333033.4\nBRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA\nCONTRIBUINTE\nERIC\nPREFEITURA MUNICIPAL DE CANDIDO\nSALES\nDEPARTAMENTO DE TRIBUTOS\nPRAÇA MOISÉS FÉLIX DOS SANTOS, 274 SAC - CENTRO\nCÂNDIDO SALES   -   BA   -   CEP: 45157-000\nDEPARTAMENTO DE TRIBUTOS\n 250,00\nVALOR RECEITA\n \nVALOR DO DOCUMENTO\n250,00\n    FAZ RENASCER\nCÓD. CONTRIBUINTE\nCÓD. CONTRIBUINTE\n13857123000195\n(77) 3438 2345\nVia Contribuinte\nVia Banco/Processamento\nTAXA DE MEIO\nAMBIENTE\nTAXA DE MEIO\nAMBIENTE\n52026/\nReferência:\n\nPagável nas CASAS LOTÉRICAS e Agências da CAIXA\nECONÔMICA FEDERAL.\nApós vencimento Multa de 5% e Juros de 1% ao mês. \nATENÇÃO: Não receber após o vencimento.\n30000460510.560529333033.450000913202.781790000002.4"
   ]
  },
- "ccf584": {
-  "nome": "CCF08052026.pdf",
-  "rel": "FERNANDO\\584 EMPREENDIMENTOS IMOBILIARIOS\\DOC 584.zip\\DOC 584\\CCF08052026.pdf",
+ "damIssCandido568": {
+  "nome": "DAM ISS ref. NFSE 19.pdf",
+  "rel": "FERNANDO\\568 BRAZILIAN COFFEE LTDA\\2026\\10.2026\\DAM ISS ref. NFSE 19.pdf",
   "texto": [
-   "Mm CA\nCARTÓRIO DE REGISTRO DE IMÓVEIS\nf Comarca de Taiobeiras -MG SD W\nRua Rio Pardo, 452, Centro, Taiobeiras, MG, CEP 39550-000 BEIRAS”\nTelefones: (38) 3845-3440 | (38) 99227-1312\nAndré Luis Tolentino Moura\nOficial\nCERTIDÃO\n\nCERTIFICO, que revendo o Registro Geral deste Cartório, verifiquei constar o seguinte Inteiro teor da\nmatrícula nº 13.218: CNM: 044933.2.0013218-38\n13218 - 27/01/2022 - Protocolo: 29773 - 26/11/2021\nUm imóvel rural denominado Lagoa Dourada, deste Município e Comarca, perfazendo a área de\n3,6587ha (três hectares, sessenta e cinco ares e oitenta e sete centiares), encerrada num perímetro de\n1.471,21m. Descrição do perímetro: Inicia-se a descrição deste perímetro no Vértice P4, de coordenadas\nN 8.248.196,38m e E 800.846,07m; deste segue confrontando com Estado de Minas Gerais — Lagoa\nDourada, com azimute de 144º46'03,19\" por uma distância de 50,34m, até o Vértice P5, de coordenadas\nN 8.248.155,26m e E 800.875,11m; deste segue confrontando com Fazenda Mirante - Matrícula: 5059\nCartório de Registro de Imóveis da Comarca de Taiobeiras - CRI Taiobeiras - Proprietária: Norte\nAcessórios Indústria e Comércio LTDA. — ME e Outros, com azimute de 240º 16'33,85\" por uma distância\nde 574,17m, até o Vértice P6, de coordenadas N 8.247.870,58m e E 800.376,48m; deste segue\nconfrontando com Estado de Minas Gerais — Faixa de Domínio da Rodovia LMG-626, com azimute de\n286º42'52,62\" por uma distância de 159,55m, até o Vértice PVO1, de coordenadas N 8.247.916,46m e E\n800.223,68"
+   "CONTRIBUINTE\nLOGRADOURO\nCÓDIGO DA RECEITADESCRIÇÃO DA RECEITA\nNÚMERO\nOBSERVAÇÕES\nVENCIMENTO\nVALOR DEVIDO - R$\nATUALIZAÇÃO MONETÁRIA - R$\nMULTA DE MORA - R$\nJUROS DE MORA - R$\nVALOR A PAGAR - R$\nCOMPLEMENTO\nDADOS PARA PAGAMENTO\n38.864,41\n1.782,77\n1.426,22\nBRAZILIAN COFFEE LTDA32415\nS/N\nBAIRRO\nMUNICÍPIOU.F.\nZONA RURAL\nCÂNDIDO SALESBA\n99999210ISS\n16/10/2026\n35.655,42\nCPF/CNPJ\nCOMPOSIÇÃO DA RECEITA\nPREÇO PÚBLICO\n0,00\n61.131.250/0001-55\nISS REFERENTE A NOTA FISCAL DE Nº 2026000000019\nEMITIDA NO DIA 22/06/2026 POR CONCRETOP\nSERVICOS DE ENGENHARIA LTDA \n614029DAM\nDAM DE RECEITAS DIVERSAS\nVIA BANCO\n VENCIMENTO\n81710000388.564410913202.230000463163.0\n16/10/202632415\n614029DAM \nPREFEITURA MUNICIPAL DE\nCANDIDO SALES\nVALOR DEVIDO (R$)\n35.655,42\nATUALIZAÇÃO MONETÁRIA (R$)\n1.782,77\nMULTA (R$)\nJUROS (R$)\n1.426,22\nTOTAL A PAGAR (R$)\n38.864,41\n61016333033.1\nBRAZILIAN COFFEE LTDA\nCONTRIBUINTE\nSEBASTIAO\nPREFEITURA MUNICIPAL DE CANDIDO\nSALES\nDEPARTAMENTO DE TRIBUTOS\nPRAÇA MOISÉS FÉLIX DOS SANTOS, 274 SAC - CENTRO\nCÂNDIDO SALES   -   BA   -   CEP: 45157-000\nDEPARTAMENTO DE TRIBUTOS\n35.655,42\nVALOR RECEITABASE DE CÁLCULO\n713.108,45\nALÍQUOTA\n5,00 %\n    FAZ RENASCER\nCÓD. CONTRIBUINTE\nCÓD. CONTRIBUINTE\n13857123000195\n(77) 3438 2345\nVia Contribuinte\nVia Banco/Processamento\nISS HOMOLOGADO - Parcela: \nISS\nISS\n62026/\nReferência:\nTomador/Prestador: CONCRETOP SERVICOS DE ENGENHARIA LTDA\n\nPagável nas CASAS LOTÉRICAS e Agências da CAIXA\nECONÔMICA FEDERAL.\nApós vencimento Multa de 5% e Juros de 1% ao mês. \nATENÇÃO: Não receber após o vencimento.\n30000463163.061016333033.164410913202.281710000388.5"
   ]
  },
- "cndPbh463": {
-  "nome": "CND - MUNICIPAL -.pdf",
-  "rel": "0463 - CENTRO DE ODONTOLOGIA ESTETICA LTDA - ME\\CERTIDÕES\\CND - MUNICIPAL -.pdf",
+ "grf443": {
+  "nome": "GRF.PDF",
+  "rel": "0443 - SU SEDUÇÃO MODA INTIMA LTDA - ME\\CADASTRO BANCARIO\\BANCO DO NORDESTE\\2022\\GRF.PDF",
   "texto": [
-   "04/07/2023, 13:42cnd.pbh.gov.br/CNDOnline/guiaCND.xhtml\nhttps://cnd.pbh.gov.br/CNDOnline/guiaCND.xhtml1/1\nPrefeitura de Belo Horizonte\nSecretaria Municipal de Fazenda\nSubsecretaria da Receita Municipal\nDOCUMENTO AUXILIAR DA\nCERTIDÃO DE QUITACAO PLENA PESSOA JURIDICA\nREGISTROS DE ACESSO\nCodigo de Controle: IJEJLKOPKJ\nDocumento/Certidão nº 24.054.085 Exercício: 2023\nEmissão em: 04/07/2023Requerimento em: 13:42:07Validade: 03/08/2023\nNome: CENTRO DE ODONTOLOGIA ESTETICA LTDA\nCNPJ: 45.430.981.0001.45\nRessalvando a Prefeitura Municipal de Belo Horizonte o direito de cobrar debitos posteriormente apurados, a Diretoria de\nArrecadação, Cobranca e Divida Ativa da Secretaria Municipal de Fazenda, no uso de suas atribuições legais, certifica que\no Contribuinte acima encontra-se regular com a Fazenda Publica Municipal, em relação aos Tributos, Multas e Precos\ninscritos ou não em divida ativa.\nNos termos do Decreto 15.927/2015 este documento auxiliar é a representação gráfica da certidão de débitos e\nsituação fiscal, não substituindo a certidão, que será obtida no Portal da PBH, por meio da autenticação dos registros\nde acesso deste documento."
+   "858700000014  939201792209  407663050840  216071200010\n858700000014  939201792209  407663050840  216071200010\nGRF - GUIA DE RECOLHIMENTO DO FGTS\nGFIP - SEFIP\nGERADA EM\n01-RAZÃO SOCIAL/NOME\nSU SEDUCAO MODA INTIMA LTDA                                                           \n08-CÓD RECOLHIMENTO\n02-DDD/TELEFONE\n09-ID RECOLHIMENTO\n(0038)91237197\n017980-9\n10-INSCRIÇÃO/TIPO( 8 )\n42.160.712/0001-18\n03-FPAS\n07-ALÍQUOTA FGTS\n04-SIMPLES06-QTDE TRABALHADORES\n507822\n11-COMPETÊNCIA12-DATA DE VALIDADE\n03/202207/04/2022\n05-REMUNERAÇÃO\n13-DEPÓSITO +CONTRIB SOCIAL\n2.424,00\n193,92\n14-ENCARGOS\n0,00\n15-TOTAL A RECOLHER\n193,92\n**VALOR FGTS A RECOLHER ATÉ O DIA 07/04/2022**\nAUTENTICAÇÃO MECÂNICA\n115\nGRF - GUIA DE RECOLHIMENTO DO FGTS\nGERADA EM\nGFIP - SEFIP\n08-CÓD RECOLHIMENTO\n01-RAZÃO SOCIAL/NOME\nSU SEDUCAO MODA INTIMA LTDA                                                           \n03-FPAS\n507\n115\n04-SIMPLES\n2\n09-ID RECOLHIMENTO\n017980-9\n05-REMUNERAÇÃO\n2.424,00\n10-INSCRIÇÃO/TIPO\n42.160.712/0001-18\n06-QTDE TRABALHADORES\n2\n11-COMPETÊNCIA\n03/2022\n02-DDD/TELEFONE\n(0038)91237197\n07-ALÍQUOTA FGTS\n8\n12-DATA DE VALIDADE\n07/04/2022\n15-TOTAL A RECOLHER\n193,92\n14-ENCARGOS\n0,00\nCONTRIB SOCIAL13-DEPÓSITO +\n193,92\n**VALOR FGTS A RECOLHER ATÉ O DIA 07/04/2022**\nAUTENTICAÇÃO MECÂNICA\n( 8 )\n8.40\n8.40\n22/03/2022 - 10:25:55\n22/03/2022 - 10:25:55"
   ]
- }
+ },
+ "iptuSpirou446": {
+  "nome": "IPTU 2025 COTA ÚNICA SPIROU R$1.344,78.pdf",
+  "rel": "FERNANDO\\446 SPIROU CONSULTORIA\\2025\\01.2025\\Pagamento e NFS\\IPTU 2025 COTA ÚNICA SPIROU R$1.344,78.pdf",
+  "texto": [
+   "PREFEITURA DO RIO DE JANEIRO\nSecretaria Municipal de Fazenda e Planejamento\nDocumento de Arrecadação de Receitas Municipais\nDARM\nRIO\n01.RECEITA\n310-7\n02.INSCRIÇÃO IMOBILIARIA\n0.743.151-3\n10.CONTRIBUINTE\nSPIROU C INVESTIMENTOS LTDA\n03.DATA DE VENCIMENTO\n07/02/2025\n11.INFORMAÇÕES COMPLEMENTARES\nEndereço do Imóvel:                                                                     \n06462-6 RUA ALMTE GONCALVES, 50\n6RP DE 8AL8 1208 - COPACABANA\nCOTA UNICA ref. cotas01,02,03,04,05,06,07,08,09,10\nOs Bancos NÃO estão autorizados a receber\neste documento após o vencimento indicado!\nRECEITA DE PAGAMENTO\n\n\n04.COMPETÊNCIA\n2025\n05.GUIA/COTA\n00/00\n06.VALOR DO TRIBUTO\n1.344,78\n07.VALOR DE MORA\n*************\n08.VALOR DA MULTA\n*************\n09.VALOR TOTAL\n1.344,78\n12.AUTENTICAÇÃO AUTOMÁTICA(PARA USO DO BANCO)\n81650000013.7 44783659202.5 50207310250.6 00007431511.0\n81650000013447836592025020731025000007431511\nEmitido pelo Carioca Digital, em 21/01/2025 18:11:16\nPREFEITURA DO RIO DE JANEIRO\nSecretaria Municipal de Fazenda e Planejamento\nDocumento de Arrecadação de Receitas Municipais\nDARM\nRIO\n01.RECEITA\n310-7\n02.INSCRIÇÃO IMOBILIARIA\n0.743.151-3\n10.CONTRIBUINTE\nSPIROU C INVESTIMENTOS LTDA\n03.DATA DE VENCIMENTO\n07/02/2025\n11.INFORMAÇÕES COMPLEMENTARES\nEndereço do Imóvel:                                                                     \n06462-6 RUA ALMTE GONCALVES, 50\n6RP DE 8AL8 1208 - COPACABANA\nCOTA UNICA ref. cotas01,02,03,04,05,06,07,08,09,10\nOs Bancos NÃO estão autorizados a receber\neste documento após o vencimento indicado!\nRECEITA DE PAGAMENTO\n\n\n04.COMPETÊNCIA\n2025\n05.GUIA/COTA\n00/00\n06.VALOR DO TRIBUTO\n1.344,78\n07.VALOR DE MORA\n*************\n08.VALOR DA MULTA\n*************\n09.VALOR TOTAL\n1.344,78\n12.AUTENTICAÇÃO AUTOMÁTICA(PARA USO DO BANCO)Emitido pelo Carioca Digital, em 21/01/2025 18:11:16\nEmitido pelo Carioca Digital, em 21/01/2025 18:11:16"
+  ]
+ },
+ "fibraxx441": {
+  "nome": "NF - OURO PRETO REFLORESTAMENTOS EIRELI.pdf",
+  "rel": "FERNANDO\\441 OURO PRETO REFLORESTAMENTO\\2025\\11.2025\\NF - OURO PRETO REFLORESTAMENTOS EIRELI.pdf",
+  "texto": [
+   "Informações de Tributos\nTributoValor\nPISR$ 0,00\nCOFINSR$ 0,00\nFUSTR$ 0,00\nFUNTTELR$ 0,00\nReservado ao Fisco\nInformações Complementares\nÁrea do Contribuinte e Determinações da Anatel\nNº Identificador de Débito AutomaticoCodigo de BarrasPix\nQR Code Pix indisponível\nDOC. AUXILIAR DA NOTA FISCAL FATURA DE SERVIÇOS DE COMUNICAÇÃO ELETRÔNICA\nRAZÃO SOCIAL: NOVA ABT FIBRAXX\nENDEREÇO: RUA JOSE VICENTE COIMBRA, 97 - LOJA, CENTRO\nCIDADE: CARAÍ/MG - CEP: 39810-000\nCNPJ: 19.507.027/0001-01\nIE: 002288168.00-62\nTELEFONE: 08002451000\nNOTA FISCAL FATURA Nº: 000000005\nSÉRIE: 001\nDATA DE EMISSÃO: 11/11/2025 08:25:01\nMODELO: 62\nCONSULTE PELA CHAVE DE ACESSO EM: \nhttps://portalnfcom.fazenda.mg.gov.br/qrcode \nCHAVE DE ACESSO:\n3125 1119 5070 2700 0101 6200 1000 0000 0510 2858 8660\nProtocolo de Autorização:\n1312500025371039 - 11/11/2025 08:32:25\nDADOS DO DESTINATÁRIO:\nOURO PRETO REFLORESTAMENTOS EIRELI NRO. DO CLIENTE: 2525\nENDEREÇO: CRG JACUTINGA FAZENDA BOA VISTA,4,5-KM DAM.D KM-222 BR-116, S/N - CASA, ENTRADA DO JENIPAPINHO\nCIDADE: CATUJI/MG - CEP: 39816-000\nCNPJ/CPF: 41.809.794/0001-16 IE: 004038173.00-77\nReferência: 11/2025\nVencimento: 10/11/2025\nTotal: R$ 129,90\n#DescriçãoUNQTDV. UNITV. TOTALPISCOFINSBC ICMS% ICMSV. ICMS\n150 MB - CARAÍ - 10/10/2025 até 09/11/2025 I R$ 129.90UN1R$ 129,90R$ 129,90R$ 0,00R$ 0,00R$ 0,000,00%R$ 0,00\nVALOR TOTAL NFCOMVALOR TOTAL BCVALOR ICMS\nR$ 129,90R$ 0,00R$ 0,00\nImpresso em 11/11/2025 as 09:21:24 | HubSoft - Software para Provedores de InternetPagina 1 de 1"
+  ]
+ },
+ "fibraxxMod21": {
+  "nome": "NFSE 39196 NOVA FIBRAXX.pdf",
+  "rel": "FERNANDO\\441 OURO PRETO REFLORESTAMENTO\\2025\\06.2025\\NFSE 39196 NOVA FIBRAXX.pdf",
+  "texto": [
+   "NOVA ABT FIBRAXXNota Fiscal de Serviço de Comunicação Modelo 21 - Série U\nRUA JOSE VICENTE COIMBRA, 97 LOJA - 39810-000Nº 000039196 Emissão: 02/06/2025\nCENTRO, Caraí/MG\nIE: 001719872.00-30 - CNPJ: 19.507.027/0001-01CFOP: 5303\nOURO PRETO REFLORESTAMENTOS EIRELINº de Referência: 2525\nCRG JACUTINGA FAZENDA BOA VISTA,4,5-KM DAM.D KM-222 BR-116, S/N CASACPF/CNPJ: 41.809.794/0001-16\n39816-000 ENTRADA DO JENIPAPINHO, Catuji/MGInscrição Estadual: 004038173.00-77\nBase do Cálculo do ICMSICMSIsento e Não TributadoOutrosValor Total\nR$ 0,00R$ 0,00R$ 0,00R$ 129,90R$ 129,90\nChave de Autenticação DigitalSituação do Documento\nF04D.2245.09AE.DF13.A639.3EB7.0853.7CDFNORMAL\n#DESCRIÇÃOVALOR TOTALBASE DE CÁLCULO ICMSALÍQUOTA ICMS\n110/05/2025 até 09/06/2025 I R$ 129.90R$ 129,90R$ 0,000,00%"
+  ]
+ },
+ "spcBarueri536": {
+  "nome": "NF SPC JAN.pdf",
+  "rel": "FERNANDO\\536 CDL DE TAIOBEIRAS\\2025\\01.2025\\NF SPC JAN.pdf",
+  "texto": [
+   "Desenvolvido por PIVOTECH LTDA tendo seus dados extraídos do ERP Totvs Protheus\nPREFEITURA MUNICIPAL DE BARUERI\nSECRETARIA DE FINANÇAS\nNOTA FISCAL ELETRÔNICA DE SERVIÇOS - NFE\nA autenticidade desta Nota Fiscal Eletrônica de Serviços poderá ser\nconfirmada na página da Prefeitura de Barueri na Internet, no Endereço:\n<http://barueri.sp.gov.br/nfe>\nData Emissão\n02/02/2025\nHora Emissão\n17:32:23\nCódigo Autenticidade\n248L.0261.0668.5564799-X\nNOTA FISCAL ELETRÔNICA DE\nSERVIÇOS E FATURA\nNúmero da Nota\n344518\nSérie da Nota\nNúmero RPS\n000005407\nSérie RPS\nRPS\nData RPS\n31/01/2025\nPrestador de Serviços\nSERVICOS PARA O COMERCIO DO BRASIL S.A.\nAL TOCANTINS, 125 - ANDAR 15 CONJ 1502 - ALPHAVILLE - CEP: 06455-020 - BARUERI - SP\nCNPJ/CPF:\n29.341.643/0001-80\nInscrição Municipal:\n4.AU533-6\nTelefone:\n11 3940-3594\nE-mail:\nNome Tomador de Serviços\nCDL DE TAIOBEIRAS\nCPF/CNPJ\n05.076.768/0001-62\nEndereço\nRUA RIO PARDO603\nComplemento\nCEP\n39550-000\nBairro\nCENTRO\nCidade\nTAIOBEIRAS\nUF\nMG\nE-mail\nacecdltaio@gmail.com\nQtde\n    1\nDescrição do Serviço\nANALISE\nCódigo Serviço\n170113211\nAliquota\n  2,00\nValor Unitário\n    1.904,33\nValor Total\n    1.904,33\nDISCRIMINAÇÃO DOS SERVIÇOS E INFORMAÇÕES RELEVANTES\nVALORES DE REPASSE A TERCEIROS\n        0,00\nOBSERVAÇÕES\nISSQN devido a: BARUERI-SP\nIRRF\n       28,56\nPIS/PASEP\n       12,38\nCOFINS\n       57,13\nCSLL\n       19,04\nVALOR TOTAL DA NOTA\nR$ 1.904,33\nFatura Nº\n000005407\nValor da Fatura R$\n    1.904,33\nForma Pagamento\nCONDICAO TIPO 9\nUM MIL, NOVECENTOS E QUATRO REAIS E TRINTA E TRES CENTAVOS\n -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -\nA autenticidade desta Nota Fiscal Eletrônica de Serviços poderá ser confirmada na página da Prefeitura de Barueri\nna Internet, no Endereço:\n<http://barueri.sp.gov.br/nfe>\nCódigo de Autenticidade\n248L.0261.0668.5564799-X\nRECEBEMOS DA EMPRESA CDL DE TAIOBEIRAS OS SERVIÇOS CONSTANTES DESTA NOTA FISCAL\nELETRÔNICA DE SERVIÇOS\n--------------------------------------------------\nLocal\n--------------------------------------------------\nData\n------------------------------------------------------------------------------------------\nAssinatura\nNúmero da Nota\n344518\nSérie da Nota"
+  ]
+ },
+ "daeKopek412": {
+  "nome": "DAE 10° BOLETO AI 297718-2022 PARC 10-60 R$43.535,44.pdf",
+  "rel": "FERNANDO\\412 KOPEK FORESTRY\\2025\\03.2025\\Comprovantes e NF\\DAE 10° BOLETO AI 297718-2022 PARC 10-60 R$43.535,44.pdf",
+  "texto": [
+   "SECRETARIA DE ESTADO DE\nFAZENDA DE MINAS GERAIS\nDOCUMENTO DE ARRECADAÇÃO ESTADUAL - DAE\nNOME:\nKopek Forestry Empreendimentos Florestais Ltda\nENDEREÇO:\nFAZENDA pera, 0 Zona Rural 39540000\nMUNICÍPIO:\nSAO JOAO DO PARAISO\n  UF:\nMA\n   TELEFONE:\n    00000-0000 \n \nVENCIMENTO\n31/03/2025\nTIPO\n3\n NÚMERO IDENTIFICAÇÃO\n11.077.541/0001-34\nCÓDIGO MUNICÍPIO EM MG (para produtor rural e não-inscrito)\n0234\nMÊS/ANO DE REFERÊNCIA\n2022\nNº DOCUMENTO\n5700565133610\nHISTÓRICO\nÓrgão emissor: SEMAD - Secretaria Estadual de Meio Ambiente e Desenvolvimento Sustentável\nAuto de InfraÃ§Ã£o NÂº 297718 - SÃ©rie 2022, número do Processo : 757459/22\nReceita : MULTAS ADMINISTRATIVAS POR DANOS AMBIENTAIS\nDAE : 10/60\nValor do DAE : R$ 40.663,12\nTaxa Bancária : R$ 0,00\nIndíce Selic : 1.07063708\nData Inic. Selic : 06/2024\nData Fim Selic : 03/2025\nValor Selic : R$ 2.872,32\nValor Total : R$ 43.535,44\nObs.: SISFAI\nSr.Caixa, este documento deve ser recebido exclusivamente pela leitura do código de barras ou linha digitável.\nLinha digitável:  85670000435 6 35440213250 1 33112570056 6 51336100137 5\nAUTENTICAÇÃO\n \nTOTAL\nR$ 43.535,44\n \n85670000435 6 35440213250 1 33112570056 6 51336100137 5\nSECRETARIA DE ESTADO DE\nFAZENDA DE MINAS GERAIS\nDOCUMENTO DE ARRECADAÇÃO ESTADUAL - DAE\nNOME\nKopek Forestry Empreendimentos Florestais Ltda\nENDEREÇO\nFAZENDA pera, 0 Zona Rural 39540000\nMUNICÍPIO\nSAO JOAO DO PARAISO\nUF\n  MA\nTELEFONE\n  00000-0000 \n \nVENCIMENTO\n31/03/2025\nTIPO\n  3\nNÚMERO IDENTIFICAÇÃO\n 11.077.541/0001-34\nCÓDIGO MUNICÍPIO EM MG (para produtor rural e não inscrito)\n0234\nNÚMERO DO DAE\n5700565133610\nVALORR$ 0,00\nACRÉSCIMOSR$ 0,00\nJUROSR$ 0,00\nTOTAL\nR$ 43.535,44\nAUTENTICAÇÃO\n "
+  ]
+ },
+ "daeLavica415": {
+  "nome": "DAE 14° BOLETO AI 117126-2019 LAVICA.pdf",
+  "rel": "FERNANDO\\415 LAVICA EMPREEND. FLORESTAIS filal 416\\2025\\01.2025\\NFSE e Boletos\\Comprovantes pagtos\\NFs e Boletos\\DAE 14° BOLETO AI 117126-2019 LAVICA.pdf",
+  "texto": [
+   "SECRETARIA DE ESTADO DE\nFAZENDA DE MINAS GERAIS\nDOCUMENTO DE ARRECADAÇÃO ESTADUAL - DAE\nDATA DE VALIDADE\n31/01/2025\nTIPO DE IDENTIFICAÇÃO\n1 - INSCRIC. ESTADUAL\n2 - INSCR. PROD. RURAL\n3 - CNPJ6 - RENAVAM\n5 - OUTROS\n4 - CPF\nNº DOCUMENTO\n5700550499125\n(21)2233-5554\nTELEFONEUF\nMGTEOFILO OTONI\nMUNICÍPIO\nRUA Coronel Antunino Barbosa, 91\nENDEREÇO\nLavica Empreendimentos Florestais Ltda.\nNOME\nHISTÓRICO\nÓrgão emissor: SEMAD - Secretaria Estadual de Meio Ambiente e Desenvolvimento Sustentável\nAuto de Infração Nº 117126- Série 2019, processo número : 683193/19\nReceita : MULTAS ADMINISTRATIVAS POR DANOS AMBIENTAIS\nDAE 14/60\nValor do DAE       : 1.485,89\nValor do Juros     : 0,00\nValor da Multa     : 0,00\nValor da taxa      : 0,00\nIndice Selic       : 1,11263471\nData Inic. Selic   : 01/12/2023\nData Fim Selic     : 07/01/2025\nValor Selic        : 167,36\nValor Final TOTAL  : 1.653,25\nSr.Caixa, este documento deve ser recebido exclusivamente pela leitura do código de barras ou linha digitável.\nLinha digitável do código de barras: \n85650000016 6 53250213250 1 13112570055 2 04991250137 3\n2019\nMÊS/ANO DE REFERÊNCIA\nCÓDIGO MUNICÍPIO EM MG (PARA PRODUTOR RURAL E NÃO INSCRITO)\n21.276.022/0001-593\nNÚMERO DE IDENTIFICAÇÃOTIPO\nAUTENTICAÇÃO\n1ª VIA: CONTRIBUINTE\nTOTAL\nR$\n1.653,25\nMOD. 06.01.11 - DAE\n85650000016 6 53250213250 1 13112570055 2 04991250137 3\n2ª VIA: BANCO\nMOD. 06.01.11 - DAE\nSECRETARIA DE ESTADO DE\nFAZENDA DE MINAS GERAIS\nAUTENTICAÇÃO\nTEOFILO OTONI\nMUNICÍPIO\nMG\nUFTELEFONE\n(21)2233-5554\nRUA Coronel Antunino Barbosa, 91\nENDEREÇO\nLavica Empreendimentos Florestais Ltda.\nNOME\nDOCUMENTO DE ARRECADAÇÃO ESTADUAL - DAE\nDATA DE VALIDADE\n31/01/2025\nTIPO DE IDENTIFICAÇÃO\n1 - INSCRIC. ESTADUAL\n2 - INSCR. PROD. RURAL\n3 - CNPJ\n4 - CPF\n5 - OUTROS\n6 - RENAVAM\nNÚMERO DE IDENTIFICAÇÃO\n21.276.022/0001-59\nTIPO\n3\nCÓDIGO MUNICÍPIO EM MG (PARA PRODUTOR RURAL E NÃO INSCRITO)\nNÚMERO DO DAE\n5700550499125\nVALOR\nR$\nR$\nR$\nR$\n1.653,25\nTOTAL\nJUROS\nACRÉSCIMOS"
+  ]
+ },
+ "ofc279": {
+  "nome": "7C5RnHX53zCZIwwOOKgqYjhCkB.nodelx191_nbcinter02l-lx191.ofc",
+  "rel": "0279 - ALMEIDA & SOUZA PRODUTOS ALIMENTICIOS LTDA - ME\\EXTRATOS\\2022\\07\\7C5RnHX53zCZIwwOOKgqYjhCkB.nodelx191_nbcinter02l-lx191.ofc",
+  "ofx": "<OFC>\r\n <DTD>2\r\n <CPAGE>1252\r\n <ACCTSTMT>\r\n  <ACCTFROM>\r\n   <BANKID>00104\r\n   <ACCTID>0000000016419\r\n   <ACCTTYPE>0\r\n  </ACCTFROM>\r\n  <STMTRS>\r\n   <DTSTART>20220830\r\n   <DTEND>20220830\r\n   <LEDGER>6534.07\r\n   <STMTTRN>\r\n    <TRNTYPE>1\r\n    <DTPOSTED>20220701\r\n    <TRNAMT>-21.30\r\n    <FITID>0\r\n    <CHKNUM>0\r\n    <MEMO>DEB.IOF\r\n   </STMTTRN>\r\n   <STMTTRN>\r\n    <TRNTYPE>1\r\n    <DTPOSTED>20220701\r\n    <TRNAMT>-948.75\r\n    <FITID>900001\r\n    <CHKNUM>900001\r\n    <MEMO>DEB.JUROS\r\n   </STMTTRN>\r\n   <STMTTRN>\r\n    <TRNTYPE>0\r\n    <DTPOSTED>20220725\r\n    <TRNAMT>800.00\r\n    <FITID>100000\r\n    <CHKNUM>100000\r\n    <MEMO>DP DIN ATM\r\n   </STMTTRN>\r\n   <STMTTRN>\r\n    <TRNTYPE>0\r\n    <DTPOSTED>20220725\r\n    <TRNAMT>900.00\r\n    <FITID>100000\r\n    <CHKNUM>100000\r\n    <MEMO>DP DIN ATM\r\n   </STMTTRN>\r\n   <STMTTRN>\r\n    <TRNTYPE>0\r\n    <DTPOSTED>20220725\r\n    <TRNAMT>2000.00\r\n    <FITID>100000\r\n    <CHKNUM>100000\r\n    <MEMO>DP DIN ATM\r\n   </STMTTRN>\r\n   <STMTTRN>\r\n    <TRNTYPE>0\r\n    <DTPOSTED>20220726\r\n    <TRNAMT>7800.00\r\n    <FITID>261820\r\n    <CHKNUM>261820\r\n    <MEMO>CRED PIX\r\n   </STMTTRN>\r\n   <STMTTRN>\r\n    <TRNTYPE>1\r\n    <DTPOSTED>20220726\r\n    <TRNAMT>-3268.51\r\n    <FITID>0\r\n    <CHKNUM>0\r\n    <MEMO>PREST CDC\r\n   </STMTTRN>\r\n   <STMTTRN>\r\n    <TRNTYPE>0\r\n    <DTPOSTED>20220729\r\n    <TRNAMT>1000.00\r\n    <FITID>100000\r\n    <CHKNUM>100000\r\n    <MEMO>DP DIN ATM\r\n   </STMTTRN>\r\n   <STMTTRN>\r\n    <TRNTYPE>0\r\n    <DTPOSTED>20220729\r\n    <TRNAMT>2000.00\r\n    <FITID>100000\r\n    <CHKNUM>100000\r\n    <MEMO>DP DIN ATM\r\n   </STMTTRN>\r\n  </STMTRS>\r\n </ACCTSTMT>\r\n</OFC>\r\n"
+ },
+ "_cadastro": [
+  {
+   "codigo": 10,
+   "razao": "DORNAS HAVANA LTDA",
+   "fantasia": "DORNAS HAVANA",
+   "outrosNomes": [
+    "DORNAS HAVANA LTDA - ME",
+    "DORNAS HAVANA LTDA - ME"
+   ],
+   "doc": "01884649000185",
+   "ie": "6807371930001",
+   "regime": "Simples",
+   "contas": [
+    {
+     "banco": "PAGBANK",
+     "agencia": "1",
+     "conta": "14792190-2"
+    },
+    {
+     "banco": "BANCO DO BRASIL",
+     "agencia": "2705-7",
+     "conta": "3273-5"
+    }
+   ],
+   "bancos": [
+    "PAGBANK",
+    "BANCO DO BRASIL"
+   ],
+   "pasta": "10 - DORNAS HAVANA LTDA - ME"
+  },
+  {
+   "codigo": 55,
+   "razao": "TORRA TORRA LTDA",
+   "fantasia": "TORRA TORRA",
+   "outrosNomes": [],
+   "doc": "03238183000176",
+   "ie": "6800288060058",
+   "regime": "Simples",
+   "contas": [
+    {
+     "banco": "SICOOB",
+     "agencia": "3144-5",
+     "conta": "12270-0"
+    },
+    {
+     "banco": "BANCO DO BRASIL",
+     "agencia": "2705-7",
+     "conta": "24916-5"
+    }
+   ],
+   "bancos": [
+    "SICOOB",
+    "BANCO DO BRASIL"
+   ],
+   "pasta": "55 - TORRA TORRA LTDA"
+  },
+  {
+   "codigo": 66,
+   "razao": "ADERLEI DOS SANTOS & CIA LTDA",
+   "fantasia": "POSTO CURRAL DE DENTRO",
+   "outrosNomes": [
+    "ADERLEI DOS SANTOS E CIA LTDA",
+    "ADERLEI DOS SANTOS E CIA LTDA"
+   ],
+   "doc": "03149551000100",
+   "ie": "7870223370092",
+   "regime": "Presumido",
+   "contas": [
+    {
+     "banco": "BRADESCO",
+     "agencia": "2557",
+     "conta": "551042-2"
+    },
+    {
+     "banco": "BRADESCO",
+     "agencia": "2557",
+     "conta": "551042"
+    },
+    {
+     "banco": "BRADESCO",
+     "agencia": "936",
+     "conta": "550042"
+    }
+   ],
+   "bancos": [
+    "BRADESCO"
+   ],
+   "pasta": "66 - ADERLEI SANTOS E CIA"
+  },
+  {
+   "codigo": 237,
+   "razao": "POSTO DE COMBUSTIVEIS BERIZAL LTDA",
+   "fantasia": "POSTO BERIZAL",
+   "outrosNomes": [
+    "POSTO DE COMBUSTIVEIS BERIZAL LTDA ME",
+    "POSTO DE COMBUSTIVEIS BERIZAL LTDA ME"
+   ],
+   "doc": "17713597000114",
+   "ie": "0021115040057",
+   "regime": "Presumido",
+   "contas": [
+    {
+     "banco": "BANCO DO BRASIL",
+     "agencia": "2705-7",
+     "conta": "22294-1"
+    },
+    {
+     "banco": "CAIXA",
+     "agencia": "3411",
+     "conta": "577985345-9"
+    }
+   ],
+   "bancos": [
+    "BANCO DO BRASIL",
+    "CAIXA"
+   ],
+   "pasta": "237 - POSTO DE COMBUSTIVEIS BERIZAL LTDA ME"
+  },
+  {
+   "codigo": 279,
+   "razao": "ALMEIDA & SOUZA PRODUTOS ALIMENTICIOS LTDA",
+   "fantasia": "SUPERBOM SUPERMERCADO",
+   "outrosNomes": [],
+   "doc": "27545832000140",
+   "ie": "0029504300073",
+   "regime": "Simples",
+   "contas": [
+    {
+     "banco": "SICOOB",
+     "agencia": "3144-5",
+     "conta": "22739-0"
+    },
+    {
+     "banco": "SICOOB",
+     "agencia": "1",
+     "conta": "22739-0"
+    },
+    {
+     "banco": "BANCO DO BRASIL",
+     "agencia": "2705-7",
+     "conta": "24668-9"
+    }
+   ],
+   "bancos": [
+    "SICOOB",
+    "BANCO DO BRASIL"
+   ],
+   "pasta": "279 - ALMEIDA & SOUZA PRODUTOS ALIMENTICIOS LTDA"
+  },
+  {
+   "codigo": 284,
+   "razao": "NILMA CONTABILIDADE LTDA",
+   "fantasia": "NILMA CONTABILIDADE",
+   "outrosNomes": [],
+   "doc": "27872981000113",
+   "ie": "",
+   "regime": "Simples",
+   "contas": [],
+   "bancos": [],
+   "pasta": "284 - NILMA CONTABILIDADE LTDA"
+  },
+  {
+   "codigo": 356,
+   "razao": "A7 COMERCIO DE VEICULOS LTDA",
+   "fantasia": "A7 VEICULOS",
+   "outrosNomes": [],
+   "doc": "13728235000146",
+   "ie": "0017812670090",
+   "regime": "Presumido",
+   "contas": [
+    {
+     "banco": "SANTANDER",
+     "agencia": "3504",
+     "conta": "13009817-5"
+    },
+    {
+     "banco": "ITAU",
+     "agencia": "3110",
+     "conta": "99699-2"
+    },
+    {
+     "banco": "BNB",
+     "agencia": "60",
+     "conta": "62684-0"
+    },
+    {
+     "banco": "C6",
+     "agencia": "1",
+     "conta": "299668789"
+    },
+    {
+     "banco": "BRADESCO",
+     "agencia": "2557",
+     "conta": "30314-3"
+    },
+    {
+     "banco": "SANTANDER",
+     "agencia": "3110",
+     "conta": "99699-2"
+    }
+   ],
+   "bancos": [
+    "SANTANDER",
+    "ITAU",
+    "BNB",
+    "C6",
+    "BRADESCO"
+   ],
+   "pasta": "356 - A7 COMERCIO DE VEICULOS LTDA"
+  },
+  {
+   "codigo": 407,
+   "razao": "DUDA HOME DE TAIOBEIRAS LTDA",
+   "fantasia": "DUDA HOME",
+   "outrosNomes": [],
+   "doc": "38221501000170",
+   "ie": "0038211130050",
+   "regime": "Simples",
+   "contas": [
+    {
+     "banco": "BANCO DO BRASIL",
+     "agencia": "2705-7",
+     "conta": "28265-0"
+    },
+    {
+     "banco": "NUBANK",
+     "agencia": "1",
+     "conta": "9558283"
+    },
+    {
+     "banco": "STONE",
+     "agencia": "1",
+     "conta": "9558283"
+    }
+   ],
+   "bancos": [
+    "BANCO DO BRASIL",
+    "NUBANK",
+    "STONE"
+   ],
+   "pasta": "407 - DUDA HOME DE TAIOBEIRAS LTDA"
+  },
+  {
+   "codigo": 408,
+   "razao": "OURO VERDE MINERACAO LTDA",
+   "fantasia": "********",
+   "outrosNomes": [],
+   "doc": "27119416000180",
+   "ie": "0029148630047",
+   "regime": "Presumido",
+   "contas": [
+    {
+     "banco": "BANCO DO BRASIL",
+     "agencia": "2705-7",
+     "conta": "26345-1"
+    },
+    {
+     "banco": "BNB",
+     "agencia": "217",
+     "conta": "14172-2"
+    },
+    {
+     "banco": "ITAU",
+     "agencia": "8656",
+     "conta": "99896-3"
+    },
+    {
+     "banco": "BRADESCO",
+     "agencia": "2557",
+     "conta": "30590-1"
+    }
+   ],
+   "bancos": [
+    "BANCO DO BRASIL",
+    "BNB",
+    "ITAU",
+    "BRADESCO"
+   ],
+   "pasta": "408 - OURO VERDE MINERACAO LTDA"
+  },
+  {
+   "codigo": 409,
+   "razao": "OURO VERDE MINERACAO LTDA - FILIAL 02",
+   "fantasia": "OURO VERDE MINERACAO E FLORESTAS",
+   "outrosNomes": [
+    "OURO VERDE MINERACAO LTDA",
+    "OURO VERDE MINERACAO LTDA"
+   ],
+   "doc": "27119416000260",
+   "ie": "0029148630128",
+   "regime": "Presumido",
+   "contas": [],
+   "bancos": [],
+   "pasta": "409 - OURO VERDE MINERACAO LTDA - FILIAL 02"
+  },
+  {
+   "codigo": 410,
+   "razao": "OURO VERDE MINERACAO LTDA - FILIAL 03",
+   "fantasia": "OURO VERDE MINERACAO E FLORESTAS",
+   "outrosNomes": [],
+   "doc": "27119416000422",
+   "ie": "",
+   "regime": "Presumido",
+   "contas": [],
+   "bancos": [],
+   "pasta": null
+  },
+  {
+   "codigo": 411,
+   "razao": "MINAS FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA",
+   "fantasia": "MINAS FORESTRY",
+   "outrosNomes": [
+    "MINAS FORESTRY EMPREENDIMENTOS FLORESTAIS",
+    "MINAS FORESTRY EMPREENDIMENTOS FLORESTAIS"
+   ],
+   "doc": "37405977000107",
+   "ie": "0037534920051",
+   "regime": "Presumido",
+   "contas": [
+    {
+     "banco": "BNB",
+     "agencia": "60",
+     "conta": "64928-9"
+    },
+    {
+     "banco": "BANCO DO BRASIL",
+     "agencia": "101-5",
+     "conta": "73891-3"
+    },
+    {
+     "banco": "BNB",
+     "agencia": "60",
+     "conta": "65171-2"
+    }
+   ],
+   "bancos": [
+    "BNB",
+    "BANCO DO BRASIL"
+   ],
+   "pasta": "411 - MINAS FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA"
+  },
+  {
+   "codigo": 412,
+   "razao": "KOPEK FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA",
+   "fantasia": "KOPEK FORESTRY",
+   "outrosNomes": [
+    "KOPEK FORESTRY EMPREENDIMENTOS FLORESTAIS",
+    "KOPEK FORESTRY EMPREENDIMENTOS FLORESTAIS"
+   ],
+   "doc": "11077541000134",
+   "ie": "0038926240053",
+   "regime": "Presumido",
+   "contas": [
+    {
+     "banco": "BNB",
+     "agencia": "199",
+     "conta": "41535-8"
+    },
+    {
+     "banco": "BANCO DO BRASIL",
+     "agencia": "4210-2",
+     "conta": "116281-0"
+    }
+   ],
+   "bancos": [
+    "BNB",
+    "BANCO DO BRASIL"
+   ],
+   "pasta": "412 - KOPEK FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA"
+  },
+  {
+   "codigo": 413,
+   "razao": "BRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA",
+   "fantasia": "********",
+   "outrosNomes": [
+    "BRAZILIAN FORESTRY EMPREENDIMENTOS",
+    "BRAZILIAN FORESTRY EMPREENDIMENTOS"
+   ],
+   "doc": "33117361000171",
+   "ie": "0035612260253",
+   "regime": "Real",
+   "contas": [
+    {
+     "banco": "BNB",
+     "agencia": "60",
+     "conta": "64926-2"
+    },
+    {
+     "banco": "BANCO DO BRASIL",
+     "agencia": "183-X",
+     "conta": "39440-8"
+    },
+    {
+     "banco": "BRADESCO",
+     "agencia": "5666",
+     "conta": "13657-3"
+    }
+   ],
+   "bancos": [
+    "BNB",
+    "BANCO DO BRASIL",
+    "BRADESCO"
+   ],
+   "pasta": "413 - BRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA"
+  },
+  {
+   "codigo": 414,
+   "razao": "BRAZILIAN FORESTRY EMPREENDIMENTOS",
+   "fantasia": "********",
+   "outrosNomes": [],
+   "doc": "33117361000252",
+   "ie": "0035612260091",
+   "regime": "Real",
+   "contas": [],
+   "bancos": [],
+   "pasta": "414 - BRAZILIAN FORESTRY EMPREENDIMENTOS"
+  },
+  {
+   "codigo": 415,
+   "razao": "LAVICA EMPREENDIMENTOS FLORESTAIS LTDA",
+   "fantasia": "N/T",
+   "outrosNomes": [],
+   "doc": "21276022000159",
+   "ie": "87276520",
+   "regime": "Presumido",
+   "contas": [
+    {
+     "banco": "BNB",
+     "agencia": "60",
+     "conta": "37991-5"
+    },
+    {
+     "banco": "BANCO DO BRASIL",
+     "agencia": "3519-X",
+     "conta": "32601-1"
+    }
+   ],
+   "bancos": [
+    "BNB",
+    "BANCO DO BRASIL"
+   ],
+   "pasta": "415 - LAVICA EMPREENDIMENTOS FLORESTAIS LTDA"
+  },
+  {
+   "codigo": 416,
+   "razao": "LAVICA EMPREENDIMENTOS FLORESTAIS LTDA - FILIAL 02",
+   "fantasia": "********",
+   "outrosNomes": [
+    "LAVICA EMPREENDIMENTOS FLORESTAIS LTDA",
+    "LAVICA EMPREENDIMENTOS FLORESTAIS LTDA"
+   ],
+   "doc": "21276022000230",
+   "ie": "0029614270004",
+   "regime": "Presumido",
+   "contas": [],
+   "bancos": [],
+   "pasta": "416 - LAVICA EMPREENDIMENTOS FLORESTAIS LTDA - FILIAL 02"
+  },
+  {
+   "codigo": 418,
+   "razao": "BRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA - FILIAL 03",
+   "fantasia": "********",
+   "outrosNomes": [
+    "BRAZILIAN FORESTRY EMPREENDIMENTOS",
+    "BRAZILIAN FORESTRY EMPREENDIMENTOS"
+   ],
+   "doc": "33117361000333",
+   "ie": "0035612260172",
+   "regime": "Real",
+   "contas": [],
+   "bancos": [],
+   "pasta": "418 - BRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA - FILIAL 03"
+  },
+  {
+   "codigo": 429,
+   "razao": "POSTO DE COMBUSTIVEIS ANDRIELE LIMITADA",
+   "fantasia": "POSTO JM JOAO MANOEL",
+   "outrosNomes": [],
+   "doc": "40299450000141",
+   "ie": "0039335670073",
+   "regime": "Presumido",
+   "contas": [],
+   "bancos": [],
+   "pasta": "429 - POSTO DE COMBUSTIVEIS ANDRIELE LIMITADA"
+  },
+  {
+   "codigo": 441,
+   "razao": "OURO PRETO REFLORESTAMENTOS LTDA",
+   "fantasia": "OURO PRETO REFLORESTAMENTOS",
+   "outrosNomes": [],
+   "doc": "41809794000116",
+   "ie": "0040381730077",
+   "regime": "Presumido",
+   "contas": [
+    {
+     "banco": "BANCO DO BRASIL",
+     "agencia": "2705-7",
+     "conta": "29443-8"
+    },
+    {
+     "banco": "BANCO DO BRASIL",
+     "agencia": "2705-7",
+     "conta": "30955-9"
+    }
+   ],
+   "bancos": [
+    "BANCO DO BRASIL"
+   ],
+   "pasta": "441 - OURO PRETO REFLORESTAMENTOS LTDA"
+  },
+  {
+   "codigo": 443,
+   "razao": "SU SEDUCAO MODA INTIMA LTDA",
+   "fantasia": "SU SEDUCAO MODA INTIMA",
+   "outrosNomes": [],
+   "doc": "42160712000118",
+   "ie": "0040599390050",
+   "regime": "Simples",
+   "contas": [
+    {
+     "banco": "SICOOB",
+     "agencia": "3144-5",
+     "conta": "50783-0"
+    },
+    {
+     "banco": "BNB",
+     "agencia": "60",
+     "conta": "66352-4"
+    },
+    {
+     "banco": "MERCADO PAGO",
+     "agencia": "1",
+     "conta": "21351046353"
+    }
+   ],
+   "bancos": [
+    "SICOOB",
+    "BNB",
+    "MERCADO PAGO"
+   ],
+   "pasta": "443 - SU SEDUCAO MODA INTIMA LTDA"
+  },
+  {
+   "codigo": 446,
+   "razao": "SPIROU CONSULTORIA E INVESTIMENTOS LTDA",
+   "fantasia": "********",
+   "outrosNomes": [],
+   "doc": "41228638000161",
+   "ie": "0041615580085",
+   "regime": "Presumido",
+   "contas": [
+    {
+     "banco": "BANCO DO BRASIL",
+     "agencia": "101-5",
+     "conta": "75225-8"
+    }
+   ],
+   "bancos": [
+    "BANCO DO BRASIL"
+   ],
+   "pasta": "446 - SPIROU CONSULTORIA E INVESTIMENTOS LTDA"
+  },
+  {
+   "codigo": 453,
+   "razao": "BRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA - FILIAL 04",
+   "fantasia": "ESTRADA MUNICIPAL",
+   "outrosNomes": [
+    "BRAZILIAN FORESTRY EMPREENDIMENTOS",
+    "BRAZILIAN FORESTRY EMPREENDIMENTOS"
+   ],
+   "doc": "33117361000414",
+   "ie": "186423817",
+   "regime": "Real",
+   "contas": [],
+   "bancos": [],
+   "pasta": "453 - BRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA - FILIAL 04"
+  },
+  {
+   "codigo": 468,
+   "razao": "CONSTRUTORA E INCORPORADORA OURO VERDE LTDA",
+   "fantasia": "CONSTRUTORA E INCORPORADORA OURO VERDE",
+   "outrosNomes": [],
+   "doc": "46151327000165",
+   "ie": "0043263840010",
+   "regime": "Simples",
+   "contas": [
+    {
+     "banco": "BANCO DO BRASIL",
+     "agencia": "2705-7",
+     "conta": "30955-9"
+    }
+   ],
+   "bancos": [
+    "BANCO DO BRASIL"
+   ],
+   "pasta": "468 - CONSTRUTORA E INCORPORADORA OURO VERDE LTDA"
+  },
+  {
+   "codigo": 476,
+   "razao": "OURO VERDE MINERACAO LTDA - FILIAL 05",
+   "fantasia": "********",
+   "outrosNomes": [
+    "OURO VERDE MINERACAO LTDA",
+    "OURO VERDE MINERACAO LTDA"
+   ],
+   "doc": "27119416000503",
+   "ie": "0029148630462",
+   "regime": "Presumido",
+   "contas": [],
+   "bancos": [],
+   "pasta": "476 - OURO VERDE MINERACAO LTDA - FILIAL 05"
+  },
+  {
+   "codigo": 509,
+   "razao": "OURO VERDE MINERACAO LTDA - FILIAL 06",
+   "fantasia": "*************",
+   "outrosNomes": [
+    "OURO VERDE MINERACAO LTDA",
+    "OURO VERDE MINERACAO LTDA"
+   ],
+   "doc": "27119416000694",
+   "ie": "208679521",
+   "regime": "Presumido",
+   "contas": [],
+   "bancos": [],
+   "pasta": "509 - OURO VERDE MINERACAO LTDA - FILIAL 06"
+  },
+  {
+   "codigo": 524,
+   "razao": "CARRETAO POSTO DE COMBUSTIVEIS LTDA",
+   "fantasia": "POSTO CARRETAO",
+   "outrosNomes": [],
+   "doc": "53997059000162",
+   "ie": "0048267800050",
+   "regime": "Real",
+   "contas": [
+    {
+     "banco": "BRADESCO",
+     "agencia": "2557",
+     "conta": "30079-9"
+    },
+    {
+     "banco": "BRADESCO",
+     "agencia": "2557",
+     "conta": "30079"
+    }
+   ],
+   "bancos": [
+    "BRADESCO"
+   ],
+   "pasta": "524 - CARRETAO POSTO DE COMBUSTIVEIS LTDA"
+  },
+  {
+   "codigo": 532,
+   "razao": "POUSADA, RESTAURANTE E PANIFICADORA JM- JOAO MANOEL LTDA",
+   "fantasia": "POUSADA, RESTAURANTE E PANIFICADORA JM -",
+   "outrosNomes": [
+    "POUSADA, RESTAURANTE E PANIFICADORA JM-",
+    "POUSADA, RESTAURANTE E PANIFICADORA JM-"
+   ],
+   "doc": "54811429000198",
+   "ie": "0048739220052",
+   "regime": "Simples",
+   "contas": [],
+   "bancos": [],
+   "pasta": "532 - POUSADA, RESTAURANTE E PANIFICADORA JM- JOAO MANOEL LTDA"
+  },
+  {
+   "codigo": 533,
+   "razao": "ALINE CARVALHO FELIX MORONI",
+   "fantasia": "",
+   "outrosNomes": [],
+   "doc": "04030048617",
+   "ie": "",
+   "regime": "Domésticas",
+   "contas": [],
+   "bancos": [],
+   "pasta": null
+  },
+  {
+   "codigo": 536,
+   "razao": "ASSOCIAÇÃO COMERCIAL E EMPRESARIAL DE TAIOBEIRAS",
+   "fantasia": "ACE",
+   "outrosNomes": [
+    "ASSOCIAÇÃO COMERCIAL E EMPRESARIAL DE",
+    "ASSOCIAÇÃO COMERCIAL E EMPRESARIAL DE"
+   ],
+   "doc": "21369913000150",
+   "ie": "",
+   "regime": "Isentas",
+   "contas": [
+    {
+     "banco": "SICOOB",
+     "agencia": "3144-5",
+     "conta": "20451-0"
+    }
+   ],
+   "bancos": [
+    "SICOOB"
+   ],
+   "pasta": "536 - ASSOCIAÇÃO COMERCIAL E EMPRESARIAL DE TAIOBEIRAS"
+  },
+  {
+   "codigo": 560,
+   "razao": "CAMARA DE DIRIGENTES LOJISTAS DE TAIOBEIRAS",
+   "fantasia": "C.D.L.",
+   "outrosNomes": [],
+   "doc": "05076768000162",
+   "ie": "",
+   "regime": "Isentas",
+   "contas": [],
+   "bancos": [],
+   "pasta": "560 - CAMARA DE DIRIGENTES LOJISTAS DE TAIOBEIRAS"
+  },
+  {
+   "codigo": 568,
+   "razao": "BRAZILIAN COFFEE LTDA",
+   "fantasia": "BRAZILIAN COFFEE",
+   "outrosNomes": [],
+   "doc": "61131250000155",
+   "ie": "231944250",
+   "regime": "Real",
+   "contas": [
+    {
+     "banco": "BNB",
+     "agencia": "60",
+     "conta": "65368-5"
+    },
+    {
+     "banco": "BANCO DO BRASIL",
+     "agencia": "101-5",
+     "conta": "88519-3"
+    },
+    {
+     "banco": "BNB",
+     "agencia": "101-5",
+     "conta": "88519-3"
+    }
+   ],
+   "bancos": [
+    "BNB",
+    "BANCO DO BRASIL"
+   ],
+   "pasta": "568 - BRAZILIAN COFFEE LTDA"
+  },
+  {
+   "codigo": 572,
+   "razao": "FREEDOM REFORESTING LTDA",
+   "fantasia": "",
+   "outrosNomes": [],
+   "doc": "57338982000143",
+   "ie": "233465782",
+   "regime": "Presumido",
+   "contas": [
+    {
+     "banco": "BANCO DO BRASIL",
+     "agencia": "101-5",
+     "conta": "86991-0"
+    }
+   ],
+   "bancos": [
+    "BANCO DO BRASIL"
+   ],
+   "pasta": "572 - FREEDOM REFORESTING LTDA"
+  },
+  {
+   "codigo": 575,
+   "razao": "BDV LTDA",
+   "fantasia": "BDV",
+   "outrosNomes": [],
+   "doc": "62183562000175",
+   "ie": "",
+   "regime": "Presumido",
+   "contas": [],
+   "bancos": [],
+   "pasta": "575 - BDV LTDA"
+  },
+  {
+   "codigo": 591,
+   "razao": "ZELO AGROINDUSTRIAS LTDA - MATRIZ",
+   "fantasia": "ZELO",
+   "outrosNomes": [
+    "ZELO AGROINDUSTRIAS LTDA"
+   ],
+   "doc": "53636418000156",
+   "ie": "",
+   "regime": "Simples",
+   "contas": [
+    {
+     "banco": "BANCO DO BRASIL",
+     "agencia": "101-5",
+     "conta": "89345-5"
+    }
+   ],
+   "bancos": [
+    "BANCO DO BRASIL"
+   ],
+   "pasta": "591 - ZELO AGROINDUSTRIAIS LTDA"
+  },
+  {
+   "codigo": 607,
+   "razao": "ZELO AGROINDUSTRIAS LTDA - FILIAL TAIOBEIRAS",
+   "fantasia": "",
+   "outrosNomes": [],
+   "doc": "53636418000237",
+   "ie": "",
+   "regime": "Simples",
+   "contas": [],
+   "bancos": [],
+   "pasta": "607 - ZELO AGROINDUSTRIAIS FILIAL 2"
+  }
+ ]
 }

@@ -11,6 +11,7 @@ dist-tipos/
 robo/*.log
 robo/*.tmp
 robo/.firebase-token
+robo/copias-limpeza-*/
 robo/arquivador-publicados.json
 robo/arquivador.lock
 robo/avisos-vencimento-feitos.json

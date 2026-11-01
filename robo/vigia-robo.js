@@ -1023,6 +1023,10 @@ async function iniciar() {
   // últimos 30 dias, o armazenamento e a hospedagem, em robo/saudeBanco (só o admin lê).
   try { require('./saude-banco').iniciarSaudeDoBanco(db, log); }
   catch (err) { log('saúde do banco desligada:', err.message); }
+  // A faxina do banco (01/11/2026: 1.009 MB de 1 GB): uma vez por dia, os pedaços de arquivo já usados (o extrato importado,
+  // as fotos da tela do FGTS, o arquivo do feedback feito); o documento de cima fica. FAXINA_BANCO=simular|desligada.
+  try { require('./faxina-banco').iniciarFaxinaDoBanco(db, log); }
+  catch (err) { log('faxina do banco desligada:', err.message); }
   // Texto completo de um e-mail, aberto no painel da tela do Robô.
   try { require('./leituras-gmail').iniciarLeiturasGmail(db, log, getGmail); }
   catch (err) { log('texto completo do e-mail desligado:', err.message); }

@@ -1043,8 +1043,64 @@ igual('sem nome no assunto: não decide pelo nome', r.desempatarPorNome(fitos, '
   igual('lote: os valores do mês (FGTS e DARF do INSS)', L.valoresDoGrupo(gL.porChave.get('191_2026-10')), { fgts: 129.68, darf: 165.33 });
 }
 
+// ---------- a faxina do banco (01/11/2026: o banco chegou a 1.009 MB de 1 GB) ----------
+const fx = require('./faxina-banco');
+const DIA_FX = 864e5;
+const AGORA_FX = Date.parse('2026-11-01T12:00:00Z');
+const haDias = n => new Date(AGORA_FX - n * DIA_FX).toISOString();
+igual('faxina: extrato importado há 8 dias perde os pedaços', fx.oQueApagar('extratosRecebidos', { status: 'importado', importadoEm: haDias(8) }, AGORA_FX).apagar, ['partes']);
+igual('faxina: extrato importado ontem fica', fx.oQueApagar('extratosRecebidos', { status: 'importado', importadoEm: haDias(1) }, AGORA_FX), null);
+igual('faxina: extrato ainda novo fica (o Extratudo vai ler)', fx.oQueApagar('extratosRecebidos', { status: 'novo', em: haDias(60) }, AGORA_FX), null);
+igual('faxina: extrato ignorado sem a data da importação vale a de chegada', fx.oQueApagar('extratosRecebidos', { status: 'ignorado', em: haDias(30) }, AGORA_FX).apagar, ['partes']);
+igual('faxina: FGTS terminado há 15 dias perde as telas, nunca o PDF da guia', fx.oQueApagar('pedidosFgts', { status: 'pronto', fimEm: haDias(15) }, AGORA_FX).apagar, ['telas', 'ao-vivo']);
+igual('faxina: FGTS ainda trabalhando fica', fx.oQueApagar('pedidosFgts', { status: 'trabalhando', criadoEm: haDias(40) }, AGORA_FX), null);
+igual('faxina: FGTS terminado há 3 dias fica', fx.oQueApagar('pedidosFgts', { status: 'erro', fimEm: haDias(3) }, AGORA_FX), null);
+igual('faxina: feedback feito de 31 dias perde o arquivo; o resolvendo fica', [fx.oQueApagar('feedbacks', { status: 'feito', criadoEm: haDias(31) }, AGORA_FX).apagar, fx.oQueApagar('feedbacks', { status: 'resolvendo', criadoEm: haDias(90) }, AGORA_FX)], [['partes'], null]);
+igual('faxina: o que já foi faxinado não volta; coleção fora da lista, nada', [fx.oQueApagar('extratosRecebidos', { status: 'importado', importadoEm: haDias(30), partesApagadasEm: haDias(20) }, AGORA_FX), fx.oQueApagar('entregas', { status: 'confirmada', criadoEm: haDias(90) }, AGORA_FX)], [null, null]);
+igual('faxina: data do Firestore (Timestamp) também vale', fx.quando({ toMillis: () => 5 }), 5);
+igual('faxina: o modo pelo ambiente', [fx.modoDaFaxina(''), fx.modoDaFaxina('simular'), fx.modoDaFaxina('desligada')], ['apagar', 'simular', 'desligada']);
+// a limpeza única (limpar-banco.js): os argumentos e o dia do arquivador remontado
+const lbz = require('./limpar-banco');
+igual('limpeza: sem argumento é simulação dos itens seguros', [lbz.lerArgumentos([]).apagar, lbz.lerArgumentos([]).so], [false, null]);
+igual('limpeza: --apagar, --so e os prazos', (() => { const x = lbz.lerArgumentos(['--apagar', '--so=dias,fgts-pdf', '--dias=feedbacks:0', '--dias-pdf=120']); return [x.apagar, x.so, x.dias, x.diasPdf]; })(), [true, ['dias', 'fgts-pdf'], { feedbacks: 0 }, 120]);
+igual('limpeza: item desconhecido para (não apaga o que não devia)', (() => { try { lbz.lerArgumentos(['--so=entregas']); return 'passou'; } catch (e) { return 'parou'; } })(), 'parou');
+{
+  const itensDia = [
+    ...Array.from({ length: 5 }, (_, i) => ({ id: 'j' + i, acao: 'jaArquivado', nome: 'x'.repeat(100) })),
+    { id: 'a1', acao: 'arquivou', nome: 'a' }, { id: 'a1', acao: 'arquivou', nome: 'a' },   // repetido (uma rodada que parou no meio)
+    { id: 'n1', acao: 'naoIdentificado', nome: 'n' }, { id: 'j9', acao: 'jaArquivado', nome: 'j' },
+  ];
+  const rd = lbz.remontarDia('2026-10-27', itensDia, 3);
+  igual('limpeza do dia: os já arquivados até o teto, o resto todo, sem repetir', [rd.ficam, rd.saem, rd.partes.flat().map(x => x.id)], [5, 4, ['j0', 'j1', 'j2', 'a1', 'n1']]);
+  const grande = Array.from({ length: 3000 }, (_, i) => ({ id: 'g' + i, acao: 'arquivou', nome: 'y'.repeat(200) }));
+  const rg2 = lbz.remontarDia('2026-10-27', grande, 300);
+  igual('limpeza do dia: as partes novas têm até 250 KB', [rg2.partes.length > 1, rg2.partes.every(p => p.reduce((s, x) => s + JSON.stringify(x).length, 0) <= 250 * 1024)], [true, true]);
+  igual('limpeza do dia: antes de 24/10 as partes eram de 700 KB', lbz.bytesDaParte('2026-10-22'), 700 * 1024);
+}
+const esperarFaxina = (async () => {
+  // um banco de mentira: 2 extratos (1 velho importado com 2 pedaços, 1 novo) e 1 FGTS pronto com 1 tela
+  const apagados = [], marcados = [];
+  const pedaco = (caminho, dados) => ({ data: () => dados, ref: { delete: async () => { apagados.push(caminho); } } });
+  const pai = (col, id, dados, subs) => ({ data: () => dados, ref: {
+    collection: s => ({ get: async () => ({ docs: (subs[s] || []).map((d, i) => pedaco(col + '/' + id + '/' + s + '/' + i, d)) }) }),
+    update: async (m) => { marcados.push([col + '/' + id, Object.keys(m)]); },
+  } });
+  const docs = {
+    extratosRecebidos: [pai('extratosRecebidos', 'a', { status: 'importado', importadoEm: haDias(10) }, { partes: [{ dados: 'x'.repeat(1000) }, { dados: 'y'.repeat(500) }] }), pai('extratosRecebidos', 'b', { status: 'importado', importadoEm: haDias(2) }, { partes: [{ dados: 'z' }] })],
+    pedidosFgts: [pai('pedidosFgts', 'f', { status: 'pronto', fimEm: haDias(20) }, { telas: [{ imagem: 'i'.repeat(100) }], arquivo: [{ base64: 'NAO' }] })],
+    feedbacks: [],
+  };
+  const db = { collection: c => ({ where: () => ({ get: async () => ({ docs: docs[c] || [] }) }) }) };
+  const simulado = await fx.faxinar(db, () => {}, { modo: 'simular', agora: AGORA_FX });
+  igual('faxina simulada: conta e não apaga nada', [simulado.pedacos, simulado.bytes, apagados.length, marcados.length], [3, 1600, 0, 0]);
+  const r = await fx.faxinar(db, () => {}, { modo: 'apagar', agora: AGORA_FX });
+  igual('faxina: apaga só os pedaços usados (nunca o PDF da guia) e marca o documento de cima', [r.pedacos, apagados, marcados.map(m => m[0])], [3, ['extratosRecebidos/a/partes/0', 'extratosRecebidos/a/partes/1', 'pedidosFgts/f/telas/0'], ['extratosRecebidos/a', 'pedidosFgts/f']]);
+  const comErro = await fx.faxinar({ collection: () => ({ where: () => ({ get: async () => { throw new Error('sem rede'); } }) }) }, () => {}, { agora: AGORA_FX });
+  igual('faxina: o erro vira uma linha, não derruba', comErro.erros.length, 3);
+})();
+
 // os testes que leem PDF são assíncronos: o resultado espera por eles
-Promise.all([esperarExtratos, esperarSieg]).then(() => {
+Promise.all([esperarExtratos, esperarSieg, esperarFaxina]).then(() => {
   console.log(falhas ? '\n' + falhas + ' de ' + total + ' testes FALHARAM' : total + ' testes, todos passaram');
   process.exit(falhas ? 1 : 0);
 });
