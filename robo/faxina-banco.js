@@ -94,7 +94,8 @@ async function faxinar(db, log, opcoes) {
           const pedacos = await doc.ref.collection(sub).get();
           for (const p of pedacos.docs) {
             const x = p.data() || {};
-            r.bytes += String(x.dados || x.imagem || x.base64 || '').length;
+            const arquivo = x.dados || x.imagem || x.base64;   // texto em Base64 ou bytes (o arquivo do feedback)
+            r.bytes += arquivo && typeof arquivo.length === 'number' ? arquivo.length : 0;
             achou++;
             if (!r.simulado) await p.ref.delete();
           }

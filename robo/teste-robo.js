@@ -1059,6 +1059,24 @@ igual('faxina: feedback feito de 31 dias perde o arquivo; o resolvendo fica', [f
 igual('faxina: o que já foi faxinado não volta; coleção fora da lista, nada', [fx.oQueApagar('extratosRecebidos', { status: 'importado', importadoEm: haDias(30), partesApagadasEm: haDias(20) }, AGORA_FX), fx.oQueApagar('entregas', { status: 'confirmada', criadoEm: haDias(90) }, AGORA_FX)], [null, null]);
 igual('faxina: data do Firestore (Timestamp) também vale', fx.quando({ toMillis: () => 5 }), 5);
 igual('faxina: o modo pelo ambiente', [fx.modoDaFaxina(''), fx.modoDaFaxina('simular'), fx.modoDaFaxina('desligada')], ['apagar', 'simular', 'desligada']);
+// a limpeza única (limpar-banco.js): os argumentos e o dia do arquivador remontado
+const lbz = require('./limpar-banco');
+igual('limpeza: sem argumento é simulação dos itens seguros', [lbz.lerArgumentos([]).apagar, lbz.lerArgumentos([]).so], [false, null]);
+igual('limpeza: --apagar, --so e os prazos', (() => { const x = lbz.lerArgumentos(['--apagar', '--so=dias,fgts-pdf', '--dias=feedbacks:0', '--dias-pdf=120']); return [x.apagar, x.so, x.dias, x.diasPdf]; })(), [true, ['dias', 'fgts-pdf'], { feedbacks: 0 }, 120]);
+igual('limpeza: item desconhecido para (não apaga o que não devia)', (() => { try { lbz.lerArgumentos(['--so=entregas']); return 'passou'; } catch (e) { return 'parou'; } })(), 'parou');
+{
+  const itensDia = [
+    ...Array.from({ length: 5 }, (_, i) => ({ id: 'j' + i, acao: 'jaArquivado', nome: 'x'.repeat(100) })),
+    { id: 'a1', acao: 'arquivou', nome: 'a' }, { id: 'a1', acao: 'arquivou', nome: 'a' },   // repetido (uma rodada que parou no meio)
+    { id: 'n1', acao: 'naoIdentificado', nome: 'n' }, { id: 'j9', acao: 'jaArquivado', nome: 'j' },
+  ];
+  const rd = lbz.remontarDia('2026-10-27', itensDia, 3);
+  igual('limpeza do dia: os já arquivados até o teto, o resto todo, sem repetir', [rd.ficam, rd.saem, rd.partes.flat().map(x => x.id)], [5, 4, ['j0', 'j1', 'j2', 'a1', 'n1']]);
+  const grande = Array.from({ length: 3000 }, (_, i) => ({ id: 'g' + i, acao: 'arquivou', nome: 'y'.repeat(200) }));
+  const rg2 = lbz.remontarDia('2026-10-27', grande, 300);
+  igual('limpeza do dia: as partes novas têm até 250 KB', [rg2.partes.length > 1, rg2.partes.every(p => p.reduce((s, x) => s + JSON.stringify(x).length, 0) <= 250 * 1024)], [true, true]);
+  igual('limpeza do dia: antes de 24/10 as partes eram de 700 KB', lbz.bytesDaParte('2026-10-22'), 700 * 1024);
+}
 const esperarFaxina = (async () => {
   // um banco de mentira: 2 extratos (1 velho importado com 2 pedaços, 1 novo) e 1 FGTS pronto com 1 tela
   const apagados = [], marcados = [];

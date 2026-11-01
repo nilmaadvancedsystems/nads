@@ -55,9 +55,9 @@ const PAUSA_MAX_MS = 10 * 60 * 1000;
 const JANELA_RITMO_MS = 10 * 60 * 1000;
 const DIAS_GUARDADOS = 730;   // 24 meses (23/10/2026: era 31)
 // 01/11/2026 (o banco chegou a 1.009 MB de 1 GB): os "já estavam arquivados" de um dia no banco têm teto. Numa releitura da
-// pasta inteira eles são quase tudo (26 e 27/10: 1.849 partes, ~410 MB, de 85 a 93% "já arquivado") e não dizem nada
-// além da contagem, que continua inteira (o painel, o resumo do mês e o arquivo do dia no PC contam todos). Passou do teto,
-// o item vai só para o arquivados-AAAA-MM-DD.jsonl do PC.
+// pasta inteira eles são a maior parte (26 e 27/10: 1.849 partes, ~453 MB; 390 mil "já arquivados", ~295 MB) e não dizem
+// nada além da contagem, que continua inteira (o painel, o resumo do mês e o arquivo do dia no PC contam todos). Passou do
+// teto, o item vai só para o arquivados-AAAA-MM-DD.jsonl do PC.
 const MAX_JA_ARQUIVADOS_NO_BANCO = 300;
 // 01/11/2026: no banco, o histórico de cada arquivo fica DIAS_NO_BANCO dias (ARQUIVADOR_DIAS_NO_BANCO troca); o arquivo do
 // dia no PC continua DIAS_GUARDADOS (24 meses) e o resumo de cada mês (meses/{AAAA-MM}, as contagens) não é apagado. Com
