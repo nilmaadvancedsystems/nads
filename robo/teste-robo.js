@@ -953,11 +953,14 @@ const esperarSieg = (async () => {
   // a contagem gravada longe do resumo (o "Contar agora" de outro dia) não diz o que havia no download: baixa
   igual('SIEG madrugada: contagem de outra hora não vale como a do download', siegT.contagemDoUltimoDownload(n137, Object.assign({}, c137, { em: '2026-10-29T12:00:00Z' })), null);
   // o resumo novo guarda a contagem de antes do download (contagemSieg): vale ela, mesmo com a siegContagens de outra hora
-  const n54 = { em: '2026-11-01T07:40:00Z', emitidas: Array.from({ length: 668 }, () => ({ tipo: 'NFC-e' })), recebidas: [], contagemSieg: contDe({}, { NFe: 120 }) };
+  const n54 = { em: '2026-11-01T07:40:00Z', emitidas: [...Array.from({ length: 120 }, () => ({ tipo: 'NF-e' })), ...Array.from({ length: 668 }, () => ({ tipo: 'NFC-e' }))], recebidas: [], contagemSieg: contDe({}, { NFe: 120 }) };
   const c54 = contDe({}, { NFe: 120 }, '2026-11-02T04:00:00Z');
   igual('SIEG madrugada: o 54 (NFC-e só no Drive) não fecha pela regra de antes', siegT.completoNoNads(c54, n54), false);
   igual('SIEG madrugada: o 54 sem nota nova no SIEG não baixa', siegT.semMudancaNoSieg(n54, c54, contDe({}, { NFe: 120 })), true);
   igual('SIEG madrugada: o 54 com uma NF-e nova baixa', siegT.semMudancaNoSieg(n54, c54, contDe({}, { NFe: 121 })), false);
+  // o tipo que veio pela metade sem erro (100 de 120) pode ser um download que parou no meio: segue sendo pedido
+  const nMetade = { em: '2026-11-01T07:40:00Z', emitidas: Array.from({ length: 100 }, () => ({ tipo: 'NF-e' })), recebidas: [], contagemSieg: contDe({}, { NFe: 120 }) };
+  igual('SIEG madrugada: veio pela metade (100 de 120), baixa mesmo sem mudança no SIEG', siegT.semMudancaNoSieg(nMetade, c54, contDe({}, { NFe: 120 })), false);
   igual('SIEG madrugada: o primeiro download do mês (sem resumo) baixa', [siegT.contagemDoUltimoDownload(null, c137), siegT.semMudancaNoSieg(null, c137, c137)], [null, false]);
   igual('SIEG madrugada: quem fecha continua sem pedido', siegT.completoNoNads(contDe({ NFe: 1 }, {}), { emitidas: [], recebidas: [{ tipo: 'NF-e' }] }), true);
   igual('SIEG madrugada: contagem sem os números não é igual a nada', [siegT.mesmaContagem(c137, {}), siegT.mesmaContagem(c137, c137)], [false, true]);

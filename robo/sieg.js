@@ -622,12 +622,16 @@ function mesmaContagem(a, b) {
 /**
  * As notas do nads (siegNotas) já têm, tipo por tipo, o que a contagem do SIEG diz (a regra de antes de 31/10/2026).
  */
+const CHAVE_DO_TIPO = { 'NF-e': 'NFe', 'NFC-e': 'NFCe', 'CT-e': 'CTe', 'NFS-e': 'NFSe', 'CF-e': 'CFe' };
+/** Por tipo de nota: [quantas o nads tem, quantas a contagem diz] (emitidas e recebidas juntas). */
+function porTipo(cont, notas) {
+  const tem = {};
+  for (const n of [...((notas && notas.emitidas) || []), ...((notas && notas.recebidas) || [])]) tem[n.tipo] = (tem[n.tipo] || 0) + 1;
+  return Object.keys(CHAVE_DO_TIPO).map(t => [tem[t] || 0, ((cont.emitidas || {})[CHAVE_DO_TIPO[t]] || 0) + ((cont.recebidas || {})[CHAVE_DO_TIPO[t]] || 0)]);
+}
 function completoNoNads(cont, notas) {
   if (!cont || !notas || !Array.isArray(notas.emitidas)) return false;
-  const tem = {};
-  for (const n of [...notas.emitidas, ...(notas.recebidas || [])]) tem[n.tipo] = (tem[n.tipo] || 0) + 1;
-  const CHAVE = { 'NF-e': 'NFe', 'NFC-e': 'NFCe', 'CT-e': 'CTe', 'NFS-e': 'NFSe', 'CF-e': 'CFe' };
-  return Object.keys(CHAVE).every(t => (tem[t] || 0) === ((cont.emitidas || {})[CHAVE[t]] || 0) + ((cont.recebidas || {})[CHAVE[t]] || 0));
+  return porTipo(cont, notas).every(([tem, conta]) => tem === conta);
 }
 /**
  * A contagem do SIEG de antes do último download do mês: a que o resumo guardou (contagemSieg) ou, nos resumos de antes de
@@ -641,8 +645,16 @@ function contagemDoUltimoDownload(notas, cont) {
   const u = Date.parse((cont && cont.em) || '');
   return Number.isFinite(t) && Number.isFinite(u) && Math.abs(t - u) <= 120000 ? soAContagem(cont) : null;
 }
-/** O mês não mudou no SIEG desde o último download: a contagem de agora é a de antes dele. agora null (não deu para contar): mudou. */
-const semMudancaNoSieg = (notas, cont, agora) => !!agora && mesmaContagem(agora, contagemDoUltimoDownload(notas, cont));
+/**
+ * O mês não mudou no SIEG desde o último download: a contagem de agora é a de antes dele (agora null, não deu para contar:
+ * mudou). E o que falta no nads tem a cara da nota que a API não entrega: o tipo veio com 0 (a NFS-e "1" que vem vazia). O
+ * tipo que veio pela metade (120 contadas, 100 baixadas) pode ser um download que parou no meio sem erro: esse segue sendo
+ * pedido toda noite, como antes.
+ */
+function semMudancaNoSieg(notas, cont, agora) {
+  const antes = contagemDoUltimoDownload(notas, cont);
+  return !!agora && mesmaContagem(agora, antes) && porTipo(antes, notas).every(([tem, conta]) => tem >= conta || tem === 0);
+}
 
 function iniciarSieg({ db, log }) {
   const estadoRef = db.collection('robo').doc('sieg');
