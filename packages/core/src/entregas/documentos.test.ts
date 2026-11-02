@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   clienteCombina, clienteDaRotaDoDocumento, entregaDoDocumento, linhasDoPainel, numerosDoMes, rotaPadraoDoDocumento, rotuloDaCompetencia,
   rotuloDaSituacao, situacaoNoMes, subtituloDaLinhaDoPainel, totalDosItens, valorDigitado, motivoComToque, motivoPadrao, competenciaAnterior,
-  ultimasCompetencias, documentoFormatado, type ClienteDaRota, type Entrega,
+  ultimasCompetencias, documentoFormatado, tipoPelaChave, type ClienteDaRota, type Entrega,
 } from './documentos';
 import {
   ajustarDiaUtil, barrasDaLinha, clienteDoPdf, codigoDePagamentoDoPdf, competenciaDoPdf, dadosDoPdf, doMesDaGuia, dvMod10, feriadosNacionais,
@@ -65,6 +65,11 @@ describe('leitura do banco e formatos', () => {
 });
 
 describe('busca, valores e motivos', () => {
+  it('o eSocial pede o valor (30/10/2026); honorário e prólabore continuam sem', () => {
+    expect(tipoPelaChave('esocial')?.semValor).toBeFalsy();
+    expect(tipoPelaChave('honorario')?.semValor).toBe(true);
+    expect(tipoPelaChave('prolabore')?.semValor).toBe(true);
+  });
   it('busca por nome sem acento, código e parte do CNPJ', () => {
     expect(clienteCombina({ nome: 'ORÇAMENTO EXEMPLO', codigoOrigem: '', documento: '' }, 'orcamento')).toBe(true);
     expect(clienteCombina(A, '22233')).toBe(true);
@@ -202,6 +207,8 @@ describe('painel', () => {
     expect(rankingDaEquipe(doMes)).toEqual([{ nome: 'Ana', total: 1 }]);
     expect(metaDaEquipe([{ total: 3 }, { total: 5 }], 4).texto).toBe('Meta: 4 por pessoa · 8 de 8 (100%) · meta da equipe batida');
     expect(entregasPorDia(doMes)).toEqual([{ dia: '2026-10-04', total: 1 }]);
+    // confirmada às 22h de Brasília (01h do dia seguinte em UTC): conta no dia daqui
+    expect(entregasPorDia([{ status: 'confirmada', confirmadoEm: '2026-10-05T01:00:00.000Z', criadoEm: '2026-10-04T12:00:00.000Z' }])).toEqual([{ dia: '2026-10-04', total: 1 }]);
     expect(clientesSemEntrega([A, B, C], [], new Set(idsComEntregaConfirmada(doMes))).map(c => c.id)).toEqual(['c2']);
   });
 });
@@ -368,6 +375,10 @@ describe('o cliente e o link dele', () => {
   it('os números, o histórico por mês e a planilha', () => {
     const k = kpisDoCliente({ ...A, honorarioForma: 'Dinheiro', honorarioDia: '10' }, hist, 4, new Date(2026, 9, 15));
     expect(k.map(x => x.rotulo + '=' + x.valor)).toEqual(['Entregas=5', 'Última entrega=01/10/2026', 'Este mês=1 entregue', 'Honorário=Pendente']);
+    // o honorário entregue no último dia do mês às 22h de Brasília (já o mês seguinte em UTC) conta no mês
+    const noite = [entrega('h0', { clienteId: 'c1', status: 'confirmada', confirmadoEm: '2026-11-01T01:00:00.000Z', competencia: '2026-10', itens: [{ tipo: 'Honorário', valor: null }] })];
+    expect(kpisDoCliente({ ...A, honorarioForma: 'Dinheiro', honorarioDia: '10' }, noite, 1, new Date(2026, 9, 31)).map(x => x.rotulo + '=' + x.valor))
+      .toEqual(['Entregas=1', 'Última entrega=31/10/2026', 'Este mês=1 entregue', 'Honorário=Entregue']);
     expect(historicoPorCompetencia(hist).map(g => g.rotulo + ':' + g.entregas.length)).toEqual(['outubro/2026:1', 'setembro/2026:1', 'agosto/2026:1', 'julho/2026:2']);
     expect(linhasDaPlanilha([hist[0]])[0].slice(0, 2)).toEqual(['X', 'outubro/2026']);
   });

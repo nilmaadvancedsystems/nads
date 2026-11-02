@@ -28,10 +28,6 @@ export function CotaECustos() {
   return (
     <section className="admin-cota">
       {vm.exemplos && <p className="hint">Dados de exemplo: nada aqui vem do banco.</p>}
-      <p className="hint">
-        Os limites são os da cota grátis do Firebase: passou do limite, o Google recusa o que passou (a leitura, a gravação ou a
-        publicação) até a cota zerar. Os números vêm do próprio Google (Cloud Monitoring), lidos pelo robô da nuvem.
-      </p>
 
       <div className="card">
         <div className="card-head">

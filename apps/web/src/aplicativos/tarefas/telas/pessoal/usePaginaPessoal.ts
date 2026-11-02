@@ -204,7 +204,7 @@ export function usePaginaPessoal() {
       trocarFoto: (arquivo: File) => { void reduzir(arquivo).then(gravarFoto, (err: Error) => toast(err.message)); },
       tirarFoto: () => { void gravarFoto(null); },
       /** os ícones do Entregas, para quem não quer foto */
-      // (os de personagem só para o Gustavo.S e o Vitor; nos exemplos, pelo nome de quem escolheu)
+      // (os de personagem só para o Gustavo.S, o Vitor e o Felipe; nos exemplos, pelo nome de quem escolheu)
       icones: iconesDePerfilPara(u?.email || usuarios.emailDoNome(op.nome)),
       escolherIcone: (url: string) => { void gravarFoto(url); },
       // o nome e a senha: só com o login do Entregas (nos exemplos não tem conta)

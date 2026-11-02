@@ -45,6 +45,9 @@
 // O balancete gerado no Alterdata (2026-10-14, pedido do Vitor), em aplicativos/concilia-ai/dados/alterdata.firestore.ts: só o
 // banco do Entregas (robo/alterdata para ler; pedidosAlterdata para pedir, acompanhar e cancelar, com o .xlsx que o robô do
 // PC grava em pedidosAlterdata/{id}/arquivo/xlsx). Quem fala com o Alterdata é o robô (robo/alterdata.js), nunca o app. Sem fetch.
+// O IP público de cada login do cofre e a cidade dele (2026-10-26, liberado pelo usuário: "Os dois", o IP e o navegador;
+// e "Trocar o ipify pelo ipwho.is", para a cidade), só em aplicativos/tarefas/dados/rede.ts: o ipwho.is (público, sem
+// chave). Nada do nads vai junto; voltam o IP e a cidade.
 // Esta checagem falha se:
 //  1. aparecer dependência de rede fora do permitido (só "firebase", e só no apps/web);
 //  2. código fora de apps/web/src/aplicativos/<app>/dados/*.firestore.ts importar/usar Firebase;
@@ -64,12 +67,19 @@ const ONDE_PODE_FETCH = /[\\/]apps[\\/]web[\\/]src[\\/]aplicativos[\\/]extratudo
 // a consulta do CNPJ (só para os dois endereços públicos da Receita: conferido no fim)
 const ONDE_PODE_FETCH_RECEITA = /[\\/]apps[\\/]web[\\/]src[\\/]aplicativos[\\/]tarefas[\\/]dados[\\/]receita\.ts$/;
 const ENDERECOS_DA_RECEITA = ['https://brasilapi.com.br/api/cnpj/v1/', 'https://minhareceita.org/'];
+// o IP público do login do cofre e a cidade (só o ipwho.is: conferido no fim)
+const ONDE_PODE_FETCH_IP = /[\\/]apps[\\/]web[\\/]src[\\/]aplicativos[\\/]tarefas[\\/]dados[\\/]rede\.ts$/;
+const ENDERECO_DO_IP = 'https://ipwho.is/?fields=ip,success,city,region_code,country_code';
 // e o aviso de versão nova, que lê o /versao.json do próprio site
 const ONDE_PODE_FETCH_VERSAO = /[\\/]packages[\\/]ui[\\/]src[\\/]versaoNova\.tsx$/;
 // o link de nova senha (2026-10-15, liberado pelo usuário: "Liberar"): a página do convite chama o serviço de contas do
 // Entregas (Apps Script em script.google.com/macros/s/…), o mesmo que o Entregas usa para trocar a senha; só nesse
 // arquivo, só nessa linha, e o arquivo confere o endereço (SERVICO_DE_CONTAS) antes de chamar
 const ONDE_PODE_FETCH_CONTAS = /[\\/]tarefas[\\/]dados[\\/]convite\.firestore\.ts$/;
+// o publicar (scripts/sites.mjs, no PC de quem publica; não vai para o app) lê as peças do PRÓPRIO site que está publicando,
+// para elas não sumirem da hospedagem (28/10/2026, ao corrigir o "Esta tela não abriu" a pedido do Vitor): só nesse
+// arquivo, só "fetch(site + '/'", e o arquivo confere que é um endereço https://<site>.web.app antes de chamar
+const ONDE_PODE_FETCH_SITES = /[\\/]scripts[\\/]sites\.mjs$/;
 
 const achados = [];
 // robo/: o robô do escritório (Gmail, Drive, avisos, arquivador, SIEG, FGTS), movido do Entregas para cá a pedido do
@@ -115,9 +125,11 @@ varrer(raiz, p => {
       if (!re.test(l)) continue;
       if (re === TEXTOS_REDE[0] && ONDE_PODE_FETCH.test(p)) continue;
       if (re === TEXTOS_REDE[0] && ONDE_PODE_FETCH_RECEITA.test(p)) continue;
+      if (re === TEXTOS_REDE[0] && ONDE_PODE_FETCH_IP.test(p) && l.includes('fetch(ENDERECO,')) continue;
       // o aviso de versão nova lê só o /versao.json do próprio site (mesmo endereço; liberado pelo usuário em 01/10/2026)
       if (re === TEXTOS_REDE[0] && ONDE_PODE_FETCH_VERSAO.test(p) && l.includes("fetch('/versao.json?t=' + Date.now()")) continue;
       if (re === TEXTOS_REDE[0] && ONDE_PODE_FETCH_CONTAS.test(p) && l.includes('fetch(c.contasUrl,') && fs.readFileSync(p, 'utf8').includes('c.contasUrl.startsWith(SERVICO_DE_CONTAS)')) continue;
+      if (re === TEXTOS_REDE[0] && ONDE_PODE_FETCH_SITES.test(p) && l.includes("fetch(site + '/'") && fs.readFileSync(p, 'utf8').includes('SITE_DO_NADS.test(site)')) continue;
       achados.push(rel + ':' + (i + 1) + ': chamada de rede ("' + re.source + '")');
     }
   });
@@ -146,6 +158,12 @@ const receita = path.join(raiz, 'apps', 'web', 'src', 'aplicativos', 'tarefas', 
 if (fs.existsSync(receita)) {
   const outros = (fs.readFileSync(receita, 'utf8').match(/https?:\/\/[^'"`\s]+/g) || []).filter(u => !ENDERECOS_DA_RECEITA.includes(u));
   if (outros.length) { console.error('conexoes: receita.ts só pode consultar ' + ENDERECOS_DA_RECEITA.join(' e ') + ' (achei: ' + outros.join(', ') + ')'); process.exit(1); }
+}
+// o IP do login só pergunta ao ipwho.is
+const rede = path.join(raiz, 'apps', 'web', 'src', 'aplicativos', 'tarefas', 'dados', 'rede.ts');
+if (fs.existsSync(rede)) {
+  const outros = (fs.readFileSync(rede, 'utf8').match(/https?:\/\/[^'"`\s]+/g) || []).filter(u => u !== ENDERECO_DO_IP);
+  if (outros.length) { console.error('conexoes: rede.ts só pode consultar ' + ENDERECO_DO_IP + ' (achei: ' + outros.join(', ') + ')'); process.exit(1); }
 }
 // o download do Drive só pode ir para a cópia do robô do Entregas
 const drive = path.join(raiz, 'apps', 'web', 'src', 'aplicativos', 'extratudo', 'dados', 'drive.firestore.ts');

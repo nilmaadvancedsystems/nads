@@ -33,7 +33,7 @@ export interface FerramentaDaEtapa {
  * A tela própria da etapa, dentro da Tarefa (Vitor, 06/10/2026: as ferramentas que abriam em iframe viram telas do nads).
  * A tela diz o que falta para seguir; periodo: trabalha todos os meses do período de uma vez.
  */
-export type TelaDaEtapa = 'bancos' | 'cheque-especial' | 'clientes' | 'adiantamento-fornecedores' | 'bens' | 'fornecedores' | 'adiantamento-clientes' | 'emprestimos' | 'salarios' | 'pro-labore' | 'honorarios' | 'simples' | 'resultado' | 'adiantamento-salarial' | 'fechamento'
+export type TelaDaEtapa = 'bancos' | 'cheque-especial' | 'clientes' | 'adiantamento-fornecedores' | 'bens' | 'fornecedores' | 'adiantamento-clientes' | 'emprestimos' | 'salarios' | 'pro-labore' | 'honorarios' | 'simples' | 'resultado' | 'adiantamento-salarial'
   // o LCDPR, a rotina inteira das empresas com ele (16/10/2026: a 62 "só precisa do lcdpr")
   | 'lcdpr';
 export interface TelaPropria { id: TelaDaEtapa; periodo?: boolean }
@@ -140,9 +140,6 @@ export interface EstadoEtapa {
   /** quem avisar no celular (07/10/2026: a REINF que o Fiscal transmitiu avisa o responsável do DP); o robô grava avisadoEm */
   avisar?: string;
   avisadoEm?: string;
-  /** o fluxo do Fiscal (23/10/2026): o status do subprocesso e o responsável por ele */
-  status?: 'pendente' | 'execucao' | 'conferencia' | 'aprovado' | 'nao-aplicavel' | 'concluido';
-  responsavel?: string;
 }
 
 /** A competência de uma empresa num departamento: o estado de cada etapa. */
@@ -169,12 +166,20 @@ export interface Execucao {
   retiradas?: string[];
   /** os valores que as etapas informam (07/10/2026: o DP informa o total da folha; o Fiscal lê ao lado do faturamento) */
   valores?: Record<string, number>;
+  /**
+   * a que instante se refere cada valor (ISO; informarValor): a hora de quem digitou, ou a do envio do lote de onde veio.
+   * Abrir um lote antigo não troca o valor que veio depois (30/10/2026)
+   */
+  valoresEm?: Record<string, string>;
+  /**
+   * quando cada etapa foi desfeita pela última vez (ISO; voltarPara): o desfazer apaga o estado da etapa, e o que marca
+   * sozinho (o envio do DP marca a Entrega) precisa saber que alguém a desfez depois (30/10/2026)
+   */
+  reabertas?: Record<string, string>;
 }
 
 export type TipoEvento = 'inicio' | 'feita' | 'dispensada' | 'interrompida' | 'verificacao-falhou' | 'sem-movimento' | 'com-movimento' | 'reaberta'
-  | 'periodo' | 'periodo-encerrado' | 'adicionada' | 'retirada' | 'valor'
-  // o fluxo do Fiscal (23/10/2026): o status e o responsável de um subprocesso
-  | 'status' | 'responsavel';
+  | 'periodo' | 'periodo-encerrado' | 'adicionada' | 'retirada' | 'valor';
 
 /** O que aconteceu, quando e com quem (para produtividade e análise das objeções). */
 export interface Evento {

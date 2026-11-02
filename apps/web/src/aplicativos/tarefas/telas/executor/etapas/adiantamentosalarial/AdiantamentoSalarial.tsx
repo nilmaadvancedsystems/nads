@@ -37,6 +37,8 @@ export function AdiantamentoSalarial() {
                     aria-label="Importar no meu Sistema"><Icone nome="download" /></button>
                 </div>
               )}
+              {/* zerou em todos os meses: o Ok padrão (o selo, como nos Bancos) */}
+              {vm.ok && <span className="badge badge-ok" title="O Adiantamento salarial zerou em todos os meses do período">Ok</span>}
               <div className="imp-grupo" aria-label="Razão do Adiantamento salarial">
                 <span className="imp-rotulo">Razão</span>
                 {vm.temRazao ? (

@@ -35,7 +35,10 @@ export function saldoDoPeriodo(e: EmpresaExtrator, banco: string, primeiro: stri
   const razaoBruto = ms.flatMap(m => doMes('sistema', m));
   if (!extrato.length || !razaoBruto.length) return vazio;
   // o cheque especial do razão fica de fora (as mesmas linhas que a conferência do banco tira)
-  const cheque = new Set([...conferenciaDoBanco(e, banco, primeiro, ms, semMovimento).cheque.linhas].map(l => l.id));
+  // (e o "Ajuste de exercícios anteriores" que bate com o saldo do extrato: implanta o saldo de abertura, que aqui já vem
+  // do extrato; 26/10/2026)
+  const doBanco = conferenciaDoBanco(e, banco, primeiro, ms, semMovimento);
+  const cheque = new Set([...doBanco.cheque.linhas, ...doBanco.ajustes].map(l => l.id));
   const razao = razaoBruto.filter(l => !cheque.has(l.id));
   // o razão com o sinal ao contrário do extrato (débito/crédito): vira
   const sinal = conferir(extrato, razao).sistemaInvertido ? -1 : 1;

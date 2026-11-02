@@ -59,6 +59,19 @@ export function useClientesDoDp(competencia?: string) {
       aplicar(codigo, cad => { const novo = empresas.cadastro.definirDocumento(cad, documento, por, new Date()); return 'erro' in novo ? cad : novo; });
       return '';
     },
+    /**
+     * o e-mail da empresa, no Cadastro (o mesmo campo de Cadastro › Dados da empresa; 28/10/2026: "mudar o gmail do cliente
+     * direto do envios"): devolve o erro quando o e-mail não confere ('' = gravando ou não mudou; vazio tira)
+     */
+    definirEmail(codigo: number, email: string): string {
+      const c = clientes.find(x => x.codigo === codigo);
+      if (!c) return '';
+      const atual = c.cadastro || empresas.cadastro.cadastroVazio(c.nomeNaTela, c.codigo);
+      if (email.trim() && !empresas.cadastro.emailValido(email.trim())) return 'E-mail inválido.';
+      if ((atual.contato?.email || '') === email.trim()) return '';
+      aplicar(codigo, cad => empresas.cadastro.definirContato(cad, 'email', email, por, new Date()));
+      return '';
+    },
     /** tira o que foi mudado: só o desta competência, ou tudo (volta à planilha) */
     voltar(codigo: number, soEsta: boolean) {
       aplicar(codigo, cad => empresas.cadastro.voltarDpAPlanilha(cad, por, new Date(), soEsta ? competencia : undefined));

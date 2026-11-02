@@ -89,14 +89,17 @@ export function useImportarExtrato() {
     : semTexto && !conta ? 'O arquivo não diz de qual conta é: escolha a conta da Nilma.'
     : null;
 
-  const linhas = useMemo(() => (lido && conta ? financeiro.linhasDoExtrato(lido.lancamentos, nomeDoBanco, lido.id) : []), [lido, conta, nomeDoBanco]);
-  const ja = useMemo(() => new Set(extrato.lista.map(x => x.id)), [extrato.lista]);
+  // o id de cada linha vai pela conta bancária (30/10/2026: pelo nome do banco, a PJ e a PF no mesmo banco colidiam)
+  const linhas = useMemo(() => (lido && conta ? financeiro.linhasDoExtrato(lido.lancamentos, nomeDoBanco, lido.id, conta.id) : []), [lido, conta, nomeDoBanco]);
+  // as que já estão no banco: pelo id, ou pelo id antigo (o do nome do banco) gravado nesta mesma conta
+  const repetidasDoArquivo = useMemo(() => financeiro.separarJaImportadas(linhas, extrato.lista).repetidas, [linhas, extrato.lista]);
+  const ja = useMemo(() => new Set([...extrato.lista.map(x => x.id), ...repetidasDoArquivo.map(x => x.id)]), [extrato.lista, repetidasDoArquivo]);
   const porImportacao = useMemo(() => {
     const m = new Map<string, financeiro.LancamentoDoBanco[]>();
     for (const l of extrato.lista) m.set(l.importacao, [...(m.get(l.importacao) ?? []), l]);
     return m;
   }, [extrato.lista]);
-  const repetidas = linhas.filter(l => ja.has(l.id)).length;
+  const repetidas = repetidasDoArquivo.length;
   const resumo = financeiro.resumoDoExtrato(linhas);
   const saldoFinal = lido ? financeiro.saldoFinalDoExtrato(lido.lancamentos, lido.saldoAnterior, lido.saldosDoDia) : undefined;
   const linhaDaTela = (l: financeiro.LancamentoDoBanco) => ({ id: l.id, data: extrator.dataBR(l.data), historico: l.historico, valor: formatos.reais(l.valor), entrada: l.tipo === 'E', ja: ja.has(l.id) });

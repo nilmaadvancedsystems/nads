@@ -2,7 +2,9 @@
 // cima, a fonte numa dica e o Exportar e o Imprimir no Mais; os números do período (o último mês com a variação); a
 // tabela com o cliente parado na rolagem, o total e a variação logo depois dele e um mês por coluna (23/10/2026). Clicar no
 // cliente abre o faturamento detalhado (JanelaDoFaturamento, 22/10/2026). Só as peças do
-// catálogo (Segmentado, SeletorMes, a busca curta, MenuSuspenso, chip, Tabela padrão, Vazio, Esqueleto).
+// catálogo (Segmentado, SeletorMes, a busca curta, MenuSuspenso, chip, Tabela padrão, Vazio, Esqueleto). O visual novo
+// (30/10/2026, "refazendo o fiscal inteiro"): a tabela num .card com o título e a legenda, o mês escolhido marcado na
+// coluna e o mês sem dado com o traço.
 import { baixarBytes, Dica, Esqueleto, Icone, MenuSuspenso, Segmentado, SeletorMes, Stat, useCarregando, Variacao, Vazio } from '@nads/ui';
 import { JanelaDoFaturamento } from './JanelaDoFaturamento';
 import { useFaturamentoDosClientes } from './useFaturamentoDosClientes';
@@ -33,9 +35,9 @@ export function FaturamentoDosClientes() {
             { rotulo: 'Imprimir', icone: 'printer', desabilitado: !vm.linhas.length, onClick: vm.imprimir },
           ]} />
       </div>
-      {vm.exemplos && <p className="hint drive-aviso">Dados de exemplo: só umas empresas têm saídas do SIEG, com valores inventados.</p>}
+      {vm.exemplos && <p className="fs-aviso"><Icone nome="ajuda" width={14} height={14} />Dados de exemplo: só umas empresas têm saídas do SIEG, com valores inventados.</p>}
       {!vm.carregando && vm.linhas.length > 0 && (
-        <div className="stat-grid">
+        <div className="stat-grid fs-fat-numeros">
           <Stat rotulo={'Faturamento · ' + vm.rotuloDoPeriodo} valor={'R$ ' + brl(vm.totalGeral)} sub={vm.linhas.length + (vm.linhas.length === 1 ? ' cliente' : ' clientes')} />
           {vm.numeros.ultimo && (
             <Stat rotulo={vm.numeros.ultimo.rotulo} valor={'R$ ' + brl(vm.numeros.ultimo.valor)}
@@ -45,44 +47,53 @@ export function FaturamentoDosClientes() {
           {vm.numeros.maior && <Stat rotulo="Maior cliente no período" valor={'R$ ' + brl(vm.numeros.maior.valor)} sub={<span className="fat-maior-nome">{vm.numeros.maior.nome}</span>} />}
         </div>
       )}
-      {vm.carregando ? <Esqueleto linhas={8} /> : !vm.linhas.length ? (
-        <Vazio icone="dinheiro" titulo="Nenhum faturamento no período" texto={vm.soComDado ? 'Nenhum cliente com as saídas do SIEG nestes meses. Desligue "Só com faturamento" para ver todos.' : 'Nenhum cliente com essa busca.'} />
+      {vm.carregando ? <Esqueleto linhas={8} numeros={4} /> : !vm.linhas.length ? (
+        <section className="card fs-fat-cartao">
+          <Vazio icone="dinheiro" titulo="Nenhum faturamento no período" texto={vm.soComDado ? 'Nenhum cliente com as saídas do SIEG nestes meses. Desligue "Só com faturamento" para ver todos.' : 'Nenhum cliente com essa busca.'} />
+        </section>
       ) : (
-        <div className="table-wrap faturamento-tabela">
-          <table className="table-compact">
-            <thead>
-              <tr>
-                <th className="fat-fixa fat-fixa-cod">Cód.</th><th className="fat-fixa fat-fixa-nome">Cliente</th>
-                <th className="num fat-col-total">Total</th><th className="num" title="O último mês com dado contra o anterior">Variação</th>
-                {vm.competencias.map(c => <th key={c.chave} className="num">{c.rotulo}</th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {vm.linhas.map(l => (
-                <tr key={l.codigo} className="fat-linha" onClick={() => vm.abrir(l.codigo)} title={'Ver o faturamento detalhado de ' + l.nome}>
-                  <td className="num fraco fat-fixa fat-fixa-cod">{l.codigo}</td>
-                  <td className="faturamento-nome fat-fixa fat-fixa-nome">
-                    <button type="button" className="fat-nome-btn" onClick={ev => { ev.stopPropagation(); vm.abrir(l.codigo); }}>{l.nome}</button>
-                    {l.regime && <span className="fat-regime">{l.regime}</span>}
-                  </td>
-                  <td className="num fat-col-total"><b>{brl(l.total)}</b></td>
-                  <td className="num"><Variacao pct={l.variacao} titulo="O último mês com dado contra o anterior" /></td>
-                  {vm.competencias.map(c => {
-                    const v = l.meses[c.chave];
-                    return <td key={c.chave} className="num" title={v ? 'Fonte: ' + vm.fonte : 'Sem dado neste mês'}>{v ? brl(v.valor) : ''}</td>;
-                  })}
+        <section className="card fs-fat-cartao">
+          {/* a tabela num cartão (30/10/2026, o visual novo do Fiscal): o título com quantos clientes e a legenda em cima */}
+          <div className="fs-fat-topo">
+            <h3 className="fs-fat-titulo">Clientes<span className="fs-conta">{vm.linhas.length}</span></h3>
+            <span className="fs-fat-legenda">Valores em R$ · {vm.rotuloDoPeriodo} · clique no cliente para o detalhe</span>
+          </div>
+          <div className="table-wrap faturamento-tabela fs-fat-tabela">
+            <table className="table-compact">
+              <thead>
+                <tr>
+                  <th className="fat-fixa fat-fixa-cod">Cód.</th><th className="fat-fixa fat-fixa-nome">Cliente</th>
+                  <th className="num fat-col-total">Total</th><th className="num" title="O último mês com dado contra o anterior">Variação</th>
+                  {vm.competencias.map(c => <th key={c.chave} className={'num' + (c.chave === vm.competencia ? ' fs-fat-mes' : '')}>{c.rotulo}</th>)}
                 </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr>
-                <td className="fat-fixa fat-fixa-cod" /><td className="fat-fixa fat-fixa-nome"><b>Total ({vm.linhas.length} {vm.linhas.length === 1 ? 'cliente' : 'clientes'})</b></td>
-                <td className="num fat-col-total"><b>{brl(vm.totalGeral)}</b></td><td />
-                {vm.competencias.map(c => <td key={c.chave} className="num"><b>{brl(c.total)}</b></td>)}
-              </tr>
-            </tfoot>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {vm.linhas.map(l => (
+                  <tr key={l.codigo} className="fat-linha" onClick={() => vm.abrir(l.codigo)} title={'Ver o faturamento detalhado de ' + l.nome}>
+                    <td className="num fat-fixa fat-fixa-cod fs-fat-cod">{l.codigo}</td>
+                    <td className="faturamento-nome fat-fixa fat-fixa-nome">
+                      <button type="button" className="fat-nome-btn" onClick={ev => { ev.stopPropagation(); vm.abrir(l.codigo); }}>{l.nome}</button>
+                      {l.regime && <span className="fat-regime">{l.regime}</span>}
+                    </td>
+                    <td className="num fat-col-total"><b>{brl(l.total)}</b></td>
+                    <td className="num"><Variacao pct={l.variacao} titulo="O último mês com dado contra o anterior" /></td>
+                    {vm.competencias.map(c => {
+                      const v = l.meses[c.chave];
+                      return <td key={c.chave} className={'num' + (c.chave === vm.competencia ? ' fs-fat-mes' : '') + (v ? '' : ' fs-fat-sem')} title={v ? 'Fonte: ' + vm.fonte : 'Sem dado neste mês'}>{v ? brl(v.valor) : '—'}</td>;
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td className="fat-fixa fat-fixa-cod" /><td className="fat-fixa fat-fixa-nome"><b>Total ({vm.linhas.length} {vm.linhas.length === 1 ? 'cliente' : 'clientes'})</b></td>
+                  <td className="num fat-col-total"><b>{brl(vm.totalGeral)}</b></td><td />
+                  {vm.competencias.map(c => <td key={c.chave} className={'num' + (c.chave === vm.competencia ? ' fs-fat-mes' : '')}><b>{brl(c.total)}</b></td>)}
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </section>
       )}
       {vm.aberto && <JanelaDoFaturamento cliente={vm.aberto} competencias={vm.competenciasDoPeriodo} rotuloDoPeriodo={vm.rotuloDoPeriodo} anual={vm.periodo === 'ano'} fechar={vm.fechar} />}
     </section>

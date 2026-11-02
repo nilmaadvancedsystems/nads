@@ -55,6 +55,8 @@ export function useConfirmarBancos() {
         /** o nome da conta contábil no plano, ou o aviso (fora do plano, sintética) */
         nomeContabil: noPlano && !noPlano.sintetica ? noPlano.nome : '',
         avisoContabil: l.contaContabil.trim() ? cad.avisoDaConta(l.contaContabil.trim(), c.plano) || '' : '',
+        /** o aviso é leve (não trava): a conta só não veio no plano do balancete, que lista só as contas com saldo no mês */
+        avisoLeve: cad.foraDoBalancete(l.contaContabil.trim(), c.plano),
       };
     }),
     marcadas: linhas.filter(l => l.marcado).length,

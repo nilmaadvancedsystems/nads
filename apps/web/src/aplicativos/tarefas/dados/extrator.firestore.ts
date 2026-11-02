@@ -116,11 +116,23 @@ export function criarRepoExtratorFirestore(lista: readonly empresas.EmpresaDoEsc
       c.empresa = e; // a tela já vê a mudança; o banco confirma pelo onSnapshot
       avisarTodos();
       const id = formatos.slug(e.nome);
-      const lote = writeBatch(db);
-      if (g.empresa) lote.set(doc(db, COLECAO, id), { ...g.empresa, atualizadoEm: new Date().toISOString() });
-      for (const a of g.arquivos) lote.set(doc(db, COLECAO, id, 'arquivos', a.id), a);
-      for (const a of g.apagar) lote.delete(doc(db, COLECAO, id, 'arquivos', a));
-      lote.commit().catch((err: Error) => avisar('Não deu para salvar "' + e.nome + '" na nuvem: ' + err.message));
+      // em lotes que o banco aceita (30/10/2026: o lote único falhava inteiro com um arquivo grande demais); o arquivo
+      // maior que um documento não vai, e o aviso diz qual
+      const { lotes, naoCabem } = x.lotesDaGravacao(g);
+      if (naoCabem.length) {
+        avisar('Não coube no banco ' + (naoCabem.length === 1 ? 'o arquivo ' : 'os arquivos ') + naoCabem.map(a => '"' + a.nome + '" (' + (x.bytesNoBanco(a) / 1_048_576).toFixed(1).replace('.', ',') + ' MB)').join(', ')
+          + ' de "' + e.nome + '": mais de 1 MB num documento. Ele aparece agora, mas some ao recarregar; divida o arquivo (um mês por vez) e importe de novo.');
+      }
+      void (async () => {
+        for (const l of lotes) {
+          const lote = writeBatch(db);
+          if (l.empresa) lote.set(doc(db, COLECAO, id), { ...l.empresa, atualizadoEm: new Date().toISOString() });
+          for (const a of l.arquivos) lote.set(doc(db, COLECAO, id, 'arquivos', a.id), a);
+          for (const a of l.apagar) lote.delete(doc(db, COLECAO, id, 'arquivos', a));
+          // um lote que falha para os seguintes (a empresa e os apagados vão no último)
+          try { await lote.commit(); } catch (err) { avisar('Não deu para salvar "' + e.nome + '" na nuvem: ' + (err instanceof Error ? err.message : String(err))); return; }
+        }
+      })();
     },
     assinar(f) {
       ouvintes.add(f);

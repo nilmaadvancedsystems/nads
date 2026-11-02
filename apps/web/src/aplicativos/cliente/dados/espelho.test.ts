@@ -132,7 +132,10 @@ describe('os pedidos que o cliente manda, conferidos pelo robô', () => {
   });
   it('o base64 de um arquivo grande (em blocos) volta igual', () => {
     const bytes = Uint8Array.from({ length: 200_000 }, (_, i) => i % 251);
-    expect(Uint8Array.from(atob(base64DosBytes(bytes)), c => c.charCodeAt(0))).toEqual(bytes);
+    const volta = Uint8Array.from(atob(base64DosBytes(bytes)), c => c.charCodeAt(0));
+    // byte a byte num laço só (o toEqual em 200 mil bytes passava dos 5 s)
+    expect(volta.length).toBe(bytes.length);
+    expect(volta.every((b, i) => b === bytes[i])).toBe(true);
   });
 });
 

@@ -74,6 +74,8 @@ export function useEmpresa(rota: string) {
       id: e.id, n: i + 1, nome: e.nome, rotulo: ROTULO_ETAPA[s], cor: COR_ETAPA[s], atual: proxima?.id === e.id,
       por: est?.por || '', quando: est ? t.quandoFoi(est.em, agora) : '', quandoCompleto: est ? dataHora(est.em) : '',
       motivo: [motivo, est?.observacao].filter(Boolean).join(' — '),
+      /** parada (interrompida), com a justificativa: vai para a Visão geral (28/10/2026) */
+      parada: s === 'interrompida',
     };
   });
 
@@ -98,9 +100,10 @@ export function useEmpresa(rota: string) {
     pronta: true as const, empresa, departamento: op.departamento, carregando, competencia,
     rotuloCompetencia: t.rotuloCompetencia(competencia),
     competencias: competencias.map(c => ({ valor: c, rotulo: t.rotuloCompetencia(c) })),
-    setCompetencia: (c: string) => setParams({ competencia: c }),
+    // troca só a competência: o ?dep= (a rotina de outro setor) fica, como no abrirCompetencia (30/10/2026)
+    setCompetencia: (c: string) => setParams(p => { const n = new URLSearchParams(p); n.set('competencia', c); return n; }),
     situacao, rotuloSituacao: t.ROTULO_SITUACAO_GERAL[situacao],
-    feitas: p.concluidas, total: p.total,
+    feitas: p.concluidas, total: p.total, porcentagem: t.porcentagemDe(p.concluidas, p.total),
     etapaAtual: situacao === 'nao-iniciada' || !proxima ? '' : proxima.nome,
     paradas: etapas.filter(e => e.cor === 'parada').length,
     ultimo: ultimo ? { por: ultimo.por, quando: t.quandoFoi(ultimo.em, agora), quandoCompleto: dataHora(ultimo.em) } : null,
@@ -109,6 +112,6 @@ export function useEmpresa(rota: string) {
     acao: ACAO[situacao],
     abrirExecutor: () => navegar(comDep(caminhoDoExecutor(empresas.rotaDaEmpresa(empresa), competencia))),
     abrirCompetencia: (c: string) => navegar(comDep(caminhoDaEmpresa(empresas.rotaDaEmpresa(empresa), c))),
-    voltar: () => navegar(lista + '?competencia=' + competencia),
+    voltar: () => navegar(lista + 'competencia=' + competencia),
   };
 }

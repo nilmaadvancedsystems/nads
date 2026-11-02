@@ -3,7 +3,7 @@
 // nota fiscal, a descrição, o valor e o que é (em aberto, apenas pagamento ou devolução). Abre embaixo da linha do
 // cliente; o "Adicionar" põe o lançamento na relação (e no que vai ser questionado). Só peças do catálogo: os campos com
 // o nome em cima, a data com a máscara (CampoData), o MenuSuspenso e os botões, numa linha alinhada.
-import type { clientes as cl } from '@nads/core';
+import { formatos, type clientes as cl } from '@nads/core';
 import { CampoData, Icone, MenuSuspenso } from '@nads/ui';
 import { useState } from 'react';
 
@@ -13,11 +13,10 @@ const TIPOS: { valor: cl.StatusDoItem; rotulo: string }[] = [
   { valor: 'devolucao', rotulo: 'Devolução' },
 ];
 
-/** "1.234,56", "1234,56" ou "1234.56" → número (0 = inválido). */
+/** "1.234,56", "1234,56", "1234.56" ou "1.500" (o ponto de milhar: 1.500,00, não 1,50; 31/10/2026) → número (0 = inválido). */
 function valorDigitado(t: string): number {
-  const s = t.trim().replace(/^R\$\s*/i, '');
-  const n = /,\d{1,2}$/.test(s) ? Number(s.replace(/\./g, '').replace(',', '.')) : Number(s.replace(/,/g, ''));
-  return Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : 0;
+  const n = formatos.numeroDigitado(t);
+  return n != null && n > 0 ? Math.round(n * 100) / 100 : 0;
 }
 
 /** O nome do campo em cima dele (a mesma altura para todos: tudo na mesma linha). */

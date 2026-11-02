@@ -10,7 +10,7 @@
 // aprende pelo Drive e pelos extratos). E o interruptor dessa leitura do robô: config/indiceDrive.contas (só o
 // admin grava, pela regra do Entregas; a gravação mexe só nesse campo).
 import { formatos, type empresas } from '@nads/core';
-import { collection, doc, getDoc, getDocs, onSnapshot, setDoc as setDocBruto, writeBatch as writeBatchBruto } from 'firebase/firestore';
+import { collection, deleteField, doc, getDoc, getDocs, onSnapshot, setDoc as setDocBruto, writeBatch as writeBatchBruto } from 'firebase/firestore';
 import { bancoDoEntregas } from './entregas.firestore';
 import { bancoDaConferencia } from './tarefas.firestore';
 import { guardar, guardarLote } from '../../../comum/modoDesenvolvedor';
@@ -25,9 +25,13 @@ export function portaCadastroFirestore(): empresas.cadastro.PortaCadastro {
     ouvirCadastro: (id, chegou, falhou) => onSnapshot(doc(db, 'cadastro', id), s => chegou(s.exists() ? s.data() : null), falhou),
     ouvirPlano: (id, chegou, falhou) => onSnapshot(doc(db, 'cadastro', id, 'plano', 'atual'), s => chegou(s.exists() ? s.data() : null), falhou),
     ouvirTodos: (chegou, falhou) => onSnapshot(collection(db, 'cadastro'), s => chegou(s.docs.map(d => ({ id: d.id, doc: d.data() }))), falhou),
-    async gravar(id, cadastro, plano) {
+    async gravarCampos(id, campos, apagar, plano) {
       const b = writeBatch(db);
-      b.set(doc(db, 'cadastro', id), cadastro);
+      // só os campos que mudaram, cada um inteiro (mergeFields: o resto do documento fica como está no banco, até o que
+      // esta versão não conhece; 30/10/2026: o set do documento inteiro deixava a aba antiga apagar o `fiscal`)
+      const dados: Record<string, unknown> = { ...campos };
+      for (const k of apagar) dados[k] = deleteField();
+      b.set(doc(db, 'cadastro', id), dados, { mergeFields: Object.keys(dados) });
       if (plano) b.set(doc(db, 'cadastro', id, 'plano', 'atual'), plano);
       await b.commit();
     },

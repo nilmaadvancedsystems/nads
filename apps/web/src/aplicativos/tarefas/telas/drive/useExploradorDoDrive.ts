@@ -1,14 +1,15 @@
 // ViewModel do Drive (a pasta do ano, pelo mapa do robô do Entregas), no jeito do Explorador de Arquivos do Windows:
 // a árvore das pastas à esquerda (abre sob demanda), a barra de endereço (voltar, avançar, acima, a trilha), a lista em
-// Detalhes (Nome, Data de modificação, Tipo, Tamanho; clicar no título ordena) ou em Ícones, a seleção (clique,
-// Ctrl e Shift) e a barra de status. A pasta aberta fica na URL (?c=<pasta do cliente>&p=<pasta>), então o voltar do
+// Detalhes (Nome, Data de modificação, Tipo, Tamanho; clicar no título ordena) ou em Ícones, a seleção (a caixinha de
+// cada linha e a do título, Ctrl e Shift) e a barra de status. A pasta aberta fica na URL (?c=<pasta do cliente>&p=<pasta>), então o voltar do
 // navegador funciona. Os pedidos ao robô (abrir, baixar, .zip) recomeçam o prazo a cada avanço que ele informa.
 // A exibição, a árvore, a tela cheia e a ordem ficam guardadas neste navegador (localStorage; se ele recusar, vale o padrão).
 import { entregas as e } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { useDriveDoEntregas } from '../../dados/repo';
+import { useDriveDoEntregas, useRepo } from '../../dados/repo';
+import { useEmpresasPermitidas } from '../empresas/andamento';
 
 const PRAZO_MS = 90 * 1000;
 const PRAZO_ZIP_MS = 3 * 60 * 1000;
@@ -39,7 +40,9 @@ function guardarPreferencias(p: Preferencias) {
 
 const quando = (iso: string | null) => (iso ? new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '');
 
-export function useExploradorDoDrive() {
+/** naEmpresa: dentro da empresa aberta (27/10/2026: "o layout ta todo porco"), já na pasta dela: a árvore começa fechada
+ * (a barra lateral da empresa já está ao lado) e abrir ou fechar ali não muda a escolha do Drive. */
+export function useExploradorDoDrive({ naEmpresa = false }: { naEmpresa?: boolean } = {}) {
   const repo = useDriveDoEntregas();
   const { toast } = useRetorno();
   const navegar = useNavigate();
@@ -49,12 +52,25 @@ export function useExploradorDoDrive() {
   const [ancora, setAncora] = useState<string | null>(null);
   const [pedidos, setPedidos] = useState<PedidoNaTela[]>([]);
   const [pref, setPref] = useState<Preferencias>(lerPreferencias);
+  const [arvoreNaEmpresa, setArvoreNaEmpresa] = useState(false);
+  const comArvore = naEmpresa ? arvoreNaEmpresa : pref.arvore;
   // na árvore: o que a pessoa abriu e o que fechou (o caminho da pasta aberta já nasce aberto)
   const [abertos, setAbertos] = useState<Set<string>>(new Set());
   const [fechados, setFechados] = useState<Set<string>>(new Set());
 
-  const mapa = repo.mapa();
-  const cliente = params.get('c') || '';
+  // só as pastas das empresas da pessoa (29/10/2026: "se eu não sou encarregado dela não tem porque eu ter acesso")
+  const permitidas = useEmpresasPermitidas();
+  const doEscritorio = useRepo().listarEmpresas();
+  const codigos = permitidas.filtra ? permitidas.filtrar(doEscritorio).map(x => String(x.codigo)).join(',') : '';
+  const mapaTodo = repo.mapa();
+  const mapa = useMemo(() => {
+    if (!permitidas.filtra) return mapaTodo;
+    const ok = new Set(codigos.split(','));
+    return { ...mapaTodo, clientes: mapaTodo.clientes.filter(c => ok.has(c.codigo)) };
+  }, [mapaTodo, codigos, permitidas.filtra]);
+  // a pasta de outra pessoa não abre nem pelo endereço (?c=)
+  const pedido = params.get('c') || '';
+  const cliente = pedido && (!permitidas.filtra || mapa.clientes.some(x => x.id === pedido)) ? pedido : '';
   const pastaCliente = mapa.clientes.find(x => x.id === cliente) || null;
   const pasta = params.get('p') || cliente;
   const conteudo = cliente ? repo.itens(cliente) : { carregados: true, itens: [] as e.ItemDoDrive[] };
@@ -77,7 +93,7 @@ export function useExploradorDoDrive() {
   // a árvore: o caminho da pasta aberta fica aberto (ela também, como no GitHub), a não ser que a pessoa feche
   const noCaminho = useMemo(() => new Set([cliente, ...caminho.map(x => x.i)].filter(Boolean)), [cliente, caminho]);
   const estaAberto = (id: string) => !fechados.has(id) && (abertos.has(id) || noCaminho.has(id));
-  const arvore = pref.arvore ? e.linhasDaArvore(e.buscarClientes(mapa.clientes, ''), estaAberto, c => repo.itens(c), true) : [];
+  const arvore = comArvore ? e.linhasDaArvore(e.buscarClientes(mapa.clientes, ''), estaAberto, c => repo.itens(c), true) : [];
 
   function mudarPref(p: Partial<Preferencias>) {
     setPref(atual => { const nova = { ...atual, ...p }; guardarPreferencias(nova); return nova; });
@@ -198,6 +214,10 @@ export function useExploradorDoDrive() {
     estaMarcado: (id: string) => marcados.has(id),
     selecionar,
     selecionarTodos: () => setMarcados(new Set(entradas.map(x => x.id))),
+    /** a caixinha do título: todos marcados, alguns (o traço) ou nenhum; o clique marca todos ou tira todos */
+    todosMarcados: entradas.length > 0 && selecionadas.length === entradas.length,
+    algunsMarcados: selecionadas.length > 0 && selecionadas.length < entradas.length,
+    alternarTodos: () => { setMarcados(selecionadas.length === entradas.length ? new Set() : new Set(entradas.map(x => x.id))); setAncora(null); },
     limparSelecao: () => { setMarcados(new Set()); setAncora(null); },
     tamanhoMarcado: e.tamanhoLegivel(bytesMarcados),
 
@@ -243,8 +263,8 @@ export function useExploradorDoDrive() {
     avancar: () => { void navegar(1); },
 
     // árvore
-    mostrarArvore: pref.arvore,
-    alternarArvore: () => mudarPref({ arvore: !pref.arvore }),
+    mostrarArvore: comArvore,
+    alternarArvore: () => (naEmpresa ? setArvoreNaEmpresa(a => !a) : mudarPref({ arvore: !pref.arvore })),
     /** o Explorador ocupando a tela inteira (sem o cabeçalho e as laterais do nads) */
     telaCheia: pref.telaCheia,
     alternarTelaCheia: () => mudarPref({ telaCheia: !pref.telaCheia }),
@@ -265,18 +285,21 @@ export function useExploradorDoDrive() {
       if (!it) return Promise.reject(new Error('arquivo não encontrado'));
       return pedirLink({ modo: 'abrir', fileId: it.i, nome: it.n }, '"' + it.n + '"').catch(falhou('abrir "' + it.n + '"'));
     },
-    /** o link de download da seleção: um arquivo; uma pasta (.zip dela); vários arquivos (um .zip) */
-    linkDosMarcados(): Promise<string> {
+    /**
+     * Os downloads da seleção, como no Explorador (30/10/2026: "podendo selecionar vários e baixar"): os arquivos num
+     * só (um arquivo vem como é; vários, num .zip) e cada pasta marcada no .zip dela. aoChegar recebe cada link pronto.
+     */
+    baixarMarcados(aoChegar: (url: string) => void): Promise<void> {
       const pastas = selecionadas.filter(x => x.pasta);
       const arquivos = selecionadas.filter(x => !x.pasta).map(x => porId.get(x.id)).filter((x): x is e.ItemDoDrive => !!x);
-      if (pastas.length === 1 && !arquivos.length) return pedirLink(e.pedidoDaPasta({ i: pastas[0].id, n: pastas[0].nome }), 'a pasta "' + pastas[0].nome + '"').catch(falhou('juntar a pasta'));
-      if (!arquivos.length) { toast('Baixe uma pasta de cada vez (ou marque só arquivos).'); return Promise.reject(new Error('várias pastas')); }
-      if (pastas.length) toast('As pastas marcadas ficaram de fora: baixe cada pasta sozinha.');
-      if (arquivos.length === 1) return pedirLink({ modo: 'baixar', fileId: arquivos[0].i, nome: arquivos[0].n }, '"' + arquivos[0].n + '"').catch(falhou('baixar'));
-      const pedido = e.pedidoDeZip(arquivos, (pastaAtual?.n || 'arquivos') + '.zip');
-      if (!pedido) return Promise.reject(new Error('nada para baixar'));
-      if (arquivos.length > e.MAX_NO_ZIP) toast('Só os ' + e.MAX_NO_ZIP + ' primeiros vão no .zip.');
-      return pedirLink(pedido, arquivos.length + ' arquivos').catch(falhou('juntar os arquivos'));
+      const links: Promise<string>[] = pastas.map(p => pedirLink(e.pedidoDaPasta({ i: p.id, n: p.nome }), 'a pasta "' + p.nome + '"').catch(falhou('juntar a pasta "' + p.nome + '"')));
+      if (arquivos.length === 1) links.push(pedirLink({ modo: 'baixar', fileId: arquivos[0].i, nome: arquivos[0].n }, '"' + arquivos[0].n + '"').catch(falhou('baixar')));
+      const pedido = arquivos.length > 1 ? e.pedidoDeZip(arquivos, (pastaAtual?.n || 'arquivos') + '.zip') : null;
+      if (pedido) {
+        if (arquivos.length > e.MAX_NO_ZIP) toast('Só os ' + e.MAX_NO_ZIP + ' primeiros vão no .zip.');
+        links.push(pedirLink(pedido, arquivos.length + ' arquivos').catch(falhou('juntar os arquivos')));
+      }
+      return Promise.allSettled(links.map(l => l.then(aoChegar))).then(() => undefined);
     },
     /** o link do .zip da pasta aberta */
     podeBaixarPasta: !!cliente && !!pastaAtual,

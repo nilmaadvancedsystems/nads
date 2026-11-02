@@ -396,25 +396,8 @@ export const ROTINA_CONTABIL: Rotina = {
       ],
     },
 
-    // ─── Fechamento ───────────────────────────────────────────────────────────
-    {
-      id: 'fechamento',
-      secao: 'Fechamento',
-      nome: 'Fechar a competência',
-      descricao: 'Revise os saldos e feche a competência no sistema.',
-      ferramenta: null,
-      // confere sozinho pelo dinâmico final e manda ao cliente o que vai ser questionado num envio só (Vitor, 16/10/2026)
-      tela: { id: 'fechamento', periodo: true },
-      verificacao: 'manual',
-      conferir: [
-        'O balancete fecha: ativo = passivo + patrimônio líquido + resultado.',
-        'Todas as conferências acima feitas (ou com o motivo de não se aplicar).',
-        'Feche a competência no Alterdata.',
-      ],
-      objecoes: [
-        { id: 'revisao', texto: 'Precisa de revisão de um sênior', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Interrompa com esta objeção: a competência aparece para os sêniores revisarem.' } },
-      ],
-    },
+    // "Fechar a competência" saiu (Vitor, 27/10/2026: "esse fechar competência tá meio maluco, pode remover"): o envio ao
+    // cliente fica no Envio de Clientes e de Fornecedores
   ],
 };
 

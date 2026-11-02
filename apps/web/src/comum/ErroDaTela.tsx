@@ -13,6 +13,7 @@ import { Vazio } from '@nads/ui';
 import { useEffect, useState } from 'react';
 import { isRouteErrorResponse, useLocation, useNavigate, useRouteError } from 'react-router';
 import { ehPedacoQueSumiu, podeRecarregarSozinho, recarregarUmaVez } from './pedacoQueSumiu';
+import { Recarregando } from './pedaco';
 
 // a última tentativa (a rota e a hora): se a mesma rota quebra de novo poucos segundos depois, a tentativa falhou
 let ultimaTentativa: { rota: string; quando: number } | null = null;
@@ -47,6 +48,8 @@ export function ErroDaTela() {
     void navegar({ pathname: local.pathname, search: local.search, hash: local.hash }, { replace: true, state: local.state });
   };
 
+  // recarregando sozinho (o pedaço que sumiu): só a bolinha, sem o "não abriu" (Vitor, 28/10/2026)
+  if (recarregando) return <Recarregando />;
   return (
     <main className="main" style={{ paddingTop: 48 }}>
       <Vazio icone="alert" titulo={recarregando ? 'Recarregando…' : 'Esta tela não abriu'}

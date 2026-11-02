@@ -18,6 +18,12 @@ export interface Lancamento {
    */
   conta?: string;
   complemento?: string;
+  /**
+   * Só no extrato do BB "Consultas": a Dt. balancete, quando o lançamento vai pela Dt. movimento e as duas são diferentes
+   * (Vitor, 27/10/2026: a "Devolução Juros-Lim Esp" de 30/04 com movimento em 04/05 "é do mês 04" — o extrato de abril já
+   * traz ela em 30/04, e a de maio sai como repetida: importacao.ts, tirarSobreposicaoDosExtratos).
+   */
+  balancete?: string;
 }
 
 /** Um lançamento com endereço: qual arquivo e qual posição dentro dele. */

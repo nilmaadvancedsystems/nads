@@ -4,7 +4,7 @@
 // impJaImportado (~L2463), empresaNuncaAberta (~L2429), ordemPlano (~L2349).
 import { compararNumerico } from '../../formatos';
 import { ehServ, SV } from '../tabelas/servicos';
-import type { Conta, Empresa, Grupo, Nota, NotaServico, TipoMovimento, TipoServico } from '../tipos';
+import type { Conta, Empresa, Grupo, Nota, NotaServico, TipoDeNotas, TipoMovimento, TipoServico } from '../tipos';
 import { agruparTotaisPorNatureza, comTipo, somaValores } from './cfop';
 
 export const GRUPOS_ORDEM: readonly Grupo[] = ['Ativo', 'Passivo', 'Despesa', 'Receita', 'Outros'];
@@ -175,6 +175,30 @@ export interface JaImportado { balancete: boolean; entradas: boolean; saidas: bo
 
 export function jaImportado(e: Empresa): JaImportado {
   return { balancete: e.contas.length > 0, entradas: e.entradas.length > 0, saidas: e.saidas.length > 0, prestados: e.servPrestados.length > 0, tomados: e.servTomados.length > 0 };
+}
+
+/** "2026-01..2026-09": a chave do período da Tarefa (os meses fora de ordem dão a mesma). */
+export function chaveDoPeriodo(meses: readonly string[]): string {
+  const o = [...meses].sort();
+  return o.length ? o[0] + '..' + o[o.length - 1] : '';
+}
+
+/**
+ * O que já está resolvido na Importação da Tarefa: importado, ou marcado "sem movimento no período" naquele mesmo
+ * período (Clara, 29/10/2026). Sem os meses, só o importado.
+ */
+export function resolvidoNoPeriodo(e: Empresa, meses?: readonly string[]): JaImportado {
+  const j = jaImportado(e);
+  const sem = semNotasDoPeriodo(e, meses);
+  return { ...j, entradas: j.entradas || sem.entradas, saidas: j.saidas || sem.saidas, tomados: j.tomados || sem.tomados, prestados: j.prestados || sem.prestados };
+}
+
+/** Os tipos marcados "sem movimento" neste período (a marca de outro período não vale). */
+export function semNotasDoPeriodo(e: Empresa, meses?: readonly string[]): Record<TipoDeNotas, boolean> {
+  const chave = chaveDoPeriodo(meses || []);
+  const m = e.semNotasNoPeriodo || {};
+  const v = (t: TipoDeNotas) => !!chave && m[t] === chave;
+  return { entradas: v('entradas'), saidas: v('saidas'), tomados: v('tomados'), prestados: v('prestados') };
 }
 
 export function temNotas(e: Empresa): boolean {

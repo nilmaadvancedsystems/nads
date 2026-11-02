@@ -26,6 +26,10 @@ const PASTA = path.join(os.tmpdir(), 'nads-suporte');
 const LIMITE_MS = 15 * 60000;
 const ESPERA_DOS_PEDACOS_MS = 3 * 60000;
 
+// o login do Claude deste PC venceu (31/10/2026: "OAuth session expired" fez o bug virar 'erro' sem ninguém saber)
+const LOGIN_VENCIDO = /failed to authenticate|oauth|not logged in|please run \/login|invalid api key|authentication_error/i;
+const PAUSA_SEM_LOGIN_MS = 10 * 60000;
+
 const VEREDITOS = ['Realmente, isso é erro do sistema', 'Precisa da sua análise'];
 
 const INSTRUCOES = [
@@ -81,14 +85,13 @@ function lerComONads(arquivo, ano) {
   });
 }
 
-/** Junta os pedaços do arquivo (esperando chegarem todos). */
-async function arquivoDoBug(ref, esperadas) {
+/** Os pedaços dos arquivos, na ordem (esperando chegarem todos). */
+async function pedacosDoBug(ref, esperadas) {
   const ate = Date.now() + ESPERA_DOS_PEDACOS_MS;
   for (;;) {
     const s = await ref.collection('partes').get();
     if (s.size >= esperadas) {
-      const pedacos = s.docs.sort((a, b) => Number(a.id) - Number(b.id)).map(d => Buffer.from(d.get('dados').toUint8Array ? d.get('dados').toUint8Array() : d.get('dados')));
-      return Buffer.concat(pedacos);
+      return s.docs.sort((a, b) => Number(a.id) - Number(b.id)).map(d => Buffer.from(d.get('dados').toUint8Array ? d.get('dados').toUint8Array() : d.get('dados')));
     }
     if (Date.now() > ate) throw new Error('o arquivo não chegou inteiro (' + s.size + ' de ' + esperadas + ' pedaços)');
     await new Promise(r => setTimeout(r, 5000));
@@ -99,6 +102,7 @@ function iniciarSuporteClaude({ db, log = console.log }) {
   if (!fs.existsSync(CLAUDE)) { log('[suporte] sem o Claude neste PC (' + CLAUDE + '): desligado'); return () => {}; }
   const fila = db.collection('feedbacks').where('tipo', '==', 'bug').where('analise', '==', 'pendente');
   let ocupado = false;
+  let semLoginAte = 0;
   const esperando = [];
 
   async function investigar(ref) {
@@ -117,13 +121,24 @@ function iniciarSuporteClaude({ db, log = console.log }) {
       fs.mkdirSync(pasta, { recursive: true });
       const ctx = pegou.contexto || {};
       const ano = (ctx.meses && ctx.meses[0] && Number(ctx.meses[0].slice(0, 4))) || new Date().getFullYear();
-      let arquivo = '', leitura = '(sem arquivo anexado)';
-      if (pegou.arquivo && pegou.arquivo.partes) {
-        const nome = String(pegou.arquivo.nome || 'arquivo').replace(/[\\/:*?"<>|]/g, '_');
-        arquivo = path.join(pasta, nome);
-        fs.writeFileSync(arquivo, await arquivoDoBug(ref, pegou.arquivo.partes));
-        leitura = await lerComONads(arquivo, ano);
+      // um ou mais arquivos (26/10/2026: o balão anexa vários): cada um com os pedaços dele (de, partes); o de antes, um só
+      const lista = pegou.arquivo && pegou.arquivo.partes
+        ? (Array.isArray(pegou.arquivo.arquivos) ? pegou.arquivo.arquivos : [{ nome: pegou.arquivo.nome, de: 0, partes: pegou.arquivo.partes }]) : [];
+      const arquivos = [];
+      const leituras = [];
+      if (lista.length) {
+        const total = Number(pegou.arquivo.total) || lista.reduce((t, a) => t + (Number(a.partes) || 0), 0);
+        const pedacos = await pedacosDoBug(ref, total);
+        for (const a of lista) {
+          const nome = String(a.nome || 'arquivo').replace(/[\\/:*?"<>|]/g, '_');
+          const arq = path.join(pasta, nome);
+          const de = Number(a.de) || 0;
+          fs.writeFileSync(arq, Buffer.concat(pedacos.slice(de, de + (Number(a.partes) || 0))));
+          arquivos.push(arq);
+          leituras.push((lista.length > 1 ? '### ' + nome + '\n' : '') + await lerComONads(arq, ano));
+        }
       }
+      const leitura = leituras.length ? leituras.join('\n\n') : '(sem arquivo anexado)';
       const pedido = [
         'O bug:',
         '- quem: ' + (pegou.nome || pegou.email || '—'),
@@ -132,7 +147,7 @@ function iniciarSuporteClaude({ db, log = console.log }) {
         '- meses da tarefa: ' + ((ctx.meses || []).join(', ') || '—'),
         '- a conversa no balão (as cápsulas): ' + (pegou.caminho || '—'),
         '- o que a pessoa escreveu: ' + (pegou.texto || '—'),
-        '- o arquivo: ' + (arquivo ? arquivo + ' (' + Math.round(fs.statSync(arquivo).size / 1024) + ' KB)' : 'nenhum'),
+        '- ' + (arquivos.length > 1 ? 'os arquivos: ' : 'o arquivo: ') + (arquivos.length ? arquivos.map(a => a + ' (' + Math.round(fs.statSync(a).size / 1024) + ' KB)').join('; ') : 'nenhum'),
         '',
         'A leitura do nads sobre o arquivo (node robo/suporte-ler.js):',
         leitura.slice(0, 20000),
@@ -144,6 +159,13 @@ function iniciarSuporteClaude({ db, log = console.log }) {
       await ref.update({ analise: 'pronta', relatorio: relatorio.slice(0, 20000), analisadoEm: new Date().toISOString() });
       log('[suporte] report pronto', id);
     } catch (err) {
+      if (LOGIN_VENCIDO.test(err.message)) {
+        // sem login o bug não é do sistema: volta para a fila e espera alguém entrar de novo no Claude deste PC
+        semLoginAte = Date.now() + PAUSA_SEM_LOGIN_MS;
+        log('[suporte] o login do Claude deste PC venceu: entre de novo (claude auth login); o bug', id, 'volta para a fila');
+        await ref.update({ analise: 'pendente', analisandoEm: null, analisandoNo: null }).catch(() => {});
+        return;
+      }
       log('[suporte] não consegui investigar', id, err.message);
       await ref.update({ analise: 'erro', relatorio: 'O robô do suporte não conseguiu investigar: ' + err.message + '\n\nPrecisa da sua análise', analisadoEm: new Date().toISOString() }).catch(() => {});
     } finally {
@@ -154,6 +176,7 @@ function iniciarSuporteClaude({ db, log = console.log }) {
   // um de cada vez (o Claude investiga um bug por vez)
   async function proximo() {
     if (ocupado || !esperando.length) return;
+    if (Date.now() < semLoginAte) { setTimeout(() => void proximo(), semLoginAte - Date.now() + 1000); return; }
     ocupado = true;
     const ref = esperando.shift();
     try { await investigar(ref); } catch (err) { log('[suporte] erro:', err.message); }
@@ -161,12 +184,21 @@ function iniciarSuporteClaude({ db, log = console.log }) {
     void proximo();
   }
 
-  const parar = fila.onSnapshot(s => {
-    for (const d of s.docs) if (!esperando.some(r => r.id === d.id)) esperando.push(d.ref);
-    void proximo();
-  }, err => log('[suporte] a fila parou:', err.message));
+  // a fila volta sozinha quando a rede cai (30/10/2026: "a fila parou" e o suporte ficou surdo até reiniciar o robô)
+  let parado = false;
+  let pararFila = () => {};
+  function ouvir() {
+    pararFila = fila.onSnapshot(s => {
+      for (const d of s.docs) if (!esperando.some(r => r.id === d.id)) esperando.push(d.ref);
+      void proximo();
+    }, err => {
+      log('[suporte] a fila parou:', err.message, '— tento de novo em 1 minuto');
+      if (!parado) setTimeout(() => { if (!parado) ouvir(); }, 60000);
+    });
+  }
+  ouvir();
   log('[suporte] ligado (Claude ' + MODELO + ')');
-  return parar;
+  return () => { parado = true; pararFila(); };
 }
 
 module.exports = { iniciarSuporteClaude };

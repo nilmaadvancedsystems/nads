@@ -374,6 +374,11 @@ async function releituraDoCliente(db, pasta, porCodigo, log, soEnsaio) {
   // e os extratos do mês na fila do Extratudo (prontos para entrar quando abrirem a tarefa; 08/10/2026)
   try { await filaDeExtratosDoDrive(db, cliente, achados, log); }
   catch (err) { log('pasta do cliente:', (cliente && cliente.nome) || pasta.name, '- extratos não foram para a fila:', err.message); }
+  // e os documentos do DP de cada mês, para o DP › Envios mandar ao cliente (27/10/2026)
+  try {
+    const dp = require('./envios-do-dp');
+    await dp.gravarArquivosDoDp(db, resumo.codigo, dp.arquivosDoDpNaPasta(itens, pasta.id, PASTA_ANO, caminhos, chaveDeNome));
+  } catch (err) { log('pasta do cliente:', (cliente && cliente.nome) || pasta.name, '- documentos do DP não foram listados:', err.message); }
   return { resumo, marcados, itens };
 }
 

@@ -16,7 +16,7 @@ export interface PedidoSieg {
   fase?: 'baixando' | 'entregando' | 'nads' | 'drive' | 'pronto';
   numeros?: { xmls: number; novos: number; jaSalvos: number; doDrive: number; doCliente?: number; deOutros?: number };
   /** o Drive por trás (09/10/2026): o pedido já está pronto para a pessoa e o robô ainda grava os XMLs novos */
-  drive?: { total: number; feitos: number; pronto: boolean; erro?: string };
+  drive?: { total: number; feitos: number; pronto: boolean; erro?: string; /** ainda conferindo o que já está no Drive: o total não vale (31/10/2026) */ conferindo?: boolean };
 }
 
 /** A situação das notas na SEFAZ (15/10/2026): o pedido e o que o robô da VM achou, nota a nota, pela chave. */
@@ -37,7 +37,8 @@ export type TipoDePedidoSieg = 'saidas' | 'contagem' | 'xmls' | 'xmlsCliente' | 
 export interface RepoSieg {
   exemplos: boolean;
   /** o robô do SIEG: ligado (com as credenciais) e quando bateu o ponto */
-  robo(): { carregado: boolean; ligado: boolean; motivo: string; em: string };
+  /** o robô do SIEG: ligado, o último sinal (em), o que está fazendo agora ('livre' = nada) e quantos pedidos esperam */
+  robo(): { carregado: boolean; ligado: boolean; motivo: string; em: string; situacao: string; naFila: number };
   contagem(codigo: string, competencia: string): { carregada: boolean; dados: t.sieg.ContagemSieg | null };
   /** as contagens e as saídas de todos os clientes do mês, numa consulta só (o Painel do Fiscal; 09/10/2026), pelo código */
   doMes(competencia: string): { carregado: boolean; contagens: Map<string, t.sieg.ContagemSieg>; saidas: Map<string, t.sieg.SaidasSieg> };
@@ -125,7 +126,7 @@ export function criarSiegMemoria(): RepoSieg {
   const agora = () => new Date().toISOString();
   return {
     exemplos: true,
-    robo: () => ({ carregado: true, ligado: true, motivo: '', em: agora() }),
+    robo: () => ({ carregado: true, ligado: true, motivo: '', em: agora(), situacao: 'livre', naFila: 0 }),
     contagem: (codigo, competencia) => ({
       carregada: true,
       dados: contadasAgora.get(codigo + '_' + competencia)

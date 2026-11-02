@@ -50,7 +50,8 @@ const ICONES_DE_PERSONAGEM: readonly { nome: string; url: string }[] = Object.en
   .sort(([a], [b]) => a.localeCompare(b)).map(([caminho, url]) => ({ nome: nomeDoArquivo(caminho), url }));
 
 /** Quem vê os de personagem (Vitor, 05/10/2026: "só vão ser liberados para os usuários Gustavo.S e Vitor"), pelo login. */
-const LIBERADOS_PERSONAGENS = ['gustavo.s@nilma.local', 'vitor@nilma.local'];
+// o Felipe também (28/10/2026)
+const LIBERADOS_PERSONAGENS = ['gustavo.s@nilma.local', 'vitor@nilma.local', 'felipe@nilma.local'];
 
 /** Os ícones que a pessoa pode escolher: os 12 emblemas para todos; os de personagem só para os liberados. */
 export function iconesDePerfilPara(email: string): readonly { nome: string; url: string }[] {

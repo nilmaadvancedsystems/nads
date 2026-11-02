@@ -56,7 +56,9 @@ describe('o Tentar de novo da tela que quebrou', () => {
     const Rota = () => sumiu();
     const montar = () => render(<RouterProvider router={createMemoryRouter([{ path: '/', element: <Rota />, errorElement: <ErroDaTela /> }])} />);
     montar();
-    expect(await screen.findByText('Recarregando…')).toBeTruthy();
+    // recarregando sozinho: só a bolinha, sem o "não abriu" (28/10/2026)
+    expect(await screen.findByLabelText('Carregando')).toBeTruthy();
+    expect(screen.queryByText('Esta tela não abriu')).toBeNull();
     expect(recarregar).toHaveBeenCalledTimes(1);
     cleanup();
     montar(); // recarregou e o pedaço ainda falta: mostra o erro com o botão, sem recarregar de novo
@@ -71,5 +73,16 @@ describe('o Tentar de novo da tela que quebrou', () => {
     expect(ehPedacoQueSumiu(new Error('Unable to preload CSS for /assets/x.css'))).toBe(true);
     expect(ehPedacoQueSumiu(new Error('a tela quebrou'))).toBe(false);
     expect(ehPedacoQueSumiu(null)).toBe(false);
+  });
+});
+
+describe('o pedaço que chega vazio (28/10/2026)', () => {
+  it('a página está recarregando (o vite:preloadError cancelado): a bolinha no lugar da tela, sem erro', async () => {
+    const { pedaco, NaEspera } = await import('./pedaco');
+    // o import() do Vite devolve undefined quando o preloadError foi cancelado pelo main.tsx
+    const Tela = pedaco(() => Promise.resolve(undefined as unknown as { Tela: () => null }), 'Tela');
+    render(<RouterProvider router={createMemoryRouter([{ path: '/', element: <NaEspera><Tela /></NaEspera>, errorElement: <ErroDaTela /> }])} />);
+    expect(await screen.findByLabelText('Carregando')).toBeTruthy();
+    expect(screen.queryByText('Esta tela não abriu')).toBeNull();
   });
 });

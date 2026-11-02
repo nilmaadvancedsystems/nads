@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   conferirNovaConta, departamentoDaConta, docDaContaNova, emailDoLogin, emailDoNome, EQUIPE_EXEMPLO, iniciais, lerUsuario, mensagemDeErroDeLogin,
-  mudancaDeCargo, nivelPeloMenos, papeisAoMudarCargo, papeisDaContaNova, papeisDoDoc, papeisFaltando, pode, recursosDe, rotuloDoCargo,
+  mudancaDeCargo, nivelPeloMenos, papeisAoMudarCargo, papeisDaContaNova, papeisDoDoc, papeisFaltando, pode, podeAlgum, recursosDe, rotuloDoCargo,
 } from '.';
 
 describe('login pelo nome (igual ao Entregas)', () => {
@@ -65,6 +65,12 @@ describe('quem pode o quê', () => {
     expect(pode(por('Clara'), 'conciliadorzinho')).toBe(true);
     expect(pode(por('Heverton'), 'conferencia')).toBe(false);
     expect(pode(por('Heverton'), 'fiscal-lcdpr')).toBe(true);
+  });
+  it('o Extratudo abre para quem pode alguma das ferramentas', () => {
+    const extratudo = ['extrator', 'cheque-especial', 'creditor'] as const;
+    expect(podeAlgum(por('Felipe'), extratudo)).toBe(true);
+    expect(podeAlgum(por('Adivania'), extratudo)).toBe(false);
+    expect(podeAlgum(por('Sávio'), extratudo)).toBe(true);
   });
   it('diretor (admin) pode tudo, inclusive gerenciar a equipe', () => {
     expect(pode(por('Nilma'), 'equipe')).toBe(true);

@@ -35,7 +35,7 @@ export function ConfirmarBancos() {
                   <input type="text" inputMode="numeric" list={lista} value={l.contaContabil} placeholder="Ex.: 10501" style={{ width: 110 }} disabled={!l.marcado}
                     onChange={e => vm.mudar(l.i, { contaContabil: e.target.value })} aria-label={'Conta contábil do ' + l.nome} />
                   {l.marcado && (l.avisoContabil
-                    ? <span className="hint ext-neg" style={{ display: 'block' }}>{l.avisoContabil}</span>
+                    ? <span className={'hint' + (l.avisoLeve ? '' : ' ext-neg')} style={{ display: 'block' }}>{l.avisoContabil}</span>
                     : l.nomeContabil ? <span className="hint" style={{ display: 'block' }}>{l.nomeContabil}</span>
                     : !l.contaContabil.trim() && <span className="hint" style={{ display: 'block' }}>{vm.temPlano ? 'A conta do banco no plano de contas' : 'Sem plano de contas importado: confira o código'}</span>)}
                 </td>

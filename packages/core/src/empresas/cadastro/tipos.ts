@@ -171,6 +171,8 @@ export interface CadastroDaEmpresa {
   transferencias?: Partial<Record<DepartamentoDoResponsavel, TransferenciaDeResponsavel>>;
   /** os parâmetros do DP mudados nas Configurações do DP (o que não está aqui vale o da planilha do DP) */
   dp?: ParametrosDoDp;
+  /** os parâmetros do Fiscal mudados em Fiscal › Parâmetros (o que não está aqui vale o da planilha do Fiscal) */
+  fiscal?: ParametrosDoFiscal;
   /** a empresa foi cadastrada pelo nads (Vitor, 07/10/2026: "um cadastro de empresas sem o botão de cadastrar empresa"): o regime */
   nova?: { regime: string; criadaEm: string };
   /** as planilhas e os documentos do Fiscal no Drive (os links; Heverton, 20/10/2026) */
@@ -206,6 +208,40 @@ export interface ParametrosDoDpDoMes {
 export interface ParametrosDoDp extends ParametrosDoDpDoMes {
   porCompetencia?: Record<string, ParametrosDoDpDoMes>;
 }
+
+/** O segmento da empresa no Fiscal (a planilha junta mais de um: "Comercio / Industria / Serviço"). */
+export type SegmentoFiscal = 'comercio' | 'industria' | 'servico';
+/** Os parâmetros de sim ou não do Fiscal, na ordem das colunas da planilha do Fiscal (29/10/2026). */
+export type ParametroFiscalSimNao = 'monofasico' | 'icmsSt' | 'icmsAntecipacao' | 'icmsDifal' | 'retencoes' | 'beneficioFiscal' | 'parcelamento' | 'declaracoesAdicionais';
+
+/**
+ * Os parâmetros do Fiscal de uma empresa (as planilhas "Clientes - Fiscal", da Fabiana e do Heverton, 29/10/2026): o
+ * segmento, os de sim ou não e dois textos livres. No Cadastro, só os que foram mudados; o resto vale o da planilha.
+ */
+export interface ParametrosDoFiscal extends Partial<Record<ParametroFiscalSimNao, boolean>> {
+  segmentos?: SegmentoFiscal[];
+  especificidades?: string;
+  observacoes?: string;
+}
+
+export const SEGMENTOS_FISCAIS: readonly { id: SegmentoFiscal; rotulo: string }[] = [
+  { id: 'comercio', rotulo: 'Comércio' }, { id: 'industria', rotulo: 'Indústria' }, { id: 'servico', rotulo: 'Serviço' },
+];
+
+/** Os de sim ou não, na ordem da planilha, com o nome da coluna dela. */
+export const PARAMETROS_FISCAIS: readonly { id: ParametroFiscalSimNao; rotulo: string; descricao: string }[] = [
+  { id: 'monofasico', rotulo: 'Monofásico', descricao: 'Vende produto com PIS/COFINS monofásico.' },
+  { id: 'icmsSt', rotulo: 'ICMS-ST', descricao: 'Tem ICMS por substituição tributária.' },
+  { id: 'icmsAntecipacao', rotulo: 'ICMS-Antecipação', descricao: 'Tem antecipação do ICMS.' },
+  { id: 'icmsDifal', rotulo: 'ICMS-DIFAL', descricao: 'Tem diferencial de alíquota do ICMS.' },
+  { id: 'retencoes', rotulo: 'Retenções', descricao: 'Tem retenção de impostos nas notas.' },
+  { id: 'beneficioFiscal', rotulo: 'Benefício fiscal', descricao: 'Tem benefício fiscal.' },
+  { id: 'parcelamento', rotulo: 'Parcelamento', descricao: 'Tem parcelamento de impostos.' },
+  { id: 'declaracoesAdicionais', rotulo: 'Declarações adicionais', descricao: 'Entrega declarações além das da rotina.' },
+];
+
+/** Tamanho máximo de cada texto livre (Especificidades, Observações). */
+export const MAX_TEXTO_DO_FISCAL = 2000;
 
 /**
  * Uma transferência de responsável (Vitor, 07/10/2026: "a empresa seria transferida com a permissão do emitente e do

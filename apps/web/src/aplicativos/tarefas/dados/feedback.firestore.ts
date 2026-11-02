@@ -1,20 +1,19 @@
 // Os feedbacks no banco do Entregas (coleção feedbacks; regra em firestore.rules): quem está no nads cria o seu (com o
 // uid dele, status 'novo' e a prioridade baixa/media/alta); só o admin lê todos e muda o status. A imagem vai no próprio
-// documento (JPEG comprimido, até ~900 KB), sem Storage.
-import { addDoc as addDocBruto, Bytes, collection, doc, getDocs, limit, onSnapshot, orderBy, query, setDoc as setDocBruto, updateDoc as updateDocBruto } from 'firebase/firestore';
+// documento (JPEG comprimido, até ~900 KB), sem Storage. Quem mandou lê os seus (o aviso do Resolvendo; 26/10/2026).
+import { Bytes, collection, doc, getDocs, limit, onSnapshot, orderBy, query, where, setDoc as setDocBruto, updateDoc as updateDocBruto } from 'firebase/firestore';
 import { entregas } from '@nads/core';
 import { bancoDoEntregas } from './entregas.firestore';
-import { ehPrioridade, type Feedback, type RepoFeedback, type SituacaoDoFeedback } from './feedback';
+import { ehPrioridade, type Feedback, type MeuFeedback, type RepoFeedback, type SituacaoDoFeedback } from './feedback';
 import { guardar, guardarPedido } from '../../../comum/modoDesenvolvedor';
 
 // a trava do modo desenvolvedor: com o modo ligado, nada é gravado
-const addDoc = guardarPedido(addDocBruto) as typeof addDocBruto;
 const updateDoc = guardar(updateDocBruto) as typeof updateDocBruto;
 const setDoc = guardarPedido(setDocBruto) as typeof setDocBruto;
 
 type Quem = { uid: string; email: string; nome: string } | null;
 const texto = (v: unknown) => (v == null ? '' : String(v));
-const STATUS: readonly SituacaoDoFeedback[] = ['novo', 'visto', 'feito'];
+const STATUS: readonly SituacaoDoFeedback[] = ['novo', 'visto', 'resolvendo', 'feito'];
 
 export function criarFeedbackFirestore(quem: () => Quem): RepoFeedback {
   const db = bancoDoEntregas();
@@ -22,15 +21,27 @@ export function criarFeedbackFirestore(quem: () => Quem): RepoFeedback {
   const ouvintes = new Set<() => void>();
   const mudou = () => { ver++; for (const f of ouvintes) f(); };
   let todos: { carregados: boolean; lista: Feedback[] } | null = null;
+  let meus: { uid: string; lista: MeuFeedback[] } | null = null;
   return {
     exemplos: false,
     async enviar(f) {
       const q = quem();
       if (!q) throw new Error('entre com a conta do Entregas');
-      await addDoc(collection(db, 'feedbacks'), {
+      // os anexos (26/10/2026): como os do bug, os pedaços em partes/ e a lista no mapa arquivo (a regra já aceita)
+      const anexos = f.arquivos || [];
+      for (const a of anexos) {
+        const problema = entregas.problemaDoArquivo({ nome: a.nome, tamanho: a.bytes.length });
+        if (problema) throw new Error(a.nome + ': ' + problema);
+      }
+      const partes: Uint8Array[] = [];
+      const lista = anexos.map(a => { const ps = entregas.partesDoArquivo(a.bytes); const de = partes.length; partes.push(...ps); return { nome: a.nome, tamanho: a.bytes.length, de, partes: ps.length }; });
+      const ref = doc(collection(db, 'feedbacks'));
+      await setDoc(ref, {
         uid: q.uid, nome: q.nome, email: q.email, texto: f.texto, imagem: f.imagem, tela: f.tela, versao: f.versao,
         criadoEm: new Date().toISOString(), status: 'novo', prioridade: f.prioridade,
+        ...(lista.length ? { arquivo: { nome: lista[0].nome, tamanho: lista[0].tamanho, partes: lista[0].partes, total: partes.length, arquivos: lista } } : {}),
       });
+      for (let i = 0; i < partes.length; i++) await setDoc(doc(ref, 'partes', String(i)), { dados: Bytes.fromUint8Array(partes[i]) });
     },
     // o bug do suporte de leitura (Vitor, 20/10/2026): o documento com a conversa e o contexto, e o arquivo em pedaços em
     // feedbacks/{id}/partes (como o enviosSecretario); o robô do PC do escritório espera os pedaços, investiga e escreve o
@@ -38,31 +49,34 @@ export function criarFeedbackFirestore(quem: () => Quem): RepoFeedback {
     async enviarBug(b) {
       const q = quem();
       if (!q) throw new Error('entre com a conta do Entregas');
-      if (b.arquivo) {
-        const problema = entregas.problemaDoArquivo({ nome: b.arquivo.nome, tamanho: b.arquivo.bytes.length });
-        if (problema) throw new Error(b.arquivo.nome + ': ' + problema);
+      for (const a of b.arquivos) {
+        const problema = entregas.problemaDoArquivo({ nome: a.nome, tamanho: a.bytes.length });
+        if (problema) throw new Error(a.nome + ': ' + problema);
       }
-      const partes = b.arquivo ? entregas.partesDoArquivo(b.arquivo.bytes) : [];
+      // os arquivos em pedaços, um atrás do outro (de = o primeiro pedaço de cada um); o primeiro também no `arquivo` de antes
+      const partes: Uint8Array[] = [];
+      const lista = b.arquivos.map(a => { const ps = entregas.partesDoArquivo(a.bytes); const de = partes.length; partes.push(...ps); return { nome: a.nome, tamanho: a.bytes.length, de, partes: ps.length }; });
       const ref = doc(collection(db, 'feedbacks'));
       await setDoc(ref, {
         uid: q.uid, nome: q.nome, email: q.email, texto: b.texto, imagem: '', tela: b.tela, versao: b.versao,
         criadoEm: new Date().toISOString(), status: 'novo', prioridade: 'alta',
         tipo: 'bug', caminho: b.caminho, contexto: b.contexto, analise: 'pendente',
-        ...(b.arquivo ? { arquivo: { nome: b.arquivo.nome, tamanho: b.arquivo.bytes.length, partes: partes.length } } : {}),
+        ...(lista.length ? { arquivo: { nome: lista[0].nome, tamanho: lista[0].tamanho, partes: lista[0].partes, total: partes.length, arquivos: lista } } : {}),
       });
       for (let i = 0; i < partes.length; i++) await setDoc(doc(ref, 'partes', String(i)), { dados: Bytes.fromUint8Array(partes[i]) });
       // o id volta para o balão mostrar o número do pedido (#)
       return ref.id;
     },
-    async arquivoDoBug(id) {
+    async arquivoDoBug(id, i = 0) {
       const d = todos?.lista.find(x => x.id === id);
-      if (!d?.arquivo) return null;
+      const a = d?.arquivos[i];
+      if (!a) return null;
       const s = await getDocs(collection(db, 'feedbacks', id, 'partes'));
-      const pedacos = s.docs.sort((a, b) => Number(a.id) - Number(b.id)).map(p => (p.data().dados as Bytes).toUint8Array());
+      const pedacos = s.docs.sort((p, q) => Number(p.id) - Number(q.id)).slice(a.de, a.de + a.partes).map(p => (p.data().dados as Bytes).toUint8Array());
       const bytes = new Uint8Array(pedacos.reduce((t, p) => t + p.length, 0));
-      let i = 0;
-      for (const p of pedacos) { bytes.set(p, i); i += p.length; }
-      return { nome: d.arquivo.nome, bytes };
+      let k = 0;
+      for (const p of pedacos) { bytes.set(p, k); k += p.length; }
+      return { nome: a.nome, bytes };
     },
     todos() {
       if (!todos) {
@@ -79,6 +93,11 @@ export function criarFeedbackFirestore(quem: () => Quem): RepoFeedback {
                 tipo: x.tipo === 'bug' ? 'bug' as const : 'feedback' as const, caminho: texto(x.caminho),
                 empresa: x.contexto && typeof x.contexto === 'object' ? texto((x.contexto as { empresa?: unknown }).empresa) : '',
                 arquivo: x.arquivo && typeof x.arquivo === 'object' ? { nome: texto(x.arquivo.nome), tamanho: Number(x.arquivo.tamanho) || 0, partes: Number(x.arquivo.partes) || 0 } : null,
+                // todos os arquivos (o de antes tinha um só, do pedaço 0)
+                arquivos: x.arquivo && typeof x.arquivo === 'object'
+                  ? (Array.isArray(x.arquivo.arquivos) ? (x.arquivo.arquivos as Record<string, unknown>[]) : [{ ...x.arquivo, de: 0 }])
+                    .map(a => ({ nome: texto(a.nome), tamanho: Number(a.tamanho) || 0, de: Number(a.de) || 0, partes: Number(a.partes) || 0 })).filter(a => a.partes > 0)
+                  : [],
                 analise: (['pendente', 'analisando', 'pronta', 'erro'].includes(x.analise) ? x.analise : '') as Feedback['analise'],
                 relatorio: texto(x.relatorio),
               };
@@ -90,6 +109,21 @@ export function criarFeedbackFirestore(quem: () => Quem): RepoFeedback {
       return todos;
     },
     async marcar(id, status) { await updateDoc(doc(db, 'feedbacks', id), { status }); },
+    // os seus (Vitor, 26/10/2026: o aviso do Resolvendo): a regra deixa cada um ler os que mandou (uid); sem orderBy, para
+    // não pedir índice composto
+    meus() {
+      const q = quem();
+      if (!q) return [];
+      if (!meus || meus.uid !== q.uid) {
+        const estes: { uid: string; lista: MeuFeedback[] } = { uid: q.uid, lista: [] };
+        meus = estes;
+        onSnapshot(query(collection(db, 'feedbacks'), where('uid', '==', q.uid), limit(200)), s => {
+          estes.lista = s.docs.map(d => { const x = d.data(); return { id: d.id, texto: texto(x.texto), status: (STATUS.includes(x.status) ? x.status : 'novo') as SituacaoDoFeedback, criadoEm: texto(x.criadoEm) }; });
+          mudou();
+        }, () => { estes.lista = []; mudou(); });
+      }
+      return meus.lista;
+    },
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,
   };

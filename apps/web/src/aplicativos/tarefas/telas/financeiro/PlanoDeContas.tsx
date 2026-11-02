@@ -1,6 +1,7 @@
 // Financeiro › Plano de contas (19/10/2026: "o Plano de Contas do Toriba, no nads"): a árvore das contas (classificação,
 // descrição, tipo, se está ativa), recuada pelo nível. Clicar numa conta abre para alterar; "Nova conta" abre a janela de criar.
-import { Icone, useCarregando, Vazio } from '@nads/ui';
+// "Exportar Excel" baixa as contas da tela (Savio, 23/10/2026).
+import { baixarBytes, Icone, useCarregando, Vazio } from '@nads/ui';
 import { JanelaDaConta } from './JanelaDaConta';
 import { LinhaDoPlano } from './partes/LinhaDoPlano';
 import { usePlanoDeContas } from './usePlanoDeContas';
@@ -19,6 +20,10 @@ export function PlanoDeContas() {
         </label>
         <span className="tarefas-barra-espaco" />
         {vm.exemplos && <span className="badge badge-neutral">Exemplos</span>}
+        <button type="button" className="btn btn-outline" disabled={!vm.linhas.length}
+          onClick={() => { const x = vm.exportar(); baixarBytes(x.bytes, x.nome, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); }}>
+          <Icone nome="download" width={16} height={16} />Exportar Excel
+        </button>
         <button type="button" className="btn btn-primary" onClick={() => vm.abrir({})}><Icone nome="plus" />Nova conta</button>
       </div>
       {vm.erro && <p className="registro-dica registro-dica-erro"><Icone nome="alert" />{vm.erro}</p>}

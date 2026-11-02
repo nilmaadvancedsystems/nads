@@ -49,6 +49,9 @@ export function useSiegDaEtapa(tipo: 'contagem' | 'saidas', codigo: string, comp
   // a janela do andamento (Vitor, 07/10/2026: "quero uma barra de progresso/tela flutuante para a pessoa ter o feedback"):
   // abre no clique, acompanha o pedido e fica até o ×
   const [janela, setJanela] = useState<Janela | null>(null);
+  // o pedido que já estava no banco no clique (31/10/2026: a janela abria como "pronta" com o resultado de antes, e o
+  // .zip do pedido anterior baixava sozinho antes do novo)
+  const [antesDoPedido, setAntesDoPedido] = useState('');
   // a nota aberta no espelho (23/10/2026: "conferir as danfe direto pelo app")
   const [vendo, setVendo] = useState('');
   // o relógio da janela (o tempo passado e o que falta), de segundo em segundo enquanto o robô trabalha
@@ -57,7 +60,8 @@ export function useSiegDaEtapa(tipo: 'contagem' | 'saidas', codigo: string, comp
   const linhas = (r: Record<t.sieg.TipoDeNota, number>) => t.sieg.TIPOS_DE_NOTA.filter(x => r[x.id] > 0).map(x => ({ rotulo: x.rotulo, n: r[x.id] }));
   const pedindo = rodando(pedido);
 
-  const pJanela = janela === 'contagem' ? pedidoContagem : janela === 'xmls' ? pedidoXmls : null;
+  const doTipo = janela === 'contagem' ? pedidoContagem : janela === 'xmls' ? pedidoXmls : null;
+  const pJanela = doTipo && doTipo.id !== antesDoPedido ? doTipo : null;
   const trabalhando = rodando(pJanela);
   useEffect(() => {
     if (!trabalhando) return;
@@ -79,7 +83,9 @@ export function useSiegDaEtapa(tipo: 'contagem' | 'saidas', codigo: string, comp
       xmls: janela === 'xmls',
       // o que o robô está fazendo agora (ex.: "Recebidas · NF-e (120 XMLs até agora)")
       // pronto para a pessoa e o Drive ainda gravando por trás (09/10/2026): o passo do Drive segue andando
-      detalhe: driveAndando ? 'Salvando no Drive por trás (' + driveAndando.feitos + ' de ' + driveAndando.total + '): pode seguir'
+      // (31/10/2026) sem ter esperado a leitura do Drive, o robô ainda não sabe quantos faltam: "0 de 747" e depois "de 175"
+      detalhe: driveAndando?.conferindo ? 'Conferindo o que já está no Drive (por trás): pode seguir'
+        : driveAndando ? 'Salvando no Drive por trás (' + driveAndando.feitos + ' de ' + driveAndando.total + '): pode seguir'
         : pJanela?.drive?.erro ? 'O Drive parou (' + pJanela.drive.erro + '): o próximo pedido salva o que faltou'
           : pJanela?.status === 'processando' && pJanela.andamento && !['emitidas', 'recebidas'].includes(pJanela.andamento) ? pJanela.andamento : '',
       passos: passos.map((texto, i) => (driveAndando && texto === 'Salvando na pasta do cliente no Drive'
@@ -116,7 +122,7 @@ export function useSiegDaEtapa(tipo: 'contagem' | 'saidas', codigo: string, comp
     catch (err) { toast('Não consegui baixar o .zip: ' + (err instanceof Error ? err.message : String(err))); }
     finally { setBaixandoZip(false); }
   }
-  const zipDaVez = janela === 'xmls' && pedidoXmls?.zip && pedidoXmls.id ? pedidoXmls.id : '';
+  const zipDaVez = janela === 'xmls' && pJanela?.zip && pJanela.id ? pJanela.id : '';
   useEffect(() => {
     if (!zipDaVez || zipBaixado.current === zipDaVez) return;
     zipBaixado.current = zipDaVez;
@@ -126,6 +132,7 @@ export function useSiegDaEtapa(tipo: 'contagem' | 'saidas', codigo: string, comp
 
   async function pedir(qual: Janela) {
     if (!codigo || (qual === 'contagem' ? contando : baixandoXmls)) return;
+    setAntesDoPedido((qual === 'contagem' ? pedidoContagem : pedidoXmls)?.id || '');
     setJanela(qual);
     try { await (qual === 'contagem' ? repo.pedirContagem(codigo, competencia) : repo.pedirXmls(codigo, competencia)); }
     catch (err) { setJanela(null); toast('Não consegui pedir ao SIEG: ' + (err instanceof Error ? err.message : String(err))); }

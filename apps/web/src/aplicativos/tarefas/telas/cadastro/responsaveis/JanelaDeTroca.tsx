@@ -69,7 +69,7 @@ function Lado({ vm, rotulo, pessoa, setPessoa, outra, marcadas, setMarcadas, opc
         <div className="troca-vazio">
           <span className="troca-vazio-icone" aria-hidden="true"><Icone nome="usuario" /></span>
           <b>Escolha com quem trocar</b>
-          <span className="fraco">{opcional ? 'Marcar as empresas dela é opcional: sem marcar, só as suas vão.' : 'Escolha a pessoa para ver as empresas dela.'}</span>
+          {opcional && <span className="fraco">Marcar as empresas dela é opcional: sem marcar, só as suas vão.</span>}
         </div>
       ) : (
         <>
@@ -172,7 +172,7 @@ export function JanelaDeTroca({ vm, pessoa, fechar }: { vm: VmEmpresasPorRespons
         <header className="pessoal-topo troca-topo">
           <div>
             <h2>Trocar empresas</h2>
-            <p className="fraco">Marque o que vai para o outro lado. Cada empresa só muda com o aceite das duas pessoas.</p>
+            <p className="fraco">Cada empresa só muda com o aceite das duas pessoas.</p>
           </div>
           <BotaoFechar onClick={() => sair()} />
         </header>

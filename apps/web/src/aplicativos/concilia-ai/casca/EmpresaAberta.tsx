@@ -17,6 +17,7 @@ import { SessaoProvider } from './sessao';
 import { TopoProvider } from '../../../comum/topo';
 import { VerificarConta } from '../telas/verificar/VerificarConta';
 import { caminho } from './caminho';
+import { SoMinhaEmpresa } from '../../tarefas/casca/SoMinhaEmpresa';
 
 function Tela({ pagina }: { pagina: string }) {
   if (pagina.startsWith('importacao/')) return <Importacao key={pagina} tipo={pagina.split('/')[1] as c.PaginaImportacao} />;
@@ -50,7 +51,7 @@ export function EmpresaAberta() {
   }
   // link antigo pelo nome (/fito-industria…/…) vira o do código (/292/…)
   if (param !== rota) return <Navigate to={caminho(rota + '/' + id)} replace />;
-  return (
+  const tela = (
     // key = empresa: trocar de empresa zera a sessão (como o entrar() do original)
     <SessaoProvider key={nome} nome={nome} rota={rota} codigo={achada.codigo} pagina={id}>
       <TopoProvider>
@@ -58,4 +59,5 @@ export function EmpresaAberta() {
       </TopoProvider>
     </SessaoProvider>
   );
+  return <SoMinhaEmpresa empresa={achada} voltar={caminho()}>{tela}</SoMinhaEmpresa>;
 }

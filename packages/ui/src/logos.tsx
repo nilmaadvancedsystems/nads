@@ -15,6 +15,7 @@ import { Icone } from './icones';
  */
 const IMAGENS = import.meta.glob('./logos-bancos/*.{png,jpg,jpeg,webp,svg}', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
 import marcaNilma from './marca-nilma.png';
+import logoExcel from './logo-excel.webp';
 
 /** O endereço completo do logo da Nilma (o do e-mail), publicado junto com o site. */
 export function urlDoLogoNilma(): string {
@@ -268,6 +269,19 @@ export function LogoInss({ cor }: { cor?: boolean }) {
  * O logo do FGTS Digital (Vitor, 21/10/2026: "muda a logo do FGTS para essa que te mandei"), redesenhado da imagem: o canto
  * verde em L, o triângulo amarelo e o meio círculo azul, todos cortados pela diagonal (a folha dobrada). Quadrado.
  */
+/**
+ * O ícone do Excel, no botão de exportar a tabela (Vitor, 28/10/2026: "coloca um ícone do excel"). A imagem original que o
+ * Vitor mandou (logo-excel.webp, 960×894; "coloque esse como padrão de ícone excel, deixe ele original"), sem redesenhar:
+ * dentro de um svg, para pegar o mesmo tamanho que os botões dão aos ícones.
+ */
+export function LogoExcel() {
+  return (
+    <svg viewBox="0 0 960 894" aria-hidden="true">
+      <image href={logoExcel} width="960" height="894" />
+    </svg>
+  );
+}
+
 export function LogoFgts({ cor }: { cor?: boolean }) {
   return (
     <svg viewBox="24 24 132 132" width="100%" height="100%" aria-hidden="true" style={cinzaSeNao(cor)}>

@@ -386,6 +386,8 @@ export function useNovaEntrega() {
       if (l.dup) setDuplicatas(ds => ds.map(d => (d.id === l.chave ? { ...d, funcionario: v } : d)));
       else setFuncionarios(x => ({ ...x, [l.chave]: v }));
     },
+    /** o nome do outro documento como foi digitado (o rótulo da linha vem aparado: no campo, o espaço sumia; 30/10/2026) */
+    outroTexto: outro,
     mudarOutro: (v: string) => setOutro(v),
     tirarDocumento(l: LinhaDoDocumento) {
       if (l.dup) setDuplicatas(ds => ds.filter(d => d.id !== l.chave));

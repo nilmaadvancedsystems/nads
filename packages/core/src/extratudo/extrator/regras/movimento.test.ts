@@ -73,6 +73,20 @@ describe('extrato no Drive', () => {
   });
 });
 
+describe('extrato no Drive: o PDF e o OFX do mesmo mês', () => {
+  const d = (i: string, n: string, p: string) => ({ i, n, p, t: 'd' as const });
+  const f = (i: string, n: string, p: string) => ({ i, n, p, t: 'f' as const });
+  const itens = [
+    d('c', 'CONTÁBIL', 'raiz'), d('e', 'EXTRATOS', 'c'), d('a', '2026', 'e'), d('m', '01', 'a'), d('b', 'BANCÁRIOS', 'm'),
+    d('bb', 'BANCO DO BRASIL', 'b'), f('o', '01-2026.ofx', 'bb'), f('p', '01-2026.pdf', 'bb'),
+  ];
+  it('são o mesmo extrato: acha, e fica o PDF', () => {
+    const r = acharExtratoNoDrive(itens, 'raiz', '2026-01', { nome: 'Banco do Brasil', marca: 'banco-do-brasil' });
+    expect(r.situacao).toBe('achou');
+    expect(r.arquivo?.id).toBe('p');
+  });
+});
+
 describe('extrato no Drive: pasta de cada banco (empresa 58, BNB e Sicoob)', () => {
   const d = (i: string, n: string, p: string) => ({ i, n, p, t: 'd' as const });
   const f = (i: string, n: string, p: string) => ({ i, n, p, t: 'f' as const });

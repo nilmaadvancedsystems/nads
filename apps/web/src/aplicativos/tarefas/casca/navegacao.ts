@@ -6,18 +6,21 @@
 // com as abas dela: /tarefas/cadastro/empresas/<empresa>/<aba>.
 import { tarefas as t, type uso } from '@nads/core';
 import type { NomeIcone } from '@nads/ui';
+import { PAGINAS_DO_ADMIN } from '../../admin/casca/navegacao';
 import type { Operador } from './operador';
 
 export const BASE = '/tarefas';
-/** O site do admin (Painel do robô, Uso do sistema, Sistema e agentes, Feedbacks; 22/10/2026); depois, admin.nilmacontabilidade.com. */
-export const URL_DO_ADMIN = 'https://admin-nilma.web.app';
 
-export type IdAplicacao = 'minhas-empresas' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'financeiro' | 'entregas' | 'area-cliente';
+export type IdAplicacao = 'inicio' | 'minhas-empresas' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'financeiro' | 'entregas' | 'area-cliente' | 'minhas-tarefas' | 'ferramentas';
 
 export interface Pagina {
   id: string; rotulo: string; icone: NomeIcone; titulo: string; /** a logo da marca no lugar do ícone, na lateral */ marca?: 'fgts';
   /** apagada na lateral; o clique avisa que está em desenvolvimento e não abre (Vitor, 21/10/2026) */
   emDesenvolvimento?: boolean;
+  /** só o admin vê (as páginas do Admin nas Configurações; 28/10/2026) */
+  soAdmin?: boolean;
+  /** o nome do bloco na barra lateral, em cima da primeira página dele (Cadastro, Admin) */
+  secao?: string;
 }
 export interface Aplicacao {
   id: IdAplicacao; nome: string; icone: NomeIcone; paginas: Pagina[]; pronta: boolean;
@@ -26,55 +29,60 @@ export interface Aplicacao {
 }
 
 export const APLICACOES: readonly Aplicacao[] = [
+  // o Início (27/10/2026): os avisos do escritório e a última empresa em que a pessoa mexeu, com o progresso dela. Uma tela
+  // à parte (27/10/2026: "pq o minhas empresas ta junto do inicio?"): /tarefas/inicio, pelo "Início" da gaveta ☰
+  { id: 'inicio', nome: 'Início', icone: 'home', grupo: 'Rotinas', pronta: true, paginas: [
+    { id: 'inicio', rotulo: 'Início', icone: 'home', titulo: 'Início' },
+  ] },
   { id: 'minhas-empresas', nome: 'Minhas empresas', icone: 'briefcase', grupo: 'Rotinas', pronta: true, paginas: [
+    // o painel do progresso das empresas (27/10/2026: "a parte de minhas empresas vai virar um dashboard de progresso")
+    // uma tela só, sem a barra lateral (27/10/2026: "coloque paradas e configuracoes tudo em uma so tela aqui nesse
+    // inicial, remove a barra lateral"): a lista, as etapas paradas e os históricos do Creditor. Os Insights saíram
     { id: 'empresas', rotulo: 'Empresas', icone: 'list', titulo: 'Minhas empresas' },
-    { id: 'insights', rotulo: 'Insights', icone: 'barChart', titulo: 'Insights', emDesenvolvimento: true },
+    // as Justificativas e as Configurações abrem em janela, pelos botões da barra da lista (Vitor, 28/10/2026: "remover esse
+    // menu superior e colocar uns ícones de botões de justificativas e configurações aparecer uma popup")
   ] },
-  { id: 'contabil', nome: 'Contábil', icone: 'scale', grupo: 'Rotinas', pronta: true, paginas: [
-    { id: 'visao', rotulo: 'Visão geral', icone: 'barChart', titulo: 'Visão geral' },
-    { id: 'paradas', rotulo: 'Paradas', icone: 'alert', titulo: 'Etapas paradas' },
-    // os históricos do Creditor, os mesmos para todas as empresas (Vitor, 05/10/2026)
-    { id: 'configuracoes', rotulo: 'Configurações', icone: 'settings', titulo: 'Configurações' },
-  ] },
-  { id: 'cadastro', nome: 'Cadastro', icone: 'grade', grupo: 'Escritório', pronta: true, paginas: [
-    { id: 'empresas', rotulo: 'Empresas', icone: 'briefcase', titulo: 'Empresas' },
-    // a organização nova (Vitor, 13/10/2026: "reveja a estrutura inteira do cadastro"): a Equipe (as pessoas e a proteção
-    // do login) e os Robôs e agentes (a saúde dos robôs, o que eles fazem e os agentes do Claude, que antes ficavam em
-    // Configurações e em Agentes; os links antigos levam para cá)
-    { id: 'usuarios', rotulo: 'Equipe', icone: 'usuario', titulo: 'Equipe' },
-    // Sistema e agentes, Painel do robô e Uso do sistema foram para o site do admin (/admin; Vitor, 22/10/2026: "tira tudo
-    // do Tarefas"); os endereços antigos caem em Empresas
-  ] },
+  // o Contábil saiu da gaveta (27/10/2026): a Visão geral foi removida e as Paradas e as Configurações foram para
+  // Minhas empresas; os links antigos (/tarefas/contabil/...) caem lá
   // o Fiscal no mesmo modelo do Contábil (Vitor, 05/10/2026): as empresas com a rotina do Fiscal, a visão e as paradas
   { id: 'fiscal', nome: 'Fiscal', icone: 'recibo', grupo: 'Rotinas', pronta: true, paginas: [
-    { id: 'empresas', rotulo: 'Empresas', icone: 'list', titulo: 'Empresas' },
-    // o Painel (Vitor, 09/10/2026): todos os clientes do mês numa tela, com o que a rotina e o SIEG apontam
-    { id: 'painel', rotulo: 'Painel', icone: 'painel', titulo: 'Painel' },
-    { id: 'visao', rotulo: 'Visão geral', icone: 'barChart', titulo: 'Visão geral' },
-    // a REINF (o fluxo do Notion do Heverton), logo abaixo da Visão geral
-    { id: 'reinf', rotulo: 'REINF', icone: 'fileUp', titulo: 'REINF' },
-    { id: 'paradas', rotulo: 'Paradas', icone: 'alert', titulo: 'Etapas paradas' },
+    // Empresas, Painel, Visão geral e Paradas saíram (27/10/2026: "essas abas que estão marcadas de vermelho vão ser
+    // removidas"): a empresa se abre por Minhas empresas, escolhendo o setor; ficam as ferramentas do Fiscal
+    // o menu em duas partes (28/10/2026: "separa nessa ordem: Empresas … Ferramentas: o restante"): em Empresas, o Relatório
+    // de cada regime (a planilha RELATORIO EMPRESA 2026 no estilo das Obrigações do DP, com a REINF; "lucro presumido e
+    // simples são diferentes, deixa cada um separado"; tomou o lugar do Controle de tributos: os links antigos caem no Simples;
+    // as Particularidades voltaram para a tabela dele, 28/10/2026: os links delas caem no Relatório do regime)
+    { id: 'relatorio-simples', rotulo: 'Simples Nacional', icone: 'painel', titulo: 'Relatório Simples', secao: 'Empresas' },
+    { id: 'relatorio-presumido', rotulo: 'Lucro Presumido', icone: 'painel', titulo: 'Relatório Lucro Presumido', secao: 'Empresas' },
+    // as Ferramentas: a REINF (o fluxo do Notion do Heverton)
+    { id: 'reinf', rotulo: 'REINF', icone: 'fileUp', titulo: 'REINF', secao: 'Ferramentas' },
+    // o SIEG fora da rotina (31/10/2026: "coloca uma função de baixar do sieg q tinha na rotina … coloca um módulo la")
+    { id: 'sieg', rotulo: 'SIEG', icone: 'download', titulo: 'SIEG', secao: 'Ferramentas' },
     // o leitor do SINTEGRA (Vitor, 15/10/2026: "montar um leitor de sintegra")
-    { id: 'sintegra', rotulo: 'SINTEGRA', icone: 'fileText', titulo: 'Leitor do SINTEGRA' },
+    { id: 'sintegra', rotulo: 'SINTEGRA', icone: 'fileText', titulo: 'Leitor do SINTEGRA', secao: 'Ferramentas' },
     // a relação de faturamento dos clientes (Heverton, 20/10/2026; o usuário decidiu em 21/10: a receita de cada cliente)
-    { id: 'faturamento', rotulo: 'Faturamento', icone: 'dinheiro', titulo: 'Faturamento dos clientes' },
+    { id: 'faturamento', rotulo: 'Faturamento', icone: 'dinheiro', titulo: 'Faturamento dos clientes', secao: 'Ferramentas' },
     // o rateio do frete e do desconto de uma nota pelas tributações (Heverton, 22/10/2026: a planilha "RATEIO - FRETE")
-    { id: 'rateio-frete', rotulo: 'Rateio de frete', icone: 'caminhao', titulo: 'Rateio de frete' },
-    // a calculadora do Simples Nacional, a planilha do Fiscal preenchida com o SIEG e a folha do DP (Heverton, 22/10/2026)
-    { id: 'simples', rotulo: 'Simples Nacional', icone: 'recibo', titulo: 'Calculadora do Simples Nacional' },
+    { id: 'rateio-frete', rotulo: 'Rateio de frete', icone: 'caminhao', titulo: 'Rateio de frete', secao: 'Ferramentas' },
+    // a calculadora do Simples Nacional, a planilha do Fiscal preenchida com o SIEG e a folha do DP (Heverton, 22/10/2026);
+    // "Calculadora do Simples" no menu, para não repetir o Simples Nacional de Empresas
+    { id: 'simples', rotulo: 'Calculadora do Simples', icone: 'recibo', titulo: 'Calculadora do Simples Nacional', secao: 'Ferramentas' },
     // a antecipação do ICMS do ES (Heverton, 22/10/2026: a planilha "Antecipação ICMS-ES", com as notas do SIEG)
-    { id: 'antecipacao-es', rotulo: 'Antecipação ICMS-ES', icone: 'fileSearch', titulo: 'Antecipação de ICMS — ES' },
+    { id: 'antecipacao-es', rotulo: 'Antecipação ICMS-ES', icone: 'fileSearch', titulo: 'Antecipação de ICMS — ES', secao: 'Ferramentas' },
   ] },
   // o DP (Vitor, 06/10/2026: o Checklist Folha "seria a rotina do dp"): as empresas com a rotina do DP, o painel da
   // planilha (números, gráficos, o progresso por responsável e as obrigações de cada cliente), a visão e as paradas
   { id: 'dp', nome: 'Departamento Pessoal', icone: 'usuario', grupo: 'Rotinas', pronta: true, paginas: [
     // tudo no tabelão (Vitor, 06/10/2026: "sem a parte de checklist"); as páginas na barra lateral ("eu ainda quero uma
     // barra lateral"); em Obrigações, uma tabela só, com as colunas agrupadas (Folha, eSocial, Guias, REINF, Entrega)
+    // as Obrigações viram o Início, a primeira página: o DP já abre nela (Vitor, 28/10/2026)
+    { id: 'obrigacoes', rotulo: 'Início', icone: 'home', titulo: 'Início' },
     { id: 'resumo', rotulo: 'Resumo', icone: 'painel', titulo: 'Resumo do mês' },
-    { id: 'obrigacoes', rotulo: 'Obrigações', icone: 'checklist', titulo: 'Obrigações do mês' },
-    { id: 'visao', rotulo: 'Visão geral', icone: 'barChart', titulo: 'Visão geral' },
+    // a Visão geral saiu do DP (Vitor, 28/10/2026: "remove essa aba"); o link antigo cai no Resumo
     // a guia do FGTS Digital pelo robô da nuvem, com o certificado do escritório (Vitor, 07/10/2026)
     { id: 'fgts', rotulo: 'FGTS Digital', icone: 'fileDown', titulo: 'FGTS Digital', marca: 'fgts' },
+    // os documentos do mês que já estão na pasta do cliente, por e-mail pelo robô da nuvem (27/10/2026: "uma aba de envios")
+    { id: 'envios', rotulo: 'Envios', icone: 'envelope', titulo: 'Envios ao cliente' },
     // os parâmetros de cada cliente (Vitor, 06/10/2026: "quero que o dp tenha a própria aba de configurações")
     // os textos de consulta que vieram do Toriba (Vitor, 14/10/2026: "importa as legislações em uma aba no DP")
     { id: 'legislacao', rotulo: 'Legislação', icone: 'scale', titulo: 'Legislação' },
@@ -90,6 +98,13 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'painel', rotulo: 'Painel', icone: 'painel', titulo: 'Painel do mês' },
     // as Solicitações (16/10/2026, "cadê as solicitações"): a aba do Entregas, logo depois do Painel como lá
     { id: 'solicitacoes', rotulo: 'Solicitações', icone: 'envelope', titulo: 'Solicitações' },
+  ] },
+  // as tarefas delegadas (30/10/2026: "quero que o minhas tarefas vire um modulo do escritorio"): a Central de tarefas, que
+  // abria numa janela pelo perfil e pelo correio do pé do menu, vira um módulo como os outros; todo o escritório
+  { id: 'minhas-tarefas', nome: 'Minhas tarefas', icone: 'checklist', grupo: 'Escritório', pronta: true, paginas: [
+    { id: 'minhas', rotulo: 'Minhas tarefas', icone: 'caixaEntrada', titulo: 'Minhas tarefas' },
+    { id: 'delegadas', rotulo: 'Delegadas por mim', icone: 'aviao', titulo: 'Delegadas por mim' },
+    { id: 'concluidas', rotulo: 'Concluídas', icone: 'checkCircle', titulo: 'Tarefas concluídas' },
   ] },
   // as senhas gov.br e os certificados digitais, no cofre com a chave por pessoa (Vitor, 07/10/2026); todo o escritório
   { id: 'senhas', nome: 'Senhas', icone: 'lock', grupo: 'Escritório', pronta: true, paginas: [
@@ -107,17 +122,32 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'painel', rotulo: 'Painel', icone: 'barChart', titulo: 'Painel financeiro' },
     // o Movimento de Caixa e o Plano de Contas que vieram do Toriba (19/10/2026), no início do Financeiro
     { id: 'caixa', rotulo: 'Caixa', icone: 'dinheiro', titulo: 'Movimento de caixa' },
-    // os honorários dos clientes, por competência (19/10/2026, fase 2 do Financeiro)
-    { id: 'honorarios', rotulo: 'Honorários', icone: 'recibo', titulo: 'Honorários' },
-    // os itens 2 e 7 da lista do Painel (22/10/2026): quem deve e o extrato do banco; o Resultado por conta virou um botão
-    // do Painel, numa janela flutuante ("a aba de resultado vai virar um botão no painel"). A conciliação virou o
-    // importador do extrato (23/10/2026: "vai se tornar um importador de extrato que vai trazer os dados e informações
-    // para o dashboard inicial"); o endereço antigo /financeiro/conciliacao abre o importador
-    { id: 'devedores', rotulo: 'Devedores', icone: 'alert', titulo: 'Devedores' },
+    // as contas a pagar (28/10/2026: "o Contas a Pagar do Toriba, no nads"). Os fornecedores viraram um botão dentro dela,
+    // numa janela (30/10/2026: "joga essa tela de fornecedores para um botão dentro de contas a pagar")
+    { id: 'pagar', rotulo: 'Contas a pagar', icone: 'codigoBarras', titulo: 'Contas a pagar' },
+    // o extrato do banco (23/10/2026: "vai se tornar um importador de extrato que vai trazer os dados e informações
+    // para o dashboard inicial"); o endereço antigo /financeiro/conciliacao abre o importador. O Resultado por conta
+    // virou um botão do Painel, numa janela flutuante (22/10/2026). Honorários e Devedores saíram do menu (30/10/2026)
     { id: 'extrato', rotulo: 'Importar extrato', icone: 'fileUp', titulo: 'Importar extrato do banco' },
     { id: 'plano', rotulo: 'Plano de contas', icone: 'list', titulo: 'Plano de contas' },
     { id: 'notas', rotulo: 'Notas fiscais', icone: 'recibo', titulo: 'Notas fiscais' },
     { id: 'configuracoes', rotulo: 'Configurações', icone: 'settings', titulo: 'Configurações do emissor' },
+  ] },
+  // as Configurações (Vitor, 28/10/2026: "Cadastro, esse admin, colocar tudo em um botão Configurações; todos esses botões
+  // dos menus nessa tela"): o Cadastro (Empresas e Equipe; o endereço continua /tarefas/cadastro/...) e, só para o admin,
+  // as páginas do site do admin, as mesmas telas, aqui dentro (o link Admin da gaveta saiu)
+  { id: 'cadastro', nome: 'Configurações', icone: 'settings', grupo: 'Escritório', pronta: true, paginas: [
+    { id: 'empresas', rotulo: 'Empresas', icone: 'briefcase', titulo: 'Empresas', secao: 'Cadastro' },
+    // a organização nova (Vitor, 13/10/2026: "reveja a estrutura inteira do cadastro"): os Usuários (as pessoas e a proteção
+    // do login; era "Equipe" até 28/10/2026: "troque a palavra equipe p/ Usuários")
+    { id: 'usuarios', rotulo: 'Usuários', icone: 'usuario', titulo: 'Usuários', secao: 'Cadastro' },
+    ...PAGINAS_DO_ADMIN.map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, titulo: p.titulo, secao: 'Admin', soAdmin: true })),
+  ] },
+  // as Ferramentas (30/10/2026: "um botão de Ferramentas ao lado da engrenagem"): utilitários de documentos que rodam no
+  // navegador (PDF: separar, juntar, girar, tirar páginas, virar imagem ou texto; planilhas). Sem entrada na gaveta: o botão
+  // fica no pé dela (useCascaTarefas.ferramentas), para todos
+  { id: 'ferramentas', nome: 'Ferramentas', icone: 'wrench', grupo: 'Escritório', pronta: true, paginas: [
+    { id: 'documentos', rotulo: 'Documentos', icone: 'fileText', titulo: 'Ferramentas de documentos' },
   ] },
   // a Área do Cliente (Vitor, 16/10/2026): o lado do escritório do site que o cliente abre pelo link secreto. Com o
   // Mandei junto (19/10/2026: "unifique área do cliente e o mandei"): o que o cliente manda (Chamados, Recebidos) e os
@@ -144,20 +174,30 @@ export const APLICACOES: readonly Aplicacao[] = [
  */
 export const podeMexerNoCadastro = (op: Operador | null) => !!op && (op.admin || op.nivel === 'diretor' || op.nivel === 'senior');
 
-/** As aplicações que a pessoa vê: Fiscal só para o Fiscal; Contábil e Drive só para o Contábil; Gmail para os dois (admin vê tudo). */
+/** Quem vê o Financeiro: só o Sávio e a Nilma, pelo nome (30/10/2026: "remova o acesso de admin ao financeiro e deixe o acesso
+ * apenas para o usuario Savio e Nilma"). O admin e o diretor não entram mais só pelo papel. Sem acento e sem caixa, o primeiro nome. */
+const DONOS_DO_FINANCEIRO = ['savio', 'nilma'];
+export const podeVerOFinanceiro = (op: Operador | null) => {
+  if (!op) return false;
+  const primeiro = op.nome.normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase().split(/[\s.]+/)[0];
+  return DONOS_DO_FINANCEIRO.includes(primeiro);
+};
+
+/** As aplicações que a pessoa vê: Fiscal só para o Fiscal; Contábil só para o Contábil; Drive para todos; Gmail para os dois (admin vê tudo). */
 export function aplicacoesDe(op: Operador): Aplicacao[] {
   return APLICACOES.filter(a =>
     (a.id !== 'fiscal' || op.admin || op.departamento === 'fiscal') &&
     (a.id !== 'dp' || op.admin || op.departamento === 'dp') &&
     (a.id !== 'contabil' || op.admin || op.departamento === 'contabil') &&
-    // o Drive do robô: as regras do Entregas só deixam o admin e o contábil lerem; o Gmail (01/10/2026): o contábil
-    // e o fiscal (cada um vê a caixa da Nilma e a do próprio setor)
-    (a.id !== 'drive' || op.admin || op.departamento === 'contabil') &&
+    // o Drive do robô: para toda a equipe (26/10/2026: "libera o drive para todos os usuarios"); o Gmail (01/10/2026): o
+    // contábil e o fiscal (cada um vê a caixa da Nilma e a do próprio setor)
     (a.id !== 'contato' || op.admin || op.departamento === 'contabil' || op.departamento === 'fiscal') &&
     // o Cadastro (empresas e equipe): o admin, o diretor (Vitor, 05/10/2026) e o sênior (19/10/2026)
     (a.id !== 'cadastro' || podeMexerNoCadastro(op)) &&
-    // o Financeiro (as notas fiscais do escritório): o admin e o diretor (15/10/2026)
-    (a.id !== 'financeiro' || op.admin || op.nivel === 'diretor'))
+    // o Financeiro (as notas fiscais do escritório): só o Sávio e a Nilma (30/10/2026; antes, o admin e o diretor)
+    (a.id !== 'financeiro' || podeVerOFinanceiro(op)))
+    // as páginas só do admin (as do Admin, nas Configurações) ficam de fora para os outros
+    .map(a => (op.admin || !a.paginas.some(p => p.soAdmin) ? a : { ...a, paginas: a.paginas.filter(p => !p.soAdmin) }))
     // na gaveta, um grupo depois do outro: Rotinas, Comunicação, Escritório
     .sort((x, y) => ORDEM_DOS_GRUPOS.indexOf(x.grupo) - ORDEM_DOS_GRUPOS.indexOf(y.grupo));
 }
@@ -191,6 +231,7 @@ export const caminhoDaPagina = (app: IdAplicacao, pagina: string) => BASE + '/' 
 /** Onde a Tarefas abre (a pessoa escolhe na Minha página, a janela do avatar › Aparência e telas; neste navegador). */
 export const CHAVE_INICIO = 'nads-tarefas-inicio';
 export const INICIOS: readonly { valor: string; rotulo: string; caminho: string }[] = [
+  { valor: 'inicio', rotulo: 'Início', caminho: BASE + '/inicio' },
   { valor: 'empresas', rotulo: 'Minhas empresas', caminho: BASE + '/minhas-empresas/empresas' },
   { valor: 'drive', rotulo: 'Drive', caminho: BASE + '/drive/pastas' },
   { valor: 'gmail', rotulo: 'Gmail', caminho: BASE + '/contato/caixa' },
@@ -232,17 +273,50 @@ export function guardarCompetenciaDoDp(c: string): void {
   try { if (/^\d{4}-\d{2}$/.test(c)) sessionStorage.setItem(CHAVE_COMPETENCIA_DO_DP, c); } catch { /* sem armazenamento: vale só a da página */ }
 }
 export function inicioEscolhido(): string {
-  try { return localStorage.getItem(CHAVE_INICIO) || 'empresas'; } catch { return 'empresas'; }
+  try { return localStorage.getItem(CHAVE_INICIO) || 'inicio'; } catch { return 'inicio'; }
 }
 export function caminhoDoInicio(op: { departamento: string; admin: boolean }): string {
   const i = INICIOS.find(x => x.valor === inicioEscolhido()) || INICIOS[0];
-  // o Drive e o Gmail têm dono (departamento): sem acesso, abre em Minhas empresas
-  if (i.valor === 'drive' && !op.admin && op.departamento !== 'contabil') return INICIOS[0].caminho;
+  // o Gmail tem dono (departamento): sem acesso, abre em Minhas empresas
   if (i.valor === 'gmail' && !op.admin && op.departamento !== 'contabil' && op.departamento !== 'fiscal') return INICIOS[0].caminho;
   return i.caminho;
 }
-/** A página de uma empresa (insights dela): /tarefas/minhas-empresas/empresa/<código>?competencia=aaaa-mm */
+/** A página de uma empresa (as tarefas dela): /tarefas/minhas-empresas/empresa/<código>?competencia=aaaa-mm */
 export const caminhoDaEmpresa = (rotaEmpresa: string, competencia: string) => BASE + '/minhas-empresas/empresa/' + rotaEmpresa + '?competencia=' + competencia;
+/** Uma página da empresa aberta: /tarefas/minhas-empresas/empresa/<código>/<página> (tarefas, visao, drive, as ferramentas do Fiscal). */
+export const caminhoDaPaginaDaEmpresa = (rotaEmpresa: string, pagina: string) => BASE + '/minhas-empresas/empresa/' + rotaEmpresa + '/' + pagina;
+
+/** Os setores em que dá para abrir uma empresa (27/10/2026: "variando de cada setor (tirando dp)"). */
+export type SetorDaEmpresa = 'contabil' | 'fiscal';
+export const SETORES_DA_EMPRESA: readonly { valor: SetorDaEmpresa; rotulo: string }[] = [
+  { valor: 'contabil', rotulo: 'Contábil' },
+  { valor: 'fiscal', rotulo: 'Fiscal' },
+];
+/** Os setores que a pessoa abre (27/10/2026: "e só o setor que ele participa"): o dela; o admin, os dois; o DP, nenhum. */
+export function setoresDe(op: Operador): typeof SETORES_DA_EMPRESA[number][] {
+  return SETORES_DA_EMPRESA.filter(s => op.admin || op.departamento === s.valor);
+}
+/**
+ * As páginas da empresa aberta, na barra lateral (27/10/2026: "vai abrir a parte de tarefas, visão geral, dentre outras
+ * informações na barra lateral como a pagina do drive dela"): as Tarefas do mês, a Visão geral, a pasta no Drive e, no
+ * Fiscal, as ferramentas que trabalham com uma empresa (já com ela escolhida).
+ */
+// a empresa abre na Visão geral, o painel dela (27/10/2026: "abrir o contabil com a empresa selecionada e o dashboard dela
+// aparecer")
+export function paginasDaEmpresa(dep: string): Pagina[] {
+  return [
+    { id: 'visao', rotulo: 'Visão geral', icone: 'barChart', titulo: 'Visão geral' },
+    { id: 'tarefas', rotulo: 'Tarefas', icone: 'checklist', titulo: 'Tarefas' },
+    // sem título: o Drive encosta nas bordas, com o nome da pasta no alto (como na aplicação Drive)
+    { id: 'drive', rotulo: 'Drive', icone: 'pasta', titulo: '' },
+    ...(dep === 'fiscal' ? [
+      { id: 'sieg', rotulo: 'SIEG', icone: 'download', titulo: 'SIEG' },
+      { id: 'rateio-frete', rotulo: 'Rateio de frete', icone: 'caminhao', titulo: 'Rateio de frete' },
+      { id: 'simples', rotulo: 'Simples Nacional', icone: 'recibo', titulo: 'Calculadora do Simples Nacional' },
+      { id: 'antecipacao-es', rotulo: 'Antecipação ICMS-ES', icone: 'fileSearch', titulo: 'Antecipação de ICMS — ES' },
+    ] satisfies Pagina[] : []),
+  ];
+}
 /** As abas da janela de uma empresa no Cadastro. */
 // em grupos (13/10/2026: "reveja a estrutura inteira do cadastro"): a janela abre na Empresa (o resumo do que falta)
 // por setor, no estilo das configurações do Notion (14/10/2026: "contas padrão e bancárias irão ficar em contábil")

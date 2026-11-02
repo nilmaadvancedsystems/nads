@@ -196,7 +196,21 @@ export interface MesDoInss {
   arredondamento: number;
 }
 
-export interface BaixaDoInss { guia: GuiaDoInss; lancamento: LancamentoDoRazao | null }
+export interface BaixaDoInss {
+  guia: GuiaDoInss;
+  lancamento: LancamentoDoRazao | null;
+  /** a baixa foi achada pelo "ref MM/AAAA" ou pela data, com outro valor (o lançamento com várias contrapartidas) */
+  outroValor?: boolean;
+}
+
+/** O mês de referência no histórico do pagamento ("Pagamento de INSS ref 01/2026 conforme DARF." → '2026-01'). */
+export function referenciaDoPagamento(historico: string): string | null {
+  const m = historico.match(/\bref(?:erente)?\.?\s*(?:a\s+)?(\d{2})\/(\d{4})\b/i);
+  return m ? m[2] + '-' + m[1] : null;
+}
+
+/** até quantos dias da arrecadação o pagamento sem o mesmo valor e sem o "ref" ainda é a baixa da guia */
+const DIAS_DA_BAIXA = 5;
 
 export interface ConferenciaDoInss {
   meses: MesDoInss[];
@@ -288,24 +302,37 @@ export function conferirInss(razao: RazaoDaConta, guias: readonly GuiaDoInss[], 
   });
 
   // as baixas: cada guia paga dentro do período (e dentro do que o razão alcança) tem que ter o pagamento no razão (o
-  // mais perto da data, sem repetir; até 2 centavos de diferença, o arredondamento da guia)
+  // mais perto da data, sem repetir; até 2 centavos de diferença, o arredondamento da guia). Sem o mesmo valor, vale o
+  // pagamento com o "ref MM/AAAA" da guia, ou o mais perto da arrecadação (até 5 dias): o lançamento com várias
+  // contrapartidas baixa o saldo da conta e a diferença da guia vai junto (Vitor, 26/10/2026: na 289, "tá tudo zerando")
   const primeiro = meses[0] + '-01';
   const desde = primeiro > razao.inicio ? primeiro : razao.inicio;
   const ultimo = meses[meses.length - 1] + '-31';
   const usados = new Set<LancamentoDoRazao>();
-  const baixas: BaixaDoInss[] = guias.filter(g => g.pagaEm && g.pagaEm >= desde && g.pagaEm <= ultimo).map(guia => {
-    const dias = (l: LancamentoDoRazao) => Math.abs(Date.parse(l.data) - Date.parse(guia.pagaEm));
-    const lancamento = pagamentos.filter(l => !usados.has(l) && (Math.abs(-l.valor - guia.total) <= 0.02 || Math.abs(-l.valor - guia.principal) <= 0.02))
-      .sort((a, b) => dias(a) - dias(b))[0] || null;
-    if (lancamento) usados.add(lancamento);
-    else {
-      sugestoes.push({
-        mes: guia.competencia, data: guia.pagaEm, tipo: 'baixa', debito: 'INSS a recolher', credito: banco, valor: guia.total,
-        historico: 'Pagamento de INSS ref ' + rotuloMes(guia.competencia) + ' conforme DARF.',
-        motivo: 'Guia de ' + rotuloMes(guia.competencia) + ' paga em ' + guia.pagaEm.split('-').reverse().join('/') + ' sem a baixa no razão'
-          + (guia.total > guia.principal ? ' (multa e juros de ' + brl(centavos(guia.total - guia.principal)) + ' vão para a despesa)' : ''),
-      });
-    }
+  const pagas = guias.filter(g => g.pagaEm && g.pagaEm >= desde && g.pagaEm <= ultimo);
+  const dias = (l: LancamentoDoRazao, guia: GuiaDoInss) => Math.abs(Date.parse(l.data) - Date.parse(guia.pagaEm)) / 86400000;
+  const doMesmoValor = (l: LancamentoDoRazao, guia: GuiaDoInss) => Math.abs(-l.valor - guia.total) <= 0.02 || Math.abs(-l.valor - guia.principal) <= 0.02;
+  const achados = new Map<GuiaDoInss, LancamentoDoRazao>();
+  for (const guia of pagas) {
+    const l = pagamentos.filter(x => !usados.has(x) && doMesmoValor(x, guia)).sort((a, b) => dias(a, guia) - dias(b, guia))[0];
+    if (l) { usados.add(l); achados.set(guia, l); }
+  }
+  for (const guia of pagas) {
+    if (achados.has(guia)) continue;
+    const livres = pagamentos.filter(x => !usados.has(x));
+    const l = livres.find(x => referenciaDoPagamento(x.historico) === guia.competencia)
+      || livres.filter(x => !referenciaDoPagamento(x.historico) && dias(x, guia) <= DIAS_DA_BAIXA).sort((a, b) => dias(a, guia) - dias(b, guia))[0];
+    if (l) { usados.add(l); achados.set(guia, l); }
+  }
+  const baixas: BaixaDoInss[] = pagas.map(guia => {
+    const lancamento = achados.get(guia) || null;
+    if (lancamento) return { guia, lancamento, ...(doMesmoValor(lancamento, guia) ? {} : { outroValor: true }) };
+    sugestoes.push({
+      mes: guia.competencia, data: guia.pagaEm, tipo: 'baixa', debito: 'INSS a recolher', credito: banco, valor: guia.total,
+      historico: 'Pagamento de INSS ref ' + rotuloMes(guia.competencia) + ' conforme DARF.',
+      motivo: 'Guia de ' + rotuloMes(guia.competencia) + ' paga em ' + guia.pagaEm.split('-').reverse().join('/') + ' sem a baixa no razão'
+        + (guia.total > guia.principal ? ' (multa e juros de ' + brl(centavos(guia.total - guia.principal)) + ' vão para a despesa)' : ''),
+    });
     return { guia, lancamento };
   });
   const pagamentosSemGuia = pagamentos.filter(l => !usados.has(l) && l.data >= primeiro && l.data <= ultimo);

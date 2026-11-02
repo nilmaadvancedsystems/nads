@@ -689,6 +689,15 @@ igual('extrato: banco que a empresa ainda não tem vira o nome do arquivo',
   en.caminhoDoExtratoNoIndice(itensDoMapa, 'cli', en.extratoDoNome('Extrato NUBANK 05-2026.ofx')),
   { existente: 'b5', faltam: ['NUBANK'], caminho: 'CONTÁBIL/EXTRATOS/2026/05/BANCÁRIOS/NUBANK', nomeFinal: '05-2026.ofx' });
 
+// --- o comprovante da aba Comprovantes direto na pasta do banco, igual ao extrato (27/10/2026) ---
+igual('comprovante: o nome da aba Comprovantes', en.comprovanteDoNome('Comprovante BANCO DO BRASIL 02-2026 - TITULOS PAGOS FEV2026 (2).pdf'),
+  { banco: 'BANCO DO BRASIL', mes: '02', ano: '2026', ext: '.pdf', original: 'TITULOS PAGOS FEV2026 (2).pdf' });
+igual('comprovante: o extrato não é comprovante', en.comprovanteDoNome('Extrato SICOOB 06-2026.pdf'), null);
+igual('comprovante: o nome solto não é', en.comprovanteDoNome('COMPROVANTE - SICOOB - pix.pdf'), null);
+igual('comprovante: na pasta COMPROVANTES do mês, com o nome da pasta do banco que a empresa usa, e o nome original',
+  en.caminhoDoExtratoNoIndice(itensDoMapa, 'cli', en.comprovanteDoNome('Comprovante SICOOB 05-2026 - pix fornecedor.pdf'), 'COMPROVANTES', 'pix fornecedor.pdf'),
+  { existente: 'm5', faltam: ['COMPROVANTES', 'BANCOOB'], caminho: 'CONTÁBIL/EXTRATOS/2026/05/COMPROVANTES/BANCOOB', nomeFinal: 'pix fornecedor.pdf' });
+
 // --- a guia DAS/DAE na Área do Cliente (envios-do-nads.js) ---
 const envioGuia = { guia: 'DAS', vencimento: '20/10/2026', valor: '1.234,56', codigo: 58, competencia: '2026-09', criadoPorUid: 'u1' };
 igual('guia do envio: conferida', en.guiaDoEnvio(envioGuia), { tipo: 'DAS', vencimento: '20/10/2026', valor: 1234.56, valorTexto: '1.234,56', codigo: '58', competencia: '2026-09' });
@@ -815,14 +824,283 @@ igual('SIEG: as saídas do resumo das notas', siegT.seriesDasNotas(siegT.saidasD
   { modelo: '65', serie: '2', numeros: [7], canceladas: [], valor: 3 },
 ]);
 
+// a ordem da fila do SIEG (31/10/2026: "Quero que melhore a velocidade do sieg"): o "Contar agora" na frente dos XMLs, a
+// madrugada por último, e entre as pessoas um de cada uma por vez (o lote de 10 meses não segura o pedido único de outra)
+{
+  const fila = [
+    { p: { id: 'g1', tipo: 'xmls', criadoEm: '2026-10-29T15:58:34', criadoPorUid: 'gustavo' } },
+    { p: { id: 'g2', tipo: 'xmls', criadoEm: '2026-10-29T15:58:35', criadoPorUid: 'gustavo' } },
+    { p: { id: 'g3', tipo: 'xmls', criadoEm: '2026-10-29T15:58:36', criadoPorUid: 'gustavo' } },
+    { p: { id: 'h1', tipo: 'xmls', criadoEm: '2026-10-29T16:01:00', criadoPorUid: 'heverton' } },
+    { p: { id: 'm1', tipo: 'xmls', criadoEm: '2026-10-29T03:00:00', criadoPorUid: 'robo', madrugada: true } },
+    { p: { id: 'c1', tipo: 'contagem', criadoEm: '2026-10-29T16:05:00', criadoPorUid: 'heverton' } },
+    { p: { id: 'z1', tipo: 'zipFaltam', criadoEm: '2026-10-29T16:04:00', criadoPorUid: 'gustavo' } },
+  ].map(x => Object.assign(x, { u: siegT.urgenciaDoPedido(x.p) }));
+  igual('SIEG: a ordem da fila (contagem e zipFaltam, um de cada pessoa, a madrugada por último)', siegT.ordemDaFila(fila).map(x => x.p.id), ['z1', 'c1', 'g1', 'h1', 'g2', 'g3', 'm1']);
+  // depois de atender o 1º mês do Gustavo, o pedido do Heverton (que chegou depois) passa na frente do 2º mês
+  const semG1 = fila.filter(x => !['g1', 'z1', 'c1', 'm1'].includes(x.p.id));
+  igual('SIEG: a vez de cada pessoa conta quem o robô atendeu por último', siegT.ordemDaFila(semG1, new Map([['gustavo', 1]])).map(x => x.p.id), ['h1', 'g2', 'g3']);
+  igual('SIEG: atendido o Heverton, volta o Gustavo', siegT.ordemDaFila(semG1.filter(x => x.p.id !== 'h1'), new Map([['gustavo', 1], ['heverton', 2]])).map(x => x.p.id), ['g2', 'g3']);
+  igual('SIEG: sem ninguém atendido, a ordem de chegada', siegT.ordemDaFila(semG1, new Map()).map(x => x.p.id), ['g2', 'h1', 'g3']);
+  igual('SIEG: a fila de uma pessoa só segue a ordem de chegada', siegT.ordemDaFila(fila.filter(x => x.p.criadoPorUid === 'gustavo' && x.p.tipo === 'xmls').reverse()).map(x => x.p.id), ['g1', 'g2', 'g3']);
+}
+// o portal do SIEG desde 30/10/2026: { downloadUrl } no lugar do .zip; a página de login é a sessão vencida
+const esperarSieg = (async () => {
+  const zipT = sxT.zipDe([{ nome: 'a.xml', xml: '<a/>' }]);
+  const json = o => new Response(JSON.stringify(o), { status: 200, headers: { 'content-type': 'application/json; charset=utf-8' } });
+  const pedidos = [];
+  const buscar = async (url, op) => { pedidos.push([url, op.headers.Cookie]); return new Response(zipT, { status: 200, headers: { 'content-type': 'application/zip' } }); };
+  const veio = await spT.zipDaResposta(json({ downloadUrl: 'https://down2.sieg.com/api/download/zip-stream?req=abc' }), 'COFRE.AUTH=x', null, buscar);
+  igual('SIEG portal: segue o downloadUrl com a sessão e devolve o .zip', [Buffer.isBuffer(veio) && veio.readUInt32LE(0) === 0x04034b50, pedidos], [true, [['https://down2.sieg.com/api/download/zip-stream?req=abc', 'COFRE.AUTH=x']]]);
+  igual('SIEG portal: o .zip direto (como antes) continua valendo', (await spT.zipDaResposta(new Response(zipT, { status: 200, headers: { 'content-type': 'application/zip' } }), '')).length, zipT.length);
+  igual('SIEG portal: 204 é mês sem documentos', await spT.zipDaResposta(new Response(null, { status: 204 }), ''), null);
+  const erro = async r => { try { await spT.zipDaResposta(r, '', null, async () => new Response('<html><title>SIEG - Login</title></html>', { status: 200, headers: { 'content-type': 'text/html' } })); return 'sem erro'; } catch (e) { return e.message.split(' (')[0]; } };
+  igual('SIEG portal: a página de login no lugar do .zip pede a sessão de novo', await erro(json({ downloadUrl: 'https://down2.sieg.com/x' })), spT.SEM_LOGIN);
+  igual('SIEG portal: endereço fora do SIEG não é seguido', await erro(json({ downloadUrl: 'https://outro.com/x' })), spT.SEM_NADA);
+  igual('SIEG portal: JSON sem endereço não é .zip', await erro(json({ mensagem: 'x' })), spT.SEM_NADA);
+  // a conferência com o Drive que ficou sem serventia desiste antes de gastar a vez no limite de 5 contagens por minuto
+  let desistiu = '';
+  try { await siegT.contagemDoMes({}, '11222333000181', '2026-10', null, () => true); } catch (e) { desistiu = e.message; }
+  igual('SIEG: a contagem desiste sem chamar o SIEG', desistiu, 'a consulta não é mais necessária');
+
+  // os trabalhadores da fila (31/10/2026): até 2 pedidos juntos, a mesma empresa e mês nunca juntos, ninguém pega o mesmo
+  const dormirT = ms => new Promise(r => setTimeout(r, ms));
+  const filaT = (lista, paralelo, demora = () => 20) => {
+    const pendentes = lista.map(x => Object.assign({}, x));
+    const rodando = new Set();
+    const chaves = new Set();
+    const r = { max: 0, juntos: [], feitos: [], dobrados: 0 };
+    const t = siegT.criarTrabalhadores({
+      paralelo,
+      // a leitura do banco demora e pode ainda ver o que foi pego (como o Firestore antes do "processando" chegar)
+      escolher: async (ocupadas, pegos) => { await dormirT(3); const x = pendentes.find(p => !pegos.has(p.id) && !ocupadas.has(p.chave)); return x || null; },
+      atender: async x => {
+        if (rodando.has(x.id)) r.dobrados++;
+        if (chaves.has(x.chave)) r.juntos.push(x.id);
+        rodando.add(x.id); chaves.add(x.chave);
+        r.max = Math.max(r.max, rodando.size);
+        await dormirT(demora(x));
+        pendentes.splice(pendentes.findIndex(p => p.id === x.id), 1);
+        rodando.delete(x.id); chaves.delete(x.chave);
+        r.feitos.push(x.id);
+      },
+    });
+    return { t, r, pendentes };
+  };
+  const seis = [['a', '380|2026-10'], ['b', '309|2026-10'], ['c', '380|2026-10'], ['d', '207|2026-09'], ['e', '380|2026-09'], ['f', '309|2026-10']].map(([id, chave]) => ({ id, chave }));
+  const f2 = filaT(seis, 2);
+  const t0 = Date.now();
+  await f2.t.acordar();
+  const ms2 = Date.now() - t0;
+  igual('SIEG fila: com 2, todos atendidos, uma vez cada', f2.r.feitos.slice().sort(), ['a', 'b', 'c', 'd', 'e', 'f']);
+  igual('SIEG fila: com 2, nunca mais de 2 juntos, nenhum pego duas vezes', [f2.r.max, f2.r.dobrados], [2, 0]);
+  igual('SIEG fila: a mesma empresa e mês nunca juntos', f2.r.juntos, []);
+  igual('SIEG fila: a mesma empresa e mês na ordem de chegada', f2.r.feitos.filter(x => x === 'a' || x === 'c'), ['a', 'c']);
+  igual('SIEG fila: livre depois de esvaziar', f2.t.ativos(), 0);
+  const f1 = filaT(seis, 1);
+  const t1 = Date.now();
+  await f1.t.acordar();
+  const ms1 = Date.now() - t1;
+  igual('SIEG fila: com 1, um por vez (como antes)', [f1.r.max, f1.r.feitos], [1, ['a', 'b', 'c', 'd', 'e', 'f']]);
+  igual('SIEG fila: com 2 leva perto da metade do tempo de 1', ms2 < ms1 * 0.75, true);
+  // um pedido só da mesma empresa: o 2º trabalhador não tem o que pegar e sai; o 1º faz os dois
+  const fMesma = filaT([{ id: 'x', chave: '1|2026-10' }, { id: 'y', chave: '1|2026-10' }], 2);
+  await fMesma.t.acordar();
+  igual('SIEG fila: dois da mesma empresa e mês, um depois do outro', [fMesma.r.max, fMesma.r.feitos], [1, ['x', 'y']]);
+  // o pedido que chega com os dois ocupados é pego por quem terminar primeiro (acordar de novo não abre um 3º)
+  const fChega = filaT([{ id: 'p', chave: '1|x' }, { id: 'q', chave: '2|x' }], 2, x => (x.id === 'p' ? 200 : 20));
+  const fim = fChega.t.acordar();
+  await dormirT(10);
+  fChega.pendentes.push({ id: 'r', chave: '3|x' });
+  fChega.t.acordar();
+  await fim;
+  igual('SIEG fila: o que chegou com os dois ocupados também é atendido, sem passar de 2', [fChega.r.feitos, fChega.r.max], [['q', 'r', 'p'], 2]);
+  // o erro num pedido não para o trabalhador
+  const fErro = siegT.criarTrabalhadores({ paralelo: 2, escolher: (() => { const l = [{ id: '1', chave: 'a' }, { id: '2', chave: 'b' }, { id: '3', chave: 'c' }]; return async (o, pg) => l.find(x => !pg.has(x.id) && !x.feito) || null; })(),
+    atender: async x => { x.feito = true; if (x.id === '1') throw new Error('falhou'); }, log: () => {} });
+  await fErro.acordar();
+  igual('SIEG fila: o erro de um pedido não para os outros', fErro.ativos(), 0);
+  igual('SIEG fila: a chave é a empresa e o mês', siegT.chaveDaPasta({ codigo: '0380', competencia: '2026-10' }), '0380|2026-10');
+
+  // sem esperar o Drive (31/10/2026): só quando o último resumo do mês está todo no que o portal trouxe agora
+  const nA = { chave: '1'.repeat(44), tipo: 'NF-e' };
+  const nB = { chave: '2'.repeat(44), tipo: 'NFC-e' };
+  const sB = { chave: '', tipo: 'NFS-e', numero: '15', emitente: { doc: '11.222.333/0001-81' }, data: '2026-10-05' };
+  const agoraT = { emitidas: [nA, sB], recebidas: [] };
+  igual('SIEG Drive: o último resumo todo no portal, não espera', siegT.cobreOUltimo({ emitidas: [nA], recebidas: [] }, agoraT), true);
+  igual('SIEG Drive: a NFS-e (sem chave) vale pelo número, prestador e data', siegT.cobreOUltimo({ emitidas: [Object.assign({}, sB, { emitente: { doc: '11222333000181' } })], recebidas: [] }, agoraT), true);
+  igual('SIEG Drive: nota que só o Drive tinha (a NFC-e de MG), espera', siegT.cobreOUltimo({ emitidas: [nA, nB], recebidas: [] }, agoraT), false);
+  igual('SIEG Drive: outra NFS-e do mesmo número, espera', siegT.cobreOUltimo({ emitidas: [Object.assign({}, sB, { data: '2026-10-06' })], recebidas: [] }, agoraT), false);
+  igual('SIEG Drive: o primeiro download do mês (sem resumo), espera', [siegT.cobreOUltimo(null, agoraT), siegT.cobreOUltimo({ codigo: '1' }, agoraT)], [false, false]);
+  // o que só o Drive tem entra no resumo; o que o portal já trouxe não entra duas vezes
+  const baixadoT = spT.montarXmls('19449248000162', [nfeItensT]);
+  const jT = siegT.juntarOsDoDrive('19449248000162', baixadoT, [nfeItensT, cancT]);
+  igual('SIEG Drive: o cancelamento que só o Drive tinha entra e marca a nota', [jT.extras, jT.baixado.arquivos.length, jT.baixado.resumo.emitidas.map(n => !!n.cancelada)], [1, 2, [true]]);
+  igual('SIEG Drive: nada a mais no Drive, o download fica como veio', siegT.juntarOsDoDrive('19449248000162', baixadoT, [nfeItensT]).baixado === baixadoT, true);
+
+  // a madrugada não repete o mês que não mudou (31/10/2026): o 137 (o SIEG conta 1 NF-e recebida, a API entrega 0) e o 54
+  // (668 NFC-e só no Drive) eram pedidos toda noite
+  const zeros = () => ({ NFe: 0, NFCe: 0, CTe: 0, NFSe: 0, CFe: 0 });
+  const contDe = (rec, emi, em) => ({ emitidas: Object.assign(zeros(), emi), recebidas: Object.assign(zeros(), rec), em });
+  const c137 = contDe({ NFe: 1 }, {}, '2026-10-31T07:22:42.273Z');
+  const n137 = { em: '2026-10-31T07:22:42.314Z', arquivos: 0, emitidas: [], recebidas: [] };
+  igual('SIEG madrugada: o 137 não fecha pela regra de antes (1 contada, 0 no nads)', siegT.completoNoNads(c137, n137), false);
+  igual('SIEG madrugada: resumo de antes de 31/10 usa a contagem gravada junto com ele', siegT.contagemDoUltimoDownload(n137, c137).recebidas.NFe, 1);
+  igual('SIEG madrugada: o SIEG conta hoje o mesmo que antes do último download, não baixa', siegT.semMudancaNoSieg(n137, c137, contDe({ NFe: 1 }, {})), true);
+  igual('SIEG madrugada: nota nova de verdade (2 NF-e recebidas), baixa', siegT.semMudancaNoSieg(n137, c137, contDe({ NFe: 2 }, {})), false);
+  igual('SIEG madrugada: nota nova de outro tipo (a NFS-e emitida), baixa', siegT.semMudancaNoSieg(n137, c137, contDe({ NFe: 1 }, { NFSe: 1 })), false);
+  igual('SIEG madrugada: sem conseguir contar agora, baixa (como antes)', siegT.semMudancaNoSieg(n137, c137, null), false);
+  // a contagem gravada longe do resumo (o "Contar agora" de outro dia) não diz o que havia no download: baixa
+  igual('SIEG madrugada: contagem de outra hora não vale como a do download', siegT.contagemDoUltimoDownload(n137, Object.assign({}, c137, { em: '2026-10-29T12:00:00Z' })), null);
+  // o resumo novo guarda a contagem de antes do download (contagemSieg): vale ela, mesmo com a siegContagens de outra hora
+  const n54 = { em: '2026-11-01T07:40:00Z', emitidas: [...Array.from({ length: 120 }, () => ({ tipo: 'NF-e' })), ...Array.from({ length: 668 }, () => ({ tipo: 'NFC-e' }))], recebidas: [], contagemSieg: contDe({}, { NFe: 120 }) };
+  const c54 = contDe({}, { NFe: 120 }, '2026-11-02T04:00:00Z');
+  igual('SIEG madrugada: o 54 (NFC-e só no Drive) não fecha pela regra de antes', siegT.completoNoNads(c54, n54), false);
+  igual('SIEG madrugada: o 54 sem nota nova no SIEG não baixa', siegT.semMudancaNoSieg(n54, c54, contDe({}, { NFe: 120 })), true);
+  igual('SIEG madrugada: o 54 com uma NF-e nova baixa', siegT.semMudancaNoSieg(n54, c54, contDe({}, { NFe: 121 })), false);
+  // o tipo que veio pela metade sem erro (100 de 120) pode ser um download que parou no meio: segue sendo pedido
+  const nMetade = { em: '2026-11-01T07:40:00Z', emitidas: Array.from({ length: 100 }, () => ({ tipo: 'NF-e' })), recebidas: [], contagemSieg: contDe({}, { NFe: 120 }) };
+  igual('SIEG madrugada: veio pela metade (100 de 120), baixa mesmo sem mudança no SIEG', siegT.semMudancaNoSieg(nMetade, c54, contDe({}, { NFe: 120 })), false);
+  igual('SIEG madrugada: o primeiro download do mês (sem resumo) baixa', [siegT.contagemDoUltimoDownload(null, c137), siegT.semMudancaNoSieg(null, c137, c137)], [null, false]);
+  igual('SIEG madrugada: quem fecha continua sem pedido', siegT.completoNoNads(contDe({ NFe: 1 }, {}), { emitidas: [], recebidas: [{ tipo: 'NF-e' }] }), true);
+  igual('SIEG madrugada: contagem sem os números não é igual a nada', [siegT.mesmaContagem(c137, {}), siegT.mesmaContagem(c137, c137)], [false, true]);
+
+  // a pasta EVENTOS junta todos os meses: o evento com data de antes do mês não é lido (o 380 de 10/2026: 3918 → 667 arquivos)
+  igual('SIEG Drive: evento de antes do mês fica de fora', siegT.eventoDeAntes('29-09-2026 - CIENCIA DA OPERACAO NF-e 155769.xml', '2026-10'), true);
+  igual('SIEG Drive: evento do mês e de depois são lidos', [siegT.eventoDeAntes('01-10-2026 - CANCELAMENTO NF-e 1.xml', '2026-10'), siegT.eventoDeAntes('03-11-2026 - CIENCIA DA OPERACAO NF-e 1.xml', '2026-10')], [false, false]);
+  igual('SIEG Drive: de outro ano conta o ano', [siegT.eventoDeAntes('15-12-2025 - X.xml', '2026-01'), siegT.eventoDeAntes('15-01-2027 - X.xml', '2026-12')], [true, false]);
+  igual('SIEG Drive: sem a data no nome, lê (como antes)', [siegT.eventoDeAntes('31260919449248000162550010000102701620070002-evento-110111-1.xml', '2026-10'), siegT.eventoDeAntes('', '2026-10')], [false, false]);
+})();
+
 // --- razão social vale mais que o nome fantasia (FITO, 01/10/2026) ---
 const fitos = [{ id: '292', nome: 'FITO INDUSTRIA E COMERCIO DE ALIMENTOS LTDA', nomeFantasia: 'FITO ALIMENTOS' }, { id: '309', nome: 'FITO ALIMENTOS LTDA', nomeFantasia: 'FITO ALIMENTOS', grupoLocal: '292' }];
 igual('razão social da irmã no assunto: é dela', (r.desempatarPorNome(fitos, 'Arquivos 09/2026 - Fito Alimentos LTDA') || {}).id, '309');
 igual('razão social da dona do e-mail: é dela', (r.desempatarPorNome(fitos, 'Arquivos 09/2026 - Fito Indústria e Comércio de Alimentos LTDA') || {}).id, '292');
 igual('sem nome no assunto: não decide pelo nome', r.desempatarPorNome(fitos, 'Faturas'), null);
 
+// ---------- DP › Envios: os documentos do DP de cada mês na pasta do cliente ----------
+{
+  const dp = require('./envios-do-dp');
+  const di2 = require('./drive-indice');
+  const itens = [
+    { i: 'dp', n: 'DEPARTAMENTO PESSOAL', p: 'R', t: 'd' }, { i: 'm10', n: '10', p: 'dp', t: 'd' }, { i: 'fg', n: 'FGTS', p: 'm10', t: 'd' },
+    { i: 'a1', n: 'FGTS 10-2026.pdf', p: 'fg', t: 'f', s: 1200 }, { i: 'a2', n: 'Resumo.pdf', p: 'm10', t: 'f', s: 300 },
+    { i: 'fu', n: 'FUNCIONÁRIOS', p: 'dp', t: 'd' }, { i: 'jo', n: 'JOAO', p: 'fu', t: 'd' }, { i: 'a3', n: 'ASO 01-10-2026.pdf', p: 'jo', t: 'f' },
+    { i: 'so', n: 'SOCIETÁRIO', p: 'R', t: 'd' }, { i: 'fp', n: 'FOLHA DE PAGAMENTO', p: 'so', t: 'd' }, { i: 'y', n: '2026', p: 'fp', t: 'd' },
+    { i: 'y9', n: '09', p: 'y', t: 'd' }, { i: 'a4', n: 'Holerites.pdf', p: 'y9', t: 'f', s: 50 }, { i: 'g1', n: 'Planilha', p: 'y9', t: 'g' },
+    { i: 'fi', n: 'FISCAL', p: 'R', t: 'd' }, { i: 'sn', n: 'SIMPLES NACIONAL', p: 'fi', t: 'd' }, { i: 'da', n: '16. DARF', p: 'sn', t: 'd' },
+    { i: 'a5', n: '10-2026 - DARF INSS - VALOR 1.234,56 - VENCIMENTO 20-11-2026.pdf', p: 'da', t: 'f' },
+    { i: 'a6', n: '10-2026 - DARF IRPJ - VALOR 10,00 - VENCIMENTO 30-11-2026.pdf', p: 'da', t: 'f' },
+    { i: 'a7', n: 'solto.pdf', p: 'dp', t: 'f' },
+  ];
+  const porMes = dp.arquivosDoDpNaPasta(itens, 'R', '2026', di2.caminhos, di2.chaveDeNome);
+  igual('DP: o mês junta a pasta do mês, a FGTS e a DARF do INSS', (porMes.get('2026-10') || []).map(a => a.i), ['a2', 'a1', 'a5']);
+  igual('DP: a folha vai pelo ano e mês da pasta', (porMes.get('2026-09') || []).map(a => a.i), ['a4']);
+  igual('DP: a pasta onde o arquivo está vai junto', (porMes.get('2026-10') || [])[1].c, 'DEPARTAMENTO PESSOAL/10/FGTS');
+  igual('DP: FUNCIONÁRIOS, DARF de outro tributo, Google Docs e arquivo solto ficam de fora', [...porMes.keys()].sort(), ['2026-09', '2026-10']);
+  igual('DP: sem escolha vão todos', dp.escolhidos([{ i: 'x' }, { i: 'y' }], []).map(a => a.i), ['x', 'y']);
+  igual('DP: só vai o escolhido que está na lista (nunca um id de fora)', dp.escolhidos([{ i: 'x' }, { i: 'y' }], ['y', 'zzz']).map(a => a.i), ['y']);
+  igual('DP: o mês por extenso', dp.mesPorExtenso('2026-03'), 'março de 2026');
+  igual('DP: os três meses recentes (virando o ano)', dp.mesesRecentes(new Date(Date.UTC(2027, 0, 15))), ['2027-01', '2026-12', '2026-11']);
+  const email = require('./email-html').htmlDoEnvioDp({ assunto: 'Documentos <DP>', texto: 'Olá!\n\nSeguem os documentos.', cliente: 'TESTE & CIA', competencia: '10/2026', anexos: [{ nome: 'FGTS 10-2026.pdf', tamanho: 2048 }] });
+  igual('DP: o e-mail tem o texto, o cartão dos dados e o anexo, com o HTML escapado', [email.html.includes('FGTS 10-2026.pdf'), email.html.includes('TESTE &amp; CIA'), email.html.includes('Seguem os documentos.'), email.html.includes('1 arquivo')], [true, true, true, true]);
+  // o boleto do escritório (28/10/2026): só BOLETO ou Fatura_ nas pastas da Nilma, no mês anterior ao da pasta
+  const boleto = [
+    { i: 'ct', n: 'CONTÁBIL', p: 'R', t: 'd' }, { i: 'pf', n: 'PAGAMENTOS DE FORNECEDORES', p: 'ct', t: 'd' }, { i: 'pa', n: '2026', p: 'pf', t: 'd' },
+    { i: 'p11', n: '11', p: 'pa', t: 'd' }, { i: 'ni', n: 'NILMA DIAS OLIVEIRA', p: 'p11', t: 'd' },
+    { i: 'b1', n: 'Fatura_NILMA DIAS OLIVEIRA_R$250,00_11-2026.pdf', p: 'ni', t: 'f' },
+    { i: 'nc', n: 'BOLETO NILMA CONTADOR', p: 'p11', t: 'd' }, { i: 'b2', n: 'BOLETO NILMA CONTADOR NF3301 R$900,00.pdf', p: 'nc', t: 'f' },
+    { i: 'b3', n: '09-11-2026 NILMA CONTADOR R$900,00.jpg', p: 'nc', t: 'f' }, { i: 'b4', n: 'NFSE 3301 NILMA CONTADOR R$900,00.pdf', p: 'nc', t: 'f' },
+    { i: 'po', n: 'POSTO 116', p: 'p11', t: 'd' }, { i: 'b5', n: 'BOLETO POSTO 116.pdf', p: 'po', t: 'f' },
+    { i: 'p01', n: '01', p: 'pa', t: 'd' }, { i: 'nj', n: 'NILMA CONT', p: 'p01', t: 'd' }, { i: 'b6', n: 'BOLETO NILMA CONT.pdf', p: 'nj', t: 'f' },
+  ];
+  const porMesB = dp.arquivosDoDpNaPasta(boleto, 'R', '2026', di2.caminhos, di2.chaveDeNome);
+  igual('DP: o boleto e a fatura da Nilma vão no mês anterior; o comprovante, a NFS-e e outro fornecedor ficam de fora', (porMesB.get('2026-10') || []).map(a => a.i).sort(), ['b1', 'b2']);
+  igual('DP: o boleto de janeiro vai com o DP de dezembro do ano anterior', (porMesB.get('2025-12') || []).map(a => a.i), ['b6']);
+  const m = dp.mensagemDoEnvio({ assunto: 'DP {competencia} - {cliente} {xyz}', texto: '' }, { cliente: 'ACME', competencia: '10/2026', mes: 'outubro de 2026' });
+  igual('DP: o modelo troca os campos, deixa o que não conhece, e o texto vazio vira o padrão', [m.assunto, m.texto.startsWith('Olá, ACME!'), m.texto.includes('outubro de 2026')], ['DP 10/2026 - ACME {xyz}', true, true]);
+  // o e-mail do Cadastro do nads manda; o do Entregas só sem ele (28/10/2026)
+  igual('DP: o e-mail do Cadastro do nads vale no lugar do Entregas', dp.paraQuem([{ contato: { email: ' Novo@Cliente.com ' } }], { email: 'velho@x.com' }), ['novo@cliente.com']);
+  igual('DP: sem e-mail no nads, vão os do Entregas (sem repetir)', dp.paraQuem([{ contato: {} }], { email: 'a@x.com', emails: ['B@x.com', 'a@x.com'] }), ['a@x.com', 'b@x.com']);
+  igual('DP: e-mail inválido não conta', dp.paraQuem([{ contato: { email: 'sem-arroba' } }], { email: 'ruim' }), []);
+  // o lote do DP (28/10/2026): a leitura do arquivador, a escolha na revisão, os grupos e os valores
+  const L = require('./lote-dp');
+  igual('lote: o valor da guia vira número', [L.valorNumero('R$1234,56'), L.valorNumero('1.234,56'), L.valorNumero('')], [1234.56, 1234.56, null]);
+  igual('lote: o tributo da DARF pelo nome final', L.tributoDoNome('10-2026 - DARF INSS - VALOR R$165,33 - VENCIMENTO 19-11-2026.pdf'), 'INSS');
+  const leit = L.leituraDe({ acao: 'ARQUIVAR', cliente: 191, clienteNome: 'PEDRO', tipo: 'FGTS', competencia: { mes: 10, ano: 2026 }, nomeFinal: 'FGTS 10-2026.pdf', anoRaiz: 2026, pastaCliente: '191 - PEDRO', caminho: ['DEPARTAMENTO PESSOAL', '10', 'FGTS'] }, { valor: 'R$129,68', vencimento: '19-11-2026' }, { texto: ['GUIA'] });
+  igual('lote: a leitura leva o cliente, a competência, o valor e a pasta', [leit.cliente, leit.competencia, leit.valor, leit.destino.join('/')], [191, '2026-10', 'R$129,68', '2026/191 - PEDRO/DEPARTAMENTO PESSOAL/10/FGTS']);
+  const pastaL = c => (c === 191 ? '191 - PEDRO' : '');
+  const lote = [
+    { nome: 'FGTS.pdf', leitura: leit },
+    { nome: 'guia.pdf', leitura: { cliente: 191, tipo: 'DARF', tributo: 'INSS', competencia: '2026-10', valor: 'R$165,33', nomeFinal: 'n.pdf', destino: ['2026', '191 - PEDRO', 'FISCAL', 'PESSOA FISICA', '02. DARF'] } },
+    { nome: 'scan.pdf', leitura: { cliente: null, tipo: '', competencia: '' }, escolha: { cliente: 191, tipo: 'FOLHA', competencia: '2026-10' } },
+    { nome: 'x.pdf', leitura: { cliente: 191, competencia: '2026-10' }, fora: true },
+    { nome: 'sem.pdf', leitura: { cliente: null, competencia: '' } },
+  ];
+  const gL = L.grupos(lote, pastaL);
+  igual('lote: um grupo por cliente e competência; o fora e o não identificado ficam de fora', [[...gL.porChave.keys()], gL.fora.map(a => a.nome)], [['191_2026-10'], ['x.pdf', 'sem.pdf']]);
+  igual('lote: o escolhido à mão vai para a pasta do DP do mês, com o nome original', gL.porChave.get('191_2026-10')[2].vai.destino.join('/'), '2026/191 - PEDRO/DEPARTAMENTO PESSOAL/10/FOLHA');
+  igual('lote: os valores do mês (FGTS e DARF do INSS)', L.valoresDoGrupo(gL.porChave.get('191_2026-10')), { fgts: 129.68, darf: 165.33 });
+}
+
+// ---------- a faxina do banco (01/11/2026: o banco chegou a 1.009 MB de 1 GB) ----------
+const fx = require('./faxina-banco');
+const DIA_FX = 864e5;
+const AGORA_FX = Date.parse('2026-11-01T12:00:00Z');
+const haDias = n => new Date(AGORA_FX - n * DIA_FX).toISOString();
+igual('faxina: extrato importado há 8 dias perde os pedaços', fx.oQueApagar('extratosRecebidos', { status: 'importado', importadoEm: haDias(8) }, AGORA_FX).apagar, ['partes']);
+igual('faxina: extrato importado ontem fica', fx.oQueApagar('extratosRecebidos', { status: 'importado', importadoEm: haDias(1) }, AGORA_FX), null);
+igual('faxina: extrato ainda novo fica (o Extratudo vai ler)', fx.oQueApagar('extratosRecebidos', { status: 'novo', em: haDias(60) }, AGORA_FX), null);
+igual('faxina: extrato ignorado sem a data da importação vale a de chegada', fx.oQueApagar('extratosRecebidos', { status: 'ignorado', em: haDias(30) }, AGORA_FX).apagar, ['partes']);
+igual('faxina: FGTS terminado há 15 dias perde as telas, nunca o PDF da guia', fx.oQueApagar('pedidosFgts', { status: 'pronto', fimEm: haDias(15) }, AGORA_FX).apagar, ['telas', 'ao-vivo']);
+igual('faxina: FGTS ainda trabalhando fica', fx.oQueApagar('pedidosFgts', { status: 'trabalhando', criadoEm: haDias(40) }, AGORA_FX), null);
+igual('faxina: FGTS terminado há 3 dias fica', fx.oQueApagar('pedidosFgts', { status: 'erro', fimEm: haDias(3) }, AGORA_FX), null);
+igual('faxina: feedback feito de 31 dias perde o arquivo; o resolvendo fica', [fx.oQueApagar('feedbacks', { status: 'feito', criadoEm: haDias(31) }, AGORA_FX).apagar, fx.oQueApagar('feedbacks', { status: 'resolvendo', criadoEm: haDias(90) }, AGORA_FX)], [['partes'], null]);
+igual('faxina: o que já foi faxinado não volta; coleção fora da lista, nada', [fx.oQueApagar('extratosRecebidos', { status: 'importado', importadoEm: haDias(30), partesApagadasEm: haDias(20) }, AGORA_FX), fx.oQueApagar('entregas', { status: 'confirmada', criadoEm: haDias(90) }, AGORA_FX)], [null, null]);
+igual('faxina: data do Firestore (Timestamp) também vale', fx.quando({ toMillis: () => 5 }), 5);
+igual('faxina: o modo pelo ambiente', [fx.modoDaFaxina(''), fx.modoDaFaxina('simular'), fx.modoDaFaxina('desligada')], ['apagar', 'simular', 'desligada']);
+// a limpeza única (limpar-banco.js): os argumentos e o dia do arquivador remontado
+const lbz = require('./limpar-banco');
+igual('limpeza: sem argumento é simulação dos itens seguros', [lbz.lerArgumentos([]).apagar, lbz.lerArgumentos([]).so], [false, null]);
+igual('limpeza: --apagar, --so e os prazos', (() => { const x = lbz.lerArgumentos(['--apagar', '--so=dias,fgts-pdf', '--dias=feedbacks:0', '--dias-pdf=120']); return [x.apagar, x.so, x.dias, x.diasPdf]; })(), [true, ['dias', 'fgts-pdf'], { feedbacks: 0 }, 120]);
+igual('limpeza: item desconhecido para (não apaga o que não devia)', (() => { try { lbz.lerArgumentos(['--so=entregas']); return 'passou'; } catch (e) { return 'parou'; } })(), 'parou');
+{
+  const itensDia = [
+    ...Array.from({ length: 5 }, (_, i) => ({ id: 'j' + i, acao: 'jaArquivado', nome: 'x'.repeat(100) })),
+    { id: 'a1', acao: 'arquivou', nome: 'a' }, { id: 'a1', acao: 'arquivou', nome: 'a' },   // repetido (uma rodada que parou no meio)
+    { id: 'n1', acao: 'naoIdentificado', nome: 'n' }, { id: 'j9', acao: 'jaArquivado', nome: 'j' },
+  ];
+  const rd = lbz.remontarDia('2026-10-27', itensDia, 3);
+  igual('limpeza do dia: os já arquivados até o teto, o resto todo, sem repetir', [rd.ficam, rd.saem, rd.partes.flat().map(x => x.id)], [5, 4, ['j0', 'j1', 'j2', 'a1', 'n1']]);
+  const grande = Array.from({ length: 3000 }, (_, i) => ({ id: 'g' + i, acao: 'arquivou', nome: 'y'.repeat(200) }));
+  const rg2 = lbz.remontarDia('2026-10-27', grande, 300);
+  igual('limpeza do dia: as partes novas têm até 250 KB', [rg2.partes.length > 1, rg2.partes.every(p => p.reduce((s, x) => s + JSON.stringify(x).length, 0) <= 250 * 1024)], [true, true]);
+  igual('limpeza do dia: antes de 24/10 as partes eram de 700 KB', lbz.bytesDaParte('2026-10-22'), 700 * 1024);
+}
+const esperarFaxina = (async () => {
+  // um banco de mentira: 2 extratos (1 velho importado com 2 pedaços, 1 novo) e 1 FGTS pronto com 1 tela
+  const apagados = [], marcados = [];
+  const pedaco = (caminho, dados) => ({ data: () => dados, ref: { delete: async () => { apagados.push(caminho); } } });
+  const pai = (col, id, dados, subs) => ({ data: () => dados, ref: {
+    collection: s => ({ get: async () => ({ docs: (subs[s] || []).map((d, i) => pedaco(col + '/' + id + '/' + s + '/' + i, d)) }) }),
+    update: async (m) => { marcados.push([col + '/' + id, Object.keys(m)]); },
+  } });
+  const docs = {
+    extratosRecebidos: [pai('extratosRecebidos', 'a', { status: 'importado', importadoEm: haDias(10) }, { partes: [{ dados: 'x'.repeat(1000) }, { dados: 'y'.repeat(500) }] }), pai('extratosRecebidos', 'b', { status: 'importado', importadoEm: haDias(2) }, { partes: [{ dados: 'z' }] })],
+    pedidosFgts: [pai('pedidosFgts', 'f', { status: 'pronto', fimEm: haDias(20) }, { telas: [{ imagem: 'i'.repeat(100) }], arquivo: [{ base64: 'NAO' }] })],
+    feedbacks: [],
+  };
+  const db = { collection: c => ({ where: () => ({ get: async () => ({ docs: docs[c] || [] }) }) }) };
+  const simulado = await fx.faxinar(db, () => {}, { modo: 'simular', agora: AGORA_FX });
+  igual('faxina simulada: conta e não apaga nada', [simulado.pedacos, simulado.bytes, apagados.length, marcados.length], [3, 1600, 0, 0]);
+  const r = await fx.faxinar(db, () => {}, { modo: 'apagar', agora: AGORA_FX });
+  igual('faxina: apaga só os pedaços usados (nunca o PDF da guia) e marca o documento de cima', [r.pedacos, apagados, marcados.map(m => m[0])], [3, ['extratosRecebidos/a/partes/0', 'extratosRecebidos/a/partes/1', 'pedidosFgts/f/telas/0'], ['extratosRecebidos/a', 'pedidosFgts/f']]);
+  const comErro = await fx.faxinar({ collection: () => ({ where: () => ({ get: async () => { throw new Error('sem rede'); } }) }) }, () => {}, { agora: AGORA_FX });
+  igual('faxina: o erro vira uma linha, não derruba', comErro.erros.length, 3);
+})();
+
 // os testes que leem PDF são assíncronos: o resultado espera por eles
-esperarExtratos.then(() => {
+Promise.all([esperarExtratos, esperarSieg, esperarFaxina]).then(() => {
   console.log(falhas ? '\n' + falhas + ' de ' + total + ' testes FALHARAM' : total + ' testes, todos passaram');
   process.exit(falhas ? 1 : 0);
 });

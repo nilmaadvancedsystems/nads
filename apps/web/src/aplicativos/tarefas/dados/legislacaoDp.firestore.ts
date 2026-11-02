@@ -1,5 +1,6 @@
 // A legislação do DP cadastrada no nads, no banco do Entregas: legislacaoDp/{id} {assunto, texto, observacoes, data,
 // atualizadoEm, atualizadoPor} (a regra: lê quem é membro; o DP e o admin gravam).
+import { formatos } from '@nads/core';
 import { addDoc as addDocBruto, collection, doc, onSnapshot, setDoc as setDocBruto } from 'firebase/firestore';
 import { bancoDoEntregas } from './entregas.firestore';
 import type { LegislacaoNoBanco, RepoLegislacaoDp } from './legislacaoDp';
@@ -36,7 +37,7 @@ export function criarLegislacaoDpFirestore(quem: () => string): RepoLegislacaoDp
       return estado;
     },
     async salvar(l) {
-      const dados = { assunto: l.assunto, texto: l.texto, observacoes: l.observacoes, data: l.data || new Date().toISOString().slice(0, 10), atualizadoEm: new Date().toISOString(), atualizadoPor: quem() };
+      const dados = { assunto: l.assunto, texto: l.texto, observacoes: l.observacoes, data: l.data || formatos.diaEmBrasilia(), atualizadoEm: new Date().toISOString(), atualizadoPor: quem() };
       if (l.id) { await setDoc(doc(db, 'legislacaoDp', l.id), dados); return l.id; }
       const r = await addDoc(collection(db, 'legislacaoDp'), dados);
       return r.id;

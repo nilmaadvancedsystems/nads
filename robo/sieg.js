@@ -22,6 +22,7 @@ const PASTA_DO_DRIVE = process.env.PASTA_DESTINO || 'G:\\Meu Drive\\Claudio Secr
 const sx = require('./sieg-xmls');
 // o painel do robô (21/10/2026): o que o SIEG está fazendo agora, os XMLs baixados, as contagens e os erros
 const painel = require('./painel');
+const { ouvir } = require('./ouvinte');
 const BASE = 'https://api.sieg.com/api/v1/';
 const ESPERA_MS = { 'contar-xmls': 13000, 'baixar-xmls': 31000, 'create-jwt': 2000 };
 const TIPO = { NFe: 1, CTe: 2, NFSe: 3, NFCe: 4, CFe: 5 };
@@ -140,7 +141,10 @@ async function token(c) {
 // de 61 s (09/10/2026: as 2 contagens de um "Baixar XMLs" saem juntas, ~13 s a menos)
 const POR_MINUTO = { 'contar-xmls': 5, 'baixar-xmls': 2 };
 const chamadas = {};
-async function vez(rota) {
+// desistir (31/10/2026): a conferência com o Drive que ficou sem serventia (o portal já trouxe tudo) sai da fila do limite
+// sem gastar a vez, para não atrasar o "Contar agora" de alguém
+const DESISTIU = 'a consulta não é mais necessária';
+async function vez(rota, desistir) {
   const limite = POR_MINUTO[rota];
   if (!limite) {
     const falta = (chamadas[rota] ? chamadas[rota][chamadas[rota].length - 1] : 0) + (ESPERA_MS[rota] || 15000) - Date.now();
@@ -149,15 +153,16 @@ async function vez(rota) {
     for (;;) {
       const recentes = (chamadas[rota] || []).filter(t => Date.now() - t < 61000);
       chamadas[rota] = recentes;
+      if (desistir && desistir()) throw new Error(DESISTIU);
       if (recentes.length < limite) break;
       await dormir(recentes[0] + 61000 - Date.now() + 50);
     }
   }
   (chamadas[rota] = chamadas[rota] || []).push(Date.now());
 }
-async function chamar(c, rota, corpo) {
+async function chamar(c, rota, corpo, desistir) {
   for (let tentativa = 0; tentativa < 5; tentativa++) {
-    await vez(rota);
+    await vez(rota, desistir);
     let r;
     try { r = await http('POST', rota, { Authorization: 'Bearer ' + await token(c), 'X-API-Key': c.apiKey }, corpo); }
     // demorou demais: tenta de novo (até 3 vezes); outro erro de rede sobe
@@ -253,13 +258,13 @@ function periodo(competencia) {
 }
 
 /** As contagens do mês: emitidas (o cliente emitiu) e recebidas (o cliente é o destinatário), por tipo. */
-async function contagemDoMes(c, cnpj, competencia, aoAndar) {
+async function contagemDoMes(c, cnpj, competencia, aoAndar, desistir) {
   const p = periodo(competencia);
   const norm = r => ({ NFe: Number(r.NFe) || 0, NFCe: Number(r.NFCe) || 0, NFSe: Number(r.NFSe) || 0, CTe: Number(r.CTe) || 0, CFe: Number(r.CFe) || 0 });
   if (aoAndar) await aoAndar('emitidas');
-  const emitidas = norm(await chamar(c, 'contar-xmls', Object.assign({ CnpjEmit: cnpj }, p)));
+  const emitidas = norm(await chamar(c, 'contar-xmls', Object.assign({ CnpjEmit: cnpj }, p), desistir));
   if (aoAndar) await aoAndar('recebidas');
-  const recebidas = norm(await chamar(c, 'contar-xmls', Object.assign({ CnpjDest: cnpj }, p)));
+  const recebidas = norm(await chamar(c, 'contar-xmls', Object.assign({ CnpjDest: cnpj }, p), desistir));
   return { emitidas, recebidas };
 }
 
@@ -304,6 +309,16 @@ async function xmlsDoMes(c, doc, competencia, aoAndar) {
   return { arquivos: [...arquivos].map(([nome, xml]) => ({ nome, xml })), resumo, contagem };
 }
 
+// A pasta EVENTOS do ano junta os eventos de todos os meses, com a data do evento no nome ("29-10-2026 - CIENCIA DA OPERACAO
+// NF-e 155769.xml"; conferido em 31/10/2026: 5496 de 5496 eventos com data, de 7 clientes, têm no nome o mês do dhEvento). O
+// download de um mês só traz eventos de notas emitidas nele, e o evento não vem antes da nota: o evento com data de antes do
+// mês não está no download e não precisa ser lido (o 380 de 10/2026 lia 3918 arquivos para 572 XMLs do mês). Sem a data no
+// nome, lê como antes.
+function eventoDeAntes(nome, competencia) {
+  const m = /^(\d{2})-(\d{2})-(\d{4})\b/.exec(String(nome || ''));
+  return !!m && m[3] + '-' + m[2] < competencia;
+}
+
 /**
  * Os XMLs do mês que já estão no Drive (Vitor, 09/10/2026: "verificar se os arquivos estão na pasta 2026 e, se não
  * tiver lá, verifica no Claudio Secretario"). A rotina das 9h arquiva o que o robô salva em Claudio Secretario/AAAA-MM/
@@ -341,7 +356,7 @@ async function xmlsJaNoDrive(codigo, nomeDaPasta, competencia, db) {
             for (const it of filhos.get(pasta.i) || []) {
               if (it.t === 'd') { andar(it, [...caminho, it.n], eventos || /eventos/i.test(it.n)); continue; }
               if (!/\.xml$/i.test(it.n)) continue;
-              if (eventos || it.n.startsWith(mes + '-' + ano)) lerArquivo(path.join(base, ...caminho, it.n), it.i + '_' + String(it.m || '').replace(/\D/g, ''));
+              if (eventos ? !eventoDeAntes(it.n, competencia) : it.n.startsWith(mes + '-' + ano)) lerArquivo(path.join(base, ...caminho, it.n), it.i + '_' + String(it.m || '').replace(/\D/g, ''));
             }
           };
           andar(pastaXml, [], false);
@@ -365,8 +380,9 @@ async function xmlsJaNoDrive(codigo, nomeDaPasta, competencia, db) {
             const f = path.join(dir, it.name);
             if (it.isDirectory()) { await andar(f, eventos || /eventos/i.test(it.name)); continue; }
             if (!/\.xml$/i.test(it.name)) continue;
-            // as notas do mês pelo nome ("09-2026_…"); os eventos, todos (o do mês fica pela chave, abaixo)
-            if (eventos || it.name.startsWith(mes + '-' + ano)) lerArquivo(f);
+            // as notas do mês pelo nome ("09-2026_…"); os eventos, os do mês e de depois (eventoDeAntes; o do mês fica pela
+            // chave, abaixo)
+            if (eventos ? !eventoDeAntes(it.name, competencia) : it.name.startsWith(mes + '-' + ano)) lerArquivo(f);
           }
         };
         await andar(xml, false);
@@ -460,6 +476,186 @@ const saidasDoResumo = emitidas => emitidas.filter(n => n.tipo === 'NF-e' || n.t
 
 const competenciaDe = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
 
+// A ordem da fila (26/10/2026): primeiro a nota que alguém abriu na tela (zipFaltam), depois os pedidos das pessoas
+// (saídas, contagem, XMLs), por último os da madrugada; dentro de cada um, o mais antigo primeiro.
+// (31/10/2026: "Quero que melhore a velocidade do sieg") o "Contar agora" leva 2 s (o 443, 26/10) e um "Baixar XMLs", de 1
+// a 5 min: a contagem não espera atrás deles, vai junto com o zipFaltam, na frente. E entre as pessoas,
+// um de cada uma por vez: quem pede 10 meses de uma empresa (o 380 de 29/10: 10 pedidos, 37 min) não deixa o pedido único
+// de outra pessoa esperando o lote inteiro; os meses dele seguem na ordem, intercalados.
+const urgenciaDoPedido = p => (p.tipo === 'zipFaltam' || p.tipo === 'contagem' ? 0 : p.madrugada || p.criadoPorUid === 'robo' ? 2 : 1);
+const quemPediu = p => String(p.criadoPorUid || p.criadoPor || '');
+/**
+ * Os candidatos ({ p: o pedido, u: a urgência }) na ordem em que o robô atende: em cada urgência, uma rodada com o pedido
+ * mais antigo de cada pessoa, depois a segunda… e, na rodada, primeiro quem foi atendido há mais tempo. ultimaVez: a vez
+ * (um número que só cresce) em que o robô atendeu cada pessoa (quemPediu) — sem isso, o 2º mês do lote voltava à frente
+ * do pedido de outra pessoa assim que o 1º saía da fila.
+ */
+function ordemDaFila(candidatos, ultimaVez) {
+  const porData = (a, b) => String(a.p.criadoEm || '').localeCompare(String(b.p.criadoEm || ''));
+  const lista = candidatos.slice().sort((a, b) => a.u - b.u || porData(a, b));
+  const rodadas = new Map();
+  const rodada = new Map();
+  for (const x of lista) { const k = x.u + '|' + quemPediu(x.p); const n = rodadas.get(k) || 0; rodada.set(x, n); rodadas.set(k, n + 1); }
+  const atendido = x => (ultimaVez && ultimaVez.get(quemPediu(x.p))) || 0;
+  return lista.sort((a, b) => a.u - b.u || rodada.get(a) - rodada.get(b) || atendido(a) - atendido(b) || porData(a, b));
+}
+
+// Dois pedidos ao mesmo tempo (31/10/2026: "Pode fazer"). Testado de verdade com a sessão do robô, só lendo: o 380 e o 309 de
+// 10/2026 pelo portal (os 5 tipos de nota de cada um, 10 downloads juntos na mesma sessão) levaram 6,5 a 8 s juntos contra 12 a
+// 16 s um depois do outro, com os mesmos 747 + 223 XMLs e nenhum erro; 3 meses juntos também passaram (11 s). SIEG_PARALELO
+// muda (1 = um por vez, como antes). A API não passa do limite dela com 2: o vez() (acima) é um só para os dois.
+const PARALELO = Math.max(1, Math.min(4, Math.trunc(Number(process.env.SIEG_PARALELO)) || 2));
+// Sem esperar a leitura do Drive (31/10/2026, o "incremental a partir da madrugada"): medido com o 380 de 10/2026, o portal traz
+// o mês inteiro (747 XMLs) em 5,6 a 7,8 s e a leitura do que já está no Drive leva 4,8 s com o cache do C: e 35 s sem ele (o
+// que a rotina das 9h acabou de arquivar tem id novo no Drive e não está no cache; o Claudio Secretario é lido sempre do G:).
+// O pedido esperava a mais lenta das duas. Quando o último resumo do mês (siegNotas) está todo no que o portal trouxe, o Drive
+// não tem nota que falte: o .zip e as notas saem só do portal e a leitura do Drive termina por trás (o que ela achar a mais
+// ainda entra no resumo e no .zip do Drive). Baixar só o que entrou depois (o portal filtra pela data de entrada no SIEG,
+// periodType 2) não compensa: cai de ~6,6 s para ~3,4 s, mas o evento posterior de uma nota antiga não vem (o portal junta os
+// eventos à data de entrada da nota: 516 de 516 no 380, set-out/2026) e o resto do mês teria de sair do Drive, que é o lento.
+// SIEG_ESPERAR_DRIVE=1 volta a esperar sempre.
+const ESPERAR_O_DRIVE = process.env.SIEG_ESPERAR_DRIVE === '1';
+/** A empresa e o mês do pedido: dois pedidos com a mesma chave nunca rodam juntos (a mesma pasta do Drive, as mesmas notas). */
+const chaveDaPasta = p => soDigitos(p && p.codigo) + '|' + String((p && p.competencia) || '');
+
+/**
+ * Os trabalhadores da fila: até `paralelo` pedidos ao mesmo tempo. escolher(ocupadas, pegos) devolve o próximo pedido
+ * ({ id, chave, ... }) que não está em atendimento (pegos: os ids; ocupadas: as chaves empresa|mês), ou null; um escolhe por
+ * vez (dois nunca pegam o mesmo pedido). atender(x, n) atende um (n: o número do trabalhador, 1 a paralelo). acordar()
+ * põe os trabalhadores para andar e devolve uma promessa que se cumpre quando todos param (a fila não tem mais o que dar).
+ * O pedido que chega enquanto um trabalhador está saindo não fica esquecido: quem achou a fila vazia olha de novo se alguém
+ * acordou a fila nesse meio tempo (a geração).
+ */
+function criarTrabalhadores({ paralelo, escolher, atender, preparar, aoFicarLivre, log }) {
+  const ocupadas = new Set();
+  const pegos = new Set();
+  const emUso = new Set();
+  let geracao = 0;
+  let vez = Promise.resolve();
+  let preparo = null;
+  let esperando = [];
+  const pegar = () => {
+    const v = vez.then(() => escolher(ocupadas, pegos)).then(x => { if (x) { ocupadas.add(x.chave); pegos.add(x.id); } return x; });
+    vez = v.catch(() => null);
+    return v;
+  };
+  async function trabalhador(n) {
+    try {
+      if (preparo) await preparo.catch(err => log && log('SIEG: preparar a fila -', err.message));
+      for (let voltas = 0; voltas < 1000; voltas++) {
+        const g = geracao;
+        const x = await pegar();
+        if (!x) { if (g !== geracao) continue; break; }
+        try { await atender(x, n); }
+        catch (err) { if (log) log('SIEG: o pedido', x.id, 'parou -', err.message); }
+        finally { ocupadas.delete(x.chave); pegos.delete(x.id); }
+      }
+    } catch (err) { if (log) log('SIEG: não consegui ler os pedidos -', err.message); }
+    finally {
+      emUso.delete(n);
+      if (!emUso.size) {
+        preparo = null;
+        const e = esperando;
+        esperando = [];
+        try { if (aoFicarLivre) aoFicarLivre(); } catch (_) { /* segue */ }
+        e.forEach(r => r());
+      }
+    }
+  }
+  function acordar() {
+    geracao++;
+    const livre = new Promise(r => esperando.push(r));
+    if (!emUso.size && preparar) preparo = Promise.resolve().then(preparar);
+    for (let n = 1; n <= paralelo; n++) if (!emUso.has(n)) { emUso.add(n); trabalhador(n); }
+    return livre;
+  }
+  return { acordar, ativos: () => emUso.size, ocupadas, pegos };
+}
+
+/**
+ * O download mais o que está no Drive e o SIEG não trouxe (ex.: NFC-e que o SIEG não captura em MG, 09/10/2026): o resumo do
+ * mês no nads fica com tudo o que o escritório tem. Devolve { baixado, extras } (extras: quantos entraram).
+ */
+function juntarOsDoDrive(cnpj, baixado, xmlsDoDrive) {
+  const tem = new Set(baixado.arquivos.map(a => a.nome));
+  const extras = xmlsDoDrive.filter(x => !tem.has(sx.nomeDoArquivo(x)));
+  if (!extras.length) return { baixado, extras: 0 };
+  const junto = require('./sieg-portal').montarXmls(cnpj, [...baixado.arquivos.map(a => a.xml), ...extras]);
+  return { baixado: Object.assign({}, baixado, { arquivos: junto.arquivos, resumo: junto.resumo, doDrive: (baixado.doDrive || 0) + extras.length }), extras: extras.length };
+}
+
+// a NFS-e não tem chave: vale o tipo, o número, o prestador e a data
+const idDaNota = n => n.chave || [n.tipo, n.numero, soDigitos(n.emitente && n.emitente.doc), n.data].join('|');
+/**
+ * O que o último download do mês tinha (siegNotas: as notas do resumo) está todo no que o portal trouxe agora? Então não há
+ * nota que só o Drive tenha (a NFC-e que o SIEG não captura em MG, os XMLs que o cliente mandou: essas entraram no resumo
+ * da vez passada) e o pedido não precisa esperar a leitura do Drive para entregar o .zip e as notas.
+ */
+function cobreOUltimo(ultimo, resumo) {
+  if (!ultimo || !Array.isArray(ultimo.emitidas) || !Array.isArray(ultimo.recebidas)) return false;
+  const tem = new Set([...resumo.emitidas, ...resumo.recebidas].map(idDaNota));
+  return [...ultimo.emitidas, ...ultimo.recebidas].every(n => tem.has(idDaNota(n)));
+}
+
+// ---------- a madrugada não repete o mês que não mudou (31/10/2026) ----------
+// A madrugada pedia de novo, toda noite, o mês anterior de quem não fechava "as notas do nads = a contagem do SIEG", tipo
+// por tipo. Dois casos nunca fecham: (1) o SIEG conta uma nota que a API não entrega (a NFS-e recebida "1" de uns 36
+// clientes fora do portal, 404 no portal e 0 XMLs na API: 137, 145, 152, 313, 348…; noites de 29, 30 e 31/10, ~1 a 2 min
+// cada) e (2) o Drive tem notas que o SIEG não tem (a NFC-e de MG: o 54 com 668 no nads e 0 no SIEG). E depois do dia 10 a
+// contagem do mês anterior não é refeita à noite: a siegContagens desse mês é a que o próprio download gravou, então a
+// comparação dava sempre o mesmo "não fecha". Agora o resumo guarda a contagem do SIEG de antes do download (contagemSieg)
+// e a madrugada conta o mês de novo (2 contagens, que custam bem menos que um download): se o SIEG conta hoje o mesmo que
+// contava antes do último download, não há nota nova e o mês não é baixado de novo. Nota nova de verdade muda a contagem.
+const TIPOS_DA_CONTAGEM = ['NFe', 'NFCe', 'CTe', 'NFSe', 'CFe'];
+/** Só os números da contagem ({ emitidas, recebidas }, os 5 tipos), ou null. */
+function soAContagem(x) {
+  if (!x || !x.emitidas || !x.recebidas) return null;
+  const g = o => Object.fromEntries(TIPOS_DA_CONTAGEM.map(k => [k, Number(o[k]) || 0]));
+  return { emitidas: g(x.emitidas), recebidas: g(x.recebidas) };
+}
+/** As duas contagens são iguais em todos os tipos, emitidas e recebidas. */
+function mesmaContagem(a, b) {
+  const x = soAContagem(a);
+  const y = soAContagem(b);
+  return !!x && !!y && ['emitidas', 'recebidas'].every(g => TIPOS_DA_CONTAGEM.every(k => x[g][k] === y[g][k]));
+}
+/**
+ * As notas do nads (siegNotas) já têm, tipo por tipo, o que a contagem do SIEG diz (a regra de antes de 31/10/2026).
+ */
+const CHAVE_DO_TIPO = { 'NF-e': 'NFe', 'NFC-e': 'NFCe', 'CT-e': 'CTe', 'NFS-e': 'NFSe', 'CF-e': 'CFe' };
+/** Por tipo de nota: [quantas o nads tem, quantas a contagem diz] (emitidas e recebidas juntas). */
+function porTipo(cont, notas) {
+  const tem = {};
+  for (const n of [...((notas && notas.emitidas) || []), ...((notas && notas.recebidas) || [])]) tem[n.tipo] = (tem[n.tipo] || 0) + 1;
+  return Object.keys(CHAVE_DO_TIPO).map(t => [tem[t] || 0, ((cont.emitidas || {})[CHAVE_DO_TIPO[t]] || 0) + ((cont.recebidas || {})[CHAVE_DO_TIPO[t]] || 0)]);
+}
+function completoNoNads(cont, notas) {
+  if (!cont || !notas || !Array.isArray(notas.emitidas)) return false;
+  return porTipo(cont, notas).every(([tem, conta]) => tem === conta);
+}
+/**
+ * A contagem do SIEG de antes do último download do mês: a que o resumo guardou (contagemSieg) ou, nos resumos de antes de
+ * 31/10/2026, a siegContagens que o próprio download gravou junto com o resumo (a mesma hora, com 2 min de folga). null quando
+ * não se sabe (aí a madrugada baixa, como antes).
+ */
+function contagemDoUltimoDownload(notas, cont) {
+  if (!notas) return null;
+  if (soAContagem(notas.contagemSieg)) return soAContagem(notas.contagemSieg);
+  const t = Date.parse(notas.em || '');
+  const u = Date.parse((cont && cont.em) || '');
+  return Number.isFinite(t) && Number.isFinite(u) && Math.abs(t - u) <= 120000 ? soAContagem(cont) : null;
+}
+/**
+ * O mês não mudou no SIEG desde o último download: a contagem de agora é a de antes dele (agora null, não deu para contar:
+ * mudou). E o que falta no nads tem a cara da nota que a API não entrega: o tipo veio com 0 (a NFS-e "1" que vem vazia). O
+ * tipo que veio pela metade (120 contadas, 100 baixadas) pode ser um download que parou no meio sem erro: esse segue sendo
+ * pedido toda noite, como antes.
+ */
+function semMudancaNoSieg(notas, cont, agora) {
+  const antes = contagemDoUltimoDownload(notas, cont);
+  return !!agora && mesmaContagem(agora, antes) && porTipo(antes, notas).every(([tem, conta]) => tem >= conta || tem === 0);
+}
+
 function iniciarSieg({ db, log }) {
   const estadoRef = db.collection('robo').doc('sieg');
   const { c, faltam } = lerCredenciais();
@@ -469,9 +665,14 @@ function iniciarSieg({ db, log }) {
     estadoRef.set({ em: new Date().toISOString(), ligado: false, motivo: 'falta ' + faltam.join(', ') }, { merge: true }).catch(() => {});
     return () => {};
   }
-  let situacao = 'livre';
-  painel.fazendoPor('sieg', () => (situacao === 'livre' ? null : 'SIEG: ' + situacao));
-  const ponto = () => estadoRef.set({ em: new Date().toISOString(), ligado: true, motivo: null, situacao }, { merge: true }).catch(() => {});
+  // o que cada trabalhador da fila está fazendo (31/10/2026: dois pedidos ao mesmo tempo) e a contagem da madrugada
+  const fazendo = new Map();
+  let daNoite = '';
+  const situacaoAgora = () => [...fazendo.values(), daNoite].filter(Boolean).join(' · ') || 'livre';
+  // quantos pedidos esperam na fila (a tela mostra enquanto a pessoa espera; 26/10/2026)
+  let naFila = 0;
+  painel.fazendoPor('sieg', () => (situacaoAgora() !== 'livre' ? 'SIEG: ' + situacaoAgora() : gravandoNoDrive ? 'SIEG: salvando XMLs no Drive por trás' : null));
+  const ponto = () => estadoRef.set({ em: new Date().toISOString(), ligado: true, motivo: null, situacao: situacaoAgora(), naFila, paralelo: PARALELO }, { merge: true }).catch(() => {});
   ponto();
   const relogio = setInterval(ponto, 60 * 1000);
 
@@ -502,12 +703,45 @@ function iniciarSieg({ db, log }) {
     log('SIEG: retomando o pedido', d.id, 'que ficou pela metade');
     d.ref.update({ status: 'pendente', andamento: '' }).catch(() => {});
   })).catch(() => {});
+  // e no meio do Drive por trás (31/10/2026: com a fila do Drive, um lote pode deixar uns minutos de XMLs para gravar): o
+  // "Baixar XMLs" dos últimos 2 dias que não terminou de gravar volta para a fila (o portal baixa de novo em segundos e só
+  // grava o que falta). O dos XMLs do cliente não volta (os pedaços que ele mandou já foram apagados): fica o aviso.
+  db.collection('pedidosSieg').where('drive.pronto', '==', false).limit(100).get().then(s => {
+    const desde = new Date(Date.now() - 2 * 864e5).toISOString();
+    for (const d of s.docs) {
+      const p = d.data();
+      if (String(p.concluidoEm || '') < desde) continue;
+      if (p.tipo === 'xmls') {
+        log('SIEG: o pedido', d.id, 'de', p.codigo, p.competencia, 'não terminou de gravar no Drive: volta para a fila');
+        d.ref.update({ status: 'pendente', andamento: '', drive: null }).catch(() => {});
+      } else {
+        log('SIEG: o pedido', d.id, 'de', p.codigo, p.competencia, 'não terminou de gravar no Drive (' + (p.drive && p.drive.feitos) + ' de ' + (p.drive && p.drive.total) + ')');
+        d.ref.update({ 'drive.pronto': true, 'drive.erro': 'o robô reiniciou antes de terminar de gravar no Drive' }).catch(() => {});
+      }
+    }
+  }).catch(err => log('SIEG: não consegui conferir o Drive por trás dos pedidos -', err.message));
 
-  // uma coisa por vez (o limite é por API Key): os pedidos do nads passam na frente da contagem da noite
-  let ocupado = false;
-  // o pedido que chega enquanto o robô atende outro não pode ficar esquecido (08/10/2026: o 380 do Gustavo ficou parado
-  // porque chegou durante o 62): ao terminar, olha a fila de novo
+  // a contagem da madrugada não roda junto com os pedidos (o limite é por API Key): os pedidos do nads passam na frente
+  // dela. O pedido que chega no meio da contagem fica marcado (chegouOutro) e a contagem para para atendê-lo.
+  let contando = false;
   let chegouOutro = false;
+  // o Drive por trás (31/10/2026: "Quero que melhore a velocidade do sieg"): a pessoa já ficava livre quando o .zip e as
+  // notas estavam no nads (09/10/2026), mas a FILA esperava o Drive gravar os XMLs novos para pegar o pedido seguinte. O G:
+  // grava uns 3 a 4 XMLs por segundo (29/10, o 380 de 10/2025: 614 XMLs em 2 min 50 s), e o lote de 10 meses do 380
+  // passou ~20 dos 37 minutos esperando o Drive. Agora o Drive grava numa fila só dele, um pedido de cada vez (para não
+  // disputar o G:), e o robô já pega o próximo pedido; só um pedido da MESMA pasta (empresa e mês) espera a gravação dela
+  // terminar antes de ler o que já está lá.
+  let filaDoDrive = Promise.resolve();
+  let gravandoNoDrive = 0;
+  const driveDaPasta = new Map();
+  const esperarODrive = pasta => driveDaPasta.get(pasta) || Promise.resolve();
+  function gravarNoDrivePorTras(pasta, gravar) {
+    gravandoNoDrive++;
+    const vez = filaDoDrive.then(gravar).catch(err => log('SIEG: Drive por trás -', err.message)).finally(() => { gravandoNoDrive--; });
+    filaDoDrive = vez;
+    driveDaPasta.set(pasta, vez);
+    vez.then(() => { if (driveDaPasta.get(pasta) === vez) driveDaPasta.delete(pasta); });
+  }
   // sem o Google Drive deste PC aberto (26/10/2026: 59 erros "a pasta do Drive deste PC não está em…" às 3h35; o Drive só
   // abriu às 13h06): o pedido de XMLs não dá erro, fica na fila e é atendido quando a pasta aparecer (o relógio de 10 em
   // 10 minutos tenta de novo); e os que já deram esse erro nos últimos 3 dias voltam para a fila sozinhos quando o Drive
@@ -528,269 +762,374 @@ function iniciarSieg({ db, log }) {
       painel.atividade('sieg', 'O Drive deste PC abriu: ' + voltam.length + ' pedidos de XMLs voltaram para a fila', 'eles tinham dado erro porque o Google Drive estava fechado');
     }
   }
-  async function atenderPedidos() {
-    if (ocupado) { chegouOutro = true; return; }
-    ocupado = true;
-    chegouOutro = false;
-    try {
+  // A ordem da fila: ordemDaFila (acima). Os repetidos (o mesmo tipo, empresa e mês: a madrugada de 3 noites devolvida de
+  // uma vez quando o Drive abriu) vão juntos: fica o mais novo, que é o que a tela acompanha, com a prioridade do mais
+  // urgente deles; os outros fecham como concluídos ("juntadoCom"). Os de XMLs ficam esperando se o Drive deste PC não
+  // estiver aberto (sem mexer neles).
+  const JUNTAVEIS = new Set(['saidas', 'contagem', 'xmls']);
+  const urgencia = urgenciaDoPedido;
+  // a vez em que o robô atendeu cada pessoa (ordemDaFila)
+  const ultimaVez = new Map();
+  let vezes = 0;
+  // ocupadas: as empresas e meses que um trabalhador já atende (o pedido da mesma espera); pegos: os pedidos em atendimento
+  // (a leitura da fila pode ainda vê-los "pendente" antes de o "processando" chegar ao banco)
+  async function proximoPedido(ocupadas, pegos) {
+    const s = await db.collection('pedidosSieg').where('status', '==', 'pendente').limit(500).get();
+    const semDrive = !driveAberto();
+    const vale = s.docs.filter(d => !pegos.has(d.id) && !(semDrive && (d.data().tipo === 'xmls' || d.data().tipo === 'xmlsCliente')));
+    // (31/10/2026) só quando é o Drive que segura: com dois trabalhadores, o pedido que o outro já pegou (pegos) também fica de
+    // fora e o aviso "esperando o Google Drive" saía com o Drive aberto (visto no ensaio)
+    if (semDrive && s.docs.some(d => d.data().tipo === 'xmls' || d.data().tipo === 'xmlsCliente') && Date.now() - avisouSemDrive > 60 * 60 * 1000) {
+      avisouSemDrive = Date.now();
+      log('SIEG: pedidos de XMLs esperando o Google Drive deste PC abrir (' + PASTA_DO_DRIVE + ')');
+      painel.atividade('sieg', 'Pedidos de XMLs esperando o Google Drive deste PC abrir', 'a pasta ' + PASTA_DO_DRIVE + ' não está aberta; o robô baixa assim que ela aparecer', { aviso: true });
+    }
+    const grupos = new Map();
+    const candidatos = [];
+    for (const d of vale) {
+      const p = d.data();
+      const tipo = p.tipo || 'saidas';
+      if (!JUNTAVEIS.has(tipo)) { candidatos.push({ d, p, u: urgencia(p) }); continue; }
+      const k = tipo + '|' + soDigitos(p.codigo) + '|' + p.competencia;
+      if (!grupos.has(k)) grupos.set(k, []);
+      grupos.get(k).push(d);
+    }
+    let juntados = 0;
+    for (const g of grupos.values()) {
+      g.sort((a, b) => String(b.data().criadoEm || '').localeCompare(String(a.data().criadoEm || '')));
+      const fica = g[0];
+      for (const d of g.slice(1)) {
+        await d.ref.update({ status: 'concluido', concluidoEm: new Date().toISOString(), andamento: '', juntadoCom: fica.id }).catch(() => {});
+        juntados++;
+      }
+      candidatos.push({ d: fica, p: fica.data(), u: Math.min(...g.map(x => urgencia(x.data()))) });
+    }
+    if (juntados) log('SIEG: ' + juntados + ' pedidos repetidos (mesmo tipo, empresa e mês) foram juntos com o mais novo');
+    const fila = ordemDaFila(candidatos, ultimaVez);
+    const vez = fila.find(x => !ocupadas.has(chaveDaPasta(x.p)));
+    naFila = Math.max(0, fila.length - (vez ? 1 : 0));
+    ponto();
+    if (!vez) return null;
+    ultimaVez.set(quemPediu(vez.p), ++vezes);
+    return { d: vez.d, id: vez.d.id, chave: chaveDaPasta(vez.p) };
+  }
+
+  // a fila é relida antes de cada pedido (26/10/2026: "ta bugado ou demora muito para puxar a nota": a nota de uma tela
+  // esperava atrás de 176 pedidos de XMLs da madrugada): cada trabalhador escolhe o mais urgente que está livre
+  const trabalhadores = criarTrabalhadores({
+    paralelo: PARALELO,
+    escolher: proximoPedido,
+    atender: async (x, n) => {
+      try { await atenderUm(x.d, t => { if (t) fazendo.set(n, t); else fazendo.delete(n); }); }
+      finally { fazendo.delete(n); ponto(); }
+    },
+    preparar: async () => {
       await apagarZipsVelhos().catch(err => log('SIEG: não consegui apagar os .zip velhos -', err.message));
       await devolverOsQueEsperavamODrive().catch(err => log('SIEG: não consegui devolver os pedidos que esperavam o Drive -', err.message));
-      // 25 de uma vez (eram 5): os de XMLs que esperam o Drive ficam na fila e não podem tapar os outros
-      const snap = await db.collection('pedidosSieg').where('status', '==', 'pendente').limit(25).get();
-      for (const d of snap.docs) {
-        const p = d.data();
-        const id = soDigitos(p.codigo) + '_' + p.competencia;
-        if ((p.tipo === 'xmls' || p.tipo === 'xmlsCliente') && !driveAberto()) {
-          // fica pendente, sem mexer no pedido (mexer acordaria a fila de novo, sem parar)
-          if (Date.now() - avisouSemDrive > 60 * 60 * 1000) {
-            avisouSemDrive = Date.now();
-            log('SIEG: pedidos de XMLs esperando o Google Drive deste PC abrir (' + PASTA_DO_DRIVE + ')');
-            painel.atividade('sieg', 'Pedidos de XMLs esperando o Google Drive deste PC abrir', 'a pasta ' + PASTA_DO_DRIVE + ' não está aberta; o robô baixa assim que ela aparecer', { aviso: true });
-          }
-          continue;
-        }
-        situacao = 'baixando as saídas de ' + p.codigo;
-        await d.ref.update({ status: 'processando', processandoEm: new Date().toISOString() });
-        try {
-          // o nads conhece a empresa pelo código: o CNPJ vem do cadastro de clientes
-          let cnpj = normalizarDocumento(p.cnpj);
-          if (!cnpj) {
-            const lista = [];
-            (await require('./clientes-cache').clientesAtivos(db)).forEach(x => lista.push(x.data()));
-            const cli = lista.find(x => codigoDe(x) === soDigitos(p.codigo));
-            cnpj = normalizarDocumento(cli && cli.documento, cli && cli.enquadramento);
-            if (!cnpj) throw new Error(SEM_DOC(soDigitos(p.codigo)));
-          }
-          // "Baixar XMLs do SIEG" (07/10/2026): todos os XMLs do mês na pasta do cliente (Drive deste PC) e o resumo no banco
-          // e os XMLs que o cliente mandou (xmlsCliente, 08/10/2026): o nads manda os arquivos em pedaços
-          // (pedidosSieg/{id}/xmls); o robô junta com os do Drive e segue o mesmo caminho, sem o SIEG e sem o .zip para baixar
-          if (p.tipo === 'xmls' || p.tipo === 'xmlsCliente') {
-            const doCliente = p.tipo === 'xmlsCliente';
-            situacao = (doCliente ? 'lendo os XMLs do cliente ' : 'baixando os XMLs de ') + p.codigo;
-            const lista = [];
-            (await require('./clientes-cache').clientesAtivos(db)).forEach(x => lista.push(x.data()));
-            const cli = lista.find(x => codigoDe(x) === soDigitos(p.codigo));
-            if (!cli) throw new Error('o cliente ' + p.codigo + ' não está no cadastro');
-            if (!fs.existsSync(PASTA_DO_DRIVE)) throw new Error('a pasta do Drive deste PC não está em ' + PASTA_DO_DRIVE);
-            // o andamento de verdade (08/10/2026: "quero uma porcentagem melhor… pra espera não ficar estranha"): cada fase
-            // tem a sua faixa da barra (baixar 0–70%, o .zip 70–80, o nads 80–84, o Drive 84–99) e o pedido guarda a
-            // porcentagem, a fase e os números (gravado no máximo a cada 0,8 s, para não encher o banco)
-            const FAIXA = { baixando: [0, 70], entregando: [70, 80], nads: [80, 84], drive: [84, 99] };
-            const numeros = { xmls: 0, novos: 0, jaSalvos: 0 };
-            let ultimo = 0;
-            let pct = 1;
-            const andar = (fase, texto, fracao, forcar) => {
-              if (fracao != null) pct = Math.max(pct, Math.round(FAIXA[fase][0] + (FAIXA[fase][1] - FAIXA[fase][0]) * fracao));
-              if (!forcar && Date.now() - ultimo < 800) return Promise.resolve();
-              ultimo = Date.now();
-              return d.ref.update({ andamento: texto, fase, pct, numeros }).catch(() => {});
-            };
-            await andar('baixando', 'Entrando no SIEG', 0, true);
-            // o que a contagem espera de cada tipo (pesa a barra do download)
-            const cont = (await db.collection('siegContagens').doc(id).get().catch(() => null))?.data();
-            const soma = k => ((cont && cont.emitidas && cont.emitidas[k]) || 0) + ((cont && cont.recebidas && cont.recebidas[k]) || 0);
-            const esperado = cont ? { 'NF-e': soma('NFe'), 'NFC-e': soma('NFCe'), 'CT-e': soma('CTe'), 'NFS-e': soma('NFSe'), 'CF-e': soma('CFe') } : null;
-            const nomeDaPasta = (cli.nome || 'cliente ' + p.codigo).replace(/[\\/:*?"<>|]/g, '_').trim().slice(0, 80);
-            const nomeDoZip = 'SIEG ' + p.competencia + ' - ' + nomeDaPasta + '.zip';
-            const pasta = path.join(PASTA_DO_DRIVE, p.competencia, nomeDaPasta);
-            // já baixou antes? (08/10/2026: "caso tenham baixado esses XMLs, para acelerar, verifica se tem todos no Drive,
-            // aí puxa de lá, baixando apenas os excedentes"): conta agora no SIEG (2 consultas rápidas) e compara, tipo por
-            // tipo, com as notas do último download; o tipo que não mudou sai do .zip que está na pasta, sem baixar
-            // a conferência roda JUNTO com os downloads (08/10/2026: "tá demorando em média 3 minutos, queria que demorasse
-            // 1"): quando ela diz que um tipo não mudou, o download dele é cancelado e ele sai do .zip do Drive
-            // o que já está no Drive (a pasta 2026 do cliente, depois o Claudio Secretario; 09/10/2026), lido uma vez só
-            const noDrive = xmlsJaNoDrive(soDigitos(p.codigo), nomeDaPasta, p.competencia, db).catch(() => ({ xmls: [], nomes: new Set() }));
-            const reaproveitar = !doCliente ? (async () => {
-              const [agora, ja] = await Promise.all([contagemDoMes(c, cnpj, p.competencia), noDrive]);
-              if (!ja.xmls.length) return null;
-              // as notas de cada tipo que estão no Drive x as que o SIEG tem agora: o tipo completo sai do Drive
-              const montado = require('./sieg-portal').montarXmls(cnpj, ja.xmls).resumo;
-              const antes = {};
-              for (const n of [...montado.emitidas, ...montado.recebidas]) antes[n.tipo] = (antes[n.tipo] || 0) + 1;
-              const CHAVE = { 'NF-e': 'NFe', 'NFC-e': 'NFCe', 'CT-e': 'CTe', 'NFS-e': 'NFSe', 'CF-e': 'CFe' };
-              const tipos = Object.keys(CHAVE).filter(t => (agora.emitidas[CHAVE[t]] || 0) + (agora.recebidas[CHAVE[t]] || 0) === (antes[t] || 0));
-              log('SIEG: XMLs de', p.codigo, '- não mudaram desde o último download:', tipos.join(', ') || 'nenhum');
-              return { tipos, xmls: ja.xmls };
-            })().catch(err => { log('SIEG: não deu para usar o Drive (' + err.message + '), baixando tudo'); return null; }) : null;
-            // pelo portal primeiro (08/10/2026: "tem clientes com 1000 xml de uma vez, quero que ele vá no site e baixe"):
-            // os tipos de nota ao mesmo tempo, em segundos; sem a sessão do portal ou com erro, pela API (mais lenta)
-            let baixado;
-            if (doCliente) {
-              const sp = require('./sieg-portal');
-              await andar('baixando', 'Lendo os XMLs que o cliente mandou', 0.1, true);
-              const pedacos = await d.ref.collection('xmls').get();
-              // sem arquivos (partes 0): "puxar os XMLs do cliente direto da pasta do Drive" (09/10/2026) — os do mês na
-              // pasta do ano do cliente e no Claudio Secretario
-              if (!p.partes) await andar('baixando', 'Lendo os XMLs da pasta do cliente no Drive', 0.2, true);
-              const mandados = !p.partes ? (await noDrive).xmls
-                : JSON.parse(pedacos.docs.sort((a, b) => a.data().n - b.data().n).map(x => x.data().dados).join('') || '[]');
-              const deles = sp.soDoCliente(cnpj, mandados);
-              // os do Drive (o último .zip da pasta) entram junto: o resumo do mês fica com tudo
-              const velhos = (await noDrive).xmls;
-              baixado = sp.montarXmls(cnpj, [...velhos, ...deles]);
-              baixado.doDrive = velhos.length;
-              numeros.doCliente = deles.length;
-              numeros.deOutros = mandados.length - deles.length;
-              await andar('baixando', deles.length + ' XMLs do cliente' + (numeros.deOutros ? ' (' + numeros.deOutros + ' de outra empresa ficaram de fora)' : ''), 1, true);
-              await Promise.all(pedacos.docs.map(x => x.ref.delete().catch(() => {})));
-              log('SIEG: XMLs do cliente', p.codigo, p.competencia, '-', deles.length, 'dele,', numeros.deOutros, 'de outra empresa');
-            } else try {
-              baixado = await require('./sieg-portal').xmlsPeloPortal(cnpj, p.competencia, (t, f) => andar('baixando', t, f), lerZip, null, esperado, reaproveitar);
-              log('SIEG: XMLs de', p.codigo, 'pelo portal' + (baixado.tiposDoDrive.length ? ' (do Drive: ' + baixado.tiposDoDrive.join(', ') + ')' : ''));
-            } catch (err) {
-              log('SIEG: portal não deu (' + err.message + '), XMLs de', p.codigo, 'pela API');
-              await andar('baixando', 'O portal não deu (' + err.message + '): baixando pela API', null, true);
-              baixado = await xmlsDoMes(c, cnpj, p.competencia, t => andar('baixando', t, null));
-            }
-            // o que está no Drive e o SIEG não trouxe (ex.: NFC-e que o SIEG não captura em MG, 09/10/2026) entra junto: o
-            // resumo do mês no nads fica com tudo o que o escritório tem
-            if (!doCliente) {
-              const ja = await noDrive;
-              const tem = new Set(baixado.arquivos.map(a => a.nome));
-              const extras = ja.xmls.filter(x => !tem.has(sx.nomeDoArquivo(x)));
-              if (extras.length) {
-                const junto = require('./sieg-portal').montarXmls(cnpj, [...baixado.arquivos.map(a => a.xml), ...extras]);
-                baixado = Object.assign({}, baixado, { arquivos: junto.arquivos, resumo: junto.resumo, doDrive: (baixado.doDrive || 0) + extras.length });
-                log('SIEG: XMLs de', p.codigo, '-', extras.length, 'que estavam só no Drive entraram no resumo');
-              }
-            }
-            const { arquivos, resumo, contagem } = baixado;
-            numeros.xmls = arquivos.length;
-            numeros.doDrive = baixado.doDrive || 0;
-            const zip = arquivos.length ? sx.zipDe(arquivos) : null;
-            // a ordem (Vitor, 08/10/2026: "seja entregue para a pessoa o zip dos XML, depois que ele introduza esses XML
-            // no sistema (nads), depois que ele salve no drive"): 1) o .zip para quem pediu, que o nads baixa na hora
-            if (zip && !doCliente && !p.madrugada) {
-              await andar('entregando', 'Entregando o .zip (' + arquivos.length + ' XMLs)', 0, true);
-              const partes = await entregarZip(d.ref.id, id, zip, (i, n) => andar('entregando', 'Entregando o .zip (parte ' + i + ' de ' + n + ')', i / n));
-              await d.ref.update({ zip: { nome: nomeDoZip, partes, bytes: zip.length }, zipApagarEm: new Date(Date.now() + ZIP_GUARDADO_MS).toISOString() });
-            }
-            // 2) as notas no nads (o resumo e a contagem)
-            await andar('nads', 'Lendo as notas no nads', 0, true);
-            if (!doCliente) await db.collection('siegContagens').doc(id).set({ codigo: soDigitos(p.codigo), cnpj, competencia: p.competencia, em: new Date().toISOString(), ...contagem });
-            const onde = 'Claudio Secretario/' + p.competencia + '/' + nomeDaPasta;
-            await db.collection('siegNotas').doc(id).set(resumoQueCabe({
-              codigo: soDigitos(p.codigo), competencia: p.competencia, em: new Date().toISOString(), pasta: onde, zip: zip ? nomeDoZip : '', arquivos: arquivos.length, novos: arquivos.length,
-              emitidas: resumo.emitidas, recebidas: resumo.recebidas, resumo: sx.VERSAO_DO_RESUMO,
-            }));
-            // e a sequência das saídas (a Conferência de Saídas lê daqui, sem outro pedido)
-            await db.collection('siegSaidas').doc(id).set({ codigo: soDigitos(p.codigo), cnpj, competencia: p.competencia, em: new Date().toISOString(), series: seriesDasNotas(saidasDoResumo(resumo.emitidas)) });
-            // 3) a pasta do cliente no Drive: só os XMLs que ainda não estão lá (08/10/2026: "se já foi salvo uma vez, só
-            // sobreponha os a mais e não salve no drive o que já foi salvo"). O nome do arquivo é a chave da nota: o mesmo
-            // nome é a mesma nota. O .zip só é refeito quando entrou XML novo (ou quando ainda não existe)
-            const jaTem = new Set([...(await noDrive).nomes, ...(await fs.promises.readdir(pasta).catch(() => []))]);
-            const faltam = arquivos.filter(a => !jaTem.has(a.nome));
-            numeros.jaSalvos = arquivos.length - faltam.length;
-            // a pessoa já está livre (09/10/2026: "sim" — liberar quando o .zip e as notas estão no nads): o pedido fica
-            // concluído agora e o Drive termina por trás, contando em drive { total, feitos, pronto }
-            await d.ref.update({
-              status: 'concluido', concluidoEm: new Date().toISOString(), andamento: '', pct: 100, fase: 'pronto', numeros,
-              drive: { total: faltam.length, feitos: 0, pronto: !faltam.length },
-              // nada novo: não grava no Claudio Secretario (já estava tudo arquivado ou lá)
-              resultado: { arquivos: arquivos.length, novos: 0, jaSalvos: numeros.jaSalvos, pasta: faltam.length ? onde : 'o Drive do cliente (já estava tudo lá)', zip: faltam.length ? nomeDoZip : '', emitidas: resumo.emitidas.length, recebidas: resumo.recebidas.length },
-            });
-            // em paralelo (48 por vez; 16 levavam 34 s para 1292 XMLs): o andamento do Drive no máximo a cada 1 s
-            let novos = 0;
-            if (faltam.length) {
-              let ultimoDrive = 0;
-              const contar = forcar => {
-                if (!forcar && Date.now() - ultimoDrive < 1000) return Promise.resolve();
-                ultimoDrive = Date.now();
-                return d.ref.update({ 'drive.feitos': novos }).catch(() => {});
-              };
-              try {
-                await fs.promises.mkdir(pasta, { recursive: true });
-                const fila = faltam.slice();
-                await Promise.all(Array.from({ length: 48 }, async () => {
-                  for (let a = fila.shift(); a; a = fila.shift()) {
-                    await fs.promises.writeFile(path.join(pasta, a.nome), a.xml);
-                    novos++;
-                    contar(false);
-                  }
-                }));
-                // e o .zip com todos, na mesma pasta (07/10/2026: "quero que ele também salve um arquivo .zip na hora")
-                if (zip && novos) await fs.promises.writeFile(path.join(pasta, nomeDoZip), zip);
-                await d.ref.update({ drive: { total: faltam.length, feitos: novos, pronto: true, em: new Date().toISOString() }, 'numeros.novos': novos, 'resultado.novos': novos }).catch(() => {});
-              } catch (err) {
-                // o Drive falhou depois de a pessoa já ter o .zip e as notas: fica o aviso no pedido (o próximo pedido salva o que faltou)
-                await d.ref.update({ drive: { total: faltam.length, feitos: novos, pronto: true, erro: err.message } }).catch(() => {});
-                log('SIEG: Drive de', p.codigo, '- parou em', novos, 'de', faltam.length, '-', err.message);
-              }
-            }
-            await db.collection('siegNotas').doc(id).update({ novos }).catch(() => {});
-            log('SIEG: XMLs de', p.codigo, p.competencia, '-', arquivos.length, 'arquivos (' + novos + ' novos) em', onde);
-            painel.atividade('sieg', (doCliente ? 'Juntou os XMLs que o cliente mandou de ' : 'Baixou os XMLs do SIEG de ') + p.codigo + ' (' + p.competencia.slice(5) + '/' + p.competencia.slice(0, 4) + ')',
-              arquivos.length + ' arquivo(s), ' + novos + ' novo(s) no Drive' + (p.madrugada ? ' · madrugada' : p.criadoPor ? ' · pedido de ' + p.criadoPor : ''));
-            continue;
-          }
-          // o .zip das notas que faltam no Alterdata (08/10/2026: "3"): só essas chaves, pelo portal (ou do .zip do Drive), e
-          // entregue como o do "Baixar XMLs" (o nads baixa na hora)
-          if (p.tipo === 'zipFaltam') {
-            situacao = 'montando o .zip das que faltam de ' + p.codigo;
-            const chaves = (Array.isArray(p.chaves) ? p.chaves : []).map(String).filter(ch => /^\d{44}$/.test(ch));
-            if (!chaves.length) throw new Error('nenhuma chave de nota no pedido');
-            await d.ref.update({ andamento: 'Pegando ' + chaves.length + ' notas no SIEG', pct: 20, fase: 'baixando' });
-            const quero = new Set(chaves);
-            const daChave = x => ((/Id="(?:NFe|CTe)(\d{44})"/.exec(x)) || [])[1] || '';
-            let xmls = [];
-            try { xmls = await require('./sieg-portal').xmlsPorChaves(cnpj, chaves, lerZip); }
-            catch (err) { log('SIEG: portal não deu nas chaves (' + err.message + '), tentando o .zip do Drive'); }
-            if (xmls.filter(x => quero.has(daChave(x))).length < chaves.length) {
-              // o que faltou, do .zip do Drive (se a pasta do mês ainda está lá)
-              const nota = (await db.collection('siegNotas').doc(id).get()).data();
-              const nomeDaPasta = nota && nota.pasta ? nota.pasta.split('/').pop() : '';
-              if (nomeDaPasta) xmls.push(...(await xmlsJaNoDrive(soDigitos(p.codigo), nomeDaPasta, p.competencia, db)).xmls);
-            }
-            const arquivos = [...new Map(xmls.filter(x => quero.has(daChave(x))).map(x => [sx.nomeDoArquivo(x), x]))].map(([nome, xml]) => ({ nome, xml }));
-            if (!arquivos.length) throw new Error('o SIEG não devolveu nenhuma dessas notas');
-            await d.ref.update({ andamento: 'Entregando o .zip (' + arquivos.length + ' notas)', pct: 80, fase: 'entregando' });
-            const zip = sx.zipDe(arquivos);
-            const nomeDoZip = 'Faltam no Alterdata ' + p.competencia + ' - ' + p.codigo + '.zip';
-            const partes = await entregarZip(d.ref.id, id + '_faltam', zip);
-            await d.ref.update({
-              status: 'concluido', concluidoEm: new Date().toISOString(), andamento: '', pct: 100, fase: 'pronto',
-              zip: { nome: nomeDoZip, partes, bytes: zip.length }, zipApagarEm: new Date(Date.now() + ZIP_GUARDADO_MS).toISOString(),
-              resultado: { arquivos: arquivos.length, novos: 0, pasta: '', emitidas: 0, recebidas: 0, zip: nomeDoZip, faltaram: chaves.length - arquivos.length },
-            });
-            log('SIEG: .zip das que faltam no Alterdata de', p.codigo, '-', arquivos.length, 'de', chaves.length, 'notas');
-            painel.atividade('sieg', 'Montou o .zip das notas que faltam no Alterdata de ' + p.codigo, arquivos.length + ' de ' + chaves.length + ' notas');
-            continue;
-          }
-          // o "Contar agora" do nads (07/10/2026): só a contagem desta empresa e mês, sem esperar a madrugada
-          if (p.tipo === 'contagem') {
-            situacao = 'contando ' + p.codigo + ' (pedido)';
-            await d.ref.update({ andamento: 'emitidas' });
-            const r = await contagemDoMes(c, cnpj, p.competencia, t => d.ref.update({ andamento: t }).catch(() => {}));
-            await db.collection('siegContagens').doc(id).set({ codigo: soDigitos(p.codigo), cnpj, competencia: p.competencia, em: new Date().toISOString(), ...r });
-            await d.ref.update({ status: 'concluido', concluidoEm: new Date().toISOString() });
-            log('SIEG: contagem de', p.codigo, p.competencia, 'pedida pelo nads');
-            painel.atividade('sieg', 'Contou as notas de ' + p.codigo + ' no SIEG (' + p.competencia.slice(5) + '/' + p.competencia.slice(0, 4) + ')', p.criadoPor ? 'pedido de ' + p.criadoPor : '');
-            continue;
-          }
-          // pelo portal primeiro (só NF-e e NFC-e: segundos), sem a sessão ou com erro pela API (50 por chamada)
-          const andarSaidas = t => d.ref.update({ andamento: t }).catch(() => {});
-          let series;
-          try {
-            const r = await require('./sieg-portal').xmlsPeloPortal(cnpj, p.competencia, andarSaidas, lerZip, ['NF-e', 'NFC-e']);
-            series = seriesDasNotas(saidasDoResumo(r.resumo.emitidas));
-          } catch (err) {
-            log('SIEG: portal não deu (' + err.message + '), saídas de', p.codigo, 'pela API');
-            series = await saidasDoMes(c, cnpj, p.competencia, andarSaidas);
-          }
-          await db.collection('siegSaidas').doc(id).set({ codigo: String(p.codigo), cnpj, competencia: p.competencia, em: new Date().toISOString(), series });
-          await d.ref.update({ status: 'concluido', concluidoEm: new Date().toISOString() });
-          log('SIEG: saídas de', p.codigo, p.competencia, '-', series.reduce((s, x) => s + x.numeros.length, 0), 'notas');
-          painel.atividade('sieg', 'Baixou as saídas de ' + p.codigo + ' (' + p.competencia.slice(5) + '/' + p.competencia.slice(0, 4) + ')', series.reduce((s, x) => s + x.numeros.length, 0) + ' notas');
-        } catch (err) {
-          await d.ref.update({ status: 'erro', erro: err.message, erroEm: new Date().toISOString() });
-          log('SIEG: erro', p.tipo === 'contagem' ? 'na contagem de' : p.tipo === 'xmls' ? 'nos XMLs de' : 'nas saídas de', p.codigo, '-', err.message);
-          painel.erro('sieg', 'O SIEG deu erro ' + (p.tipo === 'contagem' ? 'na contagem de ' : p.tipo === 'xmls' ? 'nos XMLs de ' : 'nas saídas de ') + p.codigo, err.message);
-        }
-      }
-    } catch (err) { log('SIEG: não consegui ler os pedidos -', err.message); }
-    finally { situacao = 'livre'; ocupado = false; if (chegouOutro) setTimeout(atenderPedidos, 0); }
+    },
+    aoFicarLivre: () => { naFila = 0; ponto(); },
+    log,
+  });
+  /** Põe a fila para andar; a promessa se cumpre quando a fila esvazia. No meio da contagem da madrugada, só marca. */
+  function atenderPedidos() {
+    if (contando) { chegouOutro = true; return Promise.resolve(); }
+    return trabalhadores.acordar();
   }
-  const pararPedidos = db.collection('pedidosSieg').where('status', '==', 'pendente').onSnapshot(s => { if (!s.empty) atenderPedidos(); }, err => log('SIEG: pedidos -', err.message));
+
+  /** Um pedido, do começo ao fim (o status no banco: processando → concluido ou erro). ponha(texto): o que está fazendo. */
+  async function atenderUm(d, ponha) {
+    const p = d.data();
+    const id = soDigitos(p.codigo) + '_' + p.competencia;
+    ponha('baixando as saídas de ' + p.codigo);
+    await d.ref.update({ status: 'processando', processandoEm: new Date().toISOString() });
+    try {
+      // o nads conhece a empresa pelo código: o CNPJ vem do cadastro de clientes
+      let cnpj = normalizarDocumento(p.cnpj);
+      if (!cnpj) {
+        const lista = [];
+        (await require('./clientes-cache').clientesAtivos(db)).forEach(x => lista.push(x.data()));
+        const cli = lista.find(x => codigoDe(x) === soDigitos(p.codigo));
+        cnpj = normalizarDocumento(cli && cli.documento, cli && cli.enquadramento);
+        if (!cnpj) throw new Error(SEM_DOC(soDigitos(p.codigo)));
+      }
+      // "Baixar XMLs do SIEG" (07/10/2026): todos os XMLs do mês na pasta do cliente (Drive deste PC) e o resumo no banco
+      // e os XMLs que o cliente mandou (xmlsCliente, 08/10/2026): o nads manda os arquivos em pedaços
+      // (pedidosSieg/{id}/xmls); o robô junta com os do Drive e segue o mesmo caminho, sem o SIEG e sem o .zip para baixar
+      if (p.tipo === 'xmls' || p.tipo === 'xmlsCliente') {
+        const doCliente = p.tipo === 'xmlsCliente';
+        ponha((doCliente ? 'lendo os XMLs do cliente ' : 'baixando os XMLs de ') + p.codigo);
+        const lista = [];
+        (await require('./clientes-cache').clientesAtivos(db)).forEach(x => lista.push(x.data()));
+        const cli = lista.find(x => codigoDe(x) === soDigitos(p.codigo));
+        if (!cli) throw new Error('o cliente ' + p.codigo + ' não está no cadastro');
+        if (!fs.existsSync(PASTA_DO_DRIVE)) throw new Error('a pasta do Drive deste PC não está em ' + PASTA_DO_DRIVE);
+        // o andamento de verdade (08/10/2026: "quero uma porcentagem melhor… pra espera não ficar estranha"): cada fase
+        // tem a sua faixa da barra (baixar 0–70%, o .zip 70–80, o nads 80–84, o Drive 84–99) e o pedido guarda a
+        // porcentagem, a fase e os números (gravado no máximo a cada 0,8 s, para não encher o banco)
+        const FAIXA = { baixando: [0, 70], entregando: [70, 80], nads: [80, 84], drive: [84, 99] };
+        const numeros = { xmls: 0, novos: 0, jaSalvos: 0 };
+        let ultimo = 0;
+        let pct = 1;
+        const andar = (fase, texto, fracao, forcar) => {
+          if (fracao != null) pct = Math.max(pct, Math.round(FAIXA[fase][0] + (FAIXA[fase][1] - FAIXA[fase][0]) * fracao));
+          if (!forcar && Date.now() - ultimo < 800) return Promise.resolve();
+          ultimo = Date.now();
+          return d.ref.update({ andamento: texto, fase, pct, numeros }).catch(() => {});
+        };
+        await andar('baixando', 'Entrando no SIEG', 0, true);
+        // o que a contagem espera de cada tipo (pesa a barra do download)
+        const cont = (await db.collection('siegContagens').doc(id).get().catch(() => null))?.data();
+        const soma = k => ((cont && cont.emitidas && cont.emitidas[k]) || 0) + ((cont && cont.recebidas && cont.recebidas[k]) || 0);
+        const esperado = cont ? { 'NF-e': soma('NFe'), 'NFC-e': soma('NFCe'), 'CT-e': soma('CTe'), 'NFS-e': soma('NFSe'), 'CF-e': soma('CFe') } : null;
+        const nomeDaPasta = (cli.nome || 'cliente ' + p.codigo).replace(/[\\/:*?"<>|]/g, '_').trim().slice(0, 80);
+        const nomeDoZip = 'SIEG ' + p.competencia + ' - ' + nomeDaPasta + '.zip';
+        const pasta = path.join(PASTA_DO_DRIVE, p.competencia, nomeDaPasta);
+        // a gravação por trás desta mesma pasta (o pedido anterior da empresa e mês) termina antes de ler o Drive
+        await esperarODrive(pasta);
+        // já baixou antes? (08/10/2026: "caso tenham baixado esses XMLs, para acelerar, verifica se tem todos no Drive,
+        // aí puxa de lá, baixando apenas os excedentes"): conta agora no SIEG (2 consultas rápidas) e compara, tipo por
+        // tipo, com as notas do último download; o tipo que não mudou sai do .zip que está na pasta, sem baixar
+        // a conferência roda JUNTO com os downloads (08/10/2026: "tá demorando em média 3 minutos, queria que demorasse
+        // 1"): quando ela diz que um tipo não mudou, o download dele é cancelado e ele sai do .zip do Drive
+        // o que já está no Drive (a pasta 2026 do cliente, depois o Claudio Secretario; 09/10/2026), lido uma vez só
+        const noDrive = xmlsJaNoDrive(soDigitos(p.codigo), nomeDaPasta, p.competencia, db).catch(() => ({ xmls: [], nomes: new Set() }));
+        // e o resumo do último download do mês (para saber se dá para não esperar o Drive: ESPERAR_O_DRIVE, acima)
+        const ultimoResumo = !doCliente ? db.collection('siegNotas').doc(id).get().then(s => (s.exists ? s.data() : null)).catch(() => null) : null;
+        let peloPortal = false;
+        // (31/10/2026) com o portal de novo em segundos, a contagem desta conferência às vezes ainda espera a vez no limite
+        // do SIEG (5 por minuto) quando o download já acabou, ou quando o download foi para a API (que não usa a
+        // conferência e conta sozinha): aí ela desiste, sem gastar a vez de um "Contar agora"
+        let semServentia = false;
+        const reaproveitar = !doCliente ? (async () => {
+          const [agora, ja] = await Promise.all([contagemDoMes(c, cnpj, p.competencia, null, () => semServentia), noDrive]);
+          if (!ja.xmls.length) return null;
+          // as notas de cada tipo que estão no Drive x as que o SIEG tem agora: o tipo completo sai do Drive
+          const montado = require('./sieg-portal').montarXmls(cnpj, ja.xmls).resumo;
+          const antes = {};
+          for (const n of [...montado.emitidas, ...montado.recebidas]) antes[n.tipo] = (antes[n.tipo] || 0) + 1;
+          const CHAVE = { 'NF-e': 'NFe', 'NFC-e': 'NFCe', 'CT-e': 'CTe', 'NFS-e': 'NFSe', 'CF-e': 'CFe' };
+          const tipos = Object.keys(CHAVE).filter(t => (agora.emitidas[CHAVE[t]] || 0) + (agora.recebidas[CHAVE[t]] || 0) === (antes[t] || 0));
+          log('SIEG: XMLs de', p.codigo, '- não mudaram desde o último download:', tipos.join(', ') || 'nenhum');
+          return { tipos, xmls: ja.xmls };
+        })().catch(err => { if (err.message !== DESISTIU) log('SIEG: não deu para usar o Drive (' + err.message + '), baixando tudo'); return null; }) : null;
+        // pelo portal primeiro (08/10/2026: "tem clientes com 1000 xml de uma vez, quero que ele vá no site e baixe"):
+        // os tipos de nota ao mesmo tempo, em segundos; sem a sessão do portal ou com erro, pela API (mais lenta)
+        let baixado;
+        if (doCliente) {
+          const sp = require('./sieg-portal');
+          await andar('baixando', 'Lendo os XMLs que o cliente mandou', 0.1, true);
+          const pedacos = await d.ref.collection('xmls').get();
+          // sem arquivos (partes 0): "puxar os XMLs do cliente direto da pasta do Drive" (09/10/2026) — os do mês na
+          // pasta do ano do cliente e no Claudio Secretario
+          if (!p.partes) await andar('baixando', 'Lendo os XMLs da pasta do cliente no Drive', 0.2, true);
+          const mandados = !p.partes ? (await noDrive).xmls
+            : JSON.parse(pedacos.docs.sort((a, b) => a.data().n - b.data().n).map(x => x.data().dados).join('') || '[]');
+          const deles = sp.soDoCliente(cnpj, mandados);
+          // os do Drive (o último .zip da pasta) entram junto: o resumo do mês fica com tudo
+          const velhos = (await noDrive).xmls;
+          baixado = sp.montarXmls(cnpj, [...velhos, ...deles]);
+          baixado.doDrive = velhos.length;
+          numeros.doCliente = deles.length;
+          numeros.deOutros = mandados.length - deles.length;
+          await andar('baixando', deles.length + ' XMLs do cliente' + (numeros.deOutros ? ' (' + numeros.deOutros + ' de outra empresa ficaram de fora)' : ''), 1, true);
+          await Promise.all(pedacos.docs.map(x => x.ref.delete().catch(() => {})));
+          log('SIEG: XMLs do cliente', p.codigo, p.competencia, '-', deles.length, 'dele,', numeros.deOutros, 'de outra empresa');
+        } else try {
+          baixado = await require('./sieg-portal').xmlsPeloPortal(cnpj, p.competencia, (t, f) => andar('baixando', t, f), lerZip, null, esperado, reaproveitar);
+          semServentia = true;
+          peloPortal = true;
+          log('SIEG: XMLs de', p.codigo, 'pelo portal' + (baixado.tiposDoDrive.length ? ' (do Drive: ' + baixado.tiposDoDrive.join(', ') + ')' : ''));
+        } catch (err) {
+          semServentia = true;
+          log('SIEG: portal não deu (' + err.message + '), XMLs de', p.codigo, 'pela API');
+          await andar('baixando', 'O portal não deu (' + err.message + '): baixando pela API', null, true);
+          baixado = await xmlsDoMes(c, cnpj, p.competencia, t => andar('baixando', t, null));
+        }
+        // o que está no Drive e o SIEG não trouxe entra junto (juntarOsDoDrive); quando o portal trouxe tudo o que o último
+        // download tinha, isso fica para depois, por trás (ESPERAR_O_DRIVE, acima)
+        const semEsperarODrive = !doCliente && !ESPERAR_O_DRIVE && peloPortal && !baixado.tiposDoDrive.length && cobreOUltimo(await ultimoResumo, baixado.resumo);
+        if (!doCliente && !semEsperarODrive) {
+          const j = juntarOsDoDrive(cnpj, baixado, (await noDrive).xmls);
+          baixado = j.baixado;
+          if (j.extras) log('SIEG: XMLs de', p.codigo, '-', j.extras, 'que estavam só no Drive entraram no resumo');
+        }
+        if (semEsperarODrive) log('SIEG: XMLs de', p.codigo, p.competencia, '- o portal trouxe tudo o que o último download tinha: sem esperar a leitura do Drive');
+        let { arquivos, resumo } = baixado;
+        const { contagem } = baixado;
+        numeros.xmls = arquivos.length;
+        numeros.doDrive = baixado.doDrive || 0;
+        const zip = arquivos.length ? sx.zipDe(arquivos) : null;
+        // a ordem (Vitor, 08/10/2026: "seja entregue para a pessoa o zip dos XML, depois que ele introduza esses XML
+        // no sistema (nads), depois que ele salve no drive"): 1) o .zip para quem pediu, que o nads baixa na hora
+        if (zip && !doCliente && !p.madrugada) {
+          await andar('entregando', 'Entregando o .zip (' + arquivos.length + ' XMLs)', 0, true);
+          const partes = await entregarZip(d.ref.id, id, zip, (i, n) => andar('entregando', 'Entregando o .zip (parte ' + i + ' de ' + n + ')', i / n));
+          await d.ref.update({ zip: { nome: nomeDoZip, partes, bytes: zip.length }, zipApagarEm: new Date(Date.now() + ZIP_GUARDADO_MS).toISOString() });
+        }
+        // 2) as notas no nads (o resumo e a contagem)
+        await andar('nads', 'Lendo as notas no nads', 0, true);
+        if (!doCliente) await db.collection('siegContagens').doc(id).set({ codigo: soDigitos(p.codigo), cnpj, competencia: p.competencia, em: new Date().toISOString(), ...contagem });
+        const onde = 'Claudio Secretario/' + p.competencia + '/' + nomeDaPasta;
+        // a contagem do SIEG de antes do download (a madrugada compara com ela: semMudancaNoSieg). Só vale a de antes: uma
+        // contagem feita depois de começar a baixar poderia contar uma nota que o download não pegou. A API conta logo
+        // antes de baixar; no portal vale a da madrugada que criou o pedido, ou a que estava gravada quando o pedido começou
+        const contagemSieg = soAContagem(peloPortal || doCliente ? (p.contagemSieg || cont) : contagem);
+        await db.collection('siegNotas').doc(id).set(resumoQueCabe({
+          codigo: soDigitos(p.codigo), competencia: p.competencia, em: new Date().toISOString(), pasta: onde, zip: zip ? nomeDoZip : '', arquivos: arquivos.length, novos: arquivos.length,
+          emitidas: resumo.emitidas, recebidas: resumo.recebidas, resumo: sx.VERSAO_DO_RESUMO, ...(contagemSieg ? { contagemSieg } : {}),
+        }));
+        // e a sequência das saídas (a Conferência de Saídas lê daqui, sem outro pedido)
+        await db.collection('siegSaidas').doc(id).set({ codigo: soDigitos(p.codigo), cnpj, competencia: p.competencia, em: new Date().toISOString(), series: seriesDasNotas(saidasDoResumo(resumo.emitidas)) });
+        // 3) a pasta do cliente no Drive: só os XMLs que ainda não estão lá (08/10/2026: "se já foi salvo uma vez, só
+        // sobreponha os a mais e não salve no drive o que já foi salvo"). O nome do arquivo é a chave da nota: o mesmo
+        // nome é a mesma nota. O .zip só é refeito quando entrou XML novo (ou quando ainda não existe)
+        const faltamNoDrive = async lista => {
+          const jaTem = new Set([...(await noDrive).nomes, ...(await fs.promises.readdir(pasta).catch(() => []))]);
+          return lista.filter(a => !jaTem.has(a.nome));
+        };
+        // sem esperar o Drive, ainda não se sabe quantos faltam: o total vai com todos e é acertado por trás; até lá o pedido
+        // fica com drive.conferindo (31/10/2026: a tela mostrava "Salvando no Drive por trás (0 de 747)" e depois "de 175")
+        let faltam = semEsperarODrive ? null : await faltamNoDrive(arquivos);
+        numeros.jaSalvos = faltam ? arquivos.length - faltam.length : 0;
+        const comoFica = f => ({ pasta: !f || f.length ? onde : 'o Drive do cliente (já estava tudo lá)', zip: !f || f.length ? nomeDoZip : '' });
+        // a pessoa já está livre (09/10/2026: "sim" — liberar quando o .zip e as notas estão no nads): o pedido fica
+        // concluído agora e o Drive termina por trás, contando em drive { total, feitos, pronto }
+        await d.ref.update({
+          status: 'concluido', concluidoEm: new Date().toISOString(), andamento: '', pct: 100, fase: 'pronto', numeros,
+          drive: { total: faltam ? faltam.length : arquivos.length, feitos: 0, pronto: !!faltam && !faltam.length, ...(faltam ? {} : { conferindo: true }) },
+          // nada novo: não grava no Claudio Secretario (já estava tudo arquivado ou lá)
+          resultado: { arquivos: arquivos.length, novos: 0, jaSalvos: numeros.jaSalvos, ...comoFica(faltam), emitidas: resumo.emitidas.length, recebidas: resumo.recebidas.length },
+        });
+        // 3b) o Drive por trás, na fila do Drive (acima), e o robô segue para o próximo pedido
+        let zipDoDrive = zip;
+        gravarNoDrivePorTras(pasta, async () => {
+          // sem ter esperado o Drive: a leitura dele termina aqui; o que ele tem a mais entra no resumo e no .zip da pasta
+          if (!faltam) {
+            const j = juntarOsDoDrive(cnpj, { arquivos, resumo }, (await noDrive).xmls);
+            if (j.extras) {
+              ({ arquivos, resumo } = j.baixado);
+              zipDoDrive = sx.zipDe(arquivos);
+              log('SIEG: XMLs de', p.codigo, '-', j.extras, 'que estavam só no Drive entraram no resumo (depois de entregar o .zip)');
+              await db.collection('siegNotas').doc(id).set(resumoQueCabe({
+                codigo: soDigitos(p.codigo), competencia: p.competencia, em: new Date().toISOString(), pasta: onde, zip: nomeDoZip, arquivos: arquivos.length, novos: arquivos.length,
+                emitidas: resumo.emitidas, recebidas: resumo.recebidas, resumo: sx.VERSAO_DO_RESUMO, ...(contagemSieg ? { contagemSieg } : {}),
+              })).catch(err => log('SIEG: não consegui juntar ao resumo de', p.codigo, 'o que só o Drive tinha -', err.message));
+              await db.collection('siegSaidas').doc(id).set({ codigo: soDigitos(p.codigo), cnpj, competencia: p.competencia, em: new Date().toISOString(), series: seriesDasNotas(saidasDoResumo(resumo.emitidas)) }).catch(() => {});
+            }
+            faltam = await faltamNoDrive(arquivos);
+            numeros.jaSalvos = arquivos.length - faltam.length;
+            const fica = comoFica(faltam);
+            await d.ref.update({ 'drive.total': faltam.length, 'drive.pronto': !faltam.length, 'drive.conferindo': false, 'numeros.jaSalvos': numeros.jaSalvos, 'numeros.xmls': arquivos.length,
+              'resultado.jaSalvos': numeros.jaSalvos, 'resultado.arquivos': arquivos.length, 'resultado.pasta': fica.pasta, 'resultado.zip': fica.zip }).catch(() => {});
+          }
+          // em paralelo (48 por vez; 16 levavam 34 s para 1292 XMLs): o andamento do Drive no máximo a cada 1 s
+          let novos = 0;
+          if (faltam.length) {
+            let ultimoDrive = 0;
+            const contar = forcar => {
+              if (!forcar && Date.now() - ultimoDrive < 1000) return Promise.resolve();
+              ultimoDrive = Date.now();
+              return d.ref.update({ 'drive.feitos': novos }).catch(() => {});
+            };
+            try {
+              await fs.promises.mkdir(pasta, { recursive: true });
+              const fila = faltam.slice();
+              await Promise.all(Array.from({ length: 48 }, async () => {
+                for (let a = fila.shift(); a; a = fila.shift()) {
+                  await fs.promises.writeFile(path.join(pasta, a.nome), a.xml);
+                  novos++;
+                  contar(false);
+                }
+              }));
+              // e o .zip com todos, na mesma pasta (07/10/2026: "quero que ele também salve um arquivo .zip na hora")
+              if (zipDoDrive && novos) await fs.promises.writeFile(path.join(pasta, nomeDoZip), zipDoDrive);
+              await d.ref.update({ drive: { total: faltam.length, feitos: novos, pronto: true, em: new Date().toISOString() }, 'numeros.novos': novos, 'resultado.novos': novos }).catch(() => {});
+            } catch (err) {
+              // o Drive falhou depois de a pessoa já ter o .zip e as notas: fica o aviso no pedido (o próximo pedido salva o que faltou)
+              await d.ref.update({ drive: { total: faltam.length, feitos: novos, pronto: true, erro: err.message } }).catch(() => {});
+              log('SIEG: Drive de', p.codigo, '- parou em', novos, 'de', faltam.length, '-', err.message);
+            }
+          }
+          await db.collection('siegNotas').doc(id).update({ novos }).catch(() => {});
+          log('SIEG: XMLs de', p.codigo, p.competencia, '-', arquivos.length, 'arquivos (' + novos + ' novos) em', onde);
+          painel.atividade('sieg', (doCliente ? 'Juntou os XMLs que o cliente mandou de ' : 'Baixou os XMLs do SIEG de ') + p.codigo + ' (' + p.competencia.slice(5) + '/' + p.competencia.slice(0, 4) + ')',
+            arquivos.length + ' arquivo(s), ' + novos + ' novo(s) no Drive' + (p.madrugada ? ' · madrugada' : p.criadoPor ? ' · pedido de ' + p.criadoPor : ''));
+        });
+        return;
+      }
+      // o .zip das notas que faltam no Alterdata (08/10/2026: "3"): só essas chaves, pelo portal (ou do .zip do Drive), e
+      // entregue como o do "Baixar XMLs" (o nads baixa na hora)
+      if (p.tipo === 'zipFaltam') {
+        ponha('montando o .zip das que faltam de ' + p.codigo);
+        const chaves = (Array.isArray(p.chaves) ? p.chaves : []).map(String).filter(ch => /^\d{44}$/.test(ch));
+        if (!chaves.length) throw new Error('nenhuma chave de nota no pedido');
+        await d.ref.update({ andamento: 'Pegando ' + chaves.length + ' notas no SIEG', pct: 20, fase: 'baixando' });
+        const quero = new Set(chaves);
+        const daChave = x => ((/Id="(?:NFe|CTe)(\d{44})"/.exec(x)) || [])[1] || '';
+        let xmls = [];
+        try { xmls = await require('./sieg-portal').xmlsPorChaves(cnpj, chaves, lerZip); }
+        catch (err) { log('SIEG: portal não deu nas chaves (' + err.message + '), tentando o .zip do Drive'); }
+        if (xmls.filter(x => quero.has(daChave(x))).length < chaves.length) {
+          // o que faltou, do .zip do Drive (se a pasta do mês ainda está lá)
+          const nota = (await db.collection('siegNotas').doc(id).get()).data();
+          const nomeDaPasta = nota && nota.pasta ? nota.pasta.split('/').pop() : '';
+          if (nomeDaPasta) {
+            await esperarODrive(path.join(PASTA_DO_DRIVE, p.competencia, nomeDaPasta));
+            xmls.push(...(await xmlsJaNoDrive(soDigitos(p.codigo), nomeDaPasta, p.competencia, db)).xmls);
+          }
+        }
+        const arquivos = [...new Map(xmls.filter(x => quero.has(daChave(x))).map(x => [sx.nomeDoArquivo(x), x]))].map(([nome, xml]) => ({ nome, xml }));
+        if (!arquivos.length) throw new Error('o SIEG não devolveu nenhuma dessas notas');
+        await d.ref.update({ andamento: 'Entregando o .zip (' + arquivos.length + ' notas)', pct: 80, fase: 'entregando' });
+        const zip = sx.zipDe(arquivos);
+        const nomeDoZip = 'Faltam no Alterdata ' + p.competencia + ' - ' + p.codigo + '.zip';
+        const partes = await entregarZip(d.ref.id, id + '_faltam', zip);
+        await d.ref.update({
+          status: 'concluido', concluidoEm: new Date().toISOString(), andamento: '', pct: 100, fase: 'pronto',
+          zip: { nome: nomeDoZip, partes, bytes: zip.length }, zipApagarEm: new Date(Date.now() + ZIP_GUARDADO_MS).toISOString(),
+          resultado: { arquivos: arquivos.length, novos: 0, pasta: '', emitidas: 0, recebidas: 0, zip: nomeDoZip, faltaram: chaves.length - arquivos.length },
+        });
+        log('SIEG: .zip das que faltam no Alterdata de', p.codigo, '-', arquivos.length, 'de', chaves.length, 'notas');
+        painel.atividade('sieg', 'Montou o .zip das notas que faltam no Alterdata de ' + p.codigo, arquivos.length + ' de ' + chaves.length + ' notas');
+        return;
+      }
+      // o "Contar agora" do nads (07/10/2026): só a contagem desta empresa e mês, sem esperar a madrugada
+      if (p.tipo === 'contagem') {
+        ponha('contando ' + p.codigo + ' (pedido)');
+        await d.ref.update({ andamento: 'emitidas' });
+        const r = await contagemDoMes(c, cnpj, p.competencia, t => d.ref.update({ andamento: t }).catch(() => {}));
+        await db.collection('siegContagens').doc(id).set({ codigo: soDigitos(p.codigo), cnpj, competencia: p.competencia, em: new Date().toISOString(), ...r });
+        await d.ref.update({ status: 'concluido', concluidoEm: new Date().toISOString() });
+        log('SIEG: contagem de', p.codigo, p.competencia, 'pedida pelo nads');
+        painel.atividade('sieg', 'Contou as notas de ' + p.codigo + ' no SIEG (' + p.competencia.slice(5) + '/' + p.competencia.slice(0, 4) + ')', p.criadoPor ? 'pedido de ' + p.criadoPor : '');
+        return;
+      }
+      // pelo portal primeiro (só NF-e e NFC-e: segundos), sem a sessão ou com erro pela API (50 por chamada)
+      const andarSaidas = t => d.ref.update({ andamento: t }).catch(() => {});
+      let series;
+      try {
+        const r = await require('./sieg-portal').xmlsPeloPortal(cnpj, p.competencia, andarSaidas, lerZip, ['NF-e', 'NFC-e']);
+        series = seriesDasNotas(saidasDoResumo(r.resumo.emitidas));
+      } catch (err) {
+        log('SIEG: portal não deu (' + err.message + '), saídas de', p.codigo, 'pela API');
+        series = await saidasDoMes(c, cnpj, p.competencia, andarSaidas);
+      }
+      await db.collection('siegSaidas').doc(id).set({ codigo: String(p.codigo), cnpj, competencia: p.competencia, em: new Date().toISOString(), series });
+      await d.ref.update({ status: 'concluido', concluidoEm: new Date().toISOString() });
+      log('SIEG: saídas de', p.codigo, p.competencia, '-', series.reduce((s, x) => s + x.numeros.length, 0), 'notas');
+      painel.atividade('sieg', 'Baixou as saídas de ' + p.codigo + ' (' + p.competencia.slice(5) + '/' + p.competencia.slice(0, 4) + ')', series.reduce((s, x) => s + x.numeros.length, 0) + ' notas');
+    } catch (err) {
+      await d.ref.update({ status: 'erro', erro: err.message, erroEm: new Date().toISOString() });
+      log('SIEG: erro', p.tipo === 'contagem' ? 'na contagem de' : p.tipo === 'xmls' ? 'nos XMLs de' : 'nas saídas de', p.codigo, '-', err.message);
+      painel.erro('sieg', 'O SIEG deu erro ' + (p.tipo === 'contagem' ? 'na contagem de ' : p.tipo === 'xmls' ? 'nos XMLs de ' : 'nas saídas de ') + p.codigo, err.message);
+    }
+  }
+  // o ouvinte que volta sozinho (31/10/2026): em 30/10 às 9:59 a rede caiu, o onSnapshot morreu ("Exceeded maximum number
+  // of retries allowed") e ninguém religou; até o robô reiniciar, às 13:05, os pedidos só eram vistos no relógio de 10 em
+  // 10 minutos (o 309 do Gustavo, às 10:36, esperou 7 min 32 s para começar). Agora ele volta (ouvinte.js) e, de reserva,
+  // a fila é olhada a cada 2 minutos.
+  const pararPedidos = ouvir('SIEG: pedidos', () => db.collection('pedidosSieg').where('status', '==', 'pendente'), s => { if (!s.empty) atenderPedidos(); }, log);
+  const relogioDaFila = setInterval(() => { if (!trabalhadores.ativos() && !contando) atenderPedidos(); }, 2 * 60 * 1000);
 
   // quem não tem documento válido não vai ao SIEG: um aviso por cliente por dia no painel (o documento do dia é criado com
   // create(), que falha se já existe: vale também se o robô reiniciar no meio da madrugada)
@@ -827,9 +1166,11 @@ function iniciarSieg({ db, log }) {
   async function contarTodos() {
     const hoje = new Date();
     const dia = hoje.toISOString().slice(0, 10);
-    if (ocupado || contouEm === dia || hoje.getHours() < 1 || hoje.getHours() >= 5) return;
-    ocupado = true;
+    if (trabalhadores.ativos() || contando || contouEm === dia || hoje.getHours() < 1 || hoje.getHours() >= 5) return;
+    contando = true;
+    chegouOutro = false;
     contouEm = dia;
+    const contouDesde = hoje.toISOString();
     try {
       const comps = [competenciaDe(hoje)];
       if (hoje.getDate() <= 10) comps.push(competenciaDe(new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1)));
@@ -840,8 +1181,8 @@ function iniciarSieg({ db, log }) {
       for (const comp of comps) {
         for (const cli of comCnpj) {
           // um pedido do nads chegou no meio da noite (ou da manhã: em 08/10 a contagem foi até 7:46): atende antes de seguir
-          if (chegouOutro) { ocupado = false; await atenderPedidos(); ocupado = true; }
-          situacao = 'contando ' + codigoDe(cli) + ' (' + comp + ')';
+          if (chegouOutro) { chegouOutro = false; contando = false; daNoite = ''; await atenderPedidos(); contando = true; }
+          daNoite = 'contando ' + codigoDe(cli) + ' (' + comp + ')';
           try {
             const r = await contagemDoMes(c, normalizarDocumento(cli.documento, cli.enquadramento), comp);
             await db.collection('siegContagens').doc(codigoDe(cli) + '_' + comp).set({ codigo: codigoDe(cli), cnpj: normalizarDocumento(cli.documento, cli.enquadramento), competencia: comp, em: new Date().toISOString(), ...r });
@@ -851,48 +1192,60 @@ function iniciarSieg({ db, log }) {
       log('SIEG: contagem da noite pronta');
       painel.atividade('sieg', 'Contagem da madrugada pronta', comCnpj.length + ' clientes em ' + comps.join(' e '));
     } catch (err) { log('SIEG: contagem da noite falhou -', err.message); painel.erro('sieg', 'A contagem da madrugada falhou', err.message); }
-    finally { situacao = 'livre'; ocupado = false; }
-    await xmlsDaMadrugada().catch(err => log('SIEG: XMLs da madrugada falharam -', err.message));
+    finally { daNoite = ''; contando = false; ponto(); }
+    await xmlsDaMadrugada(contouDesde).catch(err => log('SIEG: XMLs da madrugada falharam -', err.message));
   }
 
   /**
    * Os XMLs prontos de manhã (Vitor, 08/10/2026: "1"): depois da contagem, o mês anterior (o da rotina do Fiscal) de cada
    * cliente que teve nota e ainda não está completo no nads e no Drive (pela contagem: o mesmo número de notas por tipo).
-   * Um por vez, pelo mesmo caminho do "Baixar XMLs" (sem o .zip para baixar), e os pedidos do nads passam na frente.
+   * Pelo mesmo caminho do "Baixar XMLs" (sem o .zip para baixar), e os pedidos do nads passam na frente. Os pedidos entram
+   * na fila de uma vez (31/10/2026) e os trabalhadores atendem PARALELO deles ao mesmo tempo (antes: um, e o próximo só era
+   * criado quando o anterior terminava).
    */
-  async function xmlsDaMadrugada() {
+  async function xmlsDaMadrugada(contouDesde) {
     const hoje = new Date();
     const comp = competenciaDe(new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1));
     const ativos = [];
     (await require('./clientes-cache').clientesAtivos(db)).forEach(d => ativos.push(d.data()));
     const comCnpj = await soComDocumento(ativos);
-    const CHAVE = { 'NF-e': 'NFe', 'NFC-e': 'NFCe', 'CT-e': 'CTe', 'NFS-e': 'NFSe', 'CF-e': 'CFe' };
     let feitos = 0;
+    let semMudanca = 0;
     for (const cli of comCnpj) {
       const id = codigoDe(cli) + '_' + comp;
       const cont = (await db.collection('siegContagens').doc(id).get()).data();
       if (!cont) continue;
-      const esperado = t => ((cont.emitidas || {})[CHAVE[t]] || 0) + ((cont.recebidas || {})[CHAVE[t]] || 0);
-      if (!Object.keys(CHAVE).some(t => esperado(t) > 0)) continue;
+      if (!TIPOS_DA_CONTAGEM.some(k => ((cont.emitidas || {})[k] || 0) + ((cont.recebidas || {})[k] || 0) > 0)) continue;
       const notas = (await db.collection('siegNotas').doc(id).get()).data();
-      if (notas && Array.isArray(notas.emitidas)) {
-        const tem = {};
-        for (const n of [...notas.emitidas, ...(notas.recebidas || [])]) tem[n.tipo] = (tem[n.tipo] || 0) + 1;
-        if (Object.keys(CHAVE).every(t => (tem[t] || 0) === esperado(t))) continue;
+      if (completoNoNads(cont, notas)) continue;
+      // não fecha: o SIEG mudou desde o último download? (semMudancaNoSieg, acima). A contagem desta noite já serve (até o
+      // dia 10 o mês anterior também é contado); depois do dia 10, conta agora, só este cliente
+      let agora = null;
+      if (contagemDoUltimoDownload(notas, cont)) {
+        if (contouDesde && String(cont.em || '') >= contouDesde) agora = soAContagem(cont);
+        else {
+          daNoite = 'conferindo ' + codigoDe(cli) + ' (' + comp + ')';
+          agora = await contagemDoMes(c, normalizarDocumento(cli.documento, cli.enquadramento), comp).catch(err => { log('SIEG: contagem de', codigoDe(cli), comp, '-', err.message); return null; });
+          daNoite = '';
+        }
+        if (semMudancaNoSieg(notas, cont, agora)) { semMudanca++; continue; }
       }
-      // o pedido, como se fosse do nads (a tela mostra "XMLs baixados" de manhã), e a fila atende na hora
+      // o pedido, como se fosse do nads (a tela mostra "XMLs baixados" de manhã); o ouvinte da fila já começa a atender.
+      // Leva a contagem de agora: é a de antes do download, que o resumo guarda (contagemSieg)
       await db.collection('pedidosSieg').add({ status: 'pendente', tipo: 'xmls', codigo: codigoDe(cli), competencia: comp, madrugada: true,
-        criadoEm: new Date().toISOString(), criadoPor: 'Robô (madrugada)', criadoPorUid: 'robo' });
-      await atenderPedidos();
-      while (ocupado) await dormir(2000);
+        criadoEm: new Date().toISOString(), criadoPor: 'Robô (madrugada)', criadoPorUid: 'robo', ...(agora ? { contagemSieg: agora } : {}) });
       feitos++;
     }
+    daNoite = '';
+    if (semMudanca) log('SIEG: madrugada -', semMudanca, 'clientes sem nota nova no SIEG desde o último download de', comp, '(não baixados de novo)');
+    // e espera a fila esvaziar
+    if (feitos) await atenderPedidos();
     log('SIEG: XMLs da madrugada prontos -', feitos, 'clientes em', comp);
     if (feitos) painel.atividade('sieg', 'XMLs da madrugada prontos', feitos + ' cliente(s) em ' + comp);
   }
-  const relogioNoite = setInterval(() => { contarTodos(); if (!ocupado) atenderPedidos(); }, 10 * 60 * 1000);
+  const relogioNoite = setInterval(() => { contarTodos(); if (!trabalhadores.ativos() && !contando) atenderPedidos(); }, 10 * 60 * 1000);
   log('SIEG ligado: contagem da madrugada e os pedidos do nads');
-  return () => { clearInterval(relogio); clearInterval(relogioNoite); pararPedidos(); };
+  return () => { clearInterval(relogio); clearInterval(relogioNoite); clearInterval(relogioDaFila); pararPedidos(); };
 }
 
-module.exports = { normalizarDocumento, xmlsJaNoDrive, seriesDasNotas, saidasDoResumo, iniciarSieg, lerXml, xmlsDaResposta, lerZip, periodo, contagemDoMes, saidasDoMes, xmlsDoMes, resumoQueCabe, chamar, lerCredenciais };
+module.exports = { eventoDeAntes, ordemDaFila, urgenciaDoPedido, criarTrabalhadores, chaveDaPasta, cobreOUltimo, juntarOsDoDrive, mesmaContagem, completoNoNads, contagemDoUltimoDownload, semMudancaNoSieg, PARALELO, normalizarDocumento, xmlsJaNoDrive, seriesDasNotas, saidasDoResumo, iniciarSieg, lerXml, xmlsDaResposta, lerZip, periodo, contagemDoMes, saidasDoMes, xmlsDoMes, resumoQueCabe, chamar, lerCredenciais };

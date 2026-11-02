@@ -6,7 +6,6 @@
 import { useRetorno } from '@nads/ui';
 import { useEffect, useState } from 'react';
 import { caminhoDoAdmin } from '../../../admin/casca/navegacao';
-import { URL_DO_ADMIN } from '../../casca/navegacao';
 import { useOperador } from '../../casca/operador';
 import { useArquivador } from '../../dados/repo';
 import type { PedidoDeArquivo } from '../../dados/arquivador';
@@ -150,8 +149,8 @@ export function useArquivadorDoDrive() {
     exemplos: repo.exemplos,
     visivel: !e.semPermissao,
     novo,
-    /** a área do arquivador no site do admin (só o admin): o que foi arquivado e por quê, o que ficou para resolver, os erros */
-    linkDoAdmin: admin ? URL_DO_ADMIN + caminhoDoAdmin('arquivador') : '',
+    /** o Arquivador do admin, nas Configurações (só o admin; 28/10/2026): o que foi arquivado e por quê, o que ficou para resolver, os erros */
+    linkDoAdmin: admin ? caminhoDoAdmin('arquivador') : '',
     // o que está HOJE em NÃO IDENTIFICADOS (a mesma conta da aba Para resolver do admin), não o histórico das rodadas
     paraResolver: n ? { n: n.paraResolver, texto: n.paraResolver ? n.paraResolver.toLocaleString('pt-BR') + (n.paraResolver === 1 ? ' arquivo para resolver' : ' arquivos para resolver') : 'Nada para resolver', aviso: n.paraResolver > 0 } : e.paraResolver ? { n: e.paraResolver.agora, texto: e.paraResolver.agora ? e.paraResolver.agora.toLocaleString('pt-BR') + (e.paraResolver.agora === 1 ? ' arquivo para resolver' : ' arquivos para resolver') : 'Nada para resolver', aviso: e.paraResolver.agora > 0 } : null,
     ligado,

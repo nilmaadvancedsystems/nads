@@ -64,7 +64,7 @@ function Cartao({ titulo, lista, vm, n }: { titulo: string; lista: Linha[]; vm: 
 function Pendentes({ vm }: { vm: Vm }) {
   return (
     <>
-      <p className="hint ent-sol-sub">{vm.subPendentes}{vm.exemplos && <span className="badge badge-neutral">Exemplos</span>}</p>
+      {vm.exemplos && <p className="hint ent-sol-sub"><span className="badge badge-neutral">Exemplos</span></p>}
       {vm.carregando ? <Esqueleto linhas={4} /> : vm.erroDaLista ? <Vazio icone="alert" texto={vm.erroDaLista} /> : vm.nenhumaPendente ? (
         <Vazio icone="checkCircle" texto="Nenhuma solicitação pendente."><button type="button" className="btn btn-primary" onClick={() => vm.setTopico('nova')}><Icone nome="plus" />Nova solicitação</button></Vazio>
       ) : !vm.urgentes.length && !vm.outras.length ? <Vazio texto="Nada encontrado nas pendentes." /> : <>
@@ -78,7 +78,7 @@ function Pendentes({ vm }: { vm: Vm }) {
 function Concluidas({ vm }: { vm: Vm }) {
   return (
     <>
-      <p className="hint ent-sol-sub">{vm.subConcluidas}{vm.exemplos && <span className="badge badge-neutral">Exemplos</span>}</p>
+      {vm.exemplos && <p className="hint ent-sol-sub"><span className="badge badge-neutral">Exemplos</span></p>}
       {!vm.concluidas ? <Esqueleto linhas={4} /> : vm.erroConcluidas ? <Vazio icone="alert" texto={vm.erroConcluidas} /> : !vm.concluidas.length
         ? <Vazio icone={vm.busca ? 'search' : 'caixaEntrada'} texto={vm.busca ? 'Nada encontrado nas concluídas.' : 'Nenhuma solicitação concluída ainda.'} />
         : <Cartao titulo={'Últimas ' + vm.concluidas.length} lista={vm.concluidas} vm={vm} />}
@@ -100,22 +100,22 @@ function NovaSolicitacao({ vm }: { vm: Vm }) {
   return (
     <form className="card ent-cartao" noValidate onSubmit={e => { e.preventDefault(); void vm.enviar(); }}>
       <div className="card-head"><h3><Icone nome="lapis" width={16} height={16} /> O pedido</h3></div>
-      <p className="hint ent-sol-sub">Peça pra equipe entregar, buscar ou resolver algo na rua.{vm.exemplos && <span className="badge badge-neutral">Exemplos</span>}</p>
-      <ConfigLinha titulo="Tipo" descricao="O que precisa ser feito.">
+      {vm.exemplos && <p className="hint ent-sol-sub"><span className="badge badge-neutral">Exemplos</span></p>}
+      <ConfigLinha titulo="Tipo">
         <select className="ent-campo-curto" aria-label="Tipo" value={vm.tipo} onChange={e => vm.setTipo(e.target.value as typeof vm.tipo)}>
           {vm.tipos.map(t => <option key={t.valor} value={t.valor}>{t.rotulo}</option>)}
         </select>
       </ConfigLinha>
       {atestado && <>
-        <ConfigLinha titulo="Clínica" descricao="Onde o atestado vai ser buscado.">
+        <ConfigLinha titulo="Clínica">
           <select className="ent-campo-curto" aria-label="Clínica" value={vm.clinica} onChange={e => vm.setClinica(e.target.value)}>
             {vm.clinicas.map(c => <option key={c.valor} value={c.valor}>{c.rotulo}</option>)}
           </select>
         </ConfigLinha>
-        <ConfigLinha titulo="Funcionário" descricao="Nome de quem fez o exame.">
+        <ConfigLinha titulo="Funcionário">
           <input type="text" className="ent-campo-curto" aria-invalid={vm.erro.campo === 'funcionario' || undefined} placeholder="Nome do funcionário" aria-label="Funcionário" autoComplete="off" value={vm.funcionario} onChange={e => vm.setFuncionario(e.target.value)} />
         </ConfigLinha>
-        <ConfigLinha titulo="Empresa cliente" descricao="A empresa do funcionário.">
+        <ConfigLinha titulo="Empresa cliente">
           <div className="ent-combo ent-campo-curto" ref={caixa}>
             <input type="text" aria-invalid={vm.erro.campo === 'empresa' || undefined} placeholder="Buscar por nome, código ou CNPJ" aria-label="Empresa cliente" autoComplete="off"
               role="combobox" aria-expanded={vm.listaEmpresa} aria-controls="ent-sol-empresas" value={vm.buscaEmpresa}
@@ -133,7 +133,7 @@ function NovaSolicitacao({ vm }: { vm: Vm }) {
         </ConfigLinha>
       </>}
       {!atestado && <>
-        <ConfigLinha titulo="Cliente ou local" descricao="Opcional. Ex.: Cartório, Prefeitura, nome do cliente.">
+        <ConfigLinha titulo="Cliente ou local" descricao="Opcional.">
           <input type="text" className="ent-campo-curto" placeholder="Cliente ou local" aria-label="Cliente ou local" autoComplete="off" value={vm.local} onChange={e => vm.setLocal(e.target.value)} />
         </ConfigLinha>
         <div className="field ent-sol-descricao">
@@ -141,10 +141,10 @@ function NovaSolicitacao({ vm }: { vm: Vm }) {
           <textarea id="ent-sol-descricao" ref={descricao} rows={3} aria-invalid={vm.erro.campo === 'descricao' || undefined} placeholder="O que precisa ser feito" value={vm.descricao} onChange={e => vm.setDescricao(e.target.value)} />
         </div>
       </>}
-      <ConfigLinha titulo="Concluir até" descricao="Data máxima pra ficar pronto.">
+      <ConfigLinha titulo="Concluir até">
         <CampoData valor={vm.prazo} onMudar={vm.setPrazo} rotulo="Concluir até" />
       </ConfigLinha>
-      <ConfigLinha titulo="Prioridade" descricao="Urgente aparece em cima da fila.">
+      <ConfigLinha titulo="Prioridade">
         <Segmentado valor={vm.urgente ? 'urgente' : 'normal'} opcoes={PRIORIDADES} onMudar={v => vm.setUrgente(v === 'urgente')} />
       </ConfigLinha>
       <div className="ent-sol-pe">

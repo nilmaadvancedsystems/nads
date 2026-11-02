@@ -37,7 +37,6 @@ export function Chamados(props: DaCasca) {
       <div className="cli-titulo">
         <div>
           <h1 className="page-title">Solicitações e chamados</h1>
-          <p className="page-desc">Peça documentos, tire dúvidas e acompanhe as respostas do escritório.</p>
         </div>
         {props.area.secoes.documentos ? novo : (
           <div className="cli-acoes">

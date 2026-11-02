@@ -26,7 +26,7 @@ export function Bens() {
         </div>
       )}
       {!vm.verificado ? null : vm.nenhuma ? (
-        <Alerta tom="ok" titulo="Nenhuma nota de bem no período" texto="Nenhuma entrada 1551, 2551 ou de CFOP ligado a bem, nenhuma saída de bem e nenhum uso e consumo com item de bem nas notas importadas." />
+        <Alerta tom="ok" titulo="Nenhuma nota de bem no período" />
       ) : (
         <>
           <div className="dash-grid" style={{ marginBottom: 16 }}>
@@ -35,8 +35,7 @@ export function Bens() {
             <Stat rotulo="Notas de bem" valor={vm.entradas.length + vm.saidas.length} grande={false} />
           </div>
           <Tabela titulo="Compras e entradas de bens" vazio="Nenhuma entrada de bem no período." linhas={vm.entradas} quem="Fornecedor" />
-          <Tabela titulo="Vendas e saídas de bens" vazio="Nenhuma saída de bem no período." linhas={vm.saidas} quem="Cliente"
-            dica="O bem vendido ou devolvido sai do imobilizado junto com a depreciação dele." />
+          <Tabela titulo="Vendas e saídas de bens" vazio="Nenhuma saída de bem no período." linhas={vm.saidas} quem="Cliente" />
           {vm.usoEConsumo.length > 0 && (
             <Tabela titulo="Uso e consumo com item de bem" vazio="" linhas={vm.usoEConsumo} quem="Fornecedor"
               dica="Item com NCM de veículo, máquina, equipamento, computador ou móvel lançado como uso e consumo: confira se não foi para a despesa." />

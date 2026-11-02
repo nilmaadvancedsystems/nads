@@ -14,6 +14,7 @@ import { CascaCreditor } from './Casca';
 import { caminho } from './caminho';
 import { caminhoDaEtapa, ETAPAS, indiceDaEtapa, type IdEtapa } from './navegacao';
 import { SessaoProvider, useSessao } from './sessao';
+import { SoMinhaEmpresa } from '../../../../tarefas/casca/SoMinhaEmpresa';
 
 function Tela() {
   const s = useSessao();
@@ -39,7 +40,7 @@ export function EmpresaAberta() {
   if (!empresa) return <Navigate to={caminho()} replace />;
   const rota = empresas.rotaDaEmpresa(empresa);
   if (!etapa || param !== rota) return <Navigate to={caminhoDaEtapa(rota, indiceDaEtapa(etapa) >= 0 ? etapa as IdEtapa : 'competencia') + search} replace />;
-  return (
+  const tela = (
     // key = empresa: trocar de empresa começa do zero (nada é guardado)
     <SessaoProvider key={rota} empresa={empresa} rota={rota} etapa={etapa as IdEtapa}>
       <TopoProvider>
@@ -49,4 +50,5 @@ export function EmpresaAberta() {
       </TopoProvider>
     </SessaoProvider>
   );
+  return <SoMinhaEmpresa empresa={empresa} voltar={caminho()}>{tela}</SoMinhaEmpresa>;
 }

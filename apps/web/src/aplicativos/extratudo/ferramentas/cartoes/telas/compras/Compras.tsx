@@ -116,7 +116,7 @@ export function Compras({ empresa }: { empresa: empresas.EmpresaDoEscritorio }) 
         <div className="imp-bloco">
           <div className="imp-linha">
             <span className="imp-ico"><Icone nome="landmark" /></span>
-            <div className="imp-txt"><span><b>Conta do cartão de crédito</b><span className="imp-conta">débito de cada compra · o crédito é o banco que pagou</span></span></div>
+            <div className="imp-txt"><span><b>Conta do cartão de crédito</b></span></div>
             <div className="imp-resumo">{vm.nomeContaCartao && <div><span>{vm.nomeContaCartao}</span></div>}</div>
             <div className="imp-grupos">
               <MenuDeConta valor={vm.contaCartao} contas={vm.opcoes} onEscolher={vm.escolherContaCartao} travado={!vm.cadastroCarregado} />

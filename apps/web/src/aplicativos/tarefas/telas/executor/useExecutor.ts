@@ -20,6 +20,7 @@ import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
 import { apagarTiques } from './useChecklistDaFolha';
 import { useEscopoDoGuardado, useVersaoDoGuardado } from '../../../../comum/guardado';
 import { dinamicoDaEmpresa } from '../../../../comum/contabilDaEmpresa';
+import { useEmpresasPermitidas } from '../empresas/andamento';
 
 /**
  * Onde cada aplicativo mora. O Extratudo vem junto no site da Tarefas (mesmo endereço: o login do Entregas
@@ -50,7 +51,11 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   const [dev] = useModoDesenvolvedor();
   // a rotina do departamento de quem está trabalhando (Contábil ou Fiscal)
   const { dep, comDep, lista } = useDepartamentoDaTela();
-  const empresa = empresas.empresaPelaRota(repo.listarEmpresas(), rotaEmpresa);
+  // a empresa de outra pessoa não abre nem pelo endereço (29/10/2026: "se não é encarregado não deve nem ver"); até o
+  // Cadastro chegar (de onde vem o responsável), nenhuma: a tela espera, sem mostrar
+  const permitidas = useEmpresasPermitidas();
+  const achada = empresas.empresaPelaRota(repo.listarEmpresas(), rotaEmpresa);
+  const empresa = achada && permitidas.carregada && permitidas.pode(achada) ? achada : null;
   // a da empresa (16/10/2026): no Contábil, a 62 (com o LCDPR) tem só a etapa LCDPR
   const rotina = t.rotinaDaEmpresa(dep, empresa?.codigo) || t.ROTINA_CONTABIL;
   // as seções da rotina, na ordem (Preparação, Ativo, Passivo, Resultado, Fechamento)
@@ -101,7 +106,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     for (const c of meses) {
       if (exDe[c] && exDe[c].periodo !== periodo) {
         const p = t.definirPeriodo(exDe[c], periodo, op.nome, new Date());
-        repo.gravar(p.execucao, p.evento);
+        repo.gravar(p.execucao, p.evento, exDe[c]);
       }
     }
   });
@@ -115,10 +120,10 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
       const esta = !!exc.adicionadas?.includes('cartoes');
       if (cartaoEmpresarial && !esta) {
         const a = t.adicionarEtapa(exc, 'cartoes', 'Cadastro: cartão empresarial', op.nome, new Date());
-        repo.gravar(a.execucao, a.evento);
+        repo.gravar(a.execucao, a.evento, exc);
       } else if (!cartaoEmpresarial && esta && !t.estadoDa(exc, 'cartoes')) {
         const r = t.retirarEtapa(exc, 'cartoes', 'Cadastro: sem cartão empresarial', op.nome, new Date());
-        repo.gravar(r.execucao, r.evento);
+        repo.gravar(r.execucao, r.evento, exc);
       }
     }
   });
@@ -131,10 +136,10 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
       const esta = !!exc.adicionadas?.includes('vendas-cartao');
       if (vendeNoCartao && !esta) {
         const a = t.adicionarEtapa(exc, 'vendas-cartao', 'Cadastro: vende no cartão', op.nome, new Date());
-        repo.gravar(a.execucao, a.evento);
+        repo.gravar(a.execucao, a.evento, exc);
       } else if (!vendeNoCartao && esta && !t.estadoDa(exc, 'vendas-cartao')) {
         const r = t.retirarEtapa(exc, 'vendas-cartao', 'Cadastro: não vende no cartão', op.nome, new Date());
-        repo.gravar(r.execucao, r.evento);
+        repo.gravar(r.execucao, r.evento, exc);
       }
     }
   });
@@ -146,7 +151,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
       const exc = exDe[c];
       if (!exc || exc.adicionadas?.includes('creditor')) continue;
       const a = t.adicionarEtapa(exc, 'creditor', 'Cadastro: liquidação de cobrança', op.nome, new Date());
-      repo.gravar(a.execucao, a.evento);
+      repo.gravar(a.execucao, a.evento, exc);
     }
   });
   /**
@@ -164,11 +169,11 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
         const esta = !!exc.adicionadas?.includes(b.etapa);
         const m = entra && !esta ? t.adicionarEtapa(exc, b.etapa, b.motivo, op.nome, new Date())
           : !entra && esta ? t.retirarEtapa(exc, b.etapa, b.motivo, op.nome, new Date()) : null;
-        if (m) repo.gravar(m.execucao, m.evento);
+        if (m) repo.gravar(m.execucao, m.evento, exc);
         continue;
       }
       const m = t.etapaPeloBalancete(exc, b.etapa, entra, b.motivo, op.nome, new Date());
-      if (m) repo.gravar(m.execucao, m.evento);
+      if (m) repo.gravar(m.execucao, m.evento, exc);
     }
   }
   const chaveDasExecucoes = meses.map(c => (exDe[c] ? JSON.stringify(exDe[c]) : '')).join('|');
@@ -246,10 +251,12 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
       }
     }
     // no período: volta em todos os meses em que ela estava feita
+    // (30/10/2026: a cópia é a do clique, de antes da janela; com ela junto, o banco tira só o check desta etapa, sem
+    // apagar o que chegou com a janela aberta)
     for (const c of meses.filter(m => concluidaEm(id, m))) {
       const v = t.voltarPara(exDe[c], id, op.nome, new Date());
       iniciadas.current.delete(id + '|' + c);
-      repo.gravar(v.execucao, v.evento);
+      repo.gravar(v.execucao, v.evento, exDe[c]);
     }
     setAviso(null);
     setVendo(null);
@@ -265,7 +272,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   }
 
   const ultimo = meses[meses.length - 1] || competencia;
-  const voltar = () => navegar(lista + '?competencia=' + ultimo);
+  const voltar = () => navegar(lista + 'competencia=' + ultimo);
   const rotuloCurto = (c: string) => t.rotuloCurtoCompetencia(c);
 
   /** Confere e marca a etapa em cada mês que falta (no período, todos de uma vez); o que não passou vira aviso. */
@@ -277,11 +284,11 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     if (!ex || !etapa || conferindo) return;
     const pulaCheque = semCheque && etapa.id === 'extratos';
     /** grava a etapa feita e, sem dia negativo, o Cheque especial dispensado em cima dela (a mesma execução) */
-    const gravarFeita = (ev: ReturnType<typeof t.fazer>) => {
-      repo.gravar(ev.execucao, ev.evento);
+    const gravarFeita = (ev: ReturnType<typeof t.fazer>, antes: t.Execucao) => {
+      repo.gravar(ev.execucao, ev.evento, antes);
       if (!pulaCheque) return;
       const d = t.dispensar(ev.execucao, 'cheque-especial', 'sem-saldo-negativo', '', op.nome, new Date());
-      repo.gravar(d.execucao, d.evento);
+      repo.gravar(d.execucao, d.evento, ev.execucao);
     };
     setConferindo(true);
     try {
@@ -289,7 +296,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
         // liberado: marca feita em cada mês que falta, sem conferir
         for (const c of alvos) {
           const fz = t.fazer(exDe[c], etapa.id, op.nome, new Date());
-          gravarFeita(fz);
+          gravarFeita(fz, exDe[c]);
         }
         setAviso(null);
         toast(etapa.nome + ': feita' + (varios ? ' em ' + alvos.map(rotuloCurto).join(', ') : '') + '.');
@@ -307,7 +314,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
         if (ext && t.todosSemMovimento(exc, bancos)) {
           // nenhum banco teve movimento: a etapa não se aplica nesta competência
           const d = t.dispensar(exc, etapa.id, 'sem-movimento', '', op.nome, new Date());
-          repo.gravar(d.execucao, d.evento);
+          repo.gravar(d.execucao, d.evento, exc);
           feitos.push(c); semMov++;
           continue;
         }
@@ -318,7 +325,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
           continue;
         }
         const fz = t.fazer(exc, etapa.id, op.nome, new Date());
-        gravarFeita(fz);
+        gravarFeita(fz, exc);
         feitos.push(c);
       }
       setAviso(falhas.length ? falhas.join(' · ') : null);
@@ -337,9 +344,11 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
       botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Não se aplica', valor: true, variante: 'btn-primary' }],
     });
     if (!ok) return;
+    // (30/10/2026: a cópia é a do clique, de antes da janela; com ela junto, o banco grava só esta etapa, sem apagar o que
+    // chegou com a janela aberta)
     for (const c of alvos) {
       const d = t.dispensar(exDe[c], etapa.id, objecao.id, '', op.nome, new Date());
-      repo.gravar(d.execucao, d.evento);
+      repo.gravar(d.execucao, d.evento, exDe[c]);
     }
     setAviso(null);
   }
@@ -349,7 +358,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     if (!ex || !etapa) return;
     for (const c of alvos) {
       const i = t.interromper(exDe[c], etapa.id, objecao, observacao, op.nome, new Date());
-      repo.gravar(i.execucao, i.evento);
+      repo.gravar(i.execucao, i.evento, exDe[c]);
     }
     setInterrompendo(false);
     toast('Etapa interrompida: ' + etapa.nome + '.');
@@ -384,6 +393,8 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   }
 
   return {
+    /** o Cadastro ainda não chegou: não dá para saber se a empresa é da pessoa */
+    esperandoEmpresa: !permitidas.carregada,
     bancosDaEmpresa,
     departamento: rotina.departamento,
     grupos, abrirGrupo,
@@ -427,11 +438,14 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     },
     /** os valores que as etapas informaram neste mês (o total da folha do DP) */
     valores: ex?.valores || {},
-    /** a etapa informa um valor (o DP, o total da folha): fica na execução do mês */
+    /**
+     * a etapa informa um valor (o DP, o total da folha): fica na execução do mês. Vários seguidos partem da mesma cópia
+     * (os números da conferência, 30/10/2026: só o último ficava); com a cópia junto, cada um grava só o seu valor
+     */
     informarValor: (chave: string, valor: number) => {
       if (!ex || !etapa) return;
       const v = t.informarValor(ex, etapa.id, chave, valor, op.nome, new Date());
-      repo.gravar(v.execucao, v.evento);
+      repo.gravar(v.execucao, v.evento, ex);
     },
     /**
      * O ⚡ › Apagar início (Vitor, 06/10/2026): a rotina volta ao começo — toda etapa pendente, em todos os meses do
@@ -448,7 +462,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
         if (!atual) continue;
         for (const id of Object.keys(atual.etapas || {})) {
           const v = t.voltarPara(atual, id, op.nome, agora);
-          repo.gravar(v.execucao, v.evento);
+          repo.gravar(v.execucao, v.evento, atual);
           atual = v.execucao;
         }
       }
@@ -483,7 +497,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
       if (!etapa || etapa.id !== 'cheque-especial') return;
       for (const c of alvos) {
         const d = t.dispensar(exDe[c], etapa.id, 'sem-saldo-negativo', '', op.nome, new Date());
-        repo.gravar(d.execucao, d.evento);
+        repo.gravar(d.execucao, d.evento, exDe[c]);
       }
     },
     interrompendo, abrirInterromper: () => setInterrompendo(true), fecharInterromper: () => setInterrompendo(false), interromper,
@@ -494,7 +508,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
       const c = mes && exDe[mes] ? mes : competencia;
       if (!exDe[c] || !etapa || carregando) return;
       const m = t.marcarSemMovimento(exDe[c], etapa.id, banco, marcado, op.nome, new Date());
-      repo.gravar(m.execucao, m.evento);
+      repo.gravar(m.execucao, m.evento, exDe[c]);
     },
     /** o mês aberto faz parte de um período prometido: para onde levar */
     irParaPeriodo: periodoDoMes && empresa ? comDep(caminhoDoExecutor(empresas.rotaDaEmpresa(empresa), periodoDoMes)) : null,
@@ -509,7 +523,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
       for (const c of meses) {
         if (!exDe[c]?.periodo) continue;
         const p = t.definirPeriodo(exDe[c], null, op.nome, new Date());
-        repo.gravar(p.execucao, p.evento);
+        repo.gravar(p.execucao, p.evento, exDe[c]);
       }
       toast('Em lote cancelado: ' + t.rotuloDoPeriodo(meses) + '.');
       navegar(comDep(caminhoDoExecutor(empresas.rotaDaEmpresa(empresa), ultimo)));
@@ -527,7 +541,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
           // um mês só: ele também sai do Em lote (senão o executor voltaria para o período antigo)
           if ((novos.has(m) && novos.size > 1) || !exDe[m]?.periodo) continue;
           const p = t.definirPeriodo(exDe[m], null, op.nome, new Date());
-          repo.gravar(p.execucao, p.evento);
+          repo.gravar(p.execucao, p.evento, exDe[m]);
         }
       }
       navegar(comDep(caminhoDoExecutor(empresas.rotaDaEmpresa(empresa), c)));
@@ -547,15 +561,16 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
         const esta = !!exc.adicionadas?.includes('creditor');
         if (tem && !esta) {
           const a = t.adicionarEtapa(exc, 'creditor', 'CRÉD.LIQ.COBRANÇA no razão do caixa', op.nome, new Date());
-          repo.gravar(a.execucao, a.evento);
+          repo.gravar(a.execucao, a.evento, exc);
           entrou.push(c);
         } else if (!tem && esta && !t.estadoDa(exc, 'creditor') && credLiquidacao !== true) {
           const r = t.retirarEtapa(exc, 'creditor', 'o razão do caixa não tem CRÉD.LIQ.COBRANÇA', op.nome, new Date());
-          repo.gravar(r.execucao, r.evento);
+          repo.gravar(r.execucao, r.evento, exc);
         }
       }
       return entrou;
     },
-    abrirEmpresa: () => { if (empresa) navegar(caminhoDaEmpresa(empresas.rotaDaEmpresa(empresa), ultimo)); },
+    // com o ?dep= (a rotina de outro setor), como as outras saídas do executor (31/10/2026: abria a página na rotina da pessoa)
+    abrirEmpresa: () => { if (empresa) navegar(comDep(caminhoDaEmpresa(empresas.rotaDaEmpresa(empresa), ultimo))); },
   };
 }

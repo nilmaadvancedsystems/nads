@@ -37,7 +37,7 @@ export function UsuariosDoNads() {
         <button type="button" className="btn btn-outline" onClick={() => setResponsaveis(true)}><Icone nome="briefcase" />Empresas por responsável</button>
         {vm.admin && <button type="button" className="btn btn-primary" onClick={vm.abrirNovo}><Icone nome="plus" />Novo usuário</button>}
       </div>
-      {!vm.admin && <p className="hint">Só um administrador muda a equipe; aqui você vê quem é quem.</p>}
+      {!vm.admin && <p className="hint">Só um administrador muda a equipe.</p>}
       {vm.exemplos && <p className="hint drive-aviso">Dados de exemplo: a equipe é a de exemplo e nada vai para o banco.</p>}
       {vm.carregando ? <Esqueleto linhas={6} /> : !vm.linhas.length ? (
         <div className="card gh-blank"><Icone nome="usuario" /><h4>Ninguém aqui</h4><p>{vm.busca ? 'Nenhuma pessoa com "' + vm.busca + '".' : 'Nenhuma pessoa neste filtro.'}</p></div>

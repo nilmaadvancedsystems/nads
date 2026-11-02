@@ -135,6 +135,8 @@ export function fatorR(meses: readonly FolhaDoMes[], rbt12: number): { folha: nu
   const salario = soma('salario'), fgts = soma('fgts'), cpp = soma('cpp');
   const folha = centavos(salario + fgts + cpp);
   if (!(rbt12 > 0)) return { folha, salario, fgts, cpp, fator: null, anexo: null };
-  const fator = arred(folha / rbt12 * 100, 2);
-  return { folha, salario, fgts, cpp, fator, anexo: fator >= FATOR_R_MINIMO * 100 ? 'III' : 'V' };
+  // truncado, não arredondado: 27,996% é menos de 28% e fica no Anexo V (arredondar dava 28,00% e o III; 31/10/2026)
+  const fator = truncar(folha / rbt12 * 100, 2);
+  // 0,28 × 100 dá 28,000000000000004 no ponto flutuante: sem o arred, os 28% exatos caíam no Anexo V
+  return { folha, salario, fgts, cpp, fator, anexo: fator >= arred(FATOR_R_MINIMO * 100, 2) ? 'III' : 'V' };
 }

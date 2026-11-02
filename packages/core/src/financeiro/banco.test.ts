@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { contaDoPlanoParaOBanco, identificarExtrato, linhasDoExtrato, resumoDoExtrato, saldoFinalDoExtrato, saldosNoBanco, type ImportacaoDeExtrato } from './banco';
+import { contaDoPlanoParaOBanco, identificarExtrato, linhasDoExtrato, resumoDoExtrato, saldoFinalDoExtrato, saldosNoBanco, separarJaImportadas, type ImportacaoDeExtrato } from './banco';
 
 describe('o extrato do banco no Financeiro (23/10/2026)', () => {
   const lidas = [
@@ -28,7 +28,38 @@ describe('o extrato do banco no Financeiro (23/10/2026)', () => {
     const i = (id: string, banco: string, ate: string, saldoFinal?: number): ImportacaoDeExtrato =>
       ({ id, banco, arquivo: 'x', de: '2026-10-01', ate, quantos: 1, entradas: 0, saidas: 0, saldoFinal, importadoEm: '2026-10-23T10:00:00Z', importadoPor: 'X' });
     expect(saldosNoBanco([i('1', 'Sicoob', '2026-09-30', 10), i('2', 'Sicoob', '2026-10-20', 20), i('3', 'Efí', '2026-10-21'), i('4', 'Efí', '2026-10-10', 5)]))
-      .toEqual([{ banco: 'Efí', saldo: 5, ate: '2026-10-10' }, { banco: 'Sicoob', saldo: 20, ate: '2026-10-20' }]);
+      .toEqual([{ chave: 'banco:Efí', banco: 'Efí', saldo: 5, ate: '2026-10-10' }, { chave: 'banco:Sicoob', banco: 'Sicoob', saldo: 20, ate: '2026-10-20' }]);
+  });
+  it('a PJ e a PF no mesmo banco: cada conta bancária com o seu saldo (30/10/2026)', () => {
+    const i = (id: string, contaBancaria: string, rotuloDaConta: string, ate: string, saldoFinal: number): ImportacaoDeExtrato =>
+      ({ id, banco: 'Sicoob', marca: 'sicoob', contaBancaria, rotuloDaConta, arquivo: 'x', de: '2026-10-01', ate, quantos: 1, entradas: 0, saidas: 0, saldoFinal, importadoEm: '2026-10-23T10:00:00Z', importadoPor: 'X' });
+    expect(saldosNoBanco([i('1', 'sicoob-pj', 'C/C 111', '2026-10-20', 100), i('2', 'sicoob-pf', 'C/C 222', '2026-10-21', 7), i('3', 'sicoob-pj', 'C/C 111', '2026-09-30', 1)]))
+      .toEqual([
+        { chave: 'sicoob-pj', banco: 'Sicoob', conta: 'C/C 111', marca: 'sicoob', saldo: 100, ate: '2026-10-20' },
+        { chave: 'sicoob-pf', banco: 'Sicoob', conta: 'C/C 222', marca: 'sicoob', saldo: 7, ate: '2026-10-21' },
+      ]);
+  });
+  it('o id pela conta bancária: a mesma linha na PJ e na PF do mesmo banco são duas (30/10/2026)', () => {
+    const pj = linhasDoExtrato(lidas, 'Sicoob', 'imp1', 'sicoob-pj');
+    const pf = linhasDoExtrato(lidas, 'Sicoob', 'imp2', 'sicoob-pf');
+    expect(pj.map(l => l.id)).not.toEqual(pf.map(l => l.id));
+    expect(pj[0].contaBancaria).toBe('sicoob-pj');
+    // o id antigo (pelo nome do banco) é o de antes, igual nas duas
+    expect(pj.map(l => l.idAntigo)).toEqual(linhasDoExtrato(lidas, 'Sicoob', 'imp0').map(l => l.id));
+    expect(pf.map(l => l.idAntigo)).toEqual(pj.map(l => l.idAntigo));
+    // a PF com a PJ já gravada: tudo novo (antes, a colisão fazia a linha da PF não gravar)
+    expect(separarJaImportadas(pf, pj).novas.length).toBe(3);
+  });
+  it('a linha gravada com o id antigo continua "já estava" na mesma conta (não duplica na próxima importação)', () => {
+    // gravadas antes de 30/10/2026: o id pelo nome do banco, com a conta bancária (ou sem ela, nas mais velhas)
+    const antigas = linhasDoExtrato(lidas, 'Sicoob', 'imp0').map(l => ({ ...l, contaBancaria: 'sicoob-pj' }));
+    const deNovo = linhasDoExtrato(lidas, 'Sicoob', 'imp9', 'sicoob-pj');
+    expect(separarJaImportadas(deNovo, antigas)).toEqual({ novas: [], repetidas: deNovo });
+    expect(separarJaImportadas(deNovo, antigas.map(l => ({ id: l.id }))).novas).toEqual([]);
+    // o id antigo gravado na outra conta do mesmo banco não conta: a linha da PF entra
+    expect(separarJaImportadas(linhasDoExtrato(lidas, 'Sicoob', 'imp9', 'sicoob-pf'), antigas).repetidas).toEqual([]);
+    // e com o id novo já gravado, também já estava
+    expect(separarJaImportadas(deNovo, deNovo).novas).toEqual([]);
   });
 });
 

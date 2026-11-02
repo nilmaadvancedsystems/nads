@@ -2,6 +2,7 @@
 export * from './tipos';
 export { EMPRESAS } from './lista';
 export * from './dp';
+export * from './fiscal';
 export * from './busca';
 export * from './bancos';
 export * as cadastro from './cadastro';

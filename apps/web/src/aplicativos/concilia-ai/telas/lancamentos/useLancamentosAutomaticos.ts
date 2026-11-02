@@ -23,8 +23,11 @@ export function useLancamentosAutomaticos() {
     contas: (porGrupo[g] as c.Conta[]).slice().sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')).map(a => ({ codigo: a.codigo, nome: a.nome })),
   }));
   const foraDoPlano = (codigo: string) => !!codigo && !analiticas.some(a => a.codigo === codigo);
+  // por que a conta não está na lista: a sintética está no balancete; a que não veio nele é a sem saldo no mês (o
+  // balancete só lista essas; 30/10/2026: dizia "fora do plano")
+  const motivoFora = (codigo: string) => (e.contas.some(a => a.codigo === codigo && a.sintetica) ? 'sintética' : 'sem saldo neste balancete');
 
-  const montar = (l: c.LinhaDp) => ({ lanc: l.lanc, cfops: l.cfops.join(', ') || '—', natureza: l.natureza, conta: l.conta, foraDoPlano: foraDoPlano(l.conta) });
+  const montar = (l: c.LinhaDp) => ({ lanc: l.lanc, cfops: l.cfops.join(', ') || '—', natureza: l.natureza, conta: l.conta, foraDoPlano: foraDoPlano(l.conta), motivoFora: motivoFora(l.conta) });
   const pendentes = linhas.filter(l => !l.conta).map(montar);
   const vinculadas = linhas.filter(l => l.conta).map(montar);
 

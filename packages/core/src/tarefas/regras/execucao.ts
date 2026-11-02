@@ -143,13 +143,15 @@ export function interromper(ex: Execucao, etapa: string, objecao: string, observ
 
 /**
  * A pessoa clicou numa etapa já concluída no checklist: volta para ela e o check sai (a etapa fica
- * pendente de novo; as outras continuam como estão). O evento guarda como ela estava.
+ * pendente de novo; as outras continuam como estão). O evento guarda como ela estava; a execução guarda quando foi
+ * desfeita (reabertas), para o que marca sozinho não refazer o que a pessoa desfez (30/10/2026).
  */
 export function voltarPara(ex: Execucao, etapa: string, por: string, agora: Date): { execucao: Execucao; evento: Evento } {
   const antes = situacaoDa(ex, etapa);
+  const em = agora.toISOString();
   const etapas = { ...ex.etapas };
   delete etapas[etapa];
-  return { execucao: { ...ex, etapas }, evento: { tipo: 'reaberta', etapa, por, em: agora.toISOString(), observacao: antes } };
+  return { execucao: { ...ex, etapas, reabertas: { ...(ex.reabertas || {}), [etapa]: em } }, evento: { tipo: 'reaberta', etapa, por, em, observacao: antes } };
 }
 
 /**
@@ -163,17 +165,30 @@ export function reinfPeloFiscal(ex: Execucao, por: string, avisar: string, agora
   return { execucao: { ...r.execucao, etapas }, evento: { ...r.evento, observacao: 'REINF transmitida pelo Fiscal' + (avisar ? '; avisar ' + avisar : '') } };
 }
 
-/** O Fiscal desfez a transmissão: a REINF do DP volta a fazer, se foi o Fiscal que marcou. */
-export function reinfDesfeitaPeloFiscal(ex: Execucao, por: string, agora: Date): { execucao: Execucao; evento: Evento } | null {
+/**
+ * O Fiscal transmitiu a REINF e a do DP já está feita pelo Fiscal: não grava de novo. Feita por outro (a importação do
+ * Toriba marcou a REINF de setembro), a marca passa a ser a do Fiscal (29/10/2026: "quando eu clico em transmitir no
+ * fiscal ele não conta no DP que foi transmitido ou removido").
+ */
+export function reinfJaMarcadaPeloFiscal(ex: Execucao): boolean {
   const e = ex.etapas['dp-reinf'];
-  if (!e || !e.por.endsWith('(Fiscal)')) return null;
+  return !!e && e.situacao === 'feita' && e.por.endsWith('(Fiscal)');
+}
+
+/** O Fiscal desfez a transmissão: a REINF do DP volta a fazer, seja quem for que marcou (a REINF é do Fiscal). */
+export function reinfDesfeitaPeloFiscal(ex: Execucao, por: string, agora: Date): { execucao: Execucao; evento: Evento } | null {
+  if (!ex.etapas['dp-reinf']) return null;
   return voltarPara(ex, 'dp-reinf', por + ' (Fiscal)', agora);
 }
 
-/** A etapa informa um valor do mês (ex.: o DP, o total da folha): fica na execução; o evento guarda o que mudou. */
+/**
+ * A etapa informa um valor do mês (ex.: o DP, o total da folha): fica na execução, com o instante a que se refere
+ * (valoresEm: agora, ou o envio do lote de onde veio); o evento guarda o que mudou.
+ */
 export function informarValor(ex: Execucao, etapa: string, chave: string, valor: number, por: string, agora: Date): { execucao: Execucao; evento: Evento } {
+  const em = agora.toISOString();
   const valores = { ...(ex.valores || {}), [chave]: Math.round(valor * 100) / 100 };
-  return { execucao: { ...ex, valores }, evento: { tipo: 'valor', etapa, por, em: agora.toISOString(), observacao: chave + '=' + valores[chave] } };
+  return { execucao: { ...ex, valores, valoresEm: { ...(ex.valoresEm || {}), [chave]: em } }, evento: { tipo: 'valor', etapa, por, em, observacao: chave + '=' + valores[chave] } };
 }
 
 /**

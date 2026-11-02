@@ -7,7 +7,6 @@ export function Contas() {
   return (
     <section>
       <div className="card">
-        <p className="page-desc" style={{ marginTop: 0 }}>As contas padrão dos lançamentos.</p>
         <div className="form-grid">
           <div className="field">
             <label htmlFor="fRevenda">Conta de vendas</label>

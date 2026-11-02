@@ -15,6 +15,17 @@ export function useDadosDaEmpresa(rota: string) {
   // os dados da empresa que o Entregas tem (o CNPJ, o cadastro de lá e a Receita; 14/10/2026)
   const identificacao = useDadosDaEmpresaNoEntregas(codigo);
   const regimeQueVale = (c.cadastro.regime as string | undefined) || padraoEntregas || tarefas.regimeDaLista(codigo) || c.empresa?.regime || '';
+  const planilhaDoFiscal = empresas.parametrosFiscaisDaPlanilha(codigo);
+  const fiscal = empresas.parametrosFiscaisQueValem(codigo, c.cadastro.fiscal);
+  function definirFiscal<K extends keyof empresas.cadastro.ParametrosDoFiscal>(campo: K, valor: NonNullable<empresas.cadastro.ParametrosDoFiscal[K]>) {
+    if (c.carregando) return;
+    // o mesmo valor da planilha (o texto vazio, sem nada na planilha) volta a seguir a planilha
+    const limpo = typeof valor === 'string' ? valor.trim() : valor;
+    const daPlanilha = planilhaDoFiscal?.[campo] ?? (typeof valor === 'string' ? '' : undefined);
+    const igual = JSON.stringify(daPlanilha) === JSON.stringify(limpo);
+    const novo = empresas.cadastro.definirParametrosFiscais(c.cadastro, { [campo]: igual ? null : valor }, c.por, new Date());
+    if (novo !== c.cadastro) c.salvar(novo);
+  }
   return {
     empresa: c.empresa,
     /** a identificação (Entregas) e o CNPJ do cadastro do nads (as empresas novas, pela Receita) */
@@ -49,6 +60,26 @@ export function useDadosDaEmpresa(rota: string) {
       const atual = c.cadastro.prestaServico ?? null;
       // clicar no que já está marcado volta para "não informado"
       const novo = empresas.cadastro.definirPrestaServico(c.cadastro, atual === sim ? null : sim, c.por, new Date());
+      if (novo !== c.cadastro) c.salvar(novo);
+    },
+    /**
+     * os parâmetros do Fiscal (29/10/2026): os que valem e de onde veio cada um (mudado no Cadastro ou da planilha do
+     * Fiscal). Mudar para o mesmo valor da planilha volta a seguir a planilha.
+     */
+    fiscal: fiscal.valores,
+    origemDoFiscal: fiscal.origem,
+    abaDoFiscal: fiscal.aba,
+    parametrosFiscais: empresas.cadastro.PARAMETROS_FISCAIS,
+    segmentosFiscais: empresas.cadastro.SEGMENTOS_FISCAIS,
+    maxTextoDoFiscal: empresas.cadastro.MAX_TEXTO_DO_FISCAL,
+    definirFiscal,
+    alternarSegmento(s: empresas.cadastro.SegmentoFiscal) {
+      const atual = fiscal.valores.segmentos || [];
+      definirFiscal('segmentos', atual.includes(s) ? atual.filter(x => x !== s) : [...atual, s]);
+    },
+    voltarFiscalAPlanilha() {
+      if (c.carregando) return;
+      const novo = empresas.cadastro.voltarFiscalAPlanilha(c.cadastro, c.por, new Date());
       if (novo !== c.cadastro) c.salvar(novo);
     },
     /** os cartões (Vitor, 07/10/2026): true, false ou null (não informado); ligam a etapa Cartões na Tarefas */

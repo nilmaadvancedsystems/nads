@@ -87,6 +87,45 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [acesso.entrou, paraReler]);
 
+  // os importados do computador (ou do e-mail) lidos por um leitor mais velho: o arquivo não fica guardado, então busca o PDF
+  // de cada mês dele no Drive e relê com o primeiro que cobre todos os meses (Vitor, 26/10/2026: na 183, o Stone e o Sicoob
+  // de junho continuavam com a leitura antiga depois do leitor novo). Sem o PDF no Drive, fica como está (importar de novo).
+  const relidosPeloDrive = useRef(new Set<string>());
+  const relendoPeloDrive = useRef(false);
+  const paraRelerPeloDrive = vm.extratosParaRelerPeloDrive.map(a => a.id).join(',');
+  useEffect(() => {
+    if (!acesso.entrou || drive.exemplos || relendoPeloDrive.current) return;
+    const fila = vm.extratosParaRelerPeloDrive.filter(a => !relidosPeloDrive.current.has(a.id));
+    if (!fila.length) return;
+    relendoPeloDrive.current = true;
+    void (async () => {
+      let n = 0;
+      for (const a of fila) {
+        relidosPeloDrive.current.add(a.id);
+        const linha = vm.bancos.find(b => b.id === (a.banco || vm.bancos[0]?.id));
+        if (!linha) continue;
+        const meses = [...new Set(a.lancamentos.map(l => l.data.slice(0, 7)))].sort();
+        const vistos = new Set<string>();
+        for (const mes of meses) {
+          try {
+            const arq = await arquivoNoDrive(linha, mes);
+            if (!arq || vistos.has(arq.id)) continue;
+            vistos.add(arq.id);
+            const conteudo = await drive.baixar(arq.id, arq.nome);
+            const lido = await x.lerArquivo(arq.nome, new Uint8Array(conteudo), 'banco');
+            if (!x.leituraCobreOArquivo(a, lido)) continue;
+            relerExtrato(a.id, lido);
+            n++;
+            break;
+          } catch { /* sem o robô agora: na próxima vez que abrir, tenta de novo */ }
+        }
+      }
+      relendoPeloDrive.current = false;
+      if (n) avisar(n === 1 ? '1 extrato relido com o leitor novo (pelo PDF do Drive)' : n + ' extratos relidos com o leitor novo (pelo PDF do Drive)');
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [acesso.entrou, paraRelerPeloDrive]);
+
   /**
    * Traz do Drive o primeiro dos arquivos do mês que tiver o extrato: o achado e, se ele vier vazio, os outros do mês (o
    * "(1)" com o mesmo nome pode ser outra coisa). 'vazio': nenhum tinha lançamento; false: não entrou (cancelou a pergunta).

@@ -202,7 +202,8 @@ export function useConfiguracoes() {
     const busca = campos[k] || '';
     return {
       chave: k,
-      chips: ligadas.map(codigo => { const a = c.contaPorCodigo(e, codigo); return { codigo, texto: codigo + (a ? ' — ' + a.nome : ' — fora do plano') }; }),
+      // a conta que não veio no balancete é a sem saldo no mês (o balancete só lista essas; 30/10/2026: dizia "fora do plano")
+      chips: ligadas.map(codigo => { const a = c.contaPorCodigo(e, codigo); return { codigo, texto: codigo + (a ? ' — ' + a.nome : ' — sem saldo neste balancete') }; }),
       aberto, busca,
       lista: aberto && listaDe === k ? c.contasParaVincular(e, ligadas, busca.trim()).map(a => ({ codigo: a.codigo, nome: a.nome, grupo: a.grupo })) : null,
       abrir: () => { setCampos(x => ({ ...x, [k]: '' })); setListaDe(k); },

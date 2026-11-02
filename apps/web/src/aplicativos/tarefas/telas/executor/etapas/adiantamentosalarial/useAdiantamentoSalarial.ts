@@ -59,8 +59,9 @@ export function useAdiantamentoSalarial() {
     mostrarSemMovimento: semMovimento || !razao || naoZerou.length > 0,
     temRazao: !!razao, arquivo: razao?.arquivo || '',
     importar, remover: () => { setRazao(null); if (!proprio && daImportacao) contabil.tirarRazao(daImportacao.conta); },
+    // o Ok é o selo padrão (Vitor, 26/10/2026: "deixe o ok padrão"); no resumo, só o que falta
     resumo: razao ? [
-      naoZerou.length ? 'Não zerou em ' + naoZerou.map(m => t.rotuloNumericoCompetencia(m.mes)).join(', ') : 'Ok',
+      ...(naoZerou.length ? ['Não zerou em ' + naoZerou.map(m => t.rotuloNumericoCompetencia(m.mes)).join(', ')] : []),
       ...(faltando.length ? ['Falta pagar ' + reais(faltando.reduce((x, p) => x + p.valor, 0)) + ' (' + faltando.map(p => t.rotuloNumericoCompetencia(p.mes)).join(', ') + ')'] : []),
     ] : [],
     ok: !!razao && !naoZerou.length,

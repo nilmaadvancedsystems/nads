@@ -12,6 +12,7 @@ import { SessaoProvider, useSincronizarPrestaServico } from './casca/sessao';
 import { avisarErrosDoBanco, repoDaConferencia } from './dados/fonte';
 import { RepoProvider, useRepo, useVersaoDoRepo } from './dados/repo';
 import { Importacao } from './telas/importacao/Importacao';
+import { GravacaoNaNuvem } from './casca/GravacaoNaNuvem';
 
 /**
  * prestaServico: a regra do Cadastro da empresa (a Conferência fica igual); null = não informado.
@@ -20,7 +21,7 @@ export function ImportacaoNaEtapa({ nome, tipo, prestaServico, meses }: { nome: 
   const repo = repoDaConferencia();
   const { toast } = useRetorno();
   useEffect(() => { avisarErrosDoBanco(repo, toast); }, [repo, toast]);
-  return <RepoProvider repo={repo}><DaEmpresa nome={nome} tipo={tipo} prestaServico={prestaServico} meses={meses} /></RepoProvider>;
+  return <RepoProvider repo={repo}><DaEmpresa nome={nome} tipo={tipo} prestaServico={prestaServico} meses={meses} /><GravacaoNaNuvem /></RepoProvider>;
 }
 
 function DaEmpresa({ nome, tipo, prestaServico, meses }: { nome: string; tipo: c.PaginaImportacao; prestaServico: boolean | null; meses?: readonly string[] }) {

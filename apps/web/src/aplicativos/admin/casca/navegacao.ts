@@ -21,4 +21,9 @@ export const PAGINAS_DO_ADMIN: readonly PaginaAdmin[] = [
 ];
 
 export const paginaDoAdmin = (id: string) => PAGINAS_DO_ADMIN.find(p => p.id === id);
-export const caminhoDoAdmin = (id: IdPaginaAdmin) => BASE + '/' + id;
+/**
+ * O endereço da página: no site do admin, /admin/<página>; dentro da Tarefas, onde as mesmas telas moram nas Configurações
+ * (28/10/2026), /tarefas/cadastro/<página> (os links da Visão geral e da Saúde do banco não saem da Tarefas).
+ */
+export const caminhoDoAdmin = (id: IdPaginaAdmin) =>
+  (typeof window !== 'undefined' && window.location.pathname.startsWith('/tarefas') ? '/tarefas/cadastro/' : BASE + '/') + id;

@@ -4,7 +4,7 @@
 // Um documento por arquivo deixa cada um bem abaixo do limite de 1 MB do Firestore, e gravar uma
 // importação nova não reescreve as antigas. Aqui ficam só as contas (o que gravar e como remontar);
 // quem fala com o Firebase é apps/web/src/aplicativos/extratudo/dados/extrator.firestore.ts.
-import { normalizarEmpresa } from './importacao';
+import { bytesNoBanco, normalizarEmpresa } from './importacao';
 import type { ArquivoImportado, BancoAdicionado, EmpresaExtrator, PedidoRegistrado, RegistroAuditoria } from '../tipos';
 
 export interface DocEmpresaExtrator { nome: string; auditoria: RegistroAuditoria[]; bancos?: BancoAdicionado[]; pedidos?: PedidoRegistrado[] }
@@ -29,6 +29,37 @@ export function gravacao(antes: EmpresaExtrator | null, depois: EmpresaExtrator)
   const ficam = new Set(depois.arquivos.map(a => a.id));
   const apagar = (antes?.arquivos || []).filter(a => !ficam.has(a.id)).map(a => a.id);
   return { empresa, arquivos, apagar };
+}
+
+/** O limite de um documento do Firestore (1 MiB), com folga para o caminho e os nomes dos campos. */
+export const LIMITE_DO_DOCUMENTO = 1_000_000;
+/** O pedido de um lote do Firestore cabe 10 MiB e 500 gravações; com folga. */
+const BYTES_POR_LOTE = 8_000_000;
+const GRAVACOES_POR_LOTE = 400;
+
+/**
+ * A gravação em lotes que o banco aceita (30/10/2026: um lote só, com um arquivo grande demais ou grande no total,
+ * falhava inteiro e nada gravava). O arquivo maior que um documento fica de fora (naoCabem: a tela diz qual); os outros
+ * vão em lotes de até 8 MB e 400 gravações. O documento da empresa (a auditoria) e os apagados vão no último lote,
+ * depois dos arquivos: se um lote de arquivos falhar, nada do que já estava é apagado.
+ */
+export function lotesDaGravacao(g: Gravacao): { lotes: Gravacao[]; naoCabem: ArquivoImportado[] } {
+  const naoCabem: ArquivoImportado[] = [];
+  const lotes: Gravacao[] = [];
+  let atual: Gravacao = { empresa: null, arquivos: [], apagar: [] }, bytes = 0;
+  const cheio = () => atual.arquivos.length + atual.apagar.length + (atual.empresa ? 1 : 0) >= GRAVACOES_POR_LOTE;
+  const fechar = () => { lotes.push(atual); atual = { empresa: null, arquivos: [], apagar: [] }; bytes = 0; };
+  for (const a of g.arquivos) {
+    const t = bytesNoBanco(a);
+    if (t > LIMITE_DO_DOCUMENTO) { naoCabem.push(a); continue; }
+    if (atual.arquivos.length && (bytes + t > BYTES_POR_LOTE || cheio())) fechar();
+    atual.arquivos.push(a); bytes += t;
+  }
+  // o fim: os apagados e a empresa, depois dos arquivos (no último lote, enquanto couberem)
+  for (const id of g.apagar) { if (cheio()) fechar(); atual.apagar.push(id); }
+  if (g.empresa) { if (cheio() || bytes + bytesNoBanco(g.empresa) > BYTES_POR_LOTE) fechar(); atual.empresa = g.empresa; }
+  if (!semMudanca(atual)) lotes.push(atual);
+  return { lotes, naoCabem };
 }
 
 /** Nada a gravar? */

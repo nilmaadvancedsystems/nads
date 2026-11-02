@@ -7,6 +7,12 @@ import type { Empresa, EmpresaDaLista } from './tipos';
 /** A empresa que a URL aponta. codigo = o da URL (o mesmo nome pode ter dois códigos). */
 export interface EmpresaNaRota { nome: string; codigo: number | null; rota: string }
 
+/**
+ * A gravação das notas em pedaços que está subindo (Vitor, 27/10/2026: "coloca um feedback visual pro usuário saber o
+ * progresso e não sair da tela"): de quantos pedaços, quantos já chegaram ao banco.
+ */
+export interface GravacaoNaNuvem { empresa: string; notas: number; feitos: number; total: number; /** tudo no banco: pode sair da tela */ pronto?: boolean }
+
 export interface RepoConferencia {
   /** true = dados de exemplo (nada vai para o banco). */
   readonly exemplos: boolean;
@@ -26,6 +32,8 @@ export interface RepoConferencia {
   versao(): number;
   /** Volta os dados de exemplo ao estado inicial (só no modo exemplos). */
   restaurarExemplos(): void;
+  /** A gravação grande em andamento (só no banco; os exemplos não têm): null = nada subindo. Ouvida à parte da versão. */
+  readonly gravacao?: { atual(): GravacaoNaNuvem | null; pendente(): boolean; assinar(aoMudar: () => void): () => void };
 }
 
 /** Lista da entrada: a lista fixa + as empresas guardadas que não estão nela (em ordem de nome). */

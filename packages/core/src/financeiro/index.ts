@@ -175,3 +175,5 @@ export * from './painel';
 export * from './gestao';
 export * from './resultado';
 export * from './banco';
+export * from './contasPagar';
+export * from './boleto';

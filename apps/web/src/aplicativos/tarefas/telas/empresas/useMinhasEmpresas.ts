@@ -3,7 +3,7 @@
 import { empresas, tarefas as t } from '@nads/core';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { caminhoDaEmpresa, caminhoDaPagina, caminhoDoExecutor } from '../../casca/navegacao';
+import { caminhoDaEmpresa, caminhoDoExecutor } from '../../casca/navegacao';
 import { SITUACOES, useAndamento } from './andamento';
 import { useDepartamentoDaTela } from '../../casca/departamento';
 
@@ -75,6 +75,7 @@ export function useMinhasEmpresas() {
   return {
     temRotina: a.temRotina,
     departamento: a.departamento,
+    podeVerTodas: a.podeVerTodas, escopo: a.escopo, setEscopo: a.setEscopo, filtrandoPorResponsavel: a.filtrandoPorResponsavel,
     competencia: a.competencia,
     rotuloCompetencia: t.rotuloCompetencia(a.competencia),
     competencias: a.competencias,
@@ -102,8 +103,11 @@ export function useMinhasEmpresas() {
       ...l,
       quando: l.ultimaVez ? t.quandoFoi(l.ultimaVez, new Date()) : '',
       quandoCompleto: l.ultimaVez ? new Date(l.ultimaVez).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '',
+      porcentagem: t.porcentagemDe(l.concluidas, l.total),
     })),
     total: linhas.length,
+    /** as empresas por situação: as da pessoa (ou todas), sem a busca e a situação */
+    resumo: t.resumoDoProgresso(a.linhas),
     abrir,
     /** a página da empresa (insights dela) */
     abrirEmpresa: (rota: string) => navegar(comDep(caminhoDaEmpresa(rota, a.competencia))),
@@ -133,6 +137,5 @@ export function useMinhasEmpresas() {
     recentes: recentes.slice(0, LIMITE_INICIAR),
     ultimaAberta, proximaDaFila, paradas,
     verParadas: () => { setBusca(''); a.mudar('situacao', 'parada'); },
-    abrirInsights: () => navegar(caminhoDaPagina('minhas-empresas', 'insights') + '?competencia=' + a.competencia),
   };
 }

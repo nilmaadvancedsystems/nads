@@ -34,11 +34,15 @@ export function foneSoDigitos(f: string): string {
   return (d.length === 12 || d.length === 13) && d.startsWith('55') ? d.slice(2) : d;
 }
 
-/** "420,00", "1.250,5" ou "R$ 420" → número (0 quando não dá para ler) */
+/**
+ * "420,00", "1.250,5" ou "R$ 420" → número (0 quando não dá para ler). Sem vírgula, o ponto seguido de exatamente 3
+ * dígitos é o do milhar ("1.500" = 1500, "12.000" = 12000; 30/10/2026: viravam 1,50 e 12); com 1 ou 2, é o decimal
+ * ("420.5", "420.50"). Mais de um ponto, todos do milhar.
+ */
 export function valorDigitado(v: string): number {
   let s = v.replace(/[^\d.,]/g, '');
   if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.');
-  else if ((s.match(/\./g) || []).length > 1) s = s.replace(/\./g, '');
+  else if ((s.match(/\./g) || []).length > 1 || /\.\d{3}$/.test(s)) s = s.replace(/\./g, '');
   const n = Number(s);
   return Number.isFinite(n) ? Math.round(n * 100) / 100 : 0;
 }

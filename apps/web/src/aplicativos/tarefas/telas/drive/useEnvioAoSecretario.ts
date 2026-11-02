@@ -24,11 +24,14 @@ export function useEnvioAoSecretario(clienteAberto: e.PastaDeCliente | null) {
   const [subindo, setSubindo] = useState(false);
   const [vendoMeus, setVendoMeus] = useState(false);
   const meus = repo.meusEnvios();
-  // parar de acompanhar ao sair da tela (o que já subiu, o robô grava do mesmo jeito)
+  // parar de acompanhar ao sair da tela (o que já subiu, o robô grava do mesmo jeito). Só os que já subiram param: parar um
+  // que ainda está subindo calava o aviso de "subiu", e os arquivos seguintes da fila nunca eram mandados
   const paradas = useRef(new Set<() => void>());
+  const saiu = useRef(false);
   useEffect(() => {
+    saiu.current = false;
     const lista = paradas.current;
-    return () => { for (const p of lista) p(); };
+    return () => { saiu.current = true; for (const p of lista) p(); lista.clear(); };
   }, []);
 
   const clientes = e.buscarClientes(repo.mapa().clientes, '');
@@ -59,6 +62,9 @@ export function useEnvioAoSecretario(clienteAberto: e.PastaDeCliente | null) {
           return;
         }
         subiu();
+        // a tela saiu enquanto subia: o arquivo está na fila do robô, ninguém mais acompanha (a fila segue para o próximo)
+        if (saiu.current) { acabar(); return; }
+        paradas.current.add(parar);
         if (a.status === 'pronto') {
           acabar();
           tirar(id);
@@ -69,7 +75,6 @@ export function useEnvioAoSecretario(clienteAberto: e.PastaDeCliente | null) {
           setTimeout(() => tirar(id), 8000);
         } else mudar(id, { texto: f.name + ': ' + TEXTO[a.status] + '…' });
       });
-      paradas.current.add(parar);
     });
   }
 

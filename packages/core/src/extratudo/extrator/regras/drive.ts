@@ -56,7 +56,7 @@ export function acharExtratoNoDrive(itens: readonly ItemDrive[], raizDoCliente: 
   const digitos = (conta.conta || '').replace(/\D/g, '');
 
   const temPastaDeExtratos = itens.some(it => it.t === 'd' && nomeNorm(it.n) === 'extratos');
-  type Nota = ArquivoAchado & { nota: number; grupo: string; copia: boolean };
+  type Nota = ArquivoAchado & { nota: number; grupo: string; copia: boolean; pdf: boolean };
   const achados: Nota[] = [];
   const andar = (pasta: string, caminho: string[]) => {
     for (const it of filhos.get(pasta) || []) {
@@ -80,8 +80,12 @@ export function acharExtratoNoDrive(itens: readonly ItemDrive[], raizDoCliente: 
       const daCompetencia = pelaPasta ? pelaPasta === competencia.slice(5, 7) : falaDaCompetencia([...caminho, nome].join(' '), competencia);
       const nota = (daCompetencia ? 4 : 0) + (/extrato/.test(texto) ? 2 : 0) + (pastas.includes('bancarios') ? 3 : 0)
         + (banco.some(b => b && texto.includes(b)) || meus.some(a => temPalavra(texto, a)) ? 2 : 0) + (digitos.length >= 4 && texto.replace(/\D/g, '').includes(digitos) ? 3 : 0);
-      // a cópia baixada de novo ("X (1).pdf" ao lado de "X.pdf") é o mesmo extrato: um grupo só
-      achados.push({ id: it.i, nome: it.n, caminho: [...caminho, it.n].join(' › '), modificado: it.m, credliquidacao: false, daCompetencia, nota, grupo: it.p + '|' + nomeNorm(nome), copia: nome !== it.n });
+      // a cópia baixada de novo ("X (1).pdf" ao lado de "X.pdf") é o mesmo extrato: um grupo só; e o PDF e o OFX do mesmo
+      // nome na mesma pasta também (Vitor, 26/10/2026, na 237: "08-2026.pdf" e "08-2026.ofx" empatavam e o Drive não trazia
+      // nenhum — "Banco do Brasil: nada veio do Drive", com os dois lá)
+      const semExtensao = nome.replace(/\.[^.]+$/, '');
+      achados.push({ id: it.i, nome: it.n, caminho: [...caminho, it.n].join(' › '), modificado: it.m, credliquidacao: false, daCompetencia, nota,
+        grupo: it.p + '|' + nomeNorm(semExtensao), copia: nome !== it.n, pdf: /\.pdf$/i.test(nome) });
     }
   };
   andar(raizDoCliente, []);
@@ -89,7 +93,8 @@ export function acharExtratoNoDrive(itens: readonly ItemDrive[], raizDoCliente: 
   const ordem = (a: Nota, b: Nota) => b.nota - a.nota || Number(a.copia) - Number(b.copia) || (b.modificado || '').localeCompare(a.modificado || '');
   // das cópias do mesmo extrato, fica o original ("X.pdf"); depois, o mais novo. (Vitor, 19/10/2026, na 450: o "X (1).pdf"
   // eram os comprovantes dos boletos com o nome do extrato, e o nads trazia ele, sem nenhum lançamento)
-  const maisNova = (a: Nota, b: Nota) => Number(a.copia) - Number(b.copia) || (b.modificado || '').localeCompare(a.modificado || '');
+  // do PDF e do OFX do mesmo extrato, fica o PDF (o que o olhinho abre e o que se pede ao cliente)
+  const maisNova = (a: Nota, b: Nota) => Number(a.copia) - Number(b.copia) || Number(b.pdf) - Number(a.pdf) || (b.modificado || '').localeCompare(a.modificado || '');
   const bons = achados.filter(a => a.daCompetencia && a.nota >= 6).sort((a, b) => b.nota - a.nota || maisNova(a, b))
     .filter((a, i, todos) => todos.findIndex(x => x.grupo === a.grupo) === i).sort(ordem);
   const semNota = (a: Nota): ArquivoAchado => ({ id: a.id, nome: a.nome, caminho: a.caminho, modificado: a.modificado, credliquidacao: false, daCompetencia: a.daCompetencia });

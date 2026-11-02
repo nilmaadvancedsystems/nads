@@ -83,8 +83,6 @@ export function useSolicitacoes() {
       if (topico === 'pendentes' && !naFila && nasFeitas) setTopico('concluidas');
       else if (topico === 'concluidas' && !nasFeitas && naFila) setTopico('pendentes');
     },
-    subPendentes: entregas.veTodasAsSolicitacoes(papeis) ? 'Pedidos da equipe que ainda não foram feitos.' : 'O que você pediu e ainda não foi feito.',
-    subConcluidas: entregas.veTodasAsSolicitacoes(papeis) ? 'As últimas feitas pela equipe.' : 'As últimas que você pediu e já foram feitas.',
     erroDaLista: pendentes.erro,
     urgentes: fila.urgentes.map(linha),
     outras: fila.outras.map(linha),

@@ -7,6 +7,7 @@ import { cnpjFormatado, documentoValido } from './receita';
 import { BANCOS_CONHECIDOS, bancosDaEmpresa, idDaConta, rotuloDaConta, type BancoDaEmpresa } from '../bancos';
 import {
   type BancoDoRelatorio, BANCOS_DO_RELATORIO, type CadastroDaEmpresa, type EmprestimoDaEmpresa, type CampoContaPadrao, type ContaBancaria, type ContaDoPlano, type ContaPadraoDoPlano, type ContasPadrao, type PlanoDeContas, type RegistroCadastro, type Socio, type TipoContaBancaria, type DepartamentoDoResponsavel, type ParametrosDoDp, type ParametrosDoDpDoMes, DEPARTAMENTOS_DO_RESPONSAVEL, type TransferenciaDeResponsavel, type ArquivoDoFiscal, type DocumentosDoFiscal, type PlanilhaDoFiscal, type AntecipacaoDoFiscal,
+  type ParametrosDoFiscal, type SegmentoFiscal, MAX_TEXTO_DO_FISCAL, PARAMETROS_FISCAIS, SEGMENTOS_FISCAIS,
 } from './tipos';
 
 /** Quantos registros do histórico ficam guardados (os mais novos). */
@@ -102,6 +103,17 @@ function dpDoDocumento(v: unknown): { dp?: ParametrosDoDp } {
     if (Object.keys(pc).length) p.porCompetencia = pc;
   }
   return Object.keys(p).length ? { dp: p } : {};
+}
+
+/** Os parâmetros do Fiscal do documento: só os conhecidos e do tipo certo (o resto fica de fora). */
+function fiscalDoDocumento(v: unknown): { fiscal?: ParametrosDoFiscal } {
+  if (!v || typeof v !== 'object') return {};
+  const o = v as Record<string, unknown>;
+  const p: ParametrosDoFiscal = {};
+  for (const { id } of PARAMETROS_FISCAIS) if (typeof o[id] === 'boolean') p[id] = o[id] as boolean;
+  if (Array.isArray(o.segmentos)) p.segmentos = SEGMENTOS_FISCAIS.map(s => s.id).filter(s => (o.segmentos as unknown[]).includes(s));
+  for (const k of ['especificidades', 'observacoes'] as const) if (typeof o[k] === 'string') p[k] = (o[k] as string).slice(0, MAX_TEXTO_DO_FISCAL);
+  return Object.keys(p).length ? { fiscal: p } : {};
 }
 
 function camposDoDp(o: Record<string, unknown>): ParametrosDoDpDoMes {
@@ -257,7 +269,7 @@ export function cadastroDoDocumento(nome: string, codigo: number | null, doc: Re
     ...contatoDoDocumento(doc.contato),
     ...(Array.isArray(doc.emprestimos) ? { emprestimos: (doc.emprestimos as Record<string, unknown>[]).map(e => ({ numero: texto(e?.numero), banco: texto(e?.banco), desde: texto(e?.desde), ...(texto(e?.ate) ? { ate: texto(e?.ate) } : {}) })).filter(e => e.numero && e.banco) } : {}),
     ...(Array.isArray(doc.socios) ? { socios: (doc.socios as Record<string, unknown>[]).map(s => ({ nome: texto(s?.nome), cpf: texto(s?.cpf) })).filter(s => s.nome || s.cpf) } : {}), atualizadoEm: opcional(doc.atualizadoEm),
-    ...responsaveisDoDocumento(doc.responsaveis), ...dpDoDocumento(doc.dp), ...transferenciasDoDocumento(doc.transferencias),
+    ...responsaveisDoDocumento(doc.responsaveis), ...dpDoDocumento(doc.dp), ...fiscalDoDocumento(doc.fiscal), ...transferenciasDoDocumento(doc.transferencias),
     ...documentosFiscaisDoDocumento(doc.documentosFiscais),
     ...antecipacaoDoDocumento(doc.antecipacaoIcmsEs),
     ...(doc.nova && typeof doc.nova === 'object' && texto((doc.nova as Record<string, unknown>).regime)
@@ -286,6 +298,7 @@ export function documentoDoCadastro(c: CadastroDaEmpresa): Record<string, unknow
     ...(c.emprestimos?.length ? { emprestimos: c.emprestimos } : {}),
     ...(c.responsaveis && Object.keys(c.responsaveis).length ? { responsaveis: c.responsaveis } : {}),
     ...(c.dp && Object.keys(c.dp).length ? { dp: c.dp } : {}),
+    ...(c.fiscal && Object.keys(c.fiscal).length ? { fiscal: c.fiscal } : {}),
     ...(c.transferencias && Object.keys(c.transferencias).length ? { transferencias: c.transferencias } : {}),
     ...(c.nova ? { nova: c.nova } : {}),
     ...(c.documentosFiscais && (Object.keys(c.documentosFiscais.planilhas || {}).length || c.documentosFiscais.outros?.length) ? { documentosFiscais: c.documentosFiscais } : {}),
@@ -293,6 +306,23 @@ export function documentoDoCadastro(c: CadastroDaEmpresa): Record<string, unknow
     historico: c.historico.slice(0, MAX_HISTORICO),
     atualizadoEm: c.atualizadoEm || new Date().toISOString(),
   };
+}
+
+/**
+ * O que gravar do cadastro (30/10/2026, revisão dos dados): só os campos do documento que mudaram de `antes` (o cadastro
+ * como estava) para `depois`. Antes o documento inteiro era regravado a partir do que esta versão do nads conhece: a aba
+ * aberta com uma versão antiga apagava os campos novos (o `fiscal`), e cada Salvar podia voltar o que outra pessoa tinha
+ * mudado em outro campo. campos: o que pôr (o campo inteiro); apagar: o que a pessoa tirou de propósito (estava e não
+ * está mais). O nome, o código e a data vão sempre; o histórico, quando muda ou quando o documento ainda não existe (a
+ * regra do banco pede os dois na criação).
+ */
+export function gravacaoDoCadastro(antes: CadastroDaEmpresa, depois: CadastroDaEmpresa, existe = true): { campos: Record<string, unknown>; apagar: string[] } {
+  const a = documentoDoCadastro(antes), d = documentoDoCadastro(depois);
+  const campos: Record<string, unknown> = { nome: d.nome, codigo: d.codigo, atualizadoEm: d.atualizadoEm };
+  for (const k of Object.keys(d)) if (!(k in campos) && JSON.stringify(a[k]) !== JSON.stringify(d[k])) campos[k] = d[k];
+  if (!existe) campos.historico = d.historico;
+  const apagar = Object.keys(a).filter(k => !(k in d));
+  return { campos, apagar };
 }
 
 /** O documento `cadastro/{slug}/plano/atual` conferido (null = a empresa ainda não tem plano). */
@@ -424,6 +454,43 @@ export function voltarDpAPlanilha(c: CadastroDaEmpresa, por: string, agora: Date
   const resto: CadastroDaEmpresa = { ...c };
   delete resto.dp;
   return registrar(resto, por, agora, 'DP', 'voltou à planilha');
+}
+
+/**
+ * Muda parâmetros do Fiscal (29/10/2026). null = volta o da planilha. O texto vazio e a lista de segmentos vazia valem
+ * como mudança (a pessoa apagou o que a planilha dizia). Fica no histórico; sem mudança, devolve o mesmo.
+ */
+export function definirParametrosFiscais(c: CadastroDaEmpresa, mudar: { [K in keyof ParametrosDoFiscal]?: ParametrosDoFiscal[K] | null }, por: string, agora: Date): CadastroDaEmpresa {
+  const fiscal: ParametrosDoFiscal = { ...(c.fiscal || {}) };
+  const partes: string[] = [];
+  for (const [k, bruto] of Object.entries(mudar) as [keyof ParametrosDoFiscal, unknown][]) {
+    if (bruto === undefined) continue;
+    const nome = PARAMETROS_FISCAIS.find(p => p.id === k)?.rotulo || (k === 'segmentos' ? 'Segmento' : k === 'especificidades' ? 'Especificidades' : 'Observações');
+    if (bruto === null) {
+      if (!(k in fiscal)) continue;
+      delete fiscal[k];
+      partes.push(nome + ': o da planilha');
+      continue;
+    }
+    const v = k === 'segmentos' ? SEGMENTOS_FISCAIS.map(s => s.id).filter(s => (bruto as SegmentoFiscal[]).includes(s))
+      : typeof bruto === 'string' ? bruto.trim().slice(0, MAX_TEXTO_DO_FISCAL) : bruto;
+    if (JSON.stringify(fiscal[k]) === JSON.stringify(v)) continue;
+    (fiscal as Record<string, unknown>)[k] = v;
+    partes.push(nome + ': ' + (Array.isArray(v) ? v.map(s => SEGMENTOS_FISCAIS.find(x => x.id === s)!.rotulo).join(', ') || 'nenhum'
+      : typeof v === 'boolean' ? (v ? 'sim' : 'não') : String(v) || '—'));
+  }
+  if (!partes.length) return c;
+  const novo: CadastroDaEmpresa = { ...c, fiscal };
+  if (!Object.keys(fiscal).length) delete novo.fiscal;
+  return registrar(novo, por, agora, 'Fiscal', partes.join(' · '));
+}
+
+/** Tira tudo o que foi mudado nos parâmetros do Fiscal (volta à planilha). */
+export function voltarFiscalAPlanilha(c: CadastroDaEmpresa, por: string, agora: Date): CadastroDaEmpresa {
+  if (!c.fiscal) return c;
+  const resto: CadastroDaEmpresa = { ...c };
+  delete resto.fiscal;
+  return registrar(resto, por, agora, 'Fiscal', 'voltou à planilha');
 }
 
 const nomeIgual = (a: string, b: string) => texto(a).toLowerCase() === texto(b).toLowerCase();
@@ -691,6 +758,8 @@ export interface BancoParaConfirmar {
 /**
  * Grava os bancos marcados como o cadastro da empresa, cada um com a conta contábil (obrigatória; com o plano importado,
  * tem de ser uma conta dele que recebe lançamento). A conta do ponto de partida guarda o id; a nova precisa de agência e conta.
+ * Com o plano vindo de um balancete, a conta que não está nele não trava (30/10/2026): o balancete só lista as contas com
+ * saldo no mês, e o banco parado não aparece; fica o aviso leve da linha (avisoDaConta).
  */
 export function confirmarBancos(c: CadastroDaEmpresa, linhas: readonly BancoParaConfirmar[], partida: readonly ContaBancaria[], plano: PlanoDeContas | null, por: string, agora: Date): ResultadoCadastro {
   if (c.bancos) return { cadastro: c, erro: 'Os bancos desta empresa já estão no Cadastro.' };
@@ -705,7 +774,7 @@ export function confirmarBancos(c: CadastroDaEmpresa, linhas: readonly BancoPara
     if (!antes && (!agencia || !conta)) return { cadastro: c, erro: nome + ': preencha a agência e a conta.' };
     if (!contaContabil) return { cadastro: c, erro: nome + ': informe a conta contábil.' };
     const aviso = avisoDaConta(contaContabil, plano);
-    if (aviso) return { cadastro: c, erro: nome + ': ' + aviso };
+    if (aviso && !foraDoBalancete(contaContabil, plano)) return { cadastro: c, erro: nome + ': ' + aviso };
     const id = antes ? antes.id : idDaConta(marca, agencia, conta);
     if (bancos.some(b => b.id === id)) return { cadastro: c, erro: nome + ': essa conta está duas vezes na lista.' };
     const nova: ContaBancaria = { ...(antes || { id, marca, nome }), id, contaContabil };
@@ -915,10 +984,22 @@ export function comContasPadrao(c: CadastroDaEmpresa, novas: ContasPadrao, por: 
   return registrar({ ...c, contasPadrao: { contas, nomes } }, por, agora, 'Mudou conta padrão', detalhe);
 }
 
-/** Aviso de uma conta usada no cadastro que não bate com o plano atual (null = tudo certo ou sem plano). */
+/**
+ * A conta não está no plano, e o plano veio de um balancete: o balancete só lista as contas com saldo no mês, então ela
+ * pode existir e só estar sem saldo (30/10/2026). Não trava nada; o aviso é leve.
+ */
+export function foraDoBalancete(codigo: string | undefined, plano: PlanoDeContas | null): boolean {
+  return !!codigo && plano?.origem === 'balancete' && !contaNoPlano(plano, codigo);
+}
+
+/**
+ * Aviso de uma conta usada no cadastro que não bate com o plano atual (null = tudo certo ou sem plano). Com o plano do
+ * balancete, a conta que não está nele é só "sem saldo neste balancete" (foraDoBalancete): aviso leve, não erro.
+ */
 export function avisoDaConta(codigo: string | undefined, plano: PlanoDeContas | null, nomeAntes?: string): string | null {
   if (!codigo || !plano) return null;
   const c = contaNoPlano(plano, codigo);
+  if (!c && plano.origem === 'balancete') return 'A conta ' + codigo + ' está sem saldo neste balancete (ele só lista as contas com saldo no mês): confira se é ela mesma.';
   if (!c) return 'A conta ' + codigo + ' não está no plano de contas.';
   if (c.sintetica) return 'A conta ' + codigo + ' é sintética (não recebe lançamento).';
   if (nomeAntes && nomeNorm(nomeAntes) !== nomeNorm(c.nome)) return 'Mudou de nome no plano: era "' + nomeAntes + '".';

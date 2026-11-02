@@ -1,6 +1,6 @@
 // ViewModel de Financeiro › Plano de contas (19/10/2026: "o Plano de Contas do Toriba, no nads"): a árvore em linhas (a
 // ordem de desenhar, com a fundura), a busca e qual conta está aberta na janela (nova, ou aberta para alterar).
-import { financeiro } from '@nads/core';
+import { financeiro, tarefas as t } from '@nads/core';
 import { useMemo, useState } from 'react';
 import { useCaixa } from '../../dados/repo';
 
@@ -20,5 +20,11 @@ export function usePlanoDeContas() {
     carregando: !plano.carregada, erro: plano.erro, exemplos: repo.exemplos,
     total: plano.lista.length, linhas, busca, setBusca,
     aberta, abrir: (c: ContaAberta) => setAberta(c), fechar: () => setAberta(null),
+    /** o .xlsx com as contas da tela (Savio, 23/10/2026: "exportar o plano de contas para excel"); a descrição recuada pelo nível */
+    exportar() {
+      const cabecalho = ['Classificação', 'Descrição', 'Nível', 'Tipo', 'Aceita lançamento', 'Ativa'];
+      const dados = linhas.map(({ conta: c, fundo }) => [c.codigo, ' '.repeat(fundo * 4) + c.descricao, c.nivel, financeiro.rotuloDoTipoDeConta(c.tipo), c.movimentavel ? 'Sim' : 'Não', c.ativo ? 'Sim' : 'Não']);
+      return { bytes: t.planilhaXlsx('Plano de contas', cabecalho, dados), nome: 'Plano de contas.xlsx' };
+    },
   };
 }

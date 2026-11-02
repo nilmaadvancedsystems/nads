@@ -32,7 +32,22 @@ export function Importacao({ tipo, naEtapa, meses }: { tipo: c.PaginaImportacao;
             <BotaoAcao carregando={vm.carregando} textoCarregando="Importando…" disabled={!vm.arquivo} onClick={vm.importar}>Importar</BotaoAcao>
           </div>
           <p className="hint">{vm.cfg.dica}</p>
+          {/* a empresa que não teve essas notas no período (Clara, 29/10/2026): a etapa segue sem o arquivo */}
+          {vm.podeMarcarSemMovimento && (
+            <div className="btn-row" style={{ justifyContent: 'flex-end', marginTop: 0 }}>
+              <button className="btn btn-outline" type="button" title={'A empresa não teve ' + vm.nomeDoTipo + ' em ' + vm.periodo + ': a etapa segue sem o arquivo'}
+                onClick={vm.marcarSemMovimento}>Sem movimento no período</button>
+            </div>
+          )}
         </div>
+      )}
+
+      {vm.semMovimento && (
+        <Alerta naLinha tom="ok" titulo={'Sem ' + vm.nomeDoTipo + ' em ' + vm.periodo} texto="Marcado como sem movimento no período: a etapa segue sem o arquivo.">
+          <div className="btn-row" style={{ marginTop: 8 }}>
+            <button className="btn btn-outline" type="button" onClick={vm.desfazerSemMovimento}>Desfazer e importar</button>
+          </div>
+        </Alerta>
       )}
 
       <MensagemFlutuante id={vm.cfg.idMensagem} chave={vm.seqMensagem} onFechar={vm.fecharMensagem}>

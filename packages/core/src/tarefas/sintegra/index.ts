@@ -306,3 +306,21 @@ export function conferirComAlterdata(arq: ArquivoSintegra, entradas: readonly No
   const soNoSintegra = notas.filter(n => !casa(numero(n.numero), doc(n.cnpj), alt));
   return { porCfop: [...porCfop.values()].sort((a, b) => a.cfop.localeCompare(b.cfop)), soNoAlterdata, soNoSintegra };
 }
+
+/**
+ * As notas dos relatórios do Alterdata que a pessoa subiu na tela do SINTEGRA (29/10/2026: "preciso que tenha como upar os
+ * relatórios do alterdata para comparar"): as do mês do arquivo (pela data de escrituração; a sem data fica) e sem repetir
+ * a mesma linha quando o relatório sobe duas vezes (o lançamento, o número, o CFOP e o valor).
+ */
+export function notasDosRelatorios(relatorios: readonly (readonly Nota[])[], competencia: string): Nota[] {
+  const vistas = new Set<string>();
+  const out: Nota[] = [];
+  for (const n of relatorios.flat()) {
+    if (competencia && n.comp && n.comp !== competencia) continue;
+    const k = [n.lanc, n.numero, n.cfop, n.valor, n.data].join('|');
+    if (vistas.has(k)) continue;
+    vistas.add(k);
+    out.push(n);
+  }
+  return out;
+}

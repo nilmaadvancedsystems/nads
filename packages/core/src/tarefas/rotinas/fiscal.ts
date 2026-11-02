@@ -12,20 +12,15 @@
 // Cada etapa é um checklist em ordem (como a Contabilização da Folha): só o próximo liberado; o avançar com tudo marcado.
 // É o único lugar a mexer: a ordem, os nomes e as tarefas saem daqui.
 import type { Etapa, ItemDoChecklist, Rotina } from '../tipos';
-import { etapasDaRotinaDosFluxos } from './fluxoFiscal';
 
 const item = (id: string, texto: string, mais: Omit<ItemDoChecklist, 'id' | 'texto'> = {}): ItemDoChecklist => ({ id, texto, ...mais });
 const etapa = (id: string, secao: string, nome: string, descricao: string, checklist: ItemDoChecklist[], mais: Partial<Etapa> = {}): Etapa => ({
   id, secao, nome, descricao, ferramenta: null, verificacao: 'manual', objecoes: [], checklist, ...mais,
 });
 
-/**
- * A rotina antiga (por etapas com checklist): desde 23/10/2026 só para os regimes que ainda não têm o fluxo novo (o MEI,
- * as isentas, a pessoa física e as domésticas). O Simples, o Presumido e o Real seguem o fluxo operacional
- * (fluxoFiscal.ts), gerado no fim da ROTINA_FISCAL.
- */
-const SEM_FLUXO = ['MEI', 'Isentas', 'Física', 'Domésticas'];
-const ROTINA_ANTIGA: Etapa[] = [
+export const ROTINA_FISCAL: Rotina = {
+  departamento: 'fiscal',
+  etapas: [
     // ─── Relatório inicial (Vitor, 07/10/2026: "faça uma aba de relatório no final e no início") ─────────────
     etapa('fiscal-relatorio-inicio', 'Relatório inicial', 'Relatório', 'O mês antes de começar: o regime, as etapas que entram, o SIEG e o que já foi importado.', [
       item('relatorio-inicio', 'Conferi o relatório do início', { painel: 'relatorio-inicio' }),
@@ -182,17 +177,5 @@ const ROTINA_ANTIGA: Etapa[] = [
     etapa('fiscal-relatorio-fim', 'Relatório final', 'Relatório', 'O mês fechado: os números, cada etapa com quem fez e quando, e o que ficou pendente.', [
       item('relatorio-fim', 'Conferi o relatório do fim', { painel: 'relatorio-fim' }),
     ]),
-];
-
-export const ROTINA_FISCAL: Rotina = {
-  departamento: 'fiscal',
-  etapas: [
-    // a antiga, só nos regimes sem fluxo (a etapa de todos os regimes fica nesses; a do Simples, do Presumido e do Real sai)
-    ...ROTINA_ANTIGA.flatMap(e => {
-      const regimes = (e.regimes || SEM_FLUXO).filter(r => SEM_FLUXO.includes(r));
-      return regimes.length ? [{ ...e, regimes }] : [];
-    }),
-    // o fluxo operacional do Simples, do Presumido e do Real (23/10/2026)
-    ...etapasDaRotinaDosFluxos(),
   ],
 };

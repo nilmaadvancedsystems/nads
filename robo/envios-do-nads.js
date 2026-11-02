@@ -15,6 +15,9 @@
 // arquivamento: vai direto para CONTÁBIL/EXTRATOS/AAAA/MM/BANCÁRIOS/<BANCO> na pasta da empresa, na frente da fila
 // (Vitor, 19/10/2026: "após eu pesquisar no e-mail, upe imediatamente na pasta… em até 2 minutos, priorize eles acima
 // de todos"). Sem a empresa no mapa do Drive (ou sem a API do Drive), cai no Claudio Secretario como antes.
+// O comprovante do mês da aba Comprovantes ("Comprovante BRADESCO 02-2026 - <nome original>.pdf") vai igual, para
+// CONTÁBIL/EXTRATOS/AAAA/MM/COMPROVANTES/<BANCO>, com o nome original (Vitor, 27/10/2026: "não tá upando o comprovante no
+// drive… deixe a lógica idêntica ao que funciona").
 const fs = require('fs');
 const path = require('path');
 const { ouvir } = require('./ouvinte');
@@ -145,12 +148,18 @@ function extratoDoNome(nome) {
   return m ? { banco: m[1].trim(), mes: m[2], ano: m[3], ext: m[4].toLowerCase() } : null;
 }
 
+/** "Comprovante BRADESCO 02-2026 - TITULOS PAGOS.pdf" (o nome que a aba Comprovantes dá) → { banco, mes, ano, ext, original }. */
+function comprovanteDoNome(nome) {
+  const m = /^Comprovante (.+?) (0[1-9]|1[0-2])-(20\d{2}) - (.+\.[A-Za-z0-9]{2,5})$/.exec(String(nome || '').trim());
+  return m ? { banco: m[1].trim(), mes: m[2], ano: m[3], ext: path.extname(m[4]).toLowerCase(), original: m[4].trim() } : null;
+}
+
 /**
  * Onde o extrato vai na pasta da empresa, pelo mapa do Drive (os itens do driveIndice): o nome da pasta do banco é o que a
  * empresa já usa para ele (em qualquer mês); senão, o nome do arquivo. Devolve a pasta mais funda que já existe no caminho,
  * as que faltam criar (com o nome certo, acentuado) e o nome final ("06-2026.pdf", como a rotina de arquivamento deixa).
  */
-function caminhoDoExtratoNoIndice(itens, clienteId, ex) {
+function caminhoDoExtratoNoIndice(itens, clienteId, ex, sub = 'BANCÁRIOS', nomeFinal = ex.mes + '-' + ex.ano + ex.ext) {
   const indice = require('./drive-indice');
   const k = indice.chaveDeNome;
   const idBanco = indice.bancoDaPasta(ex.banco);
@@ -161,11 +170,12 @@ function caminhoDoExtratoNoIndice(itens, clienteId, ex) {
     const c = cam.get(it.i);
     if (!c || c.length !== 6) continue;
     const ck = c.map(k);
-    if (ck[0] !== 'CONTABIL' || ck[1] !== 'EXTRATOS' || ck[4] !== 'BANCARIOS') continue;
+    // o nome da pasta do banco que a empresa já usa (nos extratos; o comprovante também olha os comprovantes)
+    if (ck[0] !== 'CONTABIL' || ck[1] !== 'EXTRATOS' || (ck[4] !== 'BANCARIOS' && ck[4] !== k(sub))) continue;
     if ((idBanco && indice.bancoDaPasta(c[5]) === idBanco) || ck[5] === k(ex.banco)) usados.set(c[5], (usados.get(c[5]) || 0) + 1);
   }
   const nomeDoBanco = [...usados].sort((a, b) => b[1] - a[1])[0]?.[0] || ex.banco.toUpperCase();
-  const alvo = ['CONTÁBIL', 'EXTRATOS', ex.ano, ex.mes, 'BANCÁRIOS', nomeDoBanco];
+  const alvo = ['CONTÁBIL', 'EXTRATOS', ex.ano, ex.mes, sub, nomeDoBanco];
   let pai = clienteId;
   let i = 0;
   for (; i < alvo.length; i++) {
@@ -173,12 +183,13 @@ function caminhoDoExtratoNoIndice(itens, clienteId, ex) {
     if (!filho) break;
     pai = filho.i;
   }
-  return { existente: pai, faltam: alvo.slice(i), caminho: alvo.join('/'), nomeFinal: ex.mes + '-' + ex.ano + ex.ext };
+  return { existente: pai, faltam: alvo.slice(i), caminho: alvo.join('/'), nomeFinal };
 }
 
 /** Grava o extrato direto na pasta do banco (pela API do Drive). null = não dá (não é extrato, empresa fora do mapa, outro ano). */
 async function gravarNaPastaDoBanco(db, drive, envio, c) {
-  const ex = extratoDoNome(c.nome);
+  const comp = extratoDoNome(c.nome) ? null : comprovanteDoNome(c.nome);
+  const ex = extratoDoNome(c.nome) || comp;
   const codigo = String(envio.codigo == null ? '' : envio.codigo).trim();
   if (!ex || !codigo) return null;
   const raiz = (await db.collection('driveIndice').doc('raiz').get()).data() || {};
@@ -190,7 +201,7 @@ async function gravarNaPastaDoBanco(db, drive, envio, c) {
   const partes = Number(((await ref.get()).data() || {}).partes || 0);
   const itens = [];
   for (let n = 0; n < partes; n++) itens.push(...((((await ref.collection('partes').doc(String(n)).get()).data()) || {}).itens || []));
-  const cam = caminhoDoExtratoNoIndice(itens, cli.id, ex);
+  const cam = comp ? caminhoDoExtratoNoIndice(itens, cli.id, ex, 'COMPROVANTES', comp.original) : caminhoDoExtratoNoIndice(itens, cli.id, ex);
   let pastaId = cam.existente;
   for (const nome of cam.faltam) pastaId = await driveArquivos.garantirPasta(drive, pastaId, nome);
   const salvo = await driveArquivos.salvarArquivo(drive, pastaId, cam.nomeFinal, c.buffer);
@@ -222,7 +233,8 @@ function iniciarEnviosDoNads(db, log) {
         return;
       }
       // o extrato do mês: direto na pasta do banco (sem esperar o arquivamento); não deu, segue para o Claudio Secretario
-      if (USAR_DRIVE_API && extratoDoNome(c.nome)) {
+      if (USAR_DRIVE_API && (extratoDoNome(c.nome) || comprovanteDoNome(c.nome))) {
+        const oQue = extratoDoNome(c.nome) ? 'extrato' : 'comprovante';
         try {
           const direto = await gravarNaPastaDoBanco(db, driveArquivos.getDrive(), envio, c);
           if (direto) {
@@ -232,11 +244,11 @@ function iniciarEnviosDoNads(db, log) {
               status: 'pronto', pasta: direto.pasta, nomeFinal: direto.nomeFinal, jaEstava: direto.jaEstava, prontoEm: agora, direto: true,
               arquivamento: { situacao: 'arquivado', em: agora, execucao: 'direto', codigo: direto.codigo, cliente: direto.cliente, subpasta: direto.subpasta, final: direto.nomeFinal },
             });
-            log('extrato pelo nads direto na pasta do banco (' + (envio.criadoPor || '?') + '):', c.nome, '->', direto.pasta + '/' + direto.nomeFinal + (direto.jaEstava ? ' (já estava lá)' : ''));
-            painel.atividade('envios', 'Arquivou o extrato mandado pelo nads: ' + c.nome, direto.pasta + '/' + direto.nomeFinal + (direto.jaEstava ? ' (já estava lá)' : '') + (envio.criadoPor ? ' · de ' + envio.criadoPor : ''));
+            log(oQue + ' pelo nads direto na pasta do banco (' + (envio.criadoPor || '?') + '):', c.nome, '->', direto.pasta + '/' + direto.nomeFinal + (direto.jaEstava ? ' (já estava lá)' : ''));
+            painel.atividade('envios', 'Arquivou o ' + oQue + ' mandado pelo nads: ' + c.nome, direto.pasta + '/' + direto.nomeFinal + (direto.jaEstava ? ' (já estava lá)' : '') + (envio.criadoPor ? ' · de ' + envio.criadoPor : ''));
             return;
           }
-        } catch (err) { log('extrato direto na pasta do banco não deu (vai para o Claudio Secretario):', err.message); }
+        } catch (err) { log(oQue + ' direto na pasta do banco não deu (vai para o Claudio Secretario):', err.message); }
       }
       const cliente = nomeDaPastaDoCliente(envio, await clientesPorCodigo(db));
       let nomeFinal;
@@ -268,7 +280,8 @@ function iniciarEnviosDoNads(db, log) {
 
   // os extratos do mês na frente (19/10/2026: "priorize eles acima de todos"), depois os outros
   ouvir('envios do nads', () => envios.where('status', '==', 'pendente').limit(20), snap => {
-    const ehExtrato = d => (extratoDoNome(d.get('nome')) ? 0 : 1);
+    // (o comprovante do mês também: Vitor, 27/10/2026)
+    const ehExtrato = d => (extratoDoNome(d.get('nome')) || comprovanteDoNome(d.get('nome')) ? 0 : 1);
     snap.docs.slice().sort((a, b) => ehExtrato(a) - ehExtrato(b)).forEach(d => { tratar(d); });
   }, log);
 
@@ -350,4 +363,4 @@ function iniciarDestinoDosEnvios(db, log) {
   }, log);
 }
 
-module.exports = { extratoDoNome, caminhoDoExtratoNoIndice, montarEnvio, nomeDaPastaDoCliente, PASTA_SEM_CLIENTE, iniciarEnviosDoNads, guiaDoEnvio, idDaGuiaDoCliente, docDaGuiaDoCliente, pedacosDoPdfCliente, guiaNaAreaDoCliente, destinoNoArquivamento, iniciarDestinoDosEnvios };
+module.exports = { extratoDoNome, comprovanteDoNome, caminhoDoExtratoNoIndice, montarEnvio, nomeDaPastaDoCliente, PASTA_SEM_CLIENTE, iniciarEnviosDoNads, guiaDoEnvio, idDaGuiaDoCliente, docDaGuiaDoCliente, pedacosDoPdfCliente, guiaNaAreaDoCliente, destinoNoArquivamento, iniciarDestinoDosEnvios };

@@ -20,7 +20,7 @@ export function RobosEAgentes() {
   const mostrar = todos ? vm.saude || [] : problemas;
   return (
     <section className="cad-robos">
-      {!vm.admin && <p className="hint">Só um administrador liga ou desliga; aqui você acompanha.</p>}
+      {!vm.admin && <p className="hint">Só um administrador liga ou desliga.</p>}
       <div className="cad-robos-grade">
         {vm.veSaude && (
           <div ref={saude} className="card cad-secao">
@@ -53,7 +53,6 @@ export function RobosEAgentes() {
               <b>Ler a agência e a conta dos extratos
                 <Dica texto='O sistema lê a agência e a conta do cabeçalho dos extratos que chegam pelo Gmail e pelo Drive; a lista de empresas usa quando a empresa ainda não tem os bancos cadastrados.' />
               </b>
-              <span className="hint">Gmail e Drive</span>
             </div>
             <Interruptor ligado={vm.robo} onMudar={() => void vm.alternarRobo()} rotulo="Ler a agência e a conta dos extratos" />
           </div>

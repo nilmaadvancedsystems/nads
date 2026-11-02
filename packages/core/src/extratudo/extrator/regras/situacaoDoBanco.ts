@@ -73,6 +73,13 @@ export interface ConferenciaDoBanco {
   faltamCheque: DiaNegativo[];
   /** o cheque especial achado no razão */
   cheque: ChequeNoRazao;
+  /** o "Ajuste de exercícios anteriores" do razão que bate com o saldo do extrato naquele dia: fica de fora */
+  ajustes: Set<LancamentoDoArquivo>;
+}
+
+/** O lançamento que implanta o saldo da conta no razão: "Ajuste de exercício(s) anterior(es)". */
+export function ehAjusteDeExerciciosAnteriores(historico: string): boolean {
+  return /\bajustes? (?:de |do |dos )?exercicios? anterior(?:es)?\b/.test(normalizarTexto(historico));
 }
 
 /** A conferência do banco no período: mês a mês, extrato × razão, tirando o cheque especial do razão. */
@@ -104,10 +111,51 @@ export function conferenciaDoBanco(e: EmpresaExtrator, banco: string, primeiro: 
     const estorno = sobras.find(l => !cheque.linhas.has(l) && l.data.startsWith(inicio) && Number(l.data.slice(8, 10)) <= 5 && Math.abs(l.valor) === -aberturaNegativa);
     if (estorno) cheque.linhas.add(estorno);
   }
+  // o "Ajuste de exercicio anteriores" que implanta o saldo da conta no razão (só no razão): fica de fora desde que o valor
+  // seja o saldo do extrato antes daquele dia (Vitor, 26/10/2026: "desde que o saldo bata, ignore")
+  const ajustes = new Set<LancamentoDoArquivo>();
+  for (const l of sobras) {
+    if (cheque.linhas.has(l) || !ehAjusteDeExerciciosAnteriores(l.historico)) continue;
+    const mov = movimentoDoExtrato(e, banco, primeiro, l.data.slice(0, 7));
+    // sem o saldo de abertura do extrato, não dá para saber se bate: fica como pendência
+    if (mov.abertura == null) continue;
+    const saldoAntes = mov.saldoAnterior + mov.linhas.filter(x => x.data < l.data).reduce((t, x) => t + x.valor, 0);
+    if (Math.abs(l.valor) === Math.abs(saldoAntes)) ajustes.add(l);
+  }
+  // o par de cheque especial que se anula no razão (o ajuste e o estorno do mesmo valor, até 7 dias depois) sem um dia
+  // negativo do mesmo valor no banco: não mexe no saldo, conta como certo (Vitor, 27/10/2026: na 237, o de 25.716,57 em
+  // 30 e 31/03 aparecia como pendência — "já foi feito o cheque especial")
+  // (o par pode estar antes ou depois, e a outra metade já contar como cheque: o ajuste de 1º a 5 de janeiro entra pela
+  // virada do ano, e o estorno dele, no dia 6, ficava sozinho)
+  const pareados = new Set<LancamentoDoArquivo>();
+  for (const l of [...sobras].sort((a, b) => a.data.localeCompare(b.data))) {
+    if (cheque.linhas.has(l) || !ehDoChequeEspecial(l)) continue;
+    const par = sobras.find(m => m !== l && !pareados.has(m) && (!cheque.linhas.has(m) || chequeDaViradaDoAno(m)) && ehDoChequeEspecial(m) && m.valor === -l.valor
+      && m.data !== l.data && Math.abs(diaDe(m.data) - diaDe(l.data)) <= DIAS_ATE_O_ESTORNO);
+    if (par) { cheque.linhas.add(l); cheque.linhas.add(par); pareados.add(l); pareados.add(par); }
+  }
+  // o que o razão lançou e estornou no mesmo dia, na mesma contrapartida, e o banco não mostra (Vitor, 27/10/2026: na 237,
+  // o "ENVIO TED" e o "DEV. TED" de 18.800,00 em 02/02 — "o banco não lançou a entrada e o estorno no extrato, que dá na
+  // mesma do meu razão"): se anulam, não é pendência
+  const anulados = new Set<LancamentoDoArquivo>();
+  for (const p of porMes) {
+    const soDoRazao = p.linhas.filter(l => !l.extrato && l.sistema && (l.situacao === 'amais' || l.situacao === 'duplicado')).map(l => l.sistema as LancamentoDoArquivo)
+      .filter(s => !cheque.linhas.has(s) && !ajustes.has(s));
+    for (const s of soDoRazao) {
+      if (anulados.has(s)) continue;
+      const par = soDoRazao.find(o => o !== s && !anulados.has(o) && o.data === s.data && o.valor === -s.valor && (o.conta || '') === (s.conta || ''));
+      if (par) { anulados.add(s); anulados.add(par); }
+    }
+  }
   const pendencias = porMes
-    .map(p => ({ mes: p.mes, linhas: p.linhas.filter(l => !(l.situacao === 'amais' && l.sistema && cheque.linhas.has(l.sistema))) }))
+    .map(p => ({ mes: p.mes, linhas: p.linhas.filter(l => !(l.sistema && !l.extrato && anulados.has(l.sistema)) && !(l.situacao === 'amais' && l.sistema && (cheque.linhas.has(l.sistema) || ajustes.has(l.sistema)))) }))
     .filter(p => p.linhas.length > 0);
-  return { completo, pendencias, negativos, faltamCheque: negativos.filter(n => !cheque.cobertos.has(n.data)), cheque };
+  return { completo, pendencias, negativos, faltamCheque: negativos.filter(n => !cheque.cobertos.has(n.data)), cheque, ajustes };
+}
+
+/** O lançamento do cheque especial no razão: o histórico (ou o nome da contrapartida) diz "cheque especial", ou o código 92029. */
+function ehDoChequeEspecial(l: Pick<LancamentoDoArquivo, 'historico' | 'complemento'>): boolean {
+  return /\bcheque especial\b/.test(normalizarTexto(l.historico + ' ' + (l.complemento || ''))) || /\b92029\b/.test(l.historico);
 }
 
 /** O lançamento do cheque especial (o histórico diz "cheque especial" ou o código 92029) entre 1º e 5 de janeiro. */

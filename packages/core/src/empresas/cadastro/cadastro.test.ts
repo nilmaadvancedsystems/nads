@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   avisoDaConta, bancosDoCadastroNa, buscarNoPlano, cadastroDoDocumento, cadastroVazio, compararPlanos, confirmarPontoDePartida,
-  comContasPadrao, criarRepoCadastro, criarRepoCadastroMemoria, definirCartao, definirContaPadrao, definirContato, definirDocumento, confirmarBancos, sugerirContaContabil, definirNotaDeHonorario, definirPagamentoDoProLabore, definirPrestaServico, definirRegime, regimeDoCadastro, definirSocios, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
+  comContasPadrao, foraDoBalancete, criarRepoCadastro, criarRepoCadastroMemoria, gravacaoDoCadastro, portaCadastroMemoria, definirCartao, definirContaPadrao, definirContato, definirDocumento, confirmarBancos, sugerirContaContabil, definirNotaDeHonorario, definirPagamentoDoProLabore, definirPrestaServico, definirRegime, regimeDoCadastro, definirSocios, documentoDoCadastro, encerrarConta, excluirConta, lerPlanoDeContas,
   bancosDoEntregasDoDocumento, bancosDoEntregasPorCodigo, contatosDoEntregasPorCodigo, contasDoEntregas, juntarComEntregas, sugestoesDoEntregas,
   lerPlanilhaDoPlano, linhasDoTexto, registrarPlano, planoDoBalancete, planoDoDocumento, pontoDePartida, primeiroBancoDoCadastro, reabrirConta, salvarConta, textoDoArquivo,
   type PlanoDeContas,
@@ -95,6 +95,17 @@ describe('confirmar os bancos na Importação (21/10/2026)', () => {
     expect(confirmarBancos(vazio(), [L('nubank', 'nubank', '10504', false)], partida, plano, 'Vitor', AGORA).erro).toBe('Marque os bancos que a empresa tem.');
     // o banco novo, com agência e conta, entra com o id da conta
     expect(confirmarBancos(vazio(), [L(null, 'itau', '10501', true, '0412', '99887-7')], partida, null, 'Vitor', AGORA).cadastro.bancos?.[0].id).toBe('itau-0412-998877');
+  });
+  it('com o plano do balancete, o banco sem saldo no mês (fora dele) não trava: aviso leve (30/10/2026)', () => {
+    const doBalancete = { ...plano, origem: 'balancete' as const };
+    const r = confirmarBancos(vazio(), [L('nubank', 'nubank', '10599')], partida, doBalancete, 'Vitor', AGORA);
+    expect(r.erro).toBeNull();
+    expect(r.cadastro.bancos?.[0].contaContabil).toBe('10599');
+    expect(avisoDaConta('10599', doBalancete)).toMatch(/sem saldo neste balancete/);
+    expect(foraDoBalancete('10599', doBalancete)).toBe(true);
+    expect(foraDoBalancete('10599', plano)).toBe(false);
+    // a sintética continua travando, mesmo no plano do balancete
+    expect(confirmarBancos(vazio(), [L('nubank', 'nubank', '105')], partida, doBalancete, 'Vitor', AGORA).erro).toBe('Nubank: A conta 105 é sintética (não recebe lançamento).');
   });
   it('a conta contábil sugerida pelo nome no plano: só quando bate uma', () => {
     expect([sugerirContaContabil(plano, 'nubank'), sugerirContaContabil(plano, 'sicoob'), sugerirContaContabil(plano, 'caixa'), sugerirContaContabil(null, 'nubank')]).toEqual(['10504', '10501', '', '']);
@@ -218,7 +229,7 @@ describe('repositório sem acesso ao banco', () => {
     const gravados: string[] = [];
     const negado = (_id: string, _ok: unknown, falhou: (e: Error) => void) => { queueMicrotask(() => falhou(new Error('Missing or insufficient permissions.'))); return () => {}; };
     const avisos: string[] = [];
-    const repo = criarRepoCadastro({ ouvirCadastro: negado, ouvirPlano: negado, ouvirTodos: (ok, falhou) => negado('', ok, falhou), gravar: async id => { gravados.push(id); } }, false);
+    const repo = criarRepoCadastro({ ouvirCadastro: negado, ouvirPlano: negado, ouvirTodos: (ok, falhou) => negado('', ok, falhou), gravarCampos: async id => { gravados.push(id); } }, false);
     repo.definirAviso(m => avisos.push(m));
     repo.cadastro('FITO', 292);
     await Promise.resolve();
@@ -228,6 +239,35 @@ describe('repositório sem acesso ao banco', () => {
     repo.salvar('FITO', confirmarPontoDePartida(repo.cadastro('FITO', 292), pontoDePartida(292), 'V', AGORA));
     expect(gravados).toEqual([]);
     expect(avisos).toHaveLength(1);
+  });
+});
+
+describe('a lista de todos os cadastros quando a leitura falha (30/10/2026)', () => {
+  it('fica marcada como falha (não como "chegou vazia") e tenta de novo até chegar', async () => {
+    vi.useFakeTimers();
+    try {
+      let tentativas = 0;
+      const nada = (_id: string, _ok: unknown, _falhou: unknown) => () => {};
+      const repo = criarRepoCadastro({
+        ouvirCadastro: nada, ouvirPlano: nada, gravarCampos: async () => {},
+        ouvirTodos: (chegou, falhou) => {
+          tentativas++;
+          const n = tentativas;
+          queueMicrotask(() => (n === 1 ? falhou(new Error('Missing or insufficient permissions.')) : chegou([{ id: 'fito', doc: { nome: 'FITO', codigo: 292, historico: [], responsaveis: { contabil: 'Clara' } } }])));
+          return () => {};
+        },
+      }, false);
+      repo.todos();
+      await Promise.resolve();
+      expect(repo.todos()).toMatchObject({ carregada: true, falhou: true });
+      expect(repo.todos().porId.size).toBe(0);
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(tentativas).toBe(2);
+      expect(repo.todos().falhou).toBe(false);
+      expect(repo.todos().porId.get('fito')?.responsaveis?.contabil).toBe('Clara');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
@@ -441,5 +481,34 @@ describe('os dados da empresa no Entregas (14/10/2026)', () => {
     expect(m.get(462)?.documento).toBe('11222333000181');
     expect(m.get(462)?.receita).toMatchObject({ razaoSocial: '3M EMPREENDIMENTOS', situacao: 'ATIVA', socios: ['FULANO'] });
     expect(m.has(7)).toBe(false);
+  });
+});
+
+describe('gravar só o que mudou no cadastro (30/10/2026)', () => {
+  it('os campos que mudaram, o que a pessoa tirou e o histórico só quando muda (ou na criação)', () => {
+    const antes = definirRegime(vazio(), 'Simples', 'V', AGORA);
+    const sim = definirCartao(antes, 'cartaoEmpresarial', true, 'V', AGORA);
+    const g = gravacaoDoCadastro(antes, sim);
+    expect(Object.keys(g.campos).sort()).toEqual(['atualizadoEm', 'cartaoEmpresarial', 'codigo', 'historico', 'nome']);
+    expect(g.apagar).toEqual([]);
+    expect(g.campos).not.toHaveProperty('regime');
+    expect(gravacaoDoCadastro(antes, definirRegime(antes, null, 'V', AGORA)).apagar).toEqual(['regime']);
+    expect(gravacaoDoCadastro(antes, antes).campos).toEqual({ nome: 'FITO', codigo: 292, atualizadoEm: documentoDoCadastro(antes).atualizadoEm });
+    expect(gravacaoDoCadastro(antes, antes, false).campos).toHaveProperty('historico');
+  });
+  it('o campo que esta versão não conhece fica no banco (a aba antiga não apaga o novo)', async () => {
+    const porta = portaCadastroMemoria({ cadastros: { fito: { nome: 'FITO', codigo: 292, historico: [], regime: 'Simples', campoDoFuturo: { a: 1 } } }, planos: {} });
+    const recebidos: { campos: Record<string, unknown>; apagar: readonly string[] }[] = [];
+    const repo = criarRepoCadastro({ ...porta, gravarCampos: (id, campos, apagar, plano) => { recebidos.push({ campos, apagar }); return porta.gravarCampos(id, campos, apagar, plano); } }, true);
+    repo.cadastro('FITO', 292);
+    await Promise.resolve(); await Promise.resolve();
+    expect(repo.carregada('FITO')).toBe(true);
+    repo.salvar('FITO', definirCartao(repo.cadastro('FITO', 292), 'vendeNoCartao', true, 'V', AGORA));
+    await Promise.resolve();
+    expect(recebidos[0].campos).not.toHaveProperty('regime');
+    let doc: Record<string, unknown> | null = null;
+    porta.ouvirCadastro('fito', d => { doc = d; }, () => {});
+    await Promise.resolve();
+    expect(doc).toMatchObject({ regime: 'Simples', vendeNoCartao: true, campoDoFuturo: { a: 1 } });
   });
 });

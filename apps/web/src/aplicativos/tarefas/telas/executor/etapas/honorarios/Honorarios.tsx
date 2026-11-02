@@ -44,7 +44,7 @@ function ExtratoPorCobranca({ vm }: { vm: Vm }) {
   const [aberta, setAberta] = useState(true);
   const e = vm.extrato;
   return (
-    <div className={'imp-bloco' + (e && vm.podeBaixar ? ' imp-ok' : '')}>
+    <div className={'imp-bloco' + (e && (!e.pagamentos.length || vm.podeBaixar) ? ' imp-ok' : '')}>
       <div className="imp-linha">
         <button type="button" className={'imp-seta' + (aberta ? ' aberta' : '')} aria-expanded={aberta} disabled={!e}
           title={aberta ? 'Recolher' : 'Abrir'} aria-label="As cobranças do período" onClick={() => setAberta(a => !a)}>
@@ -116,8 +116,9 @@ function ExtratoPorCobranca({ vm }: { vm: Vm }) {
               </table>
             </div>
           )}
-          {/* o arquivo do Alterdata: D despesa de honorários / C honorários a pagar, na data de emissão de cada cobrança */}
-          <div className="tarefas-barra-topo">
+          {/* o arquivo do Alterdata: D despesa de honorários / C honorários a pagar, na data de emissão de cada cobrança; só com
+              pagamento no PDF (Vitor, 26/10/2026: "se não tem pagamento no PDF, não dê nem a opção de baixar") */}
+          {e.pagamentos.length > 0 && <div className="tarefas-barra-topo">
             {/* as contas já vêm escolhidas (Vitor, 16/10/2026: "coloque as contas automaticamente"); dá para trocar */}
             <span className="hint">Despesa</span>
             <MenuDeConta valor={vm.contaDespesa} contas={vm.opcoes} onEscolher={c => vm.mudarConta('despesa', c)} />
@@ -132,7 +133,7 @@ function ExtratoPorCobranca({ vm }: { vm: Vm }) {
               title={vm.podeBaixar ? 'Baixar o .xls de importação do Alterdata: a provisão de cada cobrança na emissão e o pagamento das pagas' : 'Escolha a conta de despesa, a de honorários a pagar e a do banco de cada pagamento'}>
               <Icone nome="download" />Baixar .xls
             </button>
-          </div>
+          </div>}
         </div>
       )}
     </div>

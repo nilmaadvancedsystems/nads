@@ -7,10 +7,11 @@ const MESES: Record<string, number> = { jan: 1, fev: 2, mar: 3, abr: 4, mai: 5, 
 /**
  * Valor em centavos: "1.234,56", "-1.234,56", "(10,00)", "10,00 D", "10,00 C", "10,00D" (o D/C colado, como o
  * Sicoob), "1234.56", "R$ 5,00". D, "-" ou parênteses = negativo; C ou "+" = positivo. null quando não é valor.
+ * O "R$" da frente não esconde o sinal: "R$ -5,00" e "R$-5,00" são negativos (antes saíam positivos).
  */
 export function centavos(v: unknown): number | null {
   if (typeof v === 'number') return isFinite(v) ? Math.round(v * 100) : null;
-  let s = String(v == null ? '' : v).trim();
+  let s = semMoeda(String(v == null ? '' : v));
   if (!s) return null;
   const neg = /^\(.*\)$/.test(s) || /^-|-$|(\s|\d)D$|^D\s|\(-\)/i.test(s);
   const pos = /(\s|\d)C$|\(\+\)|^\+/i.test(s);
@@ -28,7 +29,12 @@ export function centavos(v: unknown): number | null {
 
 /** O texto do valor já diz se é entrada ou saída (sinal, D/C, parênteses)? */
 export function temSinal(v: unknown): boolean {
-  return /^\(.*\)$|^-|-$|(\s|\d)[CD]$|^[CD]\s|\([+-]\)|^\+/i.test(String(v == null ? '' : v).trim());
+  return /^\(.*\)$|^-|-$|(\s|\d)[CD]$|^[CD]\s|\([+-]\)|^\+/i.test(semMoeda(String(v == null ? '' : v)));
+}
+
+/** o texto do valor sem o "R$" da frente (o sinal e os parênteses depois dele ficam no começo) */
+function semMoeda(s: string): string {
+  return s.trim().replace(/^R\$\s*/i, '');
 }
 
 const pad = (n: number) => (n < 10 ? '0' : '') + n;

@@ -12,16 +12,6 @@ import { useAcesso } from '../../../dados/repo';
 export type FiltroDeUsuarios = 'todos' | 'online' | 'ativos' | 'inativos';
 type Janela = { tipo: 'novo' } | { tipo: 'pessoa'; uid: string } | null;
 
-/** Para que serve cada papel (a dica da janela da pessoa). */
-const DICAS: Partial<Record<usuarios.Papel, string>> = {
-  admin: 'Muda a equipe, as configurações e libera computadores.',
-  office_boy: 'Faz a rota de entregas no Entregas.',
-  contabil: 'Vê e faz a rotina do Contábil.',
-  fiscal: 'Vê e faz a rotina do Fiscal.',
-  dp: 'Vê e faz a rotina do Departamento Pessoal.',
-  equipe_geral: 'Vê o que é de todos no Entregas.',
-};
-
 export function useUsuariosDoNads() {
   const repo = useAcesso();
   const { toast, modal } = useRetorno();
@@ -83,7 +73,7 @@ export function useUsuariosDoNads() {
     // em grupos (sem busca, em Todos): quem está online agora, o resto da equipe e os inativos
     grupos: filtro !== 'todos' || q ? [{ titulo: '', itens: linhas }] : [
       { titulo: 'Online agora', itens: linhas.filter(p => p.online) },
-      { titulo: 'Equipe', itens: linhas.filter(p => p.ativo && !p.online) },
+      { titulo: 'Usuários', itens: linhas.filter(p => p.ativo && !p.online) },
       { titulo: 'Inativos', itens: linhas.filter(p => !p.ativo) },
     ].filter(g => g.itens.length),
     // as janelas: a da pessoa (os dados ao vivo) e a de criar o acesso
@@ -94,7 +84,7 @@ export function useUsuariosDoNads() {
     fechar: () => setJanela(null),
     departamentos: usuarios.DEPARTAMENTOS,
     niveis: usuarios.NIVEIS,
-    papeis: usuarios.PAPEIS.map(x => ({ ...x, dica: DICAS[x.id] || '' })),
+    papeis: usuarios.PAPEIS,
     mudarCargo: (p: usuarios.Usuario, departamento: usuarios.Departamento | null, nivel: usuarios.Nivel | null) =>
       tentar(() => repo.salvarCargo(p.uid, departamento, nivel), 'Cargo de ' + p.nome + ' salvo.'),
     alternarPapel(p: usuarios.Usuario, papel: usuarios.Papel) {

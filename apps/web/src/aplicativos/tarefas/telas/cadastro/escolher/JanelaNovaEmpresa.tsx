@@ -52,9 +52,7 @@ export function JanelaNovaEmpresa({ fechar }: { fechar: () => void }) {
               Buscar na Receita
             </BotaoAcao>
           </div>
-          {vm.avisoReceita
-            ? <p className="registro-dica registro-dica-erro"><Icone nome="alert" />{vm.avisoReceita}</p>
-            : !r && <p className="registro-dica">Com o CNPJ, a Receita preenche o nome e o regime. Sem CNPJ, preencha abaixo.</p>}
+          {vm.avisoReceita && <p className="registro-dica registro-dica-erro"><Icone nome="alert" />{vm.avisoReceita}</p>}
 
           {r && (
             <div className="registro-receita">

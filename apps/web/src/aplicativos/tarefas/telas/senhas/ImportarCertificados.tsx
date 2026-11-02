@@ -50,7 +50,7 @@ export function ImportarCertificados({ cofre, fechar }: { cofre: VmCofre; fechar
             onDrop={e => { e.preventDefault(); setSobre(false); soltar(e.dataTransfer.files); }}>
             <span className="cert-soltar-icone"><Icone nome="upload" /></span>
             <b>{vm.fila.length ? 'Soltar mais certificados' : 'Solte os certificados aqui'}</b>
-            <span className="fraco">um ou vários .pfx, ou o pacote do Toriba (.json) — a empresa vem pelo CNPJ</span>
+            <span className="fraco">um ou vários .pfx, ou o pacote do Toriba (.json)</span>
           </button>
           <ul className="imp-cert-lista">
             {vm.fila.map(x => (

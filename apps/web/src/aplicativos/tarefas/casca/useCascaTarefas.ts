@@ -32,11 +32,14 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
     titulo: a?.paginas.find(p => p.id === pagina)?.titulo || a?.nome || '',
     // o Cadastro com as páginas em abas no alto (Empresas, Usuários, Configurações; Vitor, 05/10/2026), sem a barra lateral
     comAbas,
-    secoes: comAbas ? [] : (a?.paginas || []).map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, marca: p.marca, grupo: 1, ativa: p.id === pagina, travada: !!p.emDesenvolvimento })),
+    // os blocos com nome (as Configurações: Cadastro e Admin; 28/10/2026): o nome em cima da primeira página de cada um
+    secoes: comAbas ? [] : (a?.paginas || []).map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, marca: p.marca, grupo: p.secao ? 1 + [...new Set(a?.paginas.map(x => x.secao))].indexOf(p.secao) : 1, titulo: p.secao, ativa: p.id === pagina, travada: !!p.emDesenvolvimento })),
     paginas: comAbas ? (a?.paginas || []).map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, ativa: p.id === pagina })) : [],
     /** a aba do alto (o Cadastro): a página, mantendo a competência */
     onPagina: (id: string) => navegar(caminhoDaPagina(app, id) + search),
-    aplicacoes: aplicacoesDe(op).map(x => ({ id: x.id, nome: x.nome, icone: x.icone, grupo: x.grupo, marca: x.marca, ativo: x.id === app })),
+    // o Início já tem o item dele no alto da gaveta
+    // as Configurações saem da lista: ficam no pé da gaveta, só com o ícone da engrenagem (Vitor, 28/10/2026)
+    aplicacoes: aplicacoesDe(op).filter(x => x.id !== 'inicio' && x.id !== 'cadastro' && x.id !== 'ferramentas').map(x => ({ id: x.id, nome: x.nome, icone: x.icone, grupo: x.grupo, marca: x.marca, ativo: x.id === app })),
     // páginas da mesma aplicação mantêm a competência escolhida (fica na URL)
     // a página em desenvolvimento não abre: só o aviso (21/10/2026)
     onSecao: (id: string) => {
@@ -44,6 +47,10 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
       if (p?.emDesenvolvimento) { aviso({ tom: 'info', titulo: p.rotulo + ': em desenvolvimento', texto: 'Esta tela ainda não está liberada.' }); return; }
       navegar(caminhoDaPagina(app, id) + search);
     },
+    /** a engrenagem do pé da gaveta: a pessoa tem as Configurações? (o sênior, o diretor e o admin) e se está nelas */
+    configuracoes: aplicacoesDe(op).some(x => x.id === 'cadastro') ? { ativa: app === 'cadastro' } : null,
+    /** o botão das Ferramentas, ao lado da engrenagem no pé da gaveta (para todos) */
+    ferramentas: { ativa: app === 'ferramentas' },
     onAplicacao: (id: string) => { const x = aplicacao(id); if (x) navegar(caminhoDaPagina(x.id, x.paginas[0].id)); },
     inicio: () => navegar(BASE),
     trocarPessoa: () => escolher(null),

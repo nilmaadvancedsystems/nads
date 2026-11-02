@@ -28,8 +28,7 @@ export function DocumentosDoFiscal({ rota }: { rota: string }) {
             </span>
           </ConfigLinha>
         ))}
-        <ConfigLinha titulo="Acrescentar um documento" descricao="O nome (ex.: Contrato social) e o link do arquivo no Drive (Compartilhar › Copiar link)."
-          aviso={vm.erroNovo || undefined}>
+        <ConfigLinha titulo="Acrescentar um documento" aviso={vm.erroNovo || undefined}>
           <form className="fis-docs-novo" onSubmit={ev => { ev.preventDefault(); vm.acrescentar(); }}>
             <input type="text" className="pessoal-select" placeholder="Nome" aria-label="Nome do documento" value={vm.novo.nome} onChange={e => vm.mudarNovo({ nome: e.target.value })} maxLength={120} />
             <input type="url" className="pessoal-select" placeholder="https://drive.google.com/…" aria-label="Link do documento" value={vm.novo.link} onChange={e => vm.mudarNovo({ link: e.target.value })} />

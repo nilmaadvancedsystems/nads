@@ -4,13 +4,16 @@ import type { empresas, entregas, tarefas, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { RepoAcesso } from './acesso';
-import { assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, dadosDaEmpresaNoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDaAreaCliente, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDoPainelRobo, repoDaIA, repoDeFeedback, repoDeUso, repoDeParcelamentos, repoDeCategoriasDp, repoDeLegislacaoDp, repoDoLcdpr, repoDoArquivador, repoDosAgentes, repoDoFgts, repoDeNfse, repoDoCaixa, repoDeHonorarios, repoDoSieg, repoPessoal, repoDoCofre } from './fonte';
+import { assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, dadosDaEmpresaNoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDaAreaCliente, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDoPainelRobo, repoDaIA, repoDeFeedback, repoDeAvisos, repoDeUso, repoDeParcelamentos, repoDeCategoriasDp, repoDoControleTributos, repoDeLegislacaoDp, repoDoLcdpr, repoDoArquivador, repoDosAgentes, repoDoFgts, repoDeEnviosDp, repoDoLoteDp, repoDeNfse, repoDoCaixa, repoDeHonorarios, repoDeContasPagar, repoDoSieg, repoPessoal, repoDoCofre, repoDeTarefasDelegadas } from './fonte';
 import type { RepoCofre } from './cofre';
 import type { RepoAgentes } from './agentes';
 import type { RepoSieg } from './sieg';
 import type { RepoFgts } from './fgts';
+import type { RepoEnviosDp } from './enviosDp';
+import type { RepoLoteDp } from './loteDp';
 import type { RepoCaixa } from './caixa';
 import type { RepoHonorarios } from './honorarios';
+import type { RepoContasPagar } from './contasPagar';
 import type { RepoNfse } from './nfse';
 import { repoDeEntregasDeDocumentos } from './fonte';
 import type { RepoEntregasDeDocumentos } from './entregasDeDocumentos';
@@ -18,9 +21,11 @@ import type { RepoArquivador } from './arquivador';
 import type { RepoIA } from './ia';
 import type { RepoPessoal } from './pessoal';
 import type { RepoFeedback } from './feedback';
+import type { RepoTarefasDelegadas } from './tarefasDelegadas';
 import type { RepoUso } from './uso';
 import type { RepoParcelamentos } from './parcelamentos';
 import type { RepoCategoriasDp } from './categoriasDp';
+import type { RepoControleTributos } from './controleTributos';
 import type { RepoLegislacaoDp } from './legislacaoDp';
 import type { RepoAreaCliente } from './areaCliente';
 import type { RepoLcdpr } from './lcdpr';
@@ -194,6 +199,20 @@ export function useFgts(): RepoFgts {
   return repo;
 }
 
+/** O DP › Envios, ao vivo: os documentos do DP de cada mês nas pastas e os envios aos clientes. */
+export function useEnviosDp(): RepoEnviosDp {
+  const repo = repoDeEnviosDp();
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  return repo;
+}
+
+/** O lote do DP › Envios, ao vivo: os lotes de quem está no nads. */
+export function useLoteDp(): RepoLoteDp {
+  const repo = repoDoLoteDp();
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  return repo;
+}
+
 /** O emissor de NFS-e do financeiro, ao vivo: as notas, a configuração e o robô. */
 export function useNfse(): RepoNfse {
   const repo = repoDeNfse();
@@ -215,6 +234,13 @@ export function useHonorarios(): RepoHonorarios {
   return repo;
 }
 
+/** As contas a pagar e os fornecedores do financeiro, ao vivo (28/10/2026). */
+export function useContasPagar(): RepoContasPagar {
+  const repo = repoDeContasPagar();
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  return repo;
+}
+
 /** A entrega de documentos aos clientes, ao vivo: a rota, o painel do mês e os clientes do Entregas (16/10/2026). */
 export function useEntregasDeDocumentos(): RepoEntregasDeDocumentos {
   const repo = repoDeEntregasDeDocumentos();
@@ -232,6 +258,13 @@ export function useAgentes(): RepoAgentes {
 /** O arquivador (o "Arquivar agora"), ao vivo: o ponto do PC e os últimos pedidos. */
 export function useArquivador(): RepoArquivador {
   const repo = repoDoArquivador();
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  return repo;
+}
+
+/** O controle de tributos do Fiscal, ao vivo (o mês pedido). */
+export function useControleTributos(): RepoControleTributos {
+  const repo = repoDoControleTributos();
   useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
   return repo;
 }
@@ -267,6 +300,20 @@ export function useLcdpr(): RepoLcdpr {
 /** Os feedbacks (enviar; o admin vê todos), ao vivo. */
 export function useFeedback(): RepoFeedback {
   const repo = repoDeFeedback();
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  return repo;
+}
+
+/** O mural de avisos do escritório (o Início), ao vivo. */
+export function useAvisos() {
+  const repo = repoDeAvisos();
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  return repo;
+}
+
+/** O delegador de tarefas (a Central de tarefas e o correio), ao vivo. */
+export function useTarefasDelegadas(): RepoTarefasDelegadas {
+  const repo = repoDeTarefasDelegadas();
   useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
   return repo;
 }

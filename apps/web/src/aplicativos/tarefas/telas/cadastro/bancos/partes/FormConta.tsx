@@ -67,14 +67,14 @@ export function FormConta({ vm, id, inicial, fechar }: { vm: VmContasBancarias; 
           placeholder={vm.temPlano ? 'Código ou nome da conta no plano' : 'Código da conta (ex.: 10503)'} />
         <datalist id={lista}>{vm.contasDoPlano.map(x => <option key={x.codigo} value={x.codigo}>{x.nome}</option>)}</datalist>
         <span className="hint cad-dica">
-          {!contaContabil.trim() ? (vm.temPlano ? 'A conta do banco no plano de contas.' : 'Sem plano de contas importado: confira o código.')
+          {!contaContabil.trim() ? (vm.temPlano ? '' : 'Sem plano de contas importado: confira o código.')
             : noPlano ? noPlano.nome
               : vm.temPlano ? 'Não está no plano de contas (ou é sintética).' : ''}
         </span>
       </label>
       <label className="field"><span className="hint">Primeira competência</span>
         <input type="month" value={desde} max={vm.hoje} onChange={e => setDesde(e.target.value)} />
-        <span className="hint cad-dica">Vazio = desde sempre. O Extrator pede o extrato desta conta a partir dela.</span>
+        <span className="hint cad-dica">Vazio = desde sempre.</span>
       </label>
       <div className="add-banco-acoes">
         <button type="button" className="btn btn-outline" onClick={fechar}>Cancelar</button>

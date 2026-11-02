@@ -208,7 +208,6 @@ export function JanelaHistoricoDePedidos({ p }: { p: P }) {
             </div>
           ))}
         </div>
-        <p className="hint pedir-hist-nota">Visualizado: o Gmail não avisa quando o cliente abre o e-mail. Por enquanto, a situação mostra se o robô enviou.</p>
       </div>
     </div>
   );

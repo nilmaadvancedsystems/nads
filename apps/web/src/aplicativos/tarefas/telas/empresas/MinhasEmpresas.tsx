@@ -1,14 +1,25 @@
-// Minhas empresas: a barra de cima, no jeito da do GitHub (competência no lugar do "main ▾", quantas
-// empresas, Insights; à direita a busca curta com atalho "/", Situação ▾ e "Iniciar ▾", que abre
-// o painel para escolher a empresa, em partes/PainelIniciar) e a lista (clicar no título da coluna ordena; clicar na linha abre a página da empresa). Os números por situação ficam em Insights.
-import { Icone, MenuSuspenso, useCarregando, useEntradaAnimada, useLinhasQueSeMovem, Vazio } from '@nads/ui';
-import { useEffect, useRef } from 'react';
+// Minhas empresas, uma tela só (27/10/2026), sem a barra lateral: a barra de cima, no jeito da do GitHub (competência no
+// lugar do "main ▾"; à direita a busca curta com atalho "/" e Situação ▾), as empresas por situação, a lista (clicar no
+// título da coluna ordena; clicar na linha abre a página da empresa), as etapas paradas e, no Contábil, os históricos do
+// Creditor. O "Iniciar", o Progresso do mês e os Insights saíram (27/10/2026).
+import { Icone, MenuSuspenso, Segmentado, useCarregando, useEntradaAnimada, useLinhasQueSeMovem, Vazio } from '@nads/ui';
+import { useEffect, useRef, useState } from 'react';
 import { EmDesenvolvimento } from '../em-desenvolvimento/EmDesenvolvimento';
-import { PainelIniciar } from './partes/PainelIniciar';
 import { LIMITE, useMinhasEmpresas, type Coluna } from './useMinhasEmpresas';
 import { JanelaDaCompetencia } from './partes/JanelaDaCompetencia';
 import { TransferenciasPendentes } from '../cadastro/responsaveis/TransferenciasPendentes';
+import { JanelaDeMinhasEmpresas } from './partes/JanelaDeMinhasEmpresas';
+import { ConfiguracoesContabil } from '../contabil/configuracoes/ConfiguracoesContabil';
 
+
+/** A cor e o ícone de cada situação no número (os tons do painel do DP). */
+// os números sem ícone (Vitor, 28/10/2026: "não gostei desses ícones, remove eles"): só a cor da situação
+const TOM_DA_SITUACAO: Record<string, { tom: string }> = {
+  parada: { tom: 'laranja' },
+  'em-andamento': { tom: 'aviso' },
+  'nao-iniciada': { tom: 'neutro' },
+  concluida: { tom: 'ok' },
+};
 
 /** Título de coluna que ordena: clicar ordena por ela (crescente), clicar de novo inverte; a setinha cinza só aparece depois do clique. */
 function Titulo({ vm, coluna, rotulo }: { vm: ReturnType<typeof useMinhasEmpresas>; coluna: Coluna; rotulo: string }) {
@@ -24,6 +35,8 @@ function Titulo({ vm, coluna, rotulo }: { vm: ReturnType<typeof useMinhasEmpresa
 export function MinhasEmpresas() {
   const vm = useMinhasEmpresas();
   const campoBusca = useRef<HTMLInputElement>(null);
+  // as Configurações em janela, pelo botão da barra (28/10/2026); as Justificativas foram para a Visão geral da empresa
+  const [janela, setJanela] = useState<'configuracoes' | null>(null);
   useCarregando(vm.carregando);
   // as linhas chegam em cascata quando o banco responde
   // tela com muitas caixas (Vitor, 01/10/2026: "tudo que tiver muita box pode reduzir"): a lista inteira só acende rápido
@@ -53,8 +66,12 @@ export function MinhasEmpresas() {
         <MenuSuspenso icone="calendar" rotulo={vm.rotuloCompetencia} titulo="Competência" dica="Trocar a competência"
           itens={vm.competencias.map(c => ({ rotulo: c.rotulo, marcado: c.valor === vm.competencia, onClick: () => vm.setCompetencia(c.valor) }))} />
         {/* o número de empresas e os Insights saíram daqui por enquanto (Vitor, 05/10/2026) */}
+        {/* só as da pessoa; o admin e o diretor podem ver todas (26/10/2026) */}
+        {vm.podeVerTodas && <Segmentado valor={vm.escopo} onMudar={vm.setEscopo} opcoes={[{ valor: 'minhas', rotulo: 'Minhas' }, { valor: 'todas', rotulo: 'Todas' }]} />}
 
         <span className="tarefas-barra-espaco" />
+
+        {vm.departamento === 'contabil' && <button type="button" className="icon-btn" title="Configurações: os históricos do Creditor" aria-label="Configurações" onClick={() => setJanela('configuracoes')}><Icone nome="settings" /></button>}
 
         <label className="busca-curta">
           <Icone nome="search" />
@@ -67,12 +84,23 @@ export function MinhasEmpresas() {
           className={'btn btn-outline' + (vm.situacao ? ' ativo' : '')}
           itens={[{ rotulo: 'Todas', marcado: !vm.situacao, onClick: () => vm.setSituacao('') },
             ...vm.situacoes.map(s => ({ rotulo: s.rotulo, marcado: s.valor === vm.situacao, onClick: () => vm.setSituacao(s.valor) }))]} />
-        <MenuSuspenso icone="play" rotulo="Iniciar" className="btn btn-primary" classeAberto="botao-apagado" direita largura={400} dica="Escolher a empresa para iniciar"
-          conteudo={fechar => <PainelIniciar vm={vm} fechar={fechar} />} />
+      </div>
+
+      {/* as empresas por situação; clicar numa situação filtra a lista (o Progresso do mês saiu; 27/10/2026) */}
+      {/* coloridos como os do Departamento Pessoal (Vitor, 28/10/2026: "dá um feedback visual melhor de paradas, em andamento") */}
+      <div className="stat-grid dp-numeros empresa-numeros">
+        {vm.situacoes.map(s => (
+          <button key={s.valor} type="button" className={'stat stat-filtro painel-numero painel-' + TOM_DA_SITUACAO[s.valor].tom + (vm.situacao === s.valor ? ' ativo' : '')} aria-pressed={vm.situacao === s.valor}
+            title={vm.situacao === s.valor ? 'Mostrar todas' : 'Mostrar só as ' + s.rotulo.toLowerCase()} onClick={() => vm.setSituacao(vm.situacao === s.valor ? '' : s.valor)}>
+            <p className="stat-label">{s.rotulo}</p>
+            <p className="stat-value">{vm.carregando ? '—' : vm.resumo.porSituacao[s.valor]}</p>
+          </button>
+        ))}
       </div>
 
       {/* a tabela aparece na hora; as linhas entram quando o banco responde (a barra do topo termina) */}
-      {!vm.carregando && vm.total === 0 ? <Vazio icone="briefcase" titulo="Nenhuma empresa nesta situação">
+      {!vm.carregando && vm.total === 0 ? <Vazio icone="briefcase" titulo={vm.filtrandoPorResponsavel && !vm.busca && !vm.situacao ? 'Nenhuma empresa no seu nome' : 'Nenhuma empresa nesta situação'}
+        texto={vm.filtrandoPorResponsavel && !vm.busca && !vm.situacao ? 'Aqui aparecem só as empresas em que você é o responsável no seu setor. Quem distribui as empresas é o Cadastro › Empresas por responsável.' : undefined}>
         {/* a saída do vazio (revisão da UI, 18/10/2026) */}
         {(vm.busca || vm.situacao) && <button type="button" className="btn btn-outline" onClick={vm.limparFiltros}>Limpar a busca e a situação</button>}
       </Vazio> : (
@@ -81,6 +109,7 @@ export function MinhasEmpresas() {
             <thead><tr>
               <Titulo vm={vm} coluna="codigo" rotulo="Código" />
               <Titulo vm={vm} coluna="nome" rotulo="Empresa" />
+              <th>Progresso</th>
               <th />
               <th />
             </tr></thead>
@@ -96,6 +125,12 @@ export function MinhasEmpresas() {
                     </span>
                   </td>
                   <td>{l.nome}</td>
+                  <td className="num" title={l.concluidas + ' de ' + l.total + ' etapas'}>
+                    <span className="progresso-linha">
+                      <span className="tarefas-barra"><span className={l.situacao === 'parada' ? 'parada' : undefined} style={{ width: l.porcentagem + '%' }} /></span>
+                      <span className="fraco">{l.concluidas}/{l.total}</span>
+                    </span>
+                  </td>
                   <td className="fraco">{l.etapaAtual}</td>
                   <td className="fraco num" title={l.quandoCompleto || undefined}>{l.quando}</td>
                 </tr>
@@ -105,6 +140,7 @@ export function MinhasEmpresas() {
           {vm.total > LIMITE && <p className="hint" style={{ padding: '8px 16px' }}>Mostrando {LIMITE} de {vm.total}. Use a busca ou a situação.</p>}
         </div>
       )}
+      {janela === 'configuracoes' && <JanelaDeMinhasEmpresas titulo="Configurações" icone="settings" fechar={() => setJanela(null)}><ConfiguracoesContabil /></JanelaDeMinhasEmpresas>}
     </section>
   );
 }

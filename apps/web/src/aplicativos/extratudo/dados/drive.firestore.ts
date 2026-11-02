@@ -54,8 +54,8 @@ const semPermissao = (e: unknown) => /permission|insufficient/i.test(String((e a
 /** O Entregas publicado, a única página de fora que pode responder pelo Drive. */
 const ENTREGAS = 'https://nilmaadvancedsystems.github.io';
 
-/** Está dentro do Entregas (iframe)? Pelo endereço de quem está por fora. */
-function dentroDoEntregas(): boolean {
+/** Está dentro do Entregas (iframe)? Pelo endereço de quem está por fora. (A trava do AppExtratudo também usa.) */
+export function dentroDoEntregas(): boolean {
   if (window.parent === window) return false;
   let origem = window.location.ancestorOrigins?.[0] || '';
   if (!origem) { try { origem = document.referrer ? new URL(document.referrer).origin : ''; } catch { origem = ''; } }
@@ -321,8 +321,16 @@ export function criarDriveFirestore(): cr.RepoDrive {
       const r = await pedidoDeEmail({ tipo: 'trazer', caixa: a.caixa, mensagemId: a.mensagemId, anexoId: a.anexoId, nome: a.nome.slice(0, 200) }, passo);
       passo?.('baixando o anexo');
       const s = await getDocs(collection(db, 'buscasEmail', String(r.id), 'partes'));
-      const b64 = s.docs.sort((x, y) => Number(x.data().n) - Number(y.data().n)).map(d => String(d.data().dados || '')).join('');
-      const bin = atob(b64);
+      const partes = s.docs.map(d => d.data()).sort((x, y) => Number(x.n) - Number(y.n));
+      // o robô novo grava os pedaços em binário (bytes: 25% menor que o base64 e sem converter; 26/10/2026); o de antes, base64
+      if (partes.some(p => p.bytes instanceof Bytes)) {
+        const pedacos = partes.map(p => (p.bytes instanceof Bytes ? p.bytes.toUint8Array() : new Uint8Array(0)));
+        const tudo = new Uint8Array(pedacos.reduce((n, p) => n + p.length, 0));
+        let k = 0;
+        for (const p of pedacos) { tudo.set(p, k); k += p.length; }
+        return tudo.buffer;
+      }
+      const bin = atob(partes.map(p => String(p.dados || '')).join(''));
       const bytes = new Uint8Array(bin.length);
       for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
       return bytes.buffer;

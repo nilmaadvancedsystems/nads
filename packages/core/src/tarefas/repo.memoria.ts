@@ -6,6 +6,7 @@ import { EMPRESAS_EXEMPLO } from '../extratudo/extrator/__exemplos__/empresas';
 import { ROTINA_CONTABIL } from './rotinas/contabil';
 import { competenciasRecentes } from './regras/competencias';
 import { dispensar, execucaoNova, fazer, interromper } from './regras/execucao';
+import { aplicarDiferenca, diferencaDaExecucao } from './regras/gravacaoDaExecucao';
 import { idDaExecucao, type RepoTarefas } from './repo';
 import type { Evento, Execucao } from './tipos';
 
@@ -118,8 +119,10 @@ export function criarRepoTarefasMemoria(opcoes: { agora?: Date; guarda?: GuardaT
     listarEmpresas: () => lista,
     execucoes: (competencia, departamento) => Object.values(dados).filter(e => e.competencia === competencia && e.departamento === departamento),
     carregada: () => true,
-    gravar(ex, ev) {
-      dados = { ...dados, [idDaExecucao(ex.empresa, ex.competencia, ex.departamento)]: ex };
+    gravar(ex, ev, antes) {
+      const id = idDaExecucao(ex.empresa, ex.competencia, ex.departamento);
+      // com a cópia de onde partiu, só o que mudou (sobre a execução como está agora)
+      dados = { ...dados, [id]: antes && dados[id] ? aplicarDiferenca(dados[id], diferencaDaExecucao(antes, ex)) : ex };
       eventos = [...eventos, ev];
       avisar();
     },

@@ -8,7 +8,7 @@
 // As regras do Entregas (firestore.rules) só deixam ler e gravar os dados do nads (rotinas, cadastro) com o login
 // liberado, quando a proteção está ligada; o admin não precisa de liberação.
 import { usuarios as u } from '@nads/core';
-import { addDoc as addDocBruto, collection, doc, getDoc, onSnapshot, orderBy, query, setDoc as setDocBruto, Timestamp, updateDoc as updateDocBruto, where, writeBatch as writeBatchBruto, limit } from 'firebase/firestore';
+import { addDoc as addDocBruto, collection, deleteField, doc, getDoc, onSnapshot, orderBy, query, setDoc as setDocBruto, Timestamp, updateDoc as updateDocBruto, where, writeBatch as writeBatchBruto, limit } from 'firebase/firestore';
 import type { RepoAcesso } from './acesso';
 import { bancoDoEntregas, criarLoginNoEntregas, horaDoLogin } from './entregas.firestore';
 import { guardar, guardarLote, guardarPedido } from '../../../comum/modoDesenvolvedor';
@@ -140,7 +140,10 @@ export function criarAcessoFirestore(quem: () => Quem): RepoAcesso {
     async salvarCargo(uid, departamento, nivel) {
       const atual = equipe.docs[uid];
       if (!atual) throw new Error('pessoa não encontrada');
-      await updateDoc(doc(db, 'usuarios', uid), u.mudancaDeCargo(atual, departamento, nivel));
+      const m = u.mudancaDeCargo(atual, departamento, nivel);
+      // o "—" (sem departamento ou sem nível) vem como undefined, que o banco ignora (ignoreUndefinedProperties): o campo
+      // antigo ficava gravado, e as regras (doSetor, ehDiretorNads) e a tela continuavam lendo o cargo que saiu. Apaga.
+      await updateDoc(doc(db, 'usuarios', uid), { roles: m.roles, departamento: m.departamento ?? deleteField(), nivel: m.nivel ?? deleteField() });
     },
     async salvarPapeis(uid, papeis) { await updateDoc(doc(db, 'usuarios', uid), { roles: papeis }); },
     minhaFoto: () => { ouvir(); const q = quem(); return (q && equipe.docs[q.uid]?.fotoPerfil) || null; },
