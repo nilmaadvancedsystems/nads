@@ -1132,6 +1132,10 @@ const REGRAS_PDF = [
       return { ano, trimestre, fonte: fonte ? fonte.trim() : null };
     } },
   { tipo: 'OPERACAO DE CREDITO', setor: 'CONTABIL', re: /^(?![\s\S]{0,200}EXTRATO DE CONTA CORRENTE)[\s\S]{0,1500}(EXTRATO DE (EMPRESTIMOS?|OPERACAO DE CREDITO)|EVOLUCAO CONTRATUAL|CONTRATO DE (EMPRESTIMO|FINANCIAMENTO)|CEDULA DE CREDITO BANCARIO|DADOS DA CONTRATACAO|GIRO PRONAMPE)/, fonte: '04 (Op. Crédito)', campos: () => ({}) },
+  // (Vitor, 02/11/2026, 6ª rodada, decisão 4) os relatórios da Rede em PDF ("rede Consolidado por modalidade", o de vendas; "rede Consolidado por banco, bandeira e modalidade",
+  // o "Relatório de recebimentos"): maquininha, como a planilha da Rede (EXTRATOS\ANO\MÊS\MAQUININHAS\REDE); antes o de recebimentos ia para RECEBIMENTO DE CLIENTES e o de
+  // vendas com o título mal lido pelo OCR ficava em NÃO IDENTIFICADOS
+  { tipo: 'MAQUININHAS', setor: 'CONTABIL', re: /^\s*REDE\s*\n?\s*CONSOLIDADO POR (MODALIDADE|BANCO)/, fonte: 'Dicionário §6.1; 04 (Maquininhas; a Rede em PDF, Vitor, 02/11/2026)', campos: u => camposDeExtrato(u) },
   { tipo: 'RECEBIMENTO DE CLIENTES', setor: 'CONTABIL', re: /RELATORIO DE RECEBIMENTOS|TITULOS LIQUIDADOS|TITULOS BAIXADOS|TITULOS PAGOS POR CONTA CREDITO|RELATORIO DE COBRANCA|CREDITOS? DE LIQUIDACAO|CRED\.? LIQUIDACAO/, fonte: 'Dicionário §6.1', campos: u => camposDeExtrato(u) },
   // os recebíveis de maquininha em PDF (Vitor, 29/10/2026, 3ª rodada, decisão 13; o layout no LAYOUTS diz a operadora): CONTÁBIL\EXTRATOS\ANO\MÊS\MAQUININHAS\<OPERADORA>, como os outros;
   // o mês pelo "Período:" (Getnet) ou pela "Data de pagamento: dd/mm/aaaa à dd/mm/aaaa" (Cielo)
@@ -1620,7 +1624,8 @@ function contaDeEnergiaPelaInscricao(entrada, ctx, d) {
   const bruto = Array.isArray(entrada.texto) ? entrada.texto.slice(0, 3).join('\n') : String(entrada.texto || '');
   const u = norm(bruto);
   if (!/NOTA FISCAL DE ENERGIA ELETRICA/.test(u) || !/COELBA|NEOENERGIA|COMPANHIA DE ELETRICIDADE DO ESTADO DA BAHIA/.test(u)) return null;
-  const mi = /INSCRICAO ESTADUAL\s*:?\s*(\d{5,})[^\d\n]{0,4}\*/.exec(u);
+  // (Vitor, 02/11/2026, 6ª rodada, decisão 2) a conta escaneada: o OCR lê os asteriscos da máscara como aspas ("18642\" 20257924", "18642\"***"); a aspa colada nos dígitos conta
+  const mi = /INSCRICAO ESTADUAL\s*:?\s*(\d{5,})[^\d\n]{0,4}\*/.exec(u) || /INSCRICAO ESTADUAL\s*:?\s*(\d{5,}) ?"/.exec(u);
   if (!mi) return null;
   const porIe = [...cad.porCod.values()].filter(x => x.ie && so(x.ie).replace(/^0+/, '').startsWith(mi[1].replace(/^0+/, ''))).map(x => x.codigo);
   if (porIe.length !== 1) return null;
@@ -1637,6 +1642,75 @@ function contaDeEnergiaPelaInscricao(entrada, ctx, d) {
   if (!comp || !anoOk(comp.ano)) return null;
   const ev = (d.evidencias || []).concat('conta de energia (' + conc + '): a inscrição estadual ' + mi[1] + '**** só confere com o cliente ' + cli.codigo + ' no cadastro (' + cli.ie + '), a razão e o CNPJ mascarado concordam: PAGAMENTOS DE FORNECEDORES\\' + comp.ano + '\\' + dois(comp.mes) + '\\' + conc + ' (Vitor, 30/10/2026)');
   return finalizar({ acao: 'ARQUIVAR', cliente: cli.codigo, comoCliente: 'doc', confianca: 0.9, tipo: 'CONTA DE CONSUMO', setor: 'CONTABIL', caminho: ['CONTÁBIL', 'PAGAMENTOS DE FORNECEDORES', String(comp.ano), dois(comp.mes), conc], competencia: comp, evidencias: ev, nomeOriginal: nome, nomeFinal: nome, ocr: entrada.ocr || null, anoPista: pa, fonte: 'conta de energia pela inscrição estadual (Vitor, 30/10/2026)' }, ctx);
+}
+/**
+ * (Vitor, 02/11/2026, 6ª rodada, decisão 3) o DAM do ISS nos modelos que a regra do DAM não lê. → null (não é um deles) ou { modelo, cliente (ou null), vencimento, porque }.
+ *  - Cândido Sales ("DAM DE RECEITAS DIVERSAS", o código da receita "…ISS"/"ISS TOMADOR" e a observação "ISS REFERENTE A NOTA…"): o contribuinte é o nome logo depois do valor em
+ *    "DADOS PARA PAGAMENTO" e o CNPJ logo depois de "PREÇO PÚBLICO 0,00" (o CNPJ do prestador da nota, na observação, não conta); o vencimento é a data depois da linha digitável
+ *    ("VIA BANCO / VENCIMENTO"), e a do código da receita, quando lida, tem de ser a mesma.
+ *  - Taiobeiras (o DAM de englobamento do ISS MENSAL): o contribuinte do "Identificação do Contribuinte: … | Nome/Razão Social : … | CPF/CNPJ : …"; o vencimento é a data
+ *    depois do valor, antes de "Pagável em", e a do "Controle Parcela", quando lida, tem de ser a mesma.
+ * O CNPJ tem de ser de UM cliente e as duas primeiras palavras da razão (ou de outro nome dele) têm de estar no nome escrito do contribuinte.
+ */
+function damDoIssSemRegra(u, cad) {
+  const data = m => m && +m[2] >= 1 && +m[2] <= 12 && anoOk(+m[3]) ? { dia: +m[1], mes: +m[2], ano: +m[3] } : null;
+  const igual = (a, b) => !b || (a.dia === b.dia && a.mes === b.mes && a.ano === b.ano);
+  let modelo = null, nomeContrib = null, doc = null, venc = null, conf = null;
+  if (/PREFEITURA MUNICIPAL DE\s*\n?\s*CANDIDO SA/.test(u) && /DAM DE RECEITAS DIVERSAS/.test(u) && (/\d*ISS(?: TOMADOR)?\s*\n\s*\d{2}\/\d{2}\/20\d{2}/.test(u) || /\bISS(QN)? (REF|RETIDO|HOMOLOGADO|SUBSTITUCAO|TOMADOR)/.test(u))) {
+    modelo = 'Cândido Sales';
+    nomeContrib = (/DADOS PARA PAGAMENTO\s*\n(?:\s*[\d.]+,\d{2}\s*\n){1,4}\s*([^\n]+?)\d*\s*\n/.exec(u) || [])[1] || null;   // o valor (e, vencido, os juros e a multa) antes do nome
+    doc = (/PRECO PUBLICO\s*\n\s*[\d.]+,\d{2}\s*\n\s*(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}|\d{3}\.\d{3}\.\d{3}-\d{2})\s*\n/.exec(u) || [])[1] || null;
+    venc = data(/VIA BANCO\s*\n\s*VENCIMENTO\s*\n\s*[\d.]+\s*\n\s*(\d{2})\/(\d{2})\/(20\d{2})/.exec(u));
+    conf = data(/\d*ISS(?: TOMADOR)?\s*\n\s*(\d{2})\/(\d{2})\/(20\d{2})\s*\n/.exec(u));
+  } else if (/DOCUMENTO DE\s*\n?\s*ARRECADACAO\s*\n?\s*MUNICIPAL/.test(u) && /PREFEITURA MUNICIPAL DE TAIOBEIRAS/.test(u) && /ISSQN MENSAL|AGRUPAMENTO\s*:\s*\d+\s*-\s*ISS MENSAL/.test(u)) {
+    modelo = 'Taiobeiras, englobamento do ISS mensal';
+    const m = /IDENTIFICACAO DO CONTRIBUINTE:\s*INSCRICAO MUNICIPAL\s*:[^|\n]*\|\s*NOME\/RAZAO SOCIAL\s*:\s*([^|\n]+?)\s*\|\s*CPF\/CNPJ\s*:\s*([\d./-]{14,18})/.exec(u);
+    if (m) { nomeContrib = m[1]; doc = m[2]; }
+    venc = data(/R\$\s*[\d.]+,\d{2}\s*\n\s*(\d{2})\/(\d{2})\/(20\d{2})\s*\n\s*PAGAVEL EM/.exec(u));
+    conf = data(/CONTROLE PARCELA:\s*\n?\s*(\d{2})\/(\d{2})\/(20\d{2})/.exec(u));
+  } else return null;
+  const r = { modelo, cliente: null, vencimento: venc };
+  if (!venc) return Object.assign(r, { porque: 'o vencimento não foi lido' });
+  if (!igual(venc, conf)) return Object.assign(r, { porque: 'duas datas de vencimento diferentes' });
+  if (!doc || !nomeContrib) return Object.assign(r, { porque: 'o CNPJ ou o nome do contribuinte não foram lidos' });
+  const cli = unico(clientesDoDoc(so(doc), cad));
+  if (cli == null) return Object.assign(r, { porque: 'o CNPJ/CPF ' + doc + ' do contribuinte não é de um cliente só do cadastro' });
+  const c = cad.porCod.get(cli);
+  const duas = s => textoDeNome(s).trim().split(' ').filter(w => w.length >= 3 && !/^(LTDA|EIRELI|FILIAL|MATRIZ|ME|EPP)$/.test(w)).slice(0, 2).join(' ');
+  const escrito = textoDeNome(nomeContrib);
+  if (![c.razao, c.fantasia].concat(c.outrosNomes || []).filter(Boolean).map(duas).some(p => p.split(' ').length === 2 && escrito.includes(' ' + p + ' '))) return Object.assign(r, { porque: 'o nome do contribuinte ("' + nomeContrib.trim() + '") não é o do cliente ' + cli });
+  return Object.assign(r, { cliente: cli });
+}
+// (Vitor, 02/11/2026, 6ª rodada, decisão 2) os grupos (a matriz do mapa da migração) em que a conta de consumo escaneada só vai para um cliente com prova no documento
+const CONSUMO_SO_COM_PROVA_NO_GRUPO = new Set([413]);
+/**
+ * A conta de consumo (pelo nome: CEMIG, COELBA, NEOENERGIA…) na pasta que junta a matriz 413 e as filiais (Vitor, 02/11/2026, 6ª rodada, decisão 2): o cliente só com prova,
+ * o código do grupo no começo do nome, o CNPJ inteiro de UM cliente escrito, ou a inscrição estadual legível (inteira, ou o começo antes da máscara "18642****") que confere
+ * com a de UM cliente só do cadastro; todas as provas que aparecem têm de dizer o mesmo cliente, e ele tem de ser do grupo. → null (a pasta não é desse grupo: segue a regra
+ * de antes), { cliente, como, porque } ou { cliente: null, porque } (NÃO IDENTIFICADO). O número da instalação não está no cadastro: não decide.
+ */
+function quemDaContaDeConsumoNoGrupo(rel, nome, bruto, u, cad) {
+  if (clienteDaPasta(rel, cad)) return null;
+  const g = grupoDaPasta(rel, cad);
+  if (!g || g.matriz == null || !CONSUMO_SO_COM_PROVA_NO_GRUPO.has(g.matriz)) return null;
+  const G = [g.matriz].concat(g.filiais || []);
+  const provas = [];
+  const ini = /^0*(\d{2,4})(?!\d)/.exec(norm(String(nome || '')));
+  if (ini && G.includes(+ini[1]) && cad.porCod.has(+ini[1])) provas.push([+ini[1], 'o código ' + ini[1] + ' no começo do nome', 'pastaConferida']);
+  const doDoc = [...new Set(documentosDoTexto(bruto).flatMap(y => clientesDoDoc(y.doc, cad)))];
+  for (const k of doDoc) provas.push([k, 'o CNPJ do cliente ' + k + ' escrito na conta', 'doc']);
+  for (const m of u.matchAll(/INSC(?:RICAO|\.)?\s*ESTADUAL\s*:?\s*(\d{5,14})(?!\d)/g)) {
+    const lida = m[1].replace(/^0+/, ''), mascarada = /^\s*[*"'´`]/.test(u.slice(m.index + m[0].length, m.index + m[0].length + 2));
+    if (lida.length < 5) continue;
+    const donos = [...cad.porCod.values()].filter(x => x.ie && (mascarada ? so(x.ie).replace(/^0+/, '').startsWith(lida) : so(x.ie).replace(/^0+/, '') === lida)).map(x => x.codigo);
+    if (donos.length === 1) provas.push([donos[0], 'a inscrição estadual ' + m[1] + (mascarada ? '****' : '') + ' só confere com o cliente ' + donos[0] + ' no cadastro', 'doc']);
+  }
+  const quem = [...new Set(provas.map(p => p[0]))];
+  if (!quem.length) return { cliente: null, porque: 'conta de consumo na pasta "' + g.parte + '" sem o CNPJ, o código no nome nem a inscrição estadual legíveis (a matriz ' + g.matriz + ' não é mais o padrão)' };
+  if (quem.length > 1) return { cliente: null, porque: 'conta de consumo na pasta "' + g.parte + '" com provas de clientes diferentes (' + quem.join(', ') + ')' };
+  if (!G.includes(quem[0])) return { cliente: null, porque: 'conta de consumo na pasta "' + g.parte + '": a prova diz o cliente ' + quem[0] + ', que não é do grupo' };
+  const p = provas.find(x => x[0] === quem[0]);
+  return { cliente: quem[0], como: p[2], porque: 'conta de consumo na pasta "' + g.parte + '": ' + provas.map(x => x[1]).join('; ') + ' (Vitor, 02/11/2026)' };
 }
 /**
  * A pasta de origem não diz OUTRO cliente (30/10/2026): sem pista de cliente na pasta, a do próprio cliente (ou de outro código da mesma raiz de CNPJ: matriz e filial), ou a
@@ -1946,6 +2020,12 @@ function pelaPastaENome(entrada, ctx, d) {
   if (conc) {
     const m = mesDe();
     if (!m) return null;
+    // (Vitor, 02/11/2026, 6ª rodada, decisão 2; substitui a de 27/10/2026, que mandava para a matriz) na pasta que junta a matriz 413 e as filiais, a conta de consumo
+    // escaneada não vai mais para a matriz por falta de outro cliente: vale o CNPJ inteiro de um cliente do grupo, o código no começo do nome ou a inscrição estadual legível
+    // que confere com UM cliente só do cadastro (a 453); sem nenhum deles, ou com dois dizendo clientes diferentes, fica em NÃO IDENTIFICADOS
+    const qc = quemDaContaDeConsumoNoGrupo(rel, nome, bruto, u, cad);
+    if (qc && qc.cliente == null) { d.evidencias = (d.evidencias || []).concat(qc.porque + ': fica em NÃO IDENTIFICADOS (Vitor, 02/11/2026)'); return null; }
+    if (qc) { c = { cliente: qc.cliente, conf: 0.9, como: qc.como }; ev.push(qc.porque); }
     return fim({ tipo: 'CONTA DE CONSUMO', setor: 'CONTABIL', caminho: ['CONTÁBIL', 'PAGAMENTOS DE FORNECEDORES', String(m.ano), dois(m.mes), conc[1]], competencia: { mes: m.mes, ano: m.ano } }, 'conta de consumo (' + conc[1] + ', o mês pelo nome, pela pasta ou pelo vencimento)');
   }
   // (lote 6, e) o DAJE (custas do cartório): PAGAMENTOS DE FORNECEDORES\ANO\MÊS\DAJE; a DCF: FISCAL\<regime>\03. DOCUMENTOS FISCAIS
@@ -2187,6 +2267,20 @@ function pelaPastaENome(entrada, ctx, d) {
         return fim30(x, { tipo: orgao ? 'TAXA ' + orgao : 'NOTA DE SERVICO TOMADO', setor: 'CONTABIL', caminho: ['CONTÁBIL', 'PAGAMENTOS DE FORNECEDORES', String(comp.ano), dois(comp.mes), fornecedor], competencia: comp },
           (orgao ? 'guia/taxa sem regra (' + orgao + ')' : 'nota de comunicação/serviço tomada (' + fornecedor + ')') + ': PAGAMENTOS DE FORNECEDORES\\' + comp.ano + '\\' + dois(comp.mes) + '\\' + fornecedor);
     }
+  }
+  // ---- as decisões do Vitor de 02/11/2026 (6ª rodada dos NÃO IDENTIFICADOS) ----
+  // (decisão 3) o DAM do ISS nos modelos que a regra do DAM não lê (o "DAM DE RECEITAS DIVERSAS" de Cândido Sales, com o ISS retido/homologado de uma nota, e o DAM de
+  // englobamento do ISS mensal de Taiobeiras): FISCAL\<regime>\NN. DAM do contribuinte, "MM-AAAA - DAM - <nome original>" (como o DAM decidido no nads), o mês e o ano pelo
+  // vencimento. O cliente é o contribuinte (o CNPJ do bloco do contribuinte, de UM cliente, com o nome dele escrito ao lado); a pasta de origem não pode dizer outro
+  if (extNome === 'pdf' && (semTipo || d.tipo === 'DAM')) {
+    const dam = damDoIssSemRegra(u, cad);
+    if (dam && dam.cliente != null && pastaNaoContradiz(rel, dam.cliente, cad) && (cad.porCod.get(dam.cliente) || {}).regime) {
+      const v = dam.vencimento;
+      ev.push('DAM do ISS (' + dam.modelo + '): o contribuinte ' + dam.cliente + ' pelo CNPJ e pelo nome, o vencimento ' + dois(v.dia) + '/' + dois(v.mes) + '/' + v.ano + '; FISCAL\\<regime>\\DAM, "' + dois(v.mes) + '-' + v.ano + ' - DAM - <nome original>" (Vitor, 02/11/2026)');
+      return finalizar({ acao: 'ARQUIVAR', cliente: dam.cliente, comoCliente: 'doc', confianca: 0.9, tipo: 'DAM', setor: 'FISCAL', fiscal: ['DAM'], competencia: { mes: v.mes, ano: v.ano }, evidencias: ev, nomeOriginal: nome,
+        nomeFinal: dois(v.mes) + '-' + v.ano + ' - DAM - ' + nome.replace(/\.[a-z0-9]+$/i, '') + '.pdf', ocr: entrada.ocr || null, anoPista: pastaAno, fonte: 'NÃO IDENTIFICADOS, 6ª rodada (Vitor, 02/11/2026)' }, ctx);
+    }
+    if (dam) ev.push('DAM do ISS (' + dam.modelo + ') sem o contribuinte certo: ' + (dam.porque || (dam.cliente != null ? 'a pasta de origem diz outro cliente ou ele não tem regime no cadastro' : '?')));
   }
   // (6) a planilha e o relatório do sistema (planilha de apoio, inventário, estoque, projeção, cotação, ficha, relatório do Alterdata/ISS/estoque/ST):
   // SEMPRE CONTÁBIL\RELATÓRIOS ALTERDATA do cliente, sem a pasta do ano, nome original; o ano do nome, da pasta ou do arquivo, senão o atual.
