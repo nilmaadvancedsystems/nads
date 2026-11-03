@@ -43,7 +43,10 @@ if (Test-Path $claude) { Ok 'Claude Code (o [suporte] e o atendente do robô)' }
 else { Write-Host '  aviso Claude Code não instalado: o robô roda, só sem o [suporte] e o atendente de IA (https://claude.com/claude-code)' -ForegroundColor DarkYellow }
 
 Write-Host "`nCódigo em $CODIGO"
-if (Test-Path (Join-Path $ROBO 'arquivador.js')) { Ok 'código' }
+if (Test-Path (Join-Path $ROBO 'arquivador.js')) {
+  if (-not $SoConferir) { git -C $CODIGO pull --ff-only origin desenvolvimento }
+  Ok ('código (' + (git -C $CODIGO log -1 --format='%h %cd' --date=short) + ')')
+}
 elseif ($SoConferir) { Falta 'código' 'rode sem -SoConferir para clonar' }
 elseif (Get-Command git -ErrorAction SilentlyContinue) {
   # pede o login do GitHub na tela (o repositório é particular)
@@ -61,7 +64,10 @@ foreach ($p in @($DADOS, $ROTINA)) { if (-not (Test-Path $p)) { if (-not $SoConf
 if (-not $SoConferir) {
   [Environment]::SetEnvironmentVariable('NADS_LOCAL', $DADOS, 'User')
   [Environment]::SetEnvironmentVariable('ARQUIVO_RAIZ', $ROTINA, 'User')
+  # o FGTS, o Alterdata, o atendente de IA e o suporte ficam no PC do escritório (robo/claude-do-pc.js)
+  [Environment]::SetEnvironmentVariable('ARQ_SO_SERVIDOR', '1', 'User')
 }
+if ([Environment]::GetEnvironmentVariable('ARQ_SO_SERVIDOR', 'User') -eq '1') { Ok 'ARQ_SO_SERVIDOR = 1 (FGTS, Alterdata, IA e suporte ficam no PC)' } else { Falta 'ARQ_SO_SERVIDOR' 'rode sem -SoConferir' }
 if ([Environment]::GetEnvironmentVariable('NADS_LOCAL', 'User') -eq $DADOS) { Ok "NADS_LOCAL = $DADOS" } else { Falta 'NADS_LOCAL' 'rode sem -SoConferir' }
 if ([Environment]::GetEnvironmentVariable('ARQUIVO_RAIZ', 'User') -eq $ROTINA) { Ok "ARQUIVO_RAIZ = $ROTINA" } else { Falta 'ARQUIVO_RAIZ' 'rode sem -SoConferir' }
 
