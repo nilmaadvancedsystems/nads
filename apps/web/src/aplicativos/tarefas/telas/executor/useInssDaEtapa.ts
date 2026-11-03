@@ -13,6 +13,7 @@ extrator.definirWorkerDoPdf(workerDoPdf);
 
 const dataBR = (d: string) => (d ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4) : '');
 const reais = formatos.reais;
+const centavos = (n: number) => Math.round(n * 100) / 100;
 
 /** Uma conta do balancete da empresa (o código e o nome). */
 export interface ContaDoPlano { codigo: string; nome: string }
@@ -115,11 +116,15 @@ export function useInssDaEtapa(chave: string, meses: readonly string[], balancet
     periodo: meses,
     chave,
     resumo: [r ? 'Razão: ' + r.razao.lancamentos.length.toLocaleString('pt-BR') + ' lançamentos' : '', g ? 'Guias: ' + g.guias.length : ''].filter(Boolean),
-    /** a grade dos meses: provisão, guia, diferença e a baixa da guia do mês */
+    /** a grade dos meses: saldo do razão, guia, diferença e a baixa da guia do mês */
     meses: (c?.meses || []).map(m => {
       const baixa = m.guia ? c!.baixas.find(b => b.guia === m.guia) : undefined;
+      // o saldo do mês (Vitor, 03/11/2026): a soma dos lançamentos do razão, + o que tem D e − o que tem C
+      // (o Alterdata grava o débito com sinal negativo, por isso o sinal é invertido aqui)
+      const somaDoMes = centavos(-(r?.razao.lancamentos.filter(l => l.data.slice(0, 7) === m.mes).reduce((n, l) => n + l.valor, 0) || 0));
       return {
         mes: m.mes, rotulo: t.rotuloNumericoCompetencia(m.mes), foraDoRazao: m.foraDoRazao,
+        saldo: m.foraDoRazao || !r ? '' : somaDoMes === 0 ? reais(0) : reais(Math.abs(somaDoMes)) + (somaDoMes > 0 ? ' D' : ' C'),
         provisao: m.foraDoRazao ? '' : reais(m.provisao), guia: m.guia ? reais(m.guia.principal) : '',
         // o total do DARF inteiro (com o IRRF e a retenção que vêm junto, e a multa e os juros); a guia lida antes de 15/10/2026
         // não tem: fica vazio (importar o PDF de novo), para não mostrar só o INSS como se fosse o total
