@@ -31,6 +31,7 @@
 const fs = require('fs');
 const path = require('path');
 const { getDb } = require('./firestore-client');
+const { FieldPath } = require('firebase-admin/firestore');
 
 // BACKUP_PASTA: na nuvem não há G:, e o backup vai pro disco da máquina (ver backup-diario.js).
 const DESTINO_PADRAO = process.env.BACKUP_PASTA || 'G:\\Meu Drive\\NILMA-PROTOCOLO-BACKUPS\\banco';
@@ -97,32 +98,59 @@ function salvarProvas(destino, entregaId, competencia, anexos, resumo) {
   return salvos;
 }
 
-// escrever(id, registro): cada documento vai direto para o arquivo, sem guardar a colecao inteira na memoria (a
-// maquina da nuvem e uma e2-micro, 1 GB); sem ele, a colecao volta inteira (as subcolecoes de um documento)
-async function lerColecao(ref, contador, destino, resumoProvas, ehEntregas, escrever) {
-  const snap = await ref.get();
-  const docs = {};
-  for (const doc of snap.docs) {
-    contador.docs++;
-    const dados = serializar(doc.data());
-    const registro = { dados: dados };
-
-    const subs = await doc.ref.listCollections();
-    if (subs.length) {
-      const subcolecoes = {};
-      for (const sub of subs) {
-        subcolecoes[sub.id] = await lerColecao(sub, contador, destino, resumoProvas, false);
-      }
-      if (ehEntregas && subcolecoes.anexos) {
-        // as imagens saem do JSON e viram arquivo; fica so o caminho delas
-        registro.provas = salvarProvas(destino, doc.id, dados.competencia, subcolecoes.anexos, resumoProvas);
-        delete subcolecoes.anexos;
-      }
-      if (Object.keys(subcolecoes).length) registro.subcolecoes = subcolecoes;
-    }
-    if (escrever) escrever(doc.id, registro); else docs[doc.id] = registro;
+// Cada documento, e as subcolecoes dele, vai direto para o arquivo, em paginas de 100: nada de colecao inteira na
+// memoria (a maquina da nuvem e uma e2-micro, 1 GB). O get() da colecao inteira estourava a memoria ("JavaScript heap
+// out of memory", 02/11/2026, sem backup desde 26/10); o pior era robo/arquivadorNovo/dias (721 dias do arquivador,
+// montados num registro so). Mesmas leituras e o mesmo JSON de antes: { "id": { dados, provas?, subcolecoes? } }.
+const POR_PAGINA = 100;
+async function* paginas(ref) {
+  let ultimo = null;
+  for (;;) {
+    let q = ref.orderBy(FieldPath.documentId()).limit(POR_PAGINA);
+    if (ultimo) q = q.startAfter(ultimo);
+    const pagina = (await q.get()).docs;
+    if (!pagina.length) return;
+    yield pagina;
+    if (pagina.length < POR_PAGINA) return;
+    ultimo = pagina[pagina.length - 1];
   }
-  return escrever ? snap.size : docs;
+}
+
+// os anexos de uma entrega sao poucos e viram arquivo de prova: esses ainda vem inteiros
+async function lerAnexos(ref, contador) {
+  const docs = {};
+  for (const doc of (await ref.get()).docs) { contador.docs++; docs[doc.id] = { dados: serializar(doc.data()) }; }
+  return docs;
+}
+
+async function escreverColecao(ref, ctx, ehEntregas, w, recuo) {
+  let n = 0;
+  for await (const pagina of paginas(ref)) {
+    for (const doc of pagina) {
+      ctx.contador.docs++;
+      const dados = serializar(doc.data());
+      w((n++ ? ',' : '') + '\n' + recuo + JSON.stringify(doc.id) + ': {"dados":' + JSON.stringify(dados));
+      let subs = await doc.ref.listCollections();
+      const anexos = ehEntregas && subs.find(s => s.id === 'anexos');
+      if (anexos) {
+        // as imagens saem do JSON e viram arquivo; fica so o caminho delas
+        subs = subs.filter(s => s !== anexos);
+        const provas = salvarProvas(ctx.destino, doc.id, dados.competencia, await lerAnexos(anexos, ctx.contador), ctx.resumoProvas);
+        w(',"provas":' + JSON.stringify(provas));
+      }
+      if (subs.length) {
+        w(',"subcolecoes":{');
+        for (let i = 0; i < subs.length; i++) {
+          w((i ? ',' : '') + JSON.stringify(subs[i].id) + ':{');
+          await escreverColecao(subs[i], ctx, false, w, recuo + ' ');
+          w('}');
+        }
+        w('}');
+      }
+      w('}');
+    }
+  }
+  return n;
 }
 
 async function main() {
@@ -160,11 +188,7 @@ async function main() {
       process.stderr.write('lendo ' + col.id + '... ');
       w((primeiraCol ? '' : ',') + '\n  ' + JSON.stringify(col.id) + ': {');
       primeiraCol = false;
-      let primeiroDoc = true;
-      const n = await lerColecao(col, contador, destino, resumoProvas, col.id === 'entregas', (id, registro) => {
-        w((primeiroDoc ? '' : ',') + '\n   ' + JSON.stringify(id) + ': ' + JSON.stringify(registro));
-        primeiroDoc = false;
-      });
+      const n = await escreverColecao(col, { contador, destino, resumoProvas }, col.id === 'entregas', w, '   ');
       w('\n  }');
       process.stderr.write(n + ' documentos\n');
     }

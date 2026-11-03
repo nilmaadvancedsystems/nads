@@ -26,13 +26,15 @@ function rodarBackup() {
   return new Promise(resolve => {
     const linhas = [];
     const filho = spawn(process.execPath, [path.join(__dirname, 'backup-firestore.js')], { cwd: __dirname });
-    const guardar = b => String(b).split(/\r?\n/).filter(Boolean).forEach(l => { linhas.push(l); if (linhas.length > 12) linhas.shift(); });
+    let fatal = '';
+    const guardar = b => String(b).split(/\r?\n/).filter(Boolean).forEach(l => { if (/FATAL/.test(l)) fatal = l; linhas.push(l); if (linhas.length > 12) linhas.shift(); });
     filho.stdout.on('data', guardar);
     filho.stderr.on('data', guardar);
     filho.on('error', err => resolve({ ok: false, resumo: err.message }));
     filho.on('close', code => {
       const ok = code === 0;
-      const util = linhas.filter(l => /^OK:|documentos:|ja existe|ERRO/.test(l)).join(' | ') || linhas.slice(-1)[0] || '';
+      // FATAL: quando o Node cai (falta de memória) a última linha é a pilha ("13: 0x19fb1be ..."), não o motivo (03/11/2026)
+      const util = fatal || linhas.filter(l => /^OK:|documentos:|ja existe|ERRO/.test(l)).join(' | ') || linhas.slice(-1)[0] || '';
       resolve({ ok, resumo: util.slice(0, 300) });
     });
   });
