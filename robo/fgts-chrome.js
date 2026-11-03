@@ -188,4 +188,14 @@ async function rodarNoChrome(itens, roteiros, aoPasso, aoResultado, log, ehEscri
   }
 }
 
-module.exports = { rodarNoChrome, ligarNoChrome, garantirLogin, comDados, BAIXADOS, PERFIL, PORTA, CHROME };
+/** Fecha o Chrome do robô (Vitor, 03/11/2026: "ele tem que fechar o app depois que terminar a fila do fgts"). */
+async function fecharChrome(log = () => {}) {
+  if (!(await chromeNoAr())) return;
+  try {
+    const browser = await require('puppeteer-core').connect({ browserURL: 'http://127.0.0.1:' + PORTA, defaultViewport: null });
+    await browser.close();
+    log('FGTS (robô): fila acabou, Chrome do robô fechado');
+  } catch (err) { log('FGTS (robô): não fechei o Chrome:', err.message); }
+}
+
+module.exports = { rodarNoChrome, fecharChrome, ligarNoChrome, garantirLogin, comDados, BAIXADOS, PERFIL, PORTA, CHROME };

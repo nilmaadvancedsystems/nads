@@ -91,6 +91,8 @@ const ROTEIRO_PERFIL = `await (async () => {
   const visivel = e => e && e.offsetParent !== null;
   const botao = t => [...document.querySelectorAll('button')].find(b => visivel(b) && b.innerText.trim() === t);
   for (let i = 0; i < 20 && !botao('Trocar Perfil') && !visivel(document.querySelector('input[role=combobox]')); i++) await dormir(300);
+  // o portal já está no empregador certo (03/11/2026: com o Meu Perfil em uso, a lista do Trocar Perfil não mostra o Meu Perfil)
+  if ((((document.body.innerText.match(/Empregador:([^\\n|]*)/) || [])[1]) || '').includes(DADOS.cnpj)) return 'OK: já está em ' + DADOS.cnpj;
   if (!visivel(document.querySelector('input[role=combobox]'))) { const tp = botao('Trocar Perfil'); if (!tp) return 'ERRO: sem Trocar Perfil'; tp.click(); await dormir(600); }
   const sel = [...document.querySelectorAll('ng-select')].find(visivel);
   if (!sel) return 'ERRO: sem a lista Perfil';
@@ -134,7 +136,10 @@ const ROTEIRO_GUIA = `await (async () => {
   const visivel = e => e && e.offsetParent !== null;
   const num = v => Number(String(v || '0').replace(/\\./g, '').replace(',', '.')) || 0;
   const reais = n => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  for (let i = 0; i < 20 && ![...document.querySelectorAll('ng-select')].some(visivel); i++) await dormir(300);
+  const semDebito = () => /N[ãa]o h[áa] d[ée]bitos de interesse/i.test(document.body.innerText);
+  for (let i = 0; i < 20 && ![...document.querySelectorAll('ng-select')].some(visivel) && !semDebito(); i++) await dormir(300);
+  // o empregador sem nenhum débito em aberto (03/11/2026: "Não há débitos de interesse… (COB0003)", e a tela vem sem a lista)
+  if (semDebito()) return JSON.stringify({ erro: 'sem débito em aberto na competência' });
   const texto = document.body.innerText;
   // a janela "Mensagem de Erro" do portal (13/10/2026: a sessão expirou e a tela mostrou "Erro 200 / OK (HTTP200)")
   if (/Mensagem de Erro/.test(texto)) return JSON.stringify({ erro: 'roteiro: o portal mostrou "' + (texto.split('Mensagem de Erro')[1] || '').trim().split('\\n').slice(0, 2).join(' ') + '" (a sessão pode ter expirado: entre de novo)' });
@@ -409,6 +414,8 @@ function iniciarFgtsPeloClaude(db, log, opcoes = {}) {
         return st === 'pendente' || st === 'trabalhando' ? d.ref.update({ status: 'erro', erro: 'o robô não conseguiu fazer este lote: ' + String(err.message).slice(0, 150) + '; peça de novo', fimEm: agora() }) : null;
       }).catch(() => {})));
     }
+    // a fila acabou: o robô do servidor fecha o Chrome dele (03/11/2026); o próximo pedido abre de novo, com o perfil copiado na hora
+    if (semClaude && !fila.length) await require('./fgts-chrome').fecharChrome(log);
     ocupado = false;
     painel.fazendo('fgts', null);
     // o Chrome fica aberto e logado depois do lote (Vitor, 09/10/2026: a opção 3, "deixar o Chrome aberto e logado"): a
