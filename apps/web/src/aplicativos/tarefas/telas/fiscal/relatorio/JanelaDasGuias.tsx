@@ -91,13 +91,17 @@ function Enviados({ vm }: { vm: VmEnvioDeGuias }) {
               <div className="dp-lote-falta-nome">
                 <b><span className="num fraco">{x.codigo}</span> {x.empresa || 'Cliente ' + x.codigo}</b>
                 <span className="fraco">{hora(x.enviadoEm)} · para {x.para.join(', ') || '—'}{x.por ? ' · por ' + x.por : ''}</span>
-                {x.guiasDrive.length > 0 ? (
-                  <span className="fraco">{x.guiasDrive.length} {x.guiasDrive.length === 1 ? 'guia' : 'guias'}:{' '}
-                    {x.guiasDrive.map((g, k) => (
-                      <span key={g.id}>{k > 0 && ' · '}<button type="button" className="link-btn" title={'Ver a guia: ' + g.nome} onClick={() => vm.abrirEnviada(g)}>{g.nome}</button></span>
-                    ))}
-                  </span>
-                ) : x.guias.length > 0 && <span className="fraco" title={x.guias.join('\n')}>{x.guias.length} {x.guias.length === 1 ? 'guia' : 'guias'}: {x.guias.join(' · ')}</span>}
+                {/* cada guia abre pelo id no Drive; os envios de antes do id, pelo nome na pasta do cliente */}
+                {(() => {
+                  const gs = x.guiasDrive.length ? x.guiasDrive : x.guias.map(nome => ({ nome, id: '' }));
+                  return gs.length > 0 && (
+                    <span className="fraco">{gs.length} {gs.length === 1 ? 'guia' : 'guias'}:{' '}
+                      {gs.map((g, k) => (
+                        <span key={g.id || g.nome + k}>{k > 0 && ' · '}<button type="button" className="link-btn" title={'Ver a guia: ' + g.nome} onClick={() => vm.abrirEnviada(g, x.codigo)}>{g.nome}</button></span>
+                      ))}
+                    </span>
+                  );
+                })()}
               </div>
             </li>
           ))}

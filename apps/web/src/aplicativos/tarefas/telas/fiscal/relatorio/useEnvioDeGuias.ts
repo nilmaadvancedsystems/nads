@@ -51,6 +51,31 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
   const cadastros = useTodosOsCadastros();
   const gmail = useGmailDoEntregas();
   const drive = useDriveDoEntregas();
+
+  /** espera o mapa do Drive responder (ele carrega quando pedido), até o prazo */
+  function esperarDrive<T>(ler: () => T | null): Promise<T> {
+    return new Promise((resolver, recusar) => {
+      const agora = ler();
+      if (agora != null) { resolver(agora); return; }
+      const prazo = setTimeout(() => { parar(); recusar(new Error('o mapa do Drive não carregou')); }, 30 * 1000);
+      const parar = drive.assinar(() => {
+        const x = ler();
+        if (x != null) { clearTimeout(prazo); parar(); resolver(x); }
+      });
+    });
+  }
+  /** o id da guia pelo nome, na pasta do cliente no mapa do Drive (a mais nova, se houver duas com o mesmo nome) */
+  async function idPeloMapa(codigo: number, nome: string): Promise<string> {
+    const pasta = await esperarDrive(() => {
+      const m = drive.mapa();
+      return m.carregado ? m.clientes.find(c => c.codigo === String(codigo)) || false : null;
+    });
+    if (!pasta) throw new Error('a pasta do cliente ' + codigo + ' não está no mapa do Drive');
+    const itens = await esperarDrive(() => { const x = drive.itens(pasta.id); return x.carregados ? x.itens : null; });
+    const achado = itens.filter(x => x.t === 'f' && x.n === nome).sort((a, b) => String(b.m || '').localeCompare(String(a.m || '')))[0];
+    if (!achado) throw new Error('não achei "' + nome + '" na pasta do cliente no Drive');
+    return achado.i;
+  }
   const { toast, modal } = useRetorno();
   const doGrupo = t.grupoDoControle(grupo);
   const todos = repo.lotes();
@@ -159,15 +184,21 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
         return url;
       }, m => toast('Não consegui abrir a guia: ' + m));
     },
-    /** "Enviados": a guia gravada no Drive do cliente, pelo robô (uma cópia de 30 minutos; o PDF não fica no banco) */
-    abrirEnviada(g: { nome: string; id: string }) {
-      abrirNaAba(g.nome, () => new Promise<string>((resolver, recusar) => {
-        const prazo = setTimeout(() => { parar(); recusar(new Error('o robô não respondeu a tempo')); }, PRAZO_DO_DRIVE_MS);
-        const parar = drive.pedir({ modo: 'abrir', fileId: g.id, nome: g.nome }, x => {
-          if (x.status === 'pronto' && x.url) { clearTimeout(prazo); parar(); resolver(x.url); }
-          else if (x.status === 'erro') { clearTimeout(prazo); parar(); recusar(new Error(x.erro || 'erro do robô')); }
+    /**
+     * "Enviados": a guia gravada no Drive do cliente, pelo robô (uma cópia de 30 minutos; o PDF não fica no banco). Sem o
+     * id (os envios de antes de 04/11/2026, 18h41), a guia é achada pelo nome na pasta do cliente, no mapa do Drive.
+     */
+    abrirEnviada(g: { nome: string; id: string }, codigo: number) {
+      abrirNaAba(g.nome, async () => {
+        const fileId = g.id || await idPeloMapa(codigo, g.nome);
+        return new Promise<string>((resolver, recusar) => {
+          const prazo = setTimeout(() => { parar(); recusar(new Error('o robô não respondeu a tempo')); }, PRAZO_DO_DRIVE_MS);
+          const parar = drive.pedir({ modo: 'abrir', fileId, nome: g.nome }, x => {
+            if (x.status === 'pronto' && x.url) { clearTimeout(prazo); parar(); resolver(x.url); }
+            else if (x.status === 'erro') { clearTimeout(prazo); parar(); recusar(new Error(x.erro || 'erro do robô')); }
+          });
         });
-      }), m => toast('Não consegui abrir a guia: ' + m));
+      }, m => toast('Não consegui abrir a guia: ' + m));
     },
     /** quantos clientes vão no disparo (os ainda não enviados) */
     paraDisparar: grupos.filter(g => g.resultado?.status !== 'enviado').length,
