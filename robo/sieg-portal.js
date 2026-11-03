@@ -178,13 +178,23 @@ async function xmlsPeloPortal(doc, competencia, aoAndar, lerZip, soTipos, espera
       try {
         let zip;
         const usada = cookie;
-        try { zip = await zipDoPeriodo(usada, doc, tipo, competencia, sinal); }
+        // um tropeço de rede ("fetch failed", sem resposta do portal) tenta de novo antes de cair na API, que leva minutos
+        // (03/11/2026: no NILMA-SERVER, o 183 falhou uma vez em 33 s e foi pela API; o mesmo mês, refeito, deu em 8 s)
+        const doPortal = async c => {
+          try { return await zipDoPeriodo(c, doc, tipo, competencia, sinal); }
+          catch (err) {
+            if (sinal.aborted || !(err instanceof TypeError) || !/fetch failed/i.test(err.message)) throw err;
+            await new Promise(r => setTimeout(r, 5000));
+            return zipDoPeriodo(c, doc, tipo, competencia, sinal);
+          }
+        };
+        try { zip = await doPortal(usada); }
         catch (err) {
           if (sinal.aborted) return;
           // a sessão guardada venceu: pega a do perfil (o Chrome) e tenta uma vez mais
           if (!err.message.startsWith(SEM_LOGIN)) throw err;
           cookie = await cookiesDoPortal(true, usada);
-          zip = await zipDoPeriodo(cookie, doc, tipo, competencia, sinal);
+          zip = await doPortal(cookie);
         }
         if (zip && !doDrive.has(nome)) juntar(lerZip(zip));
       } catch (err) { if (!sinal.aborted) throw err; }
