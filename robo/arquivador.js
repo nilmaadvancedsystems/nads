@@ -56,6 +56,9 @@ const JANELA_DAS_9H = { de: [8, 30], ate: [11, 0] };  // a tarefa agendada roda 
 
 const log = (...m) => console.log(new Date().toLocaleString('pt-BR'), '[arquivo]', ...m);
 const agora = () => new Date().toISOString();
+// no NILMA-SERVER (03/11/2026): sem o Claude e sem o Contábil logado, o FGTS, o balancete do Alterdata, o atendente de IA
+// e o suporte ficam no PC do escritório (claude-do-pc.js); aqui só o arquivamento, o SIEG e a Área do Cliente
+const SO_SERVIDOR = process.env.ARQ_SO_SERVIDOR === '1';
 
 // ---------- um arquivador só ----------
 const TRAVA = path.join(__dirname, 'arquivador.lock');
@@ -697,13 +700,19 @@ async function iniciar() {
   // tela ao vivo no nads)
   // desde 09/10/2026 pelo Claude do PC no Chrome logado (fgts-claude.js); o robô do navegador (fgts-digital.js) fica para a nuvem
   painel.modulo('arquivamento', 'Arquivamento', true);
-  painel.modulo('fgts', 'FGTS Digital', true);
-  try { require('./fgts-claude').iniciarFgtsPeloClaude(db, log); }
-  catch (err) { log('FGTS não ligou:', err.message); painel.modulo('fgts', 'FGTS Digital', false, err.message); }
-  // o balancete do Alterdata Contábil (14/10/2026): o roteiro no Contábil aberto e logado deste PC, pedido pela Conferência
-  painel.modulo('alterdata', 'Balancete do Alterdata', true);
-  try { require('./alterdata').iniciarAlterdata(db, log); }
-  catch (err) { log('Alterdata não ligou:', err.message); painel.modulo('alterdata', 'Balancete do Alterdata', false, err.message); }
+  if (SO_SERVIDOR) {
+    log('FGTS, balancete do Alterdata, atendente de IA e suporte: ficam no PC do escritório (claude-do-pc.js)');
+    painel.modulo('fgts', 'FGTS Digital', false, 'roda no PC do escritório');
+    painel.modulo('alterdata', 'Balancete do Alterdata', false, 'roda no PC do escritório');
+  } else {
+    painel.modulo('fgts', 'FGTS Digital', true);
+    try { require('./fgts-claude').iniciarFgtsPeloClaude(db, log); }
+    catch (err) { log('FGTS não ligou:', err.message); painel.modulo('fgts', 'FGTS Digital', false, err.message); }
+    // o balancete do Alterdata Contábil (14/10/2026): o roteiro no Contábil aberto e logado deste PC, pedido pela Conferência
+    painel.modulo('alterdata', 'Balancete do Alterdata', true);
+    try { require('./alterdata').iniciarAlterdata(db, log); }
+    catch (err) { log('Alterdata não ligou:', err.message); painel.modulo('alterdata', 'Balancete do Alterdata', false, err.message); }
+  }
   painel.modulo('sieg', 'SIEG', true);
   try { require('./sieg').iniciarSieg({ db, log }); }
   catch (err) { log('SIEG desligado:', err.message); painel.modulo('sieg', 'SIEG', false, err.message); }
@@ -718,6 +727,7 @@ async function iniciar() {
   // o painel dos agentes do Claude Code (14/10/2026): saiu do robô. Cada computador cadastrado no nads grava as próprias
   // conversas pelo gancho ~/.claude/painel/registro.js (painelMaquinas/{chave}/sessoes); o painelAgentes ficou sem uso.
 
+  if (SO_SERVIDOR) return;
   try { pararIA = require('./atendente-claude').iniciarAtendenteClaude({ db, log }); }
   catch (err) { log('atendente de IA desligado:', err.message); }
   // o suporte de leitura do nads (20/10/2026): o Claude deste PC investiga o bug que veio do balão e escreve o report
