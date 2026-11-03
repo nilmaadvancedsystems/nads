@@ -328,6 +328,8 @@ function perguntarAoClaude(pergunta, opcoes) {
 function iniciarAtendenteClaude(opcoes) {
   const db = opcoes.db;
   const log = opcoes.log || console.log;
+  // sem o Claude (o NILMA-SERVER, Windows Server 2019, 03/11/2026) não pega conversa nenhuma: pegaria e falharia em todas
+  if (!fs.existsSync(CLAUDE)) { log('[ia] sem o Claude neste PC (' + CLAUDE + '): atendente desligado'); return () => {}; }
   const fila = db.collection('conversasIA');
   const estadoRef = db.collection('robo').doc('estado');
 
