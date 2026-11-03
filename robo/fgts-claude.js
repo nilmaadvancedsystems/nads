@@ -358,7 +358,10 @@ function iniciarFgtsPeloClaude(db, log, opcoes = {}) {
   const semClaude = !!opcoes.semClaude;
   const ator = semClaude ? 'o robô' : 'o Claude';
   const pre = semClaude ? 'FGTS (robô): ' : 'FGTS (Claude): ';
-  const BAIXADOS_AQUI = semClaude ? require('./fgts-chrome').BAIXADOS : BAIXADOS;
+  // o executor sem o Claude (03/11/2026): a extensão no Chrome da nilmacontabilidade (o padrão) ou, com FGTS_EXECUTOR=chrome,
+  // o Chrome do robô com a porta de controle (o gov.br pede o "não sou um robô" nele)
+  const EXECUTOR = semClaude ? (process.env.FGTS_EXECUTOR === 'chrome' ? require('./fgts-chrome') : require('./fgts-extensao')) : null;
+  const BAIXADOS_AQUI = semClaude ? EXECUTOR.BAIXADOS : BAIXADOS;
   const estado = db.collection('robo').doc('fgts');
   const pedidos = db.collection('pedidosFgts');
   let ativo = false, ligou = false;
@@ -376,7 +379,9 @@ function iniciarFgtsPeloClaude(db, log, opcoes = {}) {
   /** As conferências da partida, quando esta máquina passa a atender. true = ligado. */
   function ligar() {
   if (semClaude) {
-    if (!fs.existsSync(require('./fgts-chrome').CHROME)) { marcar({ ligado: false, motivo: 'falta o Chrome em ' + os.hostname() }); log('FGTS: desligado (falta o Chrome)'); painel.modulo('fgts', 'FGTS Digital', false, 'falta o Chrome'); return false; }
+    if (!fs.existsSync(EXECUTOR.CHROME)) { marcar({ ligado: false, motivo: 'falta o Chrome em ' + os.hostname() }); log('FGTS: desligado (falta o Chrome)'); painel.modulo('fgts', 'FGTS Digital', false, 'falta o Chrome'); return false; }
+    // a pasta da extensão pronta desde a partida (para instalar no Chrome antes do primeiro pedido)
+    if (EXECUTOR.prepararExtensao) { try { EXECUTOR.prepararExtensao({ perfil: ROTEIRO_PERFIL, guia: ROTEIRO_GUIA }); log('FGTS: extensão do robô em ' + EXECUTOR.PASTA_EXT); } catch (err) { log('FGTS: não montei a extensão:', err.message); } }
   } else {
   if (!fs.existsSync(CLAUDE)) { marcar({ ligado: false, motivo: 'falta o Claude no PC do escritório' }); log('FGTS: desligado (falta o Claude em ' + CLAUDE + ')'); painel.modulo('fgts', 'FGTS Digital', false, 'falta o Claude no PC do escritório'); return false; }
   if (!fs.existsSync(BAIXADOS)) { marcar({ ligado: false, motivo: 'falta a pasta Claudio Secretario no Drive do PC' }); log('FGTS: desligado (falta ' + BAIXADOS + ')'); painel.modulo('fgts', 'FGTS Digital', false, 'falta a pasta Claudio Secretario no Drive do PC'); return false; }
@@ -415,7 +420,7 @@ function iniciarFgtsPeloClaude(db, log, opcoes = {}) {
       }).catch(() => {})));
     }
     // a fila acabou: o robô do servidor fecha o Chrome dele (03/11/2026); o próximo pedido abre de novo, com o perfil copiado na hora
-    if (semClaude && !fila.length) await require('./fgts-chrome').fecharChrome(log);
+    if (semClaude && !fila.length) await EXECUTOR.fecharChrome(log);
     ocupado = false;
     painel.fazendo('fgts', null);
     // o Chrome fica aberto e logado depois do lote (Vitor, 09/10/2026: a opção 3, "deixar o Chrome aberto e logado"): a
@@ -501,7 +506,7 @@ function iniciarFgtsPeloClaude(db, log, opcoes = {}) {
     if (semClaude) {
       // o robô sem o Claude (03/11/2026): os mesmos roteiros, direto no Chrome do servidor
       const doLote = lideres.map(it => ({ get fim() { return it.fim; }, cnpj: it.p.cnpj, portal: it.p.portal, competencia: it.p.competencia, modo: it.p.modo }));
-      r = await require('./fgts-chrome').rodarNoChrome(doLote, { perfil: ROTEIRO_PERFIL, guia: ROTEIRO_GUIA }, aoPasso, aoResultado, log, doc => doc === CNPJ_DO_ESCRITORIO)
+      r = await (EXECUTOR.rodarPelaExtensao || EXECUTOR.rodarNoChrome)(doLote, { perfil: ROTEIRO_PERFIL, guia: ROTEIRO_GUIA }, aoPasso, aoResultado, log, doc => doc === CNPJ_DO_ESCRITORIO)
         .then(x => ({ resultado: null, erro: x.erro || '' }), err => ({ resultado: null, erro: err.message }));
     } else r = await rodarClaude(instrucoesDoLote(lideres.map(it => it.p)), aoPasso, aoResultado, limite);
     // a extensão ainda não estava pronta (nenhum cliente começou): espera e tenta o lote de novo, uma vez
@@ -739,4 +744,4 @@ function iniciarFgtsPeloClaude(db, log, opcoes = {}) {
   }
 }
 
-module.exports = { iniciarFgtsPeloClaude };
+module.exports = { iniciarFgtsPeloClaude, ROTEIRO_PERFIL, ROTEIRO_GUIA };
