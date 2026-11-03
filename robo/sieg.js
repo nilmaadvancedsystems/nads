@@ -28,6 +28,8 @@ const ESPERA_MS = { 'contar-xmls': 13000, 'baixar-xmls': 31000, 'create-jwt': 20
 const TIPO = { NFe: 1, CTe: 2, NFSe: 3, NFCe: 4, CFe: 5 };
 
 const dormir = ms => new Promise(r => setTimeout(r, ms));
+// o "fetch failed" do Node esconde o motivo em err.cause (03/11/2026, no NILMA-SERVER: o portal falhava em 33 s sem dizer por quê)
+const motivo = e => String(e && e.message || e) + (e && e.cause ? ' — ' + (e.cause.code || '') + ' ' + (e.cause.message || '') : '');
 const soDigitos = v => String(v || '').replace(/\D/g, '');
 // o documento do cliente: CNPJ (14) ou CPF (11, o produtor rural; o SIEG conta pelos dois, 07/10/2026)
 // (23/10/2026: a contagem da madrugada mandava ao SIEG qualquer número de 11 ou 14 dígitos e ele devolvia HTTP 400 "CNPJ/CPF
@@ -942,8 +944,8 @@ function iniciarSieg({ db, log }) {
           log('SIEG: XMLs de', p.codigo, 'pelo portal' + (baixado.tiposDoDrive.length ? ' (do Drive: ' + baixado.tiposDoDrive.join(', ') + ')' : ''));
         } catch (err) {
           semServentia = true;
-          log('SIEG: portal não deu (' + err.message + '), XMLs de', p.codigo, 'pela API');
-          await andar('baixando', 'O portal não deu (' + err.message + '): baixando pela API', null, true);
+          log('SIEG: portal não deu (' + motivo(err) + '), XMLs de', p.codigo, 'pela API');
+          await andar('baixando', 'O portal não deu (' + motivo(err) + '): baixando pela API', null, true);
           baixado = await xmlsDoMes(c, cnpj, p.competencia, t => andar('baixando', t, null));
         }
         // o que está no Drive e o SIEG não trouxe entra junto (juntarOsDoDrive); quando o portal trouxe tudo o que o último
@@ -1069,7 +1071,7 @@ function iniciarSieg({ db, log }) {
         const daChave = x => ((/Id="(?:NFe|CTe)(\d{44})"/.exec(x)) || [])[1] || '';
         let xmls = [];
         try { xmls = await require('./sieg-portal').xmlsPorChaves(cnpj, chaves, lerZip); }
-        catch (err) { log('SIEG: portal não deu nas chaves (' + err.message + '), tentando o .zip do Drive'); }
+        catch (err) { log('SIEG: portal não deu nas chaves (' + motivo(err) + '), tentando o .zip do Drive'); }
         if (xmls.filter(x => quero.has(daChave(x))).length < chaves.length) {
           // o que faltou, do .zip do Drive (se a pasta do mês ainda está lá)
           const nota = (await db.collection('siegNotas').doc(id).get()).data();
@@ -1112,7 +1114,7 @@ function iniciarSieg({ db, log }) {
         const r = await require('./sieg-portal').xmlsPeloPortal(cnpj, p.competencia, andarSaidas, lerZip, ['NF-e', 'NFC-e']);
         series = seriesDasNotas(saidasDoResumo(r.resumo.emitidas));
       } catch (err) {
-        log('SIEG: portal não deu (' + err.message + '), saídas de', p.codigo, 'pela API');
+        log('SIEG: portal não deu (' + motivo(err) + '), saídas de', p.codigo, 'pela API');
         series = await saidasDoMes(c, cnpj, p.competencia, andarSaidas);
       }
       await db.collection('siegSaidas').doc(id).set({ codigo: String(p.codigo), cnpj, competencia: p.competencia, em: new Date().toISOString(), series });
