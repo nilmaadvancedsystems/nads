@@ -54,10 +54,14 @@ elseif (Get-Command git -ErrorAction SilentlyContinue) {
   if (Test-Path (Join-Path $ROBO 'arquivador.js')) { Ok 'código clonado (desenvolvimento)' } else { Falta 'código' 'o git clone não terminou (login do GitHub?)' }
 }
 else { Falta 'código' 'instale o Git e rode de novo' }
-if ((Test-Path (Join-Path $ROBO 'package.json')) -and -not (Test-Path (Join-Path $ROBO 'node_modules'))) {
+# o .package-lock.json só aparece com o npm ci terminado (03/11/2026: um npm ci interrompido deixou a pasta node_modules
+# pela metade, "Cannot find module 'puppeteer-core'", e a conferência só via a pasta)
+$instalado = Join-Path $ROBO 'node_modules\.package-lock.json'
+if ((Test-Path (Join-Path $ROBO 'package.json')) -and -not (Test-Path $instalado)) {
   if ($SoConferir) { Falta 'dependências do robô' 'rode sem -SoConferir' }
-  elseif ($node) { Push-Location $ROBO; try { npm ci --omit=dev } finally { Pop-Location }; Ok 'dependências instaladas' }
-} elseif (Test-Path (Join-Path $ROBO 'node_modules')) { Ok 'dependências do robô' }
+  elseif ($node) { Push-Location $ROBO; try { npm.cmd ci --omit=dev } finally { Pop-Location } }
+}
+if (Test-Path $instalado) { Ok 'dependências do robô' } elseif (Test-Path (Join-Path $ROBO 'package.json')) { Falta 'dependências do robô' "cd $ROBO; npm.cmd ci --omit=dev (até aparecer 'added ... packages')" }
 
 Write-Host "`nPastas de dados no D:"
 foreach ($p in @($DADOS, $ROTINA)) { if (-not (Test-Path $p)) { if (-not $SoConferir) { New-Item -ItemType Directory -Force $p | Out-Null } } }
