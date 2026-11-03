@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "nads - robô do FGTS",
+  "version": "1.0.0",
+  "description": "Emite as guias do FGTS Digital pedidas no nads, no Chrome da nilmacontabilidade do NILMA-SERVER. Só fala com o robô deste computador (127.0.0.1) e só abre o FGTS Digital e o login do gov.br.",
+  "background": { "service_worker": "servico.js" },
+  "permissions": ["scripting", "tabs", "downloads", "alarms"],
+  "host_permissions": [
+    "https://fgtsdigital.sistema.gov.br/*",
+    "https://*.acesso.gov.br/*",
+    "http://127.0.0.1/*"
+  ]
+}
