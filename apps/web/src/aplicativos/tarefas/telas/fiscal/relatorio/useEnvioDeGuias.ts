@@ -36,8 +36,12 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
   const doGrupo = t.grupoDoControle(grupo);
   const todos = repo.lotes();
   const lotes = todos.lista.filter(l => l.grupo === grupo);
+  // "Para enviar" (04/11/2026: "Precisa ter uma aba de enviados e uma aba de 'para enviar' para nao misturar"): os lotes que
+  // ainda têm o que mandar. O disparado em que todos os clientes receberam sai daqui e fica só em "Enviados".
+  const terminado = (l: (typeof lotes)[number]) => l.status === 'disparado' && l.resultados.length > 0 && l.resultados.every(r => r.status === 'enviado');
+  const paraEnviar = lotes.filter(l => !terminado(l));
   const [escolhido, setEscolhido] = useState<string | null>(null);
-  const atual = (escolhido ? lotes.find(l => l.id === escolhido) : null) || lotes[0] || null;
+  const atual = (escolhido ? paraEnviar.find(l => l.id === escolhido) : null) || paraEnviar[0] || null;
   const idAtual = atual?.id || '';
   const [arquivos, setArquivos] = useState<{ lote: string; lista: GuiaDoLote[] } | null>(null);
   useEffect(() => {
@@ -80,8 +84,10 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
     chave, ...g, nome: doCodigo.get(g.codigo)?.nome || '', email: doCodigo.get(g.codigo)?.email || '', resultado: resultadoDe.get(chave) || null,
   })).sort((a, b) => a.codigo - b.codigo || a.competencia.localeCompare(b.competencia));
 
-  // os salvos para enviar depois (como no lote do DP): os lotes que subiram e nunca foram disparados
-  const salvos = lotes.filter(l => ['pendente', 'lendo', 'lido'].includes(l.status) && !l.resultados.length);
+  // "Enviados": o registro de cada e-mail (fica; o lote some do banco em 3 dias), na competência da apuração escolhida
+  const [competenciaEnviados, setCompetenciaEnviados] = useState(competenciaDaTela);
+  const doMes = repo.enviados(competenciaEnviados);
+  const enviados = doMes.lista.filter(x => x.grupo === grupo);
   const rotuloDaColuna = (c: string) => CURTO[c] || doGrupo.colunas.find(x => x.id === c)?.rotulo || c;
 
   // o modelo do e-mail e a prévia com um cliente do lote
@@ -95,11 +101,14 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
     exemplos: repo.exemplos,
     carregando: !todos.carregados,
     grupo: doGrupo,
-    lotes,
-    salvos,
-    /** o lote aberto ainda não foi disparado (dá para salvar para depois) */
-    podeSalvar: !!atual && salvos.some(l => l.id === atual.id),
+    /** os lotes com o que mandar (o aberto é o atual) */
+    paraEnviar,
     atual,
+    /** os e-mails já enviados na competência escolhida, deste grupo, o mais novo primeiro */
+    enviados,
+    enviadosCarregados: doMes.carregados,
+    competenciaEnviados,
+    setCompetenciaEnviados,
     escolherLote: setEscolhido,
     grupos,
     faltam,
@@ -154,11 +163,6 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
     async tirar(arquivo: GuiaDoLote, fora: boolean) {
       if (!atual) return;
       try { await repo.tirar(atual.id, arquivo.id, fora); } catch (e) { toast('Não consegui: ' + (e instanceof Error ? e.message : String(e))); }
-    },
-    /** guarda o lote aberto para disparar depois: nada sai agora */
-    salvar() {
-      if (!atual) return;
-      toast('Lote salvo. Ele fica em "Salvos" com as guias; nada é enviado até você abrir e disparar.');
     },
     /** dispara o lote (os clientes ainda não enviados), depois de confirmar */
     async disparar() {

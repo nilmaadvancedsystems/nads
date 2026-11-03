@@ -21,6 +21,21 @@ export interface ResultadoDoLoteFiscal extends ResultadoDoLote {
   erroNoRelatorio: string;
 }
 export interface LoteFiscal extends Omit<LoteDp, 'resultados'> { grupo: t.GrupoDoControleId; resultados: ResultadoDoLoteFiscal[] }
+/** um e-mail de guias já enviado (o registro do robô em solicitacoesEmail, tipo envioFiscal): a aba "Enviados" */
+export interface EnvioDasGuias {
+  id: string;
+  codigo: number;
+  empresa: string;
+  /** a competência da apuração (AAAA-MM) */
+  competencia: string;
+  grupo: t.GrupoDoControleId;
+  para: string[];
+  /** os nomes das guias anexadas */
+  guias: string[];
+  enviadoEm: string;
+  /** quem pediu o disparo */
+  por: string;
+}
 
 /** O modelo do e-mail das guias (config/envioFiscal): vazio = este, o mesmo do robô (robo/lote-fiscal.js) */
 export const MODELO_PADRAO_DAS_GUIAS: ModeloDoEnvio = {
@@ -42,6 +57,8 @@ export interface RepoLoteFiscal {
   tirar(lote: string, arquivo: string, fora: boolean): Promise<void>;
   /** pede o disparo ao robô */
   disparar(lote: string): Promise<void>;
+  /** os e-mails de guias já enviados na competência da apuração (os dois grupos), ao vivo; os lotes somem em 3 dias, estes ficam */
+  enviados(competencia: string): { carregados: boolean; lista: EnvioDasGuias[] };
   /** o modelo do e-mail como está no banco (vazio = o padrão) */
   modelo(): { carregado: boolean } & ModeloDoEnvio;
   gravarModelo(m: ModeloDoEnvio): Promise<void>;
@@ -177,6 +194,13 @@ export function criarLoteFiscalMemoria(controle: () => RepoControleTributos): Re
         });
         mudarLote(id, { status: 'disparado', resultados });
       }, 2000);
+    },
+    enviados(competencia) {
+      const lista: EnvioDasGuias[] = lotes.flatMap(l => l.resultados.filter(r => r.status === 'enviado' && r.competencia === competencia).map(r => ({
+        id: l.id + '|' + r.chave, codigo: r.codigo, empresa: empresas.EMPRESAS.find(x => x.codigo === r.codigo)?.nome || '', competencia: r.competencia, grupo: l.grupo,
+        para: r.para, guias: r.arquivos, enviadoEm: r.enviadoEm, por: l.disparadoPor,
+      })));
+      return { carregados: true, lista: lista.sort((a, b) => b.enviadoEm.localeCompare(a.enviadoEm)) };
     },
     modelo: () => ({ carregado: true, ...modelo }),
     async gravarModelo(m) { modelo = { assunto: m.assunto.trim(), texto: m.texto.trim() }; mudou(); },

@@ -5,6 +5,7 @@
 //     total, lidos, resultados.<código>_<AAAA-MM> (com valores por coluna, preenchidos e erroNoRelatorio) };
 //   - lotesFiscal/{lote}/arquivos/{k}: { nome, tamanho, partes, status }, com os pedaços em .../partes/{n} { dados: Bytes };
 //     o robô grava a leitura (com a coluna do Relatório) ou o erro; a tela, a escolha (com a coluna) e o fora;
+//   - solicitacoesEmail { tipo: 'envioFiscal' }: o registro de cada e-mail que o robô mandou (a aba "Enviados"; fica, o lote some em 3 dias);
 //   - config/envioFiscal: o modelo do e-mail { assunto, texto, atualizadoEm, atualizadoPor } (o Fiscal e o admin gravam).
 import { addDoc as addDocBruto, Bytes, collection, doc, onSnapshot, query, setDoc as setDocBruto, updateDoc as updateDocBruto, where } from 'firebase/firestore';
 import { entregas as e } from '@nads/core';
@@ -12,7 +13,7 @@ import { guardar, guardarPedido } from '../../../comum/modoDesenvolvedor';
 import { bancoDoEntregas } from './entregas.firestore';
 import type { ModeloDoEnvio } from './enviosDp';
 import { arquivoDoBanco, loteDoBanco } from './loteDp.firestore';
-import type { GuiaDoLote, LoteFiscal, RepoLoteFiscal } from './loteFiscal';
+import type { EnvioDasGuias, GuiaDoLote, LoteFiscal, RepoLoteFiscal } from './loteFiscal';
 
 // a trava do modo desenvolvedor (comum/modoDesenvolvedor.ts): com o modo ligado, só ver — nada é gravado
 const addDoc = guardarPedido(addDocBruto) as typeof addDocBruto;
@@ -49,6 +50,7 @@ export function criarLoteFiscalFirestore(quem: () => e.Quem | null): RepoLoteFis
   let ouvindo = '';
   let modelo: { carregado: boolean } & ModeloDoEnvio = { carregado: false, assunto: '', texto: '' };
   let ouvindoModelo = false;
+  const enviadosDoMes = new Map<string, { carregados: boolean; lista: EnvioDasGuias[] }>();
 
   return {
     exemplos: false,
@@ -98,6 +100,24 @@ export function criarLoteFiscalFirestore(quem: () => e.Quem | null): RepoLoteFis
       const q = quem();
       if (!q) throw new Error('Sem login.');
       await updateDoc(doc(db, 'lotesFiscal', lote), { status: 'disparar', disparadoPor: q.nome, disparadoPorUid: q.uid, pedidoEm: new Date().toISOString() });
+    },
+    enviados(competencia) {
+      if (!enviadosDoMes.has(competencia)) {
+        enviadosDoMes.set(competencia, { carregados: false, lista: [] });
+        // só igualdade (sem orderBy, que pediria um índice): a ordem é feita aqui
+        onSnapshot(query(collection(db, 'solicitacoesEmail'), where('tipo', '==', 'envioFiscal'), where('competencia', '==', competencia)), s => {
+          const lista = s.docs.map(x => {
+            const d = x.data();
+            return {
+              id: x.id, codigo: Number(d.codigo) || 0, empresa: texto(d.empresa), competencia: texto(d.competencia), grupo: d.grupo === 'lp' ? 'lp' : 'sn',
+              para: textos(d.para), guias: textos(d.enviados), enviadoEm: texto(d.enviadoEm || d.criadoEm), por: texto(d.criadoPor),
+            } satisfies EnvioDasGuias;
+          }).sort((a, b) => b.enviadoEm.localeCompare(a.enviadoEm));
+          enviadosDoMes.set(competencia, { carregados: true, lista });
+          mudou();
+        }, () => { enviadosDoMes.set(competencia, { carregados: true, lista: [] }); mudou(); });
+      }
+      return enviadosDoMes.get(competencia)!;
     },
     modelo() {
       if (!ouvindoModelo) {
