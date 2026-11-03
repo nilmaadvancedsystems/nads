@@ -71,7 +71,7 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
             : !vm.linhas.length ? <p className="hint dp-vazio">Nenhum cliente com esses filtros.</p> : (
               // a caixa que rola: o cabeçalho fica parado em cima e o total embaixo
               <div className="fr-rola">
-                <table className="fr-tabela">
+                <table className={'fr-tabela fr-grupo-' + g.id}>
                   <colgroup>
                     <col className="fr-c-cod" /><col className="fr-c-cliente" />
                     {vm.guias.map(c => <col key={c.id} className="fr-c-guia" />)}

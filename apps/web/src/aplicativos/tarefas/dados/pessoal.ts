@@ -43,6 +43,12 @@ export interface RepoPessoal {
   arquivados(): string[];
   arquivar(id: string): Promise<void>;
   desarquivar(id: string): Promise<void>;
+  /**
+   * Uma preferência da pessoa que vale em qualquer navegador (usuarios/{uid}.nadsPreferencias; 03/11/2026, o "Por página"
+   * do Relatório do Fiscal): '' quando não tem, undefined enquanto o banco não respondeu.
+   */
+  preferencia(chave: string): string | undefined;
+  guardarPreferencia(chave: string, valor: string): Promise<void>;
   assinar(aoMudar: () => void): () => void;
   versao(): number;
 }
@@ -75,6 +81,7 @@ export function criarPessoalMemoria(): RepoPessoal {
   ];
   let notas: Nota[] = [{ id: 'n1', texto: 'Ligar para a FITO sobre o extrato do Sicoob', feito: false, criadoEm: haDias(1), lembreteEm: null }];
   let arquivados: string[] = [];
+  const preferencias: Record<string, string> = {};
   return {
     exemplos: true,
     minhasCobrancas: () => ({ carregadas: true, lista: cobrancasRecentes(cobrancas) }),
@@ -86,6 +93,8 @@ export function criarPessoalMemoria(): RepoPessoal {
     arquivados: () => arquivados,
     async arquivar(id) { if (!arquivados.includes(id)) arquivados = [...arquivados, id]; mudou(); },
     async desarquivar(id) { arquivados = arquivados.filter(x => x !== id); mudou(); },
+    preferencia: chave => preferencias[chave] ?? '',
+    async guardarPreferencia(chave, valor) { preferencias[chave] = valor; mudou(); },
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,
   };

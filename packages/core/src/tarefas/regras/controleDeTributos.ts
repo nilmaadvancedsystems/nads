@@ -40,6 +40,9 @@ export const GRUPOS_DO_CONTROLE: readonly GrupoDoControle[] = [
     { id: 'csll', rotulo: 'CSLL', tipos: [/^CSLL/] },
     { id: 'icms', rotulo: 'ICMS', tipos: [/^DAE$/, /^ICMS$/] },
     { id: 'iss', rotulo: 'ISS', tipos: [/^ISS/] },
+    // a reforma tributária (03/11/2026: "adicione uma coluna de ibs e uma de cbs")
+    { id: 'ibs', rotulo: 'IBS', tipos: [/^IBS/] },
+    { id: 'cbs', rotulo: 'CBS', tipos: [/^CBS/] },
     PARCELAMENTO,
   ], marcas: [
     { id: 'dctf', rotulo: 'DCTF', dica: 'DCTF' }, { id: 'spc', rotulo: 'SPC', dica: 'SPED Contribuições' },
@@ -104,6 +107,23 @@ export function numeroDoControle(texto: string): number {
   const t = (texto || '').trim();
   if (!/^\d{1,3}(\.\d{3})*(,\d{1,2})?$|^\d+(,\d{1,2})?$/.test(t)) return 0;
   return Number(t.replace(/\./g, '').replace(',', '.')) || 0;
+}
+
+/** A competência n meses depois ('2026-09', 1 → '2026-10'; -1 → '2026-08') */
+export function somarMesesDaCompetencia(competencia: string, n: number): string {
+  const [ano, mes] = competencia.split('-').map(Number);
+  const d = new Date(ano, mes - 1 + n, 1);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+/**
+ * De que mês é a apuração de uma guia entregue (03/11/2026: "é sempre apurado um mês depois, então se é entregue no mês 10
+ * é referente ao mês 9"). O Entregas grava a competência do mês em que a entrega foi registrada, a não ser quando o PDF da
+ * guia diz o período de apuração. Entregue no mesmo mês da competência gravada, ela é a do mês da entrega, e a apuração é
+ * a do mês anterior; entregue depois, a competência gravada já é a da apuração.
+ */
+export function competenciaDaApuracao(competencia: string, confirmadoEm: string | null | undefined): string {
+  const mesDaEntrega = confirmadoEm ? diaEmBrasilia(confirmadoEm).slice(0, 7) : '';
+  return mesDaEntrega && mesDaEntrega <= competencia ? somarMesesDaCompetencia(competencia, -1) : competencia;
 }
 
 /** As sugestões do Entregas por empresa: o valor de cada coluna e a data da última entrega (AAAA-MM-DD) */

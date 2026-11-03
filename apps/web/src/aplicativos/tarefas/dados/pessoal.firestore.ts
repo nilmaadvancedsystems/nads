@@ -4,7 +4,8 @@
 //     e-mail em todos, o uid só em alguns) — Pedir documentos (tipo um/lote) e as respostas pelo robô;
 //   - usuarios/{uid}/notas: as Anotações (as mesmas do Entregas) — só a dona lê e grava;
 //   - usuarios/{uid}.nadsArquivados: os itens da caixa de entrada que ela arquivou (o dono mexe no próprio documento,
-//     menos em roles/email/criadoEm).
+//     menos em roles/email/criadoEm);
+//   - usuarios/{uid}.nadsPreferencias: as preferências que valem em qualquer navegador (o "Por página" do Relatório).
 import { addDoc as addDocBruto, arrayRemove, arrayUnion, collection, deleteDoc as deleteDocBruto, doc, onSnapshot, query, updateDoc as updateDocBruto, where } from 'firebase/firestore';
 import { bancoDoEntregas } from './entregas.firestore';
 import { cobrancasRecentes, ordenarNotas, type CobrancaMinha, type Nota, type RepoPessoal, type TipoDeCobranca } from './pessoal';
@@ -86,6 +87,26 @@ export function criarPessoalFirestore(quem: () => Quem): RepoPessoal {
   }
   const minhasNotas = () => collection(db, 'usuarios', eu().uid, 'notas');
 
+  // as preferências (usuarios/{uid}.nadsPreferencias): uma escuta só do documento da pessoa, à parte das cobranças e das
+  // anotações, para uma tela que só quer a preferência não abrir as outras
+  let preferencias: Record<string, string> | null = null;
+  let preferenciasDe = '';
+  let pararPreferencias = () => {};
+  function ouvirPreferencias() {
+    const uid = quem()?.uid || '';
+    if (uid === preferenciasDe) return;
+    preferenciasDe = uid;
+    pararPreferencias();
+    pararPreferencias = () => {};
+    preferencias = uid ? null : {};
+    if (!uid) return;
+    pararPreferencias = onSnapshot(doc(db, 'usuarios', uid), s => {
+      const v = (s.data() || {}).nadsPreferencias;
+      preferencias = v && typeof v === 'object' ? Object.fromEntries(Object.entries(v as Record<string, unknown>).map(([k, x]) => [k, texto(x)])) : {};
+      mudou();
+    }, () => { preferencias = {}; mudou(); });
+  }
+
   return {
     exemplos: false,
     minhasCobrancas: () => { ouvir(); return cobrancas; },
@@ -100,6 +121,8 @@ export function criarPessoalFirestore(quem: () => Quem): RepoPessoal {
     arquivados: () => { ouvir(); return arquivados; },
     async arquivar(id) { await updateDoc(doc(db, 'usuarios', eu().uid), { nadsArquivados: arrayUnion(id) }); },
     async desarquivar(id) { await updateDoc(doc(db, 'usuarios', eu().uid), { nadsArquivados: arrayRemove(id) }); },
+    preferencia(chave) { ouvirPreferencias(); return preferencias ? preferencias[chave] ?? '' : undefined; },
+    async guardarPreferencia(chave, valor) { await updateDoc(doc(db, 'usuarios', eu().uid), { ['nadsPreferencias.' + chave]: valor }); },
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,
   };

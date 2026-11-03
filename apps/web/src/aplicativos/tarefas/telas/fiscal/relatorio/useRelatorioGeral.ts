@@ -12,7 +12,7 @@ import { useSearchParams } from 'react-router';
 import { competenciasDaTela } from '../../../casca/navegacao';
 import { useOperador } from '../../../casca/operador';
 import { FOLHA_VAZIA } from '../../../dados/controleTributos';
-import { useControleTributos, useEntregasDeDocumentos, useGmailDoEntregas } from '../../../dados/repo';
+import { useControleTributos, useEntregasDeDocumentos, useGmailDoEntregas, useRepoPessoal } from '../../../dados/repo';
 import { useListaDoCadastro } from '../../cadastro/escolher/useListaDoCadastro';
 import { imprimirHtml } from '../../dp/imprimirHtml';
 
@@ -28,7 +28,7 @@ const PARTES: readonly { valor: ParteDoRelatorio; rotulo: string }[] = [
 // os nomes curtos no título da coluna (o nome inteiro fica na dica), como o DP
 const CURTO: Record<string, string> = {
   das: 'DAS', 'icms-ant': 'Antec.', 'icms-arroz': 'Arroz', 'icms-dif': 'Dif. uso', 'icms-dif-ativo': 'Dif. ativo', 'st-ent': 'ST ent.', 'st-sai': 'ST saí.',
-  pis: 'PIS', cofins: 'COFINS', irpj: 'IRPJ', csll: 'CSLL', icms: 'ICMS', iss: 'ISS', parc: 'Parc.',
+  pis: 'PIS', cofins: 'COFINS', irpj: 'IRPJ', csll: 'CSLL', icms: 'ICMS', iss: 'ISS', ibs: 'IBS', cbs: 'CBS', parc: 'Parc.',
 };
 const STATUS = [
   { valor: 'pendentes', rotulo: 'Pendentes' },
@@ -36,11 +36,17 @@ const STATUS = [
 ];
 const ENTREGAS = [{ valor: 'falta', rotulo: 'Falta' }, ...t.ENTREGAS_DO_CONTROLE.filter(e => e.valor).map(e => ({ valor: e.valor as string, rotulo: e.rotulo }))];
 // quantas empresas por página (28/10/2026: "um filtro que o usuário escolhe quantas empresas tem por página"); 0 = todas.
-// Fica guardado neste navegador.
+// Fica guardado na pessoa (03/11/2026: "tem que ser recolocado toda vez que abre o app, deixe para salvar isso automatico";
+// só no navegador, ele se perdia em outro endereço do app ou com os dados do navegador limpos) e, para abrir já certo, aqui.
 const POR_PAGINA = [25, 50, 100, 0] as const;
 const CHAVE_POR_PAGINA = 'nads-relatorio-por-pagina';
-function porPaginaGuardado(): number {
-  try { const s = localStorage.getItem(CHAVE_POR_PAGINA); const n = Number(s); return s !== null && (POR_PAGINA as readonly number[]).includes(n) ? n : 25; } catch { return 25; }
+const PREFERENCIA_POR_PAGINA = 'relatorioPorPagina';
+const porPaginaValido = (s: string | null | undefined): number | null => {
+  const n = Number(s);
+  return s != null && s !== '' && (POR_PAGINA as readonly number[]).includes(n) ? n : null;
+};
+function porPaginaDoNavegador(): number {
+  try { return porPaginaValido(localStorage.getItem(CHAVE_POR_PAGINA)) ?? 25; } catch { return 25; }
 }
 const semAcento = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 // o total sem o "R$" (29/10/2026: na coluna de 70px, "R$ 38.016,39" passava para a vizinha; o cabeçalho já diz "Guias (R$)")
@@ -73,7 +79,10 @@ export function useRelatorioGeral(regime: RegimeDoRelatorio) {
   const [status, setStatus] = useState('');
   const [pendenteEm, setPendenteEm] = useState('');
   const [entrega, setEntrega] = useState('');
-  const [porPagina, setPorPagina] = useState(porPaginaGuardado);
+  // a escolhida agora vale; senão a guardada na pessoa; até o banco responder, a deste navegador
+  const pessoal = useRepoPessoal();
+  const [escolhida, setEscolhida] = useState<number | null>(null);
+  const porPagina = escolhida ?? porPaginaValido(pessoal.preferencia(PREFERENCIA_POR_PAGINA)) ?? porPaginaDoNavegador();
   const [pagina, setPagina] = useState(0);
 
   // as empresas do regime no Cadastro do nads (o do Entregas, quando o nads não tem)
@@ -82,12 +91,16 @@ export function useRelatorioGeral(regime: RegimeDoRelatorio) {
     .map(l => ({ codigo: l.codigo as number, nome: l.nome }))
     .sort((a, b) => a.codigo - b.codigo), [lista.linhas, regime]);
 
-  // as guias que o Entregas entregou na competência, ligadas ao código pelo cliente do Entregas (a sugestão em cinza)
+  // as guias da apuração da competência que o Entregas entregou, ligadas ao código pelo cliente do Entregas (a sugestão em
+  // cinza). Vêm da competência e da seguinte (03/11/2026: "se e entregue no mês 10 e referente ao mês 9"): o Entregas grava
+  // o mês em que entregou, e a apuração é a do mês anterior (t.competenciaDaApuracao)
   const doMes = entregas.doMes(competencia);
+  const doSeguinte = entregas.doMes(t.somarMesesDaCompetencia(competencia, 1));
   const codigoDoCliente = new Map(gmail.clientes().lista.map(c => [c.id, Number(c.codigo)]));
-  const guiasEntregues: t.GuiaEntregue[] = doMes.lista.flatMap(e => {
+  const guiasEntregues: t.GuiaEntregue[] = [...doMes.lista, ...doSeguinte.lista].flatMap(e => {
     const codigo = e.clienteId ? codigoDoCliente.get(e.clienteId) : undefined;
-    return codigo && e.status === 'confirmada' ? [{ codigo, itens: e.itens, em: e.confirmadoEm, porEmail: e.comprovantePorEmail || e.canal === 'email' }] : [];
+    return codigo && e.status === 'confirmada' && t.competenciaDaApuracao(e.competencia, e.confirmadoEm) === competencia
+      ? [{ codigo, itens: e.itens, em: e.confirmadoEm, porEmail: e.comprovantePorEmail || e.canal === 'email' }] : [];
   });
   const sugestoes = t.sugestoesDoEntregas(grupo, empresas, guiasEntregues);
 
@@ -153,7 +166,11 @@ export function useRelatorioGeral(regime: RegimeDoRelatorio) {
       busca, setBusca: (b: string) => { setBusca(b); setPagina(0); }, status, setStatus: (s: string) => { setStatus(s); setPagina(0); },
       pendenteEm, setPendenteEm: (p: string) => { setPendenteEm(p); setPagina(0); }, entrega, setEntrega: (e: string) => { setEntrega(e); setPagina(0); },
       porPagina, porPaginaOpcoes: POR_PAGINA.map(n => ({ valor: n, rotulo: n ? String(n) : 'Todas' })),
-      setPorPagina: (n: number) => { setPorPagina(n); setPagina(0); try { localStorage.setItem(CHAVE_POR_PAGINA, String(n)); } catch { /* sem armazenamento: só agora */ } },
+      setPorPagina: (n: number) => {
+        setEscolhida(n); setPagina(0);
+        try { localStorage.setItem(CHAVE_POR_PAGINA, String(n)); } catch { /* sem armazenamento no navegador: fica a da pessoa */ }
+        pessoal.guardarPreferencia(PREFERENCIA_POR_PAGINA, String(n)).catch(() => { /* sem internet: vale agora e neste navegador */ });
+      },
       statusOpcoes: STATUS, partes: PARTES, entregas: ENTREGAS,
       algum: !!(busca || status || pendenteEm || entrega),
       limpar: () => { setBusca(''); setStatus(''); setPendenteEm(''); setEntrega(''); setPagina(0); },
