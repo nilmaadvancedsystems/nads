@@ -299,8 +299,8 @@ function arquivarGuia(arquivo, p, numero) {
   return final;
 }
 
-/** Espera o PDF da guia chegar no Claudio Secretario (o Chrome baixa com o número no nome). */
-async function esperarPdf(numero, desde, ms) {
+/** Espera o PDF da guia chegar na pasta de downloads (o Chrome baixa com o número no nome). */
+async function esperarPdf(numero, desde, ms, BAIXADOS) {
   const digitos = String(numero || '').replace(/\D/g, '');
   const ate = Date.now() + ms;
   while (Date.now() < ate) {
@@ -344,17 +344,43 @@ function extensaoFora(r) {
   return /extens|n[aã]o (est[aá] )?conectad|not connected|browser/.test(t) && !(r.resultado && (r.resultado.numero || r.resultado.ensaio));
 }
 
-function iniciarFgtsPeloClaude(db, log) {
+/**
+ * opcoes.semClaude (03/11/2026, o NILMA-SERVER): o robô roda os roteiros direto no Chrome dele (fgts-chrome.js), sem o
+ * Claude. Quem atende os pedidos é o config/fgts.onde: 'servidor' (o robô do servidor) ou o resto ('pc', o padrão: o
+ * Claude do PC). Os dois ficam ouvindo a chave: trocar no banco vira na hora, sem reiniciar nada; o lote no meio termina.
+ */
+function iniciarFgtsPeloClaude(db, log, opcoes = {}) {
+  const semClaude = !!opcoes.semClaude;
+  const ator = semClaude ? 'o robô' : 'o Claude';
+  const pre = semClaude ? 'FGTS (robô): ' : 'FGTS (Claude): ';
+  const BAIXADOS_AQUI = semClaude ? require('./fgts-chrome').BAIXADOS : BAIXADOS;
   const estado = db.collection('robo').doc('fgts');
   const pedidos = db.collection('pedidosFgts');
-  const marcar = dados => estado.set(Object.assign({ atualizadoEm: agora() }, dados), { merge: true }).catch(() => {});
+  let ativo = false, ligou = false;
+  const marcar = dados => (ativo ? estado.set(Object.assign({ atualizadoEm: agora() }, dados), { merge: true }).catch(() => {}) : Promise.resolve());
+  db.collection('config').doc('fgts').onSnapshot(s => {
+    const vez = (((s.exists && s.data().onde) || 'pc') === 'servidor') === semClaude;
+    if (vez === ativo) return;
+    ativo = vez;
+    log('FGTS: ' + (ativo ? 'esta máquina atende os pedidos' : 'os pedidos são de outra máquina (config/fgts.onde)') + (semClaude ? ' [robô sem Claude]' : ' [Claude]'));
+    if (!ativo) { painel.modulo('fgts', 'FGTS Digital', false, 'atendido em outra máquina (config/fgts.onde)'); return; }
+    if (!ligou) ligou = ligar();
+    if (ligou) setTimeout(proximo, 1000);
+  }, err => log('FGTS: não li o config/fgts:', err.message));
 
-  if (!fs.existsSync(CLAUDE)) { marcar({ ligado: false, motivo: 'falta o Claude no PC do escritório' }); log('FGTS: desligado (falta o Claude em ' + CLAUDE + ')'); painel.modulo('fgts', 'FGTS Digital', false, 'falta o Claude no PC do escritório'); return; }
-  if (!fs.existsSync(BAIXADOS)) { marcar({ ligado: false, motivo: 'falta a pasta Claudio Secretario no Drive do PC' }); log('FGTS: desligado (falta ' + BAIXADOS + ')'); painel.modulo('fgts', 'FGTS Digital', false, 'falta a pasta Claudio Secretario no Drive do PC'); return; }
+  /** As conferências da partida, quando esta máquina passa a atender. true = ligado. */
+  function ligar() {
+  if (semClaude) {
+    if (!fs.existsSync(require('./fgts-chrome').CHROME)) { marcar({ ligado: false, motivo: 'falta o Chrome em ' + os.hostname() }); log('FGTS: desligado (falta o Chrome)'); painel.modulo('fgts', 'FGTS Digital', false, 'falta o Chrome'); return false; }
+  } else {
+  if (!fs.existsSync(CLAUDE)) { marcar({ ligado: false, motivo: 'falta o Claude no PC do escritório' }); log('FGTS: desligado (falta o Claude em ' + CLAUDE + ')'); painel.modulo('fgts', 'FGTS Digital', false, 'falta o Claude no PC do escritório'); return false; }
+  if (!fs.existsSync(BAIXADOS)) { marcar({ ligado: false, motivo: 'falta a pasta Claudio Secretario no Drive do PC' }); log('FGTS: desligado (falta ' + BAIXADOS + ')'); painel.modulo('fgts', 'FGTS Digital', false, 'falta a pasta Claudio Secretario no Drive do PC'); return false; }
+  }
+  painel.modulo('fgts', 'FGTS Digital', true);
   let cert = null;
   try { const c = require('./fgts-digital').lerCertificadoDoWindows(); cert = c.erro ? null : c; } catch (_) { /* sem certificado lido, segue */ }
-  marcar({ ligado: true, motivo: '', onde: 'pc-claude', certificado: cert });
-  log('FGTS: ligado pelo Claude do PC (Claude in Chrome)' + (cert ? ', certificado até ' + cert.validade : ''));
+  marcar({ ligado: true, motivo: '', onde: semClaude ? 'servidor-robo' : 'pc-claude', maquina: os.hostname(), certificado: cert });
+  log('FGTS: ligado ' + (semClaude ? 'pelo robô no Chrome do ' + os.hostname() + ' (sem Claude)' : 'pelo Claude do PC (Claude in Chrome)') + (cert ? ', certificado até ' + cert.validade : ''));
 
   // pedido que ficou no meio quando o robô reiniciou (09/10/2026: outra atualização do arquivador derrubou uma
   // emissão no meio): volta para a fila uma vez sozinho; na segunda, fica como erro para a pessoa pedir de novo
@@ -364,11 +390,13 @@ function iniciarFgtsPeloClaude(db, log) {
       ? d.ref.update({ status: 'pendente', tentativas: tentativas + 1, passos: [] })
       : d.ref.update({ status: 'erro', erro: 'o robô reiniciou no meio duas vezes; peça de novo', fimEm: agora() });
   }))).catch(() => {});
+  return true;
+  }
 
   const fila = [];
   let ocupado = false;
   async function proximo() {
-    if (ocupado || !fila.length) return;
+    if (!ativo || !ligou || ocupado || !fila.length) return;
     ocupado = true;
     // o lote: todos os pedidos que estão na fila agora, numa sessão só do Claude (até 25 por vez)
     const lote = fila.splice(0, 12);
@@ -421,17 +449,17 @@ function iniciarFgtsPeloClaude(db, log) {
     }
     const porCnpj = new Map(lideres.map(it => [it.p.cnpj, it]));
     painel.fazendo('fgts', 'FGTS Digital: abrindo o lote de ' + lideres.length + (lideres.length === 1 ? ' guia' : ' guias'));
-    log('FGTS (Claude): lote de ' + itens.length + ' guia(s):', itens.map(it => it.p.cnpj).join(', '));
-    for (const it of itens) await it.passo(itens.length > 1 ? 'no lote de ' + itens.length + ' guias; esperando a vez' : 'o Claude está abrindo o FGTS Digital');
+    log(pre + 'lote de ' + itens.length + ' guia(s):', itens.map(it => it.p.cnpj).join(', '));
+    for (const it of itens) await it.passo(itens.length > 1 ? 'no lote de ' + itens.length + ' guias; esperando a vez' : ator + ' está abrindo o FGTS Digital');
     const desde = Date.now();
-    if (await abrirChromeSeFechado()) for (const it of itens) await it.passo('o Chrome estava fechado: abri e esperei a extensão do Claude');
+    if (!semClaude && await abrirChromeSeFechado()) for (const it of itens) await it.passo('o Chrome estava fechado: abri e esperei a extensão do Claude');
 
     // o Cancelar do DP no meio do lote: o cliente sai do lote (o resultado dele é ignorado); todos cancelados = para o Claude
     const vigias = itens.map(it => it.ref.onSnapshot(s => {
       if ((s.data() || {}).status !== 'cancelado' || it.fim) return;
       it.fim = true;
       it.cancelado = true;
-      log('FGTS (Claude): cancelado pelo DP', it.p.cnpj);
+      log(pre + 'cancelado pelo DP', it.p.cnpj);
       if (lideres.every(x => x.fim) && processoAtual) { try { processoAtual.kill(); } catch (_) {} }
     }, () => {}));
     const comecar = it => {
@@ -462,11 +490,17 @@ function iniciarFgtsPeloClaude(db, log) {
       it.tarefa = concluir(it, res, desde);
     };
     const limite = 4 * 60 * 1000 + itens.length * 3 * 60 * 1000;
-    let r = await rodarClaude(instrucoesDoLote(lideres.map(it => it.p)), aoPasso, aoResultado, limite);
+    let r;
+    if (semClaude) {
+      // o robô sem o Claude (03/11/2026): os mesmos roteiros, direto no Chrome do servidor
+      const doLote = lideres.map(it => ({ get fim() { return it.fim; }, cnpj: it.p.cnpj, portal: it.p.portal, competencia: it.p.competencia, modo: it.p.modo }));
+      r = await require('./fgts-chrome').rodarNoChrome(doLote, { perfil: ROTEIRO_PERFIL, guia: ROTEIRO_GUIA }, aoPasso, aoResultado, log, doc => doc === CNPJ_DO_ESCRITORIO)
+        .then(x => ({ resultado: null, erro: x.erro || '' }), err => ({ resultado: null, erro: err.message }));
+    } else r = await rodarClaude(instrucoesDoLote(lideres.map(it => it.p)), aoPasso, aoResultado, limite);
     // a extensão ainda não estava pronta (nenhum cliente começou): espera e tenta o lote de novo, uma vez
     // (13/10/2026: com a sessão que fica ligada, a sessão que nasceu sem a extensão era reaproveitada e cada lote falhava em
     // segundos; agora ela é encerrada e a nova tentativa abre outra)
-    if (!lideres.some(it => it.comecou || it.fim) && extensaoFora(r)) {
+    if (!semClaude && !lideres.some(it => it.comecou || it.fim) && extensaoFora(r)) {
       matarSessao();
       for (const it of itens) await it.passo('a extensão do Claude não respondeu; tentando de novo');
       await dormir(20000);
@@ -476,15 +510,15 @@ function iniciarFgtsPeloClaude(db, log) {
         // a extensão continua fora: o resto da fila também para, com o mesmo aviso (em vez de cada lote falhar sozinho)
         const resto = fila.splice(0, fila.length);
         await Promise.all(resto.map(d => d.ref.update({ status: 'erro', erro: 'a extensão Claude in Chrome não está conectada no PC: abra o Chrome, clique no ícone do Claude e peça de novo', fimEm: agora() }).catch(() => {})));
-        if (resto.length) log('FGTS (Claude): extensão fora; parei a fila (' + resto.length + ' pedido(s) voltaram como erro)');
+        if (resto.length) log(pre + 'extensão fora; parei a fila (' + resto.length + ' pedido(s) voltaram como erro)');
       }
     }
     for (const it of lideres) {
       if (it.fim) continue;
       it.fim = true;
-      const motivo = !it.comecou && extensaoFora(r)
+      const motivo = !semClaude && !it.comecou && extensaoFora(r)
         ? 'a extensão Claude in Chrome não está conectada no PC: abra o Chrome, clique no ícone do Claude e peça de novo'
-        : 'o Claude não terminou este cliente' + (r.erro ? ': ' + r.erro.slice(0, 200) : '');
+        : ator + ' não terminou este cliente' + (r.erro ? ': ' + r.erro.slice(0, 200) : '');
       it.tarefa = it.ref.update({ status: 'erro', erro: motivo, fimEm: agora() }).catch(() => {});
       painel.erro('fgts', 'A guia do FGTS de ' + quemNoPainel(it.p) + ' não saiu', motivo);
     }
@@ -509,28 +543,29 @@ function iniciarFgtsPeloClaude(db, log) {
     it.resultadoFinal = { res, aviso };
     if (res.erro) {
       const e = String(res.erro);
-      const motivo = e === 'login' ? 'o login no FGTS Digital não foi no Chrome do PC: entre com o certificado lá e peça de novo'
-        : e === 'captcha' ? 'o gov.br pediu a verificação "não sou um robô" no Chrome do PC: faça o login lá e peça de novo'
+      const onde = semClaude ? 'no Chrome do robô no ' + os.hostname() : 'no Chrome do PC';
+      const motivo = e === 'login' ? 'o login no FGTS Digital não foi ' + onde + ': entre com o certificado lá e peça de novo'
+        : e === 'captcha' ? 'o gov.br pediu a verificação "não sou um robô" ' + onde + ': faça o login lá e peça de novo'
           : /procura/i.test(e) && !/^sem procuração/i.test(e) ? 'sem procuração no FGTS Digital para este ' + (p.cnpj.length === 11 ? 'CPF' : 'CNPJ') + ' (o portal disse: ' + e.slice(0, 160) + ')'
             : e;
       await ref.update({ status: 'erro', erro: motivo + (aviso ? ' · ' + aviso : ''), aviso, fimEm: agora() });
-      log('FGTS (Claude): erro', p.cnpj, motivo);
+      log(pre + 'erro', p.cnpj, motivo);
       painel.erro('fgts', 'A guia do FGTS de ' + quemNoPainel(p) + ' não saiu', motivo);
       return;
     }
     if (p.modo === 'ensaio') {
       await ref.update({ status: 'pronto', aviso, resultado: 'ensaio: total R$ ' + (res.valor || '?') + ', vence ' + (res.vencimento || '?') + ' (nada emitido)' + (aviso ? ' · ' + aviso : ''), fimEm: agora() });
-      log('FGTS (Claude): ensaio ok', p.cnpj);
+      log(pre + 'ensaio ok', p.cnpj);
       painel.atividade('fgts', 'Conferiu o FGTS de ' + quemNoPainel(p) + ' (ensaio, nada emitido)', 'total R$ ' + (res.valor || '?') + ' · vence ' + (res.vencimento || '?'));
       return;
     }
-    await it.passo('esperando o PDF da guia ' + (res.numero || '') + ' no Claudio Secretario');
+    await it.passo('esperando o PDF da guia ' + (res.numero || ''));
     // a guia que já existia não baixa sozinha: o Claude baixa pelo caminho de reimpressão (quando houver) ou ela fica como aviso
-    const baixado = await esperarPdf(res.numero, desde, res.existente ? 20000 : 90000);
+    const baixado = await esperarPdf(res.numero, desde, res.existente ? 20000 : 90000, BAIXADOS_AQUI);
     if (!baixado) {
       const motivo = res.existente
         ? 'a guia ' + (res.numero || '') + ' já estava emitida (vence ' + (res.vencimento || '?') + ', R$ ' + (res.valor || '?') + ') e aguarda pagamento; o PDF dela não veio'
-        : 'a guia ' + (res.numero || '') + ' foi emitida, mas o PDF não chegou no Claudio Secretario';
+        : 'a guia ' + (res.numero || '') + ' foi emitida, mas o PDF não chegou' + (semClaude ? '' : ' no Claudio Secretario');
       await ref.update({ status: 'erro', erro: motivo, aviso, numeroGuia: res.numero || '', valor: res.valor || '', vencimento: res.vencimento || '', fimEm: agora() });
       painel.erro('fgts', 'O PDF da guia do FGTS de ' + quemNoPainel(p) + ' não veio', motivo);
       return;
@@ -551,7 +586,7 @@ function iniciarFgtsPeloClaude(db, log) {
       arquivadaEm: path.relative(DRIVE, final),
     });
     it.pdfFinal = final;
-    log('FGTS (Claude): guia emitida', p.cnpj, p.competencia, res.numero || '');
+    log(pre + 'guia emitida', p.cnpj, p.competencia, res.numero || '');
     painel.atividade('fgts', 'Emitiu a guia do FGTS de ' + quemNoPainel(p),
       'guia ' + (res.numero || '') + ' · R$ ' + (res.valor || '?') + ' · vence ' + (res.vencimento || '?') + ' · ' + path.relative(DRIVE, final));
   }
@@ -559,7 +594,7 @@ function iniciarFgtsPeloClaude(db, log) {
   /** O seguidor (a filial, ou o mesmo pedido em dobro no lote) recebe a guia do líder, na pasta dele. */
   async function copiarResultado(lider, seg) {
     const fim = lider.resultadoFinal;
-    if (!fim) { await seg.ref.update({ status: 'erro', erro: 'o Claude não terminou ' + (lider.p.empresa || lider.p.cnpj) + ', que leva a guia deste', fimEm: agora() }); return; }
+    if (!fim) { await seg.ref.update({ status: 'erro', erro: ator + ' não terminou ' + (lider.p.empresa || lider.p.cnpj) + ', que leva a guia deste', fimEm: agora() }); return; }
     const { res } = fim;
     const aviso = [seg.p.portal !== seg.p.cnpj ? 'o FGTS da filial vai na guia da matriz ' + cnpjComPontos(seg.p.portal) : 'pedido repetido no lote', fim.aviso].filter(Boolean).join('; ');
     if (res.erro || !lider.pdfFinal) {
@@ -582,7 +617,7 @@ function iniciarFgtsPeloClaude(db, log) {
       resultado: 'guia ' + (res.numero || '') + ' · R$ ' + (res.valor || '?') + ' · vence ' + (res.vencimento || '?') + ' · ' + aviso,
       arquivadaEm: path.relative(DRIVE, final),
     });
-    log('FGTS (Claude): guia da matriz para', seg.p.cnpj, res.numero || '');
+    log(pre + 'guia da matriz para', seg.p.cnpj, res.numero || '');
     painel.atividade('fgts', 'Guia do FGTS da matriz copiada para ' + quemNoPainel(seg.p), 'guia ' + (res.numero || '') + ' · ' + path.relative(DRIVE, final));
   }
 
@@ -643,7 +678,7 @@ function iniciarFgtsPeloClaude(db, log) {
   function encerrarSessao(s, motivo) {
     if (!s || !s.viva) return;
     if (sessao === s) sessao = null;
-    log('FGTS (Claude): encerrando a sessão do Claude (' + motivo + ')');
+    log(pre + 'encerrando a sessão do Claude (' + motivo + ')');
     const fim = setTimeout(() => { try { s.filho.kill(); } catch (_) {} }, 90000);
     s.vez = { lerTexto: () => {}, fim: () => { clearTimeout(fim); s.vez = null; try { s.filho.stdin.end(); } catch (_) {} } };
     try { mandar(s, 'Acabaram os lotes. Feche as abas do seu grupo no Chrome (com a ferramenta de fechar abas) e responda só FIM.'); } catch (_) { s.vez.fim(); }

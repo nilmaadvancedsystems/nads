@@ -701,8 +701,11 @@ async function iniciar() {
   // desde 09/10/2026 pelo Claude do PC no Chrome logado (fgts-claude.js); o robô do navegador (fgts-digital.js) fica para a nuvem
   painel.modulo('arquivamento', 'Arquivamento', true);
   if (SO_SERVIDOR) {
-    log('FGTS, balancete do Alterdata, atendente de IA e suporte: ficam no PC do escritório (claude-do-pc.js)');
-    painel.modulo('fgts', 'FGTS Digital', false, 'roda no PC do escritório');
+    log('Balancete do Alterdata, atendente de IA e suporte: ficam no PC do escritório (claude-do-pc.js)');
+    // o FGTS pelo robô, sem o Claude, no Chrome deste servidor (03/11/2026); atende só com o config/fgts.onde = 'servidor'
+    painel.modulo('fgts', 'FGTS Digital', false, 'esperando o config/fgts.onde');
+    try { require('./fgts-claude').iniciarFgtsPeloClaude(db, log, { semClaude: true }); }
+    catch (err) { log('FGTS não ligou:', err.message); painel.modulo('fgts', 'FGTS Digital', false, err.message); }
     painel.modulo('alterdata', 'Balancete do Alterdata', false, 'roda no PC do escritório');
   } else {
     painel.modulo('fgts', 'FGTS Digital', true);
