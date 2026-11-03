@@ -7,6 +7,7 @@ import { baixarBytes, useRetorno } from '@nads/ui';
 import { useMemo, useState } from 'react';
 import { useContasDoBalancete } from '../../../concilia-ai/importadosNaEtapa';
 import { useCadastro } from '../../dados/repo';
+import { useModelosDeHistorico } from '../../dados/useModelosDeHistorico';
 import { useOperador } from '../../casca/operador';
 
 /** contaDoItem: a conta do item do checklist ("60005 — Pro-labore a Pagar"), a do débito. */
@@ -31,7 +32,8 @@ export function usePagamentosDoProLabore(empresa: string, codigo: number | null,
   const contas = useContasDoBalancete(empresa);
   const plano = useMemo(() => (contas || []).filter(c => !c.sintetica).map(c => ({ codigo: c.codigo, nome: c.nome })), [contas]);
   const debito = contaDoItem.split(' — ')[0].trim();
-  const pagamentos = useMemo(() => (razao ? t.pagamentosDoProLabore(razao.razao) : []), [razao]);
+  const modelos = useModelosDeHistorico();
+  const pagamentos = useMemo(() => (razao ? t.pagamentosDoProLabore(razao.razao, modelos) : []), [razao, modelos]);
 
   async function importar(f: File | null) {
     if (!f) return;

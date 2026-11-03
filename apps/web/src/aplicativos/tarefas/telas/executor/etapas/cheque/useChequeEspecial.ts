@@ -10,9 +10,13 @@ import { useExtratorDaEmpresa } from '../../../../dados/extrator';
 import { useOperador } from '../../../../casca/operador';
 import { useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
 import { useBancosDeTeste } from '../bancos/useBancosDeTeste';
+import { useModelosDeHistorico } from '../../../../dados/useModelosDeHistorico';
 
 export function useChequeEspecial() {
   const { nome, codigo, meses } = useEtapaAberta();
+  // o código do histórico (Contábil › Configurações; 92029 é o padrão)
+  const modelos = useModelosDeHistorico();
+  const historico = modelos['cheque.codigo'];
   // o ⚡ do modo desenvolvedor: os extratos e razões de teste da Importação (16/10/2026)
   useBancosDeTeste();
   const vivo = useCadastro(nome, codigo);
@@ -54,7 +58,7 @@ export function useChequeEspecial() {
     const l = linhas.find(b => b.id === id);
     if (!l) return;
     if (!l.contaBanco || !l.contaCheque) { aviso({ tom: 'erro', titulo: l.nome, texto: 'Informe a conta do banco e a do cheque especial.' }); return; }
-    const lanc = x.lancamentosDoChequeEspecial(empresa, id, primeiro, meses, l.faltam, l.contaBanco, l.contaCheque);
+    const lanc = x.lancamentosDoChequeEspecial(empresa, id, primeiro, meses, l.faltam, l.contaBanco, l.contaCheque, historico);
     if (!lanc.length) { aviso({ tom: 'erro', titulo: l.nome, texto: 'Nenhum dia negativo sem o cheque especial no razão.' }); return; }
     const arquivo = 'cheque_especial_' + (codigo ?? nome) + '_' + l.nome.replace(/[^\w]+/g, '') + '.xls';
     baixarBytes(ce.planilhaDeLancamentos(lanc, 'xls'), arquivo, ce.tipoMimeLancamentos('xls'));
@@ -65,7 +69,7 @@ export function useChequeEspecial() {
     periodo: meses.length > 1 ? tarefas.rotuloNumericoCompetencia(meses[0]) + ' a ' + tarefas.rotuloNumericoCompetencia(meses[meses.length - 1]) : meses[0] ? tarefas.rotuloNumericoCompetencia(meses[0]) : '',
     carregado: !!cadastro,
     bancos: linhas.map(({ faltam: _f, ...r }) => r),
-    historico: ce.HISTORICO_PADRAO,
+    historico,
     gravarConta, baixar,
   };
 }

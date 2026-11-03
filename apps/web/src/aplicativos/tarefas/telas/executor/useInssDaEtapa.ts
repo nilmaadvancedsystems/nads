@@ -8,6 +8,7 @@ import workerDoPdf from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import { useState } from 'react';
 import { useGuardado } from '../../../../comum/guardado';
 import { useContabilDaEmpresa } from '../../../../comum/contabilDaEmpresa';
+import { useModelosDeHistorico } from '../../dados/useModelosDeHistorico';
 
 extrator.definirWorkerDoPdf(workerDoPdf);
 
@@ -49,7 +50,8 @@ export function useInssDaEtapa(chave: string, meses: readonly string[], balancet
   const proprio = razao && razao.chave === chave ? razao : null;
   const r = proprio || (daImportacao ? { chave, arquivo: daImportacao.arquivo + ' (da Importação)', razao: daImportacao.razao } : null);
   const g = guias && guias.chave === chave ? guias : null;
-  const c = r && g ? t.conferirInss(r.razao, g.guias, meses) : null;
+  const modelos = useModelosDeHistorico();
+  const c = r && g ? t.conferirInss(r.razao, g.guias, meses, modelos) : null;
 
   async function importarRazao(f: File | null) {
     if (!f) return;

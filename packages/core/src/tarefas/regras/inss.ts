@@ -8,6 +8,7 @@
 // O resultado vem com o lançamento sugerido de cada diferença. Tudo no navegador; nada é gravado.
 import { brl } from '../../formatos';
 import type { LancamentoDoRazao, RazaoDaConta } from './razao';
+import { preencherHistorico, type ModelosDoHistorico } from './historicosDoContabil';
 
 // ─── As guias (o PDF dos comprovantes de arrecadação) ──────────────────────────────────────────────────────────────
 
@@ -243,7 +244,7 @@ const fimDoMes = (mes: string) => mes + '-' + String(new Date(+mes.slice(0, 4), 
 const rotuloMes = (mes: string) => mes.slice(5, 7) + '/' + mes.slice(0, 4);
 
 /** O razão do INSS a recolher × as guias, nos meses do período. */
-export function conferirInss(razao: RazaoDaConta, guias: readonly GuiaDoInss[], meses: readonly string[]): ConferenciaDoInss {
+export function conferirInss(razao: RazaoDaConta, guias: readonly GuiaDoInss[], meses: readonly string[], modelos?: ModelosDoHistorico): ConferenciaDoInss {
   const ls = razao.lancamentos;
   const pagamentos = ls.filter(ehPagamento);
   const provisoes = ls.filter(l => !ehPagamento(l));
@@ -272,13 +273,13 @@ export function conferirInss(razao: RazaoDaConta, guias: readonly GuiaDoInss[], 
     const diferenca = guia ? centavos(guia.principal - provisao) : 0;
 
     if (guia && !foraDoRazao) {
-      const ref = '<' + rotuloMes(mes) + '>';
+      const ref = rotuloMes(mes);
       for (const g of grupos.filter(x => Math.abs(x.diferenca) > TOLERANCIA)) {
         const despesa = contraDoGrupo(g.grupo) || despesaPatronal;
         const sobra = g.diferenca < 0;
         sugestoes.push({
           mes, data: fimDoMes(mes), tipo: 'provisao', debito: sobra ? 'INSS a recolher' : despesa, credito: sobra ? despesa : 'INSS a recolher', valor: Math.abs(g.diferenca),
-          historico: 'Pelo valor de INSS ' + (sobra ? 'provisionado a maior' : 'a recolher') + ' — ' + g.nome + ' ' + ref,
+          historico: preencherHistorico(sobra ? 'inss.provisao_a_maior' : 'inss.provisao_a_recolher', { grupo: g.nome, ref }, modelos),
           motivo: g.nome + ': razão ' + brl(g.razao) + ' × guia ' + brl(g.guia),
         });
       }
@@ -286,7 +287,7 @@ export function conferirInss(razao: RazaoDaConta, guias: readonly GuiaDoInss[], 
         const rural = v.grupo === 'producao-rural';
         sugestoes.push({
           mes, data: fimDoMes(mes), tipo: 'provisao', debito: rural ? 'Fornecedor (produtor rural PF)' : despesaPatronal, credito: 'INSS a recolher', valor: v.valor,
-          historico: rural ? 'INSS sobre aquisição de produção rural de PF (sub-rogação) ' + ref : 'Pelo valor de INSS a recolher — ' + v.nome + ' ' + ref,
+          historico: rural ? preencherHistorico('inss.producao_rural', { ref }, modelos) : preencherHistorico('inss.provisao_a_recolher', { grupo: v.nome, ref }, modelos),
           motivo: v.nome + ' na guia (' + v.itens.map(i => i.codigo + (i.variacao ? '-' + i.variacao : '') + ' ' + brl(i.principal)).join(', ') + ') e não no razão',
         });
       }
@@ -294,7 +295,7 @@ export function conferirInss(razao: RazaoDaConta, guias: readonly GuiaDoInss[], 
       if (Math.abs(arredondamento) >= 0.01) {
         sugestoes.push({
           mes, data: fimDoMes(mes), tipo: 'provisao', debito: arredondamento > 0 ? despesaPatronal : 'INSS a recolher', credito: arredondamento > 0 ? 'INSS a recolher' : despesaPatronal,
-          valor: Math.abs(arredondamento), historico: 'Ajuste de centavos do INSS a recolher ' + ref, motivo: 'Arredondamento entre os grupos (centavos)',
+          valor: Math.abs(arredondamento), historico: preencherHistorico('inss.ajuste_centavos', { ref }, modelos), motivo: 'Arredondamento entre os grupos (centavos)',
         });
       }
     }
@@ -329,7 +330,7 @@ export function conferirInss(razao: RazaoDaConta, guias: readonly GuiaDoInss[], 
     if (lancamento) return { guia, lancamento, ...(doMesmoValor(lancamento, guia) ? {} : { outroValor: true }) };
     sugestoes.push({
       mes: guia.competencia, data: guia.pagaEm, tipo: 'baixa', debito: 'INSS a recolher', credito: banco, valor: guia.total,
-      historico: 'Pagamento de INSS ref ' + rotuloMes(guia.competencia) + ' conforme DARF.',
+      historico: preencherHistorico('inss.pagamento', { ref: rotuloMes(guia.competencia) }, modelos),
       motivo: 'Guia de ' + rotuloMes(guia.competencia) + ' paga em ' + guia.pagaEm.split('-').reverse().join('/') + ' sem a baixa no razão'
         + (guia.total > guia.principal ? ' (multa e juros de ' + brl(centavos(guia.total - guia.principal)) + ' vão para a despesa)' : ''),
     });

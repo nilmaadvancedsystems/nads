@@ -5,6 +5,7 @@
 // importação do Alterdata (o padrão de 10 colunas do Alterdata).
 import type { RazaoDaConta } from './razao';
 import type { LancamentoDoBanco } from './fgts';
+import { preencherHistorico, type ModelosDoHistorico } from './historicosDoContabil';
 
 /** Uma cobrança do "Extrato por cobrança" (Alterdata, módulo de cobrança do escritório). */
 export interface CobrancaDeHonorario {
@@ -67,19 +68,21 @@ export interface LancamentoDeHonorario { data: string; debito: string; credito: 
 const semZeros = (n: string) => n.replace(/^0+(?=\d)/, '');
 
 const br = (iso: string) => iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4);
-/** "ref. MM/AAAA": o mês da emissão (a competência do honorário). */
-const ref = (c: CobrancaDeHonorario) => 'ref. ' + c.emissao.slice(5, 7) + '/' + c.emissao.slice(0, 4);
+/** "MM/AAAA": o mês da emissão (a competência do honorário). */
+const mesDaEmissao = (c: CobrancaDeHonorario) => c.emissao.slice(5, 7) + '/' + c.emissao.slice(0, 4);
+/** As variáveis dos três históricos: o mês da emissão e o número da cobrança. */
+const varsDaCobranca = (c: CobrancaDeHonorario) => ({ ref: mesDaEmissao(c), cobranca: semZeros(c.numero) });
 
-/** O histórico da provisão (Vitor, 16/10/2026: "já faz o histórico também"). */
-export const historicoDaProvisaoDeHonorario = (c: CobrancaDeHonorario) => 'Honorários contábeis ' + ref(c) + ' conf. cobrança nº ' + semZeros(c.numero);
+/** O histórico da provisão (Vitor, 16/10/2026: "já faz o histórico também"). `modelos`: os textos do escritório. */
+export const historicoDaProvisaoDeHonorario = (c: CobrancaDeHonorario, modelos?: ModelosDoHistorico) => preencherHistorico('honorarios.provisao', varsDaCobranca(c), modelos);
 /** O histórico do pagamento. */
-export const historicoDoPagamentoDeHonorario = (c: CobrancaDeHonorario) => 'Pagamento de honorários contábeis ' + ref(c) + ' conf. cobrança nº ' + semZeros(c.numero);
+export const historicoDoPagamentoDeHonorario = (c: CobrancaDeHonorario, modelos?: ModelosDoHistorico) => preencherHistorico('honorarios.pagamento', varsDaCobranca(c), modelos);
 
 /** A provisão de cada cobrança, na data de emissão: D despesa de honorários / C honorários a pagar. */
-export function lancamentosDosHonorarios(cobrancas: readonly CobrancaDeHonorario[], contaDespesa: string, contaAPagar: string): LancamentoDeHonorario[] {
+export function lancamentosDosHonorarios(cobrancas: readonly CobrancaDeHonorario[], contaDespesa: string, contaAPagar: string, modelos?: ModelosDoHistorico): LancamentoDeHonorario[] {
   return cobrancas.map(c => ({
     data: br(c.emissao), debito: contaDespesa.trim(), credito: contaAPagar.trim(),
-    historico: historicoDaProvisaoDeHonorario(c), valor: c.valor, documento: semZeros(c.numero),
+    historico: historicoDaProvisaoDeHonorario(c, modelos), valor: c.valor, documento: semZeros(c.numero),
   }));
 }
 
@@ -95,14 +98,14 @@ export function cobrancasPagasNoPeriodo(cobrancas: readonly CobrancaDeHonorario[
  * O pagamento de cada cobrança paga, na data do pagamento: D honorários a pagar / C banco (a conta que a pessoa escolheu
  * para ela). O que foi pago a mais que o valor (juros, multa) vai a débito da despesa, no mesmo dia.
  */
-export function pagamentosDosHonorarios(pagas: readonly CobrancaDeHonorario[], contaAPagar: string, contaDespesa: string, bancoDe: (c: CobrancaDeHonorario) => string): LancamentoDeHonorario[] {
+export function pagamentosDosHonorarios(pagas: readonly CobrancaDeHonorario[], contaAPagar: string, contaDespesa: string, bancoDe: (c: CobrancaDeHonorario) => string, modelos?: ModelosDoHistorico): LancamentoDeHonorario[] {
   return pagas.flatMap(c => {
     const banco = bancoDe(c).trim();
     const doc = semZeros(c.numero);
     const pago = c.recebido > 0 ? c.recebido : c.valor;
-    const linhas: LancamentoDeHonorario[] = [{ data: br(c.pagamento), debito: contaAPagar.trim(), credito: banco, historico: historicoDoPagamentoDeHonorario(c), valor: c.valor, documento: doc }];
+    const linhas: LancamentoDeHonorario[] = [{ data: br(c.pagamento), debito: contaAPagar.trim(), credito: banco, historico: historicoDoPagamentoDeHonorario(c, modelos), valor: c.valor, documento: doc }];
     const amais = Math.round((pago - c.valor) * 100) / 100;
-    if (amais > 0) linhas.push({ data: br(c.pagamento), debito: contaDespesa.trim(), credito: banco, historico: 'Juros e multa s/ ' + historicoDoPagamentoDeHonorario(c).charAt(0).toLowerCase() + historicoDoPagamentoDeHonorario(c).slice(1), valor: amais, documento: doc });
+    if (amais > 0) linhas.push({ data: br(c.pagamento), debito: contaDespesa.trim(), credito: banco, historico: preencherHistorico('honorarios.juros', varsDaCobranca(c), modelos), valor: amais, documento: doc });
     return linhas;
   });
 }
