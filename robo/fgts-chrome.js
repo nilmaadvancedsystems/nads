@@ -34,12 +34,28 @@ function chromeNoAr() {
   });
 }
 
+// o perfil do Chrome da nilmacontabilidade@gmail.com (o Default do Administrador; Vitor, 03/11/2026: "ele tem que abrir
+// no perfil da nilmacontabilidade"): o Chrome não deixa ligar a porta de controle no perfil padrão, então o robô abre
+// uma cópia dele, refeita a cada vez que o Chrome do robô abre (os cookies do gov.br e do portal vêm juntos; a chave
+// deles é do usuário do Windows, o mesmo Administrador). Sem os caches, que só pesam.
+const PERFIL_ORIGEM = process.env.FGTS_PERFIL_ORIGEM || path.join(process.env.LOCALAPPDATA || '', 'Google', 'Chrome', 'User Data');
+function copiarPerfilDaNilma(log) {
+  const nome = process.env.FGTS_PERFIL_NOME || 'Default';
+  if (!fs.existsSync(path.join(PERFIL_ORIGEM, nome))) { log('FGTS (robô): sem o perfil ' + nome + ' do Chrome em ' + PERFIL_ORIGEM + '; abrindo o perfil do robô'); return; }
+  try { fs.copyFileSync(path.join(PERFIL_ORIGEM, 'Local State'), path.join(PERFIL, 'Local State')); } catch (err) { log('FGTS (robô): não copiei o Local State:', err.message); }
+  const r = require('child_process').spawnSync('robocopy', [path.join(PERFIL_ORIGEM, nome), path.join(PERFIL, 'Default'), '/MIR', '/R:1', '/W:1', '/NFL', '/NDL', '/NJH', '/NJS', '/NP',
+    '/XD', 'Cache', 'Code Cache', 'GPUCache', 'DawnCache', 'DawnGraphiteCache', 'DawnWebGPUCache', 'CacheStorage', 'ScriptCache', 'Service Worker', 'File System', 'IndexedDB', 'blob_storage', 'Extensions'], { windowsHide: true, encoding: 'utf8' });
+  // robocopy: 0 a 7 é sucesso; 8 ou mais, algum arquivo não veio (o Chrome da pessoa aberto segura um ou outro)
+  log('FGTS (robô): perfil da nilmacontabilidade copiado' + (r.status >= 8 ? ' (com arquivos presos: ' + String(r.stdout || '').trim().split('\n').slice(-2).join(' ').slice(0, 160) + ')' : ''));
+}
+
 /** Liga no Chrome do robô (abre se estiver fechado). Devolve { browser, page }. */
-async function ligarNoChrome() {
+async function ligarNoChrome(log = () => {}) {
   if (!fs.existsSync(CHROME)) throw new Error('falta o Chrome em ' + CHROME);
   fs.mkdirSync(PERFIL, { recursive: true });
   fs.mkdirSync(BAIXADOS, { recursive: true });
   if (!(await chromeNoAr())) {
+    copiarPerfilDaNilma(log);
     spawn(CHROME, ['--remote-debugging-port=' + PORTA, '--user-data-dir=' + PERFIL, '--no-first-run', '--no-default-browser-check', '--lang=pt-BR', PORTAL],
       { detached: true, stdio: 'ignore', windowsHide: false }).unref();
     for (let i = 0; i < 30 && !(await chromeNoAr()); i++) await dormir(1000);
@@ -70,8 +86,15 @@ async function clicarTexto(page, re) {
   }, re.source).catch(() => false);
 }
 
-/** Há uma verificação "não sou um robô" na tela? */
-const temCaptcha = page => page.evaluate(() => !!document.querySelector('iframe[src*="hcaptcha"], iframe[src*="recaptcha"], .h-captcha, .g-recaptcha')).catch(() => false);
+/**
+ * Há uma verificação "não sou um robô" NA TELA? (03/11/2026: a página de login do gov.br carrega um hCaptcha invisível
+ * sempre; só conta o quadro que aparece de verdade, com tamanho de desafio)
+ */
+const temCaptcha = page => page.evaluate(() => [...document.querySelectorAll('iframe[src*="hcaptcha"], iframe[src*="recaptcha"]')]
+  .some(f => { const r = f.getBoundingClientRect(); const s = getComputedStyle(f); return r.width > 250 && r.height > 60 && s.visibility !== 'hidden' && s.display !== 'none' && Number(s.opacity || 1) > 0.1; })).catch(() => false);
+
+/** O portal já está com alguém logado (o alto mostra o empregador ou o botão de perfil)? */
+const logado = async page => /fgtsdigital\.sistema\.gov\.br/.test(page.url()) && await visivelNoTexto(page, /Trocar Perfil|Definir Perfil|Empregador:/i);
 
 /**
  * Garante o login no portal. Devolve '' (logado), 'login' ou 'captcha'. Não digita nada: o certificado é escolhido pela
@@ -79,9 +102,11 @@ const temCaptcha = page => page.evaluate(() => !!document.querySelector('iframe[
  */
 async function garantirLogin(page, passo) {
   await page.goto(PORTAL, { waitUntil: 'domcontentloaded', timeout: 60000 }).catch(() => {});
-  await dormir(3000);
+  // espera a página dizer de que lado está: logada (o perfil) ou pedindo o gov.br (03/11/2026: com 3 s fixos, a página
+  // ainda carregando passava por logada)
   const precisa = async () => /acesso\.gov\.br/.test(page.url()) || await visivelNoTexto(page, /Entrar com gov\.?br/i);
-  if (!(await precisa())) return '';
+  for (let i = 0; i < 20 && !(await logado(page)) && !(await precisa()); i++) await dormir(1000);
+  if (await logado(page)) return '';
   passo('entrando no gov.br com o certificado do escritório');
   if (!/acesso\.gov\.br/.test(page.url())) { await clicarTexto(page, /Entrar com gov\.?br/); await dormir(4000); }
   const ate = Date.now() + 90000;
@@ -89,7 +114,7 @@ async function garantirLogin(page, passo) {
   while (Date.now() < ate) {
     if (await temCaptcha(page)) return 'captcha';
     const url = page.url();
-    if (/fgtsdigital\.sistema\.gov\.br/.test(url) && !(await visivelNoTexto(page, /Entrar com gov\.?br/i))) { await dormir(2000); return ''; }
+    if (await logado(page)) return '';
     if (/acesso\.gov\.br/.test(url) && !clicouCert) clicouCert = await clicarTexto(page, /Seu certificado digital/);
     else if (/fgtsdigital/.test(url)) await clicarTexto(page, /Entrar com gov\.?br/);
     await dormir(2000);
@@ -110,7 +135,7 @@ const navegou = err => /Execution context was destroyed|navigat|Target closed|de
  */
 async function rodarNoChrome(itens, roteiros, aoPasso, aoResultado, log, ehEscritorio) {
   let browser, page;
-  try { ({ browser, page } = await ligarNoChrome()); } catch (err) {
+  try { ({ browser, page } = await ligarNoChrome(log)); } catch (err) {
     aoResultado('', { erro: 'o Chrome do robô não abriu: ' + err.message });
     return { erro: err.message };
   }
