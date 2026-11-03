@@ -35,7 +35,9 @@ const os = require('os');
 const path = require('path');
 
 const FREIO_MS = 45 * 1000;
-const BATIMENTO_MS = 10 * 60 * 1000;
+// o sinal de vida com a pasta parada (03/11/2026: era 10 min e a tela do Arquivador mostrava "Último sinal há 9 min", como se o
+// robô do NILMA-SERVER não estivesse ligado; o painel tem uns 280 KB, uma gravação a cada 2 min é pouco)
+const BATIMENTO_MS = 2 * 60 * 1000;
 const MAX_ULTIMOS = 50;
 const MAX_PENDENTES = 80;
 const MAX_ERROS = 30;

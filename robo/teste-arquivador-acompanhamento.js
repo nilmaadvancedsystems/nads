@@ -167,7 +167,7 @@ try {
       igual('histórico: depois de 3 min, vai', partes() - antes, 1);
       await acT.parar();
     }
-    // a varredura igual à anterior não grava de novo (só o batimento de 10 min)
+    // a varredura igual à anterior não grava de novo (só o batimento de 2 min)
     const g4 = [];
     const db4 = { collection: () => ({ doc: () => ({ set: async (d) => { if (d.painel) g4.push(d); }, collection: () => ({ doc: () => ({ set: async () => {} }) }) }) }) };
     let agora4 = T;
@@ -178,7 +178,7 @@ try {
     agora4 += 60000; ac4.varredura(v4()); await espera();
     igual('varredura igual: uma gravação só', g4.length, 1);
     agora4 += 11 * 60000; ac4.varredura(v4()); await espera();
-    igual('varredura igual depois de 10 min: o batimento grava', g4.length, 2);
+    igual('varredura igual depois de 2 min: o batimento grava', g4.length, 2);
     ac4.varredura({ vistos: [], pendentes: [], mapa: new Map() }); await espera();
     igual('a pasta mudou: grava', g4.length, 3);
     // a limpeza do histórico de mais de 24 meses (no PC e no banco), na primeira gravação e a cada virada do dia
