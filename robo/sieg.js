@@ -167,7 +167,8 @@ async function chamar(c, rota, corpo, desistir) {
     try { r = await http('POST', rota, { Authorization: 'Bearer ' + await token(c), 'X-API-Key': c.apiKey }, corpo); }
     // demorou demais: tenta de novo (até 3 vezes); outro erro de rede sobe
     catch (e) { if (e.tempo && tentativa < 2) continue; throw e; }
-    if (r.status === 429) { await dormir(60000 * (tentativa + 1)); continue; }
+    // 503/502/504: o portal do SIEG cai por instantes (03/11/2026, 7 erros em 7 min): espera e tenta de novo, como o 429
+    if (r.status === 429 || r.status === 502 || r.status === 503 || r.status === 504) { await dormir(60000 * (tentativa + 1)); continue; }
     if (r.status === 401) { jwt = { token: '', ate: 0 }; continue; }
     // nada no período: o SIEG responde 404 "Nenhum arquivo XML localizado." (07/10/2026) — lista vazia, não é erro
     if (r.status === 404 && /nenhum arquivo|nenhum xml|não localizado|nao localizado/i.test(r.texto)) return [];
