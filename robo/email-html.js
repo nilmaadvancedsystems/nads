@@ -354,17 +354,19 @@ function htmlDaNfse(o) {
 
 // O envio do DP ao cliente (DP › Envios, 27/10/2026, envios-do-dp.js), no desenho do e-mail da NFS-e (28/10/2026: "que nem
 // o de emissão do financeiro"): o texto do modelo (config/envioDp, já preenchido), o cartão com os dados e os anexos.
-// { assunto, texto, cliente, competencia, anexos: [{ nome, tamanho }], assinatura, caixa } -> { html, imagens }
+// { assunto, texto, cliente, competencia, anexos: [{ nome, tamanho }], assinatura, caixa, chip, rodape } -> { html, imagens }
+// As guias do Fiscal (03/11/2026, lote-fiscal.js) vêm no mesmo desenho, com o chip e o rodapé delas.
 function htmlDoEnvioDp(o) {
   const imagens = [];
   const n = (o.anexos || []).length;
+  const chip = o.chip || 'DP';
   const envio = cartaoDosDados('O envio', [['Cliente', o.cliente], ['Competência', o.competencia], ['Documentos', n + (n === 1 ? ' arquivo' : ' arquivos')]]);
   const html = moldura({
-    imagens, assinatura: o.assinatura, caixa: o.caixa, chip: 'DP', sobre: o.cliente || '',
+    imagens, assinatura: o.assinatura, caixa: o.caixa, chip, sobre: o.cliente || '',
     previa: String(o.texto || '').replace(/\s+/g, ' ').trim().slice(0, 140),
-    titulo: o.assunto || ('Documentos do DP · ' + (o.competencia || '')),
+    titulo: o.assunto || ('Documentos do ' + chip + ' · ' + (o.competencia || '')),
     corpo: paragrafos(o.texto) + envio + cartaoDosAnexos(imagens, o.anexos),
-    rodape: 'Mensagem enviada pelo sistema do escritório com os documentos do mês.',
+    rodape: o.rodape || 'Mensagem enviada pelo sistema do escritório com os documentos do mês.',
   });
   return { html, imagens };
 }

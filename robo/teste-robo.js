@@ -1043,6 +1043,48 @@ igual('sem nome no assunto: não decide pelo nome', r.desempatarPorNome(fitos, '
   igual('lote: os valores do mês (FGTS e DARF do INSS)', L.valoresDoGrupo(gL.porChave.get('191_2026-10')), { fgts: 129.68, darf: 165.33 });
 }
 
+// ---------- Fiscal › Enviar guias (03/11/2026): a leitura da guia, a coluna do Relatório e a linha depois do envio ----------
+{
+  const F = require('./lote-fiscal');
+  const R = require('./arquivador-regras');
+  const darf = R.norm('DOCUMENTO DE ARRECADAÇÃO DE RECEITAS FEDERAIS\nPeríodo de Apuração 30/09/2026\nCódigo da Receita 8109\nData de Vencimento 24/10/2026\nValor Total do Documento 1.234,56');
+  const g = F.camposDaGuiaFiscal('DARF', darf);
+  igual('fiscal: a DARF pelo código da receita, o valor, o vencimento e a apuração', [g.tributo, g.valor, g.vencimento, g.competencia], ['PIS', 'R$1234,56', '24-10-2026', { mes: 9, ano: 2026 }]);
+  igual('fiscal: o que não é guia não tem campos', F.camposDaGuiaFiscal('FGTS', darf), null);
+  igual('fiscal: a coluna pelo grupo', [F.colunaDaGuia('sn', 'DAS', ''), F.colunaDaGuia('lp', 'DAS', ''), F.colunaDaGuia('lp', 'DARF', 'COFINS'), F.colunaDaGuia('lp', 'DARF', 'IRRF'), F.colunaDaGuia('lp', 'DAE', 'ICMS'), F.colunaDaGuia('sn', 'DAE', 'ICMS'), F.colunaDaGuia('lp', 'DAM', 'ISS'), F.colunaDaGuia('sn', 'DAS', '', true)], ['das', '', 'cofins', '', 'icms', '', 'iss', '']);
+  const decisao = { acao: 'ARQUIVAR', cliente: 58, clienteNome: 'ACME', tipo: 'DARF', competencia: { mes: 10, ano: 2026 }, nomeFinal: '09-2026 - DARF PIS - VALOR R$1234,56 - VENCIMENTO 24-10-2026.pdf', anoRaiz: 2026, pastaCliente: '58 - ACME', caminho: ['FISCAL', 'LUCRO PRESUMIDO', '05. DARF'] };
+  const lg = F.leituraDaGuia(decisao, g, { texto: ['DARF'] }, 'lp');
+  igual('fiscal: a leitura leva a coluna, o valor e a competência da APURAÇÃO (a da guia, não a do arquivador)', [lg.cliente, lg.tipo, lg.tributo, lg.coluna, lg.valor, lg.competencia, lg.destino.join('/')], [58, 'DARF', 'PIS', 'pis', 'R$1234,56', '2026-09', '2026/58 - ACME/FISCAL/LUCRO PRESUMIDO/05. DARF']);
+  igual('fiscal: o DAM sem o período escrito fica sem competência (a do arquivador é a do vencimento)', F.leituraDaGuia(Object.assign({}, decisao, { tipo: 'DAM' }), { tributo: 'ISS', valor: 'R$10,00', vencimento: '10-10-2026', competencia: null, parcelamento: false }, { texto: ['x'] }, 'lp').competencia, '');
+  const manual = (codigo, tipo, comp, nome) => (tipo === 'DAS' ? { destino: ['2026', codigo + ' - X', 'FISCAL', 'SIMPLES NACIONAL', '01. DAS'], nome } : null);
+  const guias = [
+    { nome: 'pis.pdf', leitura: lg },
+    { nome: 'cofins.pdf', leitura: Object.assign({}, lg, { tributo: 'COFINS', coluna: 'cofins', valor: 'R$100,00' }) },
+    { nome: 'outra-cofins.pdf', leitura: Object.assign({}, lg, { tributo: 'COFINS', coluna: 'cofins', valor: 'R$50,50' }) },
+    { nome: 'irrf.pdf', leitura: Object.assign({}, lg, { tributo: 'IRRF', coluna: '', valor: 'R$7,00' }) },
+    { nome: 'trocada.pdf', leitura: Object.assign({}, lg, { coluna: 'pis' }), escolha: { cliente: 58, tipo: 'DARF', competencia: '2026-09', coluna: '' } },
+    { nome: 'scan.pdf', leitura: { cliente: null, tipo: '', competencia: '', valor: '' }, escolha: { cliente: 77, tipo: 'DAS', competencia: '2026-09', coluna: 'das' } },
+    { nome: 'fora.pdf', leitura: lg, fora: true },
+    { nome: 'sem.pdf', leitura: { cliente: null, competencia: '' } },
+  ];
+  const gf = F.gruposFiscais(guias, 'lp', manual);
+  igual('fiscal: um grupo por cliente e competência da apuração; o fora e o sem cliente ficam de fora', [[...gf.porChave.keys()], gf.fora.map(a => a.nome)], [['58_2026-09', '77_2026-09'], ['fora.pdf', 'sem.pdf']]);
+  igual('fiscal: os valores por coluna (somados; sem coluna e a coluna tirada na revisão não contam)', F.valoresPorColuna(gf.porChave.get('58_2026-09')), { pis: 1234.56, cofins: 150.5 });
+  igual('fiscal: a coluna escolhida que não é do grupo fica sem coluna; o escolhido à mão vai pela árvore do regime', [gf.porChave.get('77_2026-09')[0].vai.coluna, gf.porChave.get('77_2026-09')[0].vai.destino.join('/')], ['', '2026/77 - X/FISCAL/SIMPLES NACIONAL/01. DAS']);
+  igual('fiscal: o texto do valor no Relatório', [F.textoDoValor(1234.5), F.textoDoValor(1234567.891), F.textoDoValor(0.5)], ['1.234,50', '1.234.567,89', '0,50']);
+  igual('fiscal: o dia do envio é o de Brasília', F.diaEmBrasilia(new Date('2026-11-01T01:00:00Z')), '2026-10-31');
+  const envio = { competencia: '2026-09', codigo: 58, grupo: 'lp', valores: { pis: 1234.56, cofins: 150.5 }, dia: '2026-10-20', agora: '2026-10-20T13:00:00.000Z', quem: 'robô' };
+  const nova = F.linhaDepoisDoEnvio(null, envio);
+  igual('fiscal: sem linha, ela nasce com os valores, a data, o e-mail e o grupo do lote', [nova.linha.valores, nova.linha.data, nova.linha.entregue, nova.linha.grupo, nova.linha.codigo, nova.preenchidos, nova.mudou], [{ pis: '1.234,56', cofins: '150,50' }, '2026-10-20', 'email', 'lp', 58, ['pis', 'cofins'], true]);
+  const escrita = { competencia: '2026-09', codigo: 58, grupo: 'sn', valores: { pis: '999,00', irpj: '—' }, data: '2026-10-05', marcas: { dctf: 'ok' }, entregue: 'impresso' };
+  const depois = F.linhaDepoisDoEnvio(escrita, envio);
+  igual('fiscal: o que já estava escrito à mão fica (o valor, a data, a entrega, as marcas e o grupo); só o em branco é preenchido', [depois.linha.valores, depois.linha.data, depois.linha.entregue, depois.linha.marcas, depois.linha.grupo, depois.preenchidos], [{ pis: '999,00', irpj: '—', cofins: '150,50' }, '2026-10-05', 'impresso', { dctf: 'ok' }, 'sn', ['cofins']]);
+  igual('fiscal: tudo já preenchido, não grava de novo', F.linhaDepoisDoEnvio(depois.linha, envio).mudou, false);
+  igual('fiscal: o modelo do e-mail do Fiscal (vazio = o padrão dele)', require('./envios-do-dp').mensagemDoEnvio({}, { cliente: 'ACME', competencia: '09/2026', mes: 'setembro de 2026' }, F.MODELO_PADRAO).assunto, 'Guias de impostos · 09/2026 · ACME');
+  const emailF = require('./email-html').htmlDoEnvioDp({ assunto: 'Guias', texto: 'Olá', cliente: 'ACME', competencia: '09/2026', anexos: [{ nome: 'das.pdf', tamanho: 10 }], chip: 'Fiscal', rodape: 'com as guias do mês.' });
+  igual('fiscal: o e-mail com o chip e o rodapé do Fiscal', [emailF.html.includes('Fiscal'), emailF.html.includes('com as guias do mês.')], [true, true]);
+}
+
 // ---------- a faxina do banco (01/11/2026: o banco chegou a 1.009 MB de 1 GB) ----------
 const fx = require('./faxina-banco');
 const DIA_FX = 864e5;

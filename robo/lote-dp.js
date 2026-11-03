@@ -290,6 +290,8 @@ function iniciarLoteDp(db, deps) {
 
 module.exports = {
   iniciarLoteDp,
+  // o lote do Fiscal (lote-fiscal.js, 03/11/2026) usa o mesmo cadastro do arquivador, os mesmos pedaços e a mesma checagem
+  contextoDoArquivador, bufferDoArquivo, apagarPartes,
   // puras, pro teste
   competenciaIso, valorNumero, tributoDoNome, leituraDe, doArquivo, grupos, valoresDoGrupo, PASTA_DO_TIPO, COLECAO,
 };

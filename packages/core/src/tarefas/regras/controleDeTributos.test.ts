@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { linhasDoProtocolo } from './protocoloDeTributos';
-import { grupoDoControle, htmlDoControle, linhaEmBranco, numeroDoControle, preencherComSugestao, situacaoDaLinha, sugestoesDoEntregas, valorDoControle } from './controleDeTributos';
+import { colunaDaGuia, competenciaDaApuracao, grupoDoControle, htmlDoControle, linhaEmBranco, numeroDoControle, preencherComSugestao, situacaoDaLinha, somarMesesDaCompetencia, sugestoesDoEntregas, valorDoControle } from './controleDeTributos';
 
 const logo = { definicao: '<svg id="def"></svg>', uso: '<svg><use href="#x"/></svg>' };
 
@@ -15,6 +15,42 @@ describe('o controle de tributos do Fiscal (27/10/2026)', () => {
     expect(valorDoControle('Ø')).toBe('0');
     expect(valorDoControle(' ver obs ')).toBe('ver obs');
     expect(valorDoControle('')).toBe('');
+  });
+
+  it('o Presumido tem as colunas do IBS e da CBS, ligadas às guias do Entregas (03/11/2026)', () => {
+    const lp = grupoDoControle('lp');
+    expect(lp.colunas.map(c => c.id)).toEqual(['pis', 'cofins', 'irpj', 'csll', 'icms', 'iss', 'ibs', 'cbs', 'parc']);
+    const s = sugestoesDoEntregas(lp, [{ codigo: 9, nome: 'C' }], [
+      { codigo: 9, itens: [{ tipo: 'IBS', valor: 12.3 }, { tipo: 'CBS', valor: 45.6 }], em: '2026-10-15T10:00:00Z', porEmail: false },
+    ]);
+    expect(s.get(9)?.valores).toMatchObject({ ibs: '12,30', cbs: '45,60' });
+  });
+
+  it('a coluna de cada guia lida no lote do Fiscal, conforme o grupo (03/11/2026)', () => {
+    expect(colunaDaGuia('sn', 'DAS', '')).toBe('das');
+    expect(colunaDaGuia('lp', 'DAS', '')).toBe('');
+    expect(['PIS', 'COFINS', 'IRPJ', 'CSLL'].map(t => colunaDaGuia('lp', 'DARF', t))).toEqual(['pis', 'cofins', 'irpj', 'csll']);
+    expect(colunaDaGuia('lp', 'DARF', 'IRRF')).toBe('');
+    expect(colunaDaGuia('sn', 'DARF', 'PIS')).toBe('');
+    expect(colunaDaGuia('lp', 'DAE', 'ICMS')).toBe('icms');
+    expect(colunaDaGuia('sn', 'DAE', 'ICMS')).toBe('');
+    expect(colunaDaGuia('lp', 'DAM', 'ISS')).toBe('iss');
+    expect(colunaDaGuia('lp', 'DAM', 'IPTU')).toBe('');
+    expect(colunaDaGuia('sn', 'DAS', '', true)).toBe('');
+    expect(colunaDaGuia('lp', 'FGTS', '')).toBe('');
+  });
+
+  it('a apuração de uma guia entregue é a do mês anterior ao da entrega (03/11/2026)', () => {
+    // gravada com o mês da entrega (o padrão do Entregas): a apuração é a do mês anterior
+    expect(competenciaDaApuracao('2026-10', '2026-10-15T12:00:00Z')).toBe('2026-09');
+    expect(competenciaDaApuracao('2026-01', '2026-01-10T12:00:00Z')).toBe('2025-12');
+    // gravada com a competência do PDF (o mês anterior): vale a gravada
+    expect(competenciaDaApuracao('2026-09', '2026-10-15T12:00:00Z')).toBe('2026-09');
+    // o dia é o de Brasília: 01/11 às 01h UTC ainda é 31/10 lá
+    expect(competenciaDaApuracao('2026-10', '2026-11-01T01:00:00Z')).toBe('2026-09');
+    expect(competenciaDaApuracao('2026-10', undefined)).toBe('2026-10');
+    expect(somarMesesDaCompetencia('2026-12', 1)).toBe('2027-01');
+    expect(somarMesesDaCompetencia('2026-01', -1)).toBe('2025-12');
   });
 
   it('o número para os totais', () => {

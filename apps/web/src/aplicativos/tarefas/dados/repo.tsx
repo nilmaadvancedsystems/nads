@@ -4,13 +4,14 @@ import type { empresas, entregas, tarefas, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { RepoAcesso } from './acesso';
-import { assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, dadosDaEmpresaNoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDaAreaCliente, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDoPainelRobo, repoDaIA, repoDeFeedback, repoDeAvisos, repoDeUso, repoDeParcelamentos, repoDeCategoriasDp, repoDoControleTributos, repoDeLegislacaoDp, repoDoLcdpr, repoDoArquivador, repoDosAgentes, repoDoFgts, repoDeEnviosDp, repoDoLoteDp, repoDeNfse, repoDoCaixa, repoDeHonorarios, repoDeContasPagar, repoDoSieg, repoPessoal, repoDoCofre, repoDeTarefasDelegadas } from './fonte';
+import { assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, dadosDaEmpresaNoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDaAreaCliente, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDoPainelRobo, repoDaIA, repoDeFeedback, repoDeAvisos, repoDeUso, repoDeParcelamentos, repoDeCategoriasDp, repoDoControleTributos, repoDeLegislacaoDp, repoDoLcdpr, repoDoArquivador, repoDosAgentes, repoDoFgts, repoDeEnviosDp, repoDoLoteDp, repoDoLoteFiscal, repoDeNfse, repoDoCaixa, repoDeHonorarios, repoDeContasPagar, repoDoSieg, repoPessoal, repoDoCofre, repoDeTarefasDelegadas } from './fonte';
 import type { RepoCofre } from './cofre';
 import type { RepoAgentes } from './agentes';
 import type { RepoSieg } from './sieg';
 import type { RepoFgts } from './fgts';
 import type { RepoEnviosDp } from './enviosDp';
 import type { RepoLoteDp } from './loteDp';
+import type { RepoLoteFiscal } from './loteFiscal';
 import type { RepoCaixa } from './caixa';
 import type { RepoHonorarios } from './honorarios';
 import type { RepoContasPagar } from './contasPagar';
@@ -209,6 +210,13 @@ export function useEnviosDp(): RepoEnviosDp {
 /** O lote do DP › Envios, ao vivo: os lotes de quem está no nads. */
 export function useLoteDp(): RepoLoteDp {
   const repo = repoDoLoteDp();
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  return repo;
+}
+
+/** O lote de guias do Fiscal (Relatório › Enviar guias), ao vivo: os lotes de quem está no nads e o modelo do e-mail. */
+export function useLoteFiscal(): RepoLoteFiscal {
+  const repo = repoDoLoteFiscal();
   useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
   return repo;
 }
