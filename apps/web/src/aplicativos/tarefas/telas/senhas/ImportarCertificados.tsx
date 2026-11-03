@@ -10,7 +10,7 @@ import { useImportarCertificados, type EmpresaDoCertificado } from './useImporta
 const data = (iso: string) => (iso ? iso.split('-').reverse().join('/') : '');
 const cnpj = (d: string) => d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
 
-function EscolherEmpresa({ lista, achada, onEscolher }: { lista: readonly EmpresaDoCertificado[]; achada: boolean; onEscolher: (e: EmpresaDoCertificado) => void }) {
+export function EscolherEmpresa({ lista, achada, onEscolher }: { lista: readonly EmpresaDoCertificado[]; achada: boolean; onEscolher: (e: EmpresaDoCertificado) => void }) {
   const [q, setQ] = useState('');
   const t = q.trim().toLowerCase();
   const achadas = lista.filter(e => !t || e.nome.toLowerCase().includes(t) || String(e.codigo ?? '').includes(t)).slice(0, 40);
