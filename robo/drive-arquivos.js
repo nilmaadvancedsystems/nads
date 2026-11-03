@@ -106,6 +106,14 @@ function mesmoConteudo(arquivo, buffer) {
 // Espelha salvarArquivo do disco: devolve null quando o anexo já está lá
 // (releitura do mesmo e-mail), e nunca sobrescreve.
 async function salvarArquivo(drive, pastaId, nome, buffer) {
+  const r = await salvarArquivoComId(drive, pastaId, nome, buffer);
+  return r.jaEstava ? null : r.nome;
+}
+
+// O mesmo, devolvendo também o id do arquivo no Drive (o novo, ou o que já
+// estava lá com o mesmo conteúdo): { id, nome, jaEstava }. O Fiscal › Enviar
+// guias guarda o id para abrir a guia depois pelo abrir-do-drive (04/11/2026).
+async function salvarArquivoComId(drive, pastaId, nome, buffer) {
   const limpo = sanitizar(nome);
   const ponto = limpo.lastIndexOf('.');
   const base = ponto > 0 ? limpo.slice(0, ponto) : limpo;
@@ -116,7 +124,7 @@ async function salvarArquivo(drive, pastaId, nome, buffer) {
   for (;;) {
     const existente = await filhoChamado(drive, pastaId, candidato, false);
     if (!existente) break;
-    if (mesmoConteudo(existente, buffer)) return null;
+    if (mesmoConteudo(existente, buffer)) return { id: existente.id, nome: existente.name || candidato, jaEstava: true };
     candidato = base + ' (' + (++n) + ')' + ext;
   }
 
@@ -126,7 +134,7 @@ async function salvarArquivo(drive, pastaId, nome, buffer) {
     fields: 'id, name',
     supportsAllDrives: true,
   });
-  return r.data.name;
+  return { id: r.data.id, nome: r.data.name, jaEstava: false };
 }
 
 // A rotina de arquivamento lê a pasta inteira, em qualquer mês: o mesmo anexo
@@ -238,6 +246,6 @@ function getDrive() {
 }
 
 module.exports = {
-  PASTA_RAIZ, sanitizar, getDrive, pastaDoCliente, salvarArquivo, copiaJaNaOrigem, pastaRaiz,
+  PASTA_RAIZ, sanitizar, getDrive, pastaDoCliente, salvarArquivo, salvarArquivoComId, copiaJaNaOrigem, pastaRaiz,
   garantirCaminho, garantirPasta, espelharPasta,
 };

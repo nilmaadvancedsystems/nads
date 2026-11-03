@@ -32,6 +32,8 @@ export interface EnvioDasGuias {
   para: string[];
   /** os nomes das guias anexadas */
   guias: string[];
+  /** as guias gravadas no Drive (o id abre pelo robô, sem o PDF no banco); vazio nos envios de antes de 04/11/2026 */
+  guiasDrive: { nome: string; id: string }[];
   enviadoEm: string;
   /** quem pediu o disparo */
   por: string;
@@ -57,6 +59,8 @@ export interface RepoLoteFiscal {
   tirar(lote: string, arquivo: string, fora: boolean): Promise<void>;
   /** pede o disparo ao robô */
   disparar(lote: string): Promise<void>;
+  /** o PDF de uma guia do lote, pelos pedaços que a tela subiu (só existem até o e-mail sair: o robô apaga depois) */
+  bytesDaGuia(lote: string, arquivo: string): Promise<Uint8Array>;
   /** os e-mails de guias já enviados na competência da apuração (os dois grupos), ao vivo; os lotes somem em 3 dias, estes ficam */
   enviados(competencia: string): { carregados: boolean; lista: EnvioDasGuias[] };
   /** o modelo do e-mail como está no banco (vazio = o padrão) */
@@ -121,6 +125,7 @@ export function criarLoteFiscalMemoria(controle: () => RepoControleTributos): Re
   const mudou = () => { ver++; for (const f of ouvintes) f(); };
   const lotes: LoteFiscal[] = [];
   const arquivos = new Map<string, GuiaDoLote[]>();
+  const bytes = new Map<string, Uint8Array>();
   let modelo: ModeloDoEnvio = { assunto: '', texto: '' };
   const agora = () => new Date().toISOString();
   const doLote = (id: string) => arquivos.get(id) || [];
@@ -138,6 +143,7 @@ export function criarLoteFiscalMemoria(controle: () => RepoControleTributos): Re
     async subir(grupo, lista, andamento) {
       const id = 'ex-guias-' + Date.now();
       lotes.push({ id, grupo, status: 'pendente', criadoEm: agora(), criadoPor: 'exemplo', total: lista.length, lidos: 0, erro: '', disparadoPor: '', resultados: [] });
+      lista.forEach((a, k) => bytes.set(id + '/' + k, a.bytes));
       arquivos.set(id, lista.map((a, k) => ({ id: String(k), nome: a.nome, tamanho: a.bytes.length, status: 'pendente', erro: '', leitura: null, escolha: null, fora: false })));
       andamento(lista.length, lista.length);
       mudou();
@@ -195,10 +201,15 @@ export function criarLoteFiscalMemoria(controle: () => RepoControleTributos): Re
         mudarLote(id, { status: 'disparado', resultados });
       }, 2000);
     },
+    async bytesDaGuia(id, a) {
+      const b = bytes.get(id + '/' + a);
+      if (!b) throw new Error('a guia não está mais no lote');
+      return b;
+    },
     enviados(competencia) {
       const lista: EnvioDasGuias[] = lotes.flatMap(l => l.resultados.filter(r => r.status === 'enviado' && r.competencia === competencia).map(r => ({
         id: l.id + '|' + r.chave, codigo: r.codigo, empresa: empresas.EMPRESAS.find(x => x.codigo === r.codigo)?.nome || '', competencia: r.competencia, grupo: l.grupo,
-        para: r.para, guias: r.arquivos, enviadoEm: r.enviadoEm, por: l.disparadoPor,
+        para: r.para, guias: r.arquivos, guiasDrive: r.salvos.map((x, k) => ({ nome: x.nome, id: 'ex-' + l.id + '-' + k })), enviadoEm: r.enviadoEm, por: l.disparadoPor,
       })));
       return { carregados: true, lista: lista.sort((a, b) => b.enviadoEm.localeCompare(a.enviadoEm)) };
     },

@@ -7,7 +7,7 @@
 //     o robô grava a leitura (com a coluna do Relatório) ou o erro; a tela, a escolha (com a coluna) e o fora;
 //   - solicitacoesEmail { tipo: 'envioFiscal' }: o registro de cada e-mail que o robô mandou (a aba "Enviados"; fica, o lote some em 3 dias);
 //   - config/envioFiscal: o modelo do e-mail { assunto, texto, atualizadoEm, atualizadoPor } (o Fiscal e o admin gravam).
-import { addDoc as addDocBruto, Bytes, collection, doc, onSnapshot, query, setDoc as setDocBruto, updateDoc as updateDocBruto, where } from 'firebase/firestore';
+import { addDoc as addDocBruto, Bytes, collection, doc, getDocs, onSnapshot, query, setDoc as setDocBruto, updateDoc as updateDocBruto, where } from 'firebase/firestore';
 import { entregas as e } from '@nads/core';
 import { guardar, guardarPedido } from '../../../comum/modoDesenvolvedor';
 import { bancoDoEntregas } from './entregas.firestore';
@@ -96,6 +96,16 @@ export function criarLoteFiscalFirestore(quem: () => e.Quem | null): RepoLoteFis
     async tirar(lote, arquivo, fora) {
       await updateDoc(doc(db, 'lotesFiscal', lote, 'arquivos', arquivo), { fora });
     },
+    async bytesDaGuia(lote, arquivo) {
+      // os pedaços na ordem (o id é o número); a regra deixa só o Fiscal e o admin lerem
+      const s = await getDocs(collection(db, 'lotesFiscal', lote, 'arquivos', arquivo, 'partes'));
+      if (!s.docs.length) throw new Error('a guia não está mais no lote (o robô apaga depois do envio)');
+      const pedacos = s.docs.sort((a, b) => Number(a.id) - Number(b.id)).map(x => (x.data().dados as Bytes).toUint8Array());
+      const tudo = new Uint8Array(pedacos.reduce((n, p) => n + p.length, 0));
+      let i = 0;
+      for (const p of pedacos) { tudo.set(p, i); i += p.length; }
+      return tudo;
+    },
     async disparar(lote) {
       const q = quem();
       if (!q) throw new Error('Sem login.');
@@ -110,7 +120,8 @@ export function criarLoteFiscalFirestore(quem: () => e.Quem | null): RepoLoteFis
             const d = x.data();
             return {
               id: x.id, codigo: Number(d.codigo) || 0, empresa: texto(d.empresa), competencia: texto(d.competencia), grupo: d.grupo === 'lp' ? 'lp' : 'sn',
-              para: textos(d.para), guias: textos(d.enviados), enviadoEm: texto(d.enviadoEm || d.criadoEm), por: texto(d.criadoPor),
+              para: textos(d.para), guias: textos(d.enviados),
+              guiasDrive: (Array.isArray(d.guiasDrive) ? d.guiasDrive : []).map((g: Record<string, unknown>) => ({ nome: texto(g?.nome), id: texto(g?.id) })).filter((g: { id: string }) => g.id), enviadoEm: texto(d.enviadoEm || d.criadoEm), por: texto(d.criadoPor),
             } satisfies EnvioDasGuias;
           }).sort((a, b) => b.enviadoEm.localeCompare(a.enviadoEm));
           enviadosDoMes.set(competencia, { carregados: true, lista });
