@@ -9,6 +9,7 @@ import workerDoPdf from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import { useMemo, useState } from 'react';
 import { useContasDoBalancete } from '../../../../../concilia-ai/importadosNaEtapa';
 import { useExtratorDaEmpresa } from '../../../../dados/extrator';
+import { useModelosDeHistorico } from '../../../../dados/useModelosDeHistorico';
 import { useCadastro } from '../../../../dados/repo';
 import { useOperador } from '../../../../casca/operador';
 import { useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
@@ -20,6 +21,8 @@ extrator.definirWorkerDoPdf(workerDoPdf);
 const dataBR = (iso: string) => (iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4) : '');
 
 export function useHonorarios() {
+  // os textos do histórico que o escritório configurou (Contábil › Configurações)
+  const modelos = useModelosDeHistorico();
   const s = useEtapaAberta();
   const { aviso } = useRetorno();
   const op = useOperador().operador;
@@ -145,13 +148,13 @@ export function useHonorarios() {
       ],
       cobrancas: doPeriodo.map(c => ({
         numero: c.numero, emissao: dataBR(c.emissao), vencimento: dataBR(c.vencimento), pagamento: dataBR(c.pagamento) || 'A receber',
-        valor: formatos.reais(c.valor), paga: !!c.pagamento, historico: t.historicoDaProvisaoDeHonorario(c),
+        valor: formatos.reais(c.valor), paga: !!c.pagamento, historico: t.historicoDaProvisaoDeHonorario(c, modelos),
       })),
       /** as pagas no período: o pagamento com a conta do banco (a pessoa escolhe) */
       pagamentos: pagas.map(c => {
         const sug = sugestaoDoBanco(c);
         return {
-          numero: c.numero, data: dataBR(c.pagamento), valor: formatos.reais(c.recebido > 0 ? c.recebido : c.valor), historico: t.historicoDoPagamentoDeHonorario(c),
+          numero: c.numero, data: dataBR(c.pagamento), valor: formatos.reais(c.recebido > 0 ? c.recebido : c.valor), historico: t.historicoDoPagamentoDeHonorario(c, modelos),
           conta: bancoDe(c), nomeDaConta: nomeNoPlano(bancoDe(c).trim()), noExtrato: sug.banco,
         };
       }),
@@ -169,7 +172,7 @@ export function useHonorarios() {
     podeBaixar: !!e && pagas.length > 0 && contasOk && !faltaBanco,
     /** o .xls de importação do Alterdata (o padrão de 10 colunas): a provisão de cada cobrança na emissão e o pagamento das pagas */
     baixar: () => {
-      const linhas = [...t.lancamentosDosHonorarios(doPeriodo, contaDespesa, contaAPagar), ...t.pagamentosDosHonorarios(pagas, contaAPagar, contaDespesa, bancoDe)]
+      const linhas = [...t.lancamentosDosHonorarios(doPeriodo, contaDespesa, contaAPagar, modelos), ...t.pagamentosDosHonorarios(pagas, contaAPagar, contaDespesa, bancoDe, modelos)]
         .sort((a, b) => a.data.split('/').reverse().join('').localeCompare(b.data.split('/').reverse().join('')))
         .map(l => ({ automatico: '', codHistorico: '', ...l }));
       const nome = 'honorarios' + (s.codigo != null ? '_' + s.codigo : '') + '_' + s.meses[0] + (s.meses.length > 1 ? '-a-' + s.meses[s.meses.length - 1] : '') + '.xls';

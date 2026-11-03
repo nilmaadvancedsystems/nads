@@ -30,7 +30,7 @@ export function chequeEspecialDoBanco(e: EmpresaExtrator, banco: string, primeir
  * Os lançamentos (ajuste e estorno) dos dias que faltam, com o histórico 92029. O saldo de cada dia é o do fim do dia no
  * extrato; o estorno vai para o próximo dia que o extrato tem (ou o próximo dia útil, no último).
  */
-export function lancamentosDoChequeEspecial(e: EmpresaExtrator, banco: string, primeiro: string, meses: readonly string[], faltam: readonly DiaNegativo[], contaBanco: string, contaCheque: string): LancamentoDoCheque[] {
+export function lancamentosDoChequeEspecial(e: EmpresaExtrator, banco: string, primeiro: string, meses: readonly string[], faltam: readonly DiaNegativo[], contaBanco: string, contaCheque: string, historico: string = HISTORICO_PADRAO): LancamentoDoCheque[] {
   const ms = meses.slice().sort();
   if (!ms.length || !faltam.length) return [];
   const fim = new Map<string, number>();
@@ -38,7 +38,7 @@ export function lancamentosDoChequeEspecial(e: EmpresaExtrator, banco: string, p
     if (ms.includes(l.data.slice(0, 7))) fim.set(l.data, l.saldo);
   }
   const dias: DiaSaldo[] = [...fim].sort((a, b) => a[0].localeCompare(b[0])).map(([data, saldo]) => ({ data: diaLocal(data), saldo: saldo / 100 }));
-  const todos = gerarLancamentos(dias, contaBanco, contaCheque, HISTORICO_PADRAO).lancamentos;
+  const todos = gerarLancamentos(dias, contaBanco, contaCheque, historico).lancamentos;
   // só o par (ajuste e o estorno logo depois) dos dias que faltam no razão
   const querem = new Set(faltam.map(f => f.data));
   const out: LancamentoDoCheque[] = [];

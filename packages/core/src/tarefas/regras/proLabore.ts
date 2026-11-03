@@ -10,6 +10,7 @@
 // histórico abate as mais antigas; o saldo de antes do razão entra como a competência anterior à primeira.
 import { diaUtil } from '../../mandei';
 import type { RazaoDaConta } from './razao';
+import { preencherHistorico, type ModelosDoHistorico } from './historicosDoContabil';
 
 export interface PagamentoDoProLabore {
   /** 'aaaa-mm' */
@@ -47,10 +48,11 @@ export function dataDoPagamentoDoProLabore(competencia: string, diaUtilDoMes = 5
   return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
 }
 
-export const historicoDoPagamento = (competencia: string, socio: string) => ('Pagamento de pro-labore ' + mesBR(competencia) + ' ' + socio).trim();
+export const historicoDoPagamento = (competencia: string, socio: string, modelos?: ModelosDoHistorico) =>
+  preencherHistorico('prolabore.pagamento', { ref: mesBR(competencia), socio }, modelos).trim();
 
 /** O que falta pagar de cada competência e sócio, da mais antiga para a mais nova (só o que sobra). */
-export function pagamentosDoProLabore(razao: RazaoDaConta): PagamentoDoProLabore[] {
+export function pagamentosDoProLabore(razao: RazaoDaConta, modelos?: ModelosDoHistorico): PagamentoDoProLabore[] {
   const grupos = new Map<string, { competencia: string; socio: string; valor: number; anterior?: boolean }>();
   const soltos: number[] = [];
   for (const l of razao.lancamentos) {
@@ -82,6 +84,6 @@ export function pagamentosDoProLabore(razao: RazaoDaConta): PagamentoDoProLabore
   }
   return ordem.filter(g => g.valor > 0.005).map(g => ({
     competencia: g.competencia, socio: g.socio, valor: g.valor, data: fimDoMes(g.competencia),
-    historico: historicoDoPagamento(g.competencia, g.socio), ...(g.anterior ? { doSaldoAnterior: true } : {}),
+    historico: historicoDoPagamento(g.competencia, g.socio, modelos), ...(g.anterior ? { doSaldoAnterior: true } : {}),
   }));
 }

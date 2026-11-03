@@ -4,6 +4,7 @@
 // tem de zerar. O que falta pagar vira o lançamento sugerido: D Adiantamento salarial, C o banco, no dia certo.
 import { diaUtil } from '../../mandei';
 import { mesesDoRazao, naOrdemDasDatas, type RazaoDaConta } from './razao';
+import { preencherHistorico, type ModelosDoHistorico } from './historicosDoContabil';
 
 const centavos = (n: number) => Math.round(n * 100) / 100;
 const iso = (d: Date) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -40,7 +41,7 @@ export interface PagamentoQueFalta { mes: string; data: string; valor: number; h
  * primeiro mês. O que sobra de cada mês, até `ateMes`, é o lançamento sugerido — também de mês antes dos da etapa, que é
  * de onde vem o saldo que não zera.
  */
-export function pagamentosQueFaltam(razao: RazaoDaConta, ateMes: string): PagamentoQueFalta[] {
+export function pagamentosQueFaltam(razao: RazaoDaConta, ateMes: string, modelos?: ModelosDoHistorico): PagamentoQueFalta[] {
   const r = naOrdemDasDatas(razao);
   if (!r.lancamentos.length) return [];
   // todos os meses do razão até o último da etapa (o pagamento do dia 15 vem antes do desconto do fim do mês: o mês a mês)
@@ -70,14 +71,14 @@ export function pagamentosQueFaltam(razao: RazaoDaConta, ateMes: string): Pagame
     const resto = centavos(desconto - doMes);
     if (resto > 0.005) abertos.push({ mes: m.mes, valor: resto });
   }
-  return abertos.map(a => ({ mes: a.mes, data: dataDoAdiantamentoSalarial(a.mes), valor: a.valor, historico: historicoDoAdiantamentoSalarial(a.mes) }));
+  return abertos.map(a => ({ mes: a.mes, data: dataDoAdiantamentoSalarial(a.mes), valor: a.valor, historico: historicoDoAdiantamentoSalarial(a.mes, modelos) }));
 }
 
 const proximoMes = (m: string) => { const [a, x] = m.split('-').map(Number); return x === 12 ? (a + 1) + '-01' : a + '-' + String(x + 1).padStart(2, '0'); };
 
 /** O razão do Adiantamento salarial mês a mês: a provisão, os pagamentos, o dia certo, o saldo e o que falta. */
-export function conferirAdiantamentoSalarial(razao: RazaoDaConta, meses: readonly string[]): MesDoAdiantamentoSalarial[] {
-  const faltam = meses.length ? pagamentosQueFaltam(razao, meses[meses.length - 1]) : [];
+export function conferirAdiantamentoSalarial(razao: RazaoDaConta, meses: readonly string[], modelos?: ModelosDoHistorico): MesDoAdiantamentoSalarial[] {
+  const faltam = meses.length ? pagamentosQueFaltam(razao, meses[meses.length - 1], modelos) : [];
   return mesesDoRazao(razao, meses).map(m => {
     const provisao = centavos(m.lancamentos.filter(l => l.valor > 0).reduce((s, l) => s + l.valor, 0));
     const pagamentos = m.lancamentos.filter(l => l.valor < 0).map(l => ({ data: l.data, valor: centavos(-l.valor) }));
@@ -87,4 +88,4 @@ export function conferirAdiantamentoSalarial(razao: RazaoDaConta, meses: readonl
 }
 
 const mesBR = (m: string) => m.slice(5, 7) + '/' + m.slice(0, 4);
-export const historicoDoAdiantamentoSalarial = (mes: string) => 'Pagamento de adiantamento salarial ' + mesBR(mes);
+export const historicoDoAdiantamentoSalarial = (mes: string, modelos?: ModelosDoHistorico) => preencherHistorico('adiantamento.pagamento', { ref: mesBR(mes) }, modelos);

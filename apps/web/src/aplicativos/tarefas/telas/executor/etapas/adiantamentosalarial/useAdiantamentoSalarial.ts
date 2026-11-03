@@ -9,6 +9,7 @@ import { useMemo } from 'react';
 import { useGuardado } from '../../../../../../comum/guardado';
 import { useContabilDaEmpresa } from '../../../../../../comum/contabilDaEmpresa';
 import { useChaveDaEtapa, useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
+import { useModelosDeHistorico } from '../../../../dados/useModelosDeHistorico';
 
 const dataBR = (iso: string) => iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4);
 
@@ -42,10 +43,11 @@ export function useAdiantamentoSalarial() {
     }
   }
 
-  const meses = useMemo(() => (razao ? t.conferirAdiantamentoSalarial(razao.razao, s.meses) : []), [razao, s.meses]);
+  const modelos = useModelosDeHistorico();
+  const meses = useMemo(() => (razao ? t.conferirAdiantamentoSalarial(razao.razao, s.meses, modelos) : []), [razao, s.meses, modelos]);
   const naoZerou = meses.filter(m => Math.abs(m.saldoFinal) > 0.005);
   // o que falta pagar, também dos meses antes dos da etapa, que é de onde vem o saldo que não zera (Vitor, 26/10/2026)
-  const faltando = useMemo(() => (razao && s.meses.length ? t.pagamentosQueFaltam(razao.razao, s.meses[s.meses.length - 1]) : []), [razao, s.meses]);
+  const faltando = useMemo(() => (razao && s.meses.length ? t.pagamentosQueFaltam(razao.razao, s.meses[s.meses.length - 1], modelos) : []), [razao, s.meses, modelos]);
   const faltam = semMovimento ? [] : [
     ...(!razao ? ['Importar o razão do Adiantamento salarial'] : []),
     ...(naoZerou.length ? ['O Adiantamento salarial não zerou em ' + naoZerou.map(m => t.rotuloNumericoCompetencia(m.mes)).join(', ')] : []),

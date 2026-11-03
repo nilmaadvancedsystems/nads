@@ -99,7 +99,8 @@ export function InssDaEtapa({ inss, conferir, teste = [], folha, so, conferencia
                     </tr>
                   </thead>
                   <tbody>
-                    <tr><th scope="row">Provisão</th>{inss.meses.map(m => <td key={m.mes} className={'num' + (m.mes === inss.mesAberto ? ' atual' : '')} title={m.foraDoRazao ? 'O razão começa depois deste mês' : undefined}>{m.foraDoRazao ? 'fora do razão' : <ValorNaGrade texto={m.provisao} />}</td>)}</tr>
+                    {/* o saldo do mês no razão (Vitor, 03/11/2026: "ao invés do Provisão"): a soma dos lançamentos, + o que tem D e − o que tem C */}
+                    <tr><th scope="row">Saldo</th>{inss.meses.map(m => <td key={m.mes} className={'num' + (m.mes === inss.mesAberto ? ' atual' : '')} title={m.foraDoRazao ? 'O razão começa depois deste mês' : 'Soma dos lançamentos do mês: D (+) e C (−)'}>{m.foraDoRazao ? 'fora do razão' : <ValorNaGrade texto={m.saldo} />}</td>)}</tr>
                     <tr><th scope="row">Guia</th>{inss.meses.map(m => <td key={m.mes} className={'num' + (m.mes === inss.mesAberto ? ' atual' : '')}>{m.guia ? <ValorNaGrade texto={m.guia} /> : '—'}</td>)}</tr>
                     {/* o total do DARF (Vitor, 15/10/2026: "coloque o total da guia"): o INSS e o que vem junto; é o que sai do banco (Vitor,
                         26/10/2026: "ao invés de total da guia, coloca: No banco") */}
@@ -115,10 +116,11 @@ export function InssDaEtapa({ inss, conferir, teste = [], folha, so, conferencia
                     {inss.meses.some(m => m.banco) && (
                       <tr><th scope="row">Banco</th>{inss.meses.map(m => (
                         <td key={m.mes} className={m.mes === inss.mesAberto ? 'atual' : undefined} title={m.banco?.nome}>
+                          {/* só a logo (Vitor, 03/11/2026); o nome fica no título do passe do mouse. Sem logo cadastrada, mostra o nome curto */}
                           {m.banco ? (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                              {m.banco.marca && <span className="drive-candidato-logo" style={{ display: 'inline-flex' }}><LogoBanco banco={m.banco.marca} cor /></span>}{m.banco.curto}
-                            </span>
+                            m.banco.marca
+                              ? <span className="drive-candidato-logo" style={{ display: 'inline-flex' }}><LogoBanco banco={m.banco.marca} cor /></span>
+                              : m.banco.curto
                           ) : '—'}
                         </td>
                       ))}</tr>

@@ -7,6 +7,7 @@ import { baixarBytes, useRetorno } from '@nads/ui';
 import workerDoPdf from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import { useState } from 'react';
 import { useGuardado } from '../../../../comum/guardado';
+import { useModelosDeHistorico } from '../../dados/useModelosDeHistorico';
 import type { ContaDoPlano } from './useInssDaEtapa';
 
 extrator.definirWorkerDoPdf(workerDoPdf);
@@ -29,7 +30,8 @@ export function useFgtsDaEtapa(chave: string, meses: readonly string[], razao: t
   const doBalancete = balancete.find(x => /fgts\s+a\s+recolher/i.test(x.nome)) || null;
   const contaFgts = doBalancete?.codigo || contaDigitada;
   const g = guias && guias.chave === chave ? guias : null;
-  const c = razao && g && meses.length ? t.conferirFgts(razao, g.guias, meses, extrato) : null;
+  const modelos = useModelosDeHistorico();
+  const c = razao && g && meses.length ? t.conferirFgts(razao, g.guias, meses, extrato, modelos) : null;
 
   /** Um ou mais PDFs do FGTS Digital: as guias se somam às que já vieram (a mesma guia não repete). */
   async function importarGuias(fs: File[]) {

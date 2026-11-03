@@ -11,6 +11,7 @@ import { brl } from '../../formatos';
 import { mesmoNomeDeCliente } from '../../extratudo/creditor/regras/clientes';
 import { linhasDasPaginas, type LinhaDoAlterdata, type PedacoDoPdf } from './inss';
 import type { LancamentoDoRazao, RazaoDaConta } from './razao';
+import { preencherHistorico, type ModelosDoHistorico } from './historicosDoContabil';
 
 // ─── As guias (o "Detalhe da Guia Emitida" do FGTS Digital) ─────────────────────────────────────────────────────────
 
@@ -183,7 +184,7 @@ function competenciaDoHistorico(h: string): string {
  * O razão do FGTS a recolher × as guias, nos meses do período. extrato: os lançamentos dos bancos (para achar o pagamento
  * que não foi lançado no razão; vazio = só o razão).
  */
-export function conferirFgts(razao: RazaoDaConta, guias: readonly GuiaDoFgts[], meses: readonly string[], extrato: readonly LancamentoDoBanco[] = []): ConferenciaDoFgts {
+export function conferirFgts(razao: RazaoDaConta, guias: readonly GuiaDoFgts[], meses: readonly string[], extrato: readonly LancamentoDoBanco[] = [], modelos?: ModelosDoHistorico): ConferenciaDoFgts {
   const ls = razao.lancamentos;
   const provisoes = ls.filter(l => l.valor > 0);
   const pagamentos = ls.filter(l => l.valor < 0);
@@ -219,7 +220,7 @@ export function conferirFgts(razao: RazaoDaConta, guias: readonly GuiaDoFgts[], 
       }
     }
     const diferenca = guia ? centavos(guia.total - provisao) : 0;
-    const ref = '<' + rotuloMes(mes) + '>';
+    const ref = rotuloMes(mes);
 
     // a provisão que não bate com a guia: o ajuste de cada trabalhador
     if (guia && !foraDoRazao && Math.abs(diferenca) > TOLERANCIA) {
@@ -227,7 +228,7 @@ export function conferirFgts(razao: RazaoDaConta, guias: readonly GuiaDoFgts[], 
         const sobra = t.diferenca < 0;
         sugestoes.push({
           mes, data: fimDoMes(mes), tipo: 'provisao', debito: sobra ? FGTS_A_RECOLHER : despesa, credito: sobra ? despesa : FGTS_A_RECOLHER, valor: Math.abs(t.diferenca),
-          historico: 'Pelo valor de FGTS ' + (sobra ? 'provisionado a maior' : 'a recolher') + ' s/ folha ' + ref + ' ' + t.nome,
+          historico: preencherHistorico(sobra ? 'fgts.provisao_a_maior' : 'fgts.provisao_a_recolher', { ref, trabalhador: t.nome }, modelos),
           motivo: t.nome + ': razão ' + brl(t.razao) + ' × guia ' + brl(t.guia),
         });
       }
@@ -256,7 +257,7 @@ export function conferirFgts(razao: RazaoDaConta, guias: readonly GuiaDoFgts[], 
         if (pagaNoPeriodo && !foraDoRazao) {
           sugestoes.push({
             mes, data: pagamento?.data || guia.vencimento, tipo: 'pagamento', debito: FGTS_A_RECOLHER, credito: banco, valor: guia.total,
-            historico: 'Pagamento de FGTS referente ' + rotuloMes(mes) + ', conforme GFD quitada.',
+            historico: preencherHistorico('fgts.pagamento', { ref: rotuloMes(mes) }, modelos),
             motivo: 'Guia de ' + rotuloMes(mes) + (pagamento
               ? ' paga em ' + pagamento.data.split('-').reverse().join('/') + (pagamento.banco ? ' (' + pagamento.banco + ')' : '') + ' sem a baixa no razão'
               : ' vencida em ' + guia.vencimento.split('-').reverse().join('/') + ' sem a baixa no razão (o pagamento não está no extrato)'),
