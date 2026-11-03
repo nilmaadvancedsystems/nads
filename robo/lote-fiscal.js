@@ -264,7 +264,7 @@ async function dispararLote(db, ref, lote, deps) {
       const { gmailId, assunto } = await dp.mandarEmailDoDp(db, { comp: competencia, nome, para, anexos }, { enviar: deps.enviar, caixa: deps.caixa, assinatura: cfg.assinatura || 'Nilma Contabilidade', modelo: MODELO });
       const agora = new Date().toISOString();
       // o envio no histórico do cliente, como o lote do DP
-      await db.collection('solicitacoesEmail').add({
+      const registro = await db.collection('solicitacoesEmail').add({
         tipo: 'envioFiscal', origem: 'lote', lote: ref.id, grupo, status: 'enviado', competencia, codigo: String(codigo), empresa: nome, arquivos: [],
         para, enviados: anexos.map(a => a.nome), assunto, gmailId, enviadoEm: agora, criadoEm: agora,
         criadoPor: lote.disparadoPor || '', criadoPorUid: lote.disparadoPorUid || '',
@@ -280,10 +280,14 @@ async function dispararLote(db, ref, lote, deps) {
         if (!v.destino.length) { salvos.push({ nome: v.nome, erro: 'sem a pasta no Drive (o tipo da guia não tem pasta na árvore do Fiscal ou o cadastro não deu o destino)' }); continue; }
         try {
           const pastaId = await DA.garantirCaminho(drive, v.destino.map(p => String(p).normalize('NFC')));
-          const nomeSalvo = await DA.salvarArquivo(drive, pastaId, v.nome, anexos[k].buffer);
-          salvos.push({ nome: nomeSalvo || v.nome, pasta: v.destino.join('/'), jaEstava: !nomeSalvo });
+          const salvo = await DA.salvarArquivoComId(drive, pastaId, v.nome, anexos[k].buffer);
+          salvos.push({ nome: salvo.nome || v.nome, pasta: v.destino.join('/'), jaEstava: salvo.jaEstava, id: salvo.id || '' });
         } catch (err) { salvos.push({ nome: v.nome, erro: String(err.message || err).slice(0, 200) }); }
       }
+      // o id de cada guia no Drive, no registro do envio: a aba "Enviados" abre a guia por ele (o abrir-do-drive, sem
+      // guardar o PDF no banco; 04/11/2026: "quando eu clicar no nome do enviado ou para enviar quero poder ver a guia")
+      const guiasDrive = salvos.filter(x => x.id).map(x => ({ nome: x.nome, id: x.id }));
+      if (guiasDrive.length) await registro.update({ guiasDrive }).catch(() => {});
       Object.assign(resultado, { status: 'enviado', para, enviadoEm: agora, salvos });
       for (const i of itens) await L.apagarPartes(i.ref).catch(() => {});
       enviados++;

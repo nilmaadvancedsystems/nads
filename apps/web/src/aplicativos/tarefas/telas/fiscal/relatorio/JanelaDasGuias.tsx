@@ -67,7 +67,7 @@ function LinhaDaGuia({ vm, a, mexe }: { vm: VmEnvioDeGuias; a: GuiaDoLote; mexe:
   return (
     <li className="dp-lote-arquivo">
       <span className="badge badge-neutral">{tipoDaGuia(a)}</span>
-      <span className="dp-lote-nome" title={a.nome}>{l?.nomeFinal || a.nome}</span>
+      <button type="button" className="link-btn dp-lote-nome" title={'Ver a guia: ' + a.nome} onClick={() => vm.abrirDoLote(a)}>{l?.nomeFinal || a.nome}</button>
       <span className="num fraco">{r.valor ? 'R$ ' + r.valor : 'sem valor lido'}{l?.vencimento ? ' · vence ' + l.vencimento.replace(/-/g, '/') : ''}</span>
       {mexe ? <MenuDeColuna vm={vm} arquivo={a} compacto /> : <span className="fraco">{r.coluna ? '→ ' + r.coluna : 'sem coluna'}</span>}
       {mexe && <button type="button" className="link-btn" onClick={() => void vm.tirar(a, true)}>Tirar</button>}
@@ -91,7 +91,13 @@ function Enviados({ vm }: { vm: VmEnvioDeGuias }) {
               <div className="dp-lote-falta-nome">
                 <b><span className="num fraco">{x.codigo}</span> {x.empresa || 'Cliente ' + x.codigo}</b>
                 <span className="fraco">{hora(x.enviadoEm)} · para {x.para.join(', ') || '—'}{x.por ? ' · por ' + x.por : ''}</span>
-                {x.guias.length > 0 && <span className="fraco" title={x.guias.join('\n')}>{x.guias.length} {x.guias.length === 1 ? 'guia' : 'guias'}: {x.guias.join(' · ')}</span>}
+                {x.guiasDrive.length > 0 ? (
+                  <span className="fraco">{x.guiasDrive.length} {x.guiasDrive.length === 1 ? 'guia' : 'guias'}:{' '}
+                    {x.guiasDrive.map((g, k) => (
+                      <span key={g.id}>{k > 0 && ' · '}<button type="button" className="link-btn" title={'Ver a guia: ' + g.nome} onClick={() => vm.abrirEnviada(g)}>{g.nome}</button></span>
+                    ))}
+                  </span>
+                ) : x.guias.length > 0 && <span className="fraco" title={x.guias.join('\n')}>{x.guias.length} {x.guias.length === 1 ? 'guia' : 'guias'}: {x.guias.join(' · ')}</span>}
               </div>
             </li>
           ))}
@@ -200,7 +206,7 @@ export function JanelaDasGuias({ regime, competencia, fechar }: { regime: Regime
                       return (
                         <li key={a.id} className="dp-lote-falta">
                           <div className="dp-lote-falta-nome">
-                            <b title={a.nome}>{a.nome}</b>
+                            <button type="button" className="link-btn" title={'Ver a guia: ' + a.nome} onClick={() => vm.abrirDoLote(a)}><b>{a.nome}</b></button>
                             <span className="fraco">{a.leitura?.semTexto ? 'PDF sem texto (escaneado)' : a.leitura?.cliente != null ? tipoDaGuia(a) + ': o mês da apuração não está escrito na guia' : 'o leitor não reconheceu o cliente'}</span>
                           </div>
                           {mexe && (

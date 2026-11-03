@@ -7,12 +7,30 @@
 import { formatos, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useState } from 'react';
-import { useGmailDoEntregas, useLoteFiscal, useRepo, useTodosOsCadastros } from '../../../dados/repo';
+import { useDriveDoEntregas, useGmailDoEntregas, useLoteFiscal, useRepo, useTodosOsCadastros } from '../../../dados/repo';
 import { colunaQueVale, MODELO_PADRAO_DAS_GUIAS, valorDaGuia, type EscolhaDaGuia, type GuiaDoLote } from '../../../dados/loteFiscal';
 import { CURTO, type RegimeDoRelatorio } from './useRelatorioGeral';
 
 const MAX_ARQUIVOS = 150;
 const MAX_BYTES = 25 * 1024 * 1024;
+// o robô costuma responder o pedido de abrir em segundos; passado isso, desiste
+const PRAZO_DO_DRIVE_MS = 90 * 1000;
+
+/**
+ * Abre a guia numa aba nova (04/11/2026: "quando eu clicar no nome do enviado ou para enviar quero poder ver a guia, essa
+ * guia tem que ser armazenada de maneira a não pesar o DB"). A aba abre já no clique (senão o navegador a bloqueia) e
+ * recebe o endereço quando ele chega; se não chegar, fecha.
+ */
+function abrirNaAba(nome: string, endereco: () => Promise<string>, falhou: (motivo: string) => void) {
+  const aba = window.open('', '_blank');
+  if (aba) { try { aba.document.title = nome; aba.document.body.textContent = 'Abrindo "' + nome + '"…'; } catch { /* outra origem */ } }
+  endereco().then(url => {
+    if (aba && !aba.closed) aba.location.href = url; else window.open(url, '_blank');
+  }, (e: unknown) => {
+    try { aba?.close(); } catch { /* já fechou */ }
+    falhou(e instanceof Error ? e.message : String(e));
+  });
+}
 
 /** o que vale da guia: a escolha da revisão sobre a leitura do robô (cliente 0 = ainda não escolhido) */
 export function efetivoDaGuia(a: GuiaDoLote, grupo: RegimeDoRelatorio) {
@@ -32,6 +50,7 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
   const tarefas = useRepo();
   const cadastros = useTodosOsCadastros();
   const gmail = useGmailDoEntregas();
+  const drive = useDriveDoEntregas();
   const { toast, modal } = useRetorno();
   const doGrupo = t.grupoDoControle(grupo);
   const todos = repo.lotes();
@@ -127,6 +146,28 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
       const c = colunaQueVale(a, grupo);
       const v = valorDaGuia(a.leitura?.valor);
       return { coluna: c ? rotuloDaColuna(c) : '', valor: v != null ? t.valorDoControle(v.toFixed(2).replace('.', ',')) : '' };
+    },
+    /** "Para enviar": a guia pelos pedaços do lote, montada aqui (nada novo é gravado) */
+    abrirDoLote(a: GuiaDoLote) {
+      if (!atual) return;
+      const lote = atual.id;
+      abrirNaAba(a.leitura?.nomeFinal || a.nome, async () => {
+        const b = await repo.bytesDaGuia(lote, a.id);
+        const url = URL.createObjectURL(new Blob([b as BlobPart], { type: 'application/pdf' }));
+        // a aba já carregou o PDF depois de um tempo: o endereço pode sair da memória
+        setTimeout(() => URL.revokeObjectURL(url), 60 * 1000);
+        return url;
+      }, m => toast('Não consegui abrir a guia: ' + m));
+    },
+    /** "Enviados": a guia gravada no Drive do cliente, pelo robô (uma cópia de 30 minutos; o PDF não fica no banco) */
+    abrirEnviada(g: { nome: string; id: string }) {
+      abrirNaAba(g.nome, () => new Promise<string>((resolver, recusar) => {
+        const prazo = setTimeout(() => { parar(); recusar(new Error('o robô não respondeu a tempo')); }, PRAZO_DO_DRIVE_MS);
+        const parar = drive.pedir({ modo: 'abrir', fileId: g.id, nome: g.nome }, x => {
+          if (x.status === 'pronto' && x.url) { clearTimeout(prazo); parar(); resolver(x.url); }
+          else if (x.status === 'erro') { clearTimeout(prazo); parar(); recusar(new Error(x.erro || 'erro do robô')); }
+        });
+      }), m => toast('Não consegui abrir a guia: ' + m));
     },
     /** quantos clientes vão no disparo (os ainda não enviados) */
     paraDisparar: grupos.filter(g => g.resultado?.status !== 'enviado').length,
