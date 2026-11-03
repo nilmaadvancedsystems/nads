@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { linhasDoProtocolo } from './protocoloDeTributos';
-import { competenciaDaApuracao, grupoDoControle, htmlDoControle, linhaEmBranco, numeroDoControle, preencherComSugestao, situacaoDaLinha, somarMesesDaCompetencia, sugestoesDoEntregas, valorDoControle } from './controleDeTributos';
+import { colunaDaGuia, competenciaDaApuracao, grupoDoControle, htmlDoControle, linhaEmBranco, numeroDoControle, preencherComSugestao, situacaoDaLinha, somarMesesDaCompetencia, sugestoesDoEntregas, valorDoControle } from './controleDeTributos';
 
 const logo = { definicao: '<svg id="def"></svg>', uso: '<svg><use href="#x"/></svg>' };
 
@@ -24,6 +24,20 @@ describe('o controle de tributos do Fiscal (27/10/2026)', () => {
       { codigo: 9, itens: [{ tipo: 'IBS', valor: 12.3 }, { tipo: 'CBS', valor: 45.6 }], em: '2026-10-15T10:00:00Z', porEmail: false },
     ]);
     expect(s.get(9)?.valores).toMatchObject({ ibs: '12,30', cbs: '45,60' });
+  });
+
+  it('a coluna de cada guia lida no lote do Fiscal, conforme o grupo (03/11/2026)', () => {
+    expect(colunaDaGuia('sn', 'DAS', '')).toBe('das');
+    expect(colunaDaGuia('lp', 'DAS', '')).toBe('');
+    expect(['PIS', 'COFINS', 'IRPJ', 'CSLL'].map(t => colunaDaGuia('lp', 'DARF', t))).toEqual(['pis', 'cofins', 'irpj', 'csll']);
+    expect(colunaDaGuia('lp', 'DARF', 'IRRF')).toBe('');
+    expect(colunaDaGuia('sn', 'DARF', 'PIS')).toBe('');
+    expect(colunaDaGuia('lp', 'DAE', 'ICMS')).toBe('icms');
+    expect(colunaDaGuia('sn', 'DAE', 'ICMS')).toBe('');
+    expect(colunaDaGuia('lp', 'DAM', 'ISS')).toBe('iss');
+    expect(colunaDaGuia('lp', 'DAM', 'IPTU')).toBe('');
+    expect(colunaDaGuia('sn', 'DAS', '', true)).toBe('');
+    expect(colunaDaGuia('lp', 'FGTS', '')).toBe('');
   });
 
   it('a apuração de uma guia entregue é a do mês anterior ao da entrega (03/11/2026)', () => {

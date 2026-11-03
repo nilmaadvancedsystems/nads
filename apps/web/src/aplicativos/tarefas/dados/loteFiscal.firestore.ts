@@ -1,0 +1,121 @@
+// O lote de guias do Fiscal › Relatório › Enviar guias no banco do Entregas (03/11/2026), nas regras de lá (só o Fiscal e o
+// admin), no desenho do lote do DP (loteDp.firestore.ts), numa coleção própria:
+//   - lotesFiscal/{lote}: { status: 'enviando' → 'pendente' (a tela) → lendo → lido (o robô) → 'disparar' (a tela, com
+//     disparadoPor/disparadoPorUid) → disparando → disparado (o robô), grupo: 'sn'|'lp', criadoEm, criadoPor, criadoPorUid,
+//     total, lidos, resultados.<código>_<AAAA-MM> (com valores por coluna, preenchidos e erroNoRelatorio) };
+//   - lotesFiscal/{lote}/arquivos/{k}: { nome, tamanho, partes, status }, com os pedaços em .../partes/{n} { dados: Bytes };
+//     o robô grava a leitura (com a coluna do Relatório) ou o erro; a tela, a escolha (com a coluna) e o fora;
+//   - config/envioFiscal: o modelo do e-mail { assunto, texto, atualizadoEm, atualizadoPor } (o Fiscal e o admin gravam).
+import { addDoc as addDocBruto, Bytes, collection, doc, onSnapshot, query, setDoc as setDocBruto, updateDoc as updateDocBruto, where } from 'firebase/firestore';
+import { entregas as e } from '@nads/core';
+import { guardar, guardarPedido } from '../../../comum/modoDesenvolvedor';
+import { bancoDoEntregas } from './entregas.firestore';
+import type { ModeloDoEnvio } from './enviosDp';
+import { arquivoDoBanco, loteDoBanco } from './loteDp.firestore';
+import type { GuiaDoLote, LoteFiscal, RepoLoteFiscal } from './loteFiscal';
+
+// a trava do modo desenvolvedor (comum/modoDesenvolvedor.ts): com o modo ligado, só ver — nada é gravado
+const addDoc = guardarPedido(addDocBruto) as typeof addDocBruto;
+const setDoc = guardar(setDocBruto) as typeof setDocBruto;
+const updateDoc = guardar(updateDocBruto) as typeof updateDocBruto;
+const texto = (v: unknown) => (v == null ? '' : String(v));
+const textos = (v: unknown) => (Array.isArray(v) ? v.map(texto) : []);
+
+function guiaDoBanco(id: string, d: Record<string, unknown>): GuiaDoLote {
+  const a = arquivoDoBanco(id, d);
+  const l = (d.leitura || {}) as Record<string, unknown>;
+  const es = (d.escolha || {}) as Record<string, unknown>;
+  return {
+    ...a,
+    leitura: a.leitura ? { ...a.leitura, coluna: texto(l.coluna) } : null,
+    escolha: a.escolha ? { ...a.escolha, ...(typeof es.coluna === 'string' ? { coluna: es.coluna } : {}) } : null,
+  };
+}
+function loteFiscalDoBanco(id: string, d: Record<string, unknown>): LoteFiscal {
+  const l = loteDoBanco(id, d);
+  const r = (d.resultados || {}) as Record<string, Record<string, unknown>>;
+  return {
+    ...l, grupo: d.grupo === 'lp' ? 'lp' : 'sn',
+    resultados: l.resultados.map(x => ({ ...x, preenchidos: textos(r[x.chave]?.preenchidos), erroNoRelatorio: texto(r[x.chave]?.erroNoRelatorio) })),
+  };
+}
+
+export function criarLoteFiscalFirestore(quem: () => e.Quem | null): RepoLoteFiscal {
+  const db = bancoDoEntregas();
+  let ver = 0;
+  const ouvintes = new Set<() => void>();
+  const mudou = () => { ver++; for (const f of ouvintes) f(); };
+  let lotes: { carregados: boolean; lista: LoteFiscal[] } = { carregados: false, lista: [] };
+  let ouvindo = '';
+  let modelo: { carregado: boolean } & ModeloDoEnvio = { carregado: false, assunto: '', texto: '' };
+  let ouvindoModelo = false;
+
+  return {
+    exemplos: false,
+    lotes() {
+      const q = quem();
+      if (q && ouvindo !== q.uid) {
+        ouvindo = q.uid;
+        // só igualdade (sem orderBy, que pediria um índice): a ordem é feita aqui
+        onSnapshot(query(collection(db, 'lotesFiscal'), where('criadoPorUid', '==', q.uid)), s => {
+          lotes = { carregados: true, lista: s.docs.map(x => loteFiscalDoBanco(x.id, x.data())).sort((a, b) => b.criadoEm.localeCompare(a.criadoEm)) };
+          mudou();
+        }, () => { lotes = { carregados: true, lista: [] }; mudou(); });
+      }
+      return lotes;
+    },
+    arquivos(lote, chegou) {
+      return onSnapshot(collection(db, 'lotesFiscal', lote, 'arquivos'), s => {
+        chegou(s.docs.map(x => guiaDoBanco(x.id, x.data())).sort((a, b) => Number(a.id) - Number(b.id)));
+      }, () => chegou([]));
+    },
+    async subir(grupo, lista, andamento) {
+      const q = quem();
+      if (!q) throw new Error('Sem login.');
+      const ref = await addDoc(collection(db, 'lotesFiscal'), { status: 'enviando', grupo, criadoEm: new Date().toISOString(), criadoPor: q.nome, criadoPorUid: q.uid, total: lista.length });
+      for (let k = 0; k < lista.length; k++) {
+        const a = lista[k];
+        const partes = e.partesDoArquivo(a.bytes);
+        const arq = doc(ref, 'arquivos', String(k));
+        await setDoc(arq, { nome: e.nomeParaEnviar(a.nome), tamanho: a.bytes.length, partes: partes.length, status: 'enviando' });
+        for (let i = 0; i < partes.length; i++) await setDoc(doc(arq, 'partes', String(i)), { dados: Bytes.fromUint8Array(partes[i]) });
+        await updateDoc(arq, { status: 'pendente' });
+        andamento(k + 1, lista.length);
+      }
+      await updateDoc(ref, { status: 'pendente' });
+      return ref.id;
+    },
+    async escolher(lote, arquivo, escolha) {
+      // sem a coluna, o campo não vai (o Firestore não aceita undefined): vale a do leitor
+      await updateDoc(doc(db, 'lotesFiscal', lote, 'arquivos', arquivo), {
+        escolha: escolha ? { cliente: escolha.cliente, tipo: escolha.tipo, competencia: escolha.competencia, ...(typeof escolha.coluna === 'string' ? { coluna: escolha.coluna } : {}) } : null,
+      });
+    },
+    async tirar(lote, arquivo, fora) {
+      await updateDoc(doc(db, 'lotesFiscal', lote, 'arquivos', arquivo), { fora });
+    },
+    async disparar(lote) {
+      const q = quem();
+      if (!q) throw new Error('Sem login.');
+      await updateDoc(doc(db, 'lotesFiscal', lote), { status: 'disparar', disparadoPor: q.nome, disparadoPorUid: q.uid, pedidoEm: new Date().toISOString() });
+    },
+    modelo() {
+      if (!ouvindoModelo) {
+        ouvindoModelo = true;
+        onSnapshot(doc(db, 'config', 'envioFiscal'), s => {
+          const d = s.data() || {};
+          modelo = { carregado: true, assunto: texto(d.assunto), texto: texto(d.texto) };
+          mudou();
+        }, () => { modelo = { carregado: true, assunto: '', texto: '' }; mudou(); });
+      }
+      return modelo;
+    },
+    async gravarModelo(m) {
+      const q = quem();
+      if (!q) throw new Error('Sem login.');
+      await setDoc(doc(db, 'config', 'envioFiscal'), { assunto: m.assunto.trim().slice(0, 200), texto: m.texto.trim().slice(0, 5000), atualizadoEm: new Date().toISOString(), atualizadoPor: q.nome });
+    },
+    assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
+    versao: () => ver,
+  };
+}

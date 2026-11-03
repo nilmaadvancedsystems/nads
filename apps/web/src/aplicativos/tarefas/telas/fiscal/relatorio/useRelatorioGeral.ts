@@ -26,7 +26,7 @@ const PARTES: readonly { valor: ParteDoRelatorio; rotulo: string }[] = [
   { valor: 'guias', rotulo: 'Guias' }, { valor: 'conferencias', rotulo: 'Conferências' }, { valor: 'entrega', rotulo: 'Entrega' },
 ];
 // os nomes curtos no título da coluna (o nome inteiro fica na dica), como o DP
-const CURTO: Record<string, string> = {
+export const CURTO: Record<string, string> = {
   das: 'DAS', 'icms-ant': 'Antec.', 'icms-arroz': 'Arroz', 'icms-dif': 'Dif. uso', 'icms-dif-ativo': 'Dif. ativo', 'st-ent': 'ST ent.', 'st-sai': 'ST saí.',
   pis: 'PIS', cofins: 'COFINS', irpj: 'IRPJ', csll: 'CSLL', icms: 'ICMS', iss: 'ISS', ibs: 'IBS', cbs: 'CBS', parc: 'Parc.',
 };

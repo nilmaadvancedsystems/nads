@@ -18,7 +18,7 @@ const texto = (v: unknown) => (v == null ? '' : String(v));
 const textos = (v: unknown) => (Array.isArray(v) ? v.map(texto) : []);
 const numero = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 
-function leituraDoBanco(v: unknown): LeituraDoArquivo | null {
+export function leituraDoBanco(v: unknown): LeituraDoArquivo | null {
   if (!v || typeof v !== 'object') return null;
   const d = v as Record<string, unknown>;
   return {
@@ -27,7 +27,7 @@ function leituraDoBanco(v: unknown): LeituraDoArquivo | null {
     nomeFinal: texto(d.nomeFinal), destino: textos(d.destino), semTexto: d.semTexto === true,
   };
 }
-function arquivoDoBanco(id: string, d: Record<string, unknown>): ArquivoDoLote {
+export function arquivoDoBanco(id: string, d: Record<string, unknown>): ArquivoDoLote {
   const es = d.escolha as Record<string, unknown> | null | undefined;
   return {
     id, nome: texto(d.nome), tamanho: Number(d.tamanho) || 0, status: texto(d.status), erro: texto(d.erro), leitura: leituraDoBanco(d.leitura),
@@ -35,7 +35,7 @@ function arquivoDoBanco(id: string, d: Record<string, unknown>): ArquivoDoLote {
     fora: d.fora === true,
   };
 }
-function loteDoBanco(id: string, d: Record<string, unknown>): LoteDp {
+export function loteDoBanco(id: string, d: Record<string, unknown>): LoteDp {
   const r = (d.resultados || {}) as Record<string, Record<string, unknown>>;
   const resultados: ResultadoDoLote[] = Object.entries(r).map(([chave, x]) => ({
     chave, codigo: Number(x.codigo) || 0, competencia: texto(x.competencia), status: texto(x.status), erro: texto(x.erro), para: textos(x.para),

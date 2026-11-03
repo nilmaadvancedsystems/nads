@@ -1041,6 +1041,13 @@ async function iniciar() {
         getDrive: () => require('./drive-indice').getDrive(),
       });
     } catch (err) { log('lote do DP desligado:', err.message); }
+    // e o do Fiscal (03/11/2026: o "Enviar guias" do Relatório): as guias lidas, um e-mail por cliente e o valor no Relatório
+    try {
+      require('./lote-fiscal').iniciarLoteFiscal(db, {
+        log, caixa: CAIXA, enviar: dados => enviar(dados), config: () => configDaCobranca(),
+        getDrive: () => require('./drive-indice').getDrive(),
+      });
+    } catch (err) { log('lote do Fiscal desligado:', err.message); }
   }
   // Mapa da pasta do ano no Drive (explorador do Pendências, status pela
   // pasta) e "abrir arquivo" pelo app. Só onde o robô fala com o Drive pela

@@ -60,12 +60,14 @@ const MODELO_PADRAO = {
   assunto: 'Documentos do Departamento Pessoal · {competencia} · {cliente}',
   texto: 'Olá, {cliente}!\n\nSeguem em anexo os documentos do Departamento Pessoal referentes a {mes}.\n\nQualquer dúvida, é só responder este e-mail.\n\nAtenciosamente,\nNilma Contabilidade',
 };
-function mensagemDoEnvio(cfg, campos) {
+// padrao: o modelo que vale quando o do banco está vazio (o do DP; o lote do Fiscal passa o dele, 03/11/2026)
+function mensagemDoEnvio(cfg, campos, padrao) {
+  const p = padrao || MODELO_PADRAO;
   const t = x => (typeof x === 'string' ? x.trim() : '');
   const encher = modelo => modelo.replace(/\{(\w+)\}/g, (tudo, nome) => (Object.prototype.hasOwnProperty.call(campos, nome) ? campos[nome] : tudo));
   return {
-    assunto: encher(t(cfg && cfg.assunto) || MODELO_PADRAO.assunto).replace(/\s+/g, ' ').trim().slice(0, 200),
-    texto: encher(t(cfg && cfg.texto) || MODELO_PADRAO.texto).replace(/\r\n?/g, '\n').trim().slice(0, 5000),
+    assunto: encher(t(cfg && cfg.assunto) || p.assunto).replace(/\s+/g, ' ').trim().slice(0, 200),
+    texto: encher(t(cfg && cfg.texto) || p.texto).replace(/\r\n?/g, '\n').trim().slice(0, 5000),
   };
 }
 
@@ -213,13 +215,15 @@ async function destinatarios(db, codigo, ativos) {
 }
 
 // O e-mail do DP no modelo (config/envioDp) com os anexos já em memória, pela caixa do robô. ctx: { enviar, assinatura,
-// caixa }. Conta no freio por hora. Também o lote do DP (lote-dp.js).
+// caixa, modelo }. Conta no freio por hora. Também o lote do DP (lote-dp.js) e o do Fiscal (lote-fiscal.js, 03/11/2026),
+// que passa ctx.modelo { config: 'envioFiscal', padrao, chip, rodape, rotulo }; sem ele, o do DP como sempre.
 async function mandarEmailDoDp(db, { comp, nome, para, anexos }, ctx) {
-  if (!dentroDoLimite()) throw new Error('limite de ' + MAX_ENVIOS_POR_HORA + ' envios do DP por hora atingido; tente mais tarde');
+  const m = ctx.modelo || {};
+  if (!dentroDoLimite()) throw new Error('limite de ' + MAX_ENVIOS_POR_HORA + ' envios ' + (m.rotulo || 'do DP') + ' por hora atingido; tente mais tarde');
   const competencia = comp.slice(5) + '/' + comp.slice(0, 4);
-  const modelo = (await db.collection('config').doc('envioDp').get()).data() || {};
-  const { assunto, texto } = mensagemDoEnvio(modelo, { cliente: nome, competencia, mes: mesPorExtenso(comp) });
-  const visual = require('./email-html').htmlDoEnvioDp({ assunto, texto, cliente: nome, competencia, anexos: anexos.map(a => ({ nome: a.nome, tamanho: a.buffer.length })), assinatura: ctx.assinatura, caixa: ctx.caixa });
+  const modelo = (await db.collection('config').doc(m.config || 'envioDp').get()).data() || {};
+  const { assunto, texto } = mensagemDoEnvio(modelo, { cliente: nome, competencia, mes: mesPorExtenso(comp) }, m.padrao);
+  const visual = require('./email-html').htmlDoEnvioDp({ assunto, texto, cliente: nome, competencia, anexos: anexos.map(a => ({ nome: a.nome, tamanho: a.buffer.length })), assinatura: ctx.assinatura, caixa: ctx.caixa, chip: m.chip, rodape: m.rodape });
   const gmailId = await ctx.enviar({ para: para.join(', '), assunto, corpo: texto + '\n\n' + anexos.map(a => '- ' + a.nome).join('\n'), html: visual.html, imagens: visual.imagens, anexos });
   enviosRecentes.push(Date.now());
   return { gmailId, assunto };

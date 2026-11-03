@@ -148,6 +148,25 @@ export function preencherComSugestao(l: LinhaDoControle, s: { valores: Record<st
   return { ...l, valores, data: l.data || s.data, entregue: l.entregue || (s.email ? 'email' : '') };
 }
 
+/**
+ * A coluna do controle de uma guia lida pelo robô (03/11/2026: "ao enviar o arquivo ele lê e ja coloca os valores na
+ * tabela"): o DAS no Simples; no Presumido, a DARF pelo tributo do código da receita (PIS, COFINS, IRPJ, CSLL), o DAE do
+ * ICMS e o DAM do ISS. O que não tem coluna clara no grupo fica sem coluna ('': vai no e-mail e não preenche valor): a DARF
+ * do IRRF ou do INSS, o ICMS no Simples (pode ser antecipação, ST ou diferencial), o DAS no Presumido e o parcelamento (o
+ * período da parcela não é o da apuração). O mesmo do robô (robo/lote-fiscal.js, colunaDaGuia).
+ */
+export function colunaDaGuia(grupo: GrupoDoControleId, tipo: string, tributo: string, parcelamento = false): string {
+  if (parcelamento) return '';
+  const t = (tributo || '').toUpperCase();
+  const coluna = tipo === 'DAS' ? 'das'
+    : tipo === 'DARF' && ['PIS', 'COFINS', 'IRPJ', 'CSLL'].includes(t) ? t.toLowerCase()
+    : tipo === 'DAE' && t === 'ICMS' ? 'icms'
+    : tipo === 'DAM' && t === 'ISS' ? 'iss' : '';
+  return coluna && grupoDoControle(grupo).colunas.some(c => c.id === coluna) ? coluna : '';
+}
+/** O tipo de guia de cada coluna (a pasta do Fiscal onde a guia escolhida à mão vai no Drive); fora daqui, sem tipo de guia */
+export const TIPO_DA_COLUNA: Readonly<Record<string, string>> = { das: 'DAS', pis: 'DARF', cofins: 'DARF', irpj: 'DARF', csll: 'DARF', icms: 'DAE', iss: 'DAM' };
+
 /** Em que pé a linha está: entregue (com a entrega escolhida), começada (algo escrito) ou em branco */
 export function situacaoDaLinha(l: LinhaDoControle | undefined): 'entregue' | 'comecada' | 'branco' {
   if (!l) return 'branco';

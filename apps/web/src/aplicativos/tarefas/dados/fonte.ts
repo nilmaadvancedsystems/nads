@@ -19,6 +19,8 @@ import { criarEnviosDpMemoria, type RepoEnviosDp } from './enviosDp';
 import { criarEnviosDpFirestore } from './enviosDp.firestore';
 import { criarLoteDpMemoria, type RepoLoteDp } from './loteDp';
 import { criarLoteDpFirestore } from './loteDp.firestore';
+import { criarLoteFiscalMemoria, type RepoLoteFiscal } from './loteFiscal';
+import { criarLoteFiscalFirestore } from './loteFiscal.firestore';
 import { criarCaixaMemoria, type RepoCaixa } from './caixa';
 import { criarCaixaFirestore } from './caixa.firestore';
 import { criarHonorariosMemoria, type RepoHonorarios } from './honorarios';
@@ -386,6 +388,17 @@ let loteDp: RepoLoteDp | null = null;
 export function repoDoLoteDp(): RepoLoteDp {
   if (!loteDp) loteDp = noBanco ? criarLoteDpFirestore(quemPede) : criarLoteDpMemoria();
   return loteDp;
+}
+
+let loteFiscal: RepoLoteFiscal | null = null;
+
+/**
+ * O lote de guias do Fiscal › Relatório › Enviar guias (03/11/2026): as guias que a tela sobe, lidas pelo robô, revisadas e
+ * disparadas por cliente; o robô preenche o Relatório. Nos exemplos, o disparo preenche o controle de tributos da memória.
+ */
+export function repoDoLoteFiscal(): RepoLoteFiscal {
+  if (!loteFiscal) loteFiscal = noBanco ? criarLoteFiscalFirestore(quemPede) : criarLoteFiscalMemoria(repoDoControleTributos);
+  return loteFiscal;
 }
 
 let notasFiscais: RepoNfse | null = null;

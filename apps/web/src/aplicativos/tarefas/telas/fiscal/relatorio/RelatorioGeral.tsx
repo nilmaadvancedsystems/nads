@@ -3,9 +3,12 @@
 // inteiro "parecendo parte do site", como o Gmail): uma barra só em cima (a competência e os filtros em menus, à direita a
 // busca, o Excel e a impressora), e a tabela num .card com o andamento e o "Preencher com o Entregas" no topo; linhas
 // baixas, o cabeçalho e o total parados ao rolar, as conferências em bolinhas pequenas e a entrega com o logo. Os dados e
-// as ações são os mesmos do useRelatorioGeral.
+// as ações são os mesmos do useRelatorioGeral. O "Enviar guias" (03/11/2026: "A parte de gmail tem que funcionar assim como
+// o envios do dp"): para quem grava, abre a janela do lote de guias (JanelaDasGuias); o robô manda e preenche a tabela.
 import { baixarBytes, BotaoIcone, Esqueleto, Icone, LogoExcel, MenuSuspenso, useCarregando } from '@nads/ui';
+import { useState } from 'react';
 import { MenuDeFiltro } from '../../dp/MenuDeFiltro';
+import { JanelaDasGuias } from './JanelaDasGuias';
 import { Entrega, Valor } from './PartesDoRelatorio';
 import { dataBr, useRelatorioGeral, type RegimeDoRelatorio } from './useRelatorioGeral';
 
@@ -23,6 +26,7 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
   const f = vm.filtros;
   const g = vm.grupo;
   useCarregando(vm.carregando);
+  const [guiasAbertas, setGuiasAbertas] = useState(false);
   const feitas = vm.achadas - vm.faltam;
   return (
     <section className="fr">
@@ -37,6 +41,11 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
           itens={f.porPaginaOpcoes.map(o => ({ rotulo: o.rotulo, marcado: o.valor === f.porPagina, onClick: () => f.setPorPagina(o.valor) }))} />
         {f.algum && <button type="button" className="btn btn-ghost dp-limpar" onClick={f.limpar}><Icone nome="x" />Limpar filtros</button>}
         <span className="tarefas-barra-espaco" />
+        {vm.podeGravar && (
+          <button type="button" className="btn btn-outline" onClick={() => setGuiasAbertas(true)} title="Subir as guias do mês: o robô lê, manda um e-mail por cliente e preenche a tabela">
+            <Icone nome="envelope" width={16} height={16} />Enviar guias
+          </button>
+        )}
         <label className="busca-curta fr-busca">
           <Icone nome="search" />
           <input type="text" value={f.busca} onChange={e => f.setBusca(e.target.value)} placeholder="Buscar cliente" aria-label="Buscar cliente (nome ou código)"
@@ -139,6 +148,7 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
           )}
         </section>
       )}
+      {guiasAbertas && <JanelaDasGuias regime={regime} competencia={vm.competencia} fechar={() => setGuiasAbertas(false)} />}
     </section>
   );
 }
