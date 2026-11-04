@@ -7,6 +7,7 @@ import { CertificadoA1 } from './CertificadoA1';
 import { CofreFechado } from './CofreFechado';
 import type { VmCofre } from './useCofre';
 import { useSegredos } from './useSegredos';
+import { regimeQueVale, temCodigoDoSimples } from './useImportarCodigosDoSimples';
 
 export function Senha({ valor, onMudar, rotulo }: { valor: string; onMudar: (v: string) => void; rotulo: string }) {
   const [ver, setVer] = useState(false);
@@ -52,7 +53,8 @@ export function SegredosDaEmpresa({ vm: cofre, empresa, codigo, parte }: { vm: V
         </Cartao>
       )}
       {/* o código de acesso do Simples Nacional (Heverton, 20/10/2026): no cofre, embaralhado como a senha gov.br */}
-      {(parte === 'simples' || parte === 'tudo') && (
+      {/* na aba Senhas (tudo), o do Simples só na empresa do Simples (04/11/2026) */}
+      {(parte === 'simples' || (parte === 'tudo' && temCodigoDoSimples(regimeQueVale(codigo)))) && (
         <Cartao titulo="Simples Nacional">
           <Linha rotulo="Código de acesso"><Senha valor={vm.simples.codigo} onMudar={v => vm.setSimples({ ...vm.simples, codigo: v })} rotulo="Código de acesso do Simples Nacional" /></Linha>
           <Linha rotulo="CPF do responsável">

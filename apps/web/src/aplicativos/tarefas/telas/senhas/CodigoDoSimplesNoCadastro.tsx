@@ -10,12 +10,13 @@ import { useCofre } from './useCofre';
 
 const cpfBr = (d: string) => d.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
 
-export function CodigoDoSimplesNoCadastro({ rota }: { rota: string }) {
+export function CodigoDoSimplesNoCadastro({ rota, simples: doSimples }: { rota: string; simples: boolean }) {
   const cofre = useCofre();
   const { toast } = useRetorno();
   const e = empresaDaRota(rota);
   const nome = e?.nome || '';
-  const aberto = cofre.estado === 'aberto';
+  // fora do Simples, nada (04/11/2026): nem lê o cofre
+  const aberto = cofre.estado === 'aberto' && doSimples;
   // a versão do documento da empresa no cofre: lê de novo quando alguém muda o código
   const doc = cofre.itens.get(nome ? formatos.slug(nome) : '');
   const versao = doc ? doc.versao + '|' + doc.atualizadoEm : '';
