@@ -86,4 +86,15 @@ export const PECAS_DAS_TELAS_NOVAS: Peca[] = [
             <td><Entrega valor="" pode rotulo="Entregue" aoMudar={() => undefined} /></td></tr>
         </tbody>
       </table></div>) },
+  // a tabela da Auditoria de itens (04/11/2026: "eu queria que abrisse no proprio app uma tabela, não exportar direto pra excel")
+  { id: 'selo-auditoria', tipo: 'selos', nome: 'Selo da auditoria (SIM/NÃO e diagnóstico)', descricao: 'As cores do Excel da auditoria na tela: verde (ICMS-ST SIM, Ambos), azul (Monofásico SIM, Somente Monofásico), amarelo (Somente ST, Alíquota Zero) e cinza (NÃO, Não); fundo suave do tema, negrito, sem borda', classes: ['badge aud-selo aud-verde', 'badge aud-selo aud-azul', 'badge aud-selo aud-amarelo', 'badge aud-selo aud-cinza'], telas: ['t-fiscal-auditoria'],
+    demo: () => <><span className="badge aud-selo aud-verde">SIM</span><span className="badge aud-selo aud-azul">Somente Monofásico</span><span className="badge aud-selo aud-amarelo">Alíquota Zero</span><span className="badge aud-selo aud-cinza">NÃO</span></> },
+  { id: 'tabela-auditoria', tipo: 'tabelas', nome: 'Tabela da auditoria (a planilha na tela)', descricao: 'A planilha subida, inteira: o NCM e a descrição parados na frente quando a tabela rola para o lado, as outras colunas como vieram e, depois de uma linha mais forte, as colunas da auditoria com o selo; o embasamento numa linha só em letra menor, cortado com reticências (inteiro ao passar o mouse)', classes: ['table-compact aud-tabela', 'aud-fixa aud-fixa-1', 'aud-fixa aud-fixa-2', 'aud-primeira', 'aud-longa'], telas: ['t-fiscal-auditoria'], largo: true,
+    demo: () => (<div className="fxr-rola" style={{ maxWidth: '100%' }}><table className="table-compact aud-tabela">
+      <thead><tr><th className="aud-fixa aud-fixa-1">NCM</th><th className="aud-fixa aud-fixa-2">Descrição</th><th>CFOP</th><th className="aud-primeira">Monofásico (PIS/COFINS)</th><th>ICMS-ST (MG)</th><th>Diagnóstico Combinado</th><th>ICMS-ST Embasamento (RICMS/MG)</th></tr></thead>
+      <tbody>
+        <tr><td className="aud-fixa aud-fixa-1 num">22021000</td><td className="aud-fixa aud-fixa-2">REFRIGERANTE COLA 2L</td><td>5405</td><td className="aud-primeira"><span className="badge aud-selo aud-azul">SIM</span></td><td><span className="badge aud-selo aud-verde">SIM</span></td><td><span className="badge aud-selo aud-verde">Ambos</span></td><td className="aud-longa">RICMS/MG (Decreto nº 48.589/2023), Anexo VII — mercadoria com ICMS retido ou antecipado (CFOP 5405 / CSOSN 500)</td></tr>
+        <tr><td className="aud-fixa aud-fixa-1 num">19053100</td><td className="aud-fixa aud-fixa-2">BISCOITO RECHEADO</td><td>5102</td><td className="aud-primeira"><span className="badge aud-selo aud-cinza">NÃO</span></td><td><span className="badge aud-selo aud-cinza">NÃO</span></td><td><span className="badge aud-selo aud-cinza">Não</span></td><td className="aud-longa">RICMS/MG (Decreto nº 48.589/2023) — operação própria, sem substituição tributária</td></tr>
+      </tbody>
+    </table></div>) },
 ];

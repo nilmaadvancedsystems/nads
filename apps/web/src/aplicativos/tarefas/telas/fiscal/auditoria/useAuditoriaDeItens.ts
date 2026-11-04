@@ -1,6 +1,8 @@
 // Fiscal › Auditoria de itens (04/11/2026: o prompt "Gestor Fiscal e Auditor Tributário" adaptado como ferramenta do
 // Fiscal): sobe a planilha de itens/produtos (xlsx, xls, ods ou csv), audita linha a linha pelo core (PIS/COFINS e ICMS-ST
-// de MG) e baixa a planilha auditada. Tudo no navegador: o arquivo não sai do computador.
+// de MG) e abre a tabela auditada na própria tela (04/11/2026: "eu queria que abrisse no proprio app uma tabela, não
+// exportar direto pra excel"): todas as colunas da planilha, com o NCM e a descrição parados na frente, e as 8 da
+// auditoria coloridas; o Excel fica como opção. Tudo no navegador: o arquivo não sai do computador.
 import { tarefas as t } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
 import { useMemo, useState } from 'react';
@@ -8,7 +10,7 @@ import { useMemo, useState } from 'react';
 const a = t.auditoriaItens;
 export type Filtro = '' | t.auditoriaItens.Diagnostico;
 export const DIAGNOSTICOS: readonly t.auditoriaItens.Diagnostico[] = ['Ambos', 'Somente ST', 'Somente Monofásico', 'Não'];
-const LIMITE = 300;
+const LIMITE = 500;
 
 const normal = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
@@ -41,11 +43,21 @@ export function useAuditoriaDeItens() {
     const b = normal(busca.trim());
     const bDig = busca.replace(/\D/g, '');
     return comNcm.filter(l => (!filtro || l.auditoria!.diagnostico === filtro)
-      && (!b || normal(l.item.descricao).includes(b) || (bDig.length > 0 && a.ncmLimpo(l.item.ncm).startsWith(bDig))));
+      && (!b || (bDig.length > 0 && a.ncmLimpo(l.item.ncm).startsWith(bDig)) || l.valores.some(v => v != null && !(v instanceof Date) && normal(String(v)).includes(b))));
   }, [comNcm, filtro, busca]);
 
   const c = planilha?.colunas;
+  // a ordem das colunas na tela: o NCM e a descrição na frente (ficam parados), depois as outras como vieram
+  const ordem = useMemo(() => {
+    if (!planilha) return [];
+    const k = planilha.colunas;
+    const frente = [k.ncm, ...(k.descricao >= 0 ? [k.descricao] : [])];
+    return [...frente, ...planilha.cabecalho.map((_, i) => i).filter(i => !frente.includes(i))];
+  }, [planilha]);
   return {
+    /** os índices das colunas originais, na ordem da tela; as 2 primeiras (NCM e descrição) ficam paradas */
+    ordem,
+    paradas: c && c.descricao >= 0 ? 2 : 1,
     arquivo, escolher, erro, lendo,
     planilha,
     /** as colunas que vieram, além do NCM */

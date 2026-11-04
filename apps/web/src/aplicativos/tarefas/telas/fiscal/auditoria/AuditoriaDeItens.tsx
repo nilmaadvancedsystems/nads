@@ -1,11 +1,36 @@
 // Fiscal › Auditoria de itens (04/11/2026: o prompt "Gestor Fiscal e Auditor Tributário" adaptado como ferramenta do
-// Fiscal). De cima para baixo: na barra, a planilha (xlsx, xls, ods ou csv) e "Baixar auditada"; os quatro números do
-// diagnóstico combinado (Ambos, Somente ST, Somente Monofásico, Não), que filtram; e a tabela dos itens com o
-// PIS/COFINS e o ICMS-ST de MG de cada um (o embasamento no título da célula). Só as peças do catálogo (Campo de arquivo,
-// Botão, os números e o cartão do Fiscal, a busca curta, a Tabela padrão, o rótulo, Dica, Alerta, Vazio, Esqueleto).
+// Fiscal). De cima para baixo: na barra, a planilha (xlsx, xls, ods ou csv) e "Exportar Excel" (opcional); os quatro
+// números do diagnóstico combinado (Ambos, Somente ST, Somente Monofásico, Não), que filtram; e a tabela auditada na
+// própria tela (04/11/2026: "eu queria que abrisse no proprio app uma tabela, não exportar direto pra excel"): todas as
+// colunas da planilha, o NCM e a descrição parados na frente, e as 8 colunas da auditoria com os selos nas cores do
+// prompt (verde, azul, amarelo, cinza). Só as peças do catálogo (Campo de arquivo, Botão, os números e o cartão do Fiscal,
+// a busca curta, a Tabela da auditoria, o Selo da auditoria, Dica, Alerta, Vazio, Esqueleto).
 import { tarefas as t } from '@nads/core';
 import { Alerta, CampoArquivo, Dica, Esqueleto, Icone, useCarregando, Vazio, type NomeIcone } from '@nads/ui';
 import { DIAGNOSTICOS, useAuditoriaDeItens } from './useAuditoriaDeItens';
+
+type Valor = t.auditoriaItens.Valor;
+const COLUNAS = t.auditoriaItens.COLUNAS_DA_AUDITORIA;
+/** as colunas de texto longo da auditoria (o embasamento e o segmento): uma linha só, inteiras no título */
+const LONGAS = new Set([5, 6, 7]);
+
+/** o valor da planilha como aparece na tela: a data em dd/mm/aaaa, o número no jeito brasileiro */
+function mostrar(v: Valor): string {
+  if (v == null) return '';
+  if (v instanceof Date) return v.toLocaleDateString('pt-BR');
+  if (typeof v === 'number') return Number.isInteger(v) ? String(v) : v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+  if (typeof v === 'boolean') return v ? 'Sim' : 'Não';
+  return String(v);
+}
+
+/** a cor do selo de uma coluna da auditoria (k = 0…7), as mesmas do Excel exportado; null = texto simples */
+function corDoSelo(k: number, v: string): 'verde' | 'azul' | 'amarelo' | 'cinza' | null {
+  if (k === 0) return v === 'SIM' ? 'azul' : v === 'NÃO' ? 'cinza' : null;
+  if (k === 1) return v === 'SIM' ? 'verde' : v === 'NÃO' ? 'cinza' : null;
+  if (k === 2) return v === 'Ambos' ? 'verde' : v === 'Somente Monofásico' ? 'azul' : v === 'Somente ST' ? 'amarelo' : v === 'Não' ? 'cinza' : null;
+  if (k === 3) return v === 'Alíquota Zero' ? 'amarelo' : null;
+  return null;
+}
 
 type Diagnostico = t.auditoriaItens.Diagnostico;
 
@@ -17,9 +42,8 @@ const DICA: Record<Diagnostico, string> = {
   Não: 'Nem monofásico nem ICMS-ST',
 };
 
-function SimNao({ sim }: { sim: boolean }) {
-  return <span className={'badge ' + (sim ? 'badge-ok' : 'badge-neutral')}>{sim ? 'SIM' : 'NÃO'}</span>;
-}
+/** as colunas paradas na frente: o NCM e, se veio, a descrição */
+const fixa = (n: number, paradas: number) => (n === 0 ? 'aud-fixa aud-fixa-1' : n === 1 && paradas === 2 ? 'aud-fixa aud-fixa-2' : undefined);
 
 export function AuditoriaDeItens() {
   const vm = useAuditoriaDeItens();
@@ -29,7 +53,7 @@ export function AuditoriaDeItens() {
       <div className="tarefas-barra-topo fxr-topo">
         <CampoArquivo id="auditoria-planilha" arquivo={vm.arquivo} aceitar=".xlsx,.xls,.ods,.csv" onEscolher={f => void vm.escolher(f)} />
         <span className="tarefas-barra-espaco" />
-        <button type="button" className="btn btn-primary" disabled={!vm.total} onClick={vm.baixar}><Icone nome="download" width={16} height={16} />Baixar auditada</button>
+        <button type="button" className="btn btn-outline" disabled={!vm.total} onClick={vm.baixar} title="A mesma tabela num .xlsx, com as cores"><Icone nome="download" width={16} height={16} />Exportar Excel</button>
       </div>
 
       {vm.erro ? (
@@ -68,40 +92,38 @@ export function AuditoriaDeItens() {
                 <span className="tarefas-barra-espaco" />
                 <label className="busca-curta">
                   <Icone nome="search" width={16} height={16} />
-                  <input type="text" placeholder="Descrição ou NCM" aria-label="Buscar o item" value={vm.busca} onChange={e => vm.setBusca(e.target.value)} />
+                  <input type="text" placeholder="Buscar na tabela" aria-label="Buscar o item" value={vm.busca} onChange={e => vm.setBusca(e.target.value)} />
                 </label>
               </div>
               {!vm.linhas.length ? <Vazio compacto titulo="Nenhum item com esse filtro" /> : (
                 <div className="fxr-rola">
-                  <table className="table-compact fxr-tabela">
+                  <table className="table-compact aud-tabela">
                     <thead>
                       <tr>
-                        <th>NCM</th><th>Descrição</th>{vm.temSituacao && <><th>CFOP</th><th>CST/CSOSN</th></>}
-                        <th>Monofásico</th><th>ICMS-ST</th><th>Diagnóstico</th><th>PIS/COFINS</th><th className="num">CST saída</th><th>Segmento ST</th>
+                        {vm.ordem.map((c, n) => <th key={'o' + c} className={fixa(n, vm.paradas)}>{vm.planilha!.cabecalho[c]}</th>)}
+                        {COLUNAS.map((h, k) => <th key={h} className={k === 0 ? 'aud-primeira' : undefined}>{h}</th>)}
                       </tr>
                     </thead>
                     <tbody>
-                      {vm.linhas.map((l, i) => {
-                        const a = l.auditoria!;
-                        return (
-                          <tr key={i}>
-                            <td className="num">{t.auditoriaItens.ncmLimpo(l.item.ncm)}</td>
-                            <td className="wrap">{l.item.descricao || <span className="fraco">—</span>}</td>
-                            {vm.temSituacao && <><td className="num">{l.item.cfop || <span className="fraco">—</span>}</td><td className="num">{l.item.csosn || l.item.cst || <span className="fraco">—</span>}</td></>}
-                            <td><SimNao sim={a.monofasico} /></td>
-                            <td title={a.baseSt}><SimNao sim={a.st} /></td>
-                            <td>{a.diagnostico}</td>
-                            <td title={a.basePisCofins}>{a.regime}</td>
-                            <td className="num">{a.cstPisCofins}</td>
-                            <td className="wrap" title={a.baseSt}>{a.segmentoSt}</td>
-                          </tr>
-                        );
-                      })}
+                      {vm.linhas.map((l, i) => (
+                        <tr key={i}>
+                          {vm.ordem.map((c, n) => {
+                            const v = l.valores[c];
+                            const classe = [fixa(n, vm.paradas), typeof v === 'number' || n === 0 ? 'num' : ''].filter(Boolean).join(' ');
+                            return <td key={'o' + c} className={classe || undefined} title={n === 1 && vm.paradas === 2 ? mostrar(v) : undefined}>{n === 0 ? t.auditoriaItens.ncmLimpo(l.item.ncm) : mostrar(v)}</td>;
+                          })}
+                          {t.auditoriaItens.valoresDaAuditoria(l.auditoria).map((v, k) => {
+                            const cor = corDoSelo(k, v);
+                            const classe = [k === 0 ? 'aud-primeira' : '', LONGAS.has(k) ? 'aud-longa' : k === 4 ? 'num' : ''].filter(Boolean).join(' ');
+                            return <td key={k} className={classe || undefined} title={LONGAS.has(k) ? v : undefined}>{cor ? <span className={'badge aud-selo aud-' + cor}>{v}</span> : v}</td>;
+                          })}
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
               )}
-              {vm.fora > 0 && <p className="hint">Mais {vm.fora} itens: use a busca ou os números. Na planilha auditada vão todos.</p>}
+              {vm.fora > 0 && <p className="hint">Mais {vm.fora} itens: use a busca ou os números. No Excel exportado vão todos.</p>}
             </section>
           </>
         )}
