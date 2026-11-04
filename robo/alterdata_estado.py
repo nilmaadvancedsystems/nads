@@ -2,6 +2,8 @@
 # quando o Contábil está aberto e logado aqui. Escreve uma linha: ESTADO: ok | login | fechado | dois | erro
 # e, quando não está ok, uma linha DIAG: com as janelas do Contábil que esta sessão enxerga (classe, visível, título),
 # para o log do robô dizer o porquê (no servidor, a sessão do RDP desconectado pode esconder as janelas).
+# Só win32gui (sem o pywinauto): EnumWindows, GetClassName, IsWindowVisible e GetWindowText não mandam mensagem para a
+# janela de outro processo, então não travam se o Contábil estiver ocupado (no servidor, o pywinauto passava de 30 s).
 import os
 import sys
 import time
@@ -9,18 +11,21 @@ import time
 sys.stdout.reconfigure(encoding='utf-8')
 t0 = time.time()
 try:
+    import win32gui
     import win32process
-    from pywinauto import Desktop
-    d = Desktop(backend='win32')
     janelas = []
-    for w in d.windows():
+
+    def junta(h, _):
         try:
-            cls = w.class_name()
+            cls = win32gui.GetClassName(h)
             if cls.startswith('Tfrm') or cls == 'TApplication':
-                janelas.append((cls, w.is_visible(), (w.window_text() or '')[:40], win32process.GetWindowThreadProcessId(w.handle)[1]))
+                janelas.append((cls, bool(win32gui.IsWindowVisible(h)), (win32gui.GetWindowText(h) or '')[:40], win32process.GetWindowThreadProcessId(h)[1]))
         except Exception:
             pass
-except Exception as e:  # o pywinauto não carregou ou a área de trabalho não deixa listar
+        return True
+
+    win32gui.EnumWindows(junta, None)
+except Exception as e:  # o pywin32 não carregou ou a área de trabalho não deixa listar
     print('ESTADO: erro', flush=True)
     print('DIAG: ' + type(e).__name__ + ': ' + str(e)[:200], flush=True)
     sys.exit(0)
