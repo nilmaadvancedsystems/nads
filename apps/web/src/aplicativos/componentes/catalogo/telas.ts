@@ -36,6 +36,7 @@ export const TELAS: Tela[] = [
   { id: 't-dp-legislacao', app: 'Tarefas', nome: 'DP › Legislação' },
   { id: 't-fiscal-sintegra', app: 'Tarefas', nome: 'Fiscal › SINTEGRA (leitor)' },
   { id: 't-fiscal-rateio', app: 'Tarefas', nome: 'Fiscal › Rateio de frete' },
+  { id: 't-fiscal-auditoria', app: 'Tarefas', nome: 'Fiscal › Auditoria de itens' },
   { id: 't-fiscal-faturamento', app: 'Tarefas', nome: 'Fiscal › Faturamento (e o detalhe do cliente)' },
   { id: 't-fiscal-simples', app: 'Tarefas', nome: 'Fiscal › Simples Nacional (calculadora)' },
   { id: 't-fiscal-controle', app: 'Tarefas', nome: 'Fiscal › Relatório Simples / Presumido (a Retificação)' },
