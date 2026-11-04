@@ -39,9 +39,12 @@ const ESTADOS = { ok: 'aberto e logado', login: 'na tela de login', fechado: 'fe
 /** O Contábil desta máquina: ok | login | fechado | dois | erro (sem mexer em nada). */
 function estadoDoContabil() {
   return new Promise(resolve => {
-    execFile(PYTHON, ['-I', ROTEIRO_ESTADO], { cwd: __dirname, windowsHide: true, timeout: 30 * 1000 }, (err, out) => {
+    execFile(PYTHON, ['-I', ROTEIRO_ESTADO], { cwd: __dirname, windowsHide: true, timeout: 30 * 1000 }, (err, out, errs) => {
       const m = String(out || '').match(/ESTADO:\s*(\w+)/);
-      resolve(m ? m[1] : 'erro');
+      const d = String(out || '').match(/DIAG:\s*(.+)/);
+      // o porquê, para o log: o DIAG do roteiro, ou o fim do erro do Python, ou o prazo
+      const porque = d ? d[1].trim() : err ? (err.killed ? 'passou de 30 s' : String(errs || err.message).trim().split('\n').pop().slice(0, 200)) : '';
+      resolve({ estado: m ? m[1] : 'erro', porque });
     });
   });
 }
@@ -90,9 +93,9 @@ function iniciarAlterdata(db, log) {
   // o Contábil daqui: verificado a cada minuto e antes de cada pedido; vai para o banco e para o painel
   let estado = '';
   async function verificar() {
-    const novo = await estadoDoContabil();
+    const { estado: novo, porque } = await estadoDoContabil();
     if (novo !== estado) {
-      log('Alterdata: o Contábil deste ' + ONDE + ' está ' + ESTADOS[novo]);
+      log('Alterdata: o Contábil deste ' + ONDE + ' está ' + ESTADOS[novo] + (porque ? ' (' + porque + ')' : ''));
       painel.modulo('alterdata', 'Alterdata', novo === 'ok', 'o Contábil está ' + ESTADOS[novo]);
     }
     estado = novo;
