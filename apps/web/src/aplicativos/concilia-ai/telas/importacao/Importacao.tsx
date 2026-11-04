@@ -50,6 +50,16 @@ export function Importacao({ tipo, naEtapa, meses }: { tipo: c.PaginaImportacao;
         </Alerta>
       )}
 
+      {/* o mês do período que o arquivo não trouxe (Vitor, 04/11/2026: "tá importado só até o 08"): avisa até reimportar */}
+      {vm.mesesSemNota.length > 0 && !vm.reimportando && (
+        <Alerta naLinha titulo={'Nenhuma nota em ' + vm.mesesSemNota.join(', ')}
+          texto={'O período da Tarefa é ' + vm.periodo + '. Confira no Alterdata se o arquivo saiu com o período todo e reimporte.'}>
+          <div className="btn-row" style={{ marginTop: 8 }}>
+            <button className="btn btn-outline" type="button" onClick={vm.alternarReimportar}>Reimportar</button>
+          </div>
+        </Alerta>
+      )}
+
       <MensagemFlutuante id={vm.cfg.idMensagem} chave={vm.seqMensagem} onFechar={vm.fecharMensagem}>
         {vm.mensagem && <MensagemImportacao m={vm.mensagem} onFechar={vm.fecharMensagem} />}
       </MensagemFlutuante>

@@ -35,6 +35,16 @@ export function soDoPeriodo<N extends { comp: string }>(notas: readonly N[], mes
   return r;
 }
 
+/**
+ * Os meses do período da Tarefa sem nenhuma nota (Vitor, 04/11/2026: "tá importado só até o 08, sendo que falei que ia fazer em
+ * lote do 01 a 09"): o arquivo do Alterdata pode ter saído com o período curto.
+ */
+export function mesesSemNotas(notas: readonly { comp: string }[], meses?: readonly string[]): string[] {
+  if (!meses?.length) return [];
+  const tem = new Set(notas.map(n => n.comp));
+  return meses.filter(m => !tem.has(m));
+}
+
 export interface ResultadoMescla<N> { notas: N[]; adicionadas: number; atualizadas: number; semMudanca: number }
 
 /** Mescla notas fiscais. Não muda as listas de entrada. */

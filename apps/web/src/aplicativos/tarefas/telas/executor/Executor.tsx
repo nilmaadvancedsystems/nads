@@ -33,10 +33,11 @@ import type { ItemDeTeste } from '../../../../comum/BotaoDeTeste';
 import { EtapaProvider, type AbasDaEtapa } from './etapas/contexto';
 import { TelaDaEtapa } from './etapas/TelaDaEtapa';
 import { PeriodoDaTarefa } from './partes/PeriodoDaTarefa';
+import { SeletorDoPeriodo } from './partes/SeletorDoPeriodo';
 import { publicarOndeEsta } from '../suporte/contextoDoSuporte';
 
 // as etapas cuja ferramenta (o Extrator) já tem a linha do período: a Importação, com o seletor que troca, e o Cheque especial
-const COM_A_LINHA_DO_PERIODO = new Set(['extratos', 'cheque-especial']);
+const COM_A_LINHA_DO_PERIODO = new Set(['cheque-especial']);
 
 /** O ícone de cada grupo da rotina, no canto do cabeçalho. */
 
@@ -206,8 +207,10 @@ export function Executor() {
     <>
       <nav className="gh-topo-acoes" aria-label="Etapa">
         {/* o período no cabeçalho, no canto direito, em todas as etapas do Contábil (Vitor, 07/10/2026); só a Importação troca */}
-        {vm.departamento === 'contabil' && vm.empresa && vm.etapa && !COM_A_LINHA_DO_PERIODO.has(vm.etapa.id) && (
-          <PeriodoDaTarefa nome={vm.empresa.nome} codigo={vm.empresa.codigo} meses={vm.meses.length ? vm.meses : [vm.competencia]} />
+        {/* na Importação, o seletor que troca (o Em lote no cabeçalho, Vitor, 04/11/2026); nas outras, o período só mostra */}
+        {vm.departamento === 'contabil' && vm.empresa && vm.etapa && !COM_A_LINHA_DO_PERIODO.has(vm.etapa.id) && (vm.etapa.id === 'extratos'
+          ? <SeletorDoPeriodo meses={vm.meses} competencia={vm.competencia} concluido={vm.periodoConcluido} trocar={vm.trocarCompetencia} encerrar={vm.encerrarPeriodo} />
+          : <PeriodoDaTarefa nome={vm.empresa.nome} codigo={vm.empresa.codigo} meses={vm.meses.length ? vm.meses : [vm.competencia]} />
         )}
         {/* um grupo só (a rotina do LCDPR, 16/10/2026): sem o menu dos grupos */}
         {vm.grupos.length > 1 && (
