@@ -4,14 +4,18 @@
 // nome da conta no dinâmico, e entregue à etapa que usa. No desenho das linhas da Importação (imp-bloco).
 import { clientes as cl, formatos, tarefas as t } from '@nads/core';
 import { BotaoIcone, CampoArquivo, Icone, useRetorno } from '@nads/ui';
-import { useId } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import { useContabilDaEmpresa } from './contabilDaEmpresa';
 import { BotaoDiario } from './BotaoDiario';
 
 const dataBR = (d: string) => d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4);
 
-/** meses: o período da Tarefa (para acusar o mês que falta no razão) */
-export function ContabilNaImportacao({ nome, codigo, meses = [] }: { nome: string; codigo: number | null; meses?: readonly string[] }) {
+/**
+ * meses: o período da Tarefa (para acusar o mês que falta no razão). soDiario: a empresa ainda não saiu da Importação (Vitor,
+ * 04/11/2026: "das que não saíram, deixe só o diário, quero fazer um teste"): sem o bloco dos razões; o Diário preenche sozinho
+ * os razões que as etapas pedem (os que já estão ficam). As que já saíram seguem com os razões, como antes.
+ */
+export function ContabilNaImportacao({ nome, codigo, meses = [], soDiario = false }: { nome: string; codigo: number | null; meses?: readonly string[]; soDiario?: boolean }) {
   const vm = useContabilDaEmpresa(nome, codigo);
   const { aviso } = useRetorno();
   const idDin = useId();
@@ -32,6 +36,15 @@ export function ContabilNaImportacao({ nome, codigo, meses = [] }: { nome: strin
     r && vm.dinamico && meses.length ? cl.mesesFaltandoNoRazao(vm.dinamico.d, conta, r.razao, meses) : [];
   const incompletos = linhas.filter(x => mesesQueFaltam(x.conta, x.r).length).length;
   const rotuloDoMes = (m: string) => m.slice(5, 7) + '/' + m.slice(0, 4);
+  // só o Diário: os razões que faltam saem dele, uma vez por diário (a conta sem lançamento nele continua faltando)
+  const semRazao = pedidos.filter(p => !vm.razoes[p.codigo]).map(p => p.codigo);
+  const chaveDoDiario = soDiario && vm.diario && semRazao.length ? vm.diario.arquivo + '|' + semRazao.join(',') : '';
+  const jaPreencheu = useRef('');
+  useEffect(() => {
+    if (!chaveDoDiario || jaPreencheu.current === chaveDoDiario) return;
+    jaPreencheu.current = chaveDoDiario;
+    vm.preencherDoDiario(chaveDoDiario.split('|')[1].split(','));
+  }, [chaveDoDiario, vm]);
 
   async function importarDinamico(f: File | null) {
     if (!f) return;
@@ -113,6 +126,7 @@ export function ContabilNaImportacao({ nome, codigo, meses = [] }: { nome: strin
               {vm.diario.lido.diferenca === 0
                 ? <span className="badge badge-ok">Débito = crédito</span>
                 : <span className="badge badge-bad" title="O débito e o crédito do diário não batem: confira o PDF no Alterdata">Não fecha: diferença de {formatos.reais(Math.abs(vm.diario.lido.diferenca))}</span>}
+              {soDiario && pedidos.length > 0 && <span className={'badge ' + (faltam ? 'badge-warn' : 'badge-ok')} title={faltam ? 'Contas que as etapas usam sem lançamento no Diário' : 'Os razões que as etapas usam saem do Diário'}>{faltam ? faltam + ' de ' + pedidos.length + ' contas sem lançamento' : 'Razões pelo Diário'}</span>}
               {vm.diario.lido.semConta > 0 && <span className="badge badge-warn" title="Linhas do diário sem o código da conta (quebra de página): não entram em nenhum razão">{vm.diario.lido.semConta} sem conta</span>}
             </div>
           )}</div>
@@ -134,7 +148,7 @@ export function ContabilNaImportacao({ nome, codigo, meses = [] }: { nome: strin
         </div>
       </div>
 
-      <div className={'imp-bloco' + (pedidos.length ? (faltam || incompletos ? '' : ' imp-ok') : razoes.length && !incompletos ? ' imp-ok' : '')}>
+      {!soDiario && <div className={'imp-bloco' + (pedidos.length ? (faltam || incompletos ? '' : ' imp-ok') : razoes.length && !incompletos ? ' imp-ok' : '')}>
         <div className="imp-linha">
           <span className="imp-ico"><Icone nome="arquivo" /></span>
           <div className="imp-txt">
@@ -180,7 +194,7 @@ export function ContabilNaImportacao({ nome, codigo, meses = [] }: { nome: strin
             </table>
           </div>
         )}
-      </div>
+      </div>}
     </div>
   );
 }

@@ -95,7 +95,7 @@ export function Executor() {
           : [];
   const destacarNaFerramenta = usePonteDaFerramenta(iframe, vm.semMovimentoPorMes, vm.competencia, vm.marcarSemMovimento, vm.trocarCompetencia,
     vm.varios ? { meses: vm.meses, concluido: vm.periodoConcluido } : null, vm.encerrarPeriodo,
-    r => setRequisitos({ url: urlDaFerramenta, ...r }));
+    r => setRequisitos({ url: urlDaFerramenta, ...r }), vm.vistaConcluida);
   // os requisitos valem só para a ferramenta que mandou (trocou de etapa: some)
   // a etapa da folha: o checklist montado pelo balancete (o avançar só com tudo marcado)
   // o checklist da etapa: o da folha (pelo balancete) ou as tarefas fixas da etapa (o Fiscal)

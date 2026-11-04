@@ -755,7 +755,7 @@ export function TarefaExtratos() {
           ))}
         </nav>
       )}
-      {aba === 'contabil' ? <div data-destaque="contabil"><ContabilNaImportacao nome={s.nome} codigo={s.codigo} meses={mesesDaEtapa} /></div>
+      {aba === 'contabil' ? <div data-destaque="contabil"><ContabilNaImportacao nome={s.nome} codigo={s.codigo} meses={mesesDaEtapa} soDiario={ponte.naTarefa && !ponte.etapaConcluida} /></div>
         : aba === 'comprovantes' ? <div data-destaque="comprovantes-aba"><ComprovantesNaImportacao meses={mesesDaEtapa} bancos={vm.bancos.filter(b => b.id !== 'banco')} competencia={vm.competencia} pedirLogin={d.pedirLogin} avisar={vm.avisar} avisarErro={vm.avisarErro} /></div>
         : aba !== 'bancos' ? <div data-destaque="importacao"><ImportacaoNaEtapa nome={s.nome} tipo={aba} prestaServico={vm.prestaServico} meses={mesesDaEtapa} /></div> : (<>
       <div className={'imp-topo' + (ocupadoGeral ? ' travado' : '')} aria-busy={ocupadoGeral}>

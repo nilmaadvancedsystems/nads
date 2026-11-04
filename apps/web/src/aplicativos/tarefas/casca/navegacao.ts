@@ -69,6 +69,9 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'simples', rotulo: 'Calculadora do Simples', icone: 'recibo', titulo: 'Calculadora do Simples Nacional', secao: 'Ferramentas' },
     // a antecipação do ICMS do ES (Heverton, 22/10/2026: a planilha "Antecipação ICMS-ES", com as notas do SIEG)
     { id: 'antecipacao-es', rotulo: 'Antecipação ICMS-ES', icone: 'fileSearch', titulo: 'Antecipação de ICMS — ES', secao: 'Ferramentas' },
+    // a auditoria tributária dos itens (04/11/2026: o prompt "Gestor Fiscal e Auditor Tributário" virou ferramenta): a
+    // planilha de itens ganha o PIS/COFINS (monofásico, alíquota zero) e o ICMS-ST de MG, e sai auditada
+    { id: 'auditoria-itens', rotulo: 'Auditoria de itens', icone: 'checklist', titulo: 'Auditoria de itens — PIS/COFINS e ICMS-ST MG', secao: 'Ferramentas' },
   ] },
   // o DP (Vitor, 06/10/2026: o Checklist Folha "seria a rotina do dp"): as empresas com a rotina do DP, o painel da
   // planilha (números, gráficos, o progresso por responsável e as obrigações de cada cliente), a visão e as paradas
