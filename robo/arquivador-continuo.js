@@ -296,9 +296,11 @@ function iniciar(opcoes) {
    * migração sobraram 59 das 67 pastas da Claudio Secretario só com subpastas. Remove, de baixo para cima, a pasta SEM
    * NENHUM arquivo (rmdir só apaga pasta vazia: nada de conteúdo se perde) e parada há mais de 1 dia; nunca a raiz nem as
    * de fora da leitura (NÃO IDENTIFICADOS, "_…", CLAUDE FAVOR NÃO MEXER). O desktop.ini sozinho conta como vazia.
+   * 04/11/2026 (Vitor: "queria essa pasta limpa"): parada há mais de 2 h, não 1 dia. As AAAA-MM do SIEG ganham XMLs novos
+   * a cada pedido e ficavam um dia inteiro vazias. As 2 h protegem a pasta que o SIEG acabou de criar e ainda vai gravar.
    */
   async function limparPastasVazias(raiz, nome = 'Claudio Secretario') {
-    const UM_DIA = 864e5, agora = Date.now();
+    const PARADA_MS = 2 * 3600e3, agora = Date.now();
     let removidas = 0;
     const limpar = async (rel) => {
       const abs = rel ? path.join(raiz, rel) : raiz;
@@ -312,11 +314,11 @@ function iniciar(opcoes) {
         else if (e.name.toLowerCase() !== 'desktop.ini') vazia = false;
       }
       if (!vazia || !rel) return false;
-      if (agora - st.mtimeMs < UM_DIA) return false;
+      if (agora - st.mtimeMs < PARADA_MS) return false;
       try { const ini = path.join(abs, 'desktop.ini'); if (fs.existsSync(ini)) await fs.promises.unlink(ini); await fs.promises.rmdir(abs); removidas++; return true; } catch (e) { return false; }
     };
     await limpar('');
-    if (removidas) { o.log('pastas vazias removidas da ' + nome + ': ' + removidas); atividade('Removeu ' + removidas + ' pasta(s) vazia(s) da ' + nome, 'só pastas sem nenhum arquivo, paradas há mais de 1 dia'); }
+    if (removidas) { o.log('pastas vazias removidas da ' + nome + ': ' + removidas); atividade('Removeu ' + removidas + ' pasta(s) vazia(s) da ' + nome, 'só pastas sem nenhum arquivo, paradas há mais de 2 h'); }
     return removidas;
   }
   /** As origens: a do Drive e as locais do config (origensExtras: a entrada local; o resto igual, NÃO IDENTIFICADOS no G:). */

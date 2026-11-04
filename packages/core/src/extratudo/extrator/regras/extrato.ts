@@ -227,6 +227,14 @@ export function ehConsultasDoBB(texto: string): boolean {
   return /consultas extrato de conta corrente/.test(t) && /\bbalancete\b/.test(t) && /\bmovimento\b/.test(t);
 }
 
+/**
+ * O extrato do PagBank (no cabeçalho, "290 - PagSeguro Internet"; outros bancos citam o PagSeguro nos Pix): as saídas vêm
+ * com o sinal escrito; o valor sem sinal é entrada.
+ */
+export function ehPagBank(texto: string): boolean {
+  return /\b290 pagseguro internet\b/.test(normalizarTexto(texto));
+}
+
 export function lancamentosDoPdf(paginas: ItemDeTexto[][], lado: Lado, anoPadrao = new Date().getFullYear()): Lancamento[] {
   return lancamentosComPagina(paginas, lado, anoPadrao).lancamentos;
 }
@@ -380,6 +388,10 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
   const textoTodo = todas.map(p => p.map(l => l.texto).join('\n')).join('\n');
   const periodo = periodoDoExtrato(textoTodo);
   const pelaDtMovimento = ehConsultasDoBB(textoTodo);
+  // o PagBank escreve o sinal das saídas ("-2,27", "-R$ 30.000,00"): o valor sem sinal é entrada, e o histórico não decide
+  // (Vitor, 04/11/2026, na 10: "Vendas - Disponivel DEBITO VISA" e "Pagamento de PIX" recebidos viravam saída). Só nele:
+  // em outros bancos (Nubank, Inter, Stone…) o "-" aparece em totais e saldos e as saídas vêm sem sinal
+  const sinalEscrito = ehPagBank(textoTodo);
 
   for (const [nPagina, linhas] of todas.entries()) {
     col = colunas(linhas) || col;
@@ -431,6 +443,12 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
       const resto: string[] = [];
       for (let i = 0; i < t.length; i++) {
         const s = t[i].s;
+        // o "R$" / "-R$" solto antes do número (o PagBank "Extrato da conta"): vai com o valor, e o "-" é o sinal
+        if (sinalEscrito && /^-?R\$$/i.test(s) && t[i + 1] && RE_VALOR.test(t[i + 1].s)) {
+          valores.push({ ...t[i + 1], s: (s.startsWith('-') && !t[i + 1].s.startsWith('-') ? '-' : '') + t[i + 1].s });
+          i++;
+          continue;
+        }
         if (RE_VALOR.test(s)) {
           const v = { ...t[i] };
           const prox = t[i + 1];
@@ -505,7 +523,7 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
         if (col && col.deb != null && col.cred != null) {
           const ehDebito = Math.abs(v.x2 - col.deb) < Math.abs(v.x2 - col.cred);
           c = ehDebito !== (lado === 'sistema') ? -Math.abs(c) : Math.abs(c);
-        } else if (RE_SAIDA.test(base) && !RE_ENTRADA.test(base)) c = -Math.abs(c);
+        } else if (!sinalEscrito && RE_SAIDA.test(base) && !RE_ENTRADA.test(base)) c = -Math.abs(c);
       }
 
       // o texto entre o lançamento de cima e este: o que está mais perto de cima fica lá; o resto abre este
