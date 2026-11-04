@@ -13,9 +13,9 @@ const B292 = [
 const ATE_AGOSTO = ['2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-07', '2026-08'];
 
 describe('checklist da Contabilização da Folha', () => {
-  it('a 292 de janeiro a agosto: só as contas do Passivo (mesmo zeradas), na ordem, sem o 13º; FGTS, GRRF e INSS fora por enquanto', () => {
+  it('a 292 de janeiro a agosto: só as contas do Passivo (mesmo zeradas), na ordem, sem o 13º; GRRF e INSS fora por enquanto', () => {
     const r = checklistDaFolha(B292, ATE_AGOSTO);
-    expect(r.map(i => i.id)).toEqual(['salarios', 'pro-labore', 'ferias', 'rescisao']);
+    expect(r.map(i => i.id)).toEqual(['salarios', 'pro-labore', 'ferias', 'rescisao', 'fgts']);
     expect(r.find(i => i.id === 'ferias')?.contas).toEqual(['40002 — Férias a Pagar']);
   });
   it('com novembro ou dezembro no período, o 13º entra', () => {
@@ -28,6 +28,6 @@ describe('checklist da Contabilização da Folha', () => {
   });
   it('o empréstimo do Crédito do Trabalhador (consignado), quando tem', () => {
     const r = checklistDaFolha([...B292, C('40020', 'Empréstimo Consignado Crédito do Trabalhador', 350)], ATE_AGOSTO);
-    expect(r.map(i => i.id)).toEqual(['salarios', 'pro-labore', 'ferias', 'rescisao', 'credito-trabalhador']);
+    expect(r.map(i => i.id)).toEqual(['salarios', 'pro-labore', 'ferias', 'rescisao', 'fgts', 'credito-trabalhador']);
   });
 });
