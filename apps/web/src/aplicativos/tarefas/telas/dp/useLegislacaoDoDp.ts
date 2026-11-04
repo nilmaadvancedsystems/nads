@@ -2,7 +2,8 @@
 // (core empresas/legislacaoDp.ts) e os cadastrados no nads (Vitor, 14/10/2026: "coloque o botão de cadastro de legislação";
 // banco legislacaoDp/{id}: as novas e as do Toriba editadas, por cima do texto do core). A busca procura no assunto e no
 // texto; clicar abre a janela do assunto, numa tela só (Vitor, 28/10/2026: o texto e o editar juntos, o lápis no alto e o ✓ e o ✕
-// só enquanto edita); o DP e o admin cadastram e editam.
+// só enquanto edita); o DP e o admin cadastram, editam e excluem (Vitor, 04/11/2026: a lixeira ao lado do lápis; a excluída some
+// da lista, a do Toriba também, e fica no banco marcada com quem e quando).
 import { empresas } from '@nads/core';
 import { useMemo, useState } from 'react';
 import { useRetorno } from '@nads/ui';
@@ -28,7 +29,7 @@ const simples = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowe
 
 export function useLegislacaoDoDp() {
   const repo = useLegislacaoDp();
-  const { toast } = useRetorno();
+  const { toast, modal } = useRetorno();
   const op = useOperador().operador;
   const podeEditar = !!op && (op.admin || op.departamento === 'dp');
   const [busca, setBusca] = useState('');
@@ -39,12 +40,12 @@ export function useLegislacaoDoDp() {
 
   const todas = useMemo<LegislacaoNaTela[]>(() => {
     const porId = new Map(doBanco.lista.map(l => [l.id, l]));
-    const doToriba = empresas.LEGISLACAO_DP.map(b => {
+    const doToriba = empresas.LEGISLACAO_DP.filter(b => !porId.get('toriba-' + b.id)?.excluida).map(b => {
       const id = 'toriba-' + b.id;
       const m = porId.get(id);
       return { id, assunto: m?.assunto || b.assunto, texto: m?.texto || b.texto, observacoes: m ? m.observacoes : b.observacoes, data: b.data, origem: 'Toriba' as const, atualizadoPor: m?.atualizadoPor || '' };
     });
-    const novas = doBanco.lista.filter(l => !l.id.startsWith('toriba-'))
+    const novas = doBanco.lista.filter(l => !l.id.startsWith('toriba-') && !l.excluida)
       .map(l => ({ id: l.id, assunto: l.assunto, texto: l.texto, observacoes: l.observacoes, data: l.data, origem: 'nads' as const, atualizadoPor: l.atualizadoPor }));
     return [...doToriba, ...novas].sort((a, b) => a.assunto.localeCompare(b.assunto, 'pt-BR'));
   }, [doBanco.lista]);
@@ -84,6 +85,24 @@ export function useLegislacaoDoDp() {
         setAberta(id); setRascunho(null);
       } catch (e) {
         toast('Não deu para salvar: ' + (e instanceof Error ? e.message : String(e)));
+      } finally { setSalvando(false); }
+    },
+    /** a lixeira: pergunta antes; a excluída some da lista (fica no banco, marcada) */
+    async excluir() {
+      const l = item;
+      if (!l || salvando) return;
+      const ok = await modal<boolean>({
+        icone: 'alert', titulo: 'Excluir esta legislação?', texto: '"' + l.assunto + '" sai da lista do DP para todos.',
+        botoes: [{ rotulo: 'Voltar', valor: false, variante: 'btn-outline' }, { rotulo: 'Excluir', valor: true, variante: 'btn-danger' }],
+      });
+      if (!ok) return;
+      setSalvando(true);
+      try {
+        await repo.excluir({ id: l.id, assunto: l.assunto, texto: l.texto, observacoes: l.observacoes, data: l.data || undefined });
+        toast('Legislação excluída.');
+        setAberta(null); setRascunho(null);
+      } catch (e) {
+        toast('Não deu para excluir: ' + (e instanceof Error ? e.message : String(e)));
       } finally { setSalvando(false); }
     },
     /** 'aaaa-mm-dd' → 'dd/mm/aaaa' */

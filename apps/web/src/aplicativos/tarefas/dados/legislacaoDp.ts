@@ -13,6 +13,10 @@ export interface LegislacaoNoBanco {
   data: string;
   atualizadoEm: string;
   atualizadoPor: string;
+  /** excluída (Vitor, 04/11/2026): some da lista, mas o documento fica (o banco não deixa apagar), com quem e quando */
+  excluida?: boolean;
+  excluidaEm?: string;
+  excluidaPor?: string;
 }
 
 export type LegislacaoParaSalvar = Pick<LegislacaoNoBanco, 'assunto' | 'texto' | 'observacoes'> & { id?: string; data?: string };
@@ -23,6 +27,8 @@ export interface RepoLegislacaoDp {
   lista(): { carregada: boolean; lista: readonly LegislacaoNoBanco[] };
   /** sem id: uma nova; devolve o id */
   salvar(l: LegislacaoParaSalvar): Promise<string>;
+  /** marca como excluída (o texto vai junto: a regra do banco pede assunto, texto e data em toda gravação) */
+  excluir(l: LegislacaoParaSalvar & { id: string }): Promise<void>;
   assinar(aoMudar: () => void): () => void;
   versao(): number;
 }
@@ -44,6 +50,13 @@ export function criarLegislacaoDpMemoria(): RepoLegislacaoDp {
       ver++;
       for (const f of ouvintes) f();
       return id;
+    },
+    async excluir(l) {
+      const agora = new Date().toISOString();
+      const doc: LegislacaoNoBanco = { id: l.id, assunto: l.assunto, texto: l.texto, observacoes: l.observacoes, data: l.data || hoje(), atualizadoEm: agora, atualizadoPor: 'exemplo', excluida: true, excluidaEm: agora, excluidaPor: 'exemplo' };
+      lista = [...lista.filter(x => x.id !== l.id), doc];
+      ver++;
+      for (const f of ouvintes) f();
     },
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,
