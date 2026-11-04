@@ -42,7 +42,9 @@ function estadoDoContabil() {
     // 90 s: o roteiro leva 0,1 s, mas no servidor ocupado o Python às vezes demora mais de 30 s só para abrir
     execFile(PYTHON, ['-I', ROTEIRO_ESTADO], { cwd: __dirname, windowsHide: true, timeout: 90 * 1000 }, (err, out, errs) => {
       const m = String(out || '').match(/ESTADO:\s*(\w+)/);
+      const c = String(out || '').match(/CAMPOS:\s*(.+)/);
       const d = String(out || '').match(/DIAG:\s*(.+)/);
+      if (c && d) d[1] = d[1] + ' · campos: ' + c[1];
       // o porquê, para o log: o DIAG do roteiro, ou o fim do erro do Python, ou o prazo
       const porque = d ? d[1].trim() : err ? (err.killed ? 'passou de 90 s' : String(errs || err.message).trim().split('\n').pop().slice(0, 200)) : '';
       resolve({ estado: m ? m[1] : 'erro', porque, prazo: !m && !!err && !!err.killed });
