@@ -17,6 +17,11 @@
 //   4. depois de cada e-mail enviado, a linha do Relatório (controleTributos/{AAAA-MM}_{código}): o valor de cada coluna
 //      que está em branco, a data do envio e Entregue = e-mail, também só se estiverem em branco ("sem trocar o que já
 //      estava escrito à mão", a mesma regra do t.preencherComSugestao do nads). Cria a linha se não existir.
+//   5. impresso (04/11/2026: "preciso que quando eu va em enviar guias tenha a opção de impresso ou gmail, impresso cria na
+//      rotina do entregas a entrega"): o cliente com a via 'impresso' (lotesFiscal/{lote}.vias, gravada pela tela) não
+//      recebe e-mail: o robô põe a entrega na rota do Entregas (entregas/{id}, status 'pendente', os mesmos campos do
+//      dadosDaEntregaNova do nads), com cada guia anexada (anexos/guia-<tipo>, o PDF se couber e o id no Drive), grava no
+//      Drive como o e-mail e preenche o Relatório com Entregue = Impresso (a data fica para quando a entrega for confirmada).
 const { ouvir } = require('./ouvinte');
 const R = require('./arquivador-regras');
 const dp = require('./envios-do-dp');
@@ -29,6 +34,8 @@ const MAX_ARQUIVOS = 150;
 const ESQUECIDO_MS = 3 * 24 * 36e5;
 const COMPETENCIA = /^20\d{2}-(0[1-9]|1[0-2])$/;
 const GUIAS = ['DAS', 'DARF', 'DAE', 'DAM'];
+// o PDF da guia vai no anexo da entrega até este tamanho (o mesmo LIMITE_PDF_ANEXO do Entregas); maior, só o id no Drive
+const LIMITE_PDF_ANEXO = 700000;
 // as colunas de cada grupo do Relatório (packages/core, GRUPOS_DO_CONTROLE)
 const COLUNAS = {
   sn: ['das', 'icms-ant', 'icms-arroz', 'icms-dif', 'icms-dif-ativo', 'st-ent', 'st-sai', 'parc'],
@@ -149,8 +156,9 @@ function diaEmBrasilia(quando) {
 
 /**
  * A linha do Relatório depois do envio (controleTributos/{AAAA-MM}_{código}): só o que está em branco muda — o valor de
- * cada coluna, a data (o dia do envio) e o Entregue (e-mail). atual: o documento no banco (null = não existe: nasce com o
- * grupo do lote; existindo, o grupo dela fica). Devolve { linha, preenchidos: [colunas], mudou }.
+ * cada coluna, a data (o dia do envio) e o Entregue (o.entregue: 'email', o padrão, ou 'impresso', que vai sem o dia: a
+ * data é a da entrega confirmada). atual: o documento no banco (null = não existe: nasce com o grupo do lote; existindo, o
+ * grupo dela fica). Devolve { linha, preenchidos: [colunas], mudou }.
  */
 function linhaDepoisDoEnvio(atual, o) {
   const a = atual && typeof atual === 'object' ? atual : null;
@@ -162,14 +170,53 @@ function linhaDepoisDoEnvio(atual, o) {
     valores[coluna] = textoDoValor(n);
     preenchidos.push(coluna);
   }
-  const data = antes.data || o.dia;
-  const entregue = antes.entregue || 'email';
+  const data = antes.data || o.dia || '';
+  const entregue = antes.entregue || o.entregue || 'email';
   const grupo = a && (a.grupo === 'sn' || a.grupo === 'lp') ? a.grupo : o.grupo;
   const mudou = !a || preenchidos.length > 0 || data !== antes.data || entregue !== antes.entregue;
   return {
     linha: { competencia: o.competencia, codigo: Number(o.codigo), grupo, valores, data, marcas: antes.marcas, entregue, atualizadoEm: o.agora, atualizadoPor: String(o.quem || 'robô').slice(0, 100) },
     preenchidos, mudou,
   };
+}
+
+/** '20/10/2026', '20-10-2026' ou '2026-10-20' -> '2026-10-20'; '' sem data */
+function diaIso(v) {
+  const t = String(v || '');
+  let m = /(\d{2})[/.-](\d{2})[/.-](\d{4})/.exec(t);
+  if (m) return m[3] + '-' + m[2] + '-' + m[1];
+  m = /(20\d{2})-(\d{2})-(\d{2})/.exec(t);
+  return m ? m[1] + '-' + m[2] + '-' + m[3] : '';
+}
+
+/**
+ * A entrega do impresso, campo a campo como o dadosDaEntregaNova do nads (packages/core, entregas) grava na Nova entrega
+ * (Preparar rota): status 'pendente', na zona do cliente, um item por guia (o tipo e o valor) e o vencimento mais cedo.
+ * cliente: { id, codigoOrigem, nome, zona }; itens: [{ tipo, valor, vencimento }]; quem: { email, nome }.
+ */
+function entregaDoImpresso(cliente, competencia, itens, quem, agora) {
+  const vencimentos = itens.map(i => diaIso(i.vencimento)).filter(Boolean).sort();
+  return {
+    clienteId: cliente.id,
+    clienteNome: (cliente.codigoOrigem ? cliente.codigoOrigem + ' - ' : '') + String(cliente.nome || '').trim(),
+    avulso: false, banco: null, competencia, vencimento: vencimentos[0] || '', codigoPagamento: null, temGuia: false,
+    itens: itens.map(i => ({ tipo: i.tipo || 'Guia', valor: typeof i.valor === 'number' && Number.isFinite(i.valor) ? i.valor : null })),
+    recebedor: '', temAssinatura: false, temFoto: false, falha: false, motivoFalha: '', zona: String(cliente.zona || ''), canal: '',
+    geo: null, localDivergente: false, entregadoPor: quem.email || '', entregadoPorNome: quem.nome || quem.email || 'robô',
+    status: 'pendente', criadoEm: agora, confirmadoEm: null,
+  };
+}
+
+/** Os ids dos anexos das guias na entrega: 'guia-das', 'guia-darf-pis', e '-2' quando repete */
+function idsDosAnexos(itens) {
+  const usados = new Set();
+  return itens.map(i => {
+    const base = 'guia-' + ([i.tipo, i.tributo].filter(Boolean).join('-').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'outra');
+    let id = base;
+    for (let n = 2; usados.has(id); n++) id = base + '-' + n;
+    usados.add(id);
+    return id;
+  });
 }
 
 // ---------- o banco e o Drive ----------
@@ -234,6 +281,46 @@ async function lerLote(db, ref, lote, log) {
   painel.atividade('gmail', 'Leu o lote de guias do Fiscal (' + lidos + ' arquivos)', lote.criadoPor ? 'pedido de ' + lote.criadoPor : '');
 }
 
+// 5. o impresso: o Drive, a entrega na rota do Entregas com as guias anexadas, o registro e o Relatório (Entregue = Impresso)
+async function impresso(db, ref, lote, { codigo, competencia, itens, ativos, grupo, salvarNoDrive }) {
+  let doc = null;
+  ativos.forEach(d => { if (!doc && String(d.data().codigoOrigem || '').trim() === String(codigo)) doc = d; });
+  if (!doc) throw new Error('o cliente ' + codigo + ' não está no cadastro do Entregas (ou está inativo)');
+  const cliente = Object.assign({ id: doc.id }, doc.data());
+  const buffers = [];
+  for (const i of itens) buffers.push(await L.bufferDoArquivo(i.ref, i));
+  const salvos = await salvarNoDrive(itens, buffers);
+  const u = lote.disparadoPorUid ? ((await db.collection('usuarios').doc(String(lote.disparadoPorUid)).get()).data() || {}) : {};
+  const quem = { email: String(u.email || ''), nome: String(lote.disparadoPor || u.nome || '') };
+  const agora = new Date().toISOString();
+  const doGuia = itens.map(i => ({ tipo: i.vai.tipo === 'OUTRO' ? '' : i.vai.tipo, tributo: i.vai.tributo, valor: i.vai.valor, vencimento: (i.leitura && i.leitura.vencimento) || '' }));
+  const entregaRef = db.collection('entregas').doc();
+  const batch = db.batch();
+  batch.set(entregaRef, entregaDoImpresso(cliente, competencia, doGuia.map(g => ({ tipo: [g.tipo, g.tributo].filter(Boolean).join(' '), valor: g.valor, vencimento: g.vencimento })), quem, agora));
+  // cada guia anexada (o Entregas lê todo anexo guia-*): o PDF se couber no documento, e o id no Drive sempre que houver
+  idsDosAnexos(doGuia).forEach((id, k) => {
+    const pdf = buffers[k].length <= LIMITE_PDF_ANEXO ? buffers[k].toString('base64') : null;
+    const g = { tipo: (doGuia[k].tipo || 'guia').toLowerCase(), nome: (salvos[k] && salvos[k].nome) || itens[k].vai.nome, driveId: (salvos[k] && salvos[k].id) || '', tamanho: buffers[k].length, em: agora };
+    if (pdf && pdf.length <= LIMITE_PDF_ANEXO) g.pdf = pdf;
+    batch.set(entregaRef.collection('anexos').doc(id), g);
+  });
+  await batch.commit();
+  // o cliente passa a ser do Entregas (o app marca na primeira entrega)
+  if (cliente.entrega !== true) await db.collection('clientes').doc(cliente.id).update({ entrega: true }).catch(() => {});
+  const resultado = { status: 'enviado', para: [], enviadoEm: agora, salvos, entregaId: entregaRef.id, preenchidos: [], erroNoRelatorio: '' };
+  // o registro (a aba "Enviados"), com a via
+  const guiasDrive = salvos.filter(x => x.id).map(x => ({ nome: x.nome, id: x.id }));
+  await db.collection('solicitacoesEmail').add({
+    tipo: 'envioFiscal', via: 'impresso', origem: 'lote', lote: ref.id, grupo, status: 'enviado', competencia, codigo: String(codigo),
+    empresa: String(cliente.nome || '').trim(), arquivos: [], para: [], enviados: itens.map(i => i.vai.nome), entregaId: entregaRef.id,
+    enviadoEm: agora, criadoEm: agora, criadoPor: lote.disparadoPor || '', criadoPorUid: lote.disparadoPorUid || '', ...(guiasDrive.length ? { guiasDrive } : {}),
+  }).catch(() => {});
+  try {
+    resultado.preenchidos = await gravarNoRelatorio(db, { competencia, codigo, grupo, valores: valoresPorColuna(itens), dia: '', entregue: 'impresso', agora, quem: 'robô (impresso de ' + (lote.disparadoPor || 'guias') + ')' });
+  } catch (err) { resultado.erroNoRelatorio = String(err.message || err).slice(0, 200); }
+  return resultado;
+}
+
 // 3 e 4. o disparo: um e-mail por cliente e competência, o registro do envio, a linha do Relatório e o Drive
 async function dispararLote(db, ref, lote, deps) {
   const { log } = deps;
@@ -247,14 +334,37 @@ async function dispararLote(db, ref, lote, deps) {
   const ativos = await require('./clientes-cache').clientesAtivos(db, m => log(m));
   const drive = deps.getDrive();
   const DA = require('./drive-arquivos');
+  const vias = lote.vias && typeof lote.vias === 'object' ? lote.vias : {};
+  // cada guia na pasta FISCAL do cliente no Drive (sem sobrescrever: o mesmo arquivo de novo não duplica)
+  async function salvarNoDrive(itens, buffers) {
+    const salvos = [];
+    for (let k = 0; k < itens.length; k++) {
+      const v = itens[k].vai;
+      if (!v.destino.length) { salvos.push({ nome: v.nome, erro: 'sem a pasta no Drive (o tipo da guia não tem pasta na árvore do Fiscal ou o cadastro não deu o destino)' }); continue; }
+      try {
+        const pastaId = await DA.garantirCaminho(drive, v.destino.map(p => String(p).normalize('NFC')));
+        const salvo = await DA.salvarArquivoComId(drive, pastaId, v.nome, buffers[k]);
+        salvos.push({ nome: salvo.nome || v.nome, pasta: v.destino.join('/'), jaEstava: salvo.jaEstava, id: salvo.id || '' });
+      } catch (err) { salvos.push({ nome: v.nome, erro: String(err.message || err).slice(0, 200) }); }
+    }
+    return salvos;
+  }
   let enviados = 0;
   let erros = 0;
   for (const [chave, itens] of porChave) {
     // disparar de novo (depois de corrigir o e-mail de quem deu erro) não manda outra vez para quem já recebeu
     if (lote.resultados && lote.resultados[chave] && lote.resultados[chave].status === 'enviado') { enviados++; continue; }
     const { codigo, competencia } = itens[0].vai;
-    const resultado = { codigo, competencia, arquivos: itens.map(i => i.vai.nome), valores: valoresPorColuna(itens), preenchidos: [], erroNoRelatorio: '' };
+    const via = vias[String(codigo)] === 'impresso' ? 'impresso' : 'email';
+    const resultado = { codigo, competencia, via, arquivos: itens.map(i => i.vai.nome), valores: valoresPorColuna(itens), preenchidos: [], erroNoRelatorio: '' };
     try {
+      if (via === 'impresso') {
+        Object.assign(resultado, await impresso(db, ref, lote, { codigo, competencia, itens, ativos, grupo, salvarNoDrive }));
+        for (const i of itens) await L.apagarPartes(i.ref).catch(() => {});
+        enviados++;
+        await ref.update({ ['resultados.' + chave]: resultado });
+        continue;
+      }
       const { cliente, para } = await dp.destinatarios(db, codigo, ativos);
       const nome = String(cliente.nome || '').trim();
       const anexos = [];
@@ -274,16 +384,7 @@ async function dispararLote(db, ref, lote, deps) {
         resultado.preenchidos = await gravarNoRelatorio(db, { competencia, codigo, grupo, valores: resultado.valores, dia: diaEmBrasilia(new Date(agora)), agora, quem: 'robô (envio de ' + (lote.disparadoPor || 'guias') + ')' });
       } catch (err) { resultado.erroNoRelatorio = String(err.message || err).slice(0, 200); }
       // e no Drive, na pasta FISCAL do cliente (sem sobrescrever: o mesmo arquivo de novo não duplica)
-      const salvos = [];
-      for (let k = 0; k < itens.length; k++) {
-        const v = itens[k].vai;
-        if (!v.destino.length) { salvos.push({ nome: v.nome, erro: 'sem a pasta no Drive (o tipo da guia não tem pasta na árvore do Fiscal ou o cadastro não deu o destino)' }); continue; }
-        try {
-          const pastaId = await DA.garantirCaminho(drive, v.destino.map(p => String(p).normalize('NFC')));
-          const salvo = await DA.salvarArquivoComId(drive, pastaId, v.nome, anexos[k].buffer);
-          salvos.push({ nome: salvo.nome || v.nome, pasta: v.destino.join('/'), jaEstava: salvo.jaEstava, id: salvo.id || '' });
-        } catch (err) { salvos.push({ nome: v.nome, erro: String(err.message || err).slice(0, 200) }); }
-      }
+      const salvos = await salvarNoDrive(itens, anexos.map(a => a.buffer));
       // o id de cada guia no Drive, no registro do envio: a aba "Enviados" abre a guia por ele (o abrir-do-drive, sem
       // guardar o PDF no banco; 04/11/2026: "quando eu clicar no nome do enviado ou para enviar quero poder ver a guia")
       const guiasDrive = salvos.filter(x => x.id).map(x => ({ nome: x.nome, id: x.id }));
@@ -298,7 +399,8 @@ async function dispararLote(db, ref, lote, deps) {
     await ref.update({ ['resultados.' + chave]: resultado });
   }
   await ref.update({ status: 'disparado', disparadoEm: new Date().toISOString(), enviados, erros });
-  log('lote do Fiscal: disparado para', enviados, 'cliente(s)' + (erros ? ', ' + erros + ' com erro' : ''));
+  const impressos = Object.values(vias).filter(v => v === 'impresso').length;
+  log('lote do Fiscal: disparado para', enviados, 'cliente(s)' + (impressos ? ' (até ' + impressos + ' impresso(s), na rota do Entregas)' : '') + (erros ? ', ' + erros + ' com erro' : ''));
   painel.atividade('gmail', 'Disparou as guias do Fiscal (' + enviados + ' clientes' + (erros ? ', ' + erros + ' com erro' : '') + ')', lote.disparadoPor ? 'pedido de ' + lote.disparadoPor : '');
 }
 
@@ -345,5 +447,6 @@ module.exports = {
   iniciarLoteFiscal,
   // puras, pro teste
   colunaDaGuia, camposDaGuiaFiscal, leituraDaGuia, doGuia, gruposFiscais, valoresPorColuna, textoDoValor, diaEmBrasilia, linhaDepoisDoEnvio,
+  diaIso, entregaDoImpresso, idsDosAnexos,
   MODELO_PADRAO, COLUNAS, COLECAO,
 };

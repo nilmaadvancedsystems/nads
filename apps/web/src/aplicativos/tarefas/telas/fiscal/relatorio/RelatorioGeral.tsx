@@ -42,7 +42,7 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
         {f.algum && <button type="button" className="btn btn-ghost dp-limpar" onClick={f.limpar}><Icone nome="x" />Limpar filtros</button>}
         <span className="tarefas-barra-espaco" />
         {vm.podeGravar && (
-          <button type="button" className="btn btn-outline" onClick={() => setGuiasAbertas(true)} title="Subir as guias do mês: o robô lê, manda um e-mail por cliente e preenche a tabela">
+          <button type="button" className="btn btn-outline" onClick={() => setGuiasAbertas(true)} title="Subir as guias do mês: o robô lê, manda por Gmail ou põe na rota do Entregas (impresso) e preenche a tabela">
             <Icone nome="envelope" width={16} height={16} />Enviar guias
           </button>
         )}

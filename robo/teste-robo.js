@@ -1080,6 +1080,14 @@ igual('sem nome no assunto: não decide pelo nome', r.desempatarPorNome(fitos, '
   const depois = F.linhaDepoisDoEnvio(escrita, envio);
   igual('fiscal: o que já estava escrito à mão fica (o valor, a data, a entrega, as marcas e o grupo); só o em branco é preenchido', [depois.linha.valores, depois.linha.data, depois.linha.entregue, depois.linha.marcas, depois.linha.grupo, depois.preenchidos], [{ pis: '999,00', irpj: '—', cofins: '150,50' }, '2026-10-05', 'impresso', { dctf: 'ok' }, 'sn', ['cofins']]);
   igual('fiscal: tudo já preenchido, não grava de novo', F.linhaDepoisDoEnvio(depois.linha, envio).mudou, false);
+  // o impresso (04/11/2026): a entrega na rota do Entregas e o Relatório com Entregue = Impresso, sem a data
+  const imp = F.linhaDepoisDoEnvio(null, Object.assign({}, envio, { dia: '', entregue: 'impresso' }));
+  igual('fiscal impresso: o Relatório fica com o valor e Entregue = Impresso, sem a data', [imp.linha.entregue, imp.linha.data, imp.linha.valores.pis], ['impresso', '', '1.234,56']);
+  igual('fiscal impresso: a entrega escrita à mão fica', F.linhaDepoisDoEnvio(escrita, Object.assign({}, envio, { dia: '', entregue: 'email' })).linha.entregue, 'impresso');
+  igual('fiscal impresso: o dia da guia em ISO', [F.diaIso('20/10/2026'), F.diaIso('20-10-2026'), F.diaIso('2026-10-20'), F.diaIso('')], ['2026-10-20', '2026-10-20', '2026-10-20', '']);
+  igual('fiscal impresso: os anexos, um por guia, sem repetir', F.idsDosAnexos([{ tipo: 'DARF', tributo: 'PIS' }, { tipo: 'DARF', tributo: 'PIS' }, { tipo: 'DAS', tributo: '' }, { tipo: '', tributo: '' }]), ['guia-darf-pis', 'guia-darf-pis-2', 'guia-das', 'guia-outra']);
+  const ent = F.entregaDoImpresso({ id: 'c1', codigoOrigem: '58', nome: 'ACME ', zona: 'centro' }, '2026-09', [{ tipo: 'DARF PIS', valor: 10, vencimento: '25/10/2026' }, { tipo: 'DAS', valor: null, vencimento: '20/10/2026' }], { email: 'f@x', nome: 'Ana' }, 'T');
+  igual('fiscal impresso: a entrega pendente na rota, como a Nova entrega do Entregas', [ent.status, ent.clienteId, ent.clienteNome, ent.competencia, ent.vencimento, ent.zona, ent.itens, ent.entregadoPor, ent.confirmadoEm], ['pendente', 'c1', '58 - ACME', '2026-09', '2026-10-20', 'centro', [{ tipo: 'DARF PIS', valor: 10 }, { tipo: 'DAS', valor: null }], 'f@x', null]);
   igual('fiscal: o modelo do e-mail do Fiscal (vazio = o padrão dele)', require('./envios-do-dp').mensagemDoEnvio({}, { cliente: 'ACME', competencia: '09/2026', mes: 'setembro de 2026' }, F.MODELO_PADRAO).assunto, 'Guias de impostos · 09/2026 · ACME');
   const emailF = require('./email-html').htmlDoEnvioDp({ assunto: 'Guias', texto: 'Olá', cliente: 'ACME', competencia: '09/2026', anexos: [{ nome: 'das.pdf', tamanho: 10 }], chip: 'Fiscal', rodape: 'com as guias do mês.' });
   igual('fiscal: o e-mail com o chip e o rodapé do Fiscal', [emailF.html.includes('Fiscal'), emailF.html.includes('com as guias do mês.')], [true, true]);

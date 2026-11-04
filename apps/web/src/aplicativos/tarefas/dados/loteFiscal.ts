@@ -13,14 +13,28 @@ import type { ArquivoDoLote, EscolhaDoArquivo, LeituraDoArquivo, LoteDp, Resulta
 export interface LeituraDaGuia extends LeituraDoArquivo { coluna: string }
 /** a escolha da revisão; coluna: a do Relatório ('' = sem coluna; sem o campo, vale a do leitor) */
 export interface EscolhaDaGuia extends EscolhaDoArquivo { coluna?: string }
+/**
+ * Como o cliente recebe as guias (04/11/2026: "preciso que quando eu va em enviar guias tenha a opção de impresso ou gmail,
+ * impresso cria na rotina do entregas a entrega"): pelo Gmail (o e-mail do robô) ou impresso (o robô põe a entrega na rota
+ * do Entregas, com as guias anexadas, e o Relatório fica com Entregue = Impresso).
+ */
+export type ViaDaGuia = 'email' | 'impresso';
 export interface GuiaDoLote extends Omit<ArquivoDoLote, 'leitura' | 'escolha'> { leitura: LeituraDaGuia | null; escolha: EscolhaDaGuia | null }
 export interface ResultadoDoLoteFiscal extends ResultadoDoLote {
   /** as colunas que o robô preencheu no Relatório (as que estavam em branco); valores: o valor das guias por coluna */
   preenchidos: string[];
   /** a linha do Relatório não foi gravada (o e-mail foi): conferir à mão */
   erroNoRelatorio: string;
+  /** como foi: pelo Gmail ou impresso (a entrega na rota do Entregas, entregaId) */
+  via: ViaDaGuia;
+  entregaId: string;
 }
-export interface LoteFiscal extends Omit<LoteDp, 'resultados'> { grupo: t.GrupoDoControleId; resultados: ResultadoDoLoteFiscal[] }
+export interface LoteFiscal extends Omit<LoteDp, 'resultados'> {
+  grupo: t.GrupoDoControleId;
+  resultados: ResultadoDoLoteFiscal[];
+  /** a via de cada cliente (o código), gravada no disparo; sem o cliente, Gmail */
+  vias: Record<string, ViaDaGuia>;
+}
 /** um e-mail de guias já enviado (o registro do robô em solicitacoesEmail, tipo envioFiscal): a aba "Enviados" */
 export interface EnvioDasGuias {
   id: string;
@@ -37,6 +51,8 @@ export interface EnvioDasGuias {
   enviadoEm: string;
   /** quem pediu o disparo */
   por: string;
+  /** impresso: foi para a rota do Entregas (para fica vazio) */
+  via: ViaDaGuia;
 }
 
 /** O modelo do e-mail das guias (config/envioFiscal): vazio = este, o mesmo do robô (robo/lote-fiscal.js) */
@@ -57,6 +73,8 @@ export interface RepoLoteFiscal {
   escolher(lote: string, arquivo: string, escolha: EscolhaDaGuia | null): Promise<void>;
   /** tira do lote ou põe de volta */
   tirar(lote: string, arquivo: string, fora: boolean): Promise<void>;
+  /** grava a via de cada cliente (o código) no lote, antes do disparo */
+  definirVias(lote: string, vias: Record<string, ViaDaGuia>): Promise<void>;
   /** pede o disparo ao robô */
   disparar(lote: string): Promise<void>;
   /** exclui o lote ainda não enviado (marca 'cancelado'; o robô apaga o lote, as guias e os pedaços) */
@@ -144,7 +162,7 @@ export function criarLoteFiscalMemoria(controle: () => RepoControleTributos): Re
     },
     async subir(grupo, lista, andamento) {
       const id = 'ex-guias-' + Date.now();
-      lotes.push({ id, grupo, status: 'pendente', criadoEm: agora(), criadoPor: 'exemplo', total: lista.length, lidos: 0, erro: '', disparadoPor: '', resultados: [] });
+      lotes.push({ id, grupo, status: 'pendente', criadoEm: agora(), criadoPor: 'exemplo', total: lista.length, lidos: 0, erro: '', disparadoPor: '', resultados: [], vias: {} });
       lista.forEach((a, k) => bytes.set(id + '/' + k, a.bytes));
       arquivos.set(id, lista.map((a, k) => ({ id: String(k), nome: a.nome, tamanho: a.bytes.length, status: 'pendente', erro: '', leitura: null, escolha: null, fora: false })));
       andamento(lista.length, lista.length);
@@ -158,6 +176,7 @@ export function criarLoteFiscalMemoria(controle: () => RepoControleTributos): Re
     },
     async escolher(id, a, escolha) { mudarArquivo(id, a, { escolha }); },
     async tirar(id, a, fora) { mudarArquivo(id, a, { fora }); },
+    async definirVias(id, vias) { mudarLote(id, { vias: { ...vias } }); },
     async excluir(id) {
       const k = lotes.findIndex(l => l.id === id);
       if (k >= 0) lotes.splice(k, 1);
@@ -190,7 +209,8 @@ export function criarLoteFiscalMemoria(controle: () => RepoControleTributos): Re
             const v = valorDaGuia(i.leitura?.valor);
             if (c && v != null) valores[c] = Math.round(((valores[c] || 0) + v) * 100) / 100;
           }
-          const erro = codigo % 9 === 0 ? 'o cliente não tem e-mail no cadastro' : '';
+          const via = lote.vias[String(codigo)] === 'impresso' ? 'impresso' : 'email';
+          const erro = via === 'email' && codigo % 9 === 0 ? 'o cliente não tem e-mail no cadastro' : '';
           let preenchidos: string[] = [];
           if (!erro) {
             // a linha do Relatório de exemplo, como o robô faz: só o que está em branco
@@ -198,10 +218,12 @@ export function criarLoteFiscalMemoria(controle: () => RepoControleTributos): Re
             const linha = repo.doMes(comp).linhas.get(codigo) || t.linhaEmBranco(comp, codigo, lote.grupo);
             preenchidos = Object.keys(valores).filter(c => !(linha.valores[c] || '').trim());
             const textos = Object.fromEntries(Object.entries(valores).map(([c, v]) => [c, t.valorDoControle(v.toFixed(2).replace('.', ','))]));
-            void repo.salvarLinha(t.preencherComSugestao(linha, { valores: textos, data: dia, email: true }));
+            // impresso: o valor e o Entregue = Impresso; a data fica para quando a entrega for confirmada na rota
+            const nova = t.preencherComSugestao(linha, { valores: textos, data: via === 'email' ? dia : '', email: via === 'email' });
+            void repo.salvarLinha(via === 'impresso' ? { ...nova, entregue: nova.entregue || 'impresso' } : nova);
           }
           return {
-            chave, codigo, competencia: comp, status: erro ? 'erro' : 'enviado', erro, para: ['financeiro@exemplo.com.br'], enviadoEm: agora(), arquivos: itens.map(i => i.leitura?.nomeFinal || i.nome),
+            chave, codigo, competencia: comp, status: erro ? 'erro' : 'enviado', erro, para: via === 'email' ? ['financeiro@exemplo.com.br'] : [], via, entregaId: via === 'impresso' ? 'ex-entrega-' + chave : '', enviadoEm: agora(), arquivos: itens.map(i => i.leitura?.nomeFinal || i.nome),
             salvos: erro ? [] : itens.map(i => ({ nome: i.leitura?.nomeFinal || i.nome, pasta: (i.leitura?.destino || []).join('/'), jaEstava: false, erro: i.leitura?.destino.length ? '' : 'sem a pasta no Drive' })),
             valores, preenchidos, erroNoRelatorio: '',
           };
@@ -217,7 +239,7 @@ export function criarLoteFiscalMemoria(controle: () => RepoControleTributos): Re
     enviados(competencia) {
       const lista: EnvioDasGuias[] = lotes.flatMap(l => l.resultados.filter(r => r.status === 'enviado' && r.competencia === competencia).map(r => ({
         id: l.id + '|' + r.chave, codigo: r.codigo, empresa: empresas.EMPRESAS.find(x => x.codigo === r.codigo)?.nome || '', competencia: r.competencia, grupo: l.grupo,
-        para: r.para, guias: r.arquivos, guiasDrive: r.salvos.map((x, k) => ({ nome: x.nome, id: 'ex-' + l.id + '-' + k })), enviadoEm: r.enviadoEm, por: l.disparadoPor,
+        para: r.para, guias: r.arquivos, guiasDrive: r.salvos.map((x, k) => ({ nome: x.nome, id: 'ex-' + l.id + '-' + k })), enviadoEm: r.enviadoEm, por: l.disparadoPor, via: r.via,
       })));
       return { carregados: true, lista: lista.sort((a, b) => b.enviadoEm.localeCompare(a.enviadoEm)) };
     },

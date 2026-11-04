@@ -4,11 +4,14 @@
 // e competência, com a coluna do Relatório e o valor lido; a que o leitor não reconheceu, a pessoa escolhe o cliente, a
 // coluna e a competência, ou tira do lote) e disparar. Depois do disparo é o robô que preenche o Relatório (só o que está em
 // branco: o valor de cada coluna, a data e o Entregue por e-mail); a tela só mostra o que ele fez.
+// A via de cada cliente (04/11/2026: "preciso que quando eu va em enviar guias tenha a opção de impresso ou gmail, impresso
+// cria na rotina do entregas a entrega"): Gmail ou Impresso. Sem escolha, vale a do Relatório do mês anterior (Entregue =
+// Impresso lá, impresso aqui) e, sem e-mail no cadastro, impresso; a escolha vai para o lote (vias) e o robô segue.
 import { formatos, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useState } from 'react';
-import { useDriveDoEntregas, useGmailDoEntregas, useLoteFiscal, useRepo, useTodosOsCadastros } from '../../../dados/repo';
-import { colunaQueVale, MODELO_PADRAO_DAS_GUIAS, valorDaGuia, type EscolhaDaGuia, type GuiaDoLote } from '../../../dados/loteFiscal';
+import { useControleTributos, useDriveDoEntregas, useGmailDoEntregas, useLoteFiscal, useRepo, useTodosOsCadastros } from '../../../dados/repo';
+import { colunaQueVale, MODELO_PADRAO_DAS_GUIAS, valorDaGuia, type EscolhaDaGuia, type GuiaDoLote, type ViaDaGuia } from '../../../dados/loteFiscal';
 import { CURTO, type RegimeDoRelatorio } from './useRelatorioGeral';
 
 const MAX_ARQUIVOS = 150;
@@ -51,6 +54,7 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
   const cadastros = useTodosOsCadastros();
   const gmail = useGmailDoEntregas();
   const drive = useDriveDoEntregas();
+  const controle = useControleTributos();
 
   /** espera o mapa do Drive responder (ele carrega quando pedido), até o prazo */
   function esperarDrive<T>(ler: () => T | null): Promise<T> {
@@ -124,9 +128,18 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
   for (const g of porChave.values()) contagem.set(g.competencia, (contagem.get(g.competencia) || 0) + g.arquivos.length);
   const competenciaDoLote = [...contagem.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || competenciaDaTela;
   const resultadoDe = new Map((atual?.resultados || []).map(r => [r.chave, r]));
-  const grupos = [...porChave.entries()].map(([chave, g]) => ({
-    chave, ...g, nome: doCodigo.get(g.codigo)?.nome || '', email: doCodigo.get(g.codigo)?.email || '', resultado: resultadoDe.get(chave) || null,
-  })).sort((a, b) => a.codigo - b.codigo || a.competencia.localeCompare(b.competencia));
+  // a via que vale: a escolhida no lote; senão a do Relatório da apuração anterior (Impresso lá) e, sem e-mail, impresso
+  const viaDe = (codigo: number, competencia: string, email: string): ViaDaGuia => {
+    const escolhida = atual?.vias[String(codigo)];
+    if (escolhida) return escolhida;
+    const antes = controle.doMes(t.somarMesesDaCompetencia(competencia, -1)).linhas.get(codigo);
+    return antes?.entregue === 'impresso' || !email ? 'impresso' : 'email';
+  };
+  const grupos = [...porChave.entries()].map(([chave, g]) => {
+    const email = doCodigo.get(g.codigo)?.email || '';
+    return { chave, ...g, nome: doCodigo.get(g.codigo)?.nome || '', email, via: viaDe(g.codigo, g.competencia, email), resultado: resultadoDe.get(chave) || null };
+  }).sort((a, b) => a.codigo - b.codigo || a.competencia.localeCompare(b.competencia));
+  const pendentes = grupos.filter(g => g.resultado?.status !== 'enviado');
 
   // "Enviados": o registro de cada e-mail (fica; o lote some do banco em 3 dias), na competência da apuração escolhida
   const [competenciaEnviados, setCompetenciaEnviados] = useState(competenciaDaTela);
@@ -217,7 +230,13 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
       catch (e) { toast('Não consegui excluir: ' + (e instanceof Error ? e.message : String(e))); }
     },
     /** quantos clientes vão no disparo (os ainda não enviados) */
-    paraDisparar: grupos.filter(g => g.resultado?.status !== 'enviado').length,
+    paraDisparar: pendentes.length,
+    /** muda a via do cliente (Gmail ou Impresso) no lote aberto */
+    async mudarVia(codigo: number, via: ViaDaGuia) {
+      if (!atual) return;
+      try { await repo.definirVias(atual.id, { ...atual.vias, [String(codigo)]: via }); }
+      catch (e) { toast('Não consegui gravar: ' + (e instanceof Error ? e.message : String(e))); }
+    },
     /** sobe as guias escolhidas e entrega o lote ao robô */
     async subir(escolhidas: FileList | File[]) {
       const lista = Array.from(escolhidas);
@@ -255,20 +274,25 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
     /** dispara o lote (os clientes ainda não enviados), depois de confirmar */
     async disparar() {
       if (!atual || disparando) return;
-      const n = grupos.filter(g => g.resultado?.status !== 'enviado').length;
+      const n = pendentes.length;
       if (!n) return;
-      const semEmail = grupos.filter(g => g.resultado?.status !== 'enviado' && !g.email).length;
+      const porEmail = pendentes.filter(g => g.via === 'email').length;
+      const impressos = n - porEmail;
+      const semEmail = pendentes.filter(g => g.via === 'email' && !g.email).length;
       const ok = await modal({
         icone: 'envelope', titulo: 'Disparar para ' + n + (n === 1 ? ' cliente?' : ' clientes?'),
-        texto: 'Cada cliente recebe as guias dele no e-mail do cadastro; depois o robô grava cada guia na pasta do cliente no Drive e preenche o ' + doGrupo.rotulo +
-          ' no Relatório: o valor de cada coluna, a data e o Entregue por e-mail, só onde está em branco.' +
+        texto: (porEmail ? porEmail + (porEmail === 1 ? ' cliente recebe' : ' clientes recebem') + ' as guias no e-mail do cadastro. ' : '') +
+          (impressos ? impressos + (impressos === 1 ? ' cliente vai' : ' clientes vão') + ' para a rota do Entregas, com as guias anexadas para imprimir. ' : '') +
+          'O robô grava cada guia na pasta do cliente no Drive e preenche o ' + doGrupo.rotulo +
+          ' no Relatório: o valor de cada coluna e o Entregue (e-mail, com a data, ou impresso), só onde está em branco.' +
           (semEmail ? ' ' + semEmail + (semEmail === 1 ? ' cliente está' : ' clientes estão') + ' sem e-mail e vai dar erro.' : '') +
           (faltam.length ? ' ' + faltam.length + (faltam.length === 1 ? ' guia sem cliente fica' : ' guias sem cliente ficam') + ' de fora.' : ''),
         botoes: [{ rotulo: 'Disparar', valor: true, variante: 'btn-primary' }, { rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }],
       });
       if (!ok) return;
       setDisparando(true);
-      try { await repo.disparar(atual.id); } catch (e) { toast('Não consegui disparar: ' + (e instanceof Error ? e.message : String(e))); } finally { setDisparando(false); }
+      // a via de cada um vai junto (a que vale na tela, mesmo a que veio do mês anterior)
+      try { await repo.definirVias(atual.id, { ...atual.vias, ...Object.fromEntries(pendentes.map(g => [String(g.codigo), g.via])) }); await repo.disparar(atual.id); } catch (e) { toast('Não consegui disparar: ' + (e instanceof Error ? e.message : String(e))); } finally { setDisparando(false); }
     },
     /** o modelo do e-mail (vazio = o padrão) e a prévia com um cliente do lote */
     modelo: { carregado: modelo.carregado, assunto: modelo.assunto, texto: modelo.texto, padrao: MODELO_PADRAO_DAS_GUIAS },

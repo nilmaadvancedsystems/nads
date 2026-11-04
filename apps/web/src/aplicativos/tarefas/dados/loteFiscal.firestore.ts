@@ -5,7 +5,9 @@
 //     total, lidos, resultados.<código>_<AAAA-MM> (com valores por coluna, preenchidos e erroNoRelatorio) };
 //   - lotesFiscal/{lote}/arquivos/{k}: { nome, tamanho, partes, status }, com os pedaços em .../partes/{n} { dados: Bytes };
 //     o robô grava a leitura (com a coluna do Relatório) ou o erro; a tela, a escolha (com a coluna) e o fora;
-//   - solicitacoesEmail { tipo: 'envioFiscal' }: o registro de cada e-mail que o robô mandou (a aba "Enviados"; fica, o lote some em 3 dias);
+//   - solicitacoesEmail { tipo: 'envioFiscal' }: o registro de cada e-mail que o robô mandou (a aba "Enviados"; fica, o lote some em 3 dias),
+//     e das guias impressas (via: 'impresso', com o entregaId da entrega que o robô pôs na rota do Entregas; 04/11/2026);
+//   - lotesFiscal/{lote}.vias: { <código>: 'email'|'impresso' }, a via de cada cliente, gravada pela tela antes do disparo;
 //   - config/envioFiscal: o modelo do e-mail { assunto, texto, atualizadoEm, atualizadoPor } (o Fiscal e o admin gravam).
 import { addDoc as addDocBruto, Bytes, collection, doc, getDocs, onSnapshot, query, setDoc as setDocBruto, updateDoc as updateDocBruto, where } from 'firebase/firestore';
 import { entregas as e } from '@nads/core';
@@ -37,7 +39,11 @@ function loteFiscalDoBanco(id: string, d: Record<string, unknown>): LoteFiscal {
   const r = (d.resultados || {}) as Record<string, Record<string, unknown>>;
   return {
     ...l, grupo: d.grupo === 'lp' ? 'lp' : 'sn',
-    resultados: l.resultados.map(x => ({ ...x, preenchidos: textos(r[x.chave]?.preenchidos), erroNoRelatorio: texto(r[x.chave]?.erroNoRelatorio) })),
+    resultados: l.resultados.map(x => ({
+      ...x, preenchidos: textos(r[x.chave]?.preenchidos), erroNoRelatorio: texto(r[x.chave]?.erroNoRelatorio),
+      via: r[x.chave]?.via === 'impresso' ? 'impresso' : 'email', entregaId: texto(r[x.chave]?.entregaId),
+    })),
+    vias: Object.fromEntries(Object.entries((d.vias || {}) as Record<string, unknown>).map(([k, v]) => [k, v === 'impresso' ? 'impresso' : 'email'] as const)),
   };
 }
 
@@ -112,6 +118,10 @@ export function criarLoteFiscalFirestore(quem: () => e.Quem | null): RepoLoteFis
       if (!q) throw new Error('Sem login.');
       await updateDoc(doc(db, 'lotesFiscal', lote), { status: 'cancelado', canceladoPor: q.nome, canceladoPorUid: q.uid, canceladoEm: new Date().toISOString() });
     },
+    async definirVias(lote, vias) {
+      // a regra deixa mudar só as vias, com o lote parado (lido ou disparado)
+      await updateDoc(doc(db, 'lotesFiscal', lote), { vias });
+    },
     async disparar(lote) {
       const q = quem();
       if (!q) throw new Error('Sem login.');
@@ -128,6 +138,7 @@ export function criarLoteFiscalFirestore(quem: () => e.Quem | null): RepoLoteFis
               id: x.id, codigo: Number(d.codigo) || 0, empresa: texto(d.empresa), competencia: texto(d.competencia), grupo: d.grupo === 'lp' ? 'lp' : 'sn',
               para: textos(d.para), guias: textos(d.enviados),
               guiasDrive: (Array.isArray(d.guiasDrive) ? d.guiasDrive : []).map((g: Record<string, unknown>) => ({ nome: texto(g?.nome), id: texto(g?.id) })).filter((g: { id: string }) => g.id), enviadoEm: texto(d.enviadoEm || d.criadoEm), por: texto(d.criadoPor),
+              via: d.via === 'impresso' ? 'impresso' : 'email',
             } satisfies EnvioDasGuias;
           }).sort((a, b) => b.enviadoEm.localeCompare(a.enviadoEm));
           enviadosDoMes.set(competencia, { carregados: true, lista });

@@ -3170,6 +3170,8 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 .dp-tabela{width:100%;table-layout:auto;}
 .dp-tabela td,.dp-tabela th{white-space:nowrap;}
 .dp-tabela .dp-cliente{white-space:normal;width:100%;}
+.dp-tabela .steps{flex-wrap:nowrap;margin:0;}
+.dp-tabela .steps .step-pill{padding:4px 10px;font-size:var(--fs-12);}
 .dp-cliente-nome{display:block;}
 .dp-cliente-info{display:block;font-size:var(--fs-12);color:var(--ink-muted);margin-top:2px;}
 .dp-tabela .dp-ob{text-align:center;font-size:var(--fs-11);}
