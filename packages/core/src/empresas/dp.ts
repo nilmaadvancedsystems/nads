@@ -5,6 +5,7 @@
 // Gerado da planilha; para mudar um cliente, mude a linha dele aqui.
 import { slug } from '../formatos';
 import { EMPRESAS } from './lista';
+import { EMPRESAS_REINF } from '../tarefas/reinf/reinf';
 import type { EmpresaDoEscritorio } from './tipos';
 import type { ParametrosDoDp, ParametrosDoDpDoMes } from './cadastro/tipos';
 
@@ -278,8 +279,12 @@ const LINHAS: readonly Linha[] = [
   [613,"CAMPO E GESTAO AGROASSESSORIA LTDA","Simples","GUSTAVO","Pró-Labore",0,"11111110","E-mail",""],
 ];
 
+// a REINF autorizada: a da planilha do DP (só 19 empresas) ou a empresa estar na REINF do Fiscal (04/11/2026: "resolva esse
+// traço na reinf que marca como se não tivesse em todas as empresas"; a 66 tinha a REINF transmitida e aparecia com traço)
+const NA_REINF_DO_FISCAL = new Set(EMPRESAS_REINF.map(e => e.codigo));
+
 export const CLIENTES_DO_DP: readonly ClienteDoDp[] = LINHAS.map(([codigo, nome, enquadramento, responsavel, movimento, reinf, bits, entrega, agrupamento]) => ({
-  codigo, nome, enquadramento, responsavel, movimento, reinfAutorizada: reinf === 1,
+  codigo, nome, enquadramento, responsavel, movimento, reinfAutorizada: reinf === 1 || NA_REINF_DO_FISCAL.has(codigo),
   obrigacoes: OBRIGACOES_DP.filter((_, i) => bits[i] === '1').map(o => o.id), entrega, agrupamento,
 }));
 
