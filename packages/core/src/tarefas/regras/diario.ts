@@ -205,6 +205,16 @@ export function razaoDoDiario(lancamentos: readonly LancamentoDoDiario[], codigo
   };
 }
 
+/**
+ * Os meses (AAAA-MM) que o diário cobre: um mês está coberto quando algum lançamento tem data nele. Sem data (a página
+ * que não trouxe a data antes do lançamento), o lançamento não conta. Sem diário, o conjunto vem vazio.
+ */
+export function mesesDoDiario(lancamentos: readonly Pick<LancamentoDoDiario, 'data'>[]): Set<string> {
+  const meses = new Set<string>();
+  for (const l of lancamentos) if (/^\d{4}-\d{2}-\d{2}$/.test(l.data)) meses.add(l.data.slice(0, 7));
+  return meses;
+}
+
 /** As contas que têm lançamento no diário (código → quantidade), para pedir o razão de cada uma. */
 export function contasDoDiario(lancamentos: readonly LancamentoDoDiario[]): Record<string, number> {
   const out: Record<string, number> = {};

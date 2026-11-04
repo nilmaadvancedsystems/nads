@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { contasDoDiario, dataDoDiario, lerDiario, razaoDoDiario, type PaginaDoPdf } from './diario';
+import { contasDoDiario, dataDoDiario, lerDiario, mesesDoDiario, razaoDoDiario, type PaginaDoPdf } from './diario';
 
 // um diário sintético: a coluna da conta (x<150), o histórico (150–375), o documento (376–470), o Débito (470–530) e o
 // Crédito (>=530). Os textos são fictícios ("Conta Teste", valores inventados).
@@ -93,5 +93,29 @@ describe('razão do diário (mesmo formato do XLS)', () => {
 
   it('lista as contas com lançamento e a quantidade', () => {
     expect(contasDoDiario(d.lancamentos)).toEqual({ '10101': 3, '20202': 2 });
+  });
+});
+
+describe('meses cobertos pelo diário', () => {
+  // datas sintéticas: só o ano-mês importa
+  it('um mês está coberto quando algum lançamento tem data nele', () => {
+    const meses = mesesDoDiario([
+      { data: '2026-01-05' }, { data: '2026-01-31' }, { data: '2026-03-02' },
+    ]);
+    expect([...meses].sort()).toEqual(['2026-01', '2026-03']);
+    expect(meses.has('2026-02')).toBe(false);
+  });
+
+  it('lançamento sem data não cobre mês nenhum', () => {
+    expect(mesesDoDiario([{ data: '' }]).size).toBe(0);
+  });
+
+  it('sem diário, nenhum mês coberto', () => {
+    expect(mesesDoDiario([]).size).toBe(0);
+  });
+
+  it('dois anos diferentes são meses diferentes', () => {
+    const meses = mesesDoDiario([{ data: '2025-12-10' }, { data: '2026-12-10' }]);
+    expect([...meses].sort()).toEqual(['2025-12', '2026-12']);
   });
 });
