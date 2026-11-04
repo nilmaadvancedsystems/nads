@@ -8,8 +8,6 @@ import { useEffect, useId, useRef } from 'react';
 import { useContabilDaEmpresa } from './contabilDaEmpresa';
 import { BotaoDiario } from './BotaoDiario';
 
-const dataBR = (d: string) => d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4);
-
 /**
  * meses: o período da Tarefa (para acusar o mês que falta no razão). soDiario: a empresa ainda não saiu da Importação (Vitor,
  * 04/11/2026: "das que não saíram, deixe só o diário, quero fazer um teste"): sem o bloco dos razões; o Diário preenche sozinho
@@ -122,12 +120,18 @@ export function ContabilNaImportacao({ nome, codigo, meses = [], soDiario = fals
           </div>
           <div className="imp-resumo">{vm.diario && (
             <div>
-              <span>{vm.diario.lido.periodo ? dataBR(vm.diario.lido.periodo.inicio) + ' a ' + dataBR(vm.diario.lido.periodo.fim) + ' · ' : ''}{vm.diario.lido.lancamentos.length} lançamentos · {Object.keys(t.contasDoDiario(vm.diario.lido.lancamentos)).length} contas</span>
-              {vm.diario.lido.diferenca === 0
-                ? <span className="badge badge-ok">Débito = crédito</span>
-                : <span className="badge badge-bad" title="O débito e o crédito do diário não batem: confira o PDF no Alterdata">Não fecha: diferença de {formatos.reais(Math.abs(vm.diario.lido.diferenca))}</span>}
-              {soDiario && pedidos.length > 0 && <span className={'badge ' + (faltam ? 'badge-warn' : 'badge-ok')} title={faltam ? 'Contas que as etapas usam sem lançamento no Diário' : 'Os razões que as etapas usam saem do Diário'}>{faltam ? faltam + ' de ' + pedidos.length + ' contas sem lançamento' : 'Razões pelo Diário'}</span>}
-              {vm.diario.lido.semConta > 0 && <span className="badge badge-warn" title="Linhas do diário sem o código da conta (quebra de página): não entram em nenhum razão">{vm.diario.lido.semConta} sem conta</span>}
+              {/* no desenho das outras linhas (Vitor, 04/11/2026: "melhora esse feedback visual"): duas linhas de texto, sem
+                  pílulas; o que precisa de atenção em vermelho */}
+              <span>{vm.diario.lido.periodo ? rotuloDoMes(vm.diario.lido.periodo.inicio) + ' a ' + rotuloDoMes(vm.diario.lido.periodo.fim) + ' · ' : ''}{vm.diario.lido.lancamentos.length.toLocaleString('pt-BR')} lançamentos · {Object.keys(t.contasDoDiario(vm.diario.lido.lancamentos)).length} contas</span>
+              <span>
+                {vm.diario.lido.diferenca === 0
+                  ? 'Fecha'
+                  : <span className="ext-neg" title="O débito e o crédito do diário não batem: confira o PDF no Alterdata">Não fecha ({formatos.reais(Math.abs(vm.diario.lido.diferenca))})</span>}
+                {soDiario && pedidos.length > 0 && <>{' · '}{faltam
+                  ? <span className="ext-neg" title="Contas que as etapas usam sem lançamento no Diário: continuam sem razão">{faltam} de {pedidos.length} razões sem lançamento</span>
+                  : <span title="Os razões das contas que as etapas usam saíram do Diário">{pedidos.length} razões pelo Diário</span>}</>}
+                {vm.diario.lido.semConta > 0 && <>{' · '}<span title="Linhas do diário sem o código da conta (quebra de página): não entram em nenhum razão">{vm.diario.lido.semConta} {vm.diario.lido.semConta === 1 ? 'linha' : 'linhas'} sem conta</span></>}
+              </span>
             </div>
           )}</div>
           <div className="imp-grupos">
