@@ -11,7 +11,7 @@
 // Ao importar, só uma barrinha por cima da tela, que some em 2,7 s.
 import { clientes as cl, demo, extrator as x, type conferencia, tarefas } from '@nads/core';
 import { Alerta, BotaoFechar, classeDaJanela, destacarNaTela, Icone, LogoBanco, LogoDrive, LogoGmail, MensagemFlutuante, MenuSuspenso, preCarregarLogosDosApps, urlDoLogoBanco, urlDoLogoNilma, useAbasParaAEtapa, useCarregando, type AbaDaEtapa } from '@nads/ui';
-import { Fragment, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useId, useRef, useState } from 'react';
 import { useDadosDeTesteNaTarefa, usePonteDaTarefa, useRequisitosParaATarefa, type OpcaoDeTeste } from '../../../../../../comum/ponte';
 import { useSessao } from '../../casca/sessao';
 import { useImportacao, type Mensagem } from '../importacao/useImportacao';
@@ -38,13 +38,14 @@ import { useContabilDaEmpresa } from '../../../../../../comum/contabilDaEmpresa'
 type Vm = ReturnType<typeof useImportacao>;
 type Lado = { qtdArquivos: number; qtdLancamentos: number; lendo: boolean };
 
-/** A dica do razão que ainda não pode subir: o Diário do mês (Vitor, 04/11/2026) vem antes. */
-const DICA_SEM_DIARIO = 'Suba antes o Diário do mês (Importação › Diário)';
+/** A dica do razão que ainda não pode subir: o extrato do mês vem antes (Vitor, 04/11/2026: "enquanto o PDF não for upado do mês,
+ * não libera o botão de upar o razão"). */
+const DICA_SEM_EXTRATO = 'Suba antes o extrato do mês';
 
 /** Botão só de ícone de um lado (extrato ou razão): importar → check verde → (mouse em cima) × para excluir.
- *  semDiario = o motivo de não poder importar ainda (o botão fica ofuscado, com essa dica); o check e o excluir seguem. */
-function BotaoLado({ lado, titulo, aceitar, travado, semDiario, onArquivos, onExcluir }: {
-  lado: Lado; titulo: string; aceitar: string; travado: boolean; semDiario?: string;
+ *  semExtrato = o motivo de não poder importar ainda (o botão fica ofuscado, com essa dica); o check e o excluir seguem. */
+function BotaoLado({ lado, titulo, aceitar, travado, semExtrato, onArquivos, onExcluir }: {
+  lado: Lado; titulo: string; aceitar: string; travado: boolean; semExtrato?: string;
   onArquivos: (fs: File[]) => void; onExcluir: () => void;
 }) {
   const id = useId();
@@ -58,9 +59,9 @@ function BotaoLado({ lado, titulo, aceitar, travado, semDiario, onArquivos, onEx
     );
   }
   // o botão desabilitado (não o rótulo): o rótulo tem pointer-events:none e não mostraria a dica
-  if (semDiario) {
+  if (semExtrato) {
     return (
-      <button type="button" className="icon-btn icon-btn-sm imp-btn" disabled title={semDiario} aria-label={'Importar ' + titulo.toLowerCase() + ': ' + semDiario}>
+      <button type="button" className="icon-btn icon-btn-sm imp-btn" disabled title={semExtrato} aria-label={'Importar ' + titulo.toLowerCase() + ': ' + semExtrato}>
         <Icone nome="upload" />
       </button>
     );
@@ -297,13 +298,11 @@ function SubindoAoDrive() {
   );
 }
 
-function MesesDoBanco({ meses, competencia, buscandoMes, travado, aceitarExtrato, aceitarRazao, mesesComDiario, onMes, onArquivos, onExcluir, onDrive, onEmail, onVer, onVerImportado, onSemMovimento, naTarefa, puxados, subindo, semMovimentoDoDrive }: {
+function MesesDoBanco({ meses, competencia, buscandoMes, travado, aceitarExtrato, aceitarRazao, onMes, onArquivos, onExcluir, onDrive, onEmail, onVer, onVerImportado, onSemMovimento, naTarefa, puxados, subindo, semMovimentoDoDrive }: {
   meses: ReturnType<Vm['mesesDoBanco']>;
   /** o mês que o "Todos pelo Drive" está buscando agora: a célula do extrato gira */
   buscandoMes?: string | null;
   competencia: string; travado: boolean; aceitarExtrato: string; aceitarRazao: string; naTarefa: boolean;
-  /** os meses (AAAA-MM) que o Diário cobre: o razão só sobe nesses meses (Vitor, 04/11/2026) */
-  mesesComDiario: ReadonlySet<string>;
   onMes: (m: string) => void; onArquivos: (lado: 'banco' | 'sistema', fs: File[], mes: string) => void; onExcluir: (lado: 'banco' | 'sistema', mes: string) => void;
   onDrive: (mes: string) => void; onEmail?: (mes: string) => void; onVer: (arquivo: { id: string; nome: string }) => void; onSemMovimento: (mes: string, marcado: boolean) => void;
   /** o olhinho do mês importado sem o Drive ligado: o arquivo (do computador nesta aba, ou o do Drive) ou os lançamentos;
@@ -349,8 +348,9 @@ function MesesDoBanco({ meses, competencia, buscandoMes, travado, aceitarExtrato
     // o olhinho em todo mês importado (Vitor, 19/10/2026: "deixa eu visualizar o importado, não somente deixe o check"): o
     // arquivo que veio do e-mail ou do computador (só nesta aba); senão, onVerImportado (o do Drive, ou os lançamentos)
     const nomeLado = lado === 'banco' ? 'extrato' : 'razão';
-    const semDiario = lado === 'sistema' && !mesesComDiario.has(m.mes) ? DICA_SEM_DIARIO : undefined;
-    return <>{lado === 'banco' && subindo(m.mes) && <SubindoAoDrive />}<BotaoLado lado={info} titulo={(lado === 'banco' ? 'Extrato' : 'Razão') + ' de ' + m.rotulo} aceitar={lado === 'banco' ? aceitarExtrato : aceitarRazao} travado={trava} semDiario={semDiario}
+    // o razão do mês só sobe com o extrato dele (do computador, do e-mail ou do Drive)
+    const semExtrato = lado === 'sistema' && !m.extrato && !m.ladoExtrato.doDrive.length ? DICA_SEM_EXTRATO : undefined;
+    return <>{lado === 'banco' && subindo(m.mes) && <SubindoAoDrive />}<BotaoLado lado={info} titulo={(lado === 'banco' ? 'Extrato' : 'Razão') + ' de ' + m.rotulo} aceitar={lado === 'banco' ? aceitarExtrato : aceitarRazao} travado={trava} semExtrato={semExtrato}
       onArquivos={fs => onArquivos(lado, fs, m.mes)} onExcluir={() => onExcluir(lado, m.mes)} />
       {info.qtdArquivos > 0 && <BotaoVer titulo={'Ver o ' + nomeLado + ' importado de ' + m.rotulo} onVer={() => onVerImportado(lado, m.mes)} />}</>;
   };
@@ -429,9 +429,9 @@ function RemoverTodos({ titulo, travado, onRemover }: { titulo: string; travado:
  * o razão do período inteiro, de uma vez); o sistema vê de que mês é cada lançamento, e os meses que não vieram ficam
  * vazios embaixo, para importar um a um.
  */
-function ImportarTodos({ titulo, aceitar, travado, onArquivos, restantes, onRemover, semDiario }: { titulo: string; aceitar: string; travado: boolean; onArquivos: (fs: File[]) => void; restantes?: boolean; onRemover?: () => void;
-  /** o motivo de não poder importar (algum mês que falta ainda não tem o Diário): o importar fica ofuscado; remover segue */
-  semDiario?: string }) {
+function ImportarTodos({ titulo, aceitar, travado, onArquivos, restantes, onRemover, semExtrato }: { titulo: string; aceitar: string; travado: boolean; onArquivos: (fs: File[]) => void; restantes?: boolean; onRemover?: () => void;
+  /** o motivo de não poder importar (algum mês que falta ainda não tem o extrato): o importar fica ofuscado; remover segue */
+  semExtrato?: string }) {
   const id = useId();
   const arquivo = useRef<HTMLInputElement>(null);
   // algum mês já tem (Vitor, 02/10/2026): o ícone abre as opções — importar os restantes ou remover todos
@@ -441,7 +441,7 @@ function ImportarTodos({ titulo, aceitar, travado, onArquivos, restantes, onRemo
         <MenuSuspenso rotulo="" icone="upload" className="gh-topo-btn gh-topo-menu" direita dica={'Importar ' + titulo + ' dos meses que faltam, ou remover todos'}
           conteudo={fechar => (
             <>
-              <button type="button" className="popover-item" role="menuitem" disabled={!!semDiario} title={semDiario} onClick={() => { fechar(); arquivo.current?.click(); }}>
+              <button type="button" className="popover-item" role="menuitem" disabled={!!semExtrato} title={semExtrato} onClick={() => { fechar(); arquivo.current?.click(); }}>
                 <Icone nome="upload" /><span className="popover-texto">Importar os restantes do computador</span>
               </button>
               <hr className="popover-sep" />
@@ -455,10 +455,10 @@ function ImportarTodos({ titulo, aceitar, travado, onArquivos, restantes, onRemo
       </>
     );
   }
-  // sem o Diário de algum mês que falta: o botão ofuscado, com o motivo (o rótulo teria pointer-events: none)
-  if (semDiario && !travado) {
+  // sem o extrato de algum mês que falta: o botão ofuscado, com o motivo (o rótulo teria pointer-events: none)
+  if (semExtrato && !travado) {
     return (
-      <button type="button" className="icon-btn imp-btn" disabled title={semDiario} aria-label={'Importar ' + titulo + ': ' + semDiario}>
+      <button type="button" className="icon-btn imp-btn" disabled title={semExtrato} aria-label={'Importar ' + titulo + ': ' + semExtrato}>
         <Icone nome="upload" />
       </button>
     );
@@ -674,8 +674,6 @@ export function TarefaExtratos() {
   // Conferência, Balancete, Entradas, Saídas, Tomados e (se presta serviço) Prestados importados
   // o balancete dinâmico é obrigatório na Importação (16/10/2026): ele monta a Tarefa
   const contabil = useContabilDaEmpresa(s.nome, s.codigo);
-  // o razão de um mês só sobe depois do Diário dele (Vitor, 04/11/2026): o Diário cobre o mês com lançamento nele; sem Diário, nenhum
-  const mesesComDiario = useMemo(() => tarefas.mesesDoDiario(contabil.diario?.lido.lancamentos ?? []), [contabil.diario]);
   const mesesDaEtapa = vm.periodo.length > 1 ? vm.periodo : [vm.competencia];
   const importados = useImportadosDaConferencia(s.nome, mesesDaEtapa);
   const semMovimentoNoPeriodo = (banco: string) => mesesDaEtapa.every(m => (vm.periodo.length > 1 ? ponte.semMovimentoPorMes[m] || [] : ponte.semMovimento).includes(banco));
@@ -938,9 +936,9 @@ export function TarefaExtratos() {
                       <span className="imp-rotulo">Razão</span>
                       {lote.razaoCompleto
                         ? <RemoverTodos titulo="o razão" travado={ocupadoGeral} onRemover={() => { void vm.excluirDoPeriodo(b.id, 'sistema', lote.comRazao); }} />
-                        // o razão de todos de uma vez cai nos meses que faltam: enquanto algum deles não tem o Diário, não sobe
+                        // o razão de todos de uma vez cai nos meses que faltam: enquanto algum deles não tem o extrato, não sobe
                         : <ImportarTodos titulo="o razão" restantes={lote.comRazao.length > 0} aceitar={cxRazao.aceitar} travado={ocupadoGeral} onArquivos={fs => { void vm.importarArquivos(b.id, 'sistema', fs); }}
-                            semDiario={meses.some(m => !m.razao && !m.semMovimento && !mesesComDiario.has(m.mes)) ? DICA_SEM_DIARIO : undefined}
+                            semExtrato={meses.some(m => !m.razao && !m.semMovimento && !m.extrato && !m.ladoExtrato.doDrive.length) ? DICA_SEM_EXTRATO : undefined}
                             onRemover={() => { void vm.excluirDoPeriodo(b.id, 'sistema', lote.comRazao); }} />}
                     </div>
                   </div>
@@ -984,7 +982,7 @@ export function TarefaExtratos() {
                     <div className="imp-grupo" aria-label="Razão da conta">
                       <span className="imp-rotulo">Razão</span>
                       <BotaoLado lado={b.razao} titulo="Razão" aceitar={cxRazao.aceitar} travado={travado}
-                        semDiario={!mesesComDiario.has(vm.competencia) ? DICA_SEM_DIARIO : undefined}
+                        semExtrato={!b.extrato.qtdArquivos ? DICA_SEM_EXTRATO : undefined}
                         onArquivos={fs => { void vm.importarArquivos(b.id, 'sistema', fs); }} onExcluir={() => { void vm.excluirDoBanco(b.id, 'sistema'); }} />
                       {ehTeste && !b.razao.qtdArquivos && (
                         <button type="button" className="icon-btn icon-btn-sm imp-btn" disabled={travado} title="Dados de teste: um razão de teste" aria-label="Razão de teste"
@@ -1006,7 +1004,7 @@ export function TarefaExtratos() {
                 )}
               </div>
               {emLote && gradeAberta && <MesesDoBanco meses={meses} competencia={vm.competencia} naTarefa={ponte.naTarefa} buscandoMes={d.buscando === b.id ? d.mesAtual : null}
-                travado={ocupadoGeral} aceitarExtrato={cxExtrato.aceitar} aceitarRazao={cxRazao.aceitar} mesesComDiario={mesesComDiario}
+                travado={ocupadoGeral} aceitarExtrato={cxExtrato.aceitar} aceitarRazao={cxRazao.aceitar}
                 onMes={vm.setCompetencia} onArquivos={(lado, fs, mes) => {
                   if (lado === 'banco') importarExtrato(b, fs, () => { for (const f of fs) guardarPuxado(chaveDoExtrato(s.codigo, b.id), f.name, f, 'computador', [mes]); }, [mes]);
                   else void vm.importarArquivos(b.id, lado, fs);
