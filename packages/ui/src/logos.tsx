@@ -16,6 +16,7 @@ import { Icone } from './icones';
 const IMAGENS = import.meta.glob('./logos-bancos/*.{png,jpg,jpeg,webp,svg}', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
 import marcaNilma from './marca-nilma.png';
 import logoExcel from './logo-excel.webp';
+import logoInss from './logo-inss.png';
 
 /** O endereço completo do logo da Nilma (o do e-mail), publicado junto com o site. */
 export function urlDoLogoNilma(): string {
@@ -241,26 +242,13 @@ export function LogoDrive({ cor }: { cor?: boolean }) {
 const cinzaSeNao = (cor?: boolean) => (cor ? undefined : { filter: 'grayscale(1)', opacity: 0.75 });
 
 /**
- * O logo do INSS (Vitor, 07/10/2026), desenhado a partir da imagem que ele mandou: o oval branco, a meia-lua verde à
- * esquerda, a amarela à direita e o globo azul de quadradinhos no meio.
+ * O logo do INSS: a imagem original que o Vitor mandou (logo-inss.png, 384×384, fundo transparente; 04/11/2026: "coloque
+ * exatamente a logo do INSS"), sem redesenhar, só recortada no desenho (y 63 a 320) por dentro de um svg.
  */
 export function LogoInss({ cor }: { cor?: boolean }) {
-  const quadros: [number, number, number][] = [];
-  // o globo: quadradinhos numa grade, menores perto da borda (a esfera)
-  for (let l = -3; l <= 3; l++) {
-    for (let c = -3; c <= 3; c++) {
-      const d = Math.hypot(l, c);
-      if (d > 3.4) continue;
-      const lado = 3.6 * (1 - d / 6);
-      quadros.push([50 + c * 4.6 - lado / 2, 35 + l * 4.6 - lado / 2, lado]);
-    }
-  }
   return (
-    <svg viewBox="0 0 100 70" width="100%" height="100%" aria-hidden="true" style={cinzaSeNao(cor)}>
-      <ellipse cx="50" cy="35" rx="48" ry="32" fill="#fff" stroke="#d9dde3" strokeWidth="1.5" />
-      <path fill="#0A9B3A" d="M40 8 C18 12 6 26 8 40 C10 54 26 62 46 62 C30 54 26 46 30 38 C34 30 30 20 40 8 Z" />
-      <path fill="#F6BE2C" d="M60 8 C80 10 94 22 92 36 C90 50 76 60 56 62 C70 54 74 46 70 38 C66 30 70 20 60 8 Z" />
-      {quadros.map(([x, y, s], i) => <rect key={i} x={x} y={y} width={s} height={s} rx={0.6} fill="#1D5BBF" />)}
+    <svg viewBox="0 63 384 258" width="100%" height="100%" aria-hidden="true" style={cinzaSeNao(cor)}>
+      <image href={logoInss} width="384" height="384" />
     </svg>
   );
 }
