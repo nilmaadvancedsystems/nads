@@ -20,17 +20,17 @@ const ITENS: { id: ItemDaFolha['id']; nome: string; e: RegExp; nao?: RegExp }[] 
   { id: 'ferias', nome: 'Férias', e: /ferias/, nao: /provis|encargo/ },
   { id: 'decimo-terceiro', nome: 'Décimo terceiro', e: /\b13|decimo terceiro/, nao: /provis|encargo/ },
   { id: 'rescisao', nome: 'Rescisão', e: /rescis/, nao: /multa|grrf/ },
-  { id: 'fgts', nome: 'FGTS', e: /\bfgts\b/, nao: /multa|rescis|provis|encargos? (de|do)? ?fgts e|emprestimo|consignad|credito do trabalhador/ },
+  { id: 'fgts', nome: 'Guias do FGTS', e: /\bfgts\b/, nao: /multa|rescis|provis|encargos? (de|do)? ?fgts e|emprestimo|consignad|credito do trabalhador/ },
   { id: 'credito-trabalhador', nome: 'FGTS empréstimo · Crédito do Trabalhador', e: /credito do trabalhador|consignad|emprestimo.*(fgts|trabalhador|folha)/ },
   { id: 'grrf', nome: 'GRRF (multa rescisória)', e: /grrf|multa rescis/ },
   { id: 'inss', nome: 'INSS', e: /\binss\b/, nao: /provis/ },
 ];
 
 /**
- * Fora do checklist por enquanto (Vitor, 05/10/2026: "acho que irei tratar elas mais pra frente"): o FGTS, a GRRF e o
- * INSS. Continuam reconhecidos acima; para voltarem, é só tirar daqui.
+ * Fora do checklist por enquanto (Vitor, 05/10/2026: "acho que irei tratar elas mais pra frente"): a GRRF e o INSS. O FGTS
+ * voltou como "Guias do FGTS", só a caixinha (Vitor, 04/11/2026). Continuam reconhecidos acima; para voltarem, é só tirar daqui.
  */
-const FORA_POR_ENQUANTO = new Set<ItemDaFolha['id']>(['fgts', 'grrf', 'inss']);
+const FORA_POR_ENQUANTO = new Set<ItemDaFolha['id']>(['grrf', 'inss']);
 
 /** meses: o período da tarefa ('aaaa-mm'), para o 13º (só com novembro ou dezembro). */
 export function checklistDaFolha(contas: readonly ContaDoBalancete[], meses: readonly string[]): ItemDaFolha[] {

@@ -14,11 +14,13 @@ import { HistoricoCadastro } from '../historico/HistoricoCadastro';
 import { PlanoDeContas } from '../plano/PlanoDeContas';
 import { useJanelaDaEmpresa } from './useJanelaDaEmpresa';
 import { SenhasNoCadastro } from '../../senhas/SenhasNoCadastro';
+import { CodigoDoSimplesNoCadastro } from '../../senhas/CodigoDoSimplesNoCadastro';
 import { LinkDoClienteNaEmpresa } from '../../area-cliente/LinkDoClienteNaEmpresa';
 
 function Aba({ rota, aba }: { rota: string; aba: string }) {
   switch (aba) {
-    case 'empresa': return <DadosDaEmpresa rota={rota} />;
+    // o código de acesso do Simples à mostra em cima dos dados (03/11/2026: "aparecer no cadastro como informação facil")
+    case 'empresa': return <><CodigoDoSimplesNoCadastro rota={rota} /><DadosDaEmpresa rota={rota} /></>;
     case 'contabil': return <ParametrosContabeis rota={rota} />;
     case 'fiscal': return <ParametrosFiscais rota={rota} />;
     case 'fiscal-docs': return <DocumentosDoFiscal rota={rota} />;
@@ -113,7 +115,7 @@ export function JanelaDaEmpresa({ rota, aba, local, soLeitura }: {
           <div ref={conteudoDaAba} className="cad-janela-conteudo">
             {/* o título da página, como no Notion: "Contábil · Parâmetros" */}
             {vm.abaAberta && <h2 className="cfg-titulo">{vm.abaAberta.grupo !== 'Empresa' && <span className="fraco">{vm.abaAberta.grupo} · </span>}{vm.abaAberta.rotulo}</h2>}
-            {soLeitura || <>
+            {soLeitura ? <><CodigoDoSimplesNoCadastro rota={rota} />{soLeitura}</> : <>
               {vm.aba === 'empresa' && <ResumoDoCadastro vm={vm} />}
               <Aba rota={rota} aba={vm.aba} />
               {/* o link da Área do Cliente (Vitor, 16/10/2026): gerar, copiar, WhatsApp, trocar e revogar */}

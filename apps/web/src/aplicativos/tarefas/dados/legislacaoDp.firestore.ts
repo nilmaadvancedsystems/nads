@@ -1,5 +1,6 @@
 // A legislação do DP cadastrada no nads, no banco do Entregas: legislacaoDp/{id} {assunto, texto, observacoes, data,
-// atualizadoEm, atualizadoPor} (a regra: lê quem é membro; o DP e o admin gravam).
+// atualizadoEm, atualizadoPor, excluida?, excluidaEm?, excluidaPor?} (a regra: lê quem é membro; o DP e o admin gravam;
+// apagar, ninguém — excluir é marcar `excluida`, com quem e quando).
 import { formatos } from '@nads/core';
 import { addDoc as addDocBruto, collection, doc, onSnapshot, setDoc as setDocBruto } from 'firebase/firestore';
 import { bancoDoEntregas } from './entregas.firestore';
@@ -28,7 +29,10 @@ export function criarLegislacaoDpFirestore(quem: () => string): RepoLegislacaoDp
             carregada: true,
             lista: s.docs.map(d => {
               const x = d.data();
-              return { id: d.id, assunto: texto(x.assunto), texto: texto(x.texto), observacoes: texto(x.observacoes), data: texto(x.data), atualizadoEm: texto(x.atualizadoEm), atualizadoPor: texto(x.atualizadoPor) };
+              return {
+                id: d.id, assunto: texto(x.assunto), texto: texto(x.texto), observacoes: texto(x.observacoes), data: texto(x.data), atualizadoEm: texto(x.atualizadoEm), atualizadoPor: texto(x.atualizadoPor),
+                excluida: x.excluida === true, excluidaEm: texto(x.excluidaEm), excluidaPor: texto(x.excluidaPor),
+              };
             }).filter(l => l.assunto && l.texto),
           };
           mudou();
@@ -41,6 +45,13 @@ export function criarLegislacaoDpFirestore(quem: () => string): RepoLegislacaoDp
       if (l.id) { await setDoc(doc(db, 'legislacaoDp', l.id), dados); return l.id; }
       const r = await addDoc(collection(db, 'legislacaoDp'), dados);
       return r.id;
+    },
+    async excluir(l) {
+      const agora = new Date().toISOString();
+      await setDoc(doc(db, 'legislacaoDp', l.id), {
+        assunto: l.assunto, texto: l.texto, observacoes: l.observacoes, data: l.data || formatos.diaEmBrasilia(),
+        atualizadoEm: agora, atualizadoPor: quem(), excluida: true, excluidaEm: agora, excluidaPor: quem(),
+      });
     },
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,

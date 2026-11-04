@@ -1,8 +1,8 @@
-// A conferência do FGTS na aba FGTS da etapa da folha (Vitor, 16/10/2026), no desenho da do INSS: a linha "Guias do FGTS"
-// com as Guias (PDF do FGTS Digital) à direita, a grade dos meses (provisão, guia, diferença, pagamento; clicar abre o mês
-// com cada trabalhador), a faixa Lançamentos sugeridos e, embaixo, o fechamento do saldo. O razão é o da linha de cima.
-import { CampoArquivo, Icone, LogoFgts } from '@nads/ui';
-import { useId, useState } from 'react';
+// A conferência do FGTS na aba FGTS da etapa da folha (Vitor, 16/10/2026), no desenho da do INSS: a grade dos meses
+// (provisão, guia, diferença, pagamento; clicar abre o mês com cada trabalhador), a faixa Lançamentos sugeridos e, embaixo,
+// o fechamento do saldo. O razão é o da linha de cima. As guias não se importam aqui (Vitor, 04/11/2026): a entrega do FGTS
+// é a caixinha "Guias do FGTS" na Contabilização da Folha.
+import { Icone } from '@nads/ui';
 import { FaixaQueAbre } from '../../../../../comum/FaixaQueAbre';
 import { useColunaAjustavel, ValorNaGrade } from '../../../../../comum/GradeDosMeses';
 import { MenuDeConta } from '../../../../extratudo/ferramentas/creditor/partes/MenuDeConta';
@@ -11,40 +11,10 @@ import type { FgtsDaEtapa as Fgts } from '../useFgtsDaEtapa';
 const PAGAMENTO: Record<Fgts['meses'][number]['situacao'], string> = { ok: '✓', falta: 'Falta', depois: 'Depois', 'sem-guia': '—' };
 
 export function FgtsDaEtapa({ vm }: { vm: Fgts }) {
-  const idGuias = useId();
-  const [aberta, setAberta] = useState(true);
   const grade = useColunaAjustavel('fgts', '96px', vm.meses.length);
   return (
     <div className="imp-bloco">
-      <div className="imp-linha">
-        <button type="button" className={'imp-seta' + (aberta ? ' aberta' : '')} aria-expanded={aberta} disabled={!vm.pronto}
-          title={aberta ? 'Recolher a conferência' : 'Abrir a conferência'} aria-label="A conferência do FGTS" onClick={() => setAberta(a => !a)}>
-          <Icone nome="caretDown" />
-        </button>
-        <span className="imp-ico imp-logo"><LogoFgts cor={vm.temGuias} /></span>
-        <div className="imp-txt">
-          <span><b>Guias do FGTS</b>{vm.arquivosGuias.length > 0 && <span className="imp-conta">{vm.arquivosGuias.length} {vm.arquivosGuias.length === 1 ? 'arquivo' : 'arquivos'}</span>}</span>
-        </div>
-        <div className="imp-resumo">{vm.resumo.length > 0 && <div>{vm.resumo.map(x => <span key={x}>{x}</span>)}</div>}</div>
-        <div className="imp-grupos">
-          <div className="imp-grupo" aria-label="Guias do FGTS">
-            <span className="imp-rotulo">Guias</span>
-            {vm.lendo ? <span className="icon-btn icon-btn-sm imp-btn" title="Lendo…"><span className="btn-spinner" /></span>
-              : vm.temGuias ? (
-                <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" onClick={vm.removerGuias} title="As guias do FGTS: importadas. Clique para tirar." aria-label="Tirar as guias do FGTS">
-                  <Icone nome="check" className="imp-feito-ok" /><Icone nome="x" className="imp-feito-x" />
-                </button>
-              ) : (
-                <>
-                  <label htmlFor={idGuias} className="icon-btn icon-btn-sm imp-btn" title="Importar as guias do FGTS (PDF &quot;Detalhe da Guia Emitida&quot; do FGTS Digital)" aria-label="Importar as guias do FGTS"><Icone nome="upload" /></label>
-                  <CampoArquivo semCaixa multiplo id={idGuias} aceitar=".pdf" onEscolherVarios={fs => { void vm.importarGuias(fs); }} />
-                </>
-              )}
-          </div>
-        </div>
-      </div>
-      {vm.temGuias && !vm.temRazao && <p className="hint" style={{ margin: '8px 16px' }}>Importe o razão do FGTS a recolher na linha de cima para conferir.</p>}
-      {vm.pronto && aberta && (
+      {vm.pronto && (
         <>
           <div className="imp-periodo-linha">
             <table className="imp-meses" style={grade.tabela}>

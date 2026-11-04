@@ -60,7 +60,8 @@ export function criarLoteFiscalFirestore(quem: () => e.Quem | null): RepoLoteFis
         ouvindo = q.uid;
         // só igualdade (sem orderBy, que pediria um índice): a ordem é feita aqui
         onSnapshot(query(collection(db, 'lotesFiscal'), where('criadoPorUid', '==', q.uid)), s => {
-          lotes = { carregados: true, lista: s.docs.map(x => loteFiscalDoBanco(x.id, x.data())).sort((a, b) => b.criadoEm.localeCompare(a.criadoEm)) };
+          // o excluído ('cancelado') some na hora; o robô apaga do banco logo depois
+          lotes = { carregados: true, lista: s.docs.filter(x => x.get('status') !== 'cancelado').map(x => loteFiscalDoBanco(x.id, x.data())).sort((a, b) => b.criadoEm.localeCompare(a.criadoEm)) };
           mudou();
         }, () => { lotes = { carregados: true, lista: [] }; mudou(); });
       }
@@ -105,6 +106,11 @@ export function criarLoteFiscalFirestore(quem: () => e.Quem | null): RepoLoteFis
       let i = 0;
       for (const p of pedacos) { tudo.set(p, i); i += p.length; }
       return tudo;
+    },
+    async excluir(lote) {
+      const q = quem();
+      if (!q) throw new Error('Sem login.');
+      await updateDoc(doc(db, 'lotesFiscal', lote), { status: 'cancelado', canceladoPor: q.nome, canceladoPorUid: q.uid, canceladoEm: new Date().toISOString() });
     },
     async disparar(lote) {
       const q = quem();

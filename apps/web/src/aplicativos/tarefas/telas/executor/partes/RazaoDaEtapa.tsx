@@ -6,6 +6,7 @@ import { useId, useState } from 'react';
 import { FaixaQueAbre } from '../../../../../comum/FaixaQueAbre';
 import type { RazaoDaEtapa as Razao } from '../useRazaoDaEtapa';
 import { BotaoDeTeste, type ItemDeTeste } from '../../../../../comum/BotaoDeTeste';
+import { BotaoDiario } from '../../../../../comum/BotaoDiario';
 import { useColunaAjustavel, ValorNaGrade } from '../../../../../comum/GradeDosMeses';
 import { TabelaCaixaNoBanco, TabelaNotasNoCaixa } from '../etapas/caixabancos/CaixaNoBanco';
 
@@ -88,6 +89,7 @@ export function RazaoDaEtapa({ conta, razao, conferir, teste = [] }: { conta: st
                 ) : (
                   <>
                     <BotaoDeTeste itens={teste} />
+                    <BotaoDiario onClick={razao.usarDiario} />
                     <label htmlFor={id} className="icon-btn icon-btn-sm imp-btn" title={'Importar o razão do ' + conta + ' (XLS da conciliação do Alterdata)'} aria-label={'Importar o razão do ' + conta}>
                       <Icone nome="upload" />
                     </label>

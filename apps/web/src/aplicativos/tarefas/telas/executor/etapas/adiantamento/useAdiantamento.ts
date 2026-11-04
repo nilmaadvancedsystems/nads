@@ -70,6 +70,8 @@ export function useAdiantamento(lado: t.LadoDoAdiantamento = 'fornecedores') {
     razao: razao ? { nome: razao.nome, resumo: doPeriodo.reduce((n, m) => n + m.lancamentos.length, 0) + ' lançamentos · ' + t.rotuloDoPeriodo([...meses]) } : null,
     importar: (f: File | undefined) => { void importar(f); },
     tirar: () => { setRazao(null); if (!proprio && daImportacao) contabil.tirarRazao(daImportacao.conta); },
+    /** o Diário deste adiantamento (a Importação preenche; o razão próprio desta etapa, se houver, sai) */
+    usarDiario: () => { if (contabil.usarDiarioDoTipo(lado === 'fornecedores' ? 'adiantamento-fornecedores' : 'adiantamento-clientes', lado === 'fornecedores' ? 'Adiantamento de fornecedores' : 'Adiantamento de clientes')) setRazao(null); },
     teste,
     /** a grade: um mês por coluna — saldo do fim (credor em vermelho) e quantos lançamentos */
     meses: doPeriodo.map(m => ({

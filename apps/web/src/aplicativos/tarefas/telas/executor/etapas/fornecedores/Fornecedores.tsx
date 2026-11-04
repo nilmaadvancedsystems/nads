@@ -3,6 +3,7 @@
 import { CampoArquivo, fundoSuaveDoBanco, Icone, LogoBanco, MenuSuspenso, Segmentado } from '@nads/ui';
 import { Fragment, useRef, useState, type ReactNode } from 'react';
 import { BotaoDeTeste, type ItemDeTeste } from '../../../../../../comum/BotaoDeTeste';
+import { BotaoDiario } from '../../../../../../comum/BotaoDiario';
 import { useFornecedores, type FiltroFornecedores, type TelaFornecedores } from './useFornecedores';
 import { useColunaAjustavel, ValorNaGrade } from '../../../../../../comum/GradeDosMeses';
 import { DigitarLancamento } from '../clientes/DigitarLancamento';
@@ -207,11 +208,14 @@ function ListaDeFornecedores({ vm }: { vm: VM }) {
                       <Icone nome="check" className="imp-feito-ok" /><Icone nome="x" className="imp-feito-x" />
                     </button>
                   ) : (
+                    <>
+                    <BotaoDiario desabilitado={!vm.carregado} onClick={() => vm.usarDiarioNaConta(l.codigo)} titulo={'Usar o Diário (PDF) no razão da conta ' + l.codigo} />
                     <button type="button" className="icon-btn icon-btn-sm imp-btn" disabled={!vm.carregado}
                       onClick={() => { conta.current = l.codigo; arquivo.current?.click(); }}
                       title={'Importar o razão da conta ' + l.codigo + ' (as notas em aberto vão para a relação do cliente)'} aria-label={'Importar o razão de ' + l.nome}>
                       <Icone nome="upload" />
                     </button>
+                    </>
                   )}
                   </span>
                 </td>

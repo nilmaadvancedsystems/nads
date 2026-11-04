@@ -2,7 +2,7 @@
 // lugar do "main ▾"; à direita a busca curta com atalho "/" e Situação ▾), as empresas por situação, a lista (clicar no
 // título da coluna ordena; clicar na linha abre a página da empresa), as etapas paradas e, no Contábil, os históricos do
 // Creditor. O "Iniciar", o Progresso do mês e os Insights saíram (27/10/2026).
-import { Icone, MenuSuspenso, Segmentado, useCarregando, useEntradaAnimada, useLinhasQueSeMovem, Vazio } from '@nads/ui';
+import { Icone, MenuSuspenso, useCarregando, useEntradaAnimada, useLinhasQueSeMovem, Vazio } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
 import { EmDesenvolvimento } from '../em-desenvolvimento/EmDesenvolvimento';
 import { LIMITE, useMinhasEmpresas, type Coluna } from './useMinhasEmpresas';
@@ -66,8 +66,6 @@ export function MinhasEmpresas() {
         <MenuSuspenso icone="calendar" rotulo={vm.rotuloCompetencia} titulo="Competência" dica="Trocar a competência"
           itens={vm.competencias.map(c => ({ rotulo: c.rotulo, marcado: c.valor === vm.competencia, onClick: () => vm.setCompetencia(c.valor) }))} />
         {/* o número de empresas e os Insights saíram daqui por enquanto (Vitor, 05/10/2026) */}
-        {/* só as da pessoa; o admin e o diretor podem ver todas (26/10/2026) */}
-        {vm.podeVerTodas && <Segmentado valor={vm.escopo} onMudar={vm.setEscopo} opcoes={[{ valor: 'minhas', rotulo: 'Minhas' }, { valor: 'todas', rotulo: 'Todas' }]} />}
 
         <span className="tarefas-barra-espaco" />
 

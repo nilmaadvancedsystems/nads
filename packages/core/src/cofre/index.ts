@@ -4,3 +4,4 @@ export * from './cripto';
 export * from './regras';
 export * from './planilha';
 export * from './certificado';
+export * from './codigosDoSimples';

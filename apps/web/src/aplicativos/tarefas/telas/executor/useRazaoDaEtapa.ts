@@ -108,6 +108,8 @@ export function useRazaoDaEtapa(chave: string, meses: readonly string[], onImpor
     carregado: !!atual,
     arquivo: atual?.arquivo || '',
     remover: () => { setLido(null); if (!proprio && daImportacao) contabil.tirarRazao(daImportacao.conta); },
+    /** o Diário do caixa (a Importação preenche; o razão próprio da etapa, se houver, sai: a mais recente vence) */
+    usarDiario: () => { if (contabil.usarDiarioDoTipo('caixa', 'Caixa')) setLido(null); },
     noBanco,
     /** o ⚡ do modo desenvolvedor: o caixa de teste do período (com ou sem o CRÉD.LIQ.COBRANÇA) */
     implantarTeste: (comCreditor: boolean) => usar('TESTE razão do caixa.xls', t.caixaDeTeste(meses, comCreditor)),

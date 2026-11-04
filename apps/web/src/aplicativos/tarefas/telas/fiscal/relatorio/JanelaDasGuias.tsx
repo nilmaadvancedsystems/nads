@@ -6,7 +6,7 @@
 // de você, os clientes prontos e o Disparar), sem os já enviados. "Enviados": os e-mails que saíram na competência da
 // apuração (o registro do robô; fica mesmo depois que o lote some). "Modelo do e-mail": o assunto e o texto
 // (config/envioFiscal), como o do DP › Envios.
-import { BotaoAcao, CampoArquivos, ConfigLinha, ConfigSecao, Esqueleto, Icone, MenuSuspenso, SeletorMes } from '@nads/ui';
+import { BotaoAcao, BotaoIcone, CampoArquivos, ConfigLinha, ConfigSecao, Esqueleto, Icone, MenuSuspenso, SeletorMes } from '@nads/ui';
 import { useState } from 'react';
 import type { GuiaDoLote } from '../../../dados/loteFiscal';
 import { JanelaLateral } from '../../janela/JanelaLateral';
@@ -60,18 +60,46 @@ function MenuDeColuna({ vm, arquivo, compacto }: { vm: VmEnvioDeGuias; arquivo: 
   );
 }
 
-/** a linha de uma guia na conferência: o tipo, o nome, o valor e, se ainda pode mudar, a coluna e o "Tirar" */
-function LinhaDaGuia({ vm, a, mexe }: { vm: VmEnvioDeGuias; a: GuiaDoLote; mexe: boolean }) {
-  const l = a.leitura;
-  const r = vm.noRelatorio(a);
+/**
+ * Os clientes prontos numa tabela só (04/11/2026: "melhora essa ui"; antes era um cartão por cliente): uma linha por guia,
+ * com o cliente, o e-mail e a apuração na primeira de cada um. Clicar na guia abre o PDF; a coluna do Relatório troca no menu.
+ */
+function TabelaDosProntos({ vm, grupos, mexe }: { vm: VmEnvioDeGuias; grupos: VmEnvioDeGuias['grupos']; mexe: boolean }) {
   return (
-    <li className="dp-lote-arquivo">
-      <span className="badge badge-neutral">{tipoDaGuia(a)}</span>
-      <button type="button" className="link-btn dp-lote-nome" title={'Ver a guia: ' + a.nome} onClick={() => vm.abrirDoLote(a)}>{l?.nomeFinal || a.nome}</button>
-      <span className="num fraco">{r.valor ? 'R$ ' + r.valor : 'sem valor lido'}{l?.vencimento ? ' · vence ' + l.vencimento.replace(/-/g, '/') : ''}</span>
-      {mexe ? <MenuDeColuna vm={vm} arquivo={a} compacto /> : <span className="fraco">{r.coluna ? '→ ' + r.coluna : 'sem coluna'}</span>}
-      {mexe && <button type="button" className="link-btn" onClick={() => void vm.tirar(a, true)}>Tirar</button>}
-    </li>
+    <div className="table-wrap">
+      <table className="dp-tabela">
+        <thead>
+          <tr><th>Cód.</th><th>Cliente</th><th>Apuração</th><th>Guia</th><th className="num">Valor</th><th>Coluna</th><th /></tr>
+        </thead>
+        <tbody>
+          {grupos.flatMap(g => g.arquivos.map((a, k) => {
+            const r = vm.noRelatorio(a);
+            const erro = g.resultado?.status === 'erro' ? g.resultado.erro : !g.email ? 'sem e-mail no cadastro' : '';
+            return (
+              <tr key={g.chave + '|' + a.id}>
+                {k === 0 && (
+                  <>
+                    <td className="num fraco" rowSpan={g.arquivos.length}>{g.codigo}</td>
+                    <td className="dp-cliente" rowSpan={g.arquivos.length}>
+                      <span className="dp-cliente-nome" title={g.nome}>{g.nome || 'Cliente ' + g.codigo}</span>
+                      {erro ? <span className="fgts-pedido-erro">{erro}</span> : <span className="fraco">{g.resultado?.para.length ? g.resultado.para.join(', ') : g.email}</span>}
+                    </td>
+                    <td className="fraco" rowSpan={g.arquivos.length}>{mesAno(g.competencia)}</td>
+                  </>
+                )}
+                <td>
+                  <button type="button" className="link-btn" title={'Ver a guia: ' + (a.leitura?.nomeFinal || a.nome)} onClick={() => vm.abrirDoLote(a)}>{tipoDaGuia(a)}</button>
+                  {a.leitura?.vencimento && <span className="fraco"> · vence {a.leitura.vencimento.replace(/-/g, '/')}</span>}
+                </td>
+                <td className="num">{r.valor || <span className="fraco">—</span>}</td>
+                <td>{mexe ? <MenuDeColuna vm={vm} arquivo={a} compacto /> : <span className="fraco">{r.coluna || 'sem coluna'}</span>}</td>
+                <td>{mexe && <BotaoIcone icone="x" titulo="Tirar a guia do lote" onClick={() => void vm.tirar(a, true)} />}</td>
+              </tr>
+            );
+          }))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -91,13 +119,17 @@ function Enviados({ vm }: { vm: VmEnvioDeGuias }) {
               <div className="dp-lote-falta-nome">
                 <b><span className="num fraco">{x.codigo}</span> {x.empresa || 'Cliente ' + x.codigo}</b>
                 <span className="fraco">{hora(x.enviadoEm)} · para {x.para.join(', ') || '—'}{x.por ? ' · por ' + x.por : ''}</span>
-                {x.guiasDrive.length > 0 ? (
-                  <span className="fraco">{x.guiasDrive.length} {x.guiasDrive.length === 1 ? 'guia' : 'guias'}:{' '}
-                    {x.guiasDrive.map((g, k) => (
-                      <span key={g.id}>{k > 0 && ' · '}<button type="button" className="link-btn" title={'Ver a guia: ' + g.nome} onClick={() => vm.abrirEnviada(g)}>{g.nome}</button></span>
-                    ))}
-                  </span>
-                ) : x.guias.length > 0 && <span className="fraco" title={x.guias.join('\n')}>{x.guias.length} {x.guias.length === 1 ? 'guia' : 'guias'}: {x.guias.join(' · ')}</span>}
+                {/* cada guia abre pelo id no Drive; os envios de antes do id, pelo nome na pasta do cliente */}
+                {(() => {
+                  const gs = x.guiasDrive.length ? x.guiasDrive : x.guias.map(nome => ({ nome, id: '' }));
+                  return gs.length > 0 && (
+                    <span className="fraco">{gs.length} {gs.length === 1 ? 'guia' : 'guias'}:{' '}
+                      {gs.map((g, k) => (
+                        <span key={g.id || g.nome + k}>{k > 0 && ' · '}<button type="button" className="link-btn" title={'Ver a guia: ' + g.nome} onClick={() => vm.abrirEnviada(g, x.codigo)}>{g.nome}</button></span>
+                      ))}
+                    </span>
+                  );
+                })()}
               </div>
             </li>
           ))}
@@ -146,9 +178,16 @@ export function JanelaDasGuias({ regime, competencia, fechar }: { regime: Regime
   const prontos = vm.grupos.filter(g => g.resultado?.status !== 'enviado');
   const fora = vm.tirados.length + vm.comErro.length;
   const soltar = (fs: File[]) => { void vm.subir(fs.filter(f => /\.pdf$/i.test(f.name))); };
+  const subir = (
+    <div className="dp-lote-subir" onDragOver={ev => ev.preventDefault()} onDrop={ev => { ev.preventDefault(); if (!vm.subindo) soltar(Array.from(ev.dataTransfer.files)); }}>
+      {vm.subindo
+        ? <p className="hint">Subindo {vm.subindo.feitos} de {vm.subindo.total}…</p>
+        : <CampoArquivos id="fiscal-guias-arquivos" aceitar=".pdf" rotulo="Arraste as guias (PDF) para cá ou escolha" onEscolher={soltar} />}
+    </div>
+  );
   const andamento = !lote ? '' : andando
     ? (lote.status === 'disparar' || lote.status === 'disparando' ? 'O robô está mandando os e-mails…' : 'O robô está lendo as guias (' + (lote.lidos || 0) + ' de ' + lote.total + ')…')
-    : prontos.length + (prontos.length === 1 ? ' cliente pronto' : ' clientes prontos') + (vm.faltam.length ? ' · ' + vm.faltam.length + ' para você escolher' : '') + (fora ? ' · ' + fora + ' fora' : '') + '. O lote fica guardado aqui por 3 dias.';
+    : prontos.length + (prontos.length === 1 ? ' cliente pronto' : ' clientes prontos') + (vm.faltam.length ? ' · ' + vm.faltam.length + ' para você escolher' : '') + (fora ? ' · ' + fora + ' fora' : '') + '. Fica aqui por 3 dias até você disparar ou excluir.';
   return (
     <JanelaLateral rotulo="Enviar guias" topico={topico} mudar={setTopico} fechar={fechar} classe="fgts-janela"
       topicos={[
@@ -159,28 +198,27 @@ export function JanelaDasGuias({ regime, competencia, fechar }: { regime: Regime
       resumo={<div className="usuario-quem"><b>Fiscal › {vm.grupo.rotulo}</b><span className="fraco">um e-mail por cliente</span></div>}>
       {topico === 'modelo' ? <Modelo vm={vm} /> : topico === 'enviados' ? <Enviados vm={vm} /> : (
         <>
-          {/* 1. subir: sempre em cima; cada vez que sobe vira um lote novo, aberto aqui embaixo */}
-          <div className="card">
-            <h3>1. Subir as guias</h3>
-            <div className="dp-lote-subir" onDragOver={ev => ev.preventDefault()} onDrop={ev => { ev.preventDefault(); if (!vm.subindo) soltar(Array.from(ev.dataTransfer.files)); }}>
-              {vm.subindo
-                ? <p className="hint">Subindo {vm.subindo.feitos} de {vm.subindo.total}…</p>
-                : <CampoArquivos id="fiscal-guias-arquivos" aceitar=".pdf" rotulo="Arraste as guias (PDF) para cá ou escolha" onEscolher={soltar} />}
+          {vm.carregando ? <Esqueleto linhas={4} /> : !lote ? (
+            // sem lote: só o subir, grande, com a explicação
+            <div className="card">
+              <h3>Subir as guias</h3>
+              {subir}
+              <p className="hint dp-lote-texto">O robô lê cada guia (DAS, DARF, DAE, DAM): o cliente pelo CNPJ, o valor e o mês da apuração. Nada sai antes de você disparar.</p>
             </div>
-            <p className="hint dp-lote-texto">O robô lê cada guia (DAS, DARF, DAE, DAM): o cliente pelo CNPJ, o valor e o mês da apuração. Nada sai antes de você disparar.</p>
-          </div>
-
-          {vm.carregando ? <Esqueleto linhas={4} /> : lote && (
+          ) : (
             <>
-              {/* 2. o lote aberto: o andamento do robô e o Disparar */}
+              {/* o lote aberto: o andamento, o Excluir e o Disparar em cima, e os clientes prontos numa tabela */}
               <div className="card">
                 <div className="dp-lote-topo">
-                  <h3>2. Conferir e disparar</h3>
+                  <h3>Lote de {hora(lote.criadoEm)}</h3>
                   {s && <span className={s.classe}>{s.rotulo}</span>}
                   <span className="tarefas-barra-espaco" />
                   {vm.paraEnviar.length > 1 && (
-                    <MenuSuspenso rotulo={'Lote de ' + hora(lote.criadoEm)} className="btn btn-ghost" titulo="Lotes para enviar" direita
+                    <MenuSuspenso rotulo={'Outros lotes · ' + (vm.paraEnviar.length - 1)} className="btn btn-ghost" titulo="Lotes para enviar" direita
                       itens={vm.paraEnviar.slice(0, 10).map(l => ({ rotulo: hora(l.criadoEm) + ' · ' + l.total + (l.total === 1 ? ' guia' : ' guias') + ' · ' + (STATUS_DO_LOTE[l.status]?.rotulo || l.status), marcado: l.id === lote.id, onClick: () => vm.escolherLote(l.id) }))} />
+                  )}
+                  {vm.podeExcluir && (
+                    <button type="button" className="btn btn-outline btn-danger" onClick={() => void vm.excluirLote()}><Icone nome="lixeira" width={16} height={16} />Excluir lote</button>
                   )}
                   {mexe && (
                     <BotaoAcao carregando={vm.disparando} textoCarregando="Pedindo…" disabled={!vm.paraDisparar} onClick={() => void vm.disparar()}>
@@ -195,6 +233,7 @@ export function JanelaDasGuias({ regime, competencia, fechar }: { regime: Regime
                 )}
                 {lote.erro && <p className="fgts-pedido-erro dp-lote-texto">{lote.erro}</p>}
                 <p className="hint dp-lote-texto">{andamento}</p>
+                {!andando && prontos.length > 0 && <TabelaDosProntos vm={vm} grupos={prontos} mexe={mexe} />}
               </div>
 
               {vm.faltam.length > 0 && (
@@ -224,24 +263,6 @@ export function JanelaDasGuias({ regime, competencia, fechar }: { regime: Regime
                 </div>
               )}
 
-              {prontos.map(g => {
-                const r = g.resultado;
-                return (
-                  <div key={g.chave} className="card">
-                    <div className="dp-lote-topo">
-                      <h3><span className="num fraco">{g.codigo}</span> {g.nome || 'Cliente ' + g.codigo} · {mesAno(g.competencia)}</h3>
-                      <span className="tarefas-barra-espaco" />
-                      {r?.status === 'erro' ? <span className="badge badge-parada">Não foi</span> : !g.email ? <span className="badge badge-parada">Sem e-mail</span> : null}
-                    </div>
-                    <p className="fraco dp-lote-texto">Para: {r?.para.length ? r.para.join(', ') : g.email || 'sem e-mail no cadastro'}</p>
-                    <ul className="dp-lote-lista">
-                      {g.arquivos.map(a => <LinhaDaGuia key={a.id} vm={vm} a={a} mexe={mexe} />)}
-                    </ul>
-                    {r?.status === 'erro' && <p className="fgts-pedido-erro dp-lote-texto">{r.erro}</p>}
-                  </div>
-                );
-              })}
-
               {fora > 0 && (
                 <div className="card">
                   <h3>Fora do lote · {fora}</h3>
@@ -261,6 +282,12 @@ export function JanelaDasGuias({ regime, competencia, fechar }: { regime: Regime
                   </ul>
                 </div>
               )}
+
+              {/* mais guias viram outro lote: o subir fica embaixo, pequeno */}
+              <div className="card">
+                <h3>Subir outro lote</h3>
+                {subir}
+              </div>
             </>
           )}
         </>

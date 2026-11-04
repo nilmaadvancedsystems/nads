@@ -182,6 +182,8 @@ export function useEmprestimos() {
     periodo: t.rotuloDoPeriodo([...meses]),
     bancos: bancos.map(b => ({ id: b.id, rotulo: b.nome + (b.detalhe ? ' · ' + b.detalhe : '') })),
     importar: (fs: File[]) => { void importar(fs); },
+    /** o Diário dos empréstimos: preenche a Importação (as contas do tipo), e o efeito acima põe na lista */
+    usarDiario: () => { contabil.usarDiarioDoTipo('emprestimo', 'Empréstimos e financiamentos'); },
     tirar: (id: number) => setRazoes(l => l.filter(x => x.id !== id)),
     escolherBanco: (id: number, banco: string) => {
       const x = razoes.find(z => z.id === id);
