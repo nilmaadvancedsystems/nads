@@ -112,13 +112,34 @@ try:
 finally:
     cred = None  # a senha não fica na memória além do necessário
 time.sleep(0.5)
-win32gui.PostMessage(botoes[0], win32con.BM_CLICK, 0, 0)
 
-# entrou: a tela de login some e a principal aparece; uma mensagem (TMessageForm) no meio é o login recusado
+
+def clicar(h):
+    # o Entrar do Contábil é um TcxButton (DevExpress): não atende o BM_CLICK do Windows (04/11/2026, Vitor: "tem que
+    # clicar em entrar"); vai o clique do mouse como mensagem no próprio botão, no meio dele (sem mexer no cursor, então
+    # vale com o RDP desconectado)
+    _, _, w, a = win32gui.GetClientRect(h)
+    pos = (a // 2) << 16 | (w // 2)
+    win32gui.PostMessage(h, win32con.WM_MOUSEMOVE, 0, pos)
+    win32gui.PostMessage(h, win32con.WM_LBUTTONDOWN, win32con.MK_LBUTTON, pos)
+    time.sleep(0.15)
+    win32gui.PostMessage(h, win32con.WM_LBUTTONUP, 0, pos)
+
+
+clicar(botoes[0])
+
+# entrou: a tela de login some e a principal aparece; uma mensagem (TMessageForm) no meio é o login recusado. Se em 8 s
+# a tela de login continua lá sem mensagem nenhuma, o clique não pegou: vai o Enter na caixa da senha (o Entrar é o padrão)
 limite = time.time() + 90
+enter = time.time() + 8
 while time.time() < limite:
     time.sleep(1)
     janelas = topo()
+    if enter and time.time() > enter:
+        enter = 0
+        if tela_de_login() and not any(c in ('TMessageForm', '#32770') for _, c in janelas):
+            win32gui.PostMessage(senha['h'], win32con.WM_KEYDOWN, win32con.VK_RETURN, 0x001C0001)
+            win32gui.PostMessage(senha['h'], win32con.WM_KEYUP, win32con.VK_RETURN, 0xC01C0001)
     msg = next((h for h, c in janelas if c in ('TMessageForm', '#32770')), None)
     if msg:
         texto = ' '.join((win32gui.GetWindowText(f) or '') for f in filhos(msg) if win32gui.GetClassName(f) in ('TLabel', 'Static', 'TMemo')).strip()
