@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { anoDoTexto, ehConsultasDoBB, lancamentosDoPdf, mesesSemMovimento, paginasPorMes, periodoDoExtrato, saldoAnteriorDoPdf, saldosDoDiaDoPdf, type ItemDeTexto } from './extrato';
+import { anoDoTexto, ehConsultasDoBB, ehPagBank, lancamentosDoPdf, mesesSemMovimento, paginasPorMes, periodoDoExtrato, saldoAnteriorDoPdf, saldosDoDiaDoPdf, type ItemDeTexto } from './extrato';
 
 /** Monta uma página: cada linha é [texto, x] com a mesma altura; as linhas descem de 14 em 14. */
 function pagina(linhas: [string, number][][]): ItemDeTexto[] {
@@ -328,5 +328,26 @@ describe('o saldo do dia impresso no extrato (o Cheque especial se guia por ele)
       [['31/01/2026', 40], ['999 S A L D O', 200], ['0,02 D', 480]],
     ]);
     expect(saldosDoDiaDoPdf([p], 2026)).toEqual([{ data: '2026-01-02', saldo: 27631 }, { data: '2026-01-30', saldo: -2 }]);
+  });
+});
+
+describe('PagBank: o sinal das saídas vem escrito, o valor sem sinal é entrada (empresa 10)', () => {
+  const linhas = (cab: [string, number][][]): [string, number][][] => [
+    ...cab,
+    [['Periodo: 01/07/2026 a 31/07/2026', 40]],
+    [['Data', 40], ['Descrição', 100], ['Valor', 480]],
+    [['11/07/2026', 40], ['Vendas - Disponivel DEBITO VISA', 100], ['R$', 470], ['376,01', 500]],
+    [['12/07/2026', 40], ['Pix enviado - Conta Teste', 100], ['-R$', 470], ['30,00', 500]],
+    [['13/07/2026', 40], ['Pagamento de PIX do PagBank', 100], ['120,00', 500]],
+  ];
+  it('"Vendas - Disponivel DEBITO" e "Pagamento de PIX" sem sinal são entrada; o "-R$" solto é a saída', () => {
+    const p = pagina(linhas([[['290 - PagSeguro Internet S/A', 300]]]));
+    expect(ehPagBank(p.map(i => i.texto).join('\n'))).toBe(true);
+    expect(lancamentosDoPdf([p], 'banco', 2026).map(l => [l.data, l.valor])).toEqual([
+      ['2026-07-11', 37601], ['2026-07-12', -3000], ['2026-07-13', 12000],
+    ]);
+  });
+  it('outro banco que só cita o PagSeguro (num Pix) não é PagBank', () => {
+    expect(ehPagBank('Nu Pagamentos S.A.\nPix enviado PAGSEGURO INTERNET IP S.A.')).toBe(false);
   });
 });
