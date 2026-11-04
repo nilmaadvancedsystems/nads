@@ -5872,6 +5872,8 @@ button.fr-entrega-falta:hover{border-style:dashed;border-color:var(--border-stro
 /* os números */
 .fxr-numeros{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) minmax(0,1.4fr);gap:12px;}
 .fxr-numeros-3{grid-template-columns:repeat(3,minmax(0,1fr));}
+/* a Auditoria de itens: os quatro do diagnóstico, iguais (04/11/2026) */
+.fxr-numeros-4{grid-template-columns:repeat(4,minmax(0,1fr));}
 .fxr-numero{appearance:none;display:flex;align-items:center;gap:12px;min-width:0;margin:0;padding:14px 16px;border:1px solid var(--border);border-radius:6px;
   background:var(--surface);color:var(--ink);font:inherit;text-align:left;}
 button.fxr-numero{cursor:pointer;transition:border-color .12s ease,background-color .12s ease;}
@@ -5962,6 +5964,7 @@ button.fxr-numero.active{border-color:var(--accent);box-shadow:inset 0 0 0 1px v
   .fxr-numeros{gap:8px;}
   .fxr-numeros-3{grid-template-columns:repeat(2,minmax(0,1fr));}
   .fxr-numeros-3 .fxr-numero:first-child{grid-column:1 / -1;}
+  .fxr-numeros-4{grid-template-columns:repeat(2,minmax(0,1fr));}
   .fxr-numero{padding:10px 12px;gap:10px;}
   /* sem o ícone: os três da REINF lado a lado, e os valores da Antecipação inteiros */
   .fxr-numero-icone{display:none;}
