@@ -131,7 +131,10 @@ function iniciarAlterdata(db, log) {
     entrando = true;
     try {
       const tem = await rodarPy(ROTEIRO_LOGIN, ['--tem'], 90 * 1000);
-      if (!/TEM:\s*sim/.test(tem.out)) return;   // sem a credencial: espera alguém entrar
+      const temCredencial = /TEM:\s*sim/.test(tem.out);
+      // no banco (robo/alterdata.maquinas.{onde}.credencial), para quem olha saber se o robô achou a credencial
+      await estadoDoc.set({ maquinas: { [ONDE]: { credencial: temCredencial ? 'sim' : /TEM:\s*nao/.test(tem.out) ? 'nao' : 'erro' } } }, { merge: true }).catch(() => {});
+      if (!temCredencial) return;   // sem a credencial: espera alguém entrar
       if (como === 'fechado') {
         if (Date.now() - abertoEm < ABRIR_DE_NOVO_MS || !fs.existsSync(WCONT)) return;
         abertoEm = Date.now();
