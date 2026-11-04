@@ -1,7 +1,8 @@
 // DP › Legislação (Vitor, 14/10/2026: "importa as legislações em uma aba no DP"): a lista dos assuntos (os do Toriba e os
 // cadastrados no nads), com a busca; clicar no assunto abre a janela dele, numa tela só (Vitor,
 // 28/10/2026: "texto legal e editar em uma tela só; o lápis em outro lugar, para ter mais tela; salvar e cancelar só quando
-// o lápis é clicado, um check e um cancelar"). O DP e o admin cadastram ("Nova legislação", no canto) e editam (o lápis).
+// o lápis é clicado, um check e um cancelar"). O DP e o admin cadastram ("Nova legislação", no canto), editam (o lápis) e
+// excluem (a lixeira, ao lado do lápis; Vitor, 04/11/2026).
 import { BotaoFechar, BotaoIcone, Icone, useEntradaAnimada, useJanela } from '@nads/ui';
 import { useRef } from 'react';
 import { useLegislacaoDoDp } from './useLegislacaoDoDp';
@@ -88,6 +89,7 @@ function JanelaDaLegislacao({ vm, nova }: { vm: Vm; nova: boolean }) {
             ) : (
               <>
                 {vm.podeEditar && <BotaoIcone icone="lapis" titulo="Editar" onClick={vm.editar} />}
+                {vm.podeEditar && <BotaoIcone icone="lixeira" titulo="Excluir" disabled={vm.salvando} onClick={() => void vm.excluir()} />}
                 <BotaoFechar onClick={vm.fechar} />
               </>
             )}
