@@ -23,13 +23,17 @@ let pararIA = null;
 
 try { require('./fgts-claude').iniciarFgtsPeloClaude(db, log); }
 catch (err) { log('FGTS não ligou:', err.message); }
-try { require('./alterdata').iniciarAlterdata(db, log); }
-catch (err) { log('Alterdata não ligou:', err.message); }
+// o Alterdata foi para o NILMA-SERVER (04/11/2026: "isso tem que rodar no servidor"); aqui só com ALTERDATA_NO_PC=1 (o
+// robô pega o pedido numa transação: o PC e o servidor juntos nunca fazem o mesmo)
+if (process.env.ALTERDATA_NO_PC === '1') {
+  try { require('./alterdata').iniciarAlterdata(db, log); }
+  catch (err) { log('Alterdata não ligou:', err.message); }
+}
 try { pararIA = require('./atendente-claude').iniciarAtendenteClaude({ db, log }); }
 catch (err) { log('atendente de IA desligado:', err.message); }
 try { require('./suporte-claude').iniciarSuporteClaude({ db, log }); }
 catch (err) { log('suporte desligado:', err.message); }
-log('ligado: FGTS, balancete do Alterdata, atendente de IA e suporte');
+log('ligado: FGTS' + (process.env.ALTERDATA_NO_PC === '1' ? ', Alterdata' : '') + ', atendente de IA e suporte');
 
 function desligar() {
   Promise.resolve(pararIA ? pararIA() : null).catch(() => {}).finally(() => process.exit(0));

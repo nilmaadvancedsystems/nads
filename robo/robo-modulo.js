@@ -5,7 +5,7 @@
 //
 // Quem liga: o arquivador (satelites.js), com o canal do child_process. O painel vai para o pai (painel.js, modo
 // satélite). Se o pai sair (atualização, queda), este sai junto: o pai liga de novo quando voltar, e nunca ficam dois.
-//   node robo-modulo.js sieg | fgts
+//   node robo-modulo.js sieg | fgts | alterdata
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -14,6 +14,8 @@ const qual = String(process.argv[2] || '');
 const MODULOS = {
   sieg: (db, log) => require('./sieg').iniciarSieg({ db, log }),
   fgts: (db, log) => require('./fgts-claude').iniciarFgtsPeloClaude(db, log, { semClaude: true }),
+  // o balancete e o razão do Alterdata Contábil aberto e logado neste servidor (04/11/2026: "isso tem que rodar no servidor")
+  alterdata: (db, log) => require('./alterdata').iniciarAlterdata(db, log),
   // só para o teste (teste-satelites.js): marca o tempo a cada 200 ms e fala com o painel
   eco: (db, log) => { const p = require('./painel'); p.modulo('eco', 'Eco', true, 'teste'); p.atividade('robo', 'eco ligou'); setInterval(() => log('tique', Date.now()), 200); },
 };
@@ -38,4 +40,4 @@ process.on('unhandledRejection', err => log('erro não tratado (segui rodando):'
 
 const db = qual === 'eco' ? null : require('./firestore-client').getDb('entregas-2e5e2');
 try { MODULOS[qual](db, log); log('ligado num processo próprio (' + process.pid + ')'); }
-catch (err) { log(qual + ' não ligou:', err.message); require('./painel').modulo(qual, qual === 'sieg' ? 'SIEG' : 'FGTS Digital', false, err.message); }
+catch (err) { log(qual + ' não ligou:', err.message); require('./painel').modulo(qual, require('./satelites').NOMES[qual] || qual, false, err.message); }

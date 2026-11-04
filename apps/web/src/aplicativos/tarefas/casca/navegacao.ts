@@ -315,6 +315,11 @@ export function paginasDaEmpresa(dep: string): Pagina[] {
       { id: 'simples', rotulo: 'Simples Nacional', icone: 'recibo', titulo: 'Calculadora do Simples Nacional' },
       { id: 'antecipacao-es', rotulo: 'Antecipação ICMS-ES', icone: 'fileSearch', titulo: 'Antecipação de ICMS — ES' },
     ] satisfies Pagina[] : []),
+    // o balancete e o razão do mês pelo robô do Alterdata (04/11/2026: "quero criar um robo que puxa balancete e planilha
+    // de conta e upa no nads"; o lugar: a página da empresa)
+    ...(dep === 'contabil' ? [
+      { id: 'alterdata', rotulo: 'Alterdata', icone: 'fileDown', titulo: 'Balancete e razão do Alterdata' },
+    ] satisfies Pagina[] : []),
   ];
 }
 /** As abas da janela de uma empresa no Cadastro. */

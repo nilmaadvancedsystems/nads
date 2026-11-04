@@ -57,7 +57,7 @@ const FILAS = {
   pc: [
     { id: 'arquivamento', nome: 'Arquivamento', colecao: 'solicitacoesArquivo', esperando: ['pendente', 'aguardando'], andamento: ['processando'] },
     { id: 'fgts', nome: 'FGTS Digital', colecao: 'pedidosFgts', esperando: ['pendente'], andamento: ['trabalhando', 'verificacao', 'login'] },
-    { id: 'alterdata', nome: 'Balancete do Alterdata', colecao: 'pedidosAlterdata', esperando: ['pendente'], andamento: ['trabalhando'] },
+    { id: 'alterdata', nome: 'Alterdata (balancete e razão)', colecao: 'pedidosAlterdata', esperando: ['pendente'], andamento: ['trabalhando'] },
     { id: 'sieg', nome: 'SIEG', colecao: 'pedidosSieg', esperando: ['pendente'], andamento: ['processando'] },
     { id: 'area-chamados', nome: 'Chamados da Área do Cliente', colecao: 'areaClienteChamados', consultar: true },
     { id: 'area-envios', nome: 'Arquivos da Área do Cliente', colecao: 'areaClienteEnvios', consultar: true },

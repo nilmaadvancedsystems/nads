@@ -15,6 +15,8 @@ import { criarGmailFirestore } from './gmail.firestore';
 import { criarArquivadorMemoria, type RepoArquivador } from './arquivador';
 import { criarFgtsMemoria, type RepoFgts } from './fgts';
 import { criarFgtsFirestore } from './fgts.firestore';
+import { criarAlterdataMemoria, type RepoAlterdata } from './alterdata';
+import { criarAlterdataFirestore } from './alterdata.firestore';
 import { criarEnviosDpMemoria, type RepoEnviosDp } from './enviosDp';
 import { criarEnviosDpFirestore } from './enviosDp.firestore';
 import { criarLoteDpMemoria, type RepoLoteDp } from './loteDp';
@@ -372,6 +374,14 @@ let fgts: RepoFgts | null = null;
 export function repoDoFgts(): RepoFgts {
   if (!fgts) fgts = noBanco ? criarFgtsFirestore(() => { const q = quemPede(); return q ? { nome: q.nome, uid: q.uid } : null; }) : criarFgtsMemoria();
   return fgts;
+}
+
+let alterdata: RepoAlterdata | null = null;
+
+/** O balancete e o razão do Alterdata pelo robô do servidor (04/11/2026): os pedidos mensais de cada empresa. */
+export function repoDoAlterdata(): RepoAlterdata {
+  if (!alterdata) alterdata = noBanco ? criarAlterdataFirestore(() => { const q = quemPede(); return q ? { nome: q.nome, uid: q.uid } : null; }) : criarAlterdataMemoria();
+  return alterdata;
 }
 
 let enviosDp: RepoEnviosDp | null = null;

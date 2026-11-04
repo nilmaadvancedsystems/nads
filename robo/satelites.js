@@ -7,7 +7,7 @@ const path = require('path');
 const { fork } = require('child_process');
 const painel = require('./painel');
 
-const NOMES = { sieg: 'SIEG', fgts: 'FGTS Digital' };
+const NOMES = { sieg: 'SIEG', fgts: 'FGTS Digital', alterdata: 'Alterdata' };
 const VOLTA_MS = 30 * 1000;
 const filhos = new Map();
 let parando = false;

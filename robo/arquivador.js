@@ -704,18 +704,23 @@ async function iniciar() {
   // arquivador esperando o G: não segura mais os dois. ARQ_TUDO_JUNTO=1 volta para o mesmo processo.
   const SEPARADOS = SO_SERVIDOR && process.env.ARQ_TUDO_JUNTO !== '1';
   if (SEPARADOS) {
-    log('SIEG e FGTS: cada um no seu processo (robo-modulo.js)');
-    require('./satelites').ligar(['sieg', 'fgts'], log);
+    // o Alterdata também (04/11/2026: o balancete e o razão no Contábil deste servidor)
+    log('SIEG, FGTS e Alterdata: cada um no seu processo (robo-modulo.js)');
+    require('./satelites').ligar(['sieg', 'fgts', 'alterdata'], log);
   }
   if (SO_SERVIDOR) {
-    log('Balancete do Alterdata, atendente de IA e suporte: ficam no PC do escritório (claude-do-pc.js)');
+    log('Atendente de IA e suporte: ficam no PC do escritório (claude-do-pc.js)');
     // o FGTS pelo robô, sem o Claude, no Chrome deste servidor (03/11/2026); atende só com o config/fgts.onde = 'servidor'
     if (!SEPARADOS) {
       painel.modulo('fgts', 'FGTS Digital', false, 'esperando o config/fgts.onde');
       try { require('./fgts-claude').iniciarFgtsPeloClaude(db, log, { semClaude: true }); }
       catch (err) { log('FGTS não ligou:', err.message); painel.modulo('fgts', 'FGTS Digital', false, err.message); }
     }
-    painel.modulo('alterdata', 'Balancete do Alterdata', false, 'roda no PC do escritório');
+    // o balancete e o razão do Alterdata no Contábil deste servidor (04/11/2026: "isso tem que rodar no servidor")
+    if (!SEPARADOS) {
+      try { require('./alterdata').iniciarAlterdata(db, log); }
+      catch (err) { log('Alterdata não ligou:', err.message); painel.modulo('alterdata', 'Alterdata', false, err.message); }
+    }
   } else {
     painel.modulo('fgts', 'FGTS Digital', true);
     try { require('./fgts-claude').iniciarFgtsPeloClaude(db, log); }

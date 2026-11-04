@@ -15,6 +15,7 @@ const RateioDeFrete = pedaco(() => import('../telas/fiscal/rateio/RateioDeFrete'
 const BaixarDoSieg = pedaco(() => import('../telas/fiscal/sieg/BaixarDoSieg'), 'BaixarDoSieg');
 const CalculadoraDoSimples = pedaco(() => import('../telas/fiscal/simples/CalculadoraDoSimples'), 'CalculadoraDoSimples');
 const AntecipacaoIcms = pedaco(() => import('../telas/fiscal/antecipacao/AntecipacaoIcms'), 'AntecipacaoIcms');
+const AlterdataDaEmpresa = pedaco(() => import('../telas/contabil/alterdata/AlterdataDaEmpresa'), 'AlterdataDaEmpresa');
 
 function PaginaDaEmpresa({ rota, pagina }: { rota: string; pagina: string }) {
   switch (pagina) {
@@ -24,6 +25,7 @@ function PaginaDaEmpresa({ rota, pagina }: { rota: string; pagina: string }) {
     case 'sieg': return <BaixarDoSieg />;
     case 'simples': return <CalculadoraDoSimples />;
     case 'antecipacao-es': return <AntecipacaoIcms />;
+    case 'alterdata': return <AlterdataDaEmpresa />;
     default: return <EmpresaTarefas rota={rota} parte="visao" />;
   }
 }
