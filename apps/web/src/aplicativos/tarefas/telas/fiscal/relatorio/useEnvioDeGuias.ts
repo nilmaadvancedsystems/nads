@@ -200,6 +200,22 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
         });
       }, m => toast('Não consegui abrir a guia: ' + m));
     },
+    /** o lote aberto pode ser excluído: parado (lido, com erro, ou disparado com alguém que não recebeu), não no meio do robô */
+    podeExcluir: !!atual && ['lido', 'disparado', 'erro'].includes(atual.status),
+    /** exclui o lote aberto, depois de confirmar (04/11/2026: "Coloca o botão de excluir o para enviar"); quem já recebeu continua em Enviados */
+    async excluirLote() {
+      if (!atual) return;
+      const enviados = atual.resultados.filter(r => r.status === 'enviado').length;
+      const ok = await modal({
+        icone: 'lixeira', titulo: 'Excluir este lote?',
+        texto: 'As ' + atual.total + (atual.total === 1 ? ' guia somem' : ' guias somem') + ' daqui e nada mais é enviado.' +
+          (enviados ? ' Os ' + enviados + ' clientes que já receberam continuam em "Enviados".' : ''),
+        botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Excluir', valor: true, variante: 'btn-danger' }],
+      });
+      if (!ok) return;
+      try { await repo.excluir(atual.id); setEscolhido(null); toast('Lote excluído.'); }
+      catch (e) { toast('Não consegui excluir: ' + (e instanceof Error ? e.message : String(e))); }
+    },
     /** quantos clientes vão no disparo (os ainda não enviados) */
     paraDisparar: grupos.filter(g => g.resultado?.status !== 'enviado').length,
     /** sobe as guias escolhidas e entrega o lote ao robô */

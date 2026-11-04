@@ -313,11 +313,13 @@ function iniciarLoteFiscal(db, deps) {
     try {
       do {
         deNovo = false;
-        const snap = await db.collection(COLECAO).where('status', 'in', ['pendente', 'disparar']).get();
+        const snap = await db.collection(COLECAO).where('status', 'in', ['pendente', 'disparar', 'cancelado']).get();
         for (const doc of snap.docs.sort((a, b) => String(a.get('criadoEm')).localeCompare(String(b.get('criadoEm'))))) {
           const lote = doc.data();
           try {
-            if (lote.status === 'pendente') await lerLote(db, doc.ref, lote, log);
+            // excluído na tela (04/11/2026): some do banco, com as guias e os pedaços
+            if (lote.status === 'cancelado') { await db.recursiveDelete(doc.ref); log('lote do Fiscal', doc.id, 'excluído por', lote.canceladoPor || '?'); }
+            else if (lote.status === 'pendente') await lerLote(db, doc.ref, lote, log);
             else await dispararLote(db, doc.ref, lote, deps);
           } catch (err) {
             log('lote do Fiscal', doc.id, 'deu erro:', err.message);
@@ -328,7 +330,7 @@ function iniciarLoteFiscal(db, deps) {
       } while (deNovo);
     } catch (err) { log('lote do Fiscal: não li a fila:', err.message); } finally { ocupado = false; }
   }
-  ouvir('Lote do Fiscal', () => db.collection(COLECAO).where('status', 'in', ['pendente', 'disparar']), () => { void atender(); }, log);
+  ouvir('Lote do Fiscal', () => db.collection(COLECAO).where('status', 'in', ['pendente', 'disparar', 'cancelado']), () => { void atender(); }, log);
   // o lote esquecido some, com os arquivos e os pedaços
   setInterval(async () => {
     try {

@@ -59,6 +59,8 @@ export interface RepoLoteFiscal {
   tirar(lote: string, arquivo: string, fora: boolean): Promise<void>;
   /** pede o disparo ao robô */
   disparar(lote: string): Promise<void>;
+  /** exclui o lote ainda não enviado (marca 'cancelado'; o robô apaga o lote, as guias e os pedaços) */
+  excluir(lote: string): Promise<void>;
   /** o PDF de uma guia do lote, pelos pedaços que a tela subiu (só existem até o e-mail sair: o robô apaga depois) */
   bytesDaGuia(lote: string, arquivo: string): Promise<Uint8Array>;
   /** os e-mails de guias já enviados na competência da apuração (os dois grupos), ao vivo; os lotes somem em 3 dias, estes ficam */
@@ -156,6 +158,12 @@ export function criarLoteFiscalMemoria(controle: () => RepoControleTributos): Re
     },
     async escolher(id, a, escolha) { mudarArquivo(id, a, { escolha }); },
     async tirar(id, a, fora) { mudarArquivo(id, a, { fora }); },
+    async excluir(id) {
+      const k = lotes.findIndex(l => l.id === id);
+      if (k >= 0) lotes.splice(k, 1);
+      arquivos.delete(id);
+      mudou();
+    },
     async disparar(id) {
       const lote = lotes.find(l => l.id === id);
       if (!lote) return;
