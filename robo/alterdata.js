@@ -39,12 +39,13 @@ const ESTADOS = { ok: 'aberto e logado', login: 'na tela de login', fechado: 'fe
 /** O Contábil desta máquina: ok | login | fechado | dois | erro (sem mexer em nada). */
 function estadoDoContabil() {
   return new Promise(resolve => {
-    execFile(PYTHON, ['-I', ROTEIRO_ESTADO], { cwd: __dirname, windowsHide: true, timeout: 30 * 1000 }, (err, out, errs) => {
+    // 90 s: o roteiro leva 0,1 s, mas no servidor ocupado o Python às vezes demora mais de 30 s só para abrir
+    execFile(PYTHON, ['-I', ROTEIRO_ESTADO], { cwd: __dirname, windowsHide: true, timeout: 90 * 1000 }, (err, out, errs) => {
       const m = String(out || '').match(/ESTADO:\s*(\w+)/);
       const d = String(out || '').match(/DIAG:\s*(.+)/);
       // o porquê, para o log: o DIAG do roteiro, ou o fim do erro do Python, ou o prazo
-      const porque = d ? d[1].trim() : err ? (err.killed ? 'passou de 30 s' : String(errs || err.message).trim().split('\n').pop().slice(0, 200)) : '';
-      resolve({ estado: m ? m[1] : 'erro', porque });
+      const porque = d ? d[1].trim() : err ? (err.killed ? 'passou de 90 s' : String(errs || err.message).trim().split('\n').pop().slice(0, 200)) : '';
+      resolve({ estado: m ? m[1] : 'erro', porque, prazo: !m && !!err && !!err.killed });
     });
   });
 }
@@ -92,8 +93,13 @@ function iniciarAlterdata(db, log) {
 
   // o Contábil daqui: verificado a cada minuto e antes de cada pedido; vai para o banco e para o painel
   let estado = '';
+  let semResposta = 0;
   async function verificar() {
-    const { estado: novo, porque } = await estadoDoContabil();
+    const r = await estadoDoContabil();
+    // um prazo estourado sozinho não muda o estado (o servidor às vezes demora a abrir o Python); dois seguidos, sim
+    semResposta = r.prazo ? semResposta + 1 : 0;
+    const novo = r.prazo && semResposta < 2 && estado ? estado : r.estado;
+    const porque = r.porque;
     if (novo !== estado) {
       log('Alterdata: o Contábil deste ' + ONDE + ' está ' + ESTADOS[novo] + (porque ? ' (' + porque + ')' : ''));
       painel.modulo('alterdata', 'Alterdata', novo === 'ok', 'o Contábil está ' + ESTADOS[novo]);
