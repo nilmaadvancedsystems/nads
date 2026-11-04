@@ -11,10 +11,15 @@ function baixar(a: ArquivoPronto) {
 
 const valor = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-function CartaoDownload({ titulo, resumo, rotuloXls, xls, csv }: { titulo: string; resumo: string; rotuloXls: string; xls: () => ArquivoPronto; csv: () => ArquivoPronto }) {
+function CartaoDownload({ titulo, resumo, rotuloXls, xls, csv, valores }: {
+  titulo: string; resumo: string; rotuloXls: string; xls: () => ArquivoPronto; csv: () => ArquivoPronto;
+  /** o bruto e as taxas da bandeira (as vendas sem cartão não têm) */
+  valores?: { bruto: number; taxas: number };
+}) {
   return (
     <div className="card">
       <div className="card-head"><h3>{titulo}</h3><span className="hint">{resumo}</span></div>
+      {valores && <p className="hint" style={{ margin: '0 0 12px' }}>Bruto: <strong className="num">{cz.brl(valores.bruto)}</strong> · Taxas: <strong className="num">{cz.brl(valores.taxas)}</strong></p>}
       <div className="import-box-row">
         <button className="btn btn-primary" type="button" onClick={() => baixar(xls())}><Icone nome="download" />{rotuloXls}</button>
         <button className="btn btn-outline" type="button" onClick={() => baixar(csv())}><Icone nome="download" />Exportar como CSV</button>
@@ -44,7 +49,7 @@ export function Arquivos() {
       </p>
 
       <h3 className="painel-titulo" style={{ margin: '24px 0 12px' }}>Por bandeira</h3>
-      {vm.bandeiras.map(b => <CartaoDownload key={b.id} titulo={b.rotulo} resumo={b.resumo} rotuloXls="Baixar arquivo conciliado (Excel 97-2003)" xls={b.xls} csv={b.csv} />)}
+      {vm.bandeiras.map(b => <CartaoDownload key={b.id} titulo={b.rotulo} resumo={b.resumo} rotuloXls="Baixar arquivo conciliado (Excel 97-2003)" xls={b.xls} csv={b.csv} valores={{ bruto: b.bruto, taxas: b.taxas }} />)}
 
       <h3 className="painel-titulo" style={{ margin: '24px 0 12px' }}>Vendas sem cartão</h3>
       {vm.saidas.length

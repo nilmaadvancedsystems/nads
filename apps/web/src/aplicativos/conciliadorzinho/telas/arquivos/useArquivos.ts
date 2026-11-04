@@ -51,6 +51,8 @@ export function useArquivos() {
     bandeiras: bandeiras.map(b => ({
       id: b.id, rotulo: b.rotulo,
       resumo: b.res.aprovadas + ' lançamentos · ' + b.res.casadas + ' com nota · ' + b.res.semNota + ' sem nota',
+      // o bruto e as taxas de cada bandeira (Vitor, 04/11/2026: "coloca o bruto e taxas separados em cada um")
+      bruto: centavos(b.res.totalBruto), taxas: centavos(b.res.totalTaxa),
       xls: (): ArquivoPronto => ({ nome: b.nomeBase + '.xls', bytes: cz.planilhaXls(b.linhas, 'Conciliacao'), tipo: XLS }),
       csv: (): ArquivoPronto => ({ nome: b.nomeBase + '.csv', texto: cz.textoCsv(b.linhas), tipo: CSV }),
     })),

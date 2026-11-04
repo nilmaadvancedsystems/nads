@@ -95,6 +95,13 @@ export function usePedirExtratos(vm: VmDoPedido, codigo: number | null, empresa:
 
   /** Por que o documento daquele mês não dá para pedir ('' = dá): já importado no sistema ou já no Drive. */
   function travado(docId: string, comp: string): Travado {
+    // os comprovantes (Vitor, 04/11/2026: "faz a verificação, não deixa eu pedir tendo eles"): ficam no Drive, na pasta
+    // COMPROVANTES do mês (aba Comprovantes); o mês trava quando já tem comprovante lá, de qualquer banco (os pagamentos
+    // costumam sair de um banco só: na 10, só o BB tem comprovante)
+    if (docId === 'comprovantes') {
+      if (!pasta) return '';
+      return (x.comprovantesNoDrive(pasta.itens, pasta.raiz, [comp])[comp] || []).length > 0 ? 'no Drive' : '';
+    }
     if (!docId.startsWith('extrato:')) return '';
     const b = vm.bancos.find(bb => 'extrato:' + bb.id === docId);
     if (!b) return '';

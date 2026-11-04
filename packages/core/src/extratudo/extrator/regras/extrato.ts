@@ -217,11 +217,13 @@ export function periodoDoExtrato(texto: string): string | null {
 }
 
 /**
- * O extrato do BB "Consultas - Extrato de conta corrente" (o do BB Empresa), com as colunas Dt. balancete e Dt. movimento:
- * nele, a data certa do lançamento é a Dt. movimento (Vitor, 09/10/2026).
+ * O extrato do BB com as colunas Dt. balancete e Dt. movimento: o "Consultas - Extrato de conta corrente" (o do BB
+ * Empresa) e o "Cliente - Conta atual" (o mesmo cabeçalho de colunas). Nele, a data certa do lançamento é a Dt. movimento
+ * (Vitor, 09/10/2026; 04/11/2026, na 10: o "Movimento do Dia" de balancete 07/07 e movimento 08/07 saía como data errada).
  */
 export function ehConsultasDoBB(texto: string): boolean {
   const t = normalizarTexto(texto);
+  if (/\bdt balancete dt movimento\b/.test(t)) return true;
   return /consultas extrato de conta corrente/.test(t) && /\bbalancete\b/.test(t) && /\bmovimento\b/.test(t);
 }
 

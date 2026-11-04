@@ -265,6 +265,23 @@ describe('BB "Consultas": vale a Dt. movimento (empresa 380)', () => {
   });
 });
 
+describe('BB "Cliente - Conta atual": o mesmo cabeçalho Dt. balancete / Dt. movimento, vale a Dt. movimento (empresa 10)', () => {
+  it('o "Movimento do Dia" de balancete 07/07 e movimento 08/07 sai em 08/07', () => {
+    const p = pagina([
+      [['Cliente - Conta atual', 40]],
+      [['Período do extrato', 40], ['07 / 2026', 160]],
+      [['Dt. balancete', 40], ['Dt. movimento', 100], ['Histórico', 200], ['Valor R$', 400], ['Saldo', 480]],
+      [['01/07/2026', 40], ['000 Saldo Anterior', 200], ['0,00 C', 480]],
+      [['07/07/2026', 40], ['435 Tarifa Pacote de Serviços', 200], ['12,00 D', 400]],
+      [['07/07/2026', 40], ['08/07/2026', 100], ['900 Movimento do Dia', 200], ['100,00 C', 400], ['88,00 C', 480]],
+    ]);
+    expect(ehConsultasDoBB(p.map(i => i.texto).join('\n'))).toBe(true);
+    expect(lancamentosDoPdf([p], 'banco', 2026).map(l => [l.data, l.valor])).toEqual([
+      ['2026-07-07', -1200], ['2026-07-08', 10000],
+    ]);
+  });
+});
+
 describe('BB "Consultas": cada extrato só com o seu mês, sem repetir (empresa 380)', () => {
   const cab = (mes: string): [string, number][][] => [
     [['Consultas - Extrato de conta corrente', 120]], [['Período do', 40], [mes + ' / 2026', 160]],
