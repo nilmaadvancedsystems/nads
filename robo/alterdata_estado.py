@@ -42,6 +42,24 @@ else:
     n = len(visiveis('TfrmPrincipal'))
     estado = 'fechado' if n == 0 else 'ok' if n == 1 else 'dois'
 print('ESTADO: ' + estado, flush=True)
+if estado == 'login':
+    # os campos da tela de login (para o roteiro de login do robô): classe e posição; o texto só dos que não são caixa de
+    # texto (nunca o que está digitado no usuário ou na senha)
+    try:
+        h = next(win32gui.FindWindow(c, None) for c, v, _, _ in janelas if c.startswith('TfrmLogin') and v)
+        filhos = []
+
+        def filho(c, _):
+            cls = win32gui.GetClassName(c)
+            r = win32gui.GetWindowRect(c)
+            txt = '' if 'Edit' in cls or 'Mask' in cls or 'Combo' in cls else (win32gui.GetWindowText(c) or '')[:25]
+            filhos.append(cls + ('"' + txt + '"' if txt else '') + '@' + str(r[0]) + ',' + str(r[1]) + ('' if win32gui.IsWindowVisible(c) else '(oculto)'))
+            return True
+
+        win32gui.EnumChildWindows(h, filho, None)
+        print('CAMPOS: ' + ' | '.join(filhos[:40]), flush=True)
+    except Exception as e:
+        print('CAMPOS: ' + type(e).__name__, flush=True)
 if estado != 'ok':
     lista = '; '.join(c + ('' if v else ' (oculta)') + (' "' + t + '"' if t else '') + ' pid ' + str(p) for c, v, t, p in janelas[:12])
     print('DIAG: sessão ' + os.environ.get('SESSIONNAME', '?') + ', ' + str(len(janelas)) + ' janelas Tfrm em ' + str(round(time.time() - t0, 1)) + ' s: ' + (lista or 'nenhuma'), flush=True)
