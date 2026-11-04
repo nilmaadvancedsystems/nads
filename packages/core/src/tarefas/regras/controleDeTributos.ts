@@ -55,12 +55,13 @@ export const grupoDoControle = (id: string) => GRUPOS_DO_CONTROLE.find(g => g.id
 export type MarcaDoControle = '' | 'ok' | 'na';
 export const PROXIMA_MARCA: Record<MarcaDoControle, MarcaDoControle> = { '': 'ok', ok: 'na', na: '' };
 /** Como a guia foi entregue ao cliente (na folha: "imp", "zap", "e-mail" ou —) */
-export type EntregaDoControle = '' | 'impresso' | 'zap' | 'email' | 'nao';
+// o eContador do Alterdata (04/11/2026: "preciso que coloque a opção econtador do alterdata como envio e tambem preciso que preencha dae e icms na planilha la, enviei 2 dae via impresso e não preencheu"): as guias postadas no portal do cliente
+export type EntregaDoControle = '' | 'impresso' | 'zap' | 'email' | 'econtador' | 'nao';
 export const ENTREGAS_DO_CONTROLE: readonly { valor: EntregaDoControle; rotulo: string }[] = [
   { valor: '', rotulo: 'Falta' }, { valor: 'impresso', rotulo: 'Impresso' }, { valor: 'zap', rotulo: 'WhatsApp' },
-  { valor: 'email', rotulo: 'E-mail' }, { valor: 'nao', rotulo: 'Não se aplica' },
+  { valor: 'email', rotulo: 'E-mail' }, { valor: 'econtador', rotulo: 'eContador' }, { valor: 'nao', rotulo: 'Não se aplica' },
 ];
-const ROTULO_NA_FOLHA: Record<EntregaDoControle, string> = { '': '', impresso: 'imp.', zap: 'zap', email: 'e-mail', nao: '—' };
+const ROTULO_NA_FOLHA: Record<EntregaDoControle, string> = { '': '', impresso: 'imp.', zap: 'zap', email: 'e-mail', econtador: 'eCont.', nao: '—' };
 
 /** Uma linha guardada (controleTributos/{competência}_{código}) */
 export interface LinhaDoControle {
@@ -155,14 +156,28 @@ export function preencherComSugestao(l: LinhaDoControle, s: { valores: Record<st
  * do IRRF ou do INSS, o ICMS no Simples (pode ser antecipação, ST ou diferencial), o DAS no Presumido e o parcelamento (o
  * período da parcela não é o da apuração). O mesmo do robô (robo/lote-fiscal.js, colunaDaGuia).
  */
-export function colunaDaGuia(grupo: GrupoDoControleId, tipo: string, tributo: string, parcelamento = false): string {
+export function colunaDaGuia(grupo: GrupoDoControleId, tipo: string, tributo: string, parcelamento = false, receita = ''): string {
   if (parcelamento) return '';
   const t = (tributo || '').toUpperCase();
   const coluna = tipo === 'DAS' ? 'das'
     : tipo === 'DARF' && ['PIS', 'COFINS', 'IRPJ', 'CSLL'].includes(t) ? t.toLowerCase()
-    : tipo === 'DAE' && t === 'ICMS' ? 'icms'
+    : tipo === 'DAE' && t === 'ICMS' ? (grupo === 'sn' ? colunaDoIcmsDoSimples(receita) : 'icms')
     : tipo === 'DAM' && t === 'ISS' ? 'iss' : '';
   return coluna && grupoDoControle(grupo).colunas.some(c => c.id === coluna) ? coluna : '';
+}
+/**
+ * A coluna do ICMS do Simples pela receita escrita no DAE (04/11/2026: "preciso que coloque a opção econtador do alterdata como envio e tambem preciso que preencha dae e icms na planilha la, enviei 2 dae via impresso e não preencheu"): no Simples o ICMS se divide em antecipação,
+ * diferencial de alíquota e ST, e a receita diz qual é ("0327-7 ICMS REC.ANTECIPADO-INDUSTRIA" → ICMS antec.; "0317-8 ICMS
+ * DIFERENCA DE ALIQUOTA" → ICMS dif. alíq.). Sem receita reconhecida, '' (a pessoa escolhe a coluna na revisão).
+ */
+export function colunaDoIcmsDoSimples(receita: string): string {
+  const r = (receita || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+  if (!r) return '';
+  if (/ARROZ/.test(r)) return 'icms-arroz';
+  if (/DIFERENCA DE ALIQ|DIF\.? ?(DE )?ALIQ|DIFAL/.test(r)) return /ATIVO|IMOBILIZ/.test(r) ? 'icms-dif-ativo' : 'icms-dif';
+  if (/ANTECIPA/.test(r)) return 'icms-ant';
+  if (/SUBST|\bS\.? ?T\b/.test(r)) return /SAIDA/.test(r) ? 'st-sai' : 'st-ent';
+  return '';
 }
 /** O tipo de guia de cada coluna (a pasta do Fiscal onde a guia escolhida à mão vai no Drive); fora daqui, sem tipo de guia */
 export const TIPO_DA_COLUNA: Readonly<Record<string, string>> = { das: 'DAS', pis: 'DARF', cofins: 'DARF', irpj: 'DARF', csll: 'DARF', icms: 'DAE', iss: 'DAM' };
