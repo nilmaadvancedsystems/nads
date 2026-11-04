@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router';
 import { empresaDaRota } from '../../../../../comum/empresaDaRota';
 import { ABAS_DO_CADASTRO, caminhoDoCadastro } from '../../../casca/navegacao';
 import { useCadastro, useRegimesDoEntregas } from '../../../dados/repo';
+import { temCodigoDoSimples } from '../../senhas/useImportarCodigosDoSimples';
 
 export interface ItemDoResumo { id: string; rotulo: string; tem: boolean; texto: string; aba: string }
 
@@ -32,7 +33,9 @@ export function useJanelaDaEmpresa(rota: string, aba: string, local?: { irPara: 
   return {
     empresa,
     regime,
-    abas: ABAS_DO_CADASTRO.map(a => ({ ...a, ativa: a.id === aba, pendente: vivo.carregada ? falta(a.id) : 0 })),
+    /** a empresa do Simples (ou ainda sem regime) tem o código de acesso; as outras, não (04/11/2026) */
+    simples: temCodigoDoSimples(regime),
+    abas: ABAS_DO_CADASTRO.filter(a => a.id !== 'simples' || temCodigoDoSimples(regime)).map(a => ({ ...a, ativa: a.id === aba, pendente: vivo.carregada ? falta(a.id) : 0 })),
     aba,
     abaAberta: ABAS_DO_CADASTRO.find(a => a.id === aba) || null,
     resumo: {

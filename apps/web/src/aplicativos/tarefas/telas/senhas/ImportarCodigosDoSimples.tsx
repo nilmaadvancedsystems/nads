@@ -40,7 +40,7 @@ export function ImportarCodigosDoSimples({ cofre, fechar }: { cofre: VmCofre; fe
           </button>
           {vm.fila.length > 0 && (
             <>
-              <p className="hint">{k.novo} {k.novo === 1 ? 'novo' : 'novos'} · {k.troca} {k.troca === 1 ? 'troca' : 'trocas'} · {k.igual} já {k.igual === 1 ? 'está' : 'estão'} no cofre{k.semEmpresa ? ' · ' + k.semEmpresa + ' sem empresa (escolha ou tire)' : ''}</p>
+              <p className="hint">{k.novo} {k.novo === 1 ? 'novo' : 'novos'} · {k.troca} {k.troca === 1 ? 'troca' : 'trocas'} · {k.igual} já {k.igual === 1 ? 'está' : 'estão'} no cofre{k.outroRegime ? ' · ' + k.outroRegime + ' de outro regime (não guarda)' : ''}{k.semEmpresa ? ' · ' + k.semEmpresa + ' sem empresa (escolha ou tire)' : ''}</p>
               <div className="table-wrap">
                 <table>
                   <thead><tr><th>Cód.</th><th>Empresa</th><th>Código de acesso</th><th>Situação</th><th /></tr></thead>
@@ -53,7 +53,7 @@ export function ImportarCodigosDoSimples({ cofre, fechar }: { cofre: VmCofre; fe
                           {x.alvo && formatosIguais(x.alvo.nome, x.empresa) ? null : x.alvo && <><br /><span className="fraco">no relatório: {x.empresa}</span></>}
                         </td>
                         <td className="num">{escondido(x.acesso)}{x.situacao === 'troca' && <><br /><span className="fraco">antes {escondido(x.antes)}</span></>}</td>
-                        <td>{x.alvo ? <span className={SITUACAO[x.situacao].classe}>{SITUACAO[x.situacao].rotulo}</span> : <span className="pill-vazio">sem empresa</span>}</td>
+                        <td>{!x.alvo ? <span className="pill-vazio">sem empresa</span> : x.outroRegime ? <span className="pill-vazio" title="Só a empresa do Simples guarda o código de acesso">{x.outroRegime}: não guarda</span> : <span className={SITUACAO[x.situacao].classe}>{SITUACAO[x.situacao].rotulo}</span>}</td>
                         <td>
                           <span className="imp-cert-acoes">
                             <EscolherEmpresa lista={vm.empresas} achada={!!x.alvo} onEscolher={e => vm.escolherEmpresa(x.id, e)} />

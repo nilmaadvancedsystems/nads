@@ -700,12 +700,21 @@ async function iniciar() {
   // tela ao vivo no nads)
   // desde 09/10/2026 pelo Claude do PC no Chrome logado (fgts-claude.js); o robô do navegador (fgts-digital.js) fica para a nuvem
   painel.modulo('arquivamento', 'Arquivamento', true);
+  // no servidor, o SIEG e o FGTS em processos próprios (04/11/2026: "quero que todas funcione junto, sem fila"): o
+  // arquivador esperando o G: não segura mais os dois. ARQ_TUDO_JUNTO=1 volta para o mesmo processo.
+  const SEPARADOS = SO_SERVIDOR && process.env.ARQ_TUDO_JUNTO !== '1';
+  if (SEPARADOS) {
+    log('SIEG e FGTS: cada um no seu processo (robo-modulo.js)');
+    require('./satelites').ligar(['sieg', 'fgts'], log);
+  }
   if (SO_SERVIDOR) {
     log('Balancete do Alterdata, atendente de IA e suporte: ficam no PC do escritório (claude-do-pc.js)');
     // o FGTS pelo robô, sem o Claude, no Chrome deste servidor (03/11/2026); atende só com o config/fgts.onde = 'servidor'
-    painel.modulo('fgts', 'FGTS Digital', false, 'esperando o config/fgts.onde');
-    try { require('./fgts-claude').iniciarFgtsPeloClaude(db, log, { semClaude: true }); }
-    catch (err) { log('FGTS não ligou:', err.message); painel.modulo('fgts', 'FGTS Digital', false, err.message); }
+    if (!SEPARADOS) {
+      painel.modulo('fgts', 'FGTS Digital', false, 'esperando o config/fgts.onde');
+      try { require('./fgts-claude').iniciarFgtsPeloClaude(db, log, { semClaude: true }); }
+      catch (err) { log('FGTS não ligou:', err.message); painel.modulo('fgts', 'FGTS Digital', false, err.message); }
+    }
     painel.modulo('alterdata', 'Balancete do Alterdata', false, 'roda no PC do escritório');
   } else {
     painel.modulo('fgts', 'FGTS Digital', true);
@@ -716,9 +725,11 @@ async function iniciar() {
     try { require('./alterdata').iniciarAlterdata(db, log); }
     catch (err) { log('Alterdata não ligou:', err.message); painel.modulo('alterdata', 'Balancete do Alterdata', false, err.message); }
   }
-  painel.modulo('sieg', 'SIEG', true);
-  try { require('./sieg').iniciarSieg({ db, log }); }
-  catch (err) { log('SIEG desligado:', err.message); painel.modulo('sieg', 'SIEG', false, err.message); }
+  if (!SEPARADOS) {
+    painel.modulo('sieg', 'SIEG', true);
+    try { require('./sieg').iniciarSieg({ db, log }); }
+    catch (err) { log('SIEG desligado:', err.message); painel.modulo('sieg', 'SIEG', false, err.message); }
+  }
   // a Área do Cliente (16/10/2026): o espelho de cada link secreto e as caixas de chamados e de arquivos do cliente; aqui
   // porque o arquivo do cliente vai para a pasta dele no G: deste PC
   // o vigia do Google Drive (26/10/2026): o G: sumido por mais de 10 min reinicia o Drive (no máximo a cada 30 min)
@@ -742,6 +753,7 @@ let pararIA = null;
 let continuo = null;
 function desligar() {
   try { if (continuo) continuo.parar(); } catch (e) { /* segue desligando */ }
+  try { require('./satelites').parar(); } catch (e) { /* segue desligando */ }
   Promise.all([
     estadoRef.set({ em: new Date(0).toISOString(), situacao: 'desligado', desligadoEm: agora() }, { merge: true }),
     pararIA ? pararIA() : null,

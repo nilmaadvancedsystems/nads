@@ -8,6 +8,7 @@ import { ImportarCertificados } from './ImportarCertificados';
 import { ImportarCodigosDoSimples } from './ImportarCodigosDoSimples';
 import { SegredosDaEmpresa } from './SegredosDaEmpresa';
 import { useSenhasDasEmpresas, type FiltroDeSenhas } from './useSenhasDasEmpresas';
+import { regimeQueVale, temCodigoDoSimples } from './useImportarCodigosDoSimples';
 
 type Topico = 'gov' | 'simples' | 'certificado';
 // o código de acesso do Simples também aqui (03/11/2026, com o Importar códigos do Simples)
@@ -64,7 +65,7 @@ export function SenhasDasEmpresas() {
       {importando && <ImportarCertificados cofre={vm.cofre} fechar={() => setImportando(false)} />}
       {importandoSimples && <ImportarCodigosDoSimples cofre={vm.cofre} fechar={() => setImportandoSimples(false)} />}
       {vm.aberta && (
-        <JanelaLateral rotulo={vm.aberta.nome} topicos={TOPICOS} topico={topico} mudar={setTopico} fechar={vm.fechar} classe="cofre-janela" resumo={(
+        <JanelaLateral rotulo={vm.aberta.nome} topicos={TOPICOS.filter(t => t.id !== 'simples' || temCodigoDoSimples(regimeQueVale(vm.aberta!.codigo)))} topico={topico} mudar={setTopico} fechar={vm.fechar} classe="cofre-janela" resumo={(
           <div className="usuario-quem"><b>{vm.aberta.nome}</b>{vm.aberta.codigo != null && <span className="fraco">{vm.aberta.codigo}</span>}</div>
         )}>
           <SegredosDaEmpresa vm={vm.cofre} empresa={vm.aberta.nome} codigo={vm.aberta.codigo} parte={topico} />

@@ -4,7 +4,7 @@
 // no Importar certificados (o "Código:" do relatório nem sempre é o do ERP, então só vale quando o nome bate); o que já
 // está no cofre diz se é novo, igual ou troca. Guardar põe o código de acesso e o CPF na empresa (embaralhado; a senha
 // gov.br, o certificado e a observação do Simples ficam).
-import { cofre as c, empresas, formatos } from '@nads/core';
+import { cofre as c, empresas, formatos, tarefas } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useState } from 'react';
 import { useGmailDoEntregas } from '../../dados/repo';
@@ -13,6 +13,15 @@ import type { VmCofre } from './useCofre';
 
 export type SituacaoDoCodigo = 'lendo' | 'novo' | 'igual' | 'troca';
 
+/**
+ * A empresa tem código de acesso do Simples? Só a do Simples (04/11/2026: "empresas que são categorizadas como qualquer
+ * coisa que não seja simples no cadastro não tem porque ter isso"); a de regime ainda não escolhido também, para nada
+ * sumir por engano. regime: o que vale (o do Cadastro do nads; sem ele, o da lista do escritório).
+ */
+export const temCodigoDoSimples = (regime: string | null | undefined) => !regime || regime === 'Simples';
+/** o regime que vale da empresa pelo código do ERP */
+export const regimeQueVale = (codigo: number | null | undefined) => tarefas.regimeDaEmpresa(codigo) || empresas.EMPRESAS_COM_DP.find(e => e.codigo === codigo)?.regime || '';
+
 export interface CodigoNaFila extends c.CodigoDoSimplesDoRelatorio {
   id: string;
   /** a empresa do nads (null = não achada: escolher) */
@@ -20,6 +29,8 @@ export interface CodigoNaFila extends c.CodigoDoSimplesDoRelatorio {
   situacao: SituacaoDoCodigo;
   /** o código que já estava no cofre, quando é troca */
   antes: string;
+  /** o regime da empresa achada quando não é o Simples (não guarda: só a do Simples tem o código) */
+  outroRegime: string;
 }
 
 // o nome sem acento, sem pontuação e sem LTDA/ME/EPP, para ver se o "Código:" do relatório é mesmo o da empresa
@@ -47,6 +58,12 @@ export function useImportarCodigosDoSimples(cofre: VmCofre) {
     return e && mesmoNome(e.nome, x.empresa) ? { nome: e.nome, codigo: e.codigo } : null;
   }
 
+  // a empresa achada que não é do Simples: o regime dela ('' = é do Simples, ou ainda sem regime)
+  function doRegime(alvo: EmpresaDoCertificado | null): string {
+    const r = alvo ? regimeQueVale(alvo.codigo) : '';
+    return temCodigoDoSimples(r) ? '' : r;
+  }
+
   // o que já está no cofre: novo, igual ou troca (lê embaralhado e compara aqui, no navegador)
   async function conferir(itens: CodigoNaFila[]) {
     for (const x of itens) {
@@ -65,7 +82,7 @@ export function useImportarCodigosDoSimples(cofre: VmCofre) {
       if (x.alvo) return x;
       const alvo = alvoDe(x);
       if (!alvo) return x;
-      const y = { ...x, alvo, situacao: 'lendo' as const };
+      const y = { ...x, alvo, situacao: 'lendo' as const, outroRegime: doRegime(alvo) };
       achados.push(y);
       return y;
     }));
@@ -73,7 +90,7 @@ export function useImportarCodigosDoSimples(cofre: VmCofre) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientes.length]);
 
-  const prontos = fila.filter(x => x.alvo && (x.situacao === 'novo' || x.situacao === 'troca'));
+  const prontos = fila.filter(x => x.alvo && !x.outroRegime && (x.situacao === 'novo' || x.situacao === 'troca'));
   return {
     fila,
     semCodigo,
@@ -81,8 +98,8 @@ export function useImportarCodigosDoSimples(cofre: VmCofre) {
     empresas: todas,
     prontos: prontos.length,
     contagem: {
-      novo: fila.filter(x => x.alvo && x.situacao === 'novo').length, troca: fila.filter(x => x.situacao === 'troca').length,
-      igual: fila.filter(x => x.situacao === 'igual').length, semEmpresa: fila.filter(x => !x.alvo).length,
+      novo: fila.filter(x => x.alvo && !x.outroRegime && x.situacao === 'novo').length, troca: fila.filter(x => x.situacao === 'troca').length,
+      igual: fila.filter(x => x.situacao === 'igual').length, semEmpresa: fila.filter(x => !x.alvo).length, outroRegime: fila.filter(x => x.alvo && x.outroRegime).length,
     },
     async adicionar(arquivos: readonly File[]) {
       const novos: CodigoNaFila[] = [];
@@ -94,7 +111,7 @@ export function useImportarCodigosDoSimples(cofre: VmCofre) {
         sem.push(...r.semCodigo);
         for (const x of r.itens) {
           const alvo = alvoDe(x);
-          novos.push({ ...x, id: (x.cnpj || x.empresa) + '|' + f.name, alvo, situacao: alvo ? 'lendo' : 'novo', antes: '' });
+          novos.push({ ...x, id: (x.cnpj || x.empresa) + '|' + f.name, alvo, situacao: alvo ? 'lendo' : 'novo', antes: '', outroRegime: doRegime(alvo) });
         }
       }
       // a mesma empresa em dois relatórios (ou já na fila): fica a primeira
@@ -108,7 +125,7 @@ export function useImportarCodigosDoSimples(cofre: VmCofre) {
     escolherEmpresa(id: string, e: EmpresaDoCertificado) {
       const x = fila.find(y => y.id === id);
       if (!x) return;
-      const y = { ...x, alvo: e, situacao: 'lendo' as const };
+      const y = { ...x, alvo: e, situacao: 'lendo' as const, outroRegime: doRegime(e) };
       setFila(f => f.map(z => (z.id === id ? y : z)));
       void conferir([y]);
     },

@@ -338,8 +338,46 @@ function desligar() {
   } catch (e) { return Promise.resolve(); }
 }
 
-module.exports = {
-  iniciar, batimento, estado, fazendo, fazendoPor, modulo, atividade, erro, desligar, limpar,
+/**
+ * Um robô num processo próprio (o SIEG e o FGTS do NILMA-SERVER, 04/11/2026: "quero que todas funcione junto, sem fila"):
+ * o processo-filho não grava o painel, manda ao pai (o arquivador, que é o único que escreve o robo/painelPC) pelo canal
+ * do child_process. O pai aplica com deSatelite(). Assim a tela do painel não muda e não há dois escritores no documento.
+ */
+function deSatelite(msg) {
+  try {
+    if (!msg || !msg.painel || !Array.isArray(msg.args)) return false;
+    const f = { fazendo, modulo, atividade, estado }[msg.painel];
+    if (!f) return false;
+    f(...msg.args);
+    return true;
+  } catch (e) { return false; }
+}
+
+const SATELITE = process.env.NADS_PAINEL_SATELITE === '1' && typeof process.send === 'function';
+const aoPai = (tipo, args) => { try { if (process.connected) process.send({ painel: tipo, args }); } catch (e) { /* o pai saiu */ } };
+const provedoresDoFilho = new Map();
+let relogioDoFilho = null;
+
+module.exports = SATELITE ? {
+  iniciar: () => {}, batimento: () => Promise.resolve(), desligar: () => Promise.resolve(), limpar: () => Promise.resolve(),
+  estado: parcial => aoPai('estado', [parcial]),
+  fazendo: (chave, texto) => aoPai('fazendo', [chave, texto || null]),
+  // o "fazendo" que o módulo responde: o filho pergunta a cada 30 s e manda o texto
+  fazendoPor: (chave, f) => {
+    provedoresDoFilho.set(String(chave), f);
+    if (!relogioDoFilho) {
+      relogioDoFilho = setInterval(() => { for (const [k, g] of provedoresDoFilho) { let t = null; try { t = g(); } catch (e) { t = null; } aoPai('fazendo', [k, t || null]); } }, 30000);
+      if (relogioDoFilho.unref) relogioDoFilho.unref();
+    }
+  },
+  modulo: (id, nome, ligado, motivo) => aoPai('modulo', [id, nome, ligado, motivo]),
+  atividade: (tipo, texto, detalhe, opcoes) => aoPai('atividade', [tipo, texto, detalhe, opcoes]),
+  erro: (tipo, texto, detalhe) => aoPai('atividade', [tipo, texto, detalhe, { erro: true }]),
+  deSatelite, SATELITE,
+  FILAS, TIPOS, COLECAO, DOCS,
+  cortar, isoDe, contarFila, criarFreio, versaoDoCodigo, montarBatimento,
+} : {
+  iniciar, batimento, estado, fazendo, fazendoPor, modulo, atividade, erro, desligar, limpar, deSatelite, SATELITE,
   FILAS, TIPOS, COLECAO, DOCS,
   // para o teste
   cortar, isoDe, contarFila, criarFreio, versaoDoCodigo, montarBatimento,
