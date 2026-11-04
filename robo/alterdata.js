@@ -20,8 +20,11 @@ const painel = require('./painel');
 const { criarFilaAlterdata, periodo } = require('./alterdata-fila');
 
 const DRIVE = process.env.ARQUIVO_DRIVE || 'G:\\Meu Drive';
-const PASTA_PEDIDOS = path.join(DRIVE, 'Claudio Secretario', 'Alterdata', 'pedidos');
 const ONDE = process.env.ARQ_SO_SERVIDOR === '1' ? 'servidor' : 'pc';
+// a pasta de trabalho de cada pedido: no servidor, o disco local (o G: de lá está em "transmitir" e leva ~30 s por arquivo;
+// os arquivos sobem direto para o banco, a pasta é só o rascunho); no PC, o Drive, como no teste de 04/11/2026
+const PASTA_PEDIDOS = process.env.ALTERDATA_PEDIDOS
+  || (ONDE === 'servidor' ? 'D:\\nads-dados\\alterdata\\pedidos' : path.join(DRIVE, 'Claudio Secretario', 'Alterdata', 'pedidos'));
 // o Python do servidor fica em D:\Programas\Python313 (fora do PATH); no PC, o do PATH
 const PYTHON = process.env.PYTHON_EXE || ['D:\\Programas\\Python313\\python.exe'].find(p => fs.existsSync(p)) || 'python';
 const ROTEIROS = { balancete: path.join(__dirname, 'alterdata_balancete.py'), razao: path.join(__dirname, 'alterdata_razao.py') };
