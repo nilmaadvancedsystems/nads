@@ -771,6 +771,7 @@ async function aplicar(res, opcoes, ctx) {
   // 23/10/2026: vários destinos ao mesmo tempo (opcoes.destinosJuntos; o contínuo dá menos quando o Drive está lento). Os
   // destinos já foram reservados na decisão (nenhum par de arquivos disputa o mesmo nome)
   const juntos = Math.max(1, +opcoes.destinosJuntos || 6);
+  const MEMBROS_JUNTOS = Math.max(1, Math.min(4, juntos));   // os de dentro de um compactado (cai junto quando o Drive está lento)
   let proximo = 0;
   const porAcao = {};
   await Promise.all(Array.from({ length: Math.min(juntos, res.itens.length) }, async () => {
@@ -795,7 +796,12 @@ async function aplicar(res, opcoes, ctx) {
         const buf = await fs.promises.readFile(path.join(opcoes.origem, it.rel));
         const lista = membros(path.basename(it.rel), buf, path.join(opcoes.origem, it.rel));
         const porNome = new Map(lista.map(m => [it.rel + '\\' + m.nome, m.buffer]));
-        for (const f of it.filhos) {
+        // 04/11/2026: os de dentro gravam vários ao mesmo tempo (no G: em "transmitir" cada gravação espera o Google; um
+        // .zip do SIEG com dezenas de XMLs levava ~200 s um a um). Os destinos já foram reservados na decisão e o 'wx'
+        // nunca sobrescreve. Um que falhar não para os outros; o compactado só vai para a quarentena se todos gravaram.
+        const fila = it.filhos.slice();
+        const erros = [];
+        const umFilho = async (f) => {
           f.hashPai = it.hash;
           const b = porNome.get(f.rel);
           if (f.acao === 'ARQUIVAR') {
@@ -803,7 +809,11 @@ async function aplicar(res, opcoes, ctx) {
             for (const cp of f.copias || []) if (cp.situacao === 'NOVO') { await gravar(f, b, cp.onde, cp.cliente, cp.pastaCliente, cp.criarPastaCliente); cp.gravadoEm = cp.onde; }
           }
           else if (f.acao === 'NAO_IDENTIFICADO' || f.acao === 'FICA') await moverParaNi(f, b);   // 01 Fase 4b (09/10/2026)
-        }
+        };
+        await Promise.all(Array.from({ length: Math.min(MEMBROS_JUNTOS, fila.length) }, async () => {
+          while (fila.length) { const f = fila.shift(); try { await umFilho(f); } catch (e) { f.erro = e.message; erros.push(e); } }
+        }));
+        if (erros.length) throw erros[0];
         await paraQuarentena(it, buf);
         return;
       }
