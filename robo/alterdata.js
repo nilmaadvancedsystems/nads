@@ -29,6 +29,11 @@ const PASTA_PEDIDOS = process.env.ALTERDATA_PEDIDOS
 const PYTHON = process.env.PYTHON_EXE || ['D:\\Programas\\Python313\\python.exe'].find(p => fs.existsSync(p)) || 'python';
 const ROTEIROS = { balancete: path.join(__dirname, 'alterdata_balancete.py'), razao: path.join(__dirname, 'alterdata_razao.py') };
 const ROTEIRO_ESTADO = path.join(__dirname, 'alterdata_estado.py');
+// o login do robô (04/11/2026, Vitor: "tem um login criado especificamente para o robo, onde ele tem permissão so de puxar
+// relatorio"): a credencial fica só no Gerenciador de Credenciais do Windows (nads-alterdata-robo); sem ela, o robô só espera
+const ROTEIRO_LOGIN = path.join(__dirname, 'alterdata_login.py');
+const WCONT = process.env.ALTERDATA_WCONT || 'C:\\Program Files (x86)\\Alterdata\\Pack\\Diamond\\Contabil\\wcont.exe';
+const ABRIR_DE_NOVO_MS = 15 * 60 * 1000;
 const LIMITE_MS = 9 * 60 * 1000;
 const PEDACO = 700 * 1000;   // caracteres de base64 por pedaço (o documento do Firestore vai até 1 MiB)
 const VERIFICAR_MS = 60 * 1000;
@@ -107,8 +112,44 @@ function iniciarAlterdata(db, log) {
       painel.modulo('alterdata', 'Alterdata', novo === 'ok', 'o Contábil está ' + ESTADOS[novo]);
     }
     estado = novo;
-    await estadoDoc.set({ ligado: true, maquinas: { [ONDE]: { contabil: estado, em: agora() } }, atualizadoEm: agora() }, { merge: true }).catch(() => {});
+    if (estado === 'ok') loginParado = '';   // alguém (ou o robô) entrou: se o login tinha falhado, vale tentar de novo depois
+    await estadoDoc.set({ ligado: true, maquinas: { [ONDE]: { contabil: estado, login: loginParado, em: agora() } }, atualizadoEm: agora() }, { merge: true }).catch(() => {});
+    if (estado === 'login' || estado === 'fechado') void entrarSozinho(estado);
     return estado;
+  }
+
+  // O login do robô: só com a credencial nads-alterdata-robo no Gerenciador de Credenciais desta sessão. Contábil fechado:
+  // abre o wcont.exe (no máximo a cada 15 min); tela de login: UMA tentativa. Se falhar, para (loginParado) até alguém
+  // entrar na mão: nunca tenta de novo em laço, a conta pode ser bloqueada.
+  let loginParado = '';
+  let entrando = false;
+  let abertoEm = 0;
+  const rodarPy = (arquivo, args, ms) => new Promise(resolve => execFile(PYTHON, ['-I', arquivo, ...args], { cwd: __dirname, windowsHide: true, timeout: ms },
+    (err, out) => resolve({ err, out: String(out || '') })));
+  async function entrarSozinho(como) {
+    if (entrando || loginParado) return;
+    entrando = true;
+    try {
+      const tem = await rodarPy(ROTEIRO_LOGIN, ['--tem'], 90 * 1000);
+      if (!/TEM:\s*sim/.test(tem.out)) return;   // sem a credencial: espera alguém entrar
+      if (como === 'fechado') {
+        if (Date.now() - abertoEm < ABRIR_DE_NOVO_MS || !fs.existsSync(WCONT)) return;
+        abertoEm = Date.now();
+        log('Alterdata: o Contábil deste ' + ONDE + ' estava fechado; abrindo para o robô entrar');
+        spawn(WCONT, [], { cwd: path.dirname(WCONT), detached: true, stdio: 'ignore' }).unref();
+        return;   // a próxima verificação acha a tela de login
+      }
+      log('Alterdata: entrando no Contábil deste ' + ONDE + ' com o usuário do robô');
+      const r = await rodarPy(ROTEIRO_LOGIN, [], 150 * 1000);
+      const m = r.out.match(/RESULTADO:\s*(\{.*\})/);
+      let res = { ok: false, erro: 'o roteiro de login parou sem resultado' };
+      try { if (m) res = JSON.parse(m[1]); } catch (_) { /* mal escrito */ }
+      if (res.ok) { log('Alterdata: o robô entrou no Contábil'); await verificar(); return; }
+      loginParado = res.erro || 'não deu';
+      log('Alterdata: o login do robô não deu (' + loginParado + '); não tento de novo até alguém entrar no Contábil');
+      painel.modulo('alterdata', 'Alterdata', false, 'o login do robô não deu: ' + loginParado);
+      await estadoDoc.set({ maquinas: { [ONDE]: { login: loginParado, em: agora() } } }, { merge: true }).catch(() => {});
+    } finally { entrando = false; }
   }
 
   const banco = {
