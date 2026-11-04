@@ -115,12 +115,33 @@ function mandar(cmd, ms = 90000) {
 
 const conectada = () => Date.now() - ultimoContato < 35000;
 
+/**
+ * O "Perguntar onde salvar cada arquivo antes de fazer download" desligado no perfil (Vitor, 04/11/2026: "não tem como ele
+ * vir nas configurações e verificar isso?"): com ele ligado, a guia esperava alguém clicar em Salvar na tela do servidor.
+ * Só com o Chrome fechado (ele regrava o Preferences ao fechar). Devolve o que fez, para o log.
+ */
+function semPerguntarOndeSalvar() {
+  const arq = path.join(process.env.LOCALAPPDATA || '', 'Google', 'Chrome', 'User Data', PERFIL_NOME, 'Preferences');
+  try {
+    const aberto = /chrome\.exe/i.test(require('child_process').execFileSync('tasklist', ['/FI', 'IMAGENAME eq chrome.exe', '/NH'], { encoding: 'utf8', windowsHide: true }));
+    if (aberto) return '';
+    const p = JSON.parse(fs.readFileSync(arq, 'utf8'));
+    if (p.download && p.download.prompt_for_download === false) return '';
+    p.download = Object.assign({}, p.download, { prompt_for_download: false });
+    fs.writeFileSync(arq + '.nads-tmp', JSON.stringify(p));
+    fs.renameSync(arq + '.nads-tmp', arq);
+    return 'desliguei o "perguntar onde salvar" do Chrome da nilmacontabilidade';
+  } catch (err) { return 'não conferi o "perguntar onde salvar" (' + err.message + ')'; }
+}
+
 /** Abre o Chrome normal no perfil da nilmacontabilidade e espera a extensão chamar. */
 async function abrirChrome(log, roteiros) {
   if (!fs.existsSync(CHROME)) throw new Error('falta o Chrome em ' + CHROME);
   ligarServidor();
   prepararExtensao(roteiros);
   if (conectada()) return;
+  const salvar = semPerguntarOndeSalvar();
+  if (salvar) log('FGTS (extensão): ' + salvar);
   spawn(CHROME, ['--profile-directory=' + PERFIL_NOME, PORTAL], { detached: true, stdio: 'ignore' }).unref();
   for (let i = 0; i < 45 && !conectada(); i++) await dormir(1000);
   if (!conectada()) throw new Error('a extensão "nads - robô do FGTS" não respondeu no Chrome da nilmacontabilidade (está instalada? chrome://extensions, Carregar sem compactação: ' + PASTA_EXT + ')');
