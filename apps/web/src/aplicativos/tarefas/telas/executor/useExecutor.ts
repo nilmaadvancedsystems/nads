@@ -514,6 +514,8 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     irParaPeriodo: periodoDoMes && empresa ? comDep(caminhoDoExecutor(empresas.rotaDaEmpresa(empresa), periodoDoMes)) : null,
     /** todos os meses do período estão concluídos (só aí dá para encerrar) */
     periodoConcluido: concluido,
+    /** a etapa na tela já foi concluída em todos os meses (a Importação: as empresas que já saíram dela seguem com os razões) */
+    vistaConcluida: !!vista && concluidaNoPeriodo(vista.id),
     /** Encerra os vários meses (só com todos concluídos): tira a promessa de cada mês e volta ao último mês. */
     encerrarPeriodo: () => {
       if (!varios || !empresa) return;
