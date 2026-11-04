@@ -136,11 +136,11 @@ export function useAndamento() {
 
   // só as empresas da pessoa (26/10/2026: "o minhas empresas tem que aparecer só as empresas da pessoa e tem que mudar
   // dependendo do setor dela"): as que têm ela como responsável do setor no Cadastro (no Fiscal, sem escolha, o da
-  // planilha), como em Cadastro › Empresas por responsável. O admin e o diretor podem ver todas (?escopo=todas). O DP não
-  // tem responsável por empresa no nads: lista todas.
+  // planilha), como em Cadastro › Empresas por responsável. O admin e o diretor veem todas (sem escolha: Vitor, 04/11/2026,
+  // "remove o minhas e deixa todas"). O DP não tem responsável por empresa no nads: lista todas.
   const daPessoa = useEmpresasDaPessoa();
   const podeVerTodas = daPessoa.podeVerTodas;
-  const escopo: EscopoDasEmpresas = podeVerTodas && params.get('escopo') === 'todas' ? 'todas' : 'minhas';
+  const escopo: EscopoDasEmpresas = podeVerTodas ? 'todas' : 'minhas';
   // o Fiscal e o Contábil filtram pelo responsável do setor no Cadastro (29/10/2026: "se não é encarregado não deve nem
   // ver"; antes o Contábil ficava com todas); o DP ainda não tem o responsável por empresa
   const temResponsavel = dep === 'fiscal' || dep === 'contabil';
@@ -186,10 +186,9 @@ export function useAndamento() {
     params, setParams, mudar,
     carregando: !carregada || (filtrar && !daPessoa.carregada),
     linhas,
-    /** minhas ou todas: quem pode escolher, a escolha e se o setor tem responsável por empresa */
+    /** se o setor tem responsável por empresa, e se quem vê é o admin ou o diretor (vê todas) */
     podeVerTodas: podeVerTodas && temResponsavel,
     escopo,
-    setEscopo: (e: EscopoDasEmpresas) => mudar('escopo', e === 'todas' ? 'todas' : ''),
     filtrandoPorResponsavel: filtrar,
     contar: (s: t.SituacaoGeral) => linhas.filter(l => l.situacao === s).length,
   };
