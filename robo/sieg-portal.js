@@ -180,13 +180,18 @@ async function xmlsPeloPortal(doc, competencia, aoAndar, lerZip, soTipos, espera
         const usada = cookie;
         // um tropeço de rede ("fetch failed", sem resposta do portal) tenta de novo antes de cair na API, que leva minutos
         // (03/11/2026: no NILMA-SERVER, o 183 falhou uma vez em 33 s e foi pela API; o mesmo mês, refeito, deu em 8 s)
+        // 04/11/2026: à tarde o servidor deu "Connect Timeout" (10 s para conectar em app.sieg.com) várias vezes, e cada
+        // queda na API custou ~14 min (4.413 XMLs da 66 para achar 35 novos). Agora são até 3 novas tentativas, com 5, 15
+        // e 30 s de folga, antes de desistir do portal
         const doPortal = async c => {
-          try { return await zipDoPeriodo(c, doc, tipo, competencia, sinal); }
-          catch (err) {
-            if (sinal.aborted || !(err instanceof TypeError) || !/fetch failed/i.test(err.message)) throw err;
-            await new Promise(r => setTimeout(r, 5000));
-            return zipDoPeriodo(c, doc, tipo, competencia, sinal);
+          for (const espera of [5000, 15000, 30000]) {
+            try { return await zipDoPeriodo(c, doc, tipo, competencia, sinal); }
+            catch (err) {
+              if (sinal.aborted || !(err instanceof TypeError) || !/fetch failed/i.test(err.message)) throw err;
+              await new Promise(r => setTimeout(r, espera));
+            }
           }
+          return zipDoPeriodo(c, doc, tipo, competencia, sinal);
         };
         try { zip = await doPortal(usada); }
         catch (err) {
