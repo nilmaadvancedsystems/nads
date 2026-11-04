@@ -198,19 +198,22 @@ igual('lado a lado: o texto cita o destino diferente', /2 - Y/.test(C.textoDoLad
       vc.parar();
       igual('contagem: só o que o robô arquiva (sem NÃO IDENTIFICADOS e temporários) e desconta o que saiu', [antes, depois], [3, 0]);
     }
-    // 27/10/2026: as pastas vazias saem da origem (só as sem nenhum arquivo e paradas há mais de 1 dia; nunca NÃO IDENTIFICADOS)
+    // 27/10/2026: as pastas vazias saem da origem (só as sem nenhum arquivo e paradas há mais de 2 h; nunca NÃO IDENTIFICADOS)
     {
       const oV = path.join(sb, 'origem-v'), kV = path.join(sb, 'controle-v');
       const mk = p => fs.mkdirSync(path.join(oV, p), { recursive: true });
-      mk('0010 - X\\DEPARTAMENTO FISCAL\\SINTEGRA\\2026'); mk('0055 - Y\\OUTROS'); mk('NÃO IDENTIFICADOS\\20261027-NOVO'); mk('NOVA - Z'); mk('_tmp');
+      mk('0010 - X\\DEPARTAMENTO FISCAL\\SINTEGRA\\2026'); mk('0055 - Y\\OUTROS'); mk('NÃO IDENTIFICADOS\\20261027-NOVO'); mk('NOVA - Z'); mk('_tmp'); mk('2026-04\\ADERLEI');
       fs.mkdirSync(kV, { recursive: true });
       fs.writeFileSync(path.join(oV, '0055 - Y', 'OUTROS', 'fica.pdf'), 'x');
       const velho = new Date(Date.now() - 3 * 864e5);
+      // 04/11/2026: a AAAA-MM do SIEG parada há 3 h também sai (o limite agora é 2 h)
+      const tresHoras = new Date(Date.now() - 3 * 3600e3);
+      for (const p of ['2026-04\\ADERLEI', '2026-04']) fs.utimesSync(path.join(oV, p), tresHoras, tresHoras);
       for (const p of ['0010 - X\\DEPARTAMENTO FISCAL\\SINTEGRA\\2026', '0010 - X\\DEPARTAMENTO FISCAL\\SINTEGRA', '0010 - X\\DEPARTAMENTO FISCAL', '0010 - X', '0055 - Y\\OUTROS', '0055 - Y', 'NÃO IDENTIFICADOS\\20261027-NOVO', 'NÃO IDENTIFICADOS', '_tmp']) fs.utimesSync(path.join(oV, p), velho, velho);
       const vv = C.iniciar(Object.assign({}, base, { origem: oV, controle: kV }));
       const n = await vv._limparPastasVazias();
       vv.parar();
-      igual('pastas vazias: sai a árvore vazia antiga; ficam a com arquivo, a nova, NÃO IDENTIFICADOS e "_"', [n, fs.existsSync(path.join(oV, '0010 - X')), fs.existsSync(path.join(oV, '0055 - Y', 'OUTROS', 'fica.pdf')), fs.existsSync(path.join(oV, 'NOVA - Z')), fs.existsSync(path.join(oV, 'NÃO IDENTIFICADOS', '20261027-NOVO')), fs.existsSync(path.join(oV, '_tmp'))], [4, false, true, true, true, true]);
+      igual('pastas vazias: sai a árvore vazia antiga; ficam a com arquivo, a nova, NÃO IDENTIFICADOS e "_"', [n, fs.existsSync(path.join(oV, '0010 - X')), fs.existsSync(path.join(oV, '0055 - Y', 'OUTROS', 'fica.pdf')), fs.existsSync(path.join(oV, 'NOVA - Z')), fs.existsSync(path.join(oV, 'NÃO IDENTIFICADOS', '20261027-NOVO')), fs.existsSync(path.join(oV, '_tmp')), fs.existsSync(path.join(oV, '2026-04'))], [6, false, true, true, true, true, false]);
     }
   } finally { fs.rmSync(sb, { recursive: true, force: true }); }
   console.log((falhas ? falhas + ' FALHA(S) em ' : 'ok: ') + total + ' testes');
