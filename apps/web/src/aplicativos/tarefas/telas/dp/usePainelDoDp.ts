@@ -99,7 +99,7 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
   // o filtro de Entrega (Vitor, 07/10/2026: como chega ao cliente)
   const [entrega, setEntrega] = useState<string[]>([]);
   // o filtro da REINF (04/11/2026: "coloca a opção de reinf não autoriza de autorizada nos filtros")
-  const [reinf, setReinf] = useState<string[]>([]);
+  const [filtroReinf, setFiltroReinf] = useState<string[]>([]);
   // o que o dashboard do Resumo escolheu para a lista: uma situação (a rosca) ou uma parte da rotina (a barra), nunca as duas
   const [situacaoEscolhida, setSituacaoEscolhida] = useState<SituacaoDoDash | null>(null);
   const [parteEscolhida, setParteEscolhida] = useState<ParteDoDp | null>(null);
@@ -150,7 +150,7 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
   // o filtro Pendente em (Vitor, 07/10/2026): só quem ainda tem o que fazer naquela parte
   const pendentesEm = partes.filter(p => pendenteEm.includes(p.id));
   const filtradas = todas.filter(c => (!pendentesEm.length || pendentesEm.some(pendente => c.obrigacoes.some(o => pendente.obrigacoes.includes(o.id) && o.estado !== 'nao-tem' && o.estado !== 'feita')))
-    && (!achadas || achadas.has(c.codigo)) && (!responsavel.length || responsavel.includes(c.responsavelNome)) && (!entrega.length || entrega.includes(c.entrega)) && (!reinf.length || reinf.includes(c.reinfAutorizada ? REINF_AUTORIZADA : REINF_NAO_AUTORIZADA))
+    && (!achadas || achadas.has(c.codigo)) && (!responsavel.length || responsavel.includes(c.responsavelNome)) && (!entrega.length || entrega.includes(c.entrega)) && (!filtroReinf.length || filtroReinf.includes(c.reinfAutorizada ? REINF_AUTORIZADA : REINF_NAO_AUTORIZADA))
     && (!movimento.length || movimento.includes(c.movimento)) && (!enquadramento.length || enquadramento.includes(c.enquadramento))
     && (!agrupamento.length || agrupamento.includes(c.agrupamento)) && (!status.length || status.some(s => (s === 'pendentes' ? !c.concluida : c.situacaoId === s))))
     .sort((a, b) => a.nomeNaTela.localeCompare(b.nomeNaTela, 'pt-BR'));
@@ -318,11 +318,11 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
       movimentos: contar(todas.map(c => c.movimento)).map(x => x.rotulo),
       enquadramentos: contar(todas.map(c => c.enquadramento)).map(x => x.rotulo),
       agrupamentos: contar(todas.map(c => c.agrupamento).filter(Boolean)).map(x => x.rotulo).sort((a, b) => a.localeCompare(b, 'pt-BR')),
-      pendenteEm, setPendenteEm, entrega, setEntrega, reinf, setReinf, opcoesDaReinf: [REINF_AUTORIZADA, REINF_NAO_AUTORIZADA],
+      pendenteEm, setPendenteEm, entrega, setEntrega, reinf: filtroReinf, setReinf: setFiltroReinf, opcoesDaReinf: [REINF_AUTORIZADA, REINF_NAO_AUTORIZADA],
       entregas: contar(todas.map(c => c.entrega).filter(Boolean)).map(x => x.rotulo),
       partes: partes.map(p => ({ valor: p.id, rotulo: p.rotulo })),
-      algum: !!(busca || responsavel.length || movimento.length || enquadramento.length || status.length || agrupamento.length || pendenteEm.length || entrega.length || reinf.length),
-      limpar: () => { setBusca(''); setResponsavel([]); setMovimento([]); setEnquadramento([]); setStatus([]); setAgrupamento([]); setPendenteEm([]); setEntrega([]); setReinf([]); },
+      algum: !!(busca || responsavel.length || movimento.length || enquadramento.length || status.length || agrupamento.length || pendenteEm.length || entrega.length || filtroReinf.length),
+      limpar: () => { setBusca(''); setResponsavel([]); setMovimento([]); setEnquadramento([]); setStatus([]); setAgrupamento([]); setPendenteEm([]); setEntrega([]); setFiltroReinf([]); },
     },
     /** a tabela que está na tela (com os filtros e a ordem dela), em Excel (Vitor, 07/10/2026) */
     exportar() {
