@@ -41,6 +41,8 @@ export function useRazaoDaFolha(conta: t.ContaDaFolha, chave: string, meses: rea
     /** o razão importado (o Honorários tira dele a conta de despesa das provisões de antes) */
     razao: r?.razao ?? null,
     importar, remover: () => { setRazao(null); if (!proprio && daImportacao) contabil.tirarRazao(daImportacao.conta); },
+    /** o Diário da conta (a Importação preenche; o razão próprio desta etapa, se houver, sai: a mais recente vence) */
+    usarDiario: () => { if (contabil.usarDiarioDoTipo(conta, NOME[conta])) setRazao(null); },
     /** o ⚡: um razão de teste do período, certo ou com um mês devedor */
     teste: [
       { rotulo: NOME[conta] + ' de teste (credor e zerando)', onClick: () => setRazao({ chave, arquivo: 'TESTE razão de ' + NOME[conta] + '.xls', razao: t.razaoDaFolhaDeTeste(meses, conta, false) }) },

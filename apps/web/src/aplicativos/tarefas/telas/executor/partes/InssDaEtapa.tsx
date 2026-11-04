@@ -6,6 +6,7 @@ import { useId, useState } from 'react';
 import { FaixaQueAbre } from '../../../../../comum/FaixaQueAbre';
 import type { InssDaEtapa as Inss } from '../useInssDaEtapa';
 import { BotaoDeTeste, type ItemDeTeste } from '../../../../../comum/BotaoDeTeste';
+import { BotaoDiario } from '../../../../../comum/BotaoDiario';
 import { useColunaAjustavel, ValorNaGrade } from '../../../../../comum/GradeDosMeses';
 import type { RazaoDaFolha as VmFolha } from '../useRazaoDaFolha';
 import { RazaoDaFolha } from './RazaoDaFolha';
@@ -73,7 +74,7 @@ export function InssDaEtapa({ inss, conferir, teste = [], folha, so, conferencia
               <div className="imp-grupo" aria-label="Razão do INSS a recolher">
                 <span className="imp-rotulo">Razão</span>
                 {inss.temRazao ? <Importado titulo="o razão do INSS" onExcluir={inss.removerRazao} />
-                  : <><BotaoDeTeste itens={testeRazao} /><Importar id={idRazao} titulo="o razão do INSS a recolher (XLS da conciliação do Alterdata)" aceitar=".xls,.xlsx,.ods" onArquivos={fs => { void inss.importarRazao(fs[0] || null); }} /></>}
+                  : <><BotaoDeTeste itens={testeRazao} /><BotaoDiario onClick={inss.usarDiarioRazao} /><Importar id={idRazao} titulo="o razão do INSS a recolher (XLS da conciliação do Alterdata)" aceitar=".xls,.xlsx,.ods" onArquivos={fs => { void inss.importarRazao(fs[0] || null); }} /></>}
               </div>
               <div className="imp-grupo" aria-label="Guias do INSS">
                 <span className="imp-rotulo">Guias</span>

@@ -3,6 +3,7 @@
 // vermelho) e a faixa com os lançamentos. Mês credor: no cabeçalho, só "<adiantamento> está credor" e o "Corrigi, irei
 // reimportar" (tira o razão para importar o corrigido; Vitor, 07/10/2026), e o Próximo da Tarefa fica travado.
 import { CampoArquivo, Icone } from '@nads/ui';
+import { BotaoDiario } from '../../../../../../comum/BotaoDiario';
 import { useRef } from 'react';
 import { BotaoDeTeste } from '../../../../../../comum/BotaoDeTeste';
 import { FaixaQueAbre } from '../../../../../../comum/FaixaQueAbre';
@@ -58,6 +59,7 @@ export function Adiantamento({ lado = 'fornecedores' }: { lado?: 'fornecedores' 
                 ) : (
                   <>
                     <BotaoDeTeste itens={vm.teste} />
+                    <BotaoDiario onClick={vm.usarDiario} />
                     <button type="button" className="icon-btn icon-btn-sm imp-btn" title={'Importar o razão do ' + vm.nome} aria-label="Importar o razão" onClick={() => arquivo.current?.click()}>
                       <Icone nome="upload" />
                     </button>

@@ -4,6 +4,7 @@
 import { CampoArquivo, Icone, MenuSuspenso } from '@nads/ui';
 import { useId } from 'react';
 import { usePagamentosDoProLabore } from '../usePagamentosDoProLabore';
+import { BotaoDiario } from '../../../../../comum/BotaoDiario';
 
 /** travado: o item Pró-labore marcado no checklist — os botões ficam travados (Vitor, 14/10/2026) */
 export function PagamentosDoProLabore({ empresa, codigo, contaDoItem, travado }: { empresa: string; codigo: number | null; contaDoItem: string; travado?: boolean }) {
@@ -17,6 +18,7 @@ export function PagamentosDoProLabore({ empresa, codigo, contaDoItem, travado }:
         </button>
       ) : (
         <>
+          <BotaoDiario onClick={vm.usarDiario} />
           <label htmlFor={id} className={'icon-btn icon-btn-sm imp-btn' + (travado ? ' is-locked' : '')} aria-disabled={travado || undefined} title="Importar o razão do Pró-labore a pagar (XLS da conciliação do Alterdata)" aria-label="Importar o razão do pró-labore"><Icone nome="upload" /></label>
           <CampoArquivo semCaixa id={id} aceitar=".xls,.xlsx,.ods" desabilitado={travado} onEscolher={f => { void vm.importar(f); }} />
         </>

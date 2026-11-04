@@ -2,6 +2,7 @@
 // vira × e tira), a grade dos meses — o descontado na folha, o pagamento e o dia dele, o dia certo (15 ou o útil antes), o
 // saldo (tem de zerar) e o que falta — e, faltando pagamento, as duas contas e o .xls de importação do Alterdata, na linha.
 import { CampoArquivo, Icone } from '@nads/ui';
+import { BotaoDiario } from '../../../../../../comum/BotaoDiario';
 import { useId } from 'react';
 import { useAdiantamentoSalarial } from './useAdiantamentoSalarial';
 import { BotaoSemMovimento } from '../../partes/BotaoSemMovimento';
@@ -47,6 +48,7 @@ export function AdiantamentoSalarial() {
                   </button>
                 ) : (
                   <>
+                    <BotaoDiario onClick={vm.usarDiario} />
                     <label htmlFor={id} className="icon-btn icon-btn-sm imp-btn" title="Importar o razão do Adiantamento salarial (XLS da conciliação do Alterdata)" aria-label="Importar o razão do Adiantamento salarial"><Icone nome="upload" /></label>
                     <CampoArquivo semCaixa id={id} aceitar=".xls,.xlsx,.ods" onEscolher={f => { void vm.importar(f); }} />
                   </>

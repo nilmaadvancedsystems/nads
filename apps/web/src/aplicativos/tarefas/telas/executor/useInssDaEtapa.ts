@@ -104,6 +104,8 @@ export function useInssDaEtapa(chave: string, meses: readonly string[], balancet
     temRazao: !!r, temGuias: !!g, pronto: !!c,
     arquivoRazao: r?.arquivo || '',
     removerRazao: () => { setRazao(null); if (!proprio && daImportacao) contabil.tirarRazao(daImportacao.conta); }, removerGuias: () => setGuias(null),
+    /** o Diário do INSS a recolher (a Importação preenche; o razão próprio desta etapa, se houver, sai) */
+    usarDiarioRazao: () => { if (contabil.usarDiarioDoTipo('inss', 'INSS a recolher')) setRazao(null); },
     /** o ⚡ do modo desenvolvedor: o razão e as guias de teste do período */
     implantarTeste: () => {
       const d = t.inssDeTeste(meses);

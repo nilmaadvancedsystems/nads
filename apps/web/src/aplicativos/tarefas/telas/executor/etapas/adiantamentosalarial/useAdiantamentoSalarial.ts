@@ -61,6 +61,8 @@ export function useAdiantamentoSalarial() {
     mostrarSemMovimento: semMovimento || !razao || naoZerou.length > 0,
     temRazao: !!razao, arquivo: razao?.arquivo || '',
     importar, remover: () => { setRazao(null); if (!proprio && daImportacao) contabil.tirarRazao(daImportacao.conta); },
+    /** o Diário do adiantamento salarial (a Importação preenche; o razão próprio desta etapa, se houver, sai) */
+    usarDiario: () => { if (contabil.usarDiarioDoTipo('adiantamento-salarial', 'Adiantamento salarial')) setRazao(null); },
     // o Ok é o selo padrão (Vitor, 26/10/2026: "deixe o ok padrão"); no resumo, só o que falta
     resumo: razao ? [
       ...(naoZerou.length ? ['Não zerou em ' + naoZerou.map(m => t.rotuloNumericoCompetencia(m.mes)).join(', ')] : []),

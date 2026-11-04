@@ -177,11 +177,17 @@ export function useFornecedores() {
    * fornecedor vai para a relação (Conferido) com os números. O saldo achado tem de bater com o do balancete dinâmico.
    */
   async function importarRazao(codigo: string, f: File | undefined) {
+    if (!f) return;
+    try { aplicarRazao(codigo, f.name, tarefas.lerRazaoDoArquivo(await f.arrayBuffer(), f.name)); }
+    catch (e) { aviso({ tom: 'erro', titulo: 'Não deu para ler ' + f.name, texto: e instanceof Error ? e.message : String(e) }); }
+  }
+
+  /** o razão de uma conta, do .xls ou do Diário: as notas em aberto vão para a relação; o saldo tem de bater com o dinâmico */
+  function aplicarRazao(codigo: string, arquivo: string, lido: tarefas.RazaoDaConta) {
     const l = linhas.find(x => x.codigo === codigo);
-    if (!f || !l || !marcas.carregado) return;
-    try {
-      const r = cl.conferirRazaoDoCliente(tarefas.lerRazaoDoArquivo(await f.arrayBuffer(), f.name), mes, LADO);
-      const razao = cl.razaoDaMarca(f.name, r, LADO);
+    if (!l || !marcas.carregado) return;
+    const r = cl.conferirRazaoDoCliente(lido, mes, LADO);
+    const razao = cl.razaoDaMarca(arquivo, r, LADO);
       // com nota em aberto, a observação já vem escrita (Vitor, 07/10/2026): "No meu sistema, está em aberto…"
       marcar(codigo, m => { const n = { ...m, situacao: cl.razaoComPendencia(razao) ? 'conferido' as const : 'pendente' as const, razao }; delete n.perguntar; return n; });
       const bate = Math.abs(r.saldo - l.saldo) < 0.005;
@@ -194,7 +200,13 @@ export function useFornecedores() {
       aviso(zerado ? { tom: 'ok', titulo: l.nome, texto: 'Zerado no razão: Ok' } : bate
         ? { tom: 'ok', titulo: l.nome, texto: partes.join(' · ') }
         : { tom: 'erro', titulo: 'O razão não bate com o balancete', texto: l.nome + ': o razão fecha ' + rotuloMes + ' em ' + reais(r.saldo) + '; o balancete dinâmico, ' + reais(l.saldo) + '. Confira se é o razão desta conta.' });
-    } catch (e) { aviso({ tom: 'erro', titulo: 'Não deu para ler ' + f.name, texto: e instanceof Error ? e.message : String(e) }); }
+  }
+
+  /** o botão Diário da conta: o razão dela do Diário (a mais recente vence: troca o que estava) */
+  function usarDiarioNaConta(codigo: string) {
+    const l = linhas.find(x => x.codigo === codigo);
+    const lido = contabil.razaoDoDiarioDeConta(codigo, l?.nome || codigo);
+    if (lido) aplicarRazao(codigo, 'Diário · ' + (contabil.diario?.arquivo ?? ''), lido);
   }
 
   const arquivosProntos = !!dinamico;
@@ -318,6 +330,7 @@ export function useFornecedores() {
     }),
     /** o razão da conta: importar (acha as notas em aberto) e tirar */
     importarRazao: (codigo: string, f: File | undefined) => { void importarRazao(codigo, f); },
+    usarDiarioNaConta,
     // tirou o razão: sai o conferido e o que ia ser questionado; volta ao saldo e não trava o avançar (Vitor, 08/10/2026)
     /** o lançamento digitado à mão (sem upar o razão, ou junto dele): entra na relação e já vai para o questionar */
     digitarLancamento: (codigo: string, l: cl.LancamentoDigitado) => marcar(codigo, m => {

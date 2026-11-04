@@ -9,11 +9,18 @@ import { useContasDoBalancete } from '../../../concilia-ai/importadosNaEtapa';
 import { useCadastro } from '../../dados/repo';
 import { useModelosDeHistorico } from '../../dados/useModelosDeHistorico';
 import { useOperador } from '../../casca/operador';
+import { useContabilDaEmpresa } from '../../../../comum/contabilDaEmpresa';
 
 /** contaDoItem: a conta do item do checklist ("60005 — Pro-labore a Pagar"), a do débito. */
 export function usePagamentosDoProLabore(empresa: string, codigo: number | null, contaDoItem: string) {
   const { aviso } = useRetorno();
-  const [razao, setRazao] = useState<{ arquivo: string; razao: t.RazaoDaConta } | null>(null);
+  const [proprio, setRazao] = useState<{ arquivo: string; razao: t.RazaoDaConta } | null>(null);
+  // o da Importação (o upload único dos razões; o Diário preenche ali), quando a etapa não tem o próprio
+  const contabil = useContabilDaEmpresa(empresa, codigo);
+  const daImportacao = contabil.razaoDoTipo('prolabore');
+  const impArquivo = daImportacao?.arquivo;
+  const impRazao = daImportacao?.razao;
+  const razao = useMemo(() => proprio || (impRazao ? { arquivo: impArquivo + ' (da Importação)', razao: impRazao } : null), [proprio, impArquivo, impRazao]);
   // só a conta do crédito e o dia útil do pagamento (Vitor, 14/10/2026: "não precisa apresentar, só pedir a conta e se vai
   // ser no 1, 2, 3, 4 ou 5 dia útil de cada mês"); a lista do razão não aparece
   // salvos na empresa (Cadastro; Vitor, 14/10/2026: "deixa ele salvo na empresa"); a conta, ao sair do campo
@@ -46,7 +53,10 @@ export function usePagamentosDoProLabore(empresa: string, codigo: number | null,
 
   return {
     temRazao: !!razao, arquivo: razao?.arquivo || '',
-    importar, remover: () => setRazao(null),
+    importar,
+    remover: () => { setRazao(null); if (!proprio && daImportacao) contabil.tirarRazao(daImportacao.conta); },
+    /** o Diário do pró-labore (a Importação preenche; o razão próprio desta etapa, se houver, sai) */
+    usarDiario: () => { if (contabil.usarDiarioDoTipo('prolabore', 'Pró-labore a pagar')) setRazao(null); },
     contas: plano, conta, digitarConta: (v: string) => setDigitada(v.replace(/\D/g, '')),
     /** ao sair do campo (ou no Enter): grava a conta na empresa */
     salvarConta: () => { if (digitada !== null) { gravar({ contaCredito: digitada }); setDigitada(null); } },
