@@ -30,7 +30,8 @@ def visiveis(cls):
     return [j for j in janelas if j[0] == cls and j[1]]
 
 
-if visiveis('TfrmLogin'):
+# TfrmLogin no PC (7.1106); TfrmLoginSimultaneo no servidor (7.1029, 04/11/2026: a principal fica oculta atrás dela)
+if any(c.startswith('TfrmLogin') and v for c, v, _, _ in janelas):
     estado = 'login'
 else:
     n = len(visiveis('TfrmPrincipal'))
