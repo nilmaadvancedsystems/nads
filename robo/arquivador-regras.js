@@ -2605,6 +2605,12 @@ function decidirXml(entrada, ctx, ev) {
   const transportadoraDaPasta = !cand.length && !info.evento && !info.canceladaNoEnvelope && sub && (info.transporta || []).some(d => clientesDoDoc(d, cad).includes(sub.codigo));
   if (cliente != null) { /* já decidido acima */ }
   else if (transportadoraDaPasta) { cliente = sub.codigo; conf = 0.95; como = 'doc'; ev.push('o único cliente da nota é a transportadora (CNPJ ' + info.transporta[0] + ') e a pasta de origem é dele (' + sub.como + '): a nota de terceiros em que o cliente transportou vai para o XML dele (Vitor, 29/10/2026)'); }
+  else if (!cand.length && !info.evento && !info.emit.some(d => ESCRITORIO.has(d)) && info.partes.some(d => ESCRITORIO.has(d) && cad.porDoc.has(d)) && !info.partes.some(d => !ESCRITORIO.has(d) && d.length === 14 && cad.porRaiz.has(d.slice(0, 8)))) {
+    // (Vitor, 05/11/2026: "xml não deveria ter problema") a nota em que o escritório é o destinatário/tomador (o software, a compra da Nilma) e nenhum outro
+    // cliente aparece: é a nota recebida da própria Nilma (284), não "duas empresas possíveis". O CNPJ do escritório só não vale como cliente no documento de outro
+    const d0 = info.partes.find(d => ESCRITORIO.has(d) && cad.porDoc.has(d));
+    cliente = [...cad.porDoc.get(d0)][0]; conf = 0.97; como = 'doc'; ev.push('o escritório (CNPJ ' + d0 + ') é o destinatário/tomador e nenhum outro cliente está na nota: a nota recebida dele (Vitor, 05/11/2026)');
+  }
   else if (!cand.length && info.evento && sub) { cliente = sub.codigo; conf = 0.88; como = 'pasta'; ev.push('evento órfão: cliente da subpasta (03), ' + sub.como); }
   else if (!cand.length) {
     // 03: raiz do CNPJ igual à de cliente(s), sufixo diferente (matriz/filial não cadastrada) → CLIENTE_AMBIGUO, não "não localizado"

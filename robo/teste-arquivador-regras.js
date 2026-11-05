@@ -239,6 +239,12 @@ igual('tipo do destino: comprovante', R.tipoDoDestino('G:/Meu Drive/2026/58 - X/
 const nfseNilma = '<CompNfse><Nfse><InfNfse><Numero>4003</Numero><DataEmissao>2026-09-10T00:00:00</DataEmissao><PrestadorServico><Cnpj>27872981000113</Cnpj></PrestadorServico><TomadorServico><Cnpj>06934601000158</Cnpj></TomadorServico></InfNfse></Nfse></CompNfse>';
 d = decidir({ nome: 'nfse-nilma.xml', xml: nfseNilma });
 igual('NFS-e de honorários da Nilma: na 284 E uma cópia no tomador', [d.destinoRelativo, d.copias.map(c => c.destinoRelativo)], ['284 - NILMA CONTABILIDADE LTDA\\FISCAL\\SIMPLES NACIONAL\\12. XML\\NFS-e', ['152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\12. XML\\NFS-e']]);
+// (Vitor, 05/11/2026) a NFS-e que a Nilma recebeu (o software dela) e que nenhum outro cliente está: na 284, não "duas empresas possíveis"
+d = decidir({ nome: 'nfse-37489544000179-28740.xml', xml: '<CompNfse><Nfse><InfNfse><Numero>28740</Numero><DataEmissao>2026-10-10T00:00:00</DataEmissao><PrestadorServico><Cnpj>37489544000179</Cnpj></PrestadorServico><TomadorServico><Cnpj>27872981000113</Cnpj></TomadorServico></InfNfse></Nfse></CompNfse>' });
+igual('05/11: NFS-e recebida pela Nilma vai para a 284', [d.acao, d.destinoRelativo], ['ARQUIVAR', '284 - NILMA CONTABILIDADE LTDA\\FISCAL\\SIMPLES NACIONAL\\12. XML\\NFS-e']);
+// e quando a Nilma toma o serviço de um cliente (152): a nota é do cliente emitente e a Nilma não vira "duas empresas"
+d = decidir({ nome: 'nfse-cliente-para-nilma.xml', xml: '<CompNfse><Nfse><InfNfse><Numero>77</Numero><DataEmissao>2026-10-10T00:00:00</DataEmissao><PrestadorServico><Cnpj>06934601000158</Cnpj></PrestadorServico><TomadorServico><Cnpj>27872981000113</Cnpj></TomadorServico></InfNfse></Nfse></CompNfse>' });
+igual('05/11: NFS-e de cliente para a Nilma fica no cliente', [d.acao, d.cliente], ['ARQUIVAR', 152]);
 const CAD_ = require('./arquivador-cadastro');
 const j = CAD_.juntar({
   planilha: [{ codigo: 591, razao: 'ZELO AGROINDUSTRIAS LTDA', doc: '53.636.418/0001-56', regime: 'Simples' }, { codigo: 332, razao: 'DOMINGA ROSA GOMES', doc: '063.718.286-30', regime: 'Física' }],
