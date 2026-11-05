@@ -239,6 +239,12 @@ igual('tipo do destino: comprovante', R.tipoDoDestino('G:/Meu Drive/2026/58 - X/
 const nfseNilma = '<CompNfse><Nfse><InfNfse><Numero>4003</Numero><DataEmissao>2026-09-10T00:00:00</DataEmissao><PrestadorServico><Cnpj>27872981000113</Cnpj></PrestadorServico><TomadorServico><Cnpj>06934601000158</Cnpj></TomadorServico></InfNfse></Nfse></CompNfse>';
 d = decidir({ nome: 'nfse-nilma.xml', xml: nfseNilma });
 igual('NFS-e de honorários da Nilma: na 284 E uma cópia no tomador', [d.destinoRelativo, d.copias.map(c => c.destinoRelativo)], ['284 - NILMA CONTABILIDADE LTDA\\FISCAL\\SIMPLES NACIONAL\\12. XML\\NFS-e', ['152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\12. XML\\NFS-e']]);
+// (Vitor, 05/11/2026) a NFS-e que a Nilma recebeu (o software dela) e que nenhum outro cliente está: na 284, não "duas empresas possíveis"
+d = decidir({ nome: 'nfse-37489544000179-28740.xml', xml: '<CompNfse><Nfse><InfNfse><Numero>28740</Numero><DataEmissao>2026-10-10T00:00:00</DataEmissao><PrestadorServico><Cnpj>37489544000179</Cnpj></PrestadorServico><TomadorServico><Cnpj>27872981000113</Cnpj></TomadorServico></InfNfse></Nfse></CompNfse>' });
+igual('05/11: NFS-e recebida pela Nilma vai para a 284', [d.acao, d.destinoRelativo], ['ARQUIVAR', '284 - NILMA CONTABILIDADE LTDA\\FISCAL\\SIMPLES NACIONAL\\12. XML\\NFS-e']);
+// e quando a Nilma toma o serviço de um cliente (152): a nota é do cliente emitente e a Nilma não vira "duas empresas"
+d = decidir({ nome: 'nfse-cliente-para-nilma.xml', xml: '<CompNfse><Nfse><InfNfse><Numero>77</Numero><DataEmissao>2026-10-10T00:00:00</DataEmissao><PrestadorServico><Cnpj>06934601000158</Cnpj></PrestadorServico><TomadorServico><Cnpj>27872981000113</Cnpj></TomadorServico></InfNfse></Nfse></CompNfse>' });
+igual('05/11: NFS-e de cliente para a Nilma fica no cliente', [d.acao, d.cliente], ['ARQUIVAR', 152]);
 const CAD_ = require('./arquivador-cadastro');
 const j = CAD_.juntar({
   planilha: [{ codigo: 591, razao: 'ZELO AGROINDUSTRIAS LTDA', doc: '53.636.418/0001-56', regime: 'Simples' }, { codigo: 332, razao: 'DOMINGA ROSA GOMES', doc: '063.718.286-30', regime: 'Física' }],
@@ -1902,6 +1908,21 @@ igual('a agência e a conta no nome do arquivo ("Entradas_Saidas_ag3155cc990348_
   igual('44.4: "Rede Recebimento 04.2025.pdf" da 429 (escaneado, "Relatório de recebimentos"): EXTRATOS\\2025\\04\\MAQUININHAS\\REDE, "04-2025.pdf" (antes RECEBIMENTO DE CLIENTES)', s44(d44('redeRecebimento04')), ['ARQUIVAR', 429, 'CONTÁBIL\\EXTRATOS\\2025\\04\\MAQUININHAS\\REDE', '04-2025.pdf', 2025]);
   igual('44.4: "Rede 04.2025.pdf" (o relatório de vendas com o título mal lido pelo OCR): EXTRATOS\\2025\\04\\MAQUININHAS\\REDE', s44(d44('redeVendas04')).slice(0, 4), ['ARQUIVAR', 429, 'CONTÁBIL\\EXTRATOS\\2025\\04\\MAQUININHAS\\REDE', '04-2025.pdf']);
   igual('44.4: ... o "Relatório de recebimentos" que não é da Rede segue RECEBIMENTO DE CLIENTES', R.REGRAS_PDF.find(r => r.re.test(R.norm('RELATORIO DE RECEBIMENTOS\nSICOOB\nPERIODO 01/04/2025 A 30/04/2025'))).tipo, 'RECEBIMENTO DE CLIENTES');
+
+  // (Vitor, 05/11/2026) o fornecedor pelo nome do arquivo do zip de movimento
+  {
+    const f = (n, razao) => R.fornecedorDoNomeDoArquivo(R.norm(n), { razao });
+    igual('05/11a: CEMIG SET-2026 FZ B. VISTA', f('CEMIG SET-2026 FZ B. VISTA LAVICA R$491,67', 'LAVICA EMPREENDIMENTOS FLORESTAIS LTDA'), 'CEMIG');
+    igual('05/11b: parcela no começo', f('27º (36°) DAE LAVICA - 24549-2016 R$6.626,28', 'LAVICA EMPREENDIMENTOS FLORESTAIS LTDA'), 'DAE');
+    igual('05/11c: BOLETO no começo e NF colada', f('BOLETO POSTO TRANSANIMAIS NF28256 R$1.050,51', 'LAVICA EMPREENDIMENTOS FLORESTAIS LTDA'), 'POSTO TRANSANIMAIS');
+    igual('05/11d: o cliente no meio', f('FB GESTÃO NF70 FAST PT NZO R$11.000,00', 'FAST EMPREENDIMENTOS AERONAUTICO LTDA'), 'FB GESTAO');
+    igual('05/11e: a marca com número', f('A3MPX (KAPEFIO) ORÇAM.5213 R$122.703,70', 'BRAZILIAN COFFEE LTDA'), 'A3MPX');
+    igual('05/11f: REF.NF', f('DAM ISS REF.NF936 09-2026 R$1.135,00', 'BRAZILIAN COFFEE LTDA'), 'DAM ISS');
+    igual('05/11g: Nº', f('VALTRA CONSÓRCIO Nº1946 (COMPRATRATOR) R$2.208,98', 'BRAZILIAN COFFEE LTDA'), 'VALTRA CONSORCIO');
+    igual('05/11h: data e parêntese colado', f('16-10-2026 JOSÉ OLIVEIRA(JOMAC) F.CEDRO NF1290 R$148,68', 'FREEDOM AGRO LTDA'), 'JOSE OLIVEIRA');
+    igual('05/11i: mês-ano no começo', f('10-2026 AEGRO ZELO', 'ZELO AGROINDUSTRIAS LTDA'), 'AEGRO');
+    igual('05/11j: só número', f('NF4111 R$915,00', 'FREEDOM AGRO LTDA'), null);
+  }
 
   console.log((falhas ? falhas + ' FALHA(S) em ' : 'ok: ') + total + ' testes');
   process.exit(falhas ? 1 : 0);

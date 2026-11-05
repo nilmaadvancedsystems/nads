@@ -902,6 +902,27 @@ function linhaApos(u, rotulo, distancia) {
   return i < 0 ? '' : u.slice(i, i + (distancia || 160));
 }
 
+/**
+ * O DARF com mais de um tributo (05/11/2026: o de PIS e COFINS juntos da 444, "2172COFINS … 90,0090,00 … 8109PIS … 19,5019,50"):
+ * cada código da composição com o total da linha dele, [{ tributo, valor: 'R$90,00' }]; null quando é um tributo só (ou o
+ * código não é conhecido), e aí vale o valor total do documento.
+ */
+function partesDoDarf(u) {
+  const i = u.search(/COMPOSICAO DO DOCUMENTO/);
+  if (i < 0) return null;
+  const fim = u.slice(i).search(/\bTOTAIS\b/);
+  const trecho = u.slice(i, fim > 0 ? i + fim : i + 3000);
+  const partes = [];
+  for (const m of trecho.matchAll(/(?:^|\n)\s*(\d{4})\s*[A-Z][^\n]*\n\s*([\d.,]+)/g)) {
+    const tributo = TRIBUTO_POR_CODIGO[m[1]];
+    const valores = [...m[2].matchAll(/(\d{1,3}(?:\.\d{3})*),(\d{2})/g)];
+    if (!tributo || !valores.length) return null;
+    const t = valores[valores.length - 1];
+    partes.push({ tributo, valor: 'R$' + t[1].replace(/\./g, '') + ',' + t[2] });
+  }
+  return partes.length > 1 && new Set(partes.map(p => p.tributo)).size > 1 ? partes : null;
+}
+
 /** Os campos de uma guia (DAS/DARF/DAE/DAM/FGTS): período, vencimento, valor. */
 function camposDaGuia(u) {
   let venc = dataBr(linhaApos(u, /PAGAR (ESTE DOCUMENTO )?ATE|VENCIMENTO:|DATA DE VENCIMENTO|VENCIMENTO|VALIDADE/, 120));
@@ -984,7 +1005,7 @@ const REGRAS_PDF = [
       let trib = cod ? TRIBUTO_POR_CODIGO[cod[1]] : null;
       if (!trib && /DCTFWEB|CP SEGURADOS|PREVIDENCI|CONTRIB(UICAO)? (PATRONAL|INDIVIDUAL)|GILRAT|SENAR/.test(u)) trib = 'INSS';
       if (!trib && /ESOCIAL|DOMESTIC/.test(u)) trib = 'ESOCIAL DOMESTICO';
-      return Object.assign(c, { tributo: trib, parcelamento: /PARCELAMENTO|PGFN/.test(u) && !/DCTFWEB/.test(u) });
+      return Object.assign(c, { tributo: trib, parcelamento: /PARCELAMENTO|PGFN/.test(u) && !/DCTFWEB/.test(u), partes: partesDoDarf(u) });
     } },
   // (30/10/2026, 4ª rodada) o DAE da SEFAZ da Bahia (as fazendas da 453, 568 e 572 em Cândido Sales): sem o título, abre por "CÓDIGO DA RECEITA / DATA DE VENCIMENTO" e a
   // especificação da receita é ICMS (a taxa do INEMA, no mesmo modelo, fica de fora: não é ICMS)
@@ -1005,14 +1026,18 @@ const REGRAS_PDF = [
       }
       // o vencimento do SIARE: o rótulo "Validade" vem antes e não deixa a data por perto; a linha do "Histórico" traz "01 a 31/08/2022  105706  04/10/2022",
       // e a data aparece repetida logo antes de "Pague nos bancos" (no consolidado, junto do "Pague com PIX")
+      // o "Doc. Origem" pode vir vazio (05/11/2026: o DAE do ICMS normal do Presumido, "01 a 31/10/2026  09/11/2026  905.21 …"); a linha do Histórico
+      // vale sobre o rótulo solto (sem o "Validade" antes, o "VENCIMENTO" do cabeçalho do Histórico pegava o fim do período)
+      const hist = /(?<![\d/])\d{2} A \d{2}\/\d{2}\/20\d{2}\s+(?:(?!\d{2}\/\d{2}\/20\d{2})\S+\s+)?(\d{2}\/\d{2}\/20\d{2})/.exec(u);
+      if (hist) c.vencimento = dataBr(hist[1]);
       if (!c.vencimento) {
-        const m = /(?<![\d/])\d{2} A \d{2}\/\d{2}\/20\d{2}\s+\S+\s+(\d{2}\/\d{2}\/20\d{2})/.exec(u) || /(\d{2}\/\d{2}\/20\d{2})\n\1\nPAGUE NOS BANCOS/.exec(u) || /PAGUE COM PIX\n(\d{2}\/\d{2}\/20\d{2})\n/.exec(u);
+        const m = /(\d{2}\/\d{2}\/20\d{2})\n\1\nPAGUE NOS BANCOS/.exec(u) || /PAGUE COM PIX\n(\d{2}\/\d{2}\/20\d{2})\n/.exec(u);
         if (m) c.vencimento = dataBr(m[1]);
       }
       // o valor do SIARE: o "TOTAL" do rótulo fica longe do número; o "Histórico" repete o total com ponto decimal ("… 04/10/2022   1023.77  0.00  0.00  1023.77")
       if (!c.valor) {
         const m = /\bTOTAL:\s+\d+\.\d{2}\s+\d+\.\d{2}\s+\d+\.\d{2}\s+(\d+)\.(\d{2})(?![\d.])/.exec(u)
-          || /(?<![\d/])\d{2} A \d{2}\/\d{2}\/20\d{2}\s+\S+\s+\d{2}\/\d{2}\/20\d{2}\s+\d+\.\d{2}\s+\d+\.\d{2}\s+\d+\.\d{2}\s+(\d+)\.(\d{2})(?![\d.])/.exec(u);
+          || /(?<![\d/])\d{2} A \d{2}\/\d{2}\/20\d{2}\s+(?:(?!\d{2}\/\d{2}\/20\d{2})\S+\s+)?\d{2}\/\d{2}\/20\d{2}\s+\d+\.\d{2}\s+\d+\.\d{2}\s+\d+\.\d{2}\s+(\d+)\.(\d{2})(?![\d.])/.exec(u);
         if (m) c.valor = 'R$' + m[1] + ',' + m[2];
       }
       if (!c.competencia && trib === 'TFAMG') { const m = /TRIMESTRE\s+(20\d{2})/.exec(u); if (m) c.ano = +m[1]; }
@@ -1025,7 +1050,14 @@ const REGRAS_PDF = [
       return Object.assign(c, { receita: rec ? rec[1].trim() : '', tributo: trib, parcelaAmbiental, parcelamento: parcelaAmbiental || /PARCELAMENTO/.test(u.replace(/AUTUACAO,? DIVIDA ATIVA E PARCELAMENTO/g, " ")) })   /* "Nº Documento (autuação, dívida ativa e parcelamento)" é o rótulo do campo, em todo DAE do SIARE */;
     } },
   { tipo: 'DAM', setor: 'FISCAL', re: /DOCUMENTO DE ARRECADACAO MUNICIPAL|\bDAM\b.*PREFEITURA|PREFEITURA[\s\S]{0,300}\bDAM\b/, fonte: '05d §4',
-    campos: u => Object.assign(camposDaGuia(u), { tributo: /ITBI/.test(u) ? 'ITBI' : /\bISS/.test(u) ? 'ISS' : /IPTU/.test(u) ? 'IPTU' : /TAXA/.test(u) ? 'TAXA' : null }) },
+    campos: u => {
+      const c = camposDaGuia(u);
+      // o DAM de Taiobeiras (05/11/2026): o mês em "Lançamento: Mês/Ano: 10/2026" e o vencimento longe do rótulo
+      // ("…VENCIMENTO ORIGINAL:DATA VENCIMENTO:" no cabeçalho; "03/11/26 09:5320/11/2026" depois do endereço)
+      if (!c.competencia) { const m = /MES\/ANO:\s*(0[1-9]|1[0-2])\/(20\d{2})(?![\d/])/.exec(u); if (m) c.competencia = { mes: +m[1], ano: +m[2] }; }
+      if (!c.vencimento) { const m = /DATA VENCIMENTO:[\s\S]{0,300}?(\d{2}\/\d{2}\/20\d{2})/.exec(u); if (m) c.vencimento = dataBr(m[1]); }
+      return Object.assign(c, { tributo: /ITBI/.test(u) ? 'ITBI' : /\bISS/.test(u) ? 'ISS' : /IPTU/.test(u) ? 'IPTU' : /TAXA/.test(u) ? 'TAXA' : null });
+    } },
   // (Vitor, 29/10/2026, 3ª rodada, decisão 10) os débitos e as intimações (não são guia): a consulta de negociações da PGFN, o termo de intimação e a comunicação de inconformidades
   // da Receita, o termo de exclusão do Simples, o relatório de situação fiscal, o extrato de débitos e o PTA da SEFAZ-MG (termo de autodenúncia, auto de infração):
   // FISCAL\<regime>\OUTROS DOCUMENTOS\ANO, nome original; o cliente pelo CNPJ do contribuinte; o ano pela data do documento
@@ -1608,7 +1640,68 @@ function ficaNiPorDecisao(entrada, d) {
 }
 function decidir(entrada, ctx) {
   const d0 = decidir2(entrada, ctx);
-  return ficaNiPorDecisao(entrada, d0) || d0;
+  const d1 = ficaNiPorDecisao(entrada, d0) || d0;
+  let m = null;
+  try { m = pagamentoDoMovimento(entrada, ctx, d1); } catch (e) { m = null; }
+  return m || d1;
+}
+/**
+ * (Vitor, 05/11/2026) o que sobra do zip de MOVIMENTO do cliente ("MOVIMENTO_ZELO_OUTUBRO-2026…zip"): a nota/boleto/guia que não foi lida, o vale da Solides, a
+ * planilha do Aegro, o orçamento, o pedido e o contrato do fornecedor vão para CONTÁBIL\PAGAMENTOS DE FORNECEDORES\ANO\MÊS\<FORNECEDOR do nome do arquivo>, nome
+ * original. O cliente: o que a decisão já tinha, senão o nome do cliente no nome do zip (e a fazenda: CEDRO = 582); o mês: a data do começo do nome, senão o do
+ * nome do zip. Nunca o extrato, o banco divergente, a conta em dois clientes nem o que fica em NÃO IDENTIFICADOS por decisão (multa, parcelamento).
+ */
+/**
+ * O fornecedor pelo nome do arquivo do escritório ("FB GESTÃO NF70 FAST PT NZO R$11.000,00", "27º (36°) DAE LAVICA - 24549-2016", "SOLIDES (ALIM.418619) ZELO 9 FIOS"):
+ * as palavras do começo (sem a data, o "BOLETO" e o número da parcela) até a primeira que já não é do nome: um número, um parêntese, NF/REF/Nº, o mês,
+ * a fazenda/filial ou uma palavra do próprio cliente. No máximo 3 palavras; null se não sobra nome.
+ */
+function fornecedorDoNomeDoArquivo(n, c0) {
+  const doCli = new Set([c0.razao, c0.fantasia].concat(c0.outrosNomes || []).filter(Boolean).flatMap(x => norm(x).split(/[^A-Z0-9]+/).filter(w => w.length >= 3 && !/^(LTDA|EIRELI|COMERCIO|INDUSTRIA|SERVICOS|EMPREENDIMENTOS|FLORESTAIS|CONSULTORIA|INVESTIMENTOS|SUPERMERCADO|AGROINDUSTRIAS)$/.test(w))));
+  const s = String(n).replace(/^\d{1,2}-(\d{1,2}-)?20\d{2}\s+/, '').replace(/^(\d+\s*[º°O]?\s*(\(\s*\d+\s*[º°O]?\s*\)\s*)?[-\s]*)/, '').replace(/^(BOLETO|FATURA|GUIA|COMPROVANTE)\s+/, '').replace(/-(20\d{2})\b/g, ' ').replace(/\(/g, ' ( ');
+  const out = [];
+  for (const w0 of s.split(/\s+/)) {
+    const w = w0.replace(/[.,;:]+$/, '');
+    if (!w) continue;
+    if (!/[A-Z0-9(]/.test(w)) continue;
+    const marca = out.length === 0 && /[A-Z].*[A-Z].*[A-Z]/.test(w) && !/^(NF|CTE|REF|ITR|DAM)/.test(w);   // "A3MPX" é o nome; "NF4111" não
+    if ((/\d/.test(w) && !marca) || /[(]|^R\$|^N[º°O]$/.test(w) || doCli.has(w) || /^(NFS?-?E?|NFSE|CTE|CT-E|REF|PARC|BOLETO|FATURA|ORCAM|ORCAMENTO|PEDIDO|CONTRATO|FILIAL|MATRIZ|F|FZ|FAZ|FAZENDA|PG|PAGO|PT|PR|CS|JAN|FEV|MAR|ABR|MAI|JUN|JUL|AGO|SET|OUT|NOV|DEZ|JANEIRO|FEVEREIRO|MARCO|ABRIL|MAIO|JUNHO|JULHO|AGOSTO|SETEMBRO|OUTUBRO|NOVEMBRO|DEZEMBRO)$/.test(w) || /^(F|REF|NF)\./.test(w)) break;
+    out.push(w.replace(/\./g, ''));
+    if (out.length === 3) break;
+  }
+  const r = nomeSeguro(semAcento(out.join(' '))).toUpperCase();
+  return /[A-Z]{3}/.test(r) ? r : null;
+}
+const raizDoCliente = (cad, codigo) => { const doc = String((cad.porCod.get(codigo) || {}).doc || ''); return doc.length === 14 ? doc.slice(0, 8) : doc || ('#' + codigo); };
+const FAZENDA_DO_ESTABELECIMENTO = [{ nome: 'CEDRO', re: /\bCEDRO\b/, codigo: 582 }, { nome: 'LIBERDADE', re: /\bLIBERDADE\b/, codigo: 572 }];
+function pagamentoDoMovimento(entrada, ctx, d) {
+  if (!d || d.acao !== 'NAO_IDENTIFICADO' || d.ficaNi || d.contaAmbigua) return null;
+  const rel = entrada.rel || entrada.nome || '';
+  const partes = partesDoCaminho(rel).slice(0, -1);
+  if (!partes.some(p => /^MOVIMENTO[\s_-]/i.test(p))) return null;
+  const nome = String(entrada.nome || '');
+  if (!/\.(pdf|xlsx?|jpe?g|png)$/i.test(nome)) return null;
+  const n = norm(nome.replace(/\.[a-z0-9]+$/i, '')).replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+  if (/^(EXTRATO|MOVIMENTO BANCARIO|MOVIMENTO CONTABIL)/.test(n) || /^(EXTRATO|APLICACOES|MAQUININHAS|RECEBIMENTO DE CLIENTES)\b/.test(String(d.tipo || '')) || /^BANCO_/.test(d.motivo || '')) return null;
+  const cad = ctx.cadastro;
+  let cli = null, como = null;
+  const pz = clienteDoNomeDoConteiner(rel, cad);
+  if (pz && FAZENDA_DO_ESTABELECIMENTO.some(f => f.codigo === pz.codigo && f.re.test(n))) { cli = pz.codigo; como = pz.como; }
+  // o CNPJ que a regra achou pode ser o do emitente (a NF da NILMA 284 no zip da FAST): só vale se é da mesma raiz do cliente do nome do zip
+  else if (d.cliente != null && cad.porCod.has(+d.cliente) && d.motivo !== 'CLIENTE_AMBIGUO' && (!pz || raizDoCliente(cad, +d.cliente) === raizDoCliente(cad, pz.codigo))) { cli = +d.cliente; como = 'o cliente que a regra já tinha achado (' + d.motivo + ')'; }
+  else if (pz) { cli = pz.codigo; como = pz.como; }
+  if (cli == null) return null;
+  const dm = /^(\d{2})-(\d{2})-(20\d{2})\s/.exec(n);
+  const doZip = mesDoNomeDaPasta(rel);
+  const hoje = ctx.hoje || new Date();
+  let comp = dm && +dm[2] >= 1 && +dm[2] <= 12 ? { mes: +dm[2], ano: +dm[3] } : null;
+  if (comp && comp.ano * 12 + comp.mes > hoje.getFullYear() * 12 + hoje.getMonth() + 1) comp = null;
+  comp = comp || doZip;
+  if (!comp) return null;
+  const fornecedor = fornecedorDoNomeDoArquivo(n, cad.porCod.get(cli) || {});
+  if (!fornecedor) return null;
+  const ev = (d.evidencias || []).concat('zip de movimento do cliente: o que não foi lido/reconhecido (' + d.motivo + ') vai para os pagamentos do fornecedor pelo nome do arquivo; o cliente: ' + como + '; o mês: ' + (dm && comp !== doZip ? 'a data do nome' : 'o nome do zip') + ' (Vitor, 05/11/2026)');
+  return finalizar({ acao: 'ARQUIVAR', peloMovimento: true, cliente: cli, comoCliente: 'pastaConferida', confianca: 0.88, tipo: 'FATURA FORNECEDOR', setor: 'CONTABIL', caminho: ['CONTÁBIL', 'PAGAMENTOS DE FORNECEDORES', String(comp.ano), dois(comp.mes), fornecedor], competencia: { mes: comp.mes, ano: comp.ano }, nomeOriginal: nome, nomeFinal: nome, evidencias: ev, ocr: entrada.ocr || null, fonte: 'zip de movimento (Vitor, 05/11/2026)' }, ctx);
 }
 function decidir2(entrada, ctx) {
   const d = decidir1(entrada, ctx);
@@ -2512,6 +2605,12 @@ function decidirXml(entrada, ctx, ev) {
   const transportadoraDaPasta = !cand.length && !info.evento && !info.canceladaNoEnvelope && sub && (info.transporta || []).some(d => clientesDoDoc(d, cad).includes(sub.codigo));
   if (cliente != null) { /* já decidido acima */ }
   else if (transportadoraDaPasta) { cliente = sub.codigo; conf = 0.95; como = 'doc'; ev.push('o único cliente da nota é a transportadora (CNPJ ' + info.transporta[0] + ') e a pasta de origem é dele (' + sub.como + '): a nota de terceiros em que o cliente transportou vai para o XML dele (Vitor, 29/10/2026)'); }
+  else if (!cand.length && !info.evento && !info.emit.some(d => ESCRITORIO.has(d)) && info.partes.some(d => ESCRITORIO.has(d) && cad.porDoc.has(d)) && !info.partes.some(d => !ESCRITORIO.has(d) && d.length === 14 && cad.porRaiz.has(d.slice(0, 8)))) {
+    // (Vitor, 05/11/2026: "xml não deveria ter problema") a nota em que o escritório é o destinatário/tomador (o software, a compra da Nilma) e nenhum outro
+    // cliente aparece: é a nota recebida da própria Nilma (284), não "duas empresas possíveis". O CNPJ do escritório só não vale como cliente no documento de outro
+    const d0 = info.partes.find(d => ESCRITORIO.has(d) && cad.porDoc.has(d));
+    cliente = [...cad.porDoc.get(d0)][0]; conf = 0.97; como = 'doc'; ev.push('o escritório (CNPJ ' + d0 + ') é o destinatário/tomador e nenhum outro cliente está na nota: a nota recebida dele (Vitor, 05/11/2026)');
+  }
   else if (!cand.length && info.evento && sub) { cliente = sub.codigo; conf = 0.88; como = 'pasta'; ev.push('evento órfão: cliente da subpasta (03), ' + sub.como); }
   else if (!cand.length) {
     // 03: raiz do CNPJ igual à de cliente(s), sufixo diferente (matriz/filial não cadastrada) → CLIENTE_AMBIGUO, não "não localizado"
@@ -2956,6 +3055,9 @@ function decidirPlanilha(entrada, ctx, ev, porHash) {
     const doc = unico(documentosDoTexto(u).filter(x => !ESCRITORIO.has(x.doc)).flatMap(x => clientesDoDoc(x.doc, cad)));
     const c = porHash ? { cliente: porHash, conf: 0.97, como: 'hash' } : doc != null ? { cliente: doc, conf: 0.95, como: 'doc' } : clientePelaPastaOuGrupo(entrada.rel || entrada.nome, entrada.nome, cad, ev);
     if (!c) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_NAO_LOCALIZADO', confianca: 0.3, evidencias: ev.concat('cartão de ponto: nem a planilha nem a pasta de origem dizem o cliente') });
+    // a pasta com a razão inteira do cadastro ("2026-10\MINIMERCADO SANTO EXPEDITO LTDA ME", a pasta do mês do cliente) basta para o cartão de ponto (o conteúdo é só horário)
+    if (c.como === 'pasta') { const cli = cad.porCod.get(c.cliente); const pastaDe = partesDoCaminho(entrada.rel || '').slice(-2, -1)[0] || ''; const pe = cad.porNomeEntregas && cad.porNomeEntregas.get(chaveNome(pastaDe));
+      if (cli && chaveNome(pastaDe) && ([cli.razao, cli.fantasia].concat(cli.outrosNomes || []).filter(Boolean).some(n => chaveNome(n) === chaveNome(pastaDe)) || (pe && pe.size === 1 && pe.has(cli.codigo)))) { c.conf = 0.9; c.como = 'pastaConferida'; ev.push('a pasta "' + pastaDe + '" é a razão inteira do cliente ' + c.cliente + ' no cadastro'); } }
     const pasta = anoDaPasta(entrada.rel || '') || competenciaDaPasta(entrada.rel || '');
     const comp = competenciaDoNome(entrada.nome) || (pasta && pasta.mes ? { mes: pasta.mes, ano: pasta.ano } : null);
     if (!comp) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5, cliente: c.cliente, evidencias: ev.concat('cartão de ponto: o mês não está no nome nem na pasta de origem') });
@@ -3527,6 +3629,9 @@ function clienteDoNomeDoConteiner(rel, cad) {
   const matriz = cs.filter(c => String(c.doc || '').length === 14 && String(c.doc).slice(8, 12) === '0001');
   if (raizes.size !== 1 || matriz.length !== 1 || ![...raizes][0] || [...raizes][0].length !== 8) return null;
   const nomeArq = norm(partesDoCaminho(rel).slice(-1)[0] || '');
+  // (Vitor, 05/11/2026) a fazenda do nome diz o estabelecimento: CEDRO = 582 (a filial na Fazenda Baixa do Cedro), LIBERDADE = 572 (a matriz)
+  const faz = FAZENDA_DO_ESTABELECIMENTO.filter(f => f.re.test(nomeArq) && cs.some(c => c.codigo === f.codigo));
+  if (faz.length === 1) return { codigo: faz[0].codigo, como: 'o nome do cliente no nome da pasta de origem (' + porque.join(', ') + ') e a fazenda no nome do arquivo (' + faz[0].nome + ' = ' + faz[0].codigo + '; Vitor, 05/11/2026)' };
   if (/\bFILIAL\b|\bFAZ(ENDA)?\b|(^|[^A-Z])F\.\s?[A-Z]/.test(nomeArq)) return null;
   return { codigo: matriz[0].codigo, como: 'o nome do cliente no nome da pasta de origem (' + porque.join(', ') + '): da matriz ' + matriz[0].codigo + ' e das filiais ' + cs.filter(c => c !== matriz[0]).map(c => c.codigo).join(', ') + ', e o nome do arquivo não fala de filial nem de fazenda: a matriz' };
 }
@@ -4875,7 +4980,8 @@ function finalizar(d, ctx) {
     // (Vitor, 29/10/2026) o documento constitutivo ou pessoal (contrato social, CNH/RG/CPF do sócio, cartão CNPJ) com OCR fraco, quando a pasta de origem dá o
     // cliente com certeza (o código e o nome conferem no cadastro: d.ocrFracoOk, posto pela migração): a leitura ruim do Tesseract não derruba o arquivo; o CNPJ de
     // outra empresa ou o nome de outro titular lido no texto continua vencendo a pasta (isso é decidido antes, e este caso nem chega aqui)
-    const teto = (d.ocr.confianca < 60 && !d.ocrFracoOk) || d.evidencias.some(e => /pelo nome do arquivo/.test(e)) ? 0.8 : OCR_TETO;
+    // (Vitor, 05/11/2026) o que sobra do zip de MOVIMENTO vai pelo nome do arquivo por decisão dele ("Sim, pelo nome"): o OCR não derruba (d.peloMovimento)
+    const teto = !d.peloMovimento && ((d.ocr.confianca < 60 && !d.ocrFracoOk) || d.evidencias.some(e => /pelo nome do arquivo/.test(e))) ? 0.8 : OCR_TETO;
     d.confianca = Math.min(d.confianca || 0, teto);
     d.evidencias.push('texto por OCR (Tesseract ' + d.ocr.confianca + '%): confiança limitada a ' + teto);
   }
@@ -4927,7 +5033,7 @@ function tipoDoDestino(destino) {
 }
 
 module.exports = {
-  LIMIAR, RAIZ_CLIENTES, ARVORE, REGRAS_PDF, BANCOS, ANUAIS, ofxCompetencia, anoDaEntrega, ANO_MINIMO, ANO_DAS_PASTAS, anoDaPasta, pastasDoAno, partesDoCaminho, comMotivoDoCodigo,
+  pagamentoDoMovimento, fornecedorDoNomeDoArquivo, LIMIAR, RAIZ_CLIENTES, ARVORE, REGRAS_PDF, BANCOS, ANUAIS, ofxCompetencia, anoDaEntrega, ANO_MINIMO, ANO_DAS_PASTAS, anoDaPasta, pastasDoAno, partesDoCaminho, comMotivoDoCodigo,
   ehLivroContabil, anoDoLivro, decidirSpedAnual, semAcento, norm, chaveNome, nomeNormalizado, nomeSeguro, so, dataBr, valorBr, competenciaSolta, competenciaDoNome, competenciaDaPasta, periodoEscrito,
   cnpjValido, cpfValido, documentosDoTexto, raizesDoTexto, mascarasDoTexto,
   regimeCanonico, montarCadastro, comAnosEMapa, clientesDoDoc, clienteDaPasta, grupoDaPasta, pagamentoDeFornecedor, clientesPeloNomeNoTexto,

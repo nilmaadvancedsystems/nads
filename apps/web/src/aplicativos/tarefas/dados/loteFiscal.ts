@@ -10,7 +10,11 @@ import type { ModeloDoEnvio } from './enviosDp';
 import type { ArquivoDoLote, EscolhaDoArquivo, LeituraDoArquivo, LoteDp, ResultadoDoLote } from './loteDp';
 
 /** o que o leitor achou na guia: o do lote do DP e a coluna do Relatório ('' = sem coluna) */
-export interface LeituraDaGuia extends LeituraDoArquivo { coluna: string }
+export interface LeituraDaGuia extends LeituraDoArquivo {
+  coluna: string;
+  /** o DARF de mais de um tributo (05/11/2026: PIS e COFINS juntos): cada um na coluna dele, com o valor ('R$19,50'); vazio = um só */
+  partes?: { tributo: string; coluna: string; valor: string }[];
+}
 /** a escolha da revisão; coluna: a do Relatório ('' = sem coluna; sem o campo, vale a do leitor) */
 export interface EscolhaDaGuia extends EscolhaDoArquivo { coluna?: string }
 /**
@@ -130,6 +134,8 @@ function leituraDeExemplo(nome: string, k: number, grupo: t.GrupoDoControleId): 
     acao: 'ARQUIVAR', motivo: '', cliente: cli.codigo, clienteNome: cli.nome, tipo, tributo, competencia, valor, vencimento: venc,
     nomeFinal: tipo === 'DAS' ? mm + '.pdf' : mm + ' - ' + tipo + ' ' + tributo + ' - VALOR ' + valor + ' - VENCIMENTO ' + venc + '.pdf',
     destino: [competencia.slice(0, 4), cli.codigo + ' - ' + cli.nome, ...pasta], semTexto: false, coluna: t.colunaDaGuia(grupo, tipo, tributo),
+    // o DARF de PIS e COFINS juntos (05/11/2026), no Presumido: cada um na coluna dele
+    ...(grupo === 'lp' && /PIS/.test(n) && /COFINS/.test(n) ? { partes: [{ tributo: 'PIS', coluna: 'pis', valor: 'R$19,50' }, { tributo: 'COFINS', coluna: 'cofins', valor: 'R$90,00' }], valor: 'R$109,50' } : {}),
   };
 }
 
@@ -138,6 +144,21 @@ export function colunaQueVale(a: GuiaDoLote, grupo: t.GrupoDoControleId): string
   const c = a.escolha && typeof a.escolha.coluna === 'string' ? a.escolha.coluna : a.leitura?.coluna || '';
   return t.grupoDoControle(grupo).colunas.some(x => x.id === c) ? c : '';
 }
+/**
+ * O que a guia leva ao Relatório, coluna por coluna: as partes do DARF de mais de um tributo (sem a pessoa ter escolhido uma
+ * coluna só) ou a coluna que vale com o valor da guia. Igual ao robô (robo/lote-fiscal.js, doGuia).
+ */
+export function valoresDaGuia(a: GuiaDoLote, grupo: t.GrupoDoControleId): { coluna: string; valor: number }[] {
+  const doGrupo = new Set(t.grupoDoControle(grupo).colunas.map(c => c.id));
+  const partes = a.leitura?.partes || [];
+  if (!(a.escolha && typeof a.escolha.coluna === 'string') && partes.length > 1) {
+    return partes.flatMap(p => { const v = valorDaGuia(p.valor); return doGrupo.has(p.coluna) && v != null ? [{ coluna: p.coluna, valor: v }] : []; });
+  }
+  const c = colunaQueVale(a, grupo);
+  const v = valorDaGuia(a.leitura?.valor);
+  return c && v != null ? [{ coluna: c, valor: v }] : [];
+}
+
 /** 'R$1234,56' (o valor lido na guia) → 1234.56; null sem valor */
 export function valorDaGuia(v: string | undefined): number | null {
   const m = /(\d[\d.]*),(\d{2})/.exec(v || '');
@@ -230,9 +251,7 @@ export function criarLoteFiscalMemoria(controle: () => RepoControleTributos): Re
           const codigo = Number(cod);
           const valores: Record<string, number> = {};
           for (const i of itens) {
-            const c = colunaQueVale(i, lote.grupo);
-            const v = valorDaGuia(i.leitura?.valor);
-            if (c && v != null) valores[c] = Math.round(((valores[c] || 0) + v) * 100) / 100;
+            for (const p of valoresDaGuia(i, lote.grupo)) valores[p.coluna] = Math.round(((valores[p.coluna] || 0) + p.valor) * 100) / 100;
           }
           const via = viaDaGuia(lote.vias[String(codigo)]);
           const erro = via === 'email' && codigo % 9 === 0 ? 'o cliente não tem e-mail no cadastro' : '';
@@ -241,7 +260,8 @@ export function criarLoteFiscalMemoria(controle: () => RepoControleTributos): Re
             // a linha do Relatório de exemplo, como o robô faz: só o que está em branco
             const repo = controle();
             const linha = repo.doMes(comp).linhas.get(codigo) || t.linhaEmBranco(comp, codigo, lote.grupo);
-            preenchidos = Object.keys(valores).filter(c => !(linha.valores[c] || '').trim());
+            // o "0" não segura: veio guia, vale o valor dela (05/11/2026)
+            preenchidos = Object.keys(valores).filter(c => !(linha.valores[c] || '').trim() || /^0(,00)?$/.test((linha.valores[c] || '').trim()));
             const textos = Object.fromEntries(Object.entries(valores).map(([c, v]) => [c, t.valorDoControle(v.toFixed(2).replace('.', ','))]));
             // impresso: o valor e o Entregue = Impresso; a data fica para quando a entrega for confirmada na rota
             const nova = t.preencherComSugestao(linha, { valores: textos, data: via === 'email' ? dia : '', email: via === 'email' });
