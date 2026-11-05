@@ -290,7 +290,12 @@ function montarDps(config, pedido, numero, opcoes = {}) {
     '</serv>';
 
   // valores: o ISS no município (alíquota se informada) e "não informar" o total aproximado de tributos (indTotTrib 0)
-  const temAliq = sv.pAliq != null && sv.pAliq !== '';
+  // no nacional, ME/EPP do Simples com o ISS pelo DAS (regApTribSN 1) e sem retenção (tpRetISSQN 1) NÃO informa a alíquota
+  // (05/11/2026, E0625 na nota 141 da RDS: "Não é permitido informar alíquota quando não há indicação de retenção do ISSQN...");
+  // a E&L aceitava os 3,74%
+  const semAliqNoNacional = provedor === 'nacional' && Number(pr.opSimpNac) === 3 && Number(pr.regApTribSN) === 1 &&
+    Number(sv.tpRetISSQN == null ? 1 : sv.tpRetISSQN) === 1;
+  const temAliq = sv.pAliq != null && sv.pAliq !== '' && !semAliqNoNacional;
   const valores = '<valores><vServPrest>' + el('vServ', dinheiro(s.valor)) + '</vServPrest>' +
     '<trib><tribMun>' + el('tribISSQN', Number(sv.tribISSQN == null ? 1 : sv.tribISSQN)) +
     el('tpRetISSQN', Number(sv.tpRetISSQN == null ? 1 : sv.tpRetISSQN)) +
