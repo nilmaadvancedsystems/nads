@@ -2949,6 +2949,19 @@ function decidirPlanilha(entrada, ctx, ev, porHash) {
     const ext = (/\.[a-z0-9]+$/i.exec(entrada.nome) || ['.xlsx'])[0].toLowerCase();
     return { acao: 'ARQUIVAR', cliente: cli, comoCliente: 'nome', confianca: 0.88, tipo: 'MAQUININHAS', setor: 'CONTABIL', competencia: comp, caminho: ['CONTÁBIL', 'EXTRATOS', String(comp.ano), dois(comp.mes), 'MAQUININHAS', operadora], nomeFinal: mesAno(comp) + ext, fonte: 'Dicionário §6.1.3; 04 (Maquininhas)' };
   }
+  // (Vitor, 05/11/2026) o cartão de ponto em planilha ("Planilha - Cálculo Cartão de Ponto", uma por funcionário: "VANIR.xlsx" da MINIMERCADO SANTO EXPEDITO):
+  // DEPARTAMENTO PESSOAL\MM\CARTÃO DE PONTO, nome original; o cliente pelo CNPJ da planilha ou pela pasta de origem, o mês pelo nome ou pela pasta de origem
+  if (/CARTAO DE PONTO|CARTAO PONTO|FOLHA DE PONTO/.test(u.slice(0, 4000)) || /^(CARTAO|FOLHA) (DE )?PONTO\b/.test(norm(entrada.nome))) {
+    const base = { tipo: 'CARTAO DE PONTO', setor: 'FOLHA_SOCIETARIO', fonte: 'cartão de ponto (Vitor, 05/11/2026)' };
+    const doc = unico(documentosDoTexto(u).filter(x => !ESCRITORIO.has(x.doc)).flatMap(x => clientesDoDoc(x.doc, cad)));
+    const c = porHash ? { cliente: porHash, conf: 0.97, como: 'hash' } : doc != null ? { cliente: doc, conf: 0.95, como: 'doc' } : clientePelaPastaOuGrupo(entrada.rel || entrada.nome, entrada.nome, cad, ev);
+    if (!c) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_NAO_LOCALIZADO', confianca: 0.3, evidencias: ev.concat('cartão de ponto: nem a planilha nem a pasta de origem dizem o cliente') });
+    const pasta = anoDaPasta(entrada.rel || '') || competenciaDaPasta(entrada.rel || '');
+    const comp = competenciaDoNome(entrada.nome) || (pasta && pasta.mes ? { mes: pasta.mes, ano: pasta.ano } : null);
+    if (!comp) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5, cliente: c.cliente, evidencias: ev.concat('cartão de ponto: o mês não está no nome nem na pasta de origem') });
+    ev.push('cartão de ponto em planilha: DEPARTAMENTO PESSOAL\\' + dois(comp.mes) + '\\CARTÃO DE PONTO (Vitor, 05/11/2026)');
+    return Object.assign(base, { acao: 'ARQUIVAR', cliente: c.cliente, comoCliente: c.como, confianca: Math.min(c.conf, 0.9), competencia: { mes: comp.mes, ano: comp.ano }, caminho: ['DEPARTAMENTO PESSOAL', dois(comp.mes), 'CARTÃO DE PONTO'], nomeFinal: entrada.nome, evidencias: ev });
+  }
   if (porHash) {
     // 04: documento contábil sem sub-regra, com cliente identificado → CONTÁBIL\OUTROS DOCUMENTOS\[ANO]\, nome original;
     // o ano do conteúdo, senão o da subpasta de origem ("2026-10\"), senão o ano corrente
@@ -3425,12 +3438,11 @@ function decidirFornecedor(pg, entrada, u, bruto, ctx, ev, porHash) {
   const pasta = anoDaPasta(rel) || competenciaDaPasta(rel);
   if (!comp && pasta && pasta.mes) { comp = { mes: pasta.mes, ano: pasta.ano }; ev.push('mês pela pasta de origem (' + mesAno(comp) + ')'); }
   // (05/11/2026) no zip de movimento solto, o mês do nome do zip ("MOVIMENTO_BRAZILIAN_COFFEE_OUT-2026…zip", "…OUTUBRO-2026…"), o mesmo em todas as pastas que o trazem
-  if (!comp && c.semPasta) {
-    const MESES = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
-    const achados = new Set();
-    for (const p of partesDoCaminho(rel).slice(0, -1)) for (const m of norm(p).matchAll(/(?:^|[^A-Z])(JAN|FEV|MAR|ABR|MAI|JUN|JUL|AGO|SET|OUT|NOV|DEZ)[A-Z]*[\s_.\-\/]*(20\d{2})(?![0-9])/g)) achados.add(m[2] + '-' + (MESES.indexOf(m[1]) + 1));
-    if (achados.size === 1) { const [a, mm] = [...achados][0].split('-'); comp = { mes: +mm, ano: +a }; ev.push('mês pelo nome do zip/pasta de origem (' + mesAno(comp) + ')'); }
-  }
+  const doZip = mesDoNomeDaPasta(rel);
+  if (!comp && c.semPasta && doZip) { comp = doZip; ev.push('mês pelo nome do zip/pasta de origem (' + mesAno(comp) + ')'); }
+  // (Vitor, 05/11/2026) a data do nome no futuro ("02-10-2027 OURO VERDE FRETE…" num zip de OUTUBRO-2026: erro de digitação): vale o mês do nome do zip/pasta
+  const hoje = ctx.hoje || new Date();
+  if (comp && comp.ano * 12 + comp.mes > hoje.getFullYear() * 12 + hoje.getMonth() + 1 && doZip) { ev.push('a data do nome (' + mesAno(comp) + ') está no futuro: o mês do nome do zip/pasta de origem (' + mesAno(doZip) + ')'); comp = doZip; }
   if (!comp) { const v = dataBr(linhaApos(u, /VENCIMENTO/, 60)); if (v) { comp = { mes: +v.slice(3, 5), ano: +v.slice(6) }; ev.push('mês pelo vencimento no conteúdo (' + v + ')'); } }
   if (!comp) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5, evidencias: ev.concat('sem a data no começo do nome, o mês na pasta de origem ou o vencimento no conteúdo') });
   // o nome original fica (já traz a data, o fornecedor, a NF e o valor)
@@ -3470,6 +3482,16 @@ function clienteDoPagamento(rel, bruto, cad, ev, porHash, pagador) {
  * "NOTAS E COMPROVANTES PAGTOS 3M OUT-2026.zip"; 05/11/2026): cada palavra (fora as de pasta, de mês e de banco) que é a PRIMEIRA palavra da razão ou do fantasia de
  * clientes; vale só se todas as palavras de todas as pastas apontam para UM cliente só (duas empresas citadas, nada decide).
  */
+/** O mês escrito no nome do zip/pasta de origem ("MOVIMENTO_BRAZILIAN_COFFEE_OUT-2026…zip", "…OUTUBRO-2026…"): { mes, ano } se todas as pastas que o trazem dizem o mesmo; senão null. */
+function mesDoNomeDaPasta(rel) {
+  const MESES = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
+  const achados = new Set();
+  for (const p of partesDoCaminho(rel).slice(0, -1)) for (const m of norm(p).matchAll(/(?:^|[^A-Z])(JAN|FEV|MAR|ABR|MAI|JUN|JUL|AGO|SET|OUT|NOV|DEZ)[A-Z]*[\s_.\-\/]*(20\d{2})(?![0-9])/g)) achados.add(m[2] + '-' + (MESES.indexOf(m[1]) + 1));
+  if (achados.size !== 1) return null;
+  const [a, mm] = [...achados][0].split('-');
+  return { mes: +mm, ano: +a };
+}
+const PRO_LABORE_DO_GRUPO = 413;   // a BRAZILIAN FORESTRY (Vitor, 05/11/2026: "Denise e Dilma pode colocar na brazilian")
 const PALAVRAS_DE_MOVIMENTO = new Set(['MOVIMENTO', 'MOVIMENTOS', 'PLANILHA', 'PLANILH', 'PLANIL', 'COMPROVANTE', 'COMPROVANTES', 'PAGTO', 'PAGTOS', 'NOTA', 'NOTAS', 'BB', 'CEF', 'OUT', 'NOV', 'DEZ', 'JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'DE', 'DA', 'DO', 'DOS', 'DAS', 'E', 'NF', 'NFS', 'REF', 'MES']);
 function clienteDoNomeDoConteiner(rel, cad) {
   const partes = partesDoCaminho(rel).slice(0, -1);
@@ -3983,7 +4005,15 @@ function decidirPdf(entrada, ctx, ev, porHash) {
   const u = norm(bruto);
   // 27/10/2026 (Vitor): o pagamento de fornecedor vale pelo nome e pela pasta de origem, mesmo sem texto (escaneado)
   // o pró-labore (Vitor, 27/10/2026): DEPARTAMENTO PESSOAL\MM\PRÓ-LABORE\, nome original — antes do pagamento de fornecedor
-  if (/\bPRO\s?-?\s?LABORE|PROLABORE/.test(norm(entrada.nome))) return decidirSimples(entrada, u, bruto, ctx, ev, porHash, { tipo: 'PRO-LABORE', setor: 'FOLHA_SOCIETARIO', mes: true, caminho: comp => ['DEPARTAMENTO PESSOAL', dois(comp.mes), 'PRÓ-LABORE'] });
+  if (/\bPRO\s?-?\s?LABORE|PROLABORE/.test(norm(entrada.nome))) {
+    // (Vitor, 05/11/2026) o pró-labore da Denise e da Dilma (sócias do grupo), que vem no movimento da 3M, da SPIROU e da FAST sem o CNPJ no conteúdo: na
+    // 413 BRAZILIAN FORESTRY (a matriz do grupo), seja qual for o zip
+    const socia = /\b(DENISE|DILMA)\b/.exec(norm(entrada.nome));
+    const doc = socia ? unico(documentosDoTexto(bruto).filter(x => !ESCRITORIO.has(x.doc)).flatMap(x => clientesDoDoc(x.doc, ctx.cadastro))) : null;
+    const pl = { tipo: 'PRO-LABORE', setor: 'FOLHA_SOCIETARIO', mes: true, caminho: comp => ['DEPARTAMENTO PESSOAL', dois(comp.mes), 'PRÓ-LABORE'] };
+    if (socia && doc == null && !porHash && ctx.cadastro.porCod.has(PRO_LABORE_DO_GRUPO)) { ev.push('pró-labore da ' + socia[1] + ': na ' + PRO_LABORE_DO_GRUPO + ' BRAZILIAN FORESTRY, a matriz do grupo (Vitor, 05/11/2026)'); return decidirSimples(entrada, u, bruto, ctx, ev, PRO_LABORE_DO_GRUPO, pl); }
+    return decidirSimples(entrada, u, bruto, ctx, ev, porHash, pl);
+  }
   // a declaração municipal do ISS (DEISS de Montes Claros, DES de BH; Vitor, 27/10/2026): <regime>\DAM\DECLARAÇÕES\, nome original
   if (/\bDEISS\b|\bDES\s*-?\s*BH\b/.test(norm(entrada.rel || entrada.nome))) return decidirSimples(entrada, u, bruto, ctx, ev, porHash, { tipo: 'DECLARACAO ISS', setor: 'FISCAL', mes: true, fiscal: ['DAM', 'DECLARAÇÕES'] });
   // a declaração de inventário (Vitor, 27/10/2026): CONTÁBIL\PAPÉIS DE TRABALHO\ANO\, nome original
@@ -4075,6 +4105,18 @@ function decidirPdf(entrada, ctx, ev, porHash) {
     if (prestador && ESCRITORIO.has(prestador) && ctx.cadastro.porDoc.has(prestador)) { doMatriz = { cliente: [...ctx.cadastro.porDoc.get(prestador)][0], conf: 0.97, como: 'doc' }; ev.push('NFS-e emitida pelo escritório: na pasta dele e uma cópia na do tomador'); }
   }
   const c = porHash ? { cliente: porHash, conf: 0.97, como: 'hash' } : doMatriz || (regra.tipo === 'RELATORIO DE NOTAS' && clienteDoRelatorio(u, entrada, ctx, ev)) || clienteDoPdf(u, bruto, entrada, ctx, ev, regra, campos);
+  // (Vitor, 05/11/2026) o CT-e entre dois clientes (a 408 OURO VERDE emite o frete, a 572 FREEDOM toma): vai para os dois, EMITIDOS no emitente da chave
+  // e uma cópia em RECEBIDOS no outro (como a NFS-e de honorários da Nilma). Só com dois candidatos e um deles o emitente da chave
+  if (!c.cliente && c.motivo === 'CLIENTE_AMBIGUO' && regra.tipo === 'CT-e PDF' && !c.contaAmbigua && Array.isArray(c.candidatos) && c.candidatos.length === 2 && campos.chave) {
+    const emit = campos.chave.slice(6, 20);
+    const doEmit = c.candidatos.filter(x => clientesDoDoc(emit, ctx.cadastro).includes(x));
+    if (doEmit.length === 1) {
+      const outro = c.candidatos.find(x => x !== doEmit[0]);
+      const ev2 = ev.concat('CT-e entre dois clientes: EMITIDOS na ' + doEmit[0] + ' (emitente da chave) e uma cópia em RECEBIDOS na ' + outro + ' (Vitor, 05/11/2026)');
+      const d2 = montarNotaPdf(regra, campos, u, bruto, { cliente: doEmit[0], comoCliente: 'doc', setor: regra.setor, tipo: regra.tipo, fonte: regra.fonte, nomeArquivo: entrada.nome }, { cliente: doEmit[0], conf: 0.95, como: 'doc' }, ctx, ev2);
+      if (d2.acao === 'ARQUIVAR') { d2.copias = [{ cliente: outro, comoCliente: 'doc', fiscal: ['DOCS', 'RECEBIDOS', 'ESPECÍFICOS', 'TRANSPORTES', 'CT-E'] }]; return d2; }
+    }
+  }
   if (!c.cliente) return { acao: 'NAO_IDENTIFICADO', motivo: c.motivo, confianca: 0.3, tipo: regra.tipo, setor: regra.setor, contaAmbigua: c.contaAmbigua || undefined, candidatos: c.contaAmbigua ? c.candidatos : undefined, evidencias: ev.concat(c.candidatos ? 'candidatos ' + c.candidatos.join(', ') : []) };
   const base = { cliente: c.cliente, comoCliente: c.como, setor: regra.setor, tipo: regra.tipo, fonte: regra.fonte, nomeArquivo: entrada.nome };
   const nomeOrig = entrada.nome;

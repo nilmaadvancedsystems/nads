@@ -23,7 +23,9 @@ const log = (...m) => console.log(new Date().toLocaleTimeString('pt-BR'), ...m);
   const pastaNi = path.join(ORIGEM, 'NÃO IDENTIFICADOS');
   // --apenas <texto>: só os arquivos com o texto no caminho (ex.: "EXTRATOS")
   const apenas = arg('--apenas', null);
-  const todos = A.arquivosDosNaoIdentificados(pastaNi).filter(r => !apenas || r.toUpperCase().includes(String(apenas).toUpperCase()));
+  // vários filtros separados por vírgula: qualquer um vale (05/11/2026: o reprocesso automático dos últimos dias)
+  const filtros = apenas ? String(apenas).split(',').map(x => x.trim().toUpperCase()).filter(Boolean) : [];
+  const todos = A.arquivosDosNaoIdentificados(pastaNi).filter(r => !filtros.length || filtros.some(f => r.toUpperCase().includes(f)));
   log('em NÃO IDENTIFICADOS: ' + todos.length + ' arquivos · ' + (APLICAR ? 'PRODUÇÃO' : 'simulação'));
   const manifestoAntigo = path.join(process.env.ARQUIVO_RAIZ || 'C:\\Users\\DPTO FISCAL 004\\GUSTAVO\\claudio', '_CONTROLE', 'MANIFESTO', 'manifesto.jsonl');
   const cadastro = A.carregarCadastro({});
