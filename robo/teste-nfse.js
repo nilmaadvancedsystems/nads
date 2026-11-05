@@ -589,6 +589,7 @@ async function testarEmail({ pfx, arqSenha, cert }) {
   confere('erro único da Sefin { erro: {...} } vira lista', nfse.errosDaResposta({ erro: { codigo: 'E0001', descricao: 'x' } }).length === 1);
   confere('mensagem do 403 nacional fala do certificado, não do token', /certificado/.test(nfse.mensagemHttp({ status: 403 }, 'nacional')) && !/token/.test(nfse.mensagemHttp({ status: 403 }, 'nacional')));
   confere('a DPS da E&L não leva finNFSe', !xml.includes('finNFSe'));
+  confere('no nacional a ME/EPP informa pTotTribSN 16.42 (E0712); a E&L segue com indTotTrib 0', xmlSem.includes('<totTrib><pTotTribSN>16.42</pTotTribSN></totTrib>') && xml.includes('<indTotTrib>0</indTotTrib>'));
   confere('no nacional, ME/EPP com ISS pelo Simples e sem retenção não leva a alíquota (E0625)', !xmlSem.includes('<pAliq>') && xml.includes('<pAliq>3.74</pAliq>'));
   const xmlNacProd = nfse.montarDps(Object.assign({}, config, { provedor: 'nacional' }), pedido, 8, { agora: '2026-11-05T12:00:00Z', ambiente: 'producao' });
   confere('a DPS nacional de PRODUÇÃO segue o leiaute antigo (sem finNFSe, descrição antes do NBS)', !xmlNacProd.includes('finNFSe') && xmlNacProd.includes('</xDescServ><cNBS>'));
