@@ -6,13 +6,13 @@ import { createContext, useContext, useState, type ReactNode } from 'react';
 
 const CHAVE = 'nads-tarefas-operador';
 
-export interface Operador { nome: string; departamento: usuarios.Departamento; nivel: usuarios.Nivel | null; admin: boolean }
+export interface Operador { nome: string; email?: string; departamento: usuarios.Departamento; nivel: usuarios.Nivel | null; admin: boolean }
 
 /** A pessoa da conta do Entregas como operador (null = a conta não diz o departamento). */
 export function operadorDaConta(u: usuarios.Usuario): Operador | null {
   const departamento = usuarios.departamentoDaConta(u);
   if (!departamento) return null;
-  return { nome: u.nome, departamento, nivel: u.nivel, admin: u.papeis.includes('admin') };
+  return { nome: u.nome, email: u.email, departamento, nivel: u.nivel, admin: u.papeis.includes('admin') };
 }
 
 function daEquipe(nome: string | null): Operador | null {
