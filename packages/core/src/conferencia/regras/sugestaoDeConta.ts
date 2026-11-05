@@ -15,7 +15,8 @@ import type { Conta, Grupo, TipoCfop } from '../tipos';
 export interface SugestaoDaNatureza {
   /** conta: a do plano que serve; falta-conta: o plano não tem e precisa criar; nao-contabil: não vai para o Contábil */
   tipo: 'conta' | 'nao-contabil' | 'falta-conta';
-  conta?: { codigo: string; nome: string };
+  /** a conta do plano e, se houver, a gêmea à vista ou a prazo (as duas vão juntas) */
+  contas?: { codigo: string; nome: string }[];
   /** a conta que a natureza pede, em palavras ("Venda de produção do estabelecimento") */
   pede: string;
   /** o porquê */
@@ -187,15 +188,25 @@ function regraDoCfop(cfop: string, tipo: TipoCfop): Regra | null {
   return f.length === 3 ? REGRAS.find(r => r.tipo === tipo && r.finais.includes(f)) || null : null;
 }
 
-/** A conta do plano que serve à regra: do grupo certo, analítica, com o nome que bate; a mais curta no nome primeiro. */
-function contaDaRegra(r: Regra, contas: readonly Conta[], centros: ReadonlyMap<string, CentroDeCusto>): Conta | null {
-  if (!r.nome) return null;
+/** o nome sem o "à vista" / "a prazo" (as duas contas da mesma coisa) */
+const semPrazo = (nome: string) => nomeNorm(nome).replace(/\b(a )?(vista|prazo)\b/g, ' ').replace(/\s+/g, ' ').trim();
+
+/**
+ * As contas do plano que servem à regra: do grupo certo, analíticas, com o nome que bate; a mais curta no nome primeiro e, com
+ * ela, a gêmea à vista ou a prazo (Vitor, 05/11/2026: "coloca duas contas, porque às vezes tem a vista e a prazo").
+ */
+function contasDaRegra(r: Regra, contas: readonly Conta[], centros: ReadonlyMap<string, CentroDeCusto>): Conta[] {
+  if (!r.nome) return [];
   // com o plano dividido em centros, só as contas do centro da regra (o frete do CMV não serve ao frete industrial)
   const peloCentro = r.centro && centros.size > 0;
   const servem = contas.filter(c => !c.sintetica && (!r.grupos || r.grupos.includes(c.grupo))
     && (!peloCentro || centros.get(c.codigo) === r.centro)
-    && r.nome!.test(nomeNorm(c.nome)) && !(r.semNome && r.semNome.test(nomeNorm(c.nome))));
-  return servem.sort((a, b) => a.nome.length - b.nome.length || a.codigo.localeCompare(b.codigo))[0] || null;
+    && r.nome!.test(nomeNorm(c.nome)) && !(r.semNome && r.semNome.test(nomeNorm(c.nome))))
+    .sort((a, b) => a.nome.length - b.nome.length || a.codigo.localeCompare(b.codigo));
+  if (!servem.length) return [];
+  const base = semPrazo(servem[0].nome);
+  const comPrazo = /\b(vista|prazo)\b/.test(nomeNorm(servem[0].nome));
+  return comPrazo ? servem.filter(c => semPrazo(c.nome) === base) : [servem[0]];
 }
 
 /**
@@ -207,8 +218,8 @@ export function sugestaoDaNatureza(cfops: readonly string[], tipo: TipoCfop, con
   if (!r) return null;
   if (r.nao) return { tipo: 'nao-contabil', pede: r.pede, motivo: r.motivo, base: r.base };
   const centros = centrosDoPlano(contas);
-  const conta = contaDaRegra(r, contas, centros);
-  if (conta) return { tipo: 'conta', conta: { codigo: conta.codigo, nome: conta.nome }, pede: r.pede, motivo: r.motivo, base: r.base };
+  const achadas = contasDaRegra(r, contas, centros);
+  if (achadas.length) return { tipo: 'conta', contas: achadas.map(c => ({ codigo: c.codigo, nome: c.nome })), pede: r.pede, motivo: r.motivo, base: r.base };
   const noCentro = r.centro && centros.size > 0
     ? ([...centros.values()].includes(r.centro) ? ' no centro ' + NOME_DO_CENTRO[r.centro] : ' (nem o centro ' + NOME_DO_CENTRO[r.centro] + ')')
     : '';

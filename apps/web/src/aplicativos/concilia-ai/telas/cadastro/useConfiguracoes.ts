@@ -228,9 +228,14 @@ export function useConfiguracoes() {
     limparUi();
   }
 
-  /** usa a sugestão: vincula a conta sugerida ou marca o "Não vai para o Contábil" */
+  /** usa a sugestão: vincula as contas sugeridas (a à vista e a a prazo, quando o plano tem as duas) ou marca o "Não vai" */
   function usarSugestao(k: string, sug: c.SugestaoDaNatureza) {
-    if (sug.tipo === 'conta' && sug.conta) { const codigo = sug.conta.codigo; s.aplicar(x => c.vincularConta(x, k, codigo)); limparUi(); toast('Conta ' + codigo + ' vinculada pela sugestão.'); }
+    if (sug.tipo === 'conta' && sug.contas?.length) {
+      const codigos = sug.contas.map(x => x.codigo);
+      s.aplicar(x => codigos.reduce((e2, codigo) => c.vincularConta(e2, k, codigo), x));
+      limparUi();
+      toast((codigos.length === 1 ? 'Conta ' : 'Contas ') + codigos.join(' e ') + ' vinculada' + (codigos.length === 1 ? '' : 's') + ' pela sugestão.');
+    }
     else if (sug.tipo === 'nao-contabil') { naoContabil(k, true); toast('Marcada: não vai para o Contábil.'); }
   }
 

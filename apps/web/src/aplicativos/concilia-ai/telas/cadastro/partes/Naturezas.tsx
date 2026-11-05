@@ -112,20 +112,23 @@ function Natureza({ it, vm }: { it: ItemNatureza; vm: VM }) {
  */
 function Sugestao({ it, vm }: { it: ItemNatureza; vm: VM }) {
   const sug = it.sugestao!;
-  const titulo = sug.tipo === 'conta' && sug.conta ? sug.conta.codigo + ' — ' + sug.conta.nome : sug.tipo === 'nao-contabil' ? 'Não vai para o Contábil' : 'Falta a conta: ' + sug.pede;
+  // uma linha por conta (a à vista e a a prazo, quando o plano tem as duas)
+  const linhas = sug.tipo === 'conta' && sug.contas?.length ? sug.contas.map(x => x.codigo + ' — ' + x.nome)
+    : [sug.tipo === 'nao-contabil' ? 'Não vai para o Contábil' : 'Falta a conta: ' + sug.pede];
+  const duas = (sug.contas?.length || 0) > 1;
   return (
     // só a lâmpada (Vitor, 05/11/2026: "coloca só o ícone da lâmpada")
     // flutuante: perto do fim da tela, abre para cima (Vitor, 05/11/2026: "não consigo scrollar e clicar" na última natureza)
     <MenuSuspenso rotulo="" icone="lampada" className="icon-btn" semSeta flutuante largura={380} dica="Sugestão: qual conta vai e por quê"
       conteudo={fechar => (
         <div className="comp-varios">
-          <p className="comp-varios-texto"><b>{titulo}</b></p>
+          {linhas.map(l => <p key={l} className="comp-varios-texto" style={{ margin: 0 }}><b>{l}</b></p>)}
           {sug.tipo === 'conta' && <p className="hint">A natureza pede: {sug.pede}.</p>}
           <p className="hint">{sug.motivo}</p>
           <p className="hint">Base: {sug.base}</p>
           {sug.tipo !== 'falta-conta' && (
             <button type="button" className="btn btn-primary comp-varios-botao" onClick={() => { fechar(); vm.usarSugestao(it.k, sug); }}>
-              {sug.tipo === 'conta' ? 'Usar esta conta' : 'Marcar Não vai para o Contábil'}
+              {sug.tipo === 'conta' ? (duas ? 'Usar as duas contas' : 'Usar esta conta') : 'Marcar Não vai para o Contábil'}
             </button>
           )}
         </div>
