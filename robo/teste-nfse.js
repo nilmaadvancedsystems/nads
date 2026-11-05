@@ -120,7 +120,7 @@ function conferirOrdem(no, erros) {
 async function validarXsd(xml, principal, arquivos) {
   let validateXML;
   try { ({ validateXML } = require('xmllint-wasm')); } catch (e) { return null; }
-  const ler = n => ({ fileName: n, contents: fs.readFileSync(path.join(PASTA_XSD, n), 'utf8') });
+  const ler = n => ({ fileName: path.basename(n), contents: fs.readFileSync(path.join(PASTA_XSD, n), 'utf8') });
   const r = await validateXML({ xml: [{ fileName: 'doc.xml', contents: xml }], schema: [ler(principal)], preload: arquivos.map(ler) });
   return r;
 }
@@ -588,6 +588,10 @@ async function testarEmail({ pfx, arqSenha, cert }) {
   confere('DPS sem cIntContrib não leva a tag', !xmlSem.includes('cIntContrib') && xmlSem.includes('<cNBS>'));
   confere('erro único da Sefin { erro: {...} } vira lista', nfse.errosDaResposta({ erro: { codigo: 'E0001', descricao: 'x' } }).length === 1);
   confere('mensagem do 403 nacional fala do certificado, não do token', /certificado/.test(nfse.mensagemHttp({ status: 403 }, 'nacional')) && !/token/.test(nfse.mensagemHttp({ status: 403 }, 'nacional')));
+  confere('a DPS da E&L não leva finNFSe', !xml.includes('finNFSe'));
+  confere('a DPS nacional leva finNFSe 0 logo depois do tpEmit', xmlSem.includes('<tpEmit>1</tpEmit><finNFSe>0</finNFSe><cLocEmi>'));
+  const rNac = await validarXsd(nfse.assinar(xmlSem, 'infDPS', cert), 'nacional/DPS_v1.01.xsd', ['nacional/tiposComplexos_v1.01.xsd', 'nacional/tiposSimples_v1.01.xsd', 'nacional/xmldsig-core-schema.xsd']);
+  if (rNac) confere('DPS nacional assinada válida no XSD da Produção Restrita (20/10/2026)', rNac.valid, rNac.errors.map(e => e.message).join(' | '));
   await testarTlsMutuo(cert);
 
   // 9. o módulo inteiro, com um banco e uma prefeitura de mentira (sem rede)

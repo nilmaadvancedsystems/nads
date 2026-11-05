@@ -242,6 +242,7 @@ function idDps(cLocEmi, cnpj, serie, numero) {
  */
 function montarDps(config, pedido, numero, opcoes = {}) {
   const ambiente = opcoes.ambiente || ambienteDe(config, pedido);
+  const provedor = opcoes.provedor || provedorDe(config, pedido);
   const pr = config.prestador || {};
   const sv = config.servico || {};
   const t = pedido.tomador || {};
@@ -273,12 +274,15 @@ function montarDps(config, pedido, numero, opcoes = {}) {
   toma += '</toma>';
 
   // serviço
+  const xDescServ = el('xDescServ', textoLimpo(s.descricao, { quebras: true, max: 2000 }));
   const infoCompl = sv.infoCompl === undefined || sv.infoCompl === null ? INFO_COMPL_PADRAO : textoLimpo(sv.infoCompl, { max: 2000 });
   const serv = '<serv><locPrest>' + el('cLocPrestacao', digitos(sv.cLocPrestacao) || cLocEmi) + '</locPrest>' +
     '<cServ>' + el('cTribNac', String(sv.cTribNac)) +
-    el('xDescServ', textoLimpo(s.descricao, { quebras: true, max: 2000 })) +
+    // no leiaute nacional de 20/10/2026 a descrição vai por último (cTribNac, cTribMun, cNBS, cIntContrib, xDescServ)
+    (provedor === 'nacional' ? '' : xDescServ) +
     (digitos(sv.cNBS) ? el('cNBS', digitos(sv.cNBS)) : '') +
-    (sv.cIntContrib != null && sv.cIntContrib !== '' ? el('cIntContrib', String(sv.cIntContrib)) : '') + '</cServ>' +
+    (sv.cIntContrib != null && sv.cIntContrib !== '' ? el('cIntContrib', String(sv.cIntContrib)) : '') +
+    (provedor === 'nacional' ? xDescServ : '') + '</cServ>' +
     (infoCompl ? '<infoCompl>' + el('xInfComp', infoCompl) + '</infoCompl>' : '') +
     '</serv>';
 
@@ -299,6 +303,8 @@ function montarDps(config, pedido, numero, opcoes = {}) {
     el('nDPS', String(Number(numero))) +
     el('dCompet', s.competencia) +
     el('tpEmit', 1) +
+    // o leiaute da Sefin Nacional (esquemas de 20/10/2026, em nfse-xsd/nacional) pede a finalidade: 0 = NFS-e regular
+    (provedor === 'nacional' ? el('finNFSe', 0) : '') +
     el('cLocEmi', cLocEmi) +
     prest + toma + serv + valores +
     '</infDPS></DPS>';
@@ -669,7 +675,7 @@ function iniciarNfse(db, log, opcoes = {}) {
     }
 
     const pedido = (await ref.get()).data();
-    const xml = assinar(montarDps(config, pedido, dps.numero, { ambiente: dps.ambiente }), 'infDPS', cert);
+    const xml = assinar(montarDps(config, pedido, dps.numero, { ambiente: dps.ambiente, provedor: prov }), 'infDPS', cert);
     log('NFS-e: enviando', dps.id, '(' + (prov === 'nacional' ? 'Sefin Nacional' : 'E&L') + ', ' + dps.ambiente + (reenvio ? ', reenvio' : '') + ') para', textoLimpo(pedido.tomador.nome).slice(0, 40));
 
     let r = null;
