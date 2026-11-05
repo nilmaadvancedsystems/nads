@@ -54,7 +54,7 @@ async function rodar(rel, a, passo, sinal) {
   } finally { rodando--; }
 }
 
-const fila = criarFilaAlterdata({ banco, rodar, limiteMs: 300, pastaDoPedido: id => path.join(BASE, id) });
+const fila = criarFilaAlterdata({ banco, rodar, limiteMs: 300, apagarPasta: false, pastaDoPedido: id => path.join(BASE, id) });
 
 function novo(id, tipo, codigo, competencia) {
   pedidos.set(id, { status: 'pendente', tipo, codigo, competencia, criadoEm: new Date().toISOString(), criadoPor: 'teste' });

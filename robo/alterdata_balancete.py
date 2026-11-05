@@ -25,6 +25,12 @@ def passo(t):
     print('PASSO: ' + t, flush=True)
 
 
+def clique(t):
+    # o que o robô está fazendo agora, para a barra de andamento do nads (05/11/2026, Vitor: "quero que no nads tenha um
+    # feedback do que o robo ta fazendo, onde ele ta clicando")
+    print('CLIQUE: ' + t, flush=True)
+
+
 def fim(**r):
     print('RESULTADO: ' + json.dumps(r, ensure_ascii=False), flush=True)
     sys.exit(0 if r.get('ok') else 1)
@@ -64,25 +70,31 @@ def filhos(w, cls=None, texto=None):
 
 def limpar():
     """Fecha o que este roteiro abre (visualização, Salvar como, Imprimir, Balancete), sem gerar nada."""
+    fechou = False   # só espera quando fechou alguma coisa (antes eram 2 × 0,5 s sempre, também no começo)
     for w in janelas('TMessageForm'):   # pergunta aberta: Não (ou Cancelar), nunca Sim
         for b in filhos(w):
             if (b.window_text() or '').replace('&', '') in ('Não', 'Nao', 'Cancelar'):
                 b.click_input()
+                fechou = True
                 break
     for w in janelas('#32770', 'Salvar como'):
         for b in filhos(w, 'Button'):
             if b.control_id() == 2:
                 b.click_input()
+                fechou = True
     for w in janelas('TAlterdataPpPrintDialogPatch'):
         for b in filhos(w, 'TButton', 'Cancelar'):
             b.click_input()
+            fechou = True
     for w in janelas('TAlterdataTppPrintPreview'):
         w.close()
-    time.sleep(.5)
+        fechou = True
+    if fechou:
+        time.sleep(.5)
     for w in janelas('TfrmBalanceteRelatorioConfiguracoes'):
         for b in filhos(w, 'TcxButton', '&Cancelar'):
             b.click_input()
-    time.sleep(.5)
+            time.sleep(.5)
 
 
 def falhar(motivo):
@@ -113,12 +125,15 @@ try:
 
     # ── Livros e Relatórios → Balancete ▾ → Balancete
     passo('abrindo Livros e Relatórios → Balancete')
+    clique('menu Livros e Relatórios')
     mouse.click(coords=(ox + 288, oy + 47))
-    time.sleep(1.2)
+    time.sleep(.8)
+    clique('Balancete ▾')
     mouse.click(coords=(ox + 258, oy + 100))
-    time.sleep(1.5)
+    time.sleep(1)
+    clique('Balancete')
     mouse.click(coords=(ox + 286, oy + 147))
-    cfg = esperar(lambda: janelas('TfrmBalanceteRelatorioConfiguracoes'), 25)
+    cfg = esperar(lambda: janelas('TfrmBalanceteRelatorioConfiguracoes'), 25, .25)
     if not cfg:
         falhar('a janela do Balancete não abriu')
     cfg = cfg[0]
@@ -131,8 +146,9 @@ try:
     if not edits:
         falhar('não achei o campo Código')
     cod = min(edits, key=lambda c: (c.rectangle().top, c.rectangle().left))
+    clique('campo Código: ' + str(int(CODIGO)))
     cod.click_input()
-    cod.type_keys(str(int(CODIGO)), pause=0.05)
+    cod.type_keys(str(int(CODIGO)), pause=0.02)
     cod.type_keys('{ENTER}', pause=0.05)
     # a pergunta "Deseja selecionar as filiais desta empresa?" (janela Confirmação com Sim/Não): sempre Não
     def pergunta_das_filiais():
@@ -147,8 +163,9 @@ try:
         nao = [b for b in filhos(conf[0]) if (b.window_text() or '').replace('&', '') in ('Não', 'Nao')]
         if not nao:
             falhar('não achei o "Não" da pergunta das filiais')
+        clique('"Não" para as filiais')
         nao[0].click_input()
-        time.sleep(1)
+        time.sleep(.5)
     outros = [w for w in janelas('TMessageForm')]
     if outros:
         falhar('o Alterdata mostrou uma mensagem ao escolher a empresa ' + CODIGO + ' (empresa inexistente?)')
@@ -158,8 +175,9 @@ try:
         b = filhos(cfg, cls, t)
         if not b:
             falhar('não achei ' + t)
+        clique(t)
         b[0].click_input()
-        time.sleep(.3)
+        time.sleep(.2)
 
     # ── o período (campos com máscara: começo do campo e os 8 números por cima)
     passo('período ' + INICIO + ' a ' + FIM)
@@ -167,11 +185,12 @@ try:
     if len(datas) < 2:
         falhar('não achei as datas do período')
     for campo, valor in zip(datas[:2], (INICIO, FIM)):
+        clique('data ' + valor)
         campo.click_input()
-        campo.type_keys('{HOME}', pause=0.05)
-        campo.type_keys(valor.replace('/', ''), pause=0.05)
-        campo.type_keys('{TAB}', pause=0.05)
-        time.sleep(.4)
+        campo.type_keys('{HOME}', pause=0.02)
+        campo.type_keys(valor.replace('/', ''), pause=0.02)
+        campo.type_keys('{TAB}', pause=0.02)
+        time.sleep(.2)
     datas = sorted(filhos(cfg, 'TcxMaskEdit'), key=lambda c: c.rectangle().left)
     if [c.window_text() for c in datas[:2]] != [INICIO, FIM]:
         falhar('o período não ficou certo na tela (' + ' a '.join(c.window_text() for c in datas[:2]) + ')')
@@ -184,20 +203,22 @@ try:
     cfg.set_focus()
     time.sleep(.3)
     rc = concluir[0].rectangle()
+    clique('Concluir (o Alterdata monta o balancete)')
     mouse.click(coords=((rc.left + rc.right) // 2, (rc.top + rc.bottom) // 2))
-    pv = esperar(lambda: janelas('TAlterdataTppPrintPreview'), 240, 2)
+    pv = esperar(lambda: janelas('TAlterdataTppPrintPreview'), 240, .5)
     if not pv:
         falhar('o balancete não abriu em 4 min')
     pv = pv[0]
-    time.sleep(4)
+    time.sleep(2)
 
     # ── a impressora da visualização → "Imprimir para arquivo", Xlsx Dados, o caminho no Onde:
     passo('salvando em Xlsx')
     dlg = None
     for tentativa in range(3):   # a visualização pode ainda estar terminando de carregar as páginas
         pv.set_focus()
-        time.sleep(1)
+        time.sleep(.5)
         rp = pv.rectangle()
+        clique('impressora da visualização')
         mouse.click(coords=(rp.left + 8 + 18, rp.top + 8 + 35))
         dlg = esperar(lambda: janelas('TAlterdataPpPrintDialogPatch') or janelas('#32770', 'Salvar como'), 10)
         if dlg:
@@ -213,16 +234,18 @@ try:
         falhar('não achei o "Imprimir para arquivo"')
     caixa = max(caixas, key=lambda c: c.rectangle().top)
     if caixa.get_check_state() != 1:
+        clique('"Imprimir para arquivo"')
         caixa.click_input()
-        time.sleep(.8)
+        time.sleep(.5)
     if caixa.get_check_state() != 1:
         falhar('não consegui marcar "Imprimir para arquivo" (não vou mandar para a impressora)')
     tipos = [c for c in filhos(dlg, 'TComboBox') if 'Xlsx Dados Arquivo' in c.texts()]
     if not tipos:
         falhar('não achei o tipo Xlsx Dados Arquivo')
     tipo = tipos[0]
+    clique('tipo Xlsx Dados Arquivo')
     tipo.select('Xlsx Dados Arquivo')
-    time.sleep(.6)
+    time.sleep(.3)
     onde = [c for c in filhos(dlg, 'TEdit') if c.rectangle().top > tipo.rectangle().bottom]
     if not onde:
         falhar('não achei o campo Onde')
@@ -230,17 +253,19 @@ try:
     os.makedirs(os.path.dirname(DESTINO), exist_ok=True)
     if os.path.exists(DESTINO):
         os.remove(DESTINO)
+    clique('caminho do arquivo no "Onde"')
     onde.set_edit_text(DESTINO)
-    time.sleep(.5)
+    time.sleep(.2)
     if tipo.window_text() != 'Xlsx Dados Arquivo' or onde.window_text() != DESTINO or caixa.get_check_state() != 1:
         falhar('a janela Imprimir não ficou como devia; não cliquei OK')
     ok = [c for c in filhos(dlg, 'TButton', 'OK')]
+    clique('OK (salvando o arquivo)')
     ok[0].click_input()
 
     # ── o arquivo pronto (o tamanho parou de mudar)
     tamanhos = []
-    for _ in range(90):
-        time.sleep(1)
+    for _ in range(180):
+        time.sleep(.5)
         t = os.path.getsize(DESTINO) if os.path.exists(DESTINO) else 0
         tamanhos.append(t)
         if t > 0 and tamanhos[-3:] == [t, t, t]:

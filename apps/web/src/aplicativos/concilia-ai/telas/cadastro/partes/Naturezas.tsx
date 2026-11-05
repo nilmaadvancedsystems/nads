@@ -59,19 +59,18 @@ const LINHA: CSSProperties = { display: 'flex', alignItems: 'center', gap: 12, f
 function Natureza({ it, vm }: { it: ItemNatureza; vm: VM }) {
   return (
     <div className={'ndp-item' + (it.nao ? ' ndp-nao-contabil' : '')}>
-      {/* o total do CFOP no canto direito (Vitor, 14/10/2026), discreto desde 05/11/2026 */}
-      <div className="ndp-natureza ndp-natureza-row">
+      {/* duas linhas só (Vitor, 05/11/2026: "essa box tá com muito espaço desnecessário, reformula ela"): em cima o título e,
+          na mesma linha, o total discreto e o olhinho do Ver notas (as notas do CFOP numa janela, Vitor, 21/10/2026) */}
+      <div className="ndp-natureza ndp-natureza-row" style={{ alignItems: 'center', marginBottom: 6 }}>
         <span>{it.titulo}{it.semConta && <span className="ponto-vermelho" title="Falta a conta contábil: vincule uma conta ou marque Não vai para o Contábil" aria-label="Falta a conta contábil" />}</span>
-        {/* embaixo do total, o "Ver notas" (Vitor, 21/10/2026): abre as notas deste CFOP logo abaixo */}
-        <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 12 }}>
-          {/* o total discreto (Vitor, 05/11/2026: "deixa esse número mais minimalista, tá muito grande") */}
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 'none' }}>
           <span className="num" style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap' }} title="O total das notas deste CFOP">{it.total}</span>
-          <button type="button" className="btn" onClick={() => vm.verNotas(it.k)}>Ver notas</button>
+          <button type="button" className="icon-btn icon-btn-sm" title="Ver as notas deste CFOP" aria-label="Ver notas" onClick={() => vm.verNotas(it.k)}><Icone nome="olho" /></button>
         </span>
       </div>
       {/* a conta contábil (a que a conferência compara com o balancete) e, com as vendas separadas, o código do lançamento
           à vista e a prazo — cada um com o nome na frente, para não confundir um com o outro (Vitor, 13/10/2026) */}
-      <div style={LINHA}>
+      <div style={{ ...LINHA, marginTop: 0 }}>
         <span style={ROTULO}>Conta contábil</span>
       {/* ocupa o resto da linha: o campo de busca aberto cresce e a lista das contas cabe (Vitor, 14/10/2026: "Bugado",
           a lista abria da largura do campo, com o nome espremido e o Vincular cortado) */}
