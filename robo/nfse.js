@@ -243,6 +243,9 @@ function idDps(cLocEmi, cnpj, serie, numero) {
 function montarDps(config, pedido, numero, opcoes = {}) {
   const ambiente = opcoes.ambiente || ambienteDe(config, pedido);
   const provedor = opcoes.provedor || provedorDe(config, pedido);
+  // o leiaute novo (esquemas de 20/10/2026) só está na Produção Restrita; a produção nacional ainda recusa o finNFSe
+  // (05/11/2026, E1235 na nota 141 da RDS) e aceita o leiaute antigo, o mesmo das notas da E&L
+  const leiauteNovo = provedor === 'nacional' && ambiente === 'homologacao';
   const pr = config.prestador || {};
   const sv = config.servico || {};
   const t = pedido.tomador || {};
@@ -279,20 +282,31 @@ function montarDps(config, pedido, numero, opcoes = {}) {
   const serv = '<serv><locPrest>' + el('cLocPrestacao', digitos(sv.cLocPrestacao) || cLocEmi) + '</locPrest>' +
     '<cServ>' + el('cTribNac', String(sv.cTribNac)) +
     // no leiaute nacional de 20/10/2026 a descrição vai por último (cTribNac, cTribMun, cNBS, cIntContrib, xDescServ)
-    (provedor === 'nacional' ? '' : xDescServ) +
+    (leiauteNovo ? '' : xDescServ) +
     (digitos(sv.cNBS) ? el('cNBS', digitos(sv.cNBS)) : '') +
     (sv.cIntContrib != null && sv.cIntContrib !== '' ? el('cIntContrib', String(sv.cIntContrib)) : '') +
-    (provedor === 'nacional' ? xDescServ : '') + '</cServ>' +
+    (leiauteNovo ? xDescServ : '') + '</cServ>' +
     (infoCompl ? '<infoCompl>' + el('xInfComp', infoCompl) + '</infoCompl>' : '') +
     '</serv>';
 
   // valores: o ISS no município (alíquota se informada) e "não informar" o total aproximado de tributos (indTotTrib 0)
-  const temAliq = sv.pAliq != null && sv.pAliq !== '';
+  // no nacional, ME/EPP do Simples com o ISS pelo DAS (regApTribSN 1) e sem retenção (tpRetISSQN 1) NÃO informa a alíquota
+  // (05/11/2026, E0625 na nota 141 da RDS: "Não é permitido informar alíquota quando não há indicação de retenção do ISSQN...");
+  // a E&L aceitava os 3,74%
+  const semAliqNoNacional = provedor === 'nacional' && Number(pr.opSimpNac) === 3 && Number(pr.regApTribSN) === 1 &&
+    Number(sv.tpRetISSQN == null ? 1 : sv.tpRetISSQN) === 1;
+  const temAliq = sv.pAliq != null && sv.pAliq !== '' && !semAliqNoNacional;
+  // o total aproximado de tributos: na E&L "não informar" (indTotTrib 0); no nacional a ME/EPP não pode usar o indicador
+  // (05/11/2026, E0712) e informa o percentual do Simples (pTotTribSN) — o mesmo da observação da nota (IBPT, 16,42%)
+  const pTotSN = Number(String(sv.pTotTribSN != null && sv.pTotTribSN !== '' ? sv.pTotTribSN
+    : ((/(\d+(?:[.,]\d+)?)\s*%/.exec(infoCompl || INFO_COMPL_PADRAO) || [])[1] || '')).replace(',', '.'));
+  const totTrib = provedor === 'nacional' && Number(pr.opSimpNac) === 3 && pTotSN > 0 && pTotSN < 1000
+    ? el('pTotTribSN', pTotSN.toFixed(2)) : el('indTotTrib', 0);
   const valores = '<valores><vServPrest>' + el('vServ', dinheiro(s.valor)) + '</vServPrest>' +
     '<trib><tribMun>' + el('tribISSQN', Number(sv.tribISSQN == null ? 1 : sv.tribISSQN)) +
     el('tpRetISSQN', Number(sv.tpRetISSQN == null ? 1 : sv.tpRetISSQN)) +
     (temAliq ? el('pAliq', Number(sv.pAliq).toFixed(2)) : '') + '</tribMun>' +
-    '<totTrib>' + el('indTotTrib', 0) + '</totTrib></trib></valores>';
+    '<totTrib>' + totTrib + '</totTrib></trib></valores>';
 
   return '<?xml version="1.0" encoding="UTF-8"?>' +
     '<DPS xmlns="' + NS + '" versao="' + VERSAO + '"><infDPS Id="' + id + '">' +
@@ -304,7 +318,7 @@ function montarDps(config, pedido, numero, opcoes = {}) {
     el('dCompet', s.competencia) +
     el('tpEmit', 1) +
     // o leiaute da Sefin Nacional (esquemas de 20/10/2026, em nfse-xsd/nacional) pede a finalidade: 0 = NFS-e regular
-    (provedor === 'nacional' ? el('finNFSe', 0) : '') +
+    (leiauteNovo ? el('finNFSe', 0) : '') +
     el('cLocEmi', cLocEmi) +
     prest + toma + serv + valores +
     '</infDPS></DPS>';
@@ -636,8 +650,14 @@ function iniciarNfse(db, log, opcoes = {}) {
     if (!config) config = (await configRef.get()).data() || null;
     if (!segredo) segredo = (await segredoRef.get()).data() || null;
     const amb = (p0.dps && p0.dps.ambiente) || ambienteDe(config, p0);
-    // a nota que já tem número segue no emissor onde foi numerada (as antigas, sem provedor, são da E&L)
-    const prov = p0.dps && p0.dps.id ? (p0.dps.provedor || 'el') : provedorDe(config, p0);
+    // a nota que já tem número segue no emissor onde foi numerada (as antigas, sem provedor, são da E&L)... a não ser que o
+    // emissor de antes a tenha RECUSADO (todos os erros com código dele, nenhum do robô): aí ela nunca saiu e vai para o
+    // emissor atual com o mesmo número (05/11/2026: a E&L passou a responder "EL63 Usuário Bloqueado" depois da troca)
+    const provAtual = provedorDe(config, p0);
+    const provAntes = p0.dps && p0.dps.id ? (p0.dps.provedor || 'el') : provAtual;
+    // (o reenvio do nads apaga os erros; a marca dps.recusadaEm é do robô: o emissor respondeu com erros dele)
+    const recusadaAntes = !!(p0.dps && p0.dps.recusadaEm);
+    const prov = provAntes !== provAtual && recusadaAntes && !p0.chaveAcesso ? provAtual : provAntes;
 
     // antes de reservar número: certificado, configuração, token e o pedido
     const motivo = motivoDesligado(amb, prov);
@@ -651,6 +671,8 @@ function iniciarNfse(db, log, opcoes = {}) {
       const p = s.data() || {};
       if (!(p.status === 'pedida' || (retomar && p.status === 'enviando'))) return null;
       let dps = p.dps;
+      if (dps && dps.id && (dps.provedor || 'el') !== prov) dps = Object.assign({}, dps, { provedor: prov, idEl: null });
+      if (dps && dps.recusadaEm) { dps = Object.assign({}, dps); delete dps.recusadaEm; }
       if (!dps || !dps.id) {
         const c = (await tx.get(configRef)).data();
         const pr = problemasDaConfig(c, amb);
@@ -695,7 +717,7 @@ function iniciarNfse(db, log, opcoes = {}) {
     }
     const erros = errosDaResposta(r.json);
     if (erros.length) {
-      await falhar(ref, erros, { xmlDps: xml, enviadaEm: agora() });
+      await falhar(ref, erros, { xmlDps: xml, enviadaEm: agora(), 'dps.recusadaEm': agora() });
       log('NFS-e:', dps.id, 'recusada:', erros.map(e => e.codigo + ' ' + e.descricao).join(' | ').slice(0, 300));
       return;
     }
