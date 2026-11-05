@@ -1608,7 +1608,68 @@ function ficaNiPorDecisao(entrada, d) {
 }
 function decidir(entrada, ctx) {
   const d0 = decidir2(entrada, ctx);
-  return ficaNiPorDecisao(entrada, d0) || d0;
+  const d1 = ficaNiPorDecisao(entrada, d0) || d0;
+  let m = null;
+  try { m = pagamentoDoMovimento(entrada, ctx, d1); } catch (e) { m = null; }
+  return m || d1;
+}
+/**
+ * (Vitor, 05/11/2026) o que sobra do zip de MOVIMENTO do cliente ("MOVIMENTO_ZELO_OUTUBRO-2026…zip"): a nota/boleto/guia que não foi lida, o vale da Solides, a
+ * planilha do Aegro, o orçamento, o pedido e o contrato do fornecedor vão para CONTÁBIL\PAGAMENTOS DE FORNECEDORES\ANO\MÊS\<FORNECEDOR do nome do arquivo>, nome
+ * original. O cliente: o que a decisão já tinha, senão o nome do cliente no nome do zip (e a fazenda: CEDRO = 582); o mês: a data do começo do nome, senão o do
+ * nome do zip. Nunca o extrato, o banco divergente, a conta em dois clientes nem o que fica em NÃO IDENTIFICADOS por decisão (multa, parcelamento).
+ */
+/**
+ * O fornecedor pelo nome do arquivo do escritório ("FB GESTÃO NF70 FAST PT NZO R$11.000,00", "27º (36°) DAE LAVICA - 24549-2016", "SOLIDES (ALIM.418619) ZELO 9 FIOS"):
+ * as palavras do começo (sem a data, o "BOLETO" e o número da parcela) até a primeira que já não é do nome: um número, um parêntese, NF/REF/Nº, o mês,
+ * a fazenda/filial ou uma palavra do próprio cliente. No máximo 3 palavras; null se não sobra nome.
+ */
+function fornecedorDoNomeDoArquivo(n, c0) {
+  const doCli = new Set([c0.razao, c0.fantasia].concat(c0.outrosNomes || []).filter(Boolean).flatMap(x => norm(x).split(/[^A-Z0-9]+/).filter(w => w.length >= 3 && !/^(LTDA|EIRELI|COMERCIO|INDUSTRIA|SERVICOS|EMPREENDIMENTOS|FLORESTAIS|CONSULTORIA|INVESTIMENTOS|SUPERMERCADO|AGROINDUSTRIAS)$/.test(w))));
+  const s = String(n).replace(/^\d{1,2}-(\d{1,2}-)?20\d{2}\s+/, '').replace(/^(\d+\s*[º°O]?\s*(\(\s*\d+\s*[º°O]?\s*\)\s*)?[-\s]*)/, '').replace(/^(BOLETO|FATURA|GUIA|COMPROVANTE)\s+/, '').replace(/-(20\d{2})\b/g, ' ').replace(/\(/g, ' ( ');
+  const out = [];
+  for (const w0 of s.split(/\s+/)) {
+    const w = w0.replace(/[.,;:]+$/, '');
+    if (!w) continue;
+    if (!/[A-Z0-9(]/.test(w)) continue;
+    const marca = out.length === 0 && /[A-Z].*[A-Z].*[A-Z]/.test(w) && !/^(NF|CTE|REF|ITR|DAM)/.test(w);   // "A3MPX" é o nome; "NF4111" não
+    if ((/\d/.test(w) && !marca) || /[(]|^R\$|^N[º°O]$/.test(w) || doCli.has(w) || /^(NFS?-?E?|NFSE|CTE|CT-E|REF|PARC|BOLETO|FATURA|ORCAM|ORCAMENTO|PEDIDO|CONTRATO|FILIAL|MATRIZ|F|FZ|FAZ|FAZENDA|PG|PAGO|PT|PR|CS|JAN|FEV|MAR|ABR|MAI|JUN|JUL|AGO|SET|OUT|NOV|DEZ|JANEIRO|FEVEREIRO|MARCO|ABRIL|MAIO|JUNHO|JULHO|AGOSTO|SETEMBRO|OUTUBRO|NOVEMBRO|DEZEMBRO)$/.test(w) || /^(F|REF|NF)\./.test(w)) break;
+    out.push(w.replace(/\./g, ''));
+    if (out.length === 3) break;
+  }
+  const r = nomeSeguro(semAcento(out.join(' '))).toUpperCase();
+  return /[A-Z]{3}/.test(r) ? r : null;
+}
+const raizDoCliente = (cad, codigo) => { const doc = String((cad.porCod.get(codigo) || {}).doc || ''); return doc.length === 14 ? doc.slice(0, 8) : doc || ('#' + codigo); };
+const FAZENDA_DO_ESTABELECIMENTO = [{ nome: 'CEDRO', re: /\bCEDRO\b/, codigo: 582 }, { nome: 'LIBERDADE', re: /\bLIBERDADE\b/, codigo: 572 }];
+function pagamentoDoMovimento(entrada, ctx, d) {
+  if (!d || d.acao !== 'NAO_IDENTIFICADO' || d.ficaNi || d.contaAmbigua) return null;
+  const rel = entrada.rel || entrada.nome || '';
+  const partes = partesDoCaminho(rel).slice(0, -1);
+  if (!partes.some(p => /^MOVIMENTO[\s_-]/i.test(p))) return null;
+  const nome = String(entrada.nome || '');
+  if (!/\.(pdf|xlsx?|jpe?g|png)$/i.test(nome)) return null;
+  const n = norm(nome.replace(/\.[a-z0-9]+$/i, '')).replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+  if (/^(EXTRATO|MOVIMENTO BANCARIO|MOVIMENTO CONTABIL)/.test(n) || /^(EXTRATO|APLICACOES|MAQUININHAS|RECEBIMENTO DE CLIENTES)\b/.test(String(d.tipo || '')) || /^BANCO_/.test(d.motivo || '')) return null;
+  const cad = ctx.cadastro;
+  let cli = null, como = null;
+  const pz = clienteDoNomeDoConteiner(rel, cad);
+  if (pz && FAZENDA_DO_ESTABELECIMENTO.some(f => f.codigo === pz.codigo && f.re.test(n))) { cli = pz.codigo; como = pz.como; }
+  // o CNPJ que a regra achou pode ser o do emitente (a NF da NILMA 284 no zip da FAST): só vale se é da mesma raiz do cliente do nome do zip
+  else if (d.cliente != null && cad.porCod.has(+d.cliente) && d.motivo !== 'CLIENTE_AMBIGUO' && (!pz || raizDoCliente(cad, +d.cliente) === raizDoCliente(cad, pz.codigo))) { cli = +d.cliente; como = 'o cliente que a regra já tinha achado (' + d.motivo + ')'; }
+  else if (pz) { cli = pz.codigo; como = pz.como; }
+  if (cli == null) return null;
+  const dm = /^(\d{2})-(\d{2})-(20\d{2})\s/.exec(n);
+  const doZip = mesDoNomeDaPasta(rel);
+  const hoje = ctx.hoje || new Date();
+  let comp = dm && +dm[2] >= 1 && +dm[2] <= 12 ? { mes: +dm[2], ano: +dm[3] } : null;
+  if (comp && comp.ano * 12 + comp.mes > hoje.getFullYear() * 12 + hoje.getMonth() + 1) comp = null;
+  comp = comp || doZip;
+  if (!comp) return null;
+  const fornecedor = fornecedorDoNomeDoArquivo(n, cad.porCod.get(cli) || {});
+  if (!fornecedor) return null;
+  const ev = (d.evidencias || []).concat('zip de movimento do cliente: o que não foi lido/reconhecido (' + d.motivo + ') vai para os pagamentos do fornecedor pelo nome do arquivo; o cliente: ' + como + '; o mês: ' + (dm && comp !== doZip ? 'a data do nome' : 'o nome do zip') + ' (Vitor, 05/11/2026)');
+  return finalizar({ acao: 'ARQUIVAR', cliente: cli, comoCliente: 'pastaConferida', confianca: 0.88, tipo: 'FATURA FORNECEDOR', setor: 'CONTABIL', caminho: ['CONTÁBIL', 'PAGAMENTOS DE FORNECEDORES', String(comp.ano), dois(comp.mes), fornecedor], competencia: { mes: comp.mes, ano: comp.ano }, nomeOriginal: nome, nomeFinal: nome, evidencias: ev, ocr: entrada.ocr || null, fonte: 'zip de movimento (Vitor, 05/11/2026)' }, ctx);
 }
 function decidir2(entrada, ctx) {
   const d = decidir1(entrada, ctx);
@@ -3530,6 +3591,9 @@ function clienteDoNomeDoConteiner(rel, cad) {
   const matriz = cs.filter(c => String(c.doc || '').length === 14 && String(c.doc).slice(8, 12) === '0001');
   if (raizes.size !== 1 || matriz.length !== 1 || ![...raizes][0] || [...raizes][0].length !== 8) return null;
   const nomeArq = norm(partesDoCaminho(rel).slice(-1)[0] || '');
+  // (Vitor, 05/11/2026) a fazenda do nome diz o estabelecimento: CEDRO = 582 (a filial na Fazenda Baixa do Cedro), LIBERDADE = 572 (a matriz)
+  const faz = FAZENDA_DO_ESTABELECIMENTO.filter(f => f.re.test(nomeArq) && cs.some(c => c.codigo === f.codigo));
+  if (faz.length === 1) return { codigo: faz[0].codigo, como: 'o nome do cliente no nome da pasta de origem (' + porque.join(', ') + ') e a fazenda no nome do arquivo (' + faz[0].nome + ' = ' + faz[0].codigo + '; Vitor, 05/11/2026)' };
   if (/\bFILIAL\b|\bFAZ(ENDA)?\b|(^|[^A-Z])F\.\s?[A-Z]/.test(nomeArq)) return null;
   return { codigo: matriz[0].codigo, como: 'o nome do cliente no nome da pasta de origem (' + porque.join(', ') + '): da matriz ' + matriz[0].codigo + ' e das filiais ' + cs.filter(c => c !== matriz[0]).map(c => c.codigo).join(', ') + ', e o nome do arquivo não fala de filial nem de fazenda: a matriz' };
 }
@@ -4930,7 +4994,7 @@ function tipoDoDestino(destino) {
 }
 
 module.exports = {
-  LIMIAR, RAIZ_CLIENTES, ARVORE, REGRAS_PDF, BANCOS, ANUAIS, ofxCompetencia, anoDaEntrega, ANO_MINIMO, ANO_DAS_PASTAS, anoDaPasta, pastasDoAno, partesDoCaminho, comMotivoDoCodigo,
+  pagamentoDoMovimento, fornecedorDoNomeDoArquivo, LIMIAR, RAIZ_CLIENTES, ARVORE, REGRAS_PDF, BANCOS, ANUAIS, ofxCompetencia, anoDaEntrega, ANO_MINIMO, ANO_DAS_PASTAS, anoDaPasta, pastasDoAno, partesDoCaminho, comMotivoDoCodigo,
   ehLivroContabil, anoDoLivro, decidirSpedAnual, semAcento, norm, chaveNome, nomeNormalizado, nomeSeguro, so, dataBr, valorBr, competenciaSolta, competenciaDoNome, competenciaDaPasta, periodoEscrito,
   cnpjValido, cpfValido, documentosDoTexto, raizesDoTexto, mascarasDoTexto,
   regimeCanonico, montarCadastro, comAnosEMapa, clientesDoDoc, clienteDaPasta, grupoDaPasta, pagamentoDeFornecedor, clientesPeloNomeNoTexto,

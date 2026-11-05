@@ -1903,6 +1903,21 @@ igual('a agência e a conta no nome do arquivo ("Entradas_Saidas_ag3155cc990348_
   igual('44.4: "Rede 04.2025.pdf" (o relatório de vendas com o título mal lido pelo OCR): EXTRATOS\\2025\\04\\MAQUININHAS\\REDE', s44(d44('redeVendas04')).slice(0, 4), ['ARQUIVAR', 429, 'CONTÁBIL\\EXTRATOS\\2025\\04\\MAQUININHAS\\REDE', '04-2025.pdf']);
   igual('44.4: ... o "Relatório de recebimentos" que não é da Rede segue RECEBIMENTO DE CLIENTES', R.REGRAS_PDF.find(r => r.re.test(R.norm('RELATORIO DE RECEBIMENTOS\nSICOOB\nPERIODO 01/04/2025 A 30/04/2025'))).tipo, 'RECEBIMENTO DE CLIENTES');
 
+  // (Vitor, 05/11/2026) o fornecedor pelo nome do arquivo do zip de movimento
+  {
+    const f = (n, razao) => R.fornecedorDoNomeDoArquivo(R.norm(n), { razao });
+    igual('05/11a: CEMIG SET-2026 FZ B. VISTA', f('CEMIG SET-2026 FZ B. VISTA LAVICA R$491,67', 'LAVICA EMPREENDIMENTOS FLORESTAIS LTDA'), 'CEMIG');
+    igual('05/11b: parcela no começo', f('27º (36°) DAE LAVICA - 24549-2016 R$6.626,28', 'LAVICA EMPREENDIMENTOS FLORESTAIS LTDA'), 'DAE');
+    igual('05/11c: BOLETO no começo e NF colada', f('BOLETO POSTO TRANSANIMAIS NF28256 R$1.050,51', 'LAVICA EMPREENDIMENTOS FLORESTAIS LTDA'), 'POSTO TRANSANIMAIS');
+    igual('05/11d: o cliente no meio', f('FB GESTÃO NF70 FAST PT NZO R$11.000,00', 'FAST EMPREENDIMENTOS AERONAUTICO LTDA'), 'FB GESTAO');
+    igual('05/11e: a marca com número', f('A3MPX (KAPEFIO) ORÇAM.5213 R$122.703,70', 'BRAZILIAN COFFEE LTDA'), 'A3MPX');
+    igual('05/11f: REF.NF', f('DAM ISS REF.NF936 09-2026 R$1.135,00', 'BRAZILIAN COFFEE LTDA'), 'DAM ISS');
+    igual('05/11g: Nº', f('VALTRA CONSÓRCIO Nº1946 (COMPRATRATOR) R$2.208,98', 'BRAZILIAN COFFEE LTDA'), 'VALTRA CONSORCIO');
+    igual('05/11h: data e parêntese colado', f('16-10-2026 JOSÉ OLIVEIRA(JOMAC) F.CEDRO NF1290 R$148,68', 'FREEDOM AGRO LTDA'), 'JOSE OLIVEIRA');
+    igual('05/11i: mês-ano no começo', f('10-2026 AEGRO ZELO', 'ZELO AGROINDUSTRIAS LTDA'), 'AEGRO');
+    igual('05/11j: só número', f('NF4111 R$915,00', 'FREEDOM AGRO LTDA'), null);
+  }
+
   console.log((falhas ? falhas + ' FALHA(S) em ' : 'ok: ') + total + ' testes');
   process.exit(falhas ? 1 : 0);
 })().catch(e => { console.log('FALHOU com erro:', e.stack); process.exit(1); });
