@@ -3424,6 +3424,13 @@ function decidirFornecedor(pg, entrada, u, bruto, ctx, ev, porHash) {
   if (comp) ev.push('mês pela data no começo do nome');
   const pasta = anoDaPasta(rel) || competenciaDaPasta(rel);
   if (!comp && pasta && pasta.mes) { comp = { mes: pasta.mes, ano: pasta.ano }; ev.push('mês pela pasta de origem (' + mesAno(comp) + ')'); }
+  // (05/11/2026) no zip de movimento solto, o mês do nome do zip ("MOVIMENTO_BRAZILIAN_COFFEE_OUT-2026…zip", "…OUTUBRO-2026…"), o mesmo em todas as pastas que o trazem
+  if (!comp && c.semPasta) {
+    const MESES = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
+    const achados = new Set();
+    for (const p of partesDoCaminho(rel).slice(0, -1)) for (const m of norm(p).matchAll(/(?:^|[^A-Z])(JAN|FEV|MAR|ABR|MAI|JUN|JUL|AGO|SET|OUT|NOV|DEZ)[A-Z]*[\s_.\-\/]*(20\d{2})(?![0-9])/g)) achados.add(m[2] + '-' + (MESES.indexOf(m[1]) + 1));
+    if (achados.size === 1) { const [a, mm] = [...achados][0].split('-'); comp = { mes: +mm, ano: +a }; ev.push('mês pelo nome do zip/pasta de origem (' + mesAno(comp) + ')'); }
+  }
   if (!comp) { const v = dataBr(linhaApos(u, /VENCIMENTO/, 60)); if (v) { comp = { mes: +v.slice(3, 5), ano: +v.slice(6) }; ev.push('mês pelo vencimento no conteúdo (' + v + ')'); } }
   if (!comp) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5, evidencias: ev.concat('sem a data no começo do nome, o mês na pasta de origem ou o vencimento no conteúdo') });
   // o nome original fica (já traz a data, o fornecedor, a NF e o valor)
@@ -3467,6 +3474,18 @@ const PALAVRAS_DE_MOVIMENTO = new Set(['MOVIMENTO', 'MOVIMENTOS', 'PLANILHA', 'P
 function clienteDoNomeDoConteiner(rel, cad) {
   const partes = partesDoCaminho(rel).slice(0, -1);
   const achados = new Set(), porque = [];
+  // o nome de duas palavras seguidas ("BRAZILIAN COFFEE" no "MOVIMENTO_BRAZILIAN_COFFEE_OUT-2026…zip") vale antes da palavra solta ("BRAZILIAN" é de cinco empresas do grupo)
+  const duas = new Set(), porqueDuas = [];
+  for (const parte of partes) {
+    const ws = ' ' + norm(String(parte).replace(/\.(zip|rar|7z)$/i, '')).split(/[^A-Z0-9]+/).filter(Boolean).join(' ') + ' ';
+    for (const c of cad.porCod.values()) {
+      for (const n of [c.razao, c.fantasia].filter(Boolean)) {
+        const p2 = norm(n).split(/[^A-Z0-9]+/).filter(Boolean).slice(0, 2);
+        if (p2.length === 2 && !p2.some(w => PALAVRAS_DE_PASTA.has(w) || PALAVRAS_DE_MOVIMENTO.has(w) || /^(LTDA|ME|EPP|EIRELI|SA)$/.test(w)) && ws.includes(' ' + p2.join(' ') + ' ')) { duas.add(c.codigo); porqueDuas.push('"' + p2.join(' ') + '" em "' + parte + '"'); }
+      }
+    }
+  }
+  if (duas.size === 1) { const codigo = [...duas][0]; return { codigo, como: 'o nome do cliente ' + codigo + ' no nome da pasta de origem: ' + [...new Set(porqueDuas)].join(', ') }; }
   for (const parte of partes) {
     for (const w of norm(String(parte).replace(/\.(zip|rar|7z)$/i, '')).split(/[^A-Z0-9]+/)) {
       if (w.length < 2 || !/[A-Z]/.test(w) || PALAVRAS_DE_PASTA.has(w) || PALAVRAS_DE_MOVIMENTO.has(w)) continue;
