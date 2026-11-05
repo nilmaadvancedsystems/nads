@@ -1701,7 +1701,7 @@ function pagamentoDoMovimento(entrada, ctx, d) {
   const fornecedor = fornecedorDoNomeDoArquivo(n, cad.porCod.get(cli) || {});
   if (!fornecedor) return null;
   const ev = (d.evidencias || []).concat('zip de movimento do cliente: o que não foi lido/reconhecido (' + d.motivo + ') vai para os pagamentos do fornecedor pelo nome do arquivo; o cliente: ' + como + '; o mês: ' + (dm && comp !== doZip ? 'a data do nome' : 'o nome do zip') + ' (Vitor, 05/11/2026)');
-  return finalizar({ acao: 'ARQUIVAR', cliente: cli, comoCliente: 'pastaConferida', confianca: 0.88, tipo: 'FATURA FORNECEDOR', setor: 'CONTABIL', caminho: ['CONTÁBIL', 'PAGAMENTOS DE FORNECEDORES', String(comp.ano), dois(comp.mes), fornecedor], competencia: { mes: comp.mes, ano: comp.ano }, nomeOriginal: nome, nomeFinal: nome, evidencias: ev, ocr: entrada.ocr || null, fonte: 'zip de movimento (Vitor, 05/11/2026)' }, ctx);
+  return finalizar({ acao: 'ARQUIVAR', peloMovimento: true, cliente: cli, comoCliente: 'pastaConferida', confianca: 0.88, tipo: 'FATURA FORNECEDOR', setor: 'CONTABIL', caminho: ['CONTÁBIL', 'PAGAMENTOS DE FORNECEDORES', String(comp.ano), dois(comp.mes), fornecedor], competencia: { mes: comp.mes, ano: comp.ano }, nomeOriginal: nome, nomeFinal: nome, evidencias: ev, ocr: entrada.ocr || null, fonte: 'zip de movimento (Vitor, 05/11/2026)' }, ctx);
 }
 function decidir2(entrada, ctx) {
   const d = decidir1(entrada, ctx);
@@ -4974,7 +4974,8 @@ function finalizar(d, ctx) {
     // (Vitor, 29/10/2026) o documento constitutivo ou pessoal (contrato social, CNH/RG/CPF do sócio, cartão CNPJ) com OCR fraco, quando a pasta de origem dá o
     // cliente com certeza (o código e o nome conferem no cadastro: d.ocrFracoOk, posto pela migração): a leitura ruim do Tesseract não derruba o arquivo; o CNPJ de
     // outra empresa ou o nome de outro titular lido no texto continua vencendo a pasta (isso é decidido antes, e este caso nem chega aqui)
-    const teto = (d.ocr.confianca < 60 && !d.ocrFracoOk) || d.evidencias.some(e => /pelo nome do arquivo/.test(e)) ? 0.8 : OCR_TETO;
+    // (Vitor, 05/11/2026) o que sobra do zip de MOVIMENTO vai pelo nome do arquivo por decisão dele ("Sim, pelo nome"): o OCR não derruba (d.peloMovimento)
+    const teto = !d.peloMovimento && ((d.ocr.confianca < 60 && !d.ocrFracoOk) || d.evidencias.some(e => /pelo nome do arquivo/.test(e))) ? 0.8 : OCR_TETO;
     d.confianca = Math.min(d.confianca || 0, teto);
     d.evidencias.push('texto por OCR (Tesseract ' + d.ocr.confianca + '%): confiança limitada a ' + teto);
   }
