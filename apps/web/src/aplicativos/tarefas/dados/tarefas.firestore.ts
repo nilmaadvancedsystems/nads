@@ -54,6 +54,13 @@ export function bancoDaConferencia(): Firestore {
 
 interface Carga { chegou: boolean; execucoes: Map<string, t.Execucao> }
 
+const ehMapa = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
+
+/** O documento como a regra do banco pede: de quem é (da execução que está gravando) e etapas sempre um mapa. */
+function documentoValido(d: t.Execucao, de: t.Execucao, em: string) {
+  return { ...d, empresa: de.empresa, codigo: de.codigo ?? null, competencia: de.competencia, departamento: de.departamento, etapas: ehMapa(d.etapas) ? d.etapas : {}, atualizadoEm: em };
+}
+
 /** As esperas antes de tentar de novo uma leitura negada (ms). */
 const ESPERAS = [1000, 2000, 4000, 8000];
 
@@ -125,12 +132,25 @@ export function criarRepoTarefasFirestore(lista: readonly empresas.EmpresaDoEscr
     return { dados, campos };
   }
 
+  // o mesmo aviso, da mesma empresa, uma vez a cada 30 s (as gravações automáticas ao abrir repetiam a mesma falha)
+  const avisadoEm = new Map<string, number>();
+  const avisoUnico = (empresa: string, m: string) => {
+    const agora = Date.now();
+    if (agora - (avisadoEm.get(empresa) || 0) < 30000) return;
+    avisadoEm.set(empresa, agora);
+    avisar(m);
+  };
+
   function lote(ex: t.Execucao, ev: t.Evento, comEstado: boolean, antes?: t.Execucao) {
     const c = carregar(ex.competencia, ex.departamento);
     if (!c.chegou) return; // antes de a competência chegar do banco, nunca grava
     const id = t.idDaExecucao(ex.empresa, ex.competencia, ex.departamento);
     // o que vai para o banco: montado uma vez e regravado igual se for negado (um lote não se reenvia)
-    const escritas: ((b: ReturnType<typeof writeBatch>) => void)[] = [];
+    type Escrita = (b: ReturnType<typeof writeBatch>) => void;
+    let escritaDoEstado: Escrita | null = null;
+    // se o lote for negado: o documento inteiro, como fica depois da mudança (sem depender do que falta no banco)
+    let estadoInteiro: Escrita | null = null;
+    const ref = doc(db, COLECAO, id);
     if (comEstado) {
       const em = new Date().toISOString();
       const atual = c.execucoes.get(id);
@@ -138,32 +158,51 @@ export function criarRepoTarefasFirestore(lista: readonly empresas.EmpresaDoEscr
         // a execução já existe: só o que mudou desde a cópia de onde a mudança partiu, por cima da que está aqui
         const mudancas = t.diferencaDaExecucao(antes, ex);
         if (mudancas.length) {
-          c.execucoes.set(id, t.aplicarDiferenca(atual, mudancas)); // a tela já vê a mudança; o banco confirma pelo onSnapshot
+          const depois = t.aplicarDiferenca(atual, mudancas);
+          c.execucoes.set(id, depois); // a tela já vê a mudança; o banco confirma pelo onSnapshot
           mudou();
           const { dados, campos } = soOQueMudou(ex, mudancas, em);
-          escritas.push(b => b.set(doc(db, COLECAO, id), dados, { mergeFields: campos }));
+          // a regra do banco pede etapas (um mapa) no documento: se o do banco não tem, vai junto
+          if (!ehMapa(atual.etapas) && !campos.some(f => f.isEqual(new FieldPath('etapas')))) {
+            dados.etapas = ehMapa(depois.etapas) ? depois.etapas : {};
+            campos.push(new FieldPath('etapas'));
+          }
+          escritaDoEstado = b => b.set(ref, dados, { mergeFields: campos });
+          estadoInteiro = b => b.set(ref, documentoValido({ ...depois, ...dados, etapas: depois.etapas }, ex, em), { merge: true });
         }
       } else {
         // a primeira gravação do mês (ainda não existe no banco) ou quem não diz de onde partiu: o documento inteiro
         c.execucoes.set(id, ex); // a tela já vê a mudança; o banco confirma pelo onSnapshot
         mudou();
-        escritas.push(b => b.set(doc(db, COLECAO, id), { ...ex, atualizadoEm: em }));
+        escritaDoEstado = b => b.set(ref, documentoValido(ex, ex, em));
+        estadoInteiro = escritaDoEstado;
       }
     }
     const evento = doc(collection(db, COLECAO, id, 'eventos')); // o mesmo id em cada tentativa: o evento não duplica
-    escritas.push(b => b.set(evento, { ...ev, por: ev.por || '', etapa: ev.etapa || '' }));
-    // negada de vez em quando (Vitor, 05/11/2026): depois de o PC dormir, o token do login chega vencido. Renova o token
-    // e tenta de novo (1, 2, 4 e 8 s), como a leitura; só avisa se continuar negada
+    const escritaDoEvento: Escrita = b => b.set(evento, {
+      ...ev, tipo: String(ev.tipo || 'registro'), etapa: String(ev.etapa || ''), por: String(ev.por || ''), em: String(ev.em || new Date().toISOString()),
+    });
+    const negada = (err: Error) => /permission|insufficient|unauthenticated/i.test(err.message);
+    const commit = (escritas: Escrita[]) => { const b = writeBatch(db); for (const e of escritas) e(b); return b.commit(); };
+    const falhou = (err: Error) => avisoUnico(ex.empresa, 'Não deu para salvar a tarefa de "' + ex.empresa + '" na nuvem: ' + err.message);
+    // negada (Vitor, 05/11/2026, "de vez em quando" e depois sempre na mesma empresa):
+    // 1) o token do login vencido (o PC dormiu): renova e tenta de novo (1, 2, 4 e 8 s), como a leitura;
+    // 2) continuou negada: grava o estado sozinho, com o documento inteiro como fica (o que faltar no banco vai junto), e o
+    //    evento à parte — o evento é só o histórico: se ele falhar, a tarefa fica salva assim mesmo
     const gravar = (tentativa: number) => {
-      const b = writeBatch(db);
-      for (const e of escritas) e(b);
-      b.commit().catch(async (err: Error) => {
-        if (tentativa < ESPERAS.length && /permission|insufficient|unauthenticated/i.test(err.message)) {
+      commit([...(escritaDoEstado ? [escritaDoEstado] : []), escritaDoEvento]).catch(async (err: Error) => {
+        if (!negada(err)) { falhou(err); return; }
+        if (tentativa < ESPERAS.length) {
           await renovarLogin();
           setTimeout(() => gravar(tentativa + 1), ESPERAS[tentativa]);
           return;
         }
-        avisar('Não deu para salvar a tarefa de "' + ex.empresa + '" na nuvem: ' + err.message);
+        const [estado, hist] = await Promise.allSettled([estadoInteiro ? commit([estadoInteiro]) : Promise.resolve(), commit([escritaDoEvento])]);
+        if (hist.status === 'rejected') console.warn('Tarefas: o evento de "' + ex.empresa + '" não foi gravado', ev, hist.reason);
+        if (estado.status === 'rejected') {
+          console.warn('Tarefas: o estado de "' + ex.empresa + '" foi negado', id, ex, estado.reason);
+          falhou(estado.reason as Error);
+        }
       });
     };
     gravar(0);

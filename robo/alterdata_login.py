@@ -71,9 +71,35 @@ def eh_caixa(cls):
 cred = credencial()
 if not cred:
     fim(False, 'sem a credencial ' + ALVO + ' no Gerenciador de Credenciais desta sessão')
+
+
+def caixa_de_senha_pronta(h):
+    try:
+        return any(eh_caixa(win32gui.GetClassName(c)) and win32gui.GetWindowLong(c, win32con.GWL_STYLE) & ES_PASSWORD for c in filhos(h))
+    except Exception:
+        return False
+
+
+# 05/11/2026 (Vitor: "o robo demora muito para coloca a senha e confirmar quando abre o contabil"): logo depois de abrir o
+# Contábil, o robô não espera a checagem do minuto: fica olhando a cada meio segundo até a tela de login estar pronta
+if '--esperar' in sys.argv:
+    try:
+        limite_tela = time.time() + float(sys.argv[sys.argv.index('--esperar') + 1])
+    except Exception:
+        limite_tela = time.time() + 180
+    while time.time() < limite_tela:
+        h = tela_de_login()
+        if h and caixa_de_senha_pronta(h):
+            time.sleep(0.4)   # a tela acabou de desenhar os campos
+            break
+        if principal_visivel() and not h:
+            print('RESULTADO: ' + json.dumps({'ok': True, 'jaEntrou': True}), flush=True)
+            sys.exit(0)
+        time.sleep(0.5)
 login = tela_de_login()
 if not login:
-    fim(False, 'a tela de login do Contábil não está aberta')
+    print('RESULTADO: ' + json.dumps({'ok': False, 'semTela': True, 'erro': 'a tela de login do Contábil não apareceu'}, ensure_ascii=False), flush=True)
+    sys.exit(0)
 
 caixas = []
 for c in filhos(login):
@@ -128,12 +154,14 @@ def clicar(h):
 
 clicar(botoes[0])
 
-# entrou: a tela de login some e a principal aparece; uma mensagem (TMessageForm) no meio é o login recusado. Se em 8 s
-# a tela de login continua lá sem mensagem nenhuma, o clique não pegou: vai o Enter na caixa da senha (o Entrar é o padrão)
+# entrou: a tela de login some (o resto do Contábil carrega depois, a checagem do robô acompanha); uma mensagem
+# (TMessageForm) no meio é o login recusado. Se em 3 s a tela de login continua lá sem mensagem nenhuma, o clique não
+# pegou: vai o Enter na caixa da senha (o Entrar é o padrão)
 limite = time.time() + 90
-enter = time.time() + 8
+enter = time.time() + 3
+sumiu = 0
 while time.time() < limite:
-    time.sleep(1)
+    time.sleep(0.4)
     janelas = topo()
     if enter and time.time() > enter:
         enter = 0
@@ -148,6 +176,10 @@ while time.time() < limite:
         if ok:
             win32gui.PostMessage(ok, win32con.BM_CLICK, 0, 0)
         fim(False, 'o Contábil recusou o login: ' + (texto[:200] or 'mensagem sem texto'))
-    if principal_visivel() and not tela_de_login():
+    if tela_de_login():
+        sumiu = 0
+    elif not sumiu:
+        sumiu = time.time()
+    elif time.time() - sumiu > 1.5:   # sumiu e nenhuma mensagem de recusa em 1,5 s: entrou
         fim(True)
 fim(False, 'passou de 90 s depois de entrar e o Contábil não abriu')
