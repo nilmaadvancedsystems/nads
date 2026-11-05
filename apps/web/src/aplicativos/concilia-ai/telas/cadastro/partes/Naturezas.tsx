@@ -115,7 +115,8 @@ function Sugestao({ it, vm }: { it: ItemNatureza; vm: VM }) {
   const titulo = sug.tipo === 'conta' && sug.conta ? sug.conta.codigo + ' — ' + sug.conta.nome : sug.tipo === 'nao-contabil' ? 'Não vai para o Contábil' : 'Falta a conta: ' + sug.pede;
   return (
     // só a lâmpada (Vitor, 05/11/2026: "coloca só o ícone da lâmpada")
-    <MenuSuspenso rotulo="" icone="lampada" className="icon-btn" semSeta largura={380} dica="Sugestão: qual conta vai e por quê"
+    // flutuante: perto do fim da tela, abre para cima (Vitor, 05/11/2026: "não consigo scrollar e clicar" na última natureza)
+    <MenuSuspenso rotulo="" icone="lampada" className="icon-btn" semSeta flutuante largura={380} dica="Sugestão: qual conta vai e por quê"
       conteudo={fechar => (
         <div className="comp-varios">
           <p className="comp-varios-texto"><b>{titulo}</b></p>
