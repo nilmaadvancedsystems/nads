@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { conta, empresa, linha, nota, servico } from '../__legado__/fixtures';
 import { marcarNotaNaoContabil } from '../acoes';
-import { chaveNota } from './cfop';
-import { conferirConta, linhasForaDoContabil, podeNaoIrParaOContabil, ehLinhaIcms, naturezasDaConferencia, numerosDoHistorico, opcoesCfop, partesDoHistorico, linhasFaltando, semPendencias, soPendenciasQuePassam, totaisVerificacao, type LinhaRazao, type ResultadoVerificacao } from './verificarConta';
+import { chaveNaturezaNota, chaveNota } from './cfop';
+import { conferirConta, conferirSoAsNotas, linhasForaDoContabil, podeNaoIrParaOContabil, ehLinhaIcms, naturezasDaConferencia, numerosDoHistorico, opcoesCfop, partesDoHistorico, linhasFaltando, semPendencias, soPendenciasQuePassam, totaisVerificacao, type LinhaRazao, type ResultadoVerificacao } from './verificarConta';
 
 describe('numerosDoHistorico', () => {
   it('padrão fiscal: o número antes do CNPJ, ignorando o resto', () => {
@@ -261,5 +261,29 @@ describe('Operação incorreta (Vitor, 14/10/2026: serviço prestado na conta de
     const r = conferir([linha('100', 500), { txt: 'conf NF 777 - 99.888.777/0001-66 - FULANO DE TAL', data: '05/07/2026', valor: 12, sinal: 1, contra: '' }]);
     expect(r.operacaoIncorreta).toEqual([]);
     expect(r.aMais.length).toBe(1);
+  });
+});
+
+describe('só as notas: o simples faturamento da entrega futura e as contas de adiantamento', () => {
+  const nf = nota('6922', '194', 1000, '5890');
+  const k = chaveNaturezaNota(nf, 'Saída');
+  const e = empresa({ contas: [conta('21701', 'Adiantamento de Clientes', 0, 'Passivo', 'C')], saidas: [nf], naturezaConta: { [k]: ['21701'] } });
+  // a conta de adiantamento: a nota e os recebimentos, Pix e baixas, que são de outro assunto
+  const razao = [linha('5890', 1000), { ...linha('0', 300), txt: 'Recebimento de clientes CLIENTE Y' }, { ...linha('0', 120), txt: 'Pix - Recebido 05/07 CLIENTE Z' }];
+  it('a nota na conta: sem pendência, os outros lançamentos não são "a mais"', () => {
+    const r = conferirConta({ empresa: e, contas: [e.contas[0]], razaoPorConta: { 21701: razao }, cfopGrupo: k, servTipo: null });
+    expect(r.soNotas).toEqual({ encontradas: 1, total: 1, outros: 2 });
+    expect(r.aMais).toEqual([]);
+    expect(semPendencias(r)).toBe(true);
+  });
+  it('a nota fora da conta: falta (a pendência continua)', () => {
+    const r = conferirConta({ empresa: e, contas: [e.contas[0]], razaoPorConta: { 21701: razao.slice(1) }, cfopGrupo: k, servTipo: null });
+    expect(r.soNotas).toMatchObject({ encontradas: 0, total: 1 });
+    expect(r.faltando.map(n => n.numero)).toEqual(['5890']);
+  });
+  it('conferirSoAsNotas: o 5922/6922 ou a conta de adiantamento; os outros CFOPs e contas, não', () => {
+    expect(conferirSoAsNotas(['6922'], [{ nome: 'Clientes' }])).toBe(true);
+    expect(conferirSoAsNotas(['1102'], [{ nome: 'Adiantamentos a Fornecedores' }])).toBe(true);
+    expect(conferirSoAsNotas(['1102'], [{ nome: 'Compras de Mercadorias' }])).toBe(false);
   });
 });
