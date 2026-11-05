@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { alternarRetificada, desfazerReinf, EMPRESAS_REINF, estadosIniciaisReinf, resumoReinf, situacaoReinf, transmitirReinf } from './reinf';
+import { alternarRetificada, desfazerReinf, EMPRESAS_REINF, empresasDaReinf, estadosIniciaisReinf, resumoReinf, situacaoReinf, temReinfNoFiscal, transmitirReinf } from './reinf';
+import { EMPRESAS } from '../../empresas/lista';
 
 const agora = new Date('2026-10-05T12:00:00Z');
 
@@ -27,5 +28,24 @@ describe('REINF', () => {
   });
   it('o resumo da competência pelo estado do Notion', () => {
     expect(resumoReinf(estadosIniciaisReinf(), '2026-08')).toEqual({ transmitidas: 4, pendentes: 38, total: 42 });
+  });
+});
+
+describe('quem tem a REINF no Fiscal (05/11/2026: todas, menos as filiais)', () => {
+  it('Simples, Presumido, Real e isentas têm; MEI, pessoa física, domésticas e filiais não', () => {
+    expect(temReinfNoFiscal({ codigo: 10, nome: 'DORNAS HAVANA LTDA', regime: 'Simples' })).toBe(true);
+    expect(temReinfNoFiscal({ codigo: 66, nome: 'ADERLEI DOS SANTOS & CIA LTDA', regime: 'Presumido' })).toBe(true);
+    expect(temReinfNoFiscal({ codigo: 494, nome: 'CAIXA ESCOLAR JOVITA SECUNDINA REGO', regime: 'Isentas' })).toBe(true);
+    expect(temReinfNoFiscal({ codigo: 299, nome: 'TEOBALDO MENDES DE OLIVEIRA LTDA - FILIAL 02', regime: 'Simples' })).toBe(false);
+    expect(temReinfNoFiscal({ codigo: 449, nome: 'GRANMIX COMERCIO DE ALIMENTOS LTDA - MATRIZ', regime: 'Simples' })).toBe(true);
+    expect(temReinfNoFiscal({ codigo: 499, nome: 'FARLEN XAVIER SANTOS 36075344896', regime: 'MEI' })).toBe(false);
+    expect(temReinfNoFiscal({ codigo: 611, nome: 'FRANCIELLE SILVA SANTANA', regime: 'Domésticas' })).toBe(false);
+    expect(temReinfNoFiscal({ codigo: null, nome: 'SEM CODIGO LTDA', regime: 'Simples' })).toBe(false);
+  });
+  it('na lista do escritório: as matrizes da lista antiga continuam, as filiais saem', () => {
+    const codigos = new Set(empresasDaReinf(EMPRESAS).map(e => e.codigo));
+    expect(codigos.size).toBeGreaterThan(150);
+    for (const c of [10, 66, 86, 298, 544, 579, 593]) expect(codigos.has(c)).toBe(true);
+    for (const c of [299, 300, 301, 545, 564, 585, 599]) expect(codigos.has(c)).toBe(false);
   });
 });

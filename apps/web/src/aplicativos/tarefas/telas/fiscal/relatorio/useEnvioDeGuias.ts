@@ -97,6 +97,8 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
     return repo.arquivos(idAtual, lista => setArquivos({ lote: idAtual, lista }));
   }, [idAtual, repo]);
   const lista = arquivos && arquivos.lote === idAtual ? arquivos.lista : [];
+  // mais guias no mesmo lote (05/11/2026): só no lido, antes do disparo (depois, o robô pularia o cliente já enviado)
+  const podeAdicionar = !!atual && atual.status === 'lido';
   const [subindo, setSubindo] = useState<{ feitos: number; total: number } | null>(null);
   const [disparando, setDisparando] = useState(false);
 
@@ -238,19 +240,23 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
       try { await repo.definirVias(atual.id, { ...atual.vias, [String(codigo)]: via }); }
       catch (e) { toast('Não consegui gravar: ' + (e instanceof Error ? e.message : String(e))); }
     },
-    /** sobe as guias escolhidas e entrega o lote ao robô */
-    async subir(escolhidas: FileList | File[]) {
+    /** o lote aberto recebe mais guias: lido e ainda não disparado (05/11/2026) */
+    podeAdicionar,
+    /** sobe as guias escolhidas: no lote aberto (noLote) ou num lote novo; o robô lê */
+    async subir(escolhidas: FileList | File[], noLote = false) {
       const lista = Array.from(escolhidas);
       if (!lista.length || subindo) return;
-      if (lista.length > MAX_ARQUIVOS) { toast('No máximo ' + MAX_ARQUIVOS + ' guias por lote.'); return; }
+      const destino = noLote && podeAdicionar && atual ? atual : null;
+      const jaTem = destino ? lista.length + destino.total : lista.length;
+      if (jaTem > MAX_ARQUIVOS) { toast('No máximo ' + MAX_ARQUIVOS + ' guias por lote' + (destino ? ' (este já tem ' + destino.total + ')' : '') + '.'); return; }
       const grande = lista.find(f => f.size > MAX_BYTES);
       if (grande) { toast(grande.name + ' passa de 25 MB.'); return; }
       setSubindo({ feitos: 0, total: lista.length });
       try {
         const lidos = await Promise.all(lista.map(async f => ({ nome: f.name, bytes: new Uint8Array(await f.arrayBuffer()) })));
-        const id = await repo.subir(grupo, lidos, (feitos, total) => setSubindo({ feitos, total }));
-        setEscolhido(id);
-        toast(lista.length + (lista.length === 1 ? ' guia enviada' : ' guias enviadas') + ' ao robô para ler.');
+        if (destino) await repo.adicionar(destino.id, lidos, (feitos, total) => setSubindo({ feitos, total }));
+        else setEscolhido(await repo.subir(grupo, lidos, (feitos, total) => setSubindo({ feitos, total })));
+        toast(lista.length + (lista.length === 1 ? ' guia enviada' : ' guias enviadas') + ' ao robô para ler' + (destino ? ', no mesmo lote.' : '.'));
       } catch (e) { toast('Não consegui subir: ' + (e instanceof Error ? e.message : String(e))); } finally { setSubindo(null); }
     },
     /** a escolha da revisão: o que mudar (cliente, coluna ou competência) vale sobre o que o robô leu */

@@ -22,9 +22,9 @@ describe('rotina do DP (o Checklist Folha)', () => {
     const ex = (codigo: number) => execucaoNova('X', codigo, '2026-09', 'dp');
     expect(ROTINA_DP.etapas.filter(e => etapaNoMes(ex(folha.codigo), e.id))).toHaveLength(folha.reinfAutorizada ? 10 : 9);
     expect(ROTINA_DP.etapas.filter(e => etapaNoMes(ex(semMov.codigo), e.id)).map(e => e.id)).toEqual(['dp-s1299', 'dp-dctfweb', ...(semMov.reinfAutorizada ? ['dp-reinf'] : []), 'dp-envio']);
-    // sem nenhuma obrigação (Apenas REINF): nem o envio
-    const nada = CLIENTES_DO_DP.find(c => !c.obrigacoes.length && !c.reinfAutorizada)!;
-    expect(ROTINA_DP.etapas.filter(e => etapaNoMes(ex(nada.codigo), e.id))).toHaveLength(0);
+    // sem nenhuma obrigação (Apenas REINF): nem o envio; só a REINF, quando tem (05/11/2026: todas as do Fiscal têm)
+    const nada = CLIENTES_DO_DP.find(c => !c.obrigacoes.length)!;
+    expect(ROTINA_DP.etapas.filter(e => etapaNoMes(ex(nada.codigo), e.id)).map(e => e.id)).toEqual(nada.reinfAutorizada ? ['dp-reinf'] : []);
   });
   it('o DP trabalha os clientes da planilha; o Contábil e o Fiscal não veem os que só o DP tem', () => {
     expect(empresasDaRotina('dp', EMPRESAS_COM_DP)).toHaveLength(CLIENTES_DO_DP.length);

@@ -550,6 +550,7 @@ async function executar(opcoes) {
       catch (e) { itens.push(Object.assign(pai, { acao: 'NAO_IDENTIFICADO', motivo: /FERRAMENTA/.test(e.message) ? 'FERRAMENTA_EXTRACAO_AUSENTE' : 'ARQUIVO_COMPACTADO_CORROMPIDO', confianca: 0, evidencias: [e.message] })); continue; }
       const filhos = [];
       for (const m of lista) filhos.push(await decidirUm(path.basename(m.nome.replace(/\\/g, '/')), rel + '\\' + m.nome, m.buffer, ctx));
+      await clienteDosIrmaos(filhos, lista, ctx);
       itens.push(Object.assign(pai, { acao: 'CONTEINER', filhos, confianca: filhos.length ? Math.min(...filhos.map(f => f.confianca || 0)) : 0 }));
       continue;
     }
@@ -571,6 +572,34 @@ async function executar(opcoes) {
   return resultado;
 }
 
+/**
+ * O cliente dos irmãos do mesmo zip (Vitor, 05/11/2026: "quero que isso não aconteça de novo": o zip de movimento da FREEDOM, da COFFEE, da FAST…
+ * chega solto, os extratos acham o cliente pela conta e os comprovantes do mesmo zip ficavam sem cliente). Quando ao menos dois membros acharam o
+ * cliente por prova forte (a conta do cadastro, o CNPJ do documento, o hash, a pasta conferida) e todos esses dizem o MESMO cliente, o membro que
+ * ficou só sem o cliente (CLIENTE_NAO_LOCALIZADO) é decidido de novo como se estivesse na pasta desse cliente; vale só se agora ARQUIVA nele.
+ * O caminho do membro (rel) não muda.
+ */
+const PROVA_FORTE = new Set(['conta', 'doc', 'hash', 'pastaConferida']);
+async function clienteDosIrmaos(filhos, lista, ctx) {
+  const fortes = filhos.filter(f => f.acao === 'ARQUIVAR' && f.cliente != null && PROVA_FORTE.has(f.comoCliente));
+  const clientes = new Set(fortes.map(f => +f.cliente));
+  if (fortes.length < 2 || clientes.size !== 1) return;
+  const cod = [...clientes][0];
+  const cli = ctx.cadastro && ctx.cadastro.porCod && ctx.cadastro.porCod.get(cod);
+  if (!cli || !cli.razao) return;
+  const pasta = String(cod).padStart(4, '0') + ' - ' + cli.razao;
+  for (let i = 0; i < filhos.length; i++) {
+    const f = filhos[i], m = lista[i];
+    if (f.acao !== 'NAO_IDENTIFICADO' || f.motivo !== 'CLIENTE_NAO_LOCALIZADO' || f.cliente != null || !m || !m.buffer) continue;
+    let novo;
+    try { novo = await decidirUm(f.nome, pasta + '\\' + f.rel, m.buffer, ctx); } catch (e) { continue; }
+    if (novo.acao !== 'ARQUIVAR' || +novo.cliente !== cod) continue;
+    novo.rel = f.rel;
+    novo.comoCliente = 'irmaos';
+    novo.evidencias = (novo.evidencias || []).concat('o cliente ' + cod + ' pelos irmãos do zip: ' + fortes.length + ' arquivos do mesmo zip acharam o cliente ' + cod + ' por prova forte (' + [...new Set(fortes.map(x => x.comoCliente))].join(', ') + ') e nenhum achou outro (Vitor, 05/11/2026)');
+    filhos[i] = novo;
+  }
+}
 async function decidirUm(nome, rel, buffer, ctx, pronta) {
   const entrada = pronta || await montarEntrada(nome, rel, buffer);
   // o escaneado que o contínuo mandou para a fila do OCR: nada decidido agora (volta no lote do OCR)
@@ -584,7 +613,7 @@ async function decidirUm(nome, rel, buffer, ctx, pronta) {
   const item = { rel, nome, hash: entrada.hash, decididoPor: d.decididoPor || null, acao: d.acao, motivo: d.motivo || null, codigo: d.codigo || null, confianca: d.confianca, tipo: d.tipo || null, setor: d.setor || null,
     cliente: d.cliente || null, clienteNome: d.clienteNome || null, destinoRelativo: d.destinoRelativo || null, nomeFinal: d.nomeFinal || null, destinoSugerido: d.destinoSugerido || null,
     criarPastaCliente: !!d.criarPastaCliente, pastaCliente: d.pastaCliente || null, evidencias: d.evidencias || [], fonte: d.fonte || null, ocr: entrada.ocr || null, copias: [], chave: d.chave || null,
-    anoRaiz: d.anoRaiz || null, raiz: d.raiz || null, pelaMigracao: d.pelaMigracao || null };
+    anoRaiz: d.anoRaiz || null, raiz: d.raiz || null, pelaMigracao: d.pelaMigracao || null, comoCliente: d.comoCliente || null };
   if (d.acao === 'AGUARDANDO_ORIGINAL') item._buffer = buffer;   // para decidir de novo quando o original aparecer
   if (entrada.erroLeitura) item.evidencias.push('leitura do PDF: ' + entrada.erroLeitura);
   if (d.acao === 'ARQUIVAR') {

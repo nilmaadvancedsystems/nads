@@ -3,7 +3,7 @@
 // na tela nova"): o campo de valor, a conferência (a peça do catálogo) e a entrega. As Observações e a Retificação saíram
 // por enquanto (28/10/2026: "remove isso por enquanto, irei pensar melhor como podemos implementar").
 import { tarefas as t } from '@nads/core';
-import { Icone, LogoGmail, LogoWhatsApp, MenuSuspenso } from '@nads/ui';
+import { Icone, LogoEcontador, LogoGmail, LogoWhatsApp, MenuSuspenso } from '@nads/ui';
 
 /** O campo de valor da tabela: escreve à vontade e guarda ao sair (Enter também sai) */
 /** estreito: o campo ocupa a célula da tabela do relatório, sem caixa em volta (29/10/2026: a tabela cabe na tela) */
@@ -35,7 +35,7 @@ function SinalDaEntrega({ valor }: { valor: t.EntregaDoControle }) {
   if (valor === 'email') return <span className="ctrl-entrega-sinal"><LogoGmail /></span>;
   if (valor === 'impresso') return <span className="ctrl-entrega-sinal"><Icone nome="printer" width={16} height={16} /></span>;
   // o eContador do Alterdata: as guias postadas no portal do cliente
-  if (valor === 'econtador') return <span className="ctrl-entrega-sinal"><Icone nome="upload" width={16} height={16} /></span>;
+  if (valor === 'econtador') return <span className="ctrl-entrega-sinal"><LogoEcontador /></span>;
   return <span className="ctrl-entrega-texto">{valor === 'nao' ? '—' : 'Falta'}</span>;
 }
 

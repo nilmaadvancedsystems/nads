@@ -25,6 +25,12 @@ def passo(t):
     print('PASSO: ' + t, flush=True)
 
 
+def clique(t):
+    # o que o robô está fazendo agora, para a barra de andamento do nads (05/11/2026, Vitor: "quero que no nads tenha um
+    # feedback do que o robo ta fazendo, onde ele ta clicando")
+    print('CLIQUE: ' + t, flush=True)
+
+
 def fim(**r):
     print('RESULTADO: ' + json.dumps(r, ensure_ascii=False), flush=True)
     sys.exit(0 if r.get('ok') else 1)
@@ -80,21 +86,25 @@ def pagina(w):
 
 def limpar():
     """Fecha o que este roteiro abre (pergunta, visualização, o assistente do Razão), sem gerar nada."""
+    fechou = False   # só espera quando fechou alguma coisa
     for w in janelas('TMessageForm'):   # pergunta aberta: Não (ou Cancelar), nunca Sim
         for b in filhos(w):
             if sem_e(b.window_text()) in ('Não', 'Nao', 'Cancelar'):
                 b.click_input()
+                fechou = True
                 break
     for w in janelas('TAlterdataTppPrintPreview'):
         w.close()
-    time.sleep(.5)
+        fechou = True
+    if fechou:
+        time.sleep(.5)
     for w in janelas('TfrmRazaoDlg'):
         b = botao(w, 'Fechar') or botao(w, 'Cancelar')
         if b:
             b.click_input()
         else:
             w.close()
-    time.sleep(.5)
+        time.sleep(.5)
 
 
 def falhar(motivo):
@@ -110,13 +120,14 @@ def avancar(dlg, de):
     b = botao(dlg, 'Avançar >')
     if not b:
         falhar('não achei o Avançar na página ' + de)
+    clique('Avançar')
     b.click_input()
-    nova = esperar(lambda: (pagina(dlg) != de and pagina(dlg)) or (janelas('TMessageForm') and 'mensagem'), 15)
+    nova = esperar(lambda: (pagina(dlg) != de and pagina(dlg)) or (janelas('TMessageForm') and 'mensagem'), 15, .2)
     if nova == 'mensagem' or janelas('TMessageForm'):
         falhar('o Alterdata mostrou uma mensagem ao avançar da página ' + de)
     if not nova:
         falhar('o assistente do Razão não saiu da página ' + de)
-    time.sleep(.4)
+    time.sleep(.2)
     return nova
 
 
@@ -142,12 +153,15 @@ try:
 
     # ── Livros e Relatórios → Razão ▾ → Razão
     passo('abrindo Livros e Relatórios → Razão')
+    clique('menu Livros e Relatórios')
     mouse.click(coords=(ox + 288, oy + 47))
-    time.sleep(1.2)
+    time.sleep(.8)
+    clique('Razão ▾')
     mouse.click(coords=(ox + 143, oy + 125))
-    time.sleep(1.5)
+    time.sleep(1)
+    clique('Razão')
     mouse.click(coords=(ox + 168, oy + 148))
-    dlg = esperar(lambda: janelas('TfrmRazaoDlg'), 25)
+    dlg = esperar(lambda: janelas('TfrmRazaoDlg'), 25, .25)
     if not dlg:
         falhar('a janela do Razão não abriu')
     dlg = dlg[0]
@@ -162,8 +176,9 @@ try:
     if not edits:
         falhar('não achei o campo Código')
     cod = min(edits, key=lambda c: (c.rectangle().top, c.rectangle().left))
+    clique('campo Código: ' + str(int(CODIGO)))
     cod.click_input()
-    cod.type_keys(str(int(CODIGO)), pause=0.05)
+    cod.type_keys(str(int(CODIGO)), pause=0.02)
     cod.type_keys('{ENTER}', pause=0.05)
     def pergunta_das_filiais():
         r = []
@@ -182,8 +197,9 @@ try:
         nao = [b for b in filhos(conf[0]) if sem_e(b.window_text()) in ('Não', 'Nao')]
         if not nao:
             falhar('não achei o "Não" da pergunta das filiais')
+        clique('"Não" para as filiais')
         nao[0].click_input()
-        time.sleep(1)
+        time.sleep(.5)
     if janelas('TMessageForm'):
         falhar('o Alterdata mostrou uma mensagem ao escolher a empresa ' + CODIGO + ' (empresa inexistente?)')
     if not empresa_entrou():
@@ -206,10 +222,11 @@ try:
     if len(datas) < 2:
         falhar('não achei as datas do período (página ' + pg + ')')
     for campo, valor in zip(datas[:2], (INICIO, FIM)):
+        clique('data ' + valor)
         campo.click_input()
-        campo.type_keys('{HOME}', pause=0.05)
-        campo.type_keys(valor.replace('/', ''), pause=0.05)
-        time.sleep(.3)
+        campo.type_keys('{HOME}', pause=0.02)
+        campo.type_keys(valor.replace('/', ''), pause=0.02)
+        time.sleep(.2)
     lidas = [c.window_text() for c in campos_de_data()[:2]]
     if lidas != [INICIO, FIM]:
         falhar('o período não ficou certo na tela (' + ' a '.join(lidas) + ')')
@@ -221,8 +238,9 @@ try:
     geral = [c for c in filhos(dlg, 'TGroupButton') if sem_e(c.window_text()) == 'Geral']
     if not geral:
         falhar('não achei o tipo Geral')
+    clique('tipo Geral (todas as contas)')
     geral[0].click_input()
-    time.sleep(.3)
+    time.sleep(.2)
     if geral[0].get_check_state() != 1:
         falhar('não consegui marcar o tipo Geral')
     pg = avancar(dlg, pg)
@@ -233,8 +251,9 @@ try:
     ordem = filhos(dlg, 'TRadioButton', 'Nome + Código')
     if not ordem:
         falhar('não achei a ordem Nome + Código')
+    clique('ordem Nome + Código')
     ordem[0].click_input()
-    time.sleep(.3)
+    time.sleep(.2)
     if ordem[0].get_check_state() != 1:
         falhar('não consegui marcar Nome + Código')
     pg = avancar(dlg, pg)
@@ -259,14 +278,17 @@ try:
     interno = interno[0]
     # o "Gerar o relatório em arquivo CSV" abre desmarcado (o assistente não guarda a escolha): um clique marca. O campo da
     # pasta fica ligado com ou sem a marca, então não serve de prova (04/11/2026: o primeiro teste encheu a pasta sem marcar)
+    clique('"Gerar o relatório em arquivo CSV"')
     caixa[0].click_input()
-    time.sleep(.8)
+    time.sleep(.5)
+    clique('pasta do pedido no "Local para geração"')
     interno.set_edit_text(PASTA)
-    time.sleep(.3)
+    time.sleep(.2)
     sem_limite = [c for c in filhos(dlg, 'TGroupButton') if sem_e(c.window_text()) == 'Sem Limite']
     if sem_limite and sem_limite[0].get_check_state() != 1:
+        clique('Sem Limite')
         sem_limite[0].click_input()
-        time.sleep(.3)
+        time.sleep(.2)
     if interno.window_text() != PASTA:
         falhar('a pasta do CSV não ficou certa (' + interno.window_text() + ')')
     pg = avancar(dlg, pg)
@@ -275,13 +297,15 @@ try:
     vis = [c for c in filhos(dlg, 'TGroupButton') if sem_e(c.window_text()) == 'Visualizar']
     if not vis:
         falhar('não achei a operação Visualizar (página ' + pg + ')')
+    clique('Visualizar')
     vis[0].click_input()
-    time.sleep(.3)
+    time.sleep(.2)
     if vis[0].get_check_state() != 1:
         falhar('não consegui marcar Visualizar (não vou mandar para a impressora)')
     concluir = botao(dlg, 'Concluir')
     if not concluir:
         falhar('não achei o Concluir')
+    clique('Concluir (o Alterdata monta o razão)')
     concluir.click_input()
 
     # ── o resultado e o CSV pronto (o tamanho parou de mudar)
@@ -290,7 +314,7 @@ try:
             return None
         m = filhos(dlg, 'TMemo')
         return m[0].window_text() if m else None
-    texto = esperar(resultado, 8 * 60 - 60, 2)
+    texto = esperar(resultado, 8 * 60 - 60, .5)
     if not texto:
         falhar('o Razão não terminou em 7 min')
     if 'conclu' not in texto.lower():
@@ -298,7 +322,7 @@ try:
     def csv_pronto():
         achados = glob.glob(os.path.join(PASTA, '*.csv'))
         return achados if len(achados) == 1 else None
-    achado = esperar(csv_pronto, 60, 1)
+    achado = esperar(csv_pronto, 60, .3)
     if not achado:
         falhar('o CSV não apareceu na pasta do pedido (' + str(len(glob.glob(os.path.join(PASTA, '*.csv')))) + ' arquivos)')
     tamanhos = []
@@ -307,7 +331,7 @@ try:
         tamanhos.append(t)
         if tamanhos[-3:] == [t, t, t]:
             break
-        time.sleep(1)
+        time.sleep(.4)
     limpar()
     if os.path.abspath(achado[0]) != os.path.abspath(DESTINO):
         if os.path.exists(DESTINO):
