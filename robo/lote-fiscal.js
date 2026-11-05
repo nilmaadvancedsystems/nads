@@ -89,7 +89,7 @@ function camposDaGuiaFiscal(tipo, u) {
   if (!GUIAS.includes(tipo)) return null;
   const regra = R.REGRAS_PDF.find(r => r.tipo === tipo);
   const c = (regra && regra.campos(u)) || {};
-  return { tributo: tipo === 'DAS' ? '' : String(c.tributo || ''), valor: c.valor || '', vencimento: c.vencimento || '', competencia: c.competencia || null, parcelamento: !!c.parcelamento, receita: String(c.receita || '') };
+  return { tributo: tipo === 'DAS' ? '' : String(c.tributo || ''), valor: c.valor || '', vencimento: c.vencimento || '', competencia: c.competencia || null, parcelamento: !!c.parcelamento, receita: String(c.receita || ''), partes: Array.isArray(c.partes) ? c.partes : null };
 }
 
 /**
@@ -101,7 +101,10 @@ function leituraDaGuia(d, guia, entrada, grupo) {
   const l = L.leituraDe(d, guia, entrada);
   if (!guia) return Object.assign(l, { tributo: '', coluna: '', competencia: d.tipo === 'DAM' ? '' : l.competencia });
   const competencia = L.competenciaIso(guia.competencia) || (d.tipo === 'DAM' ? '' : L.competenciaIso(d.competencia));
-  return Object.assign(l, { tributo: guia.tributo, valor: guia.valor, vencimento: guia.vencimento, competencia, receita: guia.receita || '', coluna: colunaDaGuia(grupo, d.tipo, guia.tributo, guia.parcelamento, guia.receita) });
+  // o DARF com mais de um tributo (05/11/2026): cada parte na coluna dela; sem coluna para alguma, vale o total numa coluna só
+  const partes = (guia.partes || []).map(p => ({ tributo: p.tributo, valor: p.valor, coluna: colunaDaGuia(grupo, d.tipo, p.tributo, guia.parcelamento, '') }));
+  const divide = partes.length > 1 && partes.every(p => p.coluna);
+  return Object.assign(l, { tributo: guia.tributo, valor: guia.valor, vencimento: guia.vencimento, competencia, receita: guia.receita || '', coluna: colunaDaGuia(grupo, d.tipo, guia.tributo, guia.parcelamento, guia.receita), partes: divide ? partes : [] });
 }
 
 /**
@@ -130,7 +133,10 @@ function doGuia(a, grupo, destinoManual) {
     destino = m ? m.destino : [];
     nome = (m && m.nome) || a.nome;
   }
-  return { codigo, competencia, tipo, tributo: mudou ? '' : l.tributo || '', coluna, nome, destino, valor: L.valorNumero(l.valor) };
+  // as partes do DARF de mais de um tributo, quando a pessoa não escolheu uma coluna só
+  const partes = !(e && typeof e.coluna === 'string') && Array.isArray(l.partes) && l.partes.length > 1
+    ? l.partes.filter(p => (COLUNAS[grupo] || []).includes(p.coluna)).map(p => ({ coluna: p.coluna, valor: L.valorNumero(p.valor) })) : [];
+  return { codigo, competencia, tipo, tributo: mudou ? '' : l.tributo || '', coluna, nome, destino, valor: L.valorNumero(l.valor), partes };
 }
 
 /** As guias do lote por cliente e competência ('58_2026-09' -> [arquivo + vai]), e as que ficam de fora. */
@@ -152,8 +158,11 @@ function valoresPorColuna(itens) {
   const v = {};
   for (const i of itens) {
     const x = i.vai;
-    if (!x.coluna || x.valor == null) continue;
-    v[x.coluna] = Math.round(((v[x.coluna] || 0) + x.valor) * 100) / 100;
+    const lista = x.partes && x.partes.length ? x.partes : [{ coluna: x.coluna, valor: x.valor }];
+    for (const p of lista) {
+      if (!p.coluna || p.valor == null) continue;
+      v[p.coluna] = Math.round(((v[p.coluna] || 0) + p.valor) * 100) / 100;
+    }
   }
   return v;
 }
@@ -181,7 +190,9 @@ function linhaDepoisDoEnvio(atual, o) {
   const valores = Object.assign({}, antes.valores);
   const preenchidos = [];
   for (const [coluna, n] of Object.entries(o.valores || {})) {
-    if (typeof n !== 'number' || !Number.isFinite(n) || String(valores[coluna] || '').trim()) continue;
+    // o "0" (sem imposto) não segura: se veio guia, vale o valor dela (05/11/2026); o resto que já tem valor fica
+    const tinha = String(valores[coluna] || '').trim();
+    if (typeof n !== 'number' || !Number.isFinite(n) || (tinha && !/^0(,00)?$/.test(tinha))) continue;
     valores[coluna] = textoDoValor(n);
     preenchidos.push(coluna);
   }

@@ -11,7 +11,7 @@ import { formatos, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useState } from 'react';
 import { useControleTributos, useDriveDoEntregas, useGmailDoEntregas, useLoteFiscal, useRepo, useTodosOsCadastros } from '../../../dados/repo';
-import { colunaQueVale, MODELO_PADRAO_DAS_GUIAS, valorDaGuia, type EscolhaDaGuia, type GuiaDoLote, type ViaDaGuia } from '../../../dados/loteFiscal';
+import { colunaQueVale, MODELO_PADRAO_DAS_GUIAS, valorDaGuia, valoresDaGuia, type EscolhaDaGuia, type GuiaDoLote, type ViaDaGuia } from '../../../dados/loteFiscal';
 import { CURTO, type RegimeDoRelatorio } from './useRelatorioGeral';
 
 const MAX_ARQUIVOS = 150;
@@ -183,10 +183,14 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
     colunas: [...doGrupo.colunas.map(c => ({ valor: c.id, rotulo: c.rotulo })), { valor: '', rotulo: 'Sem coluna (só vai no e-mail)' }],
     rotuloDaColuna,
     /** o que a guia leva ao Relatório: 'DAS · 1.234,56', ou por que não leva */
-    noRelatorio(a: GuiaDoLote): { coluna: string; valor: string } {
+    noRelatorio(a: GuiaDoLote): { coluna: string; valor: string; dividida: boolean } {
+      const partes = valoresDaGuia(a, grupo);
+      const texto = (v: number) => t.valorDoControle(v.toFixed(2).replace('.', ','));
+      // o DARF de PIS e COFINS juntos (05/11/2026): 'PIS + COFINS' e '19,50 + 90,00'
+      if (partes.length > 1) return { coluna: partes.map(p => rotuloDaColuna(p.coluna)).join(' + '), valor: partes.map(p => texto(p.valor)).join(' + '), dividida: true };
       const c = colunaQueVale(a, grupo);
       const v = valorDaGuia(a.leitura?.valor);
-      return { coluna: c ? rotuloDaColuna(c) : '', valor: v != null ? t.valorDoControle(v.toFixed(2).replace('.', ',')) : '' };
+      return { coluna: c ? rotuloDaColuna(c) : '', valor: v != null ? texto(v) : '', dividida: false };
     },
     /** "Para enviar": a guia pelos pedaços do lote, montada aqui (nada novo é gravado) */
     abrirDoLote(a: GuiaDoLote) {

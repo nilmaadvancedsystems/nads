@@ -1058,6 +1058,33 @@ igual('sem nome no assunto: não decide pelo nome', r.desempatarPorNome(fitos, '
     const g = F.camposDaGuiaFiscal('DAE', u);
     igual('fiscal: a receita do DAE do SIARE', [g.receita, g.tributo, F.colunaDaGuia('sn', 'DAE', g.tributo, g.parcelamento, g.receita)], ['0327-7 ICMS REC.ANTECIPADO-INDUSTRIA', 'ICMS', 'icms-ant']);
   }
+  {
+    // 05/11/2026 (o lote da 356 e da 444): o DAE do ICMS normal sem o "Doc. Origem" no Histórico, como o arquivador lê o PDF
+    const u = 'DOCUMENTO DE ARRECADACAO ESTADUAL - DAE\nNOME\nTOTAL\nA7 COMERCIO DE VEICULOS LTDA\n905,21\n905,21\nMG\n10/2026\n09/11/2026\nHISTORICO\nORGAO: SECRET EST FAZENDA-DAE ON LINE\nRECEITA: 0104-0 ICMS VEICULOS AUTOMOTORES\nPERIODO REF. DOC. ORIGEM VENCIMENTO VALOR MULTA JUROS TOTAL\n01 A 31/10/2026 09/11/2026 905.21 0.00 0.00 905.21\nMOD.06.01.88\nPAGUE COM PIX\n09/11/2026\n10/2026\nMES ANO DE REFERENCIA\n';
+    const g = F.camposDaGuiaFiscal('DAE', u);
+    igual('fiscal: o DAE do SIARE sem o Doc. Origem (valor e vencimento)', [g.valor, g.vencimento, g.competencia, F.colunaDaGuia('lp', 'DAE', g.tributo, g.parcelamento, g.receita)], ['R$905,21', '09-11-2026', { mes: 10, ano: 2026 }, 'icms']);
+    // com o Doc. Origem continua lendo
+    const comDoc = F.camposDaGuiaFiscal('DAE', u.replace('01 A 31/10/2026 09/11/2026 905.21', '01 A 31/10/2026 105706 09/11/2026 905.21'));
+    igual('fiscal: o DAE do SIARE com o Doc. Origem', [comDoc.valor, comDoc.vencimento], ['R$905,21', '09-11-2026']);
+    // o DAM de Taiobeiras: o mês em "Mês/Ano" e o vencimento longe do rótulo
+    const dam = 'PREFEITURA MUNICIPAL DE TAIOBEIRAS\nDOCUMENTO DE\nARRECADACAO\nMUNICIPAL\nDAM\nCODIGO FEBRABAN:EXERCICIO:CONTROLE PARCELA:PARCELA:\nPROCESSO:DATA EMISSAO:VENCIMENTO ORIGINAL:DATA VENCIMENTO:\nA7 COMERCIO DE VEICULOS LTDA\nCPF / CNPJ : 13.728.235/0001-46\nRUA RUA CAICARA, 001000 - CENTRO TAIOBEIRAS - MG CEP.: 39550000\nINSCRICAO: 170114/5713\n03/11/26 09:5320/11/2026\nUNICA\n20/11/2026\n - LANCAMENTO: MES/ANO: 10/2026 | PARC.: 1 DECLARACAO Nº: 10 | OBS.:\nVALOR TOTAL:\nR$ 110,02\nISSQN MENSAL\n';
+    const d = F.camposDaGuiaFiscal('DAM', dam);
+    igual('fiscal: o DAM de Taiobeiras (mês, vencimento e valor)', [d.tributo, d.valor, d.vencimento, d.competencia], ['ISS', 'R$110,02', '20-11-2026', { mes: 10, ano: 2026 }]);
+    // o DARF de PIS e COFINS juntos: cada um na coluna dele
+    const darf = 'DOCUMENTO DE ARRECADACAO\nDE RECEITAS FEDERAIS\n42.469.613/0001-12\nGALPAO VEICULOS E LOCADORA LTDA\nPERIODO DE APURACAODATA DE VENCIMENTONUMERO DO DOCUMENTO\n07.16.26309.2719227-7\nPAGAR ESTE DOCUMENTO ATE\n25/11/2026\nVALOR TOTAL DO DOCUMENTO\n109,50\nOUTUBRO/202625/11/2026\nCODIGOPRINCIPALDENOMINACAOTOTALMULTAJUROS\nCOMPOSICAO DO DOCUMENTO DE ARRECADACAO\n2172COFINS - CONTRIB P/ FIN. SEG. SOCIAL\n90,0090,00\n01 COFINS - FATURAMENTO/PJ EM GERAL\nPA:10/2026 VENCIMENTO:25/11/2026\n8109PIS - FATURAMENTO\n19,5019,50\n02 PIS - FATURAMENTO - PJ EM GERAL\nPA:10/2026 VENCIMENTO:25/11/2026\nTOTAIS\n109,50109,50\n';
+    const p = F.camposDaGuiaFiscal('DARF', darf);
+    igual('fiscal: o DARF de PIS e COFINS juntos (as partes)', [p.valor, p.partes], ['R$109,50', [{ tributo: 'COFINS', valor: 'R$90,00' }, { tributo: 'PIS', valor: 'R$19,50' }]]);
+    const lido = F.leituraDaGuia({ acao: 'ARQUIVAR', cliente: 444, clienteNome: 'GALPAO', tipo: 'DARF', competencia: { mes: 10, ano: 2026 }, nomeFinal: 'x.pdf', anoRaiz: 2026, pastaCliente: '444 - GALPAO', caminho: ['FISCAL', 'LUCRO PRESUMIDO', '05. DARF'] }, p, { texto: [] }, 'lp');
+    const g2 = F.gruposFiscais([{ id: '0', nome: 'DARF.pdf', status: 'lido', leitura: lido }], 'lp', () => null);
+    igual('fiscal: o DARF de PIS e COFINS vai dividido no Relatório', F.valoresPorColuna(g2.porChave.get('444_2026-10')), { cofins: 90, pis: 19.5 });
+    // escolheu uma coluna só na revisão: vale o total nela
+    const g3 = F.gruposFiscais([{ id: '0', nome: 'DARF.pdf', status: 'lido', leitura: lido, escolha: { cliente: 444, tipo: 'DARF', competencia: '2026-10', coluna: 'pis' } }], 'lp', () => null);
+    igual('fiscal: o DARF de PIS e COFINS com uma coluna escolhida', F.valoresPorColuna(g3.porChave.get('444_2026-10')), { pis: 109.5 });
+    // um DARF de um tributo só não tem partes
+    igual('fiscal: o DARF de um tributo só', F.camposDaGuiaFiscal('DARF', darf.replace(/8109PIS - FATURAMENTO\n19,5019,50\n/, '')).partes, null);
+    // o "0" do Relatório não segura a guia
+    igual('fiscal: o 0 do Relatório recebe o valor da guia', F.linhaDepoisDoEnvio({ grupo: 'lp', valores: { cofins: '0', pis: '19,50' }, data: '', marcas: {}, entregue: '' }, { competencia: '2026-10', codigo: 444, grupo: 'lp', valores: { cofins: 90, pis: 20 }, dia: '2026-11-05', agora: 'x', quem: 'robô' }).preenchidos, ['cofins']);
+  }
   igual('fiscal: a coluna pelo grupo', [F.colunaDaGuia('sn', 'DAS', ''), F.colunaDaGuia('lp', 'DAS', ''), F.colunaDaGuia('lp', 'DARF', 'COFINS'), F.colunaDaGuia('lp', 'DARF', 'IRRF'), F.colunaDaGuia('lp', 'DAE', 'ICMS'), F.colunaDaGuia('sn', 'DAE', 'ICMS'), F.colunaDaGuia('lp', 'DAM', 'ISS'), F.colunaDaGuia('sn', 'DAS', '', true)], ['das', '', 'cofins', '', 'icms', '', 'iss', '']);
   const decisao = { acao: 'ARQUIVAR', cliente: 58, clienteNome: 'ACME', tipo: 'DARF', competencia: { mes: 10, ano: 2026 }, nomeFinal: '09-2026 - DARF PIS - VALOR R$1234,56 - VENCIMENTO 24-10-2026.pdf', anoRaiz: 2026, pastaCliente: '58 - ACME', caminho: ['FISCAL', 'LUCRO PRESUMIDO', '05. DARF'] };
   const lg = F.leituraDaGuia(decisao, g, { texto: ['DARF'] }, 'lp');
