@@ -85,8 +85,9 @@ function Natureza({ it, vm }: { it: ItemNatureza; vm: VM }) {
           <CampoVincular soIcone falta={it.semConta} v={it.vinculo} rotulo="Vincular conta" titulo="Vincular a conta contábil desta natureza (a que a conferência compara com o balancete)"
             extra={escondido => it.podeNaoContabil
               ? <>
-                <button type="button" className="btn ndp-nao-btn" hidden={escondido} onClick={() => vm.naoContabil(it.k, true)}>Não vai para o Contábil</button>
+                {/* numa linha só: o +, a lâmpada e o Não vai (Vitor, 05/11/2026: "deixa isso mais alinhado") */}
                 {it.sugestao && !escondido && <Sugestao it={it} vm={vm} />}
+                <button type="button" className="btn ndp-nao-btn" hidden={escondido} onClick={() => vm.naoContabil(it.k, true)}>Não vai para o Contábil</button>
               </>
               : null} />
         )}
