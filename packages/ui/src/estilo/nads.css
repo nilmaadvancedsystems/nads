@@ -3183,7 +3183,7 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 .dp-grupo td{background:var(--hover-bg);font-weight:600;font-size:var(--fs-12);}
 .dp-marca{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;font-size:var(--fs-11);font-weight:700;}
 .dp-marca.nao-tem{color:var(--ink-faint);}
-.dp-marca.feita{background:var(--success-soft);color:var(--success-ink);}
+.dp-marca.feita{background:var(--success);color:var(--on-accent);}
 .dp-marca.parada{background:var(--warn-soft);color:var(--warn);}
 /* Fiscal › a checklist disfarçada (06/10/2026), com as peças do catálogo: o cartão (card, card-head), as faixas que abrem
    (imp-faixa), a caixinha da etapa (subnav-caixa), a barra (tarefas-barra), Stat, rank, tabela, Alerta, gh-blank. Aqui, só o
@@ -3220,7 +3220,7 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 /* DP › tabelão (06/10/2026: tudo roda na tabela): a bolinha é o botão que marca a obrigação */
 button.dp-marca{padding:0;background:transparent;cursor:pointer;color:inherit;font:inherit;font-size:var(--fs-11);font-weight:700;}
 button.dp-marca.a-fazer:hover{border-color:var(--success);background:var(--success-soft);}
-button.dp-marca.feita{background:var(--success-soft);color:var(--success-ink);border:0;}
+button.dp-marca.feita{background:var(--success);color:var(--on-accent);border:0;}
 button.dp-marca.feita:hover{background:var(--success);color:var(--on-accent);}
 button.dp-marca:disabled{cursor:default;opacity:.6;}
 .dp-linha{cursor:default;}
