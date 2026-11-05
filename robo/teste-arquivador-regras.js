@@ -1909,6 +1909,20 @@ igual('a agência e a conta no nome do arquivo ("Entradas_Saidas_ag3155cc990348_
   igual('44.4: "Rede 04.2025.pdf" (o relatório de vendas com o título mal lido pelo OCR): EXTRATOS\\2025\\04\\MAQUININHAS\\REDE', s44(d44('redeVendas04')).slice(0, 4), ['ARQUIVAR', 429, 'CONTÁBIL\\EXTRATOS\\2025\\04\\MAQUININHAS\\REDE', '04-2025.pdf']);
   igual('44.4: ... o "Relatório de recebimentos" que não é da Rede segue RECEBIMENTO DE CLIENTES', R.REGRAS_PDF.find(r => r.re.test(R.norm('RELATORIO DE RECEBIMENTOS\nSICOOB\nPERIODO 01/04/2025 A 30/04/2025'))).tipo, 'RECEBIMENTO DE CLIENTES');
 
+  // (Vitor, 05/11/2026: "juntar pela pasta existente") a pasta do fornecedor que já existe no mês
+  {
+    const raiz = fs.mkdtempSync(path.join(os.tmpdir(), 'teste-forn-'));
+    const mes = path.join(raiz, '506 - FAST', 'CONTÁBIL', 'PAGAMENTOS DE FORNECEDORES', '2026', '10');
+    for (const p of ['FOX BRAVO ABASTECIMENTO', 'FOX BRAVO INTERNET', 'AEROMOC', 'NILMA CONTADORA', 'LEADER TECH']) fs.mkdirSync(path.join(mes, p), { recursive: true });
+    const pasta = f => { const d = { raiz, destinoRelativo: ['506 - FAST', 'CONTÁBIL', 'PAGAMENTOS DE FORNECEDORES', '2026', '10', f].join('\\'), evidencias: [] }; A.pastaDoFornecedorQueJaExiste(d, { clientes: raiz }); return d.destinoRelativo.split('\\').pop(); };
+    igual('05/11k: a que começa igual (duas palavras)', pasta('LEADER TECH NF'), 'LEADER TECH');
+    igual('05/11l: uma palavra', pasta('NILMA'), 'NILMA CONTADORA');
+    igual('05/11m: o nome igual fica', pasta('AEROMOC'), 'AEROMOC');
+    igual('05/11n: duas candidatas: pasta nova', pasta('FOX BRAVO RELATORIO'), 'FOX BRAVO RELATORIO');
+    igual('05/11o: nenhuma: pasta nova', pasta('MCOURA'), 'MCOURA');
+    igual('05/11p: outro fornecedor com a 1ª palavra igual não junta', pasta('NILMA CONTADOR'), 'NILMA CONTADOR');
+    fs.rmSync(raiz, { recursive: true, force: true });
+  }
   // (Vitor, 05/11/2026) o fornecedor pelo nome do arquivo do zip de movimento
   {
     const f = (n, razao) => R.fornecedorDoNomeDoArquivo(R.norm(n), { razao });

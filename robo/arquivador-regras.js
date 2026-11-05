@@ -3632,7 +3632,8 @@ function clienteDoNomeDoConteiner(rel, cad) {
   // (Vitor, 05/11/2026) a fazenda do nome diz o estabelecimento: CEDRO = 582 (a filial na Fazenda Baixa do Cedro), LIBERDADE = 572 (a matriz)
   const faz = FAZENDA_DO_ESTABELECIMENTO.filter(f => f.re.test(nomeArq) && cs.some(c => c.codigo === f.codigo));
   if (faz.length === 1) return { codigo: faz[0].codigo, como: 'o nome do cliente no nome da pasta de origem (' + porque.join(', ') + ') e a fazenda no nome do arquivo (' + faz[0].nome + ' = ' + faz[0].codigo + '; Vitor, 05/11/2026)' };
-  if (/\bFILIAL\b|\bFAZ(ENDA)?\b|(^|[^A-Z])F\.\s?[A-Z]/.test(nomeArq)) return null;
+  // (Vitor, 05/11/2026) "FILIAL" sem dizer qual (o boleto "NILMA CONT.LAVICA FILIAL"): a matriz; uma fazenda que não está no mapa continua para uma pessoa
+  if (/\bFAZ(ENDA)?\b|(^|[^A-Z])F\.\s?[A-Z]/.test(nomeArq)) return null;
   return { codigo: matriz[0].codigo, como: 'o nome do cliente no nome da pasta de origem (' + porque.join(', ') + '): da matriz ' + matriz[0].codigo + ' e das filiais ' + cs.filter(c => c !== matriz[0]).map(c => c.codigo).join(', ') + ', e o nome do arquivo não fala de filial nem de fazenda: a matriz' };
 }
 /** O cliente pagador de um comprovante: o CNPJ/CPF cujo rótulo mais próximo antes dele é Pagador/Sacado/Correntista (um cliente só). */
