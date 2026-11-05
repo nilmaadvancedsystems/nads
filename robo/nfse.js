@@ -22,6 +22,13 @@
 // com o percentual do IBPT, tribMun com pAliq e totTrib com indTotTrib 0. Sem PIS/COFINS/retenções e sem IBSCBS por enquanto.
 // O portal usa a série 70000 (numeração própria); a API usa config/nfse.serie (padrão '1') para não colidir.
 //
+// O EMISSOR NACIONAL (05/11/2026, Vitor: "agora as notas têm que ser emitidas sem passar pela prefeitura"): config/nfse.provedor
+// escolhe para onde vai a DPS — 'el' (a E&L da prefeitura, com o token; o padrão de antes) ou 'nacional' (a Sefin Nacional da
+// NFS-e, sem prefeitura e sem token: o próprio certificado do escritório identifica a conexão, TLS mútuo). A DPS, a assinatura,
+// o gzip+base64 e os nomes dos campos são os mesmos (a E&L copiou a API nacional). 'homologacao' no nacional é a Produção
+// Restrita (notas sem valor). O provedor fica gravado na dps da nota: reenvio, consulta e cancelamento vão para o mesmo lugar.
+// Na nacional a resposta do envio já traz a nota (síncrono); a consulta pelo Id da DPS devolve a chave e a nota vem de /nfse/{chave}.
+//
 // Só roda na máquina do Google (é onde está o certificado do escritório). Um pedido por vez.
 const fs = require('fs');
 const path = require('path');
@@ -43,6 +50,25 @@ const ENDERECOS = {
   nota: (amb, chave) => URLS[amb] + '/nfse/' + encodeURIComponent(chave),
   eventos: (amb, chave) => URLS[amb] + '/nfse/' + encodeURIComponent(chave) + '/eventos',
 };
+
+// A Sefin Nacional (gov.br/nfse › Documentação técnica › APIs). Produção Restrita = testes, sem valor fiscal.
+const URLS_NACIONAL = {
+  homologacao: 'https://sefin.producaorestrita.nfse.gov.br/API/SefinNacional',
+  producao: 'https://sefin.nfse.gov.br/SefinNacional',
+};
+const ENDERECOS_NACIONAL = {
+  envio: amb => URLS_NACIONAL[amb] + '/nfse',
+  consultaDps: (amb, idDps) => URLS_NACIONAL[amb] + '/dps/' + encodeURIComponent(idDps),
+  nota: (amb, chave) => URLS_NACIONAL[amb] + '/nfse/' + encodeURIComponent(chave),
+  eventos: (amb, chave) => URLS_NACIONAL[amb] + '/nfse/' + encodeURIComponent(chave) + '/eventos',
+};
+const PROVEDORES = ['el', 'nacional'];
+/** Para onde vai a DPS: o do pedido (só o teste manda), senão o da configuração; o padrão é a E&L. */
+const provedorDe = (config, pedido) => {
+  const p = (pedido && pedido.provedor) || (config && config.provedor);
+  return PROVEDORES.includes(p) ? p : 'el';
+};
+const nomeDoProvedor = prov => (prov === 'nacional' ? 'a Sefin Nacional' : 'a prefeitura');
 
 const CERTIFICADO = path.join(__dirname, 'fgts_certificado.pfx');
 const SENHA = path.join(__dirname, 'fgts_certificado.senha');
@@ -155,7 +181,10 @@ function problemasDaConfig(config, ambiente) {
   if (![0, 1, 2, 3, 4, 5, 6, 9].includes(Number(pr.regEspTrib)) || pr.regEspTrib === '' || pr.regEspTrib == null) p.push('o regime especial de tributação (regEspTrib) precisa ser 0 a 6 ou 9');
   const sv = config.servico || {};
   if (!/^\d{6}$/.test(String(sv.cTribNac || ''))) p.push('o código de tributação nacional (cTribNac) precisa ter 6 dígitos');
-  if (!/^[a-zA-Z0-9]{1,20}$/.test(String(sv.cIntContrib || ''))) p.push('falta o código de serviço municipal (cIntContrib), obrigatório na E&L (só letras e números, até 20)');
+  if (config.provedor != null && !PROVEDORES.includes(config.provedor)) p.push('o emissor (provedor) precisa ser "el" (prefeitura) ou "nacional"');
+  if (provedorDe(config) === 'nacional') {
+    if (sv.cIntContrib != null && sv.cIntContrib !== '' && !/^[a-zA-Z0-9]{1,20}$/.test(String(sv.cIntContrib))) p.push('o código de serviço municipal (cIntContrib) só aceita letras e números, até 20');
+  } else if (!/^[a-zA-Z0-9]{1,20}$/.test(String(sv.cIntContrib || ''))) p.push('falta o código de serviço municipal (cIntContrib), obrigatório na E&L (só letras e números, até 20)');
   if (sv.cNBS != null && sv.cNBS !== '' && !/^\d{9}$/.test(digitos(sv.cNBS))) p.push('o código NBS (cNBS) precisa ter 9 dígitos');
   if (sv.pAliq != null && sv.pAliq !== '' && !(Number(sv.pAliq) > 0 && Number(sv.pAliq) < 10)) p.push('a alíquota do ISS (pAliq) precisa estar entre 0 e 9,99');
   if (![1, 2, 3, 4].includes(Number(sv.tribISSQN == null ? 1 : sv.tribISSQN))) p.push('a tributação do ISS (tribISSQN) precisa ser 1 a 4');
@@ -213,6 +242,7 @@ function idDps(cLocEmi, cnpj, serie, numero) {
  */
 function montarDps(config, pedido, numero, opcoes = {}) {
   const ambiente = opcoes.ambiente || ambienteDe(config, pedido);
+  const provedor = opcoes.provedor || provedorDe(config, pedido);
   const pr = config.prestador || {};
   const sv = config.servico || {};
   const t = pedido.tomador || {};
@@ -244,12 +274,15 @@ function montarDps(config, pedido, numero, opcoes = {}) {
   toma += '</toma>';
 
   // serviço
+  const xDescServ = el('xDescServ', textoLimpo(s.descricao, { quebras: true, max: 2000 }));
   const infoCompl = sv.infoCompl === undefined || sv.infoCompl === null ? INFO_COMPL_PADRAO : textoLimpo(sv.infoCompl, { max: 2000 });
   const serv = '<serv><locPrest>' + el('cLocPrestacao', digitos(sv.cLocPrestacao) || cLocEmi) + '</locPrest>' +
     '<cServ>' + el('cTribNac', String(sv.cTribNac)) +
-    el('xDescServ', textoLimpo(s.descricao, { quebras: true, max: 2000 })) +
+    // no leiaute nacional de 20/10/2026 a descrição vai por último (cTribNac, cTribMun, cNBS, cIntContrib, xDescServ)
+    (provedor === 'nacional' ? '' : xDescServ) +
     (digitos(sv.cNBS) ? el('cNBS', digitos(sv.cNBS)) : '') +
-    el('cIntContrib', String(sv.cIntContrib)) + '</cServ>' +
+    (sv.cIntContrib != null && sv.cIntContrib !== '' ? el('cIntContrib', String(sv.cIntContrib)) : '') +
+    (provedor === 'nacional' ? xDescServ : '') + '</cServ>' +
     (infoCompl ? '<infoCompl>' + el('xInfComp', infoCompl) + '</infoCompl>' : '') +
     '</serv>';
 
@@ -270,6 +303,8 @@ function montarDps(config, pedido, numero, opcoes = {}) {
     el('nDPS', String(Number(numero))) +
     el('dCompet', s.competencia) +
     el('tpEmit', 1) +
+    // o leiaute da Sefin Nacional (esquemas de 20/10/2026, em nfse-xsd/nacional) pede a finalidade: 0 = NFS-e regular
+    (provedor === 'nacional' ? el('finNFSe', 0) : '') +
     el('cLocEmi', cLocEmi) +
     prest + toma + serv + valores +
     '</infDPS></DPS>';
@@ -358,7 +393,9 @@ function desgzipB64(b64) {
 /** A lista de erros da resposta, em { codigo, descricao } (a E&L manda Codigo/Descricao; aceita outras grafias). */
 function errosDaResposta(corpo) {
   if (!corpo || typeof corpo !== 'object') return [];
-  const lista = corpo.erros || corpo.Erros || corpo.errors;
+  // a Sefin Nacional pode mandar um erro só (erro: { codigo, descricao }) em vez da lista
+  const um = corpo.erro || corpo.Erro;
+  const lista = corpo.erros || corpo.Erros || corpo.errors || (um && typeof um === 'object' && !Array.isArray(um) ? [um] : um);
   const saida = [];
   if (Array.isArray(lista)) {
     for (const e of lista) {
@@ -406,7 +443,50 @@ async function chamar(metodo, url, token, corpo) {
   return { status: resp.status, json, texto: semToken(texto).slice(0, 500) };
 }
 
-function mensagemHttp(r) {
+/**
+ * Chama a Sefin Nacional com TLS mútuo: o certificado do escritório (cert = lerCertificadoComChave) é a credencial; não há
+ * token. Devolve o mesmo { status, json, texto } de chamar().
+ */
+function chamarComCertificado(metodo, url, cert, corpo, extra) {
+  if (!cert || cert.erro || !cert.chavePem) return Promise.reject(new ErroHttp(0, null, (cert && cert.erro) || 'falta o certificado do escritório na máquina do robô'));
+  const https = require('https');
+  const dados = corpo ? Buffer.from(JSON.stringify(corpo), 'utf8') : null;
+  return new Promise((resolve, reject) => {
+    const req = https.request(url, {
+      method: metodo,
+      key: cert.chavePem,
+      cert: cert.certPem,
+      headers: Object.assign({ Accept: 'application/json' }, dados ? { 'Content-Type': 'application/json', 'Content-Length': dados.length } : {}),
+      timeout: TEMPO_HTTP_MS,
+      // só o teste passa a autoridade do servidor de mentira
+      ca: extra && extra.ca,
+    }, res => {
+      const partes = [];
+      res.on('data', c => partes.push(c));
+      res.on('end', () => {
+        const texto = Buffer.concat(partes).toString('utf8');
+        let json = null;
+        try { json = texto ? JSON.parse(texto) : null; } catch (e) { json = null; }
+        resolve({ status: res.statusCode, json, texto: texto.slice(0, 500) });
+      });
+      res.on('error', err => reject(new ErroHttp(0, null, 'a resposta da Sefin Nacional se perdeu (' + (err.code || err.message) + ')')));
+    });
+    req.on('timeout', () => req.destroy(Object.assign(new Error('tempo'), { code: 'TEMPO' })));
+    req.on('error', err => reject(new ErroHttp(0, null, err.code === 'TEMPO'
+      ? 'a Sefin Nacional não respondeu em ' + TEMPO_HTTP_MS / 1000 + ' s'
+      : 'não consegui falar com a Sefin Nacional (' + (err.code || err.message) + ')')));
+    if (dados) req.write(dados);
+    req.end();
+  });
+}
+
+function mensagemHttp(r, provedor) {
+  if (provedor === 'nacional') {
+    if (r.status === 401 || r.status === 403) return 'a Sefin Nacional recusou o certificado do escritório (HTTP ' + r.status + '): confira se o certificado é o e-CNPJ da Nilma e se está na validade';
+    if (r.status === 404) return 'a Sefin Nacional não achou o endereço ou o documento (HTTP 404)';
+    if (r.status >= 500) return 'a Sefin Nacional deu erro (HTTP ' + r.status + '); tente de novo mais tarde';
+    return 'a Sefin Nacional respondeu HTTP ' + r.status + (r.texto ? ': ' + r.texto.slice(0, 200) : '');
+  }
   if (r.status === 401 || r.status === 403) return 'a prefeitura recusou o token (vencido, inativo ou de outro contribuinte). Gere um token novo no portal da prefeitura (Configurações > Integração) e grave no nads';
   if (r.status === 404) return 'a prefeitura não achou o endereço ou o documento (HTTP 404)';
   if (r.status >= 500) return 'o servidor da prefeitura deu erro (HTTP ' + r.status + '); tente de novo mais tarde';
@@ -445,14 +525,30 @@ function iniciarNfse(db, log, opcoes = {}) {
     return typeof t === 'string' && t.trim() ? t.trim() : '';
   };
 
+  /** Chama o emissor do provedor (a E&L com o token ou a Sefin Nacional com o certificado) no endereço `tipo`. */
+  function chamarEmissor(prov, metodo, tipo, amb, arg, corpo) {
+    if (prov === 'nacional') return chamarComCertificado(metodo, ENDERECOS_NACIONAL[tipo](amb, arg), certificado(), corpo);
+    return chamar(metodo, ENDERECOS[tipo](amb, arg), tokenPara(amb), corpo);
+  }
+  /** A nota pelo Id da DPS. Na E&L a nota vem direto; na nacional /dps/{id} devolve a chave e a nota vem de /nfse/{chave}. */
+  async function consultarPorDps(prov, amb, id) {
+    const r = await chamarEmissor(prov, 'GET', 'consultaDps', amb, id);
+    if (prov !== 'nacional' || r.status !== 200 || !r.json || desgzipB64(r.json.nfseXmlGZipB64)) return r;
+    const chave = String(r.json.chaveAcesso || r.json.ChaveAcesso || '');
+    if (!/^\d{50}$/.test(chave)) return r;
+    const r2 = await chamarEmissor(prov, 'GET', 'nota', amb, chave);
+    return r2.status === 200 && r2.json ? Object.assign({}, r2, { json: Object.assign({ chaveAcesso: chave }, r2.json) }) : r2;
+  }
+
   /** Por que não dá para emitir no ambiente (texto vazio = pode). */
-  function motivoDesligado(amb) {
+  function motivoDesligado(amb, prov) {
     const c = certificado();
     if (c.erro) return c.erro;
     const probl = problemasDaConfig(config, amb);
     if (probl.length) return probl.join('; ');
     const cnpj = digitos(config.prestador.cnpj);
     if (c.documento && c.documento.slice(0, 8) !== cnpj.slice(0, 8)) return 'o certificado do robô é do CNPJ ' + c.documento + ', mas o prestador em config/nfse é ' + cnpj;
+    if ((prov || provedorDe(config)) === 'nacional') return '';
     if (!tokenPara(amb || config.ambiente)) return 'falta o token da prefeitura (' + ((amb || config.ambiente) === 'homologacao' ? 'homologação' : 'produção') + ') — grave no nads';
     return '';
   }
@@ -463,7 +559,7 @@ function iniciarNfse(db, log, opcoes = {}) {
     const dados = { ligado: !motivo, motivo, certificado: c.erro ? null : { titular: c.titular, validade: c.validade } };
     const chave = JSON.stringify(dados);
     if (!forcar && chave === ultimoEstado) return;
-    if (chave !== ultimoEstado) log('NFS-e:', motivo ? 'desligado (' + motivo + ')' : 'ligado (certificado de ' + c.titular + ', até ' + c.validade + ', ' + config.ambiente + ')');
+    if (chave !== ultimoEstado) log('NFS-e:', motivo ? 'desligado (' + motivo + ')' : 'ligado (certificado de ' + c.titular + ', até ' + c.validade + ', ' + config.ambiente + ', ' + (provedorDe(config) === 'nacional' ? 'Sefin Nacional' : 'E&L') + ')');
     ultimoEstado = chave;
     estadoRef.set(Object.assign(dados, { atualizadoEm: agora() })).catch(err => log('NFS-e: não gravei o estado:', err.message));
   }
@@ -540,9 +636,11 @@ function iniciarNfse(db, log, opcoes = {}) {
     if (!config) config = (await configRef.get()).data() || null;
     if (!segredo) segredo = (await segredoRef.get()).data() || null;
     const amb = (p0.dps && p0.dps.ambiente) || ambienteDe(config, p0);
+    // a nota que já tem número segue no emissor onde foi numerada (as antigas, sem provedor, são da E&L)
+    const prov = p0.dps && p0.dps.id ? (p0.dps.provedor || 'el') : provedorDe(config, p0);
 
     // antes de reservar número: certificado, configuração, token e o pedido
-    const motivo = motivoDesligado(amb);
+    const motivo = motivoDesligado(amb, prov);
     if (motivo) { await falhar(ref, erroRobo('Não emiti: ' + motivo + '.')); log('NFS-e: pedido', id, 'não enviado:', motivo); return; }
     const probl = problemasDoPedido(p0);
     if (probl.length) { await falhar(ref, probl.map(d => ({ codigo: 'PEDIDO', descricao: d }))); return; }
@@ -558,7 +656,7 @@ function iniciarNfse(db, log, opcoes = {}) {
         const pr = problemasDaConfig(c, amb);
         if (pr.length) throw new Error(pr.join('; '));
         const numero = Number(c.proximoNumero[amb]);
-        dps = { serie: serieDe(c), numero, id: idDps(c.prestador.cLocEmi, c.prestador.cnpj, serieDe(c), numero), ambiente: amb };
+        dps = { serie: serieDe(c), numero, id: idDps(c.prestador.cLocEmi, c.prestador.cnpj, serieDe(c), numero), ambiente: amb, provedor: prov };
         tx.update(configRef, { ['proximoNumero.' + amb]: numero + 1 });
       }
       tx.update(ref, { status: 'enviando', dps, erros: [], consultas: 0, atualizadoEm: agora() });
@@ -566,11 +664,10 @@ function iniciarNfse(db, log, opcoes = {}) {
     });
     if (!reservado) return;
     const { dps, reenvio } = reservado;
-    const token = tokenPara(dps.ambiente);
 
     // reenvio: confere antes se a nota já saiu (a resposta do envio anterior pode ter se perdido)
     if (reenvio) {
-      const r = await chamar('GET', ENDERECOS.consultaDps(dps.ambiente, dps.idEl || dps.id), token).catch(() => null);
+      const r = await consultarPorDps(prov, dps.ambiente, dps.idEl || dps.id).catch(() => null);
       if (r && r.status === 200 && r.json && desgzipB64(r.json.nfseXmlGZipB64)) {
         await autorizar(ref, r.json, dps);
         return;
@@ -578,16 +675,16 @@ function iniciarNfse(db, log, opcoes = {}) {
     }
 
     const pedido = (await ref.get()).data();
-    const xml = assinar(montarDps(config, pedido, dps.numero, { ambiente: dps.ambiente }), 'infDPS', cert);
-    log('NFS-e: enviando', dps.id, '(' + dps.ambiente + (reenvio ? ', reenvio' : '') + ') para', textoLimpo(pedido.tomador.nome).slice(0, 40));
+    const xml = assinar(montarDps(config, pedido, dps.numero, { ambiente: dps.ambiente, provedor: prov }), 'infDPS', cert);
+    log('NFS-e: enviando', dps.id, '(' + (prov === 'nacional' ? 'Sefin Nacional' : 'E&L') + ', ' + dps.ambiente + (reenvio ? ', reenvio' : '') + ') para', textoLimpo(pedido.tomador.nome).slice(0, 40));
 
     let r = null;
     let falha = null;
     for (let tentativa = 1; tentativa <= 3; tentativa++) {
       try {
-        r = await chamar('POST', ENDERECOS.envio(dps.ambiente), token, { dpsXmlGZipB64: gzipB64(xml) });
+        r = await chamarEmissor(prov, 'POST', 'envio', dps.ambiente, null, { dpsXmlGZipB64: gzipB64(xml) });
         if (r.status < 500) break;
-        falha = mensagemHttp(r);
+        falha = mensagemHttp(r, prov);
       } catch (err) { falha = err.message; r = null; }
       if (tentativa < 3) await dormir(tentativa * 10000);
     }
@@ -603,7 +700,7 @@ function iniciarNfse(db, log, opcoes = {}) {
       return;
     }
     if (r.status !== 200 && r.status !== 201) {
-      await falhar(ref, erroRobo(mensagemHttp(r)), { xmlDps: xml });
+      await falhar(ref, erroRobo(mensagemHttp(r, prov)), { xmlDps: xml });
       log('NFS-e:', dps.id, 'HTTP', r.status);
       return;
     }
@@ -613,7 +710,7 @@ function iniciarNfse(db, log, opcoes = {}) {
     const idEl = r.json && r.json.idDPS ? String(r.json.idDPS) : '';
     const respostaEnvio = { http: r.status, idDPS: idEl, dataHora: r.json ? String(r.json.dataHoraProcessamento || '') : '', texto: String(r.texto || '').slice(0, 500) };
     await ref.update({ status: 'processando', enviadaEm: agora(), consultas: 0, xmlDps: xml, respostaEnvio, 'dps.idEl': idEl, atualizadoEm: agora() });
-    log('NFS-e:', dps.id, 'recebida pela prefeitura (HTTP ' + r.status + ', idDPS da E&L: ' + (idEl || 'nenhum') + '); consultando a cada', CONSULTA_MS / 1000, 's');
+    log('NFS-e:', dps.id, 'recebida por ' + nomeDoProvedor(prov) + ' (HTTP ' + r.status + ', idDPS devolvido: ' + (idEl || 'nenhum') + '); consultando a cada', CONSULTA_MS / 1000, 's');
   }
 
   async function autorizar(ref, resposta, dps, extra) {
@@ -638,8 +735,9 @@ function iniciarNfse(db, log, opcoes = {}) {
     const n = Number(p.consultas || 0) + 1;
     let r = null;
     let falha = '';
-    try { r = await chamar('GET', ENDERECOS.consultaDps(dps.ambiente, dps.idEl || dps.id), tokenPara(dps.ambiente)); } catch (err) { falha = err.message; }
-    if (r && (r.status === 401 || r.status === 403)) { processando.delete(id); await falhar(ref, erroRobo(mensagemHttp(r))); return; }
+    const prov = dps.provedor || 'el';
+    try { r = await consultarPorDps(prov, dps.ambiente, dps.idEl || dps.id); } catch (err) { falha = err.message; }
+    if (r && (r.status === 401 || r.status === 403)) { processando.delete(id); await falhar(ref, erroRobo(mensagemHttp(r, prov))); return; }
     // a prefeitura recusa a consulta (ex.: EL99): três seguidas e para, com o erro dela (não insiste 40 vezes)
     if (r && r.status === 400) {
       const erros = errosDaResposta(r.json);
@@ -659,7 +757,7 @@ function iniciarNfse(db, log, opcoes = {}) {
         log('NFS-e:', dps.id, 'rejeitada no processamento:', erros.map(e => e.codigo + ' ' + e.descricao).join(' | ').slice(0, 300));
         return;
       }
-    } else if (r && r.status !== 404) falha = mensagemHttp(r);
+    } else if (r && r.status !== 404) falha = mensagemHttp(r, prov);
     if (n >= MAX_CONSULTAS) {
       processando.delete(id);
       await falhar(ref, erroRobo('A prefeitura não terminou de processar a DPS depois de ' + n + ' consultas (cerca de ' + Math.round(n * CONSULTA_MS / 60000) +
@@ -706,13 +804,14 @@ function iniciarNfse(db, log, opcoes = {}) {
     if (!config) config = (await configRef.get()).data() || null;
     if (!segredo) segredo = (await segredoRef.get()).data() || null;
     const amb = (p.dps && p.dps.ambiente) || ambienteDe(config, p);
-    const motivo = motivoDesligado(amb);
+    const prov = (p.dps && p.dps.provedor) || 'el';
+    const motivo = motivoDesligado(amb, prov);
     if (motivo) { await falharCanc(erroRobo('Não cancelei: ' + motivo + '.')); return; }
 
     const xml = assinar(montarCancelamento({ ambiente: amb, cnpjAutor: config.prestador.cnpj, chaveAcesso: p.chaveAcesso, cMotivo: c.cMotivo, motivo: motivoTexto }), 'infPedReg', cert);
     log('NFS-e: cancelando a nota', p.numeroNfse || '', 'chave', p.chaveAcesso, '(' + amb + ')');
     let r;
-    try { r = await chamar('POST', ENDERECOS.eventos(amb, p.chaveAcesso), tokenPara(amb), { pedidoRegistroEventoXmlGZipB64: gzipB64(xml) }); }
+    try { r = await chamarEmissor(prov, 'POST', 'eventos', amb, p.chaveAcesso, { pedidoRegistroEventoXmlGZipB64: gzipB64(xml) }); }
     catch (err) { await falharCanc(erroRobo('Não consegui entregar o cancelamento: ' + err.message + '. Peça de novo pelo nads.')); return; }
     const erros = errosDaResposta(r.json);
     const xmlEvento = r.json ? desgzipB64(r.json.eventoXmlGZipB64) : null;
@@ -725,7 +824,7 @@ function iniciarNfse(db, log, opcoes = {}) {
       log('NFS-e: cancelamento recusado:', erros.map(e => e.codigo + ' ' + e.descricao).join(' | ').slice(0, 300));
       return;
     }
-    if (r.status !== 200 && r.status !== 201) { await falharCanc(erroRobo(mensagemHttp(r)), { xmlCancelamento: xml }); return; }
+    if (r.status !== 200 && r.status !== 201) { await falharCanc(erroRobo(mensagemHttp(r, prov)), { xmlCancelamento: xml }); return; }
     await ref.update(Object.assign({ status: 'cancelada', canceladaEm: agora(), erros: [], 'cancelamento.enviandoEm': FieldValue.delete(), atualizadoEm: agora() }, xmlEvento ? { xmlEvento } : {}));
     log('NFS-e: nota', p.numeroNfse || p.chaveAcesso, 'CANCELADA');
     painel.atividade('nfse', 'Cancelou a NFS-e nº ' + (p.numeroNfse || '?'), 'chave ' + p.chaveAcesso);
@@ -760,12 +859,12 @@ function iniciarNfse(db, log, opcoes = {}) {
       .catch(err => log('NFS-e: não li as notas sem e-mail:', err.message));
   }
   retomarEmails();
-  log('NFS-e: atendendo nfseEmissoes (Taiobeiras, E&L)' + (correio ? ', com o e-mail ao cliente' : ''));
+  log('NFS-e: atendendo nfseEmissoes (Taiobeiras, ' + (config && provedorDe(config) === 'nacional' ? 'Sefin Nacional' : 'E&L ou Sefin Nacional, pela configuração') + ')' + (correio ? ', com o e-mail ao cliente' : ''));
   return { retomarEmails };
 }
 
 module.exports = {
   iniciarNfse, montarDps, montarCancelamento, assinar, idDps, problemasDaConfig, problemasDoPedido,
   lerCertificadoComChave, gzipB64, desgzipB64, errosDaResposta, numeroDaNota, chaveDaNota, dataHoraBrasilia, textoLimpo,
-  URLS, ENDERECOS, ALG,
+  URLS, ENDERECOS, URLS_NACIONAL, ENDERECOS_NACIONAL, PROVEDORES, provedorDe, chamarComCertificado, mensagemHttp, ALG,
 };

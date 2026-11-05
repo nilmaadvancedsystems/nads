@@ -120,7 +120,7 @@ function conferirOrdem(no, erros) {
 async function validarXsd(xml, principal, arquivos) {
   let validateXML;
   try { ({ validateXML } = require('xmllint-wasm')); } catch (e) { return null; }
-  const ler = n => ({ fileName: n, contents: fs.readFileSync(path.join(PASTA_XSD, n), 'utf8') });
+  const ler = n => ({ fileName: path.basename(n), contents: fs.readFileSync(path.join(PASTA_XSD, n), 'utf8') });
   const r = await validateXML({ xml: [{ fileName: 'doc.xml', contents: xml }], schema: [ler(principal)], preload: arquivos.map(ler) });
   return r;
 }
@@ -254,6 +254,41 @@ function prefeituraDeMentira(certPem) {
     return resp(404, {});
   };
   return p;
+}
+
+/** Um servidor HTTPS local que EXIGE o certificado do cliente: prova que chamarComCertificado apresenta o do escritório. */
+async function testarTlsMutuo(cert) {
+  const https = require('https');
+  // a autoridade e o certificado do servidor de mentira (localhost)
+  const chaves = forge.pki.rsa.generateKeyPair({ bits: 2048, e: 0x10001 });
+  const c = forge.pki.createCertificate();
+  c.publicKey = chaves.publicKey; c.serialNumber = '02';
+  c.validity.notBefore = new Date(Date.now() - 86400000); c.validity.notAfter = new Date(Date.now() + 86400000);
+  c.setSubject([{ name: 'commonName', value: 'localhost' }]); c.setIssuer([{ name: 'commonName', value: 'localhost' }]);
+  c.setExtensions([{ name: 'subjectAltName', altNames: [{ type: 2, value: 'localhost' }] }]);
+  c.sign(chaves.privateKey, forge.md.sha256.create());
+  const certServidor = forge.pki.certificateToPem(c);
+  let visto = null;
+  const srv = https.createServer({ key: forge.pki.privateKeyToPem(chaves.privateKey), cert: certServidor, requestCert: true, rejectUnauthorized: false }, (req, res) => {
+    const pc = req.socket.getPeerCertificate();
+    visto = pc && pc.subject ? pc.subject.CN : null;
+    let corpo = '';
+    req.on('data', d => { corpo += d; });
+    req.on('end', () => {
+      if (!visto) { res.writeHead(403); res.end('sem certificado'); return; }
+      res.writeHead(201, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ chaveAcesso: '1'.repeat(50), recebido: JSON.parse(corpo || '{}').dpsXmlGZipB64 ? 'dps' : '' }));
+    });
+  });
+  await new Promise(r => srv.listen(0, 'localhost', r));
+  const url = 'https://localhost:' + srv.address().port + '/SefinNacional/nfse';
+  try {
+    const r = await nfse.chamarComCertificado('POST', url, cert, { dpsXmlGZipB64: 'abc' }, { ca: certServidor });
+    confere('TLS mútuo: o servidor viu o certificado do escritório', visto === 'NILMA CONTABILIDADE LTDA:27872981000113' && r.status === 201 && r.json.recebido === 'dps', JSON.stringify({ visto, status: r.status }));
+    let erro = '';
+    try { await nfse.chamarComCertificado('GET', url, { erro: 'falta o certificado do escritório na máquina do robô' }); } catch (e) { erro = e.message; }
+    confere('sem certificado nem tenta (diz o motivo)', /falta o certificado/.test(erro), erro);
+  } finally { srv.close(); }
 }
 
 async function esperar(cond, ms = 8000) {
@@ -535,6 +570,29 @@ async function testarEmail({ pfx, arqSenha, cert }) {
   confere('sem erros = lista vazia', nfse.errosDaResposta({ idDPS: 'x', nfseXmlGZipB64: '<em processamento>' }).length === 0);
   confere('URLs: homologação com o segmento, produção sem', nfse.ENDERECOS.envio('homologacao').endsWith('/api/nacional/homologacao/nfse') && nfse.ENDERECOS.envio('producao').endsWith('/api/nacional/nfse')
     && nfse.ENDERECOS.consultaDps('producao', 'DPS1').endsWith('/api/nacional/nfseDps/DPS1'));
+
+  // 8b. o emissor nacional (05/11/2026): sem prefeitura e sem token, o certificado identifica a conexão (TLS mútuo)
+  console.log('\nEmissor nacional (Sefin)');
+  confere('URLs da Sefin: Produção Restrita e Produção', nfse.ENDERECOS_NACIONAL.envio('homologacao') === 'https://sefin.producaorestrita.nfse.gov.br/API/SefinNacional/nfse'
+    && nfse.ENDERECOS_NACIONAL.envio('producao') === 'https://sefin.nfse.gov.br/SefinNacional/nfse'
+    && nfse.ENDERECOS_NACIONAL.consultaDps('producao', 'DPS1').endsWith('/SefinNacional/dps/DPS1')
+    && nfse.ENDERECOS_NACIONAL.eventos('producao', '1'.repeat(50)).endsWith('/nfse/' + '1'.repeat(50) + '/eventos'));
+  confere('provedor: o padrão é a E&L; a configuração escolhe; o pedido (teste) manda', nfse.provedorDe({}) === 'el' && nfse.provedorDe({ provedor: 'nacional' }) === 'nacional'
+    && nfse.provedorDe({ provedor: 'el' }, { provedor: 'nacional' }) === 'nacional' && nfse.provedorDe({ provedor: 'xyz' }) === 'el');
+  const semCodigo = JSON.parse(JSON.stringify(config));
+  delete semCodigo.servico.cIntContrib;
+  confere('na E&L o cIntContrib é obrigatório', nfse.problemasDaConfig(semCodigo).some(p => /cIntContrib/.test(p)));
+  confere('no nacional o cIntContrib é opcional', nfse.problemasDaConfig(Object.assign({}, semCodigo, { provedor: 'nacional' })).length === 0, nfse.problemasDaConfig(Object.assign({}, semCodigo, { provedor: 'nacional' })).join('; '));
+  confere('provedor desconhecido é acusado', nfse.problemasDaConfig(Object.assign({}, config, { provedor: 'sefaz' })).some(p => /provedor/.test(p)));
+  const xmlSem = nfse.montarDps(Object.assign({}, semCodigo, { provedor: 'nacional' }), pedido, 7, { agora: '2026-11-05T12:00:00Z' });
+  confere('DPS sem cIntContrib não leva a tag', !xmlSem.includes('cIntContrib') && xmlSem.includes('<cNBS>'));
+  confere('erro único da Sefin { erro: {...} } vira lista', nfse.errosDaResposta({ erro: { codigo: 'E0001', descricao: 'x' } }).length === 1);
+  confere('mensagem do 403 nacional fala do certificado, não do token', /certificado/.test(nfse.mensagemHttp({ status: 403 }, 'nacional')) && !/token/.test(nfse.mensagemHttp({ status: 403 }, 'nacional')));
+  confere('a DPS da E&L não leva finNFSe', !xml.includes('finNFSe'));
+  confere('a DPS nacional leva finNFSe 0 logo depois do tpEmit', xmlSem.includes('<tpEmit>1</tpEmit><finNFSe>0</finNFSe><cLocEmi>'));
+  const rNac = await validarXsd(nfse.assinar(xmlSem, 'infDPS', cert), 'nacional/DPS_v1.01.xsd', ['nacional/tiposComplexos_v1.01.xsd', 'nacional/tiposSimples_v1.01.xsd', 'nacional/xmldsig-core-schema.xsd']);
+  if (rNac) confere('DPS nacional assinada válida no XSD da Produção Restrita (20/10/2026)', rNac.valid, rNac.errors.map(e => e.message).join(' | '));
+  await testarTlsMutuo(cert);
 
   // 9. o módulo inteiro, com um banco e uma prefeitura de mentira (sem rede)
   console.log('\nFluxo do módulo (banco e prefeitura de mentira)');
