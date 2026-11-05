@@ -161,15 +161,20 @@ function iniciarAlterdata(db, log) {
   let avisouRodando = false;
   const rodarPy = (arquivo, args, ms) => new Promise(resolve => execFile(PYTHON, ['-I', arquivo, ...args], { cwd: __dirname, windowsHide: true, timeout: ms },
     (err, out) => resolve({ err, out: String(out || '') })));
+  let credencialVistaEm = 0;
   async function entrarSozinho(como) {
     if (entrando || loginParado) return;
     entrando = true;
     try {
-      const tem = await rodarPy(ROTEIRO_LOGIN, ['--tem'], 90 * 1000);
-      const temCredencial = /TEM:\s*sim/.test(tem.out);
-      // no banco (robo/alterdata.maquinas.{onde}.credencial), para quem olha saber se o robô achou a credencial
-      await estadoDoc.set({ maquinas: { [ONDE]: { credencial: temCredencial ? 'sim' : /TEM:\s*nao/.test(tem.out) ? 'nao' : 'erro' } } }, { merge: true }).catch(() => {});
-      if (!temCredencial) return;   // sem a credencial: espera alguém entrar
+      // a credencial: vista uma vez a cada 10 min (o Python leva uns segundos para abrir; antes era a cada vez)
+      if (Date.now() - credencialVistaEm > 10 * 60 * 1000) {
+        const tem = await rodarPy(ROTEIRO_LOGIN, ['--tem'], 90 * 1000);
+        const temCredencial = /TEM:\s*sim/.test(tem.out);
+        // no banco (robo/alterdata.maquinas.{onde}.credencial), para quem olha saber se o robô achou a credencial
+        await estadoDoc.set({ maquinas: { [ONDE]: { credencial: temCredencial ? 'sim' : /TEM:\s*nao/.test(tem.out) ? 'nao' : 'erro' } } }, { merge: true }).catch(() => {});
+        if (!temCredencial) return;   // sem a credencial: espera alguém entrar
+        credencialVistaEm = Date.now();
+      }
       if (como === 'fechado') {
         if (Date.now() - abertoEm < ABRIR_DE_NOVO_MS || !fs.existsSync(WCONT)) return;
         // já tem um Contábil rodando (abrindo, travado ou sem janela nesta sessão): não abre outro
@@ -182,14 +187,17 @@ function iniciarAlterdata(db, log) {
         abertoEm = Date.now();
         log('Alterdata: o Contábil deste ' + ONDE + ' estava fechado; abrindo para o robô entrar');
         spawn(WCONT, [], { cwd: path.dirname(WCONT), detached: true, stdio: 'ignore' }).unref();
-        return;   // a próxima verificação acha a tela de login
+        // 05/11/2026 ("o robo demora muito para coloca a senha"): não espera a checagem do minuto; o roteiro de login
+        // fica olhando e entra assim que a tela de login aparece
       }
       log('Alterdata: entrando no Contábil deste ' + ONDE + ' com o usuário do robô');
-      const r = await rodarPy(ROTEIRO_LOGIN, [], 150 * 1000);
+      const r = await rodarPy(ROTEIRO_LOGIN, como === 'fechado' ? ['--esperar', '180'] : [], 300 * 1000);
       const m = r.out.match(/RESULTADO:\s*(\{.*\})/);
       let res = { ok: false, erro: 'o roteiro de login parou sem resultado' };
       try { if (m) res = JSON.parse(m[1]); } catch (_) { /* mal escrito */ }
-      if (res.ok) { log('Alterdata: o robô entrou no Contábil'); await verificar(); return; }
+      if (res.ok) { log('Alterdata: o robô entrou no Contábil'); setTimeout(() => void verificar(), 5000); return; }
+      // a tela de login não apareceu (o Contábil abriu de outro jeito ou travou): não é tentativa de senha, não para
+      if (res.semTela) { log('Alterdata: abri o Contábil, mas a tela de login não apareceu em 3 min'); return; }
       loginParado = res.erro || 'não deu';
       log('Alterdata: o login do robô não deu (' + loginParado + '); não tento de novo até alguém entrar no Contábil');
       painel.modulo('alterdata', 'Alterdata', false, 'o login do robô não deu: ' + loginParado);
