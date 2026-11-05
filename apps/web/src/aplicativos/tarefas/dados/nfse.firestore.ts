@@ -66,6 +66,7 @@ function configDoBanco(d: Record<string, unknown>): nfse.ConfigNfse {
   const ap = Number(p.regApTribSN);
   return {
     ambiente: d.ambiente === 'producao' ? 'producao' : 'homologacao',
+    provedor: d.provedor === 'nacional' ? 'nacional' : 'el',
     prestador: {
       cnpj: texto(p.cnpj), im: texto(p.im), fone: texto(p.fone),
       opSimpNac: (op === 1 || op === 2 || op === 3 ? op : P.prestador.opSimpNac) as 1 | 2 | 3,
@@ -153,7 +154,7 @@ export function criarNfseFirestore(quem: () => Quem): RepoNfse {
       await updateDoc(doc(db, 'nfseEmissoes', id), { envioEmail: { para: para.trim(), pedidoPor: nome, pedidoEm: new Date().toISOString() } });
     },
     async salvarConfig(c) {
-      await setDoc(doc(db, 'config', 'nfse'), { ambiente: c.ambiente, prestador: { ...c.prestador, cnpj: nfse.soDigitos(c.prestador.cnpj), fone: nfse.soDigitos(c.prestador.fone) }, servico: { ...c.servico, cNBS: nfse.soDigitos(c.servico.cNBS) }, serie: c.serie, proximoNumero: c.proximoNumero, email: { automatico: c.email.automatico, assunto: c.email.assunto.trim(), texto: c.email.texto.trim() }, descricao: c.descricao.trim() }, { merge: true });
+      await setDoc(doc(db, 'config', 'nfse'), { ambiente: c.ambiente, provedor: c.provedor, prestador: { ...c.prestador, cnpj: nfse.soDigitos(c.prestador.cnpj), fone: nfse.soDigitos(c.prestador.fone) }, servico: { ...c.servico, cNBS: nfse.soDigitos(c.servico.cNBS) }, serie: c.serie, proximoNumero: c.proximoNumero, email: { automatico: c.email.automatico, assunto: c.email.assunto.trim(), texto: c.email.texto.trim() }, descricao: c.descricao.trim() }, { merge: true });
     },
     async salvarToken(token, nome) {
       const agora = new Date().toISOString();

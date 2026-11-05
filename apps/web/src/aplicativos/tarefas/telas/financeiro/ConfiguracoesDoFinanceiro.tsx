@@ -3,7 +3,7 @@
 // serviço (com a descrição automática das notas), o e-mail ao cliente, o token da prefeitura e o robô. Cada campo grava ao sair dele; o inválido não grava e mostra o aviso ao lado.
 import { ConfigLinha, ConfigSecao, Icone, Interruptor, MenuSuspenso, useCarregando, BotaoAcao } from '@nads/ui';
 import { dataBr, dataHoraBr } from './formatosDaNota';
-import { AMBIENTES, OPCOES_DA_APURACAO, OPCOES_DO_SIMPLES, useConfiguracoesDoFinanceiro } from './useConfiguracoesDoFinanceiro';
+import { AMBIENTES, PROVEDORES, OPCOES_DA_APURACAO, OPCOES_DO_SIMPLES, useConfiguracoesDoFinanceiro } from './useConfiguracoesDoFinanceiro';
 
 const enter = (e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') e.currentTarget.blur(); };
 const URL_DA_PREFEITURA = 'https://mg-taiobeiras-pm-nfs.cloud.el.com.br';
@@ -21,23 +21,29 @@ export function ConfiguracoesDoFinanceiro() {
       onBlur={e => { if (e.target.value !== valor) aoSair(e.target.value); else extra?.aoDigitar?.(valor); }} onKeyDown={enter} />
   );
   const apuracao = OPCOES_DA_APURACAO.find(o => o.id === c.prestador.regApTribSN);
+  const nacional = c.provedor === 'nacional';
+  const rotuloDoAmbiente = (id: string, rotulo: string) => (nacional && id === 'homologacao' ? 'Produção Restrita (testes)' : rotulo);
   return (
     <>
       {vm.exemplos && <p className="registro-dica nf-exemplos"><Icone nome="alert" />Dados de exemplo: nada do que mudar aqui vai para o banco.</p>}
 
       <ConfigSecao titulo="Emissão" acao={vm.semConfig ? <button type="button" className="btn btn-ghost" onClick={vm.gravarPadrao} title="Ainda não tem configuração salva: valem os dados do escritório da nota real">Salvar a configuração padrão</button> : undefined}>
+        <ConfigLinha titulo="Emissor" descricao={nacional ? 'Direto na Sefin Nacional, sem a prefeitura: o certificado do escritório identifica o robô.' : 'Pelo sistema da prefeitura (E&L), com o token.'}>
+          <MenuSuspenso rotulo={PROVEDORES.find(p => p.id === c.provedor)?.rotulo || ''} className="btn btn-outline" titulo="Emissor" largura={200}
+            itens={PROVEDORES.map(p => ({ rotulo: p.rotulo, marcado: p.id === c.provedor, onClick: () => { void vm.definirProvedor(p.id); } }))} />
+        </ConfigLinha>
         <ConfigLinha titulo="Ambiente">
-          <MenuSuspenso rotulo={AMBIENTES.find(a => a.id === c.ambiente)?.rotulo || ''} className="btn btn-outline" titulo="Ambiente" largura={180}
-            itens={AMBIENTES.map(a => ({ rotulo: a.rotulo, marcado: a.id === c.ambiente, onClick: () => { void vm.definirAmbiente(a.id); } }))} />
+          <MenuSuspenso rotulo={rotuloDoAmbiente(c.ambiente, AMBIENTES.find(a => a.id === c.ambiente)?.rotulo || '')} className="btn btn-outline" titulo="Ambiente" largura={220}
+            itens={AMBIENTES.map(a => ({ rotulo: rotuloDoAmbiente(a.id, a.rotulo), marcado: a.id === c.ambiente, onClick: () => { void vm.definirAmbiente(a.id); } }))} />
           <span className={'badge ' + (c.ambiente === 'producao' ? 'badge-ok' : 'badge-warn')}>{c.ambiente === 'producao' ? 'Produção' : 'Sem valor fiscal'}</span>
         </ConfigLinha>
         <ConfigLinha titulo="Série" aviso={vm.avisos.serie}>
           {campo('serie', c.serie, 'Série', vm.definirSerie, { modo: 'numeric' })}
         </ConfigLinha>
-        <ConfigLinha titulo="Próximo número na homologação" aviso={vm.avisos['numero-homologacao']}>
+        <ConfigLinha titulo={nacional ? 'Próximo número na Produção Restrita' : 'Próximo número na homologação'} aviso={vm.avisos['numero-homologacao']}>
           {campo('num-h', String(c.proximoNumero.homologacao), 'Próximo número na homologação', v => vm.definirProximoNumero('homologacao', v), { modo: 'numeric' })}
         </ConfigLinha>
-        <ConfigLinha titulo="Próximo número na produção" descricao="Siga a sequência que já saiu pela prefeitura: número repetido é recusado." aviso={vm.avisos['numero-producao']}>
+        <ConfigLinha titulo="Próximo número na produção" descricao="Siga a sequência que já saiu: número repetido é recusado." aviso={vm.avisos['numero-producao']}>
           {campo('num-p', String(c.proximoNumero.producao), 'Próximo número na produção', v => vm.definirProximoNumero('producao', v), { modo: 'numeric' })}
         </ConfigLinha>
       </ConfigSecao>
@@ -65,9 +71,11 @@ export function ConfiguracoesDoFinanceiro() {
         <ConfigLinha titulo="Código nacional (cTribNac)" descricao="6 dígitos: contabilidade, item 17.19, é 171901." aviso={vm.avisos.cTribNac}>
           {campo('cTribNac', c.servico.cTribNac, 'Código de tributação nacional', vm.definirCTribNac, { modo: 'numeric' })}
         </ConfigLinha>
-        <ConfigLinha titulo="Código na prefeitura (cIntContrib)" aviso={vm.avisos.cIntContrib}>
-          {campo('cIntContrib', c.servico.cIntContrib, 'Código do serviço na prefeitura', vm.definirCIntContrib)}
-        </ConfigLinha>
+        {!nacional && (
+          <ConfigLinha titulo="Código na prefeitura (cIntContrib)" aviso={vm.avisos.cIntContrib}>
+            {campo('cIntContrib', c.servico.cIntContrib, 'Código do serviço na prefeitura', vm.definirCIntContrib)}
+          </ConfigLinha>
+        )}
         <ConfigLinha titulo="NBS" descricao="9 dígitos." aviso={vm.avisos.nbs}>
           {campo('nbs', c.servico.cNBS, 'Código NBS', vm.definirNbs, { modo: 'numeric' })}
         </ConfigLinha>
@@ -97,7 +105,7 @@ export function ConfiguracoesDoFinanceiro() {
         </ConfigLinha>
       </ConfigSecao>
 
-      <ConfigSecao titulo="Token da prefeitura">
+      {!nacional && <ConfigSecao titulo="Token da prefeitura">
         <ConfigLinha titulo="Salvar o token"
           descricao={<>No portal da prefeitura (<a href={URL_DA_PREFEITURA} target="_blank" rel="noreferrer">{URL_DA_PREFEITURA.replace('https://', '')}</a>): Configurações › Integração › Gerar Token.</>}
           aviso={vm.avisos.token}>
@@ -110,7 +118,7 @@ export function ConfiguracoesDoFinanceiro() {
             ? <span className="cfg-valor">Salvo em {dataHoraBr(vm.tokenGravadoEm)}</span>
             : <span className="badge badge-bad">Nenhum token salvo</span>}
         </ConfigLinha>
-      </ConfigSecao>
+      </ConfigSecao>}
 
       <ConfigSecao titulo="O robô">
         <ConfigLinha titulo="Robô da nuvem" descricao={r.ligado ? undefined : r.motivo || undefined}>

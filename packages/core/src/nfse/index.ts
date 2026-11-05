@@ -7,6 +7,8 @@ import { DESCRICAO_PADRAO } from './descricao';
 import { EMAIL_PADRAO, type ConfigEmailNfse, type EmailDaNota, type PedidoDeEmail } from './email';
 
 export type AmbienteNfse = 'homologacao' | 'producao';
+/** Para onde vai a DPS: 'el' a E&L da prefeitura (com o token) ou 'nacional' a Sefin Nacional (com o certificado; 05/11/2026). */
+export type ProvedorNfse = 'el' | 'nacional';
 
 /** pedida → enviando → processando → autorizada | erro; cancelamento-pedido → cancelada | erro-cancelamento */
 export type StatusNfse = 'pedida' | 'enviando' | 'processando' | 'autorizada' | 'erro' | 'cancelamento-pedido' | 'cancelada' | 'erro-cancelamento';
@@ -60,6 +62,8 @@ export interface NotaFiscal {
 /** A configuração do emissor (config/nfse): o prestador (a Nilma), o serviço e a numeração. */
 export interface ConfigNfse {
   ambiente: AmbienteNfse;
+  /** o emissor: a prefeitura (E&L) ou o nacional, sem prefeitura e sem token */
+  provedor: ProvedorNfse;
   prestador: {
     cnpj: string;
     /** a inscrição municipal, como no cadastro da prefeitura (com os zeros) */
@@ -96,6 +100,7 @@ export interface ConfigNfse {
 
 export const CONFIG_PADRAO: ConfigNfse = {
   ambiente: 'homologacao',
+  provedor: 'el',
   // os da Nilma, tirados de uma nota autorizada pelo portal (14/10/2026): Simples (ME/EPP), contabilidade 17.19
   prestador: { cnpj: '27872981000113', im: '250517/6308', fone: '', opSimpNac: 3, regApTribSN: 1, regEspTrib: 0, cLocEmi: '3168002' },
   servico: { cTribNac: '171901', cIntContrib: '1719', cNBS: '113022100', pAliq: 3.74, infoCompl: 'Percentual aproximado de tributos: 16,42% Fonte: IBPT' },
@@ -177,11 +182,12 @@ export function faltasNaConfig(c: ConfigNfse | null, temToken: boolean): string[
   if (soDigitos(c.prestador.cnpj).length !== 14 || !documentoValido(c.prestador.cnpj)) f.push('o CNPJ do escritório');
   if (!c.prestador.im.trim()) f.push('a inscrição municipal');
   if (!/^\d{6}$/.test(c.servico.cTribNac)) f.push('o código de tributação nacional (6 dígitos)');
-  if (!c.servico.cIntContrib.trim()) f.push('o código do serviço na prefeitura');
+  const nacional = c.provedor === 'nacional';
+  if (!nacional && !c.servico.cIntContrib.trim()) f.push('o código do serviço na prefeitura');
   if (!/^\d{9}$/.test(soDigitos(c.servico.cNBS))) f.push('o código NBS (9 dígitos)');
   if (c.prestador.opSimpNac === 3 && !c.prestador.regApTribSN) f.push('a apuração do Simples');
   if (c.servico.pAliq != null && !(c.servico.pAliq > 0 && c.servico.pAliq <= 5)) f.push('a alíquota do ISS (entre 0 e 5%)');
-  if (!temToken) f.push('o token da prefeitura');
+  if (!nacional && !temToken) f.push('o token da prefeitura');
   return f;
 }
 
