@@ -21,6 +21,11 @@ export const OPCOES_DA_APURACAO: { id: 1 | 2 | 3; rotulo: string }[] = [
   { id: 2, rotulo: 'ISS fora do Simples' },
   { id: 3, rotulo: 'Tudo fora do Simples' },
 ];
+export const PROVEDORES: { id: nfse.ProvedorNfse; rotulo: string }[] = [
+  { id: 'nacional', rotulo: 'Nacional (Sefin)' },
+  { id: 'el', rotulo: 'Prefeitura (E&L)' },
+];
+
 export const AMBIENTES: { id: nfse.AmbienteNfse; rotulo: string }[] = [
   { id: 'homologacao', rotulo: 'Homologação' },
   { id: 'producao', rotulo: 'Produção' },
@@ -67,12 +72,27 @@ export function useConfiguracoesDoFinanceiro() {
       if (a === 'producao') {
         const sim = await modal<boolean>({
           icone: 'alert', titulo: 'Passar para Produção?',
-          texto: 'Daqui para frente as notas emitidas valem de verdade: vão para a prefeitura com valor fiscal e o cliente recebe a cobrança do ISS. Confirme só com o token e o certificado de produção gravados.',
+          texto: config.provedor === 'nacional'
+            ? 'Daqui para frente as notas emitidas valem de verdade: vão para a Sefin Nacional com valor fiscal e entram no ISS do escritório. Confirme só depois de testar na Produção Restrita.'
+            : 'Daqui para frente as notas emitidas valem de verdade: vão para a prefeitura com valor fiscal e o cliente recebe a cobrança do ISS. Confirme só com o token e o certificado de produção gravados.',
           botoes: [{ rotulo: 'Passar para Produção', valor: true, variante: 'btn-primary' }, { rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }],
         });
         if (!sim) return;
       }
       gravar('ambiente', { ...config, ambiente: a });
+    },
+    /** a prefeitura (E&L, com o token) ou o emissor nacional (Sefin, com o certificado): as notas novas vão para o escolhido */
+    async definirProvedor(p: nfse.ProvedorNfse) {
+      if (p === config.provedor) return;
+      const sim = await modal<boolean>({
+        icone: 'alert', titulo: p === 'nacional' ? 'Emitir pelo sistema nacional?' : 'Voltar a emitir pela prefeitura?',
+        texto: p === 'nacional'
+          ? 'As notas novas vão direto para a Sefin Nacional, sem passar pela prefeitura e sem o token: o certificado do escritório identifica o robô. As notas que já têm número continuam onde foram emitidas.'
+          : 'As notas novas voltam para o sistema da prefeitura (E&L), com o token gravado aqui.',
+        botoes: [{ rotulo: p === 'nacional' ? 'Usar o nacional' : 'Usar a prefeitura', valor: true, variante: 'btn-primary' }, { rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }],
+      });
+      if (!sim) return;
+      gravar('provedor', { ...config, provedor: p });
     },
     definirSerie(v: string) {
       const s = v.trim();

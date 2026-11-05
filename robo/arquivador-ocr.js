@@ -62,7 +62,9 @@ async function renderizar(doc, i, rotacao) {
   } finally { pagina.cleanup(); }
 }
 
-const comPrazo = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('OCR passou de ' + Math.round(ms / 1000) + ' s')), ms))]);
+// (05/11/2026) o trabalho que passou do prazo continua rodando sozinho e pode falhar depois (o trabalhador já foi descartado: "reading 'postMessage'"):
+// essa falha tardia não tem quem a espere e derrubava o processo inteiro (rejeição não tratada); agora é engolida aqui
+const comPrazo = (p, ms) => { p.catch(() => {}); return Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('OCR passou de ' + Math.round(ms / 1000) + ' s')), ms))]); };
 const util = t => String(t || '').replace(/[^A-Za-zÀ-ú0-9]/g, '').length;
 
 /**
