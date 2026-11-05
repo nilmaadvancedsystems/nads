@@ -19,6 +19,7 @@ const { ouvir } = require('./ouvinte');
 const painel = require('./painel');
 const { criarFilaAlterdata, periodo } = require('./alterdata-fila');
 const numeros = require('./alterdata-numeros');
+const { garantirTelaAtiva } = require('./sessao-no-console');
 
 const DRIVE = process.env.ARQUIVO_DRIVE || 'G:\\Meu Drive';
 const ONDE = process.env.ARQ_SO_SERVIDOR === '1' ? 'servidor' : 'pc';
@@ -119,17 +120,25 @@ function iniciarAlterdata(db, log) {
   // a tela de atualizações: um clique em "Ver depois" por janela (se não fechar, não insiste; o log diz)
   const avisosClicados = new Set();
   async function verDepois(aviso) {
+    // a mesma janela não leva outro clique se o primeiro deu; se não deu (sem tela ativa, por exemplo), tenta na checagem seguinte
     if (avisosClicados.has(aviso.janela)) return false;
-    avisosClicados.add(aviso.janela);
     const r = await rodarPy(ROTEIRO_AVISOS, [aviso.janela], 60 * 1000);
     let res = { ok: false, erro: 'o roteiro parou sem resultado' };
     try { const m = r.out.match(/RESULTADO:\s*(\{.*\})/); if (m) res = JSON.parse(m[1]); } catch (_) { /* mal escrito */ }
     const ok = !!res.ok;
+    if (ok) avisosClicados.add(aviso.janela);
     log('Alterdata: a tela de atualizações do Contábil (' + aviso.qual + '): ' + (ok ? 'cliquei em "Ver depois"' : 'não fechou com o "Ver depois" (' + res.erro + ')'));
     return ok;
   }
 
+  let ultimoConsole = '';
   async function verificar() {
+    // no servidor: a sessão do robô desconectada (o RDP fechado) vai para o console, senão nenhum clique funciona
+    if (ONDE === 'servidor') {
+      const c = await garantirTelaAtiva().catch(e => 'não consegui ver a sessão: ' + e.message);
+      if (c && c !== ultimoConsole) log('Alterdata: ' + c);
+      ultimoConsole = c;
+    }
     let r = await estadoDoContabil();
     if (r.aviso && await verDepois(r.aviso)) r = await estadoDoContabil();
     // com a tela de atualizações na frente, o Contábil não está pronto para relatório
