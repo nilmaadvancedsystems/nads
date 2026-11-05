@@ -20,10 +20,19 @@ export function ChipsDeContas({ v }: { v: Vinculo }) {
 }
 
 /** .ndp-add: botão que vira campo de busca; `extra` = botão ao lado que some com o campo aberto. */
-export function CampoVincular({ v, rotulo, titulo, extra }: { v: Vinculo; rotulo: string; titulo: string; extra?: (escondido: boolean) => ReactNode }) {
+/**
+ * soIcone: só o "+" (o rótulo vai para a dica; Vitor, 05/11/2026: "vincular conta, deixa só o ícone"); falta: a bolinha vermelha
+ * no canto dele (no lugar do "falta" escrito: "deixa algo mais clean")
+ */
+export function CampoVincular({ v, rotulo, titulo, extra, soIcone, falta }: { v: Vinculo; rotulo: string; titulo: string; extra?: (escondido: boolean) => ReactNode; soIcone?: boolean; falta?: boolean }) {
   return (
     <div className={'ndp-add' + (v.aberto ? ' aberto' : '')}>
-      <button type="button" className="btn ndp-add-btn" title={titulo} hidden={v.aberto} onClick={v.abrir}><Icone nome="plus" />{rotulo}</button>
+      {soIcone
+        ? <button type="button" className="icon-btn ndp-add-btn" style={{ position: 'relative' }} title={(falta ? 'Falta a conta. ' : '') + rotulo + ': ' + titulo.charAt(0).toLowerCase() + titulo.slice(1)} aria-label={rotulo + (falta ? ' (falta a conta)' : '')} hidden={v.aberto} onClick={v.abrir}>
+          <Icone nome="plus" />
+          {falta && <span className="ponto-vermelho" aria-hidden="true" style={{ position: 'absolute', top: -3, right: -3, margin: 0, boxShadow: '0 0 0 2px var(--bg)' }} />}
+        </button>
+        : <button type="button" className="btn ndp-add-btn" title={titulo} hidden={v.aberto} onClick={v.abrir}><Icone nome="plus" />{rotulo}</button>}
       {extra?.(v.aberto)}
       <div className="ndp-add-campo" hidden={!v.aberto}>
         {v.aberto && (
