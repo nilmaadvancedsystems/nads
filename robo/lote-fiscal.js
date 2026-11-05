@@ -55,14 +55,29 @@ const MODELO = { config: 'envioFiscal', padrao: MODELO_PADRAO, chip: 'Fiscal', r
  * packages/core (tarefas, colunaDaGuia): o DAS no Simples; a DARF do PIS, da COFINS, do IRPJ e da CSLL, o DAE do ICMS e o
  * DAM do ISS no Presumido; o parcelamento, sem coluna (o período da parcela não é o da apuração).
  */
-function colunaDaGuia(grupo, tipo, tributo, parcelamento) {
+function colunaDaGuia(grupo, tipo, tributo, parcelamento, receita) {
   if (parcelamento) return '';
   const t = String(tributo || '').toUpperCase();
   const coluna = tipo === 'DAS' ? 'das'
     : tipo === 'DARF' && ['PIS', 'COFINS', 'IRPJ', 'CSLL'].includes(t) ? t.toLowerCase()
-    : tipo === 'DAE' && t === 'ICMS' ? 'icms'
+    : tipo === 'DAE' && t === 'ICMS' ? (grupo === 'sn' ? colunaDoIcmsDoSimples(receita) : 'icms')
     : tipo === 'DAM' && t === 'ISS' ? 'iss' : '';
   return coluna && (COLUNAS[grupo] || []).includes(coluna) ? coluna : '';
+}
+
+/**
+ * A coluna do ICMS do Simples pela receita escrita no DAE (04/11/2026: "preciso que coloque a opção econtador do alterdata como envio e tambem preciso que preencha dae e icms na planilha la, enviei 2 dae via impresso e não preencheu"). O mesmo de packages/core
+ * (colunaDoIcmsDoSimples): antecipação → icms-ant, diferencial de alíquota → icms-dif (do ativo: icms-dif-ativo), arroz →
+ * icms-arroz, ST → st-ent (de saída: st-sai); sem receita reconhecida, '' (a pessoa escolhe na revisão).
+ */
+function colunaDoIcmsDoSimples(receita) {
+  const r = String(receita || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+  if (!r) return '';
+  if (/ARROZ/.test(r)) return 'icms-arroz';
+  if (/DIFERENCA DE ALIQ|DIF\.? ?(DE )?ALIQ|DIFAL/.test(r)) return /ATIVO|IMOBILIZ/.test(r) ? 'icms-dif-ativo' : 'icms-dif';
+  if (/ANTECIPA/.test(r)) return 'icms-ant';
+  if (/SUBST|\bS\.? ?T\b/.test(r)) return /SAIDA/.test(r) ? 'st-sai' : 'st-ent';
+  return '';
 }
 
 /**
@@ -74,7 +89,7 @@ function camposDaGuiaFiscal(tipo, u) {
   if (!GUIAS.includes(tipo)) return null;
   const regra = R.REGRAS_PDF.find(r => r.tipo === tipo);
   const c = (regra && regra.campos(u)) || {};
-  return { tributo: tipo === 'DAS' ? '' : String(c.tributo || ''), valor: c.valor || '', vencimento: c.vencimento || '', competencia: c.competencia || null, parcelamento: !!c.parcelamento };
+  return { tributo: tipo === 'DAS' ? '' : String(c.tributo || ''), valor: c.valor || '', vencimento: c.vencimento || '', competencia: c.competencia || null, parcelamento: !!c.parcelamento, receita: String(c.receita || '') };
 }
 
 /**
@@ -86,7 +101,7 @@ function leituraDaGuia(d, guia, entrada, grupo) {
   const l = L.leituraDe(d, guia, entrada);
   if (!guia) return Object.assign(l, { tributo: '', coluna: '', competencia: d.tipo === 'DAM' ? '' : l.competencia });
   const competencia = L.competenciaIso(guia.competencia) || (d.tipo === 'DAM' ? '' : L.competenciaIso(d.competencia));
-  return Object.assign(l, { tributo: guia.tributo, valor: guia.valor, vencimento: guia.vencimento, competencia, coluna: colunaDaGuia(grupo, d.tipo, guia.tributo, guia.parcelamento) });
+  return Object.assign(l, { tributo: guia.tributo, valor: guia.valor, vencimento: guia.vencimento, competencia, receita: guia.receita || '', coluna: colunaDaGuia(grupo, d.tipo, guia.tributo, guia.parcelamento, guia.receita) });
 }
 
 /**
@@ -321,6 +336,29 @@ async function impresso(db, ref, lote, { codigo, competencia, itens, ativos, gru
   return resultado;
 }
 
+// 6. o eContador do Alterdata (04/11/2026: "preciso que coloque a opção econtador do alterdata como envio e tambem preciso que preencha dae e icms na planilha la, enviei 2 dae via impresso e não preencheu"): as guias no Drive, o registro (a aba "Enviados", via 'econtador') e o
+// Relatório com o valor de cada coluna, a data do disparo e Entregue = eContador; sem e-mail e sem entrega na rota
+async function econtador(db, ref, lote, { codigo, competencia, itens, ativos, grupo, salvarNoDrive }) {
+  let doc = null;
+  ativos.forEach(d => { if (!doc && String(d.data().codigoOrigem || '').trim() === String(codigo)) doc = d; });
+  const nome = doc ? String(doc.data().nome || '').trim() : '';
+  const buffers = [];
+  for (const i of itens) buffers.push(await L.bufferDoArquivo(i.ref, i));
+  const salvos = await salvarNoDrive(itens, buffers);
+  const agora = new Date().toISOString();
+  const resultado = { status: 'enviado', para: [], enviadoEm: agora, salvos, entregaId: '', preenchidos: [], erroNoRelatorio: '' };
+  const guiasDrive = salvos.filter(x => x.id).map(x => ({ nome: x.nome, id: x.id }));
+  await db.collection('solicitacoesEmail').add({
+    tipo: 'envioFiscal', via: 'econtador', origem: 'lote', lote: ref.id, grupo, status: 'enviado', competencia, codigo: String(codigo),
+    empresa: nome, arquivos: [], para: [], enviados: itens.map(i => i.vai.nome),
+    enviadoEm: agora, criadoEm: agora, criadoPor: lote.disparadoPor || '', criadoPorUid: lote.disparadoPorUid || '', ...(guiasDrive.length ? { guiasDrive } : {}),
+  }).catch(() => {});
+  try {
+    resultado.preenchidos = await gravarNoRelatorio(db, { competencia, codigo, grupo, valores: valoresPorColuna(itens), dia: diaEmBrasilia(new Date(agora)), entregue: 'econtador', agora, quem: 'robô (eContador de ' + (lote.disparadoPor || 'guias') + ')' });
+  } catch (err) { resultado.erroNoRelatorio = String(err.message || err).slice(0, 200); }
+  return resultado;
+}
+
 // 3 e 4. o disparo: um e-mail por cliente e competência, o registro do envio, a linha do Relatório e o Drive
 async function dispararLote(db, ref, lote, deps) {
   const { log } = deps;
@@ -355,11 +393,11 @@ async function dispararLote(db, ref, lote, deps) {
     // disparar de novo (depois de corrigir o e-mail de quem deu erro) não manda outra vez para quem já recebeu
     if (lote.resultados && lote.resultados[chave] && lote.resultados[chave].status === 'enviado') { enviados++; continue; }
     const { codigo, competencia } = itens[0].vai;
-    const via = vias[String(codigo)] === 'impresso' ? 'impresso' : 'email';
+    const via = vias[String(codigo)] === 'impresso' || vias[String(codigo)] === 'econtador' ? vias[String(codigo)] : 'email';
     const resultado = { codigo, competencia, via, arquivos: itens.map(i => i.vai.nome), valores: valoresPorColuna(itens), preenchidos: [], erroNoRelatorio: '' };
     try {
-      if (via === 'impresso') {
-        Object.assign(resultado, await impresso(db, ref, lote, { codigo, competencia, itens, ativos, grupo, salvarNoDrive }));
+      if (via !== 'email') {
+        Object.assign(resultado, await (via === 'impresso' ? impresso : econtador)(db, ref, lote, { codigo, competencia, itens, ativos, grupo, salvarNoDrive }));
         for (const i of itens) await L.apagarPartes(i.ref).catch(() => {});
         enviados++;
         await ref.update({ ['resultados.' + chave]: resultado });
@@ -446,7 +484,7 @@ function iniciarLoteFiscal(db, deps) {
 module.exports = {
   iniciarLoteFiscal,
   // puras, pro teste
-  colunaDaGuia, camposDaGuiaFiscal, leituraDaGuia, doGuia, gruposFiscais, valoresPorColuna, textoDoValor, diaEmBrasilia, linhaDepoisDoEnvio,
+  colunaDaGuia, colunaDoIcmsDoSimples, camposDaGuiaFiscal, leituraDaGuia, doGuia, gruposFiscais, valoresPorColuna, textoDoValor, diaEmBrasilia, linhaDepoisDoEnvio,
   diaIso, entregaDoImpresso, idsDosAnexos,
   MODELO_PADRAO, COLUNAS, COLECAO,
 };

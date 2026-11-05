@@ -23,7 +23,8 @@ const STATUS_DO_LOTE: Record<string, { classe: string; rotulo: string }> = {
 };
 /** o tipo da guia como no nome do arquivador: "DAS", "DARF PIS", "DAE ICMS" */
 const tipoDaGuia = (a: GuiaDoLote) => [a.leitura?.tipo, a.leitura?.tributo].filter(Boolean).join(' ') || '?';
-const VIAS: { valor: ViaDaGuia; rotulo: string }[] = [{ valor: 'email', rotulo: 'Gmail' }, { valor: 'impresso', rotulo: 'Impresso' }];
+const VIAS: { valor: ViaDaGuia; rotulo: string }[] = [{ valor: 'email', rotulo: 'Gmail' }, { valor: 'impresso', rotulo: 'Impresso' }, { valor: 'econtador', rotulo: 'eContador' }];
+const ROTULO_DA_VIA: Record<ViaDaGuia, string> = { email: 'Gmail', impresso: 'Impresso', econtador: 'eContador' };
 
 /** escolher o cliente na lista do escritório, com a busca (o mesmo menu do lote do DP) */
 function MenuDeCliente({ vm, arquivo }: { vm: VmEnvioDeGuias; arquivo: GuiaDoLote }) {
@@ -76,7 +77,7 @@ function TabelaDosProntos({ vm, grupos, mexe }: { vm: VmEnvioDeGuias; grupos: Vm
           {grupos.flatMap(g => g.arquivos.map((a, k) => {
             const r = vm.noRelatorio(a);
             const erro = g.resultado?.status === 'erro' ? g.resultado.erro : g.via === 'email' && !g.email ? 'sem e-mail no cadastro' : '';
-            const destino = g.via === 'impresso' ? 'vai para a rota do Entregas' : g.resultado?.para.length ? g.resultado.para.join(', ') : g.email;
+            const destino = g.via === 'impresso' ? 'vai para a rota do Entregas' : g.via === 'econtador' ? 'vai pelo eContador do Alterdata' : g.resultado?.para.length ? g.resultado.para.join(', ') : g.email;
             return (
               <tr key={g.chave + '|' + a.id}>
                 {k === 0 && (
@@ -88,7 +89,7 @@ function TabelaDosProntos({ vm, grupos, mexe }: { vm: VmEnvioDeGuias; grupos: Vm
                     </td>
                     <td className="fraco" rowSpan={g.arquivos.length}>{mesAno(g.competencia)}</td>
                     <td rowSpan={g.arquivos.length}>
-                      {mexe ? <Segmentado valor={g.via} opcoes={VIAS} onMudar={v => void vm.mudarVia(g.codigo, v)} /> : <span className="fraco">{g.via === 'impresso' ? 'Impresso' : 'Gmail'}</span>}
+                      {mexe ? <Segmentado valor={g.via} opcoes={VIAS} onMudar={v => void vm.mudarVia(g.codigo, v)} /> : <span className="fraco">{ROTULO_DA_VIA[g.via]}</span>}
                     </td>
                   </>
                 )}
@@ -123,7 +124,7 @@ function Enviados({ vm }: { vm: VmEnvioDeGuias }) {
             <li key={x.id} className="dp-lote-falta">
               <div className="dp-lote-falta-nome">
                 <b><span className="num fraco">{x.codigo}</span> {x.empresa || 'Cliente ' + x.codigo}</b>
-                <span className="fraco">{hora(x.enviadoEm)} · {x.via === 'impresso' ? 'impresso, na rota do Entregas' : 'para ' + (x.para.join(', ') || '—')}{x.por ? ' · por ' + x.por : ''}</span>
+                <span className="fraco">{hora(x.enviadoEm)} · {x.via === 'impresso' ? 'impresso, na rota do Entregas' : x.via === 'econtador' ? 'pelo eContador' : 'para ' + (x.para.join(', ') || '—')}{x.por ? ' · por ' + x.por : ''}</span>
                 {/* cada guia abre pelo id no Drive; os envios de antes do id, pelo nome na pasta do cliente */}
                 {(() => {
                   const gs = x.guiasDrive.length ? x.guiasDrive : x.guias.map(nome => ({ nome, id: '' }));
@@ -200,7 +201,7 @@ export function JanelaDasGuias({ regime, competencia, fechar }: { regime: Regime
         { id: 'enviados', rotulo: 'Enviados', icone: 'check', contador: vm.enviados.length },
         { id: 'modelo', rotulo: 'Modelo do e-mail', icone: 'envelope' },
       ]}
-      resumo={<div className="usuario-quem"><b>Fiscal › {vm.grupo.rotulo}</b><span className="fraco">por Gmail ou impresso</span></div>}>
+      resumo={<div className="usuario-quem"><b>Fiscal › {vm.grupo.rotulo}</b><span className="fraco">por Gmail, impresso ou eContador</span></div>}>
       {topico === 'modelo' ? <Modelo vm={vm} /> : topico === 'enviados' ? <Enviados vm={vm} /> : (
         <>
           {vm.carregando ? <Esqueleto linhas={4} /> : !lote ? (
