@@ -120,8 +120,10 @@ function iniciarAlterdata(db, log) {
     if (avisosClicados.has(aviso.janela)) return false;
     avisosClicados.add(aviso.janela);
     const r = await rodarPy(ROTEIRO_AVISOS, [aviso.janela], 60 * 1000);
-    const ok = /"ok":\s*true/.test(r.out);
-    log('Alterdata: a tela de atualizações do Contábil (' + aviso.qual + '): ' + (ok ? 'cliquei em "Ver depois"' : 'não fechou com o "Ver depois" (' + (r.out.match(/"erro":\s*"([^"]*)"/) || [])[1] + ')'));
+    let res = { ok: false, erro: 'o roteiro parou sem resultado' };
+    try { const m = r.out.match(/RESULTADO:\s*(\{.*\})/); if (m) res = JSON.parse(m[1]); } catch (_) { /* mal escrito */ }
+    const ok = !!res.ok;
+    log('Alterdata: a tela de atualizações do Contábil (' + aviso.qual + '): ' + (ok ? 'cliquei em "Ver depois"' : 'não fechou com o "Ver depois" (' + res.erro + ')'));
     return ok;
   }
 
