@@ -18,7 +18,11 @@ export interface EscolhaDaGuia extends EscolhaDoArquivo { coluna?: string }
  * impresso cria na rotina do entregas a entrega"): pelo Gmail (o e-mail do robô) ou impresso (o robô põe a entrega na rota
  * do Entregas, com as guias anexadas, e o Relatório fica com Entregue = Impresso).
  */
-export type ViaDaGuia = 'email' | 'impresso';
+// e o eContador do Alterdata (04/11/2026: "preciso que coloque a opção econtador do alterdata como envio e tambem preciso que preencha dae e icms na planilha la, enviei 2 dae via impresso e não preencheu"): o robô grava as guias no Drive e o Relatório com Entregue = eContador,
+// sem e-mail e sem entrega (a guia vai para o portal do cliente pelo eContador)
+export type ViaDaGuia = 'email' | 'impresso' | 'econtador';
+/** a via guardada no banco ('' ou outra coisa = Gmail) */
+export const viaDaGuia = (v: unknown): ViaDaGuia => (v === 'impresso' || v === 'econtador' ? v : 'email');
 export interface GuiaDoLote extends Omit<ArquivoDoLote, 'leitura' | 'escolha'> { leitura: LeituraDaGuia | null; escolha: EscolhaDaGuia | null }
 export interface ResultadoDoLoteFiscal extends ResultadoDoLote {
   /** as colunas que o robô preencheu no Relatório (as que estavam em branco); valores: o valor das guias por coluna */
@@ -209,7 +213,7 @@ export function criarLoteFiscalMemoria(controle: () => RepoControleTributos): Re
             const v = valorDaGuia(i.leitura?.valor);
             if (c && v != null) valores[c] = Math.round(((valores[c] || 0) + v) * 100) / 100;
           }
-          const via = lote.vias[String(codigo)] === 'impresso' ? 'impresso' : 'email';
+          const via = viaDaGuia(lote.vias[String(codigo)]);
           const erro = via === 'email' && codigo % 9 === 0 ? 'o cliente não tem e-mail no cadastro' : '';
           let preenchidos: string[] = [];
           if (!erro) {
@@ -220,7 +224,7 @@ export function criarLoteFiscalMemoria(controle: () => RepoControleTributos): Re
             const textos = Object.fromEntries(Object.entries(valores).map(([c, v]) => [c, t.valorDoControle(v.toFixed(2).replace('.', ','))]));
             // impresso: o valor e o Entregue = Impresso; a data fica para quando a entrega for confirmada na rota
             const nova = t.preencherComSugestao(linha, { valores: textos, data: via === 'email' ? dia : '', email: via === 'email' });
-            void repo.salvarLinha(via === 'impresso' ? { ...nova, entregue: nova.entregue || 'impresso' } : nova);
+            void repo.salvarLinha(via === 'email' ? nova : { ...nova, entregue: nova.entregue || via });
           }
           return {
             chave, codigo, competencia: comp, status: erro ? 'erro' : 'enviado', erro, para: via === 'email' ? ['financeiro@exemplo.com.br'] : [], via, entregaId: via === 'impresso' ? 'ex-entrega-' + chave : '', enviadoEm: agora(), arquivos: itens.map(i => i.leitura?.nomeFinal || i.nome),

@@ -1,20 +1,25 @@
 // Importação › Balancete / Entradas / Saídas / Tomados / Prestados (conferencia.html ~L1036-1155).
 import { conferencia as c } from '@nads/core';
-import { Alerta, BotaoAcao, CampoArquivo, Icone, Interruptor, MensagemFlutuante, useCarregando } from '@nads/ui';
+import { Alerta, BotaoAcao, CampoArquivo, Icone, Interruptor, MensagemFlutuante, origemDoPai, useCarregando } from '@nads/ui';
+import { useState } from 'react';
 import { AcoesDoTopo } from '../../../../comum/topo';
 import { BoasVindasBalancete } from './partes/BoasVindasBalancete';
 import { NotasImportadas, ServicosImportados } from './partes/Importados';
 import { PlanoDeContas } from './partes/PlanoDeContas';
 import { useImportacao, type Mensagem } from './useImportacao';
 
-/** naEtapa: dentro da primeira etapa da Tarefas, sem o "Apagar ao sair" do balancete (nem a pergunta sobre ele). */
+/**
+ * naEtapa: dentro da primeira etapa da Tarefas. Dentro da Tarefa (a Importação ou a Conferência fiscal), sem o "Apagar ao sair"
+ * do balancete nem a pergunta sobre ele (Vitor, 05/11/2026: "remove esse apagar ao sair"); só na Conferência aberta sozinha.
+ */
 export function Importacao({ tipo, naEtapa, meses }: { tipo: c.PaginaImportacao; naEtapa?: boolean; meses?: readonly string[] }) {
   const vm = useImportacao(tipo, meses);
   useCarregando(vm.carregando);
+  const [naTarefa] = useState(() => !!naEtapa || !!origemDoPai());
   return (
     <section>
       <AcoesDoTopo>
-        {tipo === 'balancete' && !naEtapa && (
+        {tipo === 'balancete' && !naTarefa && (
           <span className="toggle-row" title="Ligado: o balancete desta empresa é apagado sempre que alguém sai dela, pra próxima conferência começar com um balancete atualizado.">
             Apagar ao sair<Interruptor ligado={vm.autoLimpar} onMudar={vm.alternarAutoLimpar} rotulo="Apagar o balancete ao sair" />
           </span>
@@ -22,7 +27,7 @@ export function Importacao({ tipo, naEtapa, meses }: { tipo: c.PaginaImportacao;
         {vm.ja && <button className="btn btn-primary" type="button" onClick={vm.alternarReimportar}>{vm.reimportando ? 'Cancelar reimportação' : 'Reimportar'}</button>}
       </AcoesDoTopo>
 
-      {vm.boasVindas && !naEtapa && <BoasVindasBalancete autoLimpar={vm.autoLimpar} onResponder={vm.definirAutoLimpar} />}
+      {vm.boasVindas && !naTarefa && <BoasVindasBalancete autoLimpar={vm.autoLimpar} onResponder={vm.definirAutoLimpar} />}
 
       {vm.mostrarCaixa && (
         <div className="card">
@@ -50,12 +55,27 @@ export function Importacao({ tipo, naEtapa, meses }: { tipo: c.PaginaImportacao;
         </Alerta>
       )}
 
-      {/* o mês do período que o arquivo não trouxe (Vitor, 04/11/2026: "tá importado só até o 08"): avisa até reimportar */}
+      {/* o mês do período que o arquivo não trouxe (Vitor, 04/11/2026: "tá importado só até o 08"): avisa até reimportar ou
+          até marcar o mês sem movimento (Vitor, 05/11/2026: "deixe a opção de marcar os meses que estão sem movimento") */}
       {vm.mesesSemNota.length > 0 && !vm.reimportando && (
-        <Alerta naLinha titulo={'Nenhuma nota em ' + vm.mesesSemNota.join(', ')}
-          texto={'O período da Tarefa é ' + vm.periodo + '. Confira no Alterdata se o arquivo saiu com o período todo e reimporte.'}>
-          <div className="btn-row" style={{ marginTop: 8 }}>
+        <Alerta naLinha titulo={'Nenhuma nota em ' + vm.mesesSemNota.map(m => m.rotulo).join(', ')}
+          texto={'O período da Tarefa é ' + vm.periodo + '. Se a empresa não teve ' + vm.nomeDoTipo + ' no mês, marque sem movimento; senão, confira no Alterdata se o arquivo saiu com o período todo e reimporte.'}>
+          <div className="btn-row" style={{ marginTop: 8, flexWrap: 'wrap' }}>
+            {vm.mesesSemNota.map(m => (
+              <button key={m.valor} className="btn btn-outline" type="button" title={'A empresa não teve ' + vm.nomeDoTipo + ' em ' + m.rotulo}
+                onClick={() => vm.marcarMesSemMovimento(m.valor)}>{m.rotulo} sem movimento</button>
+            ))}
             <button className="btn btn-outline" type="button" onClick={vm.alternarReimportar}>Reimportar</button>
+          </div>
+        </Alerta>
+      )}
+      {vm.mesesMarcadosSemNota.length > 0 && !vm.reimportando && (
+        <Alerta naLinha tom="ok" titulo={'Sem ' + vm.nomeDoTipo + ' em ' + vm.mesesMarcadosSemNota.map(m => m.rotulo).join(', ')}
+          texto="Marcado como sem movimento no mês.">
+          <div className="btn-row" style={{ marginTop: 8, flexWrap: 'wrap' }}>
+            {vm.mesesMarcadosSemNota.map(m => (
+              <button key={m.valor} className="btn btn-outline" type="button" onClick={() => vm.desfazerMesSemMovimento(m.valor)}>Desfazer {m.rotulo}</button>
+            ))}
           </div>
         </Alerta>
       )}

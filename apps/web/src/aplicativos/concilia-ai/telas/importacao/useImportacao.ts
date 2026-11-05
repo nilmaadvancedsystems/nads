@@ -68,11 +68,13 @@ export function useImportacao(tipo: TipoImp, mesesDaEtapa?: readonly string[]) {
   const tipoNotas = tipo !== 'balancete' && mesesDaEtapa?.length ? tipo : null;
   const semMovimento = !!tipoNotas && !ja && c.semNotasDoPeriodo(e, mesesDaEtapa)[tipoNotas];
   const mostrarCaixa = (!ja || reimportando) && !semMovimento;
+  // os meses marcados um a um sem notas deste tipo (o aviso do mês faltando não os acusa)
+  const marcadosSemNota: readonly string[] = (tipoNotas && e.mesesSemNotas?.[tipoNotas]) || [];
 
   function limparArquivo() { setArquivo(null); }
   /** o mês do período que o arquivo não trouxe: o aviso na mensagem da importação */
   function avisarMesesSemNota(textos: Mensagem['textos'], notas: readonly { comp: string }[]) {
-    const sem = c.mesesSemNotas(notas, mesesDaEtapa);
+    const sem = c.mesesSemNotas(notas, mesesDaEtapa).filter(m => !marcadosSemNota.includes(m));
     if (sem.length) textos.push({ texto: 'Nenhuma nota em ' + sem.map(rotuloMes).join(', ') + ': confira se o arquivo saiu com o período todo (' + rotuloDoPeriodo(mesesDaEtapa) + ').', tom: 'aviso' });
   }
   function terminar() { setCarregando(false); }
@@ -263,6 +265,12 @@ export function useImportacao(tipo: TipoImp, mesesDaEtapa?: readonly string[]) {
     setMensagemBruta(null); limparArquivo();
     toast(sem ? 'Marcado: sem ' + nomeDoTipo + ' em ' + rotuloDoPeriodo(mesesDaEtapa) + '.' : 'Desmarcado: importe as ' + nomeDoTipo + ' do período.');
   }
+  /** um mês do período sem nenhuma nota de verdade (Vitor, 05/11/2026): sai do aviso do mês faltando */
+  function marcarMesSemNota(mes: string, sem: boolean) {
+    if (!tipoNotas) return;
+    s.aplicar(x => c.marcarMesSemNotas(x, tipoNotas, mes, sem));
+    toast(sem ? 'Marcado: sem ' + nomeDoTipo + ' em ' + rotuloMes(mes) + '.' : 'Desmarcado: ' + rotuloMes(mes) + ' volta a pedir as ' + nomeDoTipo + '.');
+  }
 
   // ---------- Apagar ao sair (balancete) ----------
   const autoLimpar = e.autoLimparBalancete !== false;
@@ -276,7 +284,11 @@ export function useImportacao(tipo: TipoImp, mesesDaEtapa?: readonly string[]) {
   const notas = tipo === 'entradas' || tipo === 'saidas' ? resumoNotas(e[tipo]) : null;
   // o mês do período sem nenhuma nota no que está guardado: o aviso fica na tela até reimportar (ou marcar sem movimento)
   const guardadas: readonly { comp: string }[] = tipo === 'entradas' || tipo === 'saidas' ? e[tipo] : tipo === 'tomados' || tipo === 'prestados' ? e[c.SV[tipo].campo] : [];
-  const mesesSemNota = ja && tipoNotas ? c.mesesSemNotas(guardadas, mesesDaEtapa).map(rotuloMes) : [];
+  const semNotaNoGuardado = ja && tipoNotas ? c.mesesSemNotas(guardadas, mesesDaEtapa) : [];
+  const mesDaTela = (m: string) => ({ valor: m, rotulo: rotuloMes(m) });
+  // os que faltam (o aviso, com o marcar sem movimento de cada um) e os já marcados (o aviso verde, com o desfazer)
+  const mesesSemNota = semNotaNoGuardado.filter(m => !marcadosSemNota.includes(m)).map(mesDaTela);
+  const mesesMarcadosSemNota = semNotaNoGuardado.filter(m => marcadosSemNota.includes(m)).map(mesDaTela);
   const servicos = tipo === 'tomados' || tipo === 'prestados' ? resumoServicos(e[c.SV[tipo].campo], tipo) : null;
 
   return {
@@ -286,8 +298,9 @@ export function useImportacao(tipo: TipoImp, mesesDaEtapa?: readonly string[]) {
     boasVindas: tipo === 'balancete' && e.avisoBalPendente === true, autoLimpar, definirAutoLimpar, alternarAutoLimpar: () => definirAutoLimpar(!autoLimpar),
     plano, alternarGrupo: (g: c.Grupo) => setFiltroGrupos(f => (f.indexOf(g) > -1 ? f.filter(x => x !== g) : f.concat(g))),
     notas, servicos,
-    podeMarcarSemMovimento: !!tipoNotas && !ja, semMovimento, nomeDoTipo, periodo: rotuloDoPeriodo(mesesDaEtapa), mesesSemNota,
+    podeMarcarSemMovimento: !!tipoNotas && !ja, semMovimento, nomeDoTipo, periodo: rotuloDoPeriodo(mesesDaEtapa), mesesSemNota, mesesMarcadosSemNota,
     marcarSemMovimento: () => marcarSemMovimento(true), desfazerSemMovimento: () => marcarSemMovimento(false),
+    marcarMesSemMovimento: (mes: string) => marcarMesSemNota(mes, true), desfazerMesSemMovimento: (mes: string) => marcarMesSemNota(mes, false),
   };
 }
 

@@ -133,6 +133,7 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
     const escolhida = atual?.vias[String(codigo)];
     if (escolhida) return escolhida;
     const antes = controle.doMes(t.somarMesesDaCompetencia(competencia, -1)).linhas.get(codigo);
+    if (antes?.entregue === 'econtador') return 'econtador';
     return antes?.entregue === 'impresso' || !email ? 'impresso' : 'email';
   };
   const grupos = [...porChave.entries()].map(([chave, g]) => {
@@ -277,14 +278,16 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
       const n = pendentes.length;
       if (!n) return;
       const porEmail = pendentes.filter(g => g.via === 'email').length;
-      const impressos = n - porEmail;
+      const impressos = pendentes.filter(g => g.via === 'impresso').length;
+      const noEcontador = pendentes.filter(g => g.via === 'econtador').length;
       const semEmail = pendentes.filter(g => g.via === 'email' && !g.email).length;
       const ok = await modal({
         icone: 'envelope', titulo: 'Disparar para ' + n + (n === 1 ? ' cliente?' : ' clientes?'),
         texto: (porEmail ? porEmail + (porEmail === 1 ? ' cliente recebe' : ' clientes recebem') + ' as guias no e-mail do cadastro. ' : '') +
           (impressos ? impressos + (impressos === 1 ? ' cliente vai' : ' clientes vão') + ' para a rota do Entregas, com as guias anexadas para imprimir. ' : '') +
+          (noEcontador ? noEcontador + (noEcontador === 1 ? ' cliente fica' : ' clientes ficam') + ' com Entregue = eContador (as guias no Drive, para postar no eContador). ' : '') +
           'O robô grava cada guia na pasta do cliente no Drive e preenche o ' + doGrupo.rotulo +
-          ' no Relatório: o valor de cada coluna e o Entregue (e-mail, com a data, ou impresso), só onde está em branco.' +
+          ' no Relatório: o valor de cada coluna e o Entregue (e-mail, com a data, impresso ou eContador), só onde está em branco.' +
           (semEmail ? ' ' + semEmail + (semEmail === 1 ? ' cliente está' : ' clientes estão') + ' sem e-mail e vai dar erro.' : '') +
           (faltam.length ? ' ' + faltam.length + (faltam.length === 1 ? ' guia sem cliente fica' : ' guias sem cliente ficam') + ' de fora.' : ''),
         botoes: [{ rotulo: 'Disparar', valor: true, variante: 'btn-primary' }, { rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }],

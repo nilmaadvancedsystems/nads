@@ -97,6 +97,18 @@ export function marcarSemNotas(e: Empresa, tipo: TipoDeNotas, meses: readonly st
   });
 }
 
+/** Marca (ou desmarca) um mês sem notas daquele tipo: o aviso do mês faltando deixa de acusar. */
+export function marcarMesSemNotas(e: Empresa, tipo: TipoDeNotas, mes: string, sem: boolean): Empresa {
+  if (!/^\d{4}-\d{2}$/.test(mes)) return e;
+  return produzir(e, x => {
+    const todos = { ...(x.mesesSemNotas || {}) };
+    const lista = (todos[tipo] || []).filter(m => m !== mes);
+    if (sem) lista.push(mes);
+    if (lista.length) todos[tipo] = lista.sort(); else delete todos[tipo];
+    if (Object.keys(todos).length) x.mesesSemNotas = todos; else delete x.mesesSemNotas;
+  });
+}
+
 export function importarServicos(e: Empresa, tipo: TipoServico, notas: NotaServico[], adicionadas: number, modo: ModoImportacao, agora: Date): Empresa {
   const campo = SV[tipo].campo;
   return produzir(e, x => {

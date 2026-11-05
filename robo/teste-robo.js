@@ -1051,6 +1051,13 @@ igual('sem nome no assunto: não decide pelo nome', r.desempatarPorNome(fitos, '
   const g = F.camposDaGuiaFiscal('DARF', darf);
   igual('fiscal: a DARF pelo código da receita, o valor, o vencimento e a apuração', [g.tributo, g.valor, g.vencimento, g.competencia], ['PIS', 'R$1234,56', '24-10-2026', { mes: 9, ano: 2026 }]);
   igual('fiscal: o que não é guia não tem campos', F.camposDaGuiaFiscal('FGTS', darf), null);
+  igual('fiscal: a coluna do ICMS do Simples pela receita do DAE', [F.colunaDaGuia('sn', 'DAE', 'ICMS', false, '0327-7 ICMS REC.ANTECIPADO-INDUSTRIA'), F.colunaDaGuia('sn', 'DAE', 'ICMS', false, '0317-8 ICMS DIFERENCA DE ALIQUOTA'), F.colunaDaGuia('sn', 'DAE', 'ICMS', false, 'ICMS ST - SAIDA'), F.colunaDaGuia('sn', 'DAE', 'ICMS', false, 'OUTRA'), F.colunaDaGuia('lp', 'DAE', 'ICMS', false, '0317-8 ICMS DIFERENCA DE ALIQUOTA'), F.colunaDaGuia('sn', 'DAE', 'ICMS', true, '0327-7 ICMS REC.ANTECIPADO')], ['icms-ant', 'icms-dif', 'st-sai', '', 'icms', '']);
+  {
+    // o DAE do SIARE como o PDF sai (o texto normalizado do arquivador): a receita na linha do Histórico
+    const u = 'HISTORICO ORGAO: SECRET EST FAZENDA-DAE ON LINE RECEITA: 0327-7 ICMS REC.ANTECIPADO-INDUSTRIA PERIODO REF. DOC. ORIGEM VENCIMENTO VALOR MULTA JUROS TOTAL 01 A 31/10/2026 3417 21/12/2026 344.12 0.00 0.00 344.12\n\nSECRETARIA DE ESTADO DE FAZENDA DE MINAS GERAIS\n\nDOCUMENTO DE ARRECADACAO ESTADUAL - DAE\n\nMES ANO DE REFERENCIA 10 / 2026\n';
+    const g = F.camposDaGuiaFiscal('DAE', u);
+    igual('fiscal: a receita do DAE do SIARE', [g.receita, g.tributo, F.colunaDaGuia('sn', 'DAE', g.tributo, g.parcelamento, g.receita)], ['0327-7 ICMS REC.ANTECIPADO-INDUSTRIA', 'ICMS', 'icms-ant']);
+  }
   igual('fiscal: a coluna pelo grupo', [F.colunaDaGuia('sn', 'DAS', ''), F.colunaDaGuia('lp', 'DAS', ''), F.colunaDaGuia('lp', 'DARF', 'COFINS'), F.colunaDaGuia('lp', 'DARF', 'IRRF'), F.colunaDaGuia('lp', 'DAE', 'ICMS'), F.colunaDaGuia('sn', 'DAE', 'ICMS'), F.colunaDaGuia('lp', 'DAM', 'ISS'), F.colunaDaGuia('sn', 'DAS', '', true)], ['das', '', 'cofins', '', 'icms', '', 'iss', '']);
   const decisao = { acao: 'ARQUIVAR', cliente: 58, clienteNome: 'ACME', tipo: 'DARF', competencia: { mes: 10, ano: 2026 }, nomeFinal: '09-2026 - DARF PIS - VALOR R$1234,56 - VENCIMENTO 24-10-2026.pdf', anoRaiz: 2026, pastaCliente: '58 - ACME', caminho: ['FISCAL', 'LUCRO PRESUMIDO', '05. DARF'] };
   const lg = F.leituraDaGuia(decisao, g, { texto: ['DARF'] }, 'lp');

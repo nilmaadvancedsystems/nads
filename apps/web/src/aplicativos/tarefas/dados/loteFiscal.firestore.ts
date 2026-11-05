@@ -15,7 +15,7 @@ import { guardar, guardarPedido } from '../../../comum/modoDesenvolvedor';
 import { bancoDoEntregas } from './entregas.firestore';
 import type { ModeloDoEnvio } from './enviosDp';
 import { arquivoDoBanco, loteDoBanco } from './loteDp.firestore';
-import type { EnvioDasGuias, GuiaDoLote, LoteFiscal, RepoLoteFiscal } from './loteFiscal';
+import { viaDaGuia, type EnvioDasGuias, type GuiaDoLote, type LoteFiscal, type RepoLoteFiscal } from './loteFiscal';
 
 // a trava do modo desenvolvedor (comum/modoDesenvolvedor.ts): com o modo ligado, só ver — nada é gravado
 const addDoc = guardarPedido(addDocBruto) as typeof addDocBruto;
@@ -41,9 +41,9 @@ function loteFiscalDoBanco(id: string, d: Record<string, unknown>): LoteFiscal {
     ...l, grupo: d.grupo === 'lp' ? 'lp' : 'sn',
     resultados: l.resultados.map(x => ({
       ...x, preenchidos: textos(r[x.chave]?.preenchidos), erroNoRelatorio: texto(r[x.chave]?.erroNoRelatorio),
-      via: r[x.chave]?.via === 'impresso' ? 'impresso' : 'email', entregaId: texto(r[x.chave]?.entregaId),
+      via: viaDaGuia(r[x.chave]?.via), entregaId: texto(r[x.chave]?.entregaId),
     })),
-    vias: Object.fromEntries(Object.entries((d.vias || {}) as Record<string, unknown>).map(([k, v]) => [k, v === 'impresso' ? 'impresso' : 'email'] as const)),
+    vias: Object.fromEntries(Object.entries((d.vias || {}) as Record<string, unknown>).map(([k, v]) => [k, viaDaGuia(v)] as const)),
   };
 }
 
@@ -138,7 +138,7 @@ export function criarLoteFiscalFirestore(quem: () => e.Quem | null): RepoLoteFis
               id: x.id, codigo: Number(d.codigo) || 0, empresa: texto(d.empresa), competencia: texto(d.competencia), grupo: d.grupo === 'lp' ? 'lp' : 'sn',
               para: textos(d.para), guias: textos(d.enviados),
               guiasDrive: (Array.isArray(d.guiasDrive) ? d.guiasDrive : []).map((g: Record<string, unknown>) => ({ nome: texto(g?.nome), id: texto(g?.id) })).filter((g: { id: string }) => g.id), enviadoEm: texto(d.enviadoEm || d.criadoEm), por: texto(d.criadoPor),
-              via: d.via === 'impresso' ? 'impresso' : 'email',
+              via: viaDaGuia(d.via),
             } satisfies EnvioDasGuias;
           }).sort((a, b) => b.enviadoEm.localeCompare(a.enviadoEm));
           enviadosDoMes.set(competencia, { carregados: true, lista });

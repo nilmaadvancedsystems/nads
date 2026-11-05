@@ -34,6 +34,8 @@ function SinalDaEntrega({ valor }: { valor: t.EntregaDoControle }) {
   if (valor === 'zap') return <span className="ctrl-entrega-sinal"><LogoWhatsApp /></span>;
   if (valor === 'email') return <span className="ctrl-entrega-sinal"><LogoGmail /></span>;
   if (valor === 'impresso') return <span className="ctrl-entrega-sinal"><Icone nome="printer" width={16} height={16} /></span>;
+  // o eContador do Alterdata: as guias postadas no portal do cliente
+  if (valor === 'econtador') return <span className="ctrl-entrega-sinal"><Icone nome="upload" width={16} height={16} /></span>;
   return <span className="ctrl-entrega-texto">{valor === 'nao' ? '—' : 'Falta'}</span>;
 }
 

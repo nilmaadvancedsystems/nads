@@ -6,6 +6,7 @@ import { BotaoFechar, Icone, Interruptor, useJanela, Vazio } from '@nads/ui';
 import { useEffect, useRef, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import type { ItemNatureza, NotaDaNatureza, SlotVista, useConfiguracoes } from '../useConfiguracoes';
+import { Sugestao } from './Sugestao';
 import { CampoVincular, ChipsDeContas } from './VincularConta';
 
 type VM = ReturnType<typeof useConfiguracoes>;
@@ -58,19 +59,20 @@ const LINHA: CSSProperties = { display: 'flex', alignItems: 'center', gap: 12, f
 function Natureza({ it, vm }: { it: ItemNatureza; vm: VM }) {
   return (
     <div className={'ndp-item' + (it.nao ? ' ndp-nao-contabil' : '')}>
-      {/* o total do CFOP no canto direito, maior e em negrito (Vitor, 14/10/2026) */}
+      {/* o total do CFOP no canto direito (Vitor, 14/10/2026), discreto desde 05/11/2026 */}
       <div className="ndp-natureza ndp-natureza-row">
         <span>{it.titulo}{it.semConta && <span className="ponto-vermelho" title="Falta a conta contábil: vincule uma conta ou marque Não vai para o Contábil" aria-label="Falta a conta contábil" />}</span>
         {/* embaixo do total, o "Ver notas" (Vitor, 21/10/2026): abre as notas deste CFOP logo abaixo */}
         <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 12 }}>
-          <span className="num" style={{ fontSize: 18, fontWeight: 700, whiteSpace: 'nowrap' }} title="O total das notas deste CFOP">{it.total}</span>
+          {/* o total discreto (Vitor, 05/11/2026: "deixa esse número mais minimalista, tá muito grande") */}
+          <span className="num" style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap' }} title="O total das notas deste CFOP">{it.total}</span>
           <button type="button" className="btn" onClick={() => vm.verNotas(it.k)}>Ver notas</button>
         </span>
       </div>
       {/* a conta contábil (a que a conferência compara com o balancete) e, com as vendas separadas, o código do lançamento
           à vista e a prazo — cada um com o nome na frente, para não confundir um com o outro (Vitor, 13/10/2026) */}
       <div style={LINHA}>
-        <span style={ROTULO}>Conta contábil{it.semConta && <b className="ext-neg" style={{ marginLeft: 6, fontWeight: 600 }}>falta</b>}</span>
+        <span style={ROTULO}>Conta contábil</span>
       {/* ocupa o resto da linha: o campo de busca aberto cresce e a lista das contas cabe (Vitor, 14/10/2026: "Bugado",
           a lista abria da largura do campo, com o nome espremido e o Vincular cortado) */}
       <div className="ndp-contas-row" style={{ flex: '1 1 320px', minWidth: 0 }}>
@@ -81,10 +83,15 @@ function Natureza({ it, vm }: { it: ItemNatureza; vm: VM }) {
             <button type="button" className="vista-pill-x" title="Desfazer" aria-label="Desfazer" onClick={() => vm.naoContabil(it.k, false)}>&times;</button>
           </span>
         ) : (
-          <CampoVincular v={it.vinculo} rotulo="Vincular conta" titulo="Vincular a conta contábil desta natureza (a que a conferência compara com o balancete)"
-            extra={escondido => it.podeNaoContabil
-              ? <button type="button" className="btn ndp-nao-btn" hidden={escondido} onClick={() => vm.naoContabil(it.k, true)}>Não vai para o Contábil</button>
-              : null} />
+          <CampoVincular soIcone falta={it.semConta} v={it.vinculo} rotulo="Vincular conta" titulo="Vincular a conta contábil desta natureza (a que a conferência compara com o balancete)"
+            extra={escondido => (
+              <>
+                {/* numa linha só: o +, a lâmpada e o Não vai (Vitor, 05/11/2026: "deixa isso mais alinhado"); a lâmpada fica enquanto
+                    faltar ligar alguma conta sugerida */}
+                {it.sugestao && !escondido && <Sugestao sug={it.sugestao} oQuePede="A natureza pede" vincular={it.vinculo.escolher} naoContabil={() => vm.naoContabil(it.k, true)} />}
+                {it.podeNaoContabil && <button type="button" className="btn ndp-nao-btn" hidden={escondido} onClick={() => vm.naoContabil(it.k, true)}>Não vai para o Contábil</button>}
+              </>
+            )} />
         )}
       </div>
       </div>

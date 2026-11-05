@@ -34,6 +34,12 @@ describe('o controle de tributos do Fiscal (27/10/2026)', () => {
     expect(colunaDaGuia('sn', 'DARF', 'PIS')).toBe('');
     expect(colunaDaGuia('lp', 'DAE', 'ICMS')).toBe('icms');
     expect(colunaDaGuia('sn', 'DAE', 'ICMS')).toBe('');
+    // no Simples, a coluna do ICMS pela receita do DAE
+    expect(colunaDaGuia('sn', 'DAE', 'ICMS', false, '0327-7 ICMS REC.ANTECIPADO-INDUSTRIA')).toBe('icms-ant');
+    expect(colunaDaGuia('sn', 'DAE', 'ICMS', false, '0317-8 ICMS DIFERENCA DE ALIQUOTA')).toBe('icms-dif');
+    expect(colunaDaGuia('sn', 'DAE', 'ICMS', false, 'ICMS ST ENTRADA')).toBe('st-ent');
+    expect(colunaDaGuia('sn', 'DAE', 'ICMS', true, '0327-7 ICMS REC.ANTECIPADO-INDUSTRIA')).toBe('');
+    expect(colunaDaGuia('lp', 'DAE', 'ICMS', false, '0317-8 ICMS DIFERENCA DE ALIQUOTA')).toBe('icms');
     expect(colunaDaGuia('lp', 'DAM', 'ISS')).toBe('iss');
     expect(colunaDaGuia('lp', 'DAM', 'IPTU')).toBe('');
     expect(colunaDaGuia('sn', 'DAS', '', true)).toBe('');

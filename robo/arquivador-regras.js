@@ -1019,7 +1019,10 @@ const REGRAS_PDF = [
       // (Vitor, 30/10/2026, 5ª rodada, decisão 1) a guia da parcela da multa ambiental (SEMAD/FEAM/IEF: "Auto de Infração Nº 297718", "Receita: MULTAS ADMINISTRATIVAS POR DANOS
       // AMBIENTAIS", "DAE : 10/60"), que não escreve "PARCELAMENTO": é parcelamento, como a D3 (a da 413 já ia para PARCELAMENTOS; a da Kopek, 412, ia para 06. DAE)
       const parcelaAmbiental = ORGAO_AMBIENTAL.test(u) && /\bMULTAS?\b|AUTO DE INFRACAO/.test(u) && /\bDAE\s*:?\s*\d{1,3}\s*\/\s*\d{1,3}\b/.test(u);   // "DAE : 10/60" (Kopek) e "DAE 14/60" (Lavica)
-      return Object.assign(c, { tributo: trib, parcelaAmbiental, parcelamento: parcelaAmbiental || /PARCELAMENTO/.test(u.replace(/AUTUACAO,? DIVIDA ATIVA E PARCELAMENTO/g, " ")) })   /* "Nº Documento (autuação, dívida ativa e parcelamento)" é o rótulo do campo, em todo DAE do SIARE */;
+      // a receita do DAE (04/11/2026: "preciso que coloque a opção econtador do alterdata como envio e tambem preciso que preencha dae e icms na planilha la, enviei 2 dae via impresso e não preencheu"): no Simples ela diz a coluna do ICMS do Relatório ("Receita: 0327-7 ICMS
+      // REC.ANTECIPADO-INDUSTRIA" do SIARE; "Especificação da Receita" no DAE antigo)
+      const rec = /RECEITA:\s*(\d{3,4}-\d[^\n]*?)(?=\s+PERIODO\b|\n|$)/.exec(u) || /ESPECIFICACAO DA RECEITA\s*\n?\s*([^\n]{3,80})/.exec(u);
+      return Object.assign(c, { receita: rec ? rec[1].trim() : '', tributo: trib, parcelaAmbiental, parcelamento: parcelaAmbiental || /PARCELAMENTO/.test(u.replace(/AUTUACAO,? DIVIDA ATIVA E PARCELAMENTO/g, " ")) })   /* "Nº Documento (autuação, dívida ativa e parcelamento)" é o rótulo do campo, em todo DAE do SIARE */;
     } },
   { tipo: 'DAM', setor: 'FISCAL', re: /DOCUMENTO DE ARRECADACAO MUNICIPAL|\bDAM\b.*PREFEITURA|PREFEITURA[\s\S]{0,300}\bDAM\b/, fonte: '05d §4',
     campos: u => Object.assign(camposDaGuia(u), { tributo: /ITBI/.test(u) ? 'ITBI' : /\bISS/.test(u) ? 'ISS' : /IPTU/.test(u) ? 'IPTU' : /TAXA/.test(u) ? 'TAXA' : null }) },
