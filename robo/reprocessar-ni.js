@@ -23,7 +23,9 @@ const log = (...m) => console.log(new Date().toLocaleTimeString('pt-BR'), ...m);
   const pastaNi = path.join(ORIGEM, 'NÃO IDENTIFICADOS');
   // --apenas <texto>: só os arquivos com o texto no caminho (ex.: "EXTRATOS")
   const apenas = arg('--apenas', null);
-  const todos = A.arquivosDosNaoIdentificados(pastaNi).filter(r => !apenas || r.toUpperCase().includes(String(apenas).toUpperCase()));
+  // vários filtros separados por vírgula: qualquer um vale (05/11/2026: o reprocesso automático dos últimos dias)
+  const filtros = apenas ? String(apenas).split(',').map(x => x.trim().toUpperCase()).filter(Boolean) : [];
+  const todos = A.arquivosDosNaoIdentificados(pastaNi).filter(r => !filtros.length || filtros.some(f => r.toUpperCase().includes(f)));
   log('em NÃO IDENTIFICADOS: ' + todos.length + ' arquivos · ' + (APLICAR ? 'PRODUÇÃO' : 'simulação'));
   const manifestoAntigo = path.join(process.env.ARQUIVO_RAIZ || 'C:\\Users\\DPTO FISCAL 004\\GUSTAVO\\claudio', '_CONTROLE', 'MANIFESTO', 'manifesto.jsonl');
   const cadastro = A.carregarCadastro({});
@@ -43,7 +45,7 @@ const log = (...m) => console.log(new Date().toLocaleTimeString('pt-BR'), ...m);
     }
     log((i + LOTE) + '/' + todos.length);
   }
-  saida.end();
+  await new Promise(r => saida.end(r));   // (05/11/2026) o process.exit do fim cortava o que ainda não tinha sido gravado
   const resumo = { em: new Date().toISOString(), arquivos: todos.length, modo: base.modo, segundos: Math.round((Date.now() - t0) / 1000), transicoes: Object.fromEntries(Object.entries(conta).sort((a, b) => b[1] - a[1])) };
   fs.writeFileSync(path.join(SAIDA, 'resumo.json'), JSON.stringify(resumo, null, 1));
   log('fim: ' + JSON.stringify(resumo).slice(0, 2000));
