@@ -49,20 +49,23 @@ export function UsuariosDoNads() {
               <ul className="card usuarios-lista">
                 {g.itens.map(p => (
                   <li key={p.uid}>
-                    <button type="button" className={'usuarios-item' + (p.ativo ? '' : ' inativo')} onClick={() => vm.abrirPessoa(p.uid)} aria-label={'Abrir ' + p.nome}>
+                    {/* quem não é admin vê só o nome, o e-mail e a presença: cargo, nível, papéis e computadores são do admin (Vitor, 05/11/2026) */}
+                    <button type="button" className={'usuarios-item' + (p.ativo ? '' : ' inativo') + (vm.admin ? '' : ' so-nome')} onClick={() => vm.admin && vm.abrirPessoa(p.uid)} aria-label={vm.admin ? 'Abrir ' + p.nome : p.nome}>
                       <span className="usuarios-avatar">
                         {p.fotoPerfil ? <img className="usuarios-foto" src={p.fotoPerfil} alt="" /> : <span className="usuarios-foto usuarios-iniciais" aria-hidden="true">{p.iniciais}</span>}
                         {p.ativo && <span className={'usuarios-presenca' + (p.online ? ' on' : '')} title={p.presenca} aria-hidden="true" />}
                       </span>
                       <span className="usuarios-quem"><b>{p.nome}</b><span className="fraco">{p.email}</span></span>
-                      <span className="usuarios-cargo">
-                        {p.departamentoRotulo ? <span className={'usuarios-dep dep-' + p.departamento}>{p.departamentoRotulo}</span> : <span className="usuarios-sem-cargo">Sem cargo</span>}
-                        {p.nivelRotulo && <span className="fraco">{p.nivelRotulo}</span>}
-                      </span>
-                      <span className="usuarios-papeis">{p.papeisAMais.map(r => <span key={r} className="usuarios-tag">{r}</span>)}</span>
+                      {vm.admin && (
+                        <span className="usuarios-cargo">
+                          {p.departamentoRotulo ? <span className={'usuarios-dep dep-' + p.departamento}>{p.departamentoRotulo}</span> : <span className="usuarios-sem-cargo">Sem cargo</span>}
+                          {p.nivelRotulo && <span className="fraco">{p.nivelRotulo}</span>}
+                        </span>
+                      )}
+                      {vm.admin && <span className="usuarios-papeis">{p.papeisAMais.map(r => <span key={r} className="usuarios-tag">{r}</span>)}</span>}
                       <span className={'usuarios-visto' + (p.online ? ' on' : '')}>{!p.ativo ? 'Desativado' : p.online ? 'Online' : p.presenca.replace('Visto há ', 'há ').replace('Nunca abriu o nads', 'Nunca abriu')}</span>
-                      <span className="usuarios-pcs" title="Computadores liberados"><Icone nome="monitor" />{p.computadores.length}</span>
-                      <Icone nome="chevronRight" className="usuarios-seta" />
+                      {vm.admin && <span className="usuarios-pcs" title="Computadores liberados"><Icone nome="monitor" />{p.computadores.length}</span>}
+                      {vm.admin && <Icone nome="chevronRight" className="usuarios-seta" />}
                     </button>
                   </li>
                 ))}

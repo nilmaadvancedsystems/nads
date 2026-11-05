@@ -60,7 +60,8 @@ export function useUsuariosDoNads() {
 
   const linhas = todas
     .filter(p => filtro === 'todos' || (filtro === 'online' ? p.online : filtro === 'ativos' ? p.ativo : !p.ativo))
-    .filter(p => !q || (p.nome + ' ' + p.email + ' ' + p.cargo).toLowerCase().includes(q));
+    // a busca pelo cargo é só do admin (quem não é admin não vê o cargo, então não pode achar por ele)
+    .filter(p => !q || (p.nome + ' ' + p.email + (admin ? ' ' + p.cargo : '')).toLowerCase().includes(q));
 
   return {
     exemplos: repo.exemplos,
