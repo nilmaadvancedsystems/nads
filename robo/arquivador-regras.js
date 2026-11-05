@@ -2956,6 +2956,8 @@ function decidirPlanilha(entrada, ctx, ev, porHash) {
     const doc = unico(documentosDoTexto(u).filter(x => !ESCRITORIO.has(x.doc)).flatMap(x => clientesDoDoc(x.doc, cad)));
     const c = porHash ? { cliente: porHash, conf: 0.97, como: 'hash' } : doc != null ? { cliente: doc, conf: 0.95, como: 'doc' } : clientePelaPastaOuGrupo(entrada.rel || entrada.nome, entrada.nome, cad, ev);
     if (!c) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_NAO_LOCALIZADO', confianca: 0.3, evidencias: ev.concat('cartão de ponto: nem a planilha nem a pasta de origem dizem o cliente') });
+    // a pasta com a razão inteira do cadastro ("2026-10\MINIMERCADO SANTO EXPEDITO LTDA ME", a pasta do mês do cliente) basta para o cartão de ponto (o conteúdo é só horário)
+    if (c.como === 'pasta') { const cli = cad.porCod.get(c.cliente); const pastaDe = partesDoCaminho(entrada.rel || '').slice(-2, -1)[0] || ''; if (cli && chaveNome(pastaDe) && chaveNome(pastaDe) === chaveNome(cli.razao)) { c.conf = 0.9; c.como = 'pastaConferida'; ev.push('a pasta "' + pastaDe + '" é a razão inteira do cliente ' + c.cliente + ' no cadastro'); } }
     const pasta = anoDaPasta(entrada.rel || '') || competenciaDaPasta(entrada.rel || '');
     const comp = competenciaDoNome(entrada.nome) || (pasta && pasta.mes ? { mes: pasta.mes, ano: pasta.ano } : null);
     if (!comp) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5, cliente: c.cliente, evidencias: ev.concat('cartão de ponto: o mês não está no nome nem na pasta de origem') });

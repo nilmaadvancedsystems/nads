@@ -45,7 +45,7 @@ const log = (...m) => console.log(new Date().toLocaleTimeString('pt-BR'), ...m);
     }
     log((i + LOTE) + '/' + todos.length);
   }
-  saida.end();
+  await new Promise(r => saida.end(r));   // (05/11/2026) o process.exit do fim cortava o que ainda não tinha sido gravado
   const resumo = { em: new Date().toISOString(), arquivos: todos.length, modo: base.modo, segundos: Math.round((Date.now() - t0) / 1000), transicoes: Object.fromEntries(Object.entries(conta).sort((a, b) => b[1] - a[1])) };
   fs.writeFileSync(path.join(SAIDA, 'resumo.json'), JSON.stringify(resumo, null, 1));
   log('fim: ' + JSON.stringify(resumo).slice(0, 2000));
