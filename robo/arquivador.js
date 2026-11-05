@@ -710,6 +710,9 @@ async function iniciar() {
   }
   if (SO_SERVIDOR) {
     log('Atendente de IA e suporte: ficam no PC do escritório (claude-do-pc.js)');
+    // o pedido de reprocesso dos NÃO IDENTIFICADOS (05/11/2026): só esta sessão vê o G:
+    try { require('./reprocesso-pedido').iniciar({ controle: require('./pastas-locais').CONTROLE, log }); }
+    catch (err) { log('pedido de reprocesso não ligou:', err.message); }
     // o FGTS pelo robô, sem o Claude, no Chrome deste servidor (03/11/2026); atende só com o config/fgts.onde = 'servidor'
     if (!SEPARADOS) {
       painel.modulo('fgts', 'FGTS Digital', false, 'esperando o config/fgts.onde');
