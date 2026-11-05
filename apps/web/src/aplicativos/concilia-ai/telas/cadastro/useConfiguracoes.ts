@@ -66,6 +66,8 @@ export interface ItemNatureza {
   total: string;
   /** as notas do CFOP, por data — só com a janela do "Ver notas" aberta (Vitor, 21/10/2026: "abra em popup"); null = fechada */
   notas: NotaDaNatureza[] | null;
+  /** a sugestão de conta pelas normas ou pelo escritório (Vitor, 05/11/2026), só sem conta e sem o "Não vai"; null = sem regra */
+  sugestao: c.SugestaoDaNatureza | null;
 }
 
 /** Uma linha da tabela do "Ver notas". */
@@ -226,6 +228,12 @@ export function useConfiguracoes() {
     limparUi();
   }
 
+  /** usa a sugestão: vincula a conta sugerida ou marca o "Não vai para o Contábil" */
+  function usarSugestao(k: string, sug: c.SugestaoDaNatureza) {
+    if (sug.tipo === 'conta' && sug.conta) { const codigo = sug.conta.codigo; s.aplicar(x => c.vincularConta(x, k, codigo)); limparUi(); toast('Conta ' + codigo + ' vinculada pela sugestão.'); }
+    else if (sug.tipo === 'nao-contabil') { naoContabil(k, true); toast('Marcada: não vai para o Contábil.'); }
+  }
+
   // ---------- venda à vista (Saídas) ----------
   function alternarVista() {
     const nova = s.aplicar(c.alternarVendaVista);
@@ -297,7 +305,8 @@ export function useConfiguracoes() {
           info: r.qtd.vista + ' nota' + (r.qtd.vista === 1 ? '' : 's') + ' à vista e ' + r.qtd.prazo + ' nota' + (r.qtd.prazo === 1 ? '' : 's') + ' a prazo',
         };
       }
-      return { k, titulo: c.tituloDoGrupo(gr), nao, vinculo: vinculo(k), podeNaoContabil: !ligadas.length, semConta: !ligadas.length && !nao && Math.abs(c.somaValores(gr.itens)) >= 0.005, vista: linhaVista, total: formatos.reais(c.somaValores(gr.itens)),
+      const sugestao = !ligadas.length && !nao ? c.sugestaoDaNatureza(gr.cfops, t, e.contas) : null;
+      return { k, titulo: c.tituloDoGrupo(gr), nao, sugestao, vinculo: vinculo(k), podeNaoContabil: !ligadas.length, semConta: !ligadas.length && !nao && Math.abs(c.somaValores(gr.itens)) >= 0.005, vista: linhaVista, total: formatos.reais(c.somaValores(gr.itens)),
         notas: notasDe === k
           ? [...gr.itens].sort((a, b) => pelaData(a.data).localeCompare(pelaData(b.data)) || a.numero.localeCompare(b.numero, 'pt-BR', { numeric: true }))
             .map(n => ({ data: n.data, numero: n.numero, nome: n.nome, cfop: n.cfop, lanc: n.lanc, valor: formatos.reais(n.valor) }))
@@ -411,7 +420,7 @@ export function useConfiguracoes() {
     verNotas: (k: string) => setNotasDe(k),
     fecharNotas: () => setNotasDe(null),
     servicos: montarServicos(),
-    alternarVista, naoContabil, vista,
+    alternarVista, naoContabil, usarSugestao, vista,
   };
 }
 

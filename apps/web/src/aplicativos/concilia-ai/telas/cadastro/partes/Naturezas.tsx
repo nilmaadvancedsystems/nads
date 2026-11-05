@@ -2,7 +2,7 @@
 // linhas de venda à vista/a prazo nas Saídas.
 // Origem: conferencia.html #cadCardNfe (~L1165-1169), renderNaturezaDePara (~L2082-2132),
 // vendaVistaCard (~L2164), vistaRowCfop (~L2181-2203), "Não vai para o Contábil" (~L2117-2121).
-import { BotaoFechar, Icone, Interruptor, useJanela, Vazio } from '@nads/ui';
+import { BotaoFechar, Icone, Interruptor, MenuSuspenso, useJanela, Vazio } from '@nads/ui';
 import { useEffect, useRef, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import type { ItemNatureza, NotaDaNatureza, SlotVista, useConfiguracoes } from '../useConfiguracoes';
@@ -83,7 +83,10 @@ function Natureza({ it, vm }: { it: ItemNatureza; vm: VM }) {
         ) : (
           <CampoVincular v={it.vinculo} rotulo="Vincular conta" titulo="Vincular a conta contábil desta natureza (a que a conferência compara com o balancete)"
             extra={escondido => it.podeNaoContabil
-              ? <button type="button" className="btn ndp-nao-btn" hidden={escondido} onClick={() => vm.naoContabil(it.k, true)}>Não vai para o Contábil</button>
+              ? <>
+                <button type="button" className="btn ndp-nao-btn" hidden={escondido} onClick={() => vm.naoContabil(it.k, true)}>Não vai para o Contábil</button>
+                {it.sugestao && !escondido && <Sugestao it={it} vm={vm} />}
+              </>
               : null} />
         )}
       </div>
@@ -98,6 +101,31 @@ function Natureza({ it, vm }: { it: ItemNatureza; vm: VM }) {
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * A sugestão de conta da natureza (Vitor, 05/11/2026: "de acordo com as normas contábeis, ou do escritório, qual conta vai e o
+ * porquê"): a conta do plano da empresa (ou o Não vai, ou o que falta criar), o porquê, a base e o botão de usar.
+ */
+function Sugestao({ it, vm }: { it: ItemNatureza; vm: VM }) {
+  const sug = it.sugestao!;
+  const titulo = sug.tipo === 'conta' && sug.conta ? sug.conta.codigo + ' — ' + sug.conta.nome : sug.tipo === 'nao-contabil' ? 'Não vai para o Contábil' : 'Falta a conta: ' + sug.pede;
+  return (
+    <MenuSuspenso rotulo="Sugestão" icone="lampada" className="btn" largura={380} dica="Qual conta vai e por quê"
+      conteudo={fechar => (
+        <div className="comp-varios">
+          <p className="comp-varios-texto"><b>{titulo}</b></p>
+          {sug.tipo === 'conta' && <p className="hint">A natureza pede: {sug.pede}.</p>}
+          <p className="hint">{sug.motivo}</p>
+          <p className="hint">Base: {sug.base}</p>
+          {sug.tipo !== 'falta-conta' && (
+            <button type="button" className="btn btn-primary comp-varios-botao" onClick={() => { fechar(); vm.usarSugestao(it.k, sug); }}>
+              {sug.tipo === 'conta' ? 'Usar esta conta' : 'Marcar Não vai para o Contábil'}
+            </button>
+          )}
+        </div>
+      )} />
   );
 }
 
