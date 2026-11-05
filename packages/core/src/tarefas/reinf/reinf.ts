@@ -48,9 +48,30 @@ export function resumoReinf(estados: readonly EstadoReinf[], competencia: string
   return { transmitidas, pendentes: estados.length - transmitidas, total: estados.length };
 }
 
+/** Os regimes que têm a REINF no Fiscal: MEI, pessoa física e domésticas ficam fora. */
+export const REGIMES_DA_REINF: readonly string[] = ['Simples', 'Presumido', 'Real', 'Isentas'];
+
+/** A empresa é filial (o nome diz FILIAL): a REINF dela vai na da matriz. */
+export const ehFilial = (nome: string): boolean => /\bFILIAL\b/i.test(nome);
+
 /**
- * As empresas da REINF e o estado como estava no Notion do Heverton em 05/10/2026 (o ponto de partida; depois quem
- * guarda é o nads). O nome é o do Notion, usado só se a empresa não estiver na lista do escritório.
+ * A empresa tem a REINF no Fiscal (Vitor, 05/11/2026: "todas as empresas tem reinf, as filiais respondem a matriz então não
+ * precisa"): todas as do Simples, do Presumido, do Real e as isentas, menos as filiais.
+ */
+export function temReinfNoFiscal(e: { codigo: number | null; nome: string; regime: string }): boolean {
+  return e.codigo != null && REGIMES_DA_REINF.includes(e.regime) && !ehFilial(e.nome);
+}
+
+/** As empresas da lista que têm a REINF no Fiscal, uma por código, em ordem de código. */
+export function empresasDaReinf<T extends { codigo: number | null; nome: string; regime: string }>(lista: readonly T[]): (T & { codigo: number })[] {
+  const vistos = new Set<number>();
+  return lista.filter(e => temReinfNoFiscal(e) && !vistos.has(e.codigo as number) && !!vistos.add(e.codigo as number))
+    .map(e => e as T & { codigo: number }).sort((a, b) => a.codigo - b.codigo);
+}
+
+/**
+ * O estado da REINF como estava no Notion do Heverton em 05/10/2026 (o ponto de partida; depois quem guarda é o nads).
+ * Desde 05/11/2026 quem tem a REINF é temReinfNoFiscal; esta lista só traz o que já estava transmitido.
  */
 export const EMPRESAS_REINF: readonly { codigo: number; nome: string; transmitidoAte?: string; ultima?: string }[] = [
   { codigo: 10, nome: 'DORNAS HAVANA LTDA' }, { codigo: 49, nome: 'POSTO DE COMBUSTIVEIS ALTA FLORESTA LTDA' },
