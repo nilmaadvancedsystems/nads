@@ -100,6 +100,8 @@ export interface CategoriaView {
   travado: boolean;
   dica?: string;
   vinculo: Vinculo;
+  /** a sugestão de conta da categoria (Vitor, 05/11/2026), só sem conta ligada; null = nada a sugerir */
+  sugestao: c.SugestaoDaNatureza | null;
   /** só nas categorias específicas (não geral, não travada) */
   fornecedores: null | {
     itens: { nome: string; qtd: string; tirar: () => void }[];
@@ -226,17 +228,6 @@ export function useConfiguracoes() {
   function naoContabil(k: string, marcar: boolean) {
     s.aplicar(x => c.marcarNaoContabil(x, k, marcar));
     limparUi();
-  }
-
-  /** usa a sugestão: vincula as contas sugeridas (a à vista e a a prazo, quando o plano tem as duas) ou marca o "Não vai" */
-  function usarSugestao(k: string, sug: c.SugestaoDaNatureza) {
-    if (sug.tipo === 'conta' && sug.contas?.length) {
-      const codigos = sug.contas.map(x => x.codigo);
-      s.aplicar(x => codigos.reduce((e2, codigo) => c.vincularConta(e2, k, codigo), x));
-      limparUi();
-      toast((codigos.length === 1 ? 'Conta ' : 'Contas ') + codigos.join(' e ') + ' vinculada' + (codigos.length === 1 ? '' : 's') + ' pela sugestão.');
-    }
-    else if (sug.tipo === 'nao-contabil') { naoContabil(k, true); toast('Marcada: não vai para o Contábil.'); }
   }
 
   // ---------- venda à vista (Saídas) ----------
@@ -408,6 +399,7 @@ export function useConfiguracoes() {
       return {
         id: x.cat.id, nome: x.cat.nome, lanc: x.cat.lanc, travado: !!x.cat.travado, dica: x.cat.dica,
         vinculo: vinculo(x.chaveConta),
+        sugestao: c.contasDaNatureza(e, x.chaveConta).length ? null : c.sugestaoDoServico(t, x.cat.id, e.contas),
         fornecedores: !especifica ? null : {
           itens: x.participantes.map(p => ({
             nome: p.nome,
@@ -429,7 +421,7 @@ export function useConfiguracoes() {
     verNotas: (k: string) => setNotasDe(k),
     fecharNotas: () => setNotasDe(null),
     servicos: montarServicos(),
-    alternarVista, naoContabil, usarSugestao, vista,
+    alternarVista, naoContabil, vista,
   };
 }
 

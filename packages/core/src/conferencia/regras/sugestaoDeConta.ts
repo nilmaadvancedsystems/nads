@@ -10,7 +10,7 @@
 //   - venda de produção sem conta de produção no plano: avisa que falta a conta (não cai em Vendas de mercadorias);
 //   - bonificação, doação ou brinde dado (5910/6910): despesa de bonificação.
 import { nomeNorm } from '../../formatos';
-import type { Conta, Grupo, TipoCfop } from '../tipos';
+import type { Conta, Grupo, TipoCfop, TipoServico } from '../tipos';
 
 export interface SugestaoDaNatureza {
   /** conta: a do plano que serve; falta-conta: o plano não tem e precisa criar; nao-contabil: não vai para o Contábil */
@@ -224,4 +224,49 @@ export function sugestaoDaNatureza(cfops: readonly string[], tipo: TipoCfop, con
     ? ([...centros.values()].includes(r.centro) ? ' no centro ' + NOME_DO_CENTRO[r.centro] : ' (nem o centro ' + NOME_DO_CENTRO[r.centro] + ')')
     : '';
   return { tipo: 'falta-conta', pede: r.pede, motivo: r.motivo + ' O plano desta empresa não tem essa conta' + noCentro + ': crie no Alterdata e importe o balancete de novo.', base: r.base };
+}
+
+// ─── os serviços (Cadastro › Tomados / Prestados; Vitor, 05/11/2026: "sugestão na aba de serviços também") ───────────────
+
+type RegraDoServico = Omit<Regra, 'finais' | 'tipo' | 'nao'>;
+const DESPESA = 'NBC TG 1002 (despesas)';
+
+/** a conta de cada categoria de serviço do escritório (tabelas/servicos.ts, SERV_CAT) */
+const REGRAS_DOS_SERVICOS: Readonly<Record<TipoServico, Readonly<Record<string, RegraDoServico>>>> = {
+  tomados: {
+    geral: { pede: 'Serviços de terceiros', grupos: ['Despesa'], nome: /servic.*(tomad|terceir)|terceiros/, semNome: /a pagar|honorar/,
+      motivo: 'O serviço contratado de outra empresa ou pessoa: despesa com serviços de terceiros (no CSP, se for usado no serviço que a empresa vende).',
+      base: DESPESA },
+    honorario: { pede: 'Honorários contábeis', grupos: ['Despesa'], nome: /honorar/, semNome: /a pagar/,
+      motivo: 'O honorário do escritório de contabilidade: despesa administrativa.', base: DESPESA + ' · ' + ESCRITORIO },
+    telefone: { pede: 'Telefone', grupos: ['Despesa'], nome: /telefon/, semNome: /a pagar/,
+      motivo: 'O serviço de telefone: despesa administrativa (comunicação).', base: DESPESA },
+    internet: { pede: 'Internet', grupos: ['Despesa'], nome: /internet/, semNome: /a pagar/,
+      motivo: 'O serviço de internet: despesa administrativa (comunicação).', base: DESPESA },
+    agua: { pede: 'Água e esgoto', grupos: ['Despesa'], nome: /\bagua\b/, semNome: /a pagar/,
+      motivo: 'A conta de água: despesa (ou custo, se for da produção).', base: DESPESA },
+    energia: { pede: 'Energia elétrica', grupos: ['Despesa'], nome: /energia/, semNome: /a pagar/,
+      motivo: 'A conta de energia: despesa (ou custo, se for da produção).', base: DESPESA },
+    comissoes: { pede: 'Comissões sobre vendas', grupos: ['Despesa'], nome: /comiss/, semNome: /a pagar/,
+      motivo: 'A comissão do representante: despesa com vendas.', base: DESPESA },
+    viagem: { pede: 'Despesas de viagem', grupos: ['Despesa'], nome: /viage|hospedag|passage/, semNome: /a pagar/,
+      motivo: 'Hospedagem, passagem e viagem a trabalho: despesa administrativa (ou com vendas, se for do vendedor).', base: DESPESA },
+    sistemas: { pede: 'Locação de sistemas', grupos: ['Despesa'], nome: /sistema|software|licenc/, semNome: /a pagar/,
+      motivo: 'A mensalidade do sistema (software): despesa administrativa.', base: DESPESA },
+  },
+  prestados: {
+    geral: { pede: 'Receita de prestação de serviços', grupos: ['Receita'], nome: /servic/, semNome: /devolu|cancel|tomad/,
+      motivo: 'O serviço que a empresa presta: receita bruta de prestação de serviços.', base: NBC_RECEITA },
+  },
+};
+
+/** A sugestão de conta de uma categoria de serviço (null = categoria sem regra). */
+export function sugestaoDoServico(tipo: TipoServico, categoria: string, contas: readonly Conta[]): SugestaoDaNatureza | null {
+  const r = REGRAS_DOS_SERVICOS[tipo][categoria];
+  if (!r) return null;
+  const regra: Regra = { ...r, finais: [], tipo: tipo === 'prestados' ? 'Saída' : 'Entrada' };
+  const achadas = contasDaRegra(regra, contas, centrosDoPlano(contas));
+  return achadas.length
+    ? { tipo: 'conta', contas: achadas.map(c => ({ codigo: c.codigo, nome: c.nome })), pede: r.pede, motivo: r.motivo, base: r.base }
+    : { tipo: 'falta-conta', pede: r.pede, motivo: r.motivo + ' O plano desta empresa não tem essa conta: crie no Alterdata e importe o balancete de novo.', base: r.base };
 }

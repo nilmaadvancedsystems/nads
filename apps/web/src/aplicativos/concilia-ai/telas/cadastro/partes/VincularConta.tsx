@@ -26,7 +26,7 @@ export function ChipsDeContas({ v }: { v: Vinculo }) {
  */
 export function CampoVincular({ v, rotulo, titulo, extra, soIcone, falta }: { v: Vinculo; rotulo: string; titulo: string; extra?: (escondido: boolean) => ReactNode; soIcone?: boolean; falta?: boolean }) {
   return (
-    <div className={'ndp-add' + (soIcone ? ' ndp-add-linha' : '') + (v.aberto ? ' aberto' : '')}>
+    <div className={'ndp-add' + (soIcone || extra ? ' ndp-add-linha' : '') + (v.aberto ? ' aberto' : '')}>
       {soIcone
         ? <button type="button" className="icon-btn ndp-add-btn" style={{ position: 'relative' }} title={(falta ? 'Falta a conta. ' : '') + rotulo + ': ' + titulo.charAt(0).toLowerCase() + titulo.slice(1)} aria-label={rotulo + (falta ? ' (falta a conta)' : '')} hidden={v.aberto} onClick={v.abrir}>
           <Icone nome="plus" />

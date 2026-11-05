@@ -2,10 +2,11 @@
 // linhas de venda à vista/a prazo nas Saídas.
 // Origem: conferencia.html #cadCardNfe (~L1165-1169), renderNaturezaDePara (~L2082-2132),
 // vendaVistaCard (~L2164), vistaRowCfop (~L2181-2203), "Não vai para o Contábil" (~L2117-2121).
-import { BotaoFechar, Icone, Interruptor, MenuSuspenso, useJanela, Vazio } from '@nads/ui';
+import { BotaoFechar, Icone, Interruptor, useJanela, Vazio } from '@nads/ui';
 import { useEffect, useRef, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import type { ItemNatureza, NotaDaNatureza, SlotVista, useConfiguracoes } from '../useConfiguracoes';
+import { Sugestao } from './Sugestao';
 import { CampoVincular, ChipsDeContas } from './VincularConta';
 
 type VM = ReturnType<typeof useConfiguracoes>;
@@ -87,7 +88,7 @@ function Natureza({ it, vm }: { it: ItemNatureza; vm: VM }) {
               <>
                 {/* numa linha só: o +, a lâmpada e o Não vai (Vitor, 05/11/2026: "deixa isso mais alinhado"); a lâmpada fica enquanto
                     faltar ligar alguma conta sugerida */}
-                {it.sugestao && !escondido && <Sugestao it={it} vm={vm} />}
+                {it.sugestao && !escondido && <Sugestao sug={it.sugestao} oQuePede="A natureza pede" vincular={it.vinculo.escolher} naoContabil={() => vm.naoContabil(it.k, true)} />}
                 {it.podeNaoContabil && <button type="button" className="btn ndp-nao-btn" hidden={escondido} onClick={() => vm.naoContabil(it.k, true)}>Não vai para o Contábil</button>}
               </>
             )} />
@@ -104,40 +105,6 @@ function Natureza({ it, vm }: { it: ItemNatureza; vm: VM }) {
         </div>
       )}
     </div>
-  );
-}
-
-/**
- * A sugestão de conta da natureza (Vitor, 05/11/2026: "de acordo com as normas contábeis, ou do escritório, qual conta vai e o
- * porquê"): a conta do plano da empresa (ou o Não vai, ou o que falta criar), o porquê, a base e o botão de usar.
- */
-function Sugestao({ it, vm }: { it: ItemNatureza; vm: VM }) {
-  const sug = it.sugestao!;
-  // uma linha por conta (a à vista e a a prazo, quando o plano tem as duas)
-  const linhas = sug.tipo === 'conta' && sug.contas?.length ? sug.contas.map(x => x.codigo + ' — ' + x.nome)
-    : [sug.tipo === 'nao-contabil' ? 'Não vai para o Contábil' : 'Falta a conta: ' + sug.pede];
-  return (
-    // só a lâmpada (Vitor, 05/11/2026: "coloca só o ícone da lâmpada")
-    // flutuante: perto do fim da tela, abre para cima (Vitor, 05/11/2026: "não consigo scrollar e clicar" na última natureza)
-    <MenuSuspenso rotulo="" icone="lampada" className="icon-btn" semSeta flutuante largura={380} dica="Sugestão: qual conta vai e por quê"
-      conteudo={fechar => (
-        <div className="comp-varios">
-          {/* cada conta com o seu + (Vitor, 05/11/2026: "ao invés de um botão usar contas, coloca só um +") */}
-          {sug.tipo === 'conta' && sug.contas?.length ? sug.contas.map(x => (
-            <div key={x.codigo} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-              <p className="comp-varios-texto" style={{ margin: 0 }}><b>{x.codigo} — {x.nome}</b></p>
-              <button type="button" className="icon-btn icon-btn-sm" title={'Vincular ' + x.codigo + ' — ' + x.nome} aria-label={'Vincular ' + x.codigo}
-                onClick={() => { fechar(); vm.usarSugestao(it.k, { ...sug, contas: [x] }); }}><Icone nome="plus" /></button>
-            </div>
-          )) : linhas.map(l => <p key={l} className="comp-varios-texto" style={{ margin: 0 }}><b>{l}</b></p>)}
-          {sug.tipo === 'conta' && <p className="hint">A natureza pede: {sug.pede}.</p>}
-          <p className="hint">{sug.motivo}</p>
-          <p className="hint">Base: {sug.base}</p>
-          {sug.tipo === 'nao-contabil' && (
-            <button type="button" className="btn btn-primary comp-varios-botao" onClick={() => { fechar(); vm.usarSugestao(it.k, sug); }}>Marcar Não vai para o Contábil</button>
-          )}
-        </div>
-      )} />
   );
 }
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { conta } from '../__legado__/fixtures';
-import { centrosDoPlano, sugestaoDaNatureza } from './sugestaoDeConta';
+import { centrosDoPlano, sugestaoDaNatureza, sugestaoDoServico } from './sugestaoDeConta';
 
 // um plano de exemplo (os nomes do escritório; os códigos são inventados)
 const PLANO = [
@@ -105,5 +105,24 @@ describe('as duas contas: à vista e a prazo', () => {
   });
   it('sem o par, só a conta', () => {
     expect(sugestaoDaNatureza(['1101'], 'Entrada', COM_CENTROS)?.contas?.map(c => c.codigo)).toEqual(['61001']);
+  });
+});
+
+describe('sugestaoDoServico: a conta de cada categoria de serviço', () => {
+  const plano = [
+    conta('31001', 'Serviços Prestados por Terceiros', 0, 'Despesa'),
+    conta('31002', 'Honorários Contábeis', 0, 'Despesa'),
+    conta('31003', 'Telefone', 0, 'Despesa'),
+    conta('21001', 'Telefone a Pagar', 0, 'Passivo'),
+    conta('41001', 'Receita de Prestação de Serviços', 0, 'Receita', 'C'),
+  ];
+  it('tomados: a geral nos serviços de terceiros, o honorário e o telefone (não o a pagar)', () => {
+    expect(sugestaoDoServico('tomados', 'geral', plano)?.contas?.map(c => c.codigo)).toEqual(['31001']);
+    expect(sugestaoDoServico('tomados', 'honorario', plano)?.contas?.map(c => c.codigo)).toEqual(['31002']);
+    expect(sugestaoDoServico('tomados', 'telefone', plano)?.contas?.map(c => c.codigo)).toEqual(['31003']);
+  });
+  it('prestados: a receita de serviços; categoria sem conta no plano: falta', () => {
+    expect(sugestaoDoServico('prestados', 'geral', plano)?.contas?.map(c => c.codigo)).toEqual(['41001']);
+    expect(sugestaoDoServico('tomados', 'internet', plano)?.tipo).toBe('falta-conta');
   });
 });
