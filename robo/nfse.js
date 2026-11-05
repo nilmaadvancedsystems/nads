@@ -243,6 +243,9 @@ function idDps(cLocEmi, cnpj, serie, numero) {
 function montarDps(config, pedido, numero, opcoes = {}) {
   const ambiente = opcoes.ambiente || ambienteDe(config, pedido);
   const provedor = opcoes.provedor || provedorDe(config, pedido);
+  // o leiaute novo (esquemas de 20/10/2026) só está na Produção Restrita; a produção nacional ainda recusa o finNFSe
+  // (05/11/2026, E1235 na nota 141 da RDS) e aceita o leiaute antigo, o mesmo das notas da E&L
+  const leiauteNovo = provedor === 'nacional' && ambiente === 'homologacao';
   const pr = config.prestador || {};
   const sv = config.servico || {};
   const t = pedido.tomador || {};
@@ -279,10 +282,10 @@ function montarDps(config, pedido, numero, opcoes = {}) {
   const serv = '<serv><locPrest>' + el('cLocPrestacao', digitos(sv.cLocPrestacao) || cLocEmi) + '</locPrest>' +
     '<cServ>' + el('cTribNac', String(sv.cTribNac)) +
     // no leiaute nacional de 20/10/2026 a descrição vai por último (cTribNac, cTribMun, cNBS, cIntContrib, xDescServ)
-    (provedor === 'nacional' ? '' : xDescServ) +
+    (leiauteNovo ? '' : xDescServ) +
     (digitos(sv.cNBS) ? el('cNBS', digitos(sv.cNBS)) : '') +
     (sv.cIntContrib != null && sv.cIntContrib !== '' ? el('cIntContrib', String(sv.cIntContrib)) : '') +
-    (provedor === 'nacional' ? xDescServ : '') + '</cServ>' +
+    (leiauteNovo ? xDescServ : '') + '</cServ>' +
     (infoCompl ? '<infoCompl>' + el('xInfComp', infoCompl) + '</infoCompl>' : '') +
     '</serv>';
 
@@ -304,7 +307,7 @@ function montarDps(config, pedido, numero, opcoes = {}) {
     el('dCompet', s.competencia) +
     el('tpEmit', 1) +
     // o leiaute da Sefin Nacional (esquemas de 20/10/2026, em nfse-xsd/nacional) pede a finalidade: 0 = NFS-e regular
-    (provedor === 'nacional' ? el('finNFSe', 0) : '') +
+    (leiauteNovo ? el('finNFSe', 0) : '') +
     el('cLocEmi', cLocEmi) +
     prest + toma + serv + valores +
     '</infDPS></DPS>';

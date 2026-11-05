@@ -589,6 +589,8 @@ async function testarEmail({ pfx, arqSenha, cert }) {
   confere('erro único da Sefin { erro: {...} } vira lista', nfse.errosDaResposta({ erro: { codigo: 'E0001', descricao: 'x' } }).length === 1);
   confere('mensagem do 403 nacional fala do certificado, não do token', /certificado/.test(nfse.mensagemHttp({ status: 403 }, 'nacional')) && !/token/.test(nfse.mensagemHttp({ status: 403 }, 'nacional')));
   confere('a DPS da E&L não leva finNFSe', !xml.includes('finNFSe'));
+  const xmlNacProd = nfse.montarDps(Object.assign({}, config, { provedor: 'nacional' }), pedido, 8, { agora: '2026-11-05T12:00:00Z', ambiente: 'producao' });
+  confere('a DPS nacional de PRODUÇÃO segue o leiaute antigo (sem finNFSe, descrição antes do NBS)', !xmlNacProd.includes('finNFSe') && xmlNacProd.includes('</xDescServ><cNBS>'));
   confere('a DPS nacional leva finNFSe 0 logo depois do tpEmit', xmlSem.includes('<tpEmit>1</tpEmit><finNFSe>0</finNFSe><cLocEmi>'));
   const rNac = await validarXsd(nfse.assinar(xmlSem, 'infDPS', cert), 'nacional/DPS_v1.01.xsd', ['nacional/tiposComplexos_v1.01.xsd', 'nacional/tiposSimples_v1.01.xsd', 'nacional/xmldsig-core-schema.xsd']);
   if (rNac) confere('DPS nacional assinada válida no XSD da Produção Restrita (20/10/2026)', rNac.valid, rNac.errors.map(e => e.message).join(' | '));
