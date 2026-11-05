@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { conta, empresa, nota } from './__legado__/fixtures';
-import { aoSair, gravarLancVista, gravarVerificacao, importarNotas, marcarAutomaticos, marcarNaoContabil, marcarNatureza, vincularConta } from './acoes';
+import { aoSair, gravarLancVista, gravarVerificacao, importarNotas, marcarAutomaticos, marcarMesSemNotas, marcarNaoContabil, marcarNatureza, vincularConta } from './acoes';
 import { naturezasSemConta } from './regras/empresa';
 import { verifChave } from './regras/conciliacao';
 import { FILTRO_MOVIMENTO_VAZIO } from './tipos';
@@ -106,5 +106,20 @@ describe('naturezasSemConta: a zerada não precisa de conta', () => {
   it('a natureza com valor zero (não teve movimento) fica de fora', () => {
     const e = empresa({ contas: [conta('10', 'Fornecedores')], saidas: [nota('5102', 'S', 0, '1'), nota('5405', 'S', 300, '2')] });
     expect(naturezasSemConta(e, 'Saída').length).toBe(1);
+  });
+});
+
+describe('marcarMesSemNotas: o mês sem notas, marcado um a um', () => {
+  it('marca, mantém em ordem e desmarca; a lista vazia sai da empresa', () => {
+    let e = marcarMesSemNotas(empresa(), 'prestados', '2026-06', true);
+    e = marcarMesSemNotas(e, 'prestados', '2026-05', true);
+    expect(e.mesesSemNotas).toEqual({ prestados: ['2026-05', '2026-06'] });
+    e = marcarMesSemNotas(e, 'prestados', '2026-05', false);
+    e = marcarMesSemNotas(e, 'prestados', '2026-06', false);
+    expect(e.mesesSemNotas).toBeUndefined();
+  });
+  it('mês que não é aaaa-mm não muda nada', () => {
+    const e = empresa();
+    expect(marcarMesSemNotas(e, 'saidas', '09/2026', true)).toBe(e);
   });
 });
