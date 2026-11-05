@@ -636,8 +636,14 @@ function iniciarNfse(db, log, opcoes = {}) {
     if (!config) config = (await configRef.get()).data() || null;
     if (!segredo) segredo = (await segredoRef.get()).data() || null;
     const amb = (p0.dps && p0.dps.ambiente) || ambienteDe(config, p0);
-    // a nota que já tem número segue no emissor onde foi numerada (as antigas, sem provedor, são da E&L)
-    const prov = p0.dps && p0.dps.id ? (p0.dps.provedor || 'el') : provedorDe(config, p0);
+    // a nota que já tem número segue no emissor onde foi numerada (as antigas, sem provedor, são da E&L)... a não ser que o
+    // emissor de antes a tenha RECUSADO (todos os erros com código dele, nenhum do robô): aí ela nunca saiu e vai para o
+    // emissor atual com o mesmo número (05/11/2026: a E&L passou a responder "EL63 Usuário Bloqueado" depois da troca)
+    const provAtual = provedorDe(config, p0);
+    const provAntes = p0.dps && p0.dps.id ? (p0.dps.provedor || 'el') : provAtual;
+    // (o reenvio do nads apaga os erros; a marca dps.recusadaEm é do robô: o emissor respondeu com erros dele)
+    const recusadaAntes = !!(p0.dps && p0.dps.recusadaEm);
+    const prov = provAntes !== provAtual && recusadaAntes && !p0.chaveAcesso ? provAtual : provAntes;
 
     // antes de reservar número: certificado, configuração, token e o pedido
     const motivo = motivoDesligado(amb, prov);
@@ -651,6 +657,8 @@ function iniciarNfse(db, log, opcoes = {}) {
       const p = s.data() || {};
       if (!(p.status === 'pedida' || (retomar && p.status === 'enviando'))) return null;
       let dps = p.dps;
+      if (dps && dps.id && (dps.provedor || 'el') !== prov) dps = Object.assign({}, dps, { provedor: prov, idEl: null });
+      if (dps && dps.recusadaEm) { dps = Object.assign({}, dps); delete dps.recusadaEm; }
       if (!dps || !dps.id) {
         const c = (await tx.get(configRef)).data();
         const pr = problemasDaConfig(c, amb);
@@ -695,7 +703,7 @@ function iniciarNfse(db, log, opcoes = {}) {
     }
     const erros = errosDaResposta(r.json);
     if (erros.length) {
-      await falhar(ref, erros, { xmlDps: xml, enviadaEm: agora() });
+      await falhar(ref, erros, { xmlDps: xml, enviadaEm: agora(), 'dps.recusadaEm': agora() });
       log('NFS-e:', dps.id, 'recusada:', erros.map(e => e.codigo + ' ' + e.descricao).join(' | ').slice(0, 300));
       return;
     }
