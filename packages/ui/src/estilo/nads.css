@@ -5547,7 +5547,7 @@ button.rel-entrega-feita:hover{border-color:var(--success);background:color-mix(
 
 /* DP › Obrigações (29/10/2026: "quando for marcado a REINF o check fique azul"): a REINF transmitida pelo Fiscal sai em
    azul, para não se confundir com as obrigações feitas no DP (verdes) */
-.dp-marca.reinf.feita{background:var(--info-soft);color:var(--info);}
+.dp-marca.reinf.feita{background:var(--info);color:var(--on-accent);}
 
 /* ---------------------------------- Gmail › E-mails do robô (30/10/2026) ----------------------------------
    "esse modelo de como ta o gmail ta muito feio, quero que retrabalhe ele por completo, buscando referencias de apps de
