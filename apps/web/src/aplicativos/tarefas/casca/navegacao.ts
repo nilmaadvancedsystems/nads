@@ -180,8 +180,11 @@ export const podeMexerNoCadastro = (op: Operador | null) => !!op && (op.admin ||
 /** Quem vê o Financeiro: só o Sávio e a Nilma, pelo nome (30/10/2026: "remova o acesso de admin ao financeiro e deixe o acesso
  * apenas para o usuario Savio e Nilma"). O admin e o diretor não entram mais só pelo papel. Sem acento e sem caixa, o primeiro nome. */
 const DONOS_DO_FINANCEIRO = ['savio', 'nilma'];
+/** Contas liberadas pelo login exato (05/11/2026: o gustavo.s, sem liberar o outro Gustavo, que tem o mesmo primeiro nome). */
+const LOGINS_DO_FINANCEIRO = ['gustavo.s@nilma.local'];
 export const podeVerOFinanceiro = (op: Operador | null) => {
   if (!op) return false;
+  if (op.email && LOGINS_DO_FINANCEIRO.includes(op.email.trim().toLowerCase())) return true;
   const primeiro = op.nome.normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase().split(/[\s.]+/)[0];
   return DONOS_DO_FINANCEIRO.includes(primeiro);
 };

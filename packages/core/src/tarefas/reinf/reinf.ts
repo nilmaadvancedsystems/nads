@@ -49,16 +49,13 @@ export function resumoReinf(estados: readonly EstadoReinf[], competencia: string
 }
 
 
-/** A empresa é filial (o nome diz FILIAL): a REINF dela vai na da matriz. */
-export const ehFilial = (nome: string): boolean => /\bFILIAL\b/i.test(nome);
-
 /**
- * A empresa tem a REINF no Fiscal (Vitor, 05/11/2026: "todas as empresas tem reinf, as filiais respondem a matriz então não
- * precisa"): todas, menos as filiais. Sem olhar o regime (05/11/2026: "todas as empresas tem reinf, ele tem 43 empresas e nem
- * todas aparecem la"): o regime que vem do Entregas ou da Receita tirava empresas da lista.
+ * A empresa tem a REINF no Fiscal (Vitor, 05/11/2026: "todas as empresas tem reinf"): todas, sem olhar o regime (o que vem do
+ * Entregas ou da Receita tirava empresas da lista) e com as filiais (05/11/2026: o Heverton tem 43 empresas, as 6 filiais
+ * entram).
  */
 export function temReinfNoFiscal(e: { codigo: number | null; nome: string; regime?: string }): boolean {
-  return e.codigo != null && !ehFilial(e.nome);
+  return e.codigo != null;
 }
 
 /** As empresas da lista que têm a REINF no Fiscal, uma por código, em ordem de código. */
