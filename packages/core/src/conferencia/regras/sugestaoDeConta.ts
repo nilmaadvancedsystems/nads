@@ -36,6 +36,47 @@ interface Regra {
   grupos?: readonly Grupo[];
   nome?: RegExp;
   semNome?: RegExp;
+  /** o centro de custo em que a conta tem de estar (com o plano dividido em centros; sem eles, vale o nome) */
+  centro?: CentroDeCusto;
+}
+
+/**
+ * O centro de custo da conta no plano (Vitor, 05/11/2026: "as diferenças de centro de custo: CPV, CMV e CSP, frete industrial e
+ * frete comercial"): o da indústria (CPV), o do comércio (CMV), o dos serviços (CSP) e as despesas com vendas.
+ */
+export type CentroDeCusto = 'CPV' | 'CMV' | 'CSP' | 'vendas';
+
+const NOME_DO_CENTRO: Record<CentroDeCusto, string> = { CPV: 'CPV', CMV: 'CMV', CSP: 'CSP', vendas: 'despesas com vendas' };
+
+/** o cabeçalho do centro, pelo nome (o "CUSTO DOS PRODUTOS VENDIDOS - CPV", o "CMV- CUSTOS DAS MERCADORIAS VENDIDAS"…) */
+const CABECALHOS: readonly [CentroDeCusto, RegExp][] = [
+  ['CPV', /\bcpv\b|custos? (dos )?produtos? vendidos?/],
+  ['CMV', /\bcmv\b|custos? (das )?mercadorias? vendidas?/],
+  ['CSP', /\bcsp\b|custos? (dos )?servicos? prestados?/],
+  ['vendas', /^despesas? (com|de) vendas?\b/],
+];
+/** outros cabeçalhos: encerram o centro de cima (as despesas administrativas não são custo) */
+const OUTROS_CABECALHOS = /^(despesas?|receitas?|custos?|ativo|passivo|patrimonio|outras despesas|despesas? administrativ|despesas? financeir|despesas? tribut)/;
+
+/**
+ * O centro de custo de cada conta (código → centro), pela ordem do plano: a conta fica no centro do último cabeçalho de centro que
+ * vem antes dela (um outro cabeçalho no caminho encerra). Plano sem cabeçalho de centro: vazio (aí a regra vale só pelo nome).
+ */
+export function centrosDoPlano(contas: readonly Conta[]): Map<string, CentroDeCusto> {
+  const emOrdem = contas.map((c, i) => ({ c, o: c.ordem ?? i })).sort((a, b) => a.o - b.o).map(x => x.c);
+  const r = new Map<string, CentroDeCusto>();
+  let atual: CentroDeCusto | null = null;
+  for (const c of emOrdem) {
+    const n = nomeNorm(c.nome);
+    // cabeçalho: a sintética do dinâmico ou, no balancete normal (sem a marca), o nome em maiúsculas do Alterdata
+    const ehCabecalho = !!c.sintetica || (/[A-Z]/.test(c.nome) && c.nome === c.nome.toUpperCase());
+    const cab = ehCabecalho ? CABECALHOS.find(([, re]) => re.test(n)) : undefined;
+    if (cab) { atual = cab[0]; continue; }
+    if (ehCabecalho && OUTROS_CABECALHOS.test(n)) { atual = null; continue; }
+    if (c.grupo !== 'Despesa') { atual = null; continue; }
+    if (atual && !ehCabecalho) r.set(c.codigo, atual);
+  }
+  return r;
 }
 
 const NBC_RECEITA = 'NBC TG 47 / NBC TG 1002 (receita)';
@@ -57,12 +98,21 @@ const REGRAS: readonly Regra[] = [
     motivo: 'O simples faturamento da venda para entrega futura ainda não é receita: o cliente pagou (ou deve) antes de receber. Fica no passivo, em Adiantamento de clientes, e vira receita na entrega (5116/6116, 5117/6117).',
     base: NBC_RECEITA + ' · ' + ESCRITORIO },
   { tipo: 'Saída', finais: ['910'],
+    // sem exigir o centro: nos planos do escritório a Bonificação fica ora nas despesas com vendas, ora em outras despesas
     pede: 'Bonificação (despesa)', grupos: ['Despesa'], nome: /bonifica|brinde|doac/, semNome: /receb|devolu/,
-    motivo: 'A mercadoria sai do estoque sem receita: é uma despesa com vendas (bonificação, brinde ou doação).',
+    motivo: 'A mercadoria sai do estoque sem receita: é uma despesa (bonificação, brinde ou doação), não custo nem dedução da receita.',
     base: ESCRITORIO },
-  { tipo: 'Saída', finais: ['201', '202', '208', '209', '210', '410', '411'],
-    pede: '(-) Devolução de compras', grupos: ['Despesa', 'Ativo'], nome: /devolu.*compra/,
-    motivo: 'A empresa devolveu ao fornecedor o que tinha comprado: reduz as compras (custo ou estoque), não é receita.',
+  { tipo: 'Saída', finais: ['201', '410'],
+    pede: '(-) Devolução de compras de insumos (CPV)', grupos: ['Despesa'], centro: 'CPV', nome: /devolu.*compra/,
+    motivo: 'A empresa devolveu ao fornecedor o insumo comprado para a produção: reduz as compras do custo dos produtos (CPV), não é receita.',
+    base: NBC_ESTOQUE },
+  { tipo: 'Saída', finais: ['202', '411'],
+    pede: '(-) Devolução de compras de mercadorias (CMV)', grupos: ['Despesa'], centro: 'CMV', nome: /devolu.*compra/,
+    motivo: 'A empresa devolveu ao fornecedor a mercadoria comprada para revenda: reduz as compras do custo das mercadorias (CMV), não é receita.',
+    base: NBC_ESTOQUE },
+  { tipo: 'Saída', finais: ['208', '209', '210'],
+    pede: '(-) Devolução de compras', grupos: ['Despesa'], nome: /devolu.*compra/,
+    motivo: 'A empresa devolveu ao fornecedor o que tinha comprado: reduz as compras (custo), não é receita.',
     base: NBC_ESTOQUE },
   { tipo: 'Saída', finais: ['551'],
     pede: 'Venda de ativo imobilizado (outras receitas)', grupos: ['Receita'], nome: /(venda|alienac|ganho).*(imobiliz|ativo|bens)|outras receitas/,
@@ -78,12 +128,12 @@ const REGRAS: readonly Regra[] = [
     base: ESCRITORIO },
   // ─── entradas ───
   { tipo: 'Entrada', finais: ['101', '401', '122', '124', '125'],
-    pede: 'Compras de insumos (matéria-prima)', grupos: ['Despesa', 'Ativo'], nome: /compra.*(insumo|materia|industrializ)|insumo|materia prima/, semNome: /devolu/,
-    motivo: 'Compra do que entra na produção: custo dos produtos (ou estoque de matéria-prima), não despesa.',
+    pede: 'Compras de insumos (CPV)', grupos: ['Despesa'], centro: 'CPV', nome: /compra.*(insumo|materia|industrializ)|insumo|materia prima/, semNome: /devolu|frete/,
+    motivo: 'Compra do que entra na produção (indústria): custo dos produtos vendidos (CPV), não despesa e não o CMV. O estoque se acerta no fechamento.',
     base: NBC_ESTOQUE },
   { tipo: 'Entrada', finais: ['102', '403', '117', '118', '121'],
-    pede: 'Compras de mercadorias para revenda', grupos: ['Despesa', 'Ativo'], nome: /compra.*mercador|mercadorias para revenda/, semNome: /devolu/,
-    motivo: 'Compra de mercadoria para revender: entra no custo das mercadorias vendidas (ou no estoque), não é despesa.',
+    pede: 'Compras de mercadorias (CMV)', grupos: ['Despesa'], centro: 'CMV', nome: /compra.*mercador|mercadorias para revenda/, semNome: /devolu|frete/,
+    motivo: 'Compra de mercadoria para revender (comércio): custo das mercadorias vendidas (CMV), não despesa e não o CPV. O estoque se acerta no fechamento.',
     base: NBC_ESTOQUE },
   { tipo: 'Entrada', finais: ['201', '202', '203', '204', '410', '411'],
     pede: '(-) Devolução de vendas', grupos: ['Receita'], nome: /devolu.*venda/,
@@ -97,9 +147,21 @@ const REGRAS: readonly Regra[] = [
     pede: 'A conta do bem no imobilizado', grupos: ['Ativo'], nome: /imobiliz|maquin|equipament|veicul|moveis|computador/, semNome: /deprecia/,
     motivo: 'O bem fica na empresa por mais de um ano, para uso: ativo imobilizado (depreciado depois), não despesa.',
     base: 'NBC TG 27 / NBC TG 1002 (imobilizado)' },
-  { tipo: 'Entrada', finais: ['352', '353', '354', '355', '356', '932'],
+  { tipo: 'Entrada', finais: ['352'],
+    pede: 'Frete industrial (CPV)', grupos: ['Despesa'], centro: 'CPV', nome: /frete/,
+    motivo: 'Transporte contratado pelo estabelecimento industrial (o frete dos insumos): faz parte do custo dos produtos (CPV).',
+    base: NBC_ESTOQUE },
+  { tipo: 'Entrada', finais: ['353'],
+    pede: 'Frete comercial (CMV)', grupos: ['Despesa'], centro: 'CMV', nome: /frete/,
+    motivo: 'Transporte contratado pelo estabelecimento comercial (o frete das mercadorias compradas): faz parte do custo das mercadorias (CMV).',
+    base: NBC_ESTOQUE },
+  { tipo: 'Entrada', finais: ['354', '355', '356', '932'],
     pede: 'Fretes', grupos: ['Despesa'], nome: /frete/,
     motivo: 'O serviço de transporte: frete sobre compras (custo) ou sobre vendas (despesa com vendas), conforme o caso.',
+    base: NBC_ESTOQUE },
+  { tipo: 'Entrada', finais: ['126', '128'],
+    pede: 'Compras para a prestação de serviços (CSP)', grupos: ['Despesa'], centro: 'CSP', nome: /compra|materia(l|is)\b|insumo/, semNome: /devolu/,
+    motivo: 'Compra do que é usado na prestação do serviço: custo dos serviços prestados (CSP), não o CPV nem o CMV.',
     base: NBC_ESTOQUE },
   { tipo: 'Entrada', finais: ['252', '253', '254', '255', '256', '257'],
     pede: 'Energia elétrica', grupos: ['Despesa'], nome: /energia/,
@@ -126,9 +188,12 @@ function regraDoCfop(cfop: string, tipo: TipoCfop): Regra | null {
 }
 
 /** A conta do plano que serve à regra: do grupo certo, analítica, com o nome que bate; a mais curta no nome primeiro. */
-function contaDaRegra(r: Regra, contas: readonly Conta[]): Conta | null {
+function contaDaRegra(r: Regra, contas: readonly Conta[], centros: ReadonlyMap<string, CentroDeCusto>): Conta | null {
   if (!r.nome) return null;
+  // com o plano dividido em centros, só as contas do centro da regra (o frete do CMV não serve ao frete industrial)
+  const peloCentro = r.centro && centros.size > 0;
   const servem = contas.filter(c => !c.sintetica && (!r.grupos || r.grupos.includes(c.grupo))
+    && (!peloCentro || centros.get(c.codigo) === r.centro)
     && r.nome!.test(nomeNorm(c.nome)) && !(r.semNome && r.semNome.test(nomeNorm(c.nome))));
   return servem.sort((a, b) => a.nome.length - b.nome.length || a.codigo.localeCompare(b.codigo))[0] || null;
 }
@@ -141,8 +206,11 @@ export function sugestaoDaNatureza(cfops: readonly string[], tipo: TipoCfop, con
   const r = cfops.map(c => regraDoCfop(c, tipo)).find(Boolean);
   if (!r) return null;
   if (r.nao) return { tipo: 'nao-contabil', pede: r.pede, motivo: r.motivo, base: r.base };
-  const conta = contaDaRegra(r, contas);
-  return conta
-    ? { tipo: 'conta', conta: { codigo: conta.codigo, nome: conta.nome }, pede: r.pede, motivo: r.motivo, base: r.base }
-    : { tipo: 'falta-conta', pede: r.pede, motivo: r.motivo + ' O plano desta empresa não tem essa conta: crie no Alterdata e importe o balancete de novo.', base: r.base };
+  const centros = centrosDoPlano(contas);
+  const conta = contaDaRegra(r, contas, centros);
+  if (conta) return { tipo: 'conta', conta: { codigo: conta.codigo, nome: conta.nome }, pede: r.pede, motivo: r.motivo, base: r.base };
+  const noCentro = r.centro && centros.size > 0
+    ? ([...centros.values()].includes(r.centro) ? ' no centro ' + NOME_DO_CENTRO[r.centro] : ' (nem o centro ' + NOME_DO_CENTRO[r.centro] + ')')
+    : '';
+  return { tipo: 'falta-conta', pede: r.pede, motivo: r.motivo + ' O plano desta empresa não tem essa conta' + noCentro + ': crie no Alterdata e importe o balancete de novo.', base: r.base };
 }
