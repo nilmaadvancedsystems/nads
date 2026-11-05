@@ -33,6 +33,8 @@ describe('o emissor de NFS-e', () => {
     // o padrão já vem com os dados da Nilma (da nota real): só falta o token
     expect(faltasNaConfig(CONFIG_PADRAO, false)).toEqual(['o token da prefeitura']);
     expect(faltasNaConfig(CONFIG_PADRAO, true)).toEqual([]);
+    // o nacional (05/11/2026): sem token e sem o código da prefeitura
+    expect(faltasNaConfig({ ...CONFIG_PADRAO, provedor: 'nacional', servico: { ...CONFIG_PADRAO.servico, cIntContrib: '' } }, false)).toEqual([]);
     const errada = { ...CONFIG_PADRAO, prestador: { ...CONFIG_PADRAO.prestador, cnpj: '11222333000180' }, servico: { ...CONFIG_PADRAO.servico, cIntContrib: '', pAliq: 9 } };
     expect(faltasNaConfig(errada, true)).toEqual(['o CNPJ do escritório', 'o código do serviço na prefeitura', 'a alíquota do ISS (entre 0 e 5%)']);
   });
