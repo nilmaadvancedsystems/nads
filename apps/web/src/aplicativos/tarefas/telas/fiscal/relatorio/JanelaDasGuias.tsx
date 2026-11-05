@@ -22,7 +22,8 @@ const STATUS_DO_LOTE: Record<string, { classe: string; rotulo: string }> = {
   disparado: { classe: 'badge badge-parada', rotulo: 'Faltou alguém' }, erro: { classe: 'badge badge-parada', rotulo: 'Não deu' },
 };
 /** o tipo da guia como no nome do arquivador: "DAS", "DARF PIS", "DAE ICMS" */
-const tipoDaGuia = (a: GuiaDoLote) => [a.leitura?.tipo, a.leitura?.tributo].filter(Boolean).join(' ') || '?';
+// o DARF de mais de um tributo: "DARF PIS + COFINS" (05/11/2026)
+const tipoDaGuia = (a: GuiaDoLote) => [a.leitura?.tipo, (a.leitura?.partes?.length ?? 0) > 1 ? a.leitura!.partes!.map(p => p.tributo).join(' + ') : a.leitura?.tributo].filter(Boolean).join(' ') || '?';
 const VIAS: { valor: ViaDaGuia; rotulo: string }[] = [{ valor: 'email', rotulo: 'Gmail' }, { valor: 'impresso', rotulo: 'Impresso' }, { valor: 'econtador', rotulo: 'eContador' }];
 const ROTULO_DA_VIA: Record<ViaDaGuia, string> = { email: 'Gmail', impresso: 'Impresso', econtador: 'eContador' };
 
@@ -55,10 +56,12 @@ function MenuDeCliente({ vm, arquivo }: { vm: VmEnvioDeGuias; arquivo: GuiaDoLot
 /** a coluna do Relatório que a guia preenche (ou "sem coluna"), para trocar */
 function MenuDeColuna({ vm, arquivo, compacto }: { vm: VmEnvioDeGuias; arquivo: GuiaDoLote; compacto?: boolean }) {
   const atual = efetivoDaGuia(arquivo, vm.grupo.id).coluna;
+  // o DARF de mais de um tributo vai dividido (cada um na coluna dele) até a pessoa escolher uma coluna só
+  const r = vm.noRelatorio(arquivo);
   return (
-    <MenuSuspenso rotulo={atual ? 'Coluna: ' + vm.rotuloDaColuna(atual) : 'Sem coluna'} className={compacto ? 'btn btn-ghost btn-sm' : 'btn btn-outline'} titulo="Coluna do Relatório" compacto={compacto} flutuante direita
+    <MenuSuspenso rotulo={r.dividida ? 'Colunas: ' + r.coluna : atual ? 'Coluna: ' + vm.rotuloDaColuna(atual) : 'Sem coluna'} className={compacto ? 'btn btn-ghost btn-sm' : 'btn btn-outline'} titulo="Coluna do Relatório" compacto={compacto} flutuante direita
       dica="A coluna do Relatório que recebe o valor desta guia"
-      itens={vm.colunas.map(c => ({ rotulo: c.rotulo, marcado: c.valor === atual, onClick: () => void vm.escolher(arquivo, { coluna: c.valor }) }))} />
+      itens={vm.colunas.map(c => ({ rotulo: c.rotulo, marcado: !r.dividida && c.valor === atual, onClick: () => void vm.escolher(arquivo, { coluna: c.valor }) }))} />
   );
 }
 

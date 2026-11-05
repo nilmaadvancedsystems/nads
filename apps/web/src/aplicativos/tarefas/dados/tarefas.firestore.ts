@@ -18,7 +18,7 @@ import {
   arrayRemove, arrayUnion, collection, deleteField, doc, FieldPath, getDoc, getDocs, getFirestore, initializeFirestore, onSnapshot, query, where,
   writeBatch as writeBatchBruto, type Firestore,
 } from 'firebase/firestore';
-import { bancoDoEntregas } from './entregas.firestore';
+import { bancoDoEntregas, renovarLogin } from './entregas.firestore';
 import { guardarLote } from '../../../comum/modoDesenvolvedor';
 
 // a trava do modo desenvolvedor (comum/modoDesenvolvedor.ts): com o modo ligado, só ver — nada é gravado
@@ -129,7 +129,8 @@ export function criarRepoTarefasFirestore(lista: readonly empresas.EmpresaDoEscr
     const c = carregar(ex.competencia, ex.departamento);
     if (!c.chegou) return; // antes de a competência chegar do banco, nunca grava
     const id = t.idDaExecucao(ex.empresa, ex.competencia, ex.departamento);
-    const b = writeBatch(db);
+    // o que vai para o banco: montado uma vez e regravado igual se for negado (um lote não se reenvia)
+    const escritas: ((b: ReturnType<typeof writeBatch>) => void)[] = [];
     if (comEstado) {
       const em = new Date().toISOString();
       const atual = c.execucoes.get(id);
@@ -140,17 +141,32 @@ export function criarRepoTarefasFirestore(lista: readonly empresas.EmpresaDoEscr
           c.execucoes.set(id, t.aplicarDiferenca(atual, mudancas)); // a tela já vê a mudança; o banco confirma pelo onSnapshot
           mudou();
           const { dados, campos } = soOQueMudou(ex, mudancas, em);
-          b.set(doc(db, COLECAO, id), dados, { mergeFields: campos });
+          escritas.push(b => b.set(doc(db, COLECAO, id), dados, { mergeFields: campos }));
         }
       } else {
         // a primeira gravação do mês (ainda não existe no banco) ou quem não diz de onde partiu: o documento inteiro
         c.execucoes.set(id, ex); // a tela já vê a mudança; o banco confirma pelo onSnapshot
         mudou();
-        b.set(doc(db, COLECAO, id), { ...ex, atualizadoEm: em });
+        escritas.push(b => b.set(doc(db, COLECAO, id), { ...ex, atualizadoEm: em }));
       }
     }
-    b.set(doc(collection(db, COLECAO, id, 'eventos')), ev);
-    b.commit().catch((err: Error) => avisar('Não deu para salvar a tarefa de "' + ex.empresa + '" na nuvem: ' + err.message));
+    const evento = doc(collection(db, COLECAO, id, 'eventos')); // o mesmo id em cada tentativa: o evento não duplica
+    escritas.push(b => b.set(evento, { ...ev, por: ev.por || '', etapa: ev.etapa || '' }));
+    // negada de vez em quando (Vitor, 05/11/2026): depois de o PC dormir, o token do login chega vencido. Renova o token
+    // e tenta de novo (1, 2, 4 e 8 s), como a leitura; só avisa se continuar negada
+    const gravar = (tentativa: number) => {
+      const b = writeBatch(db);
+      for (const e of escritas) e(b);
+      b.commit().catch(async (err: Error) => {
+        if (tentativa < ESPERAS.length && /permission|insufficient|unauthenticated/i.test(err.message)) {
+          await renovarLogin();
+          setTimeout(() => gravar(tentativa + 1), ESPERAS[tentativa]);
+          return;
+        }
+        avisar('Não deu para salvar a tarefa de "' + ex.empresa + '" na nuvem: ' + err.message);
+      });
+    };
+    gravar(0);
   }
 
   return {

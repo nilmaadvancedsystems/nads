@@ -50,6 +50,11 @@ export async function horaDoLogin(): Promise<string> {
   return String(t.claims.auth_time || '');
 }
 
+/** Pede um token novo ao Firebase (depois de o PC dormir, o token velho chega ao banco vencido e a gravação é negada). */
+export async function renovarLogin(): Promise<void> {
+  await getAuth(appDoEntregas()).currentUser?.getIdToken(true).catch(() => undefined);
+}
+
 export function contaDoEntregas(): { uid: string; email: string } | null {
   const u = getAuth(appDoEntregas()).currentUser;
   return u ? { uid: u.uid, email: u.email || '' } : null;

@@ -902,6 +902,27 @@ function linhaApos(u, rotulo, distancia) {
   return i < 0 ? '' : u.slice(i, i + (distancia || 160));
 }
 
+/**
+ * O DARF com mais de um tributo (05/11/2026: o de PIS e COFINS juntos da 444, "2172COFINS … 90,0090,00 … 8109PIS … 19,5019,50"):
+ * cada código da composição com o total da linha dele, [{ tributo, valor: 'R$90,00' }]; null quando é um tributo só (ou o
+ * código não é conhecido), e aí vale o valor total do documento.
+ */
+function partesDoDarf(u) {
+  const i = u.search(/COMPOSICAO DO DOCUMENTO/);
+  if (i < 0) return null;
+  const fim = u.slice(i).search(/\bTOTAIS\b/);
+  const trecho = u.slice(i, fim > 0 ? i + fim : i + 3000);
+  const partes = [];
+  for (const m of trecho.matchAll(/(?:^|\n)\s*(\d{4})\s*[A-Z][^\n]*\n\s*([\d.,]+)/g)) {
+    const tributo = TRIBUTO_POR_CODIGO[m[1]];
+    const valores = [...m[2].matchAll(/(\d{1,3}(?:\.\d{3})*),(\d{2})/g)];
+    if (!tributo || !valores.length) return null;
+    const t = valores[valores.length - 1];
+    partes.push({ tributo, valor: 'R$' + t[1].replace(/\./g, '') + ',' + t[2] });
+  }
+  return partes.length > 1 && new Set(partes.map(p => p.tributo)).size > 1 ? partes : null;
+}
+
 /** Os campos de uma guia (DAS/DARF/DAE/DAM/FGTS): período, vencimento, valor. */
 function camposDaGuia(u) {
   let venc = dataBr(linhaApos(u, /PAGAR (ESTE DOCUMENTO )?ATE|VENCIMENTO:|DATA DE VENCIMENTO|VENCIMENTO|VALIDADE/, 120));
@@ -984,7 +1005,7 @@ const REGRAS_PDF = [
       let trib = cod ? TRIBUTO_POR_CODIGO[cod[1]] : null;
       if (!trib && /DCTFWEB|CP SEGURADOS|PREVIDENCI|CONTRIB(UICAO)? (PATRONAL|INDIVIDUAL)|GILRAT|SENAR/.test(u)) trib = 'INSS';
       if (!trib && /ESOCIAL|DOMESTIC/.test(u)) trib = 'ESOCIAL DOMESTICO';
-      return Object.assign(c, { tributo: trib, parcelamento: /PARCELAMENTO|PGFN/.test(u) && !/DCTFWEB/.test(u) });
+      return Object.assign(c, { tributo: trib, parcelamento: /PARCELAMENTO|PGFN/.test(u) && !/DCTFWEB/.test(u), partes: partesDoDarf(u) });
     } },
   // (30/10/2026, 4ª rodada) o DAE da SEFAZ da Bahia (as fazendas da 453, 568 e 572 em Cândido Sales): sem o título, abre por "CÓDIGO DA RECEITA / DATA DE VENCIMENTO" e a
   // especificação da receita é ICMS (a taxa do INEMA, no mesmo modelo, fica de fora: não é ICMS)
@@ -1005,14 +1026,18 @@ const REGRAS_PDF = [
       }
       // o vencimento do SIARE: o rótulo "Validade" vem antes e não deixa a data por perto; a linha do "Histórico" traz "01 a 31/08/2022  105706  04/10/2022",
       // e a data aparece repetida logo antes de "Pague nos bancos" (no consolidado, junto do "Pague com PIX")
+      // o "Doc. Origem" pode vir vazio (05/11/2026: o DAE do ICMS normal do Presumido, "01 a 31/10/2026  09/11/2026  905.21 …"); a linha do Histórico
+      // vale sobre o rótulo solto (sem o "Validade" antes, o "VENCIMENTO" do cabeçalho do Histórico pegava o fim do período)
+      const hist = /(?<![\d/])\d{2} A \d{2}\/\d{2}\/20\d{2}\s+(?:(?!\d{2}\/\d{2}\/20\d{2})\S+\s+)?(\d{2}\/\d{2}\/20\d{2})/.exec(u);
+      if (hist) c.vencimento = dataBr(hist[1]);
       if (!c.vencimento) {
-        const m = /(?<![\d/])\d{2} A \d{2}\/\d{2}\/20\d{2}\s+\S+\s+(\d{2}\/\d{2}\/20\d{2})/.exec(u) || /(\d{2}\/\d{2}\/20\d{2})\n\1\nPAGUE NOS BANCOS/.exec(u) || /PAGUE COM PIX\n(\d{2}\/\d{2}\/20\d{2})\n/.exec(u);
+        const m = /(\d{2}\/\d{2}\/20\d{2})\n\1\nPAGUE NOS BANCOS/.exec(u) || /PAGUE COM PIX\n(\d{2}\/\d{2}\/20\d{2})\n/.exec(u);
         if (m) c.vencimento = dataBr(m[1]);
       }
       // o valor do SIARE: o "TOTAL" do rótulo fica longe do número; o "Histórico" repete o total com ponto decimal ("… 04/10/2022   1023.77  0.00  0.00  1023.77")
       if (!c.valor) {
         const m = /\bTOTAL:\s+\d+\.\d{2}\s+\d+\.\d{2}\s+\d+\.\d{2}\s+(\d+)\.(\d{2})(?![\d.])/.exec(u)
-          || /(?<![\d/])\d{2} A \d{2}\/\d{2}\/20\d{2}\s+\S+\s+\d{2}\/\d{2}\/20\d{2}\s+\d+\.\d{2}\s+\d+\.\d{2}\s+\d+\.\d{2}\s+(\d+)\.(\d{2})(?![\d.])/.exec(u);
+          || /(?<![\d/])\d{2} A \d{2}\/\d{2}\/20\d{2}\s+(?:(?!\d{2}\/\d{2}\/20\d{2})\S+\s+)?\d{2}\/\d{2}\/20\d{2}\s+\d+\.\d{2}\s+\d+\.\d{2}\s+\d+\.\d{2}\s+(\d+)\.(\d{2})(?![\d.])/.exec(u);
         if (m) c.valor = 'R$' + m[1] + ',' + m[2];
       }
       if (!c.competencia && trib === 'TFAMG') { const m = /TRIMESTRE\s+(20\d{2})/.exec(u); if (m) c.ano = +m[1]; }
@@ -1025,7 +1050,14 @@ const REGRAS_PDF = [
       return Object.assign(c, { receita: rec ? rec[1].trim() : '', tributo: trib, parcelaAmbiental, parcelamento: parcelaAmbiental || /PARCELAMENTO/.test(u.replace(/AUTUACAO,? DIVIDA ATIVA E PARCELAMENTO/g, " ")) })   /* "Nº Documento (autuação, dívida ativa e parcelamento)" é o rótulo do campo, em todo DAE do SIARE */;
     } },
   { tipo: 'DAM', setor: 'FISCAL', re: /DOCUMENTO DE ARRECADACAO MUNICIPAL|\bDAM\b.*PREFEITURA|PREFEITURA[\s\S]{0,300}\bDAM\b/, fonte: '05d §4',
-    campos: u => Object.assign(camposDaGuia(u), { tributo: /ITBI/.test(u) ? 'ITBI' : /\bISS/.test(u) ? 'ISS' : /IPTU/.test(u) ? 'IPTU' : /TAXA/.test(u) ? 'TAXA' : null }) },
+    campos: u => {
+      const c = camposDaGuia(u);
+      // o DAM de Taiobeiras (05/11/2026): o mês em "Lançamento: Mês/Ano: 10/2026" e o vencimento longe do rótulo
+      // ("…VENCIMENTO ORIGINAL:DATA VENCIMENTO:" no cabeçalho; "03/11/26 09:5320/11/2026" depois do endereço)
+      if (!c.competencia) { const m = /MES\/ANO:\s*(0[1-9]|1[0-2])\/(20\d{2})(?![\d/])/.exec(u); if (m) c.competencia = { mes: +m[1], ano: +m[2] }; }
+      if (!c.vencimento) { const m = /DATA VENCIMENTO:[\s\S]{0,300}?(\d{2}\/\d{2}\/20\d{2})/.exec(u); if (m) c.vencimento = dataBr(m[1]); }
+      return Object.assign(c, { tributo: /ITBI/.test(u) ? 'ITBI' : /\bISS/.test(u) ? 'ISS' : /IPTU/.test(u) ? 'IPTU' : /TAXA/.test(u) ? 'TAXA' : null });
+    } },
   // (Vitor, 29/10/2026, 3ª rodada, decisão 10) os débitos e as intimações (não são guia): a consulta de negociações da PGFN, o termo de intimação e a comunicação de inconformidades
   // da Receita, o termo de exclusão do Simples, o relatório de situação fiscal, o extrato de débitos e o PTA da SEFAZ-MG (termo de autodenúncia, auto de infração):
   // FISCAL\<regime>\OUTROS DOCUMENTOS\ANO, nome original; o cliente pelo CNPJ do contribuinte; o ano pela data do documento

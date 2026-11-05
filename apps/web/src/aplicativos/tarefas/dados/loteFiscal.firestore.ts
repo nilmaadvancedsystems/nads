@@ -30,7 +30,10 @@ function guiaDoBanco(id: string, d: Record<string, unknown>): GuiaDoLote {
   const es = (d.escolha || {}) as Record<string, unknown>;
   return {
     ...a,
-    leitura: a.leitura ? { ...a.leitura, coluna: texto(l.coluna) } : null,
+    leitura: a.leitura ? {
+      ...a.leitura, coluna: texto(l.coluna),
+      partes: (Array.isArray(l.partes) ? l.partes : []).map((p: Record<string, unknown>) => ({ tributo: texto(p?.tributo), coluna: texto(p?.coluna), valor: texto(p?.valor) })),
+    } : null,
     escolha: a.escolha ? { ...a.escolha, ...(typeof es.coluna === 'string' ? { coluna: es.coluna } : {}) } : null,
   };
 }
