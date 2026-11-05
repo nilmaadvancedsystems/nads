@@ -83,13 +83,14 @@ function Natureza({ it, vm }: { it: ItemNatureza; vm: VM }) {
           </span>
         ) : (
           <CampoVincular soIcone falta={it.semConta} v={it.vinculo} rotulo="Vincular conta" titulo="Vincular a conta contábil desta natureza (a que a conferência compara com o balancete)"
-            extra={escondido => it.podeNaoContabil
-              ? <>
-                {/* numa linha só: o +, a lâmpada e o Não vai (Vitor, 05/11/2026: "deixa isso mais alinhado") */}
+            extra={escondido => (
+              <>
+                {/* numa linha só: o +, a lâmpada e o Não vai (Vitor, 05/11/2026: "deixa isso mais alinhado"); a lâmpada fica enquanto
+                    faltar ligar alguma conta sugerida */}
                 {it.sugestao && !escondido && <Sugestao it={it} vm={vm} />}
-                <button type="button" className="btn ndp-nao-btn" hidden={escondido} onClick={() => vm.naoContabil(it.k, true)}>Não vai para o Contábil</button>
+                {it.podeNaoContabil && <button type="button" className="btn ndp-nao-btn" hidden={escondido} onClick={() => vm.naoContabil(it.k, true)}>Não vai para o Contábil</button>}
               </>
-              : null} />
+            )} />
         )}
       </div>
       </div>
@@ -115,21 +116,25 @@ function Sugestao({ it, vm }: { it: ItemNatureza; vm: VM }) {
   // uma linha por conta (a à vista e a a prazo, quando o plano tem as duas)
   const linhas = sug.tipo === 'conta' && sug.contas?.length ? sug.contas.map(x => x.codigo + ' — ' + x.nome)
     : [sug.tipo === 'nao-contabil' ? 'Não vai para o Contábil' : 'Falta a conta: ' + sug.pede];
-  const duas = (sug.contas?.length || 0) > 1;
   return (
     // só a lâmpada (Vitor, 05/11/2026: "coloca só o ícone da lâmpada")
     // flutuante: perto do fim da tela, abre para cima (Vitor, 05/11/2026: "não consigo scrollar e clicar" na última natureza)
     <MenuSuspenso rotulo="" icone="lampada" className="icon-btn" semSeta flutuante largura={380} dica="Sugestão: qual conta vai e por quê"
       conteudo={fechar => (
         <div className="comp-varios">
-          {linhas.map(l => <p key={l} className="comp-varios-texto" style={{ margin: 0 }}><b>{l}</b></p>)}
+          {/* cada conta com o seu + (Vitor, 05/11/2026: "ao invés de um botão usar contas, coloca só um +") */}
+          {sug.tipo === 'conta' && sug.contas?.length ? sug.contas.map(x => (
+            <div key={x.codigo} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              <p className="comp-varios-texto" style={{ margin: 0 }}><b>{x.codigo} — {x.nome}</b></p>
+              <button type="button" className="icon-btn icon-btn-sm" title={'Vincular ' + x.codigo + ' — ' + x.nome} aria-label={'Vincular ' + x.codigo}
+                onClick={() => { fechar(); vm.usarSugestao(it.k, { ...sug, contas: [x] }); }}><Icone nome="plus" /></button>
+            </div>
+          )) : linhas.map(l => <p key={l} className="comp-varios-texto" style={{ margin: 0 }}><b>{l}</b></p>)}
           {sug.tipo === 'conta' && <p className="hint">A natureza pede: {sug.pede}.</p>}
           <p className="hint">{sug.motivo}</p>
           <p className="hint">Base: {sug.base}</p>
-          {sug.tipo !== 'falta-conta' && (
-            <button type="button" className="btn btn-primary comp-varios-botao" onClick={() => { fechar(); vm.usarSugestao(it.k, sug); }}>
-              {sug.tipo === 'conta' ? (duas ? 'Usar as duas contas' : 'Usar esta conta') : 'Marcar Não vai para o Contábil'}
-            </button>
+          {sug.tipo === 'nao-contabil' && (
+            <button type="button" className="btn btn-primary comp-varios-botao" onClick={() => { fechar(); vm.usarSugestao(it.k, sug); }}>Marcar Não vai para o Contábil</button>
           )}
         </div>
       )} />
