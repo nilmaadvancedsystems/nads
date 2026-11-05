@@ -58,8 +58,13 @@ function partesCom(categorias: readonly empresas.CategoriaDoDp[]) {
 export const ROTULO_DASH: Record<SituacaoDoDash, string> = { feita: 'Concluídos', pendente: 'Pendentes', atrasada: 'Atrasados', sem: 'Sem movimento' };
 
 const SEM_RESPONSAVEL = 'Sem responsável';
-const REINF_AUTORIZADA = 'Autorizada';
-const REINF_NAO_AUTORIZADA = 'Não autorizada';
+// o filtro REINF é o check da coluna: transmitida (o Fiscal transmitiu) ou ainda não (quem não tem a REINF fica de fora)
+const REINF_TRANSMITIDA = 'Transmitida';
+const REINF_NAO_TRANSMITIDA = 'Não transmitida';
+const rotuloDaReinf = (c: { obrigacoes: { id: string; estado: string }[] }) => {
+  const e = c.obrigacoes.find(o => o.id === 'reinf')?.estado;
+  return e === 'feita' ? REINF_TRANSMITIDA : e === 'a-fazer' ? REINF_NAO_TRANSMITIDA : null;
+};
 const contar = (xs: readonly string[]) => {
   const m = new Map<string, number>();
   for (const x of xs) m.set(x, (m.get(x) || 0) + 1);
@@ -150,7 +155,7 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
   // o filtro Pendente em (Vitor, 07/10/2026): só quem ainda tem o que fazer naquela parte
   const pendentesEm = partes.filter(p => pendenteEm.includes(p.id));
   const filtradas = todas.filter(c => (!pendentesEm.length || pendentesEm.some(pendente => c.obrigacoes.some(o => pendente.obrigacoes.includes(o.id) && o.estado !== 'nao-tem' && o.estado !== 'feita')))
-    && (!achadas || achadas.has(c.codigo)) && (!responsavel.length || responsavel.includes(c.responsavelNome)) && (!entrega.length || entrega.includes(c.entrega)) && (!filtroReinf.length || filtroReinf.includes(c.reinfAutorizada ? REINF_AUTORIZADA : REINF_NAO_AUTORIZADA))
+    && (!achadas || achadas.has(c.codigo)) && (!responsavel.length || responsavel.includes(c.responsavelNome)) && (!entrega.length || entrega.includes(c.entrega)) && (!filtroReinf.length || filtroReinf.includes(rotuloDaReinf(c) ?? ''))
     && (!movimento.length || movimento.includes(c.movimento)) && (!enquadramento.length || enquadramento.includes(c.enquadramento))
     && (!agrupamento.length || agrupamento.includes(c.agrupamento)) && (!status.length || status.some(s => (s === 'pendentes' ? !c.concluida : c.situacaoId === s))))
     .sort((a, b) => a.nomeNaTela.localeCompare(b.nomeNaTela, 'pt-BR'));
@@ -318,7 +323,7 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
       movimentos: contar(todas.map(c => c.movimento)).map(x => x.rotulo),
       enquadramentos: contar(todas.map(c => c.enquadramento)).map(x => x.rotulo),
       agrupamentos: contar(todas.map(c => c.agrupamento).filter(Boolean)).map(x => x.rotulo).sort((a, b) => a.localeCompare(b, 'pt-BR')),
-      pendenteEm, setPendenteEm, entrega, setEntrega, reinf: filtroReinf, setReinf: setFiltroReinf, opcoesDaReinf: [REINF_AUTORIZADA, REINF_NAO_AUTORIZADA],
+      pendenteEm, setPendenteEm, entrega, setEntrega, reinf: filtroReinf, setReinf: setFiltroReinf, opcoesDaReinf: [REINF_TRANSMITIDA, REINF_NAO_TRANSMITIDA],
       entregas: contar(todas.map(c => c.entrega).filter(Boolean)).map(x => x.rotulo),
       partes: partes.map(p => ({ valor: p.id, rotulo: p.rotulo })),
       algum: !!(busca || responsavel.length || movimento.length || enquadramento.length || status.length || agrupamento.length || pendenteEm.length || entrega.length || filtroReinf.length),

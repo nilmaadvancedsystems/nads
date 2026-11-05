@@ -3410,6 +3410,14 @@ function decidirFornecedor(pg, entrada, u, bruto, ctx, ev, porHash) {
     const lido = doBoleto ? doBoleto.nome : doCanhoto && !ehDoCliente(doCanhoto) ? doCanhoto : null;
     if (lido) { pg = Object.assign({}, pg, { fornecedor: lido }); ev.push('o fornecedor lido no conteúdo (' + (doBoleto ? 'beneficiário do boleto' : 'emitente do canhoto da DANFE') + '): o nome do arquivo não o traz'); }
   }
+  // (05/11/2026) no zip de movimento que chega solto (o cliente não veio da pasta), o nome do arquivo traz o nome do próprio cliente e o número do CT-e
+  // ("OURO VERDE FRETE CTE86 FREEDOM"): a pasta do fornecedor fica sem eles ("OURO VERDE FRETE"), uma só para todos os fretes
+  if (pg.fornecedor && c.semPasta) {
+    const cli = cad.porCod.get(c.cliente) || {};
+    const doCli = new Set([cli.razao, cli.fantasia].filter(Boolean).flatMap(n => { const ws = norm(n).split(/[^A-Z0-9]+/).filter(Boolean); return ws.slice(0, 1).concat(ws.filter(w => w.length >= 4 && !/^(LTDA|EIRELI|COMERCIO|INDUSTRIA|SERVICOS|EMPREENDIMENTOS|FLORESTAIS|CONSULTORIA|INVESTIMENTOS)$/.test(w))); }));
+    const limpo = String(pg.fornecedor).split(/\s+/).filter(w => !doCli.has(norm(w)) && !/^CT-?E\d+$/i.test(w)).join(' ').trim();
+    if (limpo && /[A-Z]{3}/.test(limpo) && limpo !== pg.fornecedor) { ev.push('o fornecedor sem o nome do cliente e sem o número do CT-e: ' + limpo); pg = Object.assign({}, pg, { fornecedor: limpo }); }
+  }
   if (!pg.fornecedor) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'VOCABULARIO_AUSENTE', confianca: 0.5, evidencias: ev.concat('o nome do fornecedor não foi lido no nome do arquivo (04: Fornecedores)') });
   // o mês: a data do começo do nome; sem ela, o mês da pasta de origem; sem ele, o vencimento no conteúdo
   let comp = pg.data;
@@ -3440,7 +3448,46 @@ function clienteDoPagamento(rel, bruto, cad, ev, porHash, pagador) {
     ev.push('pasta "' + g.parte + '": sem o CNPJ de uma filial no conteúdo, a matriz ' + g.matriz);
     return { c: { cliente: g.matriz, conf: 0.9, como: 'pastaConferida' } };
   }
+  // (05/11/2026) o zip de movimento que o cliente manda solto ("MOVIMENTO_FREEDOM_OUTUBRO-2026…zip\NOTAS E COMPROVANTES DE PAGTOS…zip"): a pasta não diz o
+  // cliente, mas o comprovante traz a conta do cadastro (a do BB da FREEDOM) ou o CNPJ do pagador; sem eles, o nome do cliente no nome do zip/pasta, de UM cliente só
+  const nomeArq = partesDoCaminho(rel).slice(-1)[0] || '';
+  const pc = clientesPelasContas(contasDoArquivo(bruto, { nome: nomeArq }, false), bancoDoTexto(bruto, true) || bancoDoNome(nomeArq), cad);
+  if (pc.clientes.length === 1) { ev.push('a conta do cadastro no comprovante: ' + pc.contas.join('; ') + ' (a pasta de origem não diz o cliente; 05/11/2026)'); return { c: { cliente: pc.clientes[0], conf: 0.95, como: 'conta', semPasta: true } }; }
+  if (!pagador) { const p = pagadorDoComprovante(bruto, cad); if (p != null) { ev.push('cliente pelo CNPJ do pagador (a pasta de origem não diz o cliente; 05/11/2026)'); return { c: { cliente: p, conf: 0.95, como: 'doc', semPasta: true } }; } }
+  const pz = clienteDoNomeDoConteiner(rel, cad);
+  if (pz) { ev.push(pz.como + ' (05/11/2026)'); return { c: { cliente: pz.codigo, conf: 0.85, como: 'pasta', semPasta: true } }; }
   return { erro: { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_NAO_LOCALIZADO', confianca: 0.3, evidencias: ev.concat(pagador ? 'nem o CNPJ do pagador nem a pasta de origem dizem o cliente' : 'a pasta de origem não diz o cliente') } };
+}
+/**
+ * O cliente pelo nome do zip/pasta de origem quando ele traz o nome do cliente no meio de outras palavras ("MOVIMENTO_SPIROU_OUTUBRO-2026-EXTRATOS_BB…zip",
+ * "NOTAS E COMPROVANTES PAGTOS 3M OUT-2026.zip"; 05/11/2026): cada palavra (fora as de pasta, de mês e de banco) que é a PRIMEIRA palavra da razão ou do fantasia de
+ * clientes; vale só se todas as palavras de todas as pastas apontam para UM cliente só (duas empresas citadas, nada decide).
+ */
+const PALAVRAS_DE_MOVIMENTO = new Set(['MOVIMENTO', 'MOVIMENTOS', 'PLANILHA', 'PLANILH', 'PLANIL', 'COMPROVANTE', 'COMPROVANTES', 'PAGTO', 'PAGTOS', 'NOTA', 'NOTAS', 'BB', 'CEF', 'OUT', 'NOV', 'DEZ', 'JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'DE', 'DA', 'DO', 'DOS', 'DAS', 'E', 'NF', 'NFS', 'REF', 'MES']);
+function clienteDoNomeDoConteiner(rel, cad) {
+  const partes = partesDoCaminho(rel).slice(0, -1);
+  const achados = new Set(), porque = [];
+  for (const parte of partes) {
+    for (const w of norm(String(parte).replace(/\.(zip|rar|7z)$/i, '')).split(/[^A-Z0-9]+/)) {
+      if (w.length < 2 || !/[A-Z]/.test(w) || PALAVRAS_DE_PASTA.has(w) || PALAVRAS_DE_MOVIMENTO.has(w)) continue;
+      const cs = [];
+      for (const c of cad.porCod.values()) if ([c.razao, c.fantasia].filter(Boolean).some(n => norm(n).split(/[^A-Z0-9]+/).filter(Boolean)[0] === w)) cs.push(c.codigo);
+      if (!cs.length) continue;
+      cs.forEach(c => achados.add(c));
+      porque.push('"' + w + '" em "' + parte + '"');
+    }
+  }
+  if (!achados.size) return null;
+  if (achados.size === 1) { const codigo = [...achados][0]; return { codigo, como: 'o nome do cliente ' + codigo + ' no nome da pasta de origem: ' + porque.join(', ') }; }
+  // a matriz e as filiais com o mesmo nome (a FREEDOM 572 e a 582): a matriz (/0001), a não ser que o nome do arquivo fale de filial ou de fazenda (cada
+  // estabelecimento é uma fazenda: "F. LIBERDADE", "F.CEDRO"), que fica para uma pessoa
+  const cs = [...achados].map(c => cad.porCod.get(c)).filter(Boolean);
+  const raizes = new Set(cs.map(c => String(c.doc || '').slice(0, 8)));
+  const matriz = cs.filter(c => String(c.doc || '').length === 14 && String(c.doc).slice(8, 12) === '0001');
+  if (raizes.size !== 1 || matriz.length !== 1 || ![...raizes][0] || [...raizes][0].length !== 8) return null;
+  const nomeArq = norm(partesDoCaminho(rel).slice(-1)[0] || '');
+  if (/\bFILIAL\b|\bFAZ(ENDA)?\b|(^|[^A-Z])F\.\s?[A-Z]/.test(nomeArq)) return null;
+  return { codigo: matriz[0].codigo, como: 'o nome do cliente no nome da pasta de origem (' + porque.join(', ') + '): da matriz ' + matriz[0].codigo + ' e das filiais ' + cs.filter(c => c !== matriz[0]).map(c => c.codigo).join(', ') + ', e o nome do arquivo não fala de filial nem de fazenda: a matriz' };
 }
 /** O cliente pagador de um comprovante: o CNPJ/CPF cujo rótulo mais próximo antes dele é Pagador/Sacado/Correntista (um cliente só). */
 function pagadorDoComprovante(bruto, cad) {
