@@ -1,5 +1,5 @@
 # Como está o Alterdata Contábil desta máquina, sem mexer em nada (04/11/2026): o robô do Alterdata só pega um pedido
-# quando o Contábil está aberto e logado aqui. Escreve uma linha: ESTADO: ok | login | fechado | dois | erro
+# quando o Contábil está aberto e logado aqui. Escreve uma linha: ESTADO: ok | login | abrindo | fechado | dois | erro
 # e, quando não está ok, uma linha DIAG: com as janelas do Contábil que esta sessão enxerga (classe, visível, título),
 # para o log do robô dizer o porquê (no servidor, a sessão do RDP desconectado pode esconder as janelas).
 # Só win32gui (sem o pywinauto): EnumWindows, GetClassName, IsWindowVisible e GetWindowText não mandam mensagem para a
@@ -38,10 +38,38 @@ def visiveis(cls):
 # TfrmLogin no PC (7.1106); TfrmLoginSimultaneo no servidor (7.1029, 04/11/2026: a principal fica oculta atrás dela)
 if any(c.startswith('TfrmLogin') and v for c, v, _, _ in janelas):
     estado = 'login'
+elif any(c == 'TfrmEntradaFlash' and v for c, v, _, _ in janelas):
+    # a tela "entrando" depois do login (no servidor ela leva um tempo, e às vezes trava): nem fechado nem pronto
+    estado = 'abrindo'
 else:
     n = len(visiveis('TfrmPrincipal'))
     estado = 'fechado' if n == 0 else 'ok' if n == 1 else 'dois'
 print('ESTADO: ' + estado, flush=True)
+
+# a tela de atualizações que o Alterdata mostra ao abrir (05/11/2026, Vitor: "tem uma tela de atualizacoes, ele tem que
+# clicar em ver depois"): só avisa (AVISO: <janela> "<título>"), quem clica é o alterdata_avisos.py. Procura nas janelas
+# visíveis dos processos do Alterdata (os que têm uma janela Tfrm) um botão "Ver depois".
+VER_DEPOIS = ('ver depois', 'lembrar depois', 'lembre-me depois', 'mais tarde')
+try:
+    pids = {p for _, _, _, p in janelas}
+    topos = []
+    win32gui.EnumWindows(lambda h, _: topos.append(h) or True, None)
+    for h in topos:
+        if not win32gui.IsWindowVisible(h) or win32process.GetWindowThreadProcessId(h)[1] not in pids:
+            continue
+        achou = []
+
+        def ver(c, _):
+            if (win32gui.GetWindowText(c) or '').replace('&', '').strip().lower() in VER_DEPOIS and win32gui.IsWindowVisible(c):
+                achou.append(c)
+            return True
+
+        win32gui.EnumChildWindows(h, ver, None)
+        if achou:
+            print('AVISO: ' + str(h) + ' ' + win32gui.GetClassName(h) + ' "' + (win32gui.GetWindowText(h) or '')[:40] + '"', flush=True)
+            break
+except Exception:
+    pass
 if estado == 'login':
     # os campos da tela de login (para o roteiro de login do robô): classe e posição; o texto só dos que não são caixa de
     # texto (nunca o que está digitado no usuário ou na senha)

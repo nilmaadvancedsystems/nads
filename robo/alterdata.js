@@ -18,6 +18,7 @@ const { spawn, execFile } = require('child_process');
 const { ouvir } = require('./ouvinte');
 const painel = require('./painel');
 const { criarFilaAlterdata, periodo } = require('./alterdata-fila');
+const numeros = require('./alterdata-numeros');
 
 const DRIVE = process.env.ARQUIVO_DRIVE || 'G:\\Meu Drive';
 const ONDE = process.env.ARQ_SO_SERVIDOR === '1' ? 'servidor' : 'pc';
@@ -29,6 +30,8 @@ const PASTA_PEDIDOS = process.env.ALTERDATA_PEDIDOS
 const PYTHON = process.env.PYTHON_EXE || ['D:\\Programas\\Python313\\python.exe'].find(p => fs.existsSync(p)) || 'python';
 const ROTEIROS = { balancete: path.join(__dirname, 'alterdata_balancete.py'), razao: path.join(__dirname, 'alterdata_razao.py') };
 const ROTEIRO_ESTADO = path.join(__dirname, 'alterdata_estado.py');
+// a tela de atualizações do Alterdata ao abrir: o robô clica em "Ver depois" (05/11/2026)
+const ROTEIRO_AVISOS = path.join(__dirname, 'alterdata_avisos.py');
 // o login do robô (04/11/2026, Vitor: "tem um login criado especificamente para o robo, onde ele tem permissão so de puxar
 // relatorio"): a credencial fica só no Gerenciador de Credenciais do Windows (nads-alterdata-robo); sem ela, o robô só espera
 const ROTEIRO_LOGIN = path.join(__dirname, 'alterdata_login.py');
@@ -39,7 +42,14 @@ const PEDACO = 700 * 1000;   // caracteres de base64 por pedaço (o documento do
 const VERIFICAR_MS = 60 * 1000;
 
 const agora = () => new Date().toISOString();
-const ESTADOS = { ok: 'aberto e logado', login: 'na tela de login', fechado: 'fechado', dois: 'aberto duas vezes', erro: 'sem resposta' };
+const ESTADOS = { ok: 'aberto e logado', login: 'na tela de login', abrindo: 'entrando (tela de abertura)', fechado: 'fechado', dois: 'aberto duas vezes', erro: 'sem resposta' };
+
+/** Se já tem um Contábil (wcont.exe) rodando nesta máquina, mesmo sem janela à mostra (05/11/2026, Vitor: "o robo tem que
+ *  verificar se o contabil ja ta aberto antes de abrir outro"). Na dúvida (o tasklist falhou), diz que sim: não abre. */
+function contabilRodando() {
+  return new Promise(resolve => execFile('tasklist', ['/fi', 'imagename eq wcont.exe', '/fo', 'csv', '/nh'], { windowsHide: true, timeout: 30 * 1000 },
+    (err, out) => resolve(err ? true : /wcont\.exe/i.test(String(out || '')))));
+}
 
 /** O Contábil desta máquina: ok | login | fechado | dois | erro (sem mexer em nada). */
 function estadoDoContabil() {
@@ -49,10 +59,11 @@ function estadoDoContabil() {
       const m = String(out || '').match(/ESTADO:\s*(\w+)/);
       const c = String(out || '').match(/CAMPOS:\s*(.+)/);
       const d = String(out || '').match(/DIAG:\s*(.+)/);
+      const aviso = String(out || '').match(/AVISO:\s*(\d+)\s*(.*)/);
       if (c && d) d[1] = d[1] + ' · campos: ' + c[1];
       // o porquê, para o log: o DIAG do roteiro, ou o fim do erro do Python, ou o prazo
       const porque = d ? d[1].trim() : err ? (err.killed ? 'passou de 90 s' : String(errs || err.message).trim().split('\n').pop().slice(0, 200)) : '';
-      resolve({ estado: m ? m[1] : 'erro', porque, prazo: !m && !!err && !!err.killed });
+      resolve({ estado: m ? m[1] : 'erro', porque, prazo: !m && !!err && !!err.killed, aviso: aviso ? { janela: aviso[1], qual: aviso[2].trim() } : null });
     });
   });
 }
@@ -66,7 +77,7 @@ function matar(filho) {
 }
 
 /** Roda um roteiro; PASSO: … vira passo; RESULTADO: {…} é o fim; o sinal (o prazo da fila) mata o roteiro. */
-function rodarRoteiro(relatorio, a, passo, sinal) {
+function rodarRoteiro(relatorio, a, passo, sinal, clique = () => {}) {
   const args = relatorio === 'razao'
     ? [String(a.codigo), a.inicio, a.fim, a.pasta, a.destino]
     : [String(a.codigo), a.inicio, a.fim, a.destino];
@@ -80,6 +91,8 @@ function rodarRoteiro(relatorio, a, passo, sinal) {
       for (const l of linhas) {
         const m = l.match(/^PASSO:\s*(.+)$/);
         if (m) void passo(m[1]);
+        const c = l.match(/^CLIQUE:\s*(.+)$/);
+        if (c) void clique(c[1]);
         const r = l.match(/^RESULTADO:\s*(\{.*\})\s*$/);
         if (r) { try { resultado = JSON.parse(r[1]); } catch (_) { /* mal escrito */ } }
       }
@@ -101,8 +114,22 @@ function iniciarAlterdata(db, log) {
   // o Contábil daqui: verificado a cada minuto e antes de cada pedido; vai para o banco e para o painel
   let estado = '';
   let semResposta = 0;
+  // a tela de atualizações: um clique em "Ver depois" por janela (se não fechar, não insiste; o log diz)
+  const avisosClicados = new Set();
+  async function verDepois(aviso) {
+    if (avisosClicados.has(aviso.janela)) return false;
+    avisosClicados.add(aviso.janela);
+    const r = await rodarPy(ROTEIRO_AVISOS, [aviso.janela], 60 * 1000);
+    const ok = /"ok":\s*true/.test(r.out);
+    log('Alterdata: a tela de atualizações do Contábil (' + aviso.qual + '): ' + (ok ? 'cliquei em "Ver depois"' : 'não fechou com o "Ver depois" (' + (r.out.match(/"erro":\s*"([^"]*)"/) || [])[1] + ')'));
+    return ok;
+  }
+
   async function verificar() {
-    const r = await estadoDoContabil();
+    let r = await estadoDoContabil();
+    if (r.aviso && await verDepois(r.aviso)) r = await estadoDoContabil();
+    // com a tela de atualizações na frente, o Contábil não está pronto para relatório
+    if (r.aviso && r.estado === 'ok') r.estado = 'abrindo';
     // um prazo estourado sozinho não muda o estado (o servidor às vezes demora a abrir o Python); dois seguidos, sim
     semResposta = r.prazo ? semResposta + 1 : 0;
     const novo = r.prazo && semResposta < 2 && estado ? estado : r.estado;
@@ -124,6 +151,7 @@ function iniciarAlterdata(db, log) {
   let loginParado = '';
   let entrando = false;
   let abertoEm = 0;
+  let avisouRodando = false;
   const rodarPy = (arquivo, args, ms) => new Promise(resolve => execFile(PYTHON, ['-I', arquivo, ...args], { cwd: __dirname, windowsHide: true, timeout: ms },
     (err, out) => resolve({ err, out: String(out || '') })));
   async function entrarSozinho(como) {
@@ -137,6 +165,13 @@ function iniciarAlterdata(db, log) {
       if (!temCredencial) return;   // sem a credencial: espera alguém entrar
       if (como === 'fechado') {
         if (Date.now() - abertoEm < ABRIR_DE_NOVO_MS || !fs.existsSync(WCONT)) return;
+        // já tem um Contábil rodando (abrindo, travado ou sem janela nesta sessão): não abre outro
+        if (await contabilRodando()) {
+          if (!avisouRodando) log('Alterdata: o Contábil deste ' + ONDE + ' parece fechado, mas o wcont.exe está rodando; não abro outro');
+          avisouRodando = true;
+          return;
+        }
+        avisouRodando = false;
         abertoEm = Date.now();
         log('Alterdata: o Contábil deste ' + ONDE + ' estava fechado; abrindo para o robô entrar');
         spawn(WCONT, [], { cwd: path.dirname(WCONT), detached: true, stdio: 'ignore' }).unref();
@@ -181,6 +216,23 @@ function iniciarAlterdata(db, log) {
         await ref.collection('partes').doc(rel + '-' + String(i).padStart(3, '0')).set({ n: i, dados: b64.slice(i * PEDACO, (i + 1) * PEDACO) });
       }
       return { partes: n };
+    },
+    // os números lidos (05/11/2026): pedidosAlterdata/{id}/numeros/{balancete | razao | razao-nnn}; só no pedido mensal
+    async importar(id, rel, arquivo, p) {
+      if ((p.tipo || 'balancete') !== 'mensal') return null;
+      const buf = fs.readFileSync(arquivo);
+      const col = pedidos.doc(id).collection('numeros');
+      if (rel === 'balancete') {
+        const contas = numeros.lerBalancete(buf);
+        if (!contas.length) throw new Error('não achei conta nenhuma no balancete');
+        await col.doc('balancete').set({ codigo: Number(p.codigo), competencia: p.competencia, contas, n: contas.length, em: agora() });
+        return { contas: contas.length };
+      }
+      const r = numeros.lerRazao(buf);
+      const pedacos = numeros.emPedacos(r.lancamentos);
+      for (let i = 0; i < pedacos.length; i++) await col.doc('razao-' + String(i).padStart(3, '0')).set({ n: i, lancamentos: pedacos[i] });
+      await col.doc('razao').set({ codigo: Number(p.codigo), competencia: p.competencia, contas: r.contas, n: r.lancamentos.length, pedacos: pedacos.length, em: agora() });
+      return { contas: r.contas.length, lancamentos: r.lancamentos.length };
     },
     async prontoIgual(id, p) {
       const s = await pedidos.where('codigo', '==', Number(p.codigo)).get();

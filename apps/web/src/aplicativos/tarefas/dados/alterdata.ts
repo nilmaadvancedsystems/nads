@@ -20,7 +20,13 @@ export interface ArquivoDoAlterdata {
   /** quantos pedaços em partes/{relatorio}-{nnn} */
   partes: number;
   erro: string;
+  /** os números lidos para dentro do nads (05/11/2026): quantas contas e, no razão, quantos lançamentos */
+  importado?: { contas: number; lancamentos?: number; erro?: string };
 }
+
+/** O que o robô está fazendo agora (05/11/2026, Vitor: "quero que no nads tenha um feedback do que o robo ta fazendo, onde
+ *  ele ta clicando com uma barra de progresso"): a porcentagem, a etapa (o último passo) e o clique da hora. */
+export interface AndamentoDoAlterdata { pct: number; etapa: string; clique: string; em: string }
 
 export interface PedidoMensalDoAlterdata {
   id: string;
@@ -32,6 +38,7 @@ export interface PedidoMensalDoAlterdata {
   erro: string;
   passos: { n: number; nome: string; quando: string }[];
   arquivos: Partial<Record<RelatorioDoAlterdata, ArquivoDoAlterdata>>;
+  andamento: AndamentoDoAlterdata | null;
   /** o pedido igual que o robô já atendeu: os arquivos são os dele */
   mesmoQue: string;
   criadoEm: string;
@@ -82,9 +89,10 @@ export function criarAlterdataMemoria(): RepoAlterdata {
   const todos: PedidoMensalDoAlterdata[] = [{
     id: 'ex-1', codigo: 0, empresa: '', competencia: '2026-09', status: 'pronto', erro: '', mesmoQue: '',
     passos: [{ n: 1, nome: 'balancete pronto', quando: '2026-10-02T13:05:00.000Z' }],
+    andamento: { pct: 100, etapa: 'pronto', clique: '', em: '2026-10-02T13:06:00.000Z' },
     arquivos: {
-      balancete: { status: 'pronto', nome: 'Balancete 2026-09.xlsx', tamanho: 18_400, partes: 1, erro: '' },
-      razao: { status: 'pronto', nome: 'Razão 2026-09.xlsx', tamanho: 96_000, partes: 1, erro: '' },
+      balancete: { status: 'pronto', nome: 'Balancete 2026-09.xlsx', tamanho: 18_400, partes: 1, erro: '', importado: { contas: 289 } },
+      razao: { status: 'pronto', nome: 'Razao 2026-09.csv', tamanho: 421_000, partes: 1, erro: '', importado: { contas: 213, lancamentos: 2193 } },
     },
     criadoEm: '2026-10-02T13:02:00.000Z', criadoPor: 'exemplo', inicioEm: '2026-10-02T13:03:00.000Z', fimEm: '2026-10-02T13:06:00.000Z',
   }];
@@ -96,17 +104,31 @@ export function criarAlterdataMemoria(): RepoAlterdata {
     async pedir({ codigo, empresa, competencia }) {
       if (pedidoAndando(todos.filter(p => p.codigo === codigo), competencia)) return;
       const id = 'ex-' + codigo + '-' + Date.now();
-      todos.push({ id, codigo, empresa, competencia, status: 'pendente', erro: '', mesmoQue: '', passos: [], arquivos: {}, criadoEm: agora(), criadoPor: 'exemplo', inicioEm: '', fimEm: '' });
+      todos.push({ id, codigo, empresa, competencia, status: 'pendente', erro: '', mesmoQue: '', passos: [], arquivos: {}, andamento: null, criadoEm: agora(), criadoPor: 'exemplo', inicioEm: '', fimEm: '' });
       mudou();
       const por = (m: Partial<PedidoMensalDoAlterdata>) => { const i = todos.findIndex(p => p.id === id); if (i >= 0 && todos[i].status !== 'cancelado') { todos[i] = { ...todos[i], ...m }; mudou(); } };
-      setTimeout(() => por({ status: 'trabalhando', inicioEm: agora(), passos: [{ n: 1, nome: 'balancete: gerando o balancete', quando: agora() }] }), 1000);
+      // o robô de mentira: os passos de verdade, um a cada 1,2 s, com os cliques no meio
+      const roteiro: [string, string][] = [
+        ['balancete: abrindo Livros e Relatórios → Balancete', 'menu Livros e Relatórios'], ['balancete: empresa ' + codigo, 'campo Código: ' + codigo],
+        ['balancete: período', 'data'], ['balancete: gerando o balancete', 'Concluir (o Alterdata monta o balancete)'],
+        ['balancete: salvando em Xlsx', 'tipo Xlsx Dados Arquivo'], ['balancete pronto', 'subindo o balancete para o nads'],
+        ['razão: abrindo Livros e Relatórios → Razão', 'Razão ▾'], ['razão: empresa ' + codigo, 'Avançar'], ['razão: período', 'ordem Nome + Código'],
+        ['razão: gerando o CSV na pasta do pedido', 'Concluir (o Alterdata monta o razão)'], ['razão pronto', 'subindo o razão para o nads'],
+        ['lendo os números para o nads', ''],
+      ];
+      const passos: PedidoMensalDoAlterdata['passos'] = [];
+      setTimeout(() => por({ status: 'trabalhando', inicioEm: agora(), andamento: { pct: 0, etapa: 'começando', clique: '', em: agora() } }), 800);
+      roteiro.forEach(([nome, clique], i) => setTimeout(() => {
+        passos.push({ n: i + 1, nome, quando: agora() });
+        por({ passos: [...passos], andamento: { pct: Math.round((i + 1) / 13 * 100), etapa: nome, clique, em: agora() } });
+      }, 1600 + i * 1200));
       setTimeout(() => por({
-        status: 'pronto', fimEm: agora(),
+        status: 'pronto', fimEm: agora(), andamento: { pct: 100, etapa: 'pronto', clique: '', em: agora() },
         arquivos: {
-          balancete: { status: 'pronto', nome: 'Balancete ' + codigo + ' ' + competencia + '.xlsx', tamanho: 18_400, partes: 1, erro: '' },
-          razao: { status: 'erro', nome: '', tamanho: 0, partes: 0, erro: 'o robô ainda não sabe gerar o razão (exemplo)' },
+          balancete: { status: 'pronto', nome: 'Balancete ' + codigo + ' ' + competencia + '.xlsx', tamanho: 24_228, partes: 1, erro: '', importado: { contas: 289 } },
+          razao: { status: 'pronto', nome: 'Razao ' + codigo + ' ' + competencia + '.csv', tamanho: 421_770, partes: 1, erro: '', importado: { contas: 213, lancamentos: 2193 } },
         },
-      }), 4000);
+      }), 1600 + roteiro.length * 1200);
     },
     async cancelar(id) {
       const i = todos.findIndex(p => p.id === id);
