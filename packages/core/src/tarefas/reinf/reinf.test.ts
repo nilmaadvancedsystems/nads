@@ -38,8 +38,8 @@ describe('quem tem a REINF no Fiscal (05/11/2026: todas, menos as filiais)', () 
     expect(temReinfNoFiscal({ codigo: 494, nome: 'CAIXA ESCOLAR JOVITA SECUNDINA REGO', regime: 'Isentas' })).toBe(true);
     expect(temReinfNoFiscal({ codigo: 299, nome: 'TEOBALDO MENDES DE OLIVEIRA LTDA - FILIAL 02', regime: 'Simples' })).toBe(false);
     expect(temReinfNoFiscal({ codigo: 449, nome: 'GRANMIX COMERCIO DE ALIMENTOS LTDA - MATRIZ', regime: 'Simples' })).toBe(true);
-    expect(temReinfNoFiscal({ codigo: 499, nome: 'FARLEN XAVIER SANTOS 36075344896', regime: 'MEI' })).toBe(false);
-    expect(temReinfNoFiscal({ codigo: 611, nome: 'FRANCIELLE SILVA SANTANA', regime: 'Domésticas' })).toBe(false);
+    expect(temReinfNoFiscal({ codigo: 499, nome: 'FARLEN XAVIER SANTOS 36075344896', regime: 'MEI' })).toBe(true);
+    expect(temReinfNoFiscal({ codigo: 611, nome: 'FRANCIELLE SILVA SANTANA', regime: 'Domésticas' })).toBe(true);
     expect(temReinfNoFiscal({ codigo: null, nome: 'SEM CODIGO LTDA', regime: 'Simples' })).toBe(false);
   });
   it('na lista do escritório: as matrizes da lista antiga continuam, as filiais saem', () => {
