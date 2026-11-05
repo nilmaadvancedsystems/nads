@@ -112,9 +112,21 @@ function Todas({ vm, r, t }: { vm: Vm; r: Res; t: NonNullable<Res['todas']> }) {
       <div className="vc-resumo" id="vcStats">
         <Conta conta={t.conta} fonte={r.fonte} />
         <div className="vc-resumo-nums">
-          <Numero rotulo={t.multi ? 'Relatório das contas' : 'Relatório da conta'} valor={reais(t.somaRazao)} />
-          <Numero rotulo="Notas fiscais" valor={reais(t.somaFiscal)} />
-          <Numero rotulo="Diferença" valor={reais(t.diferenca)} cls={t.zero ? 'ok' : 'bad'} />
+          {t.soNotas ? (
+            // só as notas (Vitor, 05/11/2026: "procure apenas a nota e dê um check"): a conta tem outros assuntos, o total não vale
+            <>
+              <Numero rotulo="Notas fiscais" valor={reais(t.somaFiscal)} />
+              <Numero rotulo="Na conta" valor={(t.soNotas.encontradas === t.soNotas.total ? '✓ ' : '') + t.soNotas.encontradas + ' de ' + t.soNotas.total + (t.soNotas.total === 1 ? ' nota' : ' notas')}
+                cls={t.soNotas.encontradas === t.soNotas.total ? 'ok' : 'bad'} />
+              <Numero rotulo="Outros lançamentos" valor={t.soNotas.outros + ' (não entram)'} />
+            </>
+          ) : (
+            <>
+              <Numero rotulo={t.multi ? 'Relatório das contas' : 'Relatório da conta'} valor={reais(t.somaRazao)} />
+              <Numero rotulo="Notas fiscais" valor={reais(t.somaFiscal)} />
+              <Numero rotulo="Diferença" valor={reais(t.diferenca)} cls={t.zero ? 'ok' : 'bad'} />
+            </>
+          )}
         </div>
         {t.composicao && (
           <div className="vc-comp">
@@ -133,7 +145,9 @@ function Todas({ vm, r, t }: { vm: Vm; r: Res; t: NonNullable<Res['todas']> }) {
         {r.limpo ? (
           <>
             <AlertaVerde titulo={'Nenhuma pendência ' + (t.multi ? 'nessas contas' : 'nessa conta')} margem="16px 0 0">
-              <p className="alert-text">Todas as notas bateram com {t.multi ? 'os relatórios. As contas ficam' : 'o relatório. A conta fica'} <b>Ok</b> no Relatório.</p>
+              <p className="alert-text">{t.soNotas
+                ? <>Todas as notas estão na conta. Os outros lançamentos dela são de outro assunto e não entram. A conta fica <b>Ok</b> no Relatório.</>
+                : <>Todas as notas bateram com {t.multi ? 'os relatórios. As contas ficam' : 'o relatório. A conta fica'} <b>Ok</b> no Relatório.</>}</p>
             </AlertaVerde>
             {secaoIcms && <div className="vc-pend vc-icms">{secaoIcms}</div>}
           </>

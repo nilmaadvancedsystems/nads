@@ -248,6 +248,17 @@ export interface ResultadoVerificacao {
   fonte: string;
   /** todas as linhas usadas (com a conta de origem), para as abas por conta */
   linhas: LinhaRazao[];
+  /**
+   * Só as notas (Vitor, 05/11/2026: "a conta de adiantamento movimenta outras coisas que não são da mesma área e assunto,
+   * procure apenas a nota e dê um check"): no simples faturamento da entrega futura (5922/6922) e nas contas de adiantamento,
+   * cada nota é procurada na conta; os outros lançamentos dela não são pendência e a diferença dos totais não conta.
+   */
+  soNotas?: { encontradas: number; total: number; outros: number };
+}
+
+/** A conferência só procura as notas na conta (os outros lançamentos são de outro assunto)? */
+export function conferirSoAsNotas(cfops: readonly string[], contas: readonly Pick<Conta, 'nome'>[]): boolean {
+  return (cfops.length > 0 && cfops.every(c => /922$/.test(c))) || (contas.length > 0 && contas.every(a => /\badiantament/.test(nomeNorm(a.nome))));
 }
 
 export interface EntradaVerificacao {
@@ -376,8 +387,10 @@ export function conferirConta(x: EntradaVerificacao): ResultadoVerificacao {
   const opsDe = new Map<LinhaRazao, Operacao[]>();
   for (const l of razao) { const ops = operacoesDaLinha(l, porNumero); opsDe.set(l, ops); if (ops.length) l.operacao = ops.join(' / '); }
   const deOutraOperacao = (l: LinhaRazao) => { const ops = opsDe.get(l) || []; return ops.length > 0 && operacoesDaConta.length > 0 && ops.every(o => operacoesDaConta.indexOf(o) < 0); };
-  const operacaoIncorreta = sobra.filter(deOutraOperacao);
-  const aMais = sobra.filter(l => !deOutraOperacao(l));
+  // só as notas: o que sobrou na conta é de outro assunto (recebimentos, Pix, baixas do adiantamento), não pendência
+  const soNotas = !x.servTipo && conferirSoAsNotas(uniaoCfops(gs), x.contas);
+  const operacaoIncorreta = soNotas ? [] : sobra.filter(deOutraOperacao);
+  const aMais = soNotas ? [] : sobra.filter(l => !deOutraOperacao(l));
   const somaSemIcms = linhasConf.concat(deOutroCfop).reduce((s, l) => s + l.valor, 0);
   const neg = linhasConf.filter(l => l.sinal < 0).length;
   const sinalConta = neg > linhasConf.length / 2 ? -1 : 1;
@@ -403,8 +416,12 @@ export function conferirConta(x: EntradaVerificacao): ResultadoVerificacao {
     serv: x.servTipo, conta,
     contas: comRel.length > 1 ? comRel.map(a => ({ codigo: a.codigo, nome: a.nome })) : null,
     fonte, linhas: razao,
+    ...(soNotas ? { soNotas: { encontradas: alvoComValor(alvo).length - faltando.length, total: alvoComValor(alvo).length, outros: sobra.length } } : {}),
   };
 }
+
+/** as notas que têm o que lançar (a de valor zero não entra no "Faltando na conta") */
+const alvoComValor = (alvo: NotaAlvo[]) => alvo.filter(n => !!n.numero && Math.abs(n.valor) >= IGUAL);
 
 /** As linhas de outra operação (o resultado de antes da coluna Operação não tem a lista). */
 export const operacaoIncorretaDe = (r: ResultadoVerificacao): LinhaRazao[] => r.operacaoIncorreta || [];

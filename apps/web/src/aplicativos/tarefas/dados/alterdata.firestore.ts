@@ -17,7 +17,17 @@ const texto = (v: unknown) => (v == null ? '' : String(v));
 function arquivoDoBanco(v: unknown): ArquivoDoAlterdata | undefined {
   if (!v || typeof v !== 'object') return undefined;
   const a = v as Record<string, unknown>;
-  return { status: a.status === 'pronto' ? 'pronto' : 'erro', nome: texto(a.nome), tamanho: Number(a.tamanho) || 0, partes: Number(a.partes) || 0, erro: texto(a.erro) };
+  const imp = a.importado && typeof a.importado === 'object' ? a.importado as Record<string, unknown> : null;
+  return {
+    status: a.status === 'pronto' ? 'pronto' : 'erro', nome: texto(a.nome), tamanho: Number(a.tamanho) || 0, partes: Number(a.partes) || 0, erro: texto(a.erro),
+    ...(imp ? { importado: { contas: Number(imp.contas) || 0, ...(imp.lancamentos != null ? { lancamentos: Number(imp.lancamentos) || 0 } : {}), ...(imp.erro ? { erro: texto(imp.erro) } : {}) } } : {}),
+  };
+}
+
+function andamentoDoBanco(v: unknown): PedidoMensalDoAlterdata['andamento'] {
+  if (!v || typeof v !== 'object') return null;
+  const a = v as Record<string, unknown>;
+  return { pct: Math.max(0, Math.min(100, Number(a.pct) || 0)), etapa: texto(a.etapa), clique: texto(a.clique), em: texto(a.em) };
 }
 
 function pedidoDoBanco(id: string, d: Record<string, unknown>): PedidoMensalDoAlterdata {
@@ -27,7 +37,7 @@ function pedidoDoBanco(id: string, d: Record<string, unknown>): PedidoMensalDoAl
   return {
     id, codigo: Number(d.codigo) || 0, empresa: texto(d.empresa), competencia: texto(d.competencia), status: texto(d.status), erro: texto(d.erro),
     passos: Array.isArray(d.passos) ? (d.passos as Record<string, unknown>[]).map(p => ({ n: Number(p.n) || 0, nome: texto(p.nome), quando: texto(p.quando) })) : [],
-    arquivos, mesmoQue: texto(d.mesmoQue), criadoEm: texto(d.criadoEm), criadoPor: texto(d.criadoPor), inicioEm: texto(d.inicioEm), fimEm: texto(d.fimEm),
+    arquivos, andamento: andamentoDoBanco(d.andamento), mesmoQue: texto(d.mesmoQue), criadoEm: texto(d.criadoEm), criadoPor: texto(d.criadoPor), inicioEm: texto(d.inicioEm), fimEm: texto(d.fimEm),
   };
 }
 

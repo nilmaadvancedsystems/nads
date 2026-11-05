@@ -288,7 +288,9 @@ function montarResultado(e: c.Empresa, p: c.FiltroMovimento, v: EstadoVerificar,
     porConta: null,
     todas: {
       conta: r.conta, multi, somaRazao: r.somaRazao, somaFiscal: r.somaFiscal, diferenca: t.diferenca, zero,
-      composicao: zero ? null : c.composicaoDiferenca(r),
+      /** só as notas (5922/6922 e as contas de adiantamento): as encontradas, o total e os outros lançamentos da conta */
+      soNotas: r.soNotas || null,
+      composicao: zero || r.soNotas ? null : c.composicaoDiferenca(r),
       faltando: c.linhasFaltando(r), somaFaltando: t.faltando,
       duplicadas: c.linhasDuplicadas(r), qtdDuplicadas: r.duplicada.length, somaDuplicadas: t.duplicadas,
       aMais: r.aMais.map(c.linhaDaTabela), somaAMais: t.aMais,
