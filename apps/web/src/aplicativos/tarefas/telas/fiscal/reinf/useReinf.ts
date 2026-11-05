@@ -22,9 +22,11 @@ export function useReinf() {
   const [busca, setBusca] = useState('');
   const [filtro, setFiltro] = useState<Filtro>('todas');
 
-  const nomes = new Map(repo.listarEmpresas().map(e => [e.codigo, e.nome]));
+  // todas as empresas do Fiscal, menos as filiais (05/11/2026), pelo regime do Cadastro (o da lista, quando não tem)
   const permitidas = useEmpresasPermitidas();
-  const lista = t.EMPRESAS_REINF.filter(e => permitidas.pode({ codigo: e.codigo, nome: nomes.get(e.codigo) || e.nome })).map(e => ({ ...e, nome: nomes.get(e.codigo) || e.nome, estado: acoes.estados[e.codigo] }));
+  const lista = t.empresasDaReinf(repo.listarEmpresas().map(e => ({ ...e, regime: t.regimeDaEmpresa(e.codigo) || e.regime })))
+    .filter(e => permitidas.pode(e))
+    .map(e => ({ codigo: e.codigo, nome: e.nome, estado: acoes.estados[e.codigo] || { codigo: e.codigo, retificadas: [] } }));
   const resumo = t.resumoReinf(lista.map(l => l.estado), competencia);
   const q = busca.trim().toLowerCase();
   const linhas = lista

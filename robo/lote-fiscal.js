@@ -275,7 +275,8 @@ async function lerLote(db, ref, lote, log) {
   const ctx = await L.contextoDoArquivador(db);
   const novo = require('./arquivador-novo');
   const docs = (await ref.collection('arquivos').get()).docs.slice(0, MAX_ARQUIVOS);
-  let lidos = 0;
+  // mais guias no mesmo lote (05/11/2026): as já lidas ficam como estão e contam no andamento; só as pendentes são lidas
+  let lidos = docs.filter(x => x.get('status') === 'lido' || x.get('status') === 'erro').length;
   for (const doc of docs) {
     const a = doc.data();
     if (a.status !== 'pendente') continue;

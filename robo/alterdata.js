@@ -40,6 +40,7 @@ const ABRIR_DE_NOVO_MS = 15 * 60 * 1000;
 const LIMITE_MS = 9 * 60 * 1000;
 const PEDACO = 700 * 1000;   // caracteres de base64 por pedaço (o documento do Firestore vai até 1 MiB)
 const VERIFICAR_MS = 60 * 1000;
+const ASSENTAR_MS = 60 * 1000;
 
 const agora = () => new Date().toISOString();
 const ESTADOS = { ok: 'aberto e logado', login: 'na tela de login', abrindo: 'entrando (tela de abertura)', fechado: 'fechado', dois: 'aberto duas vezes', erro: 'sem resposta' };
@@ -114,14 +115,17 @@ function iniciarAlterdata(db, log) {
   // o Contábil daqui: verificado a cada minuto e antes de cada pedido; vai para o banco e para o painel
   let estado = '';
   let semResposta = 0;
+  let okDesde = 0;
   // a tela de atualizações: um clique em "Ver depois" por janela (se não fechar, não insiste; o log diz)
   const avisosClicados = new Set();
   async function verDepois(aviso) {
     if (avisosClicados.has(aviso.janela)) return false;
     avisosClicados.add(aviso.janela);
     const r = await rodarPy(ROTEIRO_AVISOS, [aviso.janela], 60 * 1000);
-    const ok = /"ok":\s*true/.test(r.out);
-    log('Alterdata: a tela de atualizações do Contábil (' + aviso.qual + '): ' + (ok ? 'cliquei em "Ver depois"' : 'não fechou com o "Ver depois" (' + (r.out.match(/"erro":\s*"([^"]*)"/) || [])[1] + ')'));
+    let res = { ok: false, erro: 'o roteiro parou sem resultado' };
+    try { const m = r.out.match(/RESULTADO:\s*(\{.*\})/); if (m) res = JSON.parse(m[1]); } catch (_) { /* mal escrito */ }
+    const ok = !!res.ok;
+    log('Alterdata: a tela de atualizações do Contábil (' + aviso.qual + '): ' + (ok ? 'cliquei em "Ver depois"' : 'não fechou com o "Ver depois" (' + res.erro + ')'));
     return ok;
   }
 
@@ -139,6 +143,9 @@ function iniciarAlterdata(db, log) {
       painel.modulo('alterdata', 'Alterdata', novo === 'ok', 'o Contábil está ' + ESTADOS[novo]);
     }
     estado = novo;
+    // pronto desde quando: logo depois de abrir (o login, o Guia) o Contábil ainda carrega e não responde (05/11/2026: o
+    // pedido feito na hora deu "Window is not responding"); o pedido só é pego com ASSENTAR_MS de Contábil pronto
+    if (estado !== 'ok') okDesde = 0; else if (!okDesde) okDesde = Date.now();
     if (estado === 'ok') loginParado = '';   // alguém (ou o robô) entrou: se o login tinha falhado, vale tentar de novo depois
     await estadoDoc.set({ ligado: true, maquinas: { [ONDE]: { contabil: estado, login: loginParado, em: agora() } }, atualizadoEm: agora() }, { merge: true }).catch(() => {});
     if (estado === 'login' || estado === 'fechado') void entrarSozinho(estado);
@@ -194,6 +201,9 @@ function iniciarAlterdata(db, log) {
     async ler(id) { const s = await pedidos.doc(id).get(); return s.exists ? s.data() : null; },
     async pegar(id) {
       if (await verificar() !== 'ok') return null;   // fica para a máquina que estiver com o Contábil pronto
+      // acabou de abrir: espera assentar e tenta de novo (o pedido continua pendente)
+      const falta = ASSENTAR_MS - (Date.now() - okDesde);
+      if (falta > 0) { setTimeout(() => fila.chegou(id), falta + 1000).unref(); return null; }
       const ref = pedidos.doc(id);
       return db.runTransaction(async t => {
         const s = await t.get(ref);

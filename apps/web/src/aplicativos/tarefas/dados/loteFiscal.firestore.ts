@@ -94,6 +94,24 @@ export function criarLoteFiscalFirestore(quem: () => e.Quem | null): RepoLoteFis
       await updateDoc(ref, { status: 'pendente' });
       return ref.id;
     },
+    async adicionar(lote, lista, andamento) {
+      if (!quem()) throw new Error('Sem login.');
+      const ref = doc(db, 'lotesFiscal', lote);
+      // as novas continuam a numeração; o lote volta a "enviando" (a regra só deixa do lido, aumentando o total)
+      const antes = await getDocs(collection(ref, 'arquivos'));
+      const inicio = antes.docs.reduce((n, x) => Math.max(n, Number(x.id) + 1), 0);
+      await updateDoc(ref, { status: 'enviando', total: antes.size + lista.length });
+      for (let k = 0; k < lista.length; k++) {
+        const a = lista[k];
+        const partes = e.partesDoArquivo(a.bytes);
+        const arq = doc(ref, 'arquivos', String(inicio + k));
+        await setDoc(arq, { nome: e.nomeParaEnviar(a.nome), tamanho: a.bytes.length, partes: partes.length, status: 'enviando' });
+        for (let i = 0; i < partes.length; i++) await setDoc(doc(arq, 'partes', String(i)), { dados: Bytes.fromUint8Array(partes[i]) });
+        await updateDoc(arq, { status: 'pendente' });
+        andamento(k + 1, lista.length);
+      }
+      await updateDoc(ref, { status: 'pendente' });
+    },
     async escolher(lote, arquivo, escolha) {
       // sem a coluna, o campo não vai (o Firestore não aceita undefined): vale a do leitor
       await updateDoc(doc(db, 'lotesFiscal', lote, 'arquivos', arquivo), {
