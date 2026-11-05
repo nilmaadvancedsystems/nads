@@ -9,6 +9,7 @@ export { CFOP_DESC } from './tabelas/cfop';
 export { SV, SERV_CAT, ehServ, type CategoriaServico, type ConfigServico } from './tabelas/servicos';
 export * from './arquivos';
 export * from './regras/cfop';
+export * from './regras/sugestaoDeConta';
 export * from './regras/empresa';
 export * from './regras/periodo';
 export * from './regras/vendaVista';

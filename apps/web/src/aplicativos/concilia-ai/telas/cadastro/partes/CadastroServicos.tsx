@@ -5,6 +5,7 @@
 import { Icone, Vazio } from '@nads/ui';
 import { useEffect, useRef, type ReactNode } from 'react';
 import type { CategoriaView, FormServ, useConfiguracoes } from '../useConfiguracoes';
+import { Sugestao } from './Sugestao';
 import { CampoVincular, ChipsDeContas } from './VincularConta';
 
 type Servicos = NonNullable<ReturnType<typeof useConfiguracoes>['servicos']>;
@@ -41,7 +42,8 @@ function Categoria({ cat, geral }: { cat: CategoriaView; geral: string }) {
       <Bloco rot="Conta">
         <div className="ndp-contas-row">
           <ChipsDeContas v={cat.vinculo} />
-          {!cat.vinculo.chips.length && <CampoVincular v={cat.vinculo} rotulo="Vincular conta" titulo="Vincular uma conta" />}
+          {!cat.vinculo.chips.length && <CampoVincular v={cat.vinculo} rotulo="Vincular conta" titulo="Vincular uma conta"
+            extra={escondido => cat.sugestao && !escondido ? <Sugestao sug={cat.sugestao} oQuePede="A categoria pede" vincular={cat.vinculo.escolher} /> : null} />}
         </div>
       </Bloco>
       {f && (

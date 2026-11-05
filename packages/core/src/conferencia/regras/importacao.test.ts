@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { conta, empresa, nota, servico } from '../__legado__/fixtures';
-import { assinaturaBalancete, mesclarNotas, mesclarServicos, separarPorTipo, soDoPeriodo, verificarBalancete } from './importacao';
+import { assinaturaBalancete, mesclarNotas, mesesSemNotas, mesclarServicos, separarPorTipo, soDoPeriodo, verificarBalancete } from './importacao';
 
 describe('mesclarNotas', () => {
   const antigas = [nota('1102', '6', 100, '1', { data: '10/07/2026' }), nota('1102', '6', 200, '2', { data: '11/07/2026' })];
@@ -118,5 +118,16 @@ describe('soDoPeriodo (o período da Tarefa, 19/10/2026)', () => {
     expect(r.dentro.map(n => n.numero)).toEqual(['1', '3']);
     expect(r.fora.map(n => n.numero)).toEqual(['2']);
     expect(soDoPeriodo(ns).dentro).toHaveLength(3);
+  });
+});
+
+describe('mesesSemNotas: o mês do período que o arquivo não trouxe', () => {
+  it('acusa o mês sem nenhuma nota (o lote de 01 a 09 com o arquivo só até 08)', () => {
+    const notas = [{ comp: '2026-01' }, { comp: '2026-02' }, { comp: '2026-08' }];
+    expect(mesesSemNotas(notas, ['2026-01', '2026-02', '2026-08', '2026-09'])).toEqual(['2026-09']);
+  });
+  it('sem o período da Tarefa, não acusa nada', () => {
+    expect(mesesSemNotas([], undefined)).toEqual([]);
+    expect(mesesSemNotas([], [])).toEqual([]);
   });
 });

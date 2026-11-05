@@ -755,17 +755,18 @@ export function TarefaExtratos() {
           ))}
         </nav>
       )}
-      {aba === 'contabil' ? <div data-destaque="contabil"><ContabilNaImportacao nome={s.nome} codigo={s.codigo} meses={mesesDaEtapa} /></div>
+      {aba === 'contabil' ? <div data-destaque="contabil"><ContabilNaImportacao nome={s.nome} codigo={s.codigo} meses={mesesDaEtapa} soDiario={ponte.naTarefa && !ponte.etapaConcluida} /></div>
         : aba === 'comprovantes' ? <div data-destaque="comprovantes-aba"><ComprovantesNaImportacao meses={mesesDaEtapa} bancos={vm.bancos.filter(b => b.id !== 'banco')} competencia={vm.competencia} pedirLogin={d.pedirLogin} avisar={vm.avisar} avisarErro={vm.avisarErro} /></div>
         : aba !== 'bancos' ? <div data-destaque="importacao"><ImportacaoNaEtapa nome={s.nome} tipo={aba} prestaServico={vm.prestaServico} meses={mesesDaEtapa} /></div> : (<>
       <div className={'imp-topo' + (ocupadoGeral ? ' travado' : '')} aria-busy={ocupadoGeral}>
         {/* à esquerda, como o "⎇ main ▾  6 Branches" do GitHub: a competência e o número de bancos */}
-        {/* o Em lote (escolher, alterar, cancelar) mora aqui, só na Importação (Vitor, 05/10/2026: "volte para dentro da tela
-            da importação, igual estava antes"); nas outras etapas, só a informação do período */}
+        {/* o Em lote (escolher, alterar, cancelar): dentro da Tarefa, no cabeçalho dela (Vitor, 04/11/2026: "o em lote deixa no
+            cabeçalho"); aqui, só com a ferramenta aberta sozinha. No Cheque especial, só a informação do período */}
         {ponte.naTarefa && vm.etapaCheque ? (
           // o mesmo botão da Importação, só mostrando o período (Vitor, 07/10/2026: em todas as etapas; só a Importação troca)
           <PeriodoSoMostra meses={vm.periodo.length > 1 ? vm.periodo : [vm.competencia]} />
-        ) : <SeletorDeCompetencia vm={vm} naTarefa={ponte.naTarefa} trocar={ponte.trocarCompetencia} periodoDaTarefa={ponte.periodo} encerrar={ponte.encerrarPeriodo} />}
+          // dentro da Tarefa, o período fica no cabeçalho dela (Vitor, 04/11/2026: "o em lote deixa no cabeçalho"); aqui, só fora dela
+        ) : !ponte.naTarefa && <SeletorDeCompetencia vm={vm} naTarefa={ponte.naTarefa} trocar={ponte.trocarCompetencia} periodoDaTarefa={ponte.periodo} encerrar={ponte.encerrarPeriodo} />}
         <span className="imp-topo-num"><Icone nome="landmark" /><b>{vm.bancos.length}</b> {vm.bancos.length === 1 ? 'banco' : 'bancos'}</span>
         <span className="imp-topo-meio" />
         {/* a empresa de teste (Personaly Company) e o modo desenvolvedor: implanta dados fictícios, só nesta tela */}

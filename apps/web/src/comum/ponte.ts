@@ -10,7 +10,7 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 type ParaTarefa = { nads: 'pronta' } | { nads: 'sem-movimento'; banco: string; marcado: boolean; competencia?: string } | { nads: 'competencia'; competencia: string }
   | { nads: 'encerrar-periodo' } | { nads: 'requisitos'; pronto: boolean; faltam: string[]; alvos?: (string | null)[]; precisaChequeEspecial?: boolean };
 /** o estado da etapa: os bancos sem movimento de cada mês (no período, um por mês; num mês só, só ele) */
-type ParaFerramenta = { nads: 'estado-etapa'; porMes: Record<string, string[]>; periodo?: PeriodoDaEtapa | null }
+type ParaFerramenta = { nads: 'estado-etapa'; porMes: Record<string, string[]>; periodo?: PeriodoDaEtapa | null; etapaConcluida?: boolean }
   // o "Resolver" do que falta (Vitor, 02/10/2026): a ferramenta vai até o lugar (o alvo que ela mesma mandou) e destaca
   | { nads: 'destacar'; alvo: string };
 
@@ -40,15 +40,18 @@ export function usePonteDaTarefa(competencia?: string, onDestacar?: (alvo: strin
   useEffect(() => { aoDestacar.current = onDestacar; });
   const [porMes, setPorMes] = useState<Record<string, string[]>>({});
   const [periodo, setPeriodo] = useState<PeriodoDaEtapa | null>(null);
+  /** a etapa aberta já foi concluída (em todos os meses do período) */
+  const [etapaConcluida, setEtapaConcluida] = useState(false);
   useEffect(() => {
     if (!pai) return;
     const ouvir = (e: MessageEvent) => {
       if (e.source !== window.parent || e.origin !== pai) return;
-      const d = e.data as Partial<{ nads: string; porMes: Record<string, string[]>; periodo: PeriodoDaEtapa | null; alvo: string }> | null;
+      const d = e.data as Partial<{ nads: string; porMes: Record<string, string[]>; periodo: PeriodoDaEtapa | null; etapaConcluida: boolean; alvo: string }> | null;
       if (d && d.nads === 'destacar' && typeof d.alvo === 'string') aoDestacar.current?.(d.alvo);
       if (d && d.nads === 'estado-etapa' && d.porMes && typeof d.porMes === 'object') {
         setPorMes(d.porMes);
         setPeriodo(d.periodo && Array.isArray(d.periodo.meses) ? { meses: d.periodo.meses, concluido: !!d.periodo.concluido } : null);
+        setEtapaConcluida(d.etapaConcluida === true);
       }
     };
     window.addEventListener('message', ouvir);
@@ -79,7 +82,7 @@ export function usePonteDaTarefa(competencia?: string, onDestacar?: (alvo: strin
     const msg: ParaTarefa = { nads: 'encerrar-periodo' };
     window.parent.postMessage(msg, pai);
   }, [pai]);
-  return { naTarefa: !!pai, semMovimento, semMovimentoPorMes: porMes, marcarSemMovimento, trocarCompetencia, periodo, encerrarPeriodo };
+  return { naTarefa: !!pai, semMovimento, semMovimentoPorMes: porMes, marcarSemMovimento, trocarCompetencia, periodo, etapaConcluida, encerrarPeriodo };
 }
 
 /**
@@ -101,19 +104,20 @@ export function useRequisitosParaATarefa(requisitos: Requisitos | null) {
 export function usePonteDaFerramenta(iframe: RefObject<HTMLIFrameElement | null>, porMes: Record<string, string[]>, mesPadrao: string,
   onSemMovimento: (banco: string, marcado: boolean, competencia?: string) => void, onCompetencia?: (competencia: string) => void,
   periodo: PeriodoDaEtapa | null = null, onEncerrar?: () => void,
-  onRequisitos?: (r: Requisitos) => void) {
+  onRequisitos?: (r: Requisitos) => void, etapaConcluida = false) {
   const aoRequisitos = useRef(onRequisitos);
+  const estadoConcluida = useRef(etapaConcluida);
   const estado = useRef(porMes);
   const estadoPeriodo = useRef(periodo);
   const aoEncerrar = useRef(onEncerrar);
   const aoMarcar = useRef(onSemMovimento);
   const aoTrocar = useRef(onCompetencia);
-  useEffect(() => { estado.current = porMes; estadoPeriodo.current = periodo; aoMarcar.current = onSemMovimento; aoTrocar.current = onCompetencia; aoEncerrar.current = onEncerrar; aoRequisitos.current = onRequisitos; });
+  useEffect(() => { estado.current = porMes; estadoPeriodo.current = periodo; estadoConcluida.current = etapaConcluida; aoMarcar.current = onSemMovimento; aoTrocar.current = onCompetencia; aoEncerrar.current = onEncerrar; aoRequisitos.current = onRequisitos; });
 
   const mandar = useCallback(() => {
     const f = iframe.current;
     if (!f?.contentWindow) return;
-    const msg: ParaFerramenta = { nads: 'estado-etapa', porMes: estado.current, periodo: estadoPeriodo.current };
+    const msg: ParaFerramenta = { nads: 'estado-etapa', porMes: estado.current, periodo: estadoPeriodo.current, etapaConcluida: estadoConcluida.current };
     f.contentWindow.postMessage(msg, new URL(f.src, window.location.href).origin);
   }, [iframe]);
 
@@ -135,7 +139,7 @@ export function usePonteDaFerramenta(iframe: RefObject<HTMLIFrameElement | null>
     return () => window.removeEventListener('message', ouvir);
   }, [iframe, mandar, mesPadrao]);
 
-  const chave = JSON.stringify([porMes, periodo]);
+  const chave = JSON.stringify([porMes, periodo, etapaConcluida]);
   useEffect(() => { mandar(); }, [chave, mandar]);
 
   /** O "Resolver": pede à ferramenta que vá até o lugar do problema e o destaque. */

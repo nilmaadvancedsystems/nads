@@ -166,6 +166,11 @@ export interface Empresa {
    * sair da etapa"): tipo → o período marcado ("2026-01..2026-09"). Só vale no mesmo período; no próximo, pede de novo.
    */
   semNotasNoPeriodo?: Partial<Record<TipoDeNotas, string>>;
+  /**
+   * Os meses ('aaaa-mm') sem nenhuma nota daquele tipo, marcados um a um (Vitor, 05/11/2026: "deixe a opção de marcar os meses
+   * que estão sem movimento"): o aviso do mês que o arquivo não trouxe deixa de acusar esses.
+   */
+  mesesSemNotas?: Partial<Record<TipoDeNotas, string[]>>;
   /** Apagar ao sair (padrão ligado) */
   autoLimparBalancete: boolean;
   avisoBalPendente?: boolean;
