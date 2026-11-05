@@ -2930,9 +2930,12 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 .usuarios-pcs{justify-content:flex-end;}
 .usuarios-seta{opacity:0;}
 .usuarios-item:hover .usuarios-seta,.usuarios-item:focus-visible .usuarios-seta{opacity:1;}
+/* quem não é admin: só o nome, o e-mail e a presença (sem cargo, nível, papéis nem computadores) */
+.usuarios-item.so-nome{grid-template-columns:40px minmax(200px,1fr) 104px;cursor:default;}
 @media (max-width:900px){
   .usuarios-item{grid-template-columns:40px minmax(0,1fr) auto 16px;}
   .usuarios-cargo,.usuarios-papeis,.usuarios-pcs{display:none;}
+  .usuarios-item.so-nome{grid-template-columns:40px minmax(0,1fr) auto;}
 }
 /* Drive › Arquivar agora (o arquivador do PC, como nas Pendências do Entregas): o botão ocupado e o painel curto — o PC,
    o pedido com um ícone, a etapa e a barra (organizando) ou os números (concluído), e o Organizar agora na largura toda */
