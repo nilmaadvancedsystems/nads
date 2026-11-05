@@ -73,6 +73,11 @@ export interface RepoLoteFiscal {
   arquivos(lote: string, chegou: (lista: GuiaDoLote[]) => void): () => void;
   /** sobe as guias (em pedaços) e entrega o lote ao robô; devolve o id do lote */
   subir(grupo: t.GrupoDoControleId, arquivos: readonly { nome: string; bytes: Uint8Array }[], andamento: (feitos: number, total: number) => void): Promise<string>;
+  /**
+   * põe mais guias no lote lido, ainda não disparado (05/11/2026: "quero que tenha como upar aquivo num mesmo lote,
+   * atualmente quando voce upa ele simplesmente cria outro lote"): o robô lê só as novas e o lote volta a "lido"
+   */
+  adicionar(lote: string, arquivos: readonly { nome: string; bytes: Uint8Array }[], andamento: (feitos: number, total: number) => void): Promise<void>;
   /** a escolha da revisão (null tira a escolha e volta ao que o leitor achou) */
   escolher(lote: string, arquivo: string, escolha: EscolhaDaGuia | null): Promise<void>;
   /** tira do lote ou põe de volta */
@@ -177,6 +182,22 @@ export function criarLoteFiscalMemoria(controle: () => RepoControleTributos): Re
         mudarLote(id, { status: 'lido', lidos: lista.length });
       }, 1800);
       return id;
+    },
+    async adicionar(id, lista, andamento) {
+      const lote = lotes.find(l => l.id === id);
+      if (!lote || lote.status !== 'lido') throw new Error('o lote não está parado para receber guias');
+      const antes = doLote(id);
+      const inicio = antes.reduce((n, a) => Math.max(n, Number(a.id) + 1), 0);
+      const novas = lista.map((a, k) => ({ id: String(inicio + k), nome: a.nome, tamanho: a.bytes.length, status: 'pendente', erro: '', leitura: null, escolha: null, fora: false }));
+      lista.forEach((a, k) => bytes.set(id + '/' + (inicio + k), a.bytes));
+      arquivos.set(id, [...antes, ...novas]);
+      mudarLote(id, { status: 'pendente', total: lote.total + lista.length });
+      andamento(lista.length, lista.length);
+      setTimeout(() => mudarLote(id, { status: 'lendo' }), 500);
+      setTimeout(() => {
+        arquivos.set(id, doLote(id).map((a, k) => (a.status === 'pendente' ? { ...a, status: 'lido', leitura: leituraDeExemplo(a.nome, k, lote.grupo) } : a)));
+        mudarLote(id, { status: 'lido', lidos: doLote(id).length });
+      }, 1800);
     },
     async escolher(id, a, escolha) { mudarArquivo(id, a, { escolha }); },
     async tirar(id, a, fora) { mudarArquivo(id, a, { fora }); },

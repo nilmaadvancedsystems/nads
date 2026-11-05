@@ -52,7 +52,8 @@ export function usePapeisDoCadastro(linhas: readonly LinhaEmpresa[]) {
   // a REINF: as do Fiscal (Fiscal › REINF) e as do DP (a REINF autorizada no DP), e a etapa dp-reinf dos 12 meses
   const doDp = useClientesDoDp(deTrabalho);
   const reinfNoDp = useMemo(() => new Set(doDp.clientes.filter(c => c.reinfAutorizada).map(c => c.codigo)), [doDp.clientes]);
-  const reinfNoFiscal = useMemo(() => new Set(t.EMPRESAS_REINF.map(e => e.codigo)), []);
+  // a REINF do Fiscal: todas as empresas do Fiscal, menos as filiais (05/11/2026)
+  const reinfNoFiscal = useMemo(() => new Set(t.empresasDaReinf(linhas).map(e => e.codigo)), [linhas]);
   const execucoesDoDp = useExecucoesDoPeriodo(aberto === 'reinf' && preencher ? t.competenciasDoAno(ano) : [], 'dp');
 
   // os extratos: os documentos do mês da Pendências do ano todo (uma consulta, com a janela aberta)

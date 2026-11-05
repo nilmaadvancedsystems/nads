@@ -232,6 +232,16 @@ export function LogoWhatsApp() {
   );
 }
 
+/** O "e" do eContador (o portal do Alterdata; 05/11/2026, a logo que o Vitor mandou): o e vermelho dentro do anel aberto. */
+export function LogoEcontador() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="#E4262D" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M7.5 12H21.5A9.5 9.5 0 1 0 12 21.5H18.5" />
+      <path d="M16.5 12A4.5 4.5 0 1 0 15.2 15.2" />
+    </svg>
+  );
+}
+
 export function LogoDrive({ cor }: { cor?: boolean }) {
   const imagem = imagemDaMarca('drive');
   if (imagem) return <img src={imagem} alt="" aria-hidden="true" className={'logo-img app' + (cor ? '' : ' cinza')} />;

@@ -175,6 +175,9 @@ function Modelo({ vm }: { vm: VmEnvioDeGuias }) {
 export function JanelaDasGuias({ regime, competencia, fechar }: { regime: RegimeDoRelatorio; competencia: string; fechar: () => void }) {
   const vm = useEnvioDeGuias(regime, competencia);
   const [topico, setTopico] = useState<'enviar' | 'enviados' | 'modelo'>('enviar');
+  // as guias de baixo vão para o lote aberto (lido, antes do disparo; 05/11/2026) ou, se a pessoa escolher, para um lote novo
+  const [loteNovo, setLoteNovo] = useState(false);
+  const noLote = vm.podeAdicionar && !loteNovo;
   const lote = vm.atual;
   const s = lote ? STATUS_DO_LOTE[lote.status] || { classe: 'badge badge-neutral', rotulo: lote.status } : null;
   // depois de disparado, ainda dá para corrigir quem deu erro e disparar de novo (o robô pula quem já recebeu)
@@ -183,7 +186,7 @@ export function JanelaDasGuias({ regime, competencia, fechar }: { regime: Regime
   // os já enviados saem daqui: ficam só em "Enviados"
   const prontos = vm.grupos.filter(g => g.resultado?.status !== 'enviado');
   const fora = vm.tirados.length + vm.comErro.length;
-  const soltar = (fs: File[]) => { void vm.subir(fs.filter(f => /\.pdf$/i.test(f.name))); };
+  const soltar = (fs: File[]) => { void vm.subir(fs.filter(f => /\.pdf$/i.test(f.name)), noLote); };
   const subir = (
     <div className="dp-lote-subir" onDragOver={ev => ev.preventDefault()} onDrop={ev => { ev.preventDefault(); if (!vm.subindo) soltar(Array.from(ev.dataTransfer.files)); }}>
       {vm.subindo
@@ -289,10 +292,16 @@ export function JanelaDasGuias({ regime, competencia, fechar }: { regime: Regime
                 </div>
               )}
 
-              {/* mais guias viram outro lote: o subir fica embaixo, pequeno */}
+              {/* mais guias: no mesmo lote, enquanto não disparou (05/11/2026); senão, ou se a pessoa escolher, outro lote */}
               <div className="card">
-                <h3>Subir outro lote</h3>
+                <h3>{noLote ? 'Pôr mais guias neste lote' : 'Subir outro lote'}</h3>
                 {subir}
+                {vm.podeAdicionar && (
+                  <p className="hint dp-lote-texto">
+                    {noLote ? 'O robô lê só as novas, e elas entram na tabela de cima. ' : 'As guias vão para um lote separado. '}
+                    <button type="button" className="link-btn" onClick={() => setLoteNovo(!loteNovo)}>{noLote ? 'Subir num lote novo' : 'Pôr neste lote'}</button>
+                  </p>
+                )}
               </div>
             </>
           )}
