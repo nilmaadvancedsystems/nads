@@ -81,6 +81,8 @@ export function Casca(p: {
   onInicio: () => void;
   /** Início do nads (tela de aplicativos), na gaveta ☰. Sem ele, a gaveta usa onInicio. */
   onAplicativos?: () => void;
+  /** sem o Início na gaveta ☰ (a Tarefas, 06/11/2026: "Remove a tela de início para todos os usuários por enquanto") */
+  semInicio?: boolean;
   onEmpresa: () => void;
   /** os aplicativos do nads, na gaveta ☰ (o atual marcado) */
   aplicativos?: {
@@ -275,12 +277,14 @@ export function Casca(p: {
             <span className="brand-mark" aria-hidden="true"><MarcaN /></span>
             <BotaoFechar rotulo="Fechar menu" onClick={fecharGaveta} />
           </div>
-          <button className="drawer-item" type="button" onClick={() => { fecharGaveta(); (p.onAplicativos || p.onInicio)(); }}>
-            <span className="drawer-app-icone" aria-hidden="true"><Icone nome="home" /></span>Início
-          </button>
+          {!p.semInicio && (
+            <button className="drawer-item" type="button" onClick={() => { fecharGaveta(); (p.onAplicativos || p.onInicio)(); }}>
+              <span className="drawer-app-icone" aria-hidden="true"><Icone nome="home" /></span>Início
+            </button>
+          )}
           {p.aplicativos && p.aplicativos.length > 0 && (
             <>
-              <hr className="drawer-sep" />
+              {!p.semInicio && <hr className="drawer-sep" />}
               {p.aplicativos.map((a, i) => (
                 <Fragment key={a.id}>
                   {a.grupo && a.grupo !== p.aplicativos![i - 1]?.grupo && <span className="drawer-label drawer-grupo">{a.grupo}</span>}
