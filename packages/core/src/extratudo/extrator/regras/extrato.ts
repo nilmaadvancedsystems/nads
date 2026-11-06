@@ -664,10 +664,11 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
       // o valor com * é bloqueado ("911 Depósito bloquead.1d útil 4.837,00 *"): não mexe no saldo, não é lançamento (Vitor,
       // 09/10/2026: a 380 não fechava maio com junho, no BB "Consultas"; 26/10/2026: o mesmo no extrato do BB da 237)
       if (bloqueados.has(v)) { solta = null; continue; }
-      let c = centavos(v.s);
-      if (c == null || c === 0) continue;
-      let saldoDaLinha = lado === 'banco' && valores.length > 1 && valores[valores.length - 1] !== v ? centavos(valores[valores.length - 1].s) : null;
-      let saldoAntes = saldoCorrido;
+      const lidoC = centavos(v.s);
+      if (lidoC == null || lidoC === 0) continue;
+      let c: number = lidoC;
+      let saldoDaLinha: number | null = lado === 'banco' && valores.length > 1 && valores[valores.length - 1] !== v ? centavos(valores[valores.length - 1].s) : null;
+      let saldoAntes: number | null = saldoCorrido;
       // a linha de cima não fechou (o OCR estragou o valor e o saldo dela: "800,00" e "1.234,06" eram 600,00 e 1.234,56): o
       // saldo desta, menos o de antes da de cima e menos este valor, é o valor da de cima, se for parecido com o lido (um
       // dígito trocado, ou um a mais na frente) — Vitor, 06/11/2026, na 571
@@ -676,7 +677,7 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
         // a de cima ficou com o valor lido e o saldo refeito, e esta fecha com ele (com um dígito trocado no saldo desta,
         // como o "712.345,68" embaixo do "123,45"): a de cima fica como está
       } else if (entre && inseguro && ultimo === inseguro.l && saldoDaLinha != null) {
-        const cima = inseguro;
+        const cima: { l: Lancamento; antes: number } = inseguro;
         const contas: number[] = [];
         // (o valor desta também pode ter o "−" lido como número: o "71.234,56" do tributo embaixo do PIX de 600,00 lido 800,00)
         const c1 = semOPrimeiroDigito(c);
@@ -700,7 +701,7 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
         }
         if (s === saldoAntes) continue;
         // o OCR perde o "−" do saldo negativo: vale o sinal que dá a menor diferença ("7x 34" com o saldo "1.234,56", que era negativo)
-        const sCerto = Math.abs(s - saldoAntes) <= Math.abs(-s - saldoAntes) ? s : -s;
+        const sCerto: number = Math.abs(s - saldoAntes) <= Math.abs(-s - saldoAntes) ? s : -s;
         c = sCerto - saldoAntes;
         saldoDaLinha = sCerto;
       }
@@ -717,7 +718,7 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
           const sinal = col && col.deb != null && col.cred != null ? (Math.abs(v.x2 - col.deb) < Math.abs(v.x2 - col.cred) ? -1 : 1) : 0;
           const nota = (b: { valor: number; saldo: number }) => (lidaQue(b.saldo) ? 2 : 0) + (sinal && Math.sign(b.valor) === sinal ? 1 : 0);
           let melhor: { alt: number; b: { valor: number; saldo: number } } | null = null;
-          for (const alt of numerosQueOOcrEstraga(saldoAntes).slice(1)) {
+          for (const alt of numerosQueOOcrEstraga(saldoAntes as number).slice(1) as number[]) {
             const b = acertoPeloSaldo(c, saldoDaLinha, alt);
             if (!b || b.duvida) continue;
             if (!melhor || nota(b) > nota(melhor.b)) melhor = { alt, b };
@@ -727,13 +728,13 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
         if (a) { c = a.valor; saldoDaLinha = a.saldo; if (a.duvida) duvida = true; }
       }
       // não fechou (ou fechou trocando um dígito): a linha de baixo confere
-      const ficouInseguro = entre && saldoDaLinha != null && saldoAntes != null && (duvida || saldoDaLinha - saldoAntes !== c) ? saldoAntes : null;
+      const ficouInseguro: number | null = entre && saldoDaLinha != null && saldoAntes != null && (duvida || saldoDaLinha - saldoAntes !== c) ? saldoAntes : null;
       if (saldoDaLinha != null) { saldoCorrido = saldoDaLinha; aberturaSemConferir = false; }
       ultimoSemSaldo = saldoDaLinha == null;
       // do mais novo para o mais velho (o Stone), a diferença dos saldos é a do lançamento de cima, não a deste: não vale. A
       // folga de 1 centavo (o arredondamento) só em valor de 1 real para cima: no Stone, o rendimento de R$ 0,01 virava
       // saída pela diferença de R$ 0,02 do lançamento vizinho (Vitor, 26/10/2026)
-      const diferenca = !decrescente && saldoAntes != null && saldoDaLinha != null ? saldoDaLinha - saldoAntes : null;
+      const diferenca: number | null = !decrescente && saldoAntes != null && saldoDaLinha != null ? saldoDaLinha - saldoAntes : null;
       const folga = Math.abs(c) >= 100 ? 1 : 0;
       // o "−" que o OCR leu como um número na frente ("−12,34" virou "112,34", "−12.345,67" virou "712.345,67"; Vitor,
       // 06/11/2026, na 571): sem o 1º dígito, o valor é a diferença dos saldos
@@ -779,13 +780,14 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
       // mês e a 2ª dentro é do mês do extrato
       const dataDoLanc = segunda && pelaDtMovimento ? segunda
         : periodo && segunda && !dataAtual.startsWith(periodo) && segunda.startsWith(periodo) ? segunda : dataAtual;
-      ultimo = { data: dataDoLanc, valor: c, historico: h || '(sem histórico)', ...(dataDoLanc !== dataAtual ? { balancete: dataAtual } : {}) };
-      if (ficouInseguro != null) inseguro = { l: ultimo, antes: ficouInseguro };
+      const novo: Lancamento = { data: dataDoLanc, valor: c, historico: h || '(sem histórico)', ...(dataDoLanc !== dataAtual ? { balancete: dataAtual } : {}) };
+      ultimo = novo;
+      if (ficouInseguro != null) inseguro = { l: novo, antes: ficouInseguro };
       ultimaY = l.y;
       // a Dt. movimento no mês seguinte: o lançamento vem no extrato do outro mês (senão entraria duas vezes; o saldo
       // anterior do extrato seguinte já é o de antes dele)
       if (pelaDtMovimento && periodo && !dataDoLanc.startsWith(periodo)) continue;
-      saida.push(ultimo);
+      saida.push(novo);
       saldoDeCada.push(saldoDaLinha);
       paginaDe.push(nPagina);
     }
