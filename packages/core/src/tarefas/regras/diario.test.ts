@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { contasDoDiario, dataDoDiario, lerDiario, mesesDoDiario, razaoDoDiario, type PaginaDoPdf } from './diario';
+﻿import { describe, expect, it } from 'vitest';
+import { contasDoDiario, dataDoDiario, diarioDoRazaoDoRobo, lerDiario, mesesDoDiario, razaoDoDiario, type PaginaDoPdf } from './diario';
 
 // um diário sintético: a coluna da conta (x<150), o histórico (150–375), o documento (376–470), o Débito (470–530) e o
 // Crédito (>=530). Os textos são fictícios ("Conta Teste", valores inventados).
@@ -117,5 +117,39 @@ describe('meses cobertos pelo diário', () => {
   it('dois anos diferentes são meses diferentes', () => {
     const meses = mesesDoDiario([{ data: '2025-12-10' }, { data: '2026-12-10' }]);
     expect([...meses].sort()).toEqual(['2025-12', '2026-12']);
+  });
+});
+
+
+describe('razão do robô do Alterdata no formato do Diário', () => {
+  // dois meses inventados: a conta 100 (caixa) mexe nos dois; a 200 só no segundo (o anterior dela vale para o período)
+  const jan = {
+    pedido: 'p1',
+    contas: [{ conta: '100', nome: 'Caixa', anterior: 50 }, { conta: '300', nome: 'Vendas', anterior: 0 }],
+    lancamentos: [
+      { conta: '100', data: '2026-01-10', historico: 'venda', contra: '300', documento: '1', debito: 30, credito: 0 },
+      { conta: '300', data: '2026-01-10', historico: 'venda', contra: '100', documento: '1', debito: 0, credito: 30 },
+    ],
+  };
+  const fev = {
+    pedido: 'p2',
+    contas: [{ conta: '100', nome: 'Caixa', anterior: 80 }, { conta: '200', nome: 'Banco', anterior: -20 }],
+    lancamentos: [
+      { conta: '100', data: '2026-02-03', historico: 'depósito', contra: '200', documento: '', debito: 0, credito: 10 },
+      { conta: '200', data: '2026-02-03', historico: 'depósito', contra: '100', documento: '', debito: 10, credito: 0 },
+    ],
+  };
+  const lido = diarioDoRazaoDoRobo([jan, fev]);
+  it('os lançamentos com o lado, o nome da contrapartida e os totais', () => {
+    expect(lido.lancamentos).toHaveLength(4);
+    expect(lido.lancamentos[0]).toMatchObject({ conta: '100', lado: 'D', valor: 30, contrapartida: '300', nomeContrapartida: 'Vendas' });
+    expect(lido.diferenca).toBe(0);
+    expect(lido.periodo).toEqual({ inicio: '2026-01-10', fim: '2026-02-03' });
+    expect(lido.pedidos).toEqual(['p1', 'p2']);
+  });
+  it('o saldo inicial de cada conta: o anterior do primeiro mês em que aparece, no sinal do razão', () => {
+    expect(lido.saldosIniciais).toEqual({ '100': -50, '300': 0, '200': 20 });
+    const r = razaoDoDiario(lido.lancamentos, '100', lido.saldosIniciais!['100']);
+    expect(r?.saldoFinal).toBe(-70);
   });
 });

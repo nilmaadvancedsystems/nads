@@ -121,6 +121,15 @@ export function useDadosDaEmpresa(rota: string) {
       const igual = (c.cadastro.contato?.[campo] || '') === (campo === 'whatsapp' ? empresas.cadastro.whatsappLimpo(valor) : valor.trim());
       return igual || !valor.trim() ? null : campo === 'email' ? 'E-mail inválido.' : 'WhatsApp inválido: o número com o DDD (10 ou 11 dígitos).';
     },
+    /** os outros e-mails (o DP Envios manda para eles também); separados por vírgula, espaço ou quebra de linha */
+    outrosEmails: c.cadastro.contato?.outrosEmails || [],
+    definirOutrosEmails(texto: string): string | null {
+      if (c.carregando) return null;
+      const valores = texto.split(/[\s,;]+/).filter(Boolean);
+      const novo = empresas.cadastro.definirOutrosEmails(c.cadastro, valores, c.por, new Date());
+      if (novo !== c.cadastro) { c.salvar(novo); return null; }
+      return valores.some(e => !empresas.cadastro.emailValido(e)) ? 'Algum e-mail está inválido.' : null;
+    },
     /** os sócios, com o nome e o CPF (a etapa Bancos acha a transferência para o sócio no extrato) */
     socios: c.cadastro.socios || [],
     /** grava a lista inteira (a linha vazia some) */
