@@ -51,7 +51,7 @@ function pastaVazia(base) {
  * @param {number} [o.limiteMs]  o prazo de cada relatório
  */
 // quantos PASSO: cada roteiro escreve (mais o "pronto" da fila), para a porcentagem da barra
-const PASSOS_DO_ROTEIRO = { balancete: 6, razao: 5, importar: 6 };
+const PASSOS_DO_ROTEIRO = { balancete: 6, dinamico: 6, razao: 5, importar: 6 };
 const CLIQUE_MS = 700;
 
 function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, painel = null, limiteMs = 9 * 60 * 1000, apagarPasta = true }) {
@@ -124,8 +124,11 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
     const [inicio, fim] = periodo(p.competencia);
     const comp = p.competencia.slice(5) + '/' + p.competencia.slice(0, 4);
     const relatorios = tipo === 'mensal' ? ['balancete', 'razao'] : ['balancete'];
+    // no pedido mensal o balancete é o Balancete Dinâmico (06/11/2026, Vitor: "e mais facil ele puxar o balancete dinamico
+    // ao invez do balancete"): Consultas → Balancete Dinâmico → Exportar (XLS com o saldo anterior de cada conta)
+    const roteiroDe = rel => (tipo === 'mensal' && rel === 'balancete' ? 'dinamico' : rel);
     // a barra: cada passo é uma fatia igual; o último pedaço (subir para o nads) fecha em 100
-    const totalPassos = relatorios.reduce((n, r) => n + PASSOS_DO_ROTEIRO[r], 0) + 1;
+    const totalPassos = relatorios.reduce((n, r) => n + PASSOS_DO_ROTEIRO[roteiroDe(r)], 0) + 1;
     const passos = [];
     let etapa = 'começando';
     let ultimoClique = 0;
@@ -151,9 +154,9 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
       if (painel) painel.fazendo('alterdata', (rel === 'razao' ? 'Razão ' : 'Balancete ') + codigo + ' ' + comp + ' no Alterdata');
       log('Alterdata:', rotulo, codigo, p.competencia, id);
       const sub = pastaVazia(path.join(pasta, rel));
-      const nome = (rel === 'razao' ? 'Razao ' : 'Balancete ') + codigo + ' ' + p.competencia + (rel === 'razao' ? '.csv' : '.xlsx');
+      const nome = (rel === 'razao' ? 'Razao ' : 'Balancete ') + codigo + ' ' + p.competencia + (rel === 'razao' ? '.csv' : roteiroDe(rel) === 'dinamico' ? '.xls' : '.xlsx');
       const destino = path.join(sub, nome);
-      const r = await comPrazo(rel, { codigo, inicio, fim, pasta: sub, destino }, nome => passo(rotulo + ': ' + nome), clique);
+      const r = await comPrazo(roteiroDe(rel), { codigo, inicio, fim, pasta: sub, destino }, nome => passo(rotulo + ': ' + nome), clique);
       if (!r.ok || !fs.existsSync(destino)) {
         arquivos[rel] = { status: 'erro', nome: '', tamanho: 0, partes: 0, erro: String(r.erro || 'o arquivo não apareceu').slice(0, 300) };
         log('Alterdata: erro', rotulo, codigo, p.competencia, arquivos[rel].erro);
