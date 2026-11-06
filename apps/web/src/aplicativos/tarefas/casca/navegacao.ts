@@ -36,7 +36,8 @@ export const APLICACOES: readonly Aplicacao[] = [
   ] },
   // o nome na gaveta virou Contábil (Vitor, 06/11/2026: "No lugar de 'Minhas empresas', coloca o nome 'Contábil'"); o
   // endereço segue /tarefas/minhas-empresas/...
-  { id: 'minhas-empresas', nome: 'Contábil', icone: 'briefcase', grupo: 'Rotinas', pronta: true, paginas: [
+  // o ícone virou a balança (Vitor, 06/11/2026: "muda o icone também")
+  { id: 'minhas-empresas', nome: 'Contábil', icone: 'scale', grupo: 'Rotinas', pronta: true, paginas: [
     // o painel do progresso das empresas (27/10/2026: "a parte de minhas empresas vai virar um dashboard de progresso")
     // uma tela só, sem a barra lateral (27/10/2026: "coloque paradas e configuracoes tudo em uma so tela aqui nesse
     // inicial, remove a barra lateral"): a lista, as etapas paradas e os históricos do Creditor. Os Insights saíram
