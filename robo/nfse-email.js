@@ -23,8 +23,12 @@ const agora = () => new Date().toISOString();
 const ambienteDa = p => (p && p.dps && p.dps.ambiente) || (p && p.ambiente) || 'homologacao';
 const soDigitos = v => String(v == null ? '' : v).replace(/\D/g, '');
 
-const nomeDoPdf = numero => 'DANFSe-' + (soDigitos(numero) || 'nota') + '.pdf';
-const nomeDoXml = chave => 'NFSe-' + (soDigitos(chave) || 'nota') + '.xml';
+// O nome dos anexos (05/11/2026, Vitor: "que os arquivos fiquem com renomeação correta pra não ficar feio"): "NFS-e 1 - RDS AGREGADOS.pdf" e o
+// XML com o mesmo nome. Sem os caracteres que o Windows não aceita no nome do arquivo.
+const limpoParaArquivo = t => String(t || '').replace(/[\/:*?"<>|\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80);
+const nomeDaNota = (numero, cliente) => 'NFS-e ' + (soDigitos(numero) || 'nota') + (limpoParaArquivo(cliente) ? ' - ' + limpoParaArquivo(cliente) : '');
+const nomeDoPdf = (numero, cliente) => nomeDaNota(numero, cliente) + '.pdf';
+const nomeDoXml = (numero, cliente) => nomeDaNota(numero, cliente) + '.xml';
 
 /** Por que o automático NÃO manda esta nota ('' = manda). Puro. */
 function motivoParaNaoMandar(p, cfgEmail) {
@@ -45,8 +49,8 @@ async function montarEmailDaNota(p, cfgEmail, extra = {}) {
   const campos = g.camposDaNota(nota);
   const pdf = Buffer.from(await g.pdfDaDanfse(p.xmlNfse));
   const anexos = [
-    { nome: nomeDoPdf(p.numeroNfse), mime: 'application/pdf', buffer: pdf },
-    { nome: nomeDoXml(p.chaveAcesso), mime: 'application/xml', buffer: Buffer.from(String(p.xmlNfse), 'utf8') },
+    { nome: nomeDoPdf(p.numeroNfse, campos.cliente), mime: 'application/pdf', buffer: pdf },
+    { nome: nomeDoXml(p.numeroNfse, campos.cliente), mime: 'application/xml', buffer: Buffer.from(String(p.xmlNfse), 'utf8') },
   ];
   const semValor = nota.ambiente === 'homologacao';
   const visual = htmlDaNfse({
