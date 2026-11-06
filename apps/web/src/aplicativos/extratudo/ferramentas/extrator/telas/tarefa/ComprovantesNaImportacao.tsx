@@ -1,20 +1,21 @@
-// A aba Comprovantes da Importação (Vitor, 26/10/2026: "deixe idêntico ao extrato"): um bloco por banco, como na aba Bancos
-// — o logo (colorido quando tem comprovante), o nome e a conta — e a grade dos meses com a linha Comprovante: o que está no
-// Drive, o Drive colorido com o olhinho; enviando, o Drive com a rodinha; faltando, o ícone de importar com as opções do
-// extrato (do computador, buscar no Drive, buscar no e-mail).
-import { Icone, LogoBanco, LogoDrive, LogoGmail, MenuSuspenso } from '@nads/ui';
+// Os comprovantes de cada banco na aba Bancos (Vitor, 06/11/2026: "deixar acima de lançamentos, formato dropdown… é opcional
+// para quem quiser"): a faixa "Comprovantes anexados (opcional)" do bloco do banco, sem conferência nenhuma. Dentro, a grade
+// dos meses com a linha Comprovante (Vitor, 26/10/2026: "deixe idêntico ao extrato"): o que está no Drive, o Drive colorido
+// com o olhinho; enviando, o Drive com a rodinha; faltando, o ícone de importar com as opções do extrato (do computador,
+// buscar no Drive, buscar no e-mail). Na barra, todos os meses de uma vez.
+import { Icone, LogoDrive, LogoGmail, MenuSuspenso } from '@nads/ui';
 import { useRef } from 'react';
+import { FaixaQueAbre } from '../../../../../../comum/FaixaQueAbre';
 import { BotaoVer } from '../../../puxados';
-import { JanelaBuscarNoEmail } from './JanelaBuscarNoEmail';
-import { useComprovantes, type BancoDosComprovantes, type VmComprovantes } from './useComprovantes';
+import type { VmComprovantes } from './useComprovantes';
 
 const ACEITAR = '.pdf,.png,.jpg,.jpeg';
 
-export function ComprovantesNaImportacao({ meses, bancos, competencia, pedirLogin, avisar, avisarErro }: {
-  meses: readonly string[]; bancos: readonly BancoDosComprovantes[]; competencia: string;
-  pedirLogin: (depois: () => void) => void; avisar: (texto: string) => void; avisarErro: (titulo: string, texto: string) => void;
+export function ComprovantesDoBanco({ vm, id, competencia, avisarErro }: {
+  vm: VmComprovantes; id: string; competencia: string; avisarErro: (titulo: string, texto: string) => void;
 }) {
-  const vm = useComprovantes(meses, bancos, pedirLogin, avisar, avisarErro);
+  const b = vm.bancos.find(y => y.id === id);
+  if (!b) return null;
   /** abre a janela já (senão o navegador bloqueia) e põe o link temporário quando o robô responder */
   function ver(a: { id: string; nome: string }) {
     const janela = window.open('', '_blank');
@@ -22,33 +23,18 @@ export function ComprovantesNaImportacao({ meses, bancos, competencia, pedirLogi
     vm.link(a).then(url => { if (janela) janela.location.href = url; else window.open(url, '_blank'); },
       e => { janela?.close(); avisarErro('Não consegui abrir do Drive', e instanceof Error ? e.message : String(e)); });
   }
+  // todos os meses de uma vez (Vitor, 27/10/2026: "igual a outra tela", o Extrato da aba Bancos)
+  const todos = b.meses.length > 1 && b.comArquivo < b.meses.length
+    ? <ImportarComprovantesTodos restantes={b.comArquivo > 0} onArquivos={fs => vm.todosDoComputador(b, fs, b.comArquivo > 0)} onDrive={vm.buscarNoDrive} />
+    : undefined;
   return (
-    <>
-      {vm.erro && <p className="hint ext-neg">{vm.erro}</p>}
+    <FaixaQueAbre titulo="Comprovantes anexados (opcional)" qtd={b.comArquivo} acoes={todos}>
+      {/* opcional: o que não deu certo no Drive fica em cinza, não é pendência */}
+      {vm.erro && <p className="hint">{vm.erro}</p>}
       {!vm.entrou && <p className="hint">Para ver os comprovantes do Drive e buscar no e-mail, entre com o login do Entregas (o Buscar no Drive de um mês pede).</p>}
-      <div className="imp-lista" data-destaque="comprovantes">
-        {vm.bancos.map(b => (
-          <div key={b.id} data-banco={b.id} className="imp-bloco">
-            <div className="imp-linha">
-              <span className="imp-ico imp-logo"><LogoBanco banco={b.marca} cor={b.comArquivo > 0} /></span>
-              <div className="imp-txt"><span><b>{b.nome}</b>{b.conta && <span className="imp-conta">{b.conta}</span>}</span></div>
-              <div className="imp-resumo">{vm.lendo && <div><span><span className="btn-spinner" /> Lendo o Drive</span></div>}</div>
-              {/* todos os meses de uma vez (Vitor, 27/10/2026: "igual a outra tela", o Extrato da aba Bancos) */}
-              {b.meses.length > 1 && b.comArquivo < b.meses.length && (
-                <div className="imp-grupos">
-                  <div className="imp-grupo" aria-label="Comprovantes (todos os meses)">
-                    <span className="imp-rotulo">Comprovante</span>
-                    <ImportarComprovantesTodos restantes={b.comArquivo > 0} onArquivos={fs => vm.todosDoComputador(b, fs, b.comArquivo > 0)} onDrive={vm.buscarNoDrive} />
-                  </div>
-                </div>
-              )}
-            </div>
-            <MesesDosComprovantes vm={vm} b={b} competencia={competencia} onVer={ver} />
-          </div>
-        ))}
-      </div>
-      <JanelaBuscarNoEmail vm={vm.em} />
-    </>
+      {vm.lendo && <p className="hint"><span className="btn-spinner" /> Lendo o Drive</p>}
+      <MesesDosComprovantes vm={vm} b={b} competencia={competencia} onVer={ver} />
+    </FaixaQueAbre>
   );
 }
 
