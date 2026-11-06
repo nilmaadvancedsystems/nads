@@ -1,0 +1,63 @@
+// Rota da empresa aberta: /:empresa/:secao/:pagina — resolve a empresa pelo código (ou slug),
+// monta a sessão e a casca, e escolhe a tela da Conferência.
+import { Navigate, useParams } from 'react-router';
+import { conferencia as c } from '@nads/core';
+import { useCarregando } from '@nads/ui';
+import { useRepo, useVersaoDoRepo } from '../dados/repo';
+import { Auditoria } from '../telas/auditoria/Auditoria';
+import { Configuracoes } from '../telas/cadastro/Configuracoes';
+import { CascaConciliaAi } from './CascaConciliaAi';
+import { Checklist } from '../telas/checklist/Checklist';
+import { Consulta } from '../telas/consulta/Consulta';
+import { Importacao } from '../telas/importacao/Importacao';
+import { LancamentosAutomaticos } from '../telas/lancamentos/LancamentosAutomaticos';
+import { paginaPorId } from './navegacao';
+import { Relatorio } from '../telas/relatorio/Relatorio';
+import { SessaoProvider } from './sessao';
+import { TopoProvider } from '../../../comum/topo';
+import { VerificarConta } from '../telas/verificar/VerificarConta';
+import { caminho } from './caminho';
+import { SoMinhaEmpresa } from '../../tarefas/casca/SoMinhaEmpresa';
+
+function Tela({ pagina }: { pagina: string }) {
+  if (pagina.startsWith('importacao/')) return <Importacao key={pagina} tipo={pagina.split('/')[1] as c.PaginaImportacao} />;
+  switch (pagina) {
+    case 'cadastro/configuracoes': return <Configuracoes />;
+    case 'cadastro/lancamentos-automaticos': return <LancamentosAutomaticos />;
+    case 'movimento/relatorio': return <Relatorio />;
+    case 'movimento/checklist': return <Checklist />;
+    case 'movimento/consulta': return <Consulta />;
+    case 'movimento/verificar': return <VerificarConta />;
+    case 'auditoria/historico': return <Auditoria />;
+    default: return null;
+  }
+}
+
+export function EmpresaAberta() {
+  // :empresa = o código do ERP (ex.: /292/movimento/relatorio); empresa sem código, o slug do nome
+  const { empresa: param = '', secao = '', pagina = '' } = useParams();
+  const repo = useRepo();
+  useVersaoDoRepo();
+  useCarregando(!repo.pronto());
+  if (!repo.pronto()) return null; // só a barra do topo, sem texto
+  const achada = repo.empresaPelaRota(param);
+  if (!achada) return <Navigate to={caminho()} replace />;
+  const { nome, rota } = achada;
+  const id = secao + '/' + pagina;
+  if (!paginaPorId(id)) {
+    const e = repo.obter(nome) || c.empresaNova(nome);
+    const t = c.telaInicialEmpresa(e);
+    return <Navigate to={caminho(rota + '/' + t.secao + '/' + t.pagina)} replace />;
+  }
+  // link antigo pelo nome (/fito-industria…/…) vira o do código (/292/…)
+  if (param !== rota) return <Navigate to={caminho(rota + '/' + id)} replace />;
+  const tela = (
+    // key = empresa: trocar de empresa zera a sessão (como o entrar() do original)
+    <SessaoProvider key={nome} nome={nome} rota={rota} codigo={achada.codigo} pagina={id}>
+      <TopoProvider>
+        <CascaConciliaAi><Tela pagina={id} /></CascaConciliaAi>
+      </TopoProvider>
+    </SessaoProvider>
+  );
+  return <SoMinhaEmpresa empresa={achada} voltar={caminho()}>{tela}</SoMinhaEmpresa>;
+}
