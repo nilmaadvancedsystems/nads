@@ -998,7 +998,8 @@ const REGRAS_PDF = [
   // a apuração do Simples tirada do SCI (memória de cálculo: RBT12, fator "r", alíquota efetiva, repartição dos tributos):
   // 01. DAS\MM-AAAA - APURACAO SN SCI.pdf, a competência é a "Referência" (Vitor, 06/11/2026, a 606 EMILLY)
   { tipo: 'APURACAO SN SCI', setor: 'FISCAL', re: /^(?![\s\S]*PAGAR (ESTE DOCUMENTO )?ATE)[\s\S]{0,3000}?FORMULA PARA RECEITA BRUTA TOTAL DOS 12 MESES ANTERIORES[\s\S]*ALIQUOTA EFETIVA/, fonte: 'apuração do Simples do SCI (Vitor, 06/11/2026)',
-    campos: u => { const r = /REFERENCIA\s*:?\s*(0[1-9]|1[0-2])\/(20\d{2})/.exec(u); return { competencia: r ? { mes: +r[1], ano: +r[2] } : null }; } },
+    // o texto do pdf.js cola os valores na ordem Período, Referência, Vencimento, Pagamento: "31/08/202608/202621/09/2026…"
+    campos: u => { const r = /REFERENCIA\s*:?\s*(0[1-9]|1[0-2])\/(20\d{2})/.exec(u) || /\d{2}\/\d{2}\/20\d{2}(0[1-9]|1[0-2])\/(20\d{2})\d{2}\/\d{2}\/20\d{2}/.exec(u); return { competencia: r ? { mes: +r[1], ano: +r[2] } : null }; } },
   // ---- guias fiscais (05a, 05d §4) ----
   { tipo: 'DAS', setor: 'FISCAL', re: /DOCUMENTO DE ARRECADACAO DO SIMPLES NACIONAL|\bDAS\s+DE\s+PARCELAMENTO\b/, fonte: '05a',
     campos: u => Object.assign(camposDaGuia(u), { parcelamento: /PARCELAMENTO/.test(u) }) },
