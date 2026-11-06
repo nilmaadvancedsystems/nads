@@ -30,6 +30,13 @@ const nomeDaNota = (numero, cliente) => 'NFS-e ' + (soDigitos(numero) || 'nota')
 const nomeDoPdf = (numero, cliente) => nomeDaNota(numero, cliente) + '.pdf';
 const nomeDoXml = (numero, cliente) => nomeDaNota(numero, cliente) + '.xml';
 
+// a data da autorização em dd/mm/aaaa (Brasília); sem ela, hoje
+function dataDaEmissao(t) {
+  const d = t && typeof t.toDate === 'function' ? t.toDate() : t ? new Date(t) : new Date();
+  const x = isNaN(d.getTime()) ? new Date() : d;
+  return x.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
 /** Por que o automático NÃO manda esta nota ('' = manda). Puro. */
 function motivoParaNaoMandar(p, cfgEmail) {
   if (!cfgEmail || cfgEmail.automatico !== true) return 'o envio automático está desligado';
@@ -56,7 +63,8 @@ async function montarEmailDaNota(p, cfgEmail, extra = {}) {
   const visual = htmlDaNfse({
     assunto: m.assunto, texto: semValor ? m.texto.replace(g.AVISO_SEM_VALOR, '').trim() : m.texto, semValor,
     cliente: campos.cliente, numero: campos.numero, valor: campos.valor, competencia: campos.competencia, chave: String(p.chaveAcesso || ''),
-    anexos: anexos.map(a => ({ nome: a.nome, tamanho: a.buffer.length })), caixa: extra.caixa || '',
+    servico: String((nota.servico && nota.servico.descricao) || ''), emitidaEm: dataDaEmissao(p.autorizadaEm),
+    anexos: anexos.map(a => ({ nome: a.nome })), caixa: extra.caixa || '',
   });
   return { assunto: m.assunto, corpo: m.texto, html: visual.html, imagens: visual.imagens, anexos };
 }
