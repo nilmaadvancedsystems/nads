@@ -82,3 +82,16 @@ describe('o estorno do cheque especial do dia anterior ao período (qualquer ban
     expect(situacaoDoBancoNoPeriodo(outro, 'banco', 'banco', ['2026-03']).tipo).toBe('pendente');
   });
 });
+
+describe('o Ajuste de exercícios anteriores na virada do ano', () => {
+  const EX = [L('2026-01-06', -15000, 'PIX ENVIADO')];
+  const RZ = [L('2026-01-06', -15000, 'Pagamento')];
+  it('de 1º a 4 de janeiro não é acusado, com qualquer valor (06/11/2026)', () => {
+    const e = emp([arq('e', 'banco', EX, 20000), arq('r', 'sistema', [...RZ, L('2026-01-02', -31286, 'Ajustes de Exercicios Anteriores')])]);
+    expect(situacaoDoBancoNoPeriodo(e, 'b', 'b', ['2026-01']).tipo).toBe('ok');
+  });
+  it('depois do dia 4, com o valor que não bate com o saldo: pendente', () => {
+    const e = emp([arq('e', 'banco', EX, 20000), arq('r', 'sistema', [...RZ, L('2026-01-05', -31286, 'Ajustes de Exercicios Anteriores')])]);
+    expect(situacaoDoBancoNoPeriodo(e, 'b', 'b', ['2026-01']).tipo).toBe('pendente');
+  });
+});

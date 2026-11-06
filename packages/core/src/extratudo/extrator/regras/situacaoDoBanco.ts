@@ -116,6 +116,9 @@ export function conferenciaDoBanco(e: EmpresaExtrator, banco: string, primeiro: 
   const ajustes = new Set<LancamentoDoArquivo>();
   for (const l of sobras) {
     if (cheque.linhas.has(l) || !ehAjusteDeExerciciosAnteriores(l.historico)) continue;
+    // de 1º a 4 de janeiro, o ajuste não é acusado (Vitor, 06/11/2026: "ajustes não entram também, não acuse ajustes até o
+    // dia 04/01"): é a virada do ano, e o valor dele não precisa bater com o saldo
+    if (/-01-0[1-4]$/.test(l.data)) { ajustes.add(l); continue; }
     const mov = movimentoDoExtrato(e, banco, primeiro, l.data.slice(0, 7));
     // sem o saldo de abertura do extrato, não dá para saber se bate: fica como pendência
     if (mov.abertura == null) continue;
