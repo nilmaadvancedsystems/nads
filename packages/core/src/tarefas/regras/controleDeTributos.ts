@@ -56,12 +56,12 @@ export type MarcaDoControle = '' | 'ok' | 'na';
 export const PROXIMA_MARCA: Record<MarcaDoControle, MarcaDoControle> = { '': 'ok', ok: 'na', na: '' };
 /** Como a guia foi entregue ao cliente (na folha: "imp", "zap", "e-mail" ou —) */
 // o eContador do Alterdata (04/11/2026: "preciso que coloque a opção econtador do alterdata como envio e tambem preciso que preencha dae e icms na planilha la, enviei 2 dae via impresso e não preencheu"): as guias postadas no portal do cliente
-export type EntregaDoControle = '' | 'impresso' | 'zap' | 'email' | 'econtador' | 'nao';
+export type EntregaDoControle = '' | 'impresso' | 'zap' | 'email' | 'econtador' | 'scireport' | 'nao';
 export const ENTREGAS_DO_CONTROLE: readonly { valor: EntregaDoControle; rotulo: string }[] = [
   { valor: '', rotulo: 'Falta' }, { valor: 'impresso', rotulo: 'Impresso' }, { valor: 'zap', rotulo: 'WhatsApp' },
-  { valor: 'email', rotulo: 'E-mail' }, { valor: 'econtador', rotulo: 'eContador' }, { valor: 'nao', rotulo: 'Não se aplica' },
+  { valor: 'email', rotulo: 'E-mail' }, { valor: 'econtador', rotulo: 'eContador' }, { valor: 'scireport', rotulo: 'SCI Report' }, { valor: 'nao', rotulo: 'Não se aplica' },
 ];
-const ROTULO_NA_FOLHA: Record<EntregaDoControle, string> = { '': '', impresso: 'imp.', zap: 'zap', email: 'e-mail', econtador: 'eCont.', nao: '—' };
+const ROTULO_NA_FOLHA: Record<EntregaDoControle, string> = { '': '', impresso: 'imp.', zap: 'zap', email: 'e-mail', econtador: 'eCont.', scireport: 'SCI', nao: '—' };
 
 /** Uma linha guardada (controleTributos/{competência}_{código}) */
 export interface LinhaDoControle {

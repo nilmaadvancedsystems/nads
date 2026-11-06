@@ -242,6 +242,17 @@ export function LogoEcontador() {
   );
 }
 
+/** O SCI Report (06/11/2026: "quero que coloque la em envio o sci report"): o anel azul-claro aberto e o ponto azul-escuro, no quadrado claro. */
+export function LogoSciReport() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="1" y="1" width="22" height="22" rx="5" fill="#EEF3F7" />
+      <path d="M17.6 15.2A6.4 6.4 0 1 1 18.2 10" fill="none" stroke="#95DBF9" strokeWidth={2.6} strokeLinecap="round" />
+      <circle cx="11.8" cy="12" r="3.4" fill="#2B3662" />
+    </svg>
+  );
+}
+
 export function LogoDrive({ cor }: { cor?: boolean }) {
   const imagem = imagemDaMarca('drive');
   if (imagem) return <img src={imagem} alt="" aria-hidden="true" className={'logo-img app' + (cor ? '' : ' cinza')} />;

@@ -3386,6 +3386,8 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .dp-tabela .dp-tabela-acao{position:sticky;right:0;z-index:1;background:var(--surface);box-shadow:-1px 0 0 var(--border-muted);padding-left:4px;padding-right:4px;}
 .dp-tabela thead th.dp-tabela-acao{background:var(--surface-2);z-index:2;}
 .dp-tabela .dp-guia-vence{display:block;font-size:var(--fs-12);}
+.dp-tabela .dp-guia-valor .dp-guia-valor-num{display:block;}
+
 .dp-tabela-guias .dp-cliente{width:auto;max-width:190px;}
 .dp-tabela-guias .dp-cliente > span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .dp-tabela .dp-cliente-nome{max-width:205px;}
@@ -3717,6 +3719,8 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .fgts-ao-vivo img{width:100%;height:auto;cursor:pointer;display:block;}
 .fgts-ao-vivo-marca{position:absolute;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;border:2px solid var(--brand,#c8102e);pointer-events:none;}
 .fgts-janela{width:min(1180px,96vw);}
+/* o Enviar guias do Fiscal mais largo (06/11/2026: "a parte de envio do fiscal fique maior pros lados pois está cortando algumas coisas") */
+.guias-janela{width:min(1480px,98vw);}
 
 /* Senhas preenche a tela (08/10/2026: "resolva esses problemas de não preencher a tela no senhas"): a página larga e a
    lista vai até o pé da janela (no painel dos Certificados, a lista não tem teto e a página rola) */
@@ -5781,7 +5785,7 @@ html[data-sem-animacao] .mx-gaveta-fundo,html[data-sem-animacao] .mx-gaveta{anim
 .fr-rola{max-height:max(360px,calc(100dvh - 300px));overflow:auto;overscroll-behavior:contain;}
 .fr-legenda{font-size:var(--fs-12);}
 /* a tabela: largura fixa por coluna (o cliente fica com o que sobra) */
-.fr-tabela{width:100%;min-width:1060px;table-layout:fixed;border-collapse:separate;border-spacing:0;font-size:var(--fs-13);}
+.fr-tabela{width:100%;min-width:1420px;table-layout:fixed;border-collapse:separate;border-spacing:0;font-size:var(--fs-13);}
 .fr-tabela col.fr-c-cod{width:44px;}
 .fr-tabela col.fr-c-guia{width:74px;}
 .fr-tabela col.fr-c-mk{width:32px;}
@@ -5871,7 +5875,8 @@ button.fr-entrega-feita:hover{border-color:var(--success);background:color-mix(i
    guias e a data um pouco mais estreitas), as linhas listradas de leve, a "Falta" discreta (só o texto apagado; a borda
    ao passar o mouse), o total neutro e sem a legenda embaixo */
 .fr-tabela col.fr-c-cod{width:40px;}
-.fr-tabela col.fr-c-guia{width:68px;}
+/* os valores preenchidos inteiros (06/11/2026: "os numeros preenchidos estão sendo cortados"): 68 → 96px */
+.fr-tabela col.fr-c-guia{width:96px;}
 .fr-tabela col.fr-c-data{width:80px;}
 .fr-tabela input[type="text"].fr-campo{padding:0 3px;}
 .fr-tabela tbody tr:nth-child(even) td{background:color-mix(in srgb,var(--ink) 2%,var(--surface));}
