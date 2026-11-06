@@ -42,6 +42,22 @@ describe('extrato em PDF', () => {
     ]);
     expect(lancamentosDoPdf([p], 'banco', 2026).map(l => l.data + ' ' + l.valor)).toEqual(['2026-01-30 30000', '2026-01-30 -1387']);
   });
+  it('o Bradesco pelo OCR fica no período do "Entre … e …": o ano lido errado e a data do 1º dia embaralhada (06/11/2026)', () => {
+    const p = pagina([
+      [['Extrato de: Ag: 1 | CC: 2 | Entre 01/02/2026 e 28/02/2026', 40]],
+      [['Data', 40], ['Lançamento', 100], ['Crédito (R$)', 330], ['Débito (R$)', 400], ['Saldo (R$)', 480]],
+      [['30/01/2026', 40], ['SALDO ANTERIOR', 100], ['1,00', 480]],
+      // a data do 2/2 que o OCR embaralhou: o lançamento herdava o 30/01 do saldo anterior
+      [['c2102/20268', 40], ['PAGTO ELETRON COBRANCA', 100], ['-566,40', 400], ['-565,40', 480]],
+      [['TARIFA BANCARIA', 100], ['-0,90', 400], ['-566,30', 480]],
+      // o "2026" lido "2028" e "2068"
+      [['13/02/2028', 40], ['RESGATE INVEST FACIL', 100], ['7.829,01', 330], ['7.262,71', 480]],
+      [['20/02/2068', 40], ['PIX RECEBIDO', 100], ['250,00', 330], ['7.512,71', 480]],
+    ]);
+    expect(lancamentosDoPdf([p], 'banco', 2026).map(l => l.data + ' ' + l.valor)).toEqual([
+      '2026-02-01 -56640', '2026-02-01 -90', '2026-02-13 782901', '2026-02-20 25000',
+    ]);
+  });
   it('coluna Valor com sinal e coluna Saldo ignorada; histórico da linha de baixo junta', () => {
     const p = pagina([
       [['BANCO EXEMPLO S.A. Período: 01/08/2026 a 31/08/2026', 40]],

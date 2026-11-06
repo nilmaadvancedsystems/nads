@@ -217,6 +217,31 @@ export function periodoDoExtrato(texto: string): string | null {
 }
 
 /**
+ * O período que o Bradesco imprime no cabeçalho ("Extrato de: Ag: 2557 | CC: 0008939-7 | Entre 01/01/2026 e 31/01/2026"):
+ * o primeiro e o último dia, 'aaaa-mm-dd'; sem a frase (ou com ela embaralhada pelo OCR), null.
+ */
+export function periodoEntreDatas(texto: string): { inicio: string; fim: string } | null {
+  const m = texto.match(/\bentre\s+(\d{2})\/(\d{2})\/(\d{4})\s+e\s+(\d{2})\/(\d{2})\/(\d{4})\b/i);
+  if (!m) return null;
+  const inicio = m[3] + '-' + m[2] + '-' + m[1], fim = m[6] + '-' + m[5] + '-' + m[4];
+  return inicio <= fim ? { inicio, fim } : null;
+}
+
+/**
+ * A data lida pelo OCR, posta dentro do período que o extrato diz (Vitor, 06/11/2026, na 571: o Bradesco "Microsoft Print
+ * to PDF" vinha com o "2026" lido "2028" e "2086", e o janeiro ficava com 30 dos 111 lançamentos): fora do período, mas
+ * com o dia e o mês dentro dele num dos anos do período, fica nesse ano; senão, como veio.
+ */
+export function dataNoPeriodo(data: string, p: { inicio: string; fim: string }): string {
+  if (data >= p.inicio && data <= p.fim) return data;
+  for (const a of new Set([p.inicio.slice(0, 4), p.fim.slice(0, 4)])) {
+    const d = a + data.slice(4);
+    if (d >= p.inicio && d <= p.fim) return d;
+  }
+  return data;
+}
+
+/**
  * O extrato do BB com as colunas Dt. balancete e Dt. movimento: o "Consultas - Extrato de conta corrente" (o do BB
  * Empresa) e o "Cliente - Conta atual" (o mesmo cabeçalho de colunas). Nele, a data certa do lançamento é a Dt. movimento
  * (Vitor, 09/10/2026; 04/11/2026, na 10: o "Movimento do Dia" de balancete 07/07 e movimento 08/07 saía como data errada).
@@ -354,7 +379,10 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
     if (ehExtratoDaCaixa(texto)) return lancamentosDaCaixa(todas, anoDoTexto(texto, anoPadrao));
   }
   const paginaDe: number[] = [];
-  const ano = anoDoTexto(todas.map(p => p.map(l => l.texto).join('\n')).join('\n'), anoPadrao);
+  // o período que o extrato diz (o Bradesco: "Entre 01/01/2026 e 31/01/2026"): o ano dele vale, e não o que mais aparece
+  // (na 571 o OCR leu mais "2028" que "2026")
+  const entre = periodoEntreDatas(todas.map(p => p.map(l => l.texto).join('\n')).join('\n'));
+  const ano = entre ? +entre.inicio.slice(0, 4) : anoDoTexto(todas.map(p => p.map(l => l.texto).join('\n')).join('\n'), anoPadrao);
   // a ordem das datas que abrem as linhas: o extrato do mais novo para o mais velho (o Stone) tem mais descidas que subidas
   let sobe = 0, desce = 0, antes: string | null = null;
   for (const l of todas.flat()) {
@@ -431,6 +459,7 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
         if (data) t.splice(0, comAno ? 3 : 2);
       }
       else if (RE_DATA_MES.test(diaDoOcr(t[0].s))) { data = lerData(diaDoOcr(t[0].s), ano); if (data) t.shift(); }
+      if (data && entre) data = dataNoPeriodo(data, entre);
       if (data) { dataAtual = data; noResumo = false; }
       // (e o "Detalhamento do Saldo" do BNB: saldo disponível, limite, Investimentos "BNB AUTOMATICO FIF"; Vitor, 14/10/2026; e o
       // quadro do limite do BB depois do 999 S A L D O: Limite Ouro Empresarial, Custo Efetivo Total, Valor total devido,
@@ -489,6 +518,10 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
         solta = null; continue;
       }
       if (!dataAtual) continue;
+      // antes do período só fica a data do SALDO ANTERIOR: o lançamento sem data depois dele (o OCR embaralhou a do 1º dia,
+      // "c2102/20268") é do período, e entra no 1º dia dele (Vitor, 06/11/2026, na 571: o fevereiro tinha 15 lançamentos em
+      // 30/01, a data do saldo anterior, e o arquivo de fevereiro aparecia no janeiro)
+      if (entre && dataAtual < entre.inicio) dataAtual = entre.inicio;
       ultimaDataDeValor = dataAtual;
       // o valor na coluna Saldo (no BB "Consultas", na última linha do dia, pela Dt. balancete): o saldo do dia no banco
       if (col && col.saldo != null && valores.length > 1) {
