@@ -2000,6 +2000,24 @@ a.btn.gmail-icone,.gmail-de-acoes a.btn{text-decoration:none;}
 .config-item-topo > div{flex:1;}
 .config-item h3{margin:0 0 4px;font-size:var(--fs-14);}
 .config-item .fraco{color:var(--ink-muted);font-size:var(--fs-13);margin:0;}
+/* Contábil › Configurações (Vitor, 06/11/2026): uma coluna, o cabeçalho do cartão com o ícone da etapa, os códigos lado a lado */
+.config-contabil{grid-template-columns:minmax(0,1fr);}
+.config-secao-titulo{display:inline-flex;align-items:center;gap:8px;}
+.config-secao-titulo > svg{width:16px;height:16px;color:var(--accent);flex:none;}
+.config-logo{display:inline-flex;width:22px;height:16px;flex:none;}
+/* dentro da janela (que tira a borda e o fundo dos cartões), cada seção volta a ser um cartão: separa uma etapa da outra */
+.janela-minhas-empresas .card.config-secao{border:1px solid var(--border);background:var(--surface);padding:16px;border-radius:6px;}
+.janela-minhas-empresas .config-secao .card-head h3{padding:0;}
+.config-secao .form-grid{grid-template-columns:minmax(0,1fr);margin-top:0;gap:16px;}
+.config-secao .field{margin-bottom:0;}
+.config-codigos{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;}
+.config-codigos + .form-grid,.form-grid + .config-codigos{margin-top:12px;}
+.config-rotulo{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;min-height:24px;}
+.config-rotulo > label{margin:0;}
+.config-situacao{display:inline-flex;align-items:center;gap:6px;}
+.config-variaveis{display:flex;align-items:center;gap:6px 10px;flex-wrap:wrap;margin-top:6px;}
+.config-variavel{display:inline-flex;align-items:center;gap:4px;}
+.config-variaveis .fraco{font-size:var(--fs-12);}
 .config-detalhe{margin-top:10px !important;}
 
 /* ── Tarefas › Drive: o Explorador (endereço, comandos, árvore, Detalhes/Ícones, status) ── */
@@ -3365,6 +3383,11 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .dp-tabela thead tr:last-child th.dp-ob{font-weight:500;font-size:var(--fs-10);letter-spacing:-.01em;}
 .dp-tabela td,.dp-tabela th{padding-left:8px;padding-right:8px;}
 .dp-tabela .badge{font-size:var(--fs-11);padding:1px 7px;}
+.dp-tabela .dp-tabela-acao{position:sticky;right:0;z-index:1;background:var(--surface);box-shadow:-1px 0 0 var(--border-muted);padding-left:4px;padding-right:4px;}
+.dp-tabela thead th.dp-tabela-acao{background:var(--surface-2);z-index:2;}
+.dp-tabela .dp-guia-vence{display:block;font-size:var(--fs-12);}
+.dp-tabela-guias .dp-cliente{width:auto;max-width:190px;}
+.dp-tabela-guias .dp-cliente > span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .dp-tabela .dp-cliente-nome{max-width:205px;}
 /* Obrigações do DP: o nome inteiro, sem o "…" (Vitor, 28/10/2026), e o responsável embaixo, discreto */
 .dp-tabela .dp-cliente-inteiro{min-width:240px;}

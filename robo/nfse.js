@@ -296,11 +296,17 @@ function montarDps(config, pedido, numero, opcoes = {}) {
   const semAliqNoNacional = provedor === 'nacional' && Number(pr.opSimpNac) === 3 && Number(pr.regApTribSN) === 1 &&
     Number(sv.tpRetISSQN == null ? 1 : sv.tpRetISSQN) === 1;
   const temAliq = sv.pAliq != null && sv.pAliq !== '' && !semAliqNoNacional;
+  // o total aproximado de tributos: na E&L "não informar" (indTotTrib 0); no nacional a ME/EPP não pode usar o indicador
+  // (05/11/2026, E0712) e informa o percentual do Simples (pTotTribSN) — o mesmo da observação da nota (IBPT, 16,42%)
+  const pTotSN = Number(String(sv.pTotTribSN != null && sv.pTotTribSN !== '' ? sv.pTotTribSN
+    : ((/(\d+(?:[.,]\d+)?)\s*%/.exec(infoCompl || INFO_COMPL_PADRAO) || [])[1] || '')).replace(',', '.'));
+  const totTrib = provedor === 'nacional' && Number(pr.opSimpNac) === 3 && pTotSN > 0 && pTotSN < 1000
+    ? el('pTotTribSN', pTotSN.toFixed(2)) : el('indTotTrib', 0);
   const valores = '<valores><vServPrest>' + el('vServ', dinheiro(s.valor)) + '</vServPrest>' +
     '<trib><tribMun>' + el('tribISSQN', Number(sv.tribISSQN == null ? 1 : sv.tribISSQN)) +
     el('tpRetISSQN', Number(sv.tpRetISSQN == null ? 1 : sv.tpRetISSQN)) +
     (temAliq ? el('pAliq', Number(sv.pAliq).toFixed(2)) : '') + '</tribMun>' +
-    '<totTrib>' + el('indTotTrib', 0) + '</totTrib></trib></valores>';
+    '<totTrib>' + totTrib + '</totTrib></trib></valores>';
 
   return '<?xml version="1.0" encoding="UTF-8"?>' +
     '<DPS xmlns="' + NS + '" versao="' + VERSAO + '"><infDPS Id="' + id + '">' +

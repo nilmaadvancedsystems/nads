@@ -23,8 +23,19 @@ const agora = () => new Date().toISOString();
 const ambienteDa = p => (p && p.dps && p.dps.ambiente) || (p && p.ambiente) || 'homologacao';
 const soDigitos = v => String(v == null ? '' : v).replace(/\D/g, '');
 
-const nomeDoPdf = numero => 'DANFSe-' + (soDigitos(numero) || 'nota') + '.pdf';
-const nomeDoXml = chave => 'NFSe-' + (soDigitos(chave) || 'nota') + '.xml';
+// O nome dos anexos (05/11/2026, Vitor: "que os arquivos fiquem com renomeação correta pra não ficar feio"): "NFS-e 1 - RDS AGREGADOS.pdf" e o
+// XML com o mesmo nome. Sem os caracteres que o Windows não aceita no nome do arquivo.
+const limpoParaArquivo = t => String(t || '').replace(/[\/:*?"<>|\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80);
+const nomeDaNota = (numero, cliente) => 'NFS-e ' + (soDigitos(numero) || 'nota') + (limpoParaArquivo(cliente) ? ' - ' + limpoParaArquivo(cliente) : '');
+const nomeDoPdf = (numero, cliente) => nomeDaNota(numero, cliente) + '.pdf';
+const nomeDoXml = (numero, cliente) => nomeDaNota(numero, cliente) + '.xml';
+
+// a data da autorização em dd/mm/aaaa (Brasília); sem ela, hoje
+function dataDaEmissao(t) {
+  const d = t && typeof t.toDate === 'function' ? t.toDate() : t ? new Date(t) : new Date();
+  const x = isNaN(d.getTime()) ? new Date() : d;
+  return x.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric' });
+}
 
 /** Por que o automático NÃO manda esta nota ('' = manda). Puro. */
 function motivoParaNaoMandar(p, cfgEmail) {
@@ -45,14 +56,15 @@ async function montarEmailDaNota(p, cfgEmail, extra = {}) {
   const campos = g.camposDaNota(nota);
   const pdf = Buffer.from(await g.pdfDaDanfse(p.xmlNfse));
   const anexos = [
-    { nome: nomeDoPdf(p.numeroNfse), mime: 'application/pdf', buffer: pdf },
-    { nome: nomeDoXml(p.chaveAcesso), mime: 'application/xml', buffer: Buffer.from(String(p.xmlNfse), 'utf8') },
+    { nome: nomeDoPdf(p.numeroNfse, campos.cliente), mime: 'application/pdf', buffer: pdf },
+    { nome: nomeDoXml(p.numeroNfse, campos.cliente), mime: 'application/xml', buffer: Buffer.from(String(p.xmlNfse), 'utf8') },
   ];
   const semValor = nota.ambiente === 'homologacao';
   const visual = htmlDaNfse({
     assunto: m.assunto, texto: semValor ? m.texto.replace(g.AVISO_SEM_VALOR, '').trim() : m.texto, semValor,
     cliente: campos.cliente, numero: campos.numero, valor: campos.valor, competencia: campos.competencia, chave: String(p.chaveAcesso || ''),
-    anexos: anexos.map(a => ({ nome: a.nome, tamanho: a.buffer.length })), caixa: extra.caixa || '',
+    servico: String((nota.servico && nota.servico.descricao) || ''), emitidaEm: dataDaEmissao(p.autorizadaEm),
+    anexos: anexos.map(a => ({ nome: a.nome })), caixa: extra.caixa || '',
   });
   return { assunto: m.assunto, corpo: m.texto, html: visual.html, imagens: visual.imagens, anexos };
 }

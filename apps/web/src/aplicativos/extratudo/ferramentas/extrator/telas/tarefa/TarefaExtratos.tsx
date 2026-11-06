@@ -23,7 +23,8 @@ import { JanelaHistoricoDePedidos, JanelaPedirExtratos } from './JanelaPedirExtr
 import { caminhoNaFerramenta } from '../../../../casca/caminho';
 import { useBancosOk } from './useBancosOk';
 import { ConfirmarBancos } from './ConfirmarBancos';
-import { ComprovantesNaImportacao } from './ComprovantesNaImportacao';
+import { ComprovantesDoBanco } from './ComprovantesNaImportacao';
+import { useComprovantes } from './useComprovantes';
 import { useDriveDaLinha } from './useDriveDaLinha';
 import { JanelaBuscarNoEmail, useBuscarNoEmail } from './JanelaBuscarNoEmail';
 import { useRecebidosPorEmail } from './useRecebidosPorEmail';
@@ -33,6 +34,8 @@ import { CANCELAR_LOTE_A_QUALQUER_HORA } from '../../../../../../comum/desenvolv
 import { modoDesenvolvedor } from '../../../../../../comum/modoDesenvolvedor';
 import { useColunaAjustavel } from '../../../../../../comum/GradeDosMeses';
 import { ContabilNaImportacao } from '../../../../../../comum/ContabilNaImportacao';
+import { BlocoDoRobo } from './BlocoDoRobo';
+import { useRazaoDoRobo } from './useRazaoDoRobo';
 import { useContabilDaEmpresa } from '../../../../../../comum/contabilDaEmpresa';
 
 type Vm = ReturnType<typeof useImportacao>;
@@ -329,7 +332,9 @@ function MesesDoBanco({ meses, competencia, buscandoMes, travado, aceitarExtrato
       return (
         <>
           <button type="button" className="imp-mes-sem" disabled={travado || !naTarefa} onClick={() => onSemMovimento(m.mes, false)} title="Não teve movimento — clique para desfazer">s/ mov.</button>
-          {doDrive ? <BotaoVer titulo={'Ver o extrato sem movimento: ' + doDrive.nome} onVer={() => onVer(doDrive)} />
+          {/* o razão não tem o olhinho (Vitor, 06/11/2026: "o razão não precisa do olho") */}
+          {lado === 'sistema' ? null
+            : doDrive ? <BotaoVer titulo={'Ver o extrato sem movimento: ' + doDrive.nome} onVer={() => onVer(doDrive)} />
             : doEmail.length > 0 ? <BotaoVer titulo={'Ver o extrato sem movimento: ' + doEmail.map(p => p.nome).join(', ')} onVer={() => doEmail.forEach(abrirPuxado)} />
             : <BotaoVer titulo={'Ver ' + nomeDoLado + ' de ' + m.rotulo + ' (sem movimento)'} onVer={() => onVerImportado(lado, m.mes, true)} />}
         </>
@@ -352,7 +357,7 @@ function MesesDoBanco({ meses, competencia, buscandoMes, travado, aceitarExtrato
     const semExtrato = lado === 'sistema' && !m.extrato && !m.ladoExtrato.doDrive.length ? DICA_SEM_EXTRATO : undefined;
     return <>{lado === 'banco' && subindo(m.mes) && <SubindoAoDrive />}<BotaoLado lado={info} titulo={(lado === 'banco' ? 'Extrato' : 'Razão') + ' de ' + m.rotulo} aceitar={lado === 'banco' ? aceitarExtrato : aceitarRazao} travado={trava} semExtrato={semExtrato}
       onArquivos={fs => onArquivos(lado, fs, m.mes)} onExcluir={() => onExcluir(lado, m.mes)} />
-      {info.qtdArquivos > 0 && <BotaoVer titulo={'Ver o ' + nomeLado + ' importado de ' + m.rotulo} onVer={() => onVerImportado(lado, m.mes)} />}</>;
+      {lado === 'banco' && info.qtdArquivos > 0 && <BotaoVer titulo={'Ver o ' + nomeLado + ' importado de ' + m.rotulo} onVer={() => onVerImportado(lado, m.mes)} />}</>;
   };
   return (
     <div className="imp-periodo-linha">
@@ -600,11 +605,9 @@ function SeletorDeCompetencia({ vm, naTarefa, trocar, periodoDaTarefa, encerrar 
  * Conferência, as notas e os serviços. Dentro da Tarefas, ficam no cabeçalho dela, por cima do checklist; aberta
  * sozinha, em cima da página. O balancete foi para a Conferência fiscal, o primeiro passo dela (Vitor, 13/10/2026).
  */
-type AbaImportacao = 'bancos' | 'comprovantes' | 'contabil' | conferencia.PaginaImportacao;
+type AbaImportacao = 'bancos' | 'contabil' | conferencia.PaginaImportacao;
 const ABAS_DA_IMPORTACAO: { id: AbaImportacao; rotulo: string; icone: AbaDaEtapa['icone'] }[] = [
   { id: 'bancos', rotulo: 'Bancos', icone: 'landmark' },
-  // os comprovantes do período: buscar no e-mail, mandar para o Drive e ver (Vitor, 26/10/2026)
-  { id: 'comprovantes', rotulo: 'Comprovantes', icone: 'recibo' },
   // o balancete dinâmico (o primeiro passo: monta a Tarefa) e os razões das contas de uma vez (Vitor, 16/10/2026)
   { id: 'contabil', rotulo: 'Balancete e razões', icone: 'scale' },
   { id: 'entradas', rotulo: 'Entradas', icone: 'arrowDown' },
@@ -647,7 +650,7 @@ export function TarefaExtratos() {
   // o extrato importado sem movimento marca o mês como sem movimento no banco (Vitor, 13/10/2026)
   useEffect(() => { vm.aoSemMovimento((banco, meses) => { for (const m of meses) ponte.marcarSemMovimento(banco, true, m); }); });
   // meses: de onde o extrato veio (a coluna do mês, a busca no e-mail), para o sem movimento que não diz o mês
-  const importarExtrato = (b: (typeof vm.bancos)[number], fs: File[], depois?: () => void, meses?: string[]) => { void vm.importarArquivos(b.id, 'banco', fs, meses).then(ok => { if (ok) { d.subirAoDrive(b, fs, s.nome); depois?.(); } }); };
+  const importarExtrato = (b: (typeof vm.bancos)[number], fs: File[], depois?: () => void, meses?: string[]) => { void vm.importarArquivos(b.id, 'banco', fs, meses).then(ok => { if (ok) { d.subirAoDrive(b, fs, s.nome, meses); depois?.(); } }); };
   // "Buscar no e-mail": o anexo escolhido entra como se viesse do computador (Vitor, 13/10/2026); fica para o olhinho dos meses dele
   const em = useBuscarNoEmail((linha, fs, meses) => {
     const b = vm.bancos.find(x => x.id === linha.id);
@@ -676,6 +679,8 @@ export function TarefaExtratos() {
   const contabil = useContabilDaEmpresa(s.nome, s.codigo);
   const mesesDaEtapa = vm.periodo.length > 1 ? vm.periodo : [vm.competencia];
   const importados = useImportadosDaConferencia(s.nome, mesesDaEtapa);
+  // os razões pelo robô do Alterdata (06/11/2026): na Importação da Tarefa ainda não concluída, pede sozinho os meses
+  const razaoDoRobo = useRazaoDoRobo({ nome: s.nome, codigo: s.codigo, meses: mesesDaEtapa, automatico: ponte.naTarefa && !ponte.etapaConcluida && !vm.etapaCheque });
   const semMovimentoNoPeriodo = (banco: string) => mesesDaEtapa.every(m => (vm.periodo.length > 1 ? ponte.semMovimentoPorMes[m] || [] : ponte.semMovimento).includes(banco));
   const diasSemCheque = (banco: string) => { const t = situacoes[banco]; return t && t.tipo === 'falta-cheque' ? t.faltam.length : 0; };
   // algum banco fecha negativo no período: a etapa Cheque especial aparece; sem nenhum, a Tarefas a pula (Vitor, 02/10/2026)
@@ -701,6 +706,8 @@ export function TarefaExtratos() {
   // os dias que fecham negativos (somando os bancos), para o aviso da etapa Cheque especial
   const diasNegativosNoPeriodo = vm.bancos.reduce((t, b) => { const x = situacoes[b.id]; return t + (x && x.tipo !== 'pendente' ? x.negativos.length : 0); }, 0);
   const [cxExtrato, cxRazao] = vm.caixas;
+  // os comprovantes de cada banco, na faixa opcional acima dos Lançamentos (Vitor, 06/11/2026: saiu da aba Comprovantes)
+  const comp = useComprovantes(mesesDaEtapa, vm.bancos.filter(b => b.id !== 'banco'), d.pedirLogin, vm.avisar, vm.avisarErro);
   const [abertas, setAbertas] = useState<string[]>([]);
   const [abaEscolhida, setAba] = useState<AbaImportacao>(vm.etapaFiscal ? 'entradas' : 'bancos');
   // Prestados só para quem presta serviço (a regra do Cadastro; sem informar, aparece); no Fiscal, só as notas
@@ -755,8 +762,7 @@ export function TarefaExtratos() {
           ))}
         </nav>
       )}
-      {aba === 'contabil' ? <div data-destaque="contabil"><ContabilNaImportacao nome={s.nome} codigo={s.codigo} meses={mesesDaEtapa} soDiario={ponte.naTarefa && !ponte.etapaConcluida} /></div>
-        : aba === 'comprovantes' ? <div data-destaque="comprovantes-aba"><ComprovantesNaImportacao meses={mesesDaEtapa} bancos={vm.bancos.filter(b => b.id !== 'banco')} competencia={vm.competencia} pedirLogin={d.pedirLogin} avisar={vm.avisar} avisarErro={vm.avisarErro} /></div>
+      {aba === 'contabil' ? <div data-destaque="contabil"><ContabilNaImportacao nome={s.nome} codigo={s.codigo} meses={mesesDaEtapa} soDiario={ponte.naTarefa && !ponte.etapaConcluida} blocoDoRobo={<BlocoDoRobo robo={razaoDoRobo} />} /></div>
         : aba !== 'bancos' ? <div data-destaque="importacao"><ImportacaoNaEtapa nome={s.nome} tipo={aba} prestaServico={vm.prestaServico} meses={mesesDaEtapa} /></div> : (<>
       <div className={'imp-topo' + (ocupadoGeral ? ' travado' : '')} aria-busy={ocupadoGeral}>
         {/* à esquerda, como o "⎇ main ▾  6 Branches" do GitHub: a competência e o número de bancos */}
@@ -1019,6 +1025,7 @@ export function TarefaExtratos() {
                 subindo={mes => d.subindoAoDrive(b.id, mes)}
                 semMovimentoDoDrive={mes => vm.arquivoSemMovimento(b.id, mes)}
                 onSemMovimento={(mes, marcado) => ponte.marcarSemMovimento(b.id, marcado, mes)} />}
+              {(emLote ? gradeAberta : aberta) && <ComprovantesDoBanco vm={comp} id={b.id} competencia={vm.competencia} avisarErro={vm.avisarErro} />}
               {verLancamentos && (emLote ? (
                 <FaixaQueAbre titulo="Lançamentos" qtd={vm.movimentoDe(b.id).linhas.length}>
                   <Movimento m={vm.movimentoDe(b.id)} pdf={doDrive.length ? doDrive[doDrive.length - 1] : null} onPdf={visualizarDoDrive} competencia={vm.competencia} />
@@ -1088,6 +1095,7 @@ export function TarefaExtratos() {
           </div>
         </div>
       )}
+      <JanelaBuscarNoEmail vm={comp.em} />
       {/* o aviso do topo (Bancos e Comprovantes) */}
       <MensagemFlutuante id="impAviso" className="imp-aviso" chave={vm.seqMensagem} onFechar={vm.fecharMensagem}
         duracao={vm.mensagem?.tom === 'erro' ? null : 2700}>

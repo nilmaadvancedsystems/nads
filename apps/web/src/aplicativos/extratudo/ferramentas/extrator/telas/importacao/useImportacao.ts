@@ -382,7 +382,11 @@ export function useImportacao() {
           const arqs = arquivosDe(banco, l, mes);
           return {
             qtdArquivos: arqs.length, qtdLancamentos: arqs.reduce((t, a) => t + a.lancamentos.filter(z => z.data.startsWith(mes)).length, 0),
-            lendo: lendoLinha === banco + '|' + l, doDrive: arqs.flatMap(a => (a.drive ? [a.drive] : [])),
+            // o do mês (o com mais lançamentos no mês) por último, que é o que o Drive e o olhinho da célula abrem, como na linha
+            // de um mês só (Vitor, 06/11/2026, na 571: o janeiro abria o PDF de fevereiro, que o OCR deixava com lançamentos de 30/01)
+            lendo: lendoLinha === banco + '|' + l,
+            doDrive: arqs.map(a => ({ a, n: a.lancamentos.filter(z => z.data.startsWith(mes)).length }))
+              .sort((p, q) => p.n - q.n).flatMap(({ a }) => (a.drive ? [a.drive] : [])),
           };
         };
         const extrato = lado('banco');

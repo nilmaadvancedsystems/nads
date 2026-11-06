@@ -159,7 +159,7 @@ export function Emprestimos() {
       <div className="tarefas-barra-topo">
         <span className="tarefas-contador"><Icone nome="landmark" /><b>{vm.emprestimos.length}</b> {vm.emprestimos.length === 1 ? 'empréstimo' : 'empréstimos'}</span>
         <span className="tarefas-barra-espaco" />
-        <BotaoDiario onClick={vm.usarDiario} titulo="Usar o Diário (PDF) para os empréstimos" />
+        <BotaoDiario onClick={vm.usarDiario} titulo="Usar o razão do robô para os empréstimos" />
         {/* importar: só o ícone (vários razões de uma vez, um por contrato) */}
         <button type="button" className="icon-btn" onClick={() => arquivo.current?.click()} title={'Importar o razão de cada empréstimo (XLS da conciliação do Alterdata), com ' + vm.periodo} aria-label="Importar razão">
           <Icone nome="upload" />

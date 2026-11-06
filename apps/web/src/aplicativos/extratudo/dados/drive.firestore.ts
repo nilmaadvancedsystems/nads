@@ -348,6 +348,7 @@ export function criarDriveFirestore(): cr.RepoDrive {
         status: 'enviando', nome: entregas.nomeParaEnviar(arquivo.nome), tamanho: arquivo.bytes.length, partes: partes.length,
         competencia: destino.competencia, cliente: destino.cliente.trim(), codigo: destino.codigo == null ? '' : String(destino.codigo),
         criadoEm: new Date().toISOString(), criadoPor: acesso.quem || 'nads', criadoPorUid: u.uid,
+        ...(destino.substituir ? { substituir: destino.substituir.slice(0, 100) } : {}),
       });
       for (let i = 0; i < partes.length; i++) await setDoc(doc(ref, 'partes', String(i)), { dados: Bytes.fromUint8Array(partes[i]) });
       await updateDoc(ref, { status: 'pendente' });

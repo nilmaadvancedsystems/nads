@@ -72,9 +72,9 @@ function MenuDeColuna({ vm, arquivo, compacto }: { vm: VmEnvioDeGuias; arquivo: 
 function TabelaDosProntos({ vm, grupos, mexe }: { vm: VmEnvioDeGuias; grupos: VmEnvioDeGuias['grupos']; mexe: boolean }) {
   return (
     <div className="table-wrap">
-      <table className="dp-tabela">
+      <table className="dp-tabela dp-tabela-guias">
         <thead>
-          <tr><th>Cód.</th><th>Cliente</th><th>Apuração</th><th>Envio</th><th>Guia</th><th className="num">Valor</th><th>Coluna</th><th /></tr>
+          <tr><th>Cód.</th><th>Cliente</th><th>Apuração</th><th>Envio</th><th>Guia</th><th className="num">Valor</th><th>Coluna</th><th className="dp-tabela-acao" aria-label="Tirar" /></tr>
         </thead>
         <tbody>
           {grupos.flatMap(g => g.arquivos.map((a, k) => {
@@ -96,13 +96,14 @@ function TabelaDosProntos({ vm, grupos, mexe }: { vm: VmEnvioDeGuias; grupos: Vm
                     </td>
                   </>
                 )}
-                <td>
+                <td className="dp-guia">
                   <button type="button" className="link-btn" title={'Ver a guia: ' + (a.leitura?.nomeFinal || a.nome)} onClick={() => vm.abrirDoLote(a)}>{tipoDaGuia(a)}</button>
-                  {a.leitura?.vencimento && <span className="fraco"> · vence {a.leitura.vencimento.replace(/-/g, '/')}</span>}
+                  {a.leitura?.vencimento && <span className="fraco dp-guia-vence">vence {a.leitura.vencimento.replace(/-/g, '/')}</span>}
                 </td>
                 <td className="num">{r.valor || <span className="fraco">—</span>}</td>
                 <td>{mexe ? <MenuDeColuna vm={vm} arquivo={a} compacto /> : <span className="fraco">{r.coluna || 'sem coluna'}</span>}</td>
-                <td>{mexe && <BotaoIcone icone="x" titulo="Tirar a guia do lote" onClick={() => void vm.tirar(a, true)} />}</td>
+                {/* sempre à vista, preso à direita (06/11/2026: "excluir somente uma delas"; com a tabela larga ele ficava escondido no fim) */}
+                <td className="dp-tabela-acao">{mexe && <BotaoIcone icone="lixeira" titulo="Tirar esta guia do lote" onClick={() => void vm.tirar(a, true)} />}</td>
               </tr>
             );
           }))}

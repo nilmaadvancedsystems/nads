@@ -85,6 +85,13 @@ describe('extrato no Drive: o PDF e o OFX do mesmo mês', () => {
     expect(r.situacao).toBe('achou');
     expect(r.arquivo?.id).toBe('p');
   });
+  it('o antigo em SUBSTITUÍDOS não conta: fica o novo (06/11/2026)', () => {
+    const r = acharExtratoNoDrive([...itens, d('s', 'SUBSTITUÍDOS', 'bb'), f('v', '01-2026.pdf', 's'), f('v2', '01-2026 (2).pdf', 's')], 'raiz', '2026-01',
+      { nome: 'Banco do Brasil', marca: 'banco-do-brasil' });
+    expect(r.situacao).toBe('achou');
+    expect(r.arquivo?.id).toBe('p');
+    expect(r.candidatos.map(c => c.id)).not.toContain('v');
+  });
 });
 
 describe('extrato no Drive: pasta de cada banco (empresa 58, BNB e Sicoob)', () => {

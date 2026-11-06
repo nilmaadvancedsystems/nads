@@ -217,7 +217,7 @@ async function dispararLote(db, ref, lote, deps) {
       const { cliente, para } = await dp.destinatarios(db, codigo, ativos);
       const nome = String(cliente.nome || '').trim();
       const anexos = [];
-      for (const i of itens) anexos.push({ nome: i.vai.nome, mime: dp.mimeDe(i.vai.nome), buffer: await bufferDoArquivo(i.ref, i) });
+      for (const i of itens) anexos.push({ nome: i.vai.nome, mime: dp.mimeDe(i.vai.nome), buffer: await bufferDoArquivo(i.ref, i), tipo: i.vai.tipo, tributo: i.vai.tributo, pasta: (i.vai.destino || []).join('/'), valor: i.vai.valor, vencimento: ((i.leitura || {}).vencimento) || '' });
       if (anexos.reduce((s, a) => s + a.buffer.length, 0) > dp.MAX_BYTES) throw new Error('os arquivos do cliente passam de 18 MB juntos');
       const cfg = deps.config ? await deps.config().catch(() => ({})) : {};
       const { gmailId, assunto } = await dp.mandarEmailDoDp(db, { comp: competencia, nome, para, anexos }, { enviar: deps.enviar, caixa: deps.caixa, assinatura: cfg.assinatura || 'Nilma Contabilidade' });
@@ -228,13 +228,15 @@ async function dispararLote(db, ref, lote, deps) {
         para, enviados: anexos.map(a => a.nome), assunto, gmailId, enviadoEm: agora, criadoEm: agora,
         criadoPor: lote.disparadoPor || '', criadoPorUid: lote.disparadoPorUid || '',
       });
-      // e no Drive, na pasta do cliente (sem sobrescrever: o mesmo arquivo de novo não duplica)
+      // e no Drive, na pasta do cliente (sem sobrescrever: o mesmo arquivo de novo não duplica), com o nome limpo sem o
+      // cliente (06/11/2026, Vitor: "Quero que o robô renomeie o arquivos quando subir também"): "Folha de pagamento 10-2026.pdf"
+      const noDrive = dp.nomesNoEmail(anexos, competencia, '');
       const salvos = [];
       for (let k = 0; k < itens.length; k++) {
         try {
           const pastaId = await DA.garantirCaminho(drive, itens[k].vai.destino.map(p => String(p).normalize('NFC')));
-          const nomeSalvo = await DA.salvarArquivo(drive, pastaId, itens[k].vai.nome, anexos[k].buffer);
-          salvos.push({ nome: nomeSalvo || itens[k].vai.nome, pasta: itens[k].vai.destino.join('/'), jaEstava: !nomeSalvo });
+          const nomeSalvo = await DA.salvarArquivo(drive, pastaId, noDrive[k].nome, anexos[k].buffer);
+          salvos.push({ nome: nomeSalvo || noDrive[k].nome, pasta: itens[k].vai.destino.join('/'), jaEstava: !nomeSalvo });
         } catch (err) { salvos.push({ nome: itens[k].vai.nome, erro: String(err.message || err).slice(0, 200) }); }
       }
       Object.assign(resultado, { status: 'enviado', para, enviadoEm: agora, salvos });
