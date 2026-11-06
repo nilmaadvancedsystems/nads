@@ -355,7 +355,7 @@ function anexosRecibo(anexos) {
 }
 // o texto do modelo, à esquerda (pode ter vários parágrafos)
 const textoRecibo = t => String(t || '').replace(/\r/g, '').split(/\n\s*\n/).map(b => b.trim()).filter(Boolean)
-  .map(b => '<p style="margin:0 0 14px;font:15px/24px ' + FONTE + ';color:#3A393E">' + b.split('\n').map(l => esc(l).replace(/R\$ (?=\d)/g, 'R$&nbsp;')).join('<br>') + '</p>').join('');
+  .map(b => '<p style="margin:0 0 14px;font:15px/24px ' + FONTE + ';color:#3A393E">' + b.split('\n').map(l => esc(l).replace(/R\$ (?=\d)/g, () => 'R$&nbsp;')).join('<br>') + '</p>').join('');
 
 // { titulo, previa, rotulo, destaque, selo, corpo, assinatura, caixa, rodape, imagens }
 function recibo(o) {
@@ -384,26 +384,76 @@ function recibo(o) {
     '</table></td></tr></table></body></html>';
 }
 
-// A NFS-e autorizada para o tomador (nfse-email.js): o valor em destaque, o texto da configuração (Financeiro ›
-// Configurações › E-mail ao cliente), os dados, a chave e os dois arquivos anexados.
-// { assunto, texto, cliente, numero, valor, competencia, chave, anexos: [{ nome, tamanho }], semValor, assinatura, caixa } -> { html, imagens }
+// A NFS-e autorizada para o tomador (nfse-email.js), no desenho "Banco digital" do DP/Fiscal (06/11/2026, Vitor: "Quero
+// esse estilo pra nf também"): o bloco vinho com a saudação, a manchete e o valor grande; o cartão encostado com a nota em
+// grade (número, competência, serviço, emissão); os arquivos (ícone vermelho, sem o tamanho); o botão da consulta pública;
+// a chave em grupos e o rodapé.
+// { assunto, texto, cliente, numero, valor, competencia, servico, emitidaEm, chave, anexos: [{ nome }], semValor, assinatura, caixa } -> { html, imagens }
+const PORTAL_NFSE = 'https://www.nfse.gov.br/ConsultaPublica/?tpc=1&chave=';
 function htmlDaNfse(o) {
   const imagens = [];
+  const nome = o.assinatura || 'Nilma Contabilidade';
+  const mesAno = mesPorExtenso(o.competencia);
+  const mes = mesAno.replace(/ de \d{4}$/, '');
+  const anexos = o.anexos || [];
   const chave = chaveEmGrupos(o.chave);
-  const corpo = textoRecibo(o.texto) +
-    linhasRecibo([['Tomador', o.cliente], ['Competência', mesPorExtenso(o.competencia)], ['Número da nota', o.numero]]) +
-    (chave ? '<div style="margin-top:16px;padding:14px 16px;background:' + COR.fundo + ';border-radius:10px;font:12px/18px ' + FONTE + ';color:' + COR.suave + '">Chave de acesso<br>' +
-      '<span style="font:600 12px/20px Consolas,Menlo,monospace;color:' + COR.tinta + '">' + esc(chave) + '</span></div>' : '') +
-    anexosRecibo(o.anexos);
-  const html = recibo({
-    imagens, assinatura: o.assinatura, caixa: o.caixa,
-    titulo: o.assunto || ('NFS-e ' + (o.numero || '')),
-    previa: String(o.texto || '').replace(/\s+/g, ' ').trim().slice(0, 140),
-    rotulo: 'Nota fiscal de serviço' + (o.numero ? ' nº ' + o.numero : ''),
-    destaque: o.valor || '',
-    selo: o.semValor ? seloRecibo('Teste · sem valor fiscal', 'falta') : seloRecibo('● Autorizada', 'ok'),
-    corpo, rodape: 'Dúvidas? É só responder este e-mail.',
-  });
+  const logo = imagem(imagens, PASTA_ICONES, 'marca', [14, 22], 'display:block;margin:0 auto') || '';
+  const icone = imagem(imagens, PASTA_ICONES, 'arquivo', [22, 26], 'display:block;margin:0 auto') || '';
+  const primeiroNome = String(o.cliente || '').trim();
+  // o bloco já diz "Olá, cliente!": o primeiro parágrafo do modelo, se for a saudação, sai do texto
+  const texto = String(o.texto || '').replace(/\r/g, '').replace(/^\s*ol[áa][^\n]*\n\s*\n/i, '');
+  const manchete = mes && /^[a-zç]+$/.test(mes) ? 'Sua nota fiscal de ' + mes + ' chegou' : 'Sua nota fiscal chegou';
+  const servico = String(o.servico || '').split(/\r?\n/)[0].trim().slice(0, 70);
+  const celula = (rotulo, valor) => '<td class="meia" width="50%" valign="top" style="padding:10px 0">' +
+    '<div style="font:12px/16px ' + FONTE + ';color:' + COR.fraca + '">' + esc(rotulo) + '</div>' +
+    '<div style="font:600 15px/21px ' + FONTE + ';color:' + COR.tinta + ';overflow-wrap:anywhere;margin-top:2px">' + esc(valor || '—') + '</div></td>';
+  const grade = [['Nota nº', o.numero], ['Competência', mesAno], ['Serviço', servico], ['Emitida em', o.emitidaEm]].filter(d => d[1]);
+  const linhasDaGrade = [];
+  for (let k = 0; k < grade.length; k += 2) linhasDaGrade.push('<tr>' + celula(grade[k][0], grade[k][1]) + (grade[k + 1] ? celula(grade[k + 1][0], grade[k + 1][1]) : '<td class="meia" width="50%"></td>') + '</tr>');
+  const cartaoBranco = (dentro, classe) => '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FFFFFF;border-radius:20px;border-collapse:separate' + (classe === 'sombra' ? ';box-shadow:0 10px 30px rgba(80,20,24,.12)' : '') + '"><tr><td class="cartao" style="padding:14px 26px">' + dentro + '</td></tr></table>';
+  const arquivos = anexos.map((a, k) => linhaDoArquivo({ nome: a.nome, rotulo: '' }, k, icone)).join('');
+  const css = '@media only screen and (max-width:520px){.px{padding-left:16px!important;padding-right:16px!important}.hero{padding:26px 22px 60px!important}' +
+    '.manchete{font-size:22px!important;line-height:29px!important}.valor{font-size:34px!important;line-height:42px!important}.cartao{padding:10px 18px!important}.texto{padding:20px 18px 6px!important}}';
+  const html = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<meta name="color-scheme" content="light only"><meta name="supported-color-schemes" content="light"><title>' + esc(o.assunto || nome) + '</title>' +
+    '<style>' + css + '</style></head>' +
+    '<body style="margin:0;padding:0;background:' + FUNDO_DP + ';-webkit-text-size-adjust:100%">' +
+    '<div style="display:none;max-height:0;overflow:hidden;mso-hide:all">' + esc(String(o.texto || '').replace(/\s+/g, ' ').trim().slice(0, 140)) + '&#8199;&#65279;&#847;'.repeat(20) + '</div>' +
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:' + FUNDO_DP + '"><tr><td align="center" style="padding:0 0 32px">' +
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px">' +
+      // o bloco vinho
+      '<tr><td class="hero" bgcolor="' + VINHO_FUNDO + '" style="background:' + VINHO_FUNDO + ';padding:30px 40px 68px">' +
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>' +
+          '<td valign="middle"><table role="presentation" cellpadding="0" cellspacing="0"><tr>' +
+            (logo ? '<td width="34" height="34" align="center" valign="middle" style="width:34px;height:34px;background:#FFFFFF;border-radius:10px">' + logo + '</td>' : '') +
+            '<td style="padding-left:10px;font:700 15px/20px ' + FONTE + ';color:#FFFFFF">' + esc(nome) + '</td></tr></table></td>' +
+          '<td align="right" valign="middle"><span style="display:inline-block;padding:4px 12px;border-radius:99px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.28);font:600 12px/16px ' + FONTE + ';color:#FFFFFF;white-space:nowrap">' + (o.semValor ? 'Teste · sem valor fiscal' : 'NFS-e') + '</span></td>' +
+        '</tr></table>' +
+        (primeiroNome ? '<div style="font:500 14px/20px ' + FONTE + ';color:#F6CFD1;margin-top:30px">Olá, ' + esc(primeiroNome) + '!</div>' : '<div style="height:30px;line-height:30px;font-size:0">&nbsp;</div>') +
+        '<div class="manchete" style="font:700 26px/34px ' + FONTE + ';color:#FFFFFF;margin-top:6px">' + esc(manchete) + '</div>' +
+        (o.valor ? '<div class="valor" style="font:800 40px/48px ' + FONTE + ';color:#FFFFFF;letter-spacing:-.5px;margin-top:14px;white-space:nowrap">' + esc(o.valor).replace(/R\$ /, () => 'R$&nbsp;') + '</div>' : '') +
+      '</td></tr>' +
+      // a nota em grade, encostada no bloco
+      '<tr><td class="px" bgcolor="' + FUNDO_DP + '" style="padding:0 24px;background-image:linear-gradient(180deg,' + VINHO_FUNDO + ' 0,' + VINHO_FUNDO + ' 44px,' + FUNDO_DP + ' 44px)">' +
+        cartaoBranco('<table role="presentation" width="100%" cellpadding="0" cellspacing="0">' + linhasDaGrade.join('') + '</table>', 'sombra') +
+      '</td></tr>' +
+      // os arquivos
+      (arquivos ? '<tr><td class="px" style="padding:16px 24px 0">' + cartaoBranco(
+        '<div style="padding:4px 0 0;font:700 13px/18px ' + FONTE + ';color:' + COR.tinta + '">' + (anexos.length === 1 ? 'Arquivo no fim deste e-mail' : 'Arquivos no fim deste e-mail') + '</div>' +
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0">' + arquivos + '</table>') + '</td></tr>' : '') +
+      // o texto do modelo
+      (texto.trim() ? '<tr><td class="px" style="padding:16px 24px 0">' +
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FFFFFF;border-radius:20px;border-collapse:separate"><tr><td class="texto" style="padding:24px 28px 10px">' + textoRecibo(texto) + '</td></tr></table></td></tr>' : '') +
+      // o botão da consulta pública e a chave
+      (chave ? '<tr><td class="px" style="padding:18px 24px 0"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" bgcolor="' + VINHO_FUNDO + '" style="background:' + VINHO_FUNDO + ';border-radius:99px">' +
+        '<a href="' + esc(PORTAL_NFSE + String(o.chave).replace(/\D/g, '')) + '" style="display:block;padding:15px 20px;font:700 15px/20px ' + FONTE + ';color:#FFFFFF;text-decoration:none;border-radius:99px">Ver a nota no portal &rarr;</a></td></tr></table></td></tr>' +
+        '<tr><td align="center" class="px" style="padding:16px 28px 0;font:12px/18px ' + FONTE + ';color:#8C7A7B">Chave de acesso: ' + esc(chave) + '</td></tr>' : '') +
+      // o rodapé
+      '<tr><td align="center" class="px" style="padding:16px 28px 0;font:12px/18px ' + FONTE + ';color:#8C7A7B">' +
+        '<b style="color:' + COR.suave + '">' + esc(nome) + '</b>' + (o.caixa ? ' · <a href="mailto:' + esc(o.caixa) + '" style="color:#8C7A7B">' + esc(o.caixa) + '</a>' : '') +
+        '<br>Dúvidas? É só responder este e-mail.' +
+      '</td></tr>' +
+    '</table></td></tr></table></body></html>';
   return { html, imagens };
 }
 
