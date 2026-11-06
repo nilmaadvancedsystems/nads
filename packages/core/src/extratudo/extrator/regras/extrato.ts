@@ -242,6 +242,25 @@ export function dataNoPeriodo(data: string, p: { inicio: string; fim: string }):
 }
 
 /**
+ * A data que o OCR embaralhou na coluna da data, quando o extrato diz o período (Vitor, 06/11/2026, na 571: "Qual o
+ * sentido? Onde tem lançamento no dia 01/01?"): as letras que parecem número viram número ("c2r01r2026" = 02/01/2026,
+ * "c2102/20268" = 02/02/2026, com a barra lida como "1"); o dia são os 2 primeiros dígitos, e o mês, os 2 seguintes ou os
+ * 2 depois de um a mais (a barra lida como número). Vale só o que cai dentro do período; senão, null.
+ */
+export function dataEmbaralhada(token: string, p: { inicio: string; fim: string }): string | null {
+  const d = token.replace(/[oOcCQD]/g, '0').replace(/[lIi|!]/g, '1').replace(/\D/g, '');
+  if (d.length < 6) return null;
+  const dia = d.slice(0, 2);
+  for (const mes of [d.slice(2, 4), d.slice(3, 5)]) {
+    for (const a of new Set([p.inicio.slice(0, 4), p.fim.slice(0, 4)])) {
+      const data = a + '-' + mes + '-' + dia;
+      if (+mes >= 1 && +mes <= 12 && +dia >= 1 && +dia <= 31 && data >= p.inicio && data <= p.fim) return data;
+    }
+  }
+  return null;
+}
+
+/**
  * O extrato do BB com as colunas Dt. balancete e Dt. movimento: o "Consultas - Extrato de conta corrente" (o do BB
  * Empresa) e o "Cliente - Conta atual" (o mesmo cabeçalho de colunas). Nele, a data certa do lançamento é a Dt. movimento
  * (Vitor, 09/10/2026; 04/11/2026, na 10: o "Movimento do Dia" de balancete 07/07 e movimento 08/07 saía como data errada).
@@ -459,6 +478,7 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
         if (data) t.splice(0, comAno ? 3 : 2);
       }
       else if (RE_DATA_MES.test(diaDoOcr(t[0].s))) { data = lerData(diaDoOcr(t[0].s), ano); if (data) t.shift(); }
+      else if (entre) { data = dataEmbaralhada(t[0].s, entre); if (data) t.shift(); }
       if (data && entre) data = dataNoPeriodo(data, entre);
       if (data) { dataAtual = data; noResumo = false; }
       // (e o "Detalhamento do Saldo" do BNB: saldo disponível, limite, Investimentos "BNB AUTOMATICO FIF"; Vitor, 14/10/2026; e o

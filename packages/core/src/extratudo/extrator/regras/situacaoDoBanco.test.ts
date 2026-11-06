@@ -30,6 +30,14 @@ describe('cheque especial no banco', () => {
     const e = emp([arq('e', 'banco', EXTRATO, 10000), arq('r', 'sistema', [...RAZAO, L('2026-03-03', 4000, 'Ajuste'), L('2026-03-04', -4000, 'Estorno')])]);
     expect(situacaoDoBancoNoPeriodo(e, 'b', 'b', M).tipo).toBe('pendente');
   });
+  it('o cheque especial que o razão fez do jeito dele (outros valores) e que não mexe no saldo: Ok (06/11/2026)', () => {
+    const e = emp([arq('e', 'banco', EXTRATO, 10000), arq('r', 'sistema', [...RAZAO, L('2026-03-03', 4000, 'Ajuste cheque especial'), L('2026-03-05', -4000, 'Estorno cheque especial')])]);
+    expect(situacaoDoBancoNoPeriodo(e, 'b', 'b', M).tipo).toBe('ok');
+  });
+  it('o cheque especial do razão que mexe no saldo (sem o estorno): continua pendente', () => {
+    const e = emp([arq('e', 'banco', EXTRATO, 10000), arq('r', 'sistema', [...RAZAO, L('2026-03-03', 4000, 'Ajuste cheque especial')])]);
+    expect(situacaoDoBancoNoPeriodo(e, 'b', 'b', M).tipo).toBe('pendente');
+  });
   it('sem dia negativo: Ok direto', () => {
     const e = emp([arq('e', 'banco', EXTRATO, 20000), arq('r', 'sistema', RAZAO)]);
     expect(situacaoDoBancoNoPeriodo(e, 'b', 'b', M)).toEqual({ tipo: 'ok', negativos: [] });

@@ -54,9 +54,20 @@ describe('extrato em PDF', () => {
       [['13/02/2028', 40], ['RESGATE INVEST FACIL', 100], ['7.829,01', 330], ['7.262,71', 480]],
       [['20/02/2068', 40], ['PIX RECEBIDO', 100], ['250,00', 330], ['7.512,71', 480]],
     ]);
+    // a data embaralhada é lida (02/02), e não fica no 1º dia
     expect(lancamentosDoPdf([p], 'banco', 2026).map(l => l.data + ' ' + l.valor)).toEqual([
-      '2026-02-01 -56640', '2026-02-01 -90', '2026-02-13 782901', '2026-02-20 25000',
+      '2026-02-02 -56640', '2026-02-02 -90', '2026-02-13 782901', '2026-02-20 25000',
     ]);
+  });
+  it('o Bradesco pelo OCR: o "c2r01r2026" é o 02/01, e a linha seguinte sem data fica no mesmo dia (não no saldo anterior)', () => {
+    const p = pagina([
+      [['Extrato de: Ag: 1 | CC: 2 | Entre 01/01/2026 e 31/01/2026', 40]],
+      [['Data', 40], ['Lançamento', 100], ['Crédito (R$)', 330], ['Débito (R$)', 400], ['Saldo (R$)', 480]],
+      [['30/12/2025', 40], ['SALDO ANTERIOR', 100], ['1,00', 480]],
+      [['c2r01r2026', 40], ['LIQUIDACAO DE COBRANCA', 100], ['131,25', 330], ['132,25', 480]],
+      [['xx', 40], ['TARIFA BANCARIA', 100], ['-0,90', 400], ['131,35', 480]],
+    ]);
+    expect(lancamentosDoPdf([p], 'banco', 2026).map(l => l.data + ' ' + l.valor)).toEqual(['2026-01-02 13125', '2026-01-02 -90']);
   });
   it('coluna Valor com sinal e coluna Saldo ignorada; histórico da linha de baixo junta', () => {
     const p = pagina([

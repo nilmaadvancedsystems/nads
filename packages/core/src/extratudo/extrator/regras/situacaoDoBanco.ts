@@ -134,6 +134,23 @@ export function conferenciaDoBanco(e: EmpresaExtrator, banco: string, primeiro: 
       && m.data !== l.data && Math.abs(diaDe(m.data) - diaDe(l.data)) <= DIAS_ATE_O_ESTORNO);
     if (par) { cheque.linhas.add(l); cheque.linhas.add(par); pareados.add(l); pareados.add(par); }
   }
+  // o cheque especial que o razão já fez do jeito dele, com outros valores ou dias (Vitor, 06/11/2026: "tem vezes que o
+  // razão também já tem cheque especial feito, se o saldo tiver batendo só deixa, não fica acusando erro"): os lançamentos
+  // do cheque especial que sobraram, somados, não mexem no saldo (dão zero, ou o saldo negativo do último dia negativo, que
+  // tem o estorno depois do período). Aí contam como certos, e os dias negativos dos meses deles, como feitos
+  // (o par que se anula, acima, também: tirava a pendência, mas o dia negativo seguia como "falta o cheque")
+  const feitos = [...pareados];
+  const restam = sobras.filter(l => !cheque.linhas.has(l) && !ajustes.has(l) && ehDoChequeEspecial(l));
+  if (restam.length) {
+    const soma = restam.reduce((t, l) => t + l.valor, 0);
+    const ultimoNegativo = negativos[negativos.length - 1];
+    if (soma === 0 || (ultimoNegativo && Math.abs(soma) === Math.abs(ultimoNegativo.saldo))) {
+      for (const l of restam) cheque.linhas.add(l);
+      feitos.push(...restam);
+    }
+  }
+  const mesesFeitos = new Set(feitos.map(l => l.data.slice(0, 7)));
+  for (const n of negativos) if (mesesFeitos.has(n.data.slice(0, 7))) cheque.cobertos.add(n.data);
   // o que o razão lançou e estornou no mesmo dia, na mesma contrapartida, e o banco não mostra (Vitor, 27/10/2026: na 237,
   // o "ENVIO TED" e o "DEV. TED" de 18.800,00 em 02/02 — "o banco não lançou a entrada e o estorno no extrato, que dá na
   // mesma do meu razão"): se anulam, não é pendência
