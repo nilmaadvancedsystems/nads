@@ -329,7 +329,9 @@ function MesesDoBanco({ meses, competencia, buscandoMes, travado, aceitarExtrato
       return (
         <>
           <button type="button" className="imp-mes-sem" disabled={travado || !naTarefa} onClick={() => onSemMovimento(m.mes, false)} title="Não teve movimento — clique para desfazer">s/ mov.</button>
-          {doDrive ? <BotaoVer titulo={'Ver o extrato sem movimento: ' + doDrive.nome} onVer={() => onVer(doDrive)} />
+          {/* o razão não tem o olhinho (Vitor, 06/11/2026: "o razão não precisa do olho") */}
+          {lado === 'sistema' ? null
+            : doDrive ? <BotaoVer titulo={'Ver o extrato sem movimento: ' + doDrive.nome} onVer={() => onVer(doDrive)} />
             : doEmail.length > 0 ? <BotaoVer titulo={'Ver o extrato sem movimento: ' + doEmail.map(p => p.nome).join(', ')} onVer={() => doEmail.forEach(abrirPuxado)} />
             : <BotaoVer titulo={'Ver ' + nomeDoLado + ' de ' + m.rotulo + ' (sem movimento)'} onVer={() => onVerImportado(lado, m.mes, true)} />}
         </>
@@ -352,7 +354,7 @@ function MesesDoBanco({ meses, competencia, buscandoMes, travado, aceitarExtrato
     const semExtrato = lado === 'sistema' && !m.extrato && !m.ladoExtrato.doDrive.length ? DICA_SEM_EXTRATO : undefined;
     return <>{lado === 'banco' && subindo(m.mes) && <SubindoAoDrive />}<BotaoLado lado={info} titulo={(lado === 'banco' ? 'Extrato' : 'Razão') + ' de ' + m.rotulo} aceitar={lado === 'banco' ? aceitarExtrato : aceitarRazao} travado={trava} semExtrato={semExtrato}
       onArquivos={fs => onArquivos(lado, fs, m.mes)} onExcluir={() => onExcluir(lado, m.mes)} />
-      {info.qtdArquivos > 0 && <BotaoVer titulo={'Ver o ' + nomeLado + ' importado de ' + m.rotulo} onVer={() => onVerImportado(lado, m.mes)} />}</>;
+      {lado === 'banco' && info.qtdArquivos > 0 && <BotaoVer titulo={'Ver o ' + nomeLado + ' importado de ' + m.rotulo} onVer={() => onVerImportado(lado, m.mes)} />}</>;
   };
   return (
     <div className="imp-periodo-linha">
