@@ -114,6 +114,8 @@ function documentosNaPasta(itens, raizId) {
     if (!/^\d{4}$/.test(c[2]) || !/^(0[1-9]|1[0-2])$/.test(c[3])) return;
     const tipo = TIPO_POR_PASTA[c[4]];
     if (!tipo) return;
+    // o extrato que um novo substituiu (envios-do-nads, 06/11/2026) não prova nada: fica de fora
+    if (c.slice(5, -1).includes('SUBSTITUIDOS')) return;
     const chave = c[2] + '-' + c[3] + '|' + tipo;
     if (!achados.has(chave)) achados.set(chave, []);
     // a pasta logo abaixo do tipo é o banco (só quando o arquivo está dentro dela)

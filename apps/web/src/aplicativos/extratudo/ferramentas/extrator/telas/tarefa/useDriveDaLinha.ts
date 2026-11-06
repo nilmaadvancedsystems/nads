@@ -258,15 +258,18 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
   /**
    * O extrato importado do computador vai para o Drive quando o mês não está lá (Vitor, 09/10/2026: "upe no drive o que ele
    * upou do pc"; o PDF de vários meses vai quebrado, um por mês). Vai para o Claudio Secretario e o arquivamento põe em
-   * EXTRATOS/AAAA/MM/BANCÁRIOS/<BANCO>. Só com o login do Entregas; mês que já tem extrato (ou candidato) no Drive não vai.
+   * EXTRATOS/AAAA/MM/BANCÁRIOS/<BANCO>. Só com o login do Entregas.
+   * O mês que já tem o extrato no Drive (Vitor, 06/11/2026: "as vezes o que está no drive tá errado"): o importado à mão é o
+   * certo, então ele sobe e o do Drive vai para a pasta SUBSTITUÍDOS (o robô move; nada é apagado). Só nos meses em que a
+   * pessoa importou (meses; sem eles, todos os do arquivo) e quando o do Drive é um só; mais de um, ou só candidato, não vai.
    */
-  async function subirAoDrive(linha: Linha, fs: File[], cliente: string) {
+  async function subirAoDrive(linha: Linha, fs: File[], cliente: string, meses?: string[]) {
     if (!drive.enviarAoDrive || !fs.length) return;
     // sem o Drive conectado, pede o login e manda depois (Vitor, 19/10/2026: na 289, o 06 e o 07 do Sicoob entraram e nunca
     // foram para o Drive, sem aviso; o olhinho não tinha o PDF para abrir)
     if (!acesso.entrou) {
       if (drive.loginDeFora || drive.exemplos) return;
-      depois.current = () => { void subirAoDrive(linha, fs, cliente); };
+      depois.current = () => { void subirAoDrive(linha, fs, cliente, meses); };
       setLogin(l => ({ ...l, aberto: true, erro: '' }));
       return;
     }
@@ -286,10 +289,11 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
           // já tem o extrato DESTE mês no Drive: não manda de novo. (Vitor, 19/10/2026: "não está sendo armazenado" — o mês
           // sem arquivo devolve como candidatos os extratos dos OUTROS meses, e o envio era pulado em toda empresa que já
           // tinha algum extrato no Drive)
-          if (r.situacao === 'achou' || r.situacao === 'varios' || r.candidatos.some(c => c.daCompetencia)) continue;
-          const envio = await drive.enviarAoDrive({ nome: p.nome, bytes: p.bytes }, { competencia: p.mes, codigo, cliente });
+          const substituir = r.situacao === 'achou' && r.arquivo && (!meses || meses.includes(p.mes)) ? r.arquivo.id : undefined;
+          if (!substituir && (r.situacao === 'achou' || r.situacao === 'varios' || r.candidatos.some(c => c.daCompetencia))) continue;
+          const envio = await drive.enviarAoDrive({ nome: p.nome, bytes: p.bytes }, { competencia: p.mes, codigo, cliente, ...(substituir ? { substituir } : {}) });
           if (envio) setSubindo(x => ({ ...x, [linha.id + '|' + p.mes]: { envio, em: Date.now() } }));
-          mandados.push(p.mes.slice(5) + '/' + p.mes.slice(0, 4));
+          mandados.push(p.mes.slice(5) + '/' + p.mes.slice(0, 4) + (substituir ? ' (o do Drive vai para SUBSTITUÍDOS)' : ''));
         }
       }
       if (mandados.length) vm.avisar('Mandado para o Drive: ' + mandados.join(', ') + ' (vai direto para a pasta do banco, em até 2 minutos)');
@@ -384,7 +388,7 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
     cancelando,
     cancelar: () => { cancelado.current = true; setCancelando(true); },
     buscar: (linha: Linha) => { void buscar(linha); },
-    subirAoDrive: (linha: Linha, fs: File[], cliente: string) => { void subirAoDrive(linha, fs, cliente); },
+    subirAoDrive: (linha: Linha, fs: File[], cliente: string, meses?: string[]) => { void subirAoDrive(linha, fs, cliente, meses); },
     buscarNoPeriodo: (linha: Linha, meses: string[]) => { void buscarNoPeriodo(linha, meses); },
     login: { ...login, set: (m: Partial<typeof login>) => setLogin(l => ({ ...l, ...m })), entrar: () => { void entrar(); }, fechar: () => { setPendente(null); depois.current = null; setLogin(l => ({ ...l, aberto: false })); } },
     /** pede o login do Entregas e, ao entrar, faz `f` */

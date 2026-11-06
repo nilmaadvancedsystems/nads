@@ -307,7 +307,8 @@ function analisarLocal(sub, nome, cli) {
                 const bb = bate(sub[5], BANCOS);
                 if (!bb) ach('PASTA-FORA-DO-PADRAO', 'banco/operadora "' + sub[5] + '" fora da lista fechada do Dicionário §5.1', null, 0.9, 'Dicionário §5.1: nunca crie pasta com nome novo');
                 else if (bb.como === 'grafia') grafia(5, bb.c);
-                if (sub.length > 6) pastaFora(6, 'subpasta a mais dentro do banco');
+                // SUBSTITUÍDOS: o extrato antigo que o nads trocou pelo novo (envios-do-nads, Vitor, 06/11/2026)
+                if (sub.length > 6 && !(sub.length === 7 && N(sub[6]) === 'SUBSTITUIDOS')) pastaFora(6, 'subpasta a mais dentro do banco');
                 const ok = b4.c === 'COMPROVANTES' ? porNome(NOMES.COMPROVANTES, null, true) : porNome(NOMES.MES, null, true);
                 if (!ok) {
                   // "Comprovante 09-04-2026 16h24m57s.pdf": o nome do banco preservado (o BACKFILL de 27/08/2026 registrou assim)

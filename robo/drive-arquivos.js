@@ -246,6 +246,6 @@ function getDrive() {
 }
 
 module.exports = {
-  PASTA_RAIZ, sanitizar, getDrive, pastaDoCliente, salvarArquivo, salvarArquivoComId, copiaJaNaOrigem, pastaRaiz,
+  PASTA_RAIZ, sanitizar, getDrive, pastaDoCliente, salvarArquivo, salvarArquivoComId, copiaJaNaOrigem, pastaRaiz, mesmoConteudo,
   garantirCaminho, garantirPasta, espelharPasta,
 };

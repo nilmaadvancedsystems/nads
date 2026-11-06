@@ -9,7 +9,8 @@
 //      código ("58" -> clientes.codigoOrigem), senão o que a tela mandou, senão "Enviados pelo nads" —,
 //      na mesma pasta onde o robô do Gmail guarda (pela API na nuvem, em disco no PC);
 //   3. apaga os pedaços (o arquivo não fica no banco) e responde no envio ('pronto', pasta, nomeFinal).
-// Nunca apaga nem sobrescreve nada no Drive: nome repetido com conteúdo diferente vira "nome (2).pdf" e
+// Nunca apaga nem sobrescreve nada no Drive (o extrato substituído só muda para a pasta SUBSTITUÍDOS, 06/11/2026): nome
+// repetido com conteúdo diferente vira "nome (2).pdf" e
 // o mesmo arquivo de novo não é gravado duas vezes (salvarArquivo).
 // O extrato do mês que a Importação manda ("Extrato SICOOB 06-2026.pdf", com o código da empresa) não espera o
 // arquivamento: vai direto para CONTÁBIL/EXTRATOS/AAAA/MM/BANCÁRIOS/<BANCO> na pasta da empresa, na frente da fila
@@ -202,10 +203,39 @@ async function gravarNaPastaDoBanco(db, drive, envio, c) {
   const itens = [];
   for (let n = 0; n < partes; n++) itens.push(...((((await ref.collection('partes').doc(String(n)).get()).data()) || {}).itens || []));
   const cam = comp ? caminhoDoExtratoNoIndice(itens, cli.id, ex, 'COMPROVANTES', comp.original) : caminhoDoExtratoNoIndice(itens, cli.id, ex);
+  const res = { pasta: cli.nomePasta + '/' + cam.caminho, codigo, cliente: String(cli.nome || cli.nomePasta || ''), subpasta: cam.caminho };
+  // o extrato do mês que este substitui (o que veio do e-mail ou do computador é o certo): vai para SUBSTITUÍDOS
+  const antigo = !comp && typeof envio.substituir === 'string' ? envio.substituir : '';
+  if (antigo && (await moverParaSubstituidos(drive, itens, cli.id, antigo, c.buffer)) === 'igual') return Object.assign(res, { nomeFinal: cam.nomeFinal, jaEstava: true });
   let pastaId = cam.existente;
   for (const nome of cam.faltam) pastaId = await driveArquivos.garantirPasta(drive, pastaId, nome);
   const salvo = await driveArquivos.salvarArquivo(drive, pastaId, cam.nomeFinal, c.buffer);
-  return { pasta: cli.nomePasta + '/' + cam.caminho, nomeFinal: salvo || cam.nomeFinal, jaEstava: !salvo, codigo, cliente: String(cli.nome || cli.nomePasta || ''), subpasta: cam.caminho };
+  return Object.assign(res, { nomeFinal: salvo || cam.nomeFinal, jaEstava: !salvo, ...(antigo ? { substituiu: antigo } : {}) });
+}
+
+const PASTA_DOS_SUBSTITUIDOS = 'SUBSTITUÍDOS';
+
+/**
+ * Tira o extrato antigo do caminho (Vitor, 06/11/2026: "deixa o último fora dessa pasta de substituídos e deixa os antigos
+ * nela"): o arquivo vai para SUBSTITUÍDOS, dentro da pasta onde estava; nada é apagado. Só arquivo da pasta da empresa (pelo
+ * mapa). 'igual' = o antigo tem o mesmo conteúdo (fica onde está e o novo não é gravado); 'movido'; '' = não mexeu.
+ */
+async function moverParaSubstituidos(drive, itens, clienteId, arquivoId, buffer) {
+  const da = driveArquivos || require('./drive-arquivos.js');
+  const indice = require('./drive-indice');
+  const it = itens.find(x => x.i === arquivoId);
+  const cam = it && it.t === 'f' ? indice.caminhos(itens, clienteId).get(arquivoId) : null;
+  if (!cam) return '';
+  const meta = (await drive.files.get({ fileId: arquivoId, fields: 'id, name, parents, size, md5Checksum, trashed', supportsAllDrives: true })).data;
+  if (!meta || meta.trashed || !(meta.parents || []).length) return '';
+  if (da.mesmoConteudo(meta, buffer)) return 'igual';
+  const pai = meta.parents[0];
+  // já está em SUBSTITUÍDOS (o envio foi tentado de novo depois de mover)
+  const nomeDoPai = (await drive.files.get({ fileId: pai, fields: 'name', supportsAllDrives: true })).data.name;
+  if (indice.chaveDeNome(nomeDoPai) === indice.chaveDeNome(PASTA_DOS_SUBSTITUIDOS)) return '';
+  const destino = await da.garantirPasta(drive, pai, PASTA_DOS_SUBSTITUIDOS);
+  await drive.files.update({ fileId: arquivoId, addParents: destino, removeParents: meta.parents.join(','), fields: 'id', supportsAllDrives: true });
+  return 'movido';
 }
 
 function iniciarEnviosDoNads(db, log) {
@@ -244,7 +274,7 @@ function iniciarEnviosDoNads(db, log) {
               status: 'pronto', pasta: direto.pasta, nomeFinal: direto.nomeFinal, jaEstava: direto.jaEstava, prontoEm: agora, direto: true,
               arquivamento: { situacao: 'arquivado', em: agora, execucao: 'direto', codigo: direto.codigo, cliente: direto.cliente, subpasta: direto.subpasta, final: direto.nomeFinal },
             });
-            log(oQue + ' pelo nads direto na pasta do banco (' + (envio.criadoPor || '?') + '):', c.nome, '->', direto.pasta + '/' + direto.nomeFinal + (direto.jaEstava ? ' (já estava lá)' : ''));
+            log(oQue + ' pelo nads direto na pasta do banco (' + (envio.criadoPor || '?') + '):', c.nome, '->', direto.pasta + '/' + direto.nomeFinal + (direto.jaEstava ? ' (já estava lá)' : '') + (direto.substituiu ? ' (o antigo foi para ' + PASTA_DOS_SUBSTITUIDOS + ')' : ''));
             painel.atividade('envios', 'Arquivou o ' + oQue + ' mandado pelo nads: ' + c.nome, direto.pasta + '/' + direto.nomeFinal + (direto.jaEstava ? ' (já estava lá)' : '') + (envio.criadoPor ? ' · de ' + envio.criadoPor : ''));
             return;
           }
@@ -363,4 +393,4 @@ function iniciarDestinoDosEnvios(db, log) {
   }, log);
 }
 
-module.exports = { extratoDoNome, comprovanteDoNome, caminhoDoExtratoNoIndice, montarEnvio, nomeDaPastaDoCliente, PASTA_SEM_CLIENTE, iniciarEnviosDoNads, guiaDoEnvio, idDaGuiaDoCliente, docDaGuiaDoCliente, pedacosDoPdfCliente, guiaNaAreaDoCliente, destinoNoArquivamento, iniciarDestinoDosEnvios };
+module.exports = { extratoDoNome, comprovanteDoNome, caminhoDoExtratoNoIndice, moverParaSubstituidos, montarEnvio, nomeDaPastaDoCliente, PASTA_SEM_CLIENTE, iniciarEnviosDoNads, guiaDoEnvio, idDaGuiaDoCliente, docDaGuiaDoCliente, pedacosDoPdfCliente, guiaNaAreaDoCliente, destinoNoArquivamento, iniciarDestinoDosEnvios };

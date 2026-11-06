@@ -649,7 +649,7 @@ export function TarefaExtratos() {
   // o extrato importado sem movimento marca o mês como sem movimento no banco (Vitor, 13/10/2026)
   useEffect(() => { vm.aoSemMovimento((banco, meses) => { for (const m of meses) ponte.marcarSemMovimento(banco, true, m); }); });
   // meses: de onde o extrato veio (a coluna do mês, a busca no e-mail), para o sem movimento que não diz o mês
-  const importarExtrato = (b: (typeof vm.bancos)[number], fs: File[], depois?: () => void, meses?: string[]) => { void vm.importarArquivos(b.id, 'banco', fs, meses).then(ok => { if (ok) { d.subirAoDrive(b, fs, s.nome); depois?.(); } }); };
+  const importarExtrato = (b: (typeof vm.bancos)[number], fs: File[], depois?: () => void, meses?: string[]) => { void vm.importarArquivos(b.id, 'banco', fs, meses).then(ok => { if (ok) { d.subirAoDrive(b, fs, s.nome, meses); depois?.(); } }); };
   // "Buscar no e-mail": o anexo escolhido entra como se viesse do computador (Vitor, 13/10/2026); fica para o olhinho dos meses dele
   const em = useBuscarNoEmail((linha, fs, meses) => {
     const b = vm.bancos.find(x => x.id === linha.id);
