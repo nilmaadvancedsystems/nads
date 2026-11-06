@@ -6,7 +6,7 @@
 import { conferencia, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useMemo, useState } from 'react';
-import { useNotasDaConferencia } from '../../../../concilia-ai/importadosNaEtapa';
+import { useNotasDaConferencia } from '../../../etapas/conferencia/importadosNaEtapa';
 import { useGmailDoEntregas, useRepo, useSieg } from '../../../dados/repo';
 import { useEmpresasPermitidas } from '../../empresas/andamento';
 

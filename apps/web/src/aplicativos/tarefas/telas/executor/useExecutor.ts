@@ -23,18 +23,6 @@ import { dinamicoDaEmpresa } from '../../../../comum/contabilDaEmpresa';
 import { useEmpresasPermitidas } from '../empresas/andamento';
 
 /**
- * Onde cada aplicativo mora. O Extratudo vem junto no site da Tarefas (mesmo endereço: o login do Entregas
- * fica guardado); o Conciliadorzinho ainda é o site dele. A Conferência é sempre a de verdade.
- */
-const soTarefas = import.meta.env.VITE_APLICATIVO === 'tarefas';
-const BASES: Record<t.FerramentaDaEtapa['app'], string> = {
-  extratudo: '',
-  conciliadorzinho: soTarefas ? 'https://conciliadorzinho-nilma.web.app' : '',
-  // a Conferência vem junto no site da Tarefas (a etapa Conferência fiscal abre no mesmo endereço)
-  'concilia-ai': '',
-};
-
-/**
  * A conferência automática do "Próximo" (extrato e razão importados…). DESLIGADA por enquanto (Vitor, 30/09/2026:
  * "libera pra mim, depois bloqueio de novo"): o Próximo marca a etapa como feita sem conferir. Para bloquear de
  * novo, volte para true.
@@ -86,10 +74,9 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   // a etapa da vez: a primeira que falta em algum mês do período
   const etapa = empresa && meses.length ? rotina.etapas.find(e => meses.some(c => !concluidaEm(e.id, c))) || null : null;
   const pendentes = etapa ? meses.filter(c => !concluidaEm(etapa.id, c)) : [];
-  const f = etapa?.ferramenta || null;
   // em lote (vários meses: o período escolhido na Importação), toda etapa trabalha o período inteiro, do começo ao fim
   // (Vitor, 02/10/2026): as ações valem para todos os meses que faltam. Num mês só, a ferramenta de período também.
-  const juntos = varios || !!f?.periodo || !!etapa?.tela?.periodo;
+  const juntos = varios || !!etapa?.tela?.periodo;
   const alvos = juntos ? pendentes : pendentes.slice(0, 1);
   const competencia = pendentes[0] || meses[meses.length - 1] || '';
   const ex = exDe[competencia] || null;
@@ -207,15 +194,13 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   const [vendo, setVendo] = useState<string | null>(null);
   const revista = vendo && vendo !== etapa?.id && (dev || meses.some(c => concluidaEm(vendo, c))) ? rotina.etapas.find(e => e.id === vendo) || null : null;
   const vista = revista || etapa;
-  const fv = vista?.ferramenta || null;
   // a etapa "só quando adicionada" (o Creditor) trabalha os meses em que entrou: os do caixa com CRÉD.LIQ.COBRANÇA
   // (Vitor, 05/10/2026: "já deixa configurado, de acordo com os meses de cred liq do caixa")
   // (só os que faltam concluir; revendo a etapa já feita, todos em que ela entrou)
   const entrouEm = vista?.soQuandoAdicionada ? meses.filter(c => t.etapaNoMes(exDe[c] || null, vista.id)) : [];
   const mesesDaEtapa = revista ? entrouEm : entrouEm.filter(c => !concluidaEm(vista!.id, c));
   const compV = mesesDaEtapa[0] || (revista ? meses[meses.length - 1] || competencia : competencia);
-  const juntosV = varios || !!fv?.periodo || !!vista?.tela?.periodo;
-  const mesesV = mesesDaEtapa.length ? '&meses=' + mesesDaEtapa.join(',') : juntosV && varios ? '&meses=' + meses.join(',') : '';
+  const juntosV = varios || !!vista?.tela?.periodo;
 
   // começou (ou voltou a) uma etapa: um evento por etapa aberta (conta o tempo de cada uma)
   const iniciadas = useRef(new Set<string>());
@@ -478,14 +463,12 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
       if (p) setVendo(p.id === etapa?.id ? null : p.id);
     },
     interrompidaAntes: etapa && ex ? t.estadoDa(ex, etapa.id)?.situacao === 'interrompida' ? t.estadoDa(ex, etapa.id) : null : null,
-    // no período, a ferramenta que trabalha vários meses recebe todos (abas por mês); as outras, o mês da vez
-    ferramenta: fv && empresa ? { nome: fv.nome, embutir: fv.embutir, requisitos: !!fv.requisitos, url: BASES[fv.app] + fv.caminho(empresas.rotaDaEmpresa(empresa)) + (fv.app === 'extratudo' ? (fv.caminho('').includes('?') ? '&' : '?') + 'competencia=' + compV + mesesV
-      // a Conferência roda no período que a pessoa está fazendo (o mês, ou os meses do Em Lote)
-      : fv.app === 'concilia-ai' ? '?meses=' + (juntosV && varios ? meses : [compV]).join(',') + (prestaServico == null ? '' : '&servicos=' + (prestaServico ? 'sim' : 'nao')) : '') } : null,
     /** a tela própria da etapa (no lugar da ferramenta em iframe): a empresa e os meses que ela trabalha */
     tela: vista?.tela && empresa ? {
       id: vista.tela.id,
-      etapa: { nome: empresa.nome, codigo: empresa.codigo, competencia: compV, meses: mesesDaEtapa.length ? mesesDaEtapa : juntosV && varios ? [...meses] : [compV], dev },
+      etapa: { nome: empresa.nome, codigo: empresa.codigo, competencia: compV, meses: mesesDaEtapa.length ? mesesDaEtapa : juntosV && varios ? [...meses] : [compV], dev, prestaServico,
+        // os meses que iam no ?meses= do iframe: os da etapa (o Creditor, o Cartões…) ou os do Em lote; num mês só, nenhum
+        mesesDaTarefa: mesesDaEtapa.length > 0 || (juntosV && varios) },
     } : null,
     /** os meses que a etapa ainda precisa (no período) */
     pendentes: pendentes.map(rotuloCurto),

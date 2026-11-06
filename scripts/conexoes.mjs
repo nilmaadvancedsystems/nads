@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Trava das conexões do nads. Decisão do usuário (2026-09-28): o nads usa o MESMO banco da
 // conferencia-nilma.web.app, e mais nada. Exceção liberada pelo Vitor (2026-09-29): o Creditor lê o
-// Drive do escritório pelo Entregas (app Pendências), SÓ em extratudo/dados/drive.firestore.ts: o mapa
+// Drive do escritório pelo Entregas (app Pendências), SÓ em tarefas/dados/driveDasFerramentas.firestore.ts: o mapa
 // das pastas, o pedido ao robô e o download da cópia temporária (o único fetch permitido).
 // Mais uma, liberada pelo Vitor (2026-09-30, "Pedir extratos"), no mesmo arquivo: ler o cadastro de clientes
 // do Entregas (e-mails e telefone) e pôr o pedido de e-mail na fila do robô (solicitacoesEmail).
@@ -10,7 +10,7 @@
 // e as tarefas na coleção `rotinas`), só em aplicativos/tarefas/dados/*.firestore.ts, sem fetch.
 // Também (2026-09-30): o Cadastro da empresa, coleção `cadastro` (e cadastro/{id}/plano) do Entregas: a Tarefas
 // lê e grava (tarefas/dados/cadastro.firestore.ts, que também lê balancetes/{código}); o Extratudo lê e grava
-// com o login do Drive (extratudo/dados/cadastro.firestore.ts). Sem fetch. A Tarefas também lê (só leitura) os
+// com o login do Drive (tarefas/dados/cadastroDasFerramentas.firestore.ts). Sem fetch. A Tarefas também lê (só leitura) os
 // clientes do Entregas: os bancos e as contas (bancos, contasBancarias) que o robô aprende pelo Drive e pelos extratos.
 // E o Drive e o Gmail do escritório pelo robô, como nas Pendências (2026-09-30), só em
 // aplicativos/tarefas/dados/{drive,gmail}.firestore.ts: driveIndice e robo/estado (só leitura), os pedidos em
@@ -33,7 +33,7 @@
 // ler; pedidosFgts para pedir e acompanhar, com o PDF e as telas que o robô da nuvem grava). Quem fala com o portal do
 // FGTS é o robô (robo/fgts-digital.js), nunca o app.
 // Os extratos que chegam por e-mail (2026-10-08, liberado pelo Vitor: "ele já jogue o extrato para o nads"), em
-// extratudo/dados/drive.firestore.ts: extratosRecebidos (o robô do Gmail grava; o app lê a lista, os pedaços do arquivo
+// tarefas/dados/driveDasFerramentas.firestore.ts: extratosRecebidos (o robô do Gmail grava; o app lê a lista, os pedaços do arquivo
 // e marca importado/ignorado). Sem fetch.
 // A consulta do CNPJ no cadastro (2026-10-13, liberada pelo Vitor: "Pode liberar"), só em
 // aplicativos/tarefas/dados/receita.ts: a BrasilAPI e a minhareceita.org (públicas, sem chave; as mesmas do Entregas).
@@ -63,7 +63,7 @@ const ONDE_PODE_FIREBASE = /[\\/]apps[\\/]web[\\/]src[\\/]aplicativos[\\/][^\\/]
 const TEXTOS_FIREBASE = [/from\s+['"]firebase(\/[a-z-]+)?['"]/, /\b(getFirestore|initializeFirestore|firebase\.firestore)\b/, /\binitializeApp\s*\(/, /firebaseio\.com/];
 const TEXTOS_REDE = [/\bfetch\s*\(/, /\bXMLHttpRequest\b/, /\bnew\s+WebSocket\b/, /\bsendBeacon\b/, /\bEventSource\b/];
 // o download da cópia que o robô do Entregas publica (e só dela: o arquivo confere o endereço antes)
-const ONDE_PODE_FETCH = /[\\/]apps[\\/]web[\\/]src[\\/]aplicativos[\\/]extratudo[\\/]dados[\\/]drive\.firestore\.ts$/;
+const ONDE_PODE_FETCH = /[\\/]apps[\\/]web[\\/]src[\\/]aplicativos[\\/]tarefas[\\/]dados[\\/]driveDasFerramentas\.firestore\.ts$/;
 // a consulta do CNPJ (só para os dois endereços públicos da Receita: conferido no fim)
 const ONDE_PODE_FETCH_RECEITA = /[\\/]apps[\\/]web[\\/]src[\\/]aplicativos[\\/]tarefas[\\/]dados[\\/]receita\.ts$/;
 const ENDERECOS_DA_RECEITA = ['https://brasilapi.com.br/api/cnpj/v1/', 'https://minhareceita.org/'];
@@ -166,7 +166,7 @@ if (fs.existsSync(rede)) {
   if (outros.length) { console.error('conexoes: rede.ts só pode consultar ' + ENDERECO_DO_IP + ' (achei: ' + outros.join(', ') + ')'); process.exit(1); }
 }
 // o download do Drive só pode ir para a cópia do robô do Entregas
-const drive = path.join(raiz, 'apps', 'web', 'src', 'aplicativos', 'extratudo', 'dados', 'drive.firestore.ts');
+const drive = path.join(raiz, 'apps', 'web', 'src', 'aplicativos', 'tarefas', 'dados', 'driveDasFerramentas.firestore.ts');
 if (fs.existsSync(drive) && !/url\.startsWith\(LINK_DO_ROBO\)/.test(fs.readFileSync(drive, 'utf8'))) {
   console.error('conexoes: drive.firestore.ts precisa conferir o endereço (url.startsWith(LINK_DO_ROBO)) antes do fetch');
   process.exit(1);

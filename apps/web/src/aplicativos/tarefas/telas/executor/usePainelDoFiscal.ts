@@ -4,7 +4,7 @@
 import { tarefas as t } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNotasDaConferencia } from '../../../concilia-ai/importadosNaEtapa';
+import { useNotasDaConferencia } from '../../etapas/conferencia/importadosNaEtapa';
 import { useExecucoes, useExecucoesDoPeriodo, useRegimesDoEntregas, useSieg } from '../../dados/repo';
 
 const VAZIO: t.painel.NotasDoPainel = { entradas: [], saidas: [], tomados: [], prestados: [] };

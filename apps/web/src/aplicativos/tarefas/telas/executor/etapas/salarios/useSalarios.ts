@@ -6,7 +6,7 @@ import { useMemo } from 'react';
 import { useCadastro } from '../../../../dados/repo';
 import { useExtratorDaEmpresa } from '../../../../dados/extrator';
 import { useFgtsDaEtapa } from '../../useFgtsDaEtapa';
-import { useContasDoBalancete } from '../../../../../concilia-ai/importadosNaEtapa';
+import { useContasDoBalancete } from '../../../../etapas/conferencia/importadosNaEtapa';
 import { useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
 import { useInssDaEtapa } from '../../useInssDaEtapa';
 import { useRazaoDaFolha } from '../../useRazaoDaFolha';

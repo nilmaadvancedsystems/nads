@@ -5,7 +5,7 @@
 import { Icone } from '@nads/ui';
 import { FaixaQueAbre } from '../../../../../comum/FaixaQueAbre';
 import { useColunaAjustavel, ValorNaGrade } from '../../../../../comum/GradeDosMeses';
-import { MenuDeConta } from '../../../../extratudo/ferramentas/creditor/partes/MenuDeConta';
+import { MenuDeConta } from '../../../etapas/creditor/partes/MenuDeConta';
 import type { FgtsDaEtapa as Fgts } from '../useFgtsDaEtapa';
 
 const PAGAMENTO: Record<Fgts['meses'][number]['situacao'], string> = { ok: '✓', falta: 'Falta', depois: 'Depois', 'sem-guia': '—' };
