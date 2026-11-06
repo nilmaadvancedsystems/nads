@@ -1,22 +1,18 @@
 // Cadastro › empresa › Contas bancárias: a barra de cima (quantas contas, encerradas, "Nova conta") e a lista.
 // Empresa sem cadastro: o aviso com a lista que o Extrator usa hoje e "Confirmar esta lista".
-import type { empresas } from '@nads/core';
 import { Alerta, Icone, LogoBanco, MenuSuspenso, useCarregando } from '@nads/ui';
 import { useState } from 'react';
-import { FormConta, FormEncerrar } from './partes/FormConta';
-import { JanelaNovaConta } from './partes/JanelaNovaConta';
+import { JanelaDaConta, type JanelaAberta } from './partes/JanelaDaConta';
 import { useContasBancarias, type LinhaConta, type VmContasBancarias } from './useContasBancarias';
 
-function AcoesDaConta({ vm, l, fechar }: { vm: VmContasBancarias; l: LinhaConta; fechar: () => void }) {
-  const [modo, setModo] = useState<'menu' | 'editar' | 'encerrar'>('menu');
-  if (modo === 'editar') return <FormConta vm={vm} id={l.id} inicial={l.dados} fechar={fechar} />;
-  if (modo === 'encerrar') return <FormEncerrar vm={vm} id={l.id} fechar={fechar} />;
+// o menu da engrenagem: Editar e Encerrar fecham o menu e abrem a janela do centro
+function AcoesDaConta({ vm, l, fechar, abrir }: { vm: VmContasBancarias; l: LinhaConta; fechar: () => void; abrir: (j: JanelaAberta) => void }) {
   return (
     <div role="menu">
-      <button type="button" className="popover-item" role="menuitem" onClick={() => setModo('editar')}><Icone nome="settings" /><span className="popover-texto">Editar</span></button>
+      <button type="button" className="popover-item" role="menuitem" onClick={() => { fechar(); abrir({ modo: 'editar', linha: l }); }}><Icone nome="settings" /><span className="popover-texto">Editar</span></button>
       {l.temFim
         ? <button type="button" className="popover-item" role="menuitem" onClick={() => { fechar(); vm.reabrir(l.id); }}><Icone nome="repeat" /><span className="popover-texto">Reabrir</span></button>
-        : <button type="button" className="popover-item" role="menuitem" onClick={() => setModo('encerrar')}><Icone nome="lock" /><span className="popover-texto">Encerrar…</span></button>}
+        : <button type="button" className="popover-item" role="menuitem" onClick={() => { fechar(); abrir({ modo: 'encerrar', linha: l }); }}><Icone nome="lock" /><span className="popover-texto">Encerrar…</span></button>}
       <hr className="popover-sep" />
       <button type="button" className="popover-item perigo" role="menuitem" onClick={() => { fechar(); void vm.excluir(l); }}><Icone nome="x" /><span className="popover-texto">Excluir</span></button>
     </div>
@@ -26,8 +22,8 @@ function AcoesDaConta({ vm, l, fechar }: { vm: VmContasBancarias; l: LinhaConta;
 export function ContasBancarias({ rota }: { rota: string }) {
   const vm = useContasBancarias(rota);
   useCarregando(vm.carregando);
-  // a janela da nova conta (undefined = fechada; com inicial = veio de uma sugestão do robô, com o banco já escolhido)
-  const [nova, setNova] = useState<{ inicial?: empresas.cadastro.DadosDaConta }>();
+  // a janela do centro (incluir, editar ou encerrar); undefined = fechada
+  const [janela, setJanela] = useState<JanelaAberta>();
   return (
     <section>
       <div className="tarefas-barra-topo">
@@ -38,9 +34,9 @@ export function ContasBancarias({ rota }: { rota: string }) {
           </button>
         )}
         <span className="tarefas-barra-espaco" />
-        <button type="button" className="btn btn-primary" onClick={() => setNova({})}><Icone nome="plus" />Nova conta</button>
+        <button type="button" className="btn btn-primary" onClick={() => setJanela({ modo: 'nova' })}><Icone nome="plus" />Nova conta</button>
       </div>
-      {nova && <JanelaNovaConta vm={vm} inicial={nova.inicial} fechar={() => setNova(undefined)} />}
+      {janela && <JanelaDaConta vm={vm} aberta={janela} fechar={() => setJanela(undefined)} />}
 
       {vm.semCadastro && (
         <Alerta naLinha className="cad-aviso" titulo="Esta empresa ainda não tem os bancos cadastrados"
@@ -70,7 +66,7 @@ export function ContasBancarias({ rota }: { rota: string }) {
                 {s.comNumero ? (
                   <button type="button" className="btn btn-outline" onClick={() => vm.incluirSugestao(s)}>{s.tipo === 'completar' ? 'Completar' : 'Incluir'}</button>
                 ) : (
-                  <button type="button" className="btn btn-outline" onClick={() => setNova({ inicial: { marca: s.marca, agencia: '', conta: '', tipo: 'corrente' } })}>Incluir</button>
+                  <button type="button" className="btn btn-outline" onClick={() => setJanela({ modo: 'nova', inicial: { marca: s.marca, agencia: '', conta: '', tipo: 'corrente' } })}>Incluir</button>
                 )}
               </li>
             ))}
@@ -109,8 +105,8 @@ export function ContasBancarias({ rota }: { rota: string }) {
                   </td>
                   <td className="fraco">{l.vigencia}{l.encerrada && <span className="badge badge-neutral cad-badge">encerrada</span>}</td>
                   <td className="cad-acoes">
-                    <MenuSuspenso rotulo="" icone="settings" className="btn btn-ghost" dica="Editar, encerrar ou excluir" direita largura={400}
-                      conteudo={fechar => <AcoesDaConta vm={vm} l={l} fechar={fechar} />} />
+                    <MenuSuspenso rotulo="" icone="settings" className="btn btn-ghost" dica="Editar, encerrar ou excluir" direita
+                      conteudo={fechar => <AcoesDaConta vm={vm} l={l} fechar={fechar} abrir={setJanela} />} />
                   </td>
                 </tr>
               ))}
