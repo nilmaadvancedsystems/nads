@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { anoDoTexto, ehConsultasDoBB, ehPagBank, lancamentosDoPdf, mesesSemMovimento, paginasPorMes, periodoDoExtrato, saldoAnteriorDoPdf, saldosDoDiaDoPdf, type ItemDeTexto } from './extrato';
+import { anoDoTexto, ehConsultasDoBB, ehPagBank, extratoDoPdf, lancamentosDoPdf, mesesSemMovimento, paginasPorMes, periodoDoExtrato, saldoAnteriorDoPdf, saldosDoDiaDoPdf, type ItemDeTexto } from './extrato';
 
 /** Monta uma página: cada linha é [texto, x] com a mesma altura; as linhas descem de 14 em 14. */
 function pagina(linhas: [string, number][][]): ItemDeTexto[] {
@@ -48,15 +48,15 @@ describe('extrato em PDF', () => {
       [['Data', 40], ['Lançamento', 100], ['Crédito (R$)', 330], ['Débito (R$)', 400], ['Saldo (R$)', 480]],
       [['30/01/2026', 40], ['SALDO ANTERIOR', 100], ['1,00', 480]],
       // a data do 2/2 que o OCR embaralhou: o lançamento herdava o 30/01 do saldo anterior
-      [['c2102/20268', 40], ['PAGTO ELETRON COBRANCA', 100], ['-566,40', 400], ['-565,40', 480]],
-      [['TARIFA BANCARIA', 100], ['-0,90', 400], ['-566,30', 480]],
+      [['c2102/20268', 40], ['PAGTO ELETRON COBRANCA', 100], ['-100,00', 400], ['-99,00', 480]],
+      [['TARIFA BANCARIA', 100], ['-0,90', 400], ['-99,90', 480]],
       // o "2026" lido "2028" e "2068"
-      [['13/02/2028', 40], ['RESGATE INVEST FACIL', 100], ['7.829,01', 330], ['7.262,71', 480]],
-      [['20/02/2068', 40], ['PIX RECEBIDO', 100], ['250,00', 330], ['7.512,71', 480]],
+      [['13/02/2028', 40], ['RESGATE INVEST FACIL', 100], ['1.000,00', 330], ['900,10', 480]],
+      [['20/02/2068', 40], ['PIX RECEBIDO', 100], ['250,00', 330], ['1.150,10', 480]],
     ]);
     // a data embaralhada é lida (02/02), e não fica no 1º dia
     expect(lancamentosDoPdf([p], 'banco', 2026).map(l => l.data + ' ' + l.valor)).toEqual([
-      '2026-02-02 -56640', '2026-02-02 -90', '2026-02-13 782901', '2026-02-20 25000',
+      '2026-02-02 -10000', '2026-02-02 -90', '2026-02-13 100000', '2026-02-20 25000',
     ]);
   });
   it('o Bradesco pelo OCR: o "c2r01r2026" é o 02/01, e a linha seguinte sem data fica no mesmo dia (não no saldo anterior)', () => {
@@ -68,6 +68,48 @@ describe('extrato em PDF', () => {
       [['xx', 40], ['TARIFA BANCARIA', 100], ['-0,90', 400], ['131,35', 480]],
     ]);
     expect(lancamentosDoPdf([p], 'banco', 2026).map(l => l.data + ' ' + l.valor)).toEqual(['2026-01-02 13125', '2026-01-02 -90']);
+  });
+  it('o Bradesco pelo OCR: os valores sem vírgula, partidos e com o "−" lido como "1" ficam certos pelo saldo (06/11/2026)', () => {
+    // (como no OCR: o título em palavras soltas, e os números terminando uns 25 pontos depois da palavra — Crédito em 365,
+    // Débito em 430, Saldo em 505; os valores em 390, 455 e 530)
+    const p = pagina([
+      [['Extrato de: Ag: 1 | CC: 2 | Entre 01/01/2026 e 31/01/2026', 40]],
+      [['Data', 40], ['Lançamento', 100], ['Dcto.', 260], ['Crédito', 330], ['(R$)', 370], ['Débito', 400], ['(R$)', 435], ['Saldo', 480], ['(R$)', 510]],
+      [['31/12/2025', 40], ['SALDO ANTERIOR', 100], ['200,00', 500]],
+      // o "−12,34" lido "112,34", e o saldo 187,66 lido "18766"
+      [['06/01/2026', 40], ['PAGTO ELETRON COBRANCA', 100], ['1001', 260], ['112,34', 425], ['18766', 505]],
+      [['APLIC.INVEST FACIL', 100], ['1002', 260], ['-87,66', 425], ['100,00', 500]],
+      // o crédito 1.234,56 lido "123456"
+      [['09/01/2026', 40], ['RESGATE INVEST FACIL', 100], ['1003', 260], ['123456', 360], ['1.334,56', 490]],
+      // o crédito 2.345,67 partido em "2.345" e "67"
+      [['12/01/2026', 40], ['RESGATE INVEST FACIL', 100], ['1003', 260], ['2.345', 348], ['67', 380], ['3.680,23', 490]],
+    ]);
+    const ls = lancamentosDoPdf([p], 'banco', 2026);
+    expect(ls.map(l => l.data + ' ' + l.valor)).toEqual(['2026-01-06 -1234', '2026-01-06 -8766', '2026-01-09 123456', '2026-01-12 234567']);
+    // o Dcto fica no histórico, como veio
+    expect(ls[0].historico).toContain('1001');
+    expect(ls[2].historico).toContain('1003');
+  });
+  it('o Bradesco pelo OCR com o saldo negativo: o "−" perdido, o saldo anterior "7…", o saldo ilegível e o erro que a linha de baixo conserta (06/11/2026)', () => {
+    const p = pagina([
+      [['Extrato de: Ag: 1 | CC: 2 | Entre 01/02/2026 e 28/02/2026', 40]],
+      [['Data', 40], ['Lançamento', 100], ['Dcto.', 260], ['Crédito', 330], ['(R$)', 370], ['Débito', 400], ['(R$)', 435], ['Saldo', 480], ['(R$)', 510]],
+      // o "−11.234,56" lido "71.234,56" (o "−1" virou "7")
+      [['30/01/2026', 40], ['SALDO ANTERIOR', 100], ['71.234,56', 485]],
+      // os saldos negativos sem o "−"
+      [['02/02/2026', 40], ['PAGTO ELETRON COBRANCA', 100], ['1001', 260], ['500,00', 425], ['11.734,56', 485]],
+      // o saldo ilegível: a corrente anda com o valor (−10.734,56)
+      [['TRANSFERENCIA PIX', 100], ['1002', 260], ['1.000,00', 350], ['x34,56', 500]],
+      // um dígito trocado só no saldo (−12.734,56 lido "12.734,59"): fica o valor
+      [['DEVOL.CHEQUE DEPOSITADO', 100], ['1003', 260], ['2.000,00', 415], ['12.734,59', 485]],
+      [['CHEQUE COMPENSADO', 100], ['1004', 260], ['300,00', 425], ['13.034,56', 485]],
+      // o valor e o saldo errados na mesma linha (600,00 e −12.434,56 lidos "800,00" e "12.434,06"): a de baixo conserta
+      [['TRANSFERENCIA PIX', 100], ['1005', 260], ['800,00', 360], ['12.434,06', 485]],
+      [['RENTAB INVEST FACILCRED*', 100], ['1006', 260], ['0,01', 370], ['12.434,55', 485]],
+    ]);
+    const r = extratoDoPdf([p], 'banco', 2026);
+    expect(r.lancamentos.map(l => l.valor)).toEqual([-50000, 100000, -200000, -30000, 60000, 1]);
+    expect(r.saldoAnteriorConferido).toBe(-1123456);
   });
   it('coluna Valor com sinal e coluna Saldo ignorada; histórico da linha de baixo junta', () => {
     const p = pagina([

@@ -261,6 +261,100 @@ export function dataEmbaralhada(token: string, p: { inicio: string; fim: string 
 }
 
 /**
+ * Os números das colunas de valor que o OCR estragou (Vitor, 06/11/2026, na 571: "onde tem 179 no dia 06 aqui?"), no
+ * extrato que diz o período (o Bradesco): o número partido em dois ("2.345" "67" = 2.345,67) e o número sem a vírgula
+ * ("18766" = 187,66; "123456" = 1.234,56), quando a borda direita fica numa coluna de valor. A coluna é o fim da palavra
+ * do título ("Crédito"), e o "(R$)" vem depois: no OCR os números terminam uns 20 pontos à direita dela, e o Dcto, uns 65
+ * à esquerda da de Crédito.
+ */
+function consertarValoresDoOcr(t: Token[], col: Colunas): void {
+  const xs = [col.cred, col.deb, col.saldo, col.valor].filter((x): x is number => x != null);
+  const naColuna = (k: Token) => xs.some(x => Math.abs(k.x2 - x) <= 30);
+  for (let i = 0; i < t.length; i++) {
+    // a aspa que o OCR põe na frente do número ("“123,45")
+    if (/^["“”'‘’[]+-?\d/.test(t[i].s) && naColuna(t[i])) t[i] = { ...t[i], s: t[i].s.replace(/^["“”'‘’[]+/, '') };
+    // o ponto do milhar lido como vírgula ("712,345,67")
+    if (/^-?\d{1,3}(?:,\d{3})+,\d{2}$/.test(t[i].s) && naColuna(t[i])) t[i] = { ...t[i], s: t[i].s.replace(/,(?=\d{3}[,.])/g, '.') };
+    const a = t[i], b = t[i + 1];
+    if (b && /^-?\d{1,3}(?:\.\d{3})*$/.test(a.s) && /^\d{2}$/.test(b.s) && naColuna(b) && b.x - a.x2 <= 8) {
+      t.splice(i, 2, { s: a.s + ',' + b.s, x: a.x, x2: b.x2 });
+      continue;
+    }
+    if (/^-?\d{3,9}$/.test(a.s) && naColuna(a)) {
+      const neg = a.s.startsWith('-'), d = a.s.replace('-', '');
+      t[i] = { ...a, s: (neg ? '-' : '') + d.slice(0, -2).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',' + d.slice(-2) };
+    }
+  }
+}
+
+/** O número sem o 1º dígito (o "−" que o OCR leu como número: "712.345,67" era "−12.345,67"), em centavos. */
+const semOPrimeiroDigito = (n: number): number | null => { const s = String(Math.abs(n)).slice(1); return s ? Number(s) : null; };
+
+/**
+ * O número lido e o que ele pode ter sido, na ordem: o lido, com o sinal trocado (o "−" perdido), sem o 1º dígito (o "−"
+ * lido como número: "712.345,67"), e com o 1º dígito trocado por 1 (o "−1" lido como um número só: "71.234,56" era
+ * −11.234,56) — os dois últimos com os dois sinais.
+ */
+function numerosQueOOcrEstraga(n: number): number[] {
+  const d = String(Math.abs(n));
+  const sem = semOPrimeiroDigito(n);
+  const comUm = d.length > 1 && d[0] !== '1' ? Number('1' + d.slice(1)) : null;
+  return [...new Set([n, -n, ...(sem != null ? [sem, -sem] : []), ...(comUm != null ? [comUm, -comUm] : [])])];
+}
+
+/**
+ * O valor e o saldo da linha que fecham com o saldo de antes, no Bradesco escaneado (Vitor, 06/11/2026, na 571): o OCR
+ * perde o "−" do saldo negativo ("−12.345,67" lido "12.345,67"), ou lê o "−" como um número na frente do saldo
+ * ("712.345,67") ou do valor ("71.000,00"). Vale a 1ª combinação em que o saldo menos o de antes é o valor; nenhuma, null.
+ */
+function acertoPeloSaldo(valor: number, saldo: number, antes: number): { valor: number; saldo: number; duvida?: boolean } | null {
+  const saldos = numerosQueOOcrEstraga(saldo);
+  const v1 = semOPrimeiroDigito(valor);
+  const valores = [Math.abs(valor), ...(v1 != null ? [v1] : [])];
+  for (const s of saldos) for (const v of valores) {
+    const dif = s - antes;
+    if (dif !== 0 && Math.abs(dif) === v) return { valor: dif, saldo: s };
+  }
+  // um dígito diferente entre o valor e a diferença dos saldos: nestes extratos, quem tem o dígito trocado é o saldo (o
+  // "123,45" certo com o saldo "1.234,58", que era −1.234,56). Fica o
+  // valor lido, com o sinal da diferença, e o saldo refeito a partir dele; e a dúvida, para a linha de baixo decidir
+  const lido = String(Math.abs(valor));
+  for (const s of [saldo, -saldo]) {
+    const dif = s - antes, d = String(Math.abs(dif));
+    if (dif !== 0 && d.length === lido.length && [...d].filter((x, i) => x !== lido[i]).length === 1) {
+      const v = Math.sign(dif) * Math.abs(valor);
+      return { valor: v, saldo: antes + v, duvida: true };
+    }
+  }
+  return null;
+}
+
+/** O valor certo parecido com o que o OCR leu: um dígito trocado, ou um a mais na frente (o "−" lido como número). */
+function valorParecido(certo: number, lido: number): boolean {
+  const a = String(Math.abs(certo)), b = String(Math.abs(lido));
+  return (a.length === b.length && [...a].filter((x, i) => x !== b[i]).length === 1) || b.slice(1) === a;
+}
+
+/** O valor fecha com o saldo de antes por alguma leitura do saldo da linha, igual ou com um dígito diferente. */
+function fechaQuase(valor: number, saldo: number, antes: number): boolean {
+  const lido = String(Math.abs(valor));
+  return numerosQueOOcrEstraga(saldo).some(s => {
+    const d = String(Math.abs(s - antes));
+    return s !== antes && d.length === lido.length && [...d].filter((x, i) => x !== lido[i]).length <= 1;
+  });
+}
+
+/** A coluna mais perto da borda direita do número. */
+function colunaDoNumero(x2: number, col: Colunas): keyof Colunas | null {
+  let melhor: keyof Colunas | null = null;
+  for (const k of ['cred', 'deb', 'valor', 'saldo'] as const) {
+    const x = col[k];
+    if (x != null && (melhor == null || Math.abs(x2 - x) < Math.abs(x2 - (col[melhor] as number)))) melhor = k;
+  }
+  return melhor;
+}
+
+/**
  * O extrato do BB com as colunas Dt. balancete e Dt. movimento: o "Consultas - Extrato de conta corrente" (o do BB
  * Empresa) e o "Cliente - Conta atual" (o mesmo cabeçalho de colunas). Nele, a data certa do lançamento é a Dt. movimento
  * (Vitor, 09/10/2026; 04/11/2026, na 10: o "Movimento do Dia" de balancete 07/07 e movimento 08/07 saía como data errada).
@@ -294,10 +388,10 @@ export function saldosDoDiaDoPdf(paginas: ItemDeTexto[][], anoPadrao = new Date(
 }
 
 /** Os lançamentos e o saldo do dia numa leitura só (a importação lê o PDF uma vez; Vitor, 13/10/2026: ficou lento). */
-export function extratoDoPdf(paginas: ItemDeTexto[][], lado: Lado, anoPadrao = new Date().getFullYear()): { lancamentos: Lancamento[]; saldosDoDia: { data: string; saldo: number }[]; saldoAnteriorPelaLinha: number | null } {
+export function extratoDoPdf(paginas: ItemDeTexto[][], lado: Lado, anoPadrao = new Date().getFullYear()): { lancamentos: Lancamento[]; saldosDoDia: { data: string; saldo: number }[]; saldoAnteriorPelaLinha: number | null; saldoAnteriorConferido: number | null } {
   const r = lancamentosComPagina(paginas, lado, anoPadrao);
   const s = r.saldosDoDia;
-  return { saldoAnteriorPelaLinha: r.saldoAnteriorPelaLinha ?? null, lancamentos: r.lancamentos, saldosDoDia: s ? [...s].map(([data, saldo]) => ({ data, saldo })).sort((a, b) => a.data.localeCompare(b.data)) : [] };
+  return { saldoAnteriorPelaLinha: r.saldoAnteriorPelaLinha ?? null, saldoAnteriorConferido: r.saldoAnteriorConferido ?? null, lancamentos: r.lancamentos, saldosDoDia: s ? [...s].map(([data, saldo]) => ({ data, saldo })).sort((a, b) => a.data.localeCompare(b.data)) : [] };
 }
 
 /**
@@ -389,7 +483,7 @@ function lancamentosDaCaixa(todas: Linha[][], ano: number): { lancamentos: Lanca
   return { lancamentos, pagina };
 }
 
-function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: number): { lancamentos: Lancamento[]; pagina: number[]; saldosDoDia?: Map<string, number>; saldoAnteriorPelaLinha?: number | null } {
+function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: number): { lancamentos: Lancamento[]; pagina: number[]; saldosDoDia?: Map<string, number>; saldoAnteriorPelaLinha?: number | null; saldoAnteriorConferido?: number | null } {
   const saldosDoDia = new Map<string, number>();
   let ultimaDataDeValor: string | null = null;
   const todas = paginas.map(p => juntarPedacosSoltos(montarLinhas(p)));
@@ -428,6 +522,14 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
   // lançamento vem da diferença dos saldos quando ela bate com o valor (Vitor, 14/10/2026: o OCR leu o "-" do "- 632,50"
   // do BNB como "7" e o débito virou crédito)
   let saldoCorrido: number | null = null;
+  // o lançamento de cima ficou sem o saldo na linha dele (o OCR o pôs na linha de baixo)
+  let ultimoSemSaldo = false;
+  // o lançamento de cima que não fechou com o saldo (o Bradesco escaneado): a linha de baixo confere
+  let inseguro: { l: Lancamento; antes: number } | null = null;
+  // o SALDO ANTERIOR lido ainda não conferido com a 1ª linha com saldo, e o que a conferência achou (o OCR leu o "−11.234,56"
+  // como "71.234,56"; Vitor, 06/11/2026, na 571)
+  let aberturaSemConferir = false;
+  let saldoAnteriorConferido: number | null = null;
   // a coluna da data: onde ficam as datas com ano que abrem a linha. Data curta ("21/03") longe dela é o fim de um
   // histórico quebrado ("REM: FULANO" / "21/03"), não um dia novo (Vitor, 09/10/2026: a 380 jogava o 23/03 no 21/03)
   const xDasDatas = todas.flat().map(l => l.tokens[0]).filter(t => t && RE_DATA.test(t.s) && /\d{4}$/.test(t.s)).map(t => t.x);
@@ -457,6 +559,7 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
     for (const l of linhas) {
       const t = l.tokens.slice();
       if (!t.length || noFim) continue;
+      if (entre && col) consertarValoresDoOcr(t, col);
       if (/^ultimos lancamentos\b/.test(normalizarTexto(l.texto))) { juntarPerto(); noFim = true; continue; }
       // o depósito bloqueado (Sicoob: "DEP.CHEQUE BLOQ.1D 2.300,00*"): o valor com * ainda não entrou no saldo; a linha e o
       // texto embaixo dela ("ENVELOPE: …") ficam de fora, sem data nem histórico para os outros — o lançamento é a
@@ -528,6 +631,7 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
         // a linha "SALDO DO DIA": o saldo que o banco imprime no fim do dia; o "999 S A L D O" do fim do BB: o do último dia
         const n = normalizarTexto(hist || l.texto);
         if (/saldo (?:anterior|inicial)|saldo (?:do )?dia|\bs a l d o\b/.test(n) && valores.length) saldoCorrido = centavos(valores[valores.length - 1].s);
+        if (entre && /saldo (?:anterior|inicial)/.test(n) && saldoCorrido != null) { aberturaSemConferir = true; saldoAnteriorConferido = saldoCorrido; }
         const diaDoSaldo = /\bs a l d o\b/.test(n) ? ultimaDataDeValor : /\bsaldo (?:do )?dia\b/.test(n) ? dataAtual : null;
         const sv = diaDoSaldo ? centavos(valores[valores.length - 1].s) : null;
         if (sv != null && diaDoSaldo) saldosDoDia.set(diaDoSaldo, sv);
@@ -562,21 +666,93 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
       if (bloqueados.has(v)) { solta = null; continue; }
       let c = centavos(v.s);
       if (c == null || c === 0) continue;
-      const saldoDaLinha = lado === 'banco' && valores.length > 1 && valores[valores.length - 1] !== v ? centavos(valores[valores.length - 1].s) : null;
-      const saldoAntes = saldoCorrido;
-      if (saldoDaLinha != null) saldoCorrido = saldoDaLinha;
+      let saldoDaLinha = lado === 'banco' && valores.length > 1 && valores[valores.length - 1] !== v ? centavos(valores[valores.length - 1].s) : null;
+      let saldoAntes = saldoCorrido;
+      // a linha de cima não fechou (o OCR estragou o valor e o saldo dela: "800,00" e "1.234,06" eram 600,00 e 1.234,56): o
+      // saldo desta, menos o de antes da de cima e menos este valor, é o valor da de cima, se for parecido com o lido (um
+      // dígito trocado, ou um a mais na frente) — Vitor, 06/11/2026, na 571
+      if (entre && inseguro && ultimo === inseguro.l && saldoDaLinha != null && saldoAntes === inseguro.antes + inseguro.l.valor
+        && fechaQuase(c, saldoDaLinha, saldoAntes)) {
+        // a de cima ficou com o valor lido e o saldo refeito, e esta fecha com ele (com um dígito trocado no saldo desta,
+        // como o "712.345,68" embaixo do "123,45"): a de cima fica como está
+      } else if (entre && inseguro && ultimo === inseguro.l && saldoDaLinha != null) {
+        const cima = inseguro;
+        const contas: number[] = [];
+        // (o valor desta também pode ter o "−" lido como número: o "71.234,56" do tributo embaixo do PIX de 600,00 lido 800,00)
+        const c1 = semOPrimeiroDigito(c);
+        for (const s of numerosQueOOcrEstraga(saldoDaLinha)) for (const cc of [c, -c, ...(c1 ? [c1, -c1] : [])]) contas.push(s - cima.antes - cc);
+        // o valor lido confirmado (só o saldo da de cima estava errado: "712.345,68" era −12.345,63) vale mais que um parecido
+        const achou = contas.find(vi => vi === cima.l.valor) ?? contas.find(vi => vi !== 0 && valorParecido(vi, cima.l.valor));
+        if (achou != null) { cima.l.valor = achou; saldoAntes = cima.antes + achou; }
+      }
+      inseguro = null;
+      // no Bradesco escaneado, a linha só com o número da coluna Saldo (Vitor, 06/11/2026, na 571): o OCR pôs o saldo do
+      // lançamento de cima numa linha à parte (o saldo do PAGTO na linha de baixo), e aí é dele; ou o valor ficou ilegível
+      // ("7x 34"), e aí o valor é a diferença dos saldos
+      if (entre && col && lado === 'banco' && saldoAntes != null && valores.every(x => colunaDoNumero(x.x2, col as Colunas) === 'saldo')) {
+        const s = c;
+        // (o saldo corrido já andou com o valor da de cima)
+        const doDeCima = ultimo && ultimoSemSaldo ? [s, -s].find(x => x === saldoAntes) : undefined;
+        if (doDeCima != null && ultimo) {
+          saldoCorrido = doDeCima; ultimoSemSaldo = false;
+          if (hist) ultimo.historico = (ultimo.historico + ' ' + hist).trim();
+          continue;
+        }
+        if (s === saldoAntes) continue;
+        // o OCR perde o "−" do saldo negativo: vale o sinal que dá a menor diferença ("7x 34" com o saldo "1.234,56", que era negativo)
+        const sCerto = Math.abs(s - saldoAntes) <= Math.abs(-s - saldoAntes) ? s : -s;
+        c = sCerto - saldoAntes;
+        saldoDaLinha = sCerto;
+      }
+      // o extrato que diz o período (o Bradesco escaneado): o valor e o saldo que o OCR estragou ficam os que fecham com o
+      // saldo de antes (Vitor, 06/11/2026, na 571)
+      let duvida = false;
+      if (entre && !decrescente && saldoDaLinha != null && saldoAntes != null) {
+        let a = acertoPeloSaldo(c, saldoDaLinha, saldoAntes);
+        if (!a && aberturaSemConferir) {
+          // o saldo anterior que fecha com esta linha; dos que fecham, o que usa o saldo desta como foi lido (só o sinal
+          // pode mudar) vale mais (o "71.234,56" fechava como 1.234,56 com o saldo "11.734,56" lido 1.734,56; era −11.234,56)
+          // e, com o saldo todo sem o "−", o sinal do valor pela coluna (Débito = saída) decide entre o positivo e o negativo
+          const lidaQue = (n: number) => Math.abs(n) === Math.abs(saldoDaLinha as number);
+          const sinal = col && col.deb != null && col.cred != null ? (Math.abs(v.x2 - col.deb) < Math.abs(v.x2 - col.cred) ? -1 : 1) : 0;
+          const nota = (b: { valor: number; saldo: number }) => (lidaQue(b.saldo) ? 2 : 0) + (sinal && Math.sign(b.valor) === sinal ? 1 : 0);
+          let melhor: { alt: number; b: { valor: number; saldo: number } } | null = null;
+          for (const alt of numerosQueOOcrEstraga(saldoAntes).slice(1)) {
+            const b = acertoPeloSaldo(c, saldoDaLinha, alt);
+            if (!b || b.duvida) continue;
+            if (!melhor || nota(b) > nota(melhor.b)) melhor = { alt, b };
+          }
+          if (melhor) { a = melhor.b; saldoAntes = melhor.alt; saldoAnteriorConferido = melhor.alt; }
+        }
+        if (a) { c = a.valor; saldoDaLinha = a.saldo; if (a.duvida) duvida = true; }
+      }
+      // não fechou (ou fechou trocando um dígito): a linha de baixo confere
+      const ficouInseguro = entre && saldoDaLinha != null && saldoAntes != null && (duvida || saldoDaLinha - saldoAntes !== c) ? saldoAntes : null;
+      if (saldoDaLinha != null) { saldoCorrido = saldoDaLinha; aberturaSemConferir = false; }
+      ultimoSemSaldo = saldoDaLinha == null;
       // do mais novo para o mais velho (o Stone), a diferença dos saldos é a do lançamento de cima, não a deste: não vale. A
       // folga de 1 centavo (o arredondamento) só em valor de 1 real para cima: no Stone, o rendimento de R$ 0,01 virava
       // saída pela diferença de R$ 0,02 do lançamento vizinho (Vitor, 26/10/2026)
       const diferenca = !decrescente && saldoAntes != null && saldoDaLinha != null ? saldoDaLinha - saldoAntes : null;
       const folga = Math.abs(c) >= 100 ? 1 : 0;
-      if (diferenca != null && diferenca !== 0 && Math.abs(Math.abs(diferenca) - Math.abs(c)) <= folga) c = Math.sign(diferenca) * Math.abs(c);
+      // o "−" que o OCR leu como um número na frente ("−12,34" virou "112,34", "−12.345,67" virou "712.345,67"; Vitor,
+      // 06/11/2026, na 571): sem o 1º dígito, o valor é a diferença dos saldos
+      const semOPrimeiro = String(Math.abs(c)).slice(1);
+      if (diferenca != null && diferenca !== 0 && Math.abs(Math.abs(diferenca) - Math.abs(c)) > folga && semOPrimeiro && Number(semOPrimeiro) === Math.abs(diferenca)) c = diferenca;
+      else if (diferenca != null && diferenca !== 0 && Math.abs(Math.abs(diferenca) - Math.abs(c)) <= folga) c = Math.sign(diferenca) * Math.abs(c);
       else if (!temSinal(v.s)) {
         const base = normalizarTexto(hist || solta || '');
         if (col && col.deb != null && col.cred != null) {
           const ehDebito = Math.abs(v.x2 - col.deb) < Math.abs(v.x2 - col.cred);
           c = ehDebito !== (lado === 'sistema') ? -Math.abs(c) : Math.abs(c);
         } else if (!sinalEscrito && RE_SAIDA.test(base) && !RE_ENTRADA.test(base)) c = -Math.abs(c);
+      }
+      // no Bradesco escaneado, a corrente dos saldos não para (Vitor, 06/11/2026, na 571): a linha sem saldo legível ("x34,56")
+      // anda com o valor dela; a que não fechou fica com a leitura do saldo mais perto do esperado (o saldo negativo lido sem o "−")
+      if (entre && saldoAntes != null) {
+        const esperado = saldoAntes + c;
+        if (saldoDaLinha == null) saldoCorrido = esperado;
+        else if (ficouInseguro != null && !duvida) saldoCorrido = numerosQueOOcrEstraga(saldoDaLinha).reduce((m, x) => (Math.abs(x - esperado) < Math.abs(m - esperado) ? x : m));
       }
 
       // o texto entre o lançamento de cima e este: o que está mais perto de cima fica lá; o resto abre este
@@ -604,6 +780,7 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
       const dataDoLanc = segunda && pelaDtMovimento ? segunda
         : periodo && segunda && !dataAtual.startsWith(periodo) && segunda.startsWith(periodo) ? segunda : dataAtual;
       ultimo = { data: dataDoLanc, valor: c, historico: h || '(sem histórico)', ...(dataDoLanc !== dataAtual ? { balancete: dataAtual } : {}) };
+      if (ficouInseguro != null) inseguro = { l: ultimo, antes: ficouInseguro };
       ultimaY = l.y;
       // a Dt. movimento no mês seguinte: o lançamento vem no extrato do outro mês (senão entraria duas vezes; o saldo
       // anterior do extrato seguinte já é o de antes dele)
@@ -623,5 +800,5 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
     const s0 = saldoDeCada[i0];
     if (s0 != null) saldoAnteriorPelaLinha = s0 - saida[i0].valor;
   }
-  return { lancamentos: saida, pagina: paginaDe, saldosDoDia, saldoAnteriorPelaLinha };
+  return { lancamentos: saida, pagina: paginaDe, saldosDoDia, saldoAnteriorPelaLinha, saldoAnteriorConferido };
 }
