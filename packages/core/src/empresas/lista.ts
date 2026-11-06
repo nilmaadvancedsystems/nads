@@ -48,6 +48,7 @@ export const EMPRESAS: readonly EmpresaDoEscritorio[] = [
   { codigo: 577, nome: "CAFE RENASCER SPE LTDA", regime: "Real" },
   { codigo: 494, nome: "CAIXA ESCOLAR JOVITA SECUNDINA REGO", regime: "Isentas" },
   { codigo: 560, nome: "CAMARA DE DIRIGENTES LOJISTAS DE TAIOBEIRAS", regime: "Isentas" },
+  { codigo: 613, nome: "CAMPO E GESTAO AGROASSESSORIA LTDA", regime: "Simples" },
   { codigo: 555, nome: "CARLOS LUCAS MENDES - FAZ UNIÃO", regime: "Física" },
   { codigo: 226, nome: "CARLOS LUCAS MENDES - FAZ. GAMELEIRA", regime: "Física" },
   { codigo: 62, nome: "CARLOS LUCAS MENDES - FAZ. TABATINGA", regime: "Física" },
