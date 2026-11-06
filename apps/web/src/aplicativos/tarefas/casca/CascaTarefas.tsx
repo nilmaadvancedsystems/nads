@@ -10,6 +10,7 @@ import { AvisoDeCertificados } from './AvisoDeCertificados';
 import { useAvisoDosMeusFeedbacks } from './useAvisoDosMeusFeedbacks';
 import { CartaoDaEmpresa } from './CartaoDaEmpresa';
 import { useCorreioDeTarefas } from './useCorreioDeTarefas';
+import { useMuralNovo } from './useMuralNovo';
 
 /**
  * O avatar no canto do cabeçalho (como o do Entregas e o do GitHub): as iniciais; aberto, a Minha página e sair. Sem o
@@ -50,13 +51,16 @@ export function CascaTarefas({ app, pagina, telaInteira, semLateral, larga, empr
   const [feedbacks, setFeedbacks] = useState(false);
   // o aviso da tarefa nova (28/10/2026); a Central virou o módulo Minhas tarefas (30/10/2026), sem o correio no pé do menu
   useCorreioDeTarefas();
+  // os avisos novos do mural: o número no Início da gaveta e o aviso quando chega (06/11/2026)
+  const mural = useMuralNovo();
   useAvisoDeBloqueio();
   // o feedback que o admin pôs em Resolvendo: avisa quem mandou (26/10/2026)
   useAvisoDosMeusFeedbacks();
   return (
     <Casca sistema="Tarefas" temaNaGaveta={false} empresa={vm.empresa} versao={vm.versao} trilha={trilha} secoes={secoes} paginas={vm.paginas} titulo={telaInteira ? '' : titulo}
       lateral={telaInteira || semLateral || vm.comAbas ? 'nenhuma' : undefined} larga={telaInteira || larga}
-      acoes={telaInteira || (empresa && !titulo) ? undefined : <LugarDasAcoes />} onSecao={empresa ? empresa.onPagina : vm.onSecao} onPagina={vm.onPagina} onInicio={vm.inicio} onAplicativos={vm.inicio} semInicio
+      acoes={telaInteira || (empresa && !titulo) ? undefined : <LugarDasAcoes />} onSecao={empresa ? empresa.onPagina : vm.onSecao} onPagina={vm.onPagina} onInicio={vm.inicio} onAplicativos={vm.abrirInicio}
+      contadorDoInicio={mural.naoLidos ? String(mural.naoLidos) : undefined}
       onEmpresa={vm.trocarPessoa} aplicativos={vm.aplicacoes} onAplicativo={vm.onAplicacao}
       cartaoNoTopo={empresa ? <CartaoDaEmpresa empresa={empresa} /> : undefined}
       topoDireita={<AvatarDaPessoa vm={vm} abrirCentral={() => vm.onAplicacao('minhas-tarefas')} />}

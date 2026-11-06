@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router';
 import { useAvisos } from '../../dados/repo';
 import { caminhoDaPagina, caminhoDaPaginaDaEmpresa } from '../../casca/navegacao';
 import { useOperador, type Operador } from '../../casca/operador';
+import { useMuralLido } from '../../casca/useMuralNovo';
 import { useAndamento } from '../empresas/andamento';
 
 export function useInicio() {
@@ -21,6 +22,8 @@ export function useInicio() {
   const agora = new Date();
   const escreve = op.admin || op.nivel === 'diretor';
   const mural = repo.lista();
+  // abriu o Início: os avisos do mural ficam lidos (o número da gaveta some; 06/11/2026)
+  useMuralLido(mural.carregados ? mural.avisos.map(x => x.id) : []);
 
   // a última em que a pessoa mexeu nesta competência (a mais recente)
   const ultima = a.linhas.filter(l => l.mexiEm).sort((x, y) => (y.mexiEm as string).localeCompare(x.mexiEm as string))[0] || null;

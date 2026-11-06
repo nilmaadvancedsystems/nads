@@ -7,6 +7,8 @@
 import { cofre as c, formatos } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
+import { ehDiretor } from '../../casca/navegacao';
+import { useOperador } from '../../casca/operador';
 import type { VmCofre } from './useCofre';
 
 // cada parte do formulário como os segredos gravados a mostram
@@ -21,7 +23,9 @@ const dataIso = (br: string) => (/^\d{2}\/\d{2}\/\d{4}$/.test(br) ? br.slice(6) 
 
 export function useSegredos(cofre: VmCofre, empresa: string, codigo: number | null) {
   const codigoDaEmpresa = codigo;
-  const { modal } = useRetorno();
+  const { modal, toast } = useRetorno();
+  // só o Diretor exclui o certificado (06/11/2026); os outros incluem e trocam o arquivo
+  const podeExcluirCert = ehDiretor(useOperador().operador);
   const [carregado, setCarregado] = useState(false);
   const [segredos, setSegredos] = useState<c.SegredosDaEmpresa>({});
   const [gov, setGov] = useState({ login: '', senha: '', obs: '' });
@@ -110,14 +114,16 @@ export function useSegredos(cofre: VmCofre, empresa: string, codigo: number | nu
       if (novo) seguir(novo, ['gov']);
     },
     async salvarCert() {
+      if (!cert.arquivo && segredos.certificado?.arquivo && !podeExcluirCert) { toast('Só o Diretor exclui o certificado.'); return; }
       const validade = dataIso(cert.validade);
       const parte = cert.arquivo ? { nomeArquivo: cert.nomeArquivo, arquivo: cert.arquivo, senha: cert.senha, validade, ...(cert.titular ? { titular: cert.titular } : {}), ...(cert.obs.trim() ? { obs: cert.obs.trim() } : {}) } : undefined;
       const novo = await cofre.mudar(empresa, codigo, atuais => ({ ...atuais, certificado: parte }));
       if (novo) seguir(novo, ['cert']);
     },
     /** exclui o certificado do cofre, com a confirmação (Vitor, 07/10/2026); a senha gov.br fica */
+    podeExcluirCert,
     async excluirCert() {
-      if (!segredos.certificado?.arquivo) return;
+      if (!segredos.certificado?.arquivo || !podeExcluirCert) return;
       const ok = await modal({ icone: 'alert', titulo: 'Excluir o certificado de ' + empresa + '?',
         texto: (segredos.certificado.nomeArquivo || 'O certificado') + ' sai do cofre. Não dá para desfazer.',
         botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Excluir', valor: true, variante: 'btn-danger' }] });
