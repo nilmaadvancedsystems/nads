@@ -1002,6 +1002,9 @@ igual('sem nome no assunto: não decide pelo nome', r.desempatarPorNome(fitos, '
   igual('DP: FUNCIONÁRIOS, DARF de outro tributo, Google Docs e arquivo solto ficam de fora', [...porMes.keys()].sort(), ['2026-09', '2026-10']);
   igual('DP: sem escolha vão todos', dp.escolhidos([{ i: 'x' }, { i: 'y' }], []).map(a => a.i), ['x', 'y']);
   igual('DP: só vai o escolhido que está na lista (nunca um id de fora)', dp.escolhidos([{ i: 'x' }, { i: 'y' }], ['y', 'zzz']).map(a => a.i), ['y']);
+  igual('DP: o arquivo tirado da lista não vai', dp.tirarOsDeFora([{ i: 'x' }, { i: 'y' }], { tudo: false, arquivos: ['y'] }, '2026-10').map(a => a.i), ['x']);
+  igual('DP: sem nada tirado vão todos', dp.tirarOsDeFora([{ i: 'x' }], undefined, '2026-10').map(a => a.i), ['x']);
+  igual('DP: o cliente tirado não recebe', (() => { try { dp.tirarOsDeFora([{ i: 'x' }], { tudo: true, arquivos: [] }, '2026-10'); return 'foi'; } catch (e) { return e.message; } })(), 'o cliente foi tirado da lista de envios de 10/2026');
   igual('DP: o mês por extenso', dp.mesPorExtenso('2026-03'), 'março de 2026');
   igual('DP: os três meses recentes (virando o ano)', dp.mesesRecentes(new Date(Date.UTC(2027, 0, 15))), ['2027-01', '2026-12', '2026-11']);
   const email = require('./email-html').htmlDoEnvioDp({ assunto: 'Documentos <DP>', texto: 'Olá!\n\nSeguem os documentos.', cliente: 'TESTE & CIA', competencia: '10/2026', anexos: [{ nome: 'FGTS 10-2026.pdf', tamanho: 2048 }] });

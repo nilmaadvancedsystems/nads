@@ -29,7 +29,8 @@ describe('rotina do DP (o Checklist Folha)', () => {
   it('o DP trabalha os clientes da planilha; o Contábil e o Fiscal não veem os que só o DP tem', () => {
     expect(empresasDaRotina('dp', EMPRESAS_COM_DP)).toHaveLength(CLIENTES_DO_DP.length);
     expect(empresasDaRotina('contabil', EMPRESAS_COM_DP)).toHaveLength(EMPRESAS.length);
-    expect(SO_DO_DP.length).toBeGreaterThan(0);
+    // os que só o DP tem ficam fora da lista do escritório (06/11/2026: a 613 entrou na lista e hoje nenhum fica de fora)
+    expect(SO_DO_DP.every(e => !EMPRESAS.some(x => x.codigo === e.codigo))).toBe(true);
   });
 });
 

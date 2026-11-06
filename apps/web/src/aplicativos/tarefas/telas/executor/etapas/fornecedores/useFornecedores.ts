@@ -206,7 +206,7 @@ export function useFornecedores() {
   function usarDiarioNaConta(codigo: string) {
     const l = linhas.find(x => x.codigo === codigo);
     const lido = contabil.razaoDoDiarioDeConta(codigo, l?.nome || codigo);
-    if (lido) aplicarRazao(codigo, 'Diário · ' + (contabil.diario?.arquivo ?? ''), lido);
+    if (lido) aplicarRazao(codigo, contabil.diario?.arquivo ?? 'Robô', lido);
   }
 
   const arquivosProntos = !!dinamico;

@@ -13,5 +13,5 @@ export const NOMES_DOS_APLICATIVOS: Record<string, string> = {
   tarefas: 'Tarefas',
 };
 
-/** O título da aba do aplicativo (sem aplicativo, só "Nilma"). */
-export const tituloDoAplicativo = (id: string) => (NOMES_DOS_APLICATIVOS[id] ? NOMES_DOS_APLICATIVOS[id] + ' — Nilma' : 'Nilma');
+/** O título da aba do aplicativo (sem aplicativo, só "Nilma"). O Tarefas é só "NADS" (Vitor, 06/11/2026: "Troca o nome da aba, por NADS"). */
+export const tituloDoAplicativo = (id: string) => id === 'tarefas' ? 'NADS' : (NOMES_DOS_APLICATIVOS[id] ? NOMES_DOS_APLICATIVOS[id] + ' — Nilma' : 'Nilma');

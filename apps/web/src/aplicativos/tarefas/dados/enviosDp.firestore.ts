@@ -4,12 +4,14 @@
 //   - solicitacoesEmail: o pedido { tipo: 'envioDp', status: 'pendente', competencia, codigo, empresa, arquivos,
 //     criadoEm, criadoPor, criadoPorEmail, criadoPorUid } (só o admin e o DP criam); o robô responde no próprio pedido
 //     (status enviado ou erro, para, enviados, enviadoEm);
+//   - dpEnviosFora/{AAAA-MM}: o que foi tirado da lista de envios do mês, clientes.<código>: { tudo, arquivos: [ids] },
+//     atualizadoEm, atualizadoPor (o DP e o admin gravam; 06/11/2026); o robô não manda o que está aqui;
 //   - config/envioDp: o modelo do e-mail { assunto, texto, atualizadoEm, atualizadoPor } (o DP e o admin gravam; 28/10/2026).
 import { addDoc as addDocBruto, collection, doc, onSnapshot, query, setDoc as setDocBruto, where } from 'firebase/firestore';
 import type { entregas } from '@nads/core';
 import { guardar, guardarPedido } from '../../../comum/modoDesenvolvedor';
 import { bancoDoEntregas } from './entregas.firestore';
-import type { ArquivoDoDp, EnvioDoDp, ModeloDoEnvio, RepoEnviosDp } from './enviosDp';
+import { foraNovo, type ArquivoDoDp, type EnvioDoDp, type ForaDoEnvio, type ModeloDoEnvio, type RepoEnviosDp } from './enviosDp';
 
 // a trava do modo desenvolvedor (comum/modoDesenvolvedor.ts): com o modo ligado, só ver — nada é pedido
 const addDoc = guardarPedido(addDocBruto) as typeof addDocBruto;
@@ -31,6 +33,7 @@ export function criarEnviosDpFirestore(quem: () => entregas.Quem | null): RepoEn
   const mudou = () => { ver++; for (const f of ouvintes) f(); };
   const listas = new Map<string, { carregados: boolean; porCodigo: ReadonlyMap<string, readonly ArquivoDoDp[]> }>();
   const doMes = new Map<string, { carregados: boolean; porCodigo: ReadonlyMap<string, EnvioDoDp>; todosPorCodigo: ReadonlyMap<string, readonly EnvioDoDp[]> }>();
+  const foras = new Map<string, { carregados: boolean; porCodigo: ReadonlyMap<string, ForaDoEnvio> }>();
   let modelo: { carregado: boolean } & ModeloDoEnvio = { carregado: false, assunto: '', texto: '' };
   let ouvindoModelo = false;
 
@@ -65,6 +68,27 @@ export function criarEnviosDpFirestore(quem: () => entregas.Quem | null): RepoEn
         }, () => { listas.set(competencia, { carregados: true, porCodigo: new Map() }); mudou(); });
       }
       return listas.get(competencia)!;
+    },
+    fora(competencia) {
+      if (!foras.has(competencia)) {
+        foras.set(competencia, { carregados: false, porCodigo: new Map() });
+        onSnapshot(doc(db, 'dpEnviosFora', competencia), s => {
+          const clientes = (s.data()?.clientes || {}) as Record<string, { tudo?: unknown; arquivos?: unknown }>;
+          const porCodigo = new Map(Object.entries(clientes).map(([cod, c]) => [cod, { tudo: c?.tudo === true, arquivos: textos(c?.arquivos) }]));
+          foras.set(competencia, { carregados: true, porCodigo });
+          mudou();
+        }, () => { foras.set(competencia, { carregados: true, porCodigo: new Map() }); mudou(); });
+      }
+      return foras.get(competencia)!;
+    },
+    async tirar({ competencia, codigo, arquivo, tirar }) {
+      const q = quem();
+      if (!q) throw new Error('Sem login.');
+      const cod = String(codigo);
+      const novo = foraNovo(foras.get(competencia)?.porCodigo.get(cod), arquivo, tirar);
+      await setDoc(doc(db, 'dpEnviosFora', competencia), {
+        clientes: { [cod]: { tudo: novo.tudo, arquivos: [...novo.arquivos] } }, atualizadoEm: new Date().toISOString(), atualizadoPor: q.nome,
+      }, { merge: true });
     },
     envios(competencia) {
       if (!doMes.has(competencia)) {

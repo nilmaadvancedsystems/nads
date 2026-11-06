@@ -34,11 +34,14 @@ export const APLICACOES: readonly Aplicacao[] = [
   { id: 'inicio', nome: 'Início', icone: 'home', grupo: 'Rotinas', pronta: true, paginas: [
     { id: 'inicio', rotulo: 'Início', icone: 'home', titulo: 'Início' },
   ] },
-  { id: 'minhas-empresas', nome: 'Minhas empresas', icone: 'briefcase', grupo: 'Rotinas', pronta: true, paginas: [
+  // o nome na gaveta virou Contábil (Vitor, 06/11/2026: "No lugar de 'Minhas empresas', coloca o nome 'Contábil'"); o
+  // endereço segue /tarefas/minhas-empresas/...
+  // o ícone virou a balança (Vitor, 06/11/2026: "muda o icone também")
+  { id: 'minhas-empresas', nome: 'Contábil', icone: 'scale', grupo: 'Rotinas', pronta: true, paginas: [
     // o painel do progresso das empresas (27/10/2026: "a parte de minhas empresas vai virar um dashboard de progresso")
     // uma tela só, sem a barra lateral (27/10/2026: "coloque paradas e configuracoes tudo em uma so tela aqui nesse
     // inicial, remove a barra lateral"): a lista, as etapas paradas e os históricos do Creditor. Os Insights saíram
-    { id: 'empresas', rotulo: 'Empresas', icone: 'list', titulo: 'Minhas empresas' },
+    { id: 'empresas', rotulo: 'Empresas', icone: 'list', titulo: 'Contábil' },
     // as Justificativas e as Configurações abrem em janela, pelos botões da barra da lista (Vitor, 28/10/2026: "remover esse
     // menu superior e colocar uns ícones de botões de justificativas e configurações aparecer uma popup")
   ] },
@@ -116,7 +119,8 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'certificados', rotulo: 'Certificados', icone: 'barChart', titulo: 'Certificados' },
     // as contas gov.br de pessoas (CPF), importadas da planilha (Vitor, 07/10/2026)
     { id: 'gov', rotulo: 'Contas gov.br', icone: 'usuario', titulo: 'Contas gov.br' },
-    { id: 'acesso', rotulo: 'Acesso', icone: 'usuario', titulo: 'Acesso ao cofre' },
+    // "Liberação de acessos" (Vitor, 06/11/2026: era "Acesso"); o endereço segue /tarefas/senhas/acesso
+    { id: 'acesso', rotulo: 'Liberação de acessos', icone: 'usuario', titulo: 'Liberação de acessos' },
   ] },
   // o financeiro do escritório (15/10/2026: "vamos criar um emissor de notas fiscais para o financeiro"): as NFS-e de
   // honorários da Nilma (Taiobeiras, E&L), emitidas pelo robô da nuvem; só o admin e o diretor
@@ -238,7 +242,7 @@ export const caminhoDaPagina = (app: IdAplicacao, pagina: string) => BASE + '/' 
 export const CHAVE_INICIO = 'nads-tarefas-inicio';
 export const INICIOS: readonly { valor: string; rotulo: string; caminho: string }[] = [
   { valor: 'inicio', rotulo: 'Início', caminho: BASE + '/inicio' },
-  { valor: 'empresas', rotulo: 'Minhas empresas', caminho: BASE + '/minhas-empresas/empresas' },
+  { valor: 'empresas', rotulo: 'Contábil', caminho: BASE + '/minhas-empresas/empresas' },
   { valor: 'drive', rotulo: 'Drive', caminho: BASE + '/drive/pastas' },
   { valor: 'gmail', rotulo: 'Gmail', caminho: BASE + '/contato/caixa' },
 ];
