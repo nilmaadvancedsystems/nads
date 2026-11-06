@@ -995,6 +995,11 @@ const REGRAS_PDF = [
       const docs = [/RECIBO DE ENTREGA DA APURACAO/.test(u) && 'RECIBO', /EXTRATO DO SIMPLES NACIONAL/.test(u) && 'EXTRATO'].filter(Boolean);
       return { competencia: pa ? { mes: +pa[1], ano: +pa[2] } : null, docs: docs.length ? docs : ['DECLARACAO'] };
     } },
+  // a apuração do Simples tirada do SCI (memória de cálculo: RBT12, fator "r", alíquota efetiva, repartição dos tributos):
+  // 01. DAS\MM-AAAA - APURACAO SN SCI.pdf, a competência é a "Referência" (Vitor, 06/11/2026, a 606 EMILLY)
+  { tipo: 'APURACAO SN SCI', setor: 'FISCAL', re: /^(?![\s\S]*PAGAR (ESTE DOCUMENTO )?ATE)[\s\S]{0,3000}?FORMULA PARA RECEITA BRUTA TOTAL DOS 12 MESES ANTERIORES[\s\S]*ALIQUOTA EFETIVA/, fonte: 'apuração do Simples do SCI (Vitor, 06/11/2026)',
+    // o texto do pdf.js cola os valores na ordem Período, Referência, Vencimento, Pagamento: "31/08/202608/202621/09/2026…"
+    campos: u => { const r = /REFERENCIA\s*:?\s*(0[1-9]|1[0-2])\/(20\d{2})/.exec(u) || /\d{2}\/\d{2}\/20\d{2}(0[1-9]|1[0-2])\/(20\d{2})\d{2}\/\d{2}\/20\d{2}/.exec(u); return { competencia: r ? { mes: +r[1], ano: +r[2] } : null }; } },
   // ---- guias fiscais (05a, 05d §4) ----
   { tipo: 'DAS', setor: 'FISCAL', re: /DOCUMENTO DE ARRECADACAO DO SIMPLES NACIONAL|\bDAS\s+DE\s+PARCELAMENTO\b/, fonte: '05a',
     campos: u => Object.assign(camposDaGuia(u), { parcelamento: /PARCELAMENTO/.test(u) }) },
@@ -3632,7 +3637,8 @@ function clienteDoNomeDoConteiner(rel, cad) {
   // (Vitor, 05/11/2026) a fazenda do nome diz o estabelecimento: CEDRO = 582 (a filial na Fazenda Baixa do Cedro), LIBERDADE = 572 (a matriz)
   const faz = FAZENDA_DO_ESTABELECIMENTO.filter(f => f.re.test(nomeArq) && cs.some(c => c.codigo === f.codigo));
   if (faz.length === 1) return { codigo: faz[0].codigo, como: 'o nome do cliente no nome da pasta de origem (' + porque.join(', ') + ') e a fazenda no nome do arquivo (' + faz[0].nome + ' = ' + faz[0].codigo + '; Vitor, 05/11/2026)' };
-  if (/\bFILIAL\b|\bFAZ(ENDA)?\b|(^|[^A-Z])F\.\s?[A-Z]/.test(nomeArq)) return null;
+  // (Vitor, 05/11/2026) "FILIAL" sem dizer qual (o boleto "NILMA CONT.LAVICA FILIAL"): a matriz; uma fazenda que não está no mapa continua para uma pessoa
+  if (/\bFAZ(ENDA)?\b|(^|[^A-Z])F\.\s?[A-Z]/.test(nomeArq)) return null;
   return { codigo: matriz[0].codigo, como: 'o nome do cliente no nome da pasta de origem (' + porque.join(', ') + '): da matriz ' + matriz[0].codigo + ' e das filiais ' + cs.filter(c => c !== matriz[0]).map(c => c.codigo).join(', ') + ', e o nome do arquivo não fala de filial nem de fazenda: a matriz' };
 }
 /** O cliente pagador de um comprovante: o CNPJ/CPF cujo rótulo mais próximo antes dele é Pagador/Sacado/Correntista (um cliente só). */
@@ -4268,6 +4274,10 @@ function decidirPdf(entrada, ctx, ev, porHash) {
       if (!doc) { const n = norm(nomeOrig); const pn = campos.docs.filter(x => n.includes(x)); if (pn.length === 1) { doc = pn[0]; ev.push('o nome do arquivo desempata: ' + doc); } }
       if (!doc) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'VOCABULARIO_AUSENTE', confianca: 0.5, evidencias: ev.concat('o conteúdo traz ' + campos.docs.join(' e ') + ' do PGDAS-D e o nome do arquivo não desempata') });
       return Object.assign(base, { acao: 'ARQUIVAR', confianca: c.conf, competencia: campos.competencia, fiscal: ['DAS'], nomeFinal: mesAno(campos.competencia) + ' - PGDAS-D ' + doc + '.pdf' });
+    }
+    case 'APURACAO SN SCI': {
+      if (!campos.competencia) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5, evidencias: ev.concat('a "Referência" da apuração do SCI não foi lida') });
+      return Object.assign(base, { acao: 'ARQUIVAR', confianca: c.conf, competencia: campos.competencia, fiscal: ['DAS'], nomeFinal: mesAno(campos.competencia) + ' - APURACAO SN SCI.pdf' });
     }
     case 'DEFIS ALTERDATA': {
       // 27/10/2026 (Vitor): 14. DEFIS\AAAA - DEFIS ALTERDATA.pdf (AAAA = ano-calendário), na raiz do ano da entrega: o da emissão

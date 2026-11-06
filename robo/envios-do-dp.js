@@ -188,7 +188,7 @@ async function atenderEnvioDp(p, ctx) {
   const anexos = [];
   for (const a of vao) {
     const r = await ctx.getDrive().files.get({ fileId: a.i, alt: 'media' }, { responseType: 'arraybuffer', timeout: 120000 });
-    anexos.push({ nome: a.n, mime: mimeDe(a.n), buffer: Buffer.from(r.data) });
+    anexos.push({ nome: a.n, mime: mimeDe(a.n), buffer: Buffer.from(r.data), pasta: a.c });
   }
   const nome = String(cliente.nome || p.empresa || '').trim();
   const { gmailId, assunto } = await mandarEmailDoDp(db, { comp, nome, para, anexos }, ctx);
@@ -214,6 +214,44 @@ async function destinatarios(db, codigo, ativos) {
   return { cliente, para };
 }
 
+// O nome do anexo no e-mail (05/11/2026, Vitor: "quero que os arquivos que forem colocados no gmail fiquem com renomeação
+// correta pra não ficar feio"): "<Documento> MM-AAAA - <CLIENTE>.<ext>". O documento vem do que se sabe do arquivo, nesta
+// ordem: o rótulo (a guia do Fiscal: "DAS", "DARF PIS"), o boleto do escritório (BOLETO… ou Fatura_…, sem o mês), o tipo
+// do lote (FGTS, DARF, FOLHA, PRO-LABORE), a pasta do DP de onde saiu (…/FGTS, …/FOLHA…) e, sem nada disso, o próprio
+// nome limpo (sem _ e sem a data, que vai no fim). Repetiu: " (2)", " (3)". Só o nome no e-mail muda: no Drive fica o de sempre.
+const DOC_DO_TIPO = { FGTS: 'FGTS', DARF: 'DARF', FOLHA: 'Folha de pagamento', 'PRO-LABORE': 'Pró-labore', DAS: 'DAS', DAE: 'DAE', DAM: 'DAM' };
+const DOC_DA_PASTA = [
+  [/(^|\/)FGTS$/i, 'FGTS'], [/(^|\/)FOLHA( DE PAGAMENTO)?$/i, 'Folha de pagamento'], [/(^|\/)PR[ÓO]-?LABORE$/i, 'Pró-labore'],
+  [/(^|\/)CART[ÃA]O DE PONTO$/i, 'Cartão de ponto'], [/(^|\/)DARF$/i, 'DARF'], [/(^|\/)F[ÉE]RIAS$/i, 'Férias'], [/(^|\/)RESCIS[ÃA]O$/i, 'Rescisão'],
+];
+const semProibidos = t => String(t || '').replace(/[\\/:*?"<>|]+/g, ' ').replace(/[\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim();
+function documentoDoAnexo(a) {
+  if (a.rotulo) return semProibidos(a.rotulo);
+  if (/^(BOLETO\b|Fatura_)/i.test(String(a.nome || ''))) return 'Boleto de honorários';
+  if (a.tipo && DOC_DO_TIPO[a.tipo]) return DOC_DO_TIPO[a.tipo] + (a.tributo ? ' ' + semProibidos(a.tributo) : '');
+  const pasta = (DOC_DA_PASTA.find(([re]) => re.test(String(a.pasta || '').replace(/\/+$/, ''))) || [])[1];
+  if (pasta) return pasta;
+  const base = String(a.nome || '').replace(/\.[a-z0-9]{2,5}$/i, '').replace(/[_]+/g, ' ')
+    .replace(/\b(0?[1-9]|1[0-2])[-. ](20\d{2})\b/g, ' ').replace(/\b20\d{2}[-. ](0[1-9]|1[0-2])\b/g, ' ');
+  const limpo = semProibidos(base).replace(/^[-–\s]+|[-–\s]+$/g, '');
+  return limpo ? limpo.charAt(0).toUpperCase() + limpo.slice(1) : 'Documento';
+}
+// anexos: [{ nome, rotulo?, tipo?, tributo?, pasta? }]; comp: 'AAAA-MM'; cliente: o nome. -> [{ nome, documento }] na mesma ordem
+function nomesNoEmail(anexos, comp, cliente) {
+  const mmaaaa = /^\d{4}-\d{2}$/.test(String(comp || '')) ? comp.slice(5) + '-' + comp.slice(0, 4) : '';
+  const quem = semProibidos(cliente).slice(0, 60);
+  const usados = new Map();
+  return (anexos || []).map(a => {
+    const ext = (String(a.nome || '').match(/\.([a-z0-9]{2,5})$/i) || [, ''])[1].toLowerCase();
+    const documento = documentoDoAnexo(a).slice(0, 60);
+    const boleto = documento === 'Boleto de honorários';
+    const raiz = [documento, boleto ? '' : mmaaaa].filter(Boolean).join(' ') + (quem ? ' - ' + quem : '');
+    const n = (usados.get(raiz.toLowerCase()) || 0) + 1;
+    usados.set(raiz.toLowerCase(), n);
+    return { nome: raiz + (n > 1 ? ' (' + n + ')' : '') + (ext ? '.' + ext : ''), documento };
+  });
+}
+
 // O e-mail do DP no modelo (config/envioDp) com os anexos já em memória, pela caixa do robô. ctx: { enviar, assinatura,
 // caixa, modelo }. Conta no freio por hora. Também o lote do DP (lote-dp.js) e o do Fiscal (lote-fiscal.js, 03/11/2026),
 // que passa ctx.modelo { config: 'envioFiscal', padrao, chip, rodape, rotulo }; sem ele, o do DP como sempre.
@@ -223,8 +261,11 @@ async function mandarEmailDoDp(db, { comp, nome, para, anexos }, ctx) {
   const competencia = comp.slice(5) + '/' + comp.slice(0, 4);
   const modelo = (await db.collection('config').doc(m.config || 'envioDp').get()).data() || {};
   const { assunto, texto } = mensagemDoEnvio(modelo, { cliente: nome, competencia, mes: mesPorExtenso(comp) }, m.padrao);
-  const visual = require('./email-html').htmlDoEnvioDp({ assunto, texto, cliente: nome, competencia, anexos: anexos.map(a => ({ nome: a.nome, tamanho: a.buffer.length })), assinatura: ctx.assinatura, caixa: ctx.caixa, chip: m.chip, rodape: m.rodape });
-  const gmailId = await ctx.enviar({ para: para.join(', '), assunto, corpo: texto + '\n\n' + anexos.map(a => '- ' + a.nome).join('\n'), html: visual.html, imagens: visual.imagens, anexos });
+  // o nome limpo no e-mail (05/11/2026); o buffer e o tipo seguem os mesmos
+  const nomes = nomesNoEmail(anexos, comp, nome);
+  const vao = anexos.map((a, k) => ({ nome: nomes[k].nome, mime: a.mime, buffer: a.buffer }));
+  const visual = require('./email-html').htmlDoEnvioDp({ assunto, texto, cliente: nome, competencia, anexos: anexos.map((a, k) => ({ nome: nomes[k].nome, rotulo: nomes[k].documento, valor: a.valor, vencimento: a.vencimento })), assinatura: ctx.assinatura, caixa: ctx.caixa, chip: m.chip, rodape: m.rodape });
+  const gmailId = await ctx.enviar({ para: para.join(', '), assunto, corpo: texto + '\n\n' + vao.map(a => '- ' + a.nome).join('\n'), html: visual.html, imagens: visual.imagens, anexos: vao });
   enviosRecentes.push(Date.now());
   return { gmailId, assunto };
 }
@@ -232,5 +273,5 @@ async function mandarEmailDoDp(db, { comp, nome, para, anexos }, ctx) {
 module.exports = {
   gravarArquivosDoDp, atenderEnvioDp, destinatarios, mandarEmailDoDp, mimeDe, MAX_BYTES,
   // puras, pro teste
-  competenciaDoDp, arquivosDoDpNaPasta, escolhidos, paraQuem, mesPorExtenso, mesesRecentes, mesAnterior, mensagemDoEnvio, MODELO_PADRAO, COLECAO,
+  competenciaDoDp, arquivosDoDpNaPasta, nomesNoEmail, documentoDoAnexo, escolhidos, paraQuem, mesPorExtenso, mesesRecentes, mesAnterior, mensagemDoEnvio, MODELO_PADRAO, COLECAO,
 };

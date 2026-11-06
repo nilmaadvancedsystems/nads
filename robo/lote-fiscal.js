@@ -418,7 +418,7 @@ async function dispararLote(db, ref, lote, deps) {
       const { cliente, para } = await dp.destinatarios(db, codigo, ativos);
       const nome = String(cliente.nome || '').trim();
       const anexos = [];
-      for (const i of itens) anexos.push({ nome: i.vai.nome, mime: dp.mimeDe(i.vai.nome), buffer: await L.bufferDoArquivo(i.ref, i) });
+      for (const i of itens) anexos.push({ nome: i.vai.nome, mime: dp.mimeDe(i.vai.nome), buffer: await L.bufferDoArquivo(i.ref, i), rotulo: [i.vai.tipo === 'OUTRO' ? '' : i.vai.tipo, i.vai.tributo].filter(Boolean).join(' '), valor: i.vai.valor, vencimento: ((i.leitura || {}).vencimento) || '' });
       if (anexos.reduce((s, a) => s + a.buffer.length, 0) > dp.MAX_BYTES) throw new Error('as guias do cliente passam de 18 MB juntas');
       const cfg = deps.config ? await deps.config().catch(() => ({})) : {};
       const { gmailId, assunto } = await dp.mandarEmailDoDp(db, { comp: competencia, nome, para, anexos }, { enviar: deps.enviar, caixa: deps.caixa, assinatura: cfg.assinatura || 'Nilma Contabilidade', modelo: MODELO });
