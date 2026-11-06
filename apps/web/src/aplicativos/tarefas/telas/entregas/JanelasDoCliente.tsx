@@ -17,7 +17,7 @@ export function JanelaDaEntregaFeita({ entrega, nome, clienteId, voltar }: { ent
         {vm.podeExcluir && <button type="button" className="btn btn-danger" onClick={() => void vm.excluir()}><Icone nome="lixeira" />Excluir entrega</button>}
         <span className="tarefas-barra-espaco" />
         <button type="button" className="btn btn-outline" onClick={() => void vm.imprimir()}><Icone nome="printer" />Imprimir</button>
-        <button type="button" className="btn btn-primary" onClick={() => void vm.enviarComprovante()}><span className="ent-logo"><LogoWhatsApp /></span>Enviar comprovante</button>
+        {vm.podeEnviarComprovante && <button type="button" className="btn btn-primary" onClick={() => void vm.enviarComprovante()}><span className="ent-logo"><LogoWhatsApp /></span>Enviar comprovante</button>}
       </>}>
       <div className="ent-fichas">{vm.fichas.map((f, i) => <span key={i} className="badge badge-neutral">{f}</span>)}</div>
       {vm.falha && <p className="registro-dica registro-dica-erro"><Icone nome="alert" />Não entregue: {vm.falha}</p>}

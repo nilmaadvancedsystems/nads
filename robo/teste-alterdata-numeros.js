@@ -48,3 +48,28 @@ assert.strictEqual(ped.flat().length, 5000);
 for (const p of ped) assert.ok(JSON.stringify(p).length <= 200 * 1000 + 400);
 
 console.log('ok: balancete (' + bal.length + ' contas), razão (' + raz.lancamentos.length + ' lançamentos, ' + raz.contas.length + ' contas fecham), pedaços (' + ped.length + ')');
+
+// o Balancete Dinâmico (06/11/2026): o sinal muda com a origem da conta; sem movimento, o sinal sai do total da mãe
+{
+  const numeros = require('./alterdata-numeros');
+  const XLSX = require('xlsx');
+  const linhas = [
+    ['Código', 'Classificação', 'Descrição', 'Saldo anterior', 'Debito', 'Credito', 'Saldo atual'],
+    ['1', '1', 'ATIVO', -2000, -100, 50, -2050],                 // indefinida: devedor −
+    ['0010', '1.1', 'CLIENTES', -2000, -100, 50, -2050],
+    ['10101', '1.1.001', 'Cliente A (indefinida)', -1000, -100, 0, -1100],
+    ['10102', '1.1.002', 'Cliente B (devedora)', 400, 0, -50, 350], // devedora: devedor +, crédito −
+    ['10103', '1.1.003', 'Cliente C (sem movimento)', -600, 0, 0, -600],
+    ['10104', '1.1.004', 'Cliente D (zerado)', 0, 0, 0, 0],
+  ];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(linhas), 'D');
+  const c = numeros.lerDinamico(XLSX.write(wb, { type: 'buffer', bookType: 'biff8' }));
+  const de = k => c.find(x => x.codigo === k);
+  assert.deepStrictEqual([de('10101').anterior, de('10101').anteriorDc, de('10101').saldo, de('10101').dc], [1000, 'D', 1100, 'D']);
+  assert.deepStrictEqual([de('10102').anterior, de('10102').anteriorDc, de('10102').credito, de('10102').saldo, de('10102').dc], [400, 'D', 50, 350, 'D']);
+  assert.deepStrictEqual([de('10103').saldo, de('10103').dc, !!de('10103').dcIncerto], [600, 'D', false]);   // 1100 + 350 + 600 = 2050 D
+  assert.ok(de('0010').sintetica && !de('10101').sintetica);
+  assert.strictEqual(de('10101').nivel, 2);
+  console.log('ok: balancete dinâmico (o sinal pela origem; a conta sem movimento pelo total da mãe)');
+}

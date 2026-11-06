@@ -12,12 +12,14 @@
 // uma barra de progresso"): o pedido leva andamento = {pct, etapa, clique, em}; a etapa muda a cada PASSO do roteiro e o
 // clique a cada CLIQUE (no máximo um a cada CLIQUE_MS no banco). Os arquivos subidos saem da pasta do pedido (05/11/2026:
 // "os dados tem que sair da pasta D: e subir pro nads"): com tudo pronto e no banco, a pasta é apagada.
-// Tipos: 'balancete' (o da Conferência: só o balancete, arquivo/xlsx) e 'mensal' (o da página Alterdata da empresa: o
-// balancete e o razão de todas as contas). O banco e o roteiro entram por fora (o robô usa o Firestore e o Python; o teste,
+// Tipos: 'balancete' (o da Conferência: só o balancete, arquivo/xlsx), 'mensal' (o da página Alterdata da empresa: o
+// balancete e o razão de todas as contas) e 'importar' (06/11/2026: a planilha de lançamentos de 10 colunas importada no
+// Contábil, num lote novo). O banco e o roteiro entram por fora (o robô usa o Firestore e o Python; o teste,
 // memória e um roteiro de mentira): teste-alterdata-fila.js.
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const agora = () => new Date().toISOString();
 const competenciaValida = c => /^\d{4}-(0[1-9]|1[0-2])$/.test(String(c || ''));
@@ -49,7 +51,7 @@ function pastaVazia(base) {
  * @param {number} [o.limiteMs]  o prazo de cada relatório
  */
 // quantos PASSO: cada roteiro escreve (mais o "pronto" da fila), para a porcentagem da barra
-const PASSOS_DO_ROTEIRO = { balancete: 6, razao: 5 };
+const PASSOS_DO_ROTEIRO = { balancete: 6, dinamico: 6, razao: 5, importar: 6 };
 const CLIQUE_MS = 700;
 
 function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, painel = null, limiteMs = 9 * 60 * 1000, apagarPasta = true }) {
@@ -104,6 +106,7 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
     if (!p || p.status !== 'pendente') return;
     const tipo = p.tipo || 'balancete';
     const codigo = Number(p.codigo);
+    if (tipo === 'importar') return importar(id, p, codigo);
     if (tipo !== 'balancete' && tipo !== 'mensal') { await banco.atualizar(id, { status: 'erro', erro: 'tipo de relatório desconhecido: ' + tipo, fimEm: agora() }); return; }
     if (!Number.isInteger(codigo) || codigo <= 0) { await banco.atualizar(id, { status: 'erro', erro: 'código da empresa inválido', fimEm: agora() }); return; }
     if (!competenciaValida(p.competencia)) { await banco.atualizar(id, { status: 'erro', erro: 'competência inválida', fimEm: agora() }); return; }
@@ -121,8 +124,11 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
     const [inicio, fim] = periodo(p.competencia);
     const comp = p.competencia.slice(5) + '/' + p.competencia.slice(0, 4);
     const relatorios = tipo === 'mensal' ? ['balancete', 'razao'] : ['balancete'];
+    // no pedido mensal o balancete é o Balancete Dinâmico (06/11/2026, Vitor: "e mais facil ele puxar o balancete dinamico
+    // ao invez do balancete"): Consultas → Balancete Dinâmico → Exportar (XLS com o saldo anterior de cada conta)
+    const roteiroDe = rel => (tipo === 'mensal' && rel === 'balancete' ? 'dinamico' : rel);
     // a barra: cada passo é uma fatia igual; o último pedaço (subir para o nads) fecha em 100
-    const totalPassos = relatorios.reduce((n, r) => n + PASSOS_DO_ROTEIRO[r], 0) + 1;
+    const totalPassos = relatorios.reduce((n, r) => n + PASSOS_DO_ROTEIRO[roteiroDe(r)], 0) + 1;
     const passos = [];
     let etapa = 'começando';
     let ultimoClique = 0;
@@ -148,9 +154,9 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
       if (painel) painel.fazendo('alterdata', (rel === 'razao' ? 'Razão ' : 'Balancete ') + codigo + ' ' + comp + ' no Alterdata');
       log('Alterdata:', rotulo, codigo, p.competencia, id);
       const sub = pastaVazia(path.join(pasta, rel));
-      const nome = (rel === 'razao' ? 'Razao ' : 'Balancete ') + codigo + ' ' + p.competencia + (rel === 'razao' ? '.csv' : '.xlsx');
+      const nome = (rel === 'razao' ? 'Razao ' : 'Balancete ') + codigo + ' ' + p.competencia + (rel === 'razao' ? '.csv' : roteiroDe(rel) === 'dinamico' ? '.xls' : '.xlsx');
       const destino = path.join(sub, nome);
-      const r = await comPrazo(rel, { codigo, inicio, fim, pasta: sub, destino }, nome => passo(rotulo + ': ' + nome), clique);
+      const r = await comPrazo(roteiroDe(rel), { codigo, inicio, fim, pasta: sub, destino }, nome => passo(rotulo + ': ' + nome), clique);
       if (!r.ok || !fs.existsSync(destino)) {
         arquivos[rel] = { status: 'erro', nome: '', tamanho: 0, partes: 0, erro: String(r.erro || 'o arquivo não apareceu').slice(0, 300) };
         log('Alterdata: erro', rotulo, codigo, p.competencia, arquivos[rel].erro);
@@ -201,6 +207,66 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
       if (erros.length) painel.erro('alterdata', 'Alterdata ' + codigo + ' ' + comp, erros.join(' · '));
     }
     log('Alterdata: fim', id, codigo, p.competencia, prontos.join('+') || 'nada', erros.length ? '(' + erros.join(' · ') + ')' : '');
+  }
+
+  /**
+   * A importação dos lançamentos no Contábil (06/11/2026, Vitor: "importar os lancamentos direto no alterdata"): o pedido
+   * leva a planilha de 10 colunas (planilha, base64) e o nome do lote; o robô grava a planilha na pasta do pedido, roda o
+   * roteiro (Importação financeira → empresa → novo lote → planilha → Importação Personalizada - Excel → Concluir) e
+   * apaga a pasta. A mesma planilha da mesma empresa já importada não entra de novo (o duplo clique, o pedido repetido):
+   * o pedido aponta para o que já importou (mesmoQue).
+   */
+  async function importar(id, p, codigo) {
+    const erro = msg => banco.atualizar(id, { status: 'erro', erro: msg, fimEm: agora(), andamento: { pct: 100, etapa: 'erro', clique: '', em: agora() } });
+    if (!Number.isInteger(codigo) || codigo <= 0) return erro('código da empresa inválido');
+    const lote = String(p.lote || '').trim();
+    if (!lote) return erro('sem o nome do lote');
+    const buf = Buffer.from(String(p.planilha || ''), 'base64');
+    if (buf.length < 512) return erro('a planilha veio vazia');
+    const sha256 = crypto.createHash('sha256').update(buf).digest('hex');
+    if (banco.importadoIgual) {
+      const igual = await banco.importadoIgual(id, codigo, sha256);
+      if (igual) {
+        await banco.atualizar(id, { status: 'pronto', sha256, mesmoQue: igual.id, resultado: 'esta mesma planilha já foi importada nesta empresa (lote "' + (igual.lote || '') + '"); não importei de novo', inicioEm: agora(), fimEm: agora(), andamento: { pct: 100, etapa: 'pronto', clique: '', em: agora() } });
+        log('Alterdata: importação igual', id, '→', igual.id);
+        return;
+      }
+    }
+    const total = PASSOS_DO_ROTEIRO.importar + 1;
+    const passos = [];
+    let etapa = 'começando';
+    let ultimoClique = 0;
+    const pct = () => Math.min(99, Math.round(passos.length / total * 100));
+    const passo = nome => {
+      passos.push({ n: passos.length + 1, nome: String(nome).slice(0, 200), quando: agora() });
+      etapa = String(nome).slice(0, 200);
+      return banco.atualizar(id, { passos, andamento: { pct: pct(), etapa, clique: '', em: agora() } }).catch(() => {});
+    };
+    const clique = nome => {
+      if (Date.now() - ultimoClique < CLIQUE_MS) return;
+      ultimoClique = Date.now();
+      return banco.atualizar(id, { andamento: { pct: pct(), etapa, clique: String(nome).slice(0, 120), em: agora() } }).catch(() => {});
+    };
+    await banco.atualizar(id, { status: 'trabalhando', sha256, inicioEm: agora(), passos: [], andamento: { pct: 0, etapa, clique: '', em: agora() } });
+    if (painel) painel.fazendo('alterdata', 'Importando lançamentos na ' + codigo + ' no Alterdata');
+    log('Alterdata: importar', codigo, '"' + lote + '"', id);
+    const pasta = pastaVazia(pastaDoPedido(id));
+    const destino = path.join(pasta, 'lancamentos ' + codigo + '.xls');
+    fs.writeFileSync(destino, buf);
+    const r = await comPrazo('importar', { codigo, lote, destino }, passo, clique);
+    const msgs = Array.isArray(r.mensagens) ? r.mensagens.map(m => String(m).slice(0, 300)).slice(0, 10) : [];
+    if (apagarPasta) { try { fs.rmSync(pasta, { recursive: true, force: true }); } catch (err) { log('Alterdata: não apaguei a pasta', pasta, err.message); } }
+    const fimP = await banco.ler(id);
+    if (fimP && fimP.status === 'cancelado') return;
+    const andamentoFim = { pct: 100, etapa: r.ok ? 'pronto' : 'erro', clique: '', em: agora() };
+    if (r.ok) {
+      await banco.atualizar(id, { status: 'pronto', resultado: msgs.join(' · ') || 'importação concluída', empresaAlterdata: String(r.empresa || '').slice(0, 200), andamento: andamentoFim, fimEm: agora() });
+      if (painel) painel.atividade('alterdata', 'Importou lançamentos na ' + codigo + ' (lote "' + lote + '") no Alterdata', p.criadoPor ? 'pedido de ' + p.criadoPor : '');
+    } else {
+      await banco.atualizar(id, { status: 'erro', erro: String(r.erro || 'não deu').slice(0, 500), resultado: msgs.join(' · '), andamento: andamentoFim, fimEm: agora() });
+      if (painel) painel.erro('alterdata', 'Importação na ' + codigo, String(r.erro || ''));
+    }
+    log('Alterdata: fim da importação', id, codigo, r.ok ? 'ok' : 'erro: ' + r.erro);
   }
 
   return {

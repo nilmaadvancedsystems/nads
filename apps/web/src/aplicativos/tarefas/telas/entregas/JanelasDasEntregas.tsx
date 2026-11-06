@@ -1,6 +1,8 @@
 // O lugar das janelas da entrega de documentos (16/10/2026, a cópia fiel do Entregas: uma janela por vez, como o
 // modalRoot de lá). Cada página do módulo põe a sua tela dentro dele; quem abre uma janela pede pelo useJanelasDasEntregas.
 import { useMemo, useState, type ReactNode } from 'react';
+import { ehDiretor } from '../../casca/navegacao';
+import { useOperador } from '../../casca/operador';
 import { CtxDasJanelas, type JanelaDaEntrega } from './contextoDasJanelas';
 import { JanelaDaParada } from './JanelaDaParada';
 import { JanelaDasJuntas } from './JanelaDasJuntas';
@@ -26,8 +28,12 @@ export function JanelasDasEntregas({ children }: { children: ReactNode }) {
 }
 
 function Janela({ j }: { j: JanelaDaEntrega }) {
+  const diretor = ehDiretor(useOperador().operador);
   switch (j.tipo) {
-    case 'parada': return <JanelaDaParada entrega={j.entrega} assinatura={j.assinatura} />;
+    // quem não é Diretor não confirma entrega (06/11/2026): a parada abre só para ler
+    case 'parada': return diretor
+      ? <JanelaDaParada entrega={j.entrega} assinatura={j.assinatura} />
+      : <JanelaDaEntregaFeita entrega={j.entrega} nome={j.entrega.clienteNome} clienteId={j.entrega.clienteId || null} voltar={null} />;
     case 'juntas': return <JanelaDasJuntas titulo={j.titulo} lista={j.entregas} />;
     case 'lembretes': return <JanelaDosLembretes clientes={j.clientes} />;
     case 'assinarNoCelular': return <JanelaAssinarNoCelular entrega={j.entrega} />;

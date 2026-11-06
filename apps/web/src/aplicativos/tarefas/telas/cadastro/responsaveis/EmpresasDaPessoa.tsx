@@ -31,7 +31,8 @@ export function EmpresasDaPessoa({ pessoa, vm: vmDeFora }: { pessoa: string; vm?
             <input type="text" placeholder="Buscar" aria-label="Buscar empresa" value={busca} onChange={e => setBusca(e.target.value)} />
           </label>
         )}
-        <button type="button" className="btn btn-outline" onClick={() => setTrocando(true)}><Icone nome="repeat" />Trocar empresas</button>
+        {/* só o Diretor troca (06/11/2026) */}
+        {vm.podeTrocar && <button type="button" className="btn btn-outline" onClick={() => setTrocando(true)}><Icone nome="repeat" />Trocar empresas</button>}
       </div>
       {!todas.length && <ConfigLinha titulo="Nenhuma empresa" descricao="Quando você for o responsável de uma empresa no Fiscal ou no Contábil, ela aparece aqui." />}
       {todas.length > 0 && !lista.length && <ConfigLinha titulo={'Nada com "' + busca + '"'} />}
@@ -59,7 +60,7 @@ export function EmpresasDaPessoa({ pessoa, vm: vmDeFora }: { pessoa: string; vm?
           })}
         </ul>
       )}
-      {trocando && <JanelaDeTroca vm={vm} pessoa={vm.nomeNaLista(pessoa)} fechar={() => setTrocando(false)} />}
+      {trocando && vm.podeTrocar && <JanelaDeTroca vm={vm} pessoa={vm.nomeNaLista(pessoa)} fechar={() => setTrocando(false)} />}
     </div>
   );
 }
@@ -98,8 +99,8 @@ export function EmpresasSemResponsavel({ vm }: { vm: VmEmpresasPorResponsavel })
               <span className="emp-pessoa-cod num fraco">{l.codigo ?? ''}</span>
               <span className="emp-pessoa-nome" title={l.nome}>{l.nome}</span>
               {d.id === 'contabil' && <span className="badge badge-neutral">Contábil</span>}
-              <MenuSuspenso rotulo="Escolher" icone="usuario" className="btn btn-outline" titulo={'Responsável no ' + d.rotulo} direita largura={220} flutuante
-                itens={vm.opcoes[d.id].map(n => ({ rotulo: <PessoaComFoto nome={n} {...vm.fotoDe(n)} />, onClick: () => vm.definir(l.nome, l.codigo, d.id, n) }))} />
+              {vm.podeTrocar && <MenuSuspenso rotulo="Escolher" icone="usuario" className="btn btn-outline" titulo={'Responsável no ' + d.rotulo} direita largura={220} flutuante
+                itens={vm.opcoes[d.id].map(n => ({ rotulo: <PessoaComFoto nome={n} {...vm.fotoDe(n)} />, onClick: () => vm.definir(l.nome, l.codigo, d.id, n) }))} />}
             </li>
           ))}
         </ul>

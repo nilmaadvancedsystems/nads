@@ -145,22 +145,29 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
    * O balancete diz em quais meses uma etapa entra (Vitor, 15/10/2026: os adiantamentos só com saldo no dinâmico). Só
    * os meses que ele cobre; a etapa já feita no mês não sai.
    */
+  // a mesma mudança (mês, etapa, entra ou sai) no máximo uma vez por minuto nesta tela (06/11/2026: com a gravação da
+  // tarefa negada pelo banco, a execução voltava sem a mudança e esta conta gravava de novo sem parar; foram 2,6 milhões
+  // de eventos "retirada" na Dornas Havana, 3,5 GB no banco)
+  const jaPedidas = useRef(new Map<string, number>());
   function ajustarPeloBalancete(b: { etapa: string; cobertos: readonly string[]; com: readonly string[]; motivo: string }) {
     if (!carregada || dev || !temEtapa(b.etapa)) return;
     for (const c of meses) {
       const exc = exDe[c];
       if (!exc || !b.cobertos.includes(c)) continue;
       const entra = b.com.includes(c) || !!t.estadoDa(exc, b.etapa);
+      const pedida = c + '|' + b.etapa + '|' + entra;
+      const quando = jaPedidas.current.get(pedida) || 0;
+      if (Date.now() - quando < 60_000) continue;
       // a etapa que só existe quando o balancete pede (o Adiantamento salarial): entra e sai pelas adicionadas
       if (rotina.etapas.find(e => e.id === b.etapa)?.soQuandoAdicionada) {
         const esta = !!exc.adicionadas?.includes(b.etapa);
         const m = entra && !esta ? t.adicionarEtapa(exc, b.etapa, b.motivo, op.nome, new Date())
           : !entra && esta ? t.retirarEtapa(exc, b.etapa, b.motivo, op.nome, new Date()) : null;
-        if (m) repo.gravar(m.execucao, m.evento, exc);
+        if (m) { jaPedidas.current.set(pedida, Date.now()); repo.gravar(m.execucao, m.evento, exc); }
         continue;
       }
       const m = t.etapaPeloBalancete(exc, b.etapa, entra, b.motivo, op.nome, new Date());
-      if (m) repo.gravar(m.execucao, m.evento, exc);
+      if (m) { jaPedidas.current.set(pedida, Date.now()); repo.gravar(m.execucao, m.evento, exc); }
     }
   }
   const chaveDasExecucoes = meses.map(c => (exDe[c] ? JSON.stringify(exDe[c]) : '')).join('|');
