@@ -4,7 +4,7 @@
 // CFOP, lançamento) e a ordem da Consulta do Concilia aí (conferencia/regras/consulta.ts). Só olhar.
 import { conferencia as c, demo, formatos } from '@nads/core';
 import { useMemo, useState } from 'react';
-import { implantarNotasFiscaisDeTeste, useNotasDaConferencia } from '../../../../../concilia-ai/importadosNaEtapa';
+import { implantarNotasFiscaisDeTeste, useNotasDaConferencia } from '../../../../etapas/conferencia/importadosNaEtapa';
 import { useDadosDeTesteDaEtapa, useEtapaAberta } from '../contexto';
 
 export type TipoConsultado = 'entradas' | 'saidas' | 'tomados' | 'prestados';

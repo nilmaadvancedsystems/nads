@@ -1,7 +1,7 @@
 // ViewModel do Creditor dentro da casca do Extratudo: as etapas nas abas de cima (travadas até serem
 // liberadas), o título e, na linha das etapas, o Cancelar (com confirmação) e o Próximo.
 import { useRetorno } from '@nads/ui';
-import { useRequisitosParaATarefa } from '../../../../../comum/ponte';
+import { useRequisitosParaATarefa } from '../../../telas/executor/etapas/ponte';
 import { useSessao } from './sessao';
 
 export function useCascaCreditor() {
@@ -24,9 +24,6 @@ export function useCascaCreditor() {
   }
 
   return {
-    ferramenta: 'creditor' as const,
-    empresa: s.empresa,
-    rota: s.rota,
     // o título e as etapas desde a primeira (Vitor, 05/10/2026)
     titulo: atual ? atual.titulo : '',
     paginas: s.etapas.map(x => ({ id: x.id, rotulo: x.rotulo, icone: x.icone, ativa: x.id === s.etapa, travada: !s.podeAbrir(x.id) })),

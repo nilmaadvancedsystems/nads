@@ -1,7 +1,7 @@
 // Etapa Totais (conciliadorZINHO.html #step-totals ~L640). "Baixar PDF" imprime esta tela.
 import { conciliadorzinho as cz } from '@nads/core';
 import { Alerta, Icone } from '@nads/ui';
-import { AcoesDoTopo } from '../../../../comum/topo';
+import { AcoesDoTopo } from '../../../../../../comum/topo';
 import { useTotais } from './useTotais';
 
 function imprimir(titulo: string) {

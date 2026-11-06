@@ -5,7 +5,7 @@ import { baixarBytes, Icone } from '@nads/ui';
 import { useId } from 'react';
 import type { empresas } from '@nads/core';
 import { FaixaQueAbre } from '../../../../../../comum/FaixaQueAbre';
-import { useRequisitosParaATarefa } from '../../../../../../comum/ponte';
+import { useRequisitosParaATarefa } from '../../../../telas/executor/etapas/ponte';
 import { MenuDeConta } from '../../../creditor/partes/MenuDeConta';
 import { useCompras, type VmCompras } from './useCompras';
 

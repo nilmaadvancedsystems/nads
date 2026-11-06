@@ -1,7 +1,7 @@
 // Etapa Arquivos: "Tudo certo" (conciliadorZINHO.html #step-4 ~L660).
 import { conciliadorzinho as cz } from '@nads/core';
 import { baixarArquivo, baixarBytes, Icone, Segmentado, Stat } from '@nads/ui';
-import { AcoesDoTopo } from '../../../../comum/topo';
+import { AcoesDoTopo } from '../../../../../../comum/topo';
 import { useArquivos, type ArquivoPronto } from './useArquivos';
 
 function baixar(a: ArquivoPronto) {

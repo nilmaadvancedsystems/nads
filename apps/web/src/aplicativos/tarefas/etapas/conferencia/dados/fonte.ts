@@ -3,8 +3,8 @@
 //   "exemplos" → empresas de exemplo em memória, nada vai para o banco (`npm run dev`, prévias)
 // O repositório só é criado quando alguém abre a Conferência, e uma vez só.
 import { conferencia, demo } from '@nads/core';
-import { criarRepoConferenciaFirestore, type RepoConferenciaFirestore } from './conferencia.firestore';
-import { ligadoAoBanco } from '../../../comum/modoDesenvolvedor';
+import { criarRepoConferenciaFirestore, type RepoConferenciaFirestore } from '../../../dados/conferencia.firestore';
+import { ligadoAoBanco } from '../../../../../comum/modoDesenvolvedor';
 
 export const noBanco = ligadoAoBanco(); // no modo desenvolvedor, os dados de exemplo (nada vai para o banco)
 

@@ -6,7 +6,7 @@ import { creditor as cr, extrator as x } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useState } from 'react';
 import { useAplicar, useCadastroDaEmpresa, useEmpresa } from '../../../extrator/dados/repo';
-import { useDadosDeTesteNaTarefa } from '../../../../../../comum/ponte';
+import { useDadosDeTesteNaTarefa } from '../../../../telas/executor/etapas/ponte';
 import { modoDesenvolvedor } from '../../../../../../comum/modoDesenvolvedor';
 import { useSessao } from '../../casca/sessao';
 

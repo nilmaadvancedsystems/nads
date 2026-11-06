@@ -8,9 +8,9 @@
 // (ver ../../../dados/cadastro.ts e o comCadastro do core); sem cadastro, como antes.
 // Os repositórios são criados uma vez, quando alguém abre o Creditor.
 import { creditor as cr } from '@nads/core';
-import { codigoDaEmpresa, repoDoCadastro } from '../../../dados/cadastro';
+import { codigoDaEmpresa, repoDoCadastro } from '../../dados/cadastro';
 import { criarRepoCreditorFirestore, type RepoCreditorFirestore } from '../../../dados/creditor.firestore';
-import { criarDriveFirestore } from '../../../dados/drive.firestore';
+import { criarDriveFirestore } from '../../../dados/driveDasFerramentas.firestore';
 import { ligadoAoBanco } from '../../../../../comum/modoDesenvolvedor';
 
 const noBanco = ligadoAoBanco(); // no modo desenvolvedor, os dados de exemplo (nada vai para o banco)

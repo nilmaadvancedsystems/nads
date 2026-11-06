@@ -22,7 +22,7 @@ export function useConfirmarBancos() {
   useEffect(() => {
     let vale = true;
     if (s.codigo != null) {
-      void import('../../../../../tarefas/dados/fonte')
+      void import('../../../../dados/fonte')
         .then(m => m.bancosDoEntregas())
         .then(mapa => { if (vale) setDoEntregas(mapa.get(s.codigo as number) || null); }, () => undefined);
     }

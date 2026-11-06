@@ -4,7 +4,7 @@
 // salarial, INSS, FGTS e Cheque especial), também para todas as empresas. Grava quando sai do campo, só se mudou.
 import { creditor as cr, tarefas as tf } from '@nads/core';
 import { useCarregando, useRetorno } from '@nads/ui';
-import { useHistoricosDoEscritorio } from '../../../../extratudo/ferramentas/creditor/dados/repo';
+import { useHistoricosDoEscritorio } from '../../../etapas/creditor/dados/repo';
 import { useHistoricosDoContabil } from '../../../dados/useModelosDeHistorico';
 
 const ROTULO: Record<cr.CampoHistorico, string> = {

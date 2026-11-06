@@ -2,7 +2,7 @@
 import { conferencia as c } from '@nads/core';
 import { Alerta, BotaoAcao, CampoArquivo, Icone, Interruptor, MensagemFlutuante, origemDoPai, useCarregando } from '@nads/ui';
 import { useState } from 'react';
-import { AcoesDoTopo } from '../../../../comum/topo';
+import { AcoesDoTopo } from '../../../../../../comum/topo';
 import { BoasVindasBalancete } from './partes/BoasVindasBalancete';
 import { NotasImportadas, ServicosImportados } from './partes/Importados';
 import { PlanoDeContas } from './partes/PlanoDeContas';

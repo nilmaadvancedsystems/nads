@@ -7,10 +7,10 @@
 import { creditor as cr, tarefas } from '@nads/core';
 import { useCarregando, useRetorno } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router';
-import { useDadosDeTesteNaTarefa } from '../../../../../../comum/ponte';
+import { useDadosDeTesteNaTarefa } from '../../../../telas/executor/etapas/ponte';
 import { modoDesenvolvedor } from '../../../../../../comum/modoDesenvolvedor';
 import { useSessao } from '../../casca/sessao';
+import { useParametrosDaEtapa } from '../../../../telas/executor/etapas/ponte';
 import { useDrive } from '../../dados/repo';
 import { lerRelatorio, mensagemDeErro } from '../../leitura';
 import { useBuscarNoEmail } from '../../../extrator/telas/tarefa/JanelaBuscarNoEmail';
@@ -38,7 +38,7 @@ export function useCompetencia() {
   const s = useSessao();
   const { drive, acesso } = useDrive();
   const { modal, aviso } = useRetorno();
-  const [params] = useSearchParams();
+  const params = useParametrosDaEtapa();
   const maximo = new Date().toISOString().slice(0, 7);
   // aberto pela Tarefa: os meses vêm prontos (os do período com CRÉD.LIQ.COBRANÇA no caixa) e ficam travados — o
   // período só se escolhe na primeira etapa da Tarefa (Vitor, 05/10/2026: "automático e bloqueado pro usuário não mexer")

@@ -5,10 +5,10 @@
 import { demo, empresas, extrator as x, tarefas } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router';
 import { useSessao } from '../../casca/sessao';
 import { useCadastroDaEmpresa } from '../../dados/repo';
 import { useGuardado } from '../../../../../../comum/guardado';
+import { useParametrosDaEtapa } from '../../../../telas/executor/etapas/ponte';
 
 /** 'aaaa-mm' do mês passado (a competência que o escritório trabalha). */
 function mesPassado(): string {
@@ -55,8 +55,11 @@ function novoId(): string {
 export function useImportacao() {
   const s = useSessao();
   const { toast, modal } = useRetorno();
-  const [params, setParams] = useSearchParams();
-  const competenciaDeTeste = /^\d{4}-\d{2}$/.test(params.get('competencia') || '') ? (params.get('competencia') as string) : mesPassado();
+  const params = useParametrosDaEtapa();
+  // o mês aberto na grade do Em lote (antes, o ?competencia= do endereço do iframe); sem escolha, o da Tarefa
+  const [mesAberto, setMesAberto] = useState<string | null>(null);
+  const daTarefa = mesAberto || params.get('competencia') || '';
+  const competenciaDeTeste = /^\d{4}-\d{2}$/.test(daTarefa) ? daTarefa : mesPassado();
   const [escolhidos, setEscolhidos] = useState<Record<x.Lado, File[]>>({ banco: [], sistema: [] });
   const [lendo, setLendo] = useState<x.Lado | null>(null);
   /** a linha de banco que está importando: 'banco|lado' */
@@ -364,8 +367,8 @@ export function useImportacao() {
     rotuloCompetencia: tarefas.rotuloCurtoCompetencia(competenciaDeTeste),
     // a partir de 01/2026 (o primeiro mês do nads)
     competencias: tarefas.competenciasRecentes(new Date(), 24).filter(c => c >= tarefas.PRIMEIRA_COMPETENCIA).map(c => ({ valor: c, rotulo: tarefas.rotuloCompetencia(c) })),
-    /** Fora da Tarefas: troca a competência na URL (dentro dela, quem troca é a Tarefas, pela ponte). */
-    setCompetencia: (c: string) => { const n = new URLSearchParams(params); n.set('competencia', c); setParams(n); },
+    /** O mês aberto (a grade do Em lote); trocar o período é com a Tarefa, pela ponte. */
+    setCompetencia: (c: string) => setMesAberto(c),
     /**
      * A Etapa com vários meses: os meses do período (?meses=aaaa-mm,…; vazio = um mês só) e, de cada um, se
      * já está pronto (todo banco com extrato e razão do mês, ou sem movimento naquele mês).

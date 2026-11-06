@@ -2,7 +2,7 @@
 // etapa de Importação da Tarefas saber se pode seguir. Lê o mesmo repositório da Conferência que as abas da etapa
 // usam (um só, sem abrir outra conexão) e redesenha quando ele muda. null = ainda carregando.
 import { conferencia as c, demo, formatos } from '@nads/core';
-import { modoDesenvolvedor } from '../../comum/modoDesenvolvedor';
+import { modoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
 import { useSyncExternalStore } from 'react';
 import { repoDaConferencia } from './dados/fonte';
 

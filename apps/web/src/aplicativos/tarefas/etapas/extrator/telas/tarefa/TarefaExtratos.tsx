@@ -10,17 +10,17 @@
 //     botãozinho de PDF (abre pelo link temporário). O movimento se vê pela setinha.
 // Ao importar, só uma barrinha por cima da tela, que some em 2,7 s.
 import { clientes as cl, demo, extrator as x, type conferencia, tarefas } from '@nads/core';
-import { Alerta, BotaoFechar, classeDaJanela, destacarNaTela, Icone, LogoBanco, LogoDrive, LogoGmail, MensagemFlutuante, MenuSuspenso, preCarregarLogosDosApps, urlDoLogoBanco, urlDoLogoNilma, useAbasParaAEtapa, useCarregando, type AbaDaEtapa } from '@nads/ui';
+import { Alerta, BotaoFechar, classeDaJanela, destacarNaTela, Icone, LogoBanco, LogoDrive, LogoGmail, MensagemFlutuante, MenuSuspenso, preCarregarLogosDosApps, urlDoLogoBanco, urlDoLogoNilma, useCarregando, type AbaDaEtapa } from '@nads/ui';
+import { useAbasDaEtapa } from '../../../../telas/executor/etapas/contexto';
 import { Fragment, useEffect, useId, useRef, useState } from 'react';
-import { useDadosDeTesteNaTarefa, usePonteDaTarefa, useRequisitosParaATarefa, type OpcaoDeTeste } from '../../../../../../comum/ponte';
+import { useDadosDeTesteNaTarefa, usePonteDaTarefa, useRequisitosParaATarefa, type OpcaoDeTeste } from '../../../../telas/executor/etapas/ponte';
 import { useSessao } from '../../casca/sessao';
 import { useImportacao, type Mensagem } from '../importacao/useImportacao';
 import { BotaoGoogle } from '../../../../../../comum/BotaoGoogle';
 import { FaixaQueAbre } from '../../../../../../comum/FaixaQueAbre';
-import { ImportacaoNaEtapa } from '../../../../../concilia-ai/ImportacaoNaEtapa';
-import { implantarNotasFiscaisDeTeste, useImportadosDaConferencia } from '../../../../../concilia-ai/importadosNaEtapa';
+import { ImportacaoNaEtapa } from '../../../conferencia/ImportacaoNaEtapa';
+import { implantarNotasFiscaisDeTeste, useImportadosDaConferencia } from '../../../conferencia/importadosNaEtapa';
 import { JanelaHistoricoDePedidos, JanelaPedirExtratos } from './JanelaPedirExtratos';
-import { caminhoNaFerramenta } from '../../../../casca/caminho';
 import { useBancosOk } from './useBancosOk';
 import { ConfirmarBancos } from './ConfirmarBancos';
 import { ComprovantesDoBanco } from './ComprovantesNaImportacao';
@@ -718,7 +718,7 @@ export function TarefaExtratos() {
   const visiveis = ABAS_DA_IMPORTACAO.filter(a => (a.id !== 'prestados' || vm.prestaServico !== false) && (!vm.etapaFiscal || ABAS_DAS_NOTAS.includes(a.id)));
   const aba = visiveis.some(a => a.id === abaEscolhida) ? abaEscolhida : visiveis[0].id;
   const abas = visiveis.map(a => ({ ...a, ativa: a.id === aba }));
-  useAbasParaAEtapa(ponte.naTarefa && !vm.etapaCheque ? abas : null, id => { if (ABAS_DA_IMPORTACAO.some(a => a.id === id)) setAba(id as AbaImportacao); });
+  useAbasDaEtapa(vm.etapaCheque ? [] : abas, id => { if (ABAS_DA_IMPORTACAO.some(a => a.id === id)) setAba(id as AbaImportacao); });
   const alternar = (id: string) => setAbertas(v => (v.includes(id) ? v.filter(a => a !== id) : [...v, id]));
   // Em Lote: os bancos com a grade dos meses recolhida (pela setinha)
   const [recolhidas, setRecolhidas] = useState<string[]>([]);
@@ -815,9 +815,6 @@ export function TarefaExtratos() {
               {bancosSemCheque.map(b => b.nome).join(', ')} {bancosSemCheque.length === 1 ? 'fecha' : 'fecham'} negativo em alguns dias (clique em <b>Cheque especial</b>, no banco, para ver).
               Gere os lançamentos no Cheque especial, lance no Alterdata e importe o razão de novo: a conferência confere o saldo final ignorando os lançamentos do cheque especial.
             </p>
-            <a className="btn btn-outline imp-cheque-abrir" href={caminhoNaFerramenta('cheque-especial', s.rota)} target="_blank" rel="noreferrer">
-              <Icone nome="link" />Abrir o Cheque especial
-            </a>
           </div>
         </div>
       ) : vm.bancos.length > 0 && vm.bancos.every(b => bancosOk[b.id] || semMovimentoNoPeriodo(b.id)) ? (

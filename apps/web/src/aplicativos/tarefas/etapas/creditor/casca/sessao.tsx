@@ -8,11 +8,11 @@ import { creditor as cr, extrator as x } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useGuardado } from '../../../../../comum/guardado';
-import { useLocation, useNavigate } from 'react-router';
 import { useContasDaEmpresa, useDrive } from '../dados/repo';
 import { useCadastroDaEmpresa, useEmpresa } from '../../extrator/dados/repo';
-import { useSaidasDaConferencia } from '../../../../concilia-ai/importadosNaEtapa';
-import { caminhoDaEtapa, ETAPAS, indiceDaEtapa, type Etapa, type IdEtapa } from './navegacao';
+import { useSaidasDaConferencia } from '../../conferencia/importadosNaEtapa';
+import { useParametrosDaEtapa } from '../../../telas/executor/etapas/ponte';
+import { ETAPAS, indiceDaEtapa, type Etapa, type IdEtapa } from './navegacao';
 
 export interface Estado {
   /** "AAAA-MM" ('' = ainda não escolhida) */
@@ -167,13 +167,12 @@ export function useSessao(): Sessao {
 
 export const MSG_ETAPA_TRAVADA = 'Resolva as etapas anteriores primeiro';
 
-export function SessaoProvider({ empresa, rota, etapa, children }: { empresa: { nome: string; codigo: number | null }; rota: string; etapa: IdEtapa; children: ReactNode }) {
-  const navegar = useNavigate();
-  // o ?competencia=&meses= da Tarefa fica no endereço de todas as etapas
-  const { search } = useLocation();
+// dentro da etapa Creditor da Tarefa (Vitor, 06/11/2026): a etapa aberta fica aqui, sem endereço próprio; os meses vêm da Tarefa
+export function SessaoProvider({ empresa, rota, children }: { empresa: { nome: string; codigo: number | null }; rota: string; children: ReactNode }) {
+  const [etapa, setEtapa] = useState<IdEtapa>('competencia');
   const { toast } = useRetorno();
   // onde parou: a sessão e a última etapa, pela empresa e pelos meses que a Tarefa mandou
-  const daUrl = new URLSearchParams(search);
+  const daUrl = useParametrosDaEtapa();
   const chaveGuardada = 'creditor|' + rota + '|' + (daUrl.get('meses') || daUrl.get('competencia') || 'avulso');
   const [estado, setEstado] = useGuardado<Estado>(chaveGuardada, INICIAL);
   const [ultimaEtapa, setUltimaEtapa] = useGuardado<IdEtapa | null>(chaveGuardada + '|etapa', null);
@@ -227,19 +226,19 @@ export function SessaoProvider({ empresa, rota, etapa, children }: { empresa: { 
     if (!voltou.current) {
       voltou.current = true;
       if (etapa === 'competencia' && ultimaEtapa && ultimaEtapa !== etapa && indiceDaEtapa(ultimaEtapa) >= 0 && podeAbrir(ultimaEtapa)) {
-        navegar(caminhoDaEtapa(rota, ultimaEtapa) + search, { replace: true });
+        setEtapa(ultimaEtapa);
         return;
       }
     }
     if (ultimaEtapa !== etapa) setUltimaEtapa(etapa);
-  }, [daEmpresa.carregada, etapa, ultimaEtapa, podeAbrir, navegar, rota, search, setUltimaEtapa]);
+  }, [daEmpresa.carregada, etapa, ultimaEtapa, podeAbrir, setUltimaEtapa]);
 
   const abrir = useCallback((id: IdEtapa) => {
     const i = indiceDaEtapa(id);
     setEstado(e => ({ ...e, alcancada: Math.max(e.alcancada, i) }));
-    navegar(caminhoDaEtapa(rota, id) + search);
+    setEtapa(id);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [navegar, rota, search, setEstado]);
+  }, [setEstado]);
 
   const irPara = useCallback((id: IdEtapa) => {
     if (id === etapa) return;
@@ -289,7 +288,7 @@ export function SessaoProvider({ empresa, rota, etapa, children }: { empresa: { 
     podeSeguir: !!etapas[i + 1] && requisitos(etapas[i + 1].id, estado, d),
     temProxima: !!etapas[i + 1],
     anterior: () => { if (i > 0) abrir(etapas[i - 1].id); },
-    recomecar: () => { setEstado(INICIAL); navegar(caminhoDaEtapa(rota, 'competencia') + search); },
+    recomecar: () => { setEstado(INICIAL); setEtapa('competencia'); },
   };
   return <Ctx.Provider value={s}>{children}</Ctx.Provider>;
 }

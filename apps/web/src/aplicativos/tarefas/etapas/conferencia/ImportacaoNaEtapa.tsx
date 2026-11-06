@@ -6,7 +6,7 @@
 import { conferencia as c, formatos } from '@nads/core';
 import { useCarregando, useRetorno } from '@nads/ui';
 import { useEffect } from 'react';
-import { LugarDasAcoes, TopoProvider } from '../../comum/topo';
+import { LugarDasAcoes, TopoProvider } from '../../../../comum/topo';
 import { paginaPorId } from './casca/navegacao';
 import { SessaoProvider, useSincronizarPrestaServico } from './casca/sessao';
 import { avisarErrosDoBanco, repoDaConferencia } from './dados/fonte';

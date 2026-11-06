@@ -8,7 +8,7 @@ import type { tarefas as t } from '@nads/core';
 import { getAuth } from 'firebase/auth';
 import { addDoc, collection, doc, getDoc, getDocs, getFirestore, initializeFirestore, onSnapshot, query, where, type Firestore } from 'firebase/firestore';
 import { guardar } from '../../../comum/modoDesenvolvedor';
-import { appDoEntregas } from './drive.firestore';
+import { appDoEntregas } from './driveDasFerramentas.firestore';
 
 // a trava do modo desenvolvedor: com o modo ligado, só ver — o pedido não sai
 const addDocGuardado = guardar(addDoc) as typeof addDoc;

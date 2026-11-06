@@ -5,13 +5,11 @@
 import { conferencia as c } from '@nads/core';
 import { destacarNaTela, useRetorno } from '@nads/ui';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router';
-import { VERSAO_SISTEMA } from '../../../versao';
+import { VERSAO_SISTEMA } from '../../../../../versao';
 import { useRepo } from '../dados/repo';
 import { PAGINAS_ESCONDIDAS, paginaPorId, SECOES, secaoDaPagina, type IdSecao } from './navegacao';
 import { MSG_CADASTRO_BLOQ, servicosDoEndereco, useSessao, useSincronizarPrestaServico } from './sessao';
-import { caminho } from './caminho';
-import { usePonteDaTarefa, useRequisitosParaATarefa } from '../../../comum/ponte';
+import { useParametrosDaEtapa, usePonteDaTarefa, useRequisitosParaATarefa } from '../../../telas/executor/etapas/ponte';
 
 /** No "?" da Tarefas cabem poucas linhas: as primeiras e "e mais N". */
 const LIMITE_DO_QUE_FALTA = 8;
@@ -20,7 +18,6 @@ const LIMITE_DO_QUE_FALTA = 8;
 export function useCascaConciliaAi() {
   const s = useSessao();
   const repo = useRepo();
-  const navegar = useNavigate();
   const { modal } = useRetorno();
   const e = s.empresa;
   const pag = paginaPorId(s.pagina);
@@ -32,13 +29,13 @@ export function useCascaConciliaAi() {
   const lista = repo.listarEmpresas().find(x => x.nome === s.nome);
 
   // aberta pela Tarefas: a regra vem do Cadastro da empresa (?servicos=), e não se pergunta
-  const { search } = useLocation();
-  const [servicosDoCadastro] = useState(() => servicosDoEndereco(search));
+  const params = useParametrosDaEtapa();
+  const [servicosDoCadastro] = useState(() => servicosDoEndereco('?' + params.toString()));
   useSincronizarPrestaServico(servicosDoCadastro);
 
   // dentro da etapa Conferência fiscal da Tarefas: o que falta para tudo ficar Ok (o avançar só aparece sem nada).
   // Conta o período da tarefa (o ?meses= do endereço), não o filtro de meses que a pessoa mexe na tela.
-  const [mesesDaTarefa] = useState(() => (new URLSearchParams(search).get('meses') || '').split(',').filter(Boolean));
+  const [mesesDaTarefa] = useState(() => (params.get('meses') || '').split(',').filter(Boolean));
   const faltamFiscal = useMemo(() => {
     const filtro = mesesDaTarefa.length ? c.filtroDoPeriodo(mesesDaTarefa) : s.filtro;
     const todas = c.pendenciasFiscaisComLugar(e, filtro);
@@ -132,11 +129,6 @@ export function useCascaConciliaAi() {
     else onPagina(id);
   }
 
-  function sair() {
-    s.aplicar(x => c.aoSair(x, new Date()));
-    navegar(caminho());
-  }
-
   function voltarInicioDaEmpresa() {
     const t = c.telaInicialEmpresa(e);
     s.irPara(t.secao + '/' + t.pagina);
@@ -147,7 +139,7 @@ export function useCascaConciliaAi() {
     titulo: pag?.titulo || '',
     versao: VERSAO_SISTEMA,
     secoes, paginas,
-    onSecao, onPagina, sair, voltarInicioDaEmpresa,
+    onSecao, onPagina, voltarInicioDaEmpresa,
     abasNaEtapa, onAbaNaEtapa,
     msgCadastro: MSG_CADASTRO_BLOQ,
     paginaExiste: !!pag || PAGINAS_ESCONDIDAS.some(p => p.id === s.pagina),

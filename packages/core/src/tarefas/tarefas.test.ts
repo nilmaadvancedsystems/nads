@@ -135,7 +135,7 @@ describe('competências e visão de cima', () => {
     const r = resumoPorEtapa(exs, R, 3);
     expect(r[0]).toMatchObject({ etapa: 'extratos', feitas: 2, pendentes: 1 });
     expect(r[2]).toMatchObject({ etapa: 'fiscal', feitas: 1, interrompidas: 1, pendentes: 1 });
-    expect(r[3]).toMatchObject({ etapa: 'dp', dispensadas: 1, pendentes: 2 });
+    expect(r[6]).toMatchObject({ etapa: 'dp', dispensadas: 1, pendentes: 2 });
     expect(objecoesMaisComuns(exs, R).map(o => [o.texto, o.qtd])).toEqual([
       ['A empresa não tem funcionários', 1], ['Outro motivo', 1],
     ]);

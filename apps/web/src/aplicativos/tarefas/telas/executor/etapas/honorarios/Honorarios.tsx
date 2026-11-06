@@ -6,7 +6,7 @@ import { Alerta, CampoArquivo, Icone } from '@nads/ui';
 import { useId, useState } from 'react';
 import { BotaoDeTeste } from '../../../../../../comum/BotaoDeTeste';
 import { RazaoDaFolha } from '../../partes/RazaoDaFolha';
-import { MenuDeConta } from '../../../../../extratudo/ferramentas/creditor/partes/MenuDeConta';
+import { MenuDeConta } from '../../../../etapas/creditor/partes/MenuDeConta';
 import { AvisoAcimaDoCabecalho } from '../contexto';
 import { useHonorarios } from './useHonorarios';
 

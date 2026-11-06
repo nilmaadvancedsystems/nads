@@ -37,11 +37,26 @@ apps/web/src/aplicativos/tarefas/
 |---|---|---|---|---|
 | 1 | Bancos (Relatório Bancário) | extratudo › extrator/tarefa/bancos | etapas/bancos | feita (06/10) |
 | 1 | Clientes | extratudo › extrator/tarefa/clientes | etapas/clientes | feita (06/10) |
-| 2 | Creditor (Arquivo, Relatório de Recebimento, Lançamentos, Exclusão) | extratudo › creditor | etapas/creditor | — |
-| 3 | Importação + Cheque especial | extratudo › extrator/tarefa/extratos | etapas/importacao | — |
-| 4 | Conferência fiscal | concilia-ai › movimento/relatorio | etapas/conferencia-fiscal | — |
-| 5 | Receitas | conciliadorzinho › conciliacao/bandeiras | etapas/receitas | — |
-| 6 | Tirar os sites do ar e apagar os aplicativos antigos | | | — |
+| 2 | Creditor (Arquivo, Relatório de Recebimento, Lançamentos, Exclusão) | extratudo › creditor | etapas/creditor | feita (06/11) |
+| 3 | Importação (Contábil e Fiscal) | extratudo › extrator/tarefa/extratos | etapas/importacao | feita (06/11) |
+| 4 | Conferência fiscal | concilia-ai › movimento/relatorio | etapas/conferencia | feita (06/11) |
+| 5 | Cartões (cartão empresarial) | extratudo › cartoes | etapas/cartoes | feita (06/11) |
+| 6 | Vendas no cartão | conciliadorzinho › conciliacao/bandeiras | etapas/vendas | feita (06/11) |
+| 7 | Tirar os sites do ar e apagar os aplicativos antigos | | | feita (06/11) |
+
+## Como ficou (06/11/2026)
+
+Vitor: "Não quero essas ferramentas na mesma tela, quero elas separadas, uma em cada caixinha" e "não quero essas aplicações
+rodando externas, deixa apenas nas etapas". Não há mais iframe nem aplicativo à parte:
+
+- O código das ferramentas mora em `apps/web/src/aplicativos/tarefas/etapas/` (extrator, creditor, cartoes, conferencia,
+  conciliadorzinho) e abre pela tela da etapa (`telas/executor/etapas/<etapa>`), com os repositórios em `etapas/Provedores.tsx`.
+- A ponte (`telas/executor/etapas/ponte.tsx`) tem os mesmos nomes de antes, mas pelo contexto da etapa: os bancos sem
+  movimento, o período, o Resolver, o que falta e o ⚡. O período que ia na URL do iframe vem de `useParametrosDaEtapa`.
+- Ordem do Contábil: Importação → Cheque especial → Conferência fiscal → Creditor (CRÉD.LIQ) → Cartões (cartão empresarial)
+  → Vendas no cartão → o resto. As três só entram na empresa que tem (Cadastro › Contábil › Parâmetros).
+- Os sites concilia-ai-, conciliadorzinho-, extratudo-, extrator-, creditor-, cheque-especial-nilma e extratudo-entregas
+  só levam para a Tarefa (scripts/sites.mjs, tipo mudou). O Conversor e o Componentes continuam como estão.
 
 ## Dados (mesmos documentos)
 

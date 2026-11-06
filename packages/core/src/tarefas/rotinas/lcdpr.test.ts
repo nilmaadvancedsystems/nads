@@ -33,7 +33,7 @@ describe('rotina das empresas com o LCDPR', () => {
   it('uma empresa comum continua com as etapas de sempre; o Fiscal e o DP da 62 não mudam', () => {
     expect(rotinaDaEmpresa('contabil', 292)).toBe(ROTINA_CONTABIL);
     expect(rotinaDaEmpresa('contabil', null)).toBe(ROTINA_CONTABIL);
-    expect(ROTINA_CONTABIL.etapas.slice(0, 4).map(e => e.id)).toEqual(['extratos', 'cheque-especial', 'fiscal', 'dp']);
+    expect(ROTINA_CONTABIL.etapas.slice(0, 7).map(e => e.id)).toEqual(['extratos', 'cheque-especial', 'fiscal', 'creditor', 'cartoes', 'vendas-cartao', 'dp']);
     expect(rotinaDaEmpresa('fiscal', 62)).toBe(ROTINA_FISCAL);
     expect(rotinaDaEmpresa('dp', 62)).toBe(ROTINA_DP);
     expect(rotinaDaEmpresa('outro', 62)).toBeNull();

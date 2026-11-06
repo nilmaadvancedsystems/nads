@@ -1,7 +1,7 @@
 // Movimento › Verificar por conta (página escondida; abre pelo "Revisar" do Relatório).
 // Origem: conferencia.html ~L1264-1310 (#view-conferencia); com resultado na tela o formulário
 // sai e fica só o resultado (vcMostrarResultado ~L3822).
-import { TrilhaDoTopo } from '../../../../comum/topo';
+import { TrilhaDoTopo } from '../../../../../../comum/topo';
 import { ForaDoPadraoDaConta } from './partes/ForaDoPadraoDaConta';
 import { Formulario } from './partes/Formulario';
 import { Resultado } from './partes/Resultado';

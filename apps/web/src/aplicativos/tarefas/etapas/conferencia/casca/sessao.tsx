@@ -5,10 +5,9 @@
 // Também é aqui que mora irPara(), com as regras do antigo go() (~L1950).
 import { conferencia as c } from '@nads/core';
 import { useRetorno } from '@nads/ui';
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useLocation, useNavigate } from 'react-router';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useAplicar, useEmpresaGuardada } from '../dados/repo';
-import { caminho } from './caminho';
+import { useParametrosDaEtapa } from '../../../telas/executor/etapas/ponte';
 
 export type AbaCadastro = 'entradas' | 'saidas' | 'tomados' | 'prestados';
 
@@ -59,6 +58,11 @@ export interface Sessao {
   setNatAnimar: (m: string | null) => void;
   /** avisa que a página depende de um arquivo ainda não importado */
   avisoImportar: (req: keyof typeof AVISO_IMPORTAR) => void;
+  /** o "Colocar em X" do Relatório: o Cadastro abre com o formulário da categoria ('tipo|cat|nome'; antes, o ?servAdd=) */
+  servAdd: string | null;
+  setServAdd: (v: string | null) => void;
+  /** a página que não deixa sair ainda (o Cadastro com as saídas pendentes): devolve true quando segurou */
+  definirTrava: (f: (() => boolean) | null) => void;
 }
 
 const Ctx = createContext<Sessao | null>(null);
@@ -83,17 +87,21 @@ export const AVISO_IMPORTAR = {
   todas: { titulo: 'Cadastro ainda indisponível', html: 'O Cadastro fica disponível depois de importar o <b>balancete</b> e as notas: <b>entradas e saídas</b>, ou os <b>serviços</b>.', botao: 'Ir para a importação', ir: null },
 } as const;
 
-export function SessaoProvider({ nome, rota, codigo, pagina, children }: { nome: string; rota: string; codigo: number | null; pagina: string; children: ReactNode }) {
-  const navegar = useNavigate();
+// dentro da etapa Conferência fiscal da Tarefa (Vitor, 06/11/2026): a página aberta fica aqui, sem endereço próprio
+export function SessaoProvider({ nome, rota, codigo, pagina: inicial, children }: { nome: string; rota: string; codigo: number | null; pagina: string; children: ReactNode }) {
+  const [pagina, setPagina] = useState(inicial);
+  const [servAdd, setServAdd] = useState<string | null>(null);
+  const trava = useRef<(() => boolean) | null>(null);
+  const definirTrava = useCallback((f: (() => boolean) | null) => { trava.current = f; }, []);
   const { toast, modal } = useRetorno();
   const aplicar = useAplicar(nome);
   const guardada = useEmpresaGuardada(nome);
   const empresa = useMemo(() => guardada || c.empresaNova(nome), [guardada, nome]);
 
   // dentro de uma etapa da Tarefas (a Conferência fiscal), ?meses=aaaa-mm,… : o filtro já nasce no período que a pessoa está fazendo
-  const { search } = useLocation();
+  const params = useParametrosDaEtapa();
   const [filtro, setFiltro] = useState<c.FiltroMovimento>(() => {
-    const meses = new URLSearchParams(search).get('meses');
+    const meses = params.get('meses');
     return meses ? c.filtroDoPeriodo(meses.split(',')) : c.FILTRO_MOVIMENTO_VAZIO;
   });
   const [abaRelatorio, setAbaRelatorio] = useState<c.AbaRelatorio>('geral');
@@ -108,13 +116,14 @@ export function SessaoProvider({ nome, rota, codigo, pagina, children }: { nome:
   const irPara = useCallback((destino: string) => {
     const e = empresa;
     let v = destino;
+    if (v !== pagina && trava.current?.()) return;
     if (v === 'importacao/prestados' && c.semPrest(e)) v = 'importacao/tomados';
     if (v.startsWith('cadastro/') && !c.importacoesOk(e)) { toast(MSG_CADASTRO_BLOQ); v = 'importacao/' + c.primeiraImportacaoPendente(e); }
     // sair do Verificar por conta descarta o relatório lido e o resultado (nunca é salvo)
     if (pagina === 'movimento/verificar' && v !== 'movimento/verificar') setVerificar(x => ({ ...x, razaoPorConta: {}, razaoNome: {}, resultado: null, abaRes: 'todas' }));
-    navegar(caminho(rota + '/' + v));
+    setPagina(v);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [empresa, pagina, navegar, rota, toast]);
+  }, [empresa, pagina, toast]);
 
   const revisarConta = useCallback((codigos: string[]) => {
     const lista = codigos.filter(cod => empresa.contas.some(x => x.codigo === cod && !x.sintetica));
@@ -138,7 +147,7 @@ export function SessaoProvider({ nome, rota, codigo, pagina, children }: { nome:
     filtroConsulta, setFiltroConsulta: (g, f) => setFC(x => ({ ...x, [g]: f })),
     ordemDiv, setOrdemDiv: (t, o) => setOD(x => ({ ...x, [t]: o })),
     ordemServ, setOrdemServ: (t, o) => setOS(x => ({ ...x, [t]: o })),
-    verificar, setVerificar, revisarConta, natAnimar, setNatAnimar, avisoImportar,
+    verificar, setVerificar, revisarConta, natAnimar, setNatAnimar, avisoImportar, servAdd, setServAdd, definirTrava,
   };
   return <Ctx.Provider value={valor}>{children}</Ctx.Provider>;
 }

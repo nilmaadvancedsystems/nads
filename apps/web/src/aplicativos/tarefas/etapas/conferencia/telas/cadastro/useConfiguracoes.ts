@@ -6,14 +6,14 @@
 // servFormHtml/servAbrirForm/servListaForn/servConfirmar ~L4476-4615).
 //
 // CONTRATO DE ENTRADA (usado pelo Relatório, botão "Colocar em X"): abrir esta página com
-//   irPara('cadastro/configuracoes?servAdd=' + encodeURIComponent(tipo + '|' + cat + '|' + nome))
+//   s.setServAdd(tipo + '|' + cat + '|' + nome); s.irPara('cadastro/configuracoes')
 // (tipo = 'tomados' | 'prestados', cat = id da categoria em SERV_CAT, nome = participante).
 // A página vai para a aba do tipo e abre o "Adicionar fornecedor" da categoria já com o
-// participante escolhido (o servIrParaForm do original, ~L4539); o parâmetro sai da URL em seguida.
+// participante escolhido (o servIrParaForm do original, ~L4539); o pedido se apaga em seguida.
 import { conferencia as c, formatos } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useBeforeUnload, useBlocker, useSearchParams } from 'react-router';
+import { useBeforeUnload } from 'react-router';
 import { useSessao, type AbaCadastro } from '../../casca/sessao';
 
 const ORDEM_ABAS: AbaCadastro[] = ['entradas', 'saidas', 'tomados', 'prestados'];
@@ -156,14 +156,12 @@ export function useConfiguracoes() {
   }, [e, modal, limparUi]);
   const bloquear = useCallback(() => aba === 'saidas' && avisarPendentes(), [aba, avisarPendentes]);
 
-  // sair da página pela casca (menu, abas, início da empresa); "Sair" da empresa passa (ver relatório)
-  const blocker = useBlocker(({ currentLocation, nextLocation }) =>
-    aba === 'saidas' && nextLocation.pathname !== currentLocation.pathname && nextLocation.pathname !== '/' && c.vistaPendentes(e).length > 0);
+  // sair da página pelas abas da etapa (Relatório, Naturezas…): segura com as saídas pendentes
+  const { definirTrava } = s;
   useEffect(() => {
-    if (blocker.state !== 'blocked') return;
-    blocker.reset();
-    bloquear();
-  }, [blocker, bloquear]);
+    definirTrava(() => aba === 'saidas' && c.vistaPendentes(e).length > 0 && bloquear());
+    return () => definirTrava(null);
+  }, [definirTrava, aba, e, bloquear]);
   useBeforeUnload(useCallback((ev: BeforeUnloadEvent) => {
     if (aba === 'saidas' && c.vistaPendentes(e).length) { ev.preventDefault(); ev.returnValue = ''; }
   }, [aba, e]));
@@ -332,9 +330,8 @@ export function useConfiguracoes() {
     if (nome) setFocoForm(f => ({ chave: ch, seq: (f?.seq || 0) + 1 }));
   }, [s]);
 
-  // ?servAdd=tipo|cat|nome (ver contrato no topo)
-  const [params, setParams] = useSearchParams();
-  const servAdd = params.get('servAdd');
+  // servAdd = tipo|cat|nome (ver contrato no topo; antes vinha no ?servAdd= do endereço)
+  const { servAdd, setServAdd } = s;
   const servAddTratado = useRef<string | null>(null);
   useEffect(() => {
     if (servAdd == null) { servAddTratado.current = null; return; }
@@ -342,8 +339,8 @@ export function useConfiguracoes() {
     servAddTratado.current = servAdd;
     const [t, cat, ...resto] = servAdd.split('|');
     if (c.ehServ(t) && cat) irParaForm(t, cat, resto.join('|'));
-    setParams(p => { p.delete('servAdd'); return p; }, { replace: true });
-  }, [servAdd, irParaForm, setParams]);
+    setServAdd(null);
+  }, [servAdd, irParaForm, setServAdd]);
 
   function formServ(t: c.TipoServico, cat: string): FormServ {
     const ch = chaveForm(t, cat);

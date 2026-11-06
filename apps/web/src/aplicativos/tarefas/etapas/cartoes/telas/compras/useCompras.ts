@@ -7,8 +7,8 @@ import { cartoes, empresas, extrator as x, formatos, tarefas } from '@nads/core'
 import { useRetorno } from '@nads/ui';
 import workerDoPdf from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import { useState, useSyncExternalStore } from 'react';
-import { useSearchParams } from 'react-router';
-import { repoDoCadastro } from '../../../../dados/cadastro';
+import { useParametrosDaEtapa } from '../../../../telas/executor/etapas/ponte';
+import { repoDoCadastro } from '../../../dados/cadastro';
 import { useCadastroDaEmpresa, useEmpresa } from '../../../extrator/dados/repo';
 
 x.definirWorkerDoPdf(workerDoPdf);
@@ -29,7 +29,7 @@ function usePlano(nome: string): empresas.cadastro.PlanoDeContas | null {
 
 export function useCompras(empresa: empresas.EmpresaDoEscritorio) {
   const { aviso } = useRetorno();
-  const [params] = useSearchParams();
+  const params = useParametrosDaEtapa();
   // o período da Tarefa (os meses, ou a competência); fora da Tarefa, sem período (qualquer fatura vale)
   const daTarefa = (params.get('meses') || '').split(',').filter(m => /^\d{4}-\d{2}$/.test(m));
   const competencia = params.get('competencia') || '';

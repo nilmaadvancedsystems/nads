@@ -7,8 +7,7 @@
 import { creditor, extrator as x } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
 import { useEffect, useMemo, useRef } from 'react';
-import type { usePonteDaTarefa } from '../../../../../../comum/ponte';
-import { caminhoNaFerramenta } from '../../../../casca/caminho';
+import type { usePonteDaTarefa } from '../../../../telas/executor/etapas/ponte';
 import { useSessao } from '../../casca/sessao';
 import type { useImportacao } from '../importacao/useImportacao';
 
@@ -70,8 +69,9 @@ export function useBancosOk(vm: Vm, ponte: Ponte, ocupado: boolean): {
       icone: 'alert', titulo: 'Saldo negativo no banco',
       // só o banco (Vitor, 02/10/2026)
       html: '<b>' + escapar(banco.nome) + '</b>' + (banco.conta ? ' ' + escapar(banco.conta) : ''),
-      // abre o Cheque especial numa aba nova (Vitor, 02/10/2026: no lugar do "Entendi")
-      botoes: [{ rotulo: 'Fazer Cheque Especial', valor: true, variante: 'btn-primary', aoClicar: () => { window.open(caminhoNaFerramenta('cheque-especial', s.rota), '_blank', 'noopener'); } }],
+      // o Cheque especial é a etapa seguinte da Tarefa (06/11/2026: as ferramentas à parte saíram)
+      texto: 'O cheque especial deste banco se faz na etapa seguinte, Cheque especial.',
+      botoes: [{ rotulo: 'Entendi', valor: true, variante: 'btn-primary' }],
     });
   }
 

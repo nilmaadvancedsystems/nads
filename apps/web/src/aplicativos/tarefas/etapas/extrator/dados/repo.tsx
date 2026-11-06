@@ -2,7 +2,7 @@
 // nenhuma View importa o repositório.
 import { extrator, type creditor, type empresas } from '@nads/core';
 import { useRetorno } from '@nads/ui';
-import { repoDoCadastro } from '../../../dados/cadastro';
+import { repoDoCadastro } from '../../dados/cadastro';
 import { driveDoExtrator } from './fonte';
 import { createContext, useCallback, useContext, useEffect, useSyncExternalStore, type ReactNode } from 'react';
 

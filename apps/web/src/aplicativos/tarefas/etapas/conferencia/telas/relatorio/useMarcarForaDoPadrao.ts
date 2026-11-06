@@ -3,15 +3,12 @@
 // Origem: conferencia.html os change de data-resolve (~L3232-3268), data-resolve-serv (~L4730-4752) e
 // data-serv-sug → servIrParaForm (~L4539, ~L4590).
 import { conferencia as c, formatos } from '@nads/core';
-import { useNavigate } from 'react-router';
-import { caminho } from '../../casca/caminho';
 import { useSessao } from '../../casca/sessao';
 
 const { lancN } = formatos;
 
 export function useMarcarForaDoPadrao() {
   const s = useSessao();
-  const navegar = useNavigate();
   const e = s.empresa;
 
   function marcarNotaCorrigida(t: c.TipoNotaFiscal, d: c.Divergencia, marcado: boolean) {
@@ -38,7 +35,8 @@ export function useMarcarForaDoPadrao() {
   function colocarNaCategoria(t: c.TipoServico, catId: string, nome: string) {
     s.setAbaCadastro(t);
     if (!c.importacoesOk(e)) { s.irPara('cadastro/configuracoes'); return; }
-    navegar(caminho(s.rota + '/cadastro/configuracoes') + '?servAdd=' + encodeURIComponent(t + '|' + catId + '|' + nome));
+    s.setServAdd(t + '|' + catId + '|' + nome);
+    s.irPara('cadastro/configuracoes');
   }
 
   return { marcarNotaCorrigida, marcarGrupoCorrigido, marcarServCorrigido, marcarServGrupoCorrigido, colocarNaCategoria };

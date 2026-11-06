@@ -9,7 +9,7 @@
 import type { empresas } from '@nads/core';
 import { getAuth } from 'firebase/auth';
 import { collection, deleteField, doc, getFirestore, initializeFirestore, onSnapshot, writeBatch as writeBatchBruto, type Firestore } from 'firebase/firestore';
-import { appDoEntregas } from './drive.firestore';
+import { appDoEntregas } from './driveDasFerramentas.firestore';
 import { guardarLote } from '../../../comum/modoDesenvolvedor';
 
 // a trava do modo desenvolvedor (comum/modoDesenvolvedor.ts): com o modo ligado, só ver — nada é gravado

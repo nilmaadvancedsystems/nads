@@ -2,8 +2,8 @@
 // lê e grava as contas bancárias; o Creditor lê o plano e grava as contas padrão). No banco, a coleção
 // `cadastro` (ver cadastro.firestore.ts); nos exemplos, neste navegador. Criado quando alguém precisa dele.
 import { demo, empresas } from '@nads/core';
-import { portaCadastroFirestore } from './cadastro.firestore';
-import { ligadoAoBanco } from '../../../comum/modoDesenvolvedor';
+import { portaCadastroFirestore } from '../../dados/cadastroDasFerramentas.firestore';
+import { ligadoAoBanco } from '../../../../comum/modoDesenvolvedor';
 
 const noBanco = ligadoAoBanco(); // no modo desenvolvedor, os dados de exemplo (nada vai para o banco)
 

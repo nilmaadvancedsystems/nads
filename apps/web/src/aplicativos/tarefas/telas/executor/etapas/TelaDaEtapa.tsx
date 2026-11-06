@@ -1,5 +1,6 @@
 // A tela própria de cada etapa (Vitor, 06/10/2026: as ferramentas que abriam em iframe viram telas da Tarefa).
-// O id vem da rotina (packages/core: Etapa.tela); cada tela é ViewModel + View na pasta dela.
+// O id vem da rotina (packages/core: Etapa.tela); cada tela é ViewModel + View na pasta dela. As ferramentas que eram
+// aplicativos à parte (Vitor, 06/11/2026) moram em tarefas/etapas e abrem por aqui, cada uma na etapa dela.
 import type { tarefas } from '@nads/core';
 import { Adiantamento } from './adiantamento/Adiantamento';
 import { RelatorioBancario } from './bancos/RelatorioBancario';
@@ -15,9 +16,20 @@ import { Simples } from './simples/Simples';
 import { Resultado } from './resultado/Resultado';
 import { AdiantamentoSalarial } from './adiantamentosalarial/AdiantamentoSalarial';
 import { LcdprDaEtapa } from './lcdpr/LcdprDaEtapa';
+import { ImportacaoDaEtapa } from './importacao/ImportacaoDaEtapa';
+import { ConferenciaFiscal } from './conferencia/ConferenciaFiscal';
+import { CreditorDaEtapa } from './creditor/CreditorDaEtapa';
+import { CartoesDaEtapa } from './cartoes/CartoesDaEtapa';
+import { VendasNoCartao } from './vendas/VendasNoCartao';
 
 export function TelaDaEtapa({ id }: { id: tarefas.TelaDaEtapa }) {
   switch (id) {
+    case 'importacao': return <ImportacaoDaEtapa />;
+    case 'importacao-fiscal': return <ImportacaoDaEtapa fiscal />;
+    case 'conferencia-fiscal': return <ConferenciaFiscal />;
+    case 'creditor': return <CreditorDaEtapa />;
+    case 'cartoes': return <CartoesDaEtapa />;
+    case 'vendas-cartao': return <VendasNoCartao />;
     case 'bancos': return <RelatorioBancario />;
     case 'cheque-especial': return <ChequeEspecial />;
     case 'clientes': return <Clientes />;

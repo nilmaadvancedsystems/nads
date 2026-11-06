@@ -6,9 +6,7 @@
 import { conciliadorzinho as cz } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
-import { useNavigate } from 'react-router';
-import { caminho } from './caminho';
-import { etapas, idDaPagina, type Etapa, type IdEtapa } from './navegacao';
+import { etapas, type Etapa, type IdEtapa } from './navegacao';
 
 export interface ArquivoExtrato { id: number; nome: string; tamanho: number; transacoes: cz.Transacao[] }
 export interface DadosBandeira { arquivos: ArquivoExtrato[]; conta: string }
@@ -74,6 +72,8 @@ interface Sessao {
   estado: Estado;
   mudar: (f: (e: Estado) => Estado) => void;
   irPara: (etapa: IdEtapa) => void;
+  /** abre a etapa sem conferir a trava (a lista acabou de mudar) */
+  definirEtapa: (etapa: IdEtapa) => void;
   podeAbrir: (etapa: IdEtapa) => boolean;
   proxima: () => void;
   anterior: () => void;
@@ -88,8 +88,9 @@ export function useSessao(): Sessao {
   return s;
 }
 
-export function SessaoProvider({ empresa, rota, etapa, children }: { empresa: { nome: string; codigo: number | null }; rota: string; etapa: IdEtapa; children: ReactNode }) {
-  const navegar = useNavigate();
+// dentro da etapa Vendas no cartão da Tarefa (Vitor, 06/11/2026): a etapa aberta fica aqui, sem endereço próprio
+export function SessaoProvider({ empresa, rota, children }: { empresa: { nome: string; codigo: number | null }; rota: string; children: ReactNode }) {
+  const [etapa, setEtapa] = useState<IdEtapa>('bandeiras');
   const { toast } = useRetorno();
   const [estado, setEstado] = useState<Estado>(INICIAL);
   const lista = useMemo(() => etapas(estado.bandeiras), [estado.bandeiras]);
@@ -98,9 +99,9 @@ export function SessaoProvider({ empresa, rota, etapa, children }: { empresa: { 
   const abrir = useCallback((id: IdEtapa, lst: Etapa[] = lista) => {
     const i = lst.findIndex(x => x.id === id);
     setEstado(e => ({ ...e, alcancada: Math.max(e.alcancada, i) }));
-    navegar(caminho(rota + '/' + idDaPagina(id)));
+    setEtapa(id);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [lista, navegar, rota]);
+  }, [lista]);
 
   const podeAbrir = useCallback((id: IdEtapa) => { const i = indice(id); return i >= 0 && i <= estado.alcancada; }, [indice, estado.alcancada]);
 
@@ -113,10 +114,10 @@ export function SessaoProvider({ empresa, rota, etapa, children }: { empresa: { 
   const s: Sessao = {
     empresa, rota, etapa, lista, estado,
     mudar: f => setEstado(f),
-    irPara, podeAbrir,
+    irPara, podeAbrir, definirEtapa: setEtapa,
     proxima: () => { const i = indice(etapa); if (i >= 0 && i < lista.length - 1) abrir(lista[i + 1].id); },
     anterior: () => { const i = indice(etapa); if (i > 0) abrir(lista[i - 1].id); },
-    recomecar: () => { setEstado(INICIAL); navegar(caminho(rota + '/' + idDaPagina('bandeiras'))); },
+    recomecar: () => { setEstado(INICIAL); setEtapa('bandeiras'); },
   };
   return <Ctx.Provider value={s}>{children}</Ctx.Provider>;
 }
@@ -124,10 +125,9 @@ export function SessaoProvider({ empresa, rota, etapa, children }: { empresa: { 
 /** Abre uma etapa de uma lista nova (depois de trocar as bandeiras, a lista muda na mesma hora). */
 export function useAbrirEtapa() {
   const s = useSessao();
-  const navegar = useNavigate();
   return (id: IdEtapa, bandeiras: cz.IdBandeira[]) => {
     const i = etapas(bandeiras).findIndex(x => x.id === id);
     s.mudar(e => ({ ...e, alcancada: Math.max(e.alcancada, i) }));
-    navegar(caminho(s.rota + '/' + idDaPagina(id)));
+    s.definirEtapa(id);
   };
 }
