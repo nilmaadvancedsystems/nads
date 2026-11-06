@@ -376,7 +376,8 @@ async function testarEmail({ pfx, arqSenha, cert }) {
   confere('um e-mail só, para o e-mail do tomador', gmail.enviados.length === 1 && gmail.enviados[0].para === 'tomador@exemplo.com.br' && gmail.contados === 1, gmail.enviados.map(e => e.para).join(','));
   const m1 = gmail.enviados[0] || { anexos: [] };
   const nomes = (m1.anexos || []).map(a => a.nome);
-  confere('2 anexos: DANFSe-<numero>.pdf e NFSe-<chave>.xml', nomes.length === 2 && nomes[0] === 'DANFSe-' + em('p1').numeroNfse + '.pdf' && nomes[1] === 'NFSe-' + em('p1').chaveAcesso + '.xml', nomes.join(', '));
+  const base = 'NFS-e ' + em('p1').numeroNfse + ' - ' + String(em('p1').tomador.nome).trim();
+  confere('2 anexos com o nome limpo: NFS-e <número> - <tomador>.pdf e .xml', nomes.length === 2 && nomes[0] === base + '.pdf' && nomes[1] === base + '.xml', nomes.join(', '));
   confere('o PDF é um PDF e o XML é o da nota', m1.anexos[0] && m1.anexos[0].buffer.slice(0, 5).toString() === '%PDF-' && m1.anexos[0].mime === 'application/pdf'
     && m1.anexos[1] && m1.anexos[1].buffer.toString('utf8') === em('p1').xmlNfse);
   confere('assunto e texto do modelo da config, preenchidos', m1.assunto === 'NFS-e ' + em('p1').numeroNfse + ' — teste' && /Olá, TOMADOR DE TESTE .* Nota \d+ de R\$ 950,00 \(10\/2026\)\./.test(m1.corpo), m1.assunto + ' | ' + m1.corpo);
