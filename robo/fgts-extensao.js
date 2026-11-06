@@ -118,20 +118,41 @@ const conectada = () => Date.now() - ultimoContato < 35000;
 /**
  * O "Perguntar onde salvar cada arquivo antes de fazer download" desligado no perfil (Vitor, 04/11/2026: "não tem como ele
  * vir nas configurações e verificar isso?"): com ele ligado, a guia esperava alguém clicar em Salvar na tela do servidor.
- * Só com o Chrome fechado (ele regrava o Preferences ao fechar). Devolve o que fez, para o log.
+ * 06/11/2026 (Vitor: "ele não tá indo nas config e confirmando se a opção de perguntar está ativada"): só mexer no
+ * Preferences não bastava. Com o Chrome já aberto o robô pulava a conferência calado, e a sincronização da conta Google
+ * podia religar a opção. Agora vale a política do Chrome do usuário (HKCU\Software\Policies\Google\Chrome,
+ * PromptForDownloadLocation = 0), que o Chrome obedece mesmo aberto e a sincronização não desfaz. O robô confere e grava
+ * a política toda vez antes de abrir o Chrome, lê de volta para confirmar e, com o Chrome fechado, também acerta o
+ * Preferences. Devolve uma linha para o log, sempre.
  */
-function semPerguntarOndeSalvar() {
-  const arq = path.join(process.env.LOCALAPPDATA || '', 'Google', 'Chrome', 'User Data', PERFIL_NOME, 'Preferences');
+const CHAVE_POLITICA = 'HKCU\\Software\\Policies\\Google\\Chrome';
+function politicaPerguntar(exec) {
+  try { const s = exec('reg', ['query', CHAVE_POLITICA, '/v', 'PromptForDownloadLocation']); const m = /PromptForDownloadLocation\s+REG_DWORD\s+0x([0-9a-f]+)/i.exec(s); return m ? parseInt(m[1], 16) : null; } catch (e) { return null; }
+}
+function semPerguntarOndeSalvar(exec = (c, a) => require('child_process').execFileSync(c, a, { encoding: 'utf8', windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] }), arq = path.join(process.env.LOCALAPPDATA || '', 'Google', 'Chrome', 'User Data', PERFIL_NOME, 'Preferences')) {
+  const feito = [];
+  // 1) a política (vale com o Chrome aberto ou fechado)
+  const antes = politicaPerguntar(exec);
+  if (antes !== 0) {
+    try { exec('reg', ['add', CHAVE_POLITICA, '/v', 'PromptForDownloadLocation', '/t', 'REG_DWORD', '/d', '0', '/f']); } catch (e) { /* conferido abaixo */ }
+  }
+  const depois = politicaPerguntar(exec);
+  feito.push(depois === 0 ? (antes === 0 ? 'conferi: o "perguntar onde salvar" está desligado pela política do Chrome' : 'desliguei o "perguntar onde salvar" pela política do Chrome (estava ' + (antes === null ? 'sem política' : 'ligado') + ')') : 'NÃO consegui desligar o "perguntar onde salvar" pela política do Chrome: a guia pode ficar esperando o Salvar');
+  // 2) o Preferences do perfil (só com o Chrome fechado: ele regrava o arquivo ao fechar)
   try {
-    const aberto = /chrome\.exe/i.test(require('child_process').execFileSync('tasklist', ['/FI', 'IMAGENAME eq chrome.exe', '/NH'], { encoding: 'utf8', windowsHide: true }));
-    if (aberto) return '';
-    const p = JSON.parse(fs.readFileSync(arq, 'utf8'));
-    if (p.download && p.download.prompt_for_download === false) return '';
-    p.download = Object.assign({}, p.download, { prompt_for_download: false });
-    fs.writeFileSync(arq + '.nads-tmp', JSON.stringify(p));
-    fs.renameSync(arq + '.nads-tmp', arq);
-    return 'desliguei o "perguntar onde salvar" do Chrome da nilmacontabilidade';
-  } catch (err) { return 'não conferi o "perguntar onde salvar" (' + err.message + ')'; }
+    const aberto = /chrome\.exe/i.test(exec('tasklist', ['/FI', 'IMAGENAME eq chrome.exe', '/NH']));
+    if (aberto) feito.push('o Chrome já estava aberto: o Preferences fica para a próxima vez, vale a política');
+    else {
+      const p = JSON.parse(fs.readFileSync(arq, 'utf8'));
+      if (!(p.download && p.download.prompt_for_download === false)) {
+        p.download = Object.assign({}, p.download, { prompt_for_download: false });
+        fs.writeFileSync(arq + '.nads-tmp', JSON.stringify(p));
+        fs.renameSync(arq + '.nads-tmp', arq);
+        feito.push('e no perfil da nilmacontabilidade também');
+      }
+    }
+  } catch (err) { feito.push('não conferi o Preferences (' + err.message + ')'); }
+  return feito.join('; ');
 }
 
 /** Abre o Chrome normal no perfil da nilmacontabilidade e espera a extensão chamar. */
@@ -139,9 +160,9 @@ async function abrirChrome(log, roteiros) {
   if (!fs.existsSync(CHROME)) throw new Error('falta o Chrome em ' + CHROME);
   ligarServidor();
   prepararExtensao(roteiros);
-  if (conectada()) return;
   const salvar = semPerguntarOndeSalvar();
   if (salvar) log('FGTS (extensão): ' + salvar);
+  if (conectada()) return;
   spawn(CHROME, ['--profile-directory=' + PERFIL_NOME, PORTAL], { detached: true, stdio: 'ignore' }).unref();
   for (let i = 0; i < 45 && !conectada(); i++) await dormir(1000);
   if (!conectada()) throw new Error('a extensão "nads - robô do FGTS" não respondeu no Chrome da nilmacontabilidade (está instalada? chrome://extensions, Carregar sem compactação: ' + PASTA_EXT + ')');
@@ -222,4 +243,4 @@ async function rodarPelaExtensao(itens, roteiros, aoPasso, aoResultado, log, ehE
   return { erro: '' };
 }
 
-module.exports = { rodarPelaExtensao, fecharChrome, prepararExtensao, comoFuncao, BAIXADOS, PASTA_EXT, CHROME, _teste: { ligarServidor, mandar, conectada } };
+module.exports = { rodarPelaExtensao, fecharChrome, prepararExtensao, comoFuncao, BAIXADOS, PASTA_EXT, CHROME, _teste: { ligarServidor, mandar, conectada, semPerguntarOndeSalvar } };
