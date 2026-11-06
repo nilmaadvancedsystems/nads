@@ -418,7 +418,7 @@ function htmlDaNfse(o) {
     '<meta name="color-scheme" content="light only"><meta name="supported-color-schemes" content="light"><title>' + esc(o.assunto || nome) + '</title>' +
     '<style>' + css + '</style></head>' +
     '<body style="margin:0;padding:0;background:' + FUNDO_DP + ';-webkit-text-size-adjust:100%">' +
-    '<div style="display:none;max-height:0;overflow:hidden;mso-hide:all">' + esc(String(o.texto || '').replace(/\s+/g, ' ').trim().slice(0, 140)) + '&#8199;&#65279;&#847;'.repeat(20) + '</div>' +
+    '<div style="display:none;max-height:0;overflow:hidden;mso-hide:all">' + esc(texto.replace(/\s+/g, ' ').trim().slice(0, 140)) + '&#8199;&#65279;&#847;'.repeat(20) + '</div>' +
     '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:' + FUNDO_DP + '"><tr><td align="center" style="padding:0 0 32px">' +
     '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px">' +
       // o bloco vinho
