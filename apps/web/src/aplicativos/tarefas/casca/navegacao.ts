@@ -119,7 +119,8 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'certificados', rotulo: 'Certificados', icone: 'barChart', titulo: 'Certificados' },
     // as contas gov.br de pessoas (CPF), importadas da planilha (Vitor, 07/10/2026)
     { id: 'gov', rotulo: 'Contas gov.br', icone: 'usuario', titulo: 'Contas gov.br' },
-    { id: 'acesso', rotulo: 'Acesso', icone: 'usuario', titulo: 'Acesso ao cofre' },
+    // "Liberação de acessos" (Vitor, 06/11/2026: era "Acesso"); o endereço segue /tarefas/senhas/acesso
+    { id: 'acesso', rotulo: 'Liberação de acessos', icone: 'usuario', titulo: 'Liberação de acessos' },
   ] },
   // o financeiro do escritório (15/10/2026: "vamos criar um emissor de notas fiscais para o financeiro"): as NFS-e de
   // honorários da Nilma (Taiobeiras, E&L), emitidas pelo robô da nuvem; só o admin e o diretor
