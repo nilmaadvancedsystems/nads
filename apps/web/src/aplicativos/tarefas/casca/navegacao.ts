@@ -232,6 +232,10 @@ export function aplicacoesDe(op: Operador): Aplicacao[] {
     // no Entregas, quem não é Diretor só vê o Painel (06/11/2026: "não pode realizar nenhuma entrega"); os links da Nova
     // entrega, da Rota e das Solicitações caem no Painel
     .map(a => (a.id === 'entregas' && !ehDiretor(op) ? { ...a, paginas: a.paginas.filter(p => p.id === 'painel') } : a))
+    // a lista dos usuários cadastrados só para o Diretor e o admin (Vitor, 06/11/2026: "O sênior, pleno e júnior não pode em
+    // hipótese alguma ter acesso onde ele vê os usuários cadastrados, em qualquer função"): os Usuários das Configurações e a
+    // Liberação de acessos das Senhas saem; o link direto cai na primeira página liberada
+    .map(a => (ehDiretor(op) ? a : a.id === 'cadastro' ? { ...a, paginas: a.paginas.filter(p => p.id !== 'usuarios') } : a.id === 'senhas' ? { ...a, paginas: a.paginas.filter(p => p.id !== 'acesso') } : a))
     // a lista das empresas se chama Contábil só para quem é do Contábil (06/11/2026); para o Fiscal e o DP ela mostra a
     // rotina do setor deles, com o nome de antes
     .map(a => (a.id === 'minhas-empresas' && !podeVerOutrosSetores(op) && op.departamento !== 'contabil' ? { ...a, nome: 'Minhas empresas', paginas: a.paginas.map(p => ({ ...p, titulo: 'Minhas empresas' })) } : a))

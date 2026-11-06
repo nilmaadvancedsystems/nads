@@ -15,8 +15,9 @@ describe('o Cadastro por nível (Vitor, 19/10/2026: o sênior vê e mexe no cada
     expect(podeMexerNoCadastro(null)).toBe(false);
   });
 
-  it('as Configurações: Empresas e Equipe para o sênior, o diretor e o admin; as páginas do Admin só para o admin (28/10/2026)', () => {
-    for (const o of [op('senior'), op('diretor')]) expect(cadastroDe(o)?.paginas.map(p => p.id)).toEqual(['empresas', 'usuarios']);
+  it('as Configurações: Empresas para o sênior; Usuários só para o diretor e o admin (06/11/2026); as do Admin só para o admin', () => {
+    expect(cadastroDe(op('senior'))?.paginas.map(p => p.id)).toEqual(['empresas']);
+    expect(cadastroDe(op('diretor'))?.paginas.map(p => p.id)).toEqual(['empresas', 'usuarios']);
     const doAdmin = cadastroDe(op('senior', true));
     expect(doAdmin?.nome).toBe('Configurações');
     expect(doAdmin?.paginas.map(p => p.id)).toEqual(['empresas', 'usuarios', 'visao-geral', 'robo', 'arquivador', 'uso', 'banco', 'cota', 'feedbacks', 'sistema']);
@@ -63,5 +64,21 @@ describe('Sênior, Pleno e Júnior: Entregas só o Painel, e o Início para todo
     expect(ehDiretor(op('junior', true))).toBe(true);
     for (const n of ['senior', 'pleno', 'junior'] as const) expect(ehDiretor(op(n))).toBe(false);
     expect(ehDiretor(null)).toBe(false);
+  });
+});
+
+describe('os usuários cadastrados só para o Diretor e o admin (Vitor, 06/11/2026)', () => {
+  const paginas = (o: Operador, app: string) => aplicacoesDe(o).find(a => a.id === app)?.paginas.map(p => p.id) ?? [];
+  it('sênior, pleno e júnior não veem os Usuários nem a Liberação de acessos', () => {
+    for (const n of ['senior', 'pleno', 'junior'] as const) {
+      expect(paginas(op(n), 'cadastro')).not.toContain('usuarios');
+      expect(paginas(op(n), 'senhas')).not.toContain('acesso');
+    }
+  });
+  it('o diretor e o admin veem', () => {
+    for (const o of [op('diretor'), op('pleno', true)]) {
+      expect(paginas(o, 'cadastro')).toContain('usuarios');
+      expect(paginas(o, 'senhas')).toContain('acesso');
+    }
   });
 });
