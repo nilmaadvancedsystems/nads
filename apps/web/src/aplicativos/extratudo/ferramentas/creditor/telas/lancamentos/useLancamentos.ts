@@ -4,6 +4,7 @@
 // As contas vêm do balancete da empresa (sugeridas pelo nome) ou do que foi salvo nela; trocar uma
 // conta salva na empresa, e baixar o arquivo confirma as sugeridas e ensina a conta de cada cliente.
 import { creditor as cr } from '@nads/core';
+import { nomeDoLote } from '../../../../../../comum/importarNoAlterdata';
 import { useSessao } from '../../casca/sessao';
 
 export type CampoConta = keyof cr.ContasCreditor;
@@ -60,6 +61,11 @@ export function useLancamentos() {
     podeBaixar: lancamentos.length > 0 && divergentes.length === 0 && contasOk,
     /** baixar conclui: as contas sugeridas passam a ser salvas e os clientes conciliados são aprendidos */
     baixou: s.concluir,
+    /** o que o "Importar no Alterdata" manda: a mesma planilha do Baixar (as mesmas linhas) */
+    importacao: {
+      codigo: s.empresa.codigo ?? null, empresa: s.empresa.nome, origem: 'creditor', lote: nomeDoLote('Creditor', lancamentos.map(l => l.data)),
+      planilha: () => (lancamentos.length ? { bytes: cr.planilhaDeImportacao(lancamentos), linhas: lancamentos.length } : null),
+    },
     arquivo: () => ({ bytes: cr.planilhaDeImportacao(lancamentos), nome: cr.nomeDoArquivo(s.empresa.codigo != null ? String(s.empresa.codigo) : null), tipo: cr.TIPO_XLS }),
     voltar: s.anterior,
   };

@@ -17,7 +17,7 @@ export function useSalarios() {
   // o balancete importado na Conferência: a conta do INSS a recolher e as contas para a contrapartida (só as analíticas)
   const contas = useContasDoBalancete(s.nome);
   const plano = useMemo(() => (contas || []).filter(x => !x.sintetica).map(x => ({ codigo: x.codigo, nome: x.nome })), [contas]);
-  const inss = useInssDaEtapa(chave, s.meses, plano, s.nome);
+  const inss = useInssDaEtapa(chave, s.meses, plano, s.nome, s.codigo);
   const salarios = useRazaoDaFolha('salarios', chave, s.meses, s.nome);
   const fgts = useRazaoDaFolha('fgts', chave, s.meses, s.nome);
   // a conferência do FGTS (Vitor, 16/10/2026): o razão da linha do FGTS × as guias do FGTS Digital; o pagamento que não está
@@ -33,7 +33,7 @@ export function useSalarios() {
       return a.lancamentos.map(l => ({ data: l.data, valor: l.valor, historico: l.historico, banco: nomeDe.get(b) || b }));
     });
   }, [ext, cadastroVivo, s.codigo, s.meses, s.competencia]);
-  const conferenciaFgts = useFgtsDaEtapa(chave, s.meses, fgts.razao, extrato, plano);
+  const conferenciaFgts = useFgtsDaEtapa(chave, s.meses, fgts.razao, extrato, plano, { codigo: s.codigo, nome: s.nome });
   // o ⚡ de cima: o INSS (razão e guias juntos); cada linha tem o ⚡ dela
   const teste = useDadosDeTesteDaEtapa(s.dev ? [{ id: 'inss', rotulo: 'Razão e guias do INSS de teste' }] : [], () => inss.implantarTeste());
   const faltam = [

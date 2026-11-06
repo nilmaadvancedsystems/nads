@@ -6,6 +6,7 @@ import { conversor, creditor, extrator, formatos, tarefas as t } from '@nads/cor
 import { baixarBytes, useRetorno } from '@nads/ui';
 import workerDoPdf from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import { useState } from 'react';
+import { nomeDoLote } from '../../../../comum/importarNoAlterdata';
 import { useGuardado } from '../../../../comum/guardado';
 import { useContabilDaEmpresa } from '../../../../comum/contabilDaEmpresa';
 import { useModelosDeHistorico } from '../../dados/useModelosDeHistorico';
@@ -30,7 +31,7 @@ function bancoDaGuia(texto: string): { nome: string; curto: string; marca: strin
 }
 
 /** empresa: o nome (o razão do INSS importado na Importação, quando a etapa não tem o próprio; 16/10/2026) */
-export function useInssDaEtapa(chave: string, meses: readonly string[], balancete: readonly ContaDoPlano[] = [], empresa = '') {
+export function useInssDaEtapa(chave: string, meses: readonly string[], balancete: readonly ContaDoPlano[] = [], empresa = '', codigoDaEmpresa: number | null = null) {
   const { aviso } = useRetorno();
   // o razão, as guias e as contrapartidas ficam guardados (Vitor, 15/10/2026: voltou, está onde parou)
   const [razao, setRazao] = useGuardado<{ chave: string; arquivo: string; razao: t.RazaoDaConta } | null>('inss-razao|' + chave, null);
@@ -98,6 +99,9 @@ export function useInssDaEtapa(chave: string, meses: readonly string[], balancet
     ...(r ? r.razao.lancamentos.filter(l => l.contrapartida).map(l => [l.contrapartida, { codigo: l.contrapartida, nome: l.nomeContrapartida }] as const) : []),
     ...balancete.map(x => [x.codigo, x] as const),
   ]).values()];
+  /** as linhas do .xls (todas as sugestões do período): as mesmas no Baixar e no Importar no Alterdata */
+  const linhasDoInss = () => t.linhasDoAlterdata(todas, contaInss.trim(), contrapartidas).map(l => ({ automatico: '', codHistorico: '', documento: '', tipo: 'principal' as const, tituloId: 0, ...l }));
+  const planilha = () => creditor.planilhaDeImportacao(linhasDoInss());
 
   return {
     importarRazao, importarGuias, lendo,
@@ -168,10 +172,14 @@ export function useInssDaEtapa(chave: string, meses: readonly string[], balancet
     /** quantas sugestões (do período todo) ainda sem a contrapartida */
     faltaContrapartida: faltaContra,
     podeExportar: todas.length > 0 && !faltaContra && /^[0-9]+$/.test(contaInss.trim()),
+    /** o que o "Importar no Alterdata" manda: a mesma planilha do Baixar (as mesmas linhas) */
+    importacao: {
+      codigo: codigoDaEmpresa, empresa, origem: 'inss', lote: nomeDoLote('INSS', linhasDoInss().map(l => l.data)),
+      planilha: () => { const n = linhasDoInss().length; return n ? { bytes: planilha(), linhas: n } : null; },
+    },
     /** o .xls de importação do Alterdata (o padrão de 10 colunas do Alterdata), com todas as sugestões do período */
     baixarXls: () => {
-      const linhas = t.linhasDoAlterdata(todas, contaInss.trim(), contrapartidas);
-      const bytes = creditor.planilhaDeImportacao(linhas.map(l => ({ automatico: '', codHistorico: '', documento: '', tipo: 'principal' as const, tituloId: 0, ...l })));
+      const bytes = planilha();
       baixarBytes(bytes, 'lancamentos-inss-' + meses[0] + (meses.length > 1 ? '-a-' + meses[meses.length - 1] : '') + '.xls', creditor.TIPO_XLS);
     },
     totalSugerido: reais(sugestoes.reduce((n, s) => n + s.valor, 0)),

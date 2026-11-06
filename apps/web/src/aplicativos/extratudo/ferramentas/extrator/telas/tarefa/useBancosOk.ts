@@ -8,6 +8,7 @@ import { creditor, extrator as x } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
 import { useEffect, useMemo, useRef } from 'react';
 import type { usePonteDaTarefa } from '../../../../../../comum/ponte';
+import { nomeDoLote } from '../../../../../../comum/importarNoAlterdata';
 import { caminhoNaFerramenta } from '../../../../casca/caminho';
 import { useSessao } from '../../casca/sessao';
 import type { useImportacao } from '../importacao/useImportacao';
@@ -22,6 +23,10 @@ export function useBancosOk(vm: Vm, ponte: Ponte, ocupado: boolean): {
   ok: Record<string, boolean>; correcoes: Record<string, x.CorrecaoDoRazao[]>; situacoes: Record<string, x.SituacaoDoBanco>;
   explicarCheque: (banco: { nome: string; conta?: string }, sit: x.SituacaoDoBanco) => void;
   exportarFaltas: (banco: { id: string; nome: string }) => void;
+  /** as linhas do .xls das faltas (as mesmas do Baixar e do Importar no Alterdata); null = nada a gerar (e avisa por quê) */
+  planilhaDasFaltas: (banco: { id: string; nome: string }) => x.SugestaoDeLancamento[] | null;
+  /** o nome do lote das faltas de um banco no Contábil (pelos meses das pendências) */
+  loteDasFaltas: (banco: { id: string; nome: string }) => string;
 } {
   const s = useSessao();
   const { modal, aviso } = useRetorno();
@@ -79,16 +84,25 @@ export function useBancosOk(vm: Vm, ponte: Ponte, ocupado: boolean): {
    * Os lançamentos do que entrou ou saiu no banco e não está no razão, num .xls para o Alterdata (Vitor, 13/10/2026): a
    * contrapartida pelo padrão do razão já importado; para a pessoa analisar e importar.
    */
-  function exportarFaltas(banco: { id: string; nome: string }) {
+  function planilhaDasFaltas(banco: { id: string; nome: string }): x.SugestaoDeLancamento[] | null {
     const conta = vm.contaContabilDe(banco.id);
-    if (!conta) { vm.avisarErro(banco.nome + ': falta o código contábil da conta', 'Informe em Cadastro › Contas bancárias (o código da conta do banco no plano, ex.: 10506).'); return; }
+    if (!conta) { vm.avisarErro(banco.nome + ': falta o código contábil da conta', 'Informe em Cadastro › Contas bancárias (o código da conta do banco no plano, ex.: 10506).'); return null; }
     const sugestoes = x.lancamentosDoQueFaltaNoRazao(s.empresa, banco.id, vm.primeiro, correcoes[banco.id] || [], conta);
-    if (!sugestoes.length) { vm.avisarErro(banco.nome + ': nada para gerar', 'Não há lançamento do banco faltando no razão, ou o razão importado não tem a contrapartida (importe o razão da conciliação do Alterdata).'); return; }
+    if (!sugestoes.length) { vm.avisarErro(banco.nome + ': nada para gerar', 'Não há lançamento do banco faltando no razão, ou o razão importado não tem a contrapartida (importe o razão da conciliação do Alterdata).'); return null; }
+    return sugestoes;
+  }
+
+  const loteDasFaltas = (banco: { id: string; nome: string }) => nomeDoLote('Banco ' + banco.nome,
+    (correcoes[banco.id] || []).filter(c => c.tipo === 'falta').map(c => c.data.slice(8, 10) + '/' + c.data.slice(5, 7) + '/' + c.data.slice(0, 4)));
+
+  function exportarFaltas(banco: { id: string; nome: string }) {
+    const sugestoes = planilhaDasFaltas(banco);
+    if (!sugestoes) return;
     const nome = 'lancamentos_' + (s.codigo ?? s.nome) + '_' + banco.nome.replace(/[^\w]+/g, '') + '.xls';
     baixarBytes(creditor.planilhaDeImportacao(sugestoes.map(g => g.linha)), nome, creditor.TIPO_XLS);
     const conferir = sugestoes.filter(g => g.origem === 'mais-usada').length;
     aviso({ tom: 'ok', titulo: sugestoes.length + (sugestoes.length === 1 ? ' lançamento gerado' : ' lançamentos gerados'), texto: nome + (conferir ? ' · ' + conferir + ' sem histórico parecido no razão (foi a conta mais usada): confira' : '') });
   }
 
-  return { ok, correcoes, situacoes, explicarCheque, exportarFaltas };
+  return { ok, correcoes, situacoes, explicarCheque, exportarFaltas, planilhaDasFaltas, loteDasFaltas };
 }

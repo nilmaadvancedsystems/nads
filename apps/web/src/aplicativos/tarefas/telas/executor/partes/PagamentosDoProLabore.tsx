@@ -4,6 +4,7 @@
 import { CampoArquivo, Icone, MenuSuspenso } from '@nads/ui';
 import { useId } from 'react';
 import { usePagamentosDoProLabore } from '../usePagamentosDoProLabore';
+import { BotaoImportarNoAlterdata } from '../../../../../comum/BotaoImportarNoAlterdata';
 import { BotaoDiario } from '../../../../../comum/BotaoDiario';
 
 /** travado: o item Pró-labore marcado no checklist — os botões ficam travados (Vitor, 14/10/2026) */
@@ -33,6 +34,7 @@ export function PagamentosDoProLabore({ empresa, codigo, contaDoItem, travado }:
             ? <button type="button" className="btn btn-outline" disabled>{vm.diaUtil}º dia útil</button>
             : <MenuSuspenso rotulo={vm.diaUtil + 'º dia útil'} className="btn btn-outline" dica="O dia útil do pagamento, no mês seguinte à competência" largura={160}
               itens={[1, 2, 3, 4, 5].map(n => ({ rotulo: n + 'º dia útil', marcado: vm.diaUtil === n, onClick: () => vm.escolherDiaUtil(n) }))} />}
+          <BotaoImportarNoAlterdata {...vm.importacao} disabled={travado || !vm.podeExportar} motivo="Escolha a conta do crédito" />
           <button type="button" className="icon-btn icon-btn-sm" disabled={travado || !vm.podeExportar} onClick={vm.baixarXls}
             title={vm.podeExportar ? 'Importar no meu Sistema: o .xls do Alterdata com ' + vm.qtd + ' pagamentos (' + vm.total + ')' : 'Escolha a conta do crédito'}
             aria-label="Importar no meu Sistema"><Icone nome="download" /></button>

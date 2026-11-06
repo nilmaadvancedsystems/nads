@@ -2,6 +2,7 @@
 // fora) e o Baixar .xls. Sem a tabela por dia e sem a prévia das 8 colunas (Vitor, 05/10/2026: "não precisa").
 import { creditor as cr } from '@nads/core';
 import { Alerta, baixarBytes, Icone, Stat } from '@nads/ui';
+import { BotaoImportarNoAlterdata } from '../../../../../../comum/BotaoImportarNoAlterdata';
 import { MenuDeConta } from '../../partes/MenuDeConta';
 import { useLancamentos, type CampoConta as IdCampo } from './useLancamentos';
 
@@ -57,6 +58,7 @@ export function Lancamentos() {
 
       {/* o Baixar .xls embaixo, no fim da página (Vitor, 05/10/2026) */}
       <div className="btn-row" style={{ justifyContent: 'flex-end' }}>
+        <BotaoImportarNoAlterdata {...vm.importacao} disabled={!vm.podeBaixar} motivo="Só importa quando todos os dias batem com o banco e as contas estão escolhidas" />
         <button className="btn btn-primary" type="button" disabled={!vm.podeBaixar} onClick={baixar}><Icone nome="download" />Baixar .xls</button>
       </div>
 

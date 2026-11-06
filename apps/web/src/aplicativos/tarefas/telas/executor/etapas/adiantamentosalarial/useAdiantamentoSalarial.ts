@@ -6,6 +6,7 @@
 import { clientes as cl, creditor, formatos, tarefas as t } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
 import { useMemo } from 'react';
+import { nomeDoLote } from '../../../../../../comum/importarNoAlterdata';
 import { useGuardado } from '../../../../../../comum/guardado';
 import { useContabilDaEmpresa } from '../../../../../../comum/contabilDaEmpresa';
 import { useChaveDaEtapa, useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
@@ -48,6 +49,12 @@ export function useAdiantamentoSalarial() {
   const naoZerou = meses.filter(m => Math.abs(m.saldoFinal) > 0.005);
   // o que falta pagar, também dos meses antes dos da etapa, que é de onde vem o saldo que não zera (Vitor, 26/10/2026)
   const faltando = useMemo(() => (razao && s.meses.length ? t.pagamentosQueFaltam(razao.razao, s.meses[s.meses.length - 1], modelos) : []), [razao, s.meses, modelos]);
+  /** as linhas do .xls (D Adiantamento salarial, C o banco): as mesmas no Baixar e no Importar no Alterdata */
+  const linhas = () => faltando.map(p => ({
+    automatico: '', data: dataBR(p.data), debito: contaAdiantamento, credito: contaBanco, codHistorico: '',
+    historico: p.historico, valor: p.valor, documento: '', tipo: 'principal' as const, tituloId: 0,
+  }));
+  const planilha = () => creditor.planilhaDeImportacao(linhas());
   const faltam = semMovimento ? [] : [
     ...(!razao ? ['Importar o razão do Adiantamento salarial'] : []),
     ...(naoZerou.length ? ['O Adiantamento salarial não zerou em ' + naoZerou.map(m => t.rotuloNumericoCompetencia(m.mes)).join(', ')] : []),
@@ -81,16 +88,18 @@ export function useAdiantamentoSalarial() {
       falta: m.falta > 0.005 ? reais(m.falta) : '',
     })),
     contaAdiantamento, contaBanco,
+    /** o que o "Importar no Alterdata" manda: a mesma planilha do Baixar (as mesmas linhas) */
+    importacao: {
+      codigo: s.codigo ?? null, empresa: s.nome, origem: 'adiantamento', lote: nomeDoLote('Adiantamento salarial', linhas().map(l => l.data)),
+      planilha: () => (faltando.length ? { bytes: planilha(), linhas: faltando.length } : null),
+    },
     digitarContaAdiantamento: (v: string) => setContas(c => ({ ...c, adiantamento: v.replace(/\D/g, '') })),
     digitarContaBanco: (v: string) => setContas(c => ({ ...c, banco: v.replace(/\D/g, '') })),
     qtd: faltando.length,
     podeExportar: faltando.length > 0 && !!contaAdiantamento && !!contaBanco,
     /** o .xls de importação do Alterdata: D Adiantamento salarial, C o banco, no dia 15 (ou no útil antes) */
     baixarXls: () => {
-      const bytes = creditor.planilhaDeImportacao(faltando.map(p => ({
-        automatico: '', data: dataBR(p.data), debito: contaAdiantamento, credito: contaBanco, codHistorico: '',
-        historico: p.historico, valor: p.valor, documento: '', tipo: 'principal' as const, tituloId: 0,
-      })));
+      const bytes = planilha();
       baixarBytes(bytes, 'adiantamento-salarial-' + s.nome.split(' ')[0] + '.xls', creditor.TIPO_XLS);
     },
   };

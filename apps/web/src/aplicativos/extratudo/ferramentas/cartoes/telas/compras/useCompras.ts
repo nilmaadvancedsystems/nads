@@ -8,6 +8,7 @@ import { useRetorno } from '@nads/ui';
 import workerDoPdf from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import { useState, useSyncExternalStore } from 'react';
 import { useSearchParams } from 'react-router';
+import { nomeDoLote } from '../../../../../../comum/importarNoAlterdata';
 import { repoDoCadastro } from '../../../../dados/cadastro';
 import { useCadastroDaEmpresa, useEmpresa } from '../../../extrator/dados/repo';
 
@@ -115,6 +116,7 @@ export function useCompras(empresa: empresas.EmpresaDoEscritorio) {
   const validas = faturas.filter(f => f.noPeriodo);
   const faltaBanco = validas.some(f => !f.pagamento || !f.contaBanco);
   const pronto = validas.length > 0 && !!contaCartao && !faltaBanco && validas.every(f => f.bate);
+  const linhasDoArquivo = () => validas.flatMap(f => cartoes.lancamentosDaFatura(f.bruto.compras, f.bruto.dia, contaCartao, f.bruto.contaBanco));
   const opcoes = (plano?.contas || []).filter(c => !c.sintetica).map(c => ({ codigo: c.codigo, nome: c.nome }));
 
   return {
@@ -144,8 +146,14 @@ export function useCompras(empresa: empresas.EmpresaDoEscritorio) {
       validas.some(f => !f.bate) ? 'A soma das compras não bate com o total de alguma fatura' : '',
     ].filter(Boolean),
     qtdLancamentos: validas.reduce((n, f) => n + f.qtd, 0),
+    /** o que o "Importar no Alterdata" manda: a mesma planilha do Baixar (as mesmas linhas) */
+    importacao: {
+      codigo: empresa.codigo ?? null, empresa: empresa.nome, origem: 'cartoes',
+      lote: nomeDoLote('Cartões', linhasDoArquivo().map(l => l.data)),
+      planilha: () => { const linhas = linhasDoArquivo(); return linhas.length ? { bytes: cartoes.planilhaDeImportacao(linhas), linhas: linhas.length } : null; },
+    },
     arquivo: () => ({
-      bytes: cartoes.planilhaDeImportacao(validas.flatMap(f => cartoes.lancamentosDaFatura(f.bruto.compras, f.bruto.dia, contaCartao, f.bruto.contaBanco))),
+      bytes: cartoes.planilhaDeImportacao(linhasDoArquivo()),
       nome: cartoes.nomeDoArquivoDoCartao(empresa.codigo != null ? String(empresa.codigo) : null, validas[0]?.bruto.dia || ''),
       tipo: cartoes.TIPO_XLS,
     }),

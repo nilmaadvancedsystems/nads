@@ -9,6 +9,7 @@ import { useContasDoBalancete } from '../../../concilia-ai/importadosNaEtapa';
 import { useCadastro } from '../../dados/repo';
 import { useModelosDeHistorico } from '../../dados/useModelosDeHistorico';
 import { useOperador } from '../../casca/operador';
+import { nomeDoLote } from '../../../../comum/importarNoAlterdata';
 import { useContabilDaEmpresa } from '../../../../comum/contabilDaEmpresa';
 
 /** contaDoItem: a conta do item do checklist ("60005 — Pro-labore a Pagar"), a do débito. */
@@ -51,6 +52,13 @@ export function usePagamentosDoProLabore(empresa: string, codigo: number | null,
     }
   }
 
+  /** as linhas do .xls (D Pró-labore a pagar, C a conta escolhida): as mesmas no Baixar e no Importar no Alterdata */
+  const linhasDoArquivo = () => pagamentos.map(p => ({
+    automatico: '', data: t.dataDoPagamentoDoProLabore(p.competencia, diaUtil), debito, credito: conta, codHistorico: '', historico: p.historico, valor: p.valor,
+    documento: '', tipo: 'principal' as const, tituloId: 0,
+  }));
+  const planilha = () => creditor.planilhaDeImportacao(linhasDoArquivo());
+
   return {
     temRazao: !!razao, arquivo: razao?.arquivo || '',
     importar,
@@ -64,12 +72,14 @@ export function usePagamentosDoProLabore(empresa: string, codigo: number | null,
     /** quantos pagamentos faltam para o razão zerar e o total (só no título do botão) */
     qtd: pagamentos.length, total: formatos.reais(pagamentos.reduce((s, p) => s + p.valor, 0)),
     podeExportar: pagamentos.length > 0 && !!conta && !!debito,
+    /** o que o "Importar no Alterdata" manda: a mesma planilha do Baixar (as mesmas linhas) */
+    importacao: {
+      codigo, empresa, origem: 'prolabore', lote: nomeDoLote('Pró-labore', linhasDoArquivo().map(l => l.data)),
+      planilha: () => (pagamentos.length ? { bytes: planilha(), linhas: pagamentos.length } : null),
+    },
     /** o .xls de importação do Alterdata: D Pró-labore a pagar, C a conta escolhida, no dia útil escolhido do mês seguinte */
     baixarXls: () => {
-      const bytes = creditor.planilhaDeImportacao(pagamentos.map(p => ({
-        automatico: '', data: t.dataDoPagamentoDoProLabore(p.competencia, diaUtil), debito, credito: conta, codHistorico: '', historico: p.historico, valor: p.valor,
-        documento: '', tipo: 'principal' as const, tituloId: 0,
-      })));
+      const bytes = planilha();
       baixarBytes(bytes, 'pagamentos-pro-labore-' + empresa.split(' ')[0] + '.xls', creditor.TIPO_XLS);
     },
   };

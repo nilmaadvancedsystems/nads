@@ -3,6 +3,7 @@
 // o fechamento do saldo. O razão é o da linha de cima. As guias não se importam aqui (Vitor, 04/11/2026): a entrega do FGTS
 // é a caixinha "Guias do FGTS" na Contabilização da Folha.
 import { Icone } from '@nads/ui';
+import { BotaoImportarNoAlterdata } from '../../../../../comum/BotaoImportarNoAlterdata';
 import { FaixaQueAbre } from '../../../../../comum/FaixaQueAbre';
 import { useColunaAjustavel, ValorNaGrade } from '../../../../../comum/GradeDosMeses';
 import { MenuDeConta } from '../../../../extratudo/ferramentas/creditor/partes/MenuDeConta';
@@ -72,6 +73,7 @@ export function FgtsDaEtapa({ vm }: { vm: Fgts }) {
                     {vm.nomeDaContaFgts && <span className="hint" title={vm.contaTravada ? 'Do balancete da empresa' : undefined}>{vm.nomeDaContaFgts}</span>}
                     <span className="tarefas-barra-espaco" />
                     {vm.faltaContrapartida > 0 && <span className="hint">Falta a contrapartida de {vm.faltaContrapartida} {vm.faltaContrapartida === 1 ? 'lançamento' : 'lançamentos'}</span>}
+                    <BotaoImportarNoAlterdata {...vm.importacao} disabled={!vm.podeExportar} motivo="Informe a conta do FGTS a recolher e a contrapartida de cada lançamento" />
                     <button type="button" className="btn btn-primary" disabled={!vm.podeExportar} onClick={vm.baixarXls}
                       title={vm.podeExportar ? 'Baixar o .xls de importação do Alterdata com todos os lançamentos do período' : 'Informe a conta do FGTS a recolher e a contrapartida de cada lançamento'}>
                       <Icone nome="download" />Importar no meu Sistema

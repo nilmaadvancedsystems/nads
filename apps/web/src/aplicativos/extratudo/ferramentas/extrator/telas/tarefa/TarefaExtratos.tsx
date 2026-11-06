@@ -9,13 +9,14 @@
 //   à direita: "Não teve movimento" (trava a linha e vira "Desfazer"); com o extrato vindo do Drive, um
 //     botãozinho de PDF (abre pelo link temporário). O movimento se vê pela setinha.
 // Ao importar, só uma barrinha por cima da tela, que some em 2,7 s.
-import { clientes as cl, demo, extrator as x, type conferencia, tarefas } from '@nads/core';
+import { clientes as cl, creditor, demo, extrator as x, type conferencia, tarefas } from '@nads/core';
 import { Alerta, BotaoFechar, classeDaJanela, destacarNaTela, Icone, LogoBanco, LogoDrive, LogoGmail, MensagemFlutuante, MenuSuspenso, preCarregarLogosDosApps, urlDoLogoBanco, urlDoLogoNilma, useAbasParaAEtapa, useCarregando, type AbaDaEtapa } from '@nads/ui';
-import { Fragment, useEffect, useId, useRef, useState } from 'react';
+import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { useDadosDeTesteNaTarefa, usePonteDaTarefa, useRequisitosParaATarefa, type OpcaoDeTeste } from '../../../../../../comum/ponte';
 import { useSessao } from '../../casca/sessao';
 import { useImportacao, type Mensagem } from '../importacao/useImportacao';
 import { BotaoGoogle } from '../../../../../../comum/BotaoGoogle';
+import { BotaoImportarNoAlterdata } from '../../../../../../comum/BotaoImportarNoAlterdata';
 import { FaixaQueAbre } from '../../../../../../comum/FaixaQueAbre';
 import { ImportacaoNaEtapa } from '../../../../../concilia-ai/ImportacaoNaEtapa';
 import { implantarNotasFiscaisDeTeste, useImportadosDaConferencia } from '../../../../../concilia-ai/importadosNaEtapa';
@@ -122,17 +123,20 @@ const OPCOES_DE_TESTE: OpcaoDeTeste[] = [
   { id: 'apagar', rotulo: 'Apagar os dados de teste' },
 ];
 
-function PendenciasDoBanco({ itens, onGerar }: { itens: x.CorrecaoDoRazao[]; onGerar?: () => void }) {
+function PendenciasDoBanco({ itens, onGerar, importar }: { itens: x.CorrecaoDoRazao[]; onGerar?: () => void; importar?: ReactNode }) {
   if (!itens.length) return null;
   const faltas = itens.filter(c => c.tipo === 'falta').length;
   const valor = (n: number | null) => (n == null ? '' : x.reaisBR(Math.abs(n)));
   return (
     <FaixaQueAbre titulo="Pendências" qtd={itens.length} aviso acoes={onGerar && faltas > 0 ? (
       // gerar os lançamentos do que falta no razão (Vitor, 13/10/2026): o .xls para o Alterdata, para analisar
-      <button type="button" className="icon-btn icon-btn-sm imp-btn" onClick={onGerar}
-        title={'Gerar os lançamentos do que está no banco e não no razão (' + faltas + '), no .xls do Alterdata'} aria-label="Gerar os lançamentos do que falta no razão">
-        <Icone nome="download" />
-      </button>
+      <>
+        {importar}
+        <button type="button" className="icon-btn icon-btn-sm imp-btn" onClick={onGerar}
+          title={'Gerar os lançamentos do que está no banco e não no razão (' + faltas + '), no .xls do Alterdata'} aria-label="Gerar os lançamentos do que falta no razão">
+          <Icone nome="download" />
+        </button>
+      </>
     ) : undefined}>
         <>
           <div className="table-wrap">
@@ -669,7 +673,7 @@ export function TarefaExtratos() {
   const ocupadoGeral = vm.ocupado || !!d.buscando || vm.bancos.some(b => b.extrato.lendo || b.razao.lendo);
   useCarregando(ocupadoGeral);
   // extrato e razão batendo no período: a linha vira só o selo Ok (sem botões, a setinha não abre)
-  const { ok: bancosOk, correcoes, situacoes, exportarFaltas } = useBancosOk(vm, ponte, ocupadoGeral);
+  const { ok: bancosOk, correcoes, situacoes, exportarFaltas, planilhaDasFaltas, loteDasFaltas } = useBancosOk(vm, ponte, ocupadoGeral);
   // os requisitos para seguir (o botão de avançar da Tarefas só aparece com tudo pronto): cada banco Ok e, na
   // Conferência, Balancete, Entradas, Saídas, Tomados e (se presta serviço) Prestados importados
   // o balancete dinâmico é obrigatório na Importação (16/10/2026): ele monta a Tarefa
@@ -1025,7 +1029,10 @@ export function TarefaExtratos() {
                 </FaixaQueAbre>
               ) : <Movimento m={vm.movimentoDe(b.id)}
                 pdf={doDrive.length ? doDrive[doDrive.length - 1] : null} onPdf={visualizarDoDrive} competencia={vm.competencia} />)}
-              {!ok && <PendenciasDoBanco itens={correcoes[b.id] || []} onGerar={() => exportarFaltas(b)} />}
+              {!ok && <PendenciasDoBanco itens={correcoes[b.id] || []} onGerar={() => exportarFaltas(b)}
+                importar={<BotaoImportarNoAlterdata codigo={s.codigo ?? null} empresa={s.nome} origem="bancos"
+                  lote={loteDasFaltas(b)}
+                  planilha={() => { const p = planilhaDasFaltas(b); return p ? { bytes: creditor.planilhaDeImportacao(p.map(g => g.linha)), linhas: p.length } : null; }} />} />}
             </div>
           );
         })}

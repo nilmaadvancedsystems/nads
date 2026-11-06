@@ -4,6 +4,7 @@
 import { conferencia as c, formatos } from '@nads/core';
 import { baixarBytes, Icone, Segmentado } from '@nads/ui';
 import { useEffect, useRef } from 'react';
+import { BotaoImportarNoAlterdata } from '../../../../../comum/BotaoImportarNoAlterdata';
 import type { useVerificarConta } from '../useVerificarConta';
 import { AlertaVerde, SecaoVc, TabelaFaltando, TabelaVc } from './Tabelas';
 
@@ -41,8 +42,11 @@ export function Resultado({ vm, r }: { vm: Vm; r: Res }) {
       <div className="btn-row" style={{ justifyContent: 'flex-end' }}>
         {/* os lançamentos das notas faltando, para importar no Alterdata (Vitor, 22/10/2026) */}
         {r.todas && !r.todas.multi && r.todas.faltando.length > 0 && (
+          <>
+          <BotaoImportarNoAlterdata {...vm.importacaoFaltando} disabled={fechado} motivo="A conta está Ok: voltando para o Relatório" />
           <button className="btn btn-outline" id="vcBtLancamentos" type="button" disabled={fechado} title="As notas faltando no padrão de importação do Alterdata, com a conta e o histórico dos lançamentos que já estão no relatório"
             onClick={() => { const a = vm.lancamentosFaltando(); if (a) baixarBytes(a.bytes, a.nome, c.TIPO_XLS); }}><Icone nome="download" />Exportar lançamentos</button>
+          </>
         )}
         {/* a planilha completa (Vitor, 22/10/2026): o resumo e uma aba para cada pendência, no lugar do CSV */}
         <button className="btn btn-outline" id="vcBtCsv" type="button" disabled={fechado} onClick={() => { const a = vm.planilha(); if (a) baixarBytes(a.bytes, a.nome, TIPO_XLSX); }}><Icone nome="download" />Baixar resultado</button>

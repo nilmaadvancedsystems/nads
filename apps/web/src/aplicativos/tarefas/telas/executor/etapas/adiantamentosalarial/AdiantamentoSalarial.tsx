@@ -2,6 +2,7 @@
 // vira × e tira), a grade dos meses — o descontado na folha, o pagamento e o dia dele, o dia certo (15 ou o útil antes), o
 // saldo (tem de zerar) e o que falta — e, faltando pagamento, as duas contas e o .xls de importação do Alterdata, na linha.
 import { CampoArquivo, Icone } from '@nads/ui';
+import { BotaoImportarNoAlterdata } from '../../../../../../comum/BotaoImportarNoAlterdata';
 import { BotaoDiario } from '../../../../../../comum/BotaoDiario';
 import { useId } from 'react';
 import { useAdiantamentoSalarial } from './useAdiantamentoSalarial';
@@ -33,6 +34,7 @@ export function AdiantamentoSalarial() {
                     value={vm.contaAdiantamento} onChange={e => vm.digitarContaAdiantamento(e.target.value)} style={{ width: 104 }} />
                   <input type="text" inputMode="numeric" placeholder="Banco" aria-label="Conta do banco (crédito)" title="O código da conta do banco que pagou (crédito)"
                     value={vm.contaBanco} onChange={e => vm.digitarContaBanco(e.target.value)} style={{ width: 96 }} />
+                  <BotaoImportarNoAlterdata {...vm.importacao} disabled={!vm.podeExportar} motivo="Informe as duas contas" />
                   <button type="button" className="icon-btn icon-btn-sm" disabled={!vm.podeExportar} onClick={vm.baixarXls}
                     title={vm.podeExportar ? 'Importar no meu Sistema: o .xls do Alterdata com ' + (vm.qtd === 1 ? 'o pagamento que falta' : 'os ' + vm.qtd + ' pagamentos que faltam') : 'Informe as duas contas'}
                     aria-label="Importar no meu Sistema"><Icone nome="download" /></button>

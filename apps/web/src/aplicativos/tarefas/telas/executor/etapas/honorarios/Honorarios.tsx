@@ -4,6 +4,7 @@
 // Só peças que já existem: a linha da Importação (imp-bloco), a regra do Cadastro (cad-regra), a tabela e a barra.
 import { Alerta, CampoArquivo, Icone } from '@nads/ui';
 import { useId, useState } from 'react';
+import { BotaoImportarNoAlterdata } from '../../../../../../comum/BotaoImportarNoAlterdata';
 import { BotaoDeTeste } from '../../../../../../comum/BotaoDeTeste';
 import { RazaoDaFolha } from '../../partes/RazaoDaFolha';
 import { MenuDeConta } from '../../../../../extratudo/ferramentas/creditor/partes/MenuDeConta';
@@ -129,6 +130,7 @@ function ExtratoPorCobranca({ vm }: { vm: Vm }) {
             <span className="tarefas-barra-espaco" />
             {vm.faltaBanco > 0 && <span className="hint">Falta a conta do banco de {vm.faltaBanco} {vm.faltaBanco === 1 ? 'pagamento' : 'pagamentos'}</span>}
             {vm.baixado && <span className="badge badge-ok" title="A planilha foi baixada: o Próximo libera">Baixado</span>}
+            <BotaoImportarNoAlterdata {...vm.importacao} disabled={!vm.podeBaixar} motivo="Escolha a conta de despesa, a de honorários a pagar e a do banco de cada pagamento" />
             <button type="button" className="btn btn-primary" disabled={!vm.podeBaixar} onClick={vm.baixar}
               title={vm.podeBaixar ? 'Baixar o .xls de importação do Alterdata: a provisão de cada cobrança na emissão e o pagamento das pagas' : 'Escolha a conta de despesa, a de honorários a pagar e a do banco de cada pagamento'}>
               <Icone nome="download" />Baixar .xls

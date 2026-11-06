@@ -8,6 +8,7 @@
 import { conferencia as c } from '@nads/core';
 import { useRetorno, type BotaoModal } from '@nads/ui';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { nomeDoLote } from '../../../../comum/importarNoAlterdata';
 import { useSessao, VERIFICAR_VAZIO, type EstadoVerificar } from '../../casca/sessao';
 import { useMarcarForaDoPadrao } from '../relatorio/useMarcarForaDoPadrao';
 
@@ -186,7 +187,7 @@ export function useVerificarConta() {
    * Os lançamentos das notas faltando, no padrão de importação do Alterdata, copiados do razão da conta (Vitor, 22/10/2026).
    * A nota de participante sem lançamento na conta não vai: o aviso lista as que ficaram para lançar à mão.
    */
-  function lancamentosFaltando(): { bytes: Uint8Array; nome: string } | null {
+  function lancamentosFaltando(): { bytes: Uint8Array; nome: string; linhas: number } | null {
     if (!v.resultado) return null;
     const l = c.lancamentosFaltando(v.resultado);
     if (l.semConta.length) {
@@ -197,8 +198,15 @@ export function useVerificarConta() {
       });
     }
     if (!l.lancamentos.length) return null;
-    return { bytes: c.planilhaLancamentosFaltando(l), nome: c.nomeLancamentosFaltando(s.nome, v.resultado.conta.codigo) };
+    return { bytes: c.planilhaLancamentosFaltando(l), nome: c.nomeLancamentosFaltando(s.nome, v.resultado.conta.codigo), linhas: l.lancamentos.length };
   }
+
+  /** O "Importar no Alterdata" dos lançamentos faltando: os mesmos bytes do Exportar lançamentos (e o mesmo aviso das notas que ficaram de fora). */
+  const importacaoFaltando = {
+    codigo: s.codigo ?? null, empresa: s.nome, origem: 'faltando',
+    lote: nomeDoLote('Notas faltando', v.resultado ? c.lancamentosFaltando(v.resultado).lancamentos.map(l => l.data) : []),
+    planilha: () => { const a = lancamentosFaltando(); return a ? { bytes: a.bytes, linhas: a.linhas } : null; },
+  };
 
   async function limpar() {
     const ok = await modal<boolean>({
@@ -241,7 +249,7 @@ export function useVerificarConta() {
     foraDoPadrao, acoes,
     resultado: montarResultado(e, s.filtro, v, d),
     seqResultado,
-    escolherAba, reimportar, alternarConferido, planilha, lancamentosFaltando, naoVaiParaOContabil,
+    escolherAba, reimportar, alternarConferido, planilha, lancamentosFaltando, importacaoFaltando, naoVaiParaOContabil,
   };
 }
 

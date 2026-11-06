@@ -13,6 +13,7 @@ import { useModelosDeHistorico } from '../../../../dados/useModelosDeHistorico';
 import { useCadastro } from '../../../../dados/repo';
 import { useOperador } from '../../../../casca/operador';
 import { useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
+import { nomeDoLote } from '../../../../../../comum/importarNoAlterdata';
 import { useGuardado } from '../../../../../../comum/guardado';
 import { useRazaoDaFolha } from '../../useRazaoDaFolha';
 
@@ -136,6 +137,11 @@ export function useHonorarios() {
   const faltam = !razao.temRazao ? ['Importar o razão do Honorários a pagar'] : [];
   useRequisitosDaEtapa({ pronto: !faltam.length, faltam });
 
+  /** as linhas do .xls (a provisão de cada cobrança na emissão e o pagamento das pagas): as mesmas no Baixar e no Importar no Alterdata */
+  const linhasDoArquivo = () => [...t.lancamentosDosHonorarios(doPeriodo, contaDespesa, contaAPagar, modelos), ...t.pagamentosDosHonorarios(pagas, contaAPagar, contaDespesa, bancoDe, modelos)]
+    .sort((a, b) => a.data.split('/').reverse().join('').localeCompare(b.data.split('/').reverse().join('')))
+    .map(l => ({ automatico: '', codHistorico: '', ...l }));
+
   return {
     dev: s.dev, razao,
     emiteNota, definirEmiteNota,
@@ -168,15 +174,17 @@ export function useHonorarios() {
     escolherBanco: (numero: string, conta: string) => setBancos(x => ({ ...x, [numero]: conta })),
     faltaBanco,
     baixado,
+    /** o que o "Importar no Alterdata" manda: a mesma planilha do Baixar (as mesmas linhas) */
+    importacao: {
+      codigo: s.codigo ?? null, empresa: s.nome, origem: 'honorarios', lote: nomeDoLote('Honorários', linhasDoArquivo().map(l => l.data)),
+      planilha: () => { const l = linhasDoArquivo(); return l.length ? { bytes: creditor.planilhaDeImportacao(l), linhas: l.length } : null; },
+    },
     // só com pagamento no PDF (Vitor, 26/10/2026)
     podeBaixar: !!e && pagas.length > 0 && contasOk && !faltaBanco,
     /** o .xls de importação do Alterdata (o padrão de 10 colunas): a provisão de cada cobrança na emissão e o pagamento das pagas */
     baixar: () => {
-      const linhas = [...t.lancamentosDosHonorarios(doPeriodo, contaDespesa, contaAPagar, modelos), ...t.pagamentosDosHonorarios(pagas, contaAPagar, contaDespesa, bancoDe, modelos)]
-        .sort((a, b) => a.data.split('/').reverse().join('').localeCompare(b.data.split('/').reverse().join('')))
-        .map(l => ({ automatico: '', codHistorico: '', ...l }));
       const nome = 'honorarios' + (s.codigo != null ? '_' + s.codigo : '') + '_' + s.meses[0] + (s.meses.length > 1 ? '-a-' + s.meses[s.meses.length - 1] : '') + '.xls';
-      baixarBytes(creditor.planilhaDeImportacao(linhas), nome, creditor.TIPO_XLS);
+      baixarBytes(creditor.planilhaDeImportacao(linhasDoArquivo()), nome, creditor.TIPO_XLS);
       setBaixado(true);
     },
   };

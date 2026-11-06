@@ -6,6 +6,7 @@ import { creditor, extrator, formatos, tarefas as t } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
 import workerDoPdf from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import { useState } from 'react';
+import { nomeDoLote } from '../../../../comum/importarNoAlterdata';
 import { useGuardado } from '../../../../comum/guardado';
 import { useModelosDeHistorico } from '../../dados/useModelosDeHistorico';
 import type { ContaDoPlano } from './useInssDaEtapa';
@@ -19,7 +20,7 @@ const reais = formatos.reais;
  * chave: empresa, etapa e período. razao: o razão do FGTS a recolher (importado na linha do FGTS). extrato: os lançamentos
  * dos bancos da empresa (para achar o pagamento que não foi lançado no razão).
  */
-export function useFgtsDaEtapa(chave: string, meses: readonly string[], razao: t.RazaoDaConta | null, extrato: readonly t.LancamentoDoBanco[], balancete: readonly ContaDoPlano[] = []) {
+export function useFgtsDaEtapa(chave: string, meses: readonly string[], razao: t.RazaoDaConta | null, extrato: readonly t.LancamentoDoBanco[], balancete: readonly ContaDoPlano[] = [], empresa: { codigo: number | null; nome: string } | null = null) {
   const { aviso } = useRetorno();
   const [guias, setGuias] = useGuardado<{ chave: string; arquivos: string[]; guias: t.GuiaDoFgts[] } | null>('fgts-guias|' + chave, null);
   const [contrapartidas, setContrapartidas] = useGuardado<Record<string, string>>('fgts-contrapartidas|' + chave, {});
@@ -69,6 +70,10 @@ export function useFgtsDaEtapa(chave: string, meses: readonly string[], razao: t
   ]).values()];
   const aberto = mesAberto ? c?.meses.find(m => m.mes === mesAberto) : null;
 
+  /** as linhas do .xls (todas as sugestões do período): as mesmas no Baixar e no Importar no Alterdata */
+  const linhasDoFgts = () => t.linhasDoAlterdataDoFgts(todas, contaFgts.trim(), contrapartidas).map(l => ({ automatico: '', codHistorico: '', documento: '', tipo: 'principal' as const, tituloId: 0, ...l }));
+  const planilha = () => creditor.planilhaDeImportacao(linhasDoFgts());
+
   return {
     importarGuias, lendo,
     temGuias: !!g, temRazao: !!razao, pronto: !!c,
@@ -108,10 +113,14 @@ export function useFgtsDaEtapa(chave: string, meses: readonly string[], razao: t
     escolherContrapartida: (k: string, codigo: string) => setContrapartidas(x => ({ ...x, [k]: codigo })),
     faltaContrapartida: faltaContra,
     podeExportar: todas.length > 0 && !faltaContra && /^[0-9]+$/.test(contaFgts.trim()),
+    /** o que o "Importar no Alterdata" manda: a mesma planilha do Baixar (as mesmas linhas) */
+    importacao: {
+      codigo: empresa?.codigo ?? null, empresa: empresa?.nome || '', origem: 'fgts', lote: nomeDoLote('FGTS', linhasDoFgts().map(l => l.data)),
+      planilha: () => { const n = linhasDoFgts().length; return n ? { bytes: planilha(), linhas: n } : null; },
+    },
     /** o .xls de importação do Alterdata (o padrão de 10 colunas), com todas as sugestões do período */
     baixarXls: () => {
-      const linhas = t.linhasDoAlterdataDoFgts(todas, contaFgts.trim(), contrapartidas);
-      const bytes = creditor.planilhaDeImportacao(linhas.map(l => ({ automatico: '', codHistorico: '', documento: '', tipo: 'principal' as const, tituloId: 0, ...l })));
+      const bytes = planilha();
       baixarBytes(bytes, 'lancamentos-fgts-' + meses[0] + (meses.length > 1 ? '-a-' + meses[meses.length - 1] : '') + '.xls', creditor.TIPO_XLS);
     },
     pagamentosSemGuia: (c?.pagamentosSemGuia || []).map(l => dataBR(l.data) + ' · ' + reais(-l.valor) + ' · ' + l.historico),

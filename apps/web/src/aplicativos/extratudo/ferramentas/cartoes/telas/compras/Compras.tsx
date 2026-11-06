@@ -4,6 +4,7 @@
 import { baixarBytes, Icone } from '@nads/ui';
 import { useId } from 'react';
 import type { empresas } from '@nads/core';
+import { BotaoImportarNoAlterdata } from '../../../../../../comum/BotaoImportarNoAlterdata';
 import { FaixaQueAbre } from '../../../../../../comum/FaixaQueAbre';
 import { useRequisitosParaATarefa } from '../../../../../../comum/ponte';
 import { MenuDeConta } from '../../../creditor/partes/MenuDeConta';
@@ -96,6 +97,7 @@ export function Compras({ empresa }: { empresa: empresas.EmpresaDoEscritorio }) 
             <input id={id} type="file" multiple accept=".pdf" className="sr-only" onChange={e => { const fs = Array.from(e.target.files || []); e.target.value = ''; vm.importar(fs); }} />
           </>
         )}
+        <BotaoImportarNoAlterdata {...vm.importacao} disabled={!vm.pronto} motivo={vm.falta.join(' · ')} />
         <button type="button" className="btn btn-primary" disabled={!vm.pronto} title={vm.pronto ? 'O razão do cartão para importar no Alterdata' : vm.falta.join(' · ')}
           onClick={() => { const a = vm.arquivo(); baixarBytes(a.bytes, a.nome, a.tipo); }}>
           <Icone nome="download" />Baixar o razão{vm.qtdLancamentos ? ' (' + vm.qtdLancamentos + ')' : ''}

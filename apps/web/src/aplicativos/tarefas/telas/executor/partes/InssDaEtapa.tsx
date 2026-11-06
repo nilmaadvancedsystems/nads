@@ -3,6 +3,7 @@
 // abre o mês) e a faixa Lançamentos sugeridos (o Grupo a grupo saiu: Vitor, 07/10/2026); embaixo, o fechamento do saldo.
 import { CampoArquivo, Icone, LogoBanco, LogoInss } from '@nads/ui';
 import { useId, useState } from 'react';
+import { BotaoImportarNoAlterdata } from '../../../../../comum/BotaoImportarNoAlterdata';
 import { FaixaQueAbre } from '../../../../../comum/FaixaQueAbre';
 import type { InssDaEtapa as Inss } from '../useInssDaEtapa';
 import { BotaoDeTeste, type ItemDeTeste } from '../../../../../comum/BotaoDeTeste';
@@ -142,6 +143,7 @@ export function InssDaEtapa({ inss, conferir, teste = [], folha, so, conferencia
                         {inss.nomeDaContaInss && <span className="hint" title={inss.contaTravada ? 'Do balancete da empresa' : undefined}>{inss.nomeDaContaInss}</span>}
                         <span className="tarefas-barra-espaco" />
                         {inss.faltaContrapartida > 0 && <span className="hint">Falta a contrapartida de {inss.faltaContrapartida} {inss.faltaContrapartida === 1 ? 'lançamento' : 'lançamentos'}</span>}
+                        <BotaoImportarNoAlterdata {...inss.importacao} disabled={!inss.podeExportar} motivo="Informe a conta do INSS a recolher e a contrapartida de cada lançamento" />
                         <button type="button" className="btn btn-primary" disabled={!inss.podeExportar} onClick={inss.baixarXls}
                           title={inss.podeExportar ? 'Baixar o .xls de importação do Alterdata com todos os lançamentos do período' : 'Informe a conta do INSS a recolher e a contrapartida de cada lançamento'}>
                           <Icone nome="download" />Importar no meu Sistema

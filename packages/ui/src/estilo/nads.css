@@ -6234,3 +6234,9 @@ td.fs-fat-sem{color:var(--ink-faint);}
 /* Fiscal › SIEG (31/10/2026): os números do mês em duas colunas no celular */
 .stat-grid.sieg-numeros{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));}
 @media (max-width:520px){.stat-grid.sieg-numeros{grid-template-columns:repeat(2,minmax(0,1fr));}}
+
+/* o "Importar no Alterdata" (06/11/2026): o botão e, ao lado, o andamento do robô ou o que o Alterdata respondeu */
+.importar-alterdata{display:inline-flex;align-items:center;gap:var(--sp-2,8px);flex-wrap:wrap;min-width:0;}
+.importar-alterdata .btn{display:inline-flex;align-items:center;gap:6px;}
+.importar-alterdata .badge{display:inline-flex;align-items:center;gap:4px;max-width:520px;white-space:normal;}
+.importar-alterdata-andamento{display:inline-flex;flex-direction:column;gap:4px;min-width:200px;max-width:360px;}

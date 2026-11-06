@@ -61,7 +61,7 @@ export function Executor() {
   const razao = useRazaoDaEtapa(rota + '|' + (vm.etapa?.id || '') + '|' + periodo, vm.meses.length ? vm.meses : [vm.competencia], vm.ajustarCreditor,
     vm.empresa ? { nome: vm.empresa.nome, codigo: vm.empresa.codigo, caixa: vm.etapa?.razao?.conta === 'caixa' } : null);
   // a conferência do INSS (a etapa da folha): o razão do INSS a recolher × o PDF das guias pagas
-  const inss = useInssDaEtapa(rota + '|' + (vm.etapa?.id || '') + '|' + periodo, vm.meses.length ? vm.meses : [vm.competencia]);
+  const inss = useInssDaEtapa(rota + '|' + (vm.etapa?.id || '') + '|' + periodo, vm.meses.length ? vm.meses : [vm.competencia], [], vm.empresa?.nome || '', vm.empresa?.codigo ?? null);
   // a ferramenta da etapa (iframe): recebe os bancos sem movimento e avisa quando a pessoa marca um
   const iframe = useRef<HTMLIFrameElement>(null);
   // a ferramenta que tem requisitos (a Importação) diz o que falta: o avançar só aparece com tudo pronto
