@@ -5,9 +5,9 @@
 // planilha (base64), linhas, criadoEm, criadoPor, criadoPorUid}; o robô escreve o andamento, o resultado (o que o
 // Alterdata respondeu) ou o erro. A mesma planilha na mesma empresa o robô não importa duas vezes.
 // Nos exemplos e no modo desenvolvedor (sem banco): um pedido de mentira que anda sozinho.
-import { addDoc, collection, doc, onSnapshot } from 'firebase/firestore';
 import { ligadoAoBanco } from './modoDesenvolvedor';
-import { bancoDoEntregas, contaDoEntregas } from '../aplicativos/tarefas/dados/entregas.firestore';
+import { contaDoEntregas } from '../aplicativos/tarefas/dados/entregas.firestore';
+import { gravarPedidoAlterdata, ouvirPedidoAlterdata } from '../aplicativos/tarefas/dados/importarNoAlterdata.firestore';
 
 export interface ImportacaoNoAlterdata {
   id: string;
@@ -57,18 +57,17 @@ export async function pedirImportacao(p: PedidoDeImportacao, quem: string): Prom
   if (!ligadoAoBanco()) return exemplo(p);
   const conta = contaDoEntregas();
   if (!conta) throw new Error('entre no nads de novo para mandar ao robô');
-  const r = await addDoc(collection(bancoDoEntregas(), 'pedidosAlterdata'), {
+  return gravarPedidoAlterdata({
     status: 'pendente', tipo: 'importar', codigo: p.codigo, empresa: p.empresa.slice(0, 200), lote: p.lote.slice(0, 60),
     origem: p.origem.slice(0, 40), planilha, linhas: p.linhas, criadoEm: new Date().toISOString(),
     criadoPor: (quem || conta.email).slice(0, 200), criadoPorUid: conta.uid,
   });
-  return r.id;
 }
 
 /** Acompanha o pedido; devolve o desligar. */
 export function acompanharImportacao(id: string, chegou: (i: ImportacaoNoAlterdata) => void, falhou: (e: Error) => void): () => void {
   if (id.startsWith('exemplo-')) return acompanharExemplo(id, chegou);
-  return onSnapshot(doc(bancoDoEntregas(), 'pedidosAlterdata', id), s => { if (s.exists()) chegou(doBanco(id, s.data())); }, falhou);
+  return ouvirPedidoAlterdata(id, d => chegou(doBanco(id, d)), falhou);
 }
 
 // ── nos exemplos: o robô de mentira (fila, os passos do roteiro, pronto)
