@@ -49,6 +49,84 @@ function lerBalancete(buf) {
   return contas;
 }
 
+/**
+ * O Balancete Dinâmico (.xls, Consultas → Balancete Dinâmico → Exportar; 06/11/2026) → as mesmas contas de lerBalancete.
+ * Colunas: Código, Classificação (1.1.1.01.001: o nível é a quantidade de pedaços), Descrição, Saldo anterior, Debito,
+ * Credito, Saldo atual. Sintética: a conta que tem outra classificação embaixo dela.
+ * O sinal no Excel depende da ORIGEM da conta (a "Configuração para salvar em excel": devedora = devedor +, credora e
+ * indefinida = devedor −), e a origem não vem no arquivo. Sempre vale anterior + débito + crédito = saldo (com os sinais
+ * do arquivo), e o débito tem o sinal do devedor: com movimento, o sinal do débito (ou o contrário do do crédito) diz a
+ * convenção da conta. Sem movimento não há como saber: usa a convenção da maioria das contas irmãs (o mesmo grupo) e marca
+ * dcIncerto.
+ */
+function lerDinamico(buf) {
+  const wb = XLSX.read(buf, { type: 'buffer' });
+  const linhas = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: '' });
+  if (!linhas.length) return [];
+  const cab = linhas[0].map(c => String(c).trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase());
+  const col = nome => cab.indexOf(nome);
+  const ix = { codigo: col('codigo'), cls: col('classificacao'), nome: col('descricao'), anterior: col('saldo anterior'), debito: col('debito'), credito: col('credito'), saldo: col('saldo atual') };
+  if (Object.values(ix).some(i => i < 0)) throw new Error('o XLS do Balancete Dinâmico não tem as colunas esperadas (' + linhas[0].join(';').slice(0, 120) + ')');
+  const num = v => (typeof v === 'number' ? v : numero(v));
+  const r2 = n => Math.round(n * 100) / 100;
+  const brutas = [];
+  for (const l of linhas.slice(1)) {
+    const codigo = String(l[ix.codigo] ?? '').trim();
+    const cls = String(l[ix.cls] ?? '').trim();
+    if (!codigo || !cls) continue;
+    const d = num(l[ix.debito]), c = num(l[ix.credito]);
+    brutas.push({ codigo, cls, nome: String(l[ix.nome] ?? '').trim().slice(0, 80), a: num(l[ix.anterior]), d, c, s: num(l[ix.saldo]),
+      devedor: d ? Math.sign(d) : c ? -Math.sign(c) : 0 });
+  }
+  const pai = cls => cls.slice(0, Math.max(0, cls.lastIndexOf('.')));
+  // a convenção da maioria por grupo (as contas com movimento de cada pai), para as contas sem movimento
+  const porPai = new Map();
+  for (const x of brutas) if (x.devedor) { const k = pai(x.cls); porPai.set(k, (porPai.get(k) || 0) + x.devedor); }
+  const classes = brutas.map(x => x.cls);
+  // a conta sem movimento e sem saldo não tem sinal a escolher; com saldo e sem movimento: o sinal sai do total da mãe
+  // (a soma das filhas, + devedor, tem que dar o saldo da mãe); as de baixo para cima, até 16 incertas por grupo
+  const pelaMae = new Map();
+  for (let rodada = 0; rodada < 6; rodada++) {
+    const sinal = x => x.devedor || pelaMae.get(x.cls) || 0;
+    for (const mae of brutas) {
+      if (!sinal(mae)) continue;
+      const filhas = brutas.filter(x => pai(x.cls) === mae.cls);
+      if (!filhas.length) continue;
+      const abertas = filhas.filter(x => !sinal(x) && x.s);
+      if (!abertas.length || abertas.length > 16) continue;
+      if (filhas.some(x => !sinal(x) && !x.s && x.a)) continue;
+      const alvo = mae.s * sinal(mae);
+      const certo = filhas.filter(x => sinal(x)).reduce((t, x) => t + x.s * sinal(x), 0);
+      const achou = [];
+      for (let m = 0; m < (1 << abertas.length) && achou.length < 2; m++) {
+        const t = abertas.reduce((acc, x, i) => acc + x.s * ((m >> i) & 1 ? 1 : -1), certo);
+        if (Math.abs(t - alvo) < 0.015) achou.push(m);
+      }
+      // uma resposta só: o sinal que soma o saldo da mãe é este (no arquivo, x.s * dev = + devedor)
+      if (achou.length === 1) abertas.forEach((x, i) => pelaMae.set(x.cls, (achou[0] >> i) & 1 ? 1 : -1));
+    }
+  }
+  return brutas.map(x => {
+    let dev = x.devedor || pelaMae.get(x.cls) || 0, incerto = false;
+    if (!dev) {
+      incerto = !!(x.a || x.s);
+      let k = pai(x.cls);
+      while (k && !porPai.get(k)) k = pai(k);
+      dev = Math.sign(porPai.get(k) || 0) || -1;
+    }
+    const ant = x.a * dev, sal = x.s * dev;   // + devedor, − credor
+    const conta = {
+      codigo: x.codigo, classificacao: x.cls, nome: x.nome, nivel: x.cls.split('.').length - 1,
+      anterior: r2(Math.abs(ant)), anteriorDc: ant < 0 ? 'C' : 'D',
+      debito: r2(Math.abs(x.d)), credito: r2(Math.abs(x.c)),
+      saldo: r2(Math.abs(sal)), dc: sal < 0 ? 'C' : 'D',
+      sintetica: classes.some(y => y.startsWith(x.cls + '.')),
+    };
+    if (incerto) conta.dcIncerto = true;
+    return conta;
+  });
+}
+
 /** Uma linha do CSV com ';' e aspas ("" = aspa dentro do campo). */
 function campos(linha) {
   const r = [];
@@ -124,4 +202,4 @@ function emPedacos(lista, limite = 900 * 1000) {
   return pedacos;
 }
 
-module.exports = { lerBalancete, lerRazao, emPedacos, valorDc, numero, campos };
+module.exports = { lerBalancete, lerDinamico, lerRazao, emPedacos, valorDc, numero, campos };
