@@ -231,10 +231,14 @@ function documentoDoAnexo(a) {
   if (a.tipo && DOC_DO_TIPO[a.tipo]) return DOC_DO_TIPO[a.tipo] + (a.tributo ? ' ' + semProibidos(a.tributo) : '');
   const pasta = (DOC_DA_PASTA.find(([re]) => re.test(String(a.pasta || '').replace(/\/+$/, ''))) || [])[1];
   if (pasta) return pasta;
+  // sai a data inteira (23-11-2026, 2026_10_01), o mês (10-2026, 2026-10) e, no fim, os números soltos (códigos do
+  // sistema que gerou: "00463_14843_23-11-2026.PDF" vira "Documento"); sem nenhuma palavra, fica "Documento"
   const base = String(a.nome || '').replace(/\.[a-z0-9]{2,5}$/i, '').replace(/[_]+/g, ' ')
+    .replace(/\b\d{1,2}[-. ]\d{1,2}[-. ]20\d{2}\b/g, ' ').replace(/\b20\d{2}[-. ]\d{1,2}[-. ]\d{1,2}\b/g, ' ')
     .replace(/\b(0?[1-9]|1[0-2])[-. ](20\d{2})\b/g, ' ').replace(/\b20\d{2}[-. ](0[1-9]|1[0-2])\b/g, ' ');
   const limpo = semProibidos(base).replace(/^[-–\s]+|[-–\s]+$/g, '');
-  return limpo ? limpo.charAt(0).toUpperCase() + limpo.slice(1) : 'Documento';
+  if (!/[a-zà-ú]{2,}/i.test(limpo)) return 'Documento';
+  return limpo.replace(/(\s+\d+)+$/, '').replace(/^(\d+\s+)+/, '').replace(/^./, c => c.toUpperCase());
 }
 // anexos: [{ nome, rotulo?, tipo?, tributo?, pasta? }]; comp: 'AAAA-MM'; cliente: o nome. -> [{ nome, documento }] na mesma ordem
 function nomesNoEmail(anexos, comp, cliente) {
