@@ -517,6 +517,8 @@ igual('maquininha, mês inválido e FISCAL ficam de fora', Array.from(achadosPas
 igual('código e nome saem do nome da pasta', di.codigoDaPasta('58 - TORNEARIA VOLPONI LTDA'), { codigo: '58', nome: 'TORNEARIA VOLPONI LTDA' });
 igual('pasta sem código', di.codigoDaPasta('MODELOS').codigo, null);
 igual('totais contam arquivos e pastas', [di.totais(itensPasta).arquivos, di.totais(itensPasta).pastas], [5, 13]);
+igual('o extrato em SUBSTITUÍDOS não prova o mês (06/11/2026)',
+  (di.documentosNaPasta([...itensPasta, { i: 'sb', n: 'SUBSTITUÍDOS', p: 'bb', t: 'd' }, { i: 'f9', n: '06-2026.pdf', p: 'sb', t: 'f' }], 'R').get('2026-06|extrato') || []).map(a => a.id), ['f1']);
 
 // ---------- texto completo do e-mail (painel da tela do Robô) ----------
 const lg = require('./leituras-gmail');
@@ -1168,6 +1170,32 @@ igual('limpeza: item desconhecido para (não apaga o que não devia)', (() => { 
   igual('limpeza do dia: as partes novas têm até 250 KB', [rg2.partes.length > 1, rg2.partes.every(p => p.reduce((s, x) => s + JSON.stringify(x).length, 0) <= 250 * 1024)], [true, true]);
   igual('limpeza do dia: antes de 24/10 as partes eram de 700 KB', lbz.bytesDaParte('2026-10-22'), 700 * 1024);
 }
+// --- o extrato do Drive trocado pelo importado à mão vai para SUBSTITUÍDOS (envios-do-nads.js, 06/11/2026) ---
+const esperarSubstituidos = (async () => {
+  const crypto = require('crypto');
+  const itens = [{ i: 'c', n: 'CONTÁBIL', p: 'cli', t: 'd' }, { i: 'bb', n: 'BRADESCO', p: 'c', t: 'd' }, { i: 'velho', n: '01-2026.pdf', p: 'bb', t: 'f' }];
+  const falso = (md5Velho, paiNome = 'BRADESCO') => {
+    const feito = { movido: null, criadas: [] };
+    const drive = { files: {
+      get: async ({ fileId }) => ({ data: fileId === 'velho' ? { id: 'velho', name: '01-2026.pdf', parents: ['bb'], md5Checksum: md5Velho } : { name: paiNome } }),
+      list: async () => ({ data: { files: [] } }),
+      create: async ({ requestBody }) => { feito.criadas.push(requestBody.name + '<' + requestBody.parents[0]); return { data: { id: 'subs' } }; },
+      update: async p => { feito.movido = [p.fileId, p.addParents, p.removeParents]; return { data: {} }; },
+    } };
+    return { drive, feito };
+  };
+  const novo = Buffer.from('extrato certo');
+  const a = falso('outro-md5');
+  igual('substituir: o antigo vai para SUBSTITUÍDOS, dentro da pasta dele', [await en.moverParaSubstituidos(a.drive, itens, 'cli', 'velho', novo), a.feito.criadas, a.feito.movido],
+    ['movido', ['SUBSTITUÍDOS<bb'], ['velho', 'subs', 'bb']]);
+  const b = falso(crypto.createHash('md5').update(novo).digest('hex'));
+  igual('substituir: o mesmo conteúdo fica onde está', [await en.moverParaSubstituidos(b.drive, itens, 'cli', 'velho', novo), b.feito.movido], ['igual', null]);
+  const c = falso('outro-md5');
+  igual('substituir: arquivo fora da pasta da empresa não mexe', [await en.moverParaSubstituidos(c.drive, itens, 'cli', 'de-outro', novo), c.feito.movido], ['', null]);
+  const d = falso('outro-md5', 'SUBSTITUÍDOS');
+  igual('substituir: já está em SUBSTITUÍDOS (tentado de novo) não mexe', [await en.moverParaSubstituidos(d.drive, itens, 'cli', 'velho', novo), d.feito.movido], ['', null]);
+})();
+
 const esperarFaxina = (async () => {
   // um banco de mentira: 2 extratos (1 velho importado com 2 pedaços, 1 novo) e 1 FGTS pronto com 1 tela
   const apagados = [], marcados = [];
@@ -1191,7 +1219,7 @@ const esperarFaxina = (async () => {
 })();
 
 // os testes que leem PDF são assíncronos: o resultado espera por eles
-Promise.all([esperarExtratos, esperarSieg, esperarFaxina]).then(() => {
+Promise.all([esperarExtratos, esperarSieg, esperarFaxina, esperarSubstituidos]).then(() => {
   console.log(falhas ? '\n' + falhas + ' de ' + total + ' testes FALHARAM' : total + ' testes, todos passaram');
   process.exit(falhas ? 1 : 0);
 });

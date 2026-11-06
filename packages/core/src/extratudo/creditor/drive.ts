@@ -96,8 +96,10 @@ export interface RepoDrive {
    * › Drive), de onde o arquivamento leva para a pasta certa (o extrato vai para EXTRATOS/AAAA/MM/BANCÁRIOS/<BANCO>).
    * Resolve quando o arquivo inteiro já subiu e o envio ficou 'pendente' para o robô. Não existe acoplado no Entregas.
    * (Vitor, 09/10/2026: o extrato importado do computador que não está no Drive vai para lá.)
+   * substituir: o id do extrato do mês que já está no Drive e que este troca; o robô move o antigo para a pasta
+   * SUBSTITUÍDOS, ao lado (Vitor, 06/11/2026).
    */
-  enviarAoDrive?(arquivo: { nome: string; bytes: Uint8Array }, destino: { competencia: string; codigo: number | null; cliente: string }): Promise<string | void>;
+  enviarAoDrive?(arquivo: { nome: string; bytes: Uint8Array }, destino: { competencia: string; codigo: number | null; cliente: string; substituir?: string }): Promise<string | void>;
   /**
    * A situação dos envios ao Drive (pelo id que o enviarAoDrive devolve): enviando/pendente/gravando = o robô ainda não
    * gravou; pronto = gravou (pasta: onde); erro. O que sumiu da fila não vem (Vitor, 19/10/2026: o Drive "carregando").

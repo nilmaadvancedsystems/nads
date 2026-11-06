@@ -1,5 +1,5 @@
 // A janela flutuante de uma empresa no Cadastro, por cima da lista: no topo, "‹ Empresas" (voltar), a empresa
-// e o ✕; na lateral, as abas dela; no meio, a aba aberta. Esc ou clicar fora fecha.
+// e o ✕; na lateral, as abas dela; no meio, a aba aberta. Esc fecha; clicar fora não fecha (pedido do Vitor, 06/11/2026).
 // A mesma janela abre pelo cartão da empresa no cabeçalho (27/10/2026: "era pra seguir o layout do cadastro"), por cima
 // da tela e sem mexer no endereço (local); para quem não mexe no Cadastro, só a aba Dados da empresa, com o que veio
 // de fora (soLeitura), sem editar nada.
@@ -81,8 +81,7 @@ export function JanelaDaEmpresa({ rota, aba, local, soLeitura }: {
 
   return (
     // data-volta-para: ao fechar, a janela encolhe de volta para a linha desta empresa na lista (mesmo aberta por link)
-    <div className="cad-janela-fundo" data-volta-para={!local && vm.empresa.codigo != null ? '[data-empresa="' + vm.empresa.codigo + '"]' : undefined}
-      onMouseDown={e => { if (e.target === e.currentTarget) fechar(); }}>
+    <div className="cad-janela-fundo" data-volta-para={!local && vm.empresa.codigo != null ? '[data-empresa="' + vm.empresa.codigo + '"]' : undefined}>
       <div ref={janela} className="cad-janela" role="dialog" aria-modal="true" aria-label={'Cadastro de ' + vm.empresa.nome}>
         <header className="cad-janela-topo">
           {!local && (

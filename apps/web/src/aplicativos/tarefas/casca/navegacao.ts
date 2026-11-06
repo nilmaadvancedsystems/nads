@@ -34,11 +34,13 @@ export const APLICACOES: readonly Aplicacao[] = [
   { id: 'inicio', nome: 'Início', icone: 'home', grupo: 'Rotinas', pronta: true, paginas: [
     { id: 'inicio', rotulo: 'Início', icone: 'home', titulo: 'Início' },
   ] },
-  { id: 'minhas-empresas', nome: 'Minhas empresas', icone: 'briefcase', grupo: 'Rotinas', pronta: true, paginas: [
+  // o nome na gaveta virou Contábil (Vitor, 06/11/2026: "No lugar de 'Minhas empresas', coloca o nome 'Contábil'"); o
+  // endereço segue /tarefas/minhas-empresas/...
+  { id: 'minhas-empresas', nome: 'Contábil', icone: 'briefcase', grupo: 'Rotinas', pronta: true, paginas: [
     // o painel do progresso das empresas (27/10/2026: "a parte de minhas empresas vai virar um dashboard de progresso")
     // uma tela só, sem a barra lateral (27/10/2026: "coloque paradas e configuracoes tudo em uma so tela aqui nesse
     // inicial, remove a barra lateral"): a lista, as etapas paradas e os históricos do Creditor. Os Insights saíram
-    { id: 'empresas', rotulo: 'Empresas', icone: 'list', titulo: 'Minhas empresas' },
+    { id: 'empresas', rotulo: 'Empresas', icone: 'list', titulo: 'Contábil' },
     // as Justificativas e as Configurações abrem em janela, pelos botões da barra da lista (Vitor, 28/10/2026: "remover esse
     // menu superior e colocar uns ícones de botões de justificativas e configurações aparecer uma popup")
   ] },
@@ -238,7 +240,7 @@ export const caminhoDaPagina = (app: IdAplicacao, pagina: string) => BASE + '/' 
 export const CHAVE_INICIO = 'nads-tarefas-inicio';
 export const INICIOS: readonly { valor: string; rotulo: string; caminho: string }[] = [
   { valor: 'inicio', rotulo: 'Início', caminho: BASE + '/inicio' },
-  { valor: 'empresas', rotulo: 'Minhas empresas', caminho: BASE + '/minhas-empresas/empresas' },
+  { valor: 'empresas', rotulo: 'Contábil', caminho: BASE + '/minhas-empresas/empresas' },
   { valor: 'drive', rotulo: 'Drive', caminho: BASE + '/drive/pastas' },
   { valor: 'gmail', rotulo: 'Gmail', caminho: BASE + '/contato/caixa' },
 ];

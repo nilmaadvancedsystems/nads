@@ -107,12 +107,17 @@ function tirarOsDeFora(lista, fora, comp) {
 }
 
 // Para quem vai: o e-mail do Cadastro do nads (cadastro/{empresa}.contato.email; com mais de um documento do mesmo código,
-// o primeiro que tiver), senão os do Entregas (clientes: email + emails). Em minúsculas, sem repetir.
+// o primeiro que tiver) e os outros dele (contato.outrosEmails, 05/11/2026); senão os do Entregas (clientes: email + emails).
+// Em minúsculas, sem repetir.
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function paraQuem(cadastrosDoNads, clienteDoEntregas) {
   const limpo = e => String(e || '').trim().toLowerCase();
   const doNads = (cadastrosDoNads || []).map(c => limpo(c && c.contato && c.contato.email)).find(e => EMAIL.test(e));
-  if (doNads) return [doNads];
+  if (doNads) {
+    const cad = (cadastrosDoNads || []).find(c => limpo(c && c.contato && c.contato.email) === doNads) || {};
+    const outros = Array.isArray(cad.contato && cad.contato.outrosEmails) ? cad.contato.outrosEmails : [];
+    return [...new Set([doNads].concat(outros).map(limpo).filter(e => EMAIL.test(e)))];
+  }
   const c = clienteDoEntregas || {};
   return [...new Set([c.email].concat(Array.isArray(c.emails) ? c.emails : []).map(limpo).filter(e => EMAIL.test(e)))];
 }

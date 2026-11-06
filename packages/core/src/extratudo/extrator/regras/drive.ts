@@ -7,6 +7,8 @@ import type { ArquivoAchado, BuscaNoDrive, ItemDrive } from '../../creditor/regr
 import { falaDaCompetencia } from '../../creditor/regras/drive';
 
 const EXTENSOES = /\.(pdf|ofx|xlsx?|csv|txt)$/i;
+/** A pasta (dentro da do banco) para onde o robô move o extrato que um novo substituiu, já normalizada (nomeNorm). */
+const PASTA_DOS_SUBSTITUIDOS = 'substituidos';
 /** As pastas que não são de extrato da conta: o empréstimo, o relatório de cobrança, as notas, a folha. */
 const FORA_DOS_EXTRATOS = /^(operacoes de credito|emprestimos?|financiamentos?|recebimento de clientes|fiscal|departamento pessoal)$/;
 
@@ -69,6 +71,8 @@ export function acharExtratoNoDrive(itens: readonly ItemDrive[], raizDoCliente: 
       // (CONTÁBIL/EXTRATOS/AAAA/MM/{BANCÁRIOS|COMPROVANTES|APLICAÇÕES}): comprovante não é extrato
       const pastas = caminho.map(nomeNorm);
       if (pastas.some(p => p === 'comprovantes' || p === 'aplicacoes') || /^comprovante/.test(nomeNorm(it.n))) continue;
+      // o extrato trocado pelo que veio do e-mail ou do computador (Vitor, 06/11/2026) fica em SUBSTITUÍDOS: não conta mais
+      if (pastas.includes(PASTA_DOS_SUBSTITUIDOS)) continue;
       // só o lugar dos extratos (Vitor, 19/10/2026, na 450: o agosto "achou" o extrato do EMPRÉSTIMO, em OPERAÇÕES DE
       // CRÉDITO, pelo "08-2028" do nome; o olhinho abria ele e o PDF importado nem subia, porque o mês "já estava lá"): com a
       // pasta EXTRATOS do arquivamento, só dentro dela; e as pastas de outra coisa ficam sempre de fora

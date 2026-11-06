@@ -39,6 +39,12 @@ export interface DiarioLido {
   semConta: number;
   periodo: { inicio: string; fim: string } | null;
   paginas: number;
+  /** o saldo de cada conta no começo do período, no sinal do razão (devedor negativo); só o razão do robô traz */
+  saldosIniciais?: Record<string, number>;
+  /** de onde veio: o PDF do Diário (sem o campo) ou o razão que o robô do Alterdata gerou */
+  origem?: 'robo';
+  /** os pedidos do robô de onde saiu (um por mês): o mesmo conjunto não é lido de novo */
+  pedidos?: string[];
 }
 
 const MESES: Record<string, number> = {
@@ -213,6 +219,48 @@ export function mesesDoDiario(lancamentos: readonly Pick<LancamentoDoDiario, 'da
   const meses = new Set<string>();
   for (const l of lancamentos) if (/^\d{4}-\d{2}-\d{2}$/.test(l.data)) meses.add(l.data.slice(0, 7));
   return meses;
+}
+
+/** Um lançamento do razão que o robô do Alterdata gerou e leu (robo/alterdata-numeros.js, pedidosAlterdata/{id}/numeros). */
+export interface LancamentoDoRobo { conta: string; data: string; historico: string; contra: string; documento: string; debito: number; credito: number }
+/** O resumo de uma conta no razão do robô: anterior no sinal do balancete (+ devedor, − credor). */
+export interface ContaDoRobo { conta: string; nome: string; anterior: number }
+
+/**
+ * O razão de todas as contas que o robô do Alterdata gerou, mês a mês (Vitor, 06/11/2026: "ao invés do usuário upar
+ * manualmente, puxar automaticamente"), no formato do Diário: as etapas e os botões do Diário usam sem saber de onde veio.
+ * Traz o que o PDF não tem: o nome da contrapartida e o saldo de cada conta no começo do período (o anterior do primeiro mês
+ * em que a conta aparece: antes dele, no período, ela não mexeu). meses: na ordem, do primeiro ao último.
+ */
+export function diarioDoRazaoDoRobo(meses: readonly { pedido?: string; lancamentos: readonly LancamentoDoRobo[]; contas: readonly ContaDoRobo[] }[]): DiarioLido {
+  const nomes = new Map<string, string>();
+  const saldosIniciais: Record<string, number> = {};
+  for (const m of meses) {
+    for (const c of m.contas) {
+      if (!nomes.has(c.conta)) nomes.set(c.conta, c.nome);
+      if (!(c.conta in saldosIniciais)) saldosIniciais[c.conta] = centavos(-(Number(c.anterior) || 0)) || 0;
+    }
+  }
+  const lancamentos: LancamentoDoDiario[] = [];
+  for (const m of meses) {
+    for (const l of m.lancamentos) {
+      if (!l.conta || !/^\d{4}-\d{2}-\d{2}$/.test(l.data)) continue;
+      const base = {
+        data: l.data, conta: l.conta, nomeConta: nomes.get(l.conta) || '', historico: l.historico || '', documento: l.documento || '',
+        contrapartida: l.contra || '', nomeContrapartida: nomes.get(l.contra) || '', pagina: 0,
+      };
+      if (l.debito) lancamentos.push({ ...base, lado: 'D', valor: centavos(Math.abs(l.debito)) });
+      if (l.credito) lancamentos.push({ ...base, lado: 'C', valor: centavos(Math.abs(l.credito)) });
+    }
+  }
+  const debito = centavos(lancamentos.filter(l => l.lado === 'D').reduce((s, l) => s + l.valor, 0));
+  const credito = centavos(lancamentos.filter(l => l.lado === 'C').reduce((s, l) => s + l.valor, 0));
+  const datas = lancamentos.map(l => l.data).sort();
+  return {
+    lancamentos, totais: { debito, credito }, diferenca: centavos(debito - credito), semConta: 0,
+    periodo: datas.length ? { inicio: datas[0], fim: datas[datas.length - 1] } : null, paginas: 0, saldosIniciais, origem: 'robo',
+    pedidos: meses.map(m => m.pedido || '').filter(Boolean),
+  };
 }
 
 /** As contas que têm lançamento no diário (código → quantidade), para pedir o razão de cada uma. */
