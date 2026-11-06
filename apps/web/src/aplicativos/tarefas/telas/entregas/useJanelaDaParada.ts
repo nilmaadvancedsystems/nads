@@ -8,6 +8,7 @@
 import { entregas } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useMemo, useState } from 'react';
+import { ehDiretor } from '../../casca/navegacao';
 import { useOperador } from '../../casca/operador';
 import { useEntregasDeDocumentos } from '../../dados/repo';
 import { fotoComprimida } from './arquivosDaEntrega';
@@ -80,7 +81,8 @@ export function useJanelaDaParada(inicial: Entrega, assinaturaInicial?: { assina
   const podeEditar = entregas.podeExcluir(e, { admin: !!operador?.admin || !!quem?.papeis.includes('admin'), email: quem?.email || '' });
 
   async function confirmar() {
-    if (salvando) return;
+    // só o Diretor faz entrega (06/11/2026)
+    if (salvando || !ehDiretor(operador)) return;
     const c: entregas.Confirmacao = { falha, semAssinatura: !falha && semAssinatura, comPix, recebedor, motivoFalha, motivoSemAssinatura, assinatura: falha || semAssinatura ? null : assinatura, foto, geo };
     const faltas = entregas.faltasNaConfirmacao(c, e.itens);
     setErros(faltas);

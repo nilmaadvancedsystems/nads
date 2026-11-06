@@ -29,7 +29,7 @@ const PASTA_PEDIDOS = process.env.ALTERDATA_PEDIDOS
   || (ONDE === 'servidor' ? 'D:\\nads-dados\\alterdata\\pedidos' : path.join(DRIVE, 'Claudio Secretario', 'Alterdata', 'pedidos'));
 // o Python do servidor fica em D:\Programas\Python313 (fora do PATH); no PC, o do PATH
 const PYTHON = process.env.PYTHON_EXE || ['D:\\Programas\\Python313\\python.exe'].find(p => fs.existsSync(p)) || 'python';
-const ROTEIROS = { balancete: path.join(__dirname, 'alterdata_balancete.py'), razao: path.join(__dirname, 'alterdata_razao.py') };
+const ROTEIROS = { balancete: path.join(__dirname, 'alterdata_balancete.py'), razao: path.join(__dirname, 'alterdata_razao.py'), dinamico: path.join(__dirname, 'alterdata_dinamico.py'), importar: path.join(__dirname, 'alterdata_importar.py') };
 const ROTEIRO_ESTADO = path.join(__dirname, 'alterdata_estado.py');
 // a tela de atualizações do Alterdata ao abrir: o robô clica em "Ver depois" (05/11/2026)
 const ROTEIRO_AVISOS = path.join(__dirname, 'alterdata_avisos.py');
@@ -80,9 +80,9 @@ function matar(filho) {
 
 /** Roda um roteiro; PASSO: … vira passo; RESULTADO: {…} é o fim; o sinal (o prazo da fila) mata o roteiro. */
 function rodarRoteiro(relatorio, a, passo, sinal, clique = () => {}) {
-  const args = relatorio === 'razao'
-    ? [String(a.codigo), a.inicio, a.fim, a.pasta, a.destino]
-    : [String(a.codigo), a.inicio, a.fim, a.destino];
+  const args = relatorio === 'razao' ? [String(a.codigo), a.inicio, a.fim, a.pasta, a.destino]
+    : relatorio === 'importar' ? [String(a.codigo), a.lote, a.destino]
+      : [String(a.codigo), a.inicio, a.fim, a.destino];
   return new Promise(resolve => {
     const filho = spawn(PYTHON, ['-I', ROTEIROS[relatorio], ...args], { cwd: __dirname, windowsHide: true });
     let resto = '', erros = '', resultado = null;
@@ -250,7 +250,8 @@ function iniciarAlterdata(db, log) {
       const buf = fs.readFileSync(arquivo);
       const col = pedidos.doc(id).collection('numeros');
       if (rel === 'balancete') {
-        const contas = numeros.lerBalancete(buf);
+        // o mensal vem do Balancete Dinâmico (.xls); o da Conferência, do balancete Xlsx Dados
+        const contas = /\.xls$/i.test(arquivo) ? numeros.lerDinamico(buf) : numeros.lerBalancete(buf);
         if (!contas.length) throw new Error('não achei conta nenhuma no balancete');
         await col.doc('balancete').set({ codigo: Number(p.codigo), competencia: p.competencia, contas, n: contas.length, em: agora() });
         return { contas: contas.length };
@@ -260,6 +261,12 @@ function iniciarAlterdata(db, log) {
       for (let i = 0; i < pedacos.length; i++) await col.doc('razao-' + String(i).padStart(3, '0')).set({ n: i, lancamentos: pedacos[i] });
       await col.doc('razao').set({ codigo: Number(p.codigo), competencia: p.competencia, contas: r.contas, n: r.lancamentos.length, pedacos: pedacos.length, em: agora() });
       return { contas: r.contas.length, lancamentos: r.lancamentos.length };
+    },
+    // a mesma planilha (sha256) já importada nesta empresa: não importa de novo (06/11/2026)
+    async importadoIgual(id, codigo, sha256) {
+      const s = await pedidos.where('codigo', '==', codigo).get();
+      const igual = s.docs.find(d => d.id !== id && d.data().tipo === 'importar' && d.data().sha256 === sha256 && ['pronto', 'trabalhando'].includes(d.data().status));
+      return igual ? { id: igual.id, lote: igual.data().lote || '' } : null;
     },
     async prontoIgual(id, p) {
       const s = await pedidos.where('codigo', '==', Number(p.codigo)).get();

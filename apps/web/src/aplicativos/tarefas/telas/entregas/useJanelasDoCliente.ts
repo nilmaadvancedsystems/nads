@@ -7,6 +7,7 @@
 import { entregas } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useMemo, useState } from 'react';
+import { ehDiretor } from '../../casca/navegacao';
 import { useOperador } from '../../casca/operador';
 import { useEntregasDeDocumentos } from '../../dados/repo';
 import type { ComprovanteDaEntrega, GuiaAnexada } from '../../dados/entregasDeDocumentos';
@@ -52,7 +53,9 @@ export function useJanelaDaEntrega(e: Entrega, nome: string, clienteId: string |
       ['Recebido por', e.recebedor || 'não informado'], ['Entregue por', e.entregadoPorNome || e.entregadoPor || 'não informado'], ['Data/hora', entregas.dataHoraDaEntrega(entregas.quandoFoi(e))],
     ] as [string, string][],
     mapa: e.geo ? 'https://maps.google.com/?q=' + e.geo.lat + ',' + e.geo.lng : '',
-    podeExcluir: entregas.podeExcluir(e, { admin: !!operador?.admin || !!quem?.papeis.includes('admin'), email: quem?.email || '' }),
+    // quem não é Diretor só olha a entrega (06/11/2026): sem excluir e sem mandar o comprovante
+    podeExcluir: ehDiretor(operador) && entregas.podeExcluir(e, { admin: !!operador?.admin || !!quem?.papeis.includes('admin'), email: quem?.email || '' }),
+    podeEnviarComprovante: ehDiretor(operador),
     fechar,
     salvar(tipo: 'assinatura' | 'foto') {
       const url = anexos?.[tipo];

@@ -199,6 +199,12 @@ export const podeVerOFinanceiro = (op: Operador | null) => {
  */
 export const podeVerOutrosSetores = (op: Operador | null) => !!op && (op.admin || op.nivel === 'diretor');
 
+/**
+ * O que só o Diretor (ou o admin) faz; Sênior, Pleno e Júnior de todos os setores não (Vitor, 06/11/2026): excluir
+ * certificado, fazer entrega (no Entregas eles só veem o Painel) e trocar empresas entre responsáveis.
+ */
+export const ehDiretor = (op: Operador | null) => !!op && (op.admin || op.nivel === 'diretor');
+
 /** As abas da janela da empresa no Cadastro que a pessoa vê: as do Contábil só para o Contábil (e quem vê os outros setores). */
 export const abasDoCadastroDe = (op: Operador | null) =>
   ABAS_DO_CADASTRO.filter(a => a.grupo !== 'Contábil' || podeVerOutrosSetores(op) || op?.departamento === 'contabil');
@@ -206,9 +212,8 @@ export const abasDoCadastroDe = (op: Operador | null) =>
 /** As aplicações que a pessoa vê: Fiscal só para o Fiscal; Contábil só para o Contábil; Drive para todos; Gmail para os dois (admin vê tudo). */
 export function aplicacoesDe(op: Operador): Aplicacao[] {
   return APLICACOES.filter(a =>
-    // o Início fora para todos por enquanto (Vitor, 06/11/2026: "Remove a tela de início para todos os usuários por
-    // enquanto, já abrir direto em minhas empresas"): o /tarefas/inicio cai em Minhas empresas
-    a.id !== 'inicio' &&
+    // o Início voltou para todos (Vitor, 06/11/2026, à tarde: "eles também não têm acesso à aba Início, resolva"; de manhã
+    // tinha saído): todo o escritório vê o mural de avisos
     (a.id !== 'fiscal' || op.admin || op.departamento === 'fiscal') &&
     (a.id !== 'dp' || op.admin || op.departamento === 'dp') &&
     (a.id !== 'contabil' || op.admin || op.departamento === 'contabil') &&
@@ -224,6 +229,9 @@ export function aplicacoesDe(op: Operador): Aplicacao[] {
     (a.id !== 'financeiro' || podeVerOFinanceiro(op)))
     // as páginas só do admin (as do Admin, nas Configurações) ficam de fora para os outros
     .map(a => (op.admin || !a.paginas.some(p => p.soAdmin) ? a : { ...a, paginas: a.paginas.filter(p => !p.soAdmin) }))
+    // no Entregas, quem não é Diretor só vê o Painel (06/11/2026: "não pode realizar nenhuma entrega"); os links da Nova
+    // entrega, da Rota e das Solicitações caem no Painel
+    .map(a => (a.id === 'entregas' && !ehDiretor(op) ? { ...a, paginas: a.paginas.filter(p => p.id === 'painel') } : a))
     // a lista das empresas se chama Contábil só para quem é do Contábil (06/11/2026); para o Fiscal e o DP ela mostra a
     // rotina do setor deles, com o nome de antes
     .map(a => (a.id === 'minhas-empresas' && !podeVerOutrosSetores(op) && op.departamento !== 'contabil' ? { ...a, nome: 'Minhas empresas', paginas: a.paginas.map(p => ({ ...p, titulo: 'Minhas empresas' })) } : a))
@@ -260,7 +268,8 @@ export const caminhoDaPagina = (app: IdAplicacao, pagina: string) => BASE + '/' 
 /** Onde a Tarefas abre (a pessoa escolhe na Minha página, a janela do avatar › Aparência e telas; neste navegador). */
 export const CHAVE_INICIO = 'nads-tarefas-inicio';
 export const INICIOS: readonly { valor: string; rotulo: string; caminho: string }[] = [
-  // o Início saiu por enquanto (06/11/2026): quem tinha escolhido ele abre em Minhas empresas, a primeira
+  // o Início voltou (06/11/2026, à tarde) e é de novo onde a Tarefas abre, o primeiro
+  { valor: 'inicio', rotulo: 'Início', caminho: BASE + '/inicio' },
   { valor: 'empresas', rotulo: 'Contábil', caminho: BASE + '/minhas-empresas/empresas' },
   { valor: 'drive', rotulo: 'Drive', caminho: BASE + '/drive/pastas' },
   { valor: 'gmail', rotulo: 'Gmail', caminho: BASE + '/contato/caixa' },
@@ -302,7 +311,7 @@ export function guardarCompetenciaDoDp(c: string): void {
   try { if (/^\d{4}-\d{2}$/.test(c)) sessionStorage.setItem(CHAVE_COMPETENCIA_DO_DP, c); } catch { /* sem armazenamento: vale só a da página */ }
 }
 export function inicioEscolhido(): string {
-  try { const v = localStorage.getItem(CHAVE_INICIO); return INICIOS.some(i => i.valor === v) ? v as string : 'empresas'; } catch { return 'empresas'; }
+  try { const v = localStorage.getItem(CHAVE_INICIO); return INICIOS.some(i => i.valor === v) ? v as string : 'inicio'; } catch { return 'inicio'; }
 }
 export function caminhoDoInicio(op: { departamento: string; admin: boolean }): string {
   const i = INICIOS.find(x => x.valor === inicioEscolhido()) || INICIOS[0];

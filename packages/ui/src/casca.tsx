@@ -83,6 +83,8 @@ export function Casca(p: {
   onAplicativos?: () => void;
   /** sem o Início na gaveta ☰ (a Tarefas, 06/11/2026: "Remove a tela de início para todos os usuários por enquanto") */
   semInicio?: boolean;
+  /** o número ao lado do Início na gaveta (os avisos do mural ainda não lidos; 06/11/2026); com ele, o ponto no ☰ */
+  contadorDoInicio?: string;
   onEmpresa: () => void;
   /** os aplicativos do nads, na gaveta ☰ (o atual marcado) */
   aplicativos?: {
@@ -233,8 +235,9 @@ export function Casca(p: {
         <div className="gh-header-top" hidden={naEtapa}>
           {!noOutro && (
             <>
-              <button className="gh-hamb" type="button" aria-label={'Abrir menu' + (versaoNova ? ' (versão nova)' : '')} title={versaoNova ? 'Menu · saiu a versão ' + versaoNova : 'Menu'} onClick={() => setGaveta(true)}>
-                {versaoNova && <span className="gh-hamb-ponto" aria-hidden="true" />}
+              <button className="gh-hamb" type="button" aria-label={'Abrir menu' + (versaoNova ? ' (versão nova)' : '') + (p.contadorDoInicio ? ' (aviso novo no Início)' : '')}
+                title={versaoNova ? 'Menu · saiu a versão ' + versaoNova : p.contadorDoInicio ? 'Menu · aviso novo no Início' : 'Menu'} onClick={() => setGaveta(true)}>
+                {(versaoNova || p.contadorDoInicio) && <span className="gh-hamb-ponto" aria-hidden="true" />}
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
               </button>
               <span className="brand-mark" aria-hidden="true"><MarcaN /></span>
@@ -280,6 +283,7 @@ export function Casca(p: {
           {!p.semInicio && (
             <button className="drawer-item" type="button" onClick={() => { fecharGaveta(); (p.onAplicativos || p.onInicio)(); }}>
               <span className="drawer-app-icone" aria-hidden="true"><Icone nome="home" /></span>Início
+              {p.contadorDoInicio && <span className="menu-contador drawer-contador" title="Avisos novos no mural">{p.contadorDoInicio}</span>}
             </button>
           )}
           {p.aplicativos && p.aplicativos.length > 0 && (

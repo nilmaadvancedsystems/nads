@@ -86,7 +86,7 @@ function novo(id, tipo, codigo, competencia) {
     assert.strictEqual(st(id), 'pronto', id + ' não ficou pronto: ' + JSON.stringify(pedidos.get(id)));
     const [ini, fim] = periodo(comp);
     for (const rel of ['balancete', 'razao']) {
-      assert.strictEqual(partes.get(id)[rel].toString(), rel + '|' + cod + '|' + ini + '|' + fim, id + ' recebeu o ' + rel + ' de outro');
+      assert.strictEqual(partes.get(id)[rel].toString(), (rel === 'balancete' ? 'dinamico' : rel) + '|' + cod + '|' + ini + '|' + fim, id + ' recebeu o ' + rel + ' de outro');
       assert.strictEqual(pedidos.get(id).arquivos[rel].status, 'pronto');
     }
   }
@@ -94,14 +94,14 @@ function novo(id, tipo, codigo, competencia) {
   // 3. o repetido aponta para o primeiro e não rodou
   assert.strictEqual(st('dup2'), 'pronto');
   assert.strictEqual(pedidos.get('dup2').mesmoQue, 'dup1');
-  assert.strictEqual(chamadas.filter(c => c.startsWith('balancete 103 ')).length, 1, 'o mês repetido rodou duas vezes');
+  assert.strictEqual(chamadas.filter(c => c.startsWith('dinamico 103 ')).length, 1, 'o mês repetido rodou duas vezes');
   // 4. o travado virou erro com o motivo, e a fila seguiu (os de depois dele ficaram prontos, acima)
   assert.strictEqual(st('trava'), 'erro');
   assert.match(pedidos.get('trava').erro, /passou de .* min sem terminar/);
   // 5. o cancelado não rodou; o avisado duas vezes rodou uma vez; a competência inválida virou erro
   assert.strictEqual(st('cancela'), 'cancelado');
   assert.ok(!chamadas.some(c => c.includes(' 104 ')), 'o cancelado rodou');
-  assert.strictEqual(chamadas.filter(c => c.startsWith('balancete 101 01/09')).length, 1, 'o pedido avisado duas vezes rodou duas');
+  assert.strictEqual(chamadas.filter(c => c.startsWith('dinamico 101 01/09')).length, 1, 'o pedido avisado duas vezes rodou duas');
   assert.strictEqual(st('ruim'), 'erro');
   // 6. o balancete da Conferência: só o balancete
   assert.strictEqual(st('conf'), 'pronto');
@@ -132,7 +132,7 @@ function novo(id, tipo, codigo, competencia) {
   for (const id of ids) { servidor.chegou(id); pc.chegou(id); }
   await espera(5);
   await Promise.all([servidor.ocioso(), pc.ocioso()]);
-  const rodados = [...porMaquina.s, ...porMaquina.p].filter(c => c.startsWith('balancete'));
+  const rodados = [...porMaquina.s, ...porMaquina.p].filter(c => c.startsWith('dinamico'));
   assert.strictEqual(rodados.length, 12, 'algum pedido rodou nas duas máquinas: ' + rodados.length);
   assert.strictEqual(new Set(rodados).size, 12);
   for (const id of ids) assert.strictEqual(st(id), 'pronto', id);

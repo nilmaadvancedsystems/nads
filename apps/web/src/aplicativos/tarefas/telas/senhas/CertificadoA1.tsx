@@ -60,7 +60,7 @@ export function CertificadoA1({ vm, ocupado, baixar }: { vm: Vm; ocupado: boolea
           <div className="cert-acoes">
             {vm.temCertificado && <button type="button" className="btn btn-outline" onClick={baixar}><Icone nome="download" />Baixar .pfx</button>}
             <button type="button" className="btn btn-outline" onClick={() => input.current?.click()}><Icone nome="repeat" />Trocar arquivo</button>
-            {vm.temCertificado && <button type="button" className="btn btn-danger" disabled={ocupado} onClick={() => void vm.excluirCert()}>Excluir certificado</button>}
+            {vm.temCertificado && vm.podeExcluirCert && <button type="button" className="btn btn-danger" disabled={ocupado} onClick={() => void vm.excluirCert()}>Excluir certificado</button>}
             <span className="tarefas-barra-espaco" />
             {vm.mudouCert && <button type="button" className="btn btn-primary" disabled={ocupado} onClick={() => void vm.salvarCert()}><Icone nome="check" />Salvar</button>}
           </div>

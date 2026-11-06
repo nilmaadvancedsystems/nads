@@ -53,6 +53,8 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
     ferramentas: { ativa: app === 'ferramentas' },
     onAplicacao: (id: string) => { const x = aplicacao(id); if (x) navegar(caminhoDaPagina(x.id, x.paginas[0].id)); },
     inicio: () => navegar(BASE),
+    /** o Início da gaveta ☰ abre o Início (o mural), seja qual for a tela em que a pessoa escolheu abrir (06/11/2026) */
+    abrirInicio: () => navegar(BASE + '/inicio'),
     trocarPessoa: () => escolher(null),
     /** o perfil no canto do cabeçalho (como o do GitHub): as iniciais, o nome e trocar de pessoa / sair */
     perfil: { nome: op.nome, iniciais: usuarios.iniciais(op.nome), foto: acesso.minhaFoto(), sair: comLogin ? 'Sair da conta' : 'Trocar de pessoa' },

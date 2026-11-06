@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aplicacoesDe, podeMexerNoCadastro, podeVerOFinanceiro } from './navegacao';
+import { aplicacoesDe, ehDiretor, podeMexerNoCadastro, podeVerOFinanceiro } from './navegacao';
 import type { Operador } from './operador';
 
 const op = (nivel: Operador['nivel'], admin = false): Operador => ({ nome: 'X', departamento: 'contabil', nivel, admin });
@@ -44,5 +44,24 @@ describe('a Área do Cliente ainda não para o Fiscal (Vitor, 06/11/2026)', () =
     expect(vê({ ...op('senior', true), departamento: 'fiscal' })).toBe(true);
     expect(vê(op('pleno'))).toBe(true);
     expect(vê({ ...op('pleno'), departamento: 'dp' })).toBe(true);
+  });
+});
+
+describe('Sênior, Pleno e Júnior: Entregas só o Painel, e o Início para todos (Vitor, 06/11/2026)', () => {
+  const paginas = (o: Operador) => aplicacoesDe(o).find(a => a.id === 'entregas')?.paginas.map(p => p.id);
+  it('quem não é Diretor só vê o Painel do Entregas; o Diretor e o admin veem tudo', () => {
+    for (const n of ['senior', 'pleno', 'junior'] as const) expect(paginas({ ...op(n), departamento: 'fiscal' })).toEqual(['painel']);
+    expect(paginas(op('diretor'))).toEqual(['nova', 'rota', 'painel', 'solicitacoes']);
+    expect(paginas(op('pleno', true))).toEqual(['nova', 'rota', 'painel', 'solicitacoes']);
+  });
+  it('o Início volta para todo mundo', () => {
+    for (const n of ['diretor', 'senior', 'pleno', 'junior'] as const) for (const d of ['fiscal', 'contabil', 'dp'] as const)
+      expect(aplicacoesDe({ ...op(n), departamento: d }).some(a => a.id === 'inicio')).toBe(true);
+  });
+  it('só o Diretor (ou o admin) é Diretor', () => {
+    expect(ehDiretor(op('diretor'))).toBe(true);
+    expect(ehDiretor(op('junior', true))).toBe(true);
+    for (const n of ['senior', 'pleno', 'junior'] as const) expect(ehDiretor(op(n))).toBe(false);
+    expect(ehDiretor(null)).toBe(false);
   });
 });
