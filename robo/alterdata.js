@@ -29,7 +29,7 @@ const PASTA_PEDIDOS = process.env.ALTERDATA_PEDIDOS
   || (ONDE === 'servidor' ? 'D:\\nads-dados\\alterdata\\pedidos' : path.join(DRIVE, 'Claudio Secretario', 'Alterdata', 'pedidos'));
 // o Python do servidor fica em D:\Programas\Python313 (fora do PATH); no PC, o do PATH
 const PYTHON = process.env.PYTHON_EXE || ['D:\\Programas\\Python313\\python.exe'].find(p => fs.existsSync(p)) || 'python';
-const ROTEIROS = { balancete: path.join(__dirname, 'alterdata_balancete.py'), razao: path.join(__dirname, 'alterdata_razao.py'), importar: path.join(__dirname, 'alterdata_importar.py') };
+const ROTEIROS = { balancete: path.join(__dirname, 'alterdata_balancete.py'), razao: path.join(__dirname, 'alterdata_razao.py'), dinamico: path.join(__dirname, 'alterdata_dinamico.py'), importar: path.join(__dirname, 'alterdata_importar.py') };
 const ROTEIRO_ESTADO = path.join(__dirname, 'alterdata_estado.py');
 // a tela de atualizações do Alterdata ao abrir: o robô clica em "Ver depois" (05/11/2026)
 const ROTEIRO_AVISOS = path.join(__dirname, 'alterdata_avisos.py');
@@ -250,7 +250,8 @@ function iniciarAlterdata(db, log) {
       const buf = fs.readFileSync(arquivo);
       const col = pedidos.doc(id).collection('numeros');
       if (rel === 'balancete') {
-        const contas = numeros.lerBalancete(buf);
+        // o mensal vem do Balancete Dinâmico (.xls); o da Conferência, do balancete Xlsx Dados
+        const contas = /\.xls$/i.test(arquivo) ? numeros.lerDinamico(buf) : numeros.lerBalancete(buf);
         if (!contas.length) throw new Error('não achei conta nenhuma no balancete');
         await col.doc('balancete').set({ codigo: Number(p.codigo), competencia: p.competencia, contas, n: contas.length, em: agora() });
         return { contas: contas.length };
