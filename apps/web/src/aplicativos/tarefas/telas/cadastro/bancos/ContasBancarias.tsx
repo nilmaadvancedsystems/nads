@@ -1,8 +1,10 @@
-// Cadastro › empresa › Contas bancárias: a barra de cima (quantas contas, encerradas, "Nova conta ▾") e a lista.
+// Cadastro › empresa › Contas bancárias: a barra de cima (quantas contas, encerradas, "Nova conta") e a lista.
 // Empresa sem cadastro: o aviso com a lista que o Extrator usa hoje e "Confirmar esta lista".
-import { Alerta, Esqueleto, Icone, LogoBanco, MenuSuspenso, useCarregando } from '@nads/ui';
+import type { empresas } from '@nads/core';
+import { Alerta, Icone, LogoBanco, MenuSuspenso, useCarregando } from '@nads/ui';
 import { useState } from 'react';
 import { FormConta, FormEncerrar } from './partes/FormConta';
+import { JanelaNovaConta } from './partes/JanelaNovaConta';
 import { useContasBancarias, type LinhaConta, type VmContasBancarias } from './useContasBancarias';
 
 function AcoesDaConta({ vm, l, fechar }: { vm: VmContasBancarias; l: LinhaConta; fechar: () => void }) {
@@ -24,6 +26,8 @@ function AcoesDaConta({ vm, l, fechar }: { vm: VmContasBancarias; l: LinhaConta;
 export function ContasBancarias({ rota }: { rota: string }) {
   const vm = useContasBancarias(rota);
   useCarregando(vm.carregando);
+  // a janela da nova conta (undefined = fechada; com inicial = veio de uma sugestão do robô, com o banco já escolhido)
+  const [nova, setNova] = useState<{ inicial?: empresas.cadastro.DadosDaConta }>();
   return (
     <section>
       <div className="tarefas-barra-topo">
@@ -34,9 +38,9 @@ export function ContasBancarias({ rota }: { rota: string }) {
           </button>
         )}
         <span className="tarefas-barra-espaco" />
-        <MenuSuspenso icone="plus" rotulo="Nova conta" className="btn btn-primary" direita largura={400} titulo="Banco"
-          conteudo={fechar => (vm.carregando ? <Esqueleto linhas={2} /> : <FormConta vm={vm} id={null} fechar={fechar} />)} />
+        <button type="button" className="btn btn-primary" onClick={() => setNova({})}><Icone nome="plus" />Nova conta</button>
       </div>
+      {nova && <JanelaNovaConta vm={vm} inicial={nova.inicial} fechar={() => setNova(undefined)} />}
 
       {vm.semCadastro && (
         <Alerta naLinha className="cad-aviso" titulo="Esta empresa ainda não tem os bancos cadastrados"
@@ -66,8 +70,7 @@ export function ContasBancarias({ rota }: { rota: string }) {
                 {s.comNumero ? (
                   <button type="button" className="btn btn-outline" onClick={() => vm.incluirSugestao(s)}>{s.tipo === 'completar' ? 'Completar' : 'Incluir'}</button>
                 ) : (
-                  <MenuSuspenso rotulo="Incluir" className="btn btn-outline" direita largura={400}
-                    conteudo={fechar => <FormConta vm={vm} id={null} inicial={{ marca: s.marca, agencia: '', conta: '', tipo: 'corrente' }} fechar={fechar} />} />
+                  <button type="button" className="btn btn-outline" onClick={() => setNova({ inicial: { marca: s.marca, agencia: '', conta: '', tipo: 'corrente' } })}>Incluir</button>
                 )}
               </li>
             ))}
