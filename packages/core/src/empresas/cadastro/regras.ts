@@ -293,7 +293,7 @@ export function documentoDoCadastro(c: CadastroDaEmpresa): Record<string, unknow
     ...(c.proLabore && (c.proLabore.contaCredito || c.proLabore.diaUtil) ? { proLabore: c.proLabore } : {}),
     ...(c.regime ? { regime: c.regime } : {}),
     ...(c.cnpj ? { cnpj: c.cnpj } : {}),
-    ...(c.contato && (c.contato.email || c.contato.whatsapp) ? { contato: c.contato } : {}),
+    ...(c.contato && (c.contato.email || c.contato.whatsapp || c.contato.outrosEmails?.length) ? { contato: c.contato } : {}),
     ...(c.socios?.length ? { socios: c.socios } : {}),
     ...(c.emprestimos?.length ? { emprestimos: c.emprestimos } : {}),
     ...(c.responsaveis && Object.keys(c.responsaveis).length ? { responsaveis: c.responsaveis } : {}),
@@ -887,7 +887,15 @@ function contatoDoDocumento(v: unknown): Pick<CadastroDaEmpresa, 'contato'> {
   const o = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>;
   const email = texto(o.email);
   const whatsapp = texto(o.whatsapp);
-  return email || whatsapp ? { contato: { ...(email ? { email } : {}), ...(whatsapp ? { whatsapp } : {}) } } : {};
+  const outros = outrosEmailsLimpos(Array.isArray(o.outrosEmails) ? o.outrosEmails.map(texto) : []);
+  return email || whatsapp || outros.length
+    ? { contato: { ...(email ? { email } : {}), ...(whatsapp ? { whatsapp } : {}), ...(outros.length ? { outrosEmails: outros } : {}) } }
+    : {};
+}
+
+/** Os outros e-mails da empresa (o gmail extra do DP Envios): minúsculas, sem repetir, só os válidos. */
+export function outrosEmailsLimpos(lista: readonly string[]): string[] {
+  return [...new Set(lista.map(e => e.trim().toLowerCase()).filter(e => e && emailValido(e)))];
 }
 
 /**
@@ -902,8 +910,25 @@ export function definirContato(c: CadastroDaEmpresa, campo: 'email' | 'whatsapp'
   if (v) contato[campo] = v; else delete contato[campo];
   const resto: CadastroDaEmpresa = { ...c };
   delete resto.contato;
-  const novo = contato.email || contato.whatsapp ? { ...resto, contato } : resto;
+  const novo = contato.email || contato.whatsapp || contato.outrosEmails?.length ? { ...resto, contato } : resto;
   return registrar(novo, por, agora, campo === 'email' ? 'E-mail da empresa' : 'WhatsApp da empresa', v || 'Tirou');
+}
+
+/**
+ * Grava os outros e-mails da empresa (a lista inteira; vazia tira). Válido = todos os e-mails confere; senão não grava
+ * (quem chama avisa). Não mexe no e-mail principal.
+ */
+export function definirOutrosEmails(c: CadastroDaEmpresa, valores: readonly string[], por: string, agora: Date): CadastroDaEmpresa {
+  const pedidos = valores.map(e => e.trim()).filter(Boolean);
+  if (pedidos.some(e => !emailValido(e))) return c;
+  const lista = outrosEmailsLimpos(pedidos);
+  if (JSON.stringify(lista) === JSON.stringify(c.contato?.outrosEmails || [])) return c;
+  const contato = { ...(c.contato || {}) };
+  if (lista.length) contato.outrosEmails = lista; else delete contato.outrosEmails;
+  const resto: CadastroDaEmpresa = { ...c };
+  delete resto.contato;
+  const novo = contato.email || contato.whatsapp || contato.outrosEmails?.length ? { ...resto, contato } : resto;
+  return registrar(novo, por, agora, 'Outros e-mails da empresa', lista.join(', ') || 'Tirou');
 }
 
 /** O escritório emite nota de honorário para a empresa: sim, não, ou volta a "não informado" (null). */

@@ -94,7 +94,9 @@ export function useEnviosDoDp() {
       // envios"), como o regime; o do Entregas só sem ele (o robô escolhe igual: robo/envios-do-dp.js paraQuem)
       const doCadastro = (c.cadastro?.contato?.email || '').trim().toLowerCase();
       const doEntregas = emailsDe.get(cod) || (repo.exemplos ? ['financeiro@exemplo.com.br'] : []);
-      const emails = doCadastro ? [doCadastro] : doEntregas;
+      // o principal do Cadastro e os outros (contato.outrosEmails): todos recebem (05/11/2026)
+      const outros = (c.cadastro?.contato?.outrosEmails || []).map(e => e.trim().toLowerCase());
+      const emails = doCadastro ? [...new Set([doCadastro, ...outros])] : doEntregas;
       const origemDoEmail: '' | 'cadastro' | 'entregas' = doCadastro ? 'cadastro' : doEntregas.length ? 'entregas' : '';
       const envio = envios.porCodigo.get(cod);
       // os arquivos do mês que já foram, somando os envios do mês (o mais novo pode ter levado só um)
