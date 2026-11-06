@@ -10,6 +10,7 @@ import { entregas, financeiro } from '@nads/core';
 import { CONCILIA, EXECUTOR, EXTRATUDO, TAREFAS, TODAS } from './telas';
 import type { Peca } from './tipos';
 import { BotaoGoogle } from '../../../comum/BotaoGoogle';
+import { BotaoImportarNoAlterdata } from '../../../comum/BotaoImportarNoAlterdata';
 import { MenuDaRotina } from '../../tarefas/telas/executor/partes/MenuDaRotina';
 import { AreaDeSoltar } from '../../cliente/partes/AreaDeSoltar';
 import { Avatar as AvatarDoCliente } from '../../cliente/partes/Avatar';
@@ -285,6 +286,10 @@ export const PECAS_BASE: Peca[] = [
     </> },
   { id: 'botao-google', tipo: 'botoes', nome: 'Entrar com o Google', componente: 'BotaoGoogle', classes: ['btn btn-outline botao-google'], telas: ['e-importacao', 't-drive'],
     uso: '<BotaoGoogle entrando={x} onClick={entrar} />', demo: () => <><BotaoGoogle onClick={() => undefined} /><BotaoGoogle entrando onClick={() => undefined} /></> },
+  // o Importar no Alterdata (06/11/2026): ao lado de cada Baixar .xls da planilha de 10 colunas; o robô do servidor importa
+  { id: 'importar-alterdata', tipo: 'botoes', nome: 'Importar no Alterdata', descricao: 'O botão secundário com o ícone de enviar, ao lado do Baixar .xls: pergunta antes (empresa, lançamentos, lote), manda a planilha ao robô e mostra no lugar a fila, a barra com a etapa e o clique, e o que o Alterdata respondeu (Importado / Não importou). Sem o código do Alterdata, desligado', componente: 'BotaoImportarNoAlterdata', classes: ['importar-alterdata', 'importar-alterdata-andamento'], telas: ['e-creditor', 'c-verificar', 't-exec-bancos', 't-exec-folha'],
+    uso: "<BotaoImportarNoAlterdata codigo={292} empresa={nome} lote={nomeDoLote('Creditor', datas)} origem=\"creditor\" planilha={() => ({ bytes, linhas })} />",
+    demo: () => <><BotaoImportarNoAlterdata codigo={292} empresa="EXEMPLO COMERCIO DE ALIMENTOS LTDA" lote="nads Creditor 11/2025" origem="catalogo" planilha={() => ({ bytes: new Uint8Array(600), linhas: 42 })} /><BotaoImportarNoAlterdata codigo={null} empresa="" lote="nads Creditor 11/2025" origem="catalogo" planilha={() => null} /></> },
   // o × de fechar (revisão da UI, 16/10/2026: eram cinco desenhos; agora todas as janelas, gavetas e painéis usam este)
   { id: 'janela-x', tipo: 'botoes', nome: 'Fechar janela (×)', descricao: '32 px sem borda, o fundo aparece ao passar o mouse; o nome "Fechar" e a dica com o Esc. canto: preso no canto de cima da janela do meio', componente: 'BotaoFechar', classes: ['janela-x', 'modal-x'], telas: TODAS,
     uso: '<BotaoFechar onClick={fechar} />  ·  <BotaoFechar canto onClick={fechar} />  ·  <BotaoFechar rotulo="Fechar menu" onClick={fechar} />', demo: () => <><BotaoFechar onClick={nada} /><BotaoFechar rotulo="Fechar menu" onClick={nada} /><BotaoFechar disabled onClick={nada} /></> },
