@@ -3365,6 +3365,11 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .dp-tabela thead tr:last-child th.dp-ob{font-weight:500;font-size:var(--fs-10);letter-spacing:-.01em;}
 .dp-tabela td,.dp-tabela th{padding-left:8px;padding-right:8px;}
 .dp-tabela .badge{font-size:var(--fs-11);padding:1px 7px;}
+.dp-tabela .dp-tabela-acao{position:sticky;right:0;z-index:1;background:var(--surface);box-shadow:-1px 0 0 var(--border-muted);padding-left:4px;padding-right:4px;}
+.dp-tabela thead th.dp-tabela-acao{background:var(--surface-2);z-index:2;}
+.dp-tabela .dp-guia-vence{display:block;font-size:var(--fs-12);}
+.dp-tabela-guias .dp-cliente{width:auto;max-width:190px;}
+.dp-tabela-guias .dp-cliente > span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .dp-tabela .dp-cliente-nome{max-width:205px;}
 /* Obrigações do DP: o nome inteiro, sem o "…" (Vitor, 28/10/2026), e o responsável embaixo, discreto */
 .dp-tabela .dp-cliente-inteiro{min-width:240px;}
