@@ -12,7 +12,6 @@ export const ROTINA_LCDPR: Rotina = {
       secao: 'LCDPR',
       nome: 'LCDPR',
       descricao: 'Importe os relatórios do SIEG, confira a classificação dos lançamentos e baixe a planilha do LCDPR.',
-      ferramenta: null,
       // a ferramenta LCDPR (a da página da empresa) dentro da etapa: Lançamentos e as listas nas abas de cima
       tela: { id: 'lcdpr', periodo: true },
       verificacao: 'manual',

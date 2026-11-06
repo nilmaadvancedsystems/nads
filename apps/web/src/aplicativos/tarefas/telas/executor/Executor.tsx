@@ -5,13 +5,12 @@
 // atrapalhavam a ferramenta): os grupos da rotina num menu só (como o "+ ▾"), as saídas da etapa (⚠ ▾), ✕ Interromper,
 // ? (o que falta) e o perfil. Sem a seta do Próximo (Vitor, 28/10/2026: "remova essa seta e dê um check"): tudo ok, a etapa
 // ganha o check na lateral e a próxima aparece liberada; o clique nela marca esta feita e segue.
-import { AberturaN, Alerta, Casca, destacarNaTela, Icone, MenuSuspenso, useCarregando, useFerramentaNaEtapa, type NomeIcone } from '@nads/ui';
+import { AberturaN, Alerta, Casca, destacarNaTela, Icone, MenuSuspenso, useCarregando, type NomeIcone } from '@nads/ui';
 import { demo } from '@nads/core';
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, useBlocker, useParams } from 'react-router';
-import { useDadosDeTesteDaFerramenta, usePonteDaFerramenta } from '../../../../comum/ponte';
 import { useAvisoDeBloqueio } from '../../../../comum/modoDesenvolvedor';
-import { implantarNotasFiscaisDeTeste } from '../../../concilia-ai/importadosNaEtapa';
+import { implantarNotasFiscaisDeTeste } from '../../etapas/conferencia/importadosNaEtapa';
 import { BASE } from '../../casca/navegacao';
 import { useCascaTarefas } from '../../casca/useCascaTarefas';
 import { useDepartamentoDaTela } from '../../casca/departamento';
@@ -30,7 +29,8 @@ import { animarPronto } from './partes/animarPainel';
 import { useInssDaEtapa } from './useInssDaEtapa';
 import { useRazaoDaEtapa } from './useRazaoDaEtapa';
 import type { ItemDeTeste } from '../../../../comum/BotaoDeTeste';
-import { EtapaProvider, type AbasDaEtapa } from './etapas/contexto';
+import { EtapaProvider, type AbasDaEtapa, type RequisitosDaEtapa } from './etapas/contexto';
+import { PonteDaEtapaProvider, useDestaqueDaEtapa } from './etapas/ponte';
 import { TelaDaEtapa } from './etapas/TelaDaEtapa';
 import { PeriodoDaTarefa } from './partes/PeriodoDaTarefa';
 import { SeletorDoPeriodo } from './partes/SeletorDoPeriodo';
@@ -62,26 +62,20 @@ export function Executor() {
     vm.empresa ? { nome: vm.empresa.nome, codigo: vm.empresa.codigo, caixa: vm.etapa?.razao?.conta === 'caixa' } : null);
   // a conferência do INSS (a etapa da folha): o razão do INSS a recolher × o PDF das guias pagas
   const inss = useInssDaEtapa(rota + '|' + (vm.etapa?.id || '') + '|' + periodo, vm.meses.length ? vm.meses : [vm.competencia], [], vm.empresa?.nome || '', vm.empresa?.codigo ?? null);
-  // a ferramenta da etapa (iframe): recebe os bancos sem movimento e avisa quando a pessoa marca um
-  const iframe = useRef<HTMLIFrameElement>(null);
-  // a ferramenta que tem requisitos (a Importação) diz o que falta: o avançar só aparece com tudo pronto
-  const [requisitos, setRequisitos] = useState<{ url: string; pronto: boolean; faltam: string[]; alvos?: (string | null)[]; precisaChequeEspecial?: boolean } | null>(null);
-  const urlDaFerramenta = vm.ferramenta?.url || '';
-  // o ⚡ do modo desenvolvedor: as opções de dados de teste que a ferramenta aberta oferece (mudam com a tela dela)
-  const teste = useDadosDeTesteDaFerramenta(iframe, urlDaFerramenta);
-  // a tela própria da etapa (sem iframe): diz o que falta e oferece os dados de teste pelo contexto (etapas/contexto.tsx)
+  // a tela da etapa (as ferramentas viraram telas da Tarefa, sem iframe): diz o que falta e oferece os dados de teste pelo
+  // contexto (etapas/contexto.tsx); a ponte (etapas/ponte.tsx) leva os bancos sem movimento, o período e o Resolver
   const chaveDaTela = vm.tela ? rota + '|' + vm.tela.id + '|' + vm.tela.etapa.meses.join(',') : '';
-  const [requisitosDaTela, setRequisitosDaTela] = useState<{ chave: string; pronto: boolean; faltam: string[] } | null>(null);
+  const [requisitosDaTela, setRequisitosDaTela] = useState<({ chave: string } & RequisitosDaEtapa) | null>(null);
+  const requisitos = requisitosDaTela && requisitosDaTela.chave === chaveDaTela ? requisitosDaTela : null;
   const [testeDaTela, setTesteDaTela] = useState<ItemDeTeste[]>([]);
   // as telas da etapa (a tela própria) nas abas embaixo do cabeçalho, no lugar do Segmentado (Vitor, 07/10/2026)
   const [abasDaTela, setAbasDaTela] = useState<AbasDaEtapa | null>(null);
   // o lugar dos avisos da tela da etapa, na faixa acima do cabeçalho
   const [alvoDosAvisos, setAlvoDosAvisos] = useState<HTMLDivElement | null>(null);
-  // o ⚡: as opções da ferramenta aberta, ou as do que a própria etapa importa (o razão do Caixa, o INSS)
+  const destaque = useDestaqueDaEtapa();
+  // o ⚡: as opções da tela aberta, ou as do que a própria etapa importa (o razão do Caixa, o INSS)
   const opcoesDeTeste = vm.tela
     ? testeDaTela.map(o => ({ rotulo: o.rotulo, icone: 'zap' as NomeIcone, onClick: o.onClick }))
-    : vm.ferramenta
-    ? teste.opcoes.map(o => ({ rotulo: o.rotulo, icone: 'zap' as NomeIcone, onClick: () => teste.mandar(o.id) }))
     : vm.etapa?.conferenciaDoInss
       ? [{ rotulo: 'Razão e guias do INSS de teste', icone: 'zap' as NomeIcone, onClick: inss.implantarTeste }]
       : vm.etapa?.razao
@@ -94,9 +88,6 @@ export function Executor() {
           ? demo.OPCOES_FISCAIS_DE_TESTE.map(o => ({ rotulo: o.rotulo, icone: 'zap' as NomeIcone,
             onClick: () => { implantarNotasFiscaisDeTeste(vm.empresa!.nome, vm.meses.length ? vm.meses : [vm.competencia], o.id); } }))
           : [];
-  const destacarNaFerramenta = usePonteDaFerramenta(iframe, vm.semMovimentoPorMes, vm.competencia, vm.marcarSemMovimento, vm.trocarCompetencia,
-    vm.varios ? { meses: vm.meses, concluido: vm.periodoConcluido } : null, vm.encerrarPeriodo,
-    r => setRequisitos({ url: urlDaFerramenta, ...r }), vm.vistaConcluida);
   // os requisitos valem só para a ferramenta que mandou (trocou de etapa: some)
   // a etapa da folha: o checklist montado pelo balancete (o avançar só com tudo marcado)
   // o checklist da etapa: o da folha (pelo balancete) ou as tarefas fixas da etapa (o Fiscal)
@@ -107,9 +98,7 @@ export function Executor() {
   const terminou = !vm.carregando && !vm.etapa;
   useEffect(() => { if (terminou) animarPronto(fim.current); }, [terminou]);
   const folha = useChecklistDaFolha(temChecklist, vm.empresa?.nome || '', vm.meses.length ? vm.meses : [vm.competencia], fixo);
-  const faltamFerramenta = vm.tela
-    ? requisitosDaTela && requisitosDaTela.chave === chaveDaTela && !requisitosDaTela.pronto ? requisitosDaTela.faltam : null
-    : requisitos && requisitos.url === urlDaFerramenta && !requisitos.pronto ? requisitos.faltam : null;
+  const faltamFerramenta = vm.tela && requisitos && !requisitos.pronto ? requisitos.faltam : null;
   // o Caixa: sem o razão importado não dá para saber se o Creditor entra (Vitor, 05/10/2026)
   const faltaRazao = vm.etapa?.razao && !razao.carregado ? ['Importar o razão do ' + vm.etapa.razao.conta] : null;
   const faltam = temChecklist ? (folha.faltam && folha.faltam.length ? folha.faltam : null) : faltaRazao || faltamFerramenta;
@@ -119,46 +108,36 @@ export function Executor() {
   }));
   const resolver = (alvo: string) => {
     if (alvo.startsWith('folha:')) void destacarNaTela('[data-folha="' + CSS.escape(alvo.slice(6)) + '"]');
-    else destacarNaFerramenta(alvo);
+    else destaque.destacar(alvo);
   };
-  // a ferramenta do tamanho do conteúdo dela: a página toda rola junto, numa barra só
-  // um aplicativo inteiro dentro da etapa (a Conferência) manda as abas dele: elas ficam no cabeçalho, por cima do checklist
-  const { altura, carregando: ferramentaCarregando, abrindo: ferramentaAbrindo, fundoAberto, abas, abrirAba } = useFerramentaNaEtapa(iframe, vm.ferramenta?.embutir ? vm.ferramenta.url : undefined);
-  // uma barra só, no alto da página: a da Tarefas e a da ferramenta juntas
   // a etapa da folha esperando o balancete: a mesma barra do topo
   const folhaCarregando = temChecklist && folha.itens === null;
-  useCarregando(vm.carregando || vm.conferindo || (ferramentaCarregando && !vm.revendo) || folhaCarregando);
+  useCarregando(vm.carregando || vm.conferindo || folhaCarregando);
   // onde a pessoa está, para o balão do suporte (Vitor, 20/10/2026): a empresa, os meses, a etapa, a aba aberta e os bancos
-  const abaAberta = ((vm.tela && abasDaTela ? abasDaTela.paginas : abas) || []).find(p => p.ativa)?.rotulo || '';
+  const abaAberta = (vm.tela && abasDaTela ? abasDaTela.paginas : []).find(p => p.ativa)?.rotulo || '';
   useEffect(() => {
     publicarOndeEsta(vm.empresa ? { empresa: vm.empresa.nome, codigo: vm.empresa.codigo ?? null, meses: vm.meses.length ? vm.meses : [vm.competencia], etapa: vm.etapa?.nome || '', aba: abaAberta, bancos: vm.bancosDaEmpresa } : null);
   });
   useEffect(() => () => publicarOndeEsta(null), []);
-  // o nome da aba do navegador (Vitor, 26/10/2026: "o número da empresa e a etapa"): "289 · Caixa — Tarefas"; saiu, volta
-  const tituloDaAba = vm.empresa ? String(vm.empresa.codigo ?? vm.empresa.nome) + (vm.etapa?.nome ? ' · ' + vm.etapa.nome : '') + ' — Tarefas' : '';
+  // o nome da aba do navegador (Vitor, 26/10/2026: "o número da empresa e a etapa"): "289 · Caixa — NADS"; saiu, volta
+  const tituloDaAba = vm.empresa ? String(vm.empresa.codigo ?? vm.empresa.nome) + (vm.etapa?.nome ? ' · ' + vm.etapa.nome : '') + ' — NADS' : '';
   useEffect(() => {
     if (!tituloDaAba) return;
     const antes = document.title;
     document.title = tituloDaAba;
     return () => { document.title = antes; };
   }, [tituloDaAba]);
-  // os botões da etapa só com a tela pronta (a Tarefas e a ferramenta carregadas); o avançar, se a ferramenta tem
-  // requisitos, só depois que ela disser o que falta (antes disso ele apareceria liberado)
-  const telaPronta = !vm.carregando && !ferramentaCarregando;
-  // uma janela (popup) aberta na ferramenta: o cabeçalho e a lateral embaçam também (o fundo da tela inteira)
-  useEffect(() => {
-    document.documentElement.classList.toggle('fundo-embacado', fundoAberto);
-    return () => document.documentElement.classList.remove('fundo-embacado');
-  }, [fundoAberto]);
+  // os botões da etapa só com a tela pronta; o avançar, se a tela tem requisitos, só depois que ela disser o que falta
+  const telaPronta = !vm.carregando;
   // o Cheque especial já aberto sem nenhum dia negativo (a ferramenta conferiu todos os bancos): dispensa e segue
   const dispensou = useRef('');
-  const chequeDesnecessario = vm.etapa?.id === 'cheque-especial' && requisitos?.url === urlDaFerramenta && requisitos?.precisaChequeEspecial === false;
+  const chequeDesnecessario = vm.etapa?.id === 'cheque-especial' && requisitos?.precisaChequeEspecial === false;
   useEffect(() => {
-    if (!chequeDesnecessario || dispensou.current === urlDaFerramenta) return;
-    dispensou.current = urlDaFerramenta;
+    if (!chequeDesnecessario || dispensou.current === chaveDaTela) return;
+    dispensou.current = chaveDaTela;
     vm.dispensarSemCheque();
-  }, [chequeDesnecessario, urlDaFerramenta, vm]);
-  const requisitosConhecidos = temChecklist ? folha.faltam !== null : vm.tela ? requisitosDaTela?.chave === chaveDaTela : !vm.ferramenta?.requisitos || requisitos?.url === urlDaFerramenta;
+  }, [chequeDesnecessario, chaveDaTela, vm]);
+  const requisitosConhecidos = temChecklist ? folha.faltam !== null : vm.tela ? !!requisitos : true;
   // sair da execução por qualquer lugar do app (o cabeçalho, o menu, o voltar do navegador) com a etapa aberta:
   // é interromper, com a justificativa; trocar de mês ou período dentro do executor não conta
   const saida = useBlocker(({ currentLocation, nextLocation }) =>
@@ -170,7 +149,7 @@ export function Executor() {
 
   // o checklist da esquerda: só as etapas do grupo da vez (os outros grupos ficam nos botões do canto); tudo pronto, todas
   // sem dia negativo (a Importação disse), o Cheque especial nem aparece; ao seguir, ele fica dispensado (Vitor, 02/10/2026)
-  const semCheque = vm.etapa?.id === 'extratos' && requisitos?.url === urlDaFerramenta && requisitos?.precisaChequeEspecial === false;
+  const semCheque = vm.etapa?.id === 'extratos' && requisitos?.precisaChequeEspecial === false;
   // tudo ok na etapa da vez (Vitor, 28/10/2026): o check automático e a próxima etapa revelada, para a pessoa clicar
   const botoesDaEtapa = vm.etapa && telaPronta && !vm.interrompendo && saida.state !== 'blocked' && !vm.revendo;
   const liberada = !!botoesDaEtapa && !faltam && requisitosConhecidos && !vm.conferindo;
@@ -287,8 +266,8 @@ export function Executor() {
     <Casca sistema="Tarefas" temaNaGaveta={false} larga rotuloLateral="Etapas" topoDireita={topo} acimaDoCabecalho={avisos}
       empresa={{ codigo: (vm.empresa.codigo != null ? vm.empresa.codigo + ' · ' : '') + vm.empresa.nome, nome: '' }}
 
-      versao={casca.versao} secoes={checklist} paginas={vm.tela && abasDaTela ? abasDaTela.paginas : abas} titulo=""
-      onSecao={abrirEtapa} onPagina={vm.tela && abasDaTela ? abasDaTela.abrir : abrirAba} onInicio={vm.sair} onAplicativos={casca.inicio}
+      versao={casca.versao} secoes={checklist} paginas={vm.tela && abasDaTela ? abasDaTela.paginas : []} titulo=""
+      onSecao={abrirEtapa} onPagina={vm.tela && abasDaTela ? abasDaTela.abrir : () => {}} onInicio={vm.sair} onAplicativos={casca.inicio}
       onEmpresa={vm.abrirEmpresa} aplicativos={casca.aplicacoes} onAplicativo={casca.onAplicacao}>
       {vm.carregando ? null : !vm.etapa ? (
         <div className="executor-fim" ref={fim}>
@@ -305,21 +284,13 @@ export function Executor() {
           {/* revendo uma etapa concluída, a tela fica livre: navegar entre as telas dela e editar, como voltando à etapa (Vitor,
               16/10/2026: "deixe o usuário, quando ver, ter a opção de navegar entre as telas e editar as coisas"); ela continua concluída */}
           <div className="executor-ferramenta">
-            {/* a ferramenta carregando: o N no meio, sobre um vidro embaçado (em vez da área vazia) */}
-            {/* revendo uma etapa concluída: sem a abertura com o N (é só para olhar; Vitor, 05/10/2026: "o loading tá bugando") */}
-            {vm.ferramenta?.embutir && ferramentaAbrindo && !vm.revendo && <AberturaN vidro />}
             {vm.tela ? (
               <EtapaProvider etapa={vm.tela.etapa} onRequisitos={r => setRequisitosDaTela({ chave: chaveDaTela, ...r })} onTeste={setTesteDaTela} onAbas={setAbasDaTela} onBalancete={vm.ajustarPeloBalancete} alvoDosAvisos={alvoDosAvisos}>
-                <TelaDaEtapa id={vm.tela.id} />
+                <PonteDaEtapaProvider valor={{ porMes: vm.semMovimentoPorMes, periodo: vm.varios ? { meses: vm.meses, concluido: vm.periodoConcluido } : null, etapaConcluida: vm.vistaConcluida,
+                  marcarSemMovimento: vm.marcarSemMovimento, trocarCompetencia: vm.trocarCompetencia, encerrarPeriodo: vm.encerrarPeriodo, assinarDestaque: destaque.assinar }}>
+                  <TelaDaEtapa id={vm.tela.id} />
+                </PonteDaEtapaProvider>
               </EtapaProvider>
-            ) : vm.ferramenta?.embutir ? (
-              <iframe ref={iframe} key={vm.ferramenta.url} src={vm.ferramenta.url} title={vm.ferramenta.nome} style={altura ? { height: altura } : undefined} />
-            ) : vm.ferramenta ? (
-              <div className="gh-blank">
-                <Icone nome="link" />
-                <h4>{vm.ferramenta.nome}</h4>
-                <a className="btn btn-primary" href={vm.ferramenta.url} target="_blank" rel="noreferrer">Abrir {vm.ferramenta.nome}</a>
-              </div>
             ) : temChecklist && !folha.itens ? (
               // o balancete ainda carregando: o N sobre o vidro (nada de texto no lugar)
               <AberturaN vidro />

@@ -24,9 +24,11 @@ export interface EscolhaDaGuia extends EscolhaDoArquivo { coluna?: string }
  */
 // e o eContador do Alterdata (04/11/2026: "preciso que coloque a opção econtador do alterdata como envio e tambem preciso que preencha dae e icms na planilha la, enviei 2 dae via impresso e não preencheu"): o robô grava as guias no Drive e o Relatório com Entregue = eContador,
 // sem e-mail e sem entrega (a guia vai para o portal do cliente pelo eContador)
-export type ViaDaGuia = 'email' | 'impresso' | 'econtador';
+// e o SCI Report (06/11/2026: "quero que coloque la em envio o sci report"): como o eContador, as guias no Drive e o Relatório com
+// Entregue = SCI Report, sem e-mail e sem entrega
+export type ViaDaGuia = 'email' | 'impresso' | 'econtador' | 'scireport';
 /** a via guardada no banco ('' ou outra coisa = Gmail) */
-export const viaDaGuia = (v: unknown): ViaDaGuia => (v === 'impresso' || v === 'econtador' ? v : 'email');
+export const viaDaGuia = (v: unknown): ViaDaGuia => (v === 'impresso' || v === 'econtador' || v === 'scireport' ? v : 'email');
 export interface GuiaDoLote extends Omit<ArquivoDoLote, 'leitura' | 'escolha'> { leitura: LeituraDaGuia | null; escolha: EscolhaDaGuia | null }
 export interface ResultadoDoLoteFiscal extends ResultadoDoLote {
   /** as colunas que o robô preencheu no Relatório (as que estavam em branco); valores: o valor das guias por coluna */

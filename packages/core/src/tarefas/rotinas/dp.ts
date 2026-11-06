@@ -10,7 +10,7 @@ import type { Etapa, ItemDoChecklist, Rotina } from '../tipos';
 
 const item = (id: string, texto: string, mais: Omit<ItemDoChecklist, 'id' | 'texto'> = {}): ItemDoChecklist => ({ id, texto, ...mais });
 const etapa = (id: string, secao: string, nome: string, descricao: string, checklist: ItemDoChecklist[], mais: Partial<Etapa> = {}): Etapa => ({
-  id, secao, nome, descricao, ferramenta: null, verificacao: 'manual', objecoes: [], checklist, ...mais,
+  id, secao, nome, descricao, verificacao: 'manual', objecoes: [], checklist, ...mais,
 });
 
 const ESOCIAL = { rotulo: 'Abrir o eSocial', url: 'https://login.esocial.gov.br/' };

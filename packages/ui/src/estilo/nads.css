@@ -1724,6 +1724,9 @@ td.cad-acoes .menu-seta{display:none;}
 .cad-dica{font-size:var(--fs-12);min-height:16px;}
 .cad-dica-aviso{color:var(--danger);}
 .cad-bancos-lista{max-height:360px;overflow:auto;}
+/* Conta bancária na janela do centro (06/11/2026): a lista de bancos e o formulário com folga dentro da janela */
+.cad-janela-conta-corpo{padding:8px;}
+.cad-janela-conta .cad-bancos-lista{max-height:min(420px,calc(100vh - 160px));}
 .cad-origem{font-size:var(--fs-13);color:var(--ink-muted);}
 .cad-plano tr.cad-sintetica td{font-weight:600;}
 .cad-botoes{margin-top:16px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
@@ -2000,6 +2003,24 @@ a.btn.gmail-icone,.gmail-de-acoes a.btn{text-decoration:none;}
 .config-item-topo > div{flex:1;}
 .config-item h3{margin:0 0 4px;font-size:var(--fs-14);}
 .config-item .fraco{color:var(--ink-muted);font-size:var(--fs-13);margin:0;}
+/* Contábil › Configurações (Vitor, 06/11/2026): uma coluna, o cabeçalho do cartão com o ícone da etapa, os códigos lado a lado */
+.config-contabil{grid-template-columns:minmax(0,1fr);}
+.config-secao-titulo{display:inline-flex;align-items:center;gap:8px;}
+.config-secao-titulo > svg{width:16px;height:16px;color:var(--accent);flex:none;}
+.config-logo{display:inline-flex;width:22px;height:16px;flex:none;}
+/* dentro da janela (que tira a borda e o fundo dos cartões), cada seção volta a ser um cartão: separa uma etapa da outra */
+.janela-minhas-empresas .card.config-secao{border:1px solid var(--border);background:var(--surface);padding:16px;border-radius:6px;}
+.janela-minhas-empresas .config-secao .card-head h3{padding:0;}
+.config-secao .form-grid{grid-template-columns:minmax(0,1fr);margin-top:0;gap:16px;}
+.config-secao .field{margin-bottom:0;}
+.config-codigos{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;}
+.config-codigos + .form-grid,.form-grid + .config-codigos{margin-top:12px;}
+.config-rotulo{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;min-height:24px;}
+.config-rotulo > label{margin:0;}
+.config-situacao{display:inline-flex;align-items:center;gap:6px;}
+.config-variaveis{display:flex;align-items:center;gap:6px 10px;flex-wrap:wrap;margin-top:6px;}
+.config-variavel{display:inline-flex;align-items:center;gap:4px;}
+.config-variaveis .fraco{font-size:var(--fs-12);}
 .config-detalhe{margin-top:10px !important;}
 
 /* ── Tarefas › Drive: o Explorador (endereço, comandos, árvore, Detalhes/Ícones, status) ── */
@@ -2930,9 +2951,12 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 .usuarios-pcs{justify-content:flex-end;}
 .usuarios-seta{opacity:0;}
 .usuarios-item:hover .usuarios-seta,.usuarios-item:focus-visible .usuarios-seta{opacity:1;}
+/* quem não é admin: só o nome, o e-mail e a presença (sem cargo, nível, papéis nem computadores) */
+.usuarios-item.so-nome{grid-template-columns:40px minmax(200px,1fr) 104px;cursor:default;}
 @media (max-width:900px){
   .usuarios-item{grid-template-columns:40px minmax(0,1fr) auto 16px;}
   .usuarios-cargo,.usuarios-papeis,.usuarios-pcs{display:none;}
+  .usuarios-item.so-nome{grid-template-columns:40px minmax(0,1fr) auto;}
 }
 /* Drive › Arquivar agora (o arquivador do PC, como nas Pendências do Entregas): o botão ocupado e o painel curto — o PC,
    o pedido com um ícone, a etapa e a barra (organizando) ou os números (concluído), e o Organizar agora na largura toda */
@@ -3362,6 +3386,13 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .dp-tabela thead tr:last-child th.dp-ob{font-weight:500;font-size:var(--fs-10);letter-spacing:-.01em;}
 .dp-tabela td,.dp-tabela th{padding-left:8px;padding-right:8px;}
 .dp-tabela .badge{font-size:var(--fs-11);padding:1px 7px;}
+.dp-tabela .dp-tabela-acao{position:sticky;right:0;z-index:1;background:var(--surface);box-shadow:-1px 0 0 var(--border-muted);padding-left:4px;padding-right:4px;}
+.dp-tabela thead th.dp-tabela-acao{background:var(--surface-2);z-index:2;}
+.dp-tabela .dp-guia-vence{display:block;font-size:var(--fs-12);}
+.dp-tabela .dp-guia-valor .dp-guia-valor-num{display:block;}
+
+.dp-tabela-guias .dp-cliente{width:auto;max-width:190px;}
+.dp-tabela-guias .dp-cliente > span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .dp-tabela .dp-cliente-nome{max-width:205px;}
 /* Obrigações do DP: o nome inteiro, sem o "…" (Vitor, 28/10/2026), e o responsável embaixo, discreto */
 .dp-tabela .dp-cliente-inteiro{min-width:240px;}
@@ -3691,6 +3722,8 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .fgts-ao-vivo img{width:100%;height:auto;cursor:pointer;display:block;}
 .fgts-ao-vivo-marca{position:absolute;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;border:2px solid var(--brand,#c8102e);pointer-events:none;}
 .fgts-janela{width:min(1180px,96vw);}
+/* o Enviar guias do Fiscal mais largo (06/11/2026: "a parte de envio do fiscal fique maior pros lados pois está cortando algumas coisas") */
+.guias-janela{width:min(1480px,98vw);}
 
 /* Senhas preenche a tela (08/10/2026: "resolva esses problemas de não preencher a tela no senhas"): a página larga e a
    lista vai até o pé da janela (no painel dos Certificados, a lista não tem teto e a página rola) */
@@ -5755,7 +5788,7 @@ html[data-sem-animacao] .mx-gaveta-fundo,html[data-sem-animacao] .mx-gaveta{anim
 .fr-rola{max-height:max(360px,calc(100dvh - 300px));overflow:auto;overscroll-behavior:contain;}
 .fr-legenda{font-size:var(--fs-12);}
 /* a tabela: largura fixa por coluna (o cliente fica com o que sobra) */
-.fr-tabela{width:100%;min-width:1060px;table-layout:fixed;border-collapse:separate;border-spacing:0;font-size:var(--fs-13);}
+.fr-tabela{width:100%;min-width:1420px;table-layout:fixed;border-collapse:separate;border-spacing:0;font-size:var(--fs-13);}
 .fr-tabela col.fr-c-cod{width:44px;}
 .fr-tabela col.fr-c-guia{width:74px;}
 .fr-tabela col.fr-c-mk{width:32px;}
@@ -5845,7 +5878,8 @@ button.fr-entrega-feita:hover{border-color:var(--success);background:color-mix(i
    guias e a data um pouco mais estreitas), as linhas listradas de leve, a "Falta" discreta (só o texto apagado; a borda
    ao passar o mouse), o total neutro e sem a legenda embaixo */
 .fr-tabela col.fr-c-cod{width:40px;}
-.fr-tabela col.fr-c-guia{width:68px;}
+/* os valores preenchidos inteiros (06/11/2026: "os numeros preenchidos estão sendo cortados"): 68 → 96px */
+.fr-tabela col.fr-c-guia{width:96px;}
 .fr-tabela col.fr-c-data{width:80px;}
 .fr-tabela input[type="text"].fr-campo{padding:0 3px;}
 .fr-tabela tbody tr:nth-child(even) td{background:color-mix(in srgb,var(--ink) 2%,var(--surface));}

@@ -3,15 +3,18 @@
 // o executor) vem no endereço (?dep=fiscal); fora disso, o departamento de quem está trabalhando.
 import type { usuarios } from '@nads/core';
 import { useLocation } from 'react-router';
-import { BASE, caminhoDaPagina } from './navegacao';
+import { BASE, caminhoDaPagina, podeVerOutrosSetores } from './navegacao';
 import { useOperador, type Operador } from './operador';
 
 export function useDepartamentoDaTela() {
   const op = useOperador().operador as Operador;
   const { pathname, search } = useLocation();
   const q = new URLSearchParams(search).get('dep');
-  const dep: usuarios.Departamento = pathname.startsWith(BASE + '/fiscal') ? 'fiscal' : pathname.startsWith(BASE + '/dp') ? 'dp'
+  const pedido: usuarios.Departamento = pathname.startsWith(BASE + '/fiscal') ? 'fiscal' : pathname.startsWith(BASE + '/dp') ? 'dp'
     : q === 'fiscal' || q === 'contabil' || q === 'dp' ? q : op.departamento;
+  // a rotina de outro setor só para o admin e o diretor (Vitor, 06/11/2026: "quem é do fiscal, não é para ter acesso a
+  // coisas do contábil"): o ?dep= ou o endereço de outro setor, para os outros, abre a rotina do setor da pessoa
+  const dep: usuarios.Departamento = podeVerOutrosSetores(op) ? pedido : op.departamento;
   const outro = dep !== op.departamento;
   return {
     dep,

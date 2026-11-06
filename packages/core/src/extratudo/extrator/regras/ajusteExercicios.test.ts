@@ -7,9 +7,9 @@ const l = (data: string, valor: number, historico: string): Lancamento => ({ dat
 const arq = (id: string, lado: 'banco' | 'sistema', lancamentos: Lancamento[], extra: Partial<ArquivoImportado> = {}): ArquivoImportado =>
   ({ id, lado, nome: id, importadoEm: '2026-10-26', modo: 'primeira', banco: 'stone', lancamentos, ...extra });
 const MOV = [l('2026-01-02', 50000, 'Pix recebido'), l('2026-01-05', -12000, 'Tarifa'), l('2026-01-20', 3000, 'Rendimento')];
-const empresa = (ajuste: number, abertura: number | null = 11906646): EmpresaExtrator => ({ nome: 'T', auditoria: [], arquivos: [
+const empresa = (ajuste: number, abertura: number | null = 11906646, data = '2026-01-01'): EmpresaExtrator => ({ nome: 'T', auditoria: [], arquivos: [
   arq('e', 'banco', MOV, abertura != null ? { saldoAnterior: abertura } : {}),
-  arq('r', 'sistema', [l('2026-01-01', ajuste, 'Ajuste de exercicio anteriores'), ...MOV]),
+  arq('r', 'sistema', [l(data, ajuste, 'Ajuste de exercicio anteriores'), ...MOV]),
 ] });
 
 describe('o "Ajuste de exercicio anteriores" do razão (Vitor, 26/10/2026: "desde que o saldo bata, ignore")', () => {
@@ -25,8 +25,12 @@ describe('o "Ajuste de exercicio anteriores" do razão (Vitor, 26/10/2026: "desd
     expect(c.ajustes.size).toBe(1);
     expect(saldoDoPeriodo(e, 'stone', 'stone', ['2026-01']).bate).toBe(true);
   });
-  it('com outro valor, ou sem o saldo de abertura do extrato: continua pendência', () => {
-    expect(conferenciaDoBanco(empresa(11900000), 'stone', 'stone', ['2026-01']).pendencias.flatMap(p => p.linhas).map(x => x.sistema?.historico)).toEqual(['Ajuste de exercicio anteriores']);
-    expect(conferenciaDoBanco(empresa(11906646, null), 'stone', 'stone', ['2026-01']).ajustes.size).toBe(0);
+  it('depois do dia 4 de janeiro, com outro valor, ou sem o saldo de abertura do extrato: continua pendência', () => {
+    expect(conferenciaDoBanco(empresa(11900000, 11906646, '2026-01-05'), 'stone', 'stone', ['2026-01']).pendencias.flatMap(p => p.linhas).map(x => x.sistema?.historico)).toEqual(['Ajuste de exercicio anteriores']);
+    expect(conferenciaDoBanco(empresa(11906646, null, '2026-01-05'), 'stone', 'stone', ['2026-01']).ajustes.size).toBe(0);
+  });
+  it('de 1º a 4 de janeiro, com qualquer valor e sem o saldo de abertura: fica de fora (Vitor, 06/11/2026)', () => {
+    expect(conferenciaDoBanco(empresa(11900000), 'stone', 'stone', ['2026-01']).ajustes.size).toBe(1);
+    expect(conferenciaDoBanco(empresa(11900000, null, '2026-01-04'), 'stone', 'stone', ['2026-01']).ajustes.size).toBe(1);
   });
 });

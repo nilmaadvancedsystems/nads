@@ -81,6 +81,14 @@ export function DadosDaEmpresa({ rota }: { rota: string }) {
               onBlur={e => setErroDoContato(vm.definirContato('whatsapp', e.target.value))} onKeyDown={enter} />
           </label>
         </ConfigLinha>
+        <ConfigLinha titulo="Outros e-mails"
+          aviso={erroDoContato && erroDoContato.startsWith('Algum') ? erroDoContato : undefined}>
+          <label className="busca-curta" title="Mais gmails da empresa: o DP Envios manda para eles também">
+            <Icone nome="envelope" />
+            <input key={'outros|' + vm.outrosEmails.join(',')} type="text" aria-label="Outros e-mails da empresa" defaultValue={vm.outrosEmails.join(', ')} placeholder="outro@empresa.com.br, mais@empresa.com.br"
+              onBlur={e => setErroDoContato(vm.definirOutrosEmails(e.target.value))} onKeyDown={enter} />
+          </label>
+        </ConfigLinha>
       </ConfigSecao>
 
       {/* os sócios, com o nome e o CPF (Vitor, 06/10/2026): o relatório da etapa Bancos mostra a transferência para eles */}

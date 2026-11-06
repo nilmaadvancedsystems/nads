@@ -245,7 +245,7 @@ export function usePaginaPessoal() {
       },
       /** os atalhos de teclado que existem hoje (Drive, Minhas empresas, janelas, anotações) */
       atalhos: [
-        { teclas: ['/'], onde: 'Minhas empresas', faz: 'Vai para a busca de empresas' },
+        { teclas: ['/'], onde: 'Contábil', faz: 'Vai para a busca de empresas' },
         { teclas: ['T'], onde: 'Drive', faz: 'Ir para arquivo (a busca da pasta)' },
         { teclas: ['Enter'], onde: 'Drive', faz: 'Abre a pasta ou o arquivo marcado' },
         { teclas: ['Espaço'], onde: 'Drive', faz: 'Marca e desmarca a linha' },

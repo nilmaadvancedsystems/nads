@@ -8,14 +8,15 @@ import { TopoProvider } from '../../../comum/topo';
 import { EscolherEmpresaCadastro } from '../telas/cadastro/escolher/EscolherEmpresaCadastro';
 import { JanelaDaEmpresa } from '../telas/cadastro/janela/JanelaDaEmpresa';
 import { CascaTarefas } from './CascaTarefas';
-import { ABAS_DO_CADASTRO, caminhoDaPagina, caminhoDoCadastro, podeMexerNoCadastro } from './navegacao';
+import { ABAS_DO_CADASTRO, abasDoCadastroDe, caminhoDaPagina, caminhoDoCadastro, podeMexerNoCadastro } from './navegacao';
 import { useOperador } from './operador';
 
 export function CadastroAberto() {
   const { empresa = '', aba = '' } = useParams();
   const op = useOperador().operador;
   const existe = !empresa || !!empresaDaRota(empresa);
-  const abaExiste = !empresa || ABAS_DO_CADASTRO.some(a => a.id === aba);
+  // a aba do Contábil, para quem não é do Contábil, volta para a da empresa (06/11/2026), como a aba que não existe
+  const abaExiste = !empresa || abasDoCadastroDe(op).some(a => a.id === aba);
   // quem não mexe no cadastro (o pleno, o júnior) não abre a lista nem pelo endereço (19/10/2026)
   if (!podeMexerNoCadastro(op)) return <Navigate to={caminhoDaPagina('minhas-empresas', 'empresas')} replace />;
   if (!existe) return <Navigate to={caminhoDoCadastro(null)} replace />;

@@ -97,10 +97,18 @@ export function useEmpresasPermitidas() {
   return useEmpresasPermitidasDoOperador(useOperador().operador);
 }
 
+/**
+ * Os setores em que a pessoa só vê as empresas de que é a responsável no Cadastro. Nenhum por enquanto: o Fiscal também com
+ * todas (Vitor, 06/11/2026: "libera todas as empresas para o fiscal xereta"); para voltar, o setor entra de novo aqui.
+ */
+const SETORES_COM_RESPONSAVEL: readonly ('fiscal' | 'contabil')[] = [];
+
 /** O mesmo, com o operador passado (os aplicativos fora da Tarefas; null = sem conta: todas). */
 export function useEmpresasPermitidasDoOperador(op: Operador | null) {
   const daPessoa = useEmpresasDoOperador(op);
-  const setor = op?.departamento === 'fiscal' || op?.departamento === 'contabil' ? op.departamento : null;
+  // o Contábil com todas as empresas, para todo mundo (Vitor, 06/11/2026: "libera todas as empresas para todo mundo mexer
+  // por enquanto"); para voltar, o Contábil entra de novo em SETORES_COM_RESPONSAVEL
+  const setor = op && SETORES_COM_RESPONSAVEL.includes(op.departamento as 'fiscal' | 'contabil') ? (op.departamento as 'fiscal' | 'contabil') : null;
   const filtra = !daPessoa.podeVerTodas && !!setor;
   const pode = (e: { nome: string; codigo: number | null }) => !filtra || !setor || daPessoa.e(e, setor);
   return {
@@ -143,7 +151,8 @@ export function useAndamento() {
   const escopo: EscopoDasEmpresas = podeVerTodas ? 'todas' : 'minhas';
   // o Fiscal e o Contábil filtram pelo responsável do setor no Cadastro (29/10/2026: "se não é encarregado não deve nem
   // ver"; antes o Contábil ficava com todas); o DP ainda não tem o responsável por empresa
-  const temResponsavel = dep === 'fiscal' || dep === 'contabil';
+  // (o Contábil liberado para todos por enquanto, 06/11/2026: SETORES_COM_RESPONSAVEL)
+  const temResponsavel = SETORES_COM_RESPONSAVEL.includes(dep as 'fiscal' | 'contabil');
   const filtrar = escopo === 'minhas' && temResponsavel;
 
   // as empresas da rotina: o DP, os clientes da planilha do DP; o Contábil e o Fiscal, a lista do escritório

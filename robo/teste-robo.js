@@ -517,6 +517,8 @@ igual('maquininha, mês inválido e FISCAL ficam de fora', Array.from(achadosPas
 igual('código e nome saem do nome da pasta', di.codigoDaPasta('58 - TORNEARIA VOLPONI LTDA'), { codigo: '58', nome: 'TORNEARIA VOLPONI LTDA' });
 igual('pasta sem código', di.codigoDaPasta('MODELOS').codigo, null);
 igual('totais contam arquivos e pastas', [di.totais(itensPasta).arquivos, di.totais(itensPasta).pastas], [5, 13]);
+igual('o extrato em SUBSTITUÍDOS não prova o mês (06/11/2026)',
+  (di.documentosNaPasta([...itensPasta, { i: 'sb', n: 'SUBSTITUÍDOS', p: 'bb', t: 'd' }, { i: 'f9', n: '06-2026.pdf', p: 'sb', t: 'f' }], 'R').get('2026-06|extrato') || []).map(a => a.id), ['f1']);
 
 // ---------- texto completo do e-mail (painel da tela do Robô) ----------
 const lg = require('./leituras-gmail');
@@ -1000,10 +1002,17 @@ igual('sem nome no assunto: não decide pelo nome', r.desempatarPorNome(fitos, '
   igual('DP: FUNCIONÁRIOS, DARF de outro tributo, Google Docs e arquivo solto ficam de fora', [...porMes.keys()].sort(), ['2026-09', '2026-10']);
   igual('DP: sem escolha vão todos', dp.escolhidos([{ i: 'x' }, { i: 'y' }], []).map(a => a.i), ['x', 'y']);
   igual('DP: só vai o escolhido que está na lista (nunca um id de fora)', dp.escolhidos([{ i: 'x' }, { i: 'y' }], ['y', 'zzz']).map(a => a.i), ['y']);
+  igual('DP: o arquivo tirado da lista não vai', dp.tirarOsDeFora([{ i: 'x' }, { i: 'y' }], { tudo: false, arquivos: ['y'] }, '2026-10').map(a => a.i), ['x']);
+  igual('DP: sem nada tirado vão todos', dp.tirarOsDeFora([{ i: 'x' }], undefined, '2026-10').map(a => a.i), ['x']);
+  igual('DP: o cliente tirado não recebe', (() => { try { dp.tirarOsDeFora([{ i: 'x' }], { tudo: true, arquivos: [] }, '2026-10'); return 'foi'; } catch (e) { return e.message; } })(), 'o cliente foi tirado da lista de envios de 10/2026');
   igual('DP: o mês por extenso', dp.mesPorExtenso('2026-03'), 'março de 2026');
   igual('DP: os três meses recentes (virando o ano)', dp.mesesRecentes(new Date(Date.UTC(2027, 0, 15))), ['2027-01', '2026-12', '2026-11']);
   const email = require('./email-html').htmlDoEnvioDp({ assunto: 'Documentos <DP>', texto: 'Olá!\n\nSeguem os documentos.', cliente: 'TESTE & CIA', competencia: '10/2026', anexos: [{ nome: 'FGTS 10-2026.pdf', tamanho: 2048 }] });
-  igual('DP: o e-mail tem o texto, o cartão dos dados e o anexo, com o HTML escapado', [email.html.includes('FGTS 10-2026.pdf'), email.html.includes('TESTE &amp; CIA'), email.html.includes('Seguem os documentos.'), email.html.includes('1 arquivo')], [true, true, true, true]);
+  { const E = require('./email-html'); const nf = E.htmlDaNfse({ texto: 'Olá, X!\n\nValor de R$ 1.518,00.', cliente: 'X', numero: '1', valor: 'R$ 1.518,00', competencia: '10/2026', chave: '1234', anexos: [{ nome: 'NFS-e 1 - X.pdf' }] }).html;
+    igual('NF: o R$ sai uma vez só (sem o $& do replace) e a saudação não repete', [nf.includes('RR$'), nf.includes('R$&nbsp;1.518,00'), nf.includes('Sua nota fiscal de outubro chegou'), (nf.match(/Olá, X!/g) || []).length], [false, true, true, 1]); }
+  igual('DP: o e-mail tem o texto, a manchete do mês e o anexo, com o HTML escapado', [email.html.includes('FGTS 10-2026'), email.html.includes('TESTE &amp; CIA'), email.html.includes('Seguem os documentos.'), email.html.includes('Seu documento de outubro chegou')], [true, true, true, true]);
+  igual('DP: o nome no Drive vai sem o cliente, e o código solto do sistema vira "Documento"', dp.nomesNoEmail([{ nome: '00463_14843_23-11-2026.PDF' }, { nome: 'Recibo de Pró Labore.pdf', tipo: 'PRO-LABORE' }, { nome: 'recibo_mensal_horista_2026_10_01_2026_10_31.pdf' }], '2026-10', '').map(x => x.nome), ['Documento 10-2026.pdf', 'Pró-labore 10-2026.pdf', 'Recibo mensal horista 10-2026.pdf']);
+  igual('DP: o nome limpo do anexo no e-mail (pasta, boleto, rótulo da guia, repetido e o nome solto)', dp.nomesNoEmail([{ nome: 'FGTS 10-2026.pdf', pasta: 'DEPARTAMENTO PESSOAL/10/FGTS' }, { nome: 'Relatorio_folha.pdf', pasta: 'DEPARTAMENTO PESSOAL/10/FOLHA' }, { nome: 'holerites.PDF', pasta: 'DEPARTAMENTO PESSOAL/10/FOLHA' }, { nome: 'Fatura_NILMA_11-2026.pdf', pasta: 'X' }, { nome: 'das.pdf', rotulo: 'DARF PIS' }, { nome: 'recibo_ferias_10-2026.pdf', pasta: 'DEPARTAMENTO PESSOAL/10' }], '2026-10', 'ACME: LTDA').map(x => x.nome), ['FGTS 10-2026 - ACME LTDA.pdf', 'Folha de pagamento 10-2026 - ACME LTDA.pdf', 'Folha de pagamento 10-2026 - ACME LTDA (2).pdf', 'Boleto de honorários - ACME LTDA.pdf', 'DARF PIS 10-2026 - ACME LTDA.pdf', 'Recibo ferias 10-2026 - ACME LTDA.pdf']);
   // o boleto do escritório (28/10/2026): só BOLETO ou Fatura_ nas pastas da Nilma, no mês anterior ao da pasta
   const boleto = [
     { i: 'ct', n: 'CONTÁBIL', p: 'R', t: 'd' }, { i: 'pf', n: 'PAGAMENTOS DE FORNECEDORES', p: 'ct', t: 'd' }, { i: 'pa', n: '2026', p: 'pf', t: 'd' },
@@ -1161,6 +1170,32 @@ igual('limpeza: item desconhecido para (não apaga o que não devia)', (() => { 
   igual('limpeza do dia: as partes novas têm até 250 KB', [rg2.partes.length > 1, rg2.partes.every(p => p.reduce((s, x) => s + JSON.stringify(x).length, 0) <= 250 * 1024)], [true, true]);
   igual('limpeza do dia: antes de 24/10 as partes eram de 700 KB', lbz.bytesDaParte('2026-10-22'), 700 * 1024);
 }
+// --- o extrato do Drive trocado pelo importado à mão vai para SUBSTITUÍDOS (envios-do-nads.js, 06/11/2026) ---
+const esperarSubstituidos = (async () => {
+  const crypto = require('crypto');
+  const itens = [{ i: 'c', n: 'CONTÁBIL', p: 'cli', t: 'd' }, { i: 'bb', n: 'BRADESCO', p: 'c', t: 'd' }, { i: 'velho', n: '01-2026.pdf', p: 'bb', t: 'f' }];
+  const falso = (md5Velho, paiNome = 'BRADESCO') => {
+    const feito = { movido: null, criadas: [] };
+    const drive = { files: {
+      get: async ({ fileId }) => ({ data: fileId === 'velho' ? { id: 'velho', name: '01-2026.pdf', parents: ['bb'], md5Checksum: md5Velho } : { name: paiNome } }),
+      list: async () => ({ data: { files: [] } }),
+      create: async ({ requestBody }) => { feito.criadas.push(requestBody.name + '<' + requestBody.parents[0]); return { data: { id: 'subs' } }; },
+      update: async p => { feito.movido = [p.fileId, p.addParents, p.removeParents]; return { data: {} }; },
+    } };
+    return { drive, feito };
+  };
+  const novo = Buffer.from('extrato certo');
+  const a = falso('outro-md5');
+  igual('substituir: o antigo vai para SUBSTITUÍDOS, dentro da pasta dele', [await en.moverParaSubstituidos(a.drive, itens, 'cli', 'velho', novo), a.feito.criadas, a.feito.movido],
+    ['movido', ['SUBSTITUÍDOS<bb'], ['velho', 'subs', 'bb']]);
+  const b = falso(crypto.createHash('md5').update(novo).digest('hex'));
+  igual('substituir: o mesmo conteúdo fica onde está', [await en.moverParaSubstituidos(b.drive, itens, 'cli', 'velho', novo), b.feito.movido], ['igual', null]);
+  const c = falso('outro-md5');
+  igual('substituir: arquivo fora da pasta da empresa não mexe', [await en.moverParaSubstituidos(c.drive, itens, 'cli', 'de-outro', novo), c.feito.movido], ['', null]);
+  const d = falso('outro-md5', 'SUBSTITUÍDOS');
+  igual('substituir: já está em SUBSTITUÍDOS (tentado de novo) não mexe', [await en.moverParaSubstituidos(d.drive, itens, 'cli', 'velho', novo), d.feito.movido], ['', null]);
+})();
+
 const esperarFaxina = (async () => {
   // um banco de mentira: 2 extratos (1 velho importado com 2 pedaços, 1 novo) e 1 FGTS pronto com 1 tela
   const apagados = [], marcados = [];
@@ -1184,7 +1219,7 @@ const esperarFaxina = (async () => {
 })();
 
 // os testes que leem PDF são assíncronos: o resultado espera por eles
-Promise.all([esperarExtratos, esperarSieg, esperarFaxina]).then(() => {
+Promise.all([esperarExtratos, esperarSieg, esperarFaxina, esperarSubstituidos]).then(() => {
   console.log(falhas ? '\n' + falhas + ' de ' + total + ' testes FALHARAM' : total + ' testes, todos passaram');
   process.exit(falhas ? 1 : 0);
 });

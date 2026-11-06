@@ -7,7 +7,7 @@ import { creditor, empresas, extrator, formatos, tarefas as t } from '@nads/core
 import { baixarBytes, useRetorno } from '@nads/ui';
 import workerDoPdf from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import { useMemo, useState } from 'react';
-import { useContasDoBalancete } from '../../../../../concilia-ai/importadosNaEtapa';
+import { useContasDoBalancete } from '../../../../etapas/conferencia/importadosNaEtapa';
 import { useExtratorDaEmpresa } from '../../../../dados/extrator';
 import { useModelosDeHistorico } from '../../../../dados/useModelosDeHistorico';
 import { useCadastro } from '../../../../dados/repo';

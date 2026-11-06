@@ -24,8 +24,8 @@ const STATUS_DO_LOTE: Record<string, { classe: string; rotulo: string }> = {
 /** o tipo da guia como no nome do arquivador: "DAS", "DARF PIS", "DAE ICMS" */
 // o DARF de mais de um tributo: "DARF PIS + COFINS" (05/11/2026)
 const tipoDaGuia = (a: GuiaDoLote) => [a.leitura?.tipo, (a.leitura?.partes?.length ?? 0) > 1 ? a.leitura!.partes!.map(p => p.tributo).join(' + ') : a.leitura?.tributo].filter(Boolean).join(' ') || '?';
-const VIAS: { valor: ViaDaGuia; rotulo: string }[] = [{ valor: 'email', rotulo: 'Gmail' }, { valor: 'impresso', rotulo: 'Impresso' }, { valor: 'econtador', rotulo: 'eContador' }];
-const ROTULO_DA_VIA: Record<ViaDaGuia, string> = { email: 'Gmail', impresso: 'Impresso', econtador: 'eContador' };
+const VIAS: { valor: ViaDaGuia; rotulo: string }[] = [{ valor: 'email', rotulo: 'Gmail' }, { valor: 'impresso', rotulo: 'Impresso' }, { valor: 'econtador', rotulo: 'eContador' }, { valor: 'scireport', rotulo: 'SCI Report' }];
+const ROTULO_DA_VIA: Record<ViaDaGuia, string> = { email: 'Gmail', impresso: 'Impresso', econtador: 'eContador', scireport: 'SCI Report' };
 
 /** escolher o cliente na lista do escritório, com a busca (o mesmo menu do lote do DP) */
 function MenuDeCliente({ vm, arquivo }: { vm: VmEnvioDeGuias; arquivo: GuiaDoLote }) {
@@ -72,37 +72,40 @@ function MenuDeColuna({ vm, arquivo, compacto }: { vm: VmEnvioDeGuias; arquivo: 
 function TabelaDosProntos({ vm, grupos, mexe }: { vm: VmEnvioDeGuias; grupos: VmEnvioDeGuias['grupos']; mexe: boolean }) {
   return (
     <div className="table-wrap">
-      <table className="dp-tabela">
+      <table className="dp-tabela dp-tabela-guias">
         <thead>
-          <tr><th>Cód.</th><th>Cliente</th><th>Apuração</th><th>Envio</th><th>Guia</th><th className="num">Valor</th><th>Coluna</th><th /></tr>
+          <tr><th title="Código e mês da apuração">Cód.</th><th>Cliente</th><th>Envio</th><th>Guia</th><th className="num">Valor e coluna</th><th className="dp-tabela-acao" aria-label="Tirar" /></tr>
         </thead>
         <tbody>
           {grupos.flatMap(g => g.arquivos.map((a, k) => {
             const r = vm.noRelatorio(a);
             const erro = g.resultado?.status === 'erro' ? g.resultado.erro : g.via === 'email' && !g.email ? 'sem e-mail no cadastro' : '';
-            const destino = g.via === 'impresso' ? 'vai para a rota do Entregas' : g.via === 'econtador' ? 'vai pelo eContador do Alterdata' : g.resultado?.para.length ? g.resultado.para.join(', ') : g.email;
+            const destino = g.via === 'impresso' ? 'vai para a rota do Entregas' : g.via === 'econtador' ? 'vai pelo eContador do Alterdata' : g.via === 'scireport' ? 'vai pelo SCI Report' : g.resultado?.para.length ? g.resultado.para.join(', ') : g.email;
             return (
               <tr key={g.chave + '|' + a.id}>
                 {k === 0 && (
                   <>
-                    <td className="num fraco" rowSpan={g.arquivos.length}>{g.codigo}</td>
+                    <td className="num fraco dp-guia-cod" rowSpan={g.arquivos.length}>{g.codigo}<span className="dp-guia-vence">{mesAno(g.competencia)}</span></td>
                     <td className="dp-cliente" rowSpan={g.arquivos.length}>
                       <span className="dp-cliente-nome" title={g.nome}>{g.nome || 'Cliente ' + g.codigo}</span>
                       {erro ? <span className="fgts-pedido-erro">{erro}</span> : <span className="fraco">{destino}</span>}
                     </td>
-                    <td className="fraco" rowSpan={g.arquivos.length}>{mesAno(g.competencia)}</td>
                     <td rowSpan={g.arquivos.length}>
                       {mexe ? <Segmentado valor={g.via} opcoes={VIAS} onMudar={v => void vm.mudarVia(g.codigo, v)} /> : <span className="fraco">{ROTULO_DA_VIA[g.via]}</span>}
                     </td>
                   </>
                 )}
-                <td>
+                <td className="dp-guia">
                   <button type="button" className="link-btn" title={'Ver a guia: ' + (a.leitura?.nomeFinal || a.nome)} onClick={() => vm.abrirDoLote(a)}>{tipoDaGuia(a)}</button>
-                  {a.leitura?.vencimento && <span className="fraco"> · vence {a.leitura.vencimento.replace(/-/g, '/')}</span>}
+                  {a.leitura?.vencimento && <span className="fraco dp-guia-vence">vence {a.leitura.vencimento.replace(/-/g, '/')}</span>}
                 </td>
-                <td className="num">{r.valor || <span className="fraco">—</span>}</td>
-                <td>{mexe ? <MenuDeColuna vm={vm} arquivo={a} compacto /> : <span className="fraco">{r.coluna || 'sem coluna'}</span>}</td>
-                <td>{mexe && <BotaoIcone icone="x" titulo="Tirar a guia do lote" onClick={() => void vm.tirar(a, true)} />}</td>
+                {/* o valor e, embaixo, a coluna do Relatório (06/11/2026: com o SCI Report no Envio, a coluna à parte ficava cortada) */}
+                <td className="num dp-guia-valor">
+                  <span className="dp-guia-valor-num">{r.valor || <span className="fraco">—</span>}</span>
+                  {mexe ? <MenuDeColuna vm={vm} arquivo={a} compacto /> : <span className="fraco">{r.coluna || 'sem coluna'}</span>}
+                </td>
+                {/* sempre à vista, preso à direita (06/11/2026: "excluir somente uma delas"; com a tabela larga ele ficava escondido no fim) */}
+                <td className="dp-tabela-acao">{mexe && <BotaoIcone icone="lixeira" titulo="Tirar esta guia do lote" onClick={() => void vm.tirar(a, true)} />}</td>
               </tr>
             );
           }))}
@@ -127,7 +130,7 @@ function Enviados({ vm }: { vm: VmEnvioDeGuias }) {
             <li key={x.id} className="dp-lote-falta">
               <div className="dp-lote-falta-nome">
                 <b><span className="num fraco">{x.codigo}</span> {x.empresa || 'Cliente ' + x.codigo}</b>
-                <span className="fraco">{hora(x.enviadoEm)} · {x.via === 'impresso' ? 'impresso, na rota do Entregas' : x.via === 'econtador' ? 'pelo eContador' : 'para ' + (x.para.join(', ') || '—')}{x.por ? ' · por ' + x.por : ''}</span>
+                <span className="fraco">{hora(x.enviadoEm)} · {x.via === 'impresso' ? 'impresso, na rota do Entregas' : x.via === 'econtador' ? 'pelo eContador' : x.via === 'scireport' ? 'pelo SCI Report' : 'para ' + (x.para.join(', ') || '—')}{x.por ? ' · por ' + x.por : ''}</span>
                 {/* cada guia abre pelo id no Drive; os envios de antes do id, pelo nome na pasta do cliente */}
                 {(() => {
                   const gs = x.guiasDrive.length ? x.guiasDrive : x.guias.map(nome => ({ nome, id: '' }));
@@ -201,13 +204,13 @@ export function JanelaDasGuias({ regime, competencia, fechar }: { regime: Regime
     ? (lote.status === 'disparar' || lote.status === 'disparando' ? 'O robô está mandando os e-mails e pondo os impressos na rota…' : 'O robô está lendo as guias (' + (lote.lidos || 0) + ' de ' + lote.total + ')…')
     : prontos.length + (prontos.length === 1 ? ' cliente pronto' : ' clientes prontos') + (vm.faltam.length ? ' · ' + vm.faltam.length + ' para você escolher' : '') + (fora ? ' · ' + fora + ' fora' : '') + '. Fica aqui por 3 dias até você disparar ou excluir.';
   return (
-    <JanelaLateral rotulo="Enviar guias" topico={topico} mudar={setTopico} fechar={fechar} classe="fgts-janela"
+    <JanelaLateral rotulo="Enviar guias" topico={topico} mudar={setTopico} fechar={fechar} classe="fgts-janela guias-janela"
       topicos={[
         { id: 'enviar', rotulo: 'Para enviar', icone: 'aviao', contador: vm.paraDisparar },
         { id: 'enviados', rotulo: 'Enviados', icone: 'check', contador: vm.enviados.length },
         { id: 'modelo', rotulo: 'Modelo do e-mail', icone: 'envelope' },
       ]}
-      resumo={<div className="usuario-quem"><b>Fiscal › {vm.grupo.rotulo}</b><span className="fraco">por Gmail, impresso ou eContador</span></div>}>
+      resumo={<div className="usuario-quem"><b>Fiscal › {vm.grupo.rotulo}</b><span className="fraco">por Gmail, impresso, eContador ou SCI Report</span></div>}>
       {topico === 'modelo' ? <Modelo vm={vm} /> : topico === 'enviados' ? <Enviados vm={vm} /> : (
         <>
           {vm.carregando ? <Esqueleto linhas={4} /> : !lote ? (

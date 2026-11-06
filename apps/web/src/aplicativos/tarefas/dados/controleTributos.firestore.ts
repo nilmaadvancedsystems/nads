@@ -9,7 +9,7 @@ import { guardar } from '../../../comum/modoDesenvolvedor';
 const setDoc = guardar(setDocBruto) as typeof setDocBruto;
 const texto = (v: unknown, max: number) => (typeof v === 'string' ? v.slice(0, max) : '');
 const MARCAS = new Set(['ok', 'na']);
-const ENTREGAS = new Set(['impresso', 'zap', 'email', 'econtador', 'nao']);
+const ENTREGAS = new Set(['impresso', 'zap', 'email', 'econtador', 'scireport', 'nao']);
 const mapaDeTextos = (v: unknown, max: number): Record<string, string> => Object.fromEntries(Object.entries(v && typeof v === 'object' ? v as Record<string, unknown> : {})
   .filter(([, x]) => typeof x === 'string' && x).map(([k, x]) => [k, texto(x, max)]));
 const marcas = (v: unknown) => Object.fromEntries(Object.entries(mapaDeTextos(v, 4)).filter(([, x]) => MARCAS.has(x))) as Record<string, t.MarcaDoControle>;

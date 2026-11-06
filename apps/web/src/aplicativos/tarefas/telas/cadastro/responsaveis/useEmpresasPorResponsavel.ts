@@ -19,6 +19,9 @@ export function useEmpresasPorResponsavel() {
   const equipe = useAcesso().equipe();
   const op = useOperador().operador;
   const por = op?.nome || '';
+  // trocar empresas (e escolher quem cuida de uma sem responsável) é só do Diretor: Sênior, Pleno e Júnior não trocam
+  // (Vitor, 06/11/2026: "é proibido"); eles continuam aceitando ou recusando a troca que chega para eles
+  const podeTrocar = !!op?.admin;
   const { toast } = useRetorno();
 
   const ativos = equipe.lista.filter(p => p.ativo);
@@ -91,6 +94,7 @@ export function useEmpresasPorResponsavel() {
     opcoes,
     eu: por,
     admin: !!op?.admin,
+    podeTrocar,
     pessoas: [...contagem.entries()].map(([nome, r]) => ({ nome, ...r, total: r.fiscal + r.contabil }))
       .sort((a, b) => b.total - a.total || a.nome.localeCompare(b.nome, 'pt-BR')),
     empresasDe,
@@ -102,7 +106,7 @@ export function useEmpresasPorResponsavel() {
     igual,
     /** pede a transferência: só vale com o aceite do emitente (quem é hoje) e do destinatário; quem pede sendo um dos dois já aceita */
     transferir(nome: string, codigo: number | null, dep: Dep, de: string, para: string) {
-      if (!todos.carregada) return;
+      if (!todos.carregada || !podeTrocar) return;
       const previa = cad.pedirTransferencia(todos.porId.get(formatos.slug(nome)) || cad.cadastroVazio(nome, codigo), dep, de, para, por, new Date());
       if (previa.erro) { toast(previa.erro); return; }
       void gravar(nome, codigo, atual => { const r = cad.pedirTransferencia(atual, dep, de, para, por, new Date()); return r.erro ? atual : r.cadastro; });
@@ -124,7 +128,7 @@ export function useEmpresasPorResponsavel() {
      * vêm para A; cada uma só muda com o aceite dos dois, e as da mesma troca andam juntas (o mesmo id).
      */
     pedirTroca(a: string, daA: readonly { nome: string; codigo: number | null; dep: Dep }[], b: string, daB: readonly { nome: string; codigo: number | null; dep: Dep }[]) {
-      if (!todos.carregada || !a || !b || !daA.length) return;
+      if (!todos.carregada || !podeTrocar || !a || !b || !daA.length) return;
       const troca = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
       const agora = new Date();
       const pedir = (x: { nome: string; codigo: number | null; dep: Dep }, de: string, para: string) =>
@@ -136,7 +140,7 @@ export function useEmpresasPorResponsavel() {
     },
     /** escolhe direto quem cuida de uma empresa sem responsável */
     definir(nome: string, codigo: number | null, dep: Dep, quem: string) {
-      if (!todos.carregada) return;
+      if (!todos.carregada || !podeTrocar) return;
       void gravar(nome, codigo, atual => cad.definirResponsavel(atual, dep, quem, por, new Date()));
     },
   };

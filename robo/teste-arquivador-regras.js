@@ -239,6 +239,12 @@ igual('tipo do destino: comprovante', R.tipoDoDestino('G:/Meu Drive/2026/58 - X/
 const nfseNilma = '<CompNfse><Nfse><InfNfse><Numero>4003</Numero><DataEmissao>2026-09-10T00:00:00</DataEmissao><PrestadorServico><Cnpj>27872981000113</Cnpj></PrestadorServico><TomadorServico><Cnpj>06934601000158</Cnpj></TomadorServico></InfNfse></Nfse></CompNfse>';
 d = decidir({ nome: 'nfse-nilma.xml', xml: nfseNilma });
 igual('NFS-e de honorários da Nilma: na 284 E uma cópia no tomador', [d.destinoRelativo, d.copias.map(c => c.destinoRelativo)], ['284 - NILMA CONTABILIDADE LTDA\\FISCAL\\SIMPLES NACIONAL\\12. XML\\NFS-e', ['152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\12. XML\\NFS-e']]);
+// (Vitor, 05/11/2026) a NFS-e que a Nilma recebeu (o software dela) e que nenhum outro cliente está: na 284, não "duas empresas possíveis"
+d = decidir({ nome: 'nfse-37489544000179-28740.xml', xml: '<CompNfse><Nfse><InfNfse><Numero>28740</Numero><DataEmissao>2026-10-10T00:00:00</DataEmissao><PrestadorServico><Cnpj>37489544000179</Cnpj></PrestadorServico><TomadorServico><Cnpj>27872981000113</Cnpj></TomadorServico></InfNfse></Nfse></CompNfse>' });
+igual('05/11: NFS-e recebida pela Nilma vai para a 284', [d.acao, d.destinoRelativo], ['ARQUIVAR', '284 - NILMA CONTABILIDADE LTDA\\FISCAL\\SIMPLES NACIONAL\\12. XML\\NFS-e']);
+// e quando a Nilma toma o serviço de um cliente (152): a nota é do cliente emitente e a Nilma não vira "duas empresas"
+d = decidir({ nome: 'nfse-cliente-para-nilma.xml', xml: '<CompNfse><Nfse><InfNfse><Numero>77</Numero><DataEmissao>2026-10-10T00:00:00</DataEmissao><PrestadorServico><Cnpj>06934601000158</Cnpj></PrestadorServico><TomadorServico><Cnpj>27872981000113</Cnpj></TomadorServico></InfNfse></Nfse></CompNfse>' });
+igual('05/11: NFS-e de cliente para a Nilma fica no cliente', [d.acao, d.cliente], ['ARQUIVAR', 152]);
 const CAD_ = require('./arquivador-cadastro');
 const j = CAD_.juntar({
   planilha: [{ codigo: 591, razao: 'ZELO AGROINDUSTRIAS LTDA', doc: '53.636.418/0001-56', regime: 'Simples' }, { codigo: 332, razao: 'DOMINGA ROSA GOMES', doc: '063.718.286-30', regime: 'Física' }],
@@ -287,6 +293,12 @@ igual('extrato da Stone com Pix do Nubank: o banco é STONE', /STONE/.test((d.ca
 const PGDAS_DECL = 'Programa Gerador do Documento de Arrecadação do Simples Nacional – Declaratório\nPGDAS-D\nDeclaração\nNº da Declaração: 06934601202302001\nCNPJ Básico: 06.934.601\nCNPJ Matriz: 06.934.601/0001-58\nNome Empresarial: JANIO JOSE DE ALMEIDA\nPeríodo de Apuração (PA): 02/2023\nReceita Bruta do PA (RPA) - Competência 10.000,00';
 d = d27({ nome: 'PGDASD-DECLARACAO-06934601202302001 02-2023.pdf', texto: [PGDAS_DECL] });
 igual('PGDAS-D declaração: 01. DAS\\MM-AAAA - PGDAS-D DECLARACAO.pdf, raiz do ano do PA', destino(d).concat(d.anoRaiz), ['ARQUIVAR', null, '152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\01. DAS', '02-2023 - PGDAS-D DECLARACAO.pdf', 2023]);
+// a apuração do Simples do SCI (memória de cálculo) vai para o 01. DAS com a Referência (Vitor, 06/11/2026, a 606)
+d = d27({ nome: 'Relatório SN.pdf', texto: ['Página 1\nEmpresa: 152 - JANIO JOSE DE ALMEIDA Cód. Acesso:\nCNPJ: 06.934.601/0001-58 CPF Responsável: 103.795.706-70\nReferência: 08/2026 Vencimento: 21/09/2026 Pagamento: 21/09/2026 Período: 31/08/2026\nFórmula para receita bruta total dos 12 meses anteriores ao período de apuração - mercado interno R$ 0,00\nFórmula para folha de salários, incluídos encargos nos 12 meses anteriores ao período de apuração R$ 0,00\nObs.: FS12 maior do que 0 (zero), e RBT12r igual a 0 (zero), o fator "r" será igual a 28%.\nFaixa de 0,01 até 180.000,00\nBase de cálculo: R$ 8.360,00 Alíquota nominal: 15,50% % 5ª faixa: 0,00% Alíquota efetiva: 6,00%\nImposto Tributação % Tabela\nIRPJ Tributado integralmente 25% R$ 20,06\nNILMA CONTABILIDADE 03/09/2026 09:54 - SCI Novo Visual'] });
+igual('apuração do Simples do SCI: 01. DAS\\08-2026 - APURACAO SN SCI.pdf', destino(d).concat(d.anoRaiz), ['ARQUIVAR', null, '152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\01. DAS', '08-2026 - APURACAO SN SCI.pdf', 2026]);
+// o mesmo relatório como o pdf.js lê: os valores colados antes dos rótulos
+d = d27({ nome: 'Relatório SN.pdf', texto: ['Página 1\nEmpresa:\n152 - JANIO JOSE DE ALMEIDA\n31/08/202608/202621/09/202621/09/2026\nR$ 501,60\nValor:\nReferência:Vencimento:Pagamento:Período:\nR$ 0,00Fórmula para receita bruta total dos 12 meses anteriores ao período de apuração - mercado interno\nCNPJ:\n06.934.601/0001-58\nBase de cálculo: R$ 8.360,00Alíquota nominal: 15,50%Alíquota efetiva: 6,00%'] });
+igual('apuração do SCI com os valores colados: a Referência é o MM/AAAA depois do período', destino(d).concat(d.anoRaiz), ['ARQUIVAR', null, '152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\01. DAS', '08-2026 - APURACAO SN SCI.pdf', 2026]);
 // o layout de 2021: o título quebrado em duas linhas e o período "01/06/2021 a 30/06/2021" (Torra Torra; 27/10/2026)
 d = d27({ nome: 'PGDASD-DECLARACAO-06934601202106001.pdf', texto: ['Programa Gerador do Documento de Arrecadação\ndo Simples Nacional - Declaratório\nDeclaração Original\nPeríodo de Apuração:01/06/2021 a 30/06/2021\n.\n1. Identificação do Contribuinte\nCNPJ Matriz:06.934.601/0001-58\nNome empresarial:JANIO JOSE DE ALMEIDA\nNº da Declaração:06934601202106001'] });
 igual('PGDAS-D de 2021: o título em duas linhas', destino(d).concat(d.anoRaiz), ['ARQUIVAR', null, '152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\01. DAS', '06-2021 - PGDAS-D DECLARACAO.pdf', 2021]);
@@ -1903,6 +1915,20 @@ igual('a agência e a conta no nome do arquivo ("Entradas_Saidas_ag3155cc990348_
   igual('44.4: "Rede 04.2025.pdf" (o relatório de vendas com o título mal lido pelo OCR): EXTRATOS\\2025\\04\\MAQUININHAS\\REDE', s44(d44('redeVendas04')).slice(0, 4), ['ARQUIVAR', 429, 'CONTÁBIL\\EXTRATOS\\2025\\04\\MAQUININHAS\\REDE', '04-2025.pdf']);
   igual('44.4: ... o "Relatório de recebimentos" que não é da Rede segue RECEBIMENTO DE CLIENTES', R.REGRAS_PDF.find(r => r.re.test(R.norm('RELATORIO DE RECEBIMENTOS\nSICOOB\nPERIODO 01/04/2025 A 30/04/2025'))).tipo, 'RECEBIMENTO DE CLIENTES');
 
+  // (Vitor, 05/11/2026: "juntar pela pasta existente") a pasta do fornecedor que já existe no mês
+  {
+    const raiz = fs.mkdtempSync(path.join(os.tmpdir(), 'teste-forn-'));
+    const mes = path.join(raiz, '506 - FAST', 'CONTÁBIL', 'PAGAMENTOS DE FORNECEDORES', '2026', '10');
+    for (const p of ['FOX BRAVO ABASTECIMENTO', 'FOX BRAVO INTERNET', 'AEROMOC', 'NILMA CONTADORA', 'LEADER TECH']) fs.mkdirSync(path.join(mes, p), { recursive: true });
+    const pasta = f => { const d = { raiz, destinoRelativo: ['506 - FAST', 'CONTÁBIL', 'PAGAMENTOS DE FORNECEDORES', '2026', '10', f].join('\\'), evidencias: [] }; A.pastaDoFornecedorQueJaExiste(d, { clientes: raiz }); return d.destinoRelativo.split('\\').pop(); };
+    igual('05/11k: a que começa igual (duas palavras)', pasta('LEADER TECH NF'), 'LEADER TECH');
+    igual('05/11l: uma palavra', pasta('NILMA'), 'NILMA CONTADORA');
+    igual('05/11m: o nome igual fica', pasta('AEROMOC'), 'AEROMOC');
+    igual('05/11n: duas candidatas: pasta nova', pasta('FOX BRAVO RELATORIO'), 'FOX BRAVO RELATORIO');
+    igual('05/11o: nenhuma: pasta nova', pasta('MCOURA'), 'MCOURA');
+    igual('05/11p: outro fornecedor com a 1ª palavra igual não junta', pasta('NILMA CONTADOR'), 'NILMA CONTADOR');
+    fs.rmSync(raiz, { recursive: true, force: true });
+  }
   // (Vitor, 05/11/2026) o fornecedor pelo nome do arquivo do zip de movimento
   {
     const f = (n, razao) => R.fornecedorDoNomeDoArquivo(R.norm(n), { razao });

@@ -21,6 +21,8 @@
 const { FieldValue } = require('firebase-admin/firestore');
 
 const COLECAO = 'dpArquivos';
+// o que o DP tirou da lista de envios do mês (06/11/2026): clientes.<código>: { tudo, arquivos: [ids] }; nunca vai
+const COLECAO_FORA = 'dpEnviosFora';
 const MES = /^(0[1-9]|1[0-2])$/;
 // um cliente com mais que isso num mês é pasta bagunçada: a lista fica nos primeiros (o documento tem teto de 1 MB)
 const MAX_ARQUIVOS = 80;
@@ -95,13 +97,27 @@ function escolhidos(lista, pedidos) {
   return ids.size ? lista.filter(a => ids.has(a.i)) : lista.slice();
 }
 
+// Tira o que o DP tirou da lista do mês (DP › Envios, a lixeira; 06/11/2026: "excluir o arquivo em anexo assim como no
+// fiscal e remover da lista de envios"): fora = { tudo, arquivos } do cliente em dpEnviosFora. O cliente inteiro tirado não
+// recebe nada (erro, para o pedido não ficar parado); o arquivo tirado sai do e-mail, mesmo num pedido feito antes.
+function tirarOsDeFora(lista, fora, comp) {
+  if (fora && fora.tudo === true) throw new Error('o cliente foi tirado da lista de envios de ' + String(comp || '').slice(5) + '/' + String(comp || '').slice(0, 4));
+  const ids = new Set((fora && Array.isArray(fora.arquivos) ? fora.arquivos : []).map(String));
+  return ids.size ? lista.filter(a => !ids.has(String(a.i))) : lista;
+}
+
 // Para quem vai: o e-mail do Cadastro do nads (cadastro/{empresa}.contato.email; com mais de um documento do mesmo código,
-// o primeiro que tiver), senão os do Entregas (clientes: email + emails). Em minúsculas, sem repetir.
+// o primeiro que tiver) e os outros dele (contato.outrosEmails, 05/11/2026); senão os do Entregas (clientes: email + emails).
+// Em minúsculas, sem repetir.
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function paraQuem(cadastrosDoNads, clienteDoEntregas) {
   const limpo = e => String(e || '').trim().toLowerCase();
   const doNads = (cadastrosDoNads || []).map(c => limpo(c && c.contato && c.contato.email)).find(e => EMAIL.test(e));
-  if (doNads) return [doNads];
+  if (doNads) {
+    const cad = (cadastrosDoNads || []).find(c => limpo(c && c.contato && c.contato.email) === doNads) || {};
+    const outros = Array.isArray(cad.contato && cad.contato.outrosEmails) ? cad.contato.outrosEmails : [];
+    return [...new Set([doNads].concat(outros).map(limpo).filter(e => EMAIL.test(e)))];
+  }
   const c = clienteDoEntregas || {};
   return [...new Set([c.email].concat(Array.isArray(c.emails) ? c.emails : []).map(limpo).filter(e => EMAIL.test(e)))];
 }
@@ -176,8 +192,9 @@ async function atenderEnvioDp(p, ctx) {
 
   const doc = (await db.collection(COLECAO).doc(comp).get()).data() || {};
   const lista = ((doc.clientes || {})[codigo] || {}).arquivos || [];
-  const vao = escolhidos(lista, p.arquivos);
-  if (!vao.length) throw new Error('nenhum arquivo do DP de ' + comp.slice(5) + '/' + comp.slice(0, 4) + ' na pasta do cliente');
+  const fora = ((((await db.collection(COLECAO_FORA).doc(comp).get()).data() || {}).clientes) || {})[codigo];
+  const vao = tirarOsDeFora(escolhidos(lista, p.arquivos), fora, comp);
+  if (!vao.length) throw new Error(fora && fora.arquivos && fora.arquivos.length ? 'os arquivos pedidos foram tirados da lista de envios' : 'nenhum arquivo do DP de ' + comp.slice(5) + '/' + comp.slice(0, 4) + ' na pasta do cliente');
   const total = vao.reduce((s, a) => s + (a.s || 0), 0);
   if (total > MAX_BYTES) throw new Error('os arquivos passam de 18 MB juntos (' + (total / 1048576).toFixed(1).replace('.', ',') + ' MB); desmarque alguns');
 
@@ -188,7 +205,7 @@ async function atenderEnvioDp(p, ctx) {
   const anexos = [];
   for (const a of vao) {
     const r = await ctx.getDrive().files.get({ fileId: a.i, alt: 'media' }, { responseType: 'arraybuffer', timeout: 120000 });
-    anexos.push({ nome: a.n, mime: mimeDe(a.n), buffer: Buffer.from(r.data) });
+    anexos.push({ nome: a.n, mime: mimeDe(a.n), buffer: Buffer.from(r.data), pasta: a.c });
   }
   const nome = String(cliente.nome || p.empresa || '').trim();
   const { gmailId, assunto } = await mandarEmailDoDp(db, { comp, nome, para, anexos }, ctx);
@@ -214,6 +231,48 @@ async function destinatarios(db, codigo, ativos) {
   return { cliente, para };
 }
 
+// O nome do anexo no e-mail (05/11/2026, Vitor: "quero que os arquivos que forem colocados no gmail fiquem com renomeação
+// correta pra não ficar feio"): "<Documento> MM-AAAA - <CLIENTE>.<ext>". O documento vem do que se sabe do arquivo, nesta
+// ordem: o rótulo (a guia do Fiscal: "DAS", "DARF PIS"), o boleto do escritório (BOLETO… ou Fatura_…, sem o mês), o tipo
+// do lote (FGTS, DARF, FOLHA, PRO-LABORE), a pasta do DP de onde saiu (…/FGTS, …/FOLHA…) e, sem nada disso, o próprio
+// nome limpo (sem _ e sem a data, que vai no fim). Repetiu: " (2)", " (3)". Só o nome no e-mail muda: no Drive fica o de sempre.
+const DOC_DO_TIPO = { FGTS: 'FGTS', DARF: 'DARF', FOLHA: 'Folha de pagamento', 'PRO-LABORE': 'Pró-labore', DAS: 'DAS', DAE: 'DAE', DAM: 'DAM' };
+const DOC_DA_PASTA = [
+  [/(^|\/)FGTS$/i, 'FGTS'], [/(^|\/)FOLHA( DE PAGAMENTO)?$/i, 'Folha de pagamento'], [/(^|\/)PR[ÓO]-?LABORE$/i, 'Pró-labore'],
+  [/(^|\/)CART[ÃA]O DE PONTO$/i, 'Cartão de ponto'], [/(^|\/)DARF$/i, 'DARF'], [/(^|\/)F[ÉE]RIAS$/i, 'Férias'], [/(^|\/)RESCIS[ÃA]O$/i, 'Rescisão'],
+];
+const semProibidos = t => String(t || '').replace(/[\\/:*?"<>|]+/g, ' ').replace(/[\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim();
+function documentoDoAnexo(a) {
+  if (a.rotulo) return semProibidos(a.rotulo);
+  if (/^(BOLETO\b|Fatura_)/i.test(String(a.nome || ''))) return 'Boleto de honorários';
+  if (a.tipo && DOC_DO_TIPO[a.tipo]) return DOC_DO_TIPO[a.tipo] + (a.tributo ? ' ' + semProibidos(a.tributo) : '');
+  const pasta = (DOC_DA_PASTA.find(([re]) => re.test(String(a.pasta || '').replace(/\/+$/, ''))) || [])[1];
+  if (pasta) return pasta;
+  // sai a data inteira (23-11-2026, 2026_10_01), o mês (10-2026, 2026-10) e, no fim, os números soltos (códigos do
+  // sistema que gerou: "00463_14843_23-11-2026.PDF" vira "Documento"); sem nenhuma palavra, fica "Documento"
+  const base = String(a.nome || '').replace(/\.[a-z0-9]{2,5}$/i, '').replace(/[_]+/g, ' ')
+    .replace(/\b\d{1,2}[-. ]\d{1,2}[-. ]20\d{2}\b/g, ' ').replace(/\b20\d{2}[-. ]\d{1,2}[-. ]\d{1,2}\b/g, ' ')
+    .replace(/\b(0?[1-9]|1[0-2])[-. ](20\d{2})\b/g, ' ').replace(/\b20\d{2}[-. ](0[1-9]|1[0-2])\b/g, ' ');
+  const limpo = semProibidos(base).replace(/^[-–\s]+|[-–\s]+$/g, '');
+  if (!/[a-zà-ú]{2,}/i.test(limpo)) return 'Documento';
+  return limpo.replace(/(\s+\d+)+$/, '').replace(/^(\d+\s+)+/, '').replace(/^./, c => c.toUpperCase());
+}
+// anexos: [{ nome, rotulo?, tipo?, tributo?, pasta? }]; comp: 'AAAA-MM'; cliente: o nome. -> [{ nome, documento }] na mesma ordem
+function nomesNoEmail(anexos, comp, cliente) {
+  const mmaaaa = /^\d{4}-\d{2}$/.test(String(comp || '')) ? comp.slice(5) + '-' + comp.slice(0, 4) : '';
+  const quem = semProibidos(cliente).slice(0, 60);
+  const usados = new Map();
+  return (anexos || []).map(a => {
+    const ext = (String(a.nome || '').match(/\.([a-z0-9]{2,5})$/i) || [, ''])[1].toLowerCase();
+    const documento = documentoDoAnexo(a).slice(0, 60);
+    const boleto = documento === 'Boleto de honorários';
+    const raiz = [documento, boleto ? '' : mmaaaa].filter(Boolean).join(' ') + (quem ? ' - ' + quem : '');
+    const n = (usados.get(raiz.toLowerCase()) || 0) + 1;
+    usados.set(raiz.toLowerCase(), n);
+    return { nome: raiz + (n > 1 ? ' (' + n + ')' : '') + (ext ? '.' + ext : ''), documento };
+  });
+}
+
 // O e-mail do DP no modelo (config/envioDp) com os anexos já em memória, pela caixa do robô. ctx: { enviar, assinatura,
 // caixa, modelo }. Conta no freio por hora. Também o lote do DP (lote-dp.js) e o do Fiscal (lote-fiscal.js, 03/11/2026),
 // que passa ctx.modelo { config: 'envioFiscal', padrao, chip, rodape, rotulo }; sem ele, o do DP como sempre.
@@ -223,8 +282,11 @@ async function mandarEmailDoDp(db, { comp, nome, para, anexos }, ctx) {
   const competencia = comp.slice(5) + '/' + comp.slice(0, 4);
   const modelo = (await db.collection('config').doc(m.config || 'envioDp').get()).data() || {};
   const { assunto, texto } = mensagemDoEnvio(modelo, { cliente: nome, competencia, mes: mesPorExtenso(comp) }, m.padrao);
-  const visual = require('./email-html').htmlDoEnvioDp({ assunto, texto, cliente: nome, competencia, anexos: anexos.map(a => ({ nome: a.nome, tamanho: a.buffer.length })), assinatura: ctx.assinatura, caixa: ctx.caixa, chip: m.chip, rodape: m.rodape });
-  const gmailId = await ctx.enviar({ para: para.join(', '), assunto, corpo: texto + '\n\n' + anexos.map(a => '- ' + a.nome).join('\n'), html: visual.html, imagens: visual.imagens, anexos });
+  // o nome limpo no e-mail (05/11/2026); o buffer e o tipo seguem os mesmos
+  const nomes = nomesNoEmail(anexos, comp, nome);
+  const vao = anexos.map((a, k) => ({ nome: nomes[k].nome, mime: a.mime, buffer: a.buffer }));
+  const visual = require('./email-html').htmlDoEnvioDp({ assunto, texto, cliente: nome, competencia, anexos: anexos.map((a, k) => ({ nome: nomes[k].nome, rotulo: nomes[k].documento, valor: a.valor, vencimento: a.vencimento })), assinatura: ctx.assinatura, caixa: ctx.caixa, chip: m.chip, rodape: m.rodape });
+  const gmailId = await ctx.enviar({ para: para.join(', '), assunto, corpo: texto + '\n\n' + vao.map(a => '- ' + a.nome).join('\n'), html: visual.html, imagens: visual.imagens, anexos: vao });
   enviosRecentes.push(Date.now());
   return { gmailId, assunto };
 }
@@ -232,5 +294,5 @@ async function mandarEmailDoDp(db, { comp, nome, para, anexos }, ctx) {
 module.exports = {
   gravarArquivosDoDp, atenderEnvioDp, destinatarios, mandarEmailDoDp, mimeDe, MAX_BYTES,
   // puras, pro teste
-  competenciaDoDp, arquivosDoDpNaPasta, escolhidos, paraQuem, mesPorExtenso, mesesRecentes, mesAnterior, mensagemDoEnvio, MODELO_PADRAO, COLECAO,
+  competenciaDoDp, arquivosDoDpNaPasta, nomesNoEmail, documentoDoAnexo, escolhidos, tirarOsDeFora, paraQuem, mesPorExtenso, mesesRecentes, mesAnterior, mensagemDoEnvio, MODELO_PADRAO, COLECAO,
 };

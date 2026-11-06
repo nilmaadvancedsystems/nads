@@ -350,7 +350,8 @@ async function impresso(db, ref, lote, { codigo, competencia, itens, ativos, gru
 
 // 6. o eContador do Alterdata (04/11/2026: "preciso que coloque a opção econtador do alterdata como envio e tambem preciso que preencha dae e icms na planilha la, enviei 2 dae via impresso e não preencheu"): as guias no Drive, o registro (a aba "Enviados", via 'econtador') e o
 // Relatório com o valor de cada coluna, a data do disparo e Entregue = eContador; sem e-mail e sem entrega na rota
-async function econtador(db, ref, lote, { codigo, competencia, itens, ativos, grupo, salvarNoDrive }) {
+// e o SCI Report (06/11/2026: "quero que coloque la em envio o sci report"): o mesmo, com via e Entregue = 'scireport'
+async function econtador(db, ref, lote, { codigo, competencia, itens, ativos, grupo, salvarNoDrive, via = 'econtador' }) {
   let doc = null;
   ativos.forEach(d => { if (!doc && String(d.data().codigoOrigem || '').trim() === String(codigo)) doc = d; });
   const nome = doc ? String(doc.data().nome || '').trim() : '';
@@ -361,12 +362,12 @@ async function econtador(db, ref, lote, { codigo, competencia, itens, ativos, gr
   const resultado = { status: 'enviado', para: [], enviadoEm: agora, salvos, entregaId: '', preenchidos: [], erroNoRelatorio: '' };
   const guiasDrive = salvos.filter(x => x.id).map(x => ({ nome: x.nome, id: x.id }));
   await db.collection('solicitacoesEmail').add({
-    tipo: 'envioFiscal', via: 'econtador', origem: 'lote', lote: ref.id, grupo, status: 'enviado', competencia, codigo: String(codigo),
+    tipo: 'envioFiscal', via, origem: 'lote', lote: ref.id, grupo, status: 'enviado', competencia, codigo: String(codigo),
     empresa: nome, arquivos: [], para: [], enviados: itens.map(i => i.vai.nome),
     enviadoEm: agora, criadoEm: agora, criadoPor: lote.disparadoPor || '', criadoPorUid: lote.disparadoPorUid || '', ...(guiasDrive.length ? { guiasDrive } : {}),
   }).catch(() => {});
   try {
-    resultado.preenchidos = await gravarNoRelatorio(db, { competencia, codigo, grupo, valores: valoresPorColuna(itens), dia: diaEmBrasilia(new Date(agora)), entregue: 'econtador', agora, quem: 'robô (eContador de ' + (lote.disparadoPor || 'guias') + ')' });
+    resultado.preenchidos = await gravarNoRelatorio(db, { competencia, codigo, grupo, valores: valoresPorColuna(itens), dia: diaEmBrasilia(new Date(agora)), entregue: via, agora, quem: 'robô (' + (via === 'scireport' ? 'SCI Report' : 'eContador') + ' de ' + (lote.disparadoPor || 'guias') + ')' });
   } catch (err) { resultado.erroNoRelatorio = String(err.message || err).slice(0, 200); }
   return resultado;
 }
@@ -405,11 +406,11 @@ async function dispararLote(db, ref, lote, deps) {
     // disparar de novo (depois de corrigir o e-mail de quem deu erro) não manda outra vez para quem já recebeu
     if (lote.resultados && lote.resultados[chave] && lote.resultados[chave].status === 'enviado') { enviados++; continue; }
     const { codigo, competencia } = itens[0].vai;
-    const via = vias[String(codigo)] === 'impresso' || vias[String(codigo)] === 'econtador' ? vias[String(codigo)] : 'email';
+    const via = ['impresso', 'econtador', 'scireport'].includes(vias[String(codigo)]) ? vias[String(codigo)] : 'email';
     const resultado = { codigo, competencia, via, arquivos: itens.map(i => i.vai.nome), valores: valoresPorColuna(itens), preenchidos: [], erroNoRelatorio: '' };
     try {
       if (via !== 'email') {
-        Object.assign(resultado, await (via === 'impresso' ? impresso : econtador)(db, ref, lote, { codigo, competencia, itens, ativos, grupo, salvarNoDrive }));
+        Object.assign(resultado, await (via === 'impresso' ? impresso : econtador)(db, ref, lote, { codigo, competencia, itens, ativos, grupo, salvarNoDrive, via }));
         for (const i of itens) await L.apagarPartes(i.ref).catch(() => {});
         enviados++;
         await ref.update({ ['resultados.' + chave]: resultado });
@@ -418,7 +419,7 @@ async function dispararLote(db, ref, lote, deps) {
       const { cliente, para } = await dp.destinatarios(db, codigo, ativos);
       const nome = String(cliente.nome || '').trim();
       const anexos = [];
-      for (const i of itens) anexos.push({ nome: i.vai.nome, mime: dp.mimeDe(i.vai.nome), buffer: await L.bufferDoArquivo(i.ref, i) });
+      for (const i of itens) anexos.push({ nome: i.vai.nome, mime: dp.mimeDe(i.vai.nome), buffer: await L.bufferDoArquivo(i.ref, i), rotulo: [i.vai.tipo === 'OUTRO' ? '' : i.vai.tipo, i.vai.tributo].filter(Boolean).join(' '), valor: i.vai.valor, vencimento: ((i.leitura || {}).vencimento) || '' });
       if (anexos.reduce((s, a) => s + a.buffer.length, 0) > dp.MAX_BYTES) throw new Error('as guias do cliente passam de 18 MB juntas');
       const cfg = deps.config ? await deps.config().catch(() => ({})) : {};
       const { gmailId, assunto } = await dp.mandarEmailDoDp(db, { comp: competencia, nome, para, anexos }, { enviar: deps.enviar, caixa: deps.caixa, assinatura: cfg.assinatura || 'Nilma Contabilidade', modelo: MODELO });

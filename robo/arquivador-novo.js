@@ -467,6 +467,28 @@ function conferirDestino(d, hash, ctx, soNaPasta, hashXml) {
   }
   throw new Error('nomes esgotados em ' + pasta);
 }
+/**
+ * (Vitor, 05/11/2026: "juntar pela pasta existente") o pagamento de fornecedor (…\PAGAMENTOS DE FORNECEDORES\ANO\MM\<FORNECEDOR>) vai para a pasta que JÁ existe
+ * no mês para o mesmo fornecedor: a de nome igual; senão, a ÚNICA que começa com as mesmas duas primeiras palavras ("FOX BRAVO …"), ou com a mesma palavra
+ * quando o fornecedor tem uma só. Mais de uma candidata ou nenhuma: fica o nome calculado (pasta nova).
+ */
+function pastaDoFornecedorQueJaExiste(d, ctx) {
+  const partes = String(d.destinoRelativo || '').split('\\');
+  const i = partes.indexOf('PAGAMENTOS DE FORNECEDORES');
+  if (i < 0 || partes.length !== i + 4) return;
+  const forn = partes[i + 3], mes = path.join(d.raiz || ctx.clientes, partes.slice(0, i + 3).join('\\'));
+  let pastas = [];
+  try { pastas = fs.readdirSync(mes, { withFileTypes: true }).filter(e => e.isDirectory()).map(e => e.name); } catch (e) { return; }
+  const pal = s => R.norm(s).split(/[^A-Z0-9]+/).filter(Boolean);
+  if (pastas.some(p => R.norm(p) === R.norm(forn))) return;
+  const f = pal(forn), k = Math.min(2, f.length);
+  if (!f.length || f.slice(0, k).join('').length < 3) return;
+  const iguais = pastas.filter(p => { const w = pal(p); return w.length >= k && w.slice(0, k).join(' ') === f.slice(0, k).join(' '); });
+  if (iguais.length !== 1) return;
+  partes[i + 3] = iguais[0];
+  d.destinoRelativo = partes.join('\\');
+  (d.evidencias || (d.evidencias = [])).push('a pasta do fornecedor que já existe no mês: "' + iguais[0] + '" em vez de "' + forn + '" (Vitor, 05/11/2026)');
+}
 // "existe" é qualquer coisa com o nome (a rotina antiga deixou PASTAS chamadas "CONTRATO.pdf"): ocupado, vai para " (N)"
 function existe(p, ctx) { if (!ctx.existe.has(p)) { let ok = false; try { fs.statSync(p); ok = true; } catch (e) {} ctx.existe.set(p, ok); } return ctx.existe.get(p); }
 function hashDe(p, ctx) {
@@ -610,6 +632,7 @@ async function decidirUm(nome, rel, buffer, ctx, pronta) {
   // a imagem que nem as regras nem o mapa decidiram, depois do OCR: DESCARTAR (Vitor, 28/10/2026)
   if (!(ctx.manual && ctx.manual[rel])) d = R.descarteDaImagem(entrada, d);
   if (d.acao === 'ARQUIVAR') { d.raiz = raizDoAno(ctx.clientes, d.anoRaiz); for (const cp of d.copias || []) cp.raiz = raizDoAno(ctx.clientes, cp.anoRaiz || d.anoRaiz); }
+  if (d.acao === 'ARQUIVAR') pastaDoFornecedorQueJaExiste(d, ctx);
   const item = { rel, nome, hash: entrada.hash, decididoPor: d.decididoPor || null, acao: d.acao, motivo: d.motivo || null, codigo: d.codigo || null, confianca: d.confianca, tipo: d.tipo || null, setor: d.setor || null,
     cliente: d.cliente || null, clienteNome: d.clienteNome || null, destinoRelativo: d.destinoRelativo || null, nomeFinal: d.nomeFinal || null, destinoSugerido: d.destinoSugerido || null,
     criarPastaCliente: !!d.criarPastaCliente, pastaCliente: d.pastaCliente || null, evidencias: d.evidencias || [], fonte: d.fonte || null, ocr: entrada.ocr || null, copias: [], chave: d.chave || null,
@@ -995,7 +1018,7 @@ async function reprocessarNaoIdentificados(opcoes) {
 /** O trabalhador do Tesseract segura o processo vivo: fecha no fim de cada execução (se o OCR foi usado). */
 async function encerrarOcr() { const k = require.resolve('./arquivador-ocr'); if (require.cache[k]) await require('./arquivador-ocr').encerrar(); }
 
-module.exports = { textoDoRtf, ehTedSintegra, reprocessarNaoIdentificados, arquivosDosNaoIdentificados, rotaDoReprocesso, atualizarCadastro, encerrarOcr, executar, aprenderContas, lerContas, varrer, abrirZip, membros, montarEntrada, textoDoPdf, carregarCadastro, indiceDoManifesto, caminhoArquivado, conferirDestino, conteudoXml, raizDoAno, relatorioTexto, planos, CONTROLE };
+module.exports = { pastaDoFornecedorQueJaExiste, textoDoRtf, ehTedSintegra, reprocessarNaoIdentificados, arquivosDosNaoIdentificados, rotaDoReprocesso, atualizarCadastro, encerrarOcr, executar, aprenderContas, lerContas, varrer, abrirZip, membros, montarEntrada, textoDoPdf, carregarCadastro, indiceDoManifesto, caminhoArquivado, conferirDestino, conteudoXml, raizDoAno, relatorioTexto, planos, CONTROLE };
 
 if (require.main === module) {
   const a = process.argv.slice(2);

@@ -34,11 +34,14 @@ export const APLICACOES: readonly Aplicacao[] = [
   { id: 'inicio', nome: 'Início', icone: 'home', grupo: 'Rotinas', pronta: true, paginas: [
     { id: 'inicio', rotulo: 'Início', icone: 'home', titulo: 'Início' },
   ] },
-  { id: 'minhas-empresas', nome: 'Minhas empresas', icone: 'briefcase', grupo: 'Rotinas', pronta: true, paginas: [
+  // o nome na gaveta virou Contábil (Vitor, 06/11/2026: "No lugar de 'Minhas empresas', coloca o nome 'Contábil'"); o
+  // endereço segue /tarefas/minhas-empresas/...
+  // o ícone virou a balança (Vitor, 06/11/2026: "muda o icone também")
+  { id: 'minhas-empresas', nome: 'Contábil', icone: 'scale', grupo: 'Rotinas', pronta: true, paginas: [
     // o painel do progresso das empresas (27/10/2026: "a parte de minhas empresas vai virar um dashboard de progresso")
     // uma tela só, sem a barra lateral (27/10/2026: "coloque paradas e configuracoes tudo em uma so tela aqui nesse
     // inicial, remove a barra lateral"): a lista, as etapas paradas e os históricos do Creditor. Os Insights saíram
-    { id: 'empresas', rotulo: 'Empresas', icone: 'list', titulo: 'Minhas empresas' },
+    { id: 'empresas', rotulo: 'Empresas', icone: 'list', titulo: 'Contábil' },
     // as Justificativas e as Configurações abrem em janela, pelos botões da barra da lista (Vitor, 28/10/2026: "remover esse
     // menu superior e colocar uns ícones de botões de justificativas e configurações aparecer uma popup")
   ] },
@@ -116,7 +119,8 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'certificados', rotulo: 'Certificados', icone: 'barChart', titulo: 'Certificados' },
     // as contas gov.br de pessoas (CPF), importadas da planilha (Vitor, 07/10/2026)
     { id: 'gov', rotulo: 'Contas gov.br', icone: 'usuario', titulo: 'Contas gov.br' },
-    { id: 'acesso', rotulo: 'Acesso', icone: 'usuario', titulo: 'Acesso ao cofre' },
+    // "Liberação de acessos" (Vitor, 06/11/2026: era "Acesso"); o endereço segue /tarefas/senhas/acesso
+    { id: 'acesso', rotulo: 'Liberação de acessos', icone: 'usuario', titulo: 'Liberação de acessos' },
   ] },
   // o financeiro do escritório (15/10/2026: "vamos criar um emissor de notas fiscais para o financeiro"): as NFS-e de
   // honorários da Nilma (Taiobeiras, E&L), emitidas pelo robô da nuvem; só o admin e o diretor
@@ -180,27 +184,49 @@ export const podeMexerNoCadastro = (op: Operador | null) => !!op && (op.admin ||
 /** Quem vê o Financeiro: só o Sávio e a Nilma, pelo nome (30/10/2026: "remova o acesso de admin ao financeiro e deixe o acesso
  * apenas para o usuario Savio e Nilma"). O admin e o diretor não entram mais só pelo papel. Sem acento e sem caixa, o primeiro nome. */
 const DONOS_DO_FINANCEIRO = ['savio', 'nilma'];
+/** Contas liberadas pelo login exato (05/11/2026: o gustavo.s, sem liberar o outro Gustavo, que tem o mesmo primeiro nome). */
+const LOGINS_DO_FINANCEIRO = ['gustavo.s@nilma.local'];
 export const podeVerOFinanceiro = (op: Operador | null) => {
   if (!op) return false;
+  if (op.email && LOGINS_DO_FINANCEIRO.includes(op.email.trim().toLowerCase())) return true;
   const primeiro = op.nome.normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase().split(/[\s.]+/)[0];
   return DONOS_DO_FINANCEIRO.includes(primeiro);
 };
 
+/**
+ * Quem abre a rotina e o cadastro de outro setor: o admin e o diretor (Vitor, 06/11/2026: "quem é do fiscal, não é para ter
+ * acesso a coisas do contábil"). Os outros ficam no setor deles (o ?dep= de outro setor é ignorado).
+ */
+export const podeVerOutrosSetores = (op: Operador | null) => !!op && (op.admin || op.nivel === 'diretor');
+
+/** As abas da janela da empresa no Cadastro que a pessoa vê: as do Contábil só para o Contábil (e quem vê os outros setores). */
+export const abasDoCadastroDe = (op: Operador | null) =>
+  ABAS_DO_CADASTRO.filter(a => a.grupo !== 'Contábil' || podeVerOutrosSetores(op) || op?.departamento === 'contabil');
+
 /** As aplicações que a pessoa vê: Fiscal só para o Fiscal; Contábil só para o Contábil; Drive para todos; Gmail para os dois (admin vê tudo). */
 export function aplicacoesDe(op: Operador): Aplicacao[] {
   return APLICACOES.filter(a =>
+    // o Início fora para todos por enquanto (Vitor, 06/11/2026: "Remove a tela de início para todos os usuários por
+    // enquanto, já abrir direto em minhas empresas"): o /tarefas/inicio cai em Minhas empresas
+    a.id !== 'inicio' &&
     (a.id !== 'fiscal' || op.admin || op.departamento === 'fiscal') &&
     (a.id !== 'dp' || op.admin || op.departamento === 'dp') &&
     (a.id !== 'contabil' || op.admin || op.departamento === 'contabil') &&
     // o Drive do robô: para toda a equipe (26/10/2026: "libera o drive para todos os usuarios"); o Gmail (01/10/2026): o
     // contábil e o fiscal (cada um vê a caixa da Nilma e a do próprio setor)
     (a.id !== 'contato' || op.admin || op.departamento === 'contabil' || op.departamento === 'fiscal') &&
+    // a Área do Cliente ainda não para o Fiscal (Vitor, 06/11/2026: "Para quem é do fiscal, não deixe a função área do
+    // cliente ativa ainda"): some da gaveta e o link direto não abre
+    (a.id !== 'area-cliente' || op.admin || op.departamento !== 'fiscal') &&
     // o Cadastro (empresas e equipe): o admin, o diretor (Vitor, 05/10/2026) e o sênior (19/10/2026)
     (a.id !== 'cadastro' || podeMexerNoCadastro(op)) &&
     // o Financeiro (as notas fiscais do escritório): só o Sávio e a Nilma (30/10/2026; antes, o admin e o diretor)
     (a.id !== 'financeiro' || podeVerOFinanceiro(op)))
     // as páginas só do admin (as do Admin, nas Configurações) ficam de fora para os outros
     .map(a => (op.admin || !a.paginas.some(p => p.soAdmin) ? a : { ...a, paginas: a.paginas.filter(p => !p.soAdmin) }))
+    // a lista das empresas se chama Contábil só para quem é do Contábil (06/11/2026); para o Fiscal e o DP ela mostra a
+    // rotina do setor deles, com o nome de antes
+    .map(a => (a.id === 'minhas-empresas' && !podeVerOutrosSetores(op) && op.departamento !== 'contabil' ? { ...a, nome: 'Minhas empresas', paginas: a.paginas.map(p => ({ ...p, titulo: 'Minhas empresas' })) } : a))
     // na gaveta, um grupo depois do outro: Rotinas, Comunicação, Escritório
     .sort((x, y) => ORDEM_DOS_GRUPOS.indexOf(x.grupo) - ORDEM_DOS_GRUPOS.indexOf(y.grupo));
 }
@@ -234,8 +260,8 @@ export const caminhoDaPagina = (app: IdAplicacao, pagina: string) => BASE + '/' 
 /** Onde a Tarefas abre (a pessoa escolhe na Minha página, a janela do avatar › Aparência e telas; neste navegador). */
 export const CHAVE_INICIO = 'nads-tarefas-inicio';
 export const INICIOS: readonly { valor: string; rotulo: string; caminho: string }[] = [
-  { valor: 'inicio', rotulo: 'Início', caminho: BASE + '/inicio' },
-  { valor: 'empresas', rotulo: 'Minhas empresas', caminho: BASE + '/minhas-empresas/empresas' },
+  // o Início saiu por enquanto (06/11/2026): quem tinha escolhido ele abre em Minhas empresas, a primeira
+  { valor: 'empresas', rotulo: 'Contábil', caminho: BASE + '/minhas-empresas/empresas' },
   { valor: 'drive', rotulo: 'Drive', caminho: BASE + '/drive/pastas' },
   { valor: 'gmail', rotulo: 'Gmail', caminho: BASE + '/contato/caixa' },
 ];
@@ -276,7 +302,7 @@ export function guardarCompetenciaDoDp(c: string): void {
   try { if (/^\d{4}-\d{2}$/.test(c)) sessionStorage.setItem(CHAVE_COMPETENCIA_DO_DP, c); } catch { /* sem armazenamento: vale só a da página */ }
 }
 export function inicioEscolhido(): string {
-  try { return localStorage.getItem(CHAVE_INICIO) || 'inicio'; } catch { return 'inicio'; }
+  try { const v = localStorage.getItem(CHAVE_INICIO); return INICIOS.some(i => i.valor === v) ? v as string : 'empresas'; } catch { return 'empresas'; }
 }
 export function caminhoDoInicio(op: { departamento: string; admin: boolean }): string {
   const i = INICIOS.find(x => x.valor === inicioEscolhido()) || INICIOS[0];

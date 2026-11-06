@@ -2,22 +2,25 @@
 // primeiro passo (ele monta a Tarefa: os adiantamentos, os empréstimos, o adiantamento salarial e as despesas e receitas
 // entram ou saem por ele), e os razões das contas de uma vez só — cada um reconhecido pelo código da aba do XLS e pelo
 // nome da conta no dinâmico, e entregue à etapa que usa. No desenho das linhas da Importação (imp-bloco).
-import { clientes as cl, formatos, tarefas as t } from '@nads/core';
+import { clientes as cl, tarefas as t } from '@nads/core';
 import { BotaoIcone, CampoArquivo, Icone, useRetorno } from '@nads/ui';
-import { useEffect, useId, useRef } from 'react';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { useContabilDaEmpresa } from './contabilDaEmpresa';
 import { BotaoDiario } from './BotaoDiario';
 
 /**
  * meses: o período da Tarefa (para acusar o mês que falta no razão). soDiario: a empresa ainda não saiu da Importação (Vitor,
- * 04/11/2026: "das que não saíram, deixe só o diário, quero fazer um teste"): sem o bloco dos razões; o Diário preenche sozinho
- * os razões que as etapas pedem (os que já estão ficam). As que já saíram seguem com os razões, como antes.
+ * 04/11/2026): sem o bloco dos razões; o razão que o robô puxou do Alterdata (06/11/2026, no lugar do Diário em PDF) preenche
+ * sozinho os razões que as etapas pedem (os que já estão ficam). As que já saíram seguem com os razões, como antes.
  */
-export function ContabilNaImportacao({ nome, codigo, meses = [], soDiario = false }: { nome: string; codigo: number | null; meses?: readonly string[]; soDiario?: boolean }) {
+export function ContabilNaImportacao({ nome, codigo, meses = [], soDiario = false, blocoDoRobo = null }: {
+  nome: string; codigo: number | null; meses?: readonly string[]; soDiario?: boolean;
+  /** o bloco "Razões do Alterdata" (o robô), desenhado por quem tem os dados do robô */
+  blocoDoRobo?: ReactNode;
+}) {
   const vm = useContabilDaEmpresa(nome, codigo);
   const { aviso } = useRetorno();
   const idDin = useId();
-  const idDia = useId();
   const idRaz = useId();
   const razoes = Object.entries(vm.razoes).sort(([a], [b]) => a.localeCompare(b));
   // os razões que a Tarefa precisa, pelo dinâmico (Vitor, 19/10/2026: "especifique quais razões você quer"): as contas que as
@@ -51,25 +54,14 @@ export function ContabilNaImportacao({ nome, codigo, meses = [], soDiario = fals
       aviso({ tom: 'ok', titulo: 'Balancete dinâmico importado', texto: f.name + ' · ' + d.meses.length + ' meses' });
     } catch (e) { aviso({ tom: 'erro', titulo: 'Não deu para ler ' + f.name, texto: e instanceof Error ? e.message : String(e) }); }
   }
-  // o Diário (um PDF com todas as contas): guarda os lançamentos; o resumo mostra se o diário fecha (débito = crédito)
-  async function importarDiario(f: File | null) {
-    if (!f) return;
-    try {
-      const lido = await vm.importarDiario(f);
-      aviso({
-        tom: lido.diferenca === 0 ? 'ok' : 'erro', titulo: 'Diário importado',
-        texto: f.name + ' · ' + lido.lancamentos.length + ' lançamentos' + (lido.diferenca ? ' · o diário não fecha: diferença de ' + formatos.reais(Math.abs(lido.diferenca)) : ''),
-      });
-    } catch (e) { aviso({ tom: 'erro', titulo: 'Não deu para ler ' + f.name, texto: e instanceof Error ? e.message : String(e) }); }
-  }
-  // o Diário nos razões: preenche de uma vez as contas que as etapas pedem (a mais recente vence)
+  // o razão do robô nos razões: preenche de uma vez as contas que as etapas pedem (a mais recente vence)
   function diarioNosRazoes() {
-    if (!vm.diario) { aviso({ tom: 'erro', titulo: 'Sem o Diário', texto: 'Importe o Diário (PDF) no bloco Diário, acima.' }); return; }
+    if (!vm.diario) { aviso({ tom: 'erro', titulo: 'Sem o razão do robô', texto: 'Espere o robô terminar os meses (bloco Razões do Alterdata, acima).' }); return; }
     if (!pedidos.length) { aviso({ tom: 'erro', titulo: 'Sem as contas dos razões', texto: 'Importe o balancete dinâmico para saber quais razões a Tarefa precisa.' }); return; }
     const r = vm.preencherDoDiario(pedidos.map(p => p.codigo));
     aviso({
-      tom: r.contas.length ? 'ok' : 'erro', titulo: 'Razões pelo Diário',
-      texto: r.contas.length + (r.contas.length === 1 ? ' razão preenchido' : ' razões preenchidos') + (r.semLancamento.length ? ' · sem lançamento no Diário: ' + r.semLancamento.join(', ') : ''),
+      tom: r.contas.length ? 'ok' : 'erro', titulo: 'Razões pelo robô',
+      texto: r.contas.length + (r.contas.length === 1 ? ' razão preenchido' : ' razões preenchidos') + (r.semLancamento.length ? ' · sem lançamento no período: ' + r.semLancamento.join(', ') : ''),
     });
   }
 
@@ -111,46 +103,34 @@ export function ContabilNaImportacao({ nome, codigo, meses = [], soDiario = fals
         </div>
       </div>
 
-      {/* o Diário (um PDF com todas as contas do período): troca os razões .xls, uma conta de cada vez, pelo botão de cada razão */}
-      <div className={'imp-bloco' + (vm.diario ? (vm.diario.lido.diferenca === 0 ? ' imp-ok' : '') : '')}>
-        <div className="imp-linha">
-          <span className="imp-ico"><Icone nome="relatorio" /></span>
-          <div className="imp-txt">
-            <span><b>Diário</b>{vm.diario && <span className="imp-conta">{vm.diario.arquivo}</span>}</span>
-          </div>
-          <div className="imp-resumo">{vm.diario && (
-            <div>
-              {/* no desenho das outras linhas (Vitor, 04/11/2026: "melhora esse feedback visual"): duas linhas de texto, sem
-                  pílulas; o que precisa de atenção em vermelho */}
-              <span>{vm.diario.lido.periodo ? rotuloDoMes(vm.diario.lido.periodo.inicio) + ' a ' + rotuloDoMes(vm.diario.lido.periodo.fim) + ' · ' : ''}{vm.diario.lido.lancamentos.length.toLocaleString('pt-BR')} lançamentos · {Object.keys(t.contasDoDiario(vm.diario.lido.lancamentos)).length} contas</span>
-              <span>
-                {vm.diario.lido.diferenca === 0
-                  ? 'Fecha'
-                  : <span className="ext-neg" title="O débito e o crédito do diário não batem: confira o PDF no Alterdata">Não fecha ({formatos.reais(Math.abs(vm.diario.lido.diferenca))})</span>}
-                {soDiario && pedidos.length > 0 && <>{' · '}{faltam
-                  ? <span className="ext-neg" title="Contas que as etapas usam sem lançamento no Diário: continuam sem razão">{faltam} de {pedidos.length} razões sem lançamento</span>
-                  : <span title="Os razões das contas que as etapas usam saíram do Diário">{pedidos.length} razões pelo Diário</span>}</>}
-                {vm.diario.lido.semConta > 0 && <>{' · '}<span title="Linhas do diário sem o código da conta (quebra de página): não entram em nenhum razão">{vm.diario.lido.semConta} {vm.diario.lido.semConta === 1 ? 'linha' : 'linhas'} sem conta</span></>}
-              </span>
+      {/* os razões do Alterdata pelo robô (Vitor, 06/11/2026: no lugar do Diário em PDF): quem desenha é a Importação da
+          Tarefa (o robô fica nos dados dela); o resumo do que chegou fica aqui embaixo */}
+      {blocoDoRobo}
+      {vm.diario && (
+        <div className="imp-bloco imp-ok">
+          <div className="imp-linha">
+            <span className="imp-ico"><Icone nome="arquivo" /></span>
+            <div className="imp-txt">
+              <span><b>Razão de todas as contas</b><span className="imp-conta">{vm.diario.arquivo}</span></span>
             </div>
-          )}</div>
-          <div className="imp-grupos">
-            <div className="imp-grupo" aria-label="Diário">
-              <span className="imp-rotulo">Diário</span>
-              {vm.diario ? (
-                <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" onClick={vm.tirarDiario} title="Diário importado. Clique para tirar (para importar o corrigido)." aria-label="Tirar o Diário">
+            <div className="imp-resumo">
+              <div>
+                <span>{vm.diario.lido.periodo ? rotuloDoMes(vm.diario.lido.periodo.inicio) + ' a ' + rotuloDoMes(vm.diario.lido.periodo.fim) + ' · ' : ''}{vm.diario.lido.lancamentos.length.toLocaleString('pt-BR')} lançamentos · {Object.keys(t.contasDoDiario(vm.diario.lido.lancamentos)).length} contas</span>
+                {soDiario && pedidos.length > 0 && <span>{faltam
+                  ? <span className="ext-neg" title="Contas que as etapas usam sem lançamento no período: continuam sem razão">{faltam} de {pedidos.length} razões sem lançamento</span>
+                  : <span title="Os razões das contas que as etapas usam saíram do razão do robô">{pedidos.length} razões das etapas preenchidos</span>}</span>}
+              </div>
+            </div>
+            <div className="imp-grupos">
+              <div className="imp-grupo" aria-label="Razão de todas as contas">
+                <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" onClick={vm.tirarDiario} title="Clique para tirar (o robô lê de novo os meses prontos)." aria-label="Tirar o razão de todas as contas">
                   <Icone nome="check" className="imp-feito-ok" /><Icone nome="x" className="imp-feito-x" />
                 </button>
-              ) : (
-                <>
-                  <label htmlFor={idDia} className="icon-btn icon-btn-sm imp-btn" title="Importar o Diário (PDF do Alterdata, todas as contas do período)" aria-label="Importar o Diário"><Icone nome="upload" /></label>
-                  <CampoArquivo semCaixa id={idDia} aceitar=".pdf,application/pdf" onEscolher={f => { void importarDiario(f); }} />
-                </>
-              )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {!soDiario && <div className={'imp-bloco' + (pedidos.length ? (faltam || incompletos ? '' : ' imp-ok') : razoes.length && !incompletos ? ' imp-ok' : '')}>
         <div className="imp-linha">
@@ -163,7 +143,7 @@ export function ContabilNaImportacao({ nome, codigo, meses = [], soDiario = fals
           <div className="imp-grupos">
             <div className="imp-grupo" aria-label="Razões das contas">
               <span className="imp-rotulo">Razões</span>
-              <BotaoDiario onClick={diarioNosRazoes} titulo="Preencher os razões das contas que as etapas usam, pelo Diário (PDF)" />
+              <BotaoDiario onClick={diarioNosRazoes} titulo="Preencher os razões das contas que as etapas usam, pelo razão que o robô puxou" />
               <label htmlFor={idRaz} className="icon-btn icon-btn-sm imp-btn" title="Importar os razões (XLS da conciliação do Alterdata; vários de uma vez)" aria-label="Importar os razões"><Icone nome="upload" /></label>
               <CampoArquivo semCaixa multiplo id={idRaz} aceitar=".xls,.xlsx,.ods" onEscolherVarios={fs => { void importarRazoes(fs); }} />
             </div>

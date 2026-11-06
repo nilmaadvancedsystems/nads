@@ -14,26 +14,15 @@ export type Verificacao =
   /** a pessoa confirma que fez */
   | 'manual';
 
-/** A ferramenta que abre no meio da tela. */
-export interface FerramentaDaEtapa {
-  /** aplicativo do nads */
-  app: 'extratudo' | 'conciliadorzinho' | 'concilia-ai';
-  nome: string;
-  /** caminho dentro do aplicativo, a partir da empresa (rota = código do ERP) */
-  caminho: (rotaEmpresa: string) => string;
-  /** false = abre em outra aba (quando não dá para embutir) */
-  embutir: boolean;
-  /** a ferramenta trabalha vários meses de uma vez (a Etapa com vários meses); sem isso, vai mês a mês */
-  periodo?: boolean;
-  /** a ferramenta diz à Tarefas o que falta para seguir (a Importação): os botões só aparecem depois que ela disser */
-  requisitos?: boolean;
-}
-
 /**
  * A tela própria da etapa, dentro da Tarefa (Vitor, 06/10/2026: as ferramentas que abriam em iframe viram telas do nads).
  * A tela diz o que falta para seguir; periodo: trabalha todos os meses do período de uma vez.
  */
-export type TelaDaEtapa = 'bancos' | 'cheque-especial' | 'clientes' | 'adiantamento-fornecedores' | 'bens' | 'fornecedores' | 'adiantamento-clientes' | 'emprestimos' | 'salarios' | 'pro-labore' | 'honorarios' | 'simples' | 'resultado' | 'adiantamento-salarial'
+export type TelaDaEtapa =
+  // as ferramentas que eram aplicativos à parte (Vitor, 06/11/2026: 'deixa apenas nas etapas'): a Importação (a do Contábil e
+  // a do Fiscal), a Conferência fiscal, o Creditor, o Cartões e as Vendas no cartão
+  | 'importacao' | 'importacao-fiscal' | 'conferencia-fiscal' | 'creditor' | 'cartoes' | 'vendas-cartao'
+  | 'bancos' | 'cheque-especial' | 'clientes' | 'adiantamento-fornecedores' | 'bens' | 'fornecedores' | 'adiantamento-clientes' | 'emprestimos' | 'salarios' | 'pro-labore' | 'honorarios' | 'simples' | 'resultado' | 'adiantamento-salarial'
   // o LCDPR, a rotina inteira das empresas com ele (16/10/2026: a 62 "só precisa do lcdpr")
   | 'lcdpr';
 export interface TelaPropria { id: TelaDaEtapa; periodo?: boolean }
@@ -55,8 +44,7 @@ export interface Etapa {
   nome: string;
   /** uma linha: o que fazer */
   descricao: string;
-  ferramenta: FerramentaDaEtapa | null;
-  /** a tela própria da etapa na Tarefa (no lugar da ferramenta em iframe) */
+  /** a tela própria da etapa na Tarefa */
   tela?: TelaPropria;
   verificacao: Verificacao;
   objecoes: Objecao[];

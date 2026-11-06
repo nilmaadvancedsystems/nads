@@ -1,5 +1,4 @@
 // Entrada do nads: o visual, a barrinha de carregamento do topo, o aviso de versão nova, o retorno (toast/modal) e as rotas.
-// O Concilia aí liga os próprios dados em aplicativos/concilia-ai/ (AppConciliaAi).
 import '@nads/ui/estilo.css';
 import { BarraDeCarregamento, DefsMarca, iniciarAnimador, iniciarContinuidade, RetornoProvider } from '@nads/ui';
 import { StrictMode } from 'react';

@@ -16,10 +16,20 @@ export interface EtapaAberta {
   meses: string[];
   /** o modo desenvolvedor: nada vai para o banco e o ⚡ aparece */
   dev: boolean;
+  /** a empresa presta serviço (o Cadastro; null = ainda sem resposta) */
+  prestaServico?: boolean | null;
+  /** os meses são da Tarefa (vários, ou os da etapa); false = um mês só, o da competência */
+  mesesDaTarefa?: boolean;
 }
 
 /** O que falta para seguir (o Próximo da Tarefa só libera com tudo pronto). */
-export interface RequisitosDaEtapa { pronto: boolean; faltam: string[] }
+export interface RequisitosDaEtapa {
+  pronto: boolean; faltam: string[];
+  /** o lugar de cada item na tela (o Resolver leva até lá; null = sem lugar) */
+  alvos?: (string | null)[];
+  /** a Importação diz se algum banco fecha negativo (false: a Tarefa pula o Cheque especial) */
+  precisaChequeEspecial?: boolean;
+}
 
 /** As abas da tela no cabeçalho (como as da Importação: Bancos, Balancete…) e o que fazer ao clicar numa. */
 export interface AbasDaEtapa { paginas: PaginaCasca[]; abrir: (id: string) => void }
@@ -81,11 +91,11 @@ export function useEtapaPeloBalancete(b: EtapaPeloBalancete | null) {
 }
 
 /** Diz à Tarefa o que falta para seguir (a cada mudança). */
-export function useRequisitosDaEtapa(r: RequisitosDaEtapa) {
+export function useRequisitosDaEtapa(r: RequisitosDaEtapa | null) {
   const { ligacoes } = useCtx();
   const chave = JSON.stringify(r);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { ligacoes.requisitos(r); }, [ligacoes, chave]);
+  useEffect(() => { if (r) ligacoes.requisitos(r); }, [ligacoes, chave]);
 }
 
 /**

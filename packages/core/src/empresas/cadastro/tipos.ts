@@ -154,7 +154,7 @@ export interface CadastroDaEmpresa {
    * O contato da empresa (Vitor, 07/10/2026): o e-mail e o WhatsApp para onde o Mandei manda as perguntas (Clientes e
    * Fornecedores › Envio). O WhatsApp só com os números, com o DDD (ex.: 38999998888). Sem = não cadastrado.
    */
-  contato?: { email?: string; whatsapp?: string };
+  contato?: { email?: string; whatsapp?: string; outrosEmails?: string[] };
   /** os sócios, com o nome e o CPF (Vitor, 06/10/2026): a etapa Bancos acha a transferência para o sócio no extrato */
   socios?: Socio[];
   /**

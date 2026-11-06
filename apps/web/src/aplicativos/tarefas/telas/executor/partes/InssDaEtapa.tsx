@@ -13,7 +13,7 @@ import type { RazaoDaFolha as VmFolha } from '../useRazaoDaFolha';
 import { RazaoDaFolha } from './RazaoDaFolha';
 import { FgtsDaEtapa } from './FgtsDaEtapa';
 import type { FgtsDaEtapa as VmFgts } from '../useFgtsDaEtapa';
-import { MenuDeConta } from '../../../../extratudo/ferramentas/creditor/partes/MenuDeConta';
+import { MenuDeConta } from '../../../etapas/creditor/partes/MenuDeConta';
 
 const BAIXA: Record<Inss['meses'][number]['baixa'], string> = { ok: '✓', falta: 'Falta', depois: 'Depois', fora: '—', 'sem-guia': '—' };
 
