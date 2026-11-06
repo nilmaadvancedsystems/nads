@@ -2005,7 +2005,6 @@ a.btn.gmail-icone,.gmail-de-acoes a.btn{text-decoration:none;}
 .config-secao-titulo{display:inline-flex;align-items:center;gap:8px;}
 .config-secao-titulo > svg{width:16px;height:16px;color:var(--accent);flex:none;}
 .config-logo{display:inline-flex;width:22px;height:16px;flex:none;}
-.config-secao-desc{margin:0 0 12px !important;padding:0 !important;}
 /* dentro da janela (que tira a borda e o fundo dos cartões), cada seção volta a ser um cartão: separa uma etapa da outra */
 .janela-minhas-empresas .card.config-secao{border:1px solid var(--border);background:var(--surface);padding:16px;border-radius:6px;}
 .janela-minhas-empresas .config-secao .card-head h3{padding:0;}
