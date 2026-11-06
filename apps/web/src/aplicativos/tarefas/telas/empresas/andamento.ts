@@ -97,8 +97,11 @@ export function useEmpresasPermitidas() {
   return useEmpresasPermitidasDoOperador(useOperador().operador);
 }
 
-/** Os setores em que a pessoa só vê as empresas de que é a responsável no Cadastro. */
-const SETORES_COM_RESPONSAVEL: readonly ('fiscal' | 'contabil')[] = ['fiscal'];
+/**
+ * Os setores em que a pessoa só vê as empresas de que é a responsável no Cadastro. Nenhum por enquanto: o Fiscal também com
+ * todas (Vitor, 06/11/2026: "libera todas as empresas para o fiscal xereta"); para voltar, o setor entra de novo aqui.
+ */
+const SETORES_COM_RESPONSAVEL: readonly ('fiscal' | 'contabil')[] = [];
 
 /** O mesmo, com o operador passado (os aplicativos fora da Tarefas; null = sem conta: todas). */
 export function useEmpresasPermitidasDoOperador(op: Operador | null) {

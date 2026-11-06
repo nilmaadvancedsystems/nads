@@ -206,12 +206,18 @@ export const abasDoCadastroDe = (op: Operador | null) =>
 /** As aplicações que a pessoa vê: Fiscal só para o Fiscal; Contábil só para o Contábil; Drive para todos; Gmail para os dois (admin vê tudo). */
 export function aplicacoesDe(op: Operador): Aplicacao[] {
   return APLICACOES.filter(a =>
+    // o Início fora para todos por enquanto (Vitor, 06/11/2026: "Remove a tela de início para todos os usuários por
+    // enquanto, já abrir direto em minhas empresas"): o /tarefas/inicio cai em Minhas empresas
+    a.id !== 'inicio' &&
     (a.id !== 'fiscal' || op.admin || op.departamento === 'fiscal') &&
     (a.id !== 'dp' || op.admin || op.departamento === 'dp') &&
     (a.id !== 'contabil' || op.admin || op.departamento === 'contabil') &&
     // o Drive do robô: para toda a equipe (26/10/2026: "libera o drive para todos os usuarios"); o Gmail (01/10/2026): o
     // contábil e o fiscal (cada um vê a caixa da Nilma e a do próprio setor)
     (a.id !== 'contato' || op.admin || op.departamento === 'contabil' || op.departamento === 'fiscal') &&
+    // a Área do Cliente ainda não para o Fiscal (Vitor, 06/11/2026: "Para quem é do fiscal, não deixe a função área do
+    // cliente ativa ainda"): some da gaveta e o link direto não abre
+    (a.id !== 'area-cliente' || op.admin || op.departamento !== 'fiscal') &&
     // o Cadastro (empresas e equipe): o admin, o diretor (Vitor, 05/10/2026) e o sênior (19/10/2026)
     (a.id !== 'cadastro' || podeMexerNoCadastro(op)) &&
     // o Financeiro (as notas fiscais do escritório): só o Sávio e a Nilma (30/10/2026; antes, o admin e o diretor)
@@ -254,7 +260,7 @@ export const caminhoDaPagina = (app: IdAplicacao, pagina: string) => BASE + '/' 
 /** Onde a Tarefas abre (a pessoa escolhe na Minha página, a janela do avatar › Aparência e telas; neste navegador). */
 export const CHAVE_INICIO = 'nads-tarefas-inicio';
 export const INICIOS: readonly { valor: string; rotulo: string; caminho: string }[] = [
-  { valor: 'inicio', rotulo: 'Início', caminho: BASE + '/inicio' },
+  // o Início saiu por enquanto (06/11/2026): quem tinha escolhido ele abre em Minhas empresas, a primeira
   { valor: 'empresas', rotulo: 'Contábil', caminho: BASE + '/minhas-empresas/empresas' },
   { valor: 'drive', rotulo: 'Drive', caminho: BASE + '/drive/pastas' },
   { valor: 'gmail', rotulo: 'Gmail', caminho: BASE + '/contato/caixa' },
@@ -296,7 +302,7 @@ export function guardarCompetenciaDoDp(c: string): void {
   try { if (/^\d{4}-\d{2}$/.test(c)) sessionStorage.setItem(CHAVE_COMPETENCIA_DO_DP, c); } catch { /* sem armazenamento: vale só a da página */ }
 }
 export function inicioEscolhido(): string {
-  try { return localStorage.getItem(CHAVE_INICIO) || 'inicio'; } catch { return 'inicio'; }
+  try { const v = localStorage.getItem(CHAVE_INICIO); return INICIOS.some(i => i.valor === v) ? v as string : 'empresas'; } catch { return 'empresas'; }
 }
 export function caminhoDoInicio(op: { departamento: string; admin: boolean }): string {
   const i = INICIOS.find(x => x.valor === inicioEscolhido()) || INICIOS[0];

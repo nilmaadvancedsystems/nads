@@ -35,3 +35,14 @@ describe('o Cadastro por nível (Vitor, 19/10/2026: o sênior vê e mexe no cada
     expect(podeVerOFinanceiro(null)).toBe(false);
   });
 });
+
+describe('a Área do Cliente ainda não para o Fiscal (Vitor, 06/11/2026)', () => {
+  const vê = (o: Operador) => aplicacoesDe(o).some(a => a.id === 'area-cliente');
+  it('o Fiscal não vê (nem o diretor); o admin, o Contábil e o DP veem', () => {
+    expect(vê({ ...op('pleno'), departamento: 'fiscal' })).toBe(false);
+    expect(vê({ ...op('diretor'), departamento: 'fiscal' })).toBe(false);
+    expect(vê({ ...op('senior', true), departamento: 'fiscal' })).toBe(true);
+    expect(vê(op('pleno'))).toBe(true);
+    expect(vê({ ...op('pleno'), departamento: 'dp' })).toBe(true);
+  });
+});
