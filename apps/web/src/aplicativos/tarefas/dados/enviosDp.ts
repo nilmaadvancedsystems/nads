@@ -16,6 +16,13 @@ export interface ArquivoDoDp {
   tamanho: number;
 }
 
+/**
+ * O que foi tirado da lista de envios do mês (06/11/2026, Vitor: "ter como excluir o arquivo em anexo assim como no fiscal e
+ * remover da lista de envios"): o cliente inteiro (tudo) ou só uns arquivos (os ids da lista do mês). Fica no banco
+ * (dpEnviosFora/{AAAA-MM}); o robô não manda o que está aqui (robo/envios-do-dp.js tirarOsDeFora). Pôr de volta desfaz.
+ */
+export interface ForaDoEnvio { tudo: boolean; arquivos: readonly string[] }
+
 export interface EnvioDoDp {
   id: string;
   codigo: string;
@@ -59,10 +66,23 @@ export interface RepoEnviosDp {
   envios(competencia: string): { carregados: boolean; porCodigo: ReadonlyMap<string, EnvioDoDp>; todosPorCodigo: ReadonlyMap<string, readonly EnvioDoDp[]> };
   /** tudo o que já foi pedido para o cliente, de todos os meses, o mais novo primeiro (28/10/2026: "ver o que já foi enviado") */
   historico(codigo: number, chegou: (lista: EnvioDoDp[]) => void): () => void;
+  /** o que foi tirado da lista de envios do mês, por código do cliente */
+  fora(competencia: string): { carregados: boolean; porCodigo: ReadonlyMap<string, ForaDoEnvio> };
+  /** tira (ou põe de volta, com tirar false) o cliente inteiro ou, com arquivo, só esse arquivo da lista do mês */
+  tirar(dados: { competencia: string; codigo: number; arquivo?: string; tirar: boolean }): Promise<void>;
   /** pede ao robô o e-mail com estes arquivos (os ids da lista do mês) */
   enviar(dados: { codigo: number; empresa: string; competencia: string; arquivos: readonly string[] }): Promise<void>;
   assinar(f: () => void): () => void;
   versao(): number;
+}
+
+/** o que fica fora depois de tirar (ou pôr de volta) o cliente inteiro ou, com arquivo, só ele */
+export function foraNovo(atual: ForaDoEnvio | undefined, arquivo: string | undefined, tirar: boolean): ForaDoEnvio {
+  const a = atual || { tudo: false, arquivos: [] };
+  if (!arquivo) return { tudo: tirar, arquivos: a.arquivos };
+  const ids = new Set(a.arquivos);
+  if (tirar) ids.add(arquivo); else ids.delete(arquivo);
+  return { tudo: a.tudo, arquivos: [...ids] };
 }
 
 /** Os exemplos (sem banco): uns documentos inventados para os clientes do DP; o envio anda sozinho. */
@@ -74,6 +94,7 @@ export function criarEnviosDpMemoria(): RepoEnviosDp {
   // todos os pedidos (o histórico), na ordem em que foram feitos
   const todos: EnvioDoDp[] = [];
   const listas = new Map<string, Map<string, ArquivoDoDp[]>>();
+  const foras = new Map<string, Map<string, ForaDoEnvio>>();
   let modelo: ModeloDoEnvio = { assunto: '', texto: '' };
   const agora = () => new Date().toISOString();
   function listaDe(competencia: string) {
@@ -102,6 +123,14 @@ export function criarEnviosDpMemoria(): RepoEnviosDp {
       const todosPorCodigo = new Map<string, EnvioDoDp[]>();
       for (const e of todos) if (e.competencia === competencia) todosPorCodigo.set(e.codigo, [...(todosPorCodigo.get(e.codigo) || []), e]);
       return { carregados: true, porCodigo: envios.get(competencia) || new Map(), todosPorCodigo };
+    },
+    fora: competencia => ({ carregados: true, porCodigo: foras.get(competencia) || new Map() }),
+    async tirar({ competencia, codigo, arquivo, tirar }) {
+      const m = new Map(foras.get(competencia) || []);
+      const cod = String(codigo);
+      m.set(cod, foraNovo(m.get(cod), arquivo, tirar));
+      foras.set(competencia, m);
+      mudou();
     },
     historico(codigo, chegou) {
       const mandar = () => chegou(todos.filter(e => e.codigo === String(codigo)).sort((a, b) => b.criadoEm.localeCompare(a.criadoEm)));

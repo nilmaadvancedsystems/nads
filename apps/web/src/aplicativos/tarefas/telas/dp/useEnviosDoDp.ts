@@ -80,16 +80,23 @@ export function useEnviosDoDp() {
   const { execucoes, carregada } = useExecucoes(competencia, 'dp');
   const lista = repo.arquivos(competencia);
   const envios = repo.envios(competencia);
+  // o que foi tirado da lista do mês (06/11/2026: "excluir o arquivo em anexo assim como no fiscal e remover da lista de envios")
+  const foraDoMes = repo.fora(competencia);
   const clientesDoEntregas = gmail.clientes();
   const emailsDe = new Map(clientesDoEntregas.lista.map(c => [c.codigo, [...new Set([c.email, ...c.emails].filter(Boolean))]]));
   const porNome = new Map(execucoes.map(e => [e.empresa, e]));
 
-  const todas = doDp.clientes
+  const comTirados = doDp.clientes
     // os clientes com alguma obrigação do DP no mês (os mesmos das Obrigações)
     .filter(c => c.obrigacoes.length > 0)
     .map(c => {
       const cod = String(c.codigo);
-      const arquivos = lista.porCodigo.get(cod) || NADA;
+      const doMes = lista.porCodigo.get(cod) || NADA;
+      // os arquivos tirados não contam: nem para enviar, nem para o Enviado (a Entrega marca com os que ficaram)
+      const tirado = foraDoMes.porCodigo.get(cod);
+      const idsFora = new Set(tirado?.arquivos || []);
+      const arquivos = idsFora.size ? doMes.filter(a => !idsFora.has(a.id)) : doMes;
+      const arquivosFora = idsFora.size ? doMes.filter(a => idsFora.has(a.id)) : NADA;
       // o e-mail do Cadastro do nads manda (28/10/2026: "quando eu altero no cadastro da empresa o gmail não altera lá no
       // envios"), como o regime; o do Entregas só sem ele (o robô escolhe igual: robo/envios-do-dp.js paraQuem)
       const doCadastro = (c.cadastro?.contato?.email || '').trim().toLowerCase();
@@ -104,17 +111,21 @@ export function useEnviosDoDp() {
       const desmarcados = fora.get(c.codigo);
       const escolhidos = desmarcados ? arquivos.filter(a => !desmarcados.has(a.id)) : arquivos;
       return {
-        codigo: c.codigo, nome: c.nomeNaTela, responsavel: nomeDe(c.responsavel), arquivos, escolhidos, emails, origemDoEmail, emailDoCadastro: doCadastro, emailsDoEntregas: doEntregas, envio, jaEnviados,
+        codigo: c.codigo, nome: c.nomeNaTela, responsavel: nomeDe(c.responsavel), arquivos, arquivosFora, tirado: !!tirado?.tudo, escolhidos, emails, origemDoEmail, emailDoCadastro: doCadastro, emailsDoEntregas: doEntregas, envio, jaEnviados,
         situacao: situacaoDoEnvio(envio, arquivos.length, emails.length, jaEnviados.completo), ex: porNome.get(c.nomeNaTela) || null,
       };
     })
     // marcar para o lote: tem arquivo e e-mail e não está com o robô
     .map(l => ({ ...l, podeMarcar: l.arquivos.length > 0 && l.emails.length > 0 && l.situacao !== 'fila' && l.situacao !== 'enviando' }))
     .sort((a, b) => a.codigo - b.codigo);
-  type Linha = (typeof todas)[number];
+  type Linha = (typeof comTirados)[number];
+  // o cliente tirado sai da lista (e do lote, do progresso e da contagem); fica no cartão Fora da lista, para pôr de volta
+  const todas = comTirados.filter(l => !l.tirado);
   const q = busca.trim().toLowerCase();
+  const daBusca = (l: Linha) => !q || l.nome.toLowerCase().includes(q) || String(l.codigo).includes(q) || l.emails.some(e => e.includes(q));
   const doResponsavel = responsavel ? todas.filter(l => l.responsavel === responsavel) : todas;
-  const linhas = doResponsavel.filter(l => (!q || l.nome.toLowerCase().includes(q) || String(l.codigo).includes(q) || l.emails.some(e => e.includes(q))) && DO_FILTRO[filtro](l.situacao));
+  const linhas = doResponsavel.filter(l => daBusca(l) && DO_FILTRO[filtro](l.situacao));
+  const tirados = comTirados.filter(l => l.tirado && (!responsavel || l.responsavel === responsavel) && daBusca(l));
   const prontos = doResponsavel.filter(l => l.situacao === 'pronto' && l.escolhidos.length > 0);
   const marcadasValidas = todas.filter(l => l.podeMarcar && selecionadas.has(l.codigo) && l.escolhidos.length > 0);
   // o robô agora (como o do FGTS): com quem está e a fila
@@ -168,7 +179,7 @@ export function useEnviosDoDp() {
 
   return {
     exemplos: repo.exemplos,
-    carregando: !lista.carregados || !envios.carregados || !clientesDoEntregas.carregados || !doDp.carregado,
+    carregando: !lista.carregados || !envios.carregados || !foraDoMes.carregados || !clientesDoEntregas.carregados || !doDp.carregado,
     competencia,
     competencias: competencias.map(c => ({ valor: c, rotulo: t.rotuloCompetencia(c) })),
     /** a competência do DP é a mesma em todas as páginas (21/10/2026) */
@@ -223,6 +234,32 @@ export function useEnviosDoDp() {
     gravarModelo: async (m: { assunto: string; texto: string }) => {
       try { await repo.gravarModelo(m); toast('Modelo do e-mail salvo.'); }
       catch (e) { toast('Não consegui salvar: ' + (e instanceof Error ? e.message : String(e))); }
+    },
+    /** os clientes tirados da lista do mês (com a busca e o responsável), para pôr de volta */
+    tirados: tirados.map(l => ({ codigo: l.codigo, nome: l.nome, arquivos: l.arquivos.length })),
+    /** dá para tirar o cliente (não está com o robô agora) */
+    podeTirar: (codigo: number) => { const l = comTirados.find(x => x.codigo === codigo); return !!l && l.situacao !== 'fila' && l.situacao !== 'enviando'; },
+    /** tira o cliente inteiro da lista do mês (ou põe de volta) */
+    async tirarCliente(codigo: number, tirar: boolean) {
+      const l = comTirados.find(x => x.codigo === codigo);
+      if (!l) return;
+      await comLinha('tirar:' + codigo, async () => {
+        try {
+          await repo.tirar({ competencia, codigo, tirar });
+          if (tirar) { setSelecionadas(m => { const n = new Set(m); n.delete(codigo); return n; }); if (aberto === codigo) setAberto(null); }
+          toast(l.nome + (tirar ? ' saiu da lista de envios de ' : ' voltou para a lista de envios de ') + t.rotuloCompetencia(competencia) + '.');
+        } catch (e) { toast('Não consegui: ' + (e instanceof Error ? e.message : String(e))); }
+      });
+    },
+    /** tira um arquivo da lista do mês do cliente (ou põe de volta): o robô não manda o que foi tirado */
+    async tirarArquivo(codigo: number, id: string, tirar: boolean) {
+      const l = comTirados.find(x => x.codigo === codigo);
+      const a = l && [...l.arquivos, ...l.arquivosFora].find(x => x.id === id);
+      if (!l || !a) return;
+      await comLinha('tirar:' + codigo + ':' + id, async () => {
+        try { await repo.tirar({ competencia, codigo, arquivo: id, tirar }); toast(a.nome + (tirar ? ' saiu da lista de envios.' : ' voltou para a lista de envios.')); }
+        catch (e) { toast('Não consegui: ' + (e instanceof Error ? e.message : String(e))); }
+      });
     },
     /** o cliente aberto na janela (os arquivos para marcar e o último envio) */
     aberto: aberto != null ? todas.find(l => l.codigo === aberto) || null : null,
