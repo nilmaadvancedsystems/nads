@@ -34,6 +34,8 @@ import { CANCELAR_LOTE_A_QUALQUER_HORA } from '../../../../../../comum/desenvolv
 import { modoDesenvolvedor } from '../../../../../../comum/modoDesenvolvedor';
 import { useColunaAjustavel } from '../../../../../../comum/GradeDosMeses';
 import { ContabilNaImportacao } from '../../../../../../comum/ContabilNaImportacao';
+import { BlocoDoRobo } from './BlocoDoRobo';
+import { useRazaoDoRobo } from './useRazaoDoRobo';
 import { useContabilDaEmpresa } from '../../../../../../comum/contabilDaEmpresa';
 
 type Vm = ReturnType<typeof useImportacao>;
@@ -677,6 +679,8 @@ export function TarefaExtratos() {
   const contabil = useContabilDaEmpresa(s.nome, s.codigo);
   const mesesDaEtapa = vm.periodo.length > 1 ? vm.periodo : [vm.competencia];
   const importados = useImportadosDaConferencia(s.nome, mesesDaEtapa);
+  // os razões pelo robô do Alterdata (06/11/2026): na Importação da Tarefa ainda não concluída, pede sozinho os meses
+  const razaoDoRobo = useRazaoDoRobo({ nome: s.nome, codigo: s.codigo, meses: mesesDaEtapa, automatico: ponte.naTarefa && !ponte.etapaConcluida && !vm.etapaCheque });
   const semMovimentoNoPeriodo = (banco: string) => mesesDaEtapa.every(m => (vm.periodo.length > 1 ? ponte.semMovimentoPorMes[m] || [] : ponte.semMovimento).includes(banco));
   const diasSemCheque = (banco: string) => { const t = situacoes[banco]; return t && t.tipo === 'falta-cheque' ? t.faltam.length : 0; };
   // algum banco fecha negativo no período: a etapa Cheque especial aparece; sem nenhum, a Tarefas a pula (Vitor, 02/10/2026)
@@ -758,7 +762,7 @@ export function TarefaExtratos() {
           ))}
         </nav>
       )}
-      {aba === 'contabil' ? <div data-destaque="contabil"><ContabilNaImportacao nome={s.nome} codigo={s.codigo} meses={mesesDaEtapa} soDiario={ponte.naTarefa && !ponte.etapaConcluida} /></div>
+      {aba === 'contabil' ? <div data-destaque="contabil"><ContabilNaImportacao nome={s.nome} codigo={s.codigo} meses={mesesDaEtapa} soDiario={ponte.naTarefa && !ponte.etapaConcluida} blocoDoRobo={<BlocoDoRobo robo={razaoDoRobo} />} /></div>
         : aba !== 'bancos' ? <div data-destaque="importacao"><ImportacaoNaEtapa nome={s.nome} tipo={aba} prestaServico={vm.prestaServico} meses={mesesDaEtapa} /></div> : (<>
       <div className={'imp-topo' + (ocupadoGeral ? ' travado' : '')} aria-busy={ocupadoGeral}>
         {/* à esquerda, como o "⎇ main ▾  6 Branches" do GitHub: a competência e o número de bancos */}

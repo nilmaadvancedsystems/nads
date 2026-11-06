@@ -209,7 +209,7 @@ function ListaDeFornecedores({ vm }: { vm: VM }) {
                     </button>
                   ) : (
                     <>
-                    <BotaoDiario desabilitado={!vm.carregado} onClick={() => vm.usarDiarioNaConta(l.codigo)} titulo={'Usar o Diário (PDF) no razão da conta ' + l.codigo} />
+                    <BotaoDiario desabilitado={!vm.carregado} onClick={() => vm.usarDiarioNaConta(l.codigo)} titulo={'Usar o razão do robô na conta ' + l.codigo} />
                     <button type="button" className="icon-btn icon-btn-sm imp-btn" disabled={!vm.carregado}
                       onClick={() => { conta.current = l.codigo; arquivo.current?.click(); }}
                       title={'Importar o razão da conta ' + l.codigo + ' (as notas em aberto vão para a relação do cliente)'} aria-label={'Importar o razão de ' + l.nome}>

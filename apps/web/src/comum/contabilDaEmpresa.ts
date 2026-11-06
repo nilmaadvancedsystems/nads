@@ -3,19 +3,21 @@
 // as etapas leem daqui (o razão do tipo delas) quando não têm o próprio. O código da conta vem do nome da aba do XLS do
 // Alterdata; de que é a conta, pelo dinâmico (clientes.tipoDoRazao). Fica no guardado da empresa (o "onde parou": neste
 // navegador e, com a empresa aberta, no banco).
-// O Diário (Vitor, 2026-11): um PDF com todas as contas do período. Fica no mesmo guardado; o razão de uma conta sai dele
-// (razaoDoDiario). Mais recente vence: o que se importa ou se preenche pelo Diário troca o razão de antes da conta.
+// O razão de todas as contas pelo robô do Alterdata (Vitor, 06/11/2026: "não vai ter mais a função de diário, apenas razões
+// do lançamento"; antes era o PDF do Diário): fica no mesmo lugar do guardado (o campo diario, no formato do Diário); o razão
+// de uma conta sai dele (razaoDoDiario). Mais recente vence: o que se importa ou se preenche pelo robô troca o razão de antes.
 import { clientes as cl, conferencia as c, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useMemo } from 'react';
 import { guardadosQueCasam, useGuardado } from './guardado';
-import { paginasDoDiario } from './diarioPdf';
 
 export interface RazaoGuardado { arquivo: string; razao: t.RazaoDaConta }
 export interface DinamicoGuardado { nome: string; d: cl.BalanceteDinamico }
 /** O Diário do Alterdata (um PDF com todas as contas do período): os lançamentos lidos, por conta. */
 export interface DiarioGuardado { arquivo: string; lido: t.DiarioLido }
 interface Contabil { dinamico?: DinamicoGuardado; razoes?: Record<string, RazaoGuardado>; diario?: DiarioGuardado }
+
+const SEM_RAZAO_DO_ROBO = 'Na Importação, aba Balancete e razões, puxe os razões do Alterdata pelo robô.';
 
 /** A chave do guardado da empresa (o nome: a Importação e as etapas têm o mesmo). */
 export const chaveDoContabil = (empresa: string) => 'contabil|' + empresa;
@@ -43,12 +45,13 @@ export function useContabilDaEmpresa(nome: string, codigo: number | null = null)
     return out;
   }, [razoes, dinamico]);
 
-  // o saldo inicial do razão do Diário: o saldo anterior do dinâmico, no sinal do razão (devedor negativo). O Diário não
-  // traz o saldo anterior; sem o dinâmico da conta, 0.
+  // o saldo inicial do razão do Diário: o do razão do robô (ele traz), ou o saldo anterior do dinâmico, no sinal do razão
+  // (devedor negativo). O PDF do Diário não traz o saldo anterior; sem o dinâmico da conta, 0.
   const razaoDoDiarioDaConta = (codigo: string): t.RazaoDaConta | null => {
     if (!diario) return null;
+    const doRobo = diario.lido.saldosIniciais?.[codigo];
     const linha = dinamico?.d.linhas.find(l => l.codigo === codigo);
-    return t.razaoDoDiario(diario.lido.lancamentos, codigo, linha ? -linha.saldoAnterior : 0);
+    return t.razaoDoDiario(diario.lido.lancamentos, codigo, doRobo ?? (linha ? -linha.saldoAnterior : 0));
   };
 
   // preenche o razão de cada conta pelo Diário; a mais recente vence (troca o razão .xls que estava)
@@ -107,14 +110,9 @@ export function useContabilDaEmpresa(nome: string, codigo: number | null = null)
     // ─── o Diário (um PDF com todas as contas do período) ───
     /** o Diário guardado (null = não importou) */
     diario,
-    /** lê o PDF do Diário e guarda os lançamentos (o de antes sai). Lança Error com a mensagem para a tela. */
-    async importarDiario(f: File): Promise<t.DiarioLido> {
-      const lido = t.lerDiario(await paginasDoDiario(await f.arrayBuffer()));
-      if (!lido.lancamentos.length) throw new Error('O diário não tem nenhum lançamento. Confira se é o Diário do Alterdata em PDF.');
-      setG(x => ({ ...x, diario: { arquivo: f.name, lido } }));
-      return lido;
-    },
     tirarDiario: () => setG(x => { const n = { ...x }; delete n.diario; return n; }),
+    /** o razão de todas as contas que o robô do Alterdata gerou, já lido: no lugar do Diário (o de antes sai) */
+    usarDiarioLido: (arquivo: string, lido: t.DiarioLido) => setG(x => ({ ...x, diario: { arquivo, lido } })),
     /** as contas de um tipo que o razão alimenta (Caixa, Salários…), pelo dinâmico; vazio sem o dinâmico */
     contasDoTipo: (tipo: cl.TipoDoRazao): string[] =>
       dinamico ? cl.razoesPedidos(dinamico.d).filter(p => p.tipo === tipo).map(p => p.codigo) : [],
@@ -125,19 +123,19 @@ export function useContabilDaEmpresa(nome: string, codigo: number | null = null)
      * etapa lê dali quando não tem o próprio). true = preencheu. Sem o Diário, avisa e não faz nada.
      */
     usarDiarioDoTipo(tipo: cl.TipoDoRazao, rotulo: string): boolean {
-      if (!diario) { aviso({ tom: 'erro', titulo: 'Sem o Diário', texto: 'Importe o Diário (PDF) na Importação, no bloco Diário.' }); return false; }
+      if (!diario) { aviso({ tom: 'erro', titulo: 'Sem o razão do robô', texto: SEM_RAZAO_DO_ROBO }); return false; }
       const codigos = dinamico ? cl.razoesPedidos(dinamico.d).filter(p => p.tipo === tipo).map(p => p.codigo) : [];
       if (!codigos.length) { aviso({ tom: 'erro', titulo: 'Sem a conta de ' + rotulo, texto: 'O balancete dinâmico não tem a conta de ' + rotulo + ' com saldo ou movimento no período.' }); return false; }
       const r = preencherDoDiario(codigos);
-      if (!r.contas.length) { aviso({ tom: 'erro', titulo: 'O Diário não tem ' + rotulo, texto: 'Nenhum lançamento das contas ' + codigos.join(', ') + ' no Diário.' }); return false; }
-      aviso({ tom: 'ok', titulo: 'Razão de ' + rotulo + ' pelo Diário', texto: r.semLancamento.length ? 'Sem lançamento no Diário: ' + r.semLancamento.join(', ') : diario.arquivo });
+      if (!r.contas.length) { aviso({ tom: 'erro', titulo: 'O razão do robô não tem ' + rotulo, texto: 'Nenhum lançamento das contas ' + codigos.join(', ') + ' no período.' }); return false; }
+      aviso({ tom: 'ok', titulo: 'Razão de ' + rotulo + ' pelo robô', texto: r.semLancamento.length ? 'Sem lançamento no período: ' + r.semLancamento.join(', ') : diario.arquivo });
       return true;
     },
-    /** o botão Diário de uma conta (Clientes, Fornecedores…): o razão dela do Diário, ou null (com aviso). */
+    /** o botão do robô numa conta (Clientes, Fornecedores…): o razão dela, ou null (com aviso). */
     razaoDoDiarioDeConta(codigo: string, rotulo: string): t.RazaoDaConta | null {
-      if (!diario) { aviso({ tom: 'erro', titulo: 'Sem o Diário', texto: 'Importe o Diário (PDF) na Importação, no bloco Diário.' }); return null; }
+      if (!diario) { aviso({ tom: 'erro', titulo: 'Sem o razão do robô', texto: SEM_RAZAO_DO_ROBO }); return null; }
       const r = razaoDoDiarioDaConta(codigo);
-      if (!r) aviso({ tom: 'erro', titulo: 'O Diário não tem ' + rotulo, texto: 'Nenhum lançamento da conta ' + codigo + ' no Diário.' });
+      if (!r) aviso({ tom: 'erro', titulo: 'O razão do robô não tem ' + rotulo, texto: 'Nenhum lançamento da conta ' + codigo + ' no período.' });
       return r;
     },
   };
