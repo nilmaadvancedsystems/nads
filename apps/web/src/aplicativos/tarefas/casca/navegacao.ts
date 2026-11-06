@@ -193,6 +193,16 @@ export const podeVerOFinanceiro = (op: Operador | null) => {
   return DONOS_DO_FINANCEIRO.includes(primeiro);
 };
 
+/**
+ * Quem abre a rotina e o cadastro de outro setor: o admin e o diretor (Vitor, 06/11/2026: "quem é do fiscal, não é para ter
+ * acesso a coisas do contábil"). Os outros ficam no setor deles (o ?dep= de outro setor é ignorado).
+ */
+export const podeVerOutrosSetores = (op: Operador | null) => !!op && (op.admin || op.nivel === 'diretor');
+
+/** As abas da janela da empresa no Cadastro que a pessoa vê: as do Contábil só para o Contábil (e quem vê os outros setores). */
+export const abasDoCadastroDe = (op: Operador | null) =>
+  ABAS_DO_CADASTRO.filter(a => a.grupo !== 'Contábil' || podeVerOutrosSetores(op) || op?.departamento === 'contabil');
+
 /** As aplicações que a pessoa vê: Fiscal só para o Fiscal; Contábil só para o Contábil; Drive para todos; Gmail para os dois (admin vê tudo). */
 export function aplicacoesDe(op: Operador): Aplicacao[] {
   return APLICACOES.filter(a =>
@@ -208,6 +218,9 @@ export function aplicacoesDe(op: Operador): Aplicacao[] {
     (a.id !== 'financeiro' || podeVerOFinanceiro(op)))
     // as páginas só do admin (as do Admin, nas Configurações) ficam de fora para os outros
     .map(a => (op.admin || !a.paginas.some(p => p.soAdmin) ? a : { ...a, paginas: a.paginas.filter(p => !p.soAdmin) }))
+    // a lista das empresas se chama Contábil só para quem é do Contábil (06/11/2026); para o Fiscal e o DP ela mostra a
+    // rotina do setor deles, com o nome de antes
+    .map(a => (a.id === 'minhas-empresas' && !podeVerOutrosSetores(op) && op.departamento !== 'contabil' ? { ...a, nome: 'Minhas empresas', paginas: a.paginas.map(p => ({ ...p, titulo: 'Minhas empresas' })) } : a))
     // na gaveta, um grupo depois do outro: Rotinas, Comunicação, Escritório
     .sort((x, y) => ORDEM_DOS_GRUPOS.indexOf(x.grupo) - ORDEM_DOS_GRUPOS.indexOf(y.grupo));
 }
