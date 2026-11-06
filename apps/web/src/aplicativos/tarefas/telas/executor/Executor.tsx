@@ -119,8 +119,8 @@ export function Executor() {
     publicarOndeEsta(vm.empresa ? { empresa: vm.empresa.nome, codigo: vm.empresa.codigo ?? null, meses: vm.meses.length ? vm.meses : [vm.competencia], etapa: vm.etapa?.nome || '', aba: abaAberta, bancos: vm.bancosDaEmpresa } : null);
   });
   useEffect(() => () => publicarOndeEsta(null), []);
-  // o nome da aba do navegador (Vitor, 26/10/2026: "o número da empresa e a etapa"): "289 · Caixa — Tarefas"; saiu, volta
-  const tituloDaAba = vm.empresa ? String(vm.empresa.codigo ?? vm.empresa.nome) + (vm.etapa?.nome ? ' · ' + vm.etapa.nome : '') + ' — Tarefas' : '';
+  // o nome da aba do navegador (Vitor, 26/10/2026: "o número da empresa e a etapa"): "289 · Caixa — NADS"; saiu, volta
+  const tituloDaAba = vm.empresa ? String(vm.empresa.codigo ?? vm.empresa.nome) + (vm.etapa?.nome ? ' · ' + vm.etapa.nome : '') + ' — NADS' : '';
   useEffect(() => {
     if (!tituloDaAba) return;
     const antes = document.title;

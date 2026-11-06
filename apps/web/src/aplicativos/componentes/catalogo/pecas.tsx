@@ -1,7 +1,7 @@
 // As peças do catálogo, desenhadas com as MESMAS peças do sistema (@nads/ui e as classes do nads.css). A ordem dentro
 // de cada tipo dá o código (BT-01, BT-02…): peça nova entra no FIM do tipo, para os códigos não mudarem.
 import {
-  Alerta, AnelDeContagem, BarrasEmColuna, BotaoAcao, BotaoFechar, Vazio, CartaoComAnel, RoscaComLegenda, ConfigLinha, ConfigSecao, Dica, MedalhaGov, classeDaJanela, ordemDosBotoes, BotaoIcone, CampoArquivos, CampoData, Esqueleto, Icone, Interruptor, LogoBanco, LogoDrive, LogoEcontador, LogoGmail, MapaDeCalor, Variacao,
+  Alerta, AnelDeContagem, BarrasEmColuna, BotaoAcao, BotaoFechar, Vazio, CartaoComAnel, RoscaComLegenda, ConfigLinha, ConfigSecao, Dica, MedalhaGov, classeDaJanela, ordemDosBotoes, BotaoIcone, CampoArquivos, CampoData, Esqueleto, Icone, Interruptor, LogoBanco, LogoDrive, LogoEcontador, LogoGmail, LogoSciReport, MapaDeCalor, Variacao,
   LogoFgts, LogoGovernoMinas, LogoInss, LogoReceitaFederal, LogoSimplesNacional, LogoWhatsApp, MarcaN, MenuSuspenso, Segmentado, SeletorMes, SeletorTema, Stat, type NomeIcone, type OpcoesModal,
 } from '@nads/ui';
 import { useState, type ReactNode } from 'react';
@@ -348,8 +348,8 @@ export const PECAS_BASE: Peca[] = [
   // ─── Logos ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   { id: 'logos-bancos', tipo: 'logos', nome: 'Bancos (cinza e colorido)', componente: 'LogoBanco', telas: ['e-importacao', 't-exec-importacao', 't-exec-cheque', 't-cadastro-janela'], largo: true, uso: '<LogoBanco banco="sicoob" cor />',
     demo: () => <div className="cat-icones">{BANCOS.map(b => <span key={b} className="cat-icone"><span style={{ display: 'flex', gap: 8 }}><span className="imp-logo" style={{ width: 28, height: 28 }}><LogoBanco banco={b} /></span><span className="imp-logo" style={{ width: 28, height: 28 }}><LogoBanco banco={b} cor /></span></span>{b}</span>)}</div> },
-  { id: 'logos-apps', tipo: 'logos', nome: 'Aplicativos', componente: 'LogoDrive · LogoGmail · LogoWhatsApp · LogoEcontador', telas: ['e-importacao', 't-drive', 't-gmail', 't-fiscal-relatorio'],
-    demo: () => <><span style={{ width: 24, height: 24, display: 'inline-flex' }}><LogoDrive /></span><span style={{ width: 24, height: 24, display: 'inline-flex' }}><LogoDrive cor /></span><span style={{ width: 24, height: 24, display: 'inline-flex' }}><LogoGmail /></span><span style={{ width: 24, height: 24, display: 'inline-flex' }}><LogoWhatsApp /></span><span style={{ width: 24, height: 24, display: 'inline-flex' }}><LogoEcontador /></span></> },
+  { id: 'logos-apps', tipo: 'logos', nome: 'Aplicativos', componente: 'LogoDrive · LogoGmail · LogoWhatsApp · LogoEcontador · LogoSciReport', telas: ['e-importacao', 't-drive', 't-gmail', 't-fiscal-relatorio'],
+    demo: () => <><span style={{ width: 24, height: 24, display: 'inline-flex' }}><LogoDrive /></span><span style={{ width: 24, height: 24, display: 'inline-flex' }}><LogoDrive cor /></span><span style={{ width: 24, height: 24, display: 'inline-flex' }}><LogoGmail /></span><span style={{ width: 24, height: 24, display: 'inline-flex' }}><LogoWhatsApp /></span><span style={{ width: 24, height: 24, display: 'inline-flex' }}><LogoEcontador /></span><span style={{ width: 24, height: 24, display: 'inline-flex' }}><LogoSciReport /></span></> },
 
   // ─── Campos ─────────────────────────────────────────────────────────────────────────────────────────────────────────
   { id: 'busca-curta', tipo: 'campos', nome: 'Busca (com lupa)', classes: ['busca-curta', 'busca-curta larga'], telas: ['t-empresa-lcdpr', 't-empresas', 't-cadastro', 't-drive', 'e-importacao', 'c-consulta', 't-senhas', 'a-arquivador'],
