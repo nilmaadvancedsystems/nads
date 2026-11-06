@@ -21,6 +21,8 @@
 const { FieldValue } = require('firebase-admin/firestore');
 
 const COLECAO = 'dpArquivos';
+// o que o DP tirou da lista de envios do mês (06/11/2026): clientes.<código>: { tudo, arquivos: [ids] }; nunca vai
+const COLECAO_FORA = 'dpEnviosFora';
 const MES = /^(0[1-9]|1[0-2])$/;
 // um cliente com mais que isso num mês é pasta bagunçada: a lista fica nos primeiros (o documento tem teto de 1 MB)
 const MAX_ARQUIVOS = 80;
@@ -93,6 +95,15 @@ function arquivosDoDpNaPasta(itens, raizId, ano, caminhos, chaveDeNome) {
 function escolhidos(lista, pedidos) {
   const ids = new Set((Array.isArray(pedidos) ? pedidos : []).map(String));
   return ids.size ? lista.filter(a => ids.has(a.i)) : lista.slice();
+}
+
+// Tira o que o DP tirou da lista do mês (DP › Envios, a lixeira; 06/11/2026: "excluir o arquivo em anexo assim como no
+// fiscal e remover da lista de envios"): fora = { tudo, arquivos } do cliente em dpEnviosFora. O cliente inteiro tirado não
+// recebe nada (erro, para o pedido não ficar parado); o arquivo tirado sai do e-mail, mesmo num pedido feito antes.
+function tirarOsDeFora(lista, fora, comp) {
+  if (fora && fora.tudo === true) throw new Error('o cliente foi tirado da lista de envios de ' + String(comp || '').slice(5) + '/' + String(comp || '').slice(0, 4));
+  const ids = new Set((fora && Array.isArray(fora.arquivos) ? fora.arquivos : []).map(String));
+  return ids.size ? lista.filter(a => !ids.has(String(a.i))) : lista;
 }
 
 // Para quem vai: o e-mail do Cadastro do nads (cadastro/{empresa}.contato.email; com mais de um documento do mesmo código,
@@ -176,8 +187,9 @@ async function atenderEnvioDp(p, ctx) {
 
   const doc = (await db.collection(COLECAO).doc(comp).get()).data() || {};
   const lista = ((doc.clientes || {})[codigo] || {}).arquivos || [];
-  const vao = escolhidos(lista, p.arquivos);
-  if (!vao.length) throw new Error('nenhum arquivo do DP de ' + comp.slice(5) + '/' + comp.slice(0, 4) + ' na pasta do cliente');
+  const fora = ((((await db.collection(COLECAO_FORA).doc(comp).get()).data() || {}).clientes) || {})[codigo];
+  const vao = tirarOsDeFora(escolhidos(lista, p.arquivos), fora, comp);
+  if (!vao.length) throw new Error(fora && fora.arquivos && fora.arquivos.length ? 'os arquivos pedidos foram tirados da lista de envios' : 'nenhum arquivo do DP de ' + comp.slice(5) + '/' + comp.slice(0, 4) + ' na pasta do cliente');
   const total = vao.reduce((s, a) => s + (a.s || 0), 0);
   if (total > MAX_BYTES) throw new Error('os arquivos passam de 18 MB juntos (' + (total / 1048576).toFixed(1).replace('.', ',') + ' MB); desmarque alguns');
 
@@ -277,5 +289,5 @@ async function mandarEmailDoDp(db, { comp, nome, para, anexos }, ctx) {
 module.exports = {
   gravarArquivosDoDp, atenderEnvioDp, destinatarios, mandarEmailDoDp, mimeDe, MAX_BYTES,
   // puras, pro teste
-  competenciaDoDp, arquivosDoDpNaPasta, nomesNoEmail, documentoDoAnexo, escolhidos, paraQuem, mesPorExtenso, mesesRecentes, mesAnterior, mensagemDoEnvio, MODELO_PADRAO, COLECAO,
+  competenciaDoDp, arquivosDoDpNaPasta, nomesNoEmail, documentoDoAnexo, escolhidos, tirarOsDeFora, paraQuem, mesPorExtenso, mesesRecentes, mesAnterior, mensagemDoEnvio, MODELO_PADRAO, COLECAO,
 };

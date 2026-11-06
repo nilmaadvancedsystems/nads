@@ -6,7 +6,10 @@
 // Em cima, Enviar todos os prontos (com a confirmação: são e-mails para muitos clientes de uma vez).
 // 28/10/2026 ("com seleção de quais vou enviar, no estilo do fgts"): o painel do robô do FGTS (o progresso do mês, Agora e
 // Na fila), a caixinha de cada cliente com Enviar marcadas, e o Modelo do e-mail (como o E-mail ao cliente da NFS-e).
-import { BotaoAcao, ConfigLinha, ConfigSecao, Esqueleto, Icone, MenuSuspenso, NumeroQueConta, SeletorMes, useCarregando, useEntradaAnimada } from '@nads/ui';
+// 06/11/2026 ("ter como excluir o arquivo em anexo assim como no fiscal e remover da lista de envios"): a lixeira, como a do
+// Enviar guias do Fiscal, tira o cliente inteiro (na linha) ou um arquivo (na janela) da lista do mês; os tirados ficam no
+// cartão Fora da lista, com Pôr de volta, e o robô não manda o que foi tirado.
+import { BotaoAcao, BotaoIcone, ConfigLinha, ConfigSecao, Esqueleto, Icone, MenuSuspenso, NumeroQueConta, SeletorMes, useCarregando, useEntradaAnimada } from '@nads/ui';
 import { useState } from 'react';
 import { JanelaLateral } from '../janela/JanelaLateral';
 import { JanelaDoLote } from './JanelaDoLote';
@@ -112,7 +115,7 @@ export function EnviosDoDp() {
           <div className="table-wrap" ref={tabela}>
             <table className="dp-tabela fgts-tabela">
               <thead>
-                <tr><th className="fgts-marca"><input type="checkbox" checked={vm.todasMarcadas} onChange={e => vm.marcarTodas(e.target.checked)} aria-label="Marcar todas" title="Marcar todas da tela" /></th><th>Cód.</th><th>Cliente</th><th>Responsável</th><th>Arquivos do mês</th><th>E-mail</th><th>Envio</th><th /></tr>
+                <tr><th className="fgts-marca"><input type="checkbox" checked={vm.todasMarcadas} onChange={e => vm.marcarTodas(e.target.checked)} aria-label="Marcar todas" title="Marcar todas da tela" /></th><th>Cód.</th><th>Cliente</th><th>Responsável</th><th>Arquivos do mês</th><th>E-mail</th><th>Envio</th><th /><th className="dp-tabela-acao" aria-label="Tirar" /></tr>
               </thead>
               <tbody>
                 {vm.linhas.map(l => {
@@ -165,6 +168,9 @@ export function EnviosDoDp() {
                           )}
                         </div>
                       </td>
+                      <td className="dp-tabela-acao">
+                        {vm.podeTirar(l.codigo) && <BotaoIcone icone="lixeira" titulo={'Tirar ' + l.nome + ' da lista de envios'} disabled={vm.fazendo('tirar:' + l.codigo)} onClick={() => void vm.tirarCliente(l.codigo, true)} />}
+                      </td>
                     </tr>
                   );
                 })}
@@ -173,6 +179,26 @@ export function EnviosDoDp() {
           </div>
         )}
       </section>
+
+      {!vm.carregando && vm.tirados.length > 0 && (
+        <section className="card dp-lista">
+          <div className="dp-lista-topo">
+            <h3 className="dp-titulo">Fora da lista</h3>
+            <span className="badge badge-neutral">{vm.tirados.length}</span>
+            <span className="hint">o robô não manda para estes clientes em {mes}</span>
+          </div>
+          <ul className="dp-lote-lista">
+            {vm.tirados.map(l => (
+              <li key={l.codigo} className="dp-lote-arquivo">
+                <span className="num fraco">{l.codigo}</span>
+                <span className="dp-lote-nome" title={l.nome}>{l.nome}</span>
+                <span className="fraco">{l.arquivos ? l.arquivos + (l.arquivos === 1 ? ' arquivo' : ' arquivos') : 'sem arquivos'}</span>
+                <button type="button" className="link-btn" disabled={vm.fazendo('tirar:' + l.codigo)} onClick={() => void vm.tirarCliente(l.codigo, false)}>Pôr de volta</button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {aberto && (
         <JanelaLateral rotulo={aberto.nome} topico={vm.aba} mudar={vm.setAba} fechar={vm.fechar} classe="fgts-janela"
@@ -196,10 +222,24 @@ export function EnviosDoDp() {
                       {/* um documento só (28/10/2026: "a opção de enviar um único documento") */}
                       <BotaoAcao className="btn btn-ghost dp-envio-um" disabled={!vm.podeEnviar(aberto.codigo)} carregando={vm.fazendo('enviar:' + aberto.codigo + ':' + a.id)} textoCarregando="Pedindo…"
                         onClick={() => void vm.enviarArquivo(aberto.codigo, a.id)}><Icone nome="aviao" />Enviar só este</BotaoAcao>
+                      {vm.podeTirar(aberto.codigo) && <BotaoIcone icone="lixeira" titulo="Tirar este arquivo da lista de envios" disabled={vm.fazendo('tirar:' + aberto.codigo + ':' + a.id)} onClick={() => void vm.tirarArquivo(aberto.codigo, a.id, true)} />}
                     </li>
                   ))}
                 </ul>
-              ) : <p className="hint">Nenhum documento do DP de {mes} na pasta do cliente.</p>}
+              ) : <p className="hint">{aberto.arquivosFora.length ? 'Todos os documentos do DP de ' + mes + ' foram tirados da lista.' : 'Nenhum documento do DP de ' + mes + ' na pasta do cliente.'}</p>}
+              {aberto.arquivosFora.length > 0 && (
+                <>
+                  <h3>Fora da lista · {aberto.arquivosFora.length}</h3>
+                  <ul className="dp-lote-lista">
+                    {aberto.arquivosFora.map(a => (
+                      <li key={a.id} className="dp-lote-arquivo">
+                        <span className="dp-lote-nome" title={a.pasta}>{a.nome}</span>
+                        <button type="button" className="link-btn" disabled={vm.fazendo('tirar:' + aberto.codigo + ':' + a.id)} onClick={() => void vm.tirarArquivo(aberto.codigo, a.id, false)}>Pôr de volta</button>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
               <p className="fraco">Para: {aberto.emails.length ? aberto.emails.join(', ') : 'sem e-mail no cadastro'} · <button type="button" className="link-btn" onClick={() => vm.setAba('email')}>mudar</button></p>
               {aberto.arquivos.length > 0 && (
                 <BotaoAcao className="btn btn-primary" disabled={!aberto.escolhidos.length || !vm.podeEnviar(aberto.codigo)} carregando={vm.fazendo('enviar:' + aberto.codigo)} textoCarregando="Pedindo…" onClick={() => void vm.enviar(aberto.codigo)}>
