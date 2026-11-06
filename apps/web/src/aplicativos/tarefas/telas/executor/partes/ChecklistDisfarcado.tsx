@@ -9,7 +9,7 @@
 import { tarefas as t } from '@nads/core';
 import { Icone } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
-import { ImportacaoNaEtapa } from '../../../../concilia-ai/ImportacaoNaEtapa';
+import { ImportacaoNaEtapa } from '../../../etapas/conferencia/ImportacaoNaEtapa';
 import { JanelaLateral, type TopicoDaJanela } from '../../janela/JanelaLateral';
 import { ROTULO_DO_RELATORIO, usePainelDoFiscal, type TopicoDeImportar, type VmPainelDoFiscal } from '../usePainelDoFiscal';
 import type { TarefaDoChecklist } from '../useChecklistDaFolha';

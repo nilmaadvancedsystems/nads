@@ -24,7 +24,7 @@ export const ROTINA_CONTABIL: Rotina = {
       secao: 'Preparação',
       nome: 'Importação',
       descricao: 'Importe tudo o que a empresa precisa na competência: o extrato de cada banco e o razão da conta.',
-      ferramenta: { app: 'extratudo', nome: 'Extrator', caminho: r => '/extratudo/' + r + '/extrator/tarefa/extratos', embutir: true, periodo: true, requisitos: true },
+      tela: { id: 'importacao', periodo: true },
       verificacao: 'extrato-e-sistema',
       objecoes: [
         { id: 'sem-extrato', texto: 'O cliente não enviou o extrato', soMotivo: true, solucao: { tipo: 'contato', rotulo: 'Pedir extrato' } },
@@ -42,7 +42,6 @@ export const ROTINA_CONTABIL: Rotina = {
       nome: 'Cheque especial',
       descricao: 'Os dias em que o banco fecha negativo: gere os lançamentos no Cheque especial, lance no Alterdata e importe o razão de novo.',
       // a tela própria da Tarefa, banco por banco (Vitor, 13/10/2026: "não vai ficar em uma aplicação externa")
-      ferramenta: null,
       tela: { id: 'cheque-especial', periodo: true },
       verificacao: 'manual',
       objecoes: [
@@ -55,10 +54,59 @@ export const ROTINA_CONTABIL: Rotina = {
       nome: 'Conferência fiscal',
       descricao: 'Confira se o Fiscal fechou a competência: as notas de entrada e saída batem com o balancete.',
       // a Conferência (Concilia aí) dentro da etapa, no período que a pessoa está fazendo (o mês ou os meses do Em Lote)
-      ferramenta: { app: 'concilia-ai', nome: 'Conferência', caminho: r => '/' + r + '/movimento/relatorio', embutir: true, periodo: true, requisitos: true },
+      tela: { id: 'conferencia-fiscal', periodo: true },
       verificacao: 'manual',
       // sem a saída "O Fiscal ainda não fechou as notas" (Vitor, 01/10/2026): sem o Fiscal fechado, o Contábil nem abre a empresa
       objecoes: [],
+    },
+    {
+      // o caixa recebeu liquidação de cobrança do banco (CRÉD.LIQ.COBRANÇA): o Creditor é obrigatório no mês (Vitor,
+      // 05/10/2026). Entra pelo Cadastro ("Liquidação de cobrança: Sim") ou pelo razão do caixa. Logo depois da Conferência
+      // fiscal, cada ferramenta na sua etapa (Vitor, 06/11/2026: "Creditor, você coloca depois da conferência fiscal para
+      // empresas que têm CRED LIQ"; o Cartões e as Vendas no cartão na mesma lógica).
+      id: 'creditor',
+      secao: 'Preparação',
+      nome: 'Creditor',
+      descricao: 'As liquidações de cobrança que caíram no caixa conciliadas com o relatório do banco.',
+      tela: { id: 'creditor' },
+      verificacao: 'manual',
+      soQuandoAdicionada: true,
+      conferir: ['O razão do caixa tem CRÉD.LIQ.COBRANÇA: concilie as liquidações com o relatório do banco e importe no sistema.'],
+      objecoes: [
+        { id: 'sem-relatorio', texto: 'O relatório de liquidação não chegou', solucao: { tipo: 'contato', rotulo: 'Pedir o relatório ao cliente' } },
+      ],
+    },
+    {
+      // o cartão de crédito empresarial (Vitor, 07/10/2026): a fatura quebrada no razão do cartão, uma linha por compra
+      // (D Cartão de Crédito / C Banco) no dia em que o banco pagou. Só entra na empresa com "Cartão empresarial: Sim" no
+      // Cadastro (a Tarefa põe a etapa nos meses do período).
+      id: 'cartoes',
+      secao: 'Preparação',
+      nome: 'Cartões',
+      descricao: 'A fatura do cartão empresarial quebrada no razão do cartão, no dia do pagamento.',
+      tela: { id: 'cartoes' },
+      verificacao: 'manual',
+      soQuandoAdicionada: true,
+      conferir: ['Cada compra da fatura no razão do cartão, no dia em que o banco pagou; a soma igual ao total da fatura.'],
+      objecoes: [
+        { id: 'sem-fatura', texto: 'A fatura do cartão não chegou', solucao: { tipo: 'contato', rotulo: 'Pedir a fatura ao cliente' } },
+        nao('sem-compras-cartao', 'Não teve compra no cartão no mês', 'Sem fatura no mês'),
+      ],
+    },
+    {
+      // as vendas no cartão conciliadas com as notas, no Conciliadorzinho (Vitor, 16/10/2026: "o Conciliadorzinho é só para
+      // empresas que vendem no cartão"): só entra na empresa com "Vende no cartão: Sim" no Cadastro (useExecutor)
+      id: 'vendas-cartao',
+      secao: 'Preparação',
+      nome: 'Vendas no cartão',
+      descricao: 'As vendas das bandeiras conciliadas com as notas.',
+      tela: { id: 'vendas-cartao' },
+      verificacao: 'manual',
+      soQuandoAdicionada: true,
+      conferir: ['As vendas das bandeiras conciliadas com as notas de venda.'],
+      objecoes: [
+        { id: 'sem-extrato-cartao', texto: 'O extrato da operadora não chegou', soMotivo: true, solucao: { tipo: 'contato', rotulo: 'Pedir o extrato da operadora' } },
+      ],
     },
     {
       id: 'dp',
@@ -67,7 +115,6 @@ export const ROTINA_CONTABIL: Rotina = {
       // balancete importado — só o que a empresa tem (core: tarefas.checklistDaFolha)
       nome: 'Contabilização da Folha',
       descricao: 'Contabilize a folha do mês, item por item, conforme o que a empresa tem no balancete.',
-      ferramenta: null,
       verificacao: 'manual',
       checklistDaFolha: true,
       objecoes: [SEM_FUNCIONARIOS],
@@ -79,7 +126,6 @@ export const ROTINA_CONTABIL: Rotina = {
       secao: 'Ativo',
       nome: 'Caixa',
       descricao: 'O caixa nunca fica credor.',
-      ferramenta: null,
       verificacao: 'manual',
       // o botão de importar o razão do caixa (Vitor, 05/10/2026)
       razao: { conta: 'caixa' },
@@ -95,27 +141,11 @@ export const ROTINA_CONTABIL: Rotina = {
       ],
     },
     {
-      // o caixa recebeu liquidação de cobrança do banco (CRÉD.LIQ.COBRANÇA): o Creditor é obrigatório no mês (Vitor,
-      // 05/10/2026). A etapa só entra quando o razão do caixa importado tem isso.
-      id: 'creditor',
-      secao: 'Ativo',
-      nome: 'Creditor',
-      descricao: 'As liquidações de cobrança que caíram no caixa conciliadas com o relatório do banco.',
-      ferramenta: { app: 'extratudo', nome: 'Creditor', caminho: r => '/extratudo/' + r + '/creditor/competencia', embutir: true, requisitos: true },
-      verificacao: 'manual',
-      soQuandoAdicionada: true,
-      conferir: ['O razão do caixa tem CRÉD.LIQ.COBRANÇA: concilie as liquidações com o relatório do banco e importe no sistema.'],
-      objecoes: [
-        { id: 'sem-relatorio', texto: 'O relatório de liquidação não chegou', solucao: { tipo: 'contato', rotulo: 'Pedir o relatório ao cliente' } },
-      ],
-    },
-    {
       id: 'bancos',
       secao: 'Ativo',
       nome: 'Bancos',
       descricao: 'O saldo de cada banco é o do extrato no último dia; banco negativo vai para o cheque especial.',
       // só o relatório do que passou pelos bancos no período (Vitor, 06/10/2026): a pessoa vê os saldos e dá Próximo
-      ferramenta: null,
       tela: { id: 'bancos', periodo: true },
       verificacao: 'manual',
       conferir: [
@@ -134,7 +164,6 @@ export const ROTINA_CONTABIL: Rotina = {
       nome: 'Clientes',
       descricao: 'Nenhum cliente com saldo credor; os recebimentos do mês baixados.',
       // a ferramenta Clientes (Vitor, 06/10/2026): o balancete e o dinâmico, o saldo credor, a situação de cada cliente e o envio
-      ferramenta: null,
       tela: { id: 'clientes', periodo: true },
       verificacao: 'manual',
       conferir: [
@@ -151,7 +180,6 @@ export const ROTINA_CONTABIL: Rotina = {
       secao: 'Ativo',
       nome: 'Adiantamento a fornecedores',
       descricao: 'Os adiantamentos baixados quando a nota do fornecedor chega.',
-      ferramenta: null,
       // o razão da conta, mês a mês: credor trava o Próximo (Vitor, 07/10/2026: "ou ele fica devedor ou zera")
       tela: { id: 'adiantamento-fornecedores', periodo: true },
       verificacao: 'manual',
@@ -169,7 +197,6 @@ export const ROTINA_CONTABIL: Rotina = {
       secao: 'Ativo',
       nome: 'Adiantamento salarial',
       descricao: 'O adiantamento pago no dia 15 e descontado na folha do mês: zera no mês.',
-      ferramenta: null,
       tela: { id: 'adiantamento-salarial', periodo: true },
       // só entra pelo balancete (o mês com saldo): sem o dinâmico, nem aparece
       soQuandoAdicionada: true,
@@ -189,7 +216,6 @@ export const ROTINA_CONTABIL: Rotina = {
       secao: 'Ativo',
       nome: 'Estoque',
       descricao: 'O inventário do fim do ano: o cliente envia o estoque e ele é lançado.',
-      ferramenta: null,
       verificacao: 'manual',
       meses: [12],
       checklist: [
@@ -208,7 +234,6 @@ export const ROTINA_CONTABIL: Rotina = {
       descricao: 'As compras e vendas de bens do período lançadas no imobilizado.',
       // a tela Bens (Vitor, 07/10/2026): as notas de entrada 1551/2551 e os CFOPs ligados a bem, as saídas que baixam bem e
       // o uso e consumo com item de bem, das notas importadas na Conferência, no período da tarefa
-      ferramenta: null,
       tela: { id: 'bens', periodo: true },
       verificacao: 'manual',
       conferir: [
@@ -226,7 +251,6 @@ export const ROTINA_CONTABIL: Rotina = {
       secao: 'Passivo',
       nome: 'Fornecedores',
       descricao: 'Nenhum fornecedor com saldo devedor; as notas de entrada e os pagamentos do mês lançados.',
-      ferramenta: null,
       // a mesma tela do Clientes, com o fornecedor devedor no lugar do cliente credor (Vitor, 07/10/2026)
       tela: { id: 'fornecedores', periodo: true },
       verificacao: 'manual',
@@ -237,28 +261,10 @@ export const ROTINA_CONTABIL: Rotina = {
       objecoes: [nao('sem-fornecedores', 'A empresa não compra a prazo')],
     },
     {
-      // o cartão de crédito empresarial (Vitor, 07/10/2026): a fatura quebrada no razão do cartão, uma linha por compra
-      // (D Cartão de Crédito / C Banco) no dia em que o banco pagou. Só entra na empresa com "Cartão empresarial: Sim" no
-      // Cadastro (a Tarefa põe a etapa nos meses do período).
-      id: 'cartoes',
-      secao: 'Passivo',
-      nome: 'Cartões',
-      descricao: 'A fatura do cartão empresarial quebrada no razão do cartão, no dia do pagamento.',
-      ferramenta: { app: 'extratudo', nome: 'Cartões', caminho: r => '/extratudo/' + r + '/cartoes/compras/fatura', embutir: true, requisitos: true },
-      verificacao: 'manual',
-      soQuandoAdicionada: true,
-      conferir: ['Cada compra da fatura no razão do cartão, no dia em que o banco pagou; a soma igual ao total da fatura.'],
-      objecoes: [
-        { id: 'sem-fatura', texto: 'A fatura do cartão não chegou', solucao: { tipo: 'contato', rotulo: 'Pedir a fatura ao cliente' } },
-        nao('sem-compras-cartao', 'Não teve compra no cartão no mês', 'Sem fatura no mês'),
-      ],
-    },
-    {
       id: 'adiantamento-clientes',
       secao: 'Passivo',
       nome: 'Adiantamento de clientes',
       descricao: 'Os adiantamentos baixados quando a nota de venda sai.',
-      ferramenta: null,
       // a tela do Adiantamento a fornecedores ao contrário (Vitor, 07/10/2026): fica credor ou zera; mês devedor trava o Próximo
       tela: { id: 'adiantamento-clientes', periodo: true },
       verificacao: 'manual',
@@ -273,7 +279,6 @@ export const ROTINA_CONTABIL: Rotina = {
       secao: 'Passivo',
       nome: 'Empréstimos e financiamentos',
       descricao: 'O saldo de cada contrato igual ao do banco: parcela paga, juros e saldo devedor.',
-      ferramenta: null,
       // o razão de cada empréstimo com o banco dele, mês a mês (Vitor, 07/10/2026)
       tela: { id: 'emprestimos', periodo: true },
       verificacao: 'manual',
@@ -292,7 +297,6 @@ export const ROTINA_CONTABIL: Rotina = {
       secao: 'Passivo',
       nome: 'Salários, INSS e FGTS',
       descricao: 'A folha paga e as guias do mês: salários a pagar zerados, INSS e FGTS iguais às guias.',
-      ferramenta: null,
       verificacao: 'manual',
       // o razão do INSS a recolher × o PDF das guias: o que falta provisionar e baixar (Vitor, 05/10/2026); com Salários a
       // pagar e FGTS a recolher (um razão cada), na tela própria: mês devedor trava o Próximo (Vitor, 07/10/2026)
@@ -309,7 +313,6 @@ export const ROTINA_CONTABIL: Rotina = {
       secao: 'Passivo',
       nome: 'Pró-labore',
       descricao: 'O pró-labore a pagar recebe a despesa do mês e zera no pagamento.',
-      ferramenta: null,
       // só o razão do Pró-labore a pagar: obrigatório e tem que zerar (Vitor, 07/10/2026)
       tela: { id: 'pro-labore', periodo: true },
       verificacao: 'manual',
@@ -324,7 +327,6 @@ export const ROTINA_CONTABIL: Rotina = {
       secao: 'Passivo',
       nome: 'Honorários',
       descricao: 'O honorário a pagar recebe a despesa do mês e zera no pagamento.',
-      ferramenta: null,
       // o razão do Honorários a pagar, obrigatório e tem que zerar; sem nota de honorário (Cadastro), o Extrato por
       // cobrança vira os lançamentos na data de emissão, no arquivo do Alterdata (Vitor, 07/10/2026)
       tela: { id: 'honorarios', periodo: true },
@@ -344,7 +346,6 @@ export const ROTINA_CONTABIL: Rotina = {
       secao: 'Passivo',
       nome: 'Simples Nacional a recolher',
       descricao: 'O DAS do mês entra a crédito e é pago no mês seguinte.',
-      ferramenta: null,
       tela: { id: 'simples', periodo: true },
       regimes: ['Simples'],
       verificacao: 'manual',
@@ -366,7 +367,6 @@ export const ROTINA_CONTABIL: Rotina = {
       secao: 'Resultado',
       nome: 'Despesas e receitas',
       descricao: 'Nenhuma despesa credora e nenhuma receita devedora no balancete dinâmico.',
-      ferramenta: null,
       tela: { id: 'resultado', periodo: true },
       verificacao: 'manual',
       conferir: [
@@ -377,22 +377,6 @@ export const ROTINA_CONTABIL: Rotina = {
       objecoes: [
         { id: 'despesa-credora', texto: 'Tem despesa credora e não achei o motivo', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Interrompa com esta objeção: a competência aparece para os sêniores revisarem.' } },
         { id: 'receita-devedora', texto: 'Tem receita devedora e não achei o motivo', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Interrompa com esta objeção: a competência aparece para os sêniores revisarem.' } },
-      ],
-    },
-
-    {
-      // as vendas no cartão conciliadas com as notas, no Conciliadorzinho (Vitor, 16/10/2026: "o Conciliadorzinho é só para
-      // empresas que vendem no cartão"): só entra na empresa com "Vende no cartão: Sim" no Cadastro (useExecutor)
-      id: 'vendas-cartao',
-      secao: 'Resultado',
-      nome: 'Vendas no cartão',
-      descricao: 'As vendas das bandeiras conciliadas com as notas.',
-      ferramenta: { app: 'conciliadorzinho', nome: 'Conciliadorzinho', caminho: r => '/conciliadorzinho/' + r + '/conciliacao/bandeiras', embutir: true },
-      verificacao: 'manual',
-      soQuandoAdicionada: true,
-      conferir: ['As vendas das bandeiras conciliadas com as notas de venda.'],
-      objecoes: [
-        { id: 'sem-extrato-cartao', texto: 'O extrato da operadora não chegou', soMotivo: true, solucao: { tipo: 'contato', rotulo: 'Pedir o extrato da operadora' } },
       ],
     },
 
@@ -407,7 +391,6 @@ export const IMPOSTOS_A_RECOLHER = {
   secao: 'Passivo',
   nome: 'Impostos a recolher',
   descricao: 'O imposto do mês (Simples ou ICMS) igual à guia; a guia paga zera o saldo.',
-  ferramenta: null,
   verificacao: 'manual',
   conferir: [
     'Simples Nacional a recolher: o crédito do mês é igual à despesa (ou à dedução da receita) e à guia do DAS.',

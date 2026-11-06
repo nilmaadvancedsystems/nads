@@ -47,7 +47,7 @@ export function RazaoDaEtapa({ conta, razao, conferir, teste = [] }: { conta: st
     <div className="executor-razao">
       {razao.creditor.length > 0 && (
         <Alerta naLinha titulo="Liquidação de cobrança no caixa: faça o Creditor"
-          texto={<>O caixa tem CRÉD.LIQ.COBRANÇA em {razao.creditor.join(', ')}. A etapa Creditor entrou na rotina {razao.creditor.length === 1 ? 'desse mês' : 'desses meses'}, logo depois do Caixa, e é obrigatória.</>} />
+          texto={<>O caixa tem CRÉD.LIQ.COBRANÇA em {razao.creditor.join(', ')}. A etapa Creditor entrou na rotina {razao.creditor.length === 1 ? 'desse mês' : 'desses meses'}, logo depois da Conferência fiscal, e é obrigatória.</>} />
       )}
       {razao.cobertura && (razao.cobertura.faltam.length > 0 || razao.cobertura.aMais.length > 0) && (
         <div className="alert">

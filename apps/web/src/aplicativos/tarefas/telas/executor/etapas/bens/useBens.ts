@@ -8,7 +8,7 @@
 import { demo, formatos, tarefas } from '@nads/core';
 import { useCarregando, useRetorno } from '@nads/ui';
 import { useEffect, useState } from 'react';
-import { useNotasDaConferencia } from '../../../../../concilia-ai/importadosNaEtapa';
+import { useNotasDaConferencia } from '../../../../etapas/conferencia/importadosNaEtapa';
 import { useGuardado } from '../../../../../../comum/guardado';
 import { useChaveDaEtapa, useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
 

@@ -5,7 +5,7 @@
 // aparece com todos marcados (o "?" lista os que faltam). Os tiques ficam neste navegador, por empresa e período.
 import { tarefas as t } from '@nads/core';
 import { useEffect, useState } from 'react';
-import { useContasDoBalancete } from '../../../concilia-ai/importadosNaEtapa';
+import { useContasDoBalancete } from '../../etapas/conferencia/importadosNaEtapa';
 
 const chaveDe = (empresa: string, meses: readonly string[], etapa?: string) => (etapa ? 'nads-check:' + etapa + ':' : 'nads-folha:') + empresa + ':' + meses.join(',');
 

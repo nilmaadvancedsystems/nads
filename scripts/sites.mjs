@@ -7,8 +7,7 @@
 // Quem ainda não existe no nads ganha a página "Em construção"; os links antigos (que viraram parte
 // de outro aplicativo) levam para o novo.
 //
-//   npm run sites -- extratudo conciliadorzinho     publica só esses
-//   npm run sites -- extratudo-entregas             o Extratudo no projeto do Entregas (cria o site na 1ª vez)
+//   npm run sites -- tarefas conversor              publica só esses
 //   npm run sites -- todos                          publica todos
 //   npm run sites -- tarefas --canal=exemplos --exemplos
 //                                                   prévia com dados de exemplo (link próprio, expira em 7 dias;
@@ -46,10 +45,6 @@ const principal = (() => {
  */
 const PROJETO_PADRAO = 'conferencia-nilma';
 const SITES = {
-  'concilia-ai': { site: 'concilia-ai-nilma', nome: 'Concilia aí', tipo: 'app' },
-  // o Concilia aí só para conferir entradas, ligado ao banco da Conferência (Vitor, 01/10/2026): só como prévia (link à parte)
-  'conferir-entradas': { site: 'concilia-ai-nilma', nome: 'Concilia aí — Conferir entradas', tipo: 'app', banco: true, aplicativo: 'concilia-ai', env: { VITE_SO_ENTRADAS: '1' }, soCanal: true, pasta: 'concilia-ai' },
-  conciliadorzinho: { site: 'conciliadorzinho-nilma', nome: 'Conciliadorzinho', tipo: 'app' },
   // o catálogo de componentes de todo o nads (Vitor, 02/10/2026): as mesmas peças do sistema, com dados de exemplo
   componentes: { site: 'componentes-nilma', nome: 'Componentes', tipo: 'app' },
   // a Área do Cliente (Vitor, 16/10/2026): enquanto não tem o site próprio (cliente.nilmacontabilidade.com), só como prévia
@@ -61,15 +56,18 @@ const SITES = {
   // o site só para admin (Vitor, 21/10/2026; admin.nilmacontabilidade.com): o robô, o uso do sistema, a saúde do banco, a
   // cota, os feedbacks e o sistema e agentes. O pacote leva só o site do admin (vite.config.ts, nads-rotas-proprias)
   admin: { site: 'admin-nilma', nome: 'Admin', tipo: 'app', banco: true },
-  extratudo: { site: 'extratudo-nilma', nome: 'Extratudo', tipo: 'app', banco: true },
   tarefas: { site: 'tarefas-nilma', nome: 'Tarefas', tipo: 'app', banco: true },
   // extrato do banco → .xls, sem banco de dados (Vitor, 06/10/2026)
   conversor: { site: 'conversor-nilma', nome: 'Conversor', tipo: 'app' },
-  'extratudo-entregas': { site: 'extratudo-entregas', nome: 'Extratudo (Entregas)', tipo: 'app', banco: true, aplicativo: 'extratudo', projeto: 'entregas-2e5e2' },
-  // viraram ferramentas do Extratudo
-  extrator: { site: 'extrator-nilma', nome: 'Extrator', tipo: 'mudou', para: 'extratudo' },
-  'cheque-especial': { site: 'cheque-especial-nilma', nome: 'Cheque especial', tipo: 'mudou', para: 'extratudo' },
-  creditor: { site: 'creditor-nilma', nome: 'Creditor', tipo: 'mudou', para: 'extratudo' },
+  // as ferramentas que eram aplicativos à parte (Vitor, 06/11/2026: "não quero essas aplicações rodando externas, deixa
+  // apenas nas etapas"): os sites saíram do ar e o link leva para a Tarefa, onde cada uma é uma etapa
+  'concilia-ai': { site: 'concilia-ai-nilma', nome: 'Concilia aí', tipo: 'mudou', para: 'tarefas' },
+  conciliadorzinho: { site: 'conciliadorzinho-nilma', nome: 'Conciliadorzinho', tipo: 'mudou', para: 'tarefas' },
+  extratudo: { site: 'extratudo-nilma', nome: 'Extratudo', tipo: 'mudou', para: 'tarefas' },
+  'extratudo-entregas': { site: 'extratudo-entregas', nome: 'Extratudo (Entregas)', tipo: 'mudou', para: 'tarefas', projeto: 'entregas-2e5e2' },
+  extrator: { site: 'extrator-nilma', nome: 'Extrator', tipo: 'mudou', para: 'tarefas' },
+  'cheque-especial': { site: 'cheque-especial-nilma', nome: 'Cheque especial', tipo: 'mudou', para: 'tarefas' },
+  creditor: { site: 'creditor-nilma', nome: 'Creditor', tipo: 'mudou', para: 'tarefas' },
 };
 
 const argumentos = process.argv.slice(2);

@@ -5,7 +5,7 @@
 import { creditor, empresas, formatos, tarefas as t } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
 import { useMemo, useState } from 'react';
-import { useContasDoBalancete } from '../../../concilia-ai/importadosNaEtapa';
+import { useContasDoBalancete } from '../../etapas/conferencia/importadosNaEtapa';
 import { useCadastro } from '../../dados/repo';
 import { useModelosDeHistorico } from '../../dados/useModelosDeHistorico';
 import { useOperador } from '../../casca/operador';

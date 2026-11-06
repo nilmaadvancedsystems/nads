@@ -15,7 +15,7 @@ import type { Etapa, ItemDoChecklist, Rotina } from '../tipos';
 
 const item = (id: string, texto: string, mais: Omit<ItemDoChecklist, 'id' | 'texto'> = {}): ItemDoChecklist => ({ id, texto, ...mais });
 const etapa = (id: string, secao: string, nome: string, descricao: string, checklist: ItemDoChecklist[], mais: Partial<Etapa> = {}): Etapa => ({
-  id, secao, nome, descricao, ferramenta: null, verificacao: 'manual', objecoes: [], checklist, ...mais,
+  id, secao, nome, descricao, verificacao: 'manual', objecoes: [], checklist, ...mais,
 });
 
 export const ROTINA_FISCAL: Rotina = {
@@ -36,7 +36,7 @@ export const ROTINA_FISCAL: Rotina = {
     // O CT-e vem no relatório de Entradas.
     etapa('fiscal-importacao', 'Importação de Notas', 'Importação no Alterdata', 'Importe os relatórios de notas do Alterdata (com a conta contábil): Entradas, Saídas, Tomados e Prestados.', [], {
       checklist: undefined,
-      ferramenta: { app: 'extratudo', nome: 'Importação', caminho: r => '/extratudo/' + r + '/extrator/tarefa/extratos?etapa=fiscal', embutir: true, periodo: true, requisitos: true },
+      tela: { id: 'importacao-fiscal', periodo: true },
     }),
     // ─── Conferência ──────────────────────────────────────────────────────────
     etapa('fiscal-conf-saidas', 'Conferência', 'Saídas', 'Confira a sequência e as notas de saída.', [
