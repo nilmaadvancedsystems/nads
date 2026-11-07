@@ -22,6 +22,8 @@ if (process.env.ARQ_NOVO_OCR == null) process.env.ARQ_NOVO_OCR = '0';
 const { ouvir } = require('./ouvinte');
 const R = require('./arquivador-regras');
 const dp = require('./envios-do-dp');
+// a pasta do UpDocs para quem recebe pelo eContador (desligada por padrão)
+const EC = require('./econtador');
 // o painel do robô: o lote lido e o disparado
 const painel = require('./painel');
 
@@ -214,19 +216,34 @@ async function dispararLote(db, ref, lote, deps) {
     const { codigo, competencia } = itens[0].vai;
     const resultado = { codigo, competencia, arquivos: itens.map(i => i.vai.nome), valores: valoresDoGrupo(itens) };
     try {
-      const { cliente, para } = await dp.destinatarios(db, codigo, ativos);
-      const nome = String(cliente.nome || '').trim();
+      // o cliente que recebe pelo eContador (07/11/2026, econtador.js): com a pasta ligada, as guias vão também para a pasta
+      // do UpDocs; com semEmail, só para ela (o e-mail não sai). Desligado (o padrão), nada muda.
+      const ec = await EC.decisaoDoDp(db, codigo, competencia);
+      let para = [];
+      let nome = '';
+      if (ec.semEmail) {
+        nome = EC.nomeDoAtivo(ativos, codigo);
+        if (!nome) throw new Error('o cliente ' + codigo + ' não está no cadastro (ou está inativo)');
+      } else {
+        const d = await dp.destinatarios(db, codigo, ativos);
+        para = d.para;
+        nome = String(d.cliente.nome || '').trim();
+      }
       const anexos = [];
       for (const i of itens) anexos.push({ nome: i.vai.nome, mime: dp.mimeDe(i.vai.nome), buffer: await bufferDoArquivo(i.ref, i), tipo: i.vai.tipo, tributo: i.vai.tributo, pasta: (i.vai.destino || []).join('/'), valor: i.vai.valor, vencimento: ((i.leitura || {}).vencimento) || '' });
-      if (anexos.reduce((s, a) => s + a.buffer.length, 0) > dp.MAX_BYTES) throw new Error('os arquivos do cliente passam de 18 MB juntos');
-      const cfg = deps.config ? await deps.config().catch(() => ({})) : {};
-      const { gmailId, assunto } = await dp.mandarEmailDoDp(db, { comp: competencia, nome, para, anexos }, { enviar: deps.enviar, caixa: deps.caixa, assinatura: cfg.assinatura || 'Nilma Contabilidade' });
+      if (!ec.semEmail && anexos.reduce((s, a) => s + a.buffer.length, 0) > dp.MAX_BYTES) throw new Error('os arquivos do cliente passam de 18 MB juntos');
+      let gmailId = '';
+      let assunto = '';
+      if (!ec.semEmail) {
+        const cfg = deps.config ? await deps.config().catch(() => ({})) : {};
+        ({ gmailId, assunto } = await dp.mandarEmailDoDp(db, { comp: competencia, nome, para, anexos }, { enviar: deps.enviar, caixa: deps.caixa, assinatura: cfg.assinatura || 'Nilma Contabilidade' }));
+      }
       const agora = new Date().toISOString();
       // o envio no histórico do cliente (e a Entrega marcada pela tela), como o do DP › Envios
-      await db.collection('solicitacoesEmail').add({
+      const registro = await db.collection('solicitacoesEmail').add({
         tipo: 'envioDp', origem: 'lote', lote: ref.id, status: 'enviado', competencia, codigo: String(codigo), empresa: nome, arquivos: [],
         para, enviados: anexos.map(a => a.nome), assunto, gmailId, enviadoEm: agora, criadoEm: agora,
-        criadoPor: lote.disparadoPor || '', criadoPorUid: lote.disparadoPorUid || '',
+        criadoPor: lote.disparadoPor || '', criadoPorUid: lote.disparadoPorUid || '', ...(ec.semEmail ? { via: 'econtador' } : {}),
       });
       // e no Drive, na pasta do cliente (sem sobrescrever: o mesmo arquivo de novo não duplica), com o nome limpo sem o
       // cliente (06/11/2026, Vitor: "Quero que o robô renomeie o arquivos quando subir também"): "Folha de pagamento 10-2026.pdf"
@@ -235,11 +252,18 @@ async function dispararLote(db, ref, lote, deps) {
       for (let k = 0; k < itens.length; k++) {
         try {
           const pastaId = await DA.garantirCaminho(drive, itens[k].vai.destino.map(p => String(p).normalize('NFC')));
-          const nomeSalvo = await DA.salvarArquivo(drive, pastaId, noDrive[k].nome, anexos[k].buffer);
-          salvos.push({ nome: nomeSalvo || noDrive[k].nome, pasta: itens[k].vai.destino.join('/'), jaEstava: !nomeSalvo });
+          // com o id no Drive (a pasta do eContador baixa por ele no servidor)
+          const salvo = await DA.salvarArquivoComId(drive, pastaId, noDrive[k].nome, anexos[k].buffer);
+          salvos.push({ nome: salvo.nome || noDrive[k].nome, pasta: itens[k].vai.destino.join('/'), jaEstava: salvo.jaEstava, id: salvo.id || '' });
         } catch (err) { salvos.push({ nome: itens[k].vai.nome, erro: String(err.message || err).slice(0, 200) }); }
       }
       Object.assign(resultado, { status: 'enviado', para, enviadoEm: agora, salvos });
+      if (ec.semEmail) resultado.via = 'econtador';
+      if (ec.pasta) {
+        const arquivos = salvos.map((s, k) => ({ driveId: s.id || '', nome: s.nome, tipo: itens[k].vai.tipo, tributo: itens[k].vai.tributo, pasta: (itens[k].vai.destino || []).join('/') }));
+        resultado.econtadorSaida = await EC.anotarSaida(db, { origem: 'lote-dp', codigo, competencia, empresa: nome, registro: registro.id, arquivos })
+          .catch(err => { resultado.erroNoEcontador = String(err.message || err).slice(0, 200); return ''; });
+      }
       for (const i of itens) await apagarPartes(i.ref).catch(() => {});
       enviados++;
     } catch (err) {
@@ -261,6 +285,7 @@ function iniciarLoteDp(db, deps) {
   async function atender() {
     if (ocupado) { deNovo = true; return; }
     ocupado = true;
+    require('./ocupado').marcar('lote-dp', 'Lote do DP');   // sair com calma espera o lote (07/11/2026)
     try {
       do {
         deNovo = false;
@@ -277,7 +302,7 @@ function iniciarLoteDp(db, deps) {
           }
         }
       } while (deNovo);
-    } catch (err) { log('lote do DP: não li a fila:', err.message); } finally { ocupado = false; }
+    } catch (err) { log('lote do DP: não li a fila:', err.message); } finally { ocupado = false; require('./ocupado').marcar('lote-dp', null); }
   }
   ouvir('Lote do DP', () => db.collection(COLECAO).where('status', 'in', ['pendente', 'disparar']), () => { void atender(); }, log);
   // o lote esquecido some, com os arquivos e os pedaços

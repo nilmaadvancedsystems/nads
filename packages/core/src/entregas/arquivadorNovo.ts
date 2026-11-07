@@ -79,6 +79,43 @@ export function lerGrupoParaResolver(d: Obj): GrupoParaResolver {
     sugestao: s ? { codigo: typeof s.codigo === 'number' ? s.codigo : null, tipoDoc: s.tipoDoc ? txt(s.tipoDoc) : null } : null,
   };
 }
+/** O "tipo" de um pedido de grupo que descarta o grupo inteiro (para a quarentena; nada é apagado). Vai no mesmo pedido `grupo` de sempre (as regras do banco não mudam). */
+export const TIPO_DESCARTAR_GRUPO = 'DESCARTAR';
+/** O valor do filtro "sem tipo provável" (grupos sem sugestão de tipo do mapa da migração). */
+export const SEM_TIPO_PROVAVEL = '-';
+export interface FiltroDosGrupos { busca: string; motivo: string; tipo: string }
+/** O tipo provável de um grupo (o do mapa da migração) ou SEM_TIPO_PROVAVEL. */
+export const tipoProvavelDoGrupo = (g: GrupoParaResolver): string => g.sugestao?.tipoDoc || SEM_TIPO_PROVAVEL;
+/** Os grupos que passam na busca (pela pasta, causa e exemplos), na causa e no tipo provável, na ordem que vieram (os maiores primeiro). */
+export function filtrarGrupos(grupos: readonly GrupoParaResolver[], f: Partial<FiltroDosGrupos>): GrupoParaResolver[] {
+  const termos = semAcento(f.busca || '').split(/\s+/).filter(Boolean);
+  return grupos.filter(g => {
+    if (f.motivo && g.motivo !== f.motivo) return false;
+    if (f.tipo && tipoProvavelDoGrupo(g) !== f.tipo) return false;
+    if (!termos.length) return true;
+    const texto = semAcento([g.pasta, g.motivoTexto, g.sugestao?.tipoDoc || '', ...g.exemplos.map(x => x.nome)].join(' '));
+    return termos.every(t => texto.includes(t));
+  });
+}
+export interface FaixaDosGrupos { id: string; rotulo: string; grupos: number; arquivos: number }
+export interface ResumoDosGrupos { grupos: number; arquivos: number; porMotivo: FaixaDosGrupos[]; porTipo: FaixaDosGrupos[] }
+/** Quantos grupos e arquivos há no total, por causa e por tipo provável (os com mais arquivos primeiro). */
+export function resumoDosGrupos(grupos: readonly GrupoParaResolver[]): ResumoDosGrupos {
+  const soma = (chave: (g: GrupoParaResolver) => [string, string]) => {
+    const m = new Map<string, FaixaDosGrupos>();
+    for (const g of grupos) {
+      const [id, rotulo] = chave(g);
+      const f = m.get(id) || { id, rotulo, grupos: 0, arquivos: 0 };
+      f.grupos++; f.arquivos += g.n; m.set(id, f);
+    }
+    return [...m.values()].sort((a, b) => b.arquivos - a.arquivos || a.rotulo.localeCompare(b.rotulo, 'pt-BR'));
+  };
+  return {
+    grupos: grupos.length, arquivos: grupos.reduce((s, g) => s + g.n, 0),
+    porMotivo: soma(g => [g.motivo, g.motivoTexto]),
+    porTipo: soma(g => [tipoProvavelDoGrupo(g), g.sugestao?.tipoDoc || 'Sem tipo provável']),
+  };
+}
 export interface PainelDoArquivador {
   em: string; maquina: string; config: ConfigDoArquivador | null;
   /** ok | sem-drive | esperando */

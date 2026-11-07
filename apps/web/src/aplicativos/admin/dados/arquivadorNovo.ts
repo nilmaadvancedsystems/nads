@@ -118,6 +118,10 @@ const GRUPOS_DE_EXEMPLO: entregas.GrupoParaResolver[] = [
     exemplos: ['CNH Digital (22).pdf', 'contrato 2019.pdf', 'alteracao.pdf'].map((nome, i) => ({ nome, rel: 'NÃO IDENTIFICADOS\\20261023-NOVO\\0049 - POSTO\\' + nome, hash: 'gy' + i })), sugestao: { codigo: 49, tipoDoc: 'DOC_CONSTITUTIVO' } },
   { id: 'g-ano', motivo: 'ANO_INDETERMINADO', motivoTexto: 'Sem o ano', pasta: '0055 - TORRA TORRA LTDA - ME\\CERTIDÕES', n: 41,
     exemplos: ['CND - FEDERAL.pdf', 'CND ESTADUAL.pdf', 'FGTS.pdf'].map((nome, i) => ({ nome, rel: 'NÃO IDENTIFICADOS\\20261023-NOVO\\0055 - TORRA TORRA LTDA - ME\\CERTIDÕES\\' + nome, hash: 'gz' + i })), sugestao: { codigo: 55, tipoDoc: null } },
+  { id: 'g-guias', motivo: 'TIPO_NAO_RECONHECIDO', motivoTexto: 'Tipo de documento desconhecido', pasta: '0292 - FITO INDUSTRIA E COMERCIO DE ALIMENTOS LTDA\\DEPARTAMENTO FISCAL\\GUIAS PAGAS', n: 126,
+    exemplos: ['guia 03-2024.pdf', 'guia 04-2024.pdf', 'comprovante 05-2024.pdf'].map((nome, i) => ({ nome, rel: 'NÃO IDENTIFICADOS\\20261023-NOVO\\0292 - FITO\\GUIAS PAGAS\\' + nome, hash: 'gw' + i })), sugestao: { codigo: 292, tipoDoc: 'DAS' } },
+  { id: 'g-ofx', motivo: 'CLIENTE_AMBIGUO', motivoTexto: 'Duas empresas possíveis', pasta: '0120 - IRMAOS SILVA LTDA\\FINANCEIRO\\EXTRATOS', n: 23,
+    exemplos: ['extrato-sicoob-0924.ofx', 'extrato-sicoob-1024.ofx', 'extrato-bb-1124.ofx'].map((nome, i) => ({ nome, rel: 'NÃO IDENTIFICADOS\\20261023-NOVO\\0120 - IRMAOS SILVA\\EXTRATOS\\' + nome, hash: 'gv' + i })), sugestao: { codigo: 120, tipoDoc: 'EXTRATO' } },
 ];
 /** O painel de exemplo: a primeira passada (a pilha antiga da pasta) em andamento, em produção. */
 export function painelDeExemplo(agora = Date.now()): entregas.PainelDoArquivador {
@@ -308,7 +312,13 @@ export function criarArquivadorNovoMemoria(): RepoArquivadorNovo {
         if (n.tipo === 'grupoPrevia' || n.tipo === 'grupo') {
           const g = GRUPOS_DE_EXEMPLO.find(x => x.id === n.hash);
           const tipoG = TIPOS_DE_EXEMPLO.find(t => t.id === n.tipoDoc);
-          if (!g || !tipoG || tipoG.id === 'AUTO') { responder(id, { ...base, status: 'erro', erro: g ? 'escolha o tipo (exemplo)' : 'o grupo não está mais em NÃO IDENTIFICADOS' }); return; }
+          // descartar o grupo: o mesmo pedido, com o tipo DESCARTAR (para a quarentena)
+          if (g && n.tipoDoc === entregas.TIPO_DESCARTAR_GRUPO) {
+            const vaz = { acao: '', destino: '', nomeFinal: '', situacao: '', pastaNova: '', copias: [], motivo: '', evidencias: [], cliente: '', clienteNome: '', tipo: '' };
+            responder(id, n.tipo === 'grupoPrevia' ? { ...base, status: 'pronto', resposta: { ...vaz, total: g.n, exemplos: [] } } : { ...base, status: 'feito', resposta: { ...vaz, total: g.n, feitos: g.n, erros: 0, primeiroErro: '', lembrou: false } });
+            return;
+          }
+          if (!g ||!tipoG || tipoG.id === 'AUTO') { responder(id, { ...base, status: 'erro', erro: g ? 'escolha o tipo (exemplo)' : 'o grupo não está mais em NÃO IDENTIFICADOS' }); return; }
           const pastaG = n.codigo + ' - ' + nomeDe(n.codigo);
           const vazia = { acao: '', destino: '', nomeFinal: '', situacao: '', pastaNova: '', copias: [], motivo: '', evidencias: [], cliente: String(n.codigo), clienteNome: nomeDe(n.codigo), tipo: tipoG.id };
           if (n.tipo === 'grupoPrevia') {

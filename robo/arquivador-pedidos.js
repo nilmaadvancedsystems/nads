@@ -9,6 +9,7 @@
 //     arquivar    pelo MESMO executor (arquivador-novo.executar em PRODUCAO, com a decisão do admin): copia, confere o
 //                 hash, nunca sobrescreve, manifesto com decidido_por, o original para a quarentena → 'feito' ou 'erro'.
 //     descartar   para a quarentena (nunca apagado), com a linha no manifesto → 'feito' ou 'erro'.
+//   grupo com tipoDoc 'DESCARTAR' (codigo 1, só para as regras do banco; ignorado): descarta o grupo inteiro para a quarentena.
 //   O robô confere sempre: o caminho fica dentro da pasta Claudio Secretario (em NÃO IDENTIFICADOS ou na origem), o
 //   arquivo existe, e o hash do pedido é o da lista (o do caminho em NÃO IDENTIFICADOS) ou o do conteúdo.
 //   Quem arquiva ou descarta espera a volta do arquivador terminar (a mesma trava: nunca dois mexendo na pasta).
@@ -33,6 +34,7 @@ const LIMPAR_A_CADA_MS = 5 * 60 * 1000;
 // cliente e tipo para o GRUPO inteiro; a competência de cada arquivo pelo nome ou pelas pastas de origem (ou a do pedido)
 const TIPOS = ['abrir', 'previa', 'arquivar', 'descartar', 'grupoPrevia', 'grupo'];
 const EXEMPLOS_DA_PREVIA = 3;
+const TIPO_DESCARTAR_GRUPO = 'DESCARTAR';
 const MIME = { pdf: 'application/pdf', xml: 'text/xml', txt: 'text/plain', ofx: 'text/plain', csv: 'text/csv', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp',
   xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', xls: 'application/vnd.ms-excel', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', doc: 'application/msword', zip: 'application/zip' };
 
@@ -192,13 +194,17 @@ function criar(opcoes) {
     const g = o.grupo ? o.grupo(String(p.hash || '')) : null;
     if (!g || !g.arquivos.length) return { status: 'erro', erro: 'o grupo não está mais em NÃO IDENTIFICADOS (atualize a página)' };
     const previa = p.tipo === 'grupoPrevia';
+    // descartar o grupo inteiro (tipoDoc 'DESCARTAR' no mesmo pedido `grupo`: as regras do banco não mudam): cada arquivo vai para a
+    // quarentena pelo mesmo caminho do descartar de um arquivo (nunca apagado, com a linha no manifesto); sem prévia e sem lembrar
+    const descartar = String(p.tipoDoc || '').toUpperCase() === TIPO_DESCARTAR_GRUPO;
+    if (descartar && previa) return { status: 'pronto', resposta: { total: g.arquivos.length, exemplos: [] } };
     const lista = previa ? g.arquivos.slice(0, EXEMPLOS_DA_PREVIA) : g.arquivos.slice();
     const exemplos = [];
     let feitos = 0, erros = 0, primeiroErro = null;
     for (const a of lista) {
       const c = caminhoDoPedido(o.origem, a.rel);
       if (c.erro || !fs.existsSync(c.abs)) { erros++; if (!primeiroErro) primeiroErro = a.nome + ': saiu da pasta'; continue; }
-      const pp = Object.assign({}, p, { tipo: previa ? 'previa' : 'arquivar', rel: a.rel, hash: a.hash, competencia: competenciaDoArquivo(p.competencia, c.ni || a.rel) });
+      const pp = Object.assign({}, p, { tipo: descartar ? 'descartar' : previa ? 'previa' : 'arquivar', rel: a.rel, hash: a.hash, competencia: descartar ? null : competenciaDoArquivo(p.competencia, c.ni || a.rel) });
       let r;
       try { r = await decidir(id, pp, c, !previa); } catch (e) { r = { status: 'erro', erro: e.message }; }
       if (previa) exemplos.push(Object.assign({ nome: corta(a.nome, 200), competencia: pp.competencia || null, erro: r.erro || null }, r.resposta || {}));
@@ -208,7 +214,7 @@ function criar(opcoes) {
     if (previa) return { status: exemplos.some(x => !x.erro) ? 'pronto' : 'erro', erro: exemplos.every(x => x.erro) ? (exemplos[0] && exemplos[0].erro) || 'as regras não chegaram a um destino' : null, resposta: { total: g.arquivos.length, exemplos } };
     // lembrar: a pasta de origem do grupo vira regra (o cliente pela pasta do cliente; o tipo pela pasta do grupo)
     let lembrou = false;
-    if (p.lembrar === true && feitos > 0 && o.lembrar) { try { lembrou = !!o.lembrar({ pasta: g.pasta, cliente: Number(p.codigo), tipoDoc: String(p.tipoDoc || ''), por: corta(p.pedidoPor || 'admin', 80) }); } catch (e) { o.log('pedido ' + id + ': não lembrei a decisão do grupo:', e.message); } }
+    if (!descartar && p.lembrar === true && feitos > 0 && o.lembrar) { try { lembrou = !!o.lembrar({ pasta: g.pasta, cliente: Number(p.codigo), tipoDoc: String(p.tipoDoc || ''), por: corta(p.pedidoPor || 'admin', 80) }); } catch (e) { o.log('pedido ' + id + ': não lembrei a decisão do grupo:', e.message); } }
     return { status: feitos ? 'feito' : 'erro', erro: feitos ? null : primeiroErro || 'nenhum arquivo do grupo foi arquivado', resposta: { total: lista.length, feitos, erros, primeiroErro, lembrou } };
   }
 
@@ -289,4 +295,4 @@ function criar(opcoes) {
   };
 }
 
-module.exports = { criar, caminhoDoPedido, movidoParaNi, hashConfere, emPartes, mimeDe, escolhaDoPedido, respostaDoItem, clientesDoCadastro, competenciaDoArquivo, LIMITE_ABRIR, BYTES_POR_PARTE, VIDA_MS, TIPOS };
+module.exports = { criar, TIPO_DESCARTAR_GRUPO, caminhoDoPedido, movidoParaNi, hashConfere, emPartes, mimeDe, escolhaDoPedido, respostaDoItem, clientesDoCadastro, competenciaDoArquivo, LIMITE_ABRIR, BYTES_POR_PARTE, VIDA_MS, TIPOS };

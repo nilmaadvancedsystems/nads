@@ -9,6 +9,7 @@ import { CascaAdmin } from './casca/CascaAdmin';
 import { BASE, caminhoDoAdmin, paginaDoAdmin, type IdPaginaAdmin } from './casca/navegacao';
 
 const VisaoGeral = pedaco(() => import('./telas/visao-geral/VisaoGeral'), 'VisaoGeral');
+const SaudeDosRobos = pedaco(() => import('./telas/saude-robos/SaudeDosRobos'), 'SaudeDosRobos');
 const Arquivador = pedaco(() => import('./telas/arquivador/Arquivador'), 'Arquivador');
 const SaudeDoBanco = pedaco(() => import('./telas/banco/SaudeDoBanco'), 'SaudeDoBanco');
 const CotaECustos = pedaco(() => import('./telas/cota/CotaECustos'), 'CotaECustos');
@@ -21,6 +22,7 @@ function Tela({ pagina }: { pagina: IdPaginaAdmin }) {
   switch (pagina) {
     case 'visao-geral': return <VisaoGeral />;
     case 'robo': return <PainelDoRobo />;
+    case 'saude-robos': return <SaudeDosRobos />;
     case 'arquivador': return <Arquivador />;
     case 'uso': return <UsoDoSistema />;
     case 'banco': return <SaudeDoBanco />;

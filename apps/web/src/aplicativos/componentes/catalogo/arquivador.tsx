@@ -10,6 +10,7 @@ import { DetalheDoArquivo } from '../../admin/telas/arquivador/partes/DetalheDoA
 import { ListaComDetalhe, type LinhaDaLista } from '../../admin/telas/arquivador/partes/ListaComDetalhe';
 import { RankingComMarca } from '../../admin/telas/arquivador/partes/RankingComMarca';
 import { ArquivarEm } from '../../admin/telas/arquivador/partes/ArquivarEm';
+import { FiltrosDosGrupos } from '../../admin/telas/arquivador/partes/FiltrosDosGrupos';
 import { VisorDoArquivo } from '../../admin/telas/arquivador/partes/VisorDoArquivo';
 import { TopoDoArquivador } from '../../admin/telas/arquivador/partes/TopoDoArquivador';
 import type { Peca } from './tipos';
@@ -86,6 +87,9 @@ export const PECAS_DO_ARQUIVADOR: Peca[] = [
   { id: 'arq-arquivar-em', tipo: 'campos', nome: 'Arquivar em… (cliente, tipo e competência, com a prévia)', descricao: 'No detalhe de um arquivo de Para resolver (ou para os marcados, em lote): o cliente pela busca por código ou nome (a lista de sugestões; "sem pasta no Drive" quando o robô vai criar), o tipo de documento (os que as regras conhecem), o mês (Seletor de mês) ou o ano quando o tipo pede; embaixo, a prévia que o robô calcula pelas mesmas regras (verde: "Vai para" a pasta e o nome final, a pasta nova, a cópia; âmbar: por que não dá). Arquivar só com a prévia pronta', componente: 'ArquivarEm', classes: ['arq-em', 'arq-em-sugestoes', 'arq-em-previa', 'arq-em-previa erro', 'arq-em-destino', 'arq-em-botoes'], telas: TELA, largo: true,
     uso: '<ArquivarEm f={formulario} />',
     demo: () => <DemoDoArquivarEm /> },
+  { id: 'arq-grupos-filtros', tipo: 'campos', nome: 'Filtros e lote dos grupos (Para resolver em grupos)', descricao: 'Em Para resolver › Em grupos (07/11/2026, os ~1.340 parados): a busca pela pasta, pela causa ou pelo nome de um exemplo, a causa e o tipo provável (o do mapa da migração), cada opção com quantos arquivos tem, e o Limpar quando há filtro; embaixo, a frase "N de M grupos · X de Y arquivos". No detalhe do grupo, Descartar o grupo (quarentena, nada é apagado) ao lado do Arquivar em…; os dois pedem a confirmação com quantos arquivos serão afetados. Só junta a busca curta, os selects compactos e os botões que já existem', componente: 'FiltrosDosGrupos', classes: ['arq-grupos-filtros', 'arq-filtros', 'busca-curta larga', 'select-compact', 'arq-detalhe-acoes'], telas: TELA, largo: true,
+    uso: '<FiltrosDosGrupos f={filtros} />',
+    demo: () => <DemoDosFiltrosDosGrupos /> },
   { id: 'arq-visor', tipo: 'janelas', nome: 'Visor do arquivo (Abrir o arquivo)', descricao: 'Por cima da página inteira (também no celular): o ícone do formato e o nome, Baixar e Fechar (Esc); o PDF no visualizador do navegador, a imagem inteira, o XML/TXT como texto; o resto, só o Baixar. Enquanto o robô do PC lê o arquivo, a barra de espera com a frase', componente: 'VisorDoArquivo', classes: ['arq-visor', 'arq-visor-topo', 'arq-visor-corpo', 'arq-visor-pdf', 'arq-visor-texto', 'arq-visor-espera'], telas: TELA, largo: true,
     uso: '<VisorDoArquivo v={visor} onFechar={fechar} />',
     demo: () => (
@@ -108,6 +112,31 @@ function DemoDoArquivarEm() {
         previa: { carregando: false, erro: '', destino: ['568 - BRAZILIAN EXEMPLO LTDA', 'FISCAL', 'SIMPLES NACIONAL', '01. DAS', '01-2026.pdf'].join(String.fromCharCode(92)), nomeFinal: '01-2026.pdf', pastaNova: '', jaArquivado: false, copias: [] },
         enviando: false, podeConfirmar: true, confirmar: nada, fechar: nada,
       }} />
+    </div>
+  );
+}
+
+function DemoDosFiltrosDosGrupos() {
+  const todos = painelDeExemplo().grupos;
+  const [busca, setBusca] = useState('');
+  const [motivo, setMotivo] = useState('');
+  const [tipo, setTipo] = useState('');
+  const resumo = entregas.resumoDosGrupos(todos);
+  const vistos = entregas.filtrarGrupos(todos, { busca, motivo, tipo });
+  const ativo = !!(busca.trim() || motivo || tipo);
+  return (
+    <div className="card" style={{ width: '100%', margin: 0 }}>
+      <FiltrosDosGrupos f={{
+        busca, setBusca, motivo, setMotivo, tipo, setTipo, ativo, limpar: () => { setBusca(''); setMotivo(''); setTipo(''); },
+        opcoesMotivo: resumo.porMotivo.map(x => ({ valor: x.id, rotulo: x.rotulo, arquivos: x.arquivos })),
+        opcoesTipo: resumo.porTipo.map(x => ({ valor: x.id, rotulo: x.rotulo, arquivos: x.arquivos })),
+        mostrando: { grupos: vistos.length, arquivos: vistos.reduce((t, x) => t + x.n, 0) }, total: { grupos: resumo.grupos, arquivos: resumo.arquivos },
+      }} />
+      <ul className="arq-grupo-exemplos">{vistos.map(x => <li key={x.id}><Icone nome="pasta" width={14} height={14} /> <b>{x.n.toLocaleString('pt-BR')}</b> · {x.motivoTexto} · <span className="fraco">{x.pasta}</span></li>)}</ul>
+      <div className="arq-detalhe-acoes" style={{ marginTop: 12 }}>
+        <button type="button" className="btn btn-primary"><Icone nome="pasta" width={16} height={16} />Arquivar em…</button>
+        <button type="button" className="btn btn-outline"><Icone nome="lixeira" width={16} height={16} />Descartar o grupo ({vistos[0]?.n.toLocaleString('pt-BR') ?? 0})</button>
+      </div>
     </div>
   );
 }

@@ -21,3 +21,13 @@ export function pedidoAproveitavel(lista: readonly PedidoParaAproveitar[], agora
 const RE_AMBIENTE = /n[ãa]o abriu|not responding|n[ãa]o respond|SendInput|no active desktop|sem sess[ãa]o de tela|esperando o Cont[áa]bil/i;
 /** O erro é do ambiente do robô (Contábil fora, sem tela), não do pedido: pedir de novo sozinho só repete o erro. */
 export const erroDeAmbiente = (msg: string) => RE_AMBIENTE.test(msg || '');
+
+/** O teto dos pedidos que o site faz sozinho, por navegador (abrir a rotina de várias empresas seguidas não enche a fila do robô). */
+export const PEDIDOS_SOZINHO_POR_HORA = 6;
+export const JANELA_DOS_PEDIDOS_MS = 60 * 60 * 1000;
+
+/** Quantos pedidos automáticos ainda cabem agora, dados os instantes (ms) dos que este navegador já criou. */
+export function vagasDePedidoSozinho(criadosEm: readonly number[], agoraMs: number, teto = PEDIDOS_SOZINHO_POR_HORA, janelaMs = JANELA_DOS_PEDIDOS_MS): number {
+  const naJanela = criadosEm.filter(t => agoraMs - t < janelaMs).length;
+  return Math.max(0, teto - naJanela);
+}

@@ -22,11 +22,15 @@ export interface ArquivadosDoMes {
 }
 /** O que está HOJE em NÃO IDENTIFICADOS (o arquivador novo conta; 23/10/2026): a mesma conta da aba Para resolver. */
 export interface ParaResolverAgora { agora: number; em: string }
+/** O último trabalho e o último erro de um tipo de atividade (o robô guarda no batimento; Saúde dos robôs, 07/11/2026). */
+export interface UltimoDoTipo { trabalho: { em: string; texto: string } | null; erro: { em: string; texto: string; detalhe: string } | null }
 export interface BatimentoDoRobo {
   robo: IdRobo; nome: string; maquina: string; versao: string; ligadoEm: string; em: string; desligadoEm: string;
   agora: FazendoAgora[]; modulos: ModuloDoRobo[]; filas: FilaDoRobo[]; arquivados: ArquivadosDoMes | null;
   /** null: o robô ainda não conta (antes de ser atualizado) */
   paraResolver: ParaResolverAgora | null;
+  /** por tipo de atividade; vazio no robô que ainda não manda */
+  ultimos: Record<string, UltimoDoTipo>;
 }
 export interface AtividadeDoRobo { id: string; em: string; robo: IdRobo; maquina: string; tipo: string; texto: string; detalhe: string; erro: boolean }
 /** O sinal de vida de antes do painel (para quando o robô ainda não publica o painel). */
@@ -51,6 +55,20 @@ const MIN = 60 * 1000;
 const HORA = 60 * MIN;
 const idade = (iso: string, agora: number) => { const t = Date.parse(iso); return Number.isFinite(t) ? agora - t : Infinity; };
 
+function lerUltimos(v: unknown): Record<string, UltimoDoTipo> {
+  const saida: Record<string, UltimoDoTipo> = {};
+  for (const [tipo, u] of Object.entries(obj(v))) {
+    const o = obj(u);
+    const t = obj(o.trabalho);
+    const e = obj(o.erro);
+    saida[tipo] = {
+      trabalho: txt(t.em) ? { em: txt(t.em), texto: txt(t.texto) } : null,
+      erro: txt(e.em) ? { em: txt(e.em), texto: txt(e.texto), detalhe: txt(e.detalhe) } : null,
+    };
+  }
+  return saida;
+}
+
 /** O batimento como veio do banco (null sem documento). */
 export function lerBatimento(robo: IdRobo, d: Obj | null | undefined): BatimentoDoRobo | null {
   if (!d) return null;
@@ -68,6 +86,7 @@ export function lerBatimento(robo: IdRobo, d: Obj | null | undefined): Batimento
       execucoes: lista(a.execucoes).map(x => ({ id: txt(x.id), em: txt(x.em), arquivados: num(x.arquivados), clientes: num(x.clientes), naoIdentificados: num(x.naoIdentificados) })),
     } : null,
     paraResolver: pr ? { agora: num(pr.agora), em: txt(pr.em) } : null,
+    ultimos: lerUltimos(d.ultimos),
   };
 }
 
