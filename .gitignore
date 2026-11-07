@@ -39,6 +39,7 @@ robo/gmail_token_fiscal.json.anterior
 robo/node_modules/
 robo/sieg_credenciais.json
 robo/vigia-partidas.json
+robo/backup-drive-sessoes.json
 robo/vigia.lock
 robo/fgts_certificado.pfx
 robo/fgts_certificado.senha

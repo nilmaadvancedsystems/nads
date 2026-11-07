@@ -6,9 +6,10 @@
 // As regras de lá: o admin e o Contábil leem e pedem (só essas chaves no pedido); o resto, só o robô escreve.
 import type { tarefas as t } from '@nads/core';
 import { getAuth } from 'firebase/auth';
-import { addDoc, collection, doc, getDoc, getDocs, getFirestore, initializeFirestore, onSnapshot, query, where, type Firestore } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, getDocs, getFirestore, initializeFirestore, limit, onSnapshot, query, where, type Firestore } from 'firebase/firestore';
 import { guardar } from '../../../comum/modoDesenvolvedor';
 import { appDoEntregas } from './driveDasFerramentas.firestore';
+import { pedidoAproveitavel } from './razaoDoRobo.regras';
 
 // a trava do modo desenvolvedor: com o modo ligado, só ver — o pedido não sai
 const addDocGuardado = guardar(addDoc) as typeof addDoc;
@@ -34,6 +35,8 @@ export interface PedidoDoRazao {
   /** o pedido igual que o robô já atendeu: os números são os dele */
   mesmoQue: string;
   criadoEm: string;
+  /** a fila segurou o pedido porque o Contábil do servidor não responde (a mensagem dela) */
+  esperandoContabil: string;
 }
 
 const texto = (v: unknown) => (v == null ? '' : String(v));
@@ -43,7 +46,7 @@ function pedidoDoBanco(id: string, d: Record<string, unknown>): PedidoDoRazao {
   const imp = raz?.importado as Record<string, unknown> | undefined;
   const and = (d.andamento || {}) as Record<string, unknown>;
   return {
-    id, competencia: texto(d.competencia), status: texto(d.status), mesmoQue: texto(d.mesmoQue), criadoEm: texto(d.criadoEm),
+    id, competencia: texto(d.competencia), status: texto(d.status), mesmoQue: texto(d.mesmoQue), criadoEm: texto(d.criadoEm), esperandoContabil: texto(d.esperandoContabil),
     razaoLido: raz?.status === 'pronto' && !!imp && imp.lancamentos != null && !imp.erro,
     erro: texto(raz?.status === 'erro' ? raz.erro : imp?.erro ? 'não consegui ler o razão: ' + texto(imp.erro) : d.status === 'erro' ? d.erro : ''),
     pct: Number(and.pct) || 0, etapa: texto(and.etapa),
@@ -64,14 +67,25 @@ export function ouvirPedidosDoRazao(codigo: number, chegou: (l: PedidoDoRazao[])
   return () => { parado = true; parar(); };
 }
 
-/** Pede ao robô o balancete e o razão do mês (a mesma fila da página Alterdata). */
-export async function pedirRazaoDoMes(codigo: number, empresa: string, competencia: string): Promise<void> {
+/** Pede ao robô o balancete e o razão do mês (a mesma fila da página Alterdata). Antes de criar, procura (uma consulta, até 10 docs)
+ *  o pedido da mesma empresa e mês que já esteja andando, ou pronto há pouco: se existe, devolve o id dele e não cria outro.
+ *  `novoDeProposito`: o usuário quer o razão de novo, então só o que ainda está andando é reaproveitado. */
+export async function pedirRazaoDoMes(codigo: number, empresa: string, competencia: string, novoDeProposito = false): Promise<{ id: string; reaproveitado: boolean }> {
   const u = getAuth(appDoEntregas()).currentUser;
   if (!u) throw new Error('Entre com a conta do escritório para pedir ao robô.');
-  await addDocGuardado(collection(banco(), 'pedidosAlterdata'), {
+  const db = banco();
+  const jaTem = await getDocs(query(collection(db, 'pedidosAlterdata'),
+    where('codigo', '==', codigo), where('tipo', '==', 'mensal'), where('competencia', '==', competencia), limit(10)));
+  const achado = pedidoAproveitavel(jaTem.docs.map(x => {
+    const p = pedidoDoBanco(x.id, x.data());
+    return { id: p.id, status: p.status, criadoEm: p.criadoEm, fimEm: texto(x.data().fimEm), razaoLido: p.razaoLido };
+  }), Date.now(), !novoDeProposito);
+  if (achado) return { id: achado, reaproveitado: true };
+  const ref = await addDocGuardado(collection(db, 'pedidosAlterdata'), {
     status: 'pendente', tipo: 'mensal', codigo, empresa: empresa.slice(0, 200), competencia,
     criadoEm: new Date().toISOString(), criadoPor: (u.displayName || (u.email || '').split('@')[0] || 'nads').slice(0, 120), criadoPorUid: u.uid,
   });
+  return { id: ref.id, reaproveitado: false };
 }
 
 /** Os números do razão que o robô leu (o resumo por conta e os lançamentos, de todos os pedaços). */

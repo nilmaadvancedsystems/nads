@@ -206,12 +206,107 @@ async function nomesNaPasta(drive, pastaId) {
   return nomes;
 }
 
+
+// ---- Envio em partes, retomável (upload resumable da API do Drive) ----
+// Um pedido só com 334 MB estourava com "write EPIPE". Aqui o arquivo sobe em
+// partes de 8 MB lidas do disco (a memória não cresce com o arquivo), e o
+// endereço da sessão fica anotado num arquivo local: se a rede cair, ou o
+// robô reiniciar, a próxima chamada pergunta ao Drive até onde chegou e
+// continua dali. O Drive só cria o arquivo quando o último pedaço chega, então
+// um envio pela metade nunca aparece como arquivo no Drive.
+const LIMITE_PEDIDO_UNICO = 5 * 1024 * 1024;
+const TAMANHO_PARTE = 8 * 1024 * 1024;   // múltiplo de 256 KB, como a API exige
+const SESSOES_PADRAO = require('path').join(__dirname, 'backup-drive-sessoes.json');
+
+function lerSessoes(arq) { try { return JSON.parse(require('fs').readFileSync(arq, 'utf8')) || {}; } catch (e) { return {}; } }
+function gravarSessoes(arq, obj) { try { require('fs').writeFileSync(arq, JSON.stringify(obj)); } catch (e) { /* sem o arquivo só perde a retomada entre reinícios */ } }
+
+// cliente: algo com .request({url, method, headers, data, validateStatus}) -> { status, headers, data }
+// (o OAuth2Client do googleapis; nos testes, um falso)
+async function enviarArquivoRetomavel(o) {
+  const fs = require('fs');
+  const cliente = o.cliente || getAuth('robo');
+  const sessoesArq = o.sessoesArquivo || SESSOES_PADRAO;
+  const parte = o.tamanhoParte || TAMANHO_PARTE;
+  const tentativasPorParte = o.tentativasPorParte || 5;
+  const espera = o.espera || (ms => new Promise(r => setTimeout(r, ms)));
+  const total = fs.statSync(o.caminho).size;
+  const chave = o.pastaId + '/' + o.nome + '/' + total + '/' + Math.floor(fs.statSync(o.caminho).mtimeMs);
+  const aceita = s => (s >= 200 && s < 300) || s === 308 || s === 404;
+  const pedir = req => cliente.request(Object.assign({ validateStatus: aceita }, req));
+
+  async function abrirSessao() {
+    const r = await pedir({
+      url: 'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true&fields=id',
+      method: 'POST',
+      headers: { 'X-Upload-Content-Length': String(total), 'Content-Type': 'application/json; charset=UTF-8' },
+      data: { name: o.nome, parents: [o.pastaId] },
+    });
+    const uri = r.headers && (r.headers.location || r.headers.Location);
+    if (!uri) throw new Error('o Drive não devolveu o endereço do envio retomável');
+    const s = lerSessoes(sessoesArq); s[chave] = uri; gravarSessoes(sessoesArq, s);
+    return uri;
+  }
+  // até onde o Drive já tem: -1 = sessão perdida, total = terminou
+  async function ondeParou(uri) {
+    const r = await pedir({ url: uri, method: 'PUT', headers: { 'Content-Length': '0', 'Content-Range': 'bytes */' + total } });
+    if (r.status === 404) return -1;
+    if (r.status >= 200 && r.status < 300) return total;
+    const m = /bytes=0-(\d+)/.exec((r.headers && (r.headers.range || r.headers.Range)) || '');
+    return m ? Number(m[1]) + 1 : 0;
+  }
+
+  let uri = lerSessoes(sessoesArq)[chave];
+  let enviado = 0;
+  if (uri) { enviado = await ondeParou(uri); if (enviado < 0) { uri = null; enviado = 0; } }
+  if (!uri) uri = await abrirSessao();
+  if (enviado >= total && total > 0) return { retomou: true, bytes: total };
+
+  const fd = fs.openSync(o.caminho, 'r');
+  try {
+    while (enviado < total) {
+      const n = Math.min(parte, total - enviado);
+      const buf = Buffer.alloc(n);
+      fs.readSync(fd, buf, 0, n, enviado);
+      let ok = false, ultimoErro;
+      for (let t = 1; t <= tentativasPorParte && !ok; t++) {
+        try {
+          const r = await pedir({
+            url: uri, method: 'PUT',
+            headers: { 'Content-Length': String(n), 'Content-Range': 'bytes ' + enviado + '-' + (enviado + n - 1) + '/' + total },
+            data: buf,
+          });
+          if (r.status === 404) { uri = await abrirSessao(); enviado = 0; }   // sessão expirou: recomeça este arquivo
+          else if (r.status === 308) {
+            const m = /bytes=0-(\d+)/.exec((r.headers && (r.headers.range || r.headers.Range)) || '');
+            enviado = m ? Number(m[1]) + 1 : enviado;
+          } else enviado = total;
+          ok = true;
+        } catch (err) {
+          ultimoErro = err;
+          await espera(Math.min(30000, 1000 * Math.pow(2, t)));
+          try {
+            const w = await ondeParou(uri);   // a parte pode ter chegado antes do erro
+            if (w < 0) { uri = await abrirSessao(); enviado = 0; ok = true; }
+            else if (w > enviado) { enviado = w; ok = true; }   // chegou: segue; senão tenta a mesma parte de novo
+          } catch (e) { /* sem resposta ainda: tenta a mesma parte de novo */ }
+        }
+      }
+      // sem sucesso: a sessão continua anotada e a próxima chamada retoma dali
+      if (!ok) throw new Error('envio ao Drive parou em ' + enviado + '/' + total + ' bytes (' + (ultimoErro && ultimoErro.message || ultimoErro) + ')');
+    }
+  } finally { fs.closeSync(fd); }
+  const s = lerSessoes(sessoesArq); delete s[chave]; gravarSessoes(sessoesArq, s);
+  return { retomou: false, bytes: total };
+}
+
 // Copia pro Drive o que existe numa pasta do disco e ainda não existe lá,
 // subpasta por subpasta. É como o backup chega ao Drive quando o robô roda na
 // nuvem: ele grava no disco da máquina (como sempre gravou no G:) e esta
 // função leva o que for novo. Arquivo que já está lá com o mesmo nome fica
 // como está: nada é sobrescrito nem apagado.
-async function espelharPasta(drive, pastaLocal, pastaId, resumo) {
+async function espelharPasta(drive, pastaLocal, pastaId, resumo, enviarRetomavel) {
+  enviarRetomavel = enviarRetomavel || ((l, p, n) => enviarArquivoRetomavel({ caminho: l, pastaId: p, nome: n }));
   resumo = resumo || { enviados: 0, jaEstavam: 0, bytes: 0 };
   const fs = require('fs');
   const path = require('path');
@@ -221,10 +316,18 @@ async function espelharPasta(drive, pastaLocal, pastaId, resumo) {
     if (item.isDirectory()) {
       const sub = noDrive.get(item.name);
       const subId = sub && sub.mimeType === MIME_PASTA ? sub.id : await garantirPasta(drive, pastaId, item.name);
-      await espelharPasta(drive, local, subId, resumo);
+      await espelharPasta(drive, local, subId, resumo, enviarRetomavel);
       continue;
     }
     if (noDrive.has(item.name)) { resumo.jaEstavam++; continue; }
+    const tamanho = fs.statSync(local).size;
+    if (tamanho > LIMITE_PEDIDO_UNICO) {
+      // arquivo grande (o retrato do banco passa de 300 MB): em partes, retomando de onde parou
+      await enviarRetomavel(local, pastaId, item.name);
+      resumo.enviados++;
+      resumo.bytes += tamanho;
+      continue;
+    }
     const buffer = fs.readFileSync(local);
     await drive.files.create({
       requestBody: { name: item.name, parents: [pastaId] },
@@ -247,5 +350,5 @@ function getDrive() {
 
 module.exports = {
   PASTA_RAIZ, sanitizar, getDrive, pastaDoCliente, salvarArquivo, salvarArquivoComId, copiaJaNaOrigem, pastaRaiz, mesmoConteudo,
-  garantirCaminho, garantirPasta, espelharPasta,
+  garantirCaminho, garantirPasta, espelharPasta, enviarArquivoRetomavel,
 };

@@ -30,10 +30,12 @@ export function BlocoDoRobo({ robo }: { robo: RazaoDoRobo }) {
               ? <span className="ext-neg">Não consegui ver os pedidos: {robo.falha}</span>
               : robo.carregado && <span>{partes.join(' · ')}</span>}
             {robo.lendo && <span>Lendo os lançamentos que o robô subiu</span>}
+            {robo.espera && <span className="ext-neg">{robo.espera}</span>}
             {!robo.lendo && robo.agora && <span className="hint">{robo.agora}</span>}
             {erros.map(m => (
               <span key={m.mes} className="ext-neg" title={m.pedido?.erro || ''}>{robo.rotuloDoMes(m.mes)}: {m.pedido?.erro || 'o robô não conseguiu'}</span>
             ))}
+            {robo.erroDeAmbiente && <span className="hint">O Contábil do servidor não respondeu; não peço de novo sozinho. Use o botão quando ele voltar.</span>}
           </div>
         </div>
         <div className="imp-grupos">
