@@ -29,11 +29,19 @@ function lerDoArquivo(agora) {
   } catch (e) { return null; }
 }
 
-// Clientes ativos: do arquivo se estiver fresco, senão do banco.
+// Sem o arquivo do vigia (no NILMA-SERVER ele não existe: o vigia roda na nuvem), a leitura do banco vale 10 min neste
+// processo (07/11/2026: o SIEG relia os ~400 clientes a cada pedido, duas vezes no "Baixar XMLs").
+const MEMORIA_VALE_MS = 10 * 60 * 1000;
+let memoria = { db: null, em: 0, snap: null };
+
+// Clientes ativos: do arquivo se estiver fresco, senão do banco (guardado em memória por MEMORIA_VALE_MS).
 async function clientesAtivos(db, log) {
   const doArquivo = lerDoArquivo();
   if (doArquivo) { if (log) log('clientes: ' + doArquivo.length + ' do arquivo local (sem ler o banco)'); return comoSnap(doArquivo); }
-  return db.collection('clientes').where('ativo', '==', true).get();
+  if (memoria.snap && memoria.db === db && Date.now() - memoria.em < MEMORIA_VALE_MS) return memoria.snap;
+  const snap = await db.collection('clientes').where('ativo', '==', true).get();
+  memoria = { db, em: Date.now(), snap };
+  return snap;
 }
 
 // No vigia: mantém o arquivo em dia.
@@ -57,4 +65,4 @@ function manterArquivo(db, log) {
   log('lista de clientes mantida em arquivo local (a leitura do Gmail deixa de reler o cadastro)');
 }
 
-module.exports = { clientesAtivos, manterArquivo, lerDoArquivo, comoSnap, ARQUIVO, VALIDADE_MS };
+module.exports = { clientesAtivos, manterArquivo, lerDoArquivo, comoSnap, ARQUIVO, VALIDADE_MS, MEMORIA_VALE_MS };

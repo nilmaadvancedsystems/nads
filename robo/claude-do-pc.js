@@ -19,6 +19,9 @@ fs.writeFileSync(TRAVA, String(process.pid));
 process.on('exit', () => { try { if (parseInt(fs.readFileSync(TRAVA, 'utf8'), 10) === process.pid) fs.unlinkSync(TRAVA); } catch (e) {} });
 
 const db = getDb('entregas-2e5e2');
+// o freio de consumo do banco (07/11/2026, consumo.js): soma as leituras e gravações deste processo por tarefa; acima do
+// teto (20 mil leituras ou 5 mil gravações em 10 min) pausa 15 min a tarefa que mais gastou e avisa os admins (1 por hora)
+require('./consumo').instalar(db, { log });
 let pararIA = null;
 
 try { require('./fgts-claude').iniciarFgtsPeloClaude(db, log); }

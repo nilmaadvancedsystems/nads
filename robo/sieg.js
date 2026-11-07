@@ -800,13 +800,23 @@ function iniciarSieg({ db, log }) {
   let vezes = 0;
   // ocupadas: as empresas e meses que um trabalhador já atende (o pedido da mesma espera); pegos: os pedidos em atendimento
   // (a leitura da fila pode ainda vê-los "pendente" antes de o "processando" chegar ao banco)
+  // a fila viva (07/11/2026): a resposta do ouvinte dos pendentes (pararPedidos, lá embaixo) já é a fila; o banco só é lido
+  // quando ele não respondeu nos últimos 2 min (fila parada, ou o ouvinte caiu: a reserva de 2 em 2 min continua valendo).
+  // Antes eram até 500 leituras a CADA pedido atendido (uma fila de 500: ~125 mil para esvaziar). O que acabou de terminar
+  // (ou de ser juntado) fica de fora por 2 min, até a resposta nova do ouvinte chegar sem ele.
+  let filaViva = null, filaVivaEm = 0;
+  const terminados = new Map();   // id → quando terminou
+  const RECENTE_MS = 2 * 60 * 1000;
   async function proximoPedido(ocupadas, pegos) {
-    const s = await db.collection('pedidosSieg').where('status', '==', 'pendente').limit(500).get();
+    const viva = filaViva && Date.now() - filaVivaEm < RECENTE_MS ? filaViva : null;
+    const docs = viva || (await db.collection('pedidosSieg').where('status', '==', 'pendente').limit(500).get()).docs;
+    for (const [id, t] of terminados) if (Date.now() - t >= RECENTE_MS) terminados.delete(id);
+    const pendentes = docs.filter(d => !terminados.has(d.id));
     const semDrive = !driveAberto();
-    const vale = s.docs.filter(d => !pegos.has(d.id) && !(semDrive && (d.data().tipo === 'xmls' || d.data().tipo === 'xmlsCliente')));
+    const vale = pendentes.filter(d => !pegos.has(d.id) && !(semDrive && (d.data().tipo === 'xmls' || d.data().tipo === 'xmlsCliente')));
     // (31/10/2026) só quando é o Drive que segura: com dois trabalhadores, o pedido que o outro já pegou (pegos) também fica de
     // fora e o aviso "esperando o Google Drive" saía com o Drive aberto (visto no ensaio)
-    if (semDrive && s.docs.some(d => d.data().tipo === 'xmls' || d.data().tipo === 'xmlsCliente') && Date.now() - avisouSemDrive > 60 * 60 * 1000) {
+    if (semDrive && pendentes.some(d => d.data().tipo === 'xmls' || d.data().tipo === 'xmlsCliente') && Date.now() - avisouSemDrive > 60 * 60 * 1000) {
       avisouSemDrive = Date.now();
       log('SIEG: pedidos de XMLs esperando o Google Drive deste PC abrir (' + PASTA_DO_DRIVE + ')');
       painel.atividade('sieg', 'Pedidos de XMLs esperando o Google Drive deste PC abrir', 'a pasta ' + PASTA_DO_DRIVE + ' não está aberta; o robô baixa assim que ela aparecer', { aviso: true });
@@ -829,6 +839,7 @@ function iniciarSieg({ db, log }) {
         // se isto falhar o pedido repetido ficaria "trabalhando" para sempre: tenta de novo e, não dando, deixa dito no log
         await est.tentarDeNovo(() => d.ref.update({ status: 'concluido', concluidoEm: new Date().toISOString(), andamento: '', juntadoCom: fica.id }))
           .catch(err => log('SIEG: não consegui concluir o pedido repetido', d.id, '(' + motivo(err) + '): ele pode ficar como trabalhando'));
+        terminados.set(d.id, Date.now());
         juntados++;
       }
       candidatos.push({ d: fica, p: fica.data(), u: Math.min(...g.map(x => urgencia(x.data()))) });
@@ -850,7 +861,7 @@ function iniciarSieg({ db, log }) {
     escolher: proximoPedido,
     atender: async (x, n) => {
       try { await atenderUm(x.d, t => { if (t) fazendo.set(n, t); else fazendo.delete(n); }); }
-      finally { fazendo.delete(n); ponto(); }
+      finally { fazendo.delete(n); terminados.set(x.id, Date.now()); ponto(); }
     },
     preparar: async () => {
       await apagarZipsVelhos().catch(err => log('SIEG: não consegui apagar os .zip velhos -', motivo(err)));
@@ -1175,7 +1186,7 @@ function iniciarSieg({ db, log }) {
   // of retries allowed") e ninguém religou; até o robô reiniciar, às 13:05, os pedidos só eram vistos no relógio de 10 em
   // 10 minutos (o 309 do Gustavo, às 10:36, esperou 7 min 32 s para começar). Agora ele volta (ouvinte.js) e, de reserva,
   // a fila é olhada a cada 2 minutos.
-  const pararPedidos = ouvir('SIEG: pedidos', () => db.collection('pedidosSieg').where('status', '==', 'pendente'), s => { if (!s.empty) atenderPedidos(); }, log);
+  const pararPedidos = ouvir('SIEG: pedidos', () => { filaViva = null; return db.collection('pedidosSieg').where('status', '==', 'pendente'); }, s => { filaViva = s.docs; filaVivaEm = Date.now(); if (!s.empty) atenderPedidos(); }, log);
   const relogioDaFila = setInterval(() => { if (!trabalhadores.ativos() && !contando) atenderPedidos(); }, 2 * 60 * 1000);
 
   // quem não tem documento válido não vai ao SIEG: um aviso por cliente por dia no painel (o documento do dia é criado com
