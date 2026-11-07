@@ -16,8 +16,13 @@ const MODULOS = {
   fgts: (db, log) => require('./fgts-claude').iniciarFgtsPeloClaude(db, log, { semClaude: true }),
   // o balancete e o razão do Alterdata Contábil aberto e logado neste servidor (04/11/2026: "isso tem que rodar no servidor")
   alterdata: (db, log) => require('./alterdata').iniciarAlterdata(db, log),
-  // só para o teste (teste-satelites.js): marca o tempo a cada 200 ms e fala com o painel
-  eco: (db, log) => { const p = require('./painel'); p.modulo('eco', 'Eco', true, 'teste'); p.atividade('robo', 'eco ligou'); setInterval(() => log('tique', Date.now()), 200); },
+  // só para o teste (teste-satelites.js): marca o tempo a cada 200 ms e fala com o painel; com ECO_OCUPADO_MS, fica
+  // "trabalhando" esse tempo depois de ligar (teste-reinicio.js: o pai espera ele terminar antes de sair)
+  eco: (db, log) => {
+    const p = require('./painel'); p.modulo('eco', 'Eco', true, 'teste'); p.atividade('robo', 'eco ligou'); setInterval(() => log('tique', Date.now()), 200);
+    const ms = Number(process.env.ECO_OCUPADO_MS) || 0;
+    if (ms) { p.fazendo('eco', 'Eco trabalhando'); setTimeout(() => { p.fazendo('eco', null); log('eco terminou o trabalho'); }, ms); }
+  },
 };
 if (!MODULOS[qual]) { console.error('robo-modulo: qual módulo? (' + Object.keys(MODULOS).join(', ') + ')'); process.exit(2); }
 
@@ -31,6 +36,12 @@ try {
 } catch (e) { /* sem trava */ }
 fs.writeFileSync(TRAVA, String(process.pid));
 process.on('exit', () => { try { if (parseInt(fs.readFileSync(TRAVA, 'utf8'), 10) === process.pid) fs.unlinkSync(TRAVA); } catch (e) { /* segue */ } });
+
+// sair com calma (07/11/2026, ocupado.js): o pai pede ({ sair }) quando vai atualizar; este para de pegar pedido novo,
+// termina o que está fazendo (até o limite) e sai. O pai espera.
+const ocupado = require('./ocupado');
+ocupado.iniciar({ nome: qual, log, sair: () => setTimeout(() => process.exit(0), 300) });
+process.on('message', msg => { if (msg && msg.sair) void ocupado.pedirParada(msg.sair); });
 
 // o pai saiu: este sai também (o próximo arquivador liga outro)
 process.on('disconnect', () => { log('o arquivador saiu; saindo junto'); setTimeout(() => process.exit(0), 500); });

@@ -562,6 +562,8 @@ async function executar(opcoes) {
     const lido = await leituras.get(i); leituras.delete(i);
     tempos.leituraMs += Date.now() - t0;
     // erro de leitura (o arquivo ainda subindo de outro PC, preso por outro programa): fica e tenta depois
+    // o arquivo que sumiu da origem entre a listagem e a leitura (alguém moveu/apagou no Drive) saiu da pasta: não é erro (07/11/2026)
+    if (lido.e && lido.e.code === 'ENOENT') { itens.push({ rel, acao: 'FICA', motivo: 'SAIU_DA_PASTA', sumiu: true, confianca: 0, evidencias: ['o arquivo saiu da pasta antes de ser lido'] }); continue; }
     if (lido.e) { itens.push({ rel, acao: 'FICA', motivo: 'ARQUIVO_INACESSIVEL', temporario: true, confianca: 0, evidencias: [lido.e.message] }); continue; }
     const buffer = lido.b;
     const t1 = Date.now();
@@ -893,7 +895,13 @@ async function aplicar(res, opcoes, ctx) {
       }
       else if (it.acao === 'JA_ARQUIVADO') { await paraQuarentena(it); if (it.chave && ctx.chaves && it.onde) ctx.chaves.anotar(it.chave, { onde: it.onde, raiz: opcoes.clientes, fonte: 'já arquivado' }, true); }
       else if (it.acao === 'NAO_IDENTIFICADO' && opcoes.moverNaoIdentificados) await moverParaNi(it);
-    } catch (e) { it.erro = e.message; if (painel) painel.erro('arquivamento', 'Não consegui arquivar ' + (it.nome || it.rel), e.message); }
+    } catch (e) {
+      // o ENOENT de um arquivo da ORIGEM (stat/unlink/rename: sumiu no meio do caminho, alguém tirou da pasta) é "saiu da pasta", não erro (07/11/2026)
+      if (e && e.code === 'ENOENT' && !fs.existsSync(path.join(opcoes.origem, it.dentroDe || it.rel))) {
+        it.acaoAntes = it.acao; if (it.acao !== 'CONTEINER') it.acao = 'FICA'; it.motivo = 'SAIU_DA_PASTA'; it.sumiu = true; it.naoAplicado = 'o arquivo saiu da pasta antes de ser arquivado';
+        for (const f of it.filhos || []) { if (f.erro) delete f.erro; f.acao = 'FICA'; f.motivo = 'SAIU_DA_PASTA'; f.sumiu = true; }
+      } else { it.erro = e.message; if (painel) painel.erro('arquivamento', 'Não consegui arquivar ' + (it.nome || it.rel), e.message); }
+    }
   }
 }
 
@@ -973,6 +981,16 @@ function arquivosDosNaoIdentificados(pastaNi) {
   })(pastaNi, '');
   return out.sort();
 }
+/**
+ * A versão das regras: o começo do sha256 dos arquivos que decidem (arquivador-regras, arquivador-novo, arquivador-migracao).
+ * Muda quando as regras mudam: dispara o reprocesso automático dos NÃO IDENTIFICADOS (reprocesso-pedido.js) e é o carimbo do
+ * "já decidido com estas regras" (reprocessar-ni.js, 07/11/2026).
+ */
+function versaoDasRegras() {
+  const h = require('crypto').createHash('sha256');
+  for (const f of ['arquivador-regras.js', 'arquivador-novo.js', 'arquivador-migracao.js']) { try { h.update(fs.readFileSync(path.join(__dirname, f))); } catch (e) { /* segue */ } }
+  return h.digest('hex').slice(0, 16);
+}
 /** Por onde cada documento sairia: chave (índice), sieg, hello (544/545/564), outros, ja, ou o motivo de ficar. */
 function rotaDoReprocesso(x) {
   if (x.erro) return 'erro';
@@ -1018,7 +1036,7 @@ async function reprocessarNaoIdentificados(opcoes) {
 /** O trabalhador do Tesseract segura o processo vivo: fecha no fim de cada execução (se o OCR foi usado). */
 async function encerrarOcr() { const k = require.resolve('./arquivador-ocr'); if (require.cache[k]) await require('./arquivador-ocr').encerrar(); }
 
-module.exports = { pastaDoFornecedorQueJaExiste, textoDoRtf, ehTedSintegra, reprocessarNaoIdentificados, arquivosDosNaoIdentificados, rotaDoReprocesso, atualizarCadastro, encerrarOcr, executar, aprenderContas, lerContas, varrer, abrirZip, membros, montarEntrada, textoDoPdf, carregarCadastro, indiceDoManifesto, caminhoArquivado, conferirDestino, conteudoXml, raizDoAno, relatorioTexto, planos, CONTROLE };
+module.exports = { versaoDasRegras, pastaDoFornecedorQueJaExiste, textoDoRtf, ehTedSintegra, reprocessarNaoIdentificados, arquivosDosNaoIdentificados, rotaDoReprocesso, atualizarCadastro, encerrarOcr, executar, aprenderContas, lerContas, varrer, abrirZip, membros, montarEntrada, textoDoPdf, carregarCadastro, indiceDoManifesto, caminhoArquivado, conferirDestino, conteudoXml, raizDoAno, relatorioTexto, planos, CONTROLE };
 
 if (require.main === module) {
   const a = process.argv.slice(2);

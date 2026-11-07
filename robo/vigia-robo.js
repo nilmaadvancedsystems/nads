@@ -359,10 +359,10 @@ async function atenderResponder(p, ref) {
 }
 
 // Os documentos do DP do mês para um cliente (DP › Envios, 27/10/2026): a lista, o Drive e o modelo em envios-do-dp.js
-async function atenderEnvioDp(p) {
+async function atenderEnvioDp(p, pedidoId) {
   const cfg = await configDaCobranca().catch(() => ({}));
   const r = await require('./envios-do-dp').atenderEnvioDp(p, {
-    db, log, caixa: CAIXA, assinatura: cfg.assinatura || 'Nilma Contabilidade',
+    db, log, caixa: CAIXA, assinatura: cfg.assinatura || 'Nilma Contabilidade', pedidoId,
     getDrive: () => require('./drive-indice').getDrive(),
     clientesAtivos: () => require('./clientes-cache').clientesAtivos(db, m => log(m)),
     enviar: dados => enviar(dados),
@@ -908,7 +908,7 @@ async function atenderFila() {
           try { resultado = await atenderDesligar(p); } finally { lendo = false; }
         } else if (p.tipo === 'disparo') resultado = await atenderDisparo(p, doc.ref);
         else if (p.tipo === 'responder') resultado = await atenderResponder(p, doc.ref);
-        else if (p.tipo === 'envioDp') resultado = await atenderEnvioDp(p);
+        else if (p.tipo === 'envioDp') resultado = await atenderEnvioDp(p, doc.id);
         else throw new Error('tipo de pedido desconhecido: ' + p.tipo);
         await doc.ref.update(resultado);
         // no painel do robô (a leitura do Gmail já se registra sozinha em rodarRobo)
@@ -1111,14 +1111,15 @@ async function iniciar() {
         // nada rodando: o que a tela mostra como "lendo" é resto; limpa pra poder pedir de novo
         if (!parou && !lendo) limparEstadoPreso('nenhuma leitura estava rodando').catch(() => {});
       });
-      if (snap.docs.some(d => d.data().tipo !== 'cancelar')) atenderFila();
+      // saindo com calma (ocupado.js): o pedido novo fica na fila para o vigia que ligar depois
+      if (snap.docs.some(d => d.data().tipo !== 'cancelar') && !require('./ocupado').parando()) atenderFila();
     },
     err => { log('perdi a conexão com a fila:', err.message); process.exit(1); }
   );
 
   if (A_CADA_MIN > 0) {
     setInterval(async () => {
-      if (lendo || ocupado) return;
+      if (lendo || ocupado || require('./ocupado').parando()) return;
       const dias = await diasDesdeUltimaLeitura();
       if (!lendo && !ocupado) rodarTodas(dias, 'automático a cada ' + A_CADA_MIN + ' min');
     }, A_CADA_MIN * 60 * 1000);
@@ -1149,7 +1150,14 @@ function desligar() {
   ]).catch(() => {}).finally(() => process.exit(0));
 }
 process.on('SIGINT', desligar);
-process.on('SIGTERM', desligar);
+// O SIGTERM é o "systemctl stop" da atualização (07/11/2026, ocupado.js): sai com calma, sem pegar pedido novo e esperando
+// o que está em andamento (o backup, a leitura do Gmail, um lote), até 10 min; o robo.service dá 11 antes de matar. Um
+// segundo SIGTERM (ou o vigia de reserva, sem nada nas mãos) sai na hora.
+let termos = 0;
+process.on('SIGTERM', () => {
+  if (++termos > 1 || !comAVez || SO_VER_RESUMO) { desligar(); return; }
+  void require('./ocupado').pedirParada('SIGTERM (atualização ou desligamento da máquina)');
+});
 
 // ---------- freio de reinício ----------
 // O serviço da nuvem (robo.service) religa o vigia 30s depois de qualquer queda. Cada partida lê
@@ -1174,6 +1182,8 @@ if (SO_VER_RESUMO) {
   montarResumo(hojeLocal()).then(r => { console.log('Assunto: ' + r.assunto + '\n\n' + r.texto); process.exit(0); })
     .catch(err => { console.error('ERRO:', err.message); process.exit(1); });
 } else {
+  // o "estou ocupado" e a prova de vida para o atualizador da nuvem (robo/robo-vivo-vigia.json, ocupado.js; 07/11/2026)
+  require('./ocupado').iniciar({ nome: 'vigia', log, sair: () => desligar() });
   const espera = esperaAntesDeLigar(Date.now());
   if (espera) log('muitas partidas seguidas: espero', Math.round(espera / 60000), 'min antes de ligar (pra não gastar o banco à toa)');
   setTimeout(async () => {

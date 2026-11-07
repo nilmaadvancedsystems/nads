@@ -179,7 +179,8 @@ function dentroDoLimite() {
 
 const MIME = { pdf: 'application/pdf', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', xls: 'application/vnd.ms-excel', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', txt: 'text/plain', csv: 'text/csv', zip: 'application/zip', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg' };
 
-// ctx: { db, getDrive, enviar(dados), clientesAtivos(), assinatura, caixa, log }. Devolve o que vai no pedido.
+// ctx: { db, getDrive, enviar(dados), clientesAtivos(), assinatura, caixa, log, pedidoId (o solicitacoesEmail/{id}, para a
+// pasta do eContador marcar nele) }. Devolve o que vai no pedido.
 async function atenderEnvioDp(p, ctx) {
   const { db } = ctx;
   const quem = p.criadoPorUid ? ((await db.collection('usuarios').doc(String(p.criadoPorUid)).get()).data() || {}) : {};
@@ -195,10 +196,27 @@ async function atenderEnvioDp(p, ctx) {
   const fora = ((((await db.collection(COLECAO_FORA).doc(comp).get()).data() || {}).clientes) || {})[codigo];
   const vao = tirarOsDeFora(escolhidos(lista, p.arquivos), fora, comp);
   if (!vao.length) throw new Error(fora && fora.arquivos && fora.arquivos.length ? 'os arquivos pedidos foram tirados da lista de envios' : 'nenhum arquivo do DP de ' + comp.slice(5) + '/' + comp.slice(0, 4) + ' na pasta do cliente');
+
+  // o cliente que recebe pelo eContador (07/11/2026, econtador.js): com a pasta ligada, os arquivos (já no Drive) entram
+  // na fila da pasta do UpDocs; com semEmail, só nela, sem e-mail. Desligado (o padrão), nada muda.
+  const EC = require('./econtador');
+  const ec = await EC.decisaoDoDp(db, codigo, comp);
+  const ativos = await ctx.clientesAtivos();
+  const naFila = empresa => EC.anotarSaida(db, { origem: 'envio-dp', codigo, competencia: comp, empresa, registro: ctx.pedidoId || '', arquivos: vao.map(a => ({ driveId: a.i, nome: a.n, pasta: a.c })) });
+  if (ec.semEmail) {
+    const empresa = EC.nomeDoAtivo(ativos, codigo);
+    if (!empresa) throw new Error('o cliente ' + codigo + ' não está no cadastro (ou está inativo)');
+    const econtadorSaida = await naFila(empresa);
+    if (!econtadorSaida) throw new Error('nenhum PDF para a pasta do eContador (o UpDocs só lê PDF)');
+    ctx.log('DP: documentos de', comp, 'de', codigo, empresa, 'na fila da pasta do eContador (' + vao.length + ' arquivo(s), sem e-mail)');
+    return {
+      status: 'enviado', via: 'econtador', enviadoEm: new Date().toISOString(), gmailId: '', para: [], assunto: '', econtadorSaida,
+      enviados: vao.map(a => a.n), resumo: vao.length + ' arquivo(s) para a pasta do eContador',
+    };
+  }
   const total = vao.reduce((s, a) => s + (a.s || 0), 0);
   if (total > MAX_BYTES) throw new Error('os arquivos passam de 18 MB juntos (' + (total / 1048576).toFixed(1).replace('.', ',') + ' MB); desmarque alguns');
 
-  const ativos = await ctx.clientesAtivos();
   const { cliente, para } = await destinatarios(db, codigo, ativos);
   if (!dentroDoLimite()) throw new Error('limite de ' + MAX_ENVIOS_POR_HORA + ' envios do DP por hora atingido; tente mais tarde');
 
@@ -210,9 +228,12 @@ async function atenderEnvioDp(p, ctx) {
   const nome = String(cliente.nome || p.empresa || '').trim();
   const { gmailId, assunto } = await mandarEmailDoDp(db, { comp, nome, para, anexos }, ctx);
   ctx.log('DP: documentos de', comp, 'enviados a', codigo, nome, '(' + anexos.length + ' arquivo(s), para ' + para.join(', ') + ')');
+  // o e-mail já foi: a fila da pasta do eContador não vira erro do envio
+  const econtadorSaida = ec.pasta ? await naFila(nome).catch(err => { ctx.log('DP: a fila do eContador de', codigo, 'deu erro:', err.message); return ''; }) : '';
   return {
     status: 'enviado', enviadoEm: new Date().toISOString(), gmailId, para, assunto,
-    enviados: anexos.map(a => a.nome), resumo: anexos.length + ' arquivo(s) para ' + para.join(', '),
+    enviados: anexos.map(a => a.nome), resumo: anexos.length + ' arquivo(s) para ' + para.join(', ') + (econtadorSaida ? ' e a pasta do eContador' : ''),
+    ...(econtadorSaida ? { econtadorSaida } : {}),
   };
 }
 

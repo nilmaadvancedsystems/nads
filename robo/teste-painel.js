@@ -104,6 +104,13 @@ function bancoDeMentira() {
   painel.erro('sieg', 'O SIEG deu erro', 'a API recusou');
   painel.erro('sieg', 'O SIEG deu erro', 'a API recusou');
   igual('erro: marcado e sem repetir em seguida', banco.gravados.filter(g => g.erro).length, 1);
+  painel.atividade('sieg', 'Baixou os XMLs de 292', 'ok');
+  painel.atividade('sieg', 'Cliente sem CNPJ', 'corrija no cadastro', { erro: true, aviso: true });
+  painel.batimento();
+  await new Promise(res => setTimeout(res, 20));
+  const ult = banco.docs.get('robo/painelPC').ultimos;
+  igual('ultimos: o último trabalho e o último erro de cada tipo', [ult.sieg.trabalho.texto, ult.sieg.erro.texto, ult.sieg.erro.detalhe], ['Baixou os XMLs de 292', 'O SIEG deu erro', 'a API recusou']);
+  verdade('ultimos: o "ligou" do robô não conta como trabalho e aviso não vira erro', !(ult.robo && ult.robo.trabalho) && ult.sieg.erro.texto !== 'Cliente sem CNPJ');
   painel.atividade('inventado', 'tipo fora da lista');
   igual('tipo fora da lista vira robo', banco.gravados.slice(-1)[0].tipo, 'robo');
   painel.fazendo('fgts', null);
