@@ -89,6 +89,10 @@ saida.aoParar(motivo => {
 });
 
 const db = getDb('entregas-2e5e2');
+// o freio de consumo do banco (07/11/2026, consumo.js): soma as leituras e gravações deste processo por tarefa; acima do
+// teto (20 mil leituras ou 5 mil gravações em 10 min) pausa 15 min a tarefa que mais gastou e avisa os admins (1 por hora)
+const { tarefa } = require('./consumo');
+require('./consumo').instalar(db, { log });
 const fila = db.collection('solicitacoesArquivo');
 const estadoRef = db.collection('robo').doc('arquivador');
 
@@ -708,7 +712,7 @@ async function iniciar() {
   // relatório lado a lado. Produção só por tipo, pela chave do config (robo/arquivadorNovo ou config.json no controle).
   // Nunca roda junto com um pedido do botão (ocupado) nem com a rotina antiga. ARQUIVADOR_NOVO=0 não liga.
   if (process.env.ARQUIVADOR_NOVO !== '0') {
-    try { continuo = require('./arquivador-continuo').iniciar({ db, painel, log: (...m) => log('[novo]', ...m), ocupado: () => ocupado, aoContarPendentes: p => { paraResolver = p; } }); }
+    try { continuo = tarefa('arquivador-novo', () => require('./arquivador-continuo').iniciar({ db, painel, log: (...m) => log('[novo]', ...m), ocupado: () => ocupado, aoContarPendentes: p => { paraResolver = p; } })); }
     catch (err) { log('o arquivador novo não ligou:', err.message); painel.modulo('arquivador-novo', 'Arquivador novo (por evento)', false, err.message); }
   }
   log('arquivador ligado em', os.hostname(), '— rotina em', RAIZ);
@@ -741,12 +745,12 @@ async function iniciar() {
     // o FGTS pelo robô, sem o Claude, no Chrome deste servidor (03/11/2026); atende só com o config/fgts.onde = 'servidor'
     if (!SEPARADOS) {
       painel.modulo('fgts', 'FGTS Digital', false, 'esperando o config/fgts.onde');
-      try { require('./fgts-claude').iniciarFgtsPeloClaude(db, log, { semClaude: true }); }
+      try { tarefa('fgts', () => require('./fgts-claude').iniciarFgtsPeloClaude(db, log, { semClaude: true })); }
       catch (err) { log('FGTS não ligou:', err.message); painel.modulo('fgts', 'FGTS Digital', false, err.message); }
     }
     // o balancete e o razão do Alterdata no Contábil deste servidor (04/11/2026: "isso tem que rodar no servidor")
     if (!SEPARADOS) {
-      try { require('./alterdata').iniciarAlterdata(db, log); }
+      try { tarefa('alterdata', () => require('./alterdata').iniciarAlterdata(db, log)); }
       catch (err) { log('Alterdata não ligou:', err.message); painel.modulo('alterdata', 'Alterdata', false, err.message); }
     }
   } else {
@@ -760,7 +764,7 @@ async function iniciar() {
   }
   if (!SEPARADOS) {
     painel.modulo('sieg', 'SIEG', true);
-    try { require('./sieg').iniciarSieg({ db, log }); }
+    try { tarefa('sieg', () => require('./sieg').iniciarSieg({ db, log })); }
     catch (err) { log('SIEG desligado:', err.message); painel.modulo('sieg', 'SIEG', false, err.message); }
   }
   // a Área do Cliente (16/10/2026): o espelho de cada link secreto e as caixas de chamados e de arquivos do cliente; aqui
@@ -769,7 +773,7 @@ async function iniciar() {
   try { require('./drive-vigia').iniciar({ log, painel }); }
   catch (err) { log('vigia do Google Drive não ligou:', err.message); }
   painel.modulo('area-cliente', 'Área do Cliente', true);
-  try { require('./area-cliente').iniciarAreaDoCliente(db, log); }
+  try { tarefa('area-cliente', () => require('./area-cliente').iniciarAreaDoCliente(db, log)); }
   catch (err) { log('Área do Cliente não ligou:', err.message); painel.modulo('area-cliente', 'Área do Cliente', false, err.message); }
   // o painel dos agentes do Claude Code (14/10/2026): saiu do robô. Cada computador cadastrado no nads grava as próprias
   // conversas pelo gancho ~/.claude/painel/registro.js (painelMaquinas/{chave}/sessoes); o painelAgentes ficou sem uso.

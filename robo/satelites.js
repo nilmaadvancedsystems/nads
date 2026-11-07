@@ -9,6 +9,14 @@ const painel = require('./painel');
 
 const NOMES = { sieg: 'SIEG', fgts: 'FGTS Digital', alterdata: 'Alterdata' };
 const VOLTA_MS = 30 * 1000;
+// a queda logo depois de ligar volta cada vez mais devagar (07/11/2026: cada partida relê a fila e os pedidos presos do
+// banco; um módulo que cai ao ligar religava a cada 30 s para sempre): 30 s, 1, 2, 4, 8 e depois de 10 em 10 min. O que
+// ficou de pé mais de 10 min volta a cair "pela primeira vez".
+const VOLTA_MAXIMA_MS = 10 * 60 * 1000;
+const FICOU_DE_PE_MS = 10 * 60 * 1000;
+/** A espera antes de religar, pela n-ésima queda seguida (0 = a primeira): 30 s, 1, 2, 4, 8, 10, 10... min. */
+const esperaDaVolta = n => Math.min(VOLTA_MAXIMA_MS, VOLTA_MS * Math.pow(2, Math.max(0, n)));
+const quedas = new Map();   // qual -> quedas seguidas (logo depois de ligar)
 const filhos = new Map();
 let parando = false;
 
@@ -21,6 +29,7 @@ function ligarUm(qual, log) {
     windowsHide: true,
   });
   filhos.set(qual, filho);
+  const ligadoEm = Date.now();
   // as linhas do filho no log do arquivador (cada uma já vem com a data e o [sieg] / [fgts])
   const repassar = fluxo => { let resto = ''; fluxo.on('data', b => { resto += b; const l = resto.split('\n'); resto = l.pop(); for (const x of l) if (x.trim()) process.stdout.write(x + '\n'); }); };
   repassar(filho.stdout);
@@ -38,9 +47,12 @@ function ligarUm(qual, log) {
     if (parando) return;
     // 3 = já existe outro desse módulo rodando (não liga de novo por cima)
     if (codigo === 3) { log(NOMES[qual] + ': já havia outro processo; não liguei de novo'); return; }
-    log(NOMES[qual] + ': o processo saiu (código ' + codigo + '); volta em ' + VOLTA_MS / 1000 + ' s');
+    const seguidas = Date.now() - ligadoEm < FICOU_DE_PE_MS ? (quedas.get(qual) || 0) + 1 : 0;
+    quedas.set(qual, seguidas);
+    const espera = esperaDaVolta(seguidas - 1);
+    log(NOMES[qual] + ': o processo saiu (código ' + codigo + '); volta em ' + (espera < 60000 ? Math.round(espera / 1000) + ' s' : Math.round(espera / 60000) + ' min') + (seguidas > 1 ? ' (' + seguidas + ' quedas seguidas)' : ''));
     painel.modulo(qual, NOMES[qual], false, 'reiniciando');
-    setTimeout(() => ligarUm(qual, log), VOLTA_MS).unref();
+    setTimeout(() => ligarUm(qual, log), espera).unref();
   });
   filho.on('error', err => log(NOMES[qual] + ': o processo não abriu:', err.message));
 }
@@ -68,4 +80,4 @@ function pedirSaida(motivo) {
 /** Quantos filhos ainda estão rodando. */
 function vivos() { return filhos.size; }
 
-module.exports = { ligar, parar, pedirSaida, vivos, NOMES };
+module.exports = { ligar, parar, pedirSaida, vivos, esperaDaVolta, NOMES };

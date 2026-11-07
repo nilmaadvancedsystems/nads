@@ -220,6 +220,44 @@ async function clientesPorCodigo(db) {
   return m;
 }
 
+// A lista acima custa uma leitura por cliente (~400) e era relida a CADA minuto com mudança no Drive (07/11/2026: o
+// arquivador e o SIEG mexem nas pastas o dia todo; era o maior gasto fixo do mapa). Agora a lista vale 30 min em memória
+// (a releitura completa da madrugada a renova) e serve só para achar o cliente pelo código: o cliente da pasta que mudou
+// é relido sozinho do banco (clienteDaPasta), então a marcação e o cadastro usam o dado de agora, como antes.
+const CLIENTES_DO_MAPA_VALEM_MS = 30 * 60 * 1000;
+let clientesDoMapa = { em: 0, mapa: null };
+function guardarClientesDoMapa(mapa) {
+  const m = new Map(mapa);
+  m.daMemoria = true;
+  m.semCliente = new Set();
+  clientesDoMapa = { em: Date.now(), mapa: m };
+  return m;
+}
+async function clientesPorCodigoGuardados(db) {
+  if (clientesDoMapa.mapa && Date.now() - clientesDoMapa.em < CLIENTES_DO_MAPA_VALEM_MS) return clientesDoMapa.mapa;
+  return guardarClientesDoMapa(await clientesPorCodigo(db));
+}
+// O cliente da pasta: da lista lida agora (a releitura completa) ou, com a lista da memória, do banco na hora (1 leitura;
+// o código fora da lista é procurado uma vez por validade da lista: o cliente novo entra sem esperar 30 min).
+async function clienteDaPasta(db, codigo, porCodigo) {
+  if (!codigo) return null;
+  const daLista = porCodigo.get(codigo) || null;
+  if (!porCodigo.daMemoria) return daLista;
+  if (daLista) {
+    const s = await db.collection('clientes').doc(daLista.id).get();
+    const c = s.exists ? Object.assign({ id: s.id }, s.data()) : null;
+    if (!c || c.ativo === false || String(c.codigoOrigem).trim() !== codigo) { porCodigo.delete(codigo); return null; }
+    porCodigo.set(codigo, c);
+    return c;
+  }
+  if (porCodigo.semCliente.has(codigo)) return null;
+  const codigos = /^\d+$/.test(codigo) ? [codigo, Number(codigo)] : [codigo];
+  const achado = (await db.collection('clientes').where('codigoOrigem', 'in', codigos).limit(5).get()).docs
+    .map(d => Object.assign({ id: d.id }, d.data())).find(c => c.ativo !== false) || null;
+  if (achado) porCodigo.set(codigo, achado); else porCodigo.semCliente.add(codigo);
+  return achado;
+}
+
 // Marca como recebido o que a pasta prova que chegou. Três cuidados:
 //   - só MARCA, nunca desmarca: falta de arquivo na pasta não é prova de nada;
 //   - lembra quais arquivos já usou (campo "pasta" do mês): se alguém
@@ -362,7 +400,7 @@ async function marcacaoLigada(db) {
 async function releituraDoCliente(db, pasta, porCodigo, log, soEnsaio) {
   const itens = await varrerPasta(pasta.id);
   const resumo = await gravarCliente(db, { id: pasta.id, name: pasta.name }, itens);
-  const cliente = resumo.codigo ? porCodigo.get(resumo.codigo) : null;
+  const cliente = await clienteDaPasta(db, resumo.codigo, porCodigo);
   const achados = documentosNaPasta(itens, pasta.id);
   const marcados = await marcarPeloIndice(db, cliente, achados, log, soEnsaio);
   // cadastro (bancos, "não se aplica") só com a marcação ligada
@@ -511,6 +549,7 @@ async function varreduraCompleta(db, log, estado) {
   const raizId = await acharPastaDoAno();
   const topo = (await listarFilhosDe([raizId])).filter(i => i.t === 'd');
   const porCodigo = await clientesPorCodigo(db);
+  guardarClientesDoMapa(porCodigo);   // a lista lida agora vale para as mudanças dos próximos 30 min
   const soEnsaio = !(await marcacaoLigada(db));
   const resumos = [];
   let marcados = 0;
@@ -585,7 +624,7 @@ async function conferirMudancas(db, estado, log) {
     if (proximo && proximo !== raiz.pageToken) await raizRef.set({ pageToken: proximo }, { merge: true });
     return false;
   }
-  const porCodigo = await clientesPorCodigo(db);
+  const porCodigo = await clientesPorCodigoGuardados(db);
   const soEnsaio = !(await marcacaoLigada(db));
   const clientes = new Map((raiz.clientes || []).map(c => [c.id, c]));
   if (novaRaiz) {
@@ -633,7 +672,7 @@ async function atenderPedidoDoMapa(db, log, estado, pedido) {
   if (pastaId && raiz.pastaId) {
     const c = (raiz.clientes || []).find(x => x.id === pastaId);
     if (!c) throw new Error('essa pasta de cliente não está no mapa');
-    const porCodigo = await clientesPorCodigo(db);
+    const porCodigo = await clientesPorCodigoGuardados(db);
     const soEnsaio = !(await marcacaoLigada(db));
     const r = await releituraDoCliente(db, { id: c.id, name: c.nomePasta }, porCodigo, log, soEnsaio);
     lembrarDonos(estado, c.id, r.itens);
@@ -762,4 +801,6 @@ module.exports = {
   codigoDaPasta, chaveDeNome, caminhos, documentosNaPasta, totais, TIPO_POR_PASTA, bancoDaPasta,
   // cadastro pela pasta (bancos, "não se aplica"): exposta pra aplicar/testar fora do robô
   ajustarCadastroPeloIndice, marcarPeloIndice,
+  // a lista dos clientes em memória (teste-consumo.js)
+  clienteDaPasta, guardarClientesDoMapa,
 };

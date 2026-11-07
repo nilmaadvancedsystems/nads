@@ -50,5 +50,7 @@ process.on('SIGTERM', () => process.exit(0));
 process.on('unhandledRejection', err => log('erro não tratado (segui rodando):', err && err.message ? err.message : String(err)));
 
 const db = qual === 'eco' ? null : require('./firestore-client').getDb('entregas-2e5e2');
+// o freio de consumo do banco (07/11/2026, consumo.js): aqui o processo é um módulo só, então ele é a tarefa (pausável)
+if (db) require('./consumo').instalar(db, { log, tarefa: qual });
 try { MODULOS[qual](db, log); log('ligado num processo próprio (' + process.pid + ')'); }
 catch (err) { log(qual + ' não ligou:', err.message); require('./painel').modulo(qual, require('./satelites').NOMES[qual] || qual, false, err.message); }

@@ -75,6 +75,10 @@ const ALERTA_A_CADA_H = 6;              // no máximo um alerta de erro a cada 6
 
 const agora = () => new Date().toISOString();
 const log = (...m) => console.log(new Date().toLocaleString('pt-BR'), ...m);
+// o freio de consumo do banco (07/11/2026, consumo.js): soma as leituras e gravações deste processo por tarefa; acima do
+// teto (20 mil leituras ou 5 mil gravações em 10 min) pausa 15 min a tarefa que mais gastou e avisa os admins (1 por hora)
+const { tarefa } = require('./consumo');
+if (!SO_VER_RESUMO) require('./consumo').instalar(db, { log });
 
 // ---------- sinal de vida ----------
 function baterPonto() {
@@ -978,7 +982,8 @@ async function iniciar() {
   // no seu try: nenhum deles pode derrubar o robô do Gmail.
   try { require('./avisos-vencimento').iniciarAvisosDeVencimento(db, log); }
   catch (err) { log('lembrete de vencimento desligado:', err.message); }
-  try { require('./backup-diario').iniciarBackupDiario(db, log, avisos); }
+  // o backup lê o banco inteiro de propósito: teto próprio, fora da soma do processo
+  try { tarefa('backup', () => require('./backup-diario').iniciarBackupDiario(db, log, avisos), { tetoLeituras: 400000 }); }
   catch (err) { log('backup diário desligado:', err.message); }
   try { require('./clientes-cache').manterArquivo(db, log); }
   catch (err) { log('arquivo local de clientes desligado:', err.message); }
@@ -1011,21 +1016,21 @@ async function iniciar() {
   catch (err) { log('documentos pelo link desligados:', err.message); }
   // Arquivo mandado pelo nads (Tarefas › Drive) para a pasta Claudio Secretario.
   painel.modulo('envios', 'Envios do nads', true);
-  try { require('./envios-do-nads').iniciarEnviosDoNads(db, log); }
+  try { tarefa('envios-do-nads', () => require('./envios-do-nads').iniciarEnviosDoNads(db, log)); }
   catch (err) { log('envios do nads desligados:', err.message); painel.modulo('envios', 'Envios do nads', false, err.message); }
   // e onde cada um foi parar depois do arquivamento (a tela do nads mostra)
-  try { require('./envios-do-nads').iniciarDestinoDosEnvios(db, log); }
+  try { tarefa('envios-do-nads', () => require('./envios-do-nads').iniciarDestinoDosEnvios(db, log)); }
   catch (err) { log('destino dos envios do nads desligado:', err.message); }
   // Quanto o banco já usou hoje (todo o sistema), pro cartão Saúde do sistema.
   try { require('./uso-banco').iniciarUsoDoBanco(db, log); }
   catch (err) { log('uso do banco desligado:', err.message); }
   // O resumo diário da saúde do banco (o site do admin, 21/10/2026): o tamanho das coleções, os órfãos, o uso dos
   // últimos 30 dias, o armazenamento e a hospedagem, em robo/saudeBanco (só o admin lê).
-  try { require('./saude-banco').iniciarSaudeDoBanco(db, log); }
+  try { tarefa('saude-banco', () => require('./saude-banco').iniciarSaudeDoBanco(db, log)); }
   catch (err) { log('saúde do banco desligada:', err.message); }
   // A faxina do banco (01/11/2026: 1.009 MB de 1 GB): uma vez por dia, os pedaços de arquivo já usados (o extrato importado,
   // as fotos da tela do FGTS, o arquivo do feedback feito); o documento de cima fica. FAXINA_BANCO=simular|desligada.
-  try { require('./faxina-banco').iniciarFaxinaDoBanco(db, log); }
+  try { tarefa('faxina-banco', () => require('./faxina-banco').iniciarFaxinaDoBanco(db, log)); }
   catch (err) { log('faxina do banco desligada:', err.message); }
   // A Central dos robôs (07/11/2026, central.js): os comandos do site robos-nilma para a nuvem (lista fechada), o espelho
   // do log de cada robô daqui e o estado da máquina (CPU, memória, disco). Só o vigia com a vez (este iniciar).
@@ -1040,17 +1045,17 @@ async function iniciar() {
   // o lote do DP (28/10/2026): os arquivos que a tela sobe, lidos pelo arquivador, disparados por cliente e gravados no Drive
   if (process.env.USAR_DRIVE_API === '1') {
     try {
-      require('./lote-dp').iniciarLoteDp(db, {
+      tarefa('lote-dp', () => require('./lote-dp').iniciarLoteDp(db, {
         log, caixa: CAIXA, enviar: dados => enviar(dados), config: () => configDaCobranca(),
         getDrive: () => require('./drive-indice').getDrive(),
-      });
+      }));
     } catch (err) { log('lote do DP desligado:', err.message); }
     // e o do Fiscal (03/11/2026: o "Enviar guias" do Relatório): as guias lidas, um e-mail por cliente e o valor no Relatório
     try {
-      require('./lote-fiscal').iniciarLoteFiscal(db, {
+      tarefa('lote-fiscal', () => require('./lote-fiscal').iniciarLoteFiscal(db, {
         log, caixa: CAIXA, enviar: dados => enviar(dados), config: () => configDaCobranca(),
         getDrive: () => require('./drive-indice').getDrive(),
-      });
+      }));
     } catch (err) { log('lote do Fiscal desligado:', err.message); }
   }
   // Mapa da pasta do ano no Drive (explorador do Pendências, status pela
@@ -1058,9 +1063,9 @@ async function iniciar() {
   // API — na nuvem. Ver drive-indice.js e abrir-do-drive.js.
   if (process.env.USAR_DRIVE_API === '1') {
     painel.modulo('drive', 'Mapa do Drive', true);
-    try { require('./drive-indice').iniciarIndiceDrive(db, log); }
+    try { tarefa('mapa-do-drive', () => require('./drive-indice').iniciarIndiceDrive(db, log)); }
     catch (err) { log('mapa do Drive desligado:', err.message); painel.modulo('drive', 'Mapa do Drive', false, err.message); }
-    try { require('./abrir-do-drive').iniciarAberturaDoDrive(db, log); }
+    try { tarefa('abrir-do-drive', () => require('./abrir-do-drive').iniciarAberturaDoDrive(db, log)); }
     catch (err) { log('abrir arquivo do Drive desligado:', err.message); }
   }
   // A guia do FGTS Digital (07/10/2026): só na máquina do Google, que tem o navegador e o certificado do escritório.
