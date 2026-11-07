@@ -212,7 +212,10 @@ function devolverPecas(de, para) {
 /** Site de outro projeto: cria na primeira vez (o nome do site é único no Firebase inteiro). */
 function garantirSite(projeto, site) {
   if (projeto === PROJETO_PADRAO) return;
-  const lista = execSync('firebase hosting:sites:list --json --project ' + projeto, { cwd: web, encoding: 'utf8' });
+  // o firebase no Node 24 às vezes cai ao sair (Assertion failed ... async.c) depois de responder certo: vale o que ele respondeu
+  let lista;
+  try { lista = execSync('firebase hosting:sites:list --json --project ' + projeto, { cwd: web, encoding: 'utf8' }); }
+  catch (e) { if (!/"status": "success"/.test(e.stdout || '')) throw e; lista = e.stdout; }
   if (lista.includes('/sites/' + site + '"')) return;
   console.log('sites: criando o site ' + site + ' no projeto ' + projeto);
   execSync('firebase hosting:sites:create ' + site + ' --project ' + projeto, { cwd: web, stdio: 'inherit' });
