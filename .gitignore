@@ -15,6 +15,11 @@ robo/copias-limpeza-*/
 robo/arquivador-publicados.json
 robo/arquivador.lock
 robo/robo-*.lock
+# sair com calma (07/11/2026, robo/ocupado.js): o pedido do atualizador, a prova de vida de cada processo e as partidas
+robo/sair.pedido
+robo/robo-vivo-*.json
+robo/robo-vivo-*.json.tmp
+robo/arquivador-partidas.json
 robo/avisos-vencimento-feitos.json
 robo/clientes-cache.json
 robo/gemini_key.json

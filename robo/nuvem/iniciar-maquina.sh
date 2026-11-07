@@ -17,7 +17,14 @@
 #        robo-ligado = sim      liga o robô; qualquer outra coisa, desliga
 #        robo-versao = (texto)  quando muda, baixa o código novo e reinicia
 #      É assim que o robô é ligado, desligado e atualizado sem ninguém
-#      precisar entrar na máquina.
+#      precisar entrar na máquina. Desde 07/11/2026 sem matar o trabalho no
+#      meio: quem decide se e quando reinicia é o robo/atualizar-robo.js do
+#      commit novo (só se mudou algo que o vigia usa, no máximo 1 vez a cada
+#      30 min, fora da janela das 3h, esperando até 30 min o backup ou o lote
+#      em andamento; "urgente" no robo-versao ou [urgente] no commit passa na
+#      frente), e o "systemctl stop" deixa o vigia terminar o que está
+#      fazendo (até 10 min). Isto só vale depois que a máquina religa com
+#      este arquivo no metadado startup-script.
 #   7. o FGTS Digital (07/10/2026): o navegador (Chromium) e, quando o
 #      certificado do escritório chega pelos metadados, a importação dele para
 #      o navegador do usuário "robo" (ver robo/fgts-digital.js).
@@ -156,7 +163,10 @@ RestartSec=30
 StandardOutput=journal+console
 StandardError=journal+console
 KillSignal=SIGTERM
-TimeoutStopSec=15
+# o SIGTERM vai só para o vigia (07/11/2026): ele para de pegar pedido novo, espera o que está em andamento (o backup é
+# um processo-filho dele) até 10 min e sai; o systemd dá 11 min antes de matar o resto
+KillMode=mixed
+TimeoutStopSec=11min
 
 [Install]
 WantedBy=multi-user.target
@@ -171,13 +181,42 @@ SCRIPTS=$CODIGO/robo
 export PATH=/opt/node/bin:$PATH
 ligado=$(meta robo-ligado)
 versao=$(meta robo-versao)
+como_robo() { sudo -u robo env PATH="$PATH" TZ=America/Sao_Paulo "$@"; }
 if [ -n "$versao" ] && [ "$versao" != "$(cat /opt/robo/versao 2>/dev/null)" ]; then
-  echo "robo-interruptor: atualizando para $versao" > /dev/console
-  sudo -u robo git -C "$CODIGO" pull -q --ff-only \
-    && sudo -u robo env PATH="$PATH" npm install --omit=dev --no-audit --no-fund --prefix "$SCRIPTS" >/dev/null 2>&1 \
-    && echo "$versao" > /opt/robo/versao \
-    && { [ "$ligado" = "sim" ] && systemctl restart robo; true; }
+  # sem rede: tenta de novo no próximo minuto
+  como_robo git -C "$CODIGO" fetch -q origin desenvolvimento || exit 0
+  # quem decide é o atualizar-robo.js do commit novo (07/11/2026), tirado com git show: o merge não troca quem decide
+  decisao=""
+  if como_robo git -C "$CODIGO" show origin/desenvolvimento:robo/atualizar-robo.js > /opt/robo/atualizar-robo.js 2>/dev/null; then
+    decisao=$(como_robo node /opt/robo/atualizar-robo.js decidir --repo "$CODIGO" --versao "$versao" --estado /opt/robo/atualizar-estado.json 2>/dev/null)
+  fi
+  [ -n "$decisao" ] || decisao="reiniciar (sem o atualizar-robo.js: como antes)"
+  case "$decisao" in
+    esperar*)
+      # uma linha no registro por motivo, não uma por minuto; a próxima volta do relógio decide de novo
+      if [ "$decisao" != "$(cat /opt/robo/atualizar-espera 2>/dev/null)" ]; then
+        echo "robo-interruptor: $versao: $decisao" > /dev/console
+        echo "$decisao" > /opt/robo/atualizar-espera
+      fi ;;
+    nada*|codigo*)
+      echo "robo-interruptor: $versao sem reiniciar: $decisao" > /dev/console
+      como_robo git -C "$CODIGO" merge -q --ff-only origin/desenvolvimento && echo "$versao" > /opt/robo/versao
+      rm -f /opt/robo/atualizar-espera ;;
+    *)
+      echo "robo-interruptor: atualizando para $versao: $decisao" > /dev/console
+      # o vigia sai com calma (SIGTERM: para de pegar pedido, termina o que está fazendo, até 10 min) ANTES do código mudar
+      if systemctl is-active -q robo; then
+        echo "robo-interruptor: pedi ao vigia para sair com calma" > /dev/console
+        systemctl stop robo
+      fi
+      como_robo git -C "$CODIGO" merge -q --ff-only origin/desenvolvimento \
+        && como_robo npm install --omit=dev --no-audit --no-fund --prefix "$SCRIPTS" >/dev/null 2>&1 \
+        && echo "$versao" > /opt/robo/versao
+      como_robo node /opt/robo/atualizar-robo.js registrar --estado /opt/robo/atualizar-estado.json >/dev/null 2>&1
+      rm -f /opt/robo/atualizar-espera ;;
+  esac
 fi
+# ligar (também logo depois de atualizar) e desligar
 if [ "$ligado" = "sim" ]; then
   systemctl is-active -q robo || { echo "robo-interruptor: ligando" > /dev/console; systemctl start robo; }
 else

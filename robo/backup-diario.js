@@ -62,6 +62,7 @@ function iniciarBackupDiario(db, log) {
     if (diaDasTentativas !== hojeIso()) { diaDasTentativas = hojeIso(); tentativasNoDia = 0; }
     if (tentativasNoDia >= MAX_TENTATIVAS) return;
     rodando = true;
+    require('./ocupado').marcar('backup', 'Backup do dia');   // sair com calma espera o backup (07/11/2026)
     try {
       const estado = (await estadoRef.get()).data() || {};
       if (estado.backup && estado.backup.dia === hojeIso() && estado.backup.ok) { feitoNoDia = hojeIso(); return; }
@@ -97,7 +98,7 @@ function iniciarBackupDiario(db, log) {
       }
     } catch (err) {
       log('backup do dia falhou:', err.message);
-    } finally { rodando = false; }
+    } finally { rodando = false; require('./ocupado').marcar('backup', null); }
   }
   setTimeout(talvez, 10 * 60 * 1000);
   setInterval(talvez, 60 * 60 * 1000);
