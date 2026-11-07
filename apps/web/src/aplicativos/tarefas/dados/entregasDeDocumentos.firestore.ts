@@ -22,6 +22,7 @@ import {
   setDoc as setDocBruto, Timestamp, updateDoc as updateDocBruto, where, writeBatch as writeBatchBruto, type DocumentData, type Unsubscribe,
 } from 'firebase/firestore';
 import { guardar, guardarLote, guardarPedido } from '../../../comum/modoDesenvolvedor';
+import { criarTravaDeRepeticao } from '../../../comum/travaDeRepeticao';
 import type { ListaAoVivo } from './agentes';
 import { bancoDoEntregas, contaDoEntregas } from './entregas.firestore';
 import type { ArquivoDoDrive, AtestadoParaBuscar, ComprovanteDaEntrega, EscritaPerdida, GuiaAnexada, LembreteDoCliente, QuemNoEntregas, RepoEntregasDeDocumentos, ResultadoDaGravacao } from './entregasDeDocumentos';
@@ -246,17 +247,22 @@ export function criarEntregasDeDocumentosFirestore(pessoa: () => { nome: string;
   const gravadoEm = new Map<string, number>();
   let retentativa: ReturnType<typeof setTimeout> | null = null;
   const portalEmAndamento = new Map<string, Promise<void>>();
+  // (07/11/2026) reabrir ou recriar o mesmo link espera 1 min antes de ir de novo, e o dobro a cada vez: negada a gravação
+  // (ou dois aparelhos com a parada diferente para o mesmo link), o snapshot voltava igual e cada volta apagava e criava
+  // o link de novo, como o ping-pong do rotaLinks de 25/09/2026
+  const podeMexerNoLink = criarTravaDeRepeticao();
   function garantirRotaDoPortal(token: string, chave: string, zona: string | null, nome: string): Promise<void> {
     const link = links?.lista.find(l => l.id === token);
     const limite = new Date(Date.now() + 24 * 3600000).toISOString();
     const serve = link && link.clienteChave === chave && (link.zona || null) === (zona || null) && link.expiraEm > limite;
     if (serve) {
-      if (!link.concluida) return Promise.resolve();
+      if (!link.concluida || !podeMexerNoLink('reabrir|' + token)) return Promise.resolve();
       link.concluida = false;
       return updateDoc(doc(db, 'rotaLinks', token), { concluida: false, paradasAntes: [], atualizadoEm: agora() }).catch(() => undefined);
     }
     const ja = portalEmAndamento.get(token);
     if (ja) return ja;
+    if (!podeMexerNoLink('recriar|' + token + '|' + chave + '|' + (zona || ''))) return Promise.resolve();
     const q = quem();
     const ref = doc(db, 'rotaLinks', token);
     // nome, zona e validade são fixos depois de criado (as regras): mudou algum, apaga e cria de novo

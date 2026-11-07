@@ -7,6 +7,7 @@
 // A interface fica azul (data-dev no <html>), para nunca confundir com o uso de verdade.
 import { useRetorno } from '@nads/ui';
 import { useEffect, useSyncExternalStore } from 'react';
+import { travar, travarLote, travarPedido } from './disjuntorDeGravacao';
 
 const CHAVE = 'nads-modo-desenvolvedor';
 const EVENTO = 'nads-modo-desenvolvedor';
@@ -56,22 +57,28 @@ function gravaDeVerdade(caminho = ''): boolean {
 
 const caminhoDe = (ref: unknown) => (ref && typeof ref === 'object' && 'path' in ref ? String((ref as { path: unknown }).path) : '');
 
+// a gravação de verdade passa também pelo disjuntor (disjuntorDeGravacao.ts, 07/11/2026): o mesmo documento gravado sem
+// parar (um ciclo) para por uns minutos, com aviso na auditoria
+
 /** setDoc / updateDoc / deleteDoc com a trava: no modo desenvolvedor, finge que gravou (a tela segue com o que a pessoa fez). */
 export function guardar<A extends unknown[], R>(gravar: (...a: A) => Promise<R>): (...a: A) => Promise<R> {
-  return (...a: A) => (gravaDeVerdade(caminhoDe(a[0])) ? gravar(...a) : Promise.resolve(undefined as R));
+  const comDisjuntor = travar(gravar);
+  return (...a: A) => (gravaDeVerdade(caminhoDe(a[0])) ? comDisjuntor(...a) : Promise.resolve(undefined as R));
 }
 
 /** addDoc com a trava: os pedidos que disparam ação (e-mail, robô, IA) são recusados no modo desenvolvedor. */
 export function guardarPedido<A extends unknown[], R>(gravar: (...a: A) => Promise<R>): (...a: A) => Promise<R> {
+  const comDisjuntor = travarPedido(gravar);
   return (...a: A) => {
-    if (gravaDeVerdade(caminhoDe(a[0]))) return gravar(...a);
+    if (gravaDeVerdade(caminhoDe(a[0]))) return comDisjuntor(...a);
     window.dispatchEvent(new CustomEvent(EVENTO_BLOQUEADO));
     return Promise.reject(new Error(MENSAGEM_BLOQUEADO));
   };
 }
 
 /** O lote do Firestore com a trava no commit (no modo desenvolvedor, finge que gravou). */
-export function guardarLote<L extends { commit: () => Promise<void> }>(lote: L): L {
+export function guardarLote<L extends { commit: () => Promise<void> }>(loteBruto: L): L {
+  const lote = travarLote(loteBruto);
   const commit = lote.commit.bind(lote);
   lote.commit = () => (gravaDeVerdade() ? commit() : Promise.resolve());
   return lote;

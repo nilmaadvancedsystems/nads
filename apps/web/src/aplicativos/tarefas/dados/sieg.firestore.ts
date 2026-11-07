@@ -4,9 +4,14 @@
 //     chaves); o robô escreve o andamento, o concluído ou o erro no próprio pedido;
 //   - robo/sieg (só leitura): o robô ligado (com as credenciais) e o ponto.
 import { tarefas as t } from '@nads/core';
-import { addDoc, collection, doc, getDoc, onSnapshot, query, setDoc, where } from 'firebase/firestore';
+import { addDoc as addDocBruto, collection, doc, getDoc, onSnapshot, query, setDoc as setDocBruto, where } from 'firebase/firestore';
 import { bancoDoEntregas } from './entregas.firestore';
 import type { PedidoSieg, PedidoSituacao, RepoSieg, SituacaoNaSefaz } from './sieg';
+import { travar, travarPedido } from '../../../comum/disjuntorDeGravacao';
+
+// o disjuntor de gravação (comum/disjuntorDeGravacao.ts): o mesmo alvo gravado sem parar para por uns minutos
+const addDoc = travarPedido(addDocBruto) as typeof addDocBruto;
+const setDoc = travar(setDocBruto) as typeof setDocBruto;
 
 type Quem = { nome: string; uid: string } | null;
 const texto = (v: unknown) => (v == null ? '' : String(v));

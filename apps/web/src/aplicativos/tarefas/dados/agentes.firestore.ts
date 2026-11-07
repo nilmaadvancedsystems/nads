@@ -2,9 +2,14 @@
 // cadastrados; o id do documento é a chave secreta) e painelMaquinas/{chave}/sessoes (o resumo vivo de cada conversa,
 // que o gancho registro.js do computador grava). Só o admin lê e grava os computadores; as conversas, só lê (a regra).
 // Ao vivo: os computadores e, de cada computador ativo, as 30 conversas mais recentes das últimas 24 h.
-import { collection, doc, limit, onSnapshot, orderBy, query, setDoc, updateDoc, where, type Unsubscribe } from 'firebase/firestore';
+import { collection, doc, limit, onSnapshot, orderBy, query, setDoc as setDocBruto, updateDoc as updateDocBruto, where, type Unsubscribe } from 'firebase/firestore';
 import { chaveNova, pastaDe, type AgenteNoPainel, type ListaAoVivo, type MaquinaDoPainel, type RepoAgentes, type SessaoDeAgentes } from './agentes';
 import { bancoDoEntregas } from './entregas.firestore';
+import { travar } from '../../../comum/disjuntorDeGravacao';
+
+// o disjuntor de gravação (comum/disjuntorDeGravacao.ts): o mesmo alvo gravado sem parar para por uns minutos
+const setDoc = travar(setDocBruto) as typeof setDocBruto;
+const updateDoc = travar(updateDocBruto) as typeof updateDocBruto;
 
 const texto = (v: unknown) => (v == null ? '' : String(v));
 const COLECAO = 'painelMaquinas';

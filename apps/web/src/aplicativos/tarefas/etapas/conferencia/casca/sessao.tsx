@@ -8,6 +8,7 @@ import { useRetorno } from '@nads/ui';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useAplicar, useEmpresaGuardada } from '../dados/repo';
 import { useParametrosDaEtapa } from '../../../telas/executor/etapas/ponte';
+import { criarTravaDeRepeticao } from '../../../../../comum/travaDeRepeticao';
 
 export type AbaCadastro = 'entradas' | 'saidas' | 'tomados' | 'prestados';
 
@@ -162,11 +163,16 @@ export function servicosDoEndereco(search: string): boolean | undefined {
  * A regra "presta serviços" mora no Cadastro da empresa (Vitor, 30/09/2026). Quando a Conferência abre pela
  * Tarefas, ela vem junto, e a empresa da Conferência fica igual (no lugar da pergunta de boas-vindas).
  */
+// (07/11/2026) o mesmo valor, na mesma empresa, espera 1 min antes de ir de novo, e o dobro a cada vez: com a gravação
+// negada (ou duas telas abertas com valores diferentes, uma gravando por cima da outra), o banco voltava com o outro valor
+// e este efeito gravava a empresa inteira de novo a cada volta
 export function useSincronizarPrestaServico(valor: boolean | null | undefined) {
   const s = useSessao();
   const atual = s.empresa.prestaServico;
+  const nome = s.empresa.nome;
   const { aplicar } = s;
+  const [podePedir] = useState(() => criarTravaDeRepeticao());
   useEffect(() => {
-    if (typeof valor === 'boolean' && atual !== valor) aplicar(x => c.definirPrestaServico(x, valor));
-  }, [valor, atual, aplicar]);
+    if (typeof valor === 'boolean' && atual !== valor && podePedir(nome + '|' + valor)) aplicar(x => c.definirPrestaServico(x, valor));
+  }, [valor, atual, aplicar, nome, podePedir]);
 }

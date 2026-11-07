@@ -8,9 +8,13 @@
 //                                  pede o "ao vivo" (um comando 'assistir'), e o robô passa a mandar a cada 10 s
 // A tela nunca escreve nada além do comando (status 'pendente'); quem responde é o robô.
 import { entregas as e, robos as r } from '@nads/core';
-import { addDoc, collection, doc, limit, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { addDoc as addDocBruto, collection, doc, limit, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { bancoDoEntregas, contaDoEntregas } from '../../tarefas/dados/entregas.firestore';
 import type { DocsDaCentral, PedidoDaTela, RepoCentral } from './central';
+import { travarPedido } from '../../../comum/disjuntorDeGravacao';
+
+// o disjuntor de gravação (comum/disjuntorDeGravacao.ts): o mesmo alvo gravado sem parar para por uns minutos
+const addDoc = travarPedido(addDocBruto) as typeof addDocBruto;
 
 const QUANTAS_ATIVIDADES = 150;
 const QUANTOS_COMANDOS = 40;

@@ -1,7 +1,11 @@
 // O acesso ao Firestore do "Importar no Alterdata" (comum/importarNoAlterdata.ts): grava o pedido em pedidosAlterdata
 // (banco do Entregas) e acompanha o documento que o robô do servidor vai escrevendo.
-import { addDoc, collection, doc, onSnapshot } from 'firebase/firestore';
+import { addDoc as addDocBruto, collection, doc, onSnapshot } from 'firebase/firestore';
 import { bancoDoEntregas } from './entregas.firestore';
+import { travarPedido } from '../../../comum/disjuntorDeGravacao';
+
+// o disjuntor de gravação (comum/disjuntorDeGravacao.ts): o mesmo alvo gravado sem parar para por uns minutos
+const addDoc = travarPedido(addDocBruto) as typeof addDocBruto;
 
 export async function gravarPedidoAlterdata(dados: Record<string, unknown>): Promise<string> {
   const r = await addDoc(collection(bancoDoEntregas(), 'pedidosAlterdata'), dados);

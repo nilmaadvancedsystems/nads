@@ -9,6 +9,7 @@ import { useSessao } from '../../casca/sessao';
 import { useCadastroDaEmpresa } from '../../dados/repo';
 import { useGuardado } from '../../../../../../comum/guardado';
 import { useParametrosDaEtapa } from '../../../../telas/executor/etapas/ponte';
+import { criarTravaDeRepeticao } from '../../../../../../comum/travaDeRepeticao';
 
 /** 'aaaa-mm' do mês passado (a competência que o escritório trabalha). */
 function mesPassado(): string {
@@ -105,11 +106,17 @@ export function useImportacao() {
   const extratosParaRelerPeloDrive = useMemo(() => x.extratosParaRelerPeloDrive(s.empresa), [s.empresa]);
   // o mesmo lançamento em dois extratos do mesmo banco (a página da virada do mês nos dois PDFs): a cópia a mais sai, sozinha
   // (Vitor, 26/10/2026: o Stone da 183 com os de 31/01 "duas vezes no extrato")
+  // (07/11/2026) a mesma limpeza (os mesmos extratos) espera 1 min antes de ir de novo, e o dobro a cada vez: com a
+  // gravação negada pelo banco, a empresa voltava com a sobreposição e este efeito gravava de novo a cada volta
   const { aplicar } = s;
+  const [podeLimpar] = useState(() => criarTravaDeRepeticao());
   useEffect(() => {
     const bancoDe = (a: x.ArquivoImportado) => x.bancoDoArquivo(a, primeiro);
-    if (x.tirarSobreposicaoDosExtratos(s.empresa, bancoDe, new Date()).tirados) aplicar(e => x.tirarSobreposicaoDosExtratos(e, bancoDe, new Date()).empresa);
-  }, [s.empresa, primeiro, aplicar]);
+    const r = x.tirarSobreposicaoDosExtratos(s.empresa, bancoDe, new Date());
+    if (!r.tirados) return;
+    const chave = s.empresa.nome + '|' + r.tirados + '|' + s.empresa.arquivos.filter(a => a.lado === 'banco').map(a => a.id + ':' + a.lancamentos.length).join(',');
+    if (podeLimpar(chave)) aplicar(e => x.tirarSobreposicaoDosExtratos(e, bancoDe, new Date()).empresa);
+  }, [s.empresa, primeiro, aplicar, podeLimpar]);
   const [mensagem, setMensagemBruta] = useState<Mensagem | null>(null);
   const [seqMensagem, setSeq] = useState(0);
   const setMensagem = (m: Mensagem | null) => { setMensagemBruta(m); setSeq(v => v + 1); };

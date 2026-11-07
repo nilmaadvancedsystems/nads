@@ -20,6 +20,7 @@ import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
 import { apagarTiques } from './useChecklistDaFolha';
 import { useEscopoDoGuardado, useVersaoDoGuardado } from '../../../../comum/guardado';
 import { dinamicoDaEmpresa } from '../../../../comum/contabilDaEmpresa';
+import { criarTravaDeRepeticao } from '../../../../comum/travaDeRepeticao';
 import { useEmpresasPermitidas } from '../empresas/andamento';
 
 /**
@@ -97,6 +98,11 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
       }
     }
   });
+  // as gravações que esta tela faz sozinha (Cartões, Vendas no cartão, Creditor e o balancete): a mesma mudança (mês,
+  // etapa, entra ou sai) espera 1 min antes de ser pedida de novo, e o dobro a cada vez, até 1 h (06-07/11/2026: com a
+  // gravação da tarefa negada pelo banco, a execução voltava sem a mudança e a conta gravava de novo sem parar; foram 2,6
+  // milhões de eventos "retirada" na Dornas Havana, 3,5 GB no banco). Estes efeitos rodam a cada desenho.
+  const [podePedir] = useState(() => criarTravaDeRepeticao());
   // a etapa Cartões segue o Cadastro (Vitor, 07/10/2026): "Cartão empresarial: Sim" põe ela nos meses do período; "Não"
   // tira a que ainda não foi feita; não informado, não mexe. Só grava o que mudou (a próxima volta já vê igual).
   useEffect(() => {
@@ -106,9 +112,11 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
       if (!exc) continue;
       const esta = !!exc.adicionadas?.includes('cartoes');
       if (cartaoEmpresarial && !esta) {
+        if (!podePedir(c + '|cartoes|true')) continue;
         const a = t.adicionarEtapa(exc, 'cartoes', 'Cadastro: cartão empresarial', op.nome, new Date());
         repo.gravar(a.execucao, a.evento, exc);
       } else if (!cartaoEmpresarial && esta && !t.estadoDa(exc, 'cartoes')) {
+        if (!podePedir(c + '|cartoes|false')) continue;
         const r = t.retirarEtapa(exc, 'cartoes', 'Cadastro: sem cartão empresarial', op.nome, new Date());
         repo.gravar(r.execucao, r.evento, exc);
       }
@@ -122,9 +130,11 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
       if (!exc) continue;
       const esta = !!exc.adicionadas?.includes('vendas-cartao');
       if (vendeNoCartao && !esta) {
+        if (!podePedir(c + '|vendas-cartao|true')) continue;
         const a = t.adicionarEtapa(exc, 'vendas-cartao', 'Cadastro: vende no cartão', op.nome, new Date());
         repo.gravar(a.execucao, a.evento, exc);
       } else if (!vendeNoCartao && esta && !t.estadoDa(exc, 'vendas-cartao')) {
+        if (!podePedir(c + '|vendas-cartao|false')) continue;
         const r = t.retirarEtapa(exc, 'vendas-cartao', 'Cadastro: não vende no cartão', op.nome, new Date());
         repo.gravar(r.execucao, r.evento, exc);
       }
@@ -136,7 +146,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     if (dev || !carregada || !empresa || credLiquidacao !== true || !temEtapa('creditor')) return;
     for (const c of meses) {
       const exc = exDe[c];
-      if (!exc || exc.adicionadas?.includes('creditor')) continue;
+      if (!exc || exc.adicionadas?.includes('creditor') || !podePedir(c + '|creditor|true')) continue;
       const a = t.adicionarEtapa(exc, 'creditor', 'Cadastro: liquidação de cobrança', op.nome, new Date());
       repo.gravar(a.execucao, a.evento, exc);
     }
@@ -145,10 +155,8 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
    * O balancete diz em quais meses uma etapa entra (Vitor, 15/10/2026: os adiantamentos só com saldo no dinâmico). Só
    * os meses que ele cobre; a etapa já feita no mês não sai.
    */
-  // a mesma mudança (mês, etapa, entra ou sai) no máximo uma vez por minuto nesta tela (06/11/2026: com a gravação da
-  // tarefa negada pelo banco, a execução voltava sem a mudança e esta conta gravava de novo sem parar; foram 2,6 milhões
-  // de eventos "retirada" na Dornas Havana, 3,5 GB no banco)
-  const jaPedidas = useRef(new Map<string, number>());
+  // a mesma mudança (mês, etapa, entra ou sai) pela trava de cima: 1 min, depois o dobro a cada vez (06/11/2026: era só
+  // 1 min, sem teto; com o banco negando o dia todo, ainda dava 60 eventos por hora por mudança)
   function ajustarPeloBalancete(b: { etapa: string; cobertos: readonly string[]; com: readonly string[]; motivo: string }) {
     if (!carregada || dev || !temEtapa(b.etapa)) return;
     for (const c of meses) {
@@ -156,18 +164,16 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
       if (!exc || !b.cobertos.includes(c)) continue;
       const entra = b.com.includes(c) || !!t.estadoDa(exc, b.etapa);
       const pedida = c + '|' + b.etapa + '|' + entra;
-      const quando = jaPedidas.current.get(pedida) || 0;
-      if (Date.now() - quando < 60_000) continue;
       // a etapa que só existe quando o balancete pede (o Adiantamento salarial): entra e sai pelas adicionadas
       if (rotina.etapas.find(e => e.id === b.etapa)?.soQuandoAdicionada) {
         const esta = !!exc.adicionadas?.includes(b.etapa);
         const m = entra && !esta ? t.adicionarEtapa(exc, b.etapa, b.motivo, op.nome, new Date())
           : !entra && esta ? t.retirarEtapa(exc, b.etapa, b.motivo, op.nome, new Date()) : null;
-        if (m) { jaPedidas.current.set(pedida, Date.now()); repo.gravar(m.execucao, m.evento, exc); }
+        if (m && podePedir(pedida)) repo.gravar(m.execucao, m.evento, exc);
         continue;
       }
       const m = t.etapaPeloBalancete(exc, b.etapa, entra, b.motivo, op.nome, new Date());
-      if (m) { jaPedidas.current.set(pedida, Date.now()); repo.gravar(m.execucao, m.evento, exc); }
+      if (m && podePedir(pedida)) repo.gravar(m.execucao, m.evento, exc);
     }
   }
   const chaveDasExecucoes = meses.map(c => (exDe[c] ? JSON.stringify(exDe[c]) : '')).join('|');
