@@ -29,7 +29,20 @@ const TIPO = { NFe: 1, CTe: 2, NFSe: 3, NFCe: 4, CFe: 5 };
 
 const dormir = ms => new Promise(r => setTimeout(r, ms));
 // o "fetch failed" do Node esconde o motivo em err.cause (03/11/2026, no NILMA-SERVER: o portal falhava em 33 s sem dizer por quê)
-const motivo = e => String(e && e.message || e) + (e && e.cause ? ' — ' + (e.cause.code || '') + ' ' + (e.cause.message || '') : '');
+// (07/11/2026: "erro nos XMLs de 66 - " saiu vazio porque a mensagem era vazia: sem mensagem, vale o nome ou o código do erro)
+const motivo = e => (String(e && e.message || '') || String(e && (e.code || e.name) || e || 'erro sem mensagem')) + (e && e.cause ? ' — ' + (e.cause.code || '') + ' ' + (e.cause.message || '') : '');
+const est = require('./sieg-estado');
+// os clientes em que o portal respondeu 404 (04/11/2026: 11 de uma vez): por 3 dias vão direto pela API; fica em arquivo no PC
+const portal404 = est.criarPortal404(path.join(require('./pastas-locais').ROBO, 'sieg-portal-404.json'), { dias: 3 });
+// o índice de chaves do arquivador (arquivador-chaves.js): o que o SIEG baixa de novo e o arquivador já arquivou não vai de novo
+// para a pasta de entrada. Lido uma vez por rodada (30 min); sem poder ler, baixa tudo como antes
+const jaArquivados = est.criarFiltroDeArquivados(() => {
+  const L = require('./pastas-locais');
+  const K = require('./arquivador-chaves');
+  const controle = process.env.SIEG_INDICE_CONTROLE || L.CONTROLE;
+  const antigo = path.join(process.env.ARQUIVO_RAIZ || 'C:\Users\DPTO FISCAL 004\GUSTAVO\claudio', '_CONTROLE', 'MANIFESTO', 'manifesto.jsonl');
+  return K.carregar({ controle, manifestoAntigo: antigo, raiz: require('./arquivador-regras').RAIZ_CLIENTES });
+}, { log: (...m) => console.log(new Date().toLocaleString('pt-BR'), ...m) });
 const soDigitos = v => String(v || '').replace(/\D/g, '');
 // o documento do cliente: CNPJ (14) ou CPF (11, o produtor rural; o SIEG conta pelos dois, 07/10/2026)
 // (23/10/2026: a contagem da madrugada mandava ao SIEG qualquer número de 11 ou 14 dígitos e ele devolvia HTTP 400 "CNPJ/CPF
@@ -127,7 +140,7 @@ async function token(c) {
   const cab = { clientId: c.clientId, secretKey: c.secretKey, 'X-Client-Id': c.clientId, 'X-Secret-Key': c.secretKey };
   let ultimo = '';
   for (const metodo of ['POST', 'GET']) {
-    const r = await http(metodo, 'create-jwt', cab, null);
+    const r = await est.comTentativas(() => http(metodo, 'create-jwt', cab, null));
     ultimo = 'HTTP ' + r.status;
     if (r.status >= 300) continue;
     let t = r.texto.trim();
@@ -168,7 +181,18 @@ async function chamar(c, rota, corpo, desistir) {
     let r;
     try { r = await http('POST', rota, { Authorization: 'Bearer ' + await token(c), 'X-API-Key': c.apiKey }, corpo); }
     // demorou demais: tenta de novo (até 3 vezes); outro erro de rede sobe
-    catch (e) { if (e.tempo && tentativa < 2) continue; throw e; }
+    catch (e) {
+      if (e.tempo && tentativa < 2) continue;
+      // rede que caiu (ETIMEDOUT, ECONNRESET, EAI_AGAIN... 07/11/2026: a contagem das 3:30 pulou os clientes 510 a 519): espera
+      // crescente e tenta de novo antes de desistir do cliente
+      if (!e.tempo && est.ehErroDeRede(e) && tentativa < 3) {
+        const espera = [5000, 15000, 30000][tentativa];
+        console.log(new Date().toLocaleString('pt-BR'), 'SIEG:', rota, '- a rede falhou (' + motivo(e) + '), de novo em', espera / 1000, 's');
+        await dormir(espera);
+        continue;
+      }
+      throw e;
+    }
     // 503/502/504: o portal do SIEG cai por instantes (03/11/2026, 7 erros em 7 min): espera e tenta de novo, como o 429
     if (r.status === 429 || r.status === 502 || r.status === 503 || r.status === 504) { await dormir(60000 * (tentativa + 1)); continue; }
     if (r.status === 401) { jwt = { token: '', ate: 0 }; continue; }
@@ -544,16 +568,16 @@ function criarTrabalhadores({ paralelo, escolher, atender, preparar, aoFicarLivr
   };
   async function trabalhador(n) {
     try {
-      if (preparo) await preparo.catch(err => log && log('SIEG: preparar a fila -', err.message));
+      if (preparo) await preparo.catch(err => log && log('SIEG: preparar a fila -', motivo(err)));
       for (let voltas = 0; voltas < 1000; voltas++) {
         const g = geracao;
         const x = await pegar();
         if (!x) { if (g !== geracao) continue; break; }
         try { await atender(x, n); }
-        catch (err) { if (log) log('SIEG: o pedido', x.id, 'parou -', err.message); }
+        catch (err) { if (log) log('SIEG: o pedido', x.id, 'parou -', motivo(err)); }
         finally { ocupadas.delete(x.chave); pegos.delete(x.id); }
       }
-    } catch (err) { if (log) log('SIEG: não consegui ler os pedidos -', err.message); }
+    } catch (err) { if (log) log('SIEG: não consegui ler os pedidos -', motivo(err)); }
     finally {
       emUso.delete(n);
       if (!emUso.size) {
@@ -704,8 +728,8 @@ function iniciarSieg({ db, log }) {
   // o robô caiu (ou foi atualizado) no meio de um pedido: volta para a fila
   db.collection('pedidosSieg').where('status', '==', 'processando').get().then(s => s.docs.forEach(d => {
     log('SIEG: retomando o pedido', d.id, 'que ficou pela metade');
-    d.ref.update({ status: 'pendente', andamento: '' }).catch(() => {});
-  })).catch(() => {});
+    d.ref.update({ status: 'pendente', andamento: '' }).catch(err => log('SIEG: não consegui devolver à fila o pedido', d.id, '(' + motivo(err) + '): ele fica como processando'));
+  })).catch(err => log('SIEG: não consegui ler os pedidos que ficaram pela metade -', motivo(err)));
   // e no meio do Drive por trás (31/10/2026: com a fila do Drive, um lote pode deixar uns minutos de XMLs para gravar): o
   // "Baixar XMLs" dos últimos 2 dias que não terminou de gravar volta para a fila (o portal baixa de novo em segundos e só
   // grava o que falta). O dos XMLs do cliente não volta (os pedaços que ele mandou já foram apagados): fica o aviso.
@@ -716,13 +740,13 @@ function iniciarSieg({ db, log }) {
       if (String(p.concluidoEm || '') < desde) continue;
       if (p.tipo === 'xmls') {
         log('SIEG: o pedido', d.id, 'de', p.codigo, p.competencia, 'não terminou de gravar no Drive: volta para a fila');
-        d.ref.update({ status: 'pendente', andamento: '', drive: null }).catch(() => {});
+        d.ref.update({ status: 'pendente', andamento: '', drive: null }).catch(err => log('SIEG: não consegui devolver à fila o pedido', d.id, '(' + motivo(err) + ')'));
       } else {
         log('SIEG: o pedido', d.id, 'de', p.codigo, p.competencia, 'não terminou de gravar no Drive (' + (p.drive && p.drive.feitos) + ' de ' + (p.drive && p.drive.total) + ')');
-        d.ref.update({ 'drive.pronto': true, 'drive.erro': 'o robô reiniciou antes de terminar de gravar no Drive' }).catch(() => {});
+        d.ref.update({ 'drive.pronto': true, 'drive.erro': 'o robô reiniciou antes de terminar de gravar no Drive' }).catch(err => log('SIEG: não consegui marcar o aviso do Drive no pedido', d.id, '(' + motivo(err) + ')'));
       }
     }
-  }).catch(err => log('SIEG: não consegui conferir o Drive por trás dos pedidos -', err.message));
+  }).catch(err => log('SIEG: não consegui conferir o Drive por trás dos pedidos -', motivo(err)));
 
   // a contagem da madrugada não roda junto com os pedidos (o limite é por API Key): os pedidos do nads passam na frente
   // dela. O pedido que chega no meio da contagem fica marcado (chegouOutro) e a contagem para para atendê-lo.
@@ -740,7 +764,7 @@ function iniciarSieg({ db, log }) {
   const esperarODrive = pasta => driveDaPasta.get(pasta) || Promise.resolve();
   function gravarNoDrivePorTras(pasta, gravar) {
     gravandoNoDrive++;
-    const vez = filaDoDrive.then(gravar).catch(err => log('SIEG: Drive por trás -', err.message)).finally(() => { gravandoNoDrive--; });
+    const vez = filaDoDrive.then(gravar).catch(err => log('SIEG: Drive por trás -', motivo(err))).finally(() => { gravandoNoDrive--; });
     filaDoDrive = vez;
     driveDaPasta.set(pasta, vez);
     vez.then(() => { if (driveDaPasta.get(pasta) === vez) driveDaPasta.delete(pasta); });
@@ -802,7 +826,9 @@ function iniciarSieg({ db, log }) {
       g.sort((a, b) => String(b.data().criadoEm || '').localeCompare(String(a.data().criadoEm || '')));
       const fica = g[0];
       for (const d of g.slice(1)) {
-        await d.ref.update({ status: 'concluido', concluidoEm: new Date().toISOString(), andamento: '', juntadoCom: fica.id }).catch(() => {});
+        // se isto falhar o pedido repetido ficaria "trabalhando" para sempre: tenta de novo e, não dando, deixa dito no log
+        await est.tentarDeNovo(() => d.ref.update({ status: 'concluido', concluidoEm: new Date().toISOString(), andamento: '', juntadoCom: fica.id }))
+          .catch(err => log('SIEG: não consegui concluir o pedido repetido', d.id, '(' + motivo(err) + '): ele pode ficar como trabalhando'));
         juntados++;
       }
       candidatos.push({ d: fica, p: fica.data(), u: Math.min(...g.map(x => urgencia(x.data()))) });
@@ -827,8 +853,8 @@ function iniciarSieg({ db, log }) {
       finally { fazendo.delete(n); ponto(); }
     },
     preparar: async () => {
-      await apagarZipsVelhos().catch(err => log('SIEG: não consegui apagar os .zip velhos -', err.message));
-      await devolverOsQueEsperavamODrive().catch(err => log('SIEG: não consegui devolver os pedidos que esperavam o Drive -', err.message));
+      await apagarZipsVelhos().catch(err => log('SIEG: não consegui apagar os .zip velhos -', motivo(err)));
+      await devolverOsQueEsperavamODrive().catch(err => log('SIEG: não consegui devolver os pedidos que esperavam o Drive -', motivo(err)));
     },
     aoFicarLivre: () => { naFila = 0; ponto(); },
     log,
@@ -914,7 +940,7 @@ function iniciarSieg({ db, log }) {
           const tipos = Object.keys(CHAVE).filter(t => (agora.emitidas[CHAVE[t]] || 0) + (agora.recebidas[CHAVE[t]] || 0) === (antes[t] || 0));
           log('SIEG: XMLs de', p.codigo, '- não mudaram desde o último download:', tipos.join(', ') || 'nenhum');
           return { tipos, xmls: ja.xmls };
-        })().catch(err => { if (err.message !== DESISTIU) log('SIEG: não deu para usar o Drive (' + err.message + '), baixando tudo'); return null; }) : null;
+        })().catch(err => { if (err.message !== DESISTIU) log('SIEG: não deu para usar o Drive (' + motivo(err) + '), baixando tudo'); return null; }) : null;
         // pelo portal primeiro (08/10/2026: "tem clientes com 1000 xml de uma vez, quero que ele vá no site e baixe"):
         // os tipos de nota ao mesmo tempo, em segundos; sem a sessão do portal ou com erro, pela API (mais lenta)
         let baixado;
@@ -937,13 +963,21 @@ function iniciarSieg({ db, log }) {
           await andar('baixando', deles.length + ' XMLs do cliente' + (numeros.deOutros ? ' (' + numeros.deOutros + ' de outra empresa ficaram de fora)' : ''), 1, true);
           await Promise.all(pedacos.docs.map(x => x.ref.delete().catch(() => {})));
           log('SIEG: XMLs do cliente', p.codigo, p.competencia, '-', deles.length, 'dele,', numeros.deOutros, 'de outra empresa');
+        } else if (portal404.recente(cnpj)) {
+          // o portal respondeu 404 para este cliente há pouco (até 3 dias): nem tenta, vai pela API
+          semServentia = true;
+          log('SIEG: XMLs de', p.codigo, '- o portal deu 404 para este cliente há pouco: direto pela API');
+          await andar('baixando', 'Baixando pela API (o portal deu 404 há pouco)', null, true);
+          baixado = await xmlsDoMes(c, cnpj, p.competencia, t => andar('baixando', t, null));
         } else try {
           baixado = await require('./sieg-portal').xmlsPeloPortal(cnpj, p.competencia, (t, f) => andar('baixando', t, f), lerZip, null, esperado, reaproveitar);
           semServentia = true;
           peloPortal = true;
+          portal404.limpar(cnpj);
           log('SIEG: XMLs de', p.codigo, 'pelo portal' + (baixado.tiposDoDrive.length ? ' (do Drive: ' + baixado.tiposDoDrive.join(', ') + ')' : ''));
         } catch (err) {
           semServentia = true;
+          if (est.ehPortal404(err)) portal404.anotar(cnpj);
           log('SIEG: portal não deu (' + motivo(err) + '), XMLs de', p.codigo, 'pela API');
           await andar('baixando', 'O portal não deu (' + motivo(err) + '): baixando pela API', null, true);
           baixado = await xmlsDoMes(c, cnpj, p.competencia, t => andar('baixando', t, null));
@@ -986,9 +1020,15 @@ function iniciarSieg({ db, log }) {
         // 3) a pasta do cliente no Drive: só os XMLs que ainda não estão lá (08/10/2026: "se já foi salvo uma vez, só
         // sobreponha os a mais e não salve no drive o que já foi salvo"). O nome do arquivo é a chave da nota: o mesmo
         // nome é a mesma nota. O .zip só é refeito quando entrou XML novo (ou quando ainda não existe)
+        let pulados = 0;
         const faltamNoDrive = async lista => {
           const jaTem = new Set([...(await noDrive).nomes, ...(await fs.promises.readdir(pasta).catch(() => []))]);
-          return lista.filter(a => !jaTem.has(a.nome));
+          const faltam = lista.filter(a => !jaTem.has(a.nome));
+          // o que o arquivador já arquivou (índice de chaves) não volta à pasta de entrada: em novembro 79% do trabalho dele era "já arquivado"
+          const cli = +soDigitos(p.codigo);
+          const novos = faltam.filter(a => !jaArquivados.pular(cli, a.nome));
+          pulados = faltam.length - novos.length;
+          return novos;
         };
         // sem esperar o Drive, ainda não se sabe quantos faltam: o total vai com todos e é acertado por trás; até lá o pedido
         // fica com drive.conferindo (31/10/2026: a tela mostrava "Salvando no Drive por trás (0 de 747)" e depois "de 175")
@@ -1016,14 +1056,14 @@ function iniciarSieg({ db, log }) {
               await db.collection('siegNotas').doc(id).set(resumoQueCabe({
                 codigo: soDigitos(p.codigo), competencia: p.competencia, em: new Date().toISOString(), pasta: onde, zip: nomeDoZip, arquivos: arquivos.length, novos: arquivos.length,
                 emitidas: resumo.emitidas, recebidas: resumo.recebidas, resumo: sx.VERSAO_DO_RESUMO, ...(contagemSieg ? { contagemSieg } : {}),
-              })).catch(err => log('SIEG: não consegui juntar ao resumo de', p.codigo, 'o que só o Drive tinha -', err.message));
-              await db.collection('siegSaidas').doc(id).set({ codigo: soDigitos(p.codigo), cnpj, competencia: p.competencia, em: new Date().toISOString(), series: seriesDasNotas(saidasDoResumo(resumo.emitidas)) }).catch(() => {});
+              })).catch(err => log('SIEG: não consegui juntar ao resumo de', p.codigo, 'o que só o Drive tinha -', motivo(err)));
+              await db.collection('siegSaidas').doc(id).set({ codigo: soDigitos(p.codigo), cnpj, competencia: p.competencia, em: new Date().toISOString(), series: seriesDasNotas(saidasDoResumo(resumo.emitidas)) }).catch(err => log('SIEG: não consegui gravar as saídas de', p.codigo, '(' + motivo(err) + ')'));
             }
             faltam = await faltamNoDrive(arquivos);
             numeros.jaSalvos = arquivos.length - faltam.length;
             const fica = comoFica(faltam);
             await d.ref.update({ 'drive.total': faltam.length, 'drive.pronto': !faltam.length, 'drive.conferindo': false, 'numeros.jaSalvos': numeros.jaSalvos, 'numeros.xmls': arquivos.length,
-              'resultado.jaSalvos': numeros.jaSalvos, 'resultado.arquivos': arquivos.length, 'resultado.pasta': fica.pasta, 'resultado.zip': fica.zip }).catch(() => {});
+              'resultado.jaSalvos': numeros.jaSalvos, 'resultado.arquivos': arquivos.length, 'resultado.pasta': fica.pasta, 'resultado.zip': fica.zip }).catch(err => log('SIEG: não consegui atualizar o resultado do pedido de', p.codigo, '(' + motivo(err) + ')'));
           }
           // em paralelo (48 por vez; 16 levavam 34 s para 1292 XMLs): o andamento do Drive no máximo a cada 1 s
           let novos = 0;
@@ -1046,15 +1086,15 @@ function iniciarSieg({ db, log }) {
               }));
               // e o .zip com todos, na mesma pasta (07/10/2026: "quero que ele também salve um arquivo .zip na hora")
               if (zipDoDrive && novos) await fs.promises.writeFile(path.join(pasta, nomeDoZip), zipDoDrive);
-              await d.ref.update({ drive: { total: faltam.length, feitos: novos, pronto: true, em: new Date().toISOString() }, 'numeros.novos': novos, 'resultado.novos': novos }).catch(() => {});
+              await d.ref.update({ drive: { total: faltam.length, feitos: novos, pronto: true, em: new Date().toISOString() }, 'numeros.novos': novos, 'resultado.novos': novos }).catch(err => log('SIEG: o Drive de', p.codigo, 'gravou, mas não consegui marcar o pedido como pronto (' + motivo(err) + ')'));
             } catch (err) {
               // o Drive falhou depois de a pessoa já ter o .zip e as notas: fica o aviso no pedido (o próximo pedido salva o que faltou)
-              await d.ref.update({ drive: { total: faltam.length, feitos: novos, pronto: true, erro: err.message } }).catch(() => {});
-              log('SIEG: Drive de', p.codigo, '- parou em', novos, 'de', faltam.length, '-', err.message);
+              await d.ref.update({ drive: { total: faltam.length, feitos: novos, pronto: true, erro: motivo(err) } }).catch(e2 => log('SIEG: não consegui gravar o erro do Drive no pedido de', p.codigo, '(' + motivo(e2) + ')'));
+              log('SIEG: Drive de', p.codigo, '- parou em', novos, 'de', faltam.length, '-', motivo(err));
             }
           }
-          await db.collection('siegNotas').doc(id).update({ novos }).catch(() => {});
-          log('SIEG: XMLs de', p.codigo, p.competencia, '-', arquivos.length, 'arquivos (' + novos + ' novos) em', onde);
+          await db.collection('siegNotas').doc(id).update({ novos }).catch(err => log('SIEG: não consegui gravar os novos em siegNotas de', p.codigo, '(' + motivo(err) + ')'));
+          log('SIEG: XMLs de', p.codigo, p.competencia, '-', arquivos.length, 'arquivos (' + novos + ' novos' + (pulados ? ', ' + pulados + ' pulados: já arquivados' : '') + ') em', onde);
           painel.atividade('sieg', (doCliente ? 'Juntou os XMLs que o cliente mandou de ' : 'Baixou os XMLs do SIEG de ') + p.codigo + ' (' + p.competencia.slice(5) + '/' + p.competencia.slice(0, 4) + ')',
             arquivos.length + ' arquivo(s), ' + novos + ' novo(s) no Drive' + (p.madrugada ? ' · madrugada' : p.criadoPor ? ' · pedido de ' + p.criadoPor : ''));
         });
@@ -1111,9 +1151,12 @@ function iniciarSieg({ db, log }) {
       const andarSaidas = t => d.ref.update({ andamento: t }).catch(() => {});
       let series;
       try {
+        if (portal404.recente(cnpj)) throw new Error('o portal deu 404 para este cliente há pouco');
         const r = await require('./sieg-portal').xmlsPeloPortal(cnpj, p.competencia, andarSaidas, lerZip, ['NF-e', 'NFC-e']);
+        portal404.limpar(cnpj);
         series = seriesDasNotas(saidasDoResumo(r.resumo.emitidas));
       } catch (err) {
+        if (est.ehPortal404(err)) portal404.anotar(cnpj);
         log('SIEG: portal não deu (' + motivo(err) + '), saídas de', p.codigo, 'pela API');
         series = await saidasDoMes(c, cnpj, p.competencia, andarSaidas);
       }
@@ -1122,9 +1165,10 @@ function iniciarSieg({ db, log }) {
       log('SIEG: saídas de', p.codigo, p.competencia, '-', series.reduce((s, x) => s + x.numeros.length, 0), 'notas');
       painel.atividade('sieg', 'Baixou as saídas de ' + p.codigo + ' (' + p.competencia.slice(5) + '/' + p.competencia.slice(0, 4) + ')', series.reduce((s, x) => s + x.numeros.length, 0) + ' notas');
     } catch (err) {
-      await d.ref.update({ status: 'erro', erro: err.message, erroEm: new Date().toISOString() });
-      log('SIEG: erro', p.tipo === 'contagem' ? 'na contagem de' : p.tipo === 'xmls' ? 'nos XMLs de' : 'nas saídas de', p.codigo, '-', err.message);
-      painel.erro('sieg', 'O SIEG deu erro ' + (p.tipo === 'contagem' ? 'na contagem de ' : p.tipo === 'xmls' ? 'nos XMLs de ' : 'nas saídas de ') + p.codigo, err.message);
+      await d.ref.update({ status: 'erro', erro: motivo(err), erroEm: new Date().toISOString() })
+        .catch(e2 => log('SIEG: não consegui gravar o erro do pedido', d.id, '(' + motivo(e2) + '): ele pode ficar como trabalhando'));
+      log('SIEG: erro', p.tipo === 'contagem' ? 'na contagem de' : p.tipo === 'xmls' ? 'nos XMLs de' : 'nas saídas de', p.codigo, '-', motivo(err));
+      painel.erro('sieg', 'O SIEG deu erro ' + (p.tipo === 'contagem' ? 'na contagem de ' : p.tipo === 'xmls' ? 'nos XMLs de ' : 'nas saídas de ') + p.codigo, motivo(err));
     }
   }
   // o ouvinte que volta sozinho (31/10/2026): em 30/10 às 9:59 a rede caiu, o onSnapshot morreu ("Exceeded maximum number
@@ -1189,14 +1233,14 @@ function iniciarSieg({ db, log }) {
           try {
             const r = await contagemDoMes(c, normalizarDocumento(cli.documento, cli.enquadramento), comp);
             await db.collection('siegContagens').doc(codigoDe(cli) + '_' + comp).set({ codigo: codigoDe(cli), cnpj: normalizarDocumento(cli.documento, cli.enquadramento), competencia: comp, em: new Date().toISOString(), ...r });
-          } catch (err) { log('SIEG: contagem de', codigoDe(cli), '-', err.message); }
+          } catch (err) { log('SIEG: contagem de', codigoDe(cli), '-', motivo(err)); }
         }
       }
       log('SIEG: contagem da noite pronta');
       painel.atividade('sieg', 'Contagem da madrugada pronta', comCnpj.length + ' clientes em ' + comps.join(' e '));
-    } catch (err) { log('SIEG: contagem da noite falhou -', err.message); painel.erro('sieg', 'A contagem da madrugada falhou', err.message); }
+    } catch (err) { log('SIEG: contagem da noite falhou -', motivo(err)); painel.erro('sieg', 'A contagem da madrugada falhou', motivo(err)); }
     finally { daNoite = ''; contando = false; ponto(); }
-    await xmlsDaMadrugada(contouDesde).catch(err => log('SIEG: XMLs da madrugada falharam -', err.message));
+    await xmlsDaMadrugada(contouDesde).catch(err => log('SIEG: XMLs da madrugada falharam -', motivo(err)));
   }
 
   /**
@@ -1228,7 +1272,7 @@ function iniciarSieg({ db, log }) {
         if (contouDesde && String(cont.em || '') >= contouDesde) agora = soAContagem(cont);
         else {
           daNoite = 'conferindo ' + codigoDe(cli) + ' (' + comp + ')';
-          agora = await contagemDoMes(c, normalizarDocumento(cli.documento, cli.enquadramento), comp).catch(err => { log('SIEG: contagem de', codigoDe(cli), comp, '-', err.message); return null; });
+          agora = await contagemDoMes(c, normalizarDocumento(cli.documento, cli.enquadramento), comp).catch(err => { log('SIEG: contagem de', codigoDe(cli), comp, '-', motivo(err)); return null; });
           daNoite = '';
         }
         if (semMudancaNoSieg(notas, cont, agora)) { semMudanca++; continue; }
