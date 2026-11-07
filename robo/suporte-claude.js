@@ -28,7 +28,8 @@ const ESPERA_DOS_PEDACOS_MS = 3 * 60000;
 
 // o login do Claude deste PC venceu (31/10/2026: "OAuth session expired" fez o bug virar 'erro' sem ninguém saber)
 const LOGIN_VENCIDO = /failed to authenticate|oauth|not logged in|please run \/login|invalid api key|authentication_error/i;
-const PAUSA_SEM_LOGIN_MS = 10 * 60000;
+// a espera entre tentativas sem login cresce de 10 min até 1 h e o admin é avisado (aviso-de-falha.js)
+const { vigiaDeLogin, envioPadrao, LINK_SUPORTE } = require('./aviso-de-falha');
 
 const VEREDITOS = ['Realmente, isso é erro do sistema', 'Precisa da sua análise'];
 
@@ -103,6 +104,14 @@ function iniciarSuporteClaude({ db, log = console.log }) {
   const fila = db.collection('feedbacks').where('tipo', '==', 'bug').where('analise', '==', 'pendente');
   let ocupado = false;
   let semLoginAte = 0;
+  let envio;
+  const vigia = vigiaDeLogin({
+    log,
+    avisar: async (titulo, corpo) => {
+      if (envio === undefined) envio = envioPadrao(db, log);
+      if (envio) await envio.enviar('admin', '', titulo, corpo, 'suporte-login', LINK_SUPORTE);
+    },
+  });
   const esperando = [];
 
   async function investigar(ref) {
@@ -156,13 +165,15 @@ function iniciarSuporteClaude({ db, log = console.log }) {
       // a última linha tem de ser um dos dois finais; sem ele, pede a análise
       const fim = relatorio.trim().split('\n').pop().replace(/[*_.\s]+/g, ' ').trim().toLowerCase();
       if (!VEREDITOS.some(v => fim.endsWith(v.toLowerCase()))) relatorio += '\n\nPrecisa da sua análise';
+      vigia.voltou();
       await ref.update({ analise: 'pronta', relatorio: relatorio.slice(0, 20000), analisadoEm: new Date().toISOString() });
       log('[suporte] report pronto', id);
     } catch (err) {
       if (LOGIN_VENCIDO.test(err.message)) {
         // sem login o bug não é do sistema: volta para a fila e espera alguém entrar de novo no Claude deste PC
-        semLoginAte = Date.now() + PAUSA_SEM_LOGIN_MS;
-        log('[suporte] o login do Claude deste PC venceu: entre de novo (claude auth login); o bug', id, 'volta para a fila');
+        const espera = vigia.vencido();
+        semLoginAte = Date.now() + espera;
+        log('[suporte] o login do Claude deste PC venceu: entre de novo (claude auth login); o bug', id, 'volta para a fila; tento de novo em', Math.round(espera / 60000), 'min');
         await ref.update({ analise: 'pendente', analisandoEm: null, analisandoNo: null }).catch(() => {});
         return;
       }

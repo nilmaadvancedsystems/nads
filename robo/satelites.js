@@ -25,9 +25,16 @@ function ligarUm(qual, log) {
   const repassar = fluxo => { let resto = ''; fluxo.on('data', b => { resto += b; const l = resto.split('\n'); resto = l.pop(); for (const x of l) if (x.trim()) process.stdout.write(x + '\n'); }); };
   repassar(filho.stdout);
   repassar(filho.stderr);
-  filho.on('message', msg => { painel.deSatelite(msg); });
+  // o que o filho pôs no "fazendo" do painel: quando ele sai, sai junto (07/11/2026: um "SIEG: baixando" de um filho que
+  // caiu ficava no painel e contava como ocupado para sempre)
+  const chaves = new Set();
+  filho.on('message', msg => {
+    if (msg && msg.painel === 'fazendo' && Array.isArray(msg.args)) { if (msg.args[1]) chaves.add(String(msg.args[0])); else chaves.delete(String(msg.args[0])); }
+    painel.deSatelite(msg);
+  });
   filho.on('exit', codigo => {
     if (filhos.get(qual) === filho) filhos.delete(qual);
+    for (const k of chaves) painel.fazendo(k, null);
     if (parando) return;
     // 3 = já existe outro desse módulo rodando (não liga de novo por cima)
     if (codigo === 3) { log(NOMES[qual] + ': já havia outro processo; não liguei de novo'); return; }
@@ -49,4 +56,16 @@ function parar() {
   for (const f of filhos.values()) { try { f.kill(); } catch (e) { /* já saiu */ } }
 }
 
-module.exports = { ligar, parar, NOMES };
+/**
+ * Saindo com calma (07/11/2026, ocupado.js): pede a cada filho que termine o que está fazendo e saia, e não liga de novo
+ * quem sair. O arquivador espera vivos() chegar a zero antes de sair.
+ */
+function pedirSaida(motivo) {
+  parando = true;
+  for (const f of filhos.values()) { try { if (f.connected) f.send({ sair: String(motivo || 'pedido') }); } catch (e) { /* já saiu */ } }
+}
+
+/** Quantos filhos ainda estão rodando. */
+function vivos() { return filhos.size; }
+
+module.exports = { ligar, parar, pedirSaida, vivos, NOMES };

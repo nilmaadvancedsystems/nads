@@ -214,6 +214,21 @@ function iniciarAlterdata(db, log) {
     } finally { entrando = false; }
   }
 
+  // Três pedidos seguidos sem a janela abrir (a fila pede): fecha o Contábil (wcont.exe) e abre de novo pelo mesmo caminho do
+  // login do robô (entrarSozinho: abre o wcont e entra com a credencial do Gerenciador, sem senha aqui). Uma vez por sequência.
+  async function reabrirContabil() {
+    if (!fs.existsSync(WCONT)) { log('Alterdata: não reabri o Contábil (falta ' + WCONT + ')'); return false; }
+    log('Alterdata: fechando o Contábil deste ' + ONDE + ' para abrir de novo');
+    await new Promise(resolve => execFile('taskkill', ['/im', 'wcont.exe', '/f', '/t'], { windowsHide: true, timeout: 30 * 1000 }, () => resolve()));
+    await new Promise(r => setTimeout(r, 5000));
+    abertoEm = 0; loginParado = ''; okDesde = 0; avisouRodando = false;
+    // o estado dele agora é "fechado": o mesmo caminho do robô abre e entra (espera a tela de login até 3 min)
+    await entrarSozinho('fechado');
+    const novo = await verificar();
+    log('Alterdata: depois de reabrir, o Contábil está ' + (ESTADOS[novo] || novo));
+    return novo === 'ok';
+  }
+
   const banco = {
     async ler(id) { const s = await pedidos.doc(id).get(); return s.exists ? s.data() : null; },
     async pegar(id) {
@@ -278,7 +293,7 @@ function iniciarAlterdata(db, log) {
     },
   };
 
-  const fila = criarFilaAlterdata({ banco, rodar: rodarRoteiro, pastaDoPedido: id => path.join(PASTA_PEDIDOS, id), log, painel, limiteMs: LIMITE_MS });
+  const fila = criarFilaAlterdata({ banco, rodar: rodarRoteiro, pastaDoPedido: id => path.join(PASTA_PEDIDOS, id), log, painel, limiteMs: LIMITE_MS, reabrirContabil });
 
   // o que ficou no meio, nesta máquina, quando o robô reiniciou volta para a fila uma vez
   pedidos.where('status', '==', 'trabalhando').get().then(s => Promise.all(s.docs.filter(d => (d.data().onde || 'pc') === ONDE).map(d => {

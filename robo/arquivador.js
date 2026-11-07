@@ -23,6 +23,14 @@
 //   - é o horário da execução das 9h e ela ainda não terminou hoje.
 //
 // Uso: node arquivador.js     (fica rodando; o iniciar-arquivador.cmd liga no boot)
+//
+// A atualização no meio (07/11/2026): o laço religa este processo 30 s depois que ele sai, e o reset do git no servidor
+// pode levar minutos. Com o sinal da atualização (robo/sair.pedido) recente, espera ela acabar ANTES de carregar o resto
+// e sai, para o laço ligar de novo inteiro no código novo (nunca metade velho, metade novo).
+if (require('./ocupado').esperarAtualizacao((...m) => console.log(new Date().toLocaleString('pt-BR'), '[arquivo]', ...m))) {
+  console.log(new Date().toLocaleString('pt-BR'), '[arquivo]', 'a atualização terminou: saio para o laço me ligar no código novo');
+  process.exit(0);
+}
 require('./fuso.js');
 // as leituras do G: em paralelo (o arquivador novo confere 16 arquivos de cada vez; o padrão do Node são 4 de uma vez para
 // tudo, disco e DNS juntos). Precisa vir antes de qualquer operação assíncrona de disco (23/10/2026)
@@ -68,6 +76,17 @@ try {
 } catch (e) {}
 fs.writeFileSync(TRAVA, String(process.pid));
 process.on('exit', () => { try { if (parseInt(fs.readFileSync(TRAVA, 'utf8'), 10) === process.pid) fs.unlinkSync(TRAVA); } catch (e) {} });
+
+// ---------- sair com calma (07/11/2026, ocupado.js) ----------
+// O atualizador (robo/atualizar-robo.js) escreve robo/sair.pedido em vez de matar o processo: daqui para a frente nenhum
+// pedido novo (o ouvinte para de entregar, a fila do botão e o arquivador novo param), os robôs em processo próprio
+// terminam o que estão fazendo e saem, e este sai quando tudo acabou (no máximo 10 min). O laço religa.
+const saida = require('./ocupado');
+saida.iniciar({ nome: 'arquivador', log, vigiarPedido: true, filhosVivos: () => require('./satelites').vivos(), sair: () => desligar() });
+saida.aoParar(motivo => {
+  try { if (continuo) continuo.parar(); } catch (e) { /* segue */ }
+  try { require('./satelites').pedirSaida(motivo); } catch (e) { /* segue */ }
+});
 
 const db = getDb('entregas-2e5e2');
 const fila = db.collection('solicitacoesArquivo');
@@ -528,7 +547,7 @@ function rodarRotina(modo, aoAndar) {
 
 let ocupado = false;
 async function atenderFila() {
-  if (ocupado) return;
+  if (ocupado || saida.parando()) return;
   ocupado = true;
   try {
     for (;;) {
@@ -654,6 +673,8 @@ async function atenderFila() {
 
 // ---------- início ----------
 async function iniciar() {
+  // sem rede (07/11/2026, partida.js): espera o banco aqui, cada vez mais devagar, em vez de sair e o laço religar a cada 30 s
+  await require('./partida').esperarOBanco(() => estadoRef.get(), { log });
   painel.iniciar(db, { robo: 'pc', log, filas: painel.FILAS.pc });
   // Pedido que ficou "processando" quando o PC desligou: não roda de novo às
   // cegas — metade dos arquivos pode já ter sido movida.
@@ -773,4 +794,11 @@ process.on('SIGINT', desligar);
 process.on('SIGTERM', desligar);
 process.on('unhandledRejection', err => log('erro não tratado (segui rodando):', err && err.message ? err.message : String(err)));
 
-iniciar().catch(err => { log('ERRO ao iniciar:', err.message); process.exit(1); });
+// a partida que falha mesmo com o banco respondendo: espera crescente antes de sair (30 s, 1, 2... até 10 min), contada
+// num arquivo porque cada tentativa é um processo novo do laço (07/11/2026)
+const ARQ_PARTIDAS = path.join(__dirname, 'arquivador-partidas.json');
+iniciar().then(() => require('./partida').partidaBoa(ARQ_PARTIDAS)).catch(err => {
+  const espera = require('./partida').esperaDaFalha(ARQ_PARTIDAS);
+  log('ERRO ao iniciar:', err.message + (espera ? ' (falhas seguidas: espero ' + Math.round(espera / 1000) + ' s antes de sair)' : ''));
+  setTimeout(() => process.exit(1), espera);
+});
