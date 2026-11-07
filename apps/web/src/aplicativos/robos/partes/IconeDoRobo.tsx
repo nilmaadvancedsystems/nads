@@ -12,13 +12,13 @@ const PROPRIOS: Record<string, string> = {
   terminal: '<rect x="3" y="4.5" width="18" height="15" rx="2"/><path d="m7 9.5 3 2.5-3 2.5"/><path d="M12.5 15h4.5"/>',
 };
 
-export function IconeDoRobo({ nome, tamanho = 24, className }: { nome: string; tamanho?: number; className?: string }) {
+export function IconeDoRobo({ nome, tamanho = 24, traco = 1.75, className }: { nome: string; tamanho?: number; /** a espessura do traço */ traco?: number; className?: string }) {
   const proprio = PROPRIOS[nome];
   if (proprio) {
     return (
-      <svg viewBox="0 0 24 24" width={tamanho} height={tamanho} fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round"
+      <svg viewBox="0 0 24 24" width={tamanho} height={tamanho} fill="none" stroke="currentColor" strokeWidth={traco} strokeLinecap="round"
         strokeLinejoin="round" aria-hidden="true" className={className} dangerouslySetInnerHTML={{ __html: proprio }} />
     );
   }
-  return <Icone nome={nome as NomeDoNads} width={tamanho} height={tamanho} className={className} />;
+  return <Icone nome={nome as NomeDoNads} width={tamanho} height={tamanho} strokeWidth={traco} className={className} />;
 }

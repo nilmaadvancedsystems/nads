@@ -12,10 +12,12 @@ export type IdMaquina = 'servidor' | 'nuvem' | 'escritorio';
 export type IdAcao = 'pausar' | 'retomar' | 'rodar-agora' | 'limpar-fila' | 'reiniciar' | 'atualizar' | 'assistir';
 export type Tom = 'ok' | 'aviso' | 'erro' | 'neutro';
 
-export interface MaquinaDaCentral { id: IdMaquina; nome: string; host: string; onde: string; batimento: string; icone: string }
+export interface MaquinaDaCentral { id: IdMaquina; nome: string; /** o nome curto, para os lugares apertados */ curto: string; /** "no Servidor", "na Nuvem" */ em: string; host: string; onde: string; batimento: string; icone: string }
 export interface TarefaDoRobo { id: string; nome: string }
 export interface RoboDaCentral {
-  id: string; nome: string; maquina: IdMaquina; icone: string; cor: [string, string]; descricao: string;
+  id: string; nome: string; maquina: IdMaquina; icone: string;
+  /** o símbolo do serviço com que o robô trabalha (apps/web/.../robos/logos); '' = o ícone próprio */
+  logo: string; cor: [string, string]; descricao: string;
   /** as marcas do log ('[sieg]') que são deste robô; '' = as linhas sem marca da máquina */
   tags: string[];
   /** o id da fila no batimento do painel (robo/painel.js FILAS); '' = sem fila */
@@ -272,7 +274,8 @@ export function textoDoComando(c: Pick<Comando, 'acao' | 'robo' | 'tarefa' | 'ma
   const r = roboPorId(c.robo);
   const tarefa = r?.tarefas.find(t => t.id === c.tarefa)?.nome || c.tarefa;
   const alvo = a?.alvo === 'maquina' ? maquinaPorId(c.maquina)?.nome || c.maquina : r?.nome || c.robo;
-  return (a?.nome || c.acao) + (c.acao === 'rodar-agora' && tarefa ? ': ' + tarefa : '') + ' · ' + alvo;
+  const o = c.acao === 'rodar-agora' && tarefa ? tarefa : a?.nome || c.acao;
+  return alvo + ': ' + o.charAt(0).toLowerCase() + o.slice(1);
 }
 
 export const ROTULO_DO_STATUS: Record<StatusDoComando, string> = { pendente: 'Esperando o robô', aceito: 'Aceito, fazendo', feito: 'Feito', erro: 'Deu erro', recusado: 'Recusado' };

@@ -149,8 +149,8 @@ describe('as ações', () => {
   });
   it('o histórico: leitura, texto e sem resposta', () => {
     const c = lerComando('c1', { maquina: 'nuvem', robo: 'vigia', acao: 'rodar-agora', tarefa: 'ler-gmail', em: ha(1), status: 'feito', porNome: 'Vitor' });
-    expect(textoDoComando(c)).toBe('Rodar agora: Ler o Gmail agora · Gmail e avisos');
-    expect(textoDoComando(lerComando('c2', { maquina: 'servidor', acao: 'reiniciar', robo: '' }))).toBe('Reiniciar com calma · Servidor');
+    expect(textoDoComando(c)).toBe('Gmail e avisos: ler o Gmail agora');
+    expect(textoDoComando(lerComando('c2', { maquina: 'servidor', acao: 'reiniciar', robo: '' }))).toBe('Servidor: reiniciar com calma');
     expect(lerComando('c3', { status: 'qualquer' }).status).toBe('pendente');
     expect(comandoSemResposta(lerComando('c4', { status: 'pendente', em: new Date(AGORA - VALIDADE_DO_COMANDO_MS - 1).toISOString() }), AGORA)).toBe(true);
     expect(comandoSemResposta(lerComando('c5', { status: 'pendente', em: ha(1) }), AGORA)).toBe(false);

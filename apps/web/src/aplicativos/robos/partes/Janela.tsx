@@ -1,13 +1,13 @@
-// A janela sobre o papel de parede (como as do Umbrel): no celular, uma folha que sobe de baixo e ocupa quase a tela; no
-// PC, uma janela no meio. A única animação do site: abrir e fechar, curta, e nenhuma com prefers-reduced-motion (o CSS
-// zera a duração e aqui a espera de fechar vira 0). Esc e o fundo fecham.
+// A ficha (de um robô, das máquinas, dos registros, dos ajustes): no celular, a tela inteira; no PC, um painel que entra
+// pela direita, com o quadro visível atrás. A única animação do site: abrir e fechar, curta, e nenhuma com
+// prefers-reduced-motion (o CSS zera a duração e aqui a espera de fechar vira 0). Esc e o fundo fecham.
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { IconeDoRobo } from './IconeDoRobo';
 
 const FECHAR_MS = 160;
 const semMovimento = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
-export function Janela({ titulo, aoFechar, children, larga = false, rotulo }: { titulo: ReactNode; aoFechar: () => void; children: ReactNode; larga?: boolean; rotulo: string }) {
+export function Janela({ titulo, aoFechar, children, abas, rotulo }: { titulo: ReactNode; aoFechar: () => void; children: ReactNode; /** as abas, fixas debaixo do título */ abas?: ReactNode; rotulo: string }) {
   const [fechando, setFechando] = useState(false);
   const caixa = useRef<HTMLDivElement>(null);
   const fechar = () => {
@@ -24,16 +24,16 @@ export function Janela({ titulo, aoFechar, children, larga = false, rotulo }: { 
     return () => window.removeEventListener('keydown', tecla);
   }, []);
   return (
-    <div className={'cr-janela-fundo' + (fechando ? ' fechando' : '')} onMouseDown={e => { if (e.target === e.currentTarget) fechar(); }}>
-      <div ref={caixa} className={'cr-janela' + (larga ? ' larga' : '')} role="dialog" aria-modal="true" aria-label={rotulo} tabIndex={-1}>
-        <span className="cr-janela-puxador" aria-hidden="true" />
-        <div className="cr-janela-topo">
-          <div className="cr-janela-titulo">{titulo}</div>
-          <button type="button" className="cr-fechar" onClick={fechar} aria-label="Fechar">
+    <div className={'cr-ficha-fundo' + (fechando ? ' fechando' : '')} onMouseDown={e => { if (e.target === e.currentTarget) fechar(); }}>
+      <div ref={caixa} className="cr-ficha" role="dialog" aria-modal="true" aria-label={rotulo} tabIndex={-1}>
+        <div className="cr-ficha-topo">
+          <div className="cr-ficha-titulo">{titulo}</div>
+          <button type="button" className="cr-fechar" onClick={fechar} aria-label="Fechar" title="Fechar (Esc)">
             <IconeDoRobo nome="x" tamanho={18} />
           </button>
         </div>
-        <div className="cr-janela-corpo">{children}</div>
+        {abas}
+        <div className="cr-ficha-corpo">{children}</div>
       </div>
     </div>
   );
