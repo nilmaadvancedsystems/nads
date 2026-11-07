@@ -14,8 +14,11 @@ const { getMessaging } = require('firebase-admin/messaging');
 
 const JANELA_MS = 20000;   // junta o que acontece em 20s num aviso só (rota montada de uma vez)
 
-function iniciarAvisos(db, log) {
-  const ligadoEm = new Date().toISOString();
+/**
+ * Só o envio (sem ouvir o banco): quem não é o vigia (o suporte e o FGTS, no claude-do-pc) avisa por aqui, sem repetir
+ * os avisos da rota. Devolve { enviar, enviarPara }; os dois devolvem quantos aparelhos receberam o pedido.
+ */
+function criarEnvio(db, log) {
 
   // a equipe muda pouco: uma leitura dos usuários vale por 10 minutos
   let usuariosLidos = null, usuariosEm = 0;
@@ -51,7 +54,7 @@ function iniciarAvisos(db, log) {
     return mandar(alvos, titulo, corpo, tag, link);
   }
   async function mandar(alvos, titulo, corpo, tag, link) {
-    if (!alvos.length) return;
+    if (!alvos.length) return 0;
     // Só "data": o service worker do app monta o aviso e sabe o que abrir no toque
     const r = await getMessaging().sendEachForMulticast({
       tokens: alvos.map(a => a.token),
@@ -69,7 +72,14 @@ function iniciarAvisos(db, log) {
         usuariosLidos = null;
       }
     });
+    return alvos.length;
   }
+  return { enviar, enviarPara };
+}
+
+function iniciarAvisos(db, log) {
+  const ligadoEm = new Date().toISOString();
+  const { enviar, enviarPara } = criarEnvio(db, log);
 
   // agrupa por quem fez, pra não mandar 12 avisos quando o admin monta a rota
   function agrupador(aoFechar) {
@@ -132,4 +142,4 @@ function iniciarAvisos(db, log) {
   return { enviar, enviarPara };
 }
 
-module.exports = { iniciarAvisos };
+module.exports = { iniciarAvisos, criarEnvio };
