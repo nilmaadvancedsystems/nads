@@ -26,6 +26,7 @@ const { ouvir } = require('./ouvinte');
 const R = require('./arquivador-regras');
 const dp = require('./envios-do-dp');
 const L = require('./lote-dp');
+const EC = require('./econtador');
 const painel = require('./painel');
 
 const COLECAO = 'lotesFiscal';
@@ -361,11 +362,18 @@ async function econtador(db, ref, lote, { codigo, competencia, itens, ativos, gr
   const agora = new Date().toISOString();
   const resultado = { status: 'enviado', para: [], enviadoEm: agora, salvos, entregaId: '', preenchidos: [], erroNoRelatorio: '' };
   const guiasDrive = salvos.filter(x => x.id).map(x => ({ nome: x.nome, id: x.id }));
-  await db.collection('solicitacoesEmail').add({
+  const registro = await db.collection('solicitacoesEmail').add({
     tipo: 'envioFiscal', via, origem: 'lote', lote: ref.id, grupo, status: 'enviado', competencia, codigo: String(codigo),
     empresa: nome, arquivos: [], para: [], enviados: itens.map(i => i.vai.nome),
     enviadoEm: agora, criadoEm: agora, criadoPor: lote.disparadoPor || '', criadoPorUid: lote.disparadoPorUid || '', ...(guiasDrive.length ? { guiasDrive } : {}),
-  }).catch(() => {});
+  }).catch(() => null);
+  // a via eContador com a pasta do UpDocs ligada (07/11/2026, econtador.js; desligada por padrão): as guias, já no Drive,
+  // entram na fila da pasta que o UpDocs vigia no NILMA-SERVER; o registro ganha econtadorSaida (e, gravadas, econtador)
+  if (via === 'econtador' && await EC.pastaLigada(db)) {
+    const arquivos = salvos.map((s, k) => ({ driveId: s.id || '', nome: s.nome, rotulo: [itens[k].vai.tipo === 'OUTRO' ? '' : itens[k].vai.tipo, itens[k].vai.tributo].filter(Boolean).join(' ') }));
+    resultado.econtadorSaida = await EC.anotarSaida(db, { origem: 'lote-fiscal', codigo, competencia, empresa: nome, registro: registro ? registro.id : '', arquivos })
+      .catch(err => { resultado.erroNoEcontador = String(err.message || err).slice(0, 200); return ''; });
+  }
   try {
     resultado.preenchidos = await gravarNoRelatorio(db, { competencia, codigo, grupo, valores: valoresPorColuna(itens), dia: diaEmBrasilia(new Date(agora)), entregue: via, agora, quem: 'robô (' + (via === 'scireport' ? 'SCI Report' : 'eContador') + ' de ' + (lote.disparadoPor || 'guias') + ')' });
   } catch (err) { resultado.erroNoRelatorio = String(err.message || err).slice(0, 200); }

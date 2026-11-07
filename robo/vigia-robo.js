@@ -359,10 +359,10 @@ async function atenderResponder(p, ref) {
 }
 
 // Os documentos do DP do mês para um cliente (DP › Envios, 27/10/2026): a lista, o Drive e o modelo em envios-do-dp.js
-async function atenderEnvioDp(p) {
+async function atenderEnvioDp(p, pedidoId) {
   const cfg = await configDaCobranca().catch(() => ({}));
   const r = await require('./envios-do-dp').atenderEnvioDp(p, {
-    db, log, caixa: CAIXA, assinatura: cfg.assinatura || 'Nilma Contabilidade',
+    db, log, caixa: CAIXA, assinatura: cfg.assinatura || 'Nilma Contabilidade', pedidoId,
     getDrive: () => require('./drive-indice').getDrive(),
     clientesAtivos: () => require('./clientes-cache').clientesAtivos(db, m => log(m)),
     enviar: dados => enviar(dados),
@@ -908,7 +908,7 @@ async function atenderFila() {
           try { resultado = await atenderDesligar(p); } finally { lendo = false; }
         } else if (p.tipo === 'disparo') resultado = await atenderDisparo(p, doc.ref);
         else if (p.tipo === 'responder') resultado = await atenderResponder(p, doc.ref);
-        else if (p.tipo === 'envioDp') resultado = await atenderEnvioDp(p);
+        else if (p.tipo === 'envioDp') resultado = await atenderEnvioDp(p, doc.id);
         else throw new Error('tipo de pedido desconhecido: ' + p.tipo);
         await doc.ref.update(resultado);
         // no painel do robô (a leitura do Gmail já se registra sozinha em rodarRobo)
