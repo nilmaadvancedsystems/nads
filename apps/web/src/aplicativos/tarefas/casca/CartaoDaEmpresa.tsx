@@ -1,10 +1,14 @@
-// O cartão da empresa aberta, no cabeçalho da Tarefas (27/10/2026: "no canto superior esquerdo a empresa, codigo e cnpj"):
-// o prédio, o nome e, embaixo, o código e o CNPJ. O clique abre a janela da empresa do Cadastro por cima da tela, sem sair
-// dela ("era pra seguir o layout do cadastro"): quem mexe no Cadastro, com todas as abas; os outros, só os dados.
-import { ConfigLinha, ConfigSecao, Esqueleto, Icone } from '@nads/ui';
+// A empresa aberta, no cabeçalho da Tarefas: a trilha "Tarefas / Contábil / 205 · NOME" (07/11/2026: o cartão com o prédio, o
+// código e o CNPJ saiu, "não to gostando disso"; o caminho em texto, como no resto). A lista volta para as empresas; o nome
+// abre a janela da empresa do Cadastro por cima da tela, sem sair dela ("era pra seguir o layout do cadastro"): quem mexe no
+// Cadastro, com todas as abas; os outros, só os dados.
+import { ConfigLinha, ConfigSecao, Esqueleto } from '@nads/ui';
 import { Suspense } from 'react';
 import { createPortal } from 'react-dom';
+import { useLocation, useNavigate } from 'react-router';
 import { pedaco } from '../../../comum/pedaco';
+import { aplicacoesDe, caminhoDaPagina } from './navegacao';
+import { useOperador, type Operador } from './operador';
 import { useCartaoDaEmpresa } from './useCartaoDaEmpresa';
 
 // a janela do Cadastro só baixa quando a pessoa clica no cartão
@@ -24,14 +28,23 @@ function DadosSoLeitura({ vm }: { vm: Vm }) {
 
 export function CartaoDaEmpresa({ empresa }: { empresa: { codigo: number | null; nome: string; rota: string } }) {
   const vm = useCartaoDaEmpresa(empresa);
+  const op = useOperador().operador as Operador;
+  const navegar = useNavigate();
+  const { search } = useLocation();
+  // o nome da lista muda com o setor (Contábil ou Minhas empresas); a volta mantém o setor e a competência
+  const lista = aplicacoesDe(op).find(a => a.id === 'minhas-empresas')?.nome || 'Minhas empresas';
+  const voltar = () => {
+    const de = new URLSearchParams(search), n = new URLSearchParams();
+    for (const k of ['dep', 'competencia']) { const v = de.get(k); if (v) n.set(k, v); }
+    navegar(caminhoDaPagina('minhas-empresas', 'empresas') + (n.toString() ? '?' + n : ''));
+  };
   return (
     <>
-      <button type="button" className="cartao-empresa" onClick={vm.abrir} title={'Ver o cadastro de ' + vm.nome}>
-        <span className="cartao-empresa-icone" aria-hidden="true"><Icone nome="predio" width={18} height={18} /></span>
-        <span className="cartao-empresa-texto">
-          <span className="cartao-empresa-nome">{vm.nome}</span>
-          {vm.doc && <span className="cartao-empresa-doc num">{vm.doc}</span>}
-        </span>
+      <span className="gh-sep">/</span>
+      <button type="button" className="gh-crumb" onClick={voltar} title={'Voltar para ' + lista}>{lista}</button>
+      <span className="gh-sep">/</span>
+      <button type="button" className="gh-crumb" onClick={vm.abrir} title={'Ver o cadastro de ' + vm.nome}>
+        {empresa.codigo != null ? empresa.codigo + ' · ' + vm.nome : vm.nome}
       </button>
       {/* no corpo da página: dentro do cabeçalho, a janela ficava presa no tamanho dele */}
       {vm.aba && createPortal(

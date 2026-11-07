@@ -2,7 +2,7 @@
 // "quando eu clicar e para abrir uma janela flutuante dos dados da empresa não ir para o cadastro"; "era pra seguir o
 // layout do cadastro"): a janela do Cadastro, por cima da tela, na aba aberta (começa em Dados da empresa). Quem não mexe
 // no Cadastro vê só os dados (o regime, os responsáveis e o que o Entregas e a Receita têm dela), sem editar.
-import { empresas, tarefas } from '@nads/core';
+import { tarefas } from '@nads/core';
 import { useState } from 'react';
 import { useCadastro, useDadosDaEmpresaNoEntregas } from '../dados/repo';
 import { podeMexerNoCadastro } from './navegacao';
@@ -16,9 +16,6 @@ export function useCartaoDaEmpresa(empresa: { codigo: number | null; nome: strin
   const [aba, setAba] = useState<string | null>(null);
   const d = doEntregas.dados;
   const r = d?.receita || null;
-  const cnpj = c.cadastro.cnpj || d?.documento || '';
-  const tipoDoc = cnpj.replace(/\D/g, '').length === 11 ? 'CPF' : 'CNPJ';
-  const docFormatado = cnpj ? empresas.cadastro.cnpjFormatado(cnpj) : '';
   const regime = (c.cadastro.regime as string | undefined) || tarefas.regimeDaEmpresa(empresa.codigo) || '';
   const resp = c.cadastro.responsaveis || {};
   // as datas da Receita vêm em aaaa-mm-dd: na tela, dd/mm/aaaa
@@ -40,7 +37,6 @@ export function useCartaoDaEmpresa(empresa: { codigo: number | null; nome: strin
   const pode = podeMexerNoCadastro(op);
   return {
     nome: empresa.nome,
-    doc: [empresa.codigo != null ? 'Código ' + empresa.codigo : '', docFormatado ? tipoDoc + ' ' + docFormatado : ''].filter(Boolean).join(' · '),
     aba, abrir: () => setAba('empresa'), irPara: (id: string) => setAba(id), fechar: () => setAba(null),
     carregando: !c.carregada || !doEntregas.carregado,
     linhas,

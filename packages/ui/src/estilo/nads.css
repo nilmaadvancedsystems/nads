@@ -663,13 +663,8 @@ td > .gh-blank.compacto{white-space:normal;}
 /* ---------------------------------- barra lateral: grupos, rodapé (tema + ocultar) e travas ---------------------------------- */
 .subnav-itens{display:flex;flex-direction:column;gap:2px;}
 /* o cartão da empresa aberta no cabeçalho: o prédio, o nome e, embaixo, o código e o CNPJ; o clique abre a janela do Cadastro */
-.gh-cartao-topo{display:flex;min-width:0;margin-left:8px;}
-.cartao-empresa{display:flex;align-items:center;gap:10px;min-width:0;padding:4px 10px 4px 4px;border:1px solid transparent;border-radius:8px;background:none;color:var(--ink);text-align:left;cursor:pointer;}
-.cartao-empresa:hover{border-color:var(--border);background:var(--hover-bg);}
-.cartao-empresa-icone{display:flex;align-items:center;justify-content:center;width:32px;height:32px;flex:none;border:1px solid var(--border);border-radius:6px;color:var(--ink-muted);}
-.cartao-empresa-texto{display:flex;flex-direction:column;min-width:0;}
-.cartao-empresa-nome{font-size:var(--fs-13);font-weight:600;max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.cartao-empresa-doc{font-size:var(--fs-12);color:var(--ink-faint);white-space:nowrap;}
+.gh-cartao-topo{display:contents;}
+.gh-crumbs .gh-cartao-topo > button.gh-crumb:not(:last-child){flex:none;}
 /* o Início (27/10/2026): o mural de avisos e a última empresa */
 .inicio-grade{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:16px;align-items:start;}
 @media (max-width:900px){.inicio-grade{grid-template-columns:minmax(0,1fr);}}
