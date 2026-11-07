@@ -7,6 +7,7 @@ export const NOMES_DOS_APLICATIVOS: Record<string, string> = {
   mandei: 'Mandei',
   cliente: 'Área do Cliente',
   admin: 'Admin',
+  robos: 'Central dos robôs',
   tarefas: 'Tarefas',
 };
 

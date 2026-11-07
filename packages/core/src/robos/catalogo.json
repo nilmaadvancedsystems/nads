@@ -1,0 +1,29 @@
+{
+  "_leia": "O catálogo da Central dos robôs (07/11/2026): as máquinas, os robôs de cada uma e as ações da LISTA FECHADA. O site lê daqui; o robô também (robo/central.js), mas a lista de ações que ele aceita fica no código dele (o teste-central.js confere que as duas são iguais). Nunca vem do banco.",
+  "maquinas": [
+    { "id": "servidor", "nome": "Servidor", "host": "NILMA-SERVER", "onde": "Escritório, no servidor", "batimento": "painelPC", "icone": "servidor" },
+    { "id": "nuvem", "nome": "Nuvem", "host": "robo-nilma", "onde": "Máquina do Google", "batimento": "painelVM", "icone": "nuvem" },
+    { "id": "escritorio", "nome": "PC do escritório", "host": "PC do Vitor", "onde": "Escritório, no PC", "batimento": "", "icone": "monitor" }
+  ],
+  "robos": [
+    { "id": "arquivador", "nome": "Arquivador", "maquina": "servidor", "icone": "pasta", "cor": ["#fbbf24", "#ea580c"], "descricao": "Arquiva no Drive os arquivos que chegam, pelo cadastro e pelas regras.", "tags": ["arquivo", "novo"], "fila": "arquivamento", "tipos": ["arquivamento"], "tarefas": [{ "id": "arquivar-agora", "nome": "Arquivar agora" }], "pausavel": false, "limpavel": true },
+    { "id": "sieg", "nome": "SIEG", "maquina": "servidor", "icone": "fileDown", "cor": ["#34d399", "#059669"], "descricao": "Baixa os XMLs das notas pelo portal do SIEG.", "tags": ["sieg"], "fila": "sieg", "tipos": ["sieg"], "tarefas": [], "pausavel": false, "limpavel": true },
+    { "id": "fgts", "nome": "FGTS Digital", "maquina": "servidor", "icone": "recibo", "cor": ["#60a5fa", "#2563eb"], "descricao": "Emite as guias do FGTS pela extensão no Chrome.", "tags": ["fgts"], "fila": "fgts", "tipos": ["fgts"], "tarefas": [], "pausavel": false, "limpavel": true },
+    { "id": "alterdata", "nome": "Alterdata", "maquina": "servidor", "icone": "barChart", "cor": ["#f472b6", "#db2777"], "descricao": "Tira o balancete e o razão do Alterdata Contábil.", "tags": ["alterdata"], "fila": "alterdata", "tipos": ["alterdata"], "tarefas": [], "pausavel": false, "limpavel": true },
+    { "id": "vigia", "nome": "Gmail e avisos", "maquina": "nuvem", "icone": "envelope", "cor": ["#f87171", "#dc2626"], "descricao": "Lê o Gmail, manda as cobranças, os avisos no celular e o backup.", "tags": [""], "fila": "gmail", "tipos": ["gmail", "cobranca", "robo"], "tarefas": [{ "id": "ler-gmail", "nome": "Ler o Gmail agora" }], "pausavel": false, "limpavel": true },
+    { "id": "nfse", "nome": "NFS-e", "maquina": "nuvem", "icone": "fileText", "cor": ["#a78bfa", "#7c3aed"], "descricao": "Emite as notas de serviço dos honorários.", "tags": ["nfse"], "fila": "nfse", "tipos": ["nfse"], "tarefas": [], "pausavel": false, "limpavel": false },
+    { "id": "envios", "nome": "Envios", "maquina": "nuvem", "icone": "aviao", "cor": ["#22d3ee", "#0891b2"], "descricao": "Envia os arquivos do DP e do nads para os clientes.", "tags": ["envios"], "fila": "envios", "tipos": ["envios"], "tarefas": [], "pausavel": false, "limpavel": true },
+    { "id": "sefaz", "nome": "SEFAZ", "maquina": "nuvem", "icone": "landmark", "cor": ["#a3e635", "#65a30d"], "descricao": "Confere a situação das notas na SEFAZ.", "tags": ["sefaz"], "fila": "sefaz", "tipos": ["sefaz"], "tarefas": [], "pausavel": false, "limpavel": true },
+    { "id": "ia", "nome": "Atendente de IA", "maquina": "escritorio", "icone": "mensagem", "cor": ["#fb923c", "#c2410c"], "descricao": "Responde as perguntas da equipe com o Claude.", "tags": ["ia"], "fila": "", "tipos": [], "tarefas": [], "pausavel": true, "limpavel": false },
+    { "id": "suporte", "nome": "Suporte", "maquina": "escritorio", "icone": "ajuda", "cor": ["#94a3b8", "#475569"], "descricao": "Atende os chamados de suporte do nads.", "tags": ["pc", "suporte", ""], "fila": "", "tipos": [], "tarefas": [], "pausavel": false, "limpavel": false }
+  ],
+  "acoes": [
+    { "id": "pausar", "nome": "Pausar", "alvo": "robo", "destrutiva": true, "descricao": "Para de pegar trabalho novo até alguém retomar. O que está no meio termina." },
+    { "id": "retomar", "nome": "Retomar", "alvo": "robo", "destrutiva": false, "descricao": "Volta a pegar trabalho." },
+    { "id": "rodar-agora", "nome": "Rodar agora", "alvo": "robo", "destrutiva": false, "descricao": "Roda já uma tarefa conhecida do robô, sem esperar o horário." },
+    { "id": "limpar-fila", "nome": "Limpar fila travada", "alvo": "robo", "destrutiva": true, "descricao": "Os pedidos parados em andamento há mais de 30 min viram erro, para a fila andar." },
+    { "id": "reiniciar", "nome": "Reiniciar com calma", "alvo": "maquina", "destrutiva": true, "descricao": "O robô da máquina termina o que está fazendo (até 10 min), sai e liga de novo." },
+    { "id": "atualizar", "nome": "Atualizar do desenvolvimento", "alvo": "maquina", "destrutiva": true, "descricao": "Pede ao atualizador da máquina para trazer o código novo agora, com o reinício educado." },
+    { "id": "assistir", "nome": "Registros ao vivo", "alvo": "robo", "destrutiva": false, "interna": true, "descricao": "Enquanto a aba Registros está aberta, o robô manda as linhas do log a cada 10 s (fora disso, a cada 2 min)." }
+  ]
+}

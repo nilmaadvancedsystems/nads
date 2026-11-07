@@ -61,7 +61,8 @@ function arquivosDoOcr(): Plugin {
 // só o que a Área do Cliente usa vai junto (o core é TypeScript puro: nenhum módulo dele depende de ser importado à toa).
 // O site do admin (VITE_APLICATIVO=admin, 21/10/2026) faz o mesmo com src/rotasDoAdmin.tsx: leva só o site do admin e as
 // telas da Tarefas que ele reaproveita (sem o OCR, que nenhuma tela dele usa).
-const ROTAS_PROPRIAS: Record<string, string> = { cliente: 'src/rotasDoCliente.tsx', admin: 'src/rotasDoAdmin.tsx' };
+// A Central dos robôs (VITE_APLICATIVO=robos, 07/11/2026) também: src/rotasDosRobos.tsx, só a central e o login.
+const ROTAS_PROPRIAS: Record<string, string> = { cliente: 'src/rotasDoCliente.tsx', admin: 'src/rotasDoAdmin.tsx', robos: 'src/rotasDosRobos.tsx' };
 const ROTAS_DO_SITE = ROTAS_PROPRIAS[process.env.VITE_APLICATIVO || ''] || '';
 function rotasProprias(): Plugin {
   return {

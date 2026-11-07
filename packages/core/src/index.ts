@@ -23,3 +23,4 @@ export * as financeiro from './financeiro';
 export * as suporte from './suporte';
 export * as uso from './uso';
 export * as ferramentas from './ferramentas';
+export * as robos from './robos';

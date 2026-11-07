@@ -5,6 +5,7 @@
 //   Tarefas ...................... /tarefas/<aplicação>/<página>  e  /tarefas/executar/<código>/<competência>
 //   Área do Cliente .............. /cliente/<token>/<aba>  (o link secreto da empresa, Vitor, 16/10/2026)
 //   Admin ........................ /admin/<página>  (só para admin: o robô, o uso, a saúde do banco; Vitor, 21/10/2026)
+//   Central dos robôs ............ /robos, /robos/robo/<id>/<aba>  (só para admin; Vitor, 07/11/2026)
 // São caminhos de verdade na URL; a hospedagem (firebase.json) reescreve qualquer caminho para index.html.
 //
 // VITE_APLICATIVO=<id> gera um site com UM aplicativo só (o link de cada um): as rotas dos outros
@@ -21,6 +22,7 @@ import { rotasCliente } from './aplicativos/cliente/rotas';
 import { rotasConversor } from './aplicativos/conversor/rotas';
 import { rotasTarefas } from './aplicativos/tarefas/rotas';
 import { rotasMandei } from './aplicativos/mandei/rotas';
+import { rotasRobos } from './aplicativos/robos/rotas';
 import { ErroDaTela } from './comum/ErroDaTela';
 import { NOMES_DOS_APLICATIVOS, tituloDoAplicativo } from './nomesDosAplicativos';
 
@@ -37,6 +39,8 @@ const APLICATIVOS: Record<string, { nome: string; rotas: RouteObject[]; raiz: st
   cliente: { nome: NOMES_DOS_APLICATIVOS['cliente'], rotas: SO === 'cliente' ? rotasCliente : [], raiz: '/cliente' },
   // o site só para admin (Vitor, 21/10/2026); no build do site, o rotasDoAdmin.tsx entra no lugar deste arquivo
   admin: { nome: NOMES_DOS_APLICATIVOS['admin'], rotas: SO === 'admin' ? rotasAdmin : [], raiz: '/admin' },
+  // a Central dos robôs (Vitor, 07/11/2026): os robôs das três máquinas, num site próprio; no build do site, o rotasDosRobos.tsx
+  robos: { nome: NOMES_DOS_APLICATIVOS['robos'], rotas: SO === 'robos' ? rotasRobos : [], raiz: '/robos' },
   tarefas: { nome: NOMES_DOS_APLICATIVOS['tarefas'], rotas: SO === 'tarefas' ? [...rotasTarefas, ...rotasMandei] : [], raiz: '/tarefas' },
 };
 
@@ -52,6 +56,7 @@ export const roteador = createBrowserRouter(comErro(so
     ...rotasMandei,
     ...rotasCliente,
     ...rotasAdmin,
+    ...rotasRobos,
     ...rotasComponentes,
     ...rotasTarefas,
     { path: '/', element: <Navigate to="/tarefas" replace /> },

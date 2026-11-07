@@ -56,6 +56,10 @@ const SITES = {
   // o site só para admin (Vitor, 21/10/2026; admin.nilmacontabilidade.com): o robô, o uso do sistema, a saúde do banco, a
   // cota, os feedbacks e o sistema e agentes. O pacote leva só o site do admin (vite.config.ts, nads-rotas-proprias)
   admin: { site: 'admin-nilma', nome: 'Admin', tipo: 'app', banco: true },
+  // a Central dos robôs (Vitor, 07/11/2026; robos.nilmacontabilidade.com): as máquinas e os robôs, com as ações da lista
+  // fechada. No projeto do Entregas (o login é dele: os endereços *.web.app do próprio projeto já valem para o login). O
+  // pacote leva só a central (vite.config.ts, nads-rotas-proprias)
+  robos: { site: 'robos-nilma', nome: 'Central dos robôs', tipo: 'app', banco: true, projeto: 'entregas-2e5e2' },
   tarefas: { site: 'tarefas-nilma', nome: 'Tarefas', tipo: 'app', banco: true },
   // extrato do banco → .xls, sem banco de dados (Vitor, 06/10/2026)
   conversor: { site: 'conversor-nilma', nome: 'Conversor', tipo: 'app' },

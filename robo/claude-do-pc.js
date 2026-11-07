@@ -33,6 +33,16 @@ try { pararIA = require('./atendente-claude').iniciarAtendenteClaude({ db, log }
 catch (err) { log('atendente de IA desligado:', err.message); }
 try { require('./suporte-claude').iniciarSuporteClaude({ db, log }); }
 catch (err) { log('suporte desligado:', err.message); }
+// a Central dos robôs (07/11/2026, central.js): os comandos do site robos-nilma para este PC (lista fechada), o espelho do
+// log e o estado da máquina. O atendente de IA sabe pausar (para de atender; retomar liga de novo).
+try {
+  const central = require('./central');
+  central.registrarPausa('ia', {
+    pausar: async () => { const p = pararIA; pararIA = null; if (p) await p(); },
+    retomar: async () => { if (!pararIA) pararIA = require('./atendente-claude').iniciarAtendenteClaude({ db, log }); },
+  });
+  central.iniciarCentral({ db, maquina: 'escritorio', log });
+} catch (err) { log('central dos robôs não ligou:', err.message); }
 log('ligado: FGTS' + (process.env.ALTERDATA_NO_PC === '1' ? ', Alterdata' : '') + ', atendente de IA e suporte');
 
 function desligar() {

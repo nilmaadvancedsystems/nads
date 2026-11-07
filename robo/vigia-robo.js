@@ -1027,6 +1027,10 @@ async function iniciar() {
   // as fotos da tela do FGTS, o arquivo do feedback feito); o documento de cima fica. FAXINA_BANCO=simular|desligada.
   try { require('./faxina-banco').iniciarFaxinaDoBanco(db, log); }
   catch (err) { log('faxina do banco desligada:', err.message); }
+  // A Central dos robôs (07/11/2026, central.js): os comandos do site robos-nilma para a nuvem (lista fechada), o espelho
+  // do log de cada robô daqui e o estado da máquina (CPU, memória, disco). Só o vigia com a vez (este iniciar).
+  try { require('./central').iniciarCentral({ db, maquina: 'nuvem', log }); }
+  catch (err) { log('central dos robôs desligada:', err.message); }
   // Texto completo de um e-mail, aberto no painel da tela do Robô.
   try { require('./leituras-gmail').iniciarLeiturasGmail(db, log, getGmail); }
   catch (err) { log('texto completo do e-mail desligado:', err.message); }
