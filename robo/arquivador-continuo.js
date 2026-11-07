@@ -218,7 +218,7 @@ function iniciar(opcoes) {
       manifesto: novos ? novos.manifesto : antes.manifesto || A.indiceDoManifesto(manifestoAntigo),
       chaves: novos ? novos.chaves : antes.chaves || K.carregar({ controle: o.controle, manifestoAntigo, raiz: o.clientes }),
       conteudos: novos ? novos.conteudos : antes.conteudos || require('./arquivador-conteudos').carregar({ controle: o.controle, manifestoAntigo }) };
-    if (novos) o.log('índices relidos em ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s: ' + cache.chaves.tamanho + ' chaves, ' + cache.conteudos.tamanho + ' conteúdos já arquivados');
+    if (novos) o.log('índices ' + (novos.chaves.estatistica && novos.chaves.estatistica.retrato ? 'lidos do retrato (+ o final dos .jsonl)' : 'relidos por inteiro') + ' em ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s: ' + cache.chaves.tamanho + ' chaves, ' + cache.conteudos.tamanho + ' conteúdos já arquivados');
     if (o.depurar) o.log('índice de chaves: ' + JSON.stringify(cache.chaves.estatistica));
     if (pedidos) void pedidos.publicarCadastro(cache.cadastro);
     return cache;
@@ -701,6 +701,7 @@ function iniciar(opcoes) {
           const extra = /^local:/.test(k) ? k.slice(0, k.indexOf('|')) : 'G:';
           if (ids.has(extra)) delete estado.decididos[k];
         }
+        try { await limparTentativas(origens); } catch (e) { o.log('não limpei as tentativas:', e.message); }
         salvar();
         // a passada inteira terminou: as pastas que ficaram vazias saem da Claudio Secretario (27/10/2026)
         if (cfg.emProducao) { try { await limparPastasVazias(o.origem); } catch (e) { o.log('não limpei as pastas vazias:', e.message); } }
@@ -795,6 +796,34 @@ function iniciar(opcoes) {
     if (op.loteOcr) return { esperaMs: 0 };
     medirRitmo(listagemMs, porArquivoMs);
     return { esperaMs: RITMOS[nivelRitmo].esperaMs };
+  }
+
+  /**
+   * Os contadores de tentativa (temporário ≥1, erro ≥1) só saem quando o arquivo é decidido; o arquivo que SUMIU da pasta no
+   * meio das tentativas deixava o contador preso para sempre (240 no estado.json de 07/11/2026). Uma vez por dia, confere
+   * se o arquivo ainda existe e tira o contador dos que não existem mais. Se a raiz da origem não responde (Drive fora do
+   * ar), não mexe em nada. Devolve quantos tirou.
+   */
+  async function limparTentativas(origens) {
+    const dia = new Date().toISOString().slice(0, 10);
+    if (!estado.tentativas || estado.tentativasLimpasEm === dia) return 0;
+    const raizes = new Map((origens || []).map(g => [g.id, g.raiz]));
+    const acessivel = new Map();
+    let tirou = 0;
+    for (const k of Object.keys(estado.tentativas)) {
+      // <rel>|<tam>|<mtime>|<modo>, com "local:<raiz>|" na frente nas origens locais
+      let resto = k, raiz = o.origem;
+      if (/^local:/.test(k)) { const i = k.indexOf('|'); raiz = raizes.get(k.slice(0, i)); resto = k.slice(i + 1); if (!raiz) continue; }
+      const partes = resto.split('|');
+      if (partes.length < 4) continue;
+      const rel = partes.slice(0, partes.length - 3).join('|');
+      if (!acessivel.has(raiz)) acessivel.set(raiz, fs.existsSync(raiz));
+      if (!acessivel.get(raiz)) continue;
+      try { await fs.promises.access(path.join(raiz, rel)); } catch (e) { if (e.code === 'ENOENT') { delete estado.tentativas[k]; tirou++; } }
+    }
+    estado.tentativasLimpasEm = dia;
+    if (tirou) o.log('tentativas de arquivos que saíram da pasta: ' + tirou + ' contador(es) limpo(s)');
+    return tirou;
   }
 
   /** Diário, contagem do mês e painel. */
@@ -1015,6 +1044,7 @@ function iniciar(opcoes) {
     _medirRitmo: (v, a) => medirRitmo(v, a), _ritmo: () => ({ nivel: nivelRitmo, proximoCicloEm, folgados }),
     _listar: async (raiz) => { const out = []; for await (const p of andarEmFluxo(raiz || o.origem)) out.push(...p); return out; },
     _modoAnunciado: () => modoAnunciado, _limparPastasVazias: r => limparPastasVazias(r || o.origem), _contarPasta: () => { if (estado.contagem) delete estado.contagem['G:']; return contarPasta(); }, _contados: () => contados('G:'),
+    _tentativas: () => estado.tentativas, _limparTentativas: (os, forcar) => { if (forcar) delete estado.tentativasLimpasEm; return limparTentativas(os || origensDe(lerConfig(CONFIG, configBanco))); },
     _mudados: () => mudados, _decididos: () => estado.decididos, _recentes: () => recentes, _grupos: () => gruposNi, _conferirNaoIdentificados: f => conferirNaoIdentificados(f), _lembrar: e => lembrarGrupo(e),
     parar: () => { parado = true; if (pedidos) pedidos.parar(); if (timer) clearInterval(timer); if (timerContagem) clearInterval(timerContagem); clearTimeout(acordar); if (observador) observador.close(); soltarTrava(); void acomp.parar(); },
   };

@@ -127,14 +127,23 @@ class Indice {
 }
 
 // em pedaços (o diário do contínuo passa de 100 MB com a carga do SIEG; 23/10/2026)
-const linhasJson = (arquivo, f) => require('./arquivador-conteudos').cadaLinha(arquivo, f);
+const linhasJson = (arquivo, f, desde, meta) => require('./arquivador-conteudos').cadaLinha(arquivo, f, desde, meta);
+
+/** O retrato do índice (arquivador-retrato.js): o Map de chaves já montado. */
+const paraRetrato = idx => ({ mapa: idx.mapa });
+function doRetrato(idx, d) {
+  idx.mapa = d.mapa;
+  for (const [ch, lista] of idx.mapa) for (const x of lista) idx.salvas.add(ch + '|' + x.cliente);
+}
 
 /**
  * Monta o índice com o que já está no PC (nada do G: é aberto).
- * opcoes: { controle, manifestoAntigo, raiz } → Indice, com .estatistica { linhas, chaves, ms, porFonte }.
+ * opcoes: { controle, manifestoAntigo, raiz, retrato (false: sempre relê tudo) } → Indice, com .estatistica { linhas, chaves, ms, porFonte, retrato }.
+ * 07/11/2026: com o retrato (retrato-chaves.bin) lê só o que os .jsonl ganharam depois dele; se uma origem não bater, relê tudo.
  */
 function carregar(opcoes) {
   const t0 = Date.now();
+  const RT = require('./arquivador-retrato');
   const controle = opcoes.controle;
   const idx = new Indice(path.join(controle, 'chaves.jsonl'));
   const porFonte = {};
@@ -146,23 +155,35 @@ function carregar(opcoes) {
     const chs = r.chave ? [r.chave] : chavesDoTexto(r.nome_original + ' ' + r.nome_final);
     for (const ch of chs) { if (idx.juntar(ch, d.cliente, d.sub, d.de, fonte)) conta(fonte); idx.salvas.add(chaveDoIndice(ch) + '|' + d.cliente); }
   };
-  let linhas = 0;
-  if (opcoes.manifestoAntigo) linhas += linhasJson(opcoes.manifestoAntigo, doManifesto('manifesto da rotina antiga'));
-  linhas += linhasJson(path.join(controle, 'MANIFESTO', 'manifesto.jsonl'), doManifesto('manifesto do arquivador novo'));
+  // as origens, na ordem de sempre (a ordem decide quem fica em caso de empate)
+  const fontes = [];
+  if (opcoes.manifestoAntigo) fontes.push({ arquivo: opcoes.manifestoAntigo, f: doManifesto('manifesto da rotina antiga') });
+  fontes.push({ arquivo: path.join(controle, 'MANIFESTO', 'manifesto.jsonl'), f: doManifesto('manifesto do arquivador novo') });
   // o diário do contínuo: o que foi de fato arquivado ou já estava (modo PRODUCAO), com o caminho
   let diarios = [];
   try { diarios = fs.readdirSync(path.join(controle, 'continuo')).filter(f => /^decisoes-\d{4}-\d{2}\.jsonl$/.test(f)); } catch (e) { /* sem diário */ }
   for (const f of diarios) {
-    linhas += linhasJson(path.join(controle, 'continuo', f), r => {
+    fontes.push({ arquivo: path.join(controle, 'continuo', f), f: r => {
       if (r.modo !== 'PRODUCAO' || !r.onde || !(r.acao === 'ARQUIVAR' || r.acao === 'JA_ARQUIVADO')) return;
       const d = lerDestino(r.onde, opcoes.raiz);
       if (!d) return;
       const chs = r.chave ? [r.chave] : chavesDoTexto(path.win32.basename(String(r.rel || '')));
       for (const ch of chs) { if (idx.juntar(ch, d.cliente, d.sub, d.de, 'diário do contínuo')) conta('diário do contínuo'); idx.salvas.add(ch + '|' + d.cliente); }
-    });
+    } });
   }
-  linhas += linhasJson(idx.arquivo, r => { if (idx.juntar(r.ch, r.cliente, r.sub, r.de, r.fonte || 'chaves.jsonl')) conta('chaves.jsonl'); idx.salvas.add(r.ch + '|' + (+r.cliente)); });
-  idx.estatistica = { linhas, chaves: idx.tamanho, ms: Date.now() - t0, porFonte };
+  fontes.push({ arquivo: idx.arquivo, f: r => { if (idx.juntar(r.ch, r.cliente, r.sub, r.de, r.fonte || 'chaves.jsonl')) conta('chaves.jsonl'); idx.salvas.add(r.ch + '|' + (+r.cliente)); } });
+  const arqRetrato = path.join(controle, 'retrato-chaves.bin');
+  const assinatura = JSON.stringify([RT.assinaturaDoArquivo(__filename), String(opcoes.raiz || R.RAIZ_CLIENTES), fontes.map(x => x.arquivo.toLowerCase())]);
+  const retrato = opcoes.retrato === false ? null : RT.ler(arqRetrato, assinatura);
+  if (retrato) doRetrato(idx, retrato.dados);
+  let linhas = 0;
+  for (const x of fontes) {
+    const meta = {};
+    linhas += linhasJson(x.arquivo, x.f, retrato ? (retrato.fontes.get(x.arquivo) || 0) : 0, meta);
+    x.fim = meta.fim;
+  }
+  if (opcoes.retrato !== false && (!retrato || linhas > 0)) RT.gravar(arqRetrato, assinatura, paraRetrato(idx), fontes.map(x => ({ arquivo: x.arquivo, fim: x.fim })));
+  idx.estatistica = { linhas, chaves: idx.tamanho, ms: Date.now() - t0, porFonte, retrato: !!retrato };
   return idx;
 }
 

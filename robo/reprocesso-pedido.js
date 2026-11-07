@@ -35,10 +35,7 @@ function iniciar({ controle, log }) {
   // (Vitor, 05/11/2026: "quero que isso não aconteça de novo") quando as regras mudam (o robô religa com outro arquivador-regras/arquivador-novo), os
   // NÃO IDENTIFICADOS dos últimos 3 dias são reprocessados sozinhos: o que a regra nova resolve sai de lá sem ninguém pedir
   try {
-    const crypto = require('crypto');
-    const h = crypto.createHash('sha256');
-    for (const f of ['arquivador-regras.js', 'arquivador-novo.js', 'arquivador-migracao.js']) { try { h.update(fs.readFileSync(path.join(__dirname, f))); } catch (e) { /* segue */ } }
-    const versao = h.digest('hex').slice(0, 16);
+    const versao = require('./arquivador-novo').versaoDasRegras();   // a mesma versão que o reprocessar-ni.js carimba nos já decididos
     const marca = path.join(controle, 'reprocesso-auto.json');
     let antes = null;
     try { antes = JSON.parse(fs.readFileSync(marca, 'utf8')).versao; } catch (e) { /* primeira vez */ }
