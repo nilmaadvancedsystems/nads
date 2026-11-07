@@ -978,7 +978,7 @@ async function iniciar() {
   // no seu try: nenhum deles pode derrubar o robô do Gmail.
   try { require('./avisos-vencimento').iniciarAvisosDeVencimento(db, log); }
   catch (err) { log('lembrete de vencimento desligado:', err.message); }
-  try { require('./backup-diario').iniciarBackupDiario(db, log); }
+  try { require('./backup-diario').iniciarBackupDiario(db, log, avisos); }
   catch (err) { log('backup diário desligado:', err.message); }
   try { require('./clientes-cache').manterArquivo(db, log); }
   catch (err) { log('arquivo local de clientes desligado:', err.message); }

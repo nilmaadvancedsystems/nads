@@ -116,11 +116,63 @@ function abaDaPlanilha(wb, nome, linhas) {
   XLSX.utils.book_append_sheet(wb, ws, nome.slice(0, 31)); // limite do Excel pro nome da aba
 }
 
+// Lê do retrato SÓ as coleções pedidas, em fluxo, sem montar o JSON inteiro na
+// memória. O retrato passa de 300 MB e a máquina do robô tem 1 GB: o
+// JSON.parse do arquivo todo estourava ("23: 0xccb4c8", 06/11/2026). O arquivo
+// tem a forma { projeto, feitoEm, colecoes: { nome: { id: {...} } }, ... }; o
+// leitor anda pelo texto contando chaves (respeitando aspas e barras) e só
+// guarda o trecho das coleções que a planilha usa.
+function lerColecoes(caminho, nomes, tamanhoBloco) {
+  const { StringDecoder } = require('string_decoder');
+  const quero = new Set(nomes);
+  const achadas = {};
+  const fd = fs.openSync(caminho, 'r');
+  const dec = new StringDecoder('utf8');
+  const buf = Buffer.alloc(tamanhoBloco || 4 * 1024 * 1024);
+  let prof = 0, emString = false, escapou = false, tok = '', ultimaChaveRaiz = '', ultimaChaveCol = '';
+  let dentroColecoes = false, captura = null;   // captura: { nome, partes: [] , ini }
+  try {
+    for (;;) {
+      const n = fs.readSync(fd, buf, 0, buf.length, null);
+      if (!n) break;
+      const txt = dec.write(buf.slice(0, n));
+      let ini = captura ? 0 : -1;   // começo do trecho pendente deste pedaço
+      for (let i = 0; i < txt.length; i++) {
+        const c = txt[i];
+        if (emString) {
+          if (escapou) escapou = false;
+          else if (c === '\\') escapou = true;
+          else if (c === '"') { emString = false; if (prof === 1) ultimaChaveRaiz = tok; else if (prof === 2 && dentroColecoes) ultimaChaveCol = tok; }
+          else if (prof <= 2) tok += c;
+          continue;
+        }
+        if (c === '"') { emString = true; tok = ''; continue; }
+        if (c === '{' || c === '[') {
+          prof++;
+          if (c === '{' && prof === 2 && ultimaChaveRaiz === 'colecoes') dentroColecoes = true;
+          else if (dentroColecoes && prof === 3 && quero.has(ultimaChaveCol)) { captura = { nome: ultimaChaveCol, partes: [] }; ini = i; }
+        } else if (c === '}' || c === ']') {
+          if (captura && prof === 3) {
+            captura.partes.push(txt.slice(ini, i + 1));
+            achadas[captura.nome] = JSON.parse(captura.partes.join(''));
+            captura = null; ini = -1;
+          }
+          if (prof === 2 && dentroColecoes) dentroColecoes = false;
+          prof--;
+        }
+      }
+      if (captura) captura.partes.push(txt.slice(Math.max(ini, 0)));
+    }
+  } finally { fs.closeSync(fd); }
+  return achadas;
+}
+
 function main() {
   const args = process.argv.slice(2);
   const pastaJson = args[0] || PASTA_PADRAO;
   const caminhoJson = fs.existsSync(pastaJson) && fs.statSync(pastaJson).isFile() ? pastaJson : achaJsonMaisRecente(pastaJson);
-  const backup = JSON.parse(fs.readFileSync(caminhoJson, 'utf8'));
+  const colecoes = lerColecoes(caminhoJson, ['clientes', 'documentosMensal', 'entregas']);
+  const backup = { colecoes };
   const dia = (/banco-(\d{4}-\d{2}-\d{2})\.json$/.exec(caminhoJson) || [])[1] || new Date().toISOString().slice(0, 10);
 
   const wb = XLSX.utils.book_new();
@@ -142,4 +194,4 @@ if (require.main === module) {
   try { main(); } catch (e) { console.error('ERRO:', e.message); process.exit(1); }
 }
 
-module.exports = { montarAba_Clientes, montarAba_DocumentosMensais, montarAba_Entregas, separarCodigo };
+module.exports = { lerColecoes, montarAba_Clientes, montarAba_DocumentosMensais, montarAba_Entregas, separarCodigo };
