@@ -23,8 +23,8 @@ function AvatarDaPessoa({ vm, abrirCentral }: { vm: ReturnType<typeof useCascaTa
       itens={[
         { rotulo: 'Minha conta', icone: 'usuario', onClick: () => vm.abrirPessoal('conta') },
         { rotulo: 'Minhas tarefas', icone: 'checklist', onClick: abrirCentral },
-        // só ver tudo, sem alterar nada (Vitor, 06/10/2026)
-        { rotulo: 'Modo desenvolvedor', icone: 'settings', marcado: vm.dev, onClick: () => vm.setDev(!vm.dev) },
+        // só ver tudo, sem alterar nada (Vitor, 06/10/2026); só para quem tem o papel Desenvolvedor (06/11/2026)
+        ...(vm.podeDev ? [{ rotulo: 'Modo desenvolvedor', icone: 'settings' as const, marcado: vm.dev, onClick: () => vm.setDev(!vm.dev) }] : []),
         'separador',
         { rotulo: vm.perfil.sair, icone: 'logOut', onClick: vm.trocarPessoa },
       ]} />

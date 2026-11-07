@@ -8,7 +8,7 @@ import { useOperador } from '../../../casca/operador';
 import { useAcesso } from '../../../dados/repo';
 
 /** Os papéis que se dão à mão (o resto vem do departamento e do nível). */
-const EXTRAS: readonly usuarios.Papel[] = ['admin', 'office_boy', 'equipe_geral'];
+const EXTRAS: readonly usuarios.Papel[] = ['admin', 'office_boy', 'equipe_geral', 'desenvolvedor'];
 
 export function useNovoUsuario(aoCriar: () => void = () => {}) {
   const repo = useAcesso();

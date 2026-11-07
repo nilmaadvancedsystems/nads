@@ -13,7 +13,8 @@ export type Nivel = 'diretor' | 'senior' | 'pleno' | 'junior';
  * Papéis que os sistemas do Entregas conferem (temPapel). 'staff' é o piso de quem tem conta;
  * 'dp' é o do Departamento Pessoal (a Tarefas já rotula).
  */
-export type Papel = 'staff' | 'admin' | 'contabil' | 'fiscal' | 'dp' | 'office_boy' | 'equipe_geral';
+/** 'desenvolvedor': quem pode ligar o modo desenvolvedor (Vitor, 06/11/2026: "apenas para quem tá desenvolvendo"). */
+export type Papel = 'staff' | 'admin' | 'contabil' | 'fiscal' | 'dp' | 'office_boy' | 'equipe_geral' | 'desenvolvedor';
 
 /** usuarios/{uid} como está gravado (campos do Entregas + os novos, todos opcionais na leitura). */
 export interface DocUsuario {

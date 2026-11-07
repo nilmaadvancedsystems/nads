@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { aplicacoesDe, ehDiretor, podeMexerNoCadastro, podeVerOFinanceiro } from './navegacao';
 import type { Operador } from './operador';
 
-const op = (nivel: Operador['nivel'], admin = false): Operador => ({ nome: 'X', departamento: 'contabil', nivel, admin });
+const op = (nivel: Operador['nivel'], admin = false): Operador => ({ nome: 'X', departamento: 'contabil', nivel, admin, desenvolvedor: false });
 const cadastroDe = (o: Operador) => aplicacoesDe(o).find(a => a.id === 'cadastro');
 
 describe('o Cadastro por nível (Vitor, 19/10/2026: o sênior vê e mexe no cadastro das empresas)', () => {

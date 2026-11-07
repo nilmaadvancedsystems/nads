@@ -229,7 +229,7 @@ export function Executor() {
           { rotulo: 'Voltar às empresas', icone: 'home', onClick: vm.sair },
           'separador',
           { rotulo: 'Minha conta', icone: 'usuario', onClick: () => casca.abrirPessoal('conta') },
-          { rotulo: 'Modo desenvolvedor', icone: 'settings', marcado: casca.dev, onClick: () => casca.setDev(!casca.dev) },
+          ...(casca.podeDev ? [{ rotulo: 'Modo desenvolvedor', icone: 'settings' as const, marcado: casca.dev, onClick: () => casca.setDev(!casca.dev) }] : []),
           'separador',
           { rotulo: casca.perfil.sair, icone: 'logOut', onClick: casca.trocarPessoa },
         ]} />

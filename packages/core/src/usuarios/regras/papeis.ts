@@ -28,6 +28,8 @@ export const PAPEIS: readonly { id: Papel; rotulo: string }[] = [
   { id: 'fiscal', rotulo: 'Fiscal' },
   { id: 'dp', rotulo: 'Departamento pessoal' },
   { id: 'equipe_geral', rotulo: 'Equipe geral' },
+  // o modo desenvolvedor só para quem tem este papel, dado à mão no Cadastro › Usuários (Vitor, 06/11/2026)
+  { id: 'desenvolvedor', rotulo: 'Desenvolvedor' },
 ];
 
 /** O papel que cada departamento dá. */

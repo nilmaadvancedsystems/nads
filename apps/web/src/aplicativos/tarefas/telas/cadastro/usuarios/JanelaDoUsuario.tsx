@@ -25,6 +25,9 @@ function Foto({ foto, iniciais }: { foto?: string | null; iniciais: string }) {
   return foto ? <img className="pessoal-foto grande" src={foto} alt="" /> : <span className="pessoal-foto grande pessoal-iniciais" aria-hidden="true">{iniciais}</span>;
 }
 
+/** o papel Desenvolvedor (06/11/2026): o que ele libera */
+const DICA_DEV = 'Libera o Modo desenvolvedor no menu do avatar (só ver, sem gravar nada).';
+
 type TopicoDaPessoa = 'cargo' | 'papeis' | 'acesso' | 'empresas';
 
 export function JanelaDoUsuario({ vm }: { vm: VmUsuarios }) {
@@ -72,7 +75,7 @@ export function JanelaDoUsuario({ vm }: { vm: VmUsuarios }) {
       {topico === 'papeis' && (
         <Cartao titulo="Papéis">
           {vm.papeis.map(x => (
-            <Linha key={x.id} rotulo={x.rotulo}>
+            <Linha key={x.id} rotulo={x.rotulo} dica={x.id === 'desenvolvedor' ? DICA_DEV : undefined}>
               <Interruptor ligado={p.papeis.includes(x.id)} onMudar={() => void vm.alternarPapel(p, x.id)} rotulo={x.rotulo + ' de ' + p.nome} />
             </Linha>
           ))}
@@ -189,7 +192,7 @@ export function JanelaNovoUsuario({ fechar }: { fechar: () => void }) {
       {topico === 'papeis' && (
         <Cartao titulo="Papéis a mais">
           {vm.extras.map(x => (
-            <Linha key={x.id} rotulo={x.rotulo}>
+            <Linha key={x.id} rotulo={x.rotulo} dica={x.id === 'desenvolvedor' ? DICA_DEV : undefined}>
               <Interruptor ligado={x.on} onMudar={() => vm.alternarExtra(x.id)} rotulo={x.rotulo} />
             </Linha>
           ))}

@@ -2,6 +2,7 @@
 // Contato), as páginas da aplicação aberta na barra lateral, o título e quem está trabalhando.
 import { usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
+import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { VERSAO_SISTEMA } from '../../../versao';
 import { aplicacao, aplicacoesDe, BASE, caminhoDaPagina, type IdAplicacao } from './navegacao';
@@ -23,6 +24,10 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
   const acesso = useAcesso();
   // o modo desenvolvedor (no avatar): só ver, sem alterar (Vitor, 06/10/2026)
   const [dev, setDev] = useModoDesenvolvedor();
+  // só para quem tem o papel Desenvolvedor (Vitor, 06/11/2026: "apenas para quem tá desenvolvendo"): quem não tem e
+  // estava com o modo ligado neste navegador volta ao normal (desligar recarrega a página)
+  const podeDev = op.desenvolvedor;
+  useEffect(() => { if (dev && !podeDev) setDev(false); }, [dev, podeDev, setDev]);
   const { aviso } = useRetorno();
   return {
     // a Tarefas não tem uma empresa aberta: a trilha fica só com o caminho (Vitor, 05/10/2026: sem o "Vitor · Sair da
@@ -62,6 +67,8 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
     abrirPessoal: (topico: string) => pessoal.abrir(topico),
     naPessoal: pessoal.topico !== null,
     dev, setDev,
+    /** a pessoa pode ligar o modo desenvolvedor? (o item no menu do avatar só aparece para ela) */
+    podeDev,
     /** o link Admin no pé da gaveta (só o admin) */
     admin: op.admin,
   };
