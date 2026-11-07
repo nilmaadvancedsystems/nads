@@ -36,6 +36,7 @@ import { ValorDoCaixa } from '../../tarefas/telas/financeiro/partes/ValorDoCaixa
 import { BotoesDoLink } from '../../tarefas/telas/area-cliente/partes/BotoesDoLink';
 import { ConversaDoEscritorio } from '../../tarefas/telas/area-cliente/partes/ConversaDoEscritorio';
 import { CartaoDoRobo } from '../../tarefas/telas/cadastro/painel-robo/partes/CartaoDoRobo';
+import { CartaoDeSaudeDoRobo } from '../../tarefas/telas/cadastro/painel-robo/partes/CartaoDeSaudeDoRobo';
 import { LinhaDoTempoDoRobo } from '../../tarefas/telas/cadastro/painel-robo/partes/LinhaDoTempoDoRobo';
 import { docsDeExemplo } from '../../tarefas/dados/painelRobo';
 import { ListaDaSaude } from '../../tarefas/telas/cadastro/configuracoes/ListaDaSaude';
@@ -1077,6 +1078,20 @@ export const PECAS_BASE: Peca[] = [
         <div className="robo-grade" style={{ width: '100%' }}>
           <CartaoDoRobo s={entregas.situacaoDoRobo('pc', d.pc, null, agora)} />
           <CartaoDoRobo s={entregas.situacaoDoRobo('vm', null, { em: new Date(agora - 40 * 60000).toISOString(), maquina: 'robo-nilma', desligadoEm: '' }, agora)} />
+        </div>
+      );
+    } },
+  { id: 'robo-cartao-saude', tipo: 'cartoes', nome: 'Cartão de saúde do robô (Saúde dos robôs)', descricao: 'Um por robô (arquivador, SIEG, FGTS, Alterdata, Área do Cliente, Gmail, envios, NFS-e, SEFAZ e o backup): o nome na faixa do topo com o selo suave do estado (Ok verde, Atenção amarelo, Parado vermelho, Sem informação cinza), os dados em linhas (onde roda, último batimento, último trabalho, fila: esperando, em andamento e o mais antigo), o que está fazendo agora, os motivos de não estar ok em selos e os últimos erros das 24 h (a linha do tempo). Parado: sem batimento há mais de 15 min; atenção: batimento atrasado, pedido esperando há mais de 1 h, módulo desligado ou erro sem trabalho depois', componente: 'CartaoDeSaudeDoRobo', classes: ['card robo-cartao', 'card-head', 'badge badge-suave', 'ent-dados', 'robo-cartao-agora', 'robo-cartao-modulos', 'ent-linhas robo-linhas', 'cad-placar'], telas: ['a-saude-robos'], largo: true,
+    uso: '<CartaoDeSaudeDoRobo c={entregas.cartaoDoRobo(def, pc, vm, atividades)} />',
+    demo: () => {
+      const d = docsDeExemplo();
+      const agora = Date.now();
+      const cartoes = entregas.cartoesDosRobos(d, agora);
+      const escolher = ['fgts', 'sieg', 'sefaz'].map(id => cartoes.find(c => c.id === id)!).filter(Boolean);
+      return (
+        <div className="robo-grade" style={{ width: '100%' }}>
+          {escolher.map(c => <CartaoDeSaudeDoRobo key={c.id} c={c} />)}
+          <CartaoDeSaudeDoRobo c={entregas.cartaoDoBackup({ backup: { ok: true, em: new Date(agora - 3 * 36e5).toISOString(), resumo: '41 coleções, 83 MB' } }, d.vm, agora)} />
         </div>
       );
     } },

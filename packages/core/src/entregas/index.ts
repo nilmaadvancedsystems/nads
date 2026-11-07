@@ -21,3 +21,4 @@ export * from './numerosDasEntregas';
 export * from './solicitacoes';
 export type * from './repo';
 export { criarDriveDoEntregasMemoria, criarGmailDoEntregasMemoria } from './repo.memoria';
+export * from './saudeDosRobos';

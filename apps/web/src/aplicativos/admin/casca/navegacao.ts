@@ -4,13 +4,15 @@ import type { NomeIcone } from '@nads/ui';
 
 export const BASE = '/admin';
 
-export type IdPaginaAdmin = 'visao-geral' | 'robo' | 'arquivador' | 'uso' | 'banco' | 'cota' | 'feedbacks' | 'sistema';
+export type IdPaginaAdmin = 'visao-geral' | 'robo' | 'saude-robos' | 'arquivador' | 'uso' | 'banco' | 'cota' | 'feedbacks' | 'sistema';
 
 export interface PaginaAdmin { id: IdPaginaAdmin; rotulo: string; titulo: string; icone: NomeIcone }
 
 export const PAGINAS_DO_ADMIN: readonly PaginaAdmin[] = [
   { id: 'visao-geral', rotulo: 'Visão geral', titulo: 'Visão geral', icone: 'painel' },
   { id: 'robo', rotulo: 'Robô', titulo: 'Painel do robô', icone: 'robo' },
+  // um cartão por robô com o estado (ok / atenção / parado), 07/11/2026
+  { id: 'saude-robos', rotulo: 'Saúde dos robôs', titulo: 'Saúde dos robôs', icone: 'checkCircle' },
   // o arquivador novo (22/10/2026: "quero uma só para ele e bem organizada")
   { id: 'arquivador', rotulo: 'Arquivador', titulo: 'Arquivador', icone: 'arquivo' },
   { id: 'uso', rotulo: 'Uso do sistema', titulo: 'Uso do sistema', icone: 'barChart' },
