@@ -3,16 +3,21 @@
 // do lançamento"). Um pedido por mês do período na fila do robô (a mesma da página Alterdata da empresa); com todos os meses
 // atendidos, os lançamentos lidos viram o razão de todas as contas (no lugar do Diário: as etapas e os botões usam dali).
 //   - automático: a empresa na Importação da Tarefa pede sozinha o mês que ainda não tem pedido (uma vez por abertura);
+//   - antes de criar, o pedido já andando (ou pronto há pouco) do mesmo mês é reaproveitado (várias abas não duplicam);
 //   - o mês que deu erro só vai de novo pelo botão (o robô pode estar parado; não fica pedindo em laço);
 //   - o mesmo conjunto de pedidos não é lido de novo (DiarioLido.pedidos).
 import { tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
+import { erroDeAmbiente, vagasDePedidoSozinho } from '../../../../dados/razaoDoRobo.regras';
 import { useContabilDaEmpresa } from '../../../../../../comum/contabilDaEmpresa';
 import { lerRazaoDoRobo, ouvirPedidosDoRazao, pedirRazaoDoMes, type PedidoDoRazao } from '../../../../dados/razaoDoRobo.firestore';
 
 export type SituacaoDoMes = 'pronto' | 'fila' | 'robo' | 'erro' | 'falta';
 export interface MesDoRobo { mes: string; situacao: SituacaoDoMes; pedido: PedidoDoRazao | null }
+
+// os pedidos que este navegador fez sozinho (o teto por hora; o botão não conta nem é barrado)
+const pedidosSozinho: number[] = [];
 
 const rotuloDoMes = (m: string) => m.slice(5, 7) + '/' + m.slice(0, 4);
 
@@ -50,10 +55,14 @@ export function useRazaoDoRobo({ nome, codigo, meses, automatico }: { nome: stri
   const andando = porMes.filter(m => m.situacao === 'fila' || m.situacao === 'robo');
   const prontos = porMes.filter(m => m.situacao === 'pronto');
 
-  async function pedir(quais: readonly MesDoRobo[]) {
+  async function pedir(quais: readonly MesDoRobo[], novoDeProposito = false, sozinho = false) {
     if (!codigo) return;
     try {
-      for (const m of quais) await pedirRazaoDoMes(codigo, nome, m.mes);
+      for (const m of quais) {
+        if (sozinho && vagasDePedidoSozinho(pedidosSozinho, Date.now()) <= 0) break;
+        const r = await pedirRazaoDoMes(codigo, nome, m.mes, novoDeProposito);
+        if (sozinho && !r.reaproveitado) pedidosSozinho.push(Date.now());
+      }
     } catch (e) {
       aviso({ tom: 'erro', titulo: 'Não deu para pedir ao robô', texto: e instanceof Error ? e.message : String(e) });
     }
@@ -62,11 +71,13 @@ export function useRazaoDoRobo({ nome, codigo, meses, automatico }: { nome: stri
   // automático: o mês sem pedido nenhum vai para a fila sozinho (uma vez por empresa e período nesta abertura)
   const jaPediu = useRef('');
   const semPedido = porMes.filter(m => m.situacao === 'falta');
-  const chaveDoPedido = automatico && carregado && !falha && semPedido.length ? codigo + '|' + semPedido.map(m => m.mes).join(',') : '';
+  // mês com erro (ex.: o Contábil do servidor fora): não pede sozinho; mostra a mensagem e espera o botão
+  const comErro = porMes.some(m => m.situacao === 'erro');
+  const chaveDoPedido = automatico && carregado && !falha && !comErro && semPedido.length ? codigo + '|' + semPedido.map(m => m.mes).join(',') : '';
   useEffect(() => {
     if (!chaveDoPedido || jaPediu.current === chaveDoPedido) return;
     jaPediu.current = chaveDoPedido;
-    void pedir(semPedido);
+    void pedir(semPedido, false, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chaveDoPedido]);
 
@@ -106,7 +117,11 @@ export function useRazaoDoRobo({ nome, codigo, meses, automatico }: { nome: stri
     /** pede de novo os meses que deram erro ou faltam */
     pedirOsQueFaltam: () => pedir(porMes.filter(m => m.situacao === 'erro' || m.situacao === 'falta')),
     /** pede tudo de novo (o razão mudou no Alterdata depois do último pedido) */
-    pedirDeNovo: () => pedir(porMes.filter(m => m.situacao !== 'fila' && m.situacao !== 'robo')),
+    pedirDeNovo: () => pedir(porMes.filter(m => m.situacao !== 'fila' && m.situacao !== 'robo'), true),
+    /** a fila segurou os pedidos porque o Contábil do servidor não responde (a mensagem dela) */
+    espera: porMes.find(m => m.situacao === 'fila' && m.pedido?.esperandoContabil)?.pedido?.esperandoContabil || '',
+    /** algum mês falhou por causa do ambiente do robô (não do pedido) */
+    erroDeAmbiente: porMes.some(m => m.situacao === 'erro' && erroDeAmbiente(m.pedido?.erro || '')),
     rotuloDoMes,
   };
 }

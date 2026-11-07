@@ -378,10 +378,20 @@ const aoPai = (tipo, args) => { try { if (process.connected) process.send({ pain
 const provedoresDoFilho = new Map();
 let relogioDoFilho = null;
 
+/** O que este processo está fazendo agora ([{ chave, texto, desde }]), para o "estou ocupado" (ocupado.js, 07/11/2026). */
+function fazendoAgora() { try { return oQueEstaFazendo(); } catch (e) { return []; } }
+
 module.exports = SATELITE ? {
   iniciar: () => {}, batimento: () => Promise.resolve(), desligar: () => Promise.resolve(), limpar: () => Promise.resolve(),
   estado: parcial => aoPai('estado', [parcial]),
-  fazendo: (chave, texto) => aoPai('fazendo', [chave, texto || null]),
+  // guarda também aqui (o filho sabe na hora o que está fazendo, sem esperar o pai) e manda ao pai
+  fazendo: (chave, texto) => { fazendo(chave, texto); aoPai('fazendo', [chave, texto || null]); },
+  // no filho os provedores são lidos na hora (o pai só recebe a cada 30 s)
+  fazendoAgora: () => {
+    const lista = Array.from(agora.values());
+    for (const [chave, f] of provedoresDoFilho) { let t = null; try { t = f(); } catch (e) { t = null; } if (t && !agora.has(chave)) lista.push({ chave, texto: cortar(t, MAX_TEXTO), desde: '' }); }
+    return lista;
+  },
   // o "fazendo" que o módulo responde: o filho pergunta a cada 30 s e manda o texto
   fazendoPor: (chave, f) => {
     provedoresDoFilho.set(String(chave), f);
@@ -397,7 +407,7 @@ module.exports = SATELITE ? {
   FILAS, TIPOS, COLECAO, DOCS,
   cortar, isoDe, contarFila, criarFreio, versaoDoCodigo, montarBatimento,
 } : {
-  iniciar, batimento, estado, fazendo, fazendoPor, modulo, atividade, erro, desligar, limpar, deSatelite, SATELITE,
+  iniciar, batimento, estado, fazendo, fazendoPor, fazendoAgora, modulo, atividade, erro, desligar, limpar, deSatelite, SATELITE,
   FILAS, TIPOS, COLECAO, DOCS,
   // para o teste
   cortar, isoDe, contarFila, criarFreio, versaoDoCodigo, montarBatimento,

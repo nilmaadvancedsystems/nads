@@ -1087,6 +1087,15 @@ const REGRAS_PDF = [
   { tipo: 'FGTS', setor: 'FOLHA_SOCIETARIO', re: /GUIA DO FGTS DIGITAL|\bGFD\b - GUIA DO FGTS/, fonte: '04b',
     campos: u => { const c = camposDaGuia(u); const m = /(\d{2})\/(\d{4})\s*MENSAL/.exec(u) || /COMPETENCIA[\s\S]{0,300}?(\d{2})\/(20\d{2})/.exec(u); if (m) c.competencia = { mes: +m[1], ano: +m[2] }; return c; } },
   // ---- declarações (05a, 05b, 05c) ----
+  // (07/11/2026, os NÃO IDENTIFICADOS) a DMED em PDF (o recibo de entrega e a "Declaração completa" impressa do programa da Receita): o mesmo destino do .DEC e do .REC
+  // (FISCAL\<regime>\DMED\<ano-calendário>, nome original; Vitor, 29/10/2026). O CNPJ do declarante tem de ser o do cliente, e o exercício, o ano-calendário + 1
+  { tipo: 'DMED', setor: 'FISCAL', re: /^[\s\S]{0,700}(DECLARACAO DE SERVICOS MEDICOS E DE SAUDE|RECEITA FEDERAL\s*\n?\s*DMED\s+20\d{2})[\s\S]{0,400}ANO-?CALENDARIO|^[\s\S]{0,300}ANO-?CALENDARIO[\s\S]{0,300}DECLARACAO DE SERVICOS MEDICOS E DE SAUDE/, fonte: 'DMED em PDF: o recibo e a declaração impressa (07/11/2026; o destino do .DEC, Vitor, 29/10/2026)',
+    campos: u => {
+      const a = /ANO-?CALENDARIO\s*:?\s*(20\d{2})/.exec(u), ex = /EXERCICIO\s*:?\s*(20\d{2})/.exec(u.slice(0, 600)) || /\bDMED\s+(20\d{2})\b/.exec(u.slice(0, 600));
+      const d = /CNPJ DO DECLARANTE\s*:?\s*(\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2})/.exec(u) || /\bDECLARANTE\s*:\s*(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2})/.exec(u)
+        || /\bDECLARANTE\b[\s\S]{0,120}?\bCNPJ\b[\s\S]{0,40}?(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2})/.exec(u.slice(0, 900));
+      return { ano: a ? +a[1] : null, exercicio: ex ? +ex[1] : null, cnpj: d ? so(d[1]) : null };
+    } },
   { tipo: 'DEFIS', setor: 'FISCAL', re: /DECLARACAO DE INFORMACOES SOCIOECONOMICAS E FISCAIS|\bDEFIS\b/, fonte: '05a + 05 (DEFIS)',
     campos: u => ({ ano: anoCalendario(u), recibo: /RECIBO/.test(u.slice(0, 600)) }) },
   { tipo: 'DIRF', setor: 'FISCAL', re: /SISTEMA DIRF|\bDIRF\b|IMPOSTO SOBRE A RENDA RETIDO NA FONTE|FONTES PAGADORAS/, fonte: '05a/05b/05c/05e (DIRF)',
@@ -1373,10 +1382,11 @@ function camposDeNfse(u) {
   // (Vitor, 30/10/2026, 5ª rodada, decisão 4) a NFS-e escaneada de Taiobeiras: os rótulos numa linha só, comprida ("Data Fato Gerador Exigibilidade de ISS Regime Tributário
   // Número RPS Nº da Nota Fiscal"), e os valores na linha de baixo ("03/02/2025 Exigivel Microempresa…"): a data é a 1ª da linha de baixo. O OCR às vezes come a 1ª barra
   // ("1710/2025"): vale, marcada como quebrada (montarNfsePdf exige o mês da pasta de origem)
+  // (07/11/2026, os NÃO IDENTIFICADOS) e as duas barras comidas ("01082025", a NFSE 906 da PROGEO na 412): também quebrada, com a mesma exigência do mês da pasta
   let fatoGerador = null;
   if (!emissao) {
-    const fg = /DATA FATO GERADOR[^\n]*\n\s*(\d{2})(\/?)(\d{2})\/(20\d{2})(?![\d])/.exec(u);
-    if (fg && +fg[1] >= 1 && +fg[1] <= 31 && +fg[3] >= 1 && +fg[3] <= 12) fatoGerador = { data: fg[1] + '-' + fg[3] + '-' + fg[4], quebrada: !fg[2] };
+    const fg = /DATA FATO GERADOR[^\n]*\n\s*(\d{2})(\/?)(\d{2})(\/?)(20\d{2})(?![\d])/.exec(u);
+    if (fg && +fg[1] >= 1 && +fg[1] <= 31 && +fg[3] >= 1 && +fg[3] <= 12) fatoGerador = { data: fg[1] + '-' + fg[3] + '-' + fg[5], quebrada: !fg[2] || !fg[4] };
   }
   // o que a leitura de antes (até 27/10/2026) já lia: o que ela não lia e tem o XML da chave arquivado continua indo ao lado do
   // XML (o 2º lote do Vitor, que o reprocesso em produção está aplicando); as leituras novas só valem para o resto
@@ -4161,6 +4171,9 @@ function decidirPdf(entrada, ctx, ev, porHash) {
   // Santander: título, competência e titular costumam estar na página 2 (Dicionário §6.1.2) — já está em `bruto`
   // a DRE pelo título do conteúdo (28/10/2026: a "572DRE.2025-01.pdf" lida como aplicação pela linha dos rendimentos)
   let regra = /^[\s\S]{0,800}DEMONSTRACAO D[OE]S? RESULTADOS? DO EXERCICIO/.test(u) && !/^[\s\S]{0,300}(EXTRATO|COMPROVANTE)/.test(u) ? REGRAS_PDF.find(r => r.tipo === 'BALANCETE') : REGRAS_PDF.find(r => r.re.test(u));
+  // (07/11/2026, os NÃO IDENTIFICADOS) a DRE do livro com o título curto ("Demonstração do Resultado", com Empresa/CNPJ/Folha/NIRE no cabeçalho: "408DRE2025-assinado.pdf",
+  // "413DRE2025 - Assinatura.pdf") era lida como EXTRATO pelas colunas "Saldo Atual / Saldo Anterior" (e parava em BANCO_AUSENTE): o livro contábil vale antes do extrato
+  if (regra && regra.tipo === 'EXTRATO' && ehLivroContabil(u) && /^[\s\S]{0,800}DEMONSTRACAO D[OE]S? RESULTADOS?\b/.test(u) && !/^[\s\S]{0,300}(EXTRATO|COMPROVANTE)/.test(u)) regra = REGRAS_PDF.find(r => r.tipo === 'BALANCETE');
   // a inscrição estadual pelo nome do arquivo ("Inscrição Estadual Brazilian IE 35612260253.pdf"), quando o conteúdo não diz outro tipo
   if (!regra && /INSCRI[CÇ][AÃ]O ESTADUAL|\bINSC\.? ESTADUAL\b/i.test(norm(entrada.nome))) regra = REGRAS_PDF.find(r => r.tipo === 'INSCRICAO ESTADUAL');
   // a provisão anual de impostos do sistema do escritório ("358Prov2025.pdf", "524 Prov. imposto 2025.pdf"): 04, papel de trabalho
@@ -4278,6 +4291,19 @@ function decidirPdf(entrada, ctx, ev, porHash) {
     case 'APURACAO SN SCI': {
       if (!campos.competencia) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5, evidencias: ev.concat('a "Referência" da apuração do SCI não foi lida') });
       return Object.assign(base, { acao: 'ARQUIVAR', confianca: c.conf, competencia: campos.competencia, fiscal: ['DAS'], nomeFinal: mesAno(campos.competencia) + ' - APURACAO SN SCI.pdf' });
+    }
+    case 'DMED': {
+      // (07/11/2026) a DMED em PDF: FISCAL\<regime>\DMED\<ano-calendário>, nome original (como o .DEC/.REC); o declarante tem de ser o cliente
+      if (!campos.ano || !anoOk(campos.ano)) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'ANO_INDETERMINADO', confianca: 0.5, evidencias: ev.concat('o ano-calendário da DMED não foi lido') });
+      if (campos.exercicio && campos.exercicio !== campos.ano + 1) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'ANO_INDETERMINADO', confianca: 0.5, evidencias: ev.concat('DMED com exercício ' + campos.exercicio + ' e ano-calendário ' + campos.ano + ' (o exercício é o ano-calendário + 1)') });
+      if (!campos.cnpj || !clientesDoDoc(campos.cnpj, ctx.cadastro).includes(c.cliente)) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_AMBIGUO', confianca: 0.4, evidencias: ev.concat(campos.cnpj ? 'o CNPJ do declarante (' + campos.cnpj + ') não é o do cliente ' + c.cliente : 'o CNPJ do declarante da DMED não foi lido') });
+      // a pasta de origem, quando é de cliente, tem de ser a do declarante (como no .DEC)
+      const subD = clienteDaPasta(entrada.rel || nomeOrig, ctx.cadastro);
+      if (subD && subD.codigo !== c.cliente) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_AMBIGUO', confianca: 0.4, evidencias: ev.concat('o declarante da DMED é o cliente ' + c.cliente + ', e a pasta de origem é do ' + subD.codigo) });
+      const regimeD = (ctx.cadastro.porCod.get(c.cliente) || {}).regime;
+      if (!regimeD || !ARVORE[regimeD]) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'VOCABULARIO_AUSENTE', confianca: 0.5, evidencias: ev.concat('o cliente ' + c.cliente + ' não tem regime com pasta no cadastro') });
+      ev.push('DMED em PDF: declarante ' + campos.cnpj + ', ano-calendário ' + campos.ano + '; FISCAL\\' + regimeD + '\\DMED\\' + campos.ano + ', nome original (07/11/2026)');
+      return Object.assign(base, { acao: 'ARQUIVAR', confianca: c.conf, competencia: { ano: campos.ano }, caminho: ['FISCAL', regimeD, 'DMED', String(campos.ano)], nomeFinal: nomeOrig });
     }
     case 'DEFIS ALTERDATA': {
       // 27/10/2026 (Vitor): 14. DEFIS\AAAA - DEFIS ALTERDATA.pdf (AAAA = ano-calendário), na raiz do ano da entrega: o da emissão

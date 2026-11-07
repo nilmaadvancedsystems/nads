@@ -215,6 +215,23 @@ igual('lado a lado: o texto cita o destino diferente', /2 - Y/.test(C.textoDoLad
       vv.parar();
       igual('pastas vazias: sai a árvore vazia antiga; ficam a com arquivo, a nova, NÃO IDENTIFICADOS e "_"', [n, fs.existsSync(path.join(oV, '0010 - X')), fs.existsSync(path.join(oV, '0055 - Y', 'OUTROS', 'fica.pdf')), fs.existsSync(path.join(oV, 'NOVA - Z')), fs.existsSync(path.join(oV, 'NÃO IDENTIFICADOS', '20261027-NOVO')), fs.existsSync(path.join(oV, '_tmp')), fs.existsSync(path.join(oV, '2026-04'))], [6, false, true, true, true, true, false]);
     }
+    // 07/11/2026: os contadores de tentativa de arquivos que sumiram saem (1x por dia); os de arquivos que existem ficam
+    {
+      const oT = path.join(sb, 'origem-t'), kT = path.join(sb, 'controle-t');
+      fs.mkdirSync(path.join(oT, 'A'), { recursive: true }); fs.mkdirSync(path.join(kT, 'continuo'), { recursive: true });
+      fs.writeFileSync(path.join(oT, 'A', 'existe.pdf'), 'x');
+      const kE = path.join('A', 'existe.pdf') + '|1|111|P', kS = path.join('A', 'sumiu.pdf') + '|1|111|P', kL = 'local:' + path.join(sb, 'local-nao-ligada') + '|' + path.join('B', 'x.pdf') + '|1|1|P';
+      fs.writeFileSync(path.join(kT, 'continuo', 'estado.json'), JSON.stringify({ decididos: {}, mes: {}, tentativas: { [kE]: 2, [kS]: 2, [kL]: 1 } }));
+      const vt = C.iniciar(Object.assign({}, base, { origem: oT, controle: kT }));
+      const orig = [{ id: 'G:', raiz: oT, principal: true }];
+      const n1 = await vt._limparTentativas(orig, true);
+      const n2 = await vt._limparTentativas(orig);   // no mesmo dia não varre de novo
+      igual('tentativas: tira só o contador do arquivo que sumiu (a origem local desligada não é mexida)', [n1, n2, Object.keys(vt._tentativas()).sort()], [1, 0, [kE, kL].sort()]);
+      const vazia = [{ id: 'G:', raiz: path.join(sb, 'drive-fora-do-ar'), principal: true }];
+      const n3 = await vt._limparTentativas(vazia, true);
+      igual('tentativas: com a raiz fora do ar (Drive caído) não limpa nada', [n3, Object.keys(vt._tentativas()).length], [0, 2]);
+      vt.parar();
+    }
   } finally { fs.rmSync(sb, { recursive: true, force: true }); }
   console.log((falhas ? falhas + ' FALHA(S) em ' : 'ok: ') + total + ' testes');
   process.exit(falhas ? 1 : 0);

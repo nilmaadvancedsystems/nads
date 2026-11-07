@@ -545,6 +545,12 @@ igual('... sem o carimbo, o ano pela data do nome ("_01112023")', d16('04ª Alte
 // (g) o contrato de câmbio (BB) e o de mútuo
 igual('contrato de câmbio: OPERAÇÕES DE CÂMBIO\\ANO\\BANCO\\Nº, nome original', so16(d16('CONTRATO CAMBIO Nº462283594 PRINCIPAL 50% PROETP R$3.010.630,80..pdf', T_CAMBIO, P413B + '2025\\01.2025\\')), ['ARQUIVAR', null, '413 - BRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA\\CONTÁBIL\\OPERAÇÕES DE CÂMBIO\\2025\\BANCO DO BRASIL\\462283594', 'CONTRATO CAMBIO Nº462283594 PRINCIPAL 50% PROETP R$3.010.630,80..pdf', 2025]);
 igual('... o câmbio de mútuo: OPERAÇÕES DE CRÉDITO\\ANO\\EMPRÉSTIMO\\BANCO\\Nº', d16('27-01-2025 CONTRATO Nº462283594 MUTUO CTRANSPORT R$2.776,000,00.pdf', T_CAMBIO, P413B + '2025\\01.2025\\').destinoRelativo, '413 - BRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA\\CONTÁBIL\\OPERAÇÕES DE CRÉDITO\\2025\\EMPRÉSTIMO\\BANCO DO BRASIL\\462283594');
+// (07/11/2026, os NÃO IDENTIFICADOS) a DRE do livro com o título curto e as colunas "Saldo Atual / Saldo Anterior" (o "413DRE2025 - Assinatura.pdf") não é extrato: REGISTRO DE LIVROS
+const T_DRE413 = 'Empresa: BRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA\nCNPJ: 33.117.361/0001-71 Folha: 534\nNIRE: 31212589194 Data: 29/03/2023\nDemonstração do Resultado Demonstração de Resultado - 01/01/2025 até 31/12/2025\nDescrição Classificação Cd Chamada Saldo Atual Saldo Anterior\nRECEITAS 3 3115 1.368.972,61C 652.889,26C';
+d = d16('413DRE2025 - Assinatura.pdf', T_DRE413, 'FERNANDO\\413 BRAZILIAN filiais 414.  418. 453\\2025\\Relatório2025\\');
+igual('07/11j: a DRE do livro ("Demonstração do Resultado", Saldo Atual/Anterior) vai para REGISTRO DE LIVROS\\(001) 2025, nome original', [d.acao, d.tipo, d.destinoRelativo, d.nomeFinal], ['ARQUIVAR', 'BALANCETE', '413 - BRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA\\CONTÁBIL\\REGISTRO DE LIVROS\\(001) 2025', '413DRE2025 - Assinatura.pdf']);
+d = d16('extrato.pdf', 'EXTRATO DE CONTA CORRENTE\nBANCO DO BRASIL\nCNPJ: 33.117.361/0001-71\nPeriodo: 01/01/2025 a 31/01/2025\nDescrição Saldo Atual Saldo Anterior\nSALDO ANTERIOR 10,00\nSALDO 20,00', 'FERNANDO\\413 BRAZILIAN filiais 414.  418. 453\\2025\\');
+igual('07/11k: ... e o extrato de verdade continua extrato', d.tipo, 'EXTRATO');
 // a pasta da migração × o conteúdo (Vitor, 26/10/2026)
 const decMig16 = (rel, texto) => { const e = { nome: rel.split('\\').pop(), rel, texto: [texto] }; const r = R.decidir(e, ctx16); return r.acao === 'NAO_IDENTIFICADO' ? (MIG.decidir(e, ctx16, r) || r) : r; };
 d = decMig16('0434 - CONSTRUNOVO LTDA - ME\\DEPARTAMENTO FISCAL\\SPED CONTRIBUIÇÃO\\2021\\Consolidação das Operações por CST - 01.2021.pdf', 'Consolidacao das operacoes por CST\nPOSTO DE COMBUSTIVEIS ANDRIELE LIMITADA CNPJ 40.299.450/0001-41\nPeriodo 01/01/2021 a 31/01/2021');
@@ -1467,6 +1473,22 @@ igual('a agência e a conta no nome do arquivo ("Entradas_Saidas_ag3155cc990348_
   const entDec = await A.montarEntrada(C31.dmedDec.nome, REL277 + C31.dmedDec.nome, Buffer.from(C31.dmedDec.conteudo, 'latin1'));
   igual('montarEntrada lê o começo do .DEC (DMED|2023|2022|…) e a decisão sai dele', [/^DMED\|2023\|2022\|/.test(entDec.dec), R.decidir(entDec, ctx37).acao], [true, 'ARQUIVAR']);
   igual('o .REC do SPED continua sendo do SPED (a regra da DMED só pega o nome "<CNPJ>-Dmed-AAAA-AAAA")', R.decidir({ nome: 'SPED00524_01_2025.REC', rel: 'FERNANDO\\49 - POSTO\\x\\SPED00524_01_2025.REC' }, ctx37).tipo !== 'DMED', true);
+  // (07/11/2026, os NÃO IDENTIFICADOS) a DMED em PDF (o recibo e a declaração impressa, lidos por OCR): o mesmo destino do .DEC, nome original
+  {
+    const RECIBO_DMED = 'MINISTÉRIO DA ECONOMIA Exercício: 2023\nSECRETARIA ESPECIAL DA RECEITA FEDERAL DO BRASIL Ano-calendário: 2022\nDECLARAÇÃO DE SERVIÇOS MÉDICOS E DE SAÚDE - Dmed 2023 Tipo: Original\nRECIBO DE ENTREGA\nIdentificação do declarante\nCNPJ do declarante: 27.361.015/0001-31 CNES: 931932-8\nNome empresarial: G.A.S SERVICOS LABORATORIAIS LTDA\nTipo do declarante: — Prestador de serviço de saúde\nExtrato da declaração\nDados da pessoa responsável pelo preenchimento da declaração\nNome: NILMA DIAS OLIVEIRA\nCPF:  032.318.376-00\nDeclaração recebida via internet\npelo agente receptor SERPRO';
+    const DECL_DMED = 'Declaração completa Vo Receita Federal\nDmed 2024\nAno-calendário: 2023\nDeclaração: Original Situação especial: Não\nDeclarante Responsável pelo preenchimento da declaração\nCNPJ CNES CPF\n27.361.015/0001-31 931932-8 032.318.376-00\nNome empresarial Nome\nG.A.S SERVICOS LABORATORIAIS LTDA NILMA DIAS OLIVEIRA\nTipo do declarante\nPrestador de serviço de saúde\nDeclarante: 27.361.015/0001-31 Versão: 1.1 Data: 14/02/2024 Página: 1';
+    const relD = a => '20261023-NOVO\\0277 - G.A.S SERVICOS LABORATORIAIS LTDA - ME\\DEPARTAMENTO FISCAL\\DMED\\' + a + '\\';
+    let dD = R.decidir({ nome: 'Recibo 2022.pdf', rel: relD(2022) + 'Recibo 2022.pdf', texto: [RECIBO_DMED] }, ctx37);
+    igual('07/11a: recibo da DMED em PDF: FISCAL\\SIMPLES NACIONAL\\DMED\\2022, nome original, raiz 2023 (a da entrega)', sem37(dD).concat(dD.anoRaiz), ['ARQUIVAR', 277, 'FISCAL\\SIMPLES NACIONAL\\DMED\\2022', 'Recibo 2022.pdf', 2023]);
+    dD = R.decidir({ nome: 'Declaração 2023.pdf', rel: relD(2023) + 'Declaração 2023.pdf', texto: [DECL_DMED] }, ctx37);
+    igual('07/11b: a declaração completa impressa ("Dmed 2024 / Ano-calendário: 2023"): DMED\\2023', sem37(dD), ['ARQUIVAR', 277, 'FISCAL\\SIMPLES NACIONAL\\DMED\\2023', 'Declaração 2023.pdf']);
+    dD = R.decidir({ nome: 'Recibo 2022.pdf', rel: relD(2022).replace('0277 - G.A.S SERVICOS LABORATORIAIS LTDA - ME', '0291 - G.A.S SAUDE DE DIVISA ALEGRE LTDA - ME') + 'Recibo 2022.pdf', texto: [RECIBO_DMED] }, ctx37);
+    igual('07/11c: o recibo da 277 na pasta da 291: não arquiva', dD.acao, 'NAO_IDENTIFICADO');
+    dD = R.decidir({ nome: 'Recibo 2022.pdf', rel: relD(2022) + 'Recibo 2022.pdf', texto: [RECIBO_DMED.replace('Exercício: 2023', 'Exercício: 2025')] }, ctx37);
+    igual('07/11d: exercício que não é o ano-calendário + 1: ANO_INDETERMINADO', [dD.acao, dD.motivo], ['NAO_IDENTIFICADO', 'ANO_INDETERMINADO']);
+    dD = R.decidir({ nome: 'Recibo 2022.pdf', rel: relD(2022) + 'Recibo 2022.pdf', texto: [RECIBO_DMED.replace('27.361.015/0001-31', '29.412.290/0001-62')] }, ctx37);
+    igual('07/11e: o declarante é OUTRO cliente (a 291) na pasta da 277: não arquiva', dD.acao, 'NAO_IDENTIFICADO');
+  }
 
   // (4) o extrato da CDL (536) em .xls sem banco nem conta no conteúdo: o banco pelo nome (SICOOB), só se a 536 tem o Sicoob no cadastro
   const REL536 = '20261026-NOVO\\FERNANDO\\536 CDL DE TAIOBEIRAS\\2025\\03.2025\\';
@@ -1728,6 +1750,11 @@ igual('a agência e a conta no nome do arquivo ("Entradas_Saidas_ag3155cc990348_
   igual('40.4: ... o número do nome que NÃO está no texto ("NFSE 761"): NÃO IDENTIFICADO', d40('nfseTaio760', { nome: 'NFSE 761 PROGEO CONSULTORIA.pdf', rel: C34.nfseTaio760.rel.replace('NFSE 760', 'NFSE 761') }).acao, 'NAO_IDENTIFICADO');
   igual('40.4: ... a data lida (02/05/2026) que não confere com a pasta de origem (05.2025): NÃO IDENTIFICADO', d40('nfseTaioSpirou820').acao, 'NAO_IDENTIFICADO');
   igual('40.4: ... a data com a barra comida numa pasta sem o mês: NÃO IDENTIFICADO', d40('nfseTaioNilma2947', { rel: 'FERNANDO\\411 MINAS FORESTRY\\NFSE 2947 NILMA CONTADORA MINAS R$645,00.pdf' }).acao, 'NAO_IDENTIFICADO');
+  // (07/11/2026, os NÃO IDENTIFICADOS) as DUAS barras comidas pelo OCR ("01082025", a NFSE 906 da PROGEO): quebrada, só com o mês da pasta (o mesmo ou o seguinte)
+  igual('07/11f: NFS-e de Taiobeiras com a data "03022025" (as duas barras comidas), na pasta 02.2025: RECEBIDOS, como a de "03/02/2025"', s40(d40('nfseTaio760', { texto: t40('nfseTaio760', '03/02/2025 Exigivel', '03022025 Exigivel') })).slice(0, 4), ['ARQUIVAR', 411, 'FISCAL\\LUCRO PRESUMIDO\\03. DOCUMENTOS FISCAIS\\RECEBIDOS', '03-02-2025 - NFS-e 760 - PROGEO CONSULTORIA E SERVIÇOS EM MEIO AMBIENTE.pdf']);
+  igual('07/11g: ... a mesma data sem barras numa pasta de OUTRO mês (05.2025): NÃO IDENTIFICADO', d40('nfseTaio760', { texto: t40('nfseTaio760', '03/02/2025 Exigivel', '03022025 Exigivel'), rel: C34.nfseTaio760.rel.replace('02.2025', '05.2025') }).acao, 'NAO_IDENTIFICADO');
+  igual('07/11h: ... sem barras numa pasta sem o mês: NÃO IDENTIFICADO', d40('nfseTaio760', { texto: t40('nfseTaio760', '03/02/2025 Exigivel', '03022025 Exigivel'), rel: 'FERNANDO\\411 MINAS FORESTRY\\NFSE 760 PROGEO CONSULTORIA.pdf' }).acao, 'NAO_IDENTIFICADO');
+  igual('07/11i: ... oito dígitos que não são data ("33132025"): NÃO IDENTIFICADO', d40('nfseTaio760', { texto: t40('nfseTaio760', '03/02/2025 Exigivel', '33132025 Exigivel') }).acao, 'NAO_IDENTIFICADO');
   // (5) a conta de energia da Brazilian pela inscrição estadual mascarada
   igual('40.5: conta da Neoenergia da Brazilian (CNPJ mascarado; a inscrição "18642****" só confere com a 453): PAGAMENTOS DE FORNECEDORES\\2026\\01\\NEOENERGIA da 453, nome original', s40(d40('neoenergia453')), ['ARQUIVAR', 453, 'CONTÁBIL\\PAGAMENTOS DE FORNECEDORES\\2026\\01\\NEOENERGIA', C34.neoenergia453.nome, 2026]);
   igual('40.5: ... a lida por OCR ("COELB - Energia"): COELBA, o mês da pasta de origem', s40(d40('coelbOcr453')).slice(0, 3), ['ARQUIVAR', 453, 'CONTÁBIL\\PAGAMENTOS DE FORNECEDORES\\2025\\08\\COELBA']);
