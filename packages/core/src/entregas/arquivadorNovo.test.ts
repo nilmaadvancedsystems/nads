@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  barrasPorTipo, buscarClientesDoFormulario, csvDoHistorico, diasDoPeriodo, intervaloDoPeriodo, lerMesDoArquivador, mesesDoPeriodo, situacoesDoHistorico, totaisDoPeriodo, caminhoDoArquivo, filtrarItens, lerCadastroDoFormulario, lerItemDoArquivador, lerPedidoDoArquivador, grupoDoTipo, lerPainelDoArquivador, lerParteDoDia, progressoDaPassada, resumoDoDia, situacaoDoArquivador,
+  filtrarGrupos, lerGrupoParaResolver, resumoDosGrupos, SEM_TIPO_PROVAVEL, barrasPorTipo, buscarClientesDoFormulario, csvDoHistorico, diasDoPeriodo, intervaloDoPeriodo, lerMesDoArquivador, mesesDoPeriodo, situacoesDoHistorico, totaisDoPeriodo, caminhoDoArquivo, filtrarItens, lerCadastroDoFormulario, lerItemDoArquivador, lerPedidoDoArquivador, grupoDoTipo, lerPainelDoArquivador, lerParteDoDia, progressoDaPassada, resumoDoDia, situacaoDoArquivador,
   type PainelDoArquivador,
 } from '.';
 
@@ -183,5 +183,33 @@ describe('o arquivador novo (Admin › Arquivador)', () => {
     expect([s.get(porId('e-0'))?.rotulo, s.get(porId('f-0'))?.rotulo, s.get(porId('g-0'))?.rotulo]).toEqual(['Duplicado — já estava na pasta', 'Descartado', 'Arquivado']);
     const csv = csvDoHistorico(itens.slice(0, 1), s);
     expect(csv.split('\r\n')[1]).toContain('Arquivado à mão por Vitor');
+  });
+});
+
+describe('Para resolver em grupos: filtro e resumo (lote)', () => {
+  const g = (id: string, motivo: string, motivoTexto: string, pasta: string, n: number, tipoDoc: string | null, nomes: string[] = []) =>
+    lerGrupoParaResolver({ id, motivo, motivoTexto, pasta, n, exemplos: nomes.map(x => ({ nome: x, rel: 'NÃO IDENTIFICADOS\\d\\' + x, hash: 'h' })), sugestao: tipoDoc ? { codigo: 10, tipoDoc } : null });
+  const grupos = [
+    g('a', 'TIPO_DESCONHECIDO', 'Tipo desconhecido', '0010 - DORNAS\\DEPARTAMENTO FISCAL\\DES - BH', 312, 'DES', ['Declaração São Paulo.pdf']),
+    g('b', 'CLIENTE_AMBIGUO', 'Duas empresas possíveis', '0020 - TEOBALDO\\CONTÁBIL', 40, null),
+    g('c', 'TIPO_DESCONHECIDO', 'Tipo desconhecido', '0030 - FITO\\FISCAL\\DAS', 8, 'DAS'),
+  ];
+
+  it('resume por causa e por tipo provável, os maiores primeiro', () => {
+    const r = resumoDosGrupos(grupos);
+    expect([r.grupos, r.arquivos]).toEqual([3, 360]);
+    expect(r.porMotivo.map(x => [x.id, x.grupos, x.arquivos])).toEqual([['TIPO_DESCONHECIDO', 2, 320], ['CLIENTE_AMBIGUO', 1, 40]]);
+    expect(r.porTipo.map(x => [x.id, x.arquivos])).toEqual([['DES', 312], ['-', 40], ['DAS', 8]]);
+    expect(r.porTipo[1].rotulo).toBe('Sem tipo provável');
+  });
+
+  it('filtra pela causa, pelo tipo provável e pela busca (sem acento, todos os termos)', () => {
+    expect(filtrarGrupos(grupos, {}).map(x => x.id)).toEqual(['a', 'b', 'c']);
+    expect(filtrarGrupos(grupos, { motivo: 'TIPO_DESCONHECIDO' }).map(x => x.id)).toEqual(['a', 'c']);
+    expect(filtrarGrupos(grupos, { tipo: SEM_TIPO_PROVAVEL }).map(x => x.id)).toEqual(['b']);
+    expect(filtrarGrupos(grupos, { tipo: 'DAS' }).map(x => x.id)).toEqual(['c']);
+    expect(filtrarGrupos(grupos, { busca: 'contabil teobaldo' }).map(x => x.id)).toEqual(['b']);
+    expect(filtrarGrupos(grupos, { busca: 'sao paulo' }).map(x => x.id)).toEqual(['a']);
+    expect(filtrarGrupos(grupos, { busca: 'dornas', motivo: 'CLIENTE_AMBIGUO' })).toEqual([]);
   });
 });

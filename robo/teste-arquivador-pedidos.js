@@ -107,9 +107,10 @@ igual('planilha: as regras com o hash confirmado dão o destino (OUTROS DOCUMENT
       collection: (n) => ({ doc: (id) => docRef(caminho + '/' + n + '/' + id) }),
     });
     const db = { collection: (n) => ({ doc: (id) => docRef(n + '/' + id), where: () => ({ limit: () => ({ get: async () => ({ docs: [] }) }) }) }) };
-    let mudou = 0, exclusivos = 0;
+    let mudou = 0, exclusivos = 0, lembrou = 0, grupoDeMentira = null;
     // o banco de mentira não tem onSnapshot: o ouvinte não liga, e os pedidos vão direto pelo tratar()
-    const P2 = P.criar({ db, origem, clientes, executar, exclusivo: async fn => { exclusivos++; return fn(); }, aposMudar: () => { mudou++; } });
+    const P2 = P.criar({ db, origem, clientes, executar, exclusivo: async fn => { exclusivos++; return fn(); }, aposMudar: () => { mudou++; },
+      grupo: id => grupoDeMentira && id === grupoDeMentira.id ? grupoDeMentira : null, lembrar: () => { lembrou++; return true; } });
     P2.parar();
     const relNi = 'NÃO IDENTIFICADOS\\20261022-NOVO\\2026-10\\2026-2151 BRAZILIAN.txt';
     const hashLista = sha1('20261022-NOVO\\2026-10\\2026-2151 BRAZILIAN.txt');
@@ -158,6 +159,23 @@ igual('planilha: as regras com o hash confirmado dão o destino (OUTROS DOCUMENT
     igual('descartar: o manifesto marca o descarte e quem decidiu', [man2[man2.length - 1].descarte, man2[man2.length - 1].decidido_por], [true, 'Vitor']);
     await P2.tratar('d2', { tipo: 'descartar', rel: 'NÃO IDENTIFICADOS\\20261022-NOVO\\2026-10\\lixo.txt', hash: 'x', pedidoPor: 'Vitor' });
     igual('o arquivo que já saiu: erro claro', [docs.get('pedidosArquivador/d2').status, /não está mais/.test(docs.get('pedidosArquivador/d2').erro)], ['erro', true]);
+
+    // descartar o grupo inteiro (tipoDoc 'DESCARTAR' no pedido `grupo`): tudo para a quarentena, nada apagado, sem lembrar
+    const rels = ['g1.txt', 'g2.txt', 'g3.txt'].map(n => ({ nome: n, rel: 'NÃO IDENTIFICADOS\\20261022-NOVO\\2026-10\\' + n, hash: sha1('20261022-NOVO\\2026-10\\' + n) }));
+    for (const x of rels) fs.writeFileSync(path.join(ni, x.nome), 'lixo do grupo ' + x.nome);
+    grupoDeMentira = { id: 'gg1', motivo: 'TIPO_DESCONHECIDO', pasta: '0010 - EXEMPLO\\FISCAL', n: rels.length, arquivos: rels, sugestao: null };
+    await P2.tratar('g0', { tipo: 'grupoPrevia', rel: grupoDeMentira.pasta, hash: 'gg1', codigo: 1, tipoDoc: 'DESCARTAR', pedidoPor: 'Vitor' });
+    igual('grupo descartar, prévia: só conta, nada mexe', [docs.get('pedidosArquivador/g0').status, docs.get('pedidosArquivador/g0').resposta.total, rels.every(x => fs.existsSync(path.join(ni, x.nome)))], ['pronto', 3, true]);
+    await P2.tratar('g1', { tipo: 'grupo', rel: grupoDeMentira.pasta, hash: 'gg1', codigo: 1, tipoDoc: 'DESCARTAR', lembrar: true, pedidoPor: 'Vitor' });
+    const g1 = docs.get('pedidosArquivador/g1');
+    igual('grupo descartar: feito, 3 de 3, sem lembrar', [g1.status, g1.resposta.total, g1.resposta.feitos, g1.resposta.erros, lembrou], ['feito', 3, 3, 0, 0]);
+    igual('grupo descartar: saíram de NÃO IDENTIFICADOS (quarentena, não apagados)', [rels.some(x => fs.existsSync(path.join(ni, x.nome))), fs.readdirSync(path.join(controle, 'QUARENTENA'), { recursive: true }).filter(f => /g[123]\.txt$/.test(String(f))).length === 3], [false, true]);
+    const man3 = fs.readFileSync(path.join(controle, 'MANIFESTO', 'manifesto.jsonl'), 'utf8').trim().split('\n').map(JSON.parse).slice(-3);
+    igual('grupo descartar: o manifesto marca cada descarte e quem decidiu', man3.map(m => [m.descarte, m.decidido_por]), [[true, 'Vitor'], [true, 'Vitor'], [true, 'Vitor']]);
+    await P2.tratar('g2', { tipo: 'grupo', rel: grupoDeMentira.pasta, hash: 'gg1', codigo: 1, tipoDoc: 'DESCARTAR', pedidoPor: 'Vitor' });
+    igual('grupo descartar de novo: os arquivos já saíram, erro claro', [docs.get('pedidosArquivador/g2').status, /saiu da pasta/.test(docs.get('pedidosArquivador/g2').erro)], ['erro', true]);
+    await P2.tratar('g3', { tipo: 'grupo', rel: 'x', hash: 'outro', codigo: 1, tipoDoc: 'DESCARTAR', pedidoPor: 'Vitor' });
+    igual('grupo que não existe mais: erro', [docs.get('pedidosArquivador/g3').status, /não está mais/.test(docs.get('pedidosArquivador/g3').erro)], ['erro', true]);
 
     // o cadastro do formulário: só grava quando muda
     igual('cadastro do formulário: grava a 1ª vez', await P2.publicarCadastro(cad), true);

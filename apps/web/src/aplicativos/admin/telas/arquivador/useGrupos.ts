@@ -15,8 +15,12 @@ const FINAIS = ['pronto', 'feito', 'erro'];
 
 export function useGrupos(grupos: readonly Grupo[]) {
   const d = useArquivadorNovo();
-  const { toast } = useRetorno();
+  const { toast, modal } = useRetorno();
   const [aberto, setAberto] = useState('');
+  // os filtros da lista de grupos (a busca, a causa e o tipo provável)
+  const [filtroBusca, setFiltroBusca] = useState('');
+  const [filtroMotivo, setFiltroMotivo] = useState('');
+  const [filtroTipo, setFiltroTipo] = useState('');
   const [busca, setBusca] = useState('');
   const [cliente, setCliente] = useState<entregas.ClienteDoFormulario | null>(null);
   const [tipoDoc, setTipoDoc] = useState('');
@@ -52,21 +56,40 @@ export function useGrupos(grupos: readonly Grupo[]) {
 
   // o que o robô respondeu aos grupos mandados
   const avisados = useRef(new Set<string>());
+  // os pedidos que são descarte do grupo (o aviso diz "descartado" e não "arquivado")
+  const descartes = useRef(new Set<string>());
   useEffect(() => {
     for (const pid of Object.values(feitos)) {
       const p = d.pedido(pid);
       if (!p || !FINAIS.includes(p.status) || avisados.current.has(pid)) continue;
       avisados.current.add(pid);
       const r = p.resposta;
-      if (p.status === 'feito') toast('Grupo arquivado: ' + (r?.feitos ?? 0) + ' de ' + (r?.total ?? 0) + (r?.erros ? ' (' + r.erros + ' com erro: ' + (r.primeiroErro || '') + ')' : '') + (r?.lembrou ? '. A decisão foi lembrada para os próximos desta pasta.' : '.'));
-      else toast('O grupo não foi arquivado: ' + (p.erro || 'erro sem detalhe'));
+      if (p.status === 'feito' && descartes.current.has(pid)) toast('Grupo descartado: ' + (r?.feitos ?? 0) + ' de ' + (r?.total ?? 0) + ' foram para a quarentena' + (r?.erros ? ' (' + r.erros + ' com erro: ' + (r.primeiroErro || '') + ')' : '') + '.');
+      else if (p.status === 'feito') toast('Grupo arquivado: ' + (r?.feitos ?? 0) + ' de ' + (r?.total ?? 0) + (r?.erros ? ' (' + r.erros + ' com erro: ' + (r.primeiroErro || '') + ')' : '') + (r?.lembrou ? '. A decisão foi lembrada para os próximos desta pasta.' : '.'));
+      else toast('O grupo não foi ' + (descartes.current.has(pid) ? 'descartado: ' : 'arquivado: ') + (p.erro || 'erro sem detalhe'));
     }
   });
   const andamento = (gid: string) => {
     const p = feitos[gid] ? d.pedido(feitos[gid]) : null;
     if (!p) return '';
-    return p.status === 'feito' ? 'feito' : p.status === 'erro' ? '' : 'Arquivando o grupo…';
+    return p.status === 'feito' ? 'feito' : p.status === 'erro' ? '' : descartes.current.has(p.id) ? 'Descartando o grupo…' : 'Arquivando o grupo…';
   };
+
+  /** Descartar o grupo inteiro (para a quarentena, nada é apagado): o mesmo pedido `grupo`, com o tipo DESCARTAR; confirma com quantos arquivos. */
+  async function descartar(x: Grupo) {
+    if (andamento(x.id)) return;
+    const ok = await modal<boolean>({ icone: 'alert', titulo: 'Descartar ' + x.n.toLocaleString('pt-BR') + (x.n === 1 ? ' arquivo' : ' arquivos') + '?',
+      texto: 'Todo o grupo "' + x.motivoTexto + '" de ' + x.pasta + ' vai para a quarentena do arquivador (nunca é apagado direto) e sai de NÃO IDENTIFICADOS, com uma linha no manifesto para cada arquivo dizendo que foi você.',
+      botoes: [{ rotulo: 'Voltar', valor: false, variante: 'btn-outline' }, { rotulo: 'Descartar ' + x.n.toLocaleString('pt-BR'), valor: true, variante: 'btn-danger' }] });
+    if (!ok) return;
+    try {
+      // o código 1 só passa pelas regras do banco (o robô ignora com DESCARTAR)
+      const pid = await d.pedir({ tipo: 'grupo', rel: x.pasta, hash: x.id, codigo: 1, tipoDoc: entregas.TIPO_DESCARTAR_GRUPO });
+      descartes.current.add(pid);
+      setFeitos(f => ({ ...f, [x.id]: pid }));
+      fechar();
+    } catch (err) { toast('Não consegui pedir o descarte do grupo: ' + (err instanceof Error ? err.message : String(err))); }
+  }
 
   function abrir(id: string) {
     const x = grupos.find(y => y.id === id);
@@ -83,10 +106,22 @@ export function useGrupos(grupos: readonly Grupo[]) {
   useEffect(() => { if (exato) { setCliente(exato); setBusca(exato.codigo + ' · ' + exato.nome); } }, [exato]);
   const anos = Array.from({ length: new Date().getFullYear() - 2015 + 1 }, (_, i) => String(new Date().getFullYear() - i));
 
-  const visiveis = grupos.filter(x => andamento(x.id) !== 'feito');
+  const restantes = grupos.filter(x => andamento(x.id) !== 'feito');
+  const visiveis = entregas.filtrarGrupos(restantes, { busca: filtroBusca, motivo: filtroMotivo, tipo: filtroTipo });
+  const resumo = entregas.resumoDosGrupos(restantes);
+  const rotuloDoTipo = (id: string, rotulo: string) => id === entregas.SEM_TIPO_PROVAVEL ? rotulo : d.cadastroDoFormulario().tipos.find(t => t.id === id)?.rotulo || rotulo;
+  const filtroAtivo = !!(filtroBusca.trim() || filtroMotivo || filtroTipo);
   return {
     grupos: visiveis,
     total: visiveis.reduce((s, x) => s + x.n, 0),
+    descartar,
+    filtros: {
+      busca: filtroBusca, setBusca: setFiltroBusca,
+      motivo: filtroMotivo, setMotivo: setFiltroMotivo, opcoesMotivo: resumo.porMotivo.map(f => ({ valor: f.id, rotulo: f.rotulo, arquivos: f.arquivos })),
+      tipo: filtroTipo, setTipo: setFiltroTipo, opcoesTipo: resumo.porTipo.map(f => ({ valor: f.id, rotulo: rotuloDoTipo(f.id, f.rotulo), arquivos: f.arquivos })),
+      ativo: filtroAtivo, limpar: () => { setFiltroBusca(''); setFiltroMotivo(''); setFiltroTipo(''); },
+      mostrando: { grupos: visiveis.length, arquivos: visiveis.reduce((s, x) => s + x.n, 0) }, total: { grupos: resumo.grupos, arquivos: resumo.arquivos },
+    },
     andamento,
     aberto: g,
     abrir, fechar,
@@ -108,6 +143,12 @@ export function useGrupos(grupos: readonly Grupo[]) {
       podeConfirmar: pronto && !enviando && !!previa && previa.status === 'pronto',
       async confirmar() {
         if (!pronto || enviando || !g) return;
+        // a confirmação diz quantos arquivos serão afetados
+        const quanto = g.n.toLocaleString('pt-BR') + (g.n === 1 ? ' arquivo' : ' arquivos');
+        const ok = await modal<boolean>({ icone: 'pasta', titulo: 'Arquivar ' + quanto + '?',
+          texto: 'Todo o grupo de ' + g.pasta + ' vai para ' + cliente!.codigo + ' · ' + cliente!.nome + ' como ' + (tipo?.rotulo || tipoDoc) + (lembrar ? '. A decisão será lembrada para os próximos desta pasta' : '') + '. Cada arquivo sai pelas regras e nenhum é sobrescrito.',
+          botoes: [{ rotulo: 'Voltar', valor: false, variante: 'btn-outline' }, { rotulo: 'Arquivar ' + g.n.toLocaleString('pt-BR'), valor: true, variante: 'btn-primary' }] });
+        if (!ok) return;
         setEnviando(true);
         try {
           const pid = await d.pedir({ tipo: 'grupo', rel: g.pasta, hash: g.id, codigo: cliente!.codigo, tipoDoc, ...(competencia ? { competencia } : {}), lembrar });

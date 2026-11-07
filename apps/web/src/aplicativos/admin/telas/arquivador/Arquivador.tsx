@@ -9,6 +9,7 @@ import { Alerta, Dica, Esqueleto, Icone, RoscaComLegenda, Segmentado, Vazio, use
 import type { entregas } from '@nads/core';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ArquivarEm } from './partes/ArquivarEm';
+import { FiltrosDosGrupos } from './partes/FiltrosDosGrupos';
 import { DetalheDoArquivo } from './partes/DetalheDoArquivo';
 import { LinhaDoArquivo, ListaComDetalhe } from './partes/ListaComDetalhe';
 import { RankingComMarca } from './partes/RankingComMarca';
@@ -211,17 +212,23 @@ function ResolverEmGrupos({ grupos, escolha }: { grupos: readonly entregas.Grupo
       <p className="fraco arq-grupo-pasta">{a.pasta}</p>
       <ul className="arq-grupo-exemplos">{a.exemplos.map(x => <li key={x.rel}><Icone nome="arquivo" width={14} height={14} /> {x.nome}</li>)}</ul>
       {a.sugestao && <p className="hint">Sugestão: {a.sugestao.codigo != null ? 'cliente ' + a.sugestao.codigo + ' (pela pasta de origem)' : ''}{a.sugestao.codigo != null && a.sugestao.tipoDoc ? ' · ' : ''}{a.sugestao.tipoDoc ? 'tipo ' + a.sugestao.tipoDoc + ' (pelo mapa da migração)' : ''}</p>}
+      {!g.andamento(a.id) && (
+        <div className="arq-detalhe-acoes">
+          <button type="button" className="btn btn-outline" onClick={() => void g.descartar(a)}><Icone nome="lixeira" width={16} height={16} />Descartar o grupo ({a.n.toLocaleString('pt-BR')})</button>
+        </div>
+      )}
       {g.formulario && <ArquivarEm f={g.formulario} />}
     </div>
   ) : null;
   return (
     <div className="card">
       <div className="card-head">
-        <h3>Para resolver em grupos<Dica texto="Os não identificados da mesma causa e da mesma pasta de origem juntos, os maiores primeiro. Escolha o cliente e o tipo para o grupo inteiro: a competência sai do nome ou das pastas de cada arquivo, o robô mostra 3 exemplos antes e, com Lembrar, os próximos da mesma pasta vão sozinhos." /></h3>
+        <h3>Para resolver em grupos<Dica texto="Os não identificados da mesma causa e da mesma pasta de origem juntos, os maiores primeiro. Escolha o cliente e o tipo para o grupo inteiro: a competência sai do nome ou das pastas de cada arquivo, o robô mostra 3 exemplos antes e, com Lembrar, os próximos da mesma pasta vão sozinhos. Filtre pela causa ou pelo tipo provável e use Descartar o grupo para mandar tudo à quarentena." /></h3>
         {escolha}
       </div>
+      <FiltrosDosGrupos f={g.filtros} />
       <ListaComDetalhe rotulo="Grupos para resolver" linhas={linhas} aberto={a?.id ?? ''} onAbrir={id => g.abrir(id)} onFechar={g.fechar} detalhe={detalhe}
-        vazio={<Vazio compacto icone="checkCircle" titulo="Nenhum grupo para resolver" texto="O robô arquivou tudo sozinho." />} />
+        vazio={g.filtros.ativo ? <Vazio compacto icone="search" titulo="Nenhum grupo com esses filtros" texto="Tente outra busca ou limpe os filtros." /> : <Vazio compacto icone="checkCircle" titulo="Nenhum grupo para resolver" texto="O robô arquivou tudo sozinho." />} />
     </div>
   );
 }
