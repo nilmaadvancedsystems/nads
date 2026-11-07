@@ -146,7 +146,7 @@ export function Central() {
 
       {acoes.pendente && (
         <Confirmacao
-          titulo={acoes.pendente.acao.nome + (acoes.pendente.acao.alvo === 'maquina' ? ' o robô do ' + acoes.pendente.maquina.nome : ' o ' + (acoes.pendente.robo?.nome || '')) + '?'}
+          titulo={acoes.pendente.acao.nome + ' · ' + (acoes.pendente.acao.alvo === 'maquina' ? acoes.pendente.maquina.nome : acoes.pendente.robo?.nome || '') + '?'}
           texto={<>
             <p>{acoes.pendente.acao.descricao}</p>
             <p className="cr-fraco">Vai para {acoes.pendente.maquina.nome} ({acoes.pendente.maquina.host}). O robô responde no histórico de pedidos.</p>

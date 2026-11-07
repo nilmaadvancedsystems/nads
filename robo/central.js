@@ -379,11 +379,20 @@ async function atender(doc) {
   }
 }
 
+/** O reinício educado está ligado neste processo? (o ocupado.js existe e o ocupado.iniciar gravou o arquivo vivo) */
+function reinicioLigado() {
+  try {
+    const ocupado = require('./ocupado');
+    return typeof ocupado.pedirParada === 'function' && typeof ocupado.arquivoVivo === 'function' && fs.existsSync(ocupado.arquivoVivo());
+  } catch (e) { return false; }
+}
+
 function publicarEstado(desligado) {
   if (!st) return Promise.resolve();
   const agoraIso = new Date().toISOString();
   const semGancho = [];
-  try { require.resolve('./ocupado'); } catch (e) { semGancho.push('reiniciar'); }
+  // reiniciar só com o ocupado.js E este processo ligado nele (o arquivo robo-vivo-<nome>.json do ocupado.iniciar)
+  if (st.ganchos.reiniciar === reinicioEducado && !reinicioLigado()) semGancho.push('reiniciar');
   if (st.maquina !== 'servidor' || !fs.existsSync(path.join(__dirname, 'atualizar-robo.js'))) semGancho.push('atualizar');
   const doc = desligado ? { desligadoEm: agoraIso } : {
     maquina: st.maquina, host: os.hostname(), em: agoraIso, ligadoEm: st.ligadoEm, versao: st.versao, desligadoEm: null,

@@ -74,7 +74,7 @@ function VisaoGeral({ central, s, maquina }: { central: Central; s: r.SituacaoDo
         {s.ultimo ? <Linha a={s.ultimo} agora={central.agora} /> : <p className="cr-fraco">Nada registrado nos últimos dias.</p>}
         {s.ultimoErro && <><h3>Último erro</h3><Linha a={s.ultimoErro} agora={central.agora} /></>}
       </section>
-      {atividades.length > 0 && (
+      {atividades.some(a => a.id !== s.ultimo?.id) && (
         <section className="cr-cartao">
           <h2>Atividade recente</h2>
           <ul className="cr-atividades">{atividades.map(a => <li key={a.id}><Linha a={a} agora={central.agora} /></li>)}</ul>
