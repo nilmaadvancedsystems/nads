@@ -285,6 +285,7 @@ function iniciarLoteDp(db, deps) {
   async function atender() {
     if (ocupado) { deNovo = true; return; }
     ocupado = true;
+    require('./ocupado').marcar('lote-dp', 'Lote do DP');   // sair com calma espera o lote (07/11/2026)
     try {
       do {
         deNovo = false;
@@ -301,7 +302,7 @@ function iniciarLoteDp(db, deps) {
           }
         }
       } while (deNovo);
-    } catch (err) { log('lote do DP: não li a fila:', err.message); } finally { ocupado = false; }
+    } catch (err) { log('lote do DP: não li a fila:', err.message); } finally { ocupado = false; require('./ocupado').marcar('lote-dp', null); }
   }
   ouvir('Lote do DP', () => db.collection(COLECAO).where('status', 'in', ['pendente', 'disparar']), () => { void atender(); }, log);
   // o lote esquecido some, com os arquivos e os pedaços

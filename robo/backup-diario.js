@@ -106,6 +106,7 @@ function iniciarBackupDiario(db, log, avisos) {
     const hora = new Date().getHours();
     if (rodando || hora < HORA_MINIMA || hora >= HORA_MAXIMA || feitoNoDia === hojeIso()) return;
     rodando = true;
+    require('./ocupado').marcar('backup', 'Backup do dia');   // sair com calma espera o backup (07/11/2026)
     try {
       const dia = hojeIso();
       const estado = (await estadoRef.get()).data() || {};
@@ -165,7 +166,7 @@ function iniciarBackupDiario(db, log, avisos) {
       if (planilhaResolvida && (driveFeito || t.drive >= MAX_TENTATIVAS_DRIVE)) feitoNoDia = dia;
     } catch (err) {
       log('backup do dia falhou:', err.message);
-    } finally { rodando = false; }
+    } finally { rodando = false; require('./ocupado').marcar('backup', null); }
   }
   setTimeout(talvez, 10 * 60 * 1000);
   setInterval(talvez, 60 * 60 * 1000);

@@ -160,6 +160,9 @@ function montarBatimento(s, agoraIso) {
     agora: s.agora.slice(0, MAX_AGORA),
     modulos: s.modulos,
     filas: s.filas,
+    // o último trabalho e o último erro de cada tipo (a tela Saúde dos robôs; 07/11/2026): vale mesmo quando a atividade
+    // dos últimos 7 dias já passou das 150 linhas que a tela lê
+    ultimos: s.ultimos || {},
   });
 }
 
@@ -173,6 +176,7 @@ let extra = {};
 let antesDeIniciar = [];
 const freio = criarFreio();
 const logs = new Map();
+const ultimos = new Map();        // tipo -> { trabalho: { em, texto }, erro: { em, texto, detalhe } }
 
 const isoAgora = () => new Date().toISOString();
 function logUmaVez(chave, ...m) {
@@ -201,6 +205,7 @@ function batimento(estado) {
     const doc = montarBatimento({
       robo: st.robo, maquina: st.maquina, versao: st.versao, ligadoEm: st.ligadoEm, extra,
       agora: oQueEstaFazendo(), modulos: Array.from(modulos.values()), filas: Array.from(filas.values()),
+      ultimos: Object.fromEntries(ultimos),
     }, isoAgora());
     return st.ref.set(doc).catch(err => logUmaVez('batimento', 'não consegui bater o ponto do painel -', err.message));
   } catch (e) { return Promise.resolve(); }
@@ -249,9 +254,24 @@ function atividade(tipo, texto, detalhe, opcoes) {
     const linha = { em: isoAgora(), tipo: t, texto: cortar(texto, MAX_TEXTO), detalhe: cortar(detalhe || '', MAX_DETALHE), erro: !!(opcoes && opcoes.erro) };
     if (opcoes && opcoes.aviso) linha.aviso = true;   // aviso: algo que a pessoa corrige no cadastro, não é falha do robô
     if (!linha.texto) return;
+    lembrarUltimo(t, linha, opcoes);
     if (!freio.pode(t + '|' + linha.texto + '|' + linha.detalhe, Date.now())) return;
     if (!st) { if (antesDeIniciar.length < MAX_ANTES_DE_INICIAR) antesDeIniciar.push(linha); return; }
     gravarAtividade(linha);
+  } catch (e) { /* segue */ }
+}
+
+/**
+ * Guarda o último trabalho e o último erro do tipo (vão no próximo batimento). Aviso (algo que a pessoa corrige no cadastro)
+ * não conta como erro do robô, nem como trabalho; o "ligou/desligou" do próprio robô também não conta como trabalho.
+ */
+function lembrarUltimo(tipo, linha, opcoes) {
+  try {
+    if (opcoes && opcoes.aviso) return;
+    const u = ultimos.get(tipo) || {};
+    if (linha.erro) u.erro = { em: linha.em, texto: linha.texto, detalhe: cortar(linha.detalhe, 200) };
+    else if (tipo !== 'robo') u.trabalho = { em: linha.em, texto: linha.texto };
+    ultimos.set(tipo, u);
   } catch (e) { /* segue */ }
 }
 
@@ -358,10 +378,20 @@ const aoPai = (tipo, args) => { try { if (process.connected) process.send({ pain
 const provedoresDoFilho = new Map();
 let relogioDoFilho = null;
 
+/** O que este processo está fazendo agora ([{ chave, texto, desde }]), para o "estou ocupado" (ocupado.js, 07/11/2026). */
+function fazendoAgora() { try { return oQueEstaFazendo(); } catch (e) { return []; } }
+
 module.exports = SATELITE ? {
   iniciar: () => {}, batimento: () => Promise.resolve(), desligar: () => Promise.resolve(), limpar: () => Promise.resolve(),
   estado: parcial => aoPai('estado', [parcial]),
-  fazendo: (chave, texto) => aoPai('fazendo', [chave, texto || null]),
+  // guarda também aqui (o filho sabe na hora o que está fazendo, sem esperar o pai) e manda ao pai
+  fazendo: (chave, texto) => { fazendo(chave, texto); aoPai('fazendo', [chave, texto || null]); },
+  // no filho os provedores são lidos na hora (o pai só recebe a cada 30 s)
+  fazendoAgora: () => {
+    const lista = Array.from(agora.values());
+    for (const [chave, f] of provedoresDoFilho) { let t = null; try { t = f(); } catch (e) { t = null; } if (t && !agora.has(chave)) lista.push({ chave, texto: cortar(t, MAX_TEXTO), desde: '' }); }
+    return lista;
+  },
   // o "fazendo" que o módulo responde: o filho pergunta a cada 30 s e manda o texto
   fazendoPor: (chave, f) => {
     provedoresDoFilho.set(String(chave), f);
@@ -377,7 +407,7 @@ module.exports = SATELITE ? {
   FILAS, TIPOS, COLECAO, DOCS,
   cortar, isoDe, contarFila, criarFreio, versaoDoCodigo, montarBatimento,
 } : {
-  iniciar, batimento, estado, fazendo, fazendoPor, modulo, atividade, erro, desligar, limpar, deSatelite, SATELITE,
+  iniciar, batimento, estado, fazendo, fazendoPor, fazendoAgora, modulo, atividade, erro, desligar, limpar, deSatelite, SATELITE,
   FILAS, TIPOS, COLECAO, DOCS,
   // para o teste
   cortar, isoDe, contarFila, criarFreio, versaoDoCodigo, montarBatimento,

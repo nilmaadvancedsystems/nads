@@ -70,7 +70,18 @@ export function ouvirPedidosDoRazao(codigo: number, chegou: (l: PedidoDoRazao[])
 /** Pede ao robô o balancete e o razão do mês (a mesma fila da página Alterdata). Antes de criar, procura (uma consulta, até 10 docs)
  *  o pedido da mesma empresa e mês que já esteja andando, ou pronto há pouco: se existe, devolve o id dele e não cria outro.
  *  `novoDeProposito`: o usuário quer o razão de novo, então só o que ainda está andando é reaproveitado. */
-export async function pedirRazaoDoMes(codigo: number, empresa: string, competencia: string, novoDeProposito = false): Promise<{ id: string; reaproveitado: boolean }> {
+export function pedirRazaoDoMes(codigo: number, empresa: string, competencia: string, novoDeProposito = false): Promise<{ id: string; reaproveitado: boolean }> {
+  // duas telas pedindo o mesmo mês ao mesmo tempo (a Importação e o Bancos) dividem a mesma chamada: uma consulta, um pedido
+  const chave = codigo + '|' + competencia + '|' + novoDeProposito;
+  const andando = emVoo.get(chave);
+  if (andando) return andando;
+  const p = pedirDeVerdade(codigo, empresa, competencia, novoDeProposito).finally(() => { emVoo.delete(chave); });
+  emVoo.set(chave, p);
+  return p;
+}
+const emVoo = new Map<string, Promise<{ id: string; reaproveitado: boolean }>>();
+
+async function pedirDeVerdade(codigo: number, empresa: string, competencia: string, novoDeProposito: boolean): Promise<{ id: string; reaproveitado: boolean }> {
   const u = getAuth(appDoEntregas()).currentUser;
   if (!u) throw new Error('Entre com a conta do escritório para pedir ao robô.');
   const db = banco();

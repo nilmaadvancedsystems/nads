@@ -12,12 +12,14 @@ function iniciar({ controle, log }) {
   const pedido = path.join(controle, 'reprocessar-ni.pedido');
   let rodando = false;
   const olhar = () => {
-    if (rodando || !fs.existsSync(pedido)) return;
+    // saindo com calma (ocupado.js, 07/11/2026): o pedido fica para o arquivador que ligar depois
+    if (rodando || require('./ocupado').parando() || !fs.existsSync(pedido)) return;
     let filtro = '';
     try { filtro = fs.readFileSync(pedido, 'utf8').trim().split(/\r?\n/)[0].trim(); } catch (e) { return; }
     const emCurso = pedido.replace(/\.pedido$/, '.rodando');
     try { fs.renameSync(pedido, emCurso); } catch (e) { return; }
     rodando = true;
+    require('./ocupado').marcar('reprocesso', 'Reprocessando os NÃO IDENTIFICADOS' + (filtro ? ' (' + filtro + ')' : ''));
     const dia = new Date().toISOString().slice(0, 10);
     const saida = path.join(controle, 'reprocesso-ni-' + dia + (filtro ? '-' + filtro.replace(/[^A-Za-z0-9-]+/g, '_') : ''));
     const args = [path.join(__dirname, 'reprocessar-ni.js'), '--aplicar', '--saida', saida].concat(filtro ? ['--apenas', filtro] : []);
@@ -26,11 +28,12 @@ function iniciar({ controle, log }) {
     const p = spawn(process.execPath, args, { cwd: __dirname, stdio: ['ignore', arqLog, arqLog], windowsHide: true });
     p.on('exit', code => {
       rodando = false;
+      require('./ocupado').marcar('reprocesso', null);
       try { fs.closeSync(arqLog); } catch (e) { /* segue */ }
       try { fs.renameSync(emCurso, pedido.replace(/\.pedido$/, '.feito')); fs.appendFileSync(pedido.replace(/\.pedido$/, '.feito'), '\nsaiu com ' + code + ' em ' + new Date().toISOString() + '\n'); } catch (e) { /* segue */ }
       log('reprocesso dos NÃO IDENTIFICADOS: terminou (código ' + code + '); resumo em ' + saida);
     });
-    p.on('error', err => { rodando = false; log('reprocesso dos NÃO IDENTIFICADOS não rodou: ' + err.message); });
+    p.on('error', err => { rodando = false; require('./ocupado').marcar('reprocesso', null); log('reprocesso dos NÃO IDENTIFICADOS não rodou: ' + err.message); });
   };
   // (Vitor, 05/11/2026: "quero que isso não aconteça de novo") quando as regras mudam (o robô religa com outro arquivador-regras/arquivador-novo), os
   // NÃO IDENTIFICADOS dos últimos 3 dias são reprocessados sozinhos: o que a regra nova resolve sai de lá sem ninguém pedir

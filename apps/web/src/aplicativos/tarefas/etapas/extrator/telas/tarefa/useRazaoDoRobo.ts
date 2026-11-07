@@ -9,12 +9,15 @@
 import { tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
-import { erroDeAmbiente } from '../../../../dados/razaoDoRobo.regras';
+import { erroDeAmbiente, vagasDePedidoSozinho } from '../../../../dados/razaoDoRobo.regras';
 import { useContabilDaEmpresa } from '../../../../../../comum/contabilDaEmpresa';
 import { lerRazaoDoRobo, ouvirPedidosDoRazao, pedirRazaoDoMes, type PedidoDoRazao } from '../../../../dados/razaoDoRobo.firestore';
 
 export type SituacaoDoMes = 'pronto' | 'fila' | 'robo' | 'erro' | 'falta';
 export interface MesDoRobo { mes: string; situacao: SituacaoDoMes; pedido: PedidoDoRazao | null }
+
+// os pedidos que este navegador fez sozinho (o teto por hora; o botão não conta nem é barrado)
+const pedidosSozinho: number[] = [];
 
 const rotuloDoMes = (m: string) => m.slice(5, 7) + '/' + m.slice(0, 4);
 
@@ -52,10 +55,14 @@ export function useRazaoDoRobo({ nome, codigo, meses, automatico }: { nome: stri
   const andando = porMes.filter(m => m.situacao === 'fila' || m.situacao === 'robo');
   const prontos = porMes.filter(m => m.situacao === 'pronto');
 
-  async function pedir(quais: readonly MesDoRobo[], novoDeProposito = false) {
+  async function pedir(quais: readonly MesDoRobo[], novoDeProposito = false, sozinho = false) {
     if (!codigo) return;
     try {
-      for (const m of quais) await pedirRazaoDoMes(codigo, nome, m.mes, novoDeProposito);
+      for (const m of quais) {
+        if (sozinho && vagasDePedidoSozinho(pedidosSozinho, Date.now()) <= 0) break;
+        const r = await pedirRazaoDoMes(codigo, nome, m.mes, novoDeProposito);
+        if (sozinho && !r.reaproveitado) pedidosSozinho.push(Date.now());
+      }
     } catch (e) {
       aviso({ tom: 'erro', titulo: 'Não deu para pedir ao robô', texto: e instanceof Error ? e.message : String(e) });
     }
@@ -70,7 +77,7 @@ export function useRazaoDoRobo({ nome, codigo, meses, automatico }: { nome: stri
   useEffect(() => {
     if (!chaveDoPedido || jaPediu.current === chaveDoPedido) return;
     jaPediu.current = chaveDoPedido;
-    void pedir(semPedido);
+    void pedir(semPedido, false, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chaveDoPedido]);
 

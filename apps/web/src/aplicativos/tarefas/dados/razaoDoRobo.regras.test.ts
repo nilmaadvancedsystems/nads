@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { erroDeAmbiente, pedidoAproveitavel, PRONTO_VALE_MS } from './razaoDoRobo.regras';
+import { erroDeAmbiente, JANELA_DOS_PEDIDOS_MS, pedidoAproveitavel, PEDIDOS_SOZINHO_POR_HORA, PRONTO_VALE_MS, vagasDePedidoSozinho } from './razaoDoRobo.regras';
 
 const agora = Date.parse('2026-11-06T18:00:00Z');
 const iso = (msAtras: number) => new Date(agora - msAtras).toISOString();
@@ -29,5 +29,16 @@ describe('erroDeAmbiente', () => {
     expect(erroDeAmbiente('a janela não abriu')).toBe(true);
     expect(erroDeAmbiente('SendInput: 0 eventos')).toBe(true);
     expect(erroDeAmbiente('conta 1.1.01 não encontrada')).toBe(false);
+  });
+});
+
+describe('vagasDePedidoSozinho', () => {
+  it('conta só os pedidos da última hora', () => {
+    expect(vagasDePedidoSozinho([], agora)).toBe(PEDIDOS_SOZINHO_POR_HORA);
+    expect(vagasDePedidoSozinho([agora - 1000, agora - 2000], agora)).toBe(PEDIDOS_SOZINHO_POR_HORA - 2);
+    expect(vagasDePedidoSozinho([agora - JANELA_DOS_PEDIDOS_MS - 1], agora)).toBe(PEDIDOS_SOZINHO_POR_HORA);
+  });
+  it('nunca fica negativo', () => {
+    expect(vagasDePedidoSozinho(Array.from({ length: 10 }, () => agora - 10), agora)).toBe(0);
   });
 });
