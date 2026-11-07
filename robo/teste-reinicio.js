@@ -320,11 +320,15 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'teste-reinicio-'));
       verdade('pai: esperou o robô em processo próprio terminar o trabalho (' + r.esperouMs + ' ms)', r.livre && r.esperouMs >= 1000);
       igual('pai: o filho não foi ligado de novo', r.vivosNoFim, 0);
       const vivo = pid => { try { process.kill(pid, 0); return true; } catch (e) { return false; } };
-      setTimeout(() => {
+      // no Windows carregado o processo some do sistema com algum atraso: olha por até 8 s
+      const ate = Date.now() + 8000;
+      const olhar = () => {
+        if (r.filho && vivo(r.filho) && Date.now() < ate) return setTimeout(olhar, 250);
         verdade('pai: o filho saiu (' + r.filho + ')', r.filho && !vivo(r.filho));
         igual('pai: as provas de vida somem quando os processos saem', ['teste-pai', 'eco'].filter(n => fs.existsSync(path.join(__dirname, 'robo-vivo-' + n + '.json'))), []);
         resolve();
-      }, 800);
+      };
+      setTimeout(olhar, 300);
     });
   });
 
