@@ -24,6 +24,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { spawn } = require('child_process');
 const { ouvir } = require('./ouvinte');
+const { avisoDoPedidoFgts, avisarPedidoFgts, envioPadrao } = require('./aviso-de-falha');
 // o painel do robô (21/10/2026): o que está emitindo agora, as guias emitidas e os erros
 const painel = require('./painel');
 /** "62 EMPRESA (10/2026)" para o painel. */
@@ -435,6 +436,28 @@ function iniciarFgtsPeloClaude(db, log, opcoes = {}) {
     }
     // espera um instante para juntar os pedidos que chegam juntos (o "Emitir as que faltam" pede um por um)
     setTimeout(proximo, 3000);
+  }, log);
+
+  // o pedido que termina em erro (gov.br com "não sou um robô", login, sem procuração, falha do lote…) avisa no celular
+  // quem pediu (ou os admins) com a empresa e o motivo, UM aviso por pedido (07/11/2026: antes o erro só ficava no pedido
+  // e no log). Pega todos os caminhos de erro de uma vez: olha o pedido que ficou em 'erro' depois de esta máquina ligar.
+  const ligadaEm = agora();
+  const avisadosErro = new Set();
+  let envioAviso;
+  ouvir('erros do FGTS', () => pedidos.where('fimEm', '>=', ligadaEm), snap => {
+    if (!ativo) return;
+    for (const ch of snap.docChanges()) {
+      if (ch.type === 'removed' || avisadosErro.has(ch.doc.id)) continue;
+      const aviso = avisoDoPedidoFgts(ch.doc.data());
+      if (!aviso) continue;
+      avisadosErro.add(ch.doc.id);
+      if (envioAviso === undefined) envioAviso = envioPadrao(db, log);
+      if (!envioAviso) continue;
+      avisarPedidoFgts(envioAviso, aviso, ch.doc.id)
+        .then(() => ch.doc.ref.update({ avisadoErroEm: agora() }))
+        .then(() => log(pre + 'avisei do erro de', ch.doc.get('cnpj')))
+        .catch(err => log(pre + 'aviso do erro não saiu:', err.message));
+    }
   }, log);
 
   async function atenderLote(docs) {

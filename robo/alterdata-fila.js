@@ -54,11 +54,102 @@ function pastaVazia(base) {
 const PASSOS_DO_ROTEIRO = { balancete: 6, dinamico: 6, razao: 5, importar: 6 };
 const CLIQUE_MS = 700;
 
-function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, painel = null, limiteMs = 9 * 60 * 1000, apagarPasta = true }) {
+// O Contábil que não responde (07/11/2026: 38 pedidos da 571 seguidos, todos "a janela não abriu", um por minuto depois de um
+// reinício): três falhas de ambiente seguidas fecham e reabrem o Contábil uma vez (reabrirContabil); se continuar, a fila
+// pausa (pausaMs) e os pedidos ficam "esperando o Contábil" (pendentes, com esperandoContabil), em vez de virar erro; o admin é
+// avisado uma vez. Sem sessão de tela ativa (SendInput com 0 eventos) o clique nem existe: pausa curta, sem queimar a fila.
+const RE_JANELA = /n[ãa]o abriu|not responding|n[ãa]o respond/i;
+const RE_SEM_TELA = /SendInput|no active desktop|sem sess[ãa]o de tela/i;
+const FALHAS_PARA_REABRIR = 3;
+const MAX_ESPERAS = 3;
+
+/** 'semTela' | 'janela' | '' — o que as mensagens de erro de um pedido dizem sobre o ambiente (todas precisam ser de ambiente). */
+function classeDoErro(erros) {
+  const l = (erros || []).map(e => String(e || '')).filter(Boolean);
+  if (!l.length) return '';
+  if (l.some(e => RE_SEM_TELA.test(e)) && l.every(e => RE_SEM_TELA.test(e) || RE_JANELA.test(e))) return 'semTela';
+  return l.every(e => RE_JANELA.test(e)) ? 'janela' : '';
+}
+
+/** A frase para quem pediu (o detalhe técnico vai junto, no fim). */
+function mensagemClara(classe, erros, extra) {
+  const detalhe = [...new Set((erros || []).map(e => String(e).trim()).filter(Boolean))].join(' · ');
+  const base = classe === 'semTela'
+    ? 'O robô não conseguiu clicar no Contábil: o servidor está sem sessão de tela ativa.'
+    : classe === 'janela'
+      ? 'O Contábil não respondeu ao robô (as janelas dos relatórios não abriram), então nada foi gerado.'
+      : '';
+  if (!base) return detalhe;
+  return (base + (extra ? ' ' + extra : ' Peça de novo em alguns minutos; se continuar, avise o suporte.') + ' Detalhe: ' + detalhe).slice(0, 500);
+}
+
+function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, painel = null, limiteMs = 9 * 60 * 1000, apagarPasta = true,
+  reabrirContabil = null, pausaMs = 30 * 60 * 1000, pausaSemTelaMs = 5 * 60 * 1000 }) {
   const fila = [];
   let ocupado = false;
   let atual = null;
   const esperando = [];
+  // o ambiente: falhas seguidas, se já reabriu o Contábil nesta sequência, a pausa
+  let falhasSeguidas = 0;
+  let jaReabriu = false;
+  let reabrirAgora = false;
+  let pausadoAte = 0;
+  let pausaMotivo = '';
+  let pausaTimer = null;
+  let avisouPausa = false;
+  let avisouSemTela = false;
+  const marcados = new Set();
+  const emPausa = () => pausadoAte > Date.now();
+
+  function pausar(ms, motivo) {
+    pausadoAte = Date.now() + ms;
+    pausaMotivo = motivo;
+    clearTimeout(pausaTimer);
+    pausaTimer = setTimeout(() => {
+      pausadoAte = 0; falhasSeguidas = 0; jaReabriu = false; marcados.clear();
+      log('Alterdata: fim da pausa; a fila volta a tentar');
+      setImmediate(proximo);
+    }, ms);
+    if (pausaTimer.unref) pausaTimer.unref();
+    log('Alterdata: fila pausada por ' + Math.round(ms / 60000) + ' min (' + motivo + ')');
+  }
+
+  /** Depois de um pedido que não saiu por causa do ambiente: 'esperar' (volta para a fila, pausada) ou 'erro' (termina com a mensagem). */
+  function aposFalhaDeAmbiente(classe, esperasAntes) {
+    if (classe === 'semTela') {
+      if (!avisouSemTela) { avisouSemTela = true; if (painel) painel.erro('alterdata', 'O servidor está sem sessão de tela ativa', 'o robô não consegue clicar no Contábil (SendInput sem eventos); a fila foi pausada e os pedidos esperam'); }
+      if (esperasAntes >= MAX_ESPERAS) return 'erro';
+      pausar(pausaSemTelaMs, 'o servidor está sem sessão de tela ativa');
+      return 'esperar';
+    }
+    falhasSeguidas++;
+    if (falhasSeguidas < FALHAS_PARA_REABRIR) return 'erro';
+    if (!jaReabriu && reabrirContabil) { jaReabriu = true; falhasSeguidas = 0; reabrirAgora = true; return 'erro'; }
+    if (!avisouPausa) { avisouPausa = true; if (painel) painel.erro('alterdata', 'O Contábil do servidor não está respondendo', 'as janelas dos relatórios não abrem, nem depois de reabrir o Contábil; pausei a fila por ' + Math.round(pausaMs / 60000) + ' min e os pedidos esperam'); }
+    if (esperasAntes >= MAX_ESPERAS) return 'erro';
+    pausar(pausaMs, 'esperando o Contábil');
+    return 'esperar';
+  }
+  function deuCerto() { falhasSeguidas = 0; jaReabriu = false; avisouPausa = false; avisouSemTela = false; }
+  const textoEspera = () => (pausaMotivo === 'esperando o Contábil' ? 'esperando o Contábil voltar a responder' : pausaMotivo);
+  const camposEspera = () => ({ esperandoContabil: textoEspera(), andamento: { pct: 0, etapa: textoEspera(), clique: '', em: agora() } });
+
+  // Os pedidos mensais iguais que esperavam na fila (mesma empresa e mês) recebem o resultado deste, sem rodar de novo
+  // (07/11/2026: 38 pedidos iguais da 571, um por minuto). Cada um é relido antes: só o ainda pendente é atendido.
+  const lidos = new Map();   // id → {codigo, competencia, tipo} (o que não muda no pedido)
+  async function repassar(id, p, final) {
+    for (const q of [...fila]) {
+      let d = lidos.get(q);
+      if (!d) { const l = await banco.ler(q); if (!l) continue; d = { codigo: Number(l.codigo), competencia: l.competencia, tipo: l.tipo || 'balancete' }; lidos.set(q, d); }
+      if (d.tipo !== 'mensal' || d.codigo !== Number(p.codigo) || d.competencia !== p.competencia) continue;
+      const agoraQ = await banco.ler(q);
+      if (!agoraQ || agoraQ.status !== 'pendente') continue;
+      saiu(q);
+      const passos = [{ n: 1, nome: 'o mesmo pedido (empresa e mês) já foi atendido agora há pouco: recebeu o mesmo resultado', quando: agora() }];
+      await banco.atualizar(q, { status: final.status, mesmoQue: id, arquivos: final.arquivos, erro: final.erro || '', passos, andamento: final.andamento, inicioEm: agora(), fimEm: agora() }).catch(() => {});
+      log('Alterdata: pedido igual na fila', q, '→', id, final.status);
+    }
+  }
 
   function chegou(id) {
     if (!id || fila.includes(id) || atual === id) return;
@@ -73,6 +164,14 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
   async function proximo() {
     if (ocupado) return;
     if (!fila.length) { while (esperando.length) esperando.shift()(); return; }
+    if (emPausa()) {
+      // pausada: ninguém roda; os pedidos que esperam ficam marcados (uma vez) como "esperando o Contábil"
+      ocupado = true;
+      for (const q of [...fila]) if (!marcados.has(q)) { marcados.add(q); await banco.atualizar(q, camposEspera()).catch(() => {}); }
+      ocupado = false;
+      while (esperando.length) esperando.shift()();
+      return;
+    }
     ocupado = true;
     const id = fila.shift();
     atual = id;
@@ -80,6 +179,11 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
       log('Alterdata: erro', id, err.message);
       if (painel) painel.erro('alterdata', 'O robô do Alterdata parou num pedido', err.message);
       await banco.atualizar(id, { status: 'erro', erro: 'o robô parou: ' + String(err.message).slice(0, 200), fimEm: agora() }).catch(() => {});
+    }
+    if (reabrirAgora) {
+      reabrirAgora = false;
+      log('Alterdata: ' + FALHAS_PARA_REABRIR + ' pedidos seguidos sem a janela abrir; fechando e abrindo o Contábil uma vez');
+      try { await reabrirContabil(); } catch (err) { log('Alterdata: não consegui reabrir o Contábil', err.message); }
     }
     atual = null;
     ocupado = false;
@@ -143,7 +247,7 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
       ultimoClique = Date.now();
       return banco.atualizar(id, { andamento: { pct: pct(), etapa, clique: String(nome).slice(0, 120), em: agora() } }).catch(() => {});
     };
-    await banco.atualizar(id, { status: 'trabalhando', inicioEm: agora(), passos: [], andamento: { pct: 0, etapa, clique: '', em: agora() } });
+    await banco.atualizar(id, { status: 'trabalhando', esperandoContabil: '', inicioEm: agora(), passos: [], andamento: { pct: 0, etapa, clique: '', em: agora() } });
     const pasta = pastaVazia(pastaDoPedido(id));
     const arquivos = {};
     for (const rel of relatorios) {
@@ -194,14 +298,29 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
     const apagou = apagarPasta && prontos.length === relatorios.length;
     if (apagou) { try { fs.rmSync(pasta, { recursive: true, force: true }); } catch (err) { log('Alterdata: não apaguei a pasta', pasta, err.message); } }
     const andamentoFim = { pct: 100, etapa: prontos.length ? 'pronto' : 'erro', clique: '', em: agora() };
-    if (tipo === 'balancete') {
-      if (prontos.length) await banco.atualizar(id, { status: 'pronto', arquivoNome: arquivos.balancete.nome, arquivadoEm: apagou ? '' : path.join(pasta, 'balancete'), andamento: andamentoFim, fimEm: agora() });
-      else await banco.atualizar(id, { status: 'erro', erro: arquivos.balancete.erro, andamento: andamentoFim, fimEm: agora() });
-    } else {
-      await banco.atualizar(id, prontos.length
-        ? { status: 'pronto', arquivos, erro: erros.join(' · ').slice(0, 500), arquivadoEm: apagou ? '' : pasta, andamento: andamentoFim, fimEm: agora() }
-        : { status: 'erro', arquivos, erro: erros.join(' · ').slice(0, 500), andamento: andamentoFim, fimEm: agora() });
+    // sem nada pronto e por causa do ambiente (Contábil mudo, sem tela): conta a falha; pode voltar à fila, esperando
+    const classe = prontos.length ? '' : classeDoErro(relatorios.map(r => arquivos[r].erro));
+    if (prontos.length) deuCerto();
+    const acao = classe ? aposFalhaDeAmbiente(classe, Number(p.esperas || 0)) : 'erro';
+    if (acao === 'esperar') {
+      await banco.atualizar(id, { status: 'pendente', onde: '', esperas: Number(p.esperas || 0) + 1, ...camposEspera(), arquivos, erro: '', fimEm: '' });
+      fila.unshift(id);
+      log('Alterdata: pedido de volta para a fila,', textoEspera(), id);
+      return;
     }
+    const semRotulo = erros.map(e => e.replace(/^(razão|balancete): /, ''));
+    const msgErro = classe ? mensagemClara(classe, semRotulo, reabrirAgora ? 'O robô vai fechar e abrir o Contábil agora; peça de novo em uns 5 minutos.' : '') : erros.join(' · ').slice(0, 500);
+    let final;
+    if (tipo === 'balancete') {
+      final = prontos.length ? { status: 'pronto', arquivoNome: arquivos.balancete.nome, arquivadoEm: apagou ? '' : path.join(pasta, 'balancete'), andamento: andamentoFim, fimEm: agora() }
+        : { status: 'erro', erro: classe ? msgErro : arquivos.balancete.erro, andamento: andamentoFim, fimEm: agora() };
+    } else {
+      final = prontos.length
+        ? { status: 'pronto', arquivos, erro: msgErro, arquivadoEm: apagou ? '' : pasta, andamento: andamentoFim, fimEm: agora() }
+        : { status: 'erro', arquivos, erro: msgErro, andamento: andamentoFim, fimEm: agora() };
+    }
+    await banco.atualizar(id, final);
+    if (tipo === 'mensal' && !emPausa()) await repassar(id, p, final);
     if (painel) {
       if (prontos.length) painel.atividade('alterdata', 'Gerou ' + prontos.map(r => (r === 'razao' ? 'o razão' : 'o balancete')).join(' e ') + ' ' + codigo + ' ' + comp + ' no Alterdata', p.criadoPor ? 'pedido de ' + p.criadoPor : '');
       if (erros.length) painel.erro('alterdata', 'Alterdata ' + codigo + ' ' + comp, erros.join(' · '));
@@ -247,7 +366,7 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
       ultimoClique = Date.now();
       return banco.atualizar(id, { andamento: { pct: pct(), etapa, clique: String(nome).slice(0, 120), em: agora() } }).catch(() => {});
     };
-    await banco.atualizar(id, { status: 'trabalhando', sha256, inicioEm: agora(), passos: [], andamento: { pct: 0, etapa, clique: '', em: agora() } });
+    await banco.atualizar(id, { status: 'trabalhando', esperandoContabil: '', sha256, inicioEm: agora(), passos: [], andamento: { pct: 0, etapa, clique: '', em: agora() } });
     if (painel) painel.fazendo('alterdata', 'Importando lançamentos na ' + codigo + ' no Alterdata');
     log('Alterdata: importar', codigo, '"' + lote + '"', id);
     const pasta = pastaVazia(pastaDoPedido(id));
@@ -259,11 +378,19 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
     const fimP = await banco.ler(id);
     if (fimP && fimP.status === 'cancelado') return;
     const andamentoFim = { pct: 100, etapa: r.ok ? 'pronto' : 'erro', clique: '', em: agora() };
+    if (r.ok) deuCerto();
+    const classe = r.ok ? '' : classeDoErro([r.erro]);
+    if (classe && aposFalhaDeAmbiente(classe, Number(p.esperas || 0)) === 'esperar') {
+      await banco.atualizar(id, { status: 'pendente', onde: '', esperas: Number(p.esperas || 0) + 1, ...camposEspera(), erro: '', fimEm: '' });
+      fila.unshift(id);
+      log('Alterdata: importação de volta para a fila,', textoEspera(), id);
+      return;
+    }
     if (r.ok) {
       await banco.atualizar(id, { status: 'pronto', resultado: msgs.join(' · ') || 'importação concluída', empresaAlterdata: String(r.empresa || '').slice(0, 200), andamento: andamentoFim, fimEm: agora() });
       if (painel) painel.atividade('alterdata', 'Importou lançamentos na ' + codigo + ' (lote "' + lote + '") no Alterdata', p.criadoPor ? 'pedido de ' + p.criadoPor : '');
     } else {
-      await banco.atualizar(id, { status: 'erro', erro: String(r.erro || 'não deu').slice(0, 500), resultado: msgs.join(' · '), andamento: andamentoFim, fimEm: agora() });
+      await banco.atualizar(id, { status: 'erro', erro: classe ? mensagemClara(classe, [r.erro]) : String(r.erro || 'não deu').slice(0, 500), resultado: msgs.join(' · '), andamento: andamentoFim, fimEm: agora() });
       if (painel) painel.erro('alterdata', 'Importação na ' + codigo, String(r.erro || ''));
     }
     log('Alterdata: fim da importação', id, codigo, r.ok ? 'ok' : 'erro: ' + r.erro);
@@ -274,9 +401,10 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
     saiu,
     /** quantos esperam (sem o que está com o robô) */
     tamanho: () => fila.length,
+    pausada: () => emPausa(),
     /** resolve quando a fila esvazia e nada está rodando (o teste usa) */
-    ocioso: () => (!ocupado && !fila.length ? Promise.resolve() : new Promise(r => esperando.push(r))),
+    ocioso: () => (!ocupado && (!fila.length || emPausa()) ? Promise.resolve() : new Promise(r => esperando.push(r))),
   };
 }
 
-module.exports = { criarFilaAlterdata, periodo, pastaVazia };
+module.exports = { criarFilaAlterdata, periodo, pastaVazia, classeDoErro, mensagemClara };
