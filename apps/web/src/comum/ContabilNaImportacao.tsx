@@ -77,14 +77,16 @@ export function ContabilNaImportacao({ nome, codigo, meses = [], soDiario = fals
   }
 
   return (
-    <div className="imp-lista">
+    <div className="imp-lista imp-contabil">
       <div className={'imp-bloco' + (vm.dinamico ? ' imp-ok' : '')}>
         <div className="imp-linha">
           <span className="imp-ico"><Icone nome="scale" /></span>
           <div className="imp-txt">
             <span><b>Balancete dinâmico</b>{vm.dinamico && <span className="imp-conta">{vm.dinamico.nome}</span>}</span>
           </div>
-          <div className="imp-resumo">{vm.dinamico && <div><span>{vm.dinamico.d.meses.length} meses · {vm.dinamico.d.linhas.length} contas</span></div>}</div>
+          <div className="imp-resumo">{vm.dinamico
+            ? <div><span>{vm.dinamico.d.meses.length} {vm.dinamico.d.meses.length === 1 ? 'mês' : 'meses'} · {vm.dinamico.d.linhas.length.toLocaleString('pt-BR')} contas</span></div>
+            : blocoDoRobo ? <div><span>Entra sozinho quando o robô terminar os meses</span></div> : null}</div>
           <div className="imp-grupos">
             <div className="imp-grupo" aria-label="Balancete dinâmico">
               <span className="imp-rotulo">Dinâmico</span>

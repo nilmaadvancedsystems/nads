@@ -143,8 +143,32 @@ def avancar(dlg, de):
         falhar('o Alterdata mostrou uma mensagem ao avançar da página ' + de)
     if not nova:
         falhar('o assistente do Razão não saiu da página ' + de)
-    time.sleep(.2)
-    return nova
+    # a página assentada (09/11/2026): no meio da troca o nome lido pode ser de passagem, e o próximo Avançar pulava a página
+    # do CSV (a mesma empresa e mês saíam na vez seguinte). Só volta com o mesmo nome em 4 leituras seguidas.
+    leituras = []
+    for _ in range(40):
+        time.sleep(.15)
+        leituras.append(pagina(dlg))
+        if len(leituras) >= 4 and len(set(leituras[-4:])) == 1 and leituras[-1]:
+            return leituras[-1]
+    falhar('a página do assistente do Razão não assentou (depois de ' + de + ')')
+
+
+def voltar_ate(dlg, alvo, de):
+    """Passou da página: Voltar (nunca Concluir) até ela, no máximo 2 vezes. Devolve a página em que ficou."""
+    pg = de
+    for _ in range(2):
+        b = botao(dlg, '< Voltar')
+        if not b:
+            break
+        clique('Voltar (passou da página ' + alvo + ')')
+        b.click_input()
+        esperar(lambda: pagina(dlg) != pg and pagina(dlg), 15, .2)
+        time.sleep(.6)
+        pg = pagina(dlg)
+        if pg == alvo:
+            break
+    return pg
 
 
 
@@ -301,6 +325,8 @@ try:
         if pg == 'pgeOpcoesImpressao':
             break
         pg = avancar(dlg, pg)
+    if pg == 'pgeImpressao':
+        pg = voltar_ate(dlg, 'pgeOpcoesImpressao', pg)
     if pg != 'pgeOpcoesImpressao':
         falhar('não cheguei à página do arquivo CSV (' + pg + ')')
 

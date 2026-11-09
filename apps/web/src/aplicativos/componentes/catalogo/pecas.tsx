@@ -10,6 +10,8 @@ import { entregas, financeiro } from '@nads/core';
 import { CONCILIA, EXECUTOR, EXTRATUDO, TAREFAS, TODAS } from './telas';
 import type { Peca } from './tipos';
 import { BotaoGoogle } from '../../../comum/BotaoGoogle';
+import { BlocoDoRobo } from '../../tarefas/etapas/extrator/telas/tarefa/BlocoDoRobo';
+import type { RazaoDoRobo } from '../../tarefas/etapas/extrator/telas/tarefa/useRazaoDoRobo';
 import { BotaoImportarNoAlterdata } from '../../../comum/BotaoImportarNoAlterdata';
 import { MenuDaRotina } from '../../tarefas/telas/executor/partes/MenuDaRotina';
 import { AreaDeSoltar } from '../../cliente/partes/AreaDeSoltar';
@@ -660,6 +662,26 @@ export const PECAS_BASE: Peca[] = [
         </div>
       </div>
     ) },
+  { id: 'imp-robo', tipo: 'cartoes', nome: 'Robô do Alterdata (Importação)', descricao: 'Um quadradinho por mês com a situação (Pronto, Na fila, a barra enquanto puxa, Erro); embaixo só o que pede atenção, em vermelho', componente: 'BlocoDoRobo', classes: ['imp-contabil', 'imp-robo-meses', 'imp-robo-mes', 'imp-robo-atencao'], telas: ['t-exec-importacao'], largo: true,
+    demo: () => {
+      const rotuloDoMes = (m: string) => m.slice(5, 7) + '/' + m.slice(0, 4);
+      const pedido = (pct: number, etapa: string) => ({ pct, etapa, erro: '' });
+      const base = { disponivel: true, carregado: true, falha: '', lendo: false, agora: '', espera: '', erroDeAmbiente: false, avisoDoBalancete: '', rotuloDoMes, pedirOsQueFaltam: async () => {}, pedirDeNovo: async () => {} };
+      const anda = { ...base, agora: 'empresa 292', prontos: [{ mes: '2025-10' }], porMes: [{ mes: '2025-10', situacao: 'pronto', pedido: null }, { mes: '2025-11', situacao: 'robo', pedido: pedido(40, 'empresa 292') }, { mes: '2025-12', situacao: 'fila', pedido: null }] };
+      const parado = { ...base, espera: 'o servidor está sem sessão de tela ativa', prontos: [], porMes: [{ mes: '2025-11', situacao: 'fila', pedido: null }] };
+      const pronto = { ...base, prontos: [{ mes: '2025-11' }], porMes: [{ mes: '2025-11', situacao: 'pronto', pedido: null }] };
+      return (
+        <div className="imp-lista imp-contabil" style={{ width: '100%' }}>
+          <div className="imp-bloco imp-ok"><div className="imp-linha">
+            <span className="imp-ico"><Icone nome="scale" /></span>
+            <div className="imp-txt"><span><b>Balancete dinâmico</b><span className="imp-conta">Robô · 11/2025</span></span></div>
+            <div className="imp-resumo"><div><span>1 mês · 367 contas</span></div></div>
+            <div className="imp-grupos"><div className="imp-grupo"><span className="imp-rotulo">Dinâmico</span><button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" aria-label="Tirar o balancete dinâmico"><Icone nome="check" className="imp-feito-ok" /><Icone nome="x" className="imp-feito-x" /></button></div></div>
+          </div></div>
+          {[anda, parado, pronto].map((r, i) => <BlocoDoRobo key={i} robo={r as unknown as RazaoDoRobo} />)}
+        </div>
+      );
+    } },
   { id: 'folha', tipo: 'cartoes', nome: 'Checklist da folha', classes: ['card folha-check', 'folha-check-lista'], telas: ['t-exec-folha', 't-exec-fiscal-rotina'], largo: true,
     demo: () => (
       <div className="card folha-check">

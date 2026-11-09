@@ -4,7 +4,7 @@
 //   pedidosAlterdata/{id}/numeros/razao      o resumo por conta ({contas: [{conta, nome, anterior, …}], pedacos});
 //   pedidosAlterdata/{id}/numeros/razao-nnn  os lançamentos lidos ({lancamentos: [{conta, data, historico, contra, …}]}).
 // As regras de lá: o admin e o Contábil leem e pedem (só essas chaves no pedido); o resto, só o robô escreve.
-import type { tarefas as t } from '@nads/core';
+import type { clientes as cl, tarefas as t } from '@nads/core';
 import { getAuth } from 'firebase/auth';
 import { addDoc, collection, doc, getDoc, getDocs, limit, onSnapshot, query, where, type Firestore } from 'firebase/firestore';
 import { abrirBancoDoEntregas } from './conexaoEntregas.firestore';
@@ -27,6 +27,10 @@ export interface PedidoDoRazao {
   status: string;
   /** o razão saiu e foi lido (os lançamentos estão em numeros) */
   razaoLido: boolean;
+  /** o balancete saiu e foi lido */
+  balanceteLido: boolean;
+  /** por que o balancete não saiu (ou não foi lido) */
+  erroDoBalancete: string;
   /** por que o razão não saiu (ou não foi lido) */
   erro: string;
   /** a barra do robô (0 a 100) e o que ele está fazendo */
@@ -42,12 +46,16 @@ export interface PedidoDoRazao {
 const texto = (v: unknown) => (v == null ? '' : String(v));
 
 function pedidoDoBanco(id: string, d: Record<string, unknown>): PedidoDoRazao {
-  const raz = ((d.arquivos || {}) as Record<string, Record<string, unknown> | undefined>).razao;
+  const arquivos = (d.arquivos || {}) as Record<string, Record<string, unknown> | undefined>;
+  const raz = arquivos.razao, bal = arquivos.balancete;
   const imp = raz?.importado as Record<string, unknown> | undefined;
+  const impBal = bal?.importado as Record<string, unknown> | undefined;
   const and = (d.andamento || {}) as Record<string, unknown>;
   return {
     id, competencia: texto(d.competencia), status: texto(d.status), mesmoQue: texto(d.mesmoQue), criadoEm: texto(d.criadoEm), esperandoContabil: texto(d.esperandoContabil),
     razaoLido: raz?.status === 'pronto' && !!imp && imp.lancamentos != null && !imp.erro,
+    balanceteLido: bal?.status === 'pronto' && !!impBal && !impBal.erro,
+    erroDoBalancete: texto(bal?.status === 'erro' ? bal.erro : impBal?.erro ? 'não consegui ler: ' + texto(impBal.erro) : ''),
     erro: texto(raz?.status === 'erro' ? raz.erro : imp?.erro ? 'não consegui ler o razão: ' + texto(imp.erro) : d.status === 'erro' ? d.erro : ''),
     pct: Number(and.pct) || 0, etapa: texto(and.etapa),
   };
@@ -97,6 +105,13 @@ async function pedirDeVerdade(codigo: number, empresa: string, competencia: stri
     criadoEm: new Date().toISOString(), criadoPor: (u.displayName || (u.email || '').split('@')[0] || 'nads').slice(0, 120), criadoPorUid: u.uid,
   });
   return { id: ref.id, reaproveitado: false };
+}
+
+/** As contas do Balancete Dinâmico que o robô leu no mês (no formato antigo, sem a classificação: vazio). */
+export async function lerBalanceteDoRobo(p: PedidoDoRazao): Promise<cl.ContaDoBalanceteDoRobo[]> {
+  const s = await getDoc(doc(banco(), 'pedidosAlterdata', p.mesmoQue || p.id, 'numeros', 'balancete'));
+  const contas = ((s.data() || {}).contas || []) as cl.ContaDoBalanceteDoRobo[];
+  return contas.some(c => c.classificacao) ? contas : [];
 }
 
 /** Os números do razão que o robô leu (o resumo por conta e os lançamentos, de todos os pedaços). */
