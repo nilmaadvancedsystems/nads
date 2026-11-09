@@ -505,6 +505,101 @@ function conferirDestino(d, hash, ctx, soNaPasta, hashXml) {
  * no mês para o mesmo fornecedor: a de nome igual; senão, a ÚNICA que começa com as mesmas duas primeiras palavras ("FOX BRAVO …"), ou com a mesma palavra
  * quando o fornecedor tem uma só. Mais de uma candidata ou nenhuma: fica o nome calculado (pasta nova).
  */
+/**
+ * (Vitor, 09/11/2026, decisão 5) a foto (.jpg/.jpeg/.png) de boleto ou comprovante cujo beneficiário não foi lido: a cópia REPETIDA vai para a QUARENTENA (DESCARTAR;
+ * nada é apagado) e a única fica em NÃO IDENTIFICADOS. Repetida: o mesmo conteúdo (sha256) já arquivado (o índice de conteúdo ou o manifesto, e o arquivo ainda lá), ou
+ * outra foto igual em NÃO IDENTIFICADOS (ctx.fotosDoNi: sha256 → caminhos; a primeira na ordem fica, as outras vão).
+ */
+function fotoRepetida(entrada, d, ctx, rel) {
+  if (!d || d.acao !== 'NAO_IDENTIFICADO' || !entrada.hash || !/\.(jpe?g|png)$/i.test(String(entrada.nome || ''))) return d;
+  if (!(d.evidencias || []).some(e => /o benefici[aá]rio d[oa] (pagamento|boleto) n[aã]o foi lido/.test(e))) return d;
+  const fora = p => !/\\N[ÃA]O IDENTIFICADOS\\|\\QUARENTENA\\/i.test(String(p));
+  const arquivadas = [];
+  if (ctx.conteudos) for (const onde of ctx.conteudos.achar(entrada.hash)) if (fora(onde) && existe(onde, ctx)) arquivadas.push(onde);
+  const doManifesto = ctx.manifesto && ctx.manifesto.get ? ctx.manifesto.get(entrada.hash) : null;
+  if (!arquivadas.length && doManifesto && fora(doManifesto) && existe(doManifesto, ctx)) arquivadas.push(doManifesto);
+  let porque = null;
+  if (arquivadas.length) porque = 'o mesmo conteúdo já está arquivado (' + arquivadas[0] + ')';
+  else if (ctx.fotosDoNi && ctx.fotosDoNi.has(entrada.hash)) {
+    const iguais = ctx.fotosDoNi.get(entrada.hash);
+    const primeira = iguais[0];
+    if (iguais.length > 1 && primeira.toLowerCase() !== String(rel).toLowerCase()) porque = 'outra foto igual em NÃO IDENTIFICADOS fica no lugar dela (' + primeira + ')';
+  }
+  if (!porque) return d;
+  return { acao: 'DESCARTAR', motivo: 'FOTO_REPETIDA', confianca: 1, tipo: 'DESCARTE', cliente: d.cliente || null, evidencias: (d.evidencias || []).concat('foto de boleto/comprovante sem o beneficiário lido e repetida: ' + porque + '; vai para a quarentena, nada é apagado (Vitor, 09/11/2026, decisão 5)') };
+}
+/** As fotos (.jpg/.jpeg/.png) soltas em NÃO IDENTIFICADOS: sha256 → [caminhos relativos, em ordem]. Guarda o hash por caminho+tamanho+data (o reprocesso roda em lotes). */
+const _hashDasFotos = new Map();
+function indiceDasFotosDoNi(pastaNi, todos) {
+  const idx = new Map();
+  for (const r of (todos || arquivosDosNaoIdentificados(pastaNi)).filter(x => /\.(jpe?g|png)$/i.test(x)).sort()) {
+    const p = path.join(pastaNi, r);
+    let st; try { st = fs.statSync(p); } catch (e) { continue; }
+    const k = p.toLowerCase() + '|' + st.size + '|' + Math.round(st.mtimeMs);
+    let h = _hashDasFotos.get(k);
+    if (!h) { try { h = sha(fs.readFileSync(p)); } catch (e) { continue; } _hashDasFotos.set(k, h); }
+    (idx.get(h) || idx.set(h, []).get(h)).push(r);
+  }
+  return idx;
+}
+/**
+ * (Vitor, 09/11/2026, decisão 10) o documento pessoal e a consulta do QSA/MEI/REDESIM vão para SOCIETÁRIO\DOCUMENTOS; se o cliente já tem no SOCIETÁRIO (na raiz do ano do
+ * destino) uma subpasta de documentos ("DOCUMENTOS DE SÓCIOS", "Documentos Pessoais", "SÓCIOS"), vai para ela.
+ */
+function pastaDeDocumentosQueJaExiste(d, ctx) {
+  const partes = String(d.destinoRelativo || '').split('\\');
+  if (partes.length !== 3 || partes[1] !== 'SOCIETÁRIO' || partes[2] !== 'DOCUMENTOS') return;
+  let pastas = [];
+  try { pastas = fs.readdirSync(path.join(d.raiz || ctx.clientes, partes[0], partes[1]), { withFileTypes: true }).filter(e => e.isDirectory()).map(e => e.name); } catch (e) { return; }
+  const achada = ['DOCUMENTOS DE SOCIOS', 'DOCUMENTOS PESSOAIS', 'DOCUMENTOS DOS SOCIOS', 'SOCIOS', 'DOCUMENTOS'].map(n => pastas.find(p => R.norm(p).trim() === n)).find(Boolean);
+  if (!achada || achada === partes[2]) return;
+  partes[2] = achada;
+  d.destinoRelativo = partes.join('\\');
+  (d.evidencias || (d.evidencias = [])).push('a subpasta de documentos que o cliente já tem no SOCIETÁRIO: "' + achada + '" (Vitor, 09/11/2026, decisão 10)');
+}
+// o banco do arquivador ("BANCO DO BRASIL") no id do cadastro (bancos-nilma: "bb"), como o drive-indice
+const ID_DO_BANCO = { 'BANCO DO BRASIL': 'bb', BB: 'bb', SICOOB: 'sicoob', BRADESCO: 'bradesco', NUBANK: 'nubank', CAIXA: 'caixa', ITAU: 'itau', SANTANDER: 'santander', BNB: 'bnb',
+  INTER: 'inter', 'MERCADO PAGO': 'mercadopago', CORA: 'cora', PAGBANK: 'pagbank', C6: 'c6', STONE: 'stone', SICREDI: 'sicredi', CRESOL: 'cresol', 'BTG PACTUAL': 'btg', SAFRA: 'safra', BANRISUL: 'banrisul', INFINITEPAY: 'infinitepay' };
+/**
+ * (Vitor, 09/11/2026, decisão 6) grava no cadastro do cliente (Entregas: clientes/{id}.contasBancarias, só acrescenta, o padrão do contas-bancarias.js) o banco/conta
+ * dos extratos arquivados de um banco que ele ainda não tinha, e uma linha na auditoria. Só em PRODUÇÃO e só o que chegou ao destino; erro no banco não desfaz nada.
+ */
+async function cadastrarBancosDosExtratos(itens, opcoes) {
+  const log = opcoes.log || (() => {});
+  const porConta = new Map();
+  for (const it of itens.concat(...itens.map(x => x.filhos || []))) {
+    const c = it.cadastrarBanco;
+    if (!c || it.acao !== 'ARQUIVAR' || !it.gravadoEm || it.erro) continue;
+    const id = ID_DO_BANCO[c.banco];
+    if (!id) { log('cadastro: banco ' + c.banco + ' sem id no cadastro; não gravei a conta de ' + it.rel); continue; }
+    const k = c.codigo + '|' + id + '|' + c.agencia + '|' + c.conta;
+    if (!porConta.has(k)) porConta.set(k, { codigo: c.codigo, conta: { banco: id, agencia: c.agencia, conta: c.conta }, arquivo: it.nome, banco: c.banco });
+  }
+  // a mesma conta lida para dois clientes no mesmo lote: não grava em nenhum (seria uma conta ambígua no cadastro)
+  const donos = new Map();
+  const kc = x => x.conta.banco + '|' + x.conta.agencia + '|' + x.conta.conta;
+  for (const x of porConta.values()) (donos.get(kc(x)) || donos.set(kc(x), new Set()).get(kc(x))).add(x.codigo);
+  for (const [k, x] of [...porConta]) if (donos.get(kc(x)).size > 1) { porConta.delete(k); log('cadastro: a conta ' + x.banco + ' ag. ' + x.conta.agencia + ' c/c ' + x.conta.conta + ' foi lida para mais de um cliente; não gravei'); }
+  if (!porConta.size) return [];
+  const db = opcoes.db || require('./firestore-client').getDb('entregas-2e5e2');
+  const { FieldValue } = require('firebase-admin/firestore');
+  const cb = require('./contas-bancarias');
+  const feitas = [];
+  for (const x of porConta.values()) {
+    try {
+      const codigos = [String(x.codigo), Number(x.codigo)];
+      const docs = (await db.collection('clientes').where('codigoOrigem', 'in', codigos).limit(5).get()).docs.map(s => Object.assign({ id: s.id }, s.data())).filter(c => c.ativo !== false);
+      if (docs.length !== 1) { log('cadastro: o código ' + x.codigo + ' tem ' + docs.length + ' clientes ativos no banco; não gravei a conta ' + x.banco); continue; }
+      const novas = await cb.aprenderContas(db, docs[0], [x.conta], 'arquivador', FieldValue, false);
+      if (!novas.length) continue;
+      feitas.push(x);
+      await db.collection('auditoria').add({ acao: 'banco_cadastrado_pelo_arquivador', detalhe: x.codigo + ' · ' + x.banco + ' ag. ' + x.conta.agencia + ' c/c ' + x.conta.conta + ' (lido no extrato ' + x.arquivo + ')',
+        origem: 'arquivador', feitoPor: '', feitoPorNome: 'Arquivador (robô)', quando: new Date().toISOString() }).catch(() => {});
+      log('cadastro: conta do ' + x.banco + ' (ag. ' + x.conta.agencia + ' c/c ' + x.conta.conta + ') entrou no cliente ' + x.codigo);
+    } catch (e) { log('cadastro: não gravei a conta ' + x.banco + ' do cliente ' + x.codigo + ' (' + e.message + ')'); }
+  }
+  return feitas;
+}
 function pastaDoFornecedorQueJaExiste(d, ctx) {
   const partes = String(d.destinoRelativo || '').split('\\');
   const i = partes.indexOf('PAGAMENTOS DE FORNECEDORES');
@@ -564,7 +659,9 @@ async function executar(opcoes) {
     conteudos: opcoes.conteudos || null,
     chaves: opcoes.chaves || K.carregar({ controle: opcoes.controle, manifestoAntigo: opcoes.manifestoAntigo || MANIFESTO_ANTIGO, raiz: opcoes.clientes }),
     // a decisão do admin no nads (23/10/2026, arquivador-manual.js): { [rel]: { codigo, tipoDoc, competencia, por } ou { descartar, por } }
-    manual: opcoes.manual || null };
+    manual: opcoes.manual || null,
+    // (09/11/2026) as fotos soltas em NÃO IDENTIFICADOS por conteúdo (só no reprocesso; fotoRepetida)
+    fotosDoNi: opcoes.fotosDoNi || null };
   const arquivos = opcoes.arquivos || varrer(opcoes.origem, opcoes);   // o modo contínuo passa o lote pronto
   const itens = [];
   const log = opcoes.log || (() => {});
@@ -668,12 +765,16 @@ async function decidirUm(nome, rel, buffer, ctx, pronta) {
   if (!(ctx.manual && ctx.manual[rel]) && d.acao === 'NAO_IDENTIFICADO') { try { const m = require('./arquivador-migracao').decidir(entrada, ctx, d); if (m) d = m; } catch (e) { d.evidencias = (d.evidencias || []).concat('mapa da migração: ' + e.message); } }
   // a imagem que nem as regras nem o mapa decidiram, depois do OCR: DESCARTAR (Vitor, 28/10/2026)
   if (!(ctx.manual && ctx.manual[rel])) d = R.descarteDaImagem(entrada, d);
+  if (!(ctx.manual && ctx.manual[rel])) d = fotoRepetida(entrada, d, ctx, rel);
   if (d.acao === 'ARQUIVAR') { d.raiz = raizDoAno(ctx.clientes, d.anoRaiz); for (const cp of d.copias || []) cp.raiz = raizDoAno(ctx.clientes, cp.anoRaiz || d.anoRaiz); }
   if (d.acao === 'ARQUIVAR') pastaDoFornecedorQueJaExiste(d, ctx);
+  if (d.acao === 'ARQUIVAR' && d.documentoPessoal) pastaDeDocumentosQueJaExiste(d, ctx);
   const item = { rel, nome, hash: entrada.hash, decididoPor: d.decididoPor || null, acao: d.acao, motivo: d.motivo || null, codigo: d.codigo || null, confianca: d.confianca, tipo: d.tipo || null, setor: d.setor || null,
     cliente: d.cliente || null, clienteNome: d.clienteNome || null, destinoRelativo: d.destinoRelativo || null, nomeFinal: d.nomeFinal || null, destinoSugerido: d.destinoSugerido || null,
     criarPastaCliente: !!d.criarPastaCliente, pastaCliente: d.pastaCliente || null, evidencias: d.evidencias || [], fonte: d.fonte || null, ocr: entrada.ocr || null, copias: [], chave: d.chave || null,
     anoRaiz: d.anoRaiz || null, raiz: d.raiz || null, pelaMigracao: d.pelaMigracao || null, comoCliente: d.comoCliente || null };
+  // (Vitor, 09/11/2026, decisão 6) o banco/conta lido no extrato do cliente que ainda não o tinha no cadastro: o aplicar grava (só em PRODUÇÃO, depois de arquivar)
+  if (d.acao === 'ARQUIVAR' && d.cadastrarBanco) item.cadastrarBanco = d.cadastrarBanco;
   if (d.acao === 'AGUARDANDO_ORIGINAL') item._buffer = buffer;   // para decidir de novo quando o original aparecer
   if (entrada.erroLeitura) item.evidencias.push('leitura do PDF: ' + entrada.erroLeitura);
   // (09/11/2026) o OCR que falhou fica anotado só neste arquivo; o reprocesso não o dá por decidido e lê de novo na próxima rodada
@@ -874,6 +975,8 @@ async function aplicar(res, opcoes, ctx) {
       const e = porAcao[k] || (porAcao[k] = { n: 0, ms: 0 }); e.n++; e.ms += Date.now() - t0;
     }
   }));
+  // (Vitor, 09/11/2026, decisão 6) o banco/conta dos extratos arquivados de um banco que o cliente não tinha: entra no cadastro (só acrescenta) com a auditoria
+  if (res.modo === 'PRODUCAO' && opcoes.cadastrarBancos !== false) { try { res.bancosCadastrados = await cadastrarBancosDosExtratos(res.itens, opcoes); } catch (e) { (opcoes.log || (() => {}))('cadastro: ' + e.message); } }
   if (linhasNi.length) { try { linha(path.join(ni, '_nao_identificados.jsonl'), null, linhasNi); } catch (e) { (opcoes.log || (() => {}))('não anotei o índice de NÃO IDENTIFICADOS: ' + e.message); } }
   if (res.tempos) { res.tempos.porAcao = porAcao; res.tempos.destinosJuntos = juntos; }
   async function aplicarUm(it) {
@@ -1053,7 +1156,10 @@ async function reprocessarNaoIdentificados(opcoes) {
     try { texto = fs.readFileSync(path.join(pastaNi, sub, '_nao_identificados.jsonl'), 'utf8'); } catch (e) { continue; }
     for (const l of texto.split(/\r?\n/)) { try { const j = JSON.parse(l); antes.set(sub + '\\' + (j.caminho_relativo && j.caminho_relativo !== '.' ? j.caminho_relativo + '\\' : '') + j.arquivo, j.motivo); } catch (e) { /* linha ruim */ } }
   }
-  const res = await executar(Object.assign({}, opcoes, { origem: pastaNi, arquivos, moverNaoIdentificados: false, tiposProducao: ['todos'], esperaVencida: undefined, registrar: opcoes.registrar !== false }));
+  // (Vitor, 09/11/2026, decisão 5) as fotos soltas em NÃO IDENTIFICADOS por conteúdo (a foto repetida vai para a quarentena; a primeira fica)
+  let fotosDoNi = opcoes.fotosDoNi || null;
+  if (!fotosDoNi) { try { fotosDoNi = indiceDasFotosDoNi(pastaNi); } catch (e) { fotosDoNi = null; } }
+  const res = await executar(Object.assign({}, opcoes, { origem: pastaNi, arquivos, fotosDoNi, moverNaoIdentificados: false, tiposProducao: ['todos'], esperaVencida: undefined, registrar: opcoes.registrar !== false }));
   const docs = planos(res).filter(x => x.acao !== 'CONTEINER');
   const porRota = {};
   for (const x of docs) { x.rota = rotaDoReprocesso(x); x.motivoAntes = antes.get(x.dentroDe || x.rel) || null; porRota[x.rota] = (porRota[x.rota] || 0) + 1; }
@@ -1073,7 +1179,7 @@ async function reprocessarNaoIdentificados(opcoes) {
 /** O trabalhador do Tesseract segura o processo vivo: fecha no fim de cada execução (se o OCR foi usado). */
 async function encerrarOcr() { const k = require.resolve('./arquivador-ocr'); if (require.cache[k]) await require('./arquivador-ocr').encerrar(); }
 
-module.exports = { textoIlegivel, semArquivarSemLeitura, versaoDasRegras,pastaDoFornecedorQueJaExiste, textoDoRtf, ehTedSintegra, reprocessarNaoIdentificados, arquivosDosNaoIdentificados, rotaDoReprocesso, atualizarCadastro, encerrarOcr, executar, aprenderContas, lerContas, varrer, abrirZip, membros, montarEntrada, textoDoPdf, carregarCadastro, indiceDoManifesto, caminhoArquivado, conferirDestino, conteudoXml, raizDoAno, relatorioTexto, planos, CONTROLE };
+module.exports = { textoIlegivel, semArquivarSemLeitura, versaoDasRegras,pastaDoFornecedorQueJaExiste, fotoRepetida, indiceDasFotosDoNi, pastaDeDocumentosQueJaExiste, cadastrarBancosDosExtratos, textoDoRtf, ehTedSintegra, reprocessarNaoIdentificados, arquivosDosNaoIdentificados, rotaDoReprocesso, atualizarCadastro, encerrarOcr, executar, aprenderContas, lerContas, varrer, abrirZip, membros, montarEntrada, textoDoPdf, carregarCadastro, indiceDoManifesto, caminhoArquivado, conferirDestino, conteudoXml, raizDoAno, relatorioTexto, planos, CONTROLE };
 
 if (require.main === module) {
   const a = process.argv.slice(2);
