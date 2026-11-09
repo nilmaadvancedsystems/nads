@@ -61,9 +61,17 @@ function marcarUso() {
   if (pai && agora - avisouOPai >= AVISAR_O_PAI_MS) { avisouOPai = agora; window.parent.postMessage({ nads: 'em-uso' }, pai); }
 }
 
+/**
+ * Atualiza sozinha só a aba à vista: a escondida espera a pessoa voltar (09/11/2026). Cada recarga relê os dados da tela no
+ * banco; com várias versões no dia, as abas esquecidas recarregavam a cada uma, sem ninguém olhando.
+ */
+export function podeAtualizarSozinho(a: { dentroDeEtapa: boolean; versaoNova: string; parada: number; visivel: boolean }): boolean {
+  return !a.dentroDeEtapa && !!a.versaoNova && a.parada >= INATIVO_MS && a.visivel;
+}
+
 function olharInatividade() {
   if (algumCarregando() || !window.dispatchEvent(new Event(ATUALIZAR_SOZINHO, { cancelable: true }))) marcarUso();
-  if (window.self !== window.top || !nova || Date.now() - ultimoUso < INATIVO_MS) return;
+  if (!podeAtualizarSozinho({ dentroDeEtapa: window.self !== window.top, versaoNova: nova, parada: Date.now() - ultimoUso, visivel: document.visibilityState === 'visible' })) return;
   // uma vez por versão: se o site ainda entregar a antiga, não fica recarregando a cada 10 min
   try { if (sessionStorage.getItem(JA_ATUALIZOU) === nova) return; sessionStorage.setItem(JA_ATUALIZOU, nova); } catch { /* segue */ }
   atualizarSemPerder();
@@ -77,6 +85,8 @@ export function iniciarAtualizacaoPorInatividade(versaoDaPagina: string): void {
   for (const uso of ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart', 'scroll']) window.addEventListener(uso, marcarUso, { capture: true, passive: true });
   window.addEventListener('message', e => { if ((e.data as { nads?: string } | null)?.nads === 'em-uso' && origemConfiavel(e.origin)) marcarUso(); });
   setInterval(olharInatividade, OLHAR_INATIVIDADE_MS);
+  // voltou para a aba escondida depois de 10 min: atualiza na hora, antes de a pessoa mexer
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') olharInatividade(); });
 }
 
 /** Recarrega a página na versão nova, sem perder o que está na tela (continuidade.ts). */

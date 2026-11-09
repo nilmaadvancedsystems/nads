@@ -16,9 +16,10 @@ import { dataBR } from './texto';
  * Efetivo Total, Valor total devido…) fora e o depósito bloqueado com o "*" solto fora (26/10/2026); 9 = a Dt. balancete
  * guardada no lançamento do BB "Consultas" que vai pela Dt. movimento (27/10/2026); 10 = o sinal escrito do Itaú "Lançamentos
  * do período" (09/11/2026); 11 = o "extrato mensal" do Itaú (o sinal escrito, a legenda e os quadros do fim fora) e a fatura
- * do cartão que entrou como extrato sai (09/11/2026).
+ * do cartão que entrou como extrato sai (09/11/2026); 12 = o "Extrato por período" da Caixa escaneado: o valor com letra do
+ * OCR e o saldo que entrava no lugar dele (chamado 03CP5C, 09/11/2026).
  */
-export const VERSAO_DO_LEITOR = 11;
+export const VERSAO_DO_LEITOR = 12;
 
 export function empresaNova(nome: string): EmpresaExtrator {
   return { nome, arquivos: [], auditoria: [] };

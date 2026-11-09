@@ -93,6 +93,11 @@ export function iniciarContinuidade(): void {
 }
 
 /** Atualiza a página guardando o que está na tela (a de cima e as ferramentas de dentro guardam ao sair). */
+/** Esta página acabou de voltar de uma atualização de versão (vale nos primeiros 15 s; depois o aviso some). */
+export function estamosAtualizando(): boolean {
+  try { return !!sessionStorage.getItem(FLAG); } catch { return false; }
+}
+
 export function atualizarSemPerder(): void {
   try { sessionStorage.setItem(FLAG, String(Date.now())); } catch { /* nada */ }
   fotografar();

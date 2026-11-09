@@ -11,13 +11,18 @@
 // admin grava, pela regra do Entregas; a gravação mexe só nesse campo).
 import { formatos, type empresas } from '@nads/core';
 import { collection, deleteField, doc, getDoc, getDocs, onSnapshot, setDoc as setDocBruto, writeBatch as writeBatchBruto } from 'firebase/firestore';
-import { bancoDoEntregas } from './entregas.firestore';
+import { estamosAtualizando } from '@nads/ui';
+import { criarCacheDaAtualizacao } from '../../../comum/cacheDaAtualizacao';
+import { bancoDoEntregas, contaDoEntregas } from './entregas.firestore';
 import { bancoDaConferencia } from './tarefas.firestore';
 import { guardar, guardarLote } from '../../../comum/modoDesenvolvedor';
 
 // a trava do modo desenvolvedor (comum/modoDesenvolvedor.ts): com o modo ligado, só ver — nada é gravado
 const setDoc = guardar(setDocBruto) as typeof setDocBruto;
 const writeBatch = ((...a: Parameters<typeof writeBatchBruto>) => guardarLote(writeBatchBruto(...a))) as typeof writeBatchBruto;
+
+// a lista inteira de clientes volta do banco no máximo a cada 30 min nas recargas por versão nova (F5 sempre lê do banco)
+const cacheDosClientes = criarCacheDaAtualizacao<Record<string, unknown>[]>('nads-clientes-entregas', 30 * 60 * 1000);
 
 export function portaCadastroFirestore(): empresas.cadastro.PortaCadastro {
   const db = bancoDoEntregas();
@@ -52,8 +57,15 @@ export async function balanceteNoEntregas(codigo: number): Promise<Record<string
 
 /** Os clientes do Entregas (só leitura), para os bancos que o Entregas já sabe de cada um. */
 export async function clientesNoEntregas(): Promise<Record<string, unknown>[]> {
+  const uid = contaDoEntregas()?.uid || '';
+  if (uid && estamosAtualizando()) {
+    const guardados = cacheDosClientes.ler(uid);
+    if (guardados) return guardados;
+  }
   const s = await getDocs(collection(bancoDoEntregas(), 'clientes'));
-  return s.docs.map(d => d.data());
+  const docs = s.docs.map(d => d.data());
+  if (uid) cacheDosClientes.guardar(uid, docs);
+  return docs;
 }
 
 /** O robô lê a agência e a conta dos extratos? (config/indiceDrive.contas; sem o campo = ligado) */
