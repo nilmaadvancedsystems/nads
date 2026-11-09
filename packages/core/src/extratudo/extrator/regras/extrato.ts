@@ -187,6 +187,14 @@ const MESES_POR_EXTENSO = ['janeiro', 'fevereiro', 'marco', 'abril', 'maio', 'ju
 export function mesesSemMovimento(texto: string): string[] | null {
   const t = normalizarTexto(texto);
   if (!/nenhuma movimentacao|nenhum lancamento|sem movimentacao|sem movimento|nao (?:ha|houve|existem?|possui) (?:movimentacao|movimentacoes|lancamentos?)/.test(t)) return null;
+  // o Extrato Consolidado do BNB (Vitor, 09/11/2026: "só tem aplicação"): várias contas e fundos num PDF, cada conta com a sua
+  // frase; só é sem movimento se TODA conta corrente disser que não houve. O mês vem em "Mês: Outubro/2026"
+  if (/extrato consolidado/.test(t) && /> ?conta corrente/i.test(texto)) {
+    const contas = texto.split(/>\s*CONTA CORRENTE/i).slice(1).map(c => normalizarTexto(c.split('>')[0]));
+    if (!contas.every(c => /nao houve movimentacao/.test(c))) return null;
+    const ref = t.match(new RegExp('\\bmes (' + MESES_POR_EXTENSO.join('|') + ') (\\d{4})\\b'));
+    return ref ? [ref[2] + '-' + String(MESES_POR_EXTENSO.indexOf(ref[1]) + 1).padStart(2, '0')] : [];
+  }
   const p = texto.match(/(\d{2})\/(\d{2})\/(\d{4})\s*(?:at[eé]|a)\s*(\d{2})\/(\d{2})\/(\d{4})/i);
   if (p) {
     const meses: string[] = [];

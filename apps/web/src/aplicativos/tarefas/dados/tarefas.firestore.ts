@@ -121,15 +121,15 @@ export function criarRepoTarefasFirestore(lista: readonly empresas.EmpresaDoEscr
    */
   function soOQueMudou(ex: t.Execucao, mudancas: readonly t.MudancaDaExecucao[], em: string) {
     const dados: Record<string, unknown> = { empresa: ex.empresa, codigo: ex.codigo, competencia: ex.competencia, departamento: ex.departamento, atualizadoEm: em };
-    const campos = ['empresa', 'codigo', 'competencia', 'departamento', 'atualizadoEm'].map(k => new FieldPath(k));
+    const entradas = ['empresa', 'codigo', 'competencia', 'departamento', 'atualizadoEm'].map((k): [FieldPath, unknown] => [new FieldPath(k), dados[k]]);
     for (const m of mudancas) {
       const v = 'apagar' in m ? deleteField() : 'juntar' in m ? arrayUnion(...m.juntar) : 'tirar' in m ? arrayRemove(...m.tirar) : m.valor;
       const [campo, chave] = m.caminho;
       if (chave === undefined) dados[campo] = v;
       else dados[campo] = { ...(dados[campo] as Record<string, unknown> | undefined), [chave]: v };
-      campos.push(new FieldPath(...m.caminho));
+      entradas.push([new FieldPath(...m.caminho), v]);
     }
-    return { dados, campos };
+    return { dados, entradas };
   }
 
   // o mesmo aviso, da mesma empresa, uma vez a cada 30 s (as gravações automáticas ao abrir repetiam a mesma falha)
@@ -161,13 +161,16 @@ export function criarRepoTarefasFirestore(lista: readonly empresas.EmpresaDoEscr
           const depois = t.aplicarDiferenca(atual, mudancas);
           c.execucoes.set(id, depois); // a tela já vê a mudança; o banco confirma pelo onSnapshot
           mudou();
-          const { dados, campos } = soOQueMudou(ex, mudancas, em);
-          // a regra do banco pede etapas (um mapa) no documento: se o do banco não tem, vai junto
-          if (!ehMapa(atual.etapas) && !campos.some(f => f.isEqual(new FieldPath('etapas')))) {
+          const { dados, entradas } = soOQueMudou(ex, mudancas, em);
+          let vao = entradas;
+          // a regra do banco pede etapas (um mapa) no documento: se o do banco não tem, vai junto, inteiro
+          if (!ehMapa(atual.etapas)) {
             dados.etapas = ehMapa(depois.etapas) ? depois.etapas : {};
-            campos.push(new FieldPath('etapas'));
+            vao = [...entradas.filter(([f]) => !mudancas.some(m => m.caminho[0] === 'etapas' && f.isEqual(new FieldPath(...m.caminho)))), [new FieldPath('etapas'), dados.etapas]];
           }
-          escritaDoEstado = b => b.set(ref, dados, { mergeFields: campos });
+          // update, não set com mergeFields (Vitor, 09/11/2026: "quando eu marco outro, desmarca o anterior"): no mergeFields, o
+          // campo do arrayUnion/arrayRemove entra na máscara sem valor e o banco apaga a lista antes de juntar o item
+          escritaDoEstado = b => { const [[campo, valor], ...resto] = vao; b.update(ref, campo, valor, ...resto.flat()); };
           estadoInteiro = b => b.set(ref, documentoValido({ ...depois, ...dados, etapas: depois.etapas }, ex, em), { merge: true });
         }
       } else {
