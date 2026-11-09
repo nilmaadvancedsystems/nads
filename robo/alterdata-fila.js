@@ -402,6 +402,8 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
     /** quantos esperam (sem o que está com o robô) */
     tamanho: () => fila.length,
     pausada: () => emPausa(),
+    /** se um pedido está com o robô agora (o diagnóstico da tela espera) */
+    ocupado: () => ocupado,
     /** resolve quando a fila esvazia e nada está rodando (o teste usa) */
     ocioso: () => (!ocupado && (!fila.length || emPausa()) ? Promise.resolve() : new Promise(r => esperando.push(r))),
   };
