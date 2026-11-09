@@ -8,7 +8,8 @@
 // A lógica fica no core (empresas.cadastro.criarRepoCadastro); aqui é só a porta.
 import type { empresas } from '@nads/core';
 import { getAuth } from 'firebase/auth';
-import { collection, deleteField, doc, getFirestore, initializeFirestore, onSnapshot, writeBatch as writeBatchBruto, type Firestore } from 'firebase/firestore';
+import { collection, deleteField, doc, onSnapshot, writeBatch as writeBatchBruto, type Firestore } from 'firebase/firestore';
+import { abrirBancoDoEntregas } from './conexaoEntregas.firestore';
 import { appDoEntregas } from './driveDasFerramentas.firestore';
 import { guardarLote } from '../../../comum/modoDesenvolvedor';
 
@@ -16,12 +17,7 @@ import { guardarLote } from '../../../comum/modoDesenvolvedor';
 const writeBatch = ((...a: Parameters<typeof writeBatchBruto>) => guardarLote(writeBatchBruto(...a))) as typeof writeBatchBruto;
 
 function bancoDoEntregas(): Firestore {
-  const app = appDoEntregas();
-  try {
-    return initializeFirestore(app, { ignoreUndefinedProperties: true });
-  } catch {
-    return getFirestore(app); // já aberto nesta página (o Drive)
-  }
+  return abrirBancoDoEntregas(appDoEntregas());
 }
 
 export function portaCadastroFirestore(): empresas.cadastro.PortaCadastro {
