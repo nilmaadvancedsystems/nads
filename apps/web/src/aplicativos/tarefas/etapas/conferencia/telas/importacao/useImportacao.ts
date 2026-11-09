@@ -335,7 +335,7 @@ function resumoServicos(todas: c.NotaServico[], tipo: c.TipoServico) {
   const datas = todas.map(n => n.data).sort((a, b) => formatos.dataOrdem(a) - formatos.dataOrdem(b));
   return {
     qtd: todas.length, total, rotValor: cfg.rotValor, qtdParticipantes: Object.keys(parts).length, rotParticipantes: formatos.capital(cfg.parts),
-    rotParticipante: formatos.capital(cfg.part), comIss: tipo === 'prestados', periodo: datas[0] + ' a ' + datas[datas.length - 1], linhas: todas.slice(0, LIMITE_LINHAS),
+    rotParticipante: formatos.capital(cfg.part), comIss: todas.some(n => n.iss != null), periodo: datas[0] + ' a ' + datas[datas.length - 1], linhas: todas.slice(0, LIMITE_LINHAS),
   };
 }
 
