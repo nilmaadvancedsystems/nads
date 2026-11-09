@@ -3,6 +3,8 @@
 // progresso das empresas dela no mês. Só as peças do catálogo (cartão, vazio, campo, barra de progresso, bolinha de
 // situação, botões); nada anima.
 import { Esqueleto, Icone, useCarregando, Vazio } from '@nads/ui';
+import { useSearchParams } from 'react-router';
+import { PaginaDeTarefas } from '../delegador/PaginaDeTarefas';
 import { useInicio } from './useInicio';
 
 type Vm = ReturnType<typeof useInicio>;
@@ -108,6 +110,10 @@ function MeuMes({ vm }: { vm: Vm }) {
 export function Inicio() {
   const vm = useInicio();
   useCarregando(vm.carregando || vm.carregandoAvisos);
+  // as tarefas na mesma tela (Vitor, 09/11/2026: "coloque o que está no menu lateral em uma tela só"); ?aba= diz por qual abrir
+  const [params] = useSearchParams();
+  const pedida = params.get('aba');
+  const aba = pedida === 'delegadas' || pedida === 'concluidas' ? pedida : 'minhas';
   return (
     <section>
       <p className="hint" style={{ marginBottom: 16 }}>Olá, {vm.nome}.</p>
@@ -118,6 +124,7 @@ export function Inicio() {
           {vm.temRotina && <MeuMes vm={vm} />}
         </div>
       </div>
+      <div style={{ marginTop: 24 }}><PaginaDeTarefas key={aba} aba={aba} /></div>
     </section>
   );
 }
