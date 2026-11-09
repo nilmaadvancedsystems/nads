@@ -19,6 +19,9 @@ const igual = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLo
  * Os nomes que valem para a pessoa (a mesma regra de Cadastro › Empresas por responsável): o nome e, com sufixo
  * (Gustavo.S), o nome sem ele, quando ninguém mais da equipe começa assim.
  */
+/** Contas que veem todas as empresas sem ser admin nem diretor, pelo login exato (Vitor, 06/11/2026: "libera todas as empresas para o fiscal xereta", o usuário). */
+const LOGINS_COM_TODAS_AS_EMPRESAS = ['fiscal.xereta@nilma.local'];
+
 function nomesDaPessoa(pessoa: string, equipe: readonly string[]): string[] {
   const base = pessoa.split('.')[0].trim();
   if (!base || igual(base, pessoa)) return [pessoa];
@@ -68,8 +71,8 @@ export function useEmpresasDoOperador(op: Operador | null) {
     return r || (dep === 'fiscal' ? empresas.clienteDoDp(emp.codigo)?.responsavel || '' : '');
   };
   return {
-    /** o admin e o diretor podem ver todas (26/10/2026) */
-    podeVerTodas: !op || !!op.admin || op.nivel === 'diretor',
+    /** o admin, o diretor (26/10/2026) e as contas liberadas pelo login podem ver todas */
+    podeVerTodas: !op || !!op.admin || op.nivel === 'diretor' || (!!op.email && LOGINS_COM_TODAS_AS_EMPRESAS.includes(op.email.trim().toLowerCase())),
     /**
      * o Cadastro chegou de verdade (a lista que falhou não conta: vazia, ela barraria todo mundo; 30/10/2026), e a equipe
      * (quem é de cada departamento decide se o escolhido vale)
@@ -98,10 +101,11 @@ export function useEmpresasPermitidas() {
 }
 
 /**
- * Os setores em que a pessoa só vê as empresas de que é a responsável no Cadastro. Nenhum por enquanto: o Fiscal também com
- * todas (Vitor, 06/11/2026: "libera todas as empresas para o fiscal xereta"); para voltar, o setor entra de novo aqui.
+ * Os setores em que a pessoa só vê as empresas de que é a responsável no Cadastro. O Fiscal voltou a ter o filtro (Vitor,
+ * 09/11/2026: "eu quero somente aparecendo as empresas de cada um"); o Contábil segue com todas. A exceção do Fiscal é a
+ * conta Fiscal Xereta (LOGINS_COM_TODAS_AS_EMPRESAS).
  */
-const SETORES_COM_RESPONSAVEL: readonly ('fiscal' | 'contabil')[] = [];
+const SETORES_COM_RESPONSAVEL: readonly ('fiscal' | 'contabil')[] = ['fiscal'];
 
 /** O mesmo, com o operador passado (os aplicativos fora da Tarefas; null = sem conta: todas). */
 export function useEmpresasPermitidasDoOperador(op: Operador | null) {
