@@ -39,10 +39,20 @@ async function naPagina(func, args) {
 // o que roda na página (sem nada de fora)
 function lerTela() {
   const visivelGrande = f => { const r = f.getBoundingClientRect(); const s = getComputedStyle(f); return r.width > 250 && r.height > 60 && s.visibility !== 'hidden' && s.display !== 'none' && Number(s.opacity || 1) > 0.1; };
+  // 08/11/2026: o login parou sem dizer o que a página mostrava. Agora vêm também: se a página está visível para o Chrome
+  // (escondida = a janela tida como coberta: a tela do servidor apagada ou bloqueada), as mensagens na tela (o erro do
+  // hCaptcha do gov.br, por exemplo) e se o botão do certificado ficou "carregando"
+  const cert = document.getElementById('login-certificate');
   return {
     url: location.href,
+    titulo: String(document.title || '').slice(0, 100),
     texto: document.body ? document.body.innerText.slice(0, 6000) : '',
     captcha: [...document.querySelectorAll('iframe[src*="hcaptcha"], iframe[src*="recaptcha"]')].some(visivelGrande),
+    visivel: document.visibilityState,
+    foco: document.hasFocus(),
+    avisos: [...document.querySelectorAll('[role=alert], .br-message, .alert, .error, .erro')]
+      .filter(e => e.offsetParent !== null).map(e => (e.innerText || '').trim()).filter(Boolean).slice(0, 3).map(t => t.slice(0, 200)),
+    certCarregando: !!(cert && (cert.disabled || cert.classList.contains('loading'))),
   };
 }
 function clicarTexto(fonte) {

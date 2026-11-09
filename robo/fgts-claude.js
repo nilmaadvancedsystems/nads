@@ -24,7 +24,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { spawn } = require('child_process');
 const { ouvir } = require('./ouvinte');
-const { avisoDoPedidoFgts, avisarPedidoFgts, envioPadrao } = require('./aviso-de-falha');
+const { avisoDoPedidoFgts, avisarPedidoFgts, agrupadorDeAvisosFgts, envioPadrao } = require('./aviso-de-falha');
 // o painel do robô (21/10/2026): o que está emitindo agora, as guias emitidas e os erros
 const painel = require('./painel');
 /** "62 EMPRESA (10/2026)" para o painel. */
@@ -441,9 +441,22 @@ function iniciarFgtsPeloClaude(db, log, opcoes = {}) {
   // o pedido que termina em erro (gov.br com "não sou um robô", login, sem procuração, falha do lote…) avisa no celular
   // quem pediu (ou os admins) com a empresa e o motivo, UM aviso por pedido (07/11/2026: antes o erro só ficava no pedido
   // e no log). Pega todos os caminhos de erro de uma vez: olha o pedido que ficou em 'erro' depois de esta máquina ligar.
+  // 08/11/2026: 25 pedidos com o mesmo erro de login viraram 25 notificações. Agora os erros ficam guardados até passar 1 min
+  // sem erro novo e a fila do FGTS parar (no máximo 10 min), e saem juntos: UM aviso por destinatário e motivo
+  // ("FGTS: 25 guias não saíram — <motivo> — EMPRESA A, EMPRESA B, EMPRESA C e mais 22"); cada pedido continua com o avisadoErroEm.
   const ligadaEm = agora();
   const avisadosErro = new Set();
   let envioAviso;
+  const agrupador = agrupadorDeAvisosFgts({
+    ocupado: () => ocupado || fila.length > 0,
+    enviar: (aviso, id) => avisarPedidoFgts(envioAviso, aviso, id),
+    aoAvisar: async ids => {
+      await Promise.all(ids.map(id => pedidos.doc(id).update({ avisadoErroEm: agora() }).catch(() => {})));
+      log(pre + 'avisei do erro de ' + ids.length + ' pedido(s): ' + ids.map(id => cnpjDoAviso.get(id) || id).join(', '));
+    },
+    aoFalhar: (err, ids) => log(pre + 'aviso do erro não saiu (' + ids.length + ' pedido(s)):', err.message),
+  });
+  const cnpjDoAviso = new Map();
   ouvir('erros do FGTS', () => pedidos.where('fimEm', '>=', ligadaEm), snap => {
     if (!ativo) return;
     for (const ch of snap.docChanges()) {
@@ -453,10 +466,8 @@ function iniciarFgtsPeloClaude(db, log, opcoes = {}) {
       avisadosErro.add(ch.doc.id);
       if (envioAviso === undefined) envioAviso = envioPadrao(db, log);
       if (!envioAviso) continue;
-      avisarPedidoFgts(envioAviso, aviso, ch.doc.id)
-        .then(() => ch.doc.ref.update({ avisadoErroEm: agora() }))
-        .then(() => log(pre + 'avisei do erro de', ch.doc.get('cnpj')))
-        .catch(err => log(pre + 'aviso do erro não saiu:', err.message));
+      cnpjDoAviso.set(ch.doc.id, ch.doc.get('cnpj'));
+      agrupador.adicionar(ch.doc.id, aviso);
     }
   }, log);
 
@@ -579,8 +590,11 @@ function iniciarFgtsPeloClaude(db, log, opcoes = {}) {
     if (res.erro) {
       const e = String(res.erro);
       const onde = semClaude ? 'no Chrome do robô no ' + os.hostname() : 'no Chrome do PC';
-      const motivo = e === 'login' ? 'o login no FGTS Digital não foi ' + onde + ': entre com o certificado lá e peça de novo'
-        : e === 'captcha' ? 'o gov.br pediu a verificação "não sou um robô" ' + onde + ': faça o login lá e peça de novo'
+      // o robô do servidor entra sozinho (08/11/2026: "entre com o certificado lá" mandava alguém fazer o que o robô faz):
+      // a mensagem diz que ele não conseguiu e o que a página mostrava
+      const motivo = e === 'login' && semClaude ? 'o robô não conseguiu entrar no gov.br com o certificado do escritório (Chrome do ' + os.hostname() + ')' + (res.detalhe ? ': ' + String(res.detalhe).slice(0, 300) : '')
+        : e === 'login' ? 'o login no FGTS Digital não foi ' + onde + ': entre com o certificado lá e peça de novo'
+        : e === 'captcha' ? 'o gov.br pediu a verificação "não sou um robô" ' + onde + ': faça o login lá e peça de novo' + (res.detalhe ? ' (' + String(res.detalhe).slice(0, 200) + ')' : '')
           : /procura/i.test(e) && !/^sem procuração/i.test(e) ? 'sem procuração no FGTS Digital para este ' + (p.cnpj.length === 11 ? 'CPF' : 'CNPJ') + ' (o portal disse: ' + e.slice(0, 160) + ')'
             : e;
       await ref.update({ status: 'erro', erro: motivo + (aviso ? ' · ' + aviso : ''), aviso, fimEm: agora() });

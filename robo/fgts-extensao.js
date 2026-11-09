@@ -40,16 +40,29 @@ function token() {
   return t;
 }
 
+/**
+ * A versão do manifest sai do conteúdo da extensão (08/11/2026): o Chrome só troca o service worker de uma extensão sem
+ * compactação quando a versão muda, então sem isto uma mudança no servico.js ou nos roteiros podia não chegar ao Chrome.
+ */
+function manifestoComVersao(textoManifesto, arquivos) {
+  const m = JSON.parse(textoManifesto);
+  const h = crypto.createHash('sha256');
+  for (const nome of Object.keys(arquivos).sort()) h.update(nome + '\0' + arquivos[nome] + '\0');
+  const base = String(m.version || '1.0.0').split('.').slice(0, 2).join('.');
+  m.version = base + '.' + (parseInt(h.digest('hex').slice(0, 4), 16) % 65535);
+  return JSON.stringify(m, null, 2) + '\n';
+}
+
 /** Monta a pasta da extensão (os arquivos do repositório + config.js e roteiros.js). true = mudou algo (o Chrome precisa reabrir). */
 function prepararExtensao(roteiros) {
   fs.mkdirSync(PASTA_EXT, { recursive: true });
   fs.mkdirSync(BAIXADOS, { recursive: true });
   const arquivos = {
-    'manifest.json': fs.readFileSync(path.join(__dirname, 'fgts-extensao', 'manifest.json'), 'utf8'),
     'servico.js': fs.readFileSync(path.join(__dirname, 'fgts-extensao', 'servico.js'), 'utf8'),
     'config.js': 'self.NADS_FGTS = ' + JSON.stringify({ porta: PORTA, token: token() }) + ';\n',
     'roteiros.js': '// gerado pelo robô (robo/fgts-extensao.js) a partir dos roteiros do fgts-claude.js; não editar aqui\nself.ROTEIROS = {\n  perfil: ' + comoFuncao(roteiros.perfil) + ',\n  guia: ' + comoFuncao(roteiros.guia) + ',\n};\n',
   };
+  arquivos['manifest.json'] = manifestoComVersao(fs.readFileSync(path.join(__dirname, 'fgts-extensao', 'manifest.json'), 'utf8'), arquivos);
   let mudou = false;
   for (const [nome, texto] of Object.entries(arquivos)) {
     const f = path.join(PASTA_EXT, nome);
@@ -155,6 +168,32 @@ function semPerguntarOndeSalvar(exec = (c, a) => require('child_process').execFi
   return feito.join('; ');
 }
 
+/**
+ * A tela do servidor apagada (08/11/2026). O NILMA-SERVER fica com a sessão do robô no console, sem ninguém olhando: o
+ * vídeo desliga depois de 15 min sem uso (plano de energia), e com a tela apagada (ou bloqueada) o Chrome trata a janela
+ * como coberta, a página do gov.br fica "escondida" e o login com o certificado não anda. Em 06/11 a guia saiu com alguém
+ * conectado pela Área de Trabalho Remota naquela hora (o log de sessões do Windows: reconexão às 16:53:33); em 08/11, às
+ * 21h de um domingo, a sessão estava no console desde 07/11 9h17, sem ninguém, e a página do login ficou parada ~90 s nas
+ * quatro tentativas (o histórico do Chrome), sem o formulário do certificado sair. Duas coisas:
+ *   - o Chrome que o robô abre não calcula a janela coberta nem freia a página escondida (as opções abaixo);
+ *   - enquanto a fila do FGTS roda, o robô pede ao Windows a tela ligada (como um vídeo tocando) e mexe o mouse 1 ponto e
+ *     volta, para acender a tela que já apagou. Nada fica gravado: o pedido acaba quando o robô fecha o Chrome (ou em 30 min).
+ */
+const OPCOES_CHROME = ['--disable-features=CalculateNativeWinOcclusion', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding', '--disable-background-timer-throttling'];
+const argumentosDoChrome = () => ['--profile-directory=' + PERFIL_NOME, ...OPCOES_CHROME, PORTAL];
+let telaAcesa = null;
+function acenderTela(log = () => {}) {
+  if (process.platform !== 'win32' || (telaAcesa && telaAcesa.exitCode === null && !telaAcesa.killed)) return;
+  const ps = "Add-Type -Namespace Nads -Name Tela -MemberDefinition '[DllImport(\"kernel32.dll\")] public static extern uint SetThreadExecutionState(uint f); [DllImport(\"user32.dll\")] public static extern void mouse_event(uint f, int x, int y, uint d, System.UIntPtr e);';"
+    + ' [Nads.Tela]::mouse_event(1, 1, 0, 0, [UIntPtr]::Zero); [Nads.Tela]::mouse_event(1, -1, 0, 0, [UIntPtr]::Zero);'
+    + ' for ($i = 0; $i -lt 60; $i++) { [void][Nads.Tela]::SetThreadExecutionState(0x80000003); Start-Sleep -Seconds 30 }';
+  try {
+    telaAcesa = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(ps, 'utf16le').toString('base64')], { windowsHide: true, stdio: 'ignore' });
+    telaAcesa.on('error', err => { log('FGTS (extensão): não acendi a tela do servidor:', err.message); telaAcesa = null; });
+  } catch (err) { log('FGTS (extensão): não acendi a tela do servidor:', err.message); }
+}
+function apagarTela() { if (telaAcesa) { try { telaAcesa.kill(); } catch (_) { /* já saiu */ } telaAcesa = null; } }
+
 /** Abre o Chrome normal no perfil da nilmacontabilidade e espera a extensão chamar. */
 async function abrirChrome(log, roteiros) {
   if (!fs.existsSync(CHROME)) throw new Error('falta o Chrome em ' + CHROME);
@@ -162,41 +201,90 @@ async function abrirChrome(log, roteiros) {
   prepararExtensao(roteiros);
   const salvar = semPerguntarOndeSalvar();
   if (salvar) log('FGTS (extensão): ' + salvar);
+  acenderTela(log);
   if (conectada()) return;
-  spawn(CHROME, ['--profile-directory=' + PERFIL_NOME, PORTAL], { detached: true, stdio: 'ignore' }).unref();
+  spawn(CHROME, argumentosDoChrome(), { detached: true, stdio: 'ignore' }).unref();
   for (let i = 0; i < 45 && !conectada(); i++) await dormir(1000);
   if (!conectada()) throw new Error('a extensão "nads - robô do FGTS" não respondeu no Chrome da nilmacontabilidade (está instalada? chrome://extensions, Carregar sem compactação: ' + PASTA_EXT + ')');
   log('FGTS (extensão): Chrome aberto e extensão ligada');
 }
 
 async function fecharChrome(log = () => {}) {
+  apagarTela();
   if (!conectada()) return;
   const r = await mandar({ tipo: 'fechar' }, 10000);
   if (!r.erro) { log('FGTS (extensão): fila acabou, Chrome fechado'); ultimoContato = 0; }
 }
 
-const ler = async () => (await mandar({ tipo: 'ler' }, 30000)).valor || { url: '', texto: '', captcha: false };
 const logado = t => /fgtsdigital\.sistema\.gov\.br/.test(t.url) && /Trocar Perfil|Definir Perfil|Empregador:/i.test(t.texto);
 const pedeLogin = t => /acesso\.gov\.br/.test(t.url) || /Entrar com gov\.?br/i.test(t.texto);
+// o gov.br avisa que o hCaptcha invisível (que roda ao clicar no certificado) não validou: o botão volta e dá para clicar de novo
+const erroHcaptcha = t => /hCaptcha/i.test((t.avisos || []).join(' ')) || /N[ãa]o foi poss[íi]vel validar o hCaptcha/i.test(t.texto || '');
 
-/** '' (logado), 'login' ou 'captcha'. Não digita nada: o certificado é escolhido pela regra do Chrome. */
-async function garantirLogin(passo) {
-  await mandar({ tipo: 'abrir', url: PORTAL });
-  let t = await ler();
-  for (let i = 0; i < 20 && !logado(t) && !pedeLogin(t); i++) { await dormir(1000); t = await ler(); }
+/** Tira CPF, CNPJ e números longos de um texto que vai para o log e para o pedido. */
+const semDocumentos = s => String(s || '').replace(/\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}|\d{3}\.?\d{3}\.?\d{3}-?\d{2}|\d{8,}/g, '…');
+
+/**
+ * O que a página mostrava, em uma linha sem dados sensíveis (08/11/2026: "o login não foi" não dizia nada). Ex.:
+ * 'ficou em sso.acesso.gov.br/login ("Acesso gov.br"), com a página escondida para o Chrome (a tela do servidor apagada ou
+ * bloqueada); o gov.br mostrou "Não foi possível validar o hCaptcha…"; cliquei 3 vez(es) em "Seu certificado digital"'
+ */
+function descreverTela(t, cliques = 0) {
+  t = t || {};
+  let onde = 'sem página';
+  try { const u = new URL(t.url); onde = u.host + u.pathname.replace(/\/$/, ''); } catch (_) { /* sem url */ }
+  const partes = ['ficou em ' + onde + (t.titulo ? ' ("' + semDocumentos(t.titulo).slice(0, 60) + '")' : '')];
+  if (t.visivel && t.visivel !== 'visible') partes[0] += ', com a página escondida para o Chrome (a tela do servidor apagada ou bloqueada)';
+  const avisos = (t.avisos || []).map(a => semDocumentos(a).replace(/\s+/g, ' ').trim()).filter(Boolean);
+  if (avisos.length) partes.push('o gov.br mostrou "' + avisos.join(' / ').slice(0, 160) + '"');
+  else if (erroHcaptcha(t)) partes.push('o gov.br mostrou "Não foi possível validar o hCaptcha"');
+  if (t.certCarregando) partes.push('o botão do certificado ficou carregando (o Chrome pode estar pedindo para escolher o certificado na tela do servidor)');
+  if (/acesso\.gov\.br/.test(t.url || '')) partes.push(cliques ? 'cliquei ' + cliques + ' vez(es) em "Seu certificado digital"' : 'não achei o botão "Seu certificado digital"');
+  else if (!avisos.length && t.texto) partes.push('a página dizia "' + semDocumentos(t.texto).replace(/\s+/g, ' ').trim().slice(0, 120) + '"');
+  return partes.join('; ');
+}
+
+const ESPERA_LOGIN_MS = 150000;
+const NOVO_CLIQUE_MS = 40000;
+const MAX_CLIQUES = 3;
+
+/**
+ * '' (logado) ou { erro: 'login' | 'captcha', detalhe }. Não digita nada: o certificado é escolhido pela regra do Chrome.
+ * 08/11/2026: clicava uma vez só em "Seu certificado digital"; se o hCaptcha invisível do gov.br falhasse (o botão volta
+ * e aparece "Não foi possível validar o hCaptcha"), o robô esperava parado. Agora clica de novo (até 3 vezes) quando o
+ * gov.br mostra o erro ou o botão volta sem a página andar, e diz no log e no pedido o que a página mostrava.
+ */
+async function garantirLogin(passo, dep = {}) {
+  const enviar = dep.mandar || mandar;
+  const esperar = dep.dormir || dormir;
+  const agora = dep.agora || Date.now;
+  const registrar = dep.log || ((...m) => aoLog(...m));
+  const lerAqui = async () => (await enviar({ tipo: 'ler' }, 30000)).valor || { url: '', texto: '', captcha: false };
+  await enviar({ tipo: 'abrir', url: PORTAL });
+  let t = await lerAqui();
+  for (let i = 0; i < 20 && !logado(t) && !pedeLogin(t); i++) { await esperar(1000); t = await lerAqui(); }
   if (logado(t)) return '';
   passo('entrando no gov.br com o certificado do escritório');
-  const ate = Date.now() + 90000;
-  let clicouCert = false;
-  while (Date.now() < ate) {
-    t = await ler();
-    if (t.captcha) return 'captcha';
-    if (logado(t)) return '';
-    if (/acesso\.gov\.br/.test(t.url) && !clicouCert) clicouCert = !!(await mandar({ tipo: 'clicar', fonte: 'Seu certificado digital' })).valor;
-    else if (/fgtsdigital/.test(t.url) && /Entrar com gov\.?br/i.test(t.texto)) await mandar({ tipo: 'clicar', fonte: 'Entrar com gov\\.?br' });
-    await dormir(2000);
+  const ate = agora() + ESPERA_LOGIN_MS;
+  let cliques = 0, ultimoClique = 0, contou = false;
+  while (agora() < ate) {
+    t = await lerAqui();
+    if (t.captcha) { registrar('FGTS (extensão): o gov.br pediu o "não sou um robô":', descreverTela(t, cliques)); return { erro: 'captcha', detalhe: descreverTela(t, cliques) }; }
+    if (logado(t)) { if (cliques > 1) registrar('FGTS (extensão): entrou no gov.br no clique ' + cliques + ' do certificado'); return ''; }
+    if (/acesso\.gov\.br/.test(t.url)) {
+      if (!contou) { contou = true; registrar('FGTS (extensão): na tela de login do gov.br, página ' + (t.visivel || '?') + (t.foco === undefined ? '' : ', foco ' + (t.foco ? 'sim' : 'não'))); }
+      const deNovo = cliques > 0 && cliques < MAX_CLIQUES && !t.certCarregando && (erroHcaptcha(t) || agora() - ultimoClique >= NOVO_CLIQUE_MS);
+      if (!cliques || deNovo) {
+        if (deNovo) registrar('FGTS (extensão): clicando de novo no certificado:', descreverTela(t, cliques));
+        if ((await enviar({ tipo: 'clicar', fonte: '^Seu certificado digital$' })).valor) { cliques++; ultimoClique = agora(); }
+      }
+    } else if (/fgtsdigital/.test(t.url) && /Entrar com gov\.?br/i.test(t.texto)) await enviar({ tipo: 'clicar', fonte: 'Entrar com gov\\.?br' });
+    await esperar(2000);
   }
-  return (await ler()).captcha ? 'captcha' : 'login';
+  t = await lerAqui();
+  const detalhe = descreverTela(t, cliques);
+  registrar('FGTS (extensão): desisti do login depois de ' + Math.round(ESPERA_LOGIN_MS / 1000) + ' s:', detalhe);
+  return { erro: t.captcha ? 'captcha' : 'login', detalhe };
 }
 
 /** O lote, um cliente por vez (a mesma interface do fgts-chrome.rodarNoChrome). */
@@ -206,7 +294,7 @@ async function rodarPelaExtensao(itens, roteiros, aoPasso, aoResultado, log, ehE
   const primeiro = itens.find(it => !it.fim);
   if (!primeiro) return { erro: '' };
   const entrada = await garantirLogin(t => aoPasso(primeiro.cnpj, t));
-  if (entrada) { aoResultado('', { erro: entrada }); return { erro: entrada }; }
+  if (entrada) { aoResultado('', entrada); return { erro: entrada.erro }; }
   for (const it of itens) {
     if (it.fim) continue;
     const doc = it.portal || it.cnpj;
@@ -218,7 +306,7 @@ async function rodarPelaExtensao(itens, roteiros, aoPasso, aoResultado, log, ehE
       if (tentativa) {
         aoPasso(it.cnpj, 'tentando de novo');
         const e = await garantirLogin(t => aoPasso(it.cnpj, t));
-        if (e) { aoResultado('', { erro: e }); return { erro: e }; }
+        if (e) { aoResultado('', e); return { erro: e.erro }; }
       }
       aoPasso(it.cnpj, 'definindo o perfil ' + (ehEscritorio(doc) ? 'Meu Perfil (o escritório)' : 'Procurador de ' + mascara));
       await mandar({ tipo: 'abrir', url: PORTAL });
@@ -243,4 +331,4 @@ async function rodarPelaExtensao(itens, roteiros, aoPasso, aoResultado, log, ehE
   return { erro: '' };
 }
 
-module.exports = { rodarPelaExtensao, fecharChrome, prepararExtensao, comoFuncao, BAIXADOS, PASTA_EXT, CHROME, _teste: { ligarServidor, mandar, conectada, semPerguntarOndeSalvar } };
+module.exports = { rodarPelaExtensao, fecharChrome, prepararExtensao, comoFuncao, BAIXADOS, PASTA_EXT, CHROME, _teste: { ligarServidor, mandar, conectada, semPerguntarOndeSalvar, garantirLogin, descreverTela, manifestoComVersao, argumentosDoChrome } };
