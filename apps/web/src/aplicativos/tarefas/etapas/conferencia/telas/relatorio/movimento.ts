@@ -1,7 +1,7 @@
-// Peças de ViewModel que o Relatório e o Checklist dividem: a marcação automática das
+// Peças de ViewModel do Relatório: a marcação automática das
 // naturezas que bateram com o balancete e o texto das abas travadas.
-// Origem: conferencia.html autoMarcarConferidos (~L3563, chamado em renderGeral ~L3620 e
-// renderChecklistNatureza ~L3086) e aplicarBloqueios (~L1843-1861).
+// Origem: conferencia.html autoMarcarConferidos (~L3563, chamado em renderGeral ~L3620)
+// e aplicarBloqueios (~L1843-1861).
 import { conferencia as c } from '@nads/core';
 import { useEffect, useRef } from 'react';
 import { useSessao } from '../../casca/sessao';

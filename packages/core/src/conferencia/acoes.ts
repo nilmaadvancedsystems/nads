@@ -5,7 +5,7 @@
 import { nomeNorm } from '../formatos';
 import { SV } from './tabelas/servicos';
 import type { Conta, Empresa, TipoDeNotas, EstadoVerificacao, FiltroMovimento, Nota, NotaServico, RegistroImportacao, TipoNotaFiscal, TipoServico } from './tipos';
-import { registrarHist, registrarMarcaChecklist } from './regras/auditoria';
+import { registrarHist } from './regras/auditoria';
 import { verifChave } from './regras/conciliacao';
 import { chaveDoPeriodo, contasDaNatureza, empresaNuncaAberta } from './regras/empresa';
 import { assinaturaBalancete, type ModoImportacao } from './regras/importacao';
@@ -215,16 +215,6 @@ export function marcarCorrigido(e: Empresa, chaves: string[], marcado: boolean, 
       if (marcado) { if (pos < 0) x.divResolvidos.push(key); } else if (pos >= 0) x.divResolvidos.splice(pos, 1);
     }
     x.confHistorico = registrarHist(x.confHistorico, chaveHist, texto, marcado, agora, 'divergencia');
-  });
-}
-
-/** Checklist: marcar/desmarcar à mão. Desmarcar impede a marcação automática de voltar. */
-export function marcarNatureza(e: Empresa, marca: string, marcado: boolean, texto: string, agora: Date): Empresa {
-  return produzir(e, x => {
-    const pos = x.confMarcados.indexOf(marca);
-    if (marcado) { if (pos < 0) x.confMarcados.push(marca); } else if (pos >= 0) x.confMarcados.splice(pos, 1);
-    if (!marcado && x.confAutoRecusados.indexOf(marca) < 0) x.confAutoRecusados.push(marca);
-    x.confHistorico = registrarMarcaChecklist(x.confHistorico, marca, texto, marcado, agora);
   });
 }
 

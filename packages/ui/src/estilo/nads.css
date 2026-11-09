@@ -428,8 +428,6 @@ tr.linha-passivo > td:first-child b{color:var(--destructive);}
 .rank-barra>span{display:block;height:100%;border-radius:6px;}
 .rank-item:hover .rank-nome{color:var(--ink);text-decoration:underline;}
 
-.cc-mini{height:6px;border-radius:6px;background:var(--surface-3);overflow:hidden;margin-top:6px;max-width:240px;}
-.cc-mini>span{display:block;height:100%;border-radius:6px;}
 .dash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:16px;}
 @media (max-width:640px){.dash-grid{grid-template-columns:minmax(0,1fr);}}
 .parity{display:flex;align-items:center;gap:8px;border:1px solid var(--success);background:var(--success-soft);color:var(--ink);
@@ -769,14 +767,11 @@ input[type="checkbox"]:disabled{opacity:.55;cursor:not-allowed;}
 tr.anima input[type="checkbox"]:checked::after{animation:checkPop .3s cubic-bezier(.23,1,.32,1) both;}
 
 /* ---------------------------------- naturezas: conferido = riscado e apagado, no fim da lista ---------------------------------- */
-#natLista tr.feito td{background:none;}
-#natLista tr.feito td:not(:first-child){opacity:.5;}
 .risco{background-image:linear-gradient(currentColor,currentColor);background-repeat:no-repeat;background-position:0 58%;background-size:0 1.5px;}
 tr.feito .risco{background-size:100% 1.5px;}
 @keyframes riscar{from{background-size:0 1.5px}to{background-size:100% 1.5px}}
 @keyframes ofuscar{from{opacity:1}to{opacity:.5}}
 tr.feito.anima .risco{animation:riscar .45s cubic-bezier(.23,1,.32,1) both;}
-#natLista tr.feito.anima td:not(:first-child){animation:ofuscar .45s ease-out .1s both;}
 
 /* ---------------------------------- mensagens de importação flutuantes ---------------------------------- */
 #planoMsg,#msgEnt,#msgSai{position:fixed;top:calc(var(--hdr-h,113px) + 16px);right:24px;z-index:65;width:min(440px,calc(100vw - 32px));margin:0 !important;}

@@ -36,7 +36,6 @@ const TODAS_AS_SECOES: Secao[] = [
   {
     id: 'movimento', grupo: 2, rotulo: 'Movimento', icone: 'repeat', paginas: [
       { id: 'movimento/relatorio', rotulo: 'Relatório', icone: 'relatorio', titulo: 'Relatório' },
-      { id: 'movimento/checklist', rotulo: 'Checklist', icone: 'checklist', titulo: 'Naturezas de CFOP' },
       { id: 'movimento/consulta', rotulo: 'Consulta', icone: 'search', titulo: 'Consulta de notas' },
     ],
   },
@@ -47,8 +46,8 @@ const TODAS_AS_SECOES: Secao[] = [
   },
 ];
 
-/** Só conferir entradas (SO_ENTRADAS): Importação (Balancete, Entradas) e Movimento (Relatório, Naturezas). */
-const PAGINAS_SO_ENTRADAS = ['importacao/balancete', 'importacao/entradas', 'movimento/relatorio', 'movimento/checklist'];
+/** Só conferir entradas (SO_ENTRADAS): Importação (Balancete, Entradas) e Movimento (Relatório). */
+const PAGINAS_SO_ENTRADAS = ['importacao/balancete', 'importacao/entradas', 'movimento/relatorio'];
 export const SECOES: Secao[] = SO_ENTRADAS
   ? TODAS_AS_SECOES.map(s => ({ ...s, paginas: s.paginas.filter(p => PAGINAS_SO_ENTRADAS.includes(p.id)) })).filter(s => s.paginas.length)
   : TODAS_AS_SECOES;
