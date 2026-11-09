@@ -145,15 +145,18 @@ def aba(principal, nome):
 def botao(principal, nome, embaixo=False):
     """Clica no botão da aba à mostra pelo nome (embaixo=True: na parte de baixo, a seta de um botão de lista)."""
     faixa = _faixa(principal)
-    bs = [b for b in faixa.descendants(control_type='Button') if b.is_visible()]
+    # os botões de lista (Razão ▾, Balancete ▾, Diário ▾…) não vêm como Button no UI Automation (09/11/2026: a lista de
+    # Button da aba Livros e Relatórios não tinha o Razão): vale qualquer item com o nome, menos aba, grupo e texto
+    fora = ('TabItem', 'Tab', 'ToolBar', 'Pane', 'Text', 'TitleBar', 'Custom')
+    bs = [b for b in faixa.descendants() if b.element_info.control_type not in fora and b.is_visible()]
     alvo = [b for b in bs if _nome(b) == nome]
     if not alvo:
-        raise Falha('não achei o botão "' + nome + '" na aba "' + _aba_ativa(faixa) + '" (botões: ' + ', '.join(_nome(b) for b in bs if _nome(b))[:300] + ')')
+        raise Falha('não achei o botão "' + nome + '" na aba "' + _aba_ativa(faixa) + '" (itens: ' + ', '.join(_nome(b) + '/' + str(b.element_info.control_type) for b in bs if _nome(b))[:400] + ')')
     mouse.click(coords=_meio(alvo[0], embaixo))
     return alvo[0]
 
 
-def item_do_menu(principal, nome, segundos=6):
+def item_do_menu(principal, nome, segundos=6, primeiro_se_mudo=False):
     """O item do menu que acabou de abrir (uma janela do Contábil fora da principal) pelo nome; clica nele."""
     pid = _pid(principal.handle)
     limite = time.time() + segundos
@@ -164,13 +167,20 @@ def item_do_menu(principal, nome, segundos=6):
                 itens = _uia(h).descendants()
             except Exception:
                 continue
-            vistos = [_nome(i) for i in itens if _nome(i)]
-            alvo = [i for i in itens if _nome(i) == nome and i.element_info.control_type in ('MenuItem', 'Button', 'ListItem')]
+            vistos = [_nome(i) + '/' + str(i.element_info.control_type) for i in itens if _nome(i)]
+            alvo = [i for i in itens if _nome(i) == nome and i.element_info.control_type not in ('Pane', 'ToolBar', 'Menu', 'Window', 'Text')]
             if alvo:
                 mouse.click(coords=_meio(alvo[0]))
                 return True
         time.sleep(.3)
-    raise Falha('o menu não mostrou "' + nome + '"' + (' (itens: ' + ', '.join(vistos)[:200] + ')' if vistos else ' (nenhum menu abriu)'))
+    # o menu abriu mas não diz os nomes ao UI Automation: o primeiro item (como o caminho que o Vitor ensinou, medido no
+    # PC: o item fica logo abaixo do botão); quem chamou confere a janela que abriu
+    menus = _do_contabil(pid, fora=(principal.handle,))
+    if primeiro_se_mudo and len(menus) == 1 and not vistos:
+        x0, y0, x1, y1 = win32gui.GetWindowRect(menus[0])
+        mouse.click(coords=(x0 + min(40, (x1 - x0) // 2), y0 + 12))
+        return 'primeiro'
+    raise Falha('o menu não mostrou "' + nome + '"' + (' (itens: ' + ', '.join(vistos)[:300] + ')' if vistos else ' (nenhum menu abriu)' if not menus else ' (o menu abriu sem nomes: ' + ', '.join(win32gui.GetClassName(m) for m in menus) + ')'))
 
 
 def botao_da_janela(janela_win32, nome):

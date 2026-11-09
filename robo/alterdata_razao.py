@@ -196,7 +196,7 @@ try:
         # o botão de lista abre o menu; se já abriu o assistente (o clique pegou a parte de cima), segue
         if not esperar(lambda: janelas('TfrmRazaoDlg'), 1.5, .25):
             clique('Razão')
-            fx.item_do_menu(principal, 'Razão')
+            fx.item_do_menu(principal, 'Razão', primeiro_se_mudo=True)
     except fx.Falha as e:
         falhar(com_tela(str(e), 'razao-faixa'))
     dlg = esperar(lambda: janelas('TfrmRazaoDlg'), 25, .25)
