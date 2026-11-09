@@ -24,8 +24,9 @@
 // anexo que a busca listou; o robô responde no pedido e põe o anexo em partes). Nada é enviado nem mexido no Gmail.
 import { creditor as cr, entregas, extrator as ex } from '@nads/core';
 import { getApps, initializeApp } from 'firebase/app';
+import { abrirBancoDoEntregas } from './conexaoEntregas.firestore';
 import { getAuth, GoogleAuthProvider, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth';
-import { addDoc as addDocBruto, Bytes, collection, doc, getDoc, getDocs, getFirestore, limit, onSnapshot, query, serverTimestamp, setDoc as setDocBruto, updateDoc as updateDocBruto, where } from 'firebase/firestore';
+import { addDoc as addDocBruto, Bytes, collection, doc, getDoc, getDocs, limit, onSnapshot, query, serverTimestamp, setDoc as setDocBruto, updateDoc as updateDocBruto, where } from 'firebase/firestore';
 import { guardar, guardarPedido } from '../../../comum/modoDesenvolvedor';
 
 // a trava do modo desenvolvedor (comum/modoDesenvolvedor.ts): com o modo ligado, só ver — nada é gravado
@@ -155,7 +156,7 @@ export function criarDriveFirestore(): cr.RepoDrive {
   if (dentroDoEntregas()) return criarDrivePeloEntregas();
   const app = appDoEntregas();
   const auth = getAuth(app);
-  const db = getFirestore(app);
+  const db = abrirBancoDoEntregas(app);
   let acesso: cr.AcessoDrive = { pronto: false, entrou: false, quem: '' };
   let ver = 0;
   const ouvintes = new Set<() => void>();
