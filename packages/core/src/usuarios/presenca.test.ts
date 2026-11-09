@@ -1,5 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { estaOnline, rotuloDaPresenca, rotuloDoOnde } from '.';
+import { estaOnline, rotuloDaPresenca, rotuloDoOnde, veAtividade } from '.';
+
+describe('quem vê a atividade atual', () => {
+  const contabil = { departamento: 'contabil' };
+  it('o Diretor vê todos os setores', () => {
+    expect(veAtividade({ nivel: 'diretor', departamento: 'fiscal' }, contabil)).toBe(true);
+  });
+  it('o Sênior vê só o próprio setor', () => {
+    expect(veAtividade({ nivel: 'senior', departamento: 'contabil' }, contabil)).toBe(true);
+    expect(veAtividade({ nivel: 'senior', departamento: 'fiscal' }, contabil)).toBe(false);
+  });
+  it('o Pleno e o Júnior não veem, nem do próprio setor', () => {
+    expect(veAtividade({ nivel: 'pleno', departamento: 'contabil' }, contabil)).toBe(false);
+    expect(veAtividade({ nivel: 'junior', departamento: 'contabil' }, contabil)).toBe(false);
+  });
+  it('o Sênior sem setor não vê, nem quem também está sem setor', () => {
+    expect(veAtividade({ nivel: 'senior', departamento: null }, contabil)).toBe(false);
+    expect(veAtividade({ nivel: 'senior', departamento: null }, { departamento: null })).toBe(false);
+  });
+});
 
 const agora = new Date('2026-10-05T14:00:00.000Z');
 const antes = (min: number) => new Date(agora.getTime() - min * 60000).toISOString();

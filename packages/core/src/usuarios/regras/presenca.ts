@@ -21,6 +21,15 @@ export function rotuloDoOnde(onde: Pick<OndeNoNads, 'codigo' | 'empresa' | 'etap
   return (onde.codigo != null ? onde.codigo + ' · ' : '') + onde.empresa + ' › ' + onde.etapa;
 }
 
+/**
+ * Quem vê a atividade atual (Vitor, 09/11/2026: "somente os seniores, apenas do seu setor, e os diretores, todos os
+ * setores"). Ser admin não conta: o que vale é o nível.
+ */
+export function veAtividade(quem: { nivel?: string | null; departamento?: string | null }, pessoa: { departamento?: string | null }): boolean {
+  if (quem.nivel === 'diretor') return true;
+  return quem.nivel === 'senior' && !!quem.departamento && quem.departamento === pessoa.departamento;
+}
+
 /** "Online", "Visto há 12 min", "Visto há 3 h", "Visto há 2 dias" ou "Nunca abriu o nads". */
 export function rotuloDaPresenca(vistoEm: string | null | undefined, agora: Date): string {
   const t = vistoEm ? Date.parse(vistoEm) : NaN;
