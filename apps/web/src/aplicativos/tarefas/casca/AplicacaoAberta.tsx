@@ -59,7 +59,7 @@ const Ferramentas = pedaco(() => import('../telas/ferramentas/Ferramentas'), 'Fe
 
 function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
   switch (app) {
-    case 'inicio': return <Inicio />;
+    case 'inicio': return pagina === 'inicio' ? <Inicio /> : <PaginaDeTarefas key={pagina} aba={pagina === 'delegadas' || pagina === 'concluidas' ? pagina : 'minhas'} />;
     case 'minhas-empresas': return <MinhasEmpresas />;
     // as Empresas, o Painel, a Visão geral e as Paradas do Fiscal saíram (27/10/2026): ficam as ferramentas
     case 'fiscal': return pagina === 'sintegra' ? <PaginaSintegra /> : pagina === 'faturamento' ? <FaturamentoDosClientes /> : pagina === 'simples' ? <CalculadoraDoSimples /> : pagina === 'rateio-frete' ? <RateioDeFrete /> : pagina === 'sieg' ? <BaixarDoSieg /> : pagina === 'antecipacao-es' ? <AntecipacaoIcms /> : pagina === 'auditoria-itens' ? <AuditoriaDeItens /> : pagina === 'relatorio-presumido' || pagina === 'particularidades-presumido' ? <RelatorioGeral regime="lp" /> : pagina === 'relatorio-simples' || pagina === 'relatorio' || pagina === 'controle-tributos' || pagina === 'particularidades-simples' ? <RelatorioGeral regime="sn" /> : <Reinf />;
@@ -76,8 +76,6 @@ function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
     // as Ferramentas de documentos (30/10/2026): PDF e planilha, no navegador
     case 'ferramentas': return <Ferramentas />;
     case 'contato': return pagina === 'historico' ? <HistoricoDoRobo /> : <CaixaDoRobo />;
-    // a Central de tarefas como módulo (30/10/2026); cada aba é uma página (a lista começa de novo ao trocar)
-    case 'minhas-tarefas': return <PaginaDeTarefas key={pagina} aba={pagina === 'delegadas' || pagina === 'concluidas' ? pagina : 'minhas'} />;
     default: return <EmDesenvolvimento nome={aplicacao(app)?.nome || app} />;
   }
 }
@@ -89,6 +87,8 @@ export function AplicacaoAberta() {
   const op = useOperador().operador as Operador;
   // o Mandei entrou na Área do Cliente (19/10/2026): os links antigos levam para lá, na mesma página
   if (app === 'minhas-empresas' && pagina === 'inicio') return <Navigate to={BASE + '/inicio'} replace />;
+  // as tarefas foram para o Início (09/11/2026): os links antigos levam para lá, na mesma página
+  if (app === 'minhas-tarefas') return <Navigate to={caminhoDaPagina('inicio', pagina === 'delegadas' || pagina === 'concluidas' ? pagina : 'minhas')} replace />;
   if (app === 'mandei') return <Navigate to={caminhoDaPagina('area-cliente', pagina === 'central' ? 'central' : 'meus')} replace />;
   const a = aplicacoesDe(op).find(x => x.id === app);
   if (!a) return <Navigate to={caminhoDaPagina('minhas-empresas', 'empresas')} replace />;
