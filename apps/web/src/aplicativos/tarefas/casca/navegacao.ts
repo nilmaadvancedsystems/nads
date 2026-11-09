@@ -230,8 +230,9 @@ export function aplicacoesDe(op: Operador): Aplicacao[] {
     .map(a => (a.id === 'entregas' && !ehDiretor(op) ? { ...a, paginas: a.paginas.filter(p => p.id === 'painel') } : a))
     // a lista dos usuários cadastrados só para o Diretor e o admin (Vitor, 06/11/2026: "O sênior, pleno e júnior não pode em
     // hipótese alguma ter acesso onde ele vê os usuários cadastrados, em qualquer função"): os Usuários das Configurações e a
-    // Liberação de acessos das Senhas saem; o link direto cai na primeira página liberada
-    .map(a => (ehDiretor(op) ? a : a.id === 'cadastro' ? { ...a, paginas: a.paginas.filter(p => p.id !== 'usuarios') } : a.id === 'senhas' ? { ...a, paginas: a.paginas.filter(p => p.id !== 'acesso') } : a))
+    // Liberação de acessos das Senhas saem; o link direto cai na primeira página liberada. A exceção (09/11/2026): o Sênior
+    // abre os Usuários só para ver, e só as pessoas do setor dele (useUsuariosDoNads), por causa da atividade atual
+    .map(a => (ehDiretor(op) ? a : a.id === 'cadastro' ? { ...a, paginas: a.paginas.filter(p => p.id !== 'usuarios' || op.nivel === 'senior') } : a.id === 'senhas' ? { ...a, paginas: a.paginas.filter(p => p.id !== 'acesso') } : a))
     // na gaveta, um grupo depois do outro: Rotinas, Comunicação, Escritório
     .sort((x, y) => ORDEM_DOS_GRUPOS.indexOf(x.grupo) - ORDEM_DOS_GRUPOS.indexOf(y.grupo));
 }
