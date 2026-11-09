@@ -8,8 +8,8 @@
 # Só olha (e, no modo "abas" do diagnóstico, clica nas ABAS da faixa de opções do Contábil, que só trocam a aba à mostra).
 #
 # Uso (diagnóstico pedido pelo arquivo D:\nads-dados\alterdata\tela.pedido, ver alterdata.js):
-#   python alterdata_tela.py <pasta das fotos> [largura] [foto] [abas] [uia]
-# (largura: passa a tela para 1366x768 como os roteiros fazem, só enquanto o diagnóstico roda)
+#   python alterdata_tela.py <pasta das fotos> [acender] [foto] [uia] [abas] [clique]
+# (acender: acende a tela antes; clique: a sonda dos jeitos de clicar, ver _clique)
 # Escreve TELA: {json} e FOTO: <caminho> por foto.
 import json
 import os
@@ -161,84 +161,137 @@ def resumo_do_erro(motivo, nome):
         return motivo + ' (sem a medida da tela: ' + str(e)[:80] + ')'
 
 
-# Os cliques dos roteiros são posições na faixa de opções do Contábil medidas no PC do escritório, que tem 1366x768. No
-# servidor, a sessão do robô vai para o console (tscon, sessao-no-console.js) e o console tem 1024x768 (o registro do vídeo
-# do servidor só guarda esse modo): o Contábil aberto ali monta a faixa de opções para 1024 de largura, os botões mudam de
-# lugar e nenhum relatório abre (06/11/2026 17:07 em diante). Até 05/11 dava certo porque o Contábil tinha sido aberto na
-# Área de Trabalho Remota (1366 de largura) e continuava montado assim depois do tscon.
-LARGURA_DOS_CLIQUES, ALTURA_DOS_CLIQUES = 1366, 768
-_mudou_a_tela = False
-
-
-def _voltar_tela():
-    global _mudou_a_tela
-    if _mudou_a_tela:
-        _mudou_a_tela = False
-        try:
-            win32api.ChangeDisplaySettings(None, 0)   # volta ao modo gravado no Windows (o de sempre)
-        except Exception:
-            pass
-
-
-def _modo_para_os_cliques():
-    """O modo de vídeo que a placa aceita com pelo menos 1366x768: o 1366x768 se houver, senão o menor que caiba."""
-    melhor = None
-    i = 0
-    while i < 500:
-        try:
-            m = win32api.EnumDisplaySettings(None, i)
-        except Exception:
-            break
-        i += 1
-        if m.PelsWidth < LARGURA_DOS_CLIQUES or m.PelsHeight < ALTURA_DOS_CLIQUES:
-            continue
-        chave = (m.PelsWidth != LARGURA_DOS_CLIQUES or m.PelsHeight != ALTURA_DOS_CLIQUES, m.PelsWidth * m.PelsHeight, -m.BitsPerPel)
-        if melhor is None or chave < melhor[0]:
-            melhor = (chave, m)
-    return melhor[1] if melhor else None
-
-
+# A tela do servidor (09/11/2026): o console do NILMA-SERVER tem 1024x768 e o vídeo desliga depois de 15 min sem uso. A
+# resolução NÃO é trocada (o teste com 1600x1200 mostrou que posição fixa não serve em largura nenhuma); os roteiros só
+# mantêm a tela acesa enquanto rodam.
 def preparar_tela():
-    """Antes dos cliques de um roteiro: a tela fica acesa enquanto ele roda (o pedido some quando o Python sai) e, se a
-    tela tem menos de 1366x768, passa para 1366x768 SÓ ENQUANTO O ROTEIRO RODA (CDS_FULLSCREEN: não grava nada no Windows
-    e o Windows volta sozinho ao modo de sempre quando o processo sai, mesmo morto pelo prazo; o roteiro também volta no
-    fim). Depois da troca, o Contábil maximizado é montado de novo na largura nova. Devolve o que fez (para o log) ou ''."""
-    global _mudou_a_tela
+    """Antes dos cliques de um roteiro: pede ao Windows a tela ligada enquanto o Python roda (o pedido some quando ele sai)
+    e mexe o mouse 1 ponto e volta, para acender a tela que já apagou (a mesma técnica do FGTS, f7f359bc). Nada fica
+    gravado. Devolve '' (nada a dizer) ou o porquê de não ter dado."""
     try:
         import ctypes
         ctypes.windll.kernel32.SetThreadExecutionState(0x80000003)   # ES_CONTINUOUS | ES_DISPLAY_REQUIRED | ES_SYSTEM_REQUIRED
-    except Exception:
-        pass
-    w, h = tamanho_da_tela()
-    if w >= LARGURA_DOS_CLIQUES and h >= ALTURA_DOS_CLIQUES:
+        win32api.mouse_event(win32con.MOUSEEVENTF_MOVE, 1, 0, 0, 0)
+        win32api.mouse_event(win32con.MOUSEEVENTF_MOVE, -1, 0, 0, 0)
+        time.sleep(.5)
         return ''
-    m = _modo_para_os_cliques()
-    if m is None:
-        return 'tela %dx%d e a placa de vídeo não aceita %dx%d (modos: %s): os cliques podem errar' % (w, h, LARGURA_DOS_CLIQUES, ALTURA_DOS_CLIQUES, ' '.join(modos()[1]))
-    m.Fields = win32con.DM_PELSWIDTH | win32con.DM_PELSHEIGHT | win32con.DM_BITSPERPEL
-    import atexit
-    atexit.register(_voltar_tela)
-    r = win32api.ChangeDisplaySettings(m, win32con.CDS_FULLSCREEN)
-    if r != win32con.DISP_CHANGE_SUCCESSFUL:
-        return 'tela %dx%d: a troca para %dx%d não deu (código %s): os cliques podem errar' % (w, h, m.PelsWidth, m.PelsHeight, r)
-    _mudou_a_tela = True
-    time.sleep(2)
-    # o Contábil maximizado acompanha a tela nova; se ficou menor, restaura e maximiza de novo (a faixa de opções se remonta)
-    for j in janelas_tfrm():
-        if j['classe'] == 'TfrmPrincipal' and j['l'] < m.PelsWidth:
-            try:
-                hw = j['h']
-                win32gui.ShowWindow(hw, win32con.SW_RESTORE)
-                time.sleep(.5)
-                win32gui.ShowWindow(hw, win32con.SW_MAXIMIZE)
-                time.sleep(1.5)
-            except Exception:
-                pass
-    return 'tela %dx%d → %dx%d enquanto o roteiro roda (os cliques são medidos em %dx%d)' % (w, h, m.PelsWidth, m.PelsHeight, LARGURA_DOS_CLIQUES, ALTURA_DOS_CLIQUES)
+    except Exception as e:
+        return 'não acendi a tela: ' + type(e).__name__ + ': ' + str(e)[:120]
 
 
 def voltar_tela():
-    _voltar_tela()
+    """Compatível com o diagnóstico antigo: não há mais o que voltar."""
+    return None
+
+
+def _ultima_entrada():
+    import ctypes
+
+    class LII(ctypes.Structure):
+        _fields_ = [('cbSize', ctypes.c_uint), ('dwTime', ctypes.c_uint)]
+
+    x = LII()
+    x.cbSize = ctypes.sizeof(LII)
+    ctypes.windll.user32.GetLastInputInfo(ctypes.byref(x))
+    return ctypes.windll.kernel32.GetTickCount() - x.dwTime
+
+
+def _send_clique(x, y):
+    """Clique de verdade (SendInput) em (x, y), devolvendo quantos eventos o Windows aceitou e o erro."""
+    import ctypes
+    from ctypes import wintypes
+
+    class MI(ctypes.Structure):
+        _fields_ = [('dx', wintypes.LONG), ('dy', wintypes.LONG), ('mouseData', wintypes.DWORD), ('dwFlags', wintypes.DWORD),
+                    ('time', wintypes.DWORD), ('dwExtraInfo', ctypes.c_size_t)]
+
+    class _U(ctypes.Union):
+        _fields_ = [('mi', MI), ('pad', ctypes.c_byte * 32)]
+
+    class INP(ctypes.Structure):
+        _anonymous_ = ('u',)
+        _fields_ = [('type', wintypes.DWORD), ('u', _U)]
+
+    ctypes.windll.user32.SetCursorPos(x, y)
+    time.sleep(.1)
+    evs = (INP * 2)()
+    for i, fl in enumerate((0x0002, 0x0004)):   # LEFTDOWN, LEFTUP
+        evs[i].type = 0
+        evs[i].mi = MI(0, 0, 0, fl, 0, 0)
+    ctypes.windll.kernel32.SetLastError(0)
+    n = ctypes.windll.user32.SendInput(2, evs, ctypes.sizeof(INP))
+    return n, ctypes.windll.kernel32.GetLastError()
+
+
+def _topo():
+    """As janelas visíveis de cima para baixo (classe, pid, posição, ligada, sempre-no-topo), até 15."""
+    r = []
+    h = win32gui.GetTopWindow(0)
+    while h and len(r) < 15:
+        try:
+            if win32gui.IsWindowVisible(h):
+                x0, y0, x1, y1 = win32gui.GetWindowRect(h)
+                if x1 - x0 > 0 and y1 - y0 > 0:
+                    ex = win32gui.GetWindowLong(h, win32con.GWL_EXSTYLE)
+                    r.append('%s pid %d %d,%d %dx%d%s%s%s' % (win32gui.GetClassName(h), win32process.GetWindowThreadProcessId(h)[1], x0, y0, x1 - x0, y1 - y0,
+                             '' if win32gui.IsWindowEnabled(h) else ' DESLIGADA', ' topo' if ex & win32con.WS_EX_TOPMOST else '',
+                             ' transparente' if ex & win32con.WS_EX_TRANSPARENT else ''))
+        except Exception:
+            pass
+        h = win32gui.GetWindow(h, win32con.GW_HWNDNEXT)
+    return r
+
+
+def _clique(pasta):
+    """Sonda (09/11/2026: o clique na aba "Livros e Relatórios" não trocava a aba): o estado da janela principal e três
+    jeitos de trocar de aba, com uma foto depois de cada um: o SendInput (como os roteiros), a mensagem de clique na
+    faixa e a tecla Alt (as letras das KeyTips). Só troca a aba à mostra e fecha as letras com Esc."""
+    from pywinauto import Desktop, keyboard
+    d = Desktop(backend='win32')
+    princ = [w for w in d.windows() if w.is_visible() and w.class_name() == 'TfrmPrincipal']
+    if len(princ) != 1:
+        print('CLIQUE: ' + str(len(princ)) + ' janelas principais; não cliquei', flush=True)
+        return
+    p = princ[0]
+    h = p.handle
+    fg = win32gui.GetForegroundWindow()
+    print('CLIQUE: principal ligada=%s, em primeiro plano=%s (%s), cursor %s, sem entrada há %d ms' % (
+        bool(win32gui.IsWindowEnabled(h)), fg == h, win32gui.GetClassName(fg) if fg else '-', win32api.GetCursorPos(), _ultima_entrada()), flush=True)
+    print('TOPO: ' + ' | '.join(_topo()), flush=True)
+    print('ACENDER: ' + (preparar_tela() or 'ok'), flush=True)
+    try:
+        p.set_focus()
+    except Exception as e:
+        print('CLIQUE: set_focus falhou: ' + str(e)[:120], flush=True)
+    time.sleep(.5)
+    fg = win32gui.GetForegroundWindow()
+    print('CLIQUE: depois do set_focus, em primeiro plano=%s (%s)' % (fg == h, win32gui.GetClassName(fg) if fg else '-'), flush=True)
+    r = p.rectangle()
+    ox, oy = r.left + 8, r.top + 8
+    # a) SendInput na aba Livros e Relatórios (x 288 em 1024 e em 1600, pela foto)
+    n, err = _send_clique(ox + 288, oy + 47)
+    time.sleep(1.5)
+    print('CLIQUE: a) SendInput em Livros: %d de 2 eventos, erro %d, cursor %s, sem entrada há %d ms; foto %s' % (
+        n, err, win32api.GetCursorPos(), _ultima_entrada(), foto(pasta, 'clique-a-sendinput')[0]), flush=True)
+    # b) a mensagem de clique na faixa (filho com Ribbon na classe) na aba Lançamentos
+    faixa = [c for c in p.children() if 'Ribbon' in c.class_name()]
+    if faixa:
+        fh = faixa[0].handle
+        cx, cy = win32gui.ScreenToClient(fh, (ox + 99, oy + 47))
+        lp = win32api.MAKELONG(cx, cy)
+        win32gui.PostMessage(fh, win32con.WM_MOUSEMOVE, 0, lp)
+        win32gui.PostMessage(fh, win32con.WM_LBUTTONDOWN, win32con.MK_LBUTTON, lp)
+        win32gui.PostMessage(fh, win32con.WM_LBUTTONUP, 0, lp)
+        time.sleep(1.5)
+        print('CLIQUE: b) mensagem em Lançamentos (%s): foto %s' % (faixa[0].class_name(), foto(pasta, 'clique-b-mensagem')[0]), flush=True)
+    else:
+        print('CLIQUE: b) sem a faixa de opções entre os filhos: ' + ', '.join(sorted({c.class_name() for c in p.children()}))[:300], flush=True)
+    # c) Alt: as letras das KeyTips aparecem?
+    keyboard.send_keys('{VK_MENU}')
+    time.sleep(1.2)
+    print('CLIQUE: c) Alt: foto %s' % foto(pasta, 'clique-c-alt')[0], flush=True)
+    keyboard.send_keys('{ESC}{ESC}')
+    time.sleep(.5)
 
 
 def _abas(pasta):
@@ -292,9 +345,8 @@ if __name__ == '__main__':
     pasta = sys.argv[1]
     pedidos = sys.argv[2:] or ['foto']
     print('TELA: ' + json.dumps(medidas(), ensure_ascii=False), flush=True)
-    if 'largura' in pedidos:
-        print('LARGURA: ' + (preparar_tela() or 'a tela já tem a largura dos cliques'), flush=True)
-        print('TELA: ' + json.dumps(medidas(), ensure_ascii=False), flush=True)
+    if 'acender' in pedidos:
+        print('ACENDER: ' + (preparar_tela() or 'ok'), flush=True)
     if 'foto' in pedidos:
         caminho, porque = foto(pasta, 'diagnostico')
         print('FOTO: ' + (caminho or 'não tirada: ' + porque), flush=True)
@@ -308,4 +360,8 @@ if __name__ == '__main__':
             _abas(pasta)
         except Exception as e:
             print('ABAS: erro ' + type(e).__name__ + ': ' + str(e)[:200], flush=True)
-    voltar_tela()
+    if 'clique' in pedidos:
+        try:
+            _clique(pasta)
+        except Exception as e:
+            print('CLIQUE: erro ' + type(e).__name__ + ': ' + str(e)[:200], flush=True)

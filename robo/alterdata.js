@@ -248,17 +248,17 @@ function iniciarAlterdata(db, log) {
     if (diagnosticando || !fs.existsSync(PEDIDO_TELA) || fila.ocupado()) return;
     diagnosticando = true;
     try {
-      const quero = String(fs.readFileSync(PEDIDO_TELA, 'utf8')).split(/\s+/).filter(p => ['largura', 'foto', 'abas', 'uia'].includes(p));
+      const quero = String(fs.readFileSync(PEDIDO_TELA, 'utf8')).split(/\s+/).filter(p => ['acender', 'foto', 'uia', 'abas', 'clique'].includes(p));
       const carimbo = new Date().toISOString().replace(/[-:]/g, '').replace('T', '-').slice(0, 15);
       fs.renameSync(PEDIDO_TELA, PEDIDO_TELA + '.' + carimbo + '.feito');
-      const r = await rodarPy(ROTEIRO_TELA, [PASTA_TELA, ...(quero.length ? quero : ['foto'])], 150 * 1000);
+      const r = await rodarPy(ROTEIRO_TELA, [PASTA_TELA, ...(quero.length ? quero : ['foto'])], 240 * 1000);
       fs.mkdirSync(PASTA_TELA, { recursive: true });
       fs.writeFileSync(path.join(PASTA_TELA, carimbo + '-diagnostico.txt'), r.out + (r.err ? '\nERRO: ' + r.err.message : ''));
       let tela = null;
       try { tela = JSON.parse([...r.out.matchAll(/TELA:\s*(\{.*\})/g)].pop()[1]); } catch (_) { /* sem resposta */ }
-      const largura = (r.out.match(/LARGURA:\s*(.+)/) || [])[1];
+      const sonda = [...r.out.matchAll(/^(?:ACENDER|CLIQUE): (.+)$/gm)].map(x => x[1].trim()).join(' · ').slice(0, 800);
       log('Alterdata: diagnóstico da tela (' + (quero.join(' ') || 'foto') + '): ' + (tela ? 'tela ' + tela.tela + ', modo ' + tela.modo + ', área de trabalho ' + tela.entrada
-        + ', ' + tela.janelas.map(j => j.classe + ' ' + j.l + 'x' + j.a + (j.max ? ' max' : '')).join(', ') : 'sem resposta') + (largura ? ' · ' + largura.trim() : '') + ' → ' + PASTA_TELA);
+        + ', ' + tela.janelas.map(j => j.classe + ' ' + j.l + 'x' + j.a + (j.max ? ' max' : '')).join(', ') : 'sem resposta') + (sonda ? ' · ' + sonda : '') + ' → ' + PASTA_TELA);
     } catch (err) { log('Alterdata: o diagnóstico da tela não deu:', err.message); } finally { diagnosticando = false; }
   }
 

@@ -3,8 +3,7 @@
 // SEM trocar o modo de vídeo. Prova que:
 //   1. as medidas saem (tela, modo, modos aceitos, área de trabalho);
 //   2. a foto é um PNG válido do tamanho da tela virtual;
-//   3. o modo escolhido para os cliques tem pelo menos 1366x768 (o 1366x768 quando a placa aceita);
-//   4. com a tela já larga, preparar_tela não troca nada;
+//   3. preparar_tela só acende a tela: não troca o modo de vídeo e o cursor volta ao lugar;
 //   5. o erro de janela que não abriu leva a tela e a foto junto.
 // Rodar: node robo/teste-alterdata-tela.js
 'use strict';
@@ -37,21 +36,14 @@ assert.strictEqual(png.readUInt32BE(16), lv);
 assert.strictEqual(png.readUInt32BE(20), av);
 console.log('2. foto: ok (' + lv + 'x' + av + ', ' + Math.round(png.length / 1024) + ' KB)');
 
-// 3
-const modo = JSON.parse(py('m = t._modo_para_os_cliques(); print(json.dumps(m and [m.PelsWidth, m.PelsHeight]))'));
-if (modo) {
-  assert.ok(modo[0] >= 1366 && modo[1] >= 768, 'modo pequeno: ' + modo);
-  if (m.modos.includes('1366x768')) assert.deepStrictEqual(modo, [1366, 768]);
-  console.log('3. modo para os cliques: ok (' + modo.join('x') + ')');
-} else console.log('3. modo para os cliques: esta placa não aceita 1366x768 (preparar_tela avisa no log)');
-
-// 4
-const [l, a] = m.tela.split('x').map(Number);
-if (l >= 1366 && a >= 768) {
-  assert.strictEqual(py('print(repr(t.preparar_tela()))'), "''");
-  assert.strictEqual(JSON.parse(py('print(json.dumps(t.medidas()))')).tela, m.tela);
-  console.log('4. tela já larga: não troquei nada: ok');
-} else console.log('4. pulado: esta tela tem ' + m.tela + ' (o teste não troca o modo de vídeo)');
+// 3 e 4: preparar_tela só acende a tela (nada de trocar o modo de vídeo) e o cursor volta ao lugar
+const antes = JSON.parse(py('import win32api; print(json.dumps(win32api.GetCursorPos()))'));
+assert.strictEqual(py('print(repr(t.preparar_tela()))'), "''");
+assert.strictEqual(JSON.parse(py('print(json.dumps(t.medidas()))')).tela, m.tela);
+assert.ok(!fs.readFileSync(path.join(__dirname, 'alterdata_tela.py'), 'utf8').includes('ChangeDisplaySettings('), 'a troca de resolução voltou');
+const depois = JSON.parse(py('import win32api; print(json.dumps(win32api.GetCursorPos()))'));
+assert.deepStrictEqual(depois, antes);
+console.log('3. preparar_tela acende a tela sem trocar o modo e o cursor volta: ok');
 
 // 5
 const r = py('print(t.resumo_do_erro("a janela do Razão não abriu", "teste-erro"))');
