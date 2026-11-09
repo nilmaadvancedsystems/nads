@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { empresa } from '../__legado__/fixtures';
 import type { RegistroConferencia } from '../tipos';
-import { linhasAuditoria, registrarHist, registrarMarcaChecklist } from './auditoria';
+import { linhasAuditoria, registrarHist } from './auditoria';
 
 const t0 = new Date(2026, 8, 28, 10, 0, 10);
 const mesmoMinuto = new Date(2026, 8, 28, 10, 0, 50);
@@ -20,13 +20,6 @@ describe('registrarHist', () => {
   });
   it('registro automático não é desfeito', () => {
     expect(registrarHist([reg('marcado', 'automatico')], 'k', 't', false, mesmoMinuto).length).toBe(2);
-  });
-});
-
-describe('registrarMarcaChecklist', () => {
-  it('só some ao desmarcar o que acabou de marcar', () => {
-    expect(registrarMarcaChecklist([reg('marcado')], 'k', 't', false, mesmoMinuto)).toEqual([]);
-    expect(registrarMarcaChecklist([reg('desmarcado')], 'k', 't', true, mesmoMinuto).length).toBe(2);
   });
 });
 

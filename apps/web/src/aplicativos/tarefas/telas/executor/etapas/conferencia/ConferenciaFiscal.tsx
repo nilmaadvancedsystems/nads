@@ -1,5 +1,5 @@
 // A etapa Conferência fiscal (Vitor, 06/11/2026: o Concilia aí saiu do site dele e fica só aqui): o balancete × as notas,
-// no período da Tarefa. As páginas dela (Balancete, Relatório, Naturezas, Consulta, Cadastro, Auditoria) ficam nas abas do
+// no período da Tarefa. As páginas dela (Balancete, Relatório, Consulta, Cadastro, Auditoria) ficam nas abas do
 // cabeçalho da Tarefa, como quando ela abria inteira dentro da etapa.
 import type { conferencia as c } from '@nads/core';
 import { LugarDasAcoes, TopoProvider } from '../../../../../../comum/topo';
@@ -7,7 +7,6 @@ import { useCascaConciliaAi } from '../../../../etapas/conferencia/casca/useCasc
 import { SessaoProvider, useSessao } from '../../../../etapas/conferencia/casca/sessao';
 import { Auditoria } from '../../../../etapas/conferencia/telas/auditoria/Auditoria';
 import { Configuracoes } from '../../../../etapas/conferencia/telas/cadastro/Configuracoes';
-import { Checklist } from '../../../../etapas/conferencia/telas/checklist/Checklist';
 import { Consulta } from '../../../../etapas/conferencia/telas/consulta/Consulta';
 import { Importacao } from '../../../../etapas/conferencia/telas/importacao/Importacao';
 import { LancamentosAutomaticos } from '../../../../etapas/conferencia/telas/lancamentos/LancamentosAutomaticos';
@@ -24,7 +23,6 @@ function Tela({ pagina }: { pagina: string }) {
     case 'cadastro/configuracoes': return <Configuracoes />;
     case 'cadastro/lancamentos-automaticos': return <LancamentosAutomaticos />;
     case 'movimento/relatorio': return <Relatorio />;
-    case 'movimento/checklist': return <Checklist />;
     case 'movimento/consulta': return <Consulta />;
     case 'movimento/verificar': return <VerificarConta />;
     case 'auditoria/historico': return <Auditoria />;

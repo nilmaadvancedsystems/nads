@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { conta, empresa, nota } from './__legado__/fixtures';
-import { aoSair, gravarLancVista, gravarVerificacao, importarNotas, marcarAutomaticos, marcarMesSemNotas, marcarNaoContabil, marcarNatureza, vincularConta } from './acoes';
+import { aoSair, gravarLancVista, gravarVerificacao, importarNotas, marcarMesSemNotas, marcarNaoContabil, vincularConta } from './acoes';
 import { naturezasSemConta } from './regras/empresa';
 import { verifChave } from './regras/conciliacao';
 import { FILTRO_MOVIMENTO_VAZIO } from './tipos';
@@ -20,22 +20,6 @@ describe('aoSair', () => {
     expect(aoSair(e, agora)).toBe(e);
     const vazia = empresa();
     expect(aoSair(vazia, agora)).toBe(vazia);
-  });
-});
-
-describe('marcarNatureza', () => {
-  it('desmarcar à mão entra nos recusados (a automática não volta)', () => {
-    const e = empresa({ confMarcados: ['p||A'] });
-    const x = marcarNatureza(e, 'p||A', false, 'A', agora);
-    expect(x.confMarcados).toEqual([]);
-    expect(x.confAutoRecusados).toEqual(['p||A']);
-    expect(marcarAutomaticos(x, [{ chave: 'p||A', texto: 'A' }], agora).confMarcados).toEqual([]);
-  });
-  it('marcar não recusa', () => {
-    const x = marcarNatureza(empresa(), 'p||A', true, 'A', agora);
-    expect(x.confMarcados).toEqual(['p||A']);
-    expect(x.confAutoRecusados).toEqual([]);
-    expect(x.confHistorico[0]).toMatchObject({ acao: 'marcado', origem: 'manual' });
   });
 });
 
