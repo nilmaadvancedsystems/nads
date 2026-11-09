@@ -2,7 +2,7 @@
 // do simples nacional e lucro presumido, no mesmo layout"): em cima a competência, o Status, o Por página e a busca; embaixo
 // um .card com o andamento no topo e uma linha por empresa — código, cliente, até quando foi transmitida, a última
 // transmissão (quando e quem), as retificadas, as ações (Transmitir ou Desfazer, e Retificar) e a situação.
-import { Icone, MenuSuspenso } from '@nads/ui';
+import { BotaoIcone, Icone, MenuSuspenso } from '@nads/ui';
 import { MenuDeFiltro } from '../../dp/MenuDeFiltro';
 import { useReinf } from './useReinf';
 
@@ -34,6 +34,14 @@ export function Reinf() {
             <span className="fr-andamento-barra" aria-hidden="true"><i style={{ width: feito + '%' }} /></span>
             <span className="fr-andamento-txt">{r.pendentes ? <><b>{r.transmitidas}</b> de {r.total} transmitidas · {r.pendentes} {r.pendentes === 1 ? 'falta' : 'faltam'}</> : <b>Todas transmitidas</b>}</span>
           </span>
+          {/* a página da lista: só as setas, em cima (09/11/2026: o rodapé saiu, como no Relatório) */}
+          {vm.pagina.paginas > 1 && (
+            <>
+              <span className="tarefas-barra-espaco" />
+              <BotaoIcone pequeno icone="chevronLeft" titulo={'Página anterior (está na ' + (vm.pagina.atual + 1) + ' de ' + vm.pagina.paginas + ')'} disabled={vm.pagina.atual === 0} onClick={vm.pagina.anterior} />
+              <BotaoIcone pequeno icone="chevronRight" titulo={'Próxima página (está na ' + (vm.pagina.atual + 1) + ' de ' + vm.pagina.paginas + ')'} disabled={vm.pagina.atual >= vm.pagina.paginas - 1} onClick={vm.pagina.proxima} />
+            </>
+          )}
         </div>
         {!vm.linhas.length ? <p className="hint dp-vazio">Nenhum cliente com esses filtros.</p> : (
           <div className="fr-rola">
@@ -72,14 +80,6 @@ export function Reinf() {
                 ))}
               </tbody>
             </table>
-          </div>
-        )}
-        {vm.pagina.paginas > 1 && (
-          <div className="fr-cartao-pe">
-            <span className="hint">{vm.pagina.de}–{vm.pagina.ate} de {vm.achadas} · página {vm.pagina.atual + 1} de {vm.pagina.paginas}</span>
-            <span className="tarefas-barra-espaco" />
-            <button type="button" className="btn btn-outline btn-sm" disabled={vm.pagina.atual === 0} onClick={vm.pagina.anterior}><Icone nome="chevronLeft" />Anterior</button>
-            <button type="button" className="btn btn-outline btn-sm" disabled={vm.pagina.atual >= vm.pagina.paginas - 1} onClick={vm.pagina.proxima}>Próxima<Icone nome="chevronRight" /></button>
           </div>
         )}
       </section>

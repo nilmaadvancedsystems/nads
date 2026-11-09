@@ -59,7 +59,7 @@ export function useReinf() {
     limpar: () => { setBusca(''); setFiltro(''); setPagina(0); },
     porPagina, porPaginaOpcoes,
     setPorPagina: (n: number) => { escolherPorPagina(n); setPagina(0); },
-    pagina: { atual, paginas, de: daPagina.length ? atual * (porPagina || linhas.length) + 1 : 0, ate: atual * (porPagina || linhas.length) + daPagina.length,
+    pagina: { atual, paginas,
       anterior: () => setPagina(Math.max(0, atual - 1)), proxima: () => setPagina(Math.min(paginas - 1, atual + 1)) },
     transmitir: acoes.transmitir, desfazer: acoes.desfazer, retificar: acoes.retificar,
   };

@@ -5790,7 +5790,7 @@ html[data-sem-animacao] .mx-gaveta-fundo,html[data-sem-animacao] .mx-gaveta{anim
 .fr-busca{width:240px;}
 .fr .btn-sm{min-height:28px;height:28px;padding:0 10px;font-size:var(--fs-12);gap:6px;}
 .fr .btn-sm svg{width:14px;height:14px;}
-/* o cartão: o topo com o título, o andamento e o preencher; a caixa que rola; o pé com as páginas */
+/* o cartão: o topo com o título, o andamento e o preencher; a caixa que rola */
 .fr-cartao{margin:0;padding:0;overflow:clip;}
 /* o Presumido em azul, para não confundir com o Simples (09/11/2026): o andamento, as linhas feitas, os ✓ e a entrega seguem a cor daqui */
 .fr-regime-lp{--success:var(--info);--success-soft:var(--info-soft);--success-ink:var(--info);}
@@ -5801,8 +5801,6 @@ html[data-sem-animacao] .mx-gaveta-fundo,html[data-sem-animacao] .mx-gaveta{anim
 .fr-andamento-barra i{display:block;height:100%;border-radius:inherit;background:var(--success);}
 .fr-qtd{min-width:18px;height:18px;padding:0 5px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;
   background:var(--accent-soft);color:var(--accent-ink);font-size:var(--fs-11);font-weight:700;font-variant-numeric:tabular-nums;}
-.fr-cartao-pe{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 16px;border-top:1px solid var(--border);}
-.fr-cartao-pe .hint{margin:0;}
 .fr-rola{max-height:max(320px,calc(100dvh - 285px));overflow:auto;overscroll-behavior:contain;}
 .fr-legenda{font-size:var(--fs-12);}
 /* a tabela: largura fixa por coluna (o cliente fica com o que sobra) */
@@ -5886,7 +5884,6 @@ button.fr-entrega-feita:hover{border-color:var(--success);background:color-mix(i
   .fr-tabela col.fr-c-cliente{width:140px;}
   .fr-tabela col.fr-c-cod{width:40px;}
   .fr-tabela{min-width:960px;}
-  .fr-cartao-pe .tarefas-barra-espaco{display:none;}
   /* o código e o cliente parados à esquerda ao rolar de lado */
   .fr-tabela tbody td:nth-child(1),.fr-tabela tbody td:nth-child(2),.fr-tabela thead tr:first-child th:nth-child(-n+2){position:sticky;z-index:1;}
   .fr-tabela tbody td:nth-child(1),.fr-tabela thead tr:first-child th:nth-child(1){left:0;}
