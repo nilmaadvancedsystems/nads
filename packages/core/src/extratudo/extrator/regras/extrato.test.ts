@@ -279,6 +279,13 @@ describe('o extrato sem movimento (Vitor, 13/10/2026)', () => {
     expect(mesesSemMovimento('01 DE JANEIRO DE 2026 a 31 DE JANEIRO DE 2026 VALORES EM R$ Saldo inicial 1,00 Nenhuma movimentação realizada.')).toEqual(['2026-01']);
     expect(mesesSemMovimento('01 DE MARÇO DE 2026 a 30 DE ABRIL DE 2026 Nenhuma movimentação realizada.')).toEqual(['2026-03', '2026-04']);
   });
+  it('o Extrato Consolidado do BNB: sem movimento só se toda conta corrente disser; o mês do "Mês:"', () => {
+    const conta = (frase: string) => '> CONTA CORRENTE AGENCIA: 1 CONTA 2-3 SALDO ATUAL 0,00 ' + frase + ' > APLICACOES FINANCEIRAS: FUNDOS FUNDO EXEMPLO 10,00 ***NAO HOUVE MOVIMENTACAO NESTA CONTA NO MES DE REFERENCIA***. ';
+    const nao = '***NAO HOUVE MOVIMENTACAO NESTA CONTA NO MES DE REFERENCIA***.';
+    const inicio = 'Internet Banking BNB Extrato Consolidado Titular: EXEMPLO Mês: Outubro/2026 Data de Emissão: 09/11/2026 ';
+    expect(mesesSemMovimento(inicio + conta(nao) + conta(nao))).toEqual(['2026-10']);
+    expect(mesesSemMovimento(inicio + conta(nao) + conta('10 PIX RECEBIDO 5,00'))).toBeNull();
+  });
 });
 
 describe('saldo anterior do extrato (abre a conta quando não há mês antes)', () => {

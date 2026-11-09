@@ -87,6 +87,26 @@ export function corDoExcel(c: CorDoExcel | undefined, tema: readonly string[] = 
   return '#' + (c.tint ? comTom(hex, c.tint) : hex).toLowerCase();
 }
 
+/**
+ * A cor do arquivo no tema escuro (09/11/2026: "tema dark, planilha dark"): a luminosidade se inverte e o matiz fica; o
+ * branco vira quase o fundo da tela e o preto, quase branco. O contraste que a planilha tinha continua.
+ */
+export function corNoEscuro(hex: string): string {
+  const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255);
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const d = max - min;
+  const l = (max + min) / 2;
+  const s = d ? d / (1 - Math.abs(2 * l - 1)) : 0;
+  const h = !d ? 0 : max === r ? ((g - b) / d + 6) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  const novaL = 0.92 - l * 0.85;
+  const c = (1 - Math.abs(2 * novaL - 1)) * s;
+  const x = c * (1 - Math.abs((h % 2) - 1));
+  const m = novaL - c / 2;
+  const base = h < 1 ? [c, x, 0] : h < 2 ? [x, c, 0] : h < 3 ? [0, c, x] : h < 4 ? [0, x, c] : h < 5 ? [x, 0, c] : [c, 0, x];
+  return '#' + base.map(v => Math.round((v + m) * 255).toString(16).padStart(2, '0')).join('');
+}
+
 const BORDA: Record<string, string> = {
   hair: '1px dotted', dotted: '1px dotted', dashed: '1px dashed', dashDot: '1px dashed', dashDotDot: '1px dashed', thin: '1px solid', medium: '2px solid',
   mediumDashed: '2px dashed', mediumDashDot: '2px dashed', mediumDashDotDot: '2px dashed', slantDashDot: '2px dashed', thick: '3px solid', double: '3px double',
@@ -121,7 +141,7 @@ function estiloDaCelula(s: EstiloDoExcelJs, tema: readonly string[]): EstiloDaCe
   if (a?.indent) e.recuo = a.indent;
   for (const lado of ['top', 'right', 'bottom', 'left'] as const) {
     const b = s.border?.[lado];
-    if (b?.style && BORDA[b.style]) (e.bordas ??= {})[lado] = BORDA[b.style] + ' ' + (corDoExcel(b.color, tema) || '#000');
+    if (b?.style && BORDA[b.style]) (e.bordas ??= {})[lado] = BORDA[b.style] + ' ' + (corDoExcel(b.color, tema) || '#000000');
   }
   return Object.keys(e).length ? e : undefined;
 }

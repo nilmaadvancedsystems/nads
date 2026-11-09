@@ -1,7 +1,7 @@
 import ExcelJS from 'exceljs';
 import { describe, expect, it } from 'vitest';
 import * as XLSX from 'xlsx';
-import { corDoExcel, ehPlanilha, LIMITE_DE_LINHAS, lerPlanilhaNoNavegador, textoEmPortugues } from './planilhaNoNavegador';
+import { corDoExcel, corNoEscuro, ehPlanilha, LIMITE_DE_LINHAS, lerPlanilhaNoNavegador, textoEmPortugues } from './planilhaNoNavegador';
 
 async function arquivo(montar: (ws: ExcelJS.Worksheet, livro: ExcelJS.Workbook) => void): Promise<Uint8Array> {
   const livro = new ExcelJS.Workbook();
@@ -29,6 +29,14 @@ describe('a planilha aberta no navegador', () => {
     expect(corDoExcel({ theme: 0, tint: -0.5 })).toBe('#808080');
     expect(corDoExcel({ indexed: 2 })).toBe('#ff0000');
     expect(corDoExcel({ indexed: 64 })).toBeUndefined();
+  });
+  it('no tema escuro o claro escurece, o preto clareia e o matiz fica', () => {
+    expect(corNoEscuro('#ffffff')).toBe('#121212');
+    expect(corNoEscuro('#000000')).toBe('#ebebeb');
+    const azul = corNoEscuro('#d9e1f2');
+    const [r, , b] = [1, 3, 5].map(i => parseInt(azul.slice(i, i + 2), 16));
+    expect(b).toBeGreaterThan(r);
+    expect(b).toBeLessThan(90);
   });
   it('traz valores, mescla, largura e formatação do .xlsx', async () => {
     const p = await lerPlanilhaNoNavegador('a.xlsx', await arquivo(ws => {

@@ -1,11 +1,15 @@
 // A planilha aberta no navegador, sem baixar (Vitor, 09/11/2026: "quero um visualizador de planilhas online"): só para ver,
-// com a cara do Excel (a letra das colunas e o número das linhas fixos ao rolar, as abas embaixo). A leitura é do core
+// no tema da tela (cada cor do arquivo vai com a sua versão escura, no light-dark() do CSS) e com a cara do Excel (a letra das colunas e o número das linhas fixos ao rolar, as abas embaixo). A leitura é do core
 // (lerPlanilhaNoNavegador); aqui só se desenha.
-import type { entregas as e } from '@nads/core';
+import { entregas as e } from '@nads/core';
 import { BotaoFechar, Icone, useJanela } from '@nads/ui';
 import { memo, useRef, useState, type CSSProperties } from 'react';
 
 const LARGURA_DO_NUMERO = 44;
+
+const noTema = (cor: string) => 'light-dark(' + cor + ',' + e.corNoEscuro(cor) + ')';
+/** "1px solid #000000" com a cor no tema */
+const bordaNoTema = (b: string) => b.replace(/#[0-9a-f]{6}$/, noTema);
 
 function estiloDe(c: e.CelulaDaPlanilha): CSSProperties {
   const s = c.estilo;
@@ -17,15 +21,15 @@ function estiloDe(c: e.CelulaDaPlanilha): CSSProperties {
     ...(s?.sublinhado || s?.riscado ? { textDecoration: [s.sublinhado && 'underline', s.riscado && 'line-through'].filter(Boolean).join(' ') } : {}),
     // o tamanho do Excel é em pontos
     ...(s?.tamanho ? { fontSize: s.tamanho + 'pt' } : {}),
-    ...(s?.cor ? { color: s.cor } : {}),
-    ...(s?.fundo ? { background: s.fundo } : {}),
+    ...(s?.cor ? { color: noTema(s.cor) } : {}),
+    ...(s?.fundo ? { background: noTema(s.fundo) } : {}),
     ...(horizontal ? { textAlign: horizontal } : {}),
     ...(s?.vertical ? { verticalAlign: s.vertical } : {}),
     ...(s?.recuo ? { paddingLeft: 3 + s.recuo * 9 } : {}),
-    ...(b?.top ? { borderTop: b.top } : {}),
-    ...(b?.right ? { borderRight: b.right } : {}),
-    ...(b?.bottom ? { borderBottom: b.bottom } : {}),
-    ...(b?.left ? { borderLeft: b.left } : {}),
+    ...(b?.top ? { borderTop: bordaNoTema(b.top) } : {}),
+    ...(b?.right ? { borderRight: bordaNoTema(b.right) } : {}),
+    ...(b?.bottom ? { borderBottom: bordaNoTema(b.bottom) } : {}),
+    ...(b?.left ? { borderLeft: bordaNoTema(b.left) } : {}),
   };
 }
 
