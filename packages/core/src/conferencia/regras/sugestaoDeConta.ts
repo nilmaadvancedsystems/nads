@@ -37,6 +37,10 @@ interface Regra {
   grupos?: readonly Grupo[];
   nome?: RegExp;
   semNome?: RegExp;
+  /** a venda: o CFOP 7xxx pede a conta do mercado externo, e o 5xxx e o 6xxx, uma que não seja */
+  venda?: true;
+  /** o que o nome também tem de ter */
+  tambem?: RegExp;
   /** o centro de custo em que a conta tem de estar (com o plano dividido em centros; sem eles, vale o nome) */
   centro?: CentroDeCusto;
 }
@@ -87,11 +91,11 @@ const NBC_ESTOQUE = 'NBC TG 16 / NBC TG 1002 (estoques e custos)';
 const REGRAS: readonly Regra[] = [
   // ─── saídas ───
   { tipo: 'Saída', finais: ['101', '103', '105', '107', '109', '111', '113', '118', '122', '124', '125', '401'],
-    pede: 'Venda de produção do estabelecimento', grupos: ['Receita'], nome: /\b(venda|vendas|receita)\b.*\bprodu/, semNome: /devolu|cancel|abatim/,
+    pede: 'Venda de produção do estabelecimento', venda: true, grupos: ['Receita'], nome: /\b(venda|vendas|receita)\b.*\bprodu/, semNome: /devolu|cancel|abatim/,
     motivo: 'É a venda do que a própria empresa fabricou: receita bruta de venda de produtos, reconhecida na entrega do produto ao cliente.',
     base: NBC_RECEITA },
   { tipo: 'Saída', finais: ['102', '104', '106', '108', '110', '112', '114', '115', '119', '120', '123', '403', '405'],
-    pede: 'Venda de mercadorias', grupos: ['Receita'], nome: /\b(venda|vendas|receita)\b.*\bmercador/, semNome: /devolu|cancel|abatim|produ/,
+    pede: 'Venda de mercadorias', venda: true, grupos: ['Receita'], nome: /\b(venda|vendas|receita)\b.*\bmercador/, semNome: /devolu|cancel|abatim|produ/,
     motivo: 'É a revenda de mercadoria comprada de terceiros: receita bruta de venda de mercadorias, reconhecida na entrega.',
     base: NBC_RECEITA },
   { tipo: 'Saída', finais: ['116', '117', '922'],
@@ -186,6 +190,16 @@ const REGRAS: readonly Regra[] = [
     base: ESCRITORIO },
 ];
 
+/** a conta de venda para fora do país, pelo nome */
+const NOME_DO_MERCADO_EXTERNO = /mercado externo|exporta|exterior/;
+
+/** A regra da venda conforme o mercado do CFOP (Vitor, 09/11/2026: o 7xxx em conta separada do mercado interno). */
+function regraDoMercado(r: Regra, cfops: readonly string[]): Regra {
+  if (!r.venda) return r;
+  if (!cfops.some(c => String(c).trim().charAt(0) === '7')) return { ...r, semNome: new RegExp((r.semNome as RegExp).source + '|' + NOME_DO_MERCADO_EXTERNO.source) };
+  return { ...r, pede: r.pede + ' para o mercado externo', tambem: NOME_DO_MERCADO_EXTERNO, motivo: r.motivo + ' Como vai para fora do país (CFOP 7), fica em conta separada do mercado interno.' };
+}
+
 /** O CFOP pede a regra: pelo tipo (1/2/3 entrada, 5/6/7 saída) e pelos 3 últimos dígitos. */
 function regraDoCfop(cfop: string, tipo: TipoCfop): Regra | null {
   const f = String(cfop || '').replace(/\D/g, '').slice(-3);
@@ -205,7 +219,7 @@ function contasDaRegra(r: Regra, contas: readonly Conta[], centros: ReadonlyMap<
   const peloCentro = r.centro && centros.size > 0;
   const servem = contas.filter(c => !c.sintetica && (!r.grupos || r.grupos.includes(c.grupo))
     && (!peloCentro || centros.get(c.codigo) === r.centro)
-    && r.nome!.test(nomeNorm(c.nome)) && !(r.semNome && r.semNome.test(nomeNorm(c.nome))))
+    && r.nome!.test(nomeNorm(c.nome)) && !(r.semNome && r.semNome.test(nomeNorm(c.nome))) && !(r.tambem && !r.tambem.test(nomeNorm(c.nome))))
     .sort((a, b) => a.nome.length - b.nome.length || a.codigo.localeCompare(b.codigo));
   if (!servem.length) return [];
   const base = semPrazo(servem[0].nome);
@@ -218,8 +232,9 @@ function contasDaRegra(r: Regra, contas: readonly Conta[], centros: ReadonlyMap<
  * CFOPs (a sugestão não aparece).
  */
 export function sugestaoDaNatureza(cfops: readonly string[], tipo: TipoCfop, contas: readonly Conta[]): SugestaoDaNatureza | null {
-  const r = cfops.map(c => regraDoCfop(c, tipo)).find(Boolean);
-  if (!r) return null;
+  const achada = cfops.map(c => regraDoCfop(c, tipo)).find(Boolean);
+  if (!achada) return null;
+  const r = regraDoMercado(achada, cfops);
   if (r.nao) return { tipo: 'nao-contabil', pede: r.pede, motivo: r.motivo, base: r.base };
   const centros = centrosDoPlano(contas);
   const achadas = contasDaRegra(r, contas, centros);

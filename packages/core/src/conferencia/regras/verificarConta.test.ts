@@ -264,6 +264,38 @@ describe('Operação incorreta (Vitor, 14/10/2026: serviço prestado na conta de
   });
 });
 
+describe('honorário lançado sem nota (Vitor, 09/11/2026)', () => {
+  const HONORARIO = 'serv|tomados|cat:honorario';
+  const e = empresa({
+    contas: [conta('31201', 'Honorários Contábeis'), conta('31130', 'Serviços de Terceiros')],
+    servTomados: [servico('1234', 'NILMA DIAS OLIVEIRA - ME', 500, '42')],
+    naturezaConta: { [HONORARIO]: ['31201'], 'serv|tomados|*': ['31130'] },
+  });
+  const conferir = (i: number, linhas: LinhaRazao[]) => conferirConta({ empresa: e, contas: [e.contas[i]], razaoPorConta: { [e.contas[i].codigo]: linhas }, cfopGrupo: null, servTipo: 'tomados' });
+  const provisao: LinhaRazao = { txt: 'Honorários Contábeis a pagar 00121 Pelo valor de honorários contábeis a pagar 01/2026', data: '31/01/2026', valor: 500, sinal: -1, contra: '21000' };
+  const comNota: LinhaRazao = { txt: 'Honorários Contábeis a pagar 00121 Pelo valor de honorários contábeis a pagar - 000000000001234 - 11222333000181-NILMA DIAS OLIVEIRA - ME', data: '18/03/2026', valor: 500, sinal: -1, contra: '21000' };
+
+  it('a provisão do mês, sem número de nota, sai do "A mais" e não é pendência', () => {
+    const r = conferir(0, [provisao, comNota]);
+    expect(r.aMais).toEqual([]);
+    expect(r.honorarioSemNota?.map(l => l.data)).toEqual(['31/01/2026']);
+    expect(semPendencias(r)).toBe(true);
+    const t = totaisVerificacao(r);
+    expect(t.honorarioSemNota).toBe(500);
+    expect(t.semExplicacao).toBeCloseTo(0);
+  });
+  it('a linha que cita um número de nota que não existe continua "A mais"', () => {
+    const r = conferir(0, [comNota, { ...comNota, txt: comNota.txt.replace('1234', '9999') }]);
+    expect(r.honorarioSemNota).toEqual([]);
+    expect(r.aMais.length).toBe(1);
+  });
+  it('em outra conta de serviço, o lançamento sem nota continua "A mais"', () => {
+    const r = conferir(1, [provisao]);
+    expect(r.honorarioSemNota).toEqual([]);
+    expect(r.aMais.length).toBe(1);
+  });
+});
+
 describe('só as notas: o simples faturamento da entrega futura e as contas de adiantamento', () => {
   const nf = nota('6922', '194', 1000, '5890');
   const k = chaveNaturezaNota(nf, 'Saída');

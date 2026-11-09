@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { nota } from '../__legado__/fixtures';
-import { agruparTotaisPorNatureza, chaveNaturezaNota, chaveNota, comTipo, DESC_AMBOS, tipoDoCfop } from './cfop';
+import { agruparTotaisPorNatureza, chaveNaturezaNota, chaveNota, comTipo, DESC_AMBOS, tipoDoCfop, tituloDoGrupo } from './cfop';
 
 describe('tipoDoCfop', () => {
   it('1, 2, 3 = entrada; 5, 6, 7 = saída; resto = null', () => {
@@ -23,6 +23,18 @@ describe('chaveNaturezaNota', () => {
   it('sem descrição oficial usa a do arquivo, e sem nenhuma "cfop:"', () => {
     expect(chaveNaturezaNota({ cfop: '1000', desc: 'Do arquivo' })).toBe('Do arquivo');
     expect(chaveNaturezaNota({ cfop: '1000', desc: '' })).toBe('cfop:1000');
+  });
+});
+
+describe('o mercado externo (Vitor, 09/11/2026)', () => {
+  it('o 7xxx com a descrição de um 5xxx ou 6xxx fica numa natureza só dele', () => {
+    const g = agruparTotaisPorNatureza(comTipo([], [nota('5101', '1', 10, '1'), nota('6101', '1', 20, '2'), nota('7101', '1', 30, '3')]));
+    expect(Object.keys(g).sort()).toEqual(['Venda de produção do estabelecimento', 'Venda de produção do estabelecimento (mercado externo)']);
+    expect(g['Venda de produção do estabelecimento'].cfops.sort()).toEqual(['5101', '6101']);
+    expect(tituloDoGrupo(g['Venda de produção do estabelecimento (mercado externo)'])).toBe('7101 — Venda de produção do estabelecimento (mercado externo)');
+  });
+  it('o 7xxx com descrição só dele não muda de chave', () => {
+    expect(chaveNaturezaNota({ cfop: '7501', desc: '' })).toBe('Exportação de mercadorias recebidas com fim específico de exportação');
   });
 });
 

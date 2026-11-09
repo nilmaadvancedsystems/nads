@@ -4,7 +4,7 @@
 // Duplicadas (cada nota com o valor dela, quanto foi lançado e cada lançamento a mais, com o histórico), A mais, Operação
 // incorreta, ICMS, Não vão para o Contábil e as Conferidas pelo valor. Os valores vão como número (somam no Excel).
 import * as XLSX from 'xlsx';
-import { semPendencias, linhaDaTabela, linhasFaltando, linhasForaDoContabil, operacaoIncorretaDe, partesDoHistorico, totaisVerificacao, type LinhaRazao, type LinhaTabela, type ResultadoVerificacao } from './verificarConta';
+import { honorarioSemNotaDe, semPendencias, linhaDaTabela, linhasFaltando, linhasForaDoContabil, operacaoIncorretaDe, partesDoHistorico, totaisVerificacao, type LinhaRazao, type LinhaTabela, type ResultadoVerificacao } from './verificarConta';
 import { slugArquivoLegado } from './consultaCsv';
 
 type Celula = string | number;
@@ -66,6 +66,7 @@ export function planilhaVerificacao(r: ResultadoVerificacao, info: InfoDaPlanilh
     ['Operação incorreta', centavos(t.operacaoIncorreta), operacaoIncorretaDe(r).length],
     ['A mais na conta', centavos(t.aMais), r.aMais.length],
     ['ICMS', centavos(t.icms), r.icms.length],
+    ...(honorarioSemNotaDe(r).length ? [['Honorário sem nota', centavos(t.honorarioSemNota), honorarioSemNotaDe(r).length] as Celula[]] : []),
     ...(Math.abs(t.semExplicacao) >= 0.005 ? [['Sem explicação', centavos(t.semExplicacao), ''] as Celula[]] : []),
     ...((r.foraDoContabil || []).length ? [[], ['Não vão para o Contábil (fora da soma das notas)', centavos((r.foraDoContabil || []).reduce((s, n) => s + n.valor, 0)), (r.foraDoContabil || []).length] as Celula[]] : []),
   ];
@@ -99,6 +100,7 @@ export function planilhaVerificacao(r: ResultadoVerificacao, info: InfoDaPlanilh
   if (r.aMais.length) XLSX.utils.book_append_sheet(wb, aba(CAB_REL, doRelatorio(r.aMais), LARG_REL, totalRel), 'A mais');
   if (operacaoIncorretaDe(r).length) XLSX.utils.book_append_sheet(wb, aba(CAB_REL, doRelatorio(operacaoIncorretaDe(r)), LARG_REL, totalRel), 'Operação incorreta');
   if (r.icms.length) XLSX.utils.book_append_sheet(wb, aba(CAB_REL, doRelatorio(r.icms), LARG_REL, totalRel), 'ICMS');
+  if (honorarioSemNotaDe(r).length) XLSX.utils.book_append_sheet(wb, aba(CAB_REL, doRelatorio(honorarioSemNotaDe(r)), LARG_REL, totalRel), 'Honorário sem nota');
 
   // ── as notas fora (não vão para o Contábil) e as conferidas pelo valor (a nota sem o número no histórico) ──
   const fora = linhasForaDoContabil(r);

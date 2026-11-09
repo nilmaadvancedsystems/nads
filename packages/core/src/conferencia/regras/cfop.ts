@@ -26,6 +26,18 @@ export const DESC_AMBOS: Readonly<Record<string, true>> = (() => {
   return r;
 })();
 
+/** As descrições dos CFOPs de saída dentro do país (5xxx e 6xxx). */
+const DESC_NO_PAIS: ReadonlySet<string> = new Set(Object.keys(CFOP_DESC).filter(c => /^[56]/.test(c)).map(c => CFOP_DESC[c]));
+
+/**
+ * A descrição da natureza: a do CFOP, e o 7xxx que tem a mesma descrição de um 5xxx ou 6xxx sai como "(mercado externo)", numa
+ * natureza só dele (Vitor, 09/11/2026: "o que for para o mercado externo você separa"; o 7101 caía junto do 5101 e do 6101).
+ */
+function descDaNatureza(cfop: string, descArquivo?: string): string {
+  const desc = CFOP_DESC[cfop] || descArquivo || '';
+  return cfop.charAt(0) === '7' && DESC_NO_PAIS.has(CFOP_DESC[cfop]) ? desc + ' (mercado externo)' : desc;
+}
+
 /** Descrição do CFOP: a oficial ou, sem ela, a que veio no arquivo. */
 export function descDoCfop(cfop: string, descArquivo?: string): string {
   return CFOP_DESC[cfop] || descArquivo || '';
@@ -34,7 +46,7 @@ export function descDoCfop(cfop: string, descArquivo?: string): string {
 /** Chave da natureza de CFOP de uma nota (o que o Cadastro liga às contas). */
 export function chaveNaturezaNota(n: Pick<Nota, 'cfop' | 'desc'> & { tipo?: TipoCfop }, tipoPadrao?: TipoCfop): string {
   const tipo = tipoDoCfop(n.cfop) || n.tipo || tipoPadrao;
-  const desc = CFOP_DESC[n.cfop] || n.desc || '';
+  const desc = descDaNatureza(n.cfop, n.desc);
   let key = desc || 'cfop:' + n.cfop;
   if (desc && DESC_AMBOS[desc]) key = desc + ' (' + (tipo === 'Entrada' ? 'entrada' : 'saída') + ')';
   return key;
@@ -56,7 +68,7 @@ export function agruparTotaisPorNatureza(notas: NotaComTipo[]): Record<string, G
   const g: Record<string, GrupoNatureza> = {};
   for (const n of notas) {
     const tipo = (tipoDoCfop(n.cfop) || n.tipo) as TipoCfop;
-    const desc = CFOP_DESC[n.cfop] || n.desc || '';
+    const desc = descDaNatureza(n.cfop, n.desc);
     const key = chaveNaturezaNota(n);
     if (!g[key]) g[key] = { desc, cfops: [], itens: [], tipo };
     if (g[key].cfops.indexOf(n.cfop) < 0) g[key].cfops.push(n.cfop);
@@ -93,7 +105,7 @@ export function agruparPorNatureza<T extends ItemComNota>(lista: T[]): Record<st
   const g: Record<string, { desc: string; cfops: string[]; itens: T[] }> = {};
   for (const d of lista) {
     const cfop = d.nota.cfop;
-    const desc = CFOP_DESC[cfop] || d.nota.desc || '';
+    const desc = descDaNatureza(cfop, d.nota.desc);
     const key = desc || 'cfop:' + cfop;
     if (!g[key]) g[key] = { desc, cfops: [], itens: [] };
     if (g[key].cfops.indexOf(cfop) < 0) g[key].cfops.push(cfop);

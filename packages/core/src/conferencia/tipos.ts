@@ -188,18 +188,15 @@ export interface EmpresaDaLista {
   regime: string;
 }
 
-/** Filtro do Movimento (o antigo ccState), comum ao Relatório e ao Checklist. */
+/** Filtro do Movimento (o antigo ccState). */
 export interface FiltroMovimento {
   dataDe: string;
   dataAte: string;
-  busca: string;
   /** competências aaaa-mm marcadas no gráfico */
   meses: string[];
-  tipo: '' | TipoCfop;
-  status: '' | 'pendente' | 'conferido';
 }
 
-export const FILTRO_MOVIMENTO_VAZIO: FiltroMovimento = { dataDe: '', dataAte: '', busca: '', meses: [], tipo: '', status: '' };
+export const FILTRO_MOVIMENTO_VAZIO: FiltroMovimento = { dataDe: '', dataAte: '', meses: [] };
 
 /** Grupo de notas de uma natureza de CFOP. */
 export interface GrupoNatureza<N = NotaComTipo> {

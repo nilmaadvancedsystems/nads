@@ -21,7 +21,15 @@ describe('sugestaoDaNatureza', () => {
     expect(sugestaoDaNatureza(['2117'], 'Entrada', PLANO)).toMatchObject({ tipo: 'falta-conta', pede: 'Adiantamento a fornecedores' });
   });
   it('venda de produção (5101): a conta de venda de produção do plano', () => {
-    expect(sugestaoDaNatureza(['5101', '6101', '7101'], 'Saída', PLANO)).toMatchObject({ tipo: 'conta', contas: [{ codigo: '90004' }] });
+    expect(sugestaoDaNatureza(['5101', '6101'], 'Saída', PLANO)).toMatchObject({ tipo: 'conta', contas: [{ codigo: '90004' }] });
+  });
+  it('venda para o mercado externo (7101): só a conta de exportação; o mercado interno não fica com ela (09/11/2026)', () => {
+    const interno = conta('91001', 'Vendas de produtos no mercado interno', 0, 'Receita', 'C');
+    const externo = conta('91002', 'Vendas de produtos no mercado externo', 0, 'Receita', 'C');
+    expect(sugestaoDaNatureza(['7101'], 'Saída', [interno, externo])).toMatchObject({ tipo: 'conta', contas: [{ codigo: '91002' }] });
+    expect(sugestaoDaNatureza(['5101', '6101'], 'Saída', [externo, interno])).toMatchObject({ tipo: 'conta', contas: [{ codigo: '91001' }] });
+    expect(sugestaoDaNatureza(['7101'], 'Saída', [interno])).toMatchObject({ tipo: 'falta-conta', pede: 'Venda de produção do estabelecimento para o mercado externo' });
+    expect(sugestaoDaNatureza(['7102'], 'Saída', [conta('91003', 'Vendas de mercadorias', 0, 'Receita', 'C')])?.tipo).toBe('falta-conta');
   });
   it('revenda (6102): a conta de vendas de mercadorias de nome mais curto, sem a de produção', () => {
     expect(sugestaoDaNatureza(['6102'], 'Saída', PLANO)).toMatchObject({ tipo: 'conta', contas: [{ codigo: '90001' }] });

@@ -72,6 +72,8 @@ d('paridade com o original (conferencia.html)', () => {
     const cfops = Object.keys(CFOP_DESC).concat(['1000', '4102', '', '9999']);
     for (const c of cfops) {
       expect(tipoDoCfop(c)).toBe(leg().tipoDoCfop(c));
+      // o mercado externo é regra nova (09/11/2026): o original punha o 7xxx junto do 5xxx e do 6xxx
+      if (chaveNaturezaNota({ cfop: c, desc: '' }).endsWith(' (mercado externo)')) continue;
       const n = { cfop: c, desc: 'Descrição do arquivo' };
       expect(chaveNaturezaNota(n)).toBe(leg().chaveNaturezaNota(n));
       expect(chaveNaturezaNota({ cfop: c, desc: '' }, 'Saída')).toBe(leg().chaveNaturezaNota({ cfop: c, desc: '' }, 'Saída'));
