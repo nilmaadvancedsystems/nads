@@ -45,6 +45,7 @@ const ConfiguracoesDoDp = pedaco(() => import('../telas/dp/ConfiguracoesDoDp'), 
 const Mandei = pedaco(() => import('../telas/mandei/Mandei'), 'Mandei');
 const ChamadosDoCliente = pedaco(() => import('../telas/area-cliente/ChamadosDoCliente'), 'ChamadosDoCliente');
 const RecebidosDoCliente = pedaco(() => import('../telas/area-cliente/RecebidosDoCliente'), 'RecebidosDoCliente');
+import { LoginLiberadoNoFinanceiro } from '../telas/acesso/LoginLiberadoNoFinanceiro';
 const ConfiguracoesDoFinanceiro = pedaco(() => import('../telas/financeiro/ConfiguracoesDoFinanceiro'), 'ConfiguracoesDoFinanceiro');
 const NotasFiscais = pedaco(() => import('../telas/financeiro/NotasFiscais'), 'NotasFiscais');
 const Caixa = pedaco(() => import('../telas/financeiro/Caixa'), 'Caixa');
@@ -68,7 +69,7 @@ function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
     case 'cadastro': return pagina === 'usuarios' ? <UsuariosDoNads /> : <TelaDoAdmin pagina={pagina as IdPaginaAdmin} />;
     // a Área do Cliente com o Mandei junto (19/10/2026): Chamados, Recebidos, Meus tickets e a Central de tickets
     case 'area-cliente': return pagina === 'recebidos' ? <RecebidosDoCliente /> : pagina === 'meus' || pagina === 'central' ? <Mandei pagina={pagina} /> : <ChamadosDoCliente />;
-    case 'financeiro': return pagina === 'painel' ? <PainelFinanceiro /> : pagina === 'devedores' ? <Devedores /> : pagina === 'resultado' ? <PainelFinanceiro comResultado /> : pagina === 'extrato' || pagina === 'conciliacao' ? <ImportarExtrato /> : pagina === 'configuracoes' ? <ConfiguracoesDoFinanceiro /> : pagina === 'caixa' ? <Caixa /> : pagina === 'honorarios' ? <Honorarios /> : pagina === 'pagar' ? <ContasAPagar /> : pagina === 'plano' ? <PlanoDeContas /> : <NotasFiscais />;
+    case 'financeiro': return <LoginLiberadoNoFinanceiro>{pagina === 'painel' ? <PainelFinanceiro /> : pagina === 'devedores' ? <Devedores /> : pagina === 'resultado' ? <PainelFinanceiro comResultado /> : pagina === 'extrato' || pagina === 'conciliacao' ? <ImportarExtrato /> : pagina === 'configuracoes' ? <ConfiguracoesDoFinanceiro /> : pagina === 'caixa' ? <Caixa /> : pagina === 'honorarios' ? <Honorarios /> : pagina === 'pagar' ? <ContasAPagar /> : pagina === 'plano' ? <PlanoDeContas /> : <NotasFiscais />}</LoginLiberadoNoFinanceiro>;
     // a entrega de documentos aos clientes, trazida do Entregas (16/10/2026)
     case 'entregas': return pagina === 'painel' ? <PainelDeEntregas /> : pagina === 'solicitacoes' ? <Solicitacoes /> : pagina === 'nova' ? <NovaEntrega /> : <RotaDeEntregas />;
     case 'drive': return <ExploradorDoDrive />;

@@ -65,7 +65,7 @@ export function criarAcessoFirestore(quem: () => Quem): RepoAcesso {
     });
     if (q.admin) {
       paradas.push(onSnapshot(query(collection(db, 'nadsPedidos'), where('status', '==', 'pendente')), s => {
-        pendentes = s.docs.map(d => u.pedidoDoDocumento(d.id, d.data())).filter(p => !u.pedidoVencido(p)).sort((a, b) => a.criadoEm.localeCompare(b.criadoEm));
+        pendentes = s.docs.map(d => u.pedidoDoDocumento(d.id, d.data())).filter(p => !u.pedidoVencido(p) && p.uid !== q.uid).sort((a, b) => a.criadoEm.localeCompare(b.criadoEm));
         mudou();
       }, () => {}));
       paradas.push(onSnapshot(query(collection(db, 'nadsSessoes'), orderBy('liberadoEm', 'desc'), limit(300)), s => {
@@ -113,7 +113,7 @@ export function criarAcessoFirestore(quem: () => Quem): RepoAcesso {
       const b = writeBatch(db);
       b.set(doc(db, 'nadsPedidos', p.id, 'codigo', 'atual'), { codigo });
       b.update(doc(db, 'nadsPedidos', p.id), {
-        status: 'aprovado', aprovadoPor: q.nome, aprovadoEm: new Date().toISOString(),
+        status: 'aprovado', aprovadoPor: q.nome, aprovadoPorUid: q.uid, aprovadoEm: new Date().toISOString(),
         // o código só vale por um tempo (as regras conferem com a hora do servidor)
         validoAte: Timestamp.fromMillis(Date.now() + u.PRAZO_DO_CODIGO_MS),
       });
