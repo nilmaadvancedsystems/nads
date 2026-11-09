@@ -115,6 +115,16 @@ def falhar(motivo):
     fim(ok=False, erro=motivo)
 
 
+def com_tela(motivo, nome):
+    """O erro de janela que não abriu leva a tela junto (tamanho, janelas à mostra, foto): alterdata_tela.py (09/11/2026)."""
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # o -I tira a pasta do roteiro do caminho
+        import alterdata_tela
+        return alterdata_tela.resumo_do_erro(motivo, nome)
+    except Exception:
+        return motivo
+
+
 def mes(data):
     # dd/mm/aaaa → mmaaaa (a máscara do período é mês/ano)
     return data[3:5] + data[6:10]
@@ -157,7 +167,7 @@ try:
     mouse.click(coords=(ox + 330, oy + 110))
     w = esperar(lambda: janelas(CLASSE), 25)
     if not w:
-        falhar('o Balancete Dinâmico não abriu')
+        falhar(com_tela('o Balancete Dinâmico não abriu', 'dinamico-nao-abriu'))
     w = w[0]
     # a tela de novidade do Alterdata ("Tenho uma novidade…"): Fechar
     for n in esperar(lambda: janelas('TfrmAvaNotificacaoEstendida'), 3) or []:
