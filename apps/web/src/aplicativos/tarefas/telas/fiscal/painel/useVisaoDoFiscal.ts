@@ -10,6 +10,14 @@ import { useAndamento } from '../../empresas/andamento';
 
 export type FiltroDoPainel = 'todos' | 'pendencias';
 
+// a conferência ordena todos os números de nota: uma conta por documento de saídas, não uma por empresa a cada desenho
+const buracosJaContados = new WeakMap<t.sieg.SaidasSieg, number>();
+function buracosDe(sai: t.sieg.SaidasSieg): number {
+  let n = buracosJaContados.get(sai);
+  if (n === undefined) { n = t.sieg.conferirSaidas(sai).series.reduce((s, x) => s + x.faltando.length, 0); buracosJaContados.set(sai, n); }
+  return n;
+}
+
 export function useVisaoDoFiscal() {
   useRegimesDoEntregas(); // o regime do Entregas, quando chega
   const a = useAndamento();
@@ -32,7 +40,7 @@ export function useVisaoDoFiscal() {
       progresso: l.total ? Math.round((l.concluidas / l.total) * 100) : 0,
       rota: caminhoDoExecutor(l.rota, a.competencia),
       notas: c ? t.sieg.totalDe(c.emitidas) + t.sieg.totalDe(c.recebidas) : null,
-      buracos: sai ? t.sieg.conferirSaidas(sai).series.reduce((s, x) => s + x.faltando.length, 0) : null,
+      buracos: sai ? buracosDe(sai) : null,
       xmls: num('fiscalXmls'),
       faltam: num('fiscalFaltam'),
       valores: num('fiscalValores'),

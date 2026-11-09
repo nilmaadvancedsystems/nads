@@ -26,7 +26,8 @@ export function criarGmailFirestore(quem: () => (e.Quem | null), competencia: ()
   let caixa: e.CaixaDoGmail = 'robo';
   let docSetor: Record<string, unknown> | null = null;
   let pararSetor = () => {};
-  const recalcular = () => { estado = e.estadoDoRobo(caixa === 'robo' ? docEstado : e.docDaCaixa(docEstado, docSetor)); mudou(); };
+  const calcular = () => { estado = e.estadoDoRobo(caixa === 'robo' ? docEstado : e.docDaCaixa(docEstado, docSetor)); };
+  const recalcular = () => { calcular(); mudou(); };
   let clientes: { carregados: boolean; lista: e.ClienteDoEntregas[] } = { carregados: false, lista: [] };
   // o CNPJ/CPF de cada código, também dos inativos (Sávio, 20/10/2026), da mesma leitura dos clientes
   let documentos: ReadonlyMap<number, string> = new Map();
@@ -52,8 +53,13 @@ export function criarGmailFirestore(quem: () => (e.Quem | null), competencia: ()
       ignorados = Array.isArray(r) ? r.map(String) : [];
       mudou();
     }, () => {});
-    // o "online" depende da hora: recalcula a cada 30 s
-    setInterval(() => { if (docEstado) recalcular(); }, 30 * 1000);
+    // o "online" depende da hora: recalcula a cada 30 s (só redesenha quando ele vira)
+    setInterval(() => {
+      if (!docEstado) return;
+      const era = estado.online;
+      calcular();
+      if (estado.online !== era) mudou();
+    }, 30 * 1000);
   }
 
   function pessoa(): e.Quem {

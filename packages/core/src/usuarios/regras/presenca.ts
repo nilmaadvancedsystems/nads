@@ -1,6 +1,6 @@
 // Quem está online no nads (Vitor, 05/10/2026: "quero que coloque uma opção de online"): o nads aberto de cada pessoa
 // grava usuarios/{uid}.nadsVistoEm a cada 3 minutos (só com a aba visível). Online = visto há menos de 5 minutos.
-import type { OndeNoNads } from '../tipos';
+import type { DocUsuario, OndeNoNads } from '../tipos';
 
 /** Quanto tempo sem sinal ainda conta como online (o ponto é a cada 3 min; sobra folga para um atraso). */
 export const MINUTOS_ONLINE = 5;
@@ -10,6 +10,12 @@ export const PONTO_DA_PRESENCA_MS = 3 * 60 * 1000;
 export function estaOnline(vistoEm: string | null | undefined, agora: Date): boolean {
   const t = vistoEm ? Date.parse(vistoEm) : NaN;
   return !isNaN(t) && agora.getTime() - t < MINUTOS_ONLINE * 60 * 1000;
+}
+
+/** O documento mudou só no sinal de vida (a hora do ponto e a hora do "onde está")? Entrar ou sair de uma etapa não é só o sinal. */
+export function mudouSoOPonto(antes: DocUsuario | undefined, depois: DocUsuario): boolean {
+  const semSinal = (d: DocUsuario) => JSON.stringify({ ...d, nadsVistoEm: '', nadsOnde: d.nadsOnde ? { ...d.nadsOnde, em: '' } : null });
+  return !!antes && semSinal(antes) === semSinal(depois);
 }
 
 /**

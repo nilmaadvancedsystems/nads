@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { estaOnline, rotuloDaPresenca, rotuloDoOnde, veAtividade } from '.';
+import { estaOnline, mudouSoOPonto, rotuloDaPresenca, rotuloDoOnde, veAtividade, type DocUsuario } from '.';
 
 describe('quem vê a atividade atual', () => {
   const contabil = { departamento: 'contabil' };
@@ -22,6 +22,23 @@ describe('quem vê a atividade atual', () => {
 
 const agora = new Date('2026-10-05T14:00:00.000Z');
 const antes = (min: number) => new Date(agora.getTime() - min * 60000).toISOString();
+
+describe('o ponto de presença não redesenha o app', () => {
+  const onde = { codigo: 901, empresa: 'EMPRESA EXEMPLO', etapa: 'Importação', em: antes(3) };
+  const doc = { nome: 'Pessoa', nadsVistoEm: antes(3), nadsOnde: onde } as DocUsuario;
+  it('só a hora do ponto ou do sinal mudou', () => {
+    expect(mudouSoOPonto(doc, { ...doc, nadsVistoEm: antes(0) })).toBe(true);
+    expect(mudouSoOPonto(doc, { ...doc, nadsVistoEm: antes(0), nadsOnde: { ...onde, em: antes(0) } })).toBe(true);
+  });
+  it('mudou o cadastro, a etapa ou a pessoa saiu da etapa', () => {
+    expect(mudouSoOPonto(doc, { ...doc, nome: 'Outra' } as DocUsuario)).toBe(false);
+    expect(mudouSoOPonto(doc, { ...doc, nadsOnde: { ...onde, etapa: 'Fechamento' } })).toBe(false);
+    expect(mudouSoOPonto(doc, { ...doc, nadsOnde: undefined })).toBe(false);
+  });
+  it('sem o documento de antes, avisa', () => {
+    expect(mudouSoOPonto(undefined, doc)).toBe(false);
+  });
+});
 
 describe('presença no nads', () => {
   it('online até 5 minutos sem sinal', () => {
