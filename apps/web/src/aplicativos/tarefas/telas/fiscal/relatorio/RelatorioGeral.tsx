@@ -68,7 +68,7 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
       {!vm.podeGravar && <p className="hint">Só o Fiscal preenche o relatório; você está vendo.</p>}
 
       {vm.carregando ? <Esqueleto linhas={8} /> : (
-        <section className="card fr-cartao" aria-label={g.rotulo}>
+        <section className={'card fr-cartao fr-regime-' + regime} aria-label={g.rotulo}>
           <div className="fr-cartao-topo">
             {/* o andamento: quantas das empresas achadas já estão concluídas */}
             <span className="fr-andamento" title={vm.faltam ? vm.faltam + (vm.faltam === 1 ? ' falta' : ' faltam') + ' de ' + vm.achadas : 'tudo feito'}>
@@ -80,6 +80,13 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
               <button type="button" className="btn btn-outline btn-sm fr-preencher" onClick={() => void vm.usarSugestoes()} title="Passa o que o Entregas já entregou para os campos em branco">
                 <Icone nome="download" />Preencher com o Entregas<span className="fr-qtd">{vm.comSugestaoParaUsar}</span>
               </button>
+            )}
+            {/* a página da lista: só as setas, em cima da Entrega (09/11/2026: o rodapé saiu) */}
+            {vm.pagina.paginas > 1 && (
+              <>
+                <BotaoIcone pequeno icone="chevronLeft" titulo={'Página anterior (está na ' + (vm.pagina.atual + 1) + ' de ' + vm.pagina.paginas + ')'} disabled={vm.pagina.atual === 0} onClick={vm.pagina.anterior} />
+                <BotaoIcone pequeno icone="chevronRight" titulo={'Próxima página (está na ' + (vm.pagina.atual + 1) + ' de ' + vm.pagina.paginas + ')'} disabled={vm.pagina.atual >= vm.pagina.paginas - 1} onClick={vm.pagina.proxima} />
+              </>
             )}
           </div>
           {!vm.total ? <p className="hint dp-vazio">Nenhuma empresa do {g.rotulo} no Cadastro: as empresas entram pelo regime.</p>
@@ -136,14 +143,6 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
                 </table>
               </div>
             )}
-          {vm.pagina.paginas > 1 && (
-            <div className="fr-cartao-pe">
-              <span className="hint">{vm.pagina.de}–{vm.pagina.ate} de {vm.achadas} · página {vm.pagina.atual + 1} de {vm.pagina.paginas}</span>
-              <span className="tarefas-barra-espaco" />
-              <button type="button" className="btn btn-outline btn-sm" disabled={vm.pagina.atual === 0} onClick={vm.pagina.anterior}><Icone nome="chevronLeft" />Anterior</button>
-              <button type="button" className="btn btn-outline btn-sm" disabled={vm.pagina.atual >= vm.pagina.paginas - 1} onClick={vm.pagina.proxima}>Próxima<Icone nome="chevronRight" /></button>
-            </div>
-          )}
         </section>
       )}
       {guiasAbertas && <JanelaDasGuias regime={regime} competencia={vm.competencia} fechar={() => setGuiasAbertas(false)} />}

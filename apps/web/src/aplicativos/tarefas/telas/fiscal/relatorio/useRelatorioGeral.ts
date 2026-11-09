@@ -153,8 +153,8 @@ export function useRelatorioGeral(regime: RegimeDoRelatorio) {
     grupo,
     /** as colunas das guias da página, com o nome curto */
     guias: colunas.map(c => ({ id: c.id, rotulo: CURTO[c.id] || c.rotulo, nome: c.rotulo })),
-    /** a página da lista: '1–25 de 166', a anterior e a próxima */
-    pagina: { atual, paginas, de: daPagina.length ? atual * (porPagina || linhas.length) + 1 : 0, ate: atual * (porPagina || linhas.length) + daPagina.length,
+    /** a página da lista: a anterior e a próxima */
+    pagina: { atual, paginas,
       anterior: () => setPagina(Math.max(0, atual - 1)), proxima: () => setPagina(Math.min(paginas - 1, atual + 1)) },
     total: todas.length, linhas: daPagina, achadas: linhas.length, faltam: linhas.filter(r => r.situacao !== 'concluida').length,
     /** um campo de valor: guarda como fica na tela (1.234,50, — ou 0) */

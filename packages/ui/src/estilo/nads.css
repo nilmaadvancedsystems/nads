@@ -5796,6 +5796,8 @@ html[data-sem-animacao] .mx-gaveta-fundo,html[data-sem-animacao] .mx-gaveta{anim
 .fr .btn-sm svg{width:14px;height:14px;}
 /* o cartão: o topo com o título, o andamento e o preencher; a caixa que rola; o pé com as páginas */
 .fr-cartao{margin:0;padding:0;overflow:clip;}
+/* o Presumido em azul, para não confundir com o Simples (09/11/2026): o andamento, as linhas feitas, os ✓ e a entrega seguem a cor daqui */
+.fr-regime-lp{--success:var(--info);--success-soft:var(--info-soft);--success-ink:var(--info);}
 .fr-cartao-topo{display:flex;align-items:center;gap:12px;flex-wrap:wrap;min-height:36px;padding:4px 12px;border-bottom:1px solid var(--border);}
 .fr-andamento{display:inline-flex;align-items:center;gap:8px;min-width:0;font-size:var(--fs-12);color:var(--ink-muted);font-variant-numeric:tabular-nums;}
 .fr-andamento b{color:var(--ink);font-weight:600;}
