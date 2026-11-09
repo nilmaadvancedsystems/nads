@@ -5448,19 +5448,12 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .tdl-aba-qtd{margin-left:auto;min-width:20px;height:18px;padding:0 6px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;
   font-size:var(--fs-11);font-weight:700;background:var(--surface-3);color:var(--ink-muted);font-variant-numeric:tabular-nums;}
 .cad-janela-aba.ativa .tdl-aba-qtd{background:var(--accent-soft);color:var(--accent-ink);}
-.tdl-barra .busca-curta{width:240px;}
-.tdl-tabela{max-height:none;}
-.tdl-tabela th,.tdl-tabela td{white-space:nowrap;}
-.tdl-tabela td.tdl-titulo{white-space:normal;min-width:200px;}
 .tdl-abrir{display:inline-flex;align-items:baseline;gap:8px;padding:0;border:0;background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer;}
 .tdl-abrir:hover .tdl-titulo-texto{text-decoration:underline;}
 .tdl-abrir:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px;}
 .tdl-titulo-texto{font-weight:600;}
-.tdl-contas{display:inline-flex;gap:10px;margin-left:10px;white-space:nowrap;vertical-align:middle;}
 .tdl-conta{display:inline-flex;align-items:center;gap:3px;font-size:var(--fs-12);}
 .tdl-atrasada{color:var(--danger);font-weight:600;}
-.tdl-cliente{display:inline-block;max-width:120px;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom;}
-.tdl-cliente-linha{display:inline-flex;align-items:baseline;gap:4px;}
 .tdl-tarefa{display:flex;flex-direction:column;gap:16px;}
 .tdl-tarefa-topo{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
 .tdl-tarefa-titulo{margin:0;font-size:var(--fs-20);font-weight:650;}
@@ -5484,6 +5477,36 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .tdl-prazo-campos .data-mask{flex:1 1 auto;min-width:0;}
 .tdl-prazo-campos input[type=time]{flex:0 0 96px;}
 .tdl-acoes-linha{display:flex;gap:6px;justify-content:flex-end;}
+/* a lista de tarefas (09/11/2026): a barra, as situações no topo do cartão e as linhas no jeito das issues do GitHub */
+.tdl-barra{flex-wrap:wrap;}
+.tdl-barra .busca-curta{flex:1 1 260px;width:auto;max-width:440px;}
+.tdl-caixa{margin:0;padding:0;overflow:clip;}
+.tdl-situacoes{display:flex;flex-wrap:wrap;gap:2px 4px;padding:8px;background:var(--surface-2);border-bottom:1px solid var(--border);}
+.tdl-situacao{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px;border:0;border-radius:6px;background:none;color:var(--ink-muted);font:inherit;font-size:var(--fs-14);cursor:pointer;}
+.tdl-situacao svg{color:var(--tom);}
+.tdl-situacao:hover{background:var(--hover-bg);color:var(--ink);}
+.tdl-situacao:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;}
+.tdl-situacao.ativo{background:var(--hover-bg);color:var(--ink);font-weight:600;}
+.tdl-situacao-qtd{font-weight:600;color:var(--ink);}
+.tdl-situacao.alerta .tdl-situacao-qtd{color:var(--tom);}
+.tdl-grupo{display:flex;align-items:center;gap:8px;margin:0;padding:6px 16px;border-bottom:1px solid var(--border);background:var(--surface-2);font-size:var(--fs-12);font-weight:600;color:var(--ink-muted);}
+.tdl-grupo.tdl-atrasada{color:var(--danger);}
+.tdl-grupo .tdl-aba-qtd{margin-left:0;}
+.tdl-grupos > section + section .tdl-grupo{border-top:1px solid var(--border);}
+.tdl-linhas{list-style:none;margin:0;padding:0;}
+.tdl-linha{display:grid;grid-template-columns:24px minmax(0,1fr) 150px 150px;align-items:center;gap:12px;min-height:60px;padding:8px 16px;border-top:1px solid var(--border);cursor:pointer;}
+.tdl-linha.com-acoes{grid-template-columns:24px minmax(0,1fr) 150px 150px 188px;}
+.tdl-linha:first-child{border-top:0;}
+.tdl-linha:hover{background:var(--hover-bg);}
+.tdl-marca{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:var(--tom-fundo);color:var(--tom);}
+.tdl-corpo{min-width:0;}
+.tdl-corpo-titulo{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;}
+.tdl-meta{display:flex;flex-wrap:wrap;gap:0 12px;margin:2px 0 0;font-size:var(--fs-12);color:var(--ink-muted);}
+.tdl-meta-cliente{min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.tdl-prazo,.tdl-quem{display:inline-flex;align-items:center;gap:6px;min-width:0;font-size:var(--fs-13);color:var(--ink-muted);white-space:nowrap;}
+.tdl-prazo.tdl-atrasada{color:var(--danger);}
+.tdl-avatar{display:inline-flex;align-items:center;justify-content:center;flex:none;width:22px;height:22px;border-radius:50%;background:var(--surface-3);color:var(--ink);font-size:var(--fs-12);font-weight:600;}
+.tdl-quem-nome{overflow:hidden;text-overflow:ellipsis;}
 .tdl-acoes-linha .btn{padding:0 8px;}
 /* o Delegar da tarefa (09/11/2026): o título e o toggle na mesma linha */
 .tdl-delegar-topo{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
@@ -5518,9 +5541,9 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
   box-shadow:0 0 0 2px var(--drawer-bg,var(--bg));pointer-events:none;font-variant-numeric:tabular-nums;}
 @media (max-width:760px){
   .tdl-form{grid-template-columns:minmax(0,1fr);}
-  .tdl-barra .busca-curta{width:100%;}
-  .tdl-cliente{max-width:140px;}
-  .tdl-tabela td.tdl-titulo{min-width:180px;}
+  .tdl-barra .busca-curta{flex-basis:100%;max-width:none;}
+  .tdl-linha,.tdl-linha.com-acoes{grid-template-columns:24px minmax(0,1fr);row-gap:6px;}
+  .tdl-prazo,.tdl-quem,.tdl-linha .tdl-acoes-linha{grid-column:2;justify-content:flex-start;}
   .tdl-tarefa-pe{flex-wrap:wrap;}
 }
 
