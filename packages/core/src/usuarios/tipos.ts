@@ -13,7 +13,7 @@ export type Nivel = 'diretor' | 'senior' | 'pleno' | 'junior';
  * Papéis que os sistemas do Entregas conferem (temPapel). 'staff' é o piso de quem tem conta;
  * 'dp' é o do Departamento Pessoal (a Tarefas já rotula).
  */
-/** 'financeiro': vê o Financeiro do nads; só o Diretor liga (09/11/2026). 'desenvolvedor': quem pode ligar o modo desenvolvedor (Vitor, 06/11/2026: "apenas para quem tá desenvolvendo"). */
+/** 'financeiro': autoriza quem não é Diretor a ver o Financeiro do nads; só o Diretor dá (09/11/2026). 'desenvolvedor': quem pode ligar o modo desenvolvedor (Vitor, 06/11/2026: "apenas para quem tá desenvolvendo"). */
 export type Papel = 'staff' | 'admin' | 'contabil' | 'fiscal' | 'dp' | 'office_boy' | 'equipe_geral' | 'desenvolvedor' | 'financeiro';
 
 /** usuarios/{uid} como está gravado (campos do Entregas + os novos, todos opcionais na leitura). */

@@ -178,18 +178,10 @@ export const APLICACOES: readonly Aplicacao[] = [
  */
 export const podeMexerNoCadastro = (op: Operador | null) => !!op && (op.admin || op.nivel === 'diretor' || op.nivel === 'senior');
 
-/** Quem vê o Financeiro: quem tem o papel Financeiro (o Diretor liga na ficha da pessoa, 09/11/2026) e, de base, o Sávio e a Nilma, pelo nome (30/10/2026: "remova o acesso de admin ao financeiro e deixe o acesso
- * apenas para o usuario Savio e Nilma"). O admin e o diretor não entram mais só pelo papel. Sem acento e sem caixa, o primeiro nome. */
-const DONOS_DO_FINANCEIRO = ['savio', 'nilma', 'vitor']; // o Vitor entrou em 09/11/2026 ("coloca para Vitor também")
-/** Contas liberadas pelo login exato (05/11/2026: o gustavo.s, sem liberar o outro Gustavo, que tem o mesmo primeiro nome). */
-const LOGINS_DO_FINANCEIRO = ['gustavo.s@nilma.local'];
-export const podeVerOFinanceiro = (op: Operador | null) => {
-  if (!op) return false;
-  if (op.financeiro) return true;
-  if (op.email && LOGINS_DO_FINANCEIRO.includes(op.email.trim().toLowerCase())) return true;
-  const primeiro = op.nome.normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase().split(/[\s.]+/)[0];
-  return DONOS_DO_FINANCEIRO.includes(primeiro);
-};
+/** Só o nível Diretor: o admin sem esse nível não conta para o Financeiro (30/10/2026: "remova o acesso de admin ao financeiro"). */
+export const temNivelDiretor = (op: Operador | null) => op?.nivel === 'diretor';
+/** Quem vê o Financeiro (Vitor, 09/11/2026): quem é Diretor já tem, sem como desligar; os outros, só com o papel Financeiro, que só o Diretor autoriza. */
+export const podeVerOFinanceiro = (op: Operador | null) => !!op && (temNivelDiretor(op) || !!op.financeiro);
 
 /**
  * Quem abre a rotina e o cadastro de outro setor: o admin e o diretor (Vitor, 06/11/2026: "quem é do fiscal, não é para ter
@@ -223,7 +215,7 @@ export function aplicacoesDe(op: Operador): Aplicacao[] {
     (a.id !== 'area-cliente' || op.admin || op.departamento !== 'fiscal') &&
     // o Cadastro (empresas e equipe): o admin, o diretor (Vitor, 05/10/2026) e o sênior (19/10/2026)
     (a.id !== 'cadastro' || podeMexerNoCadastro(op)) &&
-    // o Financeiro (as notas fiscais do escritório): só o Sávio e a Nilma (30/10/2026; antes, o admin e o diretor)
+    // o Financeiro (as notas fiscais do escritório): o Diretor e quem ele autorizar (09/11/2026)
     (a.id !== 'financeiro' || podeVerOFinanceiro(op)))
     // as páginas só do admin (as do Admin, nas Configurações) ficam de fora para os outros
     .map(a => (op.admin || !a.paginas.some(p => p.soAdmin) ? a : { ...a, paginas: a.paginas.filter(p => !p.soAdmin) }))
