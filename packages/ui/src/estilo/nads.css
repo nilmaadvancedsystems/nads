@@ -671,7 +671,7 @@ td > .gh-blank.compacto{white-space:normal;}
 .subnav-itens{display:flex;flex-direction:column;gap:2px;}
 /* o cartão da empresa aberta no cabeçalho: o prédio, o nome e, embaixo, o código e o CNPJ; o clique abre a janela do Cadastro */
 .gh-cartao-topo{display:contents;}
-.gh-crumbs .gh-cartao-topo > button.gh-crumb:not(:last-child){flex:none;}
+.gh-crumbs .gh-cartao-topo > button.gh-crumb:not(:last-of-type){flex:none;}
 /* o Início (27/10/2026): o mural de avisos e a última empresa */
 .inicio-grade{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:16px;align-items:start;}
 @media (max-width:900px){.inicio-grade{grid-template-columns:minmax(0,1fr);}}
