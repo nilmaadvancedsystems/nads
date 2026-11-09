@@ -2,8 +2,10 @@
 // estão credores corretamente, corrija esse bug"):
 //  - o de sempre: devedor positivo, credor negativo em todas as contas (o da 292);
 //  - pela natureza: no Passivo (2…) e nas Receitas o credor vem positivo e o devedor negativo; no Ativo e nos Custos e
-//    Despesas, o devedor positivo (o da Brasão, 250). Aí o fornecedor credor (o certo) parecia devedor.
-// O nads trabalha no de sempre: o dinâmico pela natureza tem o sinal do Passivo e das Receitas trocado na leitura.
+//    Despesas, o devedor positivo (o da Brasão, 250). Aí o fornecedor credor (o certo) parecia devedor;
+//  - tudo invertido: devedor negativo e credor positivo em todas as contas (o da 183; Vitor, 09/11/2026: "tá puxando sinal
+//    trocado"). O Ativo negativo denuncia: era tomado como pela natureza e ficava tudo negativo, com as despesas credoras.
+// O nads trabalha no de sempre: na leitura, o pela natureza tem o sinal do Passivo e das Receitas trocado; o invertido, o de tudo.
 // No plano do Alterdata, 3 = Receitas e 4 = Custos e Despesas (30/10/2026: o 4 era tomado como Receita, e o dinâmico
 // de sempre com despesa, o 4 positivo, virava "pela natureza" e trocava o sinal do Passivo e das despesas). O grupo das
 // Receitas é o de cima (sem ponto) chamado "Receita(s)…"; sem ele, o 3.
@@ -21,20 +23,37 @@ export function credoraPelaNatureza(classificacao: string, receitas = '3'): bool
   return ['2', receitas].some(g => c === g || c.startsWith(g + '.'));
 }
 
+interface LinhaDoSinal { classificacao: string; descricao?: string; valores: readonly number[] }
+
+/** A soma de um grupo: a conta de cima dele ou, sem ela, as do nível logo abaixo. */
+function somaDoGrupo(linhas: readonly LinhaDoSinal[], g: string): number {
+  const doGrupo = linhas.filter(l => l.classificacao.trim() === g || l.classificacao.trim().startsWith(g + '.'));
+  const topo = doGrupo.filter(l => l.classificacao.trim() === g);
+  return (topo.length ? topo : doGrupo.filter(l => l.classificacao.trim().split('.').length === 2))
+    .reduce((t, l) => t + l.valores.reduce((a, v) => a + (Number.isFinite(v) ? v : 0), 0), 0);
+}
+
 /**
  * O dinâmico veio pela natureza? Pelas Receitas (3…), que são sempre credoras: positivas = pela natureza. Sem Receita com
  * saldo, pelo Passivo (2…): a soma das contas de cima (as sem ponto ou, sem elas, todas) positiva = pela natureza. Os
  * Custos e Despesas (4…) não dizem nada: são devedores (positivos) nos dois jeitos.
  * `valores` = os saldos da linha (o anterior e os meses); `descricao` acha o grupo das Receitas (grupoDasReceitas).
  */
-export function dinamicoPelaNatureza(linhas: readonly { classificacao: string; descricao?: string; valores: readonly number[] }[]): boolean {
-  const soma = (ls: readonly { valores: readonly number[] }[]) => ls.reduce((t, l) => t + l.valores.reduce((a, v) => a + (Number.isFinite(v) ? v : 0), 0), 0);
-  const de = (g: string) => {
-    const doGrupo = linhas.filter(l => l.classificacao.trim() === g || l.classificacao.trim().startsWith(g + '.'));
-    const topo = doGrupo.filter(l => l.classificacao.trim() === g);
-    return soma(topo.length ? topo : doGrupo.filter(l => l.classificacao.trim().split('.').length === 2));
-  };
-  const receita = de(grupoDasReceitas(linhas));
+export function dinamicoPelaNatureza(linhas: readonly LinhaDoSinal[]): boolean {
+  const receita = somaDoGrupo(linhas, grupoDasReceitas(linhas));
   if (Math.abs(receita) >= 0.005) return receita > 0;
-  return de('2') > 0.005;
+  return somaDoGrupo(linhas, '2') > 0.005;
+}
+
+/** O dinâmico veio com tudo invertido? Pelo Ativo (o grupo 1), que é sempre devedor: negativo só aqui. */
+export function dinamicoInvertido(linhas: readonly LinhaDoSinal[]): boolean {
+  return somaDoGrupo(linhas, '1') < -0.005;
+}
+
+/** Por quanto multiplicar o saldo de cada conta para ficar no de sempre (devedor +, credor −). */
+export function sinalDoDinamico(linhas: readonly LinhaDoSinal[]): (classificacao: string) => 1 | -1 {
+  if (dinamicoInvertido(linhas)) return () => -1;
+  if (!dinamicoPelaNatureza(linhas)) return () => 1;
+  const receitas = grupoDasReceitas(linhas);
+  return classificacao => (credoraPelaNatureza(classificacao, receitas) ? -1 : 1);
 }

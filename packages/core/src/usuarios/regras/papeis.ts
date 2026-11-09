@@ -30,7 +30,7 @@ export const PAPEIS: readonly { id: Papel; rotulo: string }[] = [
   { id: 'equipe_geral', rotulo: 'Equipe geral' },
   // o modo desenvolvedor só para quem tem este papel, dado à mão no Cadastro › Usuários (Vitor, 06/11/2026)
   { id: 'desenvolvedor', rotulo: 'Desenvolvedor' },
-  // quem vê o Financeiro do nads: só o Diretor liga, na ficha da pessoa (Vitor, 09/11/2026: "para quem é diretor, coloque a opção de controlar isso")
+  // quem vê o Financeiro do nads sem ser Diretor: só o Diretor autoriza, na ficha da pessoa (Vitor, 09/11/2026)
   { id: 'financeiro', rotulo: 'Financeiro' },
 ];
 

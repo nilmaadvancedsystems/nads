@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { lerBalanceteDinamicoComoContas } from '../../conferencia/arquivos';
 import { credoraPelaNatureza, dinamicoPelaNatureza, grupoDasReceitas } from '../../formatos/sinalDoDinamico';
-import { clientesDoDinamico, credoresNoPeriodo, lerBalanceteDinamico } from './index';
+import { clientesDoDinamico, credoresNoPeriodo, lerBalanceteDinamico, resultadoErradoNoDinamico } from './index';
 
 // o dinâmico "pela natureza" (Vitor, 28/10/2026): no Passivo e nas Receitas o credor vem positivo (dados fictícios), no
 // plano do Alterdata: 3 = Receitas, 4 = Custos e Despesas (devedores, positivos nos dois jeitos)
@@ -22,8 +22,11 @@ const PELA_NATUREZA = [
 // o mesmo no jeito de sempre: devedor +, credor − (só o Passivo e as Receitas mudam; as despesas são devedoras nos dois)
 const DE_SEMPRE = PELA_NATUREZA.map((r, i) => (i && /^[23]/.test(String(r[1])) ? r.map((v, k) => (k >= 3 ? -(v as number) : v)) : r));
 
-describe('o sinal do balancete dinâmico (de sempre × pela natureza)', () => {
-  for (const [nome, rows] of [['pela natureza', PELA_NATUREZA], ['de sempre', DE_SEMPRE]] as const) {
+// tudo invertido (09/11/2026): devedor −, credor + em todas as contas
+const INVERTIDO = DE_SEMPRE.map((r, i) => (i ? r.map((v, k) => (k >= 3 ? -(v as number) : v)) : r));
+
+describe('o sinal do balancete dinâmico (de sempre × pela natureza × invertido)', () => {
+  for (const [nome, rows] of [['pela natureza', PELA_NATUREZA], ['de sempre', DE_SEMPRE], ['tudo invertido', INVERTIDO]] as const) {
     it(nome + ': o fornecedor credor é o certo; só o devedor aparece', () => {
       const d = lerBalanceteDinamico(rows);
       expect(clientesDoDinamico(d, '2026-02', 'fornecedores').map(x => [x.codigo, x.saldo])).toEqual([['321', 500], ['322', -100]]);
@@ -43,6 +46,12 @@ describe('o sinal do balancete dinâmico (de sempre × pela natureza)', () => {
       expect(b?.contas['101'].dc).toBe('D');
     });
   }
+
+  it('tudo invertido: a despesa não vira credora', () => {
+    const d = lerBalanceteDinamico(INVERTIDO);
+    expect(d.linhas.find(l => l.codigo === '400')?.saldos['2026-02']).toBe(4000);
+    expect(resultadoErradoNoDinamico(d, ['2026-01', '2026-02'])).toEqual([]);
+  });
 
   it('o de sempre com despesa (o 4 positivo) e sem receita não vira "pela natureza" (30/10/2026)', () => {
     // só despesa no resultado: antes o 4 positivo era tomado como Receita credora e trocava o sinal do Passivo e do 4
