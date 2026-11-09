@@ -111,6 +111,12 @@ function Todas({ vm, r, t }: { vm: Vm; r: Res; t: NonNullable<Res['todas']> }) {
   const secaoIcms = t.icms.length > 0 && (
     <SecaoVc className="vc-secao vc-secao-icms" titulo={'ICMS (' + t.icms.length + ')'} valor={t.somaIcms}><TabelaVc linhas={t.icms} cls="" /></SecaoVc>
   );
+  const secaoHonorario = t.honorarioSemNota.length > 0 && (
+    <SecaoVc className="vc-secao vc-secao-icms" titulo={'Honorário sem nota (' + t.honorarioSemNota.length + ')'} valor={t.somaHonorarioSemNota}>
+      <p className="hint">Lançado na conta sem nota nos tomados: não é pendência.</p>
+      <TabelaVc linhas={t.honorarioSemNota} cls="" />
+    </SecaoVc>
+  );
   return (
     <>
       <div className="vc-resumo" id="vcStats">
@@ -154,6 +160,7 @@ function Todas({ vm, r, t }: { vm: Vm; r: Res; t: NonNullable<Res['todas']> }) {
                 : <>Todas as notas bateram com {t.multi ? 'os relatórios. As contas ficam' : 'o relatório. A conta fica'} <b>Ok</b> no Relatório.</>}</p>
             </AlertaVerde>
             {secaoIcms && <div className="vc-pend vc-icms">{secaoIcms}</div>}
+            {secaoHonorario && <div className="vc-pend vc-icms">{secaoHonorario}</div>}
           </>
         ) : (
           <div className="vc-pend">
@@ -171,6 +178,7 @@ function Todas({ vm, r, t }: { vm: Vm; r: Res; t: NonNullable<Res['todas']> }) {
             {t.incorretas.length > 0 && <SecaoIncorreta linhas={t.incorretas} valor={t.somaIncorretas} daConta={t.operacoesDaConta} />}
             {t.aMais.length > 0 && <SecaoVc titulo={'A mais na conta (' + t.aMais.length + ')'} valor={t.somaAMais}><TabelaVc linhas={t.aMais} /></SecaoVc>}
             {secaoIcms}
+            {secaoHonorario}
           </div>
         )}
         {t.foraDoContabil.length > 0 && (

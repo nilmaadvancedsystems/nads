@@ -99,7 +99,7 @@ export function Importacao({ tipo, naEtapa, meses }: { tipo: c.PaginaImportacao;
 
 /**
  * A mensagem da importação (Vitor, 08/10/2026: "feio demais, esse aviso e amarelo"): uma cor só e uma linha só. Com
- * algum aviso (nota fora do padrão do CFOP, CFOP do outro tipo), a faixa toda fica amarela; sem aviso, verde.
+ * algum aviso (CFOP do outro tipo, nota fora do período), a faixa toda fica amarela; sem aviso, verde.
  */
 function MensagemImportacao({ m, onFechar }: { m: Mensagem; onFechar: () => void }) {
   const comAviso = m.textos.some(t => t.tom === 'aviso');

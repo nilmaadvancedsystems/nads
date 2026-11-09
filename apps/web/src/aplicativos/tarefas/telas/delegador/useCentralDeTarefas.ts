@@ -1,7 +1,6 @@
-// ViewModel da Central de tarefas (28/10/2026, o "Minhas Tarefas" do Toriba): a janela aberta pelo perfil ou pelo correio do
-// pé do menu. À esquerda as abas Minhas tarefas, Delegadas por mim e Concluídas (com quantas tem); no meio, no jeito do
-// Contas a pagar (09/11/2026: "no pique do financeiro"): os filtros e o Nova tarefa, os números que filtram ao clicar, a
-// busca com o Excel e a tabela. Clicar numa linha abre a tarefa no
+// ViewModel da Central de tarefas (28/10/2026): as abas Minhas tarefas, Delegadas por mim e Concluídas (com quantas tem), a
+// barra (a busca, os filtros, o Excel e o Nova tarefa), as situações que filtram ao clicar e a lista agrupada pelo prazo
+// (09/11/2026: "dá uma repaginada total"). Clicar numa linha abre a tarefa no
 // lugar da lista (useTarefaAberta). As regras (a ordem, as abas, a busca) são do core: tarefas.delegadas.
 import { formatos, tarefas } from '@nads/core';
 import { baixarArquivo, baixarBytes } from '@nads/ui';
@@ -15,10 +14,10 @@ type Filtro = tarefas.delegadas.FiltroDaLista;
 
 /** A coluna da pessoa muda com a aba: nas minhas, quem delegou; nas delegadas, o responsável; nas concluídas, de/para quem. */
 const COLUNA_DA_PESSOA: Record<AbaDaCentral, string> = { minhas: 'Quem delegou', delegadas: 'Responsável', concluidas: 'Delegação' };
-const VAZIO_DA_ABA: Record<AbaDaCentral, string> = {
-  minhas: 'Nenhuma tarefa em aberto para você.',
-  delegadas: 'Você não tem tarefas delegadas para outras pessoas em aberto.',
-  concluidas: 'As tarefas concluídas e canceladas aparecem aqui.',
+const VAZIO_DA_ABA: Record<AbaDaCentral, { titulo: string; texto: string }> = {
+  minhas: { titulo: 'Tudo em dia', texto: 'Nenhuma tarefa em aberto para você.' },
+  delegadas: { titulo: 'Nada delegado em aberto', texto: 'As tarefas que você passar para outras pessoas aparecem aqui.' },
+  concluidas: { titulo: 'Nenhuma tarefa encerrada', texto: 'As tarefas concluídas e canceladas aparecem aqui.' },
 };
 
 const nomeDoCliente = (c: tarefas.delegadas.ClienteVinculado) => (c.codigo != null ? c.codigo + ' · ' : '') + c.nome;
@@ -59,6 +58,20 @@ export function useCentralDeTarefas(abaInicial: AbaDaCentral) {
   const algumFiltro = !!filtro || !!prioridade || !!quem || !!busca.trim();
   const limparFiltros = () => { setFiltro(''); setPrioridade(''); setQuem(''); setBusca(''); };
   const nomeDoArquivo = 'tarefas-' + aba + '-' + hoje;
+  const linha = (t: tarefas.delegadas.TarefaDelegada) => ({
+    id: t.id, numero: t.numero, titulo: t.titulo,
+    status: { valor: t.status, rotulo: d.rotuloDoStatus(t.status) },
+    prioridade: { valor: t.prioridade, rotulo: d.rotuloDaPrioridade(t.prioridade) },
+    prazo: d.prazoComHora(t), atrasada: d.atrasada(t, hoje, agora),
+    cliente: t.clientes[0] ? nomeDoCliente(t.clientes[0]) : '',
+    maisClientes: t.clientes.length - 1,
+    clientes: t.clientes.map(nomeDoCliente).join('\n'),
+    pessoa: pessoa(t), anexos: t.anexos.length, pareceres: t.pareceres.length,
+    // os botões de quem faz a tarefa (Minhas tarefas)
+    acoes: aba === 'minhas' ? d.acoesDoStatus(t.status) : [],
+    // o que aconteceu por último (Delegadas por mim)
+    movimento: aba === 'delegadas' ? movimentoDe(t) : '',
+  });
   return {
     carregando: !carregadas,
     erro: erro || erroDaAcao,
@@ -80,25 +93,15 @@ export function useCentralDeTarefas(abaInicial: AbaDaCentral) {
     /** a aba não tem tarefa nenhuma (o Vazio chama para criar; com filtro, para limpar) */
     abaVazia: !daAba.length,
     colunaDaPessoa: COLUNA_DA_PESSOA[aba],
-    /** a coluna a mais: os botões nas minhas; o andamento de quem recebeu nas delegadas (09/11/2026: "eu tenha esse controle") */
-    colunaExtra: aba === 'minhas' ? 'acoes' as const : aba === 'delegadas' ? 'movimento' as const : null,
+    /** os botões de quem faz a tarefa, só nas minhas (nas delegadas, o andamento vai na linha: 09/11/2026 "eu tenha esse controle") */
+    comAcoes: aba === 'minhas',
     fazerAcao: (id: string, novo: Status) => { repo.salvar(id, { status: novo }).catch((e: unknown) => setErroDaAcao('Não gravei: ' + (e instanceof Error ? e.message : String(e)))); },
-    vazio: daAba.length ? 'Nenhuma tarefa com isso.' : VAZIO_DA_ABA[aba],
-    /** as linhas da tabela, na ordem do core (atrasadas e urgentes primeiro) */
-    linhas: lista.map(t => ({
-      id: t.id, numero: t.numero, titulo: t.titulo,
-      status: { rotulo: d.rotuloDoStatus(t.status), tom: d.tomDoStatus(t.status) },
-      prioridade: { valor: t.prioridade, rotulo: d.rotuloDaPrioridade(t.prioridade) },
-      prazo: d.prazoComHora(t), atrasada: d.atrasada(t, hoje, agora),
-      cliente: t.clientes[0] ? nomeDoCliente(t.clientes[0]) : '',
-      maisClientes: t.clientes.length - 1,
-      clientes: t.clientes.map(nomeDoCliente).join('\n'),
-      pessoa: pessoa(t), anexos: t.anexos.length, pareceres: t.pareceres.length,
-      // os botões de quem faz a tarefa (Minhas tarefas)
-      acoes: aba === 'minhas' ? d.acoesDoStatus(t.status) : [],
-      // o que aconteceu por último (Delegadas por mim)
-      movimento: movimentoDe(t),
-    })),
+    vazio: daAba.length ? { titulo: 'Nenhuma tarefa com isso', texto: '' } : VAZIO_DA_ABA[aba],
+    /** as linhas agrupadas pelo prazo, na ordem do core em cada grupo; as encerradas num grupo só */
+    grupos: aba === 'concluidas'
+      ? [{ id: 'encerradas', rotulo: '', linhas: lista.map(linha) }]
+      : d.GRUPOS_DO_PRAZO.map(g => ({ id: g.valor as string, rotulo: g.rotulo, linhas: lista.filter(t => d.grupoDoPrazo(t, hoje, agora) === g.valor).map(linha) })).filter(g => g.linhas.length > 0),
+    temLinhas: lista.length > 0,
     aberta,
     abrir: (id: string) => setAberta(id),
     nova: () => setAberta('nova'),

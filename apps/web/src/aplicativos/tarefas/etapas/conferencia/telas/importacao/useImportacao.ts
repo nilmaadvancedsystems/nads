@@ -31,7 +31,7 @@ export const CONFIG: Record<TipoImp, ConfigImportacao> = {
 export interface Mensagem {
   tom: 'erro' | 'ok' | 'lendo';
   titulo: string;
-  textos: { texto: string; tom?: 'aviso'; separado?: boolean }[];
+  textos: { texto: string; tom?: 'aviso' }[];
 }
 
 const NOME_TIPO: Record<c.TipoNotaFiscal, string> = { entradas: 'entradas', saidas: 'saídas' };
@@ -153,8 +153,7 @@ export function useImportacao(tipo: TipoImp, mesesDaEtapa?: readonly string[]) {
       modo = escolha;
     }
     const m = c.mesclarNotas(e[t], novas, modo);
-    const nova = s.aplicar(x => c.importarNotas(x, t, m.notas, m.adicionadas, modo, new Date()));
-    const div = nova ? c.acharDivergencias(nova, t).length : 0;
+    s.aplicar(x => c.importarNotas(x, t, m.notas, m.adicionadas, modo, new Date()));
     const textos: Mensagem['textos'] = [{
       texto: (modo === 'sobrepor' ? 'As ' + qtdAntes + ' nota(s) que estavam guardadas foram substituídas'
         : m.semMudanca + ' já estavam aqui sem mudança' + (m.atualizadas ? ', ' + m.atualizadas + ' tiveram lançamento/nome corrigido' : '')) + '. Total guardado: ' + m.notas.length + '.',
@@ -165,7 +164,6 @@ export function useImportacao(tipo: TipoImp, mesesDaEtapa?: readonly string[]) {
     }
     if (per.fora.length) textos.push({ texto: per.fora.length + ' nota(s) de fora do período (' + rotuloDoPeriodo(mesesDaEtapa) + ') ficaram de fora.', tom: 'aviso' });
     avisarMesesSemNota(textos, m.notas);
-    if (div) textos.push({ texto: div + ' nota(s) com lançamento fora do padrão do CFOP — veja em Movimento › Relatório › ' + (t === 'entradas' ? 'Entradas' : 'Saídas') + '.', tom: 'aviso', separado: true });
     setMensagem({ tom: 'ok', titulo: modo === 'sobrepor' ? m.adicionadas + ' nota(s) importada(s) — movimento sobreposto' : m.adicionadas + ' nota(s) nova(s) guardada(s)', textos });
     setReimportando(false); limparArquivo(); terminar();
   }
@@ -337,7 +335,7 @@ function resumoServicos(todas: c.NotaServico[], tipo: c.TipoServico) {
   const datas = todas.map(n => n.data).sort((a, b) => formatos.dataOrdem(a) - formatos.dataOrdem(b));
   return {
     qtd: todas.length, total, rotValor: cfg.rotValor, qtdParticipantes: Object.keys(parts).length, rotParticipantes: formatos.capital(cfg.parts),
-    rotParticipante: formatos.capital(cfg.part), comIss: tipo === 'prestados', periodo: datas[0] + ' a ' + datas[datas.length - 1], linhas: todas.slice(0, LIMITE_LINHAS),
+    rotParticipante: formatos.capital(cfg.part), comIss: todas.some(n => n.iss != null), periodo: datas[0] + ' a ' + datas[datas.length - 1], linhas: todas.slice(0, LIMITE_LINHAS),
   };
 }
 

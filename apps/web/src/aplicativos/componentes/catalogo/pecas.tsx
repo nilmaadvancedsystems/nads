@@ -45,16 +45,16 @@ import '../../admin/admin.css';
 import '../../cliente/cliente.css';
 import { CorreioDeTarefas } from '../../tarefas/telas/delegador/partes/CorreioDeTarefas';
 import { SeloDaPrioridade, SeloDoStatus } from '../../tarefas/telas/delegador/partes/SelosDaTarefa';
-import { TabelaDeTarefas, type LinhaDaTabelaDeTarefas } from '../../tarefas/telas/delegador/partes/TabelaDeTarefas';
+import { ListaDeTarefas, type LinhaDaListaDeTarefas } from '../../tarefas/telas/delegador/partes/ListaDeTarefas';
 import { LinhaDoTempoDaTarefa } from '../../tarefas/telas/delegador/partes/LinhaDoTempoDaTarefa';
 import { AnexosDaTarefa } from '../../tarefas/telas/delegador/partes/AnexosDaTarefa';
 
 const nada = () => undefined;
 /** As linhas de exemplo da tabela da Central de tarefas (o delegador, 28/10/2026). */
-const TAREFAS_DE_EXEMPLO: LinhaDaTabelaDeTarefas[] = [
-  { id: '1', numero: 1, titulo: 'Conferir o balancete de setembro', status: { rotulo: 'Pendente', tom: 'warn' }, prioridade: { valor: 'alta', rotulo: 'Alta' }, prazo: '26/10/2026', atrasada: true, cliente: '292 · EXEMPLO COMERCIO DE ALIMENTOS LTDA', pessoa: 'Vitor', anexos: 1, pareceres: 1 },
-  { id: '2', numero: 2, titulo: 'Mandar a guia do DAS para o cliente', status: { rotulo: 'Em andamento', tom: 'info' }, prioridade: { valor: 'urgente', rotulo: 'Urgente' }, prazo: '29/10/2026', atrasada: false, cliente: '14 · ALFA COMERCIO LTDA', pessoa: 'Heverton', anexos: 0, pareceres: 0 },
-  { id: '3', numero: 3, titulo: 'Atualizar o cadastro dos sócios', status: { rotulo: 'Pendente', tom: 'warn' }, prioridade: { valor: 'normal', rotulo: 'Normal' }, prazo: '', atrasada: false, cliente: '', pessoa: 'Você mesmo', anexos: 0, pareceres: 0 },
+const TAREFAS_DE_EXEMPLO: LinhaDaListaDeTarefas[] = [
+  { id: '1', numero: 1, titulo: 'Conferir o balancete de setembro', status: { valor: 'pendente', rotulo: 'Pendente' }, prioridade: { valor: 'alta', rotulo: 'Alta' }, prazo: '26/10/2026', atrasada: true, cliente: '292 · EXEMPLO COMERCIO DE ALIMENTOS LTDA', pessoa: 'Vitor', anexos: 1, pareceres: 1 },
+  { id: '2', numero: 2, titulo: 'Mandar a guia do DAS para o cliente', status: { valor: 'andamento', rotulo: 'Em andamento' }, prioridade: { valor: 'urgente', rotulo: 'Urgente' }, prazo: '29/10/2026', atrasada: false, cliente: '14 · ALFA COMERCIO LTDA', pessoa: 'Heverton', anexos: 0, pareceres: 0 },
+  { id: '3', numero: 3, titulo: 'Atualizar o cadastro dos sócios', status: { valor: 'pendente', rotulo: 'Pendente' }, prioridade: { valor: 'normal', rotulo: 'Normal' }, prazo: '', atrasada: false, cliente: '', pessoa: 'Você mesmo', anexos: 0, pareceres: 0 },
 ];
 /** A calculadora do catálogo, funcionando pelas teclas da tela. */
 function DemoDaCalculadora() {
@@ -756,8 +756,8 @@ export const PECAS_BASE: Peca[] = [
     demo: () => <nav className="gh-crumbs"><button type="button" className="gh-crumb">Tarefas</button><span className="gh-cartao-topo"><span className="gh-sep">/</span><button type="button" className="gh-crumb">Contábil</button><span className="gh-sep">/</span><button type="button" className="gh-crumb">292 · FITO INDUSTRIA E COMERCIO DE ALIMENTOS LTDA</button></span></nav> },
   { id: 'escolher-pessoa', tipo: 'menus', nome: 'Escolher pessoa (com a foto)', descricao: 'O menu do nads no lugar do select: a foto de perfil (ou as iniciais), o nome e o ✓ na escolhida; o "Delegar para" do delegador', classes: ['pessoa-botao', 'pessoa-escolhida', 'pessoa-foto', 'pessoa-lista', 'field-rotulo'], telas: ['t-inicio'],
     demo: () => <div className="popover" style={{ position: 'static', width: 240 }}><div className="pessoa-lista"><button type="button" className="popover-item"><span className="pessoa-foto" aria-hidden="true">CL</span><span className="popover-texto">Clara</span></button><button type="button" className="popover-item"><span className="pessoa-foto" aria-hidden="true">HE</span><span className="popover-texto">Heverton</span><Icone nome="check" width={16} height={16} /></button></div></div> },
-  { id: 'mural-avisos', tipo: 'listas', nome: 'Mural de avisos (Início)', descricao: 'Os avisos do escritório, os fixados em cima, com quem e quando; o admin e o diretor fixam, apagam e escrevem no pé', classes: ['mural-lista', 'mural-aviso', 'mural-aviso-texto', 'mural-novo', 'mural-novo-pe'], telas: ['t-inicio'], largo: true,
-    demo: () => <div className="card" style={{ width: '100%' }}><ul className="mural-lista"><li className="mural-aviso"><div className="mural-aviso-corpo"><p className="mural-aviso-texto">Sexta-feira o escritório fecha às 16h.</p><p className="hint">Vitor · há 4 horas</p></div><button type="button" className="icon-btn" title="Fixar no alto"><Icone nome="mapaPin" width={16} height={16} /></button></li></ul></div> },
+  { id: 'mural-avisos', tipo: 'listas', nome: 'Mural de avisos (Início)', descricao: 'Os avisos do escritório em faixas, os fixados em cima, com quem e quando; o admin e o diretor fixam e apagam na faixa e escrevem na janela do Novo aviso; sem aviso, nada aparece', classes: ['mural-faixas', 'mural-aviso-texto', 'mural-novo-pe'], telas: ['t-inicio'], largo: true,
+    demo: () => <div className="mural-faixas" style={{ width: '100%' }}><div className="alerta-linha"><Alerta naLinha titulo="" texto={<span className="mural-aviso-texto">Sexta-feira o escritório fecha às 16h.</span>}><span className="hint">Vitor · há 4 horas</span><span className="tarefas-barra-espaco" /><BotaoIcone pequeno icone="mapaPin" titulo="Fixar no alto" /></Alerta></div></div> },
   { id: 'stat-filtro', tipo: 'graficos', nome: 'Número que filtra (painel de Minhas empresas)', descricao: 'O número da situação que, clicado, filtra a lista (de novo, mostra todas)', classes: ['stat stat-filtro', 'ativo'], telas: ['t-empresas'],
     demo: () => <div className="stat-grid" style={{ width: 360 }}><button type="button" className="stat stat-filtro ativo"><p className="stat-label"><span className="bolinha-sit parada" />Paradas</p><p className="stat-value">3</p></button><button type="button" className="stat stat-filtro"><p className="stat-label"><span className="bolinha-sit concluida" />Concluídas</p><p className="stat-value">12</p></button></div> },
   { id: 'rank', tipo: 'graficos', nome: 'Ranking', classes: ['rank', 'rank-item', 'rank-barra'], telas: ['c-relatorio', 't-exec-fiscal-rotina', 'a-uso', 'a-cota', 'a-arquivador'], largo: true,
@@ -1119,7 +1119,7 @@ export const PECAS_BASE: Peca[] = [
           <nav className="cad-janela-abas">{([['Minhas tarefas', 'caixaEntrada', 2], ['Delegadas por mim', 'aviao', 1], ['Concluídas', 'checkCircle', 0]] as [string, NomeIcone, number][]).map(([a, ic, n], i) => <button key={a} type="button" className={'cad-janela-aba' + (i === 0 ? ' ativa' : '')}><Icone nome={ic} width={16} height={16} />{a}{n > 0 && <span className="tdl-aba-qtd">{n}</span>}</button>)}</nav>
           <div className="cad-janela-conteudo">
             <div className="tarefas-barra-topo tdl-barra"><button type="button" className="btn btn-primary"><Icone nome="plus" width={16} height={16} />Nova tarefa</button><label className="busca-curta"><Icone nome="search" width={16} height={16} /><input type="text" placeholder="O que você procura?" /></label></div>
-            <TabelaDeTarefas linhas={TAREFAS_DE_EXEMPLO.slice(0, 2)} colunaDaPessoa="Quem delegou" abrir={nada} />
+            <ListaDeTarefas grupos={[{ id: 'hoje', rotulo: 'Hoje', linhas: TAREFAS_DE_EXEMPLO.slice(0, 2) }]} colunaDaPessoa="Quem delegou" abrir={nada} />
           </div>
         </div>
       </div>
@@ -1134,9 +1134,9 @@ export const PECAS_BASE: Peca[] = [
         <SeloDaPrioridade valor="urgente" rotulo="Urgente" /><SeloDaPrioridade valor="alta" rotulo="Alta" /><SeloDaPrioridade valor="normal" rotulo="Normal" /><SeloDaPrioridade valor="baixa" rotulo="Baixa" />
       </div>
     ) },
-  { id: 'tabela-de-tarefas', tipo: 'tabelas', nome: 'Tabela da Central de tarefas', descricao: 'As colunas do "Minhas Tarefas" do Toriba: Status (a bolinha), Título (o número em cinza, e o clipe e o balão com quantos anexos e pareceres tem), Prioridade, Prazo (vermelho quando atrasada), Cliente (corta com … e mostra inteiro no título) e a pessoa — Quem delegou (Minhas), Responsável (Delegadas) ou de/para quem (Concluídas). A linha inteira abre a tarefa; o título é o botão do teclado. As atrasadas e as urgentes em cima, depois o prazo', componente: 'TabelaDeTarefas', classes: ['table-wrap tdl-tabela', 'dp-tabela', 'linha-abre', 'tdl-abrir', 'tdl-conta', 'tdl-atrasada', 'tdl-cliente'], telas: ['t-central-tarefas'], largo: true,
-    uso: '<TabelaDeTarefas linhas={vm.linhas} colunaDaPessoa={vm.colunaDaPessoa} abrir={vm.abrir} />',
-    demo: () => <div style={{ width: '100%' }}><TabelaDeTarefas linhas={TAREFAS_DE_EXEMPLO} colunaDaPessoa="Quem delegou" abrir={nada} /></div> },
+  { id: 'tabela-de-tarefas', tipo: 'tabelas', nome: 'Lista de tarefas (Início)', descricao: 'No jeito da lista de issues do GitHub, agrupada pelo prazo: a marca do status, o título (a prioridade só se Alta ou Urgente, o clipe e o balão), embaixo o status, o número, o cliente e o último movimento; à direita o prazo (vermelho quando atrasada), a pessoa e os botões de quem faz. A linha inteira abre a tarefa; o título é o botão do teclado', componente: 'ListaDeTarefas', classes: ['tdl-grupo', 'tdl-linha', 'tdl-marca', 'tdl-abrir', 'tdl-meta', 'tdl-conta', 'tdl-prazo', 'tdl-avatar', 'tdl-situacoes', 'tdl-situacao'], telas: ['t-central-tarefas'], largo: true,
+    uso: '<ListaDeTarefas grupos={vm.grupos} colunaDaPessoa={vm.colunaDaPessoa} abrir={vm.abrir} />',
+    demo: () => <div style={{ width: '100%' }}><ListaDeTarefas grupos={[{ id: 'atrasadas', rotulo: 'Atrasadas', linhas: TAREFAS_DE_EXEMPLO.slice(0, 1) }, { id: 'hoje', rotulo: 'Hoje', linhas: TAREFAS_DE_EXEMPLO.slice(1) }]} colunaDaPessoa="Quem delegou" abrir={nada} /></div> },
   { id: 'linha-do-tempo-da-tarefa', tipo: 'listas', nome: 'Histórico e pareceres da tarefa', descricao: 'A linha do tempo da tarefa aberta, a mais nova em cima: o ponto ligado ao de baixo por um fio, quem (negrito) e quando, e o texto embaixo (quebra a linha, nunca corta). No Histórico, cada mudança (criou, delegou de X para Y, mudou o status, o prazo, a prioridade, anexou, tirou, escreveu um parecer); nos Pareceres, o ponto na cor da marca e o texto numa caixinha', componente: 'LinhaDoTempoDaTarefa', classes: ['tdl-tempo', 'tdl-tempo-item', 'tdl-tempo-ponto', 'tdl-tempo-quem', 'tdl-tempo-texto', 'tdl-pareceres'], telas: ['t-central-tarefas'], largo: true,
     demo: () => (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 24, width: '100%' }}>

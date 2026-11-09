@@ -1,7 +1,7 @@
 // Fiscal › Relatório Simples / Relatório Presumido (28/10/2026: "monte a tabela nesse estilo do dp"; cada regime numa
 // página do menu lateral; no lugar do Controle de tributos). Refeito em 30/10/2026 ("a tabela é feia e pesada"; o Fiscal
 // inteiro "parecendo parte do site", como o Gmail): uma barra só em cima (a competência e os filtros em menus, à direita a
-// busca, o Excel e a impressora), e a tabela num .card com o andamento e o "Preencher com o Entregas" no topo; linhas
+// busca, o Excel e a impressora), e a tabela num .card com o andamento no topo; linhas
 // baixas, o cabeçalho e o total parados ao rolar, as conferências em bolinhas pequenas e a entrega com o logo. Os dados e
 // as ações são os mesmos do useRelatorioGeral. O "Enviar guias" (03/11/2026: "A parte de gmail tem que funcionar assim como
 // o envios do dp"): para quem grava, abre a janela do lote de guias (JanelaDasGuias); o robô manda e preenche a tabela.
@@ -76,11 +76,6 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
               <span className="fr-andamento-txt">{vm.faltam ? <><b>{feitas}</b> de {vm.achadas} concluídas · {vm.faltam} {vm.faltam === 1 ? 'falta' : 'faltam'}</> : <b>Tudo feito</b>}</span>
             </span>
             <span className="tarefas-barra-espaco" />
-            {vm.podeGravar && vm.comSugestaoParaUsar > 0 && (
-              <button type="button" className="btn btn-outline btn-sm fr-preencher" onClick={() => void vm.usarSugestoes()} title="Passa o que o Entregas já entregou para os campos em branco">
-                <Icone nome="download" />Preencher com o Entregas<span className="fr-qtd">{vm.comSugestaoParaUsar}</span>
-              </button>
-            )}
             {/* a página da lista: só as setas, em cima da Entrega (09/11/2026: o rodapé saiu) */}
             {vm.pagina.paginas > 1 && (
               <>
@@ -120,7 +115,7 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
                         <td className="fr-cliente"><span title={r.nome}>{r.nome}</span></td>
                         {vm.guias.map((c, i) => (
                           <td key={c.id} className={i === 0 ? 'fr-g' : undefined}>
-                            <Valor estreito zeroComoTraco valor={r.linha.valores[c.id] || ''} sugestao={r.sugestao?.valores[c.id]} rotulo={c.nome + ' de ' + r.nome} pode={vm.podeGravar} aoSalvar={v => vm.mudarValor(r.codigo, c.id, v)} />
+                            <Valor estreito zeroComoTraco valor={r.linha.valores[c.id] || ''} rotulo={c.nome + ' de ' + r.nome} pode={vm.podeGravar} aoSalvar={v => vm.mudarValor(r.codigo, c.id, v)} />
                           </td>
                         ))}
                         {g.marcas.map((m, i) => {
@@ -133,7 +128,7 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
                           );
                         })}
                         <td className="fr-g fr-data">
-                          <Valor estreito valor={dataBr(r.linha.data)} sugestao={r.sugestao?.data ? dataBr(r.sugestao.data) : undefined} molde="dd/mm/aaaa" rotulo={'Data de ' + r.nome} pode={vm.podeGravar} aoSalvar={v => vm.mudarData(r.codigo, v)} />
+                          <Valor estreito valor={dataBr(r.linha.data)} molde="dd/mm/aaaa" rotulo={'Data de ' + r.nome} pode={vm.podeGravar} aoSalvar={v => vm.mudarData(r.codigo, v)} />
                         </td>
                         <td className="fr-centro"><Entrega valor={r.linha.entregue} pode={vm.podeGravar} rotulo={'Entrega de ' + r.nome} aoMudar={e => vm.mudarEntrega(r.codigo, e)} /></td>
                         <td className="fr-centro"><span className={'fr-sit ' + r.situacao} title={r.rotuloSituacao} aria-label={r.rotuloSituacao}>{r.situacao === 'concluida' && <Icone nome="check" width={11} height={11} />}</span></td>

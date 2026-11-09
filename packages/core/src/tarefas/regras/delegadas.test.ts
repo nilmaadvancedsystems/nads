@@ -1,4 +1,4 @@
-import { acoesDoStatus, filtrarPorSituacao, numerosDaLista, prazoComHora, ultimoMovimento, type Status } from './delegadas';
+import { acoesDoStatus, filtrarPorSituacao, grupoDoPrazo, numerosDaLista, prazoComHora, ultimoMovimento, type Status } from './delegadas';
 import { describe, expect, it } from 'vitest';
 import {
   atrasada, buscar, celulaDoCsv, comAnexos, comMudancas, gravacaoDasMudancas, mudancasDoRascunho, comoEncolher, nomeDaImagemEncolhida, valeEncolher, comParecer, contarAbas, daAba, emAberto, extensaoDe, historicoDaCriacao, historicoDaMudanca, lerTarefa,
@@ -19,6 +19,18 @@ function tarefa(p: Partial<TarefaDelegada> = {}): TarefaDelegada {
   };
 }
 const rascunho = (p: Partial<Rascunho> = {}): Rascunho => ({ ...rascunhoVazio(NILMA), titulo: 'Tarefa', ...p });
+
+describe('o grupo do prazo na lista (09/11/2026)', () => {
+  const com = (prazo: string, prazoHora = '') => ({ status: 'pendente' as Status, prazo, prazoHora });
+  it('separa pelo prazo: atrasada, hoje, 7 dias, depois e sem prazo', () => {
+    expect(grupoDoPrazo(com('2026-11-08'), '2026-11-09', '10:00')).toBe('atrasadas');
+    expect(grupoDoPrazo(com('2026-11-09', '09:00'), '2026-11-09', '10:00')).toBe('atrasadas');
+    expect(grupoDoPrazo(com('2026-11-09', '18:00'), '2026-11-09', '10:00')).toBe('hoje');
+    expect(grupoDoPrazo(com('2026-11-16'), '2026-11-09', '10:00')).toBe('proximos');
+    expect(grupoDoPrazo(com('2026-11-17'), '2026-11-09', '10:00')).toBe('depois');
+    expect(grupoDoPrazo(com(''), '2026-11-09', '10:00')).toBe('sem-prazo');
+  });
+});
 
 describe('os números do alto da lista (09/11/2026)', () => {
   const HOJE = '2026-11-09';

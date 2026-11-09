@@ -1,14 +1,11 @@
 // ViewModel do Movimento › Relatório (abas Geral/Entradas/Saídas/Tomados/Prestados).
 // Origem: conferencia.html confAba (~L3371), renderGeral (~L3593), renderCcChart (~L3419),
 // renderCcRank (~L3447), renderCcBalancete (~L3508), autoMarcarConferidos (~L3563),
-// renderNotas/renderDivergencias (~L2985, ~L3180) e os change de data-resolve (~L3232-3268),
-// renderConfServ (~L4617) e os change de data-resolve-serv/servOrdem (~L4730-4752),
-// data-serv-sug → servIrParaForm (~L4539, ~L4590), aplicarBloqueios (~L1843-1861).
+// renderConfServ (~L4617), aplicarBloqueios (~L1843-1861).
 import { conferencia as c, formatos } from '@nads/core';
 import { useEffect, useMemo } from 'react';
 import { useSessao } from '../../casca/sessao';
 import { travaDaAba, useMarcarSozinho, type ReqAba } from './movimento';
-import { useMarcarForaDoPadrao } from './useMarcarForaDoPadrao';
 import { SO_ENTRADAS } from '../../soEntradas';
 
 const { reais, rot, mesCurto, capital } = formatos;
@@ -26,7 +23,6 @@ const ALTURA_BARRA = 104;
 
 export function useRelatorio() {
   const s = useSessao();
-  const acoes = useMarcarForaDoPadrao();
   const e = s.empresa;
   const tem = c.disponivel(e);
   const semP = c.semPrest(e);
@@ -63,32 +59,24 @@ export function useRelatorio() {
   function alternarMes(m: string) {
     s.setFiltro(f => ({ ...f, meses: f.meses.indexOf(m) > -1 ? f.meses.filter(x => x !== m) : f.meses.concat(m) }));
   }
-  /** Clicar numa natureza do ranking: filtra o Checklist pelo primeiro CFOP dela. */
+  /** Clicar numa natureza do ranking: abre a Consulta de notas no primeiro CFOP dela. */
   function abrirNatureza(cfops: string) {
     const cfop = cfops.split(',')[0].trim();
-    s.setFiltro(f => ({ ...f, busca: cfop }));
-    if (cfop) s.irPara('movimento/checklist');
+    if (!cfop) return;
+    s.setAbaConsulta('fiscais');
+    s.setFiltroConsulta('fiscais', { ...s.filtroConsulta.fiscais, q: cfop });
+    s.irPara('movimento/consulta');
   }
-
-  // ---------- lançamento fora do padrão do CFOP (Entradas/Saídas) ----------
-  const tipoNf: c.TipoNotaFiscal | null = aba === 'entradas' || aba === 'saidas' ? aba : null;
-  const ordemNf = tipoNf ? s.ordemDiv[tipoNf] : null;
-  const fiscal = useMemo(() => (tipoNf && ordemNf ? montarForaDoPadrao(e, tipoNf, ordemNf) : null), [e, tipoNf, ordemNf]);
 
   // ---------- Tomados / Prestados ----------
   const tipoServ: c.TipoServico | null = aba === 'tomados' || aba === 'prestados' ? aba : null;
-  const ordemServ = tipoServ ? s.ordemServ[tipoServ] : null;
-  const serv = useMemo(() => (tipoServ && ordemServ ? montarServicos(e, tipoServ, s.filtro, ordemServ) : null), [e, tipoServ, s.filtro, ordemServ]);
+  const serv = useMemo(() => (tipoServ ? montarServicos(e, tipoServ, s.filtro) : null), [e, tipoServ, s.filtro]);
 
   return {
     abas, aba, escolherAba, ehServ,
     stats, saldo: rel ? rel.saldo : [], grafico, rank, alternarMes, abrirNatureza,
     revisar: s.revisarConta,
-    tipoNf, fiscal, ordemDiv: tipoNf ? s.ordemDiv[tipoNf] : 'cfop',
-    setOrdemDiv: (o: c.OrdemGrupos) => { if (tipoNf) s.setOrdemDiv(tipoNf, o); },
-    ...acoes,
-    tipoServ, serv, ordemServ: tipoServ ? s.ordemServ[tipoServ] : 'nome',
-    setOrdemServ: (o: c.OrdemServ) => { if (tipoServ) s.setOrdemServ(tipoServ, o); },
+    tipoServ, serv,
   };
 }
 
@@ -136,24 +124,18 @@ function montarRank(rank: c.ItemRank[]) {
   }));
 }
 
-function montarForaDoPadrao(e: c.Empresa, t: c.TipoNotaFiscal, ordem: c.OrdemGrupos) {
-  const r = c.foraDoPadraoFiscal(e, t, ordem);
-  return { ...r, vazio: 'Nenhum lançamento fora do padrão do CFOP nas ' + (t === 'entradas' ? 'entradas' : 'saídas') + '.' };
-}
-
-function montarServicos(e: c.Empresa, t: c.TipoServico, f: c.FiltroMovimento, ordem: c.OrdemServ) {
+function montarServicos(e: c.Empresa, t: c.TipoServico, f: c.FiltroMovimento) {
   const cfg = c.SV[t];
-  const r = c.conferirServicos(e, t, f, ordem);
+  const r = c.conferirServicos(e, t, f, 'nome');
   const stats: StatRelatorio[] = [{ rotulo: (t === 'prestados' ? 'Prestados' : 'Tomados') + ' no período', valor: reais(r.totais.valor), cor: t === 'prestados' ? 'saida' : 'entrada' }];
   if (r.temIss) stats.push({ rotulo: 'ISS do período', valor: reais(r.totais.iss) }, { rotulo: 'ISS retido', valor: reais(r.totais.issRet) });
   if (r.totais.irrf) stats.push({ rotulo: 'IRRF retido', valor: reais(r.totais.irrf) });
   if (r.totais.inss) stats.push({ rotulo: 'INSS retido', valor: reais(r.totais.inss) });
-  stats.push({ rotulo: 'Notas', valor: String(r.qtdNotas) }, { rotulo: capital(cfg.parts), valor: String(r.qtdParticipantes) }, { rotulo: 'Fora do padrão', valor: String(r.qtdForaDoPadrao) });
+  stats.push({ rotulo: 'Notas', valor: String(r.qtdNotas) }, { rotulo: capital(cfg.parts), valor: String(r.qtdParticipantes) });
   return {
     ...r,
     stats,
     /** title da coluna Notas: "3 fornecedores: A, B, C" */
     tituloNotas: (l: c.LinhaSaldoServ) => l.participantes.length + ' ' + (l.participantes.length > 1 ? cfg.parts : cfg.part) + ': ' + l.participantes.join(', '),
-    ordens: [['nome', capital(cfg.part) + ' (A-Z)'], ['valor', 'Valor (maior primeiro)'], ['data', 'Data']] as [c.OrdemServ, string][],
   };
 }

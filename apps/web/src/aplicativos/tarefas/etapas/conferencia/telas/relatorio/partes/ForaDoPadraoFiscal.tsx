@@ -1,54 +1,13 @@
-// Relatório › Entradas/Saídas: "Lançamento fora do padrão do CFOP" (#confDivEntradas /
-// #confDivSaidas). Origem: conferencia.html renderNotas (~L2985-2996) e renderDivergencias
-// (~L3180-3231).
+// Uma natureza com as notas fora do padrão do CFOP, no Verificar por conta. O quadro "Lançamento fora do padrão do CFOP"
+// do Relatório saiu (Vitor, 09/11/2026).
 import { conferencia as c, formatos } from '@nads/core';
-import type { useRelatorio } from '../useRelatorio';
 import type { AcoesForaDoPadrao } from '../useMarcarForaDoPadrao';
-import { Vazio } from '@nads/ui';
 
-type VM = ReturnType<typeof useRelatorio>;
 const { reais, lancComZeros } = formatos;
 
 const ESTILO_GRUPO = { border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', marginBottom: 8, background: 'var(--surface)', overflow: 'hidden' } as const;
 const ESTILO_LI = { display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderTop: '1px solid var(--border)', fontSize: 13.5, flexWrap: 'wrap' } as const;
 
-export function ForaDoPadraoFiscal({ vm, tipo }: { vm: VM; tipo: c.TipoNotaFiscal }) {
-  const f = vm.fiscal;
-  if (!f) return null;
-  if (!f.temDivergencias) {
-    return (
-      <div className="card" id={tipo === 'entradas' ? 'confDivEntradas' : 'confDivSaidas'}>
-        <div className="card-head"><h3>Lançamento fora do padrão do CFOP</h3></div>
-        <Vazio compacto icone="checkCircle" texto={f.vazio} />
-      </div>
-    );
-  }
-  return (
-    <div className="card" id={tipo === 'entradas' ? 'confDivEntradas' : 'confDivSaidas'}>
-      <div className="card-head">
-        <h3>Lançamento fora do padrão do CFOP</h3>
-        <label className="card-head-ctl">Ordenar por{' '}
-          <select className="select-compact" value={vm.ordemDiv} onChange={ev => vm.setOrdemDiv(ev.target.value as c.OrdemGrupos)}>
-            <option value="cfop">CFOP (A-Z)</option>
-            <option value="valor">Valor (maior primeiro)</option>
-            <option value="data">Data</option>
-          </select>
-        </label>
-      </div>
-      {f.pendentes.length
-        ? f.pendentes.map(g => <GrupoFiscal key={g.key} vm={vm} tipo={tipo} gr={g} marcado={false} />)
-        : <Vazio compacto icone="checkCircle" texto="Nenhuma pendente — tudo corrigido." />}
-      {f.corrigidos.length > 0 && (
-        <>
-          <p className="hint" style={{ marginTop: 16, fontWeight: 600, color: 'var(--ink)' }}>Corrigidos ({f.qtdCorrigidos})</p>
-          {f.corrigidos.map(g => <GrupoFiscal key={g.key} vm={vm} tipo={tipo} gr={g} marcado />)}
-        </>
-      )}
-    </div>
-  );
-}
-
-/** Uma natureza com as notas fora do padrão (também no Verificar por conta). */
 export function GrupoFiscal({ vm, tipo, gr, marcado }: { vm: Pick<AcoesForaDoPadrao, 'marcarGrupoCorrigido' | 'marcarNotaCorrigida'>; tipo: c.TipoNotaFiscal; gr: c.GrupoForaDoPadrao; marcado: boolean }) {
   return (
     <details className="dp-grupo" open={!marcado} style={ESTILO_GRUPO}>

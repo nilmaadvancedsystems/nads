@@ -1660,9 +1660,25 @@ function ficaNiPorDecisao(entrada, d) {
   return { acao: 'NAO_IDENTIFICADO', motivo: 'TIPO_NAO_RECONHECIDO', ficaNi: true, confianca: 0.3, tipo: d.tipo, setor: d.setor, cliente: d.cliente != null ? d.cliente : null,
     evidencias: (d.evidencias || []).concat(porque + ': fica em NÃO IDENTIFICADOS, não vai pela regra de ' + (d.tipo || 'outro documento') + ' (Vitor, 30/10/2026)') };
 }
+/**
+ * (Vitor, 09/11/2026, decisão 8) o contrato social (DOC CONSTITUTIVO) que ficou em PASTA_DO_ANO_SEM_CNPJ (a pasta do cliente no ano do registro ainda não existe e o
+ * documento não traz o CNPJ): a pasta do ano nasce e o contrato é arquivado. Só quando a pasta de origem não diz OUTRO cliente (o "Transcrição Ata CDL 2023" da 560 achado
+ * na pasta da 536 continua); o FGTS e os outros tipos continuam como estavam.
+ */
+function contratoSemPastaDoAno(entrada, ctx, d) {
+  if (!d || d.acao !== 'NAO_IDENTIFICADO' || d.motivo !== 'PASTA_DO_ANO_SEM_CNPJ' || d.tipo !== 'DOC CONSTITUTIVO' || d.cliente == null || !ctx.cadastro.porCod.has(+d.cliente)) return null;
+  if (!pastaNaoContradiz(entrada.rel || '', +d.cliente, ctx.cadastro)) return null;
+  const ev = (d.evidencias || []).filter(e => !/^a pasta do cliente em \d{4} ainda não existe/.test(e) && !/^raiz do ano /.test(e));
+  const r = Object.assign({}, d, { acao: 'ARQUIVAR', criarPastaDoAno: true, evidencias: ev.concat('contrato social sem a pasta do cliente no ano: a pasta do ano nasce (Vitor, 09/11/2026, decisão 8)') });
+  delete r.motivo; delete r.codigo; delete r.anoRaiz;
+  const f = finalizar(r, ctx);
+  return f && f.acao === 'ARQUIVAR' ? f : null;
+}
 function decidir(entrada, ctx) {
   const d0 = decidir2(entrada, ctx);
   const d1 = ficaNiPorDecisao(entrada, d0) || d0;
+  if (d1 && d1.acao === 'NAO_IDENTIFICADO') { let q = null; try { q = pelasDecisoesDe0911(entrada, ctx, d1); } catch (e) { q = null; } if (q && q.acao === 'ARQUIVAR') return q; }
+  if (d1 && d1.motivo === 'PASTA_DO_ANO_SEM_CNPJ') { let k = null; try { k = contratoSemPastaDoAno(entrada, ctx, d1); } catch (e) { k = null; } if (k) return k; }
   let m = null;
   try { m = pagamentoDoMovimento(entrada, ctx, d1); } catch (e) { m = null; }
   return m || d1;
@@ -1686,7 +1702,7 @@ function fornecedorDoNomeDoArquivo(n, c0) {
     const w = w0.replace(/[.,;:]+$/, '');
     if (!w) continue;
     if (!/[A-Z0-9(]/.test(w)) continue;
-    const marca = out.length === 0 && /[A-Z].*[A-Z].*[A-Z]/.test(w) && !/^(NF|CTE|REF|ITR|DAM)/.test(w);   // "A3MPX" é o nome; "NF4111" não
+    const marca = out.length === 0 && w.length <= 12 && /[A-Z].*[A-Z].*[A-Z]/.test(w) && !/^(NF|CTE|REF|ITR|DAM)/.test(w);   // "A3MPX" é o nome; "NF4111" não; o nome de arquivo colado ("185PROPOSTAGRUPOBRAZILIAN…2ASSINADO1", 09/11/2026) também não
     if ((/\d/.test(w) && !marca) || /[(]|^R\$|^N[º°O]$/.test(w) || doCli.has(w) || /^(NFS?-?E?|NFSE|CTE|CT-E|REF|PARC|BOLETO|FATURA|ORCAM|ORCAMENTO|PEDIDO|CONTRATO|FILIAL|MATRIZ|F|FZ|FAZ|FAZENDA|PG|PAGO|PT|PR|CS|JAN|FEV|MAR|ABR|MAI|JUN|JUL|AGO|SET|OUT|NOV|DEZ|JANEIRO|FEVEREIRO|MARCO|ABRIL|MAIO|JUNHO|JULHO|AGOSTO|SETEMBRO|OUTUBRO|NOVEMBRO|DEZEMBRO)$/.test(w) || /^(F|REF|NF)\./.test(w)) break;
     out.push(w.replace(/\./g, ''));
     if (out.length === 3) break;
@@ -1695,9 +1711,14 @@ function fornecedorDoNomeDoArquivo(n, c0) {
   return /[A-Z]{3}/.test(r) ? r : null;
 }
 const raizDoCliente = (cad, codigo) => { const doc = String((cad.porCod.get(codigo) || {}).doc || ''); return doc.length === 14 ? doc.slice(0, 8) : doc || ('#' + codigo); };
-const FAZENDA_DO_ESTABELECIMENTO = [{ nome: 'CEDRO', re: /\bCEDRO\b/, codigo: 582 }, { nome: 'LIBERDADE', re: /\bLIBERDADE\b/, codigo: 572 }];
+// (Vitor, 09/11/2026, decisão 1) as fazendas da BRAZILIAN FORESTRY no zip "MOVIMENTO_BRAZILIAN_FORESTRY_…": RENASCER (MG e BA, "BF RN"), NOVE FIOS ("9F") e BOA VISTA II
+// são todas da filial 414; o que não fala de fazenda vai para a matriz 413. O filtro só vale entre os estabelecimentos do nome do zip (a 414 tem de estar entre eles)
+const FAZENDA_DO_ESTABELECIMENTO = [{ nome: 'CEDRO', re: /\bCEDRO\b/, codigo: 582 }, { nome: 'LIBERDADE', re: /\bLIBERDADE\b/, codigo: 572 },
+  { nome: 'RENASCER', re: /\bRENASCER\b|\bBF RN\b/, codigo: 414 }, { nome: 'NOVE FIOS', re: /\bNOVE FIOS\b|\b9 ?F\b|\b9 FIOS\b/, codigo: 414 }, { nome: 'BOA VISTA II', re: /\bBOA VISTA ?II\b/, codigo: 414 }];
 function pagamentoDoMovimento(entrada, ctx, d) {
   if (!d || d.acao !== 'NAO_IDENTIFICADO' || d.ficaNi || d.contaAmbigua) return null;
+  // (Vitor, 09/11/2026) a multa e o parcelamento de multa ("PARC MULTA ADM AMB", "PARCE DE MULTA AMB") não viram "fornecedor" pelo nome: ficam para uma pessoa
+  if (/\bMULTAS?\b/.test(norm(String(entrada.nome || '')))) return null;
   const rel = entrada.rel || entrada.nome || '';
   const partes = partesDoCaminho(rel).slice(0, -1);
   if (!partes.some(p => /^MOVIMENTO[\s_-]/i.test(p))) return null;
@@ -1724,6 +1745,129 @@ function pagamentoDoMovimento(entrada, ctx, d) {
   if (!fornecedor) return null;
   const ev = (d.evidencias || []).concat('zip de movimento do cliente: o que não foi lido/reconhecido (' + d.motivo + ') vai para os pagamentos do fornecedor pelo nome do arquivo; o cliente: ' + como + '; o mês: ' + (dm && comp !== doZip ? 'a data do nome' : 'o nome do zip') + ' (Vitor, 05/11/2026)');
   return finalizar({ acao: 'ARQUIVAR', peloMovimento: true, cliente: cli, comoCliente: 'pastaConferida', confianca: 0.88, tipo: 'FATURA FORNECEDOR', setor: 'CONTABIL', caminho: ['CONTÁBIL', 'PAGAMENTOS DE FORNECEDORES', String(comp.ano), dois(comp.mes), fornecedor], competencia: { mes: comp.mes, ano: comp.ano }, nomeOriginal: nome, nomeFinal: nome, evidencias: ev, ocr: entrada.ocr || null, fonte: 'zip de movimento (Vitor, 05/11/2026)' }, ctx);
+}
+/**
+ * As decisões do Vitor de 09/11/2026 sobre o que restou dos NÃO IDENTIFICADOS, pelo nome e pela pasta de origem (depois de pelaPastaENome, só no que continua NI):
+ *  (3) o Word (.docx/.doc), o .txt e o .html sem regra, com o cliente certo: a pasta equivalente à de origem no cliente;
+ *  (9) a certidão na pasta CERTIDÕES com o tipo e o vencimento só no nome ("481 CND - MUNICIPAL - Venc. 07.06.2026"): o nome junto com a pasta bastam;
+ *  (10) a consulta do QSA, do MEI e da REDESIM e o documento pessoal (RG, CNH, CPF) na pasta do cliente certo: SOCIETÁRIO\DOCUMENTOS (o arquivador-novo troca pela
+ *       subpasta de documentos que o cliente já tiver no SOCIETÁRIO, d.documentoPessoal).
+ * O cliente certo: o CNPJ/CPF de UM cliente escrito no documento, senão a pasta de origem conferida (código e nome, ou o grupo matriz+filiais); o CNPJ/CPF de outro
+ * cliente, a pasta de outro cliente e o nome de outro cliente no nome do arquivo ou nas pastas barram (fica em NÃO IDENTIFICADOS).
+ */
+const NI_DE_0911 = new Set(['TIPO_NAO_RECONHECIDO', 'FORMATO_SEM_REGRA', 'CONTEUDO_SEM_TEXTO', 'CONTEUDO_ILEGIVEL', 'COMPETENCIA_AUSENTE', 'ANO_INDETERMINADO', 'EMITENTE_INDETERMINADO', 'CONFIANCA_ABAIXO_DO_LIMIAR']);
+// a primeira palavra da razão que não diz o cliente sozinha (é de muitos)
+const PRIMEIRA_PALAVRA_COMUM = /^(POSTO|CENTRO|COMERCIO|COMERCIAL|AUTO|SUPERMERCADO|CASA|LOJA|DISTRIBUIDORA|EMPRESA|ASSOCIACAO|SINDICATO|INDUSTRIA|FAZENDA|BANCO|TRANSPORTE|TRANSPORTES|CONSTRUTORA|CONSTRUCOES|AGRO|AGROPECUARIA|FARMACIA|DROGARIA|MERCADO|MERCEARIA|PADARIA|PANIFICADORA|RESTAURANTE|HOTEL|POUSADA|CLINICA|LABORATORIO|ESCRITORIO|MADEIREIRA|SERVICOS|CONSULTORIA|EMPREENDIMENTOS|COOPERATIVA|IGREJA|ESCOLA|INSTITUTO|NOVA|NOVO|SAO|SANTA|SANTO|MINAS|GRUPO|BAR|LANCHONETE|ACOUGUE|MATERIAL|MATERIAIS|DEPOSITO|ARMAZEM|ATACADO|ATACADAO|MINI|SUPER|ELETRO|MOVEIS|CALCADOS|CONFECCOES|OTICA|STUDIO|ACADEMIA|PRODUTOS|DEPARTAMENTO|CAMARA|MUNICIPIO|PREFEITURA|SECRETARIA|FUNDO|FUNDACAO|CONDOMINIO|EDIFICIO|ESPOLIO|ME|EPP|LTDA)$/;
+/** O nome (ou o código no começo de uma palavra) de OUTRO cliente — de outra raiz de CNPJ — no texto (o nome do arquivo e as pastas abaixo da do cliente). */
+function outroClienteNoNome(texto, cod, cad) {
+  const raiz = c => { const d = String((cad.porCod.get(c) || {}).doc || ''); return d.length === 14 ? d.slice(0, 8) : '#' + c; };
+  const minha = raiz(cod);
+  const ws = norm(String(texto || '')).split(/[^A-Z0-9]+/).filter(Boolean);
+  const tem = new Set(ws);
+  const juntas = ' ' + ws.join(' ') + ' ';
+  // o código de outro cliente sozinho como palavra ("Empresa 452.docx"), até o de uma filial do mesmo CNPJ (na pasta da OURO VERDE 408, "Empresa 452.docx" é a da filial 452)
+  for (const w of ws) if (/^\d{2,4}$/.test(w) && +w !== cod && cad.porCod.has(+w) && !/^(19|20)\d{2}$/.test(w)) return 'o código ' + (+w) + ' de ' + (raiz(+w) === minha ? 'outro estabelecimento' : 'outro cliente');
+  const doMeu = new Set();
+  for (const c of cad.porCod.values()) {
+    if (raiz(c.codigo) !== minha) continue;
+    for (const n of [c.razao, c.fantasia].concat(c.outrosNomes || []).filter(Boolean)) { const p = norm(n).split(/[^A-Z0-9]+/).filter(Boolean)[0]; if (p) doMeu.add(p); }
+  }
+  for (const c of cad.porCod.values()) {
+    if (raiz(c.codigo) === minha || c.ativo === false) continue;
+    for (const n of [c.razao, c.fantasia].filter(Boolean)) {
+      const p = norm(n).split(/[^A-Z0-9]+/).filter(Boolean);
+      if (!p.length) continue;
+      if (p.length >= 2 && !PRIMEIRA_PALAVRA_COMUM.test(p[0]) && juntas.includes(' ' + p[0] + ' ' + p[1] + ' ')) return 'o nome de outro cliente (' + c.codigo + ': ' + p[0] + ' ' + p[1] + ')';
+      if (p[0].length >= 4 && /^[A-Z]+$/.test(p[0]) && !PRIMEIRA_PALAVRA_COMUM.test(p[0]) && !PALAVRAS_DE_PASTA.has(p[0]) && !doMeu.has(p[0]) && tem.has(p[0])) return 'o nome de outro cliente (' + c.codigo + ': ' + p[0] + ')';
+    }
+  }
+  return null;
+}
+/** As pastas entre a do cliente (a do código: "0055 - TORRA…", "413 BRAZILIAN filiais…") e o arquivo; null quando a pasta do cliente não é achada pelo código. */
+function pastasAbaixoDoCliente(rel, cod, cad) {
+  const partes = partesDoCaminho(rel).slice(0, -1);
+  const raiz = c => { const d = String((cad.porCod.get(c) || {}).doc || ''); return d.length === 14 ? d.slice(0, 8) : '#' + c; };
+  for (let i = partes.length - 1; i >= 0; i--) {
+    const m = /^0*(\d{1,4})(?!\d)/.exec(partes[i].trim());
+    if (m && cad.porCod.has(+m[1]) && (+m[1] === cod || raiz(+m[1]) === raiz(cod))) return partes.slice(i + 1);
+  }
+  return null;
+}
+function pelasDecisoesDe0911(entrada, ctx, d) {
+  if (!d || d.acao !== 'NAO_IDENTIFICADO' || d.contaAmbigua || d.ficaNi || !NI_DE_0911.has(d.motivo)) return null;
+  const cad = ctx.cadastro;
+  const nome = String(entrada.nome || ''), rel = entrada.rel || nome;
+  const ext = ((/\.([a-z0-9]+)$/i.exec(nome) || [])[1] || '').toLowerCase();
+  const n = norm(nome.replace(/\.[a-z0-9]{2,4}$/i, '')).replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+  const pastas = partesDoCaminho(rel).slice(0, -1).map(p => norm(p).replace(/\s+/g, ' ').trim());
+  const bruto = Array.isArray(entrada.texto) ? entrada.texto.slice(0, 3).join('\n') : String(entrada.texto || entrada.txt || '');
+  const ev = (d.evidencias || []).slice();
+  const pastaAno = anoDaPasta(rel);
+  const anoAtual = (ctx.hoje ? new Date(ctx.hoje) : new Date()).getFullYear();
+  const anosNome = (n.match(/(?:^|[^0-9])(20\d{2})(?![0-9])/g) || []).map(x => +x.replace(/\D/g, '')).filter(anoOk);
+  const anoNome = anosNome.length ? anosNome[anosNome.length - 1] : null;
+  const anoArq = entrada.dataArquivo && anoOk(+String(entrada.dataArquivo).slice(0, 4)) ? +String(entrada.dataArquivo).slice(0, 4) : null;
+  // o cliente certo (como o clienteCerto de pelaPastaENome, com o grupo matriz+filiais pela pasta)
+  const doTexto = [...new Set(documentosDoTexto(bruto).filter(y => !ESCRITORIO.has(y.doc)).flatMap(y => clientesDoDoc(y.doc, cad)))];
+  if (doTexto.length > 1) return null;
+  let x = null;
+  if (doTexto.length === 1) x = { cliente: doTexto[0], como: 'doc', conf: 0.95 };
+  else {
+    const pv = [];
+    const p = clientePelaPastaOuGrupo(rel, nome, cad, pv);
+    if (p && p.como === 'pastaConferida' && (d.cliente == null || +d.cliente === p.cliente)) { x = p; ev.push(...pv); }
+  }
+  if (!x || !cad.porCod.has(x.cliente) || !pastaNaoContradiz(rel, x.cliente, cad)) return null;
+  const fim = (o, porque) => {
+    ev.push(porque + ' (Vitor, 09/11/2026)');
+    return finalizar(Object.assign({ acao: 'ARQUIVAR', cliente: x.cliente, comoCliente: x.como, confianca: Math.min(x.conf || 0.9, 0.9), evidencias: ev, nomeOriginal: nome, nomeFinal: nome, ocr: entrada.ocr || null, anoPista: pastaAno, fonte: 'NÃO IDENTIFICADOS (Vitor, 09/11/2026)' }, o), ctx);
+  };
+  const abaixo = pastasAbaixoDoCliente(rel, x.cliente, cad);
+  const outro = outroClienteNoNome(nome.replace(/\.[a-z0-9]{2,4}$/i, '') + ' ' + (abaixo || []).join(' '), x.cliente, cad);
+
+  // (9) a certidão na pasta CERTIDÕES, com o tipo e o vencimento no nome ("CND - MUNICIPAL - Venc. 07.06.2026", "CND - UNIÃO - Vencimento 18.05.2024")
+  const cnd = /^(?:\d+\s*-?\s*)?CND\s*-\s*(MUNICIPAL|ESTADUAL|FEDERAL|UNIAO|TRABALHISTA|FGTS)\s*-\s*VENC(?:IMENTO|\.)?\s*(\d{2})[.\-\/](\d{2})[.\-\/](20\d{2})$/.exec(n);
+  if (cnd && ext === 'pdf' && pastas.length && /^CERTIDOES$/.test(pastas[pastas.length - 1]) && !outro) {
+    const dia = +cnd[2], mes = +cnd[3], a = +cnd[4];
+    if (mes >= 1 && mes <= 12 && dia >= 1 && dia <= 31 && anoOk(a)) {
+      const orgao = cnd[1] === 'UNIAO' ? 'FEDERAL' : cnd[1];
+      return fim({ tipo: 'CERTIDAO', setor: 'FOLHA_SOCIETARIO', caminho: ['SOCIETÁRIO', 'CERTIDÕES', orgao], competencia: { mes, ano: a }, nomeFinal: 'VENC ' + dois(dia) + '-' + dois(mes) + '-' + a + '.pdf' },
+        'certidão na pasta CERTIDÕES com o tipo (' + orgao + ') e o vencimento só no nome: SOCIETÁRIO\\CERTIDÕES\\' + orgao + ', "VENC dd-mm-aaaa" (decisão 9)');
+    }
+  }
+
+  // (10) a consulta do QSA, do MEI e da REDESIM e o documento pessoal (RG, CNH, CPF): SOCIETÁRIO\DOCUMENTOS (ou a subpasta de documentos que o cliente já tem)
+  const docPessoal = /(?:^|[^A-Z])(RG|CPF|CNH(?:-E)?|IDENTIDADE)(?![A-Z])|DOCUMENTOS? PESSOA(?:IS|L)/.test(n);
+  const consulta = /(?:^|[^A-Z])QSA(?![A-Z])|QUADRO DE SOCIOS|CONSULTA MEI|(?:^|[^A-Z])REDESIM(?![A-Z])/.test(n);
+  // a pasta de documentos constitutivos/contrato social de origem continua com a decisão de 29/10/2026 (o mapa da migração: SOCIETÁRIO\DOCUMENTOS CONSTITUTIVOS)
+  const pastaConstitutiva = pastas.some(p => /DOCUMENTOS? CONSTITUTIVOS?|CONTRATO SOCIAL/.test(p));
+  if ((docPessoal || consulta) && !pastaConstitutiva && /^(pdf|jpe?g|png)$/.test(ext) && !outro && !/\b(IRPF|DIRPF|DECLARACAO|RECIBO|COMPROVANTE|BOLETO|DARF|DAE|GUIA|NOTA|NF|NFE|EXTRATO)\b/.test(n)) {
+    const a = anoNome || (pastaAno && pastaAno.ano) || anoAtual;
+    // o documento pessoal com OCR fraco, na pasta conferida do cliente: a leitura ruim não derruba (como o documento de sócio, Vitor 29/10/2026)
+    return fim({ tipo: consulta ? 'CONSULTA CADASTRAL' : 'DOCUMENTO DE SOCIO', setor: 'FOLHA_SOCIETARIO', caminho: ['SOCIETÁRIO', 'DOCUMENTOS'], competencia: { ano: a }, documentoPessoal: true, ocrFracoOk: x.como === 'pastaConferida' },
+      (consulta ? 'consulta do QSA/MEI/REDESIM' : 'documento pessoal (RG/CNH/CPF)') + ' do cliente: SOCIETÁRIO\\DOCUMENTOS ou a subpasta de documentos que ele já tem (decisão 10)');
+  }
+
+  // (3) o Word, o .txt e o .html sem regra, com o cliente certo: a pasta equivalente à de origem no cliente
+  if (/^(docx?|txt|html?)$/.test(ext) && d.motivo === 'FORMATO_SEM_REGRA' && abaixo && !outro) {
+    if (/EXTRAT|COMPROVANTE|\bSICOOB\b|BRADESCO|\bITAU\b|CAIXA ECONOMICA|\bBB\b|\bBANCO\b|SANTANDER|\bBNB\b|SICREDI|PAGBANK|PAGSEGURO|MERCADO ?PAGO|\bSENHAS?\b|\bACESSO\b/.test(n)) return null;
+    if (/^(txt|html?)$/.test(ext) && documentosDoTexto(bruto).some(y => clientesDoDoc(y.doc, cad).some(c => c !== x.cliente))) return null;
+    const ab = abaixo.map(p => norm(p).replace(/\s+/g, ' ').trim());
+    const generica = p => /^(OUTROS|NOVA PASTA( \(\d+\))?|(19|20)\d{2}|\d{1,2}|\d{1,2}[.\-_ ](19|20)\d{2}|(19|20)\d{2}[.\-_ ]\d{1,2})$/.test(p);
+    const a = anoNome || (pastaAno && pastaAno.ano) || anoArq || anoAtual;
+    let caminho = null, porque = null;
+    if (ab.every(generica)) { caminho = ['CONTÁBIL', 'OUTROS DOCUMENTOS', String(a)]; porque = 'CONTÁBIL\\OUTROS DOCUMENTOS\\' + a; }
+    else {
+      const resto = ab.filter(p => !generica(p));
+      if (resto.length === 1 && /^RELATORIOS?( \d{4})?$/.test(resto[0])) { caminho = ['CONTÁBIL', 'RELATÓRIOS ALTERDATA']; porque = 'CONTÁBIL\\RELATÓRIOS ALTERDATA'; }
+      else if (resto.length === 1 && /^ESTOQUE( \d{4})?$/.test(resto[0])) { caminho = ['CONTÁBIL', 'PAPÉIS DE TRABALHO', String(a)]; porque = 'CONTÁBIL\\PAPÉIS DE TRABALHO\\' + a; }
+      else if (resto.length === 1 && /^(DOCUMENTOS? CONSTITUTIVOS?|CONTRATO SOCIAL)$/.test(resto[0])) { caminho = ['SOCIETÁRIO', 'DOCUMENTOS CONSTITUTIVOS']; porque = 'SOCIETÁRIO\\DOCUMENTOS CONSTITUTIVOS'; }
+    }
+    if (!caminho) return null;
+    return fim({ tipo: 'OUTROS DOCUMENTOS', setor: caminho[0] === 'SOCIETÁRIO' ? 'FOLHA_SOCIETARIO' : 'CONTABIL', caminho, competencia: { ano: a } },
+      'arquivo .' + ext + ' sem regra, com o cliente certo: a pasta equivalente à de origem ("' + (abaixo.join('\\') || '(a pasta do cliente)') + '" → ' + porque + '), nome original (decisão 3)');
+  }
+  return null;
 }
 function decidir2(entrada, ctx) {
   const d = decidir1(entrada, ctx);
@@ -2868,6 +3012,17 @@ function bancoUnicoDoCadastro(cad, c, texto, contasLidas) {
   if (outros.length) return { porque: 'o documento traz o CNPJ/CPF de outro cliente (' + [...new Set(outros)].join(', ') + ')' };
   return { banco };
 }
+/**
+ * (Vitor, 09/11/2026, decisão 7) as pessoas de fora do cadastro cujos documentos são de um cliente: o ALDINEI (a DEFIS "DEFIS - 2025 ALDINEI.xlsx", o título
+ * "DRE - ALDINEI MIRANDA ARAUJO ME") é da BIG LANCHES (96) e o DELZITO, da AUTO GIRO PECAS E ACESSORIOS (231). O DUVALLE e o NORIVAL continuam em NÃO IDENTIFICADOS.
+ * Só o nome inteiro como palavra; o código tem de existir no cadastro. → código ou null.
+ */
+const FORA_DO_CADASTRO = [{ re: /(?:^|[^A-Z])ALDINEI(?![A-Z])/, codigo: 96 }, { re: /(?:^|[^A-Z])DELZITO(?![A-Z])/, codigo: 231 }];
+function foraDoCadastro(texto, cad) {
+  const t = norm(String(texto || ''));
+  const achados = [...new Set(FORA_DO_CADASTRO.filter(f => f.re.test(t) && cad.porCod.has(f.codigo)).map(f => f.codigo))];
+  return achados.length === 1 ? achados[0] : null;
+}
 /** O ano de uma planilha de apoio da DEFIS pelos dados: a coluna do período (a 4ª) traz a data em série do Excel de janeiro (01/01/AAAA) na primeira linha de dados. */
 function anoDaPlanilhaDefis(planilha) {
   for (const l of (planilha || []).slice(1, 6)) {
@@ -2904,9 +3059,9 @@ function decidirPlanilha(entrada, ctx, ev, porHash) {
     let cli = unico(documentosDoTexto((entrada.planilha || []).map(l => (l || []).join(' | ')).join('\n')).flatMap(d => clientesDoDoc(d.doc, cad))), como = 'doc', conf = 0.95;
     // a razão social no título da planilha ("DRE - ALDINEI MIRANDA ARAUJO ME - JANEIRO A DEZEMBRO 2025")
     const tit = /\bDRE\s*-\s*(.+?)\s*-\s*JANEIRO A DEZEMBRO/.exec(u);
-    const doTitulo = tit ? (unico(clientesPeloNomeNoTexto(tit[1], cad)) || clientePeloNomeCurto(tit[1], cad)) : null;
+    const doTitulo = tit ? (unico(clientesPeloNomeNoTexto(tit[1], cad)) || clientePeloNomeCurto(tit[1], cad) || foraDoCadastro(tit[1], cad)) : null;
     // (29/10/2026, Vitor) o nome curto de matriz e filial ("ROSILENE" = a 51 e a filial 149) é o cliente da MATRIZ: a DEFIS é uma só, da empresa
-    const doNomeArq = mDefis[2].trim() ? (clientePeloNomeCurto(mDefis[2], cad) || matrizPeloNomeCurto(mDefis[2], cad)) : null;
+    const doNomeArq = mDefis[2].trim() ? (clientePeloNomeCurto(mDefis[2], cad) || matrizPeloNomeCurto(mDefis[2], cad) || foraDoCadastro(mDefis[2], cad)) : null;
     const sub = clienteDaPasta(entrada.rel || entrada.nome, cad), daPasta = sub && sub.forte ? sub.codigo : null;
     if (cli == null) {
       // o título que nomeia OUTRO cliente é o modelo copiado de uma pasta para outra (o mesmo "DRE - DORNAS HAVANA" em 14 pastas): só vale
@@ -2968,7 +3123,11 @@ function decidirPlanilha(entrada, ctx, ev, porHash) {
       if (pz && pz.forte && !outroDoc && clientesPeloNomeNoTexto(linhas.join('\n'), cad).includes(pz.codigo)) { cli = pz.codigo; conf = 0.9; pelaPasta = true; ev.push(pz.como + ' (o nome no texto é o da matriz e o da filial)'); }
     }
     if (!cli) return { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_NAO_LOCALIZADO', confianca: 0.3, tipo: 'BALANCETE', setor: 'CONTABIL' };
-    const ano = mBal ? +mBal[2] : ((/(20\d{2})/.exec(u) || [])[1] | 0) || null;
+    // (09/11/2026) o ano: o nome do arquivo, a pasta de origem e só por último o texto, número inteiro (o "(20\d{2})" solto tirou 2054 de um número da planilha do "Balancete 12.2025.xls" da 572)
+    const relBal = entrada.rel || entrada.nome;
+    const anoValido = a => anoOk(a) && a <= (ctx.hoje ? new Date(ctx.hoje) : new Date()).getFullYear();
+    const ano = [mBal ? +mBal[2] : 0, (competenciaDoNome(entrada.nome) || {}).ano, +((/(?<![0-9])(20\d{2})(?![0-9])/.exec(nome) || [])[1] || 0), (anoDaPasta(relBal) || {}).ano, (competenciaDaPasta(relBal) || {}).ano]
+      .concat([...u.matchAll(/(?<![\d,])(20\d{2})(?![.,]?\d)/g)].map(m => +m[1])).find(anoValido) || null;
     if (!ano) return { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5, cliente: cli, tipo: 'BALANCETE', setor: 'CONTABIL' };
     ev.push(mBal ? 'nome do arquivo do Alterdata (código e mês)' : 'título "Balancete"');
     return { acao: 'ARQUIVAR', cliente: cli, comoCliente: porDoc ? 'doc' : pelaPasta ? 'pastaConferida' : 'nome', confianca: conf, tipo: 'BALANCETE', setor: 'CONTABIL', caminho: ['CONTÁBIL', 'REGISTRO DE LIVROS', '(001) ' + ano], nomeFinal: entrada.nome, fonte: '04 (Balancete e ECD)' };
@@ -3529,7 +3688,7 @@ function fornecedorDoNomeSemData(base) {
   s = s.replace(/\b(JANEIRO|FEVEREIRO|MARCO|ABRIL|MAIO|JUNHO|JULHO|AGOSTO|SETEMBRO|OUTUBRO|NOVEMBRO|DEZEMBRO|JAN|FEV|MAR|ABR|MAI|JUN|JUL|AGO|SET|OUT|NOV|DEZ)[-/ ]?(20\d{2})\b/g, ' ').replace(/^RELATORIO\s+(?!PERIODICO)(CUSTO\s+)?/, '').replace(/^REEMBOLSO\s+/, '');
   s = s.replace(/^(?:(?:BOLETOS?|FATURAS?|NFS-?E|NFFS|NF-?E|NFSC|NFC|NF|NC|FT|APOLICE|RECIBO|TAXA|GUIA)\b[\s.:-]*(?:N[O°º.]+\s*)?(?:\d[\d.\/-]*)?\s*)+/, '');
   s = s.replace(/\bRELATORIO PERIODICO AO CLIENTE\b/g, ' ').replace(/\bPARC(?:ELA)?\.?\s*\d+\s*(?:DE|\/)\s*\d+\b/g, ' ')
-    .replace(/\b(MATRIZ|FILIAL\s*\d*)\b/g, ' ').replace(/(?:\s+-?\s*\d+)+\s*$/, '').replace(/^[\s•\-–.]+|[\s•\-–.]+$/g, '').replace(/\s+/g, ' ').trim();
+    .replace(/\b(MATRIZ|FILIAL\s*\d*)\b/g, ' ').replace(/(?:\s+-?\s*\d+)+\s*$/, '').replace(/\s+R\$\s*$/, '').replace(/^[\s•\-–.]+|[\s•\-–.]+$/g, '').replace(/\s+/g, ' ').trim();
   // só um nome de fornecedor: sem número e sem começar por uma palavra do que se paga (mensalidade, multa, matrícula…)
   if (!/[A-Z]{3}/.test(s) || /\d/.test(s) || /^(MENSALIDADE|MULTA|SEFAZ|PEDIDO|MAT|MATRICULAS?|CERTIDAO|CARTIDAO|AVERBACAO|REPOSICAO|PARCELA|PARC|DOACAO|LOCACAO|DE|DA|DO|DOS|DAS|E|EM|A|O)\b/.test(s)) return null;
   return nomeSeguro(semAcento(nomeNormalizado(s))).toUpperCase() || null;
@@ -3543,6 +3702,8 @@ function decidirFornecedor(pg, entrada, u, bruto, ctx, ev, porHash) {
   if (r.erro) return Object.assign(base, r.erro);
   const c = r.c;
   Object.assign(base, { cliente: c.cliente, comoCliente: c.como });
+  // (Vitor, 09/11/2026) no zip de movimento solto (o cliente pelo nome do zip), a multa e o parcelamento de multa ("PARC MULTA ADM AMB") não viram fornecedor: ficam para uma pessoa
+  if (c.semPasta && /\bMULTAS?\b/.test(norm(String(entrada.nome || '')))) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'TIPO_NAO_RECONHECIDO', confianca: 0.3, evidencias: ev.concat('multa no zip de movimento: fica em NÃO IDENTIFICADOS (Vitor, 09/11/2026)') });
   if (pg.semData) {
     // sem data no nome (27/10/2026): no boleto, o beneficiário lido no conteúdo vale antes do nome; no nome, as palavras do
     // nome do próprio cliente saem ("BOLETO TAXA 1° TRIM. IBAMA BRAZILIAN MATRIZ" = IBAMA)
@@ -3589,8 +3750,10 @@ function decidirFornecedor(pg, entrada, u, bruto, ctx, ev, porHash) {
   if (comp && comp.ano * 12 + comp.mes > hoje.getFullYear() * 12 + hoje.getMonth() + 1 && doZip) { ev.push('a data do nome (' + mesAno(comp) + ') está no futuro: o mês do nome do zip/pasta de origem (' + mesAno(doZip) + ')'); comp = doZip; }
   if (!comp) { const v = dataBr(linhaApos(u, /VENCIMENTO/, 60)); if (v) { comp = { mes: +v.slice(3, 5), ano: +v.slice(6) }; ev.push('mês pelo vencimento no conteúdo (' + v + ')'); } }
   if (!comp) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5, evidencias: ev.concat('sem a data no começo do nome, o mês na pasta de origem ou o vencimento no conteúdo') });
+  // (Vitor, 09/11/2026, decisão 4) o cliente confirmado pelo conteúdo: o CNPJ/CPF dele ou a razão social dele escritos no documento (vale no limite do OCR, em finalizar)
+  const clienteNoConteudo = !!bruto && (documentosDoTexto(bruto, true).some(y => clientesDoDoc(y.doc, cad).includes(c.cliente)) || unico(clientesPeloNomeNoTexto(bruto.slice(0, 3000), cad)) === c.cliente);
   // o nome original fica (já traz a data, o fornecedor, a NF e o valor)
-  return Object.assign(base, { acao: 'ARQUIVAR', confianca: c.conf, competencia: comp, caminho: ['CONTÁBIL', 'PAGAMENTOS DE FORNECEDORES', String(comp.ano), dois(comp.mes), pg.fornecedor], nomeFinal: entrada.nome });
+  return Object.assign(base, { acao: 'ARQUIVAR', confianca: c.conf, competencia: comp, caminho: ['CONTÁBIL', 'PAGAMENTOS DE FORNECEDORES', String(comp.ano), dois(comp.mes), pg.fornecedor], nomeFinal: entrada.nome }, clienteNoConteudo ? { clienteNoConteudo } : {});
 }
 
 /**
@@ -3652,6 +3815,9 @@ function clienteDoNomeDoConteiner(rel, cad) {
     }
   }
   if (duas.size === 1) { const codigo = [...duas][0]; return { codigo, como: 'o nome do cliente ' + codigo + ' no nome da pasta de origem: ' + [...new Set(porqueDuas)].join(', ') }; }
+  // (Vitor, 09/11/2026, decisão 1) o nome de duas palavras da matriz e das filiais ("BRAZILIAN FORESTRY" = 413, 414, 418 e 453, a mesma raiz): a matriz, ou a filial da
+  // fazenda escrita no nome do arquivo; a palavra solta ("BRAZILIAN", também da 568, de outra raiz) não entra
+  if (duas.size > 1) return matrizDoConteiner(duas, [...new Set(porqueDuas)], rel, cad);
   for (const parte of partes) {
     for (const w of norm(String(parte).replace(/\.(zip|rar|7z)$/i, '')).split(/[^A-Z0-9]+/)) {
       if (w.length < 2 || !/[A-Z]/.test(w) || PALAVRAS_DE_PASTA.has(w) || PALAVRAS_DE_MOVIMENTO.has(w)) continue;
@@ -3676,7 +3842,7 @@ function matrizDoConteiner(achados, porque, rel, cad) {
   const nomeArq = norm(partesDoCaminho(rel).slice(-1)[0] || '');
   // (Vitor, 05/11/2026) a fazenda do nome diz o estabelecimento: CEDRO = 582 (a filial na Fazenda Baixa do Cedro), LIBERDADE = 572 (a matriz)
   const faz = FAZENDA_DO_ESTABELECIMENTO.filter(f => f.re.test(nomeArq) && cs.some(c => c.codigo === f.codigo));
-  if (faz.length === 1) return { codigo: faz[0].codigo, como: 'o nome do cliente no nome da pasta de origem (' + porque.join(', ') + ') e a fazenda no nome do arquivo (' + faz[0].nome + ' = ' + faz[0].codigo + '; Vitor, 05/11/2026)' };
+  if (faz.length && new Set(faz.map(f => f.codigo)).size === 1) return { codigo: faz[0].codigo, como: 'o nome do cliente no nome da pasta de origem (' + porque.join(', ') + ') e a fazenda no nome do arquivo (' + faz[0].nome + ' = ' + faz[0].codigo + '; Vitor, 05/11/2026)' };
   // (Vitor, 05/11/2026) "FILIAL" sem dizer qual (o boleto "NILMA CONT.LAVICA FILIAL"): a matriz; uma fazenda que não está no mapa continua para uma pessoa
   if (/\bFAZ(ENDA)?\b|(^|[^A-Z])F\.\s?[A-Z]/.test(nomeArq)) return null;
   return { codigo: matriz[0].codigo, como: 'o nome do cliente no nome da pasta de origem (' + porque.join(', ') + '): da matriz ' + matriz[0].codigo + ' e das filiais ' + cs.filter(c => c !== matriz[0]).map(c => c.codigo).join(', ') + ', e o nome do arquivo não fala de filial nem de fazenda: a matriz' };
@@ -4807,7 +4973,24 @@ function montarContabil(regra, campos, u, bruto, entrada, ctx, ev, porHash) {
   if (pasta) {
     let nomeFinal = (regra.tipo === 'COMPROVANTE' ? 'Comprovantes ' : '') + ma + ext;
     if (regra.tipo === 'EXTRATO' && campos.variosMeses && campos.periodo) nomeFinal = mesAno(campos.periodo.de) + ' A ' + ma + ext;   // 04: extrato consolidado
-    return Object.assign(base, { acao: 'ARQUIVAR', confianca: conf, competencia: comp, caminho: ['CONTÁBIL', 'EXTRATOS', ano, mes, pasta, banco], nomeFinal, bancoPeloConteudo }, bancoUnico ? { bancoPeloNomeOk: true, bancoUnico: true } : {});
+    // (Vitor, 09/11/2026, decisão 6) a conta do extrato para o cadastro do cliente que ainda não tem o banco (a trava do banco decide se vale): o banco lido no conteúdo, UMA
+    // conta do titular com a agência, nenhuma outra empresa cliente no texto, a conta de nenhum outro cliente no cadastro, e o arquivo não é comprovante
+    let contaDoExtrato = null;
+    if ((regra.tipo === 'EXTRATO' || regra.tipo === 'APLICACOES') && bancoPeloConteudo && !/COMPROVANTE/.test(norm(String(entrada.nome || '')))) {
+      const lidas = contasDoDocumento(bruto, true).filter(y => y.agencia && y.conta);
+      const chaves = [...new Set(lidas.map(y => y.agencia.base + '|' + y.conta.base))];
+      const outros = documentosDoTexto(bruto).filter(y => !ESCRITORIO.has(y.doc)).flatMap(y => clientesDoDoc(y.doc, ctx.cadastro)).filter(k => k !== c.cliente);
+      const deOutro = lidas.length && ((ctx.cadastro && ctx.cadastro.contas) || []).some(k => k.codigo !== c.cliente && mesmaConta(lidas[0].conta, k.conta));
+      // o titular do extrato é o cliente: o CNPJ/CPF dele ou o nome dele no texto (só a pasta não basta: a pasta da 434 tinha os extratos do Itaú do posto 429)
+      // (o banco corta o nome: "ALMEIDA SOUZA PRODUTOS A LTDA" na Caixa; vale também as 3 primeiras palavras da razão, em sequência)
+      const palavras = s => norm(String(s || '')).split(/[^A-Z0-9]+/).filter(w => w.length > 2 && !/^(LTDA|EIRELI|EPP|DAS|DOS|CIA)$/.test(w));
+      const daRazao = palavras((ctx.cadastro && ctx.cadastro.porCod && (ctx.cadastro.porCod.get(c.cliente) || {}).razao) || '').slice(0, 3);
+      const noTexto = ' ' + palavras(bruto.slice(0, 3000)).join(' ') + ' ';
+      const titular = documentosDoTexto(bruto, true).some(y => clientesDoDoc(y.doc, ctx.cadastro).includes(c.cliente)) || unico(clientesPeloNomeNoTexto(bruto.slice(0, 3000), ctx.cadastro)) === c.cliente ||
+        (daRazao.length >= 2 && noTexto.includes(' ' + daRazao.join(' ') + ' '));
+      if (chaves.length === 1 && !outros.length && !deOutro && titular) contaDoExtrato = { banco, agencia: lidas[0].agencia.base + (lidas[0].agencia.dv ? '-' + lidas[0].agencia.dv : ''), conta: lidas[0].conta.base + (lidas[0].conta.dv ? '-' + lidas[0].conta.dv : '') };
+    }
+    return Object.assign(base, { acao: 'ARQUIVAR', confianca: conf, competencia: comp, caminho: ['CONTÁBIL', 'EXTRATOS', ano, mes, pasta, banco], nomeFinal, bancoPeloConteudo }, bancoUnico ? { bancoPeloNomeOk: true, bancoUnico: true } : {}, contaDoExtrato ? { contaDoExtrato } : {});
   }
   if (regra.tipo === 'RECEBIMENTO DE CLIENTES') return Object.assign(base, { acao: 'ARQUIVAR', confianca: conf, competencia: comp, caminho: ['CONTÁBIL', 'RECEBIMENTO DE CLIENTES', ano, mes], nomeFinal: banco + ' ' + ma + ext });
   if (regra.tipo === 'FATURA CARTAO') return Object.assign(base, { acao: 'ARQUIVAR', confianca: conf, competencia: comp, caminho: ['CONTÁBIL', 'EXTRATOS', ano, mes], nomeFinal: 'EXTRATO_' + banco + '_' + ma + ext });
@@ -4910,7 +5093,8 @@ function destinoNoCliente(d, cli, comoCliente, cad, ano) {
   if (parecida) return { erro: { acao: 'NAO_IDENTIFICADO', motivo: 'PASTA_EXISTE_COM_OUTRO_CODIGO', evidencia: 'o cadastro diz ' + cli.codigo + ' - ' + cli.razao + ', mas o Drive já tem "' + parecida + '": não crio uma segunda pasta da mesma empresa' } };
   let pastaCliente, criarPastaCliente = false;
   if (pasta) pastaCliente = pasta;
-  else if (['doc', 'conta', 'hash'].includes(comoCliente) || (!doAno.base && comoCliente === 'pastaConferida')) { pastaCliente = (doAno.base ? null : cad.pastas.get(cli.codigo)) || cli.codigo + ' - ' + nomeSeguro(cli.razao); criarPastaCliente = true; }
+  // (Vitor, 09/11/2026, decisão 8) o contrato social sem a pasta do ano (d.criarPastaDoAno, posto em contratoSemPastaDoAno): a pasta do ano nasce
+  else if (['doc', 'conta', 'hash'].includes(comoCliente) || (!doAno.base && (comoCliente === 'pastaConferida' || d.criarPastaDoAno === true))) { pastaCliente = (doAno.base ? null : cad.pastas.get(cli.codigo)) || cli.codigo + ' - ' + nomeSeguro(cli.razao); criarPastaCliente = true; }
   else if (!doAno.base) return { erro: { acao: 'NAO_IDENTIFICADO', motivo: 'PASTA_DO_ANO_SEM_CNPJ', evidencia: 'a pasta do cliente em ' + ano + ' ainda não existe e o documento não traz o CNPJ dele: ela só nasce com o CNPJ conferido (Vitor, 23/10/2026)' } };
   else return { erro: { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_AMBIGUO', evidencia: 'pasta do cliente não existe e o documento não traz o CNPJ dele (03 regra 2)' } };
   caminho = caminho.map(nomeSeguro);
@@ -5007,6 +5191,13 @@ function travaDoBanco(d, cli) {
   if (bancoPeloNome) d.evidencias = (d.evidencias || []).concat(d.bancoUnico ? 'o banco (' + banco + ') é o único do cliente no cadastro e o extrato não diz outro (Vitor, 29/10/2026, decisão 1)' : 'o banco (' + banco + ') pelo nome do arquivo, e o cliente tem esse banco no cadastro (Vitor, 28/10/2026)');
   const peloConteudo = ['conta', 'doc', 'nome'].includes(d.comoCliente);
   if ((bancos.size || !peloConteudo || (d.bancoPeloConteudo !== true && d.bancoPeloNomeOk === true)) && !bancos.has(banco)) {
+    // (Vitor, 09/11/2026, decisão 6) o banco que o cliente não tem no cadastro, lido no CONTEÚDO de um extrato (com a conta do titular: d.contaDoExtrato) do cliente certo
+    // (a conta, o CNPJ, o nome ou a pasta conferida): arquiva e o banco/conta entra no cadastro do cliente (o arquivador-novo grava em PRODUÇÃO, com a auditoria)
+    if (d.bancoPeloConteudo === true && d.contaDoExtrato && d.contaDoExtrato.banco === banco && ['conta', 'doc', 'nome', 'pastaConferida'].includes(d.comoCliente) && c[4] !== 'COMPROVANTES') {
+      d.cadastrarBanco = Object.assign({ codigo: cli.codigo }, d.contaDoExtrato);
+      d.evidencias = (d.evidencias || []).concat('o cliente ' + cli.codigo + ' ainda não tem o banco ' + banco + ' no cadastro: a conta lida no extrato (ag. ' + d.contaDoExtrato.agencia + ' c/c ' + d.contaDoExtrato.conta + ') entra no cadastro dele, com a auditoria (Vitor, 09/11/2026, decisão 6)');
+      return null;
+    }
     return { acao: 'NAO_IDENTIFICADO', motivo: 'BANCO_NAO_CADASTRADO_NO_CLIENTE', bancoSugerido: banco, evidencias: (d.evidencias || []).concat('o cliente ' + cli.codigo + ' não tem conta no banco ' + banco + ' no cadastro' + (bancos.size ? ' (tem: ' + [...bancos].join(', ') + ')' : ' (nenhum banco cadastrado)') + (peloConteudo ? '' : '; o cliente só pela pasta de origem') + ': a pasta do banco não nasce sozinha (Vitor, 28/10/2026)') };
   }
   return null;
@@ -5053,7 +5244,11 @@ function finalizar(d, ctx) {
     // cliente com certeza (o código e o nome conferem no cadastro: d.ocrFracoOk, posto pela migração): a leitura ruim do Tesseract não derruba o arquivo; o CNPJ de
     // outra empresa ou o nome de outro titular lido no texto continua vencendo a pasta (isso é decidido antes, e este caso nem chega aqui)
     // (Vitor, 05/11/2026) o que sobra do zip de MOVIMENTO vai pelo nome do arquivo por decisão dele ("Sim, pelo nome"): o OCR não derruba (d.peloMovimento)
-    const teto = !d.peloMovimento && ((d.ocr.confianca < 60 && !d.ocrFracoOk) || d.evidencias.some(e => /pelo nome do arquivo/.test(e))) ? 0.8 : OCR_TETO;
+    // (Vitor, 09/11/2026, decisão 4) o pagamento pelo nome do arquivo com o OCR acima de 60% e o cliente confirmado pelo conteúdo (o CNPJ ou a razão social dele lidos no
+    // documento: d.clienteNoConteudo, posto em decidirFornecedor): o nome do arquivo não derruba; abaixo de 60% continua como estava
+    const pagamentoConfirmado = d.clienteNoConteudo === true && d.ocr.confianca > 60;
+    if (pagamentoConfirmado) d.evidencias.push('pagamento pelo nome do arquivo com OCR acima de 60% e o cliente confirmado pelo conteúdo: o nome não limita a confiança (Vitor, 09/11/2026, decisão 4)');
+    const teto = !d.peloMovimento && !pagamentoConfirmado && ((d.ocr.confianca < 60 && !d.ocrFracoOk) || d.evidencias.some(e => /pelo nome do arquivo/.test(e))) ? 0.8 : OCR_TETO;
     d.confianca = Math.min(d.confianca || 0, teto);
     d.evidencias.push('texto por OCR (Tesseract ' + d.ocr.confianca + '%): confiança limitada a ' + teto);
   }
@@ -5105,7 +5300,7 @@ function tipoDoDestino(destino) {
 }
 
 module.exports = {
-  pagamentoDoMovimento, fornecedorDoNomeDoArquivo, LIMIAR, RAIZ_CLIENTES, ARVORE, REGRAS_PDF, BANCOS, ANUAIS, ofxCompetencia, anoDaEntrega, ANO_MINIMO, ANO_DAS_PASTAS, anoDaPasta, pastasDoAno, partesDoCaminho, comMotivoDoCodigo,
+  pagamentoDoMovimento, fornecedorDoNomeDoArquivo, fornecedorDoNomeSemData, LIMIAR, RAIZ_CLIENTES, ARVORE, REGRAS_PDF, BANCOS, ANUAIS, ofxCompetencia, anoDaEntrega, ANO_MINIMO, ANO_DAS_PASTAS, anoDaPasta, pastasDoAno, partesDoCaminho, comMotivoDoCodigo,
   ehLivroContabil, anoDoLivro, decidirSpedAnual, semAcento, norm, chaveNome, nomeNormalizado, nomeSeguro, so, dataBr, valorBr, competenciaSolta, competenciaDoNome, competenciaDaPasta, periodoEscrito,
   cnpjValido, cpfValido, documentosDoTexto, raizesDoTexto, mascarasDoTexto,
   regimeCanonico, montarCadastro, comAnosEMapa, clientesDoDoc, clienteDaPasta, grupoDaPasta, pagamentoDeFornecedor, clientesPeloNomeNoTexto,

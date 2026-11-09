@@ -1,5 +1,5 @@
 // As ações do "Lançamento fora do padrão": marcar a nota ou o grupo como corrigido e o "Colocar em …" do serviço.
-// Ficam aqui porque o quadro aparece no Relatório e no Verificar por conta (Vitor, 14/10/2026).
+// O quadro aparece só no Verificar por conta (saiu do Relatório em 09/11/2026).
 // Origem: conferencia.html os change de data-resolve (~L3232-3268), data-resolve-serv (~L4730-4752) e
 // data-serv-sug → servIrParaForm (~L4539, ~L4590).
 import { conferencia as c, formatos } from '@nads/core';

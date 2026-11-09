@@ -17,7 +17,6 @@ export * from './regras/servicos';
 export * from './regras/divergencias';
 export * from './regras/conciliacao';
 export * from './regras/relatorio';
-export * from './regras/checklist';
 export * from './regras/consulta';
 export * from './regras/auditoria';
 export * from './regras/importacao';

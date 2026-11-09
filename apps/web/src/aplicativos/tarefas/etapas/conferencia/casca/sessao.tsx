@@ -46,17 +46,10 @@ export interface Sessao {
   setAbaConsulta: (a: c.GrupoConsulta) => void;
   filtroConsulta: Record<c.GrupoConsulta, c.FiltroConsulta>;
   setFiltroConsulta: (g: c.GrupoConsulta, f: c.FiltroConsulta) => void;
-  ordemDiv: Record<c.TipoNotaFiscal, c.OrdemGrupos>;
-  setOrdemDiv: (t: c.TipoNotaFiscal, o: c.OrdemGrupos) => void;
-  ordemServ: Record<c.TipoServico, c.OrdemServ>;
-  setOrdemServ: (t: c.TipoServico, o: c.OrdemServ) => void;
   verificar: EstadoVerificar;
   setVerificar: (v: EstadoVerificar | ((v: EstadoVerificar) => EstadoVerificar)) => void;
   /** abre o Verificar por conta já com a conta (atalho "Revisar" do Relatório) */
   revisarConta: (codigos: string[]) => void;
-  /** Checklist: a linha que acabou de ser marcada (anima o risco uma vez) */
-  natAnimar: string | null;
-  setNatAnimar: (m: string | null) => void;
   /** avisa que a página depende de um arquivo ainda não importado */
   avisoImportar: (req: keyof typeof AVISO_IMPORTAR) => void;
   /** o "Colocar em X" do Relatório: o Cadastro abre com o formulário da categoria ('tipo|cat|nome'; antes, o ?servAdd=) */
@@ -109,10 +102,7 @@ export function SessaoProvider({ nome, rota, codigo, pagina: inicial, children }
   const [abaCadastro, setAbaCadastro] = useState<AbaCadastro>('entradas');
   const [abaConsulta, setAbaConsulta] = useState<c.GrupoConsulta>('fiscais');
   const [filtroConsulta, setFC] = useState<Record<c.GrupoConsulta, c.FiltroConsulta>>({ fiscais: c.FILTRO_CONSULTA_VAZIO, servicos: c.FILTRO_CONSULTA_VAZIO });
-  const [ordemDiv, setOD] = useState<Record<c.TipoNotaFiscal, c.OrdemGrupos>>({ entradas: 'cfop', saidas: 'cfop' });
-  const [ordemServ, setOS] = useState<Record<c.TipoServico, c.OrdemServ>>({ tomados: 'nome', prestados: 'nome' });
   const [verificar, setVerificar] = useState<EstadoVerificar>(VERIFICAR_VAZIO);
-  const [natAnimar, setNatAnimar] = useState<string | null>(null);
 
   const irPara = useCallback((destino: string) => {
     const e = empresa;
@@ -146,9 +136,7 @@ export function SessaoProvider({ nome, rota, codigo, pagina: inicial, children }
     nome, rota, codigo, empresa, aplicar, pagina, irPara,
     filtro, setFiltro, abaRelatorio, setAbaRelatorio, abaCadastro, setAbaCadastro, abaConsulta, setAbaConsulta,
     filtroConsulta, setFiltroConsulta: (g, f) => setFC(x => ({ ...x, [g]: f })),
-    ordemDiv, setOrdemDiv: (t, o) => setOD(x => ({ ...x, [t]: o })),
-    ordemServ, setOrdemServ: (t, o) => setOS(x => ({ ...x, [t]: o })),
-    verificar, setVerificar, revisarConta, natAnimar, setNatAnimar, avisoImportar, servAdd, setServAdd, definirTrava,
+    verificar, setVerificar, revisarConta, avisoImportar, servAdd, setServAdd, definirTrava,
   };
   return <Ctx.Provider value={valor}>{children}</Ctx.Provider>;
 }
