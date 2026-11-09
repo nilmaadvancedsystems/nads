@@ -12,7 +12,7 @@ import { noPeriodo } from './periodo';
 import { tipoDoCfopDeBem } from '../../tarefas/regras/bens';
 import { nomeComumContas } from './conciliacao';
 import { contasDaNatureza, listaTipo, naturezasDaConta, todasNotasComTipo } from './empresa';
-import { catDoPart, catServ, contasDoPart, notasCfopDeServico } from './servicos';
+import { catDoPart, catServ, chaveContaCat, contasDoPart, notasCfopDeServico } from './servicos';
 
 /** Uma linha do relatório da conta. */
 export interface LinhaRazao {
@@ -237,6 +237,8 @@ export interface ResultadoVerificacao {
   /** as notas marcadas "Não vai para o Contábil" (fora da conferência e da soma das notas; dá para desfazer) */
   foraDoContabil?: NotaAlvo[];
   icms: LinhaRazao[];
+  /** o honorário lançado sem nota, na conta do Honorário: aparece à parte e não é pendência (como o ICMS) */
+  honorarioSemNota?: LinhaRazao[];
   somaRazao: number;
   somaSemIcms: number;
   icmsSub: number;
@@ -389,8 +391,13 @@ export function conferirConta(x: EntradaVerificacao): ResultadoVerificacao {
   const deOutraOperacao = (l: LinhaRazao) => { const ops = opsDe.get(l) || []; return ops.length > 0 && operacoesDaConta.length > 0 && ops.every(o => operacoesDaConta.indexOf(o) < 0); };
   // só as notas: o que sobrou na conta é de outro assunto (recebimentos, Pix, baixas do adiantamento), não pendência
   const soNotas = !x.servTipo && conferirSoAsNotas(uniaoCfops(gs), x.contas);
-  const operacaoIncorreta = soNotas ? [] : sobra.filter(deOutraOperacao);
-  const aMais = soNotas ? [] : sobra.filter(l => !deOutraOperacao(l));
+  // o honorário lançado sem nota (Vitor, 09/11/2026: a provisão do mês, "… a pagar 01/2026", está certa no razão e não tem
+  // nota nos tomados): não é "A mais". A linha que cita um número de nota continua sendo conferida
+  const contasDoHonorario = x.servTipo === 'tomados' ? contasDaNatureza(e, chaveContaCat('tomados', 'honorario')) : [];
+  const honorarioSemNota = sobra.filter(l => contasDoHonorario.indexOf(l.conta || codigos[0]) > -1 && semNumeroDeNota(l.txt));
+  const restante = sobra.filter(l => honorarioSemNota.indexOf(l) < 0);
+  const operacaoIncorreta = soNotas ? [] : restante.filter(deOutraOperacao);
+  const aMais = soNotas ? [] : restante.filter(l => !deOutraOperacao(l));
   const somaSemIcms = linhasConf.concat(deOutroCfop).reduce((s, l) => s + l.valor, 0);
   const neg = linhasConf.filter(l => l.sinal < 0).length;
   const sinalConta = neg > linhasConf.length / 2 ? -1 : 1;
@@ -412,7 +419,7 @@ export function conferirConta(x: EntradaVerificacao): ResultadoVerificacao {
     : { codigo: comRel.map(a => a.codigo).join(' + '), nome: nomeComumContas(comRel.map(a => a.nome)) || rot.slice(rot.indexOf(' — ') + 3) };
 
   return {
-    faltando, duplicada, aMais, operacaoIncorreta, operacoesDaConta, peloValor, foraDoContabil, icms: icmsLinhas, somaRazao, somaSemIcms, icmsSub, somaFiscal,
+    faltando, duplicada, aMais, operacaoIncorreta, operacoesDaConta, peloValor, foraDoContabil, icms: icmsLinhas, honorarioSemNota, somaRazao, somaSemIcms, icmsSub, somaFiscal,
     serv: x.servTipo, conta,
     contas: comRel.length > 1 ? comRel.map(a => ({ codigo: a.codigo, nome: a.nome })) : null,
     fonte, linhas: razao,
@@ -420,11 +427,17 @@ export function conferirConta(x: EntradaVerificacao): ResultadoVerificacao {
   };
 }
 
+/** O histórico não cita número de nota? (o mês da provisão, "01/2026", não é nota) */
+const semNumeroDeNota = (txt: string) => !numerosDoHistorico(txt.replace(/\b\d{1,2}\/\d{4}\b/g, ''), true).length;
+
 /** as notas que têm o que lançar (a de valor zero não entra no "Faltando na conta") */
 const alvoComValor = (alvo: NotaAlvo[]) => alvo.filter(n => !!n.numero && Math.abs(n.valor) >= IGUAL);
 
 /** As linhas de outra operação (o resultado de antes da coluna Operação não tem a lista). */
 export const operacaoIncorretaDe = (r: ResultadoVerificacao): LinhaRazao[] => r.operacaoIncorreta || [];
+
+/** O honorário sem nota (o resultado de antes não tem a lista). */
+export const honorarioSemNotaDe = (r: ResultadoVerificacao): LinhaRazao[] => r.honorarioSemNota || [];
 
 export function semPendencias(r: ResultadoVerificacao): boolean {
   return !r.faltando.length && !r.duplicada.length && !r.aMais.length && !operacaoIncorretaDe(r).length;
@@ -460,17 +473,18 @@ export function linhasForaDoContabil(r: ResultadoVerificacao): LinhaTabela[] {
   return (r.foraDoContabil || []).map(n => linhaDaNota(n, ''));
 }
 
-export interface Totais { faltando: number; duplicadas: number; aMais: number; operacaoIncorreta: number; icms: number; diferenca: number; semExplicacao: number }
+export interface Totais { faltando: number; duplicadas: number; aMais: number; operacaoIncorreta: number; icms: number; honorarioSemNota: number; diferenca: number; semExplicacao: number }
 
-/** Diferença = Faltando − Duplicadas − A mais − Operação incorreta − ICMS; o que sobrar é "Sem explicação". */
+/** Diferença = Faltando − Duplicadas − A mais − Operação incorreta − ICMS − Honorário sem nota; o que sobrar é "Sem explicação". */
 export function totaisVerificacao(r: ResultadoVerificacao): Totais {
   const faltando = r.faltando.reduce((s, n) => s + n.valor, 0);
   const duplicadas = r.duplicada.reduce((s, d) => s + d.valor, 0);
   const aMais = r.aMais.reduce((s, l) => s + l.valor, 0);
   const operacaoIncorreta = operacaoIncorretaDe(r).reduce((s, l) => s + l.valor, 0);
   const icms = r.icms.reduce((s, l) => s + l.valor, 0);
+  const honorarioSemNota = honorarioSemNotaDe(r).reduce((s, l) => s + l.valor, 0);
   const diferenca = r.somaFiscal - r.somaRazao;
-  return { faltando, duplicadas, aMais, operacaoIncorreta, icms, diferenca, semExplicacao: diferenca - (faltando - duplicadas - aMais - operacaoIncorreta - icms) };
+  return { faltando, duplicadas, aMais, operacaoIncorreta, icms, honorarioSemNota, diferenca, semExplicacao: diferenca - (faltando - duplicadas - aMais - operacaoIncorreta - icms - honorarioSemNota) };
 }
 
 /** Aba de uma conta (várias contas): o relatório dela e o que sobrou nela. */
@@ -494,6 +508,7 @@ export function csvVerificacao(r: ResultadoVerificacao): string[] {
   operacaoIncorretaDe(r).map(linhaDaTabela).forEach(l => add('Operação incorreta', l));
   r.aMais.map(linhaDaTabela).forEach(l => add('A mais', l));
   r.icms.map(linhaDaTabela).forEach(l => add('ICMS', l));
+  honorarioSemNotaDe(r).map(linhaDaTabela).forEach(l => add('Honorário sem nota', l));
   L.push('');
   const vz = multi ? ['', '', '', '', ''] : ['', '', '', ''];
   L.push(['Totalizador', ...vz, 'Faltando', brl(t.faltando)].join(';'));
@@ -501,7 +516,8 @@ export function csvVerificacao(r: ResultadoVerificacao): string[] {
   if (t.operacaoIncorreta) L.push(['Totalizador', ...vz, 'Operação incorreta', brl(-t.operacaoIncorreta)].join(';'));
   L.push(['Totalizador', ...vz, 'A mais', brl(-t.aMais)].join(';'));
   if (t.icms) L.push(['Totalizador', ...vz, 'ICMS', brl(-t.icms)].join(';'));
-  L.push(['Totalizador', ...vz, 'Diferença', brl(t.faltando - t.duplicadas - t.aMais - t.operacaoIncorreta - t.icms)].join(';'));
+  if (t.honorarioSemNota) L.push(['Totalizador', ...vz, 'Honorário sem nota', brl(-t.honorarioSemNota)].join(';'));
+  L.push(['Totalizador', ...vz, 'Diferença', brl(t.faltando - t.duplicadas - t.aMais - t.operacaoIncorreta - t.icms - t.honorarioSemNota)].join(';'));
   return L;
 }
 

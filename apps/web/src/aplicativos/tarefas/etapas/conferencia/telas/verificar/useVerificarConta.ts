@@ -304,6 +304,7 @@ function montarResultado(e: c.Empresa, p: c.FiltroMovimento, v: EstadoVerificar,
       aMais: r.aMais.map(c.linhaDaTabela), somaAMais: t.aMais,
       incorretas: c.operacaoIncorretaDe(r).map(c.linhaDaTabela), somaIncorretas: t.operacaoIncorreta, operacoesDaConta: r.operacoesDaConta || [],
       icms: r.icms.map(c.linhaDaTabela), somaIcms: t.icms,
+      honorarioSemNota: c.honorarioSemNotaDe(r).map(c.linhaDaTabela), somaHonorarioSemNota: t.honorarioSemNota,
       /** as notas marcadas "Não vai para o Contábil" (fora da soma das notas; Desfazer) */
       foraDoContabil: c.linhasForaDoContabil(r), somaForaDoContabil: (r.foraDoContabil || []).reduce((t2, n) => t2 + n.valor, 0),
       conferido: !!d.conta && c.verifEstado(e, p, d.conta.codigo) === 'conferido',
