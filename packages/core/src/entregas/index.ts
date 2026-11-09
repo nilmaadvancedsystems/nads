@@ -13,6 +13,7 @@ export * from './gmail';
 export * from './parcelamentos';
 // a entrega de documentos aos clientes (a rota e o painel do Entregas, no nads desde 16/10/2026)
 export * from './documentos';
+export * from './visualizar';
 export * from './guiasDoPdf';
 export * from './rotaDeEntregas';
 export * from './confirmacaoDaEntrega';

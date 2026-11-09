@@ -15,6 +15,11 @@ export interface RepoDriveDoEntregas {
   itens(pastaDoCliente: string): { carregados: boolean; itens: ItemDoDrive[] };
   /** pede ao robô (abrir, baixar, zip) e acompanha; devolve como parar de acompanhar */
   pedir(p: PedidoAoDrive, aoMudar: (a: AndamentoDoPedido) => void): () => void;
+  /**
+   * O conteúdo do arquivo, para ver na tela (o robô entrega pelo banco, modo "ler", até 4 MB); aoAndar conta o
+   * andamento. Erro (robô fora, arquivo grande demais) vira exceção com a mensagem.
+   */
+  ler(fileId: string, nome: string, aoAndar?: (passo: string) => void): Promise<Uint8Array>;
   /** manda um arquivo para a pasta Claudio Secretario (o robô grava) e acompanha; devolve como parar de acompanhar */
   enviar(arquivo: ArquivoParaEnviar, destino: DestinoDoEnvio, aoMudar: (a: AndamentoDoEnvio) => void): () => void;
   /** pede ao robô para reler agora uma pasta de cliente (ou '' = a pasta do ano inteira) e acompanha */

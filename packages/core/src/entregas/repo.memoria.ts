@@ -24,6 +24,8 @@ const ITENS: Record<string, ItemDoDrive[]> = {
     { i: 'f2', n: 'extrato-bb-08-2026.pdf', p: 'c5', t: 'f', s: 96_000, m: '2026-09-03T12:00:00.000Z', x: 'application/pdf' },
     { i: 'c7', n: 'RECEBIMENTO DE CLIENTES', p: 'c1', t: 'd' },
     { i: 'f3', n: 'relatorio-liquidacao-08-2026.pdf', p: 'c7', t: 'f', s: 240_000, m: '2026-09-05T12:00:00.000Z', x: 'application/pdf' },
+    { i: 'f6', n: 'Rec. 08.2026 FITO.xls', p: 'c7', t: 'f', s: 48_000, m: '2026-09-06T12:00:00.000Z' },
+    { i: 'f7', n: 'nota 553.xml', p: 'c7', t: 'f', s: 9_000, m: '2026-09-06T12:00:00.000Z' },
     { i: 'f4', n: 'Balancete 08-2026.xlsx', p: 'p292', t: 'f', s: 4_200_000, m: '2026-09-28T13:00:00.000Z' },
     { i: 'g1', n: 'Anotações do cliente', p: 'p292', t: 'g', m: '2026-09-10T12:00:00.000Z' },
     { i: 'f5', n: 'contrato-social.pdf', p: 'p292', t: 'f', s: 700_000, m: '2026-01-10T12:00:00.000Z', x: 'application/pdf' },
@@ -65,6 +67,10 @@ export function criarDriveDoEntregasMemoria(): RepoDriveDoEntregas {
       passos.forEach((a, i) => setTimeout(() => { if (vivo) aoMudar(a); }, 400 * (i + 1)));
       return () => { vivo = false; };
     },
+    // exemplos: uma planilha (ou texto) de mentira, para ver a janela de visualização
+    ler: (_id, nome) => new Promise(ok => setTimeout(() => ok(new TextEncoder().encode(/\.(txt|xml|ofx)$/i.test(nome)
+      ? '<?xml version="1.0"?>\n<nfeProc>\n  <emit>FITO INDUSTRIA</emit>\n  <vNF>1234.56</vNF>\n</nfeProc>\n'
+      : 'Data;Histórico;Documento;Valor\n05/01/2026;Recebimento de clientes;4521;1.250,00\n06/01/2026;Tarifa bancária;;-12,50\n07/01/2026;Recebimento de clientes;4533;830,40\n')), 600)),
     enviar(arquivo, destino, aoMudar) {
       // exemplos: finge subir as partes e o robô gravar (nada vai para o Drive)
       let vivo = true;

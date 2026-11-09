@@ -17,6 +17,19 @@ const GUARDADO = 'nads.drive.explorador';
 
 export interface PedidoNaTela { id: number; rotulo: string; texto: string; erro?: string }
 export type Exibicao = 'detalhes' | 'icones';
+
+/** O arquivo aberto na janela de visualização (planilha ou texto, sem baixar; 09/11/2026). */
+export interface Visualizacao {
+  id: string;
+  nome: string;
+  como: e.ComoVer;
+  estado: 'lendo' | 'pronto' | 'erro';
+  passo: string;
+  abas: e.AbaParaVer[];
+  texto: string;
+  cortado: boolean;
+  erro: string;
+}
 interface Preferencias { exibicao: Exibicao; arvore: boolean; telaCheia: boolean; coluna: e.ColunaDoExplorador; desc: boolean }
 
 const PADRAO: Preferencias = { exibicao: 'detalhes', arvore: true, telaCheia: false, coluna: 'nome', desc: false };
@@ -52,6 +65,9 @@ export function useExploradorDoDrive({ naEmpresa = false }: { naEmpresa?: boolea
   const [ancora, setAncora] = useState<string | null>(null);
   const [pedidos, setPedidos] = useState<PedidoNaTela[]>([]);
   const [pref, setPref] = useState<Preferencias>(lerPreferencias);
+  const [vendo, setVendo] = useState<Visualizacao | null>(null);
+  // o pedido de leitura que vale (abrir outro arquivo, ou fechar, descarta a resposta do anterior)
+  const leitura = useRef(0);
   const [arvoreNaEmpresa, setArvoreNaEmpresa] = useState(false);
   const comArvore = naEmpresa ? arvoreNaEmpresa : pref.arvore;
   // na árvore: o que a pessoa abriu e o que fechou (o caminho da pasta aberta já nasce aberto)
@@ -276,6 +292,38 @@ export function useExploradorDoDrive({ naEmpresa = false }: { naEmpresa?: boolea
       setFechados(s => { const n = new Set(s); if (aberto) n.add(id); else n.delete(id); return n; });
     },
     abrirNo: (no: e.NoDaArvore) => ir(no.cliente, no.id),
+
+    // ver na tela (planilha e texto), sem baixar
+    vendo,
+    /** Abre na janela de visualização, quando dá (planilha ou texto até 4 MB); false = abre como antes (aba nova). */
+    verNaTela(id: string): boolean {
+      const it = porId.get(id);
+      const como = it ? e.comoVer(it) : null;
+      if (!it || !como) return false;
+      const n = ++leitura.current;
+      setVendo({ id, nome: it.n, como, estado: 'lendo', passo: 'Buscando no Drive…', abas: [], texto: '', cortado: false, erro: '' });
+      const ainda = () => leitura.current === n;
+      repo.ler(it.i, it.n, passo => { if (ainda()) setVendo(v => (v ? { ...v, passo: passo.charAt(0).toUpperCase() + passo.slice(1) + '…' } : v)); })
+        .then(bytes => {
+          if (!ainda()) return;
+          if (como === 'planilha') {
+            const abas = e.planilhaParaVer(bytes, it.n);
+            setVendo(v => (v ? { ...v, estado: 'pronto', abas } : v));
+          } else {
+            const t = e.textoParaVer(bytes);
+            setVendo(v => (v ? { ...v, estado: 'pronto', texto: t.texto, cortado: t.cortado } : v));
+          }
+        })
+        .catch((err: Error) => { if (ainda()) setVendo(v => (v ? { ...v, estado: 'erro', erro: err.message } : v)); });
+      return true;
+    },
+    fecharVisualizacao: () => { leitura.current++; setVendo(null); },
+    /** o arquivo visto, baixado como é */
+    baixarVisto(aoChegar: (url: string) => void) {
+      const it = vendo && porId.get(vendo.id);
+      if (!it) return;
+      pedirLink({ modo: 'baixar', fileId: it.i, nome: it.n }, '"' + it.n + '"').catch(falhou('baixar "' + it.n + '"')).then(aoChegar, () => {});
+    },
 
     // pedidos ao robô
     pedidos,
