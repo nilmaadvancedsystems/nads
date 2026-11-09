@@ -770,6 +770,14 @@ igual('a agência e a conta no nome do arquivo ("Entradas_Saidas_ag3155cc990348_
   const f1 = dF('Balancete 09.2025.xls', 'FERNANDO\\572 FREEDOM REFORESTING LTDA\\2025\\09.2025\\');
   igual('09/11h: balancete da FREEDOM (nome da matriz e da filial) na pasta "572 FREEDOM REFORESTING LTDA": a 572, REGISTRO DE LIVROS\\(001) 2025', [f1.acao, f1.destinoRelativo], ['ARQUIVAR', '572 - FREEDOM REFORESTING LTDA\\CONTÁBIL\\REGISTRO DE LIVROS\\(001) 2025']);
   igual('09/11i: ... numa pasta sem o código: NÃO IDENTIFICADO (o nome no texto é de dois clientes)', dF('Balancete 09.2025.xls', 'FERNANDO\\BALANCETES\\').acao, 'NAO_IDENTIFICADO');
+  // (09/11/2026) o ano do balancete: o "(20\d{2})" solto tirou 2054 de um número da planilha ("(001) 2054")
+  const PL54 = [['FREEDOM REFORESTING LTDA'], ['BALANCETE ANALÍTICO'], ['Conta', 12054, 2054, 'x12054', '2054,33']];
+  const PF572 = 'FERNANDO\\572 FREEDOM REFORESTING LTDA\\';
+  const B572 = '572 - FREEDOM REFORESTING LTDA\\CONTÁBIL\\REGISTRO DE LIVROS\\(001) ';
+  igual('09/11: "Balancete 12.2025.xls" com 12054 e 2054 na planilha: o ano do nome, (001) 2025', dF('Balancete 12.2025.xls', PF572 + '2025\\12.2025\\', PL54).destinoRelativo, B572 + '2025');
+  igual('09/11: ... sem o ano no nome: o ano da pasta de origem', dF('Balancete.xls', PF572 + '2024\\12.2024\\', PL54).destinoRelativo, B572 + '2024');
+  igual('09/11: ... sem o ano no nome nem na pasta e só números no texto (12054, 2054, 2054,33): COMPETENCIA_AUSENTE', (d => [d.acao, d.motivo])(dF('Balancete.xls', PF572, PL54)), ['NAO_IDENTIFICADO', 'COMPETENCIA_AUSENTE']);
+  igual('09/11: ... sem o ano no nome nem na pasta e o período no texto: o ano do texto serve à regra (sai de COMPETENCIA_AUSENTE), mas a raiz do ano continua pedindo o nome ou a pasta (ANO_INDETERMINADO, como antes)', (d => [d.acao, d.motivo])(dF('Balancete.xls', PF572, PL54.concat([['Período Contábil:', null, '01/01/2023 até 31/12/2023']]))), ['NAO_IDENTIFICADO', 'ANO_INDETERMINADO']);
   igual('09/11j: ... o nome do arquivo que não diz balancete (o extrato do BB com a coluna "Data balancete"): NÃO IDENTIFICADO', dF('FREEDOM EXTRATO JAN-2025.xlsx', 'FERNANDO\\572 FREEDOM REFORESTING LTDA\\2025\\01.2025\\', [['Extrato Conta Corrente'], ['FREEDOM REFORESTING LTDA'], ['Data', 'observacao', 'Data balancete', 'Historico', 'Valor']]).acao, 'NAO_IDENTIFICADO');
 }
 // ---------- 20. o lote 6 e as decisões do Vitor de 28/10/2026: pelo nome e pela pasta, quando o conteúdo não decide ----------
@@ -882,7 +890,13 @@ igual('a agência e a conta no nome do arquivo ("Entradas_Saidas_ag3155cc990348_
   igual('a conta corrente do BB "CLIENTE - CONTA ATUAL" (a conta grudada: "CONTA CORRENTE22294-1POSTO…"): BANCÁRIOS 03-2026', r25(d25('BB 03.2026.pdf', '0237 - POSTO DE COMBUSTIVEL BERIZAL LTDA - ME\\EXTRATOS\\BANCO DO BRASIL\\', 'G3320208000951581\n02/04/2026 08:11:01\nCliente - Conta atual\nAgência2705-7\nConta corrente22294-1POSTO DE COMBUSTIVEIS BER\nPeríodo do extrato03/2026\nLançamentos\nDt. balanceteDt. movimentoAg. origemLoteHistóricoDocumentoValor R$Saldo\n27/02/2026000000000000 Saldo Anterior0,00 C\n02/03/2026270599031830 Dep Corban Dinheiro27.057.369.000.0512.000,00 C')), ['ARQUIVAR', null, '237 - POSTO DE COMBUSTIVEIS BERIZAL LTDA\\CONTÁBIL\\EXTRATOS\\2026\\03\\BANCÁRIOS\\BANCO DO BRASIL', '03-2026.pdf']);
   igual('o titular pelas iniciais do BB ("MINAS F E F EIRELI" = 411), não o nome do PIX para a VERA (417)', d25('ABR-2026 Extrato BB Minas Forestry.pdf', 'FERNANDO\\411 MINAS FORESTRY\\2026\\04.2026\\', 'Consultas - Extrato de conta corrente\nG3330312182560831\n03/05/2026 13:18:28\nCliente - Conta atual\nAgência101-5\nConta corrente73891-3MINAS F E F EIRELI\nPeríodo do extrato04/2026\nLançamentos\n30/03/2026000000000000 Saldo Anterior0,00 C\n06/04/2026000013105144 Pix - Enviado40.60147.096,30 D\n06/04 16:12 VERA REFLORESTAMENTOS').cliente, 411);
   const CX = 'EXTRATO POR PERÍODO\nCliente:ALMEIDA SOUZA PRODUTOS A LTDA\nConta:3411 | 003 | 00001641-9\nData:02/10/2024 - 08:12\nMês:JUNHO/2024\nPeríodo:1 - 30\nEXTRATO\nData Mov.Nr. Doc.HistóricoValorSaldo\n03/06/2024000000DEB.IOF22,83 D179,66 C';
-  igual('a Caixa "EXTRATO POR PERIODO … CONTA:3411 | 003 | 00001641-9": o banco pelo layout; a 279 não tem a Caixa no cadastro: BANCO_NAO_CADASTRADO_NO_CLIENTE', (d => [d.acao, d.motivo, d.bancoSugerido])(d25('cxjun24.pdf', '0279 - ALMEIDA & SOUZA PRODUTOS ALIMENTICIOS LTDA - ME\\EXTRATOS\\2024\\06\\', CX)), ['NAO_IDENTIFICADO', 'BANCO_NAO_CADASTRADO_NO_CLIENTE', 'CAIXA']);
+  // (Vitor, 09/11/2026, decisão 6) o banco que o cliente não tem no cadastro, lido no conteúdo do extrato do cliente certo (a pasta conferida), com UMA conta do titular:
+  // arquiva e a conta vai para o cadastro dele (cadastrarBanco; o arquivador-novo grava em PRODUÇÃO). Antes (28/10/2026) ficava BANCO_NAO_CADASTRADO_NO_CLIENTE
+  igual('09/11 D6: a Caixa "EXTRATO POR PERIODO … CONTA:3411 | 003 | 00001641-9" da 279, que não tem a Caixa no cadastro: BANCÁRIOS\\CAIXA e a conta para o cadastro', (d => [d.acao, d.destinoRelativo, d.cadastrarBanco])(d25('cxjun24.pdf', '0279 - ALMEIDA & SOUZA PRODUTOS ALIMENTICIOS LTDA - ME\\EXTRATOS\\2024\\06\\', CX)), ['ARQUIVAR', '279 - ALMEIDA & SOUZA PRODUTOS ALIMENTICIOS LTDA\\CONTÁBIL\\EXTRATOS\\2024\\06\\BANCÁRIOS\\CAIXA', { codigo: 279, banco: 'CAIXA', agencia: '3411', conta: '1641-9' }]);
+  igual('09/11 D6: ... o mesmo extrato com o nome de comprovante ("Comprovante cx.pdf"): continua BANCO_NAO_CADASTRADO_NO_CLIENTE', (d => [d.acao, d.motivo, d.bancoSugerido])(d25('Comprovante cx.pdf', '0279 - ALMEIDA & SOUZA PRODUTOS ALIMENTICIOS LTDA - ME\\EXTRATOS\\2024\\06\\', CX)), ['NAO_IDENTIFICADO', 'BANCO_NAO_CADASTRADO_NO_CLIENTE', 'CAIXA']);
+  igual('09/11 D6: ... com o CNPJ de outra empresa cliente no texto (a 434): continua BANCO_NAO_CADASTRADO_NO_CLIENTE', (d => [d.acao, d.motivo])(d25('cxjun24.pdf', '0279 - ALMEIDA & SOUZA PRODUTOS ALIMENTICIOS LTDA - ME\\EXTRATOS\\2024\\06\\', CX + '\nPIX ENVIADO CNPJ 36.462.778/0001-60')), ['NAO_IDENTIFICADO', 'BANCO_NAO_CADASTRADO_NO_CLIENTE']);
+  igual('09/11 D6: ... sem a agência e a conta legíveis: continua BANCO_NAO_CADASTRADO_NO_CLIENTE', (d => [d.acao, d.motivo])(d25('cxjun24.pdf', '0279 - ALMEIDA & SOUZA PRODUTOS ALIMENTICIOS LTDA - ME\\EXTRATOS\\2024\\06\\', CX.replace('Conta:3411 | 003 | 00001641-9', 'Conta: ilegivel'))), ['NAO_IDENTIFICADO', 'BANCO_NAO_CADASTRADO_NO_CLIENTE']);
+  igual('09/11 D6: ... sem o titular no texto (nem o CNPJ nem o nome da 279; só a pasta): continua BANCO_NAO_CADASTRADO_NO_CLIENTE', (d => [d.acao, d.motivo])(d25('cxjun24.pdf', '0279 - ALMEIDA & SOUZA PRODUTOS ALIMENTICIOS LTDA - ME\\EXTRATOS\\2024\\06\\', CX.replace('Cliente:ALMEIDA SOUZA PRODUTOS A LTDA', 'Cliente:'))), ['NAO_IDENTIFICADO', 'BANCO_NAO_CADASTRADO_NO_CLIENTE']);
   igual('... a conta 00001641-9 lida (agência 3411, operação 003)', R.contasDoDocumento(CX, true).map(c => [c.agencia.base, c.conta.base, c.conta.dv]), [['3411', '1641', '9']]);
   igual('o extrato mensal do Itaú com "[B0033]" no nome: ITAU pelo layout (não o Santander do código)', r25(d25('Extrato Mensal [B0033]_Janeiro2024.pdf', '0434 - CONSTRUNOVO LTDA - ME\\EXTRATOS\\2024\\01\\', 'EXTRATOMENSAL\nAG 5237 CC 99884-3\nJAN 2024\n001|006\nMINHA CONTA\n99884-3\nSALDO EM 29/12/23SALDO EM 31/01/24')), ['ARQUIVAR', null, '434 - CONSTRUNOVO LTDA\\CONTÁBIL\\EXTRATOS\\2024\\01\\BANCÁRIOS\\ITAU', '01-2024.pdf']);
   igual('a aplicação do Bradesco com o período grudado antes do rótulo ("01/06/202530/06/2025ATE / PERIODO DE:"): 06-2025', r25(d25('Bradesco_15072025_174539.pdf', 'FERNANDO\\524 CARRETAO POSTO DE COMBUSTIVEIS LTDA\\2026\\', 'SALDO FINAL EM 30/06/2025\nRESGATES / VENCIMENTOS\nAPLICACOES\nSALDO ANTERIOR EM 30/05/2025\n01/06/202530/06/2025ATE\nPERIODO DE:\n15/07/2025\nCDB - CERTIFICADO DE DEPOSITO BANCARIO\n2557 | 0030079-9\nAGENCIA/CONTA:\nCARRETAO POSTO DE COMBUSTIVEIS LTDA | 053.997.059/0001-62\nEMPRESA/CNPJ:\nEXTRATO DE INVESTIMENTOS')), ['ARQUIVAR', null, '524 - CARRETAO POSTO DE COMBUSTIVEIS LTDA\\CONTÁBIL\\EXTRATOS\\2025\\06\\APLICAÇÕES\\BRADESCO', '06-2025.pdf']);
@@ -1826,7 +1840,8 @@ igual('a agência e a conta no nome do arquivo ("Entradas_Saidas_ag3155cc990348_
   igual('40.12: o .ofc da 279 (OFC, BANKID 104 = Caixa) é lido como o OFX: sem a Caixa no cadastro da 279, BANCO_NAO_CADASTRADO_NO_CLIENTE', ((d0) => [d0.tipo, d0.motivo])(d40('ofc279')), ['EXTRATO', 'BANCO_NAO_CADASTRADO_NO_CLIENTE']);
   igual('40.12: ... com a conta da Caixa no cadastro da 279: BANCÁRIOS\\CAIXA, "07-2022.ofc"', s40(d40('ofc279', null, cad40de({ 279: { contas: C34._cadastro.find(c => c.codigo === 279).contas.concat({ banco: 'CAIXA', agencia: null, conta: '16419' }), bancos: ['SICOOB', 'BANCO DO BRASIL', 'CAIXA'] } }))), ['ARQUIVAR', 279, 'CONTÁBIL\\EXTRATOS\\2022\\07\\BANCÁRIOS\\CAIXA', '07-2022.ofc', 2022]);
   igual('40.12: ... o .ofc que não é OFC/OFX por dentro: sem regra (FORMATO_SEM_REGRA)', d40('ofc279', { ofx: 'qualquer coisa' }).motivo, 'FORMATO_SEM_REGRA');
-  igual('40.12: o Word sem regra pelo nome ("Contrato Arrendamento ….docx"): continua NÃO IDENTIFICADO', R.decidir({ nome: 'Contrato Arrendamento Caminhonete.docx', rel: '0055 - TORRA TORRA LTDA - ME\\OUTROS\\Contrato Arrendamento Caminhonete.docx' }, ctx40).acao, 'NAO_IDENTIFICADO');
+  // (Vitor, 09/11/2026, decisão 3: o Word sem regra com o cliente certo vai pela pasta de origem; antes, 30/10, ficava em NÃO IDENTIFICADOS)
+  igual('40.12 / 09/11 D3: o Word sem regra pelo nome ("Contrato Arrendamento ….docx") na pasta OUTROS da 55: CONTÁBIL\\OUTROS DOCUMENTOS\\<ano>, nome original', s40(R.decidir({ nome: 'Contrato Arrendamento Caminhonete.docx', rel: '0055 - TORRA TORRA LTDA - ME\\OUTROS\\Contrato Arrendamento Caminhonete.docx' }, ctx40)).slice(0, 4), ['ARQUIVAR', 55, 'CONTÁBIL\\OUTROS DOCUMENTOS\\' + ctx40.hoje.getFullYear(), 'Contrato Arrendamento Caminhonete.docx']);
   igual('40.12: ... a procuração em Word segue a regra de antes (OUTROS DOCUMENTOS pelo nome)', s40(R.decidir({ nome: 'Procuração 2025.docx', rel: '0055 - TORRA TORRA LTDA - ME\\OUTROS\\Procuração 2025.docx' }, ctx40)).slice(0, 3), ['ARQUIVAR', 55, 'CONTÁBIL\\OUTROS DOCUMENTOS\\2025']);
 
   // ---------------------------------------------------------------------------------------------------------------------
@@ -1960,13 +1975,16 @@ igual('a agência e a conta no nome do arquivo ("Entradas_Saidas_ag3155cc990348_
     const b3 = R.decidir({ nome: '417-Balancete06.2026.pdf', rel: pasta + '417-Balancete06.2026.pdf', texto: [T_BAL413] }, ctx44);
     igual('09/11m: ... o código de um cliente que não é da pasta (417): continua NÃO IDENTIFICADO', b3.acao, 'NAO_IDENTIFICADO');
     // o zip de movimento solto "MOVIMENTO_BRAZILIAN_FORESTRY_…": "BRAZILIAN FORESTRY" é da matriz 413 e das filiais (a mesma raiz); a palavra solta "BRAZILIAN" também é da 568.
-    // NÃO vai para a matriz sozinho: o zip mistura os estabelecimentos pelo nome da fazenda sem a palavra "FAZENDA" ("NILMA CONT NF4104 BF RENASCER MG",
-    // "NF4105 BOA VISTAII MG", "NF4106 BF NOVE FIOS", "NF4107 BF RENASCER BA", "IBAMA BF 9F", "IBAMA BF RN"): espera o Vitor dizer a fazenda de cada filial
+    // (Vitor, 09/11/2026, decisão 1; antes ficava em NÃO IDENTIFICADOS) as fazendas RENASCER (MG/BA, "BF RN"), NOVE FIOS ("9F") e BOA VISTA II são da filial 414; o que
+    // não fala de fazenda vai para a matriz 413; a "INTEGRALIZAÇÃO DE CAPITAL COFFEE" e a "DEVOLUÇÃO EMPRESTIMO CARLO" vão para os pagamentos com o resto do zip
     const zipBr = 'MOVIMENTO_BRAZILIAN_FORESTRY_OUTUBRO-2026-EXTRATOS_BB.zip\\COMPROVANTES PAGTO BFRF OUT-2026.zip\\';
-    const m1 = R.decidir({ nome: '02-10-2026 POSTO TRANSANIMAIS NF28256 R$1.050,51.pdf', rel: zipBr + '02-10-2026 POSTO TRANSANIMAIS NF28256 R$1.050,51.pdf', texto: ['qualquer coisa'] }, ctx44);
-    igual('09/11n: o pagamento no zip "MOVIMENTO_BRAZILIAN_FORESTRY_…" (o nome é da matriz e das filiais, o zip mistura as fazendas): continua NÃO IDENTIFICADO', m1.acao, 'NAO_IDENTIFICADO');
-    const m2 = R.decidir({ nome: 'NILMA CONT NF4107 BF RENASCER BA BOLETO R$1.200,00.pdf', rel: zipBr + 'NILMA CONT NF4107 BF RENASCER BA BOLETO R$1.200,00.pdf', texto: ['qualquer coisa'] }, ctx44);
-    igual('09/11o: ... o boleto de honorários de uma fazenda ("BF RENASCER BA"): continua NÃO IDENTIFICADO, nunca a matriz', m2.cliente === 413 && m2.acao === 'ARQUIVAR', false);
+    const dz = (nome, pasta) => R.decidir({ nome, rel: (pasta || zipBr) + nome, texto: ['qualquer coisa'] }, ctx44);
+    igual('09/11n: o pagamento no zip "MOVIMENTO_BRAZILIAN_FORESTRY_…" sem fazenda no nome: a matriz 413, PAGAMENTOS DE FORNECEDORES\\2026\\10\\POSTO TRANSANIMAIS, nome original', s44(dz('02-10-2026 POSTO TRANSANIMAIS NF28256 R$1.050,51.pdf')), ['ARQUIVAR', 413, 'CONTÁBIL\\PAGAMENTOS DE FORNECEDORES\\2026\\10\\POSTO TRANSANIMAIS', '02-10-2026 POSTO TRANSANIMAIS NF28256 R$1.050,51.pdf', 2026]);
+    igual('09/11o: ... o boleto de honorários da fazenda "BF RENASCER BA": a filial 414, nunca a matriz', [dz('NILMA CONT NF4107 BF RENASCER BA BOLETO R$1.200,00.pdf').acao, dz('NILMA CONT NF4107 BF RENASCER BA BOLETO R$1.200,00.pdf').cliente], ['ARQUIVAR', 414]);
+    igual('09/11o: ... "(FAZ. RENASCER MG)", "BOA VISTAII MG", "BF NOVE FIOS", "IBAMA BF 9F" e "IBAMA BF RN": todos da 414', ['02-10-2026 ZELO NF1(FAZ. RENASCER MG)VR$15.107,28.pdf', 'NILMA CONT NF4105 BOA VISTAII MG BOLETO R$1.200,00.pdf', 'NILMA CONT NF4106 BF NOVE FIOS BOLETO R$1.200,00.pdf', 'IBAMA BF 9F R$2.318,69.pdf', 'IBAMA BF RN R$2.318,69.pdf'].map(n => (d => d.acao + ' ' + d.cliente)(dz(n))), ['ARQUIVAR 414', 'ARQUIVAR 414', 'ARQUIVAR 414', 'ARQUIVAR 414', 'ARQUIVAR 414']);
+    igual('09/11o: ... uma fazenda que não está no mapa ("FAZ. SAO JOAO"): continua NÃO IDENTIFICADO', dz('02-10-2026 ZELO NF9(FAZ. SAO JOAO) R$100,00.pdf').acao, 'NAO_IDENTIFICADO');
+    igual('09/11o: ... "INTEGRALIZAÇÃO DE CAPITAL COFFEE" e "DEVOLUÇÃO EMPRESTIMO CARLO" (data 12-06-2026): os pagamentos da 413', ['02-10-2026 INTEGRALIZAÇÃO DE CAPITAL COFFEE R$150.000,00.pdf', '12-06-2026 DEVOLUÇÃO EMPRESTIMO CARLO R$100.000,00.pdf'].map(n => s44(dz(n)).slice(0, 3)), [['ARQUIVAR', 413, 'CONTÁBIL\\PAGAMENTOS DE FORNECEDORES\\2026\\10\\INTEGRALIZACAO DE CAPITAL COFFEE'], ['ARQUIVAR', 413, 'CONTÁBIL\\PAGAMENTOS DE FORNECEDORES\\2026\\06\\DEVOLUCAO EMPRESTIMO CARLO']]);
+    igual('09/11o: ... a multa ("PARC MULTA ADM AMB", "DETRAN MULTA GWW") e o nome de arquivo colado ("185PropostaGRUPOBRAZILIAN…assinado1"): continuam NÃO IDENTIFICADOS', ['21-10-2026 PARC MULTA ADM AMB PARC 34_60 R$1.839,27.pdf', '13-10-2026 DETRAN MULTA GWW R$ 176,53.pdf', '185PropostaGRUPOBRAZILIANREG.CATEGORIA2assinado1.pdf'].map(n => dz(n).acao), ['NAO_IDENTIFICADO', 'NAO_IDENTIFICADO', 'NAO_IDENTIFICADO']);
     const m3 = R.decidir({ nome: '02-10-2026 POSTO TRANSANIMAIS NF28256 R$1.050,51.pdf', rel: 'MOVIMENTO_BRAZILIAN_OUTUBRO-2026.zip\\02-10-2026 POSTO TRANSANIMAIS NF28256 R$1.050,51.pdf', texto: ['qualquer coisa'] }, ctx44);
     igual('09/11p: ... "MOVIMENTO_BRAZILIAN_…" só com a palavra solta (a 568 também é BRAZILIAN): continua NÃO IDENTIFICADO', m3.acao, 'NAO_IDENTIFICADO');
   }
@@ -2016,6 +2034,128 @@ igual('a agência e a conta no nome do arquivo ("Entradas_Saidas_ag3155cc990348_
     igual('05/11h: data e parêntese colado', f('16-10-2026 JOSÉ OLIVEIRA(JOMAC) F.CEDRO NF1290 R$148,68', 'FREEDOM AGRO LTDA'), 'JOSE OLIVEIRA');
     igual('05/11i: mês-ano no começo', f('10-2026 AEGRO ZELO', 'ZELO AGROINDUSTRIAS LTDA'), 'AEGRO');
     igual('05/11j: só número', f('NF4111 R$915,00', 'FREEDOM AGRO LTDA'), null);
+    igual('09/11: o "R$" solto antes do número sem vírgula ("REEMBOLSO JEAN R$ 63916 R$639,16") não entra no nome da pasta', R.fornecedorDoNomeSemData('REEMBOLSO JEAN R$ 63916 R$639,16'), 'JEAN');
+  }
+
+  // ---------------------------------------------------------------------------------------------------------------------
+  // (Vitor, 09/11/2026) as 10 decisões sobre o que restou dos NÃO IDENTIFICADOS (a 1 e a 6 têm testes junto dos casos de antes: 09/11n–p e "09/11 D6")
+  // ---------------------------------------------------------------------------------------------------------------------
+  {
+    const cnpj = b12 => { const dg = String(b12).split('').map(Number); const dv = (ds, ps) => { const s = ds.reduce((a, x, i) => a + x * ps[i], 0) % 11; return s < 2 ? 0 : 11 - s; }; const d1 = dv(dg, [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]); const d2 = dv(dg.concat(d1), [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]); const s = b12 + d1 + d2; return s.slice(0, 2) + '.' + s.slice(2, 5) + '.' + s.slice(5, 8) + '/' + s.slice(8, 12) + '-' + s.slice(12); };
+    const L9 = [
+      { codigo: 96, razao: 'BIG LANCHES DE TAIOBEIRAS LTDA', fantasia: 'BIG LANCHES', doc: cnpj('231305520001'), regime: 'Simples' },
+      { codigo: 231, razao: 'AUTO GIRO PECAS E ACESSORIOS LTDA', doc: cnpj('174533710001'), regime: 'Simples' },
+      { codigo: 481, razao: 'B LIMA SERVICOS MEDICOS LTDA', doc: cnpj('487652360001'), regime: 'Simples' },
+      { codigo: 292, razao: 'FITO INDUSTRIA E COMERCIO DE ALIMENTOS LTDA', doc: cnpj('194492480001'), regime: 'Simples' },
+      { codigo: 291, razao: 'G.A.S SAUDE DE DIVISA ALEGRE LTDA', doc: cnpj('301112220001'), regime: 'Simples' },
+      { codigo: 55, razao: 'TORRA TORRA LTDA', doc: cnpj('032381830001'), regime: 'Simples' },
+      { codigo: 356, razao: 'A7 COMERCIO DE VEICULOS LTDA', doc: cnpj('137282350001'), regime: 'Simples' },
+      { codigo: 358, razao: 'MITRA TRANSPORTE E SERVICOS LTDA', doc: cnpj('358358350001'), regime: 'Simples' },
+      { codigo: 452, razao: 'QUATRO CINCO DOIS COMERCIO LTDA', doc: cnpj('452452450001'), regime: 'Simples' },
+      { codigo: 417, razao: 'VERA REFLORESTAMENTOS LTDA', doc: cnpj('417417410001'), regime: 'Presumido' },
+      { codigo: 419, razao: 'VERA REFLORESTAMENTOS LTDA - FILIAL 02', doc: cnpj('417417410002'), regime: 'Presumido' },
+      { codigo: 446, razao: 'SPIROU CONSULTORIA LTDA', doc: cnpj('446446440001'), regime: 'Presumido' },
+      { codigo: 183, razao: 'CLEIA CRUZ DE OLIVEIRA LTDA', doc: cnpj('183183180001'), regime: 'Simples' },
+      { codigo: 536, razao: 'CDL DE TAIOBEIRAS', doc: cnpj('536536530001'), regime: 'Simples' },
+      { codigo: 560, razao: 'ASSOCIACAO COMERCIAL E EMPRESARIAL DE TAIOBEIRAS', doc: cnpj('560560560001'), regime: 'Simples' },
+      { codigo: 302, razao: 'TEOBALDO MENDES DE OLIVEIRA', doc: '063.306.536-66', regime: 'Física' },
+      { codigo: 298, razao: 'TEOBALDO MENDES DE OLIVEIRA LTDA', doc: cnpj('298298290001'), regime: 'Simples' },
+    ];
+    const pastas9 = L9.map(c => c.codigo + ' - ' + c.razao);
+    const cad9 = R.comAnosEMapa(R.montarCadastro(L9, pastas9), { 2020: ['55 - TORRA TORRA LTDA'], 2025: pastas9.slice() }, MIG.carregar({}));
+    const ctx9 = { cadastro: cad9, hoje: new Date(2026, 10, 9) };
+    const d9 = (nome, rel, extra) => R.decidir(Object.assign({ nome, rel: rel + nome }, extra || {}), ctx9);
+    const s9 = x => [x.acao, x.motivo || null, x.cliente || null, x.destinoRelativo || null, x.nomeFinal || null];
+    const doc9 = k => L9.find(c => c.codigo === k).doc;
+
+    // (2) o cliente certo com o tipo desconhecido: continua em NÃO IDENTIFICADOS (nada de pasta "genérica")
+    igual('09/11 D2: o PDF sem tipo conhecido na pasta conferida da 481 (o CNPJ dela no texto): continua NÃO IDENTIFICADO', d9('algo qualquer.pdf', '0481 - B LIMA SERVICOS MEDICOS LTDA - ME\\OUTROS\\', { texto: ['UM DOCUMENTO QUALQUER SEM TITULO CONHECIDO\nB LIMA SERVICOS MEDICOS LTDA\nCNPJ ' + doc9(481) + '\n' + 'texto '.repeat(60)] }).acao, 'NAO_IDENTIFICADO');
+
+    // (3) o Word, o .txt e o .html sem regra, com o cliente certo: a pasta equivalente à de origem
+    igual('09/11 D3: "Nota Explicativa.docx" na pasta OUTROS da 55: CONTÁBIL\\OUTROS DOCUMENTOS\\2026 (sem ano no nome nem na pasta: o atual), nome original', s9(d9('Nota Explicativa.docx', '20261023-NOVO\\0055 - TORRA TORRA LTDA - ME\\OUTROS\\')), ['ARQUIVAR', null, 55, '55 - TORRA TORRA LTDA\\CONTÁBIL\\OUTROS DOCUMENTOS\\2026', 'Nota Explicativa.docx']);
+    igual('09/11 D3: ... o .doc na pasta "2025\\Relatórios" da 417: CONTÁBIL\\RELATÓRIOS ALTERDATA', s9(d9('417Balanço2025.doc', '20261026-NOVO\\FERNANDO\\417 VERA REFLORESTAMENTO EIRELI\\2025\\Relatórios\\')).slice(0, 4), ['ARQUIVAR', null, 417, '417 - VERA REFLORESTAMENTOS LTDA\\CONTÁBIL\\RELATÓRIOS ALTERDATA']);
+    igual('09/11 D3: ... o .txt na pasta "Estoque" da 292: CONTÁBIL\\PAPÉIS DE TRABALHO\\<ano>', s9(d9('Lote 1Trimestre.txt', '20261026-NOVO\\FERNANDO\\292 FITO INDUSTRIA E COMERCIO\\Estoque\\', { txt: 'lote' })).slice(0, 4), ['ARQUIVAR', null, 292, '292 - FITO INDUSTRIA E COMERCIO DE ALIMENTOS LTDA\\CONTÁBIL\\PAPÉIS DE TRABALHO\\2026']);
+    igual('09/11 D3: ... "Anotacoes.docx" na pasta "2025" da 417: CONTÁBIL\\OUTROS DOCUMENTOS\\2025 (o ano da pasta)', d9('Anotacoes.docx', '20261026-NOVO\\FERNANDO\\417 VERA REFLORESTAMENTO EIRELI\\2025\\').destinoRelativo, '417 - VERA REFLORESTAMENTOS LTDA\\CONTÁBIL\\OUTROS DOCUMENTOS\\2025');
+    igual('09/11 D3: ... o código de uma filial do mesmo CNPJ no nome ("Anotacoes 419.docx" na pasta da matriz 417): continua NÃO IDENTIFICADO', d9('Anotacoes 419.docx', '20261026-NOVO\\FERNANDO\\417 VERA REFLORESTAMENTO EIRELI\\2025\\').acao, 'NAO_IDENTIFICADO');
+    igual('09/11 D3: ... o código de outro cliente no nome ("Anotacoes 452.docx"), o nome de outro cliente ("… - Mitra 2.docx"), o extrato em .html, o arquivo fora de pasta de cliente, a subpasta sem equivalente (CADASTRO BANCARIO) e o .rtf: continuam NÃO IDENTIFICADOS',
+      [d9('Anotacoes 452.docx', '20261026-NOVO\\FERNANDO\\417 VERA REFLORESTAMENTO EIRELI\\2025\\'), d9('Denúncia Espotânea - Mitra 2.docx', '20261023-NOVO\\0356 - A7 COMERCIO DE VEICULOS LTDA - ME\\'), d9('EXTRATO SICOOB.html', '20261026-NOVO\\FERNANDO\\417 VERA REFLORESTAMENTO EIRELI\\2025\\08.2025\\', { txt: 'extrato' }),
+        d9('CHECKLIST MENSAL DE DOCUMENTOS.docx', '20261023-NOVO\\'), d9('Protocolo.docx', '20261024-NOVO\\0055 - TORRA TORRA LTDA - ME\\CADASTRO BANCARIO\\BANCO DO NORDESTE\\2022\\'), d9('Report.rtf', '20261023-NOVO\\0055 - TORRA TORRA LTDA - ME\\OUTROS\\')].map(x => x.acao),
+      ['NAO_IDENTIFICADO', 'NAO_IDENTIFICADO', 'NAO_IDENTIFICADO', 'NAO_IDENTIFICADO', 'NAO_IDENTIFICADO', 'NAO_IDENTIFICADO']);
+    igual('09/11 D3: ... o .txt com o CNPJ de outro cliente: continua NÃO IDENTIFICADO', d9('Exp00567.txt', '20261026-NOVO\\FERNANDO\\417 VERA REFLORESTAMENTO EIRELI\\2026\\', { txt: 'MUTUO ' + doc9(55) }).acao, 'NAO_IDENTIFICADO');
+
+    // (4) o pagamento pelo nome com OCR: acima de 60% e o cliente confirmado pelo conteúdo, o nome não limita a confiança; abaixo de 60%, continua
+    const pg4 = (ocr, texto) => d9('BOLETO CREA ANUIDADE 2025 SPIROU R$2.153,55.pdf', 'FERNANDO\\446 SPIROU CONSULTORIA\\2025\\03.2025\\Comprovantes e Pagtos\\', { texto: [texto], ocr: { confianca: ocr } });
+    igual('09/11 D4: o boleto pelo nome com OCR 86% e o CNPJ da 446 no conteúdo: PAGAMENTOS DE FORNECEDORES', s9(pg4(86, 'BOLETO\nPAGADOR SPIROU CONSULTORIA LTDA CNPJ ' + doc9(446))).slice(0, 4), ['ARQUIVAR', null, 446, '446 - SPIROU CONSULTORIA LTDA\\CONTÁBIL\\PAGAMENTOS DE FORNECEDORES\\2025\\03\\CREA ANUIDADE']);
+    igual('09/11 D4: ... o mesmo com OCR 55%: continua NÃO IDENTIFICADO (CONFIANCA_ABAIXO_DO_LIMIAR)', s9(pg4(55, 'BOLETO\nPAGADOR SPIROU CONSULTORIA LTDA CNPJ ' + doc9(446))).slice(0, 2), ['NAO_IDENTIFICADO', 'CONFIANCA_ABAIXO_DO_LIMIAR']);
+    igual('09/11 D4: ... OCR 86% sem o cliente no conteúdo: continua NÃO IDENTIFICADO', s9(pg4(86, 'BOLETO\nPAGADOR FULANO DE TAL')).slice(0, 2), ['NAO_IDENTIFICADO', 'CONFIANCA_ABAIXO_DO_LIMIAR']);
+
+    // (5) a foto de boleto/comprovante sem o beneficiário lido: a repetida vai para a quarentena; a única fica
+    {
+      const ni = { acao: 'NAO_IDENTIFICADO', motivo: 'VOCABULARIO_AUSENTE', tipo: 'BOLETO FORNECEDOR', evidencias: ['o beneficiário do boleto não foi lido (04: Fornecedores)'] };
+      const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'teste-0911-'));
+      const arq = path.join(tmp, '55 - TORRA\\CONTÁBIL\\x.jpg'.replace(/\\/g, path.sep));
+      fs.mkdirSync(path.dirname(arq), { recursive: true }); fs.writeFileSync(arq, 'foto');
+      const conteudos = { achar: h => h === 'h-arq' ? [arq] : [] };
+      const ctxF = { conteudos, manifesto: new Map(), existe: new Map(), fotosDoNi: new Map([['h-dup', ['A\\foto (1).jpg', 'B\\foto.jpg']], ['h-uma', ['A\\so.jpg']]]) };
+      const f = (hash, rel, d) => A.fotoRepetida({ nome: rel.split('\\').pop(), hash }, Object.assign({}, d || ni, { evidencias: (d || ni).evidencias.slice() }), ctxF, rel);
+      igual('09/11 D5: a foto do boleto sem o beneficiário lido, com o mesmo conteúdo já arquivado: DESCARTAR (FOTO_REPETIDA, a quarentena)', [f('h-arq', 'A\\b.jpg').acao, f('h-arq', 'A\\b.jpg').motivo], ['DESCARTAR', 'FOTO_REPETIDA']);
+      igual('09/11 D5: ... igual a outra foto de NÃO IDENTIFICADOS: a segunda vai, a primeira (na ordem) fica', [f('h-dup', 'B\\foto.jpg').acao, f('h-dup', 'A\\foto (1).jpg').acao], ['DESCARTAR', 'NAO_IDENTIFICADO']);
+      igual('09/11 D5: ... a única (nem arquivada nem repetida em NI): fica', f('h-uma', 'A\\so.jpg').acao, 'NAO_IDENTIFICADO');
+      igual('09/11 D5: ... a cópia arquivada que já não existe no disco não conta: fica', A.fotoRepetida({ nome: 'b.jpg', hash: 'h-sumiu' }, Object.assign({}, ni, { evidencias: ni.evidencias.slice() }), { conteudos: { achar: () => [path.join(tmp, 'nao-existe.jpg')] }, manifesto: new Map(), existe: new Map() }, 'A\\b.jpg').acao, 'NAO_IDENTIFICADO');
+      igual('09/11 D5: ... o PDF e a foto com outro motivo (sem o "beneficiário não foi lido"): não mudam', [A.fotoRepetida({ nome: 'b.pdf', hash: 'h-arq' }, Object.assign({}, ni, { evidencias: ni.evidencias.slice() }), ctxF, 'A\\b.pdf').acao, A.fotoRepetida({ nome: 'b.jpg', hash: 'h-arq' }, { acao: 'NAO_IDENTIFICADO', motivo: 'TIPO_NAO_RECONHECIDO', evidencias: [] }, ctxF, 'A\\b.jpg').acao], ['NAO_IDENTIFICADO', 'NAO_IDENTIFICADO']);
+      // o índice das fotos soltas em NÃO IDENTIFICADOS (por conteúdo, em ordem)
+      const pni = path.join(tmp, 'NI');
+      for (const [r, c] of [['20261023\\x\\a.jpg', 'AAA'], ['20261023\\y\\b.png', 'AAA'], ['20261023\\z.jpg', 'BBB'], ['20261023\\doc.pdf', 'AAA']]) { const p = path.join(pni, ...r.split('\\')); fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, c); }
+      const idx = A.indiceDasFotosDoNi(pni);
+      igual('09/11 D5: o índice das fotos de NÃO IDENTIFICADOS junta as iguais (o PDF fica de fora)', [...idx.values()].map(v => v.join('|')).sort(), ['20261023\\x\\a.jpg|20261023\\y\\b.png', '20261023\\z.jpg']);
+      // (10) a subpasta de documentos que o cliente já tem no SOCIETÁRIO
+      const raiz10 = path.join(tmp, '2026');
+      fs.mkdirSync(path.join(raiz10, '284 - NILMA', 'SOCIETÁRIO', 'Documentos Pessoais'), { recursive: true });
+      fs.mkdirSync(path.join(raiz10, '55 - TORRA', 'SOCIETÁRIO', 'CERTIDÕES'), { recursive: true });
+      const dp = rel => { const x = { destinoRelativo: rel, raiz: raiz10, evidencias: [] }; A.pastaDeDocumentosQueJaExiste(x, {}); return x.destinoRelativo; };
+      igual('09/11 D10: o documento pessoal vai para a subpasta de documentos que o cliente já tem ("Documentos Pessoais"); sem ela, SOCIETÁRIO\\DOCUMENTOS', [dp('284 - NILMA\\SOCIETÁRIO\\DOCUMENTOS'), dp('55 - TORRA\\SOCIETÁRIO\\DOCUMENTOS')], ['284 - NILMA\\SOCIETÁRIO\\Documentos Pessoais', '55 - TORRA\\SOCIETÁRIO\\DOCUMENTOS']);
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+
+    // (6) a gravação do banco/conta no cadastro (com um banco de mentira): só o que foi arquivado, só acrescenta, e a auditoria
+    {
+      const grav = { upd: [], aud: [] };
+      const docCli = { id: 'c279', codigoOrigem: '279', ativo: true, contasBancarias: [{ banco: 'bb', agencia: '2705-7', conta: '24668-9' }] };
+      const db = { collection: nome => nome === 'clientes'
+        ? { where: () => ({ limit: () => ({ get: async () => ({ docs: [{ id: docCli.id, data: () => docCli }] }) }) }), doc: () => ({ get: async () => ({ data: () => docCli }), update: async o => { grav.upd.push(o); } }) }
+        : { add: async o => { grav.aud.push(o); } } };
+      const cb = { codigo: 279, banco: 'CAIXA', agencia: '3411', conta: '1641-9' };
+      const itens = [{ acao: 'ARQUIVAR', gravadoEm: 'X', nome: 'cxjun24.pdf', cadastrarBanco: cb }, { acao: 'ARQUIVAR', gravadoEm: 'Y', nome: 'cxjul24.pdf', cadastrarBanco: cb }, { acao: 'ARQUIVAR', nome: 'falhou.pdf', erro: 'x', cadastrarBanco: Object.assign({}, cb, { conta: '9999-9' }) }];
+      const feitas = await A.cadastrarBancosDosExtratos(itens, { db, log: () => {} });
+      igual('09/11 D6: a conta da Caixa dos extratos arquivados da 279 entra uma vez em contasBancarias (o id "caixa"), com uma linha na auditoria; o que não foi arquivado não entra',
+        [feitas.length, grav.upd.length, grav.aud.length, grav.aud[0] && grav.aud[0].acao, grav.aud[0] && grav.aud[0].feitoPorNome], [1, 1, 1, 'banco_cadastrado_pelo_arquivador', 'Arquivador (robô)']);
+      const ambigua = await A.cadastrarBancosDosExtratos([{ acao: 'ARQUIVAR', gravadoEm: 'X', nome: 'a.pdf', cadastrarBanco: Object.assign({}, cb, { conta: '5555-5' }) }, { acao: 'ARQUIVAR', gravadoEm: 'Y', nome: 'b.pdf', cadastrarBanco: Object.assign({}, cb, { codigo: 434, conta: '5555-5' }) }], { db, log: () => {} });
+      igual('09/11 D6: a mesma conta lida para dois clientes no mesmo lote: não grava em nenhum', [ambigua.length, grav.upd.length], [0, 1]);
+    }
+
+    // (7) os de fora do cadastro: o ALDINEI é da BIG LANCHES (96), o DELZITO da AUTO GIRO (231); o NORIVAL e o DUVALLE continuam
+    const PD9 = [['ENTRADA', null, null, 'DRE - ALDINEI MIRANDA ARAUJO ME  -  JANEIRO A DEZEMBRO 2025'], ['COMPRA COMER.', null, 145549.65, 'PERIODO', 'SALARIO'], ['USO E CONSUMO', null, 0, 45658, 2735]];
+    igual('09/11 D7: "DEFIS - 2025 ALDINEI.xlsx" (o título "DRE - ALDINEI MIRANDA ARAUJO ME"): a BIG LANCHES 96, RELATÓRIOS ALTERDATA\\2025, "2025 - DEFIS PLANILHA.xlsx"', s9(d9('DEFIS - 2025 ALDINEI.xlsx', 'DEFIS 2025.zip\\DEFIS 2025\\', { planilha: PD9 })), ['ARQUIVAR', null, 96, '96 - BIG LANCHES DE TAIOBEIRAS LTDA\\FISCAL\\SIMPLES NACIONAL\\RELATÓRIOS ALTERDATA\\2025', '2025 - DEFIS PLANILHA.xlsx']);
+    igual('09/11 D7: ... "DEFIS - 2025 DELZITO.xlsx": a AUTO GIRO 231', d9('DEFIS - 2025 DELZITO.xlsx', 'DEFIS 2025.zip\\DEFIS 2025\\', { planilha: [['ENTRADA', null, null, 'DRE - DELZITO - JANEIRO A DEZEMBRO 2025']] }).cliente, 231);
+    igual('09/11 D7: ... "DEFIS - 2025 NORIVAL.xlsx" e "DEFIS - 2025 DUVALLE.xlsx": continuam NÃO IDENTIFICADOS', ['NORIVAL', 'DUVALLE'].map(n => d9('DEFIS - 2025 ' + n + '.xlsx', 'DEFIS 2025.zip\\DEFIS 2025\\', { planilha: [['ENTRADA', null, null, 'DRE - ' + n + ' - JANEIRO A DEZEMBRO 2025']] }).acao), ['NAO_IDENTIFICADO', 'NAO_IDENTIFICADO']);
+
+    // (8) o contrato social sem a pasta do ano: a pasta do ano nasce
+    const TC9 = r => 'CONTRATO SOCIAL\n' + r + '\nCERTIFICO O REGISTRO EM 10/03/2020 SOB O NUMERO 123';
+    igual('09/11 D8: o contrato social da 183 (registro em 2020, sem a pasta da 183 em 2020, a razão social no texto): a pasta do ano nasce, SOCIETÁRIO\\DOCUMENTOS CONSTITUTIVOS', (x => [x.acao, x.cliente, x.destinoRelativo, x.anoRaiz, x.criarPastaCliente])(d9('3. Contrato Social.pdf', '2024\\Cleia Cruz\\', { texto: [TC9('CLEIA CRUZ DE OLIVEIRA LTDA')] })), ['ARQUIVAR', 183, '183 - CLEIA CRUZ DE OLIVEIRA LTDA\\SOCIETÁRIO\\DOCUMENTOS CONSTITUTIVOS', 2020, true]);
+    igual('09/11 D8: ... a ata da 560 achada na pasta de OUTRO cliente (a 536): continua PASTA_DO_ANO_SEM_CNPJ', s9(d9('Transcrição Ata CDL 2023.pdf', 'FERNANDO\\536 CDL DE TAIOBEIRAS\\', { texto: [TC9('ASSOCIACAO COMERCIAL E EMPRESARIAL DE TAIOBEIRAS').replace('CONTRATO SOCIAL', 'ATA DA ASSEMBLEIA')] })).slice(0, 2), ['NAO_IDENTIFICADO', 'PASTA_DO_ANO_SEM_CNPJ']);
+
+    // (9) a certidão na pasta CERTIDÕES com o tipo e o vencimento só no nome
+    igual('09/11 D9: "CND - MUNICIPAL - Venc. 07.06.2026.pdf" na pasta CERTIDÕES da 481 (o CNPJ dela no texto): SOCIETÁRIO\\CERTIDÕES\\MUNICIPAL, "VENC 07-06-2026.pdf"', s9(d9('CND - MUNICIPAL - Venc. 07.06.2026.pdf', '20261023-NOVO\\0481 - B LIMA SERVICOS MEDICOS LTDA - ME\\CERTIDÕES\\', { texto: ['64848 2026\nB LIMA SERVICOS MEDICOS LTDA\n' + doc9(481) + '\nFins de Direito'] })), ['ARQUIVAR', null, 481, '481 - B LIMA SERVICOS MEDICOS LTDA\\SOCIETÁRIO\\CERTIDÕES\\MUNICIPAL', 'VENC 07-06-2026.pdf']);
+    igual('09/11 D9: ... "CND - UNIÃO - Vencimento 18.05.2024.pdf" da 292: CERTIDÕES\\FEDERAL, a raiz 2024', (x => [x.acao, x.destinoRelativo, x.nomeFinal, x.anoRaiz])(d9('CND - UNIÃO - Vencimento 18.05.2024.pdf', '0292 - FITO INDUSTRIA E COMERCIO DE ALIMENTOS LTDA - EPP (MATRIZ)\\CERTIDÕES\\', { texto: ['Certidão negativa correcional\nCPF/CNPJ: ' + doc9(292)] })), ['ARQUIVAR', '292 - FITO INDUSTRIA E COMERCIO DE ALIMENTOS LTDA\\SOCIETÁRIO\\CERTIDÕES\\FEDERAL', 'VENC 18-05-2024.pdf', 2024]);
+    igual('09/11 D9: ... fora da pasta CERTIDÕES, sem o vencimento no nome ("CND - CRO MG") e com o CNPJ de outro cliente: continuam NÃO IDENTIFICADOS',
+      [d9('CND - MUNICIPAL - Venc. 07.06.2026.pdf', '0481 - B LIMA SERVICOS MEDICOS LTDA - ME\\OUTROS\\', { texto: ['B LIMA\n' + doc9(481)] }), d9('CND - CRO MG.pdf', '0481 - B LIMA SERVICOS MEDICOS LTDA - ME\\CERTIDÕES\\', { texto: ['CERTIDAO DE REGULARIDADE\nNOME: FULANO'] }), d9('CND - MUNICIPAL - Venc. 07.06.2026.pdf', '0481 - B LIMA SERVICOS MEDICOS LTDA - ME\\CERTIDÕES\\', { texto: ['X\n' + doc9(55)] })].map(x => x.acao), ['NAO_IDENTIFICADO', 'NAO_IDENTIFICADO', 'NAO_IDENTIFICADO']);
+
+    // (10) o QSA, a consulta do MEI e da REDESIM e o documento pessoal: SOCIETÁRIO\DOCUMENTOS do cliente certo
+    igual('09/11 D10: "CNH - Josiel.pdf" na pasta conferida da 291 (sem CPF/CNPJ de cliente no texto): SOCIETÁRIO\\DOCUMENTOS, nome original', s9(d9('CNH - Josiel.pdf', '20261023-NOVO\\0291 - G.A.S SAUDE DE DIVISA ALEGRE LTDA - ME\\OUTROS\\Nova pasta\\', { texto: [''], ocr: { confianca: 91 } })), ['ARQUIVAR', null, 291, '291 - G.A.S SAUDE DE DIVISA ALEGRE LTDA\\SOCIETÁRIO\\DOCUMENTOS', 'CNH - Josiel.pdf']);
+    igual('09/11 D10: ... o QSA (o CNPJ da 291 no texto) e a REDESIM da 55: SOCIETÁRIO\\DOCUMENTOS', [d9('QUADRO DE SOCIOS E ADMINISTRADORES – QSA.pdf', '0291 - G.A.S SAUDE DE DIVISA ALEGRE LTDA - ME\\OUTROS\\', { texto: ['CNPJ ' + doc9(291) + '\nQUADRO DE SÓCIOS'] }).destinoRelativo, d9('REDESIM.pdf', '20261026-NOVO\\0055 - TORRA TORRA LTDA - ME\\', { texto: ['PROTOCOLO REDESIM ' + doc9(55)] }).destinoRelativo], ['291 - G.A.S SAUDE DE DIVISA ALEGRE LTDA\\SOCIETÁRIO\\DOCUMENTOS', '55 - TORRA TORRA LTDA\\SOCIETÁRIO\\DOCUMENTOS']);
+    igual('09/11 D10: ... o RG com OCR de 30% na pasta conferida da 55: o OCR fraco não derruba', d9('RG CPF.pdf', '0055 - TORRA TORRA LTDA - ME\\OUTROS\\', { texto: ['xx'], ocr: { confianca: 30 } }).acao, 'ARQUIVAR');
+    igual('09/11 D10: ... o CPF de outro cliente (a pessoa física 302) na pasta da 298, a pasta de outro cliente (MITRA) e a pasta sem o código: continuam NÃO IDENTIFICADOS',
+      [d9('CPF Teobaldo.pdf', '0298 - TEOBALDO MENDES DE OLIVEIRA LTDA - EPP (MATRIZ)\\LICITAÇÃO\\', { texto: ['CPF 063.306.536-66'], ocr: { confianca: 69 } }), d9('RG e CPF - João Carneiro.pdf', '0356 - A7 COMERCIO DE VEICULOS LTDA - ME\\MITRA\\', { texto: ['xx'], ocr: { confianca: 70 } }), d9('CNH Digital.pdf', 'OUTROS\\B LIMA SERVICOS MEDICOS LTDA - ME.rar\\', { texto: ['xx'] })].map(x => x.acao), ['NAO_IDENTIFICADO', 'NAO_IDENTIFICADO', 'NAO_IDENTIFICADO']);
   }
 
   console.log((falhas ? falhas + ' FALHA(S) em ' : 'ok: ') + total + ' testes');
