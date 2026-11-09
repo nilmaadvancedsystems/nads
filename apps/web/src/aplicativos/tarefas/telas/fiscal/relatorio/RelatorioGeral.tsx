@@ -61,9 +61,8 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
       {!vm.podeGravar && <p className="hint">Só o Fiscal preenche o relatório; você está vendo.</p>}
 
       {vm.carregando ? <Esqueleto linhas={8} /> : (
-        <section className="card fr-cartao">
+        <section className="card fr-cartao" aria-label={g.rotulo}>
           <div className="fr-cartao-topo">
-            <h3 className="fr-cartao-titulo">{g.rotulo}</h3>
             {/* o andamento: quantas das empresas achadas já estão concluídas */}
             <span className="fr-andamento" title={vm.faltam ? vm.faltam + (vm.faltam === 1 ? ' falta' : ' faltam') + ' de ' + vm.achadas : 'tudo feito'}>
               <span className="fr-andamento-barra" aria-hidden="true"><i style={{ width: (vm.achadas ? Math.round((feitas / vm.achadas) * 100) : 0) + '%' }} /></span>
@@ -89,13 +88,12 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
                   </colgroup>
                   <thead>
                     <tr className="fr-grupos">
-                      <th colSpan={2} />
-                      <th colSpan={vm.guias.length} className="fr-g">Guias (R$)</th>
+                      <th rowSpan={2} className="fr-num fr-cabeca">Cód.</th><th rowSpan={2} className="fr-cabeca">Cliente</th>
+                      <th colSpan={vm.guias.length} className="fr-g fr-centro">Guias (R$)</th>
                       <th colSpan={g.marcas.length} className="fr-g fr-centro">Conferências</th>
-                      <th colSpan={3} className="fr-g">Entrega</th>
+                      <th colSpan={3} className="fr-g fr-centro">Entrega</th>
                     </tr>
                     <tr>
-                      <th className="fr-num">Cód.</th><th>Cliente</th>
                       {vm.guias.map((c, i) => <th key={c.id} className={'fr-num' + (i === 0 ? ' fr-g' : '')} title={c.nome}>{c.rotulo}</th>)}
                       {g.marcas.map((m, i) => <th key={m.id} className={'fr-centro' + (i === 0 ? ' fr-g' : '')} title={m.dica}>{m.rotulo}</th>)}
                       <th className="fr-centro fr-g">Data</th><th className="fr-centro">Entregue</th><th className="fr-centro" title="Situação">Sit.</th>

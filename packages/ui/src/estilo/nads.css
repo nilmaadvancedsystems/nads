@@ -5791,8 +5791,7 @@ html[data-sem-animacao] .mx-gaveta-fundo,html[data-sem-animacao] .mx-gaveta{anim
 .fr .btn-sm svg{width:14px;height:14px;}
 /* o cartão: o topo com o título, o andamento e o preencher; a caixa que rola; o pé com as páginas */
 .fr-cartao{margin:0;padding:0;overflow:clip;}
-.fr-cartao-topo{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--border);}
-.fr-cartao-titulo{margin:0;font-size:var(--fs-14);font-weight:600;}
+.fr-cartao-topo{display:flex;align-items:center;gap:12px;flex-wrap:wrap;min-height:36px;padding:4px 12px;border-bottom:1px solid var(--border);}
 .fr-andamento{display:inline-flex;align-items:center;gap:8px;min-width:0;font-size:var(--fs-12);color:var(--ink-muted);font-variant-numeric:tabular-nums;}
 .fr-andamento b{color:var(--ink);font-weight:600;}
 .fr-andamento-barra{flex:none;width:96px;height:6px;border-radius:999px;background:var(--surface-3);overflow:hidden;}
@@ -5801,7 +5800,7 @@ html[data-sem-animacao] .mx-gaveta-fundo,html[data-sem-animacao] .mx-gaveta{anim
   background:var(--accent-soft);color:var(--accent-ink);font-size:var(--fs-11);font-weight:700;font-variant-numeric:tabular-nums;}
 .fr-cartao-pe{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 16px;border-top:1px solid var(--border);}
 .fr-cartao-pe .hint{margin:0;}
-.fr-rola{max-height:max(320px,calc(100dvh - 298px));overflow:auto;overscroll-behavior:contain;}
+.fr-rola{max-height:max(320px,calc(100dvh - 285px));overflow:auto;overscroll-behavior:contain;}
 .fr-legenda{font-size:var(--fs-12);}
 /* a tabela: largura fixa por coluna (o cliente fica com o que sobra) */
 .fr-tabela{width:100%;min-width:1420px;table-layout:fixed;border-collapse:separate;border-spacing:0;font-size:var(--fs-13);}
@@ -5825,8 +5824,10 @@ html[data-sem-animacao] .mx-gaveta-fundo,html[data-sem-animacao] .mx-gaveta{anim
 .fr-tabela td:has(> .fr-campo){padding:0 2px;}
 /* o cabeçalho: parado no alto da caixa; o grupo numa linha fina em maiúsculas */
 .fr-tabela thead th{position:sticky;z-index:3;background:var(--surface-2);font-size:var(--fs-11);font-weight:600;color:var(--ink-muted);text-align:left;}
-.fr-tabela thead tr:first-child th{top:0;height:24px;border-bottom:0;font-size:10.5px;letter-spacing:.03em;text-transform:uppercase;color:var(--ink-faint);}
-.fr-tabela thead tr:last-child th{top:24px;height:30px;}
+.fr-tabela thead tr:first-child th{top:0;height:20px;font-size:10.5px;letter-spacing:.03em;text-transform:uppercase;color:var(--ink-muted);}
+.fr-tabela thead tr:last-child th{top:20px;height:26px;}
+/* o código e o cliente ocupam as duas linhas */
+.fr-tabela thead tr:first-child th.fr-cabeca{font-size:var(--fs-11);letter-spacing:0;text-transform:none;}
 .fr-tabela thead th.fr-num{text-align:right;}
 .fr-tabela thead th.fr-centro{text-align:center;}
 /* as linhas */
@@ -5884,10 +5885,10 @@ button.fr-entrega-feita:hover{border-color:var(--success);background:color-mix(i
   .fr-tabela{min-width:960px;}
   .fr-cartao-pe .tarefas-barra-espaco{display:none;}
   /* o código e o cliente parados à esquerda ao rolar de lado */
-  .fr-tabela tbody td:nth-child(1),.fr-tabela tbody td:nth-child(2),.fr-tabela thead tr:last-child th:nth-child(-n+2){position:sticky;z-index:1;}
-  .fr-tabela tbody td:nth-child(1),.fr-tabela thead tr:last-child th:nth-child(1){left:0;}
-  .fr-tabela tbody td:nth-child(2),.fr-tabela thead tr:last-child th:nth-child(2){left:40px;box-shadow:1px 0 0 var(--border);}
-  .fr-tabela thead tr:last-child th:nth-child(-n+2){z-index:4;}
+  .fr-tabela tbody td:nth-child(1),.fr-tabela tbody td:nth-child(2),.fr-tabela thead tr:first-child th:nth-child(-n+2){position:sticky;z-index:1;}
+  .fr-tabela tbody td:nth-child(1),.fr-tabela thead tr:first-child th:nth-child(1){left:0;}
+  .fr-tabela tbody td:nth-child(2),.fr-tabela thead tr:first-child th:nth-child(2){left:40px;box-shadow:1px 0 0 var(--border);}
+  .fr-tabela thead tr:first-child th:nth-child(-n+2){z-index:4;}
   .fr-tabela thead tr:first-child th:first-child{position:sticky;left:0;z-index:4;}
   .fr-tabela tfoot td:first-child{left:0;z-index:3;}
 }
@@ -5908,10 +5909,10 @@ button.fr-entrega-falta:hover{border-style:dashed;border-color:var(--border-stro
 /* o Presumido com o IBS e a CBS (03/11/2026): 9 guias, e o cliente sumia (uns 64px). A tabela do Presumido cresce para o
    cliente ficar com uns 200px e, quando não cabe, rola de lado com o código e o cliente parados à esquerda (como no celular) */
 .fr-tabela.fr-grupo-lp{min-width:1180px;}
-.fr-tabela tbody td:nth-child(1),.fr-tabela tbody td:nth-child(2),.fr-tabela thead tr:last-child th:nth-child(-n+2){position:sticky;z-index:1;}
-.fr-tabela tbody td:nth-child(1),.fr-tabela thead tr:last-child th:nth-child(1){left:0;}
-.fr-tabela tbody td:nth-child(2),.fr-tabela thead tr:last-child th:nth-child(2){left:40px;box-shadow:1px 0 0 var(--border);}
-.fr-tabela thead tr:last-child th:nth-child(-n+2){z-index:4;}
+.fr-tabela tbody td:nth-child(1),.fr-tabela tbody td:nth-child(2),.fr-tabela thead tr:first-child th:nth-child(-n+2){position:sticky;z-index:1;}
+.fr-tabela tbody td:nth-child(1),.fr-tabela thead tr:first-child th:nth-child(1){left:0;}
+.fr-tabela tbody td:nth-child(2),.fr-tabela thead tr:first-child th:nth-child(2){left:40px;box-shadow:1px 0 0 var(--border);}
+.fr-tabela thead tr:first-child th:nth-child(-n+2){z-index:4;}
 .fr-tabela thead tr:first-child th:first-child{position:sticky;left:0;z-index:4;}
 .fr-tabela tfoot td:first-child{left:0;z-index:3;}
 .fr-tabela thead tr:first-child th.fr-g{color:var(--ink-muted);}

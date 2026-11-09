@@ -28,9 +28,8 @@ export function Reinf() {
             onKeyDown={e => { if (e.key === 'Escape') vm.setBusca(''); }} />
         </label>
       </div>
-      <section className="card fr-cartao">
+      <section className="card fr-cartao" aria-label="REINF">
         <div className="fr-cartao-topo">
-          <h3 className="fr-cartao-titulo">REINF</h3>
           <span className="fr-andamento" title={r.pendentes ? r.pendentes + (r.pendentes === 1 ? ' falta' : ' faltam') + ' de ' + r.total : 'tudo feito'}>
             <span className="fr-andamento-barra" aria-hidden="true"><i style={{ width: feito + '%' }} /></span>
             <span className="fr-andamento-txt">{r.pendentes ? <><b>{r.transmitidas}</b> de {r.total} transmitidas · {r.pendentes} {r.pendentes === 1 ? 'falta' : 'faltam'}</> : <b>Todas transmitidas</b>}</span>
