@@ -204,6 +204,11 @@ nav.menu::-webkit-scrollbar{display:none;}
   padding:0 8px;height:44px;font-size:var(--fs-14);font-weight:400;isolation:isolate;}
 .menu-item:hover::before{background:var(--hover-bg);}
 .menu-item svg{width:16px;height:16px;flex:none;color:var(--ink-muted);}
+/* a logo no lugar do ícone da aba (Fiscal, 09/11/2026); no escuro o azul oficial da Receita some, como na Área do Cliente */
+.menu-item-marca{display:inline-flex;width:18px;height:18px;flex:none;align-items:center;justify-content:center;}
+.menu-item-marca svg{width:18px;height:18px;}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .menu-item-marca{--logo-receita:color-mix(in srgb,var(--info) 60%,var(--ink));}}
+:root[data-theme="dark"] .menu-item-marca{--logo-receita:color-mix(in srgb,var(--info) 60%,var(--ink));}
 .menu-item.active{font-weight:600;}
 .menu-item.active::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;border-radius:6px;background:var(--tab-active);}
 .menu-num{display:none;}
@@ -666,7 +671,7 @@ td > .gh-blank.compacto{white-space:normal;}
 .subnav-itens{display:flex;flex-direction:column;gap:2px;}
 /* o cartão da empresa aberta no cabeçalho: o prédio, o nome e, embaixo, o código e o CNPJ; o clique abre a janela do Cadastro */
 .gh-cartao-topo{display:contents;}
-.gh-crumbs .gh-cartao-topo > button.gh-crumb:not(:last-child){flex:none;}
+.gh-crumbs .gh-cartao-topo > button.gh-crumb:not(:last-of-type){flex:none;}
 /* o Início (27/10/2026): o mural de avisos e a última empresa */
 .inicio-grade{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:16px;align-items:start;}
 @media (max-width:900px){.inicio-grade{grid-template-columns:minmax(0,1fr);}}
