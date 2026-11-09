@@ -57,9 +57,9 @@ export function CascaTarefas({ app, pagina, telaInteira, semLateral, larga, empr
   // o feedback que o admin pôs em Resolvendo: avisa quem mandou (26/10/2026)
   useAvisoDosMeusFeedbacks();
   return (
-    <Casca sistema="Tarefas" temaNaGaveta={false} empresa={vm.empresa} versao={vm.versao} trilha={trilha} secoes={secoes} paginas={vm.paginas} titulo={telaInteira ? '' : titulo}
+    <Casca sistema="Tarefas" temaNaGaveta={false} empresa={vm.empresa} versao={vm.versao} trilha={trilha} secoes={secoes} paginas={vm.paginas} titulo={telaInteira || vm.semTitulo ? '' : titulo}
       lateral={telaInteira || semLateral || vm.comAbas ? 'nenhuma' : undefined} larga={telaInteira || larga}
-      acoes={telaInteira || (empresa && !titulo) ? undefined : <LugarDasAcoes />} onSecao={empresa ? empresa.onPagina : vm.onSecao} onPagina={vm.onPagina} onInicio={vm.inicio} onAplicativos={vm.abrirInicio}
+      acoes={telaInteira || vm.semTitulo || (empresa && !titulo) ? undefined : <LugarDasAcoes />} onSecao={empresa ? empresa.onPagina : vm.onSecao} onPagina={vm.onPagina} onInicio={vm.inicio} onAplicativos={vm.abrirInicio}
       contadorDoInicio={mural.naoLidos ? String(mural.naoLidos) : undefined}
       onEmpresa={vm.trocarPessoa} aplicativos={vm.aplicacoes} onAplicativo={vm.onAplicacao}
       cartaoNoTopo={empresa ? <CartaoDaEmpresa empresa={empresa} /> : undefined}

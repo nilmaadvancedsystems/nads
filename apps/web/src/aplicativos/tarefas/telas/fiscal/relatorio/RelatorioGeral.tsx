@@ -78,7 +78,7 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
           </div>
           {!vm.total ? <p className="hint dp-vazio">Nenhuma empresa do {g.rotulo} no Cadastro: as empresas entram pelo regime.</p>
             : !vm.linhas.length ? <p className="hint dp-vazio">Nenhum cliente com esses filtros.</p> : (
-              // a caixa que rola: o cabeçalho fica parado em cima e o total embaixo
+              // a caixa que rola: o cabeçalho fica parado em cima
               <div className="fr-rola">
                 <table className={'fr-tabela fr-grupo-' + g.id}>
                   <colgroup>
@@ -128,13 +128,6 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
                       </tr>
                     ))}
                   </tbody>
-                  <tfoot>
-                    <tr>
-                      <td colSpan={2}>Total</td>
-                      {vm.totais.map((x, i) => <td key={x.id} className={'fr-num' + (i === 0 ? ' fr-g' : '') + (x.valor === '—' ? ' fr-zero' : '')} title={x.valor === '—' ? undefined : 'R$ ' + x.valor}>{x.valor}</td>)}
-                      <td colSpan={g.marcas.length + 3} className="fr-g" />
-                    </tr>
-                  </tfoot>
                 </table>
               </div>
             )}

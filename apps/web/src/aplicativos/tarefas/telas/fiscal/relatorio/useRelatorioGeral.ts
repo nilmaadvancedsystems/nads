@@ -12,9 +12,10 @@ import { useSearchParams } from 'react-router';
 import { competenciasDaTela } from '../../../casca/navegacao';
 import { useOperador } from '../../../casca/operador';
 import { FOLHA_VAZIA } from '../../../dados/controleTributos';
-import { useControleTributos, useEntregasDeDocumentos, useGmailDoEntregas, useRepoPessoal } from '../../../dados/repo';
+import { useControleTributos, useEntregasDeDocumentos, useGmailDoEntregas } from '../../../dados/repo';
 import { useListaDoCadastro } from '../../cadastro/escolher/useListaDoCadastro';
 import { imprimirHtml } from '../../dp/imprimirHtml';
+import { usePorPagina } from './usePorPagina';
 
 /** O regime da página: o grupo do controle e o regime do Cadastro que entra nele. */
 export type RegimeDoRelatorio = 'sn' | 'lp';
@@ -35,22 +36,7 @@ const STATUS = [
   ...(['nao-iniciada', 'em-andamento', 'concluida'] as const).map(v => ({ valor: v, rotulo: t.ROTULO_SITUACAO_GERAL[v] })),
 ];
 const ENTREGAS = [{ valor: 'falta', rotulo: 'Falta' }, ...t.ENTREGAS_DO_CONTROLE.filter(e => e.valor).map(e => ({ valor: e.valor as string, rotulo: e.rotulo }))];
-// quantas empresas por página (28/10/2026: "um filtro que o usuário escolhe quantas empresas tem por página"); 0 = todas.
-// Fica guardado na pessoa (03/11/2026: "tem que ser recolocado toda vez que abre o app, deixe para salvar isso automatico";
-// só no navegador, ele se perdia em outro endereço do app ou com os dados do navegador limpos) e, para abrir já certo, aqui.
-const POR_PAGINA = [25, 50, 100, 0] as const;
-const CHAVE_POR_PAGINA = 'nads-relatorio-por-pagina';
-const PREFERENCIA_POR_PAGINA = 'relatorioPorPagina';
-const porPaginaValido = (s: string | null | undefined): number | null => {
-  const n = Number(s);
-  return s != null && s !== '' && (POR_PAGINA as readonly number[]).includes(n) ? n : null;
-};
-function porPaginaDoNavegador(): number {
-  try { return porPaginaValido(localStorage.getItem(CHAVE_POR_PAGINA)) ?? 25; } catch { return 25; }
-}
 const semAcento = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-// o total sem o "R$" (29/10/2026: na coluna de 70px, "R$ 38.016,39" passava para a vizinha; o cabeçalho já diz "Guias (R$)")
-const brl = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 /** dd/mm/aaaa ↔ AAAA-MM-DD */
 export const dataBr = (iso: string) => (iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4) : '');
 const dataIso = (br: string) => { const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(br); return m ? m[3] + '-' + m[2] + '-' + m[1] : ''; };
@@ -79,10 +65,7 @@ export function useRelatorioGeral(regime: RegimeDoRelatorio) {
   const [status, setStatus] = useState('');
   const [pendenteEm, setPendenteEm] = useState('');
   const [entrega, setEntrega] = useState('');
-  // a escolhida agora vale; senão a guardada na pessoa; até o banco responder, a deste navegador
-  const pessoal = useRepoPessoal();
-  const [escolhida, setEscolhida] = useState<number | null>(null);
-  const porPagina = escolhida ?? porPaginaValido(pessoal.preferencia(PREFERENCIA_POR_PAGINA)) ?? porPaginaDoNavegador();
+  const { porPagina, porPaginaOpcoes, escolher: escolherPorPagina } = usePorPagina();
   const [pagina, setPagina] = useState(0);
 
   // as empresas do regime no Cadastro do nads (o do Entregas, quando o nads não tem)
@@ -135,10 +118,6 @@ export function useRelatorioGeral(regime: RegimeDoRelatorio) {
   const paginas = porPagina ? Math.max(1, Math.ceil(linhas.length / porPagina)) : 1;
   const atual = Math.min(pagina, paginas - 1);
   const daPagina = porPagina ? linhas.slice(atual * porPagina, (atual + 1) * porPagina) : linhas;
-  const totais = colunas.map(c => {
-    const v = linhas.reduce((s, r) => s + t.numeroDoControle(r.linha.valores[c.id] || ''), 0);
-    return { id: c.id, valor: v ? brl(v) : '—' };
-  });
   // as linhas que ganham alguma coisa com a sugestão do Entregas
   const paraPreencher = todas.flatMap(r => {
     const nova = r.sugestao ? t.preencherComSugestao(r.linha, r.sugestao) : r.linha;
@@ -165,12 +144,8 @@ export function useRelatorioGeral(regime: RegimeDoRelatorio) {
       // trocar a busca ou um filtro volta para a primeira página
       busca, setBusca: (b: string) => { setBusca(b); setPagina(0); }, status, setStatus: (s: string) => { setStatus(s); setPagina(0); },
       pendenteEm, setPendenteEm: (p: string) => { setPendenteEm(p); setPagina(0); }, entrega, setEntrega: (e: string) => { setEntrega(e); setPagina(0); },
-      porPagina, porPaginaOpcoes: POR_PAGINA.map(n => ({ valor: n, rotulo: n ? String(n) : 'Todas' })),
-      setPorPagina: (n: number) => {
-        setEscolhida(n); setPagina(0);
-        try { localStorage.setItem(CHAVE_POR_PAGINA, String(n)); } catch { /* sem armazenamento no navegador: fica a da pessoa */ }
-        pessoal.guardarPreferencia(PREFERENCIA_POR_PAGINA, String(n)).catch(() => { /* sem internet: vale agora e neste navegador */ });
-      },
+      porPagina, porPaginaOpcoes,
+      setPorPagina: (n: number) => { escolherPorPagina(n); setPagina(0); },
       statusOpcoes: STATUS, partes: PARTES, entregas: ENTREGAS,
       algum: !!(busca || status || pendenteEm || entrega),
       limpar: () => { setBusca(''); setStatus(''); setPendenteEm(''); setEntrega(''); setPagina(0); },
@@ -181,7 +156,7 @@ export function useRelatorioGeral(regime: RegimeDoRelatorio) {
     /** a página da lista: '1–25 de 166', a anterior e a próxima */
     pagina: { atual, paginas, de: daPagina.length ? atual * (porPagina || linhas.length) + 1 : 0, ate: atual * (porPagina || linhas.length) + daPagina.length,
       anterior: () => setPagina(Math.max(0, atual - 1)), proxima: () => setPagina(Math.min(paginas - 1, atual + 1)) },
-    total: todas.length, linhas: daPagina, achadas: linhas.length, faltam: linhas.filter(r => r.situacao !== 'concluida').length, totais,
+    total: todas.length, linhas: daPagina, achadas: linhas.length, faltam: linhas.filter(r => r.situacao !== 'concluida').length,
     /** um campo de valor: guarda como fica na tela (1.234,50, — ou 0) */
     mudarValor(codigo: number, coluna: string, texto: string) {
       const l = linhaDe(codigo);

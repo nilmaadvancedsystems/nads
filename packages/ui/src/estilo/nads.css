@@ -194,6 +194,8 @@ a{color:var(--accent);}
 
 nav.menu{display:flex;align-items:center;gap:8px;padding:0 16px;overflow-x:auto;scrollbar-width:none;}
 nav.menu::-webkit-scrollbar{display:none;}
+/* as abas do Fiscal (10) cabem numa linha em notebook */
+@media (max-width:1500px){nav.menu{gap:2px;}nav.menu .menu-item{padding:0 6px;gap:6px;}}
 .menu-label{display:none;}
 .menu-item::before{content:'';position:absolute;inset:6px 0;border-radius:6px;z-index:-1;}
 .menu-item{
@@ -5799,7 +5801,7 @@ html[data-sem-animacao] .mx-gaveta-fundo,html[data-sem-animacao] .mx-gaveta{anim
   background:var(--accent-soft);color:var(--accent-ink);font-size:var(--fs-11);font-weight:700;font-variant-numeric:tabular-nums;}
 .fr-cartao-pe{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 16px;border-top:1px solid var(--border);}
 .fr-cartao-pe .hint{margin:0;}
-.fr-rola{max-height:max(360px,calc(100dvh - 300px));overflow:auto;overscroll-behavior:contain;}
+.fr-rola{max-height:max(320px,calc(100dvh - 298px));overflow:auto;overscroll-behavior:contain;}
 .fr-legenda{font-size:var(--fs-12);}
 /* a tabela: largura fixa por coluna (o cliente fica com o que sobra) */
 .fr-tabela{width:100%;min-width:1420px;table-layout:fixed;border-collapse:separate;border-spacing:0;font-size:var(--fs-13);}
@@ -5809,6 +5811,13 @@ html[data-sem-animacao] .mx-gaveta-fundo,html[data-sem-animacao] .mx-gaveta{anim
 .fr-tabela col.fr-c-data{width:86px;}
 .fr-tabela col.fr-c-ent{width:68px;}
 .fr-tabela col.fr-c-sit{width:36px;}
+/* a REINF, nas mesmas linhas */
+.fr-tabela.fr-reinf{min-width:1060px;}
+.fr-tabela col.fr-c-ate{width:112px;}
+.fr-tabela col.fr-c-ultima{width:210px;}
+.fr-tabela col.fr-c-retif{width:150px;}
+.fr-tabela col.fr-c-acoes{width:190px;}
+.fr-tabela.fr-reinf thead tr:first-child th{top:0;height:34px;border-bottom:1px solid var(--border);font-size:var(--fs-11);letter-spacing:0;text-transform:none;color:var(--ink-muted);}
 .fr-tabela th,.fr-tabela td{padding:0 6px;height:34px;border-bottom:1px solid var(--border);background:var(--surface);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:middle;}
 .fr-tabela .fr-num{text-align:right;font-variant-numeric:tabular-nums;}
 .fr-tabela .fr-centro{text-align:center;padding:0 2px;text-overflow:clip;}
@@ -5865,11 +5874,6 @@ button.fr-entrega:focus-visible{outline:2px solid var(--accent);outline-offset:1
 button.fr-entrega-feita:hover{border-color:var(--success);background:color-mix(in srgb,var(--success) 22%,transparent);}
 .fr-entrega-nao{border-color:transparent;background:var(--surface-3);color:var(--ink-faint);}
 .fr-entrega.leitura{cursor:default;}
-/* o total: parado no pé da caixa, em destaque */
-.fr-tabela tfoot td{position:sticky;bottom:0;z-index:2;height:36px;border-top:1px solid var(--border-strong);border-bottom:0;
-  background:color-mix(in srgb,var(--accent) 6%,var(--surface-2));font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;}
-.fr-tabela tfoot td.fr-zero{color:var(--ink-faint);font-weight:500;}
-.fr-total-qtd{margin-left:6px;font-size:var(--fs-11);font-weight:500;color:var(--ink-muted);}
 @media (max-width:760px){
   .fr-busca{width:100%;order:10;}
   .fr-cartao-topo{padding:10px 12px;}
@@ -6045,19 +6049,6 @@ button.fxr-numero.active{border-color:var(--accent);box-shadow:inset 0 0 0 1px v
   .fxr-aliquota{flex-direction:row;align-items:center;gap:8px;width:100%;padding:8px 0 0;border-left:0;border-top:1px solid var(--border);}
   .fxr-rola{max-height:none;}
   /* REINF: cada empresa vira um cartão (o Nº, o nome e a situação; as datas; as ações embaixo) */
-  .fxr-reinf thead{display:none;}
-  .fxr-reinf tbody tr{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:6px 10px;padding:12px;border-top:1px solid var(--border-muted);}
-  .fxr-reinf tbody tr:first-child{border-top:0;}
-  .fxr-reinf tbody td{display:block;width:auto;min-width:0;padding:0;border:0;text-align:left;}
-  .fxr-reinf td.fxr-nome{width:auto;min-width:0;}
-  .fxr-reinf .fxr-cod{grid-column:1;grid-row:1;}
-  .fxr-reinf .fxr-nome{grid-column:2;grid-row:1;}
-  .fxr-reinf .fxr-sit-td{grid-column:3;grid-row:1;}
-  .fxr-reinf .fxr-ate,.fxr-reinf .fxr-ultima,.fxr-reinf .fxr-retif-td{grid-column:1 / -1;display:flex;align-items:center;gap:8px;font-size:var(--fs-12);white-space:normal;}
-  .fxr-reinf td[data-rotulo]::before{content:attr(data-rotulo);flex:none;min-width:76px;color:var(--ink-faint);}
-  .fxr-reinf .fxr-acoes{grid-column:1 / -1;display:flex;gap:6px;margin-top:4px;}
-  .fxr-reinf .fxr-acoes .btn{flex:1;justify-content:center;}
-  .fxr-reinf .fxr-acoes .btn + .btn{margin-left:0;}
 }
 
 /* ------------------------- Fiscal › Calculadora do Simples e Rateio de frete (30/10/2026) -------------------------

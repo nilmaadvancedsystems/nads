@@ -7,11 +7,10 @@ import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { competenciasDaTela } from '../../../casca/navegacao';
 import { useRepo } from '../../../dados/repo';
+import { usePorPagina } from '../relatorio/usePorPagina';
 import { mmaaaa, quandoDaReinf, useAcoesDaReinf } from './useAcoesDaReinf';
 
 export { estadosDaReinf } from './useAcoesDaReinf';
-
-type Filtro = 'todas' | 'pendentes' | 'transmitidas';
 
 export function useReinf() {
   const repo = useRepo();
@@ -20,7 +19,9 @@ export function useReinf() {
   const competencia = competencias.includes(params.get('competencia') || '') ? (params.get('competencia') as string) : competencias[0];
   const acoes = useAcoesDaReinf(competencia);
   const [busca, setBusca] = useState('');
-  const [filtro, setFiltro] = useState<Filtro>('todas');
+  const [filtro, setFiltro] = useState('');
+  const { porPagina, porPaginaOpcoes, escolher: escolherPorPagina } = usePorPagina();
+  const [pagina, setPagina] = useState(0);
 
   // todas as empresas do Fiscal, menos as filiais (05/11/2026), pelo regime do Cadastro (o da lista, quando não tem)
   const permitidas = useEmpresasPermitidas();
@@ -31,7 +32,7 @@ export function useReinf() {
   const q = busca.trim().toLowerCase();
   const linhas = lista
     .filter(l => !q || (l.codigo + ' ' + l.nome).toLowerCase().includes(q))
-    .filter(l => filtro === 'todas' || (filtro === 'pendentes') === (t.situacaoReinf(l.estado, competencia) === 'pendente'))
+    .filter(l => !filtro || (filtro === 'pendentes') === (t.situacaoReinf(l.estado, competencia) === 'pendente'))
     .map(l => {
       const sit = t.situacaoReinf(l.estado, competencia);
       return {
@@ -43,11 +44,23 @@ export function useReinf() {
       };
     });
 
+  // a busca e o filtro correm todas as empresas, e só depois a lista se divide em páginas (como no Relatório)
+  const paginas = porPagina ? Math.max(1, Math.ceil(linhas.length / porPagina)) : 1;
+  const atual = Math.min(pagina, paginas - 1);
+  const daPagina = porPagina ? linhas.slice(atual * porPagina, (atual + 1) * porPagina) : linhas;
+
   return {
     competencia, rotuloCompetencia: t.rotuloCompetencia(competencia),
     competencias: competencias.map(c => ({ valor: c, rotulo: t.rotuloCompetencia(c) })),
     setCompetencia: (c: string) => setParams({ competencia: c }),
-    resumo, linhas, busca, setBusca, filtro, setFiltro,
+    resumo, linhas: daPagina, achadas: linhas.length, busca, filtro,
+    setBusca: (b: string) => { setBusca(b); setPagina(0); },
+    setFiltro: (f: string) => { setFiltro(f); setPagina(0); },
+    limpar: () => { setBusca(''); setFiltro(''); setPagina(0); },
+    porPagina, porPaginaOpcoes,
+    setPorPagina: (n: number) => { escolherPorPagina(n); setPagina(0); },
+    pagina: { atual, paginas, de: daPagina.length ? atual * (porPagina || linhas.length) + 1 : 0, ate: atual * (porPagina || linhas.length) + daPagina.length,
+      anterior: () => setPagina(Math.max(0, atual - 1)), proxima: () => setPagina(Math.min(paginas - 1, atual + 1)) },
     transmitir: acoes.transmitir, desfazer: acoes.desfazer, retificar: acoes.retificar,
   };
 }
