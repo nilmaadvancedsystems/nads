@@ -5,7 +5,7 @@
 import { usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useState } from 'react';
-import { BASE } from '../../../casca/navegacao';
+import { BASE, temNivelDiretor } from '../../../casca/navegacao';
 import { useOperador } from '../../../casca/operador';
 import { useAcesso } from '../../../dados/repo';
 
@@ -15,7 +15,8 @@ type Janela = { tipo: 'novo' } | { tipo: 'pessoa'; uid: string } | null;
 export function useUsuariosDoNads() {
   const repo = useAcesso();
   const { toast, modal } = useRetorno();
-  const admin = !!useOperador().operador?.admin;
+  const { operador } = useOperador();
+  const admin = !!operador?.admin;
   const [busca, setBusca] = useState('');
   const [filtro, setFiltro] = useState<FiltroDeUsuarios>('todos');
   const [janela, setJanela] = useState<Janela>(null);
@@ -92,6 +93,8 @@ export function useUsuariosDoNads() {
     mudarCargo: (p: usuarios.Usuario, departamento: usuarios.Departamento | null, nivel: usuarios.Nivel | null) =>
       tentar(() => repo.salvarCargo(p.uid, departamento, nivel), 'Cargo de ' + p.nome + ' salvo.'),
     alternarPapel(p: usuarios.Usuario, papel: usuarios.Papel) {
+      // o Financeiro: só o Diretor autoriza, e quem é Diretor já tem, sem como desligar (Vitor, 09/11/2026)
+      if (papel === 'financeiro' && (!temNivelDiretor(operador) || p.nivel === 'diretor')) return Promise.resolve();
       const tem = p.papeis.includes(papel);
       const novos = tem ? p.papeis.filter(x => x !== papel) : [...p.papeis, papel];
       return tentar(() => repo.salvarPapeis(p.uid, novos), (tem ? 'Tirei ' : 'Dei ') + 'o papel ' + (usuarios.PAPEIS.find(x => x.id === papel)?.rotulo || papel) + (tem ? ' de ' : ' a ') + p.nome + '.');

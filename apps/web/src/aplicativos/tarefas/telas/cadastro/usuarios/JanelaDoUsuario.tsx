@@ -7,7 +7,7 @@ import type { usuarios } from '@nads/core';
 import { BotaoAcao, Icone, Interruptor } from '@nads/ui';
 import { useState } from 'react';
 import { Cartao, JanelaLateral, Linha, type TopicoDaJanela } from '../../janela/JanelaLateral';
-import { ehDiretor } from '../../../casca/navegacao';
+import { temNivelDiretor } from '../../../casca/navegacao';
 import { useOperador } from '../../../casca/operador';
 import { useNovoUsuario } from './useNovoUsuario';
 import { EmpresasDaPessoa } from '../responsaveis/EmpresasDaPessoa';
@@ -28,7 +28,8 @@ function Foto({ foto, iniciais }: { foto?: string | null; iniciais: string }) {
 }
 
 /** o papel Desenvolvedor (06/11/2026): o que ele libera */
-const DICA_FINANCEIRO = 'Libera o Financeiro. Só o Diretor liga e desliga.';
+const DICA_FINANCEIRO = 'Quem é Diretor sempre tem. Os outros, só com a autorização do Diretor.';
+const SempreLigado = () => <span className="badge badge-neutral">Sempre ligado</span>;
 const DICA_DEV = 'Libera o Modo desenvolvedor no menu do avatar (só ver, sem gravar nada).';
 
 type TopicoDaPessoa = 'cargo' | 'papeis' | 'acesso' | 'empresas';
@@ -79,9 +80,11 @@ export function JanelaDoUsuario({ vm }: { vm: VmUsuarios }) {
       )}
       {topico === 'papeis' && (
         <Cartao titulo="Papéis">
-          {vm.papeis.filter(x => x.id !== 'financeiro' || ehDiretor(operador)).map(x => (
+          {vm.papeis.filter(x => x.id !== 'financeiro' || temNivelDiretor(operador)).map(x => (
             <Linha key={x.id} rotulo={x.rotulo} dica={x.id === 'desenvolvedor' ? DICA_DEV : x.id === 'financeiro' ? DICA_FINANCEIRO : undefined}>
-              <Interruptor ligado={p.papeis.includes(x.id)} onMudar={() => void vm.alternarPapel(p, x.id)} rotulo={x.rotulo + ' de ' + p.nome} />
+              {x.id === 'financeiro' && p.nivel === 'diretor'
+                ? <SempreLigado />
+                : <Interruptor ligado={p.papeis.includes(x.id)} onMudar={() => void vm.alternarPapel(p, x.id)} rotulo={x.rotulo + ' de ' + p.nome} />}
             </Linha>
           ))}
         </Cartao>
@@ -197,9 +200,11 @@ export function JanelaNovoUsuario({ fechar }: { fechar: () => void }) {
       )}
       {topico === 'papeis' && (
         <Cartao titulo="Papéis a mais">
-          {vm.extras.filter(x => x.id !== 'financeiro' || ehDiretor(operador)).map(x => (
+          {vm.extras.filter(x => x.id !== 'financeiro' || temNivelDiretor(operador)).map(x => (
             <Linha key={x.id} rotulo={x.rotulo} dica={x.id === 'desenvolvedor' ? DICA_DEV : x.id === 'financeiro' ? DICA_FINANCEIRO : undefined}>
-              <Interruptor ligado={x.on} onMudar={() => vm.alternarExtra(x.id)} rotulo={x.rotulo} />
+              {x.id === 'financeiro' && vm.nivel === 'diretor'
+                ? <SempreLigado />
+                : <Interruptor ligado={x.on} onMudar={() => vm.alternarExtra(x.id)} rotulo={x.rotulo} />}
             </Linha>
           ))}
         </Cartao>
