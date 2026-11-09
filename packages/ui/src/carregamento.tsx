@@ -16,7 +16,7 @@ function mudar(d: number) {
   for (const f of ouvintes) f();
 }
 const assinar = (f: () => void) => { ouvintes.add(f); return () => { ouvintes.delete(f); }; };
-const algumCarregando = () => ativos > 0;
+export const algumCarregando = () => ativos > 0;
 
 /** A tela está carregando algo (dado do banco, arquivo…): a barra do topo aparece enquanto for true. */
 export function useCarregando(ativo: boolean): void {
