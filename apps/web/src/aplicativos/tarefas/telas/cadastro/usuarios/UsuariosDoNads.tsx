@@ -34,7 +34,7 @@ export function UsuariosDoNads() {
           <Icone nome="search" />
           <input type="text" placeholder="Buscar pessoa" aria-label="Buscar pessoa" value={vm.busca} onChange={ev => vm.setBusca(ev.target.value)} />
         </label>
-        {vm.verTodos && <button type="button" className="btn btn-outline" onClick={() => setResponsaveis(true)}><Icone nome="briefcase" />Empresas por responsável</button>}
+        <button type="button" className="btn btn-outline" onClick={() => setResponsaveis(true)}><Icone nome="briefcase" />Empresas por responsável</button>
         {vm.admin && <button type="button" className="btn btn-primary" onClick={vm.abrirNovo}><Icone nome="plus" />Novo usuário</button>}
       </div>
       {!vm.admin && <p className="hint">Só um administrador muda a equipe.</p>}

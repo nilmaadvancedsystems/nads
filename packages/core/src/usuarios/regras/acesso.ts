@@ -6,6 +6,10 @@
 // Conciliadorzinho e o Extratudo (Extrator, Cheque especial e Creditor).
 import type { Papel, Usuario } from '../tipos';
 
+/** As contas que só o Diretor e o admin enxergam nas listas da equipe (Vitor, 09/11/2026); são usuários, não setores. */
+const CONTAS_RESERVADAS: readonly string[] = ['fiscal.xereta@nilma.local', 'contabil.curioso@nilma.local'];
+export const ehContaReservada = (email: string | null | undefined): boolean => CONTAS_RESERVADAS.includes((email || '').trim().toLowerCase());
+
 export type Recurso =
   // aplicativos do nads
   | 'conferencia' | 'cheque-especial' | 'conciliadorzinho' | 'extrator' | 'creditor'
