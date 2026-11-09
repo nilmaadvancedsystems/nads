@@ -1387,6 +1387,13 @@ function camposDeNfse(u) {
   if (!emissao) {
     const fg = /DATA FATO GERADOR[^\n]*\n\s*(\d{2})(\/?)(\d{2})(\/?)(20\d{2})(?![\d])/.exec(u);
     if (fg && +fg[1] >= 1 && +fg[1] <= 31 && +fg[3] >= 1 && +fg[3] <= 12) fatoGerador = { data: fg[1] + '-' + fg[3] + '-' + fg[5], quebrada: !fg[2] || !fg[4] };
+    // (09/11/2026, os NÃO IDENTIFICADOS) a data do fato gerador ilegível no OCR ('c2105/2025' na NFSE 818 da PROGEO, que é 02/05/2025; 'ounT2O2S'): vale a do carimbo
+    // 'Emitido em 02/05/2025 09:34:38' do canto de cima (com a hora, que o OCR lê inteira), só no modelo de Taiobeiras e com a mesma exigência do mês da pasta
+    // (a data com sujeira na frente NÃO é lida: em 'c2105/2025' o '21' é '2/' e o dia sairia errado)
+    if (!fatoGerador && /DATA FATO GERADOR/.test(u)) {
+      const em = /EMITIDO EM\s*(\d{2})\/(\d{2})\/(20\d{2})\s+\d{2}:\d{2}/.exec(u);
+      if (em && +em[1] >= 1 && +em[1] <= 31 && +em[2] >= 1 && +em[2] <= 12) fatoGerador = { data: em[1] + '-' + em[2] + '-' + em[3], quebrada: true, peloCarimbo: true };
+    }
   }
   // o que a leitura de antes (até 27/10/2026) já lia: o que ela não lia e tem o XML da chave arquivado continua indo ao lado do
   // XML (o 2º lote do Vitor, que o reprocesso em produção está aplicando); as leituras novas só valem para o resto
@@ -2951,11 +2958,20 @@ function decidirPlanilha(entrada, ctx, ev, porHash) {
     const porDoc = unico(docs.flatMap(d => clientesDoDoc(d, cad)));
     if (porDoc) { if (cli && cli !== porDoc) return { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_AMBIGUO', confianca: 0.4, tipo: 'BALANCETE', setor: 'CONTABIL' }; cli = porDoc; conf = 0.97; }
     if (!cli) { const n = unico(clientesPeloNomeNoTexto(linhas.join('\n'), cad)); if (n) { cli = n; conf = 0.88; } }
+    // (09/11/2026, os NÃO IDENTIFICADOS) a matriz e a filial com o mesmo nome (572 e 582 FREEDOM REFORESTING): o nome no texto não decide entre as duas; decide a pasta de
+    // origem com o código e o nome conferidos ('FERNANDO\572 FREEDOM REFORESTING LTDA\2025\09.2025\Balancete 09.2025.xls'), só quando o nome do arquivo também diz
+    // balancete, o topo não é de extrato (o do BB tem a coluna 'Data balancete') e o nome no texto inclui o cliente da pasta (nenhum CNPJ de outro)
+    let pelaPasta = false;
+    if (!cli && /BALANCETE/.test(nome) && !/EXTRATO/.test(u.slice(0, 600))) {
+      const pz = clienteDaPasta(entrada.rel || entrada.nome, cad);
+      const outroDoc = docs.some(d => { const cs = clientesDoDoc(d, cad); return cs.length && pz && !cs.includes(pz.codigo); });
+      if (pz && pz.forte && !outroDoc && clientesPeloNomeNoTexto(linhas.join('\n'), cad).includes(pz.codigo)) { cli = pz.codigo; conf = 0.9; pelaPasta = true; ev.push(pz.como + ' (o nome no texto é o da matriz e o da filial)'); }
+    }
     if (!cli) return { acao: 'NAO_IDENTIFICADO', motivo: 'CLIENTE_NAO_LOCALIZADO', confianca: 0.3, tipo: 'BALANCETE', setor: 'CONTABIL' };
     const ano = mBal ? +mBal[2] : ((/(20\d{2})/.exec(u) || [])[1] | 0) || null;
     if (!ano) return { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5, cliente: cli, tipo: 'BALANCETE', setor: 'CONTABIL' };
     ev.push(mBal ? 'nome do arquivo do Alterdata (código e mês)' : 'título "Balancete"');
-    return { acao: 'ARQUIVAR', cliente: cli, comoCliente: porDoc ? 'doc' : 'nome', confianca: conf, tipo: 'BALANCETE', setor: 'CONTABIL', caminho: ['CONTÁBIL', 'REGISTRO DE LIVROS', '(001) ' + ano], nomeFinal: entrada.nome, fonte: '04 (Balancete e ECD)' };
+    return { acao: 'ARQUIVAR', cliente: cli, comoCliente: porDoc ? 'doc' : pelaPasta ? 'pastaConferida' : 'nome', confianca: conf, tipo: 'BALANCETE', setor: 'CONTABIL', caminho: ['CONTÁBIL', 'REGISTRO DE LIVROS', '(001) ' + ano], nomeFinal: entrada.nome, fonte: '04 (Balancete e ECD)' };
   }
   // o extrato do banco exportado em planilha (28/10/2026: "Banco Sicoob 09-2025.xls" da 443, as colunas "DATA LANCAMENTO | VALOR
   // LANCAMENTO | DESCRICAO HISTORICO"): 04, Bancários, como o PDF — "MM-AAAA.xls" em EXTRATOS\ANO\MÊS\BANCÁRIOS\<BANCO>; o banco pelo
@@ -3398,6 +3414,13 @@ function clienteDoPdf0(u, bruto, entrada, ctx, ev, regra, campos) {
   }
   if (nomes.length === 1) { ev.push('razão social escrita no documento'); return { cliente: nomes[0], conf: sub && sub.codigo !== nomes[0] ? 0.8 : 0.88, como: 'nome' }; }
   if (nomes.length > 1 && sub && nomes.includes(sub.codigo)) { ev.push('razão social escrita e ' + sub.como); return { cliente: sub.codigo, conf: 0.88, como: 'nome' }; }
+  // (09/11/2026, os NÃO IDENTIFICADOS) a pasta da matriz com as filiais ('413 BRAZILIAN filiais 414. 418. 453') e o nome do arquivo que começa pelo código de uma delas
+  // ('413-Balancete06.2026.pdf'), como em clientePelaPastaOuGrupo: vale esse código, quando a razão escrita no documento também é a dele (o balancete cita outros clientes)
+  if (nomes.length > 1 && !sub) {
+    const g = grupoDaPasta(entrada.rel || entrada.nome, cad);
+    const ini = /^(\d{2,4})(?!\d)/.exec(norm(entrada.nome || ''));
+    if (g && ini && [g.matriz].concat(g.filiais || []).includes(+ini[1]) && nomes.includes(+ini[1])) { ev.push('razão social escrita e o código ' + ini[1] + ' no começo do nome, na pasta  + g.parte + '); return { cliente: +ini[1], conf: 0.88, como: 'nome' }; }
+  }
   { const m = matrizDoContrato(nomes); if (m != null) return { cliente: m, conf: 0.88, como: 'nome' }; }
   if (nomes.length > 1) {
     const mz = MATRIZ_NO_AMBIGUO.has(regra.tipo) ? matrizDaRaiz(nomes, cad, entrada.rel) : null;
@@ -3444,14 +3467,18 @@ function clienteDoRelatorio(u, entrada, ctx, ev) {
  */
 // (Vitor, 01/11/2026, decisões 5 e 6) e as pastas "Pendencias a Resolver de Fornecedores" da 413 e "Pagamento e NFS" da 446
 const PASTA_DE_PAGAMENTOS = /\b(COMPROVANTES|PAGTOS|NFS E BOLETOS|PENDENCIAS A RESOLVER DE FORNECEDORES|PAGAMENTOS? E NFS)\b/;
+// (09/11/2026, os NÃO IDENTIFICADOS) só para o fornecedor do BOLETO lido sem o beneficiário (decidirBoleto): também as variações do nome das mesmas pastas mensais
+// ('Comprovante e NFs' no singular, 'NFs e Coprovantes' sem o M, 'Pagamento e NF SPIROU MAIO-2025', 'NFSE e Boletos', 'Notas e Boletos FREEDOM JUN-2025'); para o resto
+// do pagamento elas continuam fora (o comprovante do banco nelas vai para EXTRATOS\…\COMPROVANTES, testes 40.4 e 40.7)
+const PASTA_DE_PAGAMENTOS_DO_BOLETO = /\b(COMPROVANTES|PAGTOS|NFS E BOLETOS|PENDENCIAS A RESOLVER DE FORNECEDORES|PAGAMENTOS? E NFS?|COMPROVANTE E NFS?|NFS? E CO?M?PROVANTES?|(?:NFSE|NOTAS) E BOLETOS)\b/;
 const DOC_DO_FORNECEDOR = '(?:NFS-?E|NF-?E|NF|FATURAS?|BOLETOS?)\\s*(?:N[O°º.]*\\s*)?\\d';
-function pagamentoDeFornecedor(entrada) {
+function pagamentoDeFornecedor(entrada, pastasDePagamento) {
   const nome = String(entrada.nome || '');
   if (!/\.pdf$/i.test(nome)) return null;
   // o IPVA/licenciamento e as taxas do IBAMA, do CCIR e a TFAMG têm destino próprio (Vitor, 28/10/2026, lote 8, item 2)
   if (/IPVA|LICENC|\b(IBAMA|CCIR|TFAMG)\b/.test(norm(nome))) return null;
   const pastas = partesDoCaminho(entrada.rel || nome).slice(0, -1).map(p => norm(p).replace(/[^A-Z0-9 ]+/g, ' ').replace(/ +/g, ' ').trim());
-  if (!pastas.some(p => PASTA_DE_PAGAMENTOS.test(p)) || pastas.includes('EXTRATOS')) return null;
+  if (!pastas.some(p => (pastasDePagamento || PASTA_DE_PAGAMENTOS).test(p)) || pastas.includes('EXTRATOS')) return null;
   const base = norm(nome.replace(/\.[a-z0-9]{2,4}$/i, '')).replace(/\s+/g, ' ').trim();
   // 27/10/2026 (Vitor, 2ª leva): o boleto/NF/apólice SEM data nem "NF nnn" no nome, só o valor ("BOLETO SEGURO FROTA PARC.07
   // DE 10 R$2.893,77", "NFSE 19 IFEM R42.750,00", "Apolice_1009715020959 ESSOR R$215,45"): o mês da pasta de origem, o
@@ -3637,6 +3664,9 @@ function clienteDoNomeDoConteiner(rel, cad) {
   }
   if (!achados.size) return null;
   if (achados.size === 1) { const codigo = [...achados][0]; return { codigo, como: 'o nome do cliente ' + codigo + ' no nome da pasta de origem: ' + porque.join(', ') }; }
+  return matrizDoConteiner(achados, porque, rel, cad);
+}
+function matrizDoConteiner(achados, porque, rel, cad) {
   // a matriz e as filiais com o mesmo nome (a FREEDOM 572 e a 582): a matriz (/0001), a não ser que o nome do arquivo fale de filial ou de fazenda (cada
   // estabelecimento é uma fazenda: "F. LIBERDADE", "F.CEDRO"), que fica para uma pessoa
   const cs = [...achados].map(c => cad.porCod.get(c)).filter(Boolean);
@@ -3799,6 +3829,12 @@ function decidirBoleto(campos, entrada, u, bruto, ctx, ev, porHash) {
   // (o nome colado no CPF/CNPJ do próprio cliente é a linha do pagador: "PEDRO JORGE SANTOS\nSOUZA\nCPF: 595…")
   const benef = (campos.beneficiarios || []).find(b => b.rotulo !== 'pagador' && !ehCliente(b.nome) && !(b.doc && clientesDoDoc(b.doc, cad).includes(c.cliente)));
   campos.fornecedor = benef ? benef.nome : null;
+  // (09/11/2026, os NÃO IDENTIFICADOS) o beneficiário fora do lugar no texto (o boleto do Alterdata Pack da Nilma: 'CEDENTEVENCIMENTO' colado e o nome solto no
+  // fim): na pasta de pagamentos, o fornecedor pelo nome do arquivo, como no pagamento de fornecedor ('BOLETO NILMA CONTADORA NF2947 MINAS R$645,00.pdf'), nunca o próprio cliente
+  if (!campos.fornecedor) {
+    const pg = pagamentoDeFornecedor(entrada, PASTA_DE_PAGAMENTOS_DO_BOLETO);
+    if (pg && pg.fornecedor && !ehCliente(pg.fornecedor)) { campos.fornecedor = pg.fornecedor; ev.push('o beneficiário não foi lido no boleto: o fornecedor pelo nome do arquivo, na pasta de pagamentos (como o pagamento de fornecedor, Vitor, 27/10/2026)'); }
+  }
   if (!campos.fornecedor) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'VOCABULARIO_AUSENTE', confianca: 0.5, evidencias: ev.concat('o beneficiário do boleto não foi lido (04: Fornecedores)') });
   if (!campos.valor) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'VALOR_AUSENTE', confianca: 0.5 });
   if (!campos.competencia) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'COMPETENCIA_AUSENTE', confianca: 0.5, evidencias: ev.concat('o vencimento do boleto não foi lido') });
@@ -4585,7 +4621,7 @@ function montarNfsePdf(campos, u, bruto, base, c, ctx, ev) {
     const mE = +campos.emissao.slice(3, 5), aE = +campos.emissao.slice(6);
     const confere = pm && ((pm.mes === mE && pm.ano === aE) || (pm.mes === 1 ? mE === 12 && aE === pm.ano - 1 : mE === pm.mes - 1 && aE === pm.ano));
     if ((pm || campos.fatoGerador.quebrada) && !confere) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'VOCABULARIO_AUSENTE', confianca: 0.5, evidencias: ev.concat('a "Data Fato Gerador" lida pelo OCR (' + campos.emissao + ') não confere com o mês da pasta de origem' + (pm ? ' (' + mesAno(pm) + ')' : ' (sem o mês)')) });
-    ev.push('a data da NFS-e pela "Data Fato Gerador" e o número do nome do arquivo (' + campos.numero + '), que também está no texto (Vitor, 30/10/2026)');
+    ev.push('a data da NFS-e pel' + (campos.fatoGerador.peloCarimbo ? 'o carimbo "Emitido em" (a "Data Fato Gerador" ilegível no OCR; o mês confere com a pasta de origem)' : 'a "Data Fato Gerador"') + ' e o número do nome do arquivo (' + campos.numero + '), que também está no texto (Vitor, 30/10/2026)');
   }
   if (!campos.numero || !campos.emissao) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'VOCABULARIO_AUSENTE', confianca: 0.5, evidencias: ev.concat('nº ou data da NFS-e não lidos') });
   // a de Taiobeiras pelos blocos: a emitida pelo escritório vai para a pasta dele (e a cópia no tomador), como as outras de honorários; as outras são do prestador ou do

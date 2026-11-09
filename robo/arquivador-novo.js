@@ -264,6 +264,37 @@ function textoDoRtf(buffer) {
   if (i > 0) { const ini = s.lastIndexOf('\n', Math.max(0, i - 2)); s = s.slice(Math.max(0, s.lastIndexOf('\n', ini - 1) + 1)); }
   return s;
 }
+/**
+ * A camada de texto ilegível (09/11/2026): a fonte embutida sem o mapa de caracteres faz o PDF "ter texto", mas o texto
+ * são caracteres de controle no lugar das letras (o protocolo de cancelamento do SIARE, a alteração da JUCEMG, o
+ * comprovante do MEI: 403 de 510 caracteres eram de controle). Um em cada cinco caracteres visíveis de controle (ou o
+ * "não sei" �) já não é texto de gente: o PDF vai ao OCR como o escaneado.
+ * E a fonte com as letras trocadas por outras ("Consulta Regularidade do Empregador FGTS.pdf": "!"! #$#%&&&'!( )*+ … DEFD30GHIJKEGD3LMNMOD"):
+ * com 150 letras ou mais, menos de 27% de vogais (o português escrito fica perto de 45%; nos 261 PDFs já arquivados da amostra de 09/11/2026 o
+ * menor foi 37,8%, um extrato do BB; nos ilegíveis dos NÃO IDENTIFICADOS, 22% a 26%).
+ */
+function textoIlegivel(paginas) {
+  const t = (Array.isArray(paginas) ? paginas : [paginas]).join('\n');
+  const visiveis = (t.match(/\S/g) || []).length;
+  if (visiveis < 40) return false;
+  const lixo = (t.match(/[\u0000-\u0008\u000e-\u001f\u007f�]/g) || []).length;
+  if (lixo / visiveis >= 0.2) return true;
+  const sem = t.normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const letras = (sem.match(/[A-Za-z]/g) || []).length;
+  return letras >= 150 && (sem.match(/[AEIOUaeiou]/g) || []).length / letras < 0.27;
+}
+/**
+ * O OCR que falhou (09/11/2026: o prazo de 90 s, o trabalhador morto) num arquivo sem texto: nada do conteúdo foi lido, então
+ * as regras não arquivam só pelo nome. O mesmo arquivo com o OCR que funciona tem o teto de 0,8 e fica em NÃO IDENTIFICADOS
+ * (NFSE 23970 JEQUITIARA, 413: arquivado com o OCR que passou do prazo, NÃO IDENTIFICADO com o OCR de 42%). Fica como o
+ * escaneado sem leitura (CONTEUDO_SEM_TEXTO; o mapa da migração ainda decide pela pasta) e o reprocesso lê de novo.
+ */
+function semArquivarSemLeitura(entrada, d) {
+  if (!d || d.acao !== 'ARQUIVAR' || !entrada || !entrada.ocr || !entrada.ocr.erro) return d;
+  if ([].concat(entrada.texto || []).join('').replace(/\s/g, '').length >= 40) return d;
+  return { acao: 'NAO_IDENTIFICADO', motivo: 'CONTEUDO_SEM_TEXTO', codigo: 'E307', confianca: 0, tipo: d.tipo || null, setor: d.setor || null, cliente: d.cliente || null, clienteNome: d.clienteNome || null,
+    evidencias: (d.evidencias || []).concat('o OCR falhou e o conteúdo não foi lido: não arquiva só pelo nome (seria ' + (d.destinoRelativo || d.tipo || '?') + '); volta na próxima rodada (09/11/2026)') };
+}
 async function montarEntrada(nome, rel, buffer, op) {
   const e = { nome, rel, hash: sha(buffer), tamanho: buffer.length };
   const ext = (/\.([a-z0-9]+)$/i.exec(nome) || [])[1];
@@ -273,14 +304,16 @@ async function montarEntrada(nome, rel, buffer, op) {
       e.texto = t.paginas; e.paginas = t.total;
       if (t.erro) e.erroLeitura = t.erro;
       // escaneado (sem camada de texto, ou quase nada): OCR das primeiras páginas (arquivador-ocr.js)
-      if (OCR_LIGADO && e.texto.join('').replace(/\s/g, '').length < 40) {
+      // (09/11/2026) e a camada de texto que é lixo (a fonte sem o mapa de caracteres: caracteres de controle e "!"#$%&'" no
+      // lugar das letras, como nos PDFs impressos do SIARE, da JUCEMG e do Portal do Empreendedor): conta como sem texto
+      if (OCR_LIGADO && (e.texto.join('').replace(/\s/g, '').length < 40 || textoIlegivel(e.texto))) {
         // o contínuo manda o escaneado para a fila do OCR (26/10/2026): o lote não espera a leitura da imagem
         // e o OCR já começa, em paralelo (os trabalhadores do Tesseract rodam em outras threads): quando o lote do OCR
         // chegar, a leitura está pronta (26/10/2026: o lote do OCR de 12 levava ~52 s e parava a fila comum)
         if (op && op.adiarOcr) { e.precisaOcr = true; adiantarOcr(e.hash, buffer); break; }
         const o = await ocrDe(e.hash, buffer);
         e.ocr = { confianca: o.confianca, ms: o.ms, erro: o.erro || null };
-        if (o.paginas.length && o.paginas.join('').replace(/\s/g, '').length >= 40) { e.texto = o.paginas; e.paginas = e.paginas || o.total; }
+        if (o.paginas.length && o.paginas.join('').replace(/\s/g, '').length >= 40 && !textoIlegivel(o.paginas)) { e.texto = o.paginas; e.paginas = e.paginas || o.total; }
       }
       break;
     }
@@ -630,7 +663,7 @@ async function decidirUm(nome, rel, buffer, ctx, pronta) {
   const entrada = pronta || await montarEntrada(nome, rel, buffer);
   // o escaneado que o contínuo mandou para a fila do OCR: nada decidido agora (volta no lote do OCR)
   if (entrada.precisaOcr) return { rel, nome, hash: entrada.hash, acao: 'AGUARDANDO_OCR', motivo: 'ESCANEADO_NA_FILA_DO_OCR', confianca: 0, evidencias: [], copias: [] };
-  let d = ctx.manual && ctx.manual[rel] ? require('./arquivador-manual').decidirManual(entrada, ctx, ctx.manual[rel]) : R.decidir(entrada, ctx);
+  let d = ctx.manual && ctx.manual[rel] ? require('./arquivador-manual').decidirManual(entrada, ctx, ctx.manual[rel]) : semArquivarSemLeitura(entrada, R.decidir(entrada, ctx));
   // a migração (23/10/2026): o que o conteúdo não decidiu, a pasta de origem pode decidir (o mapa da migração)
   if (!(ctx.manual && ctx.manual[rel]) && d.acao === 'NAO_IDENTIFICADO') { try { const m = require('./arquivador-migracao').decidir(entrada, ctx, d); if (m) d = m; } catch (e) { d.evidencias = (d.evidencias || []).concat('mapa da migração: ' + e.message); } }
   // a imagem que nem as regras nem o mapa decidiram, depois do OCR: DESCARTAR (Vitor, 28/10/2026)
@@ -1040,7 +1073,7 @@ async function reprocessarNaoIdentificados(opcoes) {
 /** O trabalhador do Tesseract segura o processo vivo: fecha no fim de cada execução (se o OCR foi usado). */
 async function encerrarOcr() { const k = require.resolve('./arquivador-ocr'); if (require.cache[k]) await require('./arquivador-ocr').encerrar(); }
 
-module.exports = { versaoDasRegras, pastaDoFornecedorQueJaExiste, textoDoRtf, ehTedSintegra, reprocessarNaoIdentificados, arquivosDosNaoIdentificados, rotaDoReprocesso, atualizarCadastro, encerrarOcr, executar, aprenderContas, lerContas, varrer, abrirZip, membros, montarEntrada, textoDoPdf, carregarCadastro, indiceDoManifesto, caminhoArquivado, conferirDestino, conteudoXml, raizDoAno, relatorioTexto, planos, CONTROLE };
+module.exports = { textoIlegivel, semArquivarSemLeitura, versaoDasRegras,pastaDoFornecedorQueJaExiste, textoDoRtf, ehTedSintegra, reprocessarNaoIdentificados, arquivosDosNaoIdentificados, rotaDoReprocesso, atualizarCadastro, encerrarOcr, executar, aprenderContas, lerContas, varrer, abrirZip, membros, montarEntrada, textoDoPdf, carregarCadastro, indiceDoManifesto, caminhoArquivado, conferirDestino, conteudoXml, raizDoAno, relatorioTexto, planos, CONTROLE };
 
 if (require.main === module) {
   const a = process.argv.slice(2);

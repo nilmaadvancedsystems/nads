@@ -145,6 +145,28 @@ const jl = (arq, linhas) => fs.appendFileSync(arq, linhas.map(l => JSON.stringif
       igual('decididos: a poda tira o que já não está na pasta', [D.podar(reg, ['N1\\outro.pdf']), Object.keys(reg.itens)], [1, []]);
       igual('decididos: a versão das regras é um hash estável de 16 hex', [/^[0-9a-f]{16}$/.test(A.versaoDasRegras()), A.versaoDasRegras() === A.versaoDasRegras()], [true, true]);
     }
+    // a camada de texto ilegível (09/11/2026): caracteres de controle no lugar das letras → o PDF vai ao OCR; o texto de gente e o curto, não
+    {
+      const lixo = Array.from({ length: 300 }, (_, i) => String.fromCharCode(1 + (i % 8)) + (i % 3 ? 'a' : '')).join('');
+      igual('texto ilegível: o PDF com fonte sem mapa (controle no lugar das letras) é ilegível', A.textoIlegivel([lixo]), true);
+      igual('texto ilegível: o texto comum não é', A.textoIlegivel(['PROTOCOLO DE CANCELAMENTO DA NF-E 2268\nCNPJ 11.360.291/0001-45\nSecretaria de Estado de Fazenda de Minas Gerais']), false);
+      igual('texto ilegível: o texto curto (menos de 40 visíveis) não decide', A.textoIlegivel([String.fromCharCode(1).repeat(30)]), false);
+      // a fonte com as letras trocadas (o CRF do FGTS da 183): poucas vogais
+      const trocada = '!"! #$#%&&&\'!( )*+ ,*- ./0123.45637038/1901423/:72 ;<==293723/1>0472703#"3%3.0?:483%3:218>0142@3%3AB3%3!$CC&\'&&& 23.DEFD30GHIJKEGD3LMNMODPQ3IH3RSH3ND3DTOEUREVWH3XRM3PYM3GHIZMOM3H32OT [Q3ND3/ME3( &\n';
+      igual('texto ilegível: a fonte com as letras trocadas (menos de 27% de vogais) é ilegível', A.textoIlegivel([trocada.repeat(4)]), true);
+      const extrato = 'SISBB - SISTEMA DE INFORMACOES BANCO DO BRASIL\nEXTRATO DE CONTA CORRENTE\nCLIENTE: MINAS FORESTRY EMPREENDIMENTOS FLORESTAIS\nAGENCIA: 101-5 CONTA: 73891-3\n01/10/2025 PIX ENVIADO 1.000,00 D\n02/10/2025 TARIFA PACOTE DE SERVICOS 89,00 D\n03/10/2025 TED RECEBIDA 15.000,00 C\nSALDO ANTERIOR 2.345,67 C\n';
+      igual('texto ilegível: o extrato do BB (siglas e números) não é', A.textoIlegivel([extrato.repeat(2)]), false);
+    }
+    // o OCR que falhou num arquivo sem texto (09/11/2026): não arquiva só pelo nome; com texto lido, ou sem erro de OCR, nada muda
+    {
+      const arq = { acao: 'ARQUIVAR', tipo: 'FATURA FORNECEDOR', cliente: 413, confianca: 0.9, destinoRelativo: 'X', evidencias: ['pelo nome'] };
+      const r = A.semArquivarSemLeitura({ texto: ['\n\n'], ocr: { confianca: 0, erro: 'OCR passou de 90 s' } }, arq);
+      igual('OCR que falhou, sem texto: NÃO IDENTIFICADO (CONTEUDO_SEM_TEXTO), com o cliente e o tipo de informação', [r.acao, r.motivo, r.cliente, r.tipo, r.confianca], ['NAO_IDENTIFICADO', 'CONTEUDO_SEM_TEXTO', 413, 'FATURA FORNECEDOR', 0]);
+      igual('OCR que falhou, com a camada de texto lida (o ilegível): a decisão fica', A.semArquivarSemLeitura({ texto: ['NOTA FISCAL DE SERVIÇO ELETRÔNICA NÚMERO 23970 PRESTADOR'], ocr: { erro: 'x' } }, arq), arq);
+      igual('OCR sem erro: a decisão fica', A.semArquivarSemLeitura({ texto: [], ocr: { confianca: 80, erro: null } }, arq), arq);
+      const ni = { acao: 'NAO_IDENTIFICADO', motivo: 'TIPO_NAO_RECONHECIDO' };
+      igual('OCR que falhou num NÃO IDENTIFICADO: nada muda', A.semArquivarSemLeitura({ texto: [], ocr: { erro: 'x' } }, ni), ni);
+    }
 
     // ---------- 5. o arquivo que sumiu da origem: "saiu da pasta", não erro ----------
     {
