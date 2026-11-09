@@ -18,6 +18,7 @@ import marcaNilma from './marca-nilma.png';
 import logoExcel from './logo-excel.webp';
 import logoInss from './logo-inss.png';
 import logoSimplesDaAba from './logo-simples.png';
+import logoSped from './logo-sped.png';
 
 /** O endereço completo do logo da Nilma (o do e-mail), publicado junto com o site. */
 export function urlDoLogoNilma(): string {
@@ -246,6 +247,11 @@ export function LogoEcontador() {
 /** O Simples Nacional na aba do Fiscal: a imagem que o Vitor mandou, sem o fundo (logo-simples.png; 09/11/2026: "deixando ela original"). */
 export function LogoSimplesDaAba() {
   return <svg viewBox="0 0 64 64" aria-hidden="true"><image href={logoSimplesDaAba} width="64" height="64" /></svg>;
+}
+
+/** O SPED na aba da REINF: a imagem que o Vitor mandou, sem o fundo (logo-sped.png; 09/11/2026: "deixando ela original"). */
+export function LogoSped() {
+  return <svg viewBox="0 0 64 64" aria-hidden="true"><image href={logoSped} width="64" height="64" /></svg>;
 }
 
 /** O SIEG (09/11/2026: "deixando ela original"): o quadrado azul com o "si" branco, nas medidas da imagem que o Vitor mandou. */

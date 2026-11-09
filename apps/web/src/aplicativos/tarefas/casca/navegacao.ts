@@ -20,7 +20,7 @@ export const FERRAMENTAS_DO_FISCAL: readonly string[] = ['sintegra', 'faturament
 export type IdAplicacao = 'inicio' | 'minhas-empresas' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'financeiro' | 'entregas' | 'area-cliente' | 'ferramentas';
 
 export interface Pagina {
-  id: string; rotulo: string; icone: NomeIcone; titulo: string; /** a logo da marca no lugar do ícone (fgts na lateral; as outras nas abas do Fiscal) */ marca?: 'fgts' | 'simples' | 'receita' | 'sieg';
+  id: string; rotulo: string; icone: NomeIcone; titulo: string; /** a logo da marca no lugar do ícone (fgts na lateral; as outras nas abas do Fiscal) */ marca?: 'fgts' | 'simples' | 'receita' | 'sped' | 'sieg';
   /** apagada na lateral; o clique avisa que está em desenvolvimento e não abre (Vitor, 21/10/2026) */
   emDesenvolvimento?: boolean;
   /** só o admin vê (as páginas do Admin nas Configurações; 28/10/2026) */
@@ -65,7 +65,7 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'relatorio-simples', rotulo: 'Simples Nacional', icone: 'painel', titulo: 'Relatório Simples', secao: 'Empresas', marca: 'simples' },
     { id: 'relatorio-presumido', rotulo: 'Lucro Presumido', icone: 'painel', titulo: 'Relatório Lucro Presumido', secao: 'Empresas', marca: 'receita' },
     // as Ferramentas: a REINF (o fluxo do Notion do Heverton)
-    { id: 'reinf', rotulo: 'REINF', icone: 'fileUp', titulo: 'REINF', secao: 'Ferramentas' },
+    { id: 'reinf', rotulo: 'REINF', icone: 'fileUp', titulo: 'REINF', secao: 'Ferramentas', marca: 'sped' },
     // o SIEG fora da rotina (31/10/2026: "coloca uma função de baixar do sieg q tinha na rotina … coloca um módulo la")
     { id: 'sieg', rotulo: 'SIEG', icone: 'download', titulo: 'SIEG', secao: 'Ferramentas', marca: 'sieg' },
     // o leitor do SINTEGRA (Vitor, 15/10/2026: "montar um leitor de sintegra")
