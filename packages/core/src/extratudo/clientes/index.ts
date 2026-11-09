@@ -101,6 +101,37 @@ export function lerBalanceteDinamico(rows: readonly (readonly unknown[])[]): Bal
   return { meses: meses.map(m => m.mes), linhas };
 }
 
+/** Uma conta do Balancete Dinâmico que o robô do Alterdata leu (pedidosAlterdata/{id}/numeros/balancete). */
+export interface ContaDoBalanceteDoRobo { codigo: string; classificacao?: string; nome: string; anterior: number; anteriorDc: string; saldo: number; dc: string; dcIncerto?: boolean }
+
+/**
+ * Os balancetes dinâmicos do robô, um por mês, no balancete dinâmico da Tarefa (Vitor, 09/11/2026: "ta puxando certinho mais
+ * não importa no nads"): o saldo de cada mês com devedor +, credor −. A conta que não veio num mês fica com o saldo que já
+ * tinha (antes da primeira vez, o saldo anterior dela). incertos: as contas sem movimento cujo sinal veio do grupo.
+ */
+export function dinamicoDoRobo(porMes: readonly { mes: string; contas: readonly ContaDoBalanceteDoRobo[] }[]): { d: BalanceteDinamico; incertos: number } {
+  const ordem = [...porMes].sort((a, b) => a.mes.localeCompare(b.mes));
+  const comSinal = (v: number, dc: string) => (dc === 'C' ? -v : v) || 0;
+  const linhas = new Map<string, LinhaDinamico>();
+  const incertas = new Set<string>();
+  for (const { contas } of ordem) {
+    for (const c of contas) {
+      if (c.dcIncerto) incertas.add(c.codigo);
+      if (!linhas.has(c.codigo)) linhas.set(c.codigo, { codigo: c.codigo, classificacao: c.classificacao || '', descricao: c.nome, saldoAnterior: comSinal(c.anterior, c.anteriorDc), saldos: {} });
+    }
+  }
+  for (const l of linhas.values()) {
+    let ultimo = l.saldoAnterior;
+    for (const { mes, contas } of ordem) {
+      const c = contas.find(x => x.codigo === l.codigo);
+      if (c) ultimo = comSinal(c.saldo, c.dc);
+      l.saldos[mes] = ultimo;
+    }
+  }
+  const emOrdem = [...linhas.values()].sort((a, b) => a.classificacao.localeCompare(b.classificacao, 'pt-BR', { numeric: true }));
+  return { d: { meses: ordem.map(m => m.mes), linhas: emOrdem }, incertos: incertas.size };
+}
+
 /** Os clientes fictícios do balancete dinâmico de teste (o ⚡ do modo desenvolvedor): nome e saldo no mês. */
 const CLIENTES_DE_TESTE: [string, number][] = [
   ['MERCADO BOM PRECO LTDA', 1250.4], ['ANA PAULA SOUZA', 0], ['CONSTRUTORA ALFA LTDA', 8730], ['PADARIA DO JOAO', 312.9],

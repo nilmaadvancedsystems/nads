@@ -12,7 +12,7 @@ import { useMemo } from 'react';
 import { guardadosQueCasam, useGuardado } from './guardado';
 
 export interface RazaoGuardado { arquivo: string; razao: t.RazaoDaConta }
-export interface DinamicoGuardado { nome: string; d: cl.BalanceteDinamico }
+export interface DinamicoGuardado { nome: string; d: cl.BalanceteDinamico; /** veio do robô: os pedidos lidos */ pedidos?: string[] }
 /** O Diário do Alterdata (um PDF com todas as contas do período): os lançamentos lidos, por conta. */
 export interface DiarioGuardado { arquivo: string; lido: t.DiarioLido }
 interface Contabil { dinamico?: DinamicoGuardado; razoes?: Record<string, RazaoGuardado>; diario?: DiarioGuardado }
@@ -78,7 +78,7 @@ export function useContabilDaEmpresa(nome: string, codigo: number | null = null)
       return d;
     },
     /** o dinâmico já lido (o Clientes e o Fornecedores importam também; vale para todos) */
-    usarDinamico: (arquivo: string, d: cl.BalanceteDinamico) => setG(x => ({ ...x, dinamico: { nome: arquivo, d } })),
+    usarDinamico: (arquivo: string, d: cl.BalanceteDinamico, pedidos?: string[]) => setG(x => ({ ...x, dinamico: { nome: arquivo, d, ...(pedidos ? { pedidos } : {}) } })),
     tirarDinamico: () => setG(x => { const n = { ...x }; delete n.dinamico; return n; }),
     /** os razões (vários de uma vez): cada um pelo código da aba; o sem código fica de fora (devolve os nomes) */
     async importarRazoes(fs: readonly File[]) {

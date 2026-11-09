@@ -6,12 +6,12 @@
 //   - antes de criar, o pedido já andando (ou pronto há pouco) do mesmo mês é reaproveitado (várias abas não duplicam);
 //   - o mês que deu erro só vai de novo pelo botão (o robô pode estar parado; não fica pedindo em laço);
 //   - o mesmo conjunto de pedidos não é lido de novo (DiarioLido.pedidos).
-import { tarefas as t } from '@nads/core';
+import { clientes as cl, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
 import { erroDeAmbiente, vagasDePedidoSozinho } from '../../../../dados/razaoDoRobo.regras';
 import { useContabilDaEmpresa } from '../../../../../../comum/contabilDaEmpresa';
-import { lerRazaoDoRobo, ouvirPedidosDoRazao, pedirRazaoDoMes, type PedidoDoRazao } from '../../../../dados/razaoDoRobo.firestore';
+import { lerBalanceteDoRobo, lerRazaoDoRobo, ouvirPedidosDoRazao, pedirRazaoDoMes, type PedidoDoRazao } from '../../../../dados/razaoDoRobo.firestore';
 
 export type SituacaoDoMes = 'pronto' | 'fila' | 'robo' | 'erro' | 'falta';
 export interface MesDoRobo { mes: string; situacao: SituacaoDoMes; pedido: PedidoDoRazao | null }
@@ -36,6 +36,7 @@ export function useRazaoDoRobo({ nome, codigo, meses, automatico }: { nome: stri
   const [pedidos, setPedidos] = useState<PedidoDoRazao[] | null>(null);
   const [falha, setFalha] = useState('');
   const [lendo, setLendo] = useState(false);
+  const [avisoDoBalancete, setAvisoDoBalancete] = useState('');
   const temCodigo = codigo != null && codigo > 0 && meses.length > 0;
 
   useEffect(() => {
@@ -106,7 +107,36 @@ export function useRazaoDoRobo({ nome, codigo, meses, automatico }: { nome: stri
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chaveDaLeitura]);
 
+  // o balancete dinâmico que o robô puxou (Vitor, 09/11/2026: "não importa no nads os dados extraidos"): com todos os meses
+  // prontos, entra no balancete dinâmico da Tarefa. O que alguém importou à mão (ou no Clientes) continua valendo.
+  const todosProntos = carregado && !!porMes.length && prontos.length === porMes.length;
+  const semBalancete = todosProntos ? prontos.filter(m => !m.pedido!.balanceteLido) : [];
+  const dinamicoAtual = contabil.dinamico;
+  const podeUsar = !dinamicoAtual || !!dinamicoAtual.pedidos;
+  const chaveDoDinamico = todosProntos && !semBalancete.length && podeUsar && (dinamicoAtual?.pedidos || []).join(',') !== idsProntos.join(',') ? idsProntos.join(',') : '';
+  const jaLeuDinamico = useRef('');
+  useEffect(() => {
+    if (!chaveDoDinamico || jaLeuDinamico.current === chaveDoDinamico) return;
+    jaLeuDinamico.current = chaveDoDinamico;
+    setAvisoDoBalancete('');
+    Promise.all(prontos.map(async m => ({ mes: m.mes, contas: await lerBalanceteDoRobo(m.pedido!) })))
+      .then(lidos => {
+        const antigos = lidos.filter(l => !l.contas.length).map(l => rotuloDoMes(l.mes));
+        if (antigos.length) { setAvisoDoBalancete('O balancete de ' + antigos.join(', ') + ' veio no formato antigo: peça de novo ao robô.'); return; }
+        const { d, incertos } = cl.dinamicoDoRobo(lidos);
+        const ms = prontos.map(m => m.mes);
+        contabil.usarDinamico('Robô · ' + (ms.length > 1 ? rotuloDoMes(ms[0]) + ' a ' + rotuloDoMes(ms[ms.length - 1]) : rotuloDoMes(ms[0])), d, idsProntos);
+        if (incertos) setAvisoDoBalancete(incertos + (incertos === 1 ? ' conta sem movimento ficou' : ' contas sem movimento ficaram') + ' com o sinal do grupo: confira se o saldo parecer invertido.');
+      })
+      .catch(e => { jaLeuDinamico.current = ''; setAvisoDoBalancete('Não consegui ler o balancete do robô: ' + (e instanceof Error ? e.message : String(e))); });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chaveDoDinamico]);
+  const faltaBalancete = semBalancete.length && podeUsar
+    ? 'O balancete de ' + semBalancete.map(m => rotuloDoMes(m.mes)).join(', ') + ' não veio' + (semBalancete[0].pedido!.erroDoBalancete ? ': ' + semBalancete[0].pedido!.erroDoBalancete : '') + '.' : '';
+
   return {
+    /** o que deu errado (ou pede atenção) no balancete dinâmico do robô */
+    avisoDoBalancete: faltaBalancete || avisoDoBalancete,
     /** sem o código da empresa ou sem o período: o robô não tem o que pedir */
     disponivel: temCodigo,
     carregado, falha, lendo, porMes, andando, prontos,

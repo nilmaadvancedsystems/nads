@@ -1614,6 +1614,27 @@ html.na-etapa .imp-aviso{top:calc(var(--vista-topo,0px) + 12px);}
 .imp-resumo{flex:1;display:flex;justify-content:center;min-width:0;}
 @media (min-width:900px){.imp-linha{position:relative;}.imp-resumo > div{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);}}
 .imp-resumo > div{display:flex;flex-direction:column;font-size:var(--fs-12);line-height:18px;color:var(--ink-muted);white-space:nowrap;}
+/* Balancete e razões da Importação (09/11/2026): o resumo embaixo do nome, sem se sobrepor; a cor do ícone diz a situação; um quadradinho por mês */
+.imp-contabil .imp-linha{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:0 12px;align-items:center;}
+.imp-contabil .imp-ico{grid-row:1 / span 2;}
+.imp-contabil .imp-txt{grid-column:2;grid-row:1;min-width:0;}
+.imp-contabil .imp-resumo{grid-column:2;grid-row:2;justify-content:flex-start;}
+.imp-contabil .imp-resumo > div{position:static;transform:none;white-space:normal;}
+.imp-contabil .imp-grupos{grid-column:3;grid-row:1 / span 2;}
+.imp-contabil .imp-ok .imp-ico{background:var(--success-soft);}
+.imp-contabil .imp-ok .imp-ico svg{color:var(--success-ink);}
+.imp-contabil .imp-erro{border-color:var(--danger);}
+.imp-contabil .imp-erro .imp-ico{background:var(--danger-soft);}
+.imp-contabil .imp-erro .imp-ico svg{color:var(--danger-ink);}
+.imp-robo-meses{display:flex;flex-wrap:wrap;gap:8px;padding:0 12px 12px 56px;}
+.imp-robo-mes{display:flex;flex-direction:column;justify-content:center;gap:6px;min-width:148px;min-height:38px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface-2);}
+.imp-robo-topo{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:var(--fs-12);font-weight:600;font-variant-numeric:tabular-nums;}
+.imp-robo-barra{height:4px;border-radius:2px;background:var(--surface-3);overflow:hidden;}
+.imp-robo-barra > span{display:block;height:100%;background:var(--success);}
+.imp-robo-atencao{display:flex;flex-direction:column;gap:4px;padding:0 12px 12px 56px;font-size:var(--fs-12);line-height:18px;}
+.imp-robo-atencao > span{display:flex;align-items:flex-start;gap:6px;}
+.imp-robo-atencao svg{width:14px;height:14px;flex:none;margin-top:2px;}
+@media (max-width:599px){.imp-robo-meses,.imp-robo-atencao{padding-left:12px;}}
 
 /* o rodapé da Casca: depois de tudo, na largura toda (só se vê rolando até o fim); a logo oficial (o tigre) */
 .rodape{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;padding:10px 16px;border-top:1px solid var(--border);
