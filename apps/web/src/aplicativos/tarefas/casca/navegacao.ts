@@ -11,6 +11,12 @@ import type { Operador } from './operador';
 
 export const BASE = '/tarefas';
 
+/**
+ * As páginas do Fiscal que ficam dentro da aba "Ferramentas" (09/11/2026: "coloque uma aba superior, chamada Ferramentas;
+ * dentro dela, deixe no menu lateral…"): no alto ficam os relatórios, a REINF, o SIEG e a Ferramentas. Os endereços não mudam.
+ */
+export const FERRAMENTAS_DO_FISCAL: readonly string[] = ['sintegra', 'faturamento', 'rateio-frete', 'simples', 'antecipacao-es', 'auditoria-itens'];
+
 export type IdAplicacao = 'inicio' | 'minhas-empresas' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'financeiro' | 'entregas' | 'area-cliente' | 'ferramentas';
 
 export interface Pagina {

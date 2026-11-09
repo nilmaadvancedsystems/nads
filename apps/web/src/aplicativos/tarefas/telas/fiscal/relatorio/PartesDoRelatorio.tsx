@@ -8,12 +8,15 @@ import { Icone, LogoEcontador, LogoGmail, LogoSciReport, LogoWhatsApp, MenuSuspe
 /** O campo de valor da tabela: escreve à vontade e guarda ao sair (Enter também sai) */
 /** estreito: o campo ocupa a célula da tabela do relatório, sem caixa em volta (29/10/2026: a tabela cabe na tela) */
 /** molde: o formato ("dd/mm/aaaa") que aparece só ao escrever, para a coluna não ficar cheia dele (29/10/2026) */
-export function Valor({ valor, sugestao, molde, rotulo, pode, aoSalvar, largo, estreito }: { valor: string; sugestao?: string; molde?: string; rotulo: string; pode: boolean; aoSalvar: (v: string) => void; largo?: boolean; estreito?: boolean }) {
+/** zeroComoTraco: o zero aparece como "-" (09/11/2026: "fica mais clean"); o valor guardado segue 0 e volta ao clicar para editar */
+export function Valor({ valor, sugestao, molde, rotulo, pode, aoSalvar, largo, estreito, zeroComoTraco }: { zeroComoTraco?: boolean; valor: string; sugestao?: string; molde?: string; rotulo: string; pode: boolean; aoSalvar: (v: string) => void; largo?: boolean; estreito?: boolean }) {
+  const mostrar = zeroComoTraco && /^\s*0+([.,]0+)?\s*$/.test(valor) ? '-' : valor;
   return (
     <input key={valor} type="text" className={'fin-valor-edita' + (largo ? '' : ' num') + (estreito ? ' fr-campo' : '') + (!sugestao && molde ? ' fr-molde' : '')}
-      defaultValue={valor} placeholder={sugestao || molde || ''} aria-label={rotulo}
+      defaultValue={mostrar} placeholder={sugestao || molde || ''} aria-label={rotulo}
       title={sugestao && !valor ? 'Do Entregas: ' + sugestao : undefined} readOnly={!pode}
-      onBlur={e => { if (e.target.value !== valor) aoSalvar(e.target.value); }}
+      onFocus={e => { if (pode && e.target.value !== valor && mostrar !== valor) e.target.value = valor; }}
+      onBlur={e => { if (e.target.value !== valor) aoSalvar(e.target.value); else e.target.value = mostrar; }}
       onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); if (e.key === 'Escape') { e.currentTarget.value = valor; e.currentTarget.blur(); } }} />
   );
 }
