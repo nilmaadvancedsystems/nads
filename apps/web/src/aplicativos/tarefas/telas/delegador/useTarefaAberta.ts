@@ -6,6 +6,7 @@
 import { empresas as emp, entregas, tarefas, usuarios } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
 import { useState } from 'react';
+import { ehDiretor } from '../../casca/navegacao';
 import { useOperador } from '../../casca/operador';
 import { useAcesso, useRepo, useTarefasDelegadas } from '../../dados/repo';
 import { bytesDoAnexo, encolherAnexo } from '../../dados/encolherAnexo';
@@ -31,7 +32,8 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
   const acesso = useAcesso();
   // o cliente vinculado: só as empresas da pessoa (29/10/2026)
   const empresas = useEmpresasPermitidas().filtrar(useRepo().listarEmpresas());
-  const admin = !!useOperador().operador?.admin;
+  const { operador } = useOperador();
+  const admin = !!operador?.admin;
   const { toast, modal } = useRetorno();
   const eu = repo.eu();
   const uid = eu?.uid || '';
@@ -87,7 +89,8 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
   // que ser um dropdown com foto de perfil")
   const docs = acesso.equipe().docs;
   const pessoa = (u: { uid: string; nome: string }) => ({ uid: u.uid, nome: u.nome, voce: u.uid === uid, foto: String(docs[u.uid]?.fotoPerfil || '') || null, iniciais: usuarios.iniciais(u.nome) });
-  const equipe = acesso.equipe().lista.filter(u => u.ativo || u.uid === r.responsavel?.uid).map(pessoa);
+  // as contas reservadas (Fiscal Xereta, Contábil Curioso) só aparecem para o Diretor e o admin (Vitor, 09/11/2026)
+  const equipe = acesso.equipe().lista.filter(u => (u.ativo && (ehDiretor(operador) || !usuarios.ehContaReservada(u.email) || u.uid === uid)) || u.uid === r.responsavel?.uid).map(pessoa);
   if (r.responsavel && !equipe.some(p => p.uid === r.responsavel?.uid)) equipe.unshift(pessoa(r.responsavel));
 
   const mesmaEmpresa = (a: { codigo: number | null; nome: string }, b: { codigo: number | null; nome: string }) => a.codigo === b.codigo && a.nome === b.nome;
