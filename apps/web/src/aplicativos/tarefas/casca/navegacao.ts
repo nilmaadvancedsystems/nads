@@ -11,7 +11,7 @@ import type { Operador } from './operador';
 
 export const BASE = '/tarefas';
 
-export type IdAplicacao = 'inicio' | 'minhas-empresas' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'financeiro' | 'entregas' | 'area-cliente' | 'minhas-tarefas' | 'ferramentas';
+export type IdAplicacao = 'inicio' | 'minhas-empresas' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'financeiro' | 'entregas' | 'area-cliente' | 'ferramentas';
 
 export interface Pagina {
   id: string; rotulo: string; icone: NomeIcone; titulo: string; /** a logo da marca no lugar do ícone, na lateral */ marca?: 'fgts';
@@ -33,6 +33,11 @@ export const APLICACOES: readonly Aplicacao[] = [
   // à parte (27/10/2026: "pq o minhas empresas ta junto do inicio?"): /tarefas/inicio, pelo "Início" da gaveta ☰
   { id: 'inicio', nome: 'Início', icone: 'home', grupo: 'Rotinas', pronta: true, paginas: [
     { id: 'inicio', rotulo: 'Início', icone: 'home', titulo: 'Início' },
+    // as tarefas delegadas vieram para o Início (09/11/2026: "migra os minhas tarefa para Início, todas as abas, e remova do
+    // menu lateral"): saíram da gaveta ☰; os links antigos (/tarefas/minhas-tarefas/...) caem aqui
+    { id: 'minhas', rotulo: 'Minhas tarefas', icone: 'caixaEntrada', titulo: 'Minhas tarefas' },
+    { id: 'delegadas', rotulo: 'Delegadas por mim', icone: 'aviao', titulo: 'Delegadas por mim' },
+    { id: 'concluidas', rotulo: 'Concluídas', icone: 'checkCircle', titulo: 'Tarefas concluídas' },
   ] },
   // o nome voltou a ser Minhas empresas para todos (Vitor, 09/11/2026: foi Contábil de 06/11 a 09/11; cada um vê a rotina do
   // setor dele nela). O ícone segue a balança (06/11/2026: "muda o icone também")
@@ -104,13 +109,6 @@ export const APLICACOES: readonly Aplicacao[] = [
     // as Solicitações (16/10/2026, "cadê as solicitações"): a aba do Entregas, logo depois do Painel como lá
     { id: 'solicitacoes', rotulo: 'Solicitações', icone: 'envelope', titulo: 'Solicitações' },
   ] },
-  // as tarefas delegadas (30/10/2026: "quero que o minhas tarefas vire um modulo do escritorio"): a Central de tarefas, que
-  // abria numa janela pelo perfil e pelo correio do pé do menu, vira um módulo como os outros; todo o escritório
-  { id: 'minhas-tarefas', nome: 'Minhas tarefas', icone: 'checklist', grupo: 'Escritório', pronta: true, paginas: [
-    { id: 'minhas', rotulo: 'Minhas tarefas', icone: 'caixaEntrada', titulo: 'Minhas tarefas' },
-    { id: 'delegadas', rotulo: 'Delegadas por mim', icone: 'aviao', titulo: 'Delegadas por mim' },
-    { id: 'concluidas', rotulo: 'Concluídas', icone: 'checkCircle', titulo: 'Tarefas concluídas' },
-  ] },
   // as senhas gov.br e os certificados digitais, no cofre com a chave por pessoa (Vitor, 07/10/2026); todo o escritório
   { id: 'senhas', nome: 'Senhas', icone: 'lock', grupo: 'Escritório', pronta: true, paginas: [
     { id: 'empresas', rotulo: 'Empresas', icone: 'briefcase', titulo: 'Gov.br e certificados' },
@@ -180,13 +178,14 @@ export const APLICACOES: readonly Aplicacao[] = [
  */
 export const podeMexerNoCadastro = (op: Operador | null) => !!op && (op.admin || op.nivel === 'diretor' || op.nivel === 'senior');
 
-/** Quem vê o Financeiro: só o Sávio e a Nilma, pelo nome (30/10/2026: "remova o acesso de admin ao financeiro e deixe o acesso
+/** Quem vê o Financeiro: quem tem o papel Financeiro (o Diretor liga na ficha da pessoa, 09/11/2026) e, de base, o Sávio e a Nilma, pelo nome (30/10/2026: "remova o acesso de admin ao financeiro e deixe o acesso
  * apenas para o usuario Savio e Nilma"). O admin e o diretor não entram mais só pelo papel. Sem acento e sem caixa, o primeiro nome. */
-const DONOS_DO_FINANCEIRO = ['savio', 'nilma'];
+const DONOS_DO_FINANCEIRO = ['savio', 'nilma', 'vitor']; // o Vitor entrou em 09/11/2026 ("coloca para Vitor também")
 /** Contas liberadas pelo login exato (05/11/2026: o gustavo.s, sem liberar o outro Gustavo, que tem o mesmo primeiro nome). */
 const LOGINS_DO_FINANCEIRO = ['gustavo.s@nilma.local'];
 export const podeVerOFinanceiro = (op: Operador | null) => {
   if (!op) return false;
+  if (op.financeiro) return true;
   if (op.email && LOGINS_DO_FINANCEIRO.includes(op.email.trim().toLowerCase())) return true;
   const primeiro = op.nome.normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase().split(/[\s.]+/)[0];
   return DONOS_DO_FINANCEIRO.includes(primeiro);

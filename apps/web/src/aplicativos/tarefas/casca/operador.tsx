@@ -8,13 +8,15 @@ const CHAVE = 'nads-tarefas-operador';
 
 export interface Operador { nome: string; email?: string; departamento: usuarios.Departamento; nivel: usuarios.Nivel | null; admin: boolean;
   /** pode ligar o modo desenvolvedor (o papel Desenvolvedor do Cadastro › Usuários; 06/11/2026) */
-  desenvolvedor: boolean }
+  desenvolvedor: boolean;
+  /** tem o papel Financeiro, dado pelo Diretor (09/11/2026) */
+  financeiro?: boolean }
 
 /** A pessoa da conta do Entregas como operador (null = a conta não diz o departamento). */
 export function operadorDaConta(u: usuarios.Usuario): Operador | null {
   const departamento = usuarios.departamentoDaConta(u);
   if (!departamento) return null;
-  return { nome: u.nome, email: u.email, departamento, nivel: u.nivel, admin: u.papeis.includes('admin'), desenvolvedor: u.papeis.includes('desenvolvedor') };
+  return { nome: u.nome, email: u.email, departamento, nivel: u.nivel, admin: u.papeis.includes('admin'), desenvolvedor: u.papeis.includes('desenvolvedor'), financeiro: u.papeis.includes('financeiro') };
 }
 
 function daEquipe(nome: string | null): Operador | null {

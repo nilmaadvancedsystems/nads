@@ -32,7 +32,11 @@ describe('o Cadastro por nível (Vitor, 19/10/2026: o sênior vê e mexe no cada
     expect(vê({ ...op('pleno'), nome: 'NILMA' })).toBe(true);
     expect(vê(op('diretor', true))).toBe(false);
     expect(vê(op('diretor'))).toBe(false);
-    expect(vê({ ...op('senior', true), nome: 'Vitor' })).toBe(false);
+    expect(vê({ ...op('senior', true), nome: 'Vitor' })).toBe(true);
+    expect(vê({ ...op('senior', true), nome: 'Outro' })).toBe(false);
+    // o Diretor liga o papel Financeiro na ficha da pessoa (09/11/2026)
+    expect(vê({ ...op('pleno'), nome: 'Outro', financeiro: true })).toBe(true);
+    expect(vê({ ...op('pleno'), nome: 'Outro', financeiro: false })).toBe(false);
     expect(podeVerOFinanceiro(null)).toBe(false);
   });
 });
