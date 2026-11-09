@@ -6,7 +6,7 @@ import { cleanInlineStyles } from 'animejs';
 import { animar, ENTRAR, entrar, revelarTitulo, sairComo, useIndicador } from './animacao';
 import { useAbasParaAEtapa, useAlturaNaEtapa } from './etapa';
 import { Icone, MarcaN, type NomeIcone } from './icones';
-import { LogoDrive, LogoFgts, LogoGmail, LogoReceitaFederal, LogoSieg, LogoSimplesDaAba } from './logos';
+import { LogoDrive, LogoFgts, LogoGmail, LogoReceitaFederal, LogoSieg, LogoSimplesDaAba, LogoSped } from './logos';
 import { SeletorTema } from './tema';
 import { atualizarVersao, useVersaoNova } from './versaoNova';
 import { BotaoFechar } from './componentes';
@@ -20,7 +20,7 @@ export interface SecaoCasca { id: string; rotulo: string; icone: NomeIcone; grup
 /** ponto: o pontinho vermelho de "falta configurar" ao lado do nome (Vitor, 08/10/2026); o texto vai na dica */
 export interface PaginaCasca { id: string; rotulo: string; icone: NomeIcone; ativa?: boolean; travada?: boolean; oculta?: boolean; contador?: string; ponto?: string;
   /** a logo no lugar do ícone da aba (as do Fiscal; 09/11/2026) */
-  marca?: 'simples' | 'receita' | 'sieg' }
+  marca?: 'simples' | 'receita' | 'sped' | 'sieg' }
 
 /**
  * A tela está dentro de outra (um iframe, como quando a Tarefas abre uma ferramenta na etapa)? Aí
@@ -268,7 +268,7 @@ export function Casca(p: {
           {(abasDaEtapa || p.paginas).filter(x => !x.oculta).map(x => (
             <button key={x.id} type="button" className={'menu-item' + (x.ativa ? ' active' : '') + (x.travada ? ' is-locked' : '')}
               aria-current={x.ativa ? 'page' : undefined} aria-disabled={x.travada ? 'true' : undefined} onClick={() => (abasDaEtapa && p.onAbaNaEtapa ? p.onAbaNaEtapa : p.onPagina)(x.id)}>
-              {'marca' in x && x.marca ? <span className="menu-item-marca" aria-hidden="true">{x.marca === 'simples' ? <LogoSimplesDaAba /> : x.marca === 'receita' ? <LogoReceitaFederal /> : <LogoSieg />}</span> : <Icone nome={x.icone} />}<span>{x.rotulo}</span>{x.contador && <span className="menu-contador">{x.contador}</span>}
+              {'marca' in x && x.marca ? <span className="menu-item-marca" aria-hidden="true">{x.marca === 'simples' ? <LogoSimplesDaAba /> : x.marca === 'receita' ? <LogoReceitaFederal /> : x.marca === 'sped' ? <LogoSped /> : <LogoSieg />}</span> : <Icone nome={x.icone} />}<span>{x.rotulo}</span>{x.contador && <span className="menu-contador">{x.contador}</span>}
               {x.ponto && <span className="ponto-vermelho" title={x.ponto} aria-label={x.ponto} />}
             </button>
           ))}
