@@ -13,7 +13,7 @@ const setDoc = guardarPedido(setDocBruto) as typeof setDocBruto;
 
 type Quem = { uid: string; email: string; nome: string } | null;
 const texto = (v: unknown) => (v == null ? '' : String(v));
-const STATUS: readonly SituacaoDoFeedback[] = ['novo', 'visto', 'resolvendo', 'feito'];
+const STATUS: readonly SituacaoDoFeedback[] = ['novo', 'visto', 'resolvendo', 'testando', 'feito'];
 
 export function criarFeedbackFirestore(quem: () => Quem): RepoFeedback {
   const db = bancoDoEntregas();
@@ -108,7 +108,9 @@ export function criarFeedbackFirestore(quem: () => Quem): RepoFeedback {
       }
       return todos;
     },
-    async marcar(id, status) { await updateDoc(doc(db, 'feedbacks', id), { status }); },
+    async marcar(id, status) { await updateDoc(doc(db, 'feedbacks', id), { status, ...(status === 'feito' ? { resolvidoEm: new Date().toISOString() } : {}) }); },
+    // quem mandou responde o teste (a regra só deixa o dono, e só com o ticket em Testando)
+    async responderTeste(id, funcionou) { await updateDoc(doc(db, 'feedbacks', id), funcionou ? { status: 'feito', resolvidoEm: new Date().toISOString() } : { status: 'resolvendo' }); },
     // os seus (Vitor, 26/10/2026: o aviso do Resolvendo): a regra deixa cada um ler os que mandou (uid); sem orderBy, para
     // não pedir índice composto
     meus() {
@@ -118,7 +120,7 @@ export function criarFeedbackFirestore(quem: () => Quem): RepoFeedback {
         const estes: { uid: string; lista: MeuFeedback[] } = { uid: q.uid, lista: [] };
         meus = estes;
         onSnapshot(query(collection(db, 'feedbacks'), where('uid', '==', q.uid), limit(200)), s => {
-          estes.lista = s.docs.map(d => { const x = d.data(); return { id: d.id, texto: texto(x.texto), status: (STATUS.includes(x.status) ? x.status : 'novo') as SituacaoDoFeedback, criadoEm: texto(x.criadoEm) }; });
+          estes.lista = s.docs.map(d => { const x = d.data(); return { id: d.id, texto: texto(x.texto), status: (STATUS.includes(x.status) ? x.status : 'novo') as SituacaoDoFeedback, criadoEm: texto(x.criadoEm), tipo: x.tipo === 'bug' ? 'bug' as const : 'feedback' as const, caminho: texto(x.caminho), ...(x.resolvidoEm ? { resolvidoEm: texto(x.resolvidoEm) } : {}) }; });
           mudou();
         }, () => { estes.lista = []; mudou(); });
       }
