@@ -64,7 +64,6 @@ type Obj = Record<string, unknown>;
 const obj = (v: unknown): Obj => (v && typeof v === 'object' ? (v as Obj) : {});
 const txt = (v: unknown) => (v == null ? '' : String(v));
 const idade = (iso: string, agora: number) => { const t = Date.parse(iso); return Number.isFinite(t) ? agora - t : Infinity; };
-const maisNovo = (a: string, b: string) => (!a ? b : !b ? a : a >= b ? a : b);
 const ROTULO: Record<TomDoPainel, string> = { ok: 'Ok', aviso: 'Atenção', erro: 'Parado', neutro: 'Sem informação' };
 
 /** A situação da máquina pelo batimento: parado (15 min sem sinal ou desligado), atrasado (3 min) ou em dia. */
