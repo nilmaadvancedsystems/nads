@@ -106,6 +106,16 @@ def falhar(motivo):
 
 
 
+def com_tela(motivo, nome):
+    """O erro de janela que não abriu leva a tela junto (tamanho, janelas à mostra, foto): alterdata_tela.py (09/11/2026)."""
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # o -I tira a pasta do roteiro do caminho
+        import alterdata_tela
+        return alterdata_tela.resumo_do_erro(motivo, nome)
+    except Exception:
+        return motivo
+
+
 def preparar_tela():
     """A tela acesa enquanto o roteiro roda (sem trocar a resolução): alterdata_tela.py (09/11/2026)."""
     try:
@@ -137,26 +147,30 @@ try:
             print('TELA: o Contábil estava travado por ' + ', '.join(fechadas) + ' (janela na frente da principal): fechei', flush=True)
     except Exception as e:
         print('TELA: não liberei o Contábil: ' + str(e)[:200], flush=True)
+        if 'alterdata_faixa' not in sys.modules:
+            fim(erro='não carreguei o alterdata_faixa.py: ' + str(e)[:200])
     principal.set_focus()
     if not principal.is_maximized():
         principal.maximize()
     time.sleep(.5)
-    r = principal.rectangle()
-    ox, oy = r.left + 8, r.top + 8   # a janela maximizada fica em (-8, -8)
 
-    # ── Livros e Relatórios → Balancete ▾ → Balancete
+    # ── Livros e Relatórios → Balancete ▾ → Balancete, pelo nome (09/11/2026: pela posição medida no PC, no console de
+    # 1024x768 do servidor o clique caía noutro botão)
     passo('abrindo Livros e Relatórios → Balancete')
-    clique('menu Livros e Relatórios')
-    mouse.click(coords=(ox + 288, oy + 47))
-    time.sleep(.8)
-    clique('Balancete ▾')
-    mouse.click(coords=(ox + 258, oy + 100))
-    time.sleep(1)
-    clique('Balancete')
-    mouse.click(coords=(ox + 286, oy + 147))
+    try:
+        clique('menu Livros e Relatórios')
+        alterdata_faixa.aba(principal, 'Livros e Relatórios')
+        clique('Balancete ▾')
+        alterdata_faixa.botao(principal, 'Balancete', embaixo=True)
+        # o botão de lista abre o menu; se já abriu a configuração (o clique pegou a parte de cima), segue
+        if not esperar(lambda: janelas('TfrmBalanceteRelatorioConfiguracoes'), 1.5, .25):
+            clique('Balancete')
+            alterdata_faixa.item_do_menu(principal, 'Balancete', primeiro_se_mudo=True)
+    except alterdata_faixa.Falha as e:
+        falhar(com_tela(str(e), 'balancete-faixa'))
     cfg = esperar(lambda: janelas('TfrmBalanceteRelatorioConfiguracoes'), 25, .25)
     if not cfg:
-        falhar('a janela do Balancete não abriu')
+        falhar(com_tela('a janela do Balancete não abriu', 'balancete-nao-abriu'))
     cfg = cfg[0]
     cfg.set_focus()
     time.sleep(.5)

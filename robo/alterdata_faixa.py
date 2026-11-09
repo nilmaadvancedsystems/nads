@@ -142,14 +142,19 @@ def aba(principal, nome):
     raise Falha('cliquei na aba "' + nome + '" e ela não ficou à mostra (à mostra: "' + _aba_ativa(_faixa(principal)) + '")')
 
 
-def botao(principal, nome, embaixo=False):
-    """Clica no botão da aba à mostra pelo nome (embaixo=True: na parte de baixo, a seta de um botão de lista)."""
+def botao(principal, nome, embaixo=False, pedacos=None):
+    """Clica no botão da aba à mostra pelo nome (embaixo=True: na parte de baixo, a seta de um botão de lista). Com
+    pedacos (ex.: ('importa', 'financ')), sem o nome exato vale o único item cujo nome tem todos os pedaços."""
     faixa = _faixa(principal)
     # os botões de lista (Razão ▾, Balancete ▾, Diário ▾…) não vêm como Button no UI Automation (09/11/2026: a lista de
     # Button da aba Livros e Relatórios não tinha o Razão): vale qualquer item com o nome, menos aba, grupo e texto
     fora = ('TabItem', 'Tab', 'ToolBar', 'Pane', 'Text', 'TitleBar', 'Custom')
     bs = [b for b in faixa.descendants() if b.element_info.control_type not in fora and b.is_visible()]
     alvo = [b for b in bs if _nome(b) == nome]
+    if not alvo and pedacos:
+        parecidos = [b for b in bs if all(p in _nome(b).lower() for p in pedacos)]
+        if len({_nome(b) for b in parecidos}) == 1:
+            alvo = parecidos
     if not alvo:
         raise Falha('não achei o botão "' + nome + '" na aba "' + _aba_ativa(faixa) + '" (itens: ' + ', '.join(_nome(b) + '/' + str(b.element_info.control_type) for b in bs if _nome(b))[:400] + ')')
     mouse.click(coords=_meio(alvo[0], embaixo))

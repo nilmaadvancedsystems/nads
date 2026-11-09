@@ -107,10 +107,13 @@ def mensagens_abertas():
     return janelas('TMessageForm') + [w for w in janelas('#32770') if w.window_text() != 'Salvar como']
 
 
+ENSAIO = '--ensaio' in sys.argv
+
+
 def limpar():
-    """Fecha a Importação de Lançamentos aberta (Fechar/Cancelar), sem importar nada."""
+    """Fecha a Importação de Lançamentos aberta (Fechar/Cancelar), sem importar nada. No ensaio, nem o OK."""
     for w in mensagens_abertas():
-        apertar(w, ('Não', 'Nao', 'No', 'Cancelar', 'OK'))
+        apertar(w, ('Não', 'Nao', 'No', 'Cancelar') + (() if ENSAIO else ('OK',)))
     for w in [x for x in janelas() if x.class_name() in ('TfrmImportacaoLotes', CLASSE)]:
         if apertar(w, ('Fechar', 'Cancelar')):
             time.sleep(.8)
@@ -142,6 +145,16 @@ def so_numeros(s):
     n = ''.join(ch for ch in (s or '') if ch.isdigit())
     return int(n) if n else 0
 
+
+
+def com_tela(motivo, nome):
+    """O erro de janela que não abriu leva a tela junto (tamanho, janelas à mostra, foto): alterdata_tela.py (09/11/2026)."""
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # o -I tira a pasta do roteiro do caminho
+        import alterdata_tela
+        return alterdata_tela.resumo_do_erro(motivo, nome)
+    except Exception:
+        return motivo
 
 
 def preparar_tela():
@@ -176,6 +189,8 @@ try:
             print('TELA: o Contábil estava travado por ' + ', '.join(fechadas) + ' (janela na frente da principal): fechei', flush=True)
     except Exception as e:
         print('TELA: não liberei o Contábil: ' + str(e)[:200], flush=True)
+        if 'alterdata_faixa' not in sys.modules:
+            fim(ok=False, erro='não carreguei o alterdata_faixa.py: ' + str(e)[:200])
     principal.set_focus()
     if not principal.is_maximized():
         principal.maximize()
@@ -186,24 +201,25 @@ try:
         time.sleep(.5)
     if win32gui.GetForegroundWindow() != principal.handle:
         fim(ok=False, erro='o Contábil não veio para a frente (outra janela por cima); não cliquei em nada')
-    r = principal.rectangle()
-    ox, oy = r.left + 8, r.top + 8
 
-    # ── aba Lançamentos → Importar lançamentos
+    # ── aba Lançamentos → Importação financeira, pelo nome (09/11/2026: pela posição medida no PC, no console de 1024x768
+    # do servidor o clique caía noutro botão)
     passo('abrindo Lançamentos → Importação financeira')
-    clique('aba Lançamentos')
-    mouse.click(coords=(ox + 98, oy + 47))
-    time.sleep(.8)
     antes_de_abrir = {w.handle for w in janelas()}
     def a_janela_nova():
         return [w for w in janelas('TfrmImportacaoLotes') if w.handle not in antes_de_abrir]
-    clique('Importação financeira (texto ou planilha)')
-    mouse.click(coords=(ox + 371, oy + 110))
+    try:
+        clique('aba Lançamentos')
+        alterdata_faixa.aba(principal, 'Lançamentos')
+        clique('Importação financeira (texto ou planilha)')
+        alterdata_faixa.botao(principal, 'Importação financeira (texto ou planilha)', pedacos=('importa', 'financ'))
+    except alterdata_faixa.Falha as e:
+        falhar(com_tela(str(e), 'importar-faixa'))
     imp = esperar(a_janela_nova, 8)
     if not imp:
         imp = esperar(a_janela_nova, 15)
     if not imp:
-        falhar('a janela da Importação financeira não abriu')
+        falhar(com_tela('a janela da Importação financeira não abriu', 'importar-nao-abriu'))
     print('DIAG: janela ' + imp[0].class_name() + ' "' + (imp[0].window_text() or '') + '"', flush=True)
     CLASSE = imp[0].class_name()
     imp = imp[0]
@@ -316,9 +332,18 @@ try:
                + '", layout "' + (lay.window_text() or '') + '"')
     for w in mensagens_abertas():
         falhar('apareceu uma mensagem antes do Concluir: ' + texto_da_mensagem(w))
-    if '--ensaio' in sys.argv:   # tudo preenchido e conferido, sem Concluir (para testar o caminho)
+    if ENSAIO:   # tudo preenchido e conferido, sem Concluir (para testar o caminho): a foto e fecha pelo Fechar/Cancelar
+        foto = ''
+        try:
+            import alterdata_tela
+            pasta_fotos = os.environ.get('ALTERDATA_TELA', '')
+            foto = alterdata_tela.foto(pasta_fotos, 'importar-ensaio')[0] if pasta_fotos else ''
+        except Exception:
+            pass
         limpar()
-        fim(ok=True, ensaio=True, empresa=nome_emp)
+        aberta = bool(janelas(CLASSE))
+        fim(ok=not aberta, ensaio=True, empresa=nome_emp, foto=foto, fechou=not aberta,
+            **({} if not aberta else {'erro': 'a janela da importação não fechou depois do ensaio'}))
 
     passo('importando no Alterdata')
     conc = [b for b, t in botoes(imp) if t == 'Concluir']

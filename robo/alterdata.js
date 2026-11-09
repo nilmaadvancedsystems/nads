@@ -248,9 +248,30 @@ function iniciarAlterdata(db, log) {
     if (diagnosticando || !fs.existsSync(PEDIDO_TELA) || fila.ocupado()) return;
     diagnosticando = true;
     try {
-      const quero = String(fs.readFileSync(PEDIDO_TELA, 'utf8')).split(/\s+/).filter(p => ['acender', 'foto', 'uia', 'abas', 'clique'].includes(p));
+      const palavras = String(fs.readFileSync(PEDIDO_TELA, 'utf8')).split(/\s+/);
+      const quero = palavras.filter(p => ['acender', 'foto', 'uia', 'abas', 'clique'].includes(p));
       const carimbo = new Date().toISOString().replace(/[-:]/g, '').replace('T', '-').slice(0, 15);
       fs.renameSync(PEDIDO_TELA, PEDIDO_TELA + '.' + carimbo + '.feito');
+      // o ensaio da importação (09/11/2026): "ensaio-importar" (ou "ensaio-importar:<código>", 292 se faltar) roda o
+      // alterdata_importar.py com --ensaio: abre a Importação financeira, preenche empresa, lote, planilha e layout,
+      // confere, tira a foto e fecha pelo Fechar/Cancelar SEM clicar em Concluir (nada é importado). A planilha é uma de
+      // mentira, feita aqui, que nunca chega a ser lida.
+      const ensaio = palavras.map(p => p.match(/^ensaio-importar(?::(\d{1,6}))?$/)).find(Boolean);
+      if (ensaio) {
+        fs.mkdirSync(PASTA_TELA, { recursive: true });
+        const arq = path.join(PASTA_TELA, 'ensaio-importar.xls');
+        if (!fs.existsSync(arq)) {
+          const XLSX = require('xlsx');
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['ensaio do robô: esta planilha nunca é importada']]), 'ensaio');
+          XLSX.writeFile(wb, arq, { bookType: 'biff8' });
+        }
+        const e = await new Promise(resolve => execFile(PYTHON, ['-I', ROTEIROS.importar, ensaio[1] || '292', 'ENSAIO DO ROBO - NAO IMPORTAR', arq, '--ensaio'],
+          { cwd: __dirname, windowsHide: true, timeout: 240 * 1000, env: { ...process.env, ALTERDATA_TELA: PASTA_TELA } }, (err, out) => resolve({ err, out: String(out || '') })));
+        fs.writeFileSync(path.join(PASTA_TELA, carimbo + '-ensaio-importar.txt'), e.out + (e.err ? '\nERRO: ' + e.err.message : ''));
+        log('Alterdata: ensaio da importação (' + (ensaio[1] || '292') + ', sem Concluir): ' + ((e.out.match(/RESULTADO:\s*(\{.*\})/) || [])[1] || 'sem resultado' + (e.err ? ' (' + e.err.message.slice(0, 200) + ')' : '')));
+        if (!quero.length) return;
+      }
       const r = await rodarPy(ROTEIRO_TELA, [PASTA_TELA, ...(quero.length ? quero : ['foto'])], 240 * 1000);
       fs.mkdirSync(PASTA_TELA, { recursive: true });
       fs.writeFileSync(path.join(PASTA_TELA, carimbo + '-diagnostico.txt'), r.out + (r.err ? '\nERRO: ' + r.err.message : ''));
