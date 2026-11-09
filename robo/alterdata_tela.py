@@ -8,7 +8,8 @@
 # Só olha (e, no modo "abas" do diagnóstico, clica nas ABAS da faixa de opções do Contábil, que só trocam a aba à mostra).
 #
 # Uso (diagnóstico pedido pelo arquivo D:\nads-dados\alterdata\tela.pedido, ver alterdata.js):
-#   python alterdata_tela.py <pasta das fotos> [foto] [abas] [uia]
+#   python alterdata_tela.py <pasta das fotos> [largura] [foto] [abas] [uia]
+# (largura: passa a tela para 1366x768 como os roteiros fazem, só enquanto o diagnóstico roda)
 # Escreve TELA: {json} e FOTO: <caminho> por foto.
 import json
 import os
@@ -74,7 +75,7 @@ def janelas_tfrm():
                 cls = win32gui.GetClassName(h)
                 if cls.startswith('Tfrm') or cls in ('TMessageForm', '#32770') or cls.startswith('TAlterdata'):
                     x0, y0, x1, y1 = win32gui.GetWindowRect(h)
-                    r.append({'classe': cls, 'titulo': (win32gui.GetWindowText(h) or '')[:40], 'x': x0, 'y': y0, 'l': x1 - x0, 'a': y1 - y0,
+                    r.append({'h': h, 'classe': cls, 'titulo': (win32gui.GetWindowText(h) or '')[:40], 'x': x0, 'y': y0, 'l': x1 - x0, 'a': y1 - y0,
                               'max': bool(win32gui.GetWindowPlacement(h)[1] == win32con.SW_SHOWMAXIMIZED), 'pid': win32process.GetWindowThreadProcessId(h)[1]})
         except Exception:
             pass
@@ -160,6 +161,86 @@ def resumo_do_erro(motivo, nome):
         return motivo + ' (sem a medida da tela: ' + str(e)[:80] + ')'
 
 
+# Os cliques dos roteiros são posições na faixa de opções do Contábil medidas no PC do escritório, que tem 1366x768. No
+# servidor, a sessão do robô vai para o console (tscon, sessao-no-console.js) e o console tem 1024x768 (o registro do vídeo
+# do servidor só guarda esse modo): o Contábil aberto ali monta a faixa de opções para 1024 de largura, os botões mudam de
+# lugar e nenhum relatório abre (06/11/2026 17:07 em diante). Até 05/11 dava certo porque o Contábil tinha sido aberto na
+# Área de Trabalho Remota (1366 de largura) e continuava montado assim depois do tscon.
+LARGURA_DOS_CLIQUES, ALTURA_DOS_CLIQUES = 1366, 768
+_mudou_a_tela = False
+
+
+def _voltar_tela():
+    global _mudou_a_tela
+    if _mudou_a_tela:
+        _mudou_a_tela = False
+        try:
+            win32api.ChangeDisplaySettings(None, 0)   # volta ao modo gravado no Windows (o de sempre)
+        except Exception:
+            pass
+
+
+def _modo_para_os_cliques():
+    """O modo de vídeo que a placa aceita com pelo menos 1366x768: o 1366x768 se houver, senão o menor que caiba."""
+    melhor = None
+    i = 0
+    while i < 500:
+        try:
+            m = win32api.EnumDisplaySettings(None, i)
+        except Exception:
+            break
+        i += 1
+        if m.PelsWidth < LARGURA_DOS_CLIQUES or m.PelsHeight < ALTURA_DOS_CLIQUES:
+            continue
+        chave = (m.PelsWidth != LARGURA_DOS_CLIQUES or m.PelsHeight != ALTURA_DOS_CLIQUES, m.PelsWidth * m.PelsHeight, -m.BitsPerPel)
+        if melhor is None or chave < melhor[0]:
+            melhor = (chave, m)
+    return melhor[1] if melhor else None
+
+
+def preparar_tela():
+    """Antes dos cliques de um roteiro: a tela fica acesa enquanto ele roda (o pedido some quando o Python sai) e, se a
+    tela tem menos de 1366x768, passa para 1366x768 SÓ ENQUANTO O ROTEIRO RODA (CDS_FULLSCREEN: não grava nada no Windows
+    e o Windows volta sozinho ao modo de sempre quando o processo sai, mesmo morto pelo prazo; o roteiro também volta no
+    fim). Depois da troca, o Contábil maximizado é montado de novo na largura nova. Devolve o que fez (para o log) ou ''."""
+    global _mudou_a_tela
+    try:
+        import ctypes
+        ctypes.windll.kernel32.SetThreadExecutionState(0x80000003)   # ES_CONTINUOUS | ES_DISPLAY_REQUIRED | ES_SYSTEM_REQUIRED
+    except Exception:
+        pass
+    w, h = tamanho_da_tela()
+    if w >= LARGURA_DOS_CLIQUES and h >= ALTURA_DOS_CLIQUES:
+        return ''
+    m = _modo_para_os_cliques()
+    if m is None:
+        return 'tela %dx%d e a placa de vídeo não aceita %dx%d (modos: %s): os cliques podem errar' % (w, h, LARGURA_DOS_CLIQUES, ALTURA_DOS_CLIQUES, ' '.join(modos()[1]))
+    m.Fields = win32con.DM_PELSWIDTH | win32con.DM_PELSHEIGHT | win32con.DM_BITSPERPEL
+    import atexit
+    atexit.register(_voltar_tela)
+    r = win32api.ChangeDisplaySettings(m, win32con.CDS_FULLSCREEN)
+    if r != win32con.DISP_CHANGE_SUCCESSFUL:
+        return 'tela %dx%d: a troca para %dx%d não deu (código %s): os cliques podem errar' % (w, h, m.PelsWidth, m.PelsHeight, r)
+    _mudou_a_tela = True
+    time.sleep(2)
+    # o Contábil maximizado acompanha a tela nova; se ficou menor, restaura e maximiza de novo (a faixa de opções se remonta)
+    for j in janelas_tfrm():
+        if j['classe'] == 'TfrmPrincipal' and j['l'] < m.PelsWidth:
+            try:
+                hw = j['h']
+                win32gui.ShowWindow(hw, win32con.SW_RESTORE)
+                time.sleep(.5)
+                win32gui.ShowWindow(hw, win32con.SW_MAXIMIZE)
+                time.sleep(1.5)
+            except Exception:
+                pass
+    return 'tela %dx%d → %dx%d enquanto o roteiro roda (os cliques são medidos em %dx%d)' % (w, h, m.PelsWidth, m.PelsHeight, LARGURA_DOS_CLIQUES, ALTURA_DOS_CLIQUES)
+
+
+def voltar_tela():
+    _voltar_tela()
+
+
 def _abas(pasta):
     """Clica nas abas Consultas e Livros e Relatórios do Contábil (as mesmas posições dos roteiros) e fotografa cada uma."""
     from pywinauto import Desktop, mouse
@@ -211,6 +292,9 @@ if __name__ == '__main__':
     pasta = sys.argv[1]
     pedidos = sys.argv[2:] or ['foto']
     print('TELA: ' + json.dumps(medidas(), ensure_ascii=False), flush=True)
+    if 'largura' in pedidos:
+        print('LARGURA: ' + (preparar_tela() or 'a tela já tem a largura dos cliques'), flush=True)
+        print('TELA: ' + json.dumps(medidas(), ensure_ascii=False), flush=True)
     if 'foto' in pedidos:
         caminho, porque = foto(pasta, 'diagnostico')
         print('FOTO: ' + (caminho or 'não tirada: ' + porque), flush=True)
@@ -224,3 +308,4 @@ if __name__ == '__main__':
             _abas(pasta)
         except Exception as e:
             print('ABAS: erro ' + type(e).__name__ + ': ' + str(e)[:200], flush=True)
+    voltar_tela()

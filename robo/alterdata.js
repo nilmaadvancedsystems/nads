@@ -84,6 +84,9 @@ function matar(filho) {
   } catch (_) { /* já saiu */ }
 }
 
+// o que o roteiro fez com a tela (TELA: …, de alterdata_tela.preparar_tela) vai para o log, sem repetir a mesma frase
+let registrarTela = () => {};
+
 /** Roda um roteiro; PASSO: … vira passo; RESULTADO: {…} é o fim; o sinal (o prazo da fila) mata o roteiro. */
 function rodarRoteiro(relatorio, a, passo, sinal, clique = () => {}) {
   const args = relatorio === 'razao' ? [String(a.codigo), a.inicio, a.fim, a.pasta, a.destino]
@@ -101,6 +104,8 @@ function rodarRoteiro(relatorio, a, passo, sinal, clique = () => {}) {
         if (m) void passo(m[1]);
         const c = l.match(/^CLIQUE:\s*(.+)$/);
         if (c) void clique(c[1]);
+        const t = l.match(/^TELA:\s*(.+)$/);
+        if (t) registrarTela(t[1].trim());
         const r = l.match(/^RESULTADO:\s*(\{.*\})\s*$/);
         if (r) { try { resultado = JSON.parse(r[1]); } catch (_) { /* mal escrito */ } }
       }
@@ -118,6 +123,8 @@ function iniciarAlterdata(db, log) {
   const estadoDoc = db.collection('robo').doc('alterdata');
   const pedidos = db.collection('pedidosAlterdata');
   log('Alterdata: ligado neste ' + ONDE + ' (balancete e razão do Contábil; Python ' + PYTHON + ')');
+  let ultimaTela = '';
+  registrarTela = t => { if (t !== ultimaTela) { ultimaTela = t; log('Alterdata: ' + t); } };
 
   // o Contábil daqui: verificado a cada minuto e antes de cada pedido; vai para o banco e para o painel
   let estado = '';
@@ -241,16 +248,17 @@ function iniciarAlterdata(db, log) {
     if (diagnosticando || !fs.existsSync(PEDIDO_TELA) || fila.ocupado()) return;
     diagnosticando = true;
     try {
-      const quero = String(fs.readFileSync(PEDIDO_TELA, 'utf8')).split(/\s+/).filter(p => ['foto', 'abas', 'uia'].includes(p));
+      const quero = String(fs.readFileSync(PEDIDO_TELA, 'utf8')).split(/\s+/).filter(p => ['largura', 'foto', 'abas', 'uia'].includes(p));
       const carimbo = new Date().toISOString().replace(/[-:]/g, '').replace('T', '-').slice(0, 15);
       fs.renameSync(PEDIDO_TELA, PEDIDO_TELA + '.' + carimbo + '.feito');
       const r = await rodarPy(ROTEIRO_TELA, [PASTA_TELA, ...(quero.length ? quero : ['foto'])], 150 * 1000);
       fs.mkdirSync(PASTA_TELA, { recursive: true });
       fs.writeFileSync(path.join(PASTA_TELA, carimbo + '-diagnostico.txt'), r.out + (r.err ? '\nERRO: ' + r.err.message : ''));
       let tela = null;
-      try { tela = JSON.parse((r.out.match(/TELA:\s*(\{.*\})/) || [])[1]); } catch (_) { /* sem resposta */ }
+      try { tela = JSON.parse([...r.out.matchAll(/TELA:\s*(\{.*\})/g)].pop()[1]); } catch (_) { /* sem resposta */ }
+      const largura = (r.out.match(/LARGURA:\s*(.+)/) || [])[1];
       log('Alterdata: diagnóstico da tela (' + (quero.join(' ') || 'foto') + '): ' + (tela ? 'tela ' + tela.tela + ', modo ' + tela.modo + ', área de trabalho ' + tela.entrada
-        + ', ' + tela.janelas.map(j => j.classe + ' ' + j.l + 'x' + j.a + (j.max ? ' max' : '')).join(', ') : 'sem resposta') + ' → ' + PASTA_TELA);
+        + ', ' + tela.janelas.map(j => j.classe + ' ' + j.l + 'x' + j.a + (j.max ? ' max' : '')).join(', ') : 'sem resposta') + (largura ? ' · ' + largura.trim() : '') + ' → ' + PASTA_TELA);
     } catch (err) { log('Alterdata: o diagnóstico da tela não deu:', err.message); } finally { diagnosticando = false; }
   }
 
