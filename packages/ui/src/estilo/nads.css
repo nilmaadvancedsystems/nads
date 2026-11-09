@@ -5093,14 +5093,14 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 /* Cadastro › Painel do robô (21/10/2026): só o encaixe das peças do catálogo (card, ent-dados, ent-linhas, selo suave,
    painel-numero, chip-row, tabela padrão) — os dois robôs lado a lado, o "Agora" quebrando a linha, a hora à direita */
 .robo-grade{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start;margin-bottom:16px;}
-.robo-grade > .card{margin:0;}
+.robo-grade > .card{margin:0;min-width:0;max-width:100%;overflow-wrap:anywhere;}
 .robo-cartao-nome{display:inline-flex;align-items:center;gap:10px;}
 .robo-cartao-nome .cad-faixa-icone{width:28px;height:28px;}
 .robo-cartao-nome .cad-faixa-icone svg{width:16px;height:16px;}
 .robo-cartao-agora{margin-top:12px;padding-top:10px;border-top:1px solid var(--border-muted);}
 .robo-cartao-agora .ag-conversa-linha{white-space:normal;overflow:visible;}
 .robo-cartao-modulos{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
-.robo-cartao-modulos .badge{white-space:normal;line-height:1.35;padding-top:2px;padding-bottom:2px;}
+.robo-cartao-modulos .badge{white-space:normal;overflow-wrap:anywhere;max-width:100%;line-height:1.35;padding-top:2px;padding-bottom:2px;}
 .robo-painel > .alert{margin-bottom:16px;}
 .robo-linhas > li{align-items:flex-start;}
 .robo-linhas > li > .robo-linha-texto{flex-direction:column;align-items:flex-start;gap:2px;}
@@ -5120,6 +5120,8 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 @media (max-width:900px){.robo-grade{grid-template-columns:minmax(0,1fr);}}
 @media (max-width:640px){
   .robo-linhas > li{flex-wrap:wrap;}
+  .robo-cartao .ent-dados > div{grid-template-columns:minmax(0,1fr);gap:0;}
+  .robo-cartao-nome{min-width:0;}
   .robo-linhas > li > .robo-linha-texto{flex-basis:100%;}
   .robo-quando{min-width:0;text-align:left;}
   .robo-filtro-erros{margin-left:0;}
