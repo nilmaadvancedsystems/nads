@@ -113,7 +113,7 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
                         <td className="fr-cliente"><span title={r.nome}>{r.nome}</span></td>
                         {vm.guias.map((c, i) => (
                           <td key={c.id} className={i === 0 ? 'fr-g' : undefined}>
-                            <Valor estreito valor={r.linha.valores[c.id] || ''} sugestao={r.sugestao?.valores[c.id]} rotulo={c.nome + ' de ' + r.nome} pode={vm.podeGravar} aoSalvar={v => vm.mudarValor(r.codigo, c.id, v)} />
+                            <Valor estreito zeroComoTraco valor={r.linha.valores[c.id] || ''} sugestao={r.sugestao?.valores[c.id]} rotulo={c.nome + ' de ' + r.nome} pode={vm.podeGravar} aoSalvar={v => vm.mudarValor(r.codigo, c.id, v)} />
                           </td>
                         ))}
                         {g.marcas.map((m, i) => {

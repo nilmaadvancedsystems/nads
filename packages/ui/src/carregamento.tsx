@@ -5,6 +5,7 @@
 // ponta): esta só conta a ela quando começa e termina.
 import { animate, utils } from 'animejs';
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { AberturaN } from './abertura';
 import { ENTRAR, prefereMenosMovimento } from './animacao';
 import { origemDoPai } from './origem';
 
@@ -32,10 +33,27 @@ export function useCarregando(ativo: boolean): void {
  */
 export function carregandoAte<T>(promessa: Promise<T>): Promise<T> {
   mudar(1);
-  return promessa.finally(() => mudar(-1));
+  pedacosChegando++;
+  return promessa.finally(() => { pedacosChegando--; mudar(-1); });
 }
 
 let semEspera = false;
+/** o N na tela (09/11/2026: "no carregamento faça a animação do N, na tela"): de uma troca de tela até a nova estar desenhada */
+let nNaTela = false;
+let ultimaTroca = 0;
+let pedacosChegando = 0;
+/** o N fica pelo menos isto (senão só pisca nas telas rápidas) e no máximo aquilo (nunca prende a pessoa) */
+const N_MINIMO = 500;
+const N_MAXIMO = 6000;
+const verN = () => nNaTela;
+
+function esconderNQuandoPronta(troca: number, inicio: number) {
+  if (troca !== ultimaTroca) return;
+  const passou = Date.now() - inicio;
+  if (passou < N_MAXIMO && (passou < N_MINIMO || pedacosChegando > 0)) { setTimeout(() => esconderNQuandoPronta(troca, inicio), Math.max(30, N_MINIMO - passou)); return; }
+  nNaTela = false;
+  for (const f of ouvintes) f();
+}
 
 /**
  * Trocar de tela (09/11/2026: "o sistema dá uma travada… deixe um feedback"): a barra aparece no clique, sem os 150 ms de
@@ -43,9 +61,12 @@ let semEspera = false;
  * até o navegador desocupar. Quem ainda busca dados segue com o useCarregando.
  */
 export function trocarDeTelaComBarra<T>(navegar: () => T): Promise<T> {
+  const troca = ++ultimaTroca;
+  const inicio = Date.now();
   semEspera = true;
+  nNaTela = true;
   mudar(1);
-  const soltar = () => { semEspera = false; mudar(-1); };
+  const soltar = () => { semEspera = false; mudar(-1); esconderNQuandoPronta(troca, inicio); };
   return new Promise(resolver => {
     let foi = false;
     const seguir = () => {
@@ -66,6 +87,7 @@ type Fase = 'parada' | 'andando' | 'terminando';
 /** A barra em si: vai uma vez só, no alto da página (main.tsx). */
 export function BarraDeCarregamento() {
   const carregando = useSyncExternalStore(assinar, algumCarregando, algumCarregando);
+  const n = useSyncExternalStore(assinar, verN, verN);
   const [fase, setFase] = useState<Fase>('parada');
   const [pai] = useState(origemDoPai);
 
@@ -105,5 +127,10 @@ export function BarraDeCarregamento() {
   }, [fase]);
 
   if (pai) return null;
-  return <div ref={barra} className={'barra-carregamento ' + fase} role="progressbar" aria-hidden={fase === 'parada'} aria-label="Carregando" />;
+  return (
+    <>
+      <div ref={barra} className={'barra-carregamento ' + fase} role="progressbar" aria-hidden={fase === 'parada'} aria-label="Carregando" />
+      {n && <AberturaN vidro />}
+    </>
+  );
 }
