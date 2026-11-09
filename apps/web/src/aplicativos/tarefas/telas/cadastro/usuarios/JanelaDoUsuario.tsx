@@ -7,6 +7,8 @@ import type { usuarios } from '@nads/core';
 import { BotaoAcao, Icone, Interruptor } from '@nads/ui';
 import { useState } from 'react';
 import { Cartao, JanelaLateral, Linha, type TopicoDaJanela } from '../../janela/JanelaLateral';
+import { ehDiretor } from '../../../casca/navegacao';
+import { useOperador } from '../../../casca/operador';
 import { useNovoUsuario } from './useNovoUsuario';
 import { EmpresasDaPessoa } from '../responsaveis/EmpresasDaPessoa';
 import type { VmUsuarios } from './useUsuariosDoNads';
@@ -26,6 +28,7 @@ function Foto({ foto, iniciais }: { foto?: string | null; iniciais: string }) {
 }
 
 /** o papel Desenvolvedor (06/11/2026): o que ele libera */
+const DICA_FINANCEIRO = 'Libera o Financeiro. Só o Diretor liga e desliga.';
 const DICA_DEV = 'Libera o Modo desenvolvedor no menu do avatar (só ver, sem gravar nada).';
 
 type TopicoDaPessoa = 'cargo' | 'papeis' | 'acesso' | 'empresas';
@@ -33,6 +36,7 @@ type TopicoDaPessoa = 'cargo' | 'papeis' | 'acesso' | 'empresas';
 export function JanelaDoUsuario({ vm }: { vm: VmUsuarios }) {
   const [topico, setTopico] = useState<TopicoDaPessoa>('cargo');
   const p = vm.pessoa;
+  const { operador } = useOperador();
   if (!p) return null;
   const topicos: TopicoDaJanela<TopicoDaPessoa>[] = [
     { id: 'cargo', rotulo: 'Cargo', icone: 'briefcase' },
@@ -75,8 +79,8 @@ export function JanelaDoUsuario({ vm }: { vm: VmUsuarios }) {
       )}
       {topico === 'papeis' && (
         <Cartao titulo="Papéis">
-          {vm.papeis.map(x => (
-            <Linha key={x.id} rotulo={x.rotulo} dica={x.id === 'desenvolvedor' ? DICA_DEV : undefined}>
+          {vm.papeis.filter(x => x.id !== 'financeiro' || ehDiretor(operador)).map(x => (
+            <Linha key={x.id} rotulo={x.rotulo} dica={x.id === 'desenvolvedor' ? DICA_DEV : x.id === 'financeiro' ? DICA_FINANCEIRO : undefined}>
               <Interruptor ligado={p.papeis.includes(x.id)} onMudar={() => void vm.alternarPapel(p, x.id)} rotulo={x.rotulo + ' de ' + p.nome} />
             </Linha>
           ))}
@@ -121,6 +125,7 @@ export function JanelaDoUsuario({ vm }: { vm: VmUsuarios }) {
 type TopicoDoNovo = 'dados' | 'cargo' | 'papeis';
 
 export function JanelaNovoUsuario({ fechar }: { fechar: () => void }) {
+  const { operador } = useOperador();
   const vm = useNovoUsuario(fechar);
   const [topico, setTopico] = useState<TopicoDoNovo>('dados');
   // o que falta (depois de tentar criar) acende o tópico onde está
@@ -192,8 +197,8 @@ export function JanelaNovoUsuario({ fechar }: { fechar: () => void }) {
       )}
       {topico === 'papeis' && (
         <Cartao titulo="Papéis a mais">
-          {vm.extras.map(x => (
-            <Linha key={x.id} rotulo={x.rotulo} dica={x.id === 'desenvolvedor' ? DICA_DEV : undefined}>
+          {vm.extras.filter(x => x.id !== 'financeiro' || ehDiretor(operador)).map(x => (
+            <Linha key={x.id} rotulo={x.rotulo} dica={x.id === 'desenvolvedor' ? DICA_DEV : x.id === 'financeiro' ? DICA_FINANCEIRO : undefined}>
               <Interruptor ligado={x.on} onMudar={() => vm.alternarExtra(x.id)} rotulo={x.rotulo} />
             </Linha>
           ))}
