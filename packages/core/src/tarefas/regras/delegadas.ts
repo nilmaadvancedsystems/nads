@@ -299,6 +299,26 @@ export function statusDaAba(aba: Aba): Status[] {
   return aba === 'concluidas' ? ['concluida', 'cancelada'] : ['pendente', 'andamento', 'pausada'];
 }
 
+/** O número clicado no alto da lista: um status, as atrasadas ou '' (todas da aba). */
+export type FiltroDaLista = Status | 'atrasadas' | '';
+
+const ROTULO_DO_NUMERO: Record<Status, string> = { pendente: 'Pendentes', andamento: 'Em andamento', pausada: 'Pausadas', concluida: 'Concluídas', cancelada: 'Canceladas' };
+
+export function filtrarPorSituacao<T extends Pick<TarefaDelegada, 'status' | 'prazo'> & { prazoHora?: string }>(lista: readonly T[], filtro: FiltroDaLista, hoje: string, agora = ''): T[] {
+  if (filtro === 'atrasadas') return lista.filter(t => atrasada(t, hoje, agora));
+  return filtro ? lista.filter(t => t.status === filtro) : [...lista];
+}
+
+/** Os números do alto da lista (09/11/2026: "no pique do financeiro"): o total da aba, um por status e, nas em aberto, as atrasadas. */
+export function numerosDaLista(lista: readonly (Pick<TarefaDelegada, 'status' | 'prazo'> & { prazoHora?: string })[], aba: Aba, hoje: string, agora = ''): { filtro: FiltroDaLista; rotulo: string; quantas: number }[] {
+  const numeros: { filtro: FiltroDaLista; rotulo: string; quantas: number }[] = [
+    { filtro: '', rotulo: aba === 'concluidas' ? 'Encerradas' : 'Em aberto', quantas: lista.length },
+    ...statusDaAba(aba).map(s => ({ filtro: s as FiltroDaLista, rotulo: ROTULO_DO_NUMERO[s], quantas: lista.filter(t => t.status === s).length })),
+  ];
+  if (aba !== 'concluidas') numeros.push({ filtro: 'atrasadas', rotulo: 'Atrasadas', quantas: filtrarPorSituacao(lista, 'atrasadas', hoje, agora).length });
+  return numeros;
+}
+
 /** A busca "O que você procura?": no número, no título, na descrição e no cliente (o código ou o nome), sem acento. */
 export function buscar<T extends Pick<TarefaDelegada, 'numero' | 'titulo' | 'descricao' | 'clientes'>>(lista: readonly T[], q: string): T[] {
   const termos = nomeNorm(q).split(' ').filter(Boolean);

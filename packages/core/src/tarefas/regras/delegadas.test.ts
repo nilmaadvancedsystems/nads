@@ -1,4 +1,4 @@
-import { acoesDoStatus, prazoComHora, ultimoMovimento, type Status } from './delegadas';
+import { acoesDoStatus, filtrarPorSituacao, numerosDaLista, prazoComHora, ultimoMovimento, type Status } from './delegadas';
 import { describe, expect, it } from 'vitest';
 import {
   atrasada, buscar, celulaDoCsv, comAnexos, comMudancas, gravacaoDasMudancas, mudancasDoRascunho, comoEncolher, nomeDaImagemEncolhida, valeEncolher, comParecer, contarAbas, daAba, emAberto, extensaoDe, historicoDaCriacao, historicoDaMudanca, lerTarefa,
@@ -19,6 +19,22 @@ function tarefa(p: Partial<TarefaDelegada> = {}): TarefaDelegada {
   };
 }
 const rascunho = (p: Partial<Rascunho> = {}): Rascunho => ({ ...rascunhoVazio(NILMA), titulo: 'Tarefa', ...p });
+
+describe('os números do alto da lista (09/11/2026)', () => {
+  const HOJE = '2026-11-09';
+  const l = [tarefa({ status: 'pendente', prazo: '2026-11-01' }), tarefa({ status: 'andamento' }), tarefa({ status: 'pausada' }), tarefa({ status: 'andamento', prazo: '2026-11-30' })];
+  it('em aberto: o total, um por status e as atrasadas', () => {
+    expect(numerosDaLista(l, 'minhas', HOJE).map(n => [n.filtro, n.quantas])).toEqual([['', 4], ['pendente', 1], ['andamento', 2], ['pausada', 1], ['atrasadas', 1]]);
+  });
+  it('nas encerradas não tem atrasadas', () => {
+    expect(numerosDaLista([tarefa({ status: 'concluida' }), tarefa({ status: 'cancelada' })], 'concluidas', HOJE).map(n => n.rotulo)).toEqual(['Encerradas', 'Concluídas', 'Canceladas']);
+  });
+  it('clicar num número filtra; vazio mostra todas', () => {
+    expect(filtrarPorSituacao(l, 'andamento', HOJE)).toHaveLength(2);
+    expect(filtrarPorSituacao(l, 'atrasadas', HOJE)).toHaveLength(1);
+    expect(filtrarPorSituacao(l, '', HOJE)).toHaveLength(4);
+  });
+});
 
 describe('a tarefa aprimorada (09/11/2026)', () => {
   it('os botões do responsável seguem o status', () => {

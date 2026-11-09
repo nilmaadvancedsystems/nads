@@ -5464,8 +5464,6 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .tdl-barra .busca-curta{width:240px;}
 .tdl-tabela{max-height:none;}
 .tdl-tabela th,.tdl-tabela td{white-space:nowrap;}
-.tdl-linha{cursor:pointer;}
-.tdl-linha:hover td{background:var(--hover-bg);}
 .tdl-tabela td.tdl-titulo{white-space:normal;min-width:200px;}
 .tdl-abrir{display:inline-flex;align-items:baseline;gap:8px;padding:0;border:0;background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer;}
 .tdl-abrir:hover .tdl-titulo-texto{text-decoration:underline;}

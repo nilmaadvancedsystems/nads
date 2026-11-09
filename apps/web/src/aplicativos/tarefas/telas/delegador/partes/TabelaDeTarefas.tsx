@@ -33,13 +33,14 @@ export function TabelaDeTarefas({ linhas, colunaDaPessoa, colunaExtra, abrir, fa
 }) {
   return (
     <div className="table-wrap tdl-tabela">
-      <table className="table-compact">
+      <table className="dp-tabela">
         <thead>
           <tr><th>Status</th><th>Título</th><th>Prioridade</th><th>Prazo</th><th>Cliente</th><th>{colunaDaPessoa}</th>{colunaExtra === 'movimento' && <th>Andamento</th>}{colunaExtra === 'acoes' && <th />}</tr>
         </thead>
         <tbody>
           {linhas.map(l => (
-            <tr key={l.id} className="tdl-linha" onClick={() => abrir(l.id)}>
+            <tr key={l.id} className="linha-abre" tabIndex={0} title="Abrir a tarefa" onClick={() => abrir(l.id)}
+              onKeyDown={e => { if (e.key === 'Enter' && e.target === e.currentTarget) abrir(l.id); }}>
               <td><SeloDoStatus rotulo={l.status.rotulo} tom={l.status.tom} /></td>
               <td className="tdl-titulo">
                 <button type="button" className="tdl-abrir" onClick={e => { e.stopPropagation(); abrir(l.id); }} title={'Abrir a tarefa ' + l.numero}>
