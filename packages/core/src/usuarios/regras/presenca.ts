@@ -1,5 +1,6 @@
 // Quem está online no nads (Vitor, 05/10/2026: "quero que coloque uma opção de online"): o nads aberto de cada pessoa
 // grava usuarios/{uid}.nadsVistoEm a cada 3 minutos (só com a aba visível). Online = visto há menos de 5 minutos.
+import type { OndeNoNads } from '../tipos';
 
 /** Quanto tempo sem sinal ainda conta como online (o ponto é a cada 3 min; sobra folga para um atraso). */
 export const MINUTOS_ONLINE = 5;
@@ -9,6 +10,15 @@ export const PONTO_DA_PRESENCA_MS = 3 * 60 * 1000;
 export function estaOnline(vistoEm: string | null | undefined, agora: Date): boolean {
   const t = vistoEm ? Date.parse(vistoEm) : NaN;
   return !isNaN(t) && agora.getTime() - t < MINUTOS_ONLINE * 60 * 1000;
+}
+
+/**
+ * Onde a pessoa está, em Usuários (Vitor, 09/11/2026: "mostrar a empresa e etapa na qual a pessoa se encontra"): "408 · EMPRESA ›
+ * Importação". O sinal vale como o do online: a aba fechada ou escondida deixa de contar sozinha. '' = em nenhuma etapa.
+ */
+export function rotuloDoOnde(onde: Pick<OndeNoNads, 'codigo' | 'empresa' | 'etapa' | 'em'> | null | undefined, agora: Date): string {
+  if (!onde || !estaOnline(onde.em, agora)) return '';
+  return (onde.codigo != null ? onde.codigo + ' · ' : '') + onde.empresa + ' › ' + onde.etapa;
 }
 
 /** "Online", "Visto há 12 min", "Visto há 3 h", "Visto há 2 dias" ou "Nunca abriu o nads". */

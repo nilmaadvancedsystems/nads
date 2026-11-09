@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { estaOnline, rotuloDaPresenca } from '.';
+import { estaOnline, rotuloDaPresenca, rotuloDoOnde } from '.';
 
 const agora = new Date('2026-10-05T14:00:00.000Z');
 const antes = (min: number) => new Date(agora.getTime() - min * 60000).toISOString();
@@ -19,5 +19,12 @@ describe('presença no nads', () => {
     expect(rotuloDaPresenca(antes(60 * 24), agora)).toBe('Visto há 1 dia');
     expect(rotuloDaPresenca(antes(60 * 72), agora)).toBe('Visto há 3 dias');
     expect(rotuloDaPresenca(undefined, agora)).toBe('Nunca abriu o nads');
+  });
+  it('onde a pessoa está: a empresa e a etapa, só com o sinal recente', () => {
+    const onde = { codigo: 901, empresa: 'EMPRESA EXEMPLO', etapa: 'Importação', em: antes(2) };
+    expect(rotuloDoOnde(onde, agora)).toBe('901 · EMPRESA EXEMPLO › Importação');
+    expect(rotuloDoOnde({ ...onde, codigo: null }, agora)).toBe('EMPRESA EXEMPLO › Importação');
+    expect(rotuloDoOnde({ ...onde, em: antes(6) }, agora)).toBe('');
+    expect(rotuloDoOnde(null, agora)).toBe('');
   });
 });

@@ -15,6 +15,7 @@ import { BASE } from '../../casca/navegacao';
 import { useCascaTarefas } from '../../casca/useCascaTarefas';
 import { useDepartamentoDaTela } from '../../casca/departamento';
 import { useGuiaUnica } from '../../casca/guiaUnica';
+import { useSinalDeOnde } from './ondeEstou';
 import { useOperador } from '../../casca/operador';
 import { JanelaInterromper } from './partes/JanelaInterromper';
 import { useChecklistDaFolha } from './useChecklistDaFolha';
@@ -56,6 +57,8 @@ export function Executor() {
   const operador = useOperador().operador;
   const { dep } = useDepartamentoDaTela();
   const guia = useGuiaUnica(vm.empresa && operador ? operador.nome + '|' + dep + '|' + rota : null);
+  // onde a pessoa está, para Usuários: só no Contábil, por enquanto (Vitor, 09/11/2026)
+  useSinalDeOnde(dep === 'contabil' && vm.empresa && vm.etapa ? { codigo: vm.empresa.codigo, empresa: vm.empresa.nome, etapa: vm.etapa.nome, competencia: vm.rotuloCompetencia } : null);
   // o razão da etapa (o Caixa): importado do computador, vale para a empresa, a etapa e o período abertos; a liquidação
   // de cobrança no caixa põe o Creditor nos meses dela
   const razao = useRazaoDaEtapa(rota + '|' + (vm.etapa?.id || '') + '|' + periodo, vm.meses.length ? vm.meses : [vm.competencia], vm.ajustarCreditor,
