@@ -41,7 +41,7 @@ export function ConfiguracoesDoDp() {
       <div className="tarefas-barra-topo dp-filtros-linha">
         {/* a barra no padrão do resto do app (revisão da UI, 16/10/2026): a busca de lupa e os filtros em menus numa linha */}
         {/* a competência (Vitor, 07/10/2026): o que mudar vale dela em diante */}
-        <MenuSuspenso icone="calendar" rotulo={'A partir de ' + vm.rotuloCompetencia} className="btn btn-outline" titulo="A partir de" dica="O que mudar vale desta competência em diante" largura={220}
+        <MenuSuspenso icone="calendar" rotulo={'A partir de ' + vm.rotuloCompetencia} className="btn btn-primary" titulo="A partir de" dica="O que mudar vale desta competência em diante" largura={220}
           itens={vm.competencias.map(x => ({ rotulo: x.rotulo, marcado: x.valor === vm.competencia, onClick: () => vm.setCompetencia(x.valor) }))} />
         <label className="busca-curta">
           <Icone nome="search" />

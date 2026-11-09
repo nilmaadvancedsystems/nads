@@ -26,7 +26,7 @@ export function SeletorDoPeriodo({ meses, competencia, concluido, trocar, encerr
   return (
     <MenuSuspenso icone="calendar" rotulo={rotulo} largura={300} direita
       dica={periodo.length ? 'Em lote: ' + periodo.map(mmaaaa).join(', ') : 'Trocar a competência'}
-      className={'btn btn-outline' + (periodo.length ? ' imp-periodo-ativo' : '')}
+      className={'btn btn-primary' + (periodo.length ? ' imp-periodo-ativo' : '')}
       conteudo={fechar => (
         <div className="comp-pop">
           <div className="iniciar-abas comp-abas" role="tablist">
