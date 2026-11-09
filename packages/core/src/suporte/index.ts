@@ -167,23 +167,23 @@ function instrucoes(ctx: ContextoDoSuporte, problema: string, bancos: readonly s
     case 'leu-errado':
     case 'faltou':
       return ctx.tela === 'bancos'
-        ? [`Clique no ✓ de ${m} do ${banco} para tirar o importado.`, 'Baixe o extrato em PDF no site do banco (não foto, não print).', `Suba o PDF em ${m} do ${banco}.`]
+        ? [`Clique no ✓ (ou no ícone do Drive) de ${m} do ${banco} para tirar o importado.`, `No ícone de importar de ${m}, escolha Importar do computador ou Buscar no e-mail.`, 'Use o PDF original do banco; o escaneado também é lido, só demora mais. O arquivo novo substitui o do Drive.']
         : ['Tire o arquivo importado (clique no ✓ dele).', 'Gere o arquivo de novo no sistema de origem, no formato original (PDF, XLS).', 'Suba de novo.'];
     case 'mes':
-      return [`Clique no ✓ de ${m} do ${banco} para tirar o importado.`, `Suba em ${m} o extrato que começa e termina nesse mês.`];
+      return [`Clique no ✓ (ou no ícone do Drive) de ${m} do ${banco} para tirar o importado.`, `Importe em ${m} o extrato que começa e termina nesse mês.`];
     case 'drive':
-      return [`Confira se o PDF está no Drive em CONTÁBIL › EXTRATOS › ${mes ? mes.slice(0, 4) : 'ano'} › ${mes ? mes.slice(5) : 'mês'} › BANCÁRIOS › ${bancos.length === 1 ? banco.toUpperCase() : 'BANCO'}.`, `Clique no ícone do Drive de ${m} do ${banco}.`];
+      return [`Confira se o PDF está no Drive em CONTÁBIL › EXTRATOS › ${mes ? mes.slice(0, 4) : 'ano'} › ${mes ? mes.slice(5) : 'mês'} › BANCÁRIOS › ${bancos.length === 1 ? banco.toUpperCase() : 'BANCO'}.`, `No ícone de importar de ${m}, escolha Buscar no Drive.`, 'O arquivo do Drive está errado? Escolha Buscar no e-mail ou Importar do computador: o novo substitui o do Drive.'];
     case 'travou':
     case 'din-travou':
       return ['Recarregue a página com Ctrl+F5.', 'Suba um arquivo por vez.', 'Espere a barra do topo terminar antes de clicar de novo (arquivo grande leva alguns segundos).'];
     case 'din-errado':
       return [`No Alterdata, gere o Balancete dinâmico de ${periodo}.`, 'Exporte em XLS.', 'Clique no ✓ do Balancete dinâmico para tirar o importado.', 'Suba o XLS de novo.'];
     case 'razao-errado':
-      return ['No Alterdata, exporte o razão da conta em XLS.', 'Suba o XLS de novo em Razões das contas.'];
+      return ['Na aba Balancete e razões, abra o bloco Razões do Alterdata.', 'Clique em Pedir de novo: o robô gera o razão outra vez.', 'Espere o robô terminar e confira.'];
     case 'razao-mes':
-      return [`Exporte o razão com o período inteiro: ${periodo}.`, 'Suba o XLS de novo em Razões das contas.'];
+      return [`No bloco Razões do Alterdata, veja quais meses de ${periodo} faltam ou deram erro.`, 'Clique em Pedir ao robô.', 'Espere o robô terminar. Se o Contábil do servidor estiver fora, tente de novo em alguns minutos.'];
     case 'notas-errado':
-      return ['No Alterdata, exporte o relatório de notas em XLS.', 'Suba de novo e escolha Sobrepor o movimento.'];
+      return ['No Alterdata, exporte o relatório de notas em XLS.', 'Tire o arquivo importado e suba de novo.'];
     case 'notas-faltaram':
       return [`Confira se o relatório do Alterdata cobre ${periodo}.`, 'Suba o arquivo de novo.'];
     default:
@@ -262,6 +262,47 @@ export function vereditoDoReport(texto: string): Veredito | null {
   if (fim.endsWith(sem(VEREDITOS.erro))) return 'erro';
   if (fim.endsWith(sem(VEREDITOS.analise))) return 'analise';
   return null;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// O ticket no chat (Vitor, 09/11/2026: "o feedback não encerra até o ticket ser fechado"): fica registrado na conversa, com a
+// barra Visualizado, Resolvendo, Testando e Resolvido. Depois de Resolvendo, quem resolve pede para a pessoa testar; ela
+// confirma aqui. Resolvido, sai do chat às 18:00 (o registro continua nos Feedbacks).
+// ---------------------------------------------------------------------------------------------------------------------
+
+export type SituacaoDoTicket = 'novo' | 'visto' | 'resolvendo' | 'testando' | 'feito';
+
+export const ETAPAS_DO_TICKET = ['Visualizado', 'Resolvendo', 'Testando', 'Resolvido'] as const;
+
+/** Quantas etapas da barra a situação já alcançou (novo = 0, feito = todas). */
+export function progressoDoTicket(status: SituacaoDoTicket): number {
+  return ['novo', 'visto', 'resolvendo', 'testando', 'feito'].indexOf(status);
+}
+
+/** A resposta pronta do suporte para cada situação do ticket. */
+export function falaDoTicket(status: SituacaoDoTicket): string {
+  switch (status) {
+    case 'novo': return 'Recebi o seu pedido e encaminhei para o Vitor e o Gustavo, com tudo o que você respondeu. O andamento aparece aqui.';
+    case 'visto': return 'O suporte já viu o seu pedido. Não precisa mandar de novo.';
+    case 'resolvendo': return 'Estamos resolvendo o seu pedido.';
+    case 'testando': return 'Pronto para testar! Confira na tela e me diga se funcionou.';
+    case 'feito': return 'Resolvido! Este pedido sai do chat às 18:00.';
+  }
+}
+
+/** Até quando o ticket resolvido fica no chat: as 18:00 do dia em que resolveu; resolvido depois disso, as do dia seguinte. */
+export function fimDoTicketNoChat(resolvidoEm: Date): Date {
+  const fim = new Date(resolvidoEm);
+  fim.setHours(18, 0, 0, 0);
+  if (resolvidoEm.getTime() >= fim.getTime()) fim.setDate(fim.getDate() + 1);
+  return fim;
+}
+
+/** O ticket aparece no chat? Sempre, até ser resolvido; o resolvido, até as 18:00 (o de antes, sem a data, não aparece). */
+export function ticketNoChat(status: SituacaoDoTicket, resolvidoEm: string | undefined, agora: Date): boolean {
+  if (status !== 'feito') return true;
+  const t = resolvidoEm ? new Date(resolvidoEm) : null;
+  return !!t && !isNaN(t.getTime()) && agora.getTime() < fimDoTicketNoChat(t).getTime();
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

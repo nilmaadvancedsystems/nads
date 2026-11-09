@@ -5,10 +5,11 @@
 // feedback.firestore.ts (coleção feedbacks do Entregas).
 
 /** resolvendo (Vitor, 26/10/2026): o admin está resolvendo; quem mandou é avisado */
-export type SituacaoDoFeedback = 'novo' | 'visto' | 'resolvendo' | 'feito';
+/** testando (Vitor, 09/11/2026): quem resolveu pediu para quem mandou testar; ele confirma no chat */
+export type SituacaoDoFeedback = 'novo' | 'visto' | 'resolvendo' | 'testando' | 'feito';
 
 /** Um feedback de quem mandou (o aviso do Resolvendo): o que a regra deixa a pessoa ler dos seus. */
-export interface MeuFeedback { id: string; texto: string; status: SituacaoDoFeedback; criadoEm: string }
+export interface MeuFeedback { id: string; texto: string; status: SituacaoDoFeedback; criadoEm: string; tipo: 'feedback' | 'bug'; caminho: string; resolvidoEm?: string }
 
 /** A prioridade que quem manda escolhe (Vitor, 19/10/2026: feedbacks com "prioridade"). */
 export type PrioridadeDoFeedback = 'baixa' | 'media' | 'alta';
@@ -46,6 +47,8 @@ export interface Feedback {
   /** ISO */
   criadoEm: string;
   status: SituacaoDoFeedback;
+  /** ISO: quando foi resolvido (o ticket sai do chat às 18:00) */
+  resolvidoEm?: string;
   /** null = mandado antes de existir a prioridade (19/10/2026) */
   prioridade: PrioridadeDoFeedback | null;
   /** 'bug' = veio do suporte de leitura (o balão), com o arquivo e o report do robô (Vitor, 20/10/2026) */
@@ -88,6 +91,8 @@ export interface RepoFeedback {
   /** todos os feedbacks (só o admin lê); pedir já começa a ouvir */
   todos(): { carregados: boolean; lista: Feedback[] };
   marcar(id: string, status: SituacaoDoFeedback): Promise<void>;
+  /** quem mandou responde o teste: funcionou (resolvido) ou ainda com problema (volta a Resolvendo) */
+  responderTeste(id: string, funcionou: boolean): Promise<void>;
   /** os feedbacks de quem está usando (a regra deixa ler os seus); pedir já começa a ouvir */
   meus(): MeuFeedback[];
   assinar(aoMudar: () => void): () => void;
@@ -132,8 +137,9 @@ export function criarFeedbackMemoria(quem: () => string): RepoFeedback {
     },
     async arquivoDoBug() { return null; },
     todos: () => ({ carregados: true, lista }),
-    async marcar(id, status) { lista = lista.map(x => (x.id === id ? { ...x, status } : x)); mudou(); },
-    meus: () => lista.filter(x => x.nome === quem()).map(x => ({ id: x.id, texto: x.texto, status: x.status, criadoEm: x.criadoEm })),
+    async marcar(id, status) { lista = lista.map(x => (x.id === id ? { ...x, status, ...(status === 'feito' ? { resolvidoEm: new Date().toISOString() } : {}) } : x)); mudou(); },
+    async responderTeste(id, funcionou) { lista = lista.map(x => (x.id === id ? { ...x, status: funcionou ? 'feito' as const : 'resolvendo' as const, ...(funcionou ? { resolvidoEm: new Date().toISOString() } : {}) } : x)); mudou(); },
+    meus: () => lista.filter(x => x.nome === quem()).map(x => ({ id: x.id, texto: x.texto, status: x.status, criadoEm: x.criadoEm, tipo: x.tipo, caminho: x.caminho, resolvidoEm: x.resolvidoEm })),
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,
   };
