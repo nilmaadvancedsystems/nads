@@ -6,7 +6,7 @@ import { cleanInlineStyles } from 'animejs';
 import { animar, ENTRAR, entrar, revelarTitulo, sairComo, useIndicador } from './animacao';
 import { useAbasParaAEtapa, useAlturaNaEtapa } from './etapa';
 import { Icone, MarcaN, type NomeIcone } from './icones';
-import { LogoDrive, LogoFgts, LogoGmail } from './logos';
+import { LogoDrive, LogoFgts, LogoGmail, LogoReceitaFederal, LogoSieg, LogoSimplesDaAba } from './logos';
 import { SeletorTema } from './tema';
 import { atualizarVersao, useVersaoNova } from './versaoNova';
 import { BotaoFechar } from './componentes';
@@ -18,7 +18,9 @@ import { useJanela } from './janela';
 export interface SecaoCasca { id: string; rotulo: string; icone: NomeIcone; grupo: number; ativa?: boolean; travada?: boolean; caixa?: 'vazia' | 'marcada' | 'parada'; titulo?: string; foraDaEtapa?: boolean; apagada?: boolean; /** a logo da marca no lugar do ícone (o FGTS Digital no DP) */ marca?: 'fgts' }
 /** contador: o número ao lado do nome, como o "Issues 12" do GitHub (ex.: "2/7") */
 /** ponto: o pontinho vermelho de "falta configurar" ao lado do nome (Vitor, 08/10/2026); o texto vai na dica */
-export interface PaginaCasca { id: string; rotulo: string; icone: NomeIcone; ativa?: boolean; travada?: boolean; oculta?: boolean; contador?: string; ponto?: string }
+export interface PaginaCasca { id: string; rotulo: string; icone: NomeIcone; ativa?: boolean; travada?: boolean; oculta?: boolean; contador?: string; ponto?: string;
+  /** a logo no lugar do ícone da aba (as do Fiscal; 09/11/2026) */
+  marca?: 'simples' | 'receita' | 'sieg' }
 
 /**
  * A tela está dentro de outra (um iframe, como quando a Tarefas abre uma ferramenta na etapa)? Aí
@@ -266,7 +268,7 @@ export function Casca(p: {
           {(abasDaEtapa || p.paginas).filter(x => !x.oculta).map(x => (
             <button key={x.id} type="button" className={'menu-item' + (x.ativa ? ' active' : '') + (x.travada ? ' is-locked' : '')}
               aria-current={x.ativa ? 'page' : undefined} aria-disabled={x.travada ? 'true' : undefined} onClick={() => (abasDaEtapa && p.onAbaNaEtapa ? p.onAbaNaEtapa : p.onPagina)(x.id)}>
-              <Icone nome={x.icone} /><span>{x.rotulo}</span>{x.contador && <span className="menu-contador">{x.contador}</span>}
+              {'marca' in x && x.marca ? <span className="menu-item-marca" aria-hidden="true">{x.marca === 'simples' ? <LogoSimplesDaAba /> : x.marca === 'receita' ? <LogoReceitaFederal /> : <LogoSieg />}</span> : <Icone nome={x.icone} />}<span>{x.rotulo}</span>{x.contador && <span className="menu-contador">{x.contador}</span>}
               {x.ponto && <span className="ponto-vermelho" title={x.ponto} aria-label={x.ponto} />}
             </button>
           ))}
