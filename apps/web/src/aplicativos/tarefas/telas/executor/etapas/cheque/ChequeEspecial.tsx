@@ -5,6 +5,7 @@
 import { Icone, LogoBanco } from '@nads/ui';
 import { useEffect, useState } from 'react';
 import { useChequeEspecial } from './useChequeEspecial';
+import { BotaoImportarNoAlterdata } from '../../../../../../comum/BotaoImportarNoAlterdata';
 
 type Vm = ReturnType<typeof useChequeEspecial>;
 type Banco = Vm['bancos'][number];
@@ -50,6 +51,7 @@ function BlocoDoBanco({ b, vm }: { b: Banco; vm: Vm }) {
             <Conta rotulo="Conta do banco" valor={b.contaBanco} desabilitado={!b.noCadastro} onGravar={v => vm.gravarConta(b.id, 'contaContabil', v)} />
             <Conta rotulo="Conta do cheque especial" valor={b.contaCheque} desabilitado={!b.noCadastro} onGravar={v => vm.gravarConta(b.id, 'contaChequeEspecial', v)} />
             <span style={{ flex: 1 }} />
+            <BotaoImportarNoAlterdata {...b.importacao} disabled={!b.contaBanco || !b.contaCheque} motivo="Informe a conta do banco e a do cheque especial" />
             <button type="button" className="btn btn-primary" disabled={!b.contaBanco || !b.contaCheque} onClick={() => vm.baixar(b.id)}
               title={b.contaBanco && b.contaCheque ? 'O ajuste e o estorno de cada dia negativo, no .xls do Alterdata' : 'Informe a conta do banco e a do cheque especial'}>
               <Icone nome="download" />Baixar .xls
