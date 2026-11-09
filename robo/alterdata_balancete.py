@@ -107,7 +107,7 @@ def falhar(motivo):
 
 
 def preparar_tela():
-    """A tela acesa e com a largura dos cliques (1366x768) enquanto o roteiro roda: alterdata_tela.py (09/11/2026)."""
+    """A tela acesa enquanto o roteiro roda (sem trocar a resolução): alterdata_tela.py (09/11/2026)."""
     try:
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # o -I tira a pasta do roteiro do caminho
         import alterdata_tela
@@ -129,6 +129,14 @@ try:
     principal = principais[0]
     limpar()
     preparar_tela()
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # o -I tira a pasta do roteiro do caminho
+        import alterdata_faixa
+        fechadas = alterdata_faixa.liberar(principal)
+        if fechadas:
+            print('TELA: o Contábil estava travado por ' + ', '.join(fechadas) + ' (janela na frente da principal): fechei', flush=True)
+    except Exception as e:
+        print('TELA: não liberei o Contábil: ' + str(e)[:200], flush=True)
     principal.set_focus()
     if not principal.is_maximized():
         principal.maximize()

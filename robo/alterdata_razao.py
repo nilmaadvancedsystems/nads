@@ -125,6 +125,12 @@ def com_tela(motivo, nome):
         return motivo
 
 
+def faixa():
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # o -I tira a pasta do roteiro do caminho
+    import alterdata_faixa
+    return alterdata_faixa
+
+
 def avancar(dlg, de):
     """Avançar e esperar a página mudar (de = o nome da página de agora)."""
     b = botao(dlg, 'Avançar >')
@@ -143,7 +149,7 @@ def avancar(dlg, de):
 
 
 def preparar_tela():
-    """A tela acesa e com a largura dos cliques (1366x768) enquanto o roteiro roda: alterdata_tela.py (09/11/2026)."""
+    """A tela acesa enquanto o roteiro roda (sem trocar a resolução): alterdata_tela.py (09/11/2026)."""
     try:
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # o -I tira a pasta do roteiro do caminho
         import alterdata_tela
@@ -167,23 +173,32 @@ try:
     if not os.path.isdir(PASTA) or os.listdir(PASTA):
         fim(erro='a pasta do pedido não está vazia ou não existe: ' + PASTA)
     preparar_tela()
+    fx = faixa()
+    try:
+        fechadas = fx.liberar(principal)
+    except fx.Falha as e:
+        falhar(com_tela(str(e), 'razao-travado'))
+    if fechadas:
+        print('TELA: o Contábil estava travado por ' + ', '.join(fechadas) + ' (janela na frente da principal): fechei', flush=True)
     principal.set_focus()
     if not principal.is_maximized():
         principal.maximize()
     time.sleep(.5)
-    r = principal.rectangle()
-    ox, oy = r.left + 8, r.top + 8   # a janela maximizada fica em (-8, -8)
 
-    # ── Livros e Relatórios → Razão ▾ → Razão
+    # ── Livros e Relatórios → Razão ▾ → Razão, pelo nome (09/11/2026: pela posição, no console de 1024x768, o clique caía
+    # noutro botão)
     passo('abrindo Livros e Relatórios → Razão')
-    clique('menu Livros e Relatórios')
-    mouse.click(coords=(ox + 288, oy + 47))
-    time.sleep(.8)
-    clique('Razão ▾')
-    mouse.click(coords=(ox + 143, oy + 125))
-    time.sleep(1)
-    clique('Razão')
-    mouse.click(coords=(ox + 168, oy + 148))
+    try:
+        clique('menu Livros e Relatórios')
+        fx.aba(principal, 'Livros e Relatórios')
+        clique('Razão ▾')
+        fx.botao(principal, 'Razão', embaixo=True)
+        # o botão de lista abre o menu; se já abriu o assistente (o clique pegou a parte de cima), segue
+        if not esperar(lambda: janelas('TfrmRazaoDlg'), 1.5, .25):
+            clique('Razão')
+            fx.item_do_menu(principal, 'Razão')
+    except fx.Falha as e:
+        falhar(com_tela(str(e), 'razao-faixa'))
     dlg = esperar(lambda: janelas('TfrmRazaoDlg'), 25, .25)
     if not dlg:
         falhar(com_tela('a janela do Razão não abriu', 'razao-nao-abriu'))
