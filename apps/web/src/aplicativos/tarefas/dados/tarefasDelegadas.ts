@@ -65,15 +65,15 @@ function exemplos(agora = new Date()): TarefaDelegada[] {
   const dia = (n: number) => d.hojeIso(new Date(agora.getTime() + n * 86400_000));
   const p = (uid: string, nome: string) => ({ uid, nome });
   const nilma = p('exemplo-1', 'Nilma'), savio = p('exemplo-2', 'Sávio'), vitor = p('exemplo-3', 'Vitor'), clara = p('exemplo-6', 'Clara'), heverton = p('exemplo-7', 'Heverton');
-  const base = { descricao: '', cliente: null, concluidaEm: '', pareceres: [], anexos: [] };
+  const base = { descricao: '', cliente: null, clientes: [], prazoHora: '', concluidaEm: '', pareceres: [], anexos: [] };
   return [
     { ...base, id: 'td-1', numero: 1, titulo: 'Conferir o balancete de setembro', descricao: 'O saldo de bancos não bateu com o extrato do Sicoob. Ver se faltou alguma tarifa.',
-      cliente: { codigo: 292, nome: 'EXEMPLO COMERCIO DE ALIMENTOS LTDA' }, prioridade: 'alta', prazo: dia(-2), status: 'pendente', criadaPor: vitor, responsavel: nilma,
+      cliente: { codigo: 292, nome: 'EXEMPLO COMERCIO DE ALIMENTOS LTDA' }, clientes: [{ codigo: 292, nome: 'EXEMPLO COMERCIO DE ALIMENTOS LTDA' }], prioridade: 'alta', prazo: dia(-2), status: 'pendente', criadaPor: vitor, responsavel: nilma,
       criadaEm: ha(72), atualizadaEm: ha(70),
       pareceres: [{ por: 'Vitor', em: ha(70), texto: 'Deixei o extrato anexado.' }],
       historico: [{ por: 'Vitor', em: ha(72), texto: 'Criou a tarefa' }, { por: 'Vitor', em: ha(72), texto: 'Delegou para Nilma' }, { por: 'Vitor', em: ha(70), texto: 'Anexou o arquivo observacoes.txt' }, { por: 'Vitor', em: ha(70), texto: 'Escreveu um parecer' }],
       anexos: [{ id: 'ax-1', nome: 'observacoes.txt', extensao: 'txt', tamanho: 74, em: ha(70), por: 'Vitor', partes: 1 }] },
-    { ...base, id: 'td-2', numero: 2, titulo: 'Mandar a guia do DAS para o cliente', cliente: { codigo: 14, nome: 'ALFA COMERCIO LTDA' }, prioridade: 'urgente', prazo: dia(1),
+    { ...base, id: 'td-2', numero: 2, titulo: 'Mandar a guia do DAS para o cliente', cliente: { codigo: 14, nome: 'ALFA COMERCIO LTDA' }, clientes: [{ codigo: 14, nome: 'ALFA COMERCIO LTDA' }], prioridade: 'urgente', prazo: dia(1),
       status: 'andamento', criadaPor: heverton, responsavel: nilma, criadaEm: ha(20), atualizadaEm: ha(5),
       historico: [{ por: 'Heverton', em: ha(20), texto: 'Criou a tarefa' }, { por: 'Heverton', em: ha(20), texto: 'Delegou para Nilma' }, { por: 'Nilma', em: ha(5), texto: 'Mudou o status de Pendente para Em andamento' }] },
     { ...base, id: 'td-3', numero: 3, titulo: 'Atualizar o cadastro dos sócios', descricao: 'A alteração contratual chegou por e-mail.', prioridade: 'normal', prazo: dia(5),

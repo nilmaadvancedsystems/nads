@@ -19,6 +19,16 @@ const VAZIO_DA_ABA: Record<AbaDaCentral, string> = {
   concluidas: 'As tarefas concluídas e canceladas aparecem aqui.',
 };
 
+const nomeDoCliente = (c: tarefas.delegadas.ClienteVinculado) => (c.codigo != null ? c.codigo + ' · ' : '') + c.nome;
+
+/** O andamento para quem delegou: quem fez o quê e quando; sem movimento, ainda não começou. */
+function movimentoDe(t: tarefas.delegadas.TarefaDelegada): string {
+  const m = d.ultimoMovimento(t);
+  if (!m) return 'Ainda não iniciou';
+  const quando = new Date(m.em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  return m.por + ' · ' + m.texto.replace(/ a tarefa$/, '').toLowerCase() + ' · ' + quando;
+}
+
 export function useCentralDeTarefas(abaInicial: AbaDaCentral) {
   const repo = useTarefasDelegadas();
   const [aba, setAba] = useState<AbaDaCentral>(abaInicial);
@@ -26,12 +36,14 @@ export function useCentralDeTarefas(abaInicial: AbaDaCentral) {
   const [status, setStatus] = useState<Status | ''>('');
   // a tarefa aberta no lugar da lista: o id, 'nova' ou null (a lista)
   const [aberta, setAberta] = useState<string | null>(null);
+  const [erroDaAcao, setErroDaAcao] = useState('');
   const uid = repo.eu()?.uid || '';
   const { carregadas, tarefas: todas, erro } = repo.lista();
   const hoje = d.hojeIso();
+  const agora = new Date().toTimeString().slice(0, 5);
   const contadores = d.contarAbas(todas, uid);
   const daAba = d.daAba(todas, aba, uid);
-  const lista = d.ordenar(d.buscar(daAba, busca).filter(t => !status || t.status === status), hoje);
+  const lista = d.ordenar(d.buscar(daAba, busca).filter(t => !status || t.status === status), hoje, agora);
   const pessoa = (t: tarefas.delegadas.TarefaDelegada) => {
     if (aba === 'minhas') return t.criadaPor.uid === uid ? 'Você mesmo' : t.criadaPor.nome;
     if (aba === 'delegadas') return t.responsavel.nome;
@@ -42,7 +54,7 @@ export function useCentralDeTarefas(abaInicial: AbaDaCentral) {
   const nomeDoArquivo = 'tarefas-' + aba + '-' + hoje;
   return {
     carregando: !carregadas,
-    erro: erro || '',
+    erro: erro || erroDaAcao,
     /** as abas da lateral, com quantas tem */
     abas: d.ABAS.map(a => ({ id: a.valor, rotulo: a.rotulo, qtd: contadores[a.valor], ativa: a.valor === aba })),
     aba,
@@ -54,15 +66,24 @@ export function useCentralDeTarefas(abaInicial: AbaDaCentral) {
     opcoesDeStatus: [{ valor: '' as const, rotulo: 'Todos os status' }, ...opcoesDeStatus.map(s => ({ valor: s, rotulo: d.rotuloDoStatus(s) }))],
     setStatus,
     colunaDaPessoa: COLUNA_DA_PESSOA[aba],
+    /** a coluna a mais: os botões nas minhas; o andamento de quem recebeu nas delegadas (09/11/2026: "eu tenha esse controle") */
+    colunaExtra: aba === 'minhas' ? 'acoes' as const : aba === 'delegadas' ? 'movimento' as const : null,
+    fazerAcao: (id: string, status: Status) => { repo.salvar(id, { status }).catch((e: unknown) => setErroDaAcao('Não gravei: ' + (e instanceof Error ? e.message : String(e)))); },
     vazio: busca.trim() || status ? 'Nada com esse filtro.' : VAZIO_DA_ABA[aba],
     /** as linhas da tabela, na ordem do core (atrasadas e urgentes primeiro) */
     linhas: lista.map(t => ({
       id: t.id, numero: t.numero, titulo: t.titulo,
       status: { rotulo: d.rotuloDoStatus(t.status), tom: d.tomDoStatus(t.status) },
       prioridade: { valor: t.prioridade, rotulo: d.rotuloDaPrioridade(t.prioridade) },
-      prazo: d.prazoParaTela(t.prazo), atrasada: d.atrasada(t, hoje),
-      cliente: t.cliente ? (t.cliente.codigo != null ? t.cliente.codigo + ' · ' : '') + t.cliente.nome : '',
+      prazo: d.prazoComHora(t), atrasada: d.atrasada(t, hoje, agora),
+      cliente: t.clientes[0] ? nomeDoCliente(t.clientes[0]) : '',
+      maisClientes: t.clientes.length - 1,
+      clientes: t.clientes.map(nomeDoCliente).join('\n'),
       pessoa: pessoa(t), anexos: t.anexos.length, pareceres: t.pareceres.length,
+      // os botões de quem faz a tarefa (Minhas tarefas)
+      acoes: aba === 'minhas' ? d.acoesDoStatus(t.status) : [],
+      // o que aconteceu por último (Delegadas por mim)
+      movimento: movimentoDe(t),
     })),
     aberta,
     abrir: (id: string) => setAberta(id),
