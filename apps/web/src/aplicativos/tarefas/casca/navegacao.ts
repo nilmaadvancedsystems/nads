@@ -20,7 +20,7 @@ export const FERRAMENTAS_DO_FISCAL: readonly string[] = ['sintegra', 'faturament
 export type IdAplicacao = 'inicio' | 'minhas-empresas' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'financeiro' | 'entregas' | 'area-cliente' | 'ferramentas';
 
 export interface Pagina {
-  id: string; rotulo: string; icone: NomeIcone; titulo: string; /** a logo da marca no lugar do ícone, na lateral */ marca?: 'fgts';
+  id: string; rotulo: string; icone: NomeIcone; titulo: string; /** a logo da marca no lugar do ícone (fgts na lateral; as outras nas abas do Fiscal) */ marca?: 'fgts' | 'simples' | 'receita' | 'sieg';
   /** apagada na lateral; o clique avisa que está em desenvolvimento e não abre (Vitor, 21/10/2026) */
   emDesenvolvimento?: boolean;
   /** só o admin vê (as páginas do Admin nas Configurações; 28/10/2026) */
@@ -65,12 +65,12 @@ export const APLICACOES: readonly Aplicacao[] = [
     // de cada regime (a planilha RELATORIO EMPRESA 2026 no estilo das Obrigações do DP, com a REINF; "lucro presumido e
     // simples são diferentes, deixa cada um separado"; tomou o lugar do Controle de tributos: os links antigos caem no Simples;
     // as Particularidades voltaram para a tabela dele, 28/10/2026: os links delas caem no Relatório do regime)
-    { id: 'relatorio-simples', rotulo: 'Simples Nacional', icone: 'painel', titulo: 'Relatório Simples', secao: 'Empresas' },
-    { id: 'relatorio-presumido', rotulo: 'Lucro Presumido', icone: 'painel', titulo: 'Relatório Lucro Presumido', secao: 'Empresas' },
+    { id: 'relatorio-simples', rotulo: 'Simples Nacional', icone: 'painel', titulo: 'Relatório Simples', secao: 'Empresas', marca: 'simples' },
+    { id: 'relatorio-presumido', rotulo: 'Lucro Presumido', icone: 'painel', titulo: 'Relatório Lucro Presumido', secao: 'Empresas', marca: 'receita' },
     // as Ferramentas: a REINF (o fluxo do Notion do Heverton)
     { id: 'reinf', rotulo: 'REINF', icone: 'fileUp', titulo: 'REINF', secao: 'Ferramentas' },
     // o SIEG fora da rotina (31/10/2026: "coloca uma função de baixar do sieg q tinha na rotina … coloca um módulo la")
-    { id: 'sieg', rotulo: 'SIEG', icone: 'download', titulo: 'SIEG', secao: 'Ferramentas' },
+    { id: 'sieg', rotulo: 'SIEG', icone: 'download', titulo: 'SIEG', secao: 'Ferramentas', marca: 'sieg' },
     // o leitor do SINTEGRA (Vitor, 15/10/2026: "montar um leitor de sintegra")
     { id: 'sintegra', rotulo: 'SINTEGRA', icone: 'fileText', titulo: 'Leitor do SINTEGRA', secao: 'Ferramentas' },
     // a relação de faturamento dos clientes (Heverton, 20/10/2026; o usuário decidiu em 21/10: a receita de cada cliente)
