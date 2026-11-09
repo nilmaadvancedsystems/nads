@@ -257,7 +257,7 @@ main.main{min-width:0;}
 /* senha, e-mail, telefone, número, busca e o campo sem type com o mesmo visual, sem peso (:where) para as classes próprias
    (.nf-entrada, .usuario-campo, .pessoal-form…) continuarem valendo (revisão da UI, 16/10/2026: a Senha do login saía com o
    desenho do navegador) */
-input[type="text"],input[type="file"],select,
+input[type="text"],input[type="time"],input[type="file"],select,
 :where(input:not([type]),input[type="password"],input[type="email"],input[type="tel"],input[type="number"],input[type="search"]){
   width:100%;border:1px solid var(--border);background:var(--input-bg);color:var(--ink);
   border-radius:6px;padding:5px 12px;min-height:32px;font-size:var(--fs-14);line-height:20px;font-family:var(--font-body);
@@ -5466,7 +5466,7 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .tdl-tabela th,.tdl-tabela td{white-space:nowrap;}
 .tdl-linha{cursor:pointer;}
 .tdl-linha:hover td{background:var(--hover-bg);}
-.tdl-tabela td.tdl-titulo{white-space:normal;min-width:240px;}
+.tdl-tabela td.tdl-titulo{white-space:normal;min-width:200px;}
 .tdl-abrir{display:inline-flex;align-items:baseline;gap:8px;padding:0;border:0;background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer;}
 .tdl-abrir:hover .tdl-titulo-texto{text-decoration:underline;}
 .tdl-abrir:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px;}
@@ -5474,7 +5474,8 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .tdl-contas{display:inline-flex;gap:10px;margin-left:10px;white-space:nowrap;vertical-align:middle;}
 .tdl-conta{display:inline-flex;align-items:center;gap:3px;font-size:var(--fs-12);}
 .tdl-atrasada{color:var(--danger);font-weight:600;}
-.tdl-cliente{max-width:240px;overflow:hidden;text-overflow:ellipsis;}
+.tdl-cliente{display:inline-block;max-width:120px;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom;}
+.tdl-cliente-linha{display:inline-flex;align-items:baseline;gap:4px;}
 .tdl-tarefa{display:flex;flex-direction:column;gap:16px;}
 .tdl-tarefa-topo{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
 .tdl-tarefa-titulo{margin:0;font-size:var(--fs-20);font-weight:650;}
@@ -5484,6 +5485,21 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .tdl-campo-largo{grid-column:1 / -1;}
 .tdl-rotulo{display:block;font-size:var(--fs-14);font-weight:600;margin-bottom:6px;}
 .tdl-rotulo .fraco{font-weight:400;}
+/* a tarefa numa janela (09/11/2026): o título no topo, o corpo rola e o pé fica; os clientes em selos com o "+"; a data e a hora lado a lado */
+.modal.tdl-janela{max-width:min(760px,96vw);display:flex;flex-direction:column;max-height:calc(100vh - 32px);}
+.tdl-janela-topo{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border);}
+.tdl-janela-titulo{flex:1 1 auto;min-width:0;font-size:var(--fs-18);font-weight:600;}
+.tdl-janela-corpo{flex:1 1 auto;min-height:0;overflow:auto;padding:16px;}
+.tdl-janela-pe{padding:12px 16px;}
+.tdl-ja-fazendo{display:inline-flex;align-items:center;gap:8px;font-size:var(--fs-14);font-weight:600;cursor:pointer;}
+.tdl-clientes{display:flex;flex-wrap:wrap;align-items:center;gap:6px;}
+.tdl-busca-cliente{display:flex;flex-direction:column;gap:6px;padding:4px;}
+.tdl-busca-cliente .busca-curta{width:100%;}
+.tdl-prazo-campos{display:flex;gap:6px;}
+.tdl-prazo-campos .data-mask{flex:1 1 auto;min-width:0;}
+.tdl-prazo-campos input[type=time]{flex:0 0 96px;}
+.tdl-acoes-linha{display:flex;gap:6px;justify-content:flex-end;}
+.tdl-acoes-linha .btn{padding:0 8px;}
 /* o Delegar da tarefa (09/11/2026): o título e o toggle na mesma linha */
 .tdl-delegar-topo{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
 .field .tdl-delegar-topo .field-rotulo{margin-bottom:0;}

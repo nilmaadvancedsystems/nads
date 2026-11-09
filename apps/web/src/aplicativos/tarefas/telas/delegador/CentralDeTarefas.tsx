@@ -1,7 +1,7 @@
 // A Central de tarefas (28/10/2026: "ele irá estar em perfil e vai abrir uma central de tarefas onde irá ser delegada a
 // tarefa para a pessoa selecionada"): a janela flutuante no layout do cadastro (o usuário gosta dele: "seguir o layout do
 // cadastro"): no topo o nome e o ×; à esquerda Minhas tarefas, Delegadas por mim e Concluídas, com quantas tem; no meio a
-// barra (Nova tarefa, a busca, o status e o Exportar) e a tabela. A tarefa abre no lugar da lista, com "‹ Voltar". No corpo
+// barra (Nova tarefa, a busca, o status e o Exportar) e a tabela. A tarefa abre numa janela por cima da lista (09/11/2026). No corpo
 // da página (createPortal): dentro do cabeçalho ela ficaria presa no tamanho dele.
 import { BotaoFechar, Esqueleto, Icone, MenuSuspenso, Vazio, Alerta, useJanela } from '@nads/ui';
 import { useEffect, useRef } from 'react';
@@ -49,7 +49,8 @@ export function CentralDeTarefas({ aba, fechar }: { aba: AbaDaCentral; fechar: (
             ))}
           </nav>
           <div className="cad-janela-conteudo tdl-conteudo">
-            {vm.aberta ? <TarefaAberta key={vm.aberta} alvo={vm.aberta} voltar={vm.voltar} criada={vm.criada} saida={saida} /> : <ListaDaCentral vm={vm} />}
+            <ListaDaCentral vm={vm} />
+            {vm.aberta && <TarefaAberta key={vm.aberta} alvo={vm.aberta} voltar={vm.voltar} criada={vm.criada} saida={saida} />}
           </div>
         </div>
       </div>
@@ -81,7 +82,7 @@ export function ListaDaCentral({ vm, semTitulo }: { vm: ReturnType<typeof useCen
       {vm.erro && <Alerta naLinha titulo={vm.erro} />}
       {vm.carregando ? <Esqueleto linhas={6} />
         : !vm.linhas.length ? <Vazio icone="checklist" titulo={vm.vazio} />
-          : <TabelaDeTarefas linhas={vm.linhas} colunaDaPessoa={vm.colunaDaPessoa} abrir={vm.abrir} />}
+          : <TabelaDeTarefas linhas={vm.linhas} colunaDaPessoa={vm.colunaDaPessoa} colunaExtra={vm.colunaExtra} abrir={vm.abrir} fazerAcao={vm.fazerAcao} />}
     </>
   );
 }

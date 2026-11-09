@@ -48,9 +48,6 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
   const [parecer, setParecer] = useState('');
   const [ocupado, setOcupado] = useState<'' | 'salvar' | 'excluir' | 'anexar' | 'parecer'>('');
   const [erro, setErro] = useState('');
-  // a busca da empresa (a peça da barra do Fiscal)
-  const [busca, setBusca] = useState('');
-  const [ativo, setAtivo] = useState(0);
   // o toggle Delegar (09/11/2026: "caso esteja off, não é para a tarefa ser delegada, é para o próprio usuário"): enquanto a
   // pessoa não mexe, segue a tarefa (de outra pessoa = ligado; a nova e a dela mesma = desligado)
   const [delegarEscolhido, setDelegarEscolhido] = useState<boolean | null>(null);
@@ -73,11 +70,15 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
   const mudar = (p: Partial<Rascunho>) => { setR(x => ({ ...x, ...p })); setErro(''); };
   const prazo = d.prazoDaTela(prazoTexto);
   const delegar = delegarEscolhido ?? (!!r.responsavel && r.responsavel.uid !== uid);
-  const final: Rascunho = { ...r, prazo: prazo ?? r.prazo, responsavel: delegar || !eu ? r.responsavel : { uid: eu.uid, nome: eu.nome } };
+  const final: Rascunho = {
+    ...r, prazo: prazo ?? r.prazo, responsavel: delegar || !eu ? r.responsavel : { uid: eu.uid, nome: eu.nome },
+    // a nova que vai para outra pessoa nasce pendente: quem recebe é que inicia
+    status: ehNova && delegar ? 'pendente' : r.status,
+  };
   // o que a pessoa mudou desde que abriu: é só isso que o Salvar grava
   const mudancas = ehNova ? {} : d.mudancasDoRascunho(inicial, final);
   const mudou = ehNova
-    ? !!(r.titulo.trim() || r.descricao.trim() || r.cliente || r.responsavel || prazoTexto || pendentes.length || r.prioridade !== 'normal' || r.status !== 'pendente')
+    ? !!(r.titulo.trim() || r.descricao.trim() || r.clientes.length || r.responsavel || prazoTexto || r.prazoHora || pendentes.length || r.prioridade !== 'normal' || r.status !== 'pendente')
     : !!tarefa && (Object.keys(mudancas).length > 0 || prazo === null);
   const podeMudar = ehNova || (!!tarefa && d.podeMudar(tarefa, uid));
 
@@ -89,8 +90,7 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
   const equipe = acesso.equipe().lista.filter(u => u.ativo || u.uid === r.responsavel?.uid).map(pessoa);
   if (r.responsavel && !equipe.some(p => p.uid === r.responsavel?.uid)) equipe.unshift(pessoa(r.responsavel));
 
-  const achadas = busca.trim() ? emp.buscarEmpresas(empresas, busca).slice(0, 8) : [];
-  const escolherEmpresa = (e: { codigo: number | null; nome: string }) => { mudar({ cliente: { codigo: e.codigo, nome: e.nome } }); setBusca(''); setAtivo(0); };
+  const mesmaEmpresa = (a: { codigo: number | null; nome: string }, b: { codigo: number | null; nome: string }) => a.codigo === b.codigo && a.nome === b.nome;
 
   // o parecer escrito e ainda não gravado (29/10/2026: "o parecer não fica gravado"): quem escrevia e clicava em Salvar,
   // no ‹ Voltar ou fechava a Central perdia o texto sem aviso; agora o Salvar grava junto e o sair pergunta
@@ -125,7 +125,7 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
     /** a tarefa saiu da lista da pessoa (apagada, ou delegada para outra pessoa por quem criou) */
     sumiu: !ehNova && carregadas && !tarefa,
     ehNova,
-    titulo: ehNova ? 'Nova tarefa' : 'Tarefa ' + (tarefa?.numero || ''),
+    numero: tarefa?.numero || null,
     status: tarefa ? { rotulo: d.rotuloDoStatus(tarefa.status), tom: d.tomDoStatus(tarefa.status) } : null,
     podeMudar,
     podeExcluir: !!tarefa && d.podeExcluir(tarefa, uid, admin),
@@ -146,10 +146,26 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
     prazoTexto,
     setPrazo: (v: string) => { setPrazoTexto(v); setErro(''); },
     prazoInvalido: prazo === null,
+    prazoHora: r.prazoHora,
+    setPrazoHora: (prazoHora: string) => mudar({ prazoHora }),
     prioridades: d.PRIORIDADES,
     setPrioridade: (v: string) => { if (d.ehPrioridade(v)) mudar({ prioridade: v }); },
     opcoesDeStatus: d.STATUS.map(s => ({ valor: s.valor, rotulo: s.rotulo })),
     setStatus: (s: tarefas.delegadas.Status) => mudar({ status: s }),
+    /** a tarefa nova: "Já estava fazendo" nasce em andamento; sem marcar, pendente (09/11/2026) */
+    jaFazendo: r.status === 'andamento',
+    setJaFazendo: (sim: boolean) => mudar({ status: sim ? 'andamento' : 'pendente' }),
+    /** o seletor de status é de quem criou (o controle de quem delegou); quem recebeu usa os botões */
+    mudaStatus: !!tarefa && (tarefa.criadaPor.uid === uid || admin),
+    /** Iniciar, Pausar, Retomar e Concluir: de quem vai fazer a tarefa */
+    acoes: tarefa && tarefa.responsavel.uid === uid ? d.acoesDoStatus(tarefa.status) : [],
+    async fazerAcao(status: tarefas.delegadas.Status) {
+      if (!tarefa) return;
+      try {
+        await repo.salvar(tarefa.id, { status });
+        if (status === 'concluida' && !mudou) voltar();
+      } catch (e) { setErro('Não gravei: ' + (e instanceof Error ? e.message : String(e))); }
+    },
     equipe,
     delegar,
     /** ligar numa tarefa que era da própria pessoa pede para escolher alguém; desligar deixa a tarefa com ela (no Salvar) */
@@ -161,15 +177,13 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
       const u = acesso.equipe().lista.find(x => x.uid === uidDoResponsavel);
       mudar({ responsavel: u ? { uid: u.uid, nome: u.nome } : r.responsavel?.uid === uidDoResponsavel ? r.responsavel : null });
     },
-    /** o cliente vinculado (opcional): a peça EmpresaDaBarra */
-    empresa: {
-      empresa: r.cliente, busca, achadas, ativo, setAtivo,
-      setBusca: (v: string) => { setBusca(v); setAtivo(0); },
-      mover: (n: number) => setAtivo(i => Math.max(0, Math.min(achadas.length - 1, i + n))),
-      escolher: escolherEmpresa,
-      escolherDestacado: () => { const e = achadas[ativo]; if (e) escolherEmpresa(e); },
-      trocarEmpresa: () => mudar({ cliente: null }),
-    },
+    /** os clientes vinculados (opcional; 09/11/2026: "deixe eu colocar mais de um", com um botão "+") */
+    clientes: r.clientes,
+    podeMaisClientes: r.clientes.length < d.MAIS_CLIENTES,
+    /** as empresas da pessoa que a busca acha e que ainda não estão na tarefa (sem busca, as primeiras) */
+    achadasPara: (q: string) => (q.trim() ? emp.buscarEmpresas(empresas, q) : empresas).filter(e => !r.clientes.some(c => mesmaEmpresa(c, e))).slice(0, 8),
+    adicionarCliente: (e: { codigo: number | null; nome: string }) => { if (r.clientes.length < d.MAIS_CLIENTES) mudar({ clientes: [...r.clientes, { codigo: e.codigo, nome: e.nome }] }); },
+    tirarCliente: (i: number) => mudar({ clientes: r.clientes.filter((_, n) => n !== i) }),
     datas: tarefa ? [
       { rotulo: 'Criada em', valor: quando(tarefa.criadaEm) + ' por ' + tarefa.criadaPor.nome },
       { rotulo: 'Concluída em', valor: tarefa.concluidaEm ? quando(tarefa.concluidaEm) : '—' },

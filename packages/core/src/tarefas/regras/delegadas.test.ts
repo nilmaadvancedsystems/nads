@@ -1,3 +1,4 @@
+import { acoesDoStatus, prazoComHora, ultimoMovimento, type Status } from './delegadas';
 import { describe, expect, it } from 'vitest';
 import {
   atrasada, buscar, celulaDoCsv, comAnexos, comMudancas, gravacaoDasMudancas, mudancasDoRascunho, comoEncolher, nomeDaImagemEncolhida, valeEncolher, comParecer, contarAbas, daAba, emAberto, extensaoDe, historicoDaCriacao, historicoDaMudanca, lerTarefa,
@@ -13,11 +14,47 @@ const EM = '2026-10-28T12:00:00.000Z';
 
 function tarefa(p: Partial<TarefaDelegada> = {}): TarefaDelegada {
   return {
-    id: 't', numero: 1, titulo: 'Conferir o balancete', descricao: '', cliente: null, prioridade: 'normal', prazo: '', status: 'pendente',
+    id: 't', numero: 1, titulo: 'Conferir o balancete', descricao: '', cliente: p.clientes?.[0] ?? null, clientes: [], prazoHora: '', prioridade: 'normal', prazo: '', status: 'pendente',
     criadaPor: VITOR, responsavel: NILMA, criadaEm: EM, concluidaEm: '', atualizadaEm: EM, pareceres: [], historico: [], anexos: [], ...p,
   };
 }
 const rascunho = (p: Partial<Rascunho> = {}): Rascunho => ({ ...rascunhoVazio(NILMA), titulo: 'Tarefa', ...p });
+
+describe('a tarefa aprimorada (09/11/2026)', () => {
+  it('os botões do responsável seguem o status', () => {
+    const ids = (s: Status) => acoesDoStatus(s).map(a => a.id);
+    expect(ids('pendente')).toEqual(['iniciar']);
+    expect(ids('andamento')).toEqual(['pausar', 'concluir']);
+    expect(ids('pausada')).toEqual(['retomar', 'concluir']);
+    expect(ids('concluida')).toEqual([]);
+    expect(ids('cancelada')).toEqual([]);
+  });
+  it('a pausada segue em aberto, na aba de quem faz', () => {
+    expect(emAberto({ status: 'pausada' })).toBe(true);
+  });
+  it('vários clientes: o primeiro vai no campo de antes, e a tarefa de antes vira lista', () => {
+    const t = nova(rascunho({ clientes: [{ codigo: 1, nome: 'A' }, { codigo: 2, nome: 'B' }] }), { id: 'x', numero: 1, por: VITOR, em: EM });
+    expect(t.cliente).toEqual({ codigo: 1, nome: 'A' });
+    expect(t.clientes).toHaveLength(2);
+    expect(lerTarefa('y', { cliente: { codigo: 9, nome: 'Velho' } }).clientes).toEqual([{ codigo: 9, nome: 'Velho' }]);
+    expect(lerTarefa('y', {}).clientes).toEqual([]);
+    expect(buscar([t], 'B')).toHaveLength(1);
+  });
+  it('a hora do prazo: valida, pede a data e conta no atraso de hoje', () => {
+    expect(problemaDaTarefa(rascunho({ prazo: '2026-11-10', prazoHora: '25:00' }))).toMatch(/hora/);
+    expect(problemaDaTarefa(rascunho({ prazoHora: '10:00' }))).toMatch(/data do prazo/);
+    expect(problemaDaTarefa(rascunho({ prazo: '2026-11-10', prazoHora: '10:00' }))).toBe('');
+    expect(prazoComHora({ prazo: '2026-11-10', prazoHora: '10:00' })).toBe('10/11/2026 10:00');
+    const t = tarefa({ prazo: '2026-11-10', prazoHora: '10:00' });
+    expect(atrasada(t, '2026-11-10', '10:01')).toBe(true);
+    expect(atrasada(t, '2026-11-10', '09:59')).toBe(false);
+  });
+  it('o último movimento é de quem iniciou, pausou ou concluiu', () => {
+    const t = tarefa({ historico: [{ por: 'V', em: EM, texto: 'Criou a tarefa' }, { por: 'N', em: EM, texto: 'Iniciou a tarefa' }, { por: 'N', em: EM, texto: 'Pausou a tarefa' }, { por: 'N', em: EM, texto: 'Escreveu um parecer' }] });
+    expect(ultimoMovimento(t)?.texto).toBe('Pausou a tarefa');
+    expect(ultimoMovimento(tarefa())).toBeNull();
+  });
+});
 
 describe('validação', () => {
   it('título obrigatório e com limite', () => {
@@ -29,7 +66,7 @@ describe('validação', () => {
     expect(problemaDaTarefa(rascunho({ descricao: 'x'.repeat(5001) }))).toMatch(/descrição passou/);
     expect(problemaDaTarefa(rascunho({ responsavel: null }))).toBe('Escolha para quem delegar.');
     expect(problemaDaTarefa(rascunho({ prazo: '2026-02-30' }))).toMatch(/prazo/);
-    expect(problemaDaTarefa(rascunho({ cliente: { codigo: 292, nome: ' ' } }))).toMatch(/cliente/);
+    expect(problemaDaTarefa(rascunho({ clientes: [{ codigo: 292, nome: ' ' }] }))).toMatch(/cliente/);
   });
   it('parecer', () => {
     expect(problemaDoParecer(' \n ')).toBe('Escreva o parecer.');
@@ -107,12 +144,12 @@ describe('lista', () => {
     expect(daAba(l, 'delegadas', 'u1').map(t => t.id)).toEqual(['eu-pra-clara']);
     expect(daAba(l, 'concluidas', 'u1').map(t => t.id)).toEqual(['fechada-minha', 'cancelada-que-criei']);
     expect(contarAbas(l, 'u1')).toEqual({ minhas: 2, delegadas: 1, concluidas: 2 });
-    expect(statusDaAba('minhas')).toEqual(['pendente', 'andamento']);
+    expect(statusDaAba('minhas')).toEqual(['pendente', 'andamento', 'pausada']);
     expect(statusDaAba('concluidas')).toEqual(['concluida', 'cancelada']);
   });
   it('busca no número, título, descrição e cliente, sem acento', () => {
     const l = [
-      tarefa({ id: 'a', numero: 12, titulo: 'Guia do DAS', cliente: { codigo: 292, nome: 'Exemplo Comércio' } }),
+      tarefa({ id: 'a', numero: 12, titulo: 'Guia do DAS', clientes: [{ codigo: 292, nome: 'Exemplo Comércio' }] }),
       tarefa({ id: 'b', numero: 13, titulo: 'Férias', descricao: 'conferir o recibo' }),
     ];
     expect(buscar(l, 'comercio').map(t => t.id)).toEqual(['a']);
@@ -138,20 +175,20 @@ describe('histórico', () => {
     expect(historicoDaCriacao({ criadaPor: NILMA, responsavel: NILMA }, EM).map(n => n.texto)).toEqual(['Criou a tarefa']);
   });
   it('cada mudança vira uma linha', () => {
-    const antes = tarefa({ prazo: '2026-11-10', cliente: { codigo: 292, nome: 'Exemplo' } });
-    const r = { ...rascunhoDe(antes), titulo: 'Novo título', descricao: 'agora tem', responsavel: CLARA, status: 'andamento' as const, prioridade: 'alta' as const, prazo: '2026-11-12', cliente: null };
+    const antes = tarefa({ prazo: '2026-11-10', clientes: [{ codigo: 292, nome: 'Exemplo' }] });
+    const r = { ...rascunhoDe(antes), titulo: 'Novo título', descricao: 'agora tem', responsavel: CLARA, status: 'andamento' as const, prioridade: 'alta' as const, prazo: '2026-11-12', clientes: [], prazoHora: '' };
     expect(historicoDaMudanca(antes, r, 'Vitor', EM).map(n => n.texto)).toEqual([
       'Mudou o título para "Novo título"',
       'Mudou a descrição',
       'Tirou o cliente 292 · Exemplo',
       'Delegou de Nilma para Clara',
-      'Mudou o status de Pendente para Em andamento',
+      'Iniciou a tarefa',
       'Mudou a prioridade de Normal para Alta',
       'Mudou o prazo de 10/11/2026 para 12/11/2026',
     ]);
-    expect(historicoDaMudanca(tarefa(), { ...rascunhoDe(tarefa()), prazo: '2026-11-01', cliente: { codigo: 14, nome: 'Alfa' } }, 'V', EM).map(n => n.texto))
+    expect(historicoDaMudanca(tarefa(), { ...rascunhoDe(tarefa()), prazo: '2026-11-01', clientes: [{ codigo: 14, nome: 'Alfa' }] }, 'V', EM).map(n => n.texto))
       .toEqual(['Vinculou o cliente 14 · Alfa', 'Pôs o prazo 01/11/2026']);
-    expect(historicoDaMudanca(antes, { ...rascunhoDe(antes), prazo: '', cliente: { codigo: 14, nome: 'Alfa' } }, 'V', EM).map(n => n.texto))
+    expect(historicoDaMudanca(antes, { ...rascunhoDe(antes), prazo: '', clientes: [{ codigo: 14, nome: 'Alfa' }] }, 'V', EM).map(n => n.texto))
       .toEqual(['Trocou o cliente de 292 · Exemplo para 14 · Alfa', 'Tirou o prazo 10/11/2026']);
   });
   it('sem mudança, nada (os espaços das pontas não contam)', () => {
@@ -170,10 +207,10 @@ describe('histórico', () => {
 
 describe('gravar só o que a pessoa mudou (30/10/2026)', () => {
   it('as mudanças são só os campos diferentes do que ela abriu (os espaços das pontas não contam)', () => {
-    const t = tarefa({ cliente: { codigo: 292, nome: 'Exemplo' } });
+    const t = tarefa({ clientes: [{ codigo: 292, nome: 'Exemplo' }] });
     const inicial = rascunhoDe(t);
     expect(mudancasDoRascunho(inicial, { ...inicial, titulo: '  Conferir o balancete ' })).toEqual({});
-    expect(mudancasDoRascunho(inicial, { ...inicial, cliente: { codigo: 292, nome: 'Exemplo' } })).toEqual({});
+    expect(mudancasDoRascunho(inicial, { ...inicial, clientes: [{ codigo: 292, nome: 'Exemplo' }] })).toEqual({});
     expect(mudancasDoRascunho(inicial, { ...inicial, prioridade: 'alta', prazo: '2026-11-12' })).toEqual({ prioridade: 'alta', prazo: '2026-11-12' });
     expect(mudancasDoRascunho(inicial, { ...inicial, responsavel: { ...NILMA } })).toEqual({});
     expect(mudancasDoRascunho(inicial, { ...inicial, responsavel: CLARA })).toEqual({ responsavel: CLARA });
@@ -202,7 +239,7 @@ describe('gravar só o que a pessoa mudou (30/10/2026)', () => {
 
 describe('criar e mudar', () => {
   it('a nova: o texto limpo, o histórico da criação e a conclusão', () => {
-    const t = nova(rascunho({ titulo: '  Guia  ', responsavel: CLARA, cliente: { codigo: 292, nome: ' Exemplo ' } }), { id: 'x', numero: 7, por: NILMA, em: EM });
+    const t = nova(rascunho({ titulo: '  Guia  ', responsavel: CLARA, clientes: [{ codigo: 292, nome: ' Exemplo ' }] }), { id: 'x', numero: 7, por: NILMA, em: EM });
     expect(t.titulo).toBe('Guia');
     expect(t.cliente).toEqual({ codigo: 292, nome: 'Exemplo' });
     expect(t.criadaPor).toEqual(NILMA);
@@ -216,7 +253,7 @@ describe('criar e mudar', () => {
     const t = tarefa();
     const feita = mudar(t, { ...rascunhoDe(t), status: 'concluida' }, NILMA, EM);
     expect(feita.concluidaEm).toBe(EM);
-    expect(feita.historico.at(-1)?.texto).toBe('Mudou o status de Pendente para Concluída');
+    expect(feita.historico.at(-1)?.texto).toBe('Concluiu a tarefa');
     const depois = mudar(feita, { ...rascunhoDe(feita), prioridade: 'alta' }, NILMA, '2026-10-29T00:00:00Z');
     expect(depois.concluidaEm).toBe(EM);
     const reaberta = mudar(feita, { ...rascunhoDe(feita), status: 'andamento' }, NILMA, '2026-10-29T00:00:00Z');
@@ -254,7 +291,7 @@ describe('ler do banco e exportar', () => {
     expect(lerTarefa('d3', { cliente: { codigo: null, nome: 'Nova' } }).cliente).toEqual({ codigo: null, nome: 'Nova' });
   });
   it('as linhas da planilha e a célula do CSV', () => {
-    const l = linhasDaPlanilha([tarefa({ numero: 4, prazo: '2026-11-10', cliente: { codigo: 292, nome: 'Exemplo' }, status: 'concluida', concluidaEm: EM })]);
+    const l = linhasDaPlanilha([tarefa({ numero: 4, prazo: '2026-11-10', clientes: [{ codigo: 292, nome: 'Exemplo' }], status: 'concluida', concluidaEm: EM })]);
     expect(l[0]).toEqual([4, 'Concluída', 'Conferir o balancete', 'Normal', '10/11/2026', '292 · Exemplo', 'Nilma', 'Vitor', '28/10/2026', '28/10/2026', '']);
     // criada e concluída às 22h de Brasília (01h do dia seguinte em UTC): a planilha mostra o dia daqui
     const noite = linhasDaPlanilha([tarefa({ criadaEm: '2026-10-29T01:30:00.000Z', status: 'concluida', concluidaEm: '2026-10-30T01:00:00.000Z' })]);

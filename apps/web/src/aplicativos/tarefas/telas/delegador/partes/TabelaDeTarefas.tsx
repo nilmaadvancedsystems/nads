@@ -2,6 +2,7 @@
 // número e quantos anexos e pareceres tem), Prioridade, Prazo (vermelho quando atrasada), Cliente e a pessoa (quem delegou,
 // o responsável ou de/para quem, conforme a aba). A linha inteira abre a tarefa; o título é o botão (o teclado chega nele).
 import { Icone } from '@nads/ui';
+import type { tarefas } from '@nads/core';
 import { SeloDaPrioridade, SeloDoStatus } from './SelosDaTarefa';
 
 export interface LinhaDaTabelaDeTarefas {
@@ -13,17 +14,28 @@ export interface LinhaDaTabelaDeTarefas {
   prazo: string;
   atrasada: boolean;
   cliente: string;
+  /** quantos clientes além do primeiro */
+  maisClientes?: number;
+  /** todos, um por linha (a dica da célula) */
+  clientes?: string;
   pessoa: string;
+  acoes?: tarefas.delegadas.AcaoDaTarefa[];
+  movimento?: string;
   anexos: number;
   pareceres: number;
 }
 
-export function TabelaDeTarefas({ linhas, colunaDaPessoa, abrir }: { linhas: readonly LinhaDaTabelaDeTarefas[]; colunaDaPessoa: string; abrir: (id: string) => void }) {
+const ICONE_DA_ACAO = { iniciar: 'play', retomar: 'play', pausar: 'clock', concluir: 'check' } as const;
+
+export function TabelaDeTarefas({ linhas, colunaDaPessoa, colunaExtra, abrir, fazerAcao }: {
+  linhas: readonly LinhaDaTabelaDeTarefas[]; colunaDaPessoa: string; colunaExtra?: 'acoes' | 'movimento' | null;
+  abrir: (id: string) => void; fazerAcao?: (id: string, status: tarefas.delegadas.Status) => void;
+}) {
   return (
     <div className="table-wrap tdl-tabela">
       <table className="table-compact">
         <thead>
-          <tr><th>Status</th><th>Título</th><th>Prioridade</th><th>Prazo</th><th>Cliente</th><th>{colunaDaPessoa}</th></tr>
+          <tr><th>Status</th><th>Título</th><th>Prioridade</th><th>Prazo</th><th>Cliente</th><th>{colunaDaPessoa}</th>{colunaExtra === 'movimento' && <th>Andamento</th>}{colunaExtra === 'acoes' && <th />}</tr>
         </thead>
         <tbody>
           {linhas.map(l => (
@@ -43,8 +55,18 @@ export function TabelaDeTarefas({ linhas, colunaDaPessoa, abrir }: { linhas: rea
               </td>
               <td><SeloDaPrioridade valor={l.prioridade.valor} rotulo={l.prioridade.rotulo} /></td>
               <td className={'num tdl-prazo' + (l.atrasada ? ' tdl-atrasada' : '')} title={l.atrasada ? 'Atrasada' : undefined}>{l.prazo || <span className="fraco">—</span>}</td>
-              <td className="tdl-cliente" title={l.cliente || undefined}>{l.cliente || <span className="fraco">—</span>}</td>
+              <td title={l.clientes || l.cliente || undefined}><span className="tdl-cliente-linha"><span className="tdl-cliente">{l.cliente || <span className="fraco">—</span>}</span>{!!l.maisClientes && l.maisClientes > 0 && <span className="fraco">+{l.maisClientes}</span>}</span></td>
               <td className="tdl-pessoa">{l.pessoa}</td>
+              {colunaExtra === 'movimento' && <td className="fraco">{l.movimento}</td>}
+              {colunaExtra === 'acoes' && (
+                <td><div className="tdl-acoes-linha">
+                  {l.acoes?.map(a => (
+                    <button key={a.id} type="button" className="btn btn-outline" onClick={e => { e.stopPropagation(); fazerAcao?.(l.id, a.status); }}>
+                      <Icone nome={ICONE_DA_ACAO[a.id]} width={14} height={14} />{a.rotulo}
+                    </button>
+                  ))}
+                </div></td>
+              )}
             </tr>
           ))}
         </tbody>
