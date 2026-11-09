@@ -34,14 +34,13 @@ export const APLICACOES: readonly Aplicacao[] = [
   { id: 'inicio', nome: 'Início', icone: 'home', grupo: 'Rotinas', pronta: true, paginas: [
     { id: 'inicio', rotulo: 'Início', icone: 'home', titulo: 'Início' },
   ] },
-  // o nome na gaveta virou Contábil (Vitor, 06/11/2026: "No lugar de 'Minhas empresas', coloca o nome 'Contábil'"); o
-  // endereço segue /tarefas/minhas-empresas/...
-  // o ícone virou a balança (Vitor, 06/11/2026: "muda o icone também")
-  { id: 'minhas-empresas', nome: 'Contábil', icone: 'scale', grupo: 'Rotinas', pronta: true, paginas: [
+  // o nome voltou a ser Minhas empresas para todos (Vitor, 09/11/2026: foi Contábil de 06/11 a 09/11; cada um vê a rotina do
+  // setor dele nela). O ícone segue a balança (06/11/2026: "muda o icone também")
+  { id: 'minhas-empresas', nome: 'Minhas empresas', icone: 'scale', grupo: 'Rotinas', pronta: true, paginas: [
     // o painel do progresso das empresas (27/10/2026: "a parte de minhas empresas vai virar um dashboard de progresso")
     // uma tela só, sem a barra lateral (27/10/2026: "coloque paradas e configuracoes tudo em uma so tela aqui nesse
     // inicial, remove a barra lateral"): a lista, as etapas paradas e os históricos do Creditor. Os Insights saíram
-    { id: 'empresas', rotulo: 'Empresas', icone: 'list', titulo: 'Contábil' },
+    { id: 'empresas', rotulo: 'Empresas', icone: 'list', titulo: 'Minhas empresas' },
     // as Justificativas e as Configurações abrem em janela, pelos botões da barra da lista (Vitor, 28/10/2026: "remover esse
     // menu superior e colocar uns ícones de botões de justificativas e configurações aparecer uma popup")
   ] },
@@ -236,9 +235,6 @@ export function aplicacoesDe(op: Operador): Aplicacao[] {
     // hipótese alguma ter acesso onde ele vê os usuários cadastrados, em qualquer função"): os Usuários das Configurações e a
     // Liberação de acessos das Senhas saem; o link direto cai na primeira página liberada
     .map(a => (ehDiretor(op) ? a : a.id === 'cadastro' ? { ...a, paginas: a.paginas.filter(p => p.id !== 'usuarios') } : a.id === 'senhas' ? { ...a, paginas: a.paginas.filter(p => p.id !== 'acesso') } : a))
-    // a lista das empresas se chama Contábil só para quem é do Contábil (06/11/2026); para o Fiscal e o DP ela mostra a
-    // rotina do setor deles, com o nome de antes
-    .map(a => (a.id === 'minhas-empresas' && !podeVerOutrosSetores(op) && op.departamento !== 'contabil' ? { ...a, nome: 'Minhas empresas', paginas: a.paginas.map(p => ({ ...p, titulo: 'Minhas empresas' })) } : a))
     // na gaveta, um grupo depois do outro: Rotinas, Comunicação, Escritório
     .sort((x, y) => ORDEM_DOS_GRUPOS.indexOf(x.grupo) - ORDEM_DOS_GRUPOS.indexOf(y.grupo));
 }
@@ -274,7 +270,7 @@ export const CHAVE_INICIO = 'nads-tarefas-inicio';
 export const INICIOS: readonly { valor: string; rotulo: string; caminho: string }[] = [
   // o Início voltou (06/11/2026, à tarde) e é de novo onde a Tarefas abre, o primeiro
   { valor: 'inicio', rotulo: 'Início', caminho: BASE + '/inicio' },
-  { valor: 'empresas', rotulo: 'Contábil', caminho: BASE + '/minhas-empresas/empresas' },
+  { valor: 'empresas', rotulo: 'Minhas empresas', caminho: BASE + '/minhas-empresas/empresas' },
   { valor: 'drive', rotulo: 'Drive', caminho: BASE + '/drive/pastas' },
   { valor: 'gmail', rotulo: 'Gmail', caminho: BASE + '/contato/caixa' },
 ];
