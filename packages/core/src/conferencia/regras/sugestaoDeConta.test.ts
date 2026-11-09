@@ -14,9 +14,14 @@ const PLANO = [
 ];
 
 describe('sugestaoDaNatureza', () => {
-  it('venda de produção (5101, 6116 a entrega da encomenda): a conta de venda de produção do plano', () => {
+  it('encomenda para entrega futura: Adiantamento de clientes na venda e Adiantamento a fornecedores na compra (09/11/2026)', () => {
+    for (const cfop of ['6116', '5117', '5922']) expect(sugestaoDaNatureza([cfop], 'Saída', PLANO)).toMatchObject({ tipo: 'conta', contas: [{ codigo: '80001' }] });
+    const comFornecedor = [...PLANO, conta('10501', 'Adiantamento a Fornecedores', 0, 'Ativo', 'D')];
+    for (const cfop of ['2116', '1117', '1922']) expect(sugestaoDaNatureza([cfop], 'Entrada', comFornecedor)).toMatchObject({ tipo: 'conta', contas: [{ codigo: '10501' }] });
+    expect(sugestaoDaNatureza(['2117'], 'Entrada', PLANO)).toMatchObject({ tipo: 'falta-conta', pede: 'Adiantamento a fornecedores' });
+  });
+  it('venda de produção (5101): a conta de venda de produção do plano', () => {
     expect(sugestaoDaNatureza(['5101', '6101', '7101'], 'Saída', PLANO)).toMatchObject({ tipo: 'conta', contas: [{ codigo: '90004' }] });
-    expect(sugestaoDaNatureza(['6116'], 'Saída', PLANO)).toMatchObject({ tipo: 'conta', contas: [{ codigo: '90004' }] });
   });
   it('revenda (6102): a conta de vendas de mercadorias de nome mais curto, sem a de produção', () => {
     expect(sugestaoDaNatureza(['6102'], 'Saída', PLANO)).toMatchObject({ tipo: 'conta', contas: [{ codigo: '90001' }] });
