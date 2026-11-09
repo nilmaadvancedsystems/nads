@@ -305,6 +305,13 @@ function SubindoAoDrive() {
   );
 }
 
+/** O extrato sem movimento no Drive (Vitor, 09/11/2026: "faltou o feedback se tá upado no drive, mesmo que sem movimento"): o Drive girando enquanto o robô grava; gravado, o logo do Drive. */
+function DriveDoSemMovimento({ subindo, arquivo }: { subindo: boolean; arquivo: { nome: string } | null }) {
+  if (subindo) return <SubindoAoDrive />;
+  if (!arquivo) return null;
+  return <span className="icon-btn icon-btn-sm imp-btn imp-drive" title={'Arquivado no Drive: ' + arquivo.nome} aria-label="Arquivado no Drive"><LogoDrive /></span>;
+}
+
 function MesesDoBanco({ meses, competencia, buscandoMes, travado, aceitarExtrato, aceitarRazao, onMes, onArquivos, onExcluir, onDrive, onEmail, onVer, onVerImportado, onSemMovimento, naTarefa, puxados, subindo, semMovimentoDoDrive }: {
   meses: ReturnType<Vm['mesesDoBanco']>;
   /** o mês que o "Todos pelo Drive" está buscando agora: a célula do extrato gira */
@@ -335,6 +342,7 @@ function MesesDoBanco({ meses, competencia, buscandoMes, travado, aceitarExtrato
       const nomeDoLado = lado === 'banco' ? 'o extrato' : 'o razão';
       return (
         <>
+          {lado === 'banco' && <DriveDoSemMovimento subindo={subindo(m.mes)} arquivo={doDrive} />}
           <button type="button" className="imp-mes-sem" disabled={travado || !naTarefa} onClick={() => onSemMovimento(m.mes, false)} title="Não teve movimento — clique para desfazer">s/ mov.</button>
           {/* o razão não tem o olhinho (Vitor, 06/11/2026: "o razão não precisa do olho") */}
           {lado === 'sistema' ? null
@@ -975,6 +983,7 @@ export function TarefaExtratos() {
                         </>
                       ) : (
                         <>
+                          {semMov && <DriveDoSemMovimento subindo={d.subindoAoDrive(b.id, vm.competencia)} arquivo={vm.arquivoSemMovimento(b.id, vm.competencia)} />}
                           <BotaoLado lado={b.extrato} titulo="Extrato" aceitar={cxExtrato.aceitar} travado={travado}
                             onArquivos={fs => importarExtrato(b, fs)} onExcluir={() => undefined} />
                           <button type="button" className="icon-btn icon-btn-sm imp-btn imp-drive" disabled={travado} title="Buscar no Drive" aria-label="Buscar no Drive"

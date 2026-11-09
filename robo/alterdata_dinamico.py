@@ -130,18 +130,41 @@ def mes(data):
     return data[3:5] + data[6:10]
 
 
-def campo(w, cls, esquerda, topo):
+def campo(w, cls, esquerda, topo, ordem=0):
+    """O campo na posição medida no PC (1366x768); com a janela montada noutra largura (o console do servidor tem
+    1024x768), os da mesma linha em ordem da esquerda para a direita (ordem = 0 o primeiro, 1 o segundo…), contados a partir
+    do que fica mais perto da posição medida."""
     r = w.rectangle()
-    for c in filhos(w, cls):
+    todos = filhos(w, cls)
+    for c in todos:
         rc = c.rectangle()
         if abs(rc.left - r.left - esquerda) < 6 and abs(rc.top - r.top - topo) < 6:
             return c
-    return None
+    linha = sorted([c for c in todos if abs(c.rectangle().top - r.top - topo) < 12], key=lambda c: c.rectangle().left)
+    if not linha:
+        return None
+    return linha[ordem] if ordem < len(linha) else None
+
+
+def focar(c):
+    """O clique no campo quando ele está inteiro na tela; senão, o foco direto (o campo pode ficar além da borda)."""
+    rc = c.rectangle()
+    import win32api
+    if rc.left >= 0 and rc.right <= win32api.GetSystemMetrics(0) and rc.top >= 0 and rc.bottom <= win32api.GetSystemMetrics(1):
+        c.click_input()
+    else:
+        c.set_focus()
+
+
+def faixa():
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # o -I tira a pasta do roteiro do caminho
+    import alterdata_faixa
+    return alterdata_faixa
 
 
 
 def preparar_tela():
-    """A tela acesa e com a largura dos cliques (1366x768) enquanto o roteiro roda: alterdata_tela.py (09/11/2026)."""
+    """A tela acesa enquanto o roteiro roda (sem trocar a resolução): alterdata_tela.py (09/11/2026)."""
     try:
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # o -I tira a pasta do roteiro do caminho
         import alterdata_tela
@@ -167,17 +190,25 @@ try:
     passo('abrindo Consultas → Balancete Dinâmico')
     principal = principais[0]
     preparar_tela()
+    fx = faixa()
+    try:
+        fechadas = fx.liberar(principal)
+    except fx.Falha as e:
+        falhar(com_tela(str(e), 'dinamico-travado'))
+    if fechadas:
+        print('TELA: o Contábil estava travado por ' + ', '.join(fechadas) + ' (janela na frente da principal): fechei', flush=True)
     principal.set_focus()
     if not principal.is_maximized():
         principal.maximize()
     time.sleep(.5)
-    r = principal.rectangle()
-    ox, oy = r.left + 8, r.top + 8
-    clique('aba Consultas')
-    mouse.click(coords=(ox + 188, oy + 47))
-    time.sleep(.8)
-    clique('Balancete Dinâmico')
-    mouse.click(coords=(ox + 330, oy + 110))
+    # a aba e o botão pelo nome (09/11/2026: pela posição, no console de 1024x768, o clique caía noutro botão)
+    try:
+        clique('aba Consultas')
+        fx.aba(principal, 'Consultas')
+        clique('Balancete Dinâmico')
+        fx.botao(principal, 'Balancete Dinâmico')
+    except fx.Falha as e:
+        falhar(com_tela(str(e), 'dinamico-faixa'))
     w = esperar(lambda: janelas(CLASSE), 25)
     if not w:
         falhar(com_tela('o Balancete Dinâmico não abriu', 'dinamico-nao-abriu'))
@@ -196,25 +227,28 @@ try:
     if not emp:
         falhar('não achei o campo da empresa')
     clique('campo Empresa: ' + str(int(CODIGO)))
-    emp.click_input()
+    focar(emp)
     emp.type_keys('^a{DEL}' + str(int(CODIGO)) + '{TAB}', pause=0.03)
     time.sleep(1.2)
     for m in janelas('TMessageForm'):
         falhar('o Alterdata mostrou uma mensagem ao escolher a empresa ' + CODIGO + ': ' + texto_da_mensagem(m))
-    nome = esperar(lambda: texto(campo(w, 'TcxTextEdit', 103, 101)), 4)
+    def nome_da_empresa():
+        c = campo(w, 'TcxTextEdit', 103, 101)
+        return texto(c) if c else ''
+    nome = esperar(nome_da_empresa, 4)
     if not nome:
         falhar('a empresa ' + CODIGO + ' não apareceu na tela')
 
     passo('período ' + INICIO[3:] + ' a ' + FIM[3:])
-    for esq, valor in ((967, INICIO), (1057, FIM)):
-        c = campo(w, 'TcxMaskEdit', esq, 102)
+    for i, (esq, valor) in enumerate(((967, INICIO), (1057, FIM))):
+        c = campo(w, 'TcxMaskEdit', esq, 102, i)
         if not c:
             falhar('não achei o período')
         clique('período ' + valor[3:])
-        c.click_input()
+        focar(c)
         c.type_keys('{HOME}' + mes(valor) + '{TAB}', pause=0.03)
         time.sleep(.2)
-    lidos = [texto(campo(w, 'TcxMaskEdit', e, 102)) for e in (967, 1057)]
+    lidos = [texto(campo(w, 'TcxMaskEdit', e, 102, i)) for i, e in enumerate((967, 1057))]
     if lidos != [INICIO[3:], FIM[3:]]:
         falhar('o período na tela (' + ' a '.join(lidos) + ') não é o pedido')
 
@@ -229,13 +263,21 @@ try:
     passo('exportando')
     rw = w.rectangle()
     wx, wy = rw.left + 8, rw.top + 8
+
+    def botao_da_barra(rotulo, x):
+        # o botão da barra do Balancete Dinâmico pelo nome (UI Automation); sem ele, a posição medida no PC
+        b = fx.botao_da_janela(w, rotulo)
+        if b:
+            fx.clicar(b)
+        else:
+            mouse.click(coords=(wx + x, wy + 45))
     gravou = False
     sv = None
     limite = time.time() + 120
     while time.time() < limite and not sv:
         w.set_focus()
         clique('Exportar')
-        mouse.click(coords=(wx + 235, wy + 45))
+        botao_da_barra('Exportar', 235)
         x = esperar(lambda: janelas('#32770', 'Salvar') or janelas('TMessageForm'), 6)
         if not x:
             continue   # a consulta ainda não terminou (o Exportar fica cinza): tenta de novo
@@ -249,7 +291,7 @@ try:
             # a Configuração para salvar em excel: Gravar com o padrão, sem mudar nada (uma vez)
             clique('Configuração → Gravar (o padrão)')
             w.set_focus()
-            mouse.click(coords=(wx + 160, wy + 45))
+            botao_da_barra('Configuração', 160)
             cf = esperar(lambda: janelas('TfrmConfiguraExibicaoSaldo'), 6)
             if not cf:
                 falhar('a Configuração para salvar em excel não abriu')
