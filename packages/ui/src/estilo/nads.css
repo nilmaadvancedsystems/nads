@@ -2319,21 +2319,19 @@ main.main:has(> .content > .explorador){padding:0;}
 .abertura{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;background:var(--bg);}
 .abertura-n{width:auto;height:min(160px,28vh);overflow:visible;}
 .abertura-a,.abertura-b{transform-box:view-box;transform-origin:50% 50%;}
-/* vidro: só sobre a área que carrega (a ferramenta da etapa), com o fundo embaçado; o N um pouco menor */
-/* o vidro tem cara de vidro mesmo quando atrás não tem nada ainda (a ferramenta acabou de começar a carregar e a área
-   está vazia): duas luzes difusas, a vermelha e a prata do N, passeiam devagar por trás de um vidro fosco com um
-   reflexo na diagonal e uma borda clara em cima; o que já houver atrás aparece embaçado */
+/* vidro: o N por cima do que carrega; o N um pouco menor */
+/* o vidro tem cara de vidro mesmo quando atrás não tem nada ainda: duas luzes difusas paradas, a vermelha e a prata do N,
+   atrás de um véu com um reflexo na diagonal e uma borda clara em cima */
 /* a abertura com o N cobre a tela inteira, por cima do cabeçalho e da lateral (Vitor, 02/10/2026) */
 .abertura.vidro{position:fixed;inset:0;z-index:200;min-height:0;overflow:hidden;border-radius:0;
   background:
     linear-gradient(120deg, transparent 25%, color-mix(in srgb, #FFFFFF 7%, transparent) 45%, transparent 65%),
-    color-mix(in srgb, var(--bg) 45%, transparent);
-  box-shadow:inset 0 1px 0 color-mix(in srgb, #FFFFFF 14%, transparent), inset 0 0 0 1px color-mix(in srgb, #FFFFFF 6%, transparent);
-  -webkit-backdrop-filter:blur(18px) saturate(140%);backdrop-filter:blur(18px) saturate(140%);}
+    color-mix(in srgb, var(--bg) 82%, transparent);
+  box-shadow:inset 0 1px 0 color-mix(in srgb, #FFFFFF 14%, transparent), inset 0 0 0 1px color-mix(in srgb, #FFFFFF 6%, transparent);}
+/* sem backdrop-filter e com as luzes paradas (09/11/2026, "queda de fps"): é a tela inteira, a cada troca de tela */
 .abertura.vidro::before,.abertura.vidro::after{content:'';position:absolute;z-index:-1;width:min(560px,70%);aspect-ratio:1;border-radius:50%;pointer-events:none;}
 .abertura.vidro::before{left:8%;top:6%;background:radial-gradient(circle, color-mix(in srgb, var(--btn-primary) 38%, transparent), transparent 66%);}
 .abertura.vidro::after{right:6%;bottom:2%;background:radial-gradient(circle, color-mix(in srgb, #C9CDD3 30%, transparent), transparent 66%);}
-@keyframes vidroLuz{from{transform:translate(-6%,-4%) scale(1);}to{transform:translate(10%,8%) scale(1.15);}}
 html[data-theme="light"] .abertura.vidro::after{background:radial-gradient(circle, color-mix(in srgb, #8A9099 26%, transparent), transparent 66%);}
 .abertura.vidro .abertura-n{height:min(120px,22vh);}
 @keyframes aberturaVidro{from{opacity:0;}to{opacity:1;}}
@@ -2548,8 +2546,6 @@ tr.linha-abre,.imp-linha,.gh-crumb,.drawer-x{
 .icon-btn.girando svg{animation:drive-gira 1s linear infinite !important;}
 .esqueleto-linha::after{animation:esqueletoBrilho 1.5s var(--ease-in-out) infinite !important;}
 .abertura.vidro{animation:aberturaVidro .25s ease-out both !important;}
-.abertura.vidro::before{animation:vidroLuz 7s var(--ease-in-out) infinite alternate !important;}
-.abertura.vidro::after{animation:vidroLuz 8s var(--ease-in-out) infinite alternate-reverse !important;}
 /* a barrinha que esvaziava na janela de "feito" era só animação */
 html:not([data-animacoes=todas]) .modal-ok-barra{display:none;}
 /* a entrada da gaveta ☰ (Vitor, 06/10/2026: "faça uma animação de entrada desse menu lateral"): ela desliza da esquerda, o

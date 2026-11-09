@@ -16,11 +16,20 @@
       ],
       "headers": [
         {
-          "source": "**",
+          "source": "!/assets/**",
           "headers": [
             {
               "key": "Cache-Control",
               "value": "no-cache"
+            }
+          ]
+        },
+        {
+          "source": "/assets/**",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "public, max-age=31536000, immutable"
             }
           ]
         }
@@ -42,11 +51,20 @@
       ],
       "headers": [
         {
-          "source": "**",
+          "source": "!/assets/**",
           "headers": [
             {
               "key": "Cache-Control",
               "value": "no-cache"
+            }
+          ]
+        },
+        {
+          "source": "/assets/**",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "public, max-age=31536000, immutable"
             }
           ]
         }
@@ -68,11 +86,20 @@
       ],
       "headers": [
         {
-          "source": "**",
+          "source": "!/assets/**",
           "headers": [
             {
               "key": "Cache-Control",
               "value": "no-cache"
+            }
+          ]
+        },
+        {
+          "source": "/assets/**",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "public, max-age=31536000, immutable"
             }
           ]
         }
@@ -94,11 +121,20 @@
       ],
       "headers": [
         {
-          "source": "**",
+          "source": "!/assets/**",
           "headers": [
             {
               "key": "Cache-Control",
               "value": "no-cache"
+            }
+          ]
+        },
+        {
+          "source": "/assets/**",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "public, max-age=31536000, immutable"
             }
           ]
         }
@@ -120,11 +156,20 @@
       ],
       "headers": [
         {
-          "source": "**",
+          "source": "!/assets/**",
           "headers": [
             {
               "key": "Cache-Control",
               "value": "no-cache"
+            }
+          ]
+        },
+        {
+          "source": "/assets/**",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "public, max-age=31536000, immutable"
             }
           ]
         }
@@ -146,11 +191,20 @@
       ],
       "headers": [
         {
-          "source": "**",
+          "source": "!/assets/**",
           "headers": [
             {
               "key": "Cache-Control",
               "value": "no-cache"
+            }
+          ]
+        },
+        {
+          "source": "/assets/**",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "public, max-age=31536000, immutable"
             }
           ]
         }
@@ -172,11 +226,20 @@
       ],
       "headers": [
         {
-          "source": "**",
+          "source": "!/assets/**",
           "headers": [
             {
               "key": "Cache-Control",
               "value": "no-cache"
+            }
+          ]
+        },
+        {
+          "source": "/assets/**",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "public, max-age=31536000, immutable"
             }
           ]
         }
@@ -198,11 +261,20 @@
       ],
       "headers": [
         {
-          "source": "**",
+          "source": "!/assets/**",
           "headers": [
             {
               "key": "Cache-Control",
               "value": "no-cache"
+            }
+          ]
+        },
+        {
+          "source": "/assets/**",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "public, max-age=31536000, immutable"
             }
           ]
         }
@@ -224,11 +296,20 @@
       ],
       "headers": [
         {
-          "source": "**",
+          "source": "!/assets/**",
           "headers": [
             {
               "key": "Cache-Control",
               "value": "no-cache"
+            }
+          ]
+        },
+        {
+          "source": "/assets/**",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "public, max-age=31536000, immutable"
             }
           ]
         }
@@ -250,11 +331,20 @@
       ],
       "headers": [
         {
-          "source": "**",
+          "source": "!/assets/**",
           "headers": [
             {
               "key": "Cache-Control",
               "value": "no-cache"
+            }
+          ]
+        },
+        {
+          "source": "/assets/**",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "public, max-age=31536000, immutable"
             }
           ]
         }
@@ -276,11 +366,20 @@
       ],
       "headers": [
         {
-          "source": "**",
+          "source": "!/assets/**",
           "headers": [
             {
               "key": "Cache-Control",
               "value": "no-cache"
+            }
+          ]
+        },
+        {
+          "source": "/assets/**",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "public, max-age=31536000, immutable"
             }
           ]
         }
@@ -302,7 +401,7 @@
       ],
       "headers": [
         {
-          "source": "**",
+          "source": "!/assets/**",
           "headers": [
             {
               "key": "Cache-Control",
@@ -315,6 +414,15 @@
             {
               "key": "Referrer-Policy",
               "value": "no-referrer"
+            }
+          ]
+        },
+        {
+          "source": "/assets/**",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "public, max-age=31536000, immutable"
             }
           ]
         }
@@ -336,7 +444,7 @@
       ],
       "headers": [
         {
-          "source": "**",
+          "source": "!/assets/**",
           "headers": [
             {
               "key": "Cache-Control",
@@ -349,6 +457,15 @@
             {
               "key": "Referrer-Policy",
               "value": "no-referrer"
+            }
+          ]
+        },
+        {
+          "source": "/assets/**",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "public, max-age=31536000, immutable"
             }
           ]
         }
@@ -370,7 +487,7 @@
       ],
       "headers": [
         {
-          "source": "**",
+          "source": "!/assets/**",
           "headers": [
             {
               "key": "Cache-Control",
@@ -383,6 +500,15 @@
             {
               "key": "Referrer-Policy",
               "value": "no-referrer"
+            }
+          ]
+        },
+        {
+          "source": "/assets/**",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "public, max-age=31536000, immutable"
             }
           ]
         }

@@ -5,7 +5,7 @@
 // aviso. Cada pedido abre a janela flutuante do andamento (os passos, a barra e o resultado, ou o erro).
 import { tarefas as t } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PedidoSieg } from '../../dados/sieg';
 import { useSieg } from '../../dados/repo';
 
@@ -56,7 +56,7 @@ export function useSiegDaEtapa(tipo: 'contagem' | 'saidas', codigo: string, comp
   const [vendo, setVendo] = useState('');
   // o relógio da janela (o tempo passado e o que falta), de segundo em segundo enquanto o robô trabalha
   const [agora, setAgora] = useState(() => Date.now());
-  const conf = sai.dados ? t.sieg.conferirSaidas(sai.dados) : null;
+  const conf = useMemo(() => (sai.dados ? t.sieg.conferirSaidas(sai.dados) : null), [sai.dados]);
   const linhas = (r: Record<t.sieg.TipoDeNota, number>) => t.sieg.TIPOS_DE_NOTA.filter(x => r[x.id] > 0).map(x => ({ rotulo: x.rotulo, n: r[x.id] }));
   const pedindo = rodando(pedido);
 
