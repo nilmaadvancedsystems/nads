@@ -161,7 +161,7 @@ export function linhasDoSaldo(e: Empresa, grupos: Record<string, GrupoNatureza>,
     const saldo = saldoDasContas(e, comp.contas);
     const cfops = comp.naturezas.reduce<string[]>((l, k) => l.concat(grupos[k].cfops), [])
       .filter((c, i, l) => l.indexOf(c) === i).sort(compararNumerico);
-    // todas as naturezas desta conta marcadas à mão no Checklist
+    // todas as naturezas desta conta marcadas à mão (as marcas de quando a tela Naturezas existia)
     const conferidoManual = comp.naturezas.every(k => {
       const mk = pk + '||' + k;
       return e.confMarcados.indexOf(mk) > -1 && e.confAutoMarcados.indexOf(mk) < 0;

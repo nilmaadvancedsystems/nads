@@ -7,7 +7,7 @@ describe('filtro do período (a Conferência dentro da etapa)', () => {
   });
   it('o período do Em Lote: do primeiro dia do primeiro mês ao último do último, na ordem', () => {
     const f = filtroDoPeriodo(['2026-08', '2026-06', '2026-07', '2026-06']);
-    expect(f).toMatchObject({ meses: ['2026-06', '2026-07', '2026-08'], dataDe: '01/06/2026', dataAte: '31/08/2026', busca: '' });
+    expect(f).toMatchObject({ meses: ['2026-06', '2026-07', '2026-08'], dataDe: '01/06/2026', dataAte: '31/08/2026' });
     expect(noPeriodo({ data: '15/07/2026', comp: '2026-07' }, f)).toBe(true);
     expect(noPeriodo({ data: '01/09/2026', comp: '2026-09' }, f)).toBe(false);
   });

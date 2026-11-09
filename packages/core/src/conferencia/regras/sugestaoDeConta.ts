@@ -4,8 +4,8 @@
 // outra: a Caixa é 10101 numa e outra coisa em outra). Sem a conta no plano, a sugestão diz o que falta criar no Alterdata.
 //
 // Decisões do Vitor (05/11/2026):
-//   - venda para entrega futura: o simples faturamento (5922/6922) vai para Adiantamento de clientes; a receita entra na entrega
-//     (5116/6116 e 5117/6117) — NBC TG 47;
+//   - encomenda para entrega futura (116, 117 e o simples faturamento 922; Vitor, 09/11/2026): na venda, Adiantamento de clientes;
+//     na compra, Adiantamento a fornecedores;
 //   - remessas e retornos sem venda (comodato, conserto, industrialização, demonstração, outras saídas): não vão para o Contábil;
 //   - venda de produção sem conta de produção no plano: avisa que falta a conta (não cai em Vendas de mercadorias);
 //   - bonificação, doação ou brinde dado (5910/6910): despesa de bonificação.
@@ -37,6 +37,10 @@ interface Regra {
   grupos?: readonly Grupo[];
   nome?: RegExp;
   semNome?: RegExp;
+  /** a venda: o CFOP 7xxx pede a conta do mercado externo, e o 5xxx e o 6xxx, uma que não seja */
+  venda?: true;
+  /** o que o nome também tem de ter */
+  tambem?: RegExp;
   /** o centro de custo em que a conta tem de estar (com o plano dividido em centros; sem eles, vale o nome) */
   centro?: CentroDeCusto;
 }
@@ -86,17 +90,17 @@ const NBC_ESTOQUE = 'NBC TG 16 / NBC TG 1002 (estoques e custos)';
 
 const REGRAS: readonly Regra[] = [
   // ─── saídas ───
-  { tipo: 'Saída', finais: ['101', '103', '105', '107', '109', '111', '113', '116', '118', '122', '124', '125', '401'],
-    pede: 'Venda de produção do estabelecimento', grupos: ['Receita'], nome: /\b(venda|vendas|receita)\b.*\bprodu/, semNome: /devolu|cancel|abatim/,
-    motivo: 'É a venda do que a própria empresa fabricou: receita bruta de venda de produtos, reconhecida na entrega do produto ao cliente (o 5116/6116 é a entrega da encomenda, quando a receita entra).',
+  { tipo: 'Saída', finais: ['101', '103', '105', '107', '109', '111', '113', '118', '122', '124', '125', '401'],
+    pede: 'Venda de produção do estabelecimento', venda: true, grupos: ['Receita'], nome: /\b(venda|vendas|receita)\b.*\bprodu/, semNome: /devolu|cancel|abatim/,
+    motivo: 'É a venda do que a própria empresa fabricou: receita bruta de venda de produtos, reconhecida na entrega do produto ao cliente.',
     base: NBC_RECEITA },
-  { tipo: 'Saída', finais: ['102', '104', '106', '108', '110', '112', '114', '115', '117', '119', '120', '123', '403', '405'],
-    pede: 'Venda de mercadorias', grupos: ['Receita'], nome: /\b(venda|vendas|receita)\b.*\bmercador/, semNome: /devolu|cancel|abatim|produ/,
-    motivo: 'É a revenda de mercadoria comprada de terceiros: receita bruta de venda de mercadorias, reconhecida na entrega (o 5117/6117 é a entrega da encomenda).',
+  { tipo: 'Saída', finais: ['102', '104', '106', '108', '110', '112', '114', '115', '119', '120', '123', '403', '405'],
+    pede: 'Venda de mercadorias', venda: true, grupos: ['Receita'], nome: /\b(venda|vendas|receita)\b.*\bmercador/, semNome: /devolu|cancel|abatim|produ/,
+    motivo: 'É a revenda de mercadoria comprada de terceiros: receita bruta de venda de mercadorias, reconhecida na entrega.',
     base: NBC_RECEITA },
-  { tipo: 'Saída', finais: ['922'],
-    pede: 'Adiantamento de clientes', grupos: ['Passivo'], nome: /adiantament.*client/,
-    motivo: 'O simples faturamento da venda para entrega futura ainda não é receita: o cliente pagou (ou deve) antes de receber. Fica no passivo, em Adiantamento de clientes, e vira receita na entrega (5116/6116, 5117/6117).',
+  { tipo: 'Saída', finais: ['116', '117', '922'],
+    pede: 'Adiantamento de clientes', grupos: ['Passivo'], nome: /adiant.*client|client.*adiant/,
+    motivo: 'Venda de encomenda para entrega futura: o cliente paga antes de receber. Fica no passivo, em Adiantamento de clientes, até virar receita na entrega.',
     base: NBC_RECEITA + ' · ' + ESCRITORIO },
   { tipo: 'Saída', finais: ['910'],
     // sem exigir o centro: nos planos do escritório a Bonificação fica ora nas despesas com vendas, ora em outras despesas
@@ -132,7 +136,11 @@ const REGRAS: readonly Regra[] = [
     pede: 'Compras de insumos (CPV)', grupos: ['Despesa'], centro: 'CPV', nome: /compra.*(insumo|materia|industrializ)|insumo|materia prima/, semNome: /devolu|frete/,
     motivo: 'Compra do que entra na produção (indústria): custo dos produtos vendidos (CPV), não despesa e não o CMV. O estoque se acerta no fechamento.',
     base: NBC_ESTOQUE },
-  { tipo: 'Entrada', finais: ['102', '403', '117', '118', '121'],
+  { tipo: 'Entrada', finais: ['116', '117', '922'],
+    pede: 'Adiantamento a fornecedores', grupos: ['Ativo'], nome: /adiant.*fornec|fornec.*adiant/,
+    motivo: 'Compra de encomenda para recebimento futuro: a empresa paga antes de receber. Fica no ativo, em Adiantamento a fornecedores, até a mercadoria chegar.',
+    base: ESCRITORIO },
+  { tipo: 'Entrada', finais: ['102', '403', '118', '121'],
     pede: 'Compras de mercadorias (CMV)', grupos: ['Despesa'], centro: 'CMV', nome: /compra.*mercador|mercadorias para revenda/, semNome: /devolu|frete/,
     motivo: 'Compra de mercadoria para revender (comércio): custo das mercadorias vendidas (CMV), não despesa e não o CPV. O estoque se acerta no fechamento.',
     base: NBC_ESTOQUE },
@@ -176,11 +184,21 @@ const REGRAS: readonly Regra[] = [
     pede: 'Bonificações recebidas', grupos: ['Receita', 'Despesa'], nome: /bonifica/,
     motivo: 'A mercadoria recebida em bonificação entra no estoque sem custo: o valor vai para bonificações recebidas (ou reduz o custo das compras, conforme o plano).',
     base: ESCRITORIO },
-  { tipo: 'Entrada', nao: true, finais: ['901', '902', '903', '904', '905', '906', '907', '908', '909', '911', '912', '913', '914', '915', '916', '917', '918', '919', '920', '921', '922', '923', '924', '925', '934', '949'],
+  { tipo: 'Entrada', nao: true, finais: ['901', '902', '903', '904', '905', '906', '907', '908', '909', '911', '912', '913', '914', '915', '916', '917', '918', '919', '920', '921', '923', '924', '925', '934', '949'],
     pede: 'Não vai para o Contábil',
     motivo: 'Remessa ou retorno sem compra (comodato, conserto, industrialização, demonstração, consignação, amostra, outras entradas): o bem não passa a ser da empresa (ou só volta para ela).',
     base: ESCRITORIO },
 ];
+
+/** a conta de venda para fora do país, pelo nome */
+const NOME_DO_MERCADO_EXTERNO = /mercado externo|exporta|exterior/;
+
+/** A regra da venda conforme o mercado do CFOP (Vitor, 09/11/2026: o 7xxx em conta separada do mercado interno). */
+function regraDoMercado(r: Regra, cfops: readonly string[]): Regra {
+  if (!r.venda) return r;
+  if (!cfops.some(c => String(c).trim().charAt(0) === '7')) return { ...r, semNome: new RegExp((r.semNome as RegExp).source + '|' + NOME_DO_MERCADO_EXTERNO.source) };
+  return { ...r, pede: r.pede + ' para o mercado externo', tambem: NOME_DO_MERCADO_EXTERNO, motivo: r.motivo + ' Como vai para fora do país (CFOP 7), fica em conta separada do mercado interno.' };
+}
 
 /** O CFOP pede a regra: pelo tipo (1/2/3 entrada, 5/6/7 saída) e pelos 3 últimos dígitos. */
 function regraDoCfop(cfop: string, tipo: TipoCfop): Regra | null {
@@ -201,7 +219,7 @@ function contasDaRegra(r: Regra, contas: readonly Conta[], centros: ReadonlyMap<
   const peloCentro = r.centro && centros.size > 0;
   const servem = contas.filter(c => !c.sintetica && (!r.grupos || r.grupos.includes(c.grupo))
     && (!peloCentro || centros.get(c.codigo) === r.centro)
-    && r.nome!.test(nomeNorm(c.nome)) && !(r.semNome && r.semNome.test(nomeNorm(c.nome))))
+    && r.nome!.test(nomeNorm(c.nome)) && !(r.semNome && r.semNome.test(nomeNorm(c.nome))) && !(r.tambem && !r.tambem.test(nomeNorm(c.nome))))
     .sort((a, b) => a.nome.length - b.nome.length || a.codigo.localeCompare(b.codigo));
   if (!servem.length) return [];
   const base = semPrazo(servem[0].nome);
@@ -214,8 +232,9 @@ function contasDaRegra(r: Regra, contas: readonly Conta[], centros: ReadonlyMap<
  * CFOPs (a sugestão não aparece).
  */
 export function sugestaoDaNatureza(cfops: readonly string[], tipo: TipoCfop, contas: readonly Conta[]): SugestaoDaNatureza | null {
-  const r = cfops.map(c => regraDoCfop(c, tipo)).find(Boolean);
-  if (!r) return null;
+  const achada = cfops.map(c => regraDoCfop(c, tipo)).find(Boolean);
+  if (!achada) return null;
+  const r = regraDoMercado(achada, cfops);
   if (r.nao) return { tipo: 'nao-contabil', pede: r.pede, motivo: r.motivo, base: r.base };
   const centros = centrosDoPlano(contas);
   const achadas = contasDaRegra(r, contas, centros);

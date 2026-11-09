@@ -42,7 +42,7 @@ export function useVerificarConta() {
   // o fora do padrão da conta só de novo quando a empresa, as contas, o filtro ou a ordem mudam (19/10/2026)
   const codigosDaConta = d.codigos.join(',');
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const foraDoPadrao = useMemo(() => montarForaDoPadrao(e, s, d.codigos), [e, codigosDaConta, s.filtro, s.ordemDiv, s.ordemServ]);
+  const foraDoPadrao = useMemo(() => montarForaDoPadrao(e, s, d.codigos), [e, codigosDaConta, s.filtro, s.ordemServ]);
 
   const [info, setInfo] = useState<Record<string, InfoRelatorio>>({});
   const [comparando, setComparando] = useState(false);
@@ -257,7 +257,7 @@ export function useVerificarConta() {
 function montarForaDoPadrao(e: c.Empresa, s: ReturnType<typeof useSessao>, codigos: string[]) {
   if (!codigos.length) return { fiscais: [], servicos: [] };
   const fiscais = (['entradas', 'saidas'] as const)
-    .map(tipo => ({ tipo, r: c.foraDoPadraoFiscalDaConta(e, tipo, s.ordemDiv[tipo], codigos) }))
+    .map(tipo => ({ tipo, r: c.foraDoPadraoFiscalDaConta(e, tipo, 'cfop', codigos) }))
     .filter(x => x.r.temDivergencias);
   const servicos = (['tomados', 'prestados'] as const)
     .filter(tipo => tipo === 'tomados' || !c.semPrest(e))
@@ -304,6 +304,7 @@ function montarResultado(e: c.Empresa, p: c.FiltroMovimento, v: EstadoVerificar,
       aMais: r.aMais.map(c.linhaDaTabela), somaAMais: t.aMais,
       incorretas: c.operacaoIncorretaDe(r).map(c.linhaDaTabela), somaIncorretas: t.operacaoIncorreta, operacoesDaConta: r.operacoesDaConta || [],
       icms: r.icms.map(c.linhaDaTabela), somaIcms: t.icms,
+      honorarioSemNota: c.honorarioSemNotaDe(r).map(c.linhaDaTabela), somaHonorarioSemNota: t.honorarioSemNota,
       /** as notas marcadas "Não vai para o Contábil" (fora da soma das notas; Desfazer) */
       foraDoContabil: c.linhasForaDoContabil(r), somaForaDoContabil: (r.foraDoContabil || []).reduce((t2, n) => t2 + n.valor, 0),
       conferido: !!d.conta && c.verifEstado(e, p, d.conta.codigo) === 'conferido',

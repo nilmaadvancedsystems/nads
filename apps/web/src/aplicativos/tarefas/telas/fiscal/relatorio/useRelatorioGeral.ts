@@ -2,8 +2,8 @@
 // página por regime no menu lateral ("lucro presumido e simples são diferentes, deixa cada um separado"): o Relatório
 // Simples (só as empresas do Simples Nacional no Cadastro) e o Relatório Presumido (só as do Presumido). Tomou o lugar do
 // Controle de tributos ("remove a tela de controle de tributos, e pegue os dados de lá"): os mesmos dados no banco
-// (controleTributos e controleTributosFolha) — os valores em reais, a data, as conferências, a entrega, as sugestões do
-// Entregas e a impressão do protocolo (as observações e a retificação saíram por enquanto). A coluna da REINF saiu
+// (controleTributos e controleTributosFolha) — os valores em reais, a data, as conferências, a entrega
+// e a impressão do protocolo (as observações e a retificação saíram por enquanto). A coluna da REINF saiu
 // (29/10/2026: "a parte do R das conferencias ja e a reinf"). Quem grava o controle: o Fiscal e o admin; o resto da equipe só vê.
 import { formatos, tarefas as t } from '@nads/core';
 import { logoNilmaParaImprimir, useRetorno } from '@nads/ui';
@@ -12,7 +12,7 @@ import { useSearchParams } from 'react-router';
 import { competenciasDaTela } from '../../../casca/navegacao';
 import { useOperador } from '../../../casca/operador';
 import { FOLHA_VAZIA } from '../../../dados/controleTributos';
-import { useControleTributos, useEntregasDeDocumentos, useGmailDoEntregas } from '../../../dados/repo';
+import { useControleTributos } from '../../../dados/repo';
 import { useListaDoCadastro } from '../../cadastro/escolher/useListaDoCadastro';
 import { imprimirHtml } from '../../dp/imprimirHtml';
 import { usePorPagina } from './usePorPagina';
@@ -55,8 +55,6 @@ export function useRelatorioGeral(regime: RegimeDoRelatorio) {
   const competencia = competencias.includes(params.get('competencia') || '') ? (params.get('competencia') as string) : competencias[0];
   const repo = useControleTributos();
   const lista = useListaDoCadastro();
-  const entregas = useEntregasDeDocumentos();
-  const gmail = useGmailDoEntregas();
   const grupo = t.grupoDoControle(regime);
   const mes = repo.doMes(competencia);
   /** as colunas de guia: todas do grupo (o arroz e o parcelamento voltaram para a tabela, 28/10/2026) */
@@ -74,19 +72,7 @@ export function useRelatorioGeral(regime: RegimeDoRelatorio) {
     .map(l => ({ codigo: l.codigo as number, nome: l.nome }))
     .sort((a, b) => a.codigo - b.codigo), [lista.linhas, regime]);
 
-  // as guias da apuração da competência que o Entregas entregou, ligadas ao código pelo cliente do Entregas (a sugestão em
-  // cinza). Vêm da competência e da seguinte (03/11/2026: "se e entregue no mês 10 e referente ao mês 9"): o Entregas grava
-  // o mês em que entregou, e a apuração é a do mês anterior (t.competenciaDaApuracao)
-  const doMes = entregas.doMes(competencia);
-  const doSeguinte = entregas.doMes(t.somarMesesDaCompetencia(competencia, 1));
-  const codigoDoCliente = new Map(gmail.clientes().lista.map(c => [c.id, Number(c.codigo)]));
-  const guiasEntregues: t.GuiaEntregue[] = [...doMes.lista, ...doSeguinte.lista].flatMap(e => {
-    const codigo = e.clienteId ? codigoDoCliente.get(e.clienteId) : undefined;
-    return codigo && e.status === 'confirmada' && t.competenciaDaApuracao(e.competencia, e.confirmadoEm) === competencia
-      ? [{ codigo, itens: e.itens, em: e.confirmadoEm, porEmail: e.comprovantePorEmail || e.canal === 'email' }] : [];
-  });
-  const sugestoes = t.sugestoesDoEntregas(grupo, empresas, guiasEntregues);
-
+  // sem preenchimento vindo do Entregas (Vitor, 09/11/2026: "não haja preenchimento automático das entregas para o fiscal"): nem a sugestão apagada nos campos, nem o Preencher com o Entregas
   // o que acabou de ser gravado vale até o banco devolver (dois cliques seguidos não perdem o primeiro)
   const gravadas = useRef(new Map<string, t.LinhaDoControle>());
   const linhaDe = (codigo: number) => {
@@ -106,7 +92,7 @@ export function useRelatorioGeral(regime: RegimeDoRelatorio) {
     if (colunas.some(c => !(l.valores[c.id] || '').trim())) pendencias.add('guias');
     if (grupo.marcas.some(m => !l.marcas[m.id])) pendencias.add('conferencias');
     if (!l.entregue) pendencias.add('entrega');
-    return { ...e, linha: l, sugestao: sugestoes.get(e.codigo), situacao, rotuloSituacao: t.ROTULO_SITUACAO_GERAL[situacao], pendencias };
+    return { ...e, linha: l, situacao, rotuloSituacao: t.ROTULO_SITUACAO_GERAL[situacao], pendencias };
   });
 
   const q = semAcento(busca.trim());
@@ -118,12 +104,6 @@ export function useRelatorioGeral(regime: RegimeDoRelatorio) {
   const paginas = porPagina ? Math.max(1, Math.ceil(linhas.length / porPagina)) : 1;
   const atual = Math.min(pagina, paginas - 1);
   const daPagina = porPagina ? linhas.slice(atual * porPagina, (atual + 1) * porPagina) : linhas;
-  // as linhas que ganham alguma coisa com a sugestão do Entregas
-  const paraPreencher = todas.flatMap(r => {
-    const nova = r.sugestao ? t.preencherComSugestao(r.linha, r.sugestao) : r.linha;
-    return JSON.stringify(nova) !== JSON.stringify(r.linha) ? [nova] : [];
-  });
-
   async function gravar(l: t.LinhaDoControle) {
     if (!podeGravar) return;
     const nova = { ...l, grupo: grupo.id, atualizadoEm: undefined, atualizadoPor: undefined };
@@ -153,8 +133,8 @@ export function useRelatorioGeral(regime: RegimeDoRelatorio) {
     grupo,
     /** as colunas das guias da página, com o nome curto */
     guias: colunas.map(c => ({ id: c.id, rotulo: CURTO[c.id] || c.rotulo, nome: c.rotulo })),
-    /** a página da lista: '1–25 de 166', a anterior e a próxima */
-    pagina: { atual, paginas, de: daPagina.length ? atual * (porPagina || linhas.length) + 1 : 0, ate: atual * (porPagina || linhas.length) + daPagina.length,
+    /** a página da lista: a anterior e a próxima */
+    pagina: { atual, paginas,
       anterior: () => setPagina(Math.max(0, atual - 1)), proxima: () => setPagina(Math.min(paginas - 1, atual + 1)) },
     total: todas.length, linhas: daPagina, achadas: linhas.length, faltam: linhas.filter(r => r.situacao !== 'concluida').length,
     /** um campo de valor: guarda como fica na tela (1.234,50, — ou 0) */
@@ -185,13 +165,6 @@ export function useRelatorioGeral(regime: RegimeDoRelatorio) {
       // entregou sem data: a de hoje, em Brasília (o ISO é UTC: depois das 21h dava o dia seguinte)
       const data = e && e !== 'nao' && !l.data ? formatos.diaEmBrasilia() : l.data;
       void gravar({ ...l, entregue: e, data });
-    },
-    comSugestaoParaUsar: paraPreencher.length,
-    /** passa as sugestões do Entregas para os campos em branco (o que a pessoa escreveu fica) */
-    async usarSugestoes() {
-      const mudar = paraPreencher;
-      for (const l of mudar) await gravar(l);
-      toast(mudar.length === 1 ? '1 empresa preenchida com o Entregas' : mudar.length + ' empresas preenchidas com o Entregas');
     },
     imprimir() {
       imprimirHtml(t.htmlDoControle({ competencia, grupo, empresas, linhas: mes.linhas, folha: FOLHA_VAZIA, logo: logoNilmaParaImprimir('colorida') }));

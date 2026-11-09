@@ -102,15 +102,13 @@ export function useCascaConciliaAi() {
 
   /**
    * Dentro da etapa da Tarefas (a Conferência fiscal), sem barra lateral: todas as páginas numa linha de abas, como as
-   * de um repositório do GitHub — Relatório · Naturezas · Consulta · Cadastro · Auditoria (a Importação está na
-   * primeira etapa). "Checklist" vira "Naturezas" (o título da página) para não confundir com o checklist das etapas.
+   * de um repositório do GitHub — Relatório · Consulta · Cadastro · Auditoria (a Importação está na primeira etapa).
    */
   const semConta = c.naturezasSemConta(e).length;
   const NA_ETAPA: { id: string; rotulo: string; secao: IdSecao }[] = [
     // o balancete, o primeiro passo da Conferência fiscal (Vitor, 13/10/2026: saiu da Importação)
     { id: 'importacao/balancete', rotulo: 'Balancete', secao: 'importacao' },
     { id: 'movimento/relatorio', rotulo: 'Relatório', secao: 'movimento' },
-    { id: 'movimento/checklist', rotulo: 'Naturezas', secao: 'movimento' },
     { id: 'movimento/consulta', rotulo: 'Consulta', secao: 'movimento' },
     { id: 'cadastro/configuracoes', rotulo: 'Cadastro', secao: 'cadastro' },
     { id: 'auditoria/historico', rotulo: 'Auditoria', secao: 'auditoria' },

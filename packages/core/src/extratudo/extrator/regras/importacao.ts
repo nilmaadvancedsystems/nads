@@ -15,9 +15,10 @@ import { dataBR } from './texto';
  * abertura pela coluna Saldo, quando o extrato não imprime o saldo anterior (26/10/2026); 8 = o quadro do limite do BB (Custo
  * Efetivo Total, Valor total devido…) fora e o depósito bloqueado com o "*" solto fora (26/10/2026); 9 = a Dt. balancete
  * guardada no lançamento do BB "Consultas" que vai pela Dt. movimento (27/10/2026); 10 = o sinal escrito do Itaú "Lançamentos
- * do período" (09/11/2026).
+ * do período" (09/11/2026); 11 = o "extrato mensal" do Itaú (o sinal escrito, a legenda e os quadros do fim fora) e a fatura
+ * do cartão que entrou como extrato sai (09/11/2026).
  */
-export const VERSAO_DO_LEITOR = 10;
+export const VERSAO_DO_LEITOR = 11;
 
 export function empresaNova(nome: string): EmpresaExtrator {
   return { nome, arquivos: [], auditoria: [] };
@@ -244,6 +245,11 @@ export function leituraCobreOArquivo(a: ArquivoImportado, lido: ArquivoLido): bo
 export function relerExtrato(e: EmpresaExtrator, arquivoId: string, lido: ArquivoLido, agora: Date): EmpresaExtrator {
   const a = e.arquivos.find(x => x.id === arquivoId);
   if (!a) return e;
+  // a fatura do cartão que entrou como extrato (Vitor, 09/11/2026, na 474) sai inteira: o mês volta a faltar e o Drive traz o extrato
+  if (lido.faturaDeCartao) {
+    const tirou: RegistroAuditoria = { ts: agora.toISOString(), acao: 'Tirou a fatura do cartão', detalhe: a.nome + ' · ' + a.lancamentos.length + ' lançamento(s): era a fatura, não o extrato', tom: 'bad' };
+    return { ...e, arquivos: e.arquivos.filter(x => x.id !== arquivoId), auditoria: [tirou, ...e.auditoria] };
+  }
   const meses = new Set(a.lancamentos.map(l => l.data.slice(0, 7)));
   const outros = e.arquivos.filter(x => x.id !== arquivoId && x.lado === a.lado && (x.banco || '') === (a.banco || '')).flatMap(x => x.lancamentos);
   const novos = lido.erro ? [] : soNovos(outros, lido.lancamentos.filter(l => !meses.size || meses.has(l.data.slice(0, 7))));

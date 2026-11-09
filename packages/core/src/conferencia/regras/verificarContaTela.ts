@@ -35,6 +35,7 @@ export function composicaoDiferenca(r: ResultadoVerificacao): ItemComposicao[] {
   const l = [it('Faltando na conta', t.faltando), it('Duplicadas na conta', t.duplicadas), it('A mais na conta', t.aMais), it('ICMS', t.icms)];
   // de outra operação (Vitor, 14/10/2026): só aparece quando tem
   if (Math.abs(t.operacaoIncorreta) >= ZERO_VC) l.splice(2, 0, it('Operação incorreta', t.operacaoIncorreta));
+  if (Math.abs(t.honorarioSemNota) >= ZERO_VC) l.push(it('Honorário sem nota', t.honorarioSemNota));
   if (Math.abs(t.semExplicacao) >= ZERO_VC) l.push(it('Sem explicação', t.semExplicacao));
   return l;
 }

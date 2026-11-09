@@ -384,8 +384,8 @@ export function SeletorMes({ valor, onMudar, id, rotulo, max }: { valor: string;
   }, [aberto]);
   return (
     <div className="seletor-mes popover-wrap" ref={ref}>
-      {/* sem as setas dos lados (Vitor, 02/10/2026): o mês se escolhe abrindo o seletor */}
-      <button type="button" id={id} className="btn btn-outline seletor-mes-atual" aria-label={rotulo + ': ' + MESES[mes - 1] + ' de ' + ano} aria-haspopup="dialog" aria-expanded={aberto}
+      {/* sem as setas dos lados (Vitor, 02/10/2026): o mês se escolhe abrindo o seletor; em vermelho como todo botão de competência (Vitor, 09/11/2026: "para destacar") */}
+      <button type="button" id={id} className="btn btn-primary seletor-mes-atual" aria-label={rotulo + ': ' + MESES[mes - 1] + ' de ' + ano} aria-haspopup="dialog" aria-expanded={aberto}
         onClick={() => { setAnoGrade(ano); setAberto(a => !a); }}>
         <Icone nome="calendar" /><span>{MESES[mes - 1]} de {ano}</span><Icone nome="caretDown" className="menu-seta" />
       </button>

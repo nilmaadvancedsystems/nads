@@ -74,10 +74,12 @@ export function criarAcessoFirestore(quem: () => Quem): RepoAcesso {
       }, () => {}));
     }
     paradas.push(onSnapshot(collection(db, 'usuarios'), s => {
+      // o ponto de presença de cada pessoa, a cada 3 min, não redesenha o app de todos: a tela de Usuários lê no relógio dela
+      const soOPonto = equipe.carregada && s.docChanges().every(ch => ch.type === 'modified' && u.mudouSoOPonto(equipe.docs[ch.doc.id], ch.doc.data() as u.DocUsuario));
       const docs: Record<string, u.DocUsuario> = {};
       s.docs.forEach(d => { docs[d.id] = d.data() as u.DocUsuario; });
       equipe = { carregada: true, lista: Object.entries(docs).map(([id, d]) => u.lerUsuario(id, d)).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')), docs };
-      mudou();
+      if (!soOPonto) mudou();
     }, () => { equipe = { carregada: true, lista: [], docs: {} }; mudou(); }));
   }
 

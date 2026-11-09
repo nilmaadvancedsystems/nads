@@ -68,16 +68,3 @@ export function registrarHist(hist: RegistroConferencia[], chave: string, texto:
   if (categoria) reg.categoria = categoria;
   return hist.concat(reg);
 }
-
-/**
- * Checklist: marcar/desmarcar à mão. Desmarcar o que acabou de marcar no mesmo minuto
- * some com o registro (só nesse sentido, como no original).
- */
-export function registrarMarcaChecklist(hist: RegistroConferencia[], chave: string, texto: string, marcado: boolean, agora: Date): RegistroConferencia[] {
-  let idx = -1;
-  for (let i = hist.length - 1; i >= 0; i--) if (hist[i].chave === chave) { idx = i; break; }
-  if (!marcado && idx >= 0 && hist[idx].acao === 'marcado' && mesmoMinuto(new Date(hist[idx].ts), agora)) {
-    return hist.slice(0, idx).concat(hist.slice(idx + 1));
-  }
-  return hist.concat({ ts: agora.toISOString(), chave, texto, acao: marcado ? 'marcado' : 'desmarcado', origem: 'manual' });
-}

@@ -10,7 +10,7 @@ export function VisaoContabil({ pagina, dep }: { pagina: string; dep?: 'contabil
     <section>
       <div className="tarefas-filtros">
         {/* a competência no mesmo menu com o calendário da Minhas empresas (revisão da UI, 16/10/2026: eram três peças diferentes) */}
-        <MenuSuspenso icone="calendar" rotulo={vm.competencias.find(c => c.valor === vm.competencia)?.rotulo ?? vm.competencia} titulo="Competência" dica="Trocar a competência"
+        <MenuSuspenso icone="calendar" className="btn btn-primary" rotulo={vm.competencias.find(c => c.valor === vm.competencia)?.rotulo ?? vm.competencia} titulo="Competência" dica="Trocar a competência"
           itens={vm.competencias.map(c => ({ rotulo: c.rotulo, marcado: c.valor === vm.competencia, onClick: () => vm.setCompetencia(c.valor) }))} />
       </div>
       {vm.carregando ? null : pagina === 'paradas' ? (

@@ -1,7 +1,6 @@
 // ViewModel do Movimento › Relatório (abas Geral/Entradas/Saídas/Tomados/Prestados).
 // Origem: conferencia.html confAba (~L3371), renderGeral (~L3593), renderCcChart (~L3419),
 // renderCcRank (~L3447), renderCcBalancete (~L3508), autoMarcarConferidos (~L3563),
-// renderNotas/renderDivergencias (~L2985, ~L3180) e os change de data-resolve (~L3232-3268),
 // renderConfServ (~L4617) e os change de data-resolve-serv/servOrdem (~L4730-4752),
 // data-serv-sug → servIrParaForm (~L4539, ~L4590), aplicarBloqueios (~L1843-1861).
 import { conferencia as c, formatos } from '@nads/core';
@@ -63,17 +62,14 @@ export function useRelatorio() {
   function alternarMes(m: string) {
     s.setFiltro(f => ({ ...f, meses: f.meses.indexOf(m) > -1 ? f.meses.filter(x => x !== m) : f.meses.concat(m) }));
   }
-  /** Clicar numa natureza do ranking: filtra o Checklist pelo primeiro CFOP dela. */
+  /** Clicar numa natureza do ranking: abre a Consulta de notas no primeiro CFOP dela. */
   function abrirNatureza(cfops: string) {
     const cfop = cfops.split(',')[0].trim();
-    s.setFiltro(f => ({ ...f, busca: cfop }));
-    if (cfop) s.irPara('movimento/checklist');
+    if (!cfop) return;
+    s.setAbaConsulta('fiscais');
+    s.setFiltroConsulta('fiscais', { ...s.filtroConsulta.fiscais, q: cfop });
+    s.irPara('movimento/consulta');
   }
-
-  // ---------- lançamento fora do padrão do CFOP (Entradas/Saídas) ----------
-  const tipoNf: c.TipoNotaFiscal | null = aba === 'entradas' || aba === 'saidas' ? aba : null;
-  const ordemNf = tipoNf ? s.ordemDiv[tipoNf] : null;
-  const fiscal = useMemo(() => (tipoNf && ordemNf ? montarForaDoPadrao(e, tipoNf, ordemNf) : null), [e, tipoNf, ordemNf]);
 
   // ---------- Tomados / Prestados ----------
   const tipoServ: c.TipoServico | null = aba === 'tomados' || aba === 'prestados' ? aba : null;
@@ -84,8 +80,6 @@ export function useRelatorio() {
     abas, aba, escolherAba, ehServ,
     stats, saldo: rel ? rel.saldo : [], grafico, rank, alternarMes, abrirNatureza,
     revisar: s.revisarConta,
-    tipoNf, fiscal, ordemDiv: tipoNf ? s.ordemDiv[tipoNf] : 'cfop',
-    setOrdemDiv: (o: c.OrdemGrupos) => { if (tipoNf) s.setOrdemDiv(tipoNf, o); },
     ...acoes,
     tipoServ, serv, ordemServ: tipoServ ? s.ordemServ[tipoServ] : 'nome',
     setOrdemServ: (o: c.OrdemServ) => { if (tipoServ) s.setOrdemServ(tipoServ, o); },
@@ -134,11 +128,6 @@ function montarRank(rank: c.ItemRank[]) {
     titulo: l.cfops + ' — ' + l.nome,
     largura: Math.max(2, Math.round(l.valor / max * 100)),
   }));
-}
-
-function montarForaDoPadrao(e: c.Empresa, t: c.TipoNotaFiscal, ordem: c.OrdemGrupos) {
-  const r = c.foraDoPadraoFiscal(e, t, ordem);
-  return { ...r, vazio: 'Nenhum lançamento fora do padrão do CFOP nas ' + (t === 'entradas' ? 'entradas' : 'saídas') + '.' };
 }
 
 function montarServicos(e: c.Empresa, t: c.TipoServico, f: c.FiltroMovimento, ordem: c.OrdemServ) {

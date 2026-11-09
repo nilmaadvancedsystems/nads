@@ -555,7 +555,7 @@ function SeletorDeCompetencia({ vm, naTarefa, trocar, periodoDaTarefa, encerrar 
   return (
     <MenuSuspenso icone="calendar" rotulo={rotulo} largura={300}
       dica={periodo.length ? 'Em lote: ' + periodo.map(mmaaaa).join(', ') : 'Trocar a competência'}
-      className={'btn btn-outline' + (periodo.length ? ' imp-periodo-ativo' : '')}
+      className={'btn btn-primary' + (periodo.length ? ' imp-periodo-ativo' : '')}
       conteudo={fechar => (
         <div className="comp-pop">
           {naTarefa && (
@@ -1154,7 +1154,7 @@ function PeriodoSoMostra({ meses }: { meses: string[] }) {
   const rotulo = emLote ? mmaaaa(meses[0]) + ' a ' + mmaaaa(meses[meses.length - 1]) : tarefas.rotuloCurtoCompetencia(meses[0]);
   return (
     <MenuSuspenso icone="calendar" rotulo={rotulo} largura={300} dica={emLote ? 'Em lote: ' + meses.map(mmaaaa).join(', ') : 'A competência da tarefa'}
-      className={'btn btn-outline' + (emLote ? ' imp-periodo-ativo' : '')}
+      className={'btn btn-primary' + (emLote ? ' imp-periodo-ativo' : '')}
       conteudo={() => (
         <div className="comp-pop">
           <div className="comp-varios">

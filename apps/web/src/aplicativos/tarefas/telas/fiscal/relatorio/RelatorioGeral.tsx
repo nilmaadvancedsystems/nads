@@ -1,7 +1,7 @@
 // Fiscal › Relatório Simples / Relatório Presumido (28/10/2026: "monte a tabela nesse estilo do dp"; cada regime numa
 // página do menu lateral; no lugar do Controle de tributos). Refeito em 30/10/2026 ("a tabela é feia e pesada"; o Fiscal
 // inteiro "parecendo parte do site", como o Gmail): uma barra só em cima (a competência e os filtros em menus, à direita a
-// busca, o Excel e a impressora), e a tabela num .card com o andamento e o "Preencher com o Entregas" no topo; linhas
+// busca, o Excel e a impressora), e a tabela num .card com o andamento no topo; linhas
 // baixas, o cabeçalho e o total parados ao rolar, as conferências em bolinhas pequenas e a entrega com o logo. Os dados e
 // as ações são os mesmos do useRelatorioGeral. O "Enviar guias" (03/11/2026: "A parte de gmail tem que funcionar assim como
 // o envios do dp"): para quem grava, abre a janela do lote de guias (JanelaDasGuias); o robô manda e preenche a tabela.
@@ -38,7 +38,7 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
   return (
     <section className="fr">
       <div className="tarefas-barra-topo fr-topo">
-        <MenuSuspenso icone="calendar" rotulo={vm.competencias.find(c => c.valor === vm.competencia)?.rotulo ?? vm.competencia} titulo="Competência" dica="Trocar a competência"
+        <MenuSuspenso icone="calendar" className="btn btn-primary" rotulo={vm.competencias.find(c => c.valor === vm.competencia)?.rotulo ?? vm.competencia} titulo="Competência" dica="Trocar a competência"
           itens={vm.competencias.map(c => ({ rotulo: c.rotulo, marcado: c.valor === vm.competencia, onClick: () => vm.setCompetencia(c.valor) }))} />
         <MenuDeFiltro rotulo="Status" valor={f.status} mudar={f.setStatus} opcoes={f.statusOpcoes} />
         <MenuDeFiltro rotulo="Pendente em" valor={f.pendenteEm} mudar={f.setPendenteEm} opcoes={f.partes} todos="Todas as partes" />
@@ -68,7 +68,7 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
       {!vm.podeGravar && <p className="hint">Só o Fiscal preenche o relatório; você está vendo.</p>}
 
       {vm.carregando ? <Esqueleto linhas={8} /> : (
-        <section className="card fr-cartao" aria-label={g.rotulo}>
+        <section className={'card fr-cartao fr-regime-' + regime} aria-label={g.rotulo}>
           <div className="fr-cartao-topo">
             {/* o andamento: quantas das empresas achadas já estão concluídas */}
             <span className="fr-andamento" title={vm.faltam ? vm.faltam + (vm.faltam === 1 ? ' falta' : ' faltam') + ' de ' + vm.achadas : 'tudo feito'}>
@@ -76,10 +76,12 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
               <span className="fr-andamento-txt">{vm.faltam ? <><b>{feitas}</b> de {vm.achadas} concluídas · {vm.faltam} {vm.faltam === 1 ? 'falta' : 'faltam'}</> : <b>Tudo feito</b>}</span>
             </span>
             <span className="tarefas-barra-espaco" />
-            {vm.podeGravar && vm.comSugestaoParaUsar > 0 && (
-              <button type="button" className="btn btn-outline btn-sm fr-preencher" onClick={() => void vm.usarSugestoes()} title="Passa o que o Entregas já entregou para os campos em branco">
-                <Icone nome="download" />Preencher com o Entregas<span className="fr-qtd">{vm.comSugestaoParaUsar}</span>
-              </button>
+            {/* a página da lista: só as setas, em cima da Entrega (09/11/2026: o rodapé saiu) */}
+            {vm.pagina.paginas > 1 && (
+              <>
+                <BotaoIcone pequeno icone="chevronLeft" titulo={'Página anterior (está na ' + (vm.pagina.atual + 1) + ' de ' + vm.pagina.paginas + ')'} disabled={vm.pagina.atual === 0} onClick={vm.pagina.anterior} />
+                <BotaoIcone pequeno icone="chevronRight" titulo={'Próxima página (está na ' + (vm.pagina.atual + 1) + ' de ' + vm.pagina.paginas + ')'} disabled={vm.pagina.atual >= vm.pagina.paginas - 1} onClick={vm.pagina.proxima} />
+              </>
             )}
           </div>
           {!vm.total ? <p className="hint dp-vazio">Nenhuma empresa do {g.rotulo} no Cadastro: as empresas entram pelo regime.</p>
@@ -113,7 +115,7 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
                         <td className="fr-cliente"><span title={r.nome}>{r.nome}</span></td>
                         {vm.guias.map((c, i) => (
                           <td key={c.id} className={i === 0 ? 'fr-g' : undefined}>
-                            <Valor estreito zeroComoTraco valor={r.linha.valores[c.id] || ''} sugestao={r.sugestao?.valores[c.id]} rotulo={c.nome + ' de ' + r.nome} pode={vm.podeGravar} aoSalvar={v => vm.mudarValor(r.codigo, c.id, v)} />
+                            <Valor estreito zeroComoTraco valor={r.linha.valores[c.id] || ''} rotulo={c.nome + ' de ' + r.nome} pode={vm.podeGravar} aoSalvar={v => vm.mudarValor(r.codigo, c.id, v)} />
                           </td>
                         ))}
                         {g.marcas.map((m, i) => {
@@ -126,7 +128,7 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
                           );
                         })}
                         <td className="fr-g fr-data">
-                          <Valor estreito valor={dataBr(r.linha.data)} sugestao={r.sugestao?.data ? dataBr(r.sugestao.data) : undefined} molde="dd/mm/aaaa" rotulo={'Data de ' + r.nome} pode={vm.podeGravar} aoSalvar={v => vm.mudarData(r.codigo, v)} />
+                          <Valor estreito valor={dataBr(r.linha.data)} molde="dd/mm/aaaa" rotulo={'Data de ' + r.nome} pode={vm.podeGravar} aoSalvar={v => vm.mudarData(r.codigo, v)} />
                         </td>
                         <td className="fr-centro"><Entrega valor={r.linha.entregue} pode={vm.podeGravar} rotulo={'Entrega de ' + r.nome} aoMudar={e => vm.mudarEntrega(r.codigo, e)} /></td>
                         <td className="fr-centro"><span className={'fr-sit ' + r.situacao} title={r.rotuloSituacao} aria-label={r.rotuloSituacao}>{r.situacao === 'concluida' && <Icone nome="check" width={11} height={11} />}</span></td>
@@ -136,14 +138,6 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
                 </table>
               </div>
             )}
-          {vm.pagina.paginas > 1 && (
-            <div className="fr-cartao-pe">
-              <span className="hint">{vm.pagina.de}–{vm.pagina.ate} de {vm.achadas} · página {vm.pagina.atual + 1} de {vm.pagina.paginas}</span>
-              <span className="tarefas-barra-espaco" />
-              <button type="button" className="btn btn-outline btn-sm" disabled={vm.pagina.atual === 0} onClick={vm.pagina.anterior}><Icone nome="chevronLeft" />Anterior</button>
-              <button type="button" className="btn btn-outline btn-sm" disabled={vm.pagina.atual >= vm.pagina.paginas - 1} onClick={vm.pagina.proxima}>Próxima<Icone nome="chevronRight" /></button>
-            </div>
-          )}
         </section>
       )}
       {guiasAbertas && <JanelaDasGuias regime={regime} competencia={vm.competencia} fechar={() => setGuiasAbertas(false)} />}

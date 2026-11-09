@@ -98,8 +98,14 @@ export function nomeConta(e: Empresa, codigo: string): string | null {
   return c ? c.nome : null;
 }
 
+/** A do Passivo que pode ligar à natureza: Adiantamento de clientes (Vitor, 09/11/2026: "deixa ele ler do passivo"). */
+function adiantamentoDeCliente(a: Pick<Conta, 'nome' | 'grupo'>): boolean {
+  return a.grupo === 'Passivo' && /adiant.*client|client.*adiant/i.test(a.nome);
+}
+
+/** As contas do Passivo que não valem na natureza (o Adiantamento de clientes vale). */
 export function contasDoPassivo(e: Empresa, codigos: string[]): string[] {
-  return (codigos || []).filter(c => contaPorCodigo(e, c)?.grupo === 'Passivo');
+  return (codigos || []).filter(c => { const a = contaPorCodigo(e, c); return a?.grupo === 'Passivo' && !adiantamentoDeCliente(a); });
 }
 
 /** Vínculo errado vindo de antes (conta do Passivo): a mensagem do aviso, ou null. */
@@ -123,9 +129,9 @@ export function ordemPlano<T extends Pick<Conta, 'grupo' | 'codigo' | 'ordem'>>(
   });
 }
 
-/** Contas que dá pra vincular no Cadastro: analíticas, fora do Passivo, ainda não ligadas. */
+/** Contas que dá pra vincular no Cadastro: analíticas, fora do Passivo (menos o Adiantamento de clientes), ainda não ligadas. */
 export function contasParaVincular(e: Empresa, ligadas: string[], busca: string): Conta[] {
-  let l = e.contas.filter(a => !a.sintetica && a.grupo !== 'Passivo' && ligadas.indexOf(a.codigo) < 0);
+  let l = e.contas.filter(a => !a.sintetica && (a.grupo !== 'Passivo' || adiantamentoDeCliente(a)) && ligadas.indexOf(a.codigo) < 0);
   if (busca) {
     const q = busca.toLowerCase();
     l = l.filter(a => a.nome.toLowerCase().indexOf(q) > -1 || a.codigo.indexOf(q) > -1);

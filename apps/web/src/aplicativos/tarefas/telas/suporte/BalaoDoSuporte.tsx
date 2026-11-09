@@ -89,16 +89,14 @@ export function BalaoDoSuporte() {
     <>
       {botao}
       <section className="card suporte-balao" role="dialog" aria-label="Suporte">
-        <header className="suporte-topo">
-          <span className="suporte-avatar"><Icone nome="ajuda" /></span>
-          <span className="suporte-titulo">
-            <b>Suporte</b>
-            <span className="suporte-sub">{digitando ? 'digitando…' : vm.titulo || 'online'}</span>
-          </span>
-          {vm.conversando && vm.tickets.length > 0 && <button type="button" className="btn btn-ghost suporte-acao" onClick={vm.voltarAosTickets}>Voltar aos pedidos</button>}
-          {vm.conversando && !vm.tickets.length && <button type="button" className="btn btn-ghost suporte-acao" title="Começar uma conversa nova" onClick={vm.novaConversa}>Nova conversa</button>}
-          {vm.conversando && !vm.tickets.length && <button type="button" className="btn btn-ghost suporte-acao" title="Abandonar a conversa e fechar" onClick={vm.sair}>Sair</button>}
-        </header>
+        {/* sem o "Suporte / digitando…" (Vitor, 09/11/2026): a barra de cima só existe na conversa, com as ações dela */}
+        {vm.conversando && (
+          <div className="suporte-topo">
+            {vm.tickets.length > 0 && <button type="button" className="btn btn-ghost suporte-acao" onClick={vm.voltarAosTickets}>Voltar aos pedidos</button>}
+            {!vm.tickets.length && <button type="button" className="btn btn-ghost suporte-acao" title="Começar uma conversa nova" onClick={vm.novaConversa}>Nova conversa</button>}
+            {!vm.tickets.length && <button type="button" className="btn btn-ghost suporte-acao" title="Abandonar a conversa e fechar" onClick={vm.sair}>Sair</button>}
+          </div>
+        )}
 
         <div className="suporte-corpo" ref={corpo}>
           <div className="suporte-msg">

@@ -428,8 +428,6 @@ tr.linha-passivo > td:first-child b{color:var(--destructive);}
 .rank-barra>span{display:block;height:100%;border-radius:6px;}
 .rank-item:hover .rank-nome{color:var(--ink);text-decoration:underline;}
 
-.cc-mini{height:6px;border-radius:6px;background:var(--surface-3);overflow:hidden;margin-top:6px;max-width:240px;}
-.cc-mini>span{display:block;height:100%;border-radius:6px;}
 .dash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:16px;}
 @media (max-width:640px){.dash-grid{grid-template-columns:minmax(0,1fr);}}
 .parity{display:flex;align-items:center;gap:8px;border:1px solid var(--success);background:var(--success-soft);color:var(--ink);
@@ -672,19 +670,12 @@ td > .gh-blank.compacto{white-space:normal;}
 /* o cartão da empresa aberta no cabeçalho: o prédio, o nome e, embaixo, o código e o CNPJ; o clique abre a janela do Cadastro */
 .gh-cartao-topo{display:contents;}
 .gh-crumbs .gh-cartao-topo > button.gh-crumb:not(:last-of-type){flex:none;}
-/* o Início (27/10/2026): o mural de avisos e a última empresa */
-.inicio-grade{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:16px;align-items:start;}
-@media (max-width:900px){.inicio-grade{grid-template-columns:minmax(0,1fr);}}
-.mural-lista{list-style:none;margin:0;padding:0;}
-.mural-aviso{display:flex;gap:10px;padding:12px 16px;border-top:1px solid var(--border);}
-.mural-aviso:first-child{border-top:0;}
-.mural-aviso-corpo{flex:1;min-width:0;}
+/* o Início: os avisos do escritório em faixas (09/11/2026) */
+.mural-faixas{display:flex;flex-direction:column;gap:8px;}
+.mural-faixas .alert{margin-top:0;}
 .mural-aviso-texto{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:var(--fs-14);}
-.mural-novo{display:flex;flex-direction:column;gap:8px;padding:12px 16px;border-top:1px solid var(--border);}
 .mural-novo textarea{width:100%;min-height:64px;resize:vertical;}
 .mural-novo-pe{display:flex;align-items:center;justify-content:flex-end;gap:8px;}
-.ultima-empresa{display:flex;flex-direction:column;gap:10px;padding:16px;}
-.ultima-empresa-nome{margin:0;font-size:var(--fs-16);font-weight:600;}
 .progresso-linha{display:flex;align-items:center;gap:8px;}
 .progresso-linha .tarefas-barra{flex:1;}
 .tabela-empresas .progresso-linha .tarefas-barra{flex:none;}
@@ -769,14 +760,11 @@ input[type="checkbox"]:disabled{opacity:.55;cursor:not-allowed;}
 tr.anima input[type="checkbox"]:checked::after{animation:checkPop .3s cubic-bezier(.23,1,.32,1) both;}
 
 /* ---------------------------------- naturezas: conferido = riscado e apagado, no fim da lista ---------------------------------- */
-#natLista tr.feito td{background:none;}
-#natLista tr.feito td:not(:first-child){opacity:.5;}
 .risco{background-image:linear-gradient(currentColor,currentColor);background-repeat:no-repeat;background-position:0 58%;background-size:0 1.5px;}
 tr.feito .risco{background-size:100% 1.5px;}
 @keyframes riscar{from{background-size:0 1.5px}to{background-size:100% 1.5px}}
 @keyframes ofuscar{from{opacity:1}to{opacity:.5}}
 tr.feito.anima .risco{animation:riscar .45s cubic-bezier(.23,1,.32,1) both;}
-#natLista tr.feito.anima td:not(:first-child){animation:ofuscar .45s ease-out .1s both;}
 
 /* ---------------------------------- mensagens de importação flutuantes ---------------------------------- */
 #planoMsg,#msgEnt,#msgSai{position:fixed;top:calc(var(--hdr-h,113px) + 16px);right:24px;z-index:65;width:min(440px,calc(100vw - 32px));margin:0 !important;}
@@ -2319,21 +2307,19 @@ main.main:has(> .content > .explorador){padding:0;}
 .abertura{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;background:var(--bg);}
 .abertura-n{width:auto;height:min(160px,28vh);overflow:visible;}
 .abertura-a,.abertura-b{transform-box:view-box;transform-origin:50% 50%;}
-/* vidro: só sobre a área que carrega (a ferramenta da etapa), com o fundo embaçado; o N um pouco menor */
-/* o vidro tem cara de vidro mesmo quando atrás não tem nada ainda (a ferramenta acabou de começar a carregar e a área
-   está vazia): duas luzes difusas, a vermelha e a prata do N, passeiam devagar por trás de um vidro fosco com um
-   reflexo na diagonal e uma borda clara em cima; o que já houver atrás aparece embaçado */
+/* vidro: o N por cima do que carrega; o N um pouco menor */
+/* o vidro tem cara de vidro mesmo quando atrás não tem nada ainda: duas luzes difusas paradas, a vermelha e a prata do N,
+   atrás de um véu com um reflexo na diagonal e uma borda clara em cima */
 /* a abertura com o N cobre a tela inteira, por cima do cabeçalho e da lateral (Vitor, 02/10/2026) */
 .abertura.vidro{position:fixed;inset:0;z-index:200;min-height:0;overflow:hidden;border-radius:0;
   background:
     linear-gradient(120deg, transparent 25%, color-mix(in srgb, #FFFFFF 7%, transparent) 45%, transparent 65%),
-    color-mix(in srgb, var(--bg) 45%, transparent);
-  box-shadow:inset 0 1px 0 color-mix(in srgb, #FFFFFF 14%, transparent), inset 0 0 0 1px color-mix(in srgb, #FFFFFF 6%, transparent);
-  -webkit-backdrop-filter:blur(18px) saturate(140%);backdrop-filter:blur(18px) saturate(140%);}
+    color-mix(in srgb, var(--bg) 82%, transparent);
+  box-shadow:inset 0 1px 0 color-mix(in srgb, #FFFFFF 14%, transparent), inset 0 0 0 1px color-mix(in srgb, #FFFFFF 6%, transparent);}
+/* sem backdrop-filter e com as luzes paradas (09/11/2026, "queda de fps"): é a tela inteira, a cada troca de tela */
 .abertura.vidro::before,.abertura.vidro::after{content:'';position:absolute;z-index:-1;width:min(560px,70%);aspect-ratio:1;border-radius:50%;pointer-events:none;}
 .abertura.vidro::before{left:8%;top:6%;background:radial-gradient(circle, color-mix(in srgb, var(--btn-primary) 38%, transparent), transparent 66%);}
 .abertura.vidro::after{right:6%;bottom:2%;background:radial-gradient(circle, color-mix(in srgb, #C9CDD3 30%, transparent), transparent 66%);}
-@keyframes vidroLuz{from{transform:translate(-6%,-4%) scale(1);}to{transform:translate(10%,8%) scale(1.15);}}
 html[data-theme="light"] .abertura.vidro::after{background:radial-gradient(circle, color-mix(in srgb, #8A9099 26%, transparent), transparent 66%);}
 .abertura.vidro .abertura-n{height:min(120px,22vh);}
 @keyframes aberturaVidro{from{opacity:0;}to{opacity:1;}}
@@ -2548,8 +2534,6 @@ tr.linha-abre,.imp-linha,.gh-crumb,.drawer-x{
 .icon-btn.girando svg{animation:drive-gira 1s linear infinite !important;}
 .esqueleto-linha::after{animation:esqueletoBrilho 1.5s var(--ease-in-out) infinite !important;}
 .abertura.vidro{animation:aberturaVidro .25s ease-out both !important;}
-.abertura.vidro::before{animation:vidroLuz 7s var(--ease-in-out) infinite alternate !important;}
-.abertura.vidro::after{animation:vidroLuz 8s var(--ease-in-out) infinite alternate-reverse !important;}
 /* a barrinha que esvaziava na janela de "feito" era só animação */
 html:not([data-animacoes=todas]) .modal-ok-barra{display:none;}
 /* a entrada da gaveta ☰ (Vitor, 06/10/2026: "faça uma animação de entrada desse menu lateral"): ela desliza da esquerda, o
@@ -5148,12 +5132,8 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .suporte-botao{position:fixed;right:16px;bottom:16px;z-index:64;width:48px;height:48px;padding:0;border-radius:50%;justify-content:center;box-shadow:var(--shadow-floating);}
 .suporte-botao svg{width:22px;height:22px;}
 .suporte-balao{position:fixed;right:16px;bottom:74px;z-index:64;width:min(380px,calc(100vw - 32px));height:min(540px,calc(100vh - 120px));display:flex;flex-direction:column;padding:0;margin:0;overflow:hidden;box-shadow:var(--shadow-floating);}
-.suporte-topo{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border-muted);}
-.suporte-avatar{flex:none;width:32px;height:32px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--accent-soft);color:var(--accent);}
-.suporte-avatar svg{width:18px;height:18px;}
-.suporte-titulo{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25;}
+.suporte-topo{display:flex;align-items:center;justify-content:flex-end;gap:10px;padding:6px 12px;border-bottom:1px solid var(--border-muted);}
 .suporte-acao{height:28px;padding:0 8px;font-size:var(--fs-12);flex:none;}
-.suporte-sub{font-size:var(--fs-12);color:var(--ink-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .suporte-corpo{flex:1;overflow:auto;padding:14px 12px;display:flex;flex-direction:column;gap:8px;background:var(--surface-2);}
 .suporte-troca{display:flex;flex-direction:column;gap:8px;}
 .suporte-msg{align-self:flex-start;max-width:85%;padding:8px 12px;border-radius:14px 14px 14px 4px;background:var(--surface);border:1px solid var(--border-muted);font-size:var(--fs-13);line-height:1.45;}
@@ -5794,8 +5774,10 @@ html[data-sem-animacao] .mx-gaveta-fundo,html[data-sem-animacao] .mx-gaveta{anim
 .fr-busca{width:240px;}
 .fr .btn-sm{min-height:28px;height:28px;padding:0 10px;font-size:var(--fs-12);gap:6px;}
 .fr .btn-sm svg{width:14px;height:14px;}
-/* o cartão: o topo com o título, o andamento e o preencher; a caixa que rola; o pé com as páginas */
+/* o cartão: o topo com o título, o andamento e o preencher; a caixa que rola */
 .fr-cartao{margin:0;padding:0;overflow:clip;}
+/* o Presumido em azul, para não confundir com o Simples (09/11/2026): o andamento, as linhas feitas, os ✓ e a entrega seguem a cor daqui */
+.fr-regime-lp{--success:var(--info);--success-soft:var(--info-soft);--success-ink:var(--info);}
 .fr-cartao-topo{display:flex;align-items:center;gap:12px;flex-wrap:wrap;min-height:36px;padding:4px 12px;border-bottom:1px solid var(--border);}
 .fr-andamento{display:inline-flex;align-items:center;gap:8px;min-width:0;font-size:var(--fs-12);color:var(--ink-muted);font-variant-numeric:tabular-nums;}
 .fr-andamento b{color:var(--ink);font-weight:600;}
@@ -5803,8 +5785,6 @@ html[data-sem-animacao] .mx-gaveta-fundo,html[data-sem-animacao] .mx-gaveta{anim
 .fr-andamento-barra i{display:block;height:100%;border-radius:inherit;background:var(--success);}
 .fr-qtd{min-width:18px;height:18px;padding:0 5px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;
   background:var(--accent-soft);color:var(--accent-ink);font-size:var(--fs-11);font-weight:700;font-variant-numeric:tabular-nums;}
-.fr-cartao-pe{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 16px;border-top:1px solid var(--border);}
-.fr-cartao-pe .hint{margin:0;}
 .fr-rola{max-height:max(320px,calc(100dvh - 285px));overflow:auto;overscroll-behavior:contain;}
 .fr-legenda{font-size:var(--fs-12);}
 /* a tabela: largura fixa por coluna (o cliente fica com o que sobra) */
@@ -5888,7 +5868,6 @@ button.fr-entrega-feita:hover{border-color:var(--success);background:color-mix(i
   .fr-tabela col.fr-c-cliente{width:140px;}
   .fr-tabela col.fr-c-cod{width:40px;}
   .fr-tabela{min-width:960px;}
-  .fr-cartao-pe .tarefas-barra-espaco{display:none;}
   /* o código e o cliente parados à esquerda ao rolar de lado */
   .fr-tabela tbody td:nth-child(1),.fr-tabela tbody td:nth-child(2),.fr-tabela thead tr:first-child th:nth-child(-n+2){position:sticky;z-index:1;}
   .fr-tabela tbody td:nth-child(1),.fr-tabela thead tr:first-child th:nth-child(1){left:0;}
@@ -6306,7 +6285,7 @@ td.fs-fat-sem{color:var(--ink-faint);}
 /* O suporte em vidro e os tickets no chat (09/11/2026) */
 .card.suporte-balao{background:color-mix(in srgb,var(--surface) 68%,transparent);border:1px solid color-mix(in srgb,var(--ink) 16%,transparent);border-radius:16px;
   -webkit-backdrop-filter:blur(22px) saturate(160%);backdrop-filter:blur(22px) saturate(160%);}
-.suporte-balao .suporte-topo{padding:12px 14px;border-bottom:1px solid color-mix(in srgb,var(--ink) 10%,transparent);}
+.suporte-balao .suporte-topo{padding:6px 14px;border-bottom:1px solid color-mix(in srgb,var(--ink) 10%,transparent);}
 .suporte-balao .suporte-corpo{background:transparent;padding:14px;gap:10px;}
 .suporte-balao .suporte-envio{border-top:1px solid color-mix(in srgb,var(--ink) 10%,transparent);}
 .suporte-balao .suporte-msg:not(.suporte-eu){background:color-mix(in srgb,var(--surface) 62%,transparent);border-color:color-mix(in srgb,var(--ink) 10%,transparent);}
