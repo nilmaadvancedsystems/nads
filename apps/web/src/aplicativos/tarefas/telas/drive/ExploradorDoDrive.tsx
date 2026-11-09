@@ -5,8 +5,8 @@
 // trilha (CLIENTE / PASTA /, copiar, Enviar ▾ e o ⋯ com o Baixar) e o card com a lista (com o ".."); o painel e a lista
 // rolam cada um por si, até o fim da janela. A caixinha de cada linha marca (a do título marca todos; 30/10/2026: "assim
 // como se faz no explorer, podendo selecionar vários e baixar"). Com itens marcados, uma faixa: quantos, Baixar e Limpar
-// (várias pastas: um .zip de cada; os arquivos juntos num .zip). Um clique na linha abre (a pasta entra; o
-// arquivo abre numa aba nova, que nasce no clique e recebe o link quando o robô termina); Ctrl e Shift marcam; o botão
+// (várias pastas: um .zip de cada; os arquivos juntos num .zip). Um clique na linha abre (a pasta entra; a planilha abre aqui mesmo, no
+// VisualizadorDePlanilha; o outro arquivo abre numa aba nova, que nasce no clique e recebe o link quando o robô termina); Ctrl e Shift marcam; o botão
 // direito abre o menu (MenuDeContexto); arrastar arquivos, ou Enviar, manda para o Claudio Secretário. Tela cheia cobre
 // o nads (Esc sai). "T" vai para a busca, como no GitHub.
 import type { entregas as e } from '@nads/core';
@@ -18,6 +18,7 @@ import { EnviarAoSecretario } from './EnviarAoSecretario';
 import { MeusEnvios } from './MeusEnvios';
 import { MenuDeContexto, type LinhaDoMenu, type MenuAberto } from './MenuDeContexto';
 import { useEnvioAoSecretario } from './useEnvioAoSecretario';
+import { VisualizadorDePlanilha } from './VisualizadorDePlanilha';
 import { useExploradorDoDrive, type VmDrive } from './useExploradorDoDrive';
 
 type AoMenu = (ev: MouseEvent, x: e.EntradaDoExplorador | null) => void;
@@ -39,6 +40,7 @@ function baixar(url: string) {
 }
 
 function abrirArquivo(vm: VmDrive, x: e.EntradaDoExplorador) {
+  if (vm.podeVerPlanilha(x.id)) { void vm.verPlanilha(x.id); return; }
   const janela = window.open('', '_blank');
   if (janela) { try { janela.document.title = 'Abrindo ' + x.nome; janela.document.body.textContent = 'Buscando "' + x.nome + '" no Drive…'; } catch { /* outra origem */ } }
   vm.linkParaAbrir(x.id).then(url => {
@@ -490,6 +492,8 @@ export function ExploradorDoDrive({ naEmpresa = false }: { naEmpresa?: boolean }
       ) : null}
       {soltando && <div className="explorador-soltar" aria-hidden="true"><Icone nome="upload" />Solte para enviar ao Claudio Secretário</div>}
       {menu && <MenuDeContexto menu={menu} onFechar={() => setMenu(null)} />}
+      {vm.planilha && <VisualizadorDePlanilha nome={vm.planilha.nome} planilha={vm.planilha.dados} fechar={vm.fecharPlanilha}
+        baixar={() => { const id = vm.planilha!.id; void vm.baixarArquivo(id).then(baixar, () => undefined); }} />}
       <EnviarAoSecretario vm={envio} />
       <MeusEnvios vm={envio} abrirDestino={vm.abrirDestino} />
     </section>

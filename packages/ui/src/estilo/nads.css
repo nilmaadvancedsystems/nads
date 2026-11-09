@@ -6288,3 +6288,20 @@ td.fs-fat-sem{color:var(--ink-faint);}
 .importar-alterdata .btn{display:inline-flex;align-items:center;gap:6px;}
 .importar-alterdata .badge{display:inline-flex;align-items:center;gap:4px;max-width:520px;white-space:normal;}
 .importar-alterdata-andamento{display:inline-flex;flex-direction:column;gap:4px;min-width:200px;max-width:360px;}
+
+/* O visualizador de planilhas do Drive (09/11/2026): a folha é sempre clara, como no Excel (as cores do arquivo são para o fundo branco) */
+.modal.planilha-janela{width:min(1500px,96vw);max-width:none;height:92vh;display:flex;flex-direction:column;padding:0;overflow:hidden;}
+.planilha-topo{flex:none;display:flex;align-items:center;gap:8px;padding:10px 12px 10px 16px;border-bottom:1px solid var(--border);}
+.planilha-topo h3{flex:1;min-width:0;margin:0;padding:0;border:0;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.planilha-aviso{flex:none;margin:0;padding:6px 16px;border-bottom:1px solid var(--border);}
+.planilha-folha{flex:1;min-height:0;overflow:auto;background:#fff;}
+.planilha-tabela{border-collapse:separate;border-spacing:0;table-layout:fixed;color:#000;background:#fff;font:14.67px/1.2 Calibri,Carlito,Arial,sans-serif;}
+.planilha-tabela th{position:sticky;background:#f3f3f3;color:#444;font-size:12px;font-weight:400;text-align:center;border-right:1px solid #c8c8c8;border-bottom:1px solid #c8c8c8;}
+.planilha-tabela thead th{top:0;z-index:2;height:22px;}
+.planilha-tabela tbody th{left:0;z-index:1;}
+.planilha-tabela thead th:first-child{left:0;z-index:3;}
+.planilha-tabela td{padding:1px 3px;overflow:hidden;white-space:nowrap;vertical-align:bottom;border-right:1px solid #e3e3e3;border-bottom:1px solid #e3e3e3;}
+.planilha-tabela td.quebra{white-space:pre-wrap;overflow-wrap:anywhere;}
+.planilha-abas{flex:none;display:flex;gap:4px;padding:6px 8px;overflow-x:auto;border-top:1px solid var(--border);}
+.planilha-abas .btn{flex:none;color:var(--ink-muted);}
+.planilha-abas .btn[aria-selected="true"]{background:var(--hover-bg);color:var(--ink);font-weight:600;}
