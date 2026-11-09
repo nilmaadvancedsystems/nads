@@ -1,129 +1,77 @@
-// O Início da Tarefas (27/10/2026): à esquerda, o mural de avisos do escritório (o admin e o diretor escrevem no pé dele,
-// fixam e apagam); à direita, a última empresa em que a pessoa mexeu, com o progresso dela e o botão de continuar, e o
-// progresso das empresas dela no mês. Só as peças do catálogo (cartão, vazio, campo, barra de progresso, bolinha de
-// situação, botões); nada anima.
-import { Esqueleto, Icone, useCarregando, Vazio } from '@nads/ui';
+// O Início da Tarefas: os avisos do escritório em faixas, os fixados em cima (o admin e o diretor fixam e apagam em cada
+// faixa e escrevem na janela do Novo aviso), e as tarefas (09/11/2026: a última empresa e o progresso do mês saíram; sem
+// aviso, nada ocupa a tela). Só as peças do catálogo; nada anima.
+import { Alerta, BotaoFechar, BotaoIcone, Esqueleto, Icone, useCarregando, useJanela } from '@nads/ui';
+import { useRef } from 'react';
 import { useSearchParams } from 'react-router';
 import { PaginaDeTarefas } from '../delegador/PaginaDeTarefas';
 import { useInicio } from './useInicio';
 
 type Vm = ReturnType<typeof useInicio>;
 
-function Mural({ vm }: { vm: Vm }) {
+function Avisos({ vm }: { vm: Vm }) {
+  if (vm.carregandoAvisos) return <Esqueleto linhas={1} />;
+  if (!vm.avisos.length) return null;
   return (
-    <div className="card">
-      <div className="card-head"><h3>Avisos do escritório</h3></div>
-      {vm.carregandoAvisos ? <Esqueleto linhas={3} /> : vm.avisos.length === 0 ? (
-        <Vazio compacto icone="alert" texto={vm.escreve ? 'Nenhum aviso. Escreva o primeiro aqui embaixo.' : 'Nenhum aviso do escritório por enquanto.'} />
-      ) : (
-        <ul className="mural-lista">
-          {vm.avisos.map(a => (
-            <li key={a.id} className="mural-aviso">
-              <div className="mural-aviso-corpo">
-                <p className="mural-aviso-texto">{a.texto}</p>
-                <p className="hint" title={a.quandoCompleto}>{a.fixado && <><Icone nome="mapaPin" width={12} height={12} /> Fixado · </>}{a.por} · {a.quando}</p>
-              </div>
-              {vm.escreve && (
-                <>
-                  <button type="button" className="icon-btn" title={a.fixado ? 'Soltar do alto' : 'Fixar no alto'} aria-pressed={!!a.fixado} onClick={() => void vm.fixar(a.id, !a.fixado)}>
-                    <Icone nome="mapaPin" width={16} height={16} />
-                  </button>
-                  <button type="button" className="icon-btn" title="Apagar o aviso" onClick={() => void vm.apagar(a.id)}>
-                    <Icone nome="lixeira" width={16} height={16} />
-                  </button>
-                </>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-      {vm.escreve && (
-        <div className="mural-novo">
-          <div className="field">
-            <label htmlFor="mural-novo-texto">Novo aviso</label>
-            <textarea id="mural-novo-texto" value={vm.texto} onChange={e => vm.setTexto(e.target.value)} placeholder="Escreva o aviso para todo o escritório"
-              onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); void vm.publicar(); } }} />
-          </div>
-          <div className="mural-novo-pe">
-            {vm.faltam < 100 && <span className={'hint' + (vm.faltam < 0 ? ' cor-entrada' : '')}>{vm.faltam} caracteres</span>}
-            <button type="button" className="btn btn-primary" disabled={!vm.podePublicar} onClick={() => void vm.publicar()}>
-              <Icone nome="envelope" width={16} height={16} />{vm.publicando ? 'Publicando…' : 'Publicar'}
-            </button>
-          </div>
+    <div className="mural-faixas">
+      {vm.avisos.map(a => (
+        <div key={a.id} className="alerta-linha">
+          <Alerta naLinha titulo="" texto={<span className="mural-aviso-texto">{a.texto}</span>}>
+            <span className="hint" title={a.quandoCompleto}>{a.fixado && <><Icone nome="mapaPin" width={12} height={12} /> Fixado · </>}{a.por} · {a.quando}</span>
+            {vm.escreve && (
+              <>
+                <span className="tarefas-barra-espaco" />
+                <BotaoIcone pequeno icone="mapaPin" titulo={a.fixado ? 'Soltar do alto' : 'Fixar no alto'} aria-pressed={!!a.fixado} onClick={() => void vm.fixar(a.id, !a.fixado)} />
+                <BotaoIcone pequeno icone="lixeira" titulo="Apagar o aviso" onClick={() => void vm.apagar(a.id)} />
+              </>
+            )}
+          </Alerta>
         </div>
-      )}
+      ))}
     </div>
   );
 }
 
-function UltimaEmpresa({ vm }: { vm: Vm }) {
-  const u = vm.ultima;
+// clicar fora não fecha; o texto fica guardado se a pessoa fechar sem publicar
+function NovoAviso({ vm }: { vm: Vm }) {
+  const janela = useRef<HTMLDivElement>(null);
+  useJanela(janela, vm.fecharNovo);
   return (
-    <div className="card">
-      <div className="card-head"><h3>Última empresa</h3></div>
-      {vm.carregando ? <Esqueleto linhas={2} /> : !u ? (
-        <Vazio compacto icone="briefcase" texto={'Você ainda não mexeu em nenhuma empresa em ' + vm.rotuloCompetencia + '.'} />
-      ) : (
-        <div className="ultima-empresa">
-          <p className="ultima-empresa-nome">{u.codigo != null && <>{u.codigo} · </>}{u.nome}</p>
-          <p className="hint"><span className={'bolinha-sit ' + u.situacao} />{u.rotuloSituacao}{u.etapaAtual && <> · {u.etapaAtual}</>} · você mexeu {u.quando}</p>
-          <div className="progresso-linha">
-            <span className="tarefas-barra larga" role="progressbar" aria-valuemin={0} aria-valuemax={u.total} aria-valuenow={u.concluidas} aria-label="Etapas feitas">
-              <span style={{ width: u.porcentagem + '%' }} />
-            </span>
-            <span className="num">{u.concluidas} de {u.total}</span>
-          </div>
-          <div>
-            <button type="button" className={'btn ' + (u.situacao === 'concluida' ? 'btn-outline' : 'btn-primary')} onClick={u.abrir}>
-              <Icone nome="play" width={16} height={16} />{u.acao}
-            </button>
-          </div>
+    <div className="modal-overlay">
+      <div ref={janela} className="modal" role="dialog" aria-modal="true" aria-label="Novo aviso">
+        <BotaoFechar canto onClick={vm.fecharNovo} />
+        <h3>Novo aviso</h3>
+        <div className="field">
+          <label htmlFor="mural-novo-texto">Aviso para todo o escritório</label>
+          <textarea id="mural-novo-texto" value={vm.texto} autoFocus onChange={e => vm.setTexto(e.target.value)} placeholder="Escreva o aviso"
+            onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); void vm.publicar(); } }} />
         </div>
-      )}
-    </div>
-  );
-}
-
-function MeuMes({ vm }: { vm: Vm }) {
-  const r = vm.resumo;
-  return (
-    <div className="card">
-      <div className="card-head"><h3>Suas empresas em {vm.rotuloCompetencia}</h3></div>
-      {vm.carregando ? <Esqueleto linhas={2} /> : (
-        <div className="ultima-empresa">
-          <div className="progresso-linha">
-            <span className="tarefas-barra larga" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={r.porcentagem} aria-label="Progresso do mês">
-              <span style={{ width: r.porcentagem + '%' }} />
-            </span>
-            <span className="num">{r.porcentagem}%</span>
-          </div>
-          <p className="hint">
-            {r.porSituacao.concluida} de {r.empresas} concluídas · {r.porSituacao['em-andamento']} em andamento · {r.porSituacao.parada} paradas · {r.porSituacao['nao-iniciada']} não iniciadas
-          </p>
-          <div><button type="button" className="btn btn-outline" onClick={vm.verEmpresas}><Icone nome="list" width={16} height={16} />Ver as empresas</button></div>
+        <div className="mural-novo-pe">
+          {vm.faltam < 100 && <span className={'hint' + (vm.faltam < 0 ? ' cor-entrada' : '')}>{vm.faltam} caracteres</span>}
+          <button type="button" className="btn btn-primary" disabled={!vm.podePublicar} onClick={() => void vm.publicar()}>
+            <Icone nome="envelope" width={16} height={16} />{vm.publicando ? 'Publicando…' : 'Publicar'}
+          </button>
         </div>
-      )}
+      </div>
     </div>
   );
 }
 
 export function Inicio() {
   const vm = useInicio();
-  useCarregando(vm.carregando || vm.carregandoAvisos);
+  useCarregando(vm.carregandoAvisos);
   // as tarefas na mesma tela (Vitor, 09/11/2026: "coloque o que está no menu lateral em uma tela só"); ?aba= diz por qual abrir
   const [params] = useSearchParams();
   const pedida = params.get('aba');
   const aba = pedida === 'delegadas' || pedida === 'concluidas' ? pedida : 'minhas';
   return (
     <section>
-      <p className="hint" style={{ marginBottom: 16 }}>Olá, {vm.nome}.</p>
-      <div className="inicio-grade">
-        <Mural vm={vm} />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <UltimaEmpresa vm={vm} />
-          {vm.temRotina && <MeuMes vm={vm} />}
-        </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
+        <p className="hint" style={{ margin: 0 }}>Olá, {vm.nome}.</p>
+        {vm.escreve && <button type="button" className="btn btn-outline" onClick={vm.abrirNovo}><Icone nome="plus" width={16} height={16} />Novo aviso</button>}
       </div>
+      <Avisos vm={vm} />
+      {vm.novoAberto && <NovoAviso vm={vm} />}
       <div style={{ marginTop: 24 }}><PaginaDeTarefas key={aba} aba={aba} /></div>
     </section>
   );
