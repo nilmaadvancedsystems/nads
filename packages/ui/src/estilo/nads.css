@@ -5144,12 +5144,8 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .suporte-botao{position:fixed;right:16px;bottom:16px;z-index:64;width:48px;height:48px;padding:0;border-radius:50%;justify-content:center;box-shadow:var(--shadow-floating);}
 .suporte-botao svg{width:22px;height:22px;}
 .suporte-balao{position:fixed;right:16px;bottom:74px;z-index:64;width:min(380px,calc(100vw - 32px));height:min(540px,calc(100vh - 120px));display:flex;flex-direction:column;padding:0;margin:0;overflow:hidden;box-shadow:var(--shadow-floating);}
-.suporte-topo{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border-muted);}
-.suporte-avatar{flex:none;width:32px;height:32px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--accent-soft);color:var(--accent);}
-.suporte-avatar svg{width:18px;height:18px;}
-.suporte-titulo{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25;}
+.suporte-topo{display:flex;align-items:center;justify-content:flex-end;gap:10px;padding:6px 12px;border-bottom:1px solid var(--border-muted);}
 .suporte-acao{height:28px;padding:0 8px;font-size:var(--fs-12);flex:none;}
-.suporte-sub{font-size:var(--fs-12);color:var(--ink-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .suporte-corpo{flex:1;overflow:auto;padding:14px 12px;display:flex;flex-direction:column;gap:8px;background:var(--surface-2);}
 .suporte-troca{display:flex;flex-direction:column;gap:8px;}
 .suporte-msg{align-self:flex-start;max-width:85%;padding:8px 12px;border-radius:14px 14px 14px 4px;background:var(--surface);border:1px solid var(--border-muted);font-size:var(--fs-13);line-height:1.45;}
@@ -6301,7 +6297,7 @@ td.fs-fat-sem{color:var(--ink-faint);}
 /* O suporte em vidro e os tickets no chat (09/11/2026) */
 .card.suporte-balao{background:color-mix(in srgb,var(--surface) 68%,transparent);border:1px solid color-mix(in srgb,var(--ink) 16%,transparent);border-radius:16px;
   -webkit-backdrop-filter:blur(22px) saturate(160%);backdrop-filter:blur(22px) saturate(160%);}
-.suporte-balao .suporte-topo{padding:12px 14px;border-bottom:1px solid color-mix(in srgb,var(--ink) 10%,transparent);}
+.suporte-balao .suporte-topo{padding:6px 14px;border-bottom:1px solid color-mix(in srgb,var(--ink) 10%,transparent);}
 .suporte-balao .suporte-corpo{background:transparent;padding:14px;gap:10px;}
 .suporte-balao .suporte-envio{border-top:1px solid color-mix(in srgb,var(--ink) 10%,transparent);}
 .suporte-balao .suporte-msg:not(.suporte-eu){background:color-mix(in srgb,var(--surface) 62%,transparent);border-color:color-mix(in srgb,var(--ink) 10%,transparent);}
