@@ -34,6 +34,8 @@ export interface RepoAcesso {
   salvarMinhaFoto(foto: string | null): Promise<void>;
   /** o nads de quem está logado está aberto agora (usuarios/{uid}.nadsVistoEm): quem está online, em Usuários */
   marcarPresenca(): Promise<void>;
+  /** a empresa e a etapa do Contábil abertas por quem está logado (usuarios/{uid}.nadsOnde); null = saiu da etapa */
+  marcarOnde(onde: usuarios.OndeNoNads | null): Promise<void>;
   ativar(uid: string, ativo: boolean): Promise<void>;
   /** só o admin: cria a conta (o login no Entregas e o cadastro em usuarios/{uid}); devolve o e-mail do login */
   criarConta(c: usuarios.NovaConta): Promise<string>;
@@ -98,6 +100,10 @@ export function criarAcessoMemoria(quem: () => { nome: string } | null): RepoAce
     async marcarPresenca() {
       const d = Object.values(docs).find(x => x.nome === quem()?.nome);
       if (d) { d.nadsVistoEm = agora(); mudou(); }
+    },
+    async marcarOnde(onde) {
+      const d = Object.values(docs).find(x => x.nome === quem()?.nome);
+      if (d) { if (onde) d.nadsOnde = onde; else delete d.nadsOnde; mudou(); }
     },
     async salvarMinhaFoto(foto) {
       const d = Object.values(docs).find(x => x.nome === quem()?.nome);

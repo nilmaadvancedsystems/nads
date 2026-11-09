@@ -55,7 +55,7 @@ export function UsuariosDoNads() {
                         {p.fotoPerfil ? <img className="usuarios-foto" src={p.fotoPerfil} alt="" /> : <span className="usuarios-foto usuarios-iniciais" aria-hidden="true">{p.iniciais}</span>}
                         {p.ativo && <span className={'usuarios-presenca' + (p.online ? ' on' : '')} title={p.presenca} aria-hidden="true" />}
                       </span>
-                      <span className="usuarios-quem"><b>{p.nome}</b><span className="fraco">{p.email}</span></span>
+                      <span className="usuarios-quem"><b>{p.nome}</b><span className="fraco">{p.email}</span>{p.onde && <span className="fraco" title={p.onde + (p.ondePeriodo ? ' · ' + p.ondePeriodo : '')}>Em {p.onde}</span>}</span>
                       {vm.admin && (
                         <span className="usuarios-cargo">
                           {p.departamentoRotulo ? <span className={'usuarios-dep dep-' + p.departamento}>{p.departamentoRotulo}</span> : <span className="usuarios-sem-cargo">Sem cargo</span>}

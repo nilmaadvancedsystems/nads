@@ -49,6 +49,7 @@ export function JanelaDoUsuario({ vm }: { vm: VmUsuarios }) {
         <span className="fraco">{p.email}</span>
         <span className={'badge ' + (p.online ? 'badge-ok' : 'badge-neutral')}>{!p.ativo ? 'Inativo' : p.online ? 'Online' : 'Ativo'}</span>
         {p.ativo && !p.online && <span className="fraco">{p.presenca}</span>}
+        {p.onde && <span className="fraco">Em {p.onde}{p.ondePeriodo ? ' · ' + p.ondePeriodo : ''}</span>}
         <span className="fraco">{p.cargo || 'Sem cargo'}</span>
       </div>
     )}>
