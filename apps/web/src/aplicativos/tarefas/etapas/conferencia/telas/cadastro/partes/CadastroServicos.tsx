@@ -42,8 +42,10 @@ function Categoria({ cat, geral }: { cat: CategoriaView; geral: string }) {
       <Bloco rot="Conta">
         <div className="ndp-contas-row">
           <ChipsDeContas v={cat.vinculo} />
-          {!cat.vinculo.chips.length && <CampoVincular v={cat.vinculo} rotulo="Vincular conta" titulo="Vincular uma conta"
-            extra={escondido => cat.sugestao && !escondido ? <Sugestao sug={cat.sugestao} oQuePede="A categoria pede" vincular={cat.vinculo.escolher} /> : null} />}
+          {/* mais de uma conta na categoria (09/11/2026), como nas naturezas: com conta ligada, sobra só o + */}
+          {cat.vinculo.chips.length ? <CampoVincular soIcone v={cat.vinculo} rotulo="Vincular conta" titulo="Vincular mais uma conta" />
+            : <CampoVincular v={cat.vinculo} rotulo="Vincular conta" titulo="Vincular uma conta"
+              extra={escondido => cat.sugestao && !escondido ? <Sugestao sug={cat.sugestao} oQuePede="A categoria pede" vincular={cat.vinculo.escolher} /> : null} />}
         </div>
       </Bloco>
       {f && (
