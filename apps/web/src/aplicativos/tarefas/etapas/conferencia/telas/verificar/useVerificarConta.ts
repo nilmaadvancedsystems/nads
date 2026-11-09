@@ -39,10 +39,10 @@ export function useVerificarConta() {
   const e = s.empresa;
   const v = s.verificar;
   const d = derivar(e, v);
-  // o fora do padrão da conta só de novo quando a empresa, as contas, o filtro ou a ordem mudam (19/10/2026)
+  // o fora do padrão da conta só de novo quando a empresa, as contas, ou o filtro mudam (19/10/2026)
   const codigosDaConta = d.codigos.join(',');
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const foraDoPadrao = useMemo(() => montarForaDoPadrao(e, s, d.codigos), [e, codigosDaConta, s.filtro, s.ordemServ]);
+  const foraDoPadrao = useMemo(() => montarForaDoPadrao(e, s, d.codigos), [e, codigosDaConta, s.filtro]);
 
   const [info, setInfo] = useState<Record<string, InfoRelatorio>>({});
   const [comparando, setComparando] = useState(false);
@@ -261,7 +261,7 @@ function montarForaDoPadrao(e: c.Empresa, s: ReturnType<typeof useSessao>, codig
     .filter(x => x.r.temDivergencias);
   const servicos = (['tomados', 'prestados'] as const)
     .filter(tipo => tipo === 'tomados' || !c.semPrest(e))
-    .map(tipo => ({ tipo, r: c.foraDoPadraoServDaConta(e, tipo, s.filtro, s.ordemServ[tipo], codigos) }))
+    .map(tipo => ({ tipo, r: c.foraDoPadraoServDaConta(e, tipo, s.filtro, 'nome', codigos) }))
     .filter(x => x.r.temDivergencias);
   return { fiscais, servicos };
 }

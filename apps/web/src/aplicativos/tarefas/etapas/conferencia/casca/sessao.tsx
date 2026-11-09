@@ -46,8 +46,6 @@ export interface Sessao {
   setAbaConsulta: (a: c.GrupoConsulta) => void;
   filtroConsulta: Record<c.GrupoConsulta, c.FiltroConsulta>;
   setFiltroConsulta: (g: c.GrupoConsulta, f: c.FiltroConsulta) => void;
-  ordemServ: Record<c.TipoServico, c.OrdemServ>;
-  setOrdemServ: (t: c.TipoServico, o: c.OrdemServ) => void;
   verificar: EstadoVerificar;
   setVerificar: (v: EstadoVerificar | ((v: EstadoVerificar) => EstadoVerificar)) => void;
   /** abre o Verificar por conta já com a conta (atalho "Revisar" do Relatório) */
@@ -104,7 +102,6 @@ export function SessaoProvider({ nome, rota, codigo, pagina: inicial, children }
   const [abaCadastro, setAbaCadastro] = useState<AbaCadastro>('entradas');
   const [abaConsulta, setAbaConsulta] = useState<c.GrupoConsulta>('fiscais');
   const [filtroConsulta, setFC] = useState<Record<c.GrupoConsulta, c.FiltroConsulta>>({ fiscais: c.FILTRO_CONSULTA_VAZIO, servicos: c.FILTRO_CONSULTA_VAZIO });
-  const [ordemServ, setOS] = useState<Record<c.TipoServico, c.OrdemServ>>({ tomados: 'nome', prestados: 'nome' });
   const [verificar, setVerificar] = useState<EstadoVerificar>(VERIFICAR_VAZIO);
 
   const irPara = useCallback((destino: string) => {
@@ -139,7 +136,6 @@ export function SessaoProvider({ nome, rota, codigo, pagina: inicial, children }
     nome, rota, codigo, empresa, aplicar, pagina, irPara,
     filtro, setFiltro, abaRelatorio, setAbaRelatorio, abaCadastro, setAbaCadastro, abaConsulta, setAbaConsulta,
     filtroConsulta, setFiltroConsulta: (g, f) => setFC(x => ({ ...x, [g]: f })),
-    ordemServ, setOrdemServ: (t, o) => setOS(x => ({ ...x, [t]: o })),
     verificar, setVerificar, revisarConta, avisoImportar, servAdd, setServAdd, definirTrava,
   };
   return <Ctx.Provider value={valor}>{children}</Ctx.Provider>;
