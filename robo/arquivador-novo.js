@@ -579,7 +579,9 @@ async function executar(opcoes) {
       continue;
     }
     // o conteúdo pequeno fica com o item até o fim (a quarentena do "já arquivado" grava dele, sem ler o G: de novo)
-    if (lido.erroEntrada) throw lido.erroEntrada;
+    // (09/11/2026) a extração que lança (PDF/planilha que derruba o leitor) fica só neste arquivo: ele não sai do lugar e
+    // volta depois; antes o throw derrubava o lote inteiro (e o reprocesso com ele)
+    if (lido.erroEntrada) { itens.push({ rel, nome: path.basename(rel), hash: pai.hash, acao: 'FICA', motivo: 'ERRO_NA_LEITURA', temporario: true, erro: 'leitura do conteúdo: ' + (lido.erroEntrada.message || String(lido.erroEntrada)), confianca: 0, evidencias: ['a leitura do conteúdo falhou: ' + (lido.erroEntrada.message || String(lido.erroEntrada))], copias: [] }); continue; }
     itens.push(Object.assign(await decidirUm(path.basename(rel), rel, buffer, ctx, lido.entrada), { tamanho: buffer.length }, producao && buffer.length <= 1024 * 1024 ? { _buf: buffer } : {}));
     tempos.decisaoMs += Date.now() - t1;
   }
@@ -641,6 +643,8 @@ async function decidirUm(nome, rel, buffer, ctx, pronta) {
     anoRaiz: d.anoRaiz || null, raiz: d.raiz || null, pelaMigracao: d.pelaMigracao || null, comoCliente: d.comoCliente || null };
   if (d.acao === 'AGUARDANDO_ORIGINAL') item._buffer = buffer;   // para decidir de novo quando o original aparecer
   if (entrada.erroLeitura) item.evidencias.push('leitura do PDF: ' + entrada.erroLeitura);
+  // (09/11/2026) o OCR que falhou fica anotado só neste arquivo; o reprocesso não o dá por decidido e lê de novo na próxima rodada
+  if (entrada.ocr && entrada.ocr.erro) item.evidencias.push('OCR falhou neste arquivo (' + entrada.ocr.erro + '): lê de novo na próxima rodada');
   if (d.acao === 'ARQUIVAR') {
     const hx = /\.xml$/i.test(nome) && buffer ? conteudoXml(buffer) : null;
     if (hx) item.conteudoXml = hx;

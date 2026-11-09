@@ -18,6 +18,10 @@ const ORIGEM = arg('--origem', 'G:\\Meu Drive\\Claudio Secretario');
 const SAIDA = arg('--saida', path.join(A.CONTROLE, 'reprocesso-ni'));
 const LOTE = +arg('--lote', 150);
 const log = (...m) => console.log(new Date().toLocaleTimeString('pt-BR'), ...m);
+// (09/11/2026) o reprocesso de 07/11 caiu em 1050/1339 por uma rejeição não tratada dentro do tesseract.js: como os outros
+// processos longos do robô (arquivador.js, robo-modulo.js), a rejeição solta vira uma linha no log e a rodada segue
+const curto = e => (e && e.stack ? e.stack.split(/\r?\n/).slice(0, 3).join(' | ') : String(e));
+process.on('unhandledRejection', e => log('erro não tratado (segui rodando):', curto(e)));
 
 (async () => {
   fs.mkdirSync(SAIDA, { recursive: true });
@@ -55,7 +59,10 @@ const log = (...m) => console.log(new Date().toLocaleTimeString('pt-BR'), ...m);
   const conta = {};
   const t0 = Date.now();
   for (let i = 0; i < fila.length; i += LOTE) {
-    const res = await A.reprocessarNaoIdentificados(Object.assign({}, base, { arquivos: fila.slice(i, i + LOTE) }));
+    // o lote que falha inteiro fica onde está (nada foi movido) e a rodada segue no próximo (09/11/2026)
+    let res;
+    try { res = await A.reprocessarNaoIdentificados(Object.assign({}, base, { arquivos: fila.slice(i, i + LOTE) })); }
+    catch (e) { log('lote ' + (i + 1) + '–' + Math.min(i + LOTE, fila.length) + ' falhou (fica para a próxima rodada): ' + curto(e)); conta['(lote com erro)'] = (conta['(lote com erro)'] || 0) + Math.min(LOTE, fila.length - i); continue; }
     const docs = A.planos(res).filter(y => y.acao !== 'CONTEINER');
     if (APLICAR) {
       const sts = new Map();

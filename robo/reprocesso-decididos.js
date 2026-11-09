@@ -52,7 +52,8 @@ function anotar(reg, docs, stats, agora) {
   let n = 0;
   for (const [rel, lista] of grupos) {
     const st = stats.get(rel);
-    const fixo = lista.every(x => (x.acao === 'NAO_IDENTIFICADO' || x.acao === 'FICA') && !x.erro && !x.temporario && MOTIVOS_FIXOS.has(x.motivo));
+    // (09/11/2026) o OCR que falhou (prazo, trabalhador morto) não decide nada: o arquivo volta na próxima rodada
+    const fixo = lista.every(x => (x.acao === 'NAO_IDENTIFICADO' || x.acao === 'FICA') && !x.erro && !x.temporario && !(x.ocr && x.ocr.erro) && MOTIVOS_FIXOS.has(x.motivo));
     if (!st || !fixo) { delete reg.itens[rel]; continue; }
     reg.itens[rel] = Object.assign({ m: lista[0].motivo, em: agora || Date.now() }, marca(st));
     n++;

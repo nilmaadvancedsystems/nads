@@ -135,6 +135,7 @@ const jl = (arq, linhas) => fs.appendFileSync(arq, linhas.map(l => JSON.stringif
       igual('decididos: o arquivo mudou (data) → reprocessa', D.jaDecidido(reg, 'N1\\a.pdf', { size: 100, mtimeMs: st.mtimeMs + 5000 }, 2000), null);
       igual('decididos: passou de 7 dias → reprocessa', D.jaDecidido(reg, 'N1\\a.pdf', st, 1000 + 8 * 864e5), null);
       igual('decididos: o motivo que depende do cadastro nunca é pulado', D.jaDecidido(Object.assign({}, reg, { itens: { 'N1\\b.pdf': { m: 'CLIENTE_NAO_LOCALIZADO', em: 1000, t: 100, mt: Math.round(st.mtimeMs) } } }), 'N1\\b.pdf', st, 2000), null);
+      igual('decididos: o OCR que falhou não fica decidido (volta na próxima rodada)', D.anotar({ versao: 'v1', itens: {} }, [{ rel: 'N1\\e.pdf', acao: 'NAO_IDENTIFICADO', motivo: 'TIPO_NAO_RECONHECIDO', ocr: { erro: 'OCR passou de 90 s' } }], new Map([['N1\\e.pdf', st]]), 1000), 0);
       D.gravar(path.join(tmp, 'dec.json'), reg);
       igual('decididos: outra versão das regras → registro vazio', [Object.keys(D.ler(path.join(tmp, 'dec.json'), 'v1').itens), Object.keys(D.ler(path.join(tmp, 'dec.json'), 'v2').itens)], [['N1\\a.pdf'], []]);
       // depois: resolveu (virou ARQUIVAR) → sai do registro; e a poda tira o que sumiu da pasta
