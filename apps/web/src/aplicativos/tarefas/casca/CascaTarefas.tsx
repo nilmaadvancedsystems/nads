@@ -63,7 +63,7 @@ export function CascaTarefas({ app, pagina, telaInteira, semLateral, larga, empr
       contadorDoInicio={mural.naoLidos ? String(mural.naoLidos) : undefined}
       onEmpresa={vm.trocarPessoa} aplicativos={vm.aplicacoes} onAplicativo={vm.onAplicacao}
       cartaoNoTopo={empresa ? <CartaoDaEmpresa empresa={empresa} /> : undefined}
-      topoDireita={<AvatarDaPessoa vm={vm} abrirCentral={() => vm.onAplicacao('minhas-tarefas')} />}
+      topoDireita={<AvatarDaPessoa vm={vm} abrirCentral={vm.abrirTarefas} />}
       // o pé da gaveta (Vitor, 28/10/2026: "deixe dois ícones, um com o e-mail e outro com a engrenagem, somente com os
       // ícones"): os Feedbacks (só o admin) e as Configurações (quem tem), lado a lado. O correio das tarefas saiu (30/10/2026:
       // as tarefas viraram o módulo Minhas tarefas, no Escritório)
