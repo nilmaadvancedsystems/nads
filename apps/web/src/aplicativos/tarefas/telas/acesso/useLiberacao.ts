@@ -5,7 +5,8 @@ import { useRetorno } from '@nads/ui';
 import { useState } from 'react';
 import { useAcesso } from '../../dados/repo';
 
-export function useLiberacao(admin: boolean) {
+/** sempre: vale para todos, admin inclusive, mesmo com a proteção desligada (o Financeiro, Vitor, 09/11/2026). */
+export function useLiberacao(admin: boolean, sempre = false) {
   const repo = useAcesso();
   const { toast } = useRetorno();
   const config = repo.config();
@@ -17,8 +18,8 @@ export function useLiberacao(admin: boolean) {
 
   return {
     /** ainda sabendo se precisa */
-    carregando: !config.carregada || (config.protecao && !admin && !sessao.carregada),
-    precisa: config.protecao && !admin && sessao.carregada && !sessao.liberada,
+    carregando: sempre ? !sessao.carregada : !config.carregada || (config.protecao && !admin && !sessao.carregada),
+    precisa: sempre ? sessao.carregada && !sessao.liberada : config.protecao && !admin && sessao.carregada && !sessao.liberada,
     pedido,
     /** sem pedido, recusado, revogado ou com o código vencido: mostra "Pedir liberação" */
     pedirDeNovo: usuarios.precisaPedirDeNovo(pedido),

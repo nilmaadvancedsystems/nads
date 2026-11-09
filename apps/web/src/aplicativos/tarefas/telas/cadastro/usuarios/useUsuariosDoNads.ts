@@ -5,7 +5,7 @@
 import { usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useState } from 'react';
-import { BASE, ehDiretor, temNivelDiretor } from '../../../casca/navegacao';
+import { BASE, temNivelDiretor } from '../../../casca/navegacao';
 import { useOperador } from '../../../casca/operador';
 import { useAcesso } from '../../../dados/repo';
 
@@ -42,10 +42,7 @@ export function useUsuariosDoNads() {
     try { await f(); } finally { setFazendo(s => { const n = new Set(s); n.delete(chave); return n; }); }
   }
 
-  // o Sênior só vê as pessoas do setor dele (09/11/2026); o Diretor e o admin, a equipe toda
-  const verTodos = ehDiretor(operador);
   const todas = equipe.lista
-    .filter(p => verTodos || (!!operador?.departamento && p.departamento === operador.departamento))
     .map(p => ({
       ...p,
       cargo: p.departamento || p.nivel ? usuarios.rotuloDoCargo(p) : '',
@@ -73,7 +70,6 @@ export function useUsuariosDoNads() {
   return {
     exemplos: repo.exemplos,
     admin,
-    verTodos,
     carregando: !equipe.carregada,
     busca, setBusca,
     filtro, setFiltro,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  conferirNovaConta, departamentoDaConta, docDaContaNova, emailDoLogin, emailDoNome, EQUIPE_EXEMPLO, iniciais, lerUsuario, mensagemDeErroDeLogin,
+  conferirNovaConta, departamentoDaConta, ehContaReservada, docDaContaNova, emailDoLogin, emailDoNome, EQUIPE_EXEMPLO, iniciais, lerUsuario, mensagemDeErroDeLogin,
   mudancaDeCargo, nivelPeloMenos, papeisAoMudarCargo, papeisDaContaNova, papeisDoDoc, papeisFaltando, pode, podeAlgum, recursosDe, rotuloDoCargo,
 } from '.';
 
@@ -150,5 +150,14 @@ describe('liberação do login do nads', () => {
     expect(l.precisaPedirDeNovo(null)).toBe(true);
     expect(l.precisaPedirDeNovo(l.pedidoDoDocumento('p3', { status: 'pendente' }))).toBe(false);
     expect(l.sessaoDoDocumento('u1_1', { pedidoId: 'p1', uid: 'u1' }).pedidoId).toBe('p1');
+  });
+});
+
+describe('as contas reservadas', () => {
+  it('reconhece só as duas contas, pelo login exato', () => {
+    expect(ehContaReservada('fiscal.xereta@nilma.local')).toBe(true);
+    expect(ehContaReservada(' Contabil.Curioso@nilma.local ')).toBe(true);
+    expect(ehContaReservada('fiscal@nilma.local')).toBe(false);
+    expect(ehContaReservada(undefined)).toBe(false);
   });
 });
