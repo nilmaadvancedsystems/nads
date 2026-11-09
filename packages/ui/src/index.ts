@@ -14,7 +14,7 @@ export { MOLA, MOLA_VIVA, molaViva, mola, garantir, tudoAnima, entradasFeitas, s
 export { iniciarAnimador } from './animador';
 export { atualizarVersao, iniciarAtualizacaoPorInatividade, useVersaoNova, TravaDeVersaoNova } from './versaoNova';
 export { aplicarTabelasCompactas, definirLateralOculta, definirTabelasCompactas, lerLateralOculta, lerTabelasCompactas } from './preferencias';
-export { iniciarContinuidade, atualizarSemPerder } from './continuidade';
+export { iniciarContinuidade, atualizarSemPerder, estamosAtualizando } from './continuidade';
 export { origemConfiavel, origemDoPai, useAbasParaAEtapa, useAlturaNaEtapa, useFerramentaNaEtapa, type AbaDaEtapa } from './etapa';
 export { fundoSuaveDoBanco, LogoBanco, LogoDrive, LogoEcontador, LogoExcel, LogoFgts, LogoGmail, LogoGovernoMinas, LogoInss, LogoReceitaFederal, LogoSieg, LogoSimplesDaAba, LogoSped, LogoSciReport, LogoSimplesNacional, LogoWhatsApp, preCarregarLogosDosApps, urlDoLogoBanco, urlDoLogoNilma } from './logos';
 export { AberturaN } from './abertura';
