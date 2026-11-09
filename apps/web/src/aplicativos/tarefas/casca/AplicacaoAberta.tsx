@@ -19,7 +19,6 @@ const UsuariosDoNads = pedaco(() => import('../telas/cadastro/usuarios/UsuariosD
 const TelaDoAdmin = pedaco(() => import('../telas/configuracoes/TelaDoAdmin'), 'TelaDoAdmin');
 const VisaoContabil = pedaco(() => import('../telas/contabil/VisaoContabil'), 'VisaoContabil');
 const ExploradorDoDrive = pedaco(() => import('../telas/drive/ExploradorDoDrive'), 'ExploradorDoDrive');
-const PaginaDeTarefas = pedaco(() => import('../telas/delegador/PaginaDeTarefas'), 'PaginaDeTarefas');
 const CaixaDoRobo = pedaco(() => import('../telas/gmail/CaixaDoRobo'), 'CaixaDoRobo');
 const HistoricoDoRobo = pedaco(() => import('../telas/gmail/HistoricoDoRobo'), 'HistoricoDoRobo');
 const MinhasEmpresas = pedaco(() => import('../telas/empresas/MinhasEmpresas'), 'MinhasEmpresas');
@@ -59,7 +58,7 @@ const Ferramentas = pedaco(() => import('../telas/ferramentas/Ferramentas'), 'Fe
 
 function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
   switch (app) {
-    case 'inicio': return pagina === 'inicio' ? <Inicio /> : <PaginaDeTarefas key={pagina} aba={pagina === 'delegadas' || pagina === 'concluidas' ? pagina : 'minhas'} />;
+    case 'inicio': return <Inicio />;
     case 'minhas-empresas': return <MinhasEmpresas />;
     // as Empresas, o Painel, a Visão geral e as Paradas do Fiscal saíram (27/10/2026): ficam as ferramentas
     case 'fiscal': return pagina === 'sintegra' ? <PaginaSintegra /> : pagina === 'faturamento' ? <FaturamentoDosClientes /> : pagina === 'simples' ? <CalculadoraDoSimples /> : pagina === 'rateio-frete' ? <RateioDeFrete /> : pagina === 'sieg' ? <BaixarDoSieg /> : pagina === 'antecipacao-es' ? <AntecipacaoIcms /> : pagina === 'auditoria-itens' ? <AuditoriaDeItens /> : pagina === 'relatorio-presumido' || pagina === 'particularidades-presumido' ? <RelatorioGeral regime="lp" /> : pagina === 'relatorio-simples' || pagina === 'relatorio' || pagina === 'controle-tributos' || pagina === 'particularidades-simples' ? <RelatorioGeral regime="sn" /> : <Reinf />;
@@ -88,7 +87,8 @@ export function AplicacaoAberta() {
   // o Mandei entrou na Área do Cliente (19/10/2026): os links antigos levam para lá, na mesma página
   if (app === 'minhas-empresas' && pagina === 'inicio') return <Navigate to={BASE + '/inicio'} replace />;
   // as tarefas foram para o Início (09/11/2026): os links antigos levam para lá, na mesma página
-  if (app === 'minhas-tarefas') return <Navigate to={caminhoDaPagina('inicio', pagina === 'delegadas' || pagina === 'concluidas' ? pagina : 'minhas')} replace />;
+  // os endereços das abas de antes (o módulo Minhas tarefas e as páginas do Início): a tela é uma só, a aba vai no ?aba=
+  if (app === 'minhas-tarefas' || (app === 'inicio' && ['minhas', 'delegadas', 'concluidas'].includes(pagina))) return <Navigate to={BASE + '/inicio?aba=' + (pagina === 'delegadas' || pagina === 'concluidas' ? pagina : 'minhas')} replace />;
   if (app === 'mandei') return <Navigate to={caminhoDaPagina('area-cliente', pagina === 'central' ? 'central' : 'meus')} replace />;
   const a = aplicacoesDe(op).find(x => x.id === app);
   if (!a) return <Navigate to={caminhoDaPagina('minhas-empresas', 'empresas')} replace />;
@@ -99,7 +99,7 @@ export function AplicacaoAberta() {
   if (!a.paginas.some(p => p.id === pagina && !p.emDesenvolvimento)) return <Navigate to={caminhoDaPagina(a.id, (a.paginas.find(p => !p.emDesenvolvimento) || a.paginas[0]).id)} replace />;
   return (
     <TopoProvider>
-      <CascaTarefas app={a.id} pagina={pagina} telaInteira={a.id === 'drive'} semLateral={a.id === 'minhas-empresas' || a.id === 'contato' || a.id === 'ferramentas'} larga>
+      <CascaTarefas app={a.id} pagina={pagina} telaInteira={a.id === 'drive'} semLateral={a.id === 'inicio' || a.id === 'minhas-empresas' || a.id === 'contato' || a.id === 'ferramentas'} larga>
         <NaEspera><Tela app={a.id} pagina={pagina} /></NaEspera>
       </CascaTarefas>
     </TopoProvider>

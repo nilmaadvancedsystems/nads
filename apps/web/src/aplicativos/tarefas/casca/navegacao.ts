@@ -32,12 +32,9 @@ export const APLICACOES: readonly Aplicacao[] = [
   // o Início (27/10/2026): os avisos do escritório e a última empresa em que a pessoa mexeu, com o progresso dela. Uma tela
   // à parte (27/10/2026: "pq o minhas empresas ta junto do inicio?"): /tarefas/inicio, pelo "Início" da gaveta ☰
   { id: 'inicio', nome: 'Início', icone: 'home', grupo: 'Rotinas', pronta: true, paginas: [
+    // uma tela só, sem a barra lateral (Vitor, 09/11/2026: "coloque o que está no menu lateral em uma tela só"): os avisos, a
+    // última empresa e, embaixo, as tarefas delegadas com as abas (Minhas, Delegadas, Concluídas); os links antigos caem aqui, com ?aba=
     { id: 'inicio', rotulo: 'Início', icone: 'home', titulo: 'Início' },
-    // as tarefas delegadas vieram para o Início (09/11/2026: "migra os minhas tarefa para Início, todas as abas, e remova do
-    // menu lateral"): saíram da gaveta ☰; os links antigos (/tarefas/minhas-tarefas/...) caem aqui
-    { id: 'minhas', rotulo: 'Minhas tarefas', icone: 'caixaEntrada', titulo: 'Minhas tarefas' },
-    { id: 'delegadas', rotulo: 'Delegadas por mim', icone: 'aviao', titulo: 'Delegadas por mim' },
-    { id: 'concluidas', rotulo: 'Concluídas', icone: 'checkCircle', titulo: 'Tarefas concluídas' },
   ] },
   // o nome voltou a ser Minhas empresas para todos (Vitor, 09/11/2026: foi Contábil de 06/11 a 09/11; cada um vê a rotina do
   // setor dele nela). O ícone segue a balança (06/11/2026: "muda o icone também")
