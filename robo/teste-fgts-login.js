@@ -67,6 +67,7 @@ const passo = t => passos.push(t);
   s = cenario(() => antiga, antiga);
   r = await garantirLogin(passo, s.dep);
   igual('extensão antiga: desiste com detalhe', [r.erro, /^ficou em sso\.acesso\.gov\.br\/login; cliquei 3 vez/.test(r.detalhe)], ['login', true]);
+  igual('extensão antiga: o log pede o Recarregar', s.logs.some(l => /a extensão no Chrome é a antiga.*Recarregar/.test(l)), true);
 
   // a descrição não leva CPF nem CNPJ
   const d = descreverTela({ url: 'https://fgtsdigital.sistema.gov.br/portal/erro', texto: 'Erro para 12.345.678/0001-95 e 123.456.789-09 e 12345678000195' });

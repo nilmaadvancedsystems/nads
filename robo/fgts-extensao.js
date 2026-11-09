@@ -41,8 +41,10 @@ function token() {
 }
 
 /**
- * A versão do manifest sai do conteúdo da extensão (08/11/2026): o Chrome só troca o service worker de uma extensão sem
- * compactação quando a versão muda, então sem isto uma mudança no servico.js ou nos roteiros podia não chegar ao Chrome.
+ * A versão do manifest sai do conteúdo da extensão (08/11/2026), para dar para ver qual está no Chrome. Atenção: visto no
+ * ensaio de 08/11, o Chrome NÃO troca sozinho, ao abrir, o service worker de uma extensão sem compactação (ficou na
+ * 1.0.0): uma mudança no servico.js ou nos roteiros só vale depois do "Recarregar" em chrome://extensions no servidor.
+ * O robô avisa no log quando a extensão no Chrome é a antiga (garantirLogin).
  */
 function manifestoComVersao(textoManifesto, arquivos) {
   const m = JSON.parse(textoManifesto);
@@ -272,7 +274,12 @@ async function garantirLogin(passo, dep = {}) {
     if (t.captcha) { registrar('FGTS (extensão): o gov.br pediu o "não sou um robô":', descreverTela(t, cliques)); return { erro: 'captcha', detalhe: descreverTela(t, cliques) }; }
     if (logado(t)) { if (cliques > 1) registrar('FGTS (extensão): entrou no gov.br no clique ' + cliques + ' do certificado'); return ''; }
     if (/acesso\.gov\.br/.test(t.url)) {
-      if (!contou) { contou = true; registrar('FGTS (extensão): na tela de login do gov.br, página ' + (t.visivel || '?') + (t.foco === undefined ? '' : ', foco ' + (t.foco ? 'sim' : 'não'))); }
+      if (!contou) {
+        contou = true;
+        registrar('FGTS (extensão): na tela de login do gov.br, ' + (t.visivel === undefined
+          ? 'a extensão no Chrome é a antiga (não diz se a página está visível): no servidor, chrome://extensions, "Recarregar" no "nads - robô do FGTS"'
+          : 'página ' + t.visivel + ', foco ' + (t.foco ? 'sim' : 'não')));
+      }
       const deNovo = cliques > 0 && cliques < MAX_CLIQUES && !t.certCarregando && (erroHcaptcha(t) || agora() - ultimoClique >= NOVO_CLIQUE_MS);
       if (!cliques || deNovo) {
         if (deNovo) registrar('FGTS (extensão): clicando de novo no certificado:', descreverTela(t, cliques));
