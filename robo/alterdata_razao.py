@@ -115,6 +115,16 @@ def falhar(motivo):
     fim(erro=motivo)
 
 
+def com_tela(motivo, nome):
+    """O erro de janela que não abriu leva a tela junto (tamanho, janelas à mostra, foto): alterdata_tela.py (09/11/2026)."""
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # o -I tira a pasta do roteiro do caminho
+        import alterdata_tela
+        return alterdata_tela.resumo_do_erro(motivo, nome)
+    except Exception:
+        return motivo
+
+
 def avancar(dlg, de):
     """Avançar e esperar a página mudar (de = o nome da página de agora)."""
     b = botao(dlg, 'Avançar >')
@@ -131,6 +141,18 @@ def avancar(dlg, de):
     return nova
 
 
+
+def preparar_tela():
+    """A tela acesa e com a largura dos cliques (1366x768) enquanto o roteiro roda: alterdata_tela.py (09/11/2026)."""
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # o -I tira a pasta do roteiro do caminho
+        import alterdata_tela
+        t = alterdata_tela.preparar_tela()
+    except Exception as e:
+        t = 'não preparei a tela: ' + type(e).__name__ + ': ' + str(e)[:120]
+    if t:
+        print('TELA: ' + t, flush=True)
+
 try:
     # ── o Contábil aberto e logado
     if janelas('TfrmLogin'):
@@ -144,6 +166,7 @@ try:
     limpar()
     if not os.path.isdir(PASTA) or os.listdir(PASTA):
         fim(erro='a pasta do pedido não está vazia ou não existe: ' + PASTA)
+    preparar_tela()
     principal.set_focus()
     if not principal.is_maximized():
         principal.maximize()
@@ -163,7 +186,7 @@ try:
     mouse.click(coords=(ox + 168, oy + 148))
     dlg = esperar(lambda: janelas('TfrmRazaoDlg'), 25, .25)
     if not dlg:
-        falhar('a janela do Razão não abriu')
+        falhar(com_tela('a janela do Razão não abriu', 'razao-nao-abriu'))
     dlg = dlg[0]
     dlg.set_focus()
     time.sleep(.5)

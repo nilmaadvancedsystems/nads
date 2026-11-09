@@ -31,6 +31,12 @@ const PASTA_PEDIDOS = process.env.ALTERDATA_PEDIDOS
 const PYTHON = process.env.PYTHON_EXE || ['D:\\Programas\\Python313\\python.exe'].find(p => fs.existsSync(p)) || 'python';
 const ROTEIROS = { balancete: path.join(__dirname, 'alterdata_balancete.py'), razao: path.join(__dirname, 'alterdata_razao.py'), dinamico: path.join(__dirname, 'alterdata_dinamico.py'), importar: path.join(__dirname, 'alterdata_importar.py') };
 const ROTEIRO_ESTADO = path.join(__dirname, 'alterdata_estado.py');
+// a tela como o robô a vê (09/11/2026: tudo dava "não abriu" e o log não dizia o que havia na tela): os roteiros põem o
+// tamanho da tela e uma foto no erro de janela que não abriu (ALTERDATA_TELA) e, a pedido (o arquivo tela.pedido com
+// "foto", "abas" e/ou "uia"), o robô tira o diagnóstico com a fila parada; a saída fica na pasta tela
+const ROTEIRO_TELA = path.join(__dirname, 'alterdata_tela.py');
+const PASTA_TELA = process.env.ALTERDATA_TELA || path.join(path.dirname(PASTA_PEDIDOS), 'tela');
+const PEDIDO_TELA = path.join(path.dirname(PASTA_PEDIDOS), 'tela.pedido');
 // a tela de atualizações do Alterdata ao abrir: o robô clica em "Ver depois" (05/11/2026)
 const ROTEIRO_AVISOS = path.join(__dirname, 'alterdata_avisos.py');
 // o login do robô (04/11/2026, Vitor: "tem um login criado especificamente para o robo, onde ele tem permissão so de puxar
@@ -78,13 +84,16 @@ function matar(filho) {
   } catch (_) { /* já saiu */ }
 }
 
+// o que o roteiro fez com a tela (TELA: …, de alterdata_tela.preparar_tela) vai para o log, sem repetir a mesma frase
+let registrarTela = () => {};
+
 /** Roda um roteiro; PASSO: … vira passo; RESULTADO: {…} é o fim; o sinal (o prazo da fila) mata o roteiro. */
 function rodarRoteiro(relatorio, a, passo, sinal, clique = () => {}) {
   const args = relatorio === 'razao' ? [String(a.codigo), a.inicio, a.fim, a.pasta, a.destino]
     : relatorio === 'importar' ? [String(a.codigo), a.lote, a.destino]
       : [String(a.codigo), a.inicio, a.fim, a.destino];
   return new Promise(resolve => {
-    const filho = spawn(PYTHON, ['-I', ROTEIROS[relatorio], ...args], { cwd: __dirname, windowsHide: true });
+    const filho = spawn(PYTHON, ['-I', ROTEIROS[relatorio], ...args], { cwd: __dirname, windowsHide: true, env: { ...process.env, ALTERDATA_TELA: PASTA_TELA } });
     let resto = '', erros = '', resultado = null;
     filho.stdout.on('data', b => {
       resto += b.toString('utf8');
@@ -95,6 +104,8 @@ function rodarRoteiro(relatorio, a, passo, sinal, clique = () => {}) {
         if (m) void passo(m[1]);
         const c = l.match(/^CLIQUE:\s*(.+)$/);
         if (c) void clique(c[1]);
+        const t = l.match(/^TELA:\s*(.+)$/);
+        if (t) registrarTela(t[1].trim());
         const r = l.match(/^RESULTADO:\s*(\{.*\})\s*$/);
         if (r) { try { resultado = JSON.parse(r[1]); } catch (_) { /* mal escrito */ } }
       }
@@ -112,6 +123,8 @@ function iniciarAlterdata(db, log) {
   const estadoDoc = db.collection('robo').doc('alterdata');
   const pedidos = db.collection('pedidosAlterdata');
   log('Alterdata: ligado neste ' + ONDE + ' (balancete e razão do Contábil; Python ' + PYTHON + ')');
+  let ultimaTela = '';
+  registrarTela = t => { if (t !== ultimaTela) { ultimaTela = t; log('Alterdata: ' + t); } };
 
   // o Contábil daqui: verificado a cada minuto e antes de cada pedido; vai para o banco e para o painel
   let estado = '';
@@ -229,9 +242,30 @@ function iniciarAlterdata(db, log) {
     return novo === 'ok';
   }
 
+  // o diagnóstico da tela pedido pelo arquivo tela.pedido (só com a fila parada; enquanto roda, nenhum pedido é pego)
+  let diagnosticando = false;
+  async function diagnostico() {
+    if (diagnosticando || !fs.existsSync(PEDIDO_TELA) || fila.ocupado()) return;
+    diagnosticando = true;
+    try {
+      const quero = String(fs.readFileSync(PEDIDO_TELA, 'utf8')).split(/\s+/).filter(p => ['largura', 'foto', 'abas', 'uia'].includes(p));
+      const carimbo = new Date().toISOString().replace(/[-:]/g, '').replace('T', '-').slice(0, 15);
+      fs.renameSync(PEDIDO_TELA, PEDIDO_TELA + '.' + carimbo + '.feito');
+      const r = await rodarPy(ROTEIRO_TELA, [PASTA_TELA, ...(quero.length ? quero : ['foto'])], 150 * 1000);
+      fs.mkdirSync(PASTA_TELA, { recursive: true });
+      fs.writeFileSync(path.join(PASTA_TELA, carimbo + '-diagnostico.txt'), r.out + (r.err ? '\nERRO: ' + r.err.message : ''));
+      let tela = null;
+      try { tela = JSON.parse([...r.out.matchAll(/TELA:\s*(\{.*\})/g)].pop()[1]); } catch (_) { /* sem resposta */ }
+      const largura = (r.out.match(/LARGURA:\s*(.+)/) || [])[1];
+      log('Alterdata: diagnóstico da tela (' + (quero.join(' ') || 'foto') + '): ' + (tela ? 'tela ' + tela.tela + ', modo ' + tela.modo + ', área de trabalho ' + tela.entrada
+        + ', ' + tela.janelas.map(j => j.classe + ' ' + j.l + 'x' + j.a + (j.max ? ' max' : '')).join(', ') : 'sem resposta') + (largura ? ' · ' + largura.trim() : '') + ' → ' + PASTA_TELA);
+    } catch (err) { log('Alterdata: o diagnóstico da tela não deu:', err.message); } finally { diagnosticando = false; }
+  }
+
   const banco = {
     async ler(id) { const s = await pedidos.doc(id).get(); return s.exists ? s.data() : null; },
     async pegar(id) {
+      if (diagnosticando) { setTimeout(() => fila.chegou(id), 30 * 1000).unref(); return null; }
       if (await verificar() !== 'ok') return null;   // fica para a máquina que estiver com o Contábil pronto
       // acabou de abrir: espera assentar e tenta de novo (o pedido continua pendente)
       const falta = ASSENTAR_MS - (Date.now() - okDesde);
@@ -312,6 +346,7 @@ function iniciarAlterdata(db, log) {
   }, log);
   void verificar();
   setInterval(async () => {
+    await diagnostico();
     if (await verificar() === 'ok') for (const id of pendentes) fila.chegou(id);
   }, VERIFICAR_MS).unref();
 }

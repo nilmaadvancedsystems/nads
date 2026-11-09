@@ -115,6 +115,16 @@ def falhar(motivo):
     fim(ok=False, erro=motivo)
 
 
+def com_tela(motivo, nome):
+    """O erro de janela que não abriu leva a tela junto (tamanho, janelas à mostra, foto): alterdata_tela.py (09/11/2026)."""
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # o -I tira a pasta do roteiro do caminho
+        import alterdata_tela
+        return alterdata_tela.resumo_do_erro(motivo, nome)
+    except Exception:
+        return motivo
+
+
 def mes(data):
     # dd/mm/aaaa → mmaaaa (a máscara do período é mês/ano)
     return data[3:5] + data[6:10]
@@ -128,6 +138,18 @@ def campo(w, cls, esquerda, topo):
             return c
     return None
 
+
+
+def preparar_tela():
+    """A tela acesa e com a largura dos cliques (1366x768) enquanto o roteiro roda: alterdata_tela.py (09/11/2026)."""
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # o -I tira a pasta do roteiro do caminho
+        import alterdata_tela
+        t = alterdata_tela.preparar_tela()
+    except Exception as e:
+        t = 'não preparei a tela: ' + type(e).__name__ + ': ' + str(e)[:120]
+    if t:
+        print('TELA: ' + t, flush=True)
 
 try:
     if [w for w in janelas() if w.class_name().startswith('TfrmLogin')]:
@@ -144,6 +166,7 @@ try:
 
     passo('abrindo Consultas → Balancete Dinâmico')
     principal = principais[0]
+    preparar_tela()
     principal.set_focus()
     if not principal.is_maximized():
         principal.maximize()
@@ -157,7 +180,7 @@ try:
     mouse.click(coords=(ox + 330, oy + 110))
     w = esperar(lambda: janelas(CLASSE), 25)
     if not w:
-        falhar('o Balancete Dinâmico não abriu')
+        falhar(com_tela('o Balancete Dinâmico não abriu', 'dinamico-nao-abriu'))
     w = w[0]
     # a tela de novidade do Alterdata ("Tenho uma novidade…"): Fechar
     for n in esperar(lambda: janelas('TfrmAvaNotificacaoEstendida'), 3) or []:
