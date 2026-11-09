@@ -110,6 +110,8 @@ export interface ArquivoLido {
    * A importação marca esses meses como sem movimento no banco (Vitor, 13/10/2026).
    */
   semMovimento?: string[];
+  /** é a fatura do cartão guardada como extrato: não entra, e a que já entrou sai na releitura (Vitor, 09/11/2026) */
+  faturaDeCartao?: boolean;
   /** lido pelo OCR (o PDF escaneado ou a imagem): a tela avisa para conferir (Vitor, 13/10/2026) */
   ocr?: boolean;
   /** preenchido quando não deu para aproveitar o arquivo */

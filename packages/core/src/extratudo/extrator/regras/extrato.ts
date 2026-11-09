@@ -389,6 +389,32 @@ export function ehItauPorPeriodo(texto: string): boolean {
   return /\bdata lancamentos razao social cnpj cpf valor r\b/.test(normalizarTexto(texto));
 }
 
+/**
+ * O "extrato mensal" do Itaú (no topo, "extrato mensal  ag 1234 cc 56789-0 fev 2026"; a tabela: entradas R$, saídas R$, saldo
+ * R$): as saídas vêm com o "-" escrito depois do número, o valor sem sinal é entrada. À esquerda da data, na 1ª página, fica
+ * a legenda das siglas; depois do "Saldo final", os quadros das aplicações, dos débitos automáticos e do cheque especial.
+ */
+export function ehItauMensal(texto: string): boolean {
+  const t = normalizarTexto(texto);
+  return /\bextrato mensal\b/.test(t) && /\bag \d+ cc \d+/.test(t) && /\bentradas r\b/.test(t) && /\bsaidas r\b/.test(t) && /\bsaldo r\b/.test(t);
+}
+
+/** Tira o que está à esquerda da coluna da data (a legenda): ela caía na linha dos lançamentos e escondia a data deles. */
+function semALegendaDoItau(pagina: ItemDeTexto[]): ItemDeTexto[] {
+  const data = pagina.find(i => /^data$/i.test(i.texto.trim()));
+  return data ? pagina.filter(i => i.x >= data.x - 5) : pagina;
+}
+
+/**
+ * A fatura do cartão na pasta do extrato (Vitor, 09/11/2026, na 474: o "02-2026.pdf" do Itaú era a fatura e o extrato, o
+ * "02-2026 (1).pdf"; a fatura entrava como extrato, com as compras nas datas delas). O "Pagamento de fatura" do extrato não
+ * conta: a fatura traz o quadro dela e o vencimento, e nunca o saldo anterior ou inicial da conta.
+ */
+export function ehFaturaDeCartao(texto: string): boolean {
+  const t = normalizarTexto(texto);
+  return /resumo da fatura|total d(?:a|esta) fatura|sua fatura de|fatura no valor de/.test(t) && /\bvencimento\b/.test(t) && !/saldo (?:anterior|inicial)/.test(t);
+}
+
 export function lancamentosDoPdf(paginas: ItemDeTexto[][], lado: Lado, anoPadrao = new Date().getFullYear()): Lancamento[] {
   return lancamentosComPagina(paginas, lado, anoPadrao).lancamentos;
 }
@@ -502,7 +528,8 @@ function lancamentosDaCaixa(todas: Linha[][], ano: number): { lancamentos: Lanca
 function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: number): { lancamentos: Lancamento[]; pagina: number[]; saldosDoDia?: Map<string, number>; saldoAnteriorPelaLinha?: number | null; saldoAnteriorConferido?: number | null } {
   const saldosDoDia = new Map<string, number>();
   let ultimaDataDeValor: string | null = null;
-  const todas = paginas.map(p => juntarPedacosSoltos(montarLinhas(p)));
+  const itauMensal = lado === 'banco' && ehItauMensal(paginas.map(p => p.map(i => i.texto).join(' ')).join('\n'));
+  const todas = (itauMensal ? paginas.map(semALegendaDoItau) : paginas).map(p => juntarPedacosSoltos(montarLinhas(p)));
   if (lado === 'banco') {
     const texto = todas.map(p => p.map(l => l.texto).join('\n')).join('\n');
     if (ehExtratoDaCaixa(texto)) return lancamentosDaCaixa(todas, anoDoTexto(texto, anoPadrao));
@@ -557,7 +584,8 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
   // (Vitor, 04/11/2026, na 10: "Vendas - Disponivel DEBITO VISA" e "Pagamento de PIX" recebidos viravam saída). Só nele:
   // em outros bancos (Nubank, Inter, Stone…) o "-" aparece em totais e saldos e as saídas vêm sem sinal. O Itaú "Lançamentos
   // do período" também escreve (report PGL7X5, 09/11/2026, na 581: o "REND PAGO" e o Pix da "… PAGAMENTO S.A." viravam saída)
-  const sinalEscrito = ehPagBank(textoTodo) || ehItauPorPeriodo(textoTodo);
+  // e o "extrato mensal" dele (Vitor, 09/11/2026, na 474: o "PIX TRANSF" recebido virava saída)
+  const sinalEscrito = ehPagBank(textoTodo) || ehItauPorPeriodo(textoTodo) || itauMensal;
 
   for (const [nPagina, linhas] of todas.entries()) {
     col = colunas(linhas) || col;
@@ -578,6 +606,7 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
       if (!t.length || noFim) continue;
       if (entre && col) consertarValoresDoOcr(t, col);
       if (/^ultimos lancamentos\b/.test(normalizarTexto(l.texto))) { juntarPerto(); noFim = true; continue; }
+      if (itauMensal && /^(saldo final|totalizador de aplicacoes)\b/.test(normalizarTexto(l.texto))) { juntarPerto(); noFim = true; continue; }
       // o depósito bloqueado (Sicoob: "DEP.CHEQUE BLOQ.1D 2.300,00*"): o valor com * ainda não entrou no saldo; a linha e o
       // texto embaixo dela ("ENVELOPE: …") ficam de fora, sem data nem histórico para os outros — o lançamento é a
       // "LIBERAÇÃO DE DEPÓSITO BLOQUEADO" (Vitor, 13/10/2026: a 58 juntava o texto e a data dele no lançamento de cima)
@@ -760,7 +789,8 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
       else if (diferenca != null && diferenca !== 0 && Math.abs(Math.abs(diferenca) - Math.abs(c)) <= folga) c = Math.sign(diferenca) * Math.abs(c);
       else if (!temSinal(v.s)) {
         const base = normalizarTexto(hist || solta || '');
-        if (col && col.deb != null && col.cred != null) {
+        // (no Itaú mensal, a 1ª página tem o quadro "entradas (créditos) / saídas (débitos)" do resumo, fora das colunas da tabela)
+        if (!itauMensal && col && col.deb != null && col.cred != null) {
           const ehDebito = Math.abs(v.x2 - col.deb) < Math.abs(v.x2 - col.cred);
           c = ehDebito !== (lado === 'sistema') ? -Math.abs(c) : Math.abs(c);
         } else if (!sinalEscrito && RE_SAIDA.test(base) && !RE_ENTRADA.test(base)) c = -Math.abs(c);

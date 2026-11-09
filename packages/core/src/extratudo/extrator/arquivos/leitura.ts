@@ -1,7 +1,7 @@
 // Lê um arquivo escolhido (ou baixado) e devolve os lançamentos. Aceita PDF, OFX, Excel e CSV.
 // Nada do arquivo é guardado: quem chama recebe só os lançamentos (ou o motivo de não dar).
 import * as XLSX from 'xlsx';
-import { extratoDoPdf, mesesSemMovimento, saldoAnteriorDoPdf } from '../regras/extrato';
+import { ehFaturaDeCartao, extratoDoPdf, mesesSemMovimento, saldoAnteriorDoPdf } from '../regras/extrato';
 import { ehOfx, lancamentosDoOfx, saldoAnteriorDoOfx } from '../regras/ofx';
 import { lancamentosDaPlanilha, type Celula } from '../regras/planilha';
 import type { ArquivoLido, Lado } from '../tipos';
@@ -30,6 +30,7 @@ export async function lerArquivo(nome: string, bytes: Uint8Array, lado: Lado, an
   // as páginas (do texto do PDF ou do OCR) → os lançamentos, o sem movimento e o saldo anterior
   const doTexto = (paginas: ItemDeTexto[][], porOcr: boolean): ArquivoLido => {
     const marca = porOcr ? { ocr: true } : {};
+    if (lado === 'banco' && ehFaturaDeCartao(paginas.map(p => p.map(i => i.texto).join(' ')).join('\n'))) return { nome, lancamentos: [], erro: 'É a fatura do cartão, não o extrato da conta.', faturaDeCartao: true, ...marca };
     const { lancamentos: l, saldoAnteriorPelaLinha, saldoAnteriorConferido } = extratoDoPdf(paginas, lado, anoPadrao);
     // o extrato que diz que não teve movimento: o mês fica marcado como sem movimento (não é erro de leitura)
     const semMov = !l.length && lado === 'banco' ? mesesSemMovimento(paginas.map(p => p.map(i => i.texto).join(' ')).join('\n')) : null;
