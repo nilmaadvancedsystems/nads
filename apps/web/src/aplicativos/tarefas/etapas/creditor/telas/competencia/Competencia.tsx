@@ -141,7 +141,7 @@ function SeletorDaCompetencia({ vm }: { vm: VM }) {
   const qtd = vm.competencias.filter(c => c.valor >= (de < ate ? de : ate) && c.valor <= (de < ate ? ate : de)).length;
   const menu = (
     <MenuSuspenso icone="calendar" rotulo={vm.rotulo} largura={300} dica={vm.lote ? 'Em lote: ' + vm.linhas.map(l => l.rotulo).join(', ') : 'Trocar a competência'}
-      className={'btn btn-outline' + (vm.lote ? ' imp-periodo-ativo' : '')}
+      className={'btn btn-primary' + (vm.lote ? ' imp-periodo-ativo' : '')}
       conteudo={fechar => (
         <div className="comp-pop">
           <div className="iniciar-abas comp-abas" role="tablist">

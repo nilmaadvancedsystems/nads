@@ -11,7 +11,7 @@ export function PeriodoDaTarefa({ nome, codigo, meses }: { nome: string; codigo:
   const bancos = <span className="imp-topo-num"><Icone nome="landmark" /><b>{vm.bancos}</b> {vm.bancos === 1 ? 'banco' : 'bancos'}</span>;
   return (
     <MenuSuspenso icone="calendar" rotulo={vm.rotulo} largura={300} dica={vm.dica} direita
-      className={'btn btn-outline' + (vm.emLote ? ' imp-periodo-ativo' : '')}
+      className={'btn btn-primary' + (vm.emLote ? ' imp-periodo-ativo' : '')}
       conteudo={() => (
         <div className="comp-pop">
           {vm.emLote ? (

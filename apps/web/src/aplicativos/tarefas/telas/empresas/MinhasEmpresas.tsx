@@ -63,7 +63,7 @@ export function MinhasEmpresas() {
       <TransferenciasPendentes />
       <div className="tarefas-barra-topo">
         {vm.perguntarCompetencia && <JanelaDaCompetencia competencias={vm.competencias} competencia={vm.competencia} onSeguir={vm.setCompetencia} />}
-        <MenuSuspenso icone="calendar" rotulo={vm.rotuloCompetencia} titulo="Competência" dica="Trocar a competência"
+        <MenuSuspenso icone="calendar" className="btn btn-primary" rotulo={vm.rotuloCompetencia} titulo="Competência" dica="Trocar a competência"
           itens={vm.competencias.map(c => ({ rotulo: c.rotulo, marcado: c.valor === vm.competencia, onClick: () => vm.setCompetencia(c.valor) }))} />
         {/* o número de empresas e os Insights saíram daqui por enquanto (Vitor, 05/10/2026) */}
 

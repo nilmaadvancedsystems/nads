@@ -26,7 +26,7 @@ export function EmpresaTarefas({ rota, parte }: { rota: string; parte: 'tarefas'
           </div>
         </div>
         <div className="empresa-acoes">
-          <MenuSuspenso icone="calendar" rotulo={vm.rotuloCompetencia} titulo="Competência" direita
+          <MenuSuspenso icone="calendar" className="btn btn-primary" rotulo={vm.rotuloCompetencia} titulo="Competência" direita
             itens={vm.competencias.map(c => ({ rotulo: c.rotulo, marcado: c.valor === vm.competencia, onClick: () => vm.setCompetencia(c.valor) }))} />
           <button type="button" className={'btn ' + (vm.situacao === 'concluida' ? 'btn-outline' : 'btn-primary')} onClick={vm.abrirExecutor}>
             <Icone nome="play" />{vm.acao}

@@ -15,7 +15,7 @@ export function Reinf() {
   return (
     <section className="fr">
       <div className="tarefas-barra-topo fr-topo">
-        <MenuSuspenso icone="calendar" rotulo={vm.rotuloCompetencia} titulo="Competência" dica="Trocar a competência"
+        <MenuSuspenso icone="calendar" className="btn btn-primary" rotulo={vm.rotuloCompetencia} titulo="Competência" dica="Trocar a competência"
           itens={vm.competencias.map(c => ({ rotulo: c.rotulo, marcado: c.valor === vm.competencia, onClick: () => vm.setCompetencia(c.valor) }))} />
         <MenuDeFiltro rotulo="Status" valor={vm.filtro} mudar={vm.setFiltro} opcoes={STATUS} />
         <MenuSuspenso rotulo={'Por página: ' + (vm.porPagina || 'Todas')} titulo="Empresas por página" dica="Quantas empresas por página" className="btn btn-outline"
