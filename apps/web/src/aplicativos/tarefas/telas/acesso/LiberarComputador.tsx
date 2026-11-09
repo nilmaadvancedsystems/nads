@@ -2,7 +2,7 @@
 import { Icone, MarcaN } from '@nads/ui';
 import type { useLiberacao } from './useLiberacao';
 
-export function LiberarComputador({ vm, nome, sair }: { vm: ReturnType<typeof useLiberacao>; nome: string; sair: () => void }) {
+export function LiberarComputador({ vm, nome, sair, explicacao }: { vm: ReturnType<typeof useLiberacao>; nome: string; sair: () => void; explicacao?: string }) {
   const p = vm.pedido;
   return (
     <div id="login">
@@ -10,7 +10,7 @@ export function LiberarComputador({ vm, nome, sair }: { vm: ReturnType<typeof us
         <span className="auth-mark" aria-hidden="true"><MarcaN /></span>
         <h1 className="auth-title">Liberar este computador</h1>
         <div className="auth-box liberar-caixa">
-          <p>Olá, <b>{nome}</b>. Para usar o nads fora dos computadores já liberados, um administrador precisa liberar este login.</p>
+          <p>Olá, <b>{nome}</b>. {explicacao || 'Para usar o nads fora dos computadores já liberados, um administrador precisa liberar este login.'}</p>
           {!p || vm.pedirDeNovo ? (
             <>
               {p?.status === 'recusado' && <p className="liberar-erro"><Icone nome="alert" />O pedido anterior foi recusado{p.aprovadoPor ? ' por ' + p.aprovadoPor : ''}.</p>}

@@ -58,7 +58,7 @@ export function CascaTarefas({ app, pagina, telaInteira, semLateral, larga, empr
   useAvisoDosMeusFeedbacks();
   return (
     <Casca sistema="Tarefas" temaNaGaveta={false} empresa={vm.empresa} versao={vm.versao} trilha={trilha} secoes={secoes} paginas={vm.paginas} titulo={telaInteira || vm.semTitulo ? '' : titulo}
-      lateral={telaInteira || semLateral || vm.comAbas ? 'nenhuma' : undefined} larga={telaInteira || larga}
+      lateral={telaInteira || semLateral || vm.soAbas ? 'nenhuma' : undefined} larga={telaInteira || larga}
       acoes={telaInteira || vm.semTitulo || (empresa && !titulo) ? undefined : <LugarDasAcoes />} onSecao={empresa ? empresa.onPagina : vm.onSecao} onPagina={vm.onPagina} onInicio={vm.inicio} onAplicativos={vm.abrirInicio}
       contadorDoInicio={mural.naoLidos ? String(mural.naoLidos) : undefined}
       onEmpresa={vm.trocarPessoa} aplicativos={vm.aplicacoes} onAplicativo={vm.onAplicacao}

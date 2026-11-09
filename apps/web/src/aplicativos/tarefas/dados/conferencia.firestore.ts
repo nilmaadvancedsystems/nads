@@ -72,6 +72,8 @@ export function criarRepoConferenciaFirestore(): RepoConferenciaFirestore {
   const mudouGravacao = () => { for (const f of ouvintesDaGravacao) f(); };
   // fechar ou atualizar a página com gravação pendente perde o que não chegou: o navegador pergunta antes
   window.addEventListener('beforeunload', ev => { if (pendentes > 0) { ev.preventDefault(); ev.returnValue = ''; } });
+  // e a atualização sozinha, por inatividade (versaoNova.tsx), espera a gravação terminar
+  window.addEventListener('nads-atualizar-sozinho', ev => { if (pendentes > 0) ev.preventDefault(); });
 
   async function gravarAgora(e: c.Empresa) {
     const slug = formatos.slug(e.nome);

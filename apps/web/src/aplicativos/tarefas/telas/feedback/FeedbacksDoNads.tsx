@@ -8,9 +8,9 @@ import { JanelaLateral, type TopicoDaJanela } from '../janela/JanelaLateral';
 import { PRIORIDADES, type PrioridadeDoFeedback, type SituacaoDoFeedback } from '../../dados/feedback';
 import { useFeedbacks } from './useFeedbacks';
 
-const SELO = { novo: 'badge-warn', visto: 'badge-neutral', resolvendo: 'badge-suave badge-warn', feito: 'badge-ok' } as const;
-const NOME = { novo: 'Novo', visto: 'Visto', resolvendo: 'Resolvendo', feito: 'Feito' } as const;
-export const ICONE_DO_FILTRO = { novo: 'envelope', visto: 'olho', resolvendo: 'clock', feito: 'check', '': 'relatorio', bug: 'alert' } as const;
+const SELO = { novo: 'badge-warn', visto: 'badge-neutral', resolvendo: 'badge-suave badge-warn', testando: 'badge-suave badge-warn', feito: 'badge-ok' } as const;
+const NOME = { novo: 'Novo', visto: 'Visto', resolvendo: 'Resolvendo', testando: 'Testando', feito: 'Feito' } as const;
+export const ICONE_DO_FILTRO = { novo: 'envelope', visto: 'olho', resolvendo: 'clock', testando: 'play', feito: 'check', '': 'relatorio', bug: 'alert' } as const;
 const ANALISE = { pendente: 'Na fila do robô', analisando: 'O robô está investigando', pronta: '', erro: 'O robô não conseguiu analisar', '': '' } as const;
 const VEREDITO = { erro: { selo: 'badge-bad', rotulo: 'Erro do sistema' }, analise: { selo: 'badge-warn', rotulo: 'Precisa da sua análise' } } as const;
 
@@ -162,7 +162,10 @@ function JanelaDoFeedback({ f, fechar, ampliar, marcar, baixar, baixarTudo, copi
           {f.status === 'novo' && <button type="button" className="btn btn-outline" onClick={() => marcar(f.id, 'visto')}><Icone nome="olho" />Visto</button>}
           {/* Resolvendo (Vitor, 26/10/2026): quem mandou é avisado no Tarefas */}
           {(f.status === 'novo' || f.status === 'visto') && <button type="button" className="btn btn-outline" title="Avisa quem mandou que está sendo resolvido" onClick={() => marcar(f.id, 'resolvendo')}><Icone nome="clock" />Resolvendo</button>}
-          {f.status !== 'feito' && <button type="button" className="btn btn-primary" onClick={() => marcar(f.id, 'feito')}><Icone nome="check" />Feito</button>}
+          {/* Testando (09/11/2026: "depois de resolvendo, eu peço o usuário para testar"): quem mandou confirma no chat */}
+          {f.status === 'resolvendo' && f.tipo === 'bug' && <button type="button" className="btn btn-primary" title="Pede para quem mandou testar e confirmar no chat" onClick={() => marcar(f.id, 'testando')}><Icone nome="play" />Pedir para testar</button>}
+          {f.status === 'testando' && <button type="button" className="btn btn-outline" onClick={() => marcar(f.id, 'resolvendo')}>Voltar a Resolvendo</button>}
+          {f.status !== 'feito' && <button type="button" className={'btn ' + (f.status === 'resolvendo' && f.tipo === 'bug' ? 'btn-outline' : 'btn-primary')} onClick={() => marcar(f.id, 'feito')}><Icone nome="check" />Feito</button>}
           {f.status === 'feito' && <button type="button" className="btn btn-outline" onClick={() => marcar(f.id, 'novo')}>Reabrir</button>}
         </footer>
       </div>

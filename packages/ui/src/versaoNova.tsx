@@ -1,11 +1,20 @@
 // Versão nova do nads: confere o versao.json do site (a cada 5 min e quando a aba volta a aparecer). Não mostra mais
 // faixa no alto (Vitor, 01/10/2026); desde 02/10/2026 a tela trava com só o Atualizar no meio (TravaDeVersaoNova), e a casca põe um pontinho no ☰
-// e, no menu, "Atualizar para 0.0.17" ao lado de "Versão do sistema". Não recarrega sozinho (podia cortar um envio no
-// meio). Sem versao.json (rodando local), não faz nada. Uma conferência só para a página toda, por mais telas que usem.
+// e, no menu, "Atualizar para 0.0.17" ao lado de "Versão do sistema". Com a pessoa usando, não recarrega sozinho; depois de
+// 10 min sem uso, sim (Vitor, 09/11/2026), menos se algo estiver carregando ou gravando (podia cortar um envio no meio).
+// Sem versao.json (rodando local), não faz nada. Uma conferência só para a página toda, por mais telas que usem.
 import { useSyncExternalStore } from 'react';
+import { algumCarregando } from './carregamento';
 import { atualizarSemPerder } from './continuidade';
+import { origemConfiavel, origemDoPai } from './origem';
 
 const A_CADA_MS = 5 * 60 * 1000;
+const INATIVO_MS = 10 * 60 * 1000;
+const OLHAR_INATIVIDADE_MS = 30 * 1000;
+const AVISAR_O_PAI_MS = 20 * 1000;
+/** Quem está gravando dá preventDefault neste evento para a página não recarregar sozinha. */
+const ATUALIZAR_SOZINHO = 'nads-atualizar-sozinho';
+const JA_ATUALIZOU = 'nads-atualizou-sozinho';
 
 let atual = '';
 let nova = '';
@@ -39,6 +48,35 @@ export function useVersaoNova(versaoDaPagina: string): string {
     () => nova,
     () => '',
   );
+}
+
+let ultimoUso = Date.now();
+let avisouOPai = 0;
+let pai: string | null = null;
+
+// a ferramenta dentro de uma etapa é outra página: o mouse nela não chega na de cima, então ela avisa que está em uso
+function marcarUso() {
+  const agora = Date.now();
+  ultimoUso = agora;
+  if (pai && agora - avisouOPai >= AVISAR_O_PAI_MS) { avisouOPai = agora; window.parent.postMessage({ nads: 'em-uso' }, pai); }
+}
+
+function olharInatividade() {
+  if (algumCarregando() || !window.dispatchEvent(new Event(ATUALIZAR_SOZINHO, { cancelable: true }))) marcarUso();
+  if (window.self !== window.top || !nova || Date.now() - ultimoUso < INATIVO_MS) return;
+  // uma vez por versão: se o site ainda entregar a antiga, não fica recarregando a cada 10 min
+  try { if (sessionStorage.getItem(JA_ATUALIZOU) === nova) return; sessionStorage.setItem(JA_ATUALIZOU, nova); } catch { /* segue */ }
+  atualizarSemPerder();
+}
+
+/** Uma vez por página (main.tsx): saiu versão nova e a tela está há 10 min sem uso, atualiza sozinha, sem perder o que está nela. */
+export function iniciarAtualizacaoPorInatividade(versaoDaPagina: string): void {
+  if (!atual) atual = versaoDaPagina;
+  ligar();
+  pai = origemDoPai();
+  for (const uso of ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart', 'scroll']) window.addEventListener(uso, marcarUso, { capture: true, passive: true });
+  window.addEventListener('message', e => { if ((e.data as { nads?: string } | null)?.nads === 'em-uso' && origemConfiavel(e.origin)) marcarUso(); });
+  setInterval(olharInatividade, OLHAR_INATIVIDADE_MS);
 }
 
 /** Recarrega a página na versão nova, sem perder o que está na tela (continuidade.ts). */

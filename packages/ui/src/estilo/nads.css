@@ -204,6 +204,11 @@ nav.menu::-webkit-scrollbar{display:none;}
   padding:0 8px;height:44px;font-size:var(--fs-14);font-weight:400;isolation:isolate;}
 .menu-item:hover::before{background:var(--hover-bg);}
 .menu-item svg{width:16px;height:16px;flex:none;color:var(--ink-muted);}
+/* a logo no lugar do ícone da aba (Fiscal, 09/11/2026); no escuro o azul oficial da Receita some, como na Área do Cliente */
+.menu-item-marca{display:inline-flex;width:18px;height:18px;flex:none;align-items:center;justify-content:center;}
+.menu-item-marca svg{width:18px;height:18px;}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .menu-item-marca{--logo-receita:color-mix(in srgb,var(--info) 60%,var(--ink));}}
+:root[data-theme="dark"] .menu-item-marca{--logo-receita:color-mix(in srgb,var(--info) 60%,var(--ink));}
 .menu-item.active{font-weight:600;}
 .menu-item.active::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;border-radius:6px;background:var(--tab-active);}
 .menu-num{display:none;}
@@ -666,7 +671,7 @@ td > .gh-blank.compacto{white-space:normal;}
 .subnav-itens{display:flex;flex-direction:column;gap:2px;}
 /* o cartão da empresa aberta no cabeçalho: o prédio, o nome e, embaixo, o código e o CNPJ; o clique abre a janela do Cadastro */
 .gh-cartao-topo{display:contents;}
-.gh-crumbs .gh-cartao-topo > button.gh-crumb:not(:last-child){flex:none;}
+.gh-crumbs .gh-cartao-topo > button.gh-crumb:not(:last-of-type){flex:none;}
 /* o Início (27/10/2026): o mural de avisos e a última empresa */
 .inicio-grade{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:16px;align-items:start;}
 @media (max-width:900px){.inicio-grade{grid-template-columns:minmax(0,1fr);}}
@@ -6297,3 +6302,25 @@ td.fs-fat-sem{color:var(--ink-faint);}
 .planilha-abas{flex:none;display:flex;gap:4px;padding:6px 8px;overflow-x:auto;border-top:1px solid var(--border);}
 .planilha-abas .btn{flex:none;color:var(--ink-muted);}
 .planilha-abas .btn[aria-selected="true"]{background:var(--hover-bg);color:var(--ink);font-weight:600;}
+
+/* O suporte em vidro e os tickets no chat (09/11/2026) */
+.card.suporte-balao{background:color-mix(in srgb,var(--surface) 68%,transparent);border:1px solid color-mix(in srgb,var(--ink) 16%,transparent);border-radius:16px;
+  -webkit-backdrop-filter:blur(22px) saturate(160%);backdrop-filter:blur(22px) saturate(160%);}
+.suporte-balao .suporte-topo{padding:12px 14px;border-bottom:1px solid color-mix(in srgb,var(--ink) 10%,transparent);}
+.suporte-balao .suporte-corpo{background:transparent;padding:14px;gap:10px;}
+.suporte-balao .suporte-envio{border-top:1px solid color-mix(in srgb,var(--ink) 10%,transparent);}
+.suporte-balao .suporte-msg:not(.suporte-eu){background:color-mix(in srgb,var(--surface) 62%,transparent);border-color:color-mix(in srgb,var(--ink) 10%,transparent);}
+.suporte-balao .suporte-capsulas .badge-neutral{background:color-mix(in srgb,var(--surface) 62%,transparent);}
+.suporte-pedido{white-space:pre-wrap;overflow-wrap:anywhere;}
+.suporte-ticket{display:flex;flex-direction:column;gap:10px;padding:12px;border-radius:12px;border:1px solid color-mix(in srgb,var(--ink) 10%,transparent);background:color-mix(in srgb,var(--surface) 62%,transparent);font-size:var(--fs-13);line-height:1.45;}
+.suporte-ticket p{margin:0;}
+.suporte-ticket-numero{font-size:var(--fs-12);font-variant-numeric:tabular-nums;}
+.suporte-progresso{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;margin:0;padding:0;list-style:none;font-size:var(--fs-11);color:var(--ink-muted);}
+.suporte-progresso li{display:flex;flex-direction:column;gap:5px;min-width:0;}
+.suporte-progresso li span{display:block;height:5px;border-radius:999px;background:color-mix(in srgb,var(--ink) 14%,transparent);}
+.suporte-progresso li.feita span{background:var(--success);}
+.suporte-progresso li.atual span{background:var(--accent);}
+.suporte-progresso li.atual{color:var(--ink);font-weight:600;}
+.suporte-progresso li.feita{color:var(--ink);}
+.suporte-botao-qtd{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;background:var(--surface);color:var(--ink);border:1px solid var(--border);font-size:var(--fs-11);font-weight:700;line-height:1;}
+.suporte-botao-qtd.testar{background:var(--success);border-color:var(--success);color:#fff;}

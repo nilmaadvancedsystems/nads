@@ -27,6 +27,30 @@ function FalaDoSuporte({ passo }: { passo: suporte.PassoDoSuporte }) {
   );
 }
 
+type Ticket = ReturnType<typeof useBalaoDoSuporte>['tickets'][number];
+
+/** O ticket no chat (09/11/2026): o que a pessoa pediu, a barra de andamento, a resposta pronta e, em Testando, a confirmação. */
+function TicketNoChat({ t, responder }: { t: Ticket; responder: (funcionou: boolean) => void }) {
+  return (
+    <div className="suporte-troca">
+      <div className="suporte-msg suporte-eu suporte-pedido">{t.resumo}</div>
+      <div className="suporte-ticket">
+        <b className="suporte-ticket-numero">{t.pedido}</b>
+        <ol className="suporte-progresso" aria-label="Andamento do pedido">
+          {t.etapas.map(e => <li key={e.rotulo} className={e.estado} aria-current={e.estado === 'atual' ? 'step' : undefined}><span aria-hidden="true" />{e.rotulo}</li>)}
+        </ol>
+        <p>{t.fala}</p>
+        {t.testando && (
+          <div className="suporte-capsulas">
+            <button type="button" className="badge badge-ok" onClick={() => responder(true)}><Icone nome="check" />Funcionou</button>
+            <button type="button" className="badge badge-neutral" onClick={() => responder(false)}>Ainda com problema</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /** Os três pontinhos do "digitando". */
 function Digitando() {
   return <div className="suporte-msg suporte-digitando" aria-label="Suporte digitando"><span /><span /><span /></div>;
@@ -37,7 +61,7 @@ export function BalaoDoSuporte() {
   const idArquivo = useId();
   const corpo = useRef<HTMLDivElement>(null);
   // a cada resposta (e ao abrir), o suporte "digita" um instante antes de falar
-  const tamanho = vm.conversa.length + (vm.resolvido ? 1 : 0) + (vm.enviado ? 1 : 0);
+  const tamanho = vm.conversa.length + (vm.resolvido ? 1 : 0) + vm.tickets.length;
   const [digitando, setDigitando] = useState(false);
   useEffect(() => {
     if (!vm.aberto) return;
@@ -48,13 +72,15 @@ export function BalaoDoSuporte() {
   // a última fala sempre à vista, como num chat
   useEffect(() => { const c = corpo.current; if (c) c.scrollTop = c.scrollHeight; }, [tamanho, vm.aberto, digitando]);
 
-  // o botão fica sempre no canto (Vitor, 21/10/2026: "deixe o botão de suporte como aberto"): aberto, vira o × e o chat
-  // fica apoiado logo acima dele
+  // o botão fica sempre no canto (Vitor, 21/10/2026: "deixe o botão de suporte como aberto"): aberto, o chat fica apoiado logo
+  // acima dele. Com ticket em aberto ele só oculta, com a setinha (09/11/2026: "até o feedback for resolvido")
+  const fecha = vm.emAberto > 0 ? 'Ocultar o suporte' : 'Fechar o suporte';
   const botao = (
     <button type="button" className="btn btn-primary suporte-botao" aria-expanded={vm.aberto}
-      title={vm.aberto ? 'Fechar o suporte' : 'Suporte: arquivo lido errado ou que travou'} aria-label={vm.aberto ? 'Fechar o suporte' : 'Abrir o suporte'}
+      title={vm.aberto ? fecha : vm.paraTestar ? 'Suporte: tem pedido para você testar' : 'Suporte: arquivo lido errado ou que travou'} aria-label={vm.aberto ? fecha : 'Abrir o suporte'}
       onClick={vm.aberto ? vm.fechar : vm.abrir}>
-      <Icone nome={vm.aberto ? 'x' : 'mensagem'} />
+      <Icone nome={vm.aberto ? (vm.emAberto > 0 ? 'chevronDown' : 'x') : 'mensagem'} />
+      {!vm.aberto && vm.emAberto > 0 && <span className={'suporte-botao-qtd' + (vm.paraTestar ? ' testar' : '')} aria-hidden="true">{vm.emAberto}</span>}
     </button>
   );
   if (!vm.aberto) return botao;
@@ -66,26 +92,32 @@ export function BalaoDoSuporte() {
         <header className="suporte-topo">
           <span className="suporte-avatar"><Icone nome="ajuda" /></span>
           <span className="suporte-titulo">
-            <b>Suporte de leitura</b>
+            <b>Suporte</b>
             <span className="suporte-sub">{digitando ? 'digitando…' : vm.titulo || 'online'}</span>
           </span>
-          <button type="button" className="btn btn-ghost suporte-acao" title="Começar uma conversa nova" onClick={vm.novaConversa}>Nova conversa</button>
-          <button type="button" className="btn btn-ghost suporte-acao" title="Abandonar a conversa e fechar" onClick={vm.sair}>Sair</button>
+          {vm.conversando && vm.tickets.length > 0 && <button type="button" className="btn btn-ghost suporte-acao" onClick={vm.voltarAosTickets}>Voltar aos pedidos</button>}
+          {vm.conversando && !vm.tickets.length && <button type="button" className="btn btn-ghost suporte-acao" title="Começar uma conversa nova" onClick={vm.novaConversa}>Nova conversa</button>}
+          {vm.conversando && !vm.tickets.length && <button type="button" className="btn btn-ghost suporte-acao" title="Abandonar a conversa e fechar" onClick={vm.sair}>Sair</button>}
         </header>
 
         <div className="suporte-corpo" ref={corpo}>
           <div className="suporte-msg">
-            {vm.nomeDaPessoa ? 'Oi, ' + vm.nomeDaPessoa + '!' : 'Oi!'} Sou o suporte de leitura do nads. Me diga o que aconteceu que eu te guio.
+            {vm.nomeDaPessoa ? 'Oi, ' + vm.nomeDaPessoa + '!' : 'Oi!'} {vm.tickets.length ? 'Aqui ficam os seus pedidos até serem resolvidos.' : 'Me diga o que aconteceu que eu te guio.'}
           </div>
-          {vm.conversa.map((f, i) => (
+          {vm.tickets.map(t => <TicketNoChat key={t.id} t={t} responder={funcionou => vm.responderTeste(t.id, funcionou)} />)}
+          {vm.erro && !vm.conversando && <p className="hint ext-neg">{vm.erro}</p>}
+          {!vm.conversando && (
+            <div className="suporte-capsulas">
+              <button type="button" className="badge badge-neutral" onClick={vm.abrirOutro}><Icone nome="plus" />Abrir outro ticket</button>
+            </div>
+          )}
+          {vm.conversando && vm.conversa.map((f, i) => (
             <div key={i} className="suporte-troca">
               <FalaDoSuporte passo={f.passo} />
               <div className="suporte-msg suporte-eu">{f.escolhida}</div>
             </div>
           ))}
-          {vm.enviado ? (
-            digitando ? <Digitando /> : <div className="suporte-msg">Pronto{vm.nomeDaPessoa ? ', ' + vm.nomeDaPessoa : ''}! Abri o pedido {vm.pedido && <b>{vm.pedido}</b>} e encaminhei para o Vitor e o Gustavo, com tudo o que você respondeu.</div>
-          ) : vm.resolvido ? (
+          {!vm.conversando ? null : vm.resolvido ? (
             <>
               <div className="suporte-msg suporte-eu">Resolveu</div>
               {digitando ? <Digitando /> : <div className="suporte-msg">Que bom! Se precisar, é só chamar.</div>}
@@ -121,7 +153,7 @@ export function BalaoDoSuporte() {
           )}
         </div>
 
-        {p.tipo === 'encaminhar' && !vm.enviado && !vm.resolvido && !digitando && (
+        {vm.conversando && p.tipo === 'encaminhar' && !vm.resolvido && !digitando && (
           <div className="suporte-envio">
             {vm.erro && <p className="hint ext-neg">{vm.erro}</p>}
             <div className="field suporte-frase">

@@ -14,9 +14,10 @@ import { dataBR } from './texto';
  * do mais novo para o mais velho (26/10/2026); 7 = o nome do Pix do Stone no lançamento dele (não no de cima) e o saldo de
  * abertura pela coluna Saldo, quando o extrato não imprime o saldo anterior (26/10/2026); 8 = o quadro do limite do BB (Custo
  * Efetivo Total, Valor total devido…) fora e o depósito bloqueado com o "*" solto fora (26/10/2026); 9 = a Dt. balancete
- * guardada no lançamento do BB "Consultas" que vai pela Dt. movimento (27/10/2026).
+ * guardada no lançamento do BB "Consultas" que vai pela Dt. movimento (27/10/2026); 10 = o sinal escrito do Itaú "Lançamentos
+ * do período" (09/11/2026).
  */
-export const VERSAO_DO_LEITOR = 9;
+export const VERSAO_DO_LEITOR = 10;
 
 export function empresaNova(nome: string): EmpresaExtrator {
   return { nome, arquivos: [], auditoria: [] };

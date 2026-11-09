@@ -17,6 +17,8 @@ const IMAGENS = import.meta.glob('./logos-bancos/*.{png,jpg,jpeg,webp,svg}', { e
 import marcaNilma from './marca-nilma.png';
 import logoExcel from './logo-excel.webp';
 import logoInss from './logo-inss.png';
+import logoSimplesDaAba from './logo-simples.png';
+import logoSped from './logo-sped.png';
 
 /** O endereço completo do logo da Nilma (o do e-mail), publicado junto com o site. */
 export function urlDoLogoNilma(): string {
@@ -238,6 +240,26 @@ export function LogoEcontador() {
     <svg viewBox="0 0 24 24" fill="none" stroke="#E4262D" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M7.5 12H21.5A9.5 9.5 0 1 0 12 21.5H18.5" />
       <path d="M16.5 12A4.5 4.5 0 1 0 15.2 15.2" />
+    </svg>
+  );
+}
+
+/** O Simples Nacional na aba do Fiscal: a imagem que o Vitor mandou, sem o fundo (logo-simples.png; 09/11/2026: "deixando ela original"). */
+export function LogoSimplesDaAba() {
+  return <svg viewBox="0 0 64 64" aria-hidden="true"><image href={logoSimplesDaAba} width="64" height="64" /></svg>;
+}
+
+/** O SPED na aba da REINF: a imagem que o Vitor mandou, sem o fundo (logo-sped.png; 09/11/2026: "deixando ela original"). */
+export function LogoSped() {
+  return <svg viewBox="0 0 64 64" aria-hidden="true"><image href={logoSped} width="64" height="64" /></svg>;
+}
+
+/** O SIEG (09/11/2026: "deixando ela original"): o quadrado azul com o "si" branco, nas medidas da imagem que o Vitor mandou. */
+export function LogoSieg() {
+  return (
+    <svg viewBox="0 0 1415 1347" aria-hidden="true">
+      <rect width="1415" height="1347" fill="#001EDB" />
+      <path fill="#fff" d="M995 216H1199V386H995ZM995 555H1199V1132H995ZM995 385H400A220.5 220.5 0 0 0 400 826H692A68 68 0 0 1 692 962H216V1132H692A237.5 237.5 0 0 0 692 657H401A51 51 0 0 1 401 555H995Z" />
     </svg>
   );
 }

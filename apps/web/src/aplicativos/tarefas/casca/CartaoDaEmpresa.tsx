@@ -1,4 +1,4 @@
-// A empresa aberta, no cabeçalho da Tarefas: a trilha "Tarefas / Contábil / 205 · NOME" (07/11/2026: o cartão com o prédio, o
+// A empresa aberta, no cabeçalho da Tarefas: a trilha "Tarefas / Contábil / 205 · NOME / Drive" (07/11/2026: o cartão com o prédio, o
 // código e o CNPJ saiu, "não to gostando disso"; o caminho em texto, como no resto). A lista volta para as empresas; o nome
 // abre a janela da empresa do Cadastro por cima da tela, sem sair dela ("era pra seguir o layout do cadastro"): quem mexe no
 // Cadastro, com todas as abas; os outros, só os dados.
@@ -26,8 +26,10 @@ function DadosSoLeitura({ vm }: { vm: Vm }) {
   );
 }
 
-export function CartaoDaEmpresa({ empresa }: { empresa: { codigo: number | null; nome: string; rota: string } }) {
+export function CartaoDaEmpresa({ empresa }: { empresa: { codigo: number | null; nome: string; rota: string; pagina: string; paginas: { id: string; rotulo: string }[] } }) {
   const vm = useCartaoDaEmpresa(empresa);
+  // a tela aberta, no fim do caminho (Vitor, 09/11/2026: "em formatos de diretórios quando entra em algo da empresa")
+  const tela = empresa.paginas.find(p => p.id === empresa.pagina)?.rotulo;
   const op = useOperador().operador as Operador;
   const navegar = useNavigate();
   const { search } = useLocation();
@@ -46,6 +48,7 @@ export function CartaoDaEmpresa({ empresa }: { empresa: { codigo: number | null;
       <button type="button" className="gh-crumb" onClick={vm.abrir} title={'Ver o cadastro de ' + vm.nome}>
         {empresa.codigo != null ? empresa.codigo + ' · ' + vm.nome : vm.nome}
       </button>
+      {tela && <><span className="gh-sep">/</span><span className="gh-crumb gh-crumb-fim">{tela}</span></>}
       {/* no corpo da página: dentro do cabeçalho, a janela ficava presa no tamanho dele */}
       {vm.aba && createPortal(
         // enquanto a janela baixa, nada aparece (a barra do topo anda)
