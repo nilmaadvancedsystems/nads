@@ -5887,7 +5887,7 @@ button.fr-entrega-feita:hover{border-color:var(--success);background:color-mix(i
   /* o código e o cliente parados à esquerda ao rolar de lado */
   .fr-tabela tbody td:nth-child(1),.fr-tabela tbody td:nth-child(2),.fr-tabela thead tr:first-child th:nth-child(-n+2){position:sticky;z-index:1;}
   .fr-tabela tbody td:nth-child(1),.fr-tabela thead tr:first-child th:nth-child(1){left:0;}
-  .fr-tabela tbody td:nth-child(2),.fr-tabela thead tr:first-child th:nth-child(2){left:40px;box-shadow:1px 0 0 var(--border);}
+  .fr-tabela tbody td:nth-child(2),.fr-tabela thead tr:first-child th:nth-child(2){left:var(--fr-cod,40px);box-shadow:1px 0 0 var(--border);}
   .fr-tabela thead tr:first-child th:nth-child(-n+2){z-index:4;}
   .fr-tabela thead tr:first-child th:first-child{position:sticky;left:0;z-index:4;}
   .fr-tabela tfoot td:first-child{left:0;z-index:3;}
@@ -5906,12 +5906,11 @@ button.fr-entrega-feita:hover{border-color:var(--success);background:color-mix(i
 .fr-entrega-falta{border-color:transparent;color:var(--ink-faint);}
 button.fr-entrega-falta:hover{border-style:dashed;border-color:var(--border-strong);}
 .fr-tabela tfoot td{background:var(--surface-2);}
-/* o Presumido com o IBS e a CBS (03/11/2026): 9 guias, e o cliente sumia (uns 64px). A tabela do Presumido cresce para o
-   cliente ficar com uns 200px e, quando não cabe, rola de lado com o código e o cliente parados à esquerda (como no celular) */
-.fr-tabela.fr-grupo-lp{min-width:1180px;}
+/* quando a tabela não cabe (a largura mínima vem das colunas ajustáveis, 09/11/2026), ela rola de lado com o código e o
+   cliente parados à esquerda (como no celular) */
 .fr-tabela tbody td:nth-child(1),.fr-tabela tbody td:nth-child(2),.fr-tabela thead tr:first-child th:nth-child(-n+2){position:sticky;z-index:1;}
 .fr-tabela tbody td:nth-child(1),.fr-tabela thead tr:first-child th:nth-child(1){left:0;}
-.fr-tabela tbody td:nth-child(2),.fr-tabela thead tr:first-child th:nth-child(2){left:40px;box-shadow:1px 0 0 var(--border);}
+.fr-tabela tbody td:nth-child(2),.fr-tabela thead tr:first-child th:nth-child(2){left:var(--fr-cod,40px);box-shadow:1px 0 0 var(--border);}
 .fr-tabela thead tr:first-child th:nth-child(-n+2){z-index:4;}
 .fr-tabela thead tr:first-child th:first-child{position:sticky;left:0;z-index:4;}
 .fr-tabela tfoot td:first-child{left:0;z-index:3;}

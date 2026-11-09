@@ -35,6 +35,32 @@ export function carregandoAte<T>(promessa: Promise<T>): Promise<T> {
   return promessa.finally(() => mudar(-1));
 }
 
+let semEspera = false;
+
+/**
+ * Trocar de tela (09/11/2026: "o sistema dá uma travada… deixe um feedback"): a barra aparece no clique, sem os 150 ms de
+ * espera; só depois de ela ser pintada a tela nova começa a desenhar (desenhando, o navegador não pinta nada) e ela fica
+ * até o navegador desocupar. Quem ainda busca dados segue com o useCarregando.
+ */
+export function trocarDeTelaComBarra<T>(navegar: () => T): Promise<T> {
+  semEspera = true;
+  mudar(1);
+  const soltar = () => { semEspera = false; mudar(-1); };
+  return new Promise(resolver => {
+    let foi = false;
+    const seguir = () => {
+      if (foi) return;
+      foi = true;
+      resolver(navegar());
+      if (typeof requestIdleCallback === 'function') requestIdleCallback(soltar, { timeout: 4000 });
+      else setTimeout(soltar, 200);
+    };
+    requestAnimationFrame(() => requestAnimationFrame(seguir));
+    // com a aba em segundo plano não há quadros: o limite garante que a navegação nunca fica presa
+    setTimeout(seguir, 80);
+  });
+}
+
 type Fase = 'parada' | 'andando' | 'terminando';
 
 /** A barra em si: vai uma vez só, no alto da página (main.tsx). */
@@ -51,6 +77,7 @@ export function BarraDeCarregamento() {
   useEffect(() => {
     if (carregando) {
       if (fase === 'andando') return;
+      if (semEspera) { setFase('andando'); return; }
       const t = setTimeout(() => setFase('andando'), fase === 'terminando' ? 0 : 150);
       return () => clearTimeout(t);
     }

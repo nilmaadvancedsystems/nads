@@ -1,6 +1,6 @@
 // Entrada do nads: o visual, a barrinha de carregamento do topo, o aviso de versão nova, o retorno (toast/modal) e as rotas.
 import '@nads/ui/estilo.css';
-import { BarraDeCarregamento, DefsMarca, iniciarAnimador, iniciarContinuidade, RetornoProvider } from '@nads/ui';
+import { BarraDeCarregamento, DefsMarca, iniciarAnimador, iniciarContinuidade, RetornoProvider, trocarDeTelaComBarra } from '@nads/ui';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router';
@@ -19,6 +19,19 @@ iniciarContinuidade();
 window.addEventListener('vite:preloadError', ev => {
   if (recarregarUmaVez()) ev.preventDefault();
 });
+
+// trocar de tela: a barrinha do topo aparece já no clique, antes de a tela nova ocupar o navegador (todo navigate do app
+// passa por aqui; mudar só a busca da URL, como um filtro, não é trocar de tela)
+const navegarNoRoteador = roteador.navigate.bind(roteador);
+const eOutraTela = (para: unknown) => {
+  if (typeof para === 'number') return true;
+  const caminho = typeof para === 'string' ? para : (para as { pathname?: string } | null)?.pathname;
+  return !!caminho && new URL(caminho, location.href).pathname !== location.pathname;
+};
+roteador.navigate = ((para: unknown, opcoes?: unknown) => {
+  const seguir = () => (navegarNoRoteador as (a: unknown, b?: unknown) => Promise<void>)(para, opcoes);
+  return eOutraTela(para) ? trocarDeTelaComBarra(seguir) : seguir();
+}) as typeof roteador.navigate;
 
 createRoot(document.getElementById('raiz') as HTMLElement).render(
   <StrictMode>

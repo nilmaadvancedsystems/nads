@@ -6,7 +6,8 @@
 // as ações são os mesmos do useRelatorioGeral. O "Enviar guias" (03/11/2026: "A parte de gmail tem que funcionar assim como
 // o envios do dp"): para quem grava, abre a janela do lote de guias (JanelaDasGuias); o robô manda e preenche a tabela.
 import { baixarBytes, BotaoIcone, Esqueleto, Icone, LogoExcel, MenuSuspenso, useCarregando } from '@nads/ui';
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
+import { useColunasAjustaveis } from '../../../../../comum/ColunasAjustaveis';
 import { MenuDeFiltro } from '../../dp/MenuDeFiltro';
 import { JanelaDasGuias } from './JanelaDasGuias';
 import { Entrega, Valor } from './PartesDoRelatorio';
@@ -28,6 +29,12 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
   useCarregando(vm.carregando);
   const [guiasAbertas, setGuiasAbertas] = useState(false);
   const feitas = vm.achadas - vm.faltam;
+  // as colunas ajustáveis (09/11/2026); o cliente fica com o que sobra, e cabe tudo na tela de padrão
+  const col = useColunasAjustaveis('fiscal-' + g.id, [
+    { id: 'cod', padrao: 44 }, { id: 'cliente', padrao: 220 },
+    ...vm.guias.map(c => ({ id: c.id, padrao: 74 })), ...g.marcas.map(m => ({ id: m.id, padrao: 32 })),
+    { id: 'data', padrao: 86 }, { id: 'ent', padrao: 68 }, { id: 'sit', padrao: 36 },
+  ], 'cliente');
   return (
     <section className="fr">
       <div className="tarefas-barra-topo fr-topo">
@@ -79,24 +86,24 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
             : !vm.linhas.length ? <p className="hint dp-vazio">Nenhum cliente com esses filtros.</p> : (
               // a caixa que rola: o cabeçalho fica parado em cima
               <div className="fr-rola">
-                <table className={'fr-tabela fr-grupo-' + g.id}>
+                <table className={'fr-tabela fr-grupo-' + g.id} style={{ ...col.tabela, '--fr-cod': col.largura('cod') + 'px' } as CSSProperties}>
                   <colgroup>
-                    <col className="fr-c-cod" /><col className="fr-c-cliente" />
-                    {vm.guias.map(c => <col key={c.id} className="fr-c-guia" />)}
-                    {g.marcas.map(m => <col key={m.id} className="fr-c-mk" />)}
-                    <col className="fr-c-data" /><col className="fr-c-ent" /><col className="fr-c-sit" />
+                    <col className="fr-c-cod" style={col.col('cod')} /><col className="fr-c-cliente" style={col.col('cliente')} />
+                    {vm.guias.map(c => <col key={c.id} className="fr-c-guia" style={col.col(c.id)} />)}
+                    {g.marcas.map(m => <col key={m.id} className="fr-c-mk" style={col.col(m.id)} />)}
+                    <col className="fr-c-data" style={col.col('data')} /><col className="fr-c-ent" style={col.col('ent')} /><col className="fr-c-sit" style={col.col('sit')} />
                   </colgroup>
                   <thead>
                     <tr className="fr-grupos">
-                      <th rowSpan={2} className="fr-num fr-cabeca">Cód.</th><th rowSpan={2} className="fr-cabeca">Cliente</th>
+                      <th rowSpan={2} className="fr-num fr-cabeca">Cód.{col.alca('cod')}</th><th rowSpan={2} className="fr-cabeca">Cliente{col.alca('cliente')}</th>
                       <th colSpan={vm.guias.length} className="fr-g fr-centro">Guias (R$)</th>
                       <th colSpan={g.marcas.length} className="fr-g fr-centro">Conferências</th>
                       <th colSpan={3} className="fr-g fr-centro">Entrega</th>
                     </tr>
                     <tr>
-                      {vm.guias.map((c, i) => <th key={c.id} className={'fr-num' + (i === 0 ? ' fr-g' : '')} title={c.nome}>{c.rotulo}</th>)}
-                      {g.marcas.map((m, i) => <th key={m.id} className={'fr-centro' + (i === 0 ? ' fr-g' : '')} title={m.dica}>{m.rotulo}</th>)}
-                      <th className="fr-centro fr-g">Data</th><th className="fr-centro">Entregue</th><th className="fr-centro" title="Situação">Sit.</th>
+                      {vm.guias.map((c, i) => <th key={c.id} className={'fr-num' + (i === 0 ? ' fr-g' : '')} title={c.nome}>{c.rotulo}{col.alca(c.id)}</th>)}
+                      {g.marcas.map((m, i) => <th key={m.id} className={'fr-centro' + (i === 0 ? ' fr-g' : '')} title={m.dica}>{m.rotulo}{col.alca(m.id)}</th>)}
+                      <th className="fr-centro fr-g">Data{col.alca('data')}</th><th className="fr-centro">Entregue{col.alca('ent')}</th><th className="fr-centro" title="Situação">Sit.{col.alca('sit')}</th>
                     </tr>
                   </thead>
                   <tbody>
