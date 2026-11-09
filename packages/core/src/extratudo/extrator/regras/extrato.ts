@@ -525,6 +525,39 @@ function lancamentosDaCaixa(todas: Linha[][], ano: number): { lancamentos: Lanca
   return { lancamentos, pagina };
 }
 
+/**
+ * O "Extrato por período" da Caixa escaneado ("Lançamentos  Nr. Doc  Histórico/Complemento  Favorecido  CPF/CNPJ  Valor
+ * Saldo"), com as colunas alinhadas à esquerda. Chamado 03CP5C (09/11/2026, na 474): o OCR leu o "5.377,47 D" como
+ * "5.377,A7D" e o único número da linha virou o saldo devedor, "5.372,57 D": o lançamento entrava com o valor do saldo e o
+ * erro de 4,90 ia para todos os dias negativos seguintes do cheque especial.
+ */
+export function ehCaixaPorPeriodo(texto: string): boolean {
+  const t = normalizarTexto(texto);
+  return /\bextrato por periodo\b/.test(t) && /\bcaixa\b/.test(t);
+}
+
+/** a borda esquerda da coluna Valor, pelo cabeçalho que tem Favorecido, Valor e Saldo na mesma linha */
+function xDaColunaValorDaCaixa(linhas: Linha[]): number | null {
+  for (const l of linhas) {
+    const achar = (nome: string) => l.tokens.find(t => normalizarTexto(t.s) === nome);
+    const valor = achar('valor');
+    if (valor && achar('favorecido') && achar('saldo')) return valor.x;
+  }
+  return null;
+}
+
+/** até onde o número da coluna Valor pode começar longe do título dela (a coluna é alinhada à esquerda) */
+const FOLGA_DA_COLUNA_VALOR = 8;
+const NUMERO_DA_LETRA: Record<string, string> = { A: '4', O: '0', o: '0', I: '1', l: '1', S: '5', B: '8' };
+
+/** o valor com letra no lugar de número ("5.377,A7D" → "5.377,47D"); o que não vira um valor fica como está */
+function valorSemLetraDoOcr(s: string): string {
+  const m = s.match(/^([\dAOoIlSB.,]+?)([CD]?)$/);
+  if (!m || !/\d/.test(m[1])) return s;
+  const certo = m[1].replace(/[AOoIlSB]/g, x => NUMERO_DA_LETRA[x]) + m[2];
+  return RE_VALOR.test(certo) ? certo : s;
+}
+
 function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: number): { lancamentos: Lancamento[]; pagina: number[]; saldosDoDia?: Map<string, number>; saldoAnteriorPelaLinha?: number | null; saldoAnteriorConferido?: number | null } {
   const saldosDoDia = new Map<string, number>();
   let ultimaDataDeValor: string | null = null;
@@ -586,9 +619,14 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
   // do período" também escreve (report PGL7X5, 09/11/2026, na 581: o "REND PAGO" e o Pix da "… PAGAMENTO S.A." viravam saída)
   // e o "extrato mensal" dele (Vitor, 09/11/2026, na 474: o "PIX TRANSF" recebido virava saída)
   const sinalEscrito = ehPagBank(textoTodo) || ehItauPorPeriodo(textoTodo) || itauMensal;
+  const caixaPorPeriodo = lado === 'banco' && ehCaixaPorPeriodo(textoTodo);
+  let xValorDaCaixa: number | null = null;
 
   for (const [nPagina, linhas] of todas.entries()) {
     col = colunas(linhas) || col;
+    if (caixaPorPeriodo) xValorDaCaixa = xDaColunaValorDaCaixa(linhas) ?? xValorDaCaixa;
+    const xValor = xValorDaCaixa;
+    const naColunaValor = (k: Token) => xValor != null && Math.abs(k.x - xValor) <= FOLGA_DA_COLUNA_VALOR;
     let solta: string | null = null;
     /** a altura da última linha do texto solto: ele fica com o lançamento mais perto */
     let soltaY: number | null = null;
@@ -605,6 +643,7 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
       const t = l.tokens.slice();
       if (!t.length || noFim) continue;
       if (entre && col) consertarValoresDoOcr(t, col);
+      for (let i = 0; i < t.length; i++) if (naColunaValor(t[i])) t[i] = { ...t[i], s: valorSemLetraDoOcr(t[i].s) };
       if (/^ultimos lancamentos\b/.test(normalizarTexto(l.texto))) { juntarPerto(); noFim = true; continue; }
       if (itauMensal && /^(saldo final|totalizador de aplicacoes)\b/.test(normalizarTexto(l.texto))) { juntarPerto(); noFim = true; continue; }
       // o depósito bloqueado (Sicoob: "DEP.CHEQUE BLOQ.1D 2.300,00*"): o valor com * ainda não entrou no saldo; a linha e o
@@ -688,6 +727,9 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
         solta = null; continue;
       }
       if (!dataAtual) continue;
+      // na Caixa por período, o número fora da coluna Valor é o saldo: sem valor legível, o lançamento não entra (e aparece
+      // como pendência na conferência), em vez de entrar com o saldo no lugar do valor
+      if (xValor != null && data && !valores.some(naColunaValor)) { solta = null; continue; }
       // antes do período só fica a data do SALDO ANTERIOR: o lançamento sem data depois dele (o OCR embaralhou a do 1º dia,
       // "c2102/20268") é do período, e entra no 1º dia dele (Vitor, 06/11/2026, na 571: o fevereiro tinha 15 lançamentos em
       // 30/01, a data do saldo anterior, e o arquivo de fevereiro aparecia no janeiro)
