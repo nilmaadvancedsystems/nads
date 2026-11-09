@@ -51,6 +51,9 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
   // a busca da empresa (a peça da barra do Fiscal)
   const [busca, setBusca] = useState('');
   const [ativo, setAtivo] = useState(0);
+  // o toggle Delegar (09/11/2026: "caso esteja off, não é para a tarefa ser delegada, é para o próprio usuário"): enquanto a
+  // pessoa não mexe, segue a tarefa (de outra pessoa = ligado; a nova e a dela mesma = desligado)
+  const [delegarEscolhido, setDelegarEscolhido] = useState<boolean | null>(null);
 
   // a tarefa que chega do banco depois de aberta (a lista ainda carregava, ou outra pessoa mudou; 29/10/2026: "não salva
   // nada"): o formulário acompanha o banco nos campos que a pessoa não mexeu, e o que ela mudou fica por cima (30/10/2026:
@@ -69,7 +72,8 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
 
   const mudar = (p: Partial<Rascunho>) => { setR(x => ({ ...x, ...p })); setErro(''); };
   const prazo = d.prazoDaTela(prazoTexto);
-  const final: Rascunho = { ...r, prazo: prazo ?? r.prazo };
+  const delegar = delegarEscolhido ?? (!!r.responsavel && r.responsavel.uid !== uid);
+  const final: Rascunho = { ...r, prazo: prazo ?? r.prazo, responsavel: delegar || !eu ? r.responsavel : { uid: eu.uid, nome: eu.nome } };
   // o que a pessoa mudou desde que abriu: é só isso que o Salvar grava
   const mudancas = ehNova ? {} : d.mudancasDoRascunho(inicial, final);
   const mudou = ehNova
@@ -147,6 +151,12 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
     opcoesDeStatus: d.STATUS.map(s => ({ valor: s.valor, rotulo: s.rotulo })),
     setStatus: (s: tarefas.delegadas.Status) => mudar({ status: s }),
     equipe,
+    delegar,
+    /** ligar numa tarefa que era da própria pessoa pede para escolher alguém; desligar deixa a tarefa com ela (no Salvar) */
+    alternarDelegar: () => {
+      setDelegarEscolhido(!delegar);
+      if (delegar) setErro(''); else mudar(r.responsavel?.uid === uid ? { responsavel: null } : {});
+    },
     setResponsavel: (uidDoResponsavel: string) => {
       const u = acesso.equipe().lista.find(x => x.uid === uidDoResponsavel);
       mudar({ responsavel: u ? { uid: u.uid, nome: u.nome } : r.responsavel?.uid === uidDoResponsavel ? r.responsavel : null });

@@ -1,7 +1,7 @@
 // A tarefa aberta na Central, no lugar da lista (28/10/2026, o cadastro de tarefas do Toriba): "‹ Voltar", o número e o
 // status, e as abas Tarefa / Parecer / Histórico. Em Tarefa, o formulário (título, descrição, cliente vinculado, "Delegar
 // para", prioridade, prazo, status, as datas) e o painel Anexos; no pé, Excluir (só quem criou) e Cancelar / Salvar.
-import { Alerta, BotaoAcao, CampoData, Esqueleto, Icone, MenuSuspenso, Segmentado, Vazio } from '@nads/ui';
+import { Alerta, BotaoAcao, CampoData, Esqueleto, Icone, Interruptor, MenuSuspenso, Segmentado, Vazio } from '@nads/ui';
 import { useEffect, useId, type RefObject } from 'react';
 import { EmpresaDaBarra } from '../fiscal/partes/EmpresaDaBarra';
 import { AnexosDaTarefa } from './partes/AnexosDaTarefa';
@@ -35,8 +35,13 @@ function FormularioDaTarefa({ vm }: { vm: Vm }) {
             : <div onKeyDown={e => { if (e.key === 'Escape' && vm.empresa.achadas.length) e.preventDefault(); }}><EmpresaDaBarra vm={vm.empresa} id={id + '-empresas'} /></div>}
         </div>
         <div className="field">
-          <span className="field-rotulo" id={id + '-responsavel'}>Delegar para</span>
-          <EscolherPessoa vm={vm} so={so} rotuloId={id + '-responsavel'} />
+          {so ? <span className="field-rotulo" id={id + '-responsavel'}>Delegar para</span> : (
+            <div className="tdl-delegar-topo">
+              <span className="field-rotulo" id={id + '-responsavel'}>Delegar</span>
+              <Interruptor ligado={vm.delegar} onMudar={vm.alternarDelegar} rotulo="Delegar para outra pessoa" />
+            </div>
+          )}
+          {so || vm.delegar ? <EscolherPessoa vm={vm} so={so} rotuloId={id + '-responsavel'} /> : <FicaComVoce vm={vm} />}
         </div>
         <div className="field">
           <label htmlFor={id + '-prioridade'}>Prioridade</label>
@@ -99,6 +104,12 @@ function FotoDaPessoa({ p }: { p: Pessoa }) {
   return <span className="pessoa-foto" aria-hidden="true">{p.foto ? <img src={p.foto} alt="" /> : p.iniciais}</span>;
 }
 
+/** o Delegar desligado: a tarefa fica com quem está escrevendo */
+function FicaComVoce({ vm }: { vm: ReturnType<typeof useTarefaAberta> }) {
+  const eu = vm.equipe.find(p => p.voce);
+  return <div className="pessoa-escolhida-fixa"><span className="pessoa-escolhida">{eu && <FotoDaPessoa p={eu} />}<span>{eu ? eu.nome : 'Você'}{eu && <span className="fraco"> (você)</span>}</span></span></div>;
+}
+
 /** o "Delegar para": o menu do nads com a foto de cada pessoa (no celular, no lugar da lista do sistema) */
 function EscolherPessoa({ vm, so, rotuloId }: { vm: ReturnType<typeof useTarefaAberta>; so: boolean; rotuloId: string }) {
   const atual = vm.equipe.find(p => p.uid === vm.rascunho.responsavel?.uid) || null;
@@ -110,7 +121,7 @@ function EscolherPessoa({ vm, so, rotuloId }: { vm: ReturnType<typeof useTarefaA
     <MenuSuspenso rotulo={rotulo} className="btn btn-outline pessoa-botao" titulo="Delegar para" dica="Escolher para quem delegar"
       conteudo={fechar => (
         <div className="pessoa-lista" role="listbox" aria-labelledby={rotuloId}>
-          {vm.equipe.map(p => (
+          {vm.equipe.filter(p => !p.voce).map(p => (
             <button key={p.uid} type="button" className="popover-item" role="option" aria-selected={p.uid === atual?.uid}
               onClick={() => { vm.setResponsavel(p.uid); fechar(); }}>
               <FotoDaPessoa p={p} />
@@ -167,7 +178,7 @@ export function TarefaAberta({ alvo, voltar, criada, saida }: {
           <span className="tarefas-barra-espaco" />
           <button type="button" className="btn btn-outline" onClick={vm.cancelar}>Cancelar</button>
           <BotaoAcao className="btn btn-primary" carregando={vm.salvando} textoCarregando="Salvando" onClick={() => { void vm.salvar(); }}>
-            <Icone nome="check" width={16} height={16} />{vm.ehNova ? 'Salvar e delegar' : 'Salvar'}
+            <Icone nome="check" width={16} height={16} />{vm.ehNova && vm.delegar ? 'Salvar e delegar' : 'Salvar'}
           </BotaoAcao>
         </div>
       )}

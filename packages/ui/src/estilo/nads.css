@@ -5484,6 +5484,9 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .tdl-campo-largo{grid-column:1 / -1;}
 .tdl-rotulo{display:block;font-size:var(--fs-14);font-weight:600;margin-bottom:6px;}
 .tdl-rotulo .fraco{font-weight:400;}
+/* o Delegar da tarefa (09/11/2026): o título e o toggle na mesma linha */
+.tdl-delegar-topo{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+.field .tdl-delegar-topo .field-rotulo{margin-bottom:0;}
 .tdl-form .empresa-da-barra-busca .busca-curta{width:min(420px,100%);}
 .tdl-form .empresa-da-barra{max-width:100%;}
 .tdl-anexos{border:1px solid var(--border);border-radius:8px;padding:14px 16px;background:var(--surface);}
