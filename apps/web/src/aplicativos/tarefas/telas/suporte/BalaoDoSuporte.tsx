@@ -83,6 +83,7 @@ export function BalaoDoSuporte() {
       {!vm.aberto && vm.emAberto > 0 && <span className={'suporte-botao-qtd' + (vm.paraTestar ? ' testar' : '')} aria-hidden="true">{vm.emAberto}</span>}
     </button>
   );
+  if (!vm.aberto) return botao;
   const p = vm.passo;
   return (
     <>
