@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { anoDoTexto, ehConsultasDoBB, ehPagBank, extratoDoPdf, lancamentosDoPdf, mesesSemMovimento, paginasPorMes, periodoDoExtrato, saldoAnteriorDoPdf, saldosDoDiaDoPdf, type ItemDeTexto } from './extrato';
+import { conferir } from './conferencia';
+import { anoDoTexto, ehConsultasDoBB, ehItauPorPeriodo, ehPagBank, extratoDoPdf, lancamentosDoPdf, mesesSemMovimento, paginasPorMes, periodoDoExtrato, saldoAnteriorDoPdf, saldosDoDiaDoPdf, type ItemDeTexto } from './extrato';
 
 /** Monta uma página: cada linha é [texto, x] com a mesma altura; as linhas descem de 14 em 14. */
 function pagina(linhas: [string, number][][]): ItemDeTexto[] {
@@ -425,5 +426,36 @@ describe('PagBank: o sinal das saídas vem escrito, o valor sem sinal é entrada
   });
   it('outro banco que só cita o PagSeguro (num Pix) não é PagBank', () => {
     expect(ehPagBank('Nu Pagamentos S.A.\nPix enviado PAGSEGURO INTERNET IP S.A.')).toBe(false);
+  });
+});
+
+describe('Itaú "Lançamentos do período": o sinal das saídas vem escrito (report PGL7X5, 09/11/2026)', () => {
+  const corpo: [string, number][][] = [
+    [['01/04/2026', 35], ['REND PAGO APLIC AUT MAIS', 105], ['0,07', 481]],
+    [['01/04/2026', 35], ['BOLETO PAGO LOJA TESTE', 105], ['-600,00', 465]],
+    [['02/04/2026', 35], ['RECEBIMENTO REDE ELO', 105], ['EMPRESA DE PAGAMENTO S.A.', 241], ['91,02', 475]],
+    [['02/04/2026', 35], ['SALDO TOTAL DISPONÍVEL DIA', 105], ['1.000,00', 526]],
+  ];
+  const cabecalho: [string, number][] = [['Data', 35], ['Lançamentos', 105], ['Razão Social', 241], ['CNPJ/CPF', 378], ['Valor (R$)', 460], ['Saldo (R$)', 520]];
+
+  it('"REND PAGO" e o "PAGAMENTO" da razão social, sem sinal, são entrada; o "-" é a saída', () => {
+    const p = pagina([[['Lançamentos do período:', 34], ['01/04/2026 até 30/04/2026', 131]], cabecalho, ...corpo]);
+    expect(ehItauPorPeriodo(p.map(i => i.texto).join(' '))).toBe(true);
+    expect(lancamentosDoPdf([p], 'banco', 2026).map(l => [l.data, l.valor])).toEqual([
+      ['2026-04-01', 7], ['2026-04-01', -60000], ['2026-04-02', 9102],
+    ]);
+  });
+
+  it('com o razão da conciliação do Alterdata (o crédito positivo), tudo confere, sem sinal trocado', () => {
+    const p = pagina([cabecalho, ...corpo]);
+    const extrato = lancamentosDoPdf([p], 'banco', 2026).map((l, i) => ({ ...l, id: 'b' + i, idArquivo: 'b', lado: 'banco' as const }));
+    const razao = [['2026-04-01', -7], ['2026-04-01', 60000], ['2026-04-02', -9102]].map(([data, valor], i) => ({ data: data as string, valor: valor as number, historico: 'Caixa', conta: '10101', id: 's' + i, idArquivo: 's', lado: 'sistema' as const }));
+    const r = conferir(extrato, razao);
+    expect([r.sistemaInvertido, r.contagem.ok, r.contagem.diferente, r.contagem.faltando, r.contagem.amais]).toEqual([true, 3, 0, 0, 0]);
+  });
+
+  it('o extrato sem esse cabeçalho continua pelo histórico', () => {
+    const p = pagina([[['Data', 35], ['Lançamentos', 105], ['Valor (R$)', 460]], [['01/04/2026', 35], ['BOLETO PAGO LOJA TESTE', 105], ['600,00', 475]]]);
+    expect(lancamentosDoPdf([p], 'banco', 2026).map(l => l.valor)).toEqual([-60000]);
   });
 });

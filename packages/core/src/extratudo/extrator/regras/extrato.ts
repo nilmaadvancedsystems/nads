@@ -381,6 +381,14 @@ export function ehPagBank(texto: string): boolean {
   return /\b290 pagseguro internet\b/.test(normalizarTexto(texto));
 }
 
+/**
+ * O extrato "Lançamentos do período" do Itaú (o título da tabela: Data, Lançamentos, Razão Social, CNPJ/CPF, Valor, Saldo): as
+ * saídas vêm com o sinal escrito; o valor sem sinal é entrada.
+ */
+export function ehItauPorPeriodo(texto: string): boolean {
+  return /\bdata lancamentos razao social cnpj cpf valor r\b/.test(normalizarTexto(texto));
+}
+
 export function lancamentosDoPdf(paginas: ItemDeTexto[][], lado: Lado, anoPadrao = new Date().getFullYear()): Lancamento[] {
   return lancamentosComPagina(paginas, lado, anoPadrao).lancamentos;
 }
@@ -547,8 +555,9 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
   const pelaDtMovimento = ehConsultasDoBB(textoTodo);
   // o PagBank escreve o sinal das saídas ("-2,27", "-R$ 30.000,00"): o valor sem sinal é entrada, e o histórico não decide
   // (Vitor, 04/11/2026, na 10: "Vendas - Disponivel DEBITO VISA" e "Pagamento de PIX" recebidos viravam saída). Só nele:
-  // em outros bancos (Nubank, Inter, Stone…) o "-" aparece em totais e saldos e as saídas vêm sem sinal
-  const sinalEscrito = ehPagBank(textoTodo);
+  // em outros bancos (Nubank, Inter, Stone…) o "-" aparece em totais e saldos e as saídas vêm sem sinal. O Itaú "Lançamentos
+  // do período" também escreve (report PGL7X5, 09/11/2026, na 581: o "REND PAGO" e o Pix da "… PAGAMENTO S.A." viravam saída)
+  const sinalEscrito = ehPagBank(textoTodo) || ehItauPorPeriodo(textoTodo);
 
   for (const [nPagina, linhas] of todas.entries()) {
     col = colunas(linhas) || col;
