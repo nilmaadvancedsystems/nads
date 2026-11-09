@@ -88,7 +88,7 @@ async function levantar(db, trocas) {
   return { emps: emps.map(e => ({ cnpj: e.cnpj, nome: e.nome, antigo: e.antigo, novo: e.novo, cliente: e.cliente.id, cadastro: e.cadastro && e.cadastro.id })), ops, relatar };
 }
 
-async function gravar(db, ops, quem, desfazer) {
+async function gravar(db, ops, quem, desfazer, motivo = 'troca de código') {
   const { FieldValue } = require('firebase-admin/firestore');
   const agora = new Date().toISOString();
   const lote = db.batch();
@@ -97,7 +97,7 @@ async function gravar(db, ops, quem, desfazer) {
     const mud = { [o.campo]: desfazer ? o.antes : o.depois };
     if (o.extra && !desfazer) Object.assign(mud, o.extra, { codigoTrocadoEm: agora });
     if (o.extra && desfazer) Object.assign(mud, { codigoAnterior: FieldValue.delete(), codigoTrocadoEm: FieldValue.delete() });
-    if (o.historico) Object.assign(mud, { atualizadoEm: agora, historico: FieldValue.arrayUnion({ ts: agora, por: quem, acao: desfazer ? 'Troca de código desfeita' : 'Código trocado', detalhe: (desfazer ? o.depois + ' → ' + o.antes : o.antes + ' → ' + o.depois) + ' (Vitor, 23/10/2026: troca ZELO × AAP)' }) });
+    if (o.historico) Object.assign(mud, { atualizadoEm: agora, historico: FieldValue.arrayUnion({ ts: agora, por: quem, acao: desfazer ? 'Troca de código desfeita' : 'Código trocado', detalhe: (desfazer ? o.depois + ' → ' + o.antes : o.antes + ' → ' + o.depois) + ' (' + motivo + ')' }) });
     lote.update(ref, mud);
   }
   await lote.commit();
@@ -134,7 +134,8 @@ if (require.main === module) {
     const diario = path.join(DIARIOS, 'troca-codigo-' + new Date().toISOString().replace(/[:.]/g, '-') + '.json');
     fs.writeFileSync(diario, JSON.stringify({ em: new Date().toISOString(), emps: lev.emps, ops: lev.ops, relatar: lev.relatar }, null, 1));
     console.log('diário (para desfazer): ' + diario);
-    const erros = await gravar(db, lev.ops, 'arquivador (troca de código)', false);
+    // --motivo: o texto que fica no histórico do Cadastro de cada empresa
+    const erros = await gravar(db, lev.ops, 'arquivador (troca de código)', false, valores('--motivo')[0]);
     console.log(erros.length ? 'ERROS: ' + erros.join('; ') : 'gravado e conferido: ' + lev.ops.length + ' documentos');
     process.exit(erros.length ? 1 : 0);
   })().catch(e => { console.error('PAREI: ' + e.message); process.exit(1); });
