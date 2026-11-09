@@ -1,5 +1,4 @@
-// Relatório › Tomados/Prestados (#confServ): números, conferência com o saldo do balancete
-// e lançamento fora do padrão agrupado por fornecedor/cliente.
+// Relatório › Tomados/Prestados (#confServ): números e conferência com o saldo do balancete.
 // Origem: conferencia.html ~L1225-1231 e renderConfServ (~L4617-4729).
 import { conferencia as c, formatos } from '@nads/core';
 import { Stat, TituloDaConta, Vazio } from '@nads/ui';
@@ -14,7 +13,7 @@ const { reais, lancN, lancComZeros } = formatos;
 const ESTILO_GRUPO = { border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', marginBottom: 8, background: 'var(--surface)', overflow: 'hidden' } as const;
 const ESTILO_LI = { display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderTop: '1px solid var(--border)', fontSize: 13.5, flexWrap: 'wrap' } as const;
 
-export function Servicos({ vm, tipo }: { vm: VM; tipo: c.TipoServico }) {
+export function Servicos({ vm }: { vm: VM }) {
   const r = vm.serv;
   if (!r) return null;
   return (
@@ -26,34 +25,6 @@ export function Servicos({ vm, tipo }: { vm: VM; tipo: c.TipoServico }) {
         <div id="confServBal">
           {!r.saldo.length ? <Vazio compacto icone="search" texto="Nenhuma nota no período." /> : <SaldoServicos r={r} onRevisar={vm.revisar} />}
         </div>
-      </div>
-      <div className="card" id="confServDiv">
-        {!r.temDivergencias ? (
-          <>
-            <div className="card-head"><h3>Lançamento fora do padrão</h3></div>
-            <Vazio compacto icone="checkCircle" texto="Nenhuma nota fora do padrão." />
-          </>
-        ) : (
-          <>
-            <div className="card-head">
-              <h3>Lançamento fora do padrão</h3>
-              <label className="card-head-ctl">Ordenar por{' '}
-                <select className="select-compact" value={vm.ordemServ} onChange={ev => vm.setOrdemServ(ev.target.value as c.OrdemServ)}>
-                  {r.ordens.map(([v, rotulo]) => <option key={v} value={v}>{rotulo}</option>)}
-                </select>
-              </label>
-            </div>
-            {r.pendentes.length
-              ? r.pendentes.map(g => <GrupoServ key={g.key} vm={vm} tipo={tipo} gr={g} marcado={false} />)
-              : <Vazio compacto icone="checkCircle" texto="Nenhuma pendente — tudo corrigido." />}
-            {r.corrigidos.length > 0 && (
-              <>
-                <p className="hint" style={{ marginTop: 16, fontWeight: 600, color: 'var(--ink)' }}>Corrigidos ({r.qtdCorrigidos})</p>
-                {r.corrigidos.map(g => <GrupoServ key={g.key} vm={vm} tipo={tipo} gr={g} marcado />)}
-              </>
-            )}
-          </>
-        )}
       </div>
     </div>
   );
@@ -84,7 +55,7 @@ function SaldoServicos({ r, onRevisar }: { r: Serv; onRevisar: (contas: string[]
   );
 }
 
-/** Um fornecedor/cliente com as notas fora do padrão (também no Verificar por conta). */
+/** Um fornecedor/cliente com as notas fora do padrão (no Verificar por conta). */
 export function GrupoServ({ vm, tipo, gr, marcado }: { vm: Pick<AcoesForaDoPadrao, 'marcarServGrupoCorrigido' | 'marcarServCorrigido' | 'colocarNaCategoria'>; tipo: c.TipoServico; gr: c.GrupoForaDoPadraoServ; marcado: boolean }) {
   const cat = gr.cat;
   return (

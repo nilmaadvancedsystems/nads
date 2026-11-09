@@ -1,13 +1,11 @@
 // ViewModel do Movimento › Relatório (abas Geral/Entradas/Saídas/Tomados/Prestados).
 // Origem: conferencia.html confAba (~L3371), renderGeral (~L3593), renderCcChart (~L3419),
 // renderCcRank (~L3447), renderCcBalancete (~L3508), autoMarcarConferidos (~L3563),
-// renderConfServ (~L4617) e os change de data-resolve-serv/servOrdem (~L4730-4752),
-// data-serv-sug → servIrParaForm (~L4539, ~L4590), aplicarBloqueios (~L1843-1861).
+// renderConfServ (~L4617), aplicarBloqueios (~L1843-1861).
 import { conferencia as c, formatos } from '@nads/core';
 import { useEffect, useMemo } from 'react';
 import { useSessao } from '../../casca/sessao';
 import { travaDaAba, useMarcarSozinho, type ReqAba } from './movimento';
-import { useMarcarForaDoPadrao } from './useMarcarForaDoPadrao';
 import { SO_ENTRADAS } from '../../soEntradas';
 
 const { reais, rot, mesCurto, capital } = formatos;
@@ -25,7 +23,6 @@ const ALTURA_BARRA = 104;
 
 export function useRelatorio() {
   const s = useSessao();
-  const acoes = useMarcarForaDoPadrao();
   const e = s.empresa;
   const tem = c.disponivel(e);
   const semP = c.semPrest(e);
@@ -73,16 +70,13 @@ export function useRelatorio() {
 
   // ---------- Tomados / Prestados ----------
   const tipoServ: c.TipoServico | null = aba === 'tomados' || aba === 'prestados' ? aba : null;
-  const ordemServ = tipoServ ? s.ordemServ[tipoServ] : null;
-  const serv = useMemo(() => (tipoServ && ordemServ ? montarServicos(e, tipoServ, s.filtro, ordemServ) : null), [e, tipoServ, s.filtro, ordemServ]);
+  const serv = useMemo(() => (tipoServ ? montarServicos(e, tipoServ, s.filtro) : null), [e, tipoServ, s.filtro]);
 
   return {
     abas, aba, escolherAba, ehServ,
     stats, saldo: rel ? rel.saldo : [], grafico, rank, alternarMes, abrirNatureza,
     revisar: s.revisarConta,
-    ...acoes,
-    tipoServ, serv, ordemServ: tipoServ ? s.ordemServ[tipoServ] : 'nome',
-    setOrdemServ: (o: c.OrdemServ) => { if (tipoServ) s.setOrdemServ(tipoServ, o); },
+    tipoServ, serv,
   };
 }
 
@@ -130,19 +124,18 @@ function montarRank(rank: c.ItemRank[]) {
   }));
 }
 
-function montarServicos(e: c.Empresa, t: c.TipoServico, f: c.FiltroMovimento, ordem: c.OrdemServ) {
+function montarServicos(e: c.Empresa, t: c.TipoServico, f: c.FiltroMovimento) {
   const cfg = c.SV[t];
-  const r = c.conferirServicos(e, t, f, ordem);
+  const r = c.conferirServicos(e, t, f, 'nome');
   const stats: StatRelatorio[] = [{ rotulo: (t === 'prestados' ? 'Prestados' : 'Tomados') + ' no período', valor: reais(r.totais.valor), cor: t === 'prestados' ? 'saida' : 'entrada' }];
   if (r.temIss) stats.push({ rotulo: 'ISS do período', valor: reais(r.totais.iss) }, { rotulo: 'ISS retido', valor: reais(r.totais.issRet) });
   if (r.totais.irrf) stats.push({ rotulo: 'IRRF retido', valor: reais(r.totais.irrf) });
   if (r.totais.inss) stats.push({ rotulo: 'INSS retido', valor: reais(r.totais.inss) });
-  stats.push({ rotulo: 'Notas', valor: String(r.qtdNotas) }, { rotulo: capital(cfg.parts), valor: String(r.qtdParticipantes) }, { rotulo: 'Fora do padrão', valor: String(r.qtdForaDoPadrao) });
+  stats.push({ rotulo: 'Notas', valor: String(r.qtdNotas) }, { rotulo: capital(cfg.parts), valor: String(r.qtdParticipantes) });
   return {
     ...r,
     stats,
     /** title da coluna Notas: "3 fornecedores: A, B, C" */
     tituloNotas: (l: c.LinhaSaldoServ) => l.participantes.length + ' ' + (l.participantes.length > 1 ? cfg.parts : cfg.part) + ': ' + l.participantes.join(', '),
-    ordens: [['nome', capital(cfg.part) + ' (A-Z)'], ['valor', 'Valor (maior primeiro)'], ['data', 'Data']] as [c.OrdemServ, string][],
   };
 }

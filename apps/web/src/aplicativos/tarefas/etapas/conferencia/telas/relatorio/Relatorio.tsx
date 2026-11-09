@@ -11,7 +11,7 @@ export function Relatorio() {
     <section>
       <Segmentado id="confSeg" valor={vm.aba} opcoes={vm.abas} onMudar={vm.escolherAba} />
       {!vm.ehServ && <Geral vm={vm} />}
-      {vm.tipoServ && <Servicos vm={vm} tipo={vm.tipoServ} />}
+      {vm.tipoServ && <Servicos vm={vm} />}
     </section>
   );
 }
