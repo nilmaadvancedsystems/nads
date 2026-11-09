@@ -41,6 +41,7 @@ export function useFeedbacks() {
       { valor: 'novo' as const, rotulo: 'Novos', qtd: conta('novo') },
       { valor: 'visto' as const, rotulo: 'Vistos', qtd: conta('visto') },
       { valor: 'resolvendo' as const, rotulo: 'Resolvendo', qtd: conta('resolvendo') },
+      { valor: 'testando' as const, rotulo: 'Testando', qtd: conta('testando') },
       { valor: 'feito' as const, rotulo: 'Feitos', qtd: conta('feito') },
       { valor: '' as const, rotulo: 'Todos', qtd: todos.lista.length },
       { valor: 'bug' as const, rotulo: 'Bugs', qtd: todos.lista.filter(f => f.tipo === 'bug' && f.status !== 'feito').length },

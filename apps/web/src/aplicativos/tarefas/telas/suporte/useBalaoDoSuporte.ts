@@ -1,7 +1,8 @@
 // ViewModel do balão do suporte (Vitor, 20/10/2026): no canto de baixo, à direita, em toda tela da Tarefas. A conversa é
 // guiada por cápsulas (o problema, o banco, o mês), já sabendo a empresa, o período e a tela (contextoDoSuporte), e termina
 // nas instruções, diretas. "Não resolveu" (ou "Outro"): o arquivo e uma frase vão para os Feedbacks, aba Bugs, e o robô do
-// PC do escritório investiga e escreve o report para o admin. As regras da conversa ficam no core (suporte).
+// PC do escritório investiga e escreve o report para o admin. As regras da conversa ficam no core (suporte). Enviado, vira um
+// ticket: fica no chat, com a barra de andamento, até ser resolvido (09/11/2026), vindo do banco, em qualquer navegador.
 import { suporte as s } from '@nads/core';
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router';
@@ -20,11 +21,12 @@ export interface FalaDoSuporte { passo: s.PassoDoSuporte; escolhida: string }
 const CHAVE = 'nads-suporte-chat';
 const DURA_MS = 24 * 3600 * 1000;
 /** A conversa guardada: as respostas, a empresa dela (trocou de empresa, recomeça) e os botões da página, fixos na conversa. */
-interface ChatGuardado { comecou: number; escolhas: string[]; resolvido: boolean; enviado: boolean; empresa?: string; botoes?: string[]; pedido?: string }
+interface ChatGuardado { comecou: number; escolhas: string[]; resolvido: boolean; enviado?: boolean; empresa?: string; botoes?: string[] }
 function lerChat(): ChatGuardado | null {
   try {
     const g = JSON.parse(localStorage.getItem(CHAVE) || 'null') as ChatGuardado | null;
-    if (!g || !Array.isArray(g.escolhas) || Date.now() - g.comecou > DURA_MS) { localStorage.removeItem(CHAVE); return null; }
+    // (enviado: a conversa de antes dos tickets; agora o pedido enviado vem do banco)
+    if (!g || !Array.isArray(g.escolhas) || g.enviado || Date.now() - g.comecou > DURA_MS) { localStorage.removeItem(CHAVE); return null; }
     return g;
   } catch { return null; }
 }
@@ -46,9 +48,11 @@ export function useBalaoDoSuporte() {
   const [arquivos, setArquivos] = useState<File[]>([]);
   const [frase, setFrase] = useState('');
   const [enviando, setEnviando] = useState(false);
-  const [enviado, setEnviado] = useState(() => guardado?.enviado ?? false);
-  // o número do pedido enviado (Vitor, 21/10/2026: "nomeie em #"), o mesmo que aparece nos Feedbacks
-  const [pedido, setPedido] = useState(() => guardado?.pedido ?? '');
+  // abrir outro ticket com os que já estão no chat (sem ticket nenhum, a conversa guiada já começa)
+  const [abrindoOutro, setAbrindoOutro] = useState(false);
+  // o relógio das 18:00 (o ticket resolvido sai do chat com ele aberto)
+  const [agora, setAgora] = useState(() => new Date());
+  useEffect(() => { const r = setInterval(() => setAgora(new Date()), 60 * 1000); return () => clearInterval(r); }, []);
   // a empresa da conversa: trocou de empresa, o chat recomeça (Vitor, 21/10/2026)
   const [empresaDoChat, setEmpresaDoChat] = useState(() => guardado?.empresa ?? '');
   // os botões de importação da página: lidos ao abrir o balão e fixos na conversa (21/10/2026: lidos a cada resposta, a
@@ -58,10 +62,10 @@ export function useBalaoDoSuporte() {
   // guarda a conversa (com a hora em que começou); vazia, apaga
   useEffect(() => {
     try {
-      if (!escolhas.length && !resolvido && !enviado) localStorage.removeItem(CHAVE);
-      else localStorage.setItem(CHAVE, JSON.stringify({ comecou: comecou || Date.now(), escolhas, resolvido, enviado, empresa: empresaDoChat, botoes, pedido } satisfies ChatGuardado));
+      if (!escolhas.length && !resolvido) localStorage.removeItem(CHAVE);
+      else localStorage.setItem(CHAVE, JSON.stringify({ comecou: comecou || Date.now(), escolhas, resolvido, empresa: empresaDoChat, botoes } satisfies ChatGuardado));
     } catch { /* sem localStorage: fica só na tela */ }
-  }, [comecou, escolhas, resolvido, enviado, empresaDoChat, botoes, pedido]);
+  }, [comecou, escolhas, resolvido, empresaDoChat, botoes]);
   const [erro, setErro] = useState('');
 
   const rotuloDaTela = onde ? onde.aba || onde.etapa : '';
@@ -89,7 +93,7 @@ export function useBalaoDoSuporte() {
     setComecou(0);
     setMarcadas([]);
     setBotoes([]);
-    setEscolhas([]); setResolvido(false); setArquivos([]); setFrase(''); setEnviado(false); setPedido(''); setErro('');
+    setEscolhas([]); setResolvido(false); setArquivos([]); setFrase(''); setErro('');
   }
 
   function escolher(id: string) {
@@ -106,7 +110,7 @@ export function useBalaoDoSuporte() {
       // a regra do banco aceita o caminho até 500 letras (o texto, até 4000): várias cápsulas marcadas passavam e o envio era recusado
       const caminho = s.caminhoDaConversa(ctx, escolhas).slice(0, 500);
       const lidos = await Promise.all(arquivos.map(async f => ({ nome: f.name, bytes: new Uint8Array(await f.arrayBuffer()) })));
-      const id = await repo.enviarBug({
+      await repo.enviarBug({
         // a mensagem no formato de sempre (Vitor, 21/10/2026: "chegue para mim em um padrão")
         texto: s.mensagemDoBug(ctx, escolhas, frase, arquivos.map(f => f.name).join(', ')).slice(0, 4000),
         tela: pathname + (rotuloDaTela ? ' · ' + [onde?.etapa, onde?.aba].filter(Boolean).join(' › ') : ''),
@@ -114,8 +118,9 @@ export function useBalaoDoSuporte() {
         contexto: { empresa: ctx.empresa, codigo: ctx.codigo, tela: ctx.rotuloDaTela, meses: ctx.meses },
         arquivos: lidos,
       });
-      setPedido(s.codigoDoPedido(id));
-      setEnviado(true);
+      // virou ticket: a conversa guiada acaba e ele aparece no chat, com a barra
+      recomecar();
+      setAbrindoOutro(false);
     } catch (e) {
       setErro('Não consegui enviar: ' + (e as Error).message);
     } finally {
@@ -123,12 +128,31 @@ export function useBalaoDoSuporte() {
     }
   }
 
+  const tickets = repo.meus()
+    .filter(f => f.tipo === 'bug' && s.ticketNoChat(f.status, f.resolvidoEm, agora))
+    .sort((a, b) => a.criadoEm.localeCompare(b.criadoEm))
+    .map(f => {
+      const n = s.progressoDoTicket(f.status);
+      return {
+        id: f.id, pedido: s.codigoDoPedido(f.id), status: f.status, fala: s.falaDoTicket(f.status), testando: f.status === 'testando',
+        resumo: s.lerMensagemDoBug(f.texto).comentario || f.caminho || 'Pedido ao suporte',
+        etapas: s.ETAPAS_DO_TICKET.map((rotulo, i) => ({ rotulo, estado: i + 1 < n || n === 4 ? 'feita' : i + 1 === n ? 'atual' : '' })),
+      };
+    });
+  const emAberto = tickets.filter(t => t.status !== 'feito');
+  // a conversa guiada aparece sem ticket, ao abrir outro, ou se já tem resposta dada
+  const conversando = !tickets.length || abrindoOutro || escolhas.length > 0 || resolvido;
+
   return {
+    tickets, conversando, emAberto: emAberto.length, paraTestar: emAberto.some(t => t.testando),
+    abrirOutro: () => { recomecar(); lerBotoes(true); setAbrindoOutro(true); },
+    voltarAosTickets: () => { recomecar(); setAbrindoOutro(false); },
+    responderTeste: (id: string, funcionou: boolean) => { setErro(''); repo.responderTeste(id, funcionou).catch((e: Error) => setErro('Não consegui registrar: ' + e.message)); },
     // sem o "Nova conversa" (Vitor, 21/10/2026): a conversa que terminou (resolveu ou foi enviada) recomeça ao abrir de novo
-    aberto, abrir: () => { const terminou = resolvido || enviado; if (terminou) recomecar(); lerBotoes(terminou); setAberto(true); }, fechar: () => setAberto(false),
+    aberto, abrir: () => { if (resolvido) { recomecar(); setAbrindoOutro(false); } lerBotoes(resolvido); setAberto(true); }, fechar: () => setAberto(false),
     /** o título: a empresa e a tela de onde a pessoa está */
     titulo: [ctx.empresa, ctx.rotuloDaTela].filter(Boolean).join(' · '),
-    conversa, passo, resolvido, enviado, enviando, erro, pedido,
+    conversa, passo, resolvido, enviando, erro,
     escolher,
     nomeDaPessoa,
     /** a pergunta de várias: marca ou desmarca a cápsula */

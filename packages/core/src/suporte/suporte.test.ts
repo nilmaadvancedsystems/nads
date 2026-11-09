@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { caminhoDaConversa, codigoDoPedido, lerMensagemDoBug, lerReport, mensagemDoBug, NAO_RESOLVEU, nomeDoBotao, ondeEsta, OUTRO, passoDoSuporte, telaPeloRotulo, vereditoDoReport, type ContextoDoSuporte } from './index';
+import { caminhoDaConversa, codigoDoPedido, falaDoTicket, lerMensagemDoBug, lerReport, mensagemDoBug, NAO_RESOLVEU, nomeDoBotao, ondeEsta, OUTRO, passoDoSuporte, progressoDoTicket, telaPeloRotulo, ticketNoChat, vereditoDoReport, type ContextoDoSuporte } from './index';
 
 const ctx: ContextoDoSuporte = {
   tela: 'bancos', rotuloDaTela: 'Bancos', pagina: 'Importação › Bancos', empresa: 'EMPRESA EXEMPLO', codigo: 1,
@@ -24,7 +24,7 @@ describe('suporte de leitura: a conversa por cápsulas', () => {
     expect(fim.tipo).toBe('instrucoes');
     if (fim.tipo === 'instrucoes') {
       expect(fim.aviso).toBe('Você está na página Importação › Bancos, na empresa 1 · EMPRESA EXEMPLO, em 07/2026 a 08/2026.');
-      expect(fim.passos[0]).toBe('Clique no ✓ de 08/2026 do Bradesco para tirar o importado.');
+      expect(fim.passos[0]).toBe('Clique no ✓ (ou no ícone do Drive) de 08/2026 do Bradesco para tirar o importado.');
     }
   });
   it('não resolveu: o botão da página, o que aconteceu, o arquivo, e só então o envio (o banco e o mês já respondidos não voltam)', () => {
@@ -52,7 +52,7 @@ describe('suporte de leitura: a conversa por cápsulas', () => {
   it('várias respostas e o Todos: as instruções e a mensagem com todas', () => {
     const p = passoDoSuporte(ctx, ['faltou', 'b:*', 'm:2026-07|2026-08']);
     expect(p.tipo).toBe('instrucoes');
-    if (p.tipo === 'instrucoes') expect(p.passos[0]).toBe('Clique no ✓ de 07/2026 e 08/2026 do Bradesco e Sicoob para tirar o importado.');
+    if (p.tipo === 'instrucoes') expect(p.passos[0]).toBe('Clique no ✓ (ou no ícone do Drive) de 07/2026 e 08/2026 do Bradesco e Sicoob para tirar o importado.');
     const escolhas = ['faltou', 'b:*', 'm:2026-07|2026-08', NAO_RESOLVEU, 'i:Importar extrato|Importar razão', 'e:faltaram|datas', 'a:pdf'];
     expect(caminhoDaConversa(ctx, escolhas)).toBe('Faltou lançamento › Todos › 07/2026, 08/2026 › Não resolveu › Importar extrato, Importar razão › Faltaram lançamentos, Datas ou mês errados › PDF do banco');
     expect(mensagemDoBug(ctx, escolhas, '', '')).toContain('Mês: 07/2026, 08/2026');
@@ -61,7 +61,7 @@ describe('suporte de leitura: a conversa por cápsulas', () => {
     const um = { ...ctx, bancos: ['Bradesco'], meses: ['2026-08'] };
     const p = passoDoSuporte(um, ['leu-errado']);
     expect(p.tipo).toBe('instrucoes');
-    if (p.tipo === 'instrucoes') expect(p.passos[2]).toBe('Suba o PDF em 08/2026 do Bradesco.');
+    if (p.tipo === 'instrucoes') expect(p.passos[1]).toBe('No ícone de importar de 08/2026, escolha Importar do computador ou Buscar no e-mail.');
   });
   it('a mensagem para o Vitor, sempre no mesmo formato', () => {
     const escolhas = ['faltou', 'b:Bradesco', 'm:2026-08', NAO_RESOLVEU, 'i:Importar extrato', 'e:faltaram', 'a:pdf'];
@@ -111,5 +111,23 @@ describe('a leitura do bug por quem resolve (28/10/2026)', () => {
     expect(r.falhou).toBe(true);
     expect(r.motivo).toContain('login do Claude');
     expect(r.detalhe).toBe('o Claude saiu com 1: Failed to authenticate: OAuth session expired');
+  });
+});
+
+describe('o ticket no chat', () => {
+  it('a barra: Visualizado, Resolvendo, Testando e Resolvido', () => {
+    expect((['novo', 'visto', 'resolvendo', 'testando', 'feito'] as const).map(progressoDoTicket)).toEqual([0, 1, 2, 3, 4]);
+    expect(falaDoTicket('testando')).toContain('testar');
+  });
+  it('o resolvido sai do chat às 18:00; o resolvido depois das 18:00, no dia seguinte', () => {
+    const em = (h: number, d = 9) => new Date(2026, 10, d, h, 0, 0);
+    expect(ticketNoChat('feito', em(10).toISOString(), em(17))).toBe(true);
+    expect(ticketNoChat('feito', em(10).toISOString(), em(18))).toBe(false);
+    expect(ticketNoChat('feito', em(19).toISOString(), em(17, 10))).toBe(true);
+    expect(ticketNoChat('feito', em(19).toISOString(), em(18, 10))).toBe(false);
+  });
+  it('em aberto, fica; o resolvido de antes, sem a data, não aparece', () => {
+    expect(ticketNoChat('testando', undefined, new Date())).toBe(true);
+    expect(ticketNoChat('feito', undefined, new Date())).toBe(false);
   });
 });

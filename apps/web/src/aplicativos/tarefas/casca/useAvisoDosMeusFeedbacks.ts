@@ -14,17 +14,21 @@ function avisados(): string[] {
 export function useAvisoDosMeusFeedbacks() {
   const repo = useFeedback();
   const { aviso } = useRetorno();
-  const resolvendo = repo.meus().filter(f => f.status === 'resolvendo');
-  const marca = resolvendo.map(f => f.id).join(',');
+  // a chave do Testando é outra: o mesmo pedido avisa nas duas etapas (a do Resolvendo fica como era, no id)
+  const chaveDe = (f: { id: string; status: string }) => (f.status === 'testando' ? f.id + ':testando' : f.id);
+  const paraAvisar = repo.meus().filter(f => f.status === 'resolvendo' || f.status === 'testando');
+  const marca = paraAvisar.map(chaveDe).join(',');
   useEffect(() => {
     const ja = avisados();
-    const novos = resolvendo.filter(f => !ja.includes(f.id));
+    const novos = paraAvisar.filter(f => !ja.includes(chaveDe(f)));
     if (!novos.length) return;
     for (const f of novos) {
-      aviso({ tom: 'info', titulo: 'Seu feedback está sendo resolvido', texto: '"' + (f.texto.length > 90 ? f.texto.slice(0, 90) + '…' : f.texto) + '"' });
+      aviso(f.status === 'testando'
+        ? { tom: 'info', titulo: 'Seu pedido está pronto para testar', texto: 'Teste e confirme no suporte, no balão do canto da tela.' }
+        : { tom: 'info', titulo: 'Seu feedback está sendo resolvido', texto: '"' + (f.texto.length > 90 ? f.texto.slice(0, 90) + '…' : f.texto) + '"' });
     }
-    try { localStorage.setItem(CHAVE, JSON.stringify([...ja, ...novos.map(f => f.id)].slice(-200))); } catch { /* avisa de novo na próxima */ }
-  // os ids em resolvendo dizem tudo
+    try { localStorage.setItem(CHAVE, JSON.stringify([...ja, ...novos.map(chaveDe)].slice(-200))); } catch { /* avisa de novo na próxima */ }
+  // as chaves dizem tudo
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [marca]);
 }
