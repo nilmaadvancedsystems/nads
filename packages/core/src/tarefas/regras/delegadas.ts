@@ -248,6 +248,26 @@ export function atrasada(t: Pick<TarefaDelegada, 'status' | 'prazo'> & { prazoHo
   return t.prazo < hoje || (t.prazo === hoje && !!t.prazoHora && !!agora && t.prazoHora < agora);
 }
 
+export type GrupoDoPrazo = 'atrasadas' | 'hoje' | 'proximos' | 'depois' | 'sem-prazo';
+
+/** Os grupos da lista, na ordem em que aparecem. */
+export const GRUPOS_DO_PRAZO: readonly { valor: GrupoDoPrazo; rotulo: string }[] = [
+  { valor: 'atrasadas', rotulo: 'Atrasadas' },
+  { valor: 'hoje', rotulo: 'Hoje' },
+  { valor: 'proximos', rotulo: 'Próximos 7 dias' },
+  { valor: 'depois', rotulo: 'Mais adiante' },
+  { valor: 'sem-prazo', rotulo: 'Sem prazo' },
+];
+
+/** Em que grupo da lista a tarefa em aberto cai, pelo prazo. */
+export function grupoDoPrazo(t: Pick<TarefaDelegada, 'status' | 'prazo'> & { prazoHora?: string }, hoje: string, agora = ''): GrupoDoPrazo {
+  if (!t.prazo) return 'sem-prazo';
+  if (atrasada(t, hoje, agora)) return 'atrasadas';
+  if (t.prazo === hoje) return 'hoje';
+  const limite = new Date(Date.parse(hoje + 'T12:00:00Z') + 7 * 86400000).toISOString().slice(0, 10);
+  return t.prazo <= limite ? 'proximos' : 'depois';
+}
+
 const PESO_DA_PRIORIDADE: Record<Prioridade, number> = { urgente: 0, alta: 1, normal: 2, baixa: 3 };
 
 /**

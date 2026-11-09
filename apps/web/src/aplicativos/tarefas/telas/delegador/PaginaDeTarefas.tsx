@@ -1,7 +1,7 @@
 // As tarefas delegadas no Início (09/11/2026; antes, o módulo Minhas tarefas do Escritório): a Central de tarefas numa
 // página, no lugar da janela. As abas (Minhas tarefas, Delegadas por mim, Concluídas) ficam em cima da lista, na própria
 // tela do Início (Vitor, 09/11/2026: "coloque o que está no menu lateral em uma tela só"); no corpo, a mesma lista da Central
-// (no jeito do Contas a pagar: os filtros, os números, a busca e a tabela) e, ao clicar numa linha, a tarefa numa janela por
+// (a barra, as situações e as linhas agrupadas pelo prazo) e, ao clicar numa linha, a tarefa numa janela por
 // cima da lista (09/11/2026: "em uma popup, ao invés de abrir uma nova tela").
 import { Icone, type NomeIcone } from '@nads/ui';
 import { useRef } from 'react';
