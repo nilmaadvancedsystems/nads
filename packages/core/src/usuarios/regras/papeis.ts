@@ -102,6 +102,9 @@ export function lerUsuario(uid: string, doc: DocUsuario): Usuario {
     ativo: doc.ativo !== false,
     fotoPerfil: doc.fotoPerfil || null,
     vistoNoNads: doc.nadsVistoEm || null,
+    ondeNoNads: doc.nadsOnde?.empresa && doc.nadsOnde.etapa && doc.nadsOnde.em
+      ? { codigo: doc.nadsOnde.codigo ?? null, empresa: doc.nadsOnde.empresa, etapa: doc.nadsOnde.etapa, competencia: doc.nadsOnde.competencia || '', em: doc.nadsOnde.em }
+      : null,
   };
 }
 

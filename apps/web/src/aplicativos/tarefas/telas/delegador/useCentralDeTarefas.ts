@@ -1,6 +1,7 @@
 // ViewModel da Central de tarefas (28/10/2026, o "Minhas Tarefas" do Toriba): a janela aberta pelo perfil ou pelo correio do
-// pé do menu. À esquerda as abas Minhas tarefas, Delegadas por mim e Concluídas (com quantas tem); no meio a barra (Nova
-// tarefa, a busca "O que você procura?", o filtro de status e o Exportar) e a tabela. Clicar numa linha abre a tarefa no
+// pé do menu. À esquerda as abas Minhas tarefas, Delegadas por mim e Concluídas (com quantas tem); no meio, no jeito do
+// Contas a pagar (09/11/2026: "no pique do financeiro"): os filtros e o Nova tarefa, os números que filtram ao clicar, a
+// busca com o Excel e a tabela. Clicar numa linha abre a tarefa no
 // lugar da lista (useTarefaAberta). As regras (a ordem, as abas, a busca) são do core: tarefas.delegadas.
 import { formatos, tarefas } from '@nads/core';
 import { baixarArquivo, baixarBytes } from '@nads/ui';
@@ -10,6 +11,7 @@ import { useTarefasDelegadas } from '../../dados/repo';
 const d = tarefas.delegadas;
 export type AbaDaCentral = tarefas.delegadas.Aba;
 type Status = tarefas.delegadas.Status;
+type Filtro = tarefas.delegadas.FiltroDaLista;
 
 /** A coluna da pessoa muda com a aba: nas minhas, quem delegou; nas delegadas, o responsável; nas concluídas, de/para quem. */
 const COLUNA_DA_PESSOA: Record<AbaDaCentral, string> = { minhas: 'Quem delegou', delegadas: 'Responsável', concluidas: 'Delegação' };
@@ -19,57 +21,90 @@ const VAZIO_DA_ABA: Record<AbaDaCentral, string> = {
   concluidas: 'As tarefas concluídas e canceladas aparecem aqui.',
 };
 
+const nomeDoCliente = (c: tarefas.delegadas.ClienteVinculado) => (c.codigo != null ? c.codigo + ' · ' : '') + c.nome;
+
+/** O andamento para quem delegou: quem fez o quê e quando; sem movimento, ainda não começou. */
+function movimentoDe(t: tarefas.delegadas.TarefaDelegada): string {
+  const m = d.ultimoMovimento(t);
+  if (!m) return 'Ainda não iniciou';
+  const quando = new Date(m.em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  return m.por + ' · ' + m.texto.replace(/ a tarefa$/, '').toLowerCase() + ' · ' + quando;
+}
+
 export function useCentralDeTarefas(abaInicial: AbaDaCentral) {
   const repo = useTarefasDelegadas();
   const [aba, setAba] = useState<AbaDaCentral>(abaInicial);
   const [busca, setBusca] = useState('');
-  const [status, setStatus] = useState<Status | ''>('');
+  const [filtro, setFiltro] = useState<Filtro>('');
+  const [prioridade, setPrioridade] = useState('');
+  const [quem, setQuem] = useState('');
   // a tarefa aberta no lugar da lista: o id, 'nova' ou null (a lista)
   const [aberta, setAberta] = useState<string | null>(null);
+  const [erroDaAcao, setErroDaAcao] = useState('');
   const uid = repo.eu()?.uid || '';
   const { carregadas, tarefas: todas, erro } = repo.lista();
   const hoje = d.hojeIso();
+  const agora = new Date().toTimeString().slice(0, 5);
   const contadores = d.contarAbas(todas, uid);
   const daAba = d.daAba(todas, aba, uid);
-  const lista = d.ordenar(d.buscar(daAba, busca).filter(t => !status || t.status === status), hoje);
   const pessoa = (t: tarefas.delegadas.TarefaDelegada) => {
     if (aba === 'minhas') return t.criadaPor.uid === uid ? 'Você mesmo' : t.criadaPor.nome;
     if (aba === 'delegadas') return t.responsavel.nome;
     if (t.criadaPor.uid === t.responsavel.uid) return 'Você mesmo';
     return t.responsavel.uid === uid ? 'de ' + t.criadaPor.nome : 'para ' + t.responsavel.nome;
   };
-  const opcoesDeStatus = d.statusDaAba(aba);
+  // os filtros de cima e a busca valem para os números; o número clicado só escolhe o que a lista mostra
+  const filtradas = d.buscar(daAba, busca).filter(t => (!prioridade || t.prioridade === prioridade) && (!quem || pessoa(t) === quem));
+  const lista = d.ordenar(d.filtrarPorSituacao(filtradas, filtro, hoje, agora), hoje, agora);
+  const algumFiltro = !!filtro || !!prioridade || !!quem || !!busca.trim();
+  const limparFiltros = () => { setFiltro(''); setPrioridade(''); setQuem(''); setBusca(''); };
   const nomeDoArquivo = 'tarefas-' + aba + '-' + hoje;
   return {
     carregando: !carregadas,
-    erro: erro || '',
+    erro: erro || erroDaAcao,
     /** as abas da lateral, com quantas tem */
     abas: d.ABAS.map(a => ({ id: a.valor, rotulo: a.rotulo, qtd: contadores[a.valor], ativa: a.valor === aba })),
     aba,
-    mudarAba: (a: AbaDaCentral) => { setAba(a); setStatus(''); setAberta(null); },
+    mudarAba: (a: AbaDaCentral) => { setAba(a); limparFiltros(); setAberta(null); },
     busca, setBusca,
-    /** o filtro de status (só os da aba) */
-    status,
-    rotuloDoStatus: status ? d.rotuloDoStatus(status) : 'Todos os status',
-    opcoesDeStatus: [{ valor: '' as const, rotulo: 'Todos os status' }, ...opcoesDeStatus.map(s => ({ valor: s, rotulo: d.rotuloDoStatus(s) }))],
-    setStatus,
+    exemplos: repo.exemplos,
+    /** os números do alto: clicar filtra a lista, clicar de novo volta a todas */
+    numeros: d.numerosDaLista(filtradas, aba, hoje, agora),
+    filtro, setFiltro,
+    prioridade, setPrioridade,
+    opcoesDePrioridade: d.PRIORIDADES.map(x => ({ valor: x.valor as string, rotulo: x.rotulo })),
+    /** o filtro da pessoa, com o nome da coluna da aba */
+    quem, setQuem,
+    pessoas: [...new Set(daAba.map(pessoa))].sort((a, b) => a.localeCompare(b, 'pt-BR')),
+    algumFiltro, limparFiltros,
+    /** a aba não tem tarefa nenhuma (o Vazio chama para criar; com filtro, para limpar) */
+    abaVazia: !daAba.length,
     colunaDaPessoa: COLUNA_DA_PESSOA[aba],
-    vazio: busca.trim() || status ? 'Nada com esse filtro.' : VAZIO_DA_ABA[aba],
+    /** a coluna a mais: os botões nas minhas; o andamento de quem recebeu nas delegadas (09/11/2026: "eu tenha esse controle") */
+    colunaExtra: aba === 'minhas' ? 'acoes' as const : aba === 'delegadas' ? 'movimento' as const : null,
+    fazerAcao: (id: string, novo: Status) => { repo.salvar(id, { status: novo }).catch((e: unknown) => setErroDaAcao('Não gravei: ' + (e instanceof Error ? e.message : String(e)))); },
+    vazio: daAba.length ? 'Nenhuma tarefa com isso.' : VAZIO_DA_ABA[aba],
     /** as linhas da tabela, na ordem do core (atrasadas e urgentes primeiro) */
     linhas: lista.map(t => ({
       id: t.id, numero: t.numero, titulo: t.titulo,
       status: { rotulo: d.rotuloDoStatus(t.status), tom: d.tomDoStatus(t.status) },
       prioridade: { valor: t.prioridade, rotulo: d.rotuloDaPrioridade(t.prioridade) },
-      prazo: d.prazoParaTela(t.prazo), atrasada: d.atrasada(t, hoje),
-      cliente: t.cliente ? (t.cliente.codigo != null ? t.cliente.codigo + ' · ' : '') + t.cliente.nome : '',
+      prazo: d.prazoComHora(t), atrasada: d.atrasada(t, hoje, agora),
+      cliente: t.clientes[0] ? nomeDoCliente(t.clientes[0]) : '',
+      maisClientes: t.clientes.length - 1,
+      clientes: t.clientes.map(nomeDoCliente).join('\n'),
       pessoa: pessoa(t), anexos: t.anexos.length, pareceres: t.pareceres.length,
+      // os botões de quem faz a tarefa (Minhas tarefas)
+      acoes: aba === 'minhas' ? d.acoesDoStatus(t.status) : [],
+      // o que aconteceu por último (Delegadas por mim)
+      movimento: movimentoDe(t),
     })),
     aberta,
     abrir: (id: string) => setAberta(id),
     nova: () => setAberta('nova'),
     voltar: () => setAberta(null),
     /** depois de criar, a lista da aba onde a tarefa foi parar (a minha: Minhas; para outro: Delegadas) */
-    criada: (paraMim: boolean) => { setAberta(null); setAba(paraMim ? 'minhas' : 'delegadas'); setStatus(''); },
+    criada: (paraMim: boolean) => { setAberta(null); setAba(paraMim ? 'minhas' : 'delegadas'); limparFiltros(); },
     /** a lista que está na tela (com a busca e o filtro), em planilha */
     exportar(formato: 'xlsx' | 'csv') {
       const cabecalho = [...d.CABECALHO_DA_PLANILHA];

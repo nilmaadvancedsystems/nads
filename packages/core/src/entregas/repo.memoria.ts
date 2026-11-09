@@ -24,7 +24,7 @@ const ITENS: Record<string, ItemDoDrive[]> = {
     { i: 'f2', n: 'extrato-bb-08-2026.pdf', p: 'c5', t: 'f', s: 96_000, m: '2026-09-03T12:00:00.000Z', x: 'application/pdf' },
     { i: 'c7', n: 'RECEBIMENTO DE CLIENTES', p: 'c1', t: 'd' },
     { i: 'f3', n: 'relatorio-liquidacao-08-2026.pdf', p: 'c7', t: 'f', s: 240_000, m: '2026-09-05T12:00:00.000Z', x: 'application/pdf' },
-    { i: 'f4', n: 'Balancete 08-2026.xlsx', p: 'p292', t: 'f', s: 4_200_000, m: '2026-09-28T13:00:00.000Z' },
+    { i: 'f4', n: 'Balancete 08-2026.xlsx', p: 'p292', t: 'f', s: 420_000, m: '2026-09-28T13:00:00.000Z' },
     { i: 'g1', n: 'Anotações do cliente', p: 'p292', t: 'g', m: '2026-09-10T12:00:00.000Z' },
     { i: 'f5', n: 'contrato-social.pdf', p: 'p292', t: 'f', s: 700_000, m: '2026-01-10T12:00:00.000Z', x: 'application/pdf' },
   ],
@@ -64,6 +64,28 @@ export function criarDriveDoEntregasMemoria(): RepoDriveDoEntregas {
       ];
       passos.forEach((a, i) => setTimeout(() => { if (vivo) aoMudar(a); }, 400 * (i + 1)));
       return () => { vivo = false; };
+    },
+    async lerArquivo() {
+      // exemplos: uma planilha feita aqui, para o visualizador ter o que mostrar
+      const m = await import('exceljs');
+      const livro = new (m.default ?? m).Workbook();
+      const ws = livro.addWorksheet('Balancete');
+      ws.columns = [{ width: 14 }, { width: 34 }, { width: 16 }, { width: 16 }];
+      ws.mergeCells('A1:D1');
+      ws.getCell('A1').value = 'Balancete de exemplo';
+      ws.getCell('A1').font = { bold: true, size: 14 };
+      ws.getCell('A1').alignment = { horizontal: 'center' };
+      ws.addRow(['Conta', 'Descrição', 'Débito', 'Crédito']).eachCell(c => {
+        c.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F4E78' } };
+      });
+      [['1.1.01', 'Caixa', 1234.5, 0], ['1.1.02', 'Bancos', 98765.43, 1500], ['2.1.01', 'Fornecedores', 0, 45210.9]].forEach(l => {
+        const r = ws.addRow(l);
+        for (const c of [3, 4]) r.getCell(c).numFmt = '#,##0.00';
+        r.eachCell(c => { c.border = { bottom: { style: 'thin', color: { argb: 'FFBFBFBF' } } }; });
+      });
+      livro.addWorksheet('Resumo').addRow(['Um texto bem comprido que passa por cima das células vazias ao lado']);
+      return new Uint8Array(await livro.xlsx.writeBuffer());
     },
     enviar(arquivo, destino, aoMudar) {
       // exemplos: finge subir as partes e o robô gravar (nada vai para o Drive)

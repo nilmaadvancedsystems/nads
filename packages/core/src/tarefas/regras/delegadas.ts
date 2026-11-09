@@ -7,7 +7,7 @@
 import { diaEmBrasilia, nomeNorm } from '../../formatos';
 
 export type Prioridade = 'baixa' | 'normal' | 'alta' | 'urgente';
-export type Status = 'pendente' | 'andamento' | 'cancelada' | 'concluida';
+export type Status = 'pendente' | 'andamento' | 'pausada' | 'cancelada' | 'concluida';
 
 /** Uma pessoa da equipe (o uid do login do Entregas e o nome). */
 export interface Pessoa { uid: string; nome: string }
@@ -27,10 +27,15 @@ export interface TarefaDelegada {
   numero: number;
   titulo: string;
   descricao: string;
+  /** o primeiro dos clientes vinculados (o campo de antes; quem ainda lê só ele segue vendo um cliente) */
   cliente: ClienteVinculado | null;
+  /** os clientes vinculados (09/11/2026: "deixe eu colocar mais de um") */
+  clientes: ClienteVinculado[];
   prioridade: Prioridade;
   /** 'aaaa-mm-dd' ou '' (sem prazo) */
   prazo: string;
+  /** a hora do prazo, 'hh:mm', ou '' (o dia todo; 09/11/2026) */
+  prazoHora: string;
   status: Status;
   criadaPor: Pessoa;
   responsavel: Pessoa;
@@ -49,9 +54,10 @@ export interface TarefaDelegada {
 export interface Rascunho {
   titulo: string;
   descricao: string;
-  cliente: ClienteVinculado | null;
+  clientes: ClienteVinculado[];
   prioridade: Prioridade;
   prazo: string;
+  prazoHora: string;
   status: Status;
   responsavel: Pessoa | null;
 }
@@ -72,6 +78,7 @@ export const PRIORIDADES: readonly { valor: Prioridade; rotulo: string }[] = [
 export const STATUS: readonly { valor: Status; rotulo: string; tom: 'warn' | 'info' | 'neutral' | 'ok' }[] = [
   { valor: 'pendente', rotulo: 'Pendente', tom: 'warn' },
   { valor: 'andamento', rotulo: 'Em andamento', tom: 'info' },
+  { valor: 'pausada', rotulo: 'Pausada', tom: 'neutral' },
   { valor: 'concluida', rotulo: 'Concluída', tom: 'ok' },
   { valor: 'cancelada', rotulo: 'Cancelada', tom: 'neutral' },
 ];
@@ -82,6 +89,7 @@ export const rotuloDaPrioridade = (p: Prioridade): string => PRIORIDADES.find(x 
 export const rotuloDoStatus = (s: Status): string => STATUS.find(x => x.valor === s)?.rotulo || s;
 export const tomDoStatus = (s: Status) => STATUS.find(x => x.valor === s)?.tom || 'neutral';
 
+export const MAIS_CLIENTES = 20;
 export const MAIOR_TITULO = 200;
 export const MAIOR_DESCRICAO = 5000;
 export const MAIOR_PARECER = 2000;
@@ -120,6 +128,12 @@ export function prazoValido(p: string): boolean {
   return d.getFullYear() === Number(m[1]) && d.getMonth() === Number(m[2]) - 1 && d.getDate() === Number(m[3]);
 }
 
+/** '' ou uma hora que existe, 'hh:mm' (24h). */
+export const horaValida = (h: string): boolean => h === '' || /^([01]\d|2[0-3]):[0-5]\d$/.test(h);
+
+/** O prazo como a tela mostra: 'dd/mm/aaaa' ou 'dd/mm/aaaa hh:mm'. */
+export const prazoComHora = (t: Pick<TarefaDelegada, 'prazo' | 'prazoHora'>): string => (t.prazo ? prazoParaTela(t.prazo) + (t.prazoHora ? ' ' + t.prazoHora : '') : '');
+
 /** 'aaaa-mm-dd' → 'dd/mm/aaaa' ('' fica ''). */
 export function prazoParaTela(iso: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
@@ -146,11 +160,14 @@ export function problemaDaTarefa(r: Rascunho): string {
   if (!titulo) return 'Escreva o título da tarefa.';
   if (titulo.length > MAIOR_TITULO) return 'O título passou de ' + MAIOR_TITULO + ' caracteres.';
   if (limparTexto(r.descricao).length > MAIOR_DESCRICAO) return 'A descrição passou de ' + MAIOR_DESCRICAO + ' caracteres.';
+  if (r.clientes.length > MAIS_CLIENTES) return 'A tarefa aceita até ' + MAIS_CLIENTES + ' clientes.';
   if (!r.responsavel || !r.responsavel.uid) return 'Escolha para quem delegar.';
   if (!ehPrioridade(r.prioridade)) return 'Escolha a prioridade.';
   if (!ehStatus(r.status)) return 'Escolha o status.';
   if (!prazoValido(r.prazo)) return 'O prazo não é uma data válida.';
-  if (r.cliente && !limparTexto(r.cliente.nome)) return 'O cliente vinculado está sem nome.';
+  if (!horaValida(r.prazoHora)) return 'A hora do prazo não é válida.';
+  if (r.prazoHora && !r.prazo) return 'Escolha a data do prazo.';
+  if (r.clientes.some(c => !limparTexto(c.nome))) return 'O cliente vinculado está sem nome.';
   return '';
 }
 
@@ -222,12 +239,13 @@ export function problemaDosAnexos(novos: readonly { nome: string; tamanho: numbe
 // a lista: em aberto, atrasada, ordem, abas e busca
 // ---------------------------------------------------------------------------------------------------------------------
 
-/** Pendente ou em andamento (o que o correio conta). */
-export const emAberto = (t: Pick<TarefaDelegada, 'status'>): boolean => t.status === 'pendente' || t.status === 'andamento';
+/** Pendente, em andamento ou pausada (o que o correio conta). */
+export const emAberto = (t: Pick<TarefaDelegada, 'status'>): boolean => t.status === 'pendente' || t.status === 'andamento' || t.status === 'pausada';
 
-/** Em aberto e com o prazo antes de hoje ('aaaa-mm-dd'). */
-export function atrasada(t: Pick<TarefaDelegada, 'status' | 'prazo'>, hoje: string): boolean {
-  return emAberto(t) && !!t.prazo && t.prazo < hoje;
+/** Em aberto e com o prazo antes de hoje ('aaaa-mm-dd'); com a hora do prazo e a de agora ('hh:mm'), hoje também pode ter passado. */
+export function atrasada(t: Pick<TarefaDelegada, 'status' | 'prazo'> & { prazoHora?: string }, hoje: string, agora = ''): boolean {
+  if (!emAberto(t) || !t.prazo) return false;
+  return t.prazo < hoje || (t.prazo === hoje && !!t.prazoHora && !!agora && t.prazoHora < agora);
 }
 
 const PESO_DA_PRIORIDADE: Record<Prioridade, number> = { urgente: 0, alta: 1, normal: 2, baixa: 3 };
@@ -237,14 +255,14 @@ const PESO_DA_PRIORIDADE: Record<Prioridade, number> = { urgente: 0, alta: 1, no
  * sem prazo por último), depois a prioridade e a mais nova. As encerradas (concluídas e canceladas) depois, a que fechou
  * por último em cima.
  */
-export function ordenar<T extends Pick<TarefaDelegada, 'status' | 'prazo' | 'prioridade' | 'criadaEm' | 'concluidaEm' | 'atualizadaEm'>>(lista: readonly T[], hoje: string): T[] {
-  const grupo = (t: T) => (!emAberto(t) ? 3 : atrasada(t, hoje) ? 0 : t.prioridade === 'urgente' ? 1 : 2);
+export function ordenar<T extends Pick<TarefaDelegada, 'status' | 'prazo' | 'prioridade' | 'criadaEm' | 'concluidaEm' | 'atualizadaEm'> & { prazoHora?: string }>(lista: readonly T[], hoje: string, agora = ''): T[] {
+  const grupo = (t: T) => (!emAberto(t) ? 3 : atrasada(t, hoje, agora) ? 0 : t.prioridade === 'urgente' ? 1 : 2);
   const fechou = (t: T) => t.concluidaEm || t.atualizadaEm || t.criadaEm;
   return [...lista].sort((a, b) => {
     const g = grupo(a) - grupo(b);
     if (g) return g;
     if (grupo(a) === 3) return fechou(b).localeCompare(fechou(a));
-    const pa = a.prazo || '9999-99-99', pb = b.prazo || '9999-99-99';
+    const pa = a.prazo ? a.prazo + (a.prazoHora || '') : '9999-99-99', pb = b.prazo ? b.prazo + (b.prazoHora || '') : '9999-99-99';
     return pa.localeCompare(pb) || PESO_DA_PRIORIDADE[a.prioridade] - PESO_DA_PRIORIDADE[b.prioridade] || b.criadaEm.localeCompare(a.criadaEm);
   });
 }
@@ -278,15 +296,35 @@ export function contarAbas(lista: readonly Pick<TarefaDelegada, 'status' | 'cria
 
 /** Os status que cada aba mostra (o filtro de status da barra só oferece estes). */
 export function statusDaAba(aba: Aba): Status[] {
-  return aba === 'concluidas' ? ['concluida', 'cancelada'] : ['pendente', 'andamento'];
+  return aba === 'concluidas' ? ['concluida', 'cancelada'] : ['pendente', 'andamento', 'pausada'];
+}
+
+/** O número clicado no alto da lista: um status, as atrasadas ou '' (todas da aba). */
+export type FiltroDaLista = Status | 'atrasadas' | '';
+
+const ROTULO_DO_NUMERO: Record<Status, string> = { pendente: 'Pendentes', andamento: 'Em andamento', pausada: 'Pausadas', concluida: 'Concluídas', cancelada: 'Canceladas' };
+
+export function filtrarPorSituacao<T extends Pick<TarefaDelegada, 'status' | 'prazo'> & { prazoHora?: string }>(lista: readonly T[], filtro: FiltroDaLista, hoje: string, agora = ''): T[] {
+  if (filtro === 'atrasadas') return lista.filter(t => atrasada(t, hoje, agora));
+  return filtro ? lista.filter(t => t.status === filtro) : [...lista];
+}
+
+/** Os números do alto da lista (09/11/2026: "no pique do financeiro"): o total da aba, um por status e, nas em aberto, as atrasadas. */
+export function numerosDaLista(lista: readonly (Pick<TarefaDelegada, 'status' | 'prazo'> & { prazoHora?: string })[], aba: Aba, hoje: string, agora = ''): { filtro: FiltroDaLista; rotulo: string; quantas: number }[] {
+  const numeros: { filtro: FiltroDaLista; rotulo: string; quantas: number }[] = [
+    { filtro: '', rotulo: aba === 'concluidas' ? 'Encerradas' : 'Em aberto', quantas: lista.length },
+    ...statusDaAba(aba).map(s => ({ filtro: s as FiltroDaLista, rotulo: ROTULO_DO_NUMERO[s], quantas: lista.filter(t => t.status === s).length })),
+  ];
+  if (aba !== 'concluidas') numeros.push({ filtro: 'atrasadas', rotulo: 'Atrasadas', quantas: filtrarPorSituacao(lista, 'atrasadas', hoje, agora).length });
+  return numeros;
 }
 
 /** A busca "O que você procura?": no número, no título, na descrição e no cliente (o código ou o nome), sem acento. */
-export function buscar<T extends Pick<TarefaDelegada, 'numero' | 'titulo' | 'descricao' | 'cliente'>>(lista: readonly T[], q: string): T[] {
+export function buscar<T extends Pick<TarefaDelegada, 'numero' | 'titulo' | 'descricao' | 'clientes'>>(lista: readonly T[], q: string): T[] {
   const termos = nomeNorm(q).split(' ').filter(Boolean);
   if (!termos.length) return [...lista];
   return lista.filter(t => {
-    const onde = nomeNorm([t.numero, t.titulo, t.descricao, t.cliente?.codigo ?? '', t.cliente?.nome ?? ''].join(' '));
+    const onde = nomeNorm([t.numero, t.titulo, t.descricao, ...t.clientes.flatMap(c => [c.codigo ?? '', c.nome])].join(' '));
     return termos.every(x => onde.includes(x));
   });
 }
@@ -296,12 +334,45 @@ export const podeMudar = (t: Pick<TarefaDelegada, 'criadaPor' | 'responsavel'>, 
 /** Quem pode excluir: quem criou (ou o admin). */
 export const podeExcluir = (t: Pick<TarefaDelegada, 'criadaPor'>, uid: string, admin = false): boolean => admin || (!!uid && t.criadaPor.uid === uid);
 
+/** Um botão de quem vai fazer a tarefa e o status para onde ele leva. */
+export interface AcaoDaTarefa { id: 'iniciar' | 'retomar' | 'pausar' | 'concluir'; rotulo: string; status: Status }
+
+/**
+ * Os botões do responsável (09/11/2026: "um botão de iniciar, ele pode pausar, e ele pode clicar em concluir"): a pendente
+ * só inicia; a em andamento pausa ou conclui; a pausada retoma ou conclui; a encerrada não tem botão.
+ */
+export function acoesDoStatus(s: Status): AcaoDaTarefa[] {
+  const concluir: AcaoDaTarefa = { id: 'concluir', rotulo: 'Concluir', status: 'concluida' };
+  if (s === 'pendente') return [{ id: 'iniciar', rotulo: 'Iniciar', status: 'andamento' }];
+  if (s === 'andamento') return [{ id: 'pausar', rotulo: 'Pausar', status: 'pausada' }, concluir];
+  if (s === 'pausada') return [{ id: 'retomar', rotulo: 'Retomar', status: 'andamento' }, concluir];
+  return [];
+}
+
+const MOVIMENTO = /^(Iniciou|Retomou|Pausou|Concluiu) a tarefa$|^Mudou o status /;
+
+/** O último movimento da tarefa no histórico (quem iniciou, pausou, retomou ou concluiu, e quando): o controle de quem delegou. */
+export function ultimoMovimento(t: Pick<TarefaDelegada, 'historico'>): Nota | null {
+  for (let i = t.historico.length - 1; i >= 0; i--) if (MOVIMENTO.test(t.historico[i].texto)) return t.historico[i];
+  return null;
+}
 // ---------------------------------------------------------------------------------------------------------------------
 // o histórico de cada mudança
 // ---------------------------------------------------------------------------------------------------------------------
 
+const clienteLimpo = (c: ClienteVinculado): ClienteVinculado => ({ codigo: c.codigo ?? null, nome: limparTexto(c.nome) });
 const nomeDoCliente = (c: ClienteVinculado) => (c.codigo != null ? c.codigo + ' · ' : '') + c.nome;
-const mesmoCliente = (a: ClienteVinculado | null, b: ClienteVinculado | null) => (!a && !b) || (!!a && !!b && a.codigo === b.codigo && a.nome === b.nome);
+const mesmoCliente = (a: ClienteVinculado, b: ClienteVinculado) => a.codigo === b.codigo && a.nome === b.nome;
+const mesmosClientes = (a: readonly ClienteVinculado[], b: readonly ClienteVinculado[]) => a.length === b.length && a.every((c, i) => mesmoCliente(c, b[i]));
+
+/** A linha do histórico de uma mudança de status: o que os botões fazem tem nome próprio. */
+function linhaDoStatus(de: Status, para: Status): string {
+  if (para === 'concluida') return 'Concluiu a tarefa';
+  if (para === 'pausada') return 'Pausou a tarefa';
+  if (para === 'andamento' && de === 'pendente') return 'Iniciou a tarefa';
+  if (para === 'andamento' && de === 'pausada') return 'Retomou a tarefa';
+  return 'Mudou o status de ' + rotuloDoStatus(de) + ' para ' + rotuloDoStatus(para);
+}
 
 /** Junta as linhas novas no histórico, guardando só as últimas MAIOR_HISTORICO. */
 export function noHistorico(historico: readonly Nota[], novas: readonly Nota[]): Nota[] {
@@ -323,18 +394,21 @@ export function historicoDaMudanca(antes: TarefaDelegada, r: Rascunho, por: stri
   const titulo = limparTexto(r.titulo);
   if (titulo !== antes.titulo) linhas.push('Mudou o título para "' + titulo + '"');
   if (limparTexto(r.descricao) !== antes.descricao) linhas.push('Mudou a descrição');
-  if (!mesmoCliente(antes.cliente, r.cliente)) {
-    if (!antes.cliente && r.cliente) linhas.push('Vinculou o cliente ' + nomeDoCliente(r.cliente));
-    else if (antes.cliente && !r.cliente) linhas.push('Tirou o cliente ' + nomeDoCliente(antes.cliente));
-    else if (antes.cliente && r.cliente) linhas.push('Trocou o cliente de ' + nomeDoCliente(antes.cliente) + ' para ' + nomeDoCliente(r.cliente));
+  const clientes = r.clientes.map(clienteLimpo);
+  const sairam = antes.clientes.filter(c => !clientes.some(x => mesmoCliente(x, c)));
+  const entraram = clientes.filter(c => !antes.clientes.some(x => mesmoCliente(x, c)));
+  if (sairam.length === 1 && entraram.length === 1 && clientes.length === 1) linhas.push('Trocou o cliente de ' + nomeDoCliente(sairam[0]) + ' para ' + nomeDoCliente(entraram[0]));
+  else {
+    for (const c of sairam) linhas.push('Tirou o cliente ' + nomeDoCliente(c));
+    for (const c of entraram) linhas.push('Vinculou o cliente ' + nomeDoCliente(c));
   }
   if (r.responsavel && r.responsavel.uid !== antes.responsavel.uid) linhas.push('Delegou de ' + antes.responsavel.nome + ' para ' + r.responsavel.nome);
-  if (r.status !== antes.status) linhas.push('Mudou o status de ' + rotuloDoStatus(antes.status) + ' para ' + rotuloDoStatus(r.status));
+  if (r.status !== antes.status) linhas.push(linhaDoStatus(antes.status, r.status));
   if (r.prioridade !== antes.prioridade) linhas.push('Mudou a prioridade de ' + rotuloDaPrioridade(antes.prioridade) + ' para ' + rotuloDaPrioridade(r.prioridade));
-  if (r.prazo !== antes.prazo) {
-    if (!antes.prazo) linhas.push('Pôs o prazo ' + prazoParaTela(r.prazo));
-    else if (!r.prazo) linhas.push('Tirou o prazo ' + prazoParaTela(antes.prazo));
-    else linhas.push('Mudou o prazo de ' + prazoParaTela(antes.prazo) + ' para ' + prazoParaTela(r.prazo));
+  if (r.prazo !== antes.prazo || r.prazoHora !== antes.prazoHora) {
+    if (!antes.prazo) linhas.push('Pôs o prazo ' + prazoComHora(r));
+    else if (!r.prazo) linhas.push('Tirou o prazo ' + prazoComHora(antes));
+    else linhas.push('Mudou o prazo de ' + prazoComHora(antes) + ' para ' + prazoComHora(r));
   }
   return linhas.map(texto => ({ por, em, texto }));
 }
@@ -348,25 +422,27 @@ export const historicoDoParecer = (por: string, em: string): Nota => ({ por, em,
 // ---------------------------------------------------------------------------------------------------------------------
 
 export function rascunhoVazio(responsavel: Pessoa | null): Rascunho {
-  return { titulo: '', descricao: '', cliente: null, prioridade: 'normal', prazo: '', status: 'pendente', responsavel };
+  return { titulo: '', descricao: '', clientes: [], prioridade: 'normal', prazo: '', prazoHora: '', status: 'pendente', responsavel };
 }
 
 export function rascunhoDe(t: TarefaDelegada): Rascunho {
-  return { titulo: t.titulo, descricao: t.descricao, cliente: t.cliente, prioridade: t.prioridade, prazo: t.prazo, status: t.status, responsavel: t.responsavel };
+  return { titulo: t.titulo, descricao: t.descricao, clientes: t.clientes, prioridade: t.prioridade, prazo: t.prazo, prazoHora: t.prazoHora, status: t.status, responsavel: t.responsavel };
 }
 
 /** O rascunho mudou alguma coisa da tarefa? */
 export const mudouAlgo = (t: TarefaDelegada, r: Rascunho): boolean => historicoDaMudanca(t, r, '', '').length > 0;
 
-const clienteLimpo = (c: ClienteVinculado | null): ClienteVinculado | null => (c ? { codigo: c.codigo ?? null, nome: limparTexto(c.nome) } : null);
+
+/** Os clientes para gravar e o primeiro deles no campo de antes. */
+const comOsClientes = (lista: readonly ClienteVinculado[]) => { const clientes = lista.map(clienteLimpo); return { clientes, cliente: clientes[0] || null }; };
 
 /** A tarefa nova, pronta para gravar (o rascunho já passou por problemaDaTarefa). */
 export function nova(r: Rascunho, o: { id: string; numero: number; por: Pessoa; em: string }): TarefaDelegada {
   const responsavel = r.responsavel || o.por;
   const base = { criadaPor: o.por, responsavel };
   return {
-    id: o.id, numero: o.numero, titulo: limparTexto(r.titulo), descricao: limparTexto(r.descricao), cliente: clienteLimpo(r.cliente),
-    prioridade: r.prioridade, prazo: r.prazo, status: r.status, ...base,
+    id: o.id, numero: o.numero, titulo: limparTexto(r.titulo), descricao: limparTexto(r.descricao), ...comOsClientes(r.clientes),
+    prioridade: r.prioridade, prazo: r.prazo, prazoHora: r.prazoHora, status: r.status, ...base,
     criadaEm: o.em, concluidaEm: r.status === 'concluida' ? o.em : '', atualizadaEm: o.em,
     pareceres: [], historico: historicoDaCriacao(base, o.em), anexos: [],
   };
@@ -381,8 +457,8 @@ export function mudar(antes: TarefaDelegada, r: Rascunho, por: Pessoa, em: strin
   if (!linhas.length) return antes;
   const concluidaEm = r.status === 'concluida' ? (antes.status === 'concluida' ? antes.concluidaEm : em) : '';
   return {
-    ...antes, titulo: limparTexto(r.titulo), descricao: limparTexto(r.descricao), cliente: clienteLimpo(r.cliente),
-    prioridade: r.prioridade, prazo: r.prazo, status: r.status, responsavel: r.responsavel || antes.responsavel,
+    ...antes, titulo: limparTexto(r.titulo), descricao: limparTexto(r.descricao), ...comOsClientes(r.clientes),
+    prioridade: r.prioridade, prazo: r.prazo, prazoHora: r.prazoHora, status: r.status, responsavel: r.responsavel || antes.responsavel,
     concluidaEm, atualizadaEm: em, historico: noHistorico(antes.historico, linhas),
   };
 }
@@ -396,9 +472,10 @@ export function mudancasDoRascunho(inicial: Rascunho, r: Rascunho): Partial<Rasc
   const m: Partial<Rascunho> = {};
   if (limparTexto(r.titulo) !== limparTexto(inicial.titulo)) m.titulo = r.titulo;
   if (limparTexto(r.descricao) !== limparTexto(inicial.descricao)) m.descricao = r.descricao;
-  if (!mesmoCliente(clienteLimpo(inicial.cliente), clienteLimpo(r.cliente))) m.cliente = r.cliente;
+  if (!mesmosClientes(inicial.clientes.map(clienteLimpo), r.clientes.map(clienteLimpo))) m.clientes = r.clientes;
   if (r.prioridade !== inicial.prioridade) m.prioridade = r.prioridade;
   if (r.prazo !== inicial.prazo) m.prazo = r.prazo;
+  if (r.prazoHora !== inicial.prazoHora) m.prazoHora = r.prazoHora;
   if (r.status !== inicial.status) m.status = r.status;
   if ((r.responsavel?.uid || '') !== (inicial.responsavel?.uid || '')) m.responsavel = r.responsavel;
   return m;
@@ -407,7 +484,7 @@ export function mudancasDoRascunho(inicial: Rascunho, r: Rascunho): Partial<Rasc
 /** O rascunho da tarefa como está agora com as mudanças da pessoa por cima (o resto fica como está no banco). */
 export const comMudancas = (t: TarefaDelegada, m: Partial<Rascunho>): Rascunho => ({ ...rascunhoDe(t), ...m });
 
-const CAMPOS_DA_MUDANCA = ['titulo', 'descricao', 'cliente', 'prioridade', 'prazo', 'status', 'responsavel', 'concluidaEm'] as const;
+const CAMPOS_DA_MUDANCA = ['titulo', 'descricao', 'cliente', 'clientes', 'prioridade', 'prazo', 'prazoHora', 'status', 'responsavel', 'concluidaEm'] as const;
 export type CampoDaMudanca = typeof CAMPOS_DA_MUDANCA[number];
 
 /**
@@ -455,13 +532,20 @@ const lerNotas = (v: unknown): Nota[] => (Array.isArray(v) ? v.map(obj).filter((
 
 /** O documento do banco como tarefa (o que falta ou veio torto fica no padrão, sem quebrar a lista). */
 export function lerTarefa(id: string, x: Record<string, unknown>): TarefaDelegada {
-  const c = obj(x.cliente);
+  const lerCliente = (v: unknown): ClienteVinculado | null => {
+    const c = obj(v);
+    return c && texto(c.nome) ? { codigo: c.codigo == null || c.codigo === '' || !Number.isFinite(Number(c.codigo)) ? null : Number(c.codigo), nome: texto(c.nome) } : null;
+  };
+  const cliente = lerCliente(x.cliente);
+  // a tarefa de antes só tem o campo cliente
+  const clientes = Array.isArray(x.clientes) && x.clientes.length ? x.clientes.map(lerCliente).filter((c): c is ClienteVinculado => !!c) : cliente ? [cliente] : [];
   const anexos = Array.isArray(x.anexos) ? x.anexos.map(obj).filter((a): a is Record<string, unknown> => !!a) : [];
   return {
     id, numero: Number(x.numero) || 0, titulo: texto(x.titulo), descricao: texto(x.descricao),
-    cliente: c && texto(c.nome) ? { codigo: c.codigo == null || c.codigo === '' || !Number.isFinite(Number(c.codigo)) ? null : Number(c.codigo), nome: texto(c.nome) } : null,
+    cliente, clientes,
     prioridade: ehPrioridade(x.prioridade) ? x.prioridade : 'normal',
     prazo: typeof x.prazo === 'string' && prazoValido(x.prazo) ? x.prazo : '',
+    prazoHora: typeof x.prazoHora === 'string' && horaValida(x.prazoHora) ? x.prazoHora : '',
     status: ehStatus(x.status) ? x.status : 'pendente',
     criadaPor: lerPessoa(x.criadaPor), responsavel: lerPessoa(x.responsavel),
     criadaEm: texto(x.criadaEm), concluidaEm: texto(x.concluidaEm), atualizadaEm: texto(x.atualizadaEm) || texto(x.criadaEm),
@@ -483,7 +567,7 @@ const dataDoIso = (iso: string) => (iso ? prazoParaTela(diaEmBrasilia(iso)) : ''
 /** As linhas da planilha (o .xlsx e o .csv do Exportar), na ordem da lista. */
 export function linhasDaPlanilha(lista: readonly TarefaDelegada[]): (string | number)[][] {
   return lista.map(t => [
-    t.numero, rotuloDoStatus(t.status), t.titulo, rotuloDaPrioridade(t.prioridade), prazoParaTela(t.prazo), t.cliente ? nomeDoCliente(t.cliente) : '',
+    t.numero, rotuloDoStatus(t.status), t.titulo, rotuloDaPrioridade(t.prioridade), prazoComHora(t), t.clientes.map(nomeDoCliente).join(', '),
     t.responsavel.nome, t.criadaPor.nome, dataDoIso(t.criadaEm), dataDoIso(t.concluidaEm), t.descricao,
   ]);
 }

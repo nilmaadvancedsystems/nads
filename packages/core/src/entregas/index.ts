@@ -22,3 +22,5 @@ export * from './solicitacoes';
 export type * from './repo';
 export { criarDriveDoEntregasMemoria, criarGmailDoEntregasMemoria } from './repo.memoria';
 export * from './saudeDosRobos';
+// a planilha aberta no navegador (Drive, 09/11/2026)
+export * from './planilhaNoNavegador';

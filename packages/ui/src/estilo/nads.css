@@ -257,7 +257,7 @@ main.main{min-width:0;}
 /* senha, e-mail, telefone, número, busca e o campo sem type com o mesmo visual, sem peso (:where) para as classes próprias
    (.nf-entrada, .usuario-campo, .pessoal-form…) continuarem valendo (revisão da UI, 16/10/2026: a Senha do login saía com o
    desenho do navegador) */
-input[type="text"],input[type="file"],select,
+input[type="text"],input[type="time"],input[type="file"],select,
 :where(input:not([type]),input[type="password"],input[type="email"],input[type="tel"],input[type="number"],input[type="search"]){
   width:100%;border:1px solid var(--border);background:var(--input-bg);color:var(--ink);
   border-radius:6px;padding:5px 12px;min-height:32px;font-size:var(--fs-14);line-height:20px;font-family:var(--font-body);
@@ -5093,14 +5093,14 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 /* Cadastro › Painel do robô (21/10/2026): só o encaixe das peças do catálogo (card, ent-dados, ent-linhas, selo suave,
    painel-numero, chip-row, tabela padrão) — os dois robôs lado a lado, o "Agora" quebrando a linha, a hora à direita */
 .robo-grade{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start;margin-bottom:16px;}
-.robo-grade > .card{margin:0;}
+.robo-grade > .card{margin:0;min-width:0;max-width:100%;overflow-wrap:anywhere;}
 .robo-cartao-nome{display:inline-flex;align-items:center;gap:10px;}
 .robo-cartao-nome .cad-faixa-icone{width:28px;height:28px;}
 .robo-cartao-nome .cad-faixa-icone svg{width:16px;height:16px;}
 .robo-cartao-agora{margin-top:12px;padding-top:10px;border-top:1px solid var(--border-muted);}
 .robo-cartao-agora .ag-conversa-linha{white-space:normal;overflow:visible;}
 .robo-cartao-modulos{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
-.robo-cartao-modulos .badge{white-space:normal;line-height:1.35;padding-top:2px;padding-bottom:2px;}
+.robo-cartao-modulos .badge{white-space:normal;overflow-wrap:anywhere;max-width:100%;line-height:1.35;padding-top:2px;padding-bottom:2px;}
 .robo-painel > .alert{margin-bottom:16px;}
 .robo-linhas > li{align-items:flex-start;}
 .robo-linhas > li > .robo-linha-texto{flex-direction:column;align-items:flex-start;gap:2px;}
@@ -5120,6 +5120,8 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 @media (max-width:900px){.robo-grade{grid-template-columns:minmax(0,1fr);}}
 @media (max-width:640px){
   .robo-linhas > li{flex-wrap:wrap;}
+  .robo-cartao .ent-dados > div{grid-template-columns:minmax(0,1fr);gap:0;}
+  .robo-cartao-nome{min-width:0;}
   .robo-linhas > li > .robo-linha-texto{flex-basis:100%;}
   .robo-quando{min-width:0;text-align:left;}
   .robo-filtro-erros{margin-left:0;}
@@ -5462,9 +5464,7 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .tdl-barra .busca-curta{width:240px;}
 .tdl-tabela{max-height:none;}
 .tdl-tabela th,.tdl-tabela td{white-space:nowrap;}
-.tdl-linha{cursor:pointer;}
-.tdl-linha:hover td{background:var(--hover-bg);}
-.tdl-tabela td.tdl-titulo{white-space:normal;min-width:240px;}
+.tdl-tabela td.tdl-titulo{white-space:normal;min-width:200px;}
 .tdl-abrir{display:inline-flex;align-items:baseline;gap:8px;padding:0;border:0;background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer;}
 .tdl-abrir:hover .tdl-titulo-texto{text-decoration:underline;}
 .tdl-abrir:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px;}
@@ -5472,7 +5472,8 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .tdl-contas{display:inline-flex;gap:10px;margin-left:10px;white-space:nowrap;vertical-align:middle;}
 .tdl-conta{display:inline-flex;align-items:center;gap:3px;font-size:var(--fs-12);}
 .tdl-atrasada{color:var(--danger);font-weight:600;}
-.tdl-cliente{max-width:240px;overflow:hidden;text-overflow:ellipsis;}
+.tdl-cliente{display:inline-block;max-width:120px;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom;}
+.tdl-cliente-linha{display:inline-flex;align-items:baseline;gap:4px;}
 .tdl-tarefa{display:flex;flex-direction:column;gap:16px;}
 .tdl-tarefa-topo{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
 .tdl-tarefa-titulo{margin:0;font-size:var(--fs-20);font-weight:650;}
@@ -5482,6 +5483,24 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .tdl-campo-largo{grid-column:1 / -1;}
 .tdl-rotulo{display:block;font-size:var(--fs-14);font-weight:600;margin-bottom:6px;}
 .tdl-rotulo .fraco{font-weight:400;}
+/* a tarefa numa janela (09/11/2026): o título no topo, o corpo rola e o pé fica; os clientes em selos com o "+"; a data e a hora lado a lado */
+.modal.tdl-janela{max-width:min(760px,96vw);display:flex;flex-direction:column;max-height:calc(100vh - 32px);}
+.tdl-janela-topo{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border);}
+.tdl-janela-titulo{flex:1 1 auto;min-width:0;font-size:var(--fs-18);font-weight:600;}
+.tdl-janela-corpo{flex:1 1 auto;min-height:0;overflow:auto;padding:16px;}
+.tdl-janela-pe{padding:12px 16px;}
+.tdl-ja-fazendo{display:inline-flex;align-items:center;gap:8px;font-size:var(--fs-14);font-weight:600;cursor:pointer;}
+.tdl-clientes{display:flex;flex-wrap:wrap;align-items:center;gap:6px;}
+.tdl-busca-cliente{display:flex;flex-direction:column;gap:6px;padding:4px;}
+.tdl-busca-cliente .busca-curta{width:100%;}
+.tdl-prazo-campos{display:flex;gap:6px;}
+.tdl-prazo-campos .data-mask{flex:1 1 auto;min-width:0;}
+.tdl-prazo-campos input[type=time]{flex:0 0 96px;}
+.tdl-acoes-linha{display:flex;gap:6px;justify-content:flex-end;}
+.tdl-acoes-linha .btn{padding:0 8px;}
+/* o Delegar da tarefa (09/11/2026): o título e o toggle na mesma linha */
+.tdl-delegar-topo{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+.field .tdl-delegar-topo .field-rotulo{margin-bottom:0;}
 .tdl-form .empresa-da-barra-busca .busca-curta{width:min(420px,100%);}
 .tdl-form .empresa-da-barra{max-width:100%;}
 .tdl-anexos{border:1px solid var(--border);border-radius:8px;padding:14px 16px;background:var(--surface);}
@@ -6269,3 +6288,20 @@ td.fs-fat-sem{color:var(--ink-faint);}
 .importar-alterdata .btn{display:inline-flex;align-items:center;gap:6px;}
 .importar-alterdata .badge{display:inline-flex;align-items:center;gap:4px;max-width:520px;white-space:normal;}
 .importar-alterdata-andamento{display:inline-flex;flex-direction:column;gap:4px;min-width:200px;max-width:360px;}
+
+/* O visualizador de planilhas do Drive (09/11/2026): a folha é sempre clara, como no Excel (as cores do arquivo são para o fundo branco) */
+.modal.planilha-janela{width:min(1500px,96vw);max-width:none;height:92vh;display:flex;flex-direction:column;padding:0;overflow:hidden;}
+.planilha-topo{flex:none;display:flex;align-items:center;gap:8px;padding:10px 12px 10px 16px;border-bottom:1px solid var(--border);}
+.planilha-topo h3{flex:1;min-width:0;margin:0;padding:0;border:0;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.planilha-aviso{flex:none;margin:0;padding:6px 16px;border-bottom:1px solid var(--border);}
+.planilha-folha{flex:1;min-height:0;overflow:auto;background:#fff;}
+.planilha-tabela{border-collapse:separate;border-spacing:0;table-layout:fixed;color:#000;background:#fff;font:14.67px/1.2 Calibri,Carlito,Arial,sans-serif;}
+.planilha-tabela th{position:sticky;background:#f3f3f3;color:#444;font-size:12px;font-weight:400;text-align:center;border-right:1px solid #c8c8c8;border-bottom:1px solid #c8c8c8;}
+.planilha-tabela thead th{top:0;z-index:2;height:22px;}
+.planilha-tabela tbody th{left:0;z-index:1;}
+.planilha-tabela thead th:first-child{left:0;z-index:3;}
+.planilha-tabela td{padding:1px 3px;overflow:hidden;white-space:nowrap;vertical-align:bottom;border-right:1px solid #e3e3e3;border-bottom:1px solid #e3e3e3;}
+.planilha-tabela td.quebra{white-space:pre-wrap;overflow-wrap:anywhere;}
+.planilha-abas{flex:none;display:flex;gap:4px;padding:6px 8px;overflow-x:auto;border-top:1px solid var(--border);}
+.planilha-abas .btn{flex:none;color:var(--ink-muted);}
+.planilha-abas .btn[aria-selected="true"]{background:var(--hover-bg);color:var(--ink);font-weight:600;}

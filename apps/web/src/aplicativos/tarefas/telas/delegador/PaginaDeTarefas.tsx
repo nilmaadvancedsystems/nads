@@ -1,7 +1,7 @@
 // O módulo Minhas tarefas (30/10/2026: "quero que o minhas tarefas vire um modulo do escritorio"): a Central de tarefas
 // numa página do Escritório, no lugar da janela. As abas (Minhas tarefas, Delegadas por mim, Concluídas) são as páginas da
-// barra lateral; no corpo, a mesma lista da Central (Nova tarefa, a busca, o status, o Exportar e a tabela) e, ao clicar
-// numa linha, a tarefa no lugar da lista, com "‹ Voltar".
+// barra lateral; no corpo, a mesma lista da Central (no jeito do Contas a pagar: os filtros, os números, a busca e a tabela) e, ao clicar
+// numa linha, a tarefa numa janela por cima da lista (09/11/2026: "em uma popup, ao invés de abrir uma nova tela").
 import { useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { caminhoDaPagina } from '../../casca/navegacao';
@@ -18,7 +18,8 @@ export function PaginaDeTarefas({ aba }: { aba: AbaDaCentral }) {
   const criada = (paraMim: boolean) => { vm.criada(paraMim); navegar(caminhoDaPagina('minhas-tarefas', paraMim ? 'minhas' : 'delegadas')); };
   return (
     <section className="tdl-pagina">
-      {vm.aberta ? <TarefaAberta key={vm.aberta} alvo={vm.aberta} voltar={vm.voltar} criada={criada} saida={saida} /> : <ListaDaCentral vm={vm} semTitulo />}
+      <ListaDaCentral vm={vm} semTitulo />
+      {vm.aberta && <TarefaAberta key={vm.aberta} alvo={vm.aberta} voltar={vm.voltar} criada={criada} saida={saida} />}
     </section>
   );
 }

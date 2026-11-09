@@ -31,7 +31,12 @@ export interface DocUsuario {
   ativo?: boolean;
   /** a última vez que o nads (a Tarefas) desta pessoa estava aberto (ISO; o próprio nads grava a cada 3 min) */
   nadsVistoEm?: string;
+  /** a empresa e a etapa do Contábil abertas agora (o próprio nads grava; sai ao deixar a etapa) */
+  nadsOnde?: Partial<OndeNoNads>;
 }
+
+/** Onde a pessoa está trabalhando no Contábil (Vitor, 09/11/2026): a empresa, a etapa, o período e quando foi o último sinal (ISO). */
+export interface OndeNoNads { codigo: number | null; empresa: string; etapa: string; competencia: string; em: string }
 
 /** A pessoa já lida e conferida, pronta para as telas. */
 export interface Usuario {
@@ -46,4 +51,6 @@ export interface Usuario {
   fotoPerfil: string | null;
   /** a última vez que o nads dela estava aberto (ISO), ou null se nunca abriu */
   vistoNoNads?: string | null;
+  /** a empresa e a etapa do Contábil em que ela está (null = em nenhuma) */
+  ondeNoNads?: OndeNoNads | null;
 }
