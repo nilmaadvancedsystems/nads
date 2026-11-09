@@ -9,15 +9,15 @@ export function arredondarCentavos(n: number): number {
 }
 
 /**
- * Número escrito em texto: "1.234,56", "1234.56", "1,234.56", "-500,00", "(500,00)", "R$ 10".
+ * Número escrito em texto: "1.234,56", "1234.56", "1,234.56", "-500,00", "500,00-", "(500,00)", "R$ 10", "-R$ 500,00".
  * Com vírgula e ponto, o que vem por último é o decimal. Só vírgula: a vírgula é decimal.
  * Só ponto: "1.000" e "1.234.567" são milhar; senão ("1234.56") é decimal. Sem número: null.
  */
 export function numeroDoTexto(texto: string): number | null {
-  let s = texto.trim().replace(/^R\$\s*/i, '').replace(/\s/g, '');
-  const negativo = /^-/.test(s) || /^\(.*\)$/.test(s);
-  // só o sinal da frente e os parênteses de fora; '1-2' continua não sendo número
-  s = s.replace(/^\((.*)\)$/, '$1').replace(/^[-+]/, '');
+  let s = texto.trim().replace(/[\u2212\u2013]/g, '-').replace(/\s/g, '').replace(/^R\$/i, '');
+  const negativo = /^-|-$/.test(s) || /^\(.*\)$/.test(s);
+  // só o sinal das pontas e os parênteses de fora; '1-2' continua não sendo número
+  s = s.replace(/^\((.*)\)$/, '$1').replace(/^[-+]/, '').replace(/-$/, '').replace(/^R\$/i, '');
   const virg = s.lastIndexOf(',');
   const ponto = s.lastIndexOf('.');
   if (virg >= 0 && ponto >= 0) s = virg > ponto ? s.replace(/\./g, '').replace(',', '.') : s.replace(/,/g, '');

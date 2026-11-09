@@ -94,7 +94,10 @@ export function contaEmAberto(e: EstadoDaCalculadora): string {
 
 /** O que o "Usar no lançamento" leva: o visor em reais, arredondado em centavos (0 se deu erro). */
 export function resultadoEmReais(e: EstadoDaCalculadora): number {
-  return e.erro ? 0 : Math.round(valorDoVisor(e.visor) * 100) / 100;
+  if (e.erro) return 0;
+  // as 8 casas tiram o erro do ponto flutuante (1,005 × 100 dá 100,49999…); o negativo arredonda para o mesmo lado
+  const v = valorDoVisor(e.visor);
+  return (Math.sign(v) * Math.round(arredondar(Math.abs(v) * 100))) / 100 || 0;
 }
 
 /** A tecla do teclado do computador (null = não é da calculadora). */

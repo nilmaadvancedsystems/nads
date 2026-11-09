@@ -37,7 +37,7 @@ export function conferirFechamento(d: BalanceteDinamico, meses: readonly string[
   const tipo = (l: LinhaDinamico) => tipoDoRazao(d, l.codigo);
   const n = (l: LinhaDinamico) => normalizarTexto(l.descricao);
   add('caixa', 'Caixa credor', 'Pagamento lançado no caixa que saiu do banco, ou venda à vista que falta.', errados(l => tipo(l) === 'caixa', s => s < -0.005));
-  add('bancos', 'Banco credor', 'Banco negativo: o ajuste do cheque especial.', errados(l => l.classificacao.startsWith('1') && BANCO.test(n(l)), s => s < -0.005));
+  add('bancos', 'Banco credor', 'Banco negativo: o ajuste do cheque especial.', errados(l => l.classificacao.startsWith('1') && BANCO.test(n(l)) && tipo(l) !== 'cliente', s => s < -0.005));
   if (ultimo) {
     const comoContas = (lista: ReturnType<typeof credoresNoPeriodo>): ContaNoFechamento[] =>
       lista.map(c => ({ conta: c.codigo, nome: c.nome, meses: c.saldos.filter(x => x.saldo < 0 && !zero(x.saldo) && cobertos.includes(x.mes)).map(x => ({ mes: x.mes, saldo: x.saldo })) }))

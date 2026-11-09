@@ -1,17 +1,24 @@
 // Visão de cima (Contábil/Fiscal): como está cada etapa em todas as empresas da competência e quais
 // objeções mais param o trabalho. Só leitura.
-import type { Execucao, Rotina } from '../tipos';
-import { etapaNoMes, etapaNoMesDoAno, situacaoDa } from './execucao';
+import type { Etapa, Execucao, Rotina } from '../tipos';
+import { etapaNoMes, etapaNoMesDoAno, regimeDaEmpresa, situacaoDa } from './execucao';
 
 /** total: as empresas que têm a etapa (a "só quando adicionada" e o LCDPR contam só nas delas; 16/10/2026) */
 export interface ResumoDaEtapa { etapa: string; nome: string; feitas: number; dispensadas: number; interrompidas: number; pendentes: number; total: number }
 
-export function resumoPorEtapa(execucoes: readonly Execucao[], rotina: Rotina, totalEmpresas: number): ResumoDaEtapa[] {
+/** A empresa tem a etapa pelo regime? (regime desconhecido: entra, como em etapaNoMes) */
+function temPeloRegime(e: Etapa, codigo: number | null): boolean {
+  const regime = regimeDaEmpresa(codigo);
+  return !e.regimes || !regime || e.regimes.includes(regime);
+}
+
+export function resumoPorEtapa(execucoes: readonly Execucao[], rotina: Rotina, totalEmpresas: number, codigos?: readonly (number | null)[]): ResumoDaEtapa[] {
   return rotina.etapas.map(e => {
     let feitas = 0, dispensadas = 0, interrompidas = 0;
     // a etapa "só quando adicionada" (o Creditor) conta só nas empresas em que entrou
-    const daEtapa = e.soQuandoAdicionada ? execucoes.filter(ex => etapaNoMes(ex, e.id)) : execucoes;
-    const total = e.soQuandoAdicionada ? daEtapa.length : totalEmpresas;
+    // com os códigos, a etapa de alguns regimes conta só nas empresas deles: a Presumido não fica pendente no Simples
+    const daEtapa = e.soQuandoAdicionada ? execucoes.filter(ex => etapaNoMes(ex, e.id)) : codigos ? execucoes.filter(ex => temPeloRegime(e, ex.codigo)) : execucoes;
+    const total = e.soQuandoAdicionada ? daEtapa.length : totalEmpresas - (codigos ? codigos.filter(c => !temPeloRegime(e, c)).length : 0);
     for (const ex of daEtapa) {
       const s = situacaoDa(ex, e.id);
       if (s === 'feita') feitas++;
@@ -41,6 +48,7 @@ export function resumoPorEtapaDasEmpresas(execucoes: readonly Execucao[], codigo
     execucoes.filter(ex => g.codigos.has(ex.codigo)),
     competencia ? { ...r, etapas: r.etapas.filter(e => etapaNoMesDoAno(e, competencia)) } : r,
     g.total,
+    [...g.codigos],
   ));
 }
 

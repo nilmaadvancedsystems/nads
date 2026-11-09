@@ -103,7 +103,8 @@ export function pagamentosDosHonorarios(pagas: readonly CobrancaDeHonorario[], c
     const banco = bancoDe(c).trim();
     const doc = semZeros(c.numero);
     const pago = c.recebido > 0 ? c.recebido : c.valor;
-    const linhas: LancamentoDeHonorario[] = [{ data: br(c.pagamento), debito: contaAPagar.trim(), credito: banco, historico: historicoDoPagamentoDeHonorario(c, modelos), valor: c.valor, documento: doc }];
+    // pago a menos que o valor: o banco sai só com o que saiu de verdade (o resto fica em aberto no Honorários a pagar)
+    const linhas: LancamentoDeHonorario[] = [{ data: br(c.pagamento), debito: contaAPagar.trim(), credito: banco, historico: historicoDoPagamentoDeHonorario(c, modelos), valor: Math.min(pago, c.valor), documento: doc }];
     const amais = Math.round((pago - c.valor) * 100) / 100;
     if (amais > 0) linhas.push({ data: br(c.pagamento), debito: contaDespesa.trim(), credito: banco, historico: preencherHistorico('honorarios.juros', varsDaCobranca(c), modelos), valor: amais, documento: doc });
     return linhas;

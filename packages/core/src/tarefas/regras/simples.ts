@@ -5,7 +5,7 @@
 // ("DÉB.CONV.TRIBUTOS FEDERAIS - RFB DAS SIMPLES … REF JUN202…"), com os juros quando foi pago com atraso — e os
 // lançamentos sugeridos para baixar o que o banco pagou. Tudo no navegador; nada é gravado.
 import type { LancamentoDoBanco } from './fgts';
-import type { LancamentoDoRazao, RazaoDaConta } from './razao';
+import { naOrdemDasDatas, type LancamentoDoRazao, type RazaoDaConta } from './razao';
 
 export interface PagamentoDoSimples {
   /** no razão do Simples (já baixado) ou só no extrato (falta baixar) */
@@ -61,6 +61,8 @@ export interface ConferenciaDoSimples {
 }
 
 const centavos = (n: number) => Math.round(n * 100) / 100;
+/** a mesma quantia, até 2 centavos de diferença (a conta em centavos: 0,08 − 0,10 não passa de 0,02) */
+const quaseIgual = (a: number, b: number) => Math.abs(centavos(a - b)) <= 0.02;
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 const norm = (s: string) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const mesAntes = (m: string) => { const [a, mm] = m.split('-').map(Number); return mm === 1 ? (a - 1) + '-12' : a + '-' + String(mm - 1).padStart(2, '0'); };
@@ -100,7 +102,8 @@ export function competenciaDoDas(historico: string, data: string): string {
  * O razão do Simples a recolher × os DAS do extrato, nos meses do período. caixa: o razão do Caixa Geral (para saber se o
  * pagamento do banco passou por ele); sem ele, a baixa sugerida é contra o banco.
  */
-export function conferirSimples(razao: RazaoDaConta, meses: readonly string[], extrato: readonly LancamentoDoBanco[], caixa: RazaoDaConta | null = null): ConferenciaDoSimples {
+export function conferirSimples(razaoDoArquivo: RazaoDaConta, meses: readonly string[], extrato: readonly LancamentoDoBanco[], caixa: RazaoDaConta | null = null): ConferenciaDoSimples {
+  const razao = naOrdemDasDatas(razaoDoArquivo);
   const ultimoDia = fimDoMes(meses[meses.length - 1]);
   const ls = razao.lancamentos.filter(l => l.data <= ultimoDia);
   // as obrigações: o saldo anterior (credor) e a provisão de cada mês
@@ -125,8 +128,8 @@ export function conferirSimples(razao: RazaoDaConta, meses: readonly string[], e
   const acharObrigacao = (valor: number, data: string, competencia: string) => {
     const vencidas = abertas().filter(o => o.vencimento <= addDias(data, 5));
     return (competencia && abertas().find(o => o.competencia === competencia))
-      || vencidas.find(o => Math.abs(o.valor - valor) <= 0.02)
-      || vencidas.find(o => valor >= o.valor - 0.02 && valor <= o.valor * 1.25)
+      || vencidas.find(o => quaseIgual(o.valor, valor))
+      || vencidas.find(o => centavos(valor - o.valor) >= -0.02 && valor <= o.valor * 1.25)
       || null;
   };
   // 1. os pagamentos que já estão no razão
@@ -141,9 +144,9 @@ export function conferirSimples(razao: RazaoDaConta, meses: readonly string[], e
   const dasSemObrigacao: ConferenciaDoSimples['dasSemObrigacao'] = [];
   for (const e of das) {
     const valor = centavos(-e.valor / 100);
-    if (pagosNoRazao.some(l => Math.abs(-l.valor - valor) <= 0.02 && dias(l.data, e.data) <= 3)) continue;
+    if (pagosNoRazao.some(l => quaseIgual(-l.valor, valor) && dias(l.data, e.data) <= 3)) continue;
     const o = acharObrigacao(valor, e.data, competenciaDoDas(e.historico, e.data));
-    const noCaixa = !!caixa?.lancamentos.some(l => Math.abs(Math.abs(l.valor) - valor) <= 0.02 && dias(l.data, e.data) <= 1);
+    const noCaixa = !!caixa?.lancamentos.some(l => quaseIgual(Math.abs(l.valor), valor) && dias(l.data, e.data) <= 1);
     if (o) pagar(o, { onde: 'extrato', data: e.data, valor, historico: e.historico, banco: e.banco, noCaixa });
     else dasSemObrigacao.push({ data: e.data, valor, historico: e.historico });
   }
@@ -156,7 +159,8 @@ export function conferirSimples(razao: RazaoDaConta, meses: readonly string[], e
     const contra = p.noCaixa ? 'caixa' as const : 'banco' as const;
     const onde = p.noCaixa ? ' (está no Caixa Geral)' : ' (não está no razão)';
     sugestoes.push({
-      competencia: o.competencia, data: p.data, tipo: 'pagamento', contra, banco: p.banco, valor: o.valor,
+      // pago a menos (a competência dita, valor menor): a baixa é só o que saiu do banco
+      competencia: o.competencia, data: p.data, tipo: 'pagamento', contra, banco: p.banco, valor: Math.min(o.valor, p.valor),
       historico: 'Pago Simples Nacional referente ' + rotulo(o.competencia) + ' conforme DARF quitado.',
       motivo: 'DAS de ' + rotulo(o.competencia) + ' pago em ' + p.data.split('-').reverse().join('/') + ' pelo banco' + onde,
     });

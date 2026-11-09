@@ -63,13 +63,38 @@ function contaEGruposDeCima(d: BalanceteDinamico, l: LinhaDinamico): LinhaDinami
   return out;
 }
 
+const noCentavo = (n: number) => (Number.isFinite(n) ? Math.round(n * 100) / 100 || 0 : 0);
+
+/**
+ * O número da célula, como a planilha trouxer: número, "1234.56" (o Alterdata exporta com ponto), "1.234,56", "1,234.56", com
+ * "R$", e o negativo como "-1,00", "1,00-", "(1,00)" ou "1,00 C". O que não é número vale zero, mas o número num desses
+ * formatos não pode virar zero em silêncio.
+ */
 const numero = (v: unknown): number => {
-  const s = String(v ?? '').trim();
+  if (typeof v === 'number') return noCentavo(v);
+  let s = String(v ?? '').replace(/[\s\u00a0]+/g, '').replace(/R\$/gi, '').replace(/\u2212/g, '-');
   if (!s) return 0;
-  // "1234.56" (o Alterdata exporta com ponto) ou "1.234,56"
-  const n = /,\d{1,2}$/.test(s) ? Number(s.replace(/\./g, '').replace(',', '.')) : Number(s.replace(/,/g, ''));
-  return Number.isFinite(n) ? n : 0;
+  let negativo = false;
+  const entreParenteses = /^\((.*)\)$/.exec(s);
+  if (entreParenteses) { negativo = true; s = entreParenteses[1]; }
+  const dc = /[CD]$/i.exec(s);
+  if (dc) { if (dc[0].toUpperCase() === 'C') negativo = !negativo; s = s.slice(0, -1); }
+  if (/^-|-$/.test(s)) { negativo = !negativo; s = s.replace(/^-|-$/g, ''); }
+  const n = /,\d{1,2}$/.test(s) ? Number(s.replace(/\./g, '').replace(',', '.'))
+    : /^[1-9]\d{0,2}(\.\d{3})+$/.test(s) ? Number(s.replace(/\./g, '')) // ("0.125" é decimal: milhar não começa em zero)
+    : Number(s.replace(/,/g, ''));
+  return noCentavo(negativo ? -n : n);
 };
+
+/** O mês de uma coluna do cabeçalho ('aaaa-mm'): "MM/AAAA", ou a data do Excel (Date ou número de série). null = não é mês. */
+function mesDoCabecalho(c: unknown): string | null {
+  const doDia = (a: number, m: number) => a + '-' + String(m).padStart(2, '0');
+  // o meio do dia: a data da planilha pode vir à meia-noite em UTC, que no Brasil ainda é o dia (e o mês) anterior
+  if (c instanceof Date) { if (isNaN(c.getTime())) return null; const d = new Date(c.getTime() + 12 * 3600000); return doDia(d.getFullYear(), d.getMonth() + 1); }
+  if (typeof c === 'number') { if (c <= 20000 || c >= 80000) return null; const d = new Date(Math.round((c - 25569) * 86400000)); return doDia(d.getUTCFullYear(), d.getUTCMonth() + 1); }
+  const m = /^(0[1-9]|1[0-2])\/(\d{4})$/.exec(String(c ?? '').trim());
+  return m ? m[2] + '-' + m[1] : null;
+}
 
 /** As linhas da planilha (a primeira aba) → o balancete dinâmico. O cabeçalho: Código, Classificação, Descrição, Saldo Anterior e os meses (MM/AAAA). */
 export function lerBalanceteDinamico(rows: readonly (readonly unknown[])[]): BalanceteDinamico {
@@ -79,7 +104,7 @@ export function lerBalanceteDinamico(rows: readonly (readonly unknown[])[]): Bal
   const head = rows[h].map(c => String(c ?? '').trim());
   const col = (nome: string) => head.findIndex(c => baixo(c) === nome);
   const cCod = col('codigo'), cCla = col('classificacao'), cDes = col('descricao'), cAnt = col('saldo anterior');
-  const meses = head.map((c, i) => { const m = /^(\d{2})\/(\d{4})$/.exec(c); return m ? { i, mes: m[2] + '-' + m[1] } : null; }).filter((x): x is { i: number; mes: string } => !!x);
+  const meses = rows[h].map((c, i) => { const mes = mesDoCabecalho(c); return mes ? { i, mes } : null; }).filter((x): x is { i: number; mes: string } => !!x);
   if (!meses.length) throw new Error('O balancete dinâmico não tem as colunas dos meses (MM/AAAA).');
   const linhas: LinhaDinamico[] = [];
   for (const r of rows.slice(h + 1)) {
@@ -98,7 +123,8 @@ export function lerBalanceteDinamico(rows: readonly (readonly unknown[])[]): Bal
     l.saldoAnterior = -l.saldoAnterior || 0;
     for (const m of Object.keys(l.saldos)) l.saldos[m] = -l.saldos[m] || 0;
   }
-  return { meses: meses.map(m => m.mes), linhas };
+  // em ordem e sem repetir, como a planilha vier: quem olha o primeiro ou o último mês conta com isso
+  return { meses: [...new Set(meses.map(m => m.mes))].sort(), linhas };
 }
 
 /** Uma conta do Balancete Dinâmico que o robô do Alterdata leu (pedidosAlterdata/{id}/numeros/balancete). */
@@ -120,10 +146,16 @@ export function dinamicoDoRobo(porMes: readonly { mes: string; contas: readonly 
       if (!linhas.has(c.codigo)) linhas.set(c.codigo, { codigo: c.codigo, classificacao: c.classificacao || '', descricao: c.nome, saldoAnterior: comSinal(c.anterior, c.anteriorDc), saldos: {} });
     }
   }
+  // por código, mês a mês: a empresa com 12.902 contas em 12 meses não pode procurar conta por conta
+  const doMes = ordem.map(({ mes, contas }) => {
+    const porCodigo = new Map<string, ContaDoBalanceteDoRobo>();
+    for (const c of contas) if (!porCodigo.has(c.codigo)) porCodigo.set(c.codigo, c);
+    return { mes, porCodigo };
+  });
   for (const l of linhas.values()) {
     let ultimo = l.saldoAnterior;
-    for (const { mes, contas } of ordem) {
-      const c = contas.find(x => x.codigo === l.codigo);
+    for (const { mes, porCodigo } of doMes) {
+      const c = porCodigo.get(l.codigo);
       if (c) ultimo = comSinal(c.saldo, c.dc);
       l.saldos[mes] = ultimo;
     }
@@ -177,7 +209,7 @@ const SECAO: Record<LadoDaConta, RegExp> = {
  * O saldo visto do lado do cliente: positivo = o normal da conta, negativo = o errado (o cliente credor, o fornecedor
  * devedor). O dinâmico do Alterdata traz devedor positivo e credor negativo; no fornecedor, troca o sinal.
  */
-const noLado = (lado: LadoDaConta, v: number) => (lado === 'clientes' ? v : -v);
+const noLado = (lado: LadoDaConta, v: number) => (lado === 'clientes' ? v : -v) || 0;
 
 /**
  * As contas de cliente (ou de fornecedor) do dinâmico no mês: as analíticas debaixo da sintética (pela classificação).
@@ -275,7 +307,6 @@ export const NOME_DO_TIPO_DO_RAZAO: Record<TipoDoRazao, string> = {
 };
 
 const PELO_NOME: [TipoDoRazao, RegExp][] = [
-  ['caixa', /^caixa\b/],
   ['salarios', /^salarios?\b.*\ba pagar\b/],
   ['fgts', /^fgts\b.*\b(a recolher|a pagar)\b/],
   ['inss', /^inss\b.*\b(a recolher|a pagar)\b/],
@@ -283,6 +314,9 @@ const PELO_NOME: [TipoDoRazao, RegExp][] = [
   ['honorarios', /^honorarios?\b.*\ba pagar\b/],
   ['simples', /^(simples nacional|das)\b.*\ba recolher\b/],
 ];
+
+/** O caixa da empresa (a Caixa Econômica é banco, não o caixa). */
+const CAIXA_PELO_NOME = /^caixa\b(?! economica\b| federal\b)/;
 
 /** O tipo da conta (o código do razão) pelo dinâmico; null = conta que nenhuma etapa usa (ou fora do dinâmico). */
 export function tipoDoRazao(d: BalanceteDinamico, codigo: string): TipoDoRazao | null {
@@ -292,10 +326,13 @@ export function tipoDoRazao(d: BalanceteDinamico, codigo: string): TipoDoRazao |
   if (ADIANTAMENTO_SALARIAL.test(n)) return 'adiantamento-salarial';
   if (ADIANTAMENTO.fornecedores.test(n)) return 'adiantamento-fornecedores';
   if (ADIANTAMENTO.clientes.test(n)) return 'adiantamento-clientes';
-  for (const [tipo, re] of PELO_NOME) if (re.test(n)) return tipo === 'caixa' && !l.classificacao.startsWith('1') ? null : tipo;
+  // as obrigações pelo nome, mesmo debaixo da sintética "CONTAS A PAGAR" (o "SALARIOS A PAGAR" não é fornecedor)
+  for (const [tipo, re] of PELO_NOME) if (re.test(n)) return tipo;
+  // a seção vem antes do caixa: o cliente "CAIXA ESCOLAR…" é cliente, e o fornecedor "CAIXA ECONOMICA…" é fornecedor
   const daSecao = (lado: LadoDaConta) => { analiticasDaSecao(d, lado); return !!indiceDo(d).codigosDasSecoes[lado]?.has(codigo); };
   if (daSecao('clientes')) return 'cliente';
   if (daSecao('fornecedores')) return 'fornecedor';
+  if (CAIXA_PELO_NOME.test(n)) return l.classificacao.startsWith('1') ? 'caixa' : null;
   // só o bancário (Vitor, 19/10/2026: terceiros e mútuos não entram)
   if (emprestimoBancario(d, l)) return 'emprestimo';
   return null;
@@ -351,9 +388,13 @@ export interface ContaDoResultadoErrada {
  * "(-)" (deduções, devoluções), na conta ou no grupo dela, ficam de fora: o lado delas é o contrário.
  */
 export function resultadoErradoNoDinamico(d: BalanceteDinamico, meses: readonly string[]): ContaDoResultadoErrada[] {
-  const topo = (re: RegExp, padrao: string) => d.linhas.find(l => l.classificacao && !l.classificacao.includes('.') && re.test(normalizarTexto(l.descricao)))?.classificacao || padrao;
-  const grupos = { receita: topo(/^receitas?\b/, '3'), despesa: topo(/^(custos?|despesas?)\b/, '4') };
-  const debaixo = (l: LinhaDinamico, g: string) => l.classificacao.startsWith(g + '.');
+  // todos os grupos de cima com o nome: "Custos" e "Despesas" podem ser dois (3 e 4 no plano, cada um o seu)
+  const topos = (re: RegExp, padrao: string) => {
+    const achados = d.linhas.filter(l => l.classificacao && !l.classificacao.includes('.') && re.test(normalizarTexto(l.descricao))).map(l => l.classificacao);
+    return achados.length ? achados : [padrao];
+  };
+  const grupos = { receita: topos(/^receitas?\b/, '3'), despesa: topos(/^(custos?|despesas?)\b/, '4') };
+  const debaixo = (l: LinhaDinamico, gs: readonly string[]) => gs.some(g => l.classificacao.startsWith(g + '.'));
   const folha = (l: LinhaDinamico) => !temContaDebaixo(d, l);
   // a redutora: "(-)" ou dedução/devolução no nome dela ou de um grupo de cima
   const redutora = (l: LinhaDinamico) => contaEGruposDeCima(d, l)
@@ -593,7 +634,8 @@ export const MENSAGEM_PADRAO ='Olá! Na conferência dos clientes de {mes} da {e
 /** O texto da mensagem com a lista dos conferidos (uma linha por cliente: o nome, o saldo e a observação). */
 export function textoDaMensagem(modelo: string, empresa: string, mes: string, linhas: readonly LinhaParaCliente[]): string {
   const lista = linhas.map(l => '• ' + l.nome + ' — R$ ' + brl(l.saldo) + (l.notas?.length ? ' — em aberto: ' + textoDasNotas(l.notas) : '') + (l.obs ? ' — ' + l.obs : '')).join('\n');
-  return (modelo || MENSAGEM_PADRAO).replace(/\{empresa\}/g, empresa).replace(/\{mes\}/g, mes).replace(/\{lista\}/g, lista);
+  // com função: o "$" do nome, da empresa ou da observação ("R$&…") não é padrão do replace
+  return (modelo || MENSAGEM_PADRAO).replace(/\{empresa\}/g, () => empresa).replace(/\{mes\}/g, () => mes).replace(/\{lista\}/g, () => lista);
 }
 export { sugestoesDeBaixa, selosDaSugestao, palavrasDoNome, mesmoLancamento, comBaixa, faltaDaNota, baixasGuardadas, type LancamentoDoBanco, type SugestaoDeBaixa, type BaixaAceita, type ComoBate, type SeloDaSugestao } from './sugestaoDeBaixa';
 export { conferirFechamento, type PendenciaDoFechamento, type ContaNoFechamento } from './fechamento';

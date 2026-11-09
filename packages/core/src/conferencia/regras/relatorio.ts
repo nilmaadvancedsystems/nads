@@ -3,7 +3,7 @@
 // (~L3419), renderCcRank (~L3447).
 import { compararNumerico } from '../../formatos';
 import type { Empresa, FiltroMovimento, GrupoNatureza, NotaComTipo, TipoCfop } from '../tipos';
-import { agruparTotaisPorNatureza, somaValores } from './cfop';
+import { agruparTotaisPorNatureza, emCentavos, somaValores } from './cfop';
 import { linhasDoSaldo, quaisMarcarSozinho, type LinhaSaldo } from './conciliacao';
 import { notasBase, notasNoPeriodo } from './periodo';
 import { contasOkEmServicos } from './servicosConferencia';
@@ -25,7 +25,7 @@ export function porMes(base: NotaComTipo[]): MesDoGrafico[] {
     if (n.tipo === 'Entrada') x.ent += n.valor; else x.sai += n.valor;
     x.qtd++;
   }
-  const meses = Object.keys(m).sort().map(k => m[k]);
+  const meses = Object.keys(m).sort().map(k => ({ ...m[k], ent: emCentavos(m[k].ent), sai: emCentavos(m[k].sai) }));
   return meses.length < 2 ? [] : meses;
 }
 
@@ -42,7 +42,7 @@ export function maioresNaturezas(grupos: Record<string, GrupoNatureza>): ItemRan
       cfops: gr.cfops.slice().sort(compararNumerico).join(', '),
       valor: somaValores(gr.itens),
     };
-  }).sort((a, b) => b.valor - a.valor).slice(0, 7);
+  }).sort((a, b) => b.valor - a.valor || compararNumerico(a.k, b.k)).slice(0, 7);
 }
 
 export interface Relatorio {

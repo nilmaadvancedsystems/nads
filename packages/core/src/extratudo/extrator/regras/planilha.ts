@@ -21,7 +21,8 @@ function achaCabecalho(linha: Celula[]): Colunas {
     else if (c.compl == null && c.hist != null && n === 'descricao historico') c.compl = i;
     else if (/conta/.test(n) && /deb/.test(n)) c.contaD = i;
     else if (/conta/.test(n) && /cred/.test(n)) c.contaC = i;
-    else if (c.hist == null && /(hist|descri|complement|lancamento$|^observ)/.test(n)) c.hist = i;
+    // ("Valor do lançamento" termina em "lancamento", mas é o valor: entrava como o histórico e a planilha ficava sem valor)
+    else if (c.hist == null && /(hist|descri|complement|lancamento$|^observ)/.test(n) && !/^(valor|vlr)\b/.test(n)) c.hist = i;
     else if (c.deb == null && /^(debito|debitos|vlr debito|valor debito|saida|saidas)$/.test(n)) c.deb = i;
     else if (c.cred == null && /^(credito|creditos|vlr credito|valor credito|entrada|entradas)$/.test(n)) c.cred = i;
     else if (c.valor == null && /^(valor|vlr|valor r|valor rs|montante|quantia|valor do lancamento)$/.test(n)) c.valor = i;
@@ -33,19 +34,33 @@ function achaCabecalho(linha: Celula[]): Colunas {
 function adivinhar(linhas: Celula[][], ano: number): Colunas | null {
   let n = 0;
   for (const l of linhas) if (l.length > n) n = l.length;
-  const sc = Array.from({ length: n }, () => ({ d: 0, v: 0, t: 0 }));
+  const sc = Array.from({ length: n }, () => ({ d: 0, v: 0, t: 0, c: 0, neg: 0 }));
   for (const l of linhas.slice(0, 300)) {
     l.forEach((v, k) => {
       if (lerData(v, ano)) sc[k].d++;
-      else if (centavos(v) != null) sc[k].v++;
+      else if (centavos(v) != null) { sc[k].v++; if (temCentavos(v)) sc[k].c++; if ((centavos(v) as number) < 0) sc[k].neg++; }
       else if (String(v ?? '').trim().length > 3) sc[k].t += String(v).length;
     });
   }
   const c: Colunas = {};
   let md = 0, mt = 0;
   sc.forEach((s, k) => { if (s.d > md) { md = s.d; c.data = k; } if (s.t > mt) { mt = s.t; c.hist = k; } });
-  sc.forEach((s, k) => { if (k !== c.data && s.v > 0 && c.valor == null && s.v >= md * 0.6) c.valor = k; });
+  // a coluna de valor tem centavos; a do número do documento, que costuma vir antes, não (o documento 556000 virava R$ 556.000,00)
+  const candidatas = sc.map((s, k) => ({ s, k })).filter(({ s, k }) => k !== c.data && s.v > 0 && s.v >= md * 0.6);
+  // (a primeira com negativo já é o valor, mesmo com quantias redondas: documento não tem sinal, e o Saldo vem depois)
+  c.valor = (candidatas[0]?.s.neg ? candidatas[0] : candidatas.find(({ s }) => s.c >= s.v / 2) || candidatas[0])?.k;
   return c.data == null || c.valor == null ? null : c;
+}
+
+/** o valor escrito com os centavos ("10,50", 10.5), e não um número inteiro */
+function temCentavos(v: Celula): boolean {
+  return typeof v === 'number' ? !Number.isInteger(v) : /[.,]\d{1,2}\s*[)CD-]*\s*$/i.test(String(v));
+}
+
+/** O D/C da coluna: "D", "C", "DB", "CR", "Débito", "Crédito", "Devedor", "Credor", "C - Crédito". O nome da operação (o "Tipo" com "Depósito", "Cartão", "Compra") não diz o sinal. */
+function letraDoDC(v: Celula): 'd' | 'c' | null {
+  const n = normalizarTexto(v);
+  return /^(?:d|db|dr|deb\w*|devedora?)(?: |$)/.test(n) ? 'd' : /^(?:c|cr|cred\w*)(?: |$)/.test(n) ? 'c' : null;
 }
 
 const texto = (v: Celula) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim();
@@ -85,7 +100,7 @@ export function lancamentosDaPlanilha(linhas: Celula[][], lado: Lado, anoPadrao 
       if (ultimo && hist && semValor) ultimo.historico = (ultimo.historico + ' ' + hist).trim();
       continue;
     }
-    if (/saldo anterior|saldo inicial|saldo final|^total/.test(normalizarTexto(hist))) continue;
+    if (/saldo anterior|saldo inicial|saldo final|saldo do dia|saldo atual|^total/.test(normalizarTexto(hist))) continue;
     let c: number | null = null;
     if (k.deb != null || k.cred != null) {
       const db = k.deb != null ? Math.abs(centavos(l[k.deb]) || 0) : 0;
@@ -95,7 +110,7 @@ export function lancamentosDaPlanilha(linhas: Celula[][], lado: Lado, anoPadrao 
     if (c == null && k.valor != null) {
       c = centavos(l[k.valor]);
       if (c != null && k.dc != null) {
-        const dc = normalizarTexto(l[k.dc]).charAt(0);
+        const dc = letraDoDC(l[k.dc]);
         if (dc === 'd') c = lado === 'sistema' ? Math.abs(c) : -Math.abs(c);
         else if (dc === 'c') c = lado === 'sistema' ? -Math.abs(c) : Math.abs(c);
       } else if (c != null && contaBanco && k.contaD != null && k.contaC != null) {

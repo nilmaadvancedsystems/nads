@@ -75,7 +75,7 @@ export function servicoDaConta(e: Empresa, codigos: string[], p: Periodo): TipoS
 
 /** Participantes das notas de um tipo, com quantas notas e os lançamentos usados. */
 export function participantesDasNotas(e: Empresa, t: TipoServico): Record<string, { nome: string; qtd: number; lancs: Record<string, number> }> {
-  const parts: Record<string, { nome: string; qtd: number; lancs: Record<string, number> }> = {};
+  const parts: Record<string, { nome: string; qtd: number; lancs: Record<string, number> }> = Object.create(null);
   for (const n of listaTipo(e, t)) {
     const k = nomeNorm(n.nome);
     const p = (parts[k] = parts[k] || { nome: n.nome, qtd: 0, lancs: {} });

@@ -10,9 +10,24 @@ function decodificar(buf: ArrayBuffer): string {
   return utf8.includes(String.fromCharCode(0xfffd)) ? new TextDecoder('windows-1252').decode(buf) : utf8;
 }
 
-function separador(primeira: string): string {
-  const conta = (c: string) => primeira.split(c).length - 1;
-  return [';', '\t', ','].sort((a, b) => conta(b) - conta(a))[0];
+/** Quantas vezes o caractere aparece na linha, fora das aspas. */
+function foraDasAspas(linha: string, c: string): number {
+  let n = 0, aspas = false;
+  for (const ch of linha) { if (ch === '"') aspas = !aspas; else if (ch === c && !aspas) n++; }
+  return n;
+}
+
+/**
+ * O separador é o que divide as linhas do começo do arquivo do mesmo jeito (o título solto na primeira linha, com uma vírgula
+ * no texto, não decide nada). No empate, a ordem: o ";" primeiro, o "," por último (a vírgula também é a dos centavos).
+ */
+function separador(linhas: readonly string[]): string {
+  const nota = (c: string) => {
+    const vezes = new Map<number, number>();
+    for (const l of linhas.slice(0, 20)) { const n = foraDasAspas(l, c); if (n) vezes.set(n, (vezes.get(n) || 0) + 1); }
+    return [...vezes].reduce((m, [n, q]) => (q > m[0] || (q === m[0] && n > m[1]) ? [q, n] : m), [0, 0]);
+  };
+  return [';', '\t', ','].map(c => ({ c, n: nota(c) })).sort((a, b) => b.n[0] - a.n[0] || b.n[1] - a.n[1])[0].c;
 }
 
 /** CSV com aspas ("a;b" fica numa célula só; "" vira "). */
@@ -20,7 +35,7 @@ export function linhasDoCsv(texto: string): Linha[] {
   const semBom = texto.charCodeAt(0) === 0xfeff ? texto.slice(1) : texto;
   const linhas = semBom.split(/\r?\n/).filter(l => l.trim() !== '');
   if (!linhas.length) return [];
-  const sep = separador(linhas[0]);
+  const sep = separador(linhas);
   return linhas.map(l => {
     const celulas: string[] = [];
     let atual = '', aspas = false;

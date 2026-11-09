@@ -41,14 +41,14 @@ const iso = (d: string) => d.slice(6, 10) + '-' + d.slice(3, 5) + '-' + d.slice(
 interface Linha { pedacos: PedacoDaFatura[]; texto: string }
 
 function linhasDe(pagina: readonly PedacoDaFatura[]): Linha[] {
-  const porY = new Map<number, PedacoDaFatura[]>();
-  for (const p of pagina) {
-    if (!p.texto.trim()) continue;
-    const y = Math.round(p.y);
-    porY.set(y, [...(porY.get(y) || []), p]);
+  // com tolerância, não arredondando: 500,49 e 500,51 são a mesma linha, e arredondados cairiam em duas
+  const grupos: PedacoDaFatura[][] = [];
+  for (const p of pagina.filter(x => x.texto.trim()).sort((a, b) => b.y - a.y)) {
+    const atual = grupos[grupos.length - 1];
+    if (atual && atual[0].y - p.y <= 1) atual.push(p); else grupos.push([p]);
   }
-  return [...porY.keys()].sort((a, b) => b - a).map(y => {
-    const pedacos = porY.get(y)!.sort((a, b) => a.x - b.x);
+  return grupos.map(g => {
+    const pedacos = g.sort((a, b) => a.x - b.x);
     return { pedacos, texto: pedacos.map(p => p.texto.trim()).join(' ').replace(/\s+/g, ' ') };
   });
 }

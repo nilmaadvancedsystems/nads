@@ -18,7 +18,8 @@ export function ehCfopVenda(n: Pick<Nota, 'cfop'> & { desc?: string }): boolean 
 export function ehVendaVista(n: Pick<Nota, 'nome'> & { doc?: string }): boolean {
   const doc = docLimpo(n.doc);
   const nome = nomeNorm(n.nome);
-  if (/^\d{11}$/.test(doc)) return true;
+  // o CPF que veio como número do Excel perde os zeros da frente (o CNPJ, mesmo sem eles, tem 12 ou mais dígitos)
+  if (/^\d{9,11}$/.test(doc)) return true;
   if (nome.indexOf('consumidor final') > -1) return true;
   return !nome && !doc;
 }

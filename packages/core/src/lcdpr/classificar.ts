@@ -17,9 +17,9 @@ export function cpfCnpjFormatado(v: string): string {
 /** O histórico pelo modelo: {{doc}}, {{fornecedor}} e {{cnpj}} (com a máscara). */
 export function aplicarModelo(modelo: string, ctx: { documento: string; fornecedor: string; cnpj: string }): string {
   return String(modelo || '')
-    .replaceAll('{{doc}}', ctx.documento || '')
-    .replaceAll('{{fornecedor}}', ctx.fornecedor || '')
-    .replaceAll('{{cnpj}}', cpfCnpjFormatado(ctx.cnpj));
+    .replaceAll('{{doc}}', () => ctx.documento || '') // pela função: o "$&" e o "$$" do nome ficam como estão
+    .replaceAll('{{fornecedor}}', () => ctx.fornecedor || '')
+    .replaceAll('{{cnpj}}', () => cpfCnpjFormatado(ctx.cnpj));
 }
 
 /** O NCM com os zeros da frente que o Excel come (o 01022190 guardado como número vira 1022190). */
@@ -47,7 +47,7 @@ export function classificarNota(linhas: readonly { ncm: unknown; valor: number }
     const i = regras.findIndex(r => { const p = String(r.prefixo || '').trim(); return !!p && ncm.startsWith(p); });
     if (i < 0) continue;
     const acc = totais.get(i) || { regra: regras[i], total: 0 };
-    acc.total += Number(l.valor) || 0;
+    acc.total += Math.round((Number(l.valor) || 0) * 100); // em centavos: 0,1 + 0,2 empata com 0,3
     totais.set(i, acc);
   }
   let melhor: { regra: RegraNcm; total: number } | null = null;
@@ -158,7 +158,7 @@ export function gruposParaRevisar(lancs: readonly Lancamento[]): GrupoParaRevisa
     let g = mapa.get(chave);
     if (!g) { g = { chave, ncm, fornecedor: l.fornecedor || '(sem fornecedor)', ids: [], valor: 0 }; mapa.set(chave, g); }
     g.ids.push(l.id);
-    g.valor += Number(l.valor) || 0;
+    g.valor = Math.round((g.valor + (Number(l.valor) || 0)) * 100) / 100;
   }
   return [...mapa.values()].sort((a, b) => b.ids.length - a.ids.length || b.valor - a.valor);
 }

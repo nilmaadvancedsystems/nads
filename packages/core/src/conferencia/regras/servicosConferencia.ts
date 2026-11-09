@@ -4,7 +4,7 @@
 import { dataOrdem, lancN, nomeNorm } from '../../formatos';
 import { SERV_CAT, SV, type CategoriaServico } from '../tabelas/servicos';
 import type { Empresa, FiltroMovimento, Nota, NotaServico, TipoServico } from '../tipos';
-import { chaveNaturezaNota } from './cfop';
+import { chaveNaturezaNota, emCentavos } from './cfop';
 import { contasForaDoBalancete, podeConferir, saldoDasContas, situacaoDaConta, verifEstado, type Situacao } from './conciliacao';
 import { avisoPassivo, contasDaNatureza, listaTipo, nomeConta } from './empresa';
 import { noPeriodo } from './periodo';
@@ -57,7 +57,8 @@ export function conferirServicos(e: Empresa, tipo: TipoServico, f: FiltroMovimen
   const notas = listaTipo(e, tipo).filter(n => noPeriodo(n, f));
   const res: Record<string, 1> = {};
   for (const k of e.divResolvidos) res[k] = 1;
-  const catDe: Record<string, CategoriaServico> = {};
+  // sem protótipo: um participante chamado "Constructor" caía no constructor do objeto e a tela quebrava (09/11/2026)
+  const catDe: Record<string, CategoriaServico> = Object.create(null);
   for (const n of notas) { const k = nomeNorm(n.nome); if (!catDe[k]) catDe[k] = catServ(tipo, catDoPart(e, tipo, n.nome)); }
   const catN = (n: NotaServico) => catDe[nomeNorm(n.nome)];
   const divs = notas.filter(n => lancN(n.lanc) !== catN(n).lanc);
@@ -65,11 +66,12 @@ export function conferirServicos(e: Empresa, tipo: TipoServico, f: FiltroMovimen
   const corr = divs.filter(n => res[chaveResolvidoServ(tipo, n)]);
 
   const tot = { valor: 0, iss: 0, issRet: 0, irrf: 0, inss: 0 };
-  const parts: Record<string, string> = {};
+  const parts: Record<string, string> = Object.create(null);
   for (const n of notas) {
     tot.valor += n.valor; tot.iss += n.iss || 0; tot.issRet += n.issRet || 0; tot.irrf += n.irrf || 0; tot.inss += n.inss || 0;
     parts[nomeNorm(n.nome)] = n.nome;
   }
+  for (const k of Object.keys(tot) as (keyof typeof tot)[]) tot[k] = emCentavos(tot[k]);
 
   // conciliação: soma das notas por conta da categoria × saldo do balancete
   interface G { contas: string[]; cats: Record<string, CategoriaServico>; total: number; parts: Record<string, string>; qtd: number; cfops?: Record<string, 1> }
@@ -94,6 +96,7 @@ export function conferirServicos(e: Empresa, tipo: TipoServico, f: FiltroMovimen
   }
   const saldo: LinhaSaldoServ[] = Object.keys(grupos).sort().map(k => {
     const g = grupos[k];
+    g.total = emCentavos(g.total);
     const descricao = Object.keys(g.cats).map(id => (id === 'geral' ? 'Serviços Gerais' : g.cats[id].nome))
       .concat(g.cfops ? ['CFOP ' + Object.keys(g.cfops).sort().join(', ')] : []).join(', ');
     const titulo = g.contas.length ? g.contas.map(c => { const nm = nomeConta(e, c); return c + (nm ? ' — ' + nm : ''); }).join(' + ') : 'Sem conta vinculada';
@@ -113,7 +116,7 @@ export function conferirServicos(e: Empresa, tipo: TipoServico, f: FiltroMovimen
 
   const soma = (l: NotaForaDoPadraoServ[]) => l.reduce((s, x) => s + x.nota.valor, 0);
   const agrupar = (lista: NotaServico[], marcado: boolean): GrupoForaDoPadraoServ[] => {
-    const g: Record<string, GrupoForaDoPadraoServ> = {};
+    const g: Record<string, GrupoForaDoPadraoServ> = Object.create(null);
     for (const n of lista) {
       const k = nomeNorm(n.nome);
       (g[k] = g[k] || { key: k, nome: n.nome, cat: catN(n), itens: [], sugerirCategorias: [] }).itens.push({ nota: n, chave: tipo + '|' + chaveServ(n), esperado: catN(n) });

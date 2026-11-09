@@ -41,21 +41,67 @@ const RE_SAIDA = /\b(pagto|pagamento|pag\b|tarifa|tar\b|saque|debito|deb\b|compr
 const RE_ENTRADA = /\b(recebid|receb\b|credito|cred\b|deposito|dep\b|resgate|estorno|rendimento|liquidacao cobranca|cobranca)/;
 
 /**
+ * O valor da linha de abertura ("SALDO ANTERIOR", "Saldo inicial"), entre os valores dela, da esquerda para a direita. É o
+ * da direita (a coluna Saldo), menos em dois layouts: o resumo numa linha só ("Saldo inicial … Entradas … Saídas … Saldo
+ * final …", o Mercado Pago), em que o da direita é o saldo FINAL e o certo é o primeiro; e a Caixa com o saldo na coluna
+ * Valor e 0,00 na coluna Saldo ("SALDO ANTERIOR 889,94 C 0,00 C"), em que o certo é o que não é zero.
+ */
+function valorDaAbertura(textoDaLinha: string, valores: readonly string[]): number | null {
+  if (!valores.length) return null;
+  if (/saldo\s*(?:anterior|inicial)\b.*\bsaldo\s*final\b/.test(textoDaLinha)) return centavos(valores[0]);
+  const direita = centavos(valores[valores.length - 1]);
+  if (direita !== 0) return direita;
+  for (let i = valores.length - 2; i >= 0; i--) if (centavos(valores[i])) return centavos(valores[i]);
+  return direita;
+}
+
+/**
  * O saldo antes do primeiro lançamento, como o extrato traz: a primeira linha "SALDO ANTERIOR" (ou "saldo inicial")
- * com valor; o valor é o da direita (a coluna Saldo), com o sinal dele (−, D/C, parênteses). Sem a linha, null.
+ * com valor (valorDaAbertura), com o sinal dele (−, D/C, parênteses). Sem a linha, null.
  */
 export function saldoAnteriorDoPdf(paginas: ItemDeTexto[][]): number | null {
   for (const linhas of paginas.map(p => juntarPedacosSoltos(montarLinhas(p)))) {
     for (const l of linhas) {
-      if (!/saldo\s*(anterior|inicial)/i.test(normalizarTexto(l.texto))) continue;
+      const n = normalizarTexto(l.texto);
+      if (!/saldo\s*(anterior|inicial)/i.test(n)) continue;
       const t = l.tokens;
-      for (let i = t.length - 1; i >= 0; i--) {
-        if (RE_SINAL.test(t[i].s) && i > 0 && RE_VALOR.test(t[i - 1].s)) return centavos(t[i - 1].s + ' ' + t[i].s.replace(/[()]/g, ''));
-        if (RE_VALOR.test(t[i].s)) return centavos(t[i].s);
-      }
+      const valores: string[] = [];
+      t.forEach((k, i) => {
+        if (!RE_VALOR.test(k.s)) return;
+        const prox = t[i + 1];
+        const menosNaFrente = i > 0 && /^-R\$$/i.test(t[i - 1].s) && !k.s.startsWith('-');
+        valores.push((menosNaFrente ? '-' : '') + k.s + (prox && RE_SINAL.test(prox.s) && prox.s !== '*' ? ' ' + prox.s.replace(/[()]/g, '') : ''));
+      });
+      if (valores.length) return valorDaAbertura(n, valores);
     }
   }
   return null;
+}
+
+/**
+ * A data sem o ano na virada do ano. O ano do extrato vale para o ano novo; o novembro/dezembro que vem junto é do ano de
+ * antes (o "31/12" do extrato de janeiro ficava em dezembro do ano que vem, um mês que não aconteceu), e o dezembro impresso
+ * em janeiro também. Referência: a última data completa do texto (a emissão, o fim do período); sem ela, o ano do extrato.
+ * Só mexe na data sem o ano, com novembro/dezembro no extrato e a última data em janeiro/fevereiro (ou, sem data completa,
+ * com janeiro/fevereiro junto e nenhum mês do meio do ano: janeiro a dezembro é um ano só). Data completa fora do ano do
+ * extrato e do seguinte não é referência (o vencimento de um contrato, o ano que o OCR leu errado).
+ */
+function anoDaVirada(todas: Linha[][], ano: number): (data: string | null, escrita: string) => string | null {
+  const SEM_ANO = /^\d{1,2}[/.-]\d{1,2}$/;
+  const fimDoAno = (m: number) => m >= 11, comecoDoAno = (m: number) => m <= 2;
+  const linhas = todas.flat();
+  const mesesCurtos = linhas.map(l => l.tokens[0]?.s || '').filter(s => SEM_ANO.test(s)).map(s => +s.split(/[/.-]/)[1]);
+  const completas = linhas.flatMap(l => l.tokens).filter(k => /^\d{1,2}[/.-]\d{1,2}[/.-]\d{4}$/.test(k.s)).map(k => lerData(k.s, ano)).filter((d): d is string => !!d && (+d.slice(0, 4) === ano || +d.slice(0, 4) === ano + 1));
+  const ultima = completas.length ? completas.reduce((m, d) => (d > m ? d : m)) : null;
+  const naVirada = mesesCurtos.some(fimDoAno) && (ultima ? comecoDoAno(+ultima.slice(5, 7)) : mesesCurtos.some(comecoDoAno) && !mesesCurtos.some(m => m > 2 && m < 11));
+  if (!naVirada) return d => d;
+  const anoNovo = ultima ? +ultima.slice(0, 4) : ano;
+  return (data, escrita) => {
+    if (!data || !SEM_ANO.test(escrita)) return data;
+    const mes = +data.slice(5, 7);
+    if (!fimDoAno(mes) && !comecoDoAno(mes)) return data;
+    return lerData(data.slice(8) + '/' + data.slice(5, 7) + '/' + (fimDoAno(mes) ? anoNovo - 1 : anoNovo), ano) ?? data;
+  };
 }
 
 /** Junta os pedaços da mesma altura numa linha, da esquerda para a direita, e separa as palavras. */
@@ -74,7 +120,8 @@ export function montarLinhas(itens: ItemDeTexto[]): Linha[] {
       const total = i.texto.length || 1;
       let pos = 0;
       for (const p of i.texto.split(/(\s+)/)) {
-        if (p.trim()) toks.push({ s: p, x: i.x + i.largura * (pos / total), x2: i.x + i.largura * ((pos + p.length) / total) });
+        // (o "−" tipográfico é o sinal de menos: com ele o token não era valor e o lançamento sumia)
+        if (p.trim()) toks.push({ s: p.replace(/−/g, '-'), x: i.x + i.largura * (pos / total), x2: i.x + i.largura * ((pos + p.length) / total) });
         pos += p.length;
       }
     }
@@ -572,10 +619,11 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
   // (na 571 o OCR leu mais "2028" que "2026")
   const entre = periodoEntreDatas(todas.map(p => p.map(l => l.texto).join('\n')).join('\n'));
   const ano = entre ? +entre.inicio.slice(0, 4) : anoDoTexto(todas.map(p => p.map(l => l.texto).join('\n')).join('\n'), anoPadrao);
+  const naVirada: (data: string | null, escrita: string) => string | null = entre ? d => d : anoDaVirada(todas, ano);
   // a ordem das datas que abrem as linhas: o extrato do mais novo para o mais velho (o Stone) tem mais descidas que subidas
   let sobe = 0, desce = 0, antes: string | null = null;
   for (const l of todas.flat()) {
-    const d = l.tokens[0] && RE_DATA.test(l.tokens[0].s) ? lerData(l.tokens[0].s, ano) : null;
+    const d = l.tokens[0] && RE_DATA.test(l.tokens[0].s) ? naVirada(lerData(l.tokens[0].s, ano), l.tokens[0].s) : null;
     if (!d) continue;
     if (antes && d > antes) sobe++;
     else if (antes && d < antes) desce++;
@@ -657,7 +705,7 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
       let data: string | null = null;
       let segunda: string | null = null;
       if (!naColunaDaData(t[0].x)) { /* texto no meio da linha: não abre dia */ }
-      else if (RE_DATA.test(t[0].s)) { data = lerData(t[0].s, ano); if (data) t.shift(); }
+      else if (RE_DATA.test(t[0].s)) { data = naVirada(lerData(t[0].s, ano), t[0].s); if (data) t.shift(); }
       else if (t[1] && RE_DATA_MES.test(diaDoOcr(t[0].s) + ' ' + t[1].s)) {
         // o ano no pedaço seguinte ("11 | FEV | 2026") é da data: senão o "2026 Total de saídas" virava lançamento (Vitor,
         // 20/10/2026: o Nubank tinha o total do dia como uma saída a mais)
@@ -698,7 +746,7 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
           valores.push(v);
         } else if (RE_DATA.test(s) && !resto.length && !valores.length) {
           // segunda data (no BB "Consultas": Dt. balancete e Dt. movimento): guarda, para o período do extrato
-          segunda = lerData(s, ano);
+          segunda = naVirada(lerData(s, ano), s);
         } else resto.push(s);
       }
       const hist = resto.join(' ').replace(/\s+/g, ' ').trim();
@@ -715,7 +763,8 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
       if (RE_SALDO.test(hist) || (!hist && !solta && RE_SALDO.test(l.texto))) {
         // a linha "SALDO DO DIA": o saldo que o banco imprime no fim do dia; o "999 S A L D O" do fim do BB: o do último dia
         const n = normalizarTexto(hist || l.texto);
-        if (/saldo (?:anterior|inicial)|saldo (?:do )?dia|\bs a l d o\b/.test(n) && valores.length) saldoCorrido = centavos(valores[valores.length - 1].s);
+        if (/saldo (?:anterior|inicial)/.test(n) && valores.length) saldoCorrido = valorDaAbertura(n, valores.map(v => v.s));
+        else if (/saldo (?:do )?dia|\bs a l d o\b/.test(n) && valores.length) saldoCorrido = centavos(valores[valores.length - 1].s);
         if (entre && /saldo (?:anterior|inicial)/.test(n) && saldoCorrido != null) { aberturaSemConferir = true; saldoAnteriorConferido = saldoCorrido; }
         const diaDoSaldo = /\bs a l d o\b/.test(n) ? ultimaDataDeValor : /\bsaldo (?:do )?dia\b/.test(n) ? dataAtual : null;
         const sv = diaDoSaldo ? centavos(valores[valores.length - 1].s) : null;

@@ -2,7 +2,7 @@
 // e conferir se o balancete é mesmo desta empresa.
 // Origem: conferencia.html importar/aplicar (~L2856-2926), importarServ/aplicar (~L4311-4371),
 // verificarBalancete/assinaturaBalancete (~L2570-2604), btPlano concluir (~L2539-2555).
-import { dataOrdem, nomeNorm } from '../../formatos';
+import { dataOrdem, docLimpo, nomeNorm } from '../../formatos';
 import type { Conta, Empresa, Nota, NotaServico, TipoCfop, TipoNotaFiscal } from '../tipos';
 import { chaveNota, tipoDoCfop } from './cfop';
 import { contasDaNatureza } from './empresa';
@@ -47,28 +47,54 @@ export function mesesSemNotas(notas: readonly { comp: string }[], meses?: readon
 
 export interface ResultadoMescla<N> { notas: N[]; adicionadas: number; atualizadas: number; semMudanca: number }
 
-/** Mescla notas fiscais. Não muda as listas de entrada. */
+/** O mesmo documento (com ou sem máscara), ou um dos dois sem documento: não dá para dizer que são participantes diferentes. */
+function docsCompativeis(a: Pick<Nota, 'doc'>, b: Pick<Nota, 'doc'>): boolean {
+  const x = docLimpo(a.doc), y = docLimpo(b.doc);
+  return !x || !y || x === y;
+}
+
+/**
+ * Mescla notas fiscais. Não muda as listas de entrada.
+ * A chave da nota (cfop, número, data e valor) não tem o participante: dois fornecedores com o mesmo número, data e valor viravam
+ * uma nota só e a outra se perdia (09/11/2026). No arquivo, documentos diferentes são duas notas; contra o que já está guardado,
+ * a linha do arquivo procura primeiro a nota com o mesmo documento, e a que sobrar sem dono recebe o documento novo (a correção).
+ */
 export function mesclarNotas(existentes: Nota[], novas: Nota[], modo: ModoImportacao): ResultadoMescla<Nota> {
   let atuais: Nota[];
   let add = 0;
   let atualizadas = 0;
   if (modo === 'sobrepor') {
-    const vistos: Record<string, 1> = {};
+    const vistos = new Map<string, Nota[]>();
     atuais = [];
-    for (const n of novas) { const k = chaveNota(n); if (!vistos[k]) { vistos[k] = 1; atuais.push({ ...n }); } }
+    for (const n of novas) {
+      const k = chaveNota(n);
+      const iguais = vistos.get(k) || [];
+      if (iguais.some(x => docsCompativeis(x, n))) continue;
+      vistos.set(k, [...iguais, n]);
+      atuais.push({ ...n });
+    }
     add = atuais.length;
   } else {
     atuais = existentes.map(n => ({ ...n }));
-    const porChave: Record<string, Nota> = {};
-    for (const n of atuais) porChave[chaveNota(n)] = n;
+    const porChave = new Map<string, Nota[]>();
+    for (const n of atuais) porChave.set(chaveNota(n), [...(porChave.get(chaveNota(n)) || []), n]);
+    const mesmoDoc = (n: Nota) => { const d = docLimpo(n.doc); return d ? (porChave.get(chaveNota(n)) || []).find(x => docLimpo(x.doc) === d) : undefined; };
+    const comDono = new Set<Nota>();
+    for (const n of novas) { const ex = mesmoDoc(n); if (ex) comDono.add(ex); }
     for (const n of novas) {
       const k = chaveNota(n);
-      const ex = porChave[k];
-      if (!ex) { const c = { ...n }; atuais.push(c); porChave[k] = c; add++; continue; }
+      const iguais = porChave.get(k) || [];
+      const ex = mesmoDoc(n) || iguais.find(x => !comDono.has(x)) || iguais.find(x => docsCompativeis(x, n));
+      if (!ex) { const c = { ...n }; atuais.push(c); porChave.set(k, [...iguais, c]); comDono.add(c); add++; continue; }
+      comDono.add(ex);
       if (n.doc && ex.doc !== n.doc) ex.doc = n.doc;
       if (n.exportado && ex.exportado !== n.exportado) ex.exportado = n.exportado;
       // a conta contábil do cliente (o Creditor acha a conta pela NF): reimportar o mesmo relatório já traz ela
       if (n.conta && ex.conta !== n.conta) ex.conta = n.conta;
+      // o NCM, o CST e o CEST do item também (a verificação do Fiscal lê da nota guardada)
+      if (n.ncm && ex.ncm !== n.ncm) ex.ncm = n.ncm;
+      if (n.cst && ex.cst !== n.cst) ex.cst = n.cst;
+      if (n.cest && ex.cest !== n.cest) ex.cest = n.cest;
       if (ex.lanc !== n.lanc || ex.nome !== n.nome || ex.desc !== n.desc) { ex.lanc = n.lanc; ex.nome = n.nome; ex.desc = n.desc; atualizadas++; }
     }
   }
@@ -95,7 +121,9 @@ export function mesclarServicos(existentes: NotaServico[], novas: NotaServico[],
       const ex = por[k];
       if (!ex) { const c = { ...n }; atuais.push(c); por[k] = c; add++; continue; }
       if (n.conta && ex.conta !== n.conta) ex.conta = n.conta;
-      if (ex.lanc !== n.lanc || ex.codPart !== n.codPart || ex.iss !== n.iss) { ex.lanc = n.lanc; ex.codPart = n.codPart; ex.iss = n.iss; ex.issRet = n.issRet; atualizadas++; }
+      if (ex.lanc !== n.lanc || ex.codPart !== n.codPart || ex.iss !== n.iss) { ex.lanc = n.lanc; ex.codPart = n.codPart; ex.iss = n.iss; atualizadas++; }
+      // as retenções entram quando o relatório traz a coluna (a corrigida sem mudar o lançamento ficava com o valor velho)
+      for (const r of ['issRet', 'irrf', 'inss', 'pis', 'cofins', 'csll'] as const) { const v = n[r]; if (v != null) ex[r] = v; }
       if (n.exportado && ex.exportado !== n.exportado) ex.exportado = n.exportado;
     }
   }

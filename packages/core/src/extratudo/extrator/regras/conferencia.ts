@@ -177,8 +177,9 @@ export function conferir(extrato: LancamentoDoArquivo[], sistema: LancamentoDoAr
 
   const limpo = (x: LancamentoDoArquivo | null): LancamentoDoArquivo | null => {
     if (!x) return null;
-    const { id, idArquivo, lado, data, valor, historico } = x;
-    return { id, idArquivo, lado, data, valor, historico };
+    const { id, idArquivo, lado, data, valor, historico, conta, complemento } = x;
+    // a contrapartida e o texto do banco ficam: a conferência do banco usa os dois ("na mesma contrapartida", cheque especial no complemento)
+    return { id, idArquivo, lado, data, valor, historico, ...(conta ? { conta } : {}), ...(complemento ? { complemento } : {}) };
   };
   const final = linhas
     .map(l => ({ ...l, extrato: limpo(l.extrato), sistema: limpo(l.sistema) }))

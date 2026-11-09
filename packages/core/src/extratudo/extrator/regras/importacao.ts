@@ -229,19 +229,29 @@ export function extratosParaRelerPeloDrive(e: EmpresaExtrator): ArquivoImportado
 /**
  * A leitura nova cobre os meses do arquivo? (senão, trocar perderia um mês) O mês com 1 ou 2 lançamentos pode faltar: é o
  * erro do leitor velho que a leitura nova conserta (o "27/07/2026" do cabeçalho do Sicoob do SISBR que virava lançamento
- * com o saldo anterior); os meses com 3 ou mais têm de estar todos.
+ * com o saldo anterior); os meses com 3 ou mais têm de estar todos. O mês depois da importação não aconteceu (o OCR leu
+ * 2026 como 2028): não precisa estar na leitura nova, é justamente o que ela conserta.
  */
 export function leituraCobreOArquivo(a: ArquivoImportado, lido: ArquivoLido): boolean {
   if (lido.erro || !lido.lancamentos.length) return false;
   const lidos = new Set(lido.lancamentos.map(l => l.data.slice(0, 7)));
   const porMes = new Map<string, number>();
-  for (const l of a.lancamentos) porMes.set(l.data.slice(0, 7), (porMes.get(l.data.slice(0, 7)) || 0) + 1);
+  for (const l of a.lancamentos) if (!mesImpossivel(a, l.data.slice(0, 7))) porMes.set(l.data.slice(0, 7), (porMes.get(l.data.slice(0, 7)) || 0) + 1);
+  if (!porMes.size) return true;
   return [...porMes].every(([m, n]) => n < 3 || lidos.has(m)) && [...porMes.keys()].some(m => lidos.has(m));
+}
+
+/** O mês depois do mês em que o arquivo foi importado: o extrato não podia ter esse movimento (o ano foi lido errado). */
+function mesImpossivel(a: ArquivoImportado, mes: string): boolean {
+  return mes > a.importadoEm.slice(0, 7);
 }
 
 /**
  * Troca os lançamentos do arquivo pelos da leitura nova (o mesmo arquivo, os mesmos meses dele; o que outro arquivo do
  * lado já tem não entra de novo) e marca a versão do leitor. Fica no histórico. Sem lançamentos na leitura nova, só marca.
+ * Com mês impossível (o OCR leu 2026 como 2028; na 571, pedaços de 2028-01, 2068-02, 2086-01), "os meses dele" não servem
+ * para filtrar — o certo está justamente fora deles: fica tudo o que a leitura nova trouxe. O pedaço só com mês impossível
+ * cujo movimento outro extrato já tem sai (senão ficava para sempre, com o leitor novo marcado).
  */
 export function relerExtrato(e: EmpresaExtrator, arquivoId: string, lido: ArquivoLido, agora: Date): EmpresaExtrator {
   const a = e.arquivos.find(x => x.id === arquivoId);
@@ -253,12 +263,19 @@ export function relerExtrato(e: EmpresaExtrator, arquivoId: string, lido: Arquiv
   }
   const meses = new Set(a.lancamentos.map(l => l.data.slice(0, 7)));
   const outros = e.arquivos.filter(x => x.id !== arquivoId && x.lado === a.lado && (x.banco || '') === (a.banco || '')).flatMap(x => x.lancamentos);
-  const novos = lido.erro ? [] : soNovos(outros, lido.lancamentos.filter(l => !meses.size || meses.has(l.data.slice(0, 7))));
+  const anoErrado = [...meses].some(m => mesImpossivel(a, m));
+  const doArquivo = (d: { data: string }) => anoErrado || !meses.size || meses.has(d.data.slice(0, 7));
+  // com o ano errado, a mesma data e o mesmo valor bastam: o outro extrato leu o mesmo movimento, com outro histórico
+  const novos = lido.erro ? [] : soNovos(outros, lido.lancamentos.filter(doArquivo), anoErrado && a.lado === 'banco');
+  if (!novos.length && !lido.erro && lido.lancamentos.length && meses.size && [...meses].every(m => mesImpossivel(a, m))) {
+    const saiu: RegistroAuditoria = { ts: agora.toISOString(), acao: 'Releu o extrato', detalhe: a.nome + ' · ' + a.lancamentos.length + ' lançamento(s) com o ano errado: o movimento já está em outro extrato', tom: 'ok' };
+    return { ...e, arquivos: e.arquivos.filter(x => x.id !== arquivoId), auditoria: [saiu, ...e.auditoria] };
+  }
   if (!novos.length) return { ...e, arquivos: e.arquivos.map(x => (x.id === arquivoId ? { ...x, leitor: VERSAO_DO_LEITOR } : x)) };
   // o pedaço de um arquivo cortado por mês (excluirMesesDoArquivo): o saldo anterior é o do PDF mais os meses de antes dele
-  const primeiro = [...meses].sort()[0];
+  const primeiro = anoErrado ? undefined : [...meses].sort()[0];
   const antes = primeiro ? lido.lancamentos.filter(l => l.data < primeiro).reduce((t, l) => t + l.valor, 0) : 0;
-  const saldosDoDia = lido.saldosDoDia?.filter(s => !meses.size || meses.has(s.data.slice(0, 7)));
+  const saldosDoDia = lido.saldosDoDia?.filter(doArquivo);
   const novo: ArquivoImportado = {
     ...a, lancamentos: novos, leitor: VERSAO_DO_LEITOR,
     ...(lido.saldoAnterior != null ? { saldoAnterior: lido.saldoAnterior + antes } : {}), ...(saldosDoDia?.length ? { saldosDoDia } : {}),

@@ -36,7 +36,8 @@ export function lancamentosDaCora(paginas: ItemDeTexto[][]): LinhaConvertida[] {
       const m = t[0].s.match(RE_DATA);
       // a linha do dia: muda o dia dos lançamentos de baixo
       if (m && /\bsaldo do dia\b/.test(norm)) { data = m[3] + '-' + m[2] + '-' + m[1]; continue; }
-      if (!data || /\bsaldo\b/.test(norm)) continue;
+      // só as linhas de saldo do extrato: "SALDO" no nome de quem pagou ou recebeu é lançamento
+      if (!data || /^saldo\b|\bsaldo (do dia|inicial|final|anterior)\b/.test(norm)) continue;
       const v = l.texto.match(RE_VALOR);
       if (!v) continue;
       const valor = centavos(v[2]);

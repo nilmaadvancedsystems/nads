@@ -153,7 +153,7 @@ export interface DiferencaDoRazao { mes: string; razao: number; balancete: numbe
 export function razaoContraOBalancete(razao: RazaoDaConta, saldosDoBalancete: Record<string, number>, meses: readonly string[]): DiferencaDoRazao[] {
   return mesesDoRazao(razao, meses.filter(m => m in saldosDoBalancete))
     .map(m => ({ mes: m.mes, razao: Math.round(m.saldoFinal * 100) / 100, balancete: Math.round(-saldosDoBalancete[m.mes] * 100) / 100 }))
-    .filter(x => Math.abs(x.razao - x.balancete) > 0.01);
+    .filter(x => Math.abs(Math.round(x.razao * 100) - Math.round(x.balancete * 100)) > 1); // em centavos: 1000,01 − 1000 passa de 0,01 no ponto flutuante
 }
 
 // ─── Pontos de atenção do caixa (Vitor, 05/10/2026) ───────────────────────────────────────────────────────────────────

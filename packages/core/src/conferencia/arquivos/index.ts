@@ -9,10 +9,46 @@ import type { LinhaRazao } from '../regras/verificarConta';
 
 export type Linhas = string[][];
 
+const doisDigitos = (n: number) => String(n).padStart(2, '0');
+
+/**
+ * O texto da célula de número ou de data do Excel. O leitor formata no padrão americano: a data do formato do sistema sai
+ * "1/15/26" (o "dd/mm" do resto do sistema trocava dia e mês, e o serviço sumia) e o número "1,234.50" (lido como 1,2345; 09/11/2026).
+ * A data vira dd/mm/aaaa; o número fica sem o milhar e sem o símbolo. Máscara que não é o valor (CNPJ, 0.000, %) continua como está.
+ */
+function acertarCelula(c: XLSX.CellObject, date1904: boolean): void {
+  if (c.t !== 'n' || typeof c.v !== 'number') return;
+  if (c.z != null && XLSX.SSF.is_date(String(c.z))) {
+    // só o formato com o dia: o "mm/yyyy" do cabeçalho do dinâmico fica como está, "01/2026"
+    if (!/d/i.test(String(c.z).replace(/"[^"]*"|\[[^\]]*\]|\\./g, ''))) return;
+    const d = c.v >= 1 ? XLSX.SSF.parse_date_code(c.v, { date1904 }) : null;
+    if (d) c.w = doisDigitos(d.d) + '/' + doisDigitos(d.m) + '/' + d.y;
+    return;
+  }
+  const visto = String(c.w ?? '');
+  const digitos = visto.replace(/[^\d.,]/g, '');
+  if (!digitos) { if (!visto.trim()) c.w = String(c.v); return; } // o traço do zero e o texto da máscara ficam como estão
+  if (/\d-\d/.test(visto)) return; // o hífen no meio é máscara (CEP, dígito da conta), não o valor
+  if (!/^(\d{1,3}(,\d{3})+|\d+)(\.\d+)?$/.test(digitos)) return;
+  const semMilhar = digitos.replace(/,/g, '');
+  const casas = (semMilhar.split('.')[1] || '').length;
+  if (Math.abs(Math.abs(c.v) - Number(semMilhar)) > 0.51 * 10 ** -casas) return;
+  const letra = visto.match(/[DC]\s*$/); // "1.234,50 D" do saldo
+  c.w = letra ? semMilhar + ' ' + letra[0].trim() : (c.v < 0 ? '-' : '') + semMilhar;
+}
+
 /** Primeira aba da planilha como linhas de texto (xls, xlsx, csv, ods). */
 export function lerPlanilha(buf: ArrayBuffer): Linhas {
-  const wb = XLSX.read(new Uint8Array(buf), { type: 'array', raw: false });
-  return XLSX.utils.sheet_to_json<string[]>(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '', raw: false, blankrows: false });
+  const bytes = new Uint8Array(buf);
+  const wb = XLSX.read(bytes, { type: 'array', raw: false, cellNF: true });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  // só o arquivo com formato de célula (xlsx, ods, xls, xml do Excel): no CSV o texto já é o que veio, e a "data" 05/07 ali é chute americano
+  const inicio = String.fromCharCode(...bytes.slice(0, 5));
+  if (inicio.startsWith('PK') || (bytes[0] === 0xd0 && bytes[1] === 0xcf) || inicio === '<?xml') {
+    const date1904 = !!wb.Workbook?.WBProps?.date1904;
+    for (const ref of Object.keys(ws)) if (!ref.startsWith('!')) acertarCelula(ws[ref] as XLSX.CellObject, date1904);
+  }
+  return XLSX.utils.sheet_to_json<string[]>(ws, { header: 1, defval: '', raw: false, blankrows: false });
 }
 
 /** Linha do cabeçalho: a primeira (até a 40ª) que tem todos os trechos. */
@@ -45,36 +81,42 @@ export function colunaDaConta(head: unknown[]): number {
 
 // ---------- notas fiscais (entradas/saídas) ----------
 export function lerNotas(rows: Linhas): Nota[] {
-  const h = acharCabecalho(rows, ['cfop']);
+  // o cabeçalho tem o CFOP e o valor: o título "Notas por CFOP" em cima dele não é o cabeçalho
+  let h = acharCabecalho(rows, ['cfop', 'valor']);
+  if (h < 0) h = acharCabecalho(rows, ['cfop']);
   if (h < 0) throw new Error('Não achei a coluna CFOP nesse arquivo.');
   const head = rows[h];
   const c = {
-    cfop: coluna(head, 'cfop'), lanc: coluna(head, 'lanc'), val: coluna(head, 'valor contábil', 'valor contabil', 'valor'),
+    cfop: coluna(head, 'cfop'), lanc: coluna(head, 'lanc', 'lanç'), val: coluna(head, 'valor contábil', 'valor contabil', 'valor'),
     num: coluna(head, 'número', 'numero'), nome: coluna(head, 'nome forn', 'forn/cliente', 'nome'),
     dt: coluna(head, 'dt. escritura', 'data'), desc: coluna(head, 'descrição do cfop', 'descricao do cfop'),
     doc: coluna(head, 'cnpj/cpf', 'cpf/cnpj', 'cnpj', 'cpf'), exp: coluna(head, 'exportado', 'exp.'), conta: colunaDaConta(head),
     // do item (a verificação do Fiscal, 07/10/2026): só quando o relatório traz as colunas
     ncm: coluna(head, 'ncm', 'classificação fiscal', 'classificacao fiscal'), cst: coluna(head, 'cst', 'csosn', 'sit. trib', 'situação tributária', 'situacao tributaria'),
     cest: coluna(head, 'cest'),
+    // o relatório com as duas colunas: quem é do Simples só tem o CSOSN
+    csosn: coluna(head, 'csosn'),
   };
   if (c.cfop < 0 || c.val < 0) throw new Error('Faltou coluna de CFOP ou de valor.');
   const texto = (r: unknown[], i: number) => (i >= 0 ? String(r[i] ?? '').trim().replace(/\.0$/, '') : '');
   const out: Nota[] = [];
   for (let i = h + 1; i < rows.length; i++) {
     const r = rows[i];
-    const cf = String(r[c.cfop] || '').trim();
+    // o CFOP com máscara ("5.102") é o mesmo CFOP: a linha sumia sem aviso
+    const cf = String(r[c.cfop] || '').trim().replace(/^(\d)\.(\d{3})/, '$1$2');
     if (!cf || !/^\d{4}/.test(cf)) continue;
     const v = num(r[c.val]);
     if (v == null) continue;
     const data = String(r[c.dt] || '').trim();
+    const cst = texto(r, c.cst) || texto(r, c.csosn);
     out.push({
-      cfop: cf.slice(0, 4), lanc: String(r[c.lanc] || '').trim().replace(/\.0$/, ''), valor: v,
-      numero: String(r[c.num] || '').trim(), nome: String(r[c.nome] || '').trim(), data,
-      desc: c.desc >= 0 ? String(r[c.desc] || '').trim() : '', doc: c.doc >= 0 ? String(r[c.doc] || '').trim() : '',
+      cfop: cf.slice(0, 4), lanc: texto(r, c.lanc), valor: v,
+      numero: texto(r, c.num), nome: String(r[c.nome] || '').trim(), data,
+      desc: c.desc >= 0 ? String(r[c.desc] || '').trim() : '', doc: texto(r, c.doc),
       exportado: c.exp >= 0 ? normExportado(r[c.exp]) : '', comp: comp(data),
       ...(c.conta >= 0 && String(r[c.conta] || '').trim() ? { conta: String(r[c.conta]).trim().replace(/\.0$/, '') } : {}),
       ...(texto(r, c.ncm) ? { ncm: texto(r, c.ncm) } : {}),
-      ...(texto(r, c.cst) ? { cst: texto(r, c.cst) } : {}),
+      ...(cst ? { cst } : {}),
       ...(texto(r, c.cest) ? { cest: texto(r, c.cest) } : {}),
     });
   }
@@ -84,7 +126,7 @@ export function lerNotas(rows: Linhas): Nota[] {
 // ---------- balancete (Alterdata: XLS Dados Arquivo) ----------
 function classificarGrupo(nome: string): Grupo | null {
   const n = nome.toUpperCase();
-  if (n.indexOf('ATIVO') > -1) return 'Ativo';
+  if (/\bATIVOS?\b/.test(n)) return 'Ativo'; // a palavra inteira: "GASTOS ADMINISTRATIVOS" não é Ativo
   if (n.indexOf('PASSIVO') > -1 || n.indexOf('PATRIMONIO') > -1 || n.indexOf('PATRIMÔNIO') > -1) return 'Passivo';
   if (n.indexOf('RECEITA') > -1) return 'Receita';
   if (n.indexOf('DESPESA') > -1 || n.indexOf('CUSTO') > -1) return 'Despesa';
@@ -135,7 +177,8 @@ export function lerBalanceteDinamicoComoContas(rows: Linhas): { contas: Record<s
   const valor = (v: unknown) => (typeof v === 'number' ? v : num(v) ?? 0);
   const linhas = rows.slice(h + 1).filter(r => String(r[cCod] ?? '').trim());
   // o último mês com algum saldo (o Alterdata pode trazer meses à frente zerados)
-  const ultimo = [...meses].reverse().find(m => linhas.some(r => Math.abs(valor(r[m.i])) >= 0.005)) || meses[meses.length - 1];
+  const porMes = [...meses].sort((a, b) => a.mes.localeCompare(b.mes)); // a competência manda, não a posição da coluna
+  const ultimo = [...porMes].reverse().find(m => linhas.some(r => Math.abs(valor(r[m.i])) >= 0.005)) || porMes[porMes.length - 1];
   const m: Record<string, Conta> = {};
   let grupoAtual: Grupo | '' = '';
   // o dinâmico pela natureza (Passivo e Receitas com o credor positivo; Vitor, 28/10/2026) ou todo invertido: o sinal se acerta
@@ -169,6 +212,12 @@ export class ErroTipoErrado extends Error {
   constructor(public tipoCerto: TipoServico) { super('tipo errado'); }
 }
 
+/** A data da linha em dd/mm/aaaa ('5/7/2026', '05-07-26', com a hora…); '' = a linha não é de nota (o total, o rodapé). */
+function dataDaLinha(v: unknown): string {
+  const m = String(v ?? '').trim().match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4}|\d{2})(?!\d)/);
+  return m ? m[1].padStart(2, '0') + '/' + m[2].padStart(2, '0') + '/' + (m[3].length === 2 ? '20' + m[3] : m[3]) : '';
+}
+
 export function lerServicos(rows: Linhas, tipo: TipoServico): { notas: NotaServico[]; canceladas: number } {
   let h = -1;
   for (let i = 0; i < Math.min(rows.length, 40); i++) {
@@ -184,8 +233,9 @@ export function lerServicos(rows: Linhas, tipo: TipoServico): { notas: NotaServi
   if (tipo === 'tomados' && temCli && !temForn) throw new ErroTipoErrado('prestados');
   const acha = (...ks: string[]) => { for (const k of ks) for (let x = 0; x < head.length; x++) if (head[x].indexOf(k) > -1) return x; return -1; };
   const c = {
-    data: acha('data'), lanc: acha('lanc'), num: acha('nr.', 'número', 'numero'), cod: acha('conta cont', 'cód', 'cod.'),
-    cnpj: acha('cnpj'), nome: acha('nome'), valor: acha('valor base', 'valor do documento'),
+    data: acha('data'), lanc: acha('lanc', 'lanç'), num: acha('nr.', 'número', 'numero'), cod: acha('conta cont', 'cód', 'cod.'),
+    // Valor Base nos prestados e Valor do Documento nos tomados, mesmo quando o relatório traz as duas colunas (SV.rotValor)
+    cnpj: acha('cnpj'), nome: acha('nome'), valor: tipo === 'tomados' ? acha('valor do documento', 'valor base') : acha('valor base', 'valor do documento'),
     iss: head.indexOf('iss valor'), issRet: acha('iss valor retido', 'iss retido'), irrf: acha('irrf'), inss: acha('inss'), canc: acha('cancel'),
     exp: acha('exportado', 'exp.'), conta: colunaDaConta(rows[h]),
     // as outras retenções e o serviço (a verificação do Fiscal, 07/10/2026): só quando o relatório traz as colunas
@@ -196,22 +246,23 @@ export function lerServicos(rows: Linhas, tipo: TipoServico): { notas: NotaServi
   let canceladas = 0;
   for (let i = h + 1; i < rows.length; i++) {
     const r = rows[i];
-    const dt = String(r[c.data] || '').trim();
-    if (!/^\d{2}\/\d{2}\/\d{4}$/.test(dt)) continue;
-    if (c.canc >= 0 && String(r[c.canc] || '').trim().toUpperCase() === 'S') { canceladas++; continue; }
+    const dt = dataDaLinha(r[c.data]);
+    if (!dt) continue;
+    if (c.canc >= 0 && normExportado(r[c.canc]) === 'Sim') { canceladas++; continue; } // "S" ou "Sim"
     const v = num(r[c.valor]);
     if (v == null) continue;
+    const semPontoZero = (x: unknown) => String(x ?? '').trim().replace(/\.0$/, '');
     const n: NotaServico = {
-      data: dt, comp: comp(dt), numero: String(r[c.num] || '').trim().replace(/^0+(?=\d)/, ''),
-      lanc: String(r[c.lanc] || '').trim().replace(/\.0$/, '').replace(/^0+(?=\d)/, ''),
-      codPart: String(c.cod >= 0 ? r[c.cod] : '').trim(), cnpj: String(c.cnpj >= 0 ? r[c.cnpj] : '').trim(), nome: String(r[c.nome] || '').trim(), valor: v,
+      data: dt, comp: comp(dt), numero: semPontoZero(r[c.num]).replace(/^0+(?=\d)/, ''),
+      lanc: semPontoZero(r[c.lanc]).replace(/^0+(?=\d)/, ''),
+      codPart: String(c.cod >= 0 ? r[c.cod] : '').trim(), cnpj: c.cnpj >= 0 ? semPontoZero(r[c.cnpj]) : '', nome: String(r[c.nome] || '').trim(), valor: v,
     };
     if (c.iss >= 0) n.iss = num(r[c.iss]) || 0;
     if (c.issRet >= 0) n.issRet = num(r[c.issRet]) || 0;
     if (c.irrf >= 0) n.irrf = num(r[c.irrf]) || 0;
     if (c.inss >= 0) n.inss = num(r[c.inss]) || 0;
     if (c.exp >= 0) n.exportado = normExportado(r[c.exp]);
-    if (c.conta >= 0 && String(r[c.conta] || '').trim()) n.conta = String(r[c.conta]).trim();
+    if (c.conta >= 0 && String(r[c.conta] || '').trim()) n.conta = semPontoZero(r[c.conta]);
     // PIS/COFINS/CSLL numa coluna só (a CSRF): fica no PIS
     if (c.pis >= 0) n.pis = num(r[c.pis]) || 0;
     if (c.cofins >= 0 && c.cofins !== c.pis) n.cofins = num(r[c.cofins]) || 0;

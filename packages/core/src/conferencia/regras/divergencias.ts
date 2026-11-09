@@ -16,13 +16,16 @@ export interface PadraoCfop { lanc: string; qtd: number; total: number }
 export function padraoPorCfop(e: Empresa, tipo: TipoNotaFiscal): Record<string, PadraoCfop> {
   const g: Record<string, Record<string, number>> = {};
   const ctx = tipo === 'saidas' ? ctxVista(e) : null;
+  // o mesmo lançamento com máscara diferente ("00182", "182") é um só (09/11/2026): conta no primeiro jeito que apareceu
+  const comoApareceu: Record<string, string> = {};
   for (const n of e[tipo]) {
     if (!n.cfop || !n.lanc) continue;
     if (lancEsperadoSaida(n, ctx)) continue; // venda à vista: conferida à parte
     const lv = lancVistaDaNota(n, ctx);
     if (lv && lancN(n.lanc) === lancN(lv)) continue; // CNPJ com lançamento à vista não vira padrão
     if (!g[n.cfop]) g[n.cfop] = {};
-    g[n.cfop][n.lanc] = (g[n.cfop][n.lanc] || 0) + 1;
+    const l = (comoApareceu[lancN(n.lanc)] = comoApareceu[lancN(n.lanc)] || n.lanc);
+    g[n.cfop][l] = (g[n.cfop][l] || 0) + 1;
   }
   const dom: Record<string, PadraoCfop> = {};
   for (const cfop of Object.keys(g)) {
@@ -65,7 +68,7 @@ export function acharDivergencias(e: Empresa, tipo: TipoNotaFiscal): Divergencia
     const lv = lancVistaDaNota(n, ctx);
     if (lv && lancN(n.lanc) === lancN(lv)) { out.push({ nota: n, chave: chaveNota(n), padrao: (d && d.lanc) || '—', origem: 'cnpjVista' }); continue; }
     if (!d || d.total < MIN_NOTAS_PADRAO) continue;
-    if (n.lanc !== d.lanc && d.qtd / d.total >= FRACAO_PADRAO) out.push({ nota: n, chave: chaveNota(n), padrao: d.lanc, qtdPadrao: d.qtd, totalCfop: d.total });
+    if (lancN(n.lanc) !== lancN(d.lanc) && d.qtd / d.total >= FRACAO_PADRAO) out.push({ nota: n, chave: chaveNota(n), padrao: d.lanc, qtdPadrao: d.qtd, totalCfop: d.total });
   }
   return out;
 }
