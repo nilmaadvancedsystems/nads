@@ -8,7 +8,7 @@
 //                                                    robô grava no Drive, apaga os pedaços e responde no próprio envio.
 // As partes de uma pasta só são lidas de novo quando o robô atualiza a pasta (atualizadoEm), como nas Pendências.
 import { entregas as e } from '@nads/core';
-import { addDoc as addDocBruto, Bytes, collection, doc, getDocs, onSnapshot, query, setDoc as setDocBruto, updateDoc as updateDocBruto, where } from 'firebase/firestore';
+import { addDoc as addDocBruto, Bytes, collection, doc, getDoc, getDocs, onSnapshot, query, setDoc as setDocBruto, updateDoc as updateDocBruto, where } from 'firebase/firestore';
 import { bancoDoEntregas } from './entregas.firestore';
 import { guardar, guardarPedido } from '../../../comum/modoDesenvolvedor';
 
@@ -76,6 +76,25 @@ export function criarDriveFirestore(quem: () => e.Quem | null): e.RepoDriveDoEnt
         parar = onSnapshot(ref, s => aoMudar(e.andamentoDoDocumento(s.data())), err => aoMudar({ status: 'erro', erro: err.message }));
       }, (err: Error) => aoMudar({ status: 'erro', erro: err.message }));
       return () => { vivo = false; parar(); };
+    },
+    async lerArquivo(item) {
+      const q = quem();
+      if (!q) throw new Error('entre com a conta do Entregas');
+      // o modo 'ler' do robô: o conteúdo volta em partes/, pelo banco (o bucket só libera leitura por script para um site)
+      const ref = await addDoc(collection(db, 'aberturasDrive'), { status: 'pendente', fileId: item.i, nome: item.n, modo: 'ler', criadoEm: new Date().toISOString(), criadoPor: q.nome, criadoPorUid: q.uid });
+      const partes = await new Promise<number>((ok, falha) => {
+        const fim = setTimeout(() => { parar(); falha(new Error('o robô não respondeu a tempo. Confira se ele está online e tente de novo')); }, 120000);
+        const parar = onSnapshot(ref, s => {
+          const p = s.data() || {};
+          if (p.status === 'erro') { clearTimeout(fim); parar(); falha(new Error(String(p.erro || 'erro do robô'))); }
+          if (p.status === 'pronto') { clearTimeout(fim); parar(); if (p.partes) ok(Number(p.partes)); else falha(new Error('o robô não entregou o arquivo para leitura')); }
+        }, err => { clearTimeout(fim); falha(err); });
+      });
+      const ps = await Promise.all(Array.from({ length: partes }, (_, i) => getDoc(doc(ref, 'partes', String(i)))));
+      const bin = atob(ps.map(x => String((x.data() || {}).dados || '')).join(''));
+      const bytes = new Uint8Array(bin.length);
+      for (let k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
+      return bytes;
     },
     enviar(arquivo, destino, aoMudar) {
       const q = quem();

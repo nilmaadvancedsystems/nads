@@ -51,6 +51,8 @@ export function useExploradorDoDrive({ naEmpresa = false }: { naEmpresa?: boolea
   const [marcados, setMarcados] = useState<Set<string>>(new Set());
   const [ancora, setAncora] = useState<string | null>(null);
   const [pedidos, setPedidos] = useState<PedidoNaTela[]>([]);
+  // a planilha aberta no visualizador (só chega aqui depois de lida)
+  const [planilha, setPlanilha] = useState<{ id: string; nome: string; dados: e.PlanilhaNoNavegador } | null>(null);
   const [pref, setPref] = useState<Preferencias>(lerPreferencias);
   const [arvoreNaEmpresa, setArvoreNaEmpresa] = useState(false);
   const comArvore = naEmpresa ? arvoreNaEmpresa : pref.arvore;
@@ -279,6 +281,32 @@ export function useExploradorDoDrive({ naEmpresa = false }: { naEmpresa?: boolea
 
     // pedidos ao robô
     pedidos,
+    planilha,
+    fecharPlanilha: () => setPlanilha(null),
+    /** a planilha abre aqui, no visualizador (Vitor, 09/11/2026); maior que o robô entrega pelo banco, vai pelo link */
+    podeVerPlanilha(id: string): boolean {
+      const it = porId.get(id);
+      return !!it && e.ehPlanilha(it.n) && (it.s ?? 0) <= e.MAIOR_PLANILHA_BYTES;
+    },
+    async verPlanilha(id: string): Promise<void> {
+      const it = porId.get(id);
+      if (!it) return;
+      const pedido = Date.now() + Math.random();
+      setPedidos(l => [...l, { id: pedido, rotulo: '"' + it.n + '"', texto: 'Buscando "' + it.n + '"…' }]);
+      try {
+        const dados = await e.lerPlanilhaNoNavegador(it.n, await repo.lerArquivo(it));
+        if (!dados.abas.length) throw new Error('a planilha não tem nenhuma aba visível');
+        setPlanilha({ id: it.i, nome: it.n, dados });
+      } catch (err) {
+        toast('Não consegui abrir "' + it.n + '": ' + (err as Error).message + '.');
+      } finally { setPedidos(l => l.filter(x => x.id !== pedido)); }
+    },
+    /** o Baixar do visualizador */
+    baixarArquivo(id: string): Promise<string> {
+      const it = porId.get(id);
+      if (!it) return Promise.reject(new Error('arquivo não encontrado'));
+      return pedirLink({ modo: 'baixar', fileId: it.i, nome: it.n }, '"' + it.n + '"').catch(falhou('baixar "' + it.n + '"'));
+    },
     /** o link para abrir o arquivo no navegador */
     linkParaAbrir(id: string): Promise<string> {
       const it = porId.get(id);
