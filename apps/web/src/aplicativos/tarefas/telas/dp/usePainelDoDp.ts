@@ -11,6 +11,8 @@ import { competenciasDoDp, guardarCompetenciaDoDp } from '../../casca/navegacao'
 import { useOperador, type Operador } from '../../casca/operador';
 import { useAcesso, useCategoriasDp, useExecucoes, useRepo } from '../../dados/repo';
 import { useClientesDoDp } from './useClientesDoDp';
+import { useDocumentosDoDp } from './useDocumentosDoDp';
+import { documentoFormatado } from '../financeiro/formatosDaNota';
 
 /** Como cada obrigação está no mês: não tem, a fazer, feita, parada. */
 export type EstadoDaObrigacao = 'nao-tem' | 'a-fazer' | 'feita' | 'parada';
@@ -71,7 +73,7 @@ const contar = (xs: readonly string[]) => {
   return [...m.entries()].map(([rotulo, qtd]) => ({ rotulo, qtd })).sort((a, b) => b.qtd - a.qtd || a.rotulo.localeCompare(b.rotulo, 'pt-BR'));
 };
 // o nome da planilha (em maiúsculas) como se escreve: FABIANA → Fabiana; GUSTAVO.P → Gustavo.P
-const nomeDe = (r: string) => (r ? r.split('.').map(p => p.charAt(0) + p.slice(1).toLowerCase()).join('.') : SEM_RESPONSAVEL);
+const nomeDe = t.nomeDoResponsavelDoDp;
 
 export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
   const repo = useRepo();
@@ -83,6 +85,8 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
   const { execucoes, carregada } = useExecucoes(competencia, 'dp');
   const porNome = new Map(execucoes.map(e => [e.empresa, e]));
   const doDp = useClientesDoDp(competencia);
+  // o CNPJ/CPF de cada cliente, como nas Configurações (10/11/2026: "quero que aqui tenha a informação do cnpj e o movimento")
+  const documentos = useDocumentosDoDp(doDp.clientes).porCodigo;
   // as categorias novas: colunas na parte delas e a etapa dp-<id> da rotina do mês
   const categorias = useCategoriasDp().lista().lista;
   const partes = partesCom(categorias);
@@ -144,6 +148,8 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
     const situacao: t.SituacaoGeral = concluida ? 'concluida' : parada ? 'parada' : feitas > 0 ? 'em-andamento' : 'nao-iniciada';
     return {
       ...c, chave: String(c.codigo), responsavelNome: nomeDe(c.responsavel), ex,
+      /** o CNPJ/CPF só com os dígitos (o que se copia) e com a máscara (o que aparece) */
+      documento: documentos.get(c.codigo) || '', documentoNaTela: documentoFormatado(documentos.get(c.codigo) || ''),
       obrigacoes, concluida, temAlguma,
       situacao: !temAlguma ? 'Nada no mês' : t.ROTULO_SITUACAO_GERAL[situacao], parada, andamento: situacao === 'em-andamento',
       /** a situação para o filtro Status (Nada no mês = sem obrigação no mês) */
@@ -151,7 +157,12 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
     };
   });
 
-  const achadas = busca.trim() ? new Set(empresas.buscarEmpresas(todas.map(c => ({ codigo: c.codigo, nome: c.nomeNaTela, regime: c.enquadramento })), busca).map(e => e.codigo)) : null;
+  // a busca pelo nome, pelo código e, como nas Configurações, pelo CNPJ/CPF (com ou sem pontos)
+  const buscaDigitos = busca.replace(/\D/g, '');
+  const achadas = busca.trim() ? new Set([
+    ...empresas.buscarEmpresas(todas.map(c => ({ codigo: c.codigo, nome: c.nomeNaTela, regime: c.enquadramento })), busca).map(e => e.codigo),
+    ...(buscaDigitos.length >= 5 ? todas.filter(c => c.documento.includes(buscaDigitos)).map(c => c.codigo) : []),
+  ]) : null;
   // o filtro Pendente em (Vitor, 07/10/2026): só quem ainda tem o que fazer naquela parte
   const pendentesEm = partes.filter(p => pendenteEm.includes(p.id));
   const filtradas = todas.filter(c => (!pendentesEm.length || pendentesEm.some(pendente => c.obrigacoes.some(o => pendente.obrigacoes.includes(o.id) && o.estado !== 'nao-tem' && o.estado !== 'feita')))
@@ -337,10 +348,10 @@ export function usePainelDoDp(aba: AbaDoPainel = 'resumo') {
       const linhas = (agrupar === 'nenhum' ? [{ nome: '', linhas: linhasDaParte }] : [...new Set(linhasDaParte.map(chaveDoGrupo))]
         .sort((a, b) => a.localeCompare(b, 'pt-BR')).map(nome => ({ nome, linhas: linhasDaParte.filter(c => chaveDoGrupo(c) === nome) })))
         .flatMap(g => g.linhas.map(c => [
-          ...(agrupado ? [g.nome] : []), c.codigo, c.nomeNaTela, c.responsavelNome, c.ex?.valores?.folha ?? null,
+          ...(agrupado ? [g.nome] : []), c.codigo, c.nomeNaTela, c.documentoNaTela, c.movimento, c.responsavelNome, c.ex?.valores?.folha ?? null,
           ...cols.map(col => ROTULO[c.obrigacoes.find(o => o.id === col.id)?.estado || 'nao-tem']), c.entrega, c.situacao,
         ]));
-      const cabecalho = [...(agrupado ? [agrupar === 'responsavel' ? 'Responsável (grupo)' : 'Agrupamento'] : []), 'Cód.', 'Cliente', 'Responsável', 'Folha do mês',
+      const cabecalho = [...(agrupado ? [agrupar === 'responsavel' ? 'Responsável (grupo)' : 'Agrupamento'] : []), 'Cód.', 'Cliente', 'CNPJ/CPF', 'Movimento', 'Responsável', 'Folha do mês',
         ...cols.map(col => col.nome), 'Onde', 'Situação'];
       return { bytes: t.planilhaXlsx('Obrigações ' + competencia.slice(5, 7) + '-' + competencia.slice(0, 4), cabecalho, linhas), nome: 'DP obrigações ' + competencia + '.xlsx' };
     },

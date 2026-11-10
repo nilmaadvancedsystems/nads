@@ -6,7 +6,7 @@
 // O razão de todas as contas pelo robô do Alterdata (Vitor, 06/11/2026: "não vai ter mais a função de diário, apenas razões
 // do lançamento"; antes era o PDF do Diário): fica no mesmo lugar do guardado (o campo diario, no formato do Diário); o razão
 // de uma conta sai dele (razaoDoDiario). Mais recente vence: o que se importa ou se preenche pelo robô troca o razão de antes.
-import { clientes as cl, conferencia as c, tarefas as t } from '@nads/core';
+import { clientes as cl, conferencia as c, releitura, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useMemo } from 'react';
 import { guardadosQueCasam, useGuardado } from './guardado';
@@ -82,7 +82,7 @@ export function useContabilDaEmpresa(nome: string, codigo: number | null = null)
     razoes, tipos,
     /** o balancete dinâmico (XLS do Alterdata) */
     async importarDinamico(f: File) {
-      const d = cl.lerBalanceteDinamico(c.lerPlanilha(await f.arrayBuffer()));
+      const d = releitura.lerDinamico(c.lerPlanilha(await f.arrayBuffer()));
       setG(x => ({ ...x, dinamico: { nome: f.name, d } }));
       return d;
     },
@@ -96,7 +96,7 @@ export function useContabilDaEmpresa(nome: string, codigo: number | null = null)
       const erros: string[] = [];
       for (const f of fs) {
         try {
-          const r = t.lerRazaoDoArquivo(await f.arrayBuffer(), f.name);
+          const r = releitura.lerRazao(await f.arrayBuffer(), f.name);
           if (r.conta) lidos[r.conta] = { arquivo: f.name, razao: r };
           else semConta.push(f.name);
         } catch (e) { erros.push(f.name + ': ' + (e instanceof Error ? e.message : String(e))); }

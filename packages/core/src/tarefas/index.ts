@@ -34,6 +34,7 @@ export * from './regras/prazosDoDp';
 export * from './regras/despesasDoBalancete';
 export * from './regras/inicio';
 export * from './regras/enviosDoDp';
+export * from './regras/configuracoesDoDp';
 export { idDaExecucao, type RepoTarefas } from './repo';
 export { criarRepoTarefasMemoria, execucoesDeExemplo, execucoesVariadas, type GuardaTarefas } from './repo.memoria';
 export * from './reinf/reinf';

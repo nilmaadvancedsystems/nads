@@ -4,8 +4,9 @@
 // movimento e as obrigações do mês; a REINF é do Fiscal) e Entrega (como recebe e o agrupamento). Grava ao mudar; o que foi mudado
 // ganha o selo "mudado" e o "Voltar à planilha".
 import { MenuDeAgrupamento } from './MenuDeAgrupamento';
-import { BotaoIcone, Esqueleto, Icone, useCarregando, useEntradaAnimada, useRetorno, MenuSuspenso } from '@nads/ui';
+import { baixarBytes, BotaoIcone, Esqueleto, Icone, LogoExcel, useCarregando, useEntradaAnimada, useRetorno, MenuSuspenso } from '@nads/ui';
 import { Cartao, JanelaLateral, Linha, type TopicoDaJanela } from '../janela/JanelaLateral';
+import { copiarTexto } from './copiarTexto';
 import { MenuDeFiltro } from './MenuDeFiltro';
 import { useConfiguracoesDoDp, type TopicoDoClienteDp } from './useConfiguracoesDoDp';
 
@@ -22,19 +23,7 @@ export function ConfiguracoesDoDp() {
   // o DP animado (14/10/2026): a lista entra em cascata ao abrir e ao filtrar
   const tabela = useEntradaAnimada<HTMLDivElement>('tbody > tr', [vm.carregando, vm.busca, vm.movimento, vm.soMudados, vm.competencia], 'lista');
   /** copia o CNPJ/CPF só com os dígitos (para colar nos sites do governo) */
-  const copiar = (doc: string) => {
-    // o jeito antigo quando o navegador recusa a área de transferência (um campo escondido e o "copiar" do navegador)
-    const antigo = () => {
-      const campo = Object.assign(document.createElement('textarea'), { value: doc });
-      campo.style.position = 'fixed'; campo.style.opacity = '0';
-      document.body.appendChild(campo); campo.select();
-      const ok = document.execCommand('copy');
-      campo.remove();
-      toast(ok ? 'Copiado: ' + doc : 'Não consegui copiar.');
-    };
-    if (navigator.clipboard?.writeText) void navigator.clipboard.writeText(doc).then(() => toast('Copiado: ' + doc), antigo);
-    else antigo();
-  };
+  const copiar = (doc: string) => void copiarTexto(doc).then(ok => toast(ok ? 'Copiado: ' + doc : 'Não consegui copiar.'));
   const c = vm.cliente;
   return (
     <section className="dp-painel">
@@ -60,6 +49,12 @@ export function ConfiguracoesDoDp() {
           <div className="dp-lista-topo">
             <h3 className="dp-titulo">Clientes do DP</h3>
             <span className="badge badge-neutral">{vm.linhas.length}</span>
+            <span className="tarefas-barra-espaco" />
+            {/* a lista em Excel (10/11/2026: "exportar tudo para excel"), como no Início do DP */}
+            <button type="button" className="icon-btn" title="Exportar a lista para o Excel (todos os parâmetros)" aria-label="Exportar a lista para o Excel"
+              onClick={() => { const x = vm.exportar(); baixarBytes(x.bytes, x.nome, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); }}>
+              <LogoExcel />
+            </button>
           </div>
           <div className="table-wrap" ref={tabela}>
             <table className="dp-tabela dp-config-lista">
