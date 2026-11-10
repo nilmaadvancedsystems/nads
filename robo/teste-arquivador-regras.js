@@ -2213,6 +2213,21 @@ igual('a agência e a conta no nome do arquivo ("Entradas_Saidas_ag3155cc990348_
       [null, null, null, { mes: 10, ano: 2026 }]);
   }
 
+  // (10/11/2026) a taxa do SIARE (a CND do IEF da 414, texto real): o "Mês Ano de Referência" é a validade ("30 a 30/12/2026"); vale o "Emitido em"
+  {
+    const j14 = CAD19.juntar({ entregas: [
+      { codigoOrigem: '414', nome: 'BRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA', documento: '33.117.361/0002-52', enquadramento: 'Lucro Real' },
+    ] });
+    const c14 = R.montarCadastro(j14.linhas, ['414 - BRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA']);
+    c14.mapaMigracao = MIG.carregar({});
+    const T14 = em => 'MOD.06.01.88\nTipo de identificação\nBRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA\nPONTO DOS VOLANTES MG Linha Digitável: 85680000000 7 40530213261 9 23012110138 3 07828940970 4\nSECRETARIA DE ESTADO DE FAZENDA DE MINAS GERAIS\nCNPJ\nNome: BRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA\n1101380782894\nHistórico:Órgão:\nINSTITUTO ESTADUAL DE FLORESTAS - IEF Serviço:\nEMISSAO CERTIDAO DEBITOS FLORESTAIS Receita\nValor 1074-4\nTAXA DE EXPEDIENTE - IEF 40,53 0,00 0,00 TOTAL 40,53\nEMISSÃO DA CND EM NOME DA BRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA, INSCRITA NO CNPJ Nº 33.117.361/0002-52, COM ENDEREÇO NA FAZENDA BOA VISTA II.\n'
+      + (em ? 'Emitido em: ' + em + ' 10:25:19\n' : '') + 'DOCUMENTO DE ARRECADAÇÃO ESTADUAL - DAE\nValidade 30/12/2026Validade 30/12/2026 85680000000 7 40530213261 9 23012110138 3 07828940970 4\nPague com PIX\nNº Documento 1101380782894\nMês Ano de Referência\n30 a 30/12/2026\nR$ TOTAL\n40,53 Mês Ano de Referência 30 a 30/12/2026\nTOTAL R$ 40,53';
+    const d14 = em => (x => [x.acao, x.destinoRelativo, x.nomeFinal])(R.decidir({ nome: 'DAE TAXA CND IEF FILIAL 02 BFRF R$40,53.pdf', rel: 'Claudio Secretario\\DAE TAXA CND IEF FILIAL 02 BFRF R$40,53.pdf', texto: [T14(em)] }, { cadastro: c14, hoje: new Date(2026, 9, 26) }));
+    const DAE14 = '414 - BRAZILIAN FORESTRY EMPREENDIMENTOS FLORESTAIS LTDA\\FISCAL\\LUCRO REAL\\05. DAE';
+    igual('10/11: a DAE da taxa da CND do IEF emitida em 25/06/2026 (validade 30/12/2026): 06-2026, não 12-2026', d14('25/06/2026'), ['ARQUIVAR', DAE14, '06-2026 - DAE TAXA - VALOR R$40,53 - VENCIMENTO 30-12-2026.pdf']);
+    igual('10/11: ... sem o "Emitido em" lido, continua como antes (o mês da referência)', d14(null)[2], '12-2026 - DAE TAXA - VALOR R$40,53 - VENCIMENTO 30-12-2026.pdf');
+  }
+
   console.log((falhas ? falhas + ' FALHA(S) em ' : 'ok: ') + total + ' testes');
   process.exit(falhas ? 1 : 0);
 })().catch(e => { console.log('FALHOU com erro:', e.stack); process.exit(1); });

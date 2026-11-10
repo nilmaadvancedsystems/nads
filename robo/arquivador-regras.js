@@ -1065,6 +1065,9 @@ const REGRAS_PDF = [
           || /(?<![\d/])\d{2} A \d{2}\/\d{2}\/20\d{2}\s+(?:(?!\d{2}\/\d{2}\/20\d{2})\S+\s+)?\d{2}\/\d{2}\/20\d{2}\s+\d+\.\d{2}\s+\d+\.\d{2}\s+\d+\.\d{2}\s+(\d+)\.(\d{2})(?![\d.])/.exec(u);
         if (m) c.valor = 'R$' + m[1] + ',' + m[2];
       }
+      // (10/11/2026) a taxa do SIARE (a taxa de expediente e a da CND do IEF): o "Mês Ano de Referência" é a validade da guia ("30 a 30/12/2026"),
+      // não o mês dela; 9 guias emitidas em 06/2026 e ao longo de 2025 foram para 12-2026 e 12-2025. Vale o mês do "Emitido em".
+      if (trib === 'TAXA') { const em = /EMITIDO EM:?\s*\d{2}\/(0[1-9]|1[0-2])\/(20\d{2})/.exec(u); if (em) c.competencia = { mes: +em[1], ano: +em[2] }; }
       if (!c.competencia && trib === 'TFAMG') { const m = /TRIMESTRE\s+(20\d{2})/.exec(u); if (m) c.ano = +m[1]; }
       // (Vitor, 30/10/2026, 5ª rodada, decisão 1) a guia da parcela da multa ambiental (SEMAD/FEAM/IEF: "Auto de Infração Nº 297718", "Receita: MULTAS ADMINISTRATIVAS POR DANOS
       // AMBIENTAIS", "DAE : 10/60"), que não escreve "PARCELAMENTO": é parcelamento, como a D3 (a da 413 já ia para PARCELAMENTOS; a da Kopek, 412, ia para 06. DAE)
