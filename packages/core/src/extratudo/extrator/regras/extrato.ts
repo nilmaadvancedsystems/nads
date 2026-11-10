@@ -26,10 +26,11 @@ function diaDoOcr(s: string): string {
   const m = s.match(/^([\dOoIl]{1,2})(?=[/.\s-]?(?:jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez))/i);
   return m && /\d/.test(m[1]) ? m[1].replace(/[Oo]/g, '0').replace(/[Il]/g, '1') + s.slice(m[1].length) : s;
 }
-const RE_VALOR = /^\(?[-+]?(?:R\$)?-?\d{1,3}(?:\.\d{3})*,\d{2}\)?-?[CD]?$/i;
+// (o valor de mil para cima sem o ponto, "2500,00", também é valor: sem isso a linha sumia ou a coluna Saldo virava o valor)
+const RE_VALOR = /^\(?[-+]?(?:R\$)?-?(?:\d{1,3}(?:\.\d{3})*|\d{4,}),\d{2}\)?-?[CD]?$/i;
 const RE_SINAL = /^(?:[CD]|\(\+\)|\(-\)|[+-]|\*)$/i;
 /** o valor do depósito bloqueado, com o * colado ("2.300,00*"): ainda não é saldo */
-const RE_BLOQUEADO = /^\(?-?(?:R\$)?\d{1,3}(?:\.\d{3})*,\d{2}\*$/;
+const RE_BLOQUEADO = /^\(?-?(?:R\$)?(?:\d{1,3}(?:\.\d{3})*|\d{4,}),\d{2}\*$/;
 /**
  * Linha de saldo, total ou resumo: não é lançamento. A palavra tem de abrir a linha ("SALDO ANTERIOR", "Total de
  * créditos", "Limite disponível"…), ou ser um saldo explícito no meio dela ("… SALDO DO DIA"). Solta no histórico, não
@@ -37,6 +38,11 @@ const RE_BLOQUEADO = /^\(?-?(?:R\$)?\d{1,3}(?:\.\d{3})*,\d{2}\*$/;
  * "S A L D O" espaçado vale também no meio (o "0000 00000 999 S A L D O" do fim do extrato do BB "Consultas").
  */
 const RE_SALDO = /^[\s(+\-*]*(?:s\s?a\s?l\s?d\s?o|sdo\b|total|resumo|limite|bloquead|dispon[ií]vel|a transportar|transporte\b)|\bsaldo (?:anterior|inicial|final|atual|do dia|em\b|disponivel|disponível|bloqueado)|\bs a l d o\b/i;
+/**
+ * O histórico que é o nome de alguém e só abre com uma das palavras do resumo ("TOTAL ATACADO LTDA", "LIMITE ENGENHARIA SA",
+ * "TRANSPORTE RODOVIARIO SILVA"): na linha com data, é lançamento. "Total de créditos", "Limite disponível" e afins seguem de fora.
+ */
+const RE_NOME_QUE_ABRE_COMO_RESUMO = /^(?:total|limite|resumo|transporte)\s+(?!de\b|do\b|da\b|dos\b|das\b|geral\b|em\b|no\b|na\b|a\b|dispon|contratad|utilizad|cheque|cr[eé]dito|d[eé]bito|entrada|sa[ií]da|lan[cç]amento|per[ií]odo|aplica|tarifa|juros|encargo)\S/i;
 const RE_SAIDA = /\b(pagto|pagamento|pag\b|tarifa|tar\b|saque|debito|deb\b|compra|enviad|envio|iof|juros|encargo|tributo|darf|gps|das\b|pago|aplicacao|cesta|mensalidade|cheque compensado|chq)/;
 const RE_ENTRADA = /\b(recebid|receb\b|credito|cred\b|deposito|dep\b|resgate|estorno|rendimento|liquidacao cobranca|cobranca)/;
 
@@ -99,7 +105,7 @@ export function montarLinhas(itens: ItemDeTexto[]): Linha[] {
 }
 
 /** os pedaços soltos de um lançamento: só o valor, ou só a letra C/D do sinal */
-const SO_VALOR = /^\(?-?\d{1,3}(?:\.\d{3})*,\d{2}\)?$/;
+const SO_VALOR = /^\(?-?(?:\d{1,3}(?:\.\d{3})*|\d{4,}),\d{2}\)?$/;
 const SO_SINAL = /^[CD]$/;
 /** até onde fica o pedaço solto da linha dele (o Sicoob do SISBR: o valor 5 pontos acima; a letra 5 abaixo, ou 11 quando o
  *  valor está na linha da data), e a letra logo à direita do valor */
@@ -234,6 +240,17 @@ export function periodoDoExtrato(texto: string): string | null {
 export function periodoEntreDatas(texto: string): { inicio: string; fim: string } | null {
   const m = texto.match(/\bentre\s+(\d{2})\/(\d{2})\/(\d{4})\s+e\s+(\d{2})\/(\d{2})\/(\d{4})\b/i);
   if (!m) return null;
+  const inicio = m[3] + '-' + m[2] + '-' + m[1], fim = m[6] + '-' + m[5] + '-' + m[4];
+  return inicio <= fim ? { inicio, fim } : null;
+}
+
+/**
+ * O período escrito no extrato quando ele vira o ano ("Período: 15/12/2025 a 15/01/2026"): as datas sem ano ("05/01") caem no
+ * ano certo por ele. Sem a frase, ou dentro de um ano só, null.
+ */
+export function periodoNaViradaDoAno(texto: string): { inicio: string; fim: string } | null {
+  const m = texto.match(/(\d{2})\/(\d{2})\/(\d{4})\s*(?:at[eé]|a)\s*(\d{2})\/(\d{2})\/(\d{4})/i);
+  if (!m || m[3] === m[6]) return null;
   const inicio = m[3] + '-' + m[2] + '-' + m[1], fim = m[6] + '-' + m[5] + '-' + m[4];
   return inicio <= fim ? { inicio, fim } : null;
 }
@@ -631,6 +648,7 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
   const naColunaDaData = (x: number) => !xDasDatas.length || xDasDatas.some(d => Math.abs(d - x) <= 20);
   const textoTodo = todas.map(p => p.map(l => l.texto).join('\n')).join('\n');
   const periodo = periodoDoExtrato(textoTodo);
+  const naVirada = entre ? null : periodoNaViradaDoAno(textoTodo);
   const pelaDtMovimento = ehConsultasDoBB(textoTodo);
   // o PagBank escreve o sinal das saídas ("-2,27", "-R$ 30.000,00"): o valor sem sinal é entrada, e o histórico não decide
   // (Vitor, 04/11/2026, na 10: "Vendas - Disponivel DEBITO VISA" e "Pagamento de PIX" recebidos viravam saída). Só nele:
@@ -676,6 +694,7 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
       }
       let data: string | null = null;
       let segunda: string | null = null;
+      const dataSemAno = !/\d{4}$/.test(t[0].s) && !RE_ANO.test(t[1]?.s || '') && !RE_ANO.test(t[2]?.s || '') && !RE_ANO.test(t[4]?.s || '');
       if (!naColunaDaData(t[0].x)) { /* texto no meio da linha: não abre dia */ }
       else if (RE_DATA.test(t[0].s)) { data = lerData(t[0].s, ano); if (data) t.shift(); }
       // "2 de Março de 2026" (o Inter) e "01 Mar, 2026" (o InfinitePay; Vitor, 10/11/2026: nenhum dos dois era lido)
@@ -691,6 +710,7 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
       else if (RE_DATA_MES.test(diaDoOcr(t[0].s))) { data = lerData(diaDoOcr(t[0].s), ano); if (data) t.shift(); }
       else if (entre) { data = dataEmbaralhada(t[0].s, entre); if (data) t.shift(); }
       if (data && entre) data = dataNoPeriodo(data, entre);
+      if (data && naVirada && dataSemAno) data = dataNoPeriodo(data, naVirada);
       if (data) { dataAtual = data; noResumo = false; }
       // (e o "Detalhamento do Saldo" do BNB: saldo disponível, limite, Investimentos "BNB AUTOMATICO FIF"; Vitor, 14/10/2026; e o
       // quadro do limite do BB depois do 999 S A L D O: Limite Ouro Empresarial, Custo Efetivo Total, Valor total devido,
@@ -735,7 +755,7 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
         }
         continue;
       }
-      if (RE_SALDO.test(hist) || (!hist && !solta && RE_SALDO.test(l.texto))) {
+      if ((RE_SALDO.test(hist) && !(data && RE_NOME_QUE_ABRE_COMO_RESUMO.test(hist))) || (!hist && !solta && RE_SALDO.test(l.texto))) {
         // a linha "SALDO DO DIA": o saldo que o banco imprime no fim do dia; o "999 S A L D O" do fim do BB: o do último dia
         const n = normalizarTexto(hist || l.texto);
         // (no Inter, o saldo do dia vem antes dos lançamentos dele: não é o saldo de antes do primeiro)

@@ -253,6 +253,7 @@ function atividade(tipo, texto, detalhe, opcoes) {
     const t = TIPOS.includes(tipo) ? tipo : 'robo';
     const linha = { em: isoAgora(), tipo: t, texto: cortar(texto, MAX_TEXTO), detalhe: cortar(detalhe || '', MAX_DETALHE), erro: !!(opcoes && opcoes.erro) };
     if (opcoes && opcoes.aviso) linha.aviso = true;   // aviso: algo que a pessoa corrige no cadastro, não é falha do robô
+    if (opcoes && opcoes.pedido) linha.pedido = String(opcoes.pedido).slice(0, 128);   // o pedido da fila deste erro (o "Refazer" da Central dos robôs)
     if (!linha.texto) return;
     lembrarUltimo(t, linha, opcoes);
     if (!freio.pode(t + '|' + linha.texto + '|' + linha.detalhe, Date.now())) return;
@@ -275,8 +276,8 @@ function lembrarUltimo(tipo, linha, opcoes) {
   } catch (e) { /* segue */ }
 }
 
-/** O mesmo que atividade, marcado como erro. */
-function erro(tipo, texto, detalhe) { atividade(tipo, texto, detalhe, { erro: true }); }
+/** O mesmo que atividade, marcado como erro. opcoes.pedido: o id do pedido da fila que deu este erro. */
+function erro(tipo, texto, detalhe, opcoes) { atividade(tipo, texto, detalhe, Object.assign({}, opcoes, { erro: true })); }
 
 // ---------- as filas ----------
 function ouvirFila(cfg) {
@@ -402,7 +403,7 @@ module.exports = SATELITE ? {
   },
   modulo: (id, nome, ligado, motivo) => aoPai('modulo', [id, nome, ligado, motivo]),
   atividade: (tipo, texto, detalhe, opcoes) => aoPai('atividade', [tipo, texto, detalhe, opcoes]),
-  erro: (tipo, texto, detalhe) => aoPai('atividade', [tipo, texto, detalhe, { erro: true }]),
+  erro: (tipo, texto, detalhe, opcoes) => aoPai('atividade', [tipo, texto, detalhe, Object.assign({}, opcoes, { erro: true })]),
   deSatelite, SATELITE,
   FILAS, TIPOS, COLECAO, DOCS,
   cortar, isoDe, contarFila, criarFreio, versaoDoCodigo, montarBatimento,
