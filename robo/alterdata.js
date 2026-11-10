@@ -17,6 +17,7 @@ const crypto = require('crypto');
 const { spawn, execFile } = require('child_process');
 const { ouvir } = require('./ouvinte');
 const painel = require('./painel');
+const pausaLocal = require('./pausa-local');
 const { criarFilaAlterdata, periodo } = require('./alterdata-fila');
 const numeros = require('./alterdata-numeros');
 const { garantirTelaAtiva } = require('./sessao-no-console');
@@ -348,7 +349,8 @@ function iniciarAlterdata(db, log) {
     },
   };
 
-  const fila = criarFilaAlterdata({ banco, rodar: rodarRoteiro, pastaDoPedido: id => path.join(PASTA_PEDIDOS, id), log, painel, limiteMs: LIMITE_MS, reabrirContabil });
+  const fila = criarFilaAlterdata({ banco, rodar: rodarRoteiro, pastaDoPedido: id => path.join(PASTA_PEDIDOS, id), log, painel, limiteMs: LIMITE_MS, reabrirContabil, pausado: () => pausaLocal.estaPausado('alterdata') });
+  pausaLocal.quandoRetomar('alterdata', () => fila.retomar());
 
   // o que ficou no meio, nesta máquina, quando o robô reiniciou volta para a fila uma vez
   pedidos.where('status', '==', 'trabalhando').get().then(s => Promise.all(s.docs.filter(d => (d.data().onde || 'pc') === ONDE).map(d => {
@@ -362,7 +364,11 @@ function iniciarAlterdata(db, log) {
   const pendentes = new Set();
   ouvir('pedidos do Alterdata', () => pedidos.where('status', '==', 'pendente'), snap => {
     for (const ch of snap.docChanges()) {
-      if (ch.type === 'removed') { pendentes.delete(ch.doc.id); fila.saiu(ch.doc.id); } else { pendentes.add(ch.doc.id); fila.chegou(ch.doc.id); }
+      if (ch.type === 'removed') { pendentes.delete(ch.doc.id); fila.saiu(ch.doc.id); } else {
+        pendentes.add(ch.doc.id); fila.chegou(ch.doc.id);
+        // o "passar na frente" da Central dos robôs (depois de reiniciar, vale de novo: naFrenteEm fica no pedido)
+        if (ch.doc.data().naFrenteEm) fila.naFrente(ch.doc.id);
+      }
     }
   }, log);
   void verificar();

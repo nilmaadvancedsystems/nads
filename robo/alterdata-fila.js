@@ -84,7 +84,7 @@ function mensagemClara(classe, erros, extra) {
 }
 
 function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, painel = null, limiteMs = 9 * 60 * 1000, apagarPasta = true,
-  reabrirContabil = null, pausaMs = 30 * 60 * 1000, pausaSemTelaMs = 5 * 60 * 1000 }) {
+  reabrirContabil = null, pausaMs = 30 * 60 * 1000, pausaSemTelaMs = 5 * 60 * 1000, pausado = () => false }) {
   const fila = [];
   let ocupado = false;
   let atual = null;
@@ -160,10 +160,17 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
     const i = fila.indexOf(id);
     if (i >= 0) fila.splice(i, 1);
   }
+  /** "Passar na frente" (a Central dos robôs): o pedido que ainda espera vira o próximo; o que já está rodando não muda. */
+  function naFrente(id) {
+    const i = fila.indexOf(id);
+    if (i > 0) { fila.splice(i, 1); fila.unshift(id); }
+  }
 
   async function proximo() {
     if (ocupado) return;
     if (!fila.length) { while (esperando.length) esperando.shift()(); return; }
+    // pausado pela Central dos robôs: ninguém novo começa; retomar() põe a fila para andar de novo
+    if (pausado()) { while (esperando.length) esperando.shift()(); return; }
     if (emPausa()) {
       // pausada: ninguém roda; os pedidos que esperam ficam marcados (uma vez) como "esperando o Contábil"
       ocupado = true;
@@ -323,7 +330,8 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
     if (tipo === 'mensal' && !emPausa()) await repassar(id, p, final);
     if (painel) {
       if (prontos.length) painel.atividade('alterdata', 'Gerou ' + prontos.map(r => (r === 'razao' ? 'o razão' : 'o balancete')).join(' e ') + ' ' + codigo + ' ' + comp + ' no Alterdata', p.criadoPor ? 'pedido de ' + p.criadoPor : '');
-      if (erros.length) painel.erro('alterdata', 'Alterdata ' + codigo + ' ' + comp, erros.join(' · '));
+      // o "Refazer" da Central só onde nada saiu: com o balancete pronto e o razão com erro, o pedido fica 'pronto'
+      if (erros.length) painel.erro('alterdata', 'Alterdata ' + codigo + ' ' + comp, erros.join(' · '), prontos.length ? {} : { pedido: id });
     }
     log('Alterdata: fim', id, codigo, p.competencia, prontos.join('+') || 'nada', erros.length ? '(' + erros.join(' · ') + ')' : '');
   }
@@ -399,6 +407,9 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
   return {
     chegou,
     saiu,
+    naFrente,
+    /** depois da pausa da Central dos robôs: a fila volta a andar */
+    retomar: () => { setImmediate(proximo); },
     /** quantos esperam (sem o que está com o robô) */
     tamanho: () => fila.length,
     pausada: () => emPausa(),

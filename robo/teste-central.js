@@ -44,6 +44,54 @@ igual('conferir: reiniciar é da máquina (sem robô)', central.conferirComando(
 verdade('conferir: limpar a fila da NFS-e não (emissão fiscal)', /não se limpa/.test(central.conferirComando('c4', cmd({ maquina: 'nuvem', robo: 'nfse', acao: 'limpar-fila' }), ctx({ maquina: 'nuvem' })).motivo));
 igual('conferir: rodar agora o Ler o Gmail na nuvem', central.conferirComando('c5', cmd({ maquina: 'nuvem', robo: 'vigia', acao: 'rodar-agora', tarefa: 'ler-gmail' }), ctx({ maquina: 'nuvem' })), { fazer: true });
 
+// ---------- os controles: formato do que vem junto ----------
+{
+  const srv = (extra = {}) => ctx(Object.assign({ maquina: 'servidor', pausaveis: new Set(['fgts', 'sieg', 'alterdata']) }, extra));
+  const no = (extra = {}) => cmd(Object.assign({ maquina: 'servidor', robo: 'fgts', acao: 'refazer', item: 'abcDEF123_-' }, extra));
+  igual('item: id do Firestore passa', central.conferirComando('i1', no(), srv()), { fazer: true });
+  for (const ruim of ['', '../robosComandos/x', 'a b', 'a;del', 'a/b', '$(calc)', 'x'.repeat(129)]) {
+    verdade('item: recusa "' + ruim.slice(0, 20) + '"', /formato/.test(central.conferirComando('i2', no({ item: ruim }), srv()).motivo));
+  }
+  verdade('item: fila só de ver não cancela', /não deixa/.test(central.conferirComando('i3', no({ robo: 'arquivador', acao: 'cancelar-item' }), srv()).motivo));
+  verdade('item: robô sem fila de itens', /não deixa/.test(central.conferirComando('i4', cmd({ maquina: 'nuvem', robo: 'nfse', acao: 'na-frente', item: 'abc' }), ctx({ maquina: 'nuvem' })).motivo));
+  verdade('item: robô de outra máquina', /desconhecido/.test(central.conferirComando('i5', no({ robo: 'ia' }), srv()).motivo));
+  const pede = (extra = {}) => no(Object.assign({ robo: 'sieg', acao: 'pedir-cliente', tarefa: 'xmls', cliente: '292', competencia: '2026-10', item: undefined }, extra));
+  igual('cliente: pedido válido', central.conferirComando('p1', pede(), srv()), { fazer: true });
+  verdade('cliente: pedido fora da lista', /desconhecido/.test(central.conferirComando('p2', pede({ tarefa: 'cmd /c del *' }), srv()).motivo));
+  verdade('cliente: pedido do outro robô', /desconhecido/.test(central.conferirComando('p3', pede({ tarefa: 'guia' }), srv()).motivo));
+  for (const ruim of ['', '1;del', '1 2', 'abc', '1234567890']) verdade('cliente: recusa "' + ruim + '"', /código do cliente/.test(central.conferirComando('p4', pede({ cliente: ruim }), srv()).motivo));
+  for (const ruim of ['', '10/2026', '2026-13', '2026-00', '1999-10', '2026-1']) verdade('competência: recusa "' + ruim + '"', /competência/i.test(central.conferirComando('p5', pede({ competencia: ruim }), srv()).motivo));
+  verdade('competência: mês que não começou', /não começou/.test(central.conferirComando('p6', pede({ competencia: '2026-12' }), srv()).motivo));
+  igual('competência: o mês corrente vale', central.conferirComando('p7', pede({ competencia: '2026-11' }), srv()), { fazer: true });
+  const para = (extra = {}) => no(Object.assign({ robo: '', acao: 'parar-tudo', item: undefined }, extra));
+  igual('parar tudo: sem hora', central.conferirComando('t1', para(), srv()), { fazer: true });
+  igual('parar tudo: com hora', central.conferirComando('t2', para({ ate: new Date(AGORA + 36e5).toISOString() }), srv()), { fazer: true });
+  verdade('parar tudo: hora que já passou', /já passou/.test(central.conferirComando('t3', para({ ate: new Date(AGORA - 1000).toISOString() }), srv()).motivo));
+  verdade('parar tudo: mais de 7 dias', /7 dias/.test(central.conferirComando('t4', para({ ate: new Date(AGORA + 8 * 864e5).toISOString() }), srv()).motivo));
+  verdade('parar tudo: hora que não é data', /data válida/.test(central.conferirComando('t5', para({ ate: 'amanhã; shutdown' }), srv()).motivo));
+  verdade('parar tudo: máquina sem pausável', /sabe pausar/.test(central.conferirComando('t6', para({ maquina: 'nuvem' }), ctx({ maquina: 'nuvem' })).motivo));
+  verdade('pausar: hora que já passou', /já passou/.test(central.conferirComando('t7', cmd({ ate: new Date(AGORA - 1).toISOString() }), ctx()).motivo));
+  // o repetido olha o item: dois pedidos diferentes da fila não se atrapalham
+  const chave = central.chaveDoComando(no({ item: 'um' }));
+  verdade('repetido: o mesmo item', /Repetido/.test(central.conferirComando('r1', no({ item: 'um' }), srv({ recentes: new Map([[chave, AGORA - 1000]]) })).motivo));
+  igual('repetido: outro item passa', central.conferirComando('r2', no({ item: 'dois' }), srv({ recentes: new Map([[chave, AGORA - 1000]]) })), { fazer: true });
+  igual('repetido: a chave antiga não mudou', central.chaveDoComando(cmd()), 'pausar|ia|');
+  igual('pausas vencidas', central.pausasVencidas({ a: { ate: new Date(AGORA - 1).toISOString() }, b: { ate: new Date(AGORA + 1000).toISOString() }, c: { por: 'x' } }, AGORA), ['a']);
+  for (const r of catalogo.robos.filter(x => x.itens)) {
+    igual('catálogo: pedidos de ' + r.id + ' são os do robô', (r.pedidos || []).map(p => r.id + ':' + p.id).sort(), Object.keys(central.PEDIDOS_POR_CLIENTE).filter(k => k.startsWith(r.id + ':')).sort());
+  }
+  const { FILAS } = require('./painel');
+  for (const r of catalogo.robos.filter(x => x.itens)) {
+    const f = [...FILAS.pc, ...FILAS.vm].find(x => x.colecao === r.itens.colecao) || {};
+    igual('catálogo: os status da fila de ' + r.id + ' são os do painel', [r.itens.esperando, r.itens.andamento], [f.esperando, f.andamento]);
+  }
+  const { ordenarNaFrente } = require('./fgts-claude');
+  const d = (id, naFrenteEm) => ({ id, data: () => (naFrenteEm ? { naFrenteEm } : {}) });
+  const f = [d('a'), d('b', '2026-11-10T10:00:00Z'), d('c'), d('e', '2026-11-10T11:00:00Z')];
+  ordenarNaFrente(f);
+  igual('fgts: na frente, o mais recente primeiro, os outros na mesma ordem', f.map(x => x.id), ['e', 'b', 'a', 'c']);
+}
+
 // ---------- segredos e linhas ----------
 igual('segredo: token=', central.limparSegredos('pedido ok token=abc123def456 fim'), 'pedido ok token=*** fim');
 igual('segredo: senha:', central.limparSegredos('login {"senha": "minha-senha"}'), 'login {"senha": "***"}');
@@ -98,6 +146,9 @@ igual('dono da linha: sem marca no servidor (sem robô da casa)', central.roboDa
 }
 
 // ---------- o caminho inteiro num banco de mentira ----------
+// como o Firestore: {merge:true} funde os mapas campo a campo (quem sumiu do mapa FICA no banco); mergeFields troca o campo inteiro
+const eMapa = v => v && typeof v === 'object' && !Array.isArray(v);
+const fundir = (a, b) => { const r = Object.assign({}, a); for (const [k, v] of Object.entries(b)) r[k] = eMapa(v) && eMapa(r[k]) ? fundir(r[k], v) : v; return r; };
 function bancoDeMentira({ negar = false } = {}) {
   const colecoes = new Map();   // nome -> Map(id -> dados)
   const ouvintes = [];
@@ -109,7 +160,7 @@ function bancoDeMentira({ negar = false } = {}) {
     return {
       id,
       get: () => Promise.resolve(snapDoc(nome, id)),
-      set: (d, o) => { if (negar) return negado(); const atual = col(nome).get(id) || {}; col(nome).set(id, o && o.merge ? Object.assign({}, atual, d) : Object.assign({}, d)); avisar(); return Promise.resolve(); },
+      set: (d, o) => { if (negar) return negado(); const atual = col(nome).get(id) || {}; col(nome).set(id, o && o.merge ? fundir(atual, d) : o && o.mergeFields ? Object.assign({}, atual, d) : Object.assign({}, d)); avisar(); return Promise.resolve(); },
       update: d => { if (negar) return negado(); col(nome).set(id, Object.assign({}, col(nome).get(id), d)); avisar(); return Promise.resolve(); },
       delete: () => { col(nome).delete(id); avisar(); return Promise.resolve(); },
     };
@@ -117,7 +168,7 @@ function bancoDeMentira({ negar = false } = {}) {
   function snapDoc(nome, id) { const d = col(nome).get(id); return { id, exists: !!d, data: () => (d ? Object.assign({}, d) : undefined), ref: ref(nome, id) }; }
   function consulta(nome, filtros, lim) {
     const casa = d => filtros.every(([c, op, v]) => (op === '==' ? d[c] === v : op === 'in' ? v.includes(d[c]) : op === '<' ? d[c] < v : true));
-    const rodar = () => { const docs = Array.from(col(nome).entries()).filter(([, d]) => casa(d)).slice(0, lim || 1e9).map(([id]) => snapDoc(nome, id)); return { docs, empty: !docs.length, size: docs.length }; };
+    const rodar = () => { const docs = Array.from(col(nome).entries()).filter(([, d]) => casa(d)).slice(0, lim || 1e9).map(([id]) => snapDoc(nome, id)); return { docs, empty: !docs.length, size: docs.length, forEach: fn => docs.forEach(fn) }; };
     return {
       where: (c, op, v) => consulta(nome, [...filtros, [c, op, v]], lim),
       limit: n => consulta(nome, filtros, n),
@@ -207,6 +258,115 @@ const msgDe = (db, id) => (db.dados('robosComandos').get(id) || {}).mensagem || 
     igual('servidor: rodar agora → feito', statusDe(db, 'q1'), 'feito');
     const pedido = Array.from(db.dados('solicitacoesArquivo').values())[0] || {};
     igual('servidor: o pedido foi para a fila do arquivamento', [pedido.status, pedido.modo, pedido.criadoPorUid], ['pendente', 'PRODUCAO', 'uid-1']);
+    await central.desligarCentral();
+  }
+
+  // --- os controles, no servidor: a fila item a item, o pedido por cliente, parar tudo, e a pausa que sobrevive ao reinício ---
+  {
+    const db = bancoDeMentira();
+    const chamadas = [];
+    for (const robo of ['fgts', 'sieg', 'alterdata']) central.registrarPausa(robo, { pausar: async () => chamadas.push('pausar ' + robo), retomar: async () => chamadas.push('retomar ' + robo) });
+    const FUTURO = new Date(Date.now() + 36e5).toISOString();
+    const VENCIDA = new Date(Date.now() - 60000).toISOString();
+    // o que a máquina tinha gravado antes de reiniciar
+    db.dados('robosMaquinas').set('servidor', { pausados: { fgts: { por: 'Vitor', em: VENCIDA, ate: FUTURO }, sieg: { por: 'Ana', em: VENCIDA, ate: VENCIDA }, alterdata: { por: 'Ana', em: VENCIDA } } });
+    central.iniciarCentral({ db, maquina: 'servidor', log });
+    await esperar(40);
+    igual('reinício: a pausa com hora futura e a sem hora voltam; a vencida não', chamadas.slice().sort(), ['pausar alterdata', 'pausar fgts']);
+    await central._conferirPausas(Date.parse(FUTURO) + 1000);
+    await esperar(20);
+    igual('a hora chegou: volta sozinho', chamadas.filter(x => x.startsWith('retomar')), ['retomar fgts']);
+    const pausadosAgora = () => Object.keys((db.dados('robosMaquinas').get('servidor') || {}).pausados || {}).sort();
+    igual('a hora chegou: sai do estado gravado (troca o mapa inteiro, não funde)', pausadosAgora(), ['alterdata']);
+    chamadas.length = 0;
+
+    const bater = async (id, extra) => { db.dados('robosComandos').set(id, recente(Object.assign({ maquina: 'servidor', robo: 'fgts' }, extra))); db.collection('robosComandos').doc('gatilho').set(recente({ maquina: 'outra' })); await esperar(40); };
+    const fgts = db.dados('pedidosFgts');
+    fgts.set('p1', { status: 'pendente', cnpj: '11', competencia: '2026-10', modo: 'emitir' });
+    fgts.set('p2', { status: 'trabalhando', cnpj: '12', competencia: '2026-10', modo: 'emitir' });
+    fgts.set('p3', { status: 'pronto', cnpj: '13', competencia: '2026-10', modo: 'emitir' });
+    fgts.set('p4', { status: 'erro', cnpj: '14', competencia: '2026-10', modo: 'emitir', erro: 'login', tentativas: 1 });
+    fgts.set('p5', { status: 'erro', cnpj: '15', competencia: '2026-10', modo: 'emitir', erro: 'login' });
+    fgts.set('p6', { status: 'pendente', cnpj: '15', competencia: '2026-10', modo: 'emitir' });
+
+    await bater('c1', { acao: 'cancelar-item', item: 'p1' });
+    igual('cancelar: feito', statusDe(db, 'c1'), 'feito');
+    verdade('cancelar: nada é apagado, fica marcado com quem', fgts.has('p1') && fgts.get('p1').status === 'cancelado' && fgts.get('p1').canceladoPor === 'Vitor' && fgts.get('p1').canceladoPorUid === 'uid-1' && !!fgts.get('p1').canceladoEm);
+    await bater('c2', { acao: 'cancelar-item', item: 'p2' });
+    igual('cancelar: em andamento → recusado', statusDe(db, 'c2'), 'recusado');
+    verdade('cancelar: a mensagem diz', /em andamento/.test(msgDe(db, 'c2')));
+    igual('cancelar: quem está em andamento não muda', fgts.get('p2').status, 'trabalhando');
+    await bater('c3', { acao: 'cancelar-item', item: 'naoexiste' });
+    igual('cancelar: inexistente → recusado, o robô segue', statusDe(db, 'c3'), 'recusado');
+    verdade('cancelar: a mensagem diz que não existe', /não existe/.test(msgDe(db, 'c3')));
+    await bater('c4', { acao: 'cancelar-item', item: 'p3' });
+    verdade('cancelar: o que já terminou', statusDe(db, 'c4') === 'recusado' && /saiu da fila/.test(msgDe(db, 'c4')));
+    await bater('f1', { acao: 'na-frente', item: 'p6' });
+    igual('na frente: feito', statusDe(db, 'f1'), 'feito');
+    verdade('na frente: marcado com quem', !!fgts.get('p6').naFrenteEm && fgts.get('p6').naFrentePor === 'Vitor' && fgts.get('p6').status === 'pendente');
+    await bater('f2', { acao: 'na-frente', item: 'p2' });
+    igual('na frente: em andamento → recusado', statusDe(db, 'f2'), 'recusado');
+
+    await bater('r1', { acao: 'refazer', item: 'p4' });
+    igual('refazer: feito', statusDe(db, 'r1'), 'feito');
+    verdade('refazer: o mesmo pedido volta para a fila, com quem pediu', fgts.get('p4').status === 'pendente' && fgts.get('p4').refeitoPor === 'Vitor' && fgts.size === 6);
+    await bater('r2', { acao: 'refazer', item: 'p5' });
+    verdade('refazer: já tem um igual na fila → recusado', statusDe(db, 'r2') === 'recusado' && /igual na fila/.test(msgDe(db, 'r2')));
+    igual('refazer: o recusado continua em erro', fgts.get('p5').status, 'erro');
+    await bater('r3', { acao: 'refazer', item: 'p3' });
+    verdade('refazer: o que não está com erro → recusado', statusDe(db, 'r3') === 'recusado' && /com erro/.test(msgDe(db, 'r3')));
+    await bater('r4', { acao: 'refazer', item: 'sumiu' });
+    verdade('refazer: inexistente → recusado', statusDe(db, 'r4') === 'recusado' && /não existe/.test(msgDe(db, 'r4')));
+    db.dados('pedidosAlterdata').set('a1', { status: 'erro', tipo: 'importar', codigo: 5, competencia: '2026-10' });
+    db.dados('pedidosSieg').set('s1', { status: 'erro', tipo: 'xmlsCliente', codigo: '5', competencia: '2026-10' });
+    await bater('r5', { robo: 'alterdata', acao: 'refazer', item: 'a1' });
+    verdade('refazer: importação não se refaz', statusDe(db, 'r5') === 'recusado' && /importação/.test(msgDe(db, 'r5')));
+    await bater('r6', { robo: 'sieg', acao: 'refazer', item: 's1' });
+    verdade('refazer: XMLs do cliente não se refazem', statusDe(db, 'r6') === 'recusado' && /não ficam guardados/.test(msgDe(db, 'r6')));
+
+    db.dados('clientes').set('cli1', { ativo: true, codigoOrigem: '486', nome: 'VS MEDICINA', documento: '12.345.678/0001-90' });
+    db.dados('clientes').set('cli2', { ativo: true, codigoOrigem: '487', nome: 'SEM DOC', documento: '' });
+    const antes = fgts.size;
+    await bater('q1', { acao: 'pedir-cliente', tarefa: 'guia', cliente: '486', competencia: '2026-10' });
+    igual('pedir: feito', statusDe(db, 'q1'), 'feito');
+    igual('pedir: entrou um na fila que já existe', fgts.size, antes + 1);
+    const novo = Array.from(fgts.values()).pop();
+    igual('pedir: o mesmo pedido da tela do DP, com o CNPJ do cadastro', [novo.status, novo.modo, novo.cnpj, novo.codigo, novo.empresa, novo.competencia, novo.criadoPorUid], ['pendente', 'emitir', '12345678000190', '486', 'VS MEDICINA', '2026-10', 'uid-1']);
+    await esperar(1);
+    await bater('q2', { acao: 'pedir-cliente', tarefa: 'ensaio', cliente: '486', competencia: '2026-10', porNome: 'outro' });
+    igual('pedir: emitir e ensaio são pedidos diferentes', statusDe(db, 'q2'), 'feito');
+    await bater('q3', { acao: 'pedir-cliente', tarefa: 'guia', cliente: '486', competencia: '2026-09' });
+    igual('pedir: outra competência passa', statusDe(db, 'q3'), 'feito');
+    db.dados('robosComandos').set('q4', recente({ maquina: 'servidor', robo: 'fgts', acao: 'pedir-cliente', tarefa: 'guia', cliente: '486', competencia: '2026-10' }));
+    central._st().recentes.clear();
+    db.collection('robosComandos').doc('gatilho').set(recente({ maquina: 'outra' }));
+    await esperar(40);
+    verdade('pedir: igual já na fila → recusado', statusDe(db, 'q4') === 'recusado' && /igual na fila/.test(msgDe(db, 'q4')));
+    await bater('q5', { acao: 'pedir-cliente', tarefa: 'guia', cliente: '487', competencia: '2026-10' });
+    verdade('pedir: FGTS sem CNPJ → recusado', statusDe(db, 'q5') === 'recusado' && /CNPJ/.test(msgDe(db, 'q5')));
+    await bater('q6', { acao: 'pedir-cliente', tarefa: 'guia', cliente: '999', competencia: '2026-10' });
+    verdade('pedir: cliente que não existe → recusado', statusDe(db, 'q6') === 'recusado' && /Não achei/.test(msgDe(db, 'q6')));
+    await bater('q7', { robo: 'alterdata', acao: 'pedir-cliente', tarefa: 'mensal', cliente: '486', competencia: '2026-10' });
+    const alt = Array.from(db.dados('pedidosAlterdata').values()).pop();
+    igual('pedir: Alterdata com o código em número, como a tela', [statusDe(db, 'q7'), alt.tipo, alt.codigo], ['feito', 'mensal', 486]);
+    await bater('q8', { robo: 'sieg', acao: 'pedir-cliente', tarefa: 'saidas', cliente: '486', competencia: '2026-10' });
+    const sieg = Array.from(db.dados('pedidosSieg').values()).pop();
+    igual('pedir: SIEG saídas sem tipo, como a tela', [statusDe(db, 'q8'), sieg.tipo, sieg.codigo], ['feito', undefined, '486']);
+
+    chamadas.length = 0;
+    const ate = new Date(Date.now() + 2 * 36e5).toISOString();
+    await bater('t1', { robo: '', acao: 'parar-tudo', ate });
+    igual('parar tudo: feito', statusDe(db, 't1'), 'feito');
+    igual('parar tudo: chamou os três', chamadas.slice().sort(), ['pausar alterdata', 'pausar fgts', 'pausar sieg']);
+    verdade('parar tudo: a resposta diz quem e quando', /FGTS/.test(msgDe(db, 't1')) && /voltam/.test(msgDe(db, 't1')));
+    await esperar(20);
+    igual('parar tudo: gravado com a hora de voltar', (db.dados('robosMaquinas').get('servidor').pausados.sieg || {}).ate, ate);
+    chamadas.length = 0;
+    await bater('t2', { robo: '', acao: 'retomar-tudo' });
+    igual('retomar tudo: feito', statusDe(db, 't2'), 'feito');
+    igual('retomar tudo: chamou os três', chamadas.slice().sort(), ['retomar alterdata', 'retomar fgts', 'retomar sieg']);
+    await esperar(20);
+    igual('retomar tudo: nenhum no estado gravado', pausadosAgora(), []);
     await central.desligarCentral();
   }
 

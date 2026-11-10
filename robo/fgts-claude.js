@@ -27,6 +27,12 @@ const { ouvir } = require('./ouvinte');
 const { avisoDoPedidoFgts, avisarPedidoFgts, agrupadorDeAvisosFgts, envioPadrao } = require('./aviso-de-falha');
 // o painel do robô (21/10/2026): o que está emitindo agora, as guias emitidas e os erros
 const painel = require('./painel');
+const pausaLocal = require('./pausa-local');
+/** "Passar na frente" (Central dos robôs): quem tem naFrenteEm vai antes de todos, o mais recente primeiro; os outros não mudam de ordem. */
+function ordenarNaFrente(fila) {
+  const marca = d => String((d.data() || {}).naFrenteEm || '');
+  fila.sort((a, b) => marca(b).localeCompare(marca(a)));
+}
 /** "62 EMPRESA (10/2026)" para o painel. */
 const quemNoPainel = p => ((p.codigo ? p.codigo + ' ' : '') + (p.empresa || cnpjComPontos(p.cnpj || ''))).trim()
   + (/^\d{4}-\d{2}$/.test(String(p.competencia || '')) ? ' (' + p.competencia.slice(5) + '/' + p.competencia.slice(0, 4) + ')' : '');
@@ -407,7 +413,8 @@ function iniciarFgtsPeloClaude(db, log, opcoes = {}) {
   const fila = [];
   let ocupado = false;
   async function proximo() {
-    if (!ativo || !ligou || ocupado || !fila.length) return;
+    // pausado pela Central dos robôs: o lote que já começou termina; os pedidos ficam esperando na fila
+    if (!ativo || !ligou || ocupado || !fila.length || pausaLocal.estaPausado('fgts')) return;
     ocupado = true;
     // o lote: todos os pedidos que estão na fila agora, numa sessão só do Claude (até 25 por vez)
     const lote = fila.splice(0, 12);
@@ -428,12 +435,16 @@ function iniciarFgtsPeloClaude(db, log, opcoes = {}) {
     // próxima emissão já pega o login; o fecharChromeDoRobo fica guardado se voltar a ser pedido
     proximo();
   }
+  pausaLocal.quandoRetomar('fgts', () => setTimeout(proximo, 1000));
   ouvir('pedidos do FGTS', () => pedidos.where('status', '==', 'pendente'), snap => {
     for (const ch of snap.docChanges()) {
       if (ch.type === 'added' && !fila.some(d => d.id === ch.doc.id)) fila.push(ch.doc);
       // cancelado (ou pego) enquanto esperava: sai da fila (09/10/2026: o botão Cancelar do DP)
       if (ch.type === 'removed') { const i = fila.findIndex(d => d.id === ch.doc.id); if (i >= 0) fila.splice(i, 1); }
+      // mudou enquanto esperava (o "passar na frente" da Central dos robôs): a fila fica com o documento novo
+      if (ch.type === 'modified') { const i = fila.findIndex(d => d.id === ch.doc.id); if (i >= 0) fila[i] = ch.doc; }
     }
+    ordenarNaFrente(fila);
     // espera um instante para juntar os pedidos que chegam juntos (o "Emitir as que faltam" pede um por um)
     setTimeout(proximo, 3000);
   }, log);
@@ -460,7 +471,9 @@ function iniciarFgtsPeloClaude(db, log, opcoes = {}) {
   ouvir('erros do FGTS', () => pedidos.where('fimEm', '>=', ligadaEm), snap => {
     if (!ativo) return;
     for (const ch of snap.docChanges()) {
-      if (ch.type === 'removed' || avisadosErro.has(ch.doc.id)) continue;
+      // o pedido devolvido à fila (o "Refazer" da Central dos robôs) sai daqui; se der erro de novo, avisa de novo
+      if (ch.type === 'removed') { avisadosErro.delete(ch.doc.id); continue; }
+      if (avisadosErro.has(ch.doc.id)) continue;
       const aviso = avisoDoPedidoFgts(ch.doc.data());
       if (!aviso) continue;
       avisadosErro.add(ch.doc.id);
@@ -566,7 +579,7 @@ function iniciarFgtsPeloClaude(db, log, opcoes = {}) {
         ? 'a extensão Claude in Chrome não está conectada no PC: abra o Chrome, clique no ícone do Claude e peça de novo'
         : ator + ' não terminou este cliente' + (r.erro ? ': ' + r.erro.slice(0, 200) : '');
       it.tarefa = it.ref.update({ status: 'erro', erro: motivo, fimEm: agora() }).catch(() => {});
-      painel.erro('fgts', 'A guia do FGTS de ' + quemNoPainel(it.p) + ' não saiu', motivo);
+      painel.erro('fgts', 'A guia do FGTS de ' + quemNoPainel(it.p) + ' não saiu', motivo, { pedido: it.ref.id });
     }
     await Promise.all(lideres.map(it => it.tarefa));
     // os seguidores (a filial cuja guia é a da matriz, ou o mesmo pedido em dobro): a mesma guia, na pasta de cada um
@@ -599,7 +612,7 @@ function iniciarFgtsPeloClaude(db, log, opcoes = {}) {
             : e;
       await ref.update({ status: 'erro', erro: motivo + (aviso ? ' · ' + aviso : ''), aviso, fimEm: agora() });
       log(pre + 'erro', p.cnpj, motivo);
-      painel.erro('fgts', 'A guia do FGTS de ' + quemNoPainel(p) + ' não saiu', motivo);
+      painel.erro('fgts', 'A guia do FGTS de ' + quemNoPainel(p) + ' não saiu', motivo, { pedido: ref.id });
       return;
     }
     if (p.modo === 'ensaio') {
@@ -616,13 +629,13 @@ function iniciarFgtsPeloClaude(db, log, opcoes = {}) {
         ? 'a guia ' + (res.numero || '') + ' já estava emitida (vence ' + (res.vencimento || '?') + ', R$ ' + (res.valor || '?') + ') e aguarda pagamento; o PDF dela não veio'
         : 'a guia ' + (res.numero || '') + ' foi emitida, mas o PDF não chegou' + (semClaude ? '' : ' no Claudio Secretario');
       await ref.update({ status: 'erro', erro: motivo, aviso, numeroGuia: res.numero || '', valor: res.valor || '', vencimento: res.vencimento || '', fimEm: agora() });
-      painel.erro('fgts', 'O PDF da guia do FGTS de ' + quemNoPainel(p) + ' não veio', motivo);
+      painel.erro('fgts', 'O PDF da guia do FGTS de ' + quemNoPainel(p) + ' não veio', motivo, { pedido: ref.id });
       return;
     }
     const pdf = fs.readFileSync(baixado);
     if (pdf.slice(0, 4).toString() !== '%PDF') {
       await ref.update({ status: 'erro', erro: 'o arquivo baixado não é um PDF', fimEm: agora() });
-      painel.erro('fgts', 'A guia do FGTS de ' + quemNoPainel(p) + ' não veio em PDF', 'o arquivo baixado não é um PDF');
+      painel.erro('fgts', 'A guia do FGTS de ' + quemNoPainel(p) + ' não veio em PDF', 'o arquivo baixado não é um PDF', { pedido: ref.id });
       return;
     }
     const final = arquivarGuia(baixado, p, res.numero || 'sem-numero');
@@ -781,4 +794,4 @@ function iniciarFgtsPeloClaude(db, log, opcoes = {}) {
   }
 }
 
-module.exports = { iniciarFgtsPeloClaude, ROTEIRO_PERFIL, ROTEIRO_GUIA };
+module.exports = { iniciarFgtsPeloClaude, ordenarNaFrente, ROTEIRO_PERFIL, ROTEIRO_GUIA };
