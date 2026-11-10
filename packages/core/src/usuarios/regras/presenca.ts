@@ -18,13 +18,16 @@ export function mudouSoOPonto(antes: DocUsuario | undefined, depois: DocUsuario)
   return !!antes && semSinal(antes) === semSinal(depois);
 }
 
+export interface AtividadeAtual { etapa: string; empresa: string; periodo: string }
+
 /**
- * Onde a pessoa está, em Usuários (Vitor, 09/11/2026: "mostrar a empresa e etapa na qual a pessoa se encontra"): "408 · EMPRESA ›
- * Importação". O sinal vale como o do online: a aba fechada ou escondida deixa de contar sozinha. '' = em nenhuma etapa.
+ * Onde a pessoa está, em Usuários (Vitor, 09/11/2026: "mostrar a empresa e etapa na qual a pessoa se encontra"), em partes
+ * para a tela (10/11/2026: junto numa frase só ficava confuso). O sinal vale como o do online: a aba fechada ou escondida
+ * deixa de contar sozinha. null = em nenhuma etapa.
  */
-export function rotuloDoOnde(onde: Pick<OndeNoNads, 'codigo' | 'empresa' | 'etapa' | 'em'> | null | undefined, agora: Date): string {
-  if (!onde || !estaOnline(onde.em, agora)) return '';
-  return (onde.codigo != null ? onde.codigo + ' · ' : '') + onde.empresa + ' › ' + onde.etapa;
+export function atividadeAtual(onde: OndeNoNads | null | undefined, agora: Date): AtividadeAtual | null {
+  if (!onde || !estaOnline(onde.em, agora)) return null;
+  return { etapa: onde.etapa, empresa: (onde.codigo != null ? onde.codigo + ' · ' : '') + onde.empresa, periodo: onde.competencia || '' };
 }
 
 /**

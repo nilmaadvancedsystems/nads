@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { estaOnline, mudouSoOPonto, rotuloDaPresenca, rotuloDoOnde, veAtividade, type DocUsuario } from '.';
+import { estaOnline, mudouSoOPonto, atividadeAtual, rotuloDaPresenca, veAtividade, type DocUsuario } from '.';
 
 describe('quem vê a atividade atual', () => {
   const contabil = { departamento: 'contabil' };
@@ -24,7 +24,7 @@ const agora = new Date('2026-10-05T14:00:00.000Z');
 const antes = (min: number) => new Date(agora.getTime() - min * 60000).toISOString();
 
 describe('o ponto de presença não redesenha o app', () => {
-  const onde = { codigo: 901, empresa: 'EMPRESA EXEMPLO', etapa: 'Importação', em: antes(3) };
+  const onde = { codigo: 901, empresa: 'EMPRESA EXEMPLO', etapa: 'Importação', competencia: 'Agosto/2026', em: antes(3) };
   const doc = { nome: 'Pessoa', nadsVistoEm: antes(3), nadsOnde: onde } as DocUsuario;
   it('só a hora do ponto ou do sinal mudou', () => {
     expect(mudouSoOPonto(doc, { ...doc, nadsVistoEm: antes(0) })).toBe(true);
@@ -57,10 +57,10 @@ describe('presença no nads', () => {
     expect(rotuloDaPresenca(undefined, agora)).toBe('Nunca abriu o nads');
   });
   it('onde a pessoa está: a empresa e a etapa, só com o sinal recente', () => {
-    const onde = { codigo: 901, empresa: 'EMPRESA EXEMPLO', etapa: 'Importação', em: antes(2) };
-    expect(rotuloDoOnde(onde, agora)).toBe('901 · EMPRESA EXEMPLO › Importação');
-    expect(rotuloDoOnde({ ...onde, codigo: null }, agora)).toBe('EMPRESA EXEMPLO › Importação');
-    expect(rotuloDoOnde({ ...onde, em: antes(6) }, agora)).toBe('');
-    expect(rotuloDoOnde(null, agora)).toBe('');
+    const onde = { codigo: 901, empresa: 'EMPRESA EXEMPLO', etapa: 'Importação', competencia: 'Agosto/2026', em: antes(2) };
+    expect(atividadeAtual(onde, agora)).toEqual({ etapa: 'Importação', empresa: '901 · EMPRESA EXEMPLO', periodo: 'Agosto/2026' });
+    expect(atividadeAtual({ ...onde, codigo: null }, agora)?.empresa).toBe('EMPRESA EXEMPLO');
+    expect(atividadeAtual({ ...onde, em: antes(6) }, agora)).toBeNull();
+    expect(atividadeAtual(null, agora)).toBeNull();
   });
 });
