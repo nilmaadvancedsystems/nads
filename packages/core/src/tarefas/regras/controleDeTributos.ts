@@ -77,6 +77,17 @@ export interface LinhaDoControle {
   atualizadoEm?: string;
   atualizadoPor?: string;
 }
+/**
+ * A empresa retificada no mês (10/11/2026: "uma opção de retificação como um liga e desliga"; uma marca por empresa na
+ * competência). Mora nas marcas da linha, então o banco e as regras não mudam; não conta como andamento da empresa.
+ */
+export const MARCA_RETIFICADA = 'retificada';
+export const linhaRetificada = (l: LinhaDoControle | undefined) => l?.marcas[MARCA_RETIFICADA] === 'ok';
+export function alternarRetificacaoDaLinha(l: LinhaDoControle): LinhaDoControle {
+  const marcas = { ...l.marcas };
+  if (marcas[MARCA_RETIFICADA]) delete marcas[MARCA_RETIFICADA]; else marcas[MARCA_RETIFICADA] = 'ok';
+  return { ...l, marcas };
+}
 export const idDaLinhaDoControle = (competencia: string, codigo: number) => competencia + '_' + codigo;
 export const linhaEmBranco = (competencia: string, codigo: number, grupo: GrupoDoControleId): LinhaDoControle =>
   ({ competencia, codigo, grupo, valores: {}, data: '', marcas: {}, entregue: '' });
@@ -186,7 +197,7 @@ export const TIPO_DA_COLUNA: Readonly<Record<string, string>> = { das: 'DAS', pi
 export function situacaoDaLinha(l: LinhaDoControle | undefined): 'entregue' | 'comecada' | 'branco' {
   if (!l) return 'branco';
   if (l.entregue) return 'entregue';
-  const algo = Object.values(l.valores).some(v => v.trim()) || !!l.data || Object.values(l.marcas).some(Boolean);
+  const algo = Object.values(l.valores).some(v => v.trim()) || !!l.data || Object.entries(l.marcas).some(([m, v]) => m !== MARCA_RETIFICADA && !!v);
   return algo ? 'comecada' : 'branco';
 }
 
@@ -208,8 +219,12 @@ export function htmlDoControle(p: {
   }).join('');
   const obs = p.folha.observacoes.filter(o => o.trim());
   const linhasObs = [...obs.map(o => `<tr><td>${esc(o)}</td></tr>`), ...Array(Math.max(0, 4 - obs.length)).fill('<tr><td></td></tr>')].join('');
-  const rets = p.folha.retificacoes;
-  const linhaRet = (r: RetificacaoDoControle | null) => `<tr><td class="cod">${r?.codigo != null ? String(r.codigo).padStart(5, '0') : ''}</td><td>${esc(r?.referencia || '')}</td>${g.colunas.map(c => `<td class="val">${esc(r?.valores[c.id] || '')}</td>`).join('')}${g.marcas.map(m => `<td class="mk">${marcaNaFolha(r?.marcas[m.id])}</td>`).join('')}<td class="mail">${esc(ROTULO_NA_FOLHA[r?.entregue || ''])}</td></tr>`;
+  // no quadro: as que a folha guardou e as empresas ligadas no Relatório (o código, o nome e a competência; o resto, à mão)
+  const ligadas: RetificacaoDoControle[] = [...p.empresas].sort((a, b) => a.codigo - b.codigo).filter(e => linhaRetificada(p.linhas.get(e.codigo)))
+    .map(e => ({ codigo: e.codigo, referencia: ref, valores: {}, marcas: {}, entregue: '' }));
+  const rets = [...p.folha.retificacoes, ...ligadas];
+  const nomeDaRet = (r: RetificacaoDoControle | null) => p.empresas.find(e => e.codigo === r?.codigo)?.nome || '';
+  const linhaRet = (r: RetificacaoDoControle | null) => `<tr><td class="cod">${r?.codigo != null ? String(r.codigo).padStart(5, '0') : ''}</td><td class="nome">${esc(nomeDaRet(r))}</td><td class="ref">${esc(r?.referencia || '')}</td>${g.colunas.map(c => `<td class="val">${esc(r?.valores[c.id] || '')}</td>`).join('')}${g.marcas.map(m => `<td class="mk">${marcaNaFolha(r?.marcas[m.id])}</td>`).join('')}<td class="mail">${esc(ROTULO_NA_FOLHA[r?.entregue || ''])}</td></tr>`;
   const corpoRet = [...rets.map(linhaRet), ...Array(Math.max(0, 4 - rets.length)).fill(linhaRet(null))].join('');
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Protocolo de Entrega de Tributos ${esc(ref)} — ${esc(g.rotulo)}</title>
 <style>
@@ -241,11 +256,12 @@ export function htmlDoControle(p: {
   section{margin-top:5mm;break-inside:avoid;page-break-inside:avoid}
   section h2{margin:0 0 1.5mm;font-size:10pt;font-weight:700;letter-spacing:.5pt}
   section td{height:7mm}
-  th.ref{width:30mm}
+  th.ref{width:18mm}
+  td.ref{text-align:center}
 </style></head><body>
 ${p.logo.definicao}<div class="topo"><span class="logo">${p.logo.uso}</span><span class="selo">${esc(g.selo)}</span><span class="titulo"><b>Protocolo de Entrega de Tributos</b><span>Ref: ${esc(ref)}</span></span></div>
 <table><thead>${cab}</thead><tbody>${corpo}</tbody></table>
 <section><h2>OBSERVAÇÕES</h2><table><thead><tr><th>DESCRIÇÃO</th></tr></thead><tbody>${linhasObs}</tbody></table></section>
-<section><h2>RETIFICAÇÃO</h2><table><thead><tr><th class="cod">COD.</th><th class="ref">REFERÊNCIA</th>${g.colunas.map(c => `<th>${esc(c.rotulo.toUpperCase())}</th>`).join('')}${g.marcas.map(m => `<th class="mk">${esc(m.rotulo)}</th>`).join('')}<th class="mail">ENTREGUE</th></tr></thead><tbody>${corpoRet}</tbody></table></section>
+<section><h2>RETIFICAÇÃO</h2><table><thead><tr><th class="cod">COD.</th><th class="nome">RAZÃO SOCIAL</th><th class="ref">REFERÊNCIA</th>${g.colunas.map(c => `<th>${esc(c.rotulo.toUpperCase())}</th>`).join('')}${g.marcas.map(m => `<th class="mk">${esc(m.rotulo)}</th>`).join('')}<th class="mail">ENTREGUE</th></tr></thead><tbody>${corpoRet}</tbody></table></section>
 </body></html>`;
 }
