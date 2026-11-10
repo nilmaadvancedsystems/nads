@@ -2,7 +2,7 @@
 // um razão para upar; se tiver tudo zerado e saldos credores, show"). A pessoa importa o razão da conta (XLS da conciliação
 // do Alterdata) e vê o saldo do fim de cada mês: a conta é do passivo, fica credor ou zera; o mês devedor é o errado.
 // O que foi importado fica guardado neste navegador (Vitor, 15/10/2026: voltou, está onde parou; comum/guardado.ts).
-import { formatos, tarefas as t } from '@nads/core';
+import { formatos, releitura, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useGuardado } from '../../../../comum/guardado';
 import { rotuloDaImportacao, useContabilDaEmpresa } from '../../../../comum/contabilDaEmpresa';
@@ -24,7 +24,7 @@ export function useRazaoDaFolha(conta: t.ContaDaFolha, chave: string, meses: rea
   async function importar(f: File | null) {
     if (!f) return;
     try {
-      setRazao({ chave, arquivo: f.name, razao: t.lerRazaoDoArquivo(await f.arrayBuffer(), f.name) });
+      setRazao({ chave, arquivo: f.name, razao: releitura.lerRazao(await f.arrayBuffer(), f.name) });
     } catch (e) {
       aviso({ tom: 'erro', titulo: 'Não consegui ler o razão de ' + NOME[conta], texto: e instanceof Error ? e.message : String(e) });
     }
