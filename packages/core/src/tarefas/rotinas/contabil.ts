@@ -153,7 +153,7 @@ export const ROTINA_CONTABIL: Rotina = {
       ],
       objecoes: [
         { id: 'saldo-diferente', texto: 'O saldo não bate com o extrato', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Volte na Importação e confira extrato × razão do banco: o lançamento que falta ou sobra aparece lá.' } },
-        { id: 'sem-saldo-diario', texto: 'Não tenho o relatório de saldo diário', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'O razão dos bancos vem do robô sozinho (o bloco "Razões do Alterdata"); o saldo de cada dia sai dele. Se o robô não trouxe, use o botão de pedir de novo; se ele não conseguir, gere o razão da conta no Alterdata e importe na Importação.' } },
+        { id: 'sem-saldo-diario', texto: 'Não tenho o relatório de saldo diário', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'O saldo de cada dia sai do razão do banco: gere o razão da conta no Alterdata e importe na Importação.' } },
         nao('sem-negativo', 'Nenhum banco ficou negativo', 'Nenhum banco negativo'),
       ],
     },
@@ -276,16 +276,16 @@ export const ROTINA_CONTABIL: Rotina = {
     {
       id: 'folha',
       secao: 'Passivo',
-      nome: 'Salários, INSS e FGTS',
-      descricao: 'A folha paga e as guias do mês: salários a pagar zerados, INSS e FGTS iguais às guias.',
+      nome: 'Salários e INSS',
+      descricao: 'A folha paga e as guias do mês: salários a pagar zerados, INSS igual às guias.',
       verificacao: 'manual',
       // o razão do INSS a recolher × o PDF das guias: o que falta provisionar e baixar (Vitor, 05/10/2026); com Salários a
       // pagar e FGTS a recolher (um razão cada), na tela própria: mês devedor trava o Próximo (Vitor, 07/10/2026)
       tela: { id: 'salarios', periodo: true },
       conferir: [
         'Salários a pagar: a folha do mês entra e o pagamento zera; nenhum saldo devedor.',
-        'INSS a recolher e FGTS a recolher iguais às guias do mês; a guia paga zera o saldo.',
-        'Férias, 13º e rescisões pagos baixados (e a multa do FGTS na GRRF).',
+        'INSS a recolher igual às guias do mês; a guia paga zera o saldo.',
+        'Férias, 13º e rescisões pagos baixados.',
       ],
       objecoes: [SEM_FUNCIONARIOS],
     },
@@ -354,12 +354,22 @@ export const ROTINA_CONTABIL: Rotina = {
         'Nenhuma despesa ou custo com saldo credor, menos as redutoras "(-)" (devoluções de compra, por exemplo).',
         'Nenhuma receita com saldo devedor, menos as deduções "(-)" (impostos sobre a venda, devoluções).',
         'Despesa credora ou receita devedora: lançamento invertido, ou estorno lançado na conta errada.',
-        'Nenhum pagamento lançado no caixa que saiu do banco (a faixa "Pago pelo banco e lançado no caixa").',
       ],
       objecoes: [
         { id: 'despesa-credora', texto: 'Tem despesa credora e não achei o motivo', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Interrompa com esta objeção: a competência aparece para os sêniores revisarem.' } },
         { id: 'receita-devedora', texto: 'Tem receita devedora e não achei o motivo', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Interrompa com esta objeção: a competência aparece para os sêniores revisarem.' } },
       ],
+    },
+    {
+      // um check só dele (Vitor, 10/11/2026: "deixa no check separado"; antes, uma faixa em Despesas e receitas)
+      id: 'conciliacao-caixa',
+      secao: 'Resultado',
+      nome: 'Conciliação caixa',
+      descricao: 'Nenhum pagamento lançado no caixa que saiu do banco.',
+      tela: { id: 'conciliacao-caixa', periodo: true },
+      verificacao: 'manual',
+      conferir: ['Nenhum pagamento lançado no caixa que saiu do banco (o mesmo valor, até 5 dias de diferença).'],
+      objecoes: [nao('sem-caixa', 'A empresa não tem movimento no caixa')],
     },
 
     // "Fechar a competência" saiu (Vitor, 27/10/2026: "esse fechar competência tá meio maluco, pode remover"): o envio ao

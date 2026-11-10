@@ -41,6 +41,8 @@ export interface RepoTarefasDelegadas {
    */
   salvar(id: string, mudancas: Partial<tarefas.delegadas.Rascunho>): Promise<void>;
   comentar(id: string, texto: string): Promise<void>;
+  /** a conta da etapa delegada marcada (ou desmarcada) como feita por quem recebeu */
+  marcarContaFeita(id: string, conta: tarefas.delegadas.ContaDelegada, feita: boolean): Promise<void>;
   anexar(id: string, arquivos: ArquivoParaAnexar[]): Promise<void>;
   tirarAnexo(id: string, anexoId: string): Promise<void>;
   /** os bytes do anexo, para baixar (null = não achou) */
@@ -124,6 +126,9 @@ export function criarTarefasDelegadasMemoria(quem: () => Pessoa | null, paraQuem
       lista = [...lista, t];
       mudou();
       return t.id;
+    },
+    async marcarContaFeita(id, conta, feita) {
+      trocar(d.comContaFeita(daTarefa(id), conta, feita, eu().nome, new Date().toISOString()));
     },
     async salvar(id, mudancas) {
       const t = daTarefa(id);

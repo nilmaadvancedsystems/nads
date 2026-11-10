@@ -9,7 +9,7 @@
 // salvou às 17:28 vendo ainda o Savio como responsável, que já tinha devolvido a tarefa às 17:27): o que muda parte da
 // tarefa como está no banco agora, e depois de cada gravação a lista é relida do banco.
 import {
-  arrayUnion, Bytes, collection, deleteDoc as deleteDocBruto, doc, getDoc, getDocFromServer, getDocs, getDocsFromServer, limit, onSnapshot, orderBy, query, setDoc as setDocBruto,
+  arrayRemove, arrayUnion, Bytes, collection, deleteDoc as deleteDocBruto, doc, getDoc, getDocFromServer, getDocs, getDocsFromServer, limit, onSnapshot, orderBy, query, setDoc as setDocBruto,
   updateDoc as updateDocBruto, where, type Unsubscribe,
 } from 'firebase/firestore';
 import { entregas, tarefas } from '@nads/core';
@@ -158,6 +158,16 @@ export function criarTarefasDelegadasFirestore(quem: () => Pessoa | null): RepoT
       if (!linhas.length) return;
       await updateDoc(doc(db, COLECAO, id), {
         ...campos, ...('responsavel' in campos ? { pessoas: d.pessoasDaTarefa(t) } : {}), atualizadaEm: em, historico: historicoNovo(antes, linhas),
+      });
+      await reler();
+    },
+    async marcarContaFeita(id, conta, feita) {
+      const por = eu();
+      const t = await noBanco(id);
+      const em = new Date().toISOString();
+      await updateDoc(doc(db, COLECAO, id), {
+        'etapaDelegada.feitas': feita ? arrayUnion(conta.codigo) : arrayRemove(conta.codigo),
+        historico: historicoNovo(t, [d.historicoDaContaFeita(conta, feita, por.nome, em)]), atualizadaEm: em,
       });
       await reler();
     },

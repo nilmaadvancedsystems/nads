@@ -144,7 +144,7 @@ export function Executor() {
   // sair da execução por qualquer lugar do app (o cabeçalho, o menu, o voltar do navegador) com a etapa aberta:
   // é interromper, com a justificativa; trocar de mês ou período dentro do executor não conta
   const saida = useBlocker(({ currentLocation, nextLocation }) =>
-    !vm.dev && !!vm.etapa && !vm.interrompendo && !guia.saindo.current && currentLocation.pathname !== nextLocation.pathname && !nextLocation.pathname.startsWith(BASE + '/executar/'));
+    !vm.dev && !vm.delegada && !!vm.etapa && !vm.interrompendo && !guia.saindo.current && currentLocation.pathname !== nextLocation.pathname && !nextLocation.pathname.startsWith(BASE + '/executar/'));
   if (vm.esperandoEmpresa) return null;
   if (!vm.empresa) return <Navigate to={BASE} replace />;
   // o mês faz parte de um período prometido (vários meses): abre o período
@@ -154,15 +154,17 @@ export function Executor() {
   // sem dia negativo (a Importação disse), o Cheque especial nem aparece; ao seguir, ele fica dispensado (Vitor, 02/10/2026)
   const semCheque = vm.etapa?.id === 'extratos' && requisitos?.precisaChequeEspecial === false;
   // tudo ok na etapa da vez (Vitor, 28/10/2026): o check automático e a próxima etapa revelada, para a pessoa clicar
-  const botoesDaEtapa = vm.etapa && telaPronta && !vm.interrompendo && saida.state !== 'blocked' && !vm.revendo;
+  const botoesDaEtapa = vm.etapa && telaPronta && !vm.interrompendo && saida.state !== 'blocked' && !vm.revendo && !vm.delegada;
   const liberada = !!botoesDaEtapa && !faltam && requisitosConhecidos && !vm.conferindo;
-  const visiveis = vm.etapas.filter(e => !e.oculta && !(semCheque && e.id === 'cheque-especial'));
+  // a etapa delegada: só ela na lateral, o resto da empresa fica bloqueado
+  const visiveis = vm.delegada ? vm.etapas.filter(e => e.atual) : vm.etapas.filter(e => !e.oculta && !(semCheque && e.id === 'cheque-especial'));
   const daVez = vm.etapas.find(x => x.daVez);
   const nDaVez = daVez?.n ?? 0;
   // a que falta no grupo vem antes do grupo seguinte (com as etapas do grupo livres, ela pode estar antes da da vez)
   const proxima = liberada ? visiveis.find(e => !e.daVez && e.situacao !== 'feita' && e.secao === daVez?.secao) || visiveis.find(e => e.n > nDaVez && e.situacao !== 'feita') || null : null;
   /** o clique na próxima etapa liberada: marca a da vez feita (ela vira a da vez); em outra pendente do grupo, marca e abre ela; nas outras, o de sempre */
   const abrirEtapa = (id: string) => {
+    if (vm.delegada) return;
     if (proxima && id === proxima.id) { void vm.proximo(semCheque); return; }
     if (liberada && vm.livre(id)) void vm.proximo(semCheque);
     vm.abrirEtapa(id);
@@ -173,7 +175,7 @@ export function Executor() {
     id: e.id, rotulo: e.nome, icone: 'check' as const, grupo: e.grupo, titulo: e.secao, ativa: e.atual,
     caixa: e.situacao === 'feita' || (e.daVez && liberada) ? 'marcada' as const : e.situacao === 'interrompida' ? 'parada' as const : 'vazia' as const,
     // as da frente que ainda não foram feitas: mais apagadas; a próxima, liberada, revelada
-    apagada: !!vm.etapa && e.n > nDaVez && e.situacao !== 'feita' && e.id !== proxima?.id && !vm.livre(e.id),
+    apagada: !vm.delegada && !!vm.etapa && e.n > nDaVez && e.situacao !== 'feita' && e.id !== proxima?.id && !vm.livre(e.id),
   }));
 
   // os grupos da rotina num menu só (como o "+ ▾" do GitHub): o ícone do grupo da vez e, aberto, todos (os da frente travados)
@@ -201,7 +203,7 @@ export function Executor() {
           : <PeriodoDaTarefa nome={vm.empresa.nome} codigo={vm.empresa.codigo} meses={vm.meses.length ? vm.meses : [vm.competencia]} />
         )}
         {/* um grupo só (a rotina do LCDPR, 16/10/2026): sem o menu dos grupos */}
-        {vm.grupos.length > 1 && (
+        {vm.grupos.length > 1 && !vm.delegada && (
           <MenuSuspenso rotulo="" icone={grupoDaVez ? ICONE_DO_GRUPO[grupoDaVez.nome] || 'list' : 'checkCircle'} className="gh-topo-btn gh-topo-menu"
             dica={grupoDaVez ? grupoDaVez.nome + ' · ' + grupoDaVez.feitas + '/' + grupoDaVez.total : 'Grupos da rotina'} direita largura={300} conteudo={fechar => <MenuDaRotina grupos={itensDosGrupos} emLote={emLote} fechar={fechar} />} />
         )}
@@ -243,6 +245,7 @@ export function Executor() {
           { rotulo: casca.perfil.sair, icone: 'logOut', onClick: casca.trocarPessoa },
         ]} />
       {/* interromper: o último, em vermelho (Vitor, 02/10/2026) */}
+      {vm.delegada && <button type="button" className="gh-topo-btn gh-topo-fechar" onClick={vm.sair} title="Voltar às tarefas" aria-label="Voltar às tarefas"><Icone nome="x" /></button>}
       {botoesDaEtapa && (
         // no modo desenvolvedor (Vitor, 06/10/2026: "remova essa opção"): o X só sai, sem o "Por que interromper?"
         <button type="button" className="gh-topo-btn gh-topo-fechar" onClick={vm.dev ? vm.sair : vm.abrirInterromper} title={vm.dev ? 'Sair da etapa' : 'Interromper a etapa'} aria-label={vm.dev ? 'Sair' : 'Interromper'}>

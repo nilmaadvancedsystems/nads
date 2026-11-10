@@ -82,7 +82,10 @@ export function acharExtratoNoDrive(itens: readonly ItemDrive[], raizDoCliente: 
       if (meu && !meus.some(a => temPalavra(texto, a)) && outros.some(a => temPalavra(texto, a))) continue;
       const pelaPasta = mesDaPasta(pastas, competencia.slice(0, 4));
       const daCompetencia = pelaPasta ? pelaPasta === competencia.slice(5, 7) : falaDaCompetencia([...caminho, nome].join(' '), competencia);
-      const nota = (daCompetencia ? 4 : 0) + (/extrato/.test(texto) ? 2 : 0) + (pastas.includes('bancarios') ? 3 : 0)
+      // o arquivo só deste mês vale mais que o de um período que passa por ele (Vitor, 10/11/2026, na 581: o "03-2026.pdf" e o
+      // "10-2025 A 03-2026.pdf" empatavam e o março não vinha)
+      const umMesSo = daCompetencia && (nome.match(/\d{2}[-._ ]\d{4}/g) || []).length === 1;
+      const nota = (daCompetencia ? 4 : 0) + (umMesSo ? 1 : 0) + (/extrato/.test(texto) ? 2 : 0) + (pastas.includes('bancarios') ? 3 : 0)
         + (banco.some(b => b && texto.includes(b)) || meus.some(a => temPalavra(texto, a)) ? 2 : 0) + (digitos.length >= 4 && texto.replace(/\D/g, '').includes(digitos) ? 3 : 0);
       // a cópia baixada de novo ("X (1).pdf" ao lado de "X.pdf") é o mesmo extrato: um grupo só; e o PDF e o OFX do mesmo
       // nome na mesma pasta também (Vitor, 26/10/2026, na 237: "08-2026.pdf" e "08-2026.ofx" empatavam e o Drive não trazia

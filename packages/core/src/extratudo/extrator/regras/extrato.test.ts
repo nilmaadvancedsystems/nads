@@ -12,6 +12,43 @@ function pagina(linhas: [string, number][][]): ItemDeTexto[] {
 }
 
 describe('extrato em PDF', () => {
+  it('o BB com "(+)" escrito: o "Pagamento Débito" da maquininha é entrada (10/11/2026)', () => {
+    const p = pagina([
+      [['02/03/2026', 40]],
+      [['14024', 40], ['Stone', 120], ['Pagamento', 150], ['Débito', 210], ['129,47', 400], ['(+)', 435]],
+      [['02/03/2026', 40], ['Tarifa', 120], ['10,00', 400], ['(-)', 435]],
+    ]);
+    expect(lancamentosDoPdf([p], 'banco', 2026).map(l => l.valor)).toEqual([12947, -1000]);
+  });
+
+  it('o "Saldo inicial" e o "Saldo final" na mesma linha: o saldo anterior é o inicial (10/11/2026)', () => {
+    const p = pagina([[['Saldo', 40], ['inicial:', 70], ['40.980,06', 110], ['Saldo', 200], ['final:', 230], ['41.897,84', 270]]]);
+    expect(saldoAnteriorDoPdf([p])).toBe(4098006);
+  });
+
+  it('o Inter: o dia por extenso, a saída com "-R$" e o saldo do dia na linha da data (10/11/2026)', () => {
+    const p = pagina([
+      [['Instituição:', 40], ['Banco', 100], ['Inter', 135]],
+      [['2', 40], ['de', 50], ['Março', 62], ['de', 95], ['2026', 107], ['Saldo', 140], ['do', 170], ['dia:', 185], ['1.000,00', 210]],
+      [['Pix', 40], ['recebido:', 60], ['FULANO', 120], ['300,00', 400], ['1.300,00', 480]],
+      [['Pix', 40], ['enviado:', 60], ['CICLANO', 120], ['-R$', 395], ['300,00', 415], ['1.000,00', 480]],
+    ]);
+    const r = extratoDoPdf([p], 'banco', 2026);
+    expect(r.lancamentos.map(l => [l.data, l.valor])).toEqual([['2026-03-02', 30000], ['2026-03-02', -30000]]);
+    expect(r.saldoAnteriorPelaLinha).toBe(100000);
+    expect(r.saldosDoDia).toEqual([{ data: '2026-03-02', saldo: 100000 }]);
+  });
+
+  it('o InfinitePay: a data "01 Mar, 2026", as linhas só com a hora e o "+" no valor (10/11/2026)', () => {
+    const p = pagina([
+      [['01', 40], ['Mar,', 55], ['2026', 80], ['08:22', 110], ['Pix', 150], ['FULANO', 200], ['Recebido', 300], ['+100,00', 480]],
+      [['09:11', 110], ['Pix', 150], ['CICLANO', 200], ['Enviado', 300], ['-50,00', 480]],
+      [['Saldo', 110], ['do', 140], ['dia', 155], ['+', 470], ['150,00', 480]],
+      [['02', 40], ['Mar,', 55], ['2026', 80], ['10:00', 110], ['Pix', 150], ['BELTRANO', 200], ['Recebido', 300], ['+20,00', 480]],
+    ]);
+    expect(lancamentosDoPdf([p], 'banco', 2026).map(l => [l.data, l.valor])).toEqual([['2026-03-01', 10000], ['2026-03-01', -5000], ['2026-03-02', 2000]]);
+  });
+
   it('o Nubank pelo OCR: o dia lido com letra ("O8FEV2026") e o ano em pedaço separado não viram lançamento (20/10/2026)', () => {
     const p = pagina([
       [['01', 57], ['DE', 70], ['FEVEREIRO', 84], ['DE', 137], ['2026', 151], ['VALORES', 469], ['EM', 513], ['R$', 528]],

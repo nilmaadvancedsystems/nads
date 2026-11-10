@@ -6,6 +6,7 @@
 //                                      pasta? (onde ficou), nomeFinal?, erro? }
 //   enviosSecretario/{id}/partes/{n} { dados: bytes }   (o robô apaga depois de gravar)
 // Destino: Claudio Secretario/<competencia>/<cliente> (sem cliente: "Enviados pelo nads"), como o robô do Gmail faz.
+import { semAcento } from './documentos';
 
 /** Cada pedaço cabe folgado num documento do banco (limite de 1 MiB). */
 export const TAMANHO_DA_PARTE = 900 * 1024;
@@ -82,6 +83,43 @@ export function andamentoDoEnvio(doc: Record<string, unknown> | null | undefined
 /** "Claudio Secretario › 2026-09 › 58 - TORNEARIA" para mostrar onde vai (ou foi). */
 export function ondeVai(destino: Pick<DestinoDoEnvio, 'competencia' | 'cliente'>): string {
   return ['Claudio Secretario', destino.competencia, destino.cliente.trim() || PASTA_SEM_CLIENTE].join(' › ');
+}
+
+// ---------- "Ajudar o Claude" (Vitor, 10/11/2026): a pessoa indica os clientes e os meses dos arquivos ----------
+// O cliente e o mês chegam ao arquivamento pela pasta do Claudio Secretario. Com um só, todos os arquivos vão para ele. Com
+// vários, vale o que aparece no arquivo; sem um só que apareça, o arquivo vai como no automático e o Claude decide.
+
+export interface ClienteDaAjuda { nome: string; cliente: string; codigo: string }
+
+const palavrasDe = (s: string) => ' ' + semAcento(s).replace(/[^a-z0-9]+/g, ' ').trim() + ' ';
+const semSufixo = (s: string) => s.replace(/ (ltda|me|epp|eireli|mei|s a|sa)(?= )/g, '').replace(/ +/g, ' ');
+
+/** O único cliente da lista cujo nome aparece no texto (o nome contido no de outro achado não conta); senão, null. */
+export function clienteNoTexto<T extends { nome: string }>(texto: string, clientes: readonly T[]): T | null {
+  const t = semSufixo(palavrasDe(texto));
+  const achados = clientes.map(c => ({ c, n: semSufixo(palavrasDe(c.nome)) })).filter(x => x.n.trim().length >= 4 && t.includes(x.n));
+  const fora = achados.filter(x => !achados.some(y => y !== x && y.n.includes(x.n)));
+  return fora.length === 1 ? fora[0].c : null;
+}
+
+/** O único mês da lista que aparece no texto (dd/mm/aaaa ou mm/aaaa); senão, null. */
+export function mesNoTexto(texto: string, meses: readonly string[]): string | null {
+  const vistos = new Set([...texto.matchAll(/(?<!\d)(0[1-9]|1[0-2])[/.-](20\d{2})(?!\d)/g)].map(m => m[2] + '-' + m[1]));
+  const achados = meses.filter(m => vistos.has(m));
+  return achados.length === 1 ? achados[0] : null;
+}
+
+/** Para onde vai um arquivo. texto: o nome e o conteúdo (só precisa com mais de um cliente ou mês). mesDaFila: o mês atual. */
+export function destinoDaAjuda(texto: string, clientes: readonly ClienteDaAjuda[], meses: readonly string[], mesDaFila: string): DestinoDoEnvio {
+  const cliente = clientes.length === 1 ? clientes[0] : clienteNoTexto(texto, clientes);
+  const mes = meses.length === 1 ? meses[0] : mesNoTexto(texto, meses);
+  return { competencia: mes || mesDaFila, cliente: cliente?.cliente || '', codigo: cliente?.codigo || '' };
+}
+
+/** "Claudio Secretario › o mês do arquivo › o cliente do arquivo" para mostrar antes de enviar. */
+export function ondeVaiNaAjuda(clientes: readonly ClienteDaAjuda[], meses: readonly string[], mesDaFila: string): string {
+  return ['Claudio Secretario', meses.length > 1 ? 'o mês do arquivo' : meses[0] || mesDaFila,
+    clientes.length > 1 ? 'o cliente do arquivo' : clientes[0]?.cliente || PASTA_SEM_CLIENTE].join(' › ');
 }
 
 // ---------- Meus envios: o que já mandei e onde foi parar (01/10/2026) ----------

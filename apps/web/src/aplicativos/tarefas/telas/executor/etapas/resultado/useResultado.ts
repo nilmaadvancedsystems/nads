@@ -5,10 +5,8 @@
 import { clientes as cl, conferencia as c, formatos, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useMemo } from 'react';
-import { useParams } from 'react-router';
 import { useGuardado } from '../../../../../../comum/guardado';
 import { useContabilDaEmpresa } from '../../../../../../comum/contabilDaEmpresa';
-import { useCaixaNoBancoDoRazao } from '../caixabancos/useCaixaNoBanco';
 import { useChaveDaEtapa, useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
 
 type Dinamico = { nome: string; d: cl.BalanceteDinamico };
@@ -23,13 +21,6 @@ export function useResultado() {
   const contabil = useContabilDaEmpresa(s.nome, s.codigo);
   const doClientes = contabil.dinamico;
   const din = proprio || doClientes;
-  // o "Pago pelo banco e lançado no caixa", na etapa final (Vitor, 10/11/2026): o razão que a etapa Caixa usa (o importado nela
-  // ou o da Importação)
-  const { empresa: rota = '', competencia: periodo = '' } = useParams();
-  const chaveDoCaixa = rota + '|caixa|' + periodo;
-  const [doCaixa] = useGuardado<{ chave: string; razao: t.RazaoDaConta } | null>('razao|' + chaveDoCaixa, null);
-  const razaoDoCaixa = doCaixa && doCaixa.chave === chaveDoCaixa ? doCaixa.razao : contabil.razaoDoTipo('caixa')?.razao ?? null;
-  const noBanco = useCaixaNoBancoDoRazao(s.nome, s.codigo, s.meses, razaoDoCaixa);
   // o ⚡ do modo desenvolvedor: o dinâmico de teste da empresa toda (16/10/2026)
   useDadosDeTesteDaEtapa(s.dev ? [{ id: 'certo', rotulo: 'Dinâmico de teste (tudo certo)' }, { id: 'erros', rotulo: 'Dinâmico de teste (despesa credora e receita devedora)' }] : [],
     id => setProprio({ nome: 'TESTE balancete dinâmico.xls', d: cl.dinamicoCompletoDeTeste(s.meses, id === 'erros') }));
@@ -57,7 +48,7 @@ export function useResultado() {
 
   return {
     temDinamico: !!din, arquivo: din?.nome || '', doClientes: !proprio && !!din,
-    importar, tirar: () => setProprio(null), proprio: !!proprio, noBanco,
+    importar, tirar: () => setProprio(null), proprio: !!proprio,
     resumo: din ? [errados.length ? [despesas.length && despesas.length + ' despesa(s) credora(s)', receitas.length && receitas.length + ' receita(s) devedora(s)'].filter(Boolean).join(' · ') : 'Ok'] : [],
     contas: errados.map(x => ({
       id: x.tipo + x.codigo + x.classificacao, codigo: x.codigo, classificacao: x.classificacao, nome: x.nome,
