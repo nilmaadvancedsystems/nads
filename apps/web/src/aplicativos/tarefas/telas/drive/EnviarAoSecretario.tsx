@@ -1,7 +1,7 @@
-// A janela "Enviar para o Claudio Secretário": escolher (ou arrastar) os arquivos, o cliente e o mês; mostra para
+// A janela "Enviar para o Claudio Secretário": escolher (ou arrastar) os arquivos e, em "Ajudar o Claude", os clientes e os meses; mostra para
 // onde vai (Claudio Secretario › mês › cliente). Os arquivos sobem e o robô grava; a próxima rodada do
 // arquivamento põe cada um na pasta certa do cliente. O andamento aparece no canto (EnviosEmAndamento).
-import { CampoArquivos, Icone, SeletorMes, useJanela } from '@nads/ui';
+import { CampoArquivos, Icone, Segmentado, SeletorMes, useJanela } from '@nads/ui';
 import { useRef, useState, type DragEvent } from 'react';
 import type { VmEnvio } from './useEnvioAoSecretario';
 
@@ -34,19 +34,46 @@ export function EnviarAoSecretario({ vm }: { vm: VmEnvio }) {
               ))}
             </ul>
           )}
-          <div className="envio-campos">
-            <label className="envio-campo">
-              <span>Cliente</span>
-              <select value={vm.clienteId} onChange={ev => vm.setClienteId(ev.target.value)}>
-                <option value="">Sem cliente (a rotina descobre pelo arquivo)</option>
-                {vm.clientes.map(c => <option key={c.id} value={c.id}>{c.rotulo}</option>)}
-              </select>
-            </label>
-            <div className="envio-campo">
-              <span>Mês</span>
-              <SeletorMes valor={vm.competencia} onMudar={vm.setCompetencia} rotulo="Mês" />
+          <Segmentado valor={vm.modo} onMudar={vm.setModo} opcoes={[
+            { valor: 'automatico', rotulo: 'Arquivar 100% automático (demora mais)' },
+            { valor: 'ajuda', rotulo: 'Ajudar o Claude' },
+          ]} />
+          {vm.modo === 'ajuda' && (
+            <div className="envio-campos">
+              <label className="envio-campo">
+                <span>Clientes</span>
+                <select value="" onChange={ev => vm.adicionarCliente(ev.target.value)}>
+                  <option value="">Adicionar cliente</option>
+                  {vm.clientes.map(c => <option key={c.id} value={c.id}>{c.rotulo}</option>)}
+                </select>
+              </label>
+              {vm.clientesEscolhidos.length > 0 && (
+                <ul className="envio-lista">
+                  {vm.clientesEscolhidos.map(c => (
+                    <li key={c.id}>
+                      <span className="envio-nome" title={c.rotulo}>{c.rotulo}</span>
+                      <button type="button" className="explorador-btn" aria-label={'Tirar ' + c.rotulo} title="Tirar" onClick={() => vm.tirarCliente(c.id)}><Icone nome="x" /></button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {/* o calendário abre dentro da área que rola: rola até ele aparecer inteiro */}
+              <div className="envio-campo" onClick={ev => { const campo = ev.currentTarget; setTimeout(() => campo.querySelector('.seletor-mes-pop')?.scrollIntoView({ block: 'nearest' })); }}>
+                <span>Meses (opcional)</span>
+                <SeletorMes valor="" onMudar={vm.adicionarMes} rotulo="Mês" semValor="Adicionar mês" />
+              </div>
+              {vm.meses.length > 0 && (
+                <ul className="envio-lista">
+                  {vm.meses.map(m => (
+                    <li key={m.valor}>
+                      <span className="envio-nome">{m.rotulo}</span>
+                      <button type="button" className="explorador-btn" aria-label={'Tirar ' + m.rotulo} title="Tirar" onClick={() => vm.tirarMes(m.valor)}><Icone nome="x" /></button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
-          </div>
+          )}
           <p className="envio-onde"><Icone nome="pasta" className="drive-ico pasta" />{vm.onde}</p>
           {vm.exemplos && <p className="hint">Dados de exemplo: o envio é de mentira, nada vai para o Drive.</p>}
         </div>
