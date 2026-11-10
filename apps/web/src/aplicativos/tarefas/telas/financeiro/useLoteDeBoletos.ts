@@ -1,12 +1,13 @@
 // ViewModel de Financeiro › Boletos (10/11/2026): a competência, os PDFs que sobem (lidos no navegador, como no Contas a pagar), a
 // conferência de cada linha, a revisão cliente a cliente e o disparo, que só um Diretor pede e que sempre pergunta antes.
-import { financeiro, formatos } from '@nads/core';
+import { empresas, financeiro, formatos } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useMemo, useState } from 'react';
 import { temNivelDiretor } from '../../casca/navegacao';
 import { useOperador } from '../../casca/operador';
 import { useBoletos, useHonorarios } from '../../dados/repo';
 import type { BoletoNovo } from '../../dados/boletos';
+import { dadosDaEmpresaNoEntregas, empresasNovas, repoDoCadastro } from '../../dados/fonte';
 import { hoje } from './formatosDaNota';
 import { textoDoPdf } from './useJanelaDaContaAPagar';
 
@@ -62,6 +63,21 @@ export function useLoteDeBoletos() {
   const marcadasValidas = disparaveis.filter(l => marcadas.has(l.boleto.id));
   const marcaveis = linhas.filter(l => l.conferencia.podeDisparar);
   const podeDisparar = temNivelDiretor(operador);
+
+  /** o cliente do escritório com um destes CNPJs/CPFs (o do Cadastro do nads, senão o do Entregas); só se der um */
+  async function clienteDoDocumento(docs: string[]): Promise<{ empresa: empresas.EmpresaDoEscritorio; documento: string } | null> {
+    const deFora = docs.filter(d => !d.startsWith(financeiro.CNPJ_RAIZ_DO_ESCRITORIO));
+    if (!deFora.length) return null;
+    const doEntregas = await dadosDaEmpresaNoEntregas();
+    const cad = repoDoCadastro().todos().porId;
+    const achados = new Map<number, { empresa: empresas.EmpresaDoEscritorio; documento: string }>();
+    for (const e of [...empresas.EMPRESAS_COM_DP, ...empresasNovas()]) {
+      if (e.codigo == null) continue;
+      const doc = (cad.get(formatos.slug(e.nome))?.cnpj || doEntregas.get(e.codigo)?.documento || '').replace(/\D/g, '');
+      if (doc && deFora.includes(doc)) achados.set(e.codigo, { empresa: e, documento: doc });
+    }
+    return achados.size === 1 ? [...achados.values()][0] : null;
+  }
   const falhou = (e: unknown, o: string) => toast(o + ' ' + (e instanceof Error ? e.message : ''));
 
   return {
@@ -92,13 +108,33 @@ export function useLoteDeBoletos() {
       if (arquivos.length > MAX_ARQUIVOS) { toast(`No máximo ${MAX_ARQUIVOS} boletos de uma vez.`); return; }
       const novos: BoletoNovo[] = [];
       setLendo({ feitos: 0, total: arquivos.length });
+      // os contratos desta subida: os de agora e os criados pelo CNPJ (dois boletos do mesmo cliente não criam dois)
+      const lista = [...contratos.lista];
+      let criados = 0;
       try {
         for (const [i, f] of arquivos.entries()) {
           const bytes = new Uint8Array(await f.arrayBuffer());
           const texto = await textoDoPdf(bytes);
           const leitura = texto ? financeiro.lerBoleto(texto, dia) : null;
-          const achado = financeiro.acharContratoDoBoleto(texto, f.name, contratos.lista);
-          const contrato = achado ? contratos.lista.find(c => c.id === achado.contratoId) : undefined;
+          let achado = financeiro.acharContratoDoBoleto(texto, f.name, lista);
+          if (!achado) {
+            // sem contrato com o CNPJ do boleto (10/11/2026: "puxa pelo cnpj"): o cliente do escritório com ele; sem
+            // contrato de honorários ainda, cria um, com o valor do boleto
+            const e = await clienteDoDocumento(financeiro.documentosDoBoleto(texto));
+            if (e) {
+              const doc = e.documento;
+              let c = lista.find(x => x.codigo === String(e.empresa.codigo));
+              if (!c) {
+                const novo = { clienteId: '', codigo: String(e.empresa.codigo), nome: e.empresa.nome, cnpj: doc, valor: leitura?.valor ?? 0, ativo: true };
+                const id = await honorarios.salvarContrato(novo, operador?.nome || '');
+                c = { ...novo, id, criadoEm: new Date().toISOString(), criadoPor: operador?.nome || '' };
+                lista.push(c);
+                criados++;
+              }
+              achado = { contratoId: c.id, achadoPor: 'documento' };
+            }
+          }
+          const contrato = achado ? lista.find(c => c.id === achado.contratoId) : undefined;
           novos.push({
             bytes,
             competencia, arquivo: f.name, contratoId: achado?.contratoId ?? '', achadoPor: achado?.achadoPor ?? '',
@@ -110,7 +146,7 @@ export function useLoteDeBoletos() {
         setLendo({ feitos: 0, total: novos.length, gravando: true });
         await repo.adicionar(novos, (feitos, total) => setLendo({ feitos, total, gravando: true }));
         const semCliente = novos.filter(n => !n.contratoId).length;
-        toast(`${novos.length} ${novos.length === 1 ? 'boleto lido' : 'boletos lidos'}${semCliente ? `, ${semCliente} sem cliente` : ''}.`);
+        toast(`${novos.length} ${novos.length === 1 ? 'boleto lido' : 'boletos lidos'}${semCliente ? `, ${semCliente} sem cliente` : ''}${criados ? `; ${criados} ${criados === 1 ? 'cliente entrou' : 'clientes entraram'} nos honorários pelo CNPJ` : ''}.`);
       } catch (e) { falhou(e, 'Não consegui ler os boletos.'); } finally { setLendo(null); }
     },
 
@@ -125,6 +161,18 @@ export function useLoteDeBoletos() {
     async tirar(id: string, fora: boolean) {
       setMarcadas(m => { const n = new Set(m); n.delete(id); return n; });
       try { await repo.alterar(id, { fora }); } catch (e) { falhou(e, 'Não consegui mudar o lote.'); }
+    },
+
+    /** apaga o boleto e o PDF, depois de perguntar (só o que não saiu: as regras também conferem) */
+    async excluir(l: LinhaDoLote) {
+      const ok = await modal<boolean>({
+        icone: 'lixeira', titulo: 'Excluir este boleto?',
+        texto: `${l.boleto.arquivo}${l.contrato ? ' · ' + l.contrato.nome : ''}. O boleto e o PDF saem do lote; para mandar, suba o PDF de novo.`,
+        botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Excluir', valor: true, variante: 'btn-danger' }],
+      });
+      if (!ok) return false;
+      setMarcadas(m => { const n = new Set(m); n.delete(l.boleto.id); return n; });
+      try { await repo.excluir(l.boleto.id); toast('Boleto excluído.'); return true; } catch (e) { falhou(e, 'Não consegui excluir o boleto.'); return false; }
     },
 
     /** abre o PDF do boleto numa aba nova */
