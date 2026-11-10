@@ -18,7 +18,7 @@ import { CANCELAR_LOTE_A_QUALQUER_HORA } from '../../../../comum/desenvolvimento
 import { useDepartamentoDaTela } from '../../casca/departamento';
 import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
 import { apagarTiques } from './useChecklistDaFolha';
-import { useEscopoDoGuardado, useVersaoDoGuardado } from '../../../../comum/guardado';
+import { useEscopoDoGuardado, useGuardado, useVersaoDoGuardado } from '../../../../comum/guardado';
 import { dinamicoDaEmpresa } from '../../../../comum/contabilDaEmpresa';
 import { criarTravaDeRepeticao } from '../../../../comum/travaDeRepeticao';
 import { useEmpresasPermitidas } from '../empresas/andamento';
@@ -72,8 +72,14 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   const exDe: Record<string, t.Execucao> = {};
   if (empresa) for (const m of porMes) exDe[m.competencia] = m.execucoes.find(e => e.empresa === empresa.nome) || t.execucaoNova(empresa.nome, empresa.codigo, m.competencia, rotina.departamento);
   const concluidaEm = (id: string, c: string) => t.concluida(t.situacaoDa(exDe[c] || null, id));
-  // a etapa da vez: a primeira que falta em algum mês do período
-  const etapa = empresa && meses.length ? rotina.etapas.find(e => meses.some(c => !concluidaEm(e.id, c))) || null : null;
+  // a primeira que falta em algum mês do período
+  const primeira = empresa && meses.length ? rotina.etapas.find(e => meses.some(c => !concluidaEm(e.id, c))) || null : null;
+  // a pendente do grupo que dá para abrir fora da ordem (t.etapaLivre)
+  const pendenteLivre = (id: string) => { const e = t.etapaLivre(rotina, primeira, id); return e && meses.some(c => !concluidaEm(e.id, c)) ? e : null; };
+  // a que a pessoa abriu no grupo fica guardada, como o resto do "onde parou"; concluída, volta a primeira que falta
+  const [escolhida, setEscolhida] = useGuardado<string | null>(empresa ? 'etapa-escolhida|' + dep + '|' + formatos.slug(empresa.nome) + '|' + periodo : null, null);
+  // a etapa da vez: a que a pessoa abriu no grupo ou a primeira que falta
+  const etapa = (escolhida ? pendenteLivre(escolhida) : null) || primeira;
   const pendentes = etapa ? meses.filter(c => !concluidaEm(etapa.id, c)) : [];
   // em lote (vários meses: o período escolhido na Importação), toda etapa trabalha o período inteiro, do começo ao fim
   // (Vitor, 02/10/2026): as ações valem para todos os meses que faltam. Num mês só, a ferramenta de período também.
@@ -258,14 +264,16 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     }
     setAviso(null);
     setVendo(null);
+    setEscolhida(id);
   }
 
-  /** Clique numa etapa do checklist: a concluída abre para rever (sem desmarcar); a da vez volta para ela. */
+  /** Clique numa etapa do checklist: a concluída abre para rever (sem desmarcar); a da vez volta para ela; a pendente do grupo abre. */
   function abrirEtapa(id: string) {
     // desenvolvedor: abre qualquer uma, só para ver
     if (dev) { setVendo(id === etapa?.id ? null : id); return; }
     if (!etapa || carregando || conferindo) return;
     if (id === etapa.id) { setVendo(null); return; }
+    if (pendenteLivre(id)) { setEscolhida(id); setVendo(null); setAviso(null); return; }
     if (meses.some(c => concluidaEm(id, c))) { setVendo(id); setAviso(null); }
   }
 
@@ -487,6 +495,8 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     pendentes: pendentes.map(rotuloCurto),
     aviso, conferindo, proximo,
     abrirEtapa,
+    /** a etapa pendente do grupo que abre fora da ordem */
+    livre: (id: string) => !dev && !!pendenteLivre(id),
     resolver,
     /** o Cheque especial aberto, mas sem nenhum dia negativo: dispensa e segue (Vitor, 02/10/2026) */
     dispensarSemCheque: () => {

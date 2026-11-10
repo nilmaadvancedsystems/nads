@@ -83,6 +83,16 @@ export function proximaEtapa(ex: Execucao | null, rotina: Rotina): Etapa | null 
   return rotina.etapas.find(e => !concluida(situacaoDa(ex, e.id))) || null;
 }
 
+/**
+ * No Contábil, as etapas do grupo ficam livres (Vitor, 10/11/2026: "libera todas as tarefas daquela página, só não deixe ir
+ * para a próxima sem resolver o outro grupo"): a etapa pedida, se for do grupo da primeira que falta. A Importação vem antes
+ * de tudo, porque é ela que traz os dados e escolhe o período.
+ */
+export function etapaLivre(rotina: Rotina, primeira: Etapa | null, id: string): Etapa | null {
+  if (rotina.departamento !== 'contabil' || !primeira || primeira.id === rotina.etapas[0]?.id) return null;
+  return rotina.etapas.find(e => e.id === id && (e.secao || '') === (primeira.secao || '')) || null;
+}
+
 export interface Progresso { concluidas: number; total: number; interrompida: Etapa | null }
 
 export function progresso(ex: Execucao | null, rotina: Rotina): Progresso {

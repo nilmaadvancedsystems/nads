@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ArquivoImportado } from '../extratudo/extrator/tipos';
 import {
-  competenciasRecentes, concluida, criarRepoTarefasMemoria, dispensar, execucaoNova, fazer, idDaExecucao, interromper,
+  competenciasRecentes, concluida, criarRepoTarefasMemoria, dispensar, etapaLivre, execucaoNova, fazer, idDaExecucao, interromper,
   etapaNoMes, etapaNoMesDoAno, etapaPeloBalancete, objecoesMaisComuns, tempoPorEtapa, progresso, proximaEtapa, quandoFoi, resumoPorEtapa, ROTINA_CONTABIL, rotuloCompetencia, situacaoGeral, ultimaVez, verificar, execucoesVariadas, marcarSemMovimento, todosSemMovimento, voltarPara, rotuloCurtoCompetencia, competenciasDoPeriodo, rotaDoPeriodo, rotuloDoPeriodo, definirPeriodo, periodoConcluido,
 } from '.';
 
@@ -86,6 +86,21 @@ describe('rótulo curto da competência', () => {
   it('"ago 2026"', () => {
     expect(rotuloCurtoCompetencia('2026-08')).toBe('ago 2026');
     expect(rotuloCurtoCompetencia('2026-03')).toBe('mar 2026');
+  });
+});
+
+describe('as etapas livres dentro do grupo (10/11/2026)', () => {
+  const de = (id: string) => R.etapas.find(e => e.id === id)!;
+
+  it('abre qualquer uma do grupo da primeira que falta, nunca a de outro grupo', () => {
+    expect(etapaLivre(R, de('caixa'), 'bens')?.id).toBe('bens');
+    expect(etapaLivre(R, de('caixa'), 'fornecedores')).toBeNull();
+  });
+
+  it('a Importação vem antes de tudo; fora do Contábil, segue uma por vez', () => {
+    expect(etapaLivre(R, de('extratos'), 'fiscal')).toBeNull();
+    expect(etapaLivre({ ...R, departamento: 'fiscal' }, de('caixa'), 'bens')).toBeNull();
+    expect(etapaLivre(R, null, 'bens')).toBeNull();
   });
 });
 

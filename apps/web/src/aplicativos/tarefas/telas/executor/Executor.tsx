@@ -157,17 +157,23 @@ export function Executor() {
   const botoesDaEtapa = vm.etapa && telaPronta && !vm.interrompendo && saida.state !== 'blocked' && !vm.revendo;
   const liberada = !!botoesDaEtapa && !faltam && requisitosConhecidos && !vm.conferindo;
   const visiveis = vm.etapas.filter(e => !e.oculta && !(semCheque && e.id === 'cheque-especial'));
-  const nDaVez = vm.etapas.find(x => x.daVez)?.n ?? 0;
-  const proxima = liberada ? visiveis.find(e => e.n > nDaVez && e.situacao !== 'feita') || null : null;
-  /** o clique na próxima etapa liberada: marca a da vez feita (ela vira a da vez); nas outras, o de sempre */
-  const abrirEtapa = (id: string) => { if (proxima && id === proxima.id) void vm.proximo(semCheque); else vm.abrirEtapa(id); };
+  const daVez = vm.etapas.find(x => x.daVez);
+  const nDaVez = daVez?.n ?? 0;
+  // a que falta no grupo vem antes do grupo seguinte (com as etapas do grupo livres, ela pode estar antes da da vez)
+  const proxima = liberada ? visiveis.find(e => !e.daVez && e.situacao !== 'feita' && e.secao === daVez?.secao) || visiveis.find(e => e.n > nDaVez && e.situacao !== 'feita') || null : null;
+  /** o clique na próxima etapa liberada: marca a da vez feita (ela vira a da vez); em outra pendente do grupo, marca e abre ela; nas outras, o de sempre */
+  const abrirEtapa = (id: string) => {
+    if (proxima && id === proxima.id) { void vm.proximo(semCheque); return; }
+    if (liberada && vm.livre(id)) void vm.proximo(semCheque);
+    vm.abrirEtapa(id);
+  };
   // a lista do grupo da vez e, se a próxima é de outro grupo, ela embaixo (com o nome do grupo dela)
   const checklist = visiveis.filter(e => !vm.etapa || e.secao === vm.etapa.secao || e.id === proxima?.id).map(e => ({
     // em lote é tudo de uma vez (Vitor, 02/10/2026: "não fica 8/9, são os 9"): só o nome da etapa, sem a contagem de meses
     id: e.id, rotulo: e.nome, icone: 'check' as const, grupo: e.grupo, titulo: e.secao, ativa: e.atual,
     caixa: e.situacao === 'feita' || (e.daVez && liberada) ? 'marcada' as const : e.situacao === 'interrompida' ? 'parada' as const : 'vazia' as const,
     // as da frente que ainda não foram feitas: mais apagadas; a próxima, liberada, revelada
-    apagada: !!vm.etapa && e.n > nDaVez && e.situacao !== 'feita' && e.id !== proxima?.id,
+    apagada: !!vm.etapa && e.n > nDaVez && e.situacao !== 'feita' && e.id !== proxima?.id && !vm.livre(e.id),
   }));
 
   // os grupos da rotina num menu só (como o "+ ▾" do GitHub): o ícone do grupo da vez e, aberto, todos (os da frente travados)
