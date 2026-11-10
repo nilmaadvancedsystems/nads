@@ -39,8 +39,6 @@ export function useCaixaNoBancoDoRazao(nome: string, codigo: number | null, mese
     const chave = base + '|' + n;
     return {
       id: k + '|' + a.caixa.data + '|' + a.caixa.valor, chave, conferido: !!conferidos[chave],
-      /** a marca do banco do par: a linha do caixa no fundo da cor dele */
-      marca: a.noBanco[0]?.marca || '',
       data: dataBR(a.caixa.data), historico: a.caixa.historico, contrapartida: [a.caixa.contrapartida, a.caixa.nomeContrapartida].filter(Boolean).join(' - '),
       valor: formatos.reais(Math.abs(a.caixa.valor)),
       noBanco: a.noBanco.map(b => ({
