@@ -6356,3 +6356,9 @@ td.fs-fat-sem{color:var(--ink-faint);}
 .suporte-progresso li.feita{color:var(--ink);}
 .suporte-botao-qtd{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;background:var(--surface);color:var(--ink);border:1px solid var(--border);font-size:var(--fs-11);font-weight:700;line-height:1;}
 .suporte-botao-qtd.testar{background:var(--success);border-color:var(--success);color:#fff;}
+
+/* o popup de delegar (Vitor, 10/11/2026: "um grid proporcional e alinhado"): colunas iguais; a caixinha, o código e o nome sempre nos mesmos lugares */
+.delegar-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:2px 16px;max-height:42vh;overflow:auto;}
+.delegar-conta{display:grid;grid-template-columns:18px 64px minmax(0,1fr);align-items:center;gap:10px;padding:6px 8px;border-radius:6px;cursor:pointer;}
+.delegar-conta:hover{background:var(--hover-bg);}
+.delegar-conta-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}

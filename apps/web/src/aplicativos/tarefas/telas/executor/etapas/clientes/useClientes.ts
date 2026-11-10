@@ -269,6 +269,8 @@ export function useClientes() {
     carregado: marcas.carregado,
     filtro, setFiltro, busca, setBusca,
     contagem: { todos: linhas.length, pendente: linhas.filter(l => l.situacao === 'pendente').length, ok: linhas.filter(l => l.situacao === 'ok').length, conferido: conferidos.length },
+    /** todas as contas, sem filtro: as que dá para delegar */
+    todasAsContas: linhas.map(l => ({ codigo: l.codigo, nome: l.nome })),
     linhas: linhas
       .filter(l => filtro === 'todos' || l.situacao === filtro)
       .filter(l => !q || (l.codigo + ' ' + l.nome).toLowerCase().includes(q))

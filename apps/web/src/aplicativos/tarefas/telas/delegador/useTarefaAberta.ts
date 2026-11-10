@@ -6,7 +6,7 @@
 import { empresas as emp, entregas, tarefas, usuarios } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
 import { useState } from 'react';
-import { ehDiretor } from '../../casca/navegacao';
+import { ehDiretor, caminhoDoExecutor } from '../../casca/navegacao';
 import { useOperador } from '../../casca/operador';
 import { useAcesso, useRepo, useTarefasDelegadas } from '../../dados/repo';
 import { bytesDoAnexo, encolherAnexo } from '../../dados/encolherAnexo';
@@ -83,6 +83,8 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
     ? !!(r.titulo.trim() || r.descricao.trim() || r.clientes.length || r.responsavel || prazoTexto || r.prazoHora || pendentes.length || r.prioridade !== 'normal' || r.status !== 'pendente')
     : !!tarefa && (Object.keys(mudancas).length > 0 || prazo === null);
   const podeMudar = ehNova || (!!tarefa && d.podeMudar(tarefa, uid));
+  // a etapa delegada a esta pessoa (Vitor, 10/11/2026): abre só ela, com o resto da empresa bloqueado
+  const caminhoDaEtapa = tarefa?.etapaDelegada && tarefa.responsavel.uid === uid && tarefa.status !== 'cancelada' ? caminhoDoExecutor(tarefa.etapaDelegada.rota, tarefa.etapaDelegada.periodo) + '?delegada=' + tarefa.id : null;
 
   // a equipe ativa no "Delegar para" (quem já é o responsável fica, mesmo desativado)
   // com a foto de perfil (a do Entregas, usuarios.fotoPerfil) e as iniciais para quem não tem (28/10/2026: "a escolha tem
@@ -124,6 +126,7 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
   }
 
   return {
+    caminhoDaEtapa,
     carregando: !ehNova && !carregadas,
     /** a tarefa saiu da lista da pessoa (apagada, ou delegada para outra pessoa por quem criou) */
     sumiu: !ehNova && carregadas && !tarefa,

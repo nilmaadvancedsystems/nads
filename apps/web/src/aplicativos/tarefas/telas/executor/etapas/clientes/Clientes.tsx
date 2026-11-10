@@ -10,6 +10,8 @@ import { useClientes, type FiltroClientes, type TelaClientes } from './useClient
 import { useColunaAjustavel, ValorNaGrade } from '../../../../../../comum/GradeDosMeses';
 import { DigitarLancamento } from './DigitarLancamento';
 import { ConsultaDeNotas, useAbasDaConsulta } from '../consulta/ConsultaDeNotas';
+import { JanelaDelegar } from '../delegacao/JanelaDelegar';
+import { useDelegacaoDaEtapa, type VmDelegacao } from '../delegacao/useDelegacaoDaEtapa';
 
 type VM = ReturnType<typeof useClientes>;
 
@@ -24,15 +26,18 @@ const LISTRA = { background: 'var(--surface-2)' };
 
 export function Clientes() {
   const vm = useClientes();
+  const delegacao = useDelegacaoDaEtapa('clientes', vm.todasAsContas);
   // a aba Consulta no menu de cima (Vitor, 14/10/2026: "igual à Consulta normal")
   const consulta = useAbasDaConsulta('Clientes');
   if (consulta) return <ConsultaDeNotas tipos={['saidas', 'prestados']} />;
   return (
     <section>
       <header className="topbar"><div><h2 className="page-title">Clientes</h2></div></header>
+      {delegacao.recebida && <p className="hint">Delegado por {delegacao.recebida.criadaPor.nome}{delegacao.recebida.descricao ? ': ' + delegacao.recebida.descricao : ''}</p>}
       <div className="tarefas-barra-topo">
         <Segmentado<TelaClientes> valor={vm.tela} onMudar={vm.irPara} opcoes={vm.telas} />
         <span className="tarefas-barra-espaco" />
+        {delegacao.podeDelegar && <button type="button" className="btn" onClick={delegacao.abrir}><Icone nome="aviao" />Delegar</button>}
         {/* com cliente credor, o "Corrigi, irei reimportar" no lugar do Próximo travado: tira o dinâmico para importar o
             corrigido; deu tudo ok, volta o Próximo (Vitor, 07/10/2026) */}
         {vm.corrigir ? <button type="button" className="btn btn-primary" onClick={vm.tirar}>Corrigi, irei reimportar</button>
@@ -49,7 +54,8 @@ export function Clientes() {
         )}
       </div>
       {vm.tela === 'arquivos' && <Arquivos vm={vm} />}
-      {vm.tela === 'clientes' && <ListaDeClientes vm={vm} />}
+      {vm.tela === 'clientes' && <ListaDeClientes vm={vm} delegacao={delegacao} />}
+      {delegacao.aberta && <JanelaDelegar vm={delegacao} />}
       {vm.tela === 'envio' && <Envio vm={vm} />}
     </section>
   );
@@ -124,7 +130,10 @@ function LinhaDoArquivo({ titulo, dica = '', feito, onArquivo, onTirar, teste, c
 
 const ROTULO_FILTRO: Record<FiltroClientes, string> = { todos: 'Todos', pendente: 'Pendentes', ok: 'Ok', conferido: 'Conferidos' };
 
-function ListaDeClientes({ vm }: { vm: VM }) {
+function ListaDeClientes({ vm, delegacao }: { vm: VM; delegacao: VmDelegacao }) {
+  // quem recebeu a delegação só vê as contas pedidas; a coluna do check é só dela
+  const linhas = vm.linhas.filter(l => delegacao.visivel(l.codigo));
+  const colunas = delegacao.recebida ? 5 : 4;
   // um campo de arquivo só para a lista: guarda de qual conta é o razão
   const arquivo = useRef<HTMLInputElement>(null);
   const conta = useRef('');
@@ -133,7 +142,7 @@ function ListaDeClientes({ vm }: { vm: VM }) {
   // o formulário do lançamento digitado, aberto embaixo de qual conta (Vitor, 08/10/2026)
   const [digitando, setDigitando] = useState<string | null>(null);
   // alguma linha com a relação do razão: todas guardam o lugar da seta
-  const comSeta = vm.linhas.some(l => !!l.razao && l.razao.itens.length > 0);
+  const comSeta = linhas.some(l => !!l.razao && l.razao.itens.length > 0);
   const alternar = (codigo: string) => setAbertas(f => { const n = new Set(f); if (n.has(codigo)) n.delete(codigo); else n.add(codigo); return n; });
   // puxou o razão (do robô ou do arquivo): os lançamentos da conta já aparecem (Vitor, 10/11/2026: só o selo mudava)
   const abrir = (codigo: string) => setAbertas(f => new Set(f).add(codigo));
@@ -156,11 +165,12 @@ function ListaDeClientes({ vm }: { vm: VM }) {
       </div>
       <div className="table-wrap">
         <table className="table-compact">
-          <thead><tr><th>Conta</th><th>Cliente</th><th>Situação</th><th className="num">Razão</th></tr></thead>
+          <thead><tr>{delegacao.recebida && <th aria-label="Feito" />}<th>Conta</th><th>Cliente</th><th>Situação</th><th className="num">Razão</th></tr></thead>
           <tbody>
-            {vm.linhas.map(l => (
+            {linhas.map(l => (
               <Fragment key={l.codigo}>
-              <tr>
+              <tr style={delegacao.ofuscada(l.codigo) ? { opacity: 0.45 } : undefined}>
+                {delegacao.recebida && <td style={{ width: 32 }}><input type="checkbox" checked={delegacao.feita(l.codigo)} onChange={() => delegacao.alternar(l)} aria-label={'Feito: ' + l.nome} title="Feito" /></td>}
                 <td style={{ whiteSpace: 'nowrap' }}>
                   {/* a seta do razão (Vitor, 07/10/2026): mostra ou esconde a relação embaixo; a seta e o número na mesma
                       linha, e o lugar da seta guardado em todas as linhas para os números ficarem alinhados */}
@@ -175,7 +185,7 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                   </span>
                 </td>
                 <td className="wrap">
-                  {l.nome}{l.doMesAnterior && <> <span className="badge badge-neutral" title="Conferido no mês anterior: revise">do mês anterior</span></>}
+                  {l.nome}{delegacao.para(l.codigo) && <> <span className="badge badge-neutral">{delegacao.para(l.codigo)}</span></>}{l.doMesAnterior && <> <span className="badge badge-neutral" title="Conferido no mês anterior: revise">do mês anterior</span></>}
                   {/* o razão de outro participante (pelo nome nos históricos, não pelo saldo; Vitor, 15/10/2026) */}
                   {l.razao?.deOutro && <span className="hint ext-neg" style={{ display: 'block', marginTop: 2 }}>O razão é de {l.razao.deOutro}: confira se é desta conta</span>}
                   {/* o conferido mostra o que vai para o cliente (o que foi adicionado no "+" de cada linha da relação, em texto: "Questionar: NF 9971 · NF 10111"; Vitor, 07/10/2026) */}
@@ -226,7 +236,7 @@ function ListaDeClientes({ vm }: { vm: VM }) {
               </tr>
               {digitando === l.codigo && (
                 <tr>
-                  <td colSpan={4}>
+                  <td colSpan={colunas}>
                     <DigitarLancamento nome={l.nome} onFechar={() => setDigitando(null)}
                       onAdicionar={x => { vm.digitarLancamento(l.codigo, x); setAbertas(a => new Set(a).add(l.codigo)); }} />
                   </td>
@@ -234,7 +244,7 @@ function ListaDeClientes({ vm }: { vm: VM }) {
               )}
               {l.razao && l.razao.itens.length > 0 && abertas.has(l.codigo) && (
                 <tr>
-                  <td colSpan={4}>
+                  <td colSpan={colunas}>
                     {/* a relação isolada: o cabeçalho fixo dela não passa por cima do menu "Perguntar" da linha de cima */}
                     <div className="table-wrap" style={{ isolation: 'isolate' }}>
                       <table className="table-compact">
@@ -336,7 +346,7 @@ function ListaDeClientes({ vm }: { vm: VM }) {
               )}
               </Fragment>
             ))}
-            {!vm.linhas.length && <tr><td colSpan={4} className="hint">Nenhum cliente neste filtro.</td></tr>}
+            {!linhas.length && <tr><td colSpan={colunas} className="hint">Nenhum cliente neste filtro.</td></tr>}
           </tbody>
         </table>
       </div>

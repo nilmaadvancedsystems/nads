@@ -21,6 +21,24 @@ export interface Nota { por: string; em: string; texto: string }
  */
 export interface Anexo { id: string; nome: string; extensao: string; tamanho: number; em: string; por: string; partes: number; gzip?: true }
 
+/** A etapa que dá para delegar (Vitor, 10/11/2026: por enquanto Clientes e Fornecedores). */
+export type EtapaQueDelega = 'clientes' | 'fornecedores';
+export interface ContaDelegada { codigo: string; nome: string }
+/**
+ * A etapa da Tarefa que foi delegada: a empresa, o período, todas as contas ou só as escolhidas e as que quem recebeu já marcou
+ * como feitas. Quem recebe abre só essa etapa; quem pediu vê as feitas ofuscadas.
+ */
+export interface EtapaDelegada {
+  etapa: EtapaQueDelega;
+  /** o endereço da empresa e o período, como na rota do executor */
+  rota: string; periodo: string;
+  todas: boolean;
+  /** as escolhidas (vazio com todas) */
+  contas: ContaDelegada[];
+  /** o código das contas já feitas */
+  feitas: string[];
+}
+
 export interface TarefaDelegada {
   id: string;
   /** o número para falar da tarefa ("a tarefa 12"), como o ID do Toriba */
@@ -48,6 +66,7 @@ export interface TarefaDelegada {
   pareceres: Nota[];
   historico: Nota[];
   anexos: Anexo[];
+  etapaDelegada?: EtapaDelegada;
 }
 
 /** O que a pessoa preenche no cadastro da tarefa (a nova e a aberta). */
@@ -60,6 +79,8 @@ export interface Rascunho {
   prazoHora: string;
   status: Status;
   responsavel: Pessoa | null;
+  /** só ao criar: a etapa que esta tarefa delega */
+  etapaDelegada?: EtapaDelegada;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -465,7 +486,21 @@ export function nova(r: Rascunho, o: { id: string; numero: number; por: Pessoa; 
     prioridade: r.prioridade, prazo: r.prazo, prazoHora: r.prazoHora, status: r.status, ...base,
     criadaEm: o.em, concluidaEm: r.status === 'concluida' ? o.em : '', atualizadaEm: o.em,
     pareceres: [], historico: historicoDaCriacao(base, o.em), anexos: [],
+    ...(r.etapaDelegada ? { etapaDelegada: r.etapaDelegada } : {}),
   };
+}
+
+/** A conta está no que foi delegado? */
+export const contaNaDelegacao = (e: EtapaDelegada, codigo: string): boolean => e.todas || e.contas.some(c => c.codigo === codigo);
+
+/** A linha do histórico da conta marcada (ou desmarcada) como feita. */
+export const historicoDaContaFeita = (conta: ContaDelegada, feita: boolean, por: string, em: string): Nota => ({ por, em, texto: (feita ? 'Marcou como feita: ' : 'Desmarcou: ') + conta.codigo + ' ' + conta.nome });
+
+/** A tarefa com a conta marcada (ou desmarcada) como feita. */
+export function comContaFeita(t: TarefaDelegada, conta: ContaDelegada, feita: boolean, por: string, em: string): TarefaDelegada {
+  if (!t.etapaDelegada) return t;
+  const resto = t.etapaDelegada.feitas.filter(c => c !== conta.codigo);
+  return { ...t, etapaDelegada: { ...t.etapaDelegada, feitas: feita ? [...resto, conta.codigo] : resto }, atualizadaEm: em, historico: noHistorico(t.historico, [historicoDaContaFeita(conta, feita, por, em)]) };
 }
 
 /**
@@ -560,6 +595,11 @@ export function lerTarefa(id: string, x: Record<string, unknown>): TarefaDelegad
   // a tarefa de antes só tem o campo cliente
   const clientes = Array.isArray(x.clientes) && x.clientes.length ? x.clientes.map(lerCliente).filter((c): c is ClienteVinculado => !!c) : cliente ? [cliente] : [];
   const anexos = Array.isArray(x.anexos) ? x.anexos.map(obj).filter((a): a is Record<string, unknown> => !!a) : [];
+  const ed = obj(x.etapaDelegada);
+  const lerContas = (v: unknown): ContaDelegada[] => (Array.isArray(v) ? v.map(obj).filter((c): c is Record<string, unknown> => !!c).map(c => ({ codigo: texto(c.codigo), nome: texto(c.nome) })) : []);
+  const etapaDelegada: EtapaDelegada | null = ed && (ed.etapa === 'clientes' || ed.etapa === 'fornecedores')
+    ? { etapa: ed.etapa, rota: texto(ed.rota), periodo: texto(ed.periodo), todas: ed.todas === true, contas: lerContas(ed.contas), feitas: Array.isArray(ed.feitas) ? ed.feitas.map(texto) : [] }
+    : null;
   return {
     id, numero: Number(x.numero) || 0, titulo: texto(x.titulo), descricao: texto(x.descricao),
     cliente, clientes,
@@ -572,6 +612,7 @@ export function lerTarefa(id: string, x: Record<string, unknown>): TarefaDelegad
     pareceres: lerNotas(x.pareceres), historico: lerNotas(x.historico),
     anexos: anexos.map(a => ({ id: texto(a.id), nome: texto(a.nome), extensao: texto(a.extensao), tamanho: Number(a.tamanho) || 0, em: texto(a.em), por: texto(a.por), partes: Number(a.partes) || 0, ...(a.gzip === true ? { gzip: true as const } : {}) }))
       .filter(a => a.id && a.partes > 0),
+    ...(etapaDelegada ? { etapaDelegada } : {}),
   };
 }
 

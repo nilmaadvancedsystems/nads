@@ -9,10 +9,10 @@
 import { clientes as cl, empresas, extrator, formatos, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { extratorDaEmpresa, repoDoCadastro } from '../../dados/fonte';
-import { useCadastro, useCartaoEmpresarial, useCredLiquidacao, useVendeNoCartao, useExecucoesDoPeriodo, usePrestaServico, useRegimesDoEntregas, useRepo } from '../../dados/repo';
-import { caminhoDaEmpresa, caminhoDoExecutor } from '../../casca/navegacao';
+import { useCadastro, useCartaoEmpresarial, useCredLiquidacao, useVendeNoCartao, useExecucoesDoPeriodo, usePrestaServico, useRegimesDoEntregas, useRepo, useTarefasDelegadas } from '../../dados/repo';
+import { caminhoDaEmpresa, caminhoDoExecutor, BASE } from '../../casca/navegacao';
 import { useOperador, type Operador } from '../../casca/operador';
 import { CANCELAR_LOTE_A_QUALQUER_HORA } from '../../../../comum/desenvolvimento';
 import { useDepartamentoDaTela } from '../../casca/departamento';
@@ -87,7 +87,14 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   const alvos = juntos ? pendentes : pendentes.slice(0, 1);
   const competencia = pendentes[0] || meses[meses.length - 1] || '';
   const ex = exDe[competencia] || null;
-  const carregando = !carregada;
+  // a etapa delegada (Vitor, 10/11/2026: "o resto da empresa fica bloqueada"): aberta pela tarefa, só ela e sem concluir a rotina
+  const [paramsDaUrl] = useSearchParams();
+  const idDelegada = paramsDaUrl.get('delegada');
+  const repoDelegadas = useTarefasDelegadas();
+  const listaDelegadas = repoDelegadas.lista();
+  const recebida = idDelegada ? listaDelegadas.tarefas.find(x => x.id === idDelegada && !!x.etapaDelegada && x.responsavel.uid === repoDelegadas.eu()?.uid && x.status !== 'cancelada') : undefined;
+  const etapaDelegada = recebida ? rotina.etapas.find(e => e.id === recebida.etapaDelegada?.etapa) || null : null;
+  const carregando = !carregada || (!!idDelegada && !listaDelegadas.carregadas);
   // um mês só, mas que faz parte de um período prometido: o executor leva para o período
   const periodoDoMes = !varios && carregada && ex?.periodo && ex.periodo !== periodo && t.competenciasDoPeriodo(ex.periodo).length > 1 ? ex.periodo : null;
   const concluido = varios && carregada && t.periodoConcluido(meses.map(c => exDe[c] || null), rotina);
@@ -211,7 +218,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   // rever uma etapa já concluída (Vitor, 05/10/2026): ela abre como estava, com os checks, tudo ofuscado; só o Editar
   // (na barra de cima) desmarca e a faz voltar a ser a da vez
   const [vendo, setVendo] = useState<string | null>(null);
-  const revista = vendo && vendo !== etapa?.id && (dev || meses.some(c => concluidaEm(vendo, c))) ? rotina.etapas.find(e => e.id === vendo) || null : null;
+  const revista = etapaDelegada || (vendo && vendo !== etapa?.id && (dev || meses.some(c => concluidaEm(vendo, c))) ? rotina.etapas.find(e => e.id === vendo) || null : null);
   const vista = revista || etapa;
   // a etapa "só quando adicionada" (o Creditor) trabalha os meses em que entrou: os do caixa com CRÉD.LIQ.COBRANÇA
   // (Vitor, 05/10/2026: "já deixa configurado, de acordo com os meses de cred liq do caixa")
@@ -423,7 +430,9 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     etapa: vista, n: vista ? rotina.etapas.findIndex(e => e.id === vista.id) + 1 : 0, total: rotina.etapas.length,
     /** revendo uma etapa concluída: tudo ofuscado, só o Editar */
     // (no modo desenvolvedor, a etapa da frente aberta para ver não é "concluída": fica livre, sem a barra do Editar)
-    revendo: !!revista && meses.some(c => concluidaEm(revista.id, c)),
+    revendo: !etapaDelegada && !!revista && meses.some(c => concluidaEm(revista.id, c)),
+    /** aberta pela tarefa delegada: só esta etapa */
+    delegada: !!etapaDelegada,
     // o Editar pergunta antes de desmarcar (Vitor, 05/10/2026)
     editar: async () => {
       if (!revista) return;
@@ -507,7 +516,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
       }
     },
     interrompendo, abrirInterromper: () => setInterrompendo(true), fecharInterromper: () => setInterrompendo(false), interromper,
-    sair: voltar,
+    sair: etapaDelegada ? () => navegar(BASE + '/inicio?aba=minhas') : voltar,
     /** Os bancos sem movimento de cada mês (a ferramenta da etapa mostra a linha marcada no mês que estiver aberto). */
     semMovimentoPorMes: Object.fromEntries(meses.map(c => [c, exDe[c]?.semMovimento || []])) as Record<string, string[]>,
     marcarSemMovimento: (banco: string, marcado: boolean, mes?: string) => {
@@ -517,7 +526,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
       repo.gravar(m.execucao, m.evento, exDe[c]);
     },
     /** o mês aberto faz parte de um período prometido: para onde levar */
-    irParaPeriodo: periodoDoMes && empresa ? comDep(caminhoDoExecutor(empresas.rotaDaEmpresa(empresa), periodoDoMes)) : null,
+    irParaPeriodo: !etapaDelegada && periodoDoMes && empresa ? comDep(caminhoDoExecutor(empresas.rotaDaEmpresa(empresa), periodoDoMes)) : null,
     /** todos os meses do período estão concluídos (só aí dá para encerrar) */
     periodoConcluido: concluido,
     /** a etapa na tela já foi concluída em todos os meses (a Importação: as empresas que já saíram dela seguem com os razões) */
