@@ -2,7 +2,7 @@
 // lugar, inclusive do celular). Aqui fica a regra, sem tela e sem banco:
 //   - o catálogo (catalogo.json): as 3 máquinas, os robôs de cada uma e a LISTA FECHADA de ações;
 //   - a situação de cada máquina e de cada robô (ok / atenção / parado / pausado), reaproveitando a conta do painel do robô
-//     (entregas/painelRobo.ts: ligado até 3 min sem batimento, atrasado até 10, depois sem sinal);
+//     (entregas/painelRobo.ts: ligado até 7 min sem batimento, atrasado até 15, depois sem sinal);
 //   - o pedido de uma ação (robosComandos/{id}), que o robô de cada máquina confere de novo (robo/central.js);
 //   - o espelho dos registros (robosRegistros/{robo}) e o estado da máquina (robosMaquinas/{maquina});
 //   - os controles (10/11/2026): a fila vista pedido a pedido, o "refazer" do que deu erro, o pedido para um cliente e a pausa
@@ -123,7 +123,7 @@ const ROTULO_DA_MAQUINA: Record<string, string> = { Ligado: 'Ligada', Atrasado: 
 
 /**
  * A máquina está viva? O mais novo entre o batimento do painel (robo/painelPC, robo/painelVM) e o estado da central
- * (robosMaquinas). A conta é a do painel (situacaoDoRobo): até 3 min, ligada; até 10, atrasada; depois, sem sinal.
+ * (robosMaquinas). A conta é a do painel (situacaoDoRobo): até 7 min, ligada; até 15, atrasada; depois, sem sinal.
  */
 export function situacaoDaMaquina(m: MaquinaDaCentral, batimento: BatimentoDoRobo | null, estado: EstadoDaMaquina | null, agora = Date.now()): SituacaoDaMaquina {
   const painel = painelDaMaquina(m.id) || 'pc';

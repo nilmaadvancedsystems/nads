@@ -35,7 +35,10 @@ describe('painel do robô', () => {
     expect(s.agora).toEqual([{ texto: 'Emitindo FGTS 3/10 — 62 EMPRESA', ha: 'há 4 min' }]);
     expect(s.desligados.map(m => m.nome)).toEqual(['SIEG']);
     expect(s.ligados).toBe(1);
-    expect(situacaoDoRobo('pc', batidaPc({ em: ha(5) }), null, AGORA).rotulo).toBe('Atrasado');
+    // o batimento sem mudança vai a cada 5 min: 5 min ainda é ligado; atrasado de 7 a 15
+    expect(situacaoDoRobo('pc', batidaPc({ em: ha(5) }), null, AGORA).rotulo).toBe('Ligado');
+    expect(situacaoDoRobo('pc', batidaPc({ em: ha(8) }), null, AGORA).rotulo).toBe('Atrasado');
+    expect(situacaoDoRobo('pc', batidaPc({ em: ha(16) }), null, AGORA).rotulo).toBe('Sem sinal');
     const parado = situacaoDoRobo('pc', batidaPc({ em: ha(40) }), null, AGORA);
     expect([parado.tom, parado.rotulo, parado.agora]).toEqual(['erro', 'Sem sinal', []]);
     expect(situacaoDoRobo('pc', batidaPc({ desligadoEm: ha(2) }), null, AGORA).rotulo).toBe('Desligado');

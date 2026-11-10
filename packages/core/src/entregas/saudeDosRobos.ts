@@ -51,7 +51,8 @@ export interface CartaoDaSaude {
 
 /** Sem batimento há mais que isto = parado; mais que ATRASO = atenção. */
 export const PARADO_APOS_MIN = 15;
-export const ATRASO_APOS_MIN = 3;
+// 7 desde 10/11/2026: o batimento sem mudança vai a cada 5 min (robo/batimento.js; era 3 com o batimento de cada minuto)
+export const ATRASO_APOS_MIN = 7;
 /** Pedido esperando há mais que isto = fila parada (atenção). */
 export const FILA_VELHA_MIN = 60;
 export const ERRO_RECENTE_HORAS = 24;

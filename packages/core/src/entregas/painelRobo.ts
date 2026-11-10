@@ -152,12 +152,19 @@ export interface SituacaoDoRobo {
   aviso: string;
 }
 
-/** Ligado até 3 min sem batimento; atrasado até 10 min; depois, desligado. */
+/**
+ * Os robôs batem o ponto só quando algo muda ou, sem mudança, a cada 5 min (robo/batimento.js; 10/11/2026, consumo do banco:
+ * era a cada 1 min). Ligado até 7 min sem batimento; atrasado até 15; depois, sem sinal (eram 3 e 10).
+ */
+export const BATIMENTO_ATRASADO_MIN = 7;
+export const BATIMENTO_PARADO_MIN = 15;
+
+/** Ligado até BATIMENTO_ATRASADO_MIN sem batimento; atrasado até BATIMENTO_PARADO_MIN; depois, desligado. */
 export function situacaoDoRobo(robo: IdRobo, b: BatimentoDoRobo | null, sinal: SinalAntigo | null, agora = Date.now()): SituacaoDoRobo {
   const base = { robo, nome: NOMES_DOS_ROBOS[robo], onde: ONDE_RODA[robo], maquina: '', versao: '', ligadoDesde: '', agora: [], desligados: [], ligados: 0, aviso: '' };
   if (!b) {
     if (sinal && sinal.em) {
-      const vivo = !sinal.desligadoEm && idade(sinal.em, agora) < 3 * MIN;
+      const vivo = !sinal.desligadoEm && idade(sinal.em, agora) < BATIMENTO_ATRASADO_MIN * MIN;
       return { ...base, maquina: sinal.maquina, tom: vivo ? 'aviso' : 'erro', rotulo: vivo ? 'Ligado, sem o painel' : 'Desligado',
         sinal: haQuanto(sinal.em, agora) || 'desconhecido',
         aviso: 'Este robô ainda não publica o painel (o que está fazendo, as filas e a atividade). Atualize o código do robô para ver tudo aqui.' };
@@ -165,7 +172,7 @@ export function situacaoDoRobo(robo: IdRobo, b: BatimentoDoRobo | null, sinal: S
     return { ...base, tom: 'neutro', rotulo: 'Sem informação', sinal: 'nenhum ainda', aviso: 'O robô ainda não publicou o painel. Ele aparece aqui no primeiro minuto depois de ligado com o código novo.' };
   }
   const dt = idade(b.em, agora);
-  const tom: TomDoPainel = b.desligadoEm || dt >= 10 * MIN ? 'erro' : dt >= 3 * MIN ? 'aviso' : 'ok';
+  const tom: TomDoPainel = b.desligadoEm || dt >= BATIMENTO_PARADO_MIN * MIN ? 'erro' : dt >= BATIMENTO_ATRASADO_MIN * MIN ? 'aviso' : 'ok';
   return {
     ...base, maquina: b.maquina, versao: b.versao, ligadoDesde: b.desligadoEm ? '' : quandoNoPainel(b.ligadoEm, agora), tom,
     rotulo: b.desligadoEm ? 'Desligado' : tom === 'ok' ? 'Ligado' : tom === 'aviso' ? 'Atrasado' : 'Sem sinal',
@@ -187,7 +194,7 @@ export function filasDoPainel(pc: BatimentoDoRobo | null, vm: BatimentoDoRobo | 
   const linhas: LinhaDaFila[] = [];
   for (const b of [pc, vm]) {
     if (!b) continue;
-    const parado = !!b.desligadoEm || idade(b.em, agora) >= 10 * MIN;
+    const parado = !!b.desligadoEm || idade(b.em, agora) >= BATIMENTO_PARADO_MIN * MIN;
     for (const f of b.filas) {
       const tem = f.esperando + f.andamento > 0;
       const velha = f.esperando > 0 && idade(f.maisAntigoEm, agora) >= HORA && Number.isFinite(idade(f.maisAntigoEm, agora));

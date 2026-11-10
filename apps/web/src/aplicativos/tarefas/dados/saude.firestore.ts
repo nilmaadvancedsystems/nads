@@ -1,13 +1,13 @@
 // A saúde do robô no banco do Entregas (só leitura; as regras deixam admin e contábil lerem robo/* e driveIndice):
 //   robo/estado, robo/arquivador, robo/uso, driveIndice/raiz e os pedidos com erro de solicitacoesEmail.
-// Lê a cada 30 s enquanto alguém acompanha (o robo/estado muda a cada 2 s durante a leitura do Gmail: ouvir ao vivo
-// gastaria leitura à toa).
+// Lê a cada 2 min enquanto alguém acompanha (o robo/estado muda a cada poucos segundos durante a leitura do Gmail: ouvir ao
+// vivo gastaria leitura à toa). Era a cada 30 s: ~34 leituras por volta, ~4 mil por hora com a página aberta (10/11/2026).
 import { entregas as e } from '@nads/core';
 import { collection, doc, getDoc, getDocs, limit, query, where } from 'firebase/firestore';
 import type { RepoSaude } from './saude';
 import { bancoDoEntregas } from './entregas.firestore';
 
-const A_CADA_MS = 30 * 1000;
+const A_CADA_MS = 2 * 60 * 1000;
 
 export function criarSaudeFirestore(): RepoSaude {
   const db = bancoDoEntregas();

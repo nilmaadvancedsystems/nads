@@ -87,7 +87,7 @@ function bancoDeMentira() {
   painel.fazendoPor('sieg', () => 'SIEG: contando 58');
   painel.modulo('fgts', 'FGTS Digital', true);
   painel.estado({ arquivados: { mes: '2026-10', hoje: 1, noMes: 9, execucoes: [] } });
-  painel.iniciar(banco.db, { robo: 'pc', log: m => linhas.push(m), versao: 'teste', filas: [fgts, caixa] });
+  painel.iniciar(banco.db, { robo: 'pc', log: m => linhas.push(m), versao: 'teste', filas: [fgts, caixa], batimento: { semMudancaMs: 0, freioMs: 0 } });
   await new Promise(res => setTimeout(res, 20));
   const doc = banco.docs.get('robo/painelPC');
   verdade('o batimento foi para robo/painelPC', !!doc);

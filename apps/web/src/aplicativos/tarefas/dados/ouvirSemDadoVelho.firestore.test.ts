@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { criarFiltroDeFotos } from './ouvirSemDadoVelho.firestore';
+import { criarFiltroDeFotos, criarPausaDaAbaEscondida, umaFotoPeloOuvinte } from './ouvirSemDadoVelho.firestore';
 
 type F = { metadata: { fromCache: boolean }; docChanges?: () => unknown[]; exists?: () => boolean; data?: () => unknown };
 const consulta = (fromCache: boolean, mudancas = 1): F => ({ metadata: { fromCache }, docChanges: () => Array(mudancas).fill(0) });
@@ -72,5 +72,74 @@ describe('o cache local não põe dado velho na tela', () => {
     f.parar();
     expect(cancelar).toHaveBeenCalled();
     expect(chegaram).toEqual([]);
+  });
+});
+
+describe('a aba escondida não ouve os sinais dos robôs', () => {
+  function montarPausa() {
+    let escondida = false;
+    let agendado: (() => void) | null = null;
+    const desligou = vi.fn();
+    const ligou = vi.fn(() => desligou);
+    const p = criarPausaDaAbaEscondida(ligou, {
+      pausaMs: 1000, escondida: () => escondida,
+      agendar: g => { agendado = g; return 1; }, cancelar: () => { agendado = null; },
+    });
+    return { p, ligou, desligou, esconder: (v: boolean) => { escondida = v; p.aoMudar(); }, disparar: () => { const g = agendado; agendado = null; g?.(); } };
+  }
+  it('liga na hora e continua ouvindo com a aba visível', () => {
+    const { p, ligou } = montarPausa();
+    expect(ligou).toHaveBeenCalledTimes(1);
+    expect(p.ligado()).toBe(true);
+  });
+  it('escondida por um tempo, desliga; ao voltar, liga de novo', () => {
+    const { p, ligou, desligou, esconder, disparar } = montarPausa();
+    esconder(true);
+    expect(p.ligado()).toBe(true);
+    disparar();
+    expect(desligou).toHaveBeenCalledTimes(1);
+    expect(p.ligado()).toBe(false);
+    esconder(false);
+    expect(ligou).toHaveBeenCalledTimes(2);
+    expect(p.ligado()).toBe(true);
+  });
+  it('escondida por pouco: nem desliga nem liga de novo', () => {
+    const { p, ligou, desligou, esconder, disparar } = montarPausa();
+    esconder(true);
+    esconder(false);
+    disparar();
+    expect(desligou).not.toHaveBeenCalled();
+    expect(ligou).toHaveBeenCalledTimes(1);
+    expect(p.ligado()).toBe(true);
+  });
+  it('parou de ouvir: desliga e não religa mais', () => {
+    const { p, ligou, desligou, esconder } = montarPausa();
+    p.parar();
+    expect(desligou).toHaveBeenCalledTimes(1);
+    esconder(false);
+    expect(ligou).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('o getDocs pelo cache: um ouvinte que se desliga na primeira foto', () => {
+  it('entrega a primeira foto e para de ouvir', async () => {
+    const parar = vi.fn();
+    let mandar: (s: string) => void = () => {};
+    const foto = umaFotoPeloOuvinte<string>(chegou => { mandar = chegou; return parar; });
+    mandar('primeira');
+    mandar('segunda');
+    await expect(foto).resolves.toBe('primeira');
+    expect(parar).toHaveBeenCalledTimes(1);
+  });
+  it('a foto que chega antes de o ouvinte terminar de ligar também desliga', async () => {
+    const parar = vi.fn();
+    const foto = umaFotoPeloOuvinte<string>(chegou => { chegou('na hora'); return parar; });
+    await expect(foto).resolves.toBe('na hora');
+    await Promise.resolve();
+    expect(parar).toHaveBeenCalledTimes(1);
+  });
+  it('o erro do banco chega como no getDocs', async () => {
+    const foto = umaFotoPeloOuvinte<string>((_, falhou) => { falhou(new Error('permission-denied')); return () => {}; });
+    await expect(foto).rejects.toThrow('permission-denied');
   });
 });

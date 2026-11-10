@@ -29,7 +29,8 @@ const NAO_IDENTIFICADOS = 'NÃO IDENTIFICADOS';
 const LIMITE_ABRIR = 15 * 1024 * 1024;
 const BYTES_POR_PARTE = 512 * 1024;          // em base64: ~683 KB por documento
 const VIDA_MS = 30 * 60 * 1000;
-const LIMPAR_A_CADA_MS = 5 * 60 * 1000;
+// a faxina dos pedidos vencidos a cada 15 min (era 5; 10/11/2026, consumo do banco: cada volta é pelo menos uma leitura)
+const LIMPAR_A_CADA_MS = 15 * 60 * 1000;
 // grupoPrevia / grupo (23/10/2026, a migração: "Para resolver" em grupos pela causa e pela pasta de origem): o mesmo
 // cliente e tipo para o GRUPO inteiro; a competência de cada arquivo pelo nome ou pelas pastas de origem (ou a do pedido)
 const TIPOS = ['abrir', 'previa', 'arquivar', 'descartar', 'grupoPrevia', 'grupo'];

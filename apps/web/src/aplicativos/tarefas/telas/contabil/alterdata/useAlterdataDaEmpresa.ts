@@ -13,8 +13,11 @@ import { pedidoAndando, tipoDoArquivo, type PedidoMensalDoAlterdata, type Relato
 
 export type SituacaoDoPedido = 'fila' | 'trabalhando' | 'pronto' | 'parcial' | 'erro' | 'cancelado';
 
-/** O Contábil de uma máquina vale se foi visto há menos de 5 min (o robô verifica a cada minuto). */
-const VALE_MS = 5 * 60 * 1000;
+/**
+ * O Contábil de uma máquina vale se foi visto há menos de 12 min (o robô verifica a cada minuto, mas só grava quando muda ou,
+ * sem mudança, a cada 5 min: robo/batimento.js, 10/11/2026).
+ */
+const VALE_MS = 12 * 60 * 1000;
 
 export function situacaoDo(p: PedidoMensalDoAlterdata): SituacaoDoPedido {
   if (p.status === 'pendente') return 'fila';

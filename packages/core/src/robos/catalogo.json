@@ -19,7 +19,7 @@
   ],
   "limites": {
     "horarios": { "janelaMinimaMin": 60, "intervaloMin": 30, "intervaloMax": 720 },
-    "alertas": { "repetirMin": [15, 1440], "maxPorHora": [1, 30], "semSinalMin": [5, 1440], "discoLimite": [50, 99], "padrao": { "repetirMin": 60, "maxPorHora": 6, "semSinalMin": 15, "discoLimite": 90 } }
+    "alertas": { "repetirMin": [15, 1440], "maxPorHora": [1, 30], "semSinalMin": [15, 1440], "discoLimite": [50, 99], "padrao": { "repetirMin": 60, "maxPorHora": 6, "semSinalMin": 15, "discoLimite": 90 } }
   },
   "acoes": [
     { "id": "pausar", "nivel": "comandar", "nome": "Pausar", "alvo": "robo", "destrutiva": true, "descricao": "Para de pegar trabalho novo até alguém retomar ou até a hora marcada. O que está no meio termina." },
