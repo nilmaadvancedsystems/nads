@@ -35,8 +35,10 @@ export interface RoboDaCentral {
   itens?: ItensDaFila;
   /** o que dá para pedir para um cliente e uma competência (robo/central.js PEDIDOS_POR_CLIENTE) */
   pedidos?: TarefaDoRobo[];
+  /** aceita horário próprio (Ajustes › Horários); sem isto, não */
+  horario?: { janela: boolean; intervalo: boolean; nota?: string };
 }
-export interface AcaoDaCentral { id: IdAcao; nome: string; alvo: 'robo' | 'maquina'; destrutiva: boolean; interna?: boolean; descricao: string }
+export interface AcaoDaCentral { id: IdAcao; nome: string; alvo: 'robo' | 'maquina'; destrutiva: boolean; interna?: boolean; descricao: string; nivel: 'ver' | 'comandar' | 'administrar' }
 
 export const MAQUINAS = catalogo.maquinas as MaquinaDaCentral[];
 export const ROBOS = catalogo.robos as unknown as RoboDaCentral[];
@@ -84,6 +86,8 @@ export interface EstadoDaMaquina {
   pausados: Record<string, Pausa>;
   /** a central do robô ainda não sabe fazer (o gancho não está ligado nesta versão), por ação */
   semGancho: string[];
+  /** os robôs parados agora porque estão fora do horário configurado */
+  foraDoHorario: string[];
 }
 
 export function lerEstadoDaMaquina(maquina: IdMaquina, d: Obj | null | undefined): EstadoDaMaquina | null {
@@ -97,6 +101,7 @@ export function lerEstadoDaMaquina(maquina: IdMaquina, d: Obj | null | undefined
     sinais: { cpu: numOuNulo(s.cpu), memoria: numOuNulo(s.memoria), disco: numOuNulo(s.disco), discoLivreGb: numOuNulo(s.discoLivreGb), ligadaHa: numOuNulo(s.ligadaHa) },
     pausados,
     semGancho: Array.isArray(d.semGancho) ? d.semGancho.map(txt) : [],
+    foraDoHorario: Array.isArray(d.foraDoHorario) ? d.foraDoHorario.map(txt) : [],
   };
 }
 
@@ -174,6 +179,7 @@ export function situacaoDoRoboNaCentral(r: RoboDaCentral, maquina: SituacaoDaMaq
   if (maquina.tom === 'erro') return { ...base, tom: 'erro', rotulo: 'Parado', motivo: 'A máquina (' + maquina.maquina.nome + ') está ' + maquina.rotulo.toLowerCase() + '.' };
   if (maquina.tom === 'neutro') return { ...base, tom: 'neutro', rotulo: 'Sem informação', motivo: 'A máquina ainda não mandou sinal.' };
   if (pausa) return { ...base, tom: 'aviso', rotulo: 'Pausado', motivo: 'Pausado' + (pausa.por ? ' por ' + pausa.por : '') + (pausa.ate ? ', volta ' + quandoVolta(pausa.ate, agora) : pausa.em ? ' ' + haQuanto(pausa.em, agora) : '') + '.' };
+  if (estado?.foraDoHorario.includes(r.id)) return { ...base, tom: 'neutro', rotulo: 'Fora do horário', motivo: 'Fora do horário configurado; volta sozinho.' };
   if (modulo && !modulo.ligado) return { ...base, tom: 'erro', rotulo: 'Parado', motivo: 'Não ligou' + (modulo.motivo ? ': ' + modulo.motivo : '') + '.' };
   if (fila?.erro) return { ...base, tom: 'aviso', rotulo: 'Atenção', motivo: 'A fila não foi lida: ' + fila.erro };
   if (filaVelha) return { ...base, tom: 'aviso', rotulo: 'Atenção', motivo: 'Tem pedido esperando ' + fila!.espera + '.' };

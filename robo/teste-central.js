@@ -92,6 +92,26 @@ igual('conferir: rodar agora o Ler o Gmail na nuvem', central.conferirComando('c
   igual('fgts: na frente, o mais recente primeiro, os outros na mesma ordem', f.map(x => x.id), ['e', 'b', 'a', 'c']);
 }
 
+// ---------- quem pode o quê ----------
+{
+  const admin = { admin: true, papel: '', robos: [] };
+  const ver = { admin: false, papel: 'ver', robos: [] };
+  const fgts = { admin: false, papel: 'comandar', robos: ['fgts'] };
+  const adm = { admin: false, papel: 'administrar', robos: [] };
+  const nada = { admin: false, papel: '', robos: [] };
+  verdade('permissão: admin pode tudo', central.podeFazer(admin, 'reiniciar', ''));
+  verdade('permissão: quem administra reinicia', central.podeFazer(adm, 'parar-tudo', ''));
+  verdade('permissão: só olhar assiste', central.podeFazer(ver, 'assistir', 'fgts'));
+  igual('permissão: só olhar não pausa', central.podeFazer(ver, 'pausar', 'fgts'), false);
+  verdade('permissão: comandar o robô dele', central.podeFazer(fgts, 'cancelar-item', 'fgts'));
+  igual('permissão: comandar outro robô, não', central.podeFazer(fgts, 'cancelar-item', 'sieg'), false);
+  igual('permissão: comandar não mexe na máquina', central.podeFazer(fgts, 'reiniciar', ''), false);
+  igual('permissão: comandar não para tudo', central.podeFazer(fgts, 'parar-tudo', 'fgts'), false);
+  igual('permissão: fora da lista, nada', central.podeFazer(nada, 'assistir', 'fgts'), false);
+  igual('permissão: ação sem nível, nada', central.podeFazer(fgts, 'shell', 'fgts'), false);
+  for (const a of catalogo.acoes) verdade('catálogo: a ação ' + a.id + ' tem nível', ['ver', 'comandar', 'administrar'].includes(a.nivel));
+}
+
 // ---------- segredos e linhas ----------
 igual('segredo: token=', central.limparSegredos('pedido ok token=abc123def456 fim'), 'pedido ok token=*** fim');
 igual('segredo: senha:', central.limparSegredos('login {"senha": "minha-senha"}'), 'login {"senha": "***"}');
@@ -154,6 +174,7 @@ function bancoDeMentira({ negar = false } = {}) {
   const ouvintes = [];
   let seq = 0;
   const col = nome => { if (!colecoes.has(nome)) colecoes.set(nome, new Map()); return colecoes.get(nome); };
+  col('usuarios').set('uid-1', { roles: ['admin'] });   // quem pede nos testes
   const avisar = () => { for (const o of ouvintes) o(); };
   const negado = () => Promise.reject(Object.assign(new Error('7 PERMISSION_DENIED: Missing or insufficient permissions.'), { code: 7 }));
   function ref(nome, id) {
@@ -367,6 +388,76 @@ const msgDe = (db, id) => (db.dados('robosComandos').get(id) || {}).mensagem || 
     igual('retomar tudo: chamou os três', chamadas.slice().sort(), ['retomar alterdata', 'retomar fgts', 'retomar sieg']);
     await esperar(20);
     igual('retomar tudo: nenhum no estado gravado', pausadosAgora(), []);
+    await central.desligarCentral();
+  }
+
+  // --- quem pediu: o robô confere de novo, mesmo que o banco tenha deixado gravar ---
+  {
+    const db = bancoDeMentira();
+    const chamadas = [];
+    central.registrarPausa('fgts', { pausar: async () => chamadas.push('pausar'), retomar: async () => chamadas.push('retomar') });
+    central.iniciarCentral({ db, maquina: 'servidor', log });
+    db.dados('usuarios').set('olha', { roles: [] });
+    db.dados('robosPermissoes').set('olha', { papel: 'ver', robos: [] });
+    db.dados('usuarios').set('fgts', { roles: [] });
+    db.dados('robosPermissoes').set('fgts', { papel: 'comandar', robos: ['fgts'] });
+    db.dados('usuarios').set('ex', { roles: ['admin'], ativo: false });
+    db.dados('usuarios').set('fora', { roles: [] });
+    const bater = async (id, extra) => { db.dados('robosComandos').set(id, recente(Object.assign({ maquina: 'servidor', robo: 'fgts', acao: 'pausar' }, extra))); db.collection('robosComandos').doc('gatilho').set(recente({ maquina: 'outra' })); await esperar(40); };
+    await bater('a1', { por: 'olha' });
+    verdade('quem: só olhar não pausa', statusDe(db, 'a1') === 'recusado' && /permissão/.test(msgDe(db, 'a1')));
+    await bater('a2', { por: 'fora' });
+    igual('quem: fora da lista é recusado', statusDe(db, 'a2'), 'recusado');
+    await bater('a3', { por: 'ex' });
+    igual('quem: admin desativado é recusado', statusDe(db, 'a3'), 'recusado');
+    await bater('a4', { por: 'naoexiste' });
+    igual('quem: sem cadastro é recusado', statusDe(db, 'a4'), 'recusado');
+    igual('quem: nenhum desses chamou o gancho', chamadas, []);
+    await bater('a5', { por: 'fgts', robo: 'sieg' });
+    igual('quem: comandar outro robô é recusado', statusDe(db, 'a5'), 'recusado');
+    await bater('a6', { por: 'fgts' });
+    igual('quem: comandar o robô dele → feito', statusDe(db, 'a6'), 'feito');
+    igual('quem: e o gancho foi chamado', chamadas, ['pausar']);
+    await bater('a7', { por: 'fgts', robo: '', acao: 'reiniciar' });
+    verdade('quem: comandar não reinicia a máquina', statusDe(db, 'a7') === 'recusado' && /permissão/.test(msgDe(db, 'a7')));
+    await central.desligarCentral();
+  }
+
+  // --- os horários: fora da janela pausa, a volta não solta quem foi pausado à mão ---
+  {
+    const db = bancoDeMentira();
+    const chamadas = [];
+    for (const robo of ['fgts', 'sieg', 'alterdata']) central.registrarPausa(robo, { pausar: async () => chamadas.push('pausar ' + robo), retomar: async () => chamadas.push('retomar ' + robo) });
+    const horario = { ativo: true, dias: [0, 1, 2, 3, 4, 5, 6], de: '08:00', ate: '18:00' };
+    db.dados('config').set('robosHorarios', { robos: { fgts: horario, sieg: horario, arquivador: horario } });
+    central.iniciarCentral({ db, maquina: 'servidor', log });
+    await esperar(20);
+    const DIA = Date.parse('2026-11-10T15:00:00Z');   // 12:00 em Brasília
+    const NOITE = Date.parse('2026-11-10T23:30:00Z'); // 20:30 em Brasília
+    chamadas.length = 0;
+    central._st().foraDoHorario.clear();
+    central._st().pausados = {};
+    await central._conferirHorarios(NOITE);
+    igual('horário: fora da janela pausa os dois que têm', chamadas.slice().sort(), ['pausar fgts', 'pausar sieg']);
+    igual('horário: quem não tem horário não muda', central._st().foraDoHorario.has('alterdata'), false);
+    igual('horário: o arquivador nunca entra', central._st().foraDoHorario.has('arquivador'), false);
+    await central._conferirHorarios(NOITE + 15000);
+    igual('horário: repetir não chama de novo', chamadas.length, 2);
+    await esperar(10);
+    igual('horário: publicado na máquina', (db.dados('robosMaquinas').get('servidor').foraDoHorario || []).slice().sort(), ['fgts', 'sieg']);
+    chamadas.length = 0;
+    central._st().pausados.sieg = { por: 'Ana', em: new Date().toISOString() };
+    await central._conferirHorarios(DIA);
+    igual('horário: a volta solta só quem não foi pausado à mão', chamadas, ['retomar fgts']);
+    chamadas.length = 0;
+    await central._conferirHorarios(NOITE);
+    igual('horário: fora de novo, só chama quem não está pausado à mão', chamadas, ['pausar fgts']);
+    chamadas.length = 0;
+    db.dados('robosComandos').set('h2', recente({ maquina: 'servidor', robo: 'sieg', acao: 'retomar' }));
+    db.collection('robosComandos').doc('gatilho').set(recente({ maquina: 'outra' }));
+    await esperar(40);
+    igual('horário: retomar à mão fora da janela não solta', chamadas.includes('retomar sieg'), false);
+    igual('horário: o retomar tirou a pausa à mão', !!central._st().pausados.sieg, false);
     await central.desligarCentral();
   }
 

@@ -28,6 +28,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const horarios = require('./horarios');
 
 let catalogo = { maquinas: [], robos: [] };
 try { catalogo = require('../packages/core/src/robos/catalogo.json'); } catch (e) { /* sem o catálogo (cópia só do robo/): nenhum robô conhecido, tudo é recusado */ }
@@ -59,6 +60,8 @@ const AO_VIVO_DURA_MS = 5 * 60 * 1000;
 const ESTADO_A_CADA_MS = 60 * 1000;
 const TRAVADO_MS = 30 * 60 * 1000;
 const MAX_MENSAGEM = 300;
+const NIVEL_DA_ACAO = Object.fromEntries((catalogo.acoes || []).map(a => [a.id, a.nivel]));
+const UID_OK = /^[A-Za-z0-9_-]{1,128}$/;
 const AGENDA_A_CADA_MS = 15 * 1000;
 
 // ---------- funções puras (o teste-central.js roda sem banco) ----------
@@ -279,7 +282,7 @@ const pausas = new Map();   // robo -> { pausar, retomar }
 function registrarPausa(robo, f) {
   if (!(f && typeof f.pausar === 'function' && typeof f.retomar === 'function')) return;
   pausas.set(String(robo), f);
-  if (st && st.pausados[robo]) Promise.resolve().then(() => f.pausar()).catch(err => st && st.log('central: não consegui pausar de novo o', robo, '-', mensagemDe(err)));
+  if (st && (st.pausados[robo] || st.foraDoHorario.has(String(robo)))) Promise.resolve().then(() => f.pausar()).catch(err => st && st.log('central: não consegui pausar de novo o', robo, '-', mensagemDe(err)));
 }
 
 /** As tarefas que "rodar agora" sabe fazer: viram um pedido na fila que o robô já atende (o mesmo do botão do nads). */
@@ -291,6 +294,33 @@ const TAREFAS = {
     tipo: 'verificar', dias: 3, status: 'pendente', criadoEm: new Date().toISOString(), criadoPor: 'Central dos robôs (' + (c.porNome || 'admin') + ')', criadoPorUid: c.por,
   }).then(() => 'Pedido na fila do Gmail (últimos 3 dias).'),
 };
+
+// ---------- quem pode o quê (usuarios/{uid}.roles e robosPermissoes/{uid}: { papel, robos }) ----------
+const PAPEIS = ['ver', 'comandar', 'administrar'];
+
+/** A permissão de quem pediu. Conta desativada ou sem cadastro não tem nenhuma; o papel 'admin' do nads pode tudo. */
+async function permissaoDe(uid) {
+  const nada = { admin: false, papel: '', robos: [] };
+  if (!UID_OK.test(String(uid || ''))) return nada;
+  const [u, p] = await Promise.all([st.db.collection('usuarios').doc(uid).get(), st.db.collection('robosPermissoes').doc(uid).get()]);
+  const dados = u.exists ? u.data() || {} : null;
+  if (!dados || dados.ativo === false) return nada;
+  const permissao = p.exists ? p.data() || {} : {};
+  return {
+    admin: Array.isArray(dados.roles) && dados.roles.includes('admin'),
+    papel: PAPEIS.includes(permissao.papel) ? permissao.papel : '',
+    robos: Array.isArray(permissao.robos) ? permissao.robos.map(String) : [],
+  };
+}
+
+/** Só olhar = só o "ao vivo" dos registros; comandar = as ações de robô, só nos robôs dele; administrar = tudo, inclusive as máquinas. */
+function podeFazer(p, acao, robo) {
+  if (!p) return false;
+  if (p.admin || p.papel === 'administrar') return true;
+  const nivel = NIVEL_DA_ACAO[acao];
+  if (nivel === 'ver') return PAPEIS.includes(p.papel);
+  return nivel === 'comandar' && p.papel === 'comandar' && !!robo && p.robos.includes(String(robo));
+}
 
 /** Recusa de um comando depois de aceito (o item sumiu, já começou...): o comando fica 'recusado' com a mensagem, não 'erro'. */
 class Recusa extends Error {}
@@ -440,7 +470,7 @@ async function pausarRobo(robo, c) {
   st.pausados[robo] = p;
 }
 async function retomarRobo(robo) {
-  await pausas.get(robo).retomar();
+  if (!st.foraDoHorario.has(robo)) await pausas.get(robo).retomar();
   delete st.pausados[robo];
 }
 
@@ -583,16 +613,21 @@ async function atender(doc) {
   if (conf.ignorar) return;
   st.vistos.add(id);
   if (st.vistos.size > 2000) st.vistos = new Set(Array.from(st.vistos).slice(-1000));
-  if (!conf.fazer) {
+  const recusar = async motivo => {
     try {
       await st.db.runTransaction(async t => {
         const s = await t.get(doc.ref);
-        if (s.exists && (s.data() || {}).status === 'pendente') t.update(doc.ref, { status: 'recusado', mensagem: conf.motivo, respondidoEm: new Date().toISOString(), host: os.hostname() });
+        if (s.exists && (s.data() || {}).status === 'pendente') t.update(doc.ref, { status: 'recusado', mensagem: motivo, respondidoEm: new Date().toISOString(), host: os.hostname() });
       });
     } catch (err) { logUmaVez('recusar', 'não consegui recusar o comando -', mensagemDe(err)); }
-    st.log('central: recusei', c.acao, c.robo || '', '-', conf.motivo);
-    return;
-  }
+    st.log('central: recusei', c.acao, c.robo || '', '-', motivo);
+  };
+  if (!conf.fazer) return recusar(conf.motivo);
+  // quem pediu pode? a regra do banco já conferiu, e o robô confere de novo; sem conseguir ler, não faz
+  let semPoder = '';
+  try { if (!podeFazer(await permissaoDe(c.por), c.acao, c.robo)) semPoder = 'Quem pediu não tem permissão para isso nesta central.'; }
+  catch (err) { semPoder = 'Não consegui conferir quem pediu; peça de novo em instantes.'; logUmaVez('permissao', 'não consegui ler a permissão -', mensagemDe(err)); }
+  if (semPoder) return recusar(semPoder);
   let meu = false;
   try { meu = await pegar(doc.ref); } catch (err) { logUmaVez('pegar', 'não consegui pegar o comando -', mensagemDe(err)); return; }
   if (!meu) return;
@@ -629,6 +664,7 @@ function publicarEstado(desligado) {
   };
   // só depois de ler as pausas guardadas: publicar antes apagaria a pausa de quem estava pausado
   if (!desligado && st.pausadosLidos) doc.pausados = st.pausados;
+  if (!desligado) doc.foraDoHorario = [...st.foraDoHorario];
   // mergeFields, não merge: com merge o Firestore junta os mapas e um robô retomado continuaria em 'pausados' enquanto outro
   // estivesse pausado; assim cada campo publicado é trocado por inteiro
   return st.db.collection('robosMaquinas').doc(st.maquina).set(doc, { mergeFields: Object.keys(doc) })
@@ -653,6 +689,33 @@ function lerPausasGuardadas() {
 }
 
 /** A pausa marcada: venceu a hora, o robô volta sozinho (a hora está em robosMaquinas, então vale depois de reiniciar). */
+/**
+ * Os horários (config/robosHorarios, robo/horarios.js): fora da janela o robô de fila fica pausado do mesmo jeito da pausa
+ * à mão, mas é outra marca: a volta da janela não solta quem foi pausado por alguém, e retomar à mão não solta quem está
+ * fora da janela. Sem configuração, nada muda.
+ */
+async function conferirHorarios(agora = Date.now()) {
+  if (!st || st.conferindoHorarios) return;
+  st.conferindoHorarios = true;
+  let mudou = false;
+  try {
+    await st.horarios.atualizar(agora);
+    for (const r of robosDaMaquina(st.maquina)) {
+      const gancho = pausas.get(r.id);
+      if (!gancho || !r.pausavel || !r.horario) continue;
+      const fora = !horarios.dentroDoHorario(st.horarios.horario(r.id), agora);
+      if (fora === st.foraDoHorario.has(r.id)) continue;
+      try {
+        if (!st.pausados[r.id]) await (fora ? gancho.pausar() : gancho.retomar());
+        if (fora) st.foraDoHorario.add(r.id); else st.foraDoHorario.delete(r.id);
+        mudou = true;
+        st.log('[' + r.id + '] central: ' + (fora ? 'fora do horário; não pega trabalho novo' : 'dentro do horário; voltou a pegar trabalho'));
+      } catch (err) { logUmaVez('horario-' + r.id, 'não consegui aplicar o horário do', r.id, '-', mensagemDe(err)); }
+    }
+  } finally { if (st) st.conferindoHorarios = false; }
+  if (mudou) void publicarEstado();
+}
+
 async function conferirPausas(agora = Date.now()) {
   if (!st || st.conferindoPausas) return;
   st.conferindoPausas = true;
@@ -661,7 +724,7 @@ async function conferirPausas(agora = Date.now()) {
     for (const robo of pausasVencidas(st.pausados, agora)) {
       try {
         const gancho = pausas.get(robo);
-        if (gancho) await gancho.retomar();
+        if (gancho && !st.foraDoHorario.has(robo)) await gancho.retomar();
         delete st.pausados[robo];
         mudou = true;
         st.log('[' + robo + '] central: a pausa marcada venceu; voltou a pegar trabalho');
@@ -700,7 +763,9 @@ function iniciarCentral(o) {
       db: o.db, maquina, log: o.log || console.log, raiz: o.raiz || '', versao, ligadoEm: new Date().toISOString(),
       ganchos: Object.assign({ reiniciar: reinicioEducado, atualizar: atualizarAgora }, o.ganchos || {}),
       vistos: new Set(), recentes: new Map(), pausados: {}, pausadosLidos: false, conferindoPausas: false, timers: [], restaurar: [], paradas: [],
+      foraDoHorario: new Set(), conferindoHorarios: false,
     };
+    st.horarios = horarios.criarLeitor(o.db, m => logUmaVez('horarios', m));
     st.espelho = criarEspelho({
       maquina,
       gravar: (robo, doc) => st.db.collection('robosRegistros').doc(robo).set(doc)
@@ -709,9 +774,12 @@ function iniciarCentral(o) {
     interceptarLog(st.espelho);
     // os pausados de antes (a pausa vale até alguém retomar ou até a hora marcada, mesmo com o robô reiniciado); sem conseguir
     // ler agora, tenta de novo a cada minuto
-    lerPausasGuardadas().finally(() => { void publicarEstado(); });
+    lerPausasGuardadas().finally(() => { void conferirHorarios().catch(err => logUmaVez('agenda', 'erro no horário -', mensagemDe(err))).finally(() => publicarEstado()); });
     st.timers.push(setInterval(() => { if (!st.pausadosLidos) void lerPausasGuardadas(); void publicarEstado(); }, ESTADO_A_CADA_MS));
-    st.timers.push(setInterval(() => { void conferirPausas().catch(err => logUmaVez('agenda', 'erro na pausa marcada -', mensagemDe(err))); }, AGENDA_A_CADA_MS));
+    st.timers.push(setInterval(() => {
+      void conferirPausas().catch(err => logUmaVez('agenda', 'erro na pausa marcada -', mensagemDe(err)));
+      void conferirHorarios().catch(err => logUmaVez('agenda', 'erro no horário -', mensagemDe(err)));
+    }, AGENDA_A_CADA_MS));
     st.timers.push(setInterval(() => { try { st.espelho.tique(); } catch (e) { /* segue */ } }, 5000));
     st.timers.push(setTimeout(() => { void limparHistorico(); }, 3 * 60 * 1000));
     st.timers.push(setInterval(() => { void limparHistorico(); }, 12 * 36e5));
@@ -722,6 +790,8 @@ function iniciarCentral(o) {
       () => st.db.collection('robosComandos').where('maquina', '==', maquina).where('status', '==', 'pendente'),
       snap => { for (const d of snap.docs) void atender(d).catch(err => logUmaVez('atender', 'erro atendendo comando -', mensagemDe(err))); },
       m => logUmaVez('ouvir', m)));
+    st.alertas = require('./alertas').iniciarAlertas({ db: o.db, maquina, log: st.log, enviarPara: o.enviarAlerta || null });
+    st.paradas.push(st.alertas.parar);
     st.log('central dos robôs ligada (' + maquina + ')');
     const parar = () => desligarCentral();
     return parar;
@@ -748,5 +818,6 @@ module.exports = {
   ACOES, ACOES_DA_MAQUINA, VALIDADE_MS, REPETIDO_MS, LINHAS, MAX_BYTES, AO_VIVO_MS, DEVAGAR_MS, TRAVADO_MS,
   conferirComando, limparSegredos, linhaParaEspelho, roboDaLinha, criarEspelho, docDoEspelho, travado, chaveDoComando,
   pausasVencidas, motivoDaHora, ITEM_OK, CLIENTE_OK, COMPETENCIA_OK, PEDIDOS_POR_CLIENTE,
-  sinaisDaMaquina, TAREFAS, _atender: atender, _conferirPausas: conferirPausas, _st: () => st,
+  podeFazer,
+  sinaisDaMaquina, TAREFAS, _atender: atender, _conferirPausas: conferirPausas, _conferirHorarios: conferirHorarios, _st: () => st,
 };
