@@ -416,11 +416,14 @@ function semALegendaDoItau(pagina: ItemDeTexto[]): ItemDeTexto[] {
 /**
  * A fatura do cartão na pasta do extrato (Vitor, 09/11/2026, na 474: o "02-2026.pdf" do Itaú era a fatura e o extrato, o
  * "02-2026 (1).pdf"; a fatura entrava como extrato, com as compras nas datas delas). O "Pagamento de fatura" do extrato não
- * conta: a fatura traz o quadro dela e o vencimento, e nunca o saldo anterior ou inicial da conta.
+ * conta: a fatura traz o quadro dela e o vencimento, e não o saldo anterior ou inicial da conta. A fatura do Sicoob tem um
+ * "saldo anterior" do próprio cartão (Vitor, 10/11/2026, na 309: o "EXTRATO_SICOOB_09-2026.pdf" era a fatura): com ele, vale o
+ * pagamento mínimo, desde que o documento não se diga extrato nem tenha o saldo do dia.
  */
 export function ehFaturaDeCartao(texto: string): boolean {
   const t = normalizarTexto(texto);
-  return /resumo da fatura|total d(?:a|esta) fatura|sua fatura de|fatura no valor de/.test(t) && /\bvencimento\b/.test(t) && !/saldo (?:anterior|inicial)/.test(t);
+  if (!/resumo da fatura|total d(?:a|esta) fatura|sua fatura de|fatura no valor de/.test(t) || !/\bvencimento\b/.test(t)) return false;
+  return !/saldo (?:anterior|inicial)/.test(t) || (/pagamento minimo/.test(t) && !/extrato|saldo do dia/.test(t));
 }
 
 export function lancamentosDoPdf(paginas: ItemDeTexto[][], lado: Lado, anoPadrao = new Date().getFullYear()): Lancamento[] {

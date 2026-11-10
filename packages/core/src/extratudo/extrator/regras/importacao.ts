@@ -18,9 +18,10 @@ import { dataBR } from './texto';
  * do período" (09/11/2026); 11 = o "extrato mensal" do Itaú (o sinal escrito, a legenda e os quadros do fim fora) e a fatura
  * do cartão que entrou como extrato sai (09/11/2026); 12 = o "Extrato por período" da Caixa escaneado: o valor com letra do
  * OCR e o saldo que entrava no lugar dele (chamado 03CP5C, 09/11/2026); 13 = o "(+)" do BB, o saldo inicial do Mercado Pago e o
- * Inter e o InfinitePay, que não eram lidos (10/11/2026).
+ * Inter e o InfinitePay, que não eram lidos (10/11/2026); 14 = a fatura do cartão que tem "saldo anterior", a do Sicoob, sai
+ * (10/11/2026).
  */
-export const VERSAO_DO_LEITOR = 13;
+export const VERSAO_DO_LEITOR = 14;
 
 export function empresaNova(nome: string): EmpresaExtrator {
   return { nome, arquivos: [], auditoria: [] };
