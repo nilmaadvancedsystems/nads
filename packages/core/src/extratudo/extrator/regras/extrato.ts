@@ -544,6 +544,14 @@ export function ehCaixaPorPeriodo(texto: string): boolean {
   return /\bextrato por periodo\b/.test(t) && /\bcaixa\b/.test(t);
 }
 
+/**
+ * O histórico da Caixa por período sem o que não é histórico (chamado TKAI2P, na 175): a hora e o Nr. Doc da frente
+ * ("-11:12:17 341100 DEP DINHEIRO") e o que sobra do C/D do valor no fim ("C—", "C/"). O OCR lê o Nr. Doc "000000" como "DO0NOO".
+ */
+function semHoraNemDocumentoDaCaixa(h: string): string {
+  return h.replace(/^-?\s*\d{2}:\d{2}:\d{2}\s+\S+\s*/, '').replace(/\s+[CD][—–\-/|.,]+$/, '').trim();
+}
+
 /** a borda esquerda da coluna Valor, pelo cabeçalho que tem Favorecido, Valor e Saldo na mesma linha */
 function xDaColunaValorDaCaixa(linhas: Linha[]): number | null {
   for (const l of linhas) {
@@ -882,6 +890,7 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
       // mês e a 2ª dentro é do mês do extrato
       const dataDoLanc = segunda && pelaDtMovimento ? segunda
         : periodo && segunda && !dataAtual.startsWith(periodo) && segunda.startsWith(periodo) ? segunda : dataAtual;
+      if (caixaPorPeriodo) h = semHoraNemDocumentoDaCaixa(h);
       const novo: Lancamento = { data: dataDoLanc, valor: c, historico: h || '(sem histórico)', ...(dataDoLanc !== dataAtual ? { balancete: dataAtual } : {}) };
       ultimo = novo;
       if (ficouInseguro != null) inseguro = { l: novo, antes: ficouInseguro };
