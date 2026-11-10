@@ -5110,13 +5110,14 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .modal.fin-contratos-janela{max-width:760px;}
 .fin-contratos-filtro{display:inline-flex;align-items:center;gap:8px;font-size:var(--fs-13);color:var(--ink-muted);margin:12px 0 4px;}
 .fin-contratos{list-style:none;margin:0;padding:0;max-height:48vh;overflow:auto;border:1px solid var(--border);border-radius:6px;}
-.fin-contrato{display:grid;grid-template-columns:auto minmax(120px,1fr) 110px minmax(100px,180px) auto;align-items:center;gap:10px;padding:6px 10px;border-bottom:1px solid var(--border);}
+.fin-contrato{display:grid;grid-template-columns:auto minmax(120px,1fr) 110px 52px minmax(100px,180px) auto;align-items:center;gap:10px;padding:6px 10px;border-bottom:1px solid var(--border);}
 .fin-contrato:last-child{border-bottom:0;}
 .fin-contrato-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-14);}
 .fin-contrato-obs{min-width:0;border:1px solid transparent;border-radius:6px;background:transparent;padding:6px 8px;font-size:var(--fs-13);color:var(--ink);outline:none;}
 .fin-contrato-obs:hover{background:var(--hover-bg);}
 .fin-contrato-obs:focus{background:var(--input-bg);border-color:var(--accent);}
-@media (max-width:640px){.fin-contrato{grid-template-columns:auto 1fr auto;}.fin-contrato-obs{grid-column:1 / -1;}}
+.fin-contrato-dia{text-align:center;}
+@media (max-width:640px){.fin-contrato{grid-template-columns:auto 1fr auto;}.fin-contrato-obs{grid-column:1 / -1;}.fin-contrato-obs.fin-contrato-dia{grid-column:auto;}}
 
 /* Cadastro › Painel do robô (21/10/2026): só o encaixe das peças do catálogo (card, ent-dados, ent-linhas, selo suave,
    painel-numero, chip-row, tabela padrão) — os dois robôs lado a lado, o "Agora" quebrando a linha, a hora à direita */

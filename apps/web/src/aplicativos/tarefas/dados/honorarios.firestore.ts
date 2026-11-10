@@ -1,10 +1,10 @@
 // Os honorários no banco do Entregas (19/10/2026, fase 2 do Financeiro), nas regras de lá (o admin e o diretor):
-//   - financeiroHonorarios/{id}: {clienteId, codigo, nome, cnpj, valor, ativo, observacoes?, criadoEm, criadoPor, atualizadoEm?,
+//   - financeiroHonorarios/{id}: {clienteId, codigo, nome, cnpj, valor, diaVencimento? (10/11/2026), ativo, observacoes?, criadoEm, criadoPor, atualizadoEm?,
 //     atualizadoPor?, cobrancas?: {AAAA-MM: {em, por}}}; ao vivo;
 //   - financeiroRecebimentos/{contratoId}_{AAAA-MM}: {contratoId, competencia, valor, recebidoEm, forma, lancamentoId?,
 //     observacoes?, por, em}; ao vivo.
 import { financeiro } from '@nads/core';
-import { addDoc, collection, deleteDoc as deleteDocBruto, doc, onSnapshot, setDoc as setDocBruto, updateDoc as updateDocBruto } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc as deleteDocBruto, deleteField, doc, onSnapshot, setDoc as setDocBruto, updateDoc as updateDocBruto } from 'firebase/firestore';
 import { guardar } from '../../../comum/modoDesenvolvedor';
 import type { ListaAoVivo } from './agentes';
 import { bancoDoEntregas } from './entregas.firestore';
@@ -16,6 +16,7 @@ const deleteDoc = guardar(deleteDocBruto) as typeof deleteDocBruto;
 const addDocGuardado = guardar(addDoc) as typeof addDoc;
 const texto = (v: unknown) => (v == null ? '' : String(v));
 const FORMAS = financeiro.FORMAS_DE_RECEBIMENTO.map(f => f.valor);
+const diaValido = (v: unknown): v is number => Number.isInteger(v) && (v as number) >= 1 && (v as number) <= 31;
 
 /** as cobranças mandadas: { '2026-09': { em, por } } */
 function cobrancasDoBanco(v: unknown): Record<string, { em: string; por: string }> | undefined {
@@ -31,7 +32,7 @@ function cobrancasDoBanco(v: unknown): Record<string, { em: string; por: string 
 function contratoDoBanco(id: string, d: Record<string, unknown>): financeiro.ContratoDeHonorario {
   return {
     id, clienteId: texto(d.clienteId), codigo: texto(d.codigo), nome: texto(d.nome), cnpj: texto(d.cnpj).replace(/\D/g, ''),
-    valor: Number(d.valor) || 0, ativo: d.ativo !== false, observacoes: texto(d.observacoes) || undefined, cobrancas: cobrancasDoBanco(d.cobrancas),
+    valor: Number(d.valor) || 0, ...(diaValido(d.diaVencimento) ? { diaVencimento: d.diaVencimento } : {}), ativo: d.ativo !== false, observacoes: texto(d.observacoes) || undefined, cobrancas: cobrancasDoBanco(d.cobrancas),
     criadoEm: texto(d.criadoEm), criadoPor: texto(d.criadoPor), atualizadoEm: texto(d.atualizadoEm) || undefined, atualizadoPor: texto(d.atualizadoPor) || undefined,
   };
 }
@@ -84,13 +85,16 @@ export function criarHonorariosFirestore(): RepoHonorarios {
       };
       const antes = d.id ? contratos?.lista.find(x => x.id === d.id) : undefined;
       if (d.id && antes) {
-        await setDoc(doc(db, 'financeiroHonorarios', d.id), { ...base, ...(antes.cobrancas ? { cobrancas: antes.cobrancas } : {}), criadoEm: antes.criadoEm, criadoPor: antes.criadoPor, atualizadoEm: agora, atualizadoPor: quem });
+        await setDoc(doc(db, 'financeiroHonorarios', d.id), { ...base, ...(antes.cobrancas ? { cobrancas: antes.cobrancas } : {}), ...(antes.diaVencimento ? { diaVencimento: antes.diaVencimento } : {}), criadoEm: antes.criadoEm, criadoPor: antes.criadoPor, atualizadoEm: agora, atualizadoPor: quem });
         return d.id;
       }
       return (await addDocGuardado(collection(db, 'financeiroHonorarios'), { ...base, criadoEm: agora, criadoPor: quem })).id;
     },
     async definirValor(id, valor, quem) {
       await updateDoc(doc(db, 'financeiroHonorarios', id), { valor: Math.round(valor * 100) / 100, atualizadoEm: new Date().toISOString(), atualizadoPor: quem });
+    },
+    async definirDiaVencimento(id, dia, quem) {
+      await updateDoc(doc(db, 'financeiroHonorarios', id), { diaVencimento: dia ?? deleteField(), atualizadoEm: new Date().toISOString(), atualizadoPor: quem });
     },
     async registrarCobranca(id, competencia, quem) {
       // o campo com caminho (cobrancas.2026-09) muda só essa competência, sem apagar as outras
