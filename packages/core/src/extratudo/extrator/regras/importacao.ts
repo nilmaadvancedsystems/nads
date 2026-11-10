@@ -266,8 +266,16 @@ export function relerExtrato(e: EmpresaExtrator, arquivoId: string, lido: Arquiv
   const anoErrado = [...meses].some(m => mesImpossivel(a, m));
   const doArquivo = (d: { data: string }) => anoErrado || !meses.size || meses.has(d.data.slice(0, 7));
   // com o ano errado, a mesma data e o mesmo valor bastam: o outro extrato leu o mesmo movimento, com outro histórico
-  const novos = lido.erro ? [] : soNovos(outros, lido.lancamentos.filter(doArquivo), anoErrado && a.lado === 'banco');
-  if (!novos.length && !lido.erro && lido.lancamentos.length && meses.size && [...meses].every(m => mesImpossivel(a, m))) {
+  const lidosDoArquivo = lido.erro ? [] : lido.lancamentos.filter(doArquivo);
+  const novos = lido.erro ? [] : soNovos(outros, lidosDoArquivo, anoErrado && a.lado === 'banco');
+  // o pedaço com o ano errado cujo movimento quase todo já está em outro extrato do banco (o mesmo mês em PDF com texto; o Volponi
+  // de janeiro e fevereiro): o que sobra é o que o OCR leu com outro dia ou outro valor, e não movimento novo. Cada um desses deixa
+  // um lançamento do outro extrato sem par; sem par nenhum, o que sobra é movimento que só este arquivo tem, e ele fica
+  const repetidos = lidosDoArquivo.length - novos.length;
+  const mesesLidos = new Set(lidosDoArquivo.map(l => l.data.slice(0, 7)));
+  const semPar = outros.filter(o => mesesLidos.has(o.data.slice(0, 7))).length - repetidos;
+  const quaseTudoRepetido = novos.length > 0 && repetidos >= novos.length * 2 && novos.length <= semPar;
+  if ((!novos.length || quaseTudoRepetido) && !lido.erro && lido.lancamentos.length && meses.size && [...meses].every(m => mesImpossivel(a, m))) {
     const saiu: RegistroAuditoria = { ts: agora.toISOString(), acao: 'Releu o extrato', detalhe: a.nome + ' · ' + a.lancamentos.length + ' lançamento(s) com o ano errado: o movimento já está em outro extrato', tom: 'ok' };
     return { ...e, arquivos: e.arquivos.filter(x => x.id !== arquivoId), auditoria: [saiu, ...e.auditoria] };
   }

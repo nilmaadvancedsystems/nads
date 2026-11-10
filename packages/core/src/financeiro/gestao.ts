@@ -68,7 +68,8 @@ export const ARREDONDAMENTOS: { valor: ArredondamentoDoReajuste; rotulo: string 
 
 /** o valor com o reajuste (pct = 4,5 para 4,5%), arredondado para cima no real ou de 5 em 5 */
 export function valorReajustado(valor: number, pct: number, arredondar: ArredondamentoDoReajuste = 'centavo'): number {
-  const centavos = Math.round(emCentavos(valor) * (1 + pct / 100));
+  // limpo a 15 dígitos: 5.565,00 + 25,1% dá 696181,4999… centavos no ponto flutuante e o meio centavo descia
+  const centavos = Math.round(Number((emCentavos(valor) * (1 + pct / 100)).toPrecision(15)));
   if (arredondar === 'real') return Math.ceil(centavos / 100);
   if (arredondar === 'cinco') return Math.ceil(centavos / 500) * 5;
   return centavos / 100;

@@ -9,7 +9,8 @@
 //     prestados, R-4020 IRRF e CSRF dos tomados).
 import type { NotaDoSieg, NotasSieg } from './index';
 
-const centavos = (v: number) => Math.round(v * 100) / 100;
+// o meio centavo sobe, como o ARRED da planilha (o número limpo a 15 dígitos antes, como em calculadora.ts)
+const centavos = (v: number) => (Math.sign(v) * Math.round(Number((Math.abs(v) * 100).toPrecision(15)))) / 100;
 const so = (v: unknown) => String(v || '').replace(/\D/g, '');
 
 // ---------- 1) monofásico e ST ----------

@@ -65,7 +65,12 @@ export function lerDataFlexivel(v: unknown): Date | null {
       if (d.getMonth() === mes - 1 && d.getDate() === dia) return d;
     }
     m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (m) return new Date(parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10));
+    if (m) {
+      const mes = parseInt(m[2], 10), dia = parseInt(m[3], 10);
+      const d = new Date(parseInt(m[1], 10), mes - 1, dia);
+      // corrigido no nads (10/11/2026): a mesma conta do 'dd/mm/aaaa'; '2026-02-31' "rolava" para 03/03
+      if (d.getMonth() === mes - 1 && d.getDate() === dia) return d;
+    }
   }
   return null;
 }
@@ -73,13 +78,14 @@ export function lerDataFlexivel(v: unknown): Date | null {
 /**
  * Número de uma célula (parseNumberFlexible): número finito, ou texto com 'R$', espaços,
  * sinal '-' ou parênteses. Com vírgula e ponto, o que vem por último é o decimal; só vírgula:
- * vírgula decimal; só ponto: "1.000"/"1.234.567" são milhar, senão ("12.5") é decimal.
+ * vírgula decimal; só ponto: "1.000"/"1.234.567" são milhar, senão ("12.5", "0.500") é decimal.
  * Corrigido no nads: o original lia "1.000" como 1, "12,345" como 12345 e "1.234,567" como 1,23.
+ * O R$ pode vir depois do sinal ("-R$ 1,23", "(R$ 1,23)": 10/11/2026, a taxa negativa em texto fazia a linha sumir do extrato).
  */
 export function lerNumeroFlexivel(v: unknown): number | null {
   if (typeof v === 'number') return isFinite(v) ? v : null;
   if (typeof v !== 'string') return null;
-  let s = v.trim().replace(/^R\$\s*/i, '').replace(/\s/g, '');
+  let s = v.replace(/\s/g, '').replace(/^(-?\(?)R\$/i, '$1');
   if (!s) return null;
   const neg = /^-/.test(s) || /^\(.*\)$/.test(s);
   s = s.replace(/^\((.*)\)$/, '$1').replace(/^-/, '');
@@ -87,7 +93,7 @@ export function lerNumeroFlexivel(v: unknown): number | null {
   const ponto = s.lastIndexOf('.');
   if (virg >= 0 && ponto >= 0) s = virg > ponto ? s.replace(/\./g, '').replace(',', '.') : s.replace(/,/g, '');
   else if (virg >= 0) s = s.replace(/\./g, '').replace(',', '.');
-  else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');
+  else if (/^[1-9]\d{0,2}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');
   if (!/^\d+(\.\d+)?$/.test(s)) return null;
   const n = Number(s);
   return neg ? -n : n;

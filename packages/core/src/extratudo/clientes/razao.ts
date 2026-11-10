@@ -68,6 +68,14 @@ function nfDoPagamento(h: string): string | null {
   return /pag\w*\.?\s+(?:a\s+|de\s+|ao\s+)?fornecedor\w*\D*?(\d{3,15})/i.exec(h)?.[1].replace(/^0+(?=\d)/, '') ?? nfDoHistorico(h);
 }
 
+/** A duplicata do recebimento: "… -DUP.002", "… 9242/002"; '' = o histórico não diz. */
+function parcelaDoRecebimento(h: string): string {
+  const p = /\bdup(?:licata)?\D{0,3}(\d+)/i.exec(h)?.[1] ?? /\d{3,15}\s*\/\s*(\d{1,3})\b/.exec(h)?.[1] ?? '';
+  return p.replace(/^0+(?=\d)/, '');
+}
+
+const chaveDoRecebimento = (nf: string | null, l: Pick<LancamentoDoRazao, 'historico' | 'data' | 'valor'>) => (nf || l.historico) + '|' + l.data + '|' + Math.abs(l.valor);
+
 /**
  * De que lado é a conta (Vitor, 07/10/2026: Fornecedores é "a mesma coisa que o Clientes", com o devedor no lugar do
  * credor). No razão do Alterdata o crédito é positivo: no cliente, a venda é débito e o recebimento crédito; no
@@ -133,6 +141,22 @@ export function participanteDeOutraConta(participantes: readonly string[] | unde
   return participantes.some(p => mesmoNomeDeCliente(p, nomeDaConta)) ? null : participantes[0];
 }
 
+/**
+ * As duplicatas citadas em cada recebimento (a mesma nota, dia e valor), com '' para o que não cita nenhuma: só com duas ou mais
+ * diferentes e todos citando é que não são cópia um do outro (o lançado sem a duplicata pode ser a cópia de qualquer uma).
+ */
+function parcelasPorRecebimento(ls: readonly LancamentoDoRazao[], lado: LadoDaConta): Map<string, Set<string>> {
+  const m = new Map<string, Set<string>>();
+  for (const l of ls) {
+    if (tipoDe(l, lado) !== 'recebimento') continue;
+    const k = chaveDoRecebimento(lado === 'clientes' ? nfDoRecebimento(l.historico) : nfDoPagamento(l.historico), l);
+    let set = m.get(k);
+    if (!set) { set = new Set(); m.set(k, set); }
+    set.add(parcelaDoRecebimento(l.historico));
+  }
+  return m;
+}
+
 /** O fim do mês ('aaaa-mm' → 'aaaa-mm-31', vale para comparar datas 'aaaa-mm-dd'). */
 const fimDoMes = (mes: string) => mes + '-31';
 
@@ -149,7 +173,9 @@ export function conferirRazaoDoCliente(razao: RazaoDaConta, mes: string, lado: L
   const devolucoes: DevolucaoDoCliente[] = [];
   const duplicados: RecebimentoDuplicado[] = [];
   const semNota: RazaoConferido['semNota'] = [];
-  const vistos = new Map<string, { conta: string; dup?: RecebimentoDuplicado }>();
+  // por recebimento: quantos em cada conta e o maior deles (os da outra conta, até esse número, são a cópia)
+  const vistos = new Map<string, { primeira: string; porConta: Map<string, number>; maior: number; copias: RecebimentoDuplicado[] }>();
+  const parcelasDo = parcelasPorRecebimento(ls, lado);
   // o saldo anterior entra no saldo; o recebimento sem nota do razão paga primeiro o que ficou dele
   const anterior = centavos(-sinal * (razao.saldoInicial || 0));
   let restante = Math.max(0, anterior);
@@ -172,16 +198,24 @@ export function conferirRazaoDoCliente(razao: RazaoDaConta, mes: string, lado: L
     const valor = sinal * l.valor;
     if (tipo === 'recebimento') {
       const nf = lado === 'clientes' ? nfDoRecebimento(l.historico) : nfDoPagamento(l.historico);
-      const chave = (nf || l.historico) + '|' + l.data + '|' + valor;
-      const antes = vistos.get(chave);
+      const base = chaveDoRecebimento(nf, l);
+      // duas duplicatas diferentes da nota (DUP.001 e DUP.002), de mesmo valor no mesmo dia, são dois recebimentos
+      const parcelas = parcelasDo.get(base);
+      const chave = parcelas && parcelas.size > 1 && !parcelas.has('') ? base + '|' + parcelaDoRecebimento(l.historico) : base;
       const conta = (l.contrapartida + ' ' + l.nomeContrapartida).trim();
-      // o mesmo recebimento em outra conta no mesmo dia: duplicidade (conta uma vez)
-      if (antes && antes.conta !== conta) {
-        if (!antes.dup) { antes.dup = { nf: nf || '', data: l.data, valor, contas: [antes.conta] }; duplicados.push(antes.dup); }
-        antes.dup.contas.push(conta);
+      let visto = vistos.get(chave);
+      if (!visto) { visto = { primeira: conta, porConta: new Map(), maior: 0, copias: [] }; vistos.set(chave, visto); }
+      const naConta = (visto.porConta.get(conta) || 0) + 1;
+      visto.porConta.set(conta, naConta);
+      // o mesmo recebimento em outra conta no mesmo dia: duplicidade (conta uma vez). Vale o maior número de vezes numa conta só,
+      // para não depender da ordem da grade: Banco, Banco e Caixa são dois recebimentos e uma cópia, venha qual vier primeiro
+      if (naConta <= visto.maior) {
+        let copia = visto.copias[naConta - 1];
+        if (!copia) { copia = { nf: nf || '', data: l.data, valor, contas: [visto.primeira] }; visto.copias[naConta - 1] = copia; duplicados.push(copia); }
+        copia.contas.push(conta);
         continue;
       }
-      vistos.set(chave, { conta });
+      visto.maior = naConta;
       saldo -= valor;
       if (nf && notas.has(nf)) {
         const n = nota(nf, l.data);

@@ -368,18 +368,23 @@ export function conferirConta(x: EntradaVerificacao): ResultadoVerificacao {
   const semNumero = linhasConf.filter((_, i) => !numerosPorLinha[i].some(t => numerosAlvo[semZeros(t)]));
   const usadas = new Set<LinhaRazao>();
   const peloValor: { nota: NotaAlvo; linha: LinhaRazao }[] = [];
-  const faltando = faltandoPeloNumero.filter(n => {
+  // em ordem de data, depois número (e a linha por data e texto): com uma linha para duas notas de mesmo valor, a nota que ficava
+  // "Faltando" mudava conforme a ordem do arquivo (10/11/2026)
+  const linhasEmOrdem = semNumero.slice().sort((a, b) => dataOrdem(a.data) - dataOrdem(b.data) || a.txt.localeCompare(b.txt));
+  const casadas = new Set<NotaAlvo>();
+  for (const n of faltandoPeloNumero.slice().sort((a, b) => dataOrdem(a.data) - dataOrdem(b.data) || compararNumerico(a.numero, b.numero))) {
     let melhor: LinhaRazao | null = null, dist = Infinity;
-    for (const l of semNumero) {
+    for (const l of linhasEmOrdem) {
       if (usadas.has(l) || Math.abs(l.valor - Math.abs(n.valor)) >= IGUAL) continue;
       const d = Math.abs(diaDe(l.data) - diaDe(n.data));
       if (d <= DIAS_PELO_VALOR && d < dist) { dist = d; melhor = l; }
     }
-    if (!melhor) return true;
+    if (!melhor) continue;
     usadas.add(melhor);
+    casadas.add(n);
     peloValor.push({ nota: n, linha: melhor });
-    return false;
-  });
+  }
+  const faltando = faltandoPeloNumero.filter(n => !casadas.has(n));
   const sobra = semNumero.filter(l => !usadas.has(l)).concat(deOutroCfop);
   // a operação de cada linha (a coluna Operação) e a da conta: a linha que só é nota de outra operação sai do "A mais"
   const porNumero = notasPorNumero(e);

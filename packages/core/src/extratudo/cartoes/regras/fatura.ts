@@ -67,7 +67,14 @@ function partesDoGasto(l: Linha): { dia: string; valor: number; meio: string } |
 /** Uma linha "solta": só texto, sem data e sem valor, e que não é cabeçalho — pedaço de uma descrição quebrada. */
 function solta(l: Linha | undefined): boolean {
   if (!l) return false;
-  return !l.pedacos.some(p => RE_VALOR.test(p.texto.trim())) && !RE_DATA.test(l.pedacos[0].texto.trim()) && !RE_CABECALHO.test(l.texto);
+  // "01/02" fora da coluna da data é a parcela no meio da descrição, não a data de outro lançamento
+  const comData = l.pedacos[0].x < ATE_A_DATA && RE_DATA.test(l.pedacos[0].texto.trim());
+  return !l.pedacos.some(p => RE_VALOR.test(p.texto.trim())) && !comData && !RE_CABECALHO.test(l.texto);
+}
+
+/** Os números de "Conta Cartão:" das linhas (o rótulo sem número não pega a data ou o valor da linha de baixo). */
+function contasDe(linhas: readonly Linha[]): string[] {
+  return [...linhas.map(l => l.texto).join('\n').matchAll(/Conta Cart[ãa]o:\s*(\d+)(?![\d/.,])/gi)].map(m => m[1]);
 }
 
 /** Os pedaços de texto de cada página do PDF → a fatura. Lança Error com a mensagem para a tela. */
@@ -80,6 +87,12 @@ export function lerFatura(paginas: readonly (readonly PedacoDaFatura[])[]): Fatu
   const [anoV, mesV, diaV] = [Number(vencimento.slice(0, 4)), Number(vencimento.slice(5, 7)), Number(vencimento.slice(8, 10))];
   const total = todo.match(/Total da Fatura\s+(-?[\d.]+,\d{2})/i);
   const contaCartao = todo.match(/Conta Cart[ãa]o:\s*(\d+)/i)?.[1] || '';
+  // a leitura para no primeiro DEMONSTRATIVO: a conta que só vem depois dele sumiria em silêncio, com a diferença dando zero
+  const corte = linhas.findIndex(l => /^DEMONSTRATIVO/i.test(l.texto));
+  const lidas = corte < 0 ? [] : contasDe(linhas.slice(0, corte));
+  // pedaço de outra é a mesma conta impressa de outro jeito (o dígito à parte, zeros na frente, mascarada, em dois pedaços do PDF)
+  const outra = lidas.length ? contasDe(linhas.slice(corte)).find(c => !lidas.some(a => a.includes(c) || c.includes(a))) : undefined;
+  if (outra) throw new Error('Este PDF tem mais de uma conta de cartão (' + lidas[0] + ', ' + outra + '). Mande uma fatura por arquivo.');
   const cliente = todo.match(/Cliente:\s*(.+)/i)?.[1].trim() || '';
 
   const itens: ItemDaFatura[] = [];

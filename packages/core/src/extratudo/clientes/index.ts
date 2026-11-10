@@ -226,7 +226,9 @@ function analiticasDaSecao(d: BalanceteDinamico, lado: LadoDaConta): LinhaDinami
   const pronta = i.dasSecoes[lado];
   if (pronta) return pronta;
   const secoes = d.linhas.filter(l => SECAO[lado].test(normalizarTexto(l.descricao)) && l.classificacao && (lado === 'clientes' || l.classificacao.startsWith('2')));
-  const lista = d.linhas.filter(l => secoes.some(s => l.classificacao.startsWith(s.classificacao + '.')) && !temContaDebaixo(d, l));
+  // debaixo de "CONTAS A PAGAR" também ficam os SALARIOS A PAGAR, o INSS…: têm a etapa deles (como no tipoDoRazao), não são fornecedor
+  const daObrigacao = (l: LinhaDinamico) => lado === 'fornecedores' && PELO_NOME.some(([, re]) => re.test(normalizarTexto(l.descricao)));
+  const lista = d.linhas.filter(l => secoes.some(s => l.classificacao.startsWith(s.classificacao + '.')) && !temContaDebaixo(d, l) && !daObrigacao(l));
   i.dasSecoes[lado] = lista;
   i.codigosDasSecoes[lado] = new Set(lista.map(l => l.codigo));
   return lista;

@@ -18,7 +18,8 @@ const BANCO = /\b(banco|bco|sicoob|sicredi|bradesco|itau|santander|nubank|inter|
 /** As pendências do fim, pelo dinâmico, nos meses do período (só as que têm conta; vazio = tudo certo). */
 export function conferirFechamento(d: BalanceteDinamico, meses: readonly string[]): PendenciaDoFechamento[] {
   const cobertos = meses.filter(m => d.meses.includes(m));
-  const ultimo = cobertos[cobertos.length - 1] || '';
+  // o mês mais novo, como os meses vierem: é até ele que os credores são procurados
+  const ultimo = [...cobertos].sort().pop() || '';
   const folha = (l: LinhaDinamico) => !temContaDebaixo(d, l);
   const nome = (l: LinhaDinamico) => l.descricao.replace(/\s+/g, ' ').trim();
   /** as analíticas que passam no teste, com os meses em que o saldo está do lado errado */

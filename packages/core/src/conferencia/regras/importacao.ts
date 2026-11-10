@@ -26,12 +26,14 @@ export function separarPorTipo(novas: Nota[], tipo: TipoNotaFiscal): SeparacaoPo
 
 /**
  * Só as notas do período da Tarefa (Vitor, 19/10/2026: "se eu colocar o período até 31/08, só importe até aquelas
- * datas"): pela competência da nota; sem período (a Conferência sozinha), todas. A nota sem data fica.
+ * datas"): pela competência da nota; sem período (a Conferência sozinha), todas. A nota sem data fica; a de data com mês que não
+ * existe ("05/13/2026", sem competência desde 10/11/2026) continua de fora, com o aviso: não é do período e sumiria da conferência calada.
  */
-export function soDoPeriodo<N extends { comp: string }>(notas: readonly N[], meses?: readonly string[]): { dentro: N[]; fora: N[] } {
+export function soDoPeriodo<N extends { comp: string; data?: string }>(notas: readonly N[], meses?: readonly string[]): { dentro: N[]; fora: N[] } {
   if (!meses?.length) return { dentro: [...notas], fora: [] };
   const r = { dentro: [] as N[], fora: [] as N[] };
-  for (const n of notas) (!n.comp || meses.includes(n.comp) ? r.dentro : r.fora).push(n);
+  const mesQueNaoExiste = (n: N) => { const m = /\d{1,2}[/-](\d{1,2})[/-]\d{2,4}/.exec(n.data || ''); return !!m && (+m[1] < 1 || +m[1] > 12); };
+  for (const n of notas) ((!n.comp && !mesQueNaoExiste(n)) || meses.includes(n.comp) ? r.dentro : r.fora).push(n);
   return r;
 }
 
@@ -121,7 +123,9 @@ export function mesclarServicos(existentes: NotaServico[], novas: NotaServico[],
       const ex = por[k];
       if (!ex) { const c = { ...n }; atuais.push(c); por[k] = c; add++; continue; }
       if (n.conta && ex.conta !== n.conta) ex.conta = n.conta;
-      if (ex.lanc !== n.lanc || ex.codPart !== n.codPart || ex.iss !== n.iss) { ex.lanc = n.lanc; ex.codPart = n.codPart; ex.iss = n.iss; atualizadas++; }
+      // o ISS como as retenções abaixo: o relatório sem a coluna não apaga o guardado (10/11/2026)
+      const iss = n.iss ?? ex.iss;
+      if (ex.lanc !== n.lanc || ex.codPart !== n.codPart || ex.iss !== iss) { ex.lanc = n.lanc; ex.codPart = n.codPart; ex.iss = iss; atualizadas++; }
       // as retenções entram quando o relatório traz a coluna (a corrigida sem mudar o lançamento ficava com o valor velho)
       for (const r of ['issRet', 'irrf', 'inss', 'pis', 'cofins', 'csll'] as const) { const v = n[r]; if (v != null) ex[r] = v; }
       if (n.exportado && ex.exportado !== n.exportado) ex.exportado = n.exportado;

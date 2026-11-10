@@ -20,7 +20,9 @@ export function resumoPorEtapa(execucoes: readonly Execucao[], rotina: Rotina, t
     const daEtapa = e.soQuandoAdicionada ? execucoes.filter(ex => etapaNoMes(ex, e.id)) : codigos ? execucoes.filter(ex => temPeloRegime(e, ex.codigo)) : execucoes;
     const total = e.soQuandoAdicionada ? daEtapa.length : totalEmpresas - (codigos ? codigos.filter(c => !temPeloRegime(e, c)).length : 0);
     for (const ex of daEtapa) {
-      const s = situacaoDa(ex, e.id);
+      const salva = situacaoDa(ex, e.id);
+      // a que saiu do mês não está parada (como em progresso), mas o que foi feito nela fica contado
+      const s = salva === 'interrompida' && !etapaNoMes(ex, e.id) ? 'dispensada' : salva;
       if (s === 'feita') feitas++;
       else if (s === 'dispensada') dispensadas++;
       else if (s === 'interrompida') interrompidas++;
@@ -59,7 +61,7 @@ export function objecoesMaisComuns(execucoes: readonly Execucao[], rotina: Rotin
   const conta = new Map<string, ObjecaoContada>();
   for (const ex of execucoes) {
     for (const [idEtapa, est] of Object.entries(ex.etapas)) {
-      if (!est.objecao || (est.situacao !== 'interrompida' && est.situacao !== 'dispensada')) continue;
+      if (!est.objecao || (est.situacao !== 'interrompida' && est.situacao !== 'dispensada') || !etapaNoMes(ex, idEtapa)) continue;
       const etapa = rotina.etapas.find(e => e.id === idEtapa);
       const texto = etapa?.objecoes.find(o => o.id === est.objecao)?.texto || (est.objecao === 'outro' ? 'Outro motivo' : est.objecao);
       const k = idEtapa + '|' + est.objecao;

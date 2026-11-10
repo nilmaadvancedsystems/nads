@@ -185,6 +185,28 @@ export function juntarPedacosSoltos(linhas: Linha[]): Linha[] {
   return saida;
 }
 
+/**
+ * O mesmo Sicoob do SISBR na virada da página: o valor (5 pontos acima da linha da data) fica sozinho no fim da página e a
+ * linha da data, sem valor, abre a seguinte (Torra-Torra, jun/2026: o "23.236,51" do SALDO DO DIA entrava como crédito de
+ * R$ 23.236,51 e o saldo de todos os dias seguintes ficava errado). Leva o valor para a linha da data. Não é o caso do layout com
+ * o valor embaixo da data: ali o número é da data que ficou em cima dele, e a data que abre a página tem o seu logo depois.
+ */
+function juntarValorDaVirada(paginas: Linha[][]): Linha[][] {
+  const saida = paginas.map(p => p.slice());
+  for (let i = 0; i + 1 < saida.length; i++) {
+    const fim = saida[i][saida[i].length - 1];
+    const abre = saida[i + 1][0];
+    if (!fim || !abre || fim.tokens.length !== 1 || !SO_VALOR.test(fim.tokens[0].s)) continue;
+    const dataSemValor = (x?: Linha) => !!x && RE_DATA.test(x.tokens[0]?.s || '') && !x.tokens.some(t => RE_VALOR.test(t.s));
+    const seguinte = saida[i + 1][1];
+    if (!dataSemValor(abre) || dataSemValor(saida[i][saida[i].length - 2]) || (seguinte?.tokens.length === 1 && SO_VALOR.test(seguinte.tokens[0].s))) continue;
+    const tokens = [...abre.tokens, fim.tokens[0]].sort((a, b) => a.x - b.x);
+    saida[i + 1][0] = { y: abre.y, tokens, texto: tokens.map(t => t.s).join(' ') };
+    saida[i].pop();
+  }
+  return saida;
+}
+
 /** Cabeçalho da tabela: onde ficam as colunas Débito / Crédito / Saldo / Valor (pela borda direita). */
 function colunas(linhas: Linha[]): Colunas | null {
   for (const l of linhas) {
@@ -462,6 +484,15 @@ export function ehFaturaDeCartao(texto: string): boolean {
   return /resumo da fatura|total d(?:a|esta) fatura|sua fatura de|fatura no valor de/.test(t) && /\bvencimento\b/.test(t) && !/saldo (?:anterior|inicial)/.test(t);
 }
 
+/**
+ * O relatório de cobrança na pasta do extrato (Fito, 09/2026: o "Relatório - Títulos por Período" do Sicoob, os boletos com
+ * sacado e nosso número, entrava como extrato, com 61 "lançamentos" e sem saldo). Só pelo título do relatório e as colunas dele.
+ */
+export function ehRelatorioDeTitulos(texto: string): boolean {
+  const t = normalizarTexto(texto);
+  return /relatorio titulos por periodo/.test(t) && /\bnosso numero\b/.test(t) && /\bsacado\b/.test(t) && !/saldo (?:anterior|inicial)/.test(t);
+}
+
 export function lancamentosDoPdf(paginas: ItemDeTexto[][], lado: Lado, anoPadrao = new Date().getFullYear()): Lancamento[] {
   return lancamentosComPagina(paginas, lado, anoPadrao).lancamentos;
 }
@@ -605,11 +636,39 @@ function valorSemLetraDoOcr(s: string): string {
   return RE_VALOR.test(certo) ? certo : s;
 }
 
+/**
+ * O "Extrato Unificado - Pessoa Jurídica" do Bradesco (o da conta com Invest Fácil e poupança; arquivo real de jan/2026,
+ * com 220 lançamentos em vez de 150): só o "Demonstrativo da Movimentação" da Conta-Corrente é extrato. O resumo do topo
+ * ("Saldo em 31/12/2025  31/01/2026") abria um dia e escondia as datas curtas da tabela; o Invest Fácil e a poupança, depois
+ * do Total, viravam lançamento, com o vencimento da aplicação (2027, 2028) como data.
+ */
+function ehBradescoUnificado(texto: string): boolean {
+  const t = normalizarTexto(texto);
+  return /\bextrato unificado pessoa juridica\b/.test(t) && /\bdemonstrativo da movimentacao\b/.test(t);
+}
+
+/** Só as linhas do demonstrativo da conta-corrente (sem o cabeçalho que se repete em cada página). */
+function soAContaDoUnificado(todas: Linha[][]): Linha[][] {
+  let dentro = false, acabou = false;
+  return todas.map(linhas => linhas.filter(l => {
+    const n = normalizarTexto(l.texto);
+    if (acabou) return false;
+    if (!dentro) { dentro = /^demonstrativo da movimentacao\b/.test(n); return false; }
+    // (o título da seção inteiro: "Investimentos Alfa Ltda" embaixo de um lançamento é o favorecido dele; a linha do Total fecha a tabela)
+    if (/^(investimentos|invest facil( bradesco)?|poupanca)$/.test(n)) { acabou = true; return false; }
+    if (/^total \d/.test(n)) acabou = true;
+    return !/^(extrato unificado|agencia \d)/.test(n);
+  }));
+}
+
 function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: number): { lancamentos: Lancamento[]; pagina: number[]; saldosDoDia?: Map<string, number>; saldoAnteriorPelaLinha?: number | null; saldoAnteriorConferido?: number | null } {
   const saldosDoDia = new Map<string, number>();
   let ultimaDataDeValor: string | null = null;
-  const itauMensal = lado === 'banco' && ehItauMensal(paginas.map(p => p.map(i => i.texto).join(' ')).join('\n'));
-  const todas = (itauMensal ? paginas.map(semALegendaDoItau) : paginas).map(p => juntarPedacosSoltos(montarLinhas(p)));
+  const textoDoPdf = paginas.map(p => p.map(i => i.texto).join(' ')).join('\n');
+  const itauMensal = lado === 'banco' && ehItauMensal(textoDoPdf);
+  const unificado = lado === 'banco' && ehBradescoUnificado(textoDoPdf);
+  const lidas = juntarValorDaVirada((itauMensal ? paginas.map(semALegendaDoItau) : paginas).map(p => juntarPedacosSoltos(montarLinhas(p))));
+  const todas = unificado ? soAContaDoUnificado(lidas) : lidas;
   if (lado === 'banco') {
     const texto = todas.map(p => p.map(l => l.texto).join('\n')).join('\n');
     if (ehExtratoDaCaixa(texto)) return lancamentosDaCaixa(todas, anoDoTexto(texto, anoPadrao));
@@ -618,7 +677,8 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
   // o período que o extrato diz (o Bradesco: "Entre 01/01/2026 e 31/01/2026"): o ano dele vale, e não o que mais aparece
   // (na 571 o OCR leu mais "2028" que "2026")
   const entre = periodoEntreDatas(todas.map(p => p.map(l => l.texto).join('\n')).join('\n'));
-  const ano = entre ? +entre.inicio.slice(0, 4) : anoDoTexto(todas.map(p => p.map(l => l.texto).join('\n')).join('\n'), anoPadrao);
+  // (no Unificado, o ano vem do texto todo: a tabela só tem a data curta)
+  const ano = entre ? +entre.inicio.slice(0, 4) : anoDoTexto((unificado ? lidas : todas).map(p => p.map(l => l.texto).join('\n')).join('\n'), anoPadrao);
   const naVirada: (data: string | null, escrita: string) => string | null = entre ? d => d : anoDaVirada(todas, ano);
   // a ordem das datas que abrem as linhas: o extrato do mais novo para o mais velho (o Stone) tem mais descidas que subidas
   let sobe = 0, desce = 0, antes: string | null = null;
@@ -642,6 +702,9 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
   // imprime o movimento dos dias em que o PDF foi tirado, de outro mês. Dali para baixo, nada é do extrato (Vitor,
   // 19/10/2026: na 450 o extrato e o razão batiam, mas o março vinha em dobro, com os do PDF de janeiro e de fevereiro)
   let noFim = false;
+  // nos "Últimos Lançamentos", o PDF tirado logo depois do fim do período ainda traz dias dele que a tabela não trouxe (Volponi:
+  // o de junho, tirado em 01/07, para em 29/06 na tabela e o 30/06 só existe ali): esses entram; o resto da seção não
+  let ultimos: { corte: string; dentro: boolean } | null = null;
   // o saldo corrido (a coluna Saldo, o último valor da linha que tem dois; ou o saldo anterior / do dia): o sinal do
   // lançamento vem da diferença dos saldos quando ela bate com o valor (Vitor, 14/10/2026: o OCR leu o "-" do "- 632,50"
   // do BNB como "7" e o débito virou crédito)
@@ -687,12 +750,28 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
     let perto: { texto: string; y: number }[] = [];
     const juntarPerto = () => { if (ultimo) for (const p of perto) ultimo.historico = (ultimo.historico + ' ' + p.texto).trim(); perto = []; };
 
-    for (const l of linhas) {
+    for (const [iLinha, l] of linhas.entries()) {
       const t = l.tokens.slice();
       if (!t.length || noFim) continue;
       if (entre && col) consertarValoresDoOcr(t, col);
       for (let i = 0; i < t.length; i++) if (naColunaValor(t[i])) t[i] = { ...t[i], s: valorSemLetraDoOcr(t[i].s) };
-      if (/^ultimos lancamentos\b/.test(normalizarTexto(l.texto))) { juntarPerto(); noFim = true; continue; }
+      if (/^ultimos lancamentos\b/.test(normalizarTexto(l.texto))) {
+        juntarPerto();
+        if (entre && ultimaDataDeValor && ultimaDataDeValor < entre.fim) ultimos = { corte: ultimaDataDeValor, dentro: false };
+        else noFim = true;
+        continue;
+      }
+      if (ultimos && entre) {
+        if (/^(total|saldos invest)\b/.test(normalizarTexto(l.texto))) { juntarPerto(); noFim = true; continue; }
+        // (a data como está escrita, sem pôr no período: o mesmo dia de um ano depois não é do extrato)
+        const dataDe = (x: Linha | undefined) => { const s = x?.tokens[0]?.s || ''; return RE_DATA.test(s) ? lerData(s, ano) ?? '' : ''; };
+        const d = dataDe(l);
+        if (d) ultimos.dentro = d > ultimos.corte && d <= entre.fim;
+        // (o histórico vem 4 pontos acima da linha da data: a linha de texto logo antes de um dia que entra é dele)
+        const textoDoProximo = !d && !ultimos.dentro && !l.tokens.some(k => RE_VALOR.test(k.s)) && dataDe(linhas[iLinha + 1]) > ultimos.corte && dataDe(linhas[iLinha + 1]) <= entre.fim;
+        if (!ultimos.dentro && !textoDoProximo) continue;
+        if (/^saldo anterior\b/.test(normalizarTexto(t.slice(1).map(k => k.s).join(' ')))) continue;
+      }
       if (itauMensal && /^(saldo final|totalizador de aplicacoes)\b/.test(normalizarTexto(l.texto))) { juntarPerto(); noFim = true; continue; }
       // o depósito bloqueado (Sicoob: "DEP.CHEQUE BLOQ.1D 2.300,00*"): o valor com * ainda não entrou no saldo; a linha e o
       // texto embaixo dela ("ENVELOPE: …") ficam de fora, sem data nem histórico para os outros — o lançamento é a
@@ -752,12 +831,22 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
       const hist = resto.join(' ').replace(/\s+/g, ' ').trim();
 
       if (!valores.length) {
+        // o título da tabela: o que veio antes dele na página (o cabeçalho do PDF: "Extrato de conta corrente Emitido em… Página 67",
+        // o nome e o CNPJ do cliente) não é histórico de ninguém, e ia para o 1º lançamento da página
+        if (!data && colunas([l])) { solta = null; soltaY = null; continue; }
         if (hist && !RE_SALDO.test(hist) && !/^(data|dt\.?)\b/i.test(hist) && hist.length <= 90) {
           const acima = perto.length ? perto[perto.length - 1].y : ultimaY;
           if (data) { juntarPerto(); solta = hist; soltaY = l.y; }
           else if (ultimo && acima != null && Math.abs(acima - l.y) < 16 && !solta) perto.push({ texto: hist, y: l.y });
           else { juntarPerto(); solta = (solta ? solta + ' ' : '') + hist; soltaY = l.y; }
         }
+        continue;
+      }
+      // (no Unificado, a linha só com o número da coluna Saldo fecha o dia: não é lançamento)
+      if (unificado && col && !hist && valores.every(x => colunaDoNumero(x.x2, col as Colunas) === 'saldo')) {
+        const sv = centavos(valores[valores.length - 1].s);
+        if (sv != null && dataAtual) saldosDoDia.set(dataAtual, sv);
+        juntarPerto();
         continue;
       }
       if (RE_SALDO.test(hist) || (!hist && !solta && RE_SALDO.test(l.texto))) {
@@ -939,6 +1028,17 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
     saida.forEach((l, i) => { if (i0 < 0 || l.data < saida[i0].data || (decrescente && l.data === saida[i0].data)) i0 = i; });
     const s0 = saldoDeCada[i0];
     if (s0 != null) saldoAnteriorPelaLinha = s0 - saida[i0].valor;
+  }
+  // o "extrato mensal" do Itaú com a Aplic Aut Mais: o "Saldo anterior" impresso é a conta MAIS a aplicação automática (o quadro
+  // de cima diz "Conta Corrente e Aplicações Automáticas"), e o resgate entra como movimento: o saldo da conta é o da coluna
+  // Saldo da primeira linha que tem, menos o movimento até ela (LC Florestal: a cadeia dos 8 meses fecha só assim)
+  if (itauMensal && /\baplic aut\b/.test(normalizarTexto(textoTodo))) {
+    let acumulado = 0;
+    for (let i = 0; i < saida.length; i++) {
+      acumulado += saida[i].valor;
+      const s = saldoDeCada[i];
+      if (s != null) { saldoAnteriorConferido = s - acumulado; break; }
+    }
   }
   return { lancamentos: saida, pagina: paginaDe, saldosDoDia, saldoAnteriorPelaLinha, saldoAnteriorConferido };
 }
