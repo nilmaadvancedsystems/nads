@@ -88,7 +88,10 @@ async function atualizarCadastro(opcoes) {
     const db = opcoes.db || require('./firestore-client').getDb('entregas-2e5e2');
     // com prazo (23/10/2026: o banco parou de responder e o ciclo ficou esperando): sem resposta, fica o cache
     let t;
-    await Promise.race([CAD.atualizar(db, path.join(opcoes.controle || CONTROLE, 'cadastro.json')),
+    // o contínuo (opcoes.ouvir) liga o ouvinte uma vez e depois não lê mais nada (arquivador-cadastro.ouvir); as rodadas
+    // avulsas (a correção, a rotina) leem uma vez, como antes
+    const arq = path.join(opcoes.controle || CONTROLE, 'cadastro.json');
+    await Promise.race([opcoes.ouvir ? CAD.ouvir(db, arq, opcoes.log) : CAD.atualizar(db, arq),
       new Promise((_, rej) => { t = setTimeout(() => rej(new Error('o banco não respondeu em 45 s')), opcoes.prazoMs || 45000); if (t.unref) t.unref(); })]).finally(() => clearTimeout(t));
     return true;
   } catch (e) { if (opcoes.log) opcoes.log('cadastro: não li o banco (' + e.message + '); fica o cache/planilha'); return false; }

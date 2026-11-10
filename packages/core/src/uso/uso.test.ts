@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { celula, criarAcumulador, diasDoPeriodo, gravacoesPorDia, nivelDoCalor, nomeComparavel, rotuloLimpo, somarUso, telaDoCaminho, usoDoDocumento } from '.';
+import { celula, criarAcumulador, diasDoPeriodo, gravacoesPorDia, nivelDoCalor, nomeComparavel, rotuloLimpo, somarUso, telaDoCaminho, usoDoDocumento, TELA_DAS_LEITURAS } from '.';
 
 describe('o mapa de uso do sistema (Gustavo, 20/10/2026)', () => {
   it('a tela do caminho: app/página, sem a empresa nem a competência', () => {
@@ -74,5 +74,29 @@ describe('nivelDoCalor', () => {
     expect(nivelDoCalor(1, 100)).toBe(1);
     expect(nivelDoCalor(25, 100)).toBe(3);
     expect(nivelDoCalor(3, 0)).toBe(1);
+  });
+});
+
+describe('as leituras do banco no mesmo documento do dia (10/11/2026)', () => {
+  it('o acumulador junta as leituras sem virar tela, e o documento as separa', () => {
+    const a = criarAcumulador();
+    const dia = new Date(2026, 10, 10, 10);
+    a.visita('fiscal/painel', 'fiscal', 'Ana', dia);
+    a.leituras({ 'rotinas @ fiscal/painel': 120, 'usuarios @ fiscal/painel': 3 }, dia);
+    a.leituras({ 'rotinas @ fiscal/painel': 5, 'zero @ x': 0 }, dia);
+    const u = a.tirar()!;
+    expect(u.telas[TELA_DAS_LEITURAS].c).toEqual({ 'rotinas @ fiscal/painel': 125, 'usuarios @ fiscal/painel': 3 });
+    const lido = usoDoDocumento(u.dia, u);
+    expect(Object.keys(lido.telas)).toEqual(['fiscal/painel']);
+    expect(lido.leituras).toEqual({ 'rotinas @ fiscal/painel': 125, 'usuarios @ fiscal/painel': 3 });
+  });
+  it('a soma do período: por coleção e por coleção @ tela', () => {
+    const d1 = { dia: '2026-11-10', telas: {}, pessoas: {}, leituras: { 'rotinas @ a': 10, 'rotinas @ b': 5, 'clientes @ a': 1 } };
+    const d2 = { dia: '2026-11-11', telas: {}, pessoas: {}, leituras: { 'rotinas @ a': 2 } };
+    const s = somarUso([d1, d2], []);
+    expect(s.leituras.total).toBe(18);
+    expect(s.leituras.porColecao).toEqual([{ chave: 'rotinas', total: 17 }, { chave: 'clientes', total: 1 }]);
+    expect(s.leituras.porTela[0]).toEqual({ chave: 'rotinas @ a', total: 12 });
+    expect(s.telas).toEqual([]);
   });
 });

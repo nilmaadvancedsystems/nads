@@ -70,6 +70,15 @@ export function useUsoDoSistema() {
     estimativa: uso.gravacoesPorDia(10),
     numeros: { visitas: soma.visitas, cliques: soma.cliques, telasUsadas: visitadas.length, nuncaVisitadas: soma.nuncaVisitadas.length, semClique: soma.possivelmenteInutil.controles.length, dias: soma.dias },
     lista: todas,
+    /**
+     * as leituras do banco no período (10/11/2026, consumo do banco; medidas junto com a coleta): as coleções e as
+     * "coleção @ tela" que mais leem, com a parte de cada uma no total
+     */
+    leituras: {
+      total: soma.leituras.total,
+      porColecao: soma.leituras.porColecao.slice(0, 12).map(x => ({ ...x, pct: soma.leituras.total ? Math.round((x.total / soma.leituras.total) * 100) : 0 })),
+      porTela: soma.leituras.porTela.slice(0, 15).map(x => ({ ...x, pct: soma.leituras.total ? Math.round((x.total / soma.leituras.total) * 100) : 0 })),
+    },
     /** abre a tela de verdade com o mapa ligado (os botões pintados) */
     verNaTela(tela: string) {
       ligarMapaNaTela(periodo);

@@ -196,6 +196,24 @@ const dormir = ms => new Promise(r => setTimeout(r, ms));
     igual('ao religar, o marcador do documento vale mais que o da raiz', await di.lerMarcador(dbM, {}), 't1');
   }
 
+  // o cadastro do arquivador por ouvinte (10/11/2026): lido uma vez, depois só o que muda; o cache com os mesmos campos
+  {
+    const CAD = require('./arquivador-cadastro');
+    const os = require('os'), path = require('path');
+    const arq = path.join(os.tmpdir(), 'nads-teste-cadastro-' + process.pid + '.json');
+    const ouvintes = {};
+    const docs = { clientes: [{ codigoOrigem: '58', nome: 'TORNEARIA', ativo: true, segredo: 'x' }], cadastro: [{ codigo: 58, nome: 'TORNEARIA', regime: 'simples' }] };
+    const foto = nome => ({ docs: docs[nome].map(d => ({ data: () => d })) });
+    const dbC = { collection: nome => ({ onSnapshot: (cb) => { ouvintes[nome] = cb; setTimeout(() => cb(foto(nome)), 0); return () => {}; } }) };
+    const dados = await CAD.ouvir(dbC, arq, () => {});
+    igual('cadastro por ouvinte: os campos de antes, nada a mais', [dados.entregas, dados.nads], [[{ codigoOrigem: '58', nome: 'TORNEARIA', ativo: true }], [{ codigo: 58, nome: 'TORNEARIA', regime: 'simples' }]]);
+    igual('a segunda chamada não liga outro ouvinte', (await CAD.ouvir(dbC, arq)) === dados, true);
+    docs.cadastro = [{ codigo: 58, nome: 'TORNEARIA', regime: 'presumido' }];
+    ouvintes.cadastro(foto('cadastro'));
+    igual('a mudança chega ao cache sem ler de novo', CAD.lerCache(arq).nads[0].regime, 'presumido');
+    try { fs.unlinkSync(arq); } catch (e) { /* segue */ }
+  }
+
   // os clientes ativos sem o arquivo do vigia: a leitura vale 10 min no processo
   const cache = require('./clientes-cache');
   if (!cache.lerDoArquivo()) {

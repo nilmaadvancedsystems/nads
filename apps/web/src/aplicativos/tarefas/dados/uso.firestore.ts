@@ -6,6 +6,7 @@
 import { uso } from '@nads/core';
 import { collection, doc, getDocs, increment, onSnapshot, query, setDoc as setDocBruto, where } from 'firebase/firestore';
 import { bancoDoEntregas } from './entregas.firestore';
+import { definirTelaDaLeitura, medirLeituras, tirarLeituras } from './ouvirSemDadoVelho.firestore';
 import type { RepoUso } from './uso';
 import { guardar } from '../../../comum/modoDesenvolvedor';
 
@@ -27,6 +28,7 @@ export function criarUsoFirestore(quem: () => string): RepoUso {
   let ouvindo = false;
   return {
     exemplos: false,
+    medidor: { medir: medirLeituras, tela: definirTelaDaLeitura, tirar: tirarLeituras },
     ligado() {
       if (!ouvindo) {
         ouvindo = true;

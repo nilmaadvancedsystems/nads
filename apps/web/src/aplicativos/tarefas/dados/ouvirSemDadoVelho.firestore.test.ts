@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { criarFiltroDeFotos, criarPausaDaAbaEscondida, umaFotoPeloOuvinte } from './ouvirSemDadoVelho.firestore';
+import { colecaoDaReferencia, criarFiltroDeFotos, criarPausaDaAbaEscondida, medirLeituras, tirarLeituras, umaFotoPeloOuvinte } from './ouvirSemDadoVelho.firestore';
 
 type F = { metadata: { fromCache: boolean }; docChanges?: () => unknown[]; exists?: () => boolean; data?: () => unknown };
 const consulta = (fromCache: boolean, mudancas = 1): F => ({ metadata: { fromCache }, docChanges: () => Array(mudancas).fill(0) });
@@ -141,5 +141,22 @@ describe('o getDocs pelo cache: um ouvinte que se desliga na primeira foto', () 
   it('o erro do banco chega como no getDocs', async () => {
     const foto = umaFotoPeloOuvinte<string>((_, falhou) => { falhou(new Error('permission-denied')); return () => {}; });
     await expect(foto).rejects.toThrow('permission-denied');
+  });
+});
+
+describe('o medidor das leituras: a coleção sem os ids', () => {
+  it('coleção, subcoleção, documento, consulta e grupo', () => {
+    expect(colecaoDaReferencia({ type: 'collection', path: 'clientes' })).toBe('clientes');
+    expect(colecaoDaReferencia({ type: 'collection', path: 'usuarios/abc/notas' })).toBe('usuarios/[id]/notas');
+    expect(colecaoDaReferencia({ type: 'document', path: 'rotinas/58_2026-10_fiscal' })).toBe('rotinas/[id]');
+    expect(colecaoDaReferencia({ type: 'document', path: 'robo/estado' })).toBe('robo/estado');
+    expect(colecaoDaReferencia({ type: 'document', path: 'config/nads' })).toBe('config/nads');
+    expect(colecaoDaReferencia({ type: 'query', _query: { path: { canonicalString: () => 'rotinas' } } })).toBe('rotinas');
+    expect(colecaoDaReferencia({ type: 'query', _query: { collectionGroup: 'partes' } })).toBe('**/partes');
+    expect(colecaoDaReferencia(null)).toBe('?');
+  });
+  it('desligado, não junta nada', () => {
+    medirLeituras(false);
+    expect(tirarLeituras()).toEqual({});
   });
 });

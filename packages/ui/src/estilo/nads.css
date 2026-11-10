@@ -4993,6 +4993,8 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .fin-lista td{vertical-align:middle;}
 .fin-direita{text-align:right;white-space:nowrap;}
 .fin-corta{display:inline-block;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom;}
+/* Financeiro › Boletos: o Revisar e a lixeira lado a lado no fim da linha (10/11/2026) */
+.fin-acoes-da-linha{display:inline-flex;align-items:center;gap:4px;}
 .fin-valor{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;}
 .fin-valor-entrada{color:var(--success);}
 .fin-valor-saida{color:var(--destructive);}

@@ -196,7 +196,7 @@ function iniciar(opcoes) {
   // do contínuo passando de 100 MB, segurava o robô)
   async function garantirContexto() {
     if (Date.now() - cache.em <= 30 * 60000) return cache;
-    if (o.db) await A.atualizarCadastro({ db: o.db, controle: o.controle, log: o.log });
+    if (o.db) await A.atualizarCadastro({ db: o.db, controle: o.controle, log: o.log, ouvir: true });
     const relerIndices = !cache.indicesEm || Date.now() - cache.indicesEm > 6 * 36e5;
     const manifestoAntigo = path.join(o.controleAntigo, 'MANIFESTO', 'manifesto.jsonl');
     const t0 = Date.now();

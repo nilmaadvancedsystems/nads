@@ -1,7 +1,7 @@
 // Financeiro › Boletos (10/11/2026): o lote de boletos de honorários do mês. Os PDFs prontos sobem aqui; cada linha mostra o
 // cliente, o valor e o vencimento do PDF, para quem vai e a situação (com o motivo, quando trava ou deu erro). Só um Diretor dispara.
 import { financeiro, formatos } from '@nads/core';
-import { BotaoAcao, CampoArquivos, Icone, MenuSuspenso, Segmentado, SeletorMes, useCarregando, Vazio } from '@nads/ui';
+import { BotaoAcao, BotaoIcone, CampoArquivos, Icone, MenuSuspenso, Segmentado, SeletorMes, useCarregando, Vazio } from '@nads/ui';
 import { useState } from 'react';
 import { dataBr } from './formatosDaNota';
 import { JanelaDosContratos } from './JanelaDosContratos';
@@ -48,6 +48,13 @@ export function Boletos() {
         <span className="tarefas-barra-espaco" />
         {vm.exemplos && <span className="badge badge-neutral">Exemplos</span>}
         {vm.lendo && <span className="fraco">{vm.lendo.gravando ? 'Gravando' : 'Lendo'} {vm.lendo.feitos} de {vm.lendo.total}…</span>}
+        {/* os que subiram sem cliente: lê o PDF de novo e acha pelo CNPJ, pelo código no nome do arquivo ou pelo sacado (10/11/2026) */}
+        {vm.quantosSemCliente > 0 && (
+          <BotaoAcao className="btn btn-outline" carregando={!!vm.achando} textoCarregando={vm.achando ? `Achando ${vm.achando.feitos} de ${vm.achando.total}…` : 'Achando…'}
+            disabled={!!vm.lendo} onClick={() => void vm.acharClientes()} title="Lê de novo os boletos sem cliente e acha o cliente pelo CNPJ, pelo código no nome do arquivo ou pelo nome do sacado">
+            <Icone nome="search" />Achar clientes · {vm.quantosSemCliente}
+          </BotaoAcao>
+        )}
         <MenuSuspenso rotulo="Mais" titulo="O valor e o dia do vencimento de cada cliente" direita largura={240}
           itens={[{ rotulo: 'Gerenciar clientes', icone: 'briefcase', onClick: () => setGerenciando(true) }]} />
         {vm.temLinhas && <CampoArquivos id="boletos-subir" compacto aceitar=".pdf" rotulo="Subir mais boletos (PDF)" desabilitado={!!vm.lendo} onEscolher={fs => void vm.subir(fs)} />}
@@ -103,7 +110,13 @@ export function Boletos() {
                     <td className="num">{b.vencimento ? dataBr(b.vencimento) : '—'}</td>
                     <td><span className="fin-corta" title={b.destinatarios.join(', ')}>{b.destinatarios[0] || '—'}{b.destinatarios.length > 1 ? ` +${b.destinatarios.length - 1}` : ''}</span></td>
                     <td><span className={CLASSE_DA_SITUACAO[c.situacao]}>{financeiro.ROTULO_DA_SITUACAO_DO_BOLETO[c.situacao]}</span></td>
-                    <td className="fin-direita"><button type="button" className="btn btn-outline" onClick={() => vm.abrir(b.id)}>Revisar</button></td>
+                    <td className="fin-direita">
+                      <span className="fin-acoes-da-linha">
+                        <button type="button" className="btn btn-outline" onClick={() => vm.abrir(b.id)}>Revisar</button>
+                        {/* excluir direto da linha (10/11/2026: "precisa de um botao para excluir o documento"); pergunta antes */}
+                        {vm.podeExcluir(l) && <BotaoIcone icone="lixeira" titulo={'Excluir ' + b.arquivo} onClick={() => void vm.excluir(l)} />}
+                      </span>
+                    </td>
                   </tr>
                 );
               })}
