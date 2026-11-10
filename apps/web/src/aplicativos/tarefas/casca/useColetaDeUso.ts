@@ -28,6 +28,10 @@ export function useColetaDeUso() {
   const mapa = useMapaNaTela();
   const ativo = ligado && !!op && !mapa;
 
+  // o medidor das leituras do banco: junto com a coleta (o interruptor do Uso do sistema), com a tela aberta
+  useEffect(() => { repo.medidor.medir(ativo); }, [repo, ativo]);
+  useEffect(() => { repo.medidor.tela(tela || ''); }, [repo, tela]);
+
   // a visita: cada troca de tela
   useEffect(() => {
     if (ativo && tela && !negado.current) acumulador.current.visita(tela, departamento, pessoa);
@@ -37,6 +41,8 @@ export function useColetaDeUso() {
   const gravar = useRef(() => {
     if (negado.current) return;
     const a = acumulador.current;
+    const lidas = repo.medidor.tirar();
+    if (Object.keys(lidas).length) a.leituras(lidas);
     const delta = a.tirar();
     if (!delta) return;
     repo.somar(delta).catch((e: unknown) => {
