@@ -107,4 +107,35 @@ async function atualizar(db, cacheArq) {
 }
 function lerCache(cacheArq) { try { return JSON.parse(fs.readFileSync(cacheArq, 'utf8')); } catch (e) { return null; } }
 
-module.exports = { juntar, lerPlanilha, atualizar, lerCache };
+// O cadastro por ouvinte (10/11/2026, consumo do banco): o arquivador contínuo relia os clientes (~400) e o cadastro (~230)
+// inteiros a cada 30 min, ~1.250 leituras por hora o dia todo. O ouvinte lê tudo uma vez ao ligar e depois só o documento que
+// mudar; o cache (cadastro.json) é regravado a cada mudança, com os mesmos campos da leitura de antes.
+const CAMPOS_CLIENTES = ['codigoOrigem', 'nome', 'nomeFantasia', 'documento', 'enquadramento', 'ativo', 'contasBancarias'];
+const CAMPOS_CADASTRO = ['codigo', 'nome', 'regime', 'bancos', 'socios'];
+const soOsCampos = (d, campos) => Object.fromEntries(campos.filter(c => d && d[c] !== undefined).map(c => [c, d[c]]));
+const ouvindo = new Map();   // cacheArq → a promessa da primeira leitura completa
+
+/** Liga (uma vez por cache) o ouvinte dos clientes e do cadastro; devolve a promessa dos dados da primeira leitura. */
+function ouvir(db, cacheArq, log) {
+  if (ouvindo.has(cacheArq)) return ouvindo.get(cacheArq);
+  const st = { entregas: null, nads: null };
+  let avisar;
+  const pronto = new Promise(r => { avisar = r; });
+  const gravar = () => {
+    if (!st.entregas || !st.nads) return;
+    const dados = { em: new Date().toISOString(), entregas: st.entregas, nads: st.nads };
+    try {
+      fs.mkdirSync(path.dirname(cacheArq), { recursive: true });
+      fs.writeFileSync(cacheArq + '.tmp', JSON.stringify(dados));
+      fs.renameSync(cacheArq + '.tmp', cacheArq);
+    } catch (e) { if (log) log('cadastro: não gravei o cache (' + e.message + ')'); }
+    avisar(dados);
+  };
+  const { ouvir: ouvirBanco } = require('./ouvinte');
+  ouvirBanco('arquivador: clientes', () => db.collection('clientes'), s => { st.entregas = s.docs.map(d => soOsCampos(d.data(), CAMPOS_CLIENTES)); gravar(); }, log || (() => {}));
+  ouvirBanco('arquivador: cadastro', () => db.collection('cadastro'), s => { st.nads = s.docs.map(d => soOsCampos(d.data(), CAMPOS_CADASTRO)); gravar(); }, log || (() => {}));
+  ouvindo.set(cacheArq, pronto);
+  return pronto;
+}
+
+module.exports = { juntar, lerPlanilha, atualizar, lerCache, ouvir, soOsCampos };
