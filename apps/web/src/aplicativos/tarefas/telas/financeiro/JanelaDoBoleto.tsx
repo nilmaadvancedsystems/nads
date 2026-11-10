@@ -64,7 +64,9 @@ export function JanelaDoBoleto({ vm, linha }: { vm: VmLoteDeBoletos; linha: Linh
               )}
             </Propriedade>
             <Propriedade icone="codigoBarras" rotulo="Linha digitável"><span className="num">{financeiro.linhaFormatada(b.linha) || '—'}</span></Propriedade>
-            <Propriedade icone="fileText" rotulo="Arquivo"><span className="fin-corta" title={b.arquivo}>{b.arquivo}</span></Propriedade>
+            <Propriedade icone="fileText" rotulo="Arquivo">
+              <button type="button" className="link-btn fin-corta" title={'Abrir ' + b.arquivo} onClick={() => void vm.verPdf(b.id)}>{b.arquivo}</button>
+            </Propriedade>
             <Propriedade icone="check" rotulo="Situação">
               <span className={CLASSE_DA_SITUACAO[c.situacao]}>{financeiro.ROTULO_DA_SITUACAO_DO_BOLETO[c.situacao]}</span>
               {envio && <span className="fraco"> · {dataHoraBr(envio.em)}{envio.por ? ' · ' + envio.por : ''}</span>}

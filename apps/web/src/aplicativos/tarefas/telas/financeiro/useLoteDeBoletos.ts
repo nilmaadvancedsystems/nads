@@ -40,19 +40,19 @@ export function useLoteDeBoletos() {
   const [busca, setBusca] = useState('');
   const [marcadas, setMarcadas] = useState<ReadonlySet<string>>(new Set());
   const [aberto, setAberto] = useState<string | null>(null);
-  const [lendo, setLendo] = useState<{ feitos: number; total: number } | null>(null);
+  const [lendo, setLendo] = useState<{ feitos: number; total: number; gravando?: boolean } | null>(null);
   const [disparando, setDisparando] = useState(false);
 
-  const boletos = repo.boletos();
+  const boletos = repo.boletos(competencia);
   const contratos = honorarios.contratos();
   const recebimentos = honorarios.recebimentos();
   const todas = useMemo<LinhaDoLote[]>(() => {
     const ctx = { contratos: contratos.lista, recebimentos: recebimentos.lista, boletos: boletos.lista, hoje: dia };
     const codigo = (l: LinhaDoLote) => l.contrato?.codigo || '';
-    return boletos.lista.filter(b => b.competencia === competencia)
+    return boletos.lista
       .map(b => ({ boleto: b, contrato: contratos.lista.find(c => c.id === b.contratoId) ?? null, conferencia: financeiro.conferirBoleto(b, ctx) }))
       .sort((a, b) => Number(!a.contrato) - Number(!b.contrato) || codigo(a).localeCompare(codigo(b), 'pt-BR', { numeric: true }) || a.boleto.arquivo.localeCompare(b.boleto.arquivo, 'pt-BR'));
-  }, [boletos.lista, contratos.lista, recebimentos.lista, competencia, dia]);
+  }, [boletos.lista, contratos.lista, recebimentos.lista, dia]);
 
   const q = norm(busca.trim());
   const linhas = todas.filter(l => (filtro === 'todos' || NO_FILTRO[filtro].includes(l.conferencia.situacao))
@@ -94,24 +94,30 @@ export function useLoteDeBoletos() {
       setLendo({ feitos: 0, total: arquivos.length });
       try {
         for (const [i, f] of arquivos.entries()) {
-          const texto = await textoDoPdf(new Uint8Array(await f.arrayBuffer()));
+          const bytes = new Uint8Array(await f.arrayBuffer());
+          const texto = await textoDoPdf(bytes);
           const leitura = texto ? financeiro.lerBoleto(texto, dia) : null;
           const achado = financeiro.acharContratoDoBoleto(texto, f.name, contratos.lista);
+          const contrato = achado ? contratos.lista.find(c => c.id === achado.contratoId) : undefined;
           novos.push({
+            bytes,
             competencia, arquivo: f.name, contratoId: achado?.contratoId ?? '', achadoPor: achado?.achadoPor ?? '',
             linha: leitura?.linha ?? '', valor: leitura?.valor ?? null, vencimento: leitura?.vencimento ?? null,
-            destinatarios: achado ? repo.emailsDoContrato(achado.contratoId) : [],
+            destinatarios: contrato ? await repo.emailsDoContrato(contrato) : [],
           });
           setLendo({ feitos: i + 1, total: arquivos.length });
         }
-        await repo.adicionar(novos);
+        setLendo({ feitos: 0, total: novos.length, gravando: true });
+        await repo.adicionar(novos, (feitos, total) => setLendo({ feitos, total, gravando: true }));
         const semCliente = novos.filter(n => !n.contratoId).length;
         toast(`${novos.length} ${novos.length === 1 ? 'boleto lido' : 'boletos lidos'}${semCliente ? `, ${semCliente} sem cliente` : ''}.`);
       } catch (e) { falhou(e, 'Não consegui ler os boletos.'); } finally { setLendo(null); }
     },
 
     async escolherCliente(id: string, contratoId: string) {
-      try { await repo.alterar(id, { contratoId, achadoPor: 'mao', destinatarios: repo.emailsDoContrato(contratoId) }); } catch (e) { falhou(e, 'Não consegui trocar o cliente.'); }
+      const contrato = contratos.lista.find(c => c.id === contratoId);
+      if (!contrato) return;
+      try { await repo.alterar(id, { contratoId, achadoPor: 'mao', destinatarios: await repo.emailsDoContrato(contrato) }); } catch (e) { falhou(e, 'Não consegui trocar o cliente.'); }
     },
     async definirDestinatarios(id: string, texto: string) {
       try { await repo.alterar(id, { destinatarios: financeiro.separarEmails(texto) }); } catch (e) { falhou(e, 'Não consegui gravar o e-mail.'); }
@@ -119,6 +125,18 @@ export function useLoteDeBoletos() {
     async tirar(id: string, fora: boolean) {
       setMarcadas(m => { const n = new Set(m); n.delete(id); return n; });
       try { await repo.alterar(id, { fora }); } catch (e) { falhou(e, 'Não consegui mudar o lote.'); }
+    },
+
+    /** abre o PDF do boleto numa aba nova */
+    async verPdf(id: string) {
+      const aba = window.open('', '_blank');
+      try {
+        const bytes = await repo.pdf(id);
+        if (!bytes) { aba?.close(); toast('Este boleto não tem o PDF guardado.'); return; }
+        const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: 'application/pdf' }));
+        if (aba) aba.location.href = url; else window.open(url, '_blank');
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+      } catch (e) { aba?.close(); falhou(e, 'Não consegui abrir o PDF.'); }
     },
 
     /** dispara as marcadas ou, sem marca, todas as prontas: confere quem pode e sempre pergunta */
@@ -135,7 +153,7 @@ export function useLoteDeBoletos() {
       });
       if (!ok) return;
       setDisparando(true);
-      try { await repo.disparar(vao.map(l => l.boleto.id), operador?.nome || ''); setMarcadas(new Set()); }
+      try { await repo.disparar(vao.map(l => l.boleto)); setMarcadas(new Set()); }
       catch (e) { falhou(e, 'Não consegui disparar.'); } finally { setDisparando(false); }
     },
   };

@@ -37,6 +37,8 @@ export interface RepoHonorarios {
   salvarContrato(c: RascunhoDeContrato, quem: string): Promise<string>;
   /** só o valor (a edição na própria linha) */
   definirValor(id: string, valor: number, quem: string): Promise<void>;
+  /** o dia do vencimento do boleto (1 a 31; null tira) */
+  definirDiaVencimento(id: string, dia: number | null, quem: string): Promise<void>;
   /** grava o recebimento do mês (troca o que já houver) */
   receber(r: RascunhoDeRecebimento, quem: string): Promise<void>;
   /** registra que a cobrança da competência foi mandada (cobrancas.AAAA-MM = {em, por} no contrato; 21/10/2026) */
@@ -79,6 +81,7 @@ export function criarHonorariosMemoria(): RepoHonorarios {
       return id;
     },
     async definirValor(id, valor, quem) { contratos = contratos.map(x => (x.id === id ? { ...x, valor, atualizadoEm: agora(), atualizadoPor: quem } : x)); mudou(); },
+    async definirDiaVencimento(id, dia, quem) { contratos = contratos.map(x => (x.id === id ? { ...x, diaVencimento: dia ?? undefined, atualizadoEm: agora(), atualizadoPor: quem } : x)); mudou(); },
     async registrarCobranca(id, competencia, quem) {
       contratos = contratos.map(x => (x.id === id ? { ...x, cobrancas: { ...x.cobrancas, [competencia]: { em: agora(), por: quem } } } : x));
       mudou();

@@ -6,7 +6,7 @@
 // Quem está trabalhando: no banco, o login com as contas do Entregas (entregas.firestore.ts, 30/09/2026);
 // nos exemplos, a pessoa escolhe o nome na lista da equipe (não há login).
 // O repositório e a sessão são criados uma vez, quando alguém abre a Tarefas. O do Cadastro, quando alguém abre o Cadastro.
-import { demo, empresas, entregas, extrator, formatos, tarefas, usuarios } from '@nads/core';
+import { demo, empresas, entregas, extrator, financeiro, formatos, tarefas, usuarios } from '@nads/core';
 import { criarAcessoMemoria, type RepoAcesso } from './acesso';
 import { criarAcessoFirestore } from './acesso.firestore';
 import { criarDriveFirestore } from './drive.firestore';
@@ -21,6 +21,7 @@ import { criarEnviosDpMemoria, type RepoEnviosDp } from './enviosDp';
 import { criarEnviosDpFirestore } from './enviosDp.firestore';
 import { criarLoteDpMemoria, type RepoLoteDp } from './loteDp';
 import { criarLoteDpFirestore } from './loteDp.firestore';
+import { criarBoletosFirestore } from './boletos.firestore';
 import { criarLoteFiscalMemoria, type RepoLoteFiscal } from './loteFiscal';
 import { criarLoteFiscalFirestore } from './loteFiscal.firestore';
 import { criarCaixaMemoria, type RepoCaixa } from './caixa';
@@ -432,10 +433,24 @@ let honorarios: RepoHonorarios | null = null;
 
 /** Os honorários dos clientes (19/10/2026, fase 2 do Financeiro): os contratos e os recebimentos por competência. */
 let boletos: RepoBoletos | null = null;
-/** O lote de boletos (10/11/2026): por enquanto só os exemplos, nada grava no banco. */
+/** O lote de boletos de honorários (10/11/2026): no banco, financeiroBoletos; nos exemplos, nada grava. */
 export function repoDeBoletos(): RepoBoletos {
-  if (!boletos) boletos = criarBoletosMemoria();
+  if (!boletos) boletos = noBanco ? criarBoletosFirestore(quemPede, emailsDoContrato) : criarBoletosMemoria();
   return boletos;
+}
+
+/**
+ * Para quem vai o boleto (10/11/2026): o e-mail do Cadastro do nads e os outros dele (contato.outrosEmails); sem nenhum, o
+ * do Entregas (clientes, pelo código). Só os que parecem e-mail.
+ */
+async function emailsDoContrato(c: financeiro.ContratoDeHonorario): Promise<string[]> {
+  const codigo = Number(c.codigo);
+  if (!Number.isInteger(codigo) || codigo <= 0) return [];
+  const empresa = [...empresas.EMPRESAS_COM_DP, ...empresasNovas()].find(x => x.codigo === codigo);
+  const cad = await repoDoCadastro().obter(empresa?.nome || c.nome, codigo).catch(() => null);
+  const doNads = [cad?.contato?.email || '', ...(cad?.contato?.outrosEmails || [])];
+  const todos = doNads.some(x => x.trim()) ? doNads : [(await contatosDoEntregas()).get(codigo)?.email || ''];
+  return financeiro.separarEmails(todos.join(' ')).filter(financeiro.emailValido);
 }
 
 export function repoDeHonorarios(): RepoHonorarios {

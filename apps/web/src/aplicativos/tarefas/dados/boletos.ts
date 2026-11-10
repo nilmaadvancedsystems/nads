@@ -1,20 +1,25 @@
-// O lote de boletos de honorários (10/11/2026). Interface + a versão de exemplo: nada aqui grava no banco nem manda e-mail; o
-// disparo só simula o caminho (na fila, enviando, enviado ou erro). A versão do banco e o envio pelo robô vêm nas próximas etapas.
+// O lote de boletos de honorários (10/11/2026). Interface + a versão de exemplo, em que nada grava no banco nem manda e-mail: o
+// disparo só simula o caminho (na fila, enviando, enviado ou erro). A versão do banco é boletos.firestore.ts.
 import { financeiro } from '@nads/core';
 import type { ListaAoVivo } from './agentes';
 
-export type BoletoNovo = Omit<financeiro.BoletoDoLote, 'id'>;
+/** o boleto lido na tela, com os bytes do PDF (que vão para o banco em pedaços) */
+export type BoletoNovo = Omit<financeiro.BoletoDoLote, 'id'> & { bytes: Uint8Array };
+/** o que a revisão muda: o cliente, para quem vai e o tirar do lote; o lido do PDF não muda */
+export type MudancaDoBoleto = Partial<Pick<financeiro.BoletoDoLote, 'contratoId' | 'achadoPor' | 'destinatarios' | 'fora'>>;
 
 export interface RepoBoletos {
   readonly exemplos: boolean;
-  /** os boletos de todas as competências (ao vivo) */
-  boletos(): ListaAoVivo<financeiro.BoletoDoLote>;
+  /** os boletos da competência (ao vivo) */
+  boletos(competencia: string): ListaAoVivo<financeiro.BoletoDoLote>;
   /** os e-mails do cadastro do cliente do contrato */
-  emailsDoContrato(contratoId: string): string[];
-  adicionar(novos: BoletoNovo[]): Promise<void>;
-  alterar(id: string, mudar: Partial<Omit<financeiro.BoletoDoLote, 'id'>>): Promise<void>;
-  /** põe os boletos na fila de envio */
-  disparar(ids: string[], quem: string): Promise<void>;
+  emailsDoContrato(contrato: financeiro.ContratoDeHonorario): Promise<string[]>;
+  adicionar(novos: BoletoNovo[], andamento?: (feitos: number, total: number) => void): Promise<void>;
+  alterar(id: string, mudar: MudancaDoBoleto): Promise<void>;
+  /** põe os boletos na fila de envio (o robô manda) */
+  disparar(boletos: readonly financeiro.BoletoDoLote[]): Promise<void>;
+  /** os bytes do PDF (null quando não há) */
+  pdf(id: string): Promise<Uint8Array | null>;
   assinar(aoMudar: () => void): () => void;
   versao(): number;
 }
@@ -30,6 +35,7 @@ export function criarBoletosMemoria(): RepoBoletos {
   let ver = 0, proximo = 1;
   const ouvintes = new Set<() => void>();
   const mudou = () => { ver++; for (const f of ouvintes) f(); };
+  const pdfs = new Map<string, Uint8Array>();
   const competencia = financeiro.competenciaAnterior(hojeIso());
   const dia28 = financeiro.vencimentoDoContrato(28, competencia);
   const LINHA = '75691000090000000000000000000000000000000000000';
@@ -51,22 +57,25 @@ export function criarBoletosMemoria(): RepoBoletos {
   const alterar = (id: string, mudar: Partial<financeiro.BoletoDoLote>) => { boletos = boletos.map(x => (x.id === id ? { ...x, ...mudar } : x)); mudou(); };
   return {
     exemplos: true,
-    boletos: () => ({ carregada: true, lista: [...boletos], erro: '' }),
-    emailsDoContrato: id => [...(EMAILS[id] ?? [])],
-    async adicionar(novos) { boletos = [...boletos, ...novos.map(n => ({ ...n, id: 'novo' + proximo++ }))]; mudou(); },
+    boletos: c => ({ carregada: true, lista: boletos.filter(x => x.competencia === c), erro: '' }),
+    emailsDoContrato: async c => [...(EMAILS[c.id] ?? [])],
+    async adicionar(novos, andamento) {
+      novos.forEach(({ bytes, ...n }, i) => { const id = 'novo' + proximo++; pdfs.set(id, bytes); boletos = [...boletos, { ...n, id }]; andamento?.(i + 1, novos.length); });
+      mudou();
+    },
     async alterar(id, mudar) { alterar(id, mudar); },
-    async disparar(ids, quem) {
-      for (const id of ids) {
-        const para = boletos.find(x => x.id === id)?.destinatarios ?? [];
-        const envio = (status: financeiro.StatusDoEnvio, erro?: string): financeiro.EnvioDoBoleto => ({ status, para, em: new Date().toISOString(), por: quem, ...(erro ? { erro } : {}) });
-        alterar(id, { envio: envio('fila') });
-        setTimeout(() => alterar(id, { envio: envio('enviando') }), 700);
+    async disparar(lista) {
+      for (const x of lista) {
+        const envio = (status: financeiro.StatusDoEnvio, erro?: string): financeiro.EnvioDoBoleto => ({ status, para: x.destinatarios, em: new Date().toISOString(), por: 'Exemplo', ...(erro ? { erro } : {}) });
+        alterar(x.id, { envio: envio('fila') });
+        setTimeout(() => alterar(x.id, { envio: envio('enviando') }), 700);
         setTimeout(() => {
-          const recusa = para.some(e => e.includes('recusa'));
-          alterar(id, { envio: recusa ? envio('erro', 'O servidor do cliente recusou o e-mail: caixa cheia.') : envio('enviado') });
+          const recusa = x.destinatarios.some(e => e.includes('recusa'));
+          alterar(x.id, { envio: recusa ? envio('erro', 'O servidor do cliente recusou o e-mail: caixa cheia.') : envio('enviado') });
         }, 1500);
       }
     },
+    pdf: async id => pdfs.get(id) ?? null,
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,
   };

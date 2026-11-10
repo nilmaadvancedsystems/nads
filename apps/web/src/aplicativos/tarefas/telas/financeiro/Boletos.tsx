@@ -1,8 +1,10 @@
 // Financeiro › Boletos (10/11/2026): o lote de boletos de honorários do mês. Os PDFs prontos sobem aqui; cada linha mostra o
 // cliente, o valor e o vencimento do PDF, para quem vai e a situação (com o motivo, quando trava ou deu erro). Só um Diretor dispara.
 import { financeiro, formatos } from '@nads/core';
-import { BotaoAcao, CampoArquivos, Icone, Segmentado, SeletorMes, useCarregando, Vazio } from '@nads/ui';
+import { BotaoAcao, CampoArquivos, Icone, MenuSuspenso, Segmentado, SeletorMes, useCarregando, Vazio } from '@nads/ui';
+import { useState } from 'react';
 import { dataBr } from './formatosDaNota';
+import { JanelaDosContratos } from './JanelaDosContratos';
 import { JanelaDoBoleto } from './JanelaDoBoleto';
 import { CLASSE_DA_SITUACAO, FILTROS_DO_LOTE, useLoteDeBoletos, type LinhaDoLote } from './useLoteDeBoletos';
 
@@ -18,6 +20,8 @@ function Motivo({ l }: { l: LinhaDoLote }) {
 
 export function Boletos() {
   const vm = useLoteDeBoletos();
+  // a janela Clientes dos honorários (o valor e o dia do vencimento): Honorários saiu do menu em 30/10/2026
+  const [gerenciando, setGerenciando] = useState(false);
   useCarregando(vm.carregando);
   const r = vm.resumo;
   const numeros = [
@@ -27,10 +31,11 @@ export function Boletos() {
     { rotulo: 'A disparar', valor: formatos.reais(r.aDisparar), tom: 'info', icone: 'dinheiro' },
   ] as const;
   const quantos = vm.quantasMarcadas || vm.quantasProntas;
-  const rotuloDoDisparo = vm.quantasMarcadas ? 'Disparar marcados' : 'Disparar prontos';
+  const dicaDoDisparo = !vm.podeDisparar ? 'Só um Diretor pode disparar' : vm.quantasMarcadas ? 'Dispara os boletos marcados' : 'Dispara todos os boletos prontos';
   return (
     <section>
       {vm.aberta && <JanelaDoBoleto vm={vm} linha={vm.aberta} />}
+      {gerenciando && <JanelaDosContratos fechar={() => setGerenciando(false)} />}
 
       <div className="tarefas-barra-topo fin-barra">
         <SeletorMes valor={vm.competencia} onMudar={vm.setCompetencia} rotulo="Competência" />
@@ -42,11 +47,13 @@ export function Boletos() {
         </label>
         <span className="tarefas-barra-espaco" />
         {vm.exemplos && <span className="badge badge-neutral">Exemplos</span>}
-        {vm.lendo && <span className="fraco">Lendo {vm.lendo.feitos} de {vm.lendo.total}…</span>}
+        {vm.lendo && <span className="fraco">{vm.lendo.gravando ? 'Gravando' : 'Lendo'} {vm.lendo.feitos} de {vm.lendo.total}…</span>}
+        <MenuSuspenso rotulo="Mais" titulo="O valor e o dia do vencimento de cada cliente" direita largura={240}
+          itens={[{ rotulo: 'Gerenciar clientes', icone: 'briefcase', onClick: () => setGerenciando(true) }]} />
         {vm.temLinhas && <CampoArquivos id="boletos-subir" compacto aceitar=".pdf" rotulo="Subir mais boletos (PDF)" desabilitado={!!vm.lendo} onEscolher={fs => void vm.subir(fs)} />}
-        <span title={vm.podeDisparar ? undefined : 'Só um Diretor pode disparar'}>
+        <span title={dicaDoDisparo}>
           <BotaoAcao carregando={vm.disparando} textoCarregando="Pedindo…" disabled={!vm.podeDisparar || !quantos} onClick={() => void vm.disparar()}>
-            <Icone nome="aviao" />{rotuloDoDisparo}{quantos ? ' · ' + quantos : ''}
+            <Icone nome="aviao" />Disparar{quantos ? ' · ' + quantos : ''}
           </BotaoAcao>
         </span>
       </div>
@@ -65,7 +72,7 @@ export function Boletos() {
       {!vm.carregando && !vm.temLinhas ? (
         <div className="card">
           <Vazio icone="recibo" titulo={'Nenhum boleto de ' + financeiro.competenciaBr(vm.competencia)}>
-            <CampoArquivos id="boletos-subir" aceitar=".pdf" rotulo={vm.lendo ? `Lendo ${vm.lendo.feitos} de ${vm.lendo.total}…` : 'Escolher os boletos (PDF)'} desabilitado={!!vm.lendo} onEscolher={fs => void vm.subir(fs)} />
+            <CampoArquivos id="boletos-subir" aceitar=".pdf" rotulo={vm.lendo ? `${vm.lendo.gravando ? 'Gravando' : 'Lendo'} ${vm.lendo.feitos} de ${vm.lendo.total}…` : 'Escolher os boletos (PDF)'} desabilitado={!!vm.lendo} onEscolher={fs => void vm.subir(fs)} />
           </Vazio>
         </div>
       ) : !vm.carregando && !vm.linhas.length ? (
