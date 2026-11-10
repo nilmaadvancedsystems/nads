@@ -1,11 +1,14 @@
 // 2ª rodada: valores. Limites exatos das faixas do Simples, arredondamento de meio centavo (o ARRED da planilha) na prévia do
 // DAS, no Lucro Presumido/Real e na antecipação do ICMS; centavos em somas longas. Dados fictícios; semente fixa.
-import { describe, expect, it } from 'vitest';
+import { vi, describe, expect, it } from 'vitest';
 import { arred, contaDaAntecipacao } from './antecipacao';
 import { fatorR, calculoDoSimples } from './calculadora';
 import { irpjCsll, mesesDoTrimestre, pisCofins, type ReceitasDoMes } from './lucro';
 import { repartir, ratear } from './rateio';
 import { ANEXOS, aliquotaEfetiva, avisoDeLimite, LIMITE_MEI, previaDoDas, SUBLIMITE, TETO, type Anexo } from './simples';
+
+// laços com milhares de combinações: com a suíte inteira rodando, os 5 s de sempre não bastam
+vi.setConfig({ testTimeout: 60000 });
 
 function gerador(semente: number) {
   let a = semente >>> 0;

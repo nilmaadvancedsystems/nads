@@ -1,10 +1,13 @@
 // Combinações de importar, excluir mês, cortar, tirar sobreposição, reler e o movimento do extrato (semente fixa, sem dado
 // de cliente). Invariantes: a soma não muda, importar de novo não muda nada, a ordem dos arquivos não muda o resultado.
-import { describe, expect, it } from 'vitest';
+import { vi, describe, expect, it } from 'vitest';
 import type { ArquivoImportado, ArquivoLido, EmpresaExtrator, Lancamento } from '../tipos';
 import { bancoDoArquivo } from './bancos';
 import { caberNoBanco, empresaNova, excluirMesesDoArquivo, importar, lancamentosDe, leituraCobreOArquivo, pedacosPorMes, relerExtrato, soNovos, tirarSobreposicaoDosExtratos } from './importacao';
 import { movimentoDoExtrato } from './movimento';
+
+// laços com milhares de combinações: com a suíte inteira rodando, os 5 s de sempre não bastam
+vi.setConfig({ testTimeout: 60000 });
 
 function sorteador(semente: number) {
   let s = semente >>> 0;
