@@ -877,6 +877,20 @@ function _classificarXml(raiz) {
 // ---------------------------------------------------------------------------------------------------------------------
 // pastas por regime (05a, 05b, 05c, 05e, 05f)
 // ---------------------------------------------------------------------------------------------------------------------
+// (10/11/2026: "separe o PDF da nota fiscal tomadora e recebidos, apenas os pdf como outra pasta") dentro de
+// 03. DOCUMENTOS FISCAIS\RECEBIDOS, o PDF da NF-e recebida (DANFE) e o da NFS-e tomada têm cada um a sua subpasta; CANCELADAS,
+// RELATÓRIO MENSAL e ESPECÍFICOS continuam como eram, e o XML continua na pasta XML
+const SUB_RECEBIDOS = { 'NF-e': 'NF-e', 'NFS-e': 'NFS-e TOMADAS' };
+/**
+ * A subpasta de RECEBIDOS de um PDF já arquivado, pelo nome que as regras dão ("DD-MM-AAAA - NF-e 123 - EMITENTE.pdf",
+ * "DD-MM-AAAA - NFS-e 45 - PRESTADOR.pdf"), ou null: o cancelamento, o agro ("NF-e CARVAO 12"), o CT-e e o nome fora do padrão
+ * ficam onde estão. É o que a auditoria e a separação dos antigos (arquivador-separar-recebidos.js) usam.
+ */
+function subDoRecebidoPeloNome(nome) {
+  const m = /^\d{2}-\d{2}-\d{4} - (NF-e|NFS-e) \d[\w./-]* - .+\.pdf$/i.exec(String(nome || ''));
+  if (!m || /CANCELAD/i.test(nome)) return null;
+  return SUB_RECEBIDOS[/^NFS/i.test(m[1]) ? 'NFS-e' : 'NF-e'];
+}
 const ARVORE = {
   'SIMPLES NACIONAL': { DAS: '01. DAS', DAE: '02. DAE', DOCS: '03. DOCUMENTOS FISCAIS', DESTDA: '04. DeSTDA', SINTEGRA: '05. SINTEGRA', PARC: '06. PARCELAMENTOS', REST: '07. RESTITUIÇÃO', DAM: '08. DAM', XML: '12. XML', LIVROS: '13. LIVROS FISCAIS', DEFIS: '14. DEFIS', DIRF: '15. DIRF', DARF: '16. DARF' },
   'LUCRO PRESUMIDO': { SPEDF: '01. SPED FISCAL', SPEDC: '02. SPED CONTRIBUIÇÕES', DOCS: '03. DOCUMENTOS FISCAIS', MIT: '04. MIT', DARF: '05. DARF', DAE: '06. DAE', DAPI: '07. DAPI', PARC: '08. PARCELAMENTOS', REST: '09. RESTITUIÇÃO', DAM: '10. DAM', XML: '14. XML', LIVROS: '15. LIVROS FISCAIS', ECF: '16. ECF', DIRF: '17. DIRF' },
@@ -2344,7 +2358,8 @@ function pelaPastaENome(entrada, ctx, d) {
       if (!x || !comp) return null;
       const rz = norm((cad.porCod.get(x.cliente) || {}).razao || '');
       if (pastas.some(p => /\bFILIAL\b/.test(p)) && !/\bFILIAL\b/.test(rz)) return null;
-      return fim({ tipo, setor: 'FISCAL', fiscal: ['DOCS', 'RECEBIDOS'], competencia: comp }, porque);
+      // a NFS-e tomada em RECEBIDOS\NFS-e TOMADAS (10/11/2026); o aviso e a invoice continuam soltos em RECEBIDOS
+      return fim({ tipo, setor: 'FISCAL', fiscal: ['DOCS', 'RECEBIDOS'].concat(tipo === 'NFS-e PDF' ? [SUB_RECEBIDOS['NFS-e']] : []), competencia: comp }, porque);
     };
     const cliNfse = d.cliente != null ? cad.porCod.get(+d.cliente) : null;
     if (d.tipo === 'NFS-e PDF' && d.motivo === 'VOCABULARIO_AUSENTE' && cliNfse && /^HELLO NUTRITION\b/.test(norm(cliNfse.razao || ''))) {
@@ -4709,10 +4724,12 @@ function montarNotaPdf(regra, campos, u, bruto, base, c, ctx, ev) {
   if (!ehEmitente && emissor && emissorInvalido(emissor, cad.porCod.get(c.cliente))) emissor = null;   // endereço ou o próprio cliente lidos como emissor (29/10/2026)
   if (!emissor) return Object.assign(base, { acao: 'NAO_IDENTIFICADO', motivo: 'VOCABULARIO_AUSENTE', confianca: 0.5, evidencias: ev.concat('razão social do emissor não lida') });
   const agro = tipo === 'NF-e' ? (/CARVAO VEGETAL|\bCARVAO\b/.test(u) ? 'CARVÃO' : /\bCAFE (EM GRAO|CRU|BENEFICIADO|ARABICA|CONILON)/.test(u) ? 'CAFÉ' : /\b(BOVINOS?|GADO|NOVILH[AO]S?|BEZERR[AO]S?)\b/.test(u) ? 'GADO' : null) : null;
-  const pasta = ['DOCS', lado].concat(campos.cancelada ? ['CANCELADAS'] : tipo === 'CT-e' ? ['ESPECÍFICOS', 'TRANSPORTES', 'CT-E'] : agro ? ['ESPECÍFICOS', 'AGRO', agro] : []);
+  // a NF-e recebida comum: RECEBIDOS\NF-e (10/11/2026); a cancelada, o CT-e e o agro continuam nas pastas deles
+  const subNfe = !ehEmitente && tipo === 'NF-e' ? [SUB_RECEBIDOS['NF-e']] : [];
+  const pasta = ['DOCS', lado].concat(campos.cancelada ? ['CANCELADAS'] : tipo === 'CT-e' ? ['ESPECÍFICOS', 'TRANSPORTES', 'CT-E'] : agro ? ['ESPECÍFICOS', 'AGRO', agro] : subNfe);
   const nm = data + ' - ' + (campos.cancelada ? 'CANCELAMENTO ' : '') + tipo + (agro && !campos.cancelada ? ' ' + semAcento(agro) : '') + ' ' + num + ' - ' + nomeNormalizado(emissor) + '.pdf';
   const pivo = !ehEmitente && /^PIVOT NF\s*\d+/i.test(base.nomeArquivo || '');
-  return Object.assign(base, { acao: 'ARQUIVAR', confianca: Math.min(c.conf, ehEmitente ? 0.95 : 0.88), tipo: tipo + ' PDF', competencia: { mes: +data.slice(3, 5), ano: +data.slice(6) }, fiscal: pivo ? ['DOCS', lado] : pasta, nomeFinal: pivo ? base.nomeArquivo : nm, evidencias: ev.concat('05d §1: ' + lado + ' (emitente da chave ' + (ehEmitente ? '=' : '≠') + ' cliente)') });
+  return Object.assign(base, { acao: 'ARQUIVAR', confianca: Math.min(c.conf, ehEmitente ? 0.95 : 0.88), tipo: tipo + ' PDF', competencia: { mes: +data.slice(3, 5), ano: +data.slice(6) }, fiscal: pivo ? ['DOCS', lado].concat(subNfe) : pasta, nomeFinal: pivo ? base.nomeArquivo : nm, evidencias: ev.concat('05d §1: ' + lado + (subNfe.length && (pivo || (!campos.cancelada && !agro)) ? '\\' + subNfe[0] : '') + ' (emitente da chave ' + (ehEmitente ? '=' : '≠') + ' cliente)') });
 }
 
 /** O nome do prestador nos layouts de prefeitura em que ele fica num lugar fixo (a leitura genérica pega o do tomador ou o endereço da prefeitura). */
@@ -4802,7 +4819,7 @@ function montarNfsePdf(campos, u, bruto, base, c, ctx, ev) {
     const t = unico(clientesDoDoc(tomador, cad).filter(x => x !== c.cliente));
     const ct = t != null ? cad.porCod.get(t) : null;
     const comp0 = campos.competencia || { mes: +campos.emissao.slice(3, 5), ano: +campos.emissao.slice(6) };
-    if (ct) copias.push(ct.regime === 'ISENTA' ? { cliente: t, comoCliente: 'doc', caminho: ['CONTÁBIL', 'NOTAS DE SERVIÇO RECEBIDAS', String(comp0.ano), dois(comp0.mes)] } : { cliente: t, comoCliente: 'doc', fiscal: ['DOCS', 'RECEBIDOS'] });
+    if (ct) copias.push(ct.regime === 'ISENTA' ? { cliente: t, comoCliente: 'doc', caminho: ['CONTÁBIL', 'NOTAS DE SERVIÇO RECEBIDAS', String(comp0.ano), dois(comp0.mes)] } : { cliente: t, comoCliente: 'doc', fiscal: ['DOCS', 'RECEBIDOS', SUB_RECEBIDOS['NFS-e']] });
   }
   if (copias.length) base.copias = copias;
   const cli = cad.porCod.get(c.cliente) || {};
@@ -4835,7 +4852,7 @@ function montarNfsePdf(campos, u, bruto, base, c, ctx, ev) {
     // 05/05e: NFS-e recebida por cliente isento vai para o contábil (04, Nota de Serviço Recebida)
     return Object.assign(base, { acao: 'ARQUIVAR', setor: 'CONTABIL', confianca: Math.min(c.conf, 0.88), competencia: comp, caminho: ['CONTÁBIL', 'NOTAS DE SERVIÇO RECEBIDAS', String(comp.ano), dois(comp.mes)], nomeFinal: nm, fonte: '04 (Nota de Serviço Recebida, só ISENTA)' });
   }
-  return Object.assign(base, { acao: 'ARQUIVAR', confianca: Math.min(c.conf, emitida ? 0.95 : 0.88), competencia: comp, fiscal: ['DOCS', emitida ? 'EMITIDOS' : 'RECEBIDOS'].concat(campos.cancelada ? ['CANCELADAS'] : []), nomeFinal: nm });
+  return Object.assign(base, { acao: 'ARQUIVAR', confianca: Math.min(c.conf, emitida ? 0.95 : 0.88), competencia: comp, fiscal: ['DOCS', emitida ? 'EMITIDOS' : 'RECEBIDOS'].concat(campos.cancelada ? ['CANCELADAS'] : emitida ? [] : [SUB_RECEBIDOS['NFS-e']]), nomeFinal: nm });
 }
 
 /** Contábil (04): extratos, comprovantes, aplicações, maquininhas, recebimentos, balancete, relatório LJ. */
@@ -5300,7 +5317,7 @@ function tipoDoDestino(destino) {
 }
 
 module.exports = {
-  pagamentoDoMovimento, fornecedorDoNomeDoArquivo, fornecedorDoNomeSemData, LIMIAR, RAIZ_CLIENTES, ARVORE, REGRAS_PDF, BANCOS, ANUAIS, ofxCompetencia, anoDaEntrega, ANO_MINIMO, ANO_DAS_PASTAS, anoDaPasta, pastasDoAno, partesDoCaminho, comMotivoDoCodigo,
+  pagamentoDoMovimento, fornecedorDoNomeDoArquivo, fornecedorDoNomeSemData, LIMIAR, RAIZ_CLIENTES, ARVORE, SUB_RECEBIDOS, subDoRecebidoPeloNome, REGRAS_PDF, BANCOS, ANUAIS, ofxCompetencia, anoDaEntrega, ANO_MINIMO, ANO_DAS_PASTAS, anoDaPasta, pastasDoAno, partesDoCaminho, comMotivoDoCodigo,
   ehLivroContabil, anoDoLivro, decidirSpedAnual, semAcento, norm, chaveNome, nomeNormalizado, nomeSeguro, so, dataBr, valorBr, competenciaSolta, competenciaDoNome, competenciaDaPasta, periodoEscrito,
   cnpjValido, cpfValido, documentosDoTexto, raizesDoTexto, mascarasDoTexto,
   regimeCanonico, montarCadastro, comAnosEMapa, clientesDoDoc, clienteDaPasta, grupoDaPasta, pagamentoDeFornecedor, clientesPeloNomeNoTexto,

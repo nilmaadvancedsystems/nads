@@ -181,6 +181,10 @@ const MAPA_FORA = {
 };
 
 /** Igual ao canônico ('igual'), igual só sem acento/caixa ('grafia') ou outro (null). */
+// as subpastas de RECEBIDOS por modelo (10/11/2026; arquivador-regras.SUB_RECEBIDOS), normalizadas como o r4
+const SUBS_RECEBIDOS = Object.values(R.SUB_RECEBIDOS).map(s => N(s));
+const subDoRecebidoPeloNome = R.subDoRecebidoPeloNome;
+
 function bate(parte, lista) {
   for (const c of lista) if (parte === c) return { c, como: 'igual' };
   for (const c of lista) if (N(parte) === N(c)) return { c, como: 'grafia' };
@@ -400,9 +404,14 @@ function analisarLocal(sub, nome, cli) {
               const r4 = sub[4] ? N(sub[4]) : null;
               if (r4 === 'RELATORIO MENSAL') { tipo = 'RELATORIO DE NOTAS'; if (exigeAno(5, 'RELATÓRIO MENSAL') != null && !porNome(NOMES.RELATORIO, 3)) nomeFora('[MÊS E ANO] - RELATORIO NOTAS EMITIDAS/RECEBIDAS - [RAZÃO].pdf', 0.85); }
               else if (r4 === 'NFC-E') { tipo = 'NFC-e PDF'; if (exigeAno(5, 'NFC-e') != null && exigeMes(6) != null && !porNome(NOMES.NOTA_PDF)) nomeFora('[DATA] - NFC-e [Nº].pdf', 0.85); }
-              else if (r4 && !['ESPECIFICOS', 'CANCELADAS'].includes(r4)) pastaFora(4, 'subpasta fora do 05d §1 (ESPECÍFICOS, CANCELADAS, NFC-e, RELATÓRIO MENSAL)', null, 0.6);
+              else if (r4 && !['ESPECIFICOS', 'CANCELADAS'].concat(lado.c === 'RECEBIDOS' ? SUBS_RECEBIDOS : []).includes(r4)) pastaFora(4, 'subpasta fora do 05d §1 (ESPECÍFICOS, CANCELADAS, NFC-e, RELATÓRIO MENSAL' + (lado.c === 'RECEBIDOS' ? ', ' + Object.values(R.SUB_RECEBIDOS).join(', ') : '') + ')', null, 0.6);
               else if (!/\.pdf$/i.test(nome)) ach('ERRADO-PASTA', 'arquivo que não é PDF em DOCUMENTOS FISCAIS' + (/\.xml$/i.test(nome) ? ' (XML vai para a pasta XML)' : ''), /\.xml$/i.test(nome) ? ['FISCAL', regPasta, arv.find(p => /XML$/.test(p))] : null, 0.75, '05d §1 / §1b');
               else if (!porNome(NOMES.NOTA_PDF)) nomeFora('[DATA] - NF-e [Nº] - [EMITENTE].pdf (05d §1)', 0.8);
+              else if (lado.c === 'RECEBIDOS' && !r4 && fundo === 4) {
+                // o PDF da NF-e recebida e o da NFS-e tomada soltos em RECEBIDOS: cada um na sua subpasta (10/11/2026)
+                const s = subDoRecebidoPeloNome(nome);
+                if (s) ach('ERRADO-PASTA', 'PDF de ' + (s === R.SUB_RECEBIDOS['NFS-e'] ? 'NFS-e tomada' : 'NF-e recebida') + ' solto em RECEBIDOS (vai para RECEBIDOS\\' + s + ')', sub.slice(0, 4).concat(s), 0.95, 'RECEBIDOS separado por modelo (10/11/2026)');
+              }
             }
           } else if (['SPED FISCAL', 'SPED CONTRIBUICOES', 'SINTEGRA', 'DESTDA', 'MIT', 'DAPI'].includes(k)) { tipo = k; if (!porNome(NOMES.MES_TXT)) nomeFora('[MÊS E ANO].txt', 0.85); }
           else if (k === 'LIVROS FISCAIS') { tipo = 'LIVRO_FISCAL'; if (exigeAno(3, sub[2]) != null) { if (!porNome(NOMES.LIVRO, null, true)) nomeFora('[MÊS E ANO] - [LIVRO].pdf', 0.8); else conferePastas(3, null); } }
