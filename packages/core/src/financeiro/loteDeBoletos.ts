@@ -75,6 +75,27 @@ function temDocumento(texto: string, doc: string): boolean {
 }
 
 /**
+ * Os CNPJs e CPFs escritos no boleto (10/11/2026: "puxa pelo cnpj"), só os números, sem repetir: os que vêm depois de
+ * "CNPJ" ou "CPF" (o "CNPJ/CPF:" do sacado), com ou sem a pontuação. O número inteiro, nunca um pedaço da linha digitável.
+ */
+/** a raiz do CNPJ da Nilma Contabilidade: o documento do beneficiário não é o do cliente */
+export const CNPJ_RAIZ_DO_ESCRITORIO = '27872981';
+
+export function documentosDoBoleto(texto: string): string[] {
+  const achados = new Set<string>();
+  // a palavra, até 12 caracteres que não são número ("/CPF: ", " Nº "), e o número com a pontuação
+  const re = /(?:CNPJ|CPF)[^0-9]{0,12}([0-9][0-9./\s-]{9,22}[0-9])/gi;
+  for (const m of (texto || '').matchAll(re)) {
+    const d = soDigitos(m[1]);
+    // o número seguido de outro (o CEP depois do CPF): fica o CNPJ ou o CPF da frente
+    const cnpjNaFrente = /^\d{2}\.?\d{3}\.?\d{3}\s*\/\s*\d{4}/.test(m[1]);
+    const doc = d.length === 14 || d.length === 11 ? d : d.length > 14 && cnpjNaFrente ? d.slice(0, 14) : d.length > 11 && !cnpjNaFrente ? d.slice(0, 11) : '';
+    if (doc) achados.add(doc);
+  }
+  return [...achados];
+}
+
+/**
  * Acha de quem é o boleto entre os contratos ativos: primeiro o CNPJ/CPF do contrato no texto do PDF, depois o nome completo
  * do cliente no texto ou no nome do arquivo. Só vale se der um único cliente: dois candidatos ficam para a pessoa escolher.
  */
