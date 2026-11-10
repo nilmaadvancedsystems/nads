@@ -23,6 +23,9 @@ const codigo = [
   'import { dadosDaDanfse } from ' + caminho('packages/core/src/nfse/danfse.ts') + ';',
   'import { camposDaNota, configDoEmail, emailValido, mensagemDaNota, EMAIL_PADRAO, AVISO_SEM_VALOR } from ' + caminho('packages/core/src/nfse/email.ts') + ';',
   'import { desenharDanfse } from ' + caminho('apps/web/src/aplicativos/tarefas/telas/financeiro/danfsePdf.ts') + ';',
+  // a DANFE da NF-e/NFC-e (09/11/2026: os PDFs do SIEG, robo/sieg-pdfs.js)
+  'export { danfeDoXml } from ' + caminho('packages/core/src/tarefas/sieg/danfe.ts') + ';',
+  'export { desenharDanfe } from ' + caminho('apps/web/src/aplicativos/tarefas/telas/fiscal/partes/danfePdf.ts') + ';',
   'export { dadosDaDanfse, desenharDanfse, camposDaNota, configDoEmail, emailValido, mensagemDaNota, EMAIL_PADRAO, AVISO_SEM_VALOR };',
   '/** O PDF da DANFSe (Uint8Array) a partir do XML da NFS-e autorizada. */',
   'export async function pdfDaDanfse(xml, municipios) { return desenharDanfse(dadosDaDanfse(xml, municipios)); }',
