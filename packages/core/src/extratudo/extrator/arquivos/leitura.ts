@@ -47,7 +47,7 @@ export async function lerArquivo(nome: string, bytes: Uint8Array, lado: Lado, an
     const marca = porOcr ? { ocr: true } : {};
     if (lado === 'banco' && ehFaturaDeCartao(paginas.map(p => p.map(i => i.texto).join(' ')).join('\n'))) return { nome, lancamentos: [], erro: 'É a fatura do cartão, não o extrato da conta.', faturaDeCartao: true, ...marca };
     if (lado === 'banco' && ehRelatorioDeTitulos(paginas.map(p => p.map(i => i.texto).join(' ')).join('\n'))) return { nome, lancamentos: [], erro: 'É o relatório de cobrança (títulos por período), não o extrato da conta.', ...marca };
-    const { lancamentos: l, saldoAnteriorPelaLinha, saldoAnteriorConferido } = extratoDoPdf(paginas, lado, anoPadrao);
+    const { lancamentos: l, saldoAnteriorPelaLinha, saldoAnteriorConferido, conferenciaPeloSaldo } = extratoDoPdf(paginas, lado, anoPadrao);
     // a pré-verificação (Vitor, 10/11/2026): a aplicação, o comprovante e os outros que caem na pasta do extrato não entram
     const outro = lado === 'banco' ? preVerificarExtrato(paginas.map(p => p.map(i => i.texto).join(' ')).join('\n'), l, porOcr) : null;
     if (outro) return { nome, lancamentos: [], erro: outro.motivo, naoEExtrato: true, ...marca };
@@ -57,7 +57,7 @@ export async function lerArquivo(nome: string, bytes: Uint8Array, lado: Lado, an
     // sem a linha do saldo anterior, o da coluna Saldo (o Stone; 26/10/2026); no Bradesco escaneado, o saldo anterior conferido
     // com a 1ª linha (o OCR leu o "−11.234,56" como "71.234,56"; Vitor, 06/11/2026)
     const saldo = lado === 'banco' ? saldoAnteriorConferido ?? saldoAnteriorDoPdf(paginas) ?? saldoAnteriorPelaLinha : null;
-    return { nome, lancamentos: l, erro: l.length ? null : 'Não achei lançamentos com data e valor neste ' + (porOcr ? 'arquivo, nem pelo OCR' : 'PDF') + '.', ...(saldo != null ? { saldoAnterior: saldo } : {}), ...marca };
+    return { nome, lancamentos: l, erro: l.length ? null : 'Não achei lançamentos com data e valor neste ' + (porOcr ? 'arquivo, nem pelo OCR' : 'PDF') + '.', ...(saldo != null ? { saldoAnterior: saldo } : {}), ...(conferenciaPeloSaldo && l.length ? { conferenciaPeloSaldo } : {}), ...marca };
   };
   try {
     const ocr = ocrDefinido();

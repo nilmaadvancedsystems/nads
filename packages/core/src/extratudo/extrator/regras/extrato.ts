@@ -2,7 +2,7 @@
 // Quem tira o texto do PDF é arquivos/pdf.ts; aqui só tem regra, para dar para testar sem PDF.
 // Origem: protótipo do Extrator (leitura.js: montarLinhas, colunas, anoDoTexto, lerPaginasExtrato).
 import { normalizarTexto } from '../../../formatos';
-import type { Lado, Lancamento } from '../tipos';
+import type { ConferenciaPeloSaldo, Lado, Lancamento } from '../tipos';
 import { centavos, lerData, temSinal } from './texto';
 
 /** Um pedaço de texto da página: x/y do canto de baixo à esquerda (y cresce para cima), w = largura. */
@@ -533,10 +533,10 @@ export function saldosDoDiaDoPdf(paginas: ItemDeTexto[][], anoPadrao = new Date(
 }
 
 /** Os lançamentos e o saldo do dia numa leitura só (a importação lê o PDF uma vez; Vitor, 13/10/2026: ficou lento). */
-export function extratoDoPdf(paginas: ItemDeTexto[][], lado: Lado, anoPadrao = new Date().getFullYear()): { lancamentos: Lancamento[]; saldosDoDia: { data: string; saldo: number }[]; saldoAnteriorPelaLinha: number | null; saldoAnteriorConferido: number | null } {
+export function extratoDoPdf(paginas: ItemDeTexto[][], lado: Lado, anoPadrao = new Date().getFullYear()): { lancamentos: Lancamento[]; saldosDoDia: { data: string; saldo: number }[]; saldoAnteriorPelaLinha: number | null; saldoAnteriorConferido: number | null; conferenciaPeloSaldo: ConferenciaPeloSaldo | null } {
   const r = lancamentosComPagina(paginas, lado, anoPadrao);
   const s = r.saldosDoDia;
-  return { saldoAnteriorPelaLinha: r.saldoAnteriorPelaLinha ?? null, saldoAnteriorConferido: r.saldoAnteriorConferido ?? null, lancamentos: r.lancamentos, saldosDoDia: s ? [...s].map(([data, saldo]) => ({ data, saldo })).sort((a, b) => a.data.localeCompare(b.data)) : [] };
+  return { saldoAnteriorPelaLinha: r.saldoAnteriorPelaLinha ?? null, saldoAnteriorConferido: r.saldoAnteriorConferido ?? null, conferenciaPeloSaldo: r.conferenciaPeloSaldo ?? null, lancamentos: r.lancamentos, saldosDoDia: s ? [...s].map(([data, saldo]) => ({ data, saldo })).sort((a, b) => a.data.localeCompare(b.data)) : [] };
 }
 
 /**
@@ -694,7 +694,7 @@ function soAContaDoUnificado(todas: Linha[][]): Linha[][] {
   }));
 }
 
-function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: number): { lancamentos: Lancamento[]; pagina: number[]; saldosDoDia?: Map<string, number>; saldoAnteriorPelaLinha?: number | null; saldoAnteriorConferido?: number | null } {
+function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: number): { lancamentos: Lancamento[]; pagina: number[]; saldosDoDia?: Map<string, number>; saldoAnteriorPelaLinha?: number | null; saldoAnteriorConferido?: number | null; conferenciaPeloSaldo?: ConferenciaPeloSaldo | null } {
   const saldosDoDia = new Map<string, number>();
   let ultimaDataDeValor: string | null = null;
   const textoDoPdf = paginas.map(p => p.map(i => i.texto).join(' ')).join('\n');
@@ -767,6 +767,23 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
   const sinalEscrito = ehPagBank(textoTodo) || ehItauPorPeriodo(textoTodo) || itauMensal || inter;
   const caixaPorPeriodo = lado === 'banco' && ehCaixaPorPeriodo(textoTodo);
   let xValorDaCaixa: number | null = null;
+  // a conferência pelo saldo (10/11/2026), em todo banco: o saldo de antes mais cada lançamento tem de dar o saldo impresso. Fora
+  // o extrato do mais novo para o mais velho (a coluna Saldo anda ao contrário), o Inter (o saldo do dia vem antes dos
+  // lançamentos) e o Bradesco escaneado (que já confere e conserta pelo saldo, acima)
+  const conferePeloSaldo = lado === 'banco' && !decrescente && !inter && !entre;
+  let esperadoPeloSaldo: number | null = null;
+  const conferencia: ConferenciaPeloSaldo = { conferidos: 0, naoFecham: 0, exemplos: [] };
+  const conferirPeloSaldo = (data: string, impresso: number) => {
+    if (esperadoPeloSaldo != null) {
+      conferencia.conferidos++;
+      if (esperadoPeloSaldo !== impresso) {
+        conferencia.naoFecham++;
+        if (conferencia.exemplos.length < 5) conferencia.exemplos.push({ data, impresso, calculado: esperadoPeloSaldo });
+      }
+    }
+    // dali em diante, a conta segue do saldo impresso: um erro conta uma vez só
+    esperadoPeloSaldo = impresso;
+  };
 
   for (const [nPagina, linhas] of todas.entries()) {
     col = colunas(linhas) || col;
@@ -899,6 +916,9 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
         const diaDoSaldo = /\bs a l d o\b/.test(n) ? ultimaDataDeValor : /\bsaldo (?:do )?dia\b/.test(n) ? dataAtual : null;
         const sv = diaDoSaldo ? centavos(valores[valores.length - 1].s) : null;
         if (sv != null && diaDoSaldo) saldosDoDia.set(diaDoSaldo, sv);
+        // a conferência pelo saldo: o saldo anterior abre a conta; o saldo do dia confere a soma até ali
+        if (conferePeloSaldo && /saldo (?:anterior|inicial)/.test(n) && saldoCorrido != null) esperadoPeloSaldo = saldoCorrido;
+        else if (conferePeloSaldo && sv != null && diaDoSaldo) conferirPeloSaldo(diaDoSaldo, sv);
         juntarPerto();
         // o texto entre o último lançamento do dia e o saldo é dele (o Sicoob do SISBR: "Pagto de Simples Nacional" embaixo
         // do DB.CONV.TR FD-RFB; Vitor, 26/10/2026)
@@ -1023,6 +1043,11 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
         if (saldoDaLinha == null) saldoCorrido = esperado;
         else if (ficouInseguro != null && !duvida) saldoCorrido = numerosQueOOcrEstraga(saldoDaLinha).reduce((m, x) => (Math.abs(x - esperado) < Math.abs(m - esperado) ? x : m));
       }
+      // a conferência pelo saldo: o lançamento anda a conta; o saldo da linha, quando tem, confere
+      if (conferePeloSaldo) {
+        if (esperadoPeloSaldo != null) esperadoPeloSaldo += c;
+        if (saldoDaLinha != null) conferirPeloSaldo(dataAtual, saldoDaLinha);
+      }
 
       // o texto entre o lançamento de cima e este: o que está mais perto de cima fica lá; o resto abre este
       let antes = '';
@@ -1082,5 +1107,5 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
       if (s != null) { saldoAnteriorConferido = s - acumulado; break; }
     }
   }
-  return { lancamentos: saida, pagina: paginaDe, saldosDoDia, saldoAnteriorPelaLinha, saldoAnteriorConferido };
+  return { lancamentos: saida, pagina: paginaDe, saldosDoDia, saldoAnteriorPelaLinha, saldoAnteriorConferido, conferenciaPeloSaldo: conferePeloSaldo && conferencia.conferidos ? conferencia : null };
 }

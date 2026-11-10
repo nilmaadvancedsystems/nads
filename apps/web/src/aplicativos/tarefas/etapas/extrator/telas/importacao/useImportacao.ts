@@ -250,6 +250,14 @@ export function useImportacao() {
     // o escaneado lido pelo OCR (Vitor, 13/10/2026): o reconhecimento pode errar um dígito, então pede para conferir
     const porOcr = bons.filter(l => l.ocr).map(l => l.nome);
     if (porOcr.length) textos.push({ texto: porOcr.join(', ') + ' era imagem e foi lido pelo OCR: confira os valores com o arquivo.', tom: 'aviso' });
+    // a conferência pelo saldo (10/11/2026), em todo banco: o extrato cujo saldo impresso não fecha com os lançamentos lidos
+    for (const l of bons) {
+      const c = l.conferenciaPeloSaldo;
+      if (!c?.naoFecham) continue;
+      const p = c.exemplos[0];
+      textos.push({ tom: 'aviso', texto: l.nome + ': a leitura não fecha com o saldo do banco em ' + c.naoFecham + ' de ' + c.conferidos + ' ponto(s)'
+        + (p ? ' (em ' + x.dataBR(p.data) + ' o banco mostra ' + x.reaisBR(p.impresso) + ' e a soma dá ' + x.reaisBR(p.calculado) + ')' : '') + '. Confira esse arquivo.' });
+    }
     setMensagem({ tom: 'ok', titulo: res.gravados + ' lançamento(s) importado(s)' + (modo === 'sobrepor' ? ' — movimento sobreposto' : ''), textos });
     return true;
   }

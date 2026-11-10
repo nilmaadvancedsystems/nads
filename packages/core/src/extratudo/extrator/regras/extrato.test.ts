@@ -14,6 +14,42 @@ function pagina(linhas: [string, number][][]): ItemDeTexto[] {
 describe('extrato em PDF', () => {
   const CABECALHO: [string, number][] = [['Data', 40], ['Historico', 120], ['Valor', 400], ['Saldo', 500]];
 
+  describe('a conferência pelo saldo impresso (todo banco)', () => {
+    const conferencia = (linhas: [string, number][][]) => extratoDoPdf([pagina(linhas)], 'banco', 2026).conferenciaPeloSaldo;
+
+    it('fecha: o saldo anterior mais cada lançamento dá o saldo de cada linha', () => {
+      expect(conferencia([CABECALHO,
+        [['01/03/2026', 40], ['SALDO ANTERIOR', 120], ['1.000,00', 500]],
+        [['02/03/2026', 40], ['PIX RECEBIDO', 120], ['250,00', 400], ['1.250,00', 500]],
+        [['03/03/2026', 40], ['TARIFA', 120], ['-50,00', 400], ['1.200,00', 500]],
+      ])).toEqual({ conferidos: 2, naoFecham: 0, exemplos: [] });
+    });
+
+    it('não fecha: o valor lido errado aparece uma vez, no dia dele, e a conta segue do saldo impresso', () => {
+      expect(conferencia([CABECALHO,
+        [['01/03/2026', 40], ['SALDO ANTERIOR', 120], ['1.000,00', 500]],
+        [['02/03/2026', 40], ['PIX RECEBIDO', 120], ['205,00', 400], ['1.250,00', 500]],
+        [['03/03/2026', 40], ['TARIFA', 120], ['-50,00', 400], ['1.200,00', 500]],
+      ])).toEqual({ conferidos: 2, naoFecham: 1, exemplos: [{ data: '2026-03-02', impresso: 125000, calculado: 120500 }] });
+    });
+
+    it('a linha sem saldo anda a conta, e o SALDO DO DIA confere a soma do dia', () => {
+      const c = conferencia([CABECALHO,
+        [['01/03/2026', 40], ['SALDO ANTERIOR', 120], ['1.000,00', 500]],
+        [['02/03/2026', 40], ['PIX RECEBIDO', 120], ['250,00', 400]],
+        [['02/03/2026', 40], ['TARIFA', 120], ['-50,00', 400]],
+        [['02/03/2026', 40], ['SALDO DO DIA', 120], ['1.200,00', 500]],
+      ]);
+      expect(c).toEqual({ conferidos: 1, naoFecham: 0, exemplos: [] });
+    });
+
+    it('sem saldo impresso, não há o que conferir', () => {
+      expect(conferencia([[['Data', 40], ['Historico', 120], ['Valor', 400]],
+        [['02/03/2026', 40], ['PIX RECEBIDO', 120], ['250,00', 400]],
+      ])).toBeNull();
+    });
+  });
+
   it('o valor de mil para cima sem o ponto é lido, e o saldo não vira o valor', () => {
     const p = pagina([CABECALHO,
       [['02/03/2026', 40], ['PIX RECEBIDO CLIENTE', 120], ['2500,00', 400], ['12345,67', 500]],

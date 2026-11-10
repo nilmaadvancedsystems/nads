@@ -22,9 +22,10 @@ import { dataBR } from './texto';
  * (10/11/2026); 15 = a pré-verificação: o que não é extrato da conta sai (10/11/2026); 16 = o valor de mil para cima sem o
  * ponto, a data sem ano no extrato que vira o ano e o histórico que abre com "Total", "Limite", "Resumo" ou "Transporte" e é o
  * nome de alguém (10/11/2026); 17 = o resumo do Bradesco Unificado fora, o saldo do Itaú sem a aplicação
- * automática, o valor do Sicoob na virada da página e o pedaço com ano impossível fora (10/11/2026).
+ * automática, o valor do Sicoob na virada da página e o pedaço com ano impossível fora (10/11/2026); 18 = a conferência pelo
+ * saldo impresso, em todo banco: cada extrato guarda quantos saldos fecharam e quais não (10/11/2026).
  */
-export const VERSAO_DO_LEITOR = 17;
+export const VERSAO_DO_LEITOR = 18;
 
 export function empresaNova(nome: string): EmpresaExtrator {
   return { nome, arquivos: [], auditoria: [] };
@@ -145,7 +146,7 @@ export function importar(e: EmpresaExtrator, lado: Lado, lidos: ArquivoLido[], m
       lanc = nv;
     }
     if (!lanc.length) continue;
-    const a: ArquivoImportado = { id: ids(), lado, nome: l.nome, importadoEm: agora.toISOString(), modo, lancamentos: lanc, leitor: VERSAO_DO_LEITOR, ...(l.saldoAnterior != null ? { saldoAnterior: l.saldoAnterior } : {}), ...(l.saldosDoDia?.length ? { saldosDoDia: l.saldosDoDia } : {}) };
+    const a: ArquivoImportado = { id: ids(), lado, nome: l.nome, importadoEm: agora.toISOString(), modo, lancamentos: lanc, leitor: VERSAO_DO_LEITOR, ...(l.saldoAnterior != null ? { saldoAnterior: l.saldoAnterior } : {}), ...(l.saldosDoDia?.length ? { saldosDoDia: l.saldosDoDia } : {}), ...(l.conferenciaPeloSaldo ? { conferenciaPeloSaldo: l.conferenciaPeloSaldo } : {}) };
     arquivos.push(...caberNoBanco(a));
     gravados += lanc.length;
     novosArquivos++;
@@ -262,6 +263,15 @@ export function releituraPerderiaMes(a: ArquivoImportado, lido: ArquivoLido): bo
 }
 
 /**
+ * A releitura automática trocaria uma leitura que fechava com o saldo do banco por outra que não fecha? Então fica a de antes:
+ * a correção feita para o extrato de uma empresa não pode estragar o de outra (10/11/2026).
+ */
+export function releituraPioraOSaldo(a: ArquivoImportado, lido: ArquivoLido): boolean {
+  const antes = a.conferenciaPeloSaldo, depois = lido.conferenciaPeloSaldo;
+  return !!antes && antes.naoFecham === 0 && !!depois && depois.naoFecham > 0;
+}
+
+/**
  * Troca os lançamentos do arquivo pelos da leitura nova (o mesmo arquivo, os mesmos meses dele; o que outro arquivo do
  * lado já tem não entra de novo) e marca a versão do leitor. Fica no histórico. Sem lançamentos na leitura nova, só marca.
  * Com mês impossível (o OCR leu 2026 como 2028; na 571, pedaços de 2028-01, 2068-02, 2086-01), "os meses dele" não servem
@@ -303,6 +313,9 @@ export function relerExtrato(e: EmpresaExtrator, arquivoId: string, lido: Arquiv
     ...a, lancamentos: novos, leitor: VERSAO_DO_LEITOR,
     ...(lido.saldoAnterior != null ? { saldoAnterior: lido.saldoAnterior + antes } : {}), ...(saldosDoDia?.length ? { saldosDoDia } : {}),
   };
+  // a conferência pelo saldo é a da leitura nova (a de antes não vale mais)
+  if (lido.conferenciaPeloSaldo) novo.conferenciaPeloSaldo = lido.conferenciaPeloSaldo;
+  else delete novo.conferenciaPeloSaldo;
   const reg: RegistroAuditoria = { ts: agora.toISOString(), acao: 'Releu o extrato', detalhe: a.nome + ' · ' + a.lancamentos.length + ' → ' + novos.length + ' lançamento(s), com o leitor novo', tom: 'ok' };
   return { ...e, arquivos: e.arquivos.map(x => (x.id === arquivoId ? novo : x)), auditoria: [reg, ...e.auditoria] };
 }

@@ -3,7 +3,7 @@
 // lançamentos e confere: faltando, diferentes, a mais e duplicados. TypeScript puro.
 export type {
   Lado, Lancamento, LancamentoDoArquivo, ModoImportacao, ArquivoImportado, RegistroAuditoria, EmpresaExtrator, BancoAdicionado, PedidoRegistrado,
-  ArquivoLido, Situacao, TipoDiferenca, LinhaConferencia, Conferencia,
+  ArquivoLido, Situacao, TipoDiferenca, LinhaConferencia, Conferencia, ConferenciaPeloSaldo,
 } from './tipos';
 export { centavos, temSinal, lerData, numeroDoDia, dataBR, competencia, valorBR, reaisBR, palavras, parecido } from './regras/texto';
 export { montarLinhas, anoDoTexto, lancamentosDoPdf, paginasPorMes, ehFaturaDeCartao, ehItauMensal, type ItemDeTexto } from './regras/extrato';
@@ -13,7 +13,7 @@ export { ehOfx, lancamentosDoOfx } from './regras/ofx';
 export { conferir, totais, rotuloSituacao, csvConferencia, PARECIDO_MESMO_DIA, PARECIDO_OUTRO_DIA, PARECIDO_DUPLICADO } from './regras/conferencia';
 export {
   empresaNova, normalizarEmpresa, lancamentosDe, periodo, rotuloPeriodo, competencias, jaTemNoPeriodo, soNovos,
-  importar, excluirArquivo, excluirMesesDoArquivo, bytesNoBanco, linhasAuditoria, extratosParaReler, extratosParaRelerPeloDrive, leituraCobreOArquivo, releituraPerderiaMes, tirarSobreposicaoDosExtratos, relerExtrato, VERSAO_DO_LEITOR, type ResultadoImportacao,
+  importar, excluirArquivo, excluirMesesDoArquivo, bytesNoBanco, linhasAuditoria, extratosParaReler, extratosParaRelerPeloDrive, leituraCobreOArquivo, releituraPerderiaMes, releituraPioraOSaldo, tirarSobreposicaoDosExtratos, relerExtrato, VERSAO_DO_LEITOR, type ResultadoImportacao,
 } from './regras/importacao';
 export { EXTENSOES_EXTRATO, EXTENSOES_SISTEMA, EXTENSOES_IMAGEM, abasDaPlanilha, lerArquivo } from './arquivos/leitura';
 export { definirWorkerDoPdf, definirOcr, ehPdf, itensDoPdf, type Ocr } from './arquivos/pdf';
