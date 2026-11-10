@@ -20,6 +20,7 @@ const CREDENCIAIS = process.env.SIEG_CREDENCIAIS || path.join(__dirname, 'sieg_c
 // a mesma do "Salvar no Drive" do Gmail, de onde a rotina das 9h arquiva e o Alterdata importa (07/10/2026)
 const PASTA_DO_DRIVE = process.env.PASTA_DESTINO || 'G:\\Meu Drive\\Claudio Secretario';
 const sx = require('./sieg-xmls');
+const siegPdfs = require('./sieg-pdfs');
 // o painel do robô (21/10/2026): o que o SIEG está fazendo agora, os XMLs baixados, as contagens e os erros
 const painel = require('./painel');
 const pausaLocal = require('./pausa-local');
@@ -1018,7 +1019,26 @@ function iniciarSieg({ db, log }) {
         const { contagem } = baixado;
         numeros.xmls = arquivos.length;
         numeros.doDrive = baixado.doDrive || 0;
-        const zip = arquivos.length ? sx.zipDe(arquivos) : null;
+        // os PDFs das notas (09/11/2026: "quero tambem que o sieg puxe as notas em pdf tambem", "2 c": no .zip entregue e no
+        // Drive). Saem do XML (sieg-pdfs.js); se falharem, o pedido segue só com os XMLs
+        const pdfsFeitos = new Map();
+        const fazerPdfs = async (lista, aoAndar) => {
+          const { pdfs, falhas } = await siegPdfs.pdfsDasNotas(lista.filter(a => !pdfsFeitos.has(a.nome)), aoAndar);
+          for (const pdf of pdfs) pdfsFeitos.set(pdf.de, pdf);
+          if (falhas.length) log('SIEG: PDFs de', p.codigo, p.competencia, '-', falhas.length, 'não saíram (ex.:', falhas[0].nome + ':', falhas[0].motivo + ')');
+          return lista.map(a => pdfsFeitos.get(a.nome)).filter(Boolean);
+        };
+        let extrasDoZip = [];
+        if (arquivos.length && !doCliente && !p.madrugada) {
+          try {
+            const pdfs = await fazerPdfs(arquivos, (i, n) => andar('entregando', 'Gerando os PDFs (' + i + ' de ' + n + ')', 0));
+            const { entram, fora } = siegPdfs.paraOZip(pdfs);
+            extrasDoZip = entram;
+            numeros.pdfs = pdfs.length;
+            if (fora) log('SIEG: PDFs de', p.codigo, p.competencia, '-', fora, 'de', pdfs.length, 'ficaram fora do .zip (limite de tamanho)');
+          } catch (err) { log('SIEG: não consegui fazer os PDFs de', p.codigo, p.competencia, '-', motivo(err)); }
+        }
+        const zip = arquivos.length ? sx.zipDe(arquivos.concat(extrasDoZip)) : null;
         // a ordem (Vitor, 08/10/2026: "seja entregue para a pessoa o zip dos XML, depois que ele introduza esses XML
         // no sistema (nads), depois que ele salve no drive"): 1) o .zip para quem pediu, que o nads baixa na hora
         if (zip && !doCliente && !p.madrugada) {
@@ -1067,7 +1087,8 @@ function iniciarSieg({ db, log }) {
           resultado: { arquivos: arquivos.length, novos: 0, jaSalvos: numeros.jaSalvos, ...comoFica(faltam), emitidas: resumo.emitidas.length, recebidas: resumo.recebidas.length },
         });
         // 3b) o Drive por trás, na fila do Drive (acima), e o robô segue para o próximo pedido
-        let zipDoDrive = zip;
+        // o .zip da pasta fica só com os XMLs: os PDFs vão soltos ao lado, e o arquivador os arquivaria duas vezes
+        let zipDoDrive = extrasDoZip.length ? sx.zipDe(arquivos) : zip;
         gravarNoDrivePorTras(pasta, async () => {
           // sem ter esperado o Drive: a leitura dele termina aqui; o que ele tem a mais entra no resumo e no .zip da pasta
           if (!faltam) {
@@ -1109,6 +1130,10 @@ function iniciarSieg({ db, log }) {
               }));
               // e o .zip com todos, na mesma pasta (07/10/2026: "quero que ele também salve um arquivo .zip na hora")
               if (zipDoDrive && novos) await fs.promises.writeFile(path.join(pasta, nomeDoZip), zipDoDrive);
+              // os PDFs só das notas que acabaram de entrar: as já arquivadas não voltam para a pasta de entrada
+              try {
+                for (const pdf of await fazerPdfs(faltam)) await fs.promises.writeFile(path.join(pasta, pdf.nome), pdf.dados);
+              } catch (err) { log('SIEG: não consegui salvar os PDFs de', p.codigo, p.competencia, 'no Drive -', motivo(err)); }
               await d.ref.update({ drive: { total: faltam.length, feitos: novos, pronto: true, em: new Date().toISOString() }, 'numeros.novos': novos, 'resultado.novos': novos }).catch(err => log('SIEG: o Drive de', p.codigo, 'gravou, mas não consegui marcar o pedido como pronto (' + motivo(err) + ')'));
             } catch (err) {
               // o Drive falhou depois de a pessoa já ter o .zip e as notas: fica o aviso no pedido (o próximo pedido salva o que faltou)
