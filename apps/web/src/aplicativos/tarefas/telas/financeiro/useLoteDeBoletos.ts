@@ -64,20 +64,45 @@ export function useLoteDeBoletos() {
   const marcaveis = linhas.filter(l => l.conferencia.podeDisparar);
   const podeDisparar = temNivelDiretor(operador);
 
-  /** o cliente do escritório com um destes CNPJs/CPFs (o do Cadastro do nads, senão o do Entregas); só se der um */
-  async function clienteDoDocumento(docs: string[]): Promise<{ empresa: empresas.EmpresaDoEscritorio; documento: string } | null> {
-    const deFora = docs.filter(d => !d.startsWith(financeiro.CNPJ_RAIZ_DO_ESCRITORIO));
-    if (!deFora.length) return null;
+  /** os clientes do escritório com o CNPJ/CPF (o do Cadastro do nads, senão o do Entregas), para achar o dono do boleto */
+  async function clientesDoEscritorio(): Promise<financeiro.ClienteParaOBoleto[]> {
     const doEntregas = await dadosDaEmpresaNoEntregas();
     const cad = repoDoCadastro().todos().porId;
-    const achados = new Map<number, { empresa: empresas.EmpresaDoEscritorio; documento: string }>();
+    const lista = new Map<number, financeiro.ClienteParaOBoleto>();
     for (const e of [...empresas.EMPRESAS_COM_DP, ...empresasNovas()]) {
-      if (e.codigo == null) continue;
-      const doc = (cad.get(formatos.slug(e.nome))?.cnpj || doEntregas.get(e.codigo)?.documento || '').replace(/\D/g, '');
-      if (doc && deFora.includes(doc)) achados.set(e.codigo, { empresa: e, documento: doc });
+      if (e.codigo == null || lista.has(e.codigo)) continue;
+      lista.set(e.codigo, { codigo: e.codigo, nome: e.nome, documento: (cad.get(formatos.slug(e.nome))?.cnpj || doEntregas.get(e.codigo)?.documento || '').replace(/\D/g, '') });
     }
-    return achados.size === 1 ? [...achados.values()][0] : null;
+    return [...lista.values()];
   }
+
+  /**
+   * De quem é o boleto: o contrato de honorários pelo CNPJ ou pelo nome; sem ele, o cliente do escritório pelo CNPJ do
+   * sacado, pelo código no nome do arquivo ou pelo nome do sacado (10/11/2026: "ta lendo errado o cliente, nao ta lendo o
+   * cnpj e o cliente"), com o contrato dele. Sem contrato de honorários ainda, cria um, com o valor do boleto; `lista` são os
+   * contratos desta leitura (dois boletos do mesmo cliente não criam dois).
+   */
+  async function contratoDoBoleto(texto: string, arquivo: string, valor: number | null, lista: financeiro.ContratoDeHonorario[], clientes: readonly financeiro.ClienteParaOBoleto[]) {
+    const doContrato = financeiro.acharContratoDoBoleto(texto, arquivo, lista);
+    if (doContrato) return { ...doContrato, criado: false };
+    const achado = financeiro.acharClienteDoBoleto(texto, arquivo, clientes);
+    if (!achado) return null;
+    const cliente = clientes.find(c => c.codigo === achado.codigo);
+    if (!cliente) return null;
+    let c = lista.find(x => x.codigo === String(cliente.codigo));
+    const criado = !c;
+    if (!c) {
+      const novo = { clienteId: '', codigo: String(cliente.codigo), nome: cliente.nome, cnpj: cliente.documento, valor: valor ?? 0, ativo: true };
+      const id = await honorarios.salvarContrato(novo, operador?.nome || '');
+      c = { ...novo, id, criadoEm: new Date().toISOString(), criadoPor: operador?.nome || '' };
+      lista.push(c);
+    }
+    return { contratoId: c.id, achadoPor: achado.achadoPor, criado };
+  }
+  /** pode mexer: o que já foi pedido ao robô ou saiu não se troca nem se apaga */
+  const solto = (l: LinhaDoLote) => !['fila', 'enviando', 'enviado'].includes(l.conferencia.situacao);
+  const boletosSemCliente = todas.filter(l => !l.boleto.contratoId && solto(l));
+  const [achando, setAchando] = useState<{ feitos: number; total: number } | null>(null);
   const falhou = (e: unknown, o: string) => toast(o + ' ' + (e instanceof Error ? e.message : ''));
 
   return {
@@ -108,32 +133,17 @@ export function useLoteDeBoletos() {
       if (arquivos.length > MAX_ARQUIVOS) { toast(`No máximo ${MAX_ARQUIVOS} boletos de uma vez.`); return; }
       const novos: BoletoNovo[] = [];
       setLendo({ feitos: 0, total: arquivos.length });
-      // os contratos desta subida: os de agora e os criados pelo CNPJ (dois boletos do mesmo cliente não criam dois)
+      // os contratos desta subida: os de agora e os criados pelo cliente achado (dois boletos do mesmo cliente não criam dois)
       const lista = [...contratos.lista];
       let criados = 0;
       try {
+        const clientes = await clientesDoEscritorio();
         for (const [i, f] of arquivos.entries()) {
           const bytes = new Uint8Array(await f.arrayBuffer());
           const texto = await textoDoPdf(bytes);
           const leitura = texto ? financeiro.lerBoleto(texto, dia) : null;
-          let achado = financeiro.acharContratoDoBoleto(texto, f.name, lista);
-          if (!achado) {
-            // sem contrato com o CNPJ do boleto (10/11/2026: "puxa pelo cnpj"): o cliente do escritório com ele; sem
-            // contrato de honorários ainda, cria um, com o valor do boleto
-            const e = await clienteDoDocumento(financeiro.documentosDoBoleto(texto));
-            if (e) {
-              const doc = e.documento;
-              let c = lista.find(x => x.codigo === String(e.empresa.codigo));
-              if (!c) {
-                const novo = { clienteId: '', codigo: String(e.empresa.codigo), nome: e.empresa.nome, cnpj: doc, valor: leitura?.valor ?? 0, ativo: true };
-                const id = await honorarios.salvarContrato(novo, operador?.nome || '');
-                c = { ...novo, id, criadoEm: new Date().toISOString(), criadoPor: operador?.nome || '' };
-                lista.push(c);
-                criados++;
-              }
-              achado = { contratoId: c.id, achadoPor: 'documento' };
-            }
-          }
+          const achado = await contratoDoBoleto(texto, f.name, leitura?.valor ?? null, lista, clientes);
+          if (achado?.criado) criados++;
           const contrato = achado ? lista.find(c => c.id === achado.contratoId) : undefined;
           novos.push({
             bytes,
@@ -146,9 +156,39 @@ export function useLoteDeBoletos() {
         setLendo({ feitos: 0, total: novos.length, gravando: true });
         await repo.adicionar(novos, (feitos, total) => setLendo({ feitos, total, gravando: true }));
         const semCliente = novos.filter(n => !n.contratoId).length;
-        toast(`${novos.length} ${novos.length === 1 ? 'boleto lido' : 'boletos lidos'}${semCliente ? `, ${semCliente} sem cliente` : ''}${criados ? `; ${criados} ${criados === 1 ? 'cliente entrou' : 'clientes entraram'} nos honorários pelo CNPJ` : ''}.`);
+        toast(`${novos.length} ${novos.length === 1 ? 'boleto lido' : 'boletos lidos'}${semCliente ? `, ${semCliente} sem cliente` : ''}${criados ? `; ${criados} ${criados === 1 ? 'cliente entrou' : 'clientes entraram'} nos honorários` : ''}.`);
       } catch (e) { falhou(e, 'Não consegui ler os boletos.'); } finally { setLendo(null); }
     },
+
+    /** os boletos do mês que ficaram sem cliente (os que subiram antes da leitura nova) */
+    quantosSemCliente: boletosSemCliente.length,
+    achando,
+    /** lê de novo o PDF guardado de cada boleto sem cliente e acha o cliente, como na subida */
+    async acharClientes() {
+      if (!boletosSemCliente.length || achando || lendo) return;
+      const lista = [...contratos.lista];
+      let achados = 0, criados = 0;
+      setAchando({ feitos: 0, total: boletosSemCliente.length });
+      try {
+        const clientes = await clientesDoEscritorio();
+        for (const [i, l] of boletosSemCliente.entries()) {
+          const bytes = await repo.pdf(l.boleto.id);
+          const texto = bytes ? await textoDoPdf(bytes) : '';
+          const achado = await contratoDoBoleto(texto, l.boleto.arquivo, l.boleto.valor, lista, clientes);
+          const contrato = achado ? lista.find(c => c.id === achado.contratoId) : undefined;
+          if (achado && contrato) {
+            await repo.alterar(l.boleto.id, { contratoId: achado.contratoId, achadoPor: achado.achadoPor, destinatarios: await repo.emailsDoContrato(contrato) });
+            achados++;
+            if (achado.criado) criados++;
+          }
+          setAchando({ feitos: i + 1, total: boletosSemCliente.length });
+        }
+        const faltam = boletosSemCliente.length - achados;
+        toast(`${achados} de ${boletosSemCliente.length} ${boletosSemCliente.length === 1 ? 'boleto ganhou' : 'boletos ganharam'} o cliente${criados ? `; ${criados} ${criados === 1 ? 'cliente entrou' : 'clientes entraram'} nos honorários` : ''}${faltam ? `. ${faltam} ainda sem: escolha em Revisar` : ''}.`);
+      } catch (e) { falhou(e, 'Não consegui achar os clientes.'); } finally { setAchando(null); }
+    },
+    /** a lixeira da linha: só o que ainda não foi pedido ao robô */
+    podeExcluir: solto,
 
     async escolherCliente(id: string, contratoId: string) {
       const contrato = contratos.lista.find(c => c.id === contratoId);

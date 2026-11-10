@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ContratoDeHonorario, RecebimentoDeHonorario } from './honorarios';
-import { acharContratoDoBoleto, conferirBoleto, documentosDoBoleto, resumoDoLote, separarEmails, vencimentoDoContrato, type BoletoDoLote, type ContextoDoLote } from './loteDeBoletos';
+import { acharClienteDoBoleto, acharContratoDoBoleto, codigoDoArquivoDoBoleto, conferirBoleto, documentosDoBoleto, sacadosDoBoleto, resumoDoLote, separarEmails, vencimentoDoContrato, type BoletoDoLote, type ContextoDoLote } from './loteDeBoletos';
 
 const contrato = (id: string, nome: string, cnpj: string, extra: Partial<ContratoDeHonorario> = {}): ContratoDeHonorario =>
   ({ id, clienteId: '', codigo: id, nome, cnpj, valor: 500, ativo: true, diaVencimento: 10, criadoEm: '', criadoPor: '', ...extra });
@@ -44,6 +44,56 @@ describe('documentosDoBoleto', () => {
   });
   it('não pega pedaço da linha digitável nem número sem a palavra', () => {
     expect(documentosDoBoleto('75691.31449 01129.611602 01494.290016 3 16320000035000')).toEqual([]);
+  });
+});
+
+// o texto de um boleto do Alterdata Pack como o leitor de PDF devolve (inventado, no mesmo jeito do real; 10/11/2026)
+const BOLETO = 'VALOR DO DOCUMENTO  450,00  SACADO  ALFA COMERCIO EXEMPLO LTDA  NOSSO NÚMERO  00100001  CEDENTE  VENCIMENTO  16/11/2026 '
+  + '11111.11111 22222.222222 33333.333333 4 16320000045000 SACADO SACADOR/AVALISTA  ALFA COMERCIO EXEMPLO LTDA   CNPJ/CPF: 11.222.333/0001-81 '
+  + 'RUA DAS FLORES, 10 - CENTRO 39000-000 - Cidade Exemplo - MG NILMA DIAS OLIVEIRA';
+const clientes = [
+  { codigo: 101, nome: 'ALFA COMERCIO EXEMPLO LTDA', documento: '11222333000181' },
+  { codigo: 102, nome: 'ALFA C FILHO & CIA LTDA', documento: '44555666000199' },
+  { codigo: 103, nome: 'BETA FLORESTAL EXEMPLO LTDA', documento: '' },
+];
+
+describe('codigoDoArquivoDoBoleto', () => {
+  it('o código do cliente no começo do nome do Alterdata', () => {
+    expect(codigoDoArquivoDoBoleto('00103_10001_16-11-2026.PDF')).toBe(103);
+    expect(codigoDoArquivoDoBoleto('C:\\Downloads\\00101_10002_16-11-2026.pdf')).toBe(101);
+  });
+  it('outro jeito de nome não tem código', () => {
+    expect(codigoDoArquivoDoBoleto('Boleto BETA FLORESTAL.pdf')).toBeNull();
+    expect(codigoDoArquivoDoBoleto('2026-11-16.pdf')).toBeNull();
+    expect(codigoDoArquivoDoBoleto('00000_1_x.pdf')).toBeNull();
+  });
+});
+
+describe('sacadosDoBoleto', () => {
+  it('o sacado do recibo e o da ficha, sem repetir', () => expect(sacadosDoBoleto(BOLETO)).toEqual(['ALFA COMERCIO EXEMPLO LTDA']));
+  it('o pagador de outros bancos', () => expect(sacadosDoBoleto('Pagador: ALFA COMERCIO LTDA CNPJ 11.222.333/0001-81')).toEqual(['ALFA COMERCIO LTDA']));
+});
+
+describe('acharClienteDoBoleto (entre os clientes do escritório)', () => {
+  it('pelo CNPJ do sacado, mesmo com o código de outro no nome do arquivo', () => {
+    expect(acharClienteDoBoleto(BOLETO, '00102_1_16-11-2026.PDF', clientes)).toEqual({ codigo: 101, achadoPor: 'documento' });
+  });
+  it('sem o CNPJ no cadastro, pelo código no nome do arquivo', () => {
+    const t = 'SACADO  BETA FLORESTAL EXEMPLO LTDA  NOSSO NÚMERO 00100003 SACADO SACADOR/AVALISTA  BETA FLORESTAL EXEMPLO LTDA   CNPJ/CPF: 77.888.999/0001-55';
+    expect(acharClienteDoBoleto(t, '00103_10001_16-11-2026.PDF', clientes)).toEqual({ codigo: 103, achadoPor: 'nome' });
+  });
+  it('o código do arquivo não vale quando o sacado impresso é outro cliente', () => {
+    const semCnpj = clientes.map(c => ({ ...c, documento: '' }));
+    expect(acharClienteDoBoleto(BOLETO, '00102_1_16-11-2026.PDF', semCnpj)).toEqual({ codigo: 101, achadoPor: 'nome' });
+  });
+  it('sem CNPJ e sem código, pelo nome do sacado', () => {
+    expect(acharClienteDoBoleto(BOLETO, 'boleto.pdf', clientes.map(c => ({ ...c, documento: '' })))).toEqual({ codigo: 101, achadoPor: 'nome' });
+  });
+  it('o CNPJ da Nilma (o cedente) não conta', () => {
+    expect(acharClienteDoBoleto('CNPJ: 27.872.981/0001-50', 'x.pdf', [{ codigo: 1, nome: 'NILMA', documento: '27872981000150' }])).toBeNull();
+  });
+  it('código que não é de cliente nenhum, sem CNPJ e sem nome: fica para a pessoa', () => {
+    expect(acharClienteDoBoleto('', '00999_1_16-11-2026.PDF', clientes)).toBeNull();
   });
 });
 
