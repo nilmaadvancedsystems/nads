@@ -8,7 +8,8 @@
 //
 // No banco:
 //   driveIndice/raiz                     a pasta do ano: lista de clientes com
-//                                        totais, e o marcador de mudanças do Drive
+//                                        totais (e o marcador antigo, só de reserva)
+//   driveIndice/marcador                 o marcador de mudanças do Drive (10/11/2026)
 //   driveIndice/{pastaDoCliente}         totais da pasta de um cliente
 //   driveIndice/{pastaDoCliente}/partes/{n}
 //                                        os itens (pastas e arquivos) em lista
@@ -39,6 +40,13 @@ const PASTAS_POR_CONSULTA = 25;        // "a in parents or b in parents or ..."
 const LEITURAS_EM_PARALELO = 6;
 const MUDANCAS_A_CADA_MS = 60 * 1000;
 const HORA_DA_RELEITURA = 3;           // releitura completa, de madrugada
+// O marcador de mudanças fica num documento só dele (10/11/2026, consumo do banco). Antes ia no driveIndice/raiz, que toda
+// página de empresa aberta escuta: qualquer mudança no Drive inteiro (o arquivador mexe nele o dia todo) regravava a raiz
+// a cada minuto e virava uma leitura em cada aba aberta, mesmo sem nada mudar nas pastas dos clientes. Agora a raiz só é
+// gravada quando muda a pasta de algum cliente. O marcador fica na memória e vai para o banco no máximo a cada 10 min (ou
+// junto com uma mudança de verdade): o robô que reinicia só repete a conferência dos últimos minutos.
+const MARCADOR = 'marcador';
+const MARCADOR_A_CADA_MS = 10 * 60 * 1000;
 
 let drive = null;
 function getDrive() {
@@ -562,6 +570,7 @@ async function varreduraCompleta(db, log, estado) {
     } catch (err) { log('pasta', p.n, 'não foi lida:', err.message); }
   });
   await atualizarRaiz(db, raizId, resumos, { pageToken: inicio.data.startPageToken, varreduraEm: new Date().toISOString() });
+  if (estado) { estado.pastaId = raizId; await gravarMarcador(db, estado, inicio.data.startPageToken, true); }
   const arquivos = resumos.reduce((s, r) => s + r.arquivos, 0);
   log('mapa do Drive: ' + resumos.length + ' pastas de cliente, ' + arquivos + ' arquivos, ' + marcados + ' documento(s) ' + (soEnsaio ? 'que seriam marcados (marcação automática desligada)' : 'marcado(s) pela pasta') + ', em ' + Math.round((Date.now() - t0) / 1000) + 's');
   return { raizId, resumos };
@@ -592,13 +601,32 @@ async function pastaDoClienteDe(fileId, raizId, cache) {
   return null;
 }
 
+/** O marcador de mudanças e a pasta do ano, da memória; sem eles (o robô acabou de ligar), do banco. */
+async function lerMarcador(db, estado) {
+  if (estado.token && estado.pastaId) return estado.token;
+  const [m, r] = await Promise.all([db.collection(COLECAO).doc(MARCADOR).get(), db.collection(COLECAO).doc('raiz').get()]);
+  const raiz = r.data() || {};
+  estado.pastaId = raiz.pastaId || null;
+  estado.token = (m.data() || {}).pageToken || raiz.pageToken || null;
+  return estado.token;
+}
+
+/** Guarda o marcador na memória; no banco, no máximo a cada 10 min (forcar: já). */
+async function gravarMarcador(db, estado, token, forcar) {
+  if (!token) return;
+  estado.token = token;
+  if (!forcar && Date.now() - (estado.marcadorGravadoEm || 0) < MARCADOR_A_CADA_MS) return;
+  estado.marcadorGravadoEm = Date.now();
+  await db.collection(COLECAO).doc(MARCADOR).set({ pageToken: token, em: new Date().toISOString() });
+}
+
 async function conferirMudancas(db, estado, log) {
-  const raizRef = db.collection(COLECAO).doc('raiz');
-  const raiz = (await raizRef.get()).data() || {};
-  if (!raiz.pageToken || !raiz.pastaId) return false;
+  const inicial = await lerMarcador(db, estado);
+  const pastaId = estado.pastaId;
+  if (!inicial || !pastaId) return false;
   const sujas = new Set();
   let novaRaiz = false;
-  let token = raiz.pageToken;
+  let token = inicial;
   let proximo = null;
   do {
     const r = await getDrive().changes.list({
@@ -607,12 +635,12 @@ async function conferirMudancas(db, estado, log) {
     });
     for (const ch of r.data.changes || []) {
       const pais = (ch.file && ch.file.parents) || [];
-      if (pais.includes(raiz.pastaId)) novaRaiz = true;     // pasta de cliente criada/renomeada
+      if (pais.includes(pastaId)) novaRaiz = true;     // pasta de cliente criada/renomeada
       // Apagado ou tirado de lugar: o cache de onde ele estava diz a quem pertencia.
       const antiga = estado.dono.get(ch.fileId);
       if (antiga) sujas.add(antiga);
       if (!ch.removed && ch.file && !ch.file.trashed) {
-        const dono = await pastaDoClienteDe(ch.fileId, raiz.pastaId, estado.pais);
+        const dono = await pastaDoClienteDe(ch.fileId, pastaId, estado.pais);
         if (dono) sujas.add(dono);
       }
     }
@@ -621,14 +649,16 @@ async function conferirMudancas(db, estado, log) {
   } while (token);
 
   if (!sujas.size && !novaRaiz) {
-    if (proximo && proximo !== raiz.pageToken) await raizRef.set({ pageToken: proximo }, { merge: true });
+    // só o marcador andou: nada de gravar a raiz (que as telas escutam)
+    if (proximo && proximo !== inicial) await gravarMarcador(db, estado, proximo, false);
     return false;
   }
+  const raiz = (await db.collection(COLECAO).doc('raiz').get()).data() || {};
   const porCodigo = await clientesPorCodigoGuardados(db);
   const soEnsaio = !(await marcacaoLigada(db));
   const clientes = new Map((raiz.clientes || []).map(c => [c.id, c]));
   if (novaRaiz) {
-    const topo = (await listarFilhosDe([raiz.pastaId])).filter(i => i.t === 'd');
+    const topo = (await listarFilhosDe([pastaId])).filter(i => i.t === 'd');
     const ids = new Set(topo.map(t => t.i));
     topo.forEach(t => { if (!clientes.has(t.i)) sujas.add(t.i); });
     for (const id of Array.from(clientes.keys())) if (!ids.has(id)) clientes.delete(id);
@@ -644,7 +674,8 @@ async function conferirMudancas(db, estado, log) {
       lembrarDonos(estado, id, r.itens);
     } catch (err) { log('pasta', nome, 'não foi relida:', err.message); }
   }
-  await atualizarRaiz(db, raiz.pastaId, Array.from(clientes.values()), { pageToken: proximo || raiz.pageToken });
+  await atualizarRaiz(db, pastaId, Array.from(clientes.values()), { pageToken: proximo || inicial });
+  await gravarMarcador(db, estado, proximo || inicial, true);
   log('mapa do Drive: ' + sujas.size + ' pasta(s) de cliente atualizada(s)');
   return true;
 }
@@ -725,8 +756,7 @@ function iniciarIndiceDrive(db, log) {
     if (estado.ocupado) return;
     estado.ocupado = true;
     try {
-      const raiz = (await db.collection(COLECAO).doc('raiz').get()).data() || {};
-      const precisaCompleta = !raiz.pageToken ||
+      const precisaCompleta = !(await lerMarcador(db, estado)) ||
         (new Date().getHours() === HORA_DA_RELEITURA && estado.ultimaCompleta !== hojeIso());
       if (precisaCompleta) {
         estado.dono.clear();
@@ -803,4 +833,6 @@ module.exports = {
   ajustarCadastroPeloIndice, marcarPeloIndice,
   // a lista dos clientes em memória (teste-consumo.js)
   clienteDaPasta, guardarClientesDoMapa,
+  // o marcador de mudanças fora da raiz (teste-consumo.js)
+  lerMarcador, gravarMarcador,
 };

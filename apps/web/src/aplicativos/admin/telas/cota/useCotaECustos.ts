@@ -1,5 +1,5 @@
 // ViewModel da Cota e custos (o site do admin): o consumo de hoje contra a cota grátis do Firestore (robo/uso, medido pelo
-// Google a cada 15 min), o histórico dos últimos 30 dias (robo/saudeBanco.usoPorDia, um dia completo por vez, mais o de
+// Google a cada 30 min), o histórico dos últimos 30 dias (robo/saudeBanco.usoPorDia, um dia completo por vez, mais o de
 // hoje), o armazenamento do banco e a hospedagem de cada projeto (o resumo diário). Só o que tem medição: o que falta fica
 // "sem medição", com o motivo que o robô deixou.
 import { entregas } from '@nads/core';

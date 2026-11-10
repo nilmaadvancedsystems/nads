@@ -12,7 +12,7 @@ export function useSinalDeOnde(onde: OndeAberto | null) {
     const atual = JSON.parse(chave) as OndeAberto;
     let ultimo = 0;
     const bater = () => {
-      if (document.visibilityState !== 'visible' || Date.now() - ultimo < 60 * 1000) return;
+      if (document.visibilityState !== 'visible' || !usuarios.ehHoraDoPonto(ultimo, Date.now())) return;
       ultimo = Date.now();
       gravar(atual);
     };

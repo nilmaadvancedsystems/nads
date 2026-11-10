@@ -37,7 +37,9 @@ const path = require('path');
 const FREIO_MS = 45 * 1000;
 // o sinal de vida com a pasta parada (03/11/2026: era 10 min e a tela do Arquivador mostrava "Último sinal há 9 min", como se o
 // robô do NILMA-SERVER não estivesse ligado; o painel tem uns 280 KB, uma gravação a cada 2 min é pouco)
-const BATIMENTO_MS = 2 * 60 * 1000;
+// 5 min desde 10/11/2026 (consumo do banco: o painel de ~280 KB a cada 2 min, ~720 gravações por dia com a pasta parada); a
+// página só acusa "parado" com 15 min sem sinal. O resumo da janela do Drive só vai quando muda (ou junto do sinal de vida)
+const BATIMENTO_MS = 5 * 60 * 1000;
 const MAX_ULTIMOS = 50;
 const MAX_PENDENTES = 80;
 const MAX_ERROS = 30;
@@ -347,6 +349,8 @@ const hojeLocal = (t) => { const d = new Date(t); return d.getFullYear() + '-' +
  * Devolve as entradas que o contínuo chama: situacao, varredura, lendo, decisoes, erro, config, ladoALado, parar.
  */
 function criar(opcoes) {
+  // o resumo da janela do Drive só vai quando muda (ou junto do sinal de vida); cada acompanhamento tem o seu
+  const batidaDoResumo = require('./batimento').criarBatimento({ freioMs: 0, semMudancaMs: BATIMENTO_MS });
   const o = Object.assign({ log: () => {}, agora: () => Date.now(), freioMs: FREIO_MS, prazoMs: PRAZO_MS, historicoMs: HISTORICO_MS, diasNoBanco: DIAS_NO_BANCO }, opcoes);
   const arqEstado = path.join(o.controle, 'acompanhamento.json');
   const arqDia = dia => path.join(o.controle, 'arquivados-' + dia + '.jsonl');
@@ -470,7 +474,8 @@ function criar(opcoes) {
       const ref = o.db.collection('robo').doc('arquivadorNovo');
       await comPrazo(ref.set({ painel }, { mergeFields: ['painel'] }));
       // o resumo da janela do Drive (o contábil lê; 23/10/2026)
-      await comPrazo(o.db.collection('robo').doc('arquivadorResumo').set(resumoParaODrive(st, painel.em, painel.maquina)));
+      const resumo = resumoParaODrive(st, painel.em, painel.maquina);
+      if (batidaDoResumo.vale(resumo)) await comPrazo(o.db.collection('robo').doc('arquivadorResumo').set(resumo)).catch(err => { batidaDoResumo.falhou(); throw err; });
       // o fim do dia que terminou (o que ainda não tinha subido na virada)
       while (diasPendentes.length) {
         const d = diasPendentes[0];

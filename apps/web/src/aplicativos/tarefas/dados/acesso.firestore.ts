@@ -24,6 +24,8 @@ type Quem = { uid: string; nome: string; email: string; admin: boolean } | null;
 const DIA = 24 * 60 * 60 * 1000;
 /** O código do convite: 32 letras e números ao acaso (como o do Entregas, um UUID sem os traços). */
 const novoCodigo = () => crypto.randomUUID().replace(/-/g, '');
+// o último ponto do online gravado por esta aba (ms): o ponto e o sinal da etapa não gravam um logo depois do outro
+let ultimoPonto = 0;
 
 export function criarAcessoFirestore(quem: () => Quem): RepoAcesso {
   const db = bancoDoEntregas();
@@ -74,7 +76,7 @@ export function criarAcessoFirestore(quem: () => Quem): RepoAcesso {
       }, () => {}));
     }
     paradas.push(onSnapshot(collection(db, 'usuarios'), s => {
-      // o ponto de presença de cada pessoa, a cada 3 min, não redesenha o app de todos: a tela de Usuários lê no relógio dela
+      // o ponto de presença de cada pessoa, a cada 10 min, não redesenha o app de todos: a tela de Usuários lê no relógio dela
       const soOPonto = equipe.carregada && s.docChanges().every(ch => ch.type === 'modified' && u.mudouSoOPonto(equipe.docs[ch.doc.id], ch.doc.data() as u.DocUsuario));
       const docs: Record<string, u.DocUsuario> = {};
       s.docs.forEach(d => { docs[d.id] = d.data() as u.DocUsuario; });
@@ -155,14 +157,21 @@ export function criarAcessoFirestore(quem: () => Quem): RepoAcesso {
       if (!q) throw new Error('Sem login.');
       await updateDoc(doc(db, 'usuarios', q.uid), { fotoPerfil: foto || '' });
     },
-    // o dono pode mexer no próprio documento (menos roles, email e criadoEm): o ponto de quem está online
+    // o dono pode mexer no próprio documento (menos roles, email e criadoEm): o ponto de quem está online. Cada gravação
+    // aqui vira uma leitura em toda aba aberta do escritório (todas escutam usuarios): o ponto que o sinal da etapa acabou
+    // de levar junto não grava de novo
     async marcarPresenca() {
       const q = quem();
-      if (q) await updateDoc(doc(db, 'usuarios', q.uid), { nadsVistoEm: new Date().toISOString() });
+      if (!q || !u.ehHoraDoPonto(ultimoPonto, Date.now())) return;
+      ultimoPonto = Date.now();
+      await updateDoc(doc(db, 'usuarios', q.uid), { nadsVistoEm: new Date().toISOString() });
     },
+    // o sinal da etapa leva o ponto do online junto (uma gravação, não duas)
     async marcarOnde(onde) {
       const q = quem();
-      if (q) await updateDoc(doc(db, 'usuarios', q.uid), { nadsOnde: onde ?? deleteField() });
+      if (!q) return;
+      ultimoPonto = Date.now();
+      await updateDoc(doc(db, 'usuarios', q.uid), { nadsOnde: onde ?? deleteField(), nadsVistoEm: new Date().toISOString() });
     },
     async ativar(uid, ativo) { await updateDoc(doc(db, 'usuarios', uid), { ativo }); },
     // o "Criar acesso" do Entregas: o login (numa instância à parte) e o cadastro gravado pela sessão do admin (a regra

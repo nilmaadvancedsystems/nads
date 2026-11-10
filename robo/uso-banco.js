@@ -7,7 +7,7 @@
 // num dia em que o limite podia estar perto.
 //
 // O limite grátis do Firestore (50 mil leituras, 20 mil gravações e 20 mil
-// exclusões por dia) zera à meia-noite da Califórnia. A cada 15 minutos o
+// exclusões por dia) zera à meia-noite da Califórnia. A cada 30 minutos o
 // robô pergunta ao Cloud Monitoring quanto foi usado desde essa hora e grava
 // em robo/uso, que a tela lê uma vez ao abrir o cartão. Só leitura no Google;
 // a única gravação é o próprio robo/uso.
@@ -15,7 +15,8 @@ require('./fuso.js');
 const { GoogleAuth } = require('google-auth-library');
 
 const PROJETO = process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT || 'entregas-2e5e2';
-const A_CADA_MS = 15 * 60 * 1000;
+// a cada 30 min (era 15; 10/11/2026, consumo do banco)
+const A_CADA_MS = 30 * 60 * 1000;
 const METRICAS = {
   leituras: 'firestore.googleapis.com/document/read_ops_count',
   gravacoes: 'firestore.googleapis.com/document/write_ops_count',

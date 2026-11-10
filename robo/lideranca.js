@@ -16,15 +16,18 @@
 // parar) devolve a vez na hora, e o reserva assume já na tentativa seguinte.
 //
 // O prazo é contado no relógio de cada máquina. Computador e servidor acertam
-// a hora pela internet, e a folga de 90 s cobre com sobra a diferença entre
-// eles. Cada renovação confere, dentro de uma transação, que a vez ainda é
+// a hora pela internet, e a folga do prazo cobre com sobra a diferença entre
+// eles (a folga de 6 min sobra ainda mais). Cada renovação confere, dentro de uma transação, que a vez ainda é
 // sua; e quem não consegue renovar para sozinho antes do prazo vencer, pra
 // não seguir trabalhando depois que o reserva já assumiu.
 const os = require('os');
 const crypto = require('crypto');
 
-const PRAZO_MS = 90 * 1000;
-const RENOVAR_MS = 30 * 1000;
+// 6 min de prazo, renovado a cada 2 (10/11/2026, consumo do banco): eram 90 s e 30 s, uma transação a cada 30 s no titular
+// e uma leitura a cada 30 s em cada reserva, ~8 mil operações por dia. O preço: o reserva assume em até 6 min (eram 90 s)
+// quando o titular cai sem devolver a vez; quem desliga direito devolve na hora, como antes.
+const PRAZO_MS = 6 * 60 * 1000;
+const RENOVAR_MS = 2 * 60 * 1000;
 
 // Uma identidade por processo: duas partidas seguidas na mesma máquina são
 // vigias diferentes, e o novo não pode achar que a vez do antigo é dele.

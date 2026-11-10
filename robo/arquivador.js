@@ -98,9 +98,12 @@ const estadoRef = db.collection('robo').doc('arquivador');
 
 let estado = { situacao: 'livre', pedidoId: null, desde: agora(), mensagem: null };
 // o vigia do banco (23/10/2026: às 13:18 o robô perdeu todas as conexões com o Firestore e ficou parado até alguém
-// religar): o ponto de cada minuto é a prova de vida do banco; mais de BANCO_MUDO_MS sem ele voltar, o robô sai com o
-// código 4 e o arquivador-laco.cmd religa em 30 s, com um cliente novo do Firestore
-const BANCO_MUDO_MS = 5 * 60 * 1000;
+// religar): o ponto é a prova de vida do banco; mais de BANCO_MUDO_MS sem ele voltar, o robô sai com o código 4 e o
+// arquivador-laco.cmd religa em 30 s, com um cliente novo do Firestore. O ponto sem mudança vai a cada 5 min (10/11/2026,
+// consumo do banco; era a cada 1 min): 12 min sem resposta são pelo menos duas tentativas
+const BANCO_MUDO_MS = 12 * 60 * 1000;
+// o ponto só vai ao banco quando o estado muda ou, sem mudança, a cada 5 min (batimento.js; as telas: 7 min sem ponto = parado)
+const batidaDoPonto = require('./batimento').criarBatimento({ freioMs: 0 });
 let bancoRespondeuEm = Date.now();
 let vigiadoEm = Date.now();
 function vigiarOBanco() {
@@ -123,9 +126,11 @@ function baterPonto() {
   // a organização rodando por fora do botão (a das 9h), no painel do robô
   painel.fazendo('rotina', rotina && rotina.ativa && !rotina.deUmPedido
     ? 'Organizando o Drive (rotina das 9h' + (rotina.fase ? ', fase ' + rotina.fase : '') + ')' : null);
-  estadoRef.set(Object.assign({ em: agora(), pc: os.hostname(), rotina }, paraResolver ? { paraResolver } : {}, estado), { merge: true })
+  const ponto = Object.assign({ em: agora(), pc: os.hostname(), rotina }, paraResolver ? { paraResolver } : {}, estado);
+  if (!batidaDoPonto.vale(ponto)) return;
+  estadoRef.set(ponto, { merge: true })
     .then(() => { bancoRespondeuEm = Date.now(); })
-    .catch(err => log('não consegui bater o ponto:', err.message));
+    .catch(err => { batidaDoPonto.falhou(); log('não consegui bater o ponto:', err.message); });
 }
 function mudarEstado(novo) {
   estado = Object.assign({ desde: agora(), pedidoId: null, mensagem: null }, novo);
@@ -701,11 +706,12 @@ async function iniciar() {
   }, err => log('parar a organização:', err.message));
   // as mensagens escritas no nads para o Claude da rotina (só o admin escreve)
   mensagensRef.where('status', '==', 'pendente').onSnapshot(() => { void atenderMensagens(); }, err => log('mensagens para o Claude:', err.message));
-  setInterval(() => { void atenderMensagens(); }, 60 * 1000);
+  // de reserva do ouvinte de cima (que já atende na hora): a cada 10 min (era 1 min; 10/11/2026, consumo do banco)
+  setInterval(() => { void atenderMensagens(); }, 10 * 60 * 1000);
 
   ouvir('pedidos de arquivamento', () => fila.where('status', '==', 'pendente'), snap => { if (!snap.empty) atenderFila(); }, log);
-  // Pedido que está esperando a das 9h terminar: confere de 2 em 2 minutos.
-  setInterval(() => { if (!ocupado) atenderFila(); }, 2 * 60000);
+  // Pedido que está esperando a das 9h terminar: confere de 5 em 5 minutos (era 2; 10/11/2026, consumo do banco).
+  setInterval(() => { if (!ocupado) atenderFila(); }, 5 * 60000);
 
   // O arquivador NOVO, por evento (Vitor, 21/10/2026: "quando cair na pasta, já arquiva"; arquivador-continuo.js). Começa
   // em SIMULAÇÃO (só registra "arquivaria", não move nada) e publica no painel o que faria e, depois da rotina das 9h, o

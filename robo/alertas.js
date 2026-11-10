@@ -10,7 +10,7 @@
 let catalogo = { maquinas: [], robos: [] };
 try { catalogo = require('../packages/core/src/robos/catalogo.json'); } catch (e) { /* cópia só do robo/: nenhum alerta */ }
 
-const LIM = (catalogo.limites || {}).alertas || { repetirMin: [15, 1440], maxPorHora: [1, 30], semSinalMin: [5, 1440], discoLimite: [50, 99], padrao: { repetirMin: 60, maxPorHora: 6, semSinalMin: 15, discoLimite: 90 } };
+const LIM = (catalogo.limites || {}).alertas || { repetirMin: [15, 1440], maxPorHora: [1, 30], semSinalMin: [15, 1440], discoLimite: [50, 99], padrao: { repetirMin: 60, maxPorHora: 6, semSinalMin: 15, discoLimite: 90 } };
 const TICK_MS = 5 * 60 * 1000;
 const HORA_MS = 36e5;
 const LINK = 'https://robos.nilmacontabilidade.com/robos';
@@ -111,6 +111,11 @@ function iniciarAlertas({ db, maquina, log = () => {}, enviarPara = null }) {
   const discoDe = naNuvem ? MAQUINAS : [];
   let rodando = false;
   let envio = enviarPara;
+  // o estado (o que já saiu e até onde já viu) fica na memória entre as voltas e vai ao banco quando sai um aviso ou a cada
+  // 30 min (10/11/2026, consumo do banco: era uma leitura e uma gravação a cada 5 min, 288 gravações por dia sem aviso nenhum)
+  let estadoNaMemoria = null;
+  let guardadoEm = 0;
+  const GUARDAR_A_CADA_MS = 30 * 60 * 1000;
   const mandar = (...a) => {
     if (!envio) envio = require('./avisos-push').criarEnvio(db, log).enviarPara;   // só aqui: sem alerta ligado, nem carrega o envio
     return envio(...a);
@@ -123,7 +128,7 @@ function iniciarAlertas({ db, maquina, log = () => {}, enviarPara = null }) {
       const cfg = lerAlertas((await db.collection('config').doc('robosAlertas').get()).data());
       if (!cfg.ligado || !cfg.pessoas.length) return;
       const ref = db.collection('robosAlertasEstado').doc(maquina);
-      const estado = (await ref.get()).data() || {};
+      const estado = estadoNaMemoria || (await ref.get()).data() || {};
       const eventos = [];
       const querMaquinas = (cfg.semSinal.ligado && sinalDe.length) || (cfg.disco.ligado && discoDe.length);
       if (querMaquinas) {
@@ -148,7 +153,9 @@ function iniciarAlertas({ db, maquina, log = () => {}, enviarPara = null }) {
         try { await mandar(cfg.pessoas, ev.titulo, ev.corpo, 'robo-' + ev.chave, LINK); enviados.push(ev); }
         catch (err) { log('alertas: o aviso "' + ev.titulo + '" não saiu -', String((err && err.message) || err)); }
       }
-      if (enviados.length || naNuvem) await ref.set(estadoDepois(estado, enviados, agora, vistoEm));
+      const depois = estadoDepois(estado, enviados, agora, vistoEm);
+      estadoNaMemoria = depois;
+      if (enviados.length || (naNuvem && agora - guardadoEm >= GUARDAR_A_CADA_MS)) { guardadoEm = agora; await ref.set(depois); }
     } catch (err) {
       log('alertas: não consegui conferir -', String((err && err.message) || err));
     } finally { rodando = false; }

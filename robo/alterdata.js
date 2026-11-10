@@ -48,6 +48,7 @@ const ABRIR_DE_NOVO_MS = 15 * 60 * 1000;
 const LIMITE_MS = 9 * 60 * 1000;
 const PEDACO = 700 * 1000;   // caracteres de base64 por pedaço (o documento do Firestore vai até 1 MiB)
 const VERIFICAR_MS = 60 * 1000;
+const batidaDoEstado = require('./batimento').criarBatimento({ ignorar: ['atualizadoEm', 'maquinas.' + ONDE + '.em'], freioMs: 0 });
 const ASSENTAR_MS = 60 * 1000;
 
 const agora = () => new Date().toISOString();
@@ -170,7 +171,10 @@ function iniciarAlterdata(db, log) {
     // pedido feito na hora deu "Window is not responding"); o pedido só é pego com ASSENTAR_MS de Contábil pronto
     if (estado !== 'ok') okDesde = 0; else if (!okDesde) okDesde = Date.now();
     if (estado === 'ok') loginParado = '';   // alguém (ou o robô) entrou: se o login tinha falhado, vale tentar de novo depois
-    await estadoDoc.set({ ligado: true, maquinas: { [ONDE]: { contabil: estado, login: loginParado, em: agora() } }, atualizadoEm: agora() }, { merge: true }).catch(() => {});
+    // só quando o estado ou o login mudam ou, sem mudança, a cada 5 min (batimento.js; 10/11/2026, consumo do banco: era a
+    // cada verificação, 1 por minuto; a página Alterdata da empresa dá o sinal por velho depois de 12 min)
+    const sinal = { ligado: true, maquinas: { [ONDE]: { contabil: estado, login: loginParado, em: agora() } }, atualizadoEm: agora() };
+    if (batidaDoEstado.vale(sinal)) await estadoDoc.set(sinal, { merge: true }).catch(() => batidaDoEstado.falhou());
     if (estado === 'login' || estado === 'fechado') void entrarSozinho(estado);
     return estado;
   }
