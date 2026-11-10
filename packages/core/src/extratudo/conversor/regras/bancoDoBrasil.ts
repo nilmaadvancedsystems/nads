@@ -41,6 +41,11 @@ export function ehExtratoDoBancoDoBrasil(paginas: ItemDeTexto[][]): boolean {
 
 interface Lanc { y: number; data: string; valor: number; meio: string; acima: { y: number; s: string }[]; abaixo: { y: number; s: string }[] }
 
+/** A página sem cabeçalho tem linha da tabela (a data na coluna e o "(+)"/"(-)")? Senão é comunicado ou outra tabela, que não entra. */
+function continuaATabela(linhas: Linha[], cab: Cabecalho): boolean {
+  return linhas.some(l => !!l.tokens[0] && l.tokens[0].x < cab.xLote - 2 && RE_DATA.test(l.tokens[0].s) && l.tokens.some(t => RE_SINAL.test(t.s)));
+}
+
 export function lancamentosDoBancoDoBrasil(paginas: ItemDeTexto[][]): LinhaConvertida[] {
   const saida: Lanc[] = [];
   let cab: Cabecalho | null = null;
@@ -55,7 +60,8 @@ export function lancamentosDoBancoDoBrasil(paginas: ItemDeTexto[][]): LinhaConve
     paraOProximo = [];
     const daPagina: Lanc[] = [];
     const textos: { y: number; s: string }[] = [];
-    let dentro = false;
+    // a página que continua sem repetir o cabeçalho já começa na tabela (com cabeçalho, o que vem antes dele é o topo da página)
+    let dentro = !!cab && !linhas.some(l => cabecalho(l)) && continuaATabela(linhas, cab);
     for (const l of linhas) {
       const c = cabecalho(l);
       if (c) { cab = c; dentro = true; continue; }

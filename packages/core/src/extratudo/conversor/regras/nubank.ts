@@ -30,7 +30,8 @@ const X_TIPO = 100, X_CONTRAPARTE = 200, X_VALOR = 440;
 /** É o extrato do Nubank? (o Nu Pagamentos ou o nubank.com.br no texto e as linhas "Total de entradas"/"Saldo do dia") */
 export function ehExtratoDoNubank(paginas: ItemDeTexto[][]): boolean {
   const textos = paginas.flatMap(montarLinhas).map(l => normalizarTexto(l.texto));
-  return textos.some(t => /\bnubank\.com\.br\b|\bnu pagamentos\b|\bnu financeira\b/.test(t))
+  // o texto já vem normalizado: "nubank.com.br" chega aqui como "nubank com br"
+  return textos.some(t => /\bnubank com br\b|\bnu pagamentos\b|\bnu financeira\b/.test(t))
     && textos.some(t => RE_DIA.test(t) && /\btotal de (entradas|saidas)\b/.test(t))
     && textos.some(t => /\bsaldo do dia\b/.test(t));
 }

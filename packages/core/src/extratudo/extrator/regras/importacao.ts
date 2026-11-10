@@ -21,9 +21,11 @@ import { dataBR } from './texto';
  * Inter e o InfinitePay, que não eram lidos (10/11/2026); 14 = a fatura do cartão que tem "saldo anterior", a do Sicoob, sai
  * (10/11/2026); 15 = a pré-verificação: o que não é extrato da conta sai (10/11/2026); 16 = o valor de mil para cima sem o
  * ponto, a data sem ano no extrato que vira o ano e o histórico que abre com "Total", "Limite", "Resumo" ou "Transporte" e é o
- * nome de alguém (10/11/2026).
+ * nome de alguém (10/11/2026); 17 = o resumo do Bradesco Unificado fora, o saldo do Itaú sem a aplicação
+ * automática, o valor do Sicoob na virada da página e o pedaço com ano impossível fora (10/11/2026); 18 = a conferência pelo
+ * saldo impresso, em todo banco: cada extrato guarda quantos saldos fecharam e quais não (10/11/2026).
  */
-export const VERSAO_DO_LEITOR = 16;
+export const VERSAO_DO_LEITOR = 18;
 
 export function empresaNova(nome: string): EmpresaExtrator {
   return { nome, arquivos: [], auditoria: [] };
@@ -144,7 +146,7 @@ export function importar(e: EmpresaExtrator, lado: Lado, lidos: ArquivoLido[], m
       lanc = nv;
     }
     if (!lanc.length) continue;
-    const a: ArquivoImportado = { id: ids(), lado, nome: l.nome, importadoEm: agora.toISOString(), modo, lancamentos: lanc, leitor: VERSAO_DO_LEITOR, ...(l.saldoAnterior != null ? { saldoAnterior: l.saldoAnterior } : {}), ...(l.saldosDoDia?.length ? { saldosDoDia: l.saldosDoDia } : {}) };
+    const a: ArquivoImportado = { id: ids(), lado, nome: l.nome, importadoEm: agora.toISOString(), modo, lancamentos: lanc, leitor: VERSAO_DO_LEITOR, ...(l.saldoAnterior != null ? { saldoAnterior: l.saldoAnterior } : {}), ...(l.saldosDoDia?.length ? { saldosDoDia: l.saldosDoDia } : {}), ...(l.conferenciaPeloSaldo ? { conferenciaPeloSaldo: l.conferenciaPeloSaldo } : {}) };
     arquivos.push(...caberNoBanco(a));
     gravados += lanc.length;
     novosArquivos++;
@@ -233,14 +235,21 @@ export function extratosParaRelerPeloDrive(e: EmpresaExtrator): ArquivoImportado
 /**
  * A leitura nova cobre os meses do arquivo? (senão, trocar perderia um mês) O mês com 1 ou 2 lançamentos pode faltar: é o
  * erro do leitor velho que a leitura nova conserta (o "27/07/2026" do cabeçalho do Sicoob do SISBR que virava lançamento
- * com o saldo anterior); os meses com 3 ou mais têm de estar todos.
+ * com o saldo anterior); os meses com 3 ou mais têm de estar todos. O mês depois da importação não aconteceu (o OCR leu
+ * 2026 como 2028): não precisa estar na leitura nova, é justamente o que ela conserta.
  */
 export function leituraCobreOArquivo(a: ArquivoImportado, lido: ArquivoLido): boolean {
   if (lido.erro || !lido.lancamentos.length) return false;
   const lidos = new Set(lido.lancamentos.map(l => l.data.slice(0, 7)));
   const porMes = new Map<string, number>();
-  for (const l of a.lancamentos) porMes.set(l.data.slice(0, 7), (porMes.get(l.data.slice(0, 7)) || 0) + 1);
+  for (const l of a.lancamentos) if (!mesImpossivel(a, l.data.slice(0, 7))) porMes.set(l.data.slice(0, 7), (porMes.get(l.data.slice(0, 7)) || 0) + 1);
+  if (!porMes.size) return true;
   return [...porMes].every(([m, n]) => n < 3 || lidos.has(m)) && [...porMes.keys()].some(m => lidos.has(m));
+}
+
+/** O mês depois do mês em que o arquivo foi importado: o extrato não podia ter esse movimento (o ano foi lido errado). */
+function mesImpossivel(a: ArquivoImportado, mes: string): boolean {
+  return !!a.importadoEm && mes > a.importadoEm.slice(0, 7);
 }
 
 /**
@@ -254,8 +263,20 @@ export function releituraPerderiaMes(a: ArquivoImportado, lido: ArquivoLido): bo
 }
 
 /**
+ * A releitura automática trocaria uma leitura que fechava com o saldo do banco por outra que não fecha? Então fica a de antes:
+ * a correção feita para o extrato de uma empresa não pode estragar o de outra (10/11/2026).
+ */
+export function releituraPioraOSaldo(a: ArquivoImportado, lido: ArquivoLido): boolean {
+  const antes = a.conferenciaPeloSaldo, depois = lido.conferenciaPeloSaldo;
+  return !!antes && antes.naoFecham === 0 && !!depois && depois.naoFecham > 0;
+}
+
+/**
  * Troca os lançamentos do arquivo pelos da leitura nova (o mesmo arquivo, os mesmos meses dele; o que outro arquivo do
  * lado já tem não entra de novo) e marca a versão do leitor. Fica no histórico. Sem lançamentos na leitura nova, só marca.
+ * Com mês impossível (o OCR leu 2026 como 2028; na 571, pedaços de 2028-01, 2068-02, 2086-01), "os meses dele" não servem
+ * para filtrar — o certo está justamente fora deles: fica tudo o que a leitura nova trouxe. O pedaço só com mês impossível
+ * cujo movimento outro extrato já tem sai (senão ficava para sempre, com o leitor novo marcado).
  */
 export function relerExtrato(e: EmpresaExtrator, arquivoId: string, lido: ArquivoLido, agora: Date): EmpresaExtrator {
   const a = e.arquivos.find(x => x.id === arquivoId);
@@ -267,16 +288,34 @@ export function relerExtrato(e: EmpresaExtrator, arquivoId: string, lido: Arquiv
   }
   const meses = new Set(a.lancamentos.map(l => l.data.slice(0, 7)));
   const outros = e.arquivos.filter(x => x.id !== arquivoId && x.lado === a.lado && (x.banco || '') === (a.banco || '')).flatMap(x => x.lancamentos);
-  const novos = lido.erro ? [] : soNovos(outros, lido.lancamentos.filter(l => !meses.size || meses.has(l.data.slice(0, 7))));
+  const anoErrado = [...meses].some(m => mesImpossivel(a, m));
+  const doArquivo = (d: { data: string }) => anoErrado || !meses.size || meses.has(d.data.slice(0, 7));
+  // com o ano errado, a mesma data e o mesmo valor bastam: o outro extrato leu o mesmo movimento, com outro histórico
+  const lidosDoArquivo = lido.erro ? [] : lido.lancamentos.filter(doArquivo);
+  const novos = lido.erro ? [] : soNovos(outros, lidosDoArquivo, anoErrado && a.lado === 'banco');
+  // o pedaço com o ano errado cujo movimento quase todo já está em outro extrato do banco (o mesmo mês em PDF com texto; o Volponi
+  // de janeiro e fevereiro): o que sobra é o que o OCR leu com outro dia ou outro valor, e não movimento novo. Cada um desses deixa
+  // um lançamento do outro extrato sem par; sem par nenhum, o que sobra é movimento que só este arquivo tem, e ele fica
+  const repetidos = lidosDoArquivo.length - novos.length;
+  const mesesLidos = new Set(lidosDoArquivo.map(l => l.data.slice(0, 7)));
+  const semPar = outros.filter(o => mesesLidos.has(o.data.slice(0, 7))).length - repetidos;
+  const quaseTudoRepetido = novos.length > 0 && repetidos >= novos.length * 2 && novos.length <= semPar;
+  if ((!novos.length || quaseTudoRepetido) && !lido.erro && lido.lancamentos.length && meses.size && [...meses].every(m => mesImpossivel(a, m))) {
+    const saiu: RegistroAuditoria = { ts: agora.toISOString(), acao: 'Releu o extrato', detalhe: a.nome + ' · ' + a.lancamentos.length + ' lançamento(s) com o ano errado: o movimento já está em outro extrato', tom: 'ok' };
+    return { ...e, arquivos: e.arquivos.filter(x => x.id !== arquivoId), auditoria: [saiu, ...e.auditoria] };
+  }
   if (!novos.length) return { ...e, arquivos: e.arquivos.map(x => (x.id === arquivoId ? { ...x, leitor: VERSAO_DO_LEITOR } : x)) };
   // o pedaço de um arquivo cortado por mês (excluirMesesDoArquivo): o saldo anterior é o do PDF mais os meses de antes dele
-  const primeiro = [...meses].sort()[0];
+  const primeiro = anoErrado ? undefined : [...meses].sort()[0];
   const antes = primeiro ? lido.lancamentos.filter(l => l.data < primeiro).reduce((t, l) => t + l.valor, 0) : 0;
-  const saldosDoDia = lido.saldosDoDia?.filter(s => !meses.size || meses.has(s.data.slice(0, 7)));
+  const saldosDoDia = lido.saldosDoDia?.filter(doArquivo);
   const novo: ArquivoImportado = {
     ...a, lancamentos: novos, leitor: VERSAO_DO_LEITOR,
     ...(lido.saldoAnterior != null ? { saldoAnterior: lido.saldoAnterior + antes } : {}), ...(saldosDoDia?.length ? { saldosDoDia } : {}),
   };
+  // a conferência pelo saldo é a da leitura nova (a de antes não vale mais)
+  if (lido.conferenciaPeloSaldo) novo.conferenciaPeloSaldo = lido.conferenciaPeloSaldo;
+  else delete novo.conferenciaPeloSaldo;
   const reg: RegistroAuditoria = { ts: agora.toISOString(), acao: 'Releu o extrato', detalhe: a.nome + ' · ' + a.lancamentos.length + ' → ' + novos.length + ' lançamento(s), com o leitor novo', tom: 'ok' };
   return { ...e, arquivos: e.arquivos.map(x => (x.id === arquivoId ? novo : x)), auditoria: [reg, ...e.auditoria] };
 }

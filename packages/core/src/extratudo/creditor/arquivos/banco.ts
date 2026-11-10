@@ -34,6 +34,10 @@ export function campoDoCabecalho(h: unknown): CampoBanco | null {
 
 const ehBaixa = (n: string) => /baixa/.test(n) && /(cedente|pedido)/.test(n);
 const ehTotalGeral = (n: string) => /total/.test(n) && /(liquidados|geral)/.test(n);
+/** O rótulo de uma linha de total ("Total de Valores do grupo"), que o cliente com "TOTAL" no nome ("TOTAL ATACADO") não tem. */
+const ehRotuloDeTotal = (n: string) => /\b(sub)?total (de|do|da|geral)\b|\bsubtotal\b/.test(n);
+/** A célula do sacado é só o rótulo do total ("TOTAL", "TOTAL LIQUIDADOS", "Total dos títulos"), e não um cliente ("TOTAL ATACADO"). */
+const ehSoRotuloDeTotal = (n: string) => /^(sub)?total(?:$| (?:de|do|dos|da|das|geral|liquidados?)\b)/.test(n);
 
 interface Bloco { titulos: Titulo[]; impresso: TotaisImpressos; rotulo?: string; registros?: number | null }
 
@@ -81,7 +85,11 @@ export function lerRelatorioPlanilha(buf: ArrayBuffer, nome: string): RelatorioB
     if (cab) { mapa = cab; continue; }
     if (ehBaixa(n)) { ignorando = true; continue; }
     if (!mapa) continue;
-    if (/total/.test(n)) {
+    // a linha com número, valor e a data de liquidação é título, mesmo com "total" no nome do cliente
+    const temData = mapa.liquidacao != null ? !!dataBR(cel(l, 'liquidacao')) : !ehRotuloDeTotal(n);
+    // (o total pode trazer a contagem na coluna do número e a data: o título tem o nosso número ou, sem essa coluna, o cliente)
+    const eDoCliente = mapa.nosso != null ? /\d/.test(textoDaCelula(cel(l, 'nosso'))) : !ehSoRotuloDeTotal(normalizarTexto(textoDaCelula(cel(l, 'sacado'))));
+    if (/total/.test(n) && !(/\d/.test(textoDaCelula(cel(l, 'seu'))) && dinheiro(cel(l, 'valor')) != null && temData && eDoCliente)) {
       // o total geral fecha o relatório, mesmo depois da seção de baixas
       if (ehTotalGeral(n)) { totalGeral = totais(l); ignorando = false; continue; }
       if (ignorando) continue;
@@ -109,7 +117,7 @@ export function lerRelatorioPlanilha(buf: ArrayBuffer, nome: string): RelatorioB
 // ─── texto (PDF lido ou texto colado) ────────────────────────────────────────
 
 const RE_DATA = /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/g;
-const RE_DINHEIRO = /(?<![\d.,])-?\d{1,3}(?:\.\d{3})*,\d{2}(?![\d,])/g;
+const RE_DINHEIRO = /(?<![\d.,])-?(?:\d{1,3}(?:\.\d{3})+|\d+),\d{2}(?![\d,])/g;
 const RE_INTEIRO = /(?<![\w,])\d[\d\-/.]*\d(?![\w,])|(?<![\w,.])\d(?![\w,.])/g;
 
 interface Ordem { dinheiro: ColunaValor[]; datas: ('vencimento' | 'liquidacao')[]; inteiros: ('nosso' | 'seu')[] }
@@ -152,12 +160,14 @@ function dinheiros(linha: string): number[] {
   return (linha.match(RE_DINHEIRO) || []).map(s => dinheiro(s) as number);
 }
 
+const semDatasNemValores = (linha: string) => linha.replace(RE_DATA, ' ').replace(RE_DINHEIRO, ' ');
+
 /** Uma linha de título: Sacado, números, valores e datas, na ordem do cabeçalho quando há. */
 export function tituloDaLinha(linha: string, ordem: Ordem | null, id: number): Titulo | null {
   const datas = linha.match(RE_DATA) || [];
   const valores = dinheiros(linha);
   if (!datas.length || !valores.length) return null;
-  const resto = linha.replace(RE_DATA, ' ').replace(RE_DINHEIRO, ' ');
+  const resto = semDatasNemValores(linha);
   const inteiros = resto.match(RE_INTEIRO) || [];
   const { t, adivinhado } = distribuir(valores, ordem);
 
@@ -202,7 +212,11 @@ export function lerRelatorioTexto(texto: string): RelatorioBanco {
     const cab = ordemDoCabecalho(linha);
     if (cab) { if (!ignorando) ordem = cab; continue; }
     if (ehBaixa(n)) { ignorando = true; continue; }
-    if (/total/.test(n)) {
+    // com as datas todas do cabeçalho é título, mesmo com "total" no nome do cliente; o total traz no máximo a contagem, não
+    // os números todos do título (o nosso e o seu; sem cabeçalho, pelo menos 2)
+    const numerosDoTitulo = (semDatasNemValores(linha).match(RE_INTEIRO) || []).length >= (ordem?.inteiros.length || 2);
+    const comOsDados = !!tituloDaLinha(linha, ordem, id) && numerosDoTitulo && (!ehRotuloDeTotal(n) || (!!ordem?.datas.length && (linha.match(RE_DATA) || []).length === ordem.datas.length));
+    if (/total/.test(n) && !comOsDados) {
       const t = distribuir(dinheiros(linha), ordem).t;
       // o total geral fecha o relatório, mesmo depois da seção de baixas
       if (ehTotalGeral(n)) { totalGeral = t; ignorando = false; continue; }

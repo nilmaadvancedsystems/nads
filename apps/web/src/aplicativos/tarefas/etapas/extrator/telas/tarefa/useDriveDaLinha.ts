@@ -14,6 +14,8 @@ type Vm = ReturnType<typeof useImportacao>;
 type Linha = Vm['bancos'][number];
 
 const mensagemDeErro = (e: unknown) => (e instanceof Error ? e.message : String(e));
+/** o fim do aviso da releitura: quantos extratos relidos não fecham com o saldo que o banco imprime */
+const avisoDoSaldo = (n: number) => (!n ? '' : n === 1 ? ' · 1 não fecha com o saldo do banco: confira' : ' · ' + n + ' não fecham com o saldo do banco: confira');
 
 export function useDriveDaLinha(vm: Vm, codigo: number | null) {
   const { drive, acesso } = useDrive();
@@ -70,7 +72,7 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
     if (!fila.length) return;
     relendo.current = true;
     void (async () => {
-      let n = 0;
+      let n = 0, naoFecham = 0;
       for (const a of fila) {
         if (!a.drive) continue;
         relidos.current.add(a.id);
@@ -78,13 +80,14 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
           const conteudo = await drive.baixar(a.drive.id, a.drive.nome);
           const lido = await x.lerArquivo(a.drive.nome, new Uint8Array(conteudo), 'banco');
           // a leitura nova que perderia um mês não troca nada: fica a de antes (como na releitura pelo Drive, logo abaixo)
-          if (x.releituraPerderiaMes(a, lido)) continue;
+          if (x.releituraPerderiaMes(a, lido) || x.releituraPioraOSaldo(a, lido)) continue;
           relerExtrato(a.id, lido);
           n++;
+          if (lido.conferenciaPeloSaldo?.naoFecham) naoFecham++;
         } catch { /* sem o robô agora: fica como estava (na próxima vez que abrir, tenta de novo) */ }
       }
       relendo.current = false;
-      if (n) avisar(n === 1 ? '1 extrato do Drive relido com o leitor novo' : n + ' extratos do Drive relidos com o leitor novo');
+      if (n) avisar((n === 1 ? '1 extrato do Drive relido com o leitor novo' : n + ' extratos do Drive relidos com o leitor novo') + avisoDoSaldo(naoFecham));
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [acesso.entrou, paraReler]);
@@ -101,7 +104,7 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
     if (!fila.length) return;
     relendoPeloDrive.current = true;
     void (async () => {
-      let n = 0;
+      let n = 0, naoFecham = 0;
       for (const a of fila) {
         relidosPeloDrive.current.add(a.id);
         const linha = vm.bancos.find(b => b.id === (a.banco || vm.bancos[0]?.id));
@@ -115,15 +118,16 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
             vistos.add(arq.id);
             const conteudo = await drive.baixar(arq.id, arq.nome);
             const lido = await x.lerArquivo(arq.nome, new Uint8Array(conteudo), 'banco');
-            if (!x.leituraCobreOArquivo(a, lido)) continue;
+            if (!x.leituraCobreOArquivo(a, lido) || x.releituraPioraOSaldo(a, lido)) continue;
             relerExtrato(a.id, lido);
             n++;
+            if (lido.conferenciaPeloSaldo?.naoFecham) naoFecham++;
             break;
           } catch { /* sem o robô agora: na próxima vez que abrir, tenta de novo */ }
         }
       }
       relendoPeloDrive.current = false;
-      if (n) avisar(n === 1 ? '1 extrato relido com o leitor novo (pelo PDF do Drive)' : n + ' extratos relidos com o leitor novo (pelo PDF do Drive)');
+      if (n) avisar((n === 1 ? '1 extrato relido com o leitor novo (pelo PDF do Drive)' : n + ' extratos relidos com o leitor novo (pelo PDF do Drive)') + avisoDoSaldo(naoFecham));
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [acesso.entrou, paraRelerPeloDrive]);

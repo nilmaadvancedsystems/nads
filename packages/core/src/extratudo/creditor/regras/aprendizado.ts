@@ -4,7 +4,7 @@
 // sistema sempre vale e atualiza o que foi aprendido. Aprende quando o arquivo é baixado.
 import { nomeNorm } from '../../../formatos';
 import type { Titulo } from '../tipos';
-import { decisaoValida, type Cruzamento, type Decisao } from './cruzamento';
+import { contemDesdeUmaPalavra, decisaoValida, type Cruzamento, type Decisao } from './cruzamento';
 
 /** O que ficou aprendido de um cliente (a chave é o nome do sacado, normalizado). */
 export interface ClienteAprendido {
@@ -27,8 +27,9 @@ export const chaveDoCliente = (sacado: string) => nomeNorm(sacado);
 export function contaAprendida(aprendidos: ClientesAprendidos, sacado: string): ClienteAprendido | null {
   const k = chaveDoCliente(sacado);
   if (!k) return null;
-  if (aprendidos[k]) return aprendidos[k];
-  const parecidos = Object.keys(aprendidos).filter(x => x.length >= 6 && k.length >= 6 && (x.includes(k) || k.includes(x)));
+  // só as chaves dele: o cliente "Constructor" não pode achar o que todo objeto herda
+  if (Object.prototype.hasOwnProperty.call(aprendidos, k)) return aprendidos[k];
+  const parecidos = Object.keys(aprendidos).filter(x => x.length >= 6 && k.length >= 6 && (contemDesdeUmaPalavra(x, k) || contemDesdeUmaPalavra(k, x)));
   const contas = new Set(parecidos.map(x => aprendidos[x].conta));
   return parecidos.length && contas.size === 1 ? aprendidos[parecidos[0]] : null;
 }

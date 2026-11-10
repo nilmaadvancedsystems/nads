@@ -7,7 +7,7 @@
 // - o saldo que devia sobrar (as guias pagas depois do período) × o saldo do razão: o que não se explica vem de antes.
 // O resultado vem com o lançamento sugerido de cada diferença. Tudo no navegador; nada é gravado.
 import { brl } from '../../formatos';
-import type { LancamentoDoRazao, RazaoDaConta } from './razao';
+import { naOrdemDasDatas, type LancamentoDoRazao, type RazaoDaConta } from './razao';
 import { preencherHistorico, type ModelosDoHistorico } from './historicosDoContabil';
 
 // ─── As guias (o PDF dos comprovantes de arrecadação) ──────────────────────────────────────────────────────────────
@@ -247,7 +247,8 @@ const rotuloMes = (mes: string) => mes.slice(5, 7) + '/' + mes.slice(0, 4);
  * O razão do INSS a recolher × as guias, nos meses do período. naoPagas: as competências que a pessoa marcou como não pagas
  * (Vitor, 10/11/2026): a guia não pede baixa e o valor continua a recolher no fechamento.
  */
-export function conferirInss(razao: RazaoDaConta, guias: readonly GuiaDoInss[], meses: readonly string[], modelos?: ModelosDoHistorico, naoPagas: readonly string[] = []): ConferenciaDoInss {
+export function conferirInss(razaoDoArquivo: RazaoDaConta, guias: readonly GuiaDoInss[], meses: readonly string[], modelos?: ModelosDoHistorico, naoPagas: readonly string[] = []): ConferenciaDoInss {
+  const razao = naOrdemDasDatas(razaoDoArquivo);
   const ls = razao.lancamentos;
   const pagamentos = ls.filter(ehPagamento);
   const provisoes = ls.filter(l => !ehPagamento(l));
@@ -315,7 +316,7 @@ export function conferirInss(razao: RazaoDaConta, guias: readonly GuiaDoInss[], 
   const usados = new Set<LancamentoDoRazao>();
   const pagas = guias.filter(g => g.pagaEm && g.pagaEm >= desde && g.pagaEm <= ultimo && !naoPagas.includes(g.competencia));
   const dias = (l: LancamentoDoRazao, guia: GuiaDoInss) => Math.abs(Date.parse(l.data) - Date.parse(guia.pagaEm)) / 86400000;
-  const doMesmoValor = (l: LancamentoDoRazao, guia: GuiaDoInss) => Math.abs(-l.valor - guia.total) <= 0.02 || Math.abs(-l.valor - guia.principal) <= 0.02;
+  const doMesmoValor = (l: LancamentoDoRazao, guia: GuiaDoInss) => Math.abs(centavos(-l.valor - guia.total)) <= 0.02 || Math.abs(centavos(-l.valor - guia.principal)) <= 0.02;
   const achados = new Map<GuiaDoInss, LancamentoDoRazao>();
   for (const guia of pagas) {
     const l = pagamentos.filter(x => !usados.has(x) && doMesmoValor(x, guia)).sort((a, b) => dias(a, guia) - dias(b, guia))[0];
@@ -328,6 +329,8 @@ export function conferirInss(razao: RazaoDaConta, guias: readonly GuiaDoInss[], 
       || livres.filter(x => !referenciaDoPagamento(x.historico) && dias(x, guia) <= DIAS_DA_BAIXA).sort((a, b) => dias(a, guia) - dias(b, guia))[0];
     if (l) { usados.add(l); achados.set(guia, l); }
   }
+  // o principal de cada baixa sugerida (duas guias da mesma competência: cada uma abate o dela)
+  const principalDaBaixa = new Map<SugestaoDoInss, number>();
   const baixas: BaixaDoInss[] = pagas.map(guia => {
     const lancamento = achados.get(guia) || null;
     if (lancamento) return { guia, lancamento, ...(doMesmoValor(lancamento, guia) ? {} : { outroValor: true }) };
@@ -337,6 +340,7 @@ export function conferirInss(razao: RazaoDaConta, guias: readonly GuiaDoInss[], 
       motivo: 'Guia de ' + rotuloMes(guia.competencia) + ' paga em ' + guia.pagaEm.split('-').reverse().join('/') + ' sem a baixa no razão'
         + (guia.total > guia.principal ? ' (multa e juros de ' + brl(centavos(guia.total - guia.principal)) + ' vão para a despesa)' : ''),
     });
+    principalDaBaixa.set(sugestoes[sugestoes.length - 1], guia.principal);
     return { guia, lancamento };
   });
   const pagamentosSemGuia = pagamentos.filter(l => !usados.has(l) && l.data >= primeiro && l.data <= ultimo);
@@ -344,12 +348,12 @@ export function conferirInss(razao: RazaoDaConta, guias: readonly GuiaDoInss[], 
   const saldoEsperado = centavos(guias.filter(g => g.competencia <= meses[meses.length - 1] && (!g.pagaEm || g.pagaEm > ultimo || naoPagas.includes(g.competencia))).reduce((s, g) => s + g.principal, 0));
   // cada sugestão de provisão aumenta (ou diminui) o saldo credor; cada baixa diminui pelo principal da guia
   const ajuste = sugestoes.reduce((s, x) => {
-    if (x.tipo === 'baixa') return s - (baixas.find(b => !b.lancamento && b.guia.competencia === x.mes)?.guia.principal ?? x.valor);
+    if (x.tipo === 'baixa') return s - (principalDaBaixa.get(x) ?? x.valor);
     return s + (x.credito === 'INSS a recolher' ? x.valor : -x.valor);
   }, 0);
   // o saldo do razão no fim do período (o razão pode ir além dele)
   const ateOFim = ls.filter(l => l.data <= ultimo);
-  const saldoDoRazao = ateOFim.length ? ateOFim[ateOFim.length - 1].saldo : razao.saldoInicial;
+  const saldoDoRazao = centavos(ateOFim.length ? ateOFim[ateOFim.length - 1].saldo : razao.saldoInicial);
   const saldoAjustado = centavos(saldoDoRazao + ajuste);
   return {
     meses: mesesConferidos, baixas, pagamentosSemGuia, sugestoes,

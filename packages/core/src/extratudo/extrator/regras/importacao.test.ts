@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ArquivoImportado, ArquivoLido, Lancamento } from '../tipos';
-import { competencias, empresaNova, excluirArquivo, importar, jaTemNoPeriodo, lancamentosDe, linhasAuditoria, periodo, releituraPerderiaMes, rotuloPeriodo, soNovos } from './importacao';
+import { competencias, empresaNova, excluirArquivo, importar, jaTemNoPeriodo, lancamentosDe, linhasAuditoria, periodo, releituraPerderiaMes, releituraPioraOSaldo, rotuloPeriodo, soNovos } from './importacao';
 
 const l = (dia: number, valor: number, historico = 'H'): Lancamento => ({ data: '2026-08-' + String(dia).padStart(2, '0'), valor, historico });
 const lido = (nome: string, lancamentos: Lancamento[], erro: string | null = null): ArquivoLido => ({ nome, lancamentos, erro });
@@ -20,6 +20,15 @@ describe('a releitura automática', () => {
   });
   it('o arquivo que estava vazio recebe o que o leitor novo achar', () => {
     expect(releituraPerderiaMes(arquivo(), lido('a.pdf', [noDia('2026-02-05')]))).toBe(false);
+  });
+  it('não troca a leitura que fechava com o saldo do banco por uma que não fecha', () => {
+    const fecha = { conferidos: 3, naoFecham: 0, exemplos: [] };
+    const naoFecha = { conferidos: 3, naoFecham: 1, exemplos: [{ data: '2026-01-05', impresso: 100, calculado: 90 }] };
+    const comConferencia = { ...doisMeses, conferenciaPeloSaldo: fecha } as ArquivoImportado;
+    expect(releituraPioraOSaldo(comConferencia, { ...lido('a.pdf', [noDia('2026-01-05')]), conferenciaPeloSaldo: naoFecha })).toBe(true);
+    expect(releituraPioraOSaldo(comConferencia, { ...lido('a.pdf', [noDia('2026-01-05')]), conferenciaPeloSaldo: fecha })).toBe(false);
+    // o arquivo de antes da conferência (sem ela) pode receber a leitura nova
+    expect(releituraPioraOSaldo(doisMeses, { ...lido('a.pdf', [noDia('2026-01-05')]), conferenciaPeloSaldo: naoFecha })).toBe(false);
   });
   it('a leitura com erro e a fatura do cartão seguem para o relerExtrato decidir', () => {
     expect(releituraPerderiaMes(doisMeses, lido('a.pdf', [], 'sem texto'))).toBe(false);

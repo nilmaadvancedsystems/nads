@@ -10,7 +10,7 @@
 import { brl } from '../../formatos';
 import { mesmoNomeDeCliente } from '../../extratudo/creditor/regras/clientes';
 import { linhasDasPaginas, type LinhaDoAlterdata, type PedacoDoPdf } from './inss';
-import type { LancamentoDoRazao, RazaoDaConta } from './razao';
+import { naOrdemDasDatas, type LancamentoDoRazao, type RazaoDaConta } from './razao';
 import { preencherHistorico, type ModelosDoHistorico } from './historicosDoContabil';
 
 // ─── As guias (o "Detalhe da Guia Emitida" do FGTS Digital) ─────────────────────────────────────────────────────────
@@ -184,7 +184,8 @@ function competenciaDoHistorico(h: string): string {
  * O razão do FGTS a recolher × as guias, nos meses do período. extrato: os lançamentos dos bancos (para achar o pagamento
  * que não foi lançado no razão; vazio = só o razão).
  */
-export function conferirFgts(razao: RazaoDaConta, guias: readonly GuiaDoFgts[], meses: readonly string[], extrato: readonly LancamentoDoBanco[] = [], modelos?: ModelosDoHistorico): ConferenciaDoFgts {
+export function conferirFgts(razaoDoArquivo: RazaoDaConta, guias: readonly GuiaDoFgts[], meses: readonly string[], extrato: readonly LancamentoDoBanco[] = [], modelos?: ModelosDoHistorico): ConferenciaDoFgts {
+  const razao = naOrdemDasDatas(razaoDoArquivo);
   const ls = razao.lancamentos;
   const provisoes = ls.filter(l => l.valor > 0);
   const pagamentos = ls.filter(l => l.valor < 0);
@@ -238,7 +239,7 @@ export function conferirFgts(razao: RazaoDaConta, guias: readonly GuiaDoFgts[], 
     let pagamento: PagamentoDoFgts | null = null;
     let situacao: MesDoFgts['situacao'] = 'sem-guia';
     if (guia) {
-      const doRazao = pagamentos.filter(l => !usados.has(l) && Math.abs(-l.valor - guia.total) <= TOLERANCIA)
+      const doRazao = pagamentos.filter(l => !usados.has(l) && Math.abs(centavos(-l.valor - guia.total)) <= TOLERANCIA)
         .sort((a, b) => (competenciaDoHistorico(b.historico) === mes ? 1 : 0) - (competenciaDoHistorico(a.historico) === mes ? 1 : 0) || dias(a.data, guia.vencimento) - dias(b.data, guia.vencimento))[0];
       if (doRazao) {
         usados.add(doRazao);
@@ -270,7 +271,7 @@ export function conferirFgts(razao: RazaoDaConta, guias: readonly GuiaDoFgts[], 
 
   const primeiro = meses[0] + '-01';
   const pagamentosSemGuia = pagamentos.filter(l => !usados.has(l) && l.data >= primeiro && l.data <= ultimoDia
-    && !guias.some(g => Math.abs(-l.valor - g.total) <= TOLERANCIA));
+    && !guias.some(g => Math.abs(centavos(-l.valor - g.total)) <= TOLERANCIA));
 
   // o saldo do razão no fim do período e o que devia sobrar (as guias do período que vencem depois dele)
   const ateOFim = ls.filter(l => l.data <= ultimoDia);

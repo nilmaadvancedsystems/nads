@@ -51,6 +51,7 @@ export function pagamentosQueFaltam(razao: RazaoDaConta, ateMes: string, modelos
   // todos os meses do razão até o último da etapa (o pagamento do dia 15 vem antes do desconto do fim do mês: o mês a mês)
   const meses: string[] = [];
   for (let m = r.lancamentos[0].data.slice(0, 7); m <= ateMes; m = proximoMes(m)) meses.push(m);
+  if (!meses.length) return []; // o período todo é antes do primeiro lançamento: não há o que apontar nele
   const abertos: { mes: string; valor: number }[] = [];
   if (r.saldoInicial > 0.005) abertos.push({ mes: meses[0], valor: centavos(r.saldoInicial) });
   // o pago a mais (o saldo devedor de antes, o pagamento maior que os descontos): abate os próximos descontos
@@ -62,7 +63,7 @@ export function pagamentosQueFaltam(razao: RazaoDaConta, ateMes: string, modelos
     const doMes = Math.min(pago, desconto);
     pago = centavos(pago - doMes);
     // o que sobra com o valor de um mês em aberto é dele (o pago com atraso); senão, paga os mais antigos
-    const igual = abertos.findIndex(x => Math.abs(x.valor - pago) <= 0.01);
+    const igual = pago > 0.005 ? abertos.findIndex(x => Math.abs(centavos(x.valor - pago)) <= 0.01) : -1;
     if (igual >= 0) { abertos.splice(igual, 1); pago = 0; }
     while (pago > 0.005 && abertos.length) {
       const a = abertos[0];
@@ -87,7 +88,8 @@ export function conferirAdiantamentoSalarial(razao: RazaoDaConta, meses: readonl
   return mesesDoRazao(razao, meses).map(m => {
     const provisao = centavos(m.lancamentos.filter(l => l.valor > 0).reduce((s, l) => s + l.valor, 0));
     const pagamentos = m.lancamentos.filter(l => l.valor < 0).map(l => ({ data: l.data, valor: centavos(-l.valor) }));
-    const falta = faltam.find(p => p.mes === m.mes)?.valor || 0;
+    // o saldo de antes do razão e o resto do primeiro mês caem no mesmo mês: somam
+    const falta = centavos(faltam.filter(p => p.mes === m.mes).reduce((s, p) => s + p.valor, 0));
     // devedor (saldo negativo no razão) é dinheiro adiantado; zerando num mês seguinte, está certo. Credor continua sendo o que falta pagar
     const zeraDepois = m.saldoFinal < -0.005 && emOrdem.some(l => l.data.slice(0, 7) > m.mes && Math.abs(l.saldo) <= 0.005);
     const ferias = m.lancamentos.some(l => l.valor > 0 && /f[eé]rias/i.test(l.historico + ' ' + l.nomeContrapartida));

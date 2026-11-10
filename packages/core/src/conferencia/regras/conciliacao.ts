@@ -4,7 +4,7 @@
 // (~L3563), podeConferir (~L2328), verifChave/verifEstado (~L3826).
 import { compararNumerico, nomeNorm } from '../../formatos';
 import type { Empresa, EstadoVerificacao, FiltroMovimento, GrupoNatureza, TipoCfop, TipoServico } from '../tipos';
-import { somaValores, tituloDoGrupo } from './cfop';
+import { emCentavos, somaValores, tituloDoGrupo } from './cfop';
 import { avisoPassivo, contasDaNatureza, nomeConta, saldoAtualizado } from './empresa';
 import { periodoKey } from './periodo';
 import { servicoDaConta } from './servicos';
@@ -102,10 +102,18 @@ export interface EntradaSituacao {
   podeConferir: boolean;
 }
 
+/**
+ * Notas − saldo sem o resto do ponto flutuante: 0,03 − 0,02 dá 0,00999…, abaixo da TOLERANCIA, e a diferença de 1 centavo
+ * passava como Ok, conforme o valor (09/11/2026). Fica em 6 casas: abaixo de 1 centavo continua sendo "bateu".
+ */
+function diferencaDaConta(somaNotas: number, saldo: number): number {
+  return Math.round((somaNotas - saldo) * 1e6) / 1e6 + 0;
+}
+
 export function situacaoDaConta(x: EntradaSituacao): Situacao {
   if (Math.abs(x.somaNotas) < ZERO) return { tipo: 'soma-zero' };
   if (x.saldo == null) return { tipo: 'fora-do-balancete' };
-  const diferenca = x.somaNotas - x.saldo;
+  const diferenca = diferencaDaConta(x.somaNotas, x.saldo);
   if (Math.abs(diferenca) < TOLERANCIA) return { tipo: 'ok' };
   if (x.revisao === 'ok') return { tipo: 'ok-pela-revisao', diferenca };
   if ((x.conferidoManual || x.revisao === 'conferido') && x.podeConferir) return { tipo: 'conferido', diferenca };
@@ -139,8 +147,11 @@ export interface LinhaSaldo {
 export function saldoDasContas(e: Empresa, contas: string[]): number | null {
   const lidas = contas.filter(c => saldoAtualizado(e, c) != null);
   if (!lidas.length) return null;
-  return lidas.reduce((s, c) => s + (saldoAtualizado(e, c) as number), 0);
+  return emCentavos(lidas.reduce((s, c) => s + (saldoAtualizado(e, c) as number), 0));
 }
+
+/** As contas do grupo em ordem de código: o título e a conta da revisão não dependem de qual nota veio primeiro. */
+const contasEmOrdem = (contas: readonly string[]) => contas.slice().sort(compararNumerico);
 
 /** Contas do grupo que não estão no balancete lido (o saldo foi somado sem elas). */
 export function contasForaDoBalancete(e: Empresa, contas: string[]): string[] {
@@ -156,8 +167,9 @@ export function linhasDoSaldo(e: Empresa, grupos: Record<string, GrupoNatureza>,
   let comps = gruposConciliacao(e, chaves);
   if (tipoF) comps = comps.filter(c => c.naturezas.some(k => grupos[k].tipo === tipoF));
   const pk = periodoKey(p);
-  const linhas = comps.map(comp => {
-    const somaNotas = comp.naturezas.reduce((s, k) => s + somaValores(grupos[k].itens), 0);
+  const linhas = comps.map(c => {
+    const comp = { naturezas: c.naturezas, contas: contasEmOrdem(c.contas) };
+    const somaNotas = emCentavos(comp.naturezas.reduce((s, k) => s + somaValores(grupos[k].itens), 0));
     const saldo = saldoDasContas(e, comp.contas);
     const cfops = comp.naturezas.reduce<string[]>((l, k) => l.concat(grupos[k].cfops), [])
       .filter((c, i, l) => l.indexOf(c) === i).sort(compararNumerico);
@@ -199,15 +211,16 @@ export function quaisMarcarSozinho(e: Empresa, grupos: Record<string, GrupoNatur
   if (!e.contas.length) return [];
   const pk = periodoKey(p);
   const out: { chave: string; texto: string }[] = [];
-  for (const comp of gruposConciliacao(e, chaves)) {
+  for (const c of gruposConciliacao(e, chaves)) {
+    const comp = { naturezas: c.naturezas, contas: contasEmOrdem(c.contas) };
     const saldo = saldoDasContas(e, comp.contas);
     if (saldo == null) continue;
-    const somaNotas = comp.naturezas.reduce((s, k) => s + somaValores(grupos[k].itens), 0);
+    const somaNotas = emCentavos(comp.naturezas.reduce((s, k) => s + somaValores(grupos[k].itens), 0));
     if (Math.abs(somaNotas) < ZERO) continue;
     if (servicoDaConta(e, comp.contas, p)) {
       // conferida em Serviços: marca quando a conta está Ok lá
-      if (!comp.contas.every(c => contasOkEmServicos.has(c))) continue;
-    } else if (Math.abs(somaNotas - saldo) >= TOLERANCIA && verifEstado(e, p, comp.contas[0]) !== 'ok') continue;
+      if (!comp.contas.every(x => contasOkEmServicos.has(x))) continue;
+    } else if (Math.abs(diferencaDaConta(somaNotas, saldo)) >= TOLERANCIA && verifEstado(e, p, comp.contas[0]) !== 'ok') continue;
     for (const k of comp.naturezas) {
       const mk = pk + '||' + k;
       if (e.confMarcados.indexOf(mk) > -1 || e.confAutoRecusados.indexOf(mk) > -1) continue;

@@ -83,8 +83,14 @@ export function tituloDoGrupo(gr: { cfops: string[]; desc: string }): string {
   return cfops.join(', ') + (gr.desc ? ' — ' + gr.desc : '');
 }
 
+/** O valor no centavo, sem o resto do ponto flutuante (0,1 + 0,2 = 0,30) e sem o "-0,00". */
+export function emCentavos(v: number): number {
+  return Math.round(v * 100) / 100 + 0;
+}
+
+/** A soma das notas, no centavo: o resto do ponto flutuante mudava com a ordem das linhas (09/11/2026). */
 export function somaValores(itens: { valor: number }[]): number {
-  return itens.reduce((s, n) => s + n.valor, 0);
+  return emCentavos(itens.reduce((s, n) => s + n.valor, 0));
 }
 
 /** Ordena as chaves de naturezas pelo menor CFOP do grupo. */

@@ -11,6 +11,8 @@ export const TOLERANCIA = 0.02;
 const VAZIO: ResultadoBandeira = { meses: [], aprovadas: 0, casadas: 0, semNota: 0, totalBruto: 0, totalTaxa: 0, linhas: [] };
 const doResultado = (c: Conciliacao, id: IdBandeira): ResultadoBandeira => c.porBandeira[id] ?? VAZIO;
 const arred = (n: number) => Math.round(n * 100) / 100;
+/** Passou da tolerância? A diferença no centavo: 1,02 − 1,00 dá 0,0200000000000000018 e 2 centavos cravados eram acusados, conforme o valor (10/11/2026). */
+const passou = (a: number, b: number) => arred(Math.abs(a - b)) > TOLERANCIA;
 
 /**
  * (1) bruto e taxa do arquivo de cada bandeira têm de bater com o extrato INTEIRO dela;
@@ -32,9 +34,9 @@ export function conferirTotais(c: Conciliacao, ordem: IdBandeira[], transacoesTo
     const brutoOrig = arred(originais.reduce((s, t) => s + t.bruto, 0));
     const taxaOrig = arred(originais.reduce((s, t) => s + t.taxa, 0));
     const rotulo = bandeira(id).rotulo;
-    if (Math.abs(r.totalBruto - brutoOrig) > TOLERANCIA)
+    if (passou(r.totalBruto, brutoOrig))
       problemas.push(rotulo + ': total de vendas brutas do arquivo final (' + brl(r.totalBruto) + ') não bate com o extrato original (' + brl(brutoOrig) + ').');
-    if (Math.abs(r.totalTaxa - taxaOrig) > TOLERANCIA)
+    if (passou(r.totalTaxa, taxaOrig))
       problemas.push(rotulo + ': total de taxas do arquivo final (' + brl(r.totalTaxa) + ') não bate com o extrato original (' + brl(taxaOrig) + ').');
   }
 
@@ -45,7 +47,7 @@ export function conferirTotais(c: Conciliacao, ordem: IdBandeira[], transacoesTo
   }
   const totalSobras = c.sobras.reduce((s, v) => s + v.bruto, 0);
   const totalContado = arred(casadasNasBandeiras + totalSobras);
-  if (Math.abs(totalPlanilha - totalContado) > TOLERANCIA)
+  if (passou(totalPlanilha, totalContado))
     problemas.push('Total da planilha de vendas (' + brl(totalPlanilha) + ') não bate com a soma das notas usadas nas bandeiras + saídas (' + brl(totalContado) + ').');
 
   return { ok: problemas.length === 0, problemas };

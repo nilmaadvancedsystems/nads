@@ -4,7 +4,7 @@
 // PC do escritório investiga e escreve o report para o admin. As regras da conversa ficam no core (suporte). Enviado, vira um
 // ticket: fica no chat, com a barra de andamento, até ser resolvido (09/11/2026), vindo do banco, em qualquer navegador.
 import { suporte as s } from '@nads/core';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useLocation } from 'react-router';
 import { VERSAO_SISTEMA } from '../../../../versao';
 import { useFeedback } from '../../dados/repo';
@@ -152,22 +152,13 @@ export function useBalaoDoSuporte() {
   // a conversa guiada aparece sem ticket, ao abrir outro, ou se já tem resposta dada
   const conversando = !tickets.length || abrindoOutro || escolhas.length > 0 || resolvido;
 
-  // o Ctrl+V do print, com o campo de anexar à vista; o que vem com texto (o Excel manda texto e imagem) cola como texto
+  // o Ctrl+V do print, com o campo de anexar à vista: a tela (BalaoDoSuporte) ouve a página e entrega as imagens aqui
   const podeColar = aberto && conversando && !resolvido && passo.tipo === 'encaminhar';
-  useEffect(() => {
-    if (!podeColar) return;
-    const colou = (ev: ClipboardEvent) => {
-      const d = ev.clipboardData;
-      if (!d || d.getData('text/plain').trim()) return;
-      const imagens = Array.from(d.files).filter(f => f.type.startsWith('image/'));
-      if (!imagens.length) return;
-      ev.preventDefault();
-      setErro('');
-      setArquivos(a => juntarAnexos(a, comoPrints(imagens)));
-    };
-    document.addEventListener('paste', colou);
-    return () => document.removeEventListener('paste', colou);
-  }, [podeColar]);
+  const colarImagens = useCallback((imagens: Blob[]) => {
+    if (!imagens.length) return;
+    setErro('');
+    setArquivos(a => juntarAnexos(a, comoPrints(imagens)));
+  }, []);
 
   /** o botão Colar print: pede ao navegador o que está copiado */
   async function colarPrint() {
@@ -203,6 +194,8 @@ export function useBalaoDoSuporte() {
     arquivos,
     anexar: (fs: File[]) => setArquivos(a => juntarAnexos(a, fs)),
     colarPrint: () => { void colarPrint(); },
+    /** o Ctrl+V vale agora (o campo de anexar está à vista); as imagens coladas entram como print */
+    podeColar, colarImagens,
     tirarArquivo: (i: number) => setArquivos(a => a.filter((_, k) => k !== i)),
     frase, setFrase,
     enviar: () => { void enviar(); },

@@ -7,15 +7,17 @@ const MESES: Record<string, number> = { jan: 1, fev: 2, mar: 3, abr: 4, mai: 5, 
 /**
  * Valor em centavos: "1.234,56", "-1.234,56", "(10,00)", "10,00 D", "10,00 C", "10,00D" (o D/C colado, como o
  * Sicoob), "1234.56", "R$ 5,00". D, "-" ou parênteses = negativo; C ou "+" = positivo. null quando não é valor.
- * O "R$" da frente não esconde o sinal: "R$ -5,00" e "R$-5,00" são negativos (antes saíam positivos).
+ * O "R$" da frente não esconde o sinal: "R$ -5,00" e "R$-5,00" são negativos (antes saíam positivos). O sinal e o D/C só
+ * valem nas pontas: "1-2", "01-02-2026" ou "CD 123" não são valor (antes viravam 12,00, 1.022.026,00 e 123,00). O "−"
+ * tipográfico e o "–" são o sinal de menos; o "—" não (é ruído do OCR, que vem antes do valor).
  */
 export function centavos(v: unknown): number | null {
-  if (typeof v === 'number') return isFinite(v) ? Math.round(v * 100) : null;
+  if (typeof v === 'number') return isFinite(v) ? Math.round(v * 100) || 0 : null;
   let s = semMoeda(String(v == null ? '' : v));
   if (!s) return null;
   const neg = /^\(.*\)$/.test(s) || /^-|-$|(\s|\d)D$|^D\s|\(-\)/i.test(s);
   const pos = /(\s|\d)C$|\(\+\)|^\+/i.test(s);
-  s = s.replace(/[()R$\s+CDcd-]/g, '');
+  s = s.replace(RE_PONTA_ESQUERDA, '').replace(RE_PONTA_DIREITA, '').replace(/\s/g, '');
   if (!s) return null;
   let m: RegExpMatchArray | null;
   if ((m = s.match(/^(\d{1,3}(?:\.\d{3})+|\d+),(\d{1,2})$/))) s = m[1].replace(/\./g, '') + '.' + (m[2].length < 2 ? m[2] + '0' : m[2]);
@@ -24,7 +26,7 @@ export function centavos(v: unknown): number | null {
   else if (!/^\d+$/.test(s)) return null;
   const n = Math.round(parseFloat(s) * 100);
   if (!isFinite(n)) return null;
-  return neg && !pos ? -n : n;
+  return neg && !pos && n ? -n : n;
 }
 
 /** O texto do valor já diz se é entrada ou saída (sinal, D/C, parênteses)? */
@@ -32,10 +34,15 @@ export function temSinal(v: unknown): boolean {
   return /^\(.*\)$|^-|-$|\s\+$|(\s|\d)[CD]$|^[CD]\s|\([+-]\)|^\+/i.test(semMoeda(String(v == null ? '' : v)));
 }
 
-/** o texto do valor sem o "R$" da frente (o sinal e os parênteses depois dele ficam no começo) */
+/** o texto do valor sem o "R$" da frente (o sinal e os parênteses depois dele ficam no começo), com o "−" e o "–" como "-" */
 function semMoeda(s: string): string {
-  return s.trim().replace(/^R\$\s*/i, '');
+  return s.trim().replace(/[\u2212\u2013]/g, '-').replace(/^R\$\s*/i, '');
 }
+
+/** o que pode vir antes do número: sinal, parênteses, "R$" e o D/C solto ("D 10,00", "CR 10,00") */
+const RE_PONTA_ESQUERDA = /^(?:[\s()+-]|R\$|(?:CR|[CD])(?=\s))+/i;
+/** o que pode vir depois do número: sinal, parênteses, "R$" e um D/C só (ou o "CR") */
+const RE_PONTA_DIREITA = /(?:[\s()+-]|R\$)*(?:CR|[CD])?(?:[\s()+-]|R\$)*$/i;
 
 const pad = (n: number) => (n < 10 ? '0' : '') + n;
 
@@ -63,7 +70,8 @@ export function lerData(v: unknown, anoPadrao: number): string | null {
   const bruto = String(v == null ? '' : v).trim();
   let m: RegExpMatchArray | null;
   if ((m = bruto.match(/^(\d{4})-(\d{2})-(\d{2})/))) return iso(+m[1], +m[2], +m[3]);
-  if ((m = bruto.match(/^(\d{1,2})[/.-](\d{1,2})(?:[/.-](\d{2,4}))?$/))) {
+  // com a hora depois ("05/09/2026 10:30"), como o aaaa-mm-dd já aceitava
+  if ((m = bruto.match(/^(\d{1,2})[/.-](\d{1,2})(?:[/.-](\d{2,4}))?(?:[ T]\d{1,2}:\d{2}(?::\d{2})?)?$/))) {
     let a = m[3] ? +m[3] : anoPadrao;
     if (a < 100) a += 2000;
     return iso(a, +m[2], +m[1]);

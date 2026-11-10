@@ -151,6 +151,8 @@ export const APLICACOES: readonly Aplicacao[] = [
     // do login; era "Equipe" até 28/10/2026: "troque a palavra equipe p/ Usuários")
     { id: 'usuarios', rotulo: 'Usuários', icone: 'usuario', titulo: 'Usuários', secao: 'Cadastro' },
     ...PAGINAS_DO_ADMIN.map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, titulo: p.titulo, secao: 'Admin', soAdmin: true })),
+    // a releitura dos extratos de todas as empresas (10/11/2026): só aqui, onde o leitor de PDF e o OCR rodam
+    { id: 'releitura', rotulo: 'Releitura dos extratos', icone: 'fileSearch', titulo: 'Releitura dos extratos', secao: 'Admin', soAdmin: true },
   ] },
   // as Ferramentas (30/10/2026: "um botão de Ferramentas ao lado da engrenagem"): utilitários de documentos que rodam no
   // navegador (PDF: separar, juntar, girar, tirar páginas, virar imagem ou texto; planilhas). Sem entrada na gaveta: o botão

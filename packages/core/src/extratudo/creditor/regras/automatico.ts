@@ -11,6 +11,7 @@ import { TOTAIS_VAZIOS } from '../arquivos/banco';
 import { juntarRelatorios } from './competencia';
 import { relatorioDaEmpresa, type FormatoDoRelatorio } from '../arquivos/formatos';
 import { mesDoAnexo } from './mesDoEmail';
+import { chaveNf } from './numeros';
 
 /** Até quantos dias depois do fim do mês o relatório pode chegar por e-mail. */
 export const DIAS_DEPOIS = 45;
@@ -80,8 +81,11 @@ export function relatorioServeNoMes(r: RelatorioBanco, mes: string, empresa: str
   return r.grupos.some(g => g.titulos.some(t => t.liquidacao.slice(3) === mm));
 }
 
-/** A chave do título, para não entrar duas vezes o mesmo (dois arquivos do mesmo mês com títulos em comum). */
-const chaveDoTitulo = (t: Titulo) => t.nossoNumero + ':' + t.liquidacao + ':' + t.valor;
+/**
+ * A chave do título, para não entrar duas vezes o mesmo (dois arquivos do mesmo mês com títulos em comum). Sem o nosso número
+ * (a planilha sem essa coluna), a NF: senão, dois títulos diferentes de mesma data e valor seriam um só e o segundo sumiria.
+ */
+const chaveDoTitulo = (t: Titulo) => (t.nossoNumero || 'nf:' + chaveNf(t.nf)) + ':' + t.liquidacao + ':' + t.valor;
 
 /**
  * Junta os relatórios do mês sem repetir título (Vitor, 14/10/2026: um mês veio em dois arquivos do

@@ -17,6 +17,7 @@ export function rotuloNumericoCompetencia(c: string): string {
 
 /** O rótulo curto, para o seletor (como o "main" do GitHub): "ago 2026". */
 export function rotuloCurtoCompetencia(c: string): string {
+  if (c.slice(5, 7) === '13') return '13º ' + c.slice(0, 4); // a "competência 13" (o 13º salário), como em rotuloCompetencia
   return MESES[Number(c.slice(5, 7)) - 1].slice(0, 3).toLowerCase() + ' ' + c.slice(0, 4);
 }
 

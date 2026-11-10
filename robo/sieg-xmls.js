@@ -35,6 +35,40 @@ function tipoDeNota(xml) {
   return m ? ({ 55: 'NF-e', 65: 'NFC-e', 57: 'CT-e', 67: 'CT-e', 59: 'CF-e' }[m[1].slice(20, 22)] || '') : '';
 }
 
+/**
+ * Quem paga o frete do CT-e (10/11/2026: "quando o robô for baixar as CT-e do SIEG quero que puxe pelo tomador"): o toma3
+ * aponta para o remetente (0), o expedidor (1), o recebedor (2) ou o destinatário (3); o toma4 e o CT-e OS trazem a pessoa.
+ * Devolve { doc, nome }, ou null quando o XML não diz.
+ */
+function tomadorDoCte(xml) {
+  const ide = tag(xml, 'ide');
+  const t4 = tag(ide, 'toma4');
+  if (t4) return pessoa(t4);
+  const t3 = primeira(ide, 'toma3', 'toma03');
+  if (t3) {
+    const papel = { 0: 'rem', 1: 'exped', 2: 'receb', 3: 'dest' }[tag(t3, 'toma')];
+    return papel && tag(xml, papel) ? pessoa(tag(xml, papel)) : null;
+  }
+  const bloco = tag(xml, 'toma');
+  return bloco && primeira(bloco, 'CNPJ', 'CPF') ? pessoa(bloco) : null;
+}
+/** O CT-e é do cliente: ele é o tomador ou quem emitiu. O XML que não diz o tomador fica (melhor sobrar que sumir). */
+function cteDoCliente(xml, doc) {
+  const so = v => String(v || '').replace(/\D/g, '');
+  const tomador = tomadorDoCte(xml);
+  return !tomador || !so(tomador.doc) || so(tomador.doc) === so(doc) || so(pessoa(tag(xml, 'emit')).doc) === so(doc);
+}
+/** Tira os CT-e em que o cliente não é tomador nem emitente, e os eventos deles; o resto passa como veio. */
+function cteQueEntram(doc, xmls) {
+  const fora = new Set();
+  const ficam = xmls.filter(x => {
+    if (tipoDoXml(x) !== 'cte' || cteDoCliente(x, doc)) return true;
+    fora.add(/Id="CTe(\d{44})"/.exec(x)[1]);
+    return false;
+  });
+  return fora.size ? ficam.filter(x => !(tipoDoXml(x) === 'evento' && fora.has(tag(x, 'chCTe')))) : ficam;
+}
+
 /** O nome do arquivo na pasta: a chave (NF-e/CT-e), a chave e o evento, ou o número da NFS-e. Sempre o mesmo para o mesmo XML. */
 function nomeDoArquivo(xml) {
   const t = tipoDoXml(xml);
@@ -170,4 +204,4 @@ function zipDe(arquivos) {
  * 5 = as NF-e que o CT-e transporta e o ICMS do CT-e; 23/10/2026). */
 const VERSAO_DO_RESUMO = 5;
 
-module.exports = { VERSAO_DO_RESUMO, tipoDoXml, tipoDeNota, nomeDoArquivo, resumoDaNota, zipDe, crc32 };
+module.exports = { tomadorDoCte, cteDoCliente, cteQueEntram, VERSAO_DO_RESUMO, tipoDoXml, tipoDeNota, nomeDoArquivo, resumoDaNota, zipDe, crc32 };

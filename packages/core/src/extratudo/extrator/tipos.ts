@@ -54,8 +54,24 @@ export interface ArquivoImportado {
   saldoAnterior?: number;
   /** o saldo que o extrato imprime no fim de cada dia (centavos), quando ele traz: os dias negativos do Cheque especial */
   saldosDoDia?: { data: string; saldo: number }[];
+  /** o extrato conferido pelo saldo impresso, quando ele tem (PDF com a coluna Saldo ou o SALDO DO DIA) */
+  conferenciaPeloSaldo?: ConferenciaPeloSaldo;
   /** a versão do leitor que leu o arquivo (VERSAO_DO_LEITOR); sem = antes de 14/10/2026. O que veio do Drive é relido sozinho quando o leitor muda */
   leitor?: number;
+}
+
+/**
+ * A conferência do extrato pelo saldo que o banco imprime (10/11/2026: "a correção de um bug tem de valer para todas as
+ * empresas"): o saldo de antes mais cada lançamento tem de dar o saldo da linha e o saldo do dia. Vale para qualquer banco
+ * com a coluna Saldo ou a linha SALDO DO DIA, sem regra própria: o que não fecha é leitura a conferir.
+ */
+export interface ConferenciaPeloSaldo {
+  /** quantos saldos impressos foram conferidos */
+  conferidos: number;
+  /** quantos não fecharam */
+  naoFecham: number;
+  /** os primeiros que não fecharam (até 5): o dia, o saldo impresso e o que a soma dos lançamentos deu (centavos) */
+  exemplos: { data: string; impresso: number; calculado: number }[];
 }
 
 /** Um banco que a pessoa adicionou à empresa, valendo da competência "desde" ('aaaa-mm') em diante. */
@@ -116,6 +132,8 @@ export interface ArquivoLido {
   naoEExtrato?: boolean;
   /** lido pelo OCR (o PDF escaneado ou a imagem): a tela avisa para conferir (Vitor, 13/10/2026) */
   ocr?: boolean;
+  /** o extrato conferido pelo saldo impresso, quando ele tem: o que não fecha é leitura a conferir */
+  conferenciaPeloSaldo?: ConferenciaPeloSaldo;
   /** preenchido quando não deu para aproveitar o arquivo */
   erro: string | null;
 }

@@ -63,13 +63,21 @@ function duplicatasJuntas(valorSistema: number, t: Titulo, parcelasNoBanco: Titu
 }
 
 /**
+ * O nome (já normalizado) contém o outro a partir do começo de uma palavra? O banco corta o fim do nome, até no meio da palavra
+ * ("MERCADO BOM PREC"), mas "SUPERMERCADO X" não é "MERCADO X".
+ */
+export function contemDesdeUmaPalavra(nome: string, pedaco: string): boolean {
+  return (' ' + nome).includes(' ' + pedaco);
+}
+
+/**
  * Mesmo cliente, para achar a conta pelo nome (mais rígido que mesmoCliente, que também aceita a
  * primeira palavra igual — "SUPERMERCADO X" × "SUPERMERCADO Y" não pode dar a mesma conta).
  */
 function mesmoNome(a: string, b: string): boolean {
   const x = palavras(a).join(' '), y = palavras(b).join(' ');
   if (x.length < 6 || y.length < 6) return false;
-  return x.includes(y) || y.includes(x);
+  return contemDesdeUmaPalavra(x, y) || contemDesdeUmaPalavra(y, x);
 }
 
 /** A linha do sistema com a conta do cliente do banco — só se todas as linhas dele têm a mesma conta. */

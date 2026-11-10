@@ -28,7 +28,9 @@ export function chaveNf(nf: unknown): string {
 export function dinheiro(v: unknown): number | null {
   if (v == null || v === '') return null;
   if (typeof v === 'number') return isFinite(v) ? r2(v) : null;
-  const n = num(String(v).replace(/R\$\s*/i, '').trim());
+  const s = String(v).replace(/R\$\s*/i, '').trim();
+  // só o ponto do milhar, sem centavos ("1.234.567")
+  const n = num(/^-?\d{1,3}(\.\d{3})+$/.test(s) ? s.replace(/\./g, '') : s);
   return n == null ? null : r2(n);
 }
 
