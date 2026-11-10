@@ -740,8 +740,15 @@ async function iniciar() {
     catch (err) { log('pedido de reprocesso não ligou:', err.message); }
     // a Central dos robôs (07/11/2026, central.js): os comandos do site robos-nilma para ESTA máquina (lista fechada), o
     // espelho do log de cada robô e o estado da máquina (CPU, memória, disco)
-    try { require('./central').iniciarCentral({ db, maquina: 'servidor', log }); }
-    catch (err) { log('central dos robôs não ligou:', err.message); }
+    try {
+      const central = require('./central');
+      // o FGTS, o SIEG e o Alterdata sabem pausar (10/11/2026): em processos próprios o recado vai pelo canal do satelites.js
+      for (const m of ['fgts', 'sieg', 'alterdata']) {
+        const definir = sim => (SEPARADOS ? require('./satelites').pausar(m, sim) : require('./pausa-local').definir(m, sim));
+        central.registrarPausa(m, { pausar: async () => definir(true), retomar: async () => definir(false) });
+      }
+      central.iniciarCentral({ db, maquina: 'servidor', log });
+    } catch (err) { log('central dos robôs não ligou:', err.message); }
     // o FGTS pelo robô, sem o Claude, no Chrome deste servidor (03/11/2026); atende só com o config/fgts.onde = 'servidor'
     if (!SEPARADOS) {
       painel.modulo('fgts', 'FGTS Digital', false, 'esperando o config/fgts.onde');

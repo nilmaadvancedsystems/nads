@@ -41,7 +41,11 @@ process.on('exit', () => { try { if (parseInt(fs.readFileSync(TRAVA, 'utf8'), 10
 // termina o que está fazendo (até o limite) e sai. O pai espera.
 const ocupado = require('./ocupado');
 ocupado.iniciar({ nome: qual, log, sair: () => setTimeout(() => process.exit(0), 300) });
-process.on('message', msg => { if (msg && msg.sair) void ocupado.pedirParada(msg.sair); });
+process.on('message', msg => {
+  if (msg && msg.sair) void ocupado.pedirParada(msg.sair);
+  // a pausa da Central dos robôs (10/11/2026): este módulo não pega pedido novo; o que está no meio termina
+  if (msg && typeof msg.pausa === 'boolean') { require('./pausa-local').definir(qual, msg.pausa); log(msg.pausa ? 'pausado pela Central dos robôs' : 'retomado pela Central dos robôs'); }
+});
 
 // o pai saiu: este sai também (o próximo arquivador liga outro)
 process.on('disconnect', () => { log('o arquivador saiu; saindo junto'); setTimeout(() => process.exit(0), 500); });

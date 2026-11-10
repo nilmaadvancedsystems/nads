@@ -1127,11 +1127,18 @@ async function iniciar() {
   );
 
   if (A_CADA_MIN > 0) {
+    // o horário da Central dos robôs (config/robosHorarios, robo/horarios.js): sem configuração, a cada A_CADA_MIN, como sempre
+    const horarios = require('./horarios').criarLeitor(db, log);
+    let ultimaAutomatica = Date.now();
     setInterval(async () => {
+      const agora = Date.now();
+      await horarios.atualizar(agora);
+      if (!horarios.deveRodar('vigia', ultimaAutomatica, A_CADA_MIN, agora)) return;
       if (lendo || ocupado || require('./ocupado').parando()) return;
+      ultimaAutomatica = agora;
       const dias = await diasDesdeUltimaLeitura();
-      if (!lendo && !ocupado) rodarTodas(dias, 'automático a cada ' + A_CADA_MIN + ' min');
-    }, A_CADA_MIN * 60 * 1000);
+      if (!lendo && !ocupado) rodarTodas(dias, 'automático a cada ' + horarios.intervalo('vigia', A_CADA_MIN) + ' min');
+    }, 60 * 1000);
   }
 
   // O reforço de IA pega carona no mesmo processo: já tem a trava de

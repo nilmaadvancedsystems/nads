@@ -31,6 +31,15 @@ function lerChat(): ChatGuardado | null {
   } catch { return null; }
 }
 
+/** junta os anexos novos aos que já estão (o mesmo nome e tamanho não entra duas vezes) */
+const juntarAnexos = (a: File[], novos: File[]) => [...a, ...novos.filter(f => !a.some(x => x.name === f.name && x.size === f.size))];
+
+/** as imagens da área de transferência como anexos: o nome leva a hora (Vitor, 10/11/2026: "colar o print") */
+function comoPrints(imagens: Blob[]): File[] {
+  const hora = new Date().toTimeString().slice(0, 8).replace(/:/g, '-');
+  return imagens.map((b, i) => new File([b], 'print ' + hora + (i ? ' (' + (i + 1) + ')' : '') + (b.type === 'image/jpeg' ? '.jpg' : '.png'), { type: b.type }));
+}
+
 export function useBalaoDoSuporte() {
   const repo = useFeedback();
   const { pathname } = useLocation();
@@ -143,6 +152,36 @@ export function useBalaoDoSuporte() {
   // a conversa guiada aparece sem ticket, ao abrir outro, ou se já tem resposta dada
   const conversando = !tickets.length || abrindoOutro || escolhas.length > 0 || resolvido;
 
+  // o Ctrl+V do print, com o campo de anexar à vista; o que vem com texto (o Excel manda texto e imagem) cola como texto
+  const podeColar = aberto && conversando && !resolvido && passo.tipo === 'encaminhar';
+  useEffect(() => {
+    if (!podeColar) return;
+    const colou = (ev: ClipboardEvent) => {
+      const d = ev.clipboardData;
+      if (!d || d.getData('text/plain').trim()) return;
+      const imagens = Array.from(d.files).filter(f => f.type.startsWith('image/'));
+      if (!imagens.length) return;
+      ev.preventDefault();
+      setErro('');
+      setArquivos(a => juntarAnexos(a, comoPrints(imagens)));
+    };
+    document.addEventListener('paste', colou);
+    return () => document.removeEventListener('paste', colou);
+  }, [podeColar]);
+
+  /** o botão Colar print: pede ao navegador o que está copiado */
+  async function colarPrint() {
+    setErro('');
+    try {
+      const itens = await navigator.clipboard.read();
+      const imagens = await Promise.all(itens.flatMap(i => i.types.filter(t => t.startsWith('image/')).slice(0, 1).map(t => i.getType(t))));
+      if (!imagens.length) { setErro('Não tem imagem copiada: tire o print (Windows + Shift + S) e tente de novo.'); return; }
+      setArquivos(a => juntarAnexos(a, comoPrints(imagens)));
+    } catch {
+      setErro('O navegador não deixou ler o que está copiado: aperte Ctrl+V aqui no chat.');
+    }
+  }
+
   return {
     tickets, conversando, emAberto: emAberto.length, paraTestar: emAberto.some(t => t.testando),
     abrirOutro: () => { recomecar(); lerBotoes(true); setAbrindoOutro(true); },
@@ -162,7 +201,8 @@ export function useBalaoDoSuporte() {
     naoResolveu: () => { lerBotoes(); setEscolhas(e => [...e, s.NAO_RESOLVEU]); },
     /** os arquivos anexados: escolher junta aos que já estão (o mesmo nome não entra duas vezes); o × tira um */
     arquivos,
-    anexar: (fs: File[]) => setArquivos(a => [...a, ...fs.filter(f => !a.some(x => x.name === f.name && x.size === f.size))]),
+    anexar: (fs: File[]) => setArquivos(a => juntarAnexos(a, fs)),
+    colarPrint: () => { void colarPrint(); },
     tirarArquivo: (i: number) => setArquivos(a => a.filter((_, k) => k !== i)),
     frase, setFrase,
     enviar: () => { void enviar(); },
