@@ -1429,6 +1429,11 @@ label.imp-btn.is-locked{opacity:.5;pointer-events:none;}
 .imp-feito:hover{border-color:var(--destructive);background:var(--destructive-soft);color:var(--destructive);}
 .imp-feito:hover .imp-feito-ok{display:none;}
 .imp-feito:hover .imp-feito-x{display:inline;}
+.btn.inss-baixa{width:84px;padding:0;justify-content:center;}
+.btn.inss-baixa-falta:not(:hover):not(:focus-visible){color:var(--destructive);}
+.inss-baixa-acao{display:none;}
+.inss-baixa:hover .inss-baixa-ver,.inss-baixa:focus-visible .inss-baixa-ver{display:none;}
+.inss-baixa:hover .inss-baixa-acao,.inss-baixa:focus-visible .inss-baixa-acao{display:inline;}
 /* Não teve movimento: a linha toda escurece; o botão fica claro para desmarcar */
 .imp-linha{transition:background .15s ease;}
 .imp-bloco.sem-movimento{background:var(--surface-2);}
@@ -1603,6 +1608,10 @@ html.na-etapa .imp-aviso{top:calc(var(--vista-topo,0px) + 12px);}
 @media (min-width:900px){.imp-linha{position:relative;}.imp-resumo > div{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);}}
 .imp-resumo > div{display:flex;flex-direction:column;font-size:var(--fs-12);line-height:18px;color:var(--ink-muted);white-space:nowrap;}
 /* Balancete e razões da Importação (09/11/2026): o resumo embaixo do nome, sem se sobrepor; a cor do ícone diz a situação; um quadradinho por mês */
+/* o aviso embaixo do nome: longo, no meio da faixa, ele cobria o nome e os campos (10/11/2026) */
+.imp-txt-larga{flex:1 1 auto;}
+.imp-txt .imp-resumo{flex:none;justify-content:flex-start;}
+.imp-txt .imp-resumo > div{position:static;transform:none;white-space:normal;}
 .imp-contabil .imp-linha{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:0 12px;align-items:center;}
 .imp-contabil .imp-ico{grid-row:1 / span 2;}
 .imp-contabil .imp-txt{grid-column:2;grid-row:1;min-width:0;}
@@ -2953,6 +2962,11 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 .usuarios-dep.dep-dp{color:light-dark(#6E3FD1, #B07CFF);background:color-mix(in srgb,#B07CFF 15%,transparent);}
 .usuarios-sem-cargo{font-size:var(--fs-12);color:var(--warn);}
 .usuarios-tag{display:inline-flex;align-items:center;height:20px;padding:0 7px;border:1px solid var(--border);border-radius:5px;font-size:var(--fs-11);color:var(--ink-muted);white-space:nowrap;}
+/* a tarefa atual (10/11/2026): na lista, a etapa na frente para a empresa comprida não a cortar; na janela, um bloco só dela */
+.usuarios-atividade b{font-size:var(--fs-12);font-weight:600;color:var(--ink);}
+.usuario-atividade{align-self:stretch;display:flex;flex-direction:column;gap:2px;margin-top:8px;padding-top:12px;border-top:1px solid var(--border-muted);text-align:left;font-size:var(--fs-13);color:var(--ink);}
+.usuario-atividade b{font-size:var(--fs-14);}
+.usuario-atividade-rotulo{font-size:var(--fs-12);color:var(--ink-muted);}
 .usuarios-visto{font-size:var(--fs-12);color:var(--ink-muted);white-space:nowrap;}
 .usuarios-visto.on{color:var(--success);font-weight:600;}
 .usuarios-pcs{justify-content:flex-end;}
@@ -6347,3 +6361,9 @@ td.fs-fat-sem{color:var(--ink-faint);}
 .suporte-progresso li.feita{color:var(--ink);}
 .suporte-botao-qtd{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;background:var(--surface);color:var(--ink);border:1px solid var(--border);font-size:var(--fs-11);font-weight:700;line-height:1;}
 .suporte-botao-qtd.testar{background:var(--success);border-color:var(--success);color:#fff;}
+
+/* o popup de delegar (Vitor, 10/11/2026: "um grid proporcional e alinhado"): colunas iguais; a caixinha, o código e o nome sempre nos mesmos lugares */
+.delegar-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:2px 16px;max-height:42vh;overflow:auto;}
+.delegar-conta{display:grid;grid-template-columns:18px 64px minmax(0,1fr);align-items:center;gap:10px;padding:6px 8px;border-radius:6px;cursor:pointer;}
+.delegar-conta:hover{background:var(--hover-bg);}
+.delegar-conta-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}

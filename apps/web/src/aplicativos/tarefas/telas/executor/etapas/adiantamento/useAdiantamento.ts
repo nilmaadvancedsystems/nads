@@ -7,7 +7,7 @@ import { demo, formatos, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useChaveDaEtapa, useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
 import { useGuardado } from '../../../../../../comum/guardado';
-import { useContabilDaEmpresa } from '../../../../../../comum/contabilDaEmpresa';
+import { rotuloDaImportacao, useContabilDaEmpresa } from '../../../../../../comum/contabilDaEmpresa';
 
 /** a cor pela natureza (Vitor, 07/10/2026): credor em vermelho, devedor em azul, zerado sem cor */
 const corDoSaldo = (saldo: number) => (saldo > 0.005 ? 'ext-neg' : saldo < -0.005 ? 'ext-azul' : '');
@@ -29,7 +29,7 @@ export function useAdiantamento(lado: t.LadoDoAdiantamento = 'fornecedores') {
   // o da Importação (o upload único dos razões; 16/10/2026), quando a etapa não tem o próprio
   const contabil = useContabilDaEmpresa(s.nome, s.codigo);
   const daImportacao = contabil.razaoDoTipo(lado === 'fornecedores' ? 'adiantamento-fornecedores' : 'adiantamento-clientes');
-  const razao = proprio || (daImportacao ? { nome: daImportacao.arquivo + ' (da Importação)', r: daImportacao.razao } : null);
+  const razao = proprio || (daImportacao ? { nome: rotuloDaImportacao(daImportacao), r: daImportacao.razao } : null);
 
   async function importar(f: File | undefined) {
     if (!f) return;

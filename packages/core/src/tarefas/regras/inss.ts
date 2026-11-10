@@ -243,8 +243,11 @@ const conta = (l: LancamentoDoRazao) => (l.contrapartida + (l.nomeContrapartida 
 const fimDoMes = (mes: string) => mes + '-' + String(new Date(+mes.slice(0, 4), +mes.slice(5, 7), 0).getDate()).padStart(2, '0');
 const rotuloMes = (mes: string) => mes.slice(5, 7) + '/' + mes.slice(0, 4);
 
-/** O razão do INSS a recolher × as guias, nos meses do período. */
-export function conferirInss(razaoDoArquivo: RazaoDaConta, guias: readonly GuiaDoInss[], meses: readonly string[], modelos?: ModelosDoHistorico): ConferenciaDoInss {
+/**
+ * O razão do INSS a recolher × as guias, nos meses do período. naoPagas: as competências que a pessoa marcou como não pagas
+ * (Vitor, 10/11/2026): a guia não pede baixa e o valor continua a recolher no fechamento.
+ */
+export function conferirInss(razaoDoArquivo: RazaoDaConta, guias: readonly GuiaDoInss[], meses: readonly string[], modelos?: ModelosDoHistorico, naoPagas: readonly string[] = []): ConferenciaDoInss {
   const razao = naOrdemDasDatas(razaoDoArquivo);
   const ls = razao.lancamentos;
   const pagamentos = ls.filter(ehPagamento);
@@ -311,7 +314,7 @@ export function conferirInss(razaoDoArquivo: RazaoDaConta, guias: readonly GuiaD
   const desde = primeiro > razao.inicio ? primeiro : razao.inicio;
   const ultimo = meses[meses.length - 1] + '-31';
   const usados = new Set<LancamentoDoRazao>();
-  const pagas = guias.filter(g => g.pagaEm && g.pagaEm >= desde && g.pagaEm <= ultimo);
+  const pagas = guias.filter(g => g.pagaEm && g.pagaEm >= desde && g.pagaEm <= ultimo && !naoPagas.includes(g.competencia));
   const dias = (l: LancamentoDoRazao, guia: GuiaDoInss) => Math.abs(Date.parse(l.data) - Date.parse(guia.pagaEm)) / 86400000;
   const doMesmoValor = (l: LancamentoDoRazao, guia: GuiaDoInss) => Math.abs(centavos(-l.valor - guia.total)) <= 0.02 || Math.abs(centavos(-l.valor - guia.principal)) <= 0.02;
   const achados = new Map<GuiaDoInss, LancamentoDoRazao>();
@@ -342,7 +345,7 @@ export function conferirInss(razaoDoArquivo: RazaoDaConta, guias: readonly GuiaD
   });
   const pagamentosSemGuia = pagamentos.filter(l => !usados.has(l) && l.data >= primeiro && l.data <= ultimo);
 
-  const saldoEsperado = centavos(guias.filter(g => g.competencia <= meses[meses.length - 1] && (!g.pagaEm || g.pagaEm > ultimo)).reduce((s, g) => s + g.principal, 0));
+  const saldoEsperado = centavos(guias.filter(g => g.competencia <= meses[meses.length - 1] && (!g.pagaEm || g.pagaEm > ultimo || naoPagas.includes(g.competencia))).reduce((s, g) => s + g.principal, 0));
   // cada sugestão de provisão aumenta (ou diminui) o saldo credor; cada baixa diminui pelo principal da guia
   const ajuste = sugestoes.reduce((s, x) => {
     if (x.tipo === 'baixa') return s - (principalDaBaixa.get(x) ?? x.valor);

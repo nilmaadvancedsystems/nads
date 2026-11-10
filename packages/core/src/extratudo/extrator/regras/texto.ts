@@ -31,7 +31,7 @@ export function centavos(v: unknown): number | null {
 
 /** O texto do valor já diz se é entrada ou saída (sinal, D/C, parênteses)? */
 export function temSinal(v: unknown): boolean {
-  return /^\(.*\)$|^-|-$|(\s|\d)[CD]$|^[CD]\s|\([+-]\)|^\+/i.test(semMoeda(String(v == null ? '' : v)));
+  return /^\(.*\)$|^-|-$|\s\+$|(\s|\d)[CD]$|^[CD]\s|\([+-]\)|^\+/i.test(semMoeda(String(v == null ? '' : v)));
 }
 
 /** o texto do valor sem o "R$" da frente (o sinal e os parênteses depois dele ficam no começo), com o "−" e o "–" como "-" */

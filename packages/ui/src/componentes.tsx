@@ -361,7 +361,7 @@ const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julh
  * cinza e sem jeito): ‹ e › andam um mês; o meio mostra "Agosto de 2026" e abre a grade dos 12 meses,
  * com o ano ao lado. Mês depois de `max` fica travado.
  */
-export function SeletorMes({ valor, onMudar, id, rotulo, max }: { valor: string; onMudar: (v: string) => void; id?: string; rotulo: string; max?: string }) {
+export function SeletorMes({ valor, onMudar, id, rotulo, max, semValor }: { valor: string; onMudar: (v: string) => void; id?: string; rotulo: string; max?: string; /** o texto do botão com o valor vazio */ semValor?: string }) {
   const [aberto, setAberto] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const m = /^(\d{4})-(\d{2})$/.exec(valor);
@@ -385,9 +385,9 @@ export function SeletorMes({ valor, onMudar, id, rotulo, max }: { valor: string;
   return (
     <div className="seletor-mes popover-wrap" ref={ref}>
       {/* sem as setas dos lados (Vitor, 02/10/2026): o mês se escolhe abrindo o seletor; em vermelho como todo botão de competência (Vitor, 09/11/2026: "para destacar") */}
-      <button type="button" id={id} className="btn btn-primary seletor-mes-atual" aria-label={rotulo + ': ' + MESES[mes - 1] + ' de ' + ano} aria-haspopup="dialog" aria-expanded={aberto}
+      <button type="button" id={id} className="btn btn-primary seletor-mes-atual" aria-label={m || !semValor ? rotulo + ': ' + MESES[mes - 1] + ' de ' + ano : semValor} aria-haspopup="dialog" aria-expanded={aberto}
         onClick={() => { setAnoGrade(ano); setAberto(a => !a); }}>
-        <Icone nome="calendar" /><span>{MESES[mes - 1]} de {ano}</span><Icone nome="caretDown" className="menu-seta" />
+        <Icone nome="calendar" /><span>{m || !semValor ? MESES[mes - 1] + ' de ' + ano : semValor}</span><Icone nome="caretDown" className="menu-seta" />
       </button>
       {aberto && (
         <div className="popover seletor-mes-pop" role="dialog" aria-label={rotulo}>

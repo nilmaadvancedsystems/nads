@@ -1,33 +1,38 @@
-// O que saiu do caixa e também saiu do banco, dentro da etapa Caixa (Vitor, 16/10/2026): cada pagamento do caixa com o
-// lançamento do banco logo abaixo (o logo, a data, a descrição, o valor e quantos dias de diferença), no fundo da cor do
-// banco — o desenho da sugestão de baixa do Clientes.
-import { LogoBanco, fundoSuaveDoBanco } from '@nads/ui';
+// O que saiu do caixa e também saiu do banco, na etapa final (Vitor, 10/11/2026; antes, no Caixa): cada pagamento do caixa com
+// o lançamento do banco logo abaixo (o logo, a data, a descrição, o valor e quantos dias de diferença) e o check de conferido.
+// Um par em cada fundo, preto e cinza, para separar um do outro (Vitor, 10/11/2026: com a cor do banco, "embolou tudo").
+import { LogoBanco } from '@nads/ui';
 import { Fragment } from 'react';
 import type { CaixaNoBancoDoRazao } from './useCaixaNoBanco';
 
+const estiloDoPar = (k: number, conferido: boolean) => ({ background: k % 2 ? 'var(--surface-3)' : 'var(--surface)', ...(conferido ? { opacity: 0.45 } : {}) });
+
 export function TabelaCaixaNoBanco({ vm }: { vm: CaixaNoBancoDoRazao }) {
+  if (!vm.temRazao) return <p className="hint">Sem o razão do caixa: importe na etapa Caixa ou na Importação.</p>;
   if (!vm.temExtrato) return <p className="hint">Nenhum extrato de banco importado na Importação: não tem onde procurar.</p>;
   if (!vm.itens.length) return <p className="hint">Nenhum pagamento do caixa com o mesmo valor saindo do banco.</p>;
   return (
     <div className="table-wrap" style={{ maxHeight: 'none' }}>
       <table className="table-compact">
-        <thead><tr><th>Data</th><th>Saiu do caixa</th><th>Contrapartida</th><th className="num">Valor</th><th>Saiu do banco</th></tr></thead>
+        <thead><tr><th aria-label="Conferido" /><th>Data</th><th>Saiu do caixa</th><th>Contrapartida</th><th className="num">Valor</th><th>Saiu do banco</th></tr></thead>
         <tbody>
-          {vm.itens.map(i => (
+          {vm.itens.map((i, k) => (
             <Fragment key={i.id}>
-              <tr>
+              {/* com o check, o par fica ofuscado (Vitor, 10/11/2026) */}
+              <tr style={estiloDoPar(k, i.conferido)}>
+                <td style={{ width: 32 }}><input type="checkbox" checked={i.conferido} onChange={() => vm.alternarConferido(i.chave)} aria-label={'Conferido: ' + i.historico} title="Conferido" /></td>
                 <td style={{ whiteSpace: 'nowrap' }}>{i.data}</td>
                 <td className="wrap">{i.historico}</td>
                 <td className="wrap hint">{i.contrapartida || '—'}</td>
                 <td className="num" style={{ whiteSpace: 'nowrap' }}>{i.valor}</td>
                 <td className="hint">{i.noBanco.length === 1 ? '1 lançamento' : i.noBanco.length + ' lançamentos'}</td>
               </tr>
-              <tr>
-                <td colSpan={5} style={{ padding: 0 }}>
+              <tr style={estiloDoPar(k, i.conferido)}>
+                <td colSpan={6} style={{ padding: 0 }}>
                   <table className="table-compact" aria-label={'No banco: ' + i.historico}>
                     <tbody>
                       {i.noBanco.map((b, j) => (
-                        <tr key={j} style={fundoSuaveDoBanco(b.marca) ? { background: fundoSuaveDoBanco(b.marca) } : undefined}>
+                        <tr key={j}>
                           <td title={b.banco} style={{ width: 56 }}><span className="drive-candidato-logo" style={{ display: 'inline-flex' }} aria-label={b.banco}><LogoBanco banco={b.marca} cor /></span></td>
                           <td style={{ whiteSpace: 'nowrap', width: 96 }}>{b.data}</td>
                           <td title={b.historico} style={{ fontSize: 12, maxWidth: 0, width: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.curto}</td>

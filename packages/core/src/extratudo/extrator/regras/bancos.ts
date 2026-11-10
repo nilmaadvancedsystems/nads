@@ -35,6 +35,27 @@ export function bancosNaCompetencia(e: EmpresaExtrator, cadastrados: readonly Ba
   return [...base, ...adicionados];
 }
 
+/** Até que dia do mês um extrato de outro período ainda é só a ponta da virada. */
+const ULTIMO_DIA_DA_PONTA = 10;
+
+/**
+ * O mês em que o extrato é só a ponta de um PDF de antes (Vitor, 10/11/2026, na 581: o "10.2025 a 02.2026" vai até 03/03 e o
+ * março aparecia importado, com os outros lançamentos do mês "apenas no razão"): todo arquivo do mês começa antes dele e termina
+ * nos primeiros dias, e o razão do mês, se já veio, continua depois disso.
+ */
+export function soAPontaDoMes(extratos: readonly Pick<ArquivoImportado, 'lancamentos'>[], razoes: readonly Pick<ArquivoImportado, 'lancamentos'>[], mes: string): boolean {
+  let ultimo = '';
+  for (const a of extratos) {
+    const datas = a.lancamentos.map(l => l.data).sort();
+    const fim = datas[datas.length - 1];
+    if (!fim || datas[0] >= mes || !fim.startsWith(mes) || Number(fim.slice(8, 10)) > ULTIMO_DIA_DA_PONTA) return false;
+    if (fim > ultimo) ultimo = fim;
+  }
+  if (!ultimo) return false;
+  const doRazao = razoes.flatMap(a => a.lancamentos).filter(l => l.data.startsWith(mes));
+  return !doRazao.length || doRazao.some(l => l.data > ultimo);
+}
+
 /** Os arquivos de um banco e lado com lançamento na competência. */
 export function arquivosDoBanco(e: EmpresaExtrator, banco: string, primeiro: string, lado: ArquivoImportado['lado'], competencia: string): ArquivoImportado[] {
   return e.arquivos.filter(a => a.lado === lado && bancoDoArquivo(a, primeiro) === banco && a.lancamentos.some(l => l.data.startsWith(competencia)));

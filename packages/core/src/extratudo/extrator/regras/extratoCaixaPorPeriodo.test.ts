@@ -34,6 +34,14 @@ describe('o "Extrato por período" da Caixa escaneado (chamado 03CP5C, na 474)',
     expect(r.lancamentos.map(l => l.valor)).toEqual([540000, -537747, -37]);
   });
 
+  it('o histórico sai sem a hora, sem o Nr. Doc e sem o resto do C/D (chamado TKAI2P)', () => {
+    const paginas = [[
+      ...cabecalho,
+      ...linha(409, [['08/05/2026', 40], ['-', 79], ['11:12:17', 85], ['DO0NOO', 127], ['DEP', 163], ['DINHEIRO', 178], ['5.400,00', 443], ['C—', 477], ['5.405,27', 489], ['C', 519]]),
+    ]];
+    expect(extratoDoPdf(paginas, 'banco', 2026).lancamentos.map(l => l.historico)).toEqual(['DEP DINHEIRO']);
+  });
+
   it('sem valor legível na coluna Valor, o saldo não entra no lugar: o lançamento fica de fora', () => {
     const r = extratoDoPdf([maio('5.3#7,A7D')], 'banco', 2026);
     expect(valorDe(r.lancamentos, '2026-05-07')).toEqual([]);

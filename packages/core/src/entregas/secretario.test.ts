@@ -1,5 +1,43 @@
 import { describe, expect, it } from 'vitest';
-import { andamentoDoEnvio, envioFeitoDoDocumento, pastaPeloCaminho, situacaoDoEnvioFeito, competenciaDe, competenciaValida, MAX_ENVIO, nomeParaEnviar, ondeVai, partesDoArquivo, problemaDoArquivo } from '.';
+import { clienteNoTexto, destinoDaAjuda, mesNoTexto, ondeVaiNaAjuda, andamentoDoEnvio, envioFeitoDoDocumento, pastaPeloCaminho, situacaoDoEnvioFeito, competenciaDe, competenciaValida, MAX_ENVIO, nomeParaEnviar, ondeVai, partesDoArquivo, problemaDoArquivo } from '.';
+
+describe('Ajudar o Claude', () => {
+  const a = { nome: 'ALFA COMERCIO LTDA', cliente: '1 - ALFA COMERCIO LTDA', codigo: '1' };
+  const b = { nome: 'BETA SERVICOS ME', cliente: '2 - BETA SERVICOS ME', codigo: '2' };
+  const c = { nome: 'BETA SERVICOS GERAIS LTDA', cliente: '3 - BETA SERVICOS GERAIS LTDA', codigo: '3' };
+
+  it('acha o único cliente da lista no texto, sem acento, caixa ou sufixo', () => {
+    expect(clienteNoTexto('Pagador: Alfa Comércio Ltda - CNPJ', [a, b])).toBe(a);
+    expect(clienteNoTexto('Pagador: ALFA COMERCIO', [a, b])).toBe(a);
+    expect(clienteNoTexto('ALFA COMERCIO e BETA SERVICOS', [a, b])).toBeNull();
+    expect(clienteNoTexto('nada aqui', [a, b])).toBeNull();
+    expect(clienteNoTexto('ALFABETA COMERCIO', [a])).toBeNull();
+  });
+
+  it('o nome contido no de outro achado não conta', () => {
+    expect(clienteNoTexto('BETA SERVICOS GERAIS LTDA', [b, c])).toBe(c);
+  });
+
+  it('acha o único mês da lista no texto', () => {
+    expect(mesNoTexto('pago em 15/10/2026', ['2026-09', '2026-10'])).toBe('2026-10');
+    expect(mesNoTexto('competência 09/2026', ['2026-09', '2026-10'])).toBe('2026-09');
+    expect(mesNoTexto('09/2026 e 10/2026', ['2026-09', '2026-10'])).toBeNull();
+    expect(mesNoTexto('15/08/2026', ['2026-09', '2026-10'])).toBeNull();
+  });
+
+  it('um só vale para todos; vários, pelo texto; sem achar, como no automático', () => {
+    expect(destinoDaAjuda('', [a], ['2026-09'], '2026-11')).toEqual({ competencia: '2026-09', cliente: a.cliente, codigo: '1' });
+    expect(destinoDaAjuda('', [], [], '2026-11')).toEqual({ competencia: '2026-11', cliente: '', codigo: '' });
+    expect(destinoDaAjuda('BETA SERVICOS 10/2026', [a, b], ['2026-09', '2026-10'], '2026-11')).toEqual({ competencia: '2026-10', cliente: b.cliente, codigo: '2' });
+    expect(destinoDaAjuda('sem pista', [a, b], ['2026-09', '2026-10'], '2026-11')).toEqual({ competencia: '2026-11', cliente: '', codigo: '' });
+  });
+
+  it('mostra para onde vai', () => {
+    expect(ondeVaiNaAjuda([], [], '2026-11')).toBe('Claudio Secretario › 2026-11 › Enviados pelo nads');
+    expect(ondeVaiNaAjuda([a], ['2026-09'], '2026-11')).toBe('Claudio Secretario › 2026-09 › 1 - ALFA COMERCIO LTDA');
+    expect(ondeVaiNaAjuda([a, b], ['2026-09', '2026-10'], '2026-11')).toBe('Claudio Secretario › o mês do arquivo › o cliente do arquivo');
+  });
+});
 
 describe('envio para o Claudio Secretario', () => {
   it('parte o arquivo em pedaços na ordem, sem perder byte', () => {

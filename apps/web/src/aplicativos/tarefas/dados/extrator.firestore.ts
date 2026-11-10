@@ -9,7 +9,7 @@
 // - grava só o que mudou (o arquivo novo, o apagado, a auditoria), num lote só;
 // - se falhar, avisa 'Não deu para salvar "…" na nuvem: …'.
 // Este, o creditor.firestore.ts (ao lado) e os dados/*.firestore.ts dos outros aplicativos são os únicos arquivos do nads que falam com o Firebase.
-import { extrator as x, formatos, type empresas } from '@nads/core';
+import { escutasDoBanco, extrator as x, formatos, type empresas } from '@nads/core';
 import { getApps, initializeApp } from 'firebase/app';
 import { collection, doc, getFirestore, initializeFirestore, onSnapshot, writeBatch as writeBatchBruto, type Firestore } from 'firebase/firestore';
 import { guardarLote } from '../../../comum/modoDesenvolvedor';
@@ -62,6 +62,7 @@ export function criarRepoExtratorFirestore(lista: readonly empresas.EmpresaDoEsc
   const ouvintes = new Set<() => void>();
   let avisar: Aviso = m => console.warn(m);
   const avisarTodos = () => { ver++; for (const f of ouvintes) f(); };
+  const escutas = escutasDoBanco.criarEscutas(avisarTodos);
 
   function remontar(nome: string, c: Carga) {
     if (!c.docChegou || !c.arquivosChegaram) return;
@@ -72,7 +73,7 @@ export function criarRepoExtratorFirestore(lista: readonly empresas.EmpresaDoEsc
   /** Começa a ouvir a empresa no banco (uma vez só por empresa). */
   function carregar(nome: string): Carga {
     const pronta = cargas.get(nome);
-    if (pronta) return pronta;
+    if (pronta) { escutas.usar(nome); return pronta; }
     const c: Carga = { doc: null, docChegou: false, arquivos: [], arquivosChegaram: false, empresa: null };
     cargas.set(nome, c);
     const id = formatos.slug(nome);
@@ -80,13 +81,13 @@ export function criarRepoExtratorFirestore(lista: readonly empresas.EmpresaDoEsc
     // (Vitor, 19/10/2026: "o nads está lerdo em outras máquinas") o eco do que esta aba gravou não remonta a empresa (o
     // salvar() já pôs a nova na tela), e o arquivo que não mudou continua o mesmo objeto: a próxima gravação compara
     // pela referência, sem transformar todos os lançamentos em texto
-    onSnapshot(doc(db, COLECAO, id), s => {
+    const pararDoc = onSnapshot(doc(db, COLECAO, id), s => {
       c.doc = s.exists() ? (s.data() as x.DocEmpresaExtrator) : null;
       const eco = s.metadata.hasPendingWrites && c.docChegou;
       c.docChegou = true;
       if (!eco) remontar(nome, c);
     }, falhou);
-    onSnapshot(collection(db, COLECAO, id, 'arquivos'), s => {
+    const pararArquivos = onSnapshot(collection(db, COLECAO, id, 'arquivos'), s => {
       const porId = new Map(c.arquivos.map(a => [a.id, a]));
       const mudancas = s.docChanges();
       for (const ch of mudancas) {
@@ -98,6 +99,7 @@ export function criarRepoExtratorFirestore(lista: readonly empresas.EmpresaDoEsc
       c.arquivosChegaram = true;
       if (!eco) remontar(nome, c);
     }, falhou);
+    escutas.guardar(nome, () => { pararDoc(); pararArquivos(); cargas.delete(nome); });
     return c;
   }
 

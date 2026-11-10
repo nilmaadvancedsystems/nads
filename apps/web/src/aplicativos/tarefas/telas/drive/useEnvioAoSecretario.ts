@@ -1,11 +1,13 @@
 // ViewModel do "Enviar para o Claudio Secretário" (Tarefas › Drive): a janela (os arquivos escolhidos ou
 // arrastados, o cliente — começa no cliente aberto no Explorador — e o mês) e o andamento de cada envio. Os
 // arquivos sobem um de cada vez (em pedaços, pelo banco do Entregas); o robô grava em
-// Claudio Secretario/<mês>/<cliente>, de onde a próxima rodada do arquivamento tira.
+// Claudio Secretario/<mês>/<cliente>, de onde a próxima rodada do arquivamento tira. Duas opções (Vitor, 10/11/2026): 100%
+// automático ou "Ajudar o Claude", com os clientes e os meses dos arquivos (nenhum, um ou vários).
 import { entregas as e } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
 import { useDriveDoEntregas } from '../../dados/repo';
+import { textoDoPdf } from '../ferramentas/pdfParaArquivos';
 
 export interface EnvioNaTela { id: number; nome: string; texto: string; erro?: string }
 
@@ -13,13 +15,26 @@ const TEXTO: Record<e.AndamentoDoEnvio['status'], string> = {
   enviando: 'subindo', pendente: 'na fila do robô', gravando: 'o robô está gravando no Drive', pronto: 'pronto', erro: 'erro',
 };
 
+/** O nome e o texto do arquivo, para achar nele o cliente e o mês (PDF de foto e formato binário: só o nome). */
+async function textoDoArquivo(f: File): Promise<string> {
+  try {
+    const bytes = new Uint8Array(await f.arrayBuffer());
+    if (/\.pdf$/i.test(f.name)) return f.name + '\n' + await textoDoPdf(bytes);
+    if (/\.(xml|txt|csv|ofx|ofc)$/i.test(f.name)) return f.name + '\n' + new TextDecoder('latin1').decode(bytes);
+  } catch { /* não deu para ler: fica o nome e o Claude decide */ }
+  return f.name;
+}
+
+const rotuloDoMes = (m: string) => m.slice(5, 7) + '/' + m.slice(0, 4);
+
 export function useEnvioAoSecretario(clienteAberto: e.PastaDeCliente | null) {
   const repo = useDriveDoEntregas();
   const { toast } = useRetorno();
   const [aberto, setAberto] = useState(false);
   const [arquivos, setArquivos] = useState<File[]>([]);
-  const [clienteId, setClienteId] = useState('');
-  const [competencia, setCompetencia] = useState(() => e.competenciaDe(new Date()));
+  const [modo, setModo] = useState<'automatico' | 'ajuda'>('automatico');
+  const [clientesIds, setClientesIds] = useState<string[]>([]);
+  const [meses, setMeses] = useState<string[]>([]);
   const [envios, setEnvios] = useState<EnvioNaTela[]>([]);
   const [subindo, setSubindo] = useState(false);
   const [vendoMeus, setVendoMeus] = useState(false);
@@ -35,8 +50,10 @@ export function useEnvioAoSecretario(clienteAberto: e.PastaDeCliente | null) {
   }, []);
 
   const clientes = e.buscarClientes(repo.mapa().clientes, '');
-  const cliente = clientes.find(c => c.id === clienteId) || null;
-  const destino: e.DestinoDoEnvio = { competencia, cliente: cliente?.nomePasta || cliente?.nome || '', codigo: cliente?.codigo || '' };
+  const mesDaFila = e.competenciaDe(new Date());
+  const escolhidos = modo === 'ajuda' ? clientesIds.flatMap(id => clientes.filter(c => c.id === id)) : [];
+  const daAjuda: e.ClienteDaAjuda[] = escolhidos.map(c => ({ nome: c.nome, cliente: c.nomePasta || c.nome, codigo: c.codigo || '' }));
+  const mesesDaAjuda = modo === 'ajuda' ? meses : [];
   const lista = arquivos.map(f => ({ nome: f.name, tamanho: e.tamanhoLegivel(f.size), problema: e.problemaDoArquivo({ nome: f.name, tamanho: f.size }) }));
   const bons = arquivos.filter(f => !e.problemaDoArquivo({ nome: f.name, tamanho: f.size }));
 
@@ -44,7 +61,7 @@ export function useEnvioAoSecretario(clienteAberto: e.PastaDeCliente | null) {
   const tirar = (id: number) => setEnvios(l => l.filter(x => x.id !== id));
 
   /** Manda um arquivo; resolve quando terminou de subir (o robô grava depois, e o aviso vem sozinho). */
-  async function mandar(f: File, para: e.DestinoDoEnvio): Promise<void> {
+  async function mandar(f: File, destino: Promise<e.DestinoDoEnvio>): Promise<void> {
     const id = Date.now() + Math.random();
     setEnvios(l => [...l, { id, nome: f.name, texto: f.name + ': preparando…' }]);
     let bytes: Uint8Array;
@@ -53,6 +70,7 @@ export function useEnvioAoSecretario(clienteAberto: e.PastaDeCliente | null) {
       setTimeout(() => tirar(id), 6000);
       return;
     }
+    const para = await destino;
     await new Promise<void>(subiu => {
       let parar = () => {};
       const acabar = () => { parar(); paradas.current.delete(parar); };
@@ -90,7 +108,9 @@ export function useEnvioAoSecretario(clienteAberto: e.PastaDeCliente | null) {
     /** abre a janela (com os arquivos arrastados, se vieram) já no cliente aberto no Explorador */
     abrir(fs: File[] = []) {
       setArquivos(fs.slice(0, e.MAX_ARQUIVOS_POR_ENVIO));
-      setClienteId(clienteAberto?.id || '');
+      setModo(clienteAberto ? 'ajuda' : 'automatico');
+      setClientesIds(clienteAberto ? [clienteAberto.id] : []);
+      setMeses([]);
       setAberto(true);
     },
     fechar: () => setAberto(false),
@@ -98,21 +118,28 @@ export function useEnvioAoSecretario(clienteAberto: e.PastaDeCliente | null) {
     adicionar: (fs: File[]) => setArquivos(a => [...a, ...fs].slice(0, e.MAX_ARQUIVOS_POR_ENVIO)),
     tirarArquivo: (i: number) => setArquivos(a => a.filter((_, k) => k !== i)),
     maxArquivos: e.MAX_ARQUIVOS_POR_ENVIO,
-    clientes: clientes.map(c => ({ id: c.id, rotulo: c.nomePasta || c.nome })),
-    clienteId, setClienteId,
-    competencia, setCompetencia,
-    onde: e.ondeVai(destino),
+    modo, setModo,
+    clientes: clientes.filter(c => !clientesIds.includes(c.id)).map(c => ({ id: c.id, rotulo: c.nomePasta || c.nome })),
+    clientesEscolhidos: escolhidos.map(c => ({ id: c.id, rotulo: c.nomePasta || c.nome })),
+    adicionarCliente: (id: string) => { if (id) setClientesIds(l => (l.includes(id) ? l : [...l, id])); },
+    tirarCliente: (id: string) => setClientesIds(l => l.filter(x => x !== id)),
+    meses: meses.map(m => ({ valor: m, rotulo: rotuloDoMes(m) })),
+    adicionarMes: (m: string) => setMeses(l => (l.includes(m) ? l : [...l, m].sort())),
+    tirarMes: (m: string) => setMeses(l => l.filter(x => x !== m)),
+    onde: e.ondeVaiNaAjuda(daAjuda, mesesDaAjuda, mesDaFila),
     podeEnviar: bons.length > 0 && !subindo,
     quantos: bons.length,
     subindo,
     async enviar() {
       if (!bons.length || subindo) return;
-      const para = { ...destino };
+      const c = daAjuda.slice(), ms = mesesDaAjuda.slice();
+      // só abre o arquivo quando precisa escolher entre vários
+      const destinoDe = async (f: File) => e.destinoDaAjuda(c.length > 1 || ms.length > 1 ? await textoDoArquivo(f) : '', c, ms, mesDaFila);
       const fila = bons.slice();
       setSubindo(true);
       setAberto(false);
       setArquivos([]);
-      try { for (const f of fila) await mandar(f, para); } finally { setSubindo(false); }
+      try { for (const f of fila) await mandar(f, destinoDe(f)); } finally { setSubindo(false); }
     },
     envios,
   };

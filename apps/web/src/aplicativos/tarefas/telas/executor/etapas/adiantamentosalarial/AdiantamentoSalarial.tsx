@@ -22,10 +22,10 @@ export function AdiantamentoSalarial() {
         <div className={'imp-bloco' + (vm.ok ? ' imp-ok' : '')}>
           <div className="imp-linha">
             <span className="imp-ico"><Icone nome="dinheiro" /></span>
-            <div className="imp-txt">
+            <div className="imp-txt imp-txt-larga">
               <span><b>Adiantamento salarial</b>{vm.arquivo && <span className="imp-conta">{vm.arquivo}</span>}</span>
+              <div className="imp-resumo">{vm.resumo.length > 0 && <div>{vm.resumo.map(x => <span key={x}>{x}</span>)}</div>}</div>
             </div>
-            <div className="imp-resumo">{vm.resumo.length > 0 && <div>{vm.resumo.map(x => <span key={x}>{x}</span>)}</div>}</div>
             <div className="imp-grupos">
               {/* faltando pagamento: as duas contas digitadas e o .xls do Alterdata (o desenho dos pagamentos do Pró-labore) */}
               {vm.qtd > 0 && (

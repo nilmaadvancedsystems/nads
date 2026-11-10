@@ -485,10 +485,29 @@ export function repoDeFeedback(): RepoFeedback {
   return feedback;
 }
 
+// o ⚡ do Início no modo desenvolvedor (10/11/2026; "em todas as telas, no modo desenvolvedor, a opção de nutrir com dados de
+// teste"): enquanto ligado, as tarefas e os avisos vêm da memória, nada vai para o banco, e somem ao recarregar
+const teste: { tarefas: RepoTarefasDelegadas | null; avisos: RepoAvisos | null; ver: number } = { tarefas: null, avisos: null, ver: 0 };
+const ouvintesDoTeste = new Set<() => void>();
+
+export type DadosDeTesteDoInicio = 'tarefas' | 'avisos';
+export const assinarTesteDoInicio = (f: () => void) => { ouvintesDoTeste.add(f); return () => { ouvintesDoTeste.delete(f); }; };
+export const versaoDoTesteDoInicio = () => teste.ver;
+export const testeDoInicioLigado = (q: DadosDeTesteDoInicio) => !!teste[q];
+
+/** Liga ou desliga os dados de teste do Início (desligar volta ao que estava na tela). */
+export function ligarTesteDoInicio(q: DadosDeTesteDoInicio, ligar: boolean) {
+  if (q === 'avisos') teste.avisos = ligar ? criarAvisosMemoria() : null;
+  else teste.tarefas = ligar ? criarTarefasDelegadasMemoria(quemDasTarefas, true) : null;
+  teste.ver++;
+  for (const f of ouvintesDoTeste) f();
+}
+
 let avisos: RepoAvisos | null = null;
 
 /** O mural de avisos do escritório (o Início): no banco, a coleção nadsAvisos do Entregas; nos exemplos, na memória. */
 export function repoDeAvisos(): RepoAvisos {
+  if (teste.avisos) return teste.avisos;
   if (!avisos) avisos = noBanco ? criarAvisosFirestore() : criarAvisosMemoria();
   return avisos;
 }
@@ -500,17 +519,17 @@ let tarefasDelegadas: RepoTarefasDelegadas | null = null;
  * (quem está é o login); nos exemplos, na memória (quem está é a pessoa escolhida na lista da equipe, com o uid de exemplo).
  */
 export function repoDeTarefasDelegadas(): RepoTarefasDelegadas {
-  if (!tarefasDelegadas) {
-    tarefasDelegadas = noBanco
-      ? criarTarefasDelegadasFirestore(() => { const q = quemPede(); return q ? { uid: q.uid, nome: q.nome } : null; })
-      : criarTarefasDelegadasMemoria(() => {
-        let nome = '';
-        try { nome = localStorage.getItem('nads-tarefas-operador') || ''; } catch { /* sem storage */ }
-        const u = usuarios.EQUIPE_EXEMPLO.find(x => x.nome === nome);
-        return u ? { uid: u.uid, nome: u.nome } : nome ? { uid: nome, nome } : null;
-      });
-  }
+  if (teste.tarefas) return teste.tarefas;
+  if (!tarefasDelegadas) tarefasDelegadas = noBanco ? criarTarefasDelegadasFirestore(quemDasTarefas) : criarTarefasDelegadasMemoria(quemDasTarefas);
   return tarefasDelegadas;
+}
+
+function quemDasTarefas() {
+  if (noBanco) { const q = quemPede(); return q ? { uid: q.uid, nome: q.nome } : null; }
+  let nome = '';
+  try { nome = localStorage.getItem('nads-tarefas-operador') || ''; } catch { /* sem storage */ }
+  const u = usuarios.EQUIPE_EXEMPLO.find(x => x.nome === nome);
+  return u ? { uid: u.uid, nome: u.nome } : nome ? { uid: nome, nome } : null;
 }
 
 let parcelamentos: RepoParcelamentos | null = null;

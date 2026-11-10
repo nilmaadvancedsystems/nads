@@ -1,3 +1,4 @@
+import * as d from './delegadas';
 import { acoesDoStatus, filtrarPorSituacao, grupoDoPrazo, numerosDaLista, prazoComHora, ultimoMovimento, type Status } from './delegadas';
 import { describe, expect, it } from 'vitest';
 import {
@@ -354,5 +355,23 @@ describe('encolher os anexos', () => {
     const base = { id: 'a', nome: 'n.xml', extensao: 'xml', tamanho: 10, em: EM, por: 'Nilma', partes: 1 };
     expect(lerTarefa('t', { anexos: [{ ...base, gzip: true }] }).anexos[0].gzip).toBe(true);
     expect('gzip' in lerTarefa('t', { anexos: [{ ...base, gzip: 'sim' }] }).anexos[0]).toBe(false);
+  });
+});
+
+describe('a etapa delegada (Clientes e Fornecedores, 10/11/2026)', () => {
+  const por = { uid: 'a', nome: 'Ana' };
+  const etapaDelegada = { etapa: 'clientes' as const, rota: '901', periodo: '2026-09', todas: false, contas: [{ codigo: '111', nome: 'Exemplo' }], feitas: [] };
+  const base = d.nova({ ...d.rascunhoVazio({ uid: 'b', nome: 'Bia' }), titulo: 'Clientes', etapaDelegada }, { id: 'x', numero: 1, por, em: '2026-11-10T10:00:00.000Z' });
+  it('a escolhida está na delegação; a outra não; com todas, qualquer uma', () => {
+    expect(d.contaNaDelegacao(etapaDelegada, '111')).toBe(true);
+    expect(d.contaNaDelegacao(etapaDelegada, '222')).toBe(false);
+    expect(d.contaNaDelegacao({ ...etapaDelegada, todas: true, contas: [] }, '222')).toBe(true);
+  });
+  it('marcar e desmarcar como feita, com o histórico; volta igual do banco', () => {
+    const feita = d.comContaFeita(base, etapaDelegada.contas[0], true, 'Bia', '2026-11-10T11:00:00.000Z');
+    expect(feita.etapaDelegada?.feitas).toEqual(['111']);
+    expect(feita.historico.at(-1)?.texto).toBe('Marcou como feita: 111 Exemplo');
+    expect(d.comContaFeita(feita, etapaDelegada.contas[0], false, 'Bia', '2026-11-10T12:00:00.000Z').etapaDelegada?.feitas).toEqual([]);
+    expect(d.lerTarefa('x', feita as unknown as Record<string, unknown>).etapaDelegada).toEqual(feita.etapaDelegada);
   });
 });

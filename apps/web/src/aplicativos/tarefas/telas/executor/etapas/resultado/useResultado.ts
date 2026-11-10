@@ -18,7 +18,8 @@ export function useResultado() {
   // o importado aqui (o corrigido) vale mais que o do Clientes
   const [proprio, setProprio] = useGuardado<Dinamico | null>(chave + '|dinamico', null);
   // o da Importação (o primeiro passo), ou o que o Clientes importou antes
-  const doClientes = useContabilDaEmpresa(s.nome, s.codigo).dinamico;
+  const contabil = useContabilDaEmpresa(s.nome, s.codigo);
+  const doClientes = contabil.dinamico;
   const din = proprio || doClientes;
   // o ⚡ do modo desenvolvedor: o dinâmico de teste da empresa toda (16/10/2026)
   useDadosDeTesteDaEtapa(s.dev ? [{ id: 'certo', rotulo: 'Dinâmico de teste (tudo certo)' }, { id: 'erros', rotulo: 'Dinâmico de teste (despesa credora e receita devedora)' }] : [],

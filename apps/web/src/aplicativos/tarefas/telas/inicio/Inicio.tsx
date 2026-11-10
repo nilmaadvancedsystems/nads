@@ -1,7 +1,7 @@
 // O Início da Tarefas: os avisos do escritório em faixas, os fixados em cima (o admin e o diretor fixam e apagam em cada
 // faixa e escrevem na janela do Novo aviso), e as tarefas (09/11/2026: a última empresa e o progresso do mês saíram; sem
 // aviso, nada ocupa a tela). Só as peças do catálogo; nada anima.
-import { Alerta, BotaoFechar, BotaoIcone, Esqueleto, Icone, useCarregando, useJanela } from '@nads/ui';
+import { Alerta, BotaoFechar, BotaoIcone, Esqueleto, Icone, MenuSuspenso, useCarregando, useJanela } from '@nads/ui';
 import { useRef } from 'react';
 import { useSearchParams } from 'react-router';
 import { PaginaDeTarefas } from '../delegador/PaginaDeTarefas';
@@ -57,6 +57,20 @@ function NovoAviso({ vm }: { vm: Vm }) {
   );
 }
 
+// o ⚡ do modo desenvolvedor, como nas telas das etapas: marcar põe os exemplos na tela; nada vai para o banco
+function DadosDeTeste({ vm }: { vm: Vm }) {
+  const t = vm.teste;
+  return (
+    <MenuSuspenso rotulo="Dados de teste" icone="zap" className="btn btn-outline" direita largura={260} titulo="Modo desenvolvedor · nada vai para o banco"
+      itens={[
+        { rotulo: 'Tarefas de exemplo', icone: 'checklist', marcado: t.tarefas, onClick: () => t.ligar('tarefas', !t.tarefas) },
+        { rotulo: 'Avisos de exemplo', icone: 'alert', marcado: t.avisos, onClick: () => t.ligar('avisos', !t.avisos) },
+        'separador',
+        { rotulo: 'Apagar os dados de teste', icone: 'x', desabilitado: !t.tarefas && !t.avisos, onClick: () => { t.ligar('tarefas', false); t.ligar('avisos', false); } },
+      ]} />
+  );
+}
+
 export function Inicio() {
   const vm = useInicio();
   useCarregando(vm.carregandoAvisos);
@@ -68,7 +82,10 @@ export function Inicio() {
     <section>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
         <p className="hint" style={{ margin: 0 }}>Olá, {vm.nome}.</p>
-        {vm.escreve && <button type="button" className="btn btn-outline" onClick={vm.abrirNovo}><Icone nome="plus" width={16} height={16} />Novo aviso</button>}
+        <div style={{ display: 'flex', gap: 8 }}>
+          {vm.dev && <DadosDeTeste vm={vm} />}
+          {vm.escreve && <button type="button" className="btn btn-outline" onClick={vm.abrirNovo}><Icone nome="plus" width={16} height={16} />Novo aviso</button>}
+        </div>
       </div>
       <Avisos vm={vm} />
       {vm.novoAberto && <NovoAviso vm={vm} />}

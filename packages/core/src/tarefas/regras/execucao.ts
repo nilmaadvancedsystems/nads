@@ -12,6 +12,9 @@ import type { Etapa, EstadoEtapa, Evento, Execucao, Rotina, SituacaoEtapa } from
 /** As etapas que só entram no mês quando outra as adiciona (Etapa.soQuandoAdicionada): o Creditor, pelo caixa. */
 const SO_QUANDO_ADICIONADAS = new Set([...ROTINA_CONTABIL.etapas, ...ROTINA_FISCAL.etapas].filter(e => e.soQuandoAdicionada).map(e => e.id));
 
+/** Quando a Conciliação caixa virou um check à parte (10/11/2026). */
+const CONCILIACAO_CAIXA_DESDE = '2026-11-10T14:00:00.000Z';
+
 /** As etapas que valem só para alguns regimes ou só em alguns meses (Fiscal, 06/10/2026: a rotina pelo regime). */
 const RESTRITAS = new Map([...ROTINA_CONTABIL.etapas, ...ROTINA_FISCAL.etapas, ...ROTINA_DP.etapas].filter(e => e.regimes || e.meses || e.obrigacaoDp).map(e => [e.id, e]));
 const REGIME_POR_CODIGO = new Map(EMPRESAS.filter(e => e.codigo != null).map(e => [e.codigo, e.regime]));
@@ -36,6 +39,8 @@ export function regimeDaLista(codigo: number | null | undefined): string {
  */
 export function etapaNoMes(ex: Execucao | null, etapa: string): boolean {
   if (SO_QUANDO_ADICIONADAS.has(etapa) && !ex?.adicionadas?.includes(etapa)) return false;
+  // o mês que já tinha passado da etapa final quando a Conciliação caixa virou um check não reabre
+  if (etapa === 'conciliacao-caixa' && ex?.etapas.despesas && concluida(ex.etapas.despesas.situacao) && ex.etapas.despesas.em < CONCILIACAO_CAIXA_DESDE) return false;
   if (ex?.retiradas?.includes(etapa)) return false;
   const e = RESTRITAS.get(etapa);
   if (e && ex) {
@@ -82,6 +87,16 @@ export function concluida(s: SituacaoEtapa): boolean {
 export function proximaEtapa(ex: Execucao | null, rotina: Rotina): Etapa | null {
   // a etapa que saiu do mês (retirada, ou o regime mudou) não prende a rotina, mesmo tendo sido interrompida antes
   return rotina.etapas.find(e => etapaNoMes(ex, e.id) && !concluida(situacaoDa(ex, e.id))) || null;
+}
+
+/**
+ * No Contábil, as etapas do grupo ficam livres (Vitor, 10/11/2026: "libera todas as tarefas daquela página, só não deixe ir
+ * para a próxima sem resolver o outro grupo"): a etapa pedida, se for do grupo da primeira que falta. A Importação vem antes
+ * de tudo, porque é ela que traz os dados e escolhe o período.
+ */
+export function etapaLivre(rotina: Rotina, primeira: Etapa | null, id: string): Etapa | null {
+  if (rotina.departamento !== 'contabil' || !primeira || primeira.id === rotina.etapas[0]?.id) return null;
+  return rotina.etapas.find(e => e.id === id && (e.secao || '') === (primeira.secao || '')) || null;
 }
 
 export interface Progresso { concluidas: number; total: number; interrompida: Etapa | null }

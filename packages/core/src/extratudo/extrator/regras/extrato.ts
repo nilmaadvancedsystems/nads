@@ -26,7 +26,7 @@ function diaDoOcr(s: string): string {
   const m = s.match(/^([\dOoIl]{1,2})(?=[/.\s-]?(?:jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez))/i);
   return m && /\d/.test(m[1]) ? m[1].replace(/[Oo]/g, '0').replace(/[Il]/g, '1') + s.slice(m[1].length) : s;
 }
-const RE_VALOR = /^\(?-?(?:R\$)?-?\d{1,3}(?:\.\d{3})*,\d{2}\)?-?[CD]?$/i;
+const RE_VALOR = /^\(?[-+]?(?:R\$)?-?\d{1,3}(?:\.\d{3})*,\d{2}\)?-?[CD]?$/i;
 const RE_SINAL = /^(?:[CD]|\(\+\)|\(-\)|[+-]|\*)$/i;
 /** o valor do depósito bloqueado, com o * colado ("2.300,00*"): ainda não é saldo */
 const RE_BLOQUEADO = /^\(?-?(?:R\$)?\d{1,3}(?:\.\d{3})*,\d{2}\*$/;
@@ -450,6 +450,11 @@ export function ehPagBank(texto: string): boolean {
   return /\b290 pagseguro internet\b/.test(normalizarTexto(texto));
 }
 
+/** O extrato do Inter: cada dia abre com "2 de Março de 2026  Saldo do dia: 15.093,56" e as saídas vêm com o "-R$" escrito. */
+export function ehInter(texto: string): boolean {
+  return /\binstituicao banco inter\b/.test(normalizarTexto(texto));
+}
+
 /**
  * O extrato "Lançamentos do período" do Itaú (o título da tabela: Data, Lançamentos, Razão Social, CNPJ/CPF, Valor, Saldo): as
  * saídas vêm com o sinal escrito; o valor sem sinal é entrada.
@@ -614,6 +619,14 @@ export function ehCaixaPorPeriodo(texto: string): boolean {
   return /\bextrato por periodo\b/.test(t) && /\bcaixa\b/.test(t);
 }
 
+/**
+ * O histórico da Caixa por período sem o que não é histórico (chamado TKAI2P, na 175): a hora e o Nr. Doc da frente
+ * ("-11:12:17 341100 DEP DINHEIRO") e o que sobra do C/D do valor no fim ("C—", "C/"). O OCR lê o Nr. Doc "000000" como "DO0NOO".
+ */
+function semHoraNemDocumentoDaCaixa(h: string): string {
+  return h.replace(/^-?\s*\d{2}:\d{2}:\d{2}\s+\S+\s*/, '').replace(/\s+[CD][—–\-/|.,]+$/, '').trim();
+}
+
 /** a borda esquerda da coluna Valor, pelo cabeçalho que tem Favorecido, Valor e Saldo na mesma linha */
 function xDaColunaValorDaCaixa(linhas: Linha[]): number | null {
   for (const l of linhas) {
@@ -729,7 +742,8 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
   // em outros bancos (Nubank, Inter, Stone…) o "-" aparece em totais e saldos e as saídas vêm sem sinal. O Itaú "Lançamentos
   // do período" também escreve (report PGL7X5, 09/11/2026, na 581: o "REND PAGO" e o Pix da "… PAGAMENTO S.A." viravam saída)
   // e o "extrato mensal" dele (Vitor, 09/11/2026, na 474: o "PIX TRANSF" recebido virava saída)
-  const sinalEscrito = ehPagBank(textoTodo) || ehItauPorPeriodo(textoTodo) || itauMensal;
+  const inter = ehInter(textoTodo);
+  const sinalEscrito = ehPagBank(textoTodo) || ehItauPorPeriodo(textoTodo) || itauMensal || inter;
   const caixaPorPeriodo = lado === 'banco' && ehCaixaPorPeriodo(textoTodo);
   let xValorDaCaixa: number | null = null;
 
@@ -785,6 +799,9 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
       let segunda: string | null = null;
       if (!naColunaDaData(t[0].x)) { /* texto no meio da linha: não abre dia */ }
       else if (RE_DATA.test(t[0].s)) { data = naVirada(lerData(t[0].s, ano), t[0].s); if (data) t.shift(); }
+      // "2 de Março de 2026" (o Inter) e "01 Mar, 2026" (o InfinitePay; Vitor, 10/11/2026: nenhum dos dois era lido)
+      else if (inter && t[4] && /^\d{1,2}$/.test(t[0].s) && /^de$/i.test(t[1].s) && /^de$/i.test(t[3].s) && RE_ANO.test(t[4].s)) { data = lerData(t[0].s + ' ' + t[2].s + ' ' + t[4].s, ano); if (data) t.splice(0, 5); }
+      else if (t[2] && /^\d{1,2}$/.test(t[0].s) && /^[a-zç]{3},$/i.test(t[1].s) && RE_ANO.test(t[2].s)) { data = lerData(t[0].s + ' ' + t[1].s.slice(0, 3) + ' ' + t[2].s, ano); if (data) t.splice(0, 3); }
       else if (t[1] && RE_DATA_MES.test(diaDoOcr(t[0].s) + ' ' + t[1].s)) {
         // o ano no pedaço seguinte ("11 | FEV | 2026") é da data: senão o "2026 Total de saídas" virava lançamento (Vitor,
         // 20/10/2026: o Nubank tinha o total do dia como uma saída a mais)
@@ -852,8 +869,9 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
       if (RE_SALDO.test(hist) || (!hist && !solta && RE_SALDO.test(l.texto))) {
         // a linha "SALDO DO DIA": o saldo que o banco imprime no fim do dia; o "999 S A L D O" do fim do BB: o do último dia
         const n = normalizarTexto(hist || l.texto);
-        if (/saldo (?:anterior|inicial)/.test(n) && valores.length) saldoCorrido = valorDaAbertura(n, valores.map(v => v.s));
-        else if (/saldo (?:do )?dia|\bs a l d o\b/.test(n) && valores.length) saldoCorrido = centavos(valores[valores.length - 1].s);
+        // (no Inter, o saldo do dia vem antes dos lançamentos dele: não é o saldo de antes do primeiro)
+        if (!inter && /saldo (?:anterior|inicial)/.test(n) && valores.length) saldoCorrido = valorDaAbertura(n, valores.map(v => v.s));
+        else if (!inter && /saldo (?:do )?dia|\bs a l d o\b/.test(n) && valores.length) saldoCorrido = centavos(valores[valores.length - 1].s);
         if (entre && /saldo (?:anterior|inicial)/.test(n) && saldoCorrido != null) { aberturaSemConferir = true; saldoAnteriorConferido = saldoCorrido; }
         const diaDoSaldo = /\bs a l d o\b/.test(n) ? ultimaDataDeValor : /\bsaldo (?:do )?dia\b/.test(n) ? dataAtual : null;
         const sv = diaDoSaldo ? centavos(valores[valores.length - 1].s) : null;
@@ -1007,6 +1025,7 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
       // mês e a 2ª dentro é do mês do extrato
       const dataDoLanc = segunda && pelaDtMovimento ? segunda
         : periodo && segunda && !dataAtual.startsWith(periodo) && segunda.startsWith(periodo) ? segunda : dataAtual;
+      if (caixaPorPeriodo) h = semHoraNemDocumentoDaCaixa(h);
       const novo: Lancamento = { data: dataDoLanc, valor: c, historico: h || '(sem histórico)', ...(dataDoLanc !== dataAtual ? { balancete: dataAtual } : {}) };
       ultimo = novo;
       if (ficouInseguro != null) inseguro = { l: novo, antes: ficouInseguro };
@@ -1023,7 +1042,7 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
   // o saldo antes do primeiro lançamento pela coluna Saldo, quando o extrato não imprime a linha do saldo anterior (o Stone;
   // Vitor, 26/10/2026): o saldo da linha do lançamento mais antigo menos o valor dele
   let saldoAnteriorPelaLinha: number | null = null;
-  if (col && (col as Colunas).saldo != null && saida.length) {
+  if (((col && (col as Colunas).saldo != null) || inter) && saida.length) {
     let i0 = -1;
     saida.forEach((l, i) => { if (i0 < 0 || l.data < saida[i0].data || (decrescente && l.data === saida[i0].data)) i0 = i; });
     const s0 = saldoDeCada[i0];
