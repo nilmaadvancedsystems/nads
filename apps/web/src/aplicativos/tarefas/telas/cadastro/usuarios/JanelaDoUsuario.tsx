@@ -54,8 +54,15 @@ export function JanelaDoUsuario({ vm }: { vm: VmUsuarios }) {
         <span className="fraco">{p.email}</span>
         <span className={'badge ' + (p.online ? 'badge-ok' : 'badge-neutral')}>{!p.ativo ? 'Inativo' : p.online ? 'Online' : 'Ativo'}</span>
         {p.ativo && !p.online && <span className="fraco">{p.presenca}</span>}
-        {p.onde && <span className="fraco">Em {p.onde}{p.ondePeriodo ? ' · ' + p.ondePeriodo : ''}</span>}
         <span className="fraco">{p.cargo || 'Sem cargo'}</span>
+        {p.atividade && (
+          <div className="usuario-atividade">
+            <span className="usuario-atividade-rotulo">Trabalhando agora</span>
+            <b>{p.atividade.etapa}</b>
+            <span>{p.atividade.empresa}</span>
+            {p.atividade.periodo && <span className="usuario-atividade-rotulo">{p.atividade.periodo}</span>}
+          </div>
+        )}
       </div>
     )}>
       {!vm.admin && topico !== 'empresas' && <p className="hint">Só um administrador muda a equipe.</p>}
