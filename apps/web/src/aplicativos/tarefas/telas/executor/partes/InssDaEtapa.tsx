@@ -101,8 +101,8 @@ export function InssDaEtapa({ inss, conferir, teste = [], folha, so, conferencia
                     </tr>
                   </thead>
                   <tbody>
-                    {/* o saldo do mês no razão (Vitor, 03/11/2026: "ao invés do Provisão"): a soma dos lançamentos, + o que tem D e − o que tem C */}
-                    <tr><th scope="row">Saldo</th>{inss.meses.map(m => <td key={m.mes} className={'num' + (m.mes === inss.mesAberto ? ' atual' : '')} title={m.foraDoRazao ? 'O razão começa depois deste mês' : 'Soma dos lançamentos do mês: D (+) e C (−)'}>{m.foraDoRazao ? 'fora do razão' : <ValorNaGrade texto={m.saldo} />}</td>)}</tr>
+                    {/* o saldo do fim do mês, da coluna Saldo do razão (Vitor, 10/11/2026) */}
+                    <tr><th scope="row">Saldo</th>{inss.meses.map(m => <td key={m.mes} className={'num' + (m.mes === inss.mesAberto ? ' atual' : '')} title={m.foraDoRazao ? 'O razão começa depois deste mês' : 'Saldo da conta no fim do mês, da coluna Saldo do razão'}>{m.foraDoRazao ? 'fora do razão' : <ValorNaGrade texto={m.saldo} />}</td>)}</tr>
                     <tr><th scope="row">Guia</th>{inss.meses.map(m => <td key={m.mes} className={'num' + (m.mes === inss.mesAberto ? ' atual' : '')}>{m.guia ? <ValorNaGrade texto={m.guia} /> : '—'}</td>)}</tr>
                     {/* o total do DARF (Vitor, 15/10/2026: "coloque o total da guia"): o INSS e o que vem junto; é o que sai do banco (Vitor,
                         26/10/2026: "ao invés de total da guia, coloca: No banco") */}

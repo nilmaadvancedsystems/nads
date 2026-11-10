@@ -122,6 +122,26 @@ function novo(id, tipo, codigo, competencia) {
   assert.strictEqual(pedidos.get('g').mesmoQue, 'e');
   assert.strictEqual(partes.get('f').razao.toString().split('|')[1], '109');
 
+  // ── a Central dos robôs: pausada, ninguém novo começa; ao retomar, o passado na frente é o primeiro
+  {
+    let pausada = true;
+    const ordem = [];
+    const f2 = criarFilaAlterdata({ banco, limiteMs: 300, pausado: () => pausada, pastaDoPedido: id => path.join(BASE, 'pausa', id),
+      rodar: async (rel, a2) => { ordem.push(a2.codigo); fs.writeFileSync(a2.destino, 'x'); return { ok: true }; } });
+    novo('p1', 'balancete', 201, '2026-07'); novo('p2', 'balancete', 202, '2026-07'); novo('p3', 'balancete', 203, '2026-07');
+    for (const id of ['p1', 'p2', 'p3']) f2.chegou(id);
+    await espera(30);
+    assert.deepStrictEqual(ordem, [], 'pausada: nada roda');
+    assert.strictEqual(st('p1'), 'pendente', 'pausada: o pedido continua pendente');
+    f2.naFrente('p3');
+    pausada = false;
+    f2.retomar();
+    await espera(5);
+    await f2.ocioso();
+    assert.strictEqual(ordem[0], 203, 'o passado na frente foi o primeiro');
+    assert.strictEqual(ordem.length, 3);
+  }
+
   // ── duas máquinas (o servidor e o PC) ouvindo a mesma fila do banco: cada pedido roda numa só
   const porMaquina = { s: [], p: [] };
   const filaDe = m => criarFilaAlterdata({ banco, limiteMs: 300, pastaDoPedido: id => path.join(BASE, m, id),

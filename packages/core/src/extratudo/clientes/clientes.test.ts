@@ -158,6 +158,16 @@ describe('despesas credoras e receitas devedoras no dinâmico (16/10/2026)', () 
       ['Telefone', 'despesa', [{ mes: '2026-02', saldo: 20 }]],
     ]);
   });
+
+  it('o grupo "Receitas e despesas": manda o subgrupo mais perto da conta (10/11/2026)', () => {
+    const linha = (classificacao: string, descricao: string, saldo: number) => ({ codigo: classificacao, classificacao, descricao, saldoAnterior: 0, saldos: { '2026-01': saldo } });
+    const misto = { meses: ['2026-01'], linhas: [
+      linha('3', 'RECEITAS E DESPESAS', 0), linha('3.1', 'RECEITAS OPERACIONAIS BRUTAS', 0), linha('3.1.1', 'Venda de Produtos', 40),
+      linha('3.6', 'CUSTO NA ATIVIDADE', 0), linha('3.6.1', 'Compra de Insumos a prazo', 500), linha('3.6.2', 'Frete sobre Compras', -30),
+      linha('3.9', 'APURACAO DE RESULTADO', 0), linha('3.9.1', 'Exercicio Corrente', 900),
+    ] };
+    expect(resultadoErradoNoDinamico(misto, ['2026-01']).map(x => [x.nome, x.tipo])).toEqual([['Venda de Produtos', 'receita'], ['Frete sobre Compras', 'despesa']]);
+  });
 });
 
 describe('de que é o razão, pelo dinâmico (16/10/2026)', () => {

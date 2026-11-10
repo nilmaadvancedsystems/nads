@@ -6,11 +6,14 @@
 //   robosComandos                  os 40 comandos mais novos (o histórico: quem pediu o quê e o que o robô respondeu)
 //   robosRegistros/{robo}          o espelho do log do robô, só enquanto a aba Registros está aberta; ao abrir, a tela
 //                                  pede o "ao vivo" (um comando 'assistir'), e o robô passa a mandar a cada 10 s
+//   a fila de cada robô            pedidosFgts, pedidosSieg, pedidosAlterdata...: só o que espera ou anda, e só enquanto a
+//                                  aba Fila está aberta (mexer num pedido também é um comando: quem toca a fila é o robô)
+//   clientes                       os ativos, uma vez só, para o campo "Pedir para um cliente"
 // A tela nunca escreve nada além do comando (status 'pendente'); quem responde é o robô.
 import { entregas as e, robos as r } from '@nads/core';
-import { addDoc as addDocBruto, collection, doc, limit, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { addDoc as addDocBruto, collection, doc, getDocs, limit, onSnapshot, orderBy, query, where } from 'firebase/firestore';
 import { bancoDoEntregas, contaDoEntregas } from '../../tarefas/dados/entregas.firestore';
-import type { DocsDaCentral, PedidoDaTela, RepoCentral } from './central';
+import type { ClienteDaTela, DocsDaCentral, FilaDaTela, PedidoDaTela, RepoCentral } from './central';
 import { travarPedido } from '../../../comum/disjuntorDeGravacao';
 
 // o disjuntor de gravação (comum/disjuntorDeGravacao.ts): o mesmo alvo gravado sem parar para por uns minutos
@@ -18,6 +21,8 @@ const addDoc = travarPedido(addDocBruto) as typeof addDocBruto;
 
 const QUANTAS_ATIVIDADES = 150;
 const QUANTOS_COMANDOS = 40;
+const ITENS_NA_FILA = 200;
+const FILA_VAZIA: FilaDaTela = { carregada: false, itens: [], erro: '' };
 /** o "ao vivo" vale 5 min no robô; a tela pede de novo a cada 4 min enquanto a aba está aberta */
 const ASSISTIR_A_CADA_MS = 4 * 60 * 1000;
 
@@ -33,6 +38,8 @@ export function criarCentralFirestore(): RepoCentral {
   const chegou = { pc: false, vm: false, maquinas: false, atividade: false, comandos: false };
   const ouvintes = new Set<() => void>();
   const regs = new Map<string, r.RegistrosDoRobo>();
+  const filas = new Map<string, FilaDaTela>();
+  let clientes: Promise<ClienteDaTela[]> | null = null;
   const mudou = (parcial: Partial<DocsDaCentral>) => {
     docs = { ...docs, ...parcial, carregado: Object.values(chegou).every(Boolean) };
     ver++;
@@ -92,6 +99,23 @@ export function criarCentralFirestore(): RepoCentral {
       assistir();
       const relogio = setInterval(assistir, ASSISTIR_A_CADA_MS);
       return () => { pararDoc(); clearInterval(relogio); };
+    },
+    fila: robo => filas.get(robo) || FILA_VAZIA,
+    acompanharFila(robo) {
+      const rb = r.roboPorId(robo);
+      if (!rb?.itens) return () => {};
+      const avisar = (f: FilaDaTela) => { filas.set(robo, f); ver++; for (const o of ouvintes) o(); };
+      return onSnapshot(query(collection(db, rb.itens.colecao), where('status', 'in', [...rb.itens.esperando, ...rb.itens.andamento]), limit(ITENS_NA_FILA)),
+        s => avisar({ carregada: true, erro: '', itens: r.ordenarFila(s.docs.map(d => r.lerItemDaFila(rb, d.id, d.data()))) }),
+        () => avisar({ carregada: true, itens: [], erro: 'O banco não deixou ler esta fila.' }));
+    },
+    clientes() {
+      if (!clientes) {
+        clientes = getDocs(query(collection(db, 'clientes'), where('ativo', '==', true)))
+          .then(s => e.clientesDoEntregas(s.docs.map(d => ({ id: d.id, dados: d.data() }))).filter(c => c.codigo).map(c => ({ codigo: c.codigo, nome: c.nome })));
+        clientes.catch(() => { clientes = null; });
+      }
+      return clientes;
     },
     pedir,
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },

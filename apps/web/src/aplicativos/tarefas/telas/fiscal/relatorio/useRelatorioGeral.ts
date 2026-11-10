@@ -166,16 +166,18 @@ export function useRelatorioGeral(regime: RegimeDoRelatorio) {
       const data = e && e !== 'nao' && !l.data ? formatos.diaEmBrasilia() : l.data;
       void gravar({ ...l, entregue: e, data });
     },
+    /** a retificação da empresa no mês: o liga e desliga da linha (10/11/2026); ligada, entra no quadro do protocolo */
+    alternarRetificacao(codigo: number) { void gravar(t.alternarRetificacaoDaLinha(linhaDe(codigo))); },
     imprimir() {
       imprimirHtml(t.htmlDoControle({ competencia, grupo, empresas, linhas: mes.linhas, folha: FOLHA_VAZIA, logo: logoNilmaParaImprimir('colorida') }));
       toast('Protocolo pronto: escolha a impressora');
     },
     exportar() {
       const marca = (m: string | undefined) => (m === 'ok' ? 'OK' : m === 'na' ? '—' : '');
-      const cabecalho = ['Cód.', 'Cliente', ...colunas.map(c => c.rotulo), ...grupo.marcas.map(m => m.dica), 'Data', 'Entregue', 'Situação'];
+      const cabecalho = ['Cód.', 'Cliente', ...colunas.map(c => c.rotulo), ...grupo.marcas.map(m => m.dica), 'Data', 'Entregue', 'Situação', 'Retificada'];
       const valores = linhas.map(r => [
         r.codigo, r.nome, ...colunas.map(c => r.linha.valores[c.id] || ''), ...grupo.marcas.map(m => marca(r.linha.marcas[m.id])),
-        dataBr(r.linha.data), t.ENTREGAS_DO_CONTROLE.find(e => e.valor === r.linha.entregue)?.rotulo || '', r.rotuloSituacao,
+        dataBr(r.linha.data), t.ENTREGAS_DO_CONTROLE.find(e => e.valor === r.linha.entregue)?.rotulo || '', r.rotuloSituacao, t.linhaRetificada(r.linha) ? 'Sim' : '',
       ]);
       return { bytes: t.planilhaXlsx(grupo.rotulo + ' ' + competencia.slice(5, 7) + '-' + competencia.slice(0, 4), cabecalho, valores), nome: 'Fiscal relatório ' + (regime === 'sn' ? 'Simples' : 'Presumido') + ' ' + competencia + '.xlsx' };
     },

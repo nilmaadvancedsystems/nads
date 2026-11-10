@@ -344,11 +344,22 @@ export interface ContaDoResultadoErrada {
   meses: { mes: string; saldo: number }[];
 }
 
+/** De que lado do resultado é o grupo, pelo nome; "Receitas e despesas" tem os dois lados. */
+function ladoDoGrupo(descricao: string): 'receita' | 'despesa' | 'misto' | null {
+  const n = normalizarTexto(descricao);
+  if (/^receitas?\s+e\s+(custos?|despesas?)\b|^(custos?|despesas?)\s+e\s+receitas?\b/.test(n)) return 'misto';
+  if (/^(outras?\s+)?receitas?\b/.test(n)) return 'receita';
+  if (/^(outr[oa]s?\s+)?(custos?|despesas?|cmv|csp)\b/.test(n)) return 'despesa';
+  return null;
+}
+
 /**
  * Despesas credoras e receitas devedoras no dinâmico (Vitor, 16/10/2026: "despesas/receitas na mesma tela, o sistema só vai
  * conferir no balancete dinâmico se tem despesas credoras e receitas devedoras"). As analíticas debaixo do grupo das
  * receitas e do de custos e despesas (pelo nome do grupo de cima; sem ele, o 3 e o 4 do plano do Alterdata); as redutoras
- * "(-)" (deduções, devoluções), na conta ou no grupo dela, ficam de fora: o lado delas é o contrário.
+ * "(-)" (deduções, devoluções), na conta ou no grupo dela, ficam de fora: o lado delas é o contrário. Quem manda é o grupo
+ * mais perto da conta (10/11/2026: o plano com o grupo "Receitas e despesas" tem custos debaixo dele); num grupo com os dois
+ * lados, sem um subgrupo que diga qual, a conta fica de fora.
  */
 export function resultadoErradoNoDinamico(d: BalanceteDinamico, meses: readonly string[]): ContaDoResultadoErrada[] {
   const topo = (re: RegExp, padrao: string) => d.linhas.find(l => l.classificacao && !l.classificacao.includes('.') && re.test(normalizarTexto(l.descricao)))?.classificacao || padrao;
@@ -361,7 +372,10 @@ export function resultadoErradoNoDinamico(d: BalanceteDinamico, meses: readonly 
   const cobertos = meses.filter(m => d.meses.includes(m));
   const out: ContaDoResultadoErrada[] = [];
   for (const l of d.linhas) {
-    const tipo = debaixo(l, grupos.receita) ? 'receita' as const : debaixo(l, grupos.despesa) ? 'despesa' as const : null;
+    const peloTopo = debaixo(l, grupos.receita) ? 'receita' as const : debaixo(l, grupos.despesa) ? 'despesa' as const : null;
+    if (!peloTopo) continue;
+    const acima = contaEGruposDeCima(d, l).slice(0, -1).map(g => ladoDoGrupo(g.descricao));
+    const tipo = [...acima].reverse().find(x => x === 'receita' || x === 'despesa') || (acima.includes('misto') ? null : peloTopo);
     if (!tipo || !folha(l) || redutora(l)) continue;
     // no dinâmico: devedor positivo, credor negativo
     const errados = cobertos.map(m => ({ mes: m, saldo: l.saldos[m] ?? 0 }))

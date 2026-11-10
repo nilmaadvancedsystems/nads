@@ -1,11 +1,31 @@
 import { describe, expect, it } from 'vitest';
-import type { ArquivoLido, Lancamento } from '../tipos';
-import { competencias, empresaNova, excluirArquivo, importar, jaTemNoPeriodo, lancamentosDe, linhasAuditoria, periodo, rotuloPeriodo, soNovos } from './importacao';
+import type { ArquivoImportado, ArquivoLido, Lancamento } from '../tipos';
+import { competencias, empresaNova, excluirArquivo, importar, jaTemNoPeriodo, lancamentosDe, linhasAuditoria, periodo, releituraPerderiaMes, rotuloPeriodo, soNovos } from './importacao';
 
 const l = (dia: number, valor: number, historico = 'H'): Lancamento => ({ data: '2026-08-' + String(dia).padStart(2, '0'), valor, historico });
 const lido = (nome: string, lancamentos: Lancamento[], erro: string | null = null): ArquivoLido => ({ nome, lancamentos, erro });
 const agora = new Date('2026-09-29T12:00:00Z');
 function ids() { let n = 0; return () => 'a' + ++n; }
+
+describe('a releitura automática', () => {
+  const noDia = (data: string): Lancamento => ({ data, valor: 100, historico: 'H' });
+  const arquivo = (...datas: string[]) => ({ lancamentos: datas.map(noDia) }) as unknown as ArquivoImportado;
+  const doisMeses = arquivo('2026-01-05', '2026-01-06', '2026-01-07', '2026-02-05', '2026-02-06', '2026-02-07');
+
+  it('não troca quando a leitura nova perderia um mês', () => {
+    expect(releituraPerderiaMes(doisMeses, lido('a.pdf', [noDia('2026-02-05')]))).toBe(true);
+  });
+  it('troca quando a leitura nova cobre os meses', () => {
+    expect(releituraPerderiaMes(doisMeses, lido('a.pdf', [noDia('2026-01-05'), noDia('2026-02-05')]))).toBe(false);
+  });
+  it('o arquivo que estava vazio recebe o que o leitor novo achar', () => {
+    expect(releituraPerderiaMes(arquivo(), lido('a.pdf', [noDia('2026-02-05')]))).toBe(false);
+  });
+  it('a leitura com erro e a fatura do cartão seguem para o relerExtrato decidir', () => {
+    expect(releituraPerderiaMes(doisMeses, lido('a.pdf', [], 'sem texto'))).toBe(false);
+    expect(releituraPerderiaMes(doisMeses, { ...lido('a.pdf', [], 'É a fatura'), faturaDeCartao: true })).toBe(false);
+  });
+});
 
 describe('importação', () => {
   it('primeira vez grava tudo; arquivo com erro ou vazio fica de fora', () => {
