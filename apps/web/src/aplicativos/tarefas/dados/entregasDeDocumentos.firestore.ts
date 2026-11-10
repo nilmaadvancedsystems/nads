@@ -128,7 +128,9 @@ export function criarEntregasDeDocumentosFirestore(pessoa: () => { nome: string;
   function ouvirClientes(todos: boolean) {
     pararClientes?.();
     if (todos) {
-      pararClientes = onSnapshot(query(collection(db, 'clientes'), orderBy('nome'), limit(1000)), s => chegaramClientes(s.docs, true), err => {
+      // a coleção simples, a mesma consulta do Gmail e do cadastro (10/11/2026, consumo do banco): o banco manda os ~400
+      // clientes uma vez para as três; com orderBy e limit era outra consulta, cobrada à parte (a ordem vem do sort de cima)
+      pararClientes = onSnapshot(collection(db, 'clientes'), s => chegaramClientes(s.docs, true), err => {
         esperandoTodos.splice(0).forEach(f => f());
         clientes = { carregada: true, lista: clientes?.lista || [], erro: erroDe(err) };
         mudou();
