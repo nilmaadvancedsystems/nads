@@ -31,6 +31,13 @@ describe('a fatura do cartão e o extrato (09/11/2026)', () => {
     expect(ehFaturaDeCartao('Esta é a sua fatura de fevereiro. Data de vencimento: 15 FEV 2026')).toBe(true);
     expect(ehFaturaDeCartao('Saldo inicial 0,00 Movimentações Pagamento de fatura 90,00 Vencimento')).toBe(false);
   });
+
+  it('a fatura com o saldo anterior do cartão não é extrato; o extrato com o quadro do cartão continua sendo (10/11/2026)', () => {
+    const fatura = 'Vencimento Pagamento mínimo Limites do seu cartão Movimentações da conta Saldo anterior R$ 10,00 Resumo da fatura Pagamento total da fatura';
+    expect(ehFaturaDeCartao(fatura)).toBe(true);
+    expect(ehFaturaDeCartao('Extrato mensal Saldo anterior 5,00 Cartões: total da fatura 90,00 Vencimento Pagamento mínimo 9,00')).toBe(false);
+    expect(ehFaturaDeCartao('Histórico Saldo anterior 5,00 Saldo do dia 7,00 Resumo da fatura Vencimento Pagamento mínimo')).toBe(false);
+  });
 });
 
 describe('o "extrato mensal" do Itaú (09/11/2026)', () => {

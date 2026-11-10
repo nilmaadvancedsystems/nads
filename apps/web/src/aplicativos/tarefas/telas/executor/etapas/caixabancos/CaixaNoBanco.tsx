@@ -1,11 +1,11 @@
 // O que saiu do caixa e também saiu do banco, na etapa final (Vitor, 10/11/2026; antes, no Caixa): cada pagamento do caixa com
 // o lançamento do banco logo abaixo (o logo, a data, a descrição, o valor e quantos dias de diferença) e o check de conferido.
-// Um par em cada fundo, preto e cinza, para separar um do outro (Vitor, 10/11/2026: com a cor do banco, "embolou tudo").
+// Um par em cada fundo, preto e cinza, para separar um do outro (Vitor, 10/11/2026: com a cor do banco, "embolou tudo"; o cinza bem suave).
 import { LogoBanco } from '@nads/ui';
 import { Fragment } from 'react';
 import type { CaixaNoBancoDoRazao } from './useCaixaNoBanco';
 
-const estiloDoPar = (k: number, conferido: boolean) => ({ background: k % 2 ? 'var(--surface-3)' : 'var(--surface)', ...(conferido ? { opacity: 0.45 } : {}) });
+const estiloDoPar = (k: number, conferido: boolean) => ({ background: k % 2 ? 'color-mix(in srgb, var(--ink) 4%, var(--surface))' : 'var(--surface)', ...(conferido ? { opacity: 0.45 } : {}) });
 
 export function TabelaCaixaNoBanco({ vm }: { vm: CaixaNoBancoDoRazao }) {
   if (!vm.temRazao) return <p className="hint">Sem o razão do caixa: importe na etapa Caixa ou na Importação.</p>;

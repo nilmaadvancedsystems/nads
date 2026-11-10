@@ -138,14 +138,14 @@ const zlib = require('zlib');
 const TABELA_CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
 function crc32(buf) { let c = 0xffffffff; for (let i = 0; i < buf.length; i++) c = TABELA_CRC[(c ^ buf[i]) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; }
 
-/** Um .zip (deflate) com os arquivos [{ nome, xml }]: o cabeçalho de cada um, o diretório central e o fim. */
+/** Um .zip (deflate) com os arquivos [{ nome, xml }] (ou { nome, dados }, um Buffer): o cabeçalho de cada um, o diretório central e o fim. */
 function zipDe(arquivos) {
   const locais = [];
   const centrais = [];
   let pos = 0;
   for (const a of arquivos) {
     const nome = Buffer.from(a.nome, 'utf8');
-    const dados = Buffer.from(a.xml, 'utf8');
+    const dados = a.dados || Buffer.from(a.xml, 'utf8');   // a.dados: binário já pronto (os PDFs, 09/11/2026)
     const comp = zlib.deflateRawSync(dados);
     const crc = crc32(dados);
     const local = Buffer.alloc(30);

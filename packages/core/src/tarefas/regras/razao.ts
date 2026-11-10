@@ -46,8 +46,11 @@ export function dataDoRazao(v: unknown): string {
     const d = XLSX.SSF.parse_date_code(v);
     return d ? d.y + '-' + dois(d.m) + '-' + dois(d.d) : '';
   }
-  const m = String(v ?? '').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-  return m ? m[3] + '-' + dois(+m[2]) + '-' + dois(+m[1]) : '';
+  const texto = String(v ?? '').trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(texto)) return texto.slice(0, 10);
+  // o ano com 2 dígitos ("11/02/26") também é data: sem isso, a linha do razão sumia sem aviso
+  const m = texto.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4}|\d{2})(?!\d)/);
+  return m ? (m[3].length === 2 ? '20' + m[3] : m[3]) + '-' + dois(+m[2]) + '-' + dois(+m[1]) : '';
 }
 
 /** As linhas da planilha (a primeira aba, valores crus) → o razão. Lança Error com a mensagem para a tela. */

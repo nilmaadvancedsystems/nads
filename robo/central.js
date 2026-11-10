@@ -8,6 +8,10 @@
 //      duas centrais nunca fazem o mesmo) e responde no próprio documento: aceito → feito | erro, ou recusado, com a
 //      mensagem. O documento fica como histórico (quem pediu, o quê, a resposta) por 30 dias; o 'assistir' (o "ao vivo"
 //      da aba Registros) é apagado logo depois de atendido.
+//      Os controles (10/11/2026): 'refazer' (o pedido que deu erro volta para a fila), 'cancelar-item' e 'na-frente' (um
+//      pedido da fila, pelo id), 'pedir-cliente' (um pedido novo nas filas que já existem, para um cliente e uma competência)
+//      e 'parar-tudo' / 'retomar-tudo' (todos os robôs pausáveis da máquina). O id do item, o cliente e a competência têm o
+//      formato conferido aqui e só viram leitura e gravação de documento; nada disso vira comando de sistema.
 //   2. ESPELHA O LOG: as últimas 200 linhas de cada robô desta máquina em robosRegistros/{robo} (pela marca da linha:
 //      [sieg], [fgts], [arquivo]...; sem marca, o robô "da casa" da máquina). Linha cortada em 300 caracteres, documento
 //      com no máximo 60 KB, segredos tirados (token, senha, chave, Bearer...). Grava só quando mudou, e no máximo uma
@@ -24,13 +28,23 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const horarios = require('./horarios');
 
 let catalogo = { maquinas: [], robos: [] };
 try { catalogo = require('../packages/core/src/robos/catalogo.json'); } catch (e) { /* sem o catálogo (cópia só do robo/): nenhum robô conhecido, tudo é recusado */ }
 
 // ---------- a LISTA FECHADA (a autoridade é ESTA; o catálogo do site só mostra; o teste-central.js confere as duas) ----------
-const ACOES = Object.freeze(['pausar', 'retomar', 'rodar-agora', 'limpar-fila', 'reiniciar', 'atualizar', 'assistir']);
-const ACOES_DA_MAQUINA = Object.freeze(['reiniciar', 'atualizar']);
+const ACOES = Object.freeze(['pausar', 'retomar', 'rodar-agora', 'limpar-fila', 'reiniciar', 'atualizar', 'assistir', 'refazer', 'cancelar-item', 'na-frente', 'pedir-cliente', 'parar-tudo', 'retomar-tudo']);
+const ACOES_DA_MAQUINA = Object.freeze(['reiniciar', 'atualizar', 'parar-tudo', 'retomar-tudo']);
+const ACOES_DE_ITEM = Object.freeze(['refazer', 'cancelar-item', 'na-frente']);
+const CAPACIDADE_DA_ACAO = Object.freeze({ refazer: 'refazer', 'cancelar-item': 'cancelar', 'na-frente': 'naFrente' });
+
+// o formato do que vem junto do comando: o id de um documento do Firestore, o código do cliente, a competência
+const ITEM_OK = /^[A-Za-z0-9_-]{1,128}$/;
+const CLIENTE_OK = /^\d{1,9}$/;
+const COMPETENCIA_OK = /^20\d{2}-(0[1-9]|1[0-2])$/;
+/** a pausa marcada volta em no máximo 7 dias (uma hora errada não deixa o robô parado para sempre) */
+const PAUSA_MAXIMA_MS = 7 * 24 * 36e5;
 
 const VALIDADE_MS = 5 * 60 * 1000;
 const FUTURO_MS = 60 * 1000;
@@ -46,6 +60,9 @@ const AO_VIVO_DURA_MS = 5 * 60 * 1000;
 const ESTADO_A_CADA_MS = 60 * 1000;
 const TRAVADO_MS = 30 * 60 * 1000;
 const MAX_MENSAGEM = 300;
+const NIVEL_DA_ACAO = Object.fromEntries((catalogo.acoes || []).map(a => [a.id, a.nivel]));
+const UID_OK = /^[A-Za-z0-9_-]{1,128}$/;
+const AGENDA_A_CADA_MS = 15 * 1000;
 
 // ---------- funções puras (o teste-central.js roda sem banco) ----------
 
@@ -82,8 +99,32 @@ function roboDaLinha(maquina, linha) {
 
 const ehErro = linha => /\b(erro|error|falhou|falha|exception|não consegui|nao consegui)\b/i.test(linha);
 
-/** A chave do "repetido": o mesmo pedido (ação + robô + tarefa) desta máquina. */
-const chaveDoComando = c => [c.acao, c.robo || '', c.tarefa || ''].join('|');
+/** A chave do "repetido": o mesmo pedido (ação + robô + tarefa + item, cliente e competência, quando há) desta máquina. */
+const chaveDoComando = c => [c.acao, c.robo || '', c.tarefa || ''].concat([c.item, c.cliente, c.competencia].filter(Boolean)).join('|');
+
+/** A competência é de um mês que ainda não começou? (AAAA-MM, pelo relógio de quem confere) */
+function competenciaNoFuturo(competencia, agora) {
+  const d = new Date(agora);
+  return competencia > d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+
+/** A hora de voltar ('ate', ISO) serve? '' = serve (ou não veio); senão, o motivo. */
+function motivoDaHora(ate, agora) {
+  if (ate == null || ate === '') return '';
+  const t = Date.parse(String(ate));
+  if (!Number.isFinite(t)) return 'A hora de voltar não é uma data válida.';
+  if (t <= agora) return 'A hora de voltar já passou.';
+  if (t - agora > PAUSA_MAXIMA_MS) return 'A pausa marcada vai até 7 dias, no máximo.';
+  return '';
+}
+
+/** Os robôs com a pausa marcada já vencida (o mapa de robosMaquinas.pausados: { robo: { por, em, ate } }). */
+function pausasVencidas(pausados, agora) {
+  return Object.keys(pausados || {}).filter(robo => {
+    const t = Date.parse(String((pausados[robo] || {}).ate || ''));
+    return Number.isFinite(t) && t <= agora;
+  });
+}
 
 /**
  * Confere um comando antes de fazer. ctx: { maquina, agora (ms), vistos: Set de ids já tratados, recentes: Map chave → ms,
@@ -105,6 +146,7 @@ function conferirComando(id, c, ctx) {
   const robo = String(c.robo || '');
   if (ACOES_DA_MAQUINA.includes(acao)) {
     if (robo && !roboDaMaquina(ctx.maquina, robo)) return { fazer: false, motivo: 'Robô desconhecido nesta máquina: ' + robo.slice(0, 40) + '.' };
+    if ((acao === 'parar-tudo' || acao === 'retomar-tudo') && !robosDaMaquina(ctx.maquina).some(r => r.pausavel && (!ctx.pausaveis || ctx.pausaveis.has(r.id)))) return { fazer: false, motivo: 'Nenhum robô desta máquina sabe pausar.' };
   } else {
     const r = roboDaMaquina(ctx.maquina, robo);
     if (!r) return { fazer: false, motivo: 'Robô desconhecido nesta máquina: ' + robo.slice(0, 40) + '.' };
@@ -115,6 +157,21 @@ function conferirComando(id, c, ctx) {
     }
     if ((acao === 'pausar' || acao === 'retomar') && !(r.pausavel && (!ctx.pausaveis || ctx.pausaveis.has(r.id)))) return { fazer: false, motivo: 'O ' + r.nome + ' ainda não sabe pausar.' };
     if (acao === 'limpar-fila' && !(r.limpavel && r.fila)) return { fazer: false, motivo: 'A fila do ' + r.nome + ' não se limpa por aqui.' };
+    if (ACOES_DE_ITEM.includes(acao)) {
+      if (!ITEM_OK.test(String(c.item || ''))) return { fazer: false, motivo: 'O item da fila veio num formato que não aceito.' };
+      if (!(r.itens && r.itens[CAPACIDADE_DA_ACAO[acao]])) return { fazer: false, motivo: 'A fila do ' + r.nome + ' não deixa isso por aqui.' };
+    }
+    if (acao === 'pedir-cliente') {
+      const tipo = String(c.tarefa || '');
+      if (!(r.pedidos || []).some(p => p.id === tipo)) return { fazer: false, motivo: 'Pedido desconhecido para o ' + r.nome + ': ' + tipo.slice(0, 40) + '.' };
+      if (!CLIENTE_OK.test(String(c.cliente || ''))) return { fazer: false, motivo: 'O código do cliente veio num formato que não aceito.' };
+      if (!COMPETENCIA_OK.test(String(c.competencia || ''))) return { fazer: false, motivo: 'A competência veio num formato que não aceito (AAAA-MM).' };
+      if (competenciaNoFuturo(String(c.competencia), ctx.agora)) return { fazer: false, motivo: 'A competência ainda não começou.' };
+    }
+  }
+  if (acao === 'pausar' || acao === 'parar-tudo') {
+    const m = motivoDaHora(c.ate, ctx.agora);
+    if (m) return { fazer: false, motivo: m };
   }
   if (acao !== 'assistir') {
     const antes = ctx.recentes && ctx.recentes.get(chaveDoComando(c));
@@ -218,9 +275,14 @@ function sinaisDaMaquina(raiz) {
 // ---------- os ganchos (o que cada ação faz de verdade) ----------
 const pausas = new Map();   // robo -> { pausar, retomar }
 
-/** Um robô que sabe pausar (ex.: o atendente de IA do PC). pausar/retomar: funções (podem ser async). */
+/**
+ * Um robô que sabe pausar (ex.: o atendente de IA do PC). pausar/retomar: funções (podem ser async). Quem registra depois
+ * de a central ler as pausas guardadas (um módulo que liga mais tarde) já entra pausado, se estava.
+ */
 function registrarPausa(robo, f) {
-  if (f && typeof f.pausar === 'function' && typeof f.retomar === 'function') pausas.set(String(robo), f);
+  if (!(f && typeof f.pausar === 'function' && typeof f.retomar === 'function')) return;
+  pausas.set(String(robo), f);
+  if (st && (st.pausados[robo] || st.foraDoHorario.has(String(robo)))) Promise.resolve().then(() => f.pausar()).catch(err => st && st.log('central: não consegui pausar de novo o', robo, '-', mensagemDe(err)));
 }
 
 /** As tarefas que "rodar agora" sabe fazer: viram um pedido na fila que o robô já atende (o mesmo do botão do nads). */
@@ -232,6 +294,198 @@ const TAREFAS = {
     tipo: 'verificar', dias: 3, status: 'pendente', criadoEm: new Date().toISOString(), criadoPor: 'Central dos robôs (' + (c.porNome || 'admin') + ')', criadoPorUid: c.por,
   }).then(() => 'Pedido na fila do Gmail (últimos 3 dias).'),
 };
+
+// ---------- quem pode o quê (usuarios/{uid}.roles e robosPermissoes/{uid}: { papel, robos }) ----------
+const PAPEIS = ['ver', 'comandar', 'administrar'];
+
+/** A permissão de quem pediu. Conta desativada ou sem cadastro não tem nenhuma; o papel 'admin' do nads pode tudo. */
+async function permissaoDe(uid) {
+  const nada = { admin: false, papel: '', robos: [] };
+  if (!UID_OK.test(String(uid || ''))) return nada;
+  const [u, p] = await Promise.all([st.db.collection('usuarios').doc(uid).get(), st.db.collection('robosPermissoes').doc(uid).get()]);
+  const dados = u.exists ? u.data() || {} : null;
+  if (!dados || dados.ativo === false) return nada;
+  const permissao = p.exists ? p.data() || {} : {};
+  return {
+    admin: Array.isArray(dados.roles) && dados.roles.includes('admin'),
+    papel: PAPEIS.includes(permissao.papel) ? permissao.papel : '',
+    robos: Array.isArray(permissao.robos) ? permissao.robos.map(String) : [],
+  };
+}
+
+/** Só olhar = só o "ao vivo" dos registros; comandar = as ações de robô, só nos robôs dele; administrar = tudo, inclusive as máquinas. */
+function podeFazer(p, acao, robo) {
+  if (!p) return false;
+  if (p.admin || p.papel === 'administrar') return true;
+  const nivel = NIVEL_DA_ACAO[acao];
+  if (nivel === 'ver') return PAPEIS.includes(p.papel);
+  return nivel === 'comandar' && p.papel === 'comandar' && !!robo && p.robos.includes(String(robo));
+}
+
+/** Recusa de um comando depois de aceito (o item sumiu, já começou...): o comando fica 'recusado' com a mensagem, não 'erro'. */
+class Recusa extends Error {}
+
+/** O pedido parecido na fila: o mesmo cliente e mês já esperando ou andando (e a guia do FGTS que já saiu). */
+const MESMO_PEDIDO = {
+  fgts: { campo: 'cnpj', iguais: ['competencia', 'modo'], jaSaiu: true },
+  alterdata: { campo: 'codigo', iguais: ['competencia', 'tipo'] },
+  sieg: { campo: 'codigo', iguais: ['competencia', 'tipo'] },
+};
+
+/** O que devolve o pedido à fila, em cada robô (os mesmos campos que o próprio robô limpa quando devolve um pedido). */
+const CAMPOS_DE_REFAZER = {
+  fgts: () => ({ status: 'pendente', erro: '', aviso: '', fimEm: '', inicioEm: '', passos: [], tentativas: 0, avisadoErroEm: null }),
+  alterdata: em => ({ status: 'pendente', erro: '', fimEm: '', inicioEm: '', passos: [], tentativas: 0, esperas: 0, onde: '', esperandoContabil: '', arquivos: {}, mesmoQue: '', andamento: { pct: 0, etapa: 'pedido de novo', clique: '', em } }),
+  sieg: () => ({ status: 'pendente', erro: null, erroEm: null, andamento: '' }),
+};
+
+/** O erro que não se refaz daqui, com o motivo (a importação no Contábil pode ter lançado metade; os XMLs do cliente já foram apagados). */
+const NAO_REFAZ = {
+  alterdata: d => (d.tipo === 'importar' ? 'A importação de lançamentos não se refaz por aqui: confira no Contábil o que entrou e importe de novo pela tela.' : ''),
+  sieg: d => (d.tipo === 'xmlsCliente' ? 'Os XMLs que o cliente mandou não ficam guardados: envie de novo pela tela do Fiscal.' : ''),
+};
+
+const quemNaCentral = c => ({ criadoEm: new Date().toISOString(), criadoPor: 'Central dos robôs (' + (c.porNome || 'admin') + ')', criadoPorUid: c.por });
+const mesAno = comp => comp.slice(5) + '/' + comp.slice(0, 4);
+
+/**
+ * Os pedidos "para um cliente": o MESMO documento que as telas do nads criam nas filas que já existem (pedidosFgts,
+ * pedidosSieg, pedidosAlterdata; o cliente vem do cadastro, não da tela). A autoridade é esta lista.
+ */
+const PEDIDOS_POR_CLIENTE = {
+  'fgts:guia': { precisaDocumento: true, modelo: (cli, c) => ({ status: 'pendente', modo: 'emitir', cnpj: cli.documento, codigo: cli.codigo, empresa: cli.nome, competencia: c.competencia }) },
+  'fgts:ensaio': { precisaDocumento: true, modelo: (cli, c) => ({ status: 'pendente', modo: 'ensaio', cnpj: cli.documento, codigo: cli.codigo, empresa: cli.nome, competencia: c.competencia }) },
+  'sieg:xmls': { modelo: (cli, c) => ({ status: 'pendente', tipo: 'xmls', codigo: cli.codigo, competencia: c.competencia }) },
+  'sieg:saidas': { modelo: (cli, c) => ({ status: 'pendente', codigo: cli.codigo, competencia: c.competencia }) },
+  'sieg:contagem': { modelo: (cli, c) => ({ status: 'pendente', tipo: 'contagem', codigo: cli.codigo, competencia: c.competencia }) },
+  'alterdata:mensal': { modelo: (cli, c) => ({ status: 'pendente', tipo: 'mensal', codigo: Number(cli.codigo), empresa: cli.nome.slice(0, 200), competencia: c.competencia }) },
+};
+
+/** O cliente ativo do cadastro, pelo código (o cadastro em memória de 10 min do clientes-cache). */
+async function clienteDoCadastro(codigo) {
+  const soDigitos = v => String(v == null ? '' : v).replace(/\D/g, '');
+  let achou = null;
+  (await require('./clientes-cache').clientesAtivos(st.db)).forEach(d => {
+    const x = d.data() || {};
+    if (!achou && soDigitos(x.codigo != null && x.codigo !== '' ? x.codigo : x.codigoOrigem) === codigo) achou = x;
+  });
+  if (!achou) throw new Recusa('Não achei o cliente ' + codigo + ' entre os ativos do cadastro.');
+  return { codigo, nome: String(achou.nome || achou.razaoSocial || ''), documento: soDigitos(achou.documento) };
+}
+
+/** Procura o pedido igual já na fila (ou a guia que já saiu); ignorar: o próprio pedido, no refazer. null = pode. */
+async function pedidoIgual(r, modelo, ignorar) {
+  const cfg = MESMO_PEDIDO[r.id];
+  if (!cfg) return null;
+  const snap = await st.db.collection(r.itens.colecao).where(cfg.campo, '==', modelo[cfg.campo]).limit(200).get();
+  const naFila = [...r.itens.esperando, ...r.itens.andamento];
+  for (const doc of snap.docs) {
+    if (doc.id === ignorar) continue;
+    const o = doc.data() || {};
+    if (!cfg.iguais.every(k => (o[k] || '') === (modelo[k] || ''))) continue;
+    if (naFila.includes(String(o.status || ''))) return 'Já existe um pedido igual na fila deste robô (' + o.status + ').';
+    if (cfg.jaSaiu && o.status === 'pronto' && o.modo === 'emitir') return 'Esta guia já saiu em outro pedido' + (o.fimEm ? ' (' + new Date(o.fimEm).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) + ')' : '') + '; se precisar de outra, peça pela tela do DP.';
+  }
+  return null;
+}
+
+/** Confere o item que ainda espera na fila (dentro da transação) e devolve a situação; o resto é recusa com a mensagem. */
+function itemQueEspera(s, r, verbo) {
+  if (!s.exists) throw new Recusa('Este pedido não existe mais na fila.');
+  const status = String((s.data() || {}).status || '');
+  if (r.itens.andamento.includes(status)) throw new Recusa('Este pedido já está em andamento (' + status + '): não dá mais para ' + verbo + ' por aqui.');
+  if (!r.itens.esperando.includes(status)) throw new Recusa('Este pedido já saiu da fila (' + (status || 'sem situação') + ').');
+}
+
+/** Cancela um pedido que ainda espera: nada é apagado; fica 'cancelado', com quem cancelou. */
+async function cancelarItem(c) {
+  const r = roboDaMaquina(st.maquina, c.robo);
+  const ref = st.db.collection(r.itens.colecao).doc(String(c.item));
+  return st.db.runTransaction(async t => {
+    itemQueEspera(await t.get(ref), r, 'cancelar');
+    t.update(ref, { status: 'cancelado', canceladoEm: new Date().toISOString(), canceladoPor: c.porNome || 'admin', canceladoPorUid: c.por });
+    return 'Cancelado: o pedido ficou marcado como cancelado.';
+  });
+}
+
+/** Passa um pedido que ainda espera para a frente da fila (a fila do robô lê naFrenteEm). */
+async function passarNaFrente(c) {
+  const r = roboDaMaquina(st.maquina, c.robo);
+  const ref = st.db.collection(r.itens.colecao).doc(String(c.item));
+  return st.db.runTransaction(async t => {
+    itemQueEspera(await t.get(ref), r, 'mudar de lugar');
+    t.update(ref, { naFrenteEm: new Date().toISOString(), naFrentePor: c.porNome || 'admin' });
+    return 'Passou na frente: é o próximo da fila.';
+  });
+}
+
+/** Devolve à fila só o pedido que deu erro (o mesmo documento: quem acompanha pela tela do nads vê o pedido andar de novo). */
+async function refazerItem(c) {
+  const r = roboDaMaquina(st.maquina, c.robo);
+  const ref = st.db.collection(r.itens.colecao).doc(String(c.item));
+  const antes = await ref.get();
+  if (!antes.exists) throw new Recusa('Este pedido não existe mais.');
+  const d = antes.data() || {};
+  if (String(d.status || '') !== 'erro') throw new Recusa('Só dá para refazer o que está com erro; este pedido está "' + (d.status || 'sem situação') + '".');
+  const naoRefaz = NAO_REFAZ[r.id] && NAO_REFAZ[r.id](d);
+  if (naoRefaz) throw new Recusa(naoRefaz);
+  const igual = await pedidoIgual(r, d, antes.id);
+  if (igual) throw new Recusa(igual);
+  const em = new Date().toISOString();
+  return st.db.runTransaction(async t => {
+    const s = await t.get(ref);
+    if (!s.exists || String((s.data() || {}).status || '') !== 'erro') throw new Recusa('Este pedido mudou enquanto eu conferia; olhe a fila e peça de novo se ainda precisar.');
+    t.update(ref, Object.assign(CAMPOS_DE_REFAZER[r.id](em), { refeitoEm: em, refeitoPor: c.porNome || 'admin', refeitoPorUid: c.por }));
+    return 'Pedido de novo: voltou para a fila do ' + r.nome + '.';
+  });
+}
+
+/** Um pedido novo para um cliente e competência, na fila que o robô já atende. */
+async function pedirCliente(c) {
+  const r = roboDaMaquina(st.maquina, c.robo);
+  const receita = PEDIDOS_POR_CLIENTE[r.id + ':' + c.tarefa];
+  if (!receita) throw new Error('Esta máquina ainda não sabe fazer esse pedido.');
+  const cli = await clienteDoCadastro(String(c.cliente));
+  if (receita.precisaDocumento && !/^(\d{11}|\d{14})$/.test(cli.documento)) throw new Recusa('O cliente ' + cli.codigo + ' está sem CNPJ ou CPF válido no cadastro.');
+  const modelo = receita.modelo(cli, c);
+  const igual = await pedidoIgual(r, modelo, '');
+  if (igual) throw new Recusa(igual);
+  await st.db.collection(r.itens.colecao).add(Object.assign(modelo, quemNaCentral(c)));
+  return 'Pedido na fila do ' + r.nome + ': ' + cli.codigo + (cli.nome ? ' ' + cli.nome : '') + ' (' + mesAno(String(c.competencia)) + ').';
+}
+
+/** "às 18:30" ou "em 12/11 às 18:30", no fuso do escritório. */
+function quandoVolta(ate) {
+  const d = new Date(ate);
+  const fuso = { timeZone: 'America/Sao_Paulo' };
+  const hora = d.toLocaleTimeString('pt-BR', Object.assign({ hour: '2-digit', minute: '2-digit' }, fuso));
+  const mesmoDia = d.toLocaleDateString('pt-BR', fuso) === new Date().toLocaleDateString('pt-BR', fuso);
+  return (mesmoDia ? '' : 'em ' + d.toLocaleDateString('pt-BR', Object.assign({ day: '2-digit', month: '2-digit' }, fuso)) + ' ') + 'às ' + hora;
+}
+
+async function pausarRobo(robo, c) {
+  await pausas.get(robo).pausar();
+  const p = { por: c.porNome || '', em: new Date().toISOString() };
+  if (c.ate) p.ate = new Date(c.ate).toISOString();
+  st.pausados[robo] = p;
+}
+async function retomarRobo(robo) {
+  if (!st.foraDoHorario.has(robo)) await pausas.get(robo).retomar();
+  delete st.pausados[robo];
+}
+
+/** Todos os robôs pausáveis desta máquina de uma vez. O que falhar num não segura os outros; todos falharam = erro. */
+async function emTodos(c, mexer, palavra) {
+  const robos = robosDaMaquina(st.maquina).filter(r => r.pausavel && pausas.has(r.id));
+  const feitos = [], falhas = [];
+  for (const r of robos) {
+    try { await mexer(r.id, c); feitos.push(r.nome); }
+    catch (err) { falhas.push(r.nome + ': ' + mensagemDe(err)); }
+  }
+  void publicarEstado();
+  if (!feitos.length && falhas.length) throw new Error(falhas.join(' · '));
+  return palavra + ': ' + feitos.join(', ') + (c.ate && c.acao === 'parar-tudo' ? '; voltam ' + quandoVolta(c.ate) : '') + '.' + (falhas.length ? ' Não consegui: ' + falhas.join(' · ') : '');
+}
 
 /** O reinício educado da frente do atualizador (robo/ocupado.js). Sem ele nesta versão, não faz nada (e diz). */
 function reinicioEducado(motivo) {
@@ -310,17 +564,21 @@ async function fazer(c) {
       st.espelho.aoVivo(c.robo);
       return 'Ao vivo por 5 min.';
     case 'pausar': {
-      await pausas.get(c.robo).pausar();
-      st.pausados[c.robo] = { por: c.porNome || '', em: new Date().toISOString() };
+      await pausarRobo(c.robo, c);
       void publicarEstado();
-      return 'Pausado: não pega trabalho novo até alguém retomar.';
+      return c.ate ? 'Pausado: volta sozinho ' + quandoVolta(c.ate) + '.' : 'Pausado: não pega trabalho novo até alguém retomar.';
     }
     case 'retomar': {
-      await pausas.get(c.robo).retomar();
-      delete st.pausados[c.robo];
+      await retomarRobo(c.robo);
       void publicarEstado();
       return 'Retomado.';
     }
+    case 'parar-tudo': return emTodos(c, pausarRobo, 'Pausados');
+    case 'retomar-tudo': return emTodos(c, retomarRobo, 'Retomados');
+    case 'refazer': return refazerItem(c);
+    case 'cancelar-item': return cancelarItem(c);
+    case 'na-frente': return passarNaFrente(c);
+    case 'pedir-cliente': return pedirCliente(c);
     case 'rodar-agora': return TAREFAS[c.robo + ':' + c.tarefa](st.db, c);
     case 'limpar-fila': return limparFila(c);
     case 'reiniciar': return st.ganchos.reiniciar(motivo);
@@ -355,16 +613,21 @@ async function atender(doc) {
   if (conf.ignorar) return;
   st.vistos.add(id);
   if (st.vistos.size > 2000) st.vistos = new Set(Array.from(st.vistos).slice(-1000));
-  if (!conf.fazer) {
+  const recusar = async motivo => {
     try {
       await st.db.runTransaction(async t => {
         const s = await t.get(doc.ref);
-        if (s.exists && (s.data() || {}).status === 'pendente') t.update(doc.ref, { status: 'recusado', mensagem: conf.motivo, respondidoEm: new Date().toISOString(), host: os.hostname() });
+        if (s.exists && (s.data() || {}).status === 'pendente') t.update(doc.ref, { status: 'recusado', mensagem: motivo, respondidoEm: new Date().toISOString(), host: os.hostname() });
       });
     } catch (err) { logUmaVez('recusar', 'não consegui recusar o comando -', mensagemDe(err)); }
-    st.log('central: recusei', c.acao, c.robo || '', '-', conf.motivo);
-    return;
-  }
+    st.log('central: recusei', c.acao, c.robo || '', '-', motivo);
+  };
+  if (!conf.fazer) return recusar(conf.motivo);
+  // quem pediu pode? a regra do banco já conferiu, e o robô confere de novo; sem conseguir ler, não faz
+  let semPoder = '';
+  try { if (!podeFazer(await permissaoDe(c.por), c.acao, c.robo)) semPoder = 'Quem pediu não tem permissão para isso nesta central.'; }
+  catch (err) { semPoder = 'Não consegui conferir quem pediu; peça de novo em instantes.'; logUmaVez('permissao', 'não consegui ler a permissão -', mensagemDe(err)); }
+  if (semPoder) return recusar(semPoder);
   let meu = false;
   try { meu = await pegar(doc.ref); } catch (err) { logUmaVez('pegar', 'não consegui pegar o comando -', mensagemDe(err)); return; }
   if (!meu) return;
@@ -374,8 +637,9 @@ async function atender(doc) {
     if (c.acao === 'assistir') { await doc.ref.delete().catch(() => {}); return; }
     await responder(doc.ref, { status: 'feito', mensagem: String(msg || 'Feito.').slice(0, MAX_MENSAGEM) });
   } catch (err) {
-    await responder(doc.ref, { status: 'erro', mensagem: limparSegredos(mensagemDe(err)) });
-    st.log('central: erro em', c.acao, c.robo || '', '-', mensagemDe(err));
+    const recusado = err instanceof Recusa;
+    await responder(doc.ref, { status: recusado ? 'recusado' : 'erro', mensagem: limparSegredos(mensagemDe(err)) });
+    st.log('central: ' + (recusado ? 'recusei' : 'erro em'), c.acao, c.robo || '', '-', mensagemDe(err));
   }
 }
 
@@ -396,10 +660,78 @@ function publicarEstado(desligado) {
   if (st.maquina !== 'servidor' || !fs.existsSync(path.join(__dirname, 'atualizar-robo.js'))) semGancho.push('atualizar');
   const doc = desligado ? { desligadoEm: agoraIso } : {
     maquina: st.maquina, host: os.hostname(), em: agoraIso, ligadoEm: st.ligadoEm, versao: st.versao, desligadoEm: null,
-    sinais: sinaisDaMaquina(st.raiz), pausados: st.pausados, semGancho,
+    sinais: sinaisDaMaquina(st.raiz), semGancho,
   };
-  return st.db.collection('robosMaquinas').doc(st.maquina).set(doc, { merge: true })
+  // só depois de ler as pausas guardadas: publicar antes apagaria a pausa de quem estava pausado
+  if (!desligado && st.pausadosLidos) doc.pausados = st.pausados;
+  if (!desligado) doc.foraDoHorario = [...st.foraDoHorario];
+  // mergeFields, não merge: com merge o Firestore junta os mapas e um robô retomado continuaria em 'pausados' enquanto outro
+  // estivesse pausado; assim cada campo publicado é trocado por inteiro
+  return st.db.collection('robosMaquinas').doc(st.maquina).set(doc, { mergeFields: Object.keys(doc) })
     .catch(err => logUmaVez('estado', (semPermissao(err) ? 'sem permissão para gravar o estado da máquina' : 'não consegui gravar o estado da máquina') + ' -', mensagemDe(err)));
+}
+
+/** As pausas guardadas no banco (sobrevivem ao reinício): a que venceu com o robô desligado não volta; as outras pausam de novo. */
+function lerPausasGuardadas() {
+  if (!st) return Promise.resolve();
+  return st.db.collection('robosMaquinas').doc(st.maquina).get().then(s => {
+    if (!st) return;
+    const guardadas = (s.exists && (s.data() || {}).pausados) || {};
+    const agora = Date.now();
+    for (const [robo, quem] of Object.entries(guardadas)) {
+      if (!roboDaMaquina(st.maquina, robo) || st.pausados[robo]) continue;
+      if (pausasVencidas({ [robo]: quem }, agora).length) { st.log('[' + robo + '] central: a pausa marcada venceu com o robô desligado; segue trabalhando'); continue; }
+      st.pausados[robo] = quem;
+      if (pausas.has(robo)) Promise.resolve().then(() => pausas.get(robo).pausar()).catch(err => st && st.log('central: não consegui pausar de novo o', robo, '-', mensagemDe(err)));
+    }
+    st.pausadosLidos = true;
+  }).catch(err => logUmaVez('ler-estado', 'não consegui ler o estado da máquina -', mensagemDe(err)));
+}
+
+/** A pausa marcada: venceu a hora, o robô volta sozinho (a hora está em robosMaquinas, então vale depois de reiniciar). */
+/**
+ * Os horários (config/robosHorarios, robo/horarios.js): fora da janela o robô de fila fica pausado do mesmo jeito da pausa
+ * à mão, mas é outra marca: a volta da janela não solta quem foi pausado por alguém, e retomar à mão não solta quem está
+ * fora da janela. Sem configuração, nada muda.
+ */
+async function conferirHorarios(agora = Date.now()) {
+  if (!st || st.conferindoHorarios) return;
+  st.conferindoHorarios = true;
+  let mudou = false;
+  try {
+    await st.horarios.atualizar(agora);
+    for (const r of robosDaMaquina(st.maquina)) {
+      const gancho = pausas.get(r.id);
+      if (!gancho || !r.pausavel || !r.horario) continue;
+      const fora = !horarios.dentroDoHorario(st.horarios.horario(r.id), agora);
+      if (fora === st.foraDoHorario.has(r.id)) continue;
+      try {
+        if (!st.pausados[r.id]) await (fora ? gancho.pausar() : gancho.retomar());
+        if (fora) st.foraDoHorario.add(r.id); else st.foraDoHorario.delete(r.id);
+        mudou = true;
+        st.log('[' + r.id + '] central: ' + (fora ? 'fora do horário; não pega trabalho novo' : 'dentro do horário; voltou a pegar trabalho'));
+      } catch (err) { logUmaVez('horario-' + r.id, 'não consegui aplicar o horário do', r.id, '-', mensagemDe(err)); }
+    }
+  } finally { if (st) st.conferindoHorarios = false; }
+  if (mudou) void publicarEstado();
+}
+
+async function conferirPausas(agora = Date.now()) {
+  if (!st || st.conferindoPausas) return;
+  st.conferindoPausas = true;
+  let mudou = false;
+  try {
+    for (const robo of pausasVencidas(st.pausados, agora)) {
+      try {
+        const gancho = pausas.get(robo);
+        if (gancho && !st.foraDoHorario.has(robo)) await gancho.retomar();
+        delete st.pausados[robo];
+        mudou = true;
+        st.log('[' + robo + '] central: a pausa marcada venceu; voltou a pegar trabalho');
+      } catch (err) { logUmaVez('retomar-' + robo, 'não consegui retomar o', robo, '-', mensagemDe(err)); }
+    }
+  } finally { if (st) st.conferindoPausas = false; }
+  if (mudou) void publicarEstado();
 }
 
 async function limparHistorico() {
@@ -430,25 +762,24 @@ function iniciarCentral(o) {
     st = {
       db: o.db, maquina, log: o.log || console.log, raiz: o.raiz || '', versao, ligadoEm: new Date().toISOString(),
       ganchos: Object.assign({ reiniciar: reinicioEducado, atualizar: atualizarAgora }, o.ganchos || {}),
-      vistos: new Set(), recentes: new Map(), pausados: {}, timers: [], restaurar: [], paradas: [],
+      vistos: new Set(), recentes: new Map(), pausados: {}, pausadosLidos: false, conferindoPausas: false, timers: [], restaurar: [], paradas: [],
+      foraDoHorario: new Set(), conferindoHorarios: false,
     };
+    st.horarios = horarios.criarLeitor(o.db, m => logUmaVez('horarios', m));
     st.espelho = criarEspelho({
       maquina,
       gravar: (robo, doc) => st.db.collection('robosRegistros').doc(robo).set(doc)
         .catch(err => logUmaVez('registros', (semPermissao(err) ? 'sem permissão para o espelho do log' : 'não consegui gravar o espelho do log') + ' -', mensagemDe(err))),
     });
     interceptarLog(st.espelho);
-    // os pausados de antes (a pausa vale até alguém retomar, mesmo com o robô reiniciado)
-    st.db.collection('robosMaquinas').doc(maquina).get().then(s => {
-      const p = (s.exists && (s.data() || {}).pausados) || {};
-      for (const [robo, quem] of Object.entries(p)) {
-        if (!pausas.has(robo)) continue;
-        st.pausados[robo] = quem;
-        Promise.resolve().then(() => pausas.get(robo).pausar()).catch(err => st.log('central: não consegui pausar de novo o', robo, '-', mensagemDe(err)));
-      }
-    }).catch(err => logUmaVez('ler-estado', 'não consegui ler o estado da máquina -', mensagemDe(err)))
-      .finally(() => { void publicarEstado(); });
-    st.timers.push(setInterval(() => { void publicarEstado(); }, ESTADO_A_CADA_MS));
+    // os pausados de antes (a pausa vale até alguém retomar ou até a hora marcada, mesmo com o robô reiniciado); sem conseguir
+    // ler agora, tenta de novo a cada minuto
+    lerPausasGuardadas().finally(() => { void conferirHorarios().catch(err => logUmaVez('agenda', 'erro no horário -', mensagemDe(err))).finally(() => publicarEstado()); });
+    st.timers.push(setInterval(() => { if (!st.pausadosLidos) void lerPausasGuardadas(); void publicarEstado(); }, ESTADO_A_CADA_MS));
+    st.timers.push(setInterval(() => {
+      void conferirPausas().catch(err => logUmaVez('agenda', 'erro na pausa marcada -', mensagemDe(err)));
+      void conferirHorarios().catch(err => logUmaVez('agenda', 'erro no horário -', mensagemDe(err)));
+    }, AGENDA_A_CADA_MS));
     st.timers.push(setInterval(() => { try { st.espelho.tique(); } catch (e) { /* segue */ } }, 5000));
     st.timers.push(setTimeout(() => { void limparHistorico(); }, 3 * 60 * 1000));
     st.timers.push(setInterval(() => { void limparHistorico(); }, 12 * 36e5));
@@ -459,6 +790,8 @@ function iniciarCentral(o) {
       () => st.db.collection('robosComandos').where('maquina', '==', maquina).where('status', '==', 'pendente'),
       snap => { for (const d of snap.docs) void atender(d).catch(err => logUmaVez('atender', 'erro atendendo comando -', mensagemDe(err))); },
       m => logUmaVez('ouvir', m)));
+    st.alertas = require('./alertas').iniciarAlertas({ db: o.db, maquina, log: st.log, enviarPara: o.enviarAlerta || null });
+    st.paradas.push(st.alertas.parar);
     st.log('central dos robôs ligada (' + maquina + ')');
     const parar = () => desligarCentral();
     return parar;
@@ -484,5 +817,7 @@ module.exports = {
   // para o teste
   ACOES, ACOES_DA_MAQUINA, VALIDADE_MS, REPETIDO_MS, LINHAS, MAX_BYTES, AO_VIVO_MS, DEVAGAR_MS, TRAVADO_MS,
   conferirComando, limparSegredos, linhaParaEspelho, roboDaLinha, criarEspelho, docDoEspelho, travado, chaveDoComando,
-  sinaisDaMaquina, TAREFAS, _atender: atender, _st: () => st,
+  pausasVencidas, motivoDaHora, ITEM_OK, CLIENTE_OK, COMPETENCIA_OK, PEDIDOS_POR_CLIENTE,
+  podeFazer,
+  sinaisDaMaquina, TAREFAS, _atender: atender, _conferirPausas: conferirPausas, _conferirHorarios: conferirHorarios, _st: () => st,
 };
