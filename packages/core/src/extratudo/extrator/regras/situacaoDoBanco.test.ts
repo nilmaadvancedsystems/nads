@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ArquivoImportado, EmpresaExtrator, Lancamento } from '../tipos';
 import { chequeDaViradaDoAno, diasNegativos, situacaoDoBancoNoPeriodo } from './situacaoDoBanco';
+import { soAPontaDoMes } from './bancos';
 
 const arq = (id: string, lado: 'banco' | 'sistema', lancamentos: Lancamento[], saldoAnterior?: number): ArquivoImportado =>
   ({ id, lado, nome: id, importadoEm: '2026-10-01T12:00:00Z', modo: 'primeira', lancamentos, ...(saldoAnterior != null ? { saldoAnterior } : {}) });
@@ -93,5 +94,18 @@ describe('o Ajuste de exercícios anteriores na virada do ano', () => {
   it('depois do dia 4, com o valor que não bate com o saldo: pendente', () => {
     const e = emp([arq('e', 'banco', EX, 20000), arq('r', 'sistema', [...RZ, L('2026-01-05', -12345, 'Ajustes de Exercicios Anteriores')])]);
     expect(situacaoDoBancoNoPeriodo(e, 'b', 'b', ['2026-01']).tipo).toBe('pendente');
+  });
+});
+
+describe('o mês em que o extrato é só a ponta de um PDF de antes (10/11/2026)', () => {
+  const ponta = { lancamentos: [L('2026-02-20', 100, 'A'), L('2026-03-03', 200, 'B')] };
+  it('começa antes, termina nos primeiros dias e o razão continua: não é o extrato do mês', () => {
+    expect(soAPontaDoMes([ponta], [{ lancamentos: [L('2026-03-03', 200, 'B'), L('2026-03-20', 50, 'C')] }], '2026-03')).toBe(true);
+    expect(soAPontaDoMes([ponta], [], '2026-03')).toBe(true);
+  });
+  it('o razão termina junto, o extrato do próprio mês ou o que vai até o fim do mês: é o extrato', () => {
+    expect(soAPontaDoMes([ponta], [{ lancamentos: [L('2026-03-03', 200, 'B')] }], '2026-03')).toBe(false);
+    expect(soAPontaDoMes([ponta, { lancamentos: [L('2026-03-02', 10, 'X'), L('2026-03-31', 20, 'Y')] }], [], '2026-03')).toBe(false);
+    expect(soAPontaDoMes([{ lancamentos: [L('2026-02-20', 100, 'A'), L('2026-03-28', 200, 'B')] }], [], '2026-03')).toBe(false);
   });
 });
