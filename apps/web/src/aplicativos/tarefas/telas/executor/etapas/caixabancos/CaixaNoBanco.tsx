@@ -1,21 +1,23 @@
-// O que saiu do caixa e também saiu do banco, dentro da etapa Caixa (Vitor, 16/10/2026): cada pagamento do caixa com o
-// lançamento do banco logo abaixo (o logo, a data, a descrição, o valor e quantos dias de diferença), no fundo da cor do
-// banco — o desenho da sugestão de baixa do Clientes.
+// O que saiu do caixa e também saiu do banco, na etapa final (Vitor, 10/11/2026; antes, no Caixa): cada pagamento do caixa com
+// o lançamento do banco logo abaixo (o logo, a data, a descrição, o valor e quantos dias de diferença), o par todo no fundo
+// da cor do banco e com o check de conferido — o desenho da sugestão de baixa do Clientes.
 import { LogoBanco, fundoSuaveDoBanco } from '@nads/ui';
 import { Fragment } from 'react';
 import type { CaixaNoBancoDoRazao } from './useCaixaNoBanco';
 
 export function TabelaCaixaNoBanco({ vm }: { vm: CaixaNoBancoDoRazao }) {
+  if (!vm.temRazao) return <p className="hint">Sem o razão do caixa: importe na etapa Caixa ou na Importação.</p>;
   if (!vm.temExtrato) return <p className="hint">Nenhum extrato de banco importado na Importação: não tem onde procurar.</p>;
   if (!vm.itens.length) return <p className="hint">Nenhum pagamento do caixa com o mesmo valor saindo do banco.</p>;
   return (
     <div className="table-wrap" style={{ maxHeight: 'none' }}>
       <table className="table-compact">
-        <thead><tr><th>Data</th><th>Saiu do caixa</th><th>Contrapartida</th><th className="num">Valor</th><th>Saiu do banco</th></tr></thead>
+        <thead><tr><th aria-label="Conferido" /><th>Data</th><th>Saiu do caixa</th><th>Contrapartida</th><th className="num">Valor</th><th>Saiu do banco</th></tr></thead>
         <tbody>
           {vm.itens.map(i => (
             <Fragment key={i.id}>
-              <tr>
+              <tr style={fundoSuaveDoBanco(i.marca) ? { background: fundoSuaveDoBanco(i.marca) } : undefined}>
+                <td style={{ width: 32 }}><input type="checkbox" checked={i.conferido} onChange={() => vm.alternarConferido(i.chave)} aria-label={'Conferido: ' + i.historico} title="Conferido" /></td>
                 <td style={{ whiteSpace: 'nowrap' }}>{i.data}</td>
                 <td className="wrap">{i.historico}</td>
                 <td className="wrap hint">{i.contrapartida || '—'}</td>
@@ -23,7 +25,7 @@ export function TabelaCaixaNoBanco({ vm }: { vm: CaixaNoBancoDoRazao }) {
                 <td className="hint">{i.noBanco.length === 1 ? '1 lançamento' : i.noBanco.length + ' lançamentos'}</td>
               </tr>
               <tr>
-                <td colSpan={5} style={{ padding: 0 }}>
+                <td colSpan={6} style={{ padding: 0 }}>
                   <table className="table-compact" aria-label={'No banco: ' + i.historico}>
                     <tbody>
                       {i.noBanco.map((b, j) => (

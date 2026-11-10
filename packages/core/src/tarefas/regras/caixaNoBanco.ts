@@ -145,6 +145,11 @@ export function passouPeloCaixa(caixa: readonly LancamentoDoRazao[], meses: read
   return out;
 }
 
+/** O código de transação do histórico (o UUID do Mercado Pago, ou um código longo de letras e números); CPF, CNPJ e nº de documento, não. */
+const codigosDeTransacao = (h: string) => [...h.toLowerCase().matchAll(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b|\b(?=[a-z0-9]*[a-z])(?=[a-z0-9]*\d)[a-z0-9]{16,}\b/g)].map(m => m[0]);
+/** O mesmo lançamento (Vitor, 10/11/2026: "esse é o mesmo lançamento"): o caixa e o banco trazem o mesmo código de transação. */
+const mesmaTransacao = (a: string, b: string) => { const de = codigosDeTransacao(a); return de.length > 0 && codigosDeTransacao(b).some(c => de.includes(c)); };
+
 export function caixaNoBanco(caixa: readonly LancamentoDoRazao[], extrato: readonly LancamentoDoExtrato[], meses: readonly string[], dias = DIAS_DO_CAIXA_NO_BANCO): CaixaNoBanco[] {
   return caixa
     .filter(l => meses.includes(l.data.slice(0, 7)) && Math.round(l.valor * 100) > 0 && !BANCO.test(normalizarTexto(l.nomeContrapartida)))
@@ -153,7 +158,7 @@ export function caixaNoBanco(caixa: readonly LancamentoDoRazao[], extrato: reado
       // no razão do Alterdata o crédito vem positivo: no caixa, é o que saiu
       const saida = l.valor > 0;
       const noBanco = extrato
-        .filter(b => Math.abs(b.valor) === centavos && (saida ? b.valor < 0 : b.valor > 0))
+        .filter(b => Math.abs(b.valor) === centavos && (saida ? b.valor < 0 : b.valor > 0) && !mesmaTransacao(l.historico, b.historico))
         .map(b => ({ ...b, dias: dia(b.data) - dia(l.data) }))
         .filter(b => Math.abs(b.dias) <= dias)
         .sort((a, b) => Math.abs(a.dias) - Math.abs(b.dias) || a.dias - b.dias)
