@@ -12,10 +12,12 @@ export function FilaDoRobo({ central, s, maquina, acoes }: { central: Central; s
   const pedidos = s.robo.pedidos || [];
   const { fila, clientes } = useFila(s.robo.id, pedidos.length > 0);
   const mexe = !!s.robo.itens && (s.robo.itens.cancelar || s.robo.itens.naFrente);
+  const podeNaFrente = central.pode('na-frente', s.robo.id);
+  const podeCancelar = central.pode('cancelar-item', s.robo.id);
   return (
     <div>
       {acoes.erro && !acoes.pendente && <p className="cr-erro-linha" role="alert" style={{ marginBottom: 16 }}>{acoes.erro}</p>}
-      {pedidos.length > 0 && <PedirParaCliente s={s} maquina={maquina} acoes={acoes} pedidos={pedidos} clientes={clientes} agora={central.agora} />}
+      {pedidos.length > 0 && central.pode('pedir-cliente', s.robo.id) && <PedirParaCliente s={s} maquina={maquina} acoes={acoes} pedidos={pedidos} clientes={clientes} agora={central.agora} />}
       <section className="cr-secao">
         <h2>Na fila agora</h2>
         {fila.erro ? <p className="cr-erro-linha" role="alert">{fila.erro}</p>
@@ -30,10 +32,10 @@ export function FilaDoRobo({ central, s, maquina, acoes }: { central: Central; s
                       <b>{i.titulo}</b>
                       <span>{[i.detalhe, i.criadoPor, r.haQuantoTempo(i.criadoEm, central.agora)].filter(Boolean).join(', ')}</span>
                     </div>
-                    {i.podeCancelar || i.podePassarNaFrente ? (
+                    {(i.podeCancelar && podeCancelar) || (i.podePassarNaFrente && podeNaFrente) ? (
                       <span className="cr-botoes cr-botoes-item">
-                        {i.podePassarNaFrente && <button type="button" className="cr-botao" disabled={acoes.enviando || !!i.naFrenteEm} onClick={() => acoes.pedir(r.acaoPorId('na-frente')!, maquina.maquina, s.robo, null, extras)}>{i.naFrenteEm ? 'Na frente' : 'Passar na frente'}</button>}
-                        {i.podeCancelar && <button type="button" className="cr-botao perigo-leve" disabled={acoes.enviando} onClick={() => acoes.pedir(r.acaoPorId('cancelar-item')!, maquina.maquina, s.robo, null, extras)}>Cancelar</button>}
+                        {i.podePassarNaFrente && podeNaFrente && <button type="button" className="cr-botao" disabled={acoes.enviando || !!i.naFrenteEm} onClick={() => acoes.pedir(r.acaoPorId('na-frente')!, maquina.maquina, s.robo, null, extras)}>{i.naFrenteEm ? 'Na frente' : 'Passar na frente'}</button>}
+                        {i.podeCancelar && podeCancelar && <button type="button" className="cr-botao perigo-leve" disabled={acoes.enviando} onClick={() => acoes.pedir(r.acaoPorId('cancelar-item')!, maquina.maquina, s.robo, null, extras)}>Cancelar</button>}
                       </span>
                     ) : <Estado tom={i.emAndamento ? 'ok' : 'neutro'}>{i.rotulo}</Estado>}
                   </li>

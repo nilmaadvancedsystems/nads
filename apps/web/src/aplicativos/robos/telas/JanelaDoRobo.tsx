@@ -119,7 +119,7 @@ function VisaoGeral({ central, s, maquina, acoes }: { central: Central; s: r.Sit
 /** O botão ao lado do erro: pede de novo só aquele pedido. Sem pedido identificado (lote que não abriu, erro antigo), nada. */
 export function Refazer({ a, central, acoes }: { a: entregas.AtividadeDoRobo; central: Central; acoes: Acoes }) {
   const estado = r.estadoDoRefazer(a, central.comandos, central.agora);
-  if (estado === 'nao') return null;
+  if (estado === 'nao' || !central.pode('refazer', r.roboDaAtividade(a)?.id)) return null;
   return <button type="button" className="cr-botao" disabled={estado === 'pedido' || acoes.enviando} onClick={() => acoes.refazer(a)}>{estado === 'pedido' ? 'Pedido' : 'Refazer'}</button>;
 }
 
@@ -163,7 +163,7 @@ function Registros({ robo, agora }: { robo: r.RoboDaCentral; agora: number }) {
 }
 
 function Acoes({ central, s, maquina, acoes }: { central: Central; s: r.SituacaoDoRoboNaCentral; maquina: r.SituacaoDaMaquina; acoes: Acoes }) {
-  const lista = r.acoesDoRobo(s.robo, !!s.pausa);
+  const lista = r.acoesDoRobo(s.robo, !!s.pausa).filter(a => central.pode(a.id, s.robo.id));
   const doRobo = lista.filter(a => a.alvo === 'robo');
   const daMaquina = lista.filter(a => a.alvo === 'maquina');
   const comandos = comandosDoRobo(central.comandos, s.robo).slice(0, 8);
@@ -184,6 +184,8 @@ function Acoes({ central, s, maquina, acoes }: { central: Central; s: r.Situacao
           </ul>
         </section>
       )}
+      {!doRobo.length && !daMaquina.length && <section className="cr-secao"><p className="cr-fraco">Seu acesso a este robô é só para olhar.</p></section>}
+      {daMaquina.length > 0 && (
       <section className="cr-secao">
         <h2>Na máquina ({maquina.maquina.nome})</h2>
         <ul className="cr-acoes">
@@ -198,6 +200,7 @@ function Acoes({ central, s, maquina, acoes }: { central: Central; s: r.Situacao
           })}
         </ul>
       </section>
+      )}
       <section className="cr-secao">
         <h2>Pedidos recentes</h2>
         <Historico comandos={comandos} agora={central.agora} />
@@ -232,7 +235,7 @@ function Configuracoes({ central, s, maquina, acoes }: { central: Central; s: r.
         <section className="cr-secao">
           <div className="cr-acao">
             <div><b>Pausado</b><span>{s.pausa ? 'Pausado por ' + (s.pausa.por || 'alguém') + (s.pausa.ate ? ', volta sozinho ' + r.quandoVolta(s.pausa.ate, central.agora) : '') + '. Retome para voltar a pegar trabalho.' : 'Pausado, o robô não pega trabalho novo.'}</span></div>
-            <button type="button" role="switch" aria-checked={!!s.pausa} aria-label="Pausado" className={'cr-interruptor' + (s.pausa ? ' ligado' : '')} disabled={acoes.enviando}
+            <button type="button" role="switch" aria-checked={!!s.pausa} aria-label="Pausado" className={'cr-interruptor' + (s.pausa ? ' ligado' : '')} disabled={acoes.enviando || !central.pode(pausar.id, s.robo.id)}
               onClick={() => acoes.pedir(pausar, maquina.maquina, s.robo)}><span /></button>
           </div>
         </section>
@@ -247,7 +250,7 @@ function Configuracoes({ central, s, maquina, acoes }: { central: Central; s: r.
           <dt>Tarefas</dt><dd>{s.robo.tarefas.map(t => t.nome).join(', ') || 'nenhuma para rodar à mão'}</dd>
         </dl>
       </section>
-      <p className="cr-nota">Os ajustes do trabalho de cada robô (regras do arquivador, empresas do SIEG, horários) continuam no nads. Daqui só saem as ações da lista fechada.</p>
+      <p className="cr-nota">Ajustes, horários e alertas ficam em Ajustes, no menu. As regras do Arquivador continuam no nads. Daqui só saem as ações da lista fechada.</p>
     </div>
   );
 }

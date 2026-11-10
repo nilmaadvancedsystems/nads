@@ -1,5 +1,5 @@
-// As fichas da navegação: Máquinas (as três, com os sinais e as ações de cada uma), Registros (a atividade de todos os
-// robôs e o histórico dos pedidos) e Ajustes (a conta e como a central funciona).
+// As fichas da navegação: Máquinas (as três, com os sinais e as ações de cada uma) e Registros (a atividade de todos os
+// robôs e o histórico dos pedidos). Os Ajustes estão em Configuracoes.tsx.
 import { robos as r } from '@nads/core';
 import { useState } from 'react';
 import type { Central, useAcoes } from '../casca/useCentral';
@@ -50,12 +50,12 @@ export function PainelMaquinas({ central, acoes, aoFechar }: { central: Central;
               <dt>Robôs</dt><dd>{robos.map(s => s.robo.nome).join(', ')}</dd>
             </dl>
             {!m.sinais && <p className="cr-nota">Sem CPU e memória ainda: chegam com o código novo do robô.</p>}
-            <div className="cr-botoes">
+            {central.administra && <div className="cr-botoes">
               {r.ACOES.filter(a => a.alvo === 'maquina' && !a.interna).map(a => (
                 <button key={a.id} type="button" className="cr-botao perigo-leve" disabled={acoes.enviando || m.semGancho.includes(a.id)}
                   title={m.semGancho.includes(a.id) ? 'Esta máquina ainda não sabe fazer isso' : a.descricao} onClick={() => acoes.pedir(a, m.maquina, null)}>{a.id === 'reiniciar' ? 'Reiniciar' : 'Atualizar'}</button>
               ))}
-            </div>
+            </div>}
           </section>
         );
       })}
@@ -99,24 +99,6 @@ export function PainelRegistros({ central, acoes, aoFechar }: { central: Central
       <section className="cr-secao">
         <h2>Pedidos feitos pela central</h2>
         <Historico comandos={central.comandos.slice(0, 20)} agora={central.agora} />
-      </section>
-    </Janela>
-  );
-}
-
-export function PainelConfiguracoes({ central, aoFechar }: { central: Central; aoFechar: () => void }) {
-  return (
-    <Janela rotulo="Ajustes" aoFechar={aoFechar} titulo={<Titulo icone="settings" texto="Ajustes" />}>
-      <section className="cr-secao">
-        <h2>Conta</h2>
-        <div className="cr-acao">
-          <div><b>{central.nome || 'Sem nome'}</b><span>{central.exemplos ? 'Dados de exemplo: nada vai para o banco nem para os robôs.' : 'Administrador, com a conta do Entregas.'}</span></div>
-          <button type="button" className="cr-botao" onClick={central.sair}>{central.rotuloSair}</button>
-        </div>
-      </section>
-      <section className="cr-secao">
-        <h2>Como os pedidos chegam aos robôs</h2>
-        <p className="cr-fraco cr-pequeno">Cada ação vira um pedido no banco. O robô de cada máquina só lê os pedidos dela e só faz o que está na lista fechada: pausar e retomar (um robô ou todos, com hora para voltar), rodar uma tarefa conhecida, limpar a fila travada, cancelar, passar na frente ou refazer um pedido da fila, pedir para um cliente, reiniciar com calma e atualizar. Pedido com mais de 5 minutos ou repetido é recusado, e a resposta volta no próprio pedido. Nenhum comando de sistema sai daqui.</p>
       </section>
     </Janela>
   );

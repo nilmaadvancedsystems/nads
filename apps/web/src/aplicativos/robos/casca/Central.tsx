@@ -4,14 +4,15 @@
 // O endereço guarda o que está aberto:
 //   /robos                       a tela inicial
 //   /robos/robo/<id>/<aba>       a janela de um robô (aba: geral, fila, registros, acoes, config)
-//   /robos/maquinas | /robos/registros | /robos/configuracoes
+//   /robos/maquinas | /robos/registros | /robos/configuracoes/<aba>
 import { robos as r } from '@nads/core';
 import { useRef } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { IconeDoRobo } from '../partes/IconeDoRobo';
 import { Confirmacao } from '../partes/Janela';
 import { ABAS, AppIcone, Estado, JanelaDoRobo, Refazer, type AbaDoRobo } from '../telas/JanelaDoRobo';
-import { PainelConfiguracoes, PainelMaquinas, PainelRegistros } from '../telas/Paineis';
+import { PainelConfiguracoes } from '../telas/Configuracoes';
+import { PainelMaquinas, PainelRegistros } from '../telas/Paineis';
 import { aceitaHora, useAcoes, useBusca, useCentral } from './useCentral';
 
 const NAV = [
@@ -59,7 +60,7 @@ export function Central() {
             <div className="cr-topo-nome">
               <h1>Central dos robôs</h1>
               <div className="cr-topo-sub">
-              {central.semPermissao ? <span className="cr-resumo">O banco não deixou ler: só o administrador vê os robôs.</span>
+              {central.semPermissao ? <span className="cr-resumo">O banco não deixou ler os robôs para esta conta.</span>
                 : !central.carregado ? <span className="cr-resumo">Chamando os robôs…</span>
                 : atencao.length ? (
                   <button type="button" className="cr-resumo atencao" onClick={() => atencaoRef.current?.scrollIntoView({ block: 'start' })}>
@@ -139,10 +140,10 @@ export function Central() {
                     ? central.geral.pausados.length + ' de ' + central.geral.pausaveis.length + ' robôs pausados' + (central.geral.voltaEm ? ', o primeiro volta ' + r.quandoVolta(central.geral.voltaEm, central.agora) : ', até alguém retomar') + '.'
                     : 'Os ' + central.geral.pausaveis.length + ' robôs que sabem pausar estão trabalhando.'}
                 </p>
-                <div className="cr-botoes">
+                {central.pode('parar-tudo') && <div className="cr-botoes">
                   <button type="button" className="cr-botao perigo-leve" disabled={acoes.enviando || !central.geral.paraParar.length} onClick={() => acoes.pedirEmTodas(r.acaoPorId('parar-tudo')!, central.geral.paraParar)}>Parar tudo</button>
                   {central.geral.pausados.length > 0 && <button type="button" className="cr-botao" disabled={acoes.enviando} onClick={() => acoes.pedirEmTodas(r.acaoPorId('retomar-tudo')!, central.geral.paraRetomar)}>Retomar tudo</button>}
-                </div>
+                </div>}
               </section>
 
               <section className="cr-bloco">
@@ -210,7 +211,7 @@ export function Central() {
       )}
       {secao === 'maquinas' && <PainelMaquinas central={central} acoes={acoes} aoFechar={voltar} />}
       {secao === 'registros' && <PainelRegistros central={central} acoes={acoes} aoFechar={voltar} />}
-      {secao === 'configuracoes' && <PainelConfiguracoes central={central} aoFechar={voltar} />}
+      {secao === 'configuracoes' && <PainelConfiguracoes central={central} aba={partes[1] || ''} irPara={a => ir('/robos/configuracoes/' + a, { replace: true })} aoFechar={voltar} />}
 
       {acoes.pendente && (
         <Confirmacao

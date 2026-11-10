@@ -3,7 +3,10 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import type { robos } from '@nads/core';
 import type { ClienteDaTela, DocsDaCentral, FilaDaTela, PedidoDaTela } from './central';
-import { repoDaCentral } from './fonte';
+import { repoDaCentral, repoDosAjustes } from './fonte';
+
+/** As configurações da central (ver dados/ajustes.ts): só os ViewModels chamam. */
+export const ajustesDaCentral = repoDosAjustes;
 
 /** Tudo da central, ao vivo enquanto o site está aberto. */
 export function useDocsDaCentral(): DocsDaCentral & { exemplos: boolean; pedir: (p: PedidoDaTela) => Promise<string> } {

@@ -4,6 +4,7 @@ import { entregas, robos as r } from '@nads/core';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useOperador } from '../../tarefas/casca/operador';
 import { useDocsDaCentral } from '../dados/repo';
+import { usePermissao } from './useAcesso';
 
 const DIAS = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
@@ -21,6 +22,7 @@ export function useAgora(aCadaMs = 15000): number {
 export function useCentral() {
   const d = useDocsDaCentral();
   const { operador, escolher, comLogin } = useOperador();
+  const permissao = usePermissao();
   const agora = useAgora();
   const data = new Date(agora);
 
@@ -40,6 +42,10 @@ export function useCentral() {
   const geral = useMemo(() => r.pausaGeral(situacoes), [situacoes]);
 
   return {
+    permissao,
+    administra: r.administra(permissao),
+    /** Só para desenhar a tela; quem confere de verdade é o banco e o robô. */
+    pode: (acao: string, robo?: string) => r.podeNaCentral(permissao, acao, robo),
     exemplos: d.exemplos,
     carregado: d.carregado,
     semPermissao: d.semPermissao,
@@ -109,7 +115,7 @@ export function useAcoes(central: Pick<Central, 'pedir' | 'nome'>) {
       setHora('');
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      setErro(/permission|insufficient/i.test(msg) ? 'O banco não deixou: só o administrador manda ações (ou as regras novas ainda não foram publicadas).' : msg);
+      setErro(/permission|insufficient/i.test(msg) ? 'O banco não deixou: você não tem permissão para essa ação (ou as regras novas ainda não foram publicadas).' : msg);
     } finally {
       setEnviando(false);
     }

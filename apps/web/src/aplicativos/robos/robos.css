@@ -363,3 +363,22 @@
   .cr-acoes > .cr-acao:has(.cr-botoes-item) { flex-direction: column; align-items: stretch; gap: var(--e2); }
   .cr-botoes-item { justify-content: flex-start; }
 }
+
+/* Ajustes (10/11/2026): só o encaixe das peças que já existem (cr-acao, cr-campo, cr-busca, cr-chave, cr-botao). */
+.cr-ajuste-campo { flex: none; width: 220px; }
+.cr-ajuste-lista { flex: none; width: 280px; display: flex; flex-direction: column; gap: var(--e2); }
+.cr-ajuste-lista .cr-acoes > .cr-acao { padding: var(--e2) 0; }
+.cr-ajuste-incluir { display: flex; gap: var(--e2); }
+.cr-ajuste-incluir .cr-busca { flex: 1; margin: 0; min-width: 0; width: auto; }
+.cr-ajuste-campo .cr-busca, .cr-horario-horas .cr-busca { width: 100%; }
+.cr-marcas, .cr-horario-dias { display: flex; flex-wrap: wrap; gap: var(--e2) var(--e4); margin-top: var(--e3); }
+.cr-horario-horas { display: flex; flex-wrap: wrap; gap: var(--e3); margin-top: var(--e3); }
+.cr-horario-horas .cr-campo { flex: 1 1 140px; max-width: 220px; }
+.cr-pessoa { padding: var(--e3) 0; border-top: 1px solid var(--border); }
+.cr-pessoa:first-child { border-top: 0; padding-top: 0; }
+.cr-dl-par { display: contents; }
+@media (max-width: 767px) {
+  .cr-acao.cr-ajuste { flex-direction: column; align-items: stretch; gap: var(--e2); }
+  .cr-ajuste-campo, .cr-ajuste-lista { width: 100%; }
+  .cr-horario-horas .cr-campo { max-width: none; }
+}
