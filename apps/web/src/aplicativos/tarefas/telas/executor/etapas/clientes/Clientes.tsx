@@ -10,6 +10,7 @@ import { useClientes, type FiltroClientes, type TelaClientes } from './useClient
 import { useColunaAjustavel, ValorNaGrade } from '../../../../../../comum/GradeDosMeses';
 import { DigitarLancamento } from './DigitarLancamento';
 import { ConsultaDeNotas, useAbasDaConsulta } from '../consulta/ConsultaDeNotas';
+import { FaixaDelegado } from '../delegacao/FaixaDelegado';
 import { JanelaDelegar } from '../delegacao/JanelaDelegar';
 import { useDelegacaoDaEtapa, type VmDelegacao } from '../delegacao/useDelegacaoDaEtapa';
 
@@ -43,7 +44,7 @@ export function Clientes() {
         {vm.corrigir ? <button type="button" className="btn btn-primary" onClick={vm.tirar}>Corrigi, irei reimportar</button>
           : vm.temProxima ? <button type="button" className="btn btn-primary" disabled={!vm.podeSeguir} onClick={vm.proximo}>Próximo</button>
           // nada para questionar: sem o Envio, segue para a próxima etapa pela seta lá de cima (Vitor, 15/10/2026)
-          : vm.semQuestionamento && <span className="hint">{vm.dicaDoFim}</span>}
+          : vm.semQuestionamento && !!vm.dicaDoFim && <span className="hint">{vm.dicaDoFim}</span>}
         {/* no Envio, só o Mandar pelo Mandei (Vitor, 07/10/2026: "remove isso tudo, deixa só o botão"): vai para o e-mail e o
             WhatsApp da empresa, os do Cadastro */}
         {vm.tela === 'envio' && vm.conferidos.length > 0 && (
@@ -53,6 +54,7 @@ export function Clientes() {
           </button>
         )}
       </div>
+      <FaixaDelegado vm={delegacao} />
       {vm.tela === 'arquivos' && <Arquivos vm={vm} />}
       {vm.tela === 'clientes' && <ListaDeClientes vm={vm} delegacao={delegacao} />}
       {delegacao.aberta && <JanelaDelegar vm={delegacao} />}

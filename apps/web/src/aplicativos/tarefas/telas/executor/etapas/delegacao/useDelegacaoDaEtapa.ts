@@ -21,7 +21,7 @@ export function useDelegacaoDaEtapa(etapa: t.delegadas.EtapaQueDelega, contas: r
   const repo = useTarefasDelegadas();
   const acesso = useAcesso();
   const operador = useOperador().operador;
-  const { toast } = useRetorno();
+  const { toast, modal } = useRetorno();
   const uid = repo.eu()?.uid || '';
   // as tarefas desta etapa, nesta empresa e período
   const daEtapa = repo.lista().tarefas.filter(x => x.etapaDelegada?.etapa === etapa && x.etapaDelegada.rota === rota && x.etapaDelegada.periodo === periodo && x.status !== 'cancelada');
@@ -74,7 +74,23 @@ export function useDelegacaoDaEtapa(etapa: t.delegadas.EtapaQueDelega, contas: r
   return {
     /** a tarefa, se esta tela foi aberta pela delegação */
     recebida,
-    podeDelegar: !recebida && contas.length > 0,
+    // tudo já delegado: só depois de remover
+    podeDelegar: !recebida && contas.length > 0 && !enviadas.some(x => x.etapaDelegada?.todas),
+    /** o que quem pediu já delegou nesta etapa: para quem e quantas a pessoa marcou */
+    delegadas: recebida ? [] : enviadas.map(x => {
+      const e = x.etapaDelegada as t.delegadas.EtapaDelegada;
+      const total = e.todas ? contas.length : e.contas.length;
+      return { id: x.id, para: x.responsavel.nome, resumo: (e.todas ? 'Todos os ' + ROTULO[etapa].toLowerCase() : total + (total === 1 ? ' conta' : ' contas')) + ' · ' + Math.min(e.feitas.length, total) + ' de ' + total + ' feitas' };
+    }),
+    /** cancela a tarefa: a pessoa deixa de ter a etapa e as contas voltam ao normal (o histórico da tarefa fica) */
+    async remover(id: string, nome: string) {
+      const ok = await modal<boolean>({
+        icone: 'alert', titulo: 'Remover a delegação?', texto: nome + ' deixa de ter esta etapa. A tarefa fica como cancelada.',
+        botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Remover', valor: true, variante: 'btn-primary' }],
+      });
+      if (!ok) return;
+      try { await repo.salvar(id, { status: 'cancelada' }); toast('Delegação removida.'); } catch (e) { toast('Não removi: ' + (e instanceof Error ? e.message : String(e))); }
+    },
     /** quem recebeu só vê o que foi pedido */
     visivel: (codigo: string) => !recebida?.etapaDelegada || d.contaNaDelegacao(recebida.etapaDelegada, codigo),
     /** o check de quem recebeu */
