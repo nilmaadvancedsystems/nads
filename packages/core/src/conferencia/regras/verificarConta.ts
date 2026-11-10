@@ -308,6 +308,17 @@ export function conferirConta(x: EntradaVerificacao): ResultadoVerificacao {
     ? x.contas.flatMap(a => (x.razaoPorConta[a.codigo] || []).map(l => ({ ...l, conta: a.codigo, dica: undefined })))
     : (x.razaoPorConta[codigos[0]] || []).map(l => ({ ...l, dica: undefined }));
 
+  // a nota do fornecedor desta categoria que veio com o CFOP de outra natureza e a conta cita pelo número e pelo valor: é desta
+  // conta (Vitor, 10/11/2026, na 287: a fatura da internet com CFOP 1556 aparecia "A mais na conta", com a nota lá)
+  if (x.servTipo) {
+    const tNf = x.servTipo === 'tomados' ? 'Entrada' : 'Saída';
+    const servTipo = x.servTipo;
+    alvo = alvo.concat(todas.filter(n => n.tipo === tNf && !!n.numero && !alvo.some(a => a.numero === n.numero && Math.abs(a.valor - n.valor) < IGUAL)
+      && (!periodo || noPeriodo({ data: n.data, comp: n.comp || '' }, periodo))
+      && contasDoPart(e, servTipo, n.nome).some(c => codigos.indexOf(c) > -1)
+      && razao.some(l => Math.abs(l.valor - n.valor) < IGUAL && numerosDoHistorico(l.txt, true).some(t => semZeros(t) === semZeros(n.numero)))));
+  }
+
   const icmsLinhas = razao.filter(ehLinhaIcms);
   let linhasConf = razao.filter(l => !ehLinhaIcms(l));
 
