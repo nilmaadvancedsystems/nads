@@ -31,7 +31,7 @@ const trava = { diretor: true, liberado: false, internos: ['nilmacontabilidade@g
 igual('trava: interno passa', B.motivoParaNaoMandar(naFila(['nilmacontabilidade@gmail.com']), trava), '');
 igual('trava: cliente não passa', /ainda não foi liberado.*cliente@empresa\.com/.test(B.motivoParaNaoMandar(naFila(['nilmacontabilidade@gmail.com', 'cliente@empresa.com']), trava)), true);
 igual('liberado: cliente passa', B.motivoParaNaoMandar(naFila(['cliente@empresa.com']), Object.assign({}, trava, { liberado: true })), '');
-igual('a trava vem ligada', B.LIBERADO_PARA_CLIENTES, false);
+igual('liberado para os clientes (10/11/2026)', B.LIBERADO_PARA_CLIENTES, true);
 igual('não Diretor', B.motivoParaNaoMandar(naFila(['nilmacontabilidade@gmail.com']), Object.assign({}, trava, { diretor: false })), 'só o Diretor dispara os boletos');
 igual('fora do lote', B.motivoParaNaoMandar(naFila(['nilmacontabilidade@gmail.com'], { fora: true }), trava), 'o boleto foi tirado do lote');
 igual('sem cliente', B.motivoParaNaoMandar(naFila(['nilmacontabilidade@gmail.com'], { contratoId: '' }), trava), 'o boleto está sem cliente');
@@ -94,17 +94,18 @@ function banco(para, usuario) {
   db = banco(['cliente@empresa.com']);
   await B.mandarUm(db, db.ref('financeiroBoletos/b1'), deps);
   b = db.docs.get('financeiroBoletos/b1');
-  igual('cliente com a trava: erro', b.envio.status, 'erro');
-  igual('cliente com a trava: nada sai', mandados.length, 1);
+  // liberado em 10/11/2026: o e-mail do cliente sai (a trava continua testada acima, pelo motivoParaNaoMandar)
+  igual('cliente liberado: enviado', b.envio.status, 'enviado');
+  igual('cliente liberado: sai para o cliente', [mandados.length, mandados[1] && mandados[1].para], [2, 'cliente@empresa.com']);
 
   db = banco(['nilmacontabilidade@gmail.com'], { nivel: 'colaborador', roles: ['admin'] });
   await B.mandarUm(db, db.ref('financeiroBoletos/b1'), deps);
-  igual('quem não é Diretor: erro, nada sai', [db.docs.get('financeiroBoletos/b1').envio.erro, mandados.length], ['só o Diretor dispara os boletos', 1]);
+  igual('quem não é Diretor: erro, nada sai', [db.docs.get('financeiroBoletos/b1').envio.erro, mandados.length], ['só o Diretor dispara os boletos', 2]);
 
   db = banco(['nilmacontabilidade@gmail.com']);
   db.docs.delete('financeiroBoletos/b1/partes/0');
   await B.mandarUm(db, db.ref('financeiroBoletos/b1'), deps);
-  igual('PDF que não chegou inteiro: erro, nada sai', [db.docs.get('financeiroBoletos/b1').envio.status, mandados.length], ['erro', 1]);
+  igual('PDF que não chegou inteiro: erro, nada sai', [db.docs.get('financeiroBoletos/b1').envio.status, mandados.length], ['erro', 2]);
 
   db = banco(['nilmacontabilidade@gmail.com']);
   await B.mandarUm(db, db.ref('financeiroBoletos/b1'), Object.assign({}, deps, { enviar: async () => { throw new Error('Gmail fora'); } }));

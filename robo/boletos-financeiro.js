@@ -12,6 +12,8 @@
 // A TRAVA (Vitor, 10/11/2026: "testes só com destinatário interno"): enquanto LIBERADO_PARA_CLIENTES for false, só sai
 // para os endereços de INTERNOS; um boleto com qualquer outro destinatário vira erro, sem mandar nada. Liberar é mudar a
 // constante no código, com o ok do Vitor.
+// LIBERADA em 10/11/2026 ("libera o envio de clientes"): os boletos saem para os e-mails do cliente na linha. Para voltar aos
+// testes, é pôr false de novo.
 //
 // O que ficou 'enviando' (o robô caiu no meio) não é mandado de novo sozinho: vira erro pedindo para conferir na caixa do
 // robô se saiu, antes de disparar outra vez.
@@ -20,7 +22,7 @@ const L = require('./lote-dp');
 const dp = require('./envios-do-dp');
 
 const COLECAO = 'financeiroBoletos';
-const LIBERADO_PARA_CLIENTES = false;
+const LIBERADO_PARA_CLIENTES = true;
 const INTERNOS = ['nilmacontabilidade@gmail.com'];
 // o freio próprio (o Gmail aguenta 500 destinatários por dia); passou, o boleto espera na fila e o robô tenta depois
 const MAX_POR_HORA = 60;
