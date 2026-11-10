@@ -628,6 +628,9 @@ const ABAS_DA_IMPORTACAO: { id: AbaImportacao; rotulo: string; icone: AbaDaEtapa
   { id: 'prestados', rotulo: 'Prestados', icone: 'fileUp' },
 ];
 
+/** A aba Balancete e razões saiu da Importação (Vitor, 10/11/2026: "remove isso daqui"); o que já foi importado continua valendo nas etapas. Para voltar, é só pôr true. */
+const BALANCETE_NA_IMPORTACAO: boolean = false;
+
 /** As abas da Importação no Alterdata do Fiscal (?etapa=fiscal): só as notas, sem os bancos e o balancete. */
 const ABAS_DAS_NOTAS: AbaImportacao[] = ['entradas', 'saidas', 'tomados', 'prestados'];
 
@@ -709,7 +712,7 @@ export function TarefaExtratos() {
     ? { precisaChequeEspecial, ...x.requisitosDoChequeEspecial(vm.bancos.map(b => ({ id: b.id, nome: b.nome, ok: !!bancosOk[b.id], semMovimento: semMovimentoNoPeriodo(b.id), diasSemCheque: diasSemCheque(b.id) }))) }
     : importados ? { ...x.requisitosDaImportacao(vm.bancos.map(b => ({
       id: b.id, nome: b.nome, ok: !!bancosOk[b.id], faltaCheque: diasSemCheque(b.id) > 0, semMovimento: semMovimentoNoPeriodo(b.id),
-    })), importados, vm.prestaServico, !!contabil.dinamico), precisaChequeEspecial } : null);
+    })), importados, vm.prestaServico, !BALANCETE_NA_IMPORTACAO || !!contabil.dinamico), precisaChequeEspecial } : null);
   const bancosSemCheque = vm.bancos.filter(b => diasSemCheque(b.id) > 0);
   // "Pedir os que faltam" (08/10/2026): os bancos sem extrato no mês, fora os sem movimento e os que já têm extrato na fila
   const faltamPedir = vm.bancos.filter(b => b.id !== 'banco' && b.extrato.qtdArquivos === 0 && !semMovimentoNoPeriodo(b.id) && !rec.linhasComRecebido.has(b.id)).length;
@@ -727,7 +730,7 @@ export function TarefaExtratos() {
   const perguntarServicos = vm.perguntarServicos;
   const perguntaServicos = ponte.naTarefa && !vm.etapaCheque && vm.cadastroCarregado && vm.prestaServico === null;
   useEffect(() => { if (perguntaServicos) void perguntarServicos(); }, [perguntaServicos]); // eslint-disable-line react-hooks/exhaustive-deps
-  const visiveis = ABAS_DA_IMPORTACAO.filter(a => (a.id !== 'prestados' || vm.prestaServico !== false) && (!vm.etapaFiscal || ABAS_DAS_NOTAS.includes(a.id)));
+  const visiveis = ABAS_DA_IMPORTACAO.filter(a => (a.id !== 'contabil' || BALANCETE_NA_IMPORTACAO) && (a.id !== 'prestados' || vm.prestaServico !== false) && (!vm.etapaFiscal || ABAS_DAS_NOTAS.includes(a.id)));
   const aba = visiveis.some(a => a.id === abaEscolhida) ? abaEscolhida : visiveis[0].id;
   const abas = visiveis.map(a => ({ ...a, ativa: a.id === aba }));
   useAbasDaEtapa(vm.etapaCheque ? [] : abas, id => { if (ABAS_DA_IMPORTACAO.some(a => a.id === id)) setAba(id as AbaImportacao); });

@@ -135,7 +135,7 @@ export function JanelaDoFaturamento({ cliente, competencias, rotuloDoPeriodo, an
                 {vm.despesas?.destaques.map(x => <div key={x.rotulo} className="fat-destaque"><span className="fraco">{x.rotulo}</span><b className="num">R$ {brl(x.valor)}</b></div>)}
               </div>
             ) : null}
-            {!vm.temDinamico ? <p className="fraco">O balancete dinâmico desta empresa ainda não foi importado no Contábil (na Importação da rotina). Com ele, aparecem aqui as despesas do mês: água, energia, aluguel, salários, FGTS e as outras.</p>
+            {!vm.temDinamico ? <p className="fraco">O balancete dinâmico desta empresa ainda não foi importado no Contábil (na etapa Clientes da rotina). Com ele, aparecem aqui as despesas do mês: água, energia, aluguel, salários, FGTS e as outras.</p>
               : !vm.despesas ? <p className="fraco">O balancete dinâmico importado não tem {vm.mes.rotulo}. Importe o mais novo no Contábil.</p>
               : !vm.despesas.contas.length ? <p className="fraco">Nenhuma despesa lançada no mês.</p>
               : (

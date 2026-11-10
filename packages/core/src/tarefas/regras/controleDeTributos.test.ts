@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { linhasDoProtocolo } from './protocoloDeTributos';
-import { colunaDaGuia, competenciaDaApuracao, grupoDoControle, htmlDoControle, linhaEmBranco, numeroDoControle, preencherComSugestao, situacaoDaLinha, somarMesesDaCompetencia, sugestoesDoEntregas, valorDoControle } from './controleDeTributos';
+import { alternarRetificacaoDaLinha, linhaRetificada, colunaDaGuia, competenciaDaApuracao, grupoDoControle, htmlDoControle, linhaEmBranco, numeroDoControle, preencherComSugestao, situacaoDaLinha, somarMesesDaCompetencia, sugestoesDoEntregas, valorDoControle } from './controleDeTributos';
 
 const logo = { definicao: '<svg id="def"></svg>', uso: '<svg><use href="#x"/></svg>' };
 
@@ -118,5 +118,22 @@ describe('o controle de tributos do Fiscal (27/10/2026)', () => {
     expect(html).toContain('>zap<');
     expect(html).toContain('Cliente pediu boleto');
     expect(html).toContain('07/2026');
+  });
+
+  it('a retificação ligada: não conta como andamento e entra preenchida no quadro do protocolo', () => {
+    const lp = grupoDoControle('lp');
+    const branca = linhaEmBranco('2026-08', 12, 'lp');
+    const ligada = alternarRetificacaoDaLinha(branca);
+    expect(linhaRetificada(ligada)).toBe(true);
+    expect(situacaoDaLinha(ligada)).toBe('branco');
+    expect(linhaRetificada(alternarRetificacaoDaLinha(ligada))).toBe(false);
+    const empresas = [{ codigo: 12, nome: 'RETIFICADA LTDA' }, { codigo: 13, nome: 'OUTRA LTDA' }];
+    const quadro = (linhas: Map<number, typeof branca>) => htmlDoControle({ competencia: '2026-08', grupo: lp, empresas, linhas, logo, folha: { observacoes: [], retificacoes: [] } }).split('<h2>RETIFICAÇÃO</h2>')[1];
+    const html = quadro(new Map([[12, ligada], [13, linhaEmBranco('2026-08', 13, 'lp')]]));
+    expect(html).toContain('00012');
+    expect(html).toContain('RETIFICADA LTDA');
+    expect(html).toContain('>08/2026<');
+    expect(html).not.toContain('OUTRA LTDA');
+    expect(quadro(new Map())).not.toContain('RETIFICADA LTDA');
   });
 });

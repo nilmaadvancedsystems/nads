@@ -8,7 +8,7 @@ import type { CaixaNoBancoDoRazao } from './useCaixaNoBanco';
 const estiloDoPar = (k: number, conferido: boolean) => ({ background: k % 2 ? 'color-mix(in srgb, var(--ink) 4%, var(--surface))' : 'var(--surface)', ...(conferido ? { opacity: 0.45 } : {}) });
 
 export function TabelaCaixaNoBanco({ vm }: { vm: CaixaNoBancoDoRazao }) {
-  if (!vm.temRazao) return <p className="hint">Sem o razão do caixa: importe na etapa Caixa ou na Importação.</p>;
+  if (!vm.temRazao) return <p className="hint">Sem o razão do caixa: importe na etapa Caixa.</p>;
   if (!vm.temExtrato) return <p className="hint">Nenhum extrato de banco importado na Importação: não tem onde procurar.</p>;
   if (!vm.itens.length) return <p className="hint">Nenhum pagamento do caixa com o mesmo valor saindo do banco.</p>;
   return (
