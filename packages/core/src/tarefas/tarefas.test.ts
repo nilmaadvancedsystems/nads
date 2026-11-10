@@ -21,6 +21,7 @@ describe('rotina do Contábil', () => {
       expect(new Set(e.objecoes.map(o => o.id)).size).toBe(e.objecoes.length);
     }
     expect(ids[0]).toBe('extratos');
+    expect(ids).not.toContain('emprestimos'); // fora da rotina por enquanto (10/11/2026)
   });
 });
 
