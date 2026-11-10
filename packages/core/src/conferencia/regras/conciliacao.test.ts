@@ -62,6 +62,9 @@ describe('podeConferir', () => {
     expect(podeConferir(empresa({ contas: [conta('87529', 'Telefone')] }), ['87529'])).toBe(true);
     expect(podeConferir(e, ['66015'], ['Serviços de telecomunicação'])).toBe(true);
   });
+  it('outros custos também (10/11/2026)', () => {
+    expect(podeConferir(empresa({ contas: [conta('66012', 'Outros custos')] }), ['66012'])).toBe(true);
+  });
 });
 
 describe('quaisMarcarSozinho', () => {
