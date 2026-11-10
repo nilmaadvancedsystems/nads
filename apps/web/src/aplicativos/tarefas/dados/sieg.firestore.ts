@@ -3,7 +3,7 @@
 //   - pedidosSieg: o pedido {status: 'pendente', codigo, competencia, criadoEm, criadoPor, criadoPorUid} (só essas
 //     chaves); o robô escreve o andamento, o concluído ou o erro no próprio pedido;
 //   - robo/sieg (só leitura): o robô ligado (com as credenciais) e o ponto.
-import { tarefas as t } from '@nads/core';
+import { escutasDoBanco, tarefas as t } from '@nads/core';
 import { addDoc as addDocBruto, collection, doc, getDoc, onSnapshot, query, setDoc as setDocBruto, where } from 'firebase/firestore';
 import { bancoDoEntregas } from './entregas.firestore';
 import type { PedidoSieg, PedidoSituacao, RepoSieg, SituacaoNaSefaz } from './sieg';
@@ -22,6 +22,7 @@ export function criarSiegFirestore(quem: () => Quem): RepoSieg {
   let ver = 0;
   const ouvintes = new Set<() => void>();
   const mudou = () => { ver++; for (const f of ouvintes) f(); };
+  const escutas = escutasDoBanco.criarEscutas(mudou);
   let robo = { carregado: false, ligado: false, motivo: '', em: '', situacao: '', naFila: 0 };
   let ouvindoRobo = false;
   const contagens = new Map<string, { carregada: boolean; dados: t.sieg.ContagemSieg | null }>();
@@ -48,29 +49,32 @@ export function criarSiegFirestore(quem: () => Quem): RepoSieg {
     },
     contagem(codigo, competencia) {
       const k = soDigitos(codigo) + '_' + competencia;
+      escutas.usar('contagem|' + k);
       if (!contagens.has(k)) {
         contagens.set(k, { carregada: false, dados: null });
-        onSnapshot(doc(db, 'siegContagens', k), s => {
+        const parar = onSnapshot(doc(db, 'siegContagens', k), s => {
           const d = s.data();
           contagens.set(k, { carregada: true, dados: d ? { codigo: texto(d.codigo), competencia: texto(d.competencia), em: texto(d.em), emitidas: tipos(d.emitidas), recebidas: tipos(d.recebidas) } : null });
           mudou();
         }, () => { contagens.set(k, { carregada: true, dados: null }); mudou(); });
+        escutas.guardar('contagem|' + k, () => { parar(); contagens.delete(k); });
       }
       return contagens.get(k)!;
     },
     // todos os clientes do mês numa consulta só (siegContagens e siegSaidas têm o campo competencia; 09/10/2026)
     doMes(competencia) {
+      escutas.usar('mes|' + competencia);
       if (!doMes.has(competencia)) {
         const m = { carregado: false, contagens: new Map<string, t.sieg.ContagemSieg>(), saidas: new Map<string, t.sieg.SaidasSieg>(), vieram: 0 };
         doMes.set(competencia, m);
         const chegou = () => { m.vieram++; if (m.vieram >= 2) m.carregado = true; };
         let c1 = false, c2 = false;
-        onSnapshot(query(collection(db, 'siegContagens'), where('competencia', '==', competencia)), s => {
+        const pararContagens = onSnapshot(query(collection(db, 'siegContagens'), where('competencia', '==', competencia)), s => {
           m.contagens = new Map(s.docs.map(x => { const d = x.data(); const cod = x.id.split('_')[0]; return [cod, { codigo: cod, competencia, em: texto(d.em), emitidas: tipos(d.emitidas), recebidas: tipos(d.recebidas) }]; }));
           if (!c1) { c1 = true; chegou(); }
           mudou();
         }, () => { if (!c1) { c1 = true; chegou(); } mudou(); });
-        onSnapshot(query(collection(db, 'siegSaidas'), where('competencia', '==', competencia)), s => {
+        const pararSaidas = onSnapshot(query(collection(db, 'siegSaidas'), where('competencia', '==', competencia)), s => {
           m.saidas = new Map(s.docs.map(x => {
             const d = x.data();
             const cod = x.id.split('_')[0];
@@ -86,14 +90,16 @@ export function criarSiegFirestore(quem: () => Quem): RepoSieg {
           if (!c2) { c2 = true; chegou(); }
           mudou();
         }, () => { if (!c2) { c2 = true; chegou(); } mudou(); });
+        escutas.guardar('mes|' + competencia, () => { pararContagens(); pararSaidas(); doMes.delete(competencia); });
       }
       return doMes.get(competencia)!;
     },
     saidas(codigo, competencia) {
       const k = soDigitos(codigo) + '_' + competencia;
+      escutas.usar('saidas|' + k);
       if (!saidas.has(k)) {
         saidas.set(k, { carregadas: false, dados: null });
-        onSnapshot(doc(db, 'siegSaidas', k), s => {
+        const parar = onSnapshot(doc(db, 'siegSaidas', k), s => {
           const d = s.data();
           saidas.set(k, {
             carregadas: true,
@@ -108,11 +114,13 @@ export function criarSiegFirestore(quem: () => Quem): RepoSieg {
           });
           mudou();
         }, () => { saidas.set(k, { carregadas: true, dados: null }); mudou(); });
+        escutas.guardar('saidas|' + k, () => { parar(); saidas.delete(k); });
       }
       return saidas.get(k)!;
     },
     pedido(codigo, competencia, tipo = 'saidas') {
       const k = soDigitos(codigo) + '_' + competencia;
+      escutas.usar('pedido|' + k);
       if (!pedidos.has('saidas|' + k)) {
         pedidos.set('saidas|' + k, null);
         pedidos.set('contagem|' + k, null);
@@ -121,7 +129,7 @@ export function criarSiegFirestore(quem: () => Quem): RepoSieg {
         pedidos.set('zipFaltam|' + k, null);
         // os últimos pedidos da empresa e mês: o mais novo de cada tipo (sem tipo = as saídas, os pedidos de antes)
         // só igualdades (sem orderBy: pedia um índice que não existe e o erro sumia calado; 07/10/2026): o mais novo aqui
-        onSnapshot(query(collection(db, 'pedidosSieg'), where('codigo', '==', soDigitos(codigo)), where('competencia', '==', competencia)), s => {
+        const parar = onSnapshot(query(collection(db, 'pedidosSieg'), where('codigo', '==', soDigitos(codigo)), where('competencia', '==', competencia)), s => {
           const todos = s.docs.map(x => ({ ...x.data(), id: x.id }) as Record<string, unknown>).sort((a, b) => texto(b.criadoEm).localeCompare(texto(a.criadoEm)));
           for (const t of ['saidas', 'contagem', 'xmls', 'xmlsCliente', 'zipFaltam'] as const) {
             const d = todos.find(x => (x.tipo || 'saidas') === t);
@@ -140,15 +148,17 @@ export function criarSiegFirestore(quem: () => Quem): RepoSieg {
           }
           mudou();
         }, () => undefined);
+        escutas.guardar('pedido|' + k, () => { parar(); for (const de of ['saidas', 'contagem', 'xmls', 'xmlsCliente', 'zipFaltam']) pedidos.delete(de + '|' + k); });
       }
       return pedidos.get(tipo + '|' + k) || null;
     },
     // a situação das notas na SEFAZ (15/10/2026): pedidosSituacao, o robô da VM grava o andamento e o resultado no pedido
     situacao(codigo, competencia) {
       const k = soDigitos(codigo) + '_' + competencia;
+      escutas.usar('situacao|' + k);
       if (!situacoes.has(k)) {
         situacoes.set(k, null);
-        onSnapshot(query(collection(db, 'pedidosSituacao'), where('codigo', '==', soDigitos(codigo)), where('competencia', '==', competencia)), s => {
+        const parar = onSnapshot(query(collection(db, 'pedidosSituacao'), where('codigo', '==', soDigitos(codigo)), where('competencia', '==', competencia)), s => {
           const d = s.docs.map(x => x.data()).sort((a, b) => texto(b.criadoEm).localeCompare(texto(a.criadoEm)))[0];
           const r = d?.resultado as Record<string, unknown> | undefined;
           const c = (r?.contagem || {}) as Record<string, unknown>;
@@ -165,6 +175,7 @@ export function criarSiegFirestore(quem: () => Quem): RepoSieg {
           } : null);
           mudou();
         }, () => undefined);
+        escutas.guardar('situacao|' + k, () => { parar(); situacoes.delete(k); });
       }
       return situacoes.get(k) || null;
     },
@@ -180,9 +191,10 @@ export function criarSiegFirestore(quem: () => Quem): RepoSieg {
     },
     notas(codigo, competencia) {
       const k = soDigitos(codigo) + '_' + competencia;
+      escutas.usar('notas|' + k);
       if (!notas.has(k)) {
         notas.set(k, { carregadas: false, dados: null });
-        onSnapshot(doc(db, 'siegNotas', k), s => {
+        const parar = onSnapshot(doc(db, 'siegNotas', k), s => {
           const d = s.data();
           notas.set(k, {
             carregadas: true,
@@ -195,6 +207,7 @@ export function criarSiegFirestore(quem: () => Quem): RepoSieg {
           });
           mudou();
         }, () => { notas.set(k, { carregadas: true, dados: null }); mudou(); });
+        escutas.guardar('notas|' + k, () => { parar(); notas.delete(k); });
       }
       return notas.get(k)!;
     },

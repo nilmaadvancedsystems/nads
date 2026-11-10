@@ -10,7 +10,7 @@ import { useCadastro } from '../../dados/repo';
 import { useModelosDeHistorico } from '../../dados/useModelosDeHistorico';
 import { useOperador } from '../../casca/operador';
 import { nomeDoLote } from '../../../../comum/importarNoAlterdata';
-import { useContabilDaEmpresa } from '../../../../comum/contabilDaEmpresa';
+import { rotuloDaImportacao, useContabilDaEmpresa } from '../../../../comum/contabilDaEmpresa';
 
 /** contaDoItem: a conta do item do checklist ("60005 — Pro-labore a Pagar"), a do débito. */
 export function usePagamentosDoProLabore(empresa: string, codigo: number | null, contaDoItem: string) {
@@ -19,9 +19,9 @@ export function usePagamentosDoProLabore(empresa: string, codigo: number | null,
   // o da Importação (o upload único dos razões; o Diário preenche ali), quando a etapa não tem o próprio
   const contabil = useContabilDaEmpresa(empresa, codigo);
   const daImportacao = contabil.razaoDoTipo('prolabore');
-  const impArquivo = daImportacao?.arquivo;
+  const impArquivo = daImportacao ? rotuloDaImportacao(daImportacao) : '';
   const impRazao = daImportacao?.razao;
-  const razao = useMemo(() => proprio || (impRazao ? { arquivo: impArquivo + ' (da Importação)', razao: impRazao } : null), [proprio, impArquivo, impRazao]);
+  const razao = useMemo(() => proprio || (impRazao ? { arquivo: impArquivo, razao: impRazao } : null), [proprio, impArquivo, impRazao]);
   // só a conta do crédito e o dia útil do pagamento (Vitor, 14/10/2026: "não precisa apresentar, só pedir a conta e se vai
   // ser no 1, 2, 3, 4 ou 5 dia útil de cada mês"); a lista do razão não aparece
   // salvos na empresa (Cadastro; Vitor, 14/10/2026: "deixa ele salvo na empresa"); a conta, ao sair do campo

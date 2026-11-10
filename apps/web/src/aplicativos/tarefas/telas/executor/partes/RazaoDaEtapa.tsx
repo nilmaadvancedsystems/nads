@@ -74,10 +74,10 @@ export function RazaoDaEtapa({ conta, razao, conferir, teste = [] }: { conta: st
               <Icone nome="caretDown" />
             </button>
             <span className="imp-ico"><Icone nome="dinheiro" /></span>
-            <div className="imp-txt">
+            <div className="imp-txt imp-txt-larga">
               <span><b>{nome}</b>{razao.arquivo && <span className="imp-conta">{razao.arquivo}</span>}</span>
+              <div className="imp-resumo">{razao.resumo && <div><span>{razao.resumo}</span></div>}</div>
             </div>
-            <div className="imp-resumo">{razao.resumo && <div><span>{razao.resumo}</span></div>}</div>
             <div className="imp-grupos">
               <div className="imp-grupo" aria-label={'Razão do ' + conta}>
                 <span className="imp-rotulo">Razão</span>

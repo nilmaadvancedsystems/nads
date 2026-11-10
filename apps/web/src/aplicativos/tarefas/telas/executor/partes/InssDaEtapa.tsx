@@ -67,10 +67,10 @@ export function InssDaEtapa({ inss, conferir, teste = [], folha, so, conferencia
             </button>
             {/* o logo do INSS (Vitor, 07/10/2026): cinza até importar */}
             <span className="imp-ico imp-logo"><LogoInss cor={inss.temRazao || inss.temGuias} /></span>
-            <div className="imp-txt">
+            <div className="imp-txt imp-txt-larga">
               <span><b>INSS a recolher</b>{inss.arquivoRazao && <span className="imp-conta">{inss.arquivoRazao}</span>}</span>
+              <div className="imp-resumo">{inss.resumo.length > 0 && <div>{inss.resumo.map(x => <span key={x}>{x}</span>)}</div>}</div>
             </div>
-            <div className="imp-resumo">{inss.resumo.length > 0 && <div>{inss.resumo.map(x => <span key={x}>{x}</span>)}</div>}</div>
             <div className="imp-grupos">
               <div className="imp-grupo" aria-label="Razão do INSS a recolher">
                 <span className="imp-rotulo">Razão</span>
