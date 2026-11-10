@@ -248,7 +248,7 @@ export function leituraCobreOArquivo(a: ArquivoImportado, lido: ArquivoLido): bo
 
 /** O mês depois do mês em que o arquivo foi importado: o extrato não podia ter esse movimento (o ano foi lido errado). */
 function mesImpossivel(a: ArquivoImportado, mes: string): boolean {
-  return mes > a.importadoEm.slice(0, 7);
+  return !!a.importadoEm && mes > a.importadoEm.slice(0, 7);
 }
 
 /**
