@@ -2,8 +2,6 @@
 // aqui) e a tabela das contas do lado errado — a despesa credora e a receita devedora, com os meses. Tudo certo, o Ok.
 import { CampoArquivo, Icone } from '@nads/ui';
 import { useId } from 'react';
-import { FaixaQueAbre } from '../../../../../../comum/FaixaQueAbre';
-import { TabelaCaixaNoBanco } from '../caixabancos/CaixaNoBanco';
 import { useResultado } from './useResultado';
 
 export function Resultado() {
@@ -67,12 +65,6 @@ export function Resultado() {
         </div>
       )}
 
-      {/* o que saiu do caixa e também do banco, o mesmo valor, até 5 dias; só sugere (Vitor, 10/11/2026: "deixa para a etapa final") */}
-      <div className="imp-bloco" style={{ marginTop: 16 }}>
-        <FaixaQueAbre titulo="Pago pelo banco e lançado no caixa" qtd={vm.noBanco.pendentes} aviso={vm.noBanco.pendentes > 0}>
-          <div className="imp-mov-caixa"><TabelaCaixaNoBanco vm={vm.noBanco} /></div>
-        </FaixaQueAbre>
-      </div>
     </section>
   );
 }

@@ -17,6 +17,7 @@ import { Resultado } from './resultado/Resultado';
 import { AdiantamentoSalarial } from './adiantamentosalarial/AdiantamentoSalarial';
 import { LcdprDaEtapa } from './lcdpr/LcdprDaEtapa';
 import { ImportacaoDaEtapa } from './importacao/ImportacaoDaEtapa';
+import { ConciliacaoCaixa } from './caixabancos/ConciliacaoCaixa';
 import { ConferenciaFiscal } from './conferencia/ConferenciaFiscal';
 import { CreditorDaEtapa } from './creditor/CreditorDaEtapa';
 import { CartoesDaEtapa } from './cartoes/CartoesDaEtapa';
@@ -43,6 +44,7 @@ export function TelaDaEtapa({ id }: { id: tarefas.TelaDaEtapa }) {
     case 'honorarios': return <Honorarios />;
     case 'simples': return <Simples />;
     case 'resultado': return <Resultado />;
+    case 'conciliacao-caixa': return <ConciliacaoCaixa />;
     case 'adiantamento-salarial': return <AdiantamentoSalarial />;
     case 'lcdpr': return <LcdprDaEtapa />;
   }

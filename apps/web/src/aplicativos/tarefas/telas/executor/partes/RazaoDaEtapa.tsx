@@ -139,7 +139,7 @@ export function RazaoDaEtapa({ conta, razao, conferir, teste = [] }: { conta: st
                   ))}
                 </div>
               </FaixaQueAbre>
-              {/* o "Pago pelo banco e lançado no caixa" foi para a etapa final, Despesas e receitas (Vitor, 10/11/2026) */}
+              {/* o "Pago pelo banco e lançado no caixa" tem um check só dele, a Conciliação caixa (Vitor, 10/11/2026) */}
               {/* o conciliador (Vitor, 16/10/2026: "era essa função que eu queria"): as notas em aberto pagas ou recebidas pelo caixa */}
               {conta === 'caixa' && (
                 <FaixaQueAbre titulo="Notas e pagamentos do banco no caixa" qtd={razao.noBanco.notas.length} aviso={razao.noBanco.notas.length > 0}>
