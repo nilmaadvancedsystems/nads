@@ -71,6 +71,21 @@ export function BalaoDoSuporte() {
   }, [tamanho, vm.aberto]);
   // a última fala sempre à vista, como num chat
   useEffect(() => { const c = corpo.current; if (c) c.scrollTop = c.scrollHeight; }, [tamanho, vm.aberto, digitando]);
+  // o Ctrl+V do print em qualquer ponto da página; o que vem com texto (o Excel manda texto e imagem) cola como texto
+  const { podeColar, colarImagens } = vm;
+  useEffect(() => {
+    if (!podeColar) return;
+    const colou = (ev: ClipboardEvent) => {
+      const d = ev.clipboardData;
+      if (!d || d.getData('text/plain').trim()) return;
+      const imagens = Array.from(d.files).filter(f => f.type.startsWith('image/'));
+      if (!imagens.length) return;
+      ev.preventDefault();
+      colarImagens(imagens);
+    };
+    document.addEventListener('paste', colou);
+    return () => document.removeEventListener('paste', colou);
+  }, [podeColar, colarImagens]);
 
   // o botão fica sempre no canto (Vitor, 21/10/2026: "deixe o botão de suporte como aberto"): aberto, o chat fica apoiado logo
   // acima dele. Com ticket em aberto ele só oculta, com a setinha (09/11/2026: "até o feedback for resolvido")

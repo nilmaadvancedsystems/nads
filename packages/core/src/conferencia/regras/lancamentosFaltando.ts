@@ -7,6 +7,7 @@
 //   - o lado sai da operação: a conta de saída/prestado é creditada (o participante é o débito) e a de entrada/tomado,
 //     debitada.
 // A nota de participante que ainda não tem lançamento na conta não entra: fica na lista "sem conta", para lançar à mão.
+import { dataOrdem } from '../../formatos';
 import { planilhaDeImportacao, TIPO_XLS, type LinhaDeImportacao } from '../../extratudo/creditor/arquivos/gerar';
 import { slugArquivoLegado } from './consultaCsv';
 import { ehLinhaIcms, mesmoNome, partesDoHistorico, type LinhaRazao, type NotaAlvo, type ResultadoVerificacao } from './verificarConta';
@@ -21,8 +22,6 @@ export function historicoDaLinha(txt: string): { codigo: string; texto: string }
   const m = String(txt || '').match(/(?:^|\s)(\d{5})\s+(\p{L}.*)$/u);
   return m ? { codigo: m[1], texto: m[2].trim() } : null;
 }
-
-const diaDe = (d: string) => { const [dd, mm, aa] = String(d || '').split('/').map(Number); return aa && mm && dd ? Date.UTC(aa, mm - 1, dd) : 0; };
 
 /** O documento da nota (CNPJ com 14 dígitos, CPF com 11). */
 function docDaNota(n: NotaAlvo): string {
@@ -89,7 +88,7 @@ export function lancamentosFaltando(r: ResultadoVerificacao): LancamentosFaltand
   const linhas = r.linhas.filter(l => !ehLinhaIcms(l));
   // o modelo do histórico: o lançamento mais recente que tem o código e o texto
   const comHist = linhas.map(l => ({ l, h: historicoDaLinha(l.txt) })).filter(x => x.h);
-  const modelo = comHist.sort((a, b) => diaDe(b.l.data) - diaDe(a.l.data))[0]?.h || null;
+  const modelo = comHist.sort((a, b) => dataOrdem(b.l.data) - dataOrdem(a.l.data))[0]?.h || null;
   // o Alterdata põe o texto padrão do código antes do complemento (Vitor, 23/10/2026: "Pelo valor do Empréstimo Crédito
   // Trabalhador Pelo valor do Empréstimo Crédito Trabalhador <08/2026> …"): o complemento vai sem ele
   const padrao = modelo ? textoPadrao(comHist.filter(x => x.h!.codigo === modelo.codigo).map(x => x.h!.texto)) : '';

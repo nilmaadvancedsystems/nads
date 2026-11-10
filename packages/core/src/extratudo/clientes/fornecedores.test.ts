@@ -18,7 +18,7 @@ describe('fornecedores (a etapa Fornecedores da Tarefa)', () => {
   const d = lerBalanceteDinamico(ROWS);
   it('as contas debaixo de FORNECEDORES do Passivo, com o sinal trocado: positivo = a empresa deve', () => {
     const f = clientesDoDinamico(d, '2026-08', 'fornecedores');
-    expect(f.map(x => [x.codigo, x.saldo])).toEqual([['32004', -3610], ['32029', 15495.31], ['32032', -0], ['32016', 1719.91]]);
+    expect(f.map(x => [x.codigo, x.saldo])).toEqual([['32004', -3610], ['32029', 15495.31], ['32032', 0], ['32016', 1719.91]]);
     // o Adiantamento a fornecedores (Ativo) não entra
     expect(f.some(x => x.codigo === '21398')).toBe(false);
   });

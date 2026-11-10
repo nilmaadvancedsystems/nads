@@ -4,7 +4,7 @@
 // citam o número). O mesmo recebimento lançado em duas contas no mesmo dia (Caixa e Banco) conta uma vez só e aparece
 // como duplicidade. As devoluções abatem o saldo, mas não dizem de qual nota são. Vale o que foi lançado até o fim do mês.
 import { reais } from '../../formatos';
-import type { LancamentoDoRazao, RazaoDaConta } from '../../tarefas/regras/razao';
+import { naOrdemDasDatas, type LancamentoDoRazao, type RazaoDaConta } from '../../tarefas/regras/razao';
 import { mesmoNomeDeCliente } from '../creditor/regras/clientes';
 
 /** Uma nota de venda do cliente no razão: vendido, recebido e o que ficou em aberto (positivo = o cliente deve). */
@@ -42,7 +42,7 @@ export interface RazaoConferido {
   saldoDoRazao: number | null;
 }
 
-const centavos = (n: number) => Math.round(n * 100) / 100;
+const centavos = (n: number) => Math.round(n * 100) / 100 || 0;
 const zero = (n: number) => Math.abs(n) < 0.005;
 
 /**
@@ -51,20 +51,30 @@ const zero = (n: number) => Math.abs(n) < 0.005;
  * cliente com nota de serviço dava "nenhuma nota em aberto").
  */
 function nfDoHistorico(h: string): string | null {
-  // o CNPJ depois da nota vem só com os números ("…-11222333000144") ou com a barra e o traço ("…-11222333/0001-44")
-  const n = /-\s*(\d{1,15})-(?:\d{11,14}\b|\d{2}\.?\d{3}\.?\d{3}\/\d{4}-\d{2}\b)/.exec(h)?.[1];
+  // o CNPJ depois da nota vem só com os números ("…-11222333000144") ou com a barra e o traço ("…-11222333/0001-44");
+  // o CPF, só com os números ou pontuado ("…-123.456.789-09")
+  const n = /-\s*(\d{1,15})-(?:\d{11,14}\b|\d{2}\.?\d{3}\.?\d{3}\/\d{4}-\d{2}\b|\d{3}\.?\d{3}\.?\d{3}-\d{2}\b)/.exec(h)?.[1];
   return n ? n.replace(/^0+(?=\d)/, '') : null;
 }
 
 /** O número da nota no recebimento: "Recebimento de clientes 9078 -DUP.001", "… 9242/002 - NOME". */
 function nfDoRecebimento(h: string): string | null {
-  return /receb\w*\s+de\s+clientes?\D*?(\d{3,9})/i.exec(h)?.[1] ?? null;
+  // com os zeros na frente, como a nota de serviço: tem de dar o mesmo número que o da venda
+  return /receb\w*\s+de\s+clientes?\D*?(\d{3,15})/i.exec(h)?.[1].replace(/^0+(?=\d)/, '') ?? null;
 }
 
 /** O número da nota no pagamento ao fornecedor: "Pagamento a fornecedores 9078 …", "Pagto fornecedor 9242/002"; senão, o do histórico da nota. */
 function nfDoPagamento(h: string): string | null {
-  return /pag\w*\.?\s+(?:a\s+|de\s+|ao\s+)?fornecedor\w*\D*?(\d{3,9})/i.exec(h)?.[1] ?? nfDoHistorico(h);
+  return /pag\w*\.?\s+(?:a\s+|de\s+|ao\s+)?fornecedor\w*\D*?(\d{3,15})/i.exec(h)?.[1].replace(/^0+(?=\d)/, '') ?? nfDoHistorico(h);
 }
+
+/** A duplicata do recebimento: "… -DUP.002", "… 9242/002"; '' = o histórico não diz. */
+function parcelaDoRecebimento(h: string): string {
+  const p = /\bdup(?:licata)?\D{0,3}(\d+)/i.exec(h)?.[1] ?? /\d{3,15}\s*\/\s*(\d{1,3})\b/.exec(h)?.[1] ?? '';
+  return p.replace(/^0+(?=\d)/, '');
+}
+
+const chaveDoRecebimento = (nf: string | null, l: Pick<LancamentoDoRazao, 'historico' | 'data' | 'valor'>) => (nf || l.historico) + '|' + l.data + '|' + Math.abs(l.valor);
 
 /**
  * De que lado é a conta (Vitor, 07/10/2026: Fornecedores é "a mesma coisa que o Clientes", com o devedor no lugar do
@@ -131,6 +141,22 @@ export function participanteDeOutraConta(participantes: readonly string[] | unde
   return participantes.some(p => mesmoNomeDeCliente(p, nomeDaConta)) ? null : participantes[0];
 }
 
+/**
+ * As duplicatas citadas em cada recebimento (a mesma nota, dia e valor), com '' para o que não cita nenhuma: só com duas ou mais
+ * diferentes e todos citando é que não são cópia um do outro (o lançado sem a duplicata pode ser a cópia de qualquer uma).
+ */
+function parcelasPorRecebimento(ls: readonly LancamentoDoRazao[], lado: LadoDaConta): Map<string, Set<string>> {
+  const m = new Map<string, Set<string>>();
+  for (const l of ls) {
+    if (tipoDe(l, lado) !== 'recebimento') continue;
+    const k = chaveDoRecebimento(lado === 'clientes' ? nfDoRecebimento(l.historico) : nfDoPagamento(l.historico), l);
+    let set = m.get(k);
+    if (!set) { set = new Set(); m.set(k, set); }
+    set.add(parcelaDoRecebimento(l.historico));
+  }
+  return m;
+}
+
 /** O fim do mês ('aaaa-mm' → 'aaaa-mm-31', vale para comparar datas 'aaaa-mm-dd'). */
 const fimDoMes = (mes: string) => mes + '-31';
 
@@ -141,40 +167,55 @@ const fimDoMes = (mes: string) => mes + '-31';
 export function conferirRazaoDoCliente(razao: RazaoDaConta, mes: string, lado: LadoDaConta = 'clientes'): RazaoConferido {
   const sinal = sinalDo(lado);
   const ate = fimDoMes(mes);
-  const ls = razao.lancamentos.filter(l => l.data <= ate);
+  // em ordem de data, como o resto das etapas (o Alterdata pode exportar a grade classificada por outra coluna, Valor por exemplo)
+  const ls = naOrdemDasDatas(razao).lancamentos.filter(l => l.data <= ate);
   const notas = new Map<string, NotaDoCliente>();
   const devolucoes: DevolucaoDoCliente[] = [];
   const duplicados: RecebimentoDuplicado[] = [];
   const semNota: RazaoConferido['semNota'] = [];
-  const vistos = new Map<string, { conta: string; dup?: RecebimentoDuplicado }>();
+  // por recebimento: quantos em cada conta e o maior deles (os da outra conta, até esse número, são a cópia)
+  const vistos = new Map<string, { primeira: string; porConta: Map<string, number>; maior: number; copias: RecebimentoDuplicado[] }>();
+  const parcelasDo = parcelasPorRecebimento(ls, lado);
   // o saldo anterior entra no saldo; o recebimento sem nota do razão paga primeiro o que ficou dele
   const anterior = centavos(-sinal * (razao.saldoInicial || 0));
   let restante = Math.max(0, anterior);
   const pagaAnterior: RazaoConferido['pagaAnterior'] = [];
   let saldo = anterior;
-  // as notas vendidas (compradas) no razão: o recebimento de uma nota que não está nele é de antes (do saldo anterior)
-  const doRazao = new Set(ls.filter(l => tipoDe(l, lado) === 'venda').map(l => nfDoHistorico(l.historico)).filter((n): n is string => !!n));
   const nota = (nf: string, data: string) => {
     let n = notas.get(nf);
     if (!n) { n = { nf, data, vendido: 0, recebido: 0, aberto: 0 }; notas.set(nf, n); }
     return n;
   };
+  // as notas vendidas (compradas) no razão, antes de olhar os recebimentos: o recebimento pode vir antes da nota (o adiantamento,
+  // ou a mesma data). O recebimento de uma nota que não está no razão é de antes (do saldo anterior)
+  for (const l of ls) {
+    const nf = tipoDe(l, lado) === 'venda' ? nfDoHistorico(l.historico) : null;
+    if (nf) nota(nf, l.data);
+  }
   for (const l of ls) {
     const tipo = tipoDe(l, lado);
     // o valor visto do lado do cliente (no fornecedor, com o sinal trocado)
     const valor = sinal * l.valor;
     if (tipo === 'recebimento') {
       const nf = lado === 'clientes' ? nfDoRecebimento(l.historico) : nfDoPagamento(l.historico);
-      const chave = (nf || l.historico) + '|' + l.data + '|' + valor;
-      const antes = vistos.get(chave);
+      const base = chaveDoRecebimento(nf, l);
+      // duas duplicatas diferentes da nota (DUP.001 e DUP.002), de mesmo valor no mesmo dia, são dois recebimentos
+      const parcelas = parcelasDo.get(base);
+      const chave = parcelas && parcelas.size > 1 && !parcelas.has('') ? base + '|' + parcelaDoRecebimento(l.historico) : base;
       const conta = (l.contrapartida + ' ' + l.nomeContrapartida).trim();
-      // o mesmo recebimento em outra conta no mesmo dia: duplicidade (conta uma vez)
-      if (antes && antes.conta !== conta) {
-        if (!antes.dup) { antes.dup = { nf: nf || '', data: l.data, valor, contas: [antes.conta] }; duplicados.push(antes.dup); }
-        antes.dup.contas.push(conta);
+      let visto = vistos.get(chave);
+      if (!visto) { visto = { primeira: conta, porConta: new Map(), maior: 0, copias: [] }; vistos.set(chave, visto); }
+      const naConta = (visto.porConta.get(conta) || 0) + 1;
+      visto.porConta.set(conta, naConta);
+      // o mesmo recebimento em outra conta no mesmo dia: duplicidade (conta uma vez). Vale o maior número de vezes numa conta só,
+      // para não depender da ordem da grade: Banco, Banco e Caixa são dois recebimentos e uma cópia, venha qual vier primeiro
+      if (naConta <= visto.maior) {
+        let copia = visto.copias[naConta - 1];
+        if (!copia) { copia = { nf: nf || '', data: l.data, valor, contas: [visto.primeira] }; visto.copias[naConta - 1] = copia; duplicados.push(copia); }
+        copia.contas.push(conta);
         continue;
       }
-      vistos.set(chave, { conta });
+      visto.maior = naConta;
       saldo -= valor;
       if (nf && notas.has(nf)) {
         const n = nota(nf, l.data);
@@ -184,7 +225,7 @@ export function conferirRazaoDoCliente(razao: RazaoDaConta, mes: string, lado: L
       // sem a nota no razão: paga o saldo anterior, se cabe nele; senão, é o pagamento solto (com a conta por onde entrou:
       // o cliente precisa dela para achar o pagamento). O recebimento de uma nota de antes do razão é para zerar o saldo
       // anterior: conciliado, não mexe (Vitor, 15/10/2026), mesmo passando do que sobrou dele
-      else if (anterior > 0.005 && valor > 0 && (valor <= restante + 0.005 || (!!nf && !doRazao.has(nf)))) {
+      else if (anterior > 0.005 && valor > 0 && (valor <= restante + 0.005 || !!nf)) {
         restante = centavos(Math.max(0, restante - valor));
         pagaAnterior.push({ data: l.data, valor, historico: l.historico, conta: (l.nomeContrapartida || l.contrapartida || '').trim() });
       }
@@ -197,7 +238,10 @@ export function conferirRazaoDoCliente(razao: RazaoDaConta, mes: string, lado: L
     else if (tipo === 'devolucao') devolucoes.push({ nf: nf || '', data: l.data, valor: centavos(valor), notas: notasCitadas(l.historico) });
   }
   const todas = [...notas.values()].map(n => ({ ...n, aberto: centavos(n.vendido - n.recebido) }));
-  const ultimo = ls[ls.length - 1];
+  // a coluna Saldo como veio, se o corte do mês é o começo da grade (mesmo fora de ordem, a soma até ali é a do fim do mês);
+  // com linhas de depois do mês no meio, ela não diz o saldo daquele dia: vale o refeito na ordem das datas
+  const naGrade = razao.lancamentos.slice(0, ls.length).every(l => l.data <= ate);
+  const ultimo = naGrade ? razao.lancamentos[ls.length - 1] : ls[ls.length - 1];
   return {
     emAberto: todas.filter(n => n.aberto > 0 && !zero(n.aberto)),
     aMais: todas.filter(n => n.aberto < 0 && !zero(n.aberto)),
@@ -386,6 +430,8 @@ export function semLancamentoDigitado(razao: RazaoDaMarca | undefined, chave: st
   if (!sai) return razao;
   const itens = razao.itens.filter(i => i !== sai);
   if (razao.manual && !itens.length) return undefined;
-  const notas = sai.status === 'aberto' && sai.nf ? razao.notas.filter(n => !(n.nf === sai.nf && n.data === sai.data && n.aberto === sai.valor)) : razao.notas;
+  // só uma: dois lançamentos iguais digitados são duas notas na relação
+  const i = sai.status === 'aberto' && sai.nf ? razao.notas.findIndex(n => n.nf === sai.nf && n.data === sai.data && n.aberto === sai.valor) : -1;
+  const notas = i < 0 ? razao.notas : razao.notas.filter((_, k) => k !== i);
   return { ...razao, itens, notas };
 }

@@ -18,7 +18,9 @@ export function movimentoDoExtrato(e: EmpresaExtrator, banco: string, primeiro: 
   const doBanco = e.arquivos.filter(a => a.lado === 'banco' && bancoDoArquivo(a, primeiro) === banco);
   // o primeiro extrato (o do lançamento mais antigo): o saldo anterior dele abre a conta
   const comeco = (a: { lancamentos: { data: string }[] }) => a.lancamentos.reduce((m, l) => (l.data < m ? l.data : m), '9999');
-  const primeiroExtrato = doBanco.slice().sort((a, b) => comeco(a).localeCompare(comeco(b)))[0];
+  // (dois começando no mesmo dia: o que traz o saldo anterior abre a conta, em qualquer ordem de importação)
+  const semSaldo = (a: { saldoAnterior?: number }) => (typeof a.saldoAnterior === 'number' ? 0 : 1);
+  const primeiroExtrato = doBanco.slice().sort((a, b) => comeco(a).localeCompare(comeco(b)) || semSaldo(a) - semSaldo(b))[0];
   const abertura = primeiroExtrato && typeof primeiroExtrato.saldoAnterior === 'number' ? primeiroExtrato.saldoAnterior : null;
   const todos = doBanco
     .flatMap(a => a.lancamentos)

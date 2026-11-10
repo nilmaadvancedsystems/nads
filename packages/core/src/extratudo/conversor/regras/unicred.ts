@@ -39,6 +39,13 @@ interface Lanc { y: number; data: string; valor: number; meio: string; acima: { 
 
 const limpar = (s: string) => s.replace(/\(\s+/g, '(').replace(/\s+\)/g, ')').replace(/\s+/g, ' ').trim();
 
+/** A página sem cabeçalho tem linha da tabela (a data na coluna, um número em Valor e outro em Saldo)? Senão é outra tabela, que não entra. */
+function continuaATabela(linhas: ReturnType<typeof montarLinhas>, cab: Cabecalho): boolean {
+  const meioDoCaminho = (cab.xValor + cab.xSaldo) / 2;
+  return linhas.some(({ tokens: t }) => !!t[0] && t[0].x < cab.xLancamentos - 10 && RE_DATA.test(t[0].s)
+    && t.some(x => RE_VALOR.test(x.s) && x.x < meioDoCaminho) && t.some(x => RE_VALOR.test(x.s) && x.x >= meioDoCaminho));
+}
+
 export function lancamentosDaUnicred(paginas: ItemDeTexto[][]): LinhaConvertida[] {
   const saida: Lanc[] = [];
   let cab: Cabecalho | null = null;
@@ -47,8 +54,10 @@ export function lancamentosDaUnicred(paginas: ItemDeTexto[][]): LinhaConvertida[
     if (fim) break;
     const daPagina: Lanc[] = [];
     const textos: { y: number; s: string }[] = [];
-    let dentro = false;
-    for (const l of montarLinhas(pagina)) {
+    const linhas = montarLinhas(pagina);
+    // a página que continua sem repetir o cabeçalho já começa na tabela (com cabeçalho, o que vem antes dele é o topo da página)
+    let dentro = !!cab && !linhas.some(l => cabecalho(l)) && continuaATabela(linhas, cab);
+    for (const l of linhas) {
       const c = cabecalho(l);
       if (c) { cab = c; dentro = true; continue; }
       if (!dentro || !cab) continue;

@@ -85,7 +85,8 @@ export function concluida(s: SituacaoEtapa): boolean {
 
 /** A primeira etapa que ainda não foi concluída (null = tudo pronto). */
 export function proximaEtapa(ex: Execucao | null, rotina: Rotina): Etapa | null {
-  return rotina.etapas.find(e => !concluida(situacaoDa(ex, e.id))) || null;
+  // a etapa que saiu do mês (retirada, ou o regime mudou) não prende a rotina, mesmo tendo sido interrompida antes
+  return rotina.etapas.find(e => etapaNoMes(ex, e.id) && !concluida(situacaoDa(ex, e.id))) || null;
 }
 
 /**

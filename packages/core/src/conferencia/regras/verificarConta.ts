@@ -4,10 +4,10 @@
 // (~L3980-4108); vcNumerosDoHistorico/vcPartesHistorico/ehLinhaIcms (~L3754-3792),
 // vcLinhasDuplicadas/vcLinhasFaltando/vcLinhaRazao (~L3785-3806), vcComposicao (~L4110),
 // vcNotasServ (~L3735), vcBtCsv (~L4225). O relatório nunca é salvo: só memória.
-import { brl, compararNumerico, nomeNorm } from '../../formatos';
+import { brl, compararNumerico, dataOrdem, nomeNorm } from '../../formatos';
 import { SV } from '../tabelas/servicos';
 import type { Conta, Empresa, FiltroMovimento, NotaComTipo, NotaServico, TipoServico } from '../tipos';
-import { agruparTotaisPorNatureza, chaveNaturezaNota, chaveNota } from './cfop';
+import { agruparTotaisPorNatureza, chaveNaturezaNota, chaveNota, emCentavos } from './cfop';
 import { noPeriodo } from './periodo';
 import { tipoDoCfopDeBem } from '../../tarefas/regras/bens';
 import { nomeComumContas } from './conciliacao';
@@ -219,7 +219,8 @@ export interface Duplicada { numero: string; vezes: number; valor: number; linha
 /** Até quantos dias de distância uma linha sem o número da nota confere com ela pelo valor. */
 export const DIAS_PELO_VALOR = 5;
 
-const diaDe = (d: string) => { const [dd, mm, aa] = String(d || '').split('/').map(Number); return aa && mm && dd ? Date.UTC(aa, mm - 1, dd) / 86400000 : NaN; };
+/** O dia, de 'dd/mm/aaaa' e das outras máscaras que o Excel dá ('05/07/26', '05-07-2026', com a hora): pelo dataOrdem, como o resto. */
+const diaDe = (d: string) => { const o = dataOrdem(d); return o ? Date.UTC(Math.floor(o / 10000), (Math.floor(o / 100) % 100) - 1, o % 100) / 86400000 : NaN; };
 
 export interface ResultadoVerificacao {
   faltando: NotaAlvo[];
@@ -307,6 +308,17 @@ export function conferirConta(x: EntradaVerificacao): ResultadoVerificacao {
     ? x.contas.flatMap(a => (x.razaoPorConta[a.codigo] || []).map(l => ({ ...l, conta: a.codigo, dica: undefined })))
     : (x.razaoPorConta[codigos[0]] || []).map(l => ({ ...l, dica: undefined }));
 
+  // a nota do fornecedor desta categoria que veio com o CFOP de outra natureza e a conta cita pelo número e pelo valor: é desta
+  // conta (Vitor, 10/11/2026, na 287: a fatura da internet com CFOP 1556 aparecia "A mais na conta", com a nota lá)
+  if (x.servTipo) {
+    const tNf = x.servTipo === 'tomados' ? 'Entrada' : 'Saída';
+    const servTipo = x.servTipo;
+    alvo = alvo.concat(todas.filter(n => n.tipo === tNf && !!n.numero && !alvo.some(a => a.numero === n.numero && Math.abs(a.valor - n.valor) < IGUAL)
+      && (!periodo || noPeriodo({ data: n.data, comp: n.comp || '' }, periodo))
+      && contasDoPart(e, servTipo, n.nome).some(c => codigos.indexOf(c) > -1)
+      && razao.some(l => Math.abs(l.valor - n.valor) < IGUAL && numerosDoHistorico(l.txt, true).some(t => semZeros(t) === semZeros(n.numero)))));
+  }
+
   const icmsLinhas = razao.filter(ehLinhaIcms);
   let linhasConf = razao.filter(l => !ehLinhaIcms(l));
 
@@ -367,18 +379,23 @@ export function conferirConta(x: EntradaVerificacao): ResultadoVerificacao {
   const semNumero = linhasConf.filter((_, i) => !numerosPorLinha[i].some(t => numerosAlvo[semZeros(t)]));
   const usadas = new Set<LinhaRazao>();
   const peloValor: { nota: NotaAlvo; linha: LinhaRazao }[] = [];
-  const faltando = faltandoPeloNumero.filter(n => {
+  // em ordem de data, depois número (e a linha por data e texto): com uma linha para duas notas de mesmo valor, a nota que ficava
+  // "Faltando" mudava conforme a ordem do arquivo (10/11/2026)
+  const linhasEmOrdem = semNumero.slice().sort((a, b) => dataOrdem(a.data) - dataOrdem(b.data) || a.txt.localeCompare(b.txt));
+  const casadas = new Set<NotaAlvo>();
+  for (const n of faltandoPeloNumero.slice().sort((a, b) => dataOrdem(a.data) - dataOrdem(b.data) || compararNumerico(a.numero, b.numero))) {
     let melhor: LinhaRazao | null = null, dist = Infinity;
-    for (const l of semNumero) {
+    for (const l of linhasEmOrdem) {
       if (usadas.has(l) || Math.abs(l.valor - Math.abs(n.valor)) >= IGUAL) continue;
       const d = Math.abs(diaDe(l.data) - diaDe(n.data));
       if (d <= DIAS_PELO_VALOR && d < dist) { dist = d; melhor = l; }
     }
-    if (!melhor) return true;
+    if (!melhor) continue;
     usadas.add(melhor);
+    casadas.add(n);
     peloValor.push({ nota: n, linha: melhor });
-    return false;
-  });
+  }
+  const faltando = faltandoPeloNumero.filter(n => !casadas.has(n));
   const sobra = semNumero.filter(l => !usadas.has(l)).concat(deOutroCfop);
   // a operação de cada linha (a coluna Operação) e a da conta: a linha que só é nota de outra operação sai do "A mais"
   const porNumero = notasPorNumero(e);
@@ -398,12 +415,12 @@ export function conferirConta(x: EntradaVerificacao): ResultadoVerificacao {
   const restante = sobra.filter(l => honorarioSemNota.indexOf(l) < 0);
   const operacaoIncorreta = soNotas ? [] : restante.filter(deOutraOperacao);
   const aMais = soNotas ? [] : restante.filter(l => !deOutraOperacao(l));
-  const somaSemIcms = linhasConf.concat(deOutroCfop).reduce((s, l) => s + l.valor, 0);
+  const somaSemIcms = emCentavos(linhasConf.concat(deOutroCfop).reduce((s, l) => s + l.valor, 0));
   const neg = linhasConf.filter(l => l.sinal < 0).length;
   const sinalConta = neg > linhasConf.length / 2 ? -1 : 1;
   const icmsSub = icmsLinhas.reduce((s, l) => s + (l.sinal === sinalConta ? -l.valor : l.valor), 0);
-  const somaRazao = somaSemIcms + icmsLinhas.reduce((s, l) => s + l.valor, 0);
-  const somaFiscal = alvo.reduce((s, n) => s + n.valor, 0);
+  const somaRazao = emCentavos(somaSemIcms + icmsLinhas.reduce((s, l) => s + l.valor, 0));
+  const somaFiscal = emCentavos(alvo.reduce((s, n) => s + n.valor, 0));
 
   if (x.servTipo) {
     const cats: string[] = [];
@@ -477,14 +494,14 @@ export interface Totais { faltando: number; duplicadas: number; aMais: number; o
 
 /** Diferença = Faltando − Duplicadas − A mais − Operação incorreta − ICMS − Honorário sem nota; o que sobrar é "Sem explicação". */
 export function totaisVerificacao(r: ResultadoVerificacao): Totais {
-  const faltando = r.faltando.reduce((s, n) => s + n.valor, 0);
-  const duplicadas = r.duplicada.reduce((s, d) => s + d.valor, 0);
-  const aMais = r.aMais.reduce((s, l) => s + l.valor, 0);
-  const operacaoIncorreta = operacaoIncorretaDe(r).reduce((s, l) => s + l.valor, 0);
-  const icms = r.icms.reduce((s, l) => s + l.valor, 0);
-  const honorarioSemNota = honorarioSemNotaDe(r).reduce((s, l) => s + l.valor, 0);
-  const diferenca = r.somaFiscal - r.somaRazao;
-  return { faltando, duplicadas, aMais, operacaoIncorreta, icms, honorarioSemNota, diferenca, semExplicacao: diferenca - (faltando - duplicadas - aMais - operacaoIncorreta - icms - honorarioSemNota) };
+  const faltando = emCentavos(r.faltando.reduce((s, n) => s + n.valor, 0));
+  const duplicadas = emCentavos(r.duplicada.reduce((s, d) => s + d.valor, 0));
+  const aMais = emCentavos(r.aMais.reduce((s, l) => s + l.valor, 0));
+  const operacaoIncorreta = emCentavos(operacaoIncorretaDe(r).reduce((s, l) => s + l.valor, 0));
+  const icms = emCentavos(r.icms.reduce((s, l) => s + l.valor, 0));
+  const honorarioSemNota = emCentavos(honorarioSemNotaDe(r).reduce((s, l) => s + l.valor, 0));
+  const diferenca = emCentavos(r.somaFiscal - r.somaRazao);
+  return { faltando, duplicadas, aMais, operacaoIncorreta, icms, honorarioSemNota, diferenca, semExplicacao: emCentavos(diferenca - (faltando - duplicadas - aMais - operacaoIncorreta - icms - honorarioSemNota)) };
 }
 
 /** Aba de uma conta (várias contas): o relatório dela e o que sobrou nela. */
@@ -502,7 +519,9 @@ export function csvVerificacao(r: ResultadoVerificacao): string[] {
   const t = totaisVerificacao(r);
   const multi = !!(r.contas && r.contas.length > 1);
   const L = [(multi ? 'Tipo;Conta;' : 'Tipo;') + 'Data;Nota;Participante;Operação;Contrapartida;Valor'];
-  const add = (tipo: string, l: LinhaTabela) => L.push([tipo].concat(multi ? [l.conta || ''] : []).concat([l.data, l.nota || '', String(l.part || '').replace(/;/g, ','), l.operacao || '', l.contra || '', brl(l.valor)]).join(';'));
+  // sem o "-0,00" (o -0 do "− duplicadas" quando não tem nenhuma)
+  const menos = (v: number) => brl(0 - v);
+  const add = (tipo: string, l: LinhaTabela) => L.push([tipo].concat(multi ? [l.conta || ''] : []).concat([l.data, l.nota || '', String(l.part || '').replace(/;/g, ',').replace(/[\r\n]+/g, ' '), l.operacao || '', l.contra || '', brl(l.valor)]).join(';'));
   linhasFaltando(r).forEach(l => add('Faltando', l));
   linhasDuplicadas(r).forEach(l => add('Duplicada', l));
   operacaoIncorretaDe(r).map(linhaDaTabela).forEach(l => add('Operação incorreta', l));
@@ -512,12 +531,12 @@ export function csvVerificacao(r: ResultadoVerificacao): string[] {
   L.push('');
   const vz = multi ? ['', '', '', '', ''] : ['', '', '', ''];
   L.push(['Totalizador', ...vz, 'Faltando', brl(t.faltando)].join(';'));
-  L.push(['Totalizador', ...vz, 'Duplicadas', brl(-t.duplicadas)].join(';'));
-  if (t.operacaoIncorreta) L.push(['Totalizador', ...vz, 'Operação incorreta', brl(-t.operacaoIncorreta)].join(';'));
-  L.push(['Totalizador', ...vz, 'A mais', brl(-t.aMais)].join(';'));
-  if (t.icms) L.push(['Totalizador', ...vz, 'ICMS', brl(-t.icms)].join(';'));
-  if (t.honorarioSemNota) L.push(['Totalizador', ...vz, 'Honorário sem nota', brl(-t.honorarioSemNota)].join(';'));
-  L.push(['Totalizador', ...vz, 'Diferença', brl(t.faltando - t.duplicadas - t.aMais - t.operacaoIncorreta - t.icms - t.honorarioSemNota)].join(';'));
+  L.push(['Totalizador', ...vz, 'Duplicadas', menos(t.duplicadas)].join(';'));
+  if (t.operacaoIncorreta) L.push(['Totalizador', ...vz, 'Operação incorreta', menos(t.operacaoIncorreta)].join(';'));
+  L.push(['Totalizador', ...vz, 'A mais', menos(t.aMais)].join(';'));
+  if (t.icms) L.push(['Totalizador', ...vz, 'ICMS', menos(t.icms)].join(';'));
+  if (t.honorarioSemNota) L.push(['Totalizador', ...vz, 'Honorário sem nota', menos(t.honorarioSemNota)].join(';'));
+  L.push(['Totalizador', ...vz, 'Diferença', brl(emCentavos(t.faltando - t.duplicadas - t.aMais - t.operacaoIncorreta - t.icms - t.honorarioSemNota))].join(';'));
   return L;
 }
 

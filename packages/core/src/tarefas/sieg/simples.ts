@@ -9,7 +9,8 @@
 //     prestados, R-4020 IRRF e CSRF dos tomados).
 import type { NotaDoSieg, NotasSieg } from './index';
 
-const centavos = (v: number) => Math.round(v * 100) / 100;
+// o meio centavo sobe, como o ARRED da planilha (o número limpo a 15 dígitos antes, como em calculadora.ts)
+const centavos = (v: number) => (Math.sign(v) * Math.round(Number((Math.abs(v) * 100).toPrecision(15)))) / 100;
 const so = (v: unknown) => String(v || '').replace(/\D/g, '');
 
 // ---------- 1) monofásico e ST ----------
@@ -40,7 +41,7 @@ const CST_ST = ['10', '30', '60', '70'];
 const CSOSNS = ['101', '102', '103', '201', '202', '203', '300', '400', '500', '900'];
 export function temIcmsSt(cst: string, cfop: string): boolean {
   const c = so(cst);
-  if (['401', '402', '403', '405'].includes(String(cfop || '').slice(1))) return true;
+  if (['401', '402', '403', '404', '405'].includes(String(cfop || '').slice(1))) return true;
   if (c.length === 4 && CSOSNS.includes(c.slice(1))) return CSOSN_ST.includes(c.slice(1));
   if (c.length === 3 && CSOSNS.includes(c)) return CSOSN_ST.includes(c);
   if (c.length === 3) return CST_ST.includes(c.slice(1));
@@ -159,12 +160,16 @@ export interface PreviaDoDas {
 export function previaDoDas(rbt12: number, parcelas: readonly ParcelaDaReceita[]): PreviaDoDas {
   const linhas = parcelas.filter(p => p.valor > 0).map(p => {
     const a = aliquotaEfetiva(p.anexo, rbt12);
-    const fora = (p.semPisCofins ? (a.reparte.PIS || 0) + (a.reparte.COFINS || 0) : 0) + (p.semIcms ? a.reparte.ICMS || 0 : 0) + (p.semIss ? a.reparte.ISS || 0 : 0);
+    // o ISS para em 5% da receita (5ª faixa dos Anexos III e IV): o excesso vai para os federais, na proporção deles (LC 123; como em calculadora.ts)
+    const iss = a.reparte.ISS || 0;
+    const excesso = a.efetiva > 0 ? Math.max(0, iss - (5 / a.efetiva) * 100) : 0;
+    const federais = excesso ? 1 + excesso / (100 - iss) : 1;
+    const fora = (p.semPisCofins ? ((a.reparte.PIS || 0) + (a.reparte.COFINS || 0)) * federais : 0) + (p.semIcms ? a.reparte.ICMS || 0 : 0) + (p.semIss ? iss - excesso : 0);
     const aplicada = a.efetiva * (1 - fora / 100);
     return { ...p, faixa: a.faixa, nominal: a.nominal, efetiva: a.efetiva, aplicada: Math.round(aplicada * 10000) / 10000, das: centavos((p.valor * aplicada) / 100) };
   });
   const total = centavos(linhas.reduce((s, l) => s + l.das, 0));
-  const cheio = centavos(linhas.reduce((s, l) => s + (l.valor * l.efetiva) / 100, 0));
+  const cheio = centavos(linhas.reduce((s, l) => s + centavos((l.valor * l.efetiva) / 100), 0)); // linha a linha, como o total
   return { rbt12, parcelas: linhas, total, economia: centavos(cheio - total) };
 }
 

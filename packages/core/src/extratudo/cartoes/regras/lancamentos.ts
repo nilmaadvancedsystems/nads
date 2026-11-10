@@ -25,6 +25,8 @@ const dias = (a: string, b: string) => Math.round((Date.parse(a) - Date.parse(b)
  * mais perto do vencimento. null = não está no extrato importado.
  */
 export function pagamentoNoExtrato(f: FaturaDoCartao, total: number, extrato: readonly LinhaDoExtrato[]): PagamentoDaFatura | null {
+  // fatura zerada ou com crédito não tem débito a achar: o "alvo" seria uma entrada qualquer de mesmo valor
+  if (total <= 0) return null;
   const alvo = -Math.round(total * 100);
   const cartao = (h: string) => /CART|FATURA|SICOOBCARD|MASTERCARD|VISA|ELO/i.test(h);
   const achado = extrato

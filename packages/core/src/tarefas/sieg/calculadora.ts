@@ -20,9 +20,9 @@ export const ROTULO_DO_TRIBUTO: Record<TributoDoSimples, string> = { IRPJ: 'IRPJ
 export const TETO_DO_ISS = 0.05;
 export const FATOR_R_MINIMO = 0.28;
 
-const centavos = (v: number) => Math.round(v * 100) / 100;
 // como o ARRED e o TRUNCAR do Excel (o número limpo a 15 dígitos antes, para 0,0045 não virar 0,0044)
 const arred = (v: number, casas: number) => { const x = Number((Math.abs(v) * 10 ** casas).toPrecision(15)); return (Math.sign(v) * Math.round(x)) / 10 ** casas; };
+const centavos = (v: number) => arred(v, 2);
 const truncar = (v: number, casas: number) => { const x = Number((Math.abs(v) * 10 ** casas).toPrecision(15)); return (Math.sign(v) * Math.trunc(x)) / 10 ** casas; };
 
 export interface PercentualDoTributo { tributo: TributoDoSimples; /** o percentual efetivo, em % (2 casas, como a planilha) */ pct: number }

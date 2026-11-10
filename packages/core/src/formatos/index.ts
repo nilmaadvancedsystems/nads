@@ -9,31 +9,44 @@ export const MES = ['', 'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junh
 export const DUAS_CASAS = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export function reais(n: number): string {
-  return (n < 0 ? '\u2212' : '') + 'R$\u00a0' + brl(Math.abs(n));
+  const valor = brl(Math.abs(n));
+  return (n < 0 && valor !== '0,00' ? '\u2212' : '') + 'R$\u00a0' + valor;
 }
 
-/** 1234.5 → "1.234,50" */
+/** 1234.5 → "1.234,50". O que arredonda para zero não sai "-0,00" (10/11/2026). */
 export function brl(n: number): string {
-  return DUAS_CASAS.format(n);
+  const s = DUAS_CASAS.format(n);
+  return s === '-0,00' ? '0,00' : s;
 }
 
-/** Lê número de planilha em formato brasileiro: "1.234,56", "(1.234,56)", "1.234,56 D". */
+/** Dois ou mais pontos em grupos de três: só pode ser milhar ("1.234.567"). */
+const SO_MILHAR_COM_PONTO = /^-?\d{1,3}(\.\d{3}){2,}$/;
+/** O americano: a vírgula do milhar com o ponto decimal ("1,234.50") ou duas ou mais vírgulas em grupos de três ("1,234,567"). */
+const AMERICANO = /^-?\d{1,3}(,\d{3})+\.\d+$|^-?\d{1,3}(,\d{3}){2,}$/;
+
+/**
+ * Lê número de planilha em formato brasileiro: "1.234,56", "(1.234,56)", "1.234,56 D", "R$ 1.234,56". Um separador só continua
+ * decimal, mesmo com três casas ("1.234" = 1,234): a célula numérica do Excel chega sem o milhar (arquivos/acertarCelula) e o
+ * "12.500" da máscara 0.000 é 12,5; o milhar só é certo quando o separador se repete ou quando há os dois (10/11/2026).
+ */
 export function num(v: unknown): number | null {
   if (v == null || v === '') return null;
-  if (typeof v === 'number') return v;
-  let s = String(v).trim().replace(/\s*[DC]$/, '').trim();
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  let s = String(v).trim().replace(/\s*[DC]$/i, '').trim().replace(/^(-?\(?)\s*R\$\s*/i, '$1');
   if (!/[0-9]/.test(s) || !/^-?\(?[\d.,]+\)?$/.test(s)) return null;
   const neg = /^\(.*\)$/.test(s);
   s = s.replace(/[()]/g, '');
-  if (s.indexOf(',') > -1) s = s.replace(/\./g, '').replace(',', '.');
+  if (SO_MILHAR_COM_PONTO.test(s)) s = s.replace(/\./g, '');
+  else if (AMERICANO.test(s)) s = s.replace(/,/g, '');
+  else if (s.indexOf(',') > -1) s = s.replace(/\./g, '').replace(',', '.');
   const n = parseFloat(s);
-  return isNaN(n) ? null : neg ? -n : n;
+  return isNaN(n) ? null : (neg ? -n : n) + 0; // + 0: o "-0,00" e o "(0,00)" são zero, não -0
 }
 
-/** "05/03/2026" → "2026-03" (competência). */
+/** "05/03/2026" → "2026-03" (competência). '' quando não é data ou o mês não existe ("05/13/2026", o americano do CSV). */
 export function comp(dt: string | null | undefined): string {
   const m = String(dt || '').match(/(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})/);
-  if (!m) return '';
+  if (!m || +m[2] < 1 || +m[2] > 12) return '';
   let a = m[3];
   if (a.length === 2) a = '20' + a;
   return a + '-' + m[2].padStart(2, '0');
@@ -153,8 +166,11 @@ export function dataHora(ts: string): string {
  */
 export function numeroDigitado(texto: string): number | null {
   const s = String(texto ?? '').trim().replace(/^R\$\s*/i, '').replace(/\s/g, '');
-  if (!s) return null;
-  const n = /^-?\d+\.\d{1,2}$/.test(s) ? Number(s) : Number(s.replace(/\./g, '').replace(',', '.'));
+  // só número: o Number aceitaria "1e5" e "0x10", e o "." sozinho, sem o ponto, viraria zero (10/11/2026)
+  if (!/^[-+]?[\d.,]*\d[\d.,]*$/.test(s)) return null;
+  const n = /^-?(\d+\.\d{1,2}|0\.\d+)$/.test(s) ? Number(s) // "0.125": o zero na frente não é milhar
+    : /^[-+]?\d{1,3}(,\d{3})+\.\d+$/.test(s) ? Number(s.replace(/,/g, '')) // "1,234.56" colado de outro lugar
+    : Number(s.replace(/\./g, '').replace(',', '.'));
   return Number.isFinite(n) ? n : null;
 }
 

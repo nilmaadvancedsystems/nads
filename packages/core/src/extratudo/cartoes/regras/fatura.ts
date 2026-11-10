@@ -41,14 +41,14 @@ const iso = (d: string) => d.slice(6, 10) + '-' + d.slice(3, 5) + '-' + d.slice(
 interface Linha { pedacos: PedacoDaFatura[]; texto: string }
 
 function linhasDe(pagina: readonly PedacoDaFatura[]): Linha[] {
-  const porY = new Map<number, PedacoDaFatura[]>();
-  for (const p of pagina) {
-    if (!p.texto.trim()) continue;
-    const y = Math.round(p.y);
-    porY.set(y, [...(porY.get(y) || []), p]);
+  // com tolerância, não arredondando: 500,49 e 500,51 são a mesma linha, e arredondados cairiam em duas
+  const grupos: PedacoDaFatura[][] = [];
+  for (const p of pagina.filter(x => x.texto.trim()).sort((a, b) => b.y - a.y)) {
+    const atual = grupos[grupos.length - 1];
+    if (atual && atual[0].y - p.y <= 1) atual.push(p); else grupos.push([p]);
   }
-  return [...porY.keys()].sort((a, b) => b - a).map(y => {
-    const pedacos = porY.get(y)!.sort((a, b) => a.x - b.x);
+  return grupos.map(g => {
+    const pedacos = g.sort((a, b) => a.x - b.x);
     return { pedacos, texto: pedacos.map(p => p.texto.trim()).join(' ').replace(/\s+/g, ' ') };
   });
 }
@@ -67,7 +67,14 @@ function partesDoGasto(l: Linha): { dia: string; valor: number; meio: string } |
 /** Uma linha "solta": só texto, sem data e sem valor, e que não é cabeçalho — pedaço de uma descrição quebrada. */
 function solta(l: Linha | undefined): boolean {
   if (!l) return false;
-  return !l.pedacos.some(p => RE_VALOR.test(p.texto.trim())) && !RE_DATA.test(l.pedacos[0].texto.trim()) && !RE_CABECALHO.test(l.texto);
+  // "01/02" fora da coluna da data é a parcela no meio da descrição, não a data de outro lançamento
+  const comData = l.pedacos[0].x < ATE_A_DATA && RE_DATA.test(l.pedacos[0].texto.trim());
+  return !l.pedacos.some(p => RE_VALOR.test(p.texto.trim())) && !comData && !RE_CABECALHO.test(l.texto);
+}
+
+/** Os números de "Conta Cartão:" das linhas (o rótulo sem número não pega a data ou o valor da linha de baixo). */
+function contasDe(linhas: readonly Linha[]): string[] {
+  return [...linhas.map(l => l.texto).join('\n').matchAll(/Conta Cart[ãa]o:\s*(\d+)(?![\d/.,])/gi)].map(m => m[1]);
 }
 
 /** Os pedaços de texto de cada página do PDF → a fatura. Lança Error com a mensagem para a tela. */
@@ -80,6 +87,12 @@ export function lerFatura(paginas: readonly (readonly PedacoDaFatura[])[]): Fatu
   const [anoV, mesV, diaV] = [Number(vencimento.slice(0, 4)), Number(vencimento.slice(5, 7)), Number(vencimento.slice(8, 10))];
   const total = todo.match(/Total da Fatura\s+(-?[\d.]+,\d{2})/i);
   const contaCartao = todo.match(/Conta Cart[ãa]o:\s*(\d+)/i)?.[1] || '';
+  // a leitura para no primeiro DEMONSTRATIVO: a conta que só vem depois dele sumiria em silêncio, com a diferença dando zero
+  const corte = linhas.findIndex(l => /^DEMONSTRATIVO/i.test(l.texto));
+  const lidas = corte < 0 ? [] : contasDe(linhas.slice(0, corte));
+  // pedaço de outra é a mesma conta impressa de outro jeito (o dígito à parte, zeros na frente, mascarada, em dois pedaços do PDF)
+  const outra = lidas.length ? contasDe(linhas.slice(corte)).find(c => !lidas.some(a => a.includes(c) || c.includes(a))) : undefined;
+  if (outra) throw new Error('Este PDF tem mais de uma conta de cartão (' + lidas[0] + ', ' + outra + '). Mande uma fatura por arquivo.');
   const cliente = todo.match(/Cliente:\s*(.+)/i)?.[1].trim() || '';
 
   const itens: ItemDaFatura[] = [];

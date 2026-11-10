@@ -87,7 +87,9 @@ export function csvConsulta(l: NotaConsulta[], g: GrupoConsulta): string[] {
   const rot: Record<string, string> = {};
   CONS_TIPOS.forEach(t => { rot[t.tipo] = t.rotulo; });
   const L = [serv ? 'Tipo;Data;Nota;Participante;Valor de ISS;Lançamento;Valor' : 'Tipo;Data;Nota;Participante;CFOP;Lançamento;Valor'];
-  for (const n of l) L.push((serv ? [rot[n.tipo], n.data, n.numero, n.nome, brl(n.iss), n.lanc, brl(n.valor)] : [rot[n.tipo], n.data, n.numero, n.nome, n.cfop || '', n.lanc, brl(n.valor)]).join(';'));
+  // o ";" ou a quebra de linha no nome empurravam as colunas (como no CSV do Verificar por conta, vira ",")
+  const texto = (s: string) => String(s || '').replace(/;/g, ',').replace(/[\r\n]+/g, ' ');
+  for (const n of l) L.push((serv ? [rot[n.tipo], n.data, texto(n.numero), texto(n.nome), brl(n.iss), texto(n.lanc), brl(n.valor)] : [rot[n.tipo], n.data, texto(n.numero), texto(n.nome), n.cfop || '', texto(n.lanc), brl(n.valor)]).join(';'));
   return L;
 }
 

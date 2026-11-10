@@ -1,7 +1,7 @@
 // Lê um arquivo escolhido (ou baixado) e devolve os lançamentos. Aceita PDF, OFX, Excel e CSV.
 // Nada do arquivo é guardado: quem chama recebe só os lançamentos (ou o motivo de não dar).
 import * as XLSX from 'xlsx';
-import { ehFaturaDeCartao, extratoDoPdf, mesesSemMovimento, saldoAnteriorDoPdf } from '../regras/extrato';
+import { ehFaturaDeCartao, ehRelatorioDeTitulos, extratoDoPdf, mesesSemMovimento, saldoAnteriorDoPdf } from '../regras/extrato';
 import { ehOfx, lancamentosDoOfx, saldoAnteriorDoOfx } from '../regras/ofx';
 import { preVerificarExtrato, preVerificarOfx } from '../regras/preVerificacao';
 import { lancamentosDaPlanilha, type Celula } from '../regras/planilha';
@@ -19,9 +19,23 @@ function extensao(nome: string): string {
   return m ? m[0] : '';
 }
 
+/** O texto do arquivo: UTF-8, ou Windows-1252 quando o UTF-8 não serve (o byte inválido vira U+FFFD), como no Creditor. */
+function decodificarTexto(bytes: Uint8Array): string {
+  const utf8 = new TextDecoder('utf-8').decode(bytes);
+  return utf8.includes(String.fromCharCode(0xfffd)) ? new TextDecoder('windows-1252').decode(bytes) : utf8;
+}
+
+/** O começo de um .xlsx (zip, "PK"), de um .xls antigo (OLE, D0 CF) ou do texto em UTF-16 (o "Texto Unicode" do Excel): a biblioteca lê pelos bytes. */
+function ehPlanilhaBinaria(b: Uint8Array): boolean {
+  return (b[0] === 0x50 && b[1] === 0x4b) || (b[0] === 0xd0 && b[1] === 0xcf) || (b[0] === 0xff && b[1] === 0xfe) || (b[0] === 0xfe && b[1] === 0xff);
+}
+
 /** Linhas de cada aba da planilha, com os valores crus (Date, número ou texto). */
 export function abasDaPlanilha(bytes: Uint8Array, csv: boolean): Celula[][][] {
-  const wb = XLSX.read(bytes, { type: 'array', cellDates: true, raw: csv });
+  // o .csv de verdade vai como texto, já decodificado (em UTF-8 sem BOM, os acentos do histórico se perdiam); a planilha com a
+  // extensão trocada (.csv que é .xlsx ou .xls) continua pelos bytes
+  const comoTexto = csv && !ehPlanilhaBinaria(bytes);
+  const wb = comoTexto ? XLSX.read(decodificarTexto(bytes), { type: 'string', cellDates: true, raw: true }) : XLSX.read(bytes, { type: 'array', cellDates: true, raw: csv });
   return wb.SheetNames.map(n => XLSX.utils.sheet_to_json<Celula[]>(wb.Sheets[n], { header: 1, raw: true, defval: '', blankrows: false }));
 }
 
@@ -32,6 +46,7 @@ export async function lerArquivo(nome: string, bytes: Uint8Array, lado: Lado, an
   const doTexto = (paginas: ItemDeTexto[][], porOcr: boolean): ArquivoLido => {
     const marca = porOcr ? { ocr: true } : {};
     if (lado === 'banco' && ehFaturaDeCartao(paginas.map(p => p.map(i => i.texto).join(' ')).join('\n'))) return { nome, lancamentos: [], erro: 'É a fatura do cartão, não o extrato da conta.', faturaDeCartao: true, ...marca };
+    if (lado === 'banco' && ehRelatorioDeTitulos(paginas.map(p => p.map(i => i.texto).join(' ')).join('\n'))) return { nome, lancamentos: [], erro: 'É o relatório de cobrança (títulos por período), não o extrato da conta.', ...marca };
     const { lancamentos: l, saldoAnteriorPelaLinha, saldoAnteriorConferido } = extratoDoPdf(paginas, lado, anoPadrao);
     // a pré-verificação (Vitor, 10/11/2026): a aplicação, o comprovante e os outros que caem na pasta do extrato não entram
     const outro = lado === 'banco' ? preVerificarExtrato(paginas.map(p => p.map(i => i.texto).join(' ')).join('\n'), l, porOcr) : null;
@@ -63,7 +78,7 @@ export async function lerArquivo(nome: string, bytes: Uint8Array, lado: Lado, an
     }
     const inicio = new TextDecoder('windows-1252').decode(bytes.subarray(0, 4000));
     if (ext === '.ofx' || ehOfx(inicio)) {
-      const texto = new TextDecoder('windows-1252').decode(bytes);
+      const texto = decodificarTexto(bytes);
       const outroOfx = lado === 'banco' ? preVerificarOfx(texto) : null;
       if (outroOfx) return { nome, lancamentos: [], erro: outroOfx.motivo, naoEExtrato: true };
       const l = lancamentosDoOfx(texto);

@@ -23,14 +23,16 @@ export function soData(d: Date): Date {
 
 /**
  * Valor da célula da coluna Data → data (ou null).
- * Aceita Date, serial numérico e texto "dd/mm/aa(aa)…"; texto numérico > 1000 vira serial.
+ * Aceita Date, serial numérico e texto "dd/mm/aa(aa)…" (também com - ou .) e "aaaa-mm-dd…"; texto numérico > 1000 vira serial.
  */
 export function dataDaCelula(v: unknown): Date | null {
   if (v == null || v === '') return null;
   if (v instanceof Date && !isNaN(v.getTime())) return soData(v);
   if (typeof v === 'number') return soData(serialExcelParaData(v));
   if (typeof v === 'string') {
-    const m = v.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+    const iso = v.trim().match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (iso) return soData(new Date(+iso[1], +iso[2] - 1, +iso[3]));
+    const m = v.trim().match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})(?![\d,])/);
     if (m) {
       const d = parseInt(m[1], 10);
       const mes = parseInt(m[2], 10);

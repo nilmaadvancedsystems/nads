@@ -23,7 +23,8 @@ export function numeroDaCelula(v: unknown): number {
  * Sem fuso: a página antiga mostrava a data de texto um dia antes no Brasil (a meia-noite em UTC).
  */
 export function dataDaCelula(v: unknown): string {
-  const iso = (a: number, m: number, d: number) => (a > 1900 && m >= 1 && m <= 12 && d >= 1 && d <= 31 ? a + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0') : '');
+  // o último dia é o do mês (31/02 e 29/02 de ano comum não são data)
+  const iso = (a: number, m: number, d: number) => (a > 1900 && m >= 1 && m <= 12 && d >= 1 && d <= new Date(Date.UTC(a, m, 0)).getUTCDate() ? a + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0') : '');
   if (v instanceof Date) return isNaN(v.getTime()) ? '' : iso(v.getFullYear(), v.getMonth() + 1, v.getDate());
   if (typeof v === 'number' && v > 0) {
     const d = new Date(Date.UTC(1899, 11, 30) + Math.floor(v) * 86400000);

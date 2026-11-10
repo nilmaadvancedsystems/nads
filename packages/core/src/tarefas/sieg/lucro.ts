@@ -14,7 +14,9 @@
 import { grupoMonofasico } from './simples';
 import type { ItemDoXml, NotaDoSieg, NotasSieg } from './index';
 
-const centavos = (v: number) => Math.round(v * 100) / 100;
+// o meio centavo sobe, como o ARRED da planilha (o número limpo a 15 dígitos antes, como em calculadora.ts): 100,10 × 15% dá
+// 15,0149… no ponto flutuante e o IRPJ saía 15,01
+const centavos = (v: number) => (Math.sign(v) * Math.round(Number((Math.abs(v) * 100).toPrecision(15)))) / 100;
 const vivas = (l: readonly NotaDoSieg[]) => l.filter(n => !n.cancelada);
 const mercadoria = (n: NotaDoSieg) => n.tipo === 'NF-e' || n.tipo === 'NFC-e';
 
@@ -225,7 +227,7 @@ export function irpjCsll(meses: readonly ReceitaParaIrpj[], ativ: { mercadorias:
   const baseCs = centavos((merc * pm.csll) / 100 + (serv * ps.csll) / 100 + outras);
   const n = Math.max(1, meses.length);
   const irpj = centavos(baseIr * 0.15);
-  const adicional = centavos(Math.max(0, baseIr - 20000 * n) * 0.1);
+  const adicional = centavos(Math.max(0, centavos(baseIr - 20000 * n)) * 0.1); // o excedente limpo antes: a subtração deixa resto no ponto flutuante
   const csll = centavos(baseCs * 0.09);
   const retido = { irpj: soma('irrf'), csll: soma('csll') };
   const aPagar = { irpj: Math.max(0, centavos(irpj + adicional - retido.irpj)), csll: Math.max(0, centavos(csll - retido.csll)) };
