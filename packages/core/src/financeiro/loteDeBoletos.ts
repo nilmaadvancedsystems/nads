@@ -193,8 +193,10 @@ export function conferirBoleto(b: BoletoDoLote, ctx: ContextoDoLote): Conferenci
       pendencias.push(`O honorário de ${competenciaBr(b.competencia)} já consta como recebido.`);
     }
     const iguais = ctx.boletos.filter(o => o.id !== b.id && !o.fora && o.contratoId === contrato.id && o.competencia === b.competencia);
-    if (iguais.some(o => o.envio?.status === 'enviado')) pendencias.push(`Este cliente já recebeu o boleto de ${competenciaBr(b.competencia)}.`);
-    else if (iguais.length) pendencias.push('Há outro boleto deste cliente no lote: deixe só um.');
+    // o que já foi enviado não trava (10/11/2026: "reenviar o gmail pro mesmo cliente quantas vezes forem necessarias"); dois
+    // ainda por enviar, sim
+    if (iguais.some(o => o.envio?.status === 'enviado')) avisos.push(`Este cliente já recebeu um boleto de ${competenciaBr(b.competencia)}: este vai de novo.`);
+    if (iguais.some(o => o.envio?.status !== 'enviado')) pendencias.push('Há outro boleto deste cliente no lote: deixe só um.');
 
     if (b.valor != null && contrato.valor > 0 && Math.round(b.valor * 100) !== Math.round(contrato.valor * 100)) {
       avisos.push(`O valor do boleto é ${reais(b.valor)} e o honorário cadastrado é ${reais(contrato.valor)}.`);

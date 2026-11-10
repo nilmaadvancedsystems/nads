@@ -122,12 +122,17 @@ describe('conferirBoleto', () => {
     const r = { contratoId: 'a', competencia: '2026-10' } as RecebimentoDeHonorario;
     expect(conferirBoleto(boleto(), ctx({ recebimentos: [r] })).podeDisparar).toBe(false);
   });
-  it('trava dois boletos do mesmo cliente e quem já recebeu no mês', () => {
+  it('trava dois boletos do mesmo cliente ainda não enviados', () => {
     const outro = boleto({ id: '2' });
     expect(conferirBoleto(boleto(), ctx({ boletos: [outro] })).pendencias).toContain('Há outro boleto deste cliente no lote: deixe só um.');
-    const enviado = boleto({ id: '2', envio: { status: 'enviado', para: [], em: '', por: '' } });
-    expect(conferirBoleto(boleto(), ctx({ boletos: [enviado] })).pendencias[0]).toContain('já recebeu');
     expect(conferirBoleto(boleto(), ctx({ boletos: [{ ...outro, fora: true }] })).podeDisparar).toBe(true);
+  });
+  it('quem já recebeu no mês pode receber de novo, quantas vezes precisar: só avisa (10/11/2026)', () => {
+    const enviado = boleto({ id: '2', envio: { status: 'enviado', para: [], em: '', por: '' } });
+    const c = conferirBoleto(boleto(), ctx({ boletos: [enviado, { ...enviado, id: '3' }] }));
+    expect(c.podeDisparar).toBe(true);
+    expect(c.pendencias).toEqual([]);
+    expect(c.avisos[0]).toContain('já recebeu');
   });
   it('quem deu erro pode tentar de novo; quem saiu ou está na fila não dispara', () => {
     const erro = conferirBoleto(boleto({ envio: { status: 'erro', para: [], em: '', por: '', erro: 'x' } }), ctx());
