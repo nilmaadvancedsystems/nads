@@ -7,6 +7,7 @@
 // No banco também (Vitor, 16/10/2026: "aplique todas as suas sugestões" — guardar no banco, não no navegador): com a
 // empresa aberta (useEscopoDoGuardado), o que é dela vai para o remoto (ligarGuardadoRemoto, no banco da Tarefas) e, ao
 // abrir, o mais novo do remoto volta para cá. Outra aba ou o quadro da Importação gravou: os hooks releem (evento storage).
+import { releitura } from '@nads/core';
 import { useCallback, useEffect, useState, useSyncExternalStore, type SetStateAction } from 'react';
 
 const PREFIXO = 'nads-onde-parou-v1|';
@@ -18,6 +19,18 @@ interface Guardado { em: number; v: unknown }
 // são grandes, e cada desenho da tela relia e desfazia o JSON do localStorage; outra aba gravou, a chave sai daqui
 const cache = new Map<string, Guardado | null>();
 
+// a leitura guardada com a planilha (o dinâmico, os razões) relida pelo leitor de agora, uma vez por valor (Vitor, 10/11/2026:
+// "tem bugs que foram removidos de uma empresa que aparece em outras": a correção do leitor só valia para quem importava de novo)
+const relidos = new WeakMap<object, unknown>();
+function relido<T>(v: T): T {
+  if (!v || typeof v !== 'object') return v;
+  const ja = relidos.get(v as object);
+  if (ja !== undefined) return ja as T;
+  const novo = releitura.relerLeituras(v);
+  relidos.set(v as object, novo);
+  return novo;
+}
+
 function ler<T>(chave: string): T | undefined {
   try {
     let g = cache.get(chave);
@@ -28,7 +41,7 @@ function ler<T>(chave: string): T | undefined {
     }
     if (!g) return undefined;
     if (Date.now() - g.em > DURA_DIAS * 864e5) { localStorage.removeItem(PREFIXO + chave); cache.set(chave, null); return undefined; }
-    return g.v as T;
+    return relido(g.v as T);
   } catch { return undefined; }
 }
 
@@ -82,7 +95,7 @@ export function guardadosQueCasam(teste: (chave: string) => boolean): unknown[] 
       if (!bruto) continue;
       try {
         const g = JSON.parse(bruto) as Guardado;
-        if (g && Date.now() - g.em <= DURA_DIAS * 864e5 && g.v !== undefined) achados.push({ em: g.em, v: g.v });
+        if (g && Date.now() - g.em <= DURA_DIAS * 864e5 && g.v !== undefined) achados.push({ em: g.em, v: relido(g.v) });
       } catch { /* estragado */ }
     }
   } catch { /* sem localStorage */ }

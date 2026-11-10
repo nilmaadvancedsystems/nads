@@ -3,7 +3,7 @@
 // mostra, mês a mês, o descontado na folha, o pagamento (e o dia dele), o dia certo e o saldo, que tem de zerar. O que falta
 // vira o .xls de importação do Alterdata (10 colunas): D Adiantamento salarial, C o banco, no dia 15 (ou no útil antes).
 // O razão e as contas ficam guardados neste navegador.
-import { clientes as cl, creditor, formatos, tarefas as t } from '@nads/core';
+import { clientes as cl, creditor, formatos, releitura, tarefas as t } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
 import { useMemo } from 'react';
 import { nomeDoLote } from '../../../../../../comum/importarNoAlterdata';
@@ -38,7 +38,7 @@ export function useAdiantamentoSalarial() {
   async function importar(f: File | null) {
     if (!f) return;
     try {
-      setRazao({ arquivo: f.name, razao: t.lerRazaoDoArquivo(await f.arrayBuffer(), f.name) });
+      setRazao({ arquivo: f.name, razao: releitura.lerRazao(await f.arrayBuffer(), f.name) });
     } catch (e) {
       aviso({ tom: 'erro', titulo: 'Não consegui ler o razão do Adiantamento salarial', texto: e instanceof Error ? e.message : String(e) });
     }

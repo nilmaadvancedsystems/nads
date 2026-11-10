@@ -3,7 +3,7 @@
 // "Corrigi, irei reimportar" no lugar do Próximo), Clientes (todas as contas de cliente com o selo do sistema: Saldo, Conferido pelo razão ou Ok, o Ok do sistema na conta zerada, a observação do conferido e o razão da conta no fim da linha) e
 // Envio (a relação dos conferidos e o Mandar pelo Mandei, para o e-mail e o WhatsApp da empresa no Cadastro).
 // As marcas ficam guardadas por mês; os conferidos do mês anterior aparecem de novo para revisar.
-import { clientes as cl, conferencia as c, demo, extrator as x, formatos, mandei as md, tarefas } from '@nads/core';
+import { clientes as cl, conferencia as c, demo, extrator as x, formatos, mandei as md, releitura, tarefas } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMarcasDoMes } from '../../../../dados/clientes';
@@ -105,7 +105,7 @@ export function useClientes() {
     if (!f) return;
     try {
       const rows = c.lerPlanilha(await f.arrayBuffer());
-      const d = cl.lerBalanceteDinamico(rows);
+      const d = releitura.lerDinamico(rows);
       if (!d.meses.includes(mes)) throw new Error('O balancete dinâmico não tem o mês ' + tarefas.rotuloNumericoCompetencia(mes) + '.');
       entrarComDinamico(f.name, d);
       aviso({ tom: 'ok', titulo: 'Balancete dinâmico importado', texto: f.name });
@@ -175,7 +175,7 @@ export function useClientes() {
    */
   async function importarRazao(codigo: string, f: File | undefined) {
     if (!f) return;
-    try { aplicarRazao(codigo, f.name, tarefas.lerRazaoDoArquivo(await f.arrayBuffer(), f.name)); }
+    try { aplicarRazao(codigo, f.name, releitura.lerRazao(await f.arrayBuffer(), f.name)); }
     catch (e) { aviso({ tom: 'erro', titulo: 'Não deu para ler ' + f.name, texto: e instanceof Error ? e.message : String(e) }); }
   }
 

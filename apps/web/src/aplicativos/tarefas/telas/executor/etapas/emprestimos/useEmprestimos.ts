@@ -4,7 +4,7 @@
 // na grade dos meses; empréstimo é passivo (fica credor ou zera): o mês devedor aparece em vermelho. O razão fica só na
 // tela; o banco de cada contrato vai para o Cadastro (Vitor, 07/10/2026): nas outras competências a etapa já sabe quais
 // empréstimos valem até o mês consultado e de qual banco, e o razão importado lá já vem com o banco.
-import { empresas, formatos, tarefas as t } from '@nads/core';
+import { empresas, formatos, releitura, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useCadastro } from '../../../../dados/repo';
 import { useOperador } from '../../../../casca/operador';
@@ -56,7 +56,7 @@ export function useEmprestimos() {
   async function importar(fs: File[]) {
     const lidos: { arquivo: string; r: t.RazaoDaConta }[] = [];
     for (const f of fs) {
-      try { lidos.push({ arquivo: f.name, r: t.lerRazaoDoArquivo(await f.arrayBuffer(), f.name) }); }
+      try { lidos.push({ arquivo: f.name, r: releitura.lerRazao(await f.arrayBuffer(), f.name) }); }
       catch (e) { aviso({ tom: 'erro', titulo: 'Não deu para ler ' + f.name, texto: e instanceof Error ? e.message : String(e) }); }
     }
     adicionar(lidos, true);

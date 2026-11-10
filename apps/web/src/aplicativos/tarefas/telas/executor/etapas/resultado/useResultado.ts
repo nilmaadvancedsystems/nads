@@ -2,7 +2,7 @@
 // balancete dinâmico se tem despesas credoras e receitas devedoras"). O dinâmico é o importado em Clientes (guardado neste
 // navegador); a pessoa pode importar um mais novo aqui (o corrigido). A regra é do @nads/core
 // (clientes.resultadoErradoNoDinamico); a conta do lado errado trava o Próximo.
-import { clientes as cl, conferencia as c, formatos, tarefas as t } from '@nads/core';
+import { clientes as cl, conferencia as c, formatos, releitura, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useMemo } from 'react';
 import { useGuardado } from '../../../../../../comum/guardado';
@@ -28,7 +28,7 @@ export function useResultado() {
   async function importar(f: File | null) {
     if (!f) return;
     try {
-      const d = cl.lerBalanceteDinamico(c.lerPlanilha(await f.arrayBuffer()));
+      const d = releitura.lerDinamico(c.lerPlanilha(await f.arrayBuffer()));
       setProprio({ nome: f.name, d });
       aviso({ tom: 'ok', titulo: 'Balancete dinâmico importado', texto: f.name });
     } catch (e) {

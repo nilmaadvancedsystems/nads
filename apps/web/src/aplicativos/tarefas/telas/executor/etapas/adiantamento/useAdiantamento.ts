@@ -3,7 +3,7 @@
 // devedor ou zera" — mês fechando credor trava o Próximo até corrigir no Alterdata e reimportar. O razão fica só na tela.
 // A mesma tela serve ao Adiantamento de clientes (Vitor, 07/10/2026: "ao contrário"): a conta é do passivo, fica credor ou
 // zera, e o mês devedor é que trava.
-import { demo, formatos, tarefas as t } from '@nads/core';
+import { demo, formatos, releitura, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useChaveDaEtapa, useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
 import { useGuardado } from '../../../../../../comum/guardado';
@@ -34,7 +34,7 @@ export function useAdiantamento(lado: t.LadoDoAdiantamento = 'fornecedores') {
   async function importar(f: File | undefined) {
     if (!f) return;
     try {
-      const r = t.lerRazaoDoArquivo(await f.arrayBuffer(), f.name);
+      const r = releitura.lerRazao(await f.arrayBuffer(), f.name);
       setRazao({ nome: f.name, r });
       aviso({ tom: 'ok', titulo: 'Razão importado', texto: f.name });
     } catch (e) { aviso({ tom: 'erro', titulo: 'Não deu para ler ' + f.name, texto: e instanceof Error ? e.message : String(e) }); }
