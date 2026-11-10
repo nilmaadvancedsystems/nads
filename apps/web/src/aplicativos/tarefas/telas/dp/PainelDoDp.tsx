@@ -4,8 +4,9 @@
 // com as obrigações do mês (– não tem, vazio a fazer, ✓ feita, ! parada). Tudo roda aqui: clicar na bolinha marca a
 // obrigação como feita, clicar de novo desfaz (sem o checklist).
 import { formatos } from '@nads/core';
-import { baixarBytes, BotaoIcone, Esqueleto, Icone, Interruptor, LogoExcel, MenuSuspenso, NumeroQueConta, RoscaComLegenda, useCarregando, useEntradaAnimada, type TomDoPainel } from '@nads/ui';
+import { baixarBytes, BotaoIcone, Esqueleto, Icone, Interruptor, LogoExcel, MenuSuspenso, NumeroQueConta, RoscaComLegenda, useCarregando, useEntradaAnimada, useRetorno, type TomDoPainel } from '@nads/ui';
 import { Fragment, useState } from 'react';
+import { copiarTexto } from './copiarTexto';
 import { DecimoNaLista } from './DecimoTerceiro';
 import { JanelaDasEtiquetas } from './JanelaDasEtiquetas';
 import { useEtiquetasDaFolha } from './useEtiquetasDaFolha';
@@ -55,6 +56,9 @@ const TOM_DASH: Record<SituacaoDoDash, TomDoPainel> = { atrasada: 'perigo', pend
 export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
   const vm = usePainelDoDp(aba);
   const f = vm.filtros;
+  const { toast } = useRetorno();
+  /** copia o CNPJ/CPF só com os dígitos (para colar nos sites do governo) */
+  const copiar = (doc: string) => void copiarTexto(doc).then(ok => toast(ok ? 'Copiado: ' + doc : 'Não consegui copiar.'));
   // as etiquetas da folha (Savio, 15/10/2026): a janela com a competência e a data de pagamento, e a impressão
   const etiquetas = useEtiquetasDaFolha(vm.competencia);
   // os filtros avançados (Vitor, 28/10/2026: "reduza esses filtros, coloque um ícone de filtro"): Movimento, Enquadramento,
@@ -79,7 +83,7 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
   const busca = (
     <label className="busca-curta">
       <Icone nome="search" />
-      <input type="text" value={f.busca} onChange={e => f.setBusca(e.target.value)} placeholder="Buscar cliente" aria-label="Buscar cliente (nome ou código)"
+      <input type="text" value={f.busca} onChange={e => f.setBusca(e.target.value)} placeholder="Buscar cliente" aria-label="Buscar cliente (nome, código ou CNPJ/CPF)"
         onKeyDown={e => { if (e.key === 'Escape') f.setBusca(''); }} />
     </label>
   );
@@ -199,6 +203,9 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
                     <tr className="dp-cabeca-grupo">
                       <th rowSpan={2}>Cód.</th>
                       <th rowSpan={2}>Cliente</th>
+                      {/* o CNPJ/CPF, como nas Configurações (10/11/2026); o movimento vai embaixo do nome, ao lado do responsável
+                          (uma coluna a mais passava da largura da tela e cortava a Situação) */}
+                      <th rowSpan={2}>CNPJ/CPF</th>
                       <th rowSpan={2} className="num" title="O total da folha do mês (o Fiscal vê ao lado do faturamento)">Folha do mês</th>
                       {vm.gruposDeColunas.map(g => <th key={g.rotulo} colSpan={g.colunas} className="dp-ob-grupo dp-ob-primeira">{g.rotulo}</th>)}
                       <th rowSpan={2}>Situação</th>
@@ -211,13 +218,19 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
                   <tbody>
                     {vm.grupos.map(g => (
                       <Fragment key={g.nome || 'todos'}>
-                        {g.nome && <tr className="dp-grupo"><td colSpan={5 + vm.colunas.length}>{g.nome} <span className="hint">{g.feitas}/{g.linhas.length} concluídos</span></td></tr>}
+                        {g.nome && <tr className="dp-grupo"><td colSpan={6 + vm.colunas.length}>{g.nome} <span className="hint">{g.feitas}/{g.linhas.length} concluídos</span></td></tr>}
                         {g.linhas.map(c => (
                           <tr key={c.chave} className={'dp-linha' + (c.concluida ? ' feita' : '')}>
                             <td className="num fraco">{c.codigo}</td>
                             <td className="dp-cliente dp-cliente-inteiro">
                               <span className="dp-cliente-nome">{c.nomeNaTela}</span>
-                              <span className="dp-cliente-info">{c.responsavel ? c.responsavelNome : 'Sem responsável'}</span>
+                              <span className="dp-cliente-info">{c.responsavel ? c.responsavelNome : 'Sem responsável'} · <span title="Movimento">{c.movimento}</span></span>
+                            </td>
+                            <td className="dp-documento">
+                              {/* clicar no número copia só os dígitos, como nas Configurações; sem CNPJ/CPF, cadastra-se lá */}
+                              {c.documento
+                                ? <button type="button" className="texto-copiavel num" title="Clique para copiar" onClick={() => copiar(c.documento)}>{c.documentoNaTela}</button>
+                                : <span className="fraco" title="Sem CNPJ/CPF: cadastre em DP › Configurações">—</span>}
                             </td>
                             <td className="num">{c.obrigacoes.some(o => o.id === 'folha' && o.estado !== 'nao-tem')
                               ? <FolhaNaLinha valor={vm.folhaDe(c.codigo)} informar={v => vm.informarFolha(c.codigo, v)} travado={vm.carregando} />

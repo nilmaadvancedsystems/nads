@@ -227,7 +227,7 @@ const PASTA_DE_EXEMPLO: Record<string, (c: string) => string> = {
   DAE: c => 'FISCAL\\SIMPLES NACIONAL\\02. DAE\\' + c + ' - DAE.pdf',
   FGTS: c => 'SOCIETÁRIO\\IMPOSTOS\\FGTS\\' + c.slice(3) + '\\' + c + '.pdf',
   EXTRATO: c => 'CONTÁBIL\\EXTRATOS\\' + c.slice(3) + '\\' + c.slice(0, 2) + '\\BANCÁRIOS\\SICOOB\\' + c + '.pdf',
-  NOTA_RECEBIDA: c => 'FISCAL\\SIMPLES NACIONAL\\03. DOCUMENTOS FISCAIS\\RECEBIDOS\\' + c + ' - nota.pdf',
+  NOTA_RECEBIDA: c => 'FISCAL\\SIMPLES NACIONAL\\03. DOCUMENTOS FISCAIS\\RECEBIDOS\\NF-e\\' + c + ' - nota.pdf',
   OUTROS: c => 'CONTÁBIL\\OUTROS DOCUMENTOS\\' + c.slice(-4) + '\\arquivo.pdf',
 };
 const TIPOS_DE_EXEMPLO: entregas.TipoDoFormulario[] = [

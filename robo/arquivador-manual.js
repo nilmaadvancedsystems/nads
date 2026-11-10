@@ -29,6 +29,18 @@ const comData = (comp, base, ext) => {
   if (!prefixo) return base + ext;
   return /^\d{1,2}[-. _]?\d{4}$|^\d{4}[-. _]?\d{1,2}$|^\d{4}$/.test(base.trim()) ? prefixo + ext : prefixo + ' - ' + base + ext;
 };
+/**
+ * O PDF recebido: a subpasta do modelo em RECEBIDOS (10/11/2026: a NF-e em RECEBIDOS\NF-e, a NFS-e tomada em RECEBIDOS\NFS-e TOMADAS),
+ * pelo texto e pelo nome; o que não se sabe (o CT-e, o escaneado sem texto) fica solto em RECEBIDOS, como antes.
+ */
+function subDoRecebido(entrada) {
+  const t = R.norm(textoDe(entrada).slice(0, 4000) + '\n' + (entrada.nome || ''));
+  if (/\bDACTE\b|\bCT-?E\b|CONHECIMENTO DE TRANSPORTE/.test(t)) return [];
+  if (/\bDANFSE\b|\bNFS-?E\b|NOTA FISCAL (ELETRONICA )?DE SERVICOS?\b|NOTA FISCAL DE PRESTACAO DE SERVICOS?/.test(t)) return [R.SUB_RECEBIDOS['NFS-e']];
+  if (/\bDANFE\b|\bNF-?E\b|NOTA FISCAL ELETRONICA/.test(t)) return [R.SUB_RECEBIDOS['NF-e']];
+  return [];
+}
+
 /** A nota: o PDF em DOCUMENTOS FISCAIS\<lado>; o XML na pasta XML do modelo (o nome que o XML já traz, como as regras). */
 function nota({ comp, ext, base, nome, entrada }, lado) {
   if (ext === '.xml') {
@@ -36,7 +48,7 @@ function nota({ comp, ext, base, nome, entrada }, lado) {
     try { info = R.classificarXml(entrada.xml) || {}; } catch (e) { info = {}; }
     return { fiscal: ['XML', info.tipo && !info.erro ? info.tipo : 'NF-e'].concat(info.sub && !info.erro ? [info.sub] : []), nomeFinal: info.nome || nome };
   }
-  return { fiscal: ['DOCS', lado], nomeFinal: mesAno(comp) + ' - ' + base + ext };
+  return { fiscal: ['DOCS', lado].concat(lado === 'RECEBIDOS' ? subDoRecebido(entrada || {}) : []), nomeFinal: mesAno(comp) + ' - ' + base + ext };
 }
 
 /**
