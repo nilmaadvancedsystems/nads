@@ -67,6 +67,14 @@ d = M.decidirManual(entrada('extrato sicoob.pdf'), ctx, { codigo: 568, tipoDoc: 
 igual('extrato com o banco no nome', [d.acao, d.destinoRelativo, d.nomeFinal], ['ARQUIVAR', '568 - BRAZILIAN EXEMPLO LTDA\\CONTÁBIL\\EXTRATOS\\2026\\09\\BANCÁRIOS\\SICOOB', '09-2026.pdf']);
 d = M.decidirManual(entrada('Relatorio.xlsx'), ctx, { codigo: 568, tipoDoc: 'OUTROS', competencia: '2026', por: 'Vitor' });
 igual('outros documentos pelo ano, o nome original', [d.acao, d.destinoRelativo, d.nomeFinal], ['ARQUIVAR', '568 - BRAZILIAN EXEMPLO LTDA\\CONTÁBIL\\OUTROS DOCUMENTOS\\2026', 'Relatorio.xlsx']);
+// a nota recebida em PDF (10/11/2026): a NFS-e tomada em RECEBIDOS\NFS-e TOMADAS, a NF-e em RECEBIDOS\NF-e; sem saber o modelo, solta em RECEBIDOS
+const DOCS568 = '568 - BRAZILIAN EXEMPLO LTDA\\FISCAL\\SIMPLES NACIONAL\\03. DOCUMENTOS FISCAIS\\';
+igual('nota recebida em PDF: a subpasta pelo modelo do texto (NFS-e tomada, NF-e) e solta quando não se sabe (CT-e, sem texto)',
+  [['nfse.pdf', 'PREFEITURA MUNICIPAL\nNOTA FISCAL DE SERVIÇOS ELETRÔNICA - NFS-e'], ['danfe.pdf', 'DANFE\nDOCUMENTO AUXILIAR DA NOTA FISCAL ELETRÔNICA'], ['dacte.pdf', 'DACTE\nCONHECIMENTO DE TRANSPORTE ELETRÔNICO'], ['escaneada.pdf', ' ']]
+    .map(([n, t]) => M.decidirManual(entrada(n, { texto: [t] }), ctx, { codigo: 568, tipoDoc: 'NOTA_RECEBIDA', competencia: '2026-09', por: 'Vitor' }).destinoRelativo),
+  [DOCS568 + 'RECEBIDOS\\NFS-e TOMADAS', DOCS568 + 'RECEBIDOS\\NF-e', DOCS568 + 'RECEBIDOS', DOCS568 + 'RECEBIDOS']);
+d = M.decidirManual(entrada('danfe.pdf', { texto: ['DANFE\nDOCUMENTO AUXILIAR DA NOTA FISCAL ELETRÔNICA'] }), ctx, { codigo: 568, tipoDoc: 'NOTA_EMITIDA', competencia: '2026-09', por: 'Vitor' });
+igual('... a nota emitida continua solta em EMITIDOS', d.destinoRelativo, DOCS568 + 'EMITIDOS');
 d = M.decidirManual(entrada('a.pdf'), ctx, { codigo: 568, tipoDoc: 'DAS', por: 'Vitor' });
 igual('sem o mês: não arquiva', [d.acao, d.motivo], ['NAO_IDENTIFICADO', 'COMPETENCIA_AUSENTE']);
 d = M.decidirManual(entrada('a.pdf'), ctx, { codigo: 999, tipoDoc: 'DAS', competencia: '2026-01', por: 'Vitor' });

@@ -2,7 +2,7 @@
 // (XLS da conciliação do Alterdata) e o PDF dos comprovantes de arrecadação; a tela mostra, mês a mês, provisão × guia,
 // as verbas que o sistema não provisionou, as guias pagas sem baixa e o lançamento sugerido de cada diferença.
 // Fica só na tela (em memória): trocou de etapa, empresa ou período, some.
-import { conversor, creditor, extrator, formatos, tarefas as t } from '@nads/core';
+import { conversor, creditor, extrator, formatos, releitura, tarefas as t } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
 import workerDoPdf from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import { useState } from 'react';
@@ -59,7 +59,7 @@ export function useInssDaEtapa(chave: string, meses: readonly string[], balancet
   async function importarRazao(f: File | null) {
     if (!f) return;
     try {
-      setRazao({ chave, arquivo: f.name, razao: t.lerRazaoDoArquivo(await f.arrayBuffer(), f.name) });
+      setRazao({ chave, arquivo: f.name, razao: releitura.lerRazao(await f.arrayBuffer(), f.name) });
       setMesAberto(null);
     } catch (e) {
       aviso({ tom: 'erro', titulo: 'Não consegui ler o razão', texto: e instanceof Error ? e.message : String(e) });

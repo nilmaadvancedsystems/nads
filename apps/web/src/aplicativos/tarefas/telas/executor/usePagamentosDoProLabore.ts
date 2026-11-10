@@ -2,7 +2,7 @@
 // razão do Pró-labore a pagar (XLS da conciliação do Alterdata) e o nads monta os pagamentos que faltam para ele zerar —
 // D Pró-labore a pagar, C a conta escolhida, H "Pagamento de pro-labore mm/aaaa SÓCIO" — e baixa o .xls de importação do
 // Alterdata (o padrão de 10 colunas do Alterdata). Fica só na tela.
-import { creditor, empresas, formatos, tarefas as t } from '@nads/core';
+import { creditor, empresas, formatos, releitura, tarefas as t } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
 import { useMemo, useState } from 'react';
 import { useContasDoBalancete } from '../../etapas/conferencia/importadosNaEtapa';
@@ -46,7 +46,7 @@ export function usePagamentosDoProLabore(empresa: string, codigo: number | null,
   async function importar(f: File | null) {
     if (!f) return;
     try {
-      setRazao({ arquivo: f.name, razao: t.lerRazaoDoArquivo(await f.arrayBuffer(), f.name) });
+      setRazao({ arquivo: f.name, razao: releitura.lerRazao(await f.arrayBuffer(), f.name) });
     } catch (e) {
       aviso({ tom: 'erro', titulo: 'Não consegui ler o razão do pró-labore', texto: e instanceof Error ? e.message : String(e) });
     }

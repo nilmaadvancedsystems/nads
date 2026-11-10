@@ -2,7 +2,7 @@
 // da conciliação do Alterdata e vê o período todo (o Em lote) ou um mês de cada vez (clica no mês). Para cada mês: os
 // lançamentos, o saldo do fim e os pontos de atenção. O CRÉD.LIQ.COBRANÇA põe o Creditor no mês (onImportado).
 // O que foi importado fica guardado neste navegador (Vitor, 15/10/2026: voltou, está onde parou; comum/guardado.ts).
-import { formatos, tarefas as t } from '@nads/core';
+import { formatos, releitura, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useGuardado } from '../../../../comum/guardado';
@@ -70,7 +70,7 @@ export function useRazaoDaEtapa(chave: string, meses: readonly string[], onImpor
     if (!f) return;
     let razao: t.RazaoDaConta;
     try {
-      razao = t.lerRazaoDoArquivo(await f.arrayBuffer(), f.name);
+      razao = releitura.lerRazao(await f.arrayBuffer(), f.name);
     } catch (e) {
       aviso({ tom: 'erro', titulo: 'Não consegui ler o razão', texto: e instanceof Error ? e.message : String(e) });
       return;
