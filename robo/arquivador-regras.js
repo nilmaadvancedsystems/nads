@@ -142,6 +142,12 @@ function competenciaDoNome(nome) {
   if (m) return { mes: +m[2], ano: +m[1] };
   return null;
 }
+/** O nome sem as datas completas ("Comprovante_09-11-2026_174648" → "Comprovante__174648"): DD-MM-AAAA, DD.MM.AAAA, DD_MM_AAAA, AAAA-MM-DD. */
+function semDataCompleta(nome) {
+  return String(nome || '')
+    .replace(/(?<![0-9])(0[1-9]|[12]\d|3[01])[-._ ](0[1-9]|1[0-2])[-._ ](20\d{2})(?![0-9])/g, '')
+    .replace(/(?<![0-9])(20\d{2})[-._ ](0[1-9]|1[0-2])[-._ ](0[1-9]|[12]\d|3[01])(?![0-9])/g, '');
+}
 /** Competência pela pasta de mês que o robô do Gmail e o nads criam ("Claudio Secretario\2026-09\<cliente>"). */
 function competenciaDaPasta(rel) {
   for (const p of partesDoCaminho(rel).slice(0, -1).reverse()) {
@@ -4973,7 +4979,16 @@ function montarContabil(regra, campos, u, bruto, entrada, ctx, ev, porHash) {
   // o banco pelo nome do arquivo, confirmado pela agência e conta lidas no conteúdo, que são do cliente nesse banco no cadastro
   if (!bancoPeloConteudo && ((ctx.cadastro && ctx.cadastro.contas) || []).some(x => x.codigo === c.cliente && x.banco === banco && contasDoDocumento(bruto, regra.tipo !== 'COMPROVANTE').some(d => mesmaConta(d.conta, x.conta) && (!d.agencia || !x.agencia || d.agencia.base === x.agencia.base)))) { bancoPeloConteudo = true; ev.push('a conta lida no conteúdo é do cliente no ' + banco + ' (cadastro)'); }
   let comp = campos.competencia, confComp = 0.97;
-  if (!comp) { comp = competenciaDoNome(entrada.nome); confComp = 0.88; if (comp) ev.push('competência pelo nome do arquivo'); }
+  // (10/11/2026, a 444: "Comprovante_09-11-2026_174648.pdf" do BB ia para 11-2026) no extrato e na aplicação, a data completa do nome
+  // (DD-MM-AAAA) é a do dia em que o arquivo foi gerado no banco, não o mês do extrato: não vale como competência; o mês e o ano sozinhos
+  // ("10-2026", "OUTUBRO 2026") continuam valendo. No comprovante, a data do nome é a do pagamento e continua valendo.
+  const extratoLike = regra.tipo === 'EXTRATO' || regra.tipo === 'APLICACOES';
+  const nomeSemData = extratoLike ? semDataCompleta(entrada.nome) : entrada.nome;
+  if (!comp) {
+    comp = competenciaDoNome(nomeSemData); confComp = 0.88;
+    if (comp) ev.push('competência pelo nome do arquivo');
+    else if (nomeSemData !== entrada.nome && competenciaDoNome(entrada.nome)) ev.push('a data do nome do arquivo é a da geração do arquivo, não o mês do extrato: não vale como competência (10/11/2026)');
+  }
   if (!comp) { comp = competenciaDaPasta(entrada.rel); confComp = 0.8; if (comp) ev.push('competência pela pasta do mês'); }
   // a migração (23/10/2026): a pasta de origem com o mês ("…\EXTRATOS\2022\02\") de reserva; quando o conteúdo discorda, vale o
   // conteúdo e fica registrado
@@ -5317,7 +5332,7 @@ function tipoDoDestino(destino) {
 }
 
 module.exports = {
-  pagamentoDoMovimento, fornecedorDoNomeDoArquivo, fornecedorDoNomeSemData, LIMIAR, RAIZ_CLIENTES, ARVORE, SUB_RECEBIDOS, subDoRecebidoPeloNome, REGRAS_PDF, BANCOS, ANUAIS, ofxCompetencia, anoDaEntrega, ANO_MINIMO, ANO_DAS_PASTAS, anoDaPasta, pastasDoAno, partesDoCaminho, comMotivoDoCodigo,
+  pagamentoDoMovimento, fornecedorDoNomeDoArquivo, fornecedorDoNomeSemData, LIMIAR, RAIZ_CLIENTES, ARVORE, SUB_RECEBIDOS, subDoRecebidoPeloNome, semDataCompleta, REGRAS_PDF, BANCOS, ANUAIS, ofxCompetencia, anoDaEntrega, ANO_MINIMO, ANO_DAS_PASTAS, anoDaPasta, pastasDoAno, partesDoCaminho, comMotivoDoCodigo,
   ehLivroContabil, anoDoLivro, decidirSpedAnual, semAcento, norm, chaveNome, nomeNormalizado, nomeSeguro, so, dataBr, valorBr, competenciaSolta, competenciaDoNome, competenciaDaPasta, periodoEscrito,
   cnpjValido, cpfValido, documentosDoTexto, raizesDoTexto, mascarasDoTexto,
   regimeCanonico, montarCadastro, comAnosEMapa, clientesDoDoc, clienteDaPasta, grupoDaPasta, pagamentoDeFornecedor, clientesPeloNomeNoTexto,

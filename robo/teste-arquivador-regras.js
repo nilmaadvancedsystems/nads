@@ -2194,6 +2194,25 @@ igual('a agência e a conta no nome do arquivo ("Entradas_Saidas_ag3155cc990348_
       [[], ['NOME-FORA-DO-PADRAO']]);
   }
 
+  // (10/11/2026, a 444) o extrato do BB "Comprovante_09-11-2026_174648.pdf": a data do nome é a da geração do arquivo, não o mês do extrato
+  {
+    const j44 = CAD19.juntar({ entregas: [
+      { codigoOrigem: '444', nome: 'GALPAO VEICULOS E LOCADORA LTDA', documento: '11.222.333/0001-81', enquadramento: 'Simples', contasBancarias: [{ banco: 'bb', agencia: '2705-7', conta: '29560-4', origem: 'drive' }] },
+    ] });
+    const c44 = R.montarCadastro(j44.linhas, ['444 - GALPAO VEICULOS E LOCADORA LTDA']);
+    c44.mapaMigracao = MIG.carregar({});
+    const T44 = datas => 'EXTRATO DE CONTA CORRENTE\nCLIENTE: GALPAO VEICULOS E LOCADORA LTDA\nAGENCIA: 2705-7 CONTA: 29560-4\nDIA LANCAMENTOS VALOR SALDO\n' + datas.map((d, i) => d + ' PIX - RECEBIDO ' + (100 + i) + ',00 C').join('\n') + '\nSALDO 1.000,00 C';
+    const d44 = (nome, datas) => (x => [x.acao, x.motivo || null, x.destinoRelativo || null, x.nomeFinal || null])(R.decidir({ nome, rel: 'Claudio Secretario\\' + nome, texto: [T44(datas)] }, { cadastro: c44, hoje: new Date(2026, 10, 10) }));
+    const OUT44 = ['01/10/2026', '05/10/2026', '15/10/2026', '20/10/2026', '31/10/2026'];
+    const BB44 = '444 - GALPAO VEICULOS E LOCADORA LTDA\\CONTÁBIL\\EXTRATOS\\2026\\10\\BANCÁRIOS\\BANCO DO BRASIL';
+    igual('10/11 444: o extrato do BB "Comprovante_09-11-2026_174648.pdf" com os lançamentos de outubro: 10-2026 (a data do nome é a da geração)', d44('Comprovante_09-11-2026_174648.pdf', OUT44), ['ARQUIVAR', null, BB44, '10-2026.pdf']);
+    igual('10/11 444: ... sem lançamentos legíveis: para resolver (COMPETENCIA_AUSENTE), não o mês da data do nome', d44('Comprovante_09-11-2026_174648.pdf', []).slice(0, 2), ['NAO_IDENTIFICADO', 'COMPETENCIA_AUSENTE']);
+    igual('10/11 444: ... o mês e o ano sozinhos no nome continuam valendo ("Extrato 10-2026.pdf", "Extrato OUTUBRO 2026.pdf")', [d44('Extrato 10-2026.pdf', []), d44('Extrato OUTUBRO 2026.pdf', [])], [['ARQUIVAR', null, BB44, '10-2026.pdf'], ['ARQUIVAR', null, BB44, '10-2026.pdf']]);
+    igual('10/11 444: ... a data completa sai do nome (DD-MM-AAAA, DD.MM.AAAA, AAAA-MM-DD); o mês sozinho fica',
+      ['Comprovante_09-11-2026_174648.pdf', 'extrato 31.10.2026.pdf', 'extrato 2026-10-31.pdf', 'extrato 10-2026.pdf'].map(n => R.competenciaDoNome(R.semDataCompleta(n))),
+      [null, null, null, { mes: 10, ano: 2026 }]);
+  }
+
   console.log((falhas ? falhas + ' FALHA(S) em ' : 'ok: ') + total + ' testes');
   process.exit(falhas ? 1 : 0);
 })().catch(e => { console.log('FALHOU com erro:', e.stack); process.exit(1); });
