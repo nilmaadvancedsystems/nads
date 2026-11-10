@@ -113,4 +113,11 @@ describe('a conferência do INSS (razão × guias)', () => {
     // a provisão de 02/2026 (100,00) não tem guia de fevereiro no PDF: sobra como diferença
     expect([c.saldoDoRazao, c.saldoEsperado, c.saldoAjustado, c.antesDoPeriodo]).toEqual([5034.25, 2047.03, 2147.03, -100]);
   });
+
+  it('a guia marcada como não paga não pede baixa e continua a recolher no fechamento (10/11/2026)', () => {
+    const n = conferirInss(RAZAO, guiasDasLinhas(PAGINAS), ['2026-01', '2026-02', '2026-03'], undefined, ['2026-01']);
+    expect(n.baixas).toEqual([]);
+    expect(n.sugestoes.some(s => s.tipo === 'baixa')).toBe(false);
+    expect([n.saldoEsperado, n.saldoAjustado, n.antesDoPeriodo]).toEqual([5031.5, 5131.5, -100]);
+  });
 });

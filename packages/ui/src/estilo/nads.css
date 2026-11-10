@@ -1429,6 +1429,11 @@ label.imp-btn.is-locked{opacity:.5;pointer-events:none;}
 .imp-feito:hover{border-color:var(--destructive);background:var(--destructive-soft);color:var(--destructive);}
 .imp-feito:hover .imp-feito-ok{display:none;}
 .imp-feito:hover .imp-feito-x{display:inline;}
+.btn.inss-baixa{width:84px;padding:0;justify-content:center;}
+.btn.inss-baixa-falta:not(:hover):not(:focus-visible){color:var(--destructive);}
+.inss-baixa-acao{display:none;}
+.inss-baixa:hover .inss-baixa-ver,.inss-baixa:focus-visible .inss-baixa-ver{display:none;}
+.inss-baixa:hover .inss-baixa-acao,.inss-baixa:focus-visible .inss-baixa-acao{display:inline;}
 /* Não teve movimento: a linha toda escurece; o botão fica claro para desmarcar */
 .imp-linha{transition:background .15s ease;}
 .imp-bloco.sem-movimento{background:var(--surface-2);}
