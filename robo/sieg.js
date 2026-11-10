@@ -294,6 +294,9 @@ async function contagemDoMes(c, cnpj, competencia, aoAndar, desistir) {
   const emitidas = norm(await chamar(c, 'contar-xmls', Object.assign({ CnpjEmit: cnpj }, p), desistir));
   if (aoAndar) await aoAndar('recebidas');
   const recebidas = norm(await chamar(c, 'contar-xmls', Object.assign({ CnpjDest: cnpj }, p), desistir));
+  // o CT-e recebido é o do tomador (10/11/2026), então a conta dele vem do tomador; se o SIEG não responder, fica a do destinatário
+  try { recebidas.CTe = norm(await chamar(c, 'contar-xmls', Object.assign({ CnpjTom: cnpj }, p), desistir)).CTe; }
+  catch (err) { if (err.message === DESISTIU) throw err; console.log(new Date().toLocaleString('pt-BR'), 'SIEG: contagem do tomador de', cnpj, '-', motivo(err)); }
   return { emitidas, recebidas };
 }
 
@@ -305,7 +308,8 @@ async function xmlsDoMes(c, doc, competencia, aoAndar) {
   const p = periodo(competencia);
   const grupos = [
     ['emitidas', 'CnpjEmit', [['NF-e', TIPO.NFe], ['NFC-e', TIPO.NFCe], ['CT-e', TIPO.CTe], ['NFS-e', TIPO.NFSe]]],
-    ['recebidas', 'CnpjDest', [['NF-e', TIPO.NFe], ['CT-e', TIPO.CTe], ['NFS-e', TIPO.NFSe]]],
+    // o CT-e recebido vem pelo tomador (10/11/2026), o resto pelo destinatário
+    ['recebidas', 'CnpjDest', [['NF-e', TIPO.NFe], ['CT-e', TIPO.CTe, 'CnpjTom'], ['NFS-e', TIPO.NFSe]]],
   ];
   const arquivos = new Map();
   const resumo = { emitidas: [], recebidas: [] };
@@ -316,18 +320,20 @@ async function xmlsDoMes(c, doc, competencia, aoAndar) {
   const contagem = await contagemDoMes(c, doc, competencia);
   const CHAVE = { 'NF-e': 'NFe', 'NFC-e': 'NFCe', 'CT-e': 'CTe', 'NFS-e': 'NFSe' };
   for (const [grupo, campo, tipos] of grupos) {
-    for (const [nome, tipo] of tipos) {
+    for (const [nome, tipo, campoDoTipo] of tipos) {
       if (!contagem[grupo][CHAVE[nome]]) continue;
       for (let skip = 0; skip < 50000; skip += 50) {
         if (aoAndar) await aoAndar((grupo === 'emitidas' ? 'Emitidas' : 'Recebidas') + ' · ' + nome + ' (' + arquivos.size + ' XMLs até agora)');
         // a NFS-e só aceita dia/mês/ano, sem a hora ("Certifique-se de apenas passar dia/mês/ano em NFSe", 07/10/2026)
         const datas = tipo === TIPO.NFSe ? { DataEmissaoInicio: p.DataEmissaoInicio, DataEmissaoFim: p.DataEmissaoFim.slice(0, 10) } : p;
-        const xmls = xmlsDaResposta(await chamar(c, 'baixar-xmls', Object.assign({ TipoXml: tipo, Take: 50, Skip: skip, [campo]: doc, BaixarEventos: true }, datas)));
+        const xmls = xmlsDaResposta(await chamar(c, 'baixar-xmls', Object.assign({ TipoXml: tipo, Take: 50, Skip: skip, [campoDoTipo || campo]: doc, BaixarEventos: true }, datas)));
         for (const x of xmls) {
           arquivos.set(sx.nomeDoArquivo(x), x);
           const r = sx.resumoDaNota(x);
           if (!r) continue;
           if (r.cancela) { canceladas.add(r.cancela); continue; }
+          // o CT-e que o próprio cliente emitiu e tomou já entrou nas emitidas
+          if (campoDoTipo && soDigitos(r.emitente && r.emitente.doc) === soDigitos(doc)) continue;
           resumo[grupo].push(r);
         }
         if (xmls.length < 50) break; // a página vem com 50 XMLs, contando os eventos (08/10/2026: parar pelas notas perdia metade)
@@ -608,7 +614,7 @@ function criarTrabalhadores({ paralelo, escolher, atender, preparar, aoFicarLivr
  */
 function juntarOsDoDrive(cnpj, baixado, xmlsDoDrive) {
   const tem = new Set(baixado.arquivos.map(a => a.nome));
-  const extras = xmlsDoDrive.filter(x => !tem.has(sx.nomeDoArquivo(x)));
+  const extras = sx.cteQueEntram(cnpj, xmlsDoDrive).filter(x => !tem.has(sx.nomeDoArquivo(x)));
   if (!extras.length) return { baixado, extras: 0 };
   const junto = require('./sieg-portal').montarXmls(cnpj, [...baixado.arquivos.map(a => a.xml), ...extras]);
   return { baixado: Object.assign({}, baixado, { arquivos: junto.arquivos, resumo: junto.resumo, doDrive: (baixado.doDrive || 0) + extras.length }), extras: extras.length };
@@ -980,7 +986,7 @@ function iniciarSieg({ db, log }) {
           const deles = sp.soDoCliente(cnpj, mandados);
           // os do Drive (o último .zip da pasta) entram junto: o resumo do mês fica com tudo
           const velhos = (await noDrive).xmls;
-          baixado = sp.montarXmls(cnpj, [...velhos, ...deles]);
+          baixado = sp.montarXmls(cnpj, [...velhos, ...deles], { todosOsCte: true });
           baixado.doDrive = velhos.length;
           numeros.doCliente = deles.length;
           numeros.deOutros = mandados.length - deles.length;

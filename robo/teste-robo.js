@@ -808,6 +808,13 @@ const spT = require('./sieg-portal');
 igual('SIEG: XMLs do cliente, a nota e o cancelamento dele', spT.soDoCliente('19449248000162', [nfeItensT, cancT]).length, 2);
 igual('SIEG: XMLs do cliente, de outra empresa ficam de fora', spT.soDoCliente('22222222000122', [nfeItensT, cancT]).length, 0);
 igual('SIEG: XMLs do cliente, o destinatário também é dele', spT.soDoCliente('11111111000111', [nfeItensT]).length, 1);
+// o CT-e pelo tomador (10/11/2026): remetente paga, o destinatário que só recebe fica de fora, com o evento
+const cteTomT = '<cteProc><CTe><infCte Id="CTe31260240470754000120570010000000171041317010" versao="4.00"><ide><nCT>17</nCT><toma3><toma>0</toma></toma3></ide><emit><CNPJ>11111111000111</CNPJ></emit><rem><CNPJ>22222222000122</CNPJ></rem><dest><CNPJ>33333333000133</CNPJ></dest></infCte></CTe></cteProc>';
+const cteEvT = '<procEventoCTe><eventoCTe><infEvento Id="ID1"><chCTe>31260240470754000120570010000000171041317010</chCTe><tpEvento>110111</tpEvento><nSeqEvento>1</nSeqEvento></infEvento></eventoCTe></procEventoCTe>';
+igual('SIEG: CT-e, o tomador pelo toma3', sxT.tomadorDoCte(cteTomT).doc, '22222222000122');
+igual('SIEG: CT-e, o tomador e o evento ficam', sxT.cteQueEntram('22222222000122', [cteTomT, cteEvT]).length, 2);
+igual('SIEG: CT-e, quem emitiu fica', sxT.cteQueEntram('11111111000111', [cteTomT]).length, 1);
+igual('SIEG: CT-e, destinatário que não paga sai, com o evento', sxT.cteQueEntram('33333333000133', [cteTomT, cteEvT]).length, 0);
 igual('SIEG: montar os XMLs marca a cancelada', spT.montarXmls('19449248000162', [nfeItensT, cancT]).resumo.emitidas.map(n => !!n.cancelada), [true]);
 // os XMLs que chegam por e-mail (08/10/2026): o mês da nota, e o evento vai com a nota dele (o AAMM da chave)
 const xeT = require('./xmls-do-email');

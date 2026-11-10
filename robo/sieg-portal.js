@@ -133,7 +133,8 @@ async function xmlsPeloPortal(doc, competencia, aoAndar, lerZip, soTipos, espera
   const contagem = { emitidas: { NFe: 0, NFCe: 0, CTe: 0, NFSe: 0, CFe: 0 }, recebidas: { NFe: 0, NFCe: 0, CTe: 0, NFSe: 0, CFe: 0 } };
   const canceladas = new Set();
   const juntar = xmls => {
-    for (const x of xmls) {
+    // o pedido do portal traz o CT-e em que o CNPJ aparece em qualquer papel: ficam só os do tomador e os emitidos por ele
+    for (const x of sx.cteQueEntram(doc, xmls)) {
       arquivos.set(sx.nomeDoArquivo(x), x);
       const r = sx.resumoDaNota(x);
       if (!r) continue;
@@ -262,8 +263,10 @@ async function xmlsPorChaves(doc, chaves, lerZip) {
  * Os XMLs de qualquer origem (o .zip do Drive, os que o cliente mandou) no mesmo formato do download: { arquivos, resumo,
  * contagem }. Emitida = o emitente é o cliente; o resto, recebida. As canceladas vêm marcadas.
  */
-function montarXmls(doc, xmls) {
+function montarXmls(doc, xmls, opcoes) {
   doc = soDigitos(doc);
+  // o CT-e segue a regra do tomador, menos nos XMLs que o cliente mandou (quem mandou escolheu)
+  if (!(opcoes && opcoes.todosOsCte)) xmls = sx.cteQueEntram(doc, xmls);
   const arquivos = new Map();
   const resumo = { emitidas: [], recebidas: [] };
   const contagem = { emitidas: { NFe: 0, NFCe: 0, CTe: 0, NFSe: 0, CFe: 0 }, recebidas: { NFe: 0, NFCe: 0, CTe: 0, NFSe: 0, CFe: 0 } };
