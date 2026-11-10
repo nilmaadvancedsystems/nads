@@ -4,11 +4,16 @@
 import type { FirebaseApp } from 'firebase/app';
 import { clearIndexedDbPersistence, getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, terminate, type Firestore } from 'firebase/firestore';
 
+const TAMANHO_DO_CACHE = 250 * 1024 * 1024;
+
 export function abrirBancoDoEntregas(app: FirebaseApp): Firestore {
   try {
     return initializeFirestore(app, {
       ignoreUndefinedProperties: true,
-      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+      // 250 MB (10/11/2026, consumo do banco): no padrão de 40 MB, os pedaços grandes (os zips do SIEG, as partes do mapa do
+      // Drive, os razões do "onde parou", os lançamentos do Financeiro) enchiam o cache e o Firebase jogava fora os clientes e
+      // o cadastro, que voltavam inteiros do servidor a cada página nova
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager(), cacheSizeBytes: TAMANHO_DO_CACHE }),
     });
   } catch {
     return getFirestore(app); // já aberto nesta página

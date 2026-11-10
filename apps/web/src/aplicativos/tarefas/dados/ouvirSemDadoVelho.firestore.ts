@@ -71,14 +71,18 @@ export function escutaQueConta(eu: { ref: any }, ligadas: readonly { ref: any }[
   return true;
 }
 
-function contar(ref: any, n: number) {
+function contar(ref: any, n: number, semCache = false) {
   if (!medindo || n <= 0) return;
-  const k = colecaoDaReferencia(ref) + ' @ ' + (telaDaLeitura || '?');
+  const k = colecaoDaReferencia(ref) + (semCache ? ' (sem cache)' : '') + ' @ ' + (telaDaLeitura || '?');
   leituras.set(k, (leituras.get(k) || 0) + n);
 }
 
-/** Quantos documentos esta foto cobrou (0 = veio do cache ou só mudou o estado local). */
-function cobradosNaFoto(s: any, anterior: { conteudo: string | null }): number {
+/**
+ * Quantos documentos esta foto cobrou (0 = veio do cache ou só mudou o estado local). anterior.doCache: a última foto do
+ * cache trouxe documentos (a primeira do servidor, depois dela, é só o que mudou); sem ela, a consulta veio inteira.
+ */
+function cobradosNaFoto(s: any, anterior: { conteudo: string | null; doCache?: boolean; servidor?: boolean }): number {
+  if (s?.metadata?.fromCache && typeof s.docChanges === 'function' && !anterior.servidor) anterior.doCache = s.docChanges().length > 0;
   if (!s?.metadata || s.metadata.fromCache || s.metadata.hasPendingWrites) return 0;
   if (typeof s.docChanges === 'function') return s.docChanges().length;
   const conteudo = JSON.stringify(s.exists?.() ? s.data?.() : null);
@@ -197,13 +201,21 @@ function ouvir(ref: any, ...args: any[]): () => void {
     cancelar: t => clearTimeout(t as ReturnType<typeof setTimeout>),
     online: () => typeof navigator === 'undefined' || navigator.onLine !== false,
   });
-  const anterior = { conteudo: null as string | null };
+  const anterior = { conteudo: null as string | null, doCache: false, servidor: false };
   const ligar = () => {
     const eu = { ref };
     escutasLigadas.push(eu);
     const tirar = () => { const i = escutasLigadas.indexOf(eu); if (i >= 0) escutasLigadas.splice(i, 1); };
     const pararBruto = bruto(ref, { ...opcoes, includeMetadataChanges: true }, {
-      next: (s: Foto) => { if (medindo && escutaQueConta(eu)) contar(ref, cobradosNaFoto(s, anterior)); filtro.chegou(s); },
+      next: (s: Foto) => {
+        if (medindo && escutaQueConta(eu)) {
+          const primeiraDoServidor = !anterior.servidor && !s.metadata.fromCache && !(s as any).metadata.hasPendingWrites;
+          const n = cobradosNaFoto(s, anterior);
+          contar(ref, n, primeiraDoServidor && typeof s.docChanges === 'function' && !anterior.doCache);
+          if (primeiraDoServidor) anterior.servidor = true;
+        }
+        filtro.chegou(s);
+      },
       error: (e: unknown) => { tirar(); filtro.parar(); observador.error?.(e); },
       complete: () => observador.complete?.(),
     });
