@@ -4,7 +4,7 @@ import type { empresas, entregas, tarefas, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { RepoAcesso } from './acesso';
-import { assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, dadosDaEmpresaNoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDaAreaCliente, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDoPainelRobo, repoDaIA, repoDeFeedback, repoDeAvisos, repoDeUso, repoDeParcelamentos, repoDeCategoriasDp, repoDoControleTributos, repoDeLegislacaoDp, repoDoLcdpr, repoDoArquivador, repoDosAgentes, repoDoFgts, repoDoAlterdata, repoDeEnviosDp, repoDoLoteDp, repoDoLoteFiscal, repoDeNfse, repoDoCaixa, repoDeHonorarios, repoDeContasPagar, repoDoSieg, repoPessoal, repoDoCofre, repoDeTarefasDelegadas } from './fonte';
+import { assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, dadosDaEmpresaNoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDaAreaCliente, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDoPainelRobo, repoDaIA, repoDeFeedback, repoDeAvisos, repoDeUso, repoDeParcelamentos, repoDeCategoriasDp, repoDoControleTributos, repoDeLegislacaoDp, repoDoLcdpr, repoDoArquivador, repoDosAgentes, repoDoFgts, repoDoAlterdata, repoDeEnviosDp, repoDoLoteDp, repoDoLoteFiscal, repoDeNfse, repoDoCaixa, repoDeHonorarios, repoDeContasPagar, repoDoSieg, repoPessoal, repoDoCofre, repoDeTarefasDelegadas, assinarTesteDoInicio, versaoDoTesteDoInicio, testeDoInicioLigado, ligarTesteDoInicio } from './fonte';
 import type { RepoCofre } from './cofre';
 import type { RepoAgentes } from './agentes';
 import type { RepoSieg } from './sieg';
@@ -322,13 +322,21 @@ export function useFeedback(): RepoFeedback {
 
 /** O mural de avisos do escritório (o Início), ao vivo. */
 export function useAvisos() {
+  useSyncExternalStore(assinarTesteDoInicio, versaoDoTesteDoInicio, versaoDoTesteDoInicio);
   const repo = repoDeAvisos();
   useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
   return repo;
 }
 
+/** Os dados de teste do Início (o ⚡ do modo desenvolvedor): o que está ligado e como ligar. */
+export function useTesteDoInicio() {
+  useSyncExternalStore(assinarTesteDoInicio, versaoDoTesteDoInicio, versaoDoTesteDoInicio);
+  return { tarefas: testeDoInicioLigado('tarefas'), avisos: testeDoInicioLigado('avisos'), ligar: ligarTesteDoInicio };
+}
+
 /** O delegador de tarefas (a Central de tarefas e o correio), ao vivo. */
 export function useTarefasDelegadas(): RepoTarefasDelegadas {
+  useSyncExternalStore(assinarTesteDoInicio, versaoDoTesteDoInicio, versaoDoTesteDoInicio);
   const repo = repoDeTarefasDelegadas();
   useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
   return repo;
