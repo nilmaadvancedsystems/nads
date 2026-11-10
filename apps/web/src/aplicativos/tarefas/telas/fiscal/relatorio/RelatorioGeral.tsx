@@ -5,7 +5,8 @@
 // baixas, o cabeçalho e o total parados ao rolar, as conferências em bolinhas pequenas e a entrega com o logo. Os dados e
 // as ações são os mesmos do useRelatorioGeral. O "Enviar guias" (03/11/2026: "A parte de gmail tem que funcionar assim como
 // o envios do dp"): para quem grava, abre a janela do lote de guias (JanelaDasGuias); o robô manda e preenche a tabela.
-import { baixarBytes, BotaoIcone, Esqueleto, Icone, LogoExcel, MenuSuspenso, useCarregando } from '@nads/ui';
+import { tarefas as t } from '@nads/core';
+import { baixarBytes, BotaoIcone, Esqueleto, Icone, Interruptor, LogoExcel, MenuSuspenso, useCarregando } from '@nads/ui';
 import { useState, type CSSProperties } from 'react';
 import { useColunasAjustaveis } from '../../../../../comum/ColunasAjustaveis';
 import { MenuDeFiltro } from '../../dp/MenuDeFiltro';
@@ -33,7 +34,7 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
   const col = useColunasAjustaveis('fiscal-' + g.id, [
     { id: 'cod', padrao: 44 }, { id: 'cliente', padrao: 220 },
     ...vm.guias.map(c => ({ id: c.id, padrao: 74 })), ...g.marcas.map(m => ({ id: m.id, padrao: 32 })),
-    { id: 'data', padrao: 86 }, { id: 'ent', padrao: 68 }, { id: 'sit', padrao: 36 },
+    { id: 'data', padrao: 86 }, { id: 'ent', padrao: 68 }, { id: 'sit', padrao: 36 }, { id: 'ret', padrao: 52 },
   ], 'cliente');
   return (
     <section className="fr">
@@ -93,7 +94,7 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
                     <col className="fr-c-cod" style={col.col('cod')} /><col className="fr-c-cliente" style={col.col('cliente')} />
                     {vm.guias.map(c => <col key={c.id} className="fr-c-guia" style={col.col(c.id)} />)}
                     {g.marcas.map(m => <col key={m.id} className="fr-c-mk" style={col.col(m.id)} />)}
-                    <col className="fr-c-data" style={col.col('data')} /><col className="fr-c-ent" style={col.col('ent')} /><col className="fr-c-sit" style={col.col('sit')} />
+                    <col className="fr-c-data" style={col.col('data')} /><col className="fr-c-ent" style={col.col('ent')} /><col className="fr-c-sit" style={col.col('sit')} /><col className="fr-c-ret" style={col.col('ret')} />
                   </colgroup>
                   <thead>
                     <tr className="fr-grupos">
@@ -101,6 +102,7 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
                       <th colSpan={vm.guias.length} className="fr-g fr-centro">Guias (R$)</th>
                       <th colSpan={g.marcas.length} className="fr-g fr-centro">Conferências</th>
                       <th colSpan={3} className="fr-g fr-centro">Entrega</th>
+                      <th rowSpan={2} className="fr-g fr-centro fr-cabeca" title="A empresa foi retificada neste mês: ligada, entra no quadro de Retificação do protocolo">Retif.{col.alca('ret')}</th>
                     </tr>
                     <tr>
                       {vm.guias.map((c, i) => <th key={c.id} className={'fr-num' + (i === 0 ? ' fr-g' : '')} title={c.nome}>{c.rotulo}{col.alca(c.id)}</th>)}
@@ -132,6 +134,11 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
                         </td>
                         <td className="fr-centro"><Entrega valor={r.linha.entregue} pode={vm.podeGravar} rotulo={'Entrega de ' + r.nome} aoMudar={e => vm.mudarEntrega(r.codigo, e)} /></td>
                         <td className="fr-centro"><span className={'fr-sit ' + r.situacao} title={r.rotuloSituacao} aria-label={r.rotuloSituacao}>{r.situacao === 'concluida' && <Icone nome="check" width={11} height={11} />}</span></td>
+                        <td className="fr-g fr-centro fr-retif">
+                          {vm.podeGravar
+                            ? <Interruptor ligado={t.linhaRetificada(r.linha)} onMudar={() => vm.alternarRetificacao(r.codigo)} rotulo={'Retificação de ' + r.nome} />
+                            : (t.linhaRetificada(r.linha) ? 'Sim' : '–')}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
