@@ -36,6 +36,19 @@ describe('o adiantamento salarial (16/10/2026)', () => {
       ['2026-08', 2600, [], 2600, 2600, '2026-08-14'],
     ]);
   });
+  it('o adiantamento de férias: devedor num mês e baixado depois não é erro; sem zerar depois, continua (10/11/2026)', () => {
+    const r = lerRazao([CAB,
+      L('09/01/2026', -3000, 'Pagamento de adiantamento', -3000),
+      L('31/01/2026', 1000, 'Pagamento de férias <01/2026>', -2000),
+      L('02/02/2026', 2000, 'Pagamento de férias <02/2026>', 0),
+      L('10/03/2026', -500, 'Pagamento de adiantamento', -500),
+    ]);
+    expect(conferirAdiantamentoSalarial(r, ['2026-01', '2026-02', '2026-03']).map(m => [m.mes, m.saldoFinal, m.zeraDepois, m.ferias])).toEqual([
+      ['2026-01', -2000, true, true],
+      ['2026-02', 0, false, true],
+      ['2026-03', -500, false, false],
+    ]);
+  });
 });
 
 describe('o que falta pagar para zerar (Vitor, 26/10/2026)', () => {

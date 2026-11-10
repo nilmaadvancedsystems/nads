@@ -135,12 +135,14 @@ function ListaDeClientes({ vm }: { vm: VM }) {
   // alguma linha com a relação do razão: todas guardam o lugar da seta
   const comSeta = vm.linhas.some(l => !!l.razao && l.razao.itens.length > 0);
   const alternar = (codigo: string) => setAbertas(f => { const n = new Set(f); if (n.has(codigo)) n.delete(codigo); else n.add(codigo); return n; });
+  // puxou o razão (do robô ou do arquivo): os lançamentos da conta já aparecem (Vitor, 10/11/2026: só o selo mudava)
+  const abrir = (codigo: string) => setAbertas(f => new Set(f).add(codigo));
   // as sugestões de baixa de cada nota, fechadas até clicar na cápsula (Vitor, 15/10/2026: "tá muito embolado")
   const [noBanco, setNoBanco] = useState<ReadonlySet<string>>(new Set());
   const alternarNoBanco = (k: string) => setNoBanco(f => { const n = new Set(f); if (n.has(k)) n.delete(k); else n.add(k); return n; });
   return (
     <>
-      <CampoArquivo semCaixa semFoco ref={arquivo} aceitar=".xls,.xlsx,.ods" onEscolher={f => vm.importarRazao(conta.current, f ?? undefined)} />
+      <CampoArquivo semCaixa semFoco ref={arquivo} aceitar=".xls,.xlsx,.ods" onEscolher={f => { if (f) abrir(conta.current); vm.importarRazao(conta.current, f ?? undefined); }} />
       <div className="tarefas-barra-topo">
         <MenuSuspenso rotulo={ROTULO_FILTRO[vm.filtro]} className="btn btn-outline" dica="Filtrar os clientes"
           itens={(Object.keys(ROTULO_FILTRO) as FiltroClientes[]).map(f => ({
@@ -211,7 +213,7 @@ function ListaDeClientes({ vm }: { vm: VM }) {
                     </button>
                   ) : (
                     <>
-                    <BotaoDiario desabilitado={!vm.carregado} onClick={() => vm.usarDiarioNaConta(l.codigo)} titulo={'Usar o razão do robô na conta ' + l.codigo} />
+                    <BotaoDiario desabilitado={!vm.carregado} onClick={() => { abrir(l.codigo); vm.usarDiarioNaConta(l.codigo); }} titulo={'Usar o razão do robô na conta ' + l.codigo} />
                     <button type="button" className="icon-btn icon-btn-sm imp-btn" disabled={!vm.carregado}
                       onClick={() => { conta.current = l.codigo; arquivo.current?.click(); }}
                       title={'Importar o razão da conta ' + l.codigo + ' (as notas em aberto vão para a relação do cliente)'} aria-label={'Importar o razão de ' + l.nome}>
