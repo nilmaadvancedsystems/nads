@@ -12,6 +12,52 @@ function pagina(linhas: [string, number][][]): ItemDeTexto[] {
 }
 
 describe('extrato em PDF', () => {
+  const CABECALHO: [string, number][] = [['Data', 40], ['Historico', 120], ['Valor', 400], ['Saldo', 500]];
+
+  it('o valor de mil para cima sem o ponto é lido, e o saldo não vira o valor', () => {
+    const p = pagina([CABECALHO,
+      [['02/03/2026', 40], ['PIX RECEBIDO CLIENTE', 120], ['2500,00', 400], ['12345,67', 500]],
+      [['03/03/2026', 40], ['TARIFA PACOTE', 120], ['-35,90', 400], ['12309,77', 500]],
+      [['04/03/2026', 40], ['PAGTO FORNECEDOR', 120], ['-1200,00', 400], ['11109,77', 500]],
+    ]);
+    expect(lancamentosDoPdf([p], 'banco', 2026)).toEqual([
+      { data: '2026-03-02', valor: 250000, historico: 'PIX RECEBIDO CLIENTE' },
+      { data: '2026-03-03', valor: -3590, historico: 'TARIFA PACOTE' },
+      { data: '2026-03-04', valor: -120000, historico: 'PAGTO FORNECEDOR' },
+    ]);
+  });
+
+  it('o extrato que vira o ano: a data sem ano cai no ano certo pelo período escrito', () => {
+    const p = pagina([
+      [['Periodo:', 40], ['15/12/2025', 90], ['a', 150], ['15/01/2026', 160]],
+      CABECALHO,
+      [['20/12', 40], ['PIX RECEBIDO A', 120], ['100,00', 400], ['1.100,00', 500]],
+      [['05/01', 40], ['PIX RECEBIDO B', 120], ['300,00', 400], ['1.400,00', 500]],
+    ]);
+    expect(lancamentosDoPdf([p], 'banco', 2026).map(l => l.data)).toEqual(['2025-12-20', '2026-01-05']);
+  });
+
+  it('o extrato dentro de um ano só não muda com o período escrito', () => {
+    const p = pagina([
+      [['Periodo:', 40], ['01/03/2026', 90], ['a', 150], ['31/03/2026', 160]],
+      CABECALHO,
+      [['05/03', 40], ['PIX RECEBIDO A', 120], ['100,00', 400], ['1.100,00', 500]],
+    ]);
+    expect(lancamentosDoPdf([p], 'banco', 2026).map(l => l.data)).toEqual(['2026-03-05']);
+  });
+
+  it('o nome que abre com palavra de resumo é lançamento; o total de verdade continua de fora', () => {
+    const p = pagina([CABECALHO,
+      [['02/03/2026', 40], ['TOTAL ATACADO LTDA', 120], ['150,00', 400], ['1.150,00', 500]],
+      [['03/03/2026', 40], ['LIMITE ENGENHARIA SA', 120], ['250,00', 400], ['1.400,00', 500]],
+      [['04/03/2026', 40], ['TRANSPORTE RODOVIARIO SILVA', 120], ['350,00', 400], ['1.750,00', 500]],
+      [['05/03/2026', 40], ['TOTAL DE CREDITOS', 120], ['750,00', 400]],
+      [['05/03/2026', 40], ['LIMITE DISPONIVEL', 120], ['5.000,00', 400]],
+      [['TOTAL ATACADO LTDA', 120], ['999,00', 400]],
+    ]);
+    expect(lancamentosDoPdf([p], 'banco', 2026).map(l => l.valor)).toEqual([15000, 25000, 35000]);
+  });
+
   it('o BB com "(+)" escrito: o "Pagamento Débito" da maquininha é entrada (10/11/2026)', () => {
     const p = pagina([
       [['02/03/2026', 40]],
