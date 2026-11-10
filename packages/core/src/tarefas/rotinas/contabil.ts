@@ -133,7 +133,6 @@ export const ROTINA_CONTABIL: Rotina = {
         'O saldo do caixa é devedor (ou zero) no fim do mês e em nenhum dia fica credor.',
         'Caixa credor: procure pagamentos lançados no caixa que saíram pelo banco e vendas à vista que faltam.',
         'O saldo está de acordo com o tamanho da empresa (caixa alto demais também é sinal de lançamento errado).',
-        'Nenhum pagamento lançado no caixa que saiu do banco (a faixa "Pago pelo banco e lançado no caixa").',
       ],
       objecoes: [
         { id: 'caixa-credor', texto: 'O caixa ficou credor e não achei o motivo', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Interrompa com esta objeção: a competência aparece para os sêniores revisarem.' } },
@@ -373,6 +372,7 @@ export const ROTINA_CONTABIL: Rotina = {
         'Nenhuma despesa ou custo com saldo credor, menos as redutoras "(-)" (devoluções de compra, por exemplo).',
         'Nenhuma receita com saldo devedor, menos as deduções "(-)" (impostos sobre a venda, devoluções).',
         'Despesa credora ou receita devedora: lançamento invertido, ou estorno lançado na conta errada.',
+        'Nenhum pagamento lançado no caixa que saiu do banco (a faixa "Pago pelo banco e lançado no caixa").',
       ],
       objecoes: [
         { id: 'despesa-credora', texto: 'Tem despesa credora e não achei o motivo', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Interrompa com esta objeção: a competência aparece para os sêniores revisarem.' } },
