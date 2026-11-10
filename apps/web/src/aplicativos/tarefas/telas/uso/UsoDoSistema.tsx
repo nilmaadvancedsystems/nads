@@ -18,7 +18,7 @@ export function UsoDoSistema() {
         <span className="uso-coleta">
           <span>Coletar o uso</span>
           <Dica texto={'Cada pessoa grava no máximo uma vez a cada 5 minutos (e ao sair da página), num documento por dia: cerca de '
-            + vm.estimativa.toLocaleString('pt-BR') + ' gravações por dia para 10 pessoas. Só a tela, o rótulo do botão e o ponto do clique: nada do que se digita, nem dado de cliente, nem do cofre.'} />
+            + vm.estimativa.toLocaleString('pt-BR') + ' gravações por dia para 10 pessoas. Só a tela, o rótulo do botão e o ponto do clique: nada do que se digita, nem dado de cliente, nem do cofre. Junto, quantas leituras do banco cada coleção e tela fazem.'} />
           <Interruptor ligado={vm.coletando} onMudar={() => void vm.alternarColeta()} rotulo="Coletar o uso do sistema" />
         </span>
       </div>
@@ -41,6 +41,34 @@ export function UsoDoSistema() {
                 <span className="uso-tela-val">{x.visitas ? x.visitas + (x.visitas === 1 ? ' visita' : ' visitas') : 'ninguém abriu'}</span>
                 <button type="button" className="btn btn-outline btn-sm" onClick={() => vm.verNaTela(x.tela)}>Ver os botões</button>
                 <span className="uso-tela-barra" aria-hidden="true"><span className={'calor-' + x.nivel} style={{ width: x.pct + '%' }} /></span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!vm.carregando && vm.leituras.total > 0 && (
+        <div className="card uso-telas">
+          <h3>As leituras do banco no período</h3>
+          <p className="uso-explica">{vm.leituras.total.toLocaleString('pt-BR')} leituras medidas nos navegadores (conta aproximada; os robôs ficam de fora).</p>
+          <div className="uso-telas-lista">
+            {vm.leituras.porColecao.map(x => (
+              <div key={'c' + x.chave} className="uso-tela-item">
+                <span className="uso-tela-nome">{x.chave}</span>
+                <span className="uso-tela-val">{x.total.toLocaleString('pt-BR') + ' · ' + x.pct + '%'}</span>
+                <span />
+                <span className="uso-tela-barra" aria-hidden="true"><span className="calor-3" style={{ width: x.pct + '%' }} /></span>
+              </div>
+            ))}
+          </div>
+          <h3>Por coleção e tela</h3>
+          <div className="uso-telas-lista">
+            {vm.leituras.porTela.map(x => (
+              <div key={'t' + x.chave} className="uso-tela-item">
+                <span className="uso-tela-nome">{x.chave}</span>
+                <span className="uso-tela-val">{x.total.toLocaleString('pt-BR') + ' · ' + x.pct + '%'}</span>
+                <span />
+                <span className="uso-tela-barra" aria-hidden="true"><span className="calor-3" style={{ width: x.pct + '%' }} /></span>
               </div>
             ))}
           </div>

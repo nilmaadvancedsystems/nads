@@ -16,6 +16,11 @@ export const MAX_CONTROLES_POR_TELA = 300;
 export const INTERVALO_DE_GRAVAR_MS = 5 * 60 * 1000;
 /** o tamanho máximo do rótulo de um controle */
 export const MAX_ROTULO = 48;
+/**
+ * As leituras do banco por coleção e tela (10/11/2026, consumo do banco): vão no mesmo documento do dia, como uma "tela"
+ * especial cujos "controles" são "coleção @ tela" e os "cliques", as leituras. Não aparece como tela no Uso do sistema.
+ */
+export const TELA_DAS_LEITURAS = '_leituras';
 
 /** o uso de uma tela num dia (as chaves curtas economizam o documento) */
 export interface UsoDaTela {
@@ -35,6 +40,8 @@ export interface UsoDoDia {
   telas: Record<string, UsoDaTela>;
   /** visitas e cliques por pessoa (o nome da equipe) */
   pessoas: Record<string, number>;
+  /** as leituras do banco por "coleção @ tela" (só no que vem do banco; TELA_DAS_LEITURAS) */
+  leituras?: Record<string, number>;
 }
 
 /** o dia (AAAA-MM-DD) na hora local */
@@ -148,6 +155,12 @@ export function criarAcumulador() {
     },
     /** já viu os controles desta tela nesta sessão? */
     jaViu: (tela: string) => vistas.has(tela),
+    /** as leituras do banco desde a última vez ("coleção @ tela" → quantas), sem o limite de controles */
+    leituras(contagem: Record<string, number>, agora = new Date()) {
+      const u = doDia(agora);
+      const t = daTela(u, TELA_DAS_LEITURAS);
+      for (const [k, n] of Object.entries(contagem)) if (n > 0) somar(t.c, k, n);
+    },
     /** tira o que está pendente para gravar (null = nada) */
     tirar(): UsoDoDia | null {
       const u = pendente;
@@ -205,6 +218,8 @@ export interface UsoSomado {
   /** as telas da navegação que ninguém abriu no período */
   nuncaVisitadas: TelaDaNavegacao[];
   pessoas: { nome: string; total: number }[];
+  /** as leituras do banco no período: por coleção (somando as telas) e por "coleção @ tela", da maior para a menor */
+  leituras: { total: number; porColecao: { chave: string; total: number }[]; porTela: { chave: string; total: number }[] };
   /** o "possivelmente inútil": as telas sem visita e os controles sem clique */
   possivelmenteInutil: { telas: TelaDaNavegacao[]; controles: { tela: string; rotulo: string; controle: string }[] };
 }
@@ -216,12 +231,14 @@ const mapa = (v: unknown): Record<string, unknown> => (v && typeof v === 'object
 export function usoDoDocumento(id: string, dados: unknown): UsoDoDia {
   const d = mapa(dados);
   const telas: Record<string, UsoDaTela> = {};
+  const nums = (m: unknown) => Object.fromEntries(Object.entries(mapa(m)).map(([k, v]) => [k, num(v)]));
+  let leituras: Record<string, number> | undefined;
   for (const [tela, bruto] of Object.entries(mapa(d.telas))) {
     const t = mapa(bruto);
-    const nums = (m: unknown) => Object.fromEntries(Object.entries(mapa(m)).map(([k, v]) => [k, num(v)]));
+    if (tela === TELA_DAS_LEITURAS) { leituras = nums(t.c); continue; }
     telas[tela] = { v: num(t.v), c: nums(t.c), p: nums(t.p), q: nums(t.q) };
   }
-  return { dia: typeof d.dia === 'string' ? d.dia : id, telas, pessoas: Object.fromEntries(Object.entries(mapa(d.pessoas)).map(([k, v]) => [k, num(v)])) };
+  return { dia: typeof d.dia === 'string' ? d.dia : id, telas, pessoas: nums(d.pessoas), ...(leituras ? { leituras } : {}) };
 }
 
 /** soma os dias do período (os rótulos das telas vêm da navegação; a tela sem rótulo mostra o caminho) */
@@ -230,7 +247,13 @@ export function somarUso(dias: readonly UsoDoDia[], navegacao: readonly TelaDaNa
   const porTela = new Map<string, { v: number; c: Map<string, number>; p: Map<string, number>; q: Map<string, number> }>();
   const pessoas = new Map<string, number>();
   const somar = (m: Map<string, number>, k: string, n: number) => m.set(k, (m.get(k) || 0) + n);
+  const leiturasPorTela = new Map<string, number>();
+  const leiturasPorColecao = new Map<string, number>();
   for (const d of dias) {
+    for (const [k, n] of Object.entries(d.leituras || {})) {
+      somar(leiturasPorTela, k, n);
+      somar(leiturasPorColecao, k.split(' @ ')[0], n);
+    }
     for (const [tela, t] of Object.entries(d.telas)) {
       const a = porTela.get(tela) || { v: 0, c: new Map(), p: new Map(), q: new Map() };
       a.v += t.v;
@@ -263,6 +286,11 @@ export function somarUso(dias: readonly UsoDoDia[], navegacao: readonly TelaDaNa
     telas,
     nuncaVisitadas,
     pessoas: [...pessoas.entries()].map(([nome, total]) => ({ nome, total })).sort((x, y) => y.total - x.total),
+    leituras: {
+      total: [...leiturasPorColecao.values()].reduce((a, b) => a + b, 0),
+      porColecao: [...leiturasPorColecao.entries()].map(([chave, total]) => ({ chave, total })).sort((x, y) => y.total - x.total),
+      porTela: [...leiturasPorTela.entries()].map(([chave, total]) => ({ chave, total })).sort((x, y) => y.total - x.total),
+    },
     possivelmenteInutil: {
       telas: nuncaVisitadas,
       controles: telas.flatMap(t => t.semClique.map(controle => ({ tela: t.tela, rotulo: t.rotulo, controle }))),

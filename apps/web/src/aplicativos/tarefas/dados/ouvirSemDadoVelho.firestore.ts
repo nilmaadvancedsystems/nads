@@ -17,9 +17,57 @@
 // de recarregar), o banco cobra só o que mudou. Mais de 30 min: a consulta inteira, como antes.
 /* eslint-disable @typescript-eslint/no-explicit-any -- embrulho genérico das assinaturas de onSnapshot */
 export * from '@firebase/firestore';
-import { getDocs as getDocsBruto, onSnapshot as onSnapshotBruto } from '@firebase/firestore';
+import { getDoc as getDocBruto, getDocs as getDocsBruto, onSnapshot as onSnapshotBruto } from '@firebase/firestore';
 
 const ESPERA_SEM_SERVIDOR_MS = 10 * 1000;
+
+// ─── o medidor das leituras (10/11/2026, consumo do banco) ─────────────────────────────────────────────────────────────
+// Com a coleta do Uso do sistema ligada (config/uso), conta o que chega do servidor por "coleção @ tela": o ouvinte paga
+// os documentos que mudaram (a primeira foto, os da consulta inteira), o getDoc paga 1. Vai ao banco junto com o uso
+// (useColetaDeUso, uso/{dia}). Conta aproximada, como o freio dos robôs: serve para achar quem gasta, não para a fatura.
+let medindo = false;
+let telaDaLeitura = '';
+const leituras = new Map<string, number>();
+/** liga ou desliga o medidor (desligado, esquece o que tinha) */
+export function medirLeituras(ligado: boolean) { medindo = ligado; if (!ligado) leituras.clear(); }
+/** a tela aberta agora (o "@ tela" das contas) */
+export function definirTelaDaLeitura(tela: string) { telaDaLeitura = tela; }
+/** o que se juntou desde a última vez, e zera */
+export function tirarLeituras(): Record<string, number> {
+  const r = Object.fromEntries(leituras);
+  leituras.clear();
+  return r;
+}
+
+/** A coleção de uma referência, sem os ids ("rotinas", "usuarios › id › notas" vira usuarios/[id]/notas); robo e config com o documento. */
+export function colecaoDaReferencia(ref: any): string {
+  try {
+    let caminho = '';
+    if (ref?.type === 'document' || ref?.type === 'collection') caminho = String(ref.path);
+    else if (ref?._query?.collectionGroup) return '**/' + ref._query.collectionGroup;
+    else caminho = String(ref?._query?.path?.canonicalString?.() || '');
+    const partes = caminho.split('/').filter(Boolean);
+    if (!partes.length) return '?';
+    const fica = ref?.type === 'document' && partes.length === 2 && (partes[0] === 'robo' || partes[0] === 'config');
+    return partes.map((p, i) => (i % 2 === 1 && !fica ? '[id]' : p)).join('/');
+  } catch { return '?'; }
+}
+
+function contar(ref: any, n: number) {
+  if (!medindo || n <= 0) return;
+  const k = colecaoDaReferencia(ref) + ' @ ' + (telaDaLeitura || '?');
+  leituras.set(k, (leituras.get(k) || 0) + n);
+}
+
+/** Quantos documentos esta foto cobrou (0 = veio do cache ou só mudou o estado local). */
+function cobradosNaFoto(s: any, anterior: { conteudo: string | null }): number {
+  if (!s?.metadata || s.metadata.fromCache || s.metadata.hasPendingWrites) return 0;
+  if (typeof s.docChanges === 'function') return s.docChanges().length;
+  const conteudo = JSON.stringify(s.exists?.() ? s.data?.() : null);
+  if (conteudo === anterior.conteudo) return 0;
+  anterior.conteudo = conteudo;
+  return 1;
+}
 const PAUSA_DA_ABA_ESCONDIDA_MS = 3 * 60 * 1000;
 /** Os documentos que param de ser ouvidos com a aba escondida: os sinais dos robôs e as configurações. */
 const PAUSA_NA_ABA_ESCONDIDA = /^(robo|config|driveIndice)\/[^/]+$/;
@@ -131,8 +179,9 @@ function ouvir(ref: any, ...args: any[]): () => void {
     cancelar: t => clearTimeout(t as ReturnType<typeof setTimeout>),
     online: () => typeof navigator === 'undefined' || navigator.onLine !== false,
   });
+  const anterior = { conteudo: null as string | null };
   const ligar = () => bruto(ref, { ...opcoes, includeMetadataChanges: true }, {
-    next: (s: Foto) => filtro.chegou(s),
+    next: (s: Foto) => { contar(ref, cobradosNaFoto(s, anterior)); filtro.chegou(s); },
     error: (e: unknown) => { filtro.parar(); observador.error?.(e); },
     complete: () => observador.complete?.(),
   });
@@ -175,3 +224,11 @@ function lerConsulta(q: any): Promise<any> {
 }
 
 export const getDocs = lerConsulta as unknown as typeof getDocsBruto;
+
+function lerDocumento(ref: any): Promise<any> {
+  const p = getDocBruto(ref);
+  if (ref?.firestore?.app?.name === 'entregas' && medindo) p.then(s => { if (!s.metadata.fromCache) contar(ref, 1); }, () => {});
+  return p;
+}
+
+export const getDoc = lerDocumento as unknown as typeof getDocBruto;

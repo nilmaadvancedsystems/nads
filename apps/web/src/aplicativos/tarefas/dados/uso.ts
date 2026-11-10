@@ -19,6 +19,11 @@ export interface RepoUso {
   dias(dias: readonly string[], telasDeExemplo: readonly uso.TelaDaNavegacao[]): Promise<uso.UsoDoDia[]>;
   assinar(aoMudar: () => void): () => void;
   versao(): number;
+  /**
+   * o medidor das leituras do banco (10/11/2026, consumo do banco): ligado junto com a coleta; a tela aberta; o que se
+   * juntou desde a última vez ("coleção @ tela" → leituras). Nos exemplos, não mede nada.
+   */
+  medidor: { medir(ligado: boolean): void; tela(tela: string): void; tirar(): Record<string, number> };
 }
 
 /**
@@ -69,6 +74,7 @@ export function criarUsoMemoria(): RepoUso {
   }
   return {
     exemplos: true,
+    medidor: { medir() {}, tela() {}, tirar: () => ({}) },
     ligado: () => ({ carregado: true, ligado }),
     async ligar(l) { ligado = l; mudou(); },
     async somar(delta) {
