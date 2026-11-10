@@ -342,6 +342,7 @@ async function montarEntrada(nome, rel, buffer, op) {
     // a imagem escaneada (27/10/2026, Vitor: os comprovantes "Imagem (10).jpg" do Posto Berizal) é lida por OCR, como o PDF
     // escaneado: na fila do OCR do contínuo (adiarOcr) ou na hora
     case 'jpg': case 'jpeg': case 'png': {
+      if (R.ehFoto(nome)) break;   // a foto é ignorada (10/11/2026): nem vai ao Tesseract (só a de dentro de um compactado ainda chega aqui)
       // só imagem de verdade (JPEG FF D8, PNG 89 50 4E 47): o resto nem vai ao Tesseract
       if (!OCR_LIGADO || !(buffer.length > 8 && ((buffer[0] === 0xff && buffer[1] === 0xd8) || buffer.readUInt32BE(0) === 0x89504e47))) break;
       if (op && op.adiarOcr) { e.precisaOcr = true; adiantarOcr(e.hash, buffer, true); break; }
@@ -430,7 +431,7 @@ function varrer(origem, opcoes) {
         if (it.name.startsWith('_') || /^CLAUDE FAVOR N[ÃA]O MEXER$/i.test(it.name)) continue;
         if (it.name === NAO_IDENTIFICADOS && !opcoes.incluirNaoIdentificados) continue;
         andar(path.join(dir, it.name), r);
-      } else if (!it.name.startsWith('_nao_identificados') && it.name !== 'desktop.ini') out.push(r);
+      } else if (!it.name.startsWith('_nao_identificados') && it.name !== 'desktop.ini' && !R.ehFoto(it.name)) out.push(r);   // a foto: ignorada (10/11/2026)
     }
   };
   const base = opcoes.pasta ? path.join(origem, opcoes.pasta) : origem;
@@ -760,7 +761,11 @@ async function decidirUm(nome, rel, buffer, ctx, pronta) {
   const entrada = pronta || await montarEntrada(nome, rel, buffer);
   // o escaneado que o contínuo mandou para a fila do OCR: nada decidido agora (volta no lote do OCR)
   if (entrada.precisaOcr) return { rel, nome, hash: entrada.hash, acao: 'AGUARDANDO_OCR', motivo: 'ESCANEADO_NA_FILA_DO_OCR', confianca: 0, evidencias: [], copias: [] };
-  let d = ctx.manual && ctx.manual[rel] ? require('./arquivador-manual').decidirManual(entrada, ctx, ctx.manual[rel]) : semArquivarSemLeitura(entrada, R.decidir(entrada, ctx));
+  // a foto (10/11/2026: "o arquivador vai IGNORAR fotos"): nem as regras; a solta nem chega aqui (a varredura pula), a de dentro de
+  // um compactado fica de fora dele (não é extraída). Só a escolha do admin no site (o "Arquivar em…") ainda arquiva uma foto.
+  const foto = R.ehFoto(nome) && !(ctx.manual && ctx.manual[rel]);
+  let d = foto ? { acao: 'IGNORAR', motivo: 'FOTO', confianca: 1, evidencias: ['foto: o arquivador ignora, fica onde chegou (10/11/2026)'] }
+    : ctx.manual && ctx.manual[rel] ? require('./arquivador-manual').decidirManual(entrada, ctx, ctx.manual[rel]) : semArquivarSemLeitura(entrada, R.decidir(entrada, ctx));
   // a migração (23/10/2026): o que o conteúdo não decidiu, a pasta de origem pode decidir (o mapa da migração)
   if (!(ctx.manual && ctx.manual[rel]) && d.acao === 'NAO_IDENTIFICADO') { try { const m = require('./arquivador-migracao').decidir(entrada, ctx, d); if (m) d = m; } catch (e) { d.evidencias = (d.evidencias || []).concat('mapa da migração: ' + e.message); } }
   // a imagem que nem as regras nem o mapa decidiram, depois do OCR: DESCARTAR (Vitor, 28/10/2026)
@@ -984,7 +989,8 @@ async function aplicar(res, opcoes, ctx) {
     try {
       if (it.acao === 'CONTEINER') {
         // compactado: só quando todos os de dentro são de tipo liberado (senão fica inteiro para a rotina antiga)
-        if (!it.filhos.every(f => permitido(f) || f.acao === 'JA_ARQUIVADO')) { it.naoAplicado = 'compactado com tipo ainda em simulação'; return; }
+        // a foto de dentro (IGNORAR, 10/11/2026) não é extraída e não segura o compactado: ele vai inteiro para a quarentena, como sempre
+        if (!it.filhos.every(f => permitido(f) || f.acao === 'JA_ARQUIVADO' || f.acao === 'IGNORAR')) { it.naoAplicado = 'compactado com tipo ainda em simulação'; return; }
         if (it.filhos.some(f => f.acao === 'AGUARDANDO_ORIGINAL')) { it.naoAplicado = 'compactado com evento esperando o documento original'; return; }
         if (!opcoes.moverNaoIdentificados && it.filhos.some(f => f.acao === 'NAO_IDENTIFICADO' || f.acao === 'FICA')) { it.naoAplicado = 'compactado com não identificado (fica para a rotina antiga)'; return; }
         const buf = await fs.promises.readFile(path.join(opcoes.origem, it.rel));
@@ -1116,7 +1122,7 @@ function arquivosDosNaoIdentificados(pastaNi) {
     for (const e of lista) {
       const r = rel ? rel + '\\' + e.name : e.name;
       if (e.isDirectory()) andar(path.join(d, e.name), r);
-      else if (!/^_/.test(e.name) && !/^~\$|\.tmp$/i.test(e.name)) out.push(r);
+      else if (!/^_/.test(e.name) && !/^~\$|\.tmp$/i.test(e.name) && !R.ehFoto(e.name)) out.push(r);   // a foto: ignorada (10/11/2026)
     }
   })(pastaNi, '');
   return out.sort();

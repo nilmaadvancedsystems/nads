@@ -29,6 +29,8 @@ const path = require('path');
 const os = require('os');
 const A = require('./arquivador-novo');
 const C_ehTemporario = rel => ehTemporario(path.basename(rel));
+// a foto (10/11/2026: "o arquivador vai IGNORAR fotos"): fica onde chegou, nem é lida (o G: baixaria o arquivo)
+const C_ehFoto = rel => require('./arquivador-regras').ehFoto(path.basename(rel));
 
 const ORIGEM = process.env.ARQ_NOVO_ORIGEM || 'G:\\Meu Drive\\Claudio Secretario';
 const ROTINA = process.env.ARQUIVO_RAIZ || 'C:\\Users\\DPTO FISCAL 004\\GUSTAVO\\claudio';
@@ -370,7 +372,7 @@ function iniciar(opcoes) {
    * visto duas vezes com o mesmo tamanho e a mesma data, com estavelMs entre elas, e a data mais velha que estavelMs.
    */
   function situacaoDe(org, v, agora, estavelMs, porPedido) {
-    if (C_ehTemporario(v.rel) || !v.tam) return 'ignorado';
+    if (C_ehTemporario(v.rel) || C_ehFoto(v.rel) || !v.tam) return 'ignorado';
     const idade = agora - v.mtime, k = org.id + '|' + v.rel;
     if (porPedido && idade >= 10000) { recentes.delete(k); return 'pronto'; }
     if (idade >= RECENTE_MS) { recentes.delete(k); return 'pronto'; }
@@ -918,7 +920,7 @@ function iniciar(opcoes) {
     const naPasta = [];
     await (async function andar(d, rel) {
       let l = []; try { l = await fs.promises.readdir(d, { withFileTypes: true }); } catch (e) { return; }
-      for (const e of l) { const r = rel ? rel + '\\' + e.name : e.name; if (e.isDirectory()) await andar(path.join(d, e.name), r); else if (!/^_/.test(e.name)) naPasta.push(r); }
+      for (const e of l) { const r = rel ? rel + '\\' + e.name : e.name; if (e.isDirectory()) await andar(path.join(d, e.name), r); else if (!/^_/.test(e.name) && !C_ehFoto(e.name)) naPasta.push(r); }
     })(pastaNi, '');
     const presentes = new Set(naPasta.map(k => k.toLowerCase()));
     const semMotivo = naPasta.filter(k => !ultimos.has(k));
