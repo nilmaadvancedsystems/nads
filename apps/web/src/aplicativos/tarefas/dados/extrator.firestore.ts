@@ -11,7 +11,7 @@
 // Este, o creditor.firestore.ts (ao lado) e os dados/*.firestore.ts dos outros aplicativos são os únicos arquivos do nads que falam com o Firebase.
 import { escutasDoBanco, extrator as x, formatos, type empresas } from '@nads/core';
 import { getApps, initializeApp } from 'firebase/app';
-import { collection, doc, getFirestore, initializeFirestore, onSnapshot, writeBatch as writeBatchBruto, type Firestore } from 'firebase/firestore';
+import { collection, doc, getDocs, getFirestore, initializeFirestore, onSnapshot, writeBatch as writeBatchBruto, type Firestore } from 'firebase/firestore';
 import { guardarLote } from '../../../comum/modoDesenvolvedor';
 
 // a trava do modo desenvolvedor (comum/modoDesenvolvedor.ts): com o modo ligado, só ver — nada é gravado
@@ -44,6 +44,15 @@ export function bancoDaConferencia(): Firestore {
   } catch {
     return getFirestore(app);
   }
+}
+
+/**
+ * Os nomes das empresas que têm extrato guardado (a releitura de todas, 10/11/2026): uma leitura por empresa da coleção, só o
+ * documento de cima (os arquivos ficam para quando cada uma for aberta).
+ */
+export async function nomesNoExtrator(): Promise<string[]> {
+  const s = await getDocs(collection(bancoDaConferencia(), COLECAO));
+  return s.docs.map(d => (d.data() as { nome?: unknown }).nome).filter((n): n is string => typeof n === 'string' && !!n.trim());
 }
 
 interface Carga {

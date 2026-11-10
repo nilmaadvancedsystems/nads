@@ -6,6 +6,7 @@ export type {
   ArquivoLido, Situacao, TipoDiferenca, LinhaConferencia, Conferencia, ConferenciaPeloSaldo,
 } from './tipos';
 export { centavos, temSinal, lerData, numeroDoDia, dataBR, competencia, valorBR, reaisBR, palavras, parecido } from './regras/texto';
+export { aplicarReleituras, type ReleituraDaEmpresa } from './regras/releituraGeral';
 export { montarLinhas, anoDoTexto, lancamentosDoPdf, paginasPorMes, ehFaturaDeCartao, ehItauMensal, type ItemDeTexto } from './regras/extrato';
 export { extratoPorMes, pdfComAsPaginas, nomeDoExtratoDoMes, type ExtratoDoMes } from './arquivos/porMes';
 export { lancamentosDaPlanilha, type Celula } from './regras/planilha';
