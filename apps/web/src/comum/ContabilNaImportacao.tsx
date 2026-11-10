@@ -5,7 +5,7 @@
 import { clientes as cl, tarefas as t } from '@nads/core';
 import { BotaoIcone, CampoArquivo, Icone, useRetorno } from '@nads/ui';
 import { useEffect, useId, useRef, type ReactNode } from 'react';
-import { useContabilDaEmpresa } from './contabilDaEmpresa';
+import { ROBO_NAS_ETAPAS, useContabilDaEmpresa } from './contabilDaEmpresa';
 import { BotaoDiario } from './BotaoDiario';
 
 /**
@@ -125,7 +125,7 @@ export function ContabilNaImportacao({ nome, codigo, meses = [], soDiario = fals
             </div>
             <div className="imp-grupos">
               <div className="imp-grupo" aria-label="Razão de todas as contas">
-                <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" onClick={vm.tirarDiario} title="Clique para tirar (o robô lê de novo os meses prontos)." aria-label="Tirar o razão de todas as contas">
+                <button type="button" className="icon-btn icon-btn-sm imp-btn imp-feito" onClick={vm.tirarDiario} title={ROBO_NAS_ETAPAS ? 'Clique para tirar (o robô lê de novo os meses prontos).' : 'Clique para tirar.'} aria-label="Tirar o razão de todas as contas">
                   <Icone nome="check" className="imp-feito-ok" /><Icone nome="x" className="imp-feito-x" />
                 </button>
               </div>
@@ -134,7 +134,8 @@ export function ContabilNaImportacao({ nome, codigo, meses = [], soDiario = fals
         </div>
       )}
 
-      {!soDiario && <div className={'imp-bloco' + (pedidos.length ? (faltam || incompletos ? '' : ' imp-ok') : razoes.length && !incompletos ? ' imp-ok' : '')}>
+      {/* sem o robô nas etapas, os razões voltam a ser importados aqui */}
+      {(!soDiario || !ROBO_NAS_ETAPAS) && <div className={'imp-bloco' + (pedidos.length ? (faltam || incompletos ? '' : ' imp-ok') : razoes.length && !incompletos ? ' imp-ok' : '')}>
         <div className="imp-linha">
           <span className="imp-ico"><Icone nome="arquivo" /></span>
           <div className="imp-txt">

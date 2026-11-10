@@ -24,10 +24,10 @@ export interface ContaDoPlano { codigo: string; nome: string }
  * balancete: as contas analíticas do balancete importado na Conferência (Vitor, 07/10/2026: "essa conta do INSS a recolher,
  * você puxa diretamente do balancete, tem o nome certinho lá"); sem ele, a pessoa digita.
  */
-/** O banco do comprovante ("756 - BANCO COOPERATIVO SICOOB S/A") → o nome curto (Sicoob) e a marca do logo. */
+/** O banco do comprovante ("756 - BANCO COOPERATIVO SICOOB S/A") → o nome curto (Sicoob) e a marca do logo; "Documento pago via PIX" → PIX. */
 function bancoDaGuia(texto: string): { nome: string; curto: string; marca: string } {
   const curto = conversor.bancoDoTexto(texto);
-  return { nome: texto, curto: curto || texto.replace(/^\d+\s*-\s*/, ''), marca: curto ? conversor.marcaDoBanco(curto) : '' };
+  return { nome: texto, curto: curto || (/\bpix\b/i.test(texto) ? 'PIX' : texto.replace(/^\d+\s*-\s*/, '')), marca: curto ? conversor.marcaDoBanco(curto) : '' };
 }
 
 /** empresa: o nome (o razão do INSS importado na Importação, quando a etapa não tem o próprio; 16/10/2026) */

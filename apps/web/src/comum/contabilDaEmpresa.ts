@@ -19,6 +19,13 @@ export interface DinamicoGuardado { nome: string; d: cl.BalanceteDinamico; /** v
 export interface DiarioGuardado { arquivo: string; lido: t.DiarioLido }
 interface Contabil { dinamico?: DinamicoGuardado; razoes?: Record<string, RazaoGuardado>; diario?: DiarioGuardado }
 
+/**
+ * O robô do Alterdata nas etapas do Contábil (Vitor, 10/11/2026: "precisamos trabalhar mais nele antes de implementar
+ * diretamente para o usuário"): false = sem os botões, sem os blocos e sem pedido novo à fila. O que ele já importou fica no
+ * guardado e continua valendo. Para voltar, é só pôr true.
+ */
+export const ROBO_NAS_ETAPAS: boolean = false;
+
 const SEM_RAZAO_DO_ROBO = 'Na Importação, aba Balancete e razões, puxe os razões do Alterdata pelo robô.';
 
 /** A chave do guardado da empresa (o nome: a Importação e as etapas têm o mesmo). */
