@@ -1,6 +1,6 @@
 // O lote de boletos de honorários (10/11/2026): os PDFs prontos sobem na tela, o nads lê cada um (financeiro.lerBoleto), acha o
 // cliente pelo CNPJ/CPF que está no PDF e diz, linha a linha, o que libera ou trava o disparo. O valor e o vencimento são os
-// impressos no boleto: o dia cadastrado no contrato só serve para avisar quando os dois não batem (vale o PDF). Puro: sem tela.
+// impressos no boleto (10/11/2026: "puxe a data do vencimento do pdf como base, não ligando pro cadastro"). Puro: sem tela.
 import { competenciaBr, type ContratoDeHonorario, type RecebimentoDeHonorario } from './honorarios';
 
 export type StatusDoEnvio = 'fila' | 'enviando' | 'enviado' | 'erro';
@@ -160,15 +160,6 @@ export function acharContratoDoBoleto(texto: string, arquivo: string, contratos:
   return porNome.length === 1 ? { contratoId: porNome[0].id, achadoPor: 'nome' } : null;
 }
 
-/** O vencimento que o cadastro espera: o dia do contrato no mês seguinte à competência (o último dia, se o mês for mais curto). */
-export function vencimentoDoContrato(dia: number | undefined, competencia: string): string {
-  if (!dia || dia < 1 || dia > 31 || !/^\d{4}-\d{2}$/.test(competencia)) return '';
-  const a = Number(competencia.slice(0, 4)), m = Number(competencia.slice(5, 7));
-  const ano = m === 12 ? a + 1 : a, mes = m === 12 ? 1 : m + 1;
-  const ultimo = new Date(Date.UTC(ano, mes, 0)).getUTCDate();
-  return `${ano}-${String(mes).padStart(2, '0')}-${String(Math.min(dia, ultimo)).padStart(2, '0')}`;
-}
-
 const dataBr = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
 const reais = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -208,9 +199,6 @@ export function conferirBoleto(b: BoletoDoLote, ctx: ContextoDoLote): Conferenci
     if (b.valor != null && contrato.valor > 0 && Math.round(b.valor * 100) !== Math.round(contrato.valor * 100)) {
       avisos.push(`O valor do boleto é ${reais(b.valor)} e o honorário cadastrado é ${reais(contrato.valor)}.`);
     }
-    const esperado = vencimentoDoContrato(contrato.diaVencimento, b.competencia);
-    if (b.vencimento && !esperado) avisos.push('O cliente ainda não tem dia de vencimento cadastrado.');
-    if (b.vencimento && esperado && esperado !== b.vencimento) avisos.push(`O PDF vence em ${dataBr(b.vencimento)} e o dia cadastrado daria ${dataBr(esperado)}. Vale o do PDF.`);
   }
 
   const podeDisparar = !pendencias.length;

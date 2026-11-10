@@ -39,7 +39,9 @@ export function criarBoletosMemoria(): RepoBoletos {
   const mudou = () => { ver++; for (const f of ouvintes) f(); };
   const pdfs = new Map<string, Uint8Array>();
   const competencia = financeiro.competenciaAnterior(hojeIso());
-  const dia28 = financeiro.vencimentoDoContrato(28, competencia);
+  // o vencimento dos exemplos: o dia 28 do mês seguinte à competência
+  const [ano, mes] = competencia.split('-').map(Number);
+  const dia28 = mes === 12 ? `${ano + 1}-01-28` : `${ano}-${String(mes + 1).padStart(2, '0')}-28`;
   const LINHA = '75691000090000000000000000000000000000000000000';
   const b = (id: string, contratoId: string, arquivo: string, valor: number | null, extra: Partial<financeiro.BoletoDoLote> = {}): financeiro.BoletoDoLote => ({
     id, competencia, arquivo, contratoId, achadoPor: contratoId ? 'documento' : '', linha: valor == null ? '' : LINHA, valor, vencimento: valor == null ? null : dia28,

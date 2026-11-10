@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { ContratoDeHonorario, RecebimentoDeHonorario } from './honorarios';
-import { acharClienteDoBoleto, acharContratoDoBoleto, codigoDoArquivoDoBoleto, conferirBoleto, documentosDoBoleto, sacadosDoBoleto, resumoDoLote, separarEmails, vencimentoDoContrato, type BoletoDoLote, type ContextoDoLote } from './loteDeBoletos';
+import { acharClienteDoBoleto, acharContratoDoBoleto, codigoDoArquivoDoBoleto, conferirBoleto, documentosDoBoleto, sacadosDoBoleto, resumoDoLote, separarEmails, type BoletoDoLote, type ContextoDoLote } from './loteDeBoletos';
 
 const contrato = (id: string, nome: string, cnpj: string, extra: Partial<ContratoDeHonorario> = {}): ContratoDeHonorario =>
-  ({ id, clienteId: '', codigo: id, nome, cnpj, valor: 500, ativo: true, diaVencimento: 10, criadoEm: '', criadoPor: '', ...extra });
+  ({ id, clienteId: '', codigo: id, nome, cnpj, valor: 500, ativo: true, criadoEm: '', criadoPor: '', ...extra });
 const alfa = contrato('a', 'ALFA COMERCIO LTDA', '11222333000181');
 const beta = contrato('b', 'BETA SERVICOS LTDA', '44555666000199');
 const boleto = (extra: Partial<BoletoDoLote> = {}): BoletoDoLote => ({
@@ -97,24 +97,14 @@ describe('acharClienteDoBoleto (entre os clientes do escritório)', () => {
   });
 });
 
-describe('vencimentoDoContrato', () => {
-  it('é o dia no mês seguinte à competência', () => {
-    expect(vencimentoDoContrato(10, '2026-10')).toBe('2026-11-10');
-    expect(vencimentoDoContrato(5, '2026-12')).toBe('2027-01-05');
-  });
-  it('usa o último dia do mês curto', () => expect(vencimentoDoContrato(31, '2026-01')).toBe('2026-02-28'));
-  it('sem dia não há data', () => expect(vencimentoDoContrato(undefined, '2026-10')).toBe(''));
-});
-
 describe('conferirBoleto', () => {
   it('tudo certo fica pronto', () => {
     expect(conferirBoleto(boleto(), ctx())).toEqual({ situacao: 'pronto', pendencias: [], avisos: [], podeDisparar: true });
   });
-  it('vencimento diferente do cadastro avisa e não trava: vale o PDF', () => {
-    const c = conferirBoleto(boleto({ vencimento: '2026-11-15' }), ctx());
-    expect(c.situacao).toBe('conferir');
-    expect(c.podeDisparar).toBe(true);
-    expect(c.avisos[0]).toContain('Vale o do PDF');
+  it('o vencimento é o do PDF: qualquer dia, sem aviso (10/11/2026: "não ligando pro cadastro")', () => {
+    for (const vencimento of ['2026-11-06', '2026-11-15', '2026-12-28']) {
+      expect(conferirBoleto(boleto({ vencimento }), ctx())).toEqual({ situacao: 'pronto', pendencias: [], avisos: [], podeDisparar: true });
+    }
   });
   it('valor diferente do honorário avisa e não trava', () => {
     const c = conferirBoleto(boleto({ valor: 650 }), ctx());

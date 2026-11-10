@@ -59,9 +59,14 @@ export function useLoteDeBoletos() {
   const linhas = todas.filter(l => (filtro === 'todos' || NO_FILTRO[filtro].includes(l.conferencia.situacao))
     && (!q || norm(`${l.contrato?.nome ?? ''} ${l.contrato?.codigo ?? ''} ${l.boleto.arquivo} ${l.boleto.destinatarios.join(' ')}`).includes(q)));
   const resumo = financeiro.resumoDoLote(todas);
+  /** pode mexer: o que já foi pedido ao robô ou saiu não se troca nem se apaga */
+  const solto = (l: LinhaDoLote) => !['fila', 'enviando', 'enviado'].includes(l.conferencia.situacao);
   const disparaveis = todas.filter(l => l.conferencia.podeDisparar);
   const marcadasValidas = disparaveis.filter(l => marcadas.has(l.boleto.id));
-  const marcaveis = linhas.filter(l => l.conferencia.podeDisparar);
+  // a caixinha marca qualquer boleto que ainda não saiu (10/11/2026: "um botão para poder excluir em lote"): o Disparar
+  // leva só os prontos entre os marcados; o Excluir, todos os marcados
+  const marcadasSoltas = todas.filter(l => marcadas.has(l.boleto.id) && solto(l));
+  const marcaveis = linhas.filter(solto);
   const podeDisparar = temNivelDiretor(operador);
 
   /** os clientes do escritório com o CNPJ/CPF (o do Cadastro do nads, senão o do Entregas), para achar o dono do boleto */
@@ -99,8 +104,6 @@ export function useLoteDeBoletos() {
     }
     return { contratoId: c.id, achadoPor: achado.achadoPor, criado };
   }
-  /** pode mexer: o que já foi pedido ao robô ou saiu não se troca nem se apaga */
-  const solto = (l: LinhaDoLote) => !['fila', 'enviando', 'enviado'].includes(l.conferencia.situacao);
   const boletosSemCliente = todas.filter(l => !l.boleto.contratoId && solto(l));
   const [achando, setAchando] = useState<{ feitos: number; total: number } | null>(null);
   const falhou = (e: unknown, o: string) => toast(o + ' ' + (e instanceof Error ? e.message : ''));
@@ -124,7 +127,10 @@ export function useLoteDeBoletos() {
     alternar(id: string) { setMarcadas(m => { const n = new Set(m); if (!n.delete(id)) n.add(id); return n; }); },
     todasMarcadas: marcaveis.length > 0 && marcaveis.every(l => marcadas.has(l.boleto.id)),
     marcarTodas(sim: boolean) { setMarcadas(sim ? new Set(marcaveis.map(l => l.boleto.id)) : new Set()); },
+    /** há marcados: o Disparar leva só os prontos entre eles (nunca todos os prontos do mês) */
+    algumaMarcada: marcadasSoltas.length > 0,
     quantasMarcadas: marcadasValidas.length,
+    quantasParaExcluir: marcadasSoltas.length,
     quantasProntas: disparaveis.length,
 
     /** lê os PDFs escolhidos e põe no lote da competência; o que não der para ler entra como pendente */
@@ -215,6 +221,25 @@ export function useLoteDeBoletos() {
       try { await repo.excluir(l.boleto.id); toast('Boleto excluído.'); return true; } catch (e) { falhou(e, 'Não consegui excluir o boleto.'); return false; }
     },
 
+    /** apaga de uma vez os boletos marcados que ainda não saíram, depois de perguntar */
+    async excluirMarcados() {
+      const vao = marcadasSoltas;
+      if (!vao.length) return;
+      const n = vao.length;
+      const ok = await modal<boolean>({
+        icone: 'lixeira', titulo: `Excluir ${n} ${n === 1 ? 'boleto' : 'boletos'}?`,
+        texto: `Os boletos e os PDFs saem do lote de ${financeiro.competenciaBr(competencia)}; para mandar, suba os PDFs de novo.`,
+        botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Excluir', valor: true, variante: 'btn-danger' }],
+      });
+      if (!ok) return;
+      let feitos = 0;
+      for (const l of vao) {
+        try { await repo.excluir(l.boleto.id); feitos++; } catch (e) { falhou(e, 'Não consegui excluir ' + l.boleto.arquivo + '.'); }
+      }
+      setMarcadas(new Set());
+      toast(`${feitos} ${feitos === 1 ? 'boleto excluído' : 'boletos excluídos'}${feitos < n ? `; ${n - feitos} não saíram` : ''}.`);
+    },
+
     /** abre o PDF do boleto numa aba nova */
     async verPdf(id: string) {
       const aba = window.open('', '_blank');
@@ -230,7 +255,7 @@ export function useLoteDeBoletos() {
     /** dispara as marcadas ou, sem marca, todas as prontas: confere quem pode e sempre pergunta */
     async disparar() {
       if (!podeDisparar || disparando) return;
-      const vao = marcadasValidas.length ? marcadasValidas : disparaveis;
+      const vao = marcadasSoltas.length ? marcadasValidas : disparaveis;
       if (!vao.length) return;
       const soma = vao.reduce((t, l) => t + Math.round((l.boleto.valor ?? 0) * 100), 0) / 100;
       const n = vao.length;

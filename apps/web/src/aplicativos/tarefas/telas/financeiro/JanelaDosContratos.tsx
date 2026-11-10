@@ -44,9 +44,6 @@ export function JanelaDosContratos({ fechar }: { fechar: () => void }) {
                   <span className="emp-cod">{c.codigo || '—'}</span>
                   <span className="fin-contrato-nome" title={c.nome}>{c.nome}</span>
                   <ValorEditavel valor={c.valor} rotulo={'Valor do honorário de ' + c.nome} aoSalvar={t => void vm.definirValor(c.id, t)} />
-                  <input key={c.id + '|' + (c.diaVencimento ?? '')} type="text" inputMode="numeric" maxLength={2} className="fin-contrato-obs fin-contrato-dia" defaultValue={c.diaVencimento ?? ''} placeholder="Dia"
-                    title="Dia do vencimento do boleto" aria-label={'Dia do vencimento do boleto de ' + c.nome} onBlur={e => void vm.definirDia(c, e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }} />
                   <input type="text" className="fin-contrato-obs" defaultValue={c.observacoes ?? ''} placeholder="Observações" aria-label={'Observações de ' + c.nome}
                     onBlur={e => void vm.salvarObservacoes(c, e.target.value)} />
                   <Interruptor ligado={c.ativo} onMudar={() => void vm.alternarAtivo(c)} rotulo={'Honorário de ' + c.nome + ' ativo'} />
