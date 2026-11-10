@@ -102,6 +102,10 @@ let estado = { situacao: 'livre', pedidoId: null, desde: agora(), mensagem: null
 // arquivador-laco.cmd religa em 30 s, com um cliente novo do Firestore. O ponto sem mudança vai a cada 5 min (10/11/2026,
 // consumo do banco; era a cada 1 min): 12 min sem resposta são pelo menos duas tentativas
 const BANCO_MUDO_MS = 12 * 60 * 1000;
+// A Área do Cliente desligada por enquanto (10/11/2026: "pode desativar a area do cliente por enquanto, não estamos usando").
+// Ela ouvia os links, o cadastro, as rotinas, os chamados e os pedidos do FGTS e espelhava cada link a cada 30 min (~900
+// leituras por hora, o dia todo), e o painel consultava as caixas dela a cada volta. Para religar: true.
+const AREA_DO_CLIENTE_LIGADA = false;
 // o ponto só vai ao banco quando o estado muda ou, sem mudança, a cada 5 min (batimento.js; as telas: 7 min sem ponto = parado)
 const batidaDoPonto = require('./batimento').criarBatimento({ freioMs: 0 });
 let bancoRespondeuEm = Date.now();
@@ -684,7 +688,7 @@ async function atenderFila() {
 async function iniciar() {
   // sem rede (07/11/2026, partida.js): espera o banco aqui, cada vez mais devagar, em vez de sair e o laço religar a cada 30 s
   await require('./partida').esperarOBanco(() => estadoRef.get(), { log });
-  painel.iniciar(db, { robo: 'pc', log, filas: painel.FILAS.pc });
+  painel.iniciar(db, { robo: 'pc', log, filas: AREA_DO_CLIENTE_LIGADA ? painel.FILAS.pc : painel.FILAS.pc.filter(f => !/^area-/.test(f.id)) });
   // Pedido que ficou "processando" quando o PC desligou: não roda de novo às
   // cegas — metade dos arquivos pode já ter sido movida.
   const presos = await fila.where('status', '==', 'processando').get();
@@ -785,9 +789,12 @@ async function iniciar() {
   // o vigia do Google Drive (26/10/2026): o G: sumido por mais de 10 min reinicia o Drive (no máximo a cada 30 min)
   try { require('./drive-vigia').iniciar({ log, painel }); }
   catch (err) { log('vigia do Google Drive não ligou:', err.message); }
-  painel.modulo('area-cliente', 'Área do Cliente', true);
-  try { tarefa('area-cliente', () => require('./area-cliente').iniciarAreaDoCliente(db, log)); }
-  catch (err) { log('Área do Cliente não ligou:', err.message); painel.modulo('area-cliente', 'Área do Cliente', false, err.message); }
+  if (!AREA_DO_CLIENTE_LIGADA) painel.modulo('area-cliente', 'Área do Cliente', false, 'desligada por enquanto (não está em uso)');
+  else {
+    painel.modulo('area-cliente', 'Área do Cliente', true);
+    try { tarefa('area-cliente', () => require('./area-cliente').iniciarAreaDoCliente(db, log)); }
+    catch (err) { log('Área do Cliente não ligou:', err.message); painel.modulo('area-cliente', 'Área do Cliente', false, err.message); }
+  }
   // o painel dos agentes do Claude Code (14/10/2026): saiu do robô. Cada computador cadastrado no nads grava as próprias
   // conversas pelo gancho ~/.claude/painel/registro.js (painelMaquinas/{chave}/sessoes); o painelAgentes ficou sem uso.
 
