@@ -15,7 +15,7 @@ import { FgtsDaEtapa } from './FgtsDaEtapa';
 import type { FgtsDaEtapa as VmFgts } from '../useFgtsDaEtapa';
 import { MenuDeConta } from '../../../etapas/creditor/partes/MenuDeConta';
 
-const BAIXA: Record<Inss['meses'][number]['baixa'], string> = { ok: '✓', falta: 'Falta', depois: 'Depois', fora: '—', 'sem-guia': '—' };
+const BAIXA: Record<Inss['meses'][number]['baixa'], string> = { ok: '✓', falta: 'Falta', 'nao-pago': 'Não pago', depois: 'Depois', fora: '—', 'sem-guia': '—' };
 
 function Importar({ id, titulo, aceitar, varios, lendo, onArquivos }: { id: string; titulo: string; aceitar: string; varios?: boolean; lendo?: boolean; onArquivos: (fs: File[]) => void }) {
   if (lendo) return <span className="icon-btn icon-btn-sm imp-btn" title="Lendo…"><span className="btn-spinner" /></span>;
@@ -109,9 +109,15 @@ export function InssDaEtapa({ inss, conferir, teste = [], folha, so, conferencia
                     <tr><th scope="row">No banco</th>{inss.meses.map(m => <td key={m.mes} className={'num' + (m.mes === inss.mesAberto ? ' atual' : '')} title={m.totalDaGuia && m.totalDaGuia !== m.guia ? 'O que sai do banco: o DARF inteiro, com o INSS e o IRRF/retenções que vêm junto' : undefined}>{m.totalDaGuia ? <ValorNaGrade texto={m.totalDaGuia} /> : m.guia ? <span className="hint" title="Tire e importe de novo o PDF das guias para ler o total">reimportar</span> : '—'}</td>)}</tr>
                     <tr><th scope="row">Diferença</th>{inss.meses.map(m => <td key={m.mes} className={'num' + (m.mes === inss.mesAberto ? ' atual' : '') + (m.diferenca && !m.bate ? ' ext-neg' : '')}>{m.diferenca ? <ValorNaGrade texto={m.diferenca} /> : '—'}</td>)}</tr>
                     <tr><th scope="row">Baixa</th>{inss.meses.map(m => (
-                      <td key={m.mes} className={(m.mes === inss.mesAberto ? 'atual' : '') + (m.baixa === 'falta' ? ' ext-neg' : '')}
-                        title={m.baixa === 'falta' ? 'Guia paga em ' + m.pagaEm + ' sem a baixa no razão' : m.baixa === 'depois' ? 'Paga em ' + (m.pagaEm || '?') + ', depois do período' : m.pagaEm ? 'Paga em ' + m.pagaEm + (m.baixaComOutroValor ? '; a baixa no razão é de ' + m.baixaComOutroValor + ' (o saldo da conta, com a diferença da guia no mesmo lançamento)' : '') : undefined}>
-                        {BAIXA[m.baixa]}
+                      <td key={m.mes} className={m.mes === inss.mesAberto ? 'atual' : undefined}
+                        title={m.baixa === 'falta' ? 'Guia paga em ' + m.pagaEm + ' sem a baixa no razão' : m.baixa === 'nao-pago' ? 'Marcada como não paga: sem baixa, o valor continua a recolher' : m.baixa === 'depois' ? 'Paga em ' + (m.pagaEm || '?') + ', depois do período' : m.pagaEm ? 'Paga em ' + m.pagaEm + (m.baixaComOutroValor ? '; a baixa no razão é de ' + m.baixaComOutroValor + ' (o saldo da conta, com a diferença da guia no mesmo lançamento)' : '') : undefined}>
+                        {/* no Falta, passar o mouse mostra o "Não pago"; marcado, o Desfazer */}
+                        {m.baixa === 'falta' || m.baixa === 'nao-pago' ? (
+                          <button type="button" className={'btn btn-outline inss-baixa' + (m.baixa === 'falta' ? ' inss-baixa-falta' : '')} onClick={() => inss.alternarNaoPago(m.mes)}>
+                            <span className="inss-baixa-ver">{BAIXA[m.baixa]}</span>
+                            <span className="inss-baixa-acao">{m.baixa === 'falta' ? 'Não pago' : 'Desfazer'}</span>
+                          </button>
+                        ) : BAIXA[m.baixa]}
                       </td>
                     ))}</tr>
                     {/* o banco em que a guia foi paga, pelo comprovante do PDF (Vitor, 15/10/2026) */}
@@ -184,7 +190,7 @@ export function InssDaEtapa({ inss, conferir, teste = [], folha, so, conferencia
                   <div className="imp-faixa-corpo imp-mov-caixa">
                     <p>
                       <b>Fechamento em {inss.fechamento.fim}:</b> o razão está em {inss.fechamento.razao}; com os lançamentos sugeridos, fica em {inss.fechamento.ajustado}.
-                      O certo é {inss.fechamento.esperado} (as guias pagas depois do período).
+                      O certo é {inss.fechamento.esperado} ({inss.temNaoPagas ? 'as guias não pagas e as pagas depois do período' : 'as guias pagas depois do período'}).
                     </p>
                     {inss.fechamento.antes
                       ? <p className="hint">Sobram {inss.fechamento.antes} que vêm de antes de {inss.fechamento.inicio}: importe o razão desde o mês anterior para achar.</p>

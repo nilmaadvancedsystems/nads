@@ -4,6 +4,7 @@
 // ranking mostra a relação dos lançamentos dela embaixo (Vitor, 06/10/2026).
 import { Alerta, LogoBanco } from '@nads/ui';
 import { useState } from 'react';
+import { ROBO_NAS_ETAPAS } from '../../../../../../comum/contabilDaEmpresa';
 import { RazaoDosBancos } from './RazaoDosBancos';
 import { useRelatorioBancario } from './useRelatorioBancario';
 
@@ -15,7 +16,7 @@ export function RelatorioBancario() {
     <section>
       <header className="topbar"><div><h2 className="page-title">Relatório Bancário</h2></div></header>
       {vm.semSocios && <Alerta titulo="Sem sócios no Cadastro" texto="Informe os sócios em Cadastro › Empresa para a transferência para o sócio aparecer separada." />}
-      <RazaoDosBancos />
+      {ROBO_NAS_ETAPAS && <RazaoDosBancos />}
       <div className="imp-lista">
         {vm.bancos.map(b => <BlocoDoBanco key={b.id} b={b} />)}
       </div>

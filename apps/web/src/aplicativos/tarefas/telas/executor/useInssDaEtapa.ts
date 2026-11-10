@@ -24,10 +24,10 @@ export interface ContaDoPlano { codigo: string; nome: string }
  * balancete: as contas analíticas do balancete importado na Conferência (Vitor, 07/10/2026: "essa conta do INSS a recolher,
  * você puxa diretamente do balancete, tem o nome certinho lá"); sem ele, a pessoa digita.
  */
-/** O banco do comprovante ("756 - BANCO COOPERATIVO SICOOB S/A") → o nome curto (Sicoob) e a marca do logo. */
+/** O banco do comprovante ("756 - BANCO COOPERATIVO SICOOB S/A") → o nome curto (Sicoob) e a marca do logo; "Documento pago via PIX" → PIX. */
 function bancoDaGuia(texto: string): { nome: string; curto: string; marca: string } {
   const curto = conversor.bancoDoTexto(texto);
-  return { nome: texto, curto: curto || texto.replace(/^\d+\s*-\s*/, ''), marca: curto ? conversor.marcaDoBanco(curto) : '' };
+  return { nome: texto, curto: curto || (/\bpix\b/i.test(texto) ? 'PIX' : texto.replace(/^\d+\s*-\s*/, '')), marca: curto ? conversor.marcaDoBanco(curto) : '' };
 }
 
 /** empresa: o nome (o razão do INSS importado na Importação, quando a etapa não tem o próprio; 16/10/2026) */
@@ -52,7 +52,9 @@ export function useInssDaEtapa(chave: string, meses: readonly string[], balancet
   const r = proprio || (daImportacao ? { chave, arquivo: rotuloDaImportacao(daImportacao), razao: daImportacao.razao } : null);
   const g = guias && guias.chave === chave ? guias : null;
   const modelos = useModelosDeHistorico();
-  const c = r && g ? t.conferirInss(r.razao, g.guias, meses, modelos) : null;
+  // as guias que a pessoa marcou como não pagas, por competência (Vitor, 10/11/2026: no "Falta", o botão "Não pago")
+  const [naoPagas, setNaoPagas] = useGuardado<string[]>('inss-nao-pagas|' + chave, []);
+  const c = r && g ? t.conferirInss(r.razao, g.guias, meses, modelos, naoPagas) : null;
 
   async function importarRazao(f: File | null) {
     if (!f) return;
@@ -139,7 +141,7 @@ export function useInssDaEtapa(chave: string, meses: readonly string[], balancet
         totalDaGuia: m.guia?.documento != null ? reais(m.guia.documento) : '',
         diferenca: m.foraDoRazao || !m.guia ? '' : reais(m.diferenca), bate: Math.abs(m.diferenca) < 0.01,
         // a guia do mês: baixada, sem a baixa, paga depois do período, ou o PDF não trouxe
-        baixa: !m.guia ? 'sem-guia' as const : baixa ? (baixa.lancamento ? 'ok' as const : 'falta' as const) : m.guia.pagaEm > ultimoDia || !m.guia.pagaEm ? 'depois' as const : 'fora' as const,
+        baixa: !m.guia ? 'sem-guia' as const : naoPagas.includes(m.mes) ? 'nao-pago' as const : baixa ? (baixa.lancamento ? 'ok' as const : 'falta' as const) : m.guia.pagaEm > ultimoDia || !m.guia.pagaEm ? 'depois' as const : 'fora' as const,
         pagaEm: m.guia ? dataBR(m.guia.pagaEm) : '',
         // a baixa achada pelo "ref" ou pela data, com outro valor (o lançamento com várias contrapartidas; 26/10/2026)
         baixaComOutroValor: baixa?.lancamento && baixa.outroValor ? reais(-baixa.lancamento.valor) : '',
@@ -149,6 +151,9 @@ export function useInssDaEtapa(chave: string, meses: readonly string[], balancet
     }),
     mesAberto,
     abrirMes: (m: string) => setMesAberto(a => (a === m ? null : m)),
+    /** marca a guia do mês como não paga, ou desfaz */
+    alternarNaoPago: (m: string) => setNaoPagas(x => (x.includes(m) ? x.filter(y => y !== m) : [...x, m])),
+    temNaoPagas: naoPagas.some(m => meses.includes(m)),
     mostrando: mesAberto ? t.rotuloCompetencia(mesAberto) : t.rotuloDoPeriodo([...meses]),
     /** os lançamentos sugeridos (o período todo ou o mês aberto) */
     sugestoes: sugestoes.map((s, i) => {

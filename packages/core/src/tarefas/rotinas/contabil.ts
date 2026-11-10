@@ -153,7 +153,7 @@ export const ROTINA_CONTABIL: Rotina = {
       ],
       objecoes: [
         { id: 'saldo-diferente', texto: 'O saldo não bate com o extrato', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'Volte na Importação e confira extrato × razão do banco: o lançamento que falta ou sobra aparece lá.' } },
-        { id: 'sem-saldo-diario', texto: 'Não tenho o relatório de saldo diário', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'O razão dos bancos vem do robô sozinho (o bloco "Razões do Alterdata"); o saldo de cada dia sai dele. Se o robô não trouxe, use o botão de pedir de novo; se ele não conseguir, gere o razão da conta no Alterdata e importe na Importação.' } },
+        { id: 'sem-saldo-diario', texto: 'Não tenho o relatório de saldo diário', solucao: { tipo: 'orientacao', rotulo: 'Como resolver', texto: 'O saldo de cada dia sai do razão do banco: gere o razão da conta no Alterdata e importe na Importação.' } },
         nao('sem-negativo', 'Nenhum banco ficou negativo', 'Nenhum banco negativo'),
       ],
     },
