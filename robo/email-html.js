@@ -457,7 +457,8 @@ function htmlDaNfse(o) {
   return { html, imagens };
 }
 
-// O envio do DP ao cliente (DP › Envios, envios-do-dp.js) e as guias do Fiscal (lote-fiscal.js, com o chip 'Fiscal'), no
+// O envio do DP ao cliente (DP › Envios, envios-do-dp.js), as guias do Fiscal (lote-fiscal.js, com o chip 'Fiscal') e o boleto
+// dos honorários (boletos-financeiro.js, com o chip 'Financeiro'), no
 // desenho "Banco digital" (05/11/2026, Vitor escolheu entre 3; a NFS-e ficou no "Recibo"):
 //   - o bloco vinho no alto: a marca, a área e o cliente, a manchete ("Suas guias de outubro chegaram") e um resumo — nas
 //     guias com valor lido, o total a pagar e o vencimento mais perto; senão, quantos documentos e o mês;
@@ -504,6 +505,8 @@ function htmlDoEnvioDp(o) {
   const imagens = [];
   const chip = o.chip || 'DP';
   const fiscal = chip === 'Fiscal';
+  // o boleto dos honorários (Financeiro › Boletos, boletos-financeiro.js; 10/11/2026)
+  const boleto = chip === 'Financeiro';
   const nome = o.assinatura || 'Nilma Contabilidade';
   const mesAno = mesPorExtenso(o.competencia);
   const mes = mesAno.replace(/ de \d{4}$/, '');
@@ -513,15 +516,15 @@ function htmlDoEnvioDp(o) {
   const icone = imagem(imagens, PASTA_ICONES, 'arquivo', [22, 26], 'display:block;margin:0 auto') || '';
   const clipe = imagem(imagens, PASTA_ICONES, 'anexo', 14, 'display:inline-block;vertical-align:middle;margin-right:6px;opacity:.7') || '';
   const cadeado = imagem(imagens, PASTA_ICONES, 'cadeado', 18, 'display:block') || '';
-  const area = fiscal ? 'Fiscal' : 'Departamento Pessoal';
-  const manchete = (fiscal ? (um ? 'Sua guia de ' : 'Suas guias de ') : (um ? 'Seu documento de ' : 'Seus documentos de ')) + mes + (um ? ' chegou' : ' chegaram');
+  const area = boleto ? 'Financeiro' : fiscal ? 'Fiscal' : 'Departamento Pessoal';
+  const manchete = boleto ? 'Seu boleto de honorários de ' + mes + ' chegou' : (fiscal ? (um ? 'Sua guia de ' : 'Suas guias de ') : (um ? 'Seu documento de ' : 'Seus documentos de ')) + mes + (um ? ' chegou' : ' chegaram');
   // o resumo: o total e o vencimento mais perto (as guias com valor lido); senão, quantos e o mês
   const comValor = anexos.filter(a => typeof a.valor === 'number' && Number.isFinite(a.valor));
   const vencs = anexos.map(a => diaMes(a.vencimento)).filter(Boolean).sort((x, y) => x.chave.localeCompare(y.chave));
   const total = comValor.length ? reaisDe(Math.round(comValor.reduce((s, a) => s + a.valor, 0) * 100) / 100) : '';
   const resumo = total
-    ? numeroDoBloco(comValor.length === 1 ? 'Valor a pagar' : 'Total a pagar', total, true) + (vencs.length ? numeroDoBloco('Vence primeiro', vencs[0].curto) : '')
-    : numeroDoBloco(fiscal ? 'Guias' : 'Documentos', String(anexos.length), true) + (mesAno ? numeroDoBloco('Competência', mesAno.replace(' de ', '/')) : '');
+    ? numeroDoBloco(comValor.length === 1 ? 'Valor a pagar' : 'Total a pagar', total, true) + (vencs.length ? numeroDoBloco(boleto ? 'Vencimento' : 'Vence primeiro', vencs[0].curto) : '')
+    : numeroDoBloco(boleto ? 'Boleto' : fiscal ? 'Guias' : 'Documentos', String(anexos.length), true) + (mesAno ? numeroDoBloco('Competência', mesAno.replace(' de ', '/')) : '');
   const css = '@media only screen and (max-width:520px){.px{padding-left:16px!important;padding-right:16px!important}.hero{padding:26px 22px 60px!important}' +
     '.manchete{font-size:24px!important;line-height:31px!important}.cartao{padding:4px 18px!important}.texto{padding:20px 18px 6px!important}}';
   const html = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
@@ -559,8 +562,8 @@ function htmlDoEnvioDp(o) {
       // o aviso de segurança (05/11/2026, como os bancos): a guia é dinheiro, e guia falsa por e-mail é golpe comum
       '<tr><td class="px" style="padding:16px 24px 0"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #E6DCDC;border-radius:14px;border-collapse:separate"><tr>' +
         '<td width="40" valign="top" style="padding:14px 0 14px 16px">' + (cadeado || '') + '</td>' +
-        '<td style="padding:14px 16px 14px 8px;font:12px/18px ' + FONTE + ';color:' + COR.suave + '"><b style="color:' + COR.tinta + '">Para sua segurança:</b> a ' + esc(nome) + ' manda ' + (fiscal ? 'as guias' : 'os documentos') + ' só por este e-mail (' + esc(o.caixa || 'o do escritório') + ') e nunca pede senha. ' +
-          (fiscal ? 'Antes de pagar, confira se o CNPJ e o valor da guia são os da sua empresa. ' : '') + 'Na dúvida, fale com a gente antes.</td>' +
+        '<td style="padding:14px 16px 14px 8px;font:12px/18px ' + FONTE + ';color:' + COR.suave + '"><b style="color:' + COR.tinta + '">Para sua segurança:</b> a ' + esc(nome) + ' manda ' + (boleto ? 'o boleto' : fiscal ? 'as guias' : 'os documentos') + ' só por este e-mail (' + esc(o.caixa || 'o do escritório') + ') e nunca pede senha. ' +
+          (boleto ? 'Antes de pagar, confira se o beneficiário é a ' + esc(nome) + ' e se o valor é o combinado. ' : fiscal ? 'Antes de pagar, confira se o CNPJ e o valor da guia são os da sua empresa. ' : '') + 'Na dúvida, fale com a gente antes.</td>' +
       '</tr></table></td></tr>' +
       // o rodapé
       '<tr><td align="center" class="px" style="padding:22px 28px 0;font:12px/18px ' + FONTE + ';color:#8C7A7B">' +

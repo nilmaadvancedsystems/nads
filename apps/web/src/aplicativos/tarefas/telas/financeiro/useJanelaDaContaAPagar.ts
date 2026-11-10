@@ -38,7 +38,7 @@ async function lerArquivo(f: File): Promise<Escolhido | string> {
 }
 
 /** o texto do PDF (as palavras de cada página), '' quando não é PDF ou não tem texto */
-async function textoDoPdf(bytes: Uint8Array): Promise<string> {
+export async function textoDoPdf(bytes: Uint8Array): Promise<string> {
   try {
     if (!extrator.ehPdf(bytes)) return '';
     return (await extrator.itensDoPdf(bytes)).map(p => p.map(i => i.texto).join(' ')).join('\n');
