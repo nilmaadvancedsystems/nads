@@ -59,37 +59,38 @@ export function conferirAnexos(t: Pick<TarefaDelegada, 'anexos'> | null, arquivo
 /** Um id curto e aleatório (o dos anexos e das tarefas de exemplo). */
 export const idNovo = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 
-/** As 4 tarefas de exemplo (Nilma recebe a maioria: é quem o escritório usa para testar), relativas a hoje. */
-function exemplos(agora = new Date()): TarefaDelegada[] {
+/** As 4 tarefas de exemplo (Nilma recebe a maioria: é quem o escritório usa para testar; com eu, quem está usando), relativas a hoje. */
+function exemplos(agora = new Date(), eu: Pessoa | null = null): TarefaDelegada[] {
   const ha = (h: number) => new Date(agora.getTime() - h * 3600_000).toISOString();
   const dia = (n: number) => d.hojeIso(new Date(agora.getTime() + n * 86400_000));
   const p = (uid: string, nome: string) => ({ uid, nome });
-  const nilma = p('exemplo-1', 'Nilma'), savio = p('exemplo-2', 'Sávio'), vitor = p('exemplo-3', 'Vitor'), clara = p('exemplo-6', 'Clara'), heverton = p('exemplo-7', 'Heverton');
+  const nilma = eu || p('exemplo-1', 'Nilma'), savio = p('exemplo-2', 'Sávio'), vitor = p('exemplo-3', 'Vitor'), clara = p('exemplo-6', 'Clara'), heverton = p('exemplo-7', 'Heverton');
   const base = { descricao: '', cliente: null, clientes: [], prazoHora: '', concluidaEm: '', pareceres: [], anexos: [] };
   return [
     { ...base, id: 'td-1', numero: 1, titulo: 'Conferir o balancete de setembro', descricao: 'O saldo de bancos não bateu com o extrato do Sicoob. Ver se faltou alguma tarifa.',
       cliente: { codigo: 292, nome: 'EXEMPLO COMERCIO DE ALIMENTOS LTDA' }, clientes: [{ codigo: 292, nome: 'EXEMPLO COMERCIO DE ALIMENTOS LTDA' }], prioridade: 'alta', prazo: dia(-2), status: 'pendente', criadaPor: vitor, responsavel: nilma,
       criadaEm: ha(72), atualizadaEm: ha(70),
       pareceres: [{ por: 'Vitor', em: ha(70), texto: 'Deixei o extrato anexado.' }],
-      historico: [{ por: 'Vitor', em: ha(72), texto: 'Criou a tarefa' }, { por: 'Vitor', em: ha(72), texto: 'Delegou para Nilma' }, { por: 'Vitor', em: ha(70), texto: 'Anexou o arquivo observacoes.txt' }, { por: 'Vitor', em: ha(70), texto: 'Escreveu um parecer' }],
+      historico: [{ por: 'Vitor', em: ha(72), texto: 'Criou a tarefa' }, { por: 'Vitor', em: ha(72), texto: 'Delegou para ' + nilma.nome }, { por: 'Vitor', em: ha(70), texto: 'Anexou o arquivo observacoes.txt' }, { por: 'Vitor', em: ha(70), texto: 'Escreveu um parecer' }],
       anexos: [{ id: 'ax-1', nome: 'observacoes.txt', extensao: 'txt', tamanho: 74, em: ha(70), por: 'Vitor', partes: 1 }] },
     { ...base, id: 'td-2', numero: 2, titulo: 'Mandar a guia do DAS para o cliente', cliente: { codigo: 14, nome: 'ALFA COMERCIO LTDA' }, clientes: [{ codigo: 14, nome: 'ALFA COMERCIO LTDA' }], prioridade: 'urgente', prazo: dia(1),
       status: 'andamento', criadaPor: heverton, responsavel: nilma, criadaEm: ha(20), atualizadaEm: ha(5),
-      historico: [{ por: 'Heverton', em: ha(20), texto: 'Criou a tarefa' }, { por: 'Heverton', em: ha(20), texto: 'Delegou para Nilma' }, { por: 'Nilma', em: ha(5), texto: 'Mudou o status de Pendente para Em andamento' }] },
+      historico: [{ por: 'Heverton', em: ha(20), texto: 'Criou a tarefa' }, { por: 'Heverton', em: ha(20), texto: 'Delegou para ' + nilma.nome }, { por: nilma.nome, em: ha(5), texto: 'Mudou o status de Pendente para Em andamento' }] },
     { ...base, id: 'td-3', numero: 3, titulo: 'Atualizar o cadastro dos sócios', descricao: 'A alteração contratual chegou por e-mail.', prioridade: 'normal', prazo: dia(5),
       status: 'pendente', criadaPor: nilma, responsavel: clara, criadaEm: ha(8), atualizadaEm: ha(8),
-      historico: [{ por: 'Nilma', em: ha(8), texto: 'Criou a tarefa' }, { por: 'Nilma', em: ha(8), texto: 'Delegou para Clara' }] },
+      historico: [{ por: nilma.nome, em: ha(8), texto: 'Criou a tarefa' }, { por: nilma.nome, em: ha(8), texto: 'Delegou para Clara' }] },
     { ...base, id: 'td-4', numero: 4, titulo: 'Revisar as férias de outubro', prioridade: 'normal', prazo: dia(-3), status: 'concluida', criadaPor: savio, responsavel: nilma,
       criadaEm: ha(120), concluidaEm: ha(30), atualizadaEm: ha(30),
-      historico: [{ por: 'Sávio', em: ha(120), texto: 'Criou a tarefa' }, { por: 'Sávio', em: ha(120), texto: 'Delegou para Nilma' }, { por: 'Nilma', em: ha(30), texto: 'Mudou o status de Pendente para Concluída' }] },
+      historico: [{ por: 'Sávio', em: ha(120), texto: 'Criou a tarefa' }, { por: 'Sávio', em: ha(120), texto: 'Delegou para ' + nilma.nome }, { por: nilma.nome, em: ha(30), texto: 'Mudou o status de Pendente para Concluída' }] },
   ];
 }
 
-export function criarTarefasDelegadasMemoria(quem: () => Pessoa | null): RepoTarefasDelegadas {
+/** paraQuemUsa: os exemplos ficam na conta de quem está usando (o ⚡ do Início no modo desenvolvedor) */
+export function criarTarefasDelegadasMemoria(quem: () => Pessoa | null, paraQuemUsa = false): RepoTarefasDelegadas {
   let ver = 0;
   const ouvintes = new Set<() => void>();
   const mudou = () => { ver++; for (const f of ouvintes) f(); };
-  let lista = exemplos();
+  let lista = exemplos(new Date(), paraQuemUsa ? quem() : null);
   let cache: { ver: number; uid: string; estado: { carregadas: boolean; tarefas: TarefaDelegada[] } } | null = null;
   // os bytes dos anexos (na memória; somem ao recarregar)
   const bytes = new Map<string, Uint8Array>([['ax-1', new TextEncoder().encode('Extrato do Sicoob de 09/2026: conferir a tarifa do dia 30 (R$ 12,90).')]]);
