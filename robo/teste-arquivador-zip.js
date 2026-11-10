@@ -32,6 +32,9 @@ const PASTAS = ['152 - JANIO JOSE DE ALMEIDA'];
     const N = 9;
     const nomes = [];
     for (let i = 0; i < N; i++) { const n = 5000 + i, ch = chave('31', '2610', TRANSP, '57', n); const nome = ch + '-cte.xml'; fs.writeFileSync(path.join(monta, nome), cte(ch, n, '06934601000158')); nomes.push(n); }
+    // (10/11/2026: "o arquivador vai IGNORAR fotos") uma foto dentro do .zip e outra solta na pasta
+    fs.writeFileSync(path.join(monta, 'foto do caminhão.jpg'), Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 16, 74, 70, 73, 70, 0, 1]));
+    fs.writeFileSync(path.join(origem, '2026-10', 'solta.jpeg'), Buffer.from([0xff, 0xd8, 0xff, 0xe0]));
     const rel = '2026-10\SIEG lote.zip';
     execFileSync(path.join(process.env.SystemRoot || 'C:\Windows', 'System32', 'tar.exe'), ['-a', '-c', '-f', path.join(origem, rel), ...fs.readdirSync(monta)], { cwd: monta });
     const base = { modo: 'PRODUCAO', confirmo: true, origem, clientes, controle: ctl, cadastro: R.montarCadastro(LINHAS, PASTAS), manifestoAntigo: path.join(tmp, 'x.jsonl'), travaAntiga: path.join(tmp, 'x.lock'), tiposProducao: ['todos'], moverNaoIdentificados: true, pastaNaoIdentificados: 'HOJE', log: () => {} };
@@ -49,6 +52,12 @@ const PASTAS = ['152 - JANIO JOSE DE ALMEIDA'];
     igual('gravou mais de um ao mesmo tempo (até 4)', [maxAbertas > 1, maxAbertas <= 4], [true, true]);
     const man = fs.readFileSync(path.join(ctl, 'MANIFESTO', 'manifesto.jsonl'), 'utf8').trim().split('\n');
     igual('uma linha do manifesto por XML', man.length, N);
+    // a foto: a de dentro do .zip fica de fora (IGNORAR, não é gravada em lugar nenhum e não segura o .zip); a solta nem entra na varredura
+    const foto = res.itens[0].filhos.find(f => /foto do caminh/.test(f.rel));
+    igual('10/11: a foto de dentro do .zip é ignorada (sem OCR, sem regra)', foto && [foto.acao, foto.motivo], ['IGNORAR', 'FOTO']);
+    const fotosEm = d => { let n = 0; let l = []; try { l = fs.readdirSync(d, { withFileTypes: true }); } catch (e) { return 0; } for (const e of l) n += e.isDirectory() ? fotosEm(path.join(d, e.name)) : /\.jpe?g$/i.test(e.name) ? 1 : 0; return n; };
+    igual('10/11: ... e não foi gravada no cliente nem em NÃO IDENTIFICADOS', [fotosEm(clientes), fotosEm(path.join(origem, 'NÃO IDENTIFICADOS'))], [0, 0]);
+    igual('10/11: a foto solta fica na origem e a varredura nem a lista', [fs.existsSync(path.join(origem, '2026-10', 'solta.jpeg')), A.varrer(origem, {}).some(r => /solta/.test(r))], [true, false]);
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
   console.log(falhas ? falhas + ' de ' + total + ' falharam' : 'ok: ' + total + ' testes');
   process.exit(falhas ? 1 : 0);
