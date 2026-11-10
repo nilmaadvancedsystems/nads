@@ -712,7 +712,7 @@ export function TarefaExtratos() {
     ? { precisaChequeEspecial, ...x.requisitosDoChequeEspecial(vm.bancos.map(b => ({ id: b.id, nome: b.nome, ok: !!bancosOk[b.id], semMovimento: semMovimentoNoPeriodo(b.id), diasSemCheque: diasSemCheque(b.id) }))) }
     : importados ? { ...x.requisitosDaImportacao(vm.bancos.map(b => ({
       id: b.id, nome: b.nome, ok: !!bancosOk[b.id], faltaCheque: diasSemCheque(b.id) > 0, semMovimento: semMovimentoNoPeriodo(b.id),
-    })), importados, vm.prestaServico, !!contabil.dinamico), precisaChequeEspecial } : null);
+    })), importados, vm.prestaServico, !BALANCETE_NA_IMPORTACAO || !!contabil.dinamico), precisaChequeEspecial } : null);
   const bancosSemCheque = vm.bancos.filter(b => diasSemCheque(b.id) > 0);
   // "Pedir os que faltam" (08/10/2026): os bancos sem extrato no mês, fora os sem movimento e os que já têm extrato na fila
   const faltamPedir = vm.bancos.filter(b => b.id !== 'banco' && b.extrato.qtdArquivos === 0 && !semMovimentoNoPeriodo(b.id) && !rec.linhasComRecebido.has(b.id)).length;
