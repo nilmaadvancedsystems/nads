@@ -172,6 +172,7 @@ export function BalaoDoSuporte() {
                 <Icone nome="clipe" />{vm.arquivos.length ? 'Anexar mais' : 'Anexar arquivos'}
               </label>
               <input id={idArquivo} type="file" multiple className="sr-only" onChange={e => { vm.anexar(Array.from(e.target.files || [])); e.target.value = ''; }} />
+              <button type="button" className="btn btn-outline" title="Colar o print copiado (ou aperte Ctrl+V)" onClick={vm.colarPrint}><Icone nome="imagem" />Colar print</button>
               <button type="button" className="btn btn-primary" disabled={vm.enviando} onClick={vm.enviar}>{vm.enviando ? 'Enviando…' : 'Enviar'}</button>
             </div>
           </div>
