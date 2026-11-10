@@ -756,7 +756,7 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
   const naColunaDaData = (x: number) => !xDasDatas.length || xDasDatas.some(d => Math.abs(d - x) <= 20);
   const textoTodo = todas.map(p => p.map(l => l.texto).join('\n')).join('\n');
   const periodo = periodoDoExtrato(textoTodo);
-  const naVirada = entre ? null : periodoNaViradaDoAno(textoTodo);
+  const periodoDaVirada = entre ? null : periodoNaViradaDoAno(textoTodo);
   const pelaDtMovimento = ehConsultasDoBB(textoTodo);
   // o PagBank escreve o sinal das saídas ("-2,27", "-R$ 30.000,00"): o valor sem sinal é entrada, e o histórico não decide
   // (Vitor, 04/11/2026, na 10: "Vendas - Disponivel DEBITO VISA" e "Pagamento de PIX" recebidos viravam saída). Só nele:
@@ -834,7 +834,7 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
       else if (RE_DATA_MES.test(diaDoOcr(t[0].s))) { data = lerData(diaDoOcr(t[0].s), ano); if (data) t.shift(); }
       else if (entre) { data = dataEmbaralhada(t[0].s, entre); if (data) t.shift(); }
       if (data && entre) data = dataNoPeriodo(data, entre);
-      if (data && naVirada && dataSemAno) data = dataNoPeriodo(data, naVirada);
+      if (data && periodoDaVirada && dataSemAno) data = dataNoPeriodo(data, periodoDaVirada);
       if (data) { dataAtual = data; noResumo = false; }
       // (e o "Detalhamento do Saldo" do BNB: saldo disponível, limite, Investimentos "BNB AUTOMATICO FIF"; Vitor, 14/10/2026; e o
       // quadro do limite do BB depois do 999 S A L D O: Limite Ouro Empresarial, Custo Efetivo Total, Valor total devido,
