@@ -3,6 +3,7 @@
 import * as XLSX from 'xlsx';
 import { ehFaturaDeCartao, extratoDoPdf, mesesSemMovimento, saldoAnteriorDoPdf } from '../regras/extrato';
 import { ehOfx, lancamentosDoOfx, saldoAnteriorDoOfx } from '../regras/ofx';
+import { preVerificarExtrato, preVerificarOfx } from '../regras/preVerificacao';
 import { lancamentosDaPlanilha, type Celula } from '../regras/planilha';
 import type { ArquivoLido, Lado } from '../tipos';
 import type { ItemDeTexto } from '../regras/extrato';
@@ -32,6 +33,9 @@ export async function lerArquivo(nome: string, bytes: Uint8Array, lado: Lado, an
     const marca = porOcr ? { ocr: true } : {};
     if (lado === 'banco' && ehFaturaDeCartao(paginas.map(p => p.map(i => i.texto).join(' ')).join('\n'))) return { nome, lancamentos: [], erro: 'É a fatura do cartão, não o extrato da conta.', faturaDeCartao: true, ...marca };
     const { lancamentos: l, saldoAnteriorPelaLinha, saldoAnteriorConferido } = extratoDoPdf(paginas, lado, anoPadrao);
+    // a pré-verificação (Vitor, 10/11/2026): a aplicação, o comprovante e os outros que caem na pasta do extrato não entram
+    const outro = lado === 'banco' ? preVerificarExtrato(paginas.map(p => p.map(i => i.texto).join(' ')).join('\n'), l, porOcr) : null;
+    if (outro) return { nome, lancamentos: [], erro: outro.motivo, naoEExtrato: true, ...marca };
     // o extrato que diz que não teve movimento: o mês fica marcado como sem movimento (não é erro de leitura)
     const semMov = !l.length && lado === 'banco' ? mesesSemMovimento(paginas.map(p => p.map(i => i.texto).join(' ')).join('\n')) : null;
     if (semMov) return { nome, lancamentos: [], erro: 'Extrato sem movimento.', semMovimento: semMov, ...marca };
@@ -60,15 +64,21 @@ export async function lerArquivo(nome: string, bytes: Uint8Array, lado: Lado, an
     const inicio = new TextDecoder('windows-1252').decode(bytes.subarray(0, 4000));
     if (ext === '.ofx' || ehOfx(inicio)) {
       const texto = new TextDecoder('windows-1252').decode(bytes);
+      const outroOfx = lado === 'banco' ? preVerificarOfx(texto) : null;
+      if (outroOfx) return { nome, lancamentos: [], erro: outroOfx.motivo, naoEExtrato: true };
       const l = lancamentosDoOfx(texto);
       const saldo = lado === 'banco' ? saldoAnteriorDoOfx(texto, l) : null;
       return { nome, lancamentos: l, erro: l.length ? null : 'Não achei lançamentos neste OFX.', ...(saldo != null ? { saldoAnterior: saldo } : {}) };
     }
     let melhor: { lancamentos: ArquivoLido['lancamentos']; erro: string | null } = { lancamentos: [], erro: 'Não achei as colunas de data, histórico e valor.' };
+    let topoDaPlanilha = '';
     for (const aba of abasDaPlanilha(bytes, ext === '.csv' || ext === '.txt')) {
       const r = lancamentosDaPlanilha(aba, lado, anoPadrao);
-      if (r.lancamentos.length > melhor.lancamentos.length) melhor = r;
+      if (r.lancamentos.length > melhor.lancamentos.length) { melhor = r; topoDaPlanilha = aba.slice(0, 30).map(c => c.join(' ')).join('\n'); }
     }
+    // na planilha, só o título barra: muita exportação de banco vem sem a coluna do saldo
+    const outraPlanilha = lado === 'banco' && melhor.lancamentos.length ? preVerificarExtrato(topoDaPlanilha, melhor.lancamentos, true) : null;
+    if (outraPlanilha) return { nome, lancamentos: [], erro: outraPlanilha.motivo, naoEExtrato: true };
     return { nome, ...melhor };
   } catch (e) {
     return { nome, lancamentos: [], erro: 'Não consegui ler o arquivo' + (e instanceof Error && e.message ? ' (' + e.message + ')' : '') + '.' };

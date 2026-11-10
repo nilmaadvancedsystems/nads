@@ -32,6 +32,7 @@ export { correcoesDoRazao, ROTULO_CORRECAO, type CorrecaoDoRazao, type TipoCorre
 export { chequeEspecialDoBanco, lancamentosDoChequeEspecial, type ChequeEspecialDoBanco } from './regras/chequeEspecial';
 export { lancamentosParaOSistema, lancamentosDoQueFaltaNoRazao, type PendenteDoBanco, type SugestaoDeLancamento } from './regras/lancamentosParaOSistema';
 export { acharExtratoNoDrive, mensagemDaBuscaDoExtrato, type ContaProcurada } from './regras/drive';
+export { preVerificarExtrato, type NaoEExtrato, type OutroDocumento } from './regras/preVerificacao';
 export { comprovantesDoBanco, comprovantesNoDrive, mesDoComprovante, nomeDoComprovante, nomeDoComprovanteDoMes, type ComprovanteNoDrive } from './regras/comprovantes';
 export { linhaDoRecebido, type ExtratoRecebido, type LinhaParaRecebido } from './regras/recebidos';
 export { gravacao, semMudanca, empresaDoBanco, lotesDaGravacao, LIMITE_DO_DOCUMENTO, type Gravacao, type DocEmpresaExtrator } from './regras/banco';

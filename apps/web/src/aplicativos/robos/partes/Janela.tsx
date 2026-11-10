@@ -40,8 +40,8 @@ export function Janela({ titulo, aoFechar, children, abas, rotulo }: { titulo: R
 }
 
 /** A confirmação de uma ação (pausar, limpar a fila, reiniciar, atualizar): por cima da janela, com o "não" em foco. */
-export function Confirmacao({ titulo, texto, rotuloSim, perigo, enviando, erro, aoConfirmar, aoCancelar }: {
-  titulo: string; texto: ReactNode; rotuloSim: string; perigo: boolean; enviando: boolean; erro: string; aoConfirmar: () => void; aoCancelar: () => void;
+export function Confirmacao({ titulo, texto, rotuloSim, rotuloNao = 'Cancelar', perigo, enviando, erro, aoConfirmar, aoCancelar }: {
+  titulo: string; texto: ReactNode; rotuloSim: string; rotuloNao?: string; perigo: boolean; enviando: boolean; erro: string; aoConfirmar: () => void; aoCancelar: () => void;
 }) {
   const nao = useRef<HTMLButtonElement>(null);
   useEffect(() => { nao.current?.focus(); }, []);
@@ -52,7 +52,7 @@ export function Confirmacao({ titulo, texto, rotuloSim, perigo, enviando, erro, 
         <div className="cr-confirma-texto">{texto}</div>
         {erro && <p className="cr-erro-linha" role="alert">{erro}</p>}
         <div className="cr-confirma-botoes">
-          <button ref={nao} type="button" className="cr-botao" onClick={aoCancelar} disabled={enviando}>Cancelar</button>
+          <button ref={nao} type="button" className="cr-botao" onClick={aoCancelar} disabled={enviando}>{rotuloNao}</button>
           <button type="button" className={'cr-botao ' + (perigo ? 'perigo' : 'primario')} onClick={aoConfirmar} disabled={enviando}>
             {enviando ? 'Enviando…' : rotuloSim}
           </button>
