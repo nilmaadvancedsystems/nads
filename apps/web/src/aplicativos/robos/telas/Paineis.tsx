@@ -5,7 +5,7 @@ import { useState } from 'react';
 import type { Central, useAcoes } from '../casca/useCentral';
 import { IconeDoRobo } from '../partes/IconeDoRobo';
 import { Janela } from '../partes/Janela';
-import { Estado, Historico } from './JanelaDoRobo';
+import { Estado, Historico, Refazer } from './JanelaDoRobo';
 
 type Acoes = ReturnType<typeof useAcoes>;
 
@@ -51,7 +51,7 @@ export function PainelMaquinas({ central, acoes, aoFechar }: { central: Central;
             </dl>
             {!m.sinais && <p className="cr-nota">Sem CPU e memória ainda: chegam com o código novo do robô.</p>}
             <div className="cr-botoes">
-              {r.ACOES.filter(a => a.alvo === 'maquina').map(a => (
+              {r.ACOES.filter(a => a.alvo === 'maquina' && !a.interna).map(a => (
                 <button key={a.id} type="button" className="cr-botao perigo-leve" disabled={acoes.enviando || m.semGancho.includes(a.id)}
                   title={m.semGancho.includes(a.id) ? 'Esta máquina ainda não sabe fazer isso' : a.descricao} onClick={() => acoes.pedir(a, m.maquina, null)}>{a.id === 'reiniciar' ? 'Reiniciar' : 'Atualizar'}</button>
               ))}
@@ -65,11 +65,12 @@ export function PainelMaquinas({ central, acoes, aoFechar }: { central: Central;
 
 const horaDe = (iso: string) => { const d = new Date(iso); return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); };
 
-export function PainelRegistros({ central, aoFechar }: { central: Central; aoFechar: () => void }) {
+export function PainelRegistros({ central, acoes, aoFechar }: { central: Central; acoes: Acoes; aoFechar: () => void }) {
   const [soErros, setSoErros] = useState(false);
   const lista = central.atividades.filter(a => !soErros || a.erro).slice(0, 80);
   return (
     <Janela rotulo="Registros" aoFechar={aoFechar} titulo={<Titulo icone="terminal" texto="Registros" />}>
+      {acoes.erro && !acoes.pendente && <p className="cr-erro-linha" role="alert" style={{ marginBottom: 16 }}>{acoes.erro}</p>}
       <section className="cr-secao">
         <div className="cr-registros-barra">
           <h2 style={{ margin: 0 }}>O que os robôs fizeram</h2>
@@ -80,7 +81,7 @@ export function PainelRegistros({ central, aoFechar }: { central: Central; aoFec
             {lista.map(a => {
               const robo = r.roboDaAtividade(a);
               return (
-                <li key={a.id}>
+                <li key={a.id} className="cr-com-refazer">
                   <div className="cr-ocorrencia" style={{ cursor: 'default' }}>
                     <time className="num">{horaDe(a.em)}</time>
                     <span className="cr-ocorrencia-corpo">
@@ -88,6 +89,7 @@ export function PainelRegistros({ central, aoFechar }: { central: Central; aoFec
                       <span className="cr-ocorrencia-texto">{a.texto}{a.detalhe ? ', ' + a.detalhe : ''}</span>
                     </span>
                   </div>
+                  <Refazer a={a} central={central} acoes={acoes} />
                 </li>
               );
             })}
@@ -114,7 +116,7 @@ export function PainelConfiguracoes({ central, aoFechar }: { central: Central; a
       </section>
       <section className="cr-secao">
         <h2>Como os pedidos chegam aos robôs</h2>
-        <p className="cr-fraco cr-pequeno">Cada ação vira um pedido no banco. O robô de cada máquina só lê os pedidos dela e só faz o que está na lista fechada: pausar, retomar, rodar uma tarefa conhecida, limpar a fila travada, reiniciar com calma e atualizar. Pedido com mais de 5 minutos ou repetido é recusado, e a resposta volta no próprio pedido. Nenhum comando de sistema sai daqui.</p>
+        <p className="cr-fraco cr-pequeno">Cada ação vira um pedido no banco. O robô de cada máquina só lê os pedidos dela e só faz o que está na lista fechada: pausar e retomar (um robô ou todos, com hora para voltar), rodar uma tarefa conhecida, limpar a fila travada, cancelar, passar na frente ou refazer um pedido da fila, pedir para um cliente, reiniciar com calma e atualizar. Pedido com mais de 5 minutos ou repetido é recusado, e a resposta volta no próprio pedido. Nenhum comando de sistema sai daqui.</p>
       </section>
     </Janela>
   );

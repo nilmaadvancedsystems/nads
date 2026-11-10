@@ -344,3 +344,22 @@
 /* a busca: no topo no PC, embaixo do topo no celular */
 .cr-so-pc { display: none; }
 @media (min-width: 900px) { .cr-so-pc { display: flex; } .cr-so-celular { display: none; } }
+
+/* Os controles (10/11/2026): só o encaixe das peças que já existem (botão ao lado do erro, campos do pedido, botões do item). */
+.cr-com-refazer { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--e2); }
+.cr-com-refazer:not(:has(> .cr-botao)) { grid-template-columns: minmax(0, 1fr); }
+.cr-ocorrencias > .cr-com-refazer { border-top: 1px solid var(--border); }
+.cr-ocorrencias > .cr-com-refazer:first-child { border-top: 0; }
+.cr-com-refazer > .cr-ocorrencia { border-top: 0; }
+.cr-campo { display: flex; flex-direction: column; gap: var(--e1); min-width: 0; font-size: var(--f-sm); color: var(--ink-muted); }
+.cr-campo .cr-busca { margin: 0; }
+.cr-campo .cr-busca input { padding: 0; }
+.cr-campo .cr-busca select { flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; outline: 0; background: transparent; color: var(--ink); font: inherit; font-size: 16px; appearance: auto; }
+.cr-campo .cr-busca select option { background: var(--surface-2); color: var(--ink); }
+.cr-pedir { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--e3); }
+.cr-pedir .cr-botao { justify-self: start; }
+.cr-botoes-item { margin-top: 0; flex: none; justify-content: flex-end; }
+@media (max-width: 559px) {
+  .cr-acoes > .cr-acao:has(.cr-botoes-item) { flex-direction: column; align-items: stretch; gap: var(--e2); }
+  .cr-botoes-item { justify-content: flex-start; }
+}

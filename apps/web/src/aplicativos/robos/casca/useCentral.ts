@@ -37,6 +37,7 @@ export function useCentral() {
 
   const filas = useMemo(() => r.resumoDasFilas(situacoes), [situacoes]);
   const erros = useMemo(() => r.errosDeHoje(d.atividades, agora), [d.atividades, agora]);
+  const geral = useMemo(() => r.pausaGeral(situacoes), [situacoes]);
 
   return {
     exemplos: d.exemplos,
@@ -53,6 +54,7 @@ export function useCentral() {
     situacoes,
     filas,
     erros,
+    geral,
     atividades: d.atividades,
     comandos: d.comandos,
     pedir: d.pedir,
@@ -69,7 +71,17 @@ export function useBusca(situacoes: readonly r.SituacaoDoRoboNaCentral[]) {
 }
 
 /** Uma ação esperando a confirmação na tela. */
-export interface AcaoPendente { acao: r.AcaoDaCentral; robo: r.RoboDaCentral | null; maquina: r.MaquinaDaCentral; tarefa: r.TarefaDoRobo | null }
+export interface AcaoPendente {
+  acao: r.AcaoDaCentral; robo: r.RoboDaCentral | null; maquina: r.MaquinaDaCentral; tarefa: r.TarefaDoRobo | null;
+  /** o pedido da fila, o cliente e a competência */
+  extras?: r.ExtrasDaAcao;
+  /** o "Parar tudo" e o "Retomar tudo" vão para mais de uma máquina (um comando em cada) */
+  maquinas?: r.MaquinaDaCentral[];
+}
+
+/** Estas perguntam a hora de voltar na confirmação. */
+const COM_HORA = new Set<string>(['pausar', 'parar-tudo']);
+export const aceitaHora = (a: r.AcaoDaCentral) => COM_HORA.has(a.id);
 
 /**
  * Os pedidos de ação: as destrutivas (pausar, limpar a fila, reiniciar, atualizar) esperam o "sim" na tela; as outras vão
@@ -80,14 +92,21 @@ export function useAcoes(central: Pick<Central, 'pedir' | 'nome'>) {
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState('');
   const [enviado, setEnviado] = useState('');
+  const [hora, setHora] = useState('');
 
-  const enviar = useCallback(async (p: AcaoPendente) => {
+  const enviar = useCallback(async (p: AcaoPendente, horaDeVoltar = '') => {
     setEnviando(true);
     setErro('');
     try {
-      const id = await central.pedir({ acao: p.acao.id, robo: p.robo?.id || '', maquina: p.maquina.id, tarefa: p.tarefa?.id, porNome: central.nome });
+      const ate = horaDeVoltar ? r.ateDaHora(horaDeVoltar) : '';
+      if (horaDeVoltar && !ate) throw new Error('Essa hora não existe.');
+      let id = '';
+      for (const m of p.maquinas || [p.maquina]) {
+        id = await central.pedir({ acao: p.acao.id, robo: p.robo?.id || '', maquina: m.id, tarefa: p.tarefa?.id, porNome: central.nome, ...p.extras, ...(ate ? { ate } : {}) });
+      }
       setEnviado(id);
       setPendente(null);
+      setHora('');
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       setErro(/permission|insufficient/i.test(msg) ? 'O banco não deixou: só o administrador manda ações (ou as regras novas ainda não foram publicadas).' : msg);
@@ -96,16 +115,35 @@ export function useAcoes(central: Pick<Central, 'pedir' | 'nome'>) {
     }
   }, [central]);
 
+  const pedir = (acao: r.AcaoDaCentral, maquina: r.MaquinaDaCentral, robo: r.RoboDaCentral | null, tarefa: r.TarefaDoRobo | null = null, extras?: r.ExtrasDaAcao) => {
+    const p = { acao, maquina, robo, tarefa, extras };
+    setErro('');
+    setHora('');
+    if (acao.destrutiva) setPendente(p);
+    else void enviar(p);
+  };
+
   return {
-    pendente, enviando, erro, enviado,
-    pedir(acao: r.AcaoDaCentral, maquina: r.MaquinaDaCentral, robo: r.RoboDaCentral | null, tarefa: r.TarefaDoRobo | null = null) {
-      const p = { acao, maquina, robo, tarefa };
+    pendente, enviando, erro, enviado, hora, setHora,
+    pedir,
+    /** "Parar tudo" / "Retomar tudo": um comando por máquina, com a confirmação (se for destrutiva) antes de todos. */
+    pedirEmTodas(acao: r.AcaoDaCentral, maquinas: r.MaquinaDaCentral[]) {
+      if (!maquinas.length) return;
+      const p = { acao, maquina: maquinas[0], robo: null, tarefa: null, maquinas };
       setErro('');
+      setHora('');
       if (acao.destrutiva) setPendente(p);
       else void enviar(p);
     },
-    confirmar() { if (pendente) void enviar(pendente); },
-    cancelar() { setPendente(null); setErro(''); },
+    /** Pede de novo só o pedido que deu erro (o texto do erro vai para o histórico). */
+    refazer(a: entregas.AtividadeDoRobo) {
+      const robo = r.roboDaAtividade(a);
+      const acao = r.acaoPorId('refazer');
+      const maquina = robo && r.maquinaPorId(robo.maquina);
+      if (robo && acao && maquina && a.pedido) pedir(acao, maquina, robo, null, { item: a.pedido, rotulo: a.texto });
+    },
+    confirmar() { if (pendente) void enviar(pendente, aceitaHora(pendente.acao) ? hora : ''); },
+    cancelar() { setPendente(null); setErro(''); setHora(''); },
   };
 }
 

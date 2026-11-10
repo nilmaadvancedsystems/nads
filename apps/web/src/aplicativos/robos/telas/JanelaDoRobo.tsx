@@ -1,15 +1,17 @@
-// A ficha de um robô (clicou no ícone): Visão geral, Registros (o log ao vivo), Ações e Configurações.
-import { robos as r } from '@nads/core';
+// A ficha de um robô (clicou no ícone): Visão geral, Fila (pedido a pedido, nos robôs que têm), Registros (o log ao vivo),
+// Ações e Configurações.
+import { entregas, robos as r } from '@nads/core';
 import { useEffect, useRef } from 'react';
 import { atividadesDoRobo, comandosDoRobo, type Central, type useAcoes } from '../casca/useCentral';
 import { IconeDoRobo } from '../partes/IconeDoRobo';
 import { Janela } from '../partes/Janela';
 import { urlDoLogo } from '../partes/logos';
+import { FilaDoRobo } from './FilaDoRobo';
 import { useRegistros } from './useRegistros';
 
-export type AbaDoRobo = 'geral' | 'registros' | 'acoes' | 'config';
+export type AbaDoRobo = 'geral' | 'fila' | 'registros' | 'acoes' | 'config';
 export const ABAS: { id: AbaDoRobo; nome: string }[] = [
-  { id: 'geral', nome: 'Visão geral' }, { id: 'registros', nome: 'Registros' }, { id: 'acoes', nome: 'Ações' }, { id: 'config', nome: 'Configurações' },
+  { id: 'geral', nome: 'Visão geral' }, { id: 'fila', nome: 'Fila' }, { id: 'registros', nome: 'Registros' }, { id: 'acoes', nome: 'Ações' }, { id: 'config', nome: 'Configurações' },
 ];
 
 type Acoes = ReturnType<typeof useAcoes>;
@@ -55,16 +57,17 @@ export function JanelaDoRobo({ central, s, aba, irPara, aoFechar, acoes }: {
       }
       abas={
         <div className="cr-abas" role="tablist" aria-label="Partes do robô">
-          {ABAS.map(a => (
+          {ABAS.filter(a => a.id !== 'fila' || s.robo.itens).map(a => (
             <button key={a.id} type="button" role="tab" aria-selected={aba === a.id} className={'cr-aba' + (aba === a.id ? ' ativa' : '')} onClick={() => irPara(a.id)}>{a.nome}</button>
           ))}
         </div>
       }>
       <div role="tabpanel">
-        {aba === 'geral' && <VisaoGeral central={central} s={s} maquina={maquina} />}
+        {aba === 'geral' && <VisaoGeral central={central} s={s} maquina={maquina} acoes={acoes} />}
+        {aba === 'fila' && s.robo.itens && <FilaDoRobo central={central} s={s} maquina={maquina} acoes={acoes} />}
         {aba === 'registros' && <Registros robo={s.robo} agora={central.agora} />}
         {aba === 'acoes' && <Acoes central={central} s={s} maquina={maquina} acoes={acoes} />}
-        {aba === 'config' && <Configuracoes s={s} maquina={maquina} acoes={acoes} />}
+        {aba === 'config' && <Configuracoes central={central} s={s} maquina={maquina} acoes={acoes} />}
       </div>
     </Janela>
   );
@@ -75,7 +78,7 @@ function Numero({ valor, rotulo, ruim = false }: { valor: number | null; rotulo:
   return <div className={'cr-numero' + classe}><b>{valor ?? '—'}</b><span>{rotulo}</span></div>;
 }
 
-function VisaoGeral({ central, s, maquina }: { central: Central; s: r.SituacaoDoRoboNaCentral; maquina: r.SituacaoDaMaquina }) {
+function VisaoGeral({ central, s, maquina, acoes }: { central: Central; s: r.SituacaoDoRoboNaCentral; maquina: r.SituacaoDaMaquina; acoes: Acoes }) {
   const antes = atividadesDoRobo(central.atividades, s.robo).filter(a => a.id !== s.ultimo?.id && a.id !== s.ultimoErro?.id).slice(0, 5);
   return (
     <div>
@@ -93,12 +96,12 @@ function VisaoGeral({ central, s, maquina }: { central: Central; s: r.SituacaoDo
       <section className="cr-secao">
         <h2>Último trabalho</h2>
         {s.ultimo ? <Linha a={s.ultimo} agora={central.agora} /> : <p className="cr-fraco">Nada registrado nos últimos dias.</p>}
-        {s.ultimoErro && <><h3>Último erro</h3><Linha a={s.ultimoErro} agora={central.agora} /></>}
+        {s.ultimoErro && <><h3>Último erro</h3><div className="cr-com-refazer"><Linha a={s.ultimoErro} agora={central.agora} /><Refazer a={s.ultimoErro} central={central} acoes={acoes} /></div></>}
       </section>
       {antes.length > 0 && (
         <section className="cr-secao">
           <h2>Antes disso</h2>
-          <ul className="cr-atividades">{antes.map(a => <li key={a.id}><Linha a={a} agora={central.agora} /></li>)}</ul>
+          <ul className="cr-atividades">{antes.map(a => <li key={a.id} className="cr-com-refazer"><Linha a={a} agora={central.agora} /><Refazer a={a} central={central} acoes={acoes} /></li>)}</ul>
         </section>
       )}
       <section className="cr-secao">
@@ -111,6 +114,13 @@ function VisaoGeral({ central, s, maquina }: { central: Central; s: r.SituacaoDo
       </section>
     </div>
   );
+}
+
+/** O botão ao lado do erro: pede de novo só aquele pedido. Sem pedido identificado (lote que não abriu, erro antigo), nada. */
+export function Refazer({ a, central, acoes }: { a: entregas.AtividadeDoRobo; central: Central; acoes: Acoes }) {
+  const estado = r.estadoDoRefazer(a, central.comandos, central.agora);
+  if (estado === 'nao') return null;
+  return <button type="button" className="cr-botao" disabled={estado === 'pedido' || acoes.enviando} onClick={() => acoes.refazer(a)}>{estado === 'pedido' ? 'Pedido' : 'Refazer'}</button>;
 }
 
 function Linha({ a, agora }: { a: { texto: string; detalhe: string; em: string; erro: boolean }; agora: number }) {
@@ -214,14 +224,14 @@ export function Historico({ comandos, agora }: { comandos: readonly r.Comando[];
   );
 }
 
-function Configuracoes({ s, maquina, acoes }: { s: r.SituacaoDoRoboNaCentral; maquina: r.SituacaoDaMaquina; acoes: Acoes }) {
+function Configuracoes({ central, s, maquina, acoes }: { central: Central; s: r.SituacaoDoRoboNaCentral; maquina: r.SituacaoDaMaquina; acoes: Acoes }) {
   const pausar = r.acaoPorId(s.pausa ? 'retomar' : 'pausar')!;
   return (
     <div>
       {s.robo.pausavel && (
         <section className="cr-secao">
           <div className="cr-acao">
-            <div><b>Pausado</b><span>{s.pausa ? 'Pausado por ' + (s.pausa.por || 'alguém') + '. Retome para voltar a pegar trabalho.' : 'Pausado, o robô não pega trabalho novo.'}</span></div>
+            <div><b>Pausado</b><span>{s.pausa ? 'Pausado por ' + (s.pausa.por || 'alguém') + (s.pausa.ate ? ', volta sozinho ' + r.quandoVolta(s.pausa.ate, central.agora) : '') + '. Retome para voltar a pegar trabalho.' : 'Pausado, o robô não pega trabalho novo.'}</span></div>
             <button type="button" role="switch" aria-checked={!!s.pausa} aria-label="Pausado" className={'cr-interruptor' + (s.pausa ? ' ligado' : '')} disabled={acoes.enviando}
               onClick={() => acoes.pedir(pausar, maquina.maquina, s.robo)}><span /></button>
           </div>

@@ -15,7 +15,12 @@ export interface DocsDaCentral {
 }
 
 /** O que a tela pede (porNome: o nome de quem está na tela, para o histórico). */
-export interface PedidoDaTela { robo: string; acao: string; tarefa?: string; maquina?: string; porNome?: string }
+export interface PedidoDaTela extends r.ExtrasDaAcao { robo: string; acao: string; tarefa?: string; maquina?: string; porNome?: string }
+
+/** A fila de um robô, pedido a pedido (só enquanto a aba Fila está aberta). */
+export interface FilaDaTela { carregada: boolean; itens: r.ItemDaFila[]; erro: string }
+/** Um cliente para o campo "Pedir para um cliente". */
+export interface ClienteDaTela { codigo: string; nome: string }
 
 export interface RepoCentral {
   readonly exemplos: boolean;
@@ -25,6 +30,11 @@ export interface RepoCentral {
   /** o espelho do log de um robô, ao vivo enquanto a aba Registros está aberta (pede ao robô o "ao vivo") */
   registros(robo: string): r.RegistrosDoRobo;
   acompanharRegistros(robo: string): () => void;
+  /** a fila de um robô, pedido a pedido, ao vivo enquanto a aba Fila está aberta */
+  fila(robo: string): FilaDaTela;
+  acompanharFila(robo: string): () => void;
+  /** os clientes ativos (lidos uma vez só, na primeira vez que a aba Fila precisa) */
+  clientes(): Promise<ClienteDaTela[]>;
   /** grava o comando (robosComandos) e devolve o id; o robô responde no próprio documento */
   pedir(p: PedidoDaTela): Promise<string>;
   assinar(aoMudar: () => void): () => void;
@@ -72,8 +82,8 @@ export function docsDeExemplo(agora = Date.now()): DocsDaCentral {
   });
   const estado = (maquina: r.IdMaquina, host: string, em: number, sinais: Partial<r.SinaisDaMaquina>, extra: Record<string, unknown> = {}) =>
     r.lerEstadoDaMaquina(maquina, { host, em: ha(em), ligadoEm: ha(372), versao: '47205cc', sinais, pausados: {}, ...extra });
-  const atividade = (id: string, min: number, robo: 'pc' | 'vm', tipo: string, texto: string, detalhe = '', erro = false): entregas.AtividadeDoRobo =>
-    ({ id, em: ha(min), robo, maquina: robo === 'pc' ? 'NILMA-SERVER' : 'robo-nilma', tipo, texto, detalhe, erro });
+  const atividade = (id: string, min: number, robo: 'pc' | 'vm', tipo: string, texto: string, detalhe = '', erro = false, pedido = ''): entregas.AtividadeDoRobo =>
+    ({ id, em: ha(min), robo, maquina: robo === 'pc' ? 'NILMA-SERVER' : 'robo-nilma', tipo, texto, detalhe, erro, ...(pedido ? { pedido } : {}) });
   return {
     carregado: true, semPermissao: false,
     batimentos: { servidor, nuvem },
@@ -87,12 +97,13 @@ export function docsDeExemplo(agora = Date.now()): DocsDaCentral {
       atividade('a1', 3, 'pc', 'sieg', 'Baixou 48 XMLs da 292 (10/2026)', 'portal do SIEG'),
       atividade('a2', 9, 'pc', 'fgts', 'Emitiu a guia do FGTS de 145 COMÉRCIO EXEMPLO (10/2026)', 'guia 8821 · R$ 1.234,56'),
       atividade('a3', 16, 'vm', 'gmail', 'Leu o Gmail: 12 e-mails, 9 anexos de 7 clientes'),
-      atividade('a4', 31, 'pc', 'alterdata', 'O balancete da 205 não saiu', 'a janela do Contábil não respondeu em 2 min', true),
+      atividade('a4', 31, 'pc', 'alterdata', 'O balancete da 205 não saiu', 'a janela do Contábil não respondeu em 2 min', true, 'ex-alt-205'),
       atividade('a5', 44, 'pc', 'arquivamento', 'Arquivou 26 arquivos de 11 clientes', '2 não identificados'),
       atividade('a6', 58, 'vm', 'envios', 'Enviou os documentos do DP para 301 EXEMPLO LTDA'),
       atividade('a7', 75, 'vm', 'nfse', 'Emitiu a NFS-e 1.204 dos honorários (10/2026)'),
       atividade('a8', 92, 'vm', 'sefaz', 'Situação na SEFAZ: 3 notas conferidas'),
-      atividade('a9', 120, 'pc', 'fgts', 'A guia do FGTS de 77 EXEMPLO não saiu', 'o login no FGTS Digital não foi', true),
+      atividade('a9', 120, 'pc', 'fgts', 'A guia do FGTS de 486 VS MEDICINA ESPECIALIZADA LTDA (10/2026) não saiu', 'o login no FGTS Digital não foi', true, 'ex-fgts-486'),
+      atividade('a12', 160, 'pc', 'fgts', 'O lote do FGTS não abriu', 'a extensão não respondeu', true),
       atividade('a10', 140, 'vm', 'cobranca', 'Cobrança enviada para 14 clientes'),
       atividade('a11', 200, 'pc', 'alterdata', 'Tirou o razão da 571 (01 a 10/2026)'),
     ],
@@ -103,6 +114,32 @@ export function docsDeExemplo(agora = Date.now()): DocsDaCentral {
     ],
   };
 }
+
+/** Os pedidos de exemplo em cada fila, como estão no banco. */
+function filasDeExemplo(agora = Date.now()): Record<string, Record<string, Record<string, unknown>>> {
+  const ha = (min: number) => new Date(agora - min * MIN).toISOString();
+  return {
+    fgts: {
+      'ex-f1': { status: 'trabalhando', modo: 'emitir', codigo: '62', empresa: 'AGROPECUÁRIA EXEMPLO', competencia: '2026-10', criadoEm: ha(14), criadoPor: 'Ana' },
+      'ex-f2': { status: 'pendente', modo: 'emitir', codigo: '145', empresa: 'COMÉRCIO EXEMPLO', competencia: '2026-10', criadoEm: ha(13), criadoPor: 'Ana' },
+      'ex-f3': { status: 'pendente', modo: 'emitir', codigo: '301', empresa: 'EXEMPLO LTDA', competencia: '2026-10', criadoEm: ha(12), criadoPor: 'Ana' },
+      'ex-f4': { status: 'pendente', modo: 'ensaio', codigo: '77', empresa: 'EXEMPLO SERVIÇOS', competencia: '2026-10', criadoEm: ha(6), criadoPor: 'Vitor' },
+    },
+    sieg: { 'ex-s1': { status: 'processando', tipo: 'xmls', codigo: '292', competencia: '2026-10', criadoEm: ha(2), criadoPor: 'Sávio' } },
+    alterdata: {
+      'ex-a1': { status: 'pendente', tipo: 'mensal', codigo: 571, empresa: 'EXEMPLO COMÉRCIO', competencia: '2026-10', criadoEm: ha(75), criadoPor: 'Ana' },
+      'ex-a2': { status: 'pendente', tipo: 'mensal', codigo: 88, empresa: 'OUTRA EXEMPLO', competencia: '2026-10', criadoEm: ha(40), criadoPor: 'Ana' },
+    },
+    arquivador: {},
+    vigia: { 'ex-g1': { status: 'processando', tipo: 'verificar', criadoEm: ha(1), criadoPor: 'automático' } },
+    sefaz: {},
+  };
+}
+
+const CLIENTES_DE_EXEMPLO: ClienteDaTela[] = [
+  { codigo: '62', nome: 'AGROPECUÁRIA EXEMPLO' }, { codigo: '77', nome: 'EXEMPLO SERVIÇOS' }, { codigo: '145', nome: 'COMÉRCIO EXEMPLO' },
+  { codigo: '205', nome: 'CONSTRUTORA EXEMPLO' }, { codigo: '292', nome: 'INDÚSTRIA EXEMPLO' }, { codigo: '486', nome: 'VS MEDICINA ESPECIALIZADA LTDA' },
+];
 
 const FRASES: Record<string, string[]> = {
   arquivador: ['lendo a pasta de entrada (312 arquivos)', 'arquivou NOTA 1234.pdf em 205 EXEMPLO/FISCAL/10', 'não identificado: scan_0012.pdf', 'índice do Drive em dia'],
@@ -133,7 +170,35 @@ export function criarCentralMemoria(): RepoCentral {
   let ver = 0;
   const ouvintes = new Set<() => void>();
   const regs = new Map<string, r.RegistrosDoRobo>();
-  const mudou = () => { ver++; for (const f of ouvintes) f(); };
+  const filas = filasDeExemplo();
+  const filaCache = new Map<string, FilaDaTela>();
+  const mudou = () => { ver++; filaCache.clear(); for (const f of ouvintes) f(); };
+  const pausadosDe = (maquina: r.IdMaquina, mexer: (p: Record<string, r.Pausa>) => void) => {
+    const m = docs.maquinas[maquina];
+    if (!m) return;
+    const pausados = { ...m.pausados };
+    mexer(pausados);
+    docs = { ...docs, maquinas: { ...docs.maquinas, [maquina]: { ...m, pausados } } };
+  };
+  /** O que o robô de mentira faz com a fila; '' = fez, senão a recusa. */
+  const mexerNaFila = (c: PedidoDaTela): string => {
+    const fila = filas[c.robo];
+    const agora = new Date().toISOString();
+    if (c.acao === 'pedir-cliente' && fila) {
+      const cli = CLIENTES_DE_EXEMPLO.find(x => x.codigo === c.cliente);
+      if (!cli) return 'Não achei o cliente ' + c.cliente + ' entre os ativos do cadastro.';
+      fila['ex-' + Date.now().toString(36)] = { status: 'pendente', modo: c.tarefa === 'ensaio' ? 'ensaio' : 'emitir', tipo: c.tarefa, codigo: cli.codigo, empresa: cli.nome, competencia: c.competencia, criadoEm: agora, criadoPor: 'Vitor' };
+    }
+    if (c.acao === 'refazer' && fila && c.item) fila[c.item] = { status: 'pendente', modo: 'emitir', tipo: 'mensal', codigo: '486', empresa: 'VS MEDICINA ESPECIALIZADA LTDA', competencia: '2026-10', criadoEm: agora, criadoPor: 'Vitor' };
+    if (c.acao === 'cancelar-item' || c.acao === 'na-frente') {
+      const item = fila && c.item ? fila[c.item] : null;
+      if (!item) return 'Este pedido não existe mais na fila.';
+      if (item.status !== 'pendente') return 'Este pedido já está em andamento (' + String(item.status) + '): não dá mais para mexer por aqui.';
+      if (c.acao === 'cancelar-item') delete fila![c.item!];
+      else item.naFrenteEm = agora;
+    }
+    return '';
+  };
   const trocarComando = (id: string, parcial: Partial<r.Comando>) => {
     docs = { ...docs, comandos: docs.comandos.map(c => (c.id === id ? { ...c, ...parcial } : c)) };
     mudou();
@@ -162,6 +227,17 @@ export function criarCentralMemoria(): RepoCentral {
       }, 4000);
       return () => clearInterval(t);
     },
+    fila(robo) {
+      let f = filaCache.get(robo);
+      if (!f) {
+        const rb = r.roboPorId(robo);
+        f = { carregada: true, erro: '', itens: rb ? r.ordenarFila(Object.entries(filas[robo] || {}).map(([id, d]) => r.lerItemDaFila(rb, id, d))) : [] };
+        filaCache.set(robo, f);
+      }
+      return f;
+    },
+    acompanharFila() { return () => {}; },
+    clientes: () => Promise.resolve(CLIENTES_DE_EXEMPLO),
     async pedir(p) {
       const d = r.montarComando(p, { uid: 'uid-exemplo', nome: p.porNome || 'Vitor' });
       const id = 'ex-' + Date.now().toString(36);
@@ -169,14 +245,15 @@ export function criarCentralMemoria(): RepoCentral {
       mudou();
       setTimeout(() => trocarComando(id, { status: 'aceito', mensagem: 'Recebi.', respondidoEm: new Date().toISOString() }), 1000);
       setTimeout(() => {
-        const m = docs.maquinas[d.maquina];
-        if (m && (d.acao === 'pausar' || d.acao === 'retomar')) {
-          const pausados = { ...m.pausados };
-          if (d.acao === 'pausar') pausados[d.robo] = { por: 'Vitor', em: new Date().toISOString() };
-          else delete pausados[d.robo];
-          docs = { ...docs, maquinas: { ...docs.maquinas, [d.maquina]: { ...m, pausados } } };
-        }
-        trocarComando(id, { status: 'feito', mensagem: 'Feito (exemplo: nada foi para o robô de verdade).', respondidoEm: new Date().toISOString() });
+        const pausa: r.Pausa = { por: 'Vitor', em: new Date().toISOString(), ate: d.ate || '' };
+        const robosDaMaquina = r.ROBOS.filter(x => x.maquina === d.maquina && x.pausavel).map(x => x.id);
+        if (d.acao === 'pausar') pausadosDe(d.maquina, q => { q[d.robo] = pausa; });
+        if (d.acao === 'retomar') pausadosDe(d.maquina, q => { delete q[d.robo]; });
+        if (d.acao === 'parar-tudo') pausadosDe(d.maquina, q => { for (const x of robosDaMaquina) q[x] = pausa; });
+        if (d.acao === 'retomar-tudo') pausadosDe(d.maquina, q => { for (const x of robosDaMaquina) delete q[x]; });
+        const recusa = mexerNaFila(p);
+        trocarComando(id, recusa ? { status: 'recusado', mensagem: recusa, respondidoEm: new Date().toISOString() }
+          : { status: 'feito', mensagem: 'Feito (exemplo: nada foi para o robô de verdade).', respondidoEm: new Date().toISOString() });
       }, 2500);
       return id;
     },

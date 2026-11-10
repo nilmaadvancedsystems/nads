@@ -3,16 +3,16 @@
 // hora) e as filas. Navegação: barra embaixo no celular, trilho à esquerda no PC. Clicar num robô abre a ficha dele.
 // O endereço guarda o que está aberto:
 //   /robos                       a tela inicial
-//   /robos/robo/<id>/<aba>       a janela de um robô (aba: geral, registros, acoes, config)
+//   /robos/robo/<id>/<aba>       a janela de um robô (aba: geral, fila, registros, acoes, config)
 //   /robos/maquinas | /robos/registros | /robos/configuracoes
 import { robos as r } from '@nads/core';
 import { useRef } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { IconeDoRobo } from '../partes/IconeDoRobo';
 import { Confirmacao } from '../partes/Janela';
-import { ABAS, AppIcone, Estado, JanelaDoRobo, type AbaDoRobo } from '../telas/JanelaDoRobo';
+import { ABAS, AppIcone, Estado, JanelaDoRobo, Refazer, type AbaDoRobo } from '../telas/JanelaDoRobo';
 import { PainelConfiguracoes, PainelMaquinas, PainelRegistros } from '../telas/Paineis';
-import { useAcoes, useBusca, useCentral } from './useCentral';
+import { aceitaHora, useAcoes, useBusca, useCentral } from './useCentral';
 
 const NAV = [
   { id: '', nome: 'Robôs', icone: 'home' },
@@ -133,13 +133,26 @@ export function Central() {
               </section>
 
               <section className="cr-bloco">
+                <div className="cr-bloco-topo"><h2>Pausa geral</h2></div>
+                <p className="cr-calmo">
+                  {central.geral.pausados.length
+                    ? central.geral.pausados.length + ' de ' + central.geral.pausaveis.length + ' robôs pausados' + (central.geral.voltaEm ? ', o primeiro volta ' + r.quandoVolta(central.geral.voltaEm, central.agora) : ', até alguém retomar') + '.'
+                    : 'Os ' + central.geral.pausaveis.length + ' robôs que sabem pausar estão trabalhando.'}
+                </p>
+                <div className="cr-botoes">
+                  <button type="button" className="cr-botao perigo-leve" disabled={acoes.enviando || !central.geral.paraParar.length} onClick={() => acoes.pedirEmTodas(r.acaoPorId('parar-tudo')!, central.geral.paraParar)}>Parar tudo</button>
+                  {central.geral.pausados.length > 0 && <button type="button" className="cr-botao" disabled={acoes.enviando} onClick={() => acoes.pedirEmTodas(r.acaoPorId('retomar-tudo')!, central.geral.paraRetomar)}>Retomar tudo</button>}
+                </div>
+              </section>
+
+              <section className="cr-bloco">
                 <div className="cr-bloco-topo"><h2>Erros de hoje</h2>{central.erros.length > 0 && <button type="button" onClick={() => ir('/robos/registros')}>Ver todos</button>}</div>
                 {central.erros.length ? (
                   <ul className="cr-ocorrencias">
                     {central.erros.slice(0, 5).map(e => {
                       const robo = r.roboDaAtividade(e);
                       return (
-                        <li key={e.id}>
+                        <li key={e.id} className="cr-com-refazer">
                           <button type="button" className="cr-ocorrencia" onClick={() => (robo ? abrir(robo.id, 'registros') : ir('/robos/registros'))}>
                             <time className="num">{horaDe(e.em)}</time>
                             <span className="cr-ocorrencia-corpo">
@@ -147,6 +160,7 @@ export function Central() {
                               <span className="cr-ocorrencia-texto">{e.texto}</span>
                             </span>
                           </button>
+                          <Refazer a={e} central={central} acoes={acoes} />
                         </li>
                       );
                     })}
@@ -195,7 +209,7 @@ export function Central() {
           irPara={a => ir('/robos/robo/' + roboAberto.robo.id + '/' + a, { replace: true })} />
       )}
       {secao === 'maquinas' && <PainelMaquinas central={central} acoes={acoes} aoFechar={voltar} />}
-      {secao === 'registros' && <PainelRegistros central={central} aoFechar={voltar} />}
+      {secao === 'registros' && <PainelRegistros central={central} acoes={acoes} aoFechar={voltar} />}
       {secao === 'configuracoes' && <PainelConfiguracoes central={central} aoFechar={voltar} />}
 
       {acoes.pendente && (
@@ -204,12 +218,23 @@ export function Central() {
           texto={<>
             <dl className="cr-dl">
               {acoes.pendente.robo && acoes.pendente.acao.alvo === 'robo' && <><dt>Robô</dt><dd>{acoes.pendente.robo.nome}{acoes.pendente.tarefa ? ', ' + acoes.pendente.tarefa.nome.toLowerCase() : ''}</dd></>}
-              <dt>Máquina</dt><dd>{acoes.pendente.maquina.nome} (<span className="num">{acoes.pendente.maquina.host}</span>)</dd>
+              {acoes.pendente.extras?.cliente && <><dt>Cliente</dt><dd>{acoes.pendente.extras.rotulo || acoes.pendente.extras.cliente}</dd><dt>Competência</dt><dd className="num">{r.mesEAno(acoes.pendente.extras.competencia || '')}</dd></>}
+              {acoes.pendente.extras?.item && acoes.pendente.extras.rotulo && <><dt>Pedido</dt><dd>{acoes.pendente.extras.rotulo}</dd></>}
+              {acoes.pendente.maquinas ? <>
+                <dt>Param</dt><dd>{central.geral.pausaveis.filter(x => !central.geral.pausados.some(p => p.robo.id === x.id)).map(x => x.nome).join(', ')}</dd>
+                <dt>Continuam</dt><dd>{central.geral.naoPausam.map(x => x.nome).join(', ')}</dd>
+              </> : <><dt>Máquina</dt><dd>{acoes.pendente.maquina.nome} (<span className="num">{acoes.pendente.maquina.host}</span>)</dd></>}
             </dl>
             <p>{acoes.pendente.acao.descricao}</p>
+            {aceitaHora(acoes.pendente.acao) && (
+              <label className="cr-campo">
+                <span>Voltar sozinho às (opcional)</span>
+                <span className="cr-busca"><input type="time" value={acoes.hora} onChange={e => acoes.setHora(e.target.value)} aria-label="Hora de voltar" /></span>
+              </label>
+            )}
             <p className="cr-fraco">O robô responde em até 1 minuto, nos pedidos recentes.</p>
           </>}
-          rotuloSim={acoes.pendente.acao.nome} perigo enviando={acoes.enviando} erro={acoes.erro}
+          rotuloSim={acoes.pendente.acao.nome} rotuloNao={acoes.pendente.acao.id === 'cancelar-item' ? 'Manter na fila' : undefined} perigo enviando={acoes.enviando} erro={acoes.erro}
           aoConfirmar={acoes.confirmar} aoCancelar={acoes.cancelar} />
       )}
       {acoes.enviado && !acoes.pendente && <Enviado key={acoes.enviado} central={central} id={acoes.enviado} />}
