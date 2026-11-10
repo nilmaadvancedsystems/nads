@@ -5335,7 +5335,7 @@ function tipoDoDestino(destino) {
 }
 
 module.exports = {
-  pagamentoDoMovimento, fornecedorDoNomeDoArquivo, fornecedorDoNomeSemData, LIMIAR, RAIZ_CLIENTES, ARVORE, SUB_RECEBIDOS, subDoRecebidoPeloNome, semDataCompleta, REGRAS_PDF, BANCOS, ANUAIS, ofxCompetencia, anoDaEntrega, ANO_MINIMO, ANO_DAS_PASTAS, anoDaPasta, pastasDoAno, partesDoCaminho, comMotivoDoCodigo,
+  pagamentoDoMovimento, fornecedorDoNomeDoArquivo, fornecedorDoNomeSemData, LIMIAR, RAIZ_CLIENTES, ARVORE, SUB_RECEBIDOS, subDoRecebidoPeloNome, semDataCompleta, periodoPelasDatas, REGRAS_PDF, BANCOS, ANUAIS, ofxCompetencia, anoDaEntrega, ANO_MINIMO, ANO_DAS_PASTAS, anoDaPasta, pastasDoAno, partesDoCaminho, comMotivoDoCodigo,
   ehLivroContabil, anoDoLivro, decidirSpedAnual, semAcento, norm, chaveNome, nomeNormalizado, nomeSeguro, so, dataBr, valorBr, competenciaSolta, competenciaDoNome, competenciaDaPasta, periodoEscrito,
   cnpjValido, cpfValido, documentosDoTexto, raizesDoTexto, mascarasDoTexto,
   regimeCanonico, montarCadastro, comAnosEMapa, clientesDoDoc, clienteDaPasta, grupoDaPasta, pagamentoDeFornecedor, clientesPeloNomeNoTexto,
