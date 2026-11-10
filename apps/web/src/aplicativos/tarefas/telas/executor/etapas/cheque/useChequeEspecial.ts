@@ -11,6 +11,7 @@ import { useOperador } from '../../../../casca/operador';
 import { useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
 import { useBancosDeTeste } from '../bancos/useBancosDeTeste';
 import { useModelosDeHistorico } from '../../../../dados/useModelosDeHistorico';
+import { nomeDoLote } from '../../../../../../comum/importarNoAlterdata';
 
 export function useChequeEspecial() {
   const { nome, codigo, meses } = useEtapaAberta();
@@ -54,11 +55,13 @@ export function useChequeEspecial() {
     if (r.cadastro !== cadastro) vivo.salvar(r.cadastro);
   }
 
+  const lancamentosDe = (l: (typeof linhas)[number]) => x.lancamentosDoChequeEspecial(empresa, l.id, primeiro, meses, l.faltam, l.contaBanco, l.contaCheque, historico);
+
   function baixar(id: string) {
     const l = linhas.find(b => b.id === id);
     if (!l) return;
     if (!l.contaBanco || !l.contaCheque) { aviso({ tom: 'erro', titulo: l.nome, texto: 'Informe a conta do banco e a do cheque especial.' }); return; }
-    const lanc = x.lancamentosDoChequeEspecial(empresa, id, primeiro, meses, l.faltam, l.contaBanco, l.contaCheque, historico);
+    const lanc = lancamentosDe(l);
     if (!lanc.length) { aviso({ tom: 'erro', titulo: l.nome, texto: 'Nenhum dia negativo sem o cheque especial no razão.' }); return; }
     const arquivo = 'cheque_especial_' + (codigo ?? nome) + '_' + l.nome.replace(/[^\w]+/g, '') + '.xls';
     baixarBytes(ce.planilhaDeLancamentos(lanc, 'xls'), arquivo, ce.tipoMimeLancamentos('xls'));
@@ -68,7 +71,17 @@ export function useChequeEspecial() {
   return {
     periodo: meses.length > 1 ? tarefas.rotuloNumericoCompetencia(meses[0]) + ' a ' + tarefas.rotuloNumericoCompetencia(meses[meses.length - 1]) : meses[0] ? tarefas.rotuloNumericoCompetencia(meses[0]) : '',
     carregado: !!cadastro,
-    bancos: linhas.map(({ faltam: _f, ...r }) => r),
+    bancos: linhas.map(({ faltam: _f, ...r }, i) => ({
+      ...r,
+      /** o que o "Importar no Alterdata" manda (09/11/2026): a mesma planilha do Baixar */
+      importacao: {
+        codigo: codigo ?? null, empresa: nome, origem: 'cheque-especial', lote: nomeDoLote('Cheque especial ' + r.nome, r.dias.map(d => d.data)),
+        planilha: () => {
+          const lanc = r.contaBanco && r.contaCheque ? lancamentosDe(linhas[i]) : [];
+          return lanc.length ? { bytes: ce.planilhaDeLancamentos(lanc, 'xls'), linhas: lanc.length } : null;
+        },
+      },
+    })),
     historico,
     gravarConta, baixar,
   };

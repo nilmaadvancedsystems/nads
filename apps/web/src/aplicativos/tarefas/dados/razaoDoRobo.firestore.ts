@@ -6,7 +6,8 @@
 // As regras de lá: o admin e o Contábil leem e pedem (só essas chaves no pedido); o resto, só o robô escreve.
 import type { clientes as cl, tarefas as t } from '@nads/core';
 import { getAuth } from 'firebase/auth';
-import { addDoc, collection, doc, getDoc, getDocs, getFirestore, initializeFirestore, limit, onSnapshot, query, where, type Firestore } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, getDocs, limit, onSnapshot, query, where, type Firestore } from 'firebase/firestore';
+import { abrirBancoDoEntregas } from './conexaoEntregas.firestore';
 import { guardar } from '../../../comum/modoDesenvolvedor';
 import { appDoEntregas } from './driveDasFerramentas.firestore';
 import { pedidoAproveitavel } from './razaoDoRobo.regras';
@@ -15,8 +16,7 @@ import { pedidoAproveitavel } from './razaoDoRobo.regras';
 const addDocGuardado = guardar(addDoc) as typeof addDoc;
 
 function banco(): Firestore {
-  const app = appDoEntregas();
-  try { return initializeFirestore(app, { ignoreUndefinedProperties: true }); } catch { return getFirestore(app); }
+  return abrirBancoDoEntregas(appDoEntregas());
 }
 
 /** Um pedido mensal da empresa, no que importa aqui. */

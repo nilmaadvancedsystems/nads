@@ -8,7 +8,8 @@
 import { usuarios } from '@nads/core';
 import { deleteApp, getApps, initializeApp } from 'firebase/app';
 import { createUserWithEmailAndPassword, EmailAuthProvider, getAuth, onAuthStateChanged, reauthenticateWithCredential, signInWithEmailAndPassword, signOut, updatePassword } from 'firebase/auth';
-import { doc, getDoc, getFirestore, initializeFirestore, updateDoc as updateDocBruto, type Firestore } from 'firebase/firestore';
+import { doc, getDoc, updateDoc as updateDocBruto, type Firestore } from 'firebase/firestore';
+import { abrirBancoDoEntregas, apagarCacheDoEntregas } from './conexaoEntregas.firestore';
 import { guardar } from '../../../comum/modoDesenvolvedor';
 
 // a trava do modo desenvolvedor (comum/modoDesenvolvedor.ts): com o modo ligado, só ver — nada é gravado
@@ -91,12 +92,7 @@ export async function comAppAParte<T>(f: (app: ReturnType<typeof initializeApp>)
 }
 
 export function bancoDoEntregas(): Firestore {
-  const app = appDoEntregas();
-  try {
-    return initializeFirestore(app, { ignoreUndefinedProperties: true });
-  } catch {
-    return getFirestore(app); // já aberto nesta página
-  }
+  return abrirBancoDoEntregas(appDoEntregas());
 }
 
 export function criarSessaoEntregas(): SessaoEntregas {
@@ -134,7 +130,7 @@ export function criarSessaoEntregas(): SessaoEntregas {
         throw new Error(usuarios.mensagemDeErroDeLogin(String((e as { code?: string })?.code || '')), { cause: e });
       }
     },
-    async sair() { await signOut(auth); },
+    async sair() { await signOut(auth); await apagarCacheDoEntregas(db); },
     async trocarSenha(atual, nova) {
       const u = auth.currentUser;
       if (!u || !u.email) throw new Error('Sem login.');

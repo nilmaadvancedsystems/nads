@@ -15,8 +15,8 @@ describe('o Cadastro por nível (Vitor, 19/10/2026: o sênior vê e mexe no cada
     expect(podeMexerNoCadastro(null)).toBe(false);
   });
 
-  it('as Configurações: Empresas e Usuários (só o setor, para ver; 09/11/2026) para o sênior; as do Admin só para o admin', () => {
-    expect(cadastroDe(op('senior'))?.paginas.map(p => p.id)).toEqual(['empresas', 'usuarios']);
+  it('as Configurações: só Empresas para o sênior (os Usuários são do diretor e do admin; 09/11/2026); as do Admin só para o admin', () => {
+    expect(cadastroDe(op('senior'))?.paginas.map(p => p.id)).toEqual(['empresas']);
     expect(cadastroDe(op('diretor'))?.paginas.map(p => p.id)).toEqual(['empresas', 'usuarios']);
     const doAdmin = cadastroDe(op('senior', true));
     expect(doAdmin?.nome).toBe('Configurações');
@@ -67,12 +67,9 @@ describe('Sênior, Pleno e Júnior: Entregas só o Painel, e o Início para todo
 
 describe('os usuários cadastrados só para o Diretor e o admin (Vitor, 06/11/2026)', () => {
   const paginas = (o: Operador, app: string) => aplicacoesDe(o).find(a => a.id === app)?.paginas.map(p => p.id) ?? [];
-  it('pleno e júnior não veem os Usuários; ninguém abaixo do diretor vê a Liberação de acessos', () => {
-    for (const n of ['pleno', 'junior'] as const) expect(paginas(op(n), 'cadastro')).not.toContain('usuarios');
+  it('sênior, pleno e júnior não veem os Usuários; ninguém abaixo do diretor vê a Liberação de acessos', () => {
+    for (const n of ['senior', 'pleno', 'junior'] as const) expect(paginas(op(n), 'cadastro')).not.toContain('usuarios');
     for (const n of ['senior', 'pleno', 'junior'] as const) expect(paginas(op(n), 'senhas')).not.toContain('acesso');
-  });
-  it('o sênior abre os Usuários, só para ver e só o setor dele (09/11/2026)', () => {
-    expect(paginas(op('senior'), 'cadastro')).toContain('usuarios');
   });
   it('o diretor e o admin veem', () => {
     for (const o of [op('diretor'), op('pleno', true)]) {

@@ -99,6 +99,8 @@ const BIBLIOTECAS = [
 // base '/': as rotas são caminhos de verdade (ex.: /901/movimento/relatorio), então os
 // arquivos precisam ser referenciados a partir da raiz do site, não do caminho da página.
 export default defineConfig({
+  // o banco do Entregas com cache local, sem dado velho na tela: todo onSnapshot passa pelo filtro (ver o arquivo)
+  resolve: { alias: [{ find: /^firebase\/firestore$/, replacement: path.resolve(__dirname, 'src/aplicativos/tarefas/dados/ouvirSemDadoVelho.firestore.ts') }] },
   plugins: [react(), versaoDoSite(), tituloDoSite(), ...(ROTAS_DO_SITE ? [rotasProprias()] : [arquivosDoOcr()])],
   build: { rolldownOptions: { treeshake: SEM_EFEITO_NO_CORE, output: { codeSplitting: { groups: BIBLIOTECAS } } } },
   base: '/',
