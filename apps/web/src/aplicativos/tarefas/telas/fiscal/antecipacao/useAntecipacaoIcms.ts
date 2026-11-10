@@ -110,7 +110,8 @@ export function useAntecipacaoIcms() {
   function situacaoDoRobo(): string {
     if (comErro.length && !pedidos.length) return 'O robô não conseguiu baixar ' + comErro.map(x => s.mesCurto(x.mes)).join(', ') + ': ' + (comErro[0].p?.erro || 'erro sem detalhe') + '.';
     const sinal = Date.parse(robo.em);
-    if (!robo.ligado || !sinal || Date.now() - sinal > 3 * 60_000) return 'O robô do SIEG está fora do ar' + (sinal ? ' desde ' + new Date(sinal).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '') + '.';
+    // 7 min: o ponto do SIEG sem mudança vai a cada 5 min (robo/batimento.js, 10/11/2026)
+    if (!robo.ligado || !sinal || Date.now() - sinal > 7 * 60_000) return 'O robô do SIEG está fora do ar' + (sinal ? ' desde ' + new Date(sinal).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '') + '.';
     const andando = pedidos.find(x => x.p?.status === 'processando');
     if (andando) return 'O robô está baixando ' + s.mesCurto(andando.mes) + (andando.p?.andamento ? ' (' + andando.p.andamento + ')' : '') + '.';
     if (pedidos.length) return 'Na fila do robô' + (robo.naFila > 0 ? ' (' + robo.naFila + (robo.naFila === 1 ? ' pedido' : ' pedidos') + ' esperando)' : '') + (robo.situacao && robo.situacao !== 'livre' ? '; agora ele está ' + robo.situacao : '') + '.';

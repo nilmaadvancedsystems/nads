@@ -163,7 +163,7 @@ function AbaHorarios({ central }: { central: Central }) {
   return (
     <div>
       {r.ROBOS_COM_HORARIO.map(robo => <HorarioDoRobo key={robo.id} robo={robo} salvo={horarios[robo.id]} aoSalvar={(antes, agora) => gravacao.preparar({ robo, antes, agora })} />)}
-      <p className="cr-nota">Hora de Brasília. Os robôs seguem como sempre enquanto não tiverem horário, e o novo vale em até 5 minutos. Fora do horário o robô termina o que está fazendo e não pega trabalho novo. O Arquivador, a NFS-e, os Envios, a SEFAZ e o Suporte não têm horário próprio.</p>
+      <p className="cr-nota">Hora de Brasília. Os robôs seguem como sempre enquanto não tiverem horário, e o novo vale em até 15 minutos. Fora do horário o robô termina o que está fazendo e não pega trabalho novo. O Arquivador, a NFS-e, os Envios, a SEFAZ e o Suporte não têm horário próprio.</p>
       {p && (
         <Confirmacao titulo={'Mudar o horário do ' + p.robo.nome + '?'} rotuloSim="Salvar" perigo={false} enviando={gravacao.enviando} erro={gravacao.erro} aoConfirmar={() => void gravacao.confirmar()} aoCancelar={gravacao.cancelar}
           texto={<dl className="cr-dl"><div className="cr-dl-par"><dt>Antes</dt><dd>{r.textoDoHorario(p.robo, p.antes)}</dd></div><div className="cr-dl-par"><dt>Agora</dt><dd>{r.textoDoHorario(p.robo, p.agora)}</dd></div></dl>} />

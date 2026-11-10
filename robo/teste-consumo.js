@@ -174,6 +174,28 @@ const dormir = ms => new Promise(r => setTimeout(r, ms));
   igual('cliente que ficou inativo sai', await di.clienteDaPasta(dbMapa, '58', lista), null);
   igual('a lista lida agora (madrugada) não relê nada', [(await di.clienteDaPasta(dbMapa, '58', new Map([['58', { id: 'a1' }]]))).id, leiturasDoMapa], ['a1', 4]);
 
+  // o marcador de mudanças do Drive fora da raiz (10/11/2026): a raiz, que as telas escutam, não é regravada só porque o
+  // Drive andou; o marcador fica na memória e vai para o banco no máximo a cada 10 min
+  {
+    const docs = { raiz: { pastaId: 'ano', pageToken: 'velho', clientes: [] } };
+    const gravados = [];
+    let lidos = 0;
+    const dbM = { collection: () => ({ doc: id => ({
+      get: async () => { lidos++; const x = docs[id]; return { exists: !!x, data: () => x }; },
+      set: async d => { gravados.push(id); docs[id] = d; },
+    }) }) };
+    const est = {};
+    igual('sem o documento do marcador, vale o antigo da raiz', [await di.lerMarcador(dbM, est), est.pastaId], ['velho', 'ano']);
+    await di.lerMarcador(dbM, est);
+    igual('depois, da memória (sem ler o banco a cada minuto)', lidos, 2);
+    await di.gravarMarcador(dbM, est, 't1', true);
+    await di.gravarMarcador(dbM, est, 't2', false);
+    await di.gravarMarcador(dbM, est, 't3', false);
+    igual('o marcador vai para o documento dele, e não toda hora', [gravados, docs.marcador.pageToken, est.token], [['marcador'], 't1', 't3']);
+    igual('a raiz não foi regravada', docs.raiz.pageToken, 'velho');
+    igual('ao religar, o marcador do documento vale mais que o da raiz', await di.lerMarcador(dbM, {}), 't1');
+  }
+
   // os clientes ativos sem o arquivo do vigia: a leitura vale 10 min no processo
   const cache = require('./clientes-cache');
   if (!cache.lerDoArquivo()) {

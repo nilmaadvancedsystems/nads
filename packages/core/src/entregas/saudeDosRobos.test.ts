@@ -17,9 +17,10 @@ const pc = (extra: Record<string, unknown> = {}) => lerBatimento('pc', {
 });
 
 describe('saúde dos robôs', () => {
-  it('a máquina: em dia, atrasada (3 min), parada (15 min), desligada e sem painel', () => {
+  it('a máquina: em dia, atrasada (7 min), parada (15 min), desligada e sem painel', () => {
     expect(estadoDaMaquina(pc(), AGORA).tom).toBe('ok');
-    expect(estadoDaMaquina(pc({ em: ha(5) }), AGORA).tom).toBe('aviso');
+    expect(estadoDaMaquina(pc({ em: ha(5) }), AGORA).tom).toBe('ok');
+    expect(estadoDaMaquina(pc({ em: ha(8) }), AGORA).tom).toBe('aviso');
     expect(estadoDaMaquina(pc({ em: ha(14) }), AGORA).tom).toBe('aviso');
     expect(estadoDaMaquina(pc({ em: ha(16) }), AGORA).tom).toBe('erro');
     expect(estadoDaMaquina(pc({ desligadoEm: ha(2) }), AGORA)).toMatchObject({ tom: 'erro', sinal: 'desligou há 2 min' });

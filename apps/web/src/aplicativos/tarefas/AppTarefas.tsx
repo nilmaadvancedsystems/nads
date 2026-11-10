@@ -22,15 +22,16 @@ import { PessoalProvider } from './telas/pessoal/contexto';
 import { QuemSouEu } from './telas/quem/QuemSouEu';
 
 /**
- * Quem está online (Cadastro › Usuários): enquanto o nads está aberto e a aba visível, bate o ponto a cada 3 minutos
- * (usuarios/{uid}.nadsVistoEm); voltou para a aba depois de um tempo, bate na hora. Aba escondida não bate (economiza).
+ * Quem está online (Cadastro › Usuários): enquanto o nads está aberto e a aba visível, bate o ponto a cada 10 minutos
+ * (usuarios/{uid}.nadsVistoEm); voltou para a aba depois de 5 min ou mais, bate na hora. Aba escondida não bate (economiza:
+ * cada ponto é uma leitura em toda aba aberta do escritório, presenca.ts).
  */
 function usePresenca(ligada: boolean) {
   useEffect(() => {
     if (!ligada) return;
     let ultimo = 0;
     const bater = () => {
-      if (document.visibilityState !== 'visible' || Date.now() - ultimo < 60 * 1000) return;
+      if (document.visibilityState !== 'visible' || !usuarios.ehHoraDoPonto(ultimo, Date.now())) return;
       ultimo = Date.now();
       void repoDeAcesso().marcarPresenca().catch(() => undefined);
     };

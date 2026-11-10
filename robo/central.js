@@ -55,9 +55,17 @@ const LINHAS = 200;
 const MAX_LINHA = 300;
 const MAX_BYTES = 60 * 1024;
 const AO_VIVO_MS = 10 * 1000;
-const DEVAGAR_MS = 2 * 60 * 1000;
+// fora do "ao vivo" (a aba Registros aberta pede o ao vivo), o espelho do log vai a cada 30 min (10/11/2026, consumo do
+// banco; era a cada 2 min, com ou sem alguém olhando: até 7 mil gravações por dia de até 60 KB)
+const DEVAGAR_MS = 30 * 60 * 1000;
 const AO_VIVO_DURA_MS = 5 * 60 * 1000;
 const ESTADO_A_CADA_MS = 60 * 1000;
+// o estado da máquina (robosMaquinas) só vai ao banco quando muda (pausas, horário, versão) ou, sem mudança, a cada 10 min
+// (o ponto de vida do servidor e da nuvem é o painel, robo/painelPC e painelVM) ou 5 min (o escritório, que não tem painel).
+// Os sinais da máquina (CPU, memória, disco) e a hora não contam como mudança; a mudança de verdade (rara) vai na hora
+// (10/11/2026, consumo do banco; era a cada 1 min)
+const ESTADO_SEM_MUDANCA_MS = { escritorio: 5 * 60 * 1000 };
+const ESTADO_SEM_MUDANCA_PADRAO_MS = 10 * 60 * 1000;
 const TRAVADO_MS = 30 * 60 * 1000;
 const MAX_MENSAGEM = 300;
 const NIVEL_DA_ACAO = Object.fromEntries((catalogo.acoes || []).map(a => [a.id, a.nivel]));
@@ -667,8 +675,9 @@ function publicarEstado(desligado) {
   if (!desligado) doc.foraDoHorario = [...st.foraDoHorario];
   // mergeFields, não merge: com merge o Firestore junta os mapas e um robô retomado continuaria em 'pausados' enquanto outro
   // estivesse pausado; assim cada campo publicado é trocado por inteiro
+  if (!desligado && st.batida && !st.batida.vale(doc)) return Promise.resolve();
   return st.db.collection('robosMaquinas').doc(st.maquina).set(doc, { mergeFields: Object.keys(doc) })
-    .catch(err => logUmaVez('estado', (semPermissao(err) ? 'sem permissão para gravar o estado da máquina' : 'não consegui gravar o estado da máquina') + ' -', mensagemDe(err)));
+    .catch(err => { if (st && st.batida) st.batida.falhou(); logUmaVez('estado', (semPermissao(err) ? 'sem permissão para gravar o estado da máquina' : 'não consegui gravar o estado da máquina') + ' -', mensagemDe(err)); });
 }
 
 /** As pausas guardadas no banco (sobrevivem ao reinício): a que venceu com o robô desligado não volta; as outras pausam de novo. */
@@ -764,6 +773,7 @@ function iniciarCentral(o) {
       ganchos: Object.assign({ reiniciar: reinicioEducado, atualizar: atualizarAgora }, o.ganchos || {}),
       vistos: new Set(), recentes: new Map(), pausados: {}, pausadosLidos: false, conferindoPausas: false, timers: [], restaurar: [], paradas: [],
       foraDoHorario: new Set(), conferindoHorarios: false,
+      batida: require('./batimento').criarBatimento(Object.assign({ ignorar: ['em', 'sinais'], freioMs: 0, semMudancaMs: ESTADO_SEM_MUDANCA_MS[maquina] || ESTADO_SEM_MUDANCA_PADRAO_MS }, o.batimento)),
     };
     st.horarios = horarios.criarLeitor(o.db, m => logUmaVez('horarios', m));
     st.espelho = criarEspelho({
