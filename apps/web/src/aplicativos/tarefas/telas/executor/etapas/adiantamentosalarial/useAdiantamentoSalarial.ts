@@ -8,7 +8,7 @@ import { baixarBytes, useRetorno } from '@nads/ui';
 import { useMemo } from 'react';
 import { nomeDoLote } from '../../../../../../comum/importarNoAlterdata';
 import { useGuardado } from '../../../../../../comum/guardado';
-import { useContabilDaEmpresa } from '../../../../../../comum/contabilDaEmpresa';
+import { rotuloDaImportacao, useContabilDaEmpresa } from '../../../../../../comum/contabilDaEmpresa';
 import { useChaveDaEtapa, useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
 import { useModelosDeHistorico } from '../../../../dados/useModelosDeHistorico';
 
@@ -24,7 +24,7 @@ export function useAdiantamentoSalarial() {
   // o da Importação (o upload único dos razões; 16/10/2026), quando a etapa não tem o próprio
   const contabil = useContabilDaEmpresa(s.nome, s.codigo);
   const daImportacao = contabil.razaoDoTipo('adiantamento-salarial');
-  const razao = useMemo(() => proprio || (daImportacao ? { arquivo: daImportacao.arquivo + ' (da Importação)', razao: daImportacao.razao } : null), [proprio, daImportacao]);
+  const razao = useMemo(() => proprio || (daImportacao ? { arquivo: rotuloDaImportacao(daImportacao), razao: daImportacao.razao } : null), [proprio, daImportacao]);
   // as contas do lançamento, da empresa (a do adiantamento vem do dinâmico do Clientes, se tiver)
   const empresa = String(s.codigo ?? s.nome);
   const [contas, setContas] = useGuardado<{ adiantamento?: string; banco?: string }>('adiantamento-salarial-contas|' + empresa, {});
