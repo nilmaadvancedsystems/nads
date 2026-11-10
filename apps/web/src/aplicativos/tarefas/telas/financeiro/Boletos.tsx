@@ -60,7 +60,7 @@ export function Boletos() {
         {vm.temLinhas && <CampoArquivos id="boletos-subir" compacto aceitar=".pdf" rotulo="Subir mais boletos (PDF)" desabilitado={!!vm.lendo} onEscolher={fs => void vm.subir(fs)} />}
         {/* a exclusão em lote (10/11/2026): os marcados que ainda não saíram, com a confirmação */}
         {vm.quantasParaExcluir > 0 && (
-          <button type="button" className="btn btn-outline btn-danger" onClick={() => void vm.excluirMarcados()} title="Exclui os boletos marcados (o que já saiu fica)">
+          <button type="button" className="btn btn-outline btn-danger" onClick={() => void vm.excluirMarcados()} title="Exclui os boletos marcados, os já enviados também">
             <Icone nome="lixeira" width={16} height={16} />Excluir · {vm.quantasParaExcluir}
           </button>
         )}
@@ -97,7 +97,7 @@ export function Boletos() {
           <table className="dp-tabela fgts-tabela">
             <thead>
               <tr>
-                <th className="fgts-marca"><input type="checkbox" checked={vm.todasMarcadas} onChange={e => vm.marcarTodas(e.target.checked)} aria-label="Marcar todos da tela" title="Marcar todos da tela (menos os que já saíram)" /></th>
+                <th className="fgts-marca"><input type="checkbox" checked={vm.todasMarcadas} onChange={e => vm.marcarTodas(e.target.checked)} aria-label="Marcar todos da tela" title="Marcar todos da tela (menos os que o robô está mandando)" /></th>
                 <th>Cód.</th><th>Cliente</th><th className="fin-direita">Valor</th><th>Vencimento</th><th>Para</th><th>Situação</th><th />
               </tr>
             </thead>
@@ -118,6 +118,8 @@ export function Boletos() {
                     <td><span className={CLASSE_DA_SITUACAO[c.situacao]}>{financeiro.ROTULO_DA_SITUACAO_DO_BOLETO[c.situacao]}</span></td>
                     <td className="fin-direita">
                       <span className="fin-acoes-da-linha">
+                        {/* mandar de novo o que já saiu, quantas vezes precisar (10/11/2026) */}
+                        {vm.podeReenviar(l) && <BotaoIcone icone="repeat" titulo={'Enviar de novo para ' + b.destinatarios.join(', ')} disabled={vm.disparando} onClick={() => void vm.reenviar(l)} />}
                         <button type="button" className="btn btn-outline" onClick={() => vm.abrir(b.id)}>Revisar</button>
                         {/* excluir direto da linha (10/11/2026: "precisa de um botao para excluir o documento"); pergunta antes */}
                         {vm.podeExcluir(l) && <BotaoIcone icone="lixeira" titulo={'Excluir ' + b.arquivo} onClick={() => void vm.excluir(l)} />}

@@ -76,7 +76,7 @@ export function JanelaDoBoleto({ vm, linha }: { vm: VmLoteDeBoletos; linha: Linh
           {c.avisos.map(a => <p key={a} className="registro-dica"><Icone nome="alert" />{a}</p>)}
         </div>
         <footer className="registro-pe">
-          {!travado && (
+          {vm.podeExcluir(linha) && (
             <button type="button" className="btn btn-outline btn-danger" onClick={() => { void vm.excluir(linha).then(ok => { if (ok) vm.fechar(); }); }}>
               <Icone nome="lixeira" width={16} height={16} />Excluir
             </button>
@@ -84,6 +84,11 @@ export function JanelaDoBoleto({ vm, linha }: { vm: VmLoteDeBoletos; linha: Linh
           {!travado && (
             <button type="button" className="btn btn-outline" onClick={() => { void vm.tirar(b.id, !b.fora); if (!b.fora) vm.fechar(); }}>
               <Icone nome={b.fora ? 'repeat' : 'x'} />{b.fora ? 'Pôr de volta no lote' : 'Tirar do lote'}
+            </button>
+          )}
+          {vm.podeReenviar(linha) && (
+            <button type="button" className="btn btn-outline" disabled={vm.disparando} onClick={() => void vm.reenviar(linha)}>
+              <Icone nome="repeat" />Enviar de novo
             </button>
           )}
           <span className="tarefas-barra-espaco" />

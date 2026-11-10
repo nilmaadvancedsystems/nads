@@ -61,12 +61,14 @@ export function useLoteDeBoletos() {
   const resumo = financeiro.resumoDoLote(todas);
   /** pode mexer: o que já foi pedido ao robô ou saiu não se troca nem se apaga */
   const solto = (l: LinhaDoLote) => !['fila', 'enviando', 'enviado'].includes(l.conferencia.situacao);
+  /** pode apagar: tudo, menos o que o robô está mandando agora (10/11/2026: "excluir os de teste", os já enviados também) */
+  const apagavel = (l: LinhaDoLote) => !['fila', 'enviando'].includes(l.conferencia.situacao);
   const disparaveis = todas.filter(l => l.conferencia.podeDisparar);
   const marcadasValidas = disparaveis.filter(l => marcadas.has(l.boleto.id));
   // a caixinha marca qualquer boleto que ainda não saiu (10/11/2026: "um botão para poder excluir em lote"): o Disparar
   // leva só os prontos entre os marcados; o Excluir, todos os marcados
-  const marcadasSoltas = todas.filter(l => marcadas.has(l.boleto.id) && solto(l));
-  const marcaveis = linhas.filter(solto);
+  const marcadasSoltas = todas.filter(l => marcadas.has(l.boleto.id) && apagavel(l));
+  const marcaveis = linhas.filter(apagavel);
   const podeDisparar = temNivelDiretor(operador);
 
   /** os clientes do escritório com o CNPJ/CPF (o do Cadastro do nads, senão o do Entregas), para achar o dono do boleto */
@@ -194,7 +196,21 @@ export function useLoteDeBoletos() {
       } catch (e) { falhou(e, 'Não consegui achar os clientes.'); } finally { setAchando(null); }
     },
     /** a lixeira da linha: só o que ainda não foi pedido ao robô */
-    podeExcluir: solto,
+    podeExcluir: apagavel,
+    /** o Enviar de novo: o boleto já enviado volta para a fila do robô, para os mesmos e-mails da linha (só o Diretor) */
+    podeReenviar: (l: LinhaDoLote) => podeDisparar && l.conferencia.situacao === 'enviado' && !!l.boleto.contratoId && l.boleto.destinatarios.length > 0 && !l.boleto.fora,
+    async reenviar(l: LinhaDoLote) {
+      if (!podeDisparar || disparando) return;
+      const ok = await modal<boolean>({
+        icone: 'envelope', titulo: 'Enviar este boleto de novo?',
+        texto: `${l.contrato?.nome || l.boleto.arquivo} recebe o mesmo boleto outra vez em ${l.boleto.destinatarios.join(', ')}.` + (repo.exemplos ? ' Estes são dados de exemplo: nenhum e-mail sai.' : ''),
+        botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Enviar de novo', valor: true, variante: 'btn-primary' }],
+      });
+      if (!ok) return;
+      setDisparando(true);
+      try { await repo.disparar([l.boleto]); toast('Boleto na fila para sair de novo.'); }
+      catch (e) { falhou(e, 'Não consegui pôr o boleto na fila de novo.'); } finally { setDisparando(false); }
+    },
 
     async escolherCliente(id: string, contratoId: string) {
       const contrato = contratos.lista.find(c => c.id === contratoId);
@@ -213,7 +229,7 @@ export function useLoteDeBoletos() {
     async excluir(l: LinhaDoLote) {
       const ok = await modal<boolean>({
         icone: 'lixeira', titulo: 'Excluir este boleto?',
-        texto: `${l.boleto.arquivo}${l.contrato ? ' · ' + l.contrato.nome : ''}. O boleto e o PDF saem do lote; para mandar, suba o PDF de novo.`,
+        texto: `${l.boleto.arquivo}${l.contrato ? ' · ' + l.contrato.nome : ''}. O boleto e o PDF saem do lote${l.conferencia.situacao === 'enviado' ? ', e o envio já feito sai da lista (o e-mail que saiu continua com o cliente)' : ''}; para mandar, suba o PDF de novo.`,
         botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Excluir', valor: true, variante: 'btn-danger' }],
       });
       if (!ok) return false;
@@ -221,7 +237,7 @@ export function useLoteDeBoletos() {
       try { await repo.excluir(l.boleto.id); toast('Boleto excluído.'); return true; } catch (e) { falhou(e, 'Não consegui excluir o boleto.'); return false; }
     },
 
-    /** apaga de uma vez os boletos marcados que ainda não saíram, depois de perguntar */
+    /** apaga de uma vez os boletos marcados (os já enviados também; não o que o robô está mandando), depois de perguntar */
     async excluirMarcados() {
       const vao = marcadasSoltas;
       if (!vao.length) return;
