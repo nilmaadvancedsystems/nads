@@ -50,14 +50,6 @@ export function useContratosDeHonorario() {
       setBusca('');
     },
     alternarAtivo: (c: Contrato) => tentar(() => repo.salvarContrato({ ...rascunho(c), ativo: !c.ativo }, operador), 'Não consegui gravar.'),
-    /** o dia do vencimento do boleto: 1 a 31; vazio tira; o resto não grava */
-    definirDia(c: Contrato, texto: string) {
-      const t = texto.trim();
-      const dia = t ? Number(t) : null;
-      if (dia === (c.diaVencimento ?? null)) return Promise.resolve();
-      if (dia !== null && !(Number.isInteger(dia) && dia >= 1 && dia <= 31)) { toast('O dia do vencimento vai de 1 a 31.'); return Promise.resolve(); }
-      return tentar(() => repo.definirDiaVencimento(c.id, dia, operador), 'Não consegui gravar o dia.');
-    },
     definirValor: (id: string, texto: string) => tentar(() => repo.definirValor(id, valorDigitado(texto), operador), 'Não consegui gravar o valor.'),
     salvarObservacoes: (c: Contrato, texto: string) => (texto.trim() === (c.observacoes ?? '') ? Promise.resolve() : tentar(() => repo.salvarContrato({ ...rascunho(c), observacoes: texto }, operador), 'Não consegui gravar.')),
   };

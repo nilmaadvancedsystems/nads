@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { ContratoDeHonorario, RecebimentoDeHonorario } from './honorarios';
-import { acharContratoDoBoleto, conferirBoleto, documentosDoBoleto, resumoDoLote, separarEmails, vencimentoDoContrato, type BoletoDoLote, type ContextoDoLote } from './loteDeBoletos';
+import { acharClienteDoBoleto, acharContratoDoBoleto, codigoDoArquivoDoBoleto, conferirBoleto, documentosDoBoleto, sacadosDoBoleto, resumoDoLote, separarEmails, type BoletoDoLote, type ContextoDoLote } from './loteDeBoletos';
 
 const contrato = (id: string, nome: string, cnpj: string, extra: Partial<ContratoDeHonorario> = {}): ContratoDeHonorario =>
-  ({ id, clienteId: '', codigo: id, nome, cnpj, valor: 500, ativo: true, diaVencimento: 10, criadoEm: '', criadoPor: '', ...extra });
+  ({ id, clienteId: '', codigo: id, nome, cnpj, valor: 500, ativo: true, criadoEm: '', criadoPor: '', ...extra });
 const alfa = contrato('a', 'ALFA COMERCIO LTDA', '11222333000181');
 const beta = contrato('b', 'BETA SERVICOS LTDA', '44555666000199');
 const boleto = (extra: Partial<BoletoDoLote> = {}): BoletoDoLote => ({
@@ -47,24 +47,64 @@ describe('documentosDoBoleto', () => {
   });
 });
 
-describe('vencimentoDoContrato', () => {
-  it('é o dia no mês seguinte à competência', () => {
-    expect(vencimentoDoContrato(10, '2026-10')).toBe('2026-11-10');
-    expect(vencimentoDoContrato(5, '2026-12')).toBe('2027-01-05');
+// o texto de um boleto do Alterdata Pack como o leitor de PDF devolve (inventado, no mesmo jeito do real; 10/11/2026)
+const BOLETO = 'VALOR DO DOCUMENTO  450,00  SACADO  ALFA COMERCIO EXEMPLO LTDA  NOSSO NÚMERO  00100001  CEDENTE  VENCIMENTO  16/11/2026 '
+  + '11111.11111 22222.222222 33333.333333 4 16320000045000 SACADO SACADOR/AVALISTA  ALFA COMERCIO EXEMPLO LTDA   CNPJ/CPF: 11.222.333/0001-81 '
+  + 'RUA DAS FLORES, 10 - CENTRO 39000-000 - Cidade Exemplo - MG NILMA DIAS OLIVEIRA';
+const clientes = [
+  { codigo: 101, nome: 'ALFA COMERCIO EXEMPLO LTDA', documento: '11222333000181' },
+  { codigo: 102, nome: 'ALFA C FILHO & CIA LTDA', documento: '44555666000199' },
+  { codigo: 103, nome: 'BETA FLORESTAL EXEMPLO LTDA', documento: '' },
+];
+
+describe('codigoDoArquivoDoBoleto', () => {
+  it('o código do cliente no começo do nome do Alterdata', () => {
+    expect(codigoDoArquivoDoBoleto('00103_10001_16-11-2026.PDF')).toBe(103);
+    expect(codigoDoArquivoDoBoleto('C:\\Downloads\\00101_10002_16-11-2026.pdf')).toBe(101);
   });
-  it('usa o último dia do mês curto', () => expect(vencimentoDoContrato(31, '2026-01')).toBe('2026-02-28'));
-  it('sem dia não há data', () => expect(vencimentoDoContrato(undefined, '2026-10')).toBe(''));
+  it('outro jeito de nome não tem código', () => {
+    expect(codigoDoArquivoDoBoleto('Boleto BETA FLORESTAL.pdf')).toBeNull();
+    expect(codigoDoArquivoDoBoleto('2026-11-16.pdf')).toBeNull();
+    expect(codigoDoArquivoDoBoleto('00000_1_x.pdf')).toBeNull();
+  });
+});
+
+describe('sacadosDoBoleto', () => {
+  it('o sacado do recibo e o da ficha, sem repetir', () => expect(sacadosDoBoleto(BOLETO)).toEqual(['ALFA COMERCIO EXEMPLO LTDA']));
+  it('o pagador de outros bancos', () => expect(sacadosDoBoleto('Pagador: ALFA COMERCIO LTDA CNPJ 11.222.333/0001-81')).toEqual(['ALFA COMERCIO LTDA']));
+});
+
+describe('acharClienteDoBoleto (entre os clientes do escritório)', () => {
+  it('pelo CNPJ do sacado, mesmo com o código de outro no nome do arquivo', () => {
+    expect(acharClienteDoBoleto(BOLETO, '00102_1_16-11-2026.PDF', clientes)).toEqual({ codigo: 101, achadoPor: 'documento' });
+  });
+  it('sem o CNPJ no cadastro, pelo código no nome do arquivo', () => {
+    const t = 'SACADO  BETA FLORESTAL EXEMPLO LTDA  NOSSO NÚMERO 00100003 SACADO SACADOR/AVALISTA  BETA FLORESTAL EXEMPLO LTDA   CNPJ/CPF: 77.888.999/0001-55';
+    expect(acharClienteDoBoleto(t, '00103_10001_16-11-2026.PDF', clientes)).toEqual({ codigo: 103, achadoPor: 'nome' });
+  });
+  it('o código do arquivo não vale quando o sacado impresso é outro cliente', () => {
+    const semCnpj = clientes.map(c => ({ ...c, documento: '' }));
+    expect(acharClienteDoBoleto(BOLETO, '00102_1_16-11-2026.PDF', semCnpj)).toEqual({ codigo: 101, achadoPor: 'nome' });
+  });
+  it('sem CNPJ e sem código, pelo nome do sacado', () => {
+    expect(acharClienteDoBoleto(BOLETO, 'boleto.pdf', clientes.map(c => ({ ...c, documento: '' })))).toEqual({ codigo: 101, achadoPor: 'nome' });
+  });
+  it('o CNPJ da Nilma (o cedente) não conta', () => {
+    expect(acharClienteDoBoleto('CNPJ: 27.872.981/0001-50', 'x.pdf', [{ codigo: 1, nome: 'NILMA', documento: '27872981000150' }])).toBeNull();
+  });
+  it('código que não é de cliente nenhum, sem CNPJ e sem nome: fica para a pessoa', () => {
+    expect(acharClienteDoBoleto('', '00999_1_16-11-2026.PDF', clientes)).toBeNull();
+  });
 });
 
 describe('conferirBoleto', () => {
   it('tudo certo fica pronto', () => {
     expect(conferirBoleto(boleto(), ctx())).toEqual({ situacao: 'pronto', pendencias: [], avisos: [], podeDisparar: true });
   });
-  it('vencimento diferente do cadastro avisa e não trava: vale o PDF', () => {
-    const c = conferirBoleto(boleto({ vencimento: '2026-11-15' }), ctx());
-    expect(c.situacao).toBe('conferir');
-    expect(c.podeDisparar).toBe(true);
-    expect(c.avisos[0]).toContain('Vale o do PDF');
+  it('o vencimento é o do PDF: qualquer dia, sem aviso (10/11/2026: "não ligando pro cadastro")', () => {
+    for (const vencimento of ['2026-11-06', '2026-11-15', '2026-12-28']) {
+      expect(conferirBoleto(boleto({ vencimento }), ctx())).toEqual({ situacao: 'pronto', pendencias: [], avisos: [], podeDisparar: true });
+    }
   });
   it('valor diferente do honorário avisa e não trava', () => {
     const c = conferirBoleto(boleto({ valor: 650 }), ctx());

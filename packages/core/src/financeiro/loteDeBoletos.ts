@@ -1,6 +1,6 @@
 // O lote de boletos de honorários (10/11/2026): os PDFs prontos sobem na tela, o nads lê cada um (financeiro.lerBoleto), acha o
 // cliente pelo CNPJ/CPF que está no PDF e diz, linha a linha, o que libera ou trava o disparo. O valor e o vencimento são os
-// impressos no boleto: o dia cadastrado no contrato só serve para avisar quando os dois não batem (vale o PDF). Puro: sem tela.
+// impressos no boleto (10/11/2026: "puxe a data do vencimento do pdf como base, não ligando pro cadastro"). Puro: sem tela.
 import { competenciaBr, type ContratoDeHonorario, type RecebimentoDeHonorario } from './honorarios';
 
 export type StatusDoEnvio = 'fila' | 'enviando' | 'enviado' | 'erro';
@@ -96,6 +96,55 @@ export function documentosDoBoleto(texto: string): string[] {
 }
 
 /**
+ * O código do cliente no começo do nome do arquivo (10/11/2026: "ta lendo errado o cliente"): o Alterdata Pack gera o boleto
+ * como <código>_<documento>_<vencimento>.PDF (00103_10001_16-11-2026.PDF é o cliente 103). null = o nome não tem esse jeito.
+ */
+export function codigoDoArquivoDoBoleto(arquivo: string): number | null {
+  const m = /^0*(\d{1,6})_\d+_/.exec((arquivo || '').trim().split(/[\\/]/).pop() || '');
+  const n = m ? Number(m[1]) : 0;
+  return n > 0 ? n : null;
+}
+
+/**
+ * O nome do sacado (quem paga) impresso no boleto: depois de "SACADO" (ou "SACADO SACADOR/AVALISTA", ou "PAGADOR") e antes do
+ * "NOSSO NÚMERO" ou do "CNPJ/CPF". Sem repetir; o mesmo boleto escreve o sacado no recibo e na ficha de compensação.
+ */
+export function sacadosDoBoleto(texto: string): string[] {
+  const achados = new Set<string>();
+  const re = /(?:SACADO|PAGADOR)(?:\s+SACADOR\s*\/\s*AVALISTA)?\s*:?\s+(.+?)\s+(?:NOSSO\s+N|CNPJ|CPF)/gi;
+  for (const m of (texto || '').matchAll(re)) {
+    const nome = m[1].replace(/\s+/g, ' ').trim();
+    if (/[A-Za-zÀ-ú]{2}/.test(nome) && nome.length <= 120) achados.add(nome);
+  }
+  return [...achados];
+}
+
+/** um cliente do escritório para achar o dono do boleto: o código, o nome e o CNPJ/CPF ('' = sem cadastro) */
+export interface ClienteParaOBoleto { codigo: number; nome: string; documento: string }
+
+/**
+ * Acha de quem é o boleto entre os clientes do escritório (não só os que já têm contrato de honorários), por três caminhos,
+ * nesta ordem:
+ * 1. o CNPJ/CPF do sacado impresso no boleto (fora o da Nilma), igual ao do cadastro do cliente;
+ * 2. o código do cliente no começo do nome do arquivo (o do Alterdata), se o cliente existe e o sacado impresso não é o
+ *    nome exato de outro cliente;
+ * 3. o nome do sacado igual ao nome de um cliente.
+ * Só vale um cliente só: dois candidatos no mesmo caminho ficam para a pessoa escolher.
+ */
+export function acharClienteDoBoleto(texto: string, arquivo: string, clientes: readonly ClienteParaOBoleto[]): { codigo: number; achadoPor: 'documento' | 'nome' } | null {
+  const unico = (xs: readonly ClienteParaOBoleto[]) => { const cs = [...new Set(xs.map(c => c.codigo))]; return cs.length === 1 ? cs[0] : cs.length > 1 ? -1 : 0; };
+  const docs = documentosDoBoleto(texto).filter(d => !d.startsWith(CNPJ_RAIZ_DO_ESCRITORIO));
+  const porDocumento = unico(clientes.filter(c => { const d = soDigitos(c.documento); return d.length >= 11 && docs.includes(d); }));
+  if (porDocumento > 0) return { codigo: porDocumento, achadoPor: 'documento' };
+  if (porDocumento < 0) return null;
+  const sacados = sacadosDoBoleto(texto).map(norm);
+  const porSacado = unico(clientes.filter(c => { const n = norm(c.nome); return n.length >= 3 && sacados.includes(n); }));
+  const codigo = codigoDoArquivoDoBoleto(arquivo);
+  if (codigo != null && clientes.some(c => c.codigo === codigo) && (porSacado <= 0 || porSacado === codigo)) return { codigo, achadoPor: 'nome' };
+  return porSacado > 0 ? { codigo: porSacado, achadoPor: 'nome' } : null;
+}
+
+/**
  * Acha de quem é o boleto entre os contratos ativos: primeiro o CNPJ/CPF do contrato no texto do PDF, depois o nome completo
  * do cliente no texto ou no nome do arquivo. Só vale se der um único cliente: dois candidatos ficam para a pessoa escolher.
  */
@@ -109,15 +158,6 @@ export function acharContratoDoBoleto(texto: string, arquivo: string, contratos:
   const onde = ` ${norm(texto || '')} ${norm(arquivo || '')} `;
   const porNome = ativos.filter(c => { const n = norm(c.nome); return n.length >= 5 && onde.includes(` ${n} `); });
   return porNome.length === 1 ? { contratoId: porNome[0].id, achadoPor: 'nome' } : null;
-}
-
-/** O vencimento que o cadastro espera: o dia do contrato no mês seguinte à competência (o último dia, se o mês for mais curto). */
-export function vencimentoDoContrato(dia: number | undefined, competencia: string): string {
-  if (!dia || dia < 1 || dia > 31 || !/^\d{4}-\d{2}$/.test(competencia)) return '';
-  const a = Number(competencia.slice(0, 4)), m = Number(competencia.slice(5, 7));
-  const ano = m === 12 ? a + 1 : a, mes = m === 12 ? 1 : m + 1;
-  const ultimo = new Date(Date.UTC(ano, mes, 0)).getUTCDate();
-  return `${ano}-${String(mes).padStart(2, '0')}-${String(Math.min(dia, ultimo)).padStart(2, '0')}`;
 }
 
 const dataBr = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
@@ -159,9 +199,6 @@ export function conferirBoleto(b: BoletoDoLote, ctx: ContextoDoLote): Conferenci
     if (b.valor != null && contrato.valor > 0 && Math.round(b.valor * 100) !== Math.round(contrato.valor * 100)) {
       avisos.push(`O valor do boleto é ${reais(b.valor)} e o honorário cadastrado é ${reais(contrato.valor)}.`);
     }
-    const esperado = vencimentoDoContrato(contrato.diaVencimento, b.competencia);
-    if (b.vencimento && !esperado) avisos.push('O cliente ainda não tem dia de vencimento cadastrado.');
-    if (b.vencimento && esperado && esperado !== b.vencimento) avisos.push(`O PDF vence em ${dataBr(b.vencimento)} e o dia cadastrado daria ${dataBr(esperado)}. Vale o do PDF.`);
   }
 
   const podeDisparar = !pendencias.length;

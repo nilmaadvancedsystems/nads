@@ -1325,8 +1325,8 @@ igual('a agência e a conta no nome do arquivo ("Entradas_Saidas_ag3155cc990348_
     g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height); g.fillStyle = '#000'; g.font = '34px sans-serif';
     linhas.forEach((l, i) => g.fillText(l, 40, 70 + i * 60));
     const ent = await A.montarEntrada('Imagem (10).png', REL_BER + 'Imagem (10).png', cv.toBuffer('image/png'));
-    const di = R.decidir(ent, { cadastro: cad28, hoje: new Date(2026, 9, 27) });
-    igual('imagem PNG lida pelo Tesseract: o comprovante vai para PAGAMENTOS DE FORNECEDORES com o nome montado', [di.acao, di.destinoRelativo, di.nomeFinal], ['ARQUIVAR', '237 - POSTO DE COMBUSTIVEIS BERIZAL LTDA\\CONTÁBIL\\PAGAMENTOS DE FORNECEDORES\\2026\\02\\NILMA DIAS OLIVEIRA', '09-02-2026 NILMA DIAS OLIVEIRA R$ 1.400,00.png']);
+    // (10/11/2026: "o arquivador vai IGNORAR fotos") a foto do comprovante não vai mais ao Tesseract: a entrada sai sem texto e sem OCR
+    igual('10/11: a foto PNG do comprovante não é lida (sem OCR, sem texto)', [ent.texto || null, ent.ocr || null], [null, null]);
   } finally { await A.encerrarOcr(); }
   // =====================================================================================================================
   // 31. as decisões do Vitor de 29/10/2026 (2ª leva): os livros e demonstrativos contábeis pelo cabeçalho (razão social, CNPJ, NIRE, período)
@@ -2107,7 +2107,8 @@ igual('a agência e a conta no nome do arquivo ("Entradas_Saidas_ag3155cc990348_
       const pni = path.join(tmp, 'NI');
       for (const [r, c] of [['20261023\\x\\a.jpg', 'AAA'], ['20261023\\y\\b.png', 'AAA'], ['20261023\\z.jpg', 'BBB'], ['20261023\\doc.pdf', 'AAA']]) { const p = path.join(pni, ...r.split('\\')); fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, c); }
       const idx = A.indiceDasFotosDoNi(pni);
-      igual('09/11 D5: o índice das fotos de NÃO IDENTIFICADOS junta as iguais (o PDF fica de fora)', [...idx.values()].map(v => v.join('|')).sort(), ['20261023\\x\\a.jpg|20261023\\y\\b.png', '20261023\\z.jpg']);
+      // (10/11/2026) as fotos de NÃO IDENTIFICADOS saíram da lista do reprocesso e do "Para resolver": o índice das fotos sai vazio
+      igual('10/11: as fotos de NÃO IDENTIFICADOS ficam de fora da lista do reprocesso (só o PDF; o índice das fotos vazio)', [idx.size, A.arquivosDosNaoIdentificados(pni)], [0, ['20261023\\doc.pdf']]);
       // (10) a subpasta de documentos que o cliente já tem no SOCIETÁRIO
       const raiz10 = path.join(tmp, '2026');
       fs.mkdirSync(path.join(raiz10, '284 - NILMA', 'SOCIETÁRIO', 'Documentos Pessoais'), { recursive: true });

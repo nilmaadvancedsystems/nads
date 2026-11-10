@@ -17,8 +17,6 @@ export interface ContratoDeHonorario {
   cnpj: string;
   /** o honorário mensal; 0 = ainda não definido */
   valor: number;
-  /** o dia do mês em que o boleto vence (10/11/2026; vazio = não definido); só serve para conferir o lote de boletos */
-  diaVencimento?: number;
   ativo: boolean;
   observacoes?: string;
   /** as cobranças já mandadas, por competência AAAA-MM (21/10/2026): quando e quem */

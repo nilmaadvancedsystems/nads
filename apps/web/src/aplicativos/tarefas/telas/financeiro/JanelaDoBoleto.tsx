@@ -36,7 +36,6 @@ export function JanelaDoBoleto({ vm, linha }: { vm: VmLoteDeBoletos; linha: Linh
   const b = linha.boleto, c = linha.conferencia, envio = b.envio;
   const travado = c.situacao === 'fila' || c.situacao === 'enviando' || c.situacao === 'enviado';
   const destinatarios = b.destinatarios.join(', ');
-  const esperado = financeiro.vencimentoDoContrato(linha.contrato?.diaVencimento, b.competencia);
   return (
     <div className="modal-overlay" onMouseDown={e => { if (e.target === e.currentTarget) vm.fechar(); }}>
       <div ref={janela} className="modal registro-novo" role="dialog" aria-modal="true" aria-label="Revisar o boleto">
@@ -55,7 +54,6 @@ export function JanelaDoBoleto({ vm, linha }: { vm: VmLoteDeBoletos; linha: Linh
             </Propriedade>
             <Propriedade icone="clock" rotulo="Vencimento no PDF">
               <span className="num">{b.vencimento ? dataBr(b.vencimento) : '—'}</span>
-              {esperado && <span className="fraco"> · cadastro {dataBr(esperado)}</span>}
             </Propriedade>
             <Propriedade icone="envelope" rotulo="Para">
               {travado ? <span>{destinatarios || '—'}</span> : (

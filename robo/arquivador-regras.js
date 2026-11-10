@@ -23,6 +23,13 @@ const RAIZ_CLIENTES = 'G:\\Meu Drive\\2026';                    // Dicionário �
 const ANO_MINIMO = 2015;
 const ANO_DAS_PASTAS = 2026;   // o ano das pastas que o cadastro recebe em "pastas" (as de RAIZ_CLIENTES)
 const VIDEO_AUDIO = /\.(mp4|mov|avi|mkv|wmv|webm|mp3|wav|m4a)$/i; // Dicionário §1: ignorados, ficam na origem
+// (10/11/2026: "o arquivador vai IGNORAR fotos"; "todas, sem exceção") a foto não é lida (sem OCR), nem arquivada, nem vai para a
+// quarentena ou para NÃO IDENTIFICADOS: fica onde chegou. Inclui a foto de comprovante e de boleto (o Posto Berizal). Quem ignora é o
+// robô, na entrada (arquivador-novo: a varredura, o reprocesso, o de dentro do compactado; arquivador-continuo: a chegada e a lista
+// "Para resolver"); as regras de imagem daqui (decidirImagem, descarteDaImagem) ficam, sem uso, para o caso de voltar.
+const FOTO = /\.(jpe?g|jfif|png|heic|heif|webp|gif|bmp|tiff?)$/i;
+/** A foto (pelo nome): o arquivador a ignora (10/11/2026). */
+const ehFoto = nome => FOTO.test(String(nome || ''));
 const CONTEINER = /\.(zip|rar|7z)$/i;                            // Dicionário §1: extraídos, cada arquivo vira item
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -5335,7 +5342,7 @@ function tipoDoDestino(destino) {
 }
 
 module.exports = {
-  pagamentoDoMovimento, fornecedorDoNomeDoArquivo, fornecedorDoNomeSemData, LIMIAR, RAIZ_CLIENTES, ARVORE, SUB_RECEBIDOS, subDoRecebidoPeloNome, semDataCompleta, periodoPelasDatas, REGRAS_PDF, BANCOS, ANUAIS, ofxCompetencia, anoDaEntrega, ANO_MINIMO, ANO_DAS_PASTAS, anoDaPasta, pastasDoAno, partesDoCaminho, comMotivoDoCodigo,
+  pagamentoDoMovimento, fornecedorDoNomeDoArquivo, fornecedorDoNomeSemData, LIMIAR, RAIZ_CLIENTES, ARVORE, SUB_RECEBIDOS, subDoRecebidoPeloNome, semDataCompleta, periodoPelasDatas, ehFoto, REGRAS_PDF, BANCOS, ANUAIS, ofxCompetencia, anoDaEntrega, ANO_MINIMO, ANO_DAS_PASTAS, anoDaPasta, pastasDoAno, partesDoCaminho, comMotivoDoCodigo,
   ehLivroContabil, anoDoLivro, decidirSpedAnual, semAcento, norm, chaveNome, nomeNormalizado, nomeSeguro, so, dataBr, valorBr, competenciaSolta, competenciaDoNome, competenciaDaPasta, periodoEscrito,
   cnpjValido, cpfValido, documentosDoTexto, raizesDoTexto, mascarasDoTexto,
   regimeCanonico, montarCadastro, comAnosEMapa, clientesDoDoc, clienteDaPasta, grupoDaPasta, pagamentoDeFornecedor, clientesPeloNomeNoTexto,

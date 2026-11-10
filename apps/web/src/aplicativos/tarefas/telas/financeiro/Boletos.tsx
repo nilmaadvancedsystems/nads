@@ -1,7 +1,7 @@
 // Financeiro › Boletos (10/11/2026): o lote de boletos de honorários do mês. Os PDFs prontos sobem aqui; cada linha mostra o
 // cliente, o valor e o vencimento do PDF, para quem vai e a situação (com o motivo, quando trava ou deu erro). Só um Diretor dispara.
 import { financeiro, formatos } from '@nads/core';
-import { BotaoAcao, CampoArquivos, Icone, MenuSuspenso, Segmentado, SeletorMes, useCarregando, Vazio } from '@nads/ui';
+import { BotaoAcao, BotaoIcone, CampoArquivos, Icone, MenuSuspenso, Segmentado, SeletorMes, useCarregando, Vazio } from '@nads/ui';
 import { useState } from 'react';
 import { dataBr } from './formatosDaNota';
 import { JanelaDosContratos } from './JanelaDosContratos';
@@ -20,7 +20,7 @@ function Motivo({ l }: { l: LinhaDoLote }) {
 
 export function Boletos() {
   const vm = useLoteDeBoletos();
-  // a janela Clientes dos honorários (o valor e o dia do vencimento): Honorários saiu do menu em 30/10/2026
+  // a janela Clientes dos honorários (o valor de cada um): Honorários saiu do menu em 30/10/2026
   const [gerenciando, setGerenciando] = useState(false);
   useCarregando(vm.carregando);
   const r = vm.resumo;
@@ -30,8 +30,8 @@ export function Boletos() {
     { rotulo: 'Pendentes', valor: String(r.pendentes), tom: 'aviso', icone: 'alert' },
     { rotulo: 'A disparar', valor: formatos.reais(r.aDisparar), tom: 'info', icone: 'dinheiro' },
   ] as const;
-  const quantos = vm.quantasMarcadas || vm.quantasProntas;
-  const dicaDoDisparo = !vm.podeDisparar ? 'Só um Diretor pode disparar' : vm.quantasMarcadas ? 'Dispara os boletos marcados' : 'Dispara todos os boletos prontos';
+  const quantos = vm.algumaMarcada ? vm.quantasMarcadas : vm.quantasProntas;
+  const dicaDoDisparo = !vm.podeDisparar ? 'Só um Diretor pode disparar' : vm.algumaMarcada ? (vm.quantasMarcadas ? 'Dispara os prontos entre os marcados' : 'Nenhum dos marcados está pronto') : 'Dispara todos os boletos prontos';
   return (
     <section>
       {vm.aberta && <JanelaDoBoleto vm={vm} linha={vm.aberta} />}
@@ -48,9 +48,22 @@ export function Boletos() {
         <span className="tarefas-barra-espaco" />
         {vm.exemplos && <span className="badge badge-neutral">Exemplos</span>}
         {vm.lendo && <span className="fraco">{vm.lendo.gravando ? 'Gravando' : 'Lendo'} {vm.lendo.feitos} de {vm.lendo.total}…</span>}
-        <MenuSuspenso rotulo="Mais" titulo="O valor e o dia do vencimento de cada cliente" direita largura={240}
+        {/* os que subiram sem cliente: lê o PDF de novo e acha pelo CNPJ, pelo código no nome do arquivo ou pelo sacado (10/11/2026) */}
+        {vm.quantosSemCliente > 0 && (
+          <BotaoAcao className="btn btn-outline" carregando={!!vm.achando} textoCarregando={vm.achando ? `Achando ${vm.achando.feitos} de ${vm.achando.total}…` : 'Achando…'}
+            disabled={!!vm.lendo} onClick={() => void vm.acharClientes()} title="Lê de novo os boletos sem cliente e acha o cliente pelo CNPJ, pelo código no nome do arquivo ou pelo nome do sacado">
+            <Icone nome="search" />Achar clientes · {vm.quantosSemCliente}
+          </BotaoAcao>
+        )}
+        <MenuSuspenso rotulo="Mais" titulo="O valor do honorário de cada cliente" direita largura={240}
           itens={[{ rotulo: 'Gerenciar clientes', icone: 'briefcase', onClick: () => setGerenciando(true) }]} />
         {vm.temLinhas && <CampoArquivos id="boletos-subir" compacto aceitar=".pdf" rotulo="Subir mais boletos (PDF)" desabilitado={!!vm.lendo} onEscolher={fs => void vm.subir(fs)} />}
+        {/* a exclusão em lote (10/11/2026): os marcados que ainda não saíram, com a confirmação */}
+        {vm.quantasParaExcluir > 0 && (
+          <button type="button" className="btn btn-outline btn-danger" onClick={() => void vm.excluirMarcados()} title="Exclui os boletos marcados (o que já saiu fica)">
+            <Icone nome="lixeira" width={16} height={16} />Excluir · {vm.quantasParaExcluir}
+          </button>
+        )}
         <span title={dicaDoDisparo}>
           <BotaoAcao carregando={vm.disparando} textoCarregando="Pedindo…" disabled={!vm.podeDisparar || !quantos} onClick={() => void vm.disparar()}>
             <Icone nome="aviao" />Disparar{quantos ? ' · ' + quantos : ''}
@@ -84,7 +97,7 @@ export function Boletos() {
           <table className="dp-tabela fgts-tabela">
             <thead>
               <tr>
-                <th className="fgts-marca"><input type="checkbox" checked={vm.todasMarcadas} onChange={e => vm.marcarTodas(e.target.checked)} aria-label="Marcar todos os prontos" title="Marcar todos os prontos da tela" /></th>
+                <th className="fgts-marca"><input type="checkbox" checked={vm.todasMarcadas} onChange={e => vm.marcarTodas(e.target.checked)} aria-label="Marcar todos da tela" title="Marcar todos da tela (menos os que já saíram)" /></th>
                 <th>Cód.</th><th>Cliente</th><th className="fin-direita">Valor</th><th>Vencimento</th><th>Para</th><th>Situação</th><th />
               </tr>
             </thead>
@@ -93,7 +106,7 @@ export function Boletos() {
                 const b = l.boleto, c = l.conferencia;
                 return (
                   <tr key={b.id} className={'dp-linha' + (c.situacao === 'enviado' ? ' feita' : '')}>
-                    <td className="fgts-marca"><input type="checkbox" checked={vm.marcada(b.id)} disabled={!c.podeDisparar} onChange={() => vm.alternar(b.id)} aria-label={'Marcar ' + (l.contrato?.nome || b.arquivo)} /></td>
+                    <td className="fgts-marca"><input type="checkbox" checked={vm.marcada(b.id)} disabled={!vm.podeExcluir(l)} onChange={() => vm.alternar(b.id)} aria-label={'Marcar ' + (l.contrato?.nome || b.arquivo)} /></td>
                     <td><span className="emp-cod">{l.contrato?.codigo || '—'}</span></td>
                     <td className="dp-cliente">
                       <span className="dp-cliente-nome" title={l.contrato?.nome}>{l.contrato?.nome || 'Sem cliente'}</span>
@@ -103,7 +116,13 @@ export function Boletos() {
                     <td className="num">{b.vencimento ? dataBr(b.vencimento) : '—'}</td>
                     <td><span className="fin-corta" title={b.destinatarios.join(', ')}>{b.destinatarios[0] || '—'}{b.destinatarios.length > 1 ? ` +${b.destinatarios.length - 1}` : ''}</span></td>
                     <td><span className={CLASSE_DA_SITUACAO[c.situacao]}>{financeiro.ROTULO_DA_SITUACAO_DO_BOLETO[c.situacao]}</span></td>
-                    <td className="fin-direita"><button type="button" className="btn btn-outline" onClick={() => vm.abrir(b.id)}>Revisar</button></td>
+                    <td className="fin-direita">
+                      <span className="fin-acoes-da-linha">
+                        <button type="button" className="btn btn-outline" onClick={() => vm.abrir(b.id)}>Revisar</button>
+                        {/* excluir direto da linha (10/11/2026: "precisa de um botao para excluir o documento"); pergunta antes */}
+                        {vm.podeExcluir(l) && <BotaoIcone icone="lixeira" titulo={'Excluir ' + b.arquivo} onClick={() => void vm.excluir(l)} />}
+                      </span>
+                    </td>
                   </tr>
                 );
               })}
