@@ -10,7 +10,9 @@ try { catalogo = require('../packages/core/src/robos/catalogo.json'); } catch (e
 
 const HORA_OK = /^([01]\d|2[0-3]):[0-5]\d$/;
 const DIA_EM_MIN = 24 * 60;
-const LER_A_CADA_MS = 5 * 60 * 1000;
+// o horário de cada robô é relido a cada 15 min (era 5; 10/11/2026, consumo do banco: 3 centrais e o vigia, ~1.150 leituras
+// por dia); a tela Configurações da Central diz "vale em até 15 minutos"
+const LER_A_CADA_MS = 15 * 60 * 1000;
 const { janelaMinimaMin: JANELA_MINIMA, intervaloMin: INTERVALO_MIN, intervaloMax: INTERVALO_MAX } = (catalogo.limites || {}).horarios || { janelaMinimaMin: 60, intervaloMin: 30, intervaloMax: 720 };
 const DIA_DA_SEMANA = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
 

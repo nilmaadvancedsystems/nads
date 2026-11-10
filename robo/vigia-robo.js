@@ -81,9 +81,15 @@ const { tarefa } = require('./consumo');
 if (!SO_VER_RESUMO) require('./consumo').instalar(db, { log });
 
 // ---------- sinal de vida ----------
+// A cada 2 min (10/11/2026, consumo do banco; era a cada 1 min). O robo/estado é ouvido pelas telas de quase todo mundo e
+// cada gravação vira uma leitura em cada navegador aberto. As telas (e o entregas.html antigo) dão o vigia por desligado com
+// 3 min sem ponto: 2 min ainda deixam 1 min de folga, por isso não vai mais longe.
+const batidaDoVigia = require('./batimento').criarBatimento({ semMudancaMs: 2 * 60 * 1000 - 5000, freioMs: 0 });
 function baterPonto() {
-  roboRef.set({ vigia: { em: agora(), pc: os.hostname(), aCadaMin: A_CADA_MIN || null, desligadoEm: null } }, { merge: true })
-    .catch(err => log('não consegui bater o ponto:', err.message));
+  const ponto = { vigia: { em: agora(), pc: os.hostname(), aCadaMin: A_CADA_MIN || null, desligadoEm: null } };
+  if (!batidaDoVigia.vale({ pc: ponto.vigia.pc, aCadaMin: ponto.vigia.aCadaMin })) return;
+  roboRef.set(ponto, { merge: true })
+    .catch(err => { batidaDoVigia.falhou(); log('não consegui bater o ponto:', err.message); });
 }
 
 // ---------- e-mail ----------
@@ -470,7 +476,9 @@ async function diasDesdeUltimaLeitura() {
 // gravação a cada ANDAMENTO_A_CADA_MS. Sem isso, 40 e-mails dariam centenas de
 // gravações — e cada uma vira leitura em toda tela aberta (foi assim o pico
 // de 25/09 com a rota).
-const ANDAMENTO_A_CADA_MS = 2000;
+// Era 2 s; 8 s (10/11/2026, consumo do banco): o robo/estado é ouvido pelas telas de quase todo mundo (Gmail, IA), e
+// cada gravação vira uma leitura em cada navegador aberto (até 1.800 por hora de leitura × navegadores)
+const ANDAMENTO_A_CADA_MS = 8000;
 let andamentoAtual = null, andamentoTimer = null, andamentoGravadoEm = 0;
 function publicarAndamento(parcial, forcar) {
   andamentoAtual = Object.assign({}, andamentoAtual || {}, parcial, { em: agora() });

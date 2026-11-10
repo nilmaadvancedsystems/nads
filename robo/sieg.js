@@ -708,7 +708,14 @@ function iniciarSieg({ db, log }) {
   // quantos pedidos esperam na fila (a tela mostra enquanto a pessoa espera; 26/10/2026)
   let naFila = 0;
   painel.fazendoPor('sieg', () => (situacaoAgora() !== 'livre' ? 'SIEG: ' + situacaoAgora() : gravandoNoDrive ? 'SIEG: salvando XMLs no Drive por trás' : null));
-  const ponto = () => estadoRef.set({ em: new Date().toISOString(), ligado: true, motivo: null, situacao: situacaoAgora(), naFila, paralelo: PARALELO }, { merge: true }).catch(() => {});
+  // o ponto só vai ao banco quando muda (o que está fazendo, a fila) ou, sem mudança, a cada 5 min (batimento.js; 10/11/2026,
+  // consumo do banco: era a cada 1 min, 1.440 gravações por dia com o robô parado; as telas: 7 min sem ponto = desligado)
+  const batida = require('./batimento').criarBatimento();
+  const ponto = () => {
+    const d = { em: new Date().toISOString(), ligado: true, motivo: null, situacao: situacaoAgora(), naFila, paralelo: PARALELO };
+    if (!batida.vale(d)) return Promise.resolve();
+    return estadoRef.set(d, { merge: true }).catch(() => batida.falhou());
+  };
   ponto();
   const relogio = setInterval(ponto, 60 * 1000);
 
@@ -813,13 +820,17 @@ function iniciarSieg({ db, log }) {
   // quando ele não respondeu nos últimos 2 min (fila parada, ou o ouvinte caiu: a reserva de 2 em 2 min continua valendo).
   // Antes eram até 500 leituras a CADA pedido atendido (uma fila de 500: ~125 mil para esvaziar). O que acabou de terminar
   // (ou de ser juntado) fica de fora por 2 min, até a resposta nova do ouvinte chegar sem ele.
+  // A resposta do ouvinte vale enquanto ele está de pé (10/11/2026, consumo do banco): o ouvinte só responde quando a fila
+  // muda, então "sem resposta há 2 min" era a fila parada, não o ouvinte caído, e a fila parada (pedidos esperando o Drive)
+  // era relida inteira a cada 2 min. O ouvinte que cai é refeito pelo ouvinte.js, que zera a fila viva; 30 min é só a reserva.
   let filaViva = null, filaVivaEm = 0;
   const terminados = new Map();   // id → quando terminou
   const RECENTE_MS = 2 * 60 * 1000;
+  const FILA_VIVA_VALE_MS = 30 * 60 * 1000;
   async function proximoPedido(ocupadas, pegos) {
     // pausado pela Central dos robôs: nenhum pedido novo; o que já está sendo atendido termina
     if (pausaLocal.estaPausado('sieg')) return null;
-    const viva = filaViva && Date.now() - filaVivaEm < RECENTE_MS ? filaViva : null;
+    const viva = filaViva && Date.now() - filaVivaEm < FILA_VIVA_VALE_MS ? filaViva : null;
     const docs = viva || (await db.collection('pedidosSieg').where('status', '==', 'pendente').limit(500).get()).docs;
     for (const [id, t] of terminados) if (Date.now() - t >= RECENTE_MS) terminados.delete(id);
     const pendentes = docs.filter(d => !terminados.has(d.id));

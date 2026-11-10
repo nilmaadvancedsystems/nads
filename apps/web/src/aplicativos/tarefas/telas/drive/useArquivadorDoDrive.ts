@@ -1,5 +1,5 @@
 // ViewModel do "Arquivar agora" no Drive (o mesmo botão das Pendências do Entregas): se o PC do arquivador está ligado
-// (o ponto em robo/arquivador, até 3 minutos), o pedido aberto (ou o último, se foi nas últimas 24 h) com a %, a
+// (o ponto em robo/arquivador, até 7 minutos), o pedido aberto (ou o último, se foi nas últimas 24 h) com a %, a
 // organização rodando por fora do botão (a das 9h: a fase em que está; Vitor, 05/10/2026: "quero que mostre que está
 // rodando"), as rodadas de hoje somadas, pedir (com confirmação) e cancelar enquanto não começou. Some para quem não pode
 // (só admin e contábil).
@@ -42,7 +42,8 @@ export function useArquivadorDoDrive() {
 
   const e = repo.estado();
   const pedidos = repo.pedidos();
-  const ligado = !!e.em && agora - Date.parse(e.em) < 3 * 60 * 1000;
+  // 7 min: o ponto sem mudança vai a cada 5 min (robo/batimento.js, 10/11/2026; era 3 com o ponto de cada minuto)
+  const ligado = !!e.em && agora - Date.parse(e.em) < 7 * 60 * 1000;
   const aberto = pedidos.find(p => ABERTOS.includes(p.status)) || null;
   const ultimo = aberto || pedidos[0] || null;
   const fimDe = (p: PedidoDeArquivo) => Date.parse(p.concluidoEm || p.erroEm || p.canceladoEm || p.criadoEm) || 0;

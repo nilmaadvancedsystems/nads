@@ -33,6 +33,10 @@ function idDaChave(chave: string): string {
 export function criarGuardadoFirestore(quem: () => string): RemotoDoGuardado {
   const db = bancoDoEntregas();
   let avisou = false;
+  // o "em" do que já está no banco, por empresa e chave (10/11/2026, consumo do banco): a mesma gravação (o mesmo "em")
+  // não vai de novo ao banco; um razão grande são até 40 documentos por gravação. APAGADA = a chave já foi apagada
+  const enviados = new Map<string, number>();
+  const APAGADA = -1;
   const falhou = (e: unknown) => {
     if (avisou) return;
     avisou = true;
@@ -41,6 +45,10 @@ export function criarGuardadoFirestore(quem: () => string): RemotoDoGuardado {
   return {
     async carregar(escopo) {
       const s = await getDocs(collection(db, 'nadsGuardado', escopo, 'itens'));
+      for (const d of s.docs) {
+        const x = d.data() as { chave?: unknown; em?: unknown; parte?: unknown };
+        if (typeof x.chave === 'string' && typeof x.em === 'number' && typeof x.parte !== 'number') enviados.set(escopo + '|' + x.chave, x.em);
+      }
       type Doc = { chave?: unknown; em?: unknown; v?: unknown; partes?: unknown; parte?: unknown };
       const docs = s.docs.map(d => d.data() as Doc).filter(x => typeof x.chave === 'string' && typeof x.em === 'number');
       // os pedaços de cada gravação ('chave|em' → o texto de cada parte)
@@ -67,6 +75,10 @@ export function criarGuardadoFirestore(quem: () => string): RemotoDoGuardado {
     },
     gravar(escopo, e) {
       const ref = doc(db, 'nadsGuardado', escopo, 'itens', idDaChave(e.chave));
+      const k = escopo + '|' + e.chave;
+      const marca = e.v == null ? APAGADA : e.em;
+      if (enviados.get(k) === marca) return;
+      enviados.set(k, marca);
       if (e.v == null) { void deleteDoc(ref).catch(falhou); return; }
       const texto = JSON.stringify(e.v);
       if (texto.length > MAIOR) { falhou(new Error('grande demais (' + texto.length + ' caracteres)')); return; }

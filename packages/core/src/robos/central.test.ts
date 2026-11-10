@@ -61,7 +61,8 @@ describe('a situação da máquina', () => {
     expect(s.sinais?.cpu).toBe(30);
   });
   it('atrasada e sem sinal', () => {
-    expect(situacaoDaMaquina(servidor, lerBatimento('pc', { em: ha(5) }), null, AGORA).rotulo).toBe('Atrasada');
+    expect(situacaoDaMaquina(servidor, lerBatimento('pc', { em: ha(5) }), null, AGORA).rotulo).toBe('Ligada');
+    expect(situacaoDaMaquina(servidor, lerBatimento('pc', { em: ha(8) }), null, AGORA).rotulo).toBe('Atrasada');
     expect(situacaoDaMaquina(servidor, lerBatimento('pc', { em: ha(20) }), null, AGORA).tom).toBe('erro');
   });
   it('o PC do escritório só pelo estado da central', () => {

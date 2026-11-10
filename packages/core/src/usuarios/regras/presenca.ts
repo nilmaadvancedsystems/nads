@@ -1,11 +1,21 @@
 // Quem está online no nads (Vitor, 05/10/2026: "quero que coloque uma opção de online"): o nads aberto de cada pessoa
-// grava usuarios/{uid}.nadsVistoEm a cada 3 minutos (só com a aba visível). Online = visto há menos de 5 minutos.
+// grava usuarios/{uid}.nadsVistoEm a cada 10 minutos (só com a aba visível). Online = visto há menos de 12 minutos.
+// O compasso era de 3 min (10/11/2026, consumo do banco): cada aba aberta escuta a coleção usuarios inteira, então cada
+// ponto de cada pessoa virava uma leitura em toda aba do escritório (pessoas × abas, o dia todo). Com 10 min, voltar para a
+// aba só bate de novo depois de 5 min, e o sinal da etapa (nadsOnde) leva o ponto junto, na mesma gravação.
 import type { DocUsuario, OndeNoNads } from '../tipos';
 
-/** Quanto tempo sem sinal ainda conta como online (o ponto é a cada 3 min; sobra folga para um atraso). */
-export const MINUTOS_ONLINE = 5;
+/** Quanto tempo sem sinal ainda conta como online (o ponto é a cada 10 min; sobra folga para um atraso). */
+export const MINUTOS_ONLINE = 12;
 /** De quanto em quanto tempo o nads aberto bate o ponto. */
-export const PONTO_DA_PRESENCA_MS = 3 * 60 * 1000;
+export const PONTO_DA_PRESENCA_MS = 10 * 60 * 1000;
+/** Voltar para a aba (ou o sinal da etapa) só bate de novo se o último ponto tem mais que isto. */
+export const PONTO_MINIMO_MS = 5 * 60 * 1000;
+
+/** Já é hora de bater o ponto de novo? (o último ponto, em ms; 0 = ainda não bateu) */
+export function ehHoraDoPonto(ultimoMs: number, agoraMs: number): boolean {
+  return agoraMs - ultimoMs >= PONTO_MINIMO_MS;
+}
 
 export function estaOnline(vistoEm: string | null | undefined, agora: Date): boolean {
   const t = vistoEm ? Date.parse(vistoEm) : NaN;

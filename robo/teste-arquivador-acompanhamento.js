@@ -131,7 +131,8 @@ try {
     igual('grava a parte 0 do dia', parte && parte.dados.itens.length, 2);
     const antes = gravados.length;
     await ac._gravar();
-    igual('a parte que não mudou não é regravada', gravados.slice(antes).map(g => g.caminho), ['robo/arquivadorNovo', 'robo/arquivadorResumo']);
+    // o resumo da janela do Drive sem mudança também não (10/11/2026, consumo do banco; vai junto do sinal de vida, a cada 5 min)
+    igual('a parte que não mudou não é regravada', gravados.slice(antes).map(g => g.caminho), ['robo/arquivadorNovo']);
     // o resumo da janela do Drive (o contábil lê): sem o nome original do arquivo
     const res = gravados.filter(g => g.caminho === 'robo/arquivadorResumo').pop();
     igual('resumo do Drive: o modo, a situação, os números de hoje e o último sem o nome original', [res.dados.modo, res.dados.situacao, res.dados.hoje.arquivados, res.dados.paraResolver, res.dados.ultimo && Object.keys(res.dados.ultimo).includes('nome')], ['producao', 'sem-drive', 1, 1, false]);

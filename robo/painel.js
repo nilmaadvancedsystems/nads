@@ -38,7 +38,8 @@ const MAX_ANTES_DE_INICIAR = 20;
 const MAX_AGORA = 8;
 const MAX_TEXTO = 200;
 const MAX_DETALHE = 500;
-const CONSULTA_A_CADA_MS = 5 * 60 * 1000;
+// as filas consultadas (as que não têm ouvinte) a cada 15 min (era 5; 10/11/2026, consumo do banco)
+const CONSULTA_A_CADA_MS = 15 * 60 * 1000;
 const LIMITE_DA_FILA = 200;
 
 const COLECAO = 'roboAtividade';
@@ -207,7 +208,9 @@ function batimento(estado) {
       agora: oQueEstaFazendo(), modulos: Array.from(modulos.values()), filas: Array.from(filas.values()),
       ultimos: Object.fromEntries(ultimos),
     }, isoAgora());
-    return st.ref.set(doc).catch(err => logUmaVez('batimento', 'não consegui bater o ponto do painel -', err.message));
+    // só o que mudou, ou a cada 5 min (batimento.js): o relógio olha de minuto em minuto
+    if (!st.batida.vale(doc)) return Promise.resolve();
+    return st.ref.set(doc).catch(err => { st.batida.falhou(); logUmaVez('batimento', 'não consegui bater o ponto do painel -', err.message); });
   } catch (e) { return Promise.resolve(); }
 }
 
@@ -326,6 +329,7 @@ function iniciar(db, opcoes) {
     st = {
       db, robo, log: o.log || console.log, ref: db.collection('robo').doc(DOCS[robo]),
       maquina: os.hostname(), versao: o.versao || versaoDoCodigo(), ligadoEm: isoAgora(), timers: [], paradas: [],
+      batida: require('./batimento').criarBatimento(o.batimento),
     };
     for (const cfg of o.filas || []) { try { ouvirFila(cfg); } catch (err) { logUmaVez('fila-' + cfg.id, 'fila', cfg.nome, 'não ligou -', err.message); } }
     batimento();

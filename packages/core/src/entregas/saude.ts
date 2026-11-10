@@ -93,7 +93,8 @@ export function saudeDoRobo(d: DocsDaSaude, agora = Date.now()): ItemDaSaude[] {
   // 4. o arquivador (PC do escritório)
   if (d.arquivador) {
     const a = obj(d.arquivador);
-    const ligado = idade(a.em, agora) < 3 * MIN && a.situacao !== 'desligado';
+    // 7 min: o ponto sem mudança vai a cada 5 min (robo/batimento.js, 10/11/2026; era 3 com o ponto de cada minuto)
+    const ligado = idade(a.em, agora) < 7 * MIN && a.situacao !== 'desligado';
     const situacoes: Record<string, string> = { livre: 'Ligado, esperando pedido', aguardando: 'Esperando a hora de rodar', rodando: 'Arquivando agora' };
     itens.push({
       id: 'arquivador', rotulo: 'Arquivador (Claudio Secretario)', tom: ligado ? 'ok' : 'aviso',
