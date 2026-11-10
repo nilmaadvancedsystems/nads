@@ -2,6 +2,7 @@
 // A lógica (carregar só a empresa pedida, nunca gravar antes de ela chegar, gravar só o que mudou) fica aqui,
 // uma vez só; quem fala com o banco é a "porta": no site, os dados/cadastro.firestore.ts de cada aplicativo
 // (a Tarefas e o Extratudo); nos exemplos, a porta em memória (repo.memoria.ts).
+import { criarEscutas } from '../../escutas';
 import { slug } from '../../formatos';
 import { cadastroDoDocumento, cadastroVazio, gravacaoDoCadastro, planoDoDocumento } from './regras';
 import type { CadastroDaEmpresa, PlanoDeContas } from './tipos';
@@ -75,6 +76,7 @@ export function criarRepoCadastro(porta: PortaCadastro, exemplos: boolean): Repo
   const ouvintes = new Set<() => void>();
   let avisar = (m: string) => console.warn(m);
   const mudou = () => { ver++; for (const f of ouvintes) f(); };
+  const escutas = criarEscutas(mudou);
 
   /**
    * Ouve a lista de todos os cadastros. Se a leitura falha (a permissão negada num carregamento cedo demais, a rede), a
@@ -110,6 +112,7 @@ export function criarRepoCadastro(porta: PortaCadastro, exemplos: boolean): Repo
   function carregar(nome: string, codigo: number | null = null): Carga {
     const pronta = cargas.get(nome);
     if (pronta) {
+      escutas.usar(nome);
       if (pronta.codigo == null && codigo != null) pronta.codigo = codigo;
       return pronta;
     }
@@ -125,17 +128,18 @@ export function criarRepoCadastro(porta: PortaCadastro, exemplos: boolean): Repo
       // sem permissão (sem o login do Entregas) não é erro: o aplicativo segue como antes
       if (!antes && !/permission|insufficient/i.test(err.message)) avisar('Não consegui ler o cadastro de "' + nome + '" na nuvem: ' + err.message);
     };
-    porta.ouvirCadastro(id, doc => {
+    const pararCadastro = porta.ouvirCadastro(id, doc => {
       c.cadastro = cadastroDoDocumento(nome, c.codigo, doc);
       c.existe = !!doc;
       c.cadastroChegou = true;
       mudou();
     }, falhou);
-    porta.ouvirPlano(id, doc => {
+    const pararPlano = porta.ouvirPlano(id, doc => {
       c.plano = planoDoDocumento(doc);
       c.planoChegou = true;
       mudou();
     }, falhou);
+    escutas.guardar(nome, () => { pararCadastro(); pararPlano(); cargas.delete(nome); });
     return c;
   }
 
@@ -163,7 +167,8 @@ export function criarRepoCadastro(porta: PortaCadastro, exemplos: boolean): Repo
       const c = carregar(nome, codigo);
       if (chegou(c)) return Promise.resolve(c.cadastro);
       return new Promise(resolver => {
-        const f = () => { if (chegou(c)) { ouvintes.delete(f); resolver(c.cadastro); } };
+        // (esperando, conta como leitura: a escuta não se encerra no meio)
+        const f = () => { escutas.usar(nome); if (chegou(c)) { ouvintes.delete(f); resolver(c.cadastro); } };
         ouvintes.add(f);
       });
     },

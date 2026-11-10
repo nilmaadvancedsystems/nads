@@ -12,7 +12,7 @@
 // - se falhar, avisa 'Não deu para salvar … na nuvem: …';
 // - a leitura negada (o login ainda chegando, ou a liberação do computador acabando de sair) tenta de novo sozinha
 //   (1, 2, 4 e 8 s); só avisa se continuar, e uma vez só para todos os meses (não um aviso por mês).
-import { extrator as x, formatos, tarefas as t, type empresas, type usuarios } from '@nads/core';
+import { escutasDoBanco, extrator as x, formatos, tarefas as t, type empresas, type usuarios } from '@nads/core';
 import { getApps, initializeApp } from 'firebase/app';
 import {
   arrayRemove, arrayUnion, collection, deleteField, doc, FieldPath, getDoc, getDocs, getFirestore, initializeFirestore, onSnapshot, query, where,
@@ -71,6 +71,7 @@ export function criarRepoTarefasFirestore(lista: readonly empresas.EmpresaDoEscr
   const ouvintes = new Set<() => void>();
   let avisar: Aviso = m => console.warn(m);
   const mudou = () => { ver++; for (const f of ouvintes) f(); };
+  const escutas = escutasDoBanco.criarEscutas(mudou);
   // os meses que não deu para ler, para um aviso só
   const naoLidos = new Map<string, string>();
   let avisoMarcado: ReturnType<typeof setTimeout> | null = null;
@@ -89,12 +90,16 @@ export function criarRepoTarefasFirestore(lista: readonly empresas.EmpresaDoEscr
   function carregar(competencia: string, departamento: usuarios.Departamento): Carga {
     const k = competencia + '|' + departamento;
     const pronta = cargas.get(k);
-    if (pronta) return pronta;
+    if (pronta) { escutas.usar(k); return pronta; }
     const c: Carga = { chegou: false, execucoes: new Map() };
     cargas.set(k, c);
     const q = query(collection(db, COLECAO), where('competencia', '==', competencia), where('departamento', '==', departamento));
+    let parar = () => {};
+    let encerrada = false;
+    escutas.guardar(k, () => { encerrada = true; parar(); cargas.delete(k); });
     const ouvir = (tentativa: number) => {
-      onSnapshot(q, s => {
+      if (encerrada) return;
+      parar = onSnapshot(q, s => {
         c.execucoes = new Map(s.docs.map(d => [d.id, d.data() as t.Execucao]));
         c.chegou = true;
         naoLidos.delete(competencia);

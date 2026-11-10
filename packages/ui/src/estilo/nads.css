@@ -1603,6 +1603,10 @@ html.na-etapa .imp-aviso{top:calc(var(--vista-topo,0px) + 12px);}
 @media (min-width:900px){.imp-linha{position:relative;}.imp-resumo > div{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);}}
 .imp-resumo > div{display:flex;flex-direction:column;font-size:var(--fs-12);line-height:18px;color:var(--ink-muted);white-space:nowrap;}
 /* Balancete e razões da Importação (09/11/2026): o resumo embaixo do nome, sem se sobrepor; a cor do ícone diz a situação; um quadradinho por mês */
+/* o aviso embaixo do nome: longo, no meio da faixa, ele cobria o nome e os campos (10/11/2026) */
+.imp-txt-larga{flex:1 1 auto;}
+.imp-txt .imp-resumo{flex:none;justify-content:flex-start;}
+.imp-txt .imp-resumo > div{position:static;transform:none;white-space:normal;}
 .imp-contabil .imp-linha{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:0 12px;align-items:center;}
 .imp-contabil .imp-ico{grid-row:1 / span 2;}
 .imp-contabil .imp-txt{grid-column:2;grid-row:1;min-width:0;}

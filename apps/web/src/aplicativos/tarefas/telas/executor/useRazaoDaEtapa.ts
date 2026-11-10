@@ -6,7 +6,7 @@ import { formatos, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useGuardado } from '../../../../comum/guardado';
-import { useContabilDaEmpresa } from '../../../../comum/contabilDaEmpresa';
+import { rotuloDaImportacao, useContabilDaEmpresa } from '../../../../comum/contabilDaEmpresa';
 import { useCaixaNoBancoDoRazao } from './etapas/caixabancos/useCaixaNoBanco';
 
 const dataBR = (d: string) => d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4);
@@ -35,7 +35,7 @@ export function useRazaoDaEtapa(chave: string, meses: readonly string[], onImpor
   const contabil = useContabilDaEmpresa(empresa?.nome || '', empresa?.codigo ?? null);
   const daImportacao = empresa?.caixa ? contabil.razaoDoTipo('caixa') : null;
   const proprio = lido && lido.chave === chave ? lido : null;
-  const atual = proprio || (daImportacao ? { chave, arquivo: daImportacao.arquivo + ' (da Importação)', razao: daImportacao.razao } : null);
+  const atual = proprio || (daImportacao ? { chave, arquivo: rotuloDaImportacao(daImportacao), razao: daImportacao.razao } : null);
   // o da Importação também põe o Creditor nos meses com liquidação de cobrança (uma vez por razão)
   const avisado = useRef('');
   useEffect(() => {
