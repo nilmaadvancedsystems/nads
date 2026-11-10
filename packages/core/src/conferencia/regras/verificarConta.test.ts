@@ -319,3 +319,32 @@ describe('só as notas: o simples faturamento da entrega futura e as contas de a
     expect(conferirSoAsNotas(['1102'], [{ nome: 'Compras de Mercadorias' }])).toBe(false);
   });
 });
+
+describe('a nota do fornecedor da categoria com o CFOP de outra natureza (Vitor, 10/11/2026)', () => {
+  const base = {
+    contas: [conta('31214', 'Internet')],
+    servTomados: [servico('1', 'FORNECEDOR X LTDA', 10, '527')],
+    servCat: { tomados: { 'fornecedor x ltda': { cat: 'internet', nome: 'FORNECEDOR X LTDA' } } },
+    naturezaConta: { 'serv|tomados|cat:internet': ['31214'] },
+  };
+  const conferir = (entradas: ReturnType<typeof nota>[], linhas: LinhaRazao[]) => {
+    const e = empresa({ ...base, entradas } as never);
+    return conferirConta({ empresa: e, contas: [e.contas[0]], razaoPorConta: { 31214: linhas }, cfopGrupo: null, servTipo: 'tomados' });
+  };
+  it('a conta cita a nota pelo número e pelo valor: não é "A mais" e entra na soma das notas', () => {
+    const r = conferir([nota('1556', '38', 63.79, '7749')], [linha('1', 10), linha('7749', 63.79)]);
+    expect(r.aMais).toEqual([]);
+    expect(r.somaFiscal).toBeCloseTo(73.79);
+    expect(semPendencias(r)).toBe(true);
+  });
+  it('outro valor, ou a nota de outro fornecedor: continua sendo pendência', () => {
+    expect(semPendencias(conferir([nota('1556', '38', 63.79, '7749')], [linha('1', 10), linha('7749', 50)]))).toBe(false);
+    expect(conferir([nota('1556', '38', 63.79, '7749')], [linha('1', 10), linha('7749', 50)]).somaFiscal).toBeCloseTo(10);
+    expect(conferir([nota('1556', '38', 63.79, '7749', { nome: 'OUTRO FORNECEDOR LTDA' })], [linha('1', 10), linha('7749', 63.79)]).somaFiscal).toBeCloseTo(10);
+  });
+  it('a nota que a conta não cita não entra (não vira "Faltando")', () => {
+    const r = conferir([nota('1556', '38', 63.79, '7749')], [linha('1', 10)]);
+    expect(r.faltando).toEqual([]);
+    expect(r.somaFiscal).toBeCloseTo(10);
+  });
+});
