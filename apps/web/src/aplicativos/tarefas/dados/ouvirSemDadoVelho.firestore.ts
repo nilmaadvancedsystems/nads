@@ -17,7 +17,7 @@
 // de recarregar), o banco cobra só o que mudou. Mais de 30 min: a consulta inteira, como antes.
 /* eslint-disable @typescript-eslint/no-explicit-any -- embrulho genérico das assinaturas de onSnapshot */
 export * from '@firebase/firestore';
-import { getDoc as getDocBruto, getDocs as getDocsBruto, onSnapshot as onSnapshotBruto } from '@firebase/firestore';
+import { getDoc as getDocBruto, getDocs as getDocsBruto, onSnapshot as onSnapshotBruto, queryEqual, refEqual } from '@firebase/firestore';
 
 const ESPERA_SEM_SERVIDOR_MS = 10 * 1000;
 
@@ -51,6 +51,24 @@ export function colecaoDaReferencia(ref: any): string {
     const fica = ref?.type === 'document' && partes.length === 2 && (partes[0] === 'robo' || partes[0] === 'config');
     return partes.map((p, i) => (i % 2 === 1 && !fica ? '[id]' : p)).join('/');
   } catch { return '?'; }
+}
+
+// Duas escutas da mesma consulta no mesmo navegador: o banco manda (e cobra) uma vez só, e as duas recebem. Conta só a mais
+// antiga ainda ligada (a que de fato trouxe do servidor); a outra é servida pela primeira.
+const escutasLigadas: { ref: any }[] = [];
+const mesmaConsulta = (a: any, b: any) => {
+  try {
+    if (a?.type === 'document' || b?.type === 'document') return a?.type === b?.type && refEqual(a, b);
+    return queryEqual(a, b);
+  } catch { return false; }
+};
+/** Esta escuta é a que conta (nenhuma mais antiga, ainda ligada, ouve a mesma consulta)? */
+export function escutaQueConta(eu: { ref: any }, ligadas: readonly { ref: any }[] = escutasLigadas): boolean {
+  for (const outra of ligadas) {
+    if (outra === eu) return true;
+    if (mesmaConsulta(outra.ref, eu.ref)) return false;
+  }
+  return true;
 }
 
 function contar(ref: any, n: number) {
@@ -180,11 +198,17 @@ function ouvir(ref: any, ...args: any[]): () => void {
     online: () => typeof navigator === 'undefined' || navigator.onLine !== false,
   });
   const anterior = { conteudo: null as string | null };
-  const ligar = () => bruto(ref, { ...opcoes, includeMetadataChanges: true }, {
-    next: (s: Foto) => { contar(ref, cobradosNaFoto(s, anterior)); filtro.chegou(s); },
-    error: (e: unknown) => { filtro.parar(); observador.error?.(e); },
-    complete: () => observador.complete?.(),
-  });
+  const ligar = () => {
+    const eu = { ref };
+    escutasLigadas.push(eu);
+    const tirar = () => { const i = escutasLigadas.indexOf(eu); if (i >= 0) escutasLigadas.splice(i, 1); };
+    const pararBruto = bruto(ref, { ...opcoes, includeMetadataChanges: true }, {
+      next: (s: Foto) => { if (medindo && escutaQueConta(eu)) contar(ref, cobradosNaFoto(s, anterior)); filtro.chegou(s); },
+      error: (e: unknown) => { tirar(); filtro.parar(); observador.error?.(e); },
+      complete: () => observador.complete?.(),
+    });
+    return () => { tirar(); pararBruto(); };
+  };
   if (ref?.type !== 'document' || !PAUSA_NA_ABA_ESCONDIDA.test(String(ref.path)) || typeof document === 'undefined') {
     const parar = ligar();
     return () => { filtro.parar(); parar(); };

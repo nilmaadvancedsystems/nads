@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { colecaoDaReferencia, criarFiltroDeFotos, criarPausaDaAbaEscondida, medirLeituras, tirarLeituras, umaFotoPeloOuvinte } from './ouvirSemDadoVelho.firestore';
+import { colecaoDaReferencia, criarFiltroDeFotos, escutaQueConta, criarPausaDaAbaEscondida, medirLeituras, tirarLeituras, umaFotoPeloOuvinte } from './ouvirSemDadoVelho.firestore';
 
 type F = { metadata: { fromCache: boolean }; docChanges?: () => unknown[]; exists?: () => boolean; data?: () => unknown };
 const consulta = (fromCache: boolean, mudancas = 1): F => ({ metadata: { fromCache }, docChanges: () => Array(mudancas).fill(0) });
@@ -158,5 +158,21 @@ describe('o medidor das leituras: a coleção sem os ids', () => {
   it('desligado, não junta nada', () => {
     medirLeituras(false);
     expect(tirarLeituras()).toEqual({});
+  });
+});
+
+describe('o medidor conta a mesma consulta uma vez só', () => {
+  it('a escuta mais antiga conta; a repetida, não; uma consulta diferente, sim', async () => {
+    const { initializeApp } = await import('firebase/app');
+    const { collection, doc, getFirestore, query, where } = await import('@firebase/firestore');
+    const db = getFirestore(initializeApp({ projectId: 'teste-medidor', apiKey: 'x' }, 'teste-medidor'));
+    const a = { ref: doc(db, 'robo', 'estado') };
+    const b = { ref: doc(db, 'robo', 'estado') };
+    const c = { ref: collection(db, 'clientes') };
+    const d = { ref: collection(db, 'clientes') };
+    const e = { ref: query(collection(db, 'clientes'), where('entrega', '==', true)) };
+    const ligadas = [a, b, c, d, e];
+    expect([a, b, c, d, e].map(x => escutaQueConta(x, ligadas))).toEqual([true, false, true, false, true]);
+    expect(escutaQueConta(b, [b, c])).toBe(true);
   });
 });
