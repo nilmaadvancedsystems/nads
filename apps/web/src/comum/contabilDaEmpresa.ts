@@ -12,10 +12,19 @@ import { useMemo } from 'react';
 import { guardadosQueCasam, useGuardado } from './guardado';
 
 export interface RazaoGuardado { arquivo: string; razao: t.RazaoDaConta }
+/** O nome do razão que veio da Importação (do robô ou do upload), com o número da conta (Vitor, 10/11/2026: "para ajudar"). */
+export const rotuloDaImportacao = (x: { conta: string; arquivo: string }) => 'Conta ' + x.conta + ' · ' + x.arquivo + ' (da Importação)';
 export interface DinamicoGuardado { nome: string; d: cl.BalanceteDinamico; /** veio do robô: os pedidos lidos */ pedidos?: string[] }
 /** O Diário do Alterdata (um PDF com todas as contas do período): os lançamentos lidos, por conta. */
 export interface DiarioGuardado { arquivo: string; lido: t.DiarioLido }
 interface Contabil { dinamico?: DinamicoGuardado; razoes?: Record<string, RazaoGuardado>; diario?: DiarioGuardado }
+
+/**
+ * O robô do Alterdata nas etapas do Contábil (Vitor, 10/11/2026: "precisamos trabalhar mais nele antes de implementar
+ * diretamente para o usuário"): false = sem os botões, sem os blocos e sem pedido novo à fila. O que ele já importou fica no
+ * guardado e continua valendo. Para voltar, é só pôr true.
+ */
+export const ROBO_NAS_ETAPAS: boolean = false;
 
 const SEM_RAZAO_DO_ROBO = 'Na Importação, aba Balancete e razões, puxe os razões do Alterdata pelo robô.';
 

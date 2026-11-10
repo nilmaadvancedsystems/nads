@@ -9,7 +9,7 @@
 // tira da conta — o saldo final confere ignorando o cheque especial.
 import { normalizarTexto } from '../../../formatos';
 import type { EmpresaExtrator, LancamentoDoArquivo, LinhaConferencia } from '../tipos';
-import { arquivosDoBanco } from './bancos';
+import { arquivosDoBanco, soAPontaDoMes } from './bancos';
 import { conferir } from './conferencia';
 import { movimentoDoExtrato } from './movimento';
 
@@ -92,7 +92,8 @@ export function conferenciaDoBanco(e: EmpresaExtrator, banco: string, primeiro: 
   const porMes: { mes: string; linhas: LinhaConferencia[] }[] = [];
   for (const mes of comMovimento) {
     const extrato = doMes('banco', mes), razao = doMes('sistema', mes);
-    if (!extrato.length || !razao.length) { completo = false; continue; }
+    // (só a ponta de um PDF de antes é falta de extrato, e não o mês inteiro "apenas no razão")
+    if (!extrato.length || !razao.length || soAPontaDoMes(arquivosDoBanco(e, banco, primeiro, 'banco', mes), arquivosDoBanco(e, banco, primeiro, 'sistema', mes), mes)) { completo = false; continue; }
     porMes.push({ mes, linhas: conferir(extrato, razao).linhas.filter(l => l.situacao !== 'ok') });
   }
   const negativos = completo ? diasNegativos(e, banco, primeiro, comMovimento) : [];

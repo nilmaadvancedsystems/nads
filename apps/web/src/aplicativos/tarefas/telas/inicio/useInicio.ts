@@ -2,7 +2,8 @@
 import { tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useState } from 'react';
-import { useAvisos } from '../../dados/repo';
+import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
+import { useAvisos, useTesteDoInicio } from '../../dados/repo';
 import { useOperador, type Operador } from '../../casca/operador';
 import { useMuralLido } from '../../casca/useMuralNovo';
 
@@ -10,6 +11,8 @@ export function useInicio() {
   const op = useOperador().operador as Operador;
   const { toast, aviso, modal } = useRetorno();
   const repo = useAvisos();
+  const [dev] = useModoDesenvolvedor();
+  const teste = useTesteDoInicio();
   const [texto, setTexto] = useState('');
   const [publicando, setPublicando] = useState(false);
   const [novoAberto, setNovoAberto] = useState(false);
@@ -22,6 +25,9 @@ export function useInicio() {
 
   return {
     nome: op.nome.split(/[ .]/)[0],
+    /** o ⚡ do modo desenvolvedor: tarefas e avisos fictícios, só nesta sessão */
+    dev,
+    teste,
     // o mural
     carregandoAvisos: !mural.carregados,
     avisos: t.ordenarAvisos(mural.avisos).map(x => ({ ...x, quando: t.quandoFoi(x.em, agora), quandoCompleto: new Date(x.em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) })),

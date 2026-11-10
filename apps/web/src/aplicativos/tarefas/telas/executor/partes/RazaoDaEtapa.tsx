@@ -8,7 +8,7 @@ import type { RazaoDaEtapa as Razao } from '../useRazaoDaEtapa';
 import { BotaoDeTeste, type ItemDeTeste } from '../../../../../comum/BotaoDeTeste';
 import { BotaoDiario } from '../../../../../comum/BotaoDiario';
 import { useColunaAjustavel, ValorNaGrade } from '../../../../../comum/GradeDosMeses';
-import { TabelaCaixaNoBanco, TabelaNotasNoCaixa } from '../etapas/caixabancos/CaixaNoBanco';
+import { TabelaNotasNoCaixa } from '../etapas/caixabancos/CaixaNoBanco';
 
 // a linha dos pontos de atenção pode vir com a sugestão de conta (Vitor, 23/10/2026)
 type Linha = Razao['lancamentos'][number] & { sugestao?: string; sugestoes?: string };
@@ -74,10 +74,10 @@ export function RazaoDaEtapa({ conta, razao, conferir, teste = [] }: { conta: st
               <Icone nome="caretDown" />
             </button>
             <span className="imp-ico"><Icone nome="dinheiro" /></span>
-            <div className="imp-txt">
+            <div className="imp-txt imp-txt-larga">
               <span><b>{nome}</b>{razao.arquivo && <span className="imp-conta">{razao.arquivo}</span>}</span>
+              <div className="imp-resumo">{razao.resumo && <div><span>{razao.resumo}</span></div>}</div>
             </div>
-            <div className="imp-resumo">{razao.resumo && <div><span>{razao.resumo}</span></div>}</div>
             <div className="imp-grupos">
               <div className="imp-grupo" aria-label={'Razão do ' + conta}>
                 <span className="imp-rotulo">Razão</span>
@@ -139,17 +139,11 @@ export function RazaoDaEtapa({ conta, razao, conferir, teste = [] }: { conta: st
                   ))}
                 </div>
               </FaixaQueAbre>
-              {/* o Caixa × bancos, agora aqui (Vitor, 16/10/2026: a mesma pergunta e o mesmo razão do Caixa): o que saiu do
-                  caixa e também saiu do banco, com o mesmo valor, até 5 dias; só sugere */}
+              {/* o "Pago pelo banco e lançado no caixa" tem um check só dele, a Conciliação caixa (Vitor, 10/11/2026) */}
               {/* o conciliador (Vitor, 16/10/2026: "era essa função que eu queria"): as notas em aberto pagas ou recebidas pelo caixa */}
               {conta === 'caixa' && (
                 <FaixaQueAbre titulo="Notas e pagamentos do banco no caixa" qtd={razao.noBanco.notas.length} aviso={razao.noBanco.notas.length > 0}>
                   <div className="imp-mov-caixa"><TabelaNotasNoCaixa vm={razao.noBanco} /></div>
-                </FaixaQueAbre>
-              )}
-              {conta === 'caixa' && (
-                <FaixaQueAbre titulo="Pago pelo banco e lançado no caixa" qtd={razao.noBanco.itens.length} aviso={razao.noBanco.itens.length > 0}>
-                  <div className="imp-mov-caixa"><TabelaCaixaNoBanco vm={razao.noBanco} /></div>
                 </FaixaQueAbre>
               )}
             </>

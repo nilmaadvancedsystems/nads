@@ -9,6 +9,7 @@ import { useExtratorDaEmpresa } from '../../../../dados/extrator';
 import { useCadastro } from '../../../../dados/repo';
 import { useMarcasDoMes } from '../../../../dados/clientes';
 import { useContabilDaEmpresa } from '../../../../../../comum/contabilDaEmpresa';
+import { useGuardado } from '../../../../../../comum/guardado';
 
 const dataBR = (iso: string) => iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4);
 
@@ -27,6 +28,28 @@ export function useCaixaNoBancoDoRazao(nome: string, codigo: number | null, mese
     });
   }, [ext, cadastroVivo, codigo, ultimo]);
   const achados = useMemo(() => (razao ? t.caixaNoBanco(razao.lancamentos, extrato, meses) : []), [razao, extrato, meses]);
+  // o check de cada par já conferido (Vitor, 10/11/2026), guardado na empresa
+  const [conferidos, setConferidos] = useGuardado<Record<string, true>>('caixa-no-banco|' + (codigo ?? nome), {});
+  const vezes = new Map<string, number>();
+  // a mesma data, valor e histórico duas vezes: cada par tem o seu check
+  const itens = achados.map((a, k) => {
+    const base = a.caixa.data + '|' + a.caixa.valor + '|' + a.caixa.historico;
+    const n = (vezes.get(base) || 0) + 1;
+    vezes.set(base, n);
+    const chave = base + '|' + n;
+    return {
+      id: k + '|' + a.caixa.data + '|' + a.caixa.valor, chave, conferido: !!conferidos[chave],
+      data: dataBR(a.caixa.data), historico: a.caixa.historico, contrapartida: [a.caixa.contrapartida, a.caixa.nomeContrapartida].filter(Boolean).join(' - '),
+      valor: formatos.reais(Math.abs(a.caixa.valor)),
+      noBanco: a.noBanco.map(b => ({
+        data: dataBR(b.data), banco: b.banco, marca: b.marca || '', historico: b.historico,
+        curto: b.historico.length > 60 ? b.historico.slice(0, 60).trimEnd() + '…' : b.historico,
+        valor: formatos.reais(Math.abs(b.valor) / 100),
+        dias: b.dias === 0 ? 'Mesmo dia' : (b.dias > 0 ? b.dias + (b.dias === 1 ? ' dia depois' : ' dias depois') : -b.dias + (b.dias === -1 ? ' dia antes' : ' dias antes')),
+        mesmoDia: b.dias === 0,
+      })),
+    };
+  });
 
   // o conciliador das notas em aberto (Vitor, 16/10/2026: "tinha uma nota fiscal no caixa, sendo que tinha ela em aberto no
   // fornecedor"; "era essa função que eu queria, esse conciliador"): as notas em aberto de Fornecedores e de Clientes (as das
@@ -65,9 +88,9 @@ export function useCaixaNoBancoDoRazao(nome: string, codigo: number | null, mese
     contrapartida: [l.contrapartida, l.nomeContrapartida].filter(Boolean).join(' - '),
     sentido: l.valor > 0 ? 'Saiu do caixa' : 'Entrou no caixa',
   });
-  const reais = formatos.reais;
   return {
     temExtrato: extrato.length > 0,
+    temRazao: !!razao,
     /** quantas notas em aberto havia para procurar (sem nenhuma: importe os razões de Fornecedores e Clientes) */
     qtdNotas: notas.length + passagens.length,
     notas: [
@@ -88,18 +111,10 @@ export function useCaixaNoBancoDoRazao(nome: string, codigo: number | null, mese
         lancamentos: [p.entrada, p.saida].map(linhaDoCaixa),
       })),
     ],
-    itens: achados.map((a, k) => ({
-      id: k + '|' + a.caixa.data + '|' + a.caixa.valor,
-      data: dataBR(a.caixa.data), historico: a.caixa.historico, contrapartida: [a.caixa.contrapartida, a.caixa.nomeContrapartida].filter(Boolean).join(' - '),
-      valor: reais(Math.abs(a.caixa.valor)),
-      noBanco: a.noBanco.map(b => ({
-        data: dataBR(b.data), banco: b.banco, marca: b.marca || '', historico: b.historico,
-        curto: b.historico.length > 60 ? b.historico.slice(0, 60).trimEnd() + '…' : b.historico,
-        valor: reais(Math.abs(b.valor) / 100),
-        dias: b.dias === 0 ? 'Mesmo dia' : (b.dias > 0 ? b.dias + (b.dias === 1 ? ' dia depois' : ' dias depois') : -b.dias + (b.dias === -1 ? ' dia antes' : ' dias antes')),
-        mesmoDia: b.dias === 0,
-      })),
-    })),
+    itens,
+    /** os pares que ainda não têm o check */
+    pendentes: itens.filter(i => !i.conferido).length,
+    alternarConferido: (chave: string) => setConferidos(x => { const n = { ...x }; if (n[chave]) delete n[chave]; else n[chave] = true; return n; }),
   };
 }
 

@@ -22,7 +22,7 @@ export type TelaDaEtapa =
   // as ferramentas que eram aplicativos à parte (Vitor, 06/11/2026: 'deixa apenas nas etapas'): a Importação (a do Contábil e
   // a do Fiscal), a Conferência fiscal, o Creditor, o Cartões e as Vendas no cartão
   | 'importacao' | 'importacao-fiscal' | 'conferencia-fiscal' | 'creditor' | 'cartoes' | 'vendas-cartao'
-  | 'bancos' | 'cheque-especial' | 'clientes' | 'adiantamento-fornecedores' | 'bens' | 'fornecedores' | 'adiantamento-clientes' | 'emprestimos' | 'salarios' | 'pro-labore' | 'honorarios' | 'simples' | 'resultado' | 'adiantamento-salarial'
+  | 'bancos' | 'cheque-especial' | 'clientes' | 'adiantamento-fornecedores' | 'bens' | 'fornecedores' | 'adiantamento-clientes' | 'emprestimos' | 'salarios' | 'pro-labore' | 'honorarios' | 'simples' | 'resultado' | 'conciliacao-caixa' | 'adiantamento-salarial'
   // o LCDPR, a rotina inteira das empresas com ele (16/10/2026: a 62 "só precisa do lcdpr")
   | 'lcdpr';
 export interface TelaPropria { id: TelaDaEtapa; periodo?: boolean }

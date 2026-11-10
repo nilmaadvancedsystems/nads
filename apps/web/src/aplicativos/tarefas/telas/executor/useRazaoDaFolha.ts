@@ -5,7 +5,7 @@
 import { formatos, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useGuardado } from '../../../../comum/guardado';
-import { useContabilDaEmpresa } from '../../../../comum/contabilDaEmpresa';
+import { rotuloDaImportacao, useContabilDaEmpresa } from '../../../../comum/contabilDaEmpresa';
 
 const NOME: Record<t.ContaDaFolha, string> = { salarios: 'Salários a pagar', fgts: 'FGTS a recolher', prolabore: 'Pró-labore a pagar', honorarios: 'Honorários a pagar', simples: 'Simples Nacional a recolher' };
 
@@ -19,7 +19,7 @@ export function useRazaoDaFolha(conta: t.ContaDaFolha, chave: string, meses: rea
   const contabil = useContabilDaEmpresa(empresa);
   const daImportacao = empresa ? contabil.razaoDoTipo(conta) : null;
   const proprio = razao && razao.chave === chave ? razao : null;
-  const r = proprio || (daImportacao ? { chave, arquivo: daImportacao.arquivo + ' (da Importação)', razao: daImportacao.razao } : null);
+  const r = proprio || (daImportacao ? { chave, arquivo: rotuloDaImportacao(daImportacao), razao: daImportacao.razao } : null);
 
   async function importar(f: File | null) {
     if (!f) return;

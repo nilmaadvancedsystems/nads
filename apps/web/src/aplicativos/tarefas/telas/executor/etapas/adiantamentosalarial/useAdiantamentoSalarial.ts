@@ -8,7 +8,7 @@ import { baixarBytes, useRetorno } from '@nads/ui';
 import { useMemo } from 'react';
 import { nomeDoLote } from '../../../../../../comum/importarNoAlterdata';
 import { useGuardado } from '../../../../../../comum/guardado';
-import { useContabilDaEmpresa } from '../../../../../../comum/contabilDaEmpresa';
+import { rotuloDaImportacao, useContabilDaEmpresa } from '../../../../../../comum/contabilDaEmpresa';
 import { useChaveDaEtapa, useDadosDeTesteDaEtapa, useEtapaAberta, useRequisitosDaEtapa } from '../contexto';
 import { useModelosDeHistorico } from '../../../../dados/useModelosDeHistorico';
 
@@ -24,7 +24,7 @@ export function useAdiantamentoSalarial() {
   // o da Importação (o upload único dos razões; 16/10/2026), quando a etapa não tem o próprio
   const contabil = useContabilDaEmpresa(s.nome, s.codigo);
   const daImportacao = contabil.razaoDoTipo('adiantamento-salarial');
-  const razao = useMemo(() => proprio || (daImportacao ? { arquivo: daImportacao.arquivo + ' (da Importação)', razao: daImportacao.razao } : null), [proprio, daImportacao]);
+  const razao = useMemo(() => proprio || (daImportacao ? { arquivo: rotuloDaImportacao(daImportacao), razao: daImportacao.razao } : null), [proprio, daImportacao]);
   // as contas do lançamento, da empresa (a do adiantamento vem do dinâmico do Clientes, se tiver)
   const empresa = String(s.codigo ?? s.nome);
   const [contas, setContas] = useGuardado<{ adiantamento?: string; banco?: string }>('adiantamento-salarial-contas|' + empresa, {});
@@ -46,7 +46,7 @@ export function useAdiantamentoSalarial() {
 
   const modelos = useModelosDeHistorico();
   const meses = useMemo(() => (razao ? t.conferirAdiantamentoSalarial(razao.razao, s.meses, modelos) : []), [razao, s.meses, modelos]);
-  const naoZerou = meses.filter(m => Math.abs(m.saldoFinal) > 0.005);
+  const naoZerou = meses.filter(m => Math.abs(m.saldoFinal) > 0.005 && !m.zeraDepois);
   // o que falta pagar, também dos meses antes dos da etapa, que é de onde vem o saldo que não zera (Vitor, 26/10/2026)
   const faltando = useMemo(() => (razao && s.meses.length ? t.pagamentosQueFaltam(razao.razao, s.meses[s.meses.length - 1], modelos) : []), [razao, s.meses, modelos]);
   /** as linhas do .xls (D Adiantamento salarial, C o banco): as mesmas no Baixar e no Importar no Alterdata */
@@ -81,10 +81,10 @@ export function useAdiantamentoSalarial() {
       provisao: reais(m.provisao),
       pagamento: m.pagamentos.length ? reais(m.pagamentos.reduce((x, p) => x + p.valor, 0)) : '',
       diaDoPagamento: m.pagamentos.map(p => dataBR(p.data)).join(', '),
-      foraDoDia: m.pagamentos.some(p => p.data !== m.dataEsperada),
+      foraDoDia: !m.ferias && m.pagamentos.some(p => p.data !== m.dataEsperada),
       dataEsperada: dataBR(m.dataEsperada),
       saldo: formatos.brl(Math.abs(m.saldoFinal)) + (m.saldoFinal > 0.005 ? ' C' : m.saldoFinal < -0.005 ? ' D' : ''),
-      zerou: Math.abs(m.saldoFinal) <= 0.005,
+      zerou: Math.abs(m.saldoFinal) <= 0.005 || m.zeraDepois,
       falta: m.falta > 0.005 ? reais(m.falta) : '',
     })),
     contaAdiantamento, contaBanco,

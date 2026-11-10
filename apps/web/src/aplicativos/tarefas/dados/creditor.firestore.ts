@@ -9,7 +9,7 @@
 // Os três ficam ouvidos (onSnapshot): balancete importado de novo na Conferência chega na hora.
 // Cuidados, os mesmos da Conferência: carrega só a empresa aberta; nada é gravado antes de as duas
 // leituras chegarem; grava só o que mudou; se falhar, avisa 'Não deu para salvar "…" na nuvem: …'.
-import { creditor as cr, formatos } from '@nads/core';
+import { creditor as cr, escutasDoBanco, formatos } from '@nads/core';
 import { doc, onSnapshot, setDoc as setDocBruto } from 'firebase/firestore';
 import { bancoDaConferencia } from './extrator.firestore';
 import { guardar } from '../../../comum/modoDesenvolvedor';
@@ -40,30 +40,32 @@ export function criarRepoCreditorFirestore(): RepoCreditorFirestore {
   const ouvintes = new Set<() => void>();
   let avisar: Aviso = m => console.warn(m);
   const avisarTodos = () => { ver++; for (const f of ouvintes) f(); };
+  const escutas = escutasDoBanco.criarEscutas(avisarTodos);
 
   /** Começa a ouvir a empresa no banco (uma vez só por empresa). */
   function carregar(nome: string): Carga {
     const pronta = cargas.get(nome);
-    if (pronta) return pronta;
+    if (pronta) { escutas.usar(nome); return pronta; }
     const c: Carga = { balancete: cr.SEM_BALANCETE, balanceteChegou: false, config: cr.CONFIG_VAZIA, configChegou: false, clientes: {}, clientesChegaram: false };
     cargas.set(nome, c);
     const id = formatos.slug(nome);
     const falhou = (err: Error) => avisar('Não consegui ler "' + nome + '" na nuvem: ' + err.message);
-    onSnapshot(doc(db, 'empresas', id), s => {
+    const pararBalancete = onSnapshot(doc(db, 'empresas', id), s => {
       c.balancete = cr.balanceteDoDocumento(s.exists() ? s.data() : null);
       c.balanceteChegou = true;
       avisarTodos();
     }, falhou);
-    onSnapshot(doc(db, 'extrator', id, 'creditor', 'contas'), s => {
+    const pararContas = onSnapshot(doc(db, 'extrator', id, 'creditor', 'contas'), s => {
       c.config = cr.configDoDocumento(s.exists() ? s.data() : null);
       c.configChegou = true;
       avisarTodos();
     }, falhou);
-    onSnapshot(doc(db, 'extrator', id, 'creditor', 'clientes'), s => {
+    const pararClientes = onSnapshot(doc(db, 'extrator', id, 'creditor', 'clientes'), s => {
       c.clientes = cr.clientesDoDocumento(s.exists() ? s.data() : null);
       c.clientesChegaram = true;
       avisarTodos();
     }, falhou);
+    escutas.guardar(nome, () => { pararBalancete(); pararContas(); pararClientes(); cargas.delete(nome); });
     return c;
   }
 

@@ -48,8 +48,9 @@ export function Adiantamento({ lado = 'fornecedores' }: { lado?: 'fornecedores' 
         <div className={'imp-bloco' + (vm.razao && !vm.credores.length ? ' imp-ok' : '')}>
           <div className="imp-linha">
             <span className="imp-ico imp-logo"><Icone nome="fileText" /></span>
-            <div className="imp-txt"><span><b>Razão do {vm.nome}</b>{/* sem o texto de ajuda (Vitor, 08/10/2026): só o nome do arquivo, quando importado */}{vm.razao && <span className="imp-conta">{vm.razao.nome}</span>}</span></div>
-            <div className="imp-resumo">{vm.razao && <div><span>{vm.razao.resumo}</span></div>}</div>
+            <div className="imp-txt imp-txt-larga"><span><b>Razão do {vm.nome}</b>{/* sem o texto de ajuda (Vitor, 08/10/2026): só o nome do arquivo, quando importado */}{vm.razao && <span className="imp-conta">{vm.razao.nome}</span>}</span>
+              <div className="imp-resumo">{vm.razao && <div><span>{vm.razao.resumo}</span></div>}</div>
+            </div>
             <div className="imp-grupos">
               <div className="imp-grupo">
                 {vm.razao ? (

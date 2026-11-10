@@ -64,6 +64,7 @@ export function Resultado() {
           </table>
         </div>
       )}
+
     </section>
   );
 }

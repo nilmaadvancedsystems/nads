@@ -27,6 +27,10 @@ export interface MesDoAdiantamentoSalarial {
   dataEsperada: string;
   /** o saldo do fim do mês (positivo = credor, como o razão); tem de zerar */
   saldoFinal: number;
+  /** fechou devedor, mas zera num mês seguinte do razão: o adiantamento de férias, baixado quando as férias saem (Vitor, 10/11/2026) */
+  zeraDepois: boolean;
+  /** o mês baixa férias: o adiantamento delas não tem o dia 15 */
+  ferias: boolean;
   /** o que falta pagar no mês (a provisão menos os pagamentos; 0 = nada) */
   falta: number;
 }
@@ -79,11 +83,15 @@ const proximoMes = (m: string) => { const [a, x] = m.split('-').map(Number); ret
 /** O razão do Adiantamento salarial mês a mês: a provisão, os pagamentos, o dia certo, o saldo e o que falta. */
 export function conferirAdiantamentoSalarial(razao: RazaoDaConta, meses: readonly string[], modelos?: ModelosDoHistorico): MesDoAdiantamentoSalarial[] {
   const faltam = meses.length ? pagamentosQueFaltam(razao, meses[meses.length - 1], modelos) : [];
+  const emOrdem = naOrdemDasDatas(razao).lancamentos;
   return mesesDoRazao(razao, meses).map(m => {
     const provisao = centavos(m.lancamentos.filter(l => l.valor > 0).reduce((s, l) => s + l.valor, 0));
     const pagamentos = m.lancamentos.filter(l => l.valor < 0).map(l => ({ data: l.data, valor: centavos(-l.valor) }));
     const falta = faltam.find(p => p.mes === m.mes)?.valor || 0;
-    return { mes: m.mes, provisao, pagamentos, dataEsperada: dataDoAdiantamentoSalarial(m.mes), saldoFinal: centavos(m.saldoFinal), falta };
+    // devedor (saldo negativo no razão) é dinheiro adiantado; zerando num mês seguinte, está certo. Credor continua sendo o que falta pagar
+    const zeraDepois = m.saldoFinal < -0.005 && emOrdem.some(l => l.data.slice(0, 7) > m.mes && Math.abs(l.saldo) <= 0.005);
+    const ferias = m.lancamentos.some(l => l.valor > 0 && /f[eé]rias/i.test(l.historico + ' ' + l.nomeContrapartida));
+    return { mes: m.mes, provisao, pagamentos, dataEsperada: dataDoAdiantamentoSalarial(m.mes), saldoFinal: centavos(m.saldoFinal), zeraDepois, ferias, falta };
   });
 }
 

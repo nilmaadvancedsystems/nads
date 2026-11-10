@@ -403,7 +403,8 @@ export function useImportacao() {
         const razao = lado('sistema');
         return {
           mes, rotulo: tarefas.rotuloNumericoCompetencia(mes),
-          extrato: extrato.qtdArquivos > 0, razao: razao.qtdArquivos > 0, ladoExtrato: extrato, ladoRazao: razao,
+          // só a ponta de um PDF de antes não é o extrato do mês: a célula pede o arquivo dele
+          extrato: extrato.qtdArquivos > 0 && !x.soAPontaDoMes(arquivosDe(banco, 'banco', mes), arquivosDe(banco, 'sistema', mes), mes), razao: razao.qtdArquivos > 0, ladoExtrato: extrato, ladoRazao: razao,
           semMovimento: (semMovimentoPorMes[mes] || []).includes(banco),
         };
       }),

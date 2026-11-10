@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ArquivoImportado } from '../extratudo/extrator/tipos';
 import {
-  competenciasRecentes, concluida, criarRepoTarefasMemoria, dispensar, execucaoNova, fazer, idDaExecucao, interromper,
+  competenciasRecentes, concluida, criarRepoTarefasMemoria, dispensar, etapaLivre, execucaoNova, fazer, idDaExecucao, interromper,
   etapaNoMes, etapaNoMesDoAno, etapaPeloBalancete, objecoesMaisComuns, tempoPorEtapa, progresso, proximaEtapa, quandoFoi, resumoPorEtapa, ROTINA_CONTABIL, rotuloCompetencia, situacaoGeral, ultimaVez, verificar, execucoesVariadas, marcarSemMovimento, todosSemMovimento, voltarPara, rotuloCurtoCompetencia, competenciasDoPeriodo, rotaDoPeriodo, rotuloDoPeriodo, definirPeriodo, periodoConcluido,
 } from '.';
 
@@ -21,6 +21,7 @@ describe('rotina do Contábil', () => {
       expect(new Set(e.objecoes.map(o => o.id)).size).toBe(e.objecoes.length);
     }
     expect(ids[0]).toBe('extratos');
+    expect(ids).not.toContain('emprestimos'); // fora da rotina por enquanto (10/11/2026)
   });
 });
 
@@ -86,6 +87,33 @@ describe('rótulo curto da competência', () => {
   it('"ago 2026"', () => {
     expect(rotuloCurtoCompetencia('2026-08')).toBe('ago 2026');
     expect(rotuloCurtoCompetencia('2026-03')).toBe('mar 2026');
+  });
+});
+
+describe('a Conciliação caixa (10/11/2026)', () => {
+  it('é um check de Resultado, depois de Despesas e receitas; o mês já fechado antes dela não reabre', () => {
+    const ids = R.etapas.map(e => e.id);
+    expect(ids.indexOf('conciliacao-caixa')).toBe(ids.indexOf('despesas') + 1);
+    expect(R.etapas.find(e => e.id === 'conciliacao-caixa')?.secao).toBe('Resultado');
+    const novo = execucaoNova('FITO', 292, '2026-08', 'contabil');
+    expect(etapaNoMes(novo, 'conciliacao-caixa')).toBe(true);
+    expect(etapaNoMes(fazer(novo, 'despesas', 'Clara', new Date('2026-11-09T12:00:00Z')).execucao, 'conciliacao-caixa')).toBe(false);
+    expect(etapaNoMes(fazer(novo, 'despesas', 'Clara', new Date('2026-11-11T12:00:00Z')).execucao, 'conciliacao-caixa')).toBe(true);
+  });
+});
+
+describe('as etapas livres dentro do grupo (10/11/2026)', () => {
+  const de = (id: string) => R.etapas.find(e => e.id === id)!;
+
+  it('abre qualquer uma do grupo da primeira que falta, nunca a de outro grupo', () => {
+    expect(etapaLivre(R, de('caixa'), 'bens')?.id).toBe('bens');
+    expect(etapaLivre(R, de('caixa'), 'fornecedores')).toBeNull();
+  });
+
+  it('a Importação vem antes de tudo; fora do Contábil, segue uma por vez', () => {
+    expect(etapaLivre(R, de('extratos'), 'fiscal')).toBeNull();
+    expect(etapaLivre({ ...R, departamento: 'fiscal' }, de('caixa'), 'bens')).toBeNull();
+    expect(etapaLivre(R, null, 'bens')).toBeNull();
   });
 });
 

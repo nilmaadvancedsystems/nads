@@ -22,10 +22,10 @@ export function RazaoDaFolha({ vm, dev }: { vm: Vm; dev: boolean }) {
         </button>
         {/* o FGTS com o logo dele (Vitor, 07/10/2026), cinza até importar; Salários e Pró-labore com o ícone */}
         <span className={'imp-ico' + (vm.conta === 'fgts' ? ' imp-logo' : '')}>{vm.conta === 'fgts' ? <LogoFgts cor={vm.temRazao} /> : <Icone nome="scale" />}</span>
-        <div className="imp-txt">
+        <div className="imp-txt imp-txt-larga">
           <span><b>{vm.nome}</b>{vm.arquivo && <span className="imp-conta">{vm.arquivo}</span>}</span>
+          <div className="imp-resumo">{vm.resumo.length > 0 && <div>{vm.resumo.map(x => <span key={x}>{x}</span>)}</div>}</div>
         </div>
-        <div className="imp-resumo">{vm.resumo.length > 0 && <div>{vm.resumo.map(x => <span key={x}>{x}</span>)}</div>}</div>
         <div className="imp-grupos">
           <div className="imp-grupo" aria-label={'Razão de ' + vm.nome}>
             <span className="imp-rotulo">Razão</span>

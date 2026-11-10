@@ -56,8 +56,7 @@ export function useUsuariosDoNads() {
       papeisAMais: usuarios.PAPEIS.filter(x => p.papeis.includes(x.id) && x.id !== p.departamento).map(x => x.rotulo),
       presenca: usuarios.rotuloDaPresenca(p.vistoNoNads, agora),
       // a empresa e a etapa do Contábil em que ela está agora (Vitor, 09/11/2026)
-      onde: p.ativo && operador && usuarios.veAtividade(operador, p) ? usuarios.rotuloDoOnde(p.ondeNoNads, agora) : '',
-      ondePeriodo: operador && usuarios.veAtividade(operador, p) ? p.ondeNoNads?.competencia || '' : '',
+      atividade: p.ativo && operador && usuarios.veAtividade(operador, p) ? usuarios.atividadeAtual(p.ondeNoNads, agora) : null,
     }))
     // quem está online primeiro, depois os ativos, depois os inativos
     .sort((a, b) => Number(b.online) - Number(a.online) || Number(b.ativo) - Number(a.ativo) || a.nome.localeCompare(b.nome));

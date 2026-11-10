@@ -28,6 +28,12 @@ describe('o caixa × os bancos (16/10/2026)', () => {
       ['Pagamento de energia', [['2026-03-08', -2], ['2026-03-12', 2]]],
     ]);
   });
+  it('o mesmo código de transação no caixa e no banco é o mesmo lançamento: sai; CNPJ igual não conta (10/11/2026)', () => {
+    const id = 'aaaa1111-2222-4333-8444-bbbbcccc5555';
+    expect(caixaNoBanco([C('2026-03-10', 117.73, '09:06:29 ' + id + ' Pagamento liberado', 'Caixa')], [B('2026-03-10', -11773, '09:09:32 ' + id + ' Pagamento liberado')], ['2026-03'])).toEqual([]);
+    const cnpj = 'Fatura 11222333000181 telefone';
+    expect(caixaNoBanco([C('2026-03-10', 189.9, cnpj, 'Telefone')], [B('2026-03-11', -18990, 'Pagamento ' + cnpj)], ['2026-03'])).toHaveLength(1);
+  });
   it('a nota em aberto paga pelo caixa: pelo número da NF, ou pelo valor em parcelas iguais (16/10/2026)', () => {
     const cx = [
       // o boleto do fornecedor pago pelo banco e lançado como entrada no caixa (três parcelas da NF 240100)

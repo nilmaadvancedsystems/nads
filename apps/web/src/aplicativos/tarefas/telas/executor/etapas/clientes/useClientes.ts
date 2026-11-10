@@ -247,7 +247,7 @@ export function useClientes() {
     /** na lista, tudo certo e nada para questionar: segue pela seta da próxima etapa, lá em cima */
     semQuestionamento: tela === 'clientes' && !faltam.length,
     /** a dica no lugar do Próximo: o que vai ser questionado segue para o Fechamento */
-    dicaDoFim: paraEnviar.length ? 'O que vai ser questionado vai junto no Fechamento (um envio só): siga pela seta acima' : 'Nada para questionar: siga para a próxima etapa pela seta acima',
+    dicaDoFim: paraEnviar.length ? 'O que vai ser questionado vai junto no Fechamento (um envio só): siga pela seta acima' : '',
     podeSeguir,
     proximo: () => { if (podeSeguir && i < telas.length - 1) setTela(telas[i + 1]); },
     /** nos Arquivos com cliente credor no mês: o "Corrigi, irei reimportar" no lugar do Próximo (deu tudo ok, volta o Próximo) */
@@ -269,6 +269,8 @@ export function useClientes() {
     carregado: marcas.carregado,
     filtro, setFiltro, busca, setBusca,
     contagem: { todos: linhas.length, pendente: linhas.filter(l => l.situacao === 'pendente').length, ok: linhas.filter(l => l.situacao === 'ok').length, conferido: conferidos.length },
+    /** todas as contas, sem filtro: as que dá para delegar */
+    todasAsContas: linhas.map(l => ({ codigo: l.codigo, nome: l.nome })),
     linhas: linhas
       .filter(l => filtro === 'todos' || l.situacao === filtro)
       .filter(l => !q || (l.codigo + ' ' + l.nome).toLowerCase().includes(q))

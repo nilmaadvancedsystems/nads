@@ -6,6 +6,7 @@
 import { Alerta, BotaoAcao, BotaoFechar, CampoData, Esqueleto, Icone, Interruptor, MenuSuspenso, Segmentado, useJanela, Vazio } from '@nads/ui';
 import { useEffect, useId, useRef, useState, type RefObject } from 'react';
 import { AnexosDaTarefa } from './partes/AnexosDaTarefa';
+import { Link } from 'react-router';
 import { LinhaDoTempoDaTarefa } from './partes/LinhaDoTempoDaTarefa';
 import { SeloDoStatus } from './partes/SelosDaTarefa';
 import { useTarefaAberta } from './useTarefaAberta';
@@ -19,6 +20,7 @@ function FormularioDaTarefa({ vm }: { vm: Vm }) {
   return (
     <>
       <div className="tdl-form">
+        {vm.caminhoDaEtapa && <div className="tdl-campo-largo"><Link className="btn btn-primary" to={vm.caminhoDaEtapa}><Icone nome="play" />Abrir a etapa</Link></div>}
         {vm.ehNova && !vm.delegar && (
           <label className="tdl-ja-fazendo tdl-campo-largo">
             <input type="checkbox" checked={vm.jaFazendo} onChange={e => vm.setJaFazendo(e.target.checked)} />Já estava fazendo

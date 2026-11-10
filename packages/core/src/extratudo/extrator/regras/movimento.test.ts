@@ -80,6 +80,11 @@ describe('extrato no Drive: o PDF e o OFX do mesmo mês', () => {
     d('c', 'CONTÁBIL', 'raiz'), d('e', 'EXTRATOS', 'c'), d('a', '2026', 'e'), d('m', '01', 'a'), d('b', 'BANCÁRIOS', 'm'),
     d('bb', 'BANCO DO BRASIL', 'b'), f('o', '01-2026.ofx', 'bb'), f('p', '01-2026.pdf', 'bb'),
   ];
+  it('o do mês ganha do arquivo de um período que passa por ele (10/11/2026)', () => {
+    const r = acharExtratoNoDrive([...itens, f('q', '10-2025 A 01-2026.pdf', 'bb'), f('q2', '10-2025 A 01-2026 (1).pdf', 'bb')], 'raiz', '2026-01', { nome: 'Banco do Brasil', marca: 'banco-do-brasil' });
+    expect(r.situacao).toBe('achou');
+    expect(r.arquivo?.id).toBe('p');
+  });
   it('são o mesmo extrato: acha, e fica o PDF', () => {
     const r = acharExtratoNoDrive(itens, 'raiz', '2026-01', { nome: 'Banco do Brasil', marca: 'banco-do-brasil' });
     expect(r.situacao).toBe('achou');
