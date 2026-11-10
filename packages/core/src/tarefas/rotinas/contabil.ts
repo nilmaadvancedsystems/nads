@@ -274,24 +274,6 @@ export const ROTINA_CONTABIL: Rotina = {
       objecoes: [nao('sem-adiantamento-clientes', 'A empresa não recebeu adiantamento de cliente')],
     },
     {
-      id: 'emprestimos',
-      secao: 'Passivo',
-      nome: 'Empréstimos e financiamentos',
-      descricao: 'O saldo de cada contrato igual ao do banco: parcela paga, juros e saldo devedor.',
-      // o razão de cada empréstimo com o banco dele, mês a mês (Vitor, 07/10/2026)
-      tela: { id: 'emprestimos', periodo: true },
-      verificacao: 'manual',
-      conferir: [
-        'Cada empréstimo tem saldo credor igual ao saldo devedor do contrato no banco.',
-        'A parcela do mês está lançada: o principal baixa o empréstimo e os juros vão para a despesa financeira.',
-        'Cartão de crédito a pagar: a fatura do mês lançada e a paga baixada.',
-      ],
-      objecoes: [
-        { id: 'sem-extrato-contrato', texto: 'Não tenho o extrato do empréstimo', solucao: { tipo: 'contato', rotulo: 'Pedir o extrato do empréstimo' } },
-        nao('sem-emprestimos', 'A empresa não tem empréstimo'),
-      ],
-    },
-    {
       id: 'folha',
       secao: 'Passivo',
       nome: 'Salários e INSS',
@@ -384,6 +366,26 @@ export const ROTINA_CONTABIL: Rotina = {
     // cliente fica no Envio de Clientes e de Fornecedores
   ],
 };
+
+/** A etapa Empréstimos e financiamentos, fora da rotina por enquanto (10/11/2026): para voltar, é só pôr de novo na lista do Passivo. */
+export const EMPRESTIMOS_E_FINANCIAMENTOS = {
+    id: 'emprestimos',
+    secao: 'Passivo',
+    nome: 'Empréstimos e financiamentos',
+    descricao: 'O saldo de cada contrato igual ao do banco: parcela paga, juros e saldo devedor.',
+    // o razão de cada empréstimo com o banco dele, mês a mês (Vitor, 07/10/2026)
+    tela: { id: 'emprestimos', periodo: true },
+    verificacao: 'manual',
+    conferir: [
+      'Cada empréstimo tem saldo credor igual ao saldo devedor do contrato no banco.',
+      'A parcela do mês está lançada: o principal baixa o empréstimo e os juros vão para a despesa financeira.',
+      'Cartão de crédito a pagar: a fatura do mês lançada e a paga baixada.',
+    ],
+    objecoes: [
+      { id: 'sem-extrato-contrato', texto: 'Não tenho o extrato do empréstimo', solucao: { tipo: 'contato', rotulo: 'Pedir o extrato do empréstimo' } },
+      nao('sem-emprestimos', 'A empresa não tem empréstimo'),
+    ],
+} satisfies Etapa;
 
 /** A etapa Impostos a recolher, fora da rotina por enquanto (16/10/2026): para voltar, é só pôr de novo na lista do Passivo. */
 export const IMPOSTOS_A_RECOLHER = {
