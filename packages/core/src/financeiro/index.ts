@@ -177,3 +177,4 @@ export * from './resultado';
 export * from './banco';
 export * from './contasPagar';
 export * from './boleto';
+export * from './loteDeBoletos';

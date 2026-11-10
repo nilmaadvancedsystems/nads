@@ -47,17 +47,18 @@ export interface RepoHonorarios {
   versao(): number;
 }
 
-/** Nos exemplos: seis clientes, um sem valor, um parado, e dois recebimentos de setembro/2026. */
+/** Nos exemplos: oito clientes, um sem valor, um parado, e dois recebimentos de setembro/2026. */
 export function criarHonorariosMemoria(): RepoHonorarios {
   let ver = 0;
   const ouvintes = new Set<() => void>();
   const mudou = () => { ver++; for (const f of ouvintes) f(); };
   const agora = () => new Date().toISOString();
-  const c = (id: string, codigo: string, nome: string, valor: number, ativo = true): financeiro.ContratoDeHonorario =>
-    ({ id, clienteId: '', codigo, nome, cnpj: '11222333000181', valor, ativo, criadoEm: agora(), criadoPor: 'Exemplo' });
+  const c = (id: string, codigo: string, nome: string, valor: number, ativo = true, diaVencimento = 28): financeiro.ContratoDeHonorario =>
+    ({ id, clienteId: '', codigo, nome, cnpj: '11222333000181', valor, diaVencimento, ativo, criadoEm: agora(), criadoPor: 'Exemplo' });
   let contratos: financeiro.ContratoDeHonorario[] = [
     c('h1', '101', 'ALFA COMERCIO EXEMPLO LTDA', 850), c('h2', '102', 'BETA SERVICOS EXEMPLO LTDA', 420), c('h3', '103', 'GAMA TRANSPORTES EXEMPLO LTDA', 1200),
     c('h4', '104', 'DELTA PADARIA EXEMPLO ME', 0), c('h5', '105', 'EPSILON CLINICA EXEMPLO LTDA', 650), c('h6', '106', 'ZETA CONSTRUTORA EXEMPLO LTDA', 900, false),
+    c('h7', '107', 'ETA AGROPECUARIA EXEMPLO LTDA', 780, true, 20), c('h8', '108', 'TETA ENGENHARIA EXEMPLO LTDA', 1500),
   ];
   const r = (contratoId: string, valor: number, forma: financeiro.FormaDeRecebimento): financeiro.RecebimentoDeHonorario =>
     ({ id: financeiro.idDoRecebimento(contratoId, '2026-09'), contratoId, competencia: '2026-09', valor, recebidoEm: '2026-10-05', forma, por: 'Exemplo', em: agora() });
@@ -70,7 +71,7 @@ export function criarHonorariosMemoria(): RepoHonorarios {
       const id = d.id || 'ex-h' + Date.now();
       const antes = contratos.find(x => x.id === id);
       const novo: financeiro.ContratoDeHonorario = {
-        id, clienteId: d.clienteId, codigo: d.codigo, nome: d.nome, cnpj: d.cnpj, valor: d.valor, ativo: d.ativo, observacoes: d.observacoes?.trim() || undefined,
+        id, clienteId: d.clienteId, codigo: d.codigo, nome: d.nome, cnpj: d.cnpj, valor: d.valor, diaVencimento: antes?.diaVencimento, ativo: d.ativo, observacoes: d.observacoes?.trim() || undefined,
         cobrancas: antes?.cobrancas, criadoEm: antes?.criadoEm ?? agora(), criadoPor: antes?.criadoPor ?? quem, ...(antes ? { atualizadoEm: agora(), atualizadoPor: quem } : {}),
       };
       contratos = antes ? contratos.map(x => (x.id === id ? novo : x)) : [...contratos, novo];

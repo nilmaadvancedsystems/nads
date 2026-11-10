@@ -1,0 +1,144 @@
+// ViewModel de Financeiro › Boletos (10/11/2026): a competência, os PDFs que sobem (lidos no navegador, como no Contas a pagar), a
+// conferência de cada linha, a revisão cliente a cliente e o disparo, que só um Diretor pede e que sempre pergunta antes.
+import { financeiro, formatos } from '@nads/core';
+import { useRetorno } from '@nads/ui';
+import { useMemo, useState } from 'react';
+import { temNivelDiretor } from '../../casca/navegacao';
+import { useOperador } from '../../casca/operador';
+import { useBoletos, useHonorarios } from '../../dados/repo';
+import type { BoletoNovo } from '../../dados/boletos';
+import { hoje } from './formatosDaNota';
+import { textoDoPdf } from './useJanelaDaContaAPagar';
+
+export type FiltroDoLote = 'todos' | 'pendentes' | 'prontos' | 'enviados';
+export const FILTROS_DO_LOTE: { valor: FiltroDoLote; rotulo: string }[] = [
+  { valor: 'todos', rotulo: 'Todos' }, { valor: 'pendentes', rotulo: 'Pendentes' }, { valor: 'prontos', rotulo: 'Prontos' }, { valor: 'enviados', rotulo: 'Enviados' },
+];
+const NO_FILTRO: Record<Exclude<FiltroDoLote, 'todos'>, financeiro.SituacaoDoBoleto[]> = {
+  pendentes: ['pendente', 'erro'], prontos: ['pronto', 'conferir'], enviados: ['fila', 'enviando', 'enviado'],
+};
+export const CLASSE_DA_SITUACAO: Record<financeiro.SituacaoDoBoleto, string> = {
+  pronto: 'badge badge-ok', conferir: 'badge badge-warn', pendente: 'badge badge-bad', fora: 'badge badge-neutral', fila: 'badge badge-neutral', enviando: 'badge badge-warn', enviado: 'badge badge-ok', erro: 'badge badge-bad',
+};
+const MAX_ARQUIVOS = 150;
+const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+export interface LinhaDoLote {
+  boleto: financeiro.BoletoDoLote;
+  contrato: financeiro.ContratoDeHonorario | null;
+  conferencia: financeiro.ConferenciaDoBoleto;
+}
+
+export function useLoteDeBoletos() {
+  const repo = useBoletos();
+  const honorarios = useHonorarios();
+  const operador = useOperador().operador;
+  const { toast, modal } = useRetorno();
+  const dia = hoje();
+  const [competencia, setCompetenciaBruta] = useState(() => financeiro.competenciaAnterior(dia));
+  const [filtro, setFiltro] = useState<FiltroDoLote>('todos');
+  const [busca, setBusca] = useState('');
+  const [marcadas, setMarcadas] = useState<ReadonlySet<string>>(new Set());
+  const [aberto, setAberto] = useState<string | null>(null);
+  const [lendo, setLendo] = useState<{ feitos: number; total: number } | null>(null);
+  const [disparando, setDisparando] = useState(false);
+
+  const boletos = repo.boletos();
+  const contratos = honorarios.contratos();
+  const recebimentos = honorarios.recebimentos();
+  const todas = useMemo<LinhaDoLote[]>(() => {
+    const ctx = { contratos: contratos.lista, recebimentos: recebimentos.lista, boletos: boletos.lista, hoje: dia };
+    const codigo = (l: LinhaDoLote) => l.contrato?.codigo || '';
+    return boletos.lista.filter(b => b.competencia === competencia)
+      .map(b => ({ boleto: b, contrato: contratos.lista.find(c => c.id === b.contratoId) ?? null, conferencia: financeiro.conferirBoleto(b, ctx) }))
+      .sort((a, b) => Number(!a.contrato) - Number(!b.contrato) || codigo(a).localeCompare(codigo(b), 'pt-BR', { numeric: true }) || a.boleto.arquivo.localeCompare(b.boleto.arquivo, 'pt-BR'));
+  }, [boletos.lista, contratos.lista, recebimentos.lista, competencia, dia]);
+
+  const q = norm(busca.trim());
+  const linhas = todas.filter(l => (filtro === 'todos' || NO_FILTRO[filtro].includes(l.conferencia.situacao))
+    && (!q || norm(`${l.contrato?.nome ?? ''} ${l.contrato?.codigo ?? ''} ${l.boleto.arquivo} ${l.boleto.destinatarios.join(' ')}`).includes(q)));
+  const resumo = financeiro.resumoDoLote(todas);
+  const disparaveis = todas.filter(l => l.conferencia.podeDisparar);
+  const marcadasValidas = disparaveis.filter(l => marcadas.has(l.boleto.id));
+  const marcaveis = linhas.filter(l => l.conferencia.podeDisparar);
+  const podeDisparar = temNivelDiretor(operador);
+  const falhou = (e: unknown, o: string) => toast(o + ' ' + (e instanceof Error ? e.message : ''));
+
+  return {
+    carregando: !boletos.carregada || !contratos.carregada || !recebimentos.carregada,
+    erro: boletos.erro || contratos.erro || recebimentos.erro,
+    exemplos: repo.exemplos,
+    competencia, filtro, setFiltro, busca, setBusca, linhas, resumo, lendo, disparando, podeDisparar,
+    temLinhas: todas.length > 0,
+    /** trocar de mês limpa as marcas: "Disparar marcadas" nunca pega o mês errado */
+    setCompetencia(c: string) { setCompetenciaBruta(c); setMarcadas(new Set()); },
+    limparFiltros() { setBusca(''); setFiltro('todos'); },
+    clientes: contratos.lista.filter(c => c.ativo).sort((a, b) => (a.codigo || '').localeCompare(b.codigo || '', 'pt-BR', { numeric: true })),
+
+    aberta: todas.find(l => l.boleto.id === aberto) ?? null,
+    abrir: setAberto,
+    fechar: () => setAberto(null),
+
+    marcada: (id: string) => marcadas.has(id),
+    alternar(id: string) { setMarcadas(m => { const n = new Set(m); if (!n.delete(id)) n.add(id); return n; }); },
+    todasMarcadas: marcaveis.length > 0 && marcaveis.every(l => marcadas.has(l.boleto.id)),
+    marcarTodas(sim: boolean) { setMarcadas(sim ? new Set(marcaveis.map(l => l.boleto.id)) : new Set()); },
+    quantasMarcadas: marcadasValidas.length,
+    quantasProntas: disparaveis.length,
+
+    /** lê os PDFs escolhidos e põe no lote da competência; o que não der para ler entra como pendente */
+    async subir(arquivos: File[]) {
+      if (!arquivos.length || lendo) return;
+      if (arquivos.length > MAX_ARQUIVOS) { toast(`No máximo ${MAX_ARQUIVOS} boletos de uma vez.`); return; }
+      const novos: BoletoNovo[] = [];
+      setLendo({ feitos: 0, total: arquivos.length });
+      try {
+        for (const [i, f] of arquivos.entries()) {
+          const texto = await textoDoPdf(new Uint8Array(await f.arrayBuffer()));
+          const leitura = texto ? financeiro.lerBoleto(texto, dia) : null;
+          const achado = financeiro.acharContratoDoBoleto(texto, f.name, contratos.lista);
+          novos.push({
+            competencia, arquivo: f.name, contratoId: achado?.contratoId ?? '', achadoPor: achado?.achadoPor ?? '',
+            linha: leitura?.linha ?? '', valor: leitura?.valor ?? null, vencimento: leitura?.vencimento ?? null,
+            destinatarios: achado ? repo.emailsDoContrato(achado.contratoId) : [],
+          });
+          setLendo({ feitos: i + 1, total: arquivos.length });
+        }
+        await repo.adicionar(novos);
+        const semCliente = novos.filter(n => !n.contratoId).length;
+        toast(`${novos.length} ${novos.length === 1 ? 'boleto lido' : 'boletos lidos'}${semCliente ? `, ${semCliente} sem cliente` : ''}.`);
+      } catch (e) { falhou(e, 'Não consegui ler os boletos.'); } finally { setLendo(null); }
+    },
+
+    async escolherCliente(id: string, contratoId: string) {
+      try { await repo.alterar(id, { contratoId, achadoPor: 'mao', destinatarios: repo.emailsDoContrato(contratoId) }); } catch (e) { falhou(e, 'Não consegui trocar o cliente.'); }
+    },
+    async definirDestinatarios(id: string, texto: string) {
+      try { await repo.alterar(id, { destinatarios: financeiro.separarEmails(texto) }); } catch (e) { falhou(e, 'Não consegui gravar o e-mail.'); }
+    },
+    async tirar(id: string, fora: boolean) {
+      setMarcadas(m => { const n = new Set(m); n.delete(id); return n; });
+      try { await repo.alterar(id, { fora }); } catch (e) { falhou(e, 'Não consegui mudar o lote.'); }
+    },
+
+    /** dispara as marcadas ou, sem marca, todas as prontas: confere quem pode e sempre pergunta */
+    async disparar() {
+      if (!podeDisparar || disparando) return;
+      const vao = marcadasValidas.length ? marcadasValidas : disparaveis;
+      if (!vao.length) return;
+      const soma = vao.reduce((t, l) => t + Math.round((l.boleto.valor ?? 0) * 100), 0) / 100;
+      const n = vao.length;
+      const ok = await modal<boolean>({
+        icone: 'envelope', titulo: `Disparar ${n} ${n === 1 ? 'boleto' : 'boletos'}?`,
+        texto: `${formatos.reais(soma)} em boletos de ${financeiro.competenciaBr(competencia)}. Cada cliente recebe o boleto dele no e-mail que está na linha.` + (repo.exemplos ? ' Estes são dados de exemplo: nenhum e-mail sai.' : ''),
+        botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Disparar', valor: true, variante: 'btn-primary' }],
+      });
+      if (!ok) return;
+      setDisparando(true);
+      try { await repo.disparar(vao.map(l => l.boleto.id), operador?.nome || ''); setMarcadas(new Set()); }
+      catch (e) { falhou(e, 'Não consegui disparar.'); } finally { setDisparando(false); }
+    },
+  };
+}
+
+export type VmLoteDeBoletos = ReturnType<typeof useLoteDeBoletos>;

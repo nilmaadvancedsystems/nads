@@ -132,6 +132,8 @@ export const APLICACOES: readonly Aplicacao[] = [
     // as contas a pagar (28/10/2026: "o Contas a Pagar do Toriba, no nads"). Os fornecedores viraram um botão dentro dela,
     // numa janela (30/10/2026: "joga essa tela de fornecedores para um botão dentro de contas a pagar")
     { id: 'pagar', rotulo: 'Contas a pagar', icone: 'codigoBarras', titulo: 'Contas a pagar' },
+    // o envio dos boletos de honorários aos clientes (10/11/2026)
+    { id: 'boletos', rotulo: 'Boletos', icone: 'envelope', titulo: 'Boletos aos clientes' },
     // o extrato do banco (23/10/2026: "vai se tornar um importador de extrato que vai trazer os dados e informações
     // para o dashboard inicial"); o endereço antigo /financeiro/conciliacao abre o importador. O Resultado por conta
     // virou um botão do Painel, numa janela flutuante (22/10/2026). Honorários e Devedores saíram do menu (30/10/2026)

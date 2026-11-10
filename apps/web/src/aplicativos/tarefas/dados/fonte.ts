@@ -26,6 +26,7 @@ import { criarLoteFiscalFirestore } from './loteFiscal.firestore';
 import { criarCaixaMemoria, type RepoCaixa } from './caixa';
 import { criarCaixaFirestore } from './caixa.firestore';
 import { criarHonorariosMemoria, type RepoHonorarios } from './honorarios';
+import { criarBoletosMemoria, type RepoBoletos } from './boletos';
 import { criarHonorariosFirestore } from './honorarios.firestore';
 import { criarContasPagarMemoria, type RepoContasPagar } from './contasPagar';
 import { criarContasPagarFirestore } from './contasPagar.firestore';
@@ -430,6 +431,13 @@ export function repoDoCaixa(): RepoCaixa {
 let honorarios: RepoHonorarios | null = null;
 
 /** Os honorários dos clientes (19/10/2026, fase 2 do Financeiro): os contratos e os recebimentos por competência. */
+let boletos: RepoBoletos | null = null;
+/** O lote de boletos (10/11/2026): por enquanto só os exemplos, nada grava no banco. */
+export function repoDeBoletos(): RepoBoletos {
+  if (!boletos) boletos = criarBoletosMemoria();
+  return boletos;
+}
+
 export function repoDeHonorarios(): RepoHonorarios {
   if (!honorarios) honorarios = noBanco ? criarHonorariosFirestore() : criarHonorariosMemoria();
   return honorarios;
