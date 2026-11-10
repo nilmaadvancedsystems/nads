@@ -80,6 +80,12 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bk-'));
   await enviarArquivoRetomavel({ cliente: f2, caminho: grande, pastaId: 'P', nome: 'banco.json', sessoesArquivo: sessoes, tamanhoParte: 10, espera: async () => {} });
   igual('depois do "reinício": mesma sessão, terminou', [f2.criou, f2.recebido], [1, 25]);
 
+  // o que fica fora do backup (10/11/2026, consumo do banco): só o que o robô refaz ou é passageiro
+  const { entraNoBackup } = require('./backup-firestore');
+  igual('fora: o registro dos robôs, o mapa do Drive e os zips do SIEG', ['roboAtividade', 'driveIndice', 'siegNotas', 'siegContagens', 'robosRegistros', 'uso'].map(c => entraNoBackup(c)), [false, false, false, false, false, false]);
+  igual('dentro: entregas, clientes, rotinas, cadastro, financeiro, cofre', ['entregas', 'clientes', 'rotinas', 'cadastro', 'financeiroCaixa', 'cofre', 'pedidosSieg'].map(c => entraNoBackup(c)), [true, true, true, true, true, true, true]);
+  igual('subcoleção: os XMLs subidos ao SIEG ficam fora; os eventos da rotina e os anexos ficam', [entraNoBackup('pedidosSieg', 'xmls'), entraNoBackup('rotinas', 'eventos'), entraNoBackup('entregas', 'anexos')], [false, true, true]);
+
   fs.rmSync(tmp, { recursive: true, force: true });
   console.log((falhas ? falhas + ' FALHA(S) em ' : 'ok: ') + total + ' testes');
   process.exit(falhas ? 1 : 0);

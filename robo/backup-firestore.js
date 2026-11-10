@@ -37,6 +37,24 @@ const { FieldPath } = require('firebase-admin/firestore');
 const DESTINO_PADRAO = process.env.BACKUP_PASTA || 'G:\\Meu Drive\\NILMA-PROTOCOLO-BACKUPS\\banco';
 const CAMPOS_DE_PROVA = ['assinatura', 'foto'];
 
+// O que fica fora do backup (10/11/2026, consumo do banco: o backup lia 34.721 documentos por dia e gravava um retrato de
+// 384 MB). Só o que o robô refaz sozinho ou que é registro passageiro, nunca dado de cliente nem prova:
+//   roboAtividade      o registro dos robôs (já se apaga em 7 dias)
+//   robosRegistros     o espelho das últimas linhas do log de cada robô
+//   driveIndice        o mapa do Drive (o robô da nuvem refaz toda madrugada; os arquivos estão no próprio Drive)
+//   siegNotas          os .zip de XMLs em pedaços para baixar (os XMLs estão no Drive do cliente)
+//   siegContagens      as contagens do SIEG (refeitas na contagem da madrugada)
+//   uso                os contadores do Uso do sistema
+//   aberturasDrive     as cópias de arquivo do Drive pedidas pela tela (duram 30 min)
+//   pedidosMapaDrive   os pedidos de releitura do mapa do Drive (duram 1 dia)
+//   pedidosSieg/*/xmls os XMLs que o cliente subiu para o robô (vão para o Drive do cliente)
+const COLECOES_FORA = new Set(['roboAtividade', 'robosRegistros', 'driveIndice', 'siegNotas', 'siegContagens', 'uso', 'aberturasDrive', 'pedidosMapaDrive']);
+const SUBCOLECOES_FORA = new Set(['pedidosSieg/xmls']);
+/** A coleção (de cima, ou a subcoleção dentro dela: colecaoDeCima/sub) entra no backup? */
+function entraNoBackup(colecao, sub) {
+  return sub ? !SUBCOLECOES_FORA.has(colecao + '/' + sub) : !COLECOES_FORA.has(colecao);
+}
+
 // Converte tipos do Firestore (Timestamp, GeoPoint, referencia) em algo que
 // sobrevive ao JSON e ainda diz o que era, pra restauracao nao virar
 // adivinhacao.
@@ -123,14 +141,15 @@ async function lerAnexos(ref, contador) {
   return docs;
 }
 
-async function escreverColecao(ref, ctx, ehEntregas, w, recuo) {
+async function escreverColecao(ref, ctx, ehEntregas, w, recuo, deCima) {
+  const colecaoDeCima = deCima || ref.id;
   let n = 0;
   for await (const pagina of paginas(ref)) {
     for (const doc of pagina) {
       ctx.contador.docs++;
       const dados = serializar(doc.data());
       w((n++ ? ',' : '') + '\n' + recuo + JSON.stringify(doc.id) + ': {"dados":' + JSON.stringify(dados));
-      let subs = await doc.ref.listCollections();
+      let subs = (await doc.ref.listCollections()).filter(s => entraNoBackup(colecaoDeCima, s.id));
       const anexos = ehEntregas && subs.find(s => s.id === 'anexos');
       if (anexos) {
         // as imagens saem do JSON e viram arquivo; fica so o caminho delas
@@ -142,7 +161,7 @@ async function escreverColecao(ref, ctx, ehEntregas, w, recuo) {
         w(',"subcolecoes":{');
         for (let i = 0; i < subs.length; i++) {
           w((i ? ',' : '') + JSON.stringify(subs[i].id) + ':{');
-          await escreverColecao(subs[i], ctx, false, w, recuo + ' ');
+          await escreverColecao(subs[i], ctx, false, w, recuo + ' ', colecaoDeCima);
           w('}');
         }
         w('}');
@@ -175,14 +194,14 @@ async function main() {
     return;
   }
 
-  const colecoes = await db.listCollections();
+  const colecoes = (await db.listCollections()).filter(c => entraNoBackup(c.id));
   // o mesmo JSON de antes ({ projeto, feitoEm, colecoes: { id: { docId: registro } }, totalDeDocumentos }), escrito aos
   // poucos num arquivo temporario: so com tudo lido ele vira o do dia (um backup pela metade nao conta como feito)
   const temporario = caminho + '.parcial';
   const fd = fs.openSync(temporario, 'w');
   const w = t => fs.writeSync(fd, t);
   try {
-    w('{\n "projeto": "entregas-2e5e2",\n "feitoEm": ' + JSON.stringify(new Date().toISOString()) + ',\n "colecoes": {');
+    w('{\n "projeto": "entregas-2e5e2",\n "feitoEm": ' + JSON.stringify(new Date().toISOString()) + ',\n "foraDoBackup": ' + JSON.stringify([...COLECOES_FORA, ...SUBCOLECOES_FORA]) + ',\n "colecoes": {');
     let primeiraCol = true;
     for (const col of colecoes) {
       process.stderr.write('lendo ' + col.id + '... ');
@@ -203,4 +222,6 @@ async function main() {
     + resumoProvas.jaExistiam + ' ja guardadas de antes');
 }
 
-main().catch(e => { console.error('ERRO:', e.message); process.exit(1); });
+if (require.main === module) main().catch(e => { console.error('ERRO:', e.message); process.exit(1); });
+
+module.exports = { entraNoBackup, COLECOES_FORA, SUBCOLECOES_FORA };
