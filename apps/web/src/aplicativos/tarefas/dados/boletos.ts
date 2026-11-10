@@ -16,6 +16,8 @@ export interface RepoBoletos {
   emailsDoContrato(contrato: financeiro.ContratoDeHonorario): Promise<string[]>;
   adicionar(novos: BoletoNovo[], andamento?: (feitos: number, total: number) => void): Promise<void>;
   alterar(id: string, mudar: MudancaDoBoleto): Promise<void>;
+  /** apaga o boleto e o PDF (só o que não está na fila, enviando ou enviado; 10/11/2026) */
+  excluir(id: string): Promise<void>;
   /** põe os boletos na fila de envio (o robô manda) */
   disparar(boletos: readonly financeiro.BoletoDoLote[]): Promise<void>;
   /** os bytes do PDF (null quando não há) */
@@ -64,6 +66,7 @@ export function criarBoletosMemoria(): RepoBoletos {
       mudou();
     },
     async alterar(id, mudar) { alterar(id, mudar); },
+    async excluir(id) { boletos = boletos.filter(x => x.id !== id); mudou(); },
     async disparar(lista) {
       for (const x of lista) {
         const envio = (status: financeiro.StatusDoEnvio, erro?: string): financeiro.EnvioDoBoleto => ({ status, para: x.destinatarios, em: new Date().toISOString(), por: 'Exemplo', ...(erro ? { erro } : {}) });

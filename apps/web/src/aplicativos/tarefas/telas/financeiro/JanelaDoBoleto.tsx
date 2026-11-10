@@ -79,6 +79,11 @@ export function JanelaDoBoleto({ vm, linha }: { vm: VmLoteDeBoletos; linha: Linh
         </div>
         <footer className="registro-pe">
           {!travado && (
+            <button type="button" className="btn btn-outline btn-danger" onClick={() => { void vm.excluir(linha).then(ok => { if (ok) vm.fechar(); }); }}>
+              <Icone nome="lixeira" width={16} height={16} />Excluir
+            </button>
+          )}
+          {!travado && (
             <button type="button" className="btn btn-outline" onClick={() => { void vm.tirar(b.id, !b.fora); if (!b.fora) vm.fechar(); }}>
               <Icone nome={b.fora ? 'repeat' : 'x'} />{b.fora ? 'Pôr de volta no lote' : 'Tirar do lote'}
             </button>

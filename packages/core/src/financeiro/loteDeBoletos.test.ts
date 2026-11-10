@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ContratoDeHonorario, RecebimentoDeHonorario } from './honorarios';
-import { acharContratoDoBoleto, conferirBoleto, resumoDoLote, separarEmails, vencimentoDoContrato, type BoletoDoLote, type ContextoDoLote } from './loteDeBoletos';
+import { acharContratoDoBoleto, conferirBoleto, documentosDoBoleto, resumoDoLote, separarEmails, vencimentoDoContrato, type BoletoDoLote, type ContextoDoLote } from './loteDeBoletos';
 
 const contrato = (id: string, nome: string, cnpj: string, extra: Partial<ContratoDeHonorario> = {}): ContratoDeHonorario =>
   ({ id, clienteId: '', codigo: id, nome, cnpj, valor: 500, ativo: true, diaVencimento: 10, criadoEm: '', criadoPor: '', ...extra });
@@ -28,6 +28,22 @@ describe('acharContratoDoBoleto', () => {
   });
   it('ignora o contrato parado', () => {
     expect(acharContratoDoBoleto('11222333000181', 'x.pdf', [{ ...alfa, ativo: false }])).toBeNull();
+  });
+});
+
+describe('documentosDoBoleto', () => {
+  it('o CNPJ do sacado no boleto do Alterdata, com a pontuação', () => {
+    const t = 'SACADO SACADOR/AVALISTA VS MEDICINA ESPECIALIZADA LTDA CNPJ/CPF: 49.118.974/0001-63 RUA SAO VICENTE, 284 - CENTRO 39990-000';
+    expect(documentosDoBoleto(t)).toEqual(['49118974000163']);
+  });
+  it('sem pontuação, o CPF, e sem repetir', () => {
+    expect(documentosDoBoleto('CNPJ 49118974000163 ... CNPJ: 49.118.974/0001-63 CPF: 123.456.789-09')).toEqual(['49118974000163', '12345678909']);
+  });
+  it('o CPF seguido do CEP fica só com o CPF', () => {
+    expect(documentosDoBoleto('CPF: 123.456.789-09 39990-000 Águas Vermelhas')).toEqual(['12345678909']);
+  });
+  it('não pega pedaço da linha digitável nem número sem a palavra', () => {
+    expect(documentosDoBoleto('75691.31449 01129.611602 01494.290016 3 16320000035000')).toEqual([]);
   });
 });
 

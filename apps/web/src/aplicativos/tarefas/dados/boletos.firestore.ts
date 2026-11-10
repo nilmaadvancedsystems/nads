@@ -1,9 +1,9 @@
 // O lote de boletos no banco do Entregas (10/11/2026), nas regras de lá (só quem pode no Financeiro; o disparo, só o Diretor):
 //   - financeiroBoletos/{id}: { competencia, arquivo, contratoId, achadoPor, linha, valor, vencimento, destinatarios, fora?, tamanho,
 //     partes, criadoEm, criadoPor, criadoPorUid, atualizadoEm?, atualizadoPor?, envio?: { status, para, em, por, porUid, erro? } };
-//     a tela cria e revisa (cliente, destinatários, fora) e pede o disparo (envio.status = 'fila'); o robô manda e grava o resto;
+//     a tela cria, revisa (cliente, destinatários, fora), exclui o que não saiu e pede o disparo (envio.status = 'fila'); o robô manda e grava o resto;
 //   - financeiroBoletos/{id}/partes/{n}: { dados: Bytes }, o PDF em pedaços (como o lotesDp).
-import { addDoc as addDocBruto, Bytes, collection, doc, getDocs, onSnapshot, query, setDoc as setDocBruto, updateDoc as updateDocBruto, where } from 'firebase/firestore';
+import { addDoc as addDocBruto, Bytes, collection, deleteDoc as deleteDocBruto, doc, getDocs, onSnapshot, query, setDoc as setDocBruto, updateDoc as updateDocBruto, where } from 'firebase/firestore';
 import { entregas as e, financeiro } from '@nads/core';
 import { guardar, guardarPedido } from '../../../comum/modoDesenvolvedor';
 import type { ListaAoVivo } from './agentes';
@@ -14,6 +14,7 @@ import { bancoDoEntregas } from './entregas.firestore';
 const addDoc = guardarPedido(addDocBruto) as typeof addDocBruto;
 const setDoc = guardar(setDocBruto) as typeof setDocBruto;
 const updateDoc = guardar(updateDocBruto) as typeof updateDocBruto;
+const deleteDoc = guardar(deleteDocBruto) as typeof deleteDocBruto;
 const texto = (v: unknown) => (v == null ? '' : String(v));
 const textos = (v: unknown) => (Array.isArray(v) ? v.map(texto).filter(Boolean) : []);
 const STATUS: financeiro.StatusDoEnvio[] = ['fila', 'enviando', 'enviado', 'erro'];
@@ -78,6 +79,13 @@ export function criarBoletosFirestore(quem: () => e.Quem | null, emails: (c: fin
       const campos: Record<string, unknown> = { ...mudar, atualizadoEm: new Date().toISOString(), atualizadoPor: q.nome };
       if (mudar.destinatarios) campos.destinatarios = mudar.destinatarios.slice(0, 10);
       await updateDoc(doc(db, 'financeiroBoletos', id), campos);
+    },
+    async excluir(id) {
+      quemE();
+      // os pedaços antes: a regra deles olha o boleto, que ainda precisa existir
+      const partes = await getDocs(collection(db, 'financeiroBoletos', id, 'partes'));
+      for (const p of partes.docs) await deleteDoc(p.ref);
+      await deleteDoc(doc(db, 'financeiroBoletos', id));
     },
     async disparar(lista) {
       const q = quemE();
