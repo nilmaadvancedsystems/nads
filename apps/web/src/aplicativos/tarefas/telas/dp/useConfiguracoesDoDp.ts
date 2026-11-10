@@ -8,8 +8,9 @@ import { useSearchParams } from 'react-router';
 import { competenciasDaTela, competenciasDoDp, guardarCompetenciaDoDp } from '../../casca/navegacao';
 import { useRetorno } from '@nads/ui';
 import { useOperador } from '../../casca/operador';
-import { useCategoriasDp, useGmailDoEntregas } from '../../dados/repo';
+import { useCategoriasDp } from '../../dados/repo';
 import { useClientesDoDp } from './useClientesDoDp';
+import { useDocumentosDoDp } from './useDocumentosDoDp';
 import { documentoFormatado } from '../financeiro/formatosDaNota';
 
 export type TopicoDoClienteDp = 'identificacao' | 'obrigacoes' | 'entrega';
@@ -36,21 +37,8 @@ export function useConfiguracoesDoDp() {
   const { modal, toast } = useRetorno();
   const [categoriasAbertas, setCategoriasAbertas] = useState(false);
   const [nova, setNova] = useState<{ nome: string; rotulo: string; parte: empresas.ParteDaCategoriaDp; erro: string }>({ nome: '', rotulo: '', parte: 'guias', erro: '' });
-  // o CNPJ/CPF de cada cliente (Sávio, 07/10/2026: "copiar o CNPJ ou CPF de cada cliente sem pontos ou traços para acesso
-  // aos sites do governo"), só os dígitos. Primeiro o do Cadastro do nads (Sávio, 20/10/2026: "puxar automaticamente do
-  // cadastro de empresas"; o nads vale), que também é onde se cadastra; sem ele, o do Entregas pelo código, também dos
-  // clientes inativos lá (era por isso que 342, 394, 395 e 432 ficavam "sem cadastro")
-  const gmail = useGmailDoEntregas();
-  const doEntregasPorCodigo = gmail.documentos();
-  const documentoDoCodigo = new Map<number, string>();
-  for (const c of dp.clientes) {
-    const d = c.cadastro?.cnpj || doEntregasPorCodigo.get(c.codigo);
-    if (d) documentoDoCodigo.set(c.codigo, d);
-  }
-  const doEntregas = new Set(dp.clientes.filter(c => !c.cadastro?.cnpj && doEntregasPorCodigo.has(c.codigo)).map(c => c.codigo));
-  // nos exemplos não há cadastro do Entregas: um CNPJ inventado pelo código, para a coluna aparecer (os de código
-  // terminado em 4 ficam sem, para a tela mostrar o cadastro na linha)
-  if (gmail.exemplos) for (const c of dp.clientes) if (!documentoDoCodigo.has(c.codigo) && c.codigo % 10 !== 4) documentoDoCodigo.set(c.codigo, String(c.codigo).padStart(8, '0') + '000100');
+  // o CNPJ/CPF de cada cliente, só os dígitos: o do Cadastro do nads ou, sem ele, o do Entregas (useDocumentosDoDp)
+  const { porCodigo: documentoDoCodigo, doEntregas } = useDocumentosDoDp(dp.clientes);
   // o número que se digita na Identificação (e o erro, quando não confere)
   const [documentoNovo, setDocumentoNovo] = useState({ texto: '', erro: '' });
   // sem CNPJ/CPF em lugar nenhum, digita-se na própria linha (Sávio, 20/10/2026: "não tem como cadastrar"), com a máscara
@@ -76,12 +64,21 @@ export function useConfiguracoesDoDp() {
       // na tela com a máscara (00.000.000/0000-00), como no FGTS; o clique continua copiando só os dígitos (revisão da UI, 16/10/2026)
       documentoNaTela: documentoFormatado(documentoDoCodigo.get(c.codigo) || ''), obrigacoesTexto: c.obrigacoes.length ? (c.obrigacoes as string[]).map(rotuloDe).join(' · ') : 'Nenhuma' }));
   const cliente = aberto != null ? dp.clientes.find(c => c.codigo === aberto) || null : null;
+  const obrigacoes = [...empresas.OBRIGACOES_DP.map(o => ({ id: o.id as string, nome: o.nome, rotulo: o.rotulo })), ...categorias];
   return {
     carregando: !dp.carregado,
     linhas,
     total: dp.clientes.length,
     mudados: dp.clientes.filter(c => c.mudado).length,
-    obrigacoes: [...empresas.OBRIGACOES_DP.map(o => ({ id: o.id as string, nome: o.nome, rotulo: o.rotulo })), ...categorias],
+    obrigacoes,
+    /**
+     * a lista em Excel (10/11/2026: "nas config quero que tenha como exportar tudo para excel"): os clientes da tela (sem
+     * filtro, todos), com todos os parâmetros e uma coluna por obrigação; vale a competência escolhida
+     */
+    exportar() {
+      const p = t.planilhaDasConfiguracoesDoDp(linhas.map(l => ({ ...l, nome: l.nomeNaTela, documento: l.documentoNaTela })), obrigacoes);
+      return { bytes: t.planilhaXlsx('Clientes do DP ' + competencia.slice(5, 7) + '-' + competencia.slice(0, 4), p.cabecalho, p.linhas), nome: 'DP configurações ' + competencia + '.xlsx' };
+    },
     movimentos: empresas.MOVIMENTOS_DP,
     entregas: empresas.ENTREGAS_DP,
     agrupamentos: [...new Set(dp.clientes.map(c => c.agrupamento).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR')),

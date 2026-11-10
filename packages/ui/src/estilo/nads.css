@@ -3425,6 +3425,8 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .dp-tabela .dp-cabeca-grupo th[rowspan]{vertical-align:bottom;padding-top:8px;padding-bottom:8px;border-bottom:1px solid var(--border);}
 .dp-tabela thead th.dp-onde-cab{width:auto;text-align:left;padding-left:8px;padding-right:8px;}
 .dp-tabela .dp-cliente-inteiro .dp-cliente-nome{max-width:none;white-space:normal;overflow:visible;text-overflow:clip;}
+/* o CNPJ/CPF no Início do DP (10/11/2026), no tamanho do Onde */
+.dp-tabela .dp-documento{font-size:var(--fs-12);}
 .cofre-dev{margin:0 0 10px;color:var(--warn);font-size:var(--fs-13);}
 /* Senhas › Contas gov.br: a prévia da importação da planilha */
 .cofre-previa{margin:0 0 16px;padding:0;overflow:hidden;}
