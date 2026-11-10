@@ -77,6 +77,8 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
         try {
           const conteudo = await drive.baixar(a.drive.id, a.drive.nome);
           const lido = await x.lerArquivo(a.drive.nome, new Uint8Array(conteudo), 'banco');
+          // a leitura nova que perderia um mês não troca nada: fica a de antes (como na releitura pelo Drive, logo abaixo)
+          if (x.releituraPerderiaMes(a, lido)) continue;
           relerExtrato(a.id, lido);
           n++;
         } catch { /* sem o robô agora: fica como estava (na próxima vez que abrir, tenta de novo) */ }

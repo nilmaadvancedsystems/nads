@@ -18,6 +18,7 @@ const FICOU_DE_PE_MS = 10 * 60 * 1000;
 const esperaDaVolta = n => Math.min(VOLTA_MAXIMA_MS, VOLTA_MS * Math.pow(2, Math.max(0, n)));
 const quedas = new Map();   // qual -> quedas seguidas (logo depois de ligar)
 const filhos = new Map();
+const pausados = new Set();   // os módulos que a Central dos robôs pausou (o filho que religa volta pausado)
 let parando = false;
 
 function ligarUm(qual, log) {
@@ -29,6 +30,7 @@ function ligarUm(qual, log) {
     windowsHide: true,
   });
   filhos.set(qual, filho);
+  if (pausados.has(qual)) { try { filho.send({ pausa: true }); } catch (e) { /* o pai manda de novo na próxima pausa */ } }
   const ligadoEm = Date.now();
   // as linhas do filho no log do arquivador (cada uma já vem com a data e o [sieg] / [fgts])
   const repassar = fluxo => { let resto = ''; fluxo.on('data', b => { resto += b; const l = resto.split('\n'); resto = l.pop(); for (const x of l) if (x.trim()) process.stdout.write(x + '\n'); }); };
@@ -62,6 +64,13 @@ function ligar(quais, log) {
   for (const q of quais) { painel.modulo(q, NOMES[q] || q, true, 'processo próprio'); ligarUm(q, log); }
 }
 
+/** A pausa da Central dos robôs chegando a um módulo (vale também para o filho que religar depois). */
+function pausar(qual, sim) {
+  if (sim) pausados.add(qual); else pausados.delete(qual);
+  const f = filhos.get(qual);
+  if (f && f.connected) f.send({ pausa: !!sim });
+}
+
 /** Ao desligar o arquivador: avisa os filhos (eles também saem sozinhos quando o canal fecha). */
 function parar() {
   parando = true;
@@ -80,4 +89,4 @@ function pedirSaida(motivo) {
 /** Quantos filhos ainda estão rodando. */
 function vivos() { return filhos.size; }
 
-module.exports = { ligar, parar, pedirSaida, vivos, esperaDaVolta, NOMES };
+module.exports = { ligar, parar, pausar, pedirSaida, vivos, esperaDaVolta, NOMES };

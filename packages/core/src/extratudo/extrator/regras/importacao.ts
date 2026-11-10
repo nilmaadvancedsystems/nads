@@ -19,9 +19,11 @@ import { dataBR } from './texto';
  * do cartão que entrou como extrato sai (09/11/2026); 12 = o "Extrato por período" da Caixa escaneado: o valor com letra do
  * OCR e o saldo que entrava no lugar dele (chamado 03CP5C, 09/11/2026); 13 = o "(+)" do BB, o saldo inicial do Mercado Pago e o
  * Inter e o InfinitePay, que não eram lidos (10/11/2026); 14 = a fatura do cartão que tem "saldo anterior", a do Sicoob, sai
- * (10/11/2026); 15 = a pré-verificação: o que não é extrato da conta sai (10/11/2026).
+ * (10/11/2026); 15 = a pré-verificação: o que não é extrato da conta sai (10/11/2026); 16 = o valor de mil para cima sem o
+ * ponto, a data sem ano no extrato que vira o ano e o histórico que abre com "Total", "Limite", "Resumo" ou "Transporte" e é o
+ * nome de alguém (10/11/2026).
  */
-export const VERSAO_DO_LEITOR = 15;
+export const VERSAO_DO_LEITOR = 16;
 
 export function empresaNova(nome: string): EmpresaExtrator {
   return { nome, arquivos: [], auditoria: [] };
@@ -239,6 +241,16 @@ export function leituraCobreOArquivo(a: ArquivoImportado, lido: ArquivoLido): bo
   const porMes = new Map<string, number>();
   for (const l of a.lancamentos) porMes.set(l.data.slice(0, 7), (porMes.get(l.data.slice(0, 7)) || 0) + 1);
   return [...porMes].every(([m, n]) => n < 3 || lidos.has(m)) && [...porMes.keys()].some(m => lidos.has(m));
+}
+
+/**
+ * A releitura automática apagaria lançamentos bons? Sim, quando a leitura nova traz lançamentos mas não cobre os meses do
+ * arquivo. A leitura sem lançamentos não troca nada (o relerExtrato só marca a versão), e o arquivo que estava vazio pode
+ * receber o que o leitor novo achar; a fatura do cartão continua saindo inteira.
+ */
+export function releituraPerderiaMes(a: ArquivoImportado, lido: ArquivoLido): boolean {
+  if (lido.faturaDeCartao || lido.erro || !lido.lancamentos.length || !a.lancamentos.length) return false;
+  return !leituraCobreOArquivo(a, lido);
 }
 
 /**

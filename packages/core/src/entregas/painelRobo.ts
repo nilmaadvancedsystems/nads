@@ -32,7 +32,7 @@ export interface BatimentoDoRobo {
   /** por tipo de atividade; vazio no robô que ainda não manda */
   ultimos: Record<string, UltimoDoTipo>;
 }
-export interface AtividadeDoRobo { id: string; em: string; robo: IdRobo; maquina: string; tipo: string; texto: string; detalhe: string; erro: boolean }
+export interface AtividadeDoRobo { id: string; em: string; robo: IdRobo; maquina: string; tipo: string; texto: string; detalhe: string; erro: boolean; /** o pedido da fila que deu este erro (o "Refazer" da Central dos robôs); nem todo erro tem */ pedido?: string }
 /** O sinal de vida de antes do painel (para quando o robô ainda não publica o painel). */
 export interface SinalAntigo { em: string; maquina: string; desligadoEm: string }
 
@@ -92,7 +92,7 @@ export function lerBatimento(robo: IdRobo, d: Obj | null | undefined): Batimento
 
 /** Uma linha da atividade como veio do banco. */
 export function lerAtividade(id: string, d: Obj): AtividadeDoRobo {
-  return { id, em: txt(d.em), robo: d.robo === 'vm' ? 'vm' : 'pc', maquina: txt(d.maquina), tipo: txt(d.tipo) || 'robo', texto: txt(d.texto), detalhe: txt(d.detalhe), erro: d.erro === true };
+  return { id, em: txt(d.em), robo: d.robo === 'vm' ? 'vm' : 'pc', maquina: txt(d.maquina), tipo: txt(d.tipo) || 'robo', texto: txt(d.texto), detalhe: txt(d.detalhe), erro: d.erro === true, ...(d.pedido ? { pedido: txt(d.pedido) } : {}) };
 }
 
 export const NOMES_DOS_ROBOS: Record<IdRobo, string> = { pc: 'Robô do PC', vm: 'Robô da nuvem' };

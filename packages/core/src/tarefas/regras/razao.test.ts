@@ -29,6 +29,9 @@ describe('razão da conciliação do Alterdata', () => {
   });
   it('a data em texto também serve; linha sem data ou sem valor fica de fora', () => {
     expect(dataDoRazao('11/02/2026')).toBe('2026-02-11');
+    expect(dataDoRazao('11/02/26')).toBe('2026-02-11');
+    expect(dataDoRazao('2026-02-11')).toBe('2026-02-11');
+    expect(dataDoRazao('11/02/202')).toBe('');
     const r = lerRazao([CAB, ['', '', 'Total', '', '', '', 10, '', '', 0, ''], ['', '', '11/02/2026', '', '40007', 'Rescisoes a Pagar', '10,13', '00118', 'INSS', '2.915,04', '']]);
     expect(r.lancamentos.map(l => [l.data, l.valor, l.saldo])).toEqual([['2026-02-11', 10.13, 2915.04]]);
   });
