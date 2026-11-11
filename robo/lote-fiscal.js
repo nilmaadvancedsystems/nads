@@ -234,6 +234,20 @@ function entregaDoImpresso(cliente, competencia, itens, quem, agora) {
   };
 }
 
+// O documento para comparar, como o chaveDoDocumento do nads: sem acento, sem caixa e sem espaço sobrando
+const chaveDoDocumento = t => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+/**
+ * Quais guias do impresso já estão na rota (11/11/2026: "quero que o modulo não deixe eu colocar algo rota sendo que ja esteja
+ * em rota"), a mesma regra do jaNaRota do nads: o mesmo documento ("DAE ICMS") numa parada do cliente, da mesma competência,
+ * que ainda não foi entregue (na rota ou no link). rotulos: o documento de cada guia; -> [true/false] na mesma ordem.
+ */
+function jaNaRota(rotulos, entregasDoCliente, competencia) {
+  const na = new Set((entregasDoCliente || [])
+    .filter(e => e && e.competencia === competencia && (e.status === 'pendente' || e.status === 'link'))
+    .reduce((l, e) => l.concat((Array.isArray(e.itens) ? e.itens : []).map(i => chaveDoDocumento(i && i.tipo))), []));
+  return rotulos.map(r => na.has(chaveDoDocumento(r)));
+}
+
 /** Os ids dos anexos das guias na entrega: 'guia-das', 'guia-darf-pis', e '-2' quando repete */
 function idsDosAnexos(itens) {
   const usados = new Set();
@@ -322,25 +336,41 @@ async function impresso(db, ref, lote, { codigo, competencia, itens, ativos, gru
   const quem = { email: String(u.email || ''), nome: String(lote.disparadoPor || u.nome || '') };
   const agora = new Date().toISOString();
   const doGuia = itens.map(i => ({ tipo: i.vai.tipo === 'OUTRO' ? '' : i.vai.tipo, tributo: i.vai.tributo, valor: i.vai.valor, vencimento: (i.leitura && i.leitura.vencimento) || '' }));
-  const entregaRef = db.collection('entregas').doc();
-  const batch = db.batch();
-  batch.set(entregaRef, entregaDoImpresso(cliente, competencia, doGuia.map(g => ({ tipo: [g.tipo, g.tributo].filter(Boolean).join(' '), valor: g.valor, vencimento: g.vencimento })), quem, agora));
-  // cada guia anexada (o Entregas lê todo anexo guia-*): o PDF se couber no documento, e o id no Drive sempre que houver
-  idsDosAnexos(doGuia).forEach((id, k) => {
-    const pdf = buffers[k].length <= LIMITE_PDF_ANEXO ? buffers[k].toString('base64') : null;
-    const g = { tipo: (doGuia[k].tipo || 'guia').toLowerCase(), nome: (salvos[k] && salvos[k].nome) || itens[k].vai.nome, driveId: (salvos[k] && salvos[k].id) || '', tamanho: buffers[k].length, em: agora };
-    if (pdf && pdf.length <= LIMITE_PDF_ANEXO) g.pdf = pdf;
-    batch.set(entregaRef.collection('anexos').doc(id), g);
-  });
-  await batch.commit();
-  // o cliente passa a ser do Entregas (o app marca na primeira entrega)
-  if (cliente.entrega !== true) await db.collection('clientes').doc(cliente.id).update({ entrega: true }).catch(() => {});
-  const resultado = { status: 'enviado', para: [], enviadoEm: agora, salvos, entregaId: entregaRef.id, preenchidos: [], erroNoRelatorio: '' };
+  const rotulos = doGuia.map(g => [g.tipo, g.tributo].filter(Boolean).join(' ') || 'Guia');
+  // o que já está na rota desse cliente nessa competência não vai de novo (a guia fica no Drive e no Relatório como sempre)
+  const doCliente = (await db.collection('entregas').where('clienteId', '==', cliente.id).where('competencia', '==', competencia).get())
+    .docs.map(d => Object.assign({ id: d.id }, d.data()));
+  const ja = jaNaRota(rotulos, doCliente, competencia);
+  const vao = doGuia.map((g, k) => k).filter(k => !ja[k]);
+  const jaEstavam = rotulos.filter((r, k) => ja[k]);
+  let entregaId = '';
+  if (vao.length) {
+    const entregaRef = db.collection('entregas').doc();
+    entregaId = entregaRef.id;
+    const batch = db.batch();
+    batch.set(entregaRef, entregaDoImpresso(cliente, competencia, vao.map(k => ({ tipo: rotulos[k], valor: doGuia[k].valor, vencimento: doGuia[k].vencimento })), quem, agora));
+    // cada guia anexada (o Entregas lê todo anexo guia-*): o PDF se couber no documento, e o id no Drive sempre que houver
+    idsDosAnexos(vao.map(k => doGuia[k])).forEach((id, j) => {
+      const k = vao[j];
+      const pdf = buffers[k].length <= LIMITE_PDF_ANEXO ? buffers[k].toString('base64') : null;
+      const g = { tipo: (doGuia[k].tipo || 'guia').toLowerCase(), nome: (salvos[k] && salvos[k].nome) || itens[k].vai.nome, driveId: (salvos[k] && salvos[k].id) || '', tamanho: buffers[k].length, em: agora };
+      if (pdf && pdf.length <= LIMITE_PDF_ANEXO) g.pdf = pdf;
+      batch.set(entregaRef.collection('anexos').doc(id), g);
+    });
+    await batch.commit();
+    // o cliente passa a ser do Entregas (o app marca na primeira entrega)
+    if (cliente.entrega !== true) await db.collection('clientes').doc(cliente.id).update({ entrega: true }).catch(() => {});
+  } else {
+    // tudo já estava na rota: o registro aponta a parada que já está lá
+    const la = doCliente.find(e => (e.status === 'pendente' || e.status === 'link') && (e.itens || []).some(i => rotulos.some(r => chaveDoDocumento(r) === chaveDoDocumento(i && i.tipo))));
+    entregaId = la ? la.id : '';
+  }
+  const resultado = { status: 'enviado', para: [], enviadoEm: agora, salvos, entregaId, jaNaRota: jaEstavam, preenchidos: [], erroNoRelatorio: '' };
   // o registro (a aba "Enviados"), com a via
   const guiasDrive = salvos.filter(x => x.id).map(x => ({ nome: x.nome, id: x.id }));
   await db.collection('solicitacoesEmail').add({
     tipo: 'envioFiscal', via: 'impresso', origem: 'lote', lote: ref.id, grupo, status: 'enviado', competencia, codigo: String(codigo),
-    empresa: String(cliente.nome || '').trim(), arquivos: [], para: [], enviados: itens.map(i => i.vai.nome), entregaId: entregaRef.id,
+    empresa: String(cliente.nome || '').trim(), arquivos: [], para: [], enviados: itens.map(i => i.vai.nome), entregaId, ...(jaEstavam.length ? { jaNaRota: jaEstavam } : {}),
     enviadoEm: agora, criadoEm: agora, criadoPor: lote.disparadoPor || '', criadoPorUid: lote.disparadoPorUid || '', ...(guiasDrive.length ? { guiasDrive } : {}),
   }).catch(() => {});
   try {
@@ -507,6 +537,6 @@ module.exports = {
   iniciarLoteFiscal,
   // puras, pro teste
   colunaDaGuia, colunaDoIcmsDoSimples, camposDaGuiaFiscal, leituraDaGuia, doGuia, gruposFiscais, valoresPorColuna, textoDoValor, diaEmBrasilia, linhaDepoisDoEnvio,
-  diaIso, entregaDoImpresso, idsDosAnexos,
+  diaIso, entregaDoImpresso, idsDosAnexos, jaNaRota,
   MODELO_PADRAO, COLUNAS, COLECAO,
 };
