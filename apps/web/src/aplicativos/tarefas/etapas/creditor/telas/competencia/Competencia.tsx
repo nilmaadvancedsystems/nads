@@ -117,6 +117,9 @@ function ImportarTodos({ vm, comDrive }: { vm: VM; comDrive: boolean }) {
                 <LogoDrive cor /><span className="popover-texto">{restantes ? 'Adicionar restantes do Drive' : 'Todos pelo Drive'}</span>
               </button>
             )}
+            <button type="button" className="popover-item" role="menuitem" disabled={travado || !vm.faltam} onClick={() => { fechar(); vm.semMovimento('*'); }}>
+              <Icone nome="x" /><span className="popover-texto">{restantes ? 'Os restantes não tiveram movimento' : 'Nenhum mês teve movimento'}</span>
+            </button>
             {restantes && (
               <>
                 <hr className="popover-sep" />
@@ -271,13 +274,13 @@ function RelatoriosDoPeriodo({ vm, comDrive }: { vm: VM; comDrive: boolean }) {
           veio cada arquivo e, o que não trouxe título, avisado */}
       {carregados.length > 0 && (
         <FaixaQueAbre titulo={'Lançamentos' + (aberto ? ' de ' + aberto.rotulo : '')} qtd={(aberto ? aberto.titulos : titulos).length}
-          aviso={carregados.some(l => !l.titulos.length)}>
+          aviso={carregados.some(l => !l.titulos.length && !l.semMovimento)}>
           <div className="imp-mov-caixa">
             <ul className="hint" style={{ margin: 0, paddingLeft: 18 }}>
               {carregados.filter(l => !aberto || l.mes === aberto.mes).map(l => (
                 <li key={l.mes}>
-                  <b>{l.rotulo}</b> · {l.origem}{' · '}
-                  {l.titulos.length ? l.titulos.length + (l.titulos.length === 1 ? ' título' : ' títulos')
+                  <b>{l.rotulo}</b>{l.semMovimento ? '' : ' · ' + l.origem}{' · '}
+                  {l.semMovimento ? 'sem movimento' : l.titulos.length ? l.titulos.length + (l.titulos.length === 1 ? ' título' : ' títulos')
                     : <span className="ext-neg">nenhum título lido neste arquivo: confira se é o relatório de liquidação do mês</span>}
                 </li>
               ))}
@@ -293,6 +296,8 @@ function RelatoriosDoPeriodo({ vm, comDrive }: { vm: VM; comDrive: boolean }) {
 /** O relatório de um mês: importado, o check (ou o logo do Drive) que vira o × e exclui; lendo, a rodinha; senão, o importar. */
 function CelulaDoRelatorio({ vm, l, comDrive, direita }: { vm: VM; l: VM['linhas'][number]; comDrive: boolean; direita: boolean }) {
   const arquivo = useRef<HTMLInputElement>(null);
+  // sem movimento: o mesmo "s/ mov." dos extratos; clicar desfaz
+  if (l.semMovimento) return <button type="button" className="imp-mes-sem" disabled={vm.ocupado} onClick={() => vm.desfazerSemMovimento(l.mes)} title="Não teve movimento — clique para desfazer">s/ mov.</button>;
   if (l.carregado) {
     const feito = (
       <button type="button" className={'icon-btn icon-btn-sm imp-btn imp-feito' + (l.doDrive ? ' imp-feito-drive' : '')} onClick={() => vm.excluir(l.mes)}
@@ -336,6 +341,9 @@ function CelulaDoRelatorio({ vm, l, comDrive, direita }: { vm: VM; l: VM['linhas
                 <LogoGmail /><span className="popover-texto">Selecionar no e-mail</span>
               </button>
             )}
+            <button type="button" className="popover-item" role="menuitem" disabled={vm.ocupado} onClick={() => { fechar(); vm.semMovimento(l.mes); }}>
+              <Icone nome="x" /><span className="popover-texto">Não teve movimento</span>
+            </button>
             {vm.exemplos && (
               <button type="button" className="popover-item" role="menuitem" disabled={vm.ocupado} onClick={() => { fechar(); vm.exemplo(l.mes); }}>
                 <Icone nome="fileText" /><span className="popover-texto">Testar com o exemplo</span>
