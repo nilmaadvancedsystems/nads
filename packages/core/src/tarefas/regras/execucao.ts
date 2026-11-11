@@ -7,7 +7,7 @@ import type { Departamento } from '../../usuarios/tipos';
 import { ROTINA_CONTABIL } from '../rotinas/contabil';
 import { ROTINA_DP } from '../rotinas/dp';
 import { ROTINA_FISCAL } from '../rotinas/fiscal';
-import type { Etapa, EstadoEtapa, Evento, Execucao, Rotina, SituacaoEtapa } from '../tipos';
+import type { Etapa, EstadoEtapa, Evento, Execucao, ReaberturaDaRotina, Rotina, SituacaoEtapa } from '../tipos';
 
 /** As etapas que só entram no mês quando outra as adiciona (Etapa.soQuandoAdicionada): o Creditor, pelo caixa. */
 const SO_QUANDO_ADICIONADAS = new Set([...ROTINA_CONTABIL.etapas, ...ROTINA_FISCAL.etapas].filter(e => e.soQuandoAdicionada).map(e => e.id));
@@ -179,6 +179,33 @@ export function voltarPara(ex: Execucao, etapa: string, por: string, agora: Date
   const etapas = { ...ex.etapas };
   delete etapas[etapa];
   return { execucao: { ...ex, etapas, reabertas: { ...(ex.reabertas || {}), [etapa]: em } }, evento: { tipo: 'reaberta', etapa, por, em, observacao: antes } };
+}
+
+/** O que o evento da reabertura da rotina diz (o histórico: Usuários, produtividade). */
+export const ROTINA_REABERTA = 'rotina reaberta';
+
+/**
+ * Reabrir a empresa concluída (11/11/2026: "quando eu termino uma empresa, quero ter a opção de voltar nela: pode ter
+ * faltado algo ou eu quero revisar"): a etapa escolhida volta a ficar pendente, como no voltarPara, e todas as outras
+ * continuam como estão (nada do que foi feito se perde). A execução guarda quem reabriu, quando e por qual etapa
+ * (rotinaReaberta); o evento é o 'reaberta' de sempre, dizendo que foi a rotina inteira que reabriu.
+ * null: a rotina não está concluída, ou a etapa não é dela ou não está concluída (aí é o voltarPara de sempre).
+ */
+export function reabrirRotina(ex: Execucao, rotina: Rotina, etapa: string, por: string, agora: Date): { execucao: Execucao; evento: Evento } | null {
+  if (situacaoGeral(ex, rotina) !== 'concluida' || !rotina.etapas.some(e => e.id === etapa) || !estadoDa(ex, etapa)) return null;
+  const v = voltarPara(ex, etapa, por, agora);
+  return {
+    execucao: { ...v.execucao, rotinaReaberta: { por, em: v.evento.em, etapa } },
+    evento: { ...v.evento, observacao: ROTINA_REABERTA + ' (a etapa estava ' + v.evento.observacao + ')' },
+  };
+}
+
+/**
+ * A reabertura que ainda vale: a rotina foi reaberta e não foi concluída de novo (concluída de novo, a reabertura vira só
+ * história). null: nunca foi reaberta, ou já foi concluída de novo.
+ */
+export function reaberturaEmAberto(ex: Execucao | null, rotina: Rotina): ReaberturaDaRotina | null {
+  return ex?.rotinaReaberta && situacaoGeral(ex, rotina) !== 'concluida' ? ex.rotinaReaberta : null;
 }
 
 /**
