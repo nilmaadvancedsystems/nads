@@ -7,13 +7,15 @@
 // aberto e fica guardado; o mesmo documento importado de novo não duplica; cada linha (e a seleção) escolhe a conta de
 // pagamento (a Conta Credora: o Caixa ou um banco), lembrada para o fornecedor; e o "Puxar do SIEG" traz as notas e os
 // CT-e do mês do resumo que o robô baixa no "Baixar XMLs do SIEG" (pedindo o download quando ainda não há, ou é antigo).
+// Vários meses ao mesmo tempo ("quero poder mexer em mais de um mes ao mesmo tempo"): a lista junta os meses abertos; o
+// que entra vai para o mês da data; o "Puxar do SIEG" puxa cada mês; a planilha sai com todos.
 import { formatos, lcdpr, type tarefas } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { PedidoSieg } from '../../../dados/sieg';
 import { useSieg } from '../../../dados/repo';
 import { useRegrasDoLcdpr } from './useRegrasDoLcdpr';
-import { contasLembradas, lembrarContasDe, lerSessao, mudarMes, mudarTela, trocarLancamentos, useSessaoDoLcdpr, type ImportacaoDoLcdpr } from './useSessaoDoLcdpr';
+import { contasLembradas, lembrarContasDe, lerSessao, mesDoLancamento, mudarCadaMes, mudarMes, mudarTela, trocarLancamentos, useSessaoDoLcdpr } from './useSessaoDoLcdpr';
 
 /** O que dá para desfazer agora (o aviso no topo com o Desfazer). */
 export interface Desfazivel { titulo: string; voltar: () => void }
@@ -40,10 +42,10 @@ export function useLancamentosLcdpr() {
   const [lendo, setLendo] = useState('');
   const [aberto, setAberto] = useState<number | 'novo' | null>(null);
   const [desfazer, setDesfazer] = useState<Desfazivel | null>(null);
-  /** o pedido ao robô que este "Puxar do SIEG" está esperando (o id do pedido de antes do clique, para não pegar o velho) */
-  const [esperandoSieg, setEsperandoSieg] = useState<{ antes: string } | null>(null);
-  /** a nota aberta no espelho (a DANFE; 11/11/2026: "tem que ter como ver a nota (danfe) por aqui") */
-  const [vendo, setVendo] = useState<tarefas.sieg.NotaDoSieg | null>(null);
+  /** os meses à espera do robô no "Puxar do SIEG": o mês → o id do pedido de antes do clique (para não pegar o velho) */
+  const [esperandoSieg, setEsperandoSieg] = useState<Readonly<Record<string, string>>>({});
+  /** a nota aberta (a DANFE; 11/11/2026: "tem que ter como ver a nota (danfe) por aqui") e o mês dela */
+  const [vendo, setVendo] = useState<{ nota: tarefas.sieg.NotaDoSieg; competencia: string } | null>(null);
 
   const falhou = (msg: string) => aviso({ tom: 'erro', titulo: 'Não gravou o mês do LCDPR', texto: msg });
   const lancs = s.lancamentos;
@@ -53,14 +55,21 @@ export function useLancamentosLcdpr() {
   const visiveis = lcdpr.lancamentosVisiveis(lancs, { busca: s.busca, soRevisar: s.soRevisar });
   const contas = lcdpr.contasDePagamento(r.config);
   const padrao = r.config.config.contaCredoraPadrao;
-  const situacao = lcdpr.situacaoDoMes(s.mes);
+  const varios = s.meses.length > 1;
+  // a situação: a de cada mês e a de todos juntos (baixada só quando todos os meses com lançamento foram baixados)
+  const comLancamento = s.porMes.filter(m => m.lancamentos.length);
+  const situacao = lcdpr.situacaoDoMes({ lancamentos: [...lancs], baixadaEm: comLancamento.length && comLancamento.every(m => m.baixadaEm) ? 'sim' : '' });
+  const unico = s.porMes.length === 1 ? s.porMes[0] : null;
+  const ultimo = [...s.porMes].sort((a, b) => b.atualizadoEm.localeCompare(a.atualizadoEm))[0];
 
-  // o SIEG do mês: o resumo que o robô baixou e o pedido de baixar
+  // o SIEG de cada mês aberto: o resumo que o robô baixou e o pedido de baixar
   const codigo = s.empresa != null ? String(s.empresa) : '';
   const robo = sieg.robo();
-  const notas = codigo ? sieg.notas(codigo, s.competencia) : { carregadas: true, dados: null };
-  const pedido = codigo ? sieg.pedido(codigo, s.competencia, 'xmls') : null;
-  const baixando = rodando(pedido);
+  const doSieg = s.meses.map(mes => ({ mes, notas: codigo ? sieg.notas(codigo, mes).dados : null, pedido: codigo ? sieg.pedido(codigo, mes, 'xmls') : null }));
+  const baixandoMeses = doSieg.filter(x => rodando(x.pedido) || x.mes in esperandoSieg);
+  const baixando = baixandoMeses.length > 0;
+  const notasDoMes = (mes: string) => doSieg.find(x => x.mes === mes)?.notas || null;
+  const servem = doSieg.filter(x => lcdpr.resumoServeParaOLcdpr(x.notas));
 
   /** a categoria em vários de uma vez, com o Desfazer (aplicar em lote reescrevia 200 linhas sem volta) */
   const classificar = (ids: readonly number[], categoria: string) => {
@@ -95,58 +104,73 @@ export function useLancamentosLcdpr() {
     const atual = r.atual();
     const nova = { ...atual, ncmRules: [...atual.ncmRules, sug.regra] };
     if (!(await r.gravar(nova))) return;
-    mudarMes(m => ({ ...m, lancamentos: lcdpr.aplicarRegraNosPendentes(m.lancamentos, sug.regra, nova.categorias) }), falhou);
+    mudarCadaMes(m => ({ ...m, lancamentos: lcdpr.aplicarRegraNosPendentes(m.lancamentos, sug.regra, nova.categorias) }), falhou);
     toast('Regra criada para o NCM ' + sug.regra.prefixo + '.');
   };
 
-  /** junta os lançamentos lidos no mês (os repetidos não entram; a conta lembrada do fornecedor já vem) e registra a leitura */
-  const juntar = (arquivo: string, bytes: number, lidos: lcdpr.Lancamento[], erro = ''): { entraram: number; repetidos: number } => {
+  /**
+   * Junta os lançamentos lidos, cada um no mês da data (sem data, ou fora dos meses abertos, no `padrao`): os repetidos não
+   * entram, a conta lembrada do fornecedor já vem, e cada mês registra a leitura.
+   */
+  const juntar = (arquivo: string, bytes: number, lidos: lcdpr.Lancamento[], padrao: string): { entraram: number; repetidos: number } => {
     let entraram = 0, repetidos = 0;
-    mudarMes(m => {
-      // os ids continuam os do mês (o que veio do arquivo é renumerado depois dos guardados)
-      let proximo = lcdpr.proximoIdDoMes(m.lancamentos);
-      const novos = lcdpr.comContaDosFornecedores(lidos, contasLembradas()).map(l => ({ ...l, id: proximo++ }));
-      const j = lcdpr.juntarNoMes(m.lancamentos, novos);
-      entraram = j.entraram.length;
-      repetidos = j.repetidos;
-      const imp: ImportacaoDoLcdpr = { id: novoId(), arquivo, bytes, em: new Date().toISOString(), quantos: entraram, repetidos, erro, ids: j.entraram.map(l => l.id), desfeita: '', por: '' };
-      return { ...m, lancamentos: j.lancamentos, importacoes: [imp, ...m.importacoes].slice(0, lcdpr.IMPORTACOES_GUARDADAS) };
-    }, falhou);
+    for (const [mes, doMes] of lcdpr.porMes(lidos, lerSessao().meses, padrao)) {
+      mudarMes(mes, m => {
+        // os ids são os do mês (o que veio do arquivo é renumerado depois dos guardados)
+        let proximo = lcdpr.proximoIdDoMes(m.lancamentos, mes);
+        const novos = lcdpr.comContaDosFornecedores(doMes, contasLembradas()).map(l => ({ ...l, id: proximo++ }));
+        const j = lcdpr.juntarNoMes(m.lancamentos, novos);
+        entraram += j.entraram.length;
+        repetidos += j.repetidos;
+        const imp: lcdpr.ImportacaoDoMes = { id: novoId(), arquivo, bytes, em: new Date().toISOString(), quantos: j.entraram.length, repetidos: j.repetidos, erro: '', ids: j.entraram.map(l => l.id), desfeita: '', por: '' };
+        return { ...m, lancamentos: j.lancamentos, importacoes: [imp, ...m.importacoes].slice(0, lcdpr.IMPORTACOES_GUARDADAS) };
+      }, falhou);
+    }
     return { entraram, repetidos };
   };
 
   const registrarErro = (arquivo: string, bytes: number, erro: string) => {
-    const imp: ImportacaoDoLcdpr = { id: novoId(), arquivo, bytes, em: new Date().toISOString(), quantos: 0, repetidos: 0, erro, ids: [], desfeita: '', por: '' };
-    mudarMes(m => ({ ...m, importacoes: [imp, ...m.importacoes].slice(0, lcdpr.IMPORTACOES_GUARDADAS) }), falhou);
+    const imp: lcdpr.ImportacaoDoMes = { id: novoId(), arquivo, bytes, em: new Date().toISOString(), quantos: 0, repetidos: 0, erro, ids: [], desfeita: '', por: '' };
+    mudarMes(lerSessao().competencia, m => ({ ...m, importacoes: [imp, ...m.importacoes].slice(0, lcdpr.IMPORTACOES_GUARDADAS) }), falhou);
   };
 
-  /** as notas do resumo do SIEG viram lançamentos do mês */
-  const doResumo = (n: NonNullable<typeof notas.dados>) => {
+  /** as notas do resumo do SIEG de um mês viram lançamentos dele */
+  const doResumo = (n: tarefas.sieg.NotasSieg, mes: string) => {
     const lido = lcdpr.lerDoSieg(n, r.atual(), (() => { let i = 1; return () => i++; })());
-    const { entraram, repetidos } = juntar('SIEG (' + lido.notas + ' nota(s) e ' + lido.fretes + ' CT-e)', 0, lido.lancamentos);
+    const { entraram, repetidos } = juntar('SIEG (' + lido.notas + ' nota(s) e ' + lido.fretes + ' CT-e)', 0, lido.lancamentos, mes);
     const fora = [lido.canceladas ? lido.canceladas + ' cancelada(s)' : '', lido.entradas ? lido.entradas + ' nota(s) de entrada (venda)' : ''].filter(Boolean).join(' e ');
-    toast(entraram + ' lançamento(s) do SIEG' + (repetidos ? '; ' + repetidos + ' já estavam no mês' : '') + (fora ? '; ficaram de fora ' + fora : '') + '.');
+    toast((varios ? formatos.mesCurto(mes) + ': ' : '') + entraram + ' lançamento(s) do SIEG' + (repetidos ? '; ' + repetidos + ' já estavam no mês' : '') + (fora ? '; ficaram de fora ' + fora : '') + '.');
     if (lido.semItens) aviso({ tom: 'info', titulo: 'O SIEG veio sem os itens das notas', texto: 'O mês tem notas demais para o resumo guardar os itens: as notas entraram em REVISAR (sem o NCM para classificar).' });
   };
 
-  // o pedido ao robô terminou: as notas novas entram (uma vez)
-  const pedidoRef = useRef(pedido);
-  pedidoRef.current = pedido;
+  // o pedido de um mês terminou: as notas novas entram (uma vez)
+  const situacaoDosPedidos = doSieg.map(x => x.mes + ':' + (x.pedido ? (x.pedido.id || x.pedido.em) + x.pedido.status : '') + ':' + (x.notas?.em || '')).join('|');
   useEffect(() => {
-    if (!esperandoSieg || !pedido || (pedido.id || pedido.em) === esperandoSieg.antes) return;
-    if (pedido.status === 'erro') { setEsperandoSieg(null); aviso({ tom: 'erro', titulo: 'O robô não baixou do SIEG', texto: pedido.erro || 'Tente de novo.' }); return; }
-    if (pedido.status !== 'concluido' || !notas.dados) return;
-    setEsperandoSieg(null);
-    if (!lcdpr.resumoServeParaOLcdpr(notas.dados)) { aviso({ tom: 'info', titulo: 'O robô ainda é o antigo', texto: 'As notas vieram sem o produto, a IE da fazenda e o tipo da nota. Atualize o robô e puxe de novo.' }); return; }
-    doResumo(notas.dados);
+    for (const [mes, antes] of Object.entries(esperandoSieg)) {
+      const x = doSieg.find(d => d.mes === mes);
+      const p = x?.pedido;
+      if (!x || !p || (p.id || p.em) === antes) continue;
+      const tirar = () => setEsperandoSieg(e => { const n = { ...e }; delete n[mes]; return n; });
+      if (p.status === 'erro') { tirar(); aviso({ tom: 'erro', titulo: 'O robô não baixou ' + formatos.mesCurto(mes) + ' do SIEG', texto: p.erro || 'Tente de novo.' }); continue; }
+      if (p.status !== 'concluido' || !x.notas) continue;
+      tirar();
+      if (!lcdpr.resumoServeParaOLcdpr(x.notas)) { aviso({ tom: 'info', titulo: 'O robô ainda é o antigo', texto: 'As notas vieram sem o produto, a IE da fazenda e o tipo da nota. Atualize o robô e puxe de novo.' }); continue; }
+      doResumo(x.notas, mes);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [esperandoSieg, pedido?.status, pedido?.id, pedido?.em, notas.dados]);
+  }, [esperandoSieg, situacaoDosPedidos]);
+  const emAndamento = baixandoMeses.find(x => rodando(x.pedido)) || baixandoMeses[0];
 
   return {
     carregada: r.carregada && s.carregado, erro: r.erro || s.erro, exemplos: r.exemplos,
-    competencia: s.competencia ? formatos.rot(s.competencia) : '',
-    situacao: { rotulo: situacao.rotulo, classe: SITUACAO[situacao.situacao], baixada: s.mes.baixadaEm ? 'Baixada em ' + dataHora(s.mes.baixadaEm) + (s.mes.baixadaPor ? ' por ' + s.mes.baixadaPor : '') : '' },
-    salvo: s.salvando ? 'Salvando…' : s.mes.atualizadoEm ? 'Salvo ' + dataHora(s.mes.atualizadoEm) + (s.mes.atualizadoPor ? ' por ' + s.mes.atualizadoPor : '') : '',
+    competencia: varios ? s.meses.map(formatos.mesCurto).join(', ') : s.competencia ? formatos.rot(s.competencia) : '',
+    situacao: {
+      rotulo: situacao.rotulo, classe: SITUACAO[situacao.situacao],
+      baixada: unico?.baixadaEm ? 'Baixada em ' + dataHora(unico.baixadaEm) + (unico.baixadaPor ? ' por ' + unico.baixadaPor : '') : '',
+    },
+    /** com vários meses: a situação de cada um */
+    meses: varios ? s.porMes.map(m => { const x = lcdpr.situacaoDoMes(m); return { mes: m.competencia, rotulo: formatos.mesCurto(m.competencia), situacao: x.rotulo, classe: SITUACAO[x.situacao] }; }) : [],
+    salvo: s.salvando ? 'Salvando…' : ultimo?.atualizadoEm ? 'Salvo ' + dataHora(ultimo.atualizadoEm) + (ultimo.atualizadoPor ? ' por ' + ultimo.atualizadoPor : '') : '',
     total, revisar, classificados: total - revisar,
     valor: formatos.reais(valor),
     pronto: total > 0 && revisar === 0,
@@ -159,18 +183,21 @@ export function useLancamentosLcdpr() {
     /** as contas de pagamento (o Caixa e os bancos), para a coluna Conta e o "Pagar com" da seleção */
     contas: contas.map(c => ({ valor: c.codigo, rotulo: c.codigo + ' — ' + c.nome })),
 
+    /** a coluna do mês (só com vários meses abertos) */
+    varios,
     linhas: visiveis.map(l => ({
+      mes: formatos.mesCurto(mesDoLancamento(l.id)),
       id: l.id, origem: l.origem === 'NF' ? 'NF' : l.origem === 'CTe' ? 'CT-e' : 'À mão', revisar: l.revisar, regra: ROTULO_DA_REGRA[l.origemRegra],
       categoria: l.categoria, data: lcdpr.dataBr(l.data), fornecedor: l.fornecedor, documento: l.documento, valor: formatos.brl(Number(l.valor) || 0),
       conta: l.contaCred,
       /** a conta que não está mais entre as de pagamento aparece como está */
       contaFora: !!l.contaCred && !contas.some(c => c.codigo === l.contaCred),
       /** a nota está no resumo do SIEG do mês (dá para abrir a DANFE) */
-      temNota: !!lcdpr.notaDoLancamento(l, notas.dados),
+      temNota: !!lcdpr.notaDoLancamento(l, notasDoMes(mesDoLancamento(l.id))),
       selecionado: s.selecionados.has(l.id),
     })),
     importacoes: s.importacoes.map(i => ({
-      id: i.id, arquivo: i.arquivo, em: dataHora(i.em), erro: i.erro,
+      id: i.id, arquivo: (varios ? formatos.mesCurto(i.mes) + ' · ' : '') + i.arquivo, em: dataHora(i.em), erro: i.erro,
       resultado: i.erro || i.quantos + ' lançamento(s)' + (i.repetidos ? ' · ' + i.repetidos + ' já estavam' : ''),
       podeDesfazer: i.ids.length > 0, desfeita: !!i.desfeita,
     })),
@@ -180,20 +207,31 @@ export function useLancamentosLcdpr() {
       /** o robô está ligado (com as credenciais do SIEG) */
       ligado: robo.ligado,
       motivo: robo.ligado ? '' : robo.motivo || 'O robô do SIEG está desligado.',
-      baixando: baixando || !!esperandoSieg,
-      /** o passo do robô (uma linha) e a porcentagem (null = ainda sem número) */
-      andamento: baixando && pedido ? pedido.andamento || 'O robô pegou o pedido' : esperandoSieg ? 'Pedido enviado ao robô' : '',
-      pct: baixando && pedido && typeof pedido.pct === 'number' ? Math.max(2, Math.min(99, Math.round(pedido.pct))) : null,
-      /** as notas do mês já baixadas e prontas para o LCDPR (quando) */
-      baixadasEm: notas.dados && lcdpr.resumoServeParaOLcdpr(notas.dados) ? dataHora(notas.dados.em) : '',
+      baixando,
+      /** o passo do robô (uma linha; com vários meses, de qual) e a porcentagem (null = ainda sem número) */
+      andamento: !emAndamento ? '' : (varios ? formatos.mesCurto(emAndamento.mes) + (baixandoMeses.length > 1 ? ' (+' + (baixandoMeses.length - 1) + ')' : '') + ' · ' : '')
+        + (rodando(emAndamento.pedido) ? emAndamento.pedido?.andamento || 'O robô pegou o pedido' : 'Pedido enviado ao robô'),
+      pct: emAndamento && rodando(emAndamento.pedido) && typeof emAndamento.pedido?.pct === 'number' ? Math.max(2, Math.min(99, Math.round(emAndamento.pedido.pct))) : null,
+      /** as notas de todos os meses abertos já baixadas e prontas para o LCDPR (a mais recente) */
+      baixadasEm: servem.length === doSieg.length && servem.length ? dataHora(servem.map(x => x.notas?.em || '').sort().slice(-1)[0]) : '',
     },
-    /** traz as notas do SIEG: do resumo do mês (já baixado pelo robô novo) ou pedindo ao robô (de novo = baixar outra vez) */
+    /** traz as notas do SIEG de cada mês aberto: do resumo já baixado pelo robô novo, ou pedindo ao robô (de novo = baixar outra vez) */
     async puxarDoSieg(deNovo = false) {
-      if (!codigo || !r.carregada || baixando || esperandoSieg) return;
-      if (!deNovo && notas.dados && lcdpr.resumoServeParaOLcdpr(notas.dados)) { doResumo(notas.dados); return; }
+      if (!codigo || !r.carregada || baixando) return;
+      const pedir: string[] = [];
+      for (const x of doSieg) {
+        if (!deNovo && x.notas && lcdpr.resumoServeParaOLcdpr(x.notas)) doResumo(x.notas, x.mes);
+        else pedir.push(x.mes);
+      }
+      if (!pedir.length) return;
       if (!robo.ligado) { aviso({ tom: 'erro', titulo: 'O robô do SIEG está desligado', texto: robo.motivo || 'Sem o robô não dá para baixar as notas. Importe os relatórios do SIEG.' }); return; }
-      setEsperandoSieg({ antes: pedidoRef.current ? pedidoRef.current.id || pedidoRef.current.em : '' });
-      try { await sieg.pedirXmls(codigo, s.competencia); } catch (e) { setEsperandoSieg(null); aviso({ tom: 'erro', titulo: 'Não pediu ao robô', texto: e instanceof Error ? e.message : String(e) }); }
+      setEsperandoSieg(Object.fromEntries(pedir.map(mes => { const p = doSieg.find(x => x.mes === mes)?.pedido; return [mes, p ? p.id || p.em : '']; })));
+      for (const mes of pedir) {
+        try { await sieg.pedirXmls(codigo, mes); } catch (e) {
+          setEsperandoSieg(x => { const n = { ...x }; delete n[mes]; return n; });
+          aviso({ tom: 'erro', titulo: 'Não pediu ao robô (' + formatos.mesCurto(mes) + ')', texto: e instanceof Error ? e.message : String(e) });
+        }
+      }
     },
 
     /** lê os relatórios escolhidos (um de cada vez, dizendo em qual está) */
@@ -211,7 +249,7 @@ export function useLancamentosLcdpr() {
             if (lido.tipo === 'desconhecido') aviso({ tom: 'erro', titulo: 'Arquivo "' + f.name + '" não reconhecido', texto: lido.erro === 'planilha vazia' ? 'A planilha está vazia.' : 'Não é o Relatório de Detalhamento de Produtos nem o de CT-e do SIEG.' });
             continue;
           }
-          const j = juntar(f.name, f.size, lido.lancamentos);
+          const j = juntar(f.name, f.size, lido.lancamentos, lerSessao().competencia);
           somados += j.entraram;
           repetidos += j.repetidos;
         } catch (e) {
@@ -230,12 +268,12 @@ export function useLancamentosLcdpr() {
       const imp = lerSessao().importacoes.find(i => i.id === id);
       if (!imp || !imp.ids.length) return;
       const ok = await modal({
-        icone: 'alert', titulo: 'Desfazer esta importação?', texto: 'Saem do mês os ' + imp.ids.length + ' lançamento(s) que vieram de "' + imp.arquivo + '", com o que foi mudado neles.',
+        icone: 'alert', titulo: 'Desfazer esta importação?', texto: 'Saem de ' + formatos.rot(imp.mes) + ' os ' + imp.ids.length + ' lançamento(s) que vieram de "' + imp.arquivo + '", com o que foi mudado neles.',
         botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Desfazer', valor: true, variante: 'btn-danger' }],
       });
       if (!ok) return;
       const fora = new Set(imp.ids);
-      mudarMes(m => ({
+      mudarMes(imp.mes, m => ({
         ...m, lancamentos: m.lancamentos.filter(l => !fora.has(l.id)),
         importacoes: m.importacoes.map(i => (i.id === id ? { ...i, ids: [], desfeita: new Date().toISOString() } : i)),
       }), falhou);
@@ -258,8 +296,8 @@ export function useLancamentosLcdpr() {
         if (!ok) return;
       }
       baixarBytes(lcdpr.planilhaDoLcdpr(todos), lcdpr.NOME_DA_PLANILHA, 'application/vnd.ms-excel');
-      // o mês fica como "planilha baixada" (até mudar algum lançamento)
-      if (!pendentes.length) mudarMes(m => ({ ...m, baixadaEm: new Date().toISOString(), baixadaPor: '' }), falhou);
+      // cada mês com lançamento fica como "planilha baixada" (até mudar algum lançamento)
+      if (!pendentes.length) mudarCadaMes(m => (m.lancamentos.length ? { ...m, baixadaEm: new Date().toISOString(), baixadaPor: '' } : m), falhou);
     },
 
     /** a categoria de uma linha (e a regra sugerida) */
@@ -297,11 +335,11 @@ export function useLancamentosLcdpr() {
     // a nota (a DANFE) de um lançamento
     vendo,
     empresa: codigo,
-    competenciaDoMes: s.competencia,
     verNota: (id: number) => {
       const l = lerSessao().lancamentos.find(x => x.id === id);
-      const n = l ? lcdpr.notaDoLancamento(l, notas.dados) : null;
-      if (n) setVendo(n);
+      const mes = mesDoLancamento(id);
+      const n = l ? lcdpr.notaDoLancamento(l, notasDoMes(mes)) : null;
+      if (n) setVendo({ nota: n, competencia: mes });
     },
     fecharNota: () => setVendo(null),
 

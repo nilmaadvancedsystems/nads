@@ -19,9 +19,9 @@ export function LancamentosLcdpr() {
   return (
     <>
       {vm.aberto !== null && <JanelaDoLancamento key={vm.aberto} id={vm.aberto} fechar={vm.fechar} />}
-      {vm.vendo && (vm.vendo.tipo === 'CT-e'
-        ? <EspelhoDaNota nota={vm.vendo} codigo={vm.empresa} competencia={vm.competenciaDoMes} fechar={vm.fecharNota} />
-        : <JanelaDaDanfe nota={vm.vendo} codigo={vm.empresa} competencia={vm.competenciaDoMes} fechar={vm.fecharNota} />)}
+      {vm.vendo && (vm.vendo.nota.tipo === 'CT-e'
+        ? <EspelhoDaNota nota={vm.vendo.nota} codigo={vm.empresa} competencia={vm.vendo.competencia} fechar={vm.fecharNota} />
+        : <JanelaDaDanfe nota={vm.vendo.nota} codigo={vm.empresa} competencia={vm.vendo.competencia} fechar={vm.fecharNota} />)}
       {vm.desfazer && (
         <Alerta tom="ok" titulo={vm.desfazer.titulo} onFechar={vm.esquecerDesfazer}>
           <div className="btn-row"><button type="button" className="btn" onClick={vm.voltarDesfeito}><Icone nome="girar" />Desfazer</button></div>
@@ -34,6 +34,9 @@ export function LancamentosLcdpr() {
           <span className={'bolinha-sit ' + vm.situacao.classe} aria-hidden="true" />
           <b>{vm.competencia}</b> · {vm.situacao.rotulo}{vm.situacao.baixada ? ' · ' + vm.situacao.baixada : ''}
         </span>
+        {vm.meses.map(m => (
+          <span key={m.mes} className="lcdpr-mes-chip" title={m.situacao}><span className={'bolinha-sit ' + m.classe} aria-hidden="true" />{m.rotulo}</span>
+        ))}
         {vm.salvo && <span className="hint">{vm.salvo}</span>}
         <span className="tarefas-barra-espaco" />
         {vm.sieg.baixando ? (
@@ -121,7 +124,7 @@ export function LancamentosLcdpr() {
               <thead>
                 <tr>
                   <th className="lcdpr-marca"><input type="checkbox" checked={vm.todosVisiveisMarcados} onChange={e => vm.marcarVisiveis(e.target.checked)} aria-label="Selecionar os visíveis" /></th>
-                  <th>Situação</th><th>Categoria</th><th>Pago com</th><th>Data</th><th>Fornecedor</th><th>Documento</th><th className="num">Valor</th>
+                  <th>Situação</th><th>Categoria</th><th>Pago com</th>{vm.varios && <th>Mês</th>}<th>Data</th><th>Fornecedor</th><th>Documento</th><th className="num">Valor</th>
                 </tr>
               </thead>
               <tbody>
@@ -150,6 +153,7 @@ export function LancamentosLcdpr() {
                         {vm.contas.map(c => <option key={c.valor} value={c.valor}>{c.rotulo}</option>)}
                       </select>
                     </td>
+                    {vm.varios && <td className="fraco">{l.mes}</td>}
                     <td className="num fraco">{l.data}</td>
                     <td><span className="lcdpr-corta" title={l.fornecedor}>{l.fornecedor}</span></td>
                     <td className="num">
@@ -166,7 +170,7 @@ export function LancamentosLcdpr() {
                     <td className="num">{l.valor}</td>
                   </tr>
                 ))}
-                {!vm.linhas.length && <tr><td colSpan={8}><Vazio compacto texto="Nenhum lançamento com isso." /></td></tr>}
+                {!vm.linhas.length && <tr><td colSpan={vm.varios ? 9 : 8}><Vazio compacto texto="Nenhum lançamento com isso." /></td></tr>}
               </tbody>
             </table>
           </div>
@@ -175,7 +179,7 @@ export function LancamentosLcdpr() {
 
       {vm.importacoes.length > 0 && (
         <div className="card lcdpr-arquivos">
-          <div className="card-head"><h3>Importados no mês</h3><span className="badge badge-neutral">{vm.importacoes.length}</span></div>
+          <div className="card-head"><h3>{vm.varios ? 'Importados nos meses' : 'Importados no mês'}</h3><span className="badge badge-neutral">{vm.importacoes.length}</span></div>
           <div className="table-wrap">
             <table className="cad-lista">
               <thead><tr><th>Arquivo</th><th>Lido em</th><th>Resultado</th><th /></tr></thead>

@@ -5,7 +5,7 @@ import { formatos, lcdpr } from '@nads/core';
 import { baixarArquivo, useRetorno } from '@nads/ui';
 import { useLcdpr } from '../../../dados/repo';
 import { useRegrasDoLcdpr } from './useRegrasDoLcdpr';
-import { mudarMes, mudarTela, useSessaoDoLcdpr } from './useSessaoDoLcdpr';
+import { mudarCadaMes, mudarTela, useSessaoDoLcdpr } from './useSessaoDoLcdpr';
 
 type CampoGeral = keyof lcdpr.ConfigGeral;
 const opcoes = (lista: readonly lcdpr.CodigoDescricao[]) => lista.map(t => ({ valor: t.codigo, rotulo: t.codigo + ' — ' + t.descricao }));
@@ -70,11 +70,11 @@ export function useConfiguracaoLcdpr() {
     },
     async limparLancamentos() {
       const ok = await modal({
-        icone: 'alert', titulo: 'Remover todos os lançamentos de ' + formatos.rot(s.competencia) + '?', texto: 'Saem do mês guardado. As regras, os cadastros e os outros meses continuam.',
+        icone: 'alert', titulo: 'Remover todos os lançamentos de ' + s.meses.map(formatos.rot).join(', ') + '?', texto: 'Saem dos meses abertos. As regras, os cadastros e os outros meses continuam.',
         botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Remover tudo', valor: true, variante: 'btn-danger' }],
       });
       if (!ok) return;
-      mudarMes(x => ({ ...x, lancamentos: [], importacoes: x.importacoes.map(i => ({ ...i, ids: [] })) }), msg => aviso({ tom: 'erro', titulo: 'Não gravou o mês do LCDPR', texto: msg }));
+      mudarCadaMes(x => ({ ...x, lancamentos: [], importacoes: x.importacoes.map(i => ({ ...i, ids: [] })) }), msg => aviso({ tom: 'erro', titulo: 'Não gravou o mês do LCDPR', texto: msg }));
       mudarTela(x => ({ ...x, selecionados: new Set() }));
       toast('Lançamentos do mês removidos.');
     },

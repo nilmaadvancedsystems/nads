@@ -140,12 +140,13 @@ export function mudarNoRascunho(r: RascunhoDoLancamento, campo: keyof RascunhoDo
   return { ...novo, historico: preencher(modelo, { documento: novo.documento, fornecedor: novo.fornecedor, cnpj: novo.cnpj }) };
 }
 
-/** O que falta (ou está errado) para gravar; vazio = pode gravar. A data tem que ser do mês aberto. */
-export function problemasDoRascunho(r: RascunhoDoLancamento, competencia: string): string[] {
+/** O que falta (ou está errado) para gravar; vazio = pode gravar. A data tem que ser de um dos meses abertos. */
+export function problemasDoRascunho(r: RascunhoDoLancamento, meses: string | readonly string[]): string[] {
   const p: string[] = [];
+  const abertos = (typeof meses === 'string' ? [meses] : [...meses]).filter(Boolean);
   const data = dataDaCelula(r.data);
   if (!data) p.push('a data (dd/mm/aaaa)');
-  else if (competencia && data.slice(0, 7) !== competencia) p.push('a data dentro de ' + competencia.slice(5) + '/' + competencia.slice(0, 4));
+  else if (abertos.length && !abertos.includes(data.slice(0, 7))) p.push('a data dentro de ' + abertos.map(c => c.slice(5) + '/' + c.slice(0, 4)).join(' ou '));
   if (!(numeroDaCelula(r.valor) > 0)) p.push('o valor');
   if (!r.contaDeved.trim()) p.push('a conta devedora');
   if (!r.contaCred.trim()) p.push('a conta credora');

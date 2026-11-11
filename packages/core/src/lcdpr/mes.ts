@@ -49,10 +49,26 @@ const numero = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v 
 const obj = (v: unknown): Record<string, unknown> => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {});
 const REGRAS: readonly OrigemDaRegra[] = ['NCM', 'Padrão CT-e', 'Manual', 'Nenhuma'];
 
-/** Um lançamento guardado no banco (o que não é lançamento fica de fora). */
-export function lancamentoGuardado(v: unknown): Lancamento | null {
+/**
+ * Mais de um mês aberto ao mesmo tempo (11/11/2026: "quero poder mexer em mais de um mes ao mesmo tempo"): o id do
+ * lançamento diz o mês — aaaamm × 10000 + o número no mês (2026100001 é o 1º de 10/2026). Os guardados antes (1, 2, 3…)
+ * ganham a base do mês ao serem lidos.
+ */
+export const baseDoMes = (competencia: string): number => (Number(String(competencia).replace('-', '')) || 0) * 10000;
+
+/** O mês (aaaa-mm) de um id ('' quando o id não tem o mês). */
+export function mesDoId(id: number): string {
+  const m = Math.floor(id / 10000);
+  return m >= 190001 ? String(m).slice(0, 4) + '-' + String(m).slice(4, 6) : '';
+}
+
+/** O id com a base do mês (o que já tem fica igual). */
+const comBase = (id: number, base: number) => (id > 0 && base && id < base ? base + id : id > 0 ? id : 0);
+
+/** Um lançamento guardado no banco (o que não é lançamento fica de fora); com a competência, o id ganha a base do mês. */
+export function lancamentoGuardado(v: unknown, competencia = ''): Lancamento | null {
   const o = obj(v);
-  const id = numero(o.id);
+  const id = comBase(numero(o.id), competencia ? baseDoMes(competencia) : 0);
   if (!id) return null;
   const origem: OrigemDoDocumento = o.origem === 'CTe' || o.origem === 'Manual' ? o.origem : 'NF';
   const origemRegra = REGRAS.includes(o.origemRegra as OrigemDaRegra) ? (o.origemRegra as OrigemDaRegra) : 'Nenhuma';
@@ -68,12 +84,13 @@ export function lancamentoGuardado(v: unknown): Lancamento | null {
 /** O mês lido do banco (sem o documento, o mês vazio). */
 export function mesDoDocumento(d: unknown, empresa: number, competencia: string): MesDoLcdpr {
   const o = obj(d);
-  const lancamentos = (Array.isArray(o.lancamentos) ? o.lancamentos : []).map(lancamentoGuardado).filter((l): l is Lancamento => !!l);
+  const base = baseDoMes(competencia);
+  const lancamentos = (Array.isArray(o.lancamentos) ? o.lancamentos : []).map(v => lancamentoGuardado(v, competencia)).filter((l): l is Lancamento => !!l);
   const importacoes = (Array.isArray(o.importacoes) ? o.importacoes : []).map(v => {
     const i = obj(v);
     return {
       id: texto(i.id, 80), arquivo: texto(i.arquivo, 200), bytes: numero(i.bytes), em: texto(i.em, 40), quantos: numero(i.quantos), repetidos: numero(i.repetidos),
-      erro: texto(i.erro, 300), ids: (Array.isArray(i.ids) ? i.ids : []).map(numero).filter(Boolean), desfeita: texto(i.desfeita, 40), por: texto(i.por, 100),
+      erro: texto(i.erro, 300), ids: (Array.isArray(i.ids) ? i.ids : []).map(numero).filter(Boolean).map(id => comBase(id, base)), desfeita: texto(i.desfeita, 40), por: texto(i.por, 100),
     };
   }).filter(i => i.id);
   return {
@@ -87,8 +104,38 @@ export function documentoDoMes(m: MesDoLcdpr): Record<string, unknown> {
   return JSON.parse(JSON.stringify({ ...m, importacoes: m.importacoes.slice(0, IMPORTACOES_GUARDADAS) })) as Record<string, unknown>;
 }
 
-/** O id do próximo lançamento do mês (não repete os que estão guardados). */
-export const proximoIdDoMes = (lancs: readonly Pick<Lancamento, 'id'>[]): number => lancs.reduce((n, l) => Math.max(n, l.id), 0) + 1;
+/** O id do próximo lançamento do mês (com a base do mês; não repete os que estão guardados). */
+export const proximoIdDoMes = (lancs: readonly Pick<Lancamento, 'id'>[], competencia = ''): number => lancs.reduce((n, l) => Math.max(n, l.id), competencia ? baseDoMes(competencia) : 0) + 1;
+
+/** O mês de cada lançamento lido (pela data); sem data, ou com a data fora dos meses abertos, vai para `padrao`. */
+export function porMes<T extends Pick<Lancamento, 'data'>>(lancs: readonly T[], abertos: readonly string[], padrao: string): Map<string, T[]> {
+  const mapa = new Map<string, T[]>();
+  for (const l of lancs) {
+    const mes = String(l.data || '').slice(0, 7);
+    const destino = abertos.includes(mes) ? mes : padrao;
+    mapa.set(destino, [...(mapa.get(destino) || []), l]);
+  }
+  return mapa;
+}
+
+/** Os meses abertos depois de marcar ou desmarcar um (fica ao menos um aberto; em ordem). */
+export function alternarMes(abertos: readonly string[], mes: string): string[] {
+  const novos = abertos.includes(mes) ? abertos.filter(m => m !== mes) : [...abertos, mes];
+  return novos.length ? [...new Set(novos)].sort() : [...abertos];
+}
+
+/** O ano até o mês (janeiro a `ate`): o LCDPR é do ano. */
+export const mesesDoAno = (ate: string): string[] => mesesAte(ate, Number(ate.slice(5, 7)) || 1).reverse();
+
+/** Os meses para escolher: os `quantos` meses até `ate` (o mais novo primeiro). */
+export function mesesAte(ate: string, quantos: number): string[] {
+  const [a, m] = ate.split('-').map(Number);
+  if (!a || !m) return [];
+  return Array.from({ length: quantos }, (_, k) => {
+    const d = new Date(Date.UTC(a, m - 1 - k, 1));
+    return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0');
+  });
+}
 
 /** O mesmo documento do mesmo fornecedor (a nota do relatório e a do SIEG são a mesma). */
 export const chaveDoLancamento = (l: Pick<Lancamento, 'origem' | 'documento' | 'cnpj'>) => l.origem + '|' + String(l.documento || '').trim() + '|' + soDigitos(l.cnpj);

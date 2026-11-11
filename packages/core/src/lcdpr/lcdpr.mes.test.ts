@@ -5,7 +5,7 @@ import type { NotaDoSieg, NotasSieg } from '../tarefas/sieg';
 import {
   aplicarAutomatico, aplicarContaCredora, aplicarHistoricoPadrao, comContaDosFornecedores, configPadrao, contasDaPesquisa, historicosDaPesquisa, imoveisDaPesquisa,
   lancamentoDoRascunho, mudarNoRascunho, nomeNaPesquisa, pesquisar, problemasDoRascunho, rascunhoDoLancamento, rascunhoNovo, contasDePagamento, contasDoDocumento, documentoDoMes, juntarNoMes, lembrarContas, lerDoSieg,
-  linhasDaPlanilha, marcaDaConta, mesDoDocumento, notaDoLancamento, semEntidades, mesVazio, proximoIdDoMes, resumoServeParaOLcdpr, rotuloDaConta, situacaoDoMes, type Lancamento,
+  linhasDaPlanilha, marcaDaConta, mesDoDocumento, notaDoLancamento, semEntidades, alternarMes, baseDoMes, mesDoId, mesesAte, mesesDoAno, porMes, mesVazio, proximoIdDoMes, resumoServeParaOLcdpr, rotuloDaConta, situacaoDoMes, type Lancamento,
 } from '.';
 
 const ids = () => { let n = 1; return () => n++; };
@@ -77,11 +77,11 @@ const lanc = (o: Partial<Lancamento>): Lancamento => ({
 
 describe('o mês guardado', () => {
   it('o documento volta igual, e o que não é lançamento fica de fora', () => {
-    const m = { ...mesVazio(62, '2026-10'), lancamentos: [lanc({ id: 3 }), lanc({ id: 7, origem: 'CTe', revisar: true, origemRegra: 'Nenhuma' })], baixadaEm: '2026-11-02T10:00:00Z' };
-    m.importacoes = [{ id: 'i1', arquivo: 'SIEG', bytes: 0, em: 'x', quantos: 2, repetidos: 0, erro: '', ids: [3, 7], desfeita: '', por: 'Ana' }];
+    const m = { ...mesVazio(62, '2026-10'), lancamentos: [lanc({ id: 2026100003 }), lanc({ id: 2026100007, origem: 'CTe', revisar: true, origemRegra: 'Nenhuma' })], baixadaEm: '2026-11-02T10:00:00Z' };
+    m.importacoes = [{ id: 'i1', arquivo: 'SIEG', bytes: 0, em: 'x', quantos: 2, repetidos: 0, erro: '', ids: [2026100003, 2026100007], desfeita: '', por: 'Ana' }];
     expect(mesDoDocumento(documentoDoMes(m), 62, '2026-10')).toEqual(m);
     const sujo = mesDoDocumento({ lancamentos: [{ id: 0 }, 'x', { id: 2, origem: 'outra', origemRegra: '??', valor: '12.5', cnpj: '11.222.333/0001-81' }], importacoes: [{}] }, 62, '2026-10');
-    expect(sujo.lancamentos.map(l => [l.id, l.origem, l.origemRegra, l.valor, l.cnpj])).toEqual([[2, 'NF', 'Nenhuma', 12.5, '11222333000181']]);
+    expect(sujo.lancamentos.map(l => [l.id, l.origem, l.origemRegra, l.valor, l.cnpj])).toEqual([[2026100002, 'NF', 'Nenhuma', 12.5, '11222333000181']]);
     expect(sujo.importacoes).toEqual([]);
     expect(mesDoDocumento(undefined, 62, '2026-10')).toEqual(mesVazio(62, '2026-10'));
   });
@@ -93,6 +93,19 @@ describe('o mês guardado', () => {
     expect(r.lancamentos[0].contaCred).toBe('49');
     expect(proximoIdDoMes(r.lancamentos)).toBe(9);
     expect(proximoIdDoMes([])).toBe(1);
+    expect([proximoIdDoMes([], '2026-10'), proximoIdDoMes([lanc({ id: 2026100041 })], '2026-10')]).toEqual([2026100001, 2026100042]);
+  });
+
+  it('mais de um mês aberto: o id diz o mês, os guardados antes ganham a base, e o que entra vai para o mês da data', () => {
+    expect([baseDoMes('2026-10'), mesDoId(2026100005), mesDoId(5)]).toEqual([2026100000, '2026-10', '']);
+    const antigo = mesDoDocumento({ lancamentos: [{ ...lanc({ id: 4 }) }], importacoes: [{ id: 'i', ids: [4] }] }, 62, '2026-09');
+    expect([antigo.lancamentos[0].id, antigo.importacoes[0].ids]).toEqual([2026090004, [2026090004]]);
+    const mapa = porMes([lanc({ id: 1, data: '2026-09-30' }), lanc({ id: 2, data: '2026-10-01' }), lanc({ id: 3, data: '' }), lanc({ id: 4, data: '2025-01-01' })], ['2026-09', '2026-10'], '2026-10');
+    expect([...mapa].map(([k, v]) => [k, v.map(l => l.id)])).toEqual([['2026-09', [1]], ['2026-10', [2, 3, 4]]]);
+    expect(mesesAte('2026-02', 4)).toEqual(['2026-02', '2026-01', '2025-12', '2025-11']);
+    expect(mesesAte('x', 3)).toEqual([]);
+    expect(mesesDoAno('2026-03')).toEqual(['2026-01', '2026-02', '2026-03']);
+    expect([alternarMes(['2026-10'], '2026-09'), alternarMes(['2026-09', '2026-10'], '2026-09'), alternarMes(['2026-10'], '2026-10')]).toEqual([['2026-09', '2026-10'], ['2026-10'], ['2026-10']]);
   });
 
   it('a situação: vazio, com o que revisar, pronto e a planilha baixada', () => {
@@ -197,6 +210,8 @@ describe('o lançamento à mão (a janela do Alterdata)', () => {
     const ok = { ...rascunhoNovo(c), data: '05/10/2026', valor: '1.234,56', contaDeved: '966', historico: 'Energia', cnpj: '123' };
     expect(problemasDoRascunho(ok, '2026-10')).toEqual(['o CPF/CNPJ com 11 ou 14 dígitos']);
     expect(problemasDoRascunho({ ...ok, cnpj: '', data: '05/11/2026' }, '2026-10')).toEqual(['a data dentro de 10/2026']);
+    expect(problemasDoRascunho({ ...ok, cnpj: '', data: '05/11/2026' }, ['2026-10', '2026-11'])).toEqual([]);
+    expect(problemasDoRascunho({ ...ok, cnpj: '', data: '05/12/2026' }, ['2026-10', '2026-11'])).toEqual(['a data dentro de 10/2026 ou 11/2026']);
     expect(problemasDoRascunho({ ...ok, cnpj: '', historico: '⚠ Sem regra correspondente — classificar manualmente' }, '2026-10')).toEqual(['o histórico']);
   });
 

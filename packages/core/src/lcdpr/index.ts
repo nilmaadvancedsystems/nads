@@ -12,7 +12,7 @@ export {
 export { dataBr, dataDaCelula, fretesDoCte, lerRelatorio, linhasDoArquivo, notasDoDetalhamento, numeroDaCelula, numeroDoDocumento, serieNormal, tipoDoRelatorio, type LeituraDoRelatorio, type TipoDeRelatorio } from './relatorios';
 export { ABA_DA_PLANILHA, COLUNAS_DA_PLANILHA, NOME_DA_PLANILHA, linhasDaPlanilha, planilhaDoLcdpr } from './planilha';
 export {
-  IMPORTACOES_GUARDADAS, aplicarContaCredora, chaveDoLancamento, comContaDosFornecedores, contasDePagamento, contasDoDocumento, documentoDoMes, juntarNoMes,
+  IMPORTACOES_GUARDADAS, alternarMes, aplicarContaCredora, baseDoMes, mesDoId, mesesAte, mesesDoAno, porMes, chaveDoLancamento, comContaDosFornecedores, contasDePagamento, contasDoDocumento, documentoDoMes, juntarNoMes,
   lancamentoGuardado, lembrarContas, marcaDaConta, mesDoDocumento, mesVazio, proximoIdDoMes, rotuloDaConta, situacaoDoMes,
   type ContasDosFornecedores, type ImportacaoDoMes, type MesDoLcdpr, type SituacaoDoMes,
 } from './mes';

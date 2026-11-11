@@ -10,7 +10,7 @@ import { useRetorno } from '@nads/ui';
 import { useState } from 'react';
 import { useCadastro, useLcdpr } from '../../../dados/repo';
 import { useRegrasDoLcdpr } from './useRegrasDoLcdpr';
-import { lembrarContasDe, lerSessao, mudarMes, mudarTela, trocarLancamentos, useSessaoDoLcdpr } from './useSessaoDoLcdpr';
+import { lembrarContasDe, lerSessao, mesDoLancamento, mudarMes, tirarLancamentos, trocarLancamentos, useSessaoDoLcdpr } from './useSessaoDoLcdpr';
 
 /** Os campos com a lupa. */
 export type CampoDaPesquisa = 'contaDeved' | 'contaCred' | 'codHist' | 'imovel';
@@ -44,7 +44,8 @@ export function useJanelaDoLancamento(id: number | 'novo', fechar: () => void) {
   const historicos = lcdpr.historicosDaPesquisa(r.config, aprendidos.historicos);
   const imoveis = lcdpr.imoveisDaPesquisa(r.config);
   const listaDe = (c: CampoDaPesquisa) => (c === 'codHist' ? historicos : c === 'imovel' ? imoveis : contas);
-  const problemas = lcdpr.problemasDoRascunho(rascunho, s.competencia);
+  // o novo vai para o mês da data (um dos abertos); o que já existe fica no mês dele
+  const problemas = lcdpr.problemasDoRascunho(rascunho, existente ? [mesDoLancamento(existente.id)] : s.meses);
 
   const mudar = (campo: keyof lcdpr.RascunhoDoLancamento, v: string) => setRascunho(x => lcdpr.mudarNoRascunho(x, campo, v, r.config, historicos));
 
@@ -126,8 +127,9 @@ export function useJanelaDoLancamento(id: number | 'novo', fechar: () => void) {
         if (novo.contaCred !== atual.contaCred) lembrarContasDe([novo], r.atual().config.contaCredoraPadrao).catch((e: Error) => falhou(e.message));
       } else {
         const criado: { l?: lcdpr.Lancamento } = {};
-        mudarMes(m => {
-          const l = lcdpr.lancamentoDoRascunho(rascunho, r.config, { id: lcdpr.proximoIdDoMes(m.lancamentos) });
+        const mes = lcdpr.dataDaCelula(rascunho.data).slice(0, 7);
+        mudarMes(mes, m => {
+          const l = lcdpr.lancamentoDoRascunho(rascunho, r.config, { id: lcdpr.proximoIdDoMes(m.lancamentos, mes) });
           criado.l = l;
           return { ...m, lancamentos: [...m.lancamentos, l] };
         }, falhou);
@@ -146,8 +148,7 @@ export function useJanelaDoLancamento(id: number | 'novo', fechar: () => void) {
         botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Excluir', valor: true, variante: 'btn-danger' }],
       });
       if (!ok) return;
-      mudarMes(m => ({ ...m, lancamentos: m.lancamentos.filter(l => l.id !== existente.id) }), falhou);
-      mudarTela(x => ({ ...x, selecionados: new Set([...x.selecionados].filter(i => i !== existente.id)) }));
+      tirarLancamentos([existente.id], falhou);
       toast('Lançamento excluído.');
       fechar();
     },
