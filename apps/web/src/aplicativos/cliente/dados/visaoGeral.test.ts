@@ -37,6 +37,22 @@ describe('pendenciasDoCliente e vereditoDoMes', () => {
     expect(p[1].acao).toEqual({ tipo: 'baixar-guia', guia: 'fgts' });
     expect(vereditoDoMes(p, [])).toEqual({ tom: 'bad', titulo: 'Você tem 3 pendências', texto: '1 guia vencida, 1 guia vence hoje e 1 resposta do escritório.' });
   });
+  it('os tickets do Mandei (11/11/2026): o pedido com o que falta e o prazo; vence hoje, em vermelho', () => {
+    const p = pendenciasDoCliente({
+      ...vazio,
+      tickets: [
+        { codigo: 'ABC', numero: '#0003', assunto: 'Extratos de 09/2026', validoAte: new Date(2026, 9, 17, 23, 59).toISOString(), total: 3, faltam: 3, refazer: 0 },
+        { codigo: 'DEF', numero: '#0004', assunto: 'Saldos em aberto — 09/2026', validoAte: new Date(2026, 9, 21, 23, 59).toISOString(), total: 4, faltam: 1, refazer: 1 },
+      ],
+    }, hoje);
+    expect(p.map(x => [x.origem, x.tom, x.rotulo, x.texto])).toEqual([
+      ['ticket', 'bad', 'Responder', '3 perguntas. Responda até hoje.'],
+      ['ticket', 'warn', 'Continuar', 'O escritório pediu para rever 1 resposta. Responda até 21/10.'],
+    ]);
+    expect(p[0].titulo).toBe('O escritório pediu: Extratos de 09/2026');
+    expect(p[0].acao).toEqual({ tipo: 'abrir-ticket', codigo: 'ABC' });
+    expect(vereditoDoMes(p, []).texto).toBe('2 pedidos do escritório para responder.');
+  });
   it('uma só: o veredito é ela', () => {
     const p = pendenciasDoCliente({ ...vazio, chamados: [{ id: 'c1', tipo: 'documento', titulo: 'Certidão negativa', situacao: 'respondido', mensagens: [] }] }, hoje);
     expect(vereditoDoMes(p, [])).toEqual({ tom: 'warn', titulo: 'O escritório respondeu', texto: 'Certidão negativa' });

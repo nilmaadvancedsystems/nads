@@ -2,8 +2,10 @@
 // as respostas de cada linha do item (Vitor, 08/10/2026: "ela responde por linha"; o item sem linhas responde inteiro:
 // escolher, digitar) e os arquivos anexados. Vale até o fim do prazo do link; vencido, ou
 // com o ticket resolvido, não aceita mais nada. Por enquanto com os dados de exemplo (comum/mandeiExemplo.ts).
+// 11/11/2026: o rascunho salva sozinho (o cliente volta pelo link e continua de onde parou, como no Content Snare); o
+// que o escritório pediu de novo aparece com o motivo; a revisão avisa do comprovante que a resposta pede e não veio.
 import { mandei as m } from '@nads/core';
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useParams } from 'react-router';
 import { exemplo, MAIOR_ARQUIVO_NO_EXEMPLO } from '../../../comum/mandeiExemplo';
 
@@ -26,12 +28,26 @@ export function useFormulario() {
   // um cliente por vez (o passo); depois do último, a revisão
   const [passo, setPasso] = useState(0);
   const [erro, setErro] = useState('');
+  const [salvoEm, setSalvoEm] = useState('');
 
   // abriu o link: fica marcado (a central vê "Aberto")
   useEffect(() => {
     const atual = codigo ? exemplo.doLink(codigo) : null;
     if (atual && m.linkValido(atual, codigo, new Date()) && !atual.links.find(l => l.codigo === codigo)?.abertoEm) exemplo.gravar(m.linkAberto(atual, codigo, new Date()));
   }, [codigo]);
+
+  // o rascunho: cada resposta guarda sozinha, meio segundo depois da última mudança
+  useEffect(() => {
+    if (!Object.keys(respostas).length) return;
+    const espera = setTimeout(() => {
+      const atual = exemplo.doLink(codigo);
+      if (!atual || !m.linkValido(atual, codigo, new Date())) return;
+      const agora = new Date();
+      exemplo.gravar(m.salvarRascunho(atual, respostas, agora));
+      setSalvoEm(String(agora.getHours()).padStart(2, '0') + ':' + String(agora.getMinutes()).padStart(2, '0'));
+    }, 500);
+    return () => clearTimeout(espera);
+  }, [respostas, codigo]);
 
   const vista = t ? m.vistaDoCliente(t) : null;
   const resposta = (id: string): m.RespostaDoItem => respostas[id] ?? vista?.respostas[id] ?? {};
@@ -52,9 +68,13 @@ export function useFormulario() {
   const daChave = (chave: string) => {
     const opcao = resposta(chave).opcao || '', texto = resposta(chave).texto || '';
     const explicar = m.pedeExplicacao(opcao);
+    const arquivos = (vista?.arquivos || []).filter(a => a.itemId === chave).map(a => a.nome);
     return {
-      chave, opcao, texto, explicar, comprovar: m.pedeComprovante(opcao),
-      arquivos: (vista?.arquivos || []).filter(a => a.itemId === chave).map(a => a.nome),
+      chave, opcao, texto, explicar, comprovar: m.pedeComprovante(opcao), arquivos,
+      /** o escritório pediu de novo: o motivo ('' = não pediu) */
+      motivo: vista?.refazer[chave] ?? '',
+      /** a resposta pede o comprovante e ainda não tem */
+      semComprovante: m.pedeComprovante(opcao) && !arquivos.length,
       // respondido = escolheu uma resposta e, se ela pede, explicou (Vitor, 07/10/2026: "não deixa dar próximo sem responder")
       respondido: !!opcao && (!explicar || !!texto.trim()),
     };
@@ -72,17 +92,31 @@ export function useFormulario() {
       resumo: linhas.length
         ? linhas.map(x => ({ chave: x.chave, linha: (x.nf && x.nf !== '—' ? 'NF ' + x.nf : x.conta || x.data) + ' · ' + x.valor, resposta: [x.opcao, x.texto].filter(Boolean).join(': ') }))
         : [{ chave: doItem.chave, linha: '', resposta: [doItem.opcao, doItem.texto].filter(Boolean).join(': ') }],
-      anexos: respostas.reduce((n, x) => n + x.arquivos.length, 0) };
+      anexos: respostas.reduce((n, x) => n + x.arquivos.length, 0),
+      semComprovante: respostas.filter(x => x.semComprovante).length,
+      refazer: respostas.filter(x => !!x.motivo).length };
   });
   const respondidos = itens.filter(i => i.respondido).length;
   // só anda até o primeiro item sem resposta (a revisão só depois de todos)
   const pendente = itens.findIndex(i => !i.respondido);
   const limite = pendente < 0 ? itens.length : pendente;
+  // voltou pelo link: abre onde parou (o primeiro item sem resposta; tudo respondido, a revisão)
+  const abriu = useRef(false);
+  useEffect(() => {
+    if (abriu.current || !itens.length) return;
+    abriu.current = true;
+    if (pendente !== 0) setPasso(pendente < 0 ? itens.length : pendente);
+  }, [itens.length, pendente]);
   const dias = vista ? Math.max(0, Math.ceil((new Date(vista.validoAte).getTime() - Date.now()) / 86400000)) : 0;
 
   return {
     codigo, existe: !!t, valido, enviado, erro,
     quantos: itens.length, respondidos, dias,
+    /** a hora em que o rascunho foi guardado ('' = ainda não mexeu) */
+    salvoEm,
+    /** quantas respostas o escritório pediu de novo, e quantas pedem o comprovante que não veio */
+    refazer: itens.reduce((n, i) => n + i.refazer, 0),
+    semComprovante: itens.reduce((n, i) => n + i.semComprovante, 0),
     passo, revisao: passo >= itens.length, podeAvancar: passo < limite,
     irPara: (n: number) => { setPasso(Math.max(0, Math.min(limite, n))); window.scrollTo({ top: 0 }); },
     numero: vista?.numero || '', empresa: vista?.empresa || '', mensagem: vista?.mensagem || '',

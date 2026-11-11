@@ -373,20 +373,19 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
 .cli-app .cli-anexo .file-picker{display:inline-flex;margin:0;min-height:36px;padding:7px 14px;border-radius:var(--cli-raio-p);border-color:var(--border);color:var(--ink);font-weight:500;}
 .cli-app .cli-anexo .file-picker svg{color:var(--ink-muted);}
 .cli-app .cli-chamado-topo{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;}
-.cli-app .cli-previa{margin-top:4px;font-size:13px;color:var(--ink);}
-.cli-app .cli-conversa-aberta{margin:0 12px 8px;padding:16px;border-radius:var(--cli-raio-p);background:var(--cli-fundo);}
+/* a solicitação aberta, sem chat (11/11/2026): os passos, o pedido e a resposta, um embaixo do outro */
+.cli-app .cli-solicitacao{display:flex;flex-direction:column;gap:14px;margin:0 12px 8px;padding:16px;border-radius:var(--cli-raio-p);background:var(--cli-fundo);}
+.cli-app .cli-solicitacao h4{margin:0 0 4px;font-size:12px;font-weight:600;color:var(--ink-muted);}
+.cli-app .cli-solicitacao p{white-space:pre-wrap;overflow-wrap:anywhere;margin:0 0 4px;}
+.cli-app .cli-complemento{padding-left:10px;border-left:2px solid var(--cli-linha);}
+.cli-app .cli-passos{display:flex;flex-wrap:wrap;gap:6px;margin:0;padding:0;list-style:none;font-size:12px;}
+.cli-app .cli-passos li{padding:3px 10px;border-radius:999px;border:1px solid var(--cli-linha);color:var(--ink-muted);}
+.cli-app .cli-passos li.feito{color:var(--ink);background:var(--cli-cartao);}
+.cli-app .cli-passos li.atual{color:var(--ink);font-weight:600;border-color:var(--accent);background:var(--accent-soft);}
 .cli-app .cli-erro{margin:4px 0 8px;font-size:13px;color:var(--danger-ink);}
 .cli-app .cli-erros{display:flex;flex-direction:column;gap:2px;margin-top:8px;}
 .cli-app .cli-marcar{display:flex;align-items:center;gap:8px;font-weight:400 !important;}
 
-/* a conversa: o balão do cliente à direita, o do escritório à esquerda */
-.cli-app .cli-conversa{display:flex;flex-direction:column;gap:10px;}
-.cli-app .cli-balao{display:flex;flex-direction:column;gap:3px;max-width:min(560px,88%);padding:10px 14px;border:1px solid var(--cli-linha);border-radius:14px 14px 14px 4px;
-  background:var(--cli-cartao);box-shadow:0 1px 2px color-mix(in srgb,var(--cli-sombra-cor) 4%,transparent);}
-.cli-app .cli-balao p{white-space:pre-wrap;overflow-wrap:anywhere;}
-.cli-app .cli-balao-quem{font-size:12px;color:var(--ink-muted);}
-.cli-app .cli-balao-escritorio{align-self:flex-start;}
-.cli-app .cli-balao-cliente{align-self:flex-end;border-color:transparent;box-shadow:none;border-radius:14px 14px 4px 14px;background:var(--accent-soft);}
 
 /* a área de soltar arquivos */
 .cli-app .cli-soltar{display:flex;flex-direction:column;align-items:center;gap:2px;padding:28px 16px;border:1.5px dashed var(--border);border-radius:var(--cli-raio);

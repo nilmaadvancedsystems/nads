@@ -39,17 +39,23 @@ export function useChamadosDoCliente() {
     detalhe: aberto ? todos.lista.find(c => c.id === aberto) || null : null,
     abrir(id: string) { setAberto(a => (a === id ? null : id)); setResposta(''); },
     resposta, setResposta, enviando,
-    async responder() {
+    /** responde; concluir = já fecha a solicitação (11/11/2026: sem chat, a resposta costuma encerrar o pedido) */
+    async responder(concluir = false) {
       const c = aberto ? todos.lista.find(x => x.id === aberto) : null;
       const texto = resposta.trim();
       if (!c || !texto || enviando) return;
       if (texto.length > ac.MAIOR_TEXTO_DO_CHAMADO) { toast('A resposta passa de ' + ac.MAIOR_TEXTO_DO_CHAMADO + ' caracteres.'); return; }
       setEnviando(true);
-      try { await repo.responder(c.id, texto); setResposta(''); toast('Resposta enviada ao cliente.'); }
+      try {
+        await repo.responder(c.id, texto);
+        if (concluir) await repo.mudarSituacao(c.id, 'concluido');
+        setResposta('');
+        toast(concluir ? 'Respondida e concluída.' : 'Resposta enviada ao cliente.');
+      }
       catch (e) { toast('Não deu para responder: ' + motivo(e)); } finally { setEnviando(false); }
     },
     async mudarSituacao(id: string, situacao: ac.SituacaoDoChamado) {
-      try { await repo.mudarSituacao(id, situacao); toast('Chamado: ' + ac.ROTULO_DA_SITUACAO_DO_CHAMADO[situacao].toLowerCase() + '.'); }
+      try { await repo.mudarSituacao(id, situacao); toast('Solicitação: ' + ac.ROTULO_DA_SITUACAO_DO_CHAMADO[situacao].toLowerCase() + '.'); }
       catch (e) { toast('Não deu para mudar a situação: ' + motivo(e)); }
     },
     data: (iso: string) => (iso ? new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''),

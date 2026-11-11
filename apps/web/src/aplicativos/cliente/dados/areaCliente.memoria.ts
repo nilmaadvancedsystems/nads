@@ -7,7 +7,8 @@
 //                          avisos; o escritório sem telefone e sem horário, como o robô grava), com uma guia vencida;
 //   "exemplo-real-vazio" → o mesmo, no começo: nenhuma guia, a agenda vazia, nenhum chamado e nenhum envio.
 // Qualquer outro é um link inválido e não mostra dado nenhum. No modo banco, só o "exemplo" vem daqui (repo.ts).
-import { areaCliente as ac, formatos } from '@nads/core';
+import { areaCliente as ac, formatos, mandei } from '@nads/core';
+import { exemplo as mandeiExemplo } from '../../../comum/mandeiExemplo';
 import { AREA_VAZIA, TODAS_AS_SECOES, type DocumentoDoCliente, type Empregado, type EstadoDaArea, type RepoAreaCliente } from './areaCliente';
 import { documentoFormatado, estadoDoEspelho } from './espelho';
 
@@ -88,7 +89,7 @@ export function areaDeExemplo(hoje: Date): EstadoDaArea {
   ];
 
   return {
-    carregado: true, valido: true, erro: '', exemplos: true, secoes: TODAS_AS_SECOES,
+    carregado: true, valido: true, erro: '', exemplos: true, secoes: TODAS_AS_SECOES, tickets: [],
     resumo: {
       empresas: [{ codigo: 9999, nome: 'Personaly Company', cnpj: '00.000.000/0001-91' }],
       escritorio: { telefone: '(31) 3333-0000', email: 'atendimento@nilma.example', whatsapp: '(31) 99999-0000' },
@@ -228,11 +229,16 @@ export function criarRepoAreaClienteMemoria(agora: () => Date = () => new Date()
   return {
     assinar(token, aoMudar) {
       if (!de(token)) { aoMudar({ ...AREA_VAZIA, carregado: true }); return () => undefined; }
-      const avisar = () => aoMudar(de(token)!);
+      // os tickets do Mandei das empresas do link (11/11/2026), os do exemplo do Mandei neste navegador
+      const avisar = () => {
+        const e = de(token)!;
+        aoMudar({ ...e, tickets: mandei.ticketsDaArea(mandeiExemplo.tickets(), (e.resumo?.empresas ?? []).map(x => x.codigo), agora()) });
+      };
       if (!ouvintes.has(token)) ouvintes.set(token, new Set());
       ouvintes.get(token)!.add(avisar);
+      const pararMandei = mandeiExemplo.assinar(avisar);
       avisar();
-      return () => { ouvintes.get(token)?.delete(avisar); };
+      return () => { ouvintes.get(token)?.delete(avisar); pararMandei(); };
     },
     async enviar(token, tipo, arquivos) {
       const recebidoEm = agora().toISOString();

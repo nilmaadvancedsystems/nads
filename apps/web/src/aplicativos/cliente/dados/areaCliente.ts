@@ -5,7 +5,7 @@
 // As seções que vieram do protótipo do Vitor (documentos, certificado, empregados, ficha da empresa, atendimento, avisos e
 // guias pagas) ainda não têm tipo no core nem fonte no banco: os tipos simples ficam aqui, só a versão de exemplo os
 // preenche, e `secoes` diz à tela o que esconder quando o repositório não tem de onde tirar.
-import type { areaCliente as ac } from '@nads/core';
+import type { areaCliente as ac, mandei } from '@nads/core';
 import type { FormatoDoArquivo } from '@nads/ui';
 
 /** a área do escritório que mandou o documento */
@@ -128,11 +128,16 @@ export interface EstadoDaArea {
   ficha: FichaDaEmpresa | null;
   atendimento: Atendimento | null;
   avisos: AvisoDoEscritorio[];
+  /**
+   * Os tickets do Mandei esperando o cliente (11/11/2026: o que o escritório pede, num lugar só, como no Liscio e no G-Click
+   * da Omie). Por enquanto só nos dados de exemplo: o banco ainda não liga o Mandei (o robô não espelha os tickets).
+   */
+  tickets: mandei.TicketNaArea[];
 }
 
 export const AREA_VAZIA: EstadoDaArea = {
   carregado: false, valido: false, erro: '', exemplos: false, secoes: SECOES_DO_BANCO, resumo: null, guias: [], codigos: {}, pagas: [], agenda: [], envios: [], chamados: [],
-  documentos: [], certificado: null, empregados: [], ficha: null, atendimento: null, avisos: [],
+  documentos: [], certificado: null, empregados: [], ficha: null, atendimento: null, avisos: [], tickets: [],
 };
 
 export interface RepoAreaCliente {

@@ -164,7 +164,7 @@ export const APLICACOES: readonly Aplicacao[] = [
   // Mandei junto (19/10/2026: "unifique área do cliente e o mandei"): o que o cliente manda (Chamados, Recebidos) e os
   // tickets que o escritório manda ao cliente (Meus tickets, a Central de todos); /tarefas/mandei/* leva para cá
   { id: 'area-cliente', nome: 'Área do Cliente', icone: 'usuario', grupo: 'Comunicação', pronta: true, paginas: [
-    { id: 'chamados', rotulo: 'Chamados', icone: 'mensagem', titulo: 'Chamados' },
+    { id: 'chamados', rotulo: 'Solicitações', icone: 'mensagem', titulo: 'Solicitações dos clientes' },
     { id: 'recebidos', rotulo: 'Recebidos', icone: 'download', titulo: 'Recebidos' },
     { id: 'meus', rotulo: 'Meus tickets', icone: 'usuario', titulo: 'Meus tickets' },
     { id: 'central', rotulo: 'Central de tickets', icone: 'list', titulo: 'Central de tickets' },
