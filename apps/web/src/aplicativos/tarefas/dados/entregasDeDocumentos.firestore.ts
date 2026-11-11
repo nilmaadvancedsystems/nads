@@ -504,12 +504,15 @@ export function criarEntregasDeDocumentosFirestore(pessoa: () => { nome: string;
       const lote = writeBatch(db);
       lote.set(ref, dados);
       if (n.foto) lote.set(doc(db, 'entregas', ref.id, 'anexos', 'comprovante'), { foto: n.foto });
-      // as guias que vieram da pasta do cliente (FGTS, DARF, DAS): o PDF fica anexado à entrega
-      for (const g of guias) {
+      // as guias que vieram da pasta do cliente (FGTS, DARF, DAS): o PDF fica anexado à entrega; um DARF por tributo vai em
+      // anexos/guia-darf-<tributo>, como o lote do Fiscal grava
+      const idsDosAnexos = entregas.idsDosAnexosDasGuias(guias);
+      guias.forEach((g, k) => {
         const guia: Record<string, unknown> = { tipo: g.tipo, nome: g.nome, driveId: g.driveId, tamanho: g.tamanho, em: agora() };
+        if (g.tributo) guia.tributo = g.tributo;
         if (g.pdf) guia.pdf = g.pdf;
-        lote.set(doc(db, 'entregas', ref.id, 'anexos', 'guia-' + g.tipo), guia);
-      }
+        lote.set(doc(db, 'entregas', ref.id, 'anexos', idsDosAnexos[k]), guia);
+      });
       const clienteId = n.para.tipo === 'cliente' ? n.para.cliente.id : null;
       linkMudou(clienteId);
       marcarClienteDeEntrega(clienteId);
@@ -602,6 +605,14 @@ export function criarEntregasDeDocumentosFirestore(pessoa: () => { nome: string;
       return naoTrava(p, 'a edição da parada de ' + (e.clienteNome || 'um cliente'));
     },
     async excluir(e) {
+      // o DARF de cada tributo (anexos/guia-darf-inss, do Puxar guias e do lote do Fiscal) sai antes, à parte: se a regra do
+      // banco recusar, a exclusão de sempre continua como era
+      const aMais = entregas.anexosDeGuiaDaEntrega(e.itens).filter(id => !GUIAS_ANEXADAS.includes(id.slice(6)));
+      if (aMais.length) {
+        const antes = writeBatch(db);
+        for (const id of aMais) antes.delete(doc(db, 'entregas', e.id, 'anexos', id));
+        void antes.commit().catch(() => undefined);
+      }
       // no lote, ou os dois somem, ou nenhum some (antes sobrava uma entrega sem a prova)
       const lote = writeBatch(db);
       lote.delete(doc(db, 'entregas', e.id, 'anexos', 'comprovante'));

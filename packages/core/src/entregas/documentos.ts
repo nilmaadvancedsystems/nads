@@ -371,6 +371,42 @@ export const textoDosItens = (itens: readonly ItemDaEntrega[]) => itens.map(i =>
 /** "DAS · R$ 10,00 · Fulano" (a ficha de cada documento nas janelas). */
 export const fichaDoItem = (i: ItemDaEntrega) => i.tipo + (i.valor != null ? ' · ' + dinheiro(i.valor) : '') + (i.funcionario ? ' · ' + i.funcionario : '');
 
+// ---------------------------------------------------------------------------------------------------------------------
+// editar os documentos da parada (abrirEdicaoPendente): os tipos marcados, um "outro", os valores pelo rótulo
+// ---------------------------------------------------------------------------------------------------------------------
+/** Um documento que a edição não sabe desenhar como tipo marcado nem como "outro" (o 2º DARF, o repetido): vai como está. */
+export interface DocumentoAMaisNaEdicao { tipo: string; valor: string; funcionario?: string }
+export interface DocumentosEmEdicao {
+  marcados: string[];
+  outro: string;
+  valores: Record<string, string>;
+  funcionarios: Record<string, string>;
+  /** os que sobravam e sumiam ao salvar (11/11/2026: "DARF INSS" e "DARF IRRF" na mesma parada ficavam só com um) */
+  aMais: DocumentoAMaisNaEdicao[];
+}
+/** Os documentos da parada no formulário da edição. */
+export function documentosParaEditar(itens: readonly ItemDaEntrega[]): DocumentosEmEdicao {
+  const r: DocumentosEmEdicao = { marcados: [], outro: '', valores: {}, funcionarios: {}, aMais: [] };
+  const comValor = (i: ItemDaEntrega) => (i.valor != null ? String(i.valor) : '');
+  for (const i of itens) {
+    const t = tipoPeloRotulo(i.tipo);
+    const cabe = t ? !r.marcados.includes(t.chave) : !r.outro;
+    if (!cabe) { r.aMais.push({ tipo: i.tipo, valor: comValor(i), ...(i.funcionario ? { funcionario: i.funcionario } : {}) }); continue; }
+    if (t) r.marcados.push(t.chave); else r.outro = i.tipo;
+    if (i.valor != null) r.valores[i.tipo] = comValor(i);
+    if (i.funcionario) r.funcionarios[i.tipo] = i.funcionario;
+  }
+  return r;
+}
+/** Os documentos que a edição grava: os tipos marcados (na ordem da lista), o outro e os a mais. */
+export function itensDaEdicao(ed: DocumentosEmEdicao): ItemDaEntrega[] {
+  const linhas = [...TIPOS_DE_DOCUMENTO.filter(t => ed.marcados.includes(t.chave)), ...(ed.outro.trim() ? [{ rotulo: ed.outro.trim() } as TipoDeDocumento] : [])];
+  return [
+    ...linhas.map(l => ({ tipo: l.rotulo, valor: l.semValor ? null : valorDigitado(ed.valores[l.rotulo]), ...(l.pedeFuncionario ? { funcionario: (ed.funcionarios[l.rotulo] || '').trim() } : {}) })),
+    ...ed.aMais.map(a => ({ tipo: a.tipo, valor: tipoPeloRotulo(a.tipo)?.semValor ? null : valorDigitado(a.valor), ...(a.funcionario !== undefined ? { funcionario: a.funcionario.trim() } : {}) })),
+  ];
+}
+
 /** A data em que a entrega aconteceu (ou foi posta na rota). */
 export const quandoFoi = (e: Pick<Entrega, 'confirmadoEm' | 'criadoEm'>) => e.confirmadoEm || e.criadoEm;
 
