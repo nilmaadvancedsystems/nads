@@ -181,7 +181,8 @@ export function useCompetencia() {
    * RECEBIMENTO DE CLIENTES (decide pelo título do relatório). O mês que já tem relatório na pasta não vai de novo.
    */
   async function arquivarNoDrive(mes: string, f: File) {
-    if (!drive.enviarAoDrive || !acesso.entrou) return;
+    // o acesso de agora (não o do desenho): depois do login pedido aqui, o da tela ainda diz que não entrou
+    if (!drive.enviarAoDrive || !drive.acesso().entrou) return;
     try {
       const pasta = await drive.pastaDoCliente(s.empresa.codigo);
       const b = cr.acharRelatorioNoDrive(pasta?.itens || [], pasta?.raiz || null, mes);
@@ -194,11 +195,27 @@ export function useCompetencia() {
   }
 
   /**
+   * O relatório que a pessoa sobe do computador também vai para o Drive (Vitor, 11/11/2026: "os cred liquidação upados pelo
+   * usuário é para upar diretamente no Drive"), como o do e-mail. Sem o login do Drive, pede e manda depois; acoplado no
+   * Entregas (o login é o de lá) ou com os dados de exemplo, não manda.
+   */
+  function mandarAoDrive(lista: readonly { mes: string; f: File }[]) {
+    if (!lista.length || !drive.enviarAoDrive || drive.exemplos) return;
+    const enviar = async () => { for (const x of lista) await arquivarNoDrive(x.mes, x.f); };
+    if (acesso.entrou) { void enviar(); return; }
+    if (drive.loginDeFora) return;
+    depoisDoLogin.current = () => { void enviar(); };
+    setErroLogin('');
+    setLoginPara('email');
+  }
+
+  /**
    * Vários arquivos de uma vez (o menu de cima, como na Importação: "Importar os restantes do computador"): cada relatório
    * cai no mês das liquidações dele (o que mais aparece); fora do período, avisa e não entra.
    */
   async function importarVarios(arquivos: File[]) {
     const fora: string[] = [];
+    const entraram: { mes: string; f: File }[] = [];
     for (const f of arquivos) {
       try {
         const rel = await lerRelatorio(f.name, await f.arrayBuffer());
@@ -210,9 +227,11 @@ export function useCompetencia() {
         const mes = [...conta].sort((a, b) => b[1] - a[1])[0]?.[0];
         if (!mes || !meses.includes(mes)) { fora.push(f.name); continue; }
         guardar(mes, rel, f.name);
+        entraram.push({ mes, f });
       } catch (e) { aviso({ tom: 'erro', titulo: 'Não deu para ler ' + f.name, texto: mensagemDeErro(e) }); }
     }
     if (fora.length) aviso({ tom: 'erro', titulo: 'Fora do período', texto: fora.join(', ') + ': as liquidações não são de nenhum mês do período.' });
+    mandarAoDrive(entraram);
   }
 
   /**
@@ -384,7 +403,7 @@ export function useCompetencia() {
     busca,
     /** um mês, ou '*' para todos os que faltam */
     buscarNoDrive,
-    importarDoComputador: (mes: string, f: File | undefined) => { void importarDoComputador(mes, f); },
+    importarDoComputador: (mes: string, f: File | undefined) => { void importarDoComputador(mes, f).then(ok => { if (ok && f) mandarAoDrive([{ mes, f }]); }); },
     /** o "Buscar no e-mail" (a janela da Importação; existe = o robô do Gmail ligado) */
     email,
     /** o "Buscar no e-mail" do mês: procura e importa sozinho (Vitor, 14/10/2026) */
