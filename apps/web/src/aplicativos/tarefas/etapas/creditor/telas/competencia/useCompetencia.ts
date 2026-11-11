@@ -24,6 +24,12 @@ type Fase = 'parado' | 'procurando' | 'baixando' | 'lendo' | 'problema';
 interface Busca { mes: string; fase: Fase; texto: string; candidatos: cr.ArquivoAchado[] }
 const PARADO: Busca = { mes: '', fase: 'parado', texto: '', candidatos: [] };
 
+// o mês sem movimento (Vitor, 11/11/2026: "dá a opção de marcar sem movimento aqui"): um relatório vazio, com esta origem
+const SEM_MOVIMENTO = 'Sem movimento';
+const relatorioVazio = (): cr.RelatorioBanco => ({
+  grupos: [], totalGeral: { valor: 0, mora: 0, desconto: 0, outros: 0, cobrado: 0 }, registrosGeral: 0, ignorados: 0, avisos: [],
+});
+
 /** Os meses com que a tela abre: os já escolhidos; senão, os que a Tarefa mandou (os do Creditor); senão, o mês passado. */
 function mesesIniciais(daSessao: string, params: URLSearchParams): string[] {
   const s = cr.mesesDaCompetencia(daSessao);
@@ -284,6 +290,11 @@ export function useCompetencia() {
     if (vazios.length) aviso({ tom: 'erro', titulo: 'Não achei o relatório', texto: vazios.join(', ') + ': ' + (fontes.drive ? 'nem no Drive nem no e-mail' : 'nada no e-mail') + ', no formato do Creditor.' + (fontes.drive ? ' Importe à mão.' : ' Escolha em "Selecionar no e-mail".') });
   }
 
+  /** Marca o mês (ou todos os que faltam) sem movimento: conta como importado, sem títulos. */
+  function marcarSemMovimento(lista: readonly string[]) {
+    for (const m of lista) guardar(m, relatorioVazio(), SEM_MOVIMENTO);
+  }
+
   /** "Remover todos" (como na Importação): tira os relatórios de todos os meses (pergunta antes). */
   async function removerTodos() {
     const ok = await modal<boolean>({
@@ -356,9 +367,9 @@ export function useCompetencia() {
       const rel = s.estado.porMes[m]?.relatorio || (inteiro && m === meses[0] ? s.estado.relatorio : null);
       const ts = rel ? rel.grupos.flatMap(g => g.titulos) : [];
       return {
-        resumo: rel ? [ts.length + (ts.length === 1 ? ' título' : ' títulos'), 'Liquidado ' + cr.reais(cr.somar(ts.map(t => t.valor)))] : [],
+        resumo: r?.origem === SEM_MOVIMENTO ? [SEM_MOVIMENTO] : rel ? [ts.length + (ts.length === 1 ? ' título' : ' títulos'), 'Liquidado ' + cr.reais(cr.somar(ts.map(t => t.valor)))] : [],
         titulos: ts.map(t => ({ id: t.id, liquidacao: t.liquidacao, sacado: t.sacado, nf: t.nf, valor: t.valor, juros: t.mora + t.outros, desconto: t.desconto, cobrado: t.cobrado })),
-        mes: m, rotulo: cr.rotuloCompetencia(m), carregado: !!r, origem: r?.origem || '', doDrive: !!r?.origem.startsWith('Drive'),
+        mes: m, rotulo: cr.rotuloCompetencia(m), carregado: !!r, semMovimento: r?.origem === SEM_MOVIMENTO, origem: r?.origem || '', doDrive: !!r?.origem.startsWith('Drive'),
         ocupado: ocupado && busca.mes === m, texto: ocupado && busca.mes === m ? busca.texto : '',
         /** o que foi puxado do Drive ou do e-mail neste mês (o olhinho abre) */
         puxados: r ? puxados.filter(p => p.meses.includes(m)).map(p => ({ nome: p.nome, origem: p.origem, abrir: () => abrirPuxado(p) })) : [],
@@ -385,6 +396,10 @@ export function useCompetencia() {
     /** o Importar automático: Drive e e-mail, sem escolher (os meses que faltam) */
     importarAutomatico: () => { void importarAutomatico(); },
     removerTodos: () => { void removerTodos(); },
+    /** o "Não teve movimento" do mês, ou dos que faltam ('*') */
+    semMovimento: (mes: string) => marcarSemMovimento(mes === '*' ? faltam : [mes]),
+    /** desfaz o sem movimento (sem perguntar: não tem arquivo para perder) */
+    desfazerSemMovimento: (mes: string) => s.relatorioDoMes(mes, null),
     usar: (a: cr.ArquivoAchado) => { void usarDoDrive(busca.mes, a, busca.candidatos); },
     fecharProblema: () => setBusca(PARADO),
     excluir: (mes: string) => { void excluir(mes); },
