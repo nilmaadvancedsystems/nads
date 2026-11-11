@@ -6497,5 +6497,7 @@ td.fs-fat-sem{color:var(--ink-faint);}
 /* o popup de delegar (Vitor, 10/11/2026: "um grid proporcional e alinhado"): colunas iguais; a caixinha, o código e o nome sempre nos mesmos lugares */
 .delegar-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:2px 16px;max-height:42vh;overflow:auto;}
 .delegar-conta{display:grid;grid-template-columns:18px 64px minmax(0,1fr);align-items:center;gap:10px;padding:6px 8px;border-radius:6px;cursor:pointer;}
+/* os itens da folha não têm código: o nome ocupa a linha toda (11/11/2026) */
+.delegar-conta.sem-codigo{grid-template-columns:18px minmax(0,1fr);}
 .delegar-conta:hover{background:var(--hover-bg);}
 .delegar-conta-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
