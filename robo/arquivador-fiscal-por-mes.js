@@ -149,7 +149,97 @@ function resumir(r) {
   return { regimes: r.regimes, mover: r.plano.length, porPasta, porAno, clientes: new Set(r.plano.map(p => p.ano + '\\' + p.cliente)).size, ficam: r.ficam.length, ficamPorQue: porQue };
 }
 
-module.exports = { planejar, lerDoDisco, resumir, lugarNovo, mesDoNome };
+// ---------- sozinho, na madrugada (11/11/2026: "muito trabalho"; a escolha: "o robô faz sozinho") ----------
+// O arquivador do NILMA-SERVER chama tique() de 10 em 10 min. Entre 1h e 5h, uma vez só por ano de raiz: monta o plano, grava em
+// <controle>\fiscal-por-mes\<data-hora> e roda o executor de sempre em PRODUÇÃO num processo à parte (o mesmo arquivador-correcao.js
+// do terminal, com --pelo-arquivador: quem chama segura o contínuo e o botão "Arquivar agora" com o ocupado, no lugar de exigir o
+// contínuo desligado). Terminou bem: grava feito-<ano>.json e avisa na Central dos robôs. Deu erro: avisa e tenta na madrugada
+// seguinte (o executor para no primeiro erro de um lote, e o que já foi movido sai do plano da próxima vez).
+/**
+ * o: { log, painel, ocupado(): bool, ocupar(), desocupar(), controle, drive, anos: [2026], agora(): Date, ler (o lerDoDisco),
+ * rodarExecutor(arqPlano) → Promise<{ ok, saida?, erro? }>, travaDaRotinaAntiga (o _execucao.lock) }. Devolve { tique() }.
+ */
+function criarMudancaDaMadrugada(o) {
+  const log = o.log || (() => {});
+  const agora = o.agora || (() => new Date());
+  const anos = o.anos || [2026];
+  const ler = o.ler || lerDoDisco;
+  const dirBase = W.join(o.controle, 'fiscal-por-mes');
+  const arqFeito = ano => W.join(dirBase, 'feito-' + ano + '.json');
+  let rodando = false;
+  const rotinaAntigaRodando = () => {
+    if (!o.travaDaRotinaAntiga) return false;
+    try { return Date.now() - fs.statSync(o.travaDaRotinaAntiga).mtimeMs < 4 * 36e5; } catch (e) { return false; }
+  };
+  async function tique() {
+    const d = agora();
+    if (rodando || d.getHours() < 1 || d.getHours() >= 5) return 'fora da hora';
+    const ano = anos.find(a => !fs.existsSync(arqFeito(a)));
+    if (ano == null) return 'nada a fazer';
+    if (o.ocupado && o.ocupado()) return 'o arquivador está ocupado';
+    if (rotinaAntigaRodando()) return 'a rotina antiga está rodando';
+    const raiz = W.join(o.drive, String(ano));
+    if (!fs.existsSync(raiz)) return 'sem a raiz ' + raiz;
+    rodando = true;
+    if (o.ocupar) o.ocupar();
+    if (o.painel) o.painel.fazendo('fiscal-por-mes', 'Fiscal por mês: movendo os arquivos de ' + ano + ' para as pastas do mês');
+    const carimbo = d.getFullYear() + dois(d.getMonth() + 1) + dois(d.getDate()) + '-' + dois(d.getHours()) + dois(d.getMinutes());
+    const saida = W.join(dirBase, carimbo);
+    try {
+      log('fiscal por mês: montando o plano de ' + raiz + ' (só as pastas, nada é aberto)');
+      const r = planejar(ler, [{ ano, raiz }]);
+      const res = resumir(r);
+      fs.mkdirSync(saida, { recursive: true });
+      const arqPlano = W.join(saida, 'plano-fiscal-por-mes.jsonl');
+      fs.writeFileSync(arqPlano, r.plano.map(p => JSON.stringify(p)).join('\n') + (r.plano.length ? '\n' : ''));
+      const csv = s => '"' + String(s).replace(/"/g, '""') + '"';
+      fs.writeFileSync(W.join(saida, 'ficam.csv'), '﻿caminho;nome;por que\n' + r.ficam.map(f => [f.p, f.nome, f.porque].map(csv).join(';')).join('\n') + '\n');
+      let exec = { ok: true, saida: null };
+      if (r.plano.length) {
+        log('fiscal por mês: movendo ' + r.plano.length + ' arquivo(s) de ' + res.clientes + ' cliente(s) (o executor, em produção)');
+        exec = await o.rodarExecutor(arqPlano);
+      }
+      const feito = Object.assign({ em: new Date().toISOString(), ano, pasta: saida, executor: exec.saida || null }, res);
+      fs.writeFileSync(W.join(saida, 'resumo.json'), JSON.stringify(Object.assign({ ok: exec.ok, erro: exec.erro || null }, feito), null, 1));
+      if (!exec.ok) throw new Error(exec.erro || 'o executor parou');
+      fs.writeFileSync(arqFeito(ano), JSON.stringify(feito, null, 1));
+      const movidos = exec.saida && exec.saida.etapas && exec.saida.etapas.pasta ? exec.saida.etapas.pasta.porTipo || {} : {};
+      const texto = r.plano.length + ' arquivo(s) de ' + res.clientes + ' cliente(s) para as pastas do mês' + (res.ficam ? '; ' + res.ficam + ' ficaram onde estavam (sem o mês no nome ou de outro ano: ficam.csv)' : '');
+      log('fiscal por mês: pronto - ' + texto + ' ' + JSON.stringify(movidos) + ' (' + saida + ')');
+      if (o.painel) o.painel.atividade('arquivamento', 'Fiscal de ' + ano + ' separado por mês', texto);
+      return 'feito';
+    } catch (err) {
+      log('fiscal por mês: parou - ' + (err && err.message) + ' (tenta de novo na próxima madrugada; o diário do executor fica em ' + saida + ')');
+      if (o.painel) o.painel.erro('arquivamento', 'A mudança do fiscal para as pastas do mês parou', String(err && err.message || err) + ': tenta de novo na próxima madrugada');
+      return 'erro';
+    } finally {
+      rodando = false;
+      if (o.painel) o.painel.fazendo('fiscal-por-mes', null);
+      if (o.desocupar) o.desocupar();
+    }
+  }
+  return { tique };
+}
+
+/** O executor de sempre em produção, num processo à parte (o arquivador segue respondendo); devolve { ok, saida, erro }. */
+function rodarExecutorNumProcesso(arqPlano, log) {
+  return new Promise(resolve => {
+    const { spawn } = require('child_process');
+    const p = spawn(process.execPath, [path.join(__dirname, 'arquivador-correcao.js'), '--plano', arqPlano, '--etapas', 'pasta', '--producao', '--confirmo', '--pelo-arquivador'], { cwd: __dirname, windowsHide: true });
+    let out = '', err = '';
+    p.stdout.on('data', b => { out += b; });
+    p.stderr.on('data', b => { err += b; if (log) for (const l of String(b).split(/\r?\n/).filter(Boolean)) log('fiscal por mês: ' + l); });
+    p.on('error', e => resolve({ ok: false, erro: e.message }));
+    p.on('close', code => {
+      const i = out.lastIndexOf('\n{');
+      let saida = null;
+      try { saida = JSON.parse(i >= 0 ? out.slice(i + 1) : out); } catch (_) { /* sem o resumo */ }
+      resolve(code === 0 ? { ok: true, saida } : { ok: false, saida, erro: (err.match(/PAREI: .*/) || [err.trim().split('\n').pop() || 'o executor saiu com o código ' + code])[0] });
+    });
+  });
+}
+
+module.exports = { planejar, lerDoDisco, resumir, lugarNovo, mesDoNome, criarMudancaDaMadrugada, rodarExecutorNumProcesso };
 
 if (require.main === module) {
   const a = process.argv.slice(2);
