@@ -14,6 +14,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useOperador } from '../../casca/operador';
 import { useEntregasDeDocumentos } from '../../dados/repo';
 import type { GuiaParaAnexar } from '../../dados/entregasDeDocumentos';
+import { base64DosBytes } from '../../../cliente/dados/espelho';
 import { lerPdfDaGuia, textoDoPdf } from './arquivosDaEntrega';
 
 type Cliente = ReturnType<typeof entregas.clienteDaRotaDoDocumento>;
@@ -203,13 +204,15 @@ export function useNovaEntrega() {
     }
   }
   /** O DARF de um tributo puxado da pasta, na linha dele ("DARF INSS"); puxar de novo só troca o valor. */
-  function aplicarDarfDoTributo(texto: string, id: string, rotulo: string) {
+  function aplicarDarfDoTributo(texto: string, id: string, rotulo: string): string[] {
     const d = entregas.dadosDoPdf(texto, clientes.lista, 'darf');
-    aplicarPagamento(d, true, []);
+    const achados: string[] = [];
+    aplicarPagamento(d, true, achados);
     setErros(e => ({ ...e, itens: undefined }));
     setDuplicatas(ds => (ds.some(x => x.id === id)
       ? ds.map(x => (x.id === id ? { ...x, valor: d.valor || x.valor } : x))
       : [...ds, { id, rotulo, pedeFuncionario: false, valor: d.valor || '', funcionario: '', daPasta: true }]));
+    return achados;
   }
   async function anexarPdf(arquivos: File[]) {
     const a = arquivos[0];
@@ -239,9 +242,12 @@ export function useNovaEntrega() {
     guiasJaPuxadas.current[chave] = true;
     setPuxandoGuias(true);
     setGuiasStatus('Procurando as guias de ' + g.mm + '/' + g.aaaa + ' na pasta do cliente…');
+    // o código para pagar que já estava antes de puxar (o boleto do Financeiro não passa por cima dele nem do de uma guia)
+    let comCodigo = !!codigoPagamento;
     try {
-      const guias = await repo.guiasDaPasta(c, g);
-      if (!guias.length) { guiasJaPuxadas.current[chave] = false; setGuiasStatus('Não achei FGTS, DARF nem DAS de ' + g.mm + '/' + g.aaaa + ' na pasta do cliente.'); return; }
+      // as guias e a folha da pasta do cliente, e o boleto de honorário do Financeiro (11/11/2026), ao mesmo tempo
+      const [guias, boleto] = await Promise.all([repo.guiasDaPasta(c, g), repo.boletoDoFinanceiro(c, competencia)]);
+      if (!guias.length && !boleto) { guiasJaPuxadas.current[chave] = false; setGuiasStatus('Não achei FGTS, DARF, DAS nem a folha de ' + g.mm + '/' + g.aaaa + ' na pasta do cliente, nem o boleto no Financeiro.'); return; }
       // todos os DARFs do mês, um por tributo (11/11/2026); com mais de um, cada um na sua linha ("DARF INSS", "DARF IRRF")
       const comoEntra = entregas.comoEntraAGuia(guias);
       setGuiasStatus('Puxando ' + comoEntra.map(x => x.rotulo).join(', ') + ' de ' + g.mm + '/' + g.aaaa + ' da pasta do cliente…');
@@ -252,13 +258,23 @@ export function useNovaEntrega() {
           const texto = await textoDoPdf(arq.bytes);
           // a linha da guia: o documento da lista (fgts, darf, das) ou a do DARF daquele tributo
           const linha = comoEntra[k].principal ? x.guia.tipo : entregas.idsDosAnexosDasGuias([{ tipo: x.guia.tipo, tributo: x.tributo }])[0];
-          if (comoEntra[k].principal) aplicarDadosDoPdf(texto, null, x.guia.tipo);
-          else aplicarDarfDoTributo(texto, linha, comoEntra[k].rotulo);
+          const achou = comoEntra[k].principal ? aplicarDadosDoPdf(texto, null, x.guia.tipo) : aplicarDarfDoTributo(texto, linha, comoEntra[k].rotulo);
+          if (achou.some(a => a.startsWith('código'))) comCodigo = true;
           guiasParaAnexar.current[linha] = { tipo: x.guia.tipo, tributo: comoEntra[k].principal ? '' : x.tributo, nome: x.arquivo.n, driveId: x.arquivo.i, tamanho: arq.tamanho, pdf: arq.tamanho <= entregas.LIMITE_PDF_ANEXO ? arq.base64 : null };
           trazidas.push(comoEntra[k].rotulo);
         } catch { /* a próxima */ }
       }
-      setGuiasStatus(trazidas.length ? trazidas.join(', ') + ' de ' + g.mm + '/' + g.aaaa + ' vieram da pasta do cliente e vão anexados à entrega. Confira os valores.' : '');
+      // o boleto de honorário: o "Boleto" com o valor, o PDF anexado e o código para pagar (se nenhuma guia trouxe o dela)
+      if (boleto) {
+        setMarcados(m => (m.includes('boleto') ? m : [...m, 'boleto']));
+        if (boleto.valor != null) setValores(v => ({ ...v, boleto: entregas.valorParaCampo(boleto.valor) }));
+        if (!comCodigo && boleto.linha) setCodigoPagamento({ tipo: 'boleto', codigo: entregas.linhaDoBoleto(boleto.linha) });
+        if (!guias.length && boleto.vencimento) { ultimoAuto.current = null; setVencimentoIso(boleto.vencimento); setVencimentoTexto(dataBr(boleto.vencimento)); }
+        const tamanho = boleto.pdf?.length || 0;
+        guiasParaAnexar.current.boleto = { tipo: 'boleto', nome: boleto.arquivo, driveId: '', tamanho, pdf: boleto.pdf && tamanho <= entregas.LIMITE_PDF_ANEXO ? base64DosBytes(boleto.pdf) : null };
+        trazidas.push('Boleto');
+      }
+      setGuiasStatus(trazidas.length ? trazidas.join(', ') + ' de ' + g.mm + '/' + g.aaaa + (boleto ? ' vieram da pasta do cliente e do Financeiro' : ' vieram da pasta do cliente') + ' e vão anexados à entrega. Confira os valores.' : '');
       guiasJaPuxadas.current[chave] = false;
       if (!trazidas.length) avisar('Não consegui trazer as guias da pasta do cliente. Adicione à mão.', 'erro');
     } catch (e) {

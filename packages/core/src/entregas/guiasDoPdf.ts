@@ -309,12 +309,21 @@ export function vencimentoAutomatico(competencia: string, itens: readonly Pick<I
 // ---------------------------------------------------------------------------------------------------------------------
 // as guias que já estão na pasta do cliente no Drive (13/10/2026, no Entregas: "puxe as guias de FGTS e DARF da pasta")
 // ---------------------------------------------------------------------------------------------------------------------
-export interface GuiaDaPasta { tipo: 'fgts' | 'darf' | 'das'; nome: string; casa: (caminho: readonly string[]) => boolean }
+export interface GuiaDaPasta { tipo: 'fgts' | 'darf' | 'das' | 'folha_pagamento'; nome: string; casa: (caminho: readonly string[]) => boolean }
 export const GUIAS_DA_PASTA: readonly GuiaDaPasta[] = [
   { tipo: 'fgts', nome: 'FGTS', casa: p => { const t = p.join(' / '); return t.includes('FGTS') && !t.includes('CERTID'); } },
   { tipo: 'darf', nome: 'DARF', casa: p => p.join(' / ').includes('DARF') },
   // a pasta "01. DAS" (ou "DAS") ou o arquivo que começa com "DAS" — não qualquer nome com "das" no meio
   { tipo: 'das', nome: 'DAS', casa: p => p.slice(0, -1).some(s => /^(\d+\.\s*)?DAS$/.test(s)) || /^DAS[\s._-]/.test(p[p.length - 1] || '') },
+  // a folha do DP (11/11/2026: "no entregas tambem tenha a opção de puxar as folhas de pagamento"), onde o DP › Envios
+  // também acha: SOCIETÁRIO/FOLHA DE PAGAMENTO/AAAA/MM/… ou DEPARTAMENTO PESSOAL/MM/… com FOLHA no caminho; a guia do
+  // FGTS ou o DARF que estejam na mesma pasta ficam com o tipo deles
+  { tipo: 'folha_pagamento', nome: 'Folha de Pagamento', casa: p => {
+    const t = p.join(' / ');
+    if (/FGTS|DARF|CERTID/.test(t)) return false;
+    const dp = p.indexOf('DEPARTAMENTO PESSOAL');
+    return t.includes('FOLHA DE PAGAMENTO') || (dp >= 0 && /FOLHA/.test(p.slice(dp + 1).join(' / ')));
+  } },
 ];
 const MESES_POR_EXTENSO = ['JANEIRO', 'FEVEREIRO', 'MARCO', 'ABRIL', 'MAIO', 'JUNHO', 'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'];
 /** O mês da guia: o anterior ao da entrega (a guia de setembro é entregue em outubro). */
@@ -408,7 +417,28 @@ export function idsDosAnexosDasGuias(guias: readonly { tipo: string; tributo?: s
  */
 export function anexosDeGuiaDaEntrega(itens: readonly Pick<ItemDaEntrega, 'tipo'>[]): string[] {
   const daEntrega = idsDosAnexosDasGuias(itens.filter(i => /^(FGTS|DARF|DAS)\b/i.test(i.tipo)).map(i => ({ tipo: i.tipo })));
-  return [...new Set(['guia-fgts', 'guia-darf', 'guia-das', ...daEntrega])];
+  return [...new Set(['guia-fgts', 'guia-darf', 'guia-das', 'guia-folha-pagamento', 'guia-boleto', ...daEntrega])];
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// o boleto de honorário do Financeiro (11/11/2026: "e boletos (financeiro)"): o do cliente em Financeiro › Boletos
+// ---------------------------------------------------------------------------------------------------------------------
+/** O boleto do Financeiro que a entrega leva: o da competência; sem ele, o do mês anterior (o das guias). Nunca o tirado do lote. */
+export function boletoParaAEntrega<B extends { competencia: string; contratoId: string; fora?: boolean; vencimento: string | null }>(
+  boletos: readonly B[], contratos: readonly string[], competencia: string,
+): B | null {
+  const doCliente = boletos.filter(b => contratos.includes(b.contratoId) && !b.fora);
+  const m = /^(\d{4})-(\d{2})$/.exec(competencia);
+  const anterior = m ? (() => { const d = new Date(Number(m[1]), Number(m[2]) - 2, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); })() : '';
+  const maisNovo = (l: B[]) => [...l].sort((a, b) => String(b.vencimento || '').localeCompare(String(a.vencimento || '')))[0] || null;
+  return maisNovo(doCliente.filter(b => b.competencia === competencia)) || maisNovo(doCliente.filter(b => b.competencia === anterior));
+}
+/** A linha digitável (só os dígitos) como o banco imprime: 47 (boleto) em 5 campos; 48 (arrecadação) em 4 blocos de 12. */
+export function linhaDoBoleto(digitos: string): string {
+  const d = String(digitos || '').replace(/\D/g, '');
+  if (d.length === 47) return d.slice(0, 5) + '.' + d.slice(5, 10) + ' ' + d.slice(10, 15) + '.' + d.slice(15, 21) + ' ' + d.slice(21, 26) + '.' + d.slice(26, 32) + ' ' + d[32] + ' ' + d.slice(33);
+  if (d.length === 48) return [0, 12, 24, 36].map(i => d.slice(i, i + 12)).join(' ');
+  return d;
 }
 /** O PDF anexado à entrega cabe no documento do banco? (o documento aceita ~1 MB e o Base64 cresce 1/3) */
 export const LIMITE_PDF_ANEXO = 700000;

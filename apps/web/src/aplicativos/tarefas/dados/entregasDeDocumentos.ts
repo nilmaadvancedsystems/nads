@@ -28,6 +28,8 @@ export type ResultadoDaGravacao = 'servidor' | 'aparelho';
 export interface DocumentoMensal { clienteId: string; competencia: string; extrato: boolean; semMovimento: boolean }
 /** O arquivo do Drive trazido pelo robô (modo "ler"). */
 export interface ArquivoDoDrive { bytes: Uint8Array; base64: string; tamanho: number }
+/** O boleto de honorário do Financeiro para a entrega: o nome do PDF, a linha (só os dígitos), o valor, o vencimento e o PDF. */
+export interface BoletoDoFinanceiro { arquivo: string; linha: string; valor: number | null; vencimento: string | null; pdf: Uint8Array | null }
 
 export interface RepoEntregasDeDocumentos {
   readonly exemplos: boolean;
@@ -138,6 +140,11 @@ export interface RepoEntregasDeDocumentos {
   // ---- a guia da pasta do cliente (o robô do Drive) ----
   guiasDaPasta(c: tipos.ClienteDaRota, mes: { mm: string; aaaa: string }): Promise<tipos.GuiaAchadaNaPasta[]>;
   lerDoDrive(arquivo: tipos.ItemDoDrive): Promise<ArquivoDoDrive>;
+  /**
+   * O boleto de honorário do cliente em Financeiro › Boletos (11/11/2026: "e boletos (financeiro)"): o da competência, senão
+   * o do mês anterior (core boletoParaAEntrega), com o PDF; null quando não há (ou quando quem está não pode ver o Financeiro).
+   */
+  boletoDoFinanceiro(c: tipos.ClienteDaRota, competencia: string): Promise<BoletoDoFinanceiro | null>;
 
   assinar(aoMudar: () => void): () => void;
   versao(): number;
@@ -170,7 +177,7 @@ function pdfDeExemplo(texto: string): Uint8Array {
   return new TextEncoder().encode(pdf);
 }
 /**
- * A pasta de exemplo de um cliente no mês da guia: a ALFA (101) tem FGTS, DARF INSS e DARF IRRF; a BETA (102), um DARF só.
+ * A pasta de exemplo de um cliente no mês da guia: a ALFA (101) tem FGTS, DARF INSS, DARF IRRF e a folha do DP; a BETA (102), um DARF só.
  * O texto de cada guia vai no próprio item (t: o texto do PDF), para o lerDoDrive dos exemplos.
  */
 function pastaDeExemplo(codigo: string, m: { mm: string; aaaa: string }): (tipos.ItemDoDrive & { texto: string })[] {
@@ -181,7 +188,9 @@ function pastaDeExemplo(codigo: string, m: { mm: string; aaaa: string }): (tipos
   const pasta = (i: string, n: string, p: string) => ({ i, n, p, t: 'd' as const, texto: '' });
   const pastas = [pasta('raiz', codigo + ' - EXEMPLO', ''), pasta('fis', 'FISCAL', 'raiz'), pasta('darf', '16. DARF', 'fis'), pasta('dp', 'DEPARTAMENTO PESSOAL', 'raiz'), pasta('mes', m.mm, 'dp'), pasta('fgts', 'FGTS', 'mes')];
   if (codigo === '101') return [...pastas, darf('INSS', '1.234,56'), darf('IRRF', '87,40'),
-    guia('fgts-guia', 'GUIA FGTS.pdf', 'fgts', 'GUIA DO FGTS DIGITAL Competencia ' + m.mm + '/' + m.aaaa + ' Data de Vencimento: ' + venc + ' Valor R$ 640,00')];
+    guia('fgts-guia', 'GUIA FGTS.pdf', 'fgts', 'GUIA DO FGTS DIGITAL Competencia ' + m.mm + '/' + m.aaaa + ' Data de Vencimento: ' + venc + ' Valor R$ 640,00'),
+    pasta('soc', 'SOCIETÁRIO', 'raiz'), pasta('fp', 'FOLHA DE PAGAMENTO', 'soc'), pasta('fpa', m.aaaa, 'fp'), pasta('fpm', m.mm, 'fpa'),
+    guia('folha', 'FOLHA DE PAGAMENTO ' + m.mm + '-' + m.aaaa + '.pdf', 'fpm', 'FOLHA DE PAGAMENTO Competencia ' + m.mm + '/' + m.aaaa + ' ALFA COMERCIO EXEMPLO LTDA Total liquido R$ 8.450,00')];
   if (codigo === '102') return [...pastas, darf('INSS', '310,00')];
   return [];
 }
@@ -342,6 +351,12 @@ export function criarEntregasDeDocumentosMemoria(): RepoEntregasDeDocumentos {
       const itens = pastaDeExemplo(c.codigoOrigem.trim(), m);
       for (const it of itens) if (it.texto) textosDasGuias.set(it.i, it.texto);
       return entregas.guiasNaPasta(itens, m);
+    },
+    // nos exemplos, a ALFA (101) tem o boleto de honorário da competência no Financeiro
+    async boletoDoFinanceiro(c, competencia) {
+      if (c.codigoOrigem.trim() !== '101') return null;
+      const vencimento = competencia + '-10';
+      return { arquivo: 'Boleto ALFA.pdf', linha: '23793381286000000000300000000400185670000085000', valor: 850, vencimento, pdf: pdfDeExemplo('BOLETO HONORARIOS ALFA COMERCIO EXEMPLO LTDA Vencimento ' + vencimento + ' Valor R$ 850,00') };
     },
     async lerDoDrive(arq) {
       const texto = textosDasGuias.get(arq.i);

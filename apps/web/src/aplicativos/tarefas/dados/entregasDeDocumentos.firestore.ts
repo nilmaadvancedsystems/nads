@@ -18,12 +18,13 @@
 // O e-mail de quem grava é o do login (as regras conferem entregadoPor == o e-mail do token).
 import { entregas } from '@nads/core';
 import {
-  addDoc as addDocBruto, collection, deleteDoc as deleteDocBruto, deleteField, doc, getDoc, getDocFromServer, getDocs, getDocsFromServer, limit, onSnapshot, orderBy, query,
+  addDoc as addDocBruto, Bytes, collection, deleteDoc as deleteDocBruto, deleteField, doc, getDoc, getDocFromServer, getDocs, getDocsFromServer, limit, onSnapshot, orderBy, query,
   setDoc as setDocBruto, Timestamp, updateDoc as updateDocBruto, where, writeBatch as writeBatchBruto, type DocumentData, type Unsubscribe,
 } from 'firebase/firestore';
 import { guardar, guardarLote, guardarPedido } from '../../../comum/modoDesenvolvedor';
 import { criarTravaDeRepeticao } from '../../../comum/travaDeRepeticao';
 import type { ListaAoVivo } from './agentes';
+import { boletoDoBanco } from './boletos.firestore';
 import { bancoDoEntregas, contaDoEntregas } from './entregas.firestore';
 import type { ArquivoDoDrive, AtestadoParaBuscar, ComprovanteDaEntrega, EscritaPerdida, GuiaAnexada, LembreteDoCliente, QuemNoEntregas, RepoEntregasDeDocumentos, ResultadoDaGravacao } from './entregasDeDocumentos';
 
@@ -826,6 +827,31 @@ export function criarEntregasDeDocumentosFirestore(pessoa: () => { nome: string;
       const partes = await getDocs(collection(db, 'driveIndice', pasta.id, 'partes'));
       const itens = entregas.itensDasPartes([...partes.docs].sort((a, b) => Number(a.id) - Number(b.id)).map(d => d.data()));
       return entregas.guiasNaPasta(itens, m);
+    },
+    async boletoDoFinanceiro(c, competencia) {
+      // os contratos de honorário do cliente (pelo id do Entregas e pelo código), depois os boletos deles: consultas
+      // pequenas, sem ler o lote do mês inteiro; sem permissão no Financeiro, fica sem boleto (o resto do Puxar guias segue)
+      try {
+        const honorarios = collection(db, 'financeiroHonorarios');
+        const [porId, porCodigo] = await Promise.all([
+          getDocs(query(honorarios, where('clienteId', '==', c.id))),
+          c.codigoOrigem.trim() ? getDocs(query(honorarios, where('codigo', '==', c.codigoOrigem.trim()))) : Promise.resolve(null),
+        ]);
+        const contratos = [...new Set([...porId.docs, ...(porCodigo?.docs || [])].map(d => d.id))];
+        if (!contratos.length) return null;
+        const s = await getDocs(query(collection(db, 'financeiroBoletos'), where('contratoId', 'in', contratos.slice(0, 30))));
+        const b = entregas.boletoParaAEntrega(s.docs.map(d => boletoDoBanco(d.id, d.data())), contratos, competencia);
+        if (!b) return null;
+        const partes = await getDocs(collection(db, 'financeiroBoletos', b.id, 'partes'));
+        const pedacos = partes.docs.sort((x, y) => Number(x.id) - Number(y.id)).map(x => (x.data().dados as Bytes).toUint8Array());
+        const pdf = pedacos.length ? new Uint8Array(pedacos.reduce((t, p) => t + p.length, 0)) : null;
+        let i = 0;
+        if (pdf) for (const p of pedacos) { pdf.set(p, i); i += p.length; }
+        return { arquivo: b.arquivo, linha: b.linha, valor: b.valor, vencimento: b.vencimento, pdf };
+      } catch (err) {
+        if (codigo(err) !== 'permission-denied') console.warn('boleto do Financeiro:', err);
+        return null;
+      }
     },
     async lerDoDrive(arq): Promise<ArquivoDoDrive> {
       const q = precisaDeQuem();

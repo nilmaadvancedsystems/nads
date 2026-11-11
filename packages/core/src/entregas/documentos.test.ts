@@ -8,7 +8,7 @@ import {
 import {
   ajustarDiaUtil, barrasDaLinha, clienteDoPdf, codigoDePagamentoDoPdf, competenciaDoPdf, dadosDoPdf, doMesDaGuia, dvMod10, feriadosNacionais,
   guiasNaPasta, mesDaGuia, paradaDoCodigo, pixCopiaECola, pixValido, chavePixNormalizada, tipoDoPdf, valorDoPdf, vencimentoAutomatico, vencimentoDoPdf,
-  temVencimentoAutomatico, tributoDoDarf, comoEntraAGuia, idsDosAnexosDasGuias, anexosDeGuiaDaEntrega,
+  temVencimentoAutomatico, tributoDoDarf, comoEntraAGuia, idsDosAnexosDasGuias, anexosDeGuiaDaEntrega, boletoParaAEntrega, linhaDoBoleto,
 } from './guiasDoPdf';
 import {
   avaliarLocalDaEntrega, avisoDaParada, chaveDaParada, diasAte, estadoDaOrdemFixa, fechamentoDoDia, janelaDoPeriodo, minutosPorParada, moverNaRota,
@@ -303,11 +303,31 @@ describe('as guias da pasta do cliente', () => {
       expect(idsDosAnexosDasGuias([{ tipo: 'fgts' }, { tipo: 'darf', tributo: 'INSS' }, { tipo: 'darf', tributo: 'IRRF FOLHA' }, { tipo: 'darf' }, { tipo: 'darf', tributo: 'INSS' }]))
         .toEqual(['guia-fgts', 'guia-darf-inss', 'guia-darf-irrf-folha', 'guia-darf', 'guia-darf-inss-2']);
       expect(anexosDeGuiaDaEntrega([{ tipo: 'DARF INSS' }, { tipo: 'DARF IRRF' }, { tipo: 'Honorário' }, { tipo: 'FGTS' }]))
-        .toEqual(['guia-fgts', 'guia-darf', 'guia-das', 'guia-darf-inss', 'guia-darf-irrf']);
+        .toEqual(['guia-fgts', 'guia-darf', 'guia-das', 'guia-folha-pagamento', 'guia-boleto', 'guia-darf-inss', 'guia-darf-irrf']);
     });
   });
   it('acha a mais nova de cada tipo, sem a certidão', () => {
     expect(guiasNaPasta(itens, { mm: '09', aaaa: '2026' }).map(g => g.guia.tipo + ':' + g.arquivo.i)).toEqual(['fgts:f2', 'das:d1']);
+  });
+  it('a folha do DP (11/11/2026): na pasta da folha do Societário ou com FOLHA no DP; a guia do FGTS de lá continua FGTS', () => {
+    const comFolha: ItemDoDrive[] = [
+      ...itens,
+      { i: 'soc', n: 'SOCIETÁRIO', p: 'raiz', t: 'd' }, { i: 'fp', n: 'FOLHA DE PAGAMENTO', p: 'soc', t: 'd' },
+      { i: 'a26', n: '2026', p: 'fp', t: 'd' }, { i: 'fp09', n: '09', p: 'a26', t: 'd' },
+      { i: 'fol1', n: 'FOLHA ANALITICA.pdf', p: 'fp09', t: 'f', m: '2026-10-03' },
+      { i: 'fol2', n: 'FOLHA ANALITICA (2).pdf', p: 'fp09', t: 'f', m: '2026-10-04' },
+      { i: 'dpf', n: 'FOLHA', p: 'm09', t: 'd' }, { i: 'fol0', n: 'resumo.pdf', p: 'dpf', t: 'f', m: '2026-10-01' },
+    ];
+    expect(guiasNaPasta(comFolha, { mm: '09', aaaa: '2026' }).map(g => g.guia.tipo + ':' + g.arquivo.i)).toEqual(['fgts:f2', 'das:d1', 'folha_pagamento:fol2']);
+    expect(guiasNaPasta(comFolha.filter(x => !x.i.startsWith('fol') || x.i === 'fol0'), { mm: '09', aaaa: '2026' }).map(g => g.guia.tipo + ':' + g.arquivo.i)).toEqual(['fgts:f2', 'das:d1', 'folha_pagamento:fol0']);
+  });
+  it('o boleto de honorário do Financeiro: o da competência, senão o do mês anterior; nunca o tirado do lote nem o de outro cliente', () => {
+    const b = (id: string, contratoId: string, competencia: string, d: Record<string, unknown> = {}) => ({ id, contratoId, competencia, vencimento: competencia + '-28', ...d });
+    const lista = [b('x1', 'h1', '2026-10'), b('x2', 'h1', '2026-11', { fora: true }), b('x3', 'h2', '2026-11'), b('x4', 'h1', '2026-09')];
+    expect(boletoParaAEntrega(lista, ['h1'], '2026-11')?.id).toBe('x1');
+    expect(boletoParaAEntrega([...lista, b('x5', 'h1', '2026-11')], ['h1'], '2026-11')?.id).toBe('x5');
+    expect(boletoParaAEntrega(lista, ['h9'], '2026-11')).toBeNull();
+    expect(linhaDoBoleto('23793381286000000000300000000400185670000012345')).toBe('23793.38128 60000.000003 00000.000400 1 85670000012345');
   });
 });
 
