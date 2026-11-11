@@ -6246,6 +6246,8 @@ button.fxr-numero.active{border-color:var(--accent);box-shadow:inset 0 0 0 1px v
 .fc-cartao-titulo .fraco{font-weight:400;color:var(--ink-muted);}
 .fc-contagem{font-size:var(--fs-12);font-variant-numeric:tabular-nums;color:var(--ink-muted);}
 .fc-acoes{display:inline-flex;align-items:center;flex-wrap:wrap;gap:6px;margin-left:auto;}
+/* o Segmentado no topo do cartão (Por CFOP | Por CST; Todas | Canceladas, 11/11/2026) na linha da busca: sem a margem de baixo do .steps */
+.fc-acoes .steps{margin:0;}
 .fc-busca{width:260px;}
 .fc-sub{font-size:var(--fs-12);color:var(--ink-muted);}
 .fc-rotulo{font-size:var(--fs-12);color:var(--ink-muted);}
