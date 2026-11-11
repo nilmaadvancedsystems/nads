@@ -40,7 +40,7 @@ export function useDanfeOriginal(nota: t.sieg.NotaDoSieg, codigo: string | numbe
   const PASSOS = [50, 75, 100, 125, 150, 200];
   const atual = zoom === 'largura' ? 100 : zoom;
 
-  const erro = !o.pode ? 'Esta nota não tem a chave de acesso para o robô buscar o XML.' : o.erro || erroDoPdf;
+  const erro = !o.pode ? 'Não dá para pedir esta nota ao robô: falta a chave de acesso, a empresa ou o mês dela.' : o.erro || erroDoPdf;
   return {
     titulo: (nota.tipo === 'NFC-e' ? 'NFC-e ' : 'NF-e ') + nota.numero + (nota.serie ? ' · série ' + nota.serie : ''),
     emitente: lcdpr.semEntidades(nota.emitente.nome),

@@ -39,3 +39,13 @@ export function espelhoDaNota(n: NotaDoSieg): EspelhoDaNota {
     semItens: !itens.length,
   };
 }
+
+/**
+ * Como a nota abre no "Ver" de qualquer tela (11/11/2026: "quero que todas as maneiras de puxar danfe saia igual"): a NF-e
+ * e a NFC-e com a chave de acesso abrem na DANFE idêntica à original (o PDF desenhado do XML que o robô traz pela chave);
+ * o resto (o CT-e, a NFS-e, a nota sem a chave) fica no espelho. Nos exemplos a chave é inventada, e a DANFE vale igual.
+ */
+export function comoVerANota(n: Pick<NotaDoSieg, 'tipo' | 'chave'>, exemplos = false): 'danfe' | 'espelho' {
+  if (n.tipo !== 'NF-e' && n.tipo !== 'NFC-e') return 'espelho';
+  return exemplos || /^\d{44}$/.test((n.chave || '').replace(/\D/g, '')) ? 'danfe' : 'espelho';
+}

@@ -9,7 +9,7 @@ import { Alerta, BotaoIcone, Dica, Esqueleto, Icone, Segmentado, SeletorMes, use
 import type { KeyboardEvent, ReactNode } from 'react';
 import { ValorEditavel } from '../../financeiro/partes/ValorEditavel';
 import { EmpresaDaBarra } from '../partes/EmpresaDaBarra';
-import { EspelhoDaNota } from '../partes/EspelhoDaNota';
+import { VerANota } from '../partes/VerANota';
 import { useRateioDeFrete, type VmRateioDeFrete } from './useRateioDeFrete';
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -23,7 +23,7 @@ export function RateioDeFrete() {
   const doCte = vm.fonte === 'cte';
   return (
     <section className="fc">
-      {vm.vendo && <EspelhoDaNota nota={vm.vendo} codigo={vm.empresa?.codigo} competencia={vm.competencia} fechar={vm.fecharNota} />}
+      {vm.vendo && <VerANota nota={vm.vendo} codigo={vm.empresa?.codigo} competencia={vm.competencia} fechar={vm.fecharNota} />}
       <div className="tarefas-barra-topo fc-topo">
         {doCte && (
           <>

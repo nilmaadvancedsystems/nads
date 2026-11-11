@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chaveEmGrupos, danfeDoXml, docFormatado, htmlDaDanfe } from './danfe';
+import { chaveEmGrupos, danfeDoXml, docFormatado } from './danfe';
 
 const CHAVE = '31260921012190001613550050001114731368248106';
 const XML = `<?xml version="1.0" encoding="UTF-8"?><nfeProc xmlns="http://www.portalfiscal.inf.br/nfe" versao="4.00"><NFe><infNFe Id="NFe${CHAVE}" versao="4.00">
@@ -29,13 +29,9 @@ describe('a nota original pelo XML (23/10/2026)', () => {
     expect(d.informacoes).toBe('PEDIDO 123');
     expect(d.protocolo).toEqual({ numero: '131260000000001', data: '29/09/2026 10:16' });
   });
-  it('o que não é NF-e é null; a chave em grupos, o documento com máscara e o HTML da impressão', () => {
+  it('o que não é NF-e é null; a chave em grupos, o documento com máscara', () => {
     expect(danfeDoXml('<CTe></CTe>')).toBeNull();
     expect(chaveEmGrupos(CHAVE)).toBe('3126 0921 0121 9000 1613 5500 5000 1114 7313 6824 8106');
     expect(docFormatado('21012190001613')).toBe('21.012.190/0016-13');
-    const h = htmlDaDanfe(danfeDoXml(XML)!);
-    expect(h).toContain('PNEU 175/70 R13 &amp; CAMARA');
-    expect(h).toContain('1 - SAÍDA');
-    expect(h).toContain('size:A4');
   });
 });

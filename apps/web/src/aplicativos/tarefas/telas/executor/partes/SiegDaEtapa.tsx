@@ -3,14 +3,14 @@
 // com o Baixar do SIEG (o robô do PC baixa as saídas do mês) e o Atualizar.
 import { Alerta, BotaoAcao, BotaoFechar, Esqueleto, Icone, Segmentado } from '@nads/ui';
 import { createPortal } from 'react-dom';
-import { EspelhoDaNota } from '../../fiscal/partes/EspelhoDaNota';
+import { VerANota } from '../../fiscal/partes/VerANota';
 import { useSiegDaEtapa } from '../useSiegDaEtapa';
 
 export function SiegDaEtapa({ tipo, codigo, competencia }: { tipo: 'contagem' | 'saidas'; codigo: string; competencia: string }) {
   const vm = useSiegDaEtapa(tipo, codigo, competencia);
   return (
     <section className="sieg-painel">
-      {vm.vendo && <EspelhoDaNota nota={vm.vendo} codigo={codigo} competencia={competencia} fechar={vm.fecharNota} />}
+      {vm.vendo && <VerANota nota={vm.vendo} codigo={codigo} competencia={competencia} fechar={vm.fecharNota} />}
       <header className="sieg-topo">
         <b>SIEG</b>
         {vm.exemplos && <span className="fraco">dados de exemplo</span>}

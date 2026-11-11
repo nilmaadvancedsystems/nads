@@ -5547,18 +5547,6 @@ button.uso-pilula:hover{border-color:var(--ink-muted);color:var(--ink);}
 .espelho-chave .btn svg{width:14px;height:14px;}
 .espelho-totais{margin:0;}
 .espelho-itens{max-height:none;}
-/* a nota original (23/10/2026): a janela larga (os produtos com a descrição), o corpo rolando por dentro */
-.modal.registro-novo.danfe-janela{max-width:1240px;width:calc(100vw - 48px);max-height:calc(100vh - 48px);}
-.danfe-corpo{overflow:auto;display:flex;flex-direction:column;gap:12px;}
-.danfe-corpo>*{flex-shrink:0;}
-.danfe-corpo .stat-grid.espelho-totais{grid-template-columns:repeat(7,minmax(0,1fr));}
-@media (max-width:900px){.danfe-corpo .stat-grid.espelho-totais{grid-template-columns:repeat(2,minmax(0,1fr));}}
-.danfe-itens{max-height:none;}
-.danfe-itens td,.danfe-itens th{white-space:nowrap;}
-.danfe-itens td.danfe-descricao{white-space:normal;min-width:260px;}
-.danfe-pessoa{display:block;}
-.danfe-endereco{display:block;font-size:var(--fs-12,12px);margin-top:2px;}
-.danfe-info{white-space:pre-wrap;}
 .registro-caminho .badge{margin-left:8px;}
 .stat-grid.espelho-totais{grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;}
 .espelho-totais .stat{padding:8px 12px;min-height:0;}

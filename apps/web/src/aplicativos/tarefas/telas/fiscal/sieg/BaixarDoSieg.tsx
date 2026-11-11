@@ -9,7 +9,7 @@ import type { KeyboardEvent } from 'react';
 import { documentoFormatado } from '../../financeiro/formatosDaNota';
 import { SiegDaEtapa } from '../../executor/partes/SiegDaEtapa';
 import { EmpresaDaBarra } from '../partes/EmpresaDaBarra';
-import { EspelhoDaNota } from '../partes/EspelhoDaNota';
+import { VerANota } from '../partes/VerANota';
 import { useBaixarDoSieg, type AbaDaTela, type VmBaixarDoSieg } from './useBaixarDoSieg';
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -34,7 +34,7 @@ export function BaixarDoSieg() {
   ];
   return (
     <section className="fc">
-      {vm.vendo && <EspelhoDaNota nota={vm.vendo} codigo={vm.empresa?.codigo} competencia={vm.competencia} fechar={vm.fecharNota} />}
+      {vm.vendo && <VerANota nota={vm.vendo} codigo={vm.empresa?.codigo} competencia={vm.competencia} fechar={vm.fecharNota} />}
       <div className="tarefas-barra-topo fc-topo">
         <EmpresaDaBarra vm={vm} id="sieg-empresas" />
         <SeletorMes valor={vm.competencia} onMudar={vm.setCompetencia} rotulo="Competência" />

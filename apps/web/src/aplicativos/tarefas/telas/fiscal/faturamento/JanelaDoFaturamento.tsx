@@ -4,7 +4,7 @@
 // BotaoFechar, Stat, BarrasEmColuna, Segmentado, a busca curta, Tabela padrão).
 import { BarrasEmColuna, BotaoFechar, Icone, Segmentado, Stat, useJanela, Variacao } from '@nads/ui';
 import { useRef } from 'react';
-import { EspelhoDaNota } from '../partes/EspelhoDaNota';
+import { VerANota } from '../partes/VerANota';
 import { useDetalheDoFaturamento } from './useDetalheDoFaturamento';
 
 const brl = (n: number | null | undefined) => (n == null ? '' : n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
@@ -18,7 +18,7 @@ export function JanelaDoFaturamento({ cliente, competencias, rotuloDoPeriodo, an
   useJanela(janela, () => { if (!vm.vendo) fechar(); });
   return (
     <div className="modal-overlay" onMouseDown={ev => { if (ev.target === ev.currentTarget) fechar(); }}>
-      {vm.vendo && <EspelhoDaNota nota={vm.vendo} codigo={cliente.codigo} competencia={vm.mes?.competencia} fechar={vm.fecharNota} />}
+      {vm.vendo && <VerANota nota={vm.vendo} codigo={cliente.codigo} competencia={vm.mes?.competencia} fechar={vm.fecharNota} />}
       {/* no desenho da janela do Financeiro (o Resultado por conta; 23/10/2026: "agora tá muito grande… faça no estilo do
           financeiro"): o caminho no topo, o corpo rolando por dentro e o Fechar no pé; até 1240 px, só a altura que precisa */}
       <div ref={janela} className="modal registro-novo fat-detalhe fs-det" role="dialog" aria-modal="true" aria-labelledby="fatDetalheTitulo">
