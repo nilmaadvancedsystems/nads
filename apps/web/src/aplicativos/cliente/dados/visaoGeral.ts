@@ -37,12 +37,13 @@ export type AcaoDaPendencia =
   | { tipo: 'ver-chamado'; chamado: string }
   | { tipo: 'pedir-renovacao' }
   | { tipo: 'enviar' }
+  | { tipo: 'abrir-ticket'; codigo: string }
   | { tipo: 'ir'; aba: 'documentos' | 'guias' | 'dp' | 'chamados' };
 
 export interface Pendencia {
   id: string;
   /** de onde vem (o ícone sai daqui) */
-  origem: 'guia' | 'chamado' | 'certificado' | 'aviso';
+  origem: 'guia' | 'chamado' | 'certificado' | 'aviso' | 'ticket';
   tom: Tom;
   titulo: string;
   texto: string;
@@ -58,8 +59,20 @@ const PESO: Record<Tom, number> = { bad: 0, warn: 1, ok: 2 };
  * serve mais no banco: ele pede uma nova), a que vence hoje, a resposta do escritório a ler, o certificado perto de
  * vencer e os recados do escritório que pedem alguma coisa.
  */
-export function pendenciasDoCliente(e: Pick<EstadoDaArea, 'guias' | 'chamados' | 'certificado' | 'avisos'>, hoje: Date): Pendencia[] {
+export function pendenciasDoCliente(e: Pick<EstadoDaArea, 'guias' | 'chamados' | 'certificado' | 'avisos'> & Partial<Pick<EstadoDaArea, 'tickets'>>, hoje: Date): Pendencia[] {
   const lista: Pendencia[] = [];
+  // o que o escritório pediu pelo Mandei (11/11/2026): o formulário com o prazo; vence hoje, em vermelho
+  for (const t of e.tickets ?? []) {
+    const ate = new Date(t.validoAte);
+    const venceHoje = ate.toDateString() === hoje.toDateString();
+    const falta = t.refazer ? 'O escritório pediu para rever ' + (t.refazer === 1 ? '1 resposta' : t.refazer + ' respostas')
+      : t.faltam < t.total ? 'Faltam ' + t.faltam + ' de ' + t.total + ' respostas' : (t.total === 1 ? '1 pergunta' : t.total + ' perguntas');
+    lista.push({
+      id: 't-' + t.codigo, origem: 'ticket', tom: venceHoje ? 'bad' : 'warn', titulo: 'O escritório pediu: ' + t.assunto,
+      texto: falta + '. Responda até ' + (venceHoje ? 'hoje' : String(ate.getDate()).padStart(2, '0') + '/' + String(ate.getMonth() + 1).padStart(2, '0')) + '.',
+      rotulo: t.faltam < t.total || t.refazer ? 'Continuar' : 'Responder', acao: { tipo: 'abrir-ticket', codigo: t.codigo },
+    });
+  }
   for (const g of guiasDoMomento(e.guias, hoje)) {
     const comp = g.competencia.slice(5, 7) + '/' + g.competencia.slice(0, 4);
     if (g.situacao === 'vencida') {
@@ -110,6 +123,7 @@ export function vereditoDoMes(pendencias: Pendencia[], guias: ac.GuiaDoCliente[]
     ...conta(de('chamado'), '1 resposta do escritório', 'respostas do escritório'),
     ...conta(de('certificado'), 'o certificado digital', ''),
     ...conta(de('aviso'), '1 recado do escritório', 'recados do escritório'),
+    ...conta(de('ticket'), '1 pedido do escritório para responder', 'pedidos do escritório para responder'),
   ];
   return { tom: pendencias[0].tom, titulo: 'Você tem ' + pendencias.length + ' pendências', texto: formatos.capital(emFrase(partes)) + '.' };
 }

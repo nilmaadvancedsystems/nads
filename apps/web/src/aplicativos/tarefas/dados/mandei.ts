@@ -36,6 +36,18 @@ export function gerarSegundoLink(t: m.Ticket, agora = new Date()) {
 
 export function gravarTicket(t: m.Ticket) { exemplo.gravar(t); }
 
+/**
+ * Pede de novo ao cliente as respostas marcadas, com o motivo de cada uma (11/11/2026): o ticket ganha o link da volta
+ * (3 dias úteis) e o e-mail sai com ele. Devolve o ticket gravado (o mesmo, se nada valeu).
+ */
+export function pedirDeNovoAoCliente(t: m.Ticket, pedidos: { chave: string; motivo: string }[], por: string, agora = new Date()): m.Ticket {
+  const novo = m.pedirDeNovo(t, pedidos, por, codigoNovo(), agora);
+  if (novo === t) return t;
+  const enviado = enviarLink(novo, m.linkAtual(novo), agora);
+  exemplo.gravar(enviado);
+  return enviado;
+}
+
 /** O arquivo para baixar (no exemplo, guardado neste navegador; no banco, do Drive pelo robô). */
 export function arquivoParaBaixar(a: m.ArquivoDoTicket): string | null { return exemplo.arquivo(a.id); }
 

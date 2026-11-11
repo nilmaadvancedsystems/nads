@@ -335,6 +335,13 @@ thead th{position:sticky;top:0;z-index:1;background:var(--surface-2);text-align:
    a tabela rola de lado */
 .table-wrap.mandei-linhas{overflow:visible;max-height:none;}
 @media (max-width:940px){.table-wrap.mandei-linhas{overflow:auto;position:relative;}}
+/* a Central do Mandei (11/11/2026): os botões da revisão de cada resposta, e as notas internas e o histórico lado a lado */
+.mandei-acao{min-height:28px;height:28px;padding:0 10px;font-size:var(--fs-12);gap:6px;}
+.mandei-acao svg{width:14px;height:14px;}
+.mandei-rodape{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start;}
+@media (max-width:760px){.mandei-rodape{grid-template-columns:1fr;}}
+.mandei-novo-grade{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;}
+.mandei-historico{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:var(--fs-13,13px);}
 tbody td{padding:8px 16px;border-top:1px solid var(--border-muted);font-variant-numeric:tabular-nums;vertical-align:middle;}
 tbody tr:first-child td{border-top:none;}
 tbody td.wrap{white-space:normal;}
@@ -4969,13 +4976,10 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .ac-endereco svg{flex:none;width:16px;height:16px;}
 .ac-endereco-curto{display:inline-block;margin-left:8px;font-size:11px;color:var(--ink-muted);}
 .ac-chamado{display:flex;flex-direction:column;gap:12px;padding:12px 16px 16px;}
-.ac-conversa{display:flex;flex-direction:column;gap:10px;margin:0;padding:0;list-style:none;}
-.ac-balao{display:flex;flex-direction:column;gap:4px;max-width:min(620px,88%);padding:8px 12px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2);color:var(--ink);}
-.ac-balao p{margin:0;font-size:13px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;}
-.ac-balao-quem{font-size:11px;color:var(--ink-muted);}
-.ac-balao-cliente{align-self:flex-start;border-radius:12px 12px 12px 3px;}
-.ac-balao-escritorio{align-self:flex-end;border-color:var(--accent);border-radius:12px 12px 3px 12px;background:var(--accent-soft);}
-@media (max-width: 640px){.ac-balao{max-width:94%;}}
+/* a solicitação do cliente, sem chat (11/11/2026): o pedido e a resposta, um bloco embaixo do outro */
+.ac-pedido{display:flex;flex-direction:column;gap:12px;}
+.ac-pedido h4{margin:0 0 4px;font-size:12px;color:var(--ink-muted);font-weight:600;}
+.ac-pedido p{margin:0 0 6px;font-size:13px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;}
 
 /* o selo suave no nads (19/10/2026): o mesmo da Área do Cliente, fora do .cli-app (a pílula sem borda, o pontinho e o fundo
    suave; a cor só pelo significado); a prioridade do feedback do app */

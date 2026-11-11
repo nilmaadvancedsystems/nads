@@ -10,7 +10,7 @@
 // e a coluna Operação (Compra, Venda…) no lugar da Descrição e do Tipo; tudo da linha numa linha só (Vitor, 08/10/2026):
 // a resposta, o Explique (campo curto) e o comprovante (o ícone com o menu Galeria, Câmera, Arquivo).
 import { Icone, MarcaN, MenuSuspenso, type NomeIcone } from '@nads/ui';
-import { useRef, useState, type ReactNode } from 'react';
+import { Fragment, useRef, useState, type ReactNode } from 'react';
 import { useFormulario } from './useFormulario';
 
 type VM = ReturnType<typeof useFormulario>;
@@ -67,8 +67,15 @@ function Respostas({ vm }: { vm: VM }) {
         <p className="page-desc">
           <span className="tarefas-barra" style={{ marginRight: 8 }}><span style={{ width: (vm.quantos ? (vm.respondidos / vm.quantos) * 100 : 0) + '%' }} /></span>
           {vm.respondidos} de {vm.quantos} respondidos
+          {/* o rascunho salva sozinho (11/11/2026): dá para fechar e voltar pelo mesmo link */}
+          {vm.salvoEm && <span className="hint"> · Rascunho salvo às {vm.salvoEm}</span>}
         </p>
       </div></header>
+      {vm.refazer > 0 && (
+        <p className="msg-balao" style={{ margin: '0 0 12px' }}>
+          <Icone nome="alert" />O escritório pediu para você rever {vm.refazer === 1 ? '1 resposta' : vm.refazer + ' respostas'}: o motivo está embaixo de cada uma.
+        </p>
+      )}
       {/* só Anterior e Próximo à direita (Vitor, 07/10/2026: sem os números dos itens) */}
       <div className="tarefas-barra-topo">
         <span className="hint">{vm.revisao ? 'Revisão' : 'Item ' + (vm.passo + 1) + ' de ' + vm.quantos}</span>
@@ -115,7 +122,8 @@ function Item({ vm }: { vm: VM }) {
                 {it.linhas.map(l => (
                   // o que é cada lançamento (Vitor, 07/10/2026): a nota em aberto com a data e o número; o pagamento solto
                   // com a data e o banco (a conta por onde passou); e a resposta da linha (Vitor, 08/10/2026)
-                  <tr key={l.chave}>
+                  <Fragment key={l.chave}>
+                  <tr>
                     <td style={{ whiteSpace: 'nowrap' }}>{l.data}</td>
                     <td>{l.operacao}</td>
                     <td>{l.nf && l.nf !== '—' ? 'NF ' + l.nf : l.conta || '—'}</td>
@@ -142,6 +150,9 @@ function Item({ vm }: { vm: VM }) {
                       )}
                     </td>
                   </tr>
+                  {/* o que o escritório pediu de novo nesta linha (11/11/2026) */}
+                  {l.motivo && <tr><td colSpan={7}><span className="msg-balao"><Icone nome="alert" />O escritório pediu: {l.motivo}</span></td></tr>}
+                  </Fragment>
                 ))}
                 {it.valor && <tr><td colSpan={3}><b>Saldo em aberto</b></td><td className="num"><b>{it.valor}</b></td><td colSpan={3} /></tr>}
               </tbody>
@@ -151,6 +162,7 @@ function Item({ vm }: { vm: VM }) {
         {it.linhas.length > 0 && vm.erro && <p className="hint ext-neg" style={{ margin: 0 }}>{vm.erro}</p>}
         {it.detalhe && <span className="msg-balao"><Icone nome="mensagem" />{it.detalhe}</span>}
         {!it.linhas.length && <>
+        {it.doItem.motivo && <span className="msg-balao"><Icone nome="alert" />O escritório pediu: {it.doItem.motivo}</span>}
         <div className="field" style={{ margin: 0 }}>
           <label>Sua resposta</label>
           <div className="chip-row" style={{ margin: '4px 0 0' }} role="radiogroup" aria-label={'Resposta para ' + it.titulo}>
@@ -262,6 +274,12 @@ function Revisao({ vm }: { vm: VM }) {
       <p className="hint" style={{ marginTop: 0 }}>
         Você respondeu todos os itens. Confira e envie; até {vm.validoAte} dá para voltar pelo mesmo link e mandar mais arquivos.
       </p>
+      {/* a resposta que pede o comprovante e ele não veio (11/11/2026): dá para mandar assim, mas o escritório vai cobrar */}
+      {vm.semComprovante > 0 && (
+        <p className="msg-balao" style={{ margin: '0 0 12px' }}>
+          <Icone nome="alert" />{vm.semComprovante === 1 ? '1 resposta pede o comprovante' : vm.semComprovante + ' respostas pedem o comprovante'} e ainda não tem. Anexe agora ou até {vm.validoAte}.
+        </p>
+      )}
       <div className="table-wrap">
         <table className="table-compact">
           <thead><tr><th>Item</th><th>Resposta</th><th className="num">Anexos</th><th>Situação</th></tr></thead>
@@ -275,7 +293,7 @@ function Revisao({ vm }: { vm: VM }) {
                   ))}
                 </td>
                 <td className="num">{it.anexos || '—'}</td>
-                <td><span className={'badge ' + (it.respondido ? 'badge-ok' : 'badge-warn')}>{it.respondido ? 'Respondido' : 'Pendente'}</span></td>
+                <td><span className={'badge ' + (it.respondido && !it.semComprovante ? 'badge-ok' : 'badge-warn')}>{!it.respondido ? 'Pendente' : it.semComprovante ? 'Falta o comprovante' : 'Respondido'}</span></td>
               </tr>
             ))}
           </tbody>

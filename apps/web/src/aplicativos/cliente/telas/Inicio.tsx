@@ -21,7 +21,7 @@ import { useInicio } from './useInicio';
 import { useJanelaDeEnvio } from './JanelaDeEnvio';
 import type { AreaCliente, DaCasca } from './useAreaCliente';
 
-const ICONE_DA_PENDENCIA: Record<Pendencia['origem'], NomeIcone> = { guia: 'recibo', chamado: 'mensagem', certificado: 'escudo', aviso: 'sino' };
+const ICONE_DA_PENDENCIA: Record<Pendencia['origem'], NomeIcone> = { guia: 'recibo', chamado: 'mensagem', certificado: 'escudo', aviso: 'sino', ticket: 'checklist' };
 
 export function Inicio(props: DaCasca & { empresa: string; contato: AreaCliente['contato']; onWhatsapp?: () => void }) {
   const abrirEnvio = useJanelaDeEnvio(props);

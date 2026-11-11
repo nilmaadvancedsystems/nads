@@ -150,3 +150,33 @@ export function juntarPedacosDoPdf(pedacos: PedacoDoPdf[]): Blob | null {
   const partes = ordem.map(p => Uint8Array.from(atob(p.base64), c => c.charCodeAt(0)));
   return new Blob(partes, { type: 'application/pdf' });
 }
+
+// ─── as solicitações sem chat (11/11/2026) ──────────────────────────────────
+// "Por existir o WhatsApp, não precisa de um chat; um sistema de requisições já serve; o chat só fica bom no PC". A
+// solicitação mostra o pedido, a situação em passos e a resposta do escritório; para conversar, o WhatsApp com o assunto.
+
+/** Os passos da solicitação: Recebida › Em andamento › Respondida (ou Concluída). */
+export const PASSOS_DA_SOLICITACAO = ['Recebida', 'Em andamento', 'Pronta'] as const;
+
+/** Em que passo a solicitação está (0, 1 ou 2) e o rótulo do último: Respondida ou Concluída. */
+export function passoDaSolicitacao(situacao: ac.SituacaoDoChamado): { passo: number; rotulo: string } {
+  if (situacao === 'aberto') return { passo: 0, rotulo: 'Recebida' };
+  if (situacao === 'em andamento') return { passo: 1, rotulo: 'Em andamento' };
+  return { passo: 2, rotulo: situacao === 'concluido' ? 'Concluída' : 'Respondida' };
+}
+
+/** O pedido do cliente (as mensagens dele, na ordem) e as respostas do escritório, sem o formato de conversa. */
+export function partesDaSolicitacao(c: Pick<ac.ChamadoDoCliente, 'mensagens'>): { pedido: string; complementos: string[]; respostas: { texto: string; em: string }[] } {
+  const doCliente = c.mensagens.filter(m => m.de === 'cliente');
+  return {
+    pedido: doCliente[0]?.texto ?? '',
+    complementos: doCliente.slice(1).map(m => m.texto),
+    respostas: c.mensagens.filter(m => m.de === 'escritorio').map(m => ({ texto: m.texto, em: m.em })),
+  };
+}
+
+/** O WhatsApp do escritório já com o assunto da solicitação; '' sem número que sirva. */
+export function whatsappDaSolicitacao(numero: string | undefined, titulo: string): string {
+  const link = linkDoWhatsapp(numero);
+  return link ? link + '?text=' + encodeURIComponent('Olá! Sobre a solicitação "' + titulo + '":') : '';
+}

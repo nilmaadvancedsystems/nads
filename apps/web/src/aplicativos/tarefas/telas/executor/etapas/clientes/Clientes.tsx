@@ -2,6 +2,7 @@
 // direita; os arquivos na linha da Importação (o ícone de importar; importado, o check que vira × e tira); o credor na
 // grade dos Arquivos (com ele, o "Corrigi, irei reimportar" no lugar do Próximo); os clientes em tabela; o selo de cada cliente (o saldo, Conferido ou Ok) é do sistema: Conferido é o razão com nota em
 // aberto ou pagamento solto (Vitor, 07/10/2026), e o conferido abre a observação; o envio, só o Mandar pelo Mandei. Só o balancete dinâmico (Vitor, 06/10/2026).
+import { BotaoDoEnvio, EnvioDoMes } from './EnvioDoMes';
 import { CampoArquivo, fundoSuaveDoBanco, Icone, LogoBanco, MenuSuspenso, Segmentado } from '@nads/ui';
 import { Fragment, useRef, useState, type ReactNode } from 'react';
 import { BotaoDeTeste, type ItemDeTeste } from '../../../../../../comum/BotaoDeTeste';
@@ -45,20 +46,14 @@ export function Clientes() {
           : vm.temProxima ? <button type="button" className="btn btn-primary" disabled={!vm.podeSeguir} onClick={vm.proximo}>Próximo</button>
           // nada para questionar: sem o Envio, segue para a próxima etapa pela seta lá de cima (Vitor, 15/10/2026)
           : vm.semQuestionamento && !!vm.dicaDoFim && <span className="hint">{vm.dicaDoFim}</span>}
-        {/* no Envio, só o Mandar pelo Mandei (Vitor, 07/10/2026: "remove isso tudo, deixa só o botão"): vai para o e-mail e o
-            WhatsApp da empresa, os do Cadastro */}
-        {vm.tela === 'envio' && vm.conferidos.length > 0 && (
-          <button type="button" className="btn btn-primary" disabled={vm.faltaNoCadastro.length > 0 || vm.jaMandado} onClick={vm.mandarPeloMandei}
-            title={vm.faltaNoCadastro.length ? 'Falta no Cadastro da empresa: ' + vm.faltaNoCadastro.join(' e ') : 'Mandar para ' + [vm.contato.email, vm.contato.whatsapp && 'o WhatsApp ' + vm.contato.whatsapp].filter(Boolean).join(' e ')}>
-            <Icone nome={vm.jaMandado ? 'check' : 'caixaEntrada'} />{vm.jaMandado ? 'Mandado pelo Mandei' : 'Mandar pelo Mandei'}
-          </button>
-        )}
+        {/* no Envio, o Mandar pelo Mandei: os dois lados num ticket só (11/11/2026) */}
+        {vm.tela === 'envio' && <BotaoDoEnvio envio={vm.envio} />}
       </div>
       <FaixaDelegado vm={delegacao} />
       {vm.tela === 'arquivos' && <Arquivos vm={vm} />}
       {vm.tela === 'clientes' && <ListaDeClientes vm={vm} delegacao={delegacao} />}
       {delegacao.aberta && <JanelaDelegar vm={delegacao} />}
-      {vm.tela === 'envio' && <Envio vm={vm} />}
+      {vm.tela === 'envio' && <EnvioDoMes envio={vm.envio} />}
     </section>
   );
 }
@@ -356,24 +351,3 @@ function ListaDeClientes({ vm, delegacao }: { vm: VM; delegacao: VmDelegacao }) 
   );
 }
 
-function Envio({ vm }: { vm: VM }) {
-  if (!vm.conferidos.length) return <p className="hint">Nenhum cliente conferido: em Clientes, importe o razão da conta; com nota em aberto ou pagamento solto, ele vira Conferido.</p>;
-  return (
-    <>
-      <div className="table-wrap">
-        <table className="table-compact">
-          <thead><tr><th>Conta</th><th>Cliente</th><th className="num">Saldo</th><th>Notas em aberto</th><th>No Mandei</th></tr></thead>
-          <tbody>
-            {vm.conferidos.map(l => (
-              <tr key={l.codigo}><td>{l.codigo}</td><td className="wrap">{l.nome}</td><td className="num">{l.valor}</td><td className="wrap">{l.notas || '—'}</td><td className="wrap">{l.perguntar || '—'}</td></tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {/* sem o e-mail ou o WhatsApp no Cadastro, o Mandar fica travado */}
-      {vm.faltaNoCadastro.length > 0
-        ? <p className="hint" style={{ marginTop: 12 }}>Para mandar pelo Mandei, cadastre {vm.faltaNoCadastro.join(' e ')} da empresa em Cadastro › Empresa.</p>
-        : <p className="hint" style={{ marginTop: 12 }}>O Mandei manda para {[vm.contato.email, vm.contato.whatsapp && 'o WhatsApp ' + vm.contato.whatsapp].filter(Boolean).join(' e ')}.</p>}
-    </>
-  );
-}
