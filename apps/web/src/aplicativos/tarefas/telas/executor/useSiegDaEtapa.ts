@@ -7,12 +7,19 @@ import { tarefas as t } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PedidoSieg } from '../../dados/sieg';
+import { FORMATOS_DO_SIEG, nomeDoZip, rotuloDoBotao, zipNoFormato, type FormatoDoSieg } from '../../dados/siegZip';
 import { useSieg } from '../../dados/repo';
 
 const quando = (iso: string) => (iso ? new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '');
 const rodando = (p: PedidoSieg | null) => !!p && (p.status === 'pendente' || p.status === 'processando');
 
 type Janela = 'contagem' | 'xmls';
+
+// o formato do .zip (11/11/2026: "uma opção de baixar pdf ou uma de baixar os 2"): lembrado neste navegador
+const CHAVE_FORMATO = 'nads-sieg-formato';
+function formatoGuardado(): FormatoDoSieg {
+  try { const v = localStorage.getItem(CHAVE_FORMATO); return v === 'xml' || v === 'pdf' || v === 'ambos' ? v : 'ambos'; } catch { return 'ambos'; }
+}
 
 /** Os passos de cada pedido; o passo da vez sai do status e do andamento que o robô grava. */
 function passosDe(tipo: Janela, p: PedidoSieg | null): { passos: string[]; atual: number; pct: number } {
@@ -114,11 +121,21 @@ export function useSiegDaEtapa(tipo: 'contagem' | 'saidas', codigo: string, comp
   // fica o "Baixar o .zip" (o robô guarda por 1 dia)
   const zipBaixado = useRef('');
   const [baixandoZip, setBaixandoZip] = useState(false);
+  const [formato, setFormato] = useState<FormatoDoSieg>(formatoGuardado);
+  function escolherFormato(f: FormatoDoSieg) {
+    setFormato(f);
+    try { localStorage.setItem(CHAVE_FORMATO, f); } catch { /* sem storage: vale só agora */ }
+  }
+  // o robô entrega um .zip só (os XMLs e a pasta PDF/): aqui fica só o formato escolhido (siegZip.ts)
   async function baixarZip() {
     const z = pedidoXmls?.zip;
     if (!z || baixandoZip) return;
     setBaixandoZip(true);
-    try { baixarBytes(await repo.baixarZip(z), z.nome, 'application/zip'); }
+    try {
+      const r = zipNoFormato(await repo.baixarZip(z), formato);
+      if (!r.arquivos) toast(formato === 'pdf' ? 'Este .zip não tem PDFs: o robô faz o PDF da NF-e, da NFC-e e da NFS-e nacional (o CT-e fica só no XML). Baixe de novo do SIEG ou escolha XML.' : 'Este .zip não tem XMLs.');
+      else baixarBytes(r.bytes, nomeDoZip(z.nome, formato), 'application/zip');
+    }
     catch (err) { toast('Não consegui baixar o .zip: ' + (err instanceof Error ? err.message : String(err))); }
     finally { setBaixandoZip(false); }
   }
@@ -176,9 +193,15 @@ export function useSiegDaEtapa(tipo: 'contagem' | 'saidas', codigo: string, comp
     andamento,
     fecharAndamento: () => setJanela(null),
     /** o .zip do último "Baixar XMLs" (enquanto o robô guarda) */
-    zip: pedidoXmls?.zip ? { nome: pedidoXmls.zip.nome, tamanho: (pedidoXmls.zip.bytes / 1048576).toFixed(1).replace('.', ',') + ' MB' } : null,
+    // o tamanho é o do .zip inteiro: só vale com os dois formatos
+    zip: pedidoXmls?.zip ? { nome: pedidoXmls.zip.nome, tamanho: formato === 'ambos' ? (pedidoXmls.zip.bytes / 1048576).toFixed(1).replace('.', ',') + ' MB' : '' } : null,
     baixandoZip,
     baixarZip,
+    /** o formato do .zip: XML, PDF ou os dois (o texto do botão acompanha) */
+    formato,
+    formatos: FORMATOS_DO_SIEG,
+    escolherFormato,
+    rotuloDoBotao: rotuloDoBotao(formato),
     contar: () => pedir('contagem'),
     baixarXmls: () => pedir('xmls'),
     /** a situação das notas na SEFAZ pela VM (15/10/2026: "verifique o cupom ou nfce via vm para ter o feedback do status") */

@@ -75,6 +75,9 @@ function lerDestino(arquivo, raiz) {
   let de = /\.xml$/i.test(nome) ? 'doc' : 'outro';
   if (sub.length && sub[sub.length - 1].toUpperCase() === 'EVENTOS') { sub = sub.slice(0, -1); de = de === 'doc' ? 'evento' : 'outro'; }
   if (/-evento-|^\d{2}-\d{2}-\d{4} - /i.test(nome) && de === 'doc') de = 'evento';
+  // (11/11/2026) o XML em …\EMITIDOS|RECEBIDOS\CANCELADAS (o evento de cancelamento, a nota cancelada do envelope): vale o
+  // cliente, mas a pasta não é a do XML da nota, e outro evento da mesma chave não vai para "CANCELADAS\EVENTOS"
+  if (de !== 'outro' && sub.length && sub[sub.length - 1].toUpperCase() === 'CANCELADAS') sub = [];
   return { cliente: +m[1], sub: de === 'outro' ? null : sub, de };
 }
 

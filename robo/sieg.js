@@ -45,6 +45,8 @@ const jaArquivados = est.criarFiltroDeArquivados(() => {
   const antigo = path.join(process.env.ARQUIVO_RAIZ || 'C:\Users\DPTO FISCAL 004\GUSTAVO\claudio', '_CONTROLE', 'MANIFESTO', 'manifesto.jsonl');
   return K.carregar({ controle, manifestoAntigo: antigo, raiz: require('./arquivador-regras').RAIZ_CLIENTES });
 }, { log: (...m) => console.log(new Date().toLocaleString('pt-BR'), ...m) });
+// os cancelamentos já gravados no Drive, por empresa e mês (procurarCancelamentos, 11/11/2026): no PC, nunca no banco
+const cancelamentosVistos = est.criarMemoriaDeCancelamentos(path.join(require('./pastas-locais').ROBO, 'sieg-cancelamentos.json'));
 const soDigitos = v => String(v || '').replace(/\D/g, '');
 // o documento do cliente: CNPJ (14) ou CPF (11, o produtor rural; o SIEG conta pelos dois, 07/10/2026)
 // (23/10/2026: a contagem da madrugada mandava ao SIEG qualquer número de 11 ou 14 dígitos e ele devolvia HTTP 400 "CNPJ/CPF
@@ -340,7 +342,7 @@ async function xmlsDoMes(c, doc, competencia, aoAndar) {
       }
     }
   }
-  for (const g of ['emitidas', 'recebidas']) for (const n of resumo[g]) if (n.chave && canceladas.has(n.chave)) n.cancelada = true;
+  sx.marcarCanceladas(resumo, canceladas);
   return { arquivos: [...arquivos].map(([nome, xml]) => ({ nome, xml })), resumo, contagem };
 }
 
@@ -349,6 +351,9 @@ async function xmlsDoMes(c, doc, competencia, aoAndar) {
 // download de um mês só traz eventos de notas emitidas nele, e o evento não vem antes da nota: o evento com data de antes do
 // mês não está no download e não precisa ser lido (o 380 de 10/2026 lia 3918 arquivos para 572 XMLs do mês). Sem a data no
 // nome, lê como antes.
+// a pasta das canceladas (11/11/2026): <regime>/03. DOCUMENTOS FISCAIS/EMITIDOS|RECEBIDOS/CANCELADAS
+const PASTA_DOCS = /^\d+\.\s*DOCUMENTOS FISCAIS$/i;
+const LADOS = /^(EMITIDOS|RECEBIDOS)$/i;
 function eventoDeAntes(nome, competencia) {
   const m = /^(\d{2})-(\d{2})-(\d{4})\b/.exec(String(nome || ''));
   return !!m && m[3] + '-' + m[2] < competencia;
@@ -384,6 +389,15 @@ async function xmlsJaNoDrive(codigo, nomeDaPasta, competencia, db) {
       if (fiscal) {
         peloMapa = true;
         for (const regime of (filhos.get(fiscal.i) || []).filter(it => it.t === 'd')) {
+          // os cancelamentos já arquivados (11/11/2026): o arquivador põe o XML do evento de cancelamento em
+          // <regime>/<nº>. DOCUMENTOS FISCAIS/EMITIDOS|RECEBIDOS/CANCELADAS, fora da pasta XML
+          const docs = (filhos.get(regime.i) || []).find(it => it.t === 'd' && PASTA_DOCS.test(it.n));
+          for (const lado of docs ? (filhos.get(docs.i) || []).filter(it => it.t === 'd' && LADOS.test(it.n)) : []) {
+            const canc = (filhos.get(lado.i) || []).find(it => it.t === 'd' && /^CANCELADAS$/i.test(it.n));
+            for (const it of canc ? filhos.get(canc.i) || [] : []) {
+              if (it.t !== 'd' && /\.xml$/i.test(it.n) && !eventoDeAntes(it.n, competencia)) lerArquivo(path.join(raiz, ano, cli.nomePasta, 'FISCAL', regime.n, docs.n, lado.n, canc.n, it.n), it.i + '_' + String(it.m || '').replace(/\D/g, ''));
+            }
+          }
           const pastaXml = (filhos.get(regime.i) || []).find(it => it.t === 'd' && /^\d+\.\s*XML$/i.test(it.n));
           if (!pastaXml) continue;
           const base = path.join(raiz, ano, cli.nomePasta, 'FISCAL', regime.n, pastaXml.n);
@@ -406,8 +420,15 @@ async function xmlsJaNoDrive(codigo, nomeDaPasta, competencia, db) {
     if (cliente) {
       const fiscal = path.join(doAno, cliente, 'FISCAL');
       for (const regime of await fs.promises.readdir(fiscal).catch(() => [])) {
+        const doRegime = await fs.promises.readdir(path.join(fiscal, regime)).catch(() => []);
+        // os cancelamentos já arquivados (11/11/2026): <nº>. DOCUMENTOS FISCAIS/EMITIDOS|RECEBIDOS/CANCELADAS
+        const nomeDocs = doRegime.find(n => PASTA_DOCS.test(n));
+        for (const lado of nomeDocs ? (await fs.promises.readdir(path.join(fiscal, regime, nomeDocs)).catch(() => [])).filter(n => LADOS.test(n)) : []) {
+          const canc = path.join(fiscal, regime, nomeDocs, lado, 'CANCELADAS');
+          for (const n of await fs.promises.readdir(canc).catch(() => [])) if (/\.xml$/i.test(n) && !eventoDeAntes(n, competencia)) lerArquivo(path.join(canc, n));
+        }
         // "12. XML" no Simples, "14. XML" no Presumido: a pasta "<número>. XML" do regime
-        const nomeXml = (await fs.promises.readdir(path.join(fiscal, regime)).catch(() => [])).find(n => /^\d+\.\s*XML$/i.test(n));
+        const nomeXml = doRegime.find(n => /^\d+\.\s*XML$/i.test(n));
         if (!nomeXml) continue;
         const xml = path.join(fiscal, regime, nomeXml);
         const andar = async (dir, eventos) => {
@@ -690,6 +711,60 @@ function contagemDoUltimoDownload(notas, cont) {
 function semMudancaNoSieg(notas, cont, agora) {
   const antes = contagemDoUltimoDownload(notas, cont);
   return !!agora && mesmaContagem(agora, antes) && porTipo(antes, notas).every(([tem, conta]) => tem >= conta || tem === 0);
+}
+
+// ---------- os cancelamentos que chegam depois do download (11/11/2026) ----------
+// "preciso que ele puxe evento de cancelamento": o evento vem junto com as notas do mês (BaixarEventos na API, includeEvents
+// no portal), mas a nota cancelada DEPOIS do download não muda a contagem do SIEG, e a madrugada não baixava o mês de novo
+// (semMudancaNoSieg, completoNoNads). Combinado com o usuário: só o cancelamento (110111; o da NFS-e nacional), das emitidas
+// e das recebidas, na madrugada (os meses que ela conta: o atual e, até o dia 10, o anterior) e no "Baixar XMLs" (que agora
+// baixa sempre todos os tipos pelo portal). O arquivador põe o XML do cancelamento em EMITIDOS|RECEBIDOS\CANCELADAS.
+/** Os tipos do portal com nota no mês (emitidas + recebidas), dos que têm evento de cancelamento: o CF-e não entra. */
+function tiposComNotas(contagem) {
+  const k = { 'NF-e': 'NFe', 'NFC-e': 'NFCe', 'CT-e': 'CTe', 'NFS-e': 'NFSe' };
+  return Object.keys(k).filter(t => ((contagem && contagem.emitidas && contagem.emitidas[k[t]]) || 0) + ((contagem && contagem.recebidas && contagem.recebidas[k[t]]) || 0) > 0);
+}
+/** As notas canceladas que estão nos arquivos ({ nome, xml }): a chaveCancelada de cada evento de cancelamento. */
+const cancelamentosDe = arquivos => [...new Set((arquivos || []).filter(a => sx.ehCancelamento(a.xml)).map(a => sx.chaveCancelada(a.xml)).filter(Boolean))];
+/** As notas marcadas como canceladas num resumo do nads (siegNotas). */
+const canceladasDoResumo = r => [...((r && r.emitidas) || []), ...((r && r.recebidas) || [])].filter(n => n.cancelada).map(sx.idParaCancelamento).filter(Boolean);
+/**
+ * A busca da madrugada, sem rede nem banco (tudo vem de fora, para dar para testar). Para cada empresa e mês com nota:
+ *  - o mês que a memória não conhece: lê o resumo do último download (lerResumo; 1 leitura, só da primeira vez). Sem resumo,
+ *    o mês nunca foi baixado: fica marcado e não é olhado (o download normal traz os cancelamentos quando vier);
+ *  - baixa pelo portal (baixar: os tipos com nota) e separa os eventos de cancelamento;
+ *  - cancelamento que a memória não tem: pede o download do mês (pedir), que grava no Drive e marca as canceladas no nads.
+ * pararTudo(err): o erro que encerra a busca (o portal pediu login). Devolve os números para o log.
+ */
+async function procurarCancelamentos({ itens, memoria, lerResumo, baixar, pedir, deveParar, pararTudo, aoAndar, log }) {
+  const r = { olhados: 0, pedidos: 0, semDownload: 0, erros: 0, novos: 0, parou: '' };
+  for (const it of itens) {
+    if (deveParar && deveParar()) { r.parou = 'pausado'; break; }
+    const tipos = tiposComNotas(it.contagem);
+    if (!tipos.length || memoria.semDownload(it.codigo, it.comp)) continue;
+    if (!memoria.conhece(it.codigo, it.comp)) {
+      const resumo = await lerResumo(it.codigo, it.comp);
+      if (!resumo) { memoria.marcarSemDownload(it.codigo, it.comp); r.semDownload++; continue; }
+      memoria.anotar(it.codigo, it.comp, canceladasDoResumo(resumo));
+    }
+    if (aoAndar) aoAndar('cancelamentos de ' + it.codigo + ' (' + it.comp + ')');
+    let arquivos;
+    try { arquivos = await baixar(it.cnpj, it.comp, tipos); }
+    catch (err) {
+      if (pararTudo && pararTudo(err)) { r.parou = motivo(err); break; }
+      r.erros++;
+      if (log) log('SIEG: cancelamentos de', it.codigo, it.comp, '-', motivo(err));
+      continue;
+    }
+    r.olhados++;
+    const novas = memoria.novas(it.codigo, it.comp, cancelamentosDe(arquivos));
+    if (!novas.length) continue;
+    await pedir(it, novas);
+    r.pedidos++;
+    r.novos += novas.length;
+    if (log) log('SIEG: cancelamentos de', it.codigo, it.comp, '-', novas.length, 'novo(s) desde o último download: o mês vai ser baixado de novo');
+  }
+  return r;
 }
 
 function iniciarSieg({ db, log }) {
@@ -976,22 +1051,11 @@ function iniciarSieg({ db, log }) {
         // e o resumo do último download do mês (para saber se dá para não esperar o Drive: ESPERAR_O_DRIVE, acima)
         const ultimoResumo = !doCliente ? db.collection('siegNotas').doc(id).get().then(s => (s.exists ? s.data() : null)).catch(() => null) : null;
         let peloPortal = false;
-        // (31/10/2026) com o portal de novo em segundos, a contagem desta conferência às vezes ainda espera a vez no limite
-        // do SIEG (5 por minuto) quando o download já acabou, ou quando o download foi para a API (que não usa a
-        // conferência e conta sozinha): aí ela desiste, sem gastar a vez de um "Contar agora"
-        let semServentia = false;
-        const reaproveitar = !doCliente ? (async () => {
-          const [agora, ja] = await Promise.all([contagemDoMes(c, cnpj, p.competencia, null, () => semServentia), noDrive]);
-          if (!ja.xmls.length) return null;
-          // as notas de cada tipo que estão no Drive x as que o SIEG tem agora: o tipo completo sai do Drive
-          const montado = require('./sieg-portal').montarXmls(cnpj, ja.xmls).resumo;
-          const antes = {};
-          for (const n of [...montado.emitidas, ...montado.recebidas]) antes[n.tipo] = (antes[n.tipo] || 0) + 1;
-          const CHAVE = { 'NF-e': 'NFe', 'NFC-e': 'NFCe', 'CT-e': 'CTe', 'NFS-e': 'NFSe', 'CF-e': 'CFe' };
-          const tipos = Object.keys(CHAVE).filter(t => (agora.emitidas[CHAVE[t]] || 0) + (agora.recebidas[CHAVE[t]] || 0) === (antes[t] || 0));
-          log('SIEG: XMLs de', p.codigo, '- não mudaram desde o último download:', tipos.join(', ') || 'nenhum');
-          return { tipos, xmls: ja.xmls };
-        })().catch(err => { if (err.message !== DESISTIU) log('SIEG: não deu para usar o Drive (' + motivo(err) + '), baixando tudo'); return null; }) : null;
+        // (11/11/2026: "preciso que ele puxe evento de cancelamento") o portal baixa sempre todos os tipos. Antes, o tipo que tinha a
+        // mesma quantidade de notas que o Drive (a conferência "reaproveitar", 08/10/2026) tinha o download cancelado e saía do
+        // Drive: a nota cancelada depois do último download tem a mesma quantidade e o evento de cancelamento nunca vinha. O
+        // portal traz o mês em segundos (31/10/2026: 5,6 a 7,8 s no 380) e o que já está no Drive não é gravado de novo
+        // (faltamNoDrive, abaixo). O xmlsPeloPortal ainda aceita a conferência; ela só não é mais passada daqui.
         // pelo portal primeiro (08/10/2026: "tem clientes com 1000 xml de uma vez, quero que ele vá no site e baixe"):
         // os tipos de nota ao mesmo tempo, em segundos; sem a sessão do portal ou com erro, pela API (mais lenta)
         let baixado;
@@ -1016,18 +1080,15 @@ function iniciarSieg({ db, log }) {
           log('SIEG: XMLs do cliente', p.codigo, p.competencia, '-', deles.length, 'dele,', numeros.deOutros, 'de outra empresa');
         } else if (portal404.recente(cnpj)) {
           // o portal respondeu 404 para este cliente há pouco (até 3 dias): nem tenta, vai pela API
-          semServentia = true;
           log('SIEG: XMLs de', p.codigo, '- o portal deu 404 para este cliente há pouco: direto pela API');
           await andar('baixando', 'Baixando pela API (o portal deu 404 há pouco)', null, true);
           baixado = await xmlsDoMes(c, cnpj, p.competencia, t => andar('baixando', t, null));
         } else try {
-          baixado = await require('./sieg-portal').xmlsPeloPortal(cnpj, p.competencia, (t, f) => andar('baixando', t, f), lerZip, null, esperado, reaproveitar);
-          semServentia = true;
+          baixado = await require('./sieg-portal').xmlsPeloPortal(cnpj, p.competencia, (t, f) => andar('baixando', t, f), lerZip, null, esperado);
           peloPortal = true;
           portal404.limpar(cnpj);
           log('SIEG: XMLs de', p.codigo, 'pelo portal' + (baixado.tiposDoDrive.length ? ' (do Drive: ' + baixado.tiposDoDrive.join(', ') + ')' : ''));
         } catch (err) {
-          semServentia = true;
           if (est.ehPortal404(err)) portal404.anotar(cnpj);
           log('SIEG: portal não deu (' + motivo(err) + '), XMLs de', p.codigo, 'pela API');
           await andar('baixando', 'O portal não deu (' + motivo(err) + '): baixando pela API', null, true);
@@ -1138,6 +1199,7 @@ function iniciarSieg({ db, log }) {
           }
           // em paralelo (48 por vez; 16 levavam 34 s para 1292 XMLs): o andamento do Drive no máximo a cada 1 s
           let novos = 0;
+          let driveOk = true;
           if (faltam.length) {
             let ultimoDrive = 0;
             const contar = forcar => {
@@ -1163,11 +1225,14 @@ function iniciarSieg({ db, log }) {
               } catch (err) { log('SIEG: não consegui salvar os PDFs de', p.codigo, p.competencia, 'no Drive -', motivo(err)); }
               await d.ref.update({ drive: { total: faltam.length, feitos: novos, pronto: true, em: new Date().toISOString() }, 'numeros.novos': novos, 'resultado.novos': novos }).catch(err => log('SIEG: o Drive de', p.codigo, 'gravou, mas não consegui marcar o pedido como pronto (' + motivo(err) + ')'));
             } catch (err) {
+              driveOk = false;
               // o Drive falhou depois de a pessoa já ter o .zip e as notas: fica o aviso no pedido (o próximo pedido salva o que faltou)
               await d.ref.update({ drive: { total: faltam.length, feitos: novos, pronto: true, erro: motivo(err) } }).catch(e2 => log('SIEG: não consegui gravar o erro do Drive no pedido de', p.codigo, '(' + motivo(e2) + ')'));
               log('SIEG: Drive de', p.codigo, '- parou em', novos, 'de', faltam.length, '-', motivo(err));
             }
           }
+          // os cancelamentos deste mês já estão no Drive: a madrugada só pede o mês de novo se aparecer outro (procurarCancelamentos)
+          if (driveOk) cancelamentosVistos.anotar(p.codigo, p.competencia, cancelamentosDe(arquivos));
           await db.collection('siegNotas').doc(id).update({ novos }).catch(err => log('SIEG: não consegui gravar os novos em siegNotas de', p.codigo, '(' + motivo(err) + ')'));
           log('SIEG: XMLs de', p.codigo, p.competencia, '-', arquivos.length, 'arquivos (' + novos + ' novos' + (pulados ? ', ' + pulados + ' pulados: já arquivados' : '') + ') em', onde);
           painel.atividade('sieg', (doCliente ? 'Juntou os XMLs que o cliente mandou de ' : 'Baixou os XMLs do SIEG de ') + p.codigo + ' (' + p.competencia.slice(5) + '/' + p.competencia.slice(0, 4) + ')',
@@ -1294,6 +1359,8 @@ function iniciarSieg({ db, log }) {
     chegouOutro = false;
     contouEm = dia;
     const contouDesde = hoje.toISOString();
+    // as contagens desta noite (em memória), para a busca dos cancelamentos depois dos XMLs da madrugada
+    const daContagem = [];
     try {
       const comps = [competenciaDe(hoje)];
       if (hoje.getDate() <= 10) comps.push(competenciaDe(new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1)));
@@ -1309,6 +1376,7 @@ function iniciarSieg({ db, log }) {
           try {
             const r = await contagemDoMes(c, normalizarDocumento(cli.documento, cli.enquadramento), comp);
             await db.collection('siegContagens').doc(codigoDe(cli) + '_' + comp).set({ codigo: codigoDe(cli), cnpj: normalizarDocumento(cli.documento, cli.enquadramento), competencia: comp, em: new Date().toISOString(), ...r });
+            daContagem.push({ codigo: codigoDe(cli), cnpj: normalizarDocumento(cli.documento, cli.enquadramento), comp, contagem: r });
           } catch (err) { log('SIEG: contagem de', codigoDe(cli), '-', motivo(err)); }
         }
       }
@@ -1317,6 +1385,41 @@ function iniciarSieg({ db, log }) {
     } catch (err) { log('SIEG: contagem da noite falhou -', motivo(err)); painel.erro('sieg', 'A contagem da madrugada falhou', motivo(err)); }
     finally { daNoite = ''; contando = false; ponto(); }
     await xmlsDaMadrugada(contouDesde).catch(err => log('SIEG: XMLs da madrugada falharam -', motivo(err)));
+    await cancelamentosDaMadrugada(daContagem).catch(err => log('SIEG: cancelamentos da madrugada falharam -', motivo(err)));
+  }
+
+  /**
+   * Os cancelamentos que chegaram depois do download (11/11/2026; procurarCancelamentos, acima): pelo portal, os meses que a
+   * madrugada acabou de contar. O banco só é lido na primeira vez de cada empresa e mês (o resumo do último download); depois
+   * vale a memória do PC. Achou cancelamento novo: o pedido do mês entra na fila, como os da madrugada.
+   */
+  async function cancelamentosDaMadrugada(itens) {
+    if (!itens.length) return;
+    // os pedidos da madrugada terminam de gravar no Drive por trás, e é lá que a memória é anotada: sem esperar, o mesmo
+    // cancelamento que um deles acabou de baixar pareceria novo
+    for (let f = null; f !== filaDoDrive;) { f = filaDoDrive; await f.catch(() => {}); }
+    const sp = require('./sieg-portal');
+    const inicio = Date.now();
+    const r = await procurarCancelamentos({
+      itens: itens.filter(it => !portal404.recente(it.cnpj)),
+      memoria: cancelamentosVistos,
+      lerResumo: async (codigo, comp) => { const s = await db.collection('siegNotas').doc(codigo + '_' + comp).get(); return s.exists ? s.data() : null; },
+      baixar: async (cnpj, comp, tipos) => {
+        try { return (await sp.xmlsPeloPortal(cnpj, comp, null, lerZip, tipos)).arquivos; }
+        catch (err) { if (est.ehPortal404(err)) portal404.anotar(cnpj); throw err; }
+      },
+      pedir: (it, novas) => db.collection('pedidosSieg').add({ status: 'pendente', tipo: 'xmls', codigo: it.codigo, competencia: it.comp, madrugada: true, cancelamentos: novas.length,
+        criadoEm: new Date().toISOString(), criadoPor: 'Robô (cancelamentos da madrugada)', criadoPorUid: 'robo', ...(soAContagem(it.contagem) ? { contagemSieg: soAContagem(it.contagem) } : {}) }),
+      deveParar: () => pausaLocal.estaPausado('sieg'),
+      pararTudo: err => String(err && err.message || '').startsWith(sp.SEM_LOGIN),
+      aoAndar: t => { daNoite = t; },
+      log,
+    }).finally(() => { daNoite = ''; });
+    log('SIEG: cancelamentos da madrugada -', r.olhados, 'meses olhados no portal,', r.novos, 'cancelamento(s) novo(s) em', r.pedidos, 'mês(es)' + (r.semDownload ? ', ' + r.semDownload + ' ainda sem download' : '') + (r.erros ? ', ' + r.erros + ' erro(s)' : '') + (r.parou ? ' (parou: ' + r.parou + ')' : '') + ' em ' + Math.round((Date.now() - inicio) / 60000) + ' min');
+    if (r.pedidos) {
+      painel.atividade('sieg', 'Cancelamentos novos no SIEG', r.novos + ' nota(s) cancelada(s) depois do download, em ' + r.pedidos + ' mês(es): baixando de novo');
+      await atenderPedidos();
+    }
   }
 
   /**
@@ -1371,4 +1474,4 @@ function iniciarSieg({ db, log }) {
   return () => { clearInterval(relogio); clearInterval(relogioNoite); clearInterval(relogioDaFila); pararPedidos(); };
 }
 
-module.exports = { eventoDeAntes, ordemDaFila, urgenciaDoPedido, criarTrabalhadores, chaveDaPasta, cobreOUltimo, juntarOsDoDrive, mesmaContagem, completoNoNads, contagemDoUltimoDownload, semMudancaNoSieg, PARALELO, normalizarDocumento, xmlsJaNoDrive, seriesDasNotas, saidasDoResumo, iniciarSieg, lerXml, xmlsDaResposta, lerZip, periodo, contagemDoMes, saidasDoMes, xmlsDoMes, resumoQueCabe, chamar, lerCredenciais };
+module.exports = { procurarCancelamentos, tiposComNotas, cancelamentosDe, canceladasDoResumo, eventoDeAntes, ordemDaFila, urgenciaDoPedido, criarTrabalhadores, chaveDaPasta, cobreOUltimo, juntarOsDoDrive, mesmaContagem, completoNoNads, contagemDoUltimoDownload, semMudancaNoSieg, PARALELO, normalizarDocumento, xmlsJaNoDrive, seriesDasNotas, saidasDoResumo, iniciarSieg, lerXml, xmlsDaResposta, lerZip, periodo, contagemDoMes, saidasDoMes, xmlsDoMes, resumoQueCabe, chamar, lerCredenciais };

@@ -49,7 +49,7 @@ export function BaixarDoSieg() {
                 {vm.aba === 'sequencia'
                   ? <SiegDaEtapa key={'s' + codigo + vm.competencia} tipo="saidas" codigo={codigo} competencia={vm.competencia} />
                   : !vm.painel
-                    ? <div className="card fc-cartao"><Vazio icone="download" titulo={'Os XMLs de ' + vm.rotuloCompetencia + ' ainda não foram baixados'} texto="Clique em Baixar XMLs do SIEG, no alto." /></div>
+                    ? <div className="card fc-cartao"><Vazio icone="download" titulo={'Os XMLs de ' + vm.rotuloCompetencia + ' ainda não foram baixados'} texto="Clique em Baixar do SIEG, no alto (XML, PDF ou os dois)." /></div>
                     : vm.resumo && <DaAba vm={vm} />}
               </>
             )}

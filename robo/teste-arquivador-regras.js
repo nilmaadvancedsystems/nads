@@ -75,7 +75,15 @@ d = decidir({ nome: 'c.xml', xml: nfe('11426314000177', '99999999000191', '30644
 igual('NFC-e: pasta XML\\NFC-e', d.destinoRelativo + '\\' + d.nomeFinal, '380 - LEONARDO MENDES MARQUES\\FISCAL\\LUCRO PRESUMIDO\\14. XML\\NFC-e\\08-2026_NFC-e_30644.xml');
 const evento = '<procEventoNFe><evento><infEvento><CNPJ>11426314000177</CNPJ><chNFe>31260811426314000177550010000101431439862028</chNFe><dhEvento>2026-09-01T10:00:00-03:00</dhEvento><detEvento><descEvento>Cancelamento</descEvento></detEvento></infEvento></evento></procEventoNFe>';
 d = decidir({ nome: 'x-caneve.xml', xml: evento });
-igual('evento de NF-e: EVENTOS, nº da chave (05d §1b)', [d.destinoRelativo, d.nomeFinal], ['380 - LEONARDO MENDES MARQUES\\FISCAL\\LUCRO PRESUMIDO\\14. XML\\NF-e\\EVENTOS', '01-09-2026 - CANCELAMENTO NF-e 10143.xml']);
+// (11/11/2026, o usuário: "Na pasta CANCELADAS") o evento de cancelamento vai para EMITIDOS|RECEBIDOS\CANCELADAS, não para XML\NF-e\EVENTOS
+igual('evento de cancelamento da NF-e emitida pelo cliente: EMITIDOS\\CANCELADAS, nº da chave', [d.destinoRelativo, d.nomeFinal, d.tipo], ['380 - LEONARDO MENDES MARQUES\\FISCAL\\LUCRO PRESUMIDO\\03. DOCUMENTOS FISCAIS\\EMITIDOS\\CANCELADAS', '01-09-2026 - CANCELAMENTO NF-e 10143.xml', 'XML NF-e CANCELADA']);
+d = decidir({ nome: 'x-caneve.xml', xml: evento.replace('<dhEvento>', '<tpEvento>110111</tpEvento><dhEvento>') });
+igual('... com o código 110111: o mesmo', d.destinoRelativo, '380 - LEONARDO MENDES MARQUES\\FISCAL\\LUCRO PRESUMIDO\\03. DOCUMENTOS FISCAIS\\EMITIDOS\\CANCELADAS');
+d = decidir({ nome: 'x-cce.xml', xml: evento.replace('<dhEvento>', '<tpEvento>110110</tpEvento><dhEvento>').replace('<descEvento>Cancelamento</descEvento>', '<descEvento>Carta de Correcao</descEvento>') });
+igual('a carta de correção (110110) continua em XML\\NF-e\\EVENTOS', [d.destinoRelativo, d.nomeFinal], ['380 - LEONARDO MENDES MARQUES\\FISCAL\\LUCRO PRESUMIDO\\14. XML\\NF-e\\EVENTOS', '01-09-2026 - CARTA DE CORRECAO NF-e 10143.xml']);
+const evFornecedor = evento.replace('31260811426314000177550010000101431439862028', '31260899999999000191550010000007771000007777').replace(/11426314000177/g, '99999999000191');
+d = R.decidir({ nome: 'c.xml', rel: '2026-09\\JANIO JOSE DE ALMEIDA\\c.xml', xml: evFornecedor.replace('<dhEvento>', '<tpEvento>110111</tpEvento><dhEvento>') }, ctx);
+igual('o cancelamento de uma nota recebida (o fornecedor cancelou): RECEBIDOS\\CANCELADAS do cliente', [d.acao, d.cliente, d.destinoRelativo, d.nomeFinal], ['ARQUIVAR', 152, '152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\03. DOCUMENTOS FISCAIS\\RECEBIDOS\\CANCELADAS', '01-09-2026 - CANCELAMENTO NF-e 777.xml']);
 const nfse = '<CompNfse><Nfse><InfNfse><Numero>752217</Numero><DataEmissao>2026-09-10T00:00:00</DataEmissao><PrestadorServico><IdentificacaoPrestador><CpfCnpj><Cnpj>06934601000158</Cnpj></CpfCnpj></IdentificacaoPrestador></PrestadorServico></InfNfse></Nfse></CompNfse>';
 d = decidir({ nome: 'nfse.xml', xml: nfse });
 igual('NFS-e ABRASF do Simples: 12. XML\\NFS-e', d.destinoRelativo + '\\' + d.nomeFinal, '152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\12. XML\\NFS-e\\09-2026_NFS-e_752217.xml');
@@ -93,7 +101,7 @@ igual('... com mais de um documento dentro: continua NÃO IDENTIFICADO (não adi
 // o retorno de evento que o emissor gravou quebrado (o "NFe3126…Proc.xml" de 457 bytes do Posto Berizal): a chave e o evento estão escritos; o emitente da chave é o cliente
 const retQuebrado = '<retEvento versao="1.00"><infEvento Id="ID131260590773563"><tpAmb>1</tpAmb><cStat>135</cStat><xMotivo>Evento registrado e vinculado a NF-e</xMotivo><chNFe>31260811426314000177550010000101431439862028</chNFe><tpEvento>110111</tpEvento><xEvento>CANCELAMENTO</xEvento><nSeqEvento>1</nSeqEvento><dhRegEvento>2026-09-01T13:06:45-03:00</dhRegEvento><nProt>131260590773563</nProt></infEvento></retEvento></nfeProc>';
 d = decidir({ nome: 'NFe31260811426314000177550010000101431439862028Proc.xml', xml: retQuebrado });
-igual('retorno de evento de cancelamento quebrado (sem a abertura do envelope): EVENTOS do cliente da chave, com o nome do evento', [d.acao, d.cliente, d.destinoRelativo, d.nomeFinal], ['ARQUIVAR', 380, '380 - LEONARDO MENDES MARQUES\\FISCAL\\LUCRO PRESUMIDO\\14. XML\\NF-e\\EVENTOS', '01-09-2026 - CANCELAMENTO NF-e 10143.xml']);
+igual('retorno de evento de cancelamento quebrado (sem a abertura do envelope): EMITIDOS\\CANCELADAS do cliente da chave, com o nome do evento (11/11/2026)', [d.acao, d.cliente, d.destinoRelativo, d.nomeFinal], ['ARQUIVAR', 380, '380 - LEONARDO MENDES MARQUES\\FISCAL\\LUCRO PRESUMIDO\\03. DOCUMENTOS FISCAIS\\EMITIDOS\\CANCELADAS', '01-09-2026 - CANCELAMENTO NF-e 10143.xml']);
 igual('... sem o protocolo de registro (cStat que não é 135/136) não é evento registrado: continua ilegível', decidir({ nome: 'x.xml', xml: retQuebrado.replace('<cStat>135</cStat>', '<cStat>999</cStat>') }).motivo, 'CONTEUDO_ILEGIVEL');
 // o CPF de um sócio não vence o CNPJ: a NF-e do 380 para o CPF do sócio (que também é cliente, pessoa física 475) fica só no 380
 cad.porCod.get(380).socios = [{ nome: 'ADERLEI DOS SANTOS', cpf: '62752170653' }];

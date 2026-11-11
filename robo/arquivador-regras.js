@@ -756,7 +756,7 @@ function classificarRetEventoQuebrado(texto) {
   const modelo = ch.slice(20, 22);
   const tipo = modelo === '57' || modelo === '67' ? 'CT-e' : modelo === '58' ? 'MDF-e' : 'NF-e';
   const emitChave = [ch.slice(6, 20)];
-  return { tipo, sub: 'EVENTOS', nome: diaIso(d) + ' - ' + nomeEvento(desc) + ' ' + tipo + ' ' + numChave(ch) + '.xml', emit: emitChave, partes: emitChave, evento: true, data: d, chave: ch, nomes: {}, quebrado: true };
+  return { tipo, sub: 'EVENTOS', nome: diaIso(d) + ' - ' + nomeEvento(desc) + ' ' + tipo + ' ' + numChave(ch) + '.xml', emit: emitChave, partes: emitChave, evento: true, data: d, chave: ch, nomes: {}, quebrado: true, cancelamento: g('tpEvento') === '110111' };
 }
 /** NFS-e do layout <notas><nfse> (SINTESE, Divisa Alegre e outros; B3b, 29/10/2026): o arquivo é a exportação do mês, com uma ou mais notas do mesmo prestador. */
 function classificarNotasNfse(raiz) {
@@ -840,7 +840,9 @@ function _classificarXml(raiz) {
     if (!(n && desc && diaIso(d))) return null;
     const emit = [ch.slice(9, 23)];
     const autor = [txt(ped, 'CNPJAutor'), txt(ped, 'CPFAutor')].filter(Boolean).map(so);
-    return { tipo: 'NFS-e', sub: 'EVENTOS', nome: diaIso(d) + ' - ' + nomeEvento(desc) + ' NFS-e ' + n + '.xml', emit, partes: autor.concat(emit), evento: true, data: d, chave: ch };
+    // (11/11/2026) o cancelamento (o grupo e101101, ou "Cancelamento de NFS-e…" que não seja o indeferido) vai para CANCELADAS
+    const cancelamento = !!primeiro(ped, 'e101101') || (/^CANCELAMENTO DE NFS-?E\b/.test(nomeEvento(desc)) && !/INDEFERID/.test(nomeEvento(desc)));
+    return { tipo: 'NFS-e', sub: 'EVENTOS', nome: diaIso(d) + ' - ' + nomeEvento(desc) + ' NFS-e ' + n + '.xml', emit, partes: autor.concat(emit), evento: true, data: d, chave: ch, cancelamento };
   }
   if (['procEventoNFe', 'procEventoCTe', 'procEventoMDFe', 'evento', 'eventoCTe', 'eventoMDFe'].includes(tag)) {
     const inf = primeiro(raiz, 'infEvento');
@@ -855,7 +857,9 @@ function _classificarXml(raiz) {
     if (!(n && desc && diaIso(d))) return null;
     const emitChave = [ch.slice(6, 20)];
     const autor = [txt(inf, 'CNPJ'), txt(inf, 'CPF')].filter(Boolean).map(so);
-    return { tipo, sub: 'EVENTOS', nome: diaIso(d) + ' - ' + nomeEvento(desc) + ' ' + tipo + ' ' + n + '.xml', emit: emitChave, partes: autor.concat(emitChave, docsDe(achar(inf, 'detEvento'))), evento: true, data: d, chave: ch };
+    // (11/11/2026) o cancelamento (110111; sem o código, a descrição "Cancelamento") vai para CANCELADAS (cancelamentoParaCanceladas)
+    const cancelamento = txt(inf, 'tpEvento') ? txt(inf, 'tpEvento') === '110111' : nomeEvento(desc) === 'CANCELAMENTO';
+    return { tipo, sub: 'EVENTOS', nome: diaIso(d) + ' - ' + nomeEvento(desc) + ' ' + tipo + ' ' + n + '.xml', emit: emitChave, partes: autor.concat(emitChave, docsDe(achar(inf, 'detEvento'))), evento: true, data: d, chave: ch, cancelamento };
   }
   if (['procinutnfe', 'inutnfe', 'retinutnfe'].includes(tag.toLowerCase())) {   // há emissor que grava "ProcInutNFe"
     const inf = primeiro(raiz, 'infInut');
@@ -2794,7 +2798,7 @@ function decidirXml(entrada, ctx, ev) {
       ev.push('chave ' + info.chave + ': o documento original está arquivado em ' + vale.map(o => o.cliente).join(', ') + (vale[0].sub ? ' (' + vale[0].sub.join('\\') + ')' : ''));
       for (const o of vale.slice(1)) copias.push({ cliente: o.cliente, comoCliente: 'chave', caminho: caminhoDe(o), fiscal: caminhoDe(o) ? null : fiscal });
       const c0 = caminhoDe(vale[0]);
-      return { acao: 'ARQUIVAR', cliente: vale[0].cliente, comoCliente: 'chave', confianca: 0.95, copias, tipo: 'XML ' + info.tipo + ' EVENTOS', setor: 'FISCAL', caminho: c0, fiscal: c0 ? null : fiscal, nomeFinal: info.nome, chave: info.chave, fonte: 'índice de chaves (manifestos e decisões)', competencia: info.data ? { mes: +info.data.slice(5, 7), ano: +info.data.slice(0, 4) } : null };
+      return cancelamentoParaCanceladas({ acao: 'ARQUIVAR', cliente: vale[0].cliente, comoCliente: 'chave', confianca: 0.95, copias, tipo: 'XML ' + info.tipo + ' EVENTOS', setor: 'FISCAL', caminho: c0, fiscal: c0 ? null : fiscal, nomeFinal: info.nome, chave: info.chave, fonte: 'índice de chaves (manifestos e decisões)', competencia: info.data ? { mes: +info.data.slice(5, 7), ano: +info.data.slice(0, 4) } : null }, info, cad, ev);
     }
   }
   // 29/10/2026 (Vitor): a NF-e de outros (a Raízen vende para outros postos) cuja TRANSPORTADORA é o cliente da pasta de origem: o único cliente presente é a
@@ -2828,7 +2832,27 @@ function decidirXml(entrada, ctx, ev) {
     return { acao: 'ARQUIVAR', cliente, comoCliente: como, confianca: conf, copias: [], tipo: 'XML ' + info.tipo + ' CANCELADA', setor: 'FISCAL', fiscal: ['DOCS', lado, 'CANCELADAS'], nomeFinal: dia + ' - CANCELAMENTO ' + info.tipo + ' ' + num + ' - ' + quem + '.xml', chave: info.chave || null, fonte: 'envelope NFeDFe com o evento de cancelamento (29/10/2026; destino das canceladas, 05d §1)', competencia: { mes: +dt.slice(5, 7), ano: +dt.slice(0, 4) } };
   }
   const caminho = ['XML', info.tipo].concat(info.sub ? [info.sub] : []);
-  return { acao: 'ARQUIVAR', cliente, comoCliente: como, confianca: conf, copias, tipo: 'XML ' + info.tipo + (info.sub ? ' ' + info.sub : ''), setor: 'FISCAL', fiscal: caminho, nomeFinal: info.nome, chave: info.chave || null, fonte: '05d §1b; xml_lote.py', competencia: info.data ? { mes: +info.data.slice(5, 7), ano: +info.data.slice(0, 4) } : null };
+  return cancelamentoParaCanceladas({ acao: 'ARQUIVAR', cliente, comoCliente: como, confianca: conf, copias, tipo: 'XML ' + info.tipo + (info.sub ? ' ' + info.sub : ''), setor: 'FISCAL', fiscal: caminho, nomeFinal: info.nome, chave: info.chave || null, fonte: '05d §1b; xml_lote.py', competencia: info.data ? { mes: +info.data.slice(5, 7), ano: +info.data.slice(0, 4) } : null }, info, cad, ev);
+}
+
+/**
+ * O XML do evento de cancelamento (11/11/2026, o usuário: "Na pasta CANCELADAS"): em vez de XML\<tipo>\EVENTOS, vai para
+ * FISCAL\<regime>\03. DOCUMENTOS FISCAIS\EMITIDOS|RECEBIDOS\CANCELADAS, o lugar das canceladas (o PDF do cancelamento, B10, e a
+ * NF-e do envelope com o cancelamento junto). EMITIDOS quando o cliente é o emitente da nota (o CNPJ da chave; na NFS-e, o
+ * prestador), RECEBIDOS nos outros casos; cada cópia (o original em dois clientes) com o lado dela. O nome continua o do
+ * evento ("DD-MM-AAAA - CANCELAMENTO NF-e <nº>.xml", a data do evento). Os outros eventos (carta de correção, ciência…) não mudam.
+ */
+function cancelamentoParaCanceladas(dec, info, cad, ev) {
+  if (!info.cancelamento || !dec || dec.acao !== 'ARQUIVAR') return dec;
+  const emitente = info.emit[0];
+  const lado = c => (emitente && (clientesDoDoc(emitente, cad).includes(c) || (cad.porCod.get(c) || {}).doc === emitente) ? 'EMITIDOS' : 'RECEBIDOS');
+  const destino = c => ['DOCS', lado(c), 'CANCELADAS'];
+  if (ev) ev.push('evento de cancelamento: vai para ' + lado(dec.cliente) + '\\CANCELADAS, não para EVENTOS (11/11/2026)');
+  return Object.assign({}, dec, {
+    tipo: 'XML ' + info.tipo + ' CANCELADA', caminho: null, fiscal: destino(dec.cliente),
+    copias: (dec.copias || []).map(c => Object.assign({}, c, { caminho: null, fiscal: destino(c.cliente) })),
+    fonte: dec.fonte + '; o cancelamento vai para CANCELADAS (11/11/2026)',
+  });
 }
 
 /**

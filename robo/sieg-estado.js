@@ -93,4 +93,59 @@ function criarFiltroDeArquivados(carregar, opcoes) {
   };
 }
 
-module.exports = { tentarDeNovo, criarPortal404, ehPortal404, ehErroDeRede, comTentativas, criarFiltroDeArquivados };
+/**
+ * Os cancelamentos que o robô já gravou no Drive, por empresa e mês (11/11/2026: "preciso que ele puxe evento de
+ * cancelamento"). Fica num arquivo do PC, nunca no banco: a madrugada olha o portal e só pede o download do mês quando aparece
+ * um cancelamento que não está aqui. Arquivo JSON { "<código>_<AAAA-MM>": { em, chaves: [...] } }; os meses de mais de
+ * `meses` (6) atrás saem quando o arquivo é gravado.
+ *   conhece(codigo, comp): a empresa e mês já têm registro (senão, quem chama semeia: o resumo do último download)
+ *   anotar(codigo, comp, chaves): junta as chaves canceladas (e cria o registro, mesmo vazio)
+ *   novas(codigo, comp, chaves): as chaves que ainda não estão anotadas
+ *   semDownload(codigo, comp) / marcarSemDownload(codigo, comp): o mês nunca foi baixado (não há o que conferir; o download
+ *   normal, quando vier, traz os cancelamentos e o anotar tira a marca)
+ */
+function criarMemoriaDeCancelamentos(arquivo, opcoes) {
+  const meses = (opcoes && opcoes.meses) || 6;
+  const agora = (opcoes && opcoes.agora) || (() => Date.now());
+  let mapa = null;
+  const k = (codigo, comp) => String(+String(codigo).replace(/\D/g, '')) + '_' + comp;
+  const ler = () => {
+    if (mapa) return mapa;
+    try { mapa = JSON.parse(fs.readFileSync(arquivo, 'utf8')) || {}; } catch (e) { mapa = {}; }
+    return mapa;
+  };
+  const gravar = () => {
+    const m = ler();
+    const d = new Date(agora());
+    const limite = new Date(d.getFullYear(), d.getMonth() - meses, 1);
+    const corte = limite.getFullYear() + '-' + String(limite.getMonth() + 1).padStart(2, '0');
+    for (const chave of Object.keys(m)) if ((chave.split('_')[1] || '') < corte) delete m[chave];
+    try { fs.mkdirSync(path.dirname(arquivo), { recursive: true }); fs.writeFileSync(arquivo, JSON.stringify(m)); } catch (e) { /* só deixa de lembrar: a madrugada pede o download de novo */ }
+  };
+  return {
+    conhece: (codigo, comp) => !!ler()[k(codigo, comp)],
+    anotar(codigo, comp, chaves) {
+      const m = ler();
+      const r = m[k(codigo, comp)] || { chaves: [] };
+      const antes = r.chaves.length;
+      r.chaves = [...new Set([...r.chaves, ...(chaves || []).filter(Boolean)])];
+      const mudou = !m[k(codigo, comp)] || r.semDownload || r.chaves.length !== antes;
+      delete r.semDownload;
+      r.em = new Date(agora()).toISOString();
+      m[k(codigo, comp)] = r;
+      if (mudou) gravar();
+    },
+    semDownload: (codigo, comp) => !!(ler()[k(codigo, comp)] || {}).semDownload,
+    marcarSemDownload(codigo, comp) {
+      ler()[k(codigo, comp)] = { em: new Date(agora()).toISOString(), chaves: [], semDownload: true };
+      gravar();
+    },
+    novas(codigo, comp, chaves) {
+      const r = ler()[k(codigo, comp)];
+      const tem = new Set(r ? r.chaves : []);
+      return [...new Set((chaves || []).filter(ch => ch && !tem.has(ch)))];
+    },
+  };
+}
+
+module.exports = { criarMemoriaDeCancelamentos, tentarDeNovo, criarPortal404, ehPortal404, ehErroDeRede, comTentativas, criarFiltroDeArquivados };

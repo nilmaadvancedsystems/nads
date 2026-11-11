@@ -203,7 +203,9 @@ try {
   const chNfse = '3157005' + '2' + '2' + '06934601000158' + '0000000000009' + '2609' + '118215150' + '5';
   const evNfse = '﻿<?xml version="1.0"?><evento xmlns="http://www.sped.fazenda.gov.br/nfse"><infEvento Id="EVT1"><dhProc>2026-09-03T10:50:30-03:00</dhProc><pedRegEvento><infPedReg Id="PRE1"><dhEvento>2026-09-03T10:50:30-03:00</dhEvento><CNPJAutor>06934601000158</CNPJAutor><chNFSe>' + chNfse + '</chNFSe><e101101><xDesc>Cancelamento de NFS-e</xDesc></e101101></infPedReg></pedRegEvento></infEvento></evento>';
   const dN = R.decidir({ nome: 'xml-1.xml', rel: 'xml-1.xml', xml: evNfse }, ctx);
-  igual('evento da NFS-e nacional: cancelamento na pasta de eventos da NFS-e do prestador', [dN.acao, dN.destinoRelativo, dN.nomeFinal], ['ARQUIVAR', '152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\12. XML\\NFS-e\\EVENTOS', '03-09-2026 - CANCELAMENTO DE NFS-E NFS-e 9.xml']);
+  igual('evento da NFS-e nacional: o cancelamento do prestador vai para EMITIDOS\\CANCELADAS (11/11/2026)', [dN.acao, dN.destinoRelativo, dN.nomeFinal], ['ARQUIVAR', '152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\03. DOCUMENTOS FISCAIS\\EMITIDOS\\CANCELADAS', '03-09-2026 - CANCELAMENTO DE NFS-E NFS-e 9.xml']);
+  const dNi = R.decidir({ nome: 'xml-2.xml', rel: 'xml-2.xml', xml: evNfse.replace('<e101101><xDesc>Cancelamento de NFS-e</xDesc></e101101>', '<e105105><xDesc>Cancelamento de NFS-e Indeferido por Análise Fiscal</xDesc></e105105>') }, ctx);
+  igual('... o cancelamento indeferido não é cancelamento: fica em EVENTOS', dNi.destinoRelativo, '152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\12. XML\\NFS-e\\EVENTOS');
   const cteOs = '<cteOSProc><CTeOS><infCte Id="CTe' + chave('31', '2609', TRANSP, '67', 9151) + '"><ide><nCT>9151</nCT><dhEmi>2026-09-29T00:00:00+00:00</dhEmi></ide><emit><CNPJ>' + TRANSP + '</CNPJ></emit><toma><CNPJ>06934601000158</CNPJ></toma></infCte></CTeOS></cteOSProc>';
   const dO = R.decidir({ nome: 'os.xml', rel: 'os.xml', xml: cteOs }, ctx);
   igual('CT-e OS: o tomador, na pasta do CT-e', [dO.acao, dO.cliente, dO.nomeFinal, dO.destinoRelativo.split('\\').slice(-1)[0]], ['ARQUIVAR', 152, '09-2026_CT-e OS_9151.xml', 'CT-e']);
@@ -255,7 +257,9 @@ try {
   const chN = '3168002' + '1' + '2' + '11414965000147' + '2600000001992' + '2609' + '000270796' + '2';
   const evN = '<evento><infEvento Id="E"><pedRegEvento><infPedReg Id="P"><dhEvento>2026-09-08T10:31:37-03:00</dhEvento><CNPJAutor>11414965000147</CNPJAutor><chNFSe>' + chN + '</chNFSe><e101101><xDesc>Cancelamento de NFS-e</xDesc></e101101></infPedReg></pedRegEvento></infEvento></evento>';
   const dn = R.decidir({ nome: 'x.xml', rel: 'x.xml', xml: evN }, Object.assign({}, ctx2, { chaves: idxN }));
-  igual('evento da NFS-e nacional acha a NFS-e arquivada pelo prestador e número', [dn.acao, dn.destinoRelativo], ['ARQUIVAR', '152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\12. XML\\NFS-e\\EVENTOS']);
+  igual('evento da NFS-e nacional acha a NFS-e arquivada pelo prestador e número; o cancelamento da recebida vai para RECEBIDOS\\CANCELADAS (11/11/2026)', [dn.acao, dn.cliente, dn.destinoRelativo], ['ARQUIVAR', 152, '152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\03. DOCUMENTOS FISCAIS\\RECEBIDOS\\CANCELADAS']);
+  // (11/11/2026) o que está em …\CANCELADAS vale o cliente, mas não é a pasta do XML da nota (outro evento da chave não vai para CANCELADAS\EVENTOS)
+  igual('destino: o cancelamento em CANCELADAS fica sem a pasta (só o cliente)', K.lerDestino('G:\\Meu Drive\\2026\\152 - JANIO\\FISCAL\\SIMPLES NACIONAL\\03. DOCUMENTOS FISCAIS\\RECEBIDOS\\CANCELADAS\\08-09-2026 - CANCELAMENTO NF-e 7.xml'), { cliente: 152, sub: [], de: 'evento' });
 
   // ---------- 12. os outros que sobravam ----------
   const ofxL = '<OFX><BANKACCTFROM><BANKID>001<ACCTID>173266</BANKACCTFROM><BANKTRANLIST><DTSTART>20260901<DTEND>20260930</BANKTRANLIST></OFX>';

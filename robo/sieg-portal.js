@@ -214,7 +214,7 @@ async function xmlsPeloPortal(doc, competencia, aoAndar, lerZip, soTipos, espera
   } finally { clearInterval(relogio); }
   if (xmlsDoDrive.length) juntar(xmlsDoDrive);
   await andar('Baixados ' + arquivos.size + ' XMLs', 1);
-  for (const g of ['emitidas', 'recebidas']) for (const n of resumo[g]) if (n.chave && canceladas.has(n.chave)) n.cancelada = true;
+  sx.marcarCanceladas(resumo, canceladas);
   return { arquivos: [...arquivos].map(([nome, xml]) => ({ nome, xml })), resumo, contagem, doDrive: xmlsDoDrive.length, tiposDoDrive: [...doDrive] };
 }
 
@@ -283,7 +283,7 @@ function montarXmls(doc, xmls, opcoes) {
     const chave = r.tipo.replace('-', '');
     if (chave in contagem[grupo]) contagem[grupo][chave]++;
   }
-  for (const g of ['emitidas', 'recebidas']) for (const n of resumo[g]) if (n.chave && canceladas.has(n.chave)) n.cancelada = true;
+  sx.marcarCanceladas(resumo, canceladas);
   return { arquivos: [...arquivos].map(([nome, xml]) => ({ nome, xml })), resumo, contagem };
 }
 
@@ -304,9 +304,10 @@ function soDoCliente(doc, xmls) {
     const dele = [r.emitente, r.destinatario].some(p => p && soDigitos(p.doc) === doc);
     if (!dele) continue;
     notas.push(x);
-    if (r.chave) chaves.add(r.chave);
+    if (sx.idParaCancelamento(r)) chaves.add(sx.idParaCancelamento(r));
   }
-  const deles = eventos.filter(([, chave]) => chave && (chaves.has(chave) || chave.slice(6, 20) === doc)).map(([x]) => x);
+  // (11/11/2026) o cancelamento da NFS-e nacional vem como "NFSE:<prestador>:<número>": o do cliente tem o documento dele
+  const deles = eventos.filter(([, chave]) => chave && (chaves.has(chave) || chave.slice(6, 20) === doc || chave.startsWith('NFSE:' + doc.replace(/^0+/, '') + ':'))).map(([x]) => x);
   return [...notas, ...deles];
 }
 
