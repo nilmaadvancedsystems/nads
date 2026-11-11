@@ -75,7 +75,8 @@ export function useBaixarDoSieg() {
     soCanceladas: soCanceladas && !!resumo && resumo.canceladas > 0, setSoCanceladas,
     notas: achadasDaTabela.slice(0, NA_TABELA),
     notasFora: Math.max(0, achadasDaTabela.length - NA_TABELA),
-    // a nota aberta no espelho (a NFS-e não tem itens nem chave: não abre)
+    // a nota aberta no espelho (a NFS-e abre o espelho do serviço, 11/11/2026: "a parte dos servicos tomados e prestados
+    // nao e clicavel")
     vendo: dados && vendo ? t.sieg.notaDaLinha(dados, vendo) : null,
     verNota: (id: string) => setVendo(id),
     fecharNota: () => setVendo(''),

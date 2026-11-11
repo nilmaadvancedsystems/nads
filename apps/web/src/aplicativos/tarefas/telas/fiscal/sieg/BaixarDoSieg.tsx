@@ -10,6 +10,7 @@ import { documentoFormatado } from '../../financeiro/formatosDaNota';
 import { SiegDaEtapa } from '../../executor/partes/SiegDaEtapa';
 import { EmpresaDaBarra } from '../partes/EmpresaDaBarra';
 import { EspelhoDaNota } from '../partes/EspelhoDaNota';
+import { EspelhoDoServico } from '../partes/EspelhoDoServico';
 import { useBaixarDoSieg, type AbaDaTela, type VmBaixarDoSieg } from './useBaixarDoSieg';
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -34,7 +35,9 @@ export function BaixarDoSieg() {
   ];
   return (
     <section className="fc">
-      {vm.vendo && <EspelhoDaNota nota={vm.vendo} codigo={vm.empresa?.codigo} competencia={vm.competencia} fechar={vm.fecharNota} />}
+      {vm.vendo && (vm.vendo.tipo === 'NFS-e'
+        ? <EspelhoDoServico nota={vm.vendo} fechar={vm.fecharNota} />
+        : <EspelhoDaNota nota={vm.vendo} codigo={vm.empresa?.codigo} competencia={vm.competencia} fechar={vm.fecharNota} />)}
       <div className="tarefas-barra-topo fc-topo">
         <EmpresaDaBarra vm={vm} id="sieg-empresas" />
         <SeletorMes valor={vm.competencia} onMudar={vm.setCompetencia} rotulo="Competência" />
@@ -142,12 +145,11 @@ function DaAba({ vm }: { vm: VmBaixarDoSieg }) {
   );
 }
 
-/** a tabela das notas da aba, com a busca; clicar abre o espelho (a NFS-e não tem) */
+/** a tabela das notas da aba, com a busca; clicar abre o espelho (a NFS-e, o espelho do serviço; 11/11/2026) */
 function Notas({ vm }: { vm: VmBaixarDoSieg }) {
   const r = vm.resumo!;
   const mercadoria = !vm.servico && vm.aba !== 'ctes';
   const parte = vm.aba === 'saidas' || vm.aba === 'prestados' ? 'Cliente' : vm.aba === 'ctes' ? 'Transportadora' : 'Fornecedor';
-  const abre = (tipo: string) => tipo !== 'NFS-e';
   const colunas = 6 + (mercadoria ? 3 : 0);
   return (
     <section className="card fc-cartao">
@@ -180,11 +182,10 @@ function Notas({ vm }: { vm: VmBaixarDoSieg }) {
           </thead>
           <tbody>
             {vm.notas.map(n => {
-              const abrir = () => { if (abre(n.tipo)) vm.verNota(n.id); };
+              const abrir = () => vm.verNota(n.id);
               const retido = n.retencoes.reduce((s, x) => s + x.valor, 0);
               return (
-                <tr key={n.id} className={n.cancelada ? 'fraco' : undefined} tabIndex={abre(n.tipo) ? 0 : undefined} onClick={abrir} onKeyDown={peloTeclado(abrir)}
-                  title={abre(n.tipo) ? 'Ver a nota' : undefined} style={abre(n.tipo) ? undefined : { cursor: 'default' }}>
+                <tr key={n.id} className={n.cancelada ? 'fraco' : undefined} tabIndex={0} onClick={abrir} onKeyDown={peloTeclado(abrir)} title="Ver a nota">
                   <td><b>{n.numero}{n.serie ? '/' + n.serie : ''}</b>{n.tipo === 'NFC-e' && <span className="fraco"> · NFC-e</span>}{n.cancelada && <> <span className="badge badge-bad">Cancelada</span></>}</td>
                   <td>{n.data}</td>
                   <td className="wrap">{n.nome || '—'}{n.doc && <span className="fraco num"> · {documentoFormatado(n.doc)}</span>}{vm.servico && n.descricao && <span className="fraco"> · {n.descricao}</span>}</td>
@@ -194,7 +195,7 @@ function Notas({ vm }: { vm: VmBaixarDoSieg }) {
                     ? <td className="num" title={n.retencoes.map(x => x.imposto + ' ' + brl(x.valor)).join(' · ')}>{retido ? brl(retido) : <span className="fraco">—</span>}{n.retencoes.length > 0 && <span className="fraco"> · {n.retencoes.map(x => x.imposto).join(', ')}</span>}</td>
                     : <td className="num">{ouTraco(n.icms)}</td>}
                   {mercadoria && <td className="num">{ouTraco(n.st)}</td>}{mercadoria && <td className="num">{ouTraco(n.ipi)}</td>}
-                  <td className="fc-acao">{abre(n.tipo) && <BotaoIcone icone="olho" pequeno titulo="Ver a nota" onClick={ev => { ev.stopPropagation(); vm.verNota(n.id); }} onKeyDown={ev => ev.stopPropagation()} />}</td>
+                  <td className="fc-acao"><BotaoIcone icone="olho" pequeno titulo="Ver a nota" onClick={ev => { ev.stopPropagation(); vm.verNota(n.id); }} onKeyDown={ev => ev.stopPropagation()} /></td>
                 </tr>
               );
             })}
