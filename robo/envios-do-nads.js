@@ -319,7 +319,14 @@ function iniciarEnviosDoNads(db, log) {
   async function limpar() {
     try {
       const agora = Date.now();
-      const velhos = await envios.where('criadoEm', '<', new Date(agora - ABANDONADO_MS).toISOString()).limit(50).get();
+      // só o que pode sair (11/11/2026, consumo do banco): "os 50 criados há mais de 2 h" trazia sempre os mesmos 50 envios
+      // prontos (eles ficam 30 dias), relidos a cada 15 min para não apagar nada (~200 leituras por hora). Agora: os parados
+      // em "enviando" e os criados há mais de 30 dias
+      const [enviando, antigos] = await Promise.all([
+        envios.where('status', '==', 'enviando').limit(50).get(),
+        envios.where('criadoEm', '<', new Date(agora - RESPOSTA_DURA_MS).toISOString()).limit(50).get(),
+      ]);
+      const velhos = { docs: [...enviando.docs.filter(d => String(d.get('criadoEm') || '') < new Date(agora - ABANDONADO_MS).toISOString()), ...antigos.docs] };
       for (const d of velhos.docs) {
         const e = d.data();
         const fim = e.status === 'pronto' || e.status === 'erro';

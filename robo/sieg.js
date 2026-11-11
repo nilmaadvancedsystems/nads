@@ -734,7 +734,11 @@ function iniciarSieg({ db, log }) {
     }
     return partes;
   }
+  // de 30 em 30 min (11/11/2026, consumo do banco: rodava a cada volta da fila, de 2 em 2 min; o .zip vale por horas)
+  let apagouZipsEm = 0;
   async function apagarZipsVelhos() {
+    if (Date.now() - apagouZipsEm < 30 * 60 * 1000) return;
+    apagouZipsEm = Date.now();
     const velhos = await db.collection('pedidosSieg').where('zipApagarEm', '<=', new Date().toISOString()).limit(20).get();
     for (const d of velhos.docs) {
       for (const nome of (d.data().zip && d.data().zip.partes) || []) await db.collection('siegNotas').doc(nome).delete().catch(() => {});
@@ -792,10 +796,16 @@ function iniciarSieg({ db, log }) {
   const ERRO_SEM_DRIVE = 'a pasta do Drive deste PC não está em';
   const driveAberto = () => fs.existsSync(PASTA_DO_DRIVE);
   let avisouSemDrive = 0;
-  let devolveuEm = 0;
+  // Só quando o Drive VOLTA (estava fechado e abriu) e uma vez ao ligar (11/11/2026, consumo do banco): a conferência de
+  // 10 em 10 min relia todos os pedidos com erro (até 300; ~200 em 10/11) com o Drive aberto o tempo todo, ~1.200
+  // leituras por hora, o dia inteiro, para não achar nada
+  let conferiuAoLigar = false;
+  let driveVistoFechado = false;
   async function devolverOsQueEsperavamODrive() {
-    if (!driveAberto() || Date.now() - devolveuEm < 10 * 60 * 1000) return;
-    devolveuEm = Date.now();
+    if (!driveAberto()) { driveVistoFechado = true; return; }
+    if (conferiuAoLigar && !driveVistoFechado) return;
+    conferiuAoLigar = true;
+    driveVistoFechado = false;
     const desde = new Date(Date.now() - 3 * 864e5).toISOString();
     const s = await db.collection('pedidosSieg').where('status', '==', 'erro').limit(300).get();
     const voltam = s.docs.filter(d => String(d.data().erro || '').startsWith(ERRO_SEM_DRIVE) && String(d.data().erroEm || '') >= desde);
