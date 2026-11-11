@@ -3,12 +3,12 @@ import { describe, expect, it } from 'vitest';
 import {
   clienteCombina, clienteDaRotaDoDocumento, entregaDoDocumento, linhasDoPainel, numerosDoMes, rotaPadraoDoDocumento, rotuloDaCompetencia,
   rotuloDaSituacao, situacaoNoMes, subtituloDaLinhaDoPainel, totalDosItens, valorDigitado, motivoComToque, motivoPadrao, competenciaAnterior,
-  ultimasCompetencias, documentoFormatado, tipoPelaChave, type ClienteDaRota, type Entrega,
+  ultimasCompetencias, documentoFormatado, tipoPelaChave, documentosParaEditar, itensDaEdicao, type ClienteDaRota, type Entrega,
 } from './documentos';
 import {
   ajustarDiaUtil, barrasDaLinha, clienteDoPdf, codigoDePagamentoDoPdf, competenciaDoPdf, dadosDoPdf, doMesDaGuia, dvMod10, feriadosNacionais,
   guiasNaPasta, mesDaGuia, paradaDoCodigo, pixCopiaECola, pixValido, chavePixNormalizada, tipoDoPdf, valorDoPdf, vencimentoAutomatico, vencimentoDoPdf,
-  temVencimentoAutomatico,
+  temVencimentoAutomatico, tributoDoDarf, comoEntraAGuia, idsDosAnexosDasGuias, anexosDeGuiaDaEntrega,
 } from './guiasDoPdf';
 import {
   avaliarLocalDaEntrega, avisoDaParada, chaveDaParada, diasAte, estadoDaOrdemFixa, fechamentoDoDia, janelaDoPeriodo, minutosPorParada, moverNaRota,
@@ -148,6 +148,24 @@ describe('vencimento automático e feriados', () => {
   });
 });
 
+describe('editar os documentos da parada', () => {
+  it('os documentos que a edição não desenha (o 2º DARF, o repetido) continuam ao salvar (11/11/2026)', () => {
+    const itens = [
+      { tipo: 'DARF INSS', valor: 100 }, { tipo: 'DARF IRRF', valor: 20.5 }, { tipo: 'DAS', valor: 30 }, { tipo: 'DAS', valor: 40 },
+      { tipo: 'Multa Rescisória', valor: 5, funcionario: 'Fulano' }, { tipo: 'Notas', valor: null },
+    ];
+    const ed = documentosParaEditar(itens);
+    expect(ed).toMatchObject({ marcados: ['das', 'multa_rescisoria', 'notas'], outro: 'DARF INSS', valores: { 'DARF INSS': '100', DAS: '30' } });
+    expect(ed.aMais).toEqual([{ tipo: 'DARF IRRF', valor: '20.5' }, { tipo: 'DAS', valor: '40' }]);
+    expect(itensDaEdicao(ed)).toEqual([
+      { tipo: 'DAS', valor: 30 }, { tipo: 'Notas', valor: null }, { tipo: 'Multa Rescisória', valor: 5, funcionario: 'Fulano' },
+      { tipo: 'DARF INSS', valor: 100 }, { tipo: 'DARF IRRF', valor: 20.5 }, { tipo: 'DAS', valor: 40 },
+    ]);
+    // tirar um a mais e mudar o valor de outro
+    expect(itensDaEdicao({ ...ed, aMais: [{ tipo: 'DARF IRRF', valor: '21,00' }] }).slice(-1)).toEqual([{ tipo: 'DARF IRRF', valor: 21 }]);
+  });
+});
+
 describe('o 13º salário (11/11/2026)', () => {
   const primeira = tipoPelaChave('decimo_terceiro_1');
   const segunda = tipoPelaChave('decimo_terceiro_2');
@@ -222,6 +240,46 @@ describe('as guias da pasta do cliente', () => {
     ];
     expect(guiasNaPasta(pasta, { mm: '10', aaaa: '2026' })).toEqual([]);
     expect(guiasNaPasta([...pasta, { i: 'out', n: outubro, p: 'darf', t: 'f', m: '2026-11-11' }], { mm: '10', aaaa: '2026' }).map(x => x.arquivo.i)).toEqual(['out']);
+  });
+  describe('todos os DARFs do mês, um por tributo (11/11/2026)', () => {
+    const darf = (i: string, tributo: string, m: string): ItemDoDrive => ({ i, n: '10-2026 - DARF ' + tributo + ' - VALOR R$10,00 - VENCIMENTO 20-11-2026.pdf', p: 'darf', t: 'f', m });
+    const pasta: ItemDoDrive[] = [
+      { i: 'raiz', n: '77 - SU EXEMPLO', p: '', t: 'd' },
+      { i: 'fis', n: 'FISCAL', p: 'raiz', t: 'd' },
+      { i: 'darf', n: '16. DARF', p: 'fis', t: 'd' },
+      darf('inss', 'INSS', '2026-11-05'), darf('irrf', 'IRRF', '2026-11-05'),
+      // o INSS refeito: fica o mais novo
+      darf('inss2', 'INSS', '2026-11-08'),
+      { i: 'das', n: '01. DAS', p: 'fis', t: 'd' },
+      { i: 'd1', n: '10-2026.pdf', p: 'das', t: 'f', m: '2026-11-01' },
+    ];
+    const g = { mm: '10', aaaa: '2026' };
+    it('o tributo pelo nome do arquivo', () => {
+      expect(tributoDoDarf('09-2026 - DARF INSS - VALOR R$1.234,56 - VENCIMENTO 20-10-2026.pdf')).toBe('INSS');
+      expect(tributoDoDarf('DARF IRRF FOLHA.pdf')).toBe('IRRF FOLHA');
+      expect(tributoDoDarf('GUIA DARF 10-2026.pdf')).toBe('');
+      expect(tributoDoDarf('darf.pdf')).toBe('');
+    });
+    it('acha o DARF de cada tributo (o mais novo), na ordem FGTS, DARF, DAS', () => {
+      const r = guiasNaPasta(pasta, g);
+      expect(r.map(x => x.guia.tipo + ':' + x.tributo + ':' + x.arquivo.i)).toEqual(['darf:INSS:inss2', 'darf:IRRF:irrf', 'das::d1']);
+    });
+    it('com mais de um DARF, cada um na sua linha; com um só, no DARF da lista como sempre', () => {
+      expect(comoEntraAGuia(guiasNaPasta(pasta, g))).toEqual([
+        { principal: false, rotulo: 'DARF INSS' }, { principal: false, rotulo: 'DARF IRRF' }, { principal: true, rotulo: 'DAS' },
+      ]);
+      const umSo = guiasNaPasta(pasta.filter(x => x.i !== 'irrf'), g);
+      expect(comoEntraAGuia(umSo)).toEqual([{ principal: true, rotulo: 'DARF' }, { principal: true, rotulo: 'DAS' }]);
+      // o DARF cujo nome não diz o tributo fica no DARF da lista; o do INSS, na linha dele
+      const semNome = guiasNaPasta([...pasta.filter(x => x.i !== 'irrf'), { i: 'x', n: 'DARF 10-2026.pdf', p: 'darf', t: 'f', m: '2026-11-02' }], g);
+      expect(comoEntraAGuia(semNome).map(x => x.rotulo)).toEqual(['DARF', 'DARF INSS', 'DAS']);
+    });
+    it('os anexos: a mesma regra do lote do Fiscal; ao excluir, saem os de sempre e os dos documentos', () => {
+      expect(idsDosAnexosDasGuias([{ tipo: 'fgts' }, { tipo: 'darf', tributo: 'INSS' }, { tipo: 'darf', tributo: 'IRRF FOLHA' }, { tipo: 'darf' }, { tipo: 'darf', tributo: 'INSS' }]))
+        .toEqual(['guia-fgts', 'guia-darf-inss', 'guia-darf-irrf-folha', 'guia-darf', 'guia-darf-inss-2']);
+      expect(anexosDeGuiaDaEntrega([{ tipo: 'DARF INSS' }, { tipo: 'DARF IRRF' }, { tipo: 'Honorário' }, { tipo: 'FGTS' }]))
+        .toEqual(['guia-fgts', 'guia-darf', 'guia-das', 'guia-darf-inss', 'guia-darf-irrf']);
+    });
   });
   it('acha a mais nova de cada tipo, sem a certidão', () => {
     expect(guiasNaPasta(itens, { mm: '09', aaaa: '2026' }).map(g => g.guia.tipo + ':' + g.arquivo.i)).toEqual(['fgts:f2', 'das:d1']);

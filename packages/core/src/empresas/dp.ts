@@ -277,6 +277,8 @@ const LINHAS: readonly Linha[] = [
   [610,"GAS TAIOBEIRAS LTDA","Simples","HEVERTON","Folha",1,"11111111","Office boy",""],
   [611,"FRANCIELLE SILVA SANTANA","Domésticas","","Folha",0,"11111111","WhatsApp","DOMÉSTICAS"],
   [613,"CAMPO E GESTAO AGROASSESSORIA LTDA","Simples","GUSTAVO","Pró-Labore",0,"11111110","E-mail",""],
+  // 11/11/2026: "a empresa 614 teve movimento e nao apareceu no dp"; "ela e sem movimento so vai ter honorario e declaracoes"
+  [614,"CASA VEREDAS BAR LTDA","Simples","GUSTAVO","Sem Movimento",0,"00001100","E-mail",""],
 ];
 
 // a REINF autorizada: a da planilha do DP (só 19 empresas) ou a empresa estar na REINF do Fiscal (04/11/2026: "resolva esse

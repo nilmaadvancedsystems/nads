@@ -337,8 +337,21 @@ export function doMesDaGuia(p: readonly string[], g: { mm: string; aaaa: string 
   const extenso = MESES_POR_EXTENSO[Number(g.mm) - 1];
   return nome.includes(extenso) && nome.includes(g.aaaa);
 }
-/** As guias do mês na pasta do cliente: a mais nova de cada tipo (FGTS, DARF, DAS), só PDF. */
-export function guiasNaPasta(itens: readonly ItemDoDrive[], g: { mm: string; aaaa: string }): { guia: GuiaDaPasta; arquivo: ItemDoDrive }[] {
+/**
+ * O tributo do DARF pelo nome do arquivo (já normalizado), como o arquivador grava ("09-2026 - DARF INSS - VALOR …" → "INSS",
+ * "DARF IRRF FOLHA.PDF" → "IRRF FOLHA"); '' quando o nome não diz.
+ */
+export function tributoDoDarf(nome: string): string {
+  const m = /\bDARF\s+([A-Z][A-Z0-9]*(?:\s+[A-Z][A-Z0-9]*)*)/.exec(textoNormalizado(nome).replace(/\.PDF$/, ''));
+  return m ? m[1] : '';
+}
+/** Uma guia achada na pasta; tributo: o do DARF ('' nos outros e no DARF cujo nome não diz). */
+export interface GuiaAchadaNaPasta { guia: GuiaDaPasta; arquivo: ItemDoDrive; tributo: string }
+/**
+ * As guias do mês na pasta do cliente, só PDF: a mais nova de cada tipo (FGTS, DAS) e, do DARF, a mais nova de cada tributo
+ * (11/11/2026: o cliente com DARF INSS e DARF IRRF recebia só um). Na ordem FGTS, DARF, DAS; os DARFs pelo tributo.
+ */
+export function guiasNaPasta(itens: readonly ItemDoDrive[], g: { mm: string; aaaa: string }): GuiaAchadaNaPasta[] {
   const porId = new Map(itens.map(it => [it.i, it]));
   const caminho = (it: ItemDoDrive) => {
     const p: string[] = [];
@@ -347,18 +360,55 @@ export function guiasNaPasta(itens: readonly ItemDoDrive[], g: { mm: string; aaa
     while (x && n++ < 20) { p.unshift(textoNormalizado(x.n)); x = porId.get(x.p); }
     return p;
   };
-  const achadas: Record<string, { guia: GuiaDaPasta; arquivo: ItemDoDrive }> = {};
+  const achadas = new Map<string, GuiaAchadaNaPasta>();
   for (const it of itens) {
     if (it.t !== 'f' || !/\.pdf$/i.test(it.n)) continue;
     const p = caminho(it);
     if (!doMesDaGuia(p, g)) continue;
     for (const gp of GUIAS_DA_PASTA) {
       if (!gp.casa(p)) continue;
-      const atual = achadas[gp.tipo];
-      if (!atual || String(it.m || '') > String(atual.arquivo.m || '')) achadas[gp.tipo] = { guia: gp, arquivo: it };
+      const tributo = gp.tipo === 'darf' ? tributoDoDarf(it.n) : '';
+      const chave = gp.tipo + '|' + tributo;
+      const atual = achadas.get(chave);
+      if (!atual || String(it.m || '') > String(atual.arquivo.m || '')) achadas.set(chave, { guia: gp, arquivo: it, tributo });
     }
   }
-  return GUIAS_DA_PASTA.map(gp => achadas[gp.tipo]).filter(Boolean);
+  const ordem = (x: GuiaAchadaNaPasta) => GUIAS_DA_PASTA.indexOf(x.guia);
+  return [...achadas.values()].sort((a, b) => ordem(a) - ordem(b) || a.tributo.localeCompare(b.tributo, 'pt-BR'));
+}
+
+/**
+ * Como cada guia puxada entra na Nova entrega: no documento da lista (FGTS, DARF, DAS), como sempre; com mais de um DARF, os
+ * que dizem o tributo entram cada um na sua linha, "DARF INSS", "DARF IRRF" (o mesmo nome que o lote do Fiscal grava).
+ */
+export function comoEntraAGuia(guias: readonly Pick<GuiaAchadaNaPasta, 'guia' | 'tributo'>[]): { principal: boolean; rotulo: string }[] {
+  const darfs = guias.filter(x => x.guia.tipo === 'darf').length;
+  return guias.map(x => (x.guia.tipo === 'darf' && darfs > 1 && x.tributo
+    ? { principal: false, rotulo: 'DARF ' + x.tributo }
+    : { principal: true, rotulo: x.guia.nome }));
+}
+
+/**
+ * Os ids dos anexos das guias na entrega (entregas/{id}/anexos/<id>), a mesma regra do lote do Fiscal (robo/lote-fiscal.js,
+ * idsDosAnexos): 'guia-fgts', 'guia-darf', 'guia-darf-inss', e '-2' quando repete.
+ */
+export function idsDosAnexosDasGuias(guias: readonly { tipo: string; tributo?: string }[]): string[] {
+  const usados = new Set<string>();
+  return guias.map(gu => {
+    const base = 'guia-' + ([gu.tipo, gu.tributo].filter(Boolean).join('-').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'outra');
+    let id = base;
+    for (let n = 2; usados.has(id); n++) id = base + '-' + n;
+    usados.add(id);
+    return id;
+  });
+}
+/**
+ * Os anexos de guia que podem existir numa entrega, para sair junto com ela: os de sempre (FGTS, DARF, DAS) e os que os
+ * documentos dela indicam ("DARF INSS" → 'guia-darf-inss', o que o Puxar guias e o lote do Fiscal gravam).
+ */
+export function anexosDeGuiaDaEntrega(itens: readonly Pick<ItemDaEntrega, 'tipo'>[]): string[] {
+  const daEntrega = idsDosAnexosDasGuias(itens.filter(i => /^(FGTS|DARF|DAS)\b/i.test(i.tipo)).map(i => ({ tipo: i.tipo })));
+  return [...new Set(['guia-fgts', 'guia-darf', 'guia-das', ...daEntrega])];
 }
 /** O PDF anexado à entrega cabe no documento do banco? (o documento aceita ~1 MB e o Base64 cresce 1/3) */
 export const LIMITE_PDF_ANEXO = 700000;

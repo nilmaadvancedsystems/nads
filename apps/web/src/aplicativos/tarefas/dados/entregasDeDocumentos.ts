@@ -9,8 +9,11 @@ import type { ListaAoVivo } from './agentes';
 export interface ComprovanteDaEntrega { assinatura: string; foto: string }
 /** A guia que veio da pasta do cliente e foi anexada à entrega (entregas/{id}/anexos/guia-<tipo>). */
 export interface GuiaAnexada { tipo: string; nome: string; pdf: string | null }
-/** A guia para anexar ao gravar (o PDF em Base64, se coube no documento do banco). */
-export interface GuiaParaAnexar { tipo: string; nome: string; driveId: string; tamanho: number; pdf: string | null }
+/**
+ * A guia para anexar ao gravar (o PDF em Base64, se coube no documento do banco). tributo: o do DARF que entrou na linha dele
+ * (anexos/guia-darf-inss); vazio no FGTS, no DAS e no DARF que entrou no documento da lista (anexos/guia-darf).
+ */
+export interface GuiaParaAnexar { tipo: string; tributo?: string; nome: string; driveId: string; tamanho: number; pdf: string | null }
 /** Quem está: o e-mail da conta (as regras conferem entregadoPor com o login), o nome, o uid e os papéis. */
 export interface QuemNoEntregas { email: string; nome: string; uid: string; papeis: string[] }
 /** "Algo pra falar com o cliente" (lembretesCliente): só os ativos. */
@@ -133,7 +136,7 @@ export interface RepoEntregasDeDocumentos {
   registrarProtocolo(retrato: Record<string, unknown>): string;
 
   // ---- a guia da pasta do cliente (o robô do Drive) ----
-  guiasDaPasta(c: tipos.ClienteDaRota, mes: { mm: string; aaaa: string }): Promise<{ guia: tipos.GuiaDaPasta; arquivo: tipos.ItemDoDrive }[]>;
+  guiasDaPasta(c: tipos.ClienteDaRota, mes: { mm: string; aaaa: string }): Promise<tipos.GuiaAchadaNaPasta[]>;
   lerDoDrive(arquivo: tipos.ItemDoDrive): Promise<ArquivoDoDrive>;
 
   assinar(aoMudar: () => void): () => void;
@@ -149,7 +152,42 @@ const ASSINATURA_EXEMPLO = 'data:image/svg+xml;utf8,' + encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" width="360" height="120" viewBox="0 0 360 120"><rect width="360" height="120" fill="#fff"/>'
   + '<path d="M30 80 C60 20 80 110 110 60 S150 30 170 75 S220 100 240 50 S300 40 330 70" fill="none" stroke="#16211E" stroke-width="2.2" stroke-linecap="round"/></svg>');
 
+/** Um PDF de uma página só com o texto (o "Puxar guias" dos exemplos lê com o mesmo leitor dos de verdade). */
+function pdfDeExemplo(texto: string): Uint8Array {
+  // em linhas curtas: o que passa da largura da página o leitor não devolve
+  const linhas = texto.split(' ').reduce<string[]>((l, p) => { const u = l.length - 1; if (u >= 0 && (l[u] + ' ' + p).length <= 60) l[u] += ' ' + p; else l.push(p); return l; }, []);
+  const conteudo = 'BT /F1 9 Tf 12 TL 10 180 Td ' + linhas.map(l => '(' + l.replace(/[\\()]/g, '\\$&') + ') Tj T*').join(' ') + ' ET';
+  const objetos = [
+    '<</Type/Catalog/Pages 2 0 R>>', '<</Type/Pages/Kids[3 0 R]/Count 1>>',
+    '<</Type/Page/Parent 2 0 R/MediaBox[0 0 600 200]/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>',
+    '<</Length ' + conteudo.length + '>>\nstream\n' + conteudo + '\nendstream', '<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>',
+  ];
+  let pdf = '%PDF-1.4\n';
+  const posicoes = objetos.map((o, k) => { const p = pdf.length; pdf += (k + 1) + ' 0 obj\n' + o + '\nendobj\n'; return p; });
+  const xref = pdf.length;
+  pdf += 'xref\n0 ' + (objetos.length + 1) + '\n0000000000 65535 f \n' + posicoes.map(p => String(p).padStart(10, '0') + ' 00000 n \n').join('')
+    + 'trailer\n<</Size ' + (objetos.length + 1) + '/Root 1 0 R>>\nstartxref\n' + xref + '\n%%EOF';
+  return new TextEncoder().encode(pdf);
+}
+/**
+ * A pasta de exemplo de um cliente no mês da guia: a ALFA (101) tem FGTS, DARF INSS e DARF IRRF; a BETA (102), um DARF só.
+ * O texto de cada guia vai no próprio item (t: o texto do PDF), para o lerDoDrive dos exemplos.
+ */
+function pastaDeExemplo(codigo: string, m: { mm: string; aaaa: string }): (tipos.ItemDoDrive & { texto: string })[] {
+  const venc = '20/' + String(Number(m.mm) % 12 + 1).padStart(2, '0') + '/' + (m.mm === '12' ? Number(m.aaaa) + 1 : m.aaaa);
+  const guia = (i: string, nome: string, pai: string, texto: string) => ({ i, n: nome, p: pai, t: 'f' as const, m: m.aaaa + '-' + m.mm + '-28', texto });
+  const darf = (trib: string, valor: string) => guia('darf-' + trib, m.mm + '-' + m.aaaa + ' - DARF ' + trib + ' - VALOR R$' + valor + ' - VENCIMENTO ' + venc.replace(/\//g, '-') + '.pdf', 'darf',
+    'DOCUMENTO DE ARRECADACAO DE RECEITAS FEDERAIS DARF ' + trib + ' Periodo de apuracao ' + m.mm + '/' + m.aaaa + ' Data de Vencimento: ' + venc + ' Valor Total R$ ' + valor);
+  const pasta = (i: string, n: string, p: string) => ({ i, n, p, t: 'd' as const, texto: '' });
+  const pastas = [pasta('raiz', codigo + ' - EXEMPLO', ''), pasta('fis', 'FISCAL', 'raiz'), pasta('darf', '16. DARF', 'fis'), pasta('dp', 'DEPARTAMENTO PESSOAL', 'raiz'), pasta('mes', m.mm, 'dp'), pasta('fgts', 'FGTS', 'mes')];
+  if (codigo === '101') return [...pastas, darf('INSS', '1.234,56'), darf('IRRF', '87,40'),
+    guia('fgts-guia', 'GUIA FGTS.pdf', 'fgts', 'GUIA DO FGTS DIGITAL Competencia ' + m.mm + '/' + m.aaaa + ' Data de Vencimento: ' + venc + ' Valor R$ 640,00')];
+  if (codigo === '102') return [...pastas, darf('INSS', '310,00')];
+  return [];
+}
+
 export function criarEntregasDeDocumentosMemoria(): RepoEntregasDeDocumentos {
+  const textosDasGuias = new Map<string, string>();
   let ver = 0;
   const ouvintes = new Set<() => void>();
   const mudou = () => { ver++; for (const f of ouvintes) f(); };
@@ -300,8 +338,17 @@ export function criarEntregasDeDocumentosMemoria(): RepoEntregasDeDocumentos {
     guardarComprovanteNoLink: () => undefined,
     pedirAssinaturaNoCelular() { return { link: entregas.linkDaAssinatura('exemplo'), parar: () => undefined, pronto: Promise.resolve() }; },
     registrarProtocolo: () => 'EXEMPLO2345K',
-    async guiasDaPasta() { return []; },
-    async lerDoDrive() { throw new Error('nos exemplos não há Drive'); },
+    async guiasDaPasta(c, m) {
+      const itens = pastaDeExemplo(c.codigoOrigem.trim(), m);
+      for (const it of itens) if (it.texto) textosDasGuias.set(it.i, it.texto);
+      return entregas.guiasNaPasta(itens, m);
+    },
+    async lerDoDrive(arq) {
+      const texto = textosDasGuias.get(arq.i);
+      if (!texto) throw new Error('nos exemplos não há Drive');
+      const bytes = pdfDeExemplo(texto);
+      return { bytes, base64: btoa(String.fromCharCode(...bytes)), tamanho: bytes.length };
+    },
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,
   };

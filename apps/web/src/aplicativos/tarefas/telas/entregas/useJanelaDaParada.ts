@@ -19,7 +19,7 @@ type Entrega = ReturnType<typeof entregas.entregaDoDocumento>;
 type Geo = NonNullable<ReturnType<typeof entregas.geoDoBanco>>;
 
 /** O documento na edição da parada (os tipos do Entregas e o outro). */
-export interface EdicaoDaParada { competencia: string; zona: string; marcados: string[]; outro: string; valores: Record<string, string>; funcionarios: Record<string, string> }
+export interface EdicaoDaParada extends entregas.DocumentosEmEdicao { competencia: string; zona: string }
 
 export function useJanelaDaParada(inicial: Entrega, assinaturaInicial?: { assinatura: string; recebedor: string }) {
   const repo = useEntregasDeDocumentos();
@@ -122,23 +122,16 @@ export function useJanelaDaParada(inicial: Entrega, assinaturaInicial?: { assina
     tipos: entregas.TIPOS_DE_DOCUMENTO,
     zonas: entregas.ZONAS,
     abrirEdicao() {
-      const marcados: string[] = [], valores: Record<string, string> = {}, funcionarios: Record<string, string> = {};
-      let outro = '';
-      for (const i of e.itens) {
-        const t = entregas.tipoPeloRotulo(i.tipo);
-        if (t) { if (!marcados.includes(t.chave)) marcados.push(t.chave); } else if (!outro) outro = i.tipo;
-        if (i.valor != null) valores[i.tipo] = String(i.valor);
-        if (i.funcionario) funcionarios[i.tipo] = i.funcionario;
-      }
-      setEdicao({ competencia: e.competencia || entregas.competenciaAtual(), zona: e.zona, marcados, outro, valores, funcionarios });
+      setEdicao({ competencia: e.competencia || entregas.competenciaAtual(), zona: e.zona, ...entregas.documentosParaEditar(e.itens) });
     },
     mudarEdicao: (m: Partial<EdicaoDaParada>) => setEdicao(x => (x ? { ...x, ...m } : x)),
+    /** o valor de um dos documentos a mais (o 2º DARF, o repetido) */
+    mudarValorAMais: (k: number, valor: string) => setEdicao(x => (x ? { ...x, aMais: x.aMais.map((a, j) => (j === k ? { ...a, valor } : a)) } : x)),
+    tirarAMais: (k: number) => setEdicao(x => (x ? { ...x, aMais: x.aMais.filter((_, j) => j !== k) } : x)),
     salvandoEdicao,
     async salvarEdicao() {
       if (!edicao) return;
-      const linhas = [...entregas.TIPOS_DE_DOCUMENTO.filter(t => edicao.marcados.includes(t.chave)).map(t => ({ rotulo: t.rotulo, semValor: !!t.semValor, pedeFuncionario: !!t.pedeFuncionario })),
-        ...(edicao.outro.trim() ? [{ rotulo: edicao.outro.trim(), semValor: false, pedeFuncionario: false }] : [])];
-      const itens = linhas.map(l => ({ tipo: l.rotulo, valor: l.semValor ? null : entregas.valorDigitado(edicao.valores[l.rotulo]), ...(l.pedeFuncionario ? { funcionario: (edicao.funcionarios[l.rotulo] || '').trim() } : {}) }));
+      const itens = entregas.itensDaEdicao(edicao);
       if (!itens.length) { avisar('Selecione ao menos um documento.', 'erro'); return; }
       setSalvandoEdicao(true);
       try {
