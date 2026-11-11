@@ -36,8 +36,14 @@ export function LancamentosLcdpr() {
         </span>
         {vm.salvo && <span className="hint">{vm.salvo}</span>}
         <span className="tarefas-barra-espaco" />
-        {vm.sieg.baixando && <span className="lcdpr-sieg-andamento"><Icone nome="clock" />{vm.sieg.andamento}</span>}
-        {vm.sieg.baixadasEm ? (
+        {vm.sieg.baixando ? (
+          <span className="lcdpr-sieg-andamento" role="status" title={vm.sieg.andamento}>
+            <span className="btn-spinner" aria-hidden="true" />
+            <span className="lcdpr-sieg-passo">{vm.sieg.andamento}</span>
+            {vm.sieg.pct !== null && <b className="num">{vm.sieg.pct}%</b>}
+            <span className="lcdpr-sieg-barra" aria-hidden="true"><span style={{ width: (vm.sieg.pct ?? 6) + '%' }} /></span>
+          </span>
+        ) : vm.sieg.baixadasEm ? (
           <MenuSuspenso rotulo="Puxar do SIEG" titulo={'As notas do mês, baixadas pelo robô em ' + vm.sieg.baixadasEm} className="btn btn-outline" largura={300} itens={[
             { rotulo: 'Usar as notas já baixadas (' + vm.sieg.baixadasEm + ')', icone: 'fileDown', onClick: () => void vm.puxarDoSieg() },
             { rotulo: 'Baixar de novo do SIEG', icone: 'girar', onClick: () => void vm.puxarDoSieg(true) },
