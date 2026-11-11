@@ -141,31 +141,61 @@ async function lerAnexos(ref, contador) {
   return docs;
 }
 
-async function escreverColecao(ref, ctx, ehEntregas, w, recuo, deCima) {
+// As subcoleções pelo mapa (11/11/2026, consumo do banco): perguntar a cada documento "que subcoleções você tem?"
+// (listCollections) custa uma leitura por documento, e dobrava o backup (31.020 documentos, ~65 mil leituras). Agora a
+// pergunta vai a todos os documentos só uma vez por semana (a descoberta), que grava o mapa (subcolecoes.json, junto dos
+// backups): de cada coleção, os nomes das subcoleções que algum documento dela tem. Nos outros dias, cada documento das
+// coleções do mapa lê direto as subcoleções conhecidas (a vazia custa 1 leitura e não entra no retrato); as coleções sem
+// subcoleção no mapa não perguntam nada. Uma subcoleção de tipo novo entra na descoberta seguinte (no máximo 7 dias).
+const DESCOBRIR_A_CADA_MS = 7 * 24 * 36e5;
+const MAPA_DAS_SUBCOLECOES = 'subcolecoes.json';
+
+/** O mapa de antes vale (existe, tem menos de 7 dias e não pediram --descobrir)? */
+function mapaValido(mapa, agora, forcarDescoberta) {
+  return !forcarDescoberta && !!mapa && typeof mapa.porColecao === 'object' && !!mapa.porColecao
+    && agora - Date.parse(mapa.descobertoEm || '') < DESCOBRIR_A_CADA_MS;
+}
+
+/** As subcoleções de um documento: na descoberta, as que o banco diz (e anota no mapa novo); senão, as do mapa. */
+async function subcolecoesDo(doc, ctx, padrao) {
+  if (ctx.descobrindo) {
+    const subs = await doc.ref.listCollections();
+    const nomes = ctx.mapaNovo[padrao] || (ctx.mapaNovo[padrao] = []);
+    for (const sub of subs) if (!nomes.includes(sub.id)) nomes.push(sub.id);
+    return subs;
+  }
+  return ((ctx.mapa && ctx.mapa[padrao]) || []).map(nome => doc.ref.collection(nome));
+}
+
+// abrir(): escreve o cabeçalho da coleção antes do primeiro documento (a subcoleção vazia não aparece no retrato)
+async function escreverColecao(ref, ctx, ehEntregas, w, recuo, deCima, padraoDaColecao, abrir) {
   const colecaoDeCima = deCima || ref.id;
+  const padrao = padraoDaColecao || ref.id;
   let n = 0;
   for await (const pagina of paginas(ref)) {
     for (const doc of pagina) {
+      if (!n && abrir) abrir();
       ctx.contador.docs++;
       const dados = serializar(doc.data());
       w((n++ ? ',' : '') + '\n' + recuo + JSON.stringify(doc.id) + ': {"dados":' + JSON.stringify(dados));
-      let subs = (await doc.ref.listCollections()).filter(s => entraNoBackup(colecaoDeCima, s.id));
+      let subs = (await subcolecoesDo(doc, ctx, padrao)).filter(s => entraNoBackup(colecaoDeCima, s.id));
       const anexos = ehEntregas && subs.find(s => s.id === 'anexos');
       if (anexos) {
         // as imagens saem do JSON e viram arquivo; fica so o caminho delas
         subs = subs.filter(s => s !== anexos);
-        const provas = salvarProvas(ctx.destino, doc.id, dados.competencia, await lerAnexos(anexos, ctx.contador), ctx.resumoProvas);
-        w(',"provas":' + JSON.stringify(provas));
+        const lidos = await lerAnexos(anexos, ctx.contador);
+        if (Object.keys(lidos).length) w(',"provas":' + JSON.stringify(salvarProvas(ctx.destino, doc.id, dados.competencia, lidos, ctx.resumoProvas)));
       }
-      if (subs.length) {
-        w(',"subcolecoes":{');
-        for (let i = 0; i < subs.length; i++) {
-          w((i ? ',' : '') + JSON.stringify(subs[i].id) + ':{');
-          await escreverColecao(subs[i], ctx, false, w, recuo + ' ', colecaoDeCima);
-          w('}');
-        }
-        w('}');
+      let abriuSubs = false;
+      let i = 0;
+      for (const sub of subs) {
+        const abrirSub = () => {
+          if (!abriuSubs) { w(',"subcolecoes":{'); abriuSubs = true; }
+          w((i++ ? ',' : '') + JSON.stringify(sub.id) + ':{');
+        };
+        if (await escreverColecao(sub, ctx, false, w, recuo + ' ', colecaoDeCima, padrao + '/' + sub.id, abrirSub)) w('}');
       }
+      if (abriuSubs) w('}');
       w('}');
     }
   }
@@ -195,6 +225,13 @@ async function main() {
   }
 
   const colecoes = (await db.listCollections()).filter(c => entraNoBackup(c.id));
+  // o mapa das subcoleções: o de antes, se ainda vale; senão, esta vez descobre (e grava o novo no fim)
+  const arqMapa = path.join(destino, MAPA_DAS_SUBCOLECOES);
+  let mapaAntes = null;
+  try { mapaAntes = JSON.parse(fs.readFileSync(arqMapa, 'utf8')); } catch (e) { /* sem mapa: descobre */ }
+  const descobrindo = !mapaValido(mapaAntes, Date.now(), process.argv.includes('--descobrir'));
+  const mapaNovo = {};
+  const ctxBase = { contador, destino, resumoProvas, descobrindo, mapa: descobrindo ? null : mapaAntes.porColecao, mapaNovo };
   // o mesmo JSON de antes ({ projeto, feitoEm, colecoes: { id: { docId: registro } }, totalDeDocumentos }), escrito aos
   // poucos num arquivo temporario: so com tudo lido ele vira o do dia (um backup pela metade nao conta como feito)
   const temporario = caminho + '.parcial';
@@ -207,21 +244,22 @@ async function main() {
       process.stderr.write('lendo ' + col.id + '... ');
       w((primeiraCol ? '' : ',') + '\n  ' + JSON.stringify(col.id) + ': {');
       primeiraCol = false;
-      const n = await escreverColecao(col, { contador, destino, resumoProvas }, col.id === 'entregas', w, '   ');
+      const n = await escreverColecao(col, ctxBase, col.id === 'entregas', w, '   ');
       w('\n  }');
       process.stderr.write(n + ' documentos\n');
     }
     w('\n },\n "totalDeDocumentos": ' + contador.docs + '\n}\n');
   } finally { fs.closeSync(fd); }
   fs.renameSync(temporario, caminho);
+  if (descobrindo) fs.writeFileSync(arqMapa, JSON.stringify({ descobertoEm: new Date().toISOString(), porColecao: mapaNovo }, null, 1));
 
   const kb = (fs.statSync(caminho).size / 1024).toFixed(0);
   console.log('OK:', caminho);
-  console.log('colecoes:', colecoes.length, '| documentos:', contador.docs, '| retrato do dia:', kb, 'KB');
+  console.log('colecoes:', colecoes.length, '| documentos:', contador.docs, '| retrato do dia:', kb, 'KB', '| subcolecoes:', descobrindo ? 'descobertas de documento em documento (semanal)' : 'pelo mapa de ' + String(mapaAntes.descobertoEm).slice(0, 10));
   console.log('provas: ' + resumoProvas.novas + ' novas (' + (resumoProvas.bytesNovos / 1024 / 1024).toFixed(2) + ' MB), '
     + resumoProvas.jaExistiam + ' ja guardadas de antes');
 }
 
 if (require.main === module) main().catch(e => { console.error('ERRO:', e.message); process.exit(1); });
 
-module.exports = { entraNoBackup, COLECOES_FORA, SUBCOLECOES_FORA };
+module.exports = { entraNoBackup, COLECOES_FORA, SUBCOLECOES_FORA, escreverColecao, mapaValido, DESCOBRIR_A_CADA_MS };

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { colecaoDaReferencia, criarFiltroDeFotos, escutaQueConta, criarPausaDaAbaEscondida, medirLeituras, tirarLeituras, umaFotoPeloOuvinte } from './ouvirSemDadoVelho.firestore';
+import { colecaoDaReferencia, criarFiltroDeFotos, escutaQueConta, ouvidaHaPouco, criarPausaDaAbaEscondida, medirLeituras, tirarLeituras, umaFotoPeloOuvinte } from './ouvirSemDadoVelho.firestore';
 
 type F = { metadata: { fromCache: boolean }; docChanges?: () => unknown[]; exists?: () => boolean; data?: () => unknown };
 const consulta = (fromCache: boolean, mudancas = 1): F => ({ metadata: { fromCache }, docChanges: () => Array(mudancas).fill(0) });
@@ -174,5 +174,14 @@ describe('o medidor conta a mesma consulta uma vez só', () => {
     const ligadas = [a, b, c, d, e];
     expect([a, b, c, d, e].map(x => escutaQueConta(x, ligadas))).toEqual([true, false, true, false, true]);
     expect(escutaQueConta(b, [b, c])).toBe(true);
+  });
+});
+
+describe('o medidor conta a lista inteira depois de 30 min sem escuta', () => {
+  it('ouvida há menos de 30 min neste navegador: só o que mudou; mais que isso (ou nunca): inteira', () => {
+    const agora = Date.parse('2026-11-11T12:00:00Z');
+    expect(ouvidaHaPouco('clientes', agora, { clientes: agora - 10 * 60000 })).toBe(true);
+    expect(ouvidaHaPouco('clientes', agora, { clientes: agora - 31 * 60000 })).toBe(false);
+    expect(ouvidaHaPouco('cadastro', agora, { clientes: agora })).toBe(false);
   });
 });

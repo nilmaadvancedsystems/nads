@@ -28,8 +28,42 @@ const ESPERA_SEM_SERVIDOR_MS = 10 * 1000;
 let medindo = false;
 let telaDaLeitura = '';
 const leituras = new Map<string, number>();
+let relogioDasOuvidas: ReturnType<typeof setInterval> | null = null;
 /** liga ou desliga o medidor (desligado, esquece o que tinha) */
-export function medirLeituras(ligado: boolean) { medindo = ligado; if (!ligado) leituras.clear(); }
+export function medirLeituras(ligado: boolean) {
+  medindo = ligado;
+  if (!ligado) leituras.clear();
+  if (ligado && !relogioDasOuvidas && typeof window !== 'undefined') {
+    relogioDasOuvidas = setInterval(() => { for (const e of escutasLigadas) marcarOuvida(colecaoDaReferencia(e.ref)); }, 2 * 60 * 1000);
+  }
+  if (!ligado && relogioDasOuvidas) { clearInterval(relogioDasOuvidas); relogioDasOuvidas = null; }
+}
+
+// Quanto o banco cobra de fato (11/11/2026): a consulta que volta a ser ouvida depois de 30 min paga a lista INTEIRA, mesmo
+// com tudo no cache e nada mudado. O medidor contava só o que mudou e via ~12 mil leituras num dia em que os navegadores
+// gastaram ~80 mil. Agora cada navegador anota (no localStorage, que as abas dividem e que sobrevive à recarga) quando cada
+// coleção foi ouvida pela última vez; a primeira foto do servidor de uma coleção sem escuta nos últimos 30 min conta a
+// consulta inteira, com a marca "(inteira)".
+const OUVIDAS = 'nads-colecoes-ouvidas';
+const JANELA_DO_BANCO_MS = 30 * 60 * 1000;
+const ouvidasNaMemoria = new Map<string, number>();
+function lerOuvidas(): Record<string, number> {
+  try { return JSON.parse(localStorage.getItem(OUVIDAS) || '{}') as Record<string, number>; } catch { return {}; }
+}
+/** alguma escuta desta coleção esteve ligada neste navegador nos últimos 30 min? */
+export function ouvidaHaPouco(colecao: string, agora = Date.now(), ouvidas: Record<string, number> = lerOuvidas()): boolean {
+  return agora - Math.max(ouvidas[colecao] || 0, ouvidasNaMemoria.get(colecao) || 0) < JANELA_DO_BANCO_MS;
+}
+function marcarOuvida(colecao: string, agora = Date.now()) {
+  if (agora - (ouvidasNaMemoria.get(colecao) || 0) < 60 * 1000) return;
+  ouvidasNaMemoria.set(colecao, agora);
+  try {
+    const o = lerOuvidas();
+    o[colecao] = agora;
+    for (const [k, t] of Object.entries(o)) if (agora - t > 24 * 36e5) delete o[k];
+    localStorage.setItem(OUVIDAS, JSON.stringify(o));
+  } catch { /* sem localStorage: fica a memória */ }
+}
 /** a tela aberta agora (o "@ tela" das contas) */
 export function definirTelaDaLeitura(tela: string) { telaDaLeitura = tela; }
 /** o que se juntou desde a última vez, e zera */
@@ -71,9 +105,9 @@ export function escutaQueConta(eu: { ref: any }, ligadas: readonly { ref: any }[
   return true;
 }
 
-function contar(ref: any, n: number, semCache = false) {
+function contar(ref: any, n: number, semCache = false, inteira = false) {
   if (!medindo || n <= 0) return;
-  const k = colecaoDaReferencia(ref) + (semCache ? ' (sem cache)' : '') + ' @ ' + (telaDaLeitura || '?');
+  const k = colecaoDaReferencia(ref) + (inteira ? ' (inteira)' : '') + (semCache ? ' (sem cache)' : '') + ' @ ' + (telaDaLeitura || '?');
   leituras.set(k, (leituras.get(k) || 0) + n);
 }
 
@@ -210,9 +244,14 @@ function ouvir(ref: any, ...args: any[]): () => void {
       next: (s: Foto) => {
         if (medindo && escutaQueConta(eu)) {
           const primeiraDoServidor = !anterior.servidor && !s.metadata.fromCache && !(s as any).metadata.hasPendingWrites;
-          const n = cobradosNaFoto(s, anterior);
-          contar(ref, n, primeiraDoServidor && typeof s.docChanges === 'function' && !anterior.doCache);
+          const colecao = colecaoDaReferencia(ref);
+          let n = cobradosNaFoto(s, anterior);
+          // a consulta sem escuta nos últimos 30 min: o banco cobra a lista inteira (no mínimo 1, mesmo vazia)
+          const inteira = primeiraDoServidor && typeof s.docChanges === 'function' && !ouvidaHaPouco(colecao);
+          if (inteira) n = Math.max(1, Number((s as any).size) || 0);
+          contar(ref, n, primeiraDoServidor && typeof s.docChanges === 'function' && !anterior.doCache, inteira);
           if (primeiraDoServidor) anterior.servidor = true;
+          marcarOuvida(colecao);
         }
         filtro.chegou(s);
       },
