@@ -613,7 +613,7 @@ let lcdprRepo: RepoLcdpr | null = null;
 
 /** O Importador LCDPR (16/10/2026): as regras e os cadastros no lcdpr/config do Entregas (o mesmo da página antiga); nos exemplos, na memória. */
 export function repoDoLcdpr(): RepoLcdpr {
-  if (!lcdprRepo) lcdprRepo = noBanco ? criarLcdprFirestore() : criarLcdprMemoria();
+  if (!lcdprRepo) lcdprRepo = noBanco ? criarLcdprFirestore(() => quemPede()?.nome || '') : criarLcdprMemoria();
   return lcdprRepo;
 }
 

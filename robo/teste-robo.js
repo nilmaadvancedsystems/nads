@@ -793,6 +793,15 @@ igual('SIEG: o item com a base, a alíquota e as despesas', sxT.resumoDaNota(nfe
 // o frete e o desconto da nota (22/10/2026: o Rateio de frete)
 const nfeFreteT = nfeItensT.replace('<vNF>100.50</vNF>', '<vFrete>12.30</vFrete><vDesc>2.00</vDesc><vNF>110.80</vNF>');
 igual('SIEG: o frete e o desconto da NF-e', [sxT.resumoDaNota(nfeFreteT).frete, sxT.resumoDaNota(nfeFreteT).desconto, sxT.resumoDaNota(nfeItensT).frete], [12.3, 2, undefined]);
+// o LCDPR (11/11/2026): a nota de entrada, a IE do destinatário e os produtos (sem repetir, até 80 letras), só quando têm
+const nfeLcdprT = nfeItensT.replace('<mod>55</mod>', '<mod>55</mod><tpNF>0</tpNF>').replace('<xNome>CLIENTE</xNome>', '<xNome>CLIENTE</xNome><IE>0011288860080</IE>')
+  .replace('<NCM>21069090</NCM>', '<xProd>ADUBO NPK 20-05-20</xProd><NCM>21069090</NCM>');
+const lcdprR = sxT.resumoDaNota(nfeLcdprT);
+igual('SIEG: a NF-e de entrada, a IE do destinatário e o produto', [lcdprR.entrada, lcdprR.ieDest, lcdprR.produto], [true, '0011288860080', 'ADUBO NPK 20-05-20']);
+igual('SIEG: a NF-e de saída sem IE e sem produto não ganha os campos', ['entrada', 'ieDest', 'produto'].map(k => k in sxT.resumoDaNota(nfeItensT)), [false, false, false]);
+const doisItensT = nfeLcdprT.replace('</det>', '</det><det nItem="2"><prod><xProd>ADUBO NPK 20-05-20</xProd><NCM>31052000</NCM><vProd>1</vProd></prod></det><det nItem="3"><prod><xProd>' + 'X'.repeat(90) + '</xProd><NCM>31052000</NCM><vProd>1</vProd></prod></det>');
+igual('SIEG: os produtos sem repetir e cortados em 80 letras', sxT.resumoDaNota(doisItensT).produto, ('ADUBO NPK 20-05-20 | ' + 'X'.repeat(90)).slice(0, 80));
+igual('SIEG: o resumo que não cabe perde primeiro os produtos', (() => { const n = { chave: 'k', produto: 'P'.repeat(500), itens: [{ ncm: '1' }] }; const r = sg.resumoQueCabe({ emitidas: [], recebidas: Array.from({ length: 2000 }, () => n) }); return [r.recebidas[0].produto, !!r.recebidas[0].itens, !!r.itensCortados]; })(), [undefined, true, false]);
 // as NF-e do CT-e e o ICMS dele (23/10/2026: o Rateio de frete pelo CT-e)
 const cteT = '<cteProc><CTe><infCte Id="CTe31260919449248000162570010000000011000000017"><ide><CFOP>6353</CFOP><nCT>1</nCT><serie>1</serie><dhEmi>2026-09-05T10:00:00-03:00</dhEmi></ide><emit><CNPJ>19449248000162</CNPJ><xNome>TRANSP</xNome></emit><rem><CNPJ>22222222000122</CNPJ><xNome>REM</xNome></rem><dest><CNPJ>11111111000111</CNPJ><xNome>DEST</xNome></dest><vPrest><vTPrest>500.00</vTPrest><vRec>500.00</vRec></vPrest><imp><ICMS><ICMS00><CST>00</CST><vBC>500.00</vBC><pICMS>12.00</pICMS><vICMS>60.00</vICMS></ICMS00></ICMS></imp><infCTeNorm><infDoc><infNFe><chave>31260922222222000122550010000020751000020751</chave></infNFe><infNFe><chave>31260922222222000122550010000020761000020761</chave></infNFe></infDoc></infCTeNorm></infCte></CTe></cteProc>';
 const cteR = sxT.resumoDaNota(cteT);

@@ -480,9 +480,13 @@ async function xmlsJaNoDrive(codigo, nomeDaPasta, competencia, db) {
   return { xmls: [...unicos.values()], nomes };
 }
 
-/** O resumo para o banco, cabendo num documento (até ~900 KB): se passar, sai o detalhe dos itens (fica o resto da nota). */
+/** O resumo para o banco, cabendo num documento (até ~900 KB): se passar, saem os produtos (o LCDPR) e, se ainda passar, o detalhe dos itens (fica o resto da nota). */
 function resumoQueCabe(doc) {
   if (Buffer.byteLength(JSON.stringify(doc)) < 900000) return doc;
+  const semProduto = n => { const x = Object.assign({}, n); delete x.produto; return x; };
+  const enxuto = Object.assign({}, doc, { emitidas: doc.emitidas.map(semProduto), recebidas: doc.recebidas.map(semProduto) });
+  if (Buffer.byteLength(JSON.stringify(enxuto)) < 900000) return enxuto;
+  doc = enxuto;
   const sem = n => { const x = Object.assign({}, n); delete x.itens; return x; };
   return Object.assign({}, doc, { emitidas: doc.emitidas.map(sem), recebidas: doc.recebidas.map(sem), itensCortados: true });
 }

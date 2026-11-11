@@ -39,6 +39,14 @@ export function ConfiguracaoLcdpr() {
         <ConfigLinha titulo="Categoria do CT-e">{escolha('categoriaFretesCTe', vm.categoriaCte, 'Categoria do CT-e')}</ConfigLinha>
       </ConfigSecao>
 
+      <ConfigSecao titulo="Alterdata">
+        <ConfigLinha titulo="Históricos e contas do Alterdata"
+          descricao={vm.alterdata || 'Importe o movimento do LCDPR exportado do Alterdata (.xls): os históricos padrão e as contas que o produtor usa entram nas lupas do lançamento.'}>
+          <label className="btn btn-outline" htmlFor="lcdpr-alterdata"><Icone nome="upload" />{vm.alterdata ? 'Importar de novo' : 'Importar'}</label>
+          <CampoArquivo semCaixa id="lcdpr-alterdata" aceitar=".xls,.xlsx,.csv" onEscolher={f => { void vm.importarAlterdata(f); }} />
+        </ConfigLinha>
+      </ConfigSecao>
+
       <ConfigSecao titulo="Backup e limpeza">
         <ConfigLinha titulo="Exportar backup">
           <button type="button" className="btn btn-outline" onClick={vm.exportarBackup}><Icone nome="download" />Exportar</button>
@@ -47,7 +55,7 @@ export function ConfiguracaoLcdpr() {
           <label className="btn btn-outline" htmlFor="lcdpr-backup" aria-disabled={!!vm.erro || undefined}><Icone nome="upload" />Importar</label>
           <CampoArquivo semCaixa id="lcdpr-backup" aceitar=".json,application/json" desabilitado={!!vm.erro} onEscolher={f => { void vm.importarBackup(f); }} />
         </ConfigLinha>
-        <ConfigLinha titulo="Limpar lançamentos importados" descricao="Tira todos os lançamentos desta sessão. As regras e os cadastros continuam.">
+        <ConfigLinha titulo="Limpar lançamentos do mês" descricao="Tira todos os lançamentos do mês aberto. As regras, os cadastros e os outros meses continuam.">
           <button type="button" className="btn btn-danger" disabled={!vm.lancamentos} onClick={() => void vm.limparLancamentos()}><Icone nome="x" />Limpar</button>
         </ConfigLinha>
       </ConfigSecao>
