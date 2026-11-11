@@ -157,7 +157,7 @@ export function Executor() {
   // sair da execução por qualquer lugar do app (o cabeçalho, o menu, o voltar do navegador) com a etapa aberta:
   // é interromper, com a justificativa; trocar de mês ou período dentro do executor não conta
   const saida = useBlocker(({ currentLocation, nextLocation }) =>
-    !vm.dev && !vm.delegada && !!vm.etapa && !vm.interrompendo && !guia.saindo.current && currentLocation.pathname !== nextLocation.pathname && !nextLocation.pathname.startsWith(BASE + '/executar/'));
+    !vm.dev && !vm.delegada && !!vm.etapa && !vm.tudoPronto && !vm.interrompendo && !guia.saindo.current && currentLocation.pathname !== nextLocation.pathname && !nextLocation.pathname.startsWith(BASE + '/executar/'));
   if (vm.esperandoEmpresa) return null;
   if (!vm.empresa) return <Navigate to={BASE} replace />;
   // o mês faz parte de um período prometido (vários meses): abre o período
@@ -284,12 +284,18 @@ export function Executor() {
     </div>
   ) : vm.revendo ? (
     <div className="alerta-linha">
-      <Alerta naLinha tom="ok" titulo={vm.etapa.nome + ' já foi concluída'}>
+      {/* a empresa toda concluída: o Editar é reabrir a empresa nesta etapa (11/11/2026) */}
+      <Alerta naLinha tom="ok" titulo={vm.etapa.nome + ' já foi concluída' + (vm.tudoPronto ? ' · a empresa está concluída' : '')}>
         <div className="btn-row">
-          <button type="button" className="btn btn-primary" onClick={() => { void vm.editar(); }}>Editar</button>
-          <button type="button" className="btn" onClick={vm.voltarAEtapaDaVez}>Ir para a etapa da vez</button>
+          <button type="button" className="btn btn-primary" onClick={() => { void vm.editar(); }}>{vm.tudoPronto ? 'Reabrir nesta etapa' : 'Editar'}</button>
+          <button type="button" className="btn" onClick={vm.voltarAEtapaDaVez}>{vm.tudoPronto ? 'Voltar ao resumo' : 'Ir para a etapa da vez'}</button>
         </div>
       </Alerta>
+    </div>
+  ) : vm.reabertura?.emAberto ? (
+    // reaberta e ainda não concluída de novo: quem reabriu e quando, à vista de quem está trabalhando
+    <div className="alerta-linha">
+      <Alerta naLinha titulo={vm.reabertura.texto} />
     </div>
   ) : null;
   // e embaixo deles, os da tela da etapa (AvisoAcimaDoCabecalho)
@@ -309,8 +315,12 @@ export function Executor() {
           <span className="executor-fim-onda" aria-hidden="true" />
           <Icone nome="checkCircle" />
           <h2>Tudo pronto em {vm.rotuloCompetencia}</h2>
+          {/* voltar numa empresa concluída (11/11/2026): rever as etapas e, se faltou algo, reabrir numa delas */}
+          <p className="hint">Para revisar ou reabrir, abra uma etapa ao lado ou clique em Revisar; nada do que foi feito se perde.</p>
+          {vm.reabertura && <p className="hint">{vm.reabertura.texto}, e concluída de novo.</p>}
           <div className="executor-fim-botoes">
             {vm.varios && <button type="button" className="btn btn-outline" onClick={vm.encerrarPeriodo}>Cancelar função</button>}
+            <button type="button" className="btn btn-outline" onClick={vm.revisar}><Icone nome="repeat" />Revisar</button>
             <button type="button" className="btn btn-primary" onClick={vm.sair}>Voltar às empresas</button>
           </div>
         </div>
