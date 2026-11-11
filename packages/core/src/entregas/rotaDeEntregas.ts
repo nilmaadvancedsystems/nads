@@ -5,7 +5,8 @@
 // semana, as obrigações do mês, a qualidade da base (sem região, endereço impreciso), a ordem fixa, os protocolos do
 // período, o fechamento do dia e a fila pública (rotaLinks). Tudo puro, como as funções do entregas.html.
 import {
-  clientesDeEntrega, quandoFoi, textoDosItens, type ClienteDaRota, type Entrega, type Geo, type RotaPadrao, ROTA_PADRAO_VAZIA,
+  clientesDeEntrega, dinheiro, quandoFoi, rotuloDaCompetencia, rotuloDaZona, textoDosItens, type ClienteDaRota, type Entrega, type Geo, type ItemDaEntrega,
+  type RotaPadrao, ROTA_PADRAO_VAZIA,
 } from './documentos';
 import { ajustarDiaUtil, textoNormalizado } from './guiasDoPdf';
 
@@ -86,6 +87,17 @@ export function ordenarPendentes<T extends Pick<Entrega, 'ordemRota' | 'clienteI
   return encaixarPorProximidade(ordenarParadas(lista, fixa), fixa, clientes);
 }
 
+/**
+ * Organizar pela ordem fixa (11/11/2026: "cade a opcão de organizar pela rota fixa?"): arrastar uma parada grava a ordem da
+ * rota inteira, e daí em diante a ordem fixa não vale para ninguém. Esta é a ordem da rota esquecendo o que foi arrastado:
+ * a ordem fixa (a região e a posição), a proximidade para quem não está nela, e quem entrou primeiro. Os ids, para gravar.
+ */
+export function ordemPelaRotaFixa<T extends Pick<Entrega, 'id' | 'ordemRota' | 'clienteId' | 'zona' | 'criadoEm'>>(pendentes: readonly T[], fixa: RotaPadrao, clientes: ReadonlyMap<string, ClienteDaRota>): string[] {
+  return ordenarPendentes(pendentes.map(e => ({ ...e, ordemRota: null })), fixa, clientes).map(e => e.id);
+}
+/** O escritório tem ordem fixa (alguém já pôs cliente na lista de alguma região)? */
+export const temOrdemFixa = (fixa: RotaPadrao) => Object.keys(fixa.ordem).length > 0;
+
 /** A ordem que vale é a da ROTA INTEIRA (ordemCompletaDaRota_): ordemRota, depois quem entrou primeiro (os ids). */
 export function ordemCompletaDaRota(pendentes: readonly Pick<Entrega, 'id' | 'ordemRota' | 'criadoEm'>[]): string[] {
   return [...pendentes].sort((a, b) => {
@@ -128,6 +140,30 @@ export function paradasDaRota<T extends Pick<Entrega, 'clienteId' | 'clienteNome
   const m = new Map<string, T[]>();
   for (const e of lista) { const k = chaveDaParada(e, clientes); m.set(k, [...(m.get(k) || []), e]); }
   return m;
+}
+
+/**
+ * Aglutinar (11/11/2026: "preciso de um botao de aglutinar entregas, entregas em rota do mesmo cliente tem que ser
+ * aglutinadas"): uma linha por parada (o mesmo cliente e as empresas do mesmo endereço), na posição da primeira entrega dela,
+ * com as entregas na ordem da rota. Cada entrega continua no banco como é; a linha só junta para mostrar e assinar.
+ */
+export function aglutinarParadas<T extends Pick<Entrega, 'id' | 'clienteId' | 'clienteNome'>>(lista: readonly T[], clientes: ReadonlyMap<string, ClienteDaRota>): { chave: string; entregas: T[] }[] {
+  return [...paradasDaRota(lista, clientes)].map(([chave, entregas]) => ({ chave, entregas }));
+}
+/** "outubro/2026 · DAE ICMS, DAS · setembro/2026 · DAE ICMS · R$ 4.540,18 · Parte superior": cada mês com os documentos dele. */
+export function textoDaParadaAglutinada(lista: readonly Pick<Entrega, 'competencia' | 'itens' | 'zona'>[]): string {
+  const porMes = new Map<string, ItemDaEntrega[]>();
+  for (const e of lista) porMes.set(e.competencia, [...(porMes.get(e.competencia) || []), ...e.itens]);
+  const total = totalDaParada(lista);
+  const zona = lista.find(e => e.zona)?.zona || '';
+  return [...porMes].map(([c, itens]) => rotuloDaCompetencia(c) + ' · ' + textoDosItens(itens)).join(' · ')
+    + (total > 0 ? ' · ' + dinheiro(total) : '') + (zona ? ' · ' + rotuloDaZona(zona) : '');
+}
+/** Mover uma parada aglutinada inteira: a nova ordem dos ids das entregas (as da parada juntas, na posição dela). */
+export function moverParadaAglutinada(grupos: readonly { entregas: readonly Pick<Entrega, 'id'>[] }[], idDaPrimeira: string, para: number): string[] {
+  const primeiras = moverPara(grupos.map(g => g.entregas[0].id), idDaPrimeira, para);
+  const porPrimeira = new Map(grupos.map(g => [g.entregas[0].id, g.entregas.map(e => e.id)]));
+  return primeiras.flatMap(id => porPrimeira.get(id) || []);
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
