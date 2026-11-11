@@ -4667,6 +4667,16 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .lcdpr-ver-nota{min-height:0;height:26px;width:26px;padding:0;justify-content:center;color:var(--ink-muted);}
 .lcdpr-ver-nota:hover{color:var(--accent);}
 .lcdpr-ver-nota svg{width:15px;height:15px;}
+/* a DANFE idêntica à original (o PDF do XML) numa janela alta, como a folha A4 */
+.modal.danfe-pdf-janela{max-width:980px;width:min(980px,100%);height:calc(100dvh - 32px);display:flex;flex-direction:column;}
+.danfe-pdf-janela .registro-topo{flex:none;}
+.danfe-pdf-janela .registro-caminho .fraco{margin-left:8px;font-weight:400;}
+.danfe-pdf-acoes{display:flex;gap:8px;margin-left:auto;margin-right:8px;}
+.danfe-pdf-corpo{flex:1;min-height:0;display:flex;background:color-mix(in srgb,var(--ink) 6%,var(--surface));}
+.danfe-pdf{flex:1;width:100%;height:100%;border:0;background:#fff;}
+.danfe-pdf-aviso{margin:auto;display:flex;flex-direction:column;align-items:center;gap:10px;padding:24px;text-align:center;color:var(--ink-muted);}
+.danfe-pdf-aviso p{margin:0;max-width:440px;}
+.danfe-pdf-aviso svg{width:22px;height:22px;}
 .lcdpr-conta.fora{border-color:var(--warn,#c77700);}
 .modal.lcdpr-janela{max-width:1180px;width:min(1180px,100%);max-height:calc(100dvh - 32px);}
 .lcdpr-janela .registro-topo{flex:none;}

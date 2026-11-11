@@ -4,9 +4,10 @@
 // categoria muda na própria linha; clicar na linha abre o lançamento) e os arquivos lidos no mês, com o Desfazer.
 // Desde 11/11/2026: no topo, o mês (a situação e quando foi salvo), o "Puxar do SIEG" e o "Novo lançamento" (a janela no
 // jeito do Alterdata); na lista, a conta de pagamento de cada linha (o Caixa ou um banco) e o "Pagar com" da seleção; e
-// a lupa no documento abre a nota (o espelho da DANFE do Fiscal, com a nota original pelo robô).
+// a lupa no documento abre a DANFE idêntica à original (o PDF desenhado do XML que o robô traz; o CT-e, no espelho).
 import { Alerta, CampoArquivos, Icone, MenuSuspenso, Segmentado, Vazio } from '@nads/ui';
 import { EspelhoDaNota } from '../../fiscal/partes/EspelhoDaNota';
+import { JanelaDaDanfe } from '../../fiscal/partes/JanelaDaDanfe';
 import { JanelaDoLancamento } from './JanelaDoLancamento';
 import { useLancamentosLcdpr } from './useLancamentosLcdpr';
 
@@ -18,7 +19,9 @@ export function LancamentosLcdpr() {
   return (
     <>
       {vm.aberto !== null && <JanelaDoLancamento key={vm.aberto} id={vm.aberto} fechar={vm.fechar} />}
-      {vm.vendo && <EspelhoDaNota nota={vm.vendo} codigo={vm.empresa} competencia={vm.competenciaDoMes} fechar={vm.fecharNota} />}
+      {vm.vendo && (vm.vendo.tipo === 'CT-e'
+        ? <EspelhoDaNota nota={vm.vendo} codigo={vm.empresa} competencia={vm.competenciaDoMes} fechar={vm.fecharNota} />
+        : <JanelaDaDanfe nota={vm.vendo} codigo={vm.empresa} competencia={vm.competenciaDoMes} fechar={vm.fecharNota} />)}
       {vm.desfazer && (
         <Alerta tom="ok" titulo={vm.desfazer.titulo} onFechar={vm.esquecerDesfazer}>
           <div className="btn-row"><button type="button" className="btn" onClick={vm.voltarDesfeito}><Icone nome="girar" />Desfazer</button></div>
