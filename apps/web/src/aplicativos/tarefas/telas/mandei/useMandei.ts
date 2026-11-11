@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useOperador } from '../../casca/operador';
 import { arquivoParaBaixar, criarTicketDeTeste, gerarSegundoLink, gravarTicket, mandeiNoExemplo, pedirDeNovoAoCliente, resolverTicket, ROTULO_DA_SIMULACAO, simular, urlDoLink, useTicketsDoMandei, type SimulacaoDoMandei } from '../../dados/mandei';
+import { useGuardado } from '../../../../comum/guardado';
 import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
 
 export type FiltroDoMandei = 'abertos' | 'respondidos' | 'resolvidos' | 'todos';
@@ -40,7 +41,10 @@ export function useMandei(pagina: 'meus' | 'central') {
   const todos = useTicketsDoMandei();
   const [agora, setAgora] = useState(() => new Date());
   useEffect(() => { const i = setInterval(() => setAgora(new Date()), 60_000); return () => clearInterval(i); }, []);
-  const [filtro, setFiltro] = useState<FiltroDoMandei>('abertos');
+  const [filtro, setFiltro] = useState<FiltroDoMandei>('todos');
+  // "o botão de ocultar os que já fiz" (11/11/2026): os resolvidos somem da lista (menos no filtro Resolvidos); guardado
+  const [ocultarResolvidos, setOcultarResolvidos] = useGuardado('mandei|ocultarResolvidos', true);
+  const aparece = (s: m.SituacaoDoTicket) => !ocultarResolvidos || s !== 'resolvido' || filtro === 'resolvidos';
   const [busca, setBusca] = useState('');
   const [aberto, setAbertoDaVez] = useState<string | null>(null);
   const [dev] = useModoDesenvolvedor();
@@ -60,7 +64,7 @@ export function useMandei(pagina: 'meus' | 'central') {
   const q = busca.trim().toLowerCase();
   const comSituacao = daPagina.map(t => ({ t, s: m.situacaoDoTicket(t, agora) }));
   const linhas = comSituacao
-    .filter(x => FILTROS[filtro](x.s))
+    .filter(x => FILTROS[filtro](x.s) && aparece(x.s))
     .filter(x => !q || (m.rotuloDoNumero(x.t.numero) + ' ' + x.t.empresa.nome + ' ' + x.t.para.email + ' ' + x.t.criadoPor.nome).toLowerCase().includes(q))
     .map(({ t, s }) => {
       const l = m.linkAtual(t);
@@ -74,7 +78,7 @@ export function useMandei(pagina: 'meus' | 'central') {
         aRevisar: s === 'resolvido' ? 0 : m.chavesParaRevisar(t).length,
       };
     });
-  const contagem = Object.fromEntries((Object.keys(FILTROS) as FiltroDoMandei[]).map(f => [f, comSituacao.filter(x => FILTROS[f](x.s)).length])) as Record<FiltroDoMandei, number>;
+  const contagem = Object.fromEntries((Object.keys(FILTROS) as FiltroDoMandei[]).map(f => [f, comSituacao.filter(x => FILTROS[f](x.s) && (!ocultarResolvidos || x.s !== 'resolvido' || f === 'resolvidos')).length])) as Record<FiltroDoMandei, number>;
 
   const t = aberto ? todos.find(x => x.id === aberto) || null : null;
   const s = t ? m.situacaoDoTicket(t, agora) : null;
@@ -120,6 +124,9 @@ export function useMandei(pagina: 'meus' | 'central') {
       ...(t ? (Object.keys(ROTULO_DA_SIMULACAO) as SimulacaoDoMandei[]).map(a => ({ rotulo: ROTULO_DA_SIMULACAO[a] + ' (' + m.rotuloDoNumero(t.numero) + ')', onClick: () => { simular(t, a); if (a === 'apagar') setAberto(null); setAgora(new Date()); } })) : []),
     ] : [],
     filtro, setFiltro, contagem, busca, setBusca,
+    ocultarResolvidos, alternarResolvidos: () => setOcultarResolvidos(v => !v),
+    /** quantos resolvidos estão escondidos agora */
+    resolvidosOcultos: ocultarResolvidos && filtro !== 'resolvidos' ? comSituacao.filter(x => x.s === 'resolvido' && FILTROS[filtro](x.s)).length : 0,
     linhas,
     respondidos: contagem.respondidos,
     ligar: comSituacao.filter(x => x.s === 'ligar').length,

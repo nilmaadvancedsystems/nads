@@ -2,7 +2,7 @@
 // dos tickets (a linha abre o ticket embaixo), os selos da situação e o cartão do ticket com as respostas, os arquivos
 // e os links. Respondido: o Resolver volta para a etapa da Tarefa.
 import { mandei as m } from '@nads/core';
-import { Alerta, Icone, MenuSuspenso, Vazio } from '@nads/ui';
+import { Alerta, Icone, Interruptor, MenuSuspenso, Vazio } from '@nads/ui';
 import { Fragment } from 'react';
 import { NovoTicket } from './NovoTicket';
 import { ROTULO_DO_FILTRO, useMandei, type FiltroDoMandei } from './useMandei';
@@ -33,6 +33,11 @@ export function Mandei({ pagina }: { pagina: 'meus' | 'central' }) {
       <div className="tarefas-barra-topo" style={{ marginTop: 12 }}>
         <MenuSuspenso rotulo={ROTULO_DO_FILTRO[vm.filtro]} className="btn btn-outline" dica="Filtrar os tickets"
           itens={(Object.keys(ROTULO_DO_FILTRO) as FiltroDoMandei[]).map(f => ({ rotulo: ROTULO_DO_FILTRO[f] + ' (' + vm.contagem[f] + ')', marcado: vm.filtro === f, onClick: () => vm.setFiltro(f) }))} />
+        {/* "o botão de ocultar os que já fiz" (11/11/2026): os resolvidos somem da lista; fica guardado */}
+        <span className="mandei-ocultar">
+          <Interruptor ligado={vm.ocultarResolvidos} onMudar={vm.alternarResolvidos} rotulo="Ocultar os resolvidos" />
+          <span>Ocultar resolvidos{vm.resolvidosOcultos > 0 ? ' (' + vm.resolvidosOcultos + ')' : ''}</span>
+        </span>
         <span className="tarefas-barra-espaco" />
         {/* o ⚡ do modo desenvolvedor: o ticket de teste e as simulações do ticket aberto */}
         {vm.testes.length > 0 && (
@@ -51,9 +56,11 @@ export function Mandei({ pagina }: { pagina: 'meus' | 'central' }) {
           dentro da linha da tabela larga) */}
       {!vm.linhas.length ? (
         <div className="table-wrap">
-          <Vazio icone="mensagem" titulo="Nenhum ticket neste filtro" texto="Os tickets saem das etapas (ex.: Clientes › Envio › Mandar pelo Mandei).">
+          <Vazio icone="mensagem" titulo={vm.resolvidosOcultos ? 'Tudo resolvido por aqui' : 'Nenhum ticket neste filtro'}
+            texto={vm.resolvidosOcultos ? (vm.resolvidosOcultos === 1 ? '1 ticket resolvido está oculto.' : vm.resolvidosOcultos + ' tickets resolvidos estão ocultos.') : 'Os tickets saem das etapas (Clientes e Fornecedores › Envio) ou do Novo ticket.'}>
             {/* a saída do vazio (revisão da UI, 18/10/2026) */}
-            {(vm.filtro !== 'todos' || vm.busca) && <button type="button" className="btn btn-outline" onClick={() => { vm.setFiltro('todos'); vm.setBusca(''); }}>Ver todos os tickets</button>}
+            {vm.resolvidosOcultos > 0 && <button type="button" className="btn btn-outline" onClick={vm.alternarResolvidos}>Mostrar os resolvidos</button>}
+            {!vm.resolvidosOcultos && (vm.filtro !== 'todos' || vm.busca) && <button type="button" className="btn btn-outline" onClick={() => { vm.setFiltro('todos'); vm.setBusca(''); }}>Ver todos os tickets</button>}
           </Vazio>
         </div>
       ) : (
