@@ -4390,6 +4390,10 @@ button.cofre-pessoa:hover{background:var(--hover-bg);}
 .sieg-contagem .alerta-linha{margin:0;}
 /* os botões do SIEG alinhados à esquerda, com o conteúdo */
 .sieg-contagem .sieg-acoes{grid-column:1/-1;justify-content:flex-start;}
+/* a escolha XML | PDF | XML e PDF (11/11/2026) na mesma linha dos botões: sem a margem de baixo do .steps (que a subia) e
+   sem quebrar as opções */
+.sieg-acoes .steps{margin:0;flex-wrap:nowrap;flex:none;}
+.sieg-acoes .step-pill{min-height:32px;}
 /* Gmail: a linha com mais informação, os filtros e os grupos do dia (14/10/2026: "vamos trabalhar na ui do gmail") */
 .gm-quem{display:flex;align-items:center;gap:8px;}
 .gm-quem b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;}
@@ -4670,7 +4674,12 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
    (o código, a lupa e o nome; a pesquisa no lugar do corpo) */
 .lcdpr-mes{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
 .lcdpr-mes .tarefas-barra-espaco{flex:1;}
-.lcdpr-sieg-andamento{display:inline-flex;align-items:center;gap:6px;color:var(--ink-muted);font-size:var(--fs-13);}
+.lcdpr-sieg-andamento{position:relative;display:inline-flex;align-items:center;gap:8px;height:36px;max-width:340px;padding:0 14px;overflow:hidden;border:1px solid var(--border);border-radius:999px;background:var(--surface);color:var(--ink-muted);font-size:var(--fs-13);white-space:nowrap;}
+.lcdpr-sieg-andamento .btn-spinner{width:14px;height:14px;color:var(--accent);}
+.lcdpr-sieg-passo{min-width:0;overflow:hidden;text-overflow:ellipsis;}
+.lcdpr-sieg-andamento b{color:var(--ink);font-weight:600;}
+.lcdpr-sieg-barra{position:absolute;left:0;right:0;bottom:0;height:2px;background:color-mix(in srgb,var(--ink) 8%,transparent);}
+.lcdpr-sieg-barra > span{display:block;height:100%;background:var(--accent);transition:width .4s ease;}
 .lcdpr-conta{min-width:150px;}
 .lcdpr-doc{display:inline-flex;align-items:center;justify-content:flex-end;gap:2px;}
 .lcdpr-ver-nota{min-height:0;height:26px;width:26px;padding:0;justify-content:center;color:var(--ink-muted);}

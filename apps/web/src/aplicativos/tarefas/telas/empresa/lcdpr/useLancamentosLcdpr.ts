@@ -185,7 +185,9 @@ export function useLancamentosLcdpr() {
       ligado: robo.ligado,
       motivo: robo.ligado ? '' : robo.motivo || 'O robô do SIEG está desligado.',
       baixando: baixando || !!esperandoSieg,
-      andamento: baixando && pedido ? (pedido.andamento || 'O robô pegou o pedido') + (typeof pedido.pct === 'number' ? ' · ' + pedido.pct + '%' : '') : esperandoSieg ? 'Pedido enviado ao robô' : '',
+      /** o passo do robô (uma linha) e a porcentagem (null = ainda sem número) */
+      andamento: baixando && pedido ? pedido.andamento || 'O robô pegou o pedido' : esperandoSieg ? 'Pedido enviado ao robô' : '',
+      pct: baixando && pedido && typeof pedido.pct === 'number' ? Math.max(2, Math.min(99, Math.round(pedido.pct))) : null,
       /** as notas do mês já baixadas e prontas para o LCDPR (quando) */
       baixadasEm: notas.dados && lcdpr.resumoServeParaOLcdpr(notas.dados) ? dataHora(notas.dados.em) : '',
     },

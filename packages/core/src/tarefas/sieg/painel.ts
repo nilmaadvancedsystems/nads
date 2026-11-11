@@ -39,6 +39,8 @@ export interface ResumoDaAba {
   /** sem as canceladas */
   quantidade: number;
   canceladas: number;
+  /** o valor das canceladas (11/11/2026: "quero que tenha na tela a informação do valor de notas canceladas"); fora do `valor` */
+  valorCanceladas: number;
   valor: number;
   icms: number; st: number; ipi: number;
   /** as retenções somadas por imposto (NFS-e) */
@@ -111,6 +113,7 @@ function resumir(aba: AbaDoSieg, origem: { n: NotaDoSieg; id: string }[], lado: 
   const total = (campo: 'valor' | 'icms' | 'st' | 'ipi') => reais(vivas.reduce((s, l) => s + centavos(l[campo]), 0));
   return {
     aba, linhas, quantidade: vivas.length, canceladas: linhas.length - vivas.length,
+    valorCanceladas: reais(linhas.filter(l => l.cancelada).reduce((s, l) => s + centavos(l.valor), 0)),
     valor: total('valor'), icms: total('icms'), st: total('st'), ipi: total('ipi'),
     retencoes: [...imposto.entries()].map(([i, v]) => ({ imposto: i, valor: reais(v) })).sort((a, b) => b.valor - a.valor),
     retido: reais([...imposto.values()].reduce((s, v) => s + v, 0)),
