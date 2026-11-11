@@ -314,6 +314,27 @@ export function useCompetencia() {
     for (const m of lista) guardar(m, relatorioVazio(), SEM_MOVIMENTO);
   }
 
+  /**
+   * O olhinho do "s/ mov.", como no banco (Vitor, 11/11/2026: "deixa o sem movimento igual ao banco"): o relatório do mês
+   * no Drive, para ver se é isso mesmo; sem nada lá, avisa.
+   */
+  async function verSemMovimento(mes: string) {
+    if (!acesso.entrou) { depoisDoLogin.current = () => { void verSemMovimento(mes); }; setErroLogin(''); setLoginPara('email'); return; }
+    const rotulo = cr.rotuloCompetencia(mes);
+    const janela = window.open('', '_blank');
+    try {
+      const pasta = await drive.pastaDoCliente(s.empresa.codigo);
+      const a = cr.acharRelatorioNoDrive(pasta?.itens || [], pasta?.raiz || null, mes).candidatos.find(c => c.daCompetencia);
+      if (!a) { janela?.close(); aviso({ tom: 'ok', titulo: 'Sem movimento em ' + rotulo, texto: 'Nenhum relatório de liquidação deste mês no Drive.' }); return; }
+      janela?.document.write('<p style="font:14px sans-serif;padding:24px;color:#555">Buscando ' + a.nome.replace(/</g, '') + ' no Drive…</p>');
+      const url = await drive.link(a.id, a.nome);
+      if (janela) janela.location.href = url; else window.open(url, '_blank');
+    } catch (e) {
+      janela?.close();
+      aviso({ tom: 'erro', titulo: 'Não consegui abrir do Drive', texto: mensagemDeErro(e) });
+    }
+  }
+
   /** "Remover todos" (como na Importação): tira os relatórios de todos os meses (pergunta antes). */
   async function removerTodos() {
     const ok = await modal<boolean>({
@@ -408,8 +429,6 @@ export function useCompetencia() {
     email,
     /** o "Buscar no e-mail" do mês: procura e importa sozinho (Vitor, 14/10/2026) */
     buscarNoEmail: (mes: string) => { void importarAutomatico([mes], { drive: false, email: true }); },
-    /** o "Selecionar no e-mail": a janela com os anexos e o preview, para escolher */
-    selecionarNoEmail: (mes: string) => email.abrir({ id: mes, nome: 'Relatório de liquidação' }, mes),
     /** o menu de cima: vários arquivos (cada um no mês dele) e remover todos */
     importarVarios: (arquivos: File[]) => { void importarVarios(arquivos); },
     /** o Importar automático: Drive e e-mail, sem escolher (os meses que faltam) */
@@ -419,6 +438,8 @@ export function useCompetencia() {
     semMovimento: (mes: string) => marcarSemMovimento(mes === '*' ? faltam : [mes]),
     /** desfaz o sem movimento (sem perguntar: não tem arquivo para perder) */
     desfazerSemMovimento: (mes: string) => s.relatorioDoMes(mes, null),
+    /** o olhinho do "s/ mov.": o relatório do mês no Drive */
+    verSemMovimento: (mes: string) => { void verSemMovimento(mes); },
     usar: (a: cr.ArquivoAchado) => { void usarDoDrive(busca.mes, a, busca.candidatos); },
     fecharProblema: () => setBusca(PARADO),
     excluir: (mes: string) => { void excluir(mes); },

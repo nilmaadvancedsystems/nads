@@ -297,7 +297,14 @@ function RelatoriosDoPeriodo({ vm, comDrive }: { vm: VM; comDrive: boolean }) {
 function CelulaDoRelatorio({ vm, l, comDrive, direita }: { vm: VM; l: VM['linhas'][number]; comDrive: boolean; direita: boolean }) {
   const arquivo = useRef<HTMLInputElement>(null);
   // sem movimento: o mesmo "s/ mov." dos extratos; clicar desfaz
-  if (l.semMovimento) return <button type="button" className="imp-mes-sem" disabled={vm.ocupado} onClick={() => vm.desfazerSemMovimento(l.mes)} title="Não teve movimento — clique para desfazer">s/ mov.</button>;
+  if (l.semMovimento) {
+    return (
+      <>
+        <button type="button" className="imp-mes-sem" disabled={vm.ocupado} onClick={() => vm.desfazerSemMovimento(l.mes)} title="Não teve movimento — clique para desfazer">s/ mov.</button>
+        {!vm.exemplos && <BotaoVer titulo={'Ver o relatório de ' + l.rotulo + ' no Drive (sem movimento)'} onVer={() => vm.verSemMovimento(l.mes)} />}
+      </>
+    );
+  }
   if (l.carregado) {
     const feito = (
       <button type="button" className={'icon-btn icon-btn-sm imp-btn imp-feito' + (l.doDrive ? ' imp-feito-drive' : '')} onClick={() => vm.excluir(l.mes)}
@@ -335,12 +342,7 @@ function CelulaDoRelatorio({ vm, l, comDrive, direita }: { vm: VM; l: VM['linhas
                 <LogoGmail /><span className="popover-texto">Buscar no e-mail</span>
               </button>
             )}
-            {/* escolher à mão, com o preview do anexo (Vitor, 14/10/2026) */}
-            {vm.email.existe && (
-              <button type="button" className="popover-item" role="menuitem" disabled={vm.ocupado} onClick={() => { fechar(); vm.selecionarNoEmail(l.mes); }}>
-                <LogoGmail /><span className="popover-texto">Selecionar no e-mail</span>
-              </button>
-            )}
+            {/* o "Selecionar no e-mail" saiu (Vitor, 11/11/2026: "deixa só o Buscar no e-mail") */}
             <button type="button" className="popover-item" role="menuitem" disabled={vm.ocupado} onClick={() => { fechar(); vm.semMovimento(l.mes); }}>
               <Icone nome="x" /><span className="popover-texto">Não teve movimento</span>
             </button>
