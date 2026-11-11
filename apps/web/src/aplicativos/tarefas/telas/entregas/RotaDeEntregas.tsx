@@ -6,6 +6,7 @@
 import { BotaoIcone, CampoData, Esqueleto, Icone, MenuSuspenso, Vazio, useCarregando, useLinhasQueSeMovem } from '@nads/ui';
 import { useRef, type PointerEvent as EventoDoPonteiro } from 'react';
 import { FaixaDasGravacoes } from './FaixaDasGravacoes';
+import { JanelaDoDecimoDoDp } from './JanelaDoDecimoDoDp';
 import { JanelasDasEntregas } from './JanelasDasEntregas';
 import { useRotaDeEntregas } from './useRotaDeEntregas';
 
@@ -32,6 +33,7 @@ function Rota() {
       )}
       {vm.erro && <p className="registro-dica registro-dica-erro"><Icone nome="alert" />{vm.erro}</p>}
       {vm.categoria === 'paradas' && <Paradas vm={vm} />}
+      {vm.decimoDoDp?.aberto && <JanelaDoDecimoDoDp onFechar={vm.decimoDoDp.fechar} />}
       {vm.categoria === 'ordem' && <OrdemFixa vm={vm} />}
       {vm.categoria === 'protocolos' && <Protocolos vm={vm} />}
       {vm.categoria === 'qualidade' && <Qualidade vm={vm} />}
@@ -63,6 +65,7 @@ function Paradas({ vm }: { vm: Vm }) {
             {vm.exemplos && <span className="badge badge-neutral">Exemplos</span>}
             {vm.lerGuia && <button type="button" className="btn btn-outline" onClick={vm.lerGuia}><Icone nome="codigoBarras" />Ler guia</button>}
             <button type="button" className="btn btn-outline" onClick={vm.protocoloDaRota}><Icone nome="printer" />Protocolo</button>
+            {vm.decimoDoDp && <button type="button" className="btn btn-outline" onClick={vm.decimoDoDp.abrir}><Icone nome="caminhao" />13º do DP</button>}
             <button type="button" className="btn btn-primary" onClick={vm.adicionarARota}><Icone nome="plus" />Adicionar à rota</button>
           </span>
         </div>

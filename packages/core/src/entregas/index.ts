@@ -19,6 +19,8 @@ export * from './confirmacaoDaEntrega';
 export * from './clienteDaEntrega';
 export * from './numerosDasEntregas';
 export * from './solicitacoes';
+// o 13º do DP na rota (o botão "13º do DP" da Rota, 11/11/2026)
+export * from './decimoDoDp';
 export type * from './repo';
 export { criarDriveDoEntregasMemoria, criarGmailDoEntregasMemoria } from './repo.memoria';
 export * from './saudeDosRobos';

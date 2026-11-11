@@ -3,7 +3,7 @@
 // medido, arrastar ou Alt+↑/↓ para mudar a ordem, o sino do lembrete, o aviso que faz desviar, "Assinar" e "Assinar as N";
 // Ler guia e Protocolo; e os cartões Vencendo, Atestados para buscar e Obrigações do mês), Ordem fixa (o admin), Protocolos
 // (as feitas no período, para imprimir; o fechamento do dia) e Qualidade (o admin: sem região, endereço impreciso).
-import { entregas } from '@nads/core';
+import { entregas, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -35,6 +35,8 @@ export function useRotaDeEntregas() {
   const avisar = (titulo: string, tom: 'ok' | 'erro' | 'info' = 'ok') => retorno.aviso({ tom, titulo });
   const porId = useMemo(() => new Map(clientes.lista.map(c => [c.id, c])), [clientes.lista]);
   const [categoria, setCategoria] = useState<CategoriaDaRota>('paradas');
+  // o 13º do DP (11/11/2026): o botão só em novembro, dezembro e janeiro (quando há parcela); a janela carrega o DP ao abrir
+  const [decimoAberto, setDecimoAberto] = useState(false);
 
   // ---- Paradas ----
   const [busca, setBusca] = useState('');
@@ -165,6 +167,7 @@ export function useRotaDeEntregas() {
     quantas: naRota.lista.length,
     previsao,
     adicionarARota: () => navegar(caminhoDaPagina('entregas', 'nova')),
+    decimoDoDp: t.parcelaDoMes() ? { aberto: decimoAberto, abrir: () => setDecimoAberto(true), fechar: () => setDecimoAberto(false) } : null,
     lerGuia: sabeLerGuia() ? () => janelas.abrir({ tipo: 'lerGuia' }) : null,
     protocoloDaRota() {
       const hojeConf = entregas.confirmadasHoje([hoje.lista]).filter(e => e.status === 'confirmada');

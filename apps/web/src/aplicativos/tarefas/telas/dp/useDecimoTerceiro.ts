@@ -15,16 +15,8 @@ import { useClientesDoDp } from './useClientesDoDp';
 export type EstadoDoDecimo = 'a-fazer' | 'feita' | 'parada';
 export type FiltroDeParcela = 'todas' | '1' | '2';
 
-const ob = (id: string, rotulo: string, nome: string) => ({ id, rotulo, nome });
-/** As parcelas e o que se controla em cada uma (a ordem é a das colunas). */
-export const PARCELAS_DO_13 = [
-  { id: '1', rotulo: '1ª parcela', mes: 'novembro', obrigacoes: [ob('recibos', 'Recibos', 'Recibos da 1ª parcela'), ob('folha', 'Folha', 'Folha da 1ª parcela')] },
-  { id: '2', rotulo: '2ª parcela', mes: 'dezembro', obrigacoes: [
-    ob('recibos', 'Recibos', 'Recibos da 2ª parcela'), ob('folha', 'Folha', 'Folha da 2ª parcela'),
-    ob('s1200', 'S-1200', 'eSocial S-1200 do 13º'), ob('s1210', 'S-1210', 'eSocial S-1210 do 13º'), ob('s1299', 'S-1299', 'eSocial S-1299 (fechamento do 13º)'),
-    ob('dctfweb', 'DCTFWeb', 'DCTFWeb do 13º'), ob('darf', 'DARF', 'DARF do 13º (INSS e IRRF)'),
-  ] },
-] as const;
+/** As parcelas e o que se controla em cada uma (a ordem é a das colunas): no core, também para a Rota do Entregas. */
+export const PARCELAS_DO_13 = t.PARCELAS_DO_13;
 
 const COLUNAS = PARCELAS_DO_13.flatMap(p => p.obrigacoes.map(o => ({ chave: p.id + '-' + o.id, parcela: p.id, etapa: 'd13-' + p.id + '-' + o.id, rotulo: o.rotulo, nome: o.nome })));
 // o nome da planilha (em maiúsculas) como se escreve: FABIANA → Fabiana

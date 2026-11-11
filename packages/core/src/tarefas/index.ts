@@ -35,6 +35,8 @@ export * from './regras/despesasDoBalancete';
 export * from './regras/inicio';
 export * from './regras/enviosDoDp';
 export * from './regras/configuracoesDoDp';
+// o 13º salário do DP (as parcelas e quando estão prontas; a tabela do DP e o botão da Rota do Entregas)
+export * from './regras/decimoTerceiro';
 export { idDaExecucao, type RepoTarefas } from './repo';
 export { criarRepoTarefasMemoria, execucoesDeExemplo, execucoesVariadas, type GuardaTarefas } from './repo.memoria';
 export * from './reinf/reinf';
