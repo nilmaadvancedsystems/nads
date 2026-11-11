@@ -74,6 +74,8 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   const concluidaEm = (id: string, c: string) => t.concluida(t.situacaoDa(exDe[c] || null, id));
   // a primeira que falta em algum mês do período
   const primeira = empresa && meses.length ? rotina.etapas.find(e => meses.some(c => !concluidaEm(e.id, c))) || null : null;
+  // a rotina concluída em todos os meses (o "Tudo pronto"): dá para rever as etapas e reabrir a empresa (11/11/2026)
+  const tudoPronto = !!empresa && carregada && meses.length > 0 && !primeira;
   // a pendente do grupo que dá para abrir fora da ordem (t.etapaLivre)
   const pendenteLivre = (id: string) => { const e = t.etapaLivre(rotina, primeira, id); return e && meses.some(c => !concluidaEm(e.id, c)) ? e : null; };
   // a que a pessoa abriu no grupo fica guardada, como o resto do "onde parou"; concluída, volta a primeira que falta
@@ -246,9 +248,10 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
    * ficam como estão). Uma da frente pergunta antes. Etapa da vez: não faz nada.
    */
   async function voltarPara(id: string, confirmado = false) {
-    if (!etapa || carregando || conferindo) return;
+    // a rotina concluída (sem etapa da vez) também volta: é reabrir a empresa (11/11/2026)
+    if ((!etapa && !tudoPronto) || carregando || conferindo) return;
     const alvo = rotina.etapas.findIndex(e => e.id === id);
-    const daVez = rotina.etapas.findIndex(e => e.id === etapa.id);
+    const daVez = etapa ? rotina.etapas.findIndex(e => e.id === etapa.id) : rotina.etapas.length;
     if (alvo < 0 || alvo === daVez) return;
     // uma etapa da frente já marcada (Vitor, 01/10/2026: "desmarque esses"): pergunta e desmarca só ela
     if (alvo > daVez) {
@@ -264,8 +267,9 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     // no período: volta em todos os meses em que ela estava feita
     // (30/10/2026: a cópia é a do clique, de antes da janela; com ela junto, o banco tira só o check desta etapa, sem
     // apagar o que chegou com a janela aberta)
+    // a empresa concluída no mês: é reabrir a rotina (guarda quem reabriu e quando); senão, só a etapa volta
     for (const c of meses.filter(m => concluidaEm(id, m))) {
-      const v = t.voltarPara(exDe[c], id, op.nome, new Date());
+      const v = t.reabrirRotina(exDe[c], rotina, id, op.nome, new Date()) || t.voltarPara(exDe[c], id, op.nome, new Date());
       iniciadas.current.delete(id + '|' + c);
       repo.gravar(v.execucao, v.evento, exDe[c]);
     }
@@ -278,6 +282,8 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   function abrirEtapa(id: string) {
     // desenvolvedor: abre qualquer uma, só para ver
     if (dev) { setVendo(id === etapa?.id ? null : id); return; }
+    // tudo pronto: a etapa clicada abre para rever (antes o clique não fazia nada e a empresa ficava presa no "Tudo pronto")
+    if (tudoPronto) { if (meses.some(c => concluidaEm(id, c))) { setVendo(id); setAviso(null); } return; }
     if (!etapa || carregando || conferindo) return;
     if (id === etapa.id) { setVendo(null); return; }
     if (pendenteLivre(id)) { setEscolhida(id); setVendo(null); setAviso(null); return; }
@@ -445,13 +451,38 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     /** aberta pela tarefa delegada: só esta etapa */
     delegada: !!etapaDelegada,
     // o Editar pergunta antes de desmarcar (Vitor, 05/10/2026)
+    // a empresa concluída: o Editar reabre a rotina nesta etapa (as outras continuam feitas; fica guardado quem reabriu)
     editar: async () => {
       if (!revista) return;
-      const ok = await modal<boolean>({ titulo: 'Desmarcar ' + revista.nome + '?', texto: 'A etapa volta a ficar pendente' + (varios ? ' em todos os meses do período' : '') + ' e vira a etapa da vez.',
-        botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Desmarcar', valor: true, variante: 'btn-primary' }] });
-      if (ok) await voltarPara(revista.id, true);
+      const ok = tudoPronto
+        ? await modal<boolean>({ icone: 'repeat', titulo: 'Reabrir ' + (empresa?.nome || 'a empresa') + '?', texto: revista.nome + ' volta a ficar pendente' + (varios ? ' em todos os meses do período' : '')
+            + ' e a empresa sai de Concluída. As outras etapas continuam feitas, como estão. Fica registrado que ' + op.nome + ' reabriu agora.',
+          botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Reabrir', valor: true, variante: 'btn-primary' }] })
+        : await modal<boolean>({ titulo: 'Desmarcar ' + revista.nome + '?', texto: 'A etapa volta a ficar pendente' + (varios ? ' em todos os meses do período' : '') + ' e vira a etapa da vez.',
+          botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Desmarcar', valor: true, variante: 'btn-primary' }] });
+      if (!ok) return;
+      await voltarPara(revista.id, true);
+      if (tudoPronto) toast((empresa?.nome || 'Empresa') + ' reaberta em ' + revista.nome + '.');
     },
     voltarAEtapaDaVez: () => setVendo(null),
+    /** a rotina concluída em todos os meses: sem etapa da vez (o "Tudo pronto"); as etapas abrem para rever e reabrir */
+    tudoPronto,
+    /** Tudo pronto › Revisar: abre a primeira etapa feita, para rever (sem desmarcar nada) */
+    revisar: () => {
+      const p = rotina.etapas.find(e => meses.some(c => !!t.estadoDa(exDe[c] || null, e.id) && t.etapaNoMes(exDe[c] || null, e.id)));
+      if (p) { setVendo(p.id); setAviso(null); }
+    },
+    /**
+     * a última reabertura da empresa (quem, quando, em qual etapa): emAberto enquanto não foi concluída de novo (a faixa
+     * acima do cabeçalho); depois, só a lembrança no "Tudo pronto"
+     */
+    reabertura: (() => {
+      const r = meses.map(c => exDe[c]?.rotinaReaberta).filter((x): x is t.ReaberturaDaRotina => !!x).sort((a, b) => b.em.localeCompare(a.em))[0];
+      if (!r) return null;
+      const nome = rotina.etapas.find(e => e.id === r.etapa)?.nome || r.etapa;
+      const quando = new Date(r.em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+      return { texto: 'Reaberta por ' + r.por + ' em ' + quando + ', na etapa ' + nome, emAberto: meses.some(c => !!t.reaberturaEmAberto(exDe[c] || null, rotina)) };
+    })(),
     /** o modo desenvolvedor: só ver (o Avançar azul vai para a próxima etapa sem marcar nada) */
     dev,
     /** o relatório (início e fim): o regime e as etapas que entram no mês, cada uma com a situação, quem e quando */
