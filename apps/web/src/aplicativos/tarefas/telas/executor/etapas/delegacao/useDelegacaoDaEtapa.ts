@@ -1,7 +1,8 @@
 // Delegar a etapa Clientes ou Fornecedores (Vitor, 10/11/2026: "vai aparecer em tarefas para a pessoa delegada, o resto da
 // empresa fica bloqueada"; "que abra um popup para selecionar quais vão ser delegadas, tenha a opção todos e específica"). O
 // Delegar cria uma tarefa ligada à etapa, à empresa e ao período. Quem recebe abre pela tarefa (?delegada=id), vê só as contas
-// pedidas e marca o check de cada uma; quem pediu vê as marcadas ofuscadas.
+// pedidas e marca o check de cada uma; quem pediu vê as marcadas ofuscadas. A Contabilização da Folha também (11/11/2026: "coloca
+// um botão de delegar aqui, e adicionar o que eu quero delegar da página com as observações"): os itens do checklist.
 import { tarefas as t, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useState } from 'react';
@@ -12,10 +13,18 @@ import { useAcesso, useTarefasDelegadas } from '../../../../dados/repo';
 import { useEtapaAberta } from '../contexto';
 
 const d = t.delegadas;
-const ROTULO: Record<t.delegadas.EtapaQueDelega, string> = { clientes: 'Clientes', fornecedores: 'Fornecedores' };
+const ROTULO: Record<t.delegadas.EtapaQueDelega, string> = { clientes: 'Clientes', fornecedores: 'Fornecedores', dp: 'Contabilização da Folha' };
+const TODOS: Record<t.delegadas.EtapaQueDelega, string> = { clientes: 'Todos os clientes', fornecedores: 'Todos os fornecedores', dp: 'Todos os itens' };
+/** o item da folha tem código de texto (o id): na lista vai só o nome */
+const nomeDaConta = (c: t.delegadas.ContaDelegada) => (/^\d/.test(c.codigo) ? c.codigo + ' ' + c.nome : c.nome);
 
+/** A empresa e os meses da etapa aberta (as telas das etapas). */
 export function useDelegacaoDaEtapa(etapa: t.delegadas.EtapaQueDelega, contas: readonly t.delegadas.ContaDelegada[]) {
-  const s = useEtapaAberta();
+  return useDelegacao(etapa, contas, useEtapaAberta());
+}
+
+/** O mesmo, com a empresa e os meses passados (o checklist da folha, que não fica dentro do EtapaProvider). */
+export function useDelegacao(etapa: t.delegadas.EtapaQueDelega, contas: readonly t.delegadas.ContaDelegada[], s: { codigo: number | null; nome: string; meses: readonly string[] }) {
   const { empresa: rota = '', competencia: periodo = '' } = useParams();
   const [params] = useSearchParams();
   const repo = useTarefasDelegadas();
@@ -55,7 +64,7 @@ export function useDelegacaoDaEtapa(etapa: t.delegadas.EtapaQueDelega, contas: r
     setGravando(true);
     const contasEscolhidas = modo === 'todos' ? [] : contas.filter(c => escolhidas.has(c.codigo)).map(c => ({ codigo: c.codigo, nome: c.nome }));
     const periodoTexto = t.rotuloDoPeriodo([...s.meses]);
-    const lista = modo === 'todos' ? 'Todos os ' + ROTULO[etapa].toLowerCase() + '.' : contasEscolhidas.map(c => c.codigo + ' ' + c.nome).join('\n');
+    const lista = modo === 'todos' ? TODOS[etapa] + '.' : contasEscolhidas.map(nomeDaConta).join('\n');
     try {
       await repo.criar({
         ...d.rascunhoVazio({ uid: pessoa.uid, nome: pessoa.nome }),
@@ -80,7 +89,7 @@ export function useDelegacaoDaEtapa(etapa: t.delegadas.EtapaQueDelega, contas: r
     delegadas: recebida ? [] : enviadas.map(x => {
       const e = x.etapaDelegada as t.delegadas.EtapaDelegada;
       const total = e.todas ? contas.length : e.contas.length;
-      return { id: x.id, para: x.responsavel.nome, resumo: (e.todas ? 'Todos os ' + ROTULO[etapa].toLowerCase() : total + (total === 1 ? ' conta' : ' contas')) + ' · ' + Math.min(e.feitas.length, total) + ' de ' + total + ' feitas' };
+      return { id: x.id, para: x.responsavel.nome, resumo: (e.todas ? TODOS[etapa] : total + (etapa === 'dp' ? (total === 1 ? ' item' : ' itens') : total === 1 ? ' conta' : ' contas')) + ' · ' + Math.min(e.feitas.length, total) + ' de ' + total + ' feitas' };
     }),
     /** cancela a tarefa: a pessoa deixa de ter a etapa e as contas voltam ao normal (o histórico da tarefa fica) */
     async remover(id: string, nome: string) {
@@ -105,6 +114,8 @@ export function useDelegacaoDaEtapa(etapa: t.delegadas.EtapaQueDelega, contas: r
     para: (codigo: string) => { const x = enviadaDe(codigo); return x ? (feitaEm(x, codigo) ? 'Feito por ' : 'Com ') + x.responsavel.nome : ''; },
 
     rotulo: ROTULO[etapa],
+    /** as contas têm código (Clientes e Fornecedores); os itens da folha, não */
+    comCodigo: etapa !== 'dp',
     aberta,
     abrir: () => { setPara(''); setModo('todos'); setEscolhidas(new Set()); setBusca(''); setObservacao(''); setComObservacao(false); setAberta(true); },
     fechar: () => setAberta(false),

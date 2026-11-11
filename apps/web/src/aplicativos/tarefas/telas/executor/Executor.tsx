@@ -21,6 +21,9 @@ import { useSinalDeOnde } from './ondeEstou';
 import { useOperador } from '../../casca/operador';
 import { JanelaInterromper } from './partes/JanelaInterromper';
 import { useChecklistDaFolha } from './useChecklistDaFolha';
+import { FaixaDelegado } from './etapas/delegacao/FaixaDelegado';
+import { JanelaDelegar } from './etapas/delegacao/JanelaDelegar';
+import { useDelegacao } from './etapas/delegacao/useDelegacaoDaEtapa';
 import { useExecutor } from './useExecutor';
 import { ListaDoQueFalta, type ItemQueFalta } from './partes/OQueFalta';
 import { MenuDaRotina, type GrupoDoMenu } from './partes/MenuDaRotina';
@@ -105,6 +108,12 @@ export function Executor() {
   const terminou = !vm.carregando && !vm.etapa;
   useEffect(() => { if (terminou) animarPronto(fim.current); }, [terminou]);
   const folha = useChecklistDaFolha(temChecklist, vm.empresa?.nome || '', vm.meses.length ? vm.meses : [vm.competencia], fixo);
+  // delegar itens da Contabilização da Folha (Vitor, 11/11/2026: "coloca um botão de delegar aqui, e adicionar o que eu quero
+  // delegar da página com as observações"): como em Clientes e Fornecedores, cada item é uma "conta" da delegação
+  const naFolha = !!vm.etapa?.checklistDaFolha;
+  const itensDaFolha = naFolha && folha.itens ? folha.itens.map(i => ({ codigo: i.id, nome: i.nome })) : [];
+  const delegacao = useDelegacao('dp', itensDaFolha, { codigo: vm.empresa?.codigo ?? null, nome: vm.empresa?.nome || '', meses: vm.meses.length ? vm.meses : [vm.competencia] });
+  const itensDoChecklist = folha.itens && naFolha ? folha.itens.filter(i => delegacao.visivel(i.id)) : folha.itens;
   const faltamFerramenta = vm.tela && requisitos && !requisitos.pronto ? requisitos.faltam : null;
   // o Caixa: sem o razão importado não dá para saber se o Creditor entra (Vitor, 05/10/2026)
   const faltaRazao = vm.etapa?.razao && !razao.carregado ? ['Importar o razão do ' + vm.etapa.razao.conta] : null;
@@ -325,23 +334,32 @@ export function Executor() {
               <ChecklistDisfarcado titulo={vm.etapa.nome} itens={folha.itens} definicao={vm.etapa.checklist} alternar={folha.alternar}
                 empresa={vm.empresa.nome} codigo={vm.empresa.codigo != null ? String(vm.empresa.codigo) : ''} competencia={vm.competencia} meses={vm.meses}
                 valores={vm.valores} informar={vm.informarValor} relatorio={vm.relatorio} />
-            ) : temChecklist && folha.itens ? (
+            ) : temChecklist && folha.itens && itensDoChecklist ? (
               // o checklist da etapa: a Contabilização da Folha (pelo balancete) ou as tarefas fixas do Contábil (o Estoque de
-              // dezembro: enviado e lançado), marcando em ordem
+              // dezembro: enviado e lançado), marcando em ordem. Quem recebeu a folha delegada vê só os itens pedidos e marca
+              // cada um, sem ordem (o check fica na tarefa); quem pediu vê com quem está e os feitos ofuscados
               <div className="card folha-check">
                 <div className="folha-check-topo">
                   <h3>{vm.etapa.checklistDaFolha ? 'Contabilização da Folha' : vm.etapa.nome}</h3>
-                  {folha.itens.length > 0 && <span className="folha-check-qtd">{folha.itens.filter(i => i.marcado).length}/{folha.itens.length}</span>}
+                  <span className="btn-row" style={{ alignItems: 'center' }}>
+                    {itensDoChecklist.length > 0 && <span className="folha-check-qtd">{(delegacao.recebida ? itensDoChecklist.filter(i => delegacao.feita(i.id)) : itensDoChecklist.filter(i => i.marcado)).length}/{itensDoChecklist.length}</span>}
+                    {naFolha && delegacao.podeDelegar && <button type="button" className="btn" onClick={delegacao.abrir}><Icone nome="aviao" />Delegar</button>}
+                  </span>
                 </div>
-                {folha.itens.length ? (
+                {delegacao.recebida && <p className="hint">Delegado por {delegacao.recebida.criadaPor.nome}{delegacao.recebida.descricao ? ': ' + delegacao.recebida.descricao : ''}</p>}
+                {naFolha && <FaixaDelegado vm={delegacao} />}
+                {itensDoChecklist.length ? (
                   <ul className="folha-check-lista">
-                    {folha.itens.map(i => (
-                      <li key={i.id} data-folha={i.nome} className={(i.marcado ? 'feito' : '') + (i.liberado ? '' : ' travado')}>
+                    {itensDoChecklist.map(i => (
+                      <li key={i.id} data-folha={i.nome} className={(i.marcado ? 'feito' : '') + (i.liberado || delegacao.recebida ? '' : ' travado')}
+                        style={naFolha && delegacao.ofuscada(i.id) ? { opacity: 0.45 } : undefined}>
                         <label>
-                          <input type="checkbox" checked={i.marcado} disabled={!i.liberado} onChange={() => folha.alternar(i.id)}
-                            title={i.liberado ? undefined : i.marcado ? 'Desmarque antes os de baixo' : 'Conclua o item de cima primeiro'} />
+                          {delegacao.recebida
+                            ? <input type="checkbox" checked={delegacao.feita(i.id)} onChange={() => delegacao.alternar({ codigo: i.id, nome: i.nome })} title="Feito" />
+                            : <input type="checkbox" checked={i.marcado} disabled={!i.liberado} onChange={() => folha.alternar(i.id)}
+                              title={i.liberado ? undefined : i.marcado ? 'Desmarque antes os de baixo' : 'Conclua o item de cima primeiro'} />}
                           <span className="folha-check-texto">
-                            <b>{i.nome}</b>
+                            <b>{i.nome}{naFolha && delegacao.para(i.id) && <> <span className="badge badge-neutral">{delegacao.para(i.id)}</span></>}</b>
                             {i.contas.length > 0 && <span className="hint">{i.contas.join(' · ')}</span>}
                             {i.aviso && <span className="folha-check-aviso"><Icone nome="alert" />{i.aviso}</span>}
                           </span>
@@ -355,6 +373,7 @@ export function Executor() {
                 ) : (
                   <p className="hint">Pelo balancete importado, a empresa não tem folha (nenhuma conta da folha no Passivo: salários, pró-labore, férias, rescisão).</p>
                 )}
+                {naFolha && delegacao.aberta && <JanelaDelegar vm={delegacao} />}
               </div>
             ) : vm.etapa.conferenciaDoInss ? (
               <InssDaEtapa inss={inss} conferir={vm.etapa.conferir} teste={vm.dev ? opcoesDeTeste : []} />
