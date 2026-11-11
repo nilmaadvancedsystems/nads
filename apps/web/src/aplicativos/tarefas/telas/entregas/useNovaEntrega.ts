@@ -99,7 +99,7 @@ export function useNovaEntrega() {
   const apenasHonorario = apenas('honorario');
 
   // ---- o vencimento automático: só por cima do que ele mesmo pôs (nunca do digitado ou do PDF) ----
-  const tiposComRegra = marcados.filter(k => ['das', 'fgts', 'darf', 'esocial'].includes(k)).map(k => entregas.tipoPelaChave(k)?.rotulo || '').join('|');
+  const tiposComRegra = marcados.filter(entregas.temVencimentoAutomatico).map(k => entregas.tipoPelaChave(k)?.rotulo || '').join('|');
   useEffect(() => {
     if (vencimento && vencimento !== ultimoAuto.current) { ultimoAuto.current = null; return; }
     const nova = entregas.vencimentoAutomatico(competencia, tiposComRegra ? tiposComRegra.split('|').map(tipo => ({ tipo })) : []);

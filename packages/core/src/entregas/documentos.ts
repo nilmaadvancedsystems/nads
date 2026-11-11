@@ -46,6 +46,10 @@ export const TIPOS_DE_DOCUMENTO: readonly TipoDeDocumento[] = [
   { chave: 'multa_rescisoria', rotulo: 'Multa Rescisória', pedeFuncionario: true },
   { chave: 'ferias', rotulo: 'Férias' },
   { chave: 'folha_pagamento', rotulo: 'Folha de Pagamento', semValor: true },
+  // o 13º salário, uma opção por parcela, sem valor (11/11/2026: "preciso que coloque a opção de 13 salário lá no módulo do
+  // entregas"); o vencimento sozinho é o da lei: a 1ª até 30/11 e a 2ª até 20/12 (guiasDoPdf, vencimentoAutomatico)
+  { chave: 'decimo_terceiro_1', rotulo: '13º Salário 1ª parcela', semValor: true },
+  { chave: 'decimo_terceiro_2', rotulo: '13º Salário 2ª parcela', semValor: true },
   { chave: 'prolabore', rotulo: 'Prólabore', semValor: true },
   { chave: 'esocial', rotulo: 'eSocial' },
 ];

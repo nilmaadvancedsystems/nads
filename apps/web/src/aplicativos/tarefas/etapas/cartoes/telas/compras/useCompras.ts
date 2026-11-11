@@ -3,10 +3,15 @@
 // dia em que o banco pagou a fatura (o débito com o valor dela no extrato já importado no Extrator). A conta do cartão é
 // perguntada uma vez (como no Creditor) e fica no Cadastro; a do banco é a conta contábil do banco no Cadastro.
 // O período é o da Tarefa, à risca: fatura paga fora dele avisa e fica de fora. As faturas ficam só na tela.
+// O razão do cartão inteiro sai daqui (Vitor, 11/11/2026: "o cartão está em PDF, o razão do cartão é o que eu vou gerar"):
+// cada compra procura a nota de entrada da Conferência fiscal; com nota, D Fornecedor / C Cartão e o pagamento com o texto
+// do título; sem nota, D Caixa / C Cartão; e toda compra D Cartão / C Banco no dia em que o banco pagou.
 import { cartoes, empresas, extrator as x, formatos, tarefas } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import workerDoPdf from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
-import { useState, useSyncExternalStore } from 'react';
+import { useMemo, useState, useSyncExternalStore } from 'react';
+import { useGuardado } from '../../../../../../comum/guardado';
+import { useNotasDaConferencia } from '../../../conferencia/importadosNaEtapa';
 import { useParametrosDaEtapa } from '../../../../telas/executor/etapas/ponte';
 import { nomeDoLote } from '../../../../../../comum/importarNoAlterdata';
 import { repoDoCadastro } from '../../../dados/cadastro';
@@ -42,8 +47,27 @@ export function useCompras(empresa: empresas.EmpresaDoEscritorio) {
   const plano = usePlano(empresa.nome);
   const [lidas, setLidas] = useState<FaturaLida[]>([]);
   const [lendo, setLendo] = useState(false);
+  // as notas de entrada da Conferência fiscal (a mesma nota em várias linhas de CFOP: somadas)
+  const fonte = useNotasDaConferencia(empresa.nome);
+  const entradas = fonte?.entradas;
+  const notas = useMemo(() => {
+    const m = new Map<string, cartoes.NotaDeEntrada>();
+    for (const n of entradas || []) {
+      const doc = (n.doc || '').replace(/\D/g, '');
+      const k = n.numero + '|' + doc;
+      const iso = n.data.slice(6, 10) + '-' + n.data.slice(3, 5) + '-' + n.data.slice(0, 2);
+      const a = m.get(k);
+      if (a) m.set(k, { ...a, valor: Math.round((a.valor + n.valor) * 100) / 100, conta: a.conta || n.conta || '' });
+      else m.set(k, { numero: n.numero, doc, nome: n.nome, data: iso, valor: n.valor, conta: n.conta || '' });
+    }
+    return [...m.values()];
+  }, [entradas]);
+  // a conta do caixa (a compra sem nota) e a do fornecedor cuja nota não trouxe a conta: as escolhidas aqui; sem, as do plano
+  const [caixaEscolhido, setCaixa] = useGuardado<string>('cartoes-caixa|' + empresa.nome, '');
+  const [fornecedorEscolhido, setFornecedor] = useGuardado<string>('cartoes-fornecedor|' + empresa.nome, '');
   // a conta do banco escolhida aqui quando o banco não tem conta contábil no Cadastro (só nesta tela)
-  const [bancoEscolhido, setBancoEscolhido] = useState<Record<string, string>>({});
+  // (guardada por empresa: Vitor, 11/11/2026, "queria exportar em forma de lançamento contábil" — o arquivo travava aqui)
+  const [bancoEscolhido, setBancoEscolhido] = useGuardado<Record<string, string>>('cartoes-banco|' + empresa.nome, {});
 
   async function importar(fs: File[]) {
     if (!fs.length) return;
@@ -81,8 +105,22 @@ export function useCompras(empresa: empresas.EmpresaDoEscritorio) {
 
   const contaCartao = cadastro?.contasPadrao?.contas.cartao || '';
   const nomeDaConta = (codigo: string) => (codigo && plano ? empresas.cadastro.contaNoPlano(plano, codigo)?.nome || '' : '');
-  const contaDoBanco = (banco: string) => bancoEscolhido[banco] || cadastro?.bancos?.find(b => b.id === banco)?.contaContabil || '';
   const nomeDoBanco = (banco: string) => cadastro?.bancos?.find(b => b.id === banco)?.nome || banco;
+  const sem = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  /** a conta do banco no plano pelo nome dele ("Sicoob" → "Banco Sicoob Credinor"), quando o Cadastro não tem */
+  const doPlanoPeloNome = (banco: string) => {
+    const palavras = sem(nomeDoBanco(banco) + ' ' + banco).split(/[^a-z0-9]+/).filter(w => w.length >= 3 && !['banco', 'bco', 'conta', 'corrente', 'ltda'].includes(w));
+    const achadas = (plano?.contas || []).filter(c => !c.sintetica && palavras.some(w => sem(c.nome).split(/[^a-z0-9]+/).includes(w)));
+    return achadas.length === 1 ? achadas[0].codigo : '';
+  };
+  /** a conta do banco: a escolhida aqui, a do Cadastro ou a do plano pelo nome (e de onde veio) */
+  const contaDoBanco = (banco: string) => {
+    if (bancoEscolhido[banco]) return { codigo: bancoEscolhido[banco], origem: 'escolhida' as const };
+    const cad = cadastro?.bancos?.find(b => b.id === banco)?.contaContabil || '';
+    if (cad) return { codigo: cad, origem: 'cadastro' as const };
+    const pl = doPlanoPeloNome(banco);
+    return { codigo: pl, origem: pl ? 'plano' as const : '' as const };
+  };
 
   const faturas = lidas.map(l => {
     const c = cartoes.comprasDaFatura(l.fatura);
@@ -90,7 +128,8 @@ export function useCompras(empresa: empresas.EmpresaDoEscritorio) {
     const dia = pg?.data || l.fatura.vencimento;
     // o período à risca: a fatura entra no mês em que foi paga
     const noPeriodo = !naTarefa || meses.includes(dia.slice(0, 7));
-    const contaBanco = pg ? contaDoBanco(pg.banco) : '';
+    const doBanco = pg ? contaDoBanco(pg.banco) : null;
+    const contaBanco = doBanco?.codigo || '';
     return {
       id: l.id, arquivo: l.arquivo,
       rotulo: 'Fatura de ' + tarefas.rotuloNumericoCompetencia(l.fatura.vencimento.slice(0, 7)),
@@ -106,6 +145,9 @@ export function useCompras(empresa: empresas.EmpresaDoEscritorio) {
       mesDoPagamento: tarefas.rotuloNumericoCompetencia(dia.slice(0, 7)),
       contaBanco,
       bancoSemConta: !!pg && !contaBanco,
+      /** a conta do banco não está no Cadastro: a escolhida ou a do plano (dá para trocar) */
+      bancoForaDoCadastro: !!pg && doBanco?.origem !== 'cadastro',
+      nomeContaBanco: nomeDaConta(contaBanco),
       linhas: cartoes.lancamentosDaFatura(c, dia, contaCartao || '?', contaBanco || '?').map((ln, i) => ({ id: i, ...ln, valor: formatos.brl(ln.valor), portador: c.compras[i]?.portador || '' })),
       deFora: c.deFora.map((d, i) => ({ id: i, data: dataBr(d.item.data), descricao: d.item.descricao, valor: formatos.brl(d.item.valor), motivo: d.motivo })),
       // para o arquivo
@@ -114,9 +156,37 @@ export function useCompras(empresa: empresas.EmpresaDoEscritorio) {
   });
 
   const validas = faturas.filter(f => f.noPeriodo);
+  const doPlano = (re: RegExp) => (plano?.contas || []).find(c => !c.sintetica && re.test(c.nome.trim()))?.codigo || '';
+  const contaCaixa = caixaEscolhido || doPlano(/^caixa\b/i);
+  const contaFornecedor = fornecedorEscolhido || doPlano(/adiantamentos? a fornecedor/i);
+  const conferidas = cartoes.conferirComAsNotas(validas.map(f => ({ id: f.id, dia: f.bruto.dia, compras: f.bruto.compras.compras })), notas,
+    (meses[0] || validas[0]?.bruto.dia.slice(0, 7) || '') + '-01');
+  const diaDa = (id: string) => validas.find(f => f.id === id)?.bruto.dia || '';
+  const contas = { cartao: contaCartao || '?', caixa: contaCaixa || '?', fornecedorSemConta: contaFornecedor || '?', banco: (id: string) => validas.find(f => f.id === id)?.bruto.contaBanco || '?' };
+  const inicioDoPeriodo = (meses[0] || validas[0]?.bruto.dia.slice(0, 7) || '') + '-01';
+  const razao = cartoes.razaoDoCartao(conferidas, diaDa, contas, inicioDoPeriodo);
+  const semNota = conferidas.filter(c => c.situacao === 'sem-nota').length;
+  const notaSemConta = conferidas.some(c => c.creditaANota && c.nota && !c.nota.conta);
+  // cada fatura: as compras (com a nota achada ou não) e os lançamentos dela no razão gerado
+  const comRazao = faturas.map(f => {
+    if (!f.noPeriodo) return { ...f, compras: [] as { id: number; data: string; descricao: string; valor: string; situacao: string; dica: string }[] };
+    const daFatura = conferidas.filter(c => c.fatura === f.id);
+    const ls = razao.filter(x => x.fatura === f.id);
+    return {
+      ...f,
+      qtd: ls.length,
+      linhas: ls.map((x, i) => ({ id: i, ...x.linha, valor: formatos.brl(x.linha.valor), portador: '' })),
+      compras: daFatura.map((c, i) => ({
+        id: i, data: dataBr(c.item.data), descricao: c.item.descricao, valor: formatos.brl(c.item.valor),
+        situacao: c.situacao === 'com-nota' ? 'Nota ' + c.nota!.numero.replace(/^0+(?=\d)/, '') : c.situacao === 'sem-nota' ? 'Sem nota · Caixa' : 'Parcela de antes',
+        dica: c.nota ? c.nota.nome + ' · ' + dataBr(c.nota.data) + ' · ' + formatos.brl(c.nota.valor) + (c.creditaANota ? '' : ' (o crédito saiu na primeira parcela)')
+          : c.situacao === 'parcela-anterior' ? 'Compra de antes do período: a nota entrou lá atrás, inteira' : 'Sem nota de entrada do mesmo valor: D Caixa / C Cartão',
+      })),
+    };
+  });
   const faltaBanco = validas.some(f => !f.pagamento || !f.contaBanco);
-  const pronto = validas.length > 0 && !!contaCartao && !faltaBanco && validas.every(f => f.bate);
-  const linhasDoArquivo = () => validas.flatMap(f => cartoes.lancamentosDaFatura(f.bruto.compras, f.bruto.dia, contaCartao, f.bruto.contaBanco));
+  const pronto = validas.length > 0 && !!contaCartao && !faltaBanco && validas.every(f => f.bate) && (!naTarefa || !!fonte) && (!semNota || !!contaCaixa) && (!notaSemConta || !!contaFornecedor);
+  const linhasDoArquivo = () => razao.map(x => x.linha);
   const opcoes = (plano?.contas || []).filter(c => !c.sintetica).map(c => ({ codigo: c.codigo, nome: c.nome }));
 
   return {
@@ -124,7 +194,19 @@ export function useCompras(empresa: empresas.EmpresaDoEscritorio) {
     periodo: meses.length ? tarefas.rotuloDoPeriodo(meses) : '',
     lendo, importar: (fs: File[]) => { void importar(fs); },
     remover: (id: string) => setLidas(l => l.filter(f => f.id !== id)),
-    faturas,
+    faturas: comRazao,
+    /** o razão gerado: as notas de entrada que vieram, quantas compras com e sem nota e o movimento de cada mês */
+    razao: {
+      temNotas: !!fonte, qtdNotas: notas.length,
+      comNota: conferidas.filter(c => c.situacao === 'com-nota').length, semNota,
+      movimento: validas.length ? cartoes.movimentoDoCartao(razao, meses.length ? meses : [...new Set(razao.map(x => x.iso.slice(0, 7)))].sort()).map(s => ({
+        mes: s.mes, rotulo: tarefas.rotuloNumericoCompetencia(s.mes),
+        creditos: formatos.brl(s.creditos), debitos: formatos.brl(s.debitos), acumulado: tarefas.valorComLado(s.acumulado),
+      })) : [],
+    },
+    contaCaixa, nomeContaCaixa: nomeDaConta(contaCaixa), escolherContaCaixa: setCaixa,
+    /** a conta do fornecedor quando a nota não trouxe a conta (só aparece se precisar) */
+    notaSemConta, contaFornecedor, nomeContaFornecedor: nomeDaConta(contaFornecedor), escolherContaFornecedor: setFornecedor,
     /** as faturas pagas fora do período da Tarefa (ficam de fora do arquivo) */
     foraDoPeriodo: faturas.filter(f => !f.noPeriodo).map(f => f.rotulo + ' (paga em ' + f.mesDoPagamento + ')'),
     /** a conta do cartão: a do Cadastro; sem ela, a pessoa escolhe (e fica no Cadastro) */
@@ -141,11 +223,14 @@ export function useCompras(empresa: empresas.EmpresaDoEscritorio) {
     falta: [
       !validas.length ? 'Importe a fatura do cartão (PDF)' : '',
       validas.length && !contaCartao ? 'Escolha a conta do cartão de crédito' : '',
+      validas.length && naTarefa && !fonte ? 'Importe as notas de entrada na Conferência fiscal' : '',
+      semNota && !contaCaixa ? 'Escolha a conta do caixa (as compras sem nota)' : '',
+      notaSemConta && !contaFornecedor ? 'Escolha a conta do fornecedor (a nota de entrada veio sem a conta)' : '',
       validas.some(f => !f.pagamento) ? 'O pagamento de alguma fatura não está no extrato importado' : '',
       validas.some(f => f.pagamento && !f.contaBanco) ? 'Escolha a conta do banco que pagou a fatura' : '',
       validas.some(f => !f.bate) ? 'A soma das compras não bate com o total de alguma fatura' : '',
     ].filter(Boolean),
-    qtdLancamentos: validas.reduce((n, f) => n + f.qtd, 0),
+    qtdLancamentos: razao.length,
     /** o que o "Importar no Alterdata" manda: a mesma planilha do Baixar (as mesmas linhas) */
     importacao: {
       codigo: empresa.codigo ?? null, empresa: empresa.nome, origem: 'cartoes',

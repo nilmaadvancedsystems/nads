@@ -13,6 +13,8 @@ import { useAvisoDeBloqueio } from '../../../../comum/modoDesenvolvedor';
 import { implantarNotasFiscaisDeTeste } from '../../etapas/conferencia/importadosNaEtapa';
 import { BASE } from '../../casca/navegacao';
 import { useCascaTarefas } from '../../casca/useCascaTarefas';
+import { peDaGaveta } from '../../casca/PeDaGaveta';
+import { JanelaDosFeedbacks } from '../feedback/FeedbacksDoNads';
 import { useDepartamentoDaTela } from '../../casca/departamento';
 import { useGuiaUnica } from '../../casca/guiaUnica';
 import { useSinalDeOnde } from './ondeEstou';
@@ -51,6 +53,8 @@ export function Executor() {
   const { empresa: rota = '', competencia: periodo = '' } = useParams();
   const vm = useExecutor(rota, periodo);
   const casca = useCascaTarefas('minhas-empresas', 'empresas');
+  // os Feedbacks do pé da gaveta, também dentro da Tarefa (Vitor, 11/11/2026)
+  const [feedbacks, setFeedbacks] = useState(false);
   // o modo desenvolvedor: o aviso quando uma gravação é barrada
   useAvisoDeBloqueio();
   // uma guia só por pessoa, departamento e empresa: a nova pergunta e a anterior volta para a tela inicial (Vitor, 05/10/2026)
@@ -288,7 +292,9 @@ export function Executor() {
 
       versao={casca.versao} secoes={checklist} paginas={vm.tela && abasDaTela ? abasDaTela.paginas : []} titulo=""
       onSecao={abrirEtapa} onPagina={vm.tela && abasDaTela ? abasDaTela.abrir : () => {}} onInicio={vm.sair} onAplicativos={casca.inicio}
-      onEmpresa={vm.abrirEmpresa} aplicativos={casca.aplicacoes} onAplicativo={casca.onAplicacao}>
+      onEmpresa={vm.abrirEmpresa} aplicativos={casca.aplicacoes} onAplicativo={casca.onAplicacao}
+      peDaGaveta={peDaGaveta(casca, () => setFeedbacks(true))}>
+      {feedbacks && <JanelaDosFeedbacks fechar={() => setFeedbacks(false)} />}
       {vm.carregando ? null : !vm.etapa ? (
         <div className="executor-fim" ref={fim}>
           <span className="executor-fim-onda" aria-hidden="true" />

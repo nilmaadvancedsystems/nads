@@ -40,11 +40,33 @@ function Fatura({ f, vm }: { f: VmCompras['faturas'][number]; vm: VmCompras }) {
       {!f.pagamento && f.noPeriodo && (
         <p className="hint imp-mov-vazio">Não achei no extrato importado o débito de {f.soma} perto do vencimento. Importe o extrato do banco na Importação; até lá, os lançamentos ficam no dia do vencimento.</p>
       )}
-      {f.bancoSemConta && f.pagamento && (
+      {f.bancoForaDoCadastro && f.pagamento && (
         <div className="imp-mov-caixa">
-          <span className="hint">O banco {f.pagamento.nomeDoBanco} não tem conta contábil no Cadastro. Escolha a conta do banco (ou cadastre em Cadastro › Contas bancárias):</span>
-          <MenuDeConta valor="" contas={vm.opcoes} onEscolher={c => vm.escolherContaBanco(f.pagamento!.banco, c)} />
+          <span className="hint">{f.bancoSemConta
+            ? 'O banco ' + f.pagamento.nomeDoBanco + ' não tem conta contábil no Cadastro. Escolha a conta do banco (ou cadastre em Cadastro › Contas bancárias):'
+            : 'A conta do banco ' + f.pagamento.nomeDoBanco + ' não está no Cadastro: ' + f.contaBanco + (f.nomeContaBanco ? ' — ' + f.nomeContaBanco : '') + '. Confira ou troque:'}</span>
+          <MenuDeConta valor={f.contaBanco} contas={vm.opcoes} onEscolher={c => vm.escolherContaBanco(f.pagamento!.banco, c)} />
         </div>
+      )}
+      {/* com o razão: cada compra conferida (Vitor, 11/11/2026) */}
+      {f.compras.length > 0 && (
+        <FaixaQueAbre titulo="Compras" qtd={f.compras.length}>
+          <div className="imp-mov">
+            <table className="table-compact">
+              <thead><tr><th>Data</th><th>Descrição</th><th className="num">Valor</th><th>Nota</th></tr></thead>
+              <tbody>
+                {f.compras.map(c => (
+                  <tr key={c.id}>
+                    <td style={{ whiteSpace: 'nowrap' }}>{c.data}</td>
+                    <td className="wrap">{c.descricao}</td>
+                    <td className="num">{c.valor}</td>
+                    <td title={c.dica}><span className={'badge ' + (c.situacao === 'Sem nota · Caixa' ? 'badge-warn' : 'badge-neutral')}>{c.situacao}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </FaixaQueAbre>
       )}
       <FaixaQueAbre titulo="Lançamentos" qtd={f.linhas.length}>
         <div className="imp-mov">
@@ -80,6 +102,37 @@ function Fatura({ f, vm }: { f: VmCompras['faturas'][number]; vm: VmCompras }) {
   );
 }
 
+/**
+ * O razão do cartão gerado (Vitor, 11/11/2026: "o razão do cartão é o que eu vou gerar"): as notas de entrada da Conferência
+ * fiscal que serviram, quantas compras com e sem nota e, por mês, o que entrou (compras), o que saiu (pagamentos) e o acumulado.
+ */
+function RazaoDoCartao({ vm }: { vm: VmCompras }) {
+  const r = vm.razao;
+  if (!vm.faturas.length) return null;
+  return (
+    <div className="imp-bloco">
+      <div className="imp-linha">
+        <span className="imp-ico"><Icone nome="fileText" /></span>
+        <div className="imp-txt"><span><b>Razão do cartão</b><span className="imp-conta">{r.temNotas ? r.qtdNotas + ' notas de entrada da Conferência fiscal' : 'sem as notas de entrada'}</span></span></div>
+        <div className="imp-resumo"><div><span>{r.comNota} com nota</span><span>{r.semNota} sem nota (Caixa)</span></div></div>
+      </div>
+      {!r.temNotas && <p className="hint imp-mov-vazio">Importe as notas de entrada na Conferência fiscal: sem elas, toda compra sai sem nota (D Caixa / C Cartão).</p>}
+      {r.movimento.length > 0 && (
+        <div className="imp-periodo-linha">
+          <table className="imp-meses">
+            <thead><tr><th scope="col"><span className="sr-only">Mês</span></th>{r.movimento.map(s => <th key={s.mes} scope="col">{s.rotulo}</th>)}</tr></thead>
+            <tbody>
+              <tr><th scope="row">Compras (C)</th>{r.movimento.map(s => <td key={s.mes} className="num">{s.creditos}</td>)}</tr>
+              <tr><th scope="row">Pagamentos (D)</th>{r.movimento.map(s => <td key={s.mes} className="num">{s.debitos}</td>)}</tr>
+              <tr><th scope="row">Acumulado</th>{r.movimento.map(s => <td key={s.mes} className="num" title="O movimento do período, sem o saldo de antes dele">{s.acumulado}</td>)}</tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Compras({ empresa }: { empresa: empresas.EmpresaDoEscritorio }) {
   const vm = useCompras(empresa);
   const id = useId();
@@ -97,10 +150,13 @@ export function Compras({ empresa }: { empresa: empresas.EmpresaDoEscritorio }) 
             <input id={id} type="file" multiple accept=".pdf" className="sr-only" onChange={e => { const fs = Array.from(e.target.files || []); e.target.value = ''; vm.importar(fs); }} />
           </>
         )}
+        {/* o que trava o arquivo, escrito (Vitor, 11/11/2026: o botão apagado não dizia por quê) */}
+        {!vm.pronto && vm.faturas.length > 0 && vm.falta.length > 0 && <span className="hint">{vm.falta[0]}</span>}
         <BotaoImportarNoAlterdata {...vm.importacao} disabled={!vm.pronto} motivo={vm.falta.join(' · ')} />
-        <button type="button" className="btn btn-primary" disabled={!vm.pronto} title={vm.pronto ? 'O razão do cartão para importar no Alterdata' : vm.falta.join(' · ')}
+        {/* os lançamentos contábeis no .xls de importação do Alterdata (o padrão de 10 colunas), como no INSS e no Creditor */}
+        <button type="button" className="btn btn-primary" disabled={!vm.pronto} title={vm.pronto ? 'Baixar o .xls de importação do Alterdata com os lançamentos do cartão' : vm.falta.join(' · ')}
           onClick={() => { const a = vm.arquivo(); baixarBytes(a.bytes, a.nome, a.tipo); }}>
-          <Icone nome="download" />Baixar o razão{vm.qtdLancamentos ? ' (' + vm.qtdLancamentos + ')' : ''}
+          <Icone nome="download" />Importar no meu Sistema{vm.qtdLancamentos ? ' (' + vm.qtdLancamentos + ')' : ''}
         </button>
       </div>
 
@@ -124,7 +180,28 @@ export function Compras({ empresa }: { empresa: empresas.EmpresaDoEscritorio }) 
               <MenuDeConta valor={vm.contaCartao} contas={vm.opcoes} onEscolher={vm.escolherContaCartao} travado={!vm.cadastroCarregado} />
             </div>
           </div>
+          {/* a conta do caixa: as compras sem nota (Vitor, 11/11/2026: "Caixa") */}
+          <div className="imp-linha">
+            <span className="imp-ico"><Icone nome="dinheiro" /></span>
+            <div className="imp-txt"><span><b>Conta do caixa</b><span className="imp-conta">compras sem nota</span></span></div>
+            <div className="imp-resumo">{vm.nomeContaCaixa && <div><span>{vm.nomeContaCaixa}</span></div>}</div>
+            <div className="imp-grupos">
+              <MenuDeConta valor={vm.contaCaixa} contas={vm.opcoes} onEscolher={vm.escolherContaCaixa} />
+            </div>
+          </div>
+          {/* a nota de entrada que veio sem a conta do fornecedor: a conta escolhida aqui */}
+          {vm.notaSemConta && (
+            <div className="imp-linha">
+              <span className="imp-ico"><Icone nome="briefcase" /></span>
+              <div className="imp-txt"><span><b>Conta do fornecedor</b><span className="imp-conta">nota sem a conta</span></span></div>
+              <div className="imp-resumo">{vm.nomeContaFornecedor && <div><span>{vm.nomeContaFornecedor}</span></div>}</div>
+              <div className="imp-grupos">
+                <MenuDeConta valor={vm.contaFornecedor} contas={vm.opcoes} onEscolher={vm.escolherContaFornecedor} />
+              </div>
+            </div>
+          )}
         </div>
+        <RazaoDoCartao vm={vm} />
         {vm.faturas.map(f => <Fatura key={f.id} f={f} vm={vm} />)}
       </div>
 
@@ -132,7 +209,7 @@ export function Compras({ empresa }: { empresa: empresas.EmpresaDoEscritorio }) 
         <div className="gh-blank">
           <Icone nome="cartao" />
           <h4>Importe a fatura do cartão empresarial</h4>
-          <p>O PDF do extrato do cartão de crédito. Cada compra vira um lançamento no razão do cartão (D Cartão de Crédito / C Banco), no dia em que o banco pagou a fatura.</p>
+          <p>O PDF do extrato do cartão de crédito: daqui sai o razão do cartão. A compra com nota de entrada vai D Fornecedor / C Cartão e a sem nota, D Caixa / C Cartão; cada compra vira D Cartão / C Banco no dia em que o banco pagou a fatura.</p>
         </div>
       )}
     </section>

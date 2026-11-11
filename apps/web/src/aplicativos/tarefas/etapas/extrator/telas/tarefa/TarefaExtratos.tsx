@@ -334,12 +334,11 @@ function MesesDoBanco({ meses, competencia, buscandoMes, travado, aceitarExtrato
     const info = lado === 'banco' ? m.ladoExtrato : m.ladoRazao;
     const trava = travado || m.semMovimento;
     if (m.semMovimento) {
-      // o olhinho ao lado (Vitor, 19/10/2026: "para ver se é isso mesmo"): o extrato do Drive, ou o que veio do e-mail. Em
-      // todo "s/ mov.", também no razão e no mês marcado à mão (Vitor, 21/10/2026: "todos os s/ mov. tem que ter o olhinho"):
-      // sem o arquivo à mão, o onVerImportado procura o PDF no Drive e, sem ele, mostra o mês sem lançamento
+      // o olhinho ao lado (Vitor, 19/10/2026: "para ver se é isso mesmo"): o extrato do Drive, ou o que veio do e-mail. O mês
+      // marcado à mão não tem olho (Vitor, 11/11/2026: "sem movimento marcado manualmente, é proibido ter o olho"; antes, 21/10:
+      // "todos os s/ mov. tem que ter o olhinho")
       const doDrive = lado === 'banco' ? semMovimentoDoDrive(m.mes) : null;
       const doEmail = lado === 'banco' && !doDrive ? puxados(m.mes) : [];
-      const nomeDoLado = lado === 'banco' ? 'o extrato' : 'o razão';
       return (
         <>
           {lado === 'banco' && <DriveDoSemMovimento subindo={subindo(m.mes)} arquivo={doDrive} />}
@@ -348,7 +347,7 @@ function MesesDoBanco({ meses, competencia, buscandoMes, travado, aceitarExtrato
           {lado === 'sistema' ? null
             : doDrive ? <BotaoVer titulo={'Ver o extrato sem movimento: ' + doDrive.nome} onVer={() => onVer(doDrive)} />
             : doEmail.length > 0 ? <BotaoVer titulo={'Ver o extrato sem movimento: ' + doEmail.map(p => p.nome).join(', ')} onVer={() => doEmail.forEach(abrirPuxado)} />
-            : <BotaoVer titulo={'Ver ' + nomeDoLado + ' de ' + m.rotulo + ' (sem movimento)'} onVer={() => onVerImportado(lado, m.mes, true)} />}
+            : null}
         </>
       );
     }

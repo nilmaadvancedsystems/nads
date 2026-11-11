@@ -3,18 +3,36 @@
 // pagar — a linha digitável ou o PIX copia e cola, só quando o dígito/CRC confere), o vencimento automático (dia 20 do mês
 // seguinte, com fim de semana e feriado nacional), o PIX do escritório (BR Code com o valor) e as guias que já estão na
 // pasta do cliente no Drive (FGTS, DARF e DAS do mês da guia). Tudo puro: o PDF é lido pela tela (pdf.js), o texto vem aqui.
-import { type ClienteDaRota, type CodigoPagamento, type ItemDaEntrega } from './documentos';
+import { tipoPeloRotulo, type ClienteDaRota, type CodigoPagamento, type ItemDaEntrega } from './documentos';
 import type { ItemDoDrive } from './drive';
 
 /** O texto sem acento e em caixa alta (normalizarTexto_). */
 export const textoNormalizado = (s: string) => String(s || '').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 
-/** Cada palavra-chave procurada no texto (DETECCAO_TIPO do Entregas): o primeiro que bater é o tipo. */
-const DETECCAO_TIPO: readonly { chave: string; kws: string[] }[] = [
+// o 13º salário no PDF (11/11/2026): "13º SALÁRIO", "13° Salario", "13o salário", "DÉCIMO TERCEIRO"; a parcela pelo que
+// está escrito ("1ª parcela", "adiantamento", "2ª parcela", "parcela final"), senão pelo mês impresso (dezembro = a 2ª).
+// Guia não é 13º: o DARF e o DAE do 13º, a guia do FGTS ficam como guia (o recibo do 13º cita o FGTS no rodapé, a guia não).
+const DECIMO_TERCEIRO = /\b13\s*[ºO°]?\s*SALARIO|DECIMO\s+TERCEIRO/;
+const SEGUNDA_PARCELA = /\b2\s*[ªAº°O]?\s*PARCELA|SEGUNDA\s+PARCELA|PARCELA\s+FINAL/;
+const PRIMEIRA_PARCELA = /\b1\s*[ªAº°O]?\s*PARCELA|PRIMEIRA\s+PARCELA|ADIANTAMENTO/;
+const EH_GUIA = /DOCUMENTO DE ARRECADACAO|GUIA DE RECOLHIMENTO|GUIA DO FGTS/;
+function parcelaDoDecimo(t: string, bruto: string): string | null {
+  if (!DECIMO_TERCEIRO.test(t) || EH_GUIA.test(t)) return null;
+  if (SEGUNDA_PARCELA.test(t)) return 'decimo_terceiro_2';
+  if (PRIMEIRA_PARCELA.test(t)) return 'decimo_terceiro_1';
+  return competenciaDoPdf(bruto)?.slice(5) === '12' ? 'decimo_terceiro_2' : 'decimo_terceiro_1';
+}
+
+/**
+ * Cada palavra-chave procurada no texto (DETECCAO_TIPO do Entregas): o primeiro que bater é o tipo. O 13º vem antes do
+ * FGTS: o recibo dele cita o FGTS (a base e o depósito do mês) e seria lido como guia do FGTS.
+ */
+const DETECCAO_TIPO: readonly ({ chave: string; kws: string[] } | { chave: string; casa: (t: string, bruto: string) => string | null })[] = [
   { chave: 'das', kws: ['SIMPLES NACIONAL', 'DOCUMENTO DE ARRECADACAO DO SIMPLES'] },
   { chave: 'icms_antecipado', kws: ['ANTECIPACAO TRIBUTARIA', 'ICMS ANTECIPADO'] },
   { chave: 'icms_difal', kws: ['DIFERENCIAL DE ALIQUOTA', 'DIFAL'] },
   { chave: 'icms_st', kws: ['SUBSTITUICAO TRIBUTARIA'] },
+  { chave: 'decimo_terceiro', casa: parcelaDoDecimo },
   { chave: 'fgts', kws: ['FGTS', 'GUIA DE RECOLHIMENTO DO FGTS'] },
   { chave: 'darf', kws: ['DARF', 'DOCUMENTO DE ARRECADACAO DE RECEITAS FEDERAIS'] },
   { chave: 'dae', kws: [' DAE '] },
@@ -72,7 +90,11 @@ export function vencimentoDoPdf(bruto: string): string | null {
 /** O tipo do documento pelas palavras-chave (a chave de TIPOS_DE_DOCUMENTO), ou null. */
 export function tipoDoPdf(bruto: string): string | null {
   const t = textoNormalizado(bruto);
-  return DETECCAO_TIPO.find(d => d.kws.some(kw => t.includes(kw)))?.chave || null;
+  for (const d of DETECCAO_TIPO) {
+    if ('casa' in d) { const c = d.casa(t, bruto); if (c) return c; }
+    else if (d.kws.some(kw => t.includes(kw))) return d.chave;
+  }
+  return null;
 }
 
 /** O valor impresso (o texto do número, como a pessoa digitaria): "R$ …", "Valor a recolher …", "Total da guia …". */
@@ -214,7 +236,8 @@ export function pixCopiaECola(chave: string, nome: string, cidade: string, valor
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
-// o vencimento automático (dia 20 do mês seguinte; FGTS, DARF e eSocial antecipam, o DAS adia; pula fim de semana e feriado)
+// o vencimento automático (dia 20 do mês seguinte; FGTS, DARF e eSocial antecipam, o DAS adia; pula fim de semana e feriado;
+// o 13º no dia da lei, no ano da competência)
 // ---------------------------------------------------------------------------------------------------------------------
 const iso = (d: Date) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 
@@ -255,19 +278,28 @@ export function ajustarDiaUtil(data: Date, ajuste: 'antecipa' | 'posterga'): Dat
   return d;
 }
 
-const VENCIMENTO_AUTOMATICO: Record<string, { dia: number; ajuste: 'antecipa' | 'posterga' }> = {
-  DAS: { dia: 20, ajuste: 'posterga' }, FGTS: { dia: 20, ajuste: 'antecipa' }, DARF: { dia: 20, ajuste: 'antecipa' }, eSocial: { dia: 20, ajuste: 'antecipa' },
+/** A regra do vencimento (pela chave do documento). mes: o mês fixo no ano da competência (o 13º); sem ele, o mês seguinte. */
+interface RegraDoVencimento { dia: number; ajuste: 'antecipa' | 'posterga'; mes?: number }
+const VENCIMENTO_AUTOMATICO: Record<string, RegraDoVencimento> = {
+  das: { dia: 20, ajuste: 'posterga' }, fgts: { dia: 20, ajuste: 'antecipa' }, darf: { dia: 20, ajuste: 'antecipa' }, esocial: { dia: 20, ajuste: 'antecipa' },
+  // a 1ª parcela até 30 de novembro e a 2ª até 20 de dezembro (Lei 4.749/65); no fim de semana e no feriado, o dia útil antes
+  decimo_terceiro_1: { dia: 30, mes: 11, ajuste: 'antecipa' }, decimo_terceiro_2: { dia: 20, mes: 12, ajuste: 'antecipa' },
 };
+/** O documento (a chave de TIPOS_DE_DOCUMENTO) tem vencimento que o Entregas preenche sozinho? */
+export const temVencimentoAutomatico = (chave: string) => Object.prototype.hasOwnProperty.call(VENCIMENTO_AUTOMATICO, chave);
 function vencimentoDoTipo(competencia: string, tipo: string): string | null {
-  const regra = VENCIMENTO_AUTOMATICO[tipo];
+  const chave = tipoPeloRotulo(tipo)?.chave || '';
+  const regra = temVencimentoAutomatico(chave) ? VENCIMENTO_AUTOMATICO[chave] : null;
   const m = /^(\d{4})-(\d{2})$/.exec(competencia);
   if (!regra || !m) return null;
-  // vence no mês seguinte ao da competência
-  return iso(ajustarDiaUtil(new Date(Number(m[1]), Number(m[2]), regra.dia), regra.ajuste));
+  // no mês fixo do ano da competência (o 13º) ou no mês seguinte ao da competência
+  const d = regra.mes ? new Date(Number(m[1]), regra.mes - 1, regra.dia) : new Date(Number(m[1]), Number(m[2]), regra.dia);
+  return iso(ajustarDiaUtil(d, regra.ajuste));
 }
 /**
- * O vencimento que o Entregas preenche sozinho: quando os documentos com regra (DAS, FGTS, DARF, eSocial) dão todos a mesma
- * data. Dois tipos com regras diferentes juntos: em branco (melhor que a data errada). null = não dá para sugerir.
+ * O vencimento que o Entregas preenche sozinho: quando os documentos com regra (DAS, FGTS, DARF, eSocial, as parcelas do 13º)
+ * dão todos a mesma data. Dois tipos com regras diferentes juntos: em branco (melhor que a data errada). null = não dá para
+ * sugerir.
  */
 export function vencimentoAutomatico(competencia: string, itens: readonly Pick<ItemDaEntrega, 'tipo'>[]): string | null {
   const datas = new Set(itens.map(i => vencimentoDoTipo(competencia, i.tipo)).filter((x): x is string => !!x));

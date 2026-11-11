@@ -16,6 +16,7 @@ import { lerRelatorio, mensagemDeErro } from '../../leitura';
 import { useBuscarNoEmail } from '../../../extrator/telas/tarefa/JanelaBuscarNoEmail';
 import { abrirPuxado, esquecerPuxado, guardarPuxado, usePuxados } from '../../../puxados';
 import { useCadastroDaEmpresa } from '../../../extrator/dados/repo';
+import { useGuardado } from '../../../../../../comum/guardado';
 
 /** O arquivo que veio do Drive ou do e-mail, para o olhinho do mês (puxados.tsx). */
 interface DeOnde { nome: string; conteudo: Blob; origem: 'drive' | 'email' }
@@ -77,6 +78,12 @@ export function useCompetencia() {
   const { cadastro } = useCadastroDaEmpresa(s.empresa.nome, s.empresa.codigo);
   const bancosDoRelatorio = cadastro?.relatoriosDeLiquidacao || [];
   const puxados = usePuxados(chavePuxados);
+
+  // o feedback do Drive, como no banco (Vitor, 11/11/2026: "tá sem o feedback se tá no Drive ou não"): o relatório do mês
+  // no Drive (o logo e o olhinho), o que está subindo (o Drive girando, até o robô gravar) e o check simples (não está lá)
+  const [noDrive, setNoDrive] = useState<Record<string, { id: string; nome: string } | null>>({});
+  const [subindo, setSubindo] = useGuardado<Record<string, { envio: string; em: number }>>('creditor-subindo|' + (s.empresa.codigo ?? ''), {});
+  const [releDrive, setReleDrive] = useState(0);
 
   /** Leu o relatório do mês: guarda e fica aqui (o resumo na linha); o Continuar segue (Vitor, 05/10/2026: a Competência e o Relatório do banco eram a mesma tela). */
   function guardar(mes: string, rel: cr.RelatorioBanco, origem: string, deOnde: readonly DeOnde[] = []) {
@@ -187,8 +194,8 @@ export function useCompetencia() {
       const pasta = await drive.pastaDoCliente(s.empresa.codigo);
       const b = cr.acharRelatorioNoDrive(pasta?.itens || [], pasta?.raiz || null, mes);
       if (b.situacao === 'achou' || b.situacao === 'varios') return;
-      await drive.enviarAoDrive({ nome: f.name, bytes: new Uint8Array(await f.arrayBuffer()) }, { competencia: mes, codigo: s.empresa.codigo, cliente: s.empresa.nome });
-      aviso({ tom: 'ok', titulo: 'Mandado para o Drive', texto: f.name + ' (' + cr.rotuloCompetencia(mes) + ') entra em RECEBIMENTO DE CLIENTES no próximo arquivamento.' });
+      const envio = await drive.enviarAoDrive({ nome: f.name, bytes: new Uint8Array(await f.arrayBuffer()) }, { competencia: mes, codigo: s.empresa.codigo, cliente: s.empresa.nome });
+      if (envio) setSubindo(x => ({ ...x, [mes]: { envio, em: Date.now() } }));
     } catch (e) {
       aviso({ tom: 'erro', titulo: 'Não mandei para o Drive', texto: f.name + ': ' + mensagemDeErro(e) });
     }
@@ -259,8 +266,9 @@ export function useCompetencia() {
       const passo = (texto: string) => setBusca({ mes: m, fase: 'procurando', texto, candidatos: [] });
       // os que servem (formato, empresa e mês); no fim, juntos sem repetir título
       const rels: { rel: cr.RelatorioBanco; origem: string; deOnde: DeOnde; paraODrive?: File }[] = [];
+      // de cada arquivo, só os títulos liquidados no mês (Vitor, 11/11/2026: o anexo de outro período entrava inteiro)
       const usar = (rel: cr.RelatorioBanco, origem: string, deOnde: DeOnde, paraODrive?: File) => {
-        if (cr.relatorioServeNoMes(rel, m, s.empresa.nome, bancosDoRelatorio)) rels.push({ rel, origem, deOnde, paraODrive });
+        if (cr.relatorioServeNoMes(rel, m, s.empresa.nome, bancosDoRelatorio)) rels.push({ rel: cr.soOsTitulosDoMes(rel, m), origem, deOnde, paraODrive });
       };
       // 1. o Drive: os arquivos do mês na RECEBIMENTO DE CLIENTES
       if (fontes.drive) passo('Procurando no Drive…');
@@ -309,30 +317,62 @@ export function useCompetencia() {
     if (vazios.length) aviso({ tom: 'erro', titulo: 'Não achei o relatório', texto: vazios.join(', ') + ': ' + (fontes.drive ? 'nem no Drive nem no e-mail' : 'nada no e-mail') + ', no formato do Creditor.' + (fontes.drive ? ' Importe à mão.' : ' Escolha em "Selecionar no e-mail".') });
   }
 
+  // o relatório de cada mês importado no mapa do Drive (sem pedir ao robô para reler)
+  const chaveDosMeses = meses.filter(m => doMes(m) && doMes(m)?.origem !== SEM_MOVIMENTO).join(',');
+  useEffect(() => {
+    if (!chaveDosMeses || !acesso.entrou || drive.exemplos) return;
+    let vivo = true;
+    void drive.pastaDoCliente(s.empresa.codigo).then(pasta => {
+      if (!vivo) return;
+      const n: Record<string, { id: string; nome: string } | null> = {};
+      for (const m of chaveDosMeses.split(',')) {
+        const b = cr.acharRelatorioNoDrive(pasta?.itens || [], pasta?.raiz || null, m);
+        const a = b.arquivo || b.candidatos.find(c => c.daCompetencia) || null;
+        n[m] = a ? { id: a.id, nome: a.nome } : null;
+      }
+      setNoDrive(n);
+    }).catch(() => undefined);
+    return () => { vivo = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chaveDosMeses, acesso.entrou, releDrive]);
+
+  // acompanha os envios, como no banco: gravou, relê o mapa da pasta; erro ou 15 minutos sem aparecer, desiste e avisa
+  const chavesSubindo = Object.keys(subindo).join(',');
+  useEffect(() => {
+    if (!chavesSubindo || !drive.situacaoDosEnvios || !acesso.entrou) return;
+    let vivo = true;
+    async function conferir() {
+      const lista = Object.entries(subindo);
+      const sit = await drive.situacaoDosEnvios!(lista.map(([, v]) => v.envio));
+      const prontos = lista.filter(([, v]) => sit[v.envio]?.status === 'pronto').map(([m]) => m);
+      const falharam = lista.filter(([, v]) => sit[v.envio]?.status === 'erro' || Date.now() - v.em > 15 * 60e3).map(([m]) => m);
+      if (prontos.length) {
+        const antes = await drive.pastaDoCliente(s.empresa.codigo);
+        if (antes?.raiz && drive.atualizarMapaDoCliente) await drive.atualizarMapaDoCliente(antes.raiz);
+      }
+      if (!vivo) return;
+      const sair = [...prontos, ...falharam];
+      if (sair.length) setSubindo(x => { const n = { ...x }; for (const m of sair) delete n[m]; return n; });
+      if (prontos.length) { setReleDrive(v => v + 1); aviso({ tom: 'ok', titulo: 'Arquivado no Drive', texto: 'Relatório de liquidação ' + prontos.map(cr.rotuloCompetencia).join(', ') }); }
+      if (falharam.length) aviso({ tom: 'erro', titulo: 'Não foi para o Drive', texto: falharam.map(cr.rotuloCompetencia).join(', ') + ': o robô não gravou (erro ou mais de 15 minutos). Importe o PDF de novo no mês.' });
+    }
+    void conferir().catch(() => undefined);
+    const t = setInterval(() => { void conferir().catch(() => undefined); }, 10000);
+    return () => { vivo = false; clearInterval(t); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chavesSubindo, acesso.entrou]);
+
+  /** abre o arquivo do Drive numa aba nova */
+  function verNoDrive(a: { id: string; nome: string }) {
+    const janela = window.open('', '_blank');
+    janela?.document.write('<p style="font:14px sans-serif;padding:24px;color:#555">Buscando ' + a.nome.replace(/</g, '') + ' no Drive…</p>');
+    drive.link(a.id, a.nome).then(url => { if (janela) janela.location.href = url; else window.open(url, '_blank'); },
+      e => { janela?.close(); aviso({ tom: 'erro', titulo: 'Não consegui abrir do Drive', texto: mensagemDeErro(e) }); });
+  }
+
   /** Marca o mês (ou todos os que faltam) sem movimento: conta como importado, sem títulos. */
   function marcarSemMovimento(lista: readonly string[]) {
     for (const m of lista) guardar(m, relatorioVazio(), SEM_MOVIMENTO);
-  }
-
-  /**
-   * O olhinho do "s/ mov.", como no banco (Vitor, 11/11/2026: "deixa o sem movimento igual ao banco"): o relatório do mês
-   * no Drive, para ver se é isso mesmo; sem nada lá, avisa.
-   */
-  async function verSemMovimento(mes: string) {
-    if (!acesso.entrou) { depoisDoLogin.current = () => { void verSemMovimento(mes); }; setErroLogin(''); setLoginPara('email'); return; }
-    const rotulo = cr.rotuloCompetencia(mes);
-    const janela = window.open('', '_blank');
-    try {
-      const pasta = await drive.pastaDoCliente(s.empresa.codigo);
-      const a = cr.acharRelatorioNoDrive(pasta?.itens || [], pasta?.raiz || null, mes).candidatos.find(c => c.daCompetencia);
-      if (!a) { janela?.close(); aviso({ tom: 'ok', titulo: 'Sem movimento em ' + rotulo, texto: 'Nenhum relatório de liquidação deste mês no Drive.' }); return; }
-      janela?.document.write('<p style="font:14px sans-serif;padding:24px;color:#555">Buscando ' + a.nome.replace(/</g, '') + ' no Drive…</p>');
-      const url = await drive.link(a.id, a.nome);
-      if (janela) janela.location.href = url; else window.open(url, '_blank');
-    } catch (e) {
-      janela?.close();
-      aviso({ tom: 'erro', titulo: 'Não consegui abrir do Drive', texto: mensagemDeErro(e) });
-    }
   }
 
   /** "Remover todos" (como na Importação): tira os relatórios de todos os meses (pergunta antes). */
@@ -412,6 +452,9 @@ export function useCompetencia() {
         mes: m, rotulo: cr.rotuloCompetencia(m), carregado: !!r, semMovimento: r?.origem === SEM_MOVIMENTO, origem: r?.origem || '', doDrive: !!r?.origem.startsWith('Drive'),
         ocupado: ocupado && busca.mes === m, texto: ocupado && busca.mes === m ? busca.texto : '',
         /** o que foi puxado do Drive ou do e-mail neste mês (o olhinho abre) */
+        /** o relatório do mês no Drive (o logo e o olhinho) e o que está subindo para lá */
+        noDrive: r && r.origem !== SEM_MOVIMENTO ? noDrive[m] ?? null : null,
+        subindo: !!subindo[m],
         puxados: r ? puxados.filter(p => p.meses.includes(m)).map(p => ({ nome: p.nome, origem: p.origem, abrir: () => abrirPuxado(p) })) : [],
       };
     }),
@@ -438,8 +481,9 @@ export function useCompetencia() {
     semMovimento: (mes: string) => marcarSemMovimento(mes === '*' ? faltam : [mes]),
     /** desfaz o sem movimento (sem perguntar: não tem arquivo para perder) */
     desfazerSemMovimento: (mes: string) => s.relatorioDoMes(mes, null),
+    /** abre o relatório do mês no Drive (o olhinho ao lado do logo) */
+    verNoDrive,
     /** o olhinho do "s/ mov.": o relatório do mês no Drive */
-    verSemMovimento: (mes: string) => { void verSemMovimento(mes); },
     usar: (a: cr.ArquivoAchado) => { void usarDoDrive(busca.mes, a, busca.candidatos); },
     fecharProblema: () => setBusca(PARADO),
     excluir: (mes: string) => { void excluir(mes); },

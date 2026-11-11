@@ -1,11 +1,12 @@
 // View da casca da Tarefas (a Casca comum do nads). telaInteira: sem a barra lateral e sem o título (o Drive).
-import { BotaoIcone, Casca, MenuSuspenso, type NomeIcone } from '@nads/ui';
+import { Casca, MenuSuspenso, type NomeIcone } from '@nads/ui';
 import { useState, type ReactNode } from 'react';
 import { LugarDasAcoes, useTrilhaDoTopo } from '../../../comum/topo';
 import { useAvisoDeBloqueio } from '../../../comum/modoDesenvolvedor';
 import type { IdAplicacao } from './navegacao';
 import { useCascaTarefas } from './useCascaTarefas';
-import { ItemDosFeedbacks, JanelaDosFeedbacks } from '../telas/feedback/FeedbacksDoNads';
+import { JanelaDosFeedbacks } from '../telas/feedback/FeedbacksDoNads';
+import { peDaGaveta } from './PeDaGaveta';
 import { AvisoDeCertificados } from './AvisoDeCertificados';
 import { useAvisoDosMeusFeedbacks } from './useAvisoDosMeusFeedbacks';
 import { CartaoDaEmpresa } from './CartaoDaEmpresa';
@@ -64,18 +65,8 @@ export function CascaTarefas({ app, pagina, telaInteira, semLateral, larga, empr
       onEmpresa={vm.trocarPessoa} aplicativos={vm.aplicacoes} onAplicativo={vm.onAplicacao}
       cartaoNoTopo={empresa ? <CartaoDaEmpresa empresa={empresa} /> : undefined}
       topoDireita={<AvatarDaPessoa vm={vm} abrirCentral={vm.abrirTarefas} />}
-      // o pé da gaveta (Vitor, 28/10/2026: "deixe dois ícones, um com o e-mail e outro com a engrenagem, somente com os
-      // ícones"): os Feedbacks (só o admin) e as Configurações (quem tem), lado a lado. O correio das tarefas saiu (30/10/2026:
-      // as tarefas viraram o módulo Minhas tarefas, no Escritório)
-      peDaGaveta={vm.admin || vm.configuracoes ? fechar => (
-        <div className="drawer-icones">
-          {vm.admin && <ItemDosFeedbacks abrir={() => { fechar(); setFeedbacks(true); }} />}
-          <BotaoIcone icone="wrench" titulo="Ferramentas" aria-pressed={vm.ferramentas.ativa}
-            onClick={() => { fechar(); vm.onAplicacao('ferramentas'); }} />
-          {vm.configuracoes && <BotaoIcone icone="settings" titulo="Configurações" aria-pressed={vm.configuracoes.ativa}
-            onClick={() => { fechar(); vm.onAplicacao('cadastro'); }} />}
-        </div>
-      ) : undefined}>
+      // o pé da gaveta: Feedbacks, Ferramentas e Configurações (PeDaGaveta.tsx; o mesmo dentro da Tarefa)
+      peDaGaveta={peDaGaveta(vm, () => setFeedbacks(true))}>
       {feedbacks && <JanelaDosFeedbacks fechar={() => setFeedbacks(false)} />}
       {/* os certificados vencidos ou vencendo (19/10/2026): só o admin */}
       <AvisoDeCertificados ligado={vm.admin} />
