@@ -6,8 +6,9 @@ que já estava no ar. O FGTS Digital, o `siegNotas` e o tipo `xmls` do `pedidosS
 trechos marcados "Mandei"); a cópia local com o bloco ficou sem commit no Entregas (o commit e o push de lá são do
 Vitor).
 
-O Mandei ainda roda com **dados de exemplo** (os tickets no navegador, o e-mail simulado) até o repositório do banco
-ser ligado.
+**Ligado ao banco em 11/11/2026** ("liga ao banco"): a Tarefa grava os tickets e os formulários, o robô manda o e-mail e o
+formulário do cliente (cliente.nilmacontabilidade.com/mandei/<código>) responde e anexa direto no Entregas. No modo
+desenvolvedor e no `npm run dev`, continuam os dados de exemplo (neste navegador).
 
 ## O desenho
 
@@ -29,9 +30,24 @@ ser ligado.
   um link velho.
 - Não precisa de servidor, de função paga (Blaze) nem de encurtador: é só Firestore + regra.
 
-## Falta para ligar de verdade
+## Como ficou ligado (11/11/2026)
 
-1. O repositório do banco no Mandei (tickets em `tickets`, o formulário em `ticketsLinks`, o upload pelo
-   `enviosSecretario`), o e-mail pelo robô (`solicitacoesEmail`, tipo `um`, só para e-mail do cadastro: o Mandei
-   vai mostrar os e-mails do cadastro para escolher) e o site do formulário `mandei-nilma`.
-2. Testar com um ticket para um e-mail do escritório antes de mandar para um cliente.
+- **A Tarefa** (`apps/web/src/aplicativos/tarefas/dados/mandei.firestore.ts`): cria `tickets/{id}` (o número em
+  `tickets/_numero`, numa transação), o `ticketsLinks/{código}` do link (o `DocDoLink` do core, com o `validoAte` como
+  data do banco) e o pedido do e-mail. O 2º link e o link da volta ("Pedir de novo") são outro documento, e o de antes
+  fica `fechado`; o Resolver fecha o atual. A Central lê o ticket já com o que o cliente fez no link
+  (`mandei.ticketComOsLinks`: quando abriu, as respostas, quando mandou e os arquivos, com o andamento pelo
+  `enviosSecretario`).
+- **O e-mail** sai pelo vigia (`robo/mandei.js`): `solicitacoesEmail` com `tipo: 'mandei'` (`ticket`, `link`, `para`,
+  `assunto`, `corpo`…). O robô confere contra o ticket (o link é o atual, o ticket não foi resolvido, o e-mail é o do
+  ticket, o formulário existe), manda pela caixa do setor de quem pediu e marca no próprio ticket `enviadoEm` (ou
+  `erroDoEmail`). Não registra cobrança (não é o Pedir extratos).
+- **A trava**: `LIBERADO_PARA_CLIENTES = false` em `robo/mandei.js`: por enquanto o e-mail só sai para
+  `nilmacontabilidade@gmail.com` (o ticket para um cliente dá erro "ainda não foi liberado", sem mandar nada). Depois do
+  teste, liberar é pôr `true`, com o ok do escritório, e atualizar o robô (o da nuvem só pega com o `robo-versao` novo).
+- **O formulário** (`apps/web/src/aplicativos/mandei/dados/formulario.firestore.ts`, sem login, no app do site do
+  cliente): lê o documento do link, grava `abertoEm`, o rascunho e as `respostas` (passam pelo `aplicarRespostas` do
+  core), o `respondidoEm` e a lista dos `arquivos`; o anexo vai em pedaços pelo `enviosSecretario` (até 25 MB), e o robô
+  grava no Drive, em Claudio Secretario.
+- **A Área do Cliente** ainda não mostra os tickets do banco (o robô não espelha os tickets no `areasCliente/{token}`):
+  só no exemplo.

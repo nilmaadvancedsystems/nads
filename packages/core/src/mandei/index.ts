@@ -25,7 +25,7 @@ export interface ItemDoTicket { id: string; titulo: string; valor?: string; deta
 
 export type StatusDoArquivo = 'subindo' | 'na-fila' | 'no-drive' | 'erro';
 /** Um arquivo que o cliente anexou (o arquivo em si vai para o Drive; aqui, o nome e o andamento). */
-export interface ArquivoDoTicket { id: string; nome: string; tamanho: number; itemId?: string; enviadoEm: string; status: StatusDoArquivo; envioId?: string; erro?: string }
+export interface ArquivoDoTicket { id: string; nome: string; tamanho: number; itemId?: string; enviadoEm: string; status: StatusDoArquivo; envioId?: string; erro?: string; /** onde o robô guardou no Drive (a pasta e o nome) */ local?: string }
 
 /** A resposta de um item (ou de uma linha dele): a opção escolhida e/ou o texto. */
 export interface RespostaDoItem { opcao?: string; texto?: string }
@@ -268,7 +268,7 @@ export function linkAberto(t: Ticket, codigo: string, agora: Date): Ticket {
  * As respostas que valem, por chave: só as linhas dos itens do ticket (ou o item sem linhas), a opção que existe no item
  * e o texto até 2.000 letras. A chave mandada vazia fica null (o cliente apagou a resposta).
  */
-function respostasQueValem(t: Ticket, respostas: Record<string, RespostaDoItem>): Record<string, RespostaDoItem | null> {
+function respostasQueValem(t: Pick<Ticket, 'itens'>, respostas: Record<string, RespostaDoItem>): Record<string, RespostaDoItem | null> {
   const certas: Record<string, RespostaDoItem | null> = {};
   for (const it of t.itens) {
     for (const chave of chavesDoItem(it)) {
@@ -282,10 +282,18 @@ function respostasQueValem(t: Ticket, respostas: Record<string, RespostaDoItem>)
   return certas;
 }
 
-function comRespostas(t: Ticket, certas: Record<string, RespostaDoItem | null>): Record<string, RespostaDoItem> {
+function comRespostas(t: Pick<Ticket, 'respostas'>, certas: Record<string, RespostaDoItem | null>): Record<string, RespostaDoItem> {
   const r = { ...t.respostas };
   for (const [k, v] of Object.entries(certas)) { if (v) r[k] = v; else delete r[k]; }
   return r;
+}
+
+/**
+ * As respostas do formulário depois de uma mudança (o banco, 11/11/2026: o formulário só tem o documento do link, sem o
+ * ticket): só as chaves dos itens, a opção que existe e o texto até 2.000 letras; a chave mandada vazia sai.
+ */
+export function aplicarRespostas(itens: readonly ItemDoTicket[], atuais: Record<string, RespostaDoItem>, novas: Record<string, RespostaDoItem>): Record<string, RespostaDoItem> {
+  return comRespostas({ respostas: atuais }, respostasQueValem({ itens: [...itens] }, novas));
 }
 
 /**
@@ -433,3 +441,4 @@ export function emailDoLink(t: Ticket, link: LinkDoTicket, urlDoLink: string): {
 }
 
 export * from './modelos';
+export * from './banco';

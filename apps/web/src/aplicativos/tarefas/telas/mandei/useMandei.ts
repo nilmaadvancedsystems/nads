@@ -9,7 +9,7 @@ import { baixarBytes, useRetorno } from '@nads/ui';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useOperador } from '../../casca/operador';
-import { arquivoParaBaixar, criarTicketDeTeste, gerarSegundoLink, gravarTicket, MANDEI_NO_EXEMPLO, pedirDeNovoAoCliente, ROTULO_DA_SIMULACAO, simular, urlDoLink, useTicketsDoMandei, type SimulacaoDoMandei } from '../../dados/mandei';
+import { arquivoParaBaixar, criarTicketDeTeste, gerarSegundoLink, gravarTicket, mandeiNoExemplo, pedirDeNovoAoCliente, resolverTicket, ROTULO_DA_SIMULACAO, simular, urlDoLink, useTicketsDoMandei, type SimulacaoDoMandei } from '../../dados/mandei';
 import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
 
 export type FiltroDoMandei = 'abertos' | 'respondidos' | 'resolvidos' | 'todos';
@@ -44,6 +44,7 @@ export function useMandei(pagina: 'meus' | 'central') {
   const [busca, setBusca] = useState('');
   const [aberto, setAbertoDaVez] = useState<string | null>(null);
   const [dev] = useModoDesenvolvedor();
+  const falhou = (titulo: string) => (e: unknown) => aviso({ tom: 'erro', titulo, texto: e instanceof Error ? e.message : String(e) });
   // o pedido de novo que a pessoa está montando no ticket aberto (a chave → o motivo) e a nota interna em digitação
   const [pedidos, setPedidos] = useState<Record<string, string>>({});
   const [nota, setNota] = useState('');
@@ -52,7 +53,7 @@ export function useMandei(pagina: 'meus' | 'central') {
 
   // o 1º link vencido sem arquivo: o 2º sai sozinho (pela tela de quem mandou o ticket)
   useEffect(() => {
-    for (const t of todos) if (t.criadoPor.nome === op?.nome && m.situacaoDoTicket(t, agora) === 'segundo-link') gerarSegundoLink(t, agora);
+    for (const t of todos) if (t.criadoPor.nome === op?.nome && m.situacaoDoTicket(t, agora) === 'segundo-link') void gerarSegundoLink(t, agora).catch(() => { /* outra tela já gerou, ou sem acesso agora: tenta de novo no próximo minuto */ });
   }, [todos, agora, op?.nome]);
 
   const daPagina = todos.filter(t => pagina === 'central' || t.criadoPor.nome === op?.nome);
@@ -112,10 +113,10 @@ export function useMandei(pagina: 'meus' | 'central') {
   } : null;
 
   return {
-    exemplo: MANDEI_NO_EXEMPLO,
+    exemplo: mandeiNoExemplo(),
     /** o ⚡ do modo desenvolvedor (Vitor, 07/10/2026): criar um ticket de teste e simular o cliente e os prazos */
-    testes: dev && MANDEI_NO_EXEMPLO ? [
-      { rotulo: 'Criar ticket de teste', onClick: () => { const n = criarTicketDeTeste(op?.nome || ''); setFiltro('todos'); setAberto(n.id); toast('Ticket ' + m.rotuloDoNumero(n.numero) + ' de teste criado'); } },
+    testes: dev && mandeiNoExemplo() ? [
+      { rotulo: 'Criar ticket de teste', onClick: () => { void criarTicketDeTeste(op?.nome || '').then(n => { setFiltro('todos'); setAberto(n.id); toast('Ticket ' + m.rotuloDoNumero(n.numero) + ' de teste criado'); }); } },
       ...(t ? (Object.keys(ROTULO_DA_SIMULACAO) as SimulacaoDoMandei[]).map(a => ({ rotulo: ROTULO_DA_SIMULACAO[a] + ' (' + m.rotuloDoNumero(t.numero) + ')', onClick: () => { simular(t, a); if (a === 'apagar') setAberto(null); setAgora(new Date()); } })) : []),
     ] : [],
     filtro, setFiltro, contagem, busca, setBusca,
@@ -128,14 +129,15 @@ export function useMandei(pagina: 'meus' | 'central') {
     /** Resolver: marca o ticket e vai para a etapa da Tarefa de onde ele saiu */
     resolver: () => {
       if (!t || !op) return;
-      gravarTicket(m.resolver(t, op.nome, new Date()));
-      aviso({ tom: 'ok', titulo: m.rotuloDoNumero(t.numero) + ' resolvido', texto: t.origem.titulo });
-      if (t.origem.rota) navegar(t.origem.rota);
+      void resolverTicket(t, op.nome).then(() => {
+        aviso({ tom: 'ok', titulo: m.rotuloDoNumero(t.numero) + ' resolvido', texto: t.origem.titulo });
+        if (t.origem.rota) navegar(t.origem.rota);
+      }, falhou('Não deu para resolver'));
     },
     // a revisão de cada resposta (11/11/2026)
     aceitar: (chaves: string[]) => {
       if (!t || !op || !chaves.length) return;
-      gravarTicket(m.aceitar(t, chaves, op.nome, new Date()));
+      void gravarTicket(m.aceitar(t, chaves, op.nome, new Date())).catch(falhou('Não deu para aceitar'));
       toast(chaves.length === 1 ? 'Resposta aceita' : chaves.length + ' respostas aceitas');
     },
     /** marca (ou desmarca) a resposta para pedir de novo; o motivo se escreve embaixo dela */
@@ -145,15 +147,16 @@ export function useMandei(pagina: 'meus' | 'central') {
       if (!t || !op) return;
       const lista = Object.entries(pedidos).map(([chave, motivo]) => ({ chave, motivo }));
       if (!lista.length || lista.some(x => !x.motivo.trim())) { aviso({ tom: 'erro', titulo: 'Falta o motivo', texto: 'Escreva o motivo de cada resposta pedida de novo: é o que o cliente lê.' }); return; }
-      const n = pedirDeNovoAoCliente(t, lista, op.nome);
-      if (n === t) return;
-      setPedidos({});
-      aviso({ tom: 'ok', titulo: m.rotuloDoNumero(t.numero) + ': pedido mandado', texto: (lista.length === 1 ? '1 resposta volta' : lista.length + ' respostas voltam') + ' ao cliente, num link novo que vale até ' + data(m.linkAtual(n).validoAte) });
+      void pedirDeNovoAoCliente(t, lista, op.nome).then(n => {
+        if (n === t) return;
+        setPedidos({});
+        aviso({ tom: 'ok', titulo: m.rotuloDoNumero(t.numero) + ': pedido mandado', texto: (lista.length === 1 ? '1 resposta volta' : lista.length + ' respostas voltam') + ' ao cliente, num link novo que vale até ' + data(m.linkAtual(n).validoAte) });
+      }, falhou('Não deu para pedir de novo'));
     },
     nota, setNota,
     guardarNota: () => {
       if (!t || !op || !nota.trim()) return;
-      gravarTicket(m.comNota(t, nota, op.nome, new Date()));
+      void gravarTicket(m.comNota(t, nota, op.nome, new Date())).catch(falhou('Não deu para guardar a nota'));
       setNota('');
     },
     // o ticket avulso, a partir de um modelo (11/11/2026)
@@ -162,7 +165,14 @@ export function useMandei(pagina: 'meus' | 'central') {
     copiarLink: (url: string) => { void navigator.clipboard?.writeText(url).then(() => toast('Link copiado')); },
     baixar: (a: m.ArquivoDoTicket) => {
       const u = arquivoParaBaixar(a);
-      if (!u) { aviso({ tom: 'erro', titulo: 'Arquivo indisponível', texto: a.nome + ': no exemplo, só o que foi anexado neste navegador.' }); return; }
+      // no banco, o arquivo vai para o Drive pelo robô (a pasta do Claudio Secretário): a tela diz onde está
+      if (!u) {
+        aviso(mandeiNoExemplo() ? { tom: 'erro', titulo: 'Arquivo indisponível', texto: a.nome + ': no exemplo, só o que foi anexado neste navegador.' }
+          : a.status === 'no-drive' ? { tom: 'ok', titulo: 'No Drive', texto: a.local || a.nome }
+          : a.status === 'erro' ? { tom: 'erro', titulo: 'O arquivo não chegou ao Drive', texto: a.nome + (a.erro ? ': ' + a.erro : '') }
+          : { tom: 'ok', titulo: 'A caminho do Drive', texto: a.nome + ': o robô ainda está gravando.' });
+        return;
+      }
       baixarBytes(dataUrlParaBytes(u), a.nome, u.slice(5, u.indexOf(';')) || 'application/octet-stream');
     },
   };

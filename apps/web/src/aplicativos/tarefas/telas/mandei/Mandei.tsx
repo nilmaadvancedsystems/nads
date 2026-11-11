@@ -57,7 +57,9 @@ export function Mandei({ pagina }: { pagina: 'meus' | 'central' }) {
           </Vazio>
         </div>
       ) : (
-      <div className="table-wrap">
+      // sem a rolagem própria (11/11/2026: "tem 2 barras, a da caixa principal e a da tela"): o ticket abre embaixo da linha e
+      // a lista cresce com ele; só a página rola
+      <div className="table-wrap mandei-central">
         <table className="table-compact">
           <thead>
             <tr>

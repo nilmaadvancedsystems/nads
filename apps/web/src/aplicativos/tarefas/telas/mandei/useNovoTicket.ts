@@ -27,6 +27,7 @@ export function useNovoTicket(aoCriar: (id: string) => void) {
   const modelo = m.MODELOS_DE_TICKET.find(x => x.id === modeloId) || m.MODELOS_DE_TICKET[0];
   const [competencia, setCompetencia] = useState(mesPassado);
   const [para, setPara] = useState({ email: '', whatsapp: '' });
+  const [mandando, setMandando] = useState(false);
   const base = () => ({ empresa: { nome: empresa?.nome || '', codigo: empresa?.codigo ?? null }, para: { nome: '', ...para }, criadoPor: { nome: op?.nome || '' }, competencia });
   const [avulso, setAvulso] = useState<m.TicketAvulso>(() => m.avulsoDoModelo(modelo, base()));
 
@@ -59,12 +60,17 @@ export function useNovoTicket(aoCriar: (id: string) => void) {
     mudarTipo: (n: number, tipo: m.TipoDoItemDoModelo) => mudarItem(n, i => ({ ...i, tipo })),
     tirarItem: (n: number) => setAvulso(a => ({ ...a, itens: a.itens.filter((_, k) => k !== n) })),
     somarItem: () => setAvulso(a => ({ ...a, itens: [...a.itens, { titulo: '', tipo: 'documento' }] })),
-    erro,
-    mandar: () => {
-      if (erro) return;
-      const t = criarTicket(m.dadosDoAvulso(completo));
-      aviso({ tom: 'ok', titulo: 'Ticket ' + m.rotuloDoNumero(t.numero) + ' mandado', texto: [t.para.email, t.para.whatsapp && 'WhatsApp ' + t.para.whatsapp].filter(Boolean).join(' e ') });
-      aoCriar(t.id);
+    erro, mandando,
+    mandar: async () => {
+      if (erro || mandando) return;
+      setMandando(true);
+      try {
+        const t = await criarTicket(m.dadosDoAvulso(completo));
+        aviso({ tom: 'ok', titulo: 'Ticket ' + m.rotuloDoNumero(t.numero) + ' mandado', texto: [t.para.email, t.para.whatsapp && 'WhatsApp ' + t.para.whatsapp].filter(Boolean).join(' e ') });
+        aoCriar(t.id);
+      } catch (e) {
+        aviso({ tom: 'erro', titulo: 'O ticket não foi mandado', texto: e instanceof Error ? e.message : String(e) });
+      } finally { setMandando(false); }
     },
   };
 }

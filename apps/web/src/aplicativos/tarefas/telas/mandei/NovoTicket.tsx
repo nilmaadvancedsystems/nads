@@ -73,7 +73,7 @@ export function NovoTicket({ aoFechar, aoCriar }: { aoFechar: () => void; aoCria
           <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>
             {vm.erro && <span className="hint">{vm.erro}</span>}
             <button type="button" className="btn" onClick={aoFechar}>Cancelar</button>
-            <button type="button" className="btn btn-primary" disabled={!!vm.erro} onClick={vm.mandar}><Icone nome="caixaEntrada" />Mandar pelo Mandei</button>
+            <button type="button" className="btn btn-primary" disabled={!!vm.erro || vm.mandando} onClick={() => void vm.mandar()}><Icone nome="caixaEntrada" />Mandar pelo Mandei</button>
           </span>
         </div>
         <p className="hint" style={{ margin: 0 }}>"Pedir arquivo" dá ao cliente: Envio o arquivo, Não tenho este mês ou Outro. "Pergunta" pede a resposta por escrito.</p>
