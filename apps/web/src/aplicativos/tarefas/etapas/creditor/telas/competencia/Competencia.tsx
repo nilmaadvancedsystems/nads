@@ -296,14 +296,10 @@ function RelatoriosDoPeriodo({ vm, comDrive }: { vm: VM; comDrive: boolean }) {
 /** O relatório de um mês: importado, o check (ou o logo do Drive) que vira o × e exclui; lendo, a rodinha; senão, o importar. */
 function CelulaDoRelatorio({ vm, l, comDrive, direita }: { vm: VM; l: VM['linhas'][number]; comDrive: boolean; direita: boolean }) {
   const arquivo = useRef<HTMLInputElement>(null);
-  // sem movimento: o mesmo "s/ mov." dos extratos; clicar desfaz
+  // sem movimento: o mesmo "s/ mov." dos extratos; clicar desfaz. Aqui ele é sempre marcado à mão, então sem o olho (Vitor,
+  // 11/11/2026: "sem movimento marcado manualmente, é proibido ter o olho")
   if (l.semMovimento) {
-    return (
-      <>
-        <button type="button" className="imp-mes-sem" disabled={vm.ocupado} onClick={() => vm.desfazerSemMovimento(l.mes)} title="Não teve movimento — clique para desfazer">s/ mov.</button>
-        {!vm.exemplos && <BotaoVer titulo={'Ver o relatório de ' + l.rotulo + ' no Drive (sem movimento)'} onVer={() => vm.verSemMovimento(l.mes)} />}
-      </>
-    );
+    return <button type="button" className="imp-mes-sem" disabled={vm.ocupado} onClick={() => vm.desfazerSemMovimento(l.mes)} title="Não teve movimento — clique para desfazer">s/ mov.</button>;
   }
   if (l.carregado) {
     const feito = (
