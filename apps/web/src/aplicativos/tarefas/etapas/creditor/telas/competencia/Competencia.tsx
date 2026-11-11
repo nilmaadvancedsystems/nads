@@ -302,19 +302,27 @@ function CelulaDoRelatorio({ vm, l, comDrive, direita }: { vm: VM; l: VM['linhas
     return <button type="button" className="imp-mes-sem" disabled={vm.ocupado} onClick={() => vm.desfazerSemMovimento(l.mes)} title="Não teve movimento — clique para desfazer">s/ mov.</button>;
   }
   if (l.carregado) {
+    // o Drive como no banco (Vitor, 11/11/2026): girando enquanto o robô grava; no Drive, o logo; senão, o check simples
+    const noDrive = l.doDrive || !!l.noDrive;
     const feito = (
-      <button type="button" className={'icon-btn icon-btn-sm imp-btn imp-feito' + (l.doDrive ? ' imp-feito-drive' : '')} onClick={() => vm.excluir(l.mes)}
-        disabled={vm.ocupado} title={'Importado: ' + l.origem + '. Clique para excluir.'} aria-label={'Excluir o relatório de liquidação ' + l.rotulo}>
-        {l.doDrive ? <span className="imp-feito-ok"><LogoDrive cor /></span> : <Icone nome="check" className="imp-feito-ok" />}
+      <button type="button" className={'icon-btn icon-btn-sm imp-btn imp-feito' + (noDrive ? ' imp-feito-drive' : '')} onClick={() => vm.excluir(l.mes)}
+        disabled={vm.ocupado} title={'Importado: ' + l.origem + (noDrive ? ' · está no Drive' : l.subindo ? ' · arquivando no Drive' : ' · não está no Drive') + '. Clique para excluir.'} aria-label={'Excluir o relatório de liquidação ' + l.rotulo}>
+        {noDrive ? <span className="imp-feito-ok"><LogoDrive cor /></span> : <Icone nome="check" className="imp-feito-ok" />}
         <Icone nome="x" className="imp-feito-x" />
       </button>
     );
     // veio do Drive ou do e-mail: o olhinho ao lado abre o que foi puxado (Vitor, 14/10/2026)
-    const ver = l.puxados.length > 0 && (
+    const subindo = l.subindo && !noDrive && (
+      <span className="icon-btn icon-btn-sm imp-btn imp-subindo" title="Arquivando no Drive… (quando o robô gravar, vira o logo do Drive)" aria-label="Arquivando no Drive">
+        <LogoDrive /><span className="btn-spinner" />
+      </span>
+    );
+    const doDrive = l.noDrive;
+    const ver = doDrive ? <BotaoVer titulo={'Ver no Drive: ' + doDrive.nome} onVer={() => vm.verNoDrive(doDrive)} /> : l.puxados.length > 0 && (
       <BotaoVer titulo={'Ver o que foi puxado ' + (l.puxados[0].origem === 'drive' ? 'do Drive' : 'do e-mail') + ': ' + l.puxados.map(p => p.nome).join(', ')}
         onVer={() => l.puxados.forEach(p => p.abrir())} />
     );
-    return <>{feito}{ver}</>;
+    return <>{subindo}{feito}{ver}</>;
   }
   if (l.ocupado) return <span className="icon-btn icon-btn-sm imp-btn" title={l.texto}><span className="btn-spinner" /></span>;
   return (
