@@ -206,6 +206,23 @@ describe('as guias da pasta do cliente', () => {
     expect(mesDaGuia('2026-01')).toEqual({ mm: '12', aaaa: '2025' });
     expect(doMesDaGuia(['X', 'FGTS 09-2026.PDF'], { mm: '09', aaaa: '2026' })).toBe(true);
   });
+  it('o vencimento no nome não conta como o mês (11/11/2026: veio o DARF de setembro no lugar do de outubro)', () => {
+    const setembro = '09-2026 - DARF INSS - VALOR R$1.234,56 - VENCIMENTO 20-10-2026.PDF';
+    const outubro = '10-2026 - DARF INSS - VALOR R$1.300,00 - VENCIMENTO 20-11-2026.PDF';
+    expect(doMesDaGuia(['FISCAL', '16. DARF', setembro], { mm: '10', aaaa: '2026' })).toBe(false);
+    expect(doMesDaGuia(['FISCAL', '16. DARF', setembro], { mm: '09', aaaa: '2026' })).toBe(true);
+    expect(doMesDaGuia(['FISCAL', '16. DARF', outubro], { mm: '10', aaaa: '2026' })).toBe(true);
+    expect(doMesDaGuia(['X', 'DAS 20.10.2026.PDF'], { mm: '10', aaaa: '2026' })).toBe(false);
+    // o de outubro ainda não está na pasta: nada de DARF, em vez do de setembro
+    const pasta: ItemDoDrive[] = [
+      { i: 'raiz', n: '77 - SU EXEMPLO', p: '', t: 'd' },
+      { i: 'fis', n: 'FISCAL', p: 'raiz', t: 'd' },
+      { i: 'darf', n: '16. DARF', p: 'fis', t: 'd' },
+      { i: 'set', n: setembro, p: 'darf', t: 'f', m: '2026-10-10' },
+    ];
+    expect(guiasNaPasta(pasta, { mm: '10', aaaa: '2026' })).toEqual([]);
+    expect(guiasNaPasta([...pasta, { i: 'out', n: outubro, p: 'darf', t: 'f', m: '2026-11-11' }], { mm: '10', aaaa: '2026' }).map(x => x.arquivo.i)).toEqual(['out']);
+  });
   it('acha a mais nova de cada tipo, sem a certidão', () => {
     expect(guiasNaPasta(itens, { mm: '09', aaaa: '2026' }).map(g => g.guia.tipo + ':' + g.arquivo.i)).toEqual(['fgts:f2', 'das:d1']);
   });

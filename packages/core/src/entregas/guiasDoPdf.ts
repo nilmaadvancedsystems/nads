@@ -324,9 +324,14 @@ export function mesDaGuia(competencia: string, hoje = new Date()): { mm: string;
   d.setMonth(d.getMonth() - 1);
   return { mm: String(d.getMonth() + 1).padStart(2, '0'), aaaa: String(d.getFullYear()) };
 }
-/** O caminho (já normalizado) é do mês da guia? pela pasta "09" ou pelo nome ("09-2026", "06.2026", "SETEMBRO 2026"). */
+/**
+ * O caminho (já normalizado) é do mês da guia? pela pasta "09" ou pelo nome ("09-2026", "06.2026", "SETEMBRO 2026"). A data
+ * inteira do nome (o vencimento, o pagamento) não conta: o arquivador grava "09-2026 - DARF INSS - VALOR … - VENCIMENTO
+ * 20-10-2026.pdf", e o "10-2026" do vencimento fazia o DARF de setembro passar pelo de outubro (11/11/2026: "fui puxar uma
+ * guia … e veio o darf do mes passado ao invez do novo (que nem foi salvo ainda)").
+ */
 export function doMesDaGuia(p: readonly string[], g: { mm: string; aaaa: string }): boolean {
-  const nome = p[p.length - 1] || '';
+  const nome = (p[p.length - 1] || '').replace(/(^|\D)\d{1,2}[\s._/-]\d{1,2}[\s._/-]\d{4}(?!\d)/g, '$1 ');
   if (p.slice(0, -1).includes(g.mm)) return true;
   if (new RegExp('(^|\\D)' + g.mm + '[\\s._/-]?' + g.aaaa + '(\\D|$)').test(nome)) return true;
   const extenso = MESES_POR_EXTENSO[Number(g.mm) - 1];
