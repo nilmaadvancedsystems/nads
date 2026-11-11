@@ -1,59 +1,51 @@
-// O razão do cartão × as faturas (Vitor, 11/11/2026) e o layout novo da fatura do Sicoob. Dados fictícios.
+// O razão do cartão gerado das faturas e das notas de entrada (Vitor, 11/11/2026) e o layout novo da fatura do Sicoob.
+// Dados fictícios.
 import { describe, expect, it } from 'vitest';
 import { lerFatura, type ItemDaFatura, type PedacoDaFatura } from './regras/fatura';
-import { conferirComORazao, historicoDoTitulo, lancamentosQueFaltam, saldosDoCartao, type LancamentoDoCartao } from './regras/razao';
+import { conferirComAsNotas, movimentoDoCartao, razaoDoCartao, type NotaDeEntrada } from './regras/razao';
 
 const compra = (data: string, descricao: string, valor: number): ItemDaFatura => ({ data, descricao, valor, portador: 'FULANO (1234)' });
-const lanc = (data: string, valor: number, historico: string, saldo = 0, contrapartida = '10501'): LancamentoDoCartao =>
-  ({ data, valor, historico, saldo, contrapartida, nomeContrapartida: '', codigoHistorico: valor < 0 && /^Pagamento/.test(historico) ? '00189' : '' });
+const nota = (numero: string, nome: string, data: string, valor: number, conta = '20001'): NotaDeEntrada => ({ numero, doc: '11222333000144', nome, data, valor, conta });
 
-describe('as compras da fatura × o razão do cartão', () => {
-  const razao = {
-    saldoInicial: 1000,
-    lancamentos: [
-      // pagamento de janeiro já lançado: o título e o posto sem nota
-      lanc('2026-01-05', -300, 'Pagamento de título nº 10-0001-FORNECEDOR ALFA', 700),
-      lanc('2026-01-05', -200, 'POSTO SEM NOTA CIDADE', 500),
-      lanc('2026-01-05', 300, 'Antecipação de Cartão 10-0001-FORNECEDOR ALFA', 800, '20001'),
-      // a compra parcelada em 3, inteira, na data da nota
-      lanc('2026-01-09', 600, 'Antecipação de Cartão 77-0002-LOJA BETA', 1400, '20002'),
-    ],
-  };
+describe('o razão do cartão gerado das faturas', () => {
+  const notas = [nota('000010', 'FORNECEDOR ALFA', '2026-01-04', 300), nota('77', 'LOJA BETA', '2026-01-09', 600, '')];
   const faturas = [
-    { id: 'jan', dia: '2026-01-05', compras: [compra('2025-12-20', 'LOJA ALFA', 300), compra('2025-12-22', 'POSTO SEM NOTA CIDADE', 200), compra('2025-09-01', 'GAMA 04/05 CIDADE', 50)] },
-    { id: 'fev', dia: '2026-02-03', compras: [compra('2026-01-09', 'BETA 01/03 CIDADE', 200), compra('2026-01-20', 'POSTO DOIS CIDADE', 150)] },
+    { id: 'jan', dia: '2026-01-05', compras: [compra('2025-12-28', 'LOJA ALFA', 300), compra('2025-12-22', 'POSTO SEM NOTA', 200), compra('2025-09-01', 'GAMA 04/05 CIDADE', 50)] },
+    { id: 'fev', dia: '2026-02-03', compras: [compra('2026-01-09', 'BETA 01/03 CIDADE', 200), compra('2026-01-20', 'POSTO DOIS', 150)] },
+    { id: 'mar', dia: '2026-03-03', compras: [compra('2026-01-09', 'BETA 02/03 CIDADE', 200)] },
   ];
-  const cs = conferirComORazao(faturas, razao);
+  const cs = conferirComAsNotas(faturas, notas, '2026-01-01');
 
-  it('com nota, sem nota e a parcela de compra de antes do razão; o pagamento já lançado não sai de novo', () => {
-    expect(cs.map(c => [c.item.descricao, c.situacao, !!c.pago])).toEqual([
+  it('com nota (a parcelada pelo valor inteiro), sem nota e a parcela de compra de antes do período', () => {
+    expect(cs.map(c => [c.item.descricao, c.situacao, c.creditaANota])).toEqual([
       ['GAMA 04/05 CIDADE', 'parcela-anterior', false],
+      ['POSTO SEM NOTA', 'sem-nota', false],
       ['LOJA ALFA', 'com-nota', true],
-      ['POSTO SEM NOTA CIDADE', 'sem-nota', true],
-      ['BETA 01/03 CIDADE', 'com-nota', false],
-      ['POSTO DOIS CIDADE', 'sem-nota', false],
+      ['BETA 01/03 CIDADE', 'com-nota', true],
+      ['POSTO DOIS', 'sem-nota', false],
+      ['BETA 02/03 CIDADE', 'com-nota', false],
     ]);
   });
 
-  it('o histórico do pagamento é o do título, com a parcela depois do número', () => {
-    expect(cs.find(c => c.item.descricao.startsWith('BETA'))?.historicoDoPagamento).toBe('Pagamento de título nº 77/1-0002-LOJA BETA');
-    expect(historicoDoTitulo('Pagamento de título nº 1345/001 - POSTO', null)).toBe('Pagamento de título nº 1345/001 - POSTO');
-  });
-
-  it('o que falta: o pagamento (D cartão / C banco) e, do sem nota, D caixa / C cartão na data da compra (antes do período, no pagamento)', () => {
+  it('os dois lados: a nota ou o caixa no crédito, o pagamento no débito com o texto do título e a parcela', () => {
     const dia = (f: string) => faturas.find(x => x.id === f)!.dia;
-    const falta = lancamentosQueFaltam(cs, dia, { cartao: 'CART', caixa: 'CX', banco: () => 'BCO', historicoDoTitulo: '00189' }, '2026-01-01');
-    expect(falta.map(x => [x.linha.data, x.linha.debito, x.linha.credito, x.linha.valor, x.linha.codHistorico])).toEqual([
-      ['05/01/2026', 'CART', 'BCO', 50, ''],
-      ['05/01/2026', 'CX', 'CART', 200, ''],
-      ['20/01/2026', 'CX', 'CART', 150, ''],
-      ['03/02/2026', 'CART', 'BCO', 200, '00189'],
-      ['03/02/2026', 'CART', 'BCO', 150, ''],
+    const r = razaoDoCartao(cs, dia, { cartao: 'CART', caixa: 'CX', banco: () => 'BCO', fornecedorSemConta: 'ADTO' }, '2026-01-01');
+    expect(r.map(x => [x.linha.data, x.linha.debito, x.linha.credito, x.linha.valor, x.linha.historico])).toEqual([
+      ['04/01/2026', '20001', 'CART', 300, 'Antecipação de Cartão 10-11222333000144-FORNECEDOR ALFA'],
+      ['05/01/2026', 'CART', 'BCO', 50, 'GAMA 04/05 CIDADE'],
+      ['05/01/2026', 'CX', 'CART', 200, 'POSTO SEM NOTA'],
+      ['05/01/2026', 'CART', 'BCO', 200, 'POSTO SEM NOTA'],
+      ['05/01/2026', 'CART', 'BCO', 300, 'Pagamento de título nº 10-11222333000144-FORNECEDOR ALFA'],
+      ['09/01/2026', 'ADTO', 'CART', 600, 'Antecipação de Cartão 77-11222333000144-LOJA BETA'],
+      ['20/01/2026', 'CX', 'CART', 150, 'POSTO DOIS'],
+      ['03/02/2026', 'CART', 'BCO', 200, 'Pagamento de título nº 77/1-11222333000144-LOJA BETA'],
+      ['03/02/2026', 'CART', 'BCO', 150, 'POSTO DOIS'],
+      ['03/03/2026', 'CART', 'BCO', 200, 'Pagamento de título nº 77/2-11222333000144-LOJA BETA'],
     ]);
-    // o saldo: o da coluna Saldo do razão e com o que falta (positivo = credor)
-    expect(saldosDoCartao(razao, ['2026-01', '2026-02'], falta)).toEqual([
-      { mes: '2026-01', razao: 1400, comLancamentos: 1700 },
-      { mes: '2026-02', razao: 1400, comLancamentos: 1350 },
+    expect(movimentoDoCartao(r, ['2026-01', '2026-02', '2026-03'])).toEqual([
+      { mes: '2026-01', creditos: 1250, debitos: 550, acumulado: 700 },
+      { mes: '2026-02', creditos: 0, debitos: 350, acumulado: 350 },
+      { mes: '2026-03', creditos: 0, debitos: 200, acumulado: 150 },
     ]);
   });
 });
