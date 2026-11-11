@@ -44,6 +44,8 @@ export interface NotaDoSieg {
   /** CT-e, desde o resumo 5 (23/10/2026), só quando têm: as chaves das NF-e que ele transporta (infDoc/infNFe) e o ICMS dele */
   nfes?: string[]; icms?: number;
   cancelada?: boolean;
+  /** NF-e, desde o resumo 6 (11/11/2026, o LCDPR), só quando têm: a nota de entrada (tpNF 0), a IE do destinatário e os produtos (até 80 letras) */
+  entrada?: boolean; ieDest?: string; produto?: string;
   itens?: ItemDoXml[];
   cfop?: string;
   /** NFS-e */
@@ -59,7 +61,7 @@ export interface NotasSieg {
   emitidas: NotaDoSieg[]; recebidas: NotaDoSieg[];
   /** o resumo passou do tamanho de um documento: saíram os itens */
   itensCortados?: boolean;
-  /** a versão do resumo (2 = os itens com o ICMS, o ST, o IPI e o CST do PIS; 3 = o frete e o desconto da nota; 4 = mais a base, a alíquota e as despesas de cada item; sem = 1) */
+  /** a versão do resumo (2 = os itens com o ICMS, o ST, o IPI e o CST do PIS; 3 = o frete e o desconto da nota; 4 = mais a base, a alíquota e as despesas de cada item; 5 = as NF-e do CT-e; 6 = a entrada, a IE do destinatário e os produtos da NF-e; sem = 1) */
   resumo?: number;
 }
 

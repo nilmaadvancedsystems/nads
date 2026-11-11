@@ -73,6 +73,8 @@ export interface DocumentoDoSieg {
   ncm: string;
   /** cada item da nota (o NCM e o valor do item), para a classificação */
   linhas: { ncm: unknown; valor: number }[];
+  /** a chave de acesso (só o que veio do SIEG) */
+  chave?: string;
 }
 
 /** O lançamento de um documento: a classificação, o imóvel pela IE do destinatário (ou o padrão) e os padrões da Configuração. */
@@ -89,6 +91,7 @@ export function lancamentoDoDocumento(doc: DocumentoDoSieg, origem: OrigemDoDocu
     valor: doc.valor, imovel: vinculo ? vinculo.imovel : c.config.imovelPadrao,
     tipoDoc: c.config.tipoDocPadrao, tipoLanc: c.config.tipoLancPadrao,
     produto: doc.produto, ncm: doc.ncm, revisar: !m, origemRegra: m ? m.origemRegra : 'Nenhuma',
+    ...(doc.chave ? { chave: doc.chave } : {}),
   };
 }
 
