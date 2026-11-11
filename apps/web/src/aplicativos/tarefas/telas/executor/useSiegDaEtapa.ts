@@ -62,7 +62,7 @@ export function useSiegDaEtapa(tipo: 'contagem' | 'saidas', codigo: string, comp
   // o formato do clique (11/11/2026: "apertei para puxar pdf, não xml" e a janela dizia "Baixando os XMLs")
   const [formatoDoPedido, setFormatoDoPedido] = useState<FormatoDoSieg>(formatoGuardado);
   const oQue = formatoDoPedido === 'xml' ? 'XMLs' : formatoDoPedido === 'pdf' ? 'PDFs' : 'XMLs e PDFs';
-  // a nota aberta no espelho (23/10/2026: "conferir as danfe direto pelo app")
+  // a nota aberta no Ver (23/10/2026: "conferir as danfe direto pelo app"; a NF-e na DANFE, o CT-e no espelho: VerANota)
   const [vendo, setVendo] = useState('');
   // o relógio da janela (o tempo passado e o que falta), de segundo em segundo enquanto o robô trabalha
   const [agora, setAgora] = useState(() => Date.now());

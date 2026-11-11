@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { espelhoDaNota, type NotaDoSieg } from '.';
+import { comoVerANota, espelhoDaNota, type NotaDoSieg } from '.';
 
 describe('o espelho da nota', () => {
   it('a chave em blocos, o que ela diz e os totais dos itens', () => {
@@ -11,5 +11,24 @@ describe('o espelho da nota', () => {
     expect(e.daChave).toEqual({ uf: '31', anoMes: '10/2026', modelo: '55' });
     expect(e.totais).toEqual({ produtos: 1000, icms: 72, st: 30.5, ipi: 10, frete: 500, desconto: 0, total: 1510 });
     expect(espelhoDaNota({ ...n, itens: undefined, chave: '1' }).semItens).toBe(true);
+  });
+});
+
+describe('como a nota abre no "Ver" (11/11/2026: todas as DANFEs iguais)', () => {
+  const CHAVE = '31261011222333000181550010000005021000000019';
+  it('a NF-e e a NFC-e com a chave abrem na DANFE idêntica à original', () => {
+    expect(comoVerANota({ tipo: 'NF-e', chave: CHAVE })).toBe('danfe');
+    expect(comoVerANota({ tipo: 'NFC-e', chave: CHAVE.replace('55', '65') })).toBe('danfe');
+    expect(comoVerANota({ tipo: 'NF-e', chave: CHAVE.replace(/(\d{4})/g, '$1 ') })).toBe('danfe');
+  });
+  it('o CT-e, a NFS-e e a nota sem a chave ficam no espelho', () => {
+    expect(comoVerANota({ tipo: 'CT-e', chave: CHAVE })).toBe('espelho');
+    expect(comoVerANota({ tipo: 'NFS-e', chave: '' })).toBe('servico');
+    expect(comoVerANota({ tipo: 'NF-e', chave: '' })).toBe('espelho');
+    expect(comoVerANota({ tipo: 'NF-e', chave: '123' })).toBe('espelho');
+  });
+  it('nos exemplos (a chave inventada) a NF-e abre na DANFE; o CT-e continua no espelho', () => {
+    expect(comoVerANota({ tipo: 'NF-e', chave: 'T1' }, true)).toBe('danfe');
+    expect(comoVerANota({ tipo: 'CT-e', chave: 'T3' }, true)).toBe('espelho');
   });
 });

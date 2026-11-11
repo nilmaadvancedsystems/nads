@@ -1,7 +1,7 @@
 // ViewModel da nota original (23/10/2026: "eu queria realmente ver a nota, com produtos e tal, a nota original"): o
 // resumo do SIEG não guarda a descrição dos produtos, então o XML inteiro vem na hora, pelo mesmo pedido do ".zip das
 // notas que faltam no Alterdata" com uma chave só (o robô do PC pega no SIEG pela chave, ou no .zip do mês no Drive, e
-// entrega o .zip; o nads abre, lê o XML e monta a DANFE, core tarefas.sieg.danfeDoXml). A nota já aberta fica guardada
+// entrega o .zip; o nads abre e lê o XML, que o useDanfeOriginal desenha). A nota já aberta fica guardada
 // nesta aba. Nos exemplos, um XML montado do resumo (com descrições inventadas), só para ver a tela. Enquanto o pedido
 // espera, a tela diz o que o robô está fazendo e quantos pedidos há na fila, ou que ele está fora do ar (26/10/2026: "ta
 // bugado ou demora muito para puxar a nota"; a nota passa na frente da fila no robô).
@@ -10,9 +10,9 @@ import { useEffect, useRef, useState } from 'react';
 import { lerXmlsDosArquivos } from '../../../dados/arquivosXml';
 import { useSieg } from '../../../dados/repo';
 
-const jaAbertas = new Map<string, { xml: string; danfe: t.sieg.Danfe }>();
+/** o XML de cada nota já aberta, pela chave */
+const jaAbertas = new Map<string, string>();
 
-/** a competência da nota pela data dela (dd/mm/aaaa), quando quem chama não diz */
 /** o que dizer enquanto o pedido espera o robô pegar: fora do ar (sem sinal há 3 min), ocupado com outro pedido, ou já vai */
 function esperandoORobo(r: { carregado: boolean; ligado: boolean; em: string; situacao: string; naFila: number }): string {
   if (!r.carregado) return 'Pedindo a nota ao robô…';
@@ -24,6 +24,7 @@ function esperandoORobo(r: { carregado: boolean; ligado: boolean; em: string; si
   return 'Pedindo a nota ao robô…';
 }
 
+/** a competência da nota pela data dela (dd/mm/aaaa), quando quem chama não diz */
 const competenciaDaData = (data: string) => { const m = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(data); return m ? m[3] + '-' + m[2] : ''; };
 
 /** nos exemplos: um XML do resumo, com descrições inventadas */
@@ -40,7 +41,6 @@ export function useNotaOriginal(nota: t.sieg.NotaDoSieg, codigo: string | number
   const comp = competencia || competenciaDaData(nota.data);
   const cod = codigo == null ? '' : String(codigo);
   const [estado, setEstado] = useState<{ fase: 'parado' | 'pedindo' | 'pronta' | 'erro'; erro?: string; desde?: number }>(() => (jaAbertas.has(nota.chave) ? { fase: 'pronta' } : { fase: 'parado' }));
-  const [aberta, setAberta] = useState(false);
   const lendo = useRef('');
   const pedido = estado.fase === 'pedindo' && cod && comp ? sieg.pedido(cod, comp, 'zipFaltam') : null;
   // o pedido é o desta nota quando foi criado depois do clique (o mais novo do tipo para a empresa e o mês)
@@ -56,38 +56,27 @@ export function useNotaOriginal(nota: t.sieg.NotaDoSieg, codigo: string | number
         const bytes = await sieg.baixarZip(meu.zip!);
         const { xmls } = await lerXmlsDosArquivos([new File([bytes.slice().buffer], 'nota.zip')]);
         const xml = xmls.find(x => x.includes(nota.chave)) || xmls[0];
-        const danfe = xml ? t.sieg.danfeDoXml(xml) : null;
-        if (!xml || !danfe) throw new Error('o XML desta nota não veio no .zip');
-        jaAbertas.set(nota.chave, { xml, danfe });
+        if (!xml || !t.sieg.danfeDoXml(xml)) throw new Error('o XML desta nota não veio no .zip');
+        jaAbertas.set(nota.chave, xml);
         setEstado({ fase: 'pronta' });
-        setAberta(true);
       } catch (e) { setEstado({ fase: 'erro', erro: e instanceof Error ? e.message : String(e) }); }
     })();
   }, [meu, sieg, nota.chave]);
 
-  const guardada = jaAbertas.get(nota.chave) || null;
   return {
     /** dá para pedir: tem a empresa, a competência e a chave da NF-e/NFC-e */
     pode: !!cod && !!comp && (sieg.exemplos || /^\d{44}$/.test(nota.chave)) && (nota.tipo === 'NF-e' || nota.tipo === 'NFC-e'),
     fase: estado.fase,
     erro: estado.erro || '',
     andamento: meu?.andamento || (estado.fase === 'pedindo' ? esperandoORobo(sieg.robo()) : ''),
-    danfe: guardada?.danfe || null,
-    aberta: aberta && !!guardada,
     async abrir() {
-      if (jaAbertas.has(nota.chave)) { setEstado({ fase: 'pronta' }); setAberta(true); return; }
-      if (sieg.exemplos) {
-        const xml = xmlDeExemplo(nota);
-        const danfe = t.sieg.danfeDoXml(xml);
-        if (danfe) { jaAbertas.set(nota.chave, { xml, danfe }); setEstado({ fase: 'pronta' }); setAberta(true); }
-        return;
-      }
+      if (jaAbertas.has(nota.chave)) { setEstado({ fase: 'pronta' }); return; }
+      if (sieg.exemplos) { jaAbertas.set(nota.chave, xmlDeExemplo(nota)); setEstado({ fase: 'pronta' }); return; }
       setEstado({ fase: 'pedindo', desde: Date.now() });
       try { await sieg.pedirZipFaltam(cod, comp, [nota.chave]); }
       catch (e) { setEstado({ fase: 'erro', erro: e instanceof Error ? e.message : String(e) }); }
     },
-    fechar: () => setAberta(false),
-    /** o XML original, para baixar */
-    xml: guardada?.xml || '',
+    /** o XML original (para desenhar a DANFE e para baixar) */
+    xml: jaAbertas.get(nota.chave) || '',
   };
 }
