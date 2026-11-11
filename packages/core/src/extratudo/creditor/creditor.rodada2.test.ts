@@ -3,7 +3,7 @@
 // fictícios, sementes fixas.
 import { describe, expect, it } from 'vitest';
 import { contaAprendida, decisoesAprendidas, aprender, clientesDoDocumento, chaveDoCliente, mesmosClientes, type ClientesAprendidos } from './regras/aprendizado';
-import { juntarSemRepetir } from './regras/automatico';
+import { juntarSemRepetir, soOsTitulosDoMes } from './regras/automatico';
 import { cruzarPeloBalancete, mesmoNomeDeCliente } from './regras/clientes';
 import { cruzar, pendentes, type Cruzamento, type Decisao } from './regras/cruzamento';
 import { gerarLancamentos } from './regras/lancamentos';
@@ -213,6 +213,14 @@ describe('juntar relatórios', () => {
       expect(new Set(out.map(t => t.nossoNumero))).toEqual(new Set(ts.map(t => t.nossoNumero)));
       expect(out.length).toBe(ts.length);
     }
+  });
+
+  it('no Importar automático, só os títulos do mês: o anexo de outro período não entra inteiro (11/11/2026)', () => {
+    const r = rel([titulo(1, 'A', '4001', 100, { liquidacao: '05/08/2026' }), titulo(2, 'B', '4002', 100, { liquidacao: '03/10/2026' }), titulo(3, 'C', '4003', 100, { liquidacao: '31/08/2026' })]);
+    expect(soOsTitulosDoMes(r, '2026-08').grupos.flatMap(g => g.titulos).map(t => t.nf)).toEqual(['4001', '4003']);
+    expect(soOsTitulosDoMes(r, '2026-09').grupos).toEqual([]);
+    const so = rel([titulo(1, 'A', '4001', 100, { liquidacao: '05/08/2026' })]);
+    expect(soOsTitulosDoMes(so, '2026-08')).toBe(so);
   });
 
   it('reimportar o mesmo arquivo não repete título', () => {

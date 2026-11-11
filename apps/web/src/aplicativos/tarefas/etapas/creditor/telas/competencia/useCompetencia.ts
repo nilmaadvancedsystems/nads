@@ -259,8 +259,9 @@ export function useCompetencia() {
       const passo = (texto: string) => setBusca({ mes: m, fase: 'procurando', texto, candidatos: [] });
       // os que servem (formato, empresa e mês); no fim, juntos sem repetir título
       const rels: { rel: cr.RelatorioBanco; origem: string; deOnde: DeOnde; paraODrive?: File }[] = [];
+      // de cada arquivo, só os títulos liquidados no mês (Vitor, 11/11/2026: o anexo de outro período entrava inteiro)
       const usar = (rel: cr.RelatorioBanco, origem: string, deOnde: DeOnde, paraODrive?: File) => {
-        if (cr.relatorioServeNoMes(rel, m, s.empresa.nome, bancosDoRelatorio)) rels.push({ rel, origem, deOnde, paraODrive });
+        if (cr.relatorioServeNoMes(rel, m, s.empresa.nome, bancosDoRelatorio)) rels.push({ rel: cr.soOsTitulosDoMes(rel, m), origem, deOnde, paraODrive });
       };
       // 1. o Drive: os arquivos do mês na RECEBIMENTO DE CLIENTES
       if (fontes.drive) passo('Procurando no Drive…');

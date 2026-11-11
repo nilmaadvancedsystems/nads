@@ -82,6 +82,22 @@ export function relatorioServeNoMes(r: RelatorioBanco, mes: string, empresa: str
 }
 
 /**
+ * Só os títulos liquidados no mês (Vitor, 11/11/2026: "não entendi por que tá lendo nota que não existe"): o anexo de outro
+ * período com um título no mês entrava inteiro no Importar automático. O grupo cortado perde os totais impressos.
+ */
+export function soOsTitulosDoMes(r: RelatorioBanco, mes: string): RelatorioBanco {
+  const mm = mes.slice(5, 7) + '/' + mes.slice(0, 4);
+  let cortado = false;
+  const grupos = r.grupos.map(g => {
+    const titulos = g.titulos.filter(t => t.liquidacao.slice(3) === mm);
+    if (titulos.length === g.titulos.length) return g;
+    cortado = true;
+    return { ...g, titulos, impresso: { ...TOTAIS_VAZIOS }, registros: null };
+  }).filter(g => g.titulos.length);
+  return cortado ? { ...r, grupos, totalGeral: { ...TOTAIS_VAZIOS }, registrosGeral: null } : r;
+}
+
+/**
  * A chave do título, para não entrar duas vezes o mesmo (dois arquivos do mesmo mês com títulos em comum). Sem o nosso número
  * (a planilha sem essa coluna), a NF: senão, dois títulos diferentes de mesma data e valor seriam um só e o segundo sumiria.
  */
