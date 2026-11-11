@@ -86,6 +86,46 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bk-'));
   igual('dentro: entregas, clientes, rotinas, cadastro, financeiro, cofre', ['entregas', 'clientes', 'rotinas', 'cadastro', 'financeiroCaixa', 'cofre', 'pedidosSieg'].map(c => entraNoBackup(c)), [true, true, true, true, true, true, true]);
   igual('subcoleção: os XMLs subidos ao SIEG ficam fora; os eventos da rotina e os anexos ficam', [entraNoBackup('pedidosSieg', 'xmls'), entraNoBackup('rotinas', 'eventos'), entraNoBackup('entregas', 'anexos')], [false, true, true]);
 
+  // as subcoleções pelo mapa (11/11/2026): a descoberta pergunta a cada documento; com o mapa, só lê as conhecidas
+  {
+    const { escreverColecao, mapaValido, DESCOBRIR_A_CADA_MS } = require('./backup-firestore');
+    // um banco de mentira: rotinas/r1 com eventos, rotinas/r2 sem; cadastro sem subcoleções
+    const dados = { 'rotinas/r1': { a: 1 }, 'rotinas/r2': { a: 2 }, 'rotinas/r1/eventos/e1': { t: 'x' }, 'cadastro/c1': { n: 'C' } };
+    let perguntas = 0, leituras = 0;
+    const colecao = caminho => ({
+      id: caminho.split('/').pop(),
+      orderBy() { return this; }, limit() { return this; }, startAfter() { return this; },
+      async get() {
+        leituras++;
+        const docs = Object.keys(dados).filter(k => k.startsWith(caminho + '/') && k.slice(caminho.length + 1).indexOf('/') < 0).sort()
+          .map(k => ({ id: k.split('/').pop(), data: () => dados[k], ref: documento(k) }));
+        return { docs: docs.length ? docs : [] };
+      },
+    });
+    const documento = caminho => ({
+      collection: nome => colecao(caminho + '/' + nome),
+      async listCollections() { perguntas++; return [...new Set(Object.keys(dados).filter(k => k.startsWith(caminho + '/')).map(k => k.slice(caminho.length + 1).split('/')[0]))].map(n => colecao(caminho + '/' + n)); },
+    });
+    const rodar = async ctx => { let txt = ''; const w = x => { txt += x; }; for (const c of ['rotinas', 'cadastro']) { w('{'); await escreverColecao(colecao(c), ctx, false, w, ''); w('}'); } return txt; };
+    const base = () => ({ contador: { docs: 0 }, destino: tmp, resumoProvas: { novas: 0, jaExistiam: 0, bytesNovos: 0 } });
+    const desc = Object.assign(base(), { descobrindo: true, mapa: null, mapaNovo: {} });
+    const comDescoberta = await rodar(desc);
+    igual('descoberta: pergunta a cada documento e anota o mapa', [perguntas, desc.mapaNovo], [4, { rotinas: ['eventos'], 'rotinas/eventos': [], cadastro: [] }]);
+    perguntas = 0;
+    const pelo = Object.assign(base(), { descobrindo: false, mapa: desc.mapaNovo, mapaNovo: {} });
+    const peloMapa = await rodar(pelo);
+    igual('pelo mapa: não pergunta nada e o retrato sai igual', [perguntas, peloMapa], [0, comDescoberta]);
+    igual('pelo mapa: os mesmos documentos', pelo.contador.docs, desc.contador.docs);
+    igual('a subcoleção vazia (rotinas/r2/eventos) não aparece no retrato', /"r2": {"dados":{"a":2}}/.test(peloMapa), true);
+    const agora = Date.parse('2026-11-11T12:00:00Z');
+    igual('o mapa vale 7 dias; sem mapa ou com --descobrir, descobre', [
+      mapaValido({ descobertoEm: '2026-11-08T12:00:00Z', porColecao: {} }, agora, false),
+      mapaValido({ descobertoEm: new Date(agora - DESCOBRIR_A_CADA_MS - 1).toISOString(), porColecao: {} }, agora, false),
+      mapaValido(null, agora, false),
+      mapaValido({ descobertoEm: '2026-11-10T12:00:00Z', porColecao: {} }, agora, true),
+    ], [true, false, false, false]);
+  }
+
   fs.rmSync(tmp, { recursive: true, force: true });
   console.log((falhas ? falhas + ' FALHA(S) em ' : 'ok: ') + total + ' testes');
   process.exit(falhas ? 1 : 0);
