@@ -15,6 +15,8 @@ import { useBaixarDoSieg, type AbaDaTela, type VmBaixarDoSieg } from './useBaixa
 const brl = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const reais = (n: number) => 'R$ ' + brl(n);
 const quantas = (n: number, um: string, varios: string) => n + ' ' + (n === 1 ? um : varios);
+/** as canceladas sempre à vista (11/11/2026: "Sim, sempre"), com o valor delas, que fica fora do total */
+const textoDasCanceladas = (n: number, valor: number) => (n ? quantas(n, 'cancelada', 'canceladas') + ' (' + reais(valor) + ')' : 'nenhuma cancelada');
 /** o número ou o traço (zero não diz nada na coluna dos impostos) */
 const ouTraco = (n: number) => (n ? brl(n) : <span className="fraco">—</span>);
 const peloTeclado = (fazer: () => void) => (e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fazer(); } };
@@ -63,7 +65,7 @@ export function BaixarDoSieg() {
 function Numeros({ vm }: { vm: VmBaixarDoSieg }) {
   const a = vm.painel!.abas;
   // as canceladas com o valor delas (11/11/2026), que fica fora do total
-  const canceladas = (n: number, valor: number) => (n ? ' · ' + quantas(n, 'cancelada', 'canceladas') + ' (' + reais(valor) + ')' : '');
+  const canceladas = (n: number, valor: number) => ' · ' + textoDasCanceladas(n, valor);
   return (
     <>
       <div className="stat-grid fin-numeros sieg-numeros">
@@ -151,7 +153,7 @@ function Notas({ vm }: { vm: VmBaixarDoSieg }) {
     <section className="card fc-cartao">
       <header className="fc-cartao-topo">
         <h3 className="fc-cartao-titulo">Notas</h3>
-        <span className="fc-contagem">{quantas(r.quantidade, 'nota', 'notas')}{r.canceladas > 0 && ' · ' + quantas(r.canceladas, 'cancelada', 'canceladas') + ' (' + reais(r.valorCanceladas) + ')'}</span>
+        <span className="fc-contagem">{quantas(r.quantidade, 'nota', 'notas')}{' · ' + textoDasCanceladas(r.canceladas, r.valorCanceladas)}</span>
         <span className="fc-acoes">
           <label className="busca-curta fc-busca">
             <Icone nome="search" width={16} height={16} />
