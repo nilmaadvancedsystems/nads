@@ -2,12 +2,31 @@
 // manda da Central, a partir de um modelo (os extratos do mês, o faturamento, a admissão ou uma pergunta livre). A
 // empresa vem do Cadastro (o e-mail e o WhatsApp dela; sem eles, os do Entregas); os itens do modelo dá para mudar,
 // tirar e somar. A regra (o texto do mês, o que impede de mandar) está no @nads/core (mandei.avulsoDoModelo).
-import { mandei as m } from '@nads/core';
+import { formatos, mandei as m } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useMemo, useState } from 'react';
 import { useOperador } from '../../casca/operador';
 import { criarTicket } from '../../dados/mandei';
 import { useContatoDoEntregas, useTodosOsCadastros } from '../../dados/repo';
+
+/**
+ * A busca da empresa (11/11/2026: "pesquisa ruim"): pelo código (o que começa com o número digitado vem primeiro) ou pelo
+ * nome, sem acento e sem maiúscula, com cada palavra digitada em qualquer parte do nome; até 40.
+ */
+function buscarEmpresas<T extends { codigo: number | null; nome: string }>(lista: readonly T[], busca: string): T[] {
+  const q = formatos.normalizarTexto(busca).trim();
+  if (!q) return lista.slice(0, 40);
+  const palavras = q.split(/\s+/);
+  const peso = (e: T) => {
+    const cod = String(e.codigo ?? '');
+    const nome = formatos.normalizarTexto(e.nome);
+    if (cod === q) return 0;
+    if (/^\d+$/.test(q) && cod.startsWith(q)) return 1;
+    if (nome.startsWith(q)) return 2;
+    return palavras.every(p => nome.includes(p) || cod.includes(p)) ? 3 : -1;
+  };
+  return lista.map(e => ({ e, p: peso(e) })).filter(x => x.p >= 0).sort((a, b) => a.p - b.p).slice(0, 40).map(x => x.e);
+}
 
 /** o mês passado, 'aaaa-mm' (o pedido do mês quase sempre é do mês que fechou) */
 function mesPassado(hoje = new Date()): string {
@@ -21,6 +40,7 @@ export function useNovoTicket(aoCriar: (id: string) => void) {
   const cadastros = useTodosOsCadastros();
   const empresas = useMemo(() => [...cadastros.porId.values()].sort((a, b) => a.nome.localeCompare(b.nome)), [cadastros]);
   const [nome, setNome] = useState('');
+  const [busca, setBusca] = useState('');
   const empresa = empresas.find(e => e.nome === nome) || null;
   const doEntregas = useContatoDoEntregas(empresa?.codigo ?? null);
   const [modeloId, setModeloId] = useState(m.MODELOS_DE_TICKET[0].id);
@@ -43,8 +63,11 @@ export function useNovoTicket(aoCriar: (id: string) => void) {
   const mudarItem = (n: number, f: (i: m.ItemDoModelo) => m.ItemDoModelo) => setAvulso(a => ({ ...a, itens: a.itens.map((x, k) => (k === n ? f(x) : x)) }));
 
   return {
-    empresas: empresas.map(e => ({ valor: e.nome, rotulo: (e.codigo != null ? e.codigo + ' · ' : '') + e.nome })),
-    nome, setNome,
+    /** a empresa escolhida, como aparece no botão ('' = nenhuma) */
+    empresa: empresa ? (empresa.codigo != null ? empresa.codigo + ' · ' : '') + empresa.nome : '',
+    busca, setBusca,
+    achadas: buscarEmpresas(empresas, busca).map(e => ({ nome: e.nome, codigo: e.codigo != null ? String(e.codigo) : '' })),
+    escolherEmpresa: (n: string) => { setNome(n); setBusca(''); },
     modelos: m.MODELOS_DE_TICKET.map(x => ({ id: x.id, nome: x.nome, descricao: x.descricao })),
     modeloId, setModeloId,
     mensal: modelo.mensal,

@@ -342,6 +342,8 @@ thead th{position:sticky;top:0;z-index:1;background:var(--surface-2);text-align:
 .mandei-acao svg{width:14px;height:14px;}
 .mandei-rodape{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start;}
 @media (max-width:760px){.mandei-rodape{grid-template-columns:1fr;}}
+/* o botão da empresa do Novo ticket (11/11/2026): na largura do campo, o nome à esquerda */
+.btn.nt-empresa{width:100%;justify-content:flex-start;text-align:left;}
 .mandei-novo-grade{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;}
 .mandei-historico{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:var(--fs-13,13px);}
 tbody td{padding:8px 16px;border-top:1px solid var(--border-muted);font-variant-numeric:tabular-nums;vertical-align:middle;}
