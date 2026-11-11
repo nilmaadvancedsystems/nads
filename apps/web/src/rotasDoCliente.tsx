@@ -4,12 +4,15 @@
 // Cliente. A raiz (sem token) mostra o aviso para usar o link que o escritório enviou.
 import { createBrowserRouter, Navigate } from 'react-router';
 import { rotasCliente } from './aplicativos/cliente/rotas';
+import { rotasMandei } from './aplicativos/mandei/rotas';
 import { AreaDoCliente } from './aplicativos/cliente/telas/AreaDoCliente';
 
 document.title = 'Área do Cliente — Nilma';
 
 export const roteador = createBrowserRouter([
   ...rotasCliente,
+  // o formulário do Mandei (11/11/2026): o Responder da Visão geral abre o ticket aqui mesmo (só o formulário, sem nada da equipe)
+  ...rotasMandei,
   { path: '/', element: <AreaDoCliente /> },
   { path: '*', element: <Navigate to="/" replace /> },
 ]);

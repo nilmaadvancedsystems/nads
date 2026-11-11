@@ -19,7 +19,7 @@ export const ABAS: { id: IdAba; rotulo: string; icone: NomeIcone }[] = [
   { id: 'documentos', rotulo: 'Central de documentos', icone: 'pastaAberta' },
   { id: 'guias', rotulo: 'Guias e obrigações', icone: 'recibo' },
   { id: 'dp', rotulo: 'Departamento pessoal', icone: 'usuario' },
-  { id: 'chamados', rotulo: 'Solicitações e chamados', icone: 'mensagem' },
+  { id: 'chamados', rotulo: 'Solicitações', icone: 'mensagem' },
 ];
 /** O que a aba aberta pelo irPara já faz ao abrir: abrir a conversa de um chamado, ou o formulário com o assunto e o título. */
 export interface PedidoDaTela { chamado?: string; novoChamado?: { tipo: ac.TipoDeChamado; titulo: string } }

@@ -793,6 +793,15 @@ igual('SIEG: o item com a base, a alíquota e as despesas', sxT.resumoDaNota(nfe
 // o frete e o desconto da nota (22/10/2026: o Rateio de frete)
 const nfeFreteT = nfeItensT.replace('<vNF>100.50</vNF>', '<vFrete>12.30</vFrete><vDesc>2.00</vDesc><vNF>110.80</vNF>');
 igual('SIEG: o frete e o desconto da NF-e', [sxT.resumoDaNota(nfeFreteT).frete, sxT.resumoDaNota(nfeFreteT).desconto, sxT.resumoDaNota(nfeItensT).frete], [12.3, 2, undefined]);
+// o LCDPR (11/11/2026): a nota de entrada, a IE do destinatário e os produtos (sem repetir, até 80 letras), só quando têm
+const nfeLcdprT = nfeItensT.replace('<mod>55</mod>', '<mod>55</mod><tpNF>0</tpNF>').replace('<xNome>CLIENTE</xNome>', '<xNome>CLIENTE</xNome><IE>0011288860080</IE>')
+  .replace('<NCM>21069090</NCM>', '<xProd>ADUBO NPK 20-05-20</xProd><NCM>21069090</NCM>');
+const lcdprR = sxT.resumoDaNota(nfeLcdprT);
+igual('SIEG: a NF-e de entrada, a IE do destinatário e o produto', [lcdprR.entrada, lcdprR.ieDest, lcdprR.produto], [true, '0011288860080', 'ADUBO NPK 20-05-20']);
+igual('SIEG: a NF-e de saída sem IE e sem produto não ganha os campos', ['entrada', 'ieDest', 'produto'].map(k => k in sxT.resumoDaNota(nfeItensT)), [false, false, false]);
+const doisItensT = nfeLcdprT.replace('</det>', '</det><det nItem="2"><prod><xProd>ADUBO NPK 20-05-20</xProd><NCM>31052000</NCM><vProd>1</vProd></prod></det><det nItem="3"><prod><xProd>' + 'X'.repeat(90) + '</xProd><NCM>31052000</NCM><vProd>1</vProd></prod></det>');
+igual('SIEG: os produtos sem repetir e cortados em 80 letras', sxT.resumoDaNota(doisItensT).produto, ('ADUBO NPK 20-05-20 | ' + 'X'.repeat(90)).slice(0, 80));
+igual('SIEG: o resumo que não cabe perde primeiro os produtos', (() => { const n = { chave: 'k', produto: 'P'.repeat(500), itens: [{ ncm: '1' }] }; const r = sg.resumoQueCabe({ emitidas: [], recebidas: Array.from({ length: 2000 }, () => n) }); return [r.recebidas[0].produto, !!r.recebidas[0].itens, !!r.itensCortados]; })(), [undefined, true, false]);
 // as NF-e do CT-e e o ICMS dele (23/10/2026: o Rateio de frete pelo CT-e)
 const cteT = '<cteProc><CTe><infCte Id="CTe31260919449248000162570010000000011000000017"><ide><CFOP>6353</CFOP><nCT>1</nCT><serie>1</serie><dhEmi>2026-09-05T10:00:00-03:00</dhEmi></ide><emit><CNPJ>19449248000162</CNPJ><xNome>TRANSP</xNome></emit><rem><CNPJ>22222222000122</CNPJ><xNome>REM</xNome></rem><dest><CNPJ>11111111000111</CNPJ><xNome>DEST</xNome></dest><vPrest><vTPrest>500.00</vTPrest><vRec>500.00</vRec></vPrest><imp><ICMS><ICMS00><CST>00</CST><vBC>500.00</vBC><pICMS>12.00</pICMS><vICMS>60.00</vICMS></ICMS00></ICMS></imp><infCTeNorm><infDoc><infNFe><chave>31260922222222000122550010000020751000020751</chave></infNFe><infNFe><chave>31260922222222000122550010000020761000020761</chave></infNFe></infDoc></infCTeNorm></infCte></CTe></cteProc>';
 const cteR = sxT.resumoDaNota(cteT);
@@ -1022,7 +1031,7 @@ igual('sem nome no assunto: não decide pelo nome', r.desempatarPorNome(fitos, '
   igual('DP: o e-mail tem o texto, a manchete do mês e o anexo, com o HTML escapado', [email.html.includes('FGTS 10-2026'), email.html.includes('TESTE &amp; CIA'), email.html.includes('Seguem os documentos.'), email.html.includes('Seu documento de outubro chegou')], [true, true, true, true]);
   igual('DP: o nome no Drive vai sem o cliente, e o código solto do sistema vira "Documento"', dp.nomesNoEmail([{ nome: '00463_14843_23-11-2026.PDF' }, { nome: 'Recibo de Pró Labore.pdf', tipo: 'PRO-LABORE' }, { nome: 'recibo_mensal_horista_2026_10_01_2026_10_31.pdf' }], '2026-10', '').map(x => x.nome), ['Documento 10-2026.pdf', 'Pró-labore 10-2026.pdf', 'Recibo mensal horista 10-2026.pdf']);
   igual('DP: o nome limpo do anexo no e-mail (pasta, boleto, rótulo da guia, repetido e o nome solto)', dp.nomesNoEmail([{ nome: 'FGTS 10-2026.pdf', pasta: 'DEPARTAMENTO PESSOAL/10/FGTS' }, { nome: 'Relatorio_folha.pdf', pasta: 'DEPARTAMENTO PESSOAL/10/FOLHA' }, { nome: 'holerites.PDF', pasta: 'DEPARTAMENTO PESSOAL/10/FOLHA' }, { nome: 'Fatura_NILMA_11-2026.pdf', pasta: 'X' }, { nome: 'das.pdf', rotulo: 'DARF PIS' }, { nome: 'recibo_ferias_10-2026.pdf', pasta: 'DEPARTAMENTO PESSOAL/10' }], '2026-10', 'ACME: LTDA').map(x => x.nome), ['FGTS 10-2026 - ACME LTDA.pdf', 'Folha de pagamento 10-2026 - ACME LTDA.pdf', 'Folha de pagamento 10-2026 - ACME LTDA (2).pdf', 'Boleto de honorários - ACME LTDA.pdf', 'DARF PIS 10-2026 - ACME LTDA.pdf', 'Recibo ferias 10-2026 - ACME LTDA.pdf']);
-  // o boleto do escritório (28/10/2026): só BOLETO ou Fatura_ nas pastas da Nilma, no mês anterior ao da pasta
+  // o boleto do escritório não vai mais no DP (11/11/2026: sai pelo Financeiro › Boletos; separado por setor)
   const boleto = [
     { i: 'ct', n: 'CONTÁBIL', p: 'R', t: 'd' }, { i: 'pf', n: 'PAGAMENTOS DE FORNECEDORES', p: 'ct', t: 'd' }, { i: 'pa', n: '2026', p: 'pf', t: 'd' },
     { i: 'p11', n: '11', p: 'pa', t: 'd' }, { i: 'ni', n: 'NILMA DIAS OLIVEIRA', p: 'p11', t: 'd' },
@@ -1033,8 +1042,8 @@ igual('sem nome no assunto: não decide pelo nome', r.desempatarPorNome(fitos, '
     { i: 'p01', n: '01', p: 'pa', t: 'd' }, { i: 'nj', n: 'NILMA CONT', p: 'p01', t: 'd' }, { i: 'b6', n: 'BOLETO NILMA CONT.pdf', p: 'nj', t: 'f' },
   ];
   const porMesB = dp.arquivosDoDpNaPasta(boleto, 'R', '2026', di2.caminhos, di2.chaveDeNome);
-  igual('DP: o boleto e a fatura da Nilma vão no mês anterior; o comprovante, a NFS-e e outro fornecedor ficam de fora', (porMesB.get('2026-10') || []).map(a => a.i).sort(), ['b1', 'b2']);
-  igual('DP: o boleto de janeiro vai com o DP de dezembro do ano anterior', (porMesB.get('2025-12') || []).map(a => a.i), ['b6']);
+  igual('DP: nada da pasta CONTÁBIL (o boleto e a fatura da Nilma saem pelo Financeiro)', [...porMesB.keys()], []);
+  igual('DP: a lista já gravada com o boleto do escritório não manda o boleto', dp.escolhidos([{ i: 'x', c: 'DEPARTAMENTO PESSOAL/10' }, { i: 'b', c: 'CONTÁBIL/PAGAMENTOS DE FORNECEDORES/2026/11/NILMA DIAS OLIVEIRA' }], []).map(a => a.i), ['x']);
   const m = dp.mensagemDoEnvio({ assunto: 'DP {competencia} - {cliente} {xyz}', texto: '' }, { cliente: 'ACME', competencia: '10/2026', mes: 'outubro de 2026' });
   igual('DP: o modelo troca os campos, deixa o que não conhece, e o texto vazio vira o padrão', [m.assunto, m.texto.startsWith('Olá, ACME!'), m.texto.includes('outubro de 2026')], ['DP 10/2026 - ACME {xyz}', true, true]);
   // o e-mail do Cadastro do nads manda; o do Entregas só sem ele (28/10/2026)

@@ -46,7 +46,8 @@ export const CAMPOS_DA_CONFIG = ['config', 'categorias', 'planoContas', 'ncmRule
 export type ListaDoLcdpr = 'categorias' | 'planoContas' | 'ncmRules' | 'imoveis' | 'ieDest' | 'tipoDoc' | 'tipoLanc';
 export type ItemDaLista<L extends ListaDoLcdpr> = ConfigLcdpr[L][number];
 
-export type OrigemDoDocumento = 'NF' | 'CTe';
+/** De onde veio: a nota, o CT-e ou o lançamento feito à mão (11/11/2026). */
+export type OrigemDoDocumento = 'NF' | 'CTe' | 'Manual';
 /** Como o lançamento foi classificado (a etiqueta da linha). */
 export type OrigemDaRegra = 'NCM' | 'Padrão CT-e' | 'Manual' | 'Nenhuma';
 
@@ -77,6 +78,8 @@ export interface Lancamento {
   /** ainda sem conta: vai para REVISAR */
   revisar: boolean;
   origemRegra: OrigemDaRegra;
+  /** a chave da NF-e/CT-e (os que vieram do SIEG; 11/11/2026: abrir a DANFE pela lista) */
+  chave?: string;
 }
 
 /** Os campos do lançamento que dá para corrigir à mão (a janela do lançamento). */

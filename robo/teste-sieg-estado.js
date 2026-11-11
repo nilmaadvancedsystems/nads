@@ -71,6 +71,11 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sieg-estado-'));
   igual('não pula se arquivado em outro cliente', f.pular(999, chDoc + '-nfe.xml'), false);
   igual('não pula evento (só o original foi arquivado)', f.pular(236, chDoc + '-evento-110111-1.xml'), false);
   igual('não pula nome sem chave', f.pular(236, 'xml-abcdef.xml'), false);
+  // o PDF da nota já arquivado (11/11/2026): o índice guarda o PDF como 'outro'
+  idx.juntar(chNova, 236, null, 'outro', 'teste');
+  igual('PDF: a nota com PDF arquivado neste cliente', f.pdfArquivado(236, chNova + '-nfe.xml'), true);
+  igual('PDF: só o XML arquivado não é PDF', f.pdfArquivado(236, chDoc + '-nfe.xml'), false);
+  igual('PDF: em outro cliente não vale', f.pdfArquivado(999, chNova + '-nfe.xml'), false);
   igual('índice lido uma vez só', lidos, 1);
   const g = E.criarFiltroDeArquivados(() => { throw new Error('G: fora do ar'); }, { log: m => logs.push(m) });
   igual('índice ilegível: não pula nada (como antes)', g.pular(236, chDoc + '-nfe.xml'), false);

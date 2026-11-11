@@ -335,6 +335,19 @@ thead th{position:sticky;top:0;z-index:1;background:var(--surface-2);text-align:
    a tabela rola de lado */
 .table-wrap.mandei-linhas{overflow:visible;max-height:none;}
 @media (max-width:940px){.table-wrap.mandei-linhas{overflow:auto;position:relative;}}
+/* a Central de tickets e as Solicitações (11/11/2026: "tem 2 barras"): a lista cresce com o que abre embaixo da linha; só a página rola (no celular, a tabela ainda rola de lado) */
+.table-wrap.mandei-central{max-height:none;}
+/* a Central do Mandei (11/11/2026): os botões da revisão de cada resposta, e as notas internas e o histórico lado a lado */
+/* o Ocultar resolvidos da Central (11/11/2026): o interruptor com o texto ao lado, na barra do filtro */
+.mandei-ocultar{display:inline-flex;align-items:center;gap:8px;font-size:var(--fs-13);color:var(--ink-muted);}
+.mandei-acao{min-height:28px;height:28px;padding:0 10px;font-size:var(--fs-12);gap:6px;}
+.mandei-acao svg{width:14px;height:14px;}
+.mandei-rodape{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start;}
+@media (max-width:760px){.mandei-rodape{grid-template-columns:1fr;}}
+/* o botão da empresa do Novo ticket (11/11/2026): na largura do campo, o nome à esquerda */
+.btn.nt-empresa{width:100%;justify-content:flex-start;text-align:left;}
+.mandei-novo-grade{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;}
+.mandei-historico{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:var(--fs-13,13px);}
 tbody td{padding:8px 16px;border-top:1px solid var(--border-muted);font-variant-numeric:tabular-nums;vertical-align:middle;}
 tbody tr:first-child td{border-top:none;}
 tbody td.wrap{white-space:normal;}
@@ -4381,6 +4394,10 @@ button.cofre-pessoa:hover{background:var(--hover-bg);}
 .sieg-contagem .alerta-linha{margin:0;}
 /* os botões do SIEG alinhados à esquerda, com o conteúdo */
 .sieg-contagem .sieg-acoes{grid-column:1/-1;justify-content:flex-start;}
+/* a escolha XML | PDF | XML e PDF (11/11/2026) na mesma linha dos botões: sem a margem de baixo do .steps (que a subia) e
+   sem quebrar as opções */
+.sieg-acoes .steps{margin:0;flex-wrap:nowrap;flex:none;}
+.sieg-acoes .step-pill{min-height:32px;}
 /* Gmail: a linha com mais informação, os filtros e os grupos do dia (14/10/2026: "vamos trabalhar na ui do gmail") */
 .gm-quem{display:flex;align-items:center;gap:8px;}
 .gm-quem b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;}
@@ -4657,6 +4674,112 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .cad-grade.lcdpr-grade{grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));}
 .lcdpr-grade .lcdpr-corta.largo{max-width:300px;}
 @media (max-width:640px){.lcdpr-corta,.lcdpr-corta.largo{max-width:180px;}}
+/* LCDPR mês a mês (11/11/2026): o mês no topo, a conta de pagamento na linha e a janela do lançamento no jeito do Alterdata
+   (o código, a lupa e o nome; a pesquisa no lugar do corpo) */
+.lcdpr-mes{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+.lcdpr-mes .tarefas-barra-espaco{flex:1;}
+.lcdpr-sieg-andamento{position:relative;display:inline-flex;align-items:center;gap:8px;height:36px;max-width:340px;padding:0 14px;overflow:hidden;border:1px solid var(--border);border-radius:999px;background:var(--surface);color:var(--ink-muted);font-size:var(--fs-13);white-space:nowrap;}
+.lcdpr-sieg-andamento .btn-spinner{width:14px;height:14px;color:var(--accent);}
+.lcdpr-sieg-passo{min-width:0;overflow:hidden;text-overflow:ellipsis;}
+.lcdpr-sieg-andamento b{color:var(--ink);font-weight:600;}
+.lcdpr-sieg-barra{position:absolute;left:0;right:0;bottom:0;height:2px;background:color-mix(in srgb,var(--ink) 8%,transparent);}
+.lcdpr-sieg-barra > span{display:block;height:100%;background:var(--accent);transition:width .4s ease;}
+.lcdpr-conta{min-width:150px;}
+.lcdpr-doc{display:inline-flex;align-items:center;justify-content:flex-end;gap:2px;}
+.lcdpr-ver-nota{min-height:0;height:26px;width:26px;padding:0;justify-content:center;color:var(--ink-muted);}
+.lcdpr-ver-nota:hover{color:var(--accent);}
+.lcdpr-ver-nota svg{width:15px;height:15px;}
+/* a DANFE idêntica à original (o PDF do XML) numa janela alta, como a folha A4 */
+.modal.danfe-pdf-janela{max-width:980px;width:min(980px,100%);height:calc(100dvh - 32px);display:flex;flex-direction:column;}
+.danfe-pdf-janela .registro-topo{flex:none;}
+.danfe-pdf-janela .registro-caminho .fraco{margin-left:8px;font-weight:400;}
+.danfe-pdf-acoes{display:flex;gap:8px;margin-left:auto;margin-right:8px;}
+.danfe-pdf-corpo{flex:1;min-height:0;display:flex;background:color-mix(in srgb,var(--ink) 6%,var(--surface));}
+.danfe-folhas{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;align-items:center;gap:16px;padding:20px;}
+.danfe-folha{display:block;flex:none;max-width:none;height:auto;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.35);border-radius:2px;}
+.danfe-folhas.ajustada .danfe-folha{width:100%;max-width:900px;}
+.danfe-zoom{display:inline-flex;align-items:center;gap:2px;margin-right:4px;}
+.danfe-zoom .btn{min-width:32px;justify-content:center;padding:0 8px;font-size:var(--fs-16);}
+.danfe-zoom .danfe-zoom-valor{min-width:76px;font-size:var(--fs-13);font-variant-numeric:tabular-nums;}
+.danfe-pdf-aviso{margin:auto;display:flex;flex-direction:column;align-items:center;gap:10px;padding:24px;text-align:center;color:var(--ink-muted);}
+.danfe-pdf-aviso p{margin:0;max-width:440px;}
+.danfe-pdf-aviso svg{width:22px;height:22px;}
+.lcdpr-conta.fora{border-color:var(--warn,#c77700);}
+.modal.lcdpr-janela{max-width:1180px;width:min(1180px,100%);max-height:calc(100dvh - 32px);}
+.lcdpr-janela .registro-topo{flex:none;}
+.lcdpr-janela .registro-corpo{flex:1 1 auto;min-height:0;overflow-y:auto;}
+.lcdpr-janela .registro-pe{flex:none;margin-top:0;}
+.lcdpr-janela-origem{margin-left:auto;margin-right:8px;}
+/* o corpo: o formulário à esquerda e o resumo à direita (o "como vai para o LCDPR") */
+.lcdpr-corpo{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:20px;align-items:stretch;padding-top:4px;padding-bottom:12px;}
+.lcdpr-form{min-width:0;}
+.lcdpr-grade{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:12px 14px;}
+.lcdpr-grade .c-3{grid-column:span 3;}.lcdpr-grade .c-4{grid-column:span 4;}.lcdpr-grade .c-5{grid-column:span 5;}.lcdpr-grade .c-7{grid-column:span 7;}.lcdpr-grade .c-12{grid-column:span 12;}
+.lcdpr-campo{display:flex;flex-direction:column;gap:4px;min-width:0;}
+.lcdpr-rotulo{font-size:var(--fs-12);color:var(--ink-muted);font-weight:500;}
+.lcdpr-form input,.lcdpr-form select{width:100%;min-width:0;height:36px;padding:0 10px;border:1px solid var(--border);border-radius:8px;background:var(--input-bg);box-shadow:var(--shadow-inset);color:var(--ink);font:inherit;font-size:var(--fs-14);transition:border-color .12s,box-shadow .12s;}
+.lcdpr-form input::placeholder{color:var(--ink-faint);}
+.lcdpr-form input:hover,.lcdpr-form select:hover{border-color:var(--ink-faint);}
+.lcdpr-form input:focus,.lcdpr-form select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent);}
+.lcdpr-adorno{position:relative;display:flex;align-items:center;}
+.lcdpr-adorno > svg,.lcdpr-adorno > b{position:absolute;left:10px;pointer-events:none;color:var(--ink-muted);}
+.lcdpr-adorno > svg{width:15px;height:15px;}
+.lcdpr-adorno > b{font-size:var(--fs-13);font-weight:500;}
+.lcdpr-form .lcdpr-adorno input{padding-left:32px;}
+.lcdpr-form .lcdpr-adorno-grande input{height:36px;padding-left:40px;font-size:var(--fs-20);font-weight:600;text-align:right;font-variant-numeric:tabular-nums;}
+.lcdpr-adorno-grande > b{left:12px;font-size:var(--fs-14);}
+.lcdpr-codigo{display:flex;align-items:stretch;width:100%;min-width:0;}
+.lcdpr-form .lcdpr-cod{flex:0 0 84px;width:84px;border-top-right-radius:0;border-bottom-right-radius:0;font-variant-numeric:tabular-nums;}
+.lcdpr-lupa{flex:none;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid var(--border);border-left:0;border-radius:0 8px 8px 0;background:color-mix(in srgb,var(--ink) 4%,var(--input-bg));color:var(--ink-muted);cursor:pointer;}
+.lcdpr-lupa:hover{background:var(--hover-bg);color:var(--ink);}
+.lcdpr-lupa svg{width:15px;height:15px;}
+.lcdpr-cod-nome{flex:1;min-width:0;margin-left:8px;display:flex;align-items:center;padding:0 12px;height:36px;border-radius:8px;background:color-mix(in srgb,var(--ink) 6%,transparent);color:var(--ink);font-size:var(--fs-14);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.lcdpr-cod-nome.vazio{color:var(--ink-faint);font-style:italic;}
+/* o "Pago com": um botão por conta (o logo do banco, o nome e o código), o escolhido com a borda da cor de destaque */
+.lcdpr-pagar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;}
+.lcdpr-pagar-opcao{display:inline-flex;align-items:center;justify-content:center;width:56px;height:44px;padding:0;border:1px solid var(--border);border-radius:10px;background:var(--input-bg);color:var(--ink-muted);cursor:pointer;transition:border-color .12s,background .12s,box-shadow .12s,transform .12s;}
+.lcdpr-pagar-opcao:hover{border-color:var(--ink-faint);transform:translateY(-1px);}
+.lcdpr-pagar-opcao.atual{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 1px var(--accent) inset;color:var(--ink);}
+.lcdpr-pagar-opcao.outra{border-style:dashed;}
+.lcdpr-pagar-opcao.outra.atual{border-style:solid;}
+.lcdpr-pagar-logo{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:7px;overflow:hidden;}
+.lcdpr-pagar-logo img,.lcdpr-pagar-logo svg{width:26px;height:26px;object-fit:contain;}
+/* o resumo: o valor grande, a partida (D e C), o histórico e o que falta */
+.lcdpr-resumo{display:flex;flex-direction:column;gap:8px;min-width:0;padding:16px;border:1px solid var(--border);border-radius:12px;background:color-mix(in srgb,var(--ink) 3%,var(--surface));}
+.lcdpr-resumo-valor{font-size:var(--fs-24);font-weight:700;line-height:1.1;}
+.lcdpr-resumo-data{margin-top:-4px;color:var(--ink-muted);font-size:var(--fs-13);}
+.lcdpr-partida{display:flex;flex-direction:column;gap:6px;padding:10px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
+.lcdpr-partida-linha{display:flex;align-items:center;gap:8px;min-width:0;font-size:var(--fs-13);}
+.lcdpr-partida-linha > span:last-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.lcdpr-partida-dc{flex:none;display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:6px;font-size:var(--fs-12);font-weight:700;}
+.lcdpr-partida-dc.debito{background:color-mix(in srgb,#2f7de1 18%,transparent);color:light-dark(#1d5fb3,#8ab8ff);}
+.lcdpr-partida-dc.credito{background:color-mix(in srgb,#1f9d63 18%,transparent);color:light-dark(#137a4b,#7fd8ad);}
+.lcdpr-resumo .vazio{color:var(--ink-faint);font-style:italic;font-weight:400;}
+.lcdpr-resumo-historico{margin:0;font-size:var(--fs-13);line-height:18px;color:var(--ink);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+.lcdpr-resumo-linha{display:flex;justify-content:space-between;gap:10px;font-size:var(--fs-13);min-width:0;}
+.lcdpr-resumo-linha > span{color:var(--ink-muted);flex:none;}
+.lcdpr-resumo-linha > b{font-weight:500;text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.lcdpr-resumo .tarefas-barra-espaco{flex:1;}
+.lcdpr-resumo-falta,.lcdpr-resumo-ok{display:flex;gap:6px;align-items:flex-start;margin:0;padding:8px 10px;border-radius:8px;font-size:var(--fs-13);line-height:18px;}
+.lcdpr-resumo-falta{background:color-mix(in srgb,var(--warn,#c77700) 12%,transparent);color:var(--ink);}
+.lcdpr-resumo-falta.erro{background:color-mix(in srgb,var(--accent) 14%,transparent);}
+.lcdpr-resumo-ok{background:color-mix(in srgb,#1f9d63 14%,transparent);}
+.lcdpr-resumo-falta svg,.lcdpr-resumo-ok svg{flex:none;width:15px;height:15px;margin-top:1px;}
+.lcdpr-resumo-dica{font-size:var(--fs-11);color:var(--ink-faint);line-height:15px;}
+.lcdpr-pesquisa{display:flex;flex-direction:column;gap:8px;}
+.lcdpr-pesquisa-busca{width:100%;}
+.lcdpr-pesquisa-lista{display:flex;flex-direction:column;border:1px solid var(--border);border-radius:8px;max-height:min(58vh,520px);overflow-y:auto;}
+.lcdpr-pesquisa-cabeca,.lcdpr-pesquisa-linha{display:grid;grid-template-columns:80px minmax(130px,220px) 1fr 90px;gap:12px;align-items:center;padding:7px 12px;text-align:left;}
+.lcdpr-pesquisa-cabeca{position:sticky;top:0;background:var(--surface);border-bottom:1px solid var(--border);font-size:var(--fs-13);color:var(--ink-muted);font-weight:500;}
+.lcdpr-pesquisa-linha{width:100%;border:0;border-bottom:1px solid var(--border);background:transparent;font:inherit;font-size:var(--fs-14);color:var(--accent);cursor:pointer;}
+.lcdpr-pesquisa-linha:hover{background:var(--hover-bg);}
+.lcdpr-pesquisa-linha.sintetica{color:var(--ink);font-weight:600;cursor:default;}
+.lcdpr-pesquisa-linha.atual{background:var(--accent-soft);}
+.lcdpr-pesquisa-linha > span:last-child,.lcdpr-pesquisa-cabeca > span:last-child{color:var(--ink-muted);font-weight:400;}
+.lcdpr-pesquisa-linha > span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.lcdpr-volta{padding:0 4px;min-height:0;}
+@media (max-width:980px){.lcdpr-corpo{grid-template-columns:1fr;}.lcdpr-resumo{display:none;}}
+@media (max-width:720px){.lcdpr-grade .c-3,.lcdpr-grade .c-4,.lcdpr-grade .c-5,.lcdpr-grade .c-7{grid-column:1 / -1;}.lcdpr-pesquisa-cabeca,.lcdpr-pesquisa-linha{grid-template-columns:64px 1fr;}.lcdpr-pesquisa-cabeca > span:nth-child(2n),.lcdpr-pesquisa-linha > span:nth-child(2n){display:none;}}
 /* ---------- Entregas (16/10/2026: a entrega de documentos trazida do Entregas, "no visual igual para não destoar do app") ---------- */
 /* a assinatura (CampoAssinatura): o quadro é papel, branco também no tema escuro; o traço é o do Entregas */
 .assinatura{display:flex;flex-direction:column;gap:6px;}
@@ -4873,13 +4996,10 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .ac-endereco svg{flex:none;width:16px;height:16px;}
 .ac-endereco-curto{display:inline-block;margin-left:8px;font-size:11px;color:var(--ink-muted);}
 .ac-chamado{display:flex;flex-direction:column;gap:12px;padding:12px 16px 16px;}
-.ac-conversa{display:flex;flex-direction:column;gap:10px;margin:0;padding:0;list-style:none;}
-.ac-balao{display:flex;flex-direction:column;gap:4px;max-width:min(620px,88%);padding:8px 12px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2);color:var(--ink);}
-.ac-balao p{margin:0;font-size:13px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;}
-.ac-balao-quem{font-size:11px;color:var(--ink-muted);}
-.ac-balao-cliente{align-self:flex-start;border-radius:12px 12px 12px 3px;}
-.ac-balao-escritorio{align-self:flex-end;border-color:var(--accent);border-radius:12px 12px 3px 12px;background:var(--accent-soft);}
-@media (max-width: 640px){.ac-balao{max-width:94%;}}
+/* a solicitação do cliente, sem chat (11/11/2026): o pedido e a resposta, um bloco embaixo do outro */
+.ac-pedido{display:flex;flex-direction:column;gap:12px;}
+.ac-pedido h4{margin:0 0 4px;font-size:12px;color:var(--ink-muted);font-weight:600;}
+.ac-pedido p{margin:0 0 6px;font-size:13px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;}
 
 /* o selo suave no nads (19/10/2026): o mesmo da Área do Cliente, fora do .cli-app (a pílula sem borda, o pontinho e o fundo
    suave; a cor só pelo significado); a prioridade do feedback do app */
@@ -6377,5 +6497,7 @@ td.fs-fat-sem{color:var(--ink-faint);}
 /* o popup de delegar (Vitor, 10/11/2026: "um grid proporcional e alinhado"): colunas iguais; a caixinha, o código e o nome sempre nos mesmos lugares */
 .delegar-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:2px 16px;max-height:42vh;overflow:auto;}
 .delegar-conta{display:grid;grid-template-columns:18px 64px minmax(0,1fr);align-items:center;gap:10px;padding:6px 8px;border-radius:6px;cursor:pointer;}
+/* os itens da folha não têm código: o nome ocupa a linha toda (11/11/2026) */
+.delegar-conta.sem-codigo{grid-template-columns:18px minmax(0,1fr);}
 .delegar-conta:hover{background:var(--hover-bg);}
 .delegar-conta-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}

@@ -21,8 +21,11 @@ export interface Nota { por: string; em: string; texto: string }
  */
 export interface Anexo { id: string; nome: string; extensao: string; tamanho: number; em: string; por: string; partes: number; gzip?: true }
 
-/** A etapa que dá para delegar (Vitor, 10/11/2026: por enquanto Clientes e Fornecedores). */
-export type EtapaQueDelega = 'clientes' | 'fornecedores';
+/**
+ * A etapa que dá para delegar (Vitor, 10/11/2026: Clientes e Fornecedores; 11/11/2026: a Contabilização da Folha, id 'dp', em
+ * que os "contas" são os itens do checklist: o código é o id do item).
+ */
+export type EtapaQueDelega = 'clientes' | 'fornecedores' | 'dp';
 export interface ContaDelegada { codigo: string; nome: string }
 /**
  * A etapa da Tarefa que foi delegada: a empresa, o período, todas as contas ou só as escolhidas e as que quem recebeu já marcou
@@ -597,7 +600,7 @@ export function lerTarefa(id: string, x: Record<string, unknown>): TarefaDelegad
   const anexos = Array.isArray(x.anexos) ? x.anexos.map(obj).filter((a): a is Record<string, unknown> => !!a) : [];
   const ed = obj(x.etapaDelegada);
   const lerContas = (v: unknown): ContaDelegada[] => (Array.isArray(v) ? v.map(obj).filter((c): c is Record<string, unknown> => !!c).map(c => ({ codigo: texto(c.codigo), nome: texto(c.nome) })) : []);
-  const etapaDelegada: EtapaDelegada | null = ed && (ed.etapa === 'clientes' || ed.etapa === 'fornecedores')
+  const etapaDelegada: EtapaDelegada | null = ed && (ed.etapa === 'clientes' || ed.etapa === 'fornecedores' || ed.etapa === 'dp')
     ? { etapa: ed.etapa, rota: texto(ed.rota), periodo: texto(ed.periodo), todas: ed.todas === true, contas: lerContas(ed.contas), feitas: Array.isArray(ed.feitas) ? ed.feitas.map(texto) : [] }
     : null;
   return {

@@ -1,14 +1,12 @@
-// Solicitações e chamados da Área do Cliente (Vitor, 16/10/2026), no layout do protótipo com as peças do nads: o título com
-// Novo chamado; o card da abertura rápida (assunto, prioridade, título, o pedido, um anexo e Enviar chamado); e o card do
-// histórico, cada chamado com o selo da situação, o assunto, a última mensagem e "Ver conversa", que abre ali mesmo com o
-// responder. Versão D: só o selo da situação (o assunto vai na linha de baixo), a conversa num fundo suave e o
-// formulário com o fio fino antes do Enviar. Com o banco (17/10/2026), sem a Central de documentos, o "Enviar documento"
-// fica aqui, ao lado do Novo chamado. Polida de 17/10/2026: as frases mais curtas. "Melhora mais" de 17/10/2026: o
-// chamado que o escritório respondeu (esperando o cliente) vem primeiro, com o fundo suave e o botão "Ver resposta" (o
-// primeiro em carmim); vindo da Visão geral, a conversa já abre (ou o formulário já vem com o assunto e o título).
+// Solicitações da Área do Cliente (Vitor, 16/10/2026), no layout do protótipo com as peças do nads: o título com Nova
+// solicitação; o card da abertura rápida (assunto, prioridade, título, o pedido, um anexo e Enviar); e a lista, cada
+// solicitação com o selo da situação e o assunto. Com o banco (17/10/2026), sem a Central de documentos, o "Enviar
+// documento" fica aqui. "Melhora mais" de 17/10/2026: a respondida vem primeiro, com o fundo suave e o "Ver resposta" (a
+// primeira em carmim); vindo da Visão geral, ela já abre (ou o formulário já vem com o assunto e o título).
+// Sem chat (11/11/2026: "o chat só fica bom no PC, no celular fica ruim"): aberta, a solicitação mostra os passos
+// (Recebida › Em andamento › Pronta), o pedido e a resposta do escritório, um embaixo do outro, e o "Falar no WhatsApp".
 import { Icone } from '@nads/ui';
 import { useEffect, useId, useRef } from 'react';
-import { ConversaDoChamado } from '../partes/ConversaDoChamado';
 import { useJanelaDeEnvio } from './JanelaDeEnvio';
 import { Vazio } from '../partes/Vazio';
 import { useChamados } from './useChamados';
@@ -21,7 +19,7 @@ export function Chamados(props: DaCasca) {
   const idAnexo = useId();
   const form = useRef<HTMLElement>(null);
   const abrirEnvio = useJanelaDeEnvio(props);
-  // vindo da Visão geral: a conversa pedida aparece na tela; o formulário já preenchido leva o foco ao "O que você precisa"
+  // vindo da Visão geral: a solicitação pedida aparece na tela; o formulário já preenchido leva o foco ao "O que você precisa"
   const { pedido } = vm;
   useEffect(() => {
     if (pedido.chamado) document.getElementById('cli-chamado-' + pedido.chamado)?.scrollIntoView({ block: 'start' });
@@ -29,14 +27,14 @@ export function Chamados(props: DaCasca) {
   }, [pedido]);
   const novo = (
     <button type="button" className="btn" onClick={() => { form.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); document.getElementById('cli-titulo-chamado')?.focus(); }}>
-      <Icone nome="plus" width={16} height={16} />Novo chamado
+      <Icone nome="plus" width={16} height={16} />Nova solicitação
     </button>
   );
   return (
     <>
       <div className="cli-titulo">
         <div>
-          <h1 className="page-title">Solicitações e chamados</h1>
+          <h1 className="page-title">Solicitações</h1>
         </div>
         {props.area.secoes.documentos ? novo : (
           <div className="cli-acoes">
@@ -47,7 +45,7 @@ export function Chamados(props: DaCasca) {
       </div>
 
       <section className="card" ref={form}>
-        <div className="card-head"><h3>Abrir um chamado</h3></div>
+        <div className="card-head"><h3>Nova solicitação</h3></div>
         <div className="cli-form tres">
           <div className="field">
             <label htmlFor="cli-tipo">Assunto</label>
@@ -76,50 +74,58 @@ export function Chamados(props: DaCasca) {
             <input id={idAnexo} type="file" className="sr-only" accept={vm.aceitar} onChange={e => { vm.mudarAnexo(e.target.files?.[0] ?? null); e.target.value = ''; }} />
             {vm.anexo ? <button type="button" className="btn btn-ghost" onClick={() => vm.mudarAnexo(null)}>Tirar</button> : <span className="hint" style={{ margin: 0 }}>Até {vm.limite}</span>}
           </div>
-          <button type="button" className="btn btn-primary" disabled={vm.enviando} onClick={() => void vm.criar()}><Icone nome="seta" width={16} height={16} />Enviar chamado</button>
+          <button type="button" className="btn btn-primary" disabled={vm.enviando} onClick={() => void vm.criar()}><Icone nome="seta" width={16} height={16} />Enviar solicitação</button>
         </div>
       </section>
 
       <section className="card cli-card-tabela">
-        <div className="card-head"><h3>Histórico de chamados</h3><span className="card-head-ctl hint">Atualiza sozinho</span></div>
-        {vm.chamados.length ? (
+        <div className="card-head"><h3>Suas solicitações</h3><span className="card-head-ctl hint">Atualiza sozinho</span></div>
+        {vm.solicitacoes.length ? (
           <ul className="cli-lista">
-            {vm.chamados.map(c => {
-              const ultima = vm.ultimaMensagem(c);
-              const aberta = vm.aberto?.id === c.id;
-              return (
-                <li key={c.id} id={'cli-chamado-' + c.id} className={'cli-chamado' + (c.situacao === 'respondido' ? ' cli-chamado-esperando' : '')}>
-                  <div className="cli-linha">
-                    <div className="cli-linha-txt">
-                      <div className="cli-chamado-topo"><b>{c.titulo}</b><span className={SELO[c.situacao]}>{vm.rotuloDaSituacao[c.situacao]}</span></div>
-                      {ultima && <p className="cli-previa">{ultima.de === 'escritorio' ? 'Escritório: ' : 'Você: '}{ultima.texto.split('\n')[0]}</p>}
-                      <p className="hint">{vm.rotuloDoTipo(c.tipo)} · aberto em {vm.abertoEm(c)}{ultima ? ' · última mensagem ' + vm.quando(ultima.em) : ''}</p>
-                    </div>
-                    <button type="button" className={'btn' + (c.id === vm.primeiroRespondido && !aberta ? ' btn-primary' : '')} aria-expanded={aberta} onClick={() => vm.alternar(c.id)}>
-                      {aberta ? 'Fechar conversa' : c.situacao === 'respondido' ? 'Ver resposta' : 'Ver conversa (' + c.mensagens.length + ')'}
-                    </button>
+            {vm.solicitacoes.map(c => (
+              <li key={c.id} id={'cli-chamado-' + c.id} className={'cli-chamado' + (c.situacao === 'respondido' ? ' cli-chamado-esperando' : '')}>
+                <div className="cli-linha">
+                  <div className="cli-linha-txt">
+                    <div className="cli-chamado-topo"><b>{c.titulo}</b><span className={SELO[c.situacao]}>{c.rotulo}</span></div>
+                    <p className="hint">{c.assunto} · aberta em {c.abertaEm}</p>
                   </div>
-                  {aberta && vm.aberto && (
-                    <div className="cli-conversa-aberta">
-                      <ConversaDoChamado mensagens={vm.aberto.mensagens} />
-                      {vm.aceitaResposta ? (
-                        <>
-                          <div className="field" style={{ margin: '12px 0 0' }}>
-                            <label htmlFor="cli-resposta">Responder</label>
-                            <textarea id="cli-resposta" rows={2} value={vm.resposta} onChange={e => vm.mudarResposta(e.target.value)} />
-                          </div>
-                          <div className="cli-acoes" style={{ justifyContent: 'flex-end', marginTop: 8 }}>
-                            <button type="button" className="btn btn-primary" disabled={vm.enviando || !vm.resposta.trim()} onClick={() => void vm.responder()}>Responder</button>
-                          </div>
-                        </>
-                      ) : <p className="hint" style={{ marginTop: 12 }}>Chamado concluído. Para outro assunto, abra um novo.</p>}
+                  <button type="button" className={'btn' + (c.id === vm.primeiraRespondida && !c.aberta ? ' btn-primary' : '')} aria-expanded={c.aberta} onClick={() => vm.alternar(c.id)}>
+                    {c.aberta ? 'Fechar' : c.situacao === 'respondido' ? 'Ver resposta' : 'Ver solicitação'}
+                  </button>
+                </div>
+                {c.aberta && (
+                  <div className="cli-solicitacao">
+                    {/* os passos: onde a solicitação está */}
+                    <ol className="cli-passos" aria-label="Situação">
+                      {vm.passos.map((p, i) => (
+                        <li key={p} className={i < c.passo ? 'feito' : i === c.passo ? 'atual' : ''} aria-current={i === c.passo ? 'step' : undefined}>
+                          {i === vm.passos.length - 1 && c.passo === i ? c.rotulo : p}
+                        </li>
+                      ))}
+                    </ol>
+                    <div>
+                      <h4>Seu pedido</h4>
+                      <p>{c.pedido}</p>
+                      {c.complementos.map((t, i) => <p key={i} className="cli-complemento">{t}</p>)}
                     </div>
-                  )}
-                </li>
-              );
-            })}
+                    <div>
+                      <h4>Resposta do escritório</h4>
+                      {c.respostas.length
+                        ? c.respostas.map((r, i) => <p key={i}>{r.texto}<span className="hint"> · {r.quando}</span></p>)
+                        : <p className="hint">Ainda sem resposta. Quando o escritório responder, aparece aqui.</p>}
+                    </div>
+                    {/* para conversar, o WhatsApp do escritório, já com o assunto */}
+                    {c.whatsapp && (
+                      <div className="cli-acoes">
+                        <a className="btn" href={c.whatsapp} target="_blank" rel="noreferrer"><Icone nome="celular" width={16} height={16} />Falar no WhatsApp</a>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </li>
+            ))}
           </ul>
-        ) : <Vazio icone="mensagem" titulo="Nenhum chamado ainda" texto="Os pedidos que você abrir aparecem aqui." />}
+        ) : <Vazio icone="mensagem" titulo="Nenhuma solicitação ainda" texto="Os pedidos que você fizer aparecem aqui, com a resposta do escritório." />}
       </section>
     </>
   );

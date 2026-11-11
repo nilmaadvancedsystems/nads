@@ -46,7 +46,7 @@ const PASTAS = ['152 - JANIO JOSE DE ALMEIDA'];
     try { res = await A.executar(Object.assign({}, base, { arquivos: [rel] })); } finally { fs.promises.writeFile = original; }
     const pastaCte = path.join(clientes, PASTAS[0], 'FISCAL', 'SIMPLES NACIONAL', '12. XML', 'CT-e');
     igual('o .zip é um compactado', res.itens[0].acao, 'CONTEINER');
-    igual('todos os de dentro gravados no cliente', nomes.map(n => fs.existsSync(path.join(pastaCte, '10-2026_CT-e_' + n + '.xml'))), nomes.map(() => true));
+    igual('todos os de dentro gravados no cliente', nomes.map(n => fs.existsSync(path.join(pastaCte, '10', '10-2026_CT-e_' + n + '.xml'))), nomes.map(() => true));
     igual('nenhum erro', res.itens.flatMap(i => [i.erro, ...(i.filhos || []).map(f => f.erro)]).filter(Boolean), []);
     igual('o .zip saiu da origem (quarentena)', fs.existsSync(path.join(origem, rel)), false);
     igual('gravou mais de um ao mesmo tempo (até 4)', [maxAbertas > 1, maxAbertas <= 4], [true, true]);

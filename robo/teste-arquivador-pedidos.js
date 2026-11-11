@@ -68,7 +68,7 @@ igual('extrato com o banco no nome', [d.acao, d.destinoRelativo, d.nomeFinal], [
 d = M.decidirManual(entrada('Relatorio.xlsx'), ctx, { codigo: 568, tipoDoc: 'OUTROS', competencia: '2026', por: 'Vitor' });
 igual('outros documentos pelo ano, o nome original', [d.acao, d.destinoRelativo, d.nomeFinal], ['ARQUIVAR', '568 - BRAZILIAN EXEMPLO LTDA\\CONTÁBIL\\OUTROS DOCUMENTOS\\2026', 'Relatorio.xlsx']);
 // a nota recebida em PDF (10/11/2026): a NFS-e tomada em RECEBIDOS\NFS-e TOMADAS, a NF-e em RECEBIDOS\NF-e; sem saber o modelo, solta em RECEBIDOS
-const DOCS568 = '568 - BRAZILIAN EXEMPLO LTDA\\FISCAL\\SIMPLES NACIONAL\\03. DOCUMENTOS FISCAIS\\';
+const DOCS568 = '568 - BRAZILIAN EXEMPLO LTDA\\FISCAL\\SIMPLES NACIONAL\\03. DOCUMENTOS FISCAIS\\09\\';   // (11/11/2026) o fiscal por mês
 igual('nota recebida em PDF: a subpasta pelo modelo do texto (NFS-e tomada, NF-e) e solta quando não se sabe (CT-e, sem texto)',
   [['nfse.pdf', 'PREFEITURA MUNICIPAL\nNOTA FISCAL DE SERVIÇOS ELETRÔNICA - NFS-e'], ['danfe.pdf', 'DANFE\nDOCUMENTO AUXILIAR DA NOTA FISCAL ELETRÔNICA'], ['dacte.pdf', 'DACTE\nCONHECIMENTO DE TRANSPORTE ELETRÔNICO'], ['escaneada.pdf', ' ']]
     .map(([n, t]) => M.decidirManual(entrada(n, { texto: [t] }), ctx, { codigo: 568, tipoDoc: 'NOTA_RECEBIDA', competencia: '2026-09', por: 'Vitor' }).destinoRelativo),

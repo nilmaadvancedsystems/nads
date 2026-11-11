@@ -57,9 +57,10 @@ export function valoresDoLoteQueVao(r: ResultadoComValores, todos: readonly Resu
 
 /**
  * O arquivo é do setor do DP (11/11/2026: "os gmails sejam separados por setor, então envios do fiscal nao devem se envolver
- * com dp e vice versa"): nada da pasta FISCAL do cliente — a DARF INSS que o arquivador guarda em FISCAL/<regime>/DARF é do
- * Fiscal e sai pelo Relatório › Enviar guias. pasta: a pasta do arquivo a partir da do cliente ("DEPARTAMENTO PESSOAL/10/FGTS").
+ * com dp e vice versa"): nada da pasta FISCAL do cliente (a DARF INSS que o arquivador guarda em FISCAL/<regime>/DARF é do
+ * Fiscal e sai pelo Relatório › Enviar guias) nem da CONTÁBIL (o boleto de honorários do escritório sai pelo Financeiro ›
+ * Boletos; "Tira o boleto"). pasta: a pasta do arquivo a partir da do cliente ("DEPARTAMENTO PESSOAL/10/FGTS").
  */
 export function arquivoDoSetorDoDp(pasta: string): boolean {
-  return !/^FISCAL(\/|$)/i.test((pasta || '').trim());
+  return !/^(FISCAL|CONT[ÁA]BIL)(\/|$)/i.test((pasta || '').normalize('NFC').trim());
 }

@@ -47,9 +47,9 @@ export function JanelaDelegar({ vm }: { vm: VmDelegacao }) {
           {vm.modo === 'especificos' && (
             <div className="delegar-grade">
               {vm.contas.map(c => (
-                <label key={c.codigo} className="delegar-conta" title={c.codigo + ' — ' + c.nome}>
+                <label key={c.codigo} className={'delegar-conta' + (vm.comCodigo ? '' : ' sem-codigo')} title={vm.comCodigo ? c.codigo + ' — ' + c.nome : c.nome}>
                   <input type="checkbox" checked={c.marcada} onChange={() => vm.marcar(c.codigo)} />
-                  <span className="num">{c.codigo}</span>
+                  {vm.comCodigo && <span className="num">{c.codigo}</span>}
                   <span className="delegar-conta-nome">{c.nome}</span>
                 </label>
               ))}

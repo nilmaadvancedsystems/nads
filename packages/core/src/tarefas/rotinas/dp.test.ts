@@ -11,8 +11,10 @@ describe('rotina do DP (o Checklist Folha)', () => {
     expect(ROTINA_DP.etapas.map(e => e.obrigacaoDp)).toEqual(['recibos', 'folha', 's1200', 's1210', 's1299', 'dctfweb', 'darf', 'fgts', 'econsignado', 'reinf', 'envio']);
     for (const e of ROTINA_DP.etapas) expect(e.checklist?.length).toBeGreaterThan(0);
   });
-  it('a planilha: 232 clientes, cada um com as obrigações do movimento', () => {
-    expect(CLIENTES_DO_DP).toHaveLength(232);
+  it('a planilha: 233 clientes, cada um com as obrigações do movimento', () => {
+    // 233 com a 614 (CASA VEREDAS BAR LTDA, Sem Movimento; 11/11/2026)
+    expect(CLIENTES_DO_DP).toHaveLength(233);
+    expect(CLIENTES_DO_DP.find(c => c.codigo === 614)).toMatchObject({ nome: 'CASA VEREDAS BAR LTDA', movimento: 'Sem Movimento', obrigacoes: ['s1299', 'dctfweb'] });
     const semMov = CLIENTES_DO_DP.filter(c => c.movimento === 'Sem Movimento');
     expect(semMov.every(c => c.obrigacoes.includes('s1299') && !c.obrigacoes.includes('folha'))).toBe(true);
   });
