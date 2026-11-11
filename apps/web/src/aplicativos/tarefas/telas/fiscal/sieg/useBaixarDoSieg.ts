@@ -28,6 +28,8 @@ export function useBaixarDoSieg() {
   const [aba, setAba] = useState<AbaDaTela>('saidas');
   const [resumoPor, setResumoPor] = useState<ResumoPor>('cfop');
   const [buscaDaNota, setBuscaDaNota] = useState('');
+  // só as canceladas na tabela (11/11/2026: "nas entradas quero ver qual nota foi cancelada")
+  const [soCanceladas, setSoCanceladas] = useState(false);
   const [vendo, setVendo] = useState('');
 
   const empresas = useEmpresasPermitidas().filtrar(repo.listarEmpresas()).filter(e => e.codigo != null);
@@ -44,9 +46,9 @@ export function useBaixarDoSieg() {
   const servico = aba === 'prestados' || aba === 'tomados';
   // o resumo escolhido vale para a aba (serviço só tem NBS; CT-e só CFOP)
   const por: ResumoPor = servico ? 'nbs' : aba === 'ctes' ? 'cfop' : resumoPor === 'nbs' ? 'cfop' : resumoPor;
-  const achadasDaTabela = resumo ? resumo.linhas.filter(l => t.sieg.linhaCombina(l, buscaDaNota)) : [];
+  const achadasDaTabela = resumo ? resumo.linhas.filter(l => (!soCanceladas || l.cancelada) && t.sieg.linhaCombina(l, buscaDaNota)) : [];
 
-  const mudarAba = (a: AbaDaTela) => { setAba(a); setBuscaDaNota(''); };
+  const mudarAba = (a: AbaDaTela) => { setAba(a); setBuscaDaNota(''); setSoCanceladas(false); };
 
   return {
     exemplos: sieg.exemplos,
@@ -69,6 +71,8 @@ export function useBaixarDoSieg() {
     resumoPor: por, setResumoPor,
     grupos: resumo ? (por === 'cst' ? resumo.porCst : por === 'nbs' ? resumo.porNbs : resumo.porCfop) : [],
     buscaDaNota, setBuscaDaNota,
+    /** a tabela só com as canceladas (o filtro aparece quando a aba tem alguma) */
+    soCanceladas: soCanceladas && !!resumo && resumo.canceladas > 0, setSoCanceladas,
     notas: achadasDaTabela.slice(0, NA_TABELA),
     notasFora: Math.max(0, achadasDaTabela.length - NA_TABELA),
     // a nota aberta no espelho (a NFS-e não tem itens nem chave: não abre)

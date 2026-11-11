@@ -16,6 +16,8 @@ import { textoDoErro } from './useJanelaDaParada';
 import { sabeLerGuia } from './useJanelasPequenas';
 
 type Entrega = ReturnType<typeof entregas.entregaDoDocumento>;
+/** a rota aglutinada (uma linha por parada) ligada ou não, neste navegador */
+const CHAVE_AGLUTINAR = 'nads_rota_aglutinar';
 export type CategoriaDaRota = 'paradas' | 'ordem' | 'protocolos' | 'qualidade';
 
 export function useRotaDeEntregas() {
@@ -57,25 +59,38 @@ export function useRotaDeEntregas() {
   const paradas = porParada.size;
   const jaComecou = hoje.lista.some(e => e.status === 'confirmada' && e.confirmadoEm && new Date(e.confirmadoEm).toDateString() === new Date().toDateString());
   const previsao = entregas.previsaoDaRota(entregas.minutosPorParada(hoje.lista), paradas, jaComecou);
+  // aglutinar (11/11/2026: "entregas em rota do mesmo cliente tem que ser aglutinadas"): uma linha por parada; o botão
+  // liga e desliga, e o navegador lembra (ligado de saída)
+  const [aglutinar, setAglutinarAqui] = useState<boolean>(() => { try { return localStorage.getItem(CHAVE_AGLUTINAR) !== 'nao'; } catch { return true; } });
+  const setAglutinar = (v: boolean) => { setAglutinarAqui(v); try { localStorage.setItem(CHAVE_AGLUTINAR, v ? 'sim' : 'nao'); } catch { /* sem armazenamento */ } };
+  const grupos = aglutinar ? entregas.aglutinarParadas(visiveis, porId) : visiveis.map(e => ({ chave: e.id, entregas: [e] }));
   const vistas = new Set<string>();
-  const linhas = visiveis.map((e, i) => {
+  const linhas = grupos.map((g, i) => {
+    const e = g.entregas[0];
     const c = e.clienteId ? porId.get(e.clienteId) : null;
-    const total = entregas.totalDosItens(e.itens);
     const chave = entregas.chaveDaParada(e, porId);
     const doParada = porParada.get(chave) || [e];
     const primeira = !vistas.has(chave);
     vistas.add(chave);
     const nomes = [...new Set(doParada.map(x => x.clienteNome || '?'))];
-    const doCliente = lembretes.filter(l => l.clienteId && l.clienteId === e.clienteId);
+    const daLinha = new Set(g.entregas.map(x => x.clienteId).filter(Boolean));
+    const doCliente = lembretes.filter(l => l.clienteId && daLinha.has(l.clienteId));
+    const juntas = primeira && doParada.length > 1 ? {
+      n: doParada.length, titulo: nomes.join(' + '), lista: doParada,
+      dica: 'Assinar as ' + doParada.length + ' entregas desta parada juntas' + (entregas.totalDaParada(doParada) > 0 ? ' · ' + entregas.dinheiro(entregas.totalDaParada(doParada)) : '') + (nomes.length > 1 ? ' (' + nomes.join(' + ') + ')' : ''),
+    } : null;
+    // aglutinada: a linha é a parada inteira e "Assinar" assina todas juntas
+    const aglutinada = g.entregas.length > 1;
     return {
       e, posicao: i + 1,
-      sub: entregas.rotuloDaCompetencia(e.competencia) + ' · ' + entregas.textoDosItens(e.itens) + (total > 0 ? ' · ' + entregas.dinheiro(total) : '') + (e.zona ? ' · ' + entregas.rotuloDaZona(e.zona) : ''),
+      titulo: aglutinada ? [...new Set(g.entregas.map(x => x.clienteNome || '?'))].join(' + ') : e.clienteNome,
+      quantas: g.entregas.length,
+      tentativa: Math.max(...g.entregas.map(x => x.tentativa)),
+      sub: entregas.textoDaParadaAglutinada(g.entregas),
       aviso: entregas.avisoDaParada(e, c),
       lembretes: doCliente.length, lembretesTexto: doCliente.map(l => l.texto).join(' · '),
-      juntas: primeira && doParada.length > 1 ? {
-        n: doParada.length, titulo: nomes.join(' + '), lista: doParada,
-        dica: 'Assinar as ' + doParada.length + ' entregas desta parada juntas' + (entregas.totalDaParada(doParada) > 0 ? ' · ' + entregas.dinheiro(entregas.totalDaParada(doParada)) : '') + (nomes.length > 1 ? ' (' + nomes.join(' + ') + ')' : ''),
-      } : null,
+      juntas: aglutinada ? null : juntas,
+      assinar: () => (aglutinada ? janelas.abrir({ tipo: 'juntas', titulo: nomes.join(' + '), entregas: g.entregas }) : janelas.abrir({ tipo: 'parada', entrega: e })),
     };
   });
   async function salvarOrdem(ids: string[]) {
@@ -87,6 +102,27 @@ export function useRotaDeEntregas() {
       avisar(textoDoErro(err, 'Não foi possível salvar a nova ordem.'), 'erro');
     } finally {
       setOrdemNaTela(null);
+    }
+  }
+  // organizar pela ordem fixa (11/11/2026: "cade a opcão de organizar pela rota fixa?"): o arrastar grava a ordem da rota
+  // inteira e a ordem fixa deixa de valer; isto refaz pela ordem fixa (e a proximidade) e grava. Só o admin, que monta a fixa
+  const [organizando, setOrganizando] = useState(false);
+  async function organizarPelaFixa() {
+    if (organizando) return;
+    const ok = await retorno.modal({
+      icone: 'list', titulo: 'Organizar pela ordem fixa?',
+      texto: 'As ' + naRota.lista.length + ' paradas voltam para a ordem fixa de cada região (quem não está nela entra perto da parada mais próxima). O que foi arrastado à mão se perde.',
+      botoes: [{ rotulo: 'Organizar', valor: true, variante: 'btn-primary' }, { rotulo: 'Cancelar', valor: false }],
+    });
+    if (ok !== true) return;
+    setOrganizando(true);
+    try {
+      const r = await repo.reordenar(entregas.ordemPelaRotaFixa(naRota.lista, fixa, porId));
+      avisar(r.soAsMinhas ? 'Só as suas paradas mudaram de ordem; as de outras pessoas ficaram como estavam.' : 'Rota organizada pela ordem fixa.', r.soAsMinhas ? 'erro' : 'ok');
+    } catch (err) {
+      avisar(textoDoErro(err, 'Não foi possível organizar a rota.'), 'erro');
+    } finally {
+      setOrganizando(false);
     }
   }
   const vencimentos = entregas.vencimentosDaRota(naRota.lista);
@@ -167,6 +203,8 @@ export function useRotaDeEntregas() {
     quantas: naRota.lista.length,
     previsao,
     adicionarARota: () => navegar(caminhoDaPagina('entregas', 'nova')),
+    organizarPelaFixa: admin && entregas.temOrdemFixa(fixa) && naRota.lista.length > 1 ? () => void organizarPelaFixa() : null,
+    organizando,
     decimoDoDp: t.parcelaDoMes() ? { aberto: decimoAberto, abrir: () => setDecimoAberto(true), fechar: () => setDecimoAberto(false) } : null,
     lerGuia: sabeLerGuia() ? () => janelas.abrir({ tipo: 'lerGuia' }) : null,
     protocoloDaRota() {
@@ -181,12 +219,14 @@ export function useRotaDeEntregas() {
     linhas,
     abrirParada: (e: Entrega) => janelas.abrir({ tipo: 'parada', entrega: e }),
     abrirJuntas: (titulo: string, lista: Entrega[]) => janelas.abrir({ tipo: 'juntas', titulo, entregas: lista }),
-    /** arrastar: a ordem da tela muda enquanto o dedo anda */
-    arrastarPara(id: string, para: number) { setOrdemNaTela(entregas.moverPara(visiveis.map(e => e.id), id, para)); },
+    aglutinar, alternarAglutinar: () => setAglutinar(!aglutinar),
+    /** arrastar: a ordem da tela muda enquanto o dedo anda (aglutinada, a parada vai inteira) */
+    arrastarPara(id: string, para: number) { setOrdemNaTela(aglutinar ? entregas.moverParadaAglutinada(grupos, id, para) : entregas.moverPara(visiveis.map(e => e.id), id, para)); },
     soltar() { if (ordemNaTela) void salvarOrdem(ordemNaTela); },
     /** Alt+↑/↓ no puxador */
     moverComTeclado(id: string, passo: -1 | 1) {
-      const ids = entregas.moverNaRota(visiveis.map(e => e.id), id, passo);
+      const i = grupos.findIndex(g => g.entregas[0].id === id);
+      const ids = aglutinar ? entregas.moverParadaAglutinada(grupos, id, i + passo) : entregas.moverNaRota(visiveis.map(e => e.id), id, passo);
       setOrdemNaTela(ids);
       void salvarOrdem(ids);
     },

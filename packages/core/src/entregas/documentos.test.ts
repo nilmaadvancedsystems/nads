@@ -13,7 +13,8 @@ import {
 import {
   avaliarLocalDaEntrega, avisoDaParada, chaveDaParada, diasAte, estadoDaOrdemFixa, fechamentoDoDia, janelaDoPeriodo, minutosPorParada, moverNaRota,
   moverPara, obrigacoesDoMes, ordemComAsVisiveis, ordemCompletaDaRota, ordenarParadas, ordenarPendentes, previsaoDaRota, projecaoDoLink, protocolosVisiveis,
-  qualidadeDaRota, rotaPadraoDoEstado, textoPrazo, vencimentosDaRota, OBRIGACOES_PADRAO, linkDeRotaDoDocumento,
+  qualidadeDaRota, rotaPadraoDoEstado, textoPrazo, vencimentosDaRota, OBRIGACOES_PADRAO, linkDeRotaDoDocumento, ordemPelaRotaFixa, temOrdemFixa,
+  aglutinarParadas, textoDaParadaAglutinada, moverParadaAglutinada,
 } from './rotaDeEntregas';
 import {
   comprovanteDaConfirmacao, dadosDaConfirmacao, dadosDaEdicao, dadosDaEntregaNova, dadosDaNovaTentativa, dadosDoLote, faltasNaConfirmacao, faltasNaEntrega,
@@ -428,6 +429,35 @@ describe('rota', () => {
     const e = estadoDaOrdemFixa({ zonas: { a: 'central', b: 'central', c: 'superior', z: 'central' }, ordem: { a: 2, b: 1, c: 1, z: 3 } }, id => id !== 'z');
     expect(e).toEqual({ superior: ['c'], central: ['b', 'a'], inferior: [] });
     expect(rotaPadraoDoEstado(e)).toEqual({ zonas: { c: 'superior', b: 'central', a: 'central' }, ordem: { c: 1, b: 1, a: 2 } });
+  });
+  it('aglutinar: uma linha por parada, os meses de cada uma e mover a parada inteira (11/11/2026)', () => {
+    const vizinho = cliente('c7', 'VIZINHO', { grupoLocal: 'c2' });
+    const m = new Map([[A.id, A], [B.id, B], [vizinho.id, vizinho]]);
+    const l = [
+      entrega('a1', { clienteId: 'c1', clienteNome: '1 - ALFA', competencia: '2026-10', itens: [{ tipo: 'DAE ICMS', valor: 100 }, { tipo: 'DAS', valor: 50 }], zona: 'superior' }),
+      entrega('b1', { clienteId: 'c2', clienteNome: '2 - BETA', competencia: '2026-11', itens: [{ tipo: 'FGTS', valor: 10 }] }),
+      entrega('a2', { clienteId: 'c1', clienteNome: '1 - ALFA', competencia: '2026-09', itens: [{ tipo: 'DAE ICMS', valor: 25.5 }] }),
+      entrega('v1', { clienteId: 'c7', clienteNome: '7 - VIZINHO', competencia: '2026-11', itens: [{ tipo: 'DARF', valor: 1 }] }),
+    ];
+    const g = aglutinarParadas(l, m);
+    expect(g.map(x => x.entregas.map(e => e.id))).toEqual([['a1', 'a2'], ['b1', 'v1']]);
+    expect(textoDaParadaAglutinada(g[0].entregas).replace(/\s/g, ' ')).toBe('outubro/2026 · DAE ICMS, DAS · setembro/2026 · DAE ICMS · R$ 175,50 · Parte superior');
+    // BETA vai para a frente levando o vizinho; ALFA vai junta para trás
+    expect(moverParadaAglutinada(g, 'b1', 0)).toEqual(['b1', 'v1', 'a1', 'a2']);
+  });
+  it('organizar pela ordem fixa esquece o que foi arrastado (11/11/2026)', () => {
+    const fixa = { zonas: { c1: 'superior', c2: 'superior', c3: 'central' }, ordem: { c1: 2, c2: 1, c3: 1 } };
+    // alguém arrastou: c3 primeiro, c1 depois, c2 por último; c9 não está na ordem fixa (entra no fim, por quem entrou primeiro)
+    const l = [
+      entrega('p3', { clienteId: 'c3', zona: 'central', ordemRota: 0 }), entrega('p1', { clienteId: 'c1', zona: 'superior', ordemRota: 1 }),
+      entrega('p1b', { clienteId: 'c1', zona: 'superior', ordemRota: 3, criadoEm: '2026-10-02T10:00:00Z' }), entrega('p2', { clienteId: 'c2', zona: 'superior', ordemRota: 2 }),
+      entrega('p9', { clienteId: 'c9', zona: 'inferior', ordemRota: 4 }),
+    ];
+    expect(ordenarPendentes(l, fixa, new Map()).map(e => e.id)).toEqual(['p3', 'p1', 'p2', 'p1b', 'p9']);
+    // a superior primeiro (c2, c1 e as duas do c1 juntas), depois a central, depois quem não está na ordem fixa
+    expect(ordemPelaRotaFixa(l, fixa, new Map())).toEqual(['p2', 'p1', 'p1b', 'p3', 'p9']);
+    expect(temOrdemFixa(fixa)).toBe(true);
+    expect(temOrdemFixa({ zonas: {}, ordem: {} })).toBe(false);
   });
   it('os protocolos do período, a busca e o fechamento do dia', () => {
     expect(janelaDoPeriodo('2026-10-16', '2026-10-15')).toMatchObject({ de: '2026-10-15', ate: '2026-10-16' });

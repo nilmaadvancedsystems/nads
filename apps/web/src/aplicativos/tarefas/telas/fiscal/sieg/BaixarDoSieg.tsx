@@ -155,6 +155,11 @@ function Notas({ vm }: { vm: VmBaixarDoSieg }) {
         <h3 className="fc-cartao-titulo">Notas</h3>
         <span className="fc-contagem">{quantas(r.quantidade, 'nota', 'notas')}{' · ' + textoDasCanceladas(r.canceladas, r.valorCanceladas)}</span>
         <span className="fc-acoes">
+          {/* qual nota foi cancelada (11/11/2026): o filtro só com as canceladas, quando a aba tem alguma */}
+          {r.canceladas > 0 && (
+            <Segmentado valor={vm.soCanceladas ? 'canceladas' : 'todas'} onMudar={v => vm.setSoCanceladas(v === 'canceladas')}
+              opcoes={[{ valor: 'todas', rotulo: 'Todas' }, { valor: 'canceladas', rotulo: 'Canceladas (' + r.canceladas + ')' }]} />
+          )}
           <label className="busca-curta fc-busca">
             <Icone nome="search" width={16} height={16} />
             <input type="text" placeholder="Número, nome ou valor" aria-label="Buscar a nota" value={vm.buscaDaNota} onChange={e => vm.setBuscaDaNota(e.target.value)} />
@@ -193,7 +198,7 @@ function Notas({ vm }: { vm: VmBaixarDoSieg }) {
                 </tr>
               );
             })}
-            {!vm.notas.length && <tr><td colSpan={colunas} className="hint">Nenhuma nota com essa busca.</td></tr>}
+            {!vm.notas.length && <tr><td colSpan={colunas} className="hint">{vm.soCanceladas ? 'Nenhuma cancelada com essa busca.' : 'Nenhuma nota com essa busca.'}</td></tr>}
           </tbody>
         </table>
       </div>
