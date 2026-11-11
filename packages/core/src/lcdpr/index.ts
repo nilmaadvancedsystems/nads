@@ -7,7 +7,7 @@ export { MODELOS, configPadrao, itemEmBranco } from './padrao';
 export {
   HISTORICO_SEM_REGRA, aplicarCategoria, aplicarModelo, aplicarRegraNosPendentes, categoriaDaConta, classificarCte, classificarNota, cpfCnpjFormatado,
   gruposParaRevisar, lancamentoDoDocumento, lancamentosVisiveis, ncmCompleto, ncmDoLancamento, porData, regraNoFiltro, regraQuePega, regraSugerida,
-  soDigitos, umaLinha, type DocumentoDoSieg, type GrupoParaRevisar,
+  semEntidades, soDigitos, umaLinha, type DocumentoDoSieg, type GrupoParaRevisar,
 } from './classificar';
 export { dataBr, dataDaCelula, fretesDoCte, lerRelatorio, linhasDoArquivo, notasDoDetalhamento, numeroDaCelula, numeroDoDocumento, serieNormal, tipoDoRelatorio, type LeituraDoRelatorio, type TipoDeRelatorio } from './relatorios';
 export { ABA_DA_PLANILHA, COLUNAS_DA_PLANILHA, NOME_DA_PLANILHA, linhasDaPlanilha, planilhaDoLcdpr } from './planilha';

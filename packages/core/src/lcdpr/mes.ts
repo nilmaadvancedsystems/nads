@@ -4,7 +4,7 @@
 // conta de pagamento (a Conta Credora da planilha: o Caixa ou um banco do produtor) escolhidas. A conta escolhida fica
 // lembrada por fornecedor: o próximo lançamento dele já vem com ela.
 import { bancosCitados, marcaDoBanco } from '../extratudo/conversor/regras/arquivo';
-import { soDigitos } from './classificar';
+import { semEntidades, soDigitos } from './classificar';
 import type { ConfigLcdpr, ContaDoPlano, Lancamento, OrigemDaRegra, OrigemDoDocumento } from './tipos';
 
 /** Um arquivo (ou um "Puxar do SIEG") lido no mês: quantos entraram, o que deu errado e quais lançamentos vieram dele (o Desfazer). */
@@ -57,10 +57,10 @@ export function lancamentoGuardado(v: unknown): Lancamento | null {
   const origem: OrigemDoDocumento = o.origem === 'CTe' || o.origem === 'Manual' ? o.origem : 'NF';
   const origemRegra = REGRAS.includes(o.origemRegra as OrigemDaRegra) ? (o.origemRegra as OrigemDaRegra) : 'Nenhuma';
   return {
-    id, origem, data: texto(o.data, 10), documento: texto(o.documento, 60), cnpj: soDigitos(o.cnpj), fornecedor: texto(o.fornecedor, 200),
+    id, origem, data: texto(o.data, 10), documento: texto(o.documento, 60), cnpj: soDigitos(o.cnpj), fornecedor: semEntidades(texto(o.fornecedor, 200)),
     categoria: texto(o.categoria, 200), contaDeved: texto(o.contaDeved, 30), contaCred: texto(o.contaCred, 30), codHist: texto(o.codHist, 30),
-    historico: texto(o.historico, 600), valor: numero(o.valor), imovel: texto(o.imovel, 30), tipoDoc: texto(o.tipoDoc, 30), tipoLanc: texto(o.tipoLanc, 30),
-    produto: texto(o.produto, 600), ncm: texto(o.ncm, 300), revisar: o.revisar === true, origemRegra,
+    historico: semEntidades(texto(o.historico, 600)), valor: numero(o.valor), imovel: texto(o.imovel, 30), tipoDoc: texto(o.tipoDoc, 30), tipoLanc: texto(o.tipoLanc, 30),
+    produto: semEntidades(texto(o.produto, 600)), ncm: texto(o.ncm, 300), revisar: o.revisar === true, origemRegra,
     ...(texto(o.chave, 60) ? { chave: texto(o.chave, 60) } : {}),
   };
 }

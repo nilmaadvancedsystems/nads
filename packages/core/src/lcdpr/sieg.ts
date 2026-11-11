@@ -4,7 +4,7 @@
 // emitiu foi o comprador: é venda do produtor) fica de fora, como no relatório — e os CT-e que o produtor tomou (o frete
 // que ele pagou). O produto, a IE da fazenda e a entrada só vêm no resumo 6 em diante: o resumo de antes pede baixar de novo.
 import type { NotaDoSieg, NotasSieg } from '../tarefas/sieg';
-import { lancamentoDoDocumento, ncmCompleto, soDigitos, type DocumentoDoSieg } from './classificar';
+import { lancamentoDoDocumento, ncmCompleto, semEntidades, soDigitos, type DocumentoDoSieg } from './classificar';
 import { dataDaCelula, numeroDoDocumento } from './relatorios';
 import type { ConfigLcdpr, Lancamento } from './tipos';
 
@@ -20,8 +20,8 @@ const ehNota = (n: NotaDoSieg) => n.tipo === 'NF-e' || n.tipo === 'NFC-e';
 function documentoDaNota(n: NotaDoSieg): DocumentoDoSieg {
   const itens = n.itens || [];
   return {
-    documento: numeroDoDocumento(n.numero, n.serie), fornecedor: n.emitente.nome, cnpj: soDigitos(n.emitente.doc), valor: Number(n.valor) || 0,
-    data: dataDaCelula(n.data), ieDest: n.ieDest || '', produto: n.produto || '', chave: n.chave || undefined,
+    documento: numeroDoDocumento(n.numero, n.serie), fornecedor: semEntidades(n.emitente.nome), cnpj: soDigitos(n.emitente.doc), valor: Number(n.valor) || 0,
+    data: dataDaCelula(n.data), ieDest: n.ieDest || '', produto: semEntidades(n.produto || ''), chave: n.chave || undefined,
     ncm: [...new Set(itens.map(i => ncmCompleto(i.ncm)).filter(Boolean))].join(', '),
     linhas: itens.map(i => ({ ncm: i.ncm, valor: Number(i.valor) || 0 })),
   };
@@ -29,7 +29,7 @@ function documentoDaNota(n: NotaDoSieg): DocumentoDoSieg {
 
 /** O frete de um CT-e tomado pelo produtor. */
 const documentoDoFrete = (n: NotaDoSieg): DocumentoDoSieg => ({
-  documento: numeroDoDocumento(n.numero, n.serie), fornecedor: n.emitente.nome, cnpj: soDigitos(n.emitente.doc), valor: Number(n.valor) || 0,
+  documento: numeroDoDocumento(n.numero, n.serie), fornecedor: semEntidades(n.emitente.nome), cnpj: soDigitos(n.emitente.doc), valor: Number(n.valor) || 0,
   data: dataDaCelula(n.data), ieDest: '', produto: '', ncm: '', linhas: [], chave: n.chave || undefined,
 });
 

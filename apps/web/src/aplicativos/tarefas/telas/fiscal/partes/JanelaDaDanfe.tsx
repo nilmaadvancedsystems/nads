@@ -1,6 +1,7 @@
 // A DANFE idêntica à original numa janela (11/11/2026, no LCDPR: "a danfe que tem que ficar identica a danfe original"):
-// o PDF desenhado do XML (o mesmo do robô, medido dos PDFs do portal do SIEG) ocupa a janela; no topo, baixar o PDF e o
-// XML. Enquanto o robô busca a nota, o andamento; sem a nota, o motivo e o "Tentar de novo". Esc fecha.
+// o PDF desenhado do XML (o mesmo do robô, medido dos PDFs do portal do SIEG) aparece como a folha, branca sobre o cinza,
+// na largura da janela; no topo, o zoom (−, +, ajustar) e baixar o PDF e o XML. Sem o leitor de PDF do navegador (a barra
+// de impressão e as miniaturas; 11/11/2026: "coloca o vizualizador de verdade nao esse trem de impressao"). Enquanto o robô busca a nota, o andamento; sem a nota, o motivo e o "Tentar de novo". Esc fecha.
 import type { tarefas as t } from '@nads/core';
 import { BotaoFechar, Icone, useJanela } from '@nads/ui';
 import { useRef } from 'react';
@@ -16,13 +17,27 @@ export function JanelaDaDanfe({ nota, codigo, competencia, fechar }: { nota: t.s
         <header className="registro-topo">
           <span className="registro-caminho"><Icone nome="recibo" />DANFE<Icone nome="chevronRight" /><b>{vm.titulo}</b><span className="fraco">{vm.emitente}</span></span>
           <span className="danfe-pdf-acoes">
-            <button type="button" className="btn btn-outline" disabled={!vm.url} onClick={vm.baixarPdf}><Icone nome="download" />PDF</button>
-            <button type="button" className="btn btn-outline" disabled={!vm.url} onClick={vm.baixarXml}><Icone nome="download" />XML</button>
+            {vm.pronta && (
+              <span className="danfe-zoom" role="group" aria-label="Zoom">
+                <button type="button" className="btn btn-ghost" aria-label="Diminuir" title="Diminuir" onClick={vm.menos}>−</button>
+                <button type="button" className="btn btn-ghost danfe-zoom-valor" title="Ajustar à largura" onClick={vm.ajustar}>{vm.rotuloDoZoom}</button>
+                <button type="button" className="btn btn-ghost" aria-label="Aumentar" title="Aumentar" onClick={vm.mais}>+</button>
+              </span>
+            )}
+            <button type="button" className="btn btn-outline" disabled={!vm.pronta} onClick={vm.baixarPdf}><Icone nome="download" />PDF</button>
+            <button type="button" className="btn btn-outline" disabled={!vm.pronta} onClick={vm.baixarXml}><Icone nome="download" />XML</button>
           </span>
           <BotaoFechar onClick={fechar} />
         </header>
         <div className="danfe-pdf-corpo">
-          {vm.url ? <iframe className="danfe-pdf" src={vm.url + '#view=FitH'} title={'DANFE ' + vm.titulo} />
+          {vm.pronta ? (
+            <div className={'danfe-folhas' + (vm.zoom === 'largura' ? ' ajustada' : '')}>
+              {vm.folhas.map((f, k) => (
+                <img key={f} src={f} alt={'DANFE ' + vm.titulo + ', folha ' + (k + 1)} className="danfe-folha"
+                  style={vm.zoom === 'largura' ? undefined : { width: (vm.zoom * 8.27) + 'px' }} />
+              ))}
+            </div>
+          )
             : vm.erro ? (
               <div className="danfe-pdf-aviso">
                 <Icone nome="alert" />

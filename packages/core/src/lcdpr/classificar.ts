@@ -187,5 +187,13 @@ export function regraNoFiltro(r: RegraNcm, filtro: string): boolean {
   return [r.prefixo, r.conta, r.codHist, r.historico].some(v => String(v || '').toUpperCase().includes(q)) || (/^\d+$/.test(q) && !!pref && q.startsWith(pref));
 }
 
+/** As entidades do XML que o resumo do SIEG guarda como vieram ("ALVES &amp; ALVES" → "ALVES & ALVES"; &#233; → é). */
+export function semEntidades(s: string): string {
+  return String(s ?? '').replace(/&(#x[0-9a-f]+|#\d+|amp|lt|gt|quot|apos);/gi, (m, e: string) => {
+    if (e[0] === '#') { const n = e[1] === 'x' || e[1] === 'X' ? parseInt(e.slice(2), 16) : Number(e.slice(1)); return Number.isFinite(n) && n > 0 && n < 0x110000 ? String.fromCodePoint(n) : m; }
+    return ({ amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" } as Record<string, string>)[e.toLowerCase()] ?? m;
+  });
+}
+
 /** O texto de uma linha nova não pode ter quebra: o histórico vai numa linha só do arquivo do LCDPR. */
 export const umaLinha = (s: string) => String(s ?? '').replace(/\s*\n\s*/g, ' ');

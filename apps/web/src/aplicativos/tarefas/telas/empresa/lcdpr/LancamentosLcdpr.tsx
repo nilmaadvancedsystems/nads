@@ -1,6 +1,6 @@
 // LCDPR › Lançamentos (o "Importar e conferir" do lcdpr.html) no desenho do nads: sem lançamento, o vazio com o escolher
 // os relatórios do SIEG; com eles, o resumo com a barra ("dá pra exportar?") e o Baixar planilha .xls, a barra (Todos /
-// Só REVISAR, a seleção com o Classificar como, a busca e importar mais), os grupos do que falta revisar, a lista (a
+// Só REVISAR, a seleção com o Classificar como, a busca e importar mais), a lista (a
 // categoria muda na própria linha; clicar na linha abre o lançamento) e os arquivos lidos no mês, com o Desfazer.
 // Desde 11/11/2026: no topo, o mês (a situação e quando foi salvo), o "Puxar do SIEG" e o "Novo lançamento" (a janela no
 // jeito do Alterdata); na lista, a conta de pagamento de cada linha (o Caixa ou um banco) e o "Pagar com" da seleção; e
@@ -115,23 +115,6 @@ export function LancamentosLcdpr() {
               rotulo="Importar mais relatórios do SIEG" />
           </div>
           {vm.lendo && <p className="registro-dica nf-exemplos"><Icone nome="clock" />{vm.lendo}</p>}
-
-          {vm.grupos.length > 0 && (
-            <div className="nf-exemplos">
-              <Alerta naLinha titulo={vm.grupos.length + ' grupo(s) para classificar'} texto="Mesmo NCM e mesmo fornecedor quase sempre é a mesma conta: escolha a categoria uma vez para o grupo.">
-                <ul className="imp-recebidos">
-                  {vm.grupos.map(g => (
-                    <li key={g.chave}>
-                      <span className="imp-recebidos-nome"><b>{g.fornecedor}</b><span className="hint">{g.detalhe}</span></span>
-                      <select className="select-compact lanc-sel" value="" aria-label={'Categoria para ' + g.fornecedor} onChange={e => vm.classificarGrupo(g.chave, e.target.value)}>
-                        {opcoes('Escolher a categoria…')}
-                      </select>
-                    </li>
-                  ))}
-                </ul>
-              </Alerta>
-            </div>
-          )}
 
           <div className="table-wrap lcdpr-tabela">
             <table className="cad-lista lcdpr-lancamentos">

@@ -5,7 +5,7 @@ import type { NotaDoSieg, NotasSieg } from '../tarefas/sieg';
 import {
   aplicarAutomatico, aplicarContaCredora, aplicarHistoricoPadrao, comContaDosFornecedores, configPadrao, contasDaPesquisa, historicosDaPesquisa, imoveisDaPesquisa,
   lancamentoDoRascunho, mudarNoRascunho, nomeNaPesquisa, pesquisar, problemasDoRascunho, rascunhoDoLancamento, rascunhoNovo, contasDePagamento, contasDoDocumento, documentoDoMes, juntarNoMes, lembrarContas, lerDoSieg,
-  linhasDaPlanilha, marcaDaConta, mesDoDocumento, notaDoLancamento, mesVazio, proximoIdDoMes, resumoServeParaOLcdpr, rotuloDaConta, situacaoDoMes, type Lancamento,
+  linhasDaPlanilha, marcaDaConta, mesDoDocumento, notaDoLancamento, semEntidades, mesVazio, proximoIdDoMes, resumoServeParaOLcdpr, rotuloDaConta, situacaoDoMes, type Lancamento,
 } from '.';
 
 const ids = () => { let n = 1; return () => n++; };
@@ -52,6 +52,15 @@ describe('as notas puxadas do SIEG', () => {
     const doRelatorio = { origem: 'NF' as const, documento: '124/2', cnpj: '11.222.333/0001-81' };
     expect(notaDoLancamento(doRelatorio, res)?.chave).toBe('K2');
     expect([notaDoLancamento({ ...doRelatorio, origem: 'CTe' }, res), notaDoLancamento({ ...doRelatorio, origem: 'Manual' }, res), notaDoLancamento(a, null)]).toEqual([null, null, null]);
+  });
+
+  it('o nome com as entidades do XML sai limpo (no SIEG e no que já estava guardado no mês)', () => {
+    const r = lerDoSieg(resumo([nfe({ emitente: { doc: posto.doc, nome: 'ALVES &amp; ALVES BATERIAS LTDA' }, produto: 'BATERIA 12V &#8211; 60A' })]), configPadrao(), ids());
+    expect([r.lancamentos[0].fornecedor, r.lancamentos[0].produto]).toEqual(['ALVES & ALVES BATERIAS LTDA', 'BATERIA 12V – 60A']);
+    expect(r.lancamentos[0].historico).toContain('ALVES & ALVES BATERIAS LTDA');
+    const guardado = mesDoDocumento({ lancamentos: [{ ...lanc({ id: 1 }), fornecedor: 'A &amp; B', historico: 'Pela compra - A &amp; B' }] }, 62, '2026-10').lancamentos[0];
+    expect([guardado.fornecedor, guardado.historico]).toEqual(['A & B', 'Pela compra - A & B']);
+    expect([semEntidades('R&D &copy; &#x41;&#0;'), semEntidades('')]).toEqual(['R&D &copy; A&#0;', '']);
   });
 
   it('a nota sem itens (o resumo grande demais) vai para REVISAR e avisa; o resumo antigo não serve', () => {

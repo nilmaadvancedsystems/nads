@@ -1,6 +1,6 @@
 // ViewModel de LCDPR › Lançamentos (o "Importar e conferir" do lcdpr.html): ler os relatórios do SIEG (vários de uma
-// vez; cada arquivo lido fica na lista com o Desfazer), o quanto já está classificado, a busca e o "só REVISAR" (com os
-// grupos de mesmo NCM e fornecedor para decidir de uma vez), a categoria de cada linha e da seleção (com o Desfazer), a
+// vez; cada arquivo lido fica na lista com o Desfazer), o quanto já está classificado, a busca e o "só REVISAR" (os
+// grupos de mesmo NCM e fornecedor saíram em 11/11/2026: "pra que isso?"), a categoria de cada linha e da seleção (com o Desfazer), a
 // regra de NCM sugerida depois de classificar à mão e baixar a planilha .xls.
 // Desde 11/11/2026 ("precisa que tenha um controle mes a mes de cada um das coisas importadas pois preciso poder alterar a
 // conta que vai lancar optando pelos bancos de carlos lucas e caixa"; "também quero que puxe do sieg"): tudo é do MÊS
@@ -169,10 +169,6 @@ export function useLancamentosLcdpr() {
       temNota: !!lcdpr.notaDoLancamento(l, notas.dados),
       selecionado: s.selecionados.has(l.id),
     })),
-    /** os grupos do que falta revisar (só com o "só REVISAR" ligado) */
-    grupos: s.soRevisar ? lcdpr.gruposParaRevisar(lancs).map(g => ({
-      chave: g.chave, fornecedor: g.fornecedor, detalhe: (g.ncm ? 'NCM ' + g.ncm + '… · ' : '') + g.ids.length + ' nota(s) · ' + formatos.reais(g.valor),
-    })) : [],
     importacoes: s.importacoes.map(i => ({
       id: i.id, arquivo: i.arquivo, em: dataHora(i.em), erro: i.erro,
       resultado: i.erro || i.quantos + ' lançamento(s)' + (i.repetidos ? ' · ' + i.repetidos + ' já estavam' : ''),
@@ -276,13 +272,6 @@ export function useLancamentosLcdpr() {
     },
     /** a conta de pagamento de uma linha */
     escolherConta: (id: number, conta: string) => pagarCom([id], conta),
-    /** a mesma categoria para um grupo inteiro do que falta revisar */
-    classificarGrupo(chave: string, categoria: string) {
-      const g = lcdpr.gruposParaRevisar(lerSessao().lancamentos).find(x => x.chave === chave);
-      if (!g) return;
-      const feitos = classificar(g.ids, categoria);
-      if (feitos[0]) void talvezVirarRegra(feitos[0]);
-    },
 
     // a seleção
     selecionados: s.selecionados.size,
