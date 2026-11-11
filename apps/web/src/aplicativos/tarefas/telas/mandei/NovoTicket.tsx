@@ -1,6 +1,6 @@
 // O Novo ticket da Central (11/11/2026): o ticket avulso a partir de um modelo, num cartão em cima da lista. Só desenha:
 // o estado e o Mandar vêm do useNovoTicket.
-import { Icone } from '@nads/ui';
+import { Icone, MenuSuspenso, SeletorMes } from '@nads/ui';
 import { useNovoTicket } from './useNovoTicket';
 
 export function NovoTicket({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (id: string) => void }) {
@@ -22,17 +22,26 @@ export function NovoTicket({ aoFechar, aoCriar }: { aoFechar: () => void; aoCria
           ))}
         </div>
         <div className="mandei-novo-grade">
+          {/* a empresa pela busca (11/11/2026: "pesquisa ruim"): o botão abre o campo com o nome ou o código e a lista */}
           <div className="field" style={{ margin: 0 }}>
-            <label htmlFor="nt-empresa">Empresa</label>
-            <select id="nt-empresa" value={vm.nome} onChange={e => vm.setNome(e.target.value)}>
-              <option value="">Escolha a empresa</option>
-              {vm.empresas.map(e => <option key={e.valor} value={e.valor}>{e.rotulo}</option>)}
-            </select>
+            <label>Empresa</label>
+            <MenuSuspenso rotulo={vm.empresa || 'Escolher a empresa'} icone="briefcase" className="btn btn-outline nt-empresa" largura={420} conteudo={fechar => (
+              <div className="imp-cert-busca">
+                <input type="text" className="pessoal-select" autoFocus placeholder="Nome ou código" value={vm.busca} onChange={e => vm.setBusca(e.target.value)} aria-label="Buscar empresa" />
+                {vm.achadas.map(e => (
+                  <button key={e.codigo + e.nome} type="button" className="popover-item" onClick={() => { vm.escolherEmpresa(e.nome); fechar(); }}>
+                    <span className="num fraco">{e.codigo}</span><span className="popover-texto">{e.nome}</span>
+                  </button>
+                ))}
+                {!vm.achadas.length && <span className="hint" style={{ padding: '4px 8px' }}>Nenhuma empresa com esse nome ou código.</span>}
+              </div>
+            )} />
           </div>
+          {/* o mês pela peça do catálogo (11/11/2026: "competência fora dos componentes") */}
           {vm.mensal && (
             <div className="field" style={{ margin: 0 }}>
-              <label htmlFor="nt-mes">Mês</label>
-              <input id="nt-mes" type="month" value={vm.competencia} onChange={e => vm.setCompetencia(e.target.value)} />
+              <label>Mês</label>
+              <SeletorMes rotulo="Mês" valor={vm.competencia} onMudar={vm.setCompetencia} />
             </div>
           )}
           <div className="field" style={{ margin: 0 }}>
@@ -73,7 +82,7 @@ export function NovoTicket({ aoFechar, aoCriar }: { aoFechar: () => void; aoCria
           <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>
             {vm.erro && <span className="hint">{vm.erro}</span>}
             <button type="button" className="btn" onClick={aoFechar}>Cancelar</button>
-            <button type="button" className="btn btn-primary" disabled={!!vm.erro} onClick={vm.mandar}><Icone nome="caixaEntrada" />Mandar pelo Mandei</button>
+            <button type="button" className="btn btn-primary" disabled={!!vm.erro || vm.mandando} onClick={() => void vm.mandar()}><Icone nome="caixaEntrada" />Mandar pelo Mandei</button>
           </span>
         </div>
         <p className="hint" style={{ margin: 0 }}>"Pedir arquivo" dá ao cliente: Envio o arquivo, Não tenho este mês ou Outro. "Pergunta" pede a resposta por escrito.</p>

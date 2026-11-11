@@ -335,11 +335,15 @@ thead th{position:sticky;top:0;z-index:1;background:var(--surface-2);text-align:
    a tabela rola de lado */
 .table-wrap.mandei-linhas{overflow:visible;max-height:none;}
 @media (max-width:940px){.table-wrap.mandei-linhas{overflow:auto;position:relative;}}
+/* a Central de tickets e as Solicitações (11/11/2026: "tem 2 barras"): a lista cresce com o que abre embaixo da linha; só a página rola (no celular, a tabela ainda rola de lado) */
+.table-wrap.mandei-central{max-height:none;}
 /* a Central do Mandei (11/11/2026): os botões da revisão de cada resposta, e as notas internas e o histórico lado a lado */
 .mandei-acao{min-height:28px;height:28px;padding:0 10px;font-size:var(--fs-12);gap:6px;}
 .mandei-acao svg{width:14px;height:14px;}
 .mandei-rodape{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start;}
 @media (max-width:760px){.mandei-rodape{grid-template-columns:1fr;}}
+/* o botão da empresa do Novo ticket (11/11/2026): na largura do campo, o nome à esquerda */
+.btn.nt-empresa{width:100%;justify-content:flex-start;text-align:left;}
 .mandei-novo-grade{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;}
 .mandei-historico{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:var(--fs-13,13px);}
 tbody td{padding:8px 16px;border-top:1px solid var(--border-muted);font-variant-numeric:tabular-nums;vertical-align:middle;}
@@ -4388,6 +4392,10 @@ button.cofre-pessoa:hover{background:var(--hover-bg);}
 .sieg-contagem .alerta-linha{margin:0;}
 /* os botões do SIEG alinhados à esquerda, com o conteúdo */
 .sieg-contagem .sieg-acoes{grid-column:1/-1;justify-content:flex-start;}
+/* a escolha XML | PDF | XML e PDF (11/11/2026) na mesma linha dos botões: sem a margem de baixo do .steps (que a subia) e
+   sem quebrar as opções */
+.sieg-acoes .steps{margin:0;flex-wrap:nowrap;flex:none;}
+.sieg-acoes .step-pill{min-height:32px;}
 /* Gmail: a linha com mais informação, os filtros e os grupos do dia (14/10/2026: "vamos trabalhar na ui do gmail") */
 .gm-quem{display:flex;align-items:center;gap:8px;}
 .gm-quem b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;}

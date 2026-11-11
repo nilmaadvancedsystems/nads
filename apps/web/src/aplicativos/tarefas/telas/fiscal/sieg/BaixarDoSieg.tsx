@@ -15,6 +15,8 @@ import { useBaixarDoSieg, type AbaDaTela, type VmBaixarDoSieg } from './useBaixa
 const brl = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const reais = (n: number) => 'R$ ' + brl(n);
 const quantas = (n: number, um: string, varios: string) => n + ' ' + (n === 1 ? um : varios);
+/** as canceladas sempre à vista (11/11/2026: "Sim, sempre"), com o valor delas, que fica fora do total */
+const textoDasCanceladas = (n: number, valor: number) => (n ? quantas(n, 'cancelada', 'canceladas') + ' (' + reais(valor) + ')' : 'nenhuma cancelada');
 /** o número ou o traço (zero não diz nada na coluna dos impostos) */
 const ouTraco = (n: number) => (n ? brl(n) : <span className="fraco">—</span>);
 const peloTeclado = (fazer: () => void) => (e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fazer(); } };
@@ -62,15 +64,16 @@ export function BaixarDoSieg() {
 /** os números do mês: as notas de cada lado e os impostos que elas trazem */
 function Numeros({ vm }: { vm: VmBaixarDoSieg }) {
   const a = vm.painel!.abas;
-  const canceladas = (n: number) => (n ? ' · ' + quantas(n, 'cancelada', 'canceladas') : '');
+  // as canceladas com o valor delas (11/11/2026), que fica fora do total
+  const canceladas = (n: number, valor: number) => ' · ' + textoDasCanceladas(n, valor);
   return (
     <>
       <div className="stat-grid fin-numeros sieg-numeros">
-        <Stat grande={false} rotulo="Saídas" valor={reais(a.saidas.valor)} sub={quantas(a.saidas.quantidade, 'nota', 'notas') + canceladas(a.saidas.canceladas)} />
-        <Stat grande={false} rotulo="Entradas" valor={reais(a.entradas.valor)} sub={quantas(a.entradas.quantidade, 'nota', 'notas') + canceladas(a.entradas.canceladas)} />
-        <Stat grande={false} rotulo="Serviços prestados" valor={reais(a.prestados.valor)} sub={quantas(a.prestados.quantidade, 'nota', 'notas') + canceladas(a.prestados.canceladas)} />
-        <Stat grande={false} rotulo="Serviços tomados" valor={reais(a.tomados.valor)} sub={quantas(a.tomados.quantidade, 'nota', 'notas') + canceladas(a.tomados.canceladas)} />
-        <Stat grande={false} rotulo="CT-e" valor={reais(a.ctes.valor)} sub={quantas(a.ctes.quantidade, 'conhecimento', 'conhecimentos') + canceladas(a.ctes.canceladas)} />
+        <Stat grande={false} rotulo="Saídas" valor={reais(a.saidas.valor)} sub={quantas(a.saidas.quantidade, 'nota', 'notas') + canceladas(a.saidas.canceladas, a.saidas.valorCanceladas)} />
+        <Stat grande={false} rotulo="Entradas" valor={reais(a.entradas.valor)} sub={quantas(a.entradas.quantidade, 'nota', 'notas') + canceladas(a.entradas.canceladas, a.entradas.valorCanceladas)} />
+        <Stat grande={false} rotulo="Serviços prestados" valor={reais(a.prestados.valor)} sub={quantas(a.prestados.quantidade, 'nota', 'notas') + canceladas(a.prestados.canceladas, a.prestados.valorCanceladas)} />
+        <Stat grande={false} rotulo="Serviços tomados" valor={reais(a.tomados.valor)} sub={quantas(a.tomados.quantidade, 'nota', 'notas') + canceladas(a.tomados.canceladas, a.tomados.valorCanceladas)} />
+        <Stat grande={false} rotulo="CT-e" valor={reais(a.ctes.valor)} sub={quantas(a.ctes.quantidade, 'conhecimento', 'conhecimentos') + canceladas(a.ctes.canceladas, a.ctes.valorCanceladas)} />
       </div>
       <div className="stat-grid fin-numeros sieg-numeros">
         <Stat grande={false} rotulo="ICMS das saídas" valor={reais(a.saidas.icms)} sub={'Nas entradas ' + reais(a.entradas.icms)} />
@@ -150,7 +153,7 @@ function Notas({ vm }: { vm: VmBaixarDoSieg }) {
     <section className="card fc-cartao">
       <header className="fc-cartao-topo">
         <h3 className="fc-cartao-titulo">Notas</h3>
-        <span className="fc-contagem">{quantas(r.quantidade, 'nota', 'notas')}{r.canceladas > 0 && ' · ' + quantas(r.canceladas, 'cancelada', 'canceladas')}</span>
+        <span className="fc-contagem">{quantas(r.quantidade, 'nota', 'notas')}{' · ' + textoDasCanceladas(r.canceladas, r.valorCanceladas)}</span>
         <span className="fc-acoes">
           <label className="busca-curta fc-busca">
             <Icone nome="search" width={16} height={16} />

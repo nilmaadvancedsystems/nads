@@ -1,28 +1,26 @@
 // ViewModel do formulário do cliente (Mandei, Vitor, 07/10/2026): o ticket do link (só o que o cliente precisa ver),
 // as respostas de cada linha do item (Vitor, 08/10/2026: "ela responde por linha"; o item sem linhas responde inteiro:
 // escolher, digitar) e os arquivos anexados. Vale até o fim do prazo do link; vencido, ou
-// com o ticket resolvido, não aceita mais nada. Por enquanto com os dados de exemplo (comum/mandeiExemplo.ts).
+// com o ticket resolvido, não aceita mais nada.
 // 11/11/2026: o rascunho salva sozinho (o cliente volta pelo link e continua de onde parou, como no Content Snare); o
 // que o escritório pediu de novo aparece com o motivo; a revisão avisa do comprovante que a resposta pede e não veio.
+// E o banco ("liga ao banco"): o documento do link vem do repositório (dados/formulario.ts), no banco ou no exemplo.
 import { mandei as m } from '@nads/core';
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router';
-import { exemplo, MAIOR_ARQUIVO_NO_EXEMPLO } from '../../../comum/mandeiExemplo';
+import { repoDoFormulario, type EstadoDoFormulario } from '../dados/formulario';
 
-const lerComoDataUrl = (f: File) => new Promise<string>((ok, falha) => {
-  const r = new FileReader();
-  r.onload = () => ok(String(r.result));
-  r.onerror = () => falha(r.error);
-  r.readAsDataURL(f);
-});
+const repo = repoDoFormulario;
+const motivo = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
 const dataBR = (iso: string) => { const d = new Date(iso); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear(); };
 
 export function useFormulario() {
   const { codigo = '' } = useParams();
-  useSyncExternalStore(exemplo.assinar, exemplo.versao, exemplo.versao);
-  const t = codigo ? exemplo.doLink(codigo) : null;
-  const valido = !!t && m.linkValido(t, codigo, new Date());
+  const [estado, setEstado] = useState<EstadoDoFormulario>({ carregado: false, doc: null, erro: '' });
+  useEffect(() => repo.assinar(codigo, setEstado), [codigo]);
+  const d = estado.doc;
+  const valido = !!d && m.docValido(d, new Date());
   const [respostas, setRespostas] = useState<Record<string, m.RespostaDoItem>>({});
   const [enviado, setEnviado] = useState(false);
   // um cliente por vez (o passo); depois do último, a revisão
@@ -30,37 +28,44 @@ export function useFormulario() {
   const [erro, setErro] = useState('');
   const [salvoEm, setSalvoEm] = useState('');
 
-  // abriu o link: fica marcado (a central vê "Aberto")
+  const [enviando, setEnviando] = useState(false);
+  // os arquivos subindo agora (o nome; some quando o banco confirma)
+  const [subindo, setSubindo] = useState<string[]>([]);
+
+  // abriu o link: fica marcado (a central vê "Aberto"), uma vez
+  const marcouAberto = useRef(false);
   useEffect(() => {
-    const atual = codigo ? exemplo.doLink(codigo) : null;
-    if (atual && m.linkValido(atual, codigo, new Date()) && !atual.links.find(l => l.codigo === codigo)?.abertoEm) exemplo.gravar(m.linkAberto(atual, codigo, new Date()));
-  }, [codigo]);
+    if (marcouAberto.current || !d || !valido || d.abertoEm) return;
+    marcouAberto.current = true;
+    void repo.abriu(codigo).catch(() => { /* sem marcar: a central só não vê "Aberto" */ });
+  }, [codigo, d, valido]);
 
   // o rascunho: cada resposta guarda sozinha, meio segundo depois da última mudança
+  const docAtual = useRef(d);
+  docAtual.current = d;
   useEffect(() => {
     if (!Object.keys(respostas).length) return;
     const espera = setTimeout(() => {
-      const atual = exemplo.doLink(codigo);
-      if (!atual || !m.linkValido(atual, codigo, new Date())) return;
+      const atual = docAtual.current;
+      if (!atual || !m.docValido(atual, new Date())) return;
       const agora = new Date();
-      exemplo.gravar(m.salvarRascunho(atual, respostas, agora));
-      setSalvoEm(String(agora.getHours()).padStart(2, '0') + ':' + String(agora.getMinutes()).padStart(2, '0'));
+      void repo.rascunho(codigo, { ...atual.respostas, ...respostas }).then(
+        () => setSalvoEm(String(agora.getHours()).padStart(2, '0') + ':' + String(agora.getMinutes()).padStart(2, '0')),
+        e => setErro(motivo(e)));
     }, 500);
     return () => clearTimeout(espera);
   }, [respostas, codigo]);
 
-  const vista = t ? m.vistaDoCliente(t) : null;
+  const vista = d ? m.vistaDoDoc(d) : null;
   const resposta = (id: string): m.RespostaDoItem => respostas[id] ?? vista?.respostas[id] ?? {};
 
   async function anexar(chave: string, fs: File[]) {
     setErro('');
     for (const f of fs) {
-      const atual = exemplo.doLink(codigo);
-      if (!atual || !m.linkValido(atual, codigo, new Date())) return;
-      if (f.size > MAIOR_ARQUIVO_NO_EXEMPLO) { setErro(f.name + ': maior que 2 MB (no exemplo).'); continue; }
-      const id = 'arq-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-      if (!exemplo.guardarArquivo(id, await lerComoDataUrl(f))) { setErro(f.name + ': não coube neste navegador.'); continue; }
-      exemplo.gravar(m.comArquivo(atual, { id, nome: f.name, tamanho: f.size, itemId: chave, enviadoEm: new Date().toISOString(), status: 'na-fila' }));
+      if (!docAtual.current || !m.docValido(docAtual.current, new Date())) return;
+      if (f.size > repo.maiorArquivo) { setErro(f.name + ': maior que ' + repo.limite + '.'); continue; }
+      setSubindo(s => [...s, f.name]);
+      try { await repo.anexar(codigo, chave, f); } catch (e) { setErro(motivo(e)); } finally { setSubindo(s => s.filter(x => x !== f.name)); }
     }
   }
 
@@ -110,7 +115,7 @@ export function useFormulario() {
   const dias = vista ? Math.max(0, Math.ceil((new Date(vista.validoAte).getTime() - Date.now()) / 86400000)) : 0;
 
   return {
-    codigo, existe: !!t, valido, enviado, erro,
+    codigo, carregando: !estado.carregado, existe: !!d, valido, enviado, erro: erro || estado.erro, enviando, subindo,
     quantos: itens.length, respondidos, dias,
     /** a hora em que o rascunho foi guardado ('' = ainda não mexeu) */
     salvoEm,
@@ -128,10 +133,11 @@ export function useFormulario() {
     escrever: (chave: string, texto: string) => setRespostas(r => ({ ...r, [chave]: { ...resposta(chave), texto } })),
     anexar: (chave: string, fs: File[]) => { void anexar(chave, fs); },
     enviar: () => {
-      const atual = exemplo.doLink(codigo);
-      if (!atual || !m.linkValido(atual, codigo, new Date()) || pendente >= 0) return;
-      exemplo.gravar(m.responder(atual, { ...atual.respostas, ...respostas }, new Date()));
-      setEnviado(true);
+      const atual = docAtual.current;
+      if (!atual || !m.docValido(atual, new Date()) || pendente >= 0 || enviando) return;
+      setEnviando(true);
+      setErro('');
+      void repo.enviar(codigo, { ...atual.respostas, ...respostas }).then(() => setEnviado(true), e => setErro(motivo(e))).finally(() => setEnviando(false));
     },
     voltar: () => { setEnviado(false); setPasso(0); },
   };

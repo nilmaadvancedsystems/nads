@@ -22,7 +22,7 @@ function formatoGuardado(): FormatoDoSieg {
 }
 
 /** Os passos de cada pedido; o passo da vez sai do status e do andamento que o robô grava. */
-function passosDe(tipo: Janela, p: PedidoSieg | null): { passos: string[]; atual: number; pct: number } {
+function passosDe(tipo: Janela, p: PedidoSieg | null, formato: FormatoDoSieg = 'ambos'): { passos: string[]; atual: number; pct: number } {
   if (tipo === 'contagem') {
     const passos = ['Pedido enviado ao robô', 'O robô pegou o pedido', 'Contando as notas emitidas no SIEG', 'Contando as notas recebidas no SIEG', 'Pronto'];
     const atual = !p ? 0 : p.status === 'pendente' ? 1 : p.status === 'processando' ? (p.andamento === 'recebidas' ? 3 : 2) : p.status === 'concluido' ? 4 : 0;
@@ -31,7 +31,7 @@ function passosDe(tipo: Janela, p: PedidoSieg | null): { passos: string[]; atual
   // a ordem (08/10/2026: "seja entregue para a pessoa o zip dos XML, depois que ele introduza esses XML no sistema (nads),
   // depois que ele salve no drive"): o .zip, as notas no nads, o Drive
   const a = p ? p.andamento : '';
-  const passos = ['Pedido enviado ao robô', 'O robô pegou o pedido', 'Baixando os XMLs do SIEG', 'O .zip no seu computador', 'Lendo as notas no nads', 'Salvando na pasta do cliente no Drive', 'Pronto'];
+  const passos = ['Pedido enviado ao robô', 'O robô pegou o pedido', formato === 'xml' ? 'Baixando os XMLs do SIEG' : 'Baixando as notas do SIEG e fazendo os PDFs', 'O .zip no seu computador', 'Lendo as notas no nads', 'Salvando na pasta do cliente no Drive', 'Pronto'];
   // a fase que o robô grava (08/10/2026); sem ela (o robô antigo), pelo texto do andamento
   const PELA_FASE = { baixando: 2, entregando: 3, nads: 4, drive: 5, pronto: 6 } as const;
   const fase = p?.fase ? PELA_FASE[p.fase] : /^Salvando/.test(a) ? 5 : /^Lendo/.test(a) ? 4 : /^Entregando/.test(a) ? 3 : 2;
@@ -59,6 +59,9 @@ export function useSiegDaEtapa(tipo: 'contagem' | 'saidas', codigo: string, comp
   // o pedido que já estava no banco no clique (31/10/2026: a janela abria como "pronta" com o resultado de antes, e o
   // .zip do pedido anterior baixava sozinho antes do novo)
   const [antesDoPedido, setAntesDoPedido] = useState('');
+  // o formato do clique (11/11/2026: "apertei para puxar pdf, não xml" e a janela dizia "Baixando os XMLs")
+  const [formatoDoPedido, setFormatoDoPedido] = useState<FormatoDoSieg>(formatoGuardado);
+  const oQue = formatoDoPedido === 'xml' ? 'XMLs' : formatoDoPedido === 'pdf' ? 'PDFs' : 'XMLs e PDFs';
   // a nota aberta no espelho (23/10/2026: "conferir as danfe direto pelo app")
   const [vendo, setVendo] = useState('');
   // o relógio da janela (o tempo passado e o que falta), de segundo em segundo enquanto o robô trabalha
@@ -76,14 +79,14 @@ export function useSiegDaEtapa(tipo: 'contagem' | 'saidas', codigo: string, comp
     return () => clearInterval(r);
   }, [trabalhando]);
   const andamento = janela ? (() => {
-    const { passos, atual, pct } = passosDe(janela, pJanela);
+    const { passos, atual, pct } = passosDe(janela, pJanela, formatoDoPedido);
     const driveAndando = janela === 'xmls' && pJanela?.status === 'concluido' && pJanela.drive && !pJanela.drive.pronto ? pJanela.drive : null;
     const pronto = atual === passos.length - 1;
     return {
       titulo: janela === 'contagem'
         ? (pronto ? 'Contagem pronta' : 'Contando no SIEG')
-        : (pronto ? 'XMLs baixados' : 'Baixando os XMLs do SIEG'),
-      tituloDoErro: janela === 'contagem' ? 'A contagem não deu certo' : 'Os XMLs não vieram',
+        : (pronto ? oQue + ' baixados' : 'Baixando os ' + oQue + ' do SIEG'),
+      tituloDoErro: janela === 'contagem' ? 'A contagem não deu certo' : 'Os ' + oQue + ' não vieram',
       erro: pJanela?.status === 'erro' ? pJanela.erro || 'o robô não conseguiu' : '',
       pronto, pct,
       /** a janela do "Baixar XMLs" (mostra o "Baixar o .zip") */
@@ -151,6 +154,7 @@ export function useSiegDaEtapa(tipo: 'contagem' | 'saidas', codigo: string, comp
     if (!codigo || (qual === 'contagem' ? contando : baixandoXmls)) return;
     setAntesDoPedido((qual === 'contagem' ? pedidoContagem : pedidoXmls)?.id || '');
     setJanela(qual);
+    if (qual === 'xmls') setFormatoDoPedido(formato);
     try { await (qual === 'contagem' ? repo.pedirContagem(codigo, competencia) : repo.pedirXmls(codigo, competencia)); }
     catch (err) { setJanela(null); toast('Não consegui pedir ao SIEG: ' + (err instanceof Error ? err.message : String(err))); }
   }

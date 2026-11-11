@@ -8,7 +8,7 @@ export function BotaoDoEnvio({ envio }: { envio: EnvioDoMesVM }) {
   if (!envio.questoes.length) return null;
   const para = [envio.contato.email, envio.contato.whatsapp && 'o WhatsApp ' + envio.contato.whatsapp].filter(Boolean).join(' e ');
   return (
-    <button type="button" className="btn btn-primary" disabled={envio.faltaNoCadastro.length > 0 || envio.jaMandado} onClick={envio.mandar}
+    <button type="button" className="btn btn-primary" disabled={envio.faltaNoCadastro.length > 0 || envio.jaMandado || envio.mandando} onClick={() => void envio.mandar()}
       title={envio.faltaNoCadastro.length ? 'Falta no Cadastro da empresa: ' + envio.faltaNoCadastro.join(' e ') : 'Mandar para ' + para}>
       <Icone nome={envio.jaMandado ? 'check' : 'caixaEntrada'} />{envio.jaMandado ? 'Mandado pelo Mandei' : 'Mandar pelo Mandei'}
     </button>

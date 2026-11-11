@@ -1,63 +1,115 @@
-// Os tickets do Mandei para a Tarefa (a central e a etapa que cria). Por enquanto com os dados de exemplo
-// (comum/mandeiExemplo.ts: neste navegador, o e-mail simulado); com a regra do banco publicada pelo Vitor, entra o
-// repositório do Entregas (os tickets na coleção do escritório, o e-mail pelo robô, os arquivos pelo robô do Drive).
+// Os tickets do Mandei para a Tarefa (a central, as etapas que criam e o Novo ticket). Dois repositórios com as mesmas
+// funções (11/11/2026, "liga ao banco"):
+//   - no banco (mandei.firestore.ts): os tickets no Entregas, o formulário do cliente em ticketsLinks, o e-mail pelo robô
+//     (solicitacoesEmail, tipo 'mandei') e os arquivos pelo enviosSecretario (o robô grava no Drive);
+//   - nos dados de exemplo (comum/mandeiExemplo.ts): neste navegador, o e-mail só marcado como enviado.
+// A regra (o ticket, os links, a revisão) está no @nads/core (mandei); aqui, onde guardar e o pedido do e-mail.
 import { mandei as m } from '@nads/core';
 import { useSyncExternalStore } from 'react';
 import { codigoNovo, exemplo } from '../../../comum/mandeiExemplo';
+import { noBanco, quemPede } from './fonte';
+import { criarMandeiFirestore } from './mandei.firestore';
+
+export interface RepoMandei {
+  /** true = os dados de exemplo (neste navegador; o e-mail não sai) */
+  exemplo: boolean;
+  assinar(f: () => void): () => void;
+  versao(): number;
+  /** os tickets já com o que o cliente fez nos links (as respostas, os arquivos, quando abriu) */
+  tickets(): m.Ticket[];
+  /** cria o ticket com o 1º link e pede o e-mail */
+  criar(d: m.DadosDoTicket): Promise<m.Ticket>;
+  /** grava o que a equipe mudou (aceitar, a nota) */
+  gravar(t: m.Ticket): Promise<void>;
+  /** um link novo no ticket (o 2º ou o da volta): o formulário dele, o de antes fechado e o e-mail. false = alguém já fez */
+  novoLink(antes: m.Ticket, depois: m.Ticket): Promise<boolean>;
+  /** resolve: grava e fecha o link (o cliente não grava mais nada) */
+  resolver(t: m.Ticket, por: string): Promise<void>;
+  apagar(id: string): Promise<void>;
+  /** o arquivo para baixar: no exemplo, o guardado neste navegador; no banco, null (está no Drive: ArquivoDoTicket.local) */
+  arquivo(a: m.ArquivoDoTicket): string | null;
+  /** o endereço do formulário do link */
+  urlDoLink(codigo: string): string;
+}
+
+/** O e-mail com o link, nos dados de exemplo: só marca como enviado. */
+const enviadoNoExemplo = (t: m.Ticket, agora: Date) => m.linkEnviado(t, m.linkAtual(t).codigo, agora, 'exemplo');
+
+function criarMandeiMemoria(): RepoMandei {
+  return {
+    exemplo: true,
+    assinar: exemplo.assinar, versao: exemplo.versao, tickets: exemplo.tickets,
+    async criar(d) {
+      const agora = new Date();
+      const t = enviadoNoExemplo(exemplo.criar(d, codigoNovo(), agora), agora);
+      exemplo.gravar(t);
+      return t;
+    },
+    async gravar(t) { exemplo.gravar(t); },
+    async novoLink(antes, depois) {
+      const atual = exemplo.tickets().find(x => x.id === antes.id);
+      if (!atual || atual.links.length !== antes.links.length) return false;
+      exemplo.gravar(enviadoNoExemplo(depois, new Date()));
+      return true;
+    },
+    async resolver(t, por) { exemplo.gravar(m.resolver(t, por, new Date())); },
+    async apagar(id) { exemplo.apagar(id); },
+    arquivo: a => exemplo.arquivo(a.id),
+    urlDoLink: codigo => window.location.origin + '/mandei/' + codigo,
+  };
+}
+
+let repo: RepoMandei | null = null;
+export function repoDoMandei(): RepoMandei {
+  if (!repo) repo = noBanco ? criarMandeiFirestore(codigoNovo, quemPede) : criarMandeiMemoria();
+  return repo;
+}
 
 /** Os tickets, sempre a versão mais nova. */
 export function useTicketsDoMandei(): m.Ticket[] {
-  useSyncExternalStore(exemplo.assinar, exemplo.versao, exemplo.versao);
-  return exemplo.tickets();
+  const r = repoDoMandei();
+  useSyncExternalStore(r.assinar, r.versao, r.versao);
+  return r.tickets();
 }
 
-/** O endereço do formulário (no exemplo, neste mesmo site; no banco, o mandei-nilma). */
-export const urlDoLink = (codigo: string) => window.location.origin + '/mandei/' + codigo;
-
-/** O e-mail com o link: no exemplo, só marca como enviado (no banco, o pedido ao robô de e-mail do Entregas). */
-function enviarLink(t: m.Ticket, l: m.LinkDoTicket, agora: Date): m.Ticket {
-  return m.linkEnviado(t, l.codigo, agora, 'exemplo');
-}
+/** O endereço do formulário (no exemplo, neste mesmo site; no banco, o site do cliente). */
+export const urlDoLink = (codigo: string) => repoDoMandei().urlDoLink(codigo);
 
 /** Cria o ticket e manda o 1º link. */
-export function criarTicket(d: m.DadosDoTicket, agora = new Date()): m.Ticket {
-  const t = exemplo.criar(d, codigoNovo(), agora);
-  const enviado = enviarLink(t, t.links[0], agora);
-  exemplo.gravar(enviado);
-  return enviado;
-}
+export function criarTicket(d: m.DadosDoTicket): Promise<m.Ticket> { return repoDoMandei().criar(d); }
 
 /** O 1º link venceu sem arquivo: gera o 2º e manda (uma vez). */
-export function gerarSegundoLink(t: m.Ticket, agora = new Date()) {
+export async function gerarSegundoLink(t: m.Ticket, agora = new Date()): Promise<void> {
   const novo = m.comSegundoLink(t, codigoNovo(), agora);
-  if (novo === t) return;
-  exemplo.gravar(enviarLink(novo, m.linkAtual(novo), agora));
+  if (novo !== t) await repoDoMandei().novoLink(t, novo);
 }
 
-export function gravarTicket(t: m.Ticket) { exemplo.gravar(t); }
+export function gravarTicket(t: m.Ticket): Promise<void> { return repoDoMandei().gravar(t); }
+
+export function resolverTicket(t: m.Ticket, por: string): Promise<void> { return repoDoMandei().resolver(t, por); }
 
 /**
  * Pede de novo ao cliente as respostas marcadas, com o motivo de cada uma (11/11/2026): o ticket ganha o link da volta
- * (3 dias úteis) e o e-mail sai com ele. Devolve o ticket gravado (o mesmo, se nada valeu).
+ * (3 dias úteis) e o e-mail sai com ele. Devolve o ticket novo (o mesmo, se nada valeu).
  */
-export function pedirDeNovoAoCliente(t: m.Ticket, pedidos: { chave: string; motivo: string }[], por: string, agora = new Date()): m.Ticket {
+export async function pedirDeNovoAoCliente(t: m.Ticket, pedidos: { chave: string; motivo: string }[], por: string, agora = new Date()): Promise<m.Ticket> {
   const novo = m.pedirDeNovo(t, pedidos, por, codigoNovo(), agora);
   if (novo === t) return t;
-  const enviado = enviarLink(novo, m.linkAtual(novo), agora);
-  exemplo.gravar(enviado);
-  return enviado;
+  if (!await repoDoMandei().novoLink(t, novo)) throw new Error('O ticket mudou enquanto você revisava. Abra de novo e confira.');
+  return novo;
 }
 
-/** O arquivo para baixar (no exemplo, guardado neste navegador; no banco, do Drive pelo robô). */
-export function arquivoParaBaixar(a: m.ArquivoDoTicket): string | null { return exemplo.arquivo(a.id); }
+/** O arquivo para baixar (no exemplo, guardado neste navegador; no banco, null: está no Drive). */
+export function arquivoParaBaixar(a: m.ArquivoDoTicket): string | null { return repoDoMandei().arquivo(a); }
 
 /** Os dados de exemplo (neste navegador): o e-mail não sai de verdade. */
-export const MANDEI_NO_EXEMPLO = true;
+export const mandeiNoExemplo = () => repoDoMandei().exemplo;
 
 // ─── o ⚡ do modo desenvolvedor (Vitor, 07/10/2026): simular o caminho do ticket sem esperar os prazos ──────────
+// Só nos dados de exemplo (no banco, o modo desenvolvedor não grava nada).
 
 /** Um ticket de teste (empresa 9999, três itens), como se tivesse saído do Clientes › Envio. */
-export function criarTicketDeTeste(por: string): m.Ticket {
+export function criarTicketDeTeste(por: string): Promise<m.Ticket> {
   return criarTicket({
     empresa: { nome: 'PERSONALY COMPANY', codigo: 9999 }, para: { nome: 'Cliente de teste', email: 'teste@exemplo.com' },
     assunto: 'Clientes em aberto — teste', mensagem: 'Ticket de teste do modo desenvolvedor: pode responder à vontade.',

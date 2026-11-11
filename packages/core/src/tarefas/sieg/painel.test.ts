@@ -27,6 +27,9 @@ describe('o painel do SIEG', () => {
   it('separa as notas nas abas e não soma as canceladas', () => {
     expect(p.abas.saidas.quantidade).toBe(2);
     expect(p.abas.saidas.canceladas).toBe(1);
+    // o valor das canceladas (11/11/2026), fora do total
+    expect(p.abas.saidas.valorCanceladas).toBe(999);
+    expect(p.abas.entradas.valorCanceladas).toBe(0);
     expect(p.abas.saidas.linhas).toHaveLength(3);
     expect(p.abas.saidas.valor).toBe(2300);
     expect(p.abas.saidas.icms).toBe(324.1);
