@@ -2,4 +2,5 @@
 // cartão (D Cartão de Crédito / C Banco), no dia em que o banco pagou. TypeScript puro.
 export * from './regras/fatura';
 export * from './regras/lancamentos';
+export * from './regras/razao';
 export { planilhaDeImportacao, TIPO_XLS, type LinhaDeImportacao } from '../creditor/arquivos/gerar';

@@ -3,10 +3,13 @@
 // dia em que o banco pagou a fatura (o débito com o valor dela no extrato já importado no Extrator). A conta do cartão é
 // perguntada uma vez (como no Creditor) e fica no Cadastro; a do banco é a conta contábil do banco no Cadastro.
 // O período é o da Tarefa, à risca: fatura paga fora dele avisa e fica de fora. As faturas ficam só na tela.
+// Com o razão do cartão (Vitor, 11/11/2026: "como está no razão correto, monta para mim"): cada compra é conferida com ele
+// (a nota no crédito do título, o pagamento já lançado) e sai só o que falta; a compra sem nota vai D Caixa / C Cartão.
 import { cartoes, empresas, extrator as x, formatos, tarefas } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import workerDoPdf from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import { useState, useSyncExternalStore } from 'react';
+import { useGuardado } from '../../../../../../comum/guardado';
 import { useParametrosDaEtapa } from '../../../../telas/executor/etapas/ponte';
 import { nomeDoLote } from '../../../../../../comum/importarNoAlterdata';
 import { repoDoCadastro } from '../../../dados/cadastro';
@@ -42,6 +45,10 @@ export function useCompras(empresa: empresas.EmpresaDoEscritorio) {
   const plano = usePlano(empresa.nome);
   const [lidas, setLidas] = useState<FaturaLida[]>([]);
   const [lendo, setLendo] = useState(false);
+  // o razão do cartão (o XLS da conciliação do Alterdata), guardado por empresa e período
+  const [razaoGuardado, setRazao] = useGuardado<{ arquivo: string; razao: tarefas.RazaoDaConta } | null>('cartoes-razao|' + empresa.nome + '|' + meses.join(','), null);
+  // a conta do caixa (a compra sem nota): a escolhida aqui; sem, a "Caixa" do plano
+  const [caixaEscolhido, setCaixa] = useGuardado<string>('cartoes-caixa|' + empresa.nome, '');
   // a conta do banco escolhida aqui quando o banco não tem conta contábil no Cadastro (só nesta tela)
   const [bancoEscolhido, setBancoEscolhido] = useState<Record<string, string>>({});
 
@@ -62,6 +69,13 @@ export function useCompras(empresa: empresas.EmpresaDoEscritorio) {
       setLendo(false);
     }
     if (novas.length) setLidas(atual => [...atual.filter(a => !novas.some(n => n.id === a.id)), ...novas].sort((a, b) => a.fatura.vencimento.localeCompare(b.fatura.vencimento)));
+  }
+
+  function importarRazao(f: File | null) {
+    if (!f) return;
+    void f.arrayBuffer().then(buf => {
+      setRazao({ arquivo: f.name, razao: tarefas.lerRazaoDoArquivo(buf, f.name) });
+    }).catch((e: unknown) => aviso({ tom: 'erro', titulo: 'Não consegui ler o razão', texto: e instanceof Error ? e.message : String(e) }));
   }
 
   // o extrato do banco já importado no Extrator, nos meses em volta de cada vencimento
@@ -114,9 +128,35 @@ export function useCompras(empresa: empresas.EmpresaDoEscritorio) {
   });
 
   const validas = faturas.filter(f => f.noPeriodo);
+  const razao = razaoGuardado?.razao || null;
+  const contaCaixa = caixaEscolhido || (plano?.contas || []).find(c => !c.sintetica && /^caixa\b/i.test(c.nome.trim()))?.codigo || '';
+  const conferidas = razao ? cartoes.conferirComORazao(validas.map(f => ({ id: f.id, dia: f.bruto.dia, compras: f.bruto.compras.compras })), razao) : [];
+  const diaDa = (id: string) => validas.find(f => f.id === id)?.bruto.dia || '';
+  const contas = { cartao: contaCartao || '?', caixa: contaCaixa || '?', banco: (id: string) => validas.find(f => f.id === id)?.bruto.contaBanco || '?', historicoDoTitulo: razao ? cartoes.historicoDoPagamentoNoRazao(razao) : '' };
+  const inicioDoPeriodo = (meses[0] || validas[0]?.bruto.dia.slice(0, 7) || '') + '-01';
+  const faltam = razao ? cartoes.lancamentosQueFaltam(conferidas, diaDa, contas, inicioDoPeriodo) : [];
+  const semNota = conferidas.filter(c => c.situacao === 'sem-nota').length;
+  // o que muda em cada fatura com o razão: as compras conferidas e só os lançamentos que faltam
+  const comRazao = faturas.map(f => {
+    if (!razao || !f.noPeriodo) return { ...f, compras: [] as { id: number; data: string; descricao: string; valor: string; situacao: string; dica: string; pago: boolean }[] };
+    const daFatura = conferidas.filter(c => c.fatura === f.id);
+    const so = cartoes.lancamentosQueFaltam(daFatura, diaDa, contas, inicioDoPeriodo);
+    return {
+      ...f,
+      qtd: so.length,
+      linhas: so.map((x, i) => ({ id: i, ...x.linha, valor: formatos.brl(x.linha.valor), portador: '' })),
+      compras: daFatura.map((c, i) => ({
+        id: i, data: dataBr(c.item.data), descricao: c.item.descricao, valor: formatos.brl(c.item.valor), pago: !!c.pago,
+        situacao: c.situacao === 'com-nota' ? 'Com nota' : c.situacao === 'sem-nota' ? 'Sem nota · Caixa' : 'Parcela de antes',
+        dica: c.nota ? c.nota.historico + ' (' + dataBr(c.nota.data) + ')' : c.situacao === 'parcela-anterior' ? 'Compra de antes do razão: a nota entrou lá atrás, inteira' : 'Sem o título no razão: D Caixa / C Cartão',
+      })),
+    };
+  });
+  const fimDoRazao = razao?.fim || '';
+  const ultimoPagamento = validas.reduce((m, f) => (f.bruto.dia > m ? f.bruto.dia : m), '');
   const faltaBanco = validas.some(f => !f.pagamento || !f.contaBanco);
-  const pronto = validas.length > 0 && !!contaCartao && !faltaBanco && validas.every(f => f.bate);
-  const linhasDoArquivo = () => validas.flatMap(f => cartoes.lancamentosDaFatura(f.bruto.compras, f.bruto.dia, contaCartao, f.bruto.contaBanco));
+  const pronto = validas.length > 0 && !!contaCartao && !faltaBanco && validas.every(f => f.bate) && (!naTarefa || !!razao) && (!semNota || !!contaCaixa);
+  const linhasDoArquivo = () => (razao ? faltam.map(x => x.linha) : validas.flatMap(f => cartoes.lancamentosDaFatura(f.bruto.compras, f.bruto.dia, contaCartao, f.bruto.contaBanco)));
   const opcoes = (plano?.contas || []).filter(c => !c.sintetica).map(c => ({ codigo: c.codigo, nome: c.nome }));
 
   return {
@@ -124,7 +164,20 @@ export function useCompras(empresa: empresas.EmpresaDoEscritorio) {
     periodo: meses.length ? tarefas.rotuloDoPeriodo(meses) : '',
     lendo, importar: (fs: File[]) => { void importar(fs); },
     remover: (id: string) => setLidas(l => l.filter(f => f.id !== id)),
-    faturas,
+    faturas: comRazao,
+    /** o razão do cartão: importar, tirar, o resumo e o saldo de cada mês (o da coluna Saldo e com o que falta) */
+    razao: {
+      tem: !!razao, arquivo: razaoGuardado?.arquivo || '', importar: importarRazao, tirar: () => setRazao(null),
+      resumo: razao ? [razao.lancamentos.length + ' lançamentos', 'até ' + dataBr(razao.fim)] : [],
+      /** o razão termina antes do último pagamento de fatura: as compras depois dele parecem sem nota */
+      curto: !!razao && !!ultimoPagamento && fimDoRazao < ultimoPagamento ? dataBr(fimDoRazao) : '',
+      saldos: razao ? cartoes.saldosDoCartao(razao, meses.length ? meses : [...new Set(validas.map(f => f.bruto.dia.slice(0, 7)))].sort(), faltam).map(s => ({
+        mes: s.mes, rotulo: tarefas.rotuloNumericoCompetencia(s.mes),
+        razao: tarefas.valorComLado(s.razao), com: tarefas.valorComLado(s.comLancamentos), devedor: s.comLancamentos < -0.005,
+      })) : [],
+      semNota,
+    },
+    contaCaixa, nomeContaCaixa: nomeDaConta(contaCaixa), escolherContaCaixa: setCaixa,
     /** as faturas pagas fora do período da Tarefa (ficam de fora do arquivo) */
     foraDoPeriodo: faturas.filter(f => !f.noPeriodo).map(f => f.rotulo + ' (paga em ' + f.mesDoPagamento + ')'),
     /** a conta do cartão: a do Cadastro; sem ela, a pessoa escolhe (e fica no Cadastro) */
@@ -141,11 +194,13 @@ export function useCompras(empresa: empresas.EmpresaDoEscritorio) {
     falta: [
       !validas.length ? 'Importe a fatura do cartão (PDF)' : '',
       validas.length && !contaCartao ? 'Escolha a conta do cartão de crédito' : '',
+      validas.length && naTarefa && !razao ? 'Importe o razão do cartão de crédito (XLS do Alterdata)' : '',
+      semNota && !contaCaixa ? 'Escolha a conta do caixa (as compras sem nota)' : '',
       validas.some(f => !f.pagamento) ? 'O pagamento de alguma fatura não está no extrato importado' : '',
       validas.some(f => f.pagamento && !f.contaBanco) ? 'Escolha a conta do banco que pagou a fatura' : '',
       validas.some(f => !f.bate) ? 'A soma das compras não bate com o total de alguma fatura' : '',
     ].filter(Boolean),
-    qtdLancamentos: validas.reduce((n, f) => n + f.qtd, 0),
+    qtdLancamentos: razao ? faltam.length : validas.reduce((n, f) => n + f.qtd, 0),
     /** o que o "Importar no Alterdata" manda: a mesma planilha do Baixar (as mesmas linhas) */
     importacao: {
       codigo: empresa.codigo ?? null, empresa: empresa.nome, origem: 'cartoes',

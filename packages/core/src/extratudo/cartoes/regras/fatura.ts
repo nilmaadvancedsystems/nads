@@ -77,11 +77,73 @@ function contasDe(linhas: readonly Linha[]): string[] {
   return [...linhas.map(l => l.texto).join('\n').matchAll(/Conta Cart[ãa]o:\s*(\d+)(?![\d/.,])/gi)].map(m => m[1]);
 }
 
+const MESES = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
+const RE_DIA_MES = /^(\d{1,2}) (JAN|FEV|MAR|ABR|MAI|JUN|JUL|AGO|SET|OUT|NOV|DEZ)$/i;
+const RE_REAIS = /^(-?)R\$\s*(\d{1,3}(?:\.\d{3})*,\d{2})$/;
+/** a coluna da direita da página dos lançamentos começa aqui (pontos do PDF) */
+const COLUNA_DA_DIREITA = 300;
+
+/** O ano da data sem ano da fatura: mês depois do vencimento é do ano anterior. */
+function comAno(dia: number, mes: number, vencimento: string): string {
+  const [anoV, mesV, diaV] = [Number(vencimento.slice(0, 4)), Number(vencimento.slice(5, 7)), Number(vencimento.slice(8, 10))];
+  const ano = mes > mesV || (mes === mesV && dia > diaV) ? anoV - 1 : anoV;
+  return ano + '-' + String(mes).padStart(2, '0') + '-' + String(dia).padStart(2, '0');
+}
+
+/**
+ * O layout novo do Sicoob (Vitor, 11/11/2026: a fatura de setembro de 2026): "Esta é a fatura de…", o vencimento "3 SET 2026"
+ * e os lançamentos em duas colunas ("19 AGO | POSTO NOVO HORIZONTE | UNAI | R$ 645,78"), lidas a da esquerda e depois a da
+ * direita. A descrição longa quebra em volta da linha da data, como no layout antigo; o portador é "MARCOS ROCHA | 0051".
+ */
+function lerFaturaNova(paginas: readonly (readonly PedacoDaFatura[])[], todo: string): FaturaDoCartao {
+  const v = todo.match(/VENCIMENTO\s+(\d{1,2})\s+(JAN|FEV|MAR|ABR|MAI|JUN|JUL|AGO|SET|OUT|NOV|DEZ)\s+(\d{4})/i);
+  if (!v) throw new Error('Não é uma fatura de cartão de crédito (não achei o vencimento). Mande o PDF do extrato do cartão.');
+  const vencimento = v[3] + '-' + String(MESES.indexOf(v[2].toUpperCase()) + 1).padStart(2, '0') + '-' + v[1].padStart(2, '0');
+  const total = todo.match(/valor total de\s+R\$\s*([\d.]+,\d{2})/i) || todo.match(/\bTOTAL\s+R\$\s*([\d.]+,\d{2})\s+VENCIMENTO/i);
+  const itens: ItemDaFatura[] = [];
+  for (const pagina of paginas) {
+    const cab = linhasDe(pagina).find(l => /^LAN[ÇC]AMENTOS\b/i.test(l.texto));
+    if (!cab) continue;
+    // até o quadro "Veja como você usou…" (o perfil de consumo, embaixo)
+    const fimY = linhasDe(pagina).find(l => /^Veja como voc/i.test(l.texto))?.pedacos[0].y ?? -Infinity;
+    const doQuadro = pagina.filter(p => p.y < cab.pedacos[0].y && p.y > fimY);
+    let portador = '';
+    for (const coluna of [doQuadro.filter(p => p.x < COLUNA_DA_DIREITA), doQuadro.filter(p => p.x >= COLUNA_DA_DIREITA)]) {
+      const linhas = linhasDe(coluna);
+      const usadas = new Set<number>();
+      const daData = (l: Linha) => RE_DIA_MES.test(l.pedacos[0].texto.trim());
+      const soltaNova = (l: Linha | undefined) => !!l && !daData(l) && !l.pedacos.some(p => RE_REAIS.test(p.texto.trim()))
+        && !/^(DATA|MOVIMENTA|TOTAL|SALDO)/i.test(l.texto) && !/^\d{4}$/.test(l.pedacos[l.pedacos.length - 1].texto.trim());
+      linhas.forEach((l, i) => {
+        const ult = l.pedacos[l.pedacos.length - 1].texto.trim();
+        // o portador: o nome e os quatro números do cartão
+        if (l.pedacos.length > 1 && /^\d{4}$/.test(ult) && !daData(l)) { portador = l.pedacos.slice(0, -1).map(p => p.texto.trim()).join(' ') + ' (' + ult + ')'; return; }
+        const data = l.pedacos[0].texto.trim().match(RE_DIA_MES);
+        const valor = ult.match(RE_REAIS);
+        if (!data || !valor || l.pedacos.length < 2) return;
+        let descricao = l.pedacos.slice(1, -1).map(p => p.texto.trim()).filter(Boolean).join(' ');
+        if (!descricao) {
+          const partes: string[] = [];
+          if (soltaNova(linhas[i - 1]) && !usadas.has(i - 1)) { partes.push(linhas[i - 1].texto); usadas.add(i - 1); }
+          if (soltaNova(linhas[i + 1]) && !usadas.has(i + 1)) { partes.push(linhas[i + 1].texto); usadas.add(i + 1); }
+          descricao = partes.join(' ');
+        }
+        const mes = MESES.indexOf(data[2].toUpperCase()) + 1;
+        itens.push({ data: comAno(Number(data[1]), mes, vencimento), descricao, valor: (valor[1] ? -1 : 1) * reais(valor[2]), portador });
+      });
+    }
+  }
+  if (!itens.length) throw new Error('A fatura não tem nenhum lançamento.');
+  const cliente = linhasDe(paginas[1] || []).find(l => l.texto.trim())?.texto.trim() || '';
+  return { contaCartao: '', cliente, vencimento, total: total ? reais(total[1]) : null, itens };
+}
+
 /** Os pedaços de texto de cada página do PDF → a fatura. Lança Error com a mensagem para a tela. */
 export function lerFatura(paginas: readonly (readonly PedacoDaFatura[])[]): FaturaDoCartao {
   const linhas = paginas.flatMap(p => linhasDe(p));
   const todo = linhas.map(l => l.texto).join('\n');
   const venc = todo.match(/Vencimento:\s*(\d{2}\/\d{2}\/\d{4})/i);
+  if (!venc && /Esta [ée] a fatura de/i.test(todo)) return lerFaturaNova(paginas, todo);
   if (!/CART[ÃA]O DE CR[ÉE]DITO/i.test(todo) || !venc) throw new Error('Não é uma fatura de cartão de crédito (não achei o vencimento). Mande o PDF do extrato do cartão.');
   const vencimento = iso(venc[1]);
   const [anoV, mesV, diaV] = [Number(vencimento.slice(0, 4)), Number(vencimento.slice(5, 7)), Number(vencimento.slice(8, 10))];
