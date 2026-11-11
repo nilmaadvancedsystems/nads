@@ -47,6 +47,9 @@ const jaArquivados = est.criarFiltroDeArquivados(() => {
 }, { log: (...m) => console.log(new Date().toLocaleString('pt-BR'), ...m) });
 // os cancelamentos já gravados no Drive, por empresa e mês (procurarCancelamentos, 11/11/2026): no PC, nunca no banco
 const cancelamentosVistos = est.criarMemoriaDeCancelamentos(path.join(require('./pastas-locais').ROBO, 'sieg-cancelamentos.json'));
+// os PDFs já gravados no Drive, por empresa e mês (11/11/2026: "baixei umas 3 vezes e continua mesma coisa"): o PDF saía só das
+// notas novas, e a nota que já estava arquivada nunca ganhava o dela. Agora toda nota sem PDF ganha um, uma vez (a memória é no PC)
+const pdfsGravados = est.criarMemoriaDeCancelamentos(path.join(require('./pastas-locais').ROBO, 'sieg-pdfs.json'));
 const soDigitos = v => String(v || '').replace(/\D/g, '');
 // o documento do cliente: CNPJ (14) ou CPF (11, o produtor rural; o SIEG conta pelos dois, 07/10/2026)
 // (23/10/2026: a contagem da madrugada mandava ao SIEG qualquer número de 11 ou 14 dígitos e ele devolvia HTTP 400 "CNPJ/CPF
@@ -354,6 +357,7 @@ async function xmlsDoMes(c, doc, competencia, aoAndar) {
 // a pasta das canceladas (11/11/2026): <regime>/03. DOCUMENTOS FISCAIS/EMITIDOS|RECEBIDOS/CANCELADAS
 const PASTA_DOCS = /^\d+\.\s*DOCUMENTOS FISCAIS$/i;
 const LADOS = /^(EMITIDOS|RECEBIDOS)$/i;
+const PASTA_MES = /^\d{2}$/;   // a pasta do mês do fiscal (11/11/2026)
 function eventoDeAntes(nome, competencia) {
   const m = /^(\d{2})-(\d{2})-(\d{4})\b/.exec(String(nome || ''));
   return !!m && m[3] + '-' + m[2] < competencia;
@@ -390,12 +394,15 @@ async function xmlsJaNoDrive(codigo, nomeDaPasta, competencia, db) {
         peloMapa = true;
         for (const regime of (filhos.get(fiscal.i) || []).filter(it => it.t === 'd')) {
           // os cancelamentos já arquivados (11/11/2026): o arquivador põe o XML do evento de cancelamento em
-          // <regime>/<nº>. DOCUMENTOS FISCAIS/EMITIDOS|RECEBIDOS/CANCELADAS, fora da pasta XML
+          // <regime>/<nº>. DOCUMENTOS FISCAIS/[<MM>/]EMITIDOS|RECEBIDOS/CANCELADAS, fora da pasta XML (com a pasta do mês desde
+          // o "fiscal por mês", 11/11/2026; sem ela, o que foi arquivado antes)
           const docs = (filhos.get(regime.i) || []).find(it => it.t === 'd' && PASTA_DOCS.test(it.n));
-          for (const lado of docs ? (filhos.get(docs.i) || []).filter(it => it.t === 'd' && LADOS.test(it.n)) : []) {
-            const canc = (filhos.get(lado.i) || []).find(it => it.t === 'd' && /^CANCELADAS$/i.test(it.n));
+          const dirs = p => (filhos.get(p.i) || []).filter(it => it.t === 'd');
+          const lados = docs ? dirs(docs).flatMap(x => (LADOS.test(x.n) ? [[x]] : PASTA_MES.test(x.n) ? dirs(x).filter(y => LADOS.test(y.n)).map(y => [x, y]) : [])) : [];
+          for (const cam of lados) {
+            const canc = dirs(cam[cam.length - 1]).find(it => /^CANCELADAS$/i.test(it.n));
             for (const it of canc ? filhos.get(canc.i) || [] : []) {
-              if (it.t !== 'd' && /\.xml$/i.test(it.n) && !eventoDeAntes(it.n, competencia)) lerArquivo(path.join(raiz, ano, cli.nomePasta, 'FISCAL', regime.n, docs.n, lado.n, canc.n, it.n), it.i + '_' + String(it.m || '').replace(/\D/g, ''));
+              if (it.t !== 'd' && /\.xml$/i.test(it.n) && !eventoDeAntes(it.n, competencia)) lerArquivo(path.join(raiz, ano, cli.nomePasta, 'FISCAL', regime.n, docs.n, ...cam.map(x => x.n), canc.n, it.n), it.i + '_' + String(it.m || '').replace(/\D/g, ''));
             }
           }
           const pastaXml = (filhos.get(regime.i) || []).find(it => it.t === 'd' && /^\d+\.\s*XML$/i.test(it.n));
@@ -421,9 +428,14 @@ async function xmlsJaNoDrive(codigo, nomeDaPasta, competencia, db) {
       const fiscal = path.join(doAno, cliente, 'FISCAL');
       for (const regime of await fs.promises.readdir(fiscal).catch(() => [])) {
         const doRegime = await fs.promises.readdir(path.join(fiscal, regime)).catch(() => []);
-        // os cancelamentos já arquivados (11/11/2026): <nº>. DOCUMENTOS FISCAIS/EMITIDOS|RECEBIDOS/CANCELADAS
+        // os cancelamentos já arquivados (11/11/2026): <nº>. DOCUMENTOS FISCAIS/[<MM>/]EMITIDOS|RECEBIDOS/CANCELADAS
         const nomeDocs = doRegime.find(n => PASTA_DOCS.test(n));
-        for (const lado of nomeDocs ? (await fs.promises.readdir(path.join(fiscal, regime, nomeDocs)).catch(() => [])).filter(n => LADOS.test(n)) : []) {
+        const lados = [];
+        for (const n of nomeDocs ? await fs.promises.readdir(path.join(fiscal, regime, nomeDocs)).catch(() => []) : []) {
+          if (LADOS.test(n)) lados.push(n);
+          else if (PASTA_MES.test(n)) for (const m of await fs.promises.readdir(path.join(fiscal, regime, nomeDocs, n)).catch(() => [])) if (LADOS.test(m)) lados.push(path.join(n, m));
+        }
+        for (const lado of lados) {
           const canc = path.join(fiscal, regime, nomeDocs, lado, 'CANCELADAS');
           for (const n of await fs.promises.readdir(canc).catch(() => [])) if (/\.xml$/i.test(n) && !eventoDeAntes(n, competencia)) lerArquivo(path.join(canc, n));
         }
@@ -1223,10 +1235,6 @@ function iniciarSieg({ db, log }) {
               }));
               // e o .zip com todos, na mesma pasta (07/10/2026: "quero que ele também salve um arquivo .zip na hora")
               if (zipDoDrive && novos) await fs.promises.writeFile(path.join(pasta, nomeDoZip), zipDoDrive);
-              // os PDFs só das notas que acabaram de entrar: as já arquivadas não voltam para a pasta de entrada
-              try {
-                for (const pdf of await fazerPdfs(faltam)) await fs.promises.writeFile(path.join(pasta, pdf.nome), pdf.dados);
-              } catch (err) { log('SIEG: não consegui salvar os PDFs de', p.codigo, p.competencia, 'no Drive -', motivo(err)); }
               await d.ref.update({ drive: { total: faltam.length, feitos: novos, pronto: true, em: new Date().toISOString() }, 'numeros.novos': novos, 'resultado.novos': novos }).catch(err => log('SIEG: o Drive de', p.codigo, 'gravou, mas não consegui marcar o pedido como pronto (' + motivo(err) + ')'));
             } catch (err) {
               driveOk = false;
@@ -1235,10 +1243,24 @@ function iniciarSieg({ db, log }) {
               log('SIEG: Drive de', p.codigo, '- parou em', novos, 'de', faltam.length, '-', motivo(err));
             }
           }
+          // os PDFs: das notas que acabaram de entrar e das que já estavam no Drive sem PDF (11/11/2026). Não volta o que o
+          // robô já gravou (pdfsGravados) nem a nota que já tem PDF arquivado (o índice de chaves do arquivador)
+          let pdfsNovos = 0;
+          if (driveOk) {
+            const novasAgora = new Set(faltam.map(a => a.nome));
+            const cli = +soDigitos(p.codigo);
+            const semPdf = arquivos.filter(a => novasAgora.has(a.nome) || (pdfsGravados.novas(p.codigo, p.competencia, [a.nome]).length && !jaArquivados.pdfArquivado(cli, a.nome)));
+            try {
+              const pdfs = semPdf.length ? await fazerPdfs(semPdf) : [];
+              if (pdfs.length) await fs.promises.mkdir(pasta, { recursive: true });
+              for (const pdf of pdfs) { await fs.promises.writeFile(path.join(pasta, pdf.nome), pdf.dados); pdfsNovos++; }
+              pdfsGravados.anotar(p.codigo, p.competencia, pdfs.map(x => x.de));
+            } catch (err) { log('SIEG: não consegui salvar os PDFs de', p.codigo, p.competencia, 'no Drive -', motivo(err)); }
+          }
           // os cancelamentos deste mês já estão no Drive: a madrugada só pede o mês de novo se aparecer outro (procurarCancelamentos)
           if (driveOk) cancelamentosVistos.anotar(p.codigo, p.competencia, cancelamentosDe(arquivos));
           await db.collection('siegNotas').doc(id).update({ novos }).catch(err => log('SIEG: não consegui gravar os novos em siegNotas de', p.codigo, '(' + motivo(err) + ')'));
-          log('SIEG: XMLs de', p.codigo, p.competencia, '-', arquivos.length, 'arquivos (' + novos + ' novos' + (pulados ? ', ' + pulados + ' pulados: já arquivados' : '') + ') em', onde);
+          log('SIEG: XMLs de', p.codigo, p.competencia, '-', arquivos.length, 'arquivos (' + novos + ' novos' + (pulados ? ', ' + pulados + ' pulados: já arquivados' : '') + (pdfsNovos ? ', ' + pdfsNovos + ' PDFs' : '') + ') em', onde);
           painel.atividade('sieg', (doCliente ? 'Juntou os XMLs que o cliente mandou de ' : 'Baixou os XMLs do SIEG de ') + p.codigo + ' (' + p.competencia.slice(5) + '/' + p.competencia.slice(0, 4) + ')',
             arquivos.length + ' arquivo(s), ' + novos + ' novo(s) no Drive' + (p.madrugada ? ' · madrugada' : p.criadoPor ? ' · pedido de ' + p.criadoPor : ''));
         });

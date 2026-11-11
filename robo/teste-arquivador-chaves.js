@@ -51,6 +51,7 @@ igual('evento do MDF-e: tipo MDF-e', [R.classificarXml(evMdfe(CHM)).tipo, R.clas
 // ---------- 2. onde o original está ----------
 igual('destino: cliente, pasta do documento e de onde veio', K.lerDestino('G:\\Meu Drive\\2026\\152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\12. XML\\CT-e\\10-2026_CT-e_1234.xml'), { cliente: 152, sub: ['FISCAL', 'SIMPLES NACIONAL', '12. XML', 'CT-e'], de: 'doc' });
 igual('destino: o evento já arquivado aponta a pasta do documento', K.lerDestino('G:\\Meu Drive\\2026\\152 - JANIO\\FISCAL\\SIMPLES NACIONAL\\12. XML\\CT-e\\EVENTOS\\06-10-2026 - X.xml').sub, ['FISCAL', 'SIMPLES NACIONAL', '12. XML', 'CT-e']);
+igual('destino: o evento na pasta do mês (EVENTOS\\10) aponta a pasta do documento', K.lerDestino('G:\\Meu Drive\\2026\\152 - JANIO\\FISCAL\\SIMPLES NACIONAL\\12. XML\\CT-e\\EVENTOS\\10\\06-10-2026 - X.xml'), { cliente: 152, sub: ['FISCAL', 'SIMPLES NACIONAL', '12. XML', 'CT-e'], de: 'evento' });
 igual('destino: fora da raiz de clientes não vale', K.lerDestino('C:\\outro\\152 - X\\a.xml'), null);
 
 // ---------- 3. o índice montado dos manifestos (sem abrir nada do G:) ----------
@@ -71,14 +72,14 @@ try {
   // ---------- 4. as regras: o evento na pasta do original; sem o original, espera ----------
   const ctx = { cadastro: cad, hoje: new Date(2026, 9, 20), chaves: idx };
   const d1 = R.decidir({ nome: CH1 + '-evento-310610-001.xml', rel: '2026-10\\QUALQUER\\' + CH1 + '-evento-310610-001.xml', xml: evCte(CH1) }, ctx);
-  igual('evento com o original no índice: mesma pasta, em EVENTOS', [d1.acao, d1.cliente, d1.destinoRelativo, d1.nomeFinal, d1.comoCliente], ['ARQUIVAR', 152, '152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\12. XML\\CT-e\\EVENTOS', '06-10-2026 - MDF-E AUTORIZADO CT-e 1234.xml', 'chave']);
+  igual('evento com o original no índice: mesma pasta, em EVENTOS', [d1.acao, d1.cliente, d1.destinoRelativo, d1.nomeFinal, d1.comoCliente], ['ARQUIVAR', 152, '152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\12. XML\\CT-e\\EVENTOS\\10', '06-10-2026 - MDF-E AUTORIZADO CT-e 1234.xml', 'chave']);
   const d4 = R.decidir({ nome: 'ev.xml', rel: 'ev.xml', xml: evCte(chave('31', '2610', TRANSP, '57', 9999)) }, ctx);
   igual('evento sem o original: espera, com a chave', [d4.acao, d4.motivo, K.chaveValida(d4.chave)], ['AGUARDANDO_ORIGINAL', 'EVENTO_SEM_ORIGINAL', true]);
   const idx2 = new K.Indice();
   idx2.juntar(CH1, 152, ['FISCAL', 'SIMPLES NACIONAL', '12. XML', 'CT-e'], 'doc');
   idx2.juntar(CH1, 380, null, 'outro');
   const d5 = R.decidir({ nome: 'ev.xml', rel: 'ev.xml', xml: evCte(CH1) }, Object.assign({}, ctx, { chaves: idx2 }));
-  igual('original em dois clientes: o evento nos dois (o outro pela árvore do regime dele)', [d5.cliente, d5.copias.map(c => c.destinoRelativo)], [152, ['380 - LEONARDO MENDES MARQUES\\FISCAL\\LUCRO PRESUMIDO\\14. XML\\CT-e\\EVENTOS']]);
+  igual('original em dois clientes: o evento nos dois (o outro pela árvore do regime dele)', [d5.cliente, d5.copias.map(c => c.destinoRelativo)], [152, ['380 - LEONARDO MENDES MARQUES\\FISCAL\\LUCRO PRESUMIDO\\14. XML\\CT-e\\EVENTOS\\10']]);
   const nfeDoCliente = '<procEventoNFe><evento><infEvento><CNPJ>06934601000158</CNPJ><chNFe>' + chave('31', '2610', TRANSP, '55', 5) + '</chNFe><dhEvento>2026-10-01T10:00:00-03:00</dhEvento><detEvento><descEvento>Ciencia da Operacao</descEvento></detEvento></infEvento></evento></procEventoNFe>';
   igual('evento com o CNPJ do cliente: segue pelo CNPJ (o índice não muda isso)', R.decidir({ nome: 'c.xml', rel: 'c.xml', xml: nfeDoCliente }, ctx).cliente, 152);
 
@@ -115,7 +116,7 @@ try {
   // o evento vem ANTES do original no mesmo lote
   const res = await A.executar(Object.assign({}, base, { arquivos: [evRel, orRel] }));
   const pastaCte = path.join(clientes, '152 - JANIO JOSE DE ALMEIDA', 'FISCAL', 'SIMPLES NACIONAL', '12. XML', 'CT-e');
-  igual('lote: o original e o evento (que veio antes) arquivados juntos', [res.itens.map(i => i.acao), fs.existsSync(path.join(pastaCte, '10-2026_CT-e_1234.xml')), fs.existsSync(path.join(pastaCte, 'EVENTOS', '06-10-2026 - MDF-E AUTORIZADO CT-e 1234.xml'))], [['ARQUIVAR', 'ARQUIVAR'], true, true]);
+  igual('lote: o original e o evento (que veio antes) arquivados juntos', [res.itens.map(i => i.acao), fs.existsSync(path.join(pastaCte, '10', '10-2026_CT-e_1234.xml')), fs.existsSync(path.join(pastaCte, 'EVENTOS', '10', '06-10-2026 - MDF-E AUTORIZADO CT-e 1234.xml'))], [['ARQUIVAR', 'ARQUIVAR'], true, true]);
   const man = fs.readFileSync(path.join(ctl, 'MANIFESTO', 'manifesto.jsonl'), 'utf8').trim().split('\n').map(JSON.parse);
   igual('lote: o manifesto com a chave nas duas linhas', man.map(m => m.chave), [CH1, CH1]);
   igual('lote: a chave gravada na hora em chaves.jsonl', fs.readFileSync(path.join(ctl, 'chaves.jsonl'), 'utf8').includes(CH1), true);
@@ -127,7 +128,7 @@ try {
   // espera vencida: o SIEG (falso) tem o original, destinatário 380 → o evento vai para a 380 pela árvore do regime
   const busca = K.criarBuscaSieg({ controle: path.join(sb, 'sieg'), sieg: siegFalso([cte(CH2, 1235, '11426314000177')]), limiteDia: 10 });
   const e2 = await A.executar(Object.assign({}, base, { arquivos: [ev2], esperaVencida: () => true, buscaSieg: busca }));
-  const no380 = path.join(clientes, '380 - LEONARDO MENDES MARQUES', 'FISCAL', 'LUCRO PRESUMIDO', '14. XML', 'CT-e', 'EVENTOS', '06-10-2026 - MDF-E AUTORIZADO CT-e 1235.xml');
+  const no380 = path.join(clientes, '380 - LEONARDO MENDES MARQUES', 'FISCAL', 'LUCRO PRESUMIDO', '14. XML', 'CT-e', 'EVENTOS', '10', '06-10-2026 - MDF-E AUTORIZADO CT-e 1235.xml');
   igual('espera vencida + SIEG achou o original: arquivado no cliente do original', [e2.itens[0].acao, !!e2.itens[0].viaSieg, fs.existsSync(no380), fs.existsSync(path.join(origem, ev2))], ['ARQUIVAR', true, true, false]);
   // espera vencida e o SIEG não tem: NÃO IDENTIFICADOS com o motivo e a chave
   const ev3 = chave('31', '2610', TRANSP, '57', 4321);
@@ -157,7 +158,7 @@ try {
   await v1.ciclo(); await v1.ciclo(); await v1.ciclo(); await v1.ciclo();
   v1.parar();
   const pastaC = path.join(cC, '152 - JANIO JOSE DE ALMEIDA', 'FISCAL', 'SIMPLES NACIONAL', '12. XML', 'CT-e');
-  igual('contínuo: chegou o original, os dois arquivados (o evento na pasta do original)', [fs.existsSync(path.join(pastaC, '10-2026_CT-e_1234.xml')), fs.existsSync(path.join(pastaC, 'EVENTOS', '06-10-2026 - MDF-E AUTORIZADO CT-e 1234.xml')), fs.readdirSync(oC)], [true, true, []]);
+  igual('contínuo: chegou o original, os dois arquivados (o evento na pasta do original)', [fs.existsSync(path.join(pastaC, '10', '10-2026_CT-e_1234.xml')), fs.existsSync(path.join(pastaC, 'EVENTOS', '10', '06-10-2026 - MDF-E AUTORIZADO CT-e 1234.xml')), fs.readdirSync(oC)], [true, true, []]);
   const acomp2 = JSON.parse(fs.readFileSync(path.join(kC, 'continuo', 'acompanhamento.json'), 'utf8'));
   igual('contínuo: na aba Chegando, "esperando o documento original" enquanto esperou', [acomp.pasta && acomp.pasta.esperandoOriginal, acomp2.pasta && acomp2.pasta.esperandoOriginal], [1, 0]);
   const diario = fs.readdirSync(path.join(kC, 'continuo')).filter(f => /^decisoes-/.test(f)).flatMap(f => fs.readFileSync(path.join(kC, 'continuo', f), 'utf8').trim().split('\n').map(JSON.parse));
@@ -190,7 +191,7 @@ try {
   igual('reprocessar (simulação): um pela chave, um fica sem o original; nada mudou', [sim.porRota, fs.readdirSync(subR).length], [{ chave: 1, 'fica: EVENTO_SEM_ORIGINAL': 1 }, 2]);
   const prod = await A.reprocessarNaoIdentificados(Object.assign({}, baseR, { modo: 'PRODUCAO', confirmo: true }));
   const linhasR = fs.readFileSync(path.join(niR, '20261022-NOVO', '_nao_identificados.jsonl'), 'utf8').trim().split('\n').map(JSON.parse);
-  igual('reprocessar (produção): o da chave foi para o cliente; o outro ficou, com o motivo novo e a chave', [prod.porRota, fs.readdirSync(subR), fs.existsSync(path.join(cR, '152 - JANIO JOSE DE ALMEIDA', 'FISCAL', 'SIMPLES NACIONAL', '12. XML', 'CT-e', 'EVENTOS', '06-10-2026 - MDF-E AUTORIZADO CT-e 1234.xml')), linhasR.slice(2).map(l => [l.motivo, l.chave, l.motivo_anterior, l.caminho_relativo])],
+  igual('reprocessar (produção): o da chave foi para o cliente; o outro ficou, com o motivo novo e a chave', [prod.porRota, fs.readdirSync(subR), fs.existsSync(path.join(cR, '152 - JANIO JOSE DE ALMEIDA', 'FISCAL', 'SIMPLES NACIONAL', '12. XML', 'CT-e', 'EVENTOS', '10', '06-10-2026 - MDF-E AUTORIZADO CT-e 1234.xml')), linhasR.slice(2).map(l => [l.motivo, l.chave, l.motivo_anterior, l.caminho_relativo])],
     [{ chave: 1, 'fica: EVENTO_SEM_ORIGINAL': 1 }, [chSem + '-evento-310610-001.xml'], true, [['EVENTO_SEM_ORIGINAL', chSem, 'CLIENTE_NAO_LOCALIZADO', '2026-10\\HELLO']]]);
 
   // um evento anterior da mesma nota (o original não arquivado) não desempata dois clientes possíveis
@@ -203,12 +204,12 @@ try {
   const chNfse = '3157005' + '2' + '2' + '06934601000158' + '0000000000009' + '2609' + '118215150' + '5';
   const evNfse = '﻿<?xml version="1.0"?><evento xmlns="http://www.sped.fazenda.gov.br/nfse"><infEvento Id="EVT1"><dhProc>2026-09-03T10:50:30-03:00</dhProc><pedRegEvento><infPedReg Id="PRE1"><dhEvento>2026-09-03T10:50:30-03:00</dhEvento><CNPJAutor>06934601000158</CNPJAutor><chNFSe>' + chNfse + '</chNFSe><e101101><xDesc>Cancelamento de NFS-e</xDesc></e101101></infPedReg></pedRegEvento></infEvento></evento>';
   const dN = R.decidir({ nome: 'xml-1.xml', rel: 'xml-1.xml', xml: evNfse }, ctx);
-  igual('evento da NFS-e nacional: o cancelamento do prestador vai para EMITIDOS\\CANCELADAS (11/11/2026)', [dN.acao, dN.destinoRelativo, dN.nomeFinal], ['ARQUIVAR', '152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\03. DOCUMENTOS FISCAIS\\EMITIDOS\\CANCELADAS', '03-09-2026 - CANCELAMENTO DE NFS-E NFS-e 9.xml']);
+  igual('evento da NFS-e nacional: o cancelamento do prestador vai para EMITIDOS\\CANCELADAS (11/11/2026)', [dN.acao, dN.destinoRelativo, dN.nomeFinal], ['ARQUIVAR', '152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\03. DOCUMENTOS FISCAIS\\09\\EMITIDOS\\CANCELADAS', '03-09-2026 - CANCELAMENTO DE NFS-E NFS-e 9.xml']);
   const dNi = R.decidir({ nome: 'xml-2.xml', rel: 'xml-2.xml', xml: evNfse.replace('<e101101><xDesc>Cancelamento de NFS-e</xDesc></e101101>', '<e105105><xDesc>Cancelamento de NFS-e Indeferido por Análise Fiscal</xDesc></e105105>') }, ctx);
-  igual('... o cancelamento indeferido não é cancelamento: fica em EVENTOS', dNi.destinoRelativo, '152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\12. XML\\NFS-e\\EVENTOS');
+  igual('... o cancelamento indeferido não é cancelamento: fica em EVENTOS', dNi.destinoRelativo, '152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\12. XML\\NFS-e\\EVENTOS\\09');
   const cteOs = '<cteOSProc><CTeOS><infCte Id="CTe' + chave('31', '2609', TRANSP, '67', 9151) + '"><ide><nCT>9151</nCT><dhEmi>2026-09-29T00:00:00+00:00</dhEmi></ide><emit><CNPJ>' + TRANSP + '</CNPJ></emit><toma><CNPJ>06934601000158</CNPJ></toma></infCte></CTeOS></cteOSProc>';
   const dO = R.decidir({ nome: 'os.xml', rel: 'os.xml', xml: cteOs }, ctx);
-  igual('CT-e OS: o tomador, na pasta do CT-e', [dO.acao, dO.cliente, dO.nomeFinal, dO.destinoRelativo.split('\\').slice(-1)[0]], ['ARQUIVAR', 152, '09-2026_CT-e OS_9151.xml', 'CT-e']);
+  igual('CT-e OS: o tomador, na pasta do CT-e', [dO.acao, dO.cliente, dO.nomeFinal, dO.destinoRelativo.split('\\').slice(-2).join('\\')], ['ARQUIVAR', 152, '09-2026_CT-e OS_9151.xml', 'CT-e\\09']);
   // o mesmo evento solto e de dentro do .zip, um com BOM: o segundo é "já arquivado", não um " (1)"
   const sbB = path.join(tmp, 'bom'); const oB = path.join(sbB, 'origem'), cB = path.join(sbB, '2026');
   for (const p of PASTAS) fs.mkdirSync(path.join(cB, p), { recursive: true });
@@ -236,7 +237,7 @@ try {
   const ctx2 = { cadastro: cad2, hoje: new Date(2026, 9, 20), chaves: new K.Indice() };
   const nf = (emit, dest) => '<nfeProc><NFe><infNFe Id="NFe' + chave('31', '2610', emit, '55', 70) + '"><ide><mod>55</mod><nNF>70</nNF><dhEmi>2026-10-02T10:00:00-03:00</dhEmi></ide><emit><CNPJ>' + emit + '</CNPJ></emit><dest><CNPJ>' + dest + '</CNPJ></dest></infNFe></NFe></nfeProc>';
   const dd = R.decidir({ nome: 'n.xml', rel: 'n.xml', xml: nf('11426314000177', '06934601000158') }, ctx2);
-  igual('duas clientes: saída no emitente (380, Presumido) e entrada no destinatário (152, Simples)', [dd.acao, dd.destinoRelativo, dd.copias.map(c => c.destinoRelativo)], ['ARQUIVAR', '380 - LEONARDO MENDES MARQUES\\FISCAL\\LUCRO PRESUMIDO\\14. XML\\NF-e', ['152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\12. XML\\NF-e']]);
+  igual('duas clientes: saída no emitente (380, Presumido) e entrada no destinatário (152, Simples)', [dd.acao, dd.destinoRelativo, dd.copias.map(c => c.destinoRelativo)], ['ARQUIVAR', '380 - LEONARDO MENDES MARQUES\\FISCAL\\LUCRO PRESUMIDO\\14. XML\\NF-e\\10', ['152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\12. XML\\NF-e\\10']]);
   igual('duas clientes: um CNPJ em dois códigos continua ambíguo', R.decidir({ nome: 'n.xml', rel: 'n.xml', xml: nf('45997418000153', '06934601000158') }, ctx2).motivo, 'CLIENTE_AMBIGUO');
   const di = R.decidir({ nome: 'n.xml', rel: 'n.xml', xml: nf('36462778000160', '06934601000158') }, ctx2);
   igual('duas clientes: a inativa sem pasta fica de fora (só o destinatário)', [di.acao, di.cliente, di.copias.length], ['ARQUIVAR', 152, 0]);
@@ -257,7 +258,7 @@ try {
   const chN = '3168002' + '1' + '2' + '11414965000147' + '2600000001992' + '2609' + '000270796' + '2';
   const evN = '<evento><infEvento Id="E"><pedRegEvento><infPedReg Id="P"><dhEvento>2026-09-08T10:31:37-03:00</dhEvento><CNPJAutor>11414965000147</CNPJAutor><chNFSe>' + chN + '</chNFSe><e101101><xDesc>Cancelamento de NFS-e</xDesc></e101101></infPedReg></pedRegEvento></infEvento></evento>';
   const dn = R.decidir({ nome: 'x.xml', rel: 'x.xml', xml: evN }, Object.assign({}, ctx2, { chaves: idxN }));
-  igual('evento da NFS-e nacional acha a NFS-e arquivada pelo prestador e número; o cancelamento da recebida vai para RECEBIDOS\\CANCELADAS (11/11/2026)', [dn.acao, dn.cliente, dn.destinoRelativo], ['ARQUIVAR', 152, '152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\03. DOCUMENTOS FISCAIS\\RECEBIDOS\\CANCELADAS']);
+  igual('evento da NFS-e nacional acha a NFS-e arquivada pelo prestador e número; o cancelamento da recebida vai para RECEBIDOS\\CANCELADAS (11/11/2026)', [dn.acao, dn.cliente, dn.destinoRelativo], ['ARQUIVAR', 152, '152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\03. DOCUMENTOS FISCAIS\\09\\RECEBIDOS\\CANCELADAS']);
   // (11/11/2026) o que está em …\CANCELADAS vale o cliente, mas não é a pasta do XML da nota (outro evento da chave não vai para CANCELADAS\EVENTOS)
   igual('destino: o cancelamento em CANCELADAS fica sem a pasta (só o cliente)', K.lerDestino('G:\\Meu Drive\\2026\\152 - JANIO\\FISCAL\\SIMPLES NACIONAL\\03. DOCUMENTOS FISCAIS\\RECEBIDOS\\CANCELADAS\\08-09-2026 - CANCELAMENTO NF-e 7.xml'), { cliente: 152, sub: [], de: 'evento' });
 
@@ -270,7 +271,7 @@ try {
   igual('TXT do livro de apuração do ICMS: LIVROS FISCAIS do ano, .txt', [dt.acao, dt.destinoRelativo, dt.nomeFinal], ['ARQUIVAR', '152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\13. LIVROS FISCAIS\\2026', '09-2026 - APURACAO ICMS.txt']);
   const rel = ['Notas Fiscais Saída 09/10/2026 14:22 Data: Hora Período : 01/09/2026 a 30/09/2026 CFOP JANIO JOSE DE ALMEIDA CNPJ 06.934.601/0001-58 XML SAIDA MG01/09/2026 2328 5.102'];
   const dr = R.decidir({ nome: 'RELATORIO 01 SET.PDF', rel: 'r.pdf', texto: rel }, ctx2);
-  igual('relatório de notas de saída: EMITIDOS\\RELATÓRIO MENSAL do ano', [dr.acao, dr.destinoRelativo, dr.nomeFinal], ['ARQUIVAR', '152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\03. DOCUMENTOS FISCAIS\\EMITIDOS\\RELATÓRIO MENSAL\\2026', '09-2026 - RELATORIO NOTAS EMITIDAS - JANIO JOSE DE ALMEIDA.pdf']);
+  igual('relatório de notas de saída: EMITIDOS\\RELATÓRIO MENSAL do ano', [dr.acao, dr.destinoRelativo, dr.nomeFinal], ['ARQUIVAR', '152 - JANIO JOSE DE ALMEIDA\\FISCAL\\SIMPLES NACIONAL\\03. DOCUMENTOS FISCAIS\\09\\EMITIDOS\\RELATÓRIO MENSAL', '09-2026 - RELATORIO NOTAS EMITIDAS - JANIO JOSE DE ALMEIDA.pdf']);
   const drE = R.decidir({ nome: 'RELATORIO 02 SET.PDF', rel: 'r.pdf', texto: [rel[0].replace('Notas Fiscais Saída', 'Notas Fiscais Entrada')] }, ctx2);
   igual('relatório de notas de entrada: RECEBIDOS', [drE.acao, drE.nomeFinal], ['ARQUIVAR', '09-2026 - RELATORIO NOTAS RECEBIDAS - JANIO JOSE DE ALMEIDA.pdf']);
 
@@ -376,7 +377,7 @@ try {
     const vM = C.iniciar(baseM);
     await vM.ciclo(); vM.parar();
     const pastaC = path.join(cM, '152 - JANIO JOSE DE ALMEIDA', 'FISCAL', 'SIMPLES NACIONAL', '12. XML', 'CT-e');
-    const alvo = path.join(pastaC, '10-2026_CT-e_1234.xml');
+    const alvo = path.join(pastaC, '10', '10-2026_CT-e_1234.xml');
     const man = fs.readFileSync(path.join(kM, 'MANIFESTO', 'manifesto.jsonl'), 'utf8').trim().split('\n').map(JSON.parse);
     igual('mover: o original foi para o destino por rename (o mesmo arquivo), sem cópia na quarentena', [fs.existsSync(original), fs.existsSync(alvo), fs.statSync(alvo).ino === ino, fs.existsSync(path.join(kM, 'QUARENTENA')), man[0].movido, !!man[0].conteudo_xml], [false, true, true, false, true, true]);
     // o mesmo documento de novo (o SIEG repete; aqui com BOM, bytes diferentes): já arquivado sem abrir o destino
@@ -389,7 +390,7 @@ try {
     try { const v2 = C.iniciar(baseM); await v2.ciclo(); v2.parar(); lM = fs.readFileSync(path.join(kM, 'continuo', fs.readdirSync(path.join(kM, 'continuo')).find(f => /^decisoes-/.test(f))), 'utf8').trim().split('\n').map(JSON.parse); }
     finally { fs.readFileSync = rf; fs.promises.readFile = prf; }
     const rep = lM.find(l => /repetido/.test(l.rel));
-    igual('já arquivado pelo índice: sem abrir o destino no G:; o repetido foi para a quarentena', [rep && rep.acao, lidos.length, fs.existsSync(path.join(oM, 'lote', CH1 + '-repetido.xml')), fs.readdirSync(pastaC).filter(n => /\.xml$/.test(n)).length], ['JA_ARQUIVADO', 0, false, 1]);
+    igual('já arquivado pelo índice: sem abrir o destino no G:; o repetido foi para a quarentena', [rep && rep.acao, lidos.length, fs.existsSync(path.join(oM, 'lote', CH1 + '-repetido.xml')), fs.readdirSync(path.join(pastaC, '10')).filter(n => /\.xml$/.test(n)).length], ['JA_ARQUIVADO', 0, false, 1]);
     // a origem LOCAL (outro disco, simulado pela raiz diferente não dá aqui): o config aceita a lista
     igual('config: origensExtras vira lista', C.lerConfig(path.join(sm, 'nao-existe.json'), { origensExtras: 'C:\\nads\\entrada' }).origensExtras, ['C:\\nads\\entrada']);
   }
@@ -407,7 +408,7 @@ try {
     await vE.ciclo(); vE.parar();
     const niG = path.join(oG, 'NÃO IDENTIFICADOS');
     const niArqs = []; (function andar(d) { try { for (const e of fs.readdirSync(d, { withFileTypes: true })) { if (e.isDirectory()) andar(path.join(d, e.name)); else niArqs.push(e.name); } } catch (e) { /* sem pasta */ } })(niG);
-    igual('entrada local: arquivou, o não identificado foi para o NÃO IDENTIFICADOS do G:, a local ficou vazia', [fs.existsSync(path.join(cE, '152 - JANIO JOSE DE ALMEIDA', 'FISCAL', 'SIMPLES NACIONAL', '12. XML', 'CT-e', '10-2026_CT-e_1235.xml')), niArqs.includes('sem-regra.bin'), fs.readdirSync(loc)], [true, true, []]);
+    igual('entrada local: arquivou, o não identificado foi para o NÃO IDENTIFICADOS do G:, a local ficou vazia', [fs.existsSync(path.join(cE, '152 - JANIO JOSE DE ALMEIDA', 'FISCAL', 'SIMPLES NACIONAL', '12. XML', 'CT-e', '10', '10-2026_CT-e_1235.xml')), niArqs.includes('sem-regra.bin'), fs.readdirSync(loc)], [true, true, []]);
   }
   // ---------- 18. os "já decididos" que saíram da pasta são esquecidos na passada inteira ----------
   {

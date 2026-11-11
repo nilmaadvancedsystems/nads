@@ -153,9 +153,11 @@ igual('as canceladas de um resumo do nads', S.canceladasDoResumo({ emitidas: [{ 
   const raiz = path.join(tmp, 'drive');
   const regime = path.join(raiz, '2026', '380 - LEONARDO', 'FISCAL', 'LUCRO PRESUMIDO');
   const escrever = (f, t) => { fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, t); };
-  escrever(path.join(regime, '14. XML', 'NF-e', '10-2026_NF-e_101.xml'), nfe(CH1, CLI, FORN, 101).replace('2026-09-05', '2026-10-05'));
+  // o fiscal por mês (11/11/2026): o XML em 14. XML\NF-e\10, a cancelada em 03. DOCUMENTOS FISCAIS\10\RECEBIDOS\CANCELADAS; e o
+  // arquivado antes, sem a pasta do mês (EMITIDOS\CANCELADAS)
+  escrever(path.join(regime, '14. XML', 'NF-e', '10', '10-2026_NF-e_101.xml'), nfe(CH1, CLI, FORN, 101).replace('2026-09-05', '2026-10-05'));
   escrever(path.join(regime, '03. DOCUMENTOS FISCAIS', 'EMITIDOS', 'CANCELADAS', '08-10-2026 - CANCELAMENTO NF-e 101.xml'), canc1);
-  escrever(path.join(regime, '03. DOCUMENTOS FISCAIS', 'RECEBIDOS', 'CANCELADAS', '09-10-2026 - CANCELAMENTO NF-e 202.xml'), canc2);
+  escrever(path.join(regime, '03. DOCUMENTOS FISCAIS', '10', 'RECEBIDOS', 'CANCELADAS', '09-10-2026 - CANCELAMENTO NF-e 202.xml'), canc2);
   escrever(path.join(regime, '03. DOCUMENTOS FISCAIS', 'RECEBIDOS', 'CANCELADAS', '01-09-2026 - CANCELAMENTO NF-e 7.xml'), cancCte);   // de antes do mês: não é lido
   escrever(path.join(regime, '03. DOCUMENTOS FISCAIS', 'EMITIDOS', 'CANCELADAS', '08-10-2026 - CANCELAMENTO NF-e 101 - X.pdf'), '%PDF');
   const g = await S.xmlsJaNoDrive('380', 'LEONARDO', '2026-10', null);
@@ -166,7 +168,7 @@ igual('as canceladas de um resumo do nads', S.canceladasDoResumo({ emitidas: [{ 
   const itensMapa = [
     it('f', 'c', 'FISCAL', 'd'), it('r', 'f', 'LUCRO PRESUMIDO', 'd'), it('x', 'r', '14. XML', 'd'), it('d', 'r', '03. DOCUMENTOS FISCAIS', 'd'),
     it('e', 'd', 'EMITIDOS', 'd'), it('ec', 'e', 'CANCELADAS', 'd'), it('a1', 'ec', '08-10-2026 - CANCELAMENTO NF-e 101.xml', 'f'),
-    it('v', 'd', 'RECEBIDOS', 'd'), it('vc', 'v', 'CANCELADAS', 'd'), it('a2', 'vc', '09-10-2026 - CANCELAMENTO NF-e 202.xml', 'f'),
+    it('m', 'd', '10', 'd'), it('v', 'm', 'RECEBIDOS', 'd'), it('vc', 'v', 'CANCELADAS', 'd'), it('a2', 'vc', '09-10-2026 - CANCELAMENTO NF-e 202.xml', 'f'),
   ];
   const doc = dados => ({ get: async () => ({ data: () => dados, exists: true }), collection: () => ({ get: async () => ({ docs: [{ data: () => ({ itens: itensMapa }) }] }) }) });
   const db = { collection: () => ({ doc: id => (id === 'raiz' ? doc({ pastaNome: '2026', clientes: [{ codigo: 380, id: 'c', nomePasta: '380 - LEONARDO' }] }) : doc({})) }) };

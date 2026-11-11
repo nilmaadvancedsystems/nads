@@ -90,6 +90,12 @@ function criarFiltroDeArquivados(carregar, opcoes) {
       }
       return false;
     },
+    /** (11/11/2026) a nota deste XML já tem um PDF arquivado neste cliente (o índice guarda o PDF como 'outro'); sem índice, não sabe: false */
+    pdfArquivado(cliente, nome) {
+      const i = indice();
+      if (!i || !Number.isFinite(+cliente)) return false;
+      return K.chavesDoTexto(String(nome || '')).some(ch => i.achar(ch).some(x => x.cliente === +cliente && x.de === 'outro'));
+    },
   };
 }
 

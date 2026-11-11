@@ -2793,7 +2793,10 @@ function decidirXml(entrada, ctx, ev) {
     if (entre.length) orig = entre;
     const vale = orig.filter(o => cad.porCod.has(o.cliente));
     if (vale.length) {
-      const caminhoDe = o => (o.sub && o.sub.length ? o.sub.concat('EVENTOS') : null);
+      // (11/11/2026, o fiscal por mês) a pasta do original já pode ter o mês no fim (12. XML\NF-e\10): o evento vai para
+      // <tipo>\EVENTOS\<mês do evento>, não para <tipo>\10\EVENTOS
+      const mesDoEvento = info.data && /^\d{4}-\d{2}/.test(info.data) ? info.data.slice(5, 7) : null;
+      const caminhoDe = o => (o.sub && o.sub.length ? semPastaDoMes(o.sub).concat('EVENTOS', mesDoEvento ? [mesDoEvento] : []) : null);
       const fiscal = ['XML', info.tipo, 'EVENTOS'];
       ev.push('chave ' + info.chave + ': o documento original está arquivado em ' + vale.map(o => o.cliente).join(', ') + (vale[0].sub ? ' (' + vale[0].sub.join('\\') + ')' : ''));
       for (const o of vale.slice(1)) copias.push({ cliente: o.cliente, comoCliente: 'chave', caminho: caminhoDe(o), fiscal: caminhoDe(o) ? null : fiscal });
@@ -5125,6 +5128,26 @@ function pastaParecida(cli, cad) {
  * O destino de um documento num cliente: regime e pasta do regime (fiscal), pasta raiz (existente, ou nova só com o CNPJ
  * do documento). Devolve { erro: { acao, motivo, evidencia } } ou { pastaCliente, criarPastaCliente, caminho, regime }.
  */
+/**
+ * O fiscal por mês (11/11/2026, o usuário: "tem que mudar o arquivador e ensinar ele que o fiscal também é por mês"; a escolha:
+ * "o mês logo no começo", nos documentos fiscais e no XML). Com o mês da competência:
+ *   03. DOCUMENTOS FISCAIS\<MM>\EMITIDOS|RECEBIDOS\…  (o mês logo depois da pasta dos documentos)
+ *   12. XML\<tipo>\[EVENTOS|INUTILIZAÇÕES\]<MM>         (o mês no fim, como na escolha: 12. XML\NF-e\10, 12. XML\NF-e\EVENTOS\10)
+ * O ano e o mês que alguns tipos já punham no fim (a NFC-e: …\NFC-e\<AAAA>\<MM>; o relatório mensal: …\<AAAA>) saem: a raiz
+ * já é a do ano e o mês passa a ser a pasta do mês. Sem o mês (só o ano), fica como antes. As outras pastas do regime não mudam.
+ */
+function comPastaDoMes(caminho, chave, competencia) {
+  if (!competencia || !competencia.mes || (chave !== 'DOCS' && chave !== 'XML')) return caminho;
+  const mm = String(competencia.mes).padStart(2, '0');
+  const ano = String(competencia.ano || '');
+  let resto = caminho.slice(3);
+  if (resto.length >= 2 && resto[resto.length - 2] === ano && String(resto[resto.length - 1]).padStart(2, '0') === mm) resto = resto.slice(0, -2);
+  else if (resto.length && resto[resto.length - 1] === ano) resto = resto.slice(0, -1);
+  return chave === 'DOCS' ? caminho.slice(0, 3).concat(mm, resto) : caminho.slice(0, 3).concat(resto, mm);
+}
+/** A pasta sem o mês do fim (12. XML\NF-e\10 → 12. XML\NF-e): o lugar do original no índice de chaves, para os eventos. */
+const semPastaDoMes = sub => (sub.length && /^\d{2}$/.test(sub[sub.length - 1]) ? sub.slice(0, -1) : sub);
+
 function destinoNoCliente(d, cli, comoCliente, cad, ano) {
   let caminho = d.caminho;
   if (d.fiscal) {
@@ -5148,7 +5171,7 @@ function destinoNoCliente(d, cli, comoCliente, cad, ano) {
     if (!arv[chave] && chave === 'SINTEGRA' && regime === 'LUCRO PRESUMIDO') { arv = Object.assign({}, arv, { SINTEGRA: 'SINTEGRA' }); (d.evidencias || (d.evidencias = [])).push('Sintegra no Lucro Presumido: a pasta SINTEGRA nasce em FISCAL\\LUCRO PRESUMIDO (Vitor, 29/10/2026)'); }
     // o documento do ano corrente (o regime muda na virada do ano): o tipo fora da árvore de hoje continua recusado
     if (!arv[chave]) return { erro: { acao: 'NAO_IDENTIFICADO', motivo: 'TIPO_INCOMPATIVEL_COM_REGIME', evidencia: chave + ' não previsto em ' + cli.regime } };
-    caminho = ['FISCAL', regime, arv[chave]].concat(d.fiscal.slice(1));
+    caminho = comPastaDoMes(['FISCAL', regime, arv[chave]].concat(d.fiscal.slice(1)), chave, d.competencia);
   }
   // 03 regra 1/2: pasta raiz pelo código; sem pasta, só cria se o cliente veio do CNPJ do documento. A raiz é a do ano
   // (23/10/2026): G:\Meu Drive\<ano>; a pasta do cliente num ano tem o mesmo nome que a de 2026 (ou "<cód> - <razão>")

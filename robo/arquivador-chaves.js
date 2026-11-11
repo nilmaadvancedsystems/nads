@@ -73,6 +73,8 @@ function lerDestino(arquivo, raiz) {
   let sub = partes.slice(1, -1);
   const nome = partes[partes.length - 1];
   let de = /\.xml$/i.test(nome) ? 'doc' : 'outro';
+  // (11/11/2026, o fiscal por mês) o evento em <tipo>\EVENTOS\<MM>: a pasta do mês sai, e vale como o EVENTOS de antes
+  if (sub.length >= 2 && /^\d{2}$/.test(sub[sub.length - 1]) && sub[sub.length - 2].toUpperCase() === 'EVENTOS') sub = sub.slice(0, -1);
   if (sub.length && sub[sub.length - 1].toUpperCase() === 'EVENTOS') { sub = sub.slice(0, -1); de = de === 'doc' ? 'evento' : 'outro'; }
   if (/-evento-|^\d{2}-\d{2}-\d{4} - /i.test(nome) && de === 'doc') de = 'evento';
   // (11/11/2026) o XML em …\EMITIDOS|RECEBIDOS\CANCELADAS (o evento de cancelamento, a nota cancelada do envelope): vale o
