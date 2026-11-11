@@ -103,10 +103,14 @@ describe('DP › Lote: os valores vão para a execução só do lote mais novo',
 });
 
 describe('DP › Envios: só o que é do setor do DP (11/11/2026)', () => {
-  it('a pasta do DP, a folha e o boleto do escritório entram', () => {
+  it('a pasta do DP e a folha entram', () => {
     expect(arquivoDoSetorDoDp('DEPARTAMENTO PESSOAL/10/FGTS')).toBe(true);
     expect(arquivoDoSetorDoDp('SOCIETÁRIO/FOLHA DE PAGAMENTO/2026/10')).toBe(true);
-    expect(arquivoDoSetorDoDp('CONTÁBIL/PAGAMENTOS DE FORNECEDORES/2026/11/NILMA')).toBe(true);
+  });
+  it('o boleto do escritório, da pasta CONTÁBIL, não entra: sai pelo Financeiro › Boletos', () => {
+    expect(arquivoDoSetorDoDp('CONTÁBIL/PAGAMENTOS DE FORNECEDORES/2026/11/NILMA')).toBe(false);
+    expect(arquivoDoSetorDoDp('CONTABIL/PAGAMENTOS DE FORNECEDORES/2026/11/NILMA')).toBe(false);
+    expect(arquivoDoSetorDoDp('CONTÁBIL/PAGAMENTOS DE FORNECEDORES')).toBe(false);
   });
   it('nada da pasta FISCAL (a DARF INSS que o arquivador guarda lá é do Fiscal)', () => {
     expect(arquivoDoSetorDoDp('FISCAL/SIMPLES NACIONAL/16. DARF')).toBe(false);
