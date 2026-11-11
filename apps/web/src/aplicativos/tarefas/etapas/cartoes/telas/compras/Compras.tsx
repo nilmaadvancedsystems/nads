@@ -40,10 +40,12 @@ function Fatura({ f, vm }: { f: VmCompras['faturas'][number]; vm: VmCompras }) {
       {!f.pagamento && f.noPeriodo && (
         <p className="hint imp-mov-vazio">Não achei no extrato importado o débito de {f.soma} perto do vencimento. Importe o extrato do banco na Importação; até lá, os lançamentos ficam no dia do vencimento.</p>
       )}
-      {f.bancoSemConta && f.pagamento && (
+      {f.bancoForaDoCadastro && f.pagamento && (
         <div className="imp-mov-caixa">
-          <span className="hint">O banco {f.pagamento.nomeDoBanco} não tem conta contábil no Cadastro. Escolha a conta do banco (ou cadastre em Cadastro › Contas bancárias):</span>
-          <MenuDeConta valor="" contas={vm.opcoes} onEscolher={c => vm.escolherContaBanco(f.pagamento!.banco, c)} />
+          <span className="hint">{f.bancoSemConta
+            ? 'O banco ' + f.pagamento.nomeDoBanco + ' não tem conta contábil no Cadastro. Escolha a conta do banco (ou cadastre em Cadastro › Contas bancárias):'
+            : 'A conta do banco ' + f.pagamento.nomeDoBanco + ' não está no Cadastro: ' + f.contaBanco + (f.nomeContaBanco ? ' — ' + f.nomeContaBanco : '') + '. Confira ou troque:'}</span>
+          <MenuDeConta valor={f.contaBanco} contas={vm.opcoes} onEscolher={c => vm.escolherContaBanco(f.pagamento!.banco, c)} />
         </div>
       )}
       {/* com o razão: cada compra conferida (Vitor, 11/11/2026) */}
@@ -148,10 +150,13 @@ export function Compras({ empresa }: { empresa: empresas.EmpresaDoEscritorio }) 
             <input id={id} type="file" multiple accept=".pdf" className="sr-only" onChange={e => { const fs = Array.from(e.target.files || []); e.target.value = ''; vm.importar(fs); }} />
           </>
         )}
+        {/* o que trava o arquivo, escrito (Vitor, 11/11/2026: o botão apagado não dizia por quê) */}
+        {!vm.pronto && vm.faturas.length > 0 && vm.falta.length > 0 && <span className="hint">{vm.falta[0]}</span>}
         <BotaoImportarNoAlterdata {...vm.importacao} disabled={!vm.pronto} motivo={vm.falta.join(' · ')} />
-        <button type="button" className="btn btn-primary" disabled={!vm.pronto} title={vm.pronto ? 'O razão do cartão para importar no Alterdata' : vm.falta.join(' · ')}
+        {/* os lançamentos contábeis no .xls de importação do Alterdata (o padrão de 10 colunas), como no INSS e no Creditor */}
+        <button type="button" className="btn btn-primary" disabled={!vm.pronto} title={vm.pronto ? 'Baixar o .xls de importação do Alterdata com os lançamentos do cartão' : vm.falta.join(' · ')}
           onClick={() => { const a = vm.arquivo(); baixarBytes(a.bytes, a.nome, a.tipo); }}>
-          <Icone nome="download" />Baixar o razão{vm.qtdLancamentos ? ' (' + vm.qtdLancamentos + ')' : ''}
+          <Icone nome="download" />Importar no meu Sistema{vm.qtdLancamentos ? ' (' + vm.qtdLancamentos + ')' : ''}
         </button>
       </div>
 

@@ -66,7 +66,8 @@ export function useCompras(empresa: empresas.EmpresaDoEscritorio) {
   const [caixaEscolhido, setCaixa] = useGuardado<string>('cartoes-caixa|' + empresa.nome, '');
   const [fornecedorEscolhido, setFornecedor] = useGuardado<string>('cartoes-fornecedor|' + empresa.nome, '');
   // a conta do banco escolhida aqui quando o banco não tem conta contábil no Cadastro (só nesta tela)
-  const [bancoEscolhido, setBancoEscolhido] = useState<Record<string, string>>({});
+  // (guardada por empresa: Vitor, 11/11/2026, "queria exportar em forma de lançamento contábil" — o arquivo travava aqui)
+  const [bancoEscolhido, setBancoEscolhido] = useGuardado<Record<string, string>>('cartoes-banco|' + empresa.nome, {});
 
   async function importar(fs: File[]) {
     if (!fs.length) return;
@@ -104,8 +105,22 @@ export function useCompras(empresa: empresas.EmpresaDoEscritorio) {
 
   const contaCartao = cadastro?.contasPadrao?.contas.cartao || '';
   const nomeDaConta = (codigo: string) => (codigo && plano ? empresas.cadastro.contaNoPlano(plano, codigo)?.nome || '' : '');
-  const contaDoBanco = (banco: string) => bancoEscolhido[banco] || cadastro?.bancos?.find(b => b.id === banco)?.contaContabil || '';
   const nomeDoBanco = (banco: string) => cadastro?.bancos?.find(b => b.id === banco)?.nome || banco;
+  const sem = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  /** a conta do banco no plano pelo nome dele ("Sicoob" → "Banco Sicoob Credinor"), quando o Cadastro não tem */
+  const doPlanoPeloNome = (banco: string) => {
+    const palavras = sem(nomeDoBanco(banco) + ' ' + banco).split(/[^a-z0-9]+/).filter(w => w.length >= 3 && !['banco', 'bco', 'conta', 'corrente', 'ltda'].includes(w));
+    const achadas = (plano?.contas || []).filter(c => !c.sintetica && palavras.some(w => sem(c.nome).split(/[^a-z0-9]+/).includes(w)));
+    return achadas.length === 1 ? achadas[0].codigo : '';
+  };
+  /** a conta do banco: a escolhida aqui, a do Cadastro ou a do plano pelo nome (e de onde veio) */
+  const contaDoBanco = (banco: string) => {
+    if (bancoEscolhido[banco]) return { codigo: bancoEscolhido[banco], origem: 'escolhida' as const };
+    const cad = cadastro?.bancos?.find(b => b.id === banco)?.contaContabil || '';
+    if (cad) return { codigo: cad, origem: 'cadastro' as const };
+    const pl = doPlanoPeloNome(banco);
+    return { codigo: pl, origem: pl ? 'plano' as const : '' as const };
+  };
 
   const faturas = lidas.map(l => {
     const c = cartoes.comprasDaFatura(l.fatura);
@@ -113,7 +128,8 @@ export function useCompras(empresa: empresas.EmpresaDoEscritorio) {
     const dia = pg?.data || l.fatura.vencimento;
     // o período à risca: a fatura entra no mês em que foi paga
     const noPeriodo = !naTarefa || meses.includes(dia.slice(0, 7));
-    const contaBanco = pg ? contaDoBanco(pg.banco) : '';
+    const doBanco = pg ? contaDoBanco(pg.banco) : null;
+    const contaBanco = doBanco?.codigo || '';
     return {
       id: l.id, arquivo: l.arquivo,
       rotulo: 'Fatura de ' + tarefas.rotuloNumericoCompetencia(l.fatura.vencimento.slice(0, 7)),
@@ -129,6 +145,9 @@ export function useCompras(empresa: empresas.EmpresaDoEscritorio) {
       mesDoPagamento: tarefas.rotuloNumericoCompetencia(dia.slice(0, 7)),
       contaBanco,
       bancoSemConta: !!pg && !contaBanco,
+      /** a conta do banco não está no Cadastro: a escolhida ou a do plano (dá para trocar) */
+      bancoForaDoCadastro: !!pg && doBanco?.origem !== 'cadastro',
+      nomeContaBanco: nomeDaConta(contaBanco),
       linhas: cartoes.lancamentosDaFatura(c, dia, contaCartao || '?', contaBanco || '?').map((ln, i) => ({ id: i, ...ln, valor: formatos.brl(ln.valor), portador: c.compras[i]?.portador || '' })),
       deFora: c.deFora.map((d, i) => ({ id: i, data: dataBr(d.item.data), descricao: d.item.descricao, valor: formatos.brl(d.item.valor), motivo: d.motivo })),
       // para o arquivo
