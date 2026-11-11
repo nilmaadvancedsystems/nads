@@ -283,7 +283,9 @@ if (require.main === module) {
     if (producao) {
       // o arquivador contínuo tem de estar desligado e a rotina antiga parada
       let cfg = {}; try { cfg = JSON.parse(fs.readFileSync(W.join(CONTROLE, 'config.json'), 'utf8')); } catch (e) { /* sem config */ }
-      if (cfg.modo && cfg.modo !== 'desligado') throw new Error('o arquivador contínuo está em "' + cfg.modo + '": desligue antes');
+      // (11/11/2026) --pelo-arquivador: quem chama é o próprio arquivador (o fiscal por mês da madrugada), que segura o contínuo e
+      // o botão com o "ocupado" enquanto o executor roda: o contínuo não precisa estar desligado
+      if (cfg.modo && cfg.modo !== 'desligado' && !a.includes('--pelo-arquivador')) throw new Error('o arquivador contínuo está em "' + cfg.modo + '": desligue antes');
       const trava = W.join(process.env.ARQUIVO_RAIZ || 'C:\\Users\\DPTO FISCAL 004\\GUSTAVO\\claudio', '_CONTROLE', '_execucao.lock');
       try { if (Date.now() - fs.statSync(trava).mtimeMs < 4 * 36e5) throw new Error('a rotina antiga está rodando (_execucao.lock)'); } catch (e) { if (e.code !== 'ENOENT') throw e; }
     }

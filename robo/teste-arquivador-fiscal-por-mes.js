@@ -102,11 +102,41 @@ try {
   const des = new C.Correcao({ producao: true, log: () => {} });
   C.desfazer(des, pro.diario);
   igual('o --desfazer devolve tudo para o lugar de antes', [existe(XML + 'NF-e\\10-2026_NF-e_254.xml'), existe(XML + 'NF-e\\10\\10-2026_NF-e_254.xml'), existe(DOCS + 'EMITIDOS\\05-10-2026 - NF-e 254 - VOLPONI.pdf'), existe(DOCS + 'RECEBIDOS\\NF-e\\06-10-2026 - NF-e 800 - IGUAL.pdf')], [true, false, true, true]);
+
+  // ---------- sozinho, na madrugada (o "o robô faz sozinho") ----------
+  (async () => {
+    let hora = 14, ocupado = false;
+    const marcas = [], avisos = [];
+    const painelFalso = { fazendo: (k, t) => marcas.push(t ? 'fazendo' : 'livre'), atividade: (k, t, d) => avisos.push('ok: ' + t + ' / ' + d), erro: (k, t, d) => avisos.push('erro: ' + t + ' / ' + d) };
+    const base = {
+      log: () => {}, painel: painelFalso, controle: process.env.ARQ_NOVO_CONTROLE, drive: DRIVE, anos: [2026],
+      agora: () => new Date(2026, 10, 12, hora, 0), ocupado: () => ocupado, ocupar: () => marcas.push('ocupou'), desocupar: () => marcas.push('desocupou'),
+      rodarExecutor: arq => F.rodarExecutorNumProcesso(arq),
+    };
+    const m = F.criarMudancaDaMadrugada(base);
+    igual('madrugada: às 14h não roda', await m.tique(), 'fora da hora');
+    hora = 2; ocupado = true;
+    igual('madrugada: com o arquivador ocupado, espera', await m.tique(), 'o arquivador está ocupado');
+    ocupado = false;
+    igual('madrugada: às 2h move tudo (o executor num processo à parte)', await m.tique(), 'feito');
+    igual('madrugada: os arquivos estão nas pastas do mês', [existe(XML + 'NF-e\\10\\10-2026_NF-e_254.xml'), existe(XML + 'NF-e\\10-2026_NF-e_254.xml'), existe(DOCS + '10\\RECEBIDOS\\NF-e\\06-10-2026 - NF-e 799 - LUCIMAR.pdf'), existe(DOCS + '09\\EMITIDOS\\RELATÓRIO MENSAL\\09-2026 - RELATORIO NOTAS EMITIDAS - VOLPONI.pdf')], [true, false, true, true]);
+    igual('madrugada: segurou o arquivador enquanto movia e avisou na Central', [marcas, avisos.length, /^ok: Fiscal de 2026 separado por mês/.test(avisos[0])], [['ocupou', 'fazendo', 'livre', 'desocupou'], 1, true]);
+    igual('madrugada: o feito fica gravado (com o resumo do executor)', (x => [x.ano, x.mover, !!x.executor])(JSON.parse(fs.readFileSync(path.join(process.env.ARQ_NOVO_CONTROLE, 'fiscal-por-mes', 'feito-2026.json'), 'utf8'))), [2026, 11, true]);
+    igual('madrugada: na noite seguinte não faz de novo', await m.tique(), 'nada a fazer');
+    // o executor que falha: avisa e não marca como feito (tenta na próxima madrugada)
+    fs.mkdirSync(path.join(DRIVE, '2025', '1 - X', 'FISCAL', 'SIMPLES NACIONAL', '12. XML', 'NF-e'), { recursive: true });
+    fs.writeFileSync(path.join(DRIVE, '2025', '1 - X', 'FISCAL', 'SIMPLES NACIONAL', '12. XML', 'NF-e', '01-2025_NF-e_1.xml'), 'x');
+    avisos.length = 0;
+    const falha = F.criarMudancaDaMadrugada(Object.assign({}, base, { anos: [2025], rodarExecutor: async () => ({ ok: false, erro: 'PAREI: o lote não conferiu' }) }));
+    igual('madrugada: o executor parou → erro na Central, sem o feito', [await falha.tique(), /^erro: /.test(avisos[0] || ''), fs.existsSync(path.join(process.env.ARQ_NOVO_CONTROLE, 'fiscal-por-mes', 'feito-2025.json'))], ['erro', true, false]);
+  })().then(fim, e => { falhas++; console.log('FALHOU com erro:', e.stack); fim(); });
 } catch (e) {
   falhas++;
   console.log('FALHOU com erro:', e.stack);
-} finally {
-  try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) { /* o temporário fica */ }
+  fim();
 }
-console.log((falhas ? falhas + ' FALHA(S) em ' : 'ok: ') + total + ' testes');
-process.exit(falhas ? 1 : 0);
+function fim() {
+  try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) { /* o temporário fica */ }
+  console.log((falhas ? falhas + ' FALHA(S) em ' : 'ok: ') + total + ' testes');
+  process.exit(falhas ? 1 : 0);
+}
