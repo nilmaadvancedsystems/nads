@@ -36,7 +36,8 @@ export function ChamadosDoCliente() {
         </label>
       </div>
       {vm.carregando ? <Esqueleto linhas={6} /> : (
-        <div className="table-wrap">
+        // sem a rolagem própria: a solicitação abre embaixo da linha e só a página rola (11/11/2026)
+        <div className="table-wrap mandei-central">
           <table className="table-compact">
             <thead><tr><th>Empresa</th><th>Assunto</th><th>Situação</th><th>Atualizado</th></tr></thead>
             <tbody>

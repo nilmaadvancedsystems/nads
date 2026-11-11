@@ -4,7 +4,7 @@
 // da empresa e o Mandar.
 import { clientes as cl, formatos, mandei as md, tarefas } from '@nads/core';
 import { useRetorno } from '@nads/ui';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useOperador } from '../../../../casca/operador';
 import { useMarcasDoMes } from '../../../../dados/clientes';
 import { criarTicket } from '../../../../dados/mandei';
@@ -32,6 +32,8 @@ export function useEnvioDoMes() {
   const doEntregas = useContatoDoEntregas(s.codigo);
   const contato = { email: vivo.cadastro.contato?.email || doEntregas?.email || '', whatsapp: vivo.cadastro.contato?.whatsapp || doEntregas?.whatsapp || '' };
   const carregado = mc.carregado && mf.carregado;
+  // mandando: o botão espera o banco gravar o ticket (e não manda duas vezes)
+  const [mandando, setMandando] = useState(false);
 
   return {
     /** as contas que vão ser questionadas, dos dois lados; jaFoi = o lado dela já foi mandado */
@@ -46,20 +48,26 @@ export function useEnvioDoMes() {
     contato,
     /** o que falta no Cadastro para mandar (vazio = pode): um dos dois basta (Vitor, 07/10/2026) */
     faltaNoCadastro: !vivo.carregada ? ['o cadastro (carregando)'] : contato.email || contato.whatsapp ? [] : ['o e-mail ou o WhatsApp'],
-    mandar: () => {
+    mandando,
+    mandar: async () => {
       const { email, whatsapp } = contato;
       if (!email && !whatsapp) { aviso({ tom: 'erro', titulo: 'Mandei', texto: 'Cadastre o e-mail ou o WhatsApp da empresa em Cadastro › Empresa.' }); return; }
-      if (!envio.faltam.length) return;
+      if (!envio.faltam.length || mandando) return;
       const doMes = cl.ticketDoMes(envio, mes, rotuloMes);
-      const tk = criarTicket({
-        empresa: { nome: s.nome, codigo: s.codigo }, para: { nome: '', email, ...(whatsapp ? { whatsapp } : {}) },
-        ...doMes, criadoPor: { nome: op?.nome || '' },
-        origem: { titulo: 'Saldos em aberto · ' + rotuloMes, rota: window.location.pathname, competencia: mes },
-      });
-      // cada lado mandado guarda a assinatura: mudou o "+" depois, falta mandar de novo
-      if (envio.faltam.includes('clientes')) mc.salvar({ ...mc.doc, enviado: envio.assinaturas.clientes });
-      if (envio.faltam.includes('fornecedores')) mf.salvar({ ...mf.doc, enviado: envio.assinaturas.fornecedores });
-      aviso({ tom: 'ok', titulo: 'Ticket ' + md.rotuloDoNumero(tk.numero) + ' mandado', texto: [email, whatsapp && 'WhatsApp ' + whatsapp].filter(Boolean).join(' e ') + ' · acompanhe em Área do Cliente › Meus tickets' });
+      setMandando(true);
+      try {
+        const tk = await criarTicket({
+          empresa: { nome: s.nome, codigo: s.codigo }, para: { nome: '', email, ...(whatsapp ? { whatsapp } : {}) },
+          ...doMes, criadoPor: { nome: op?.nome || '' },
+          origem: { titulo: 'Saldos em aberto · ' + rotuloMes, rota: window.location.pathname, competencia: mes },
+        });
+        // cada lado mandado guarda a assinatura: mudou o "+" depois, falta mandar de novo
+        if (envio.faltam.includes('clientes')) mc.salvar({ ...mc.doc, enviado: envio.assinaturas.clientes });
+        if (envio.faltam.includes('fornecedores')) mf.salvar({ ...mf.doc, enviado: envio.assinaturas.fornecedores });
+        aviso({ tom: 'ok', titulo: 'Ticket ' + md.rotuloDoNumero(tk.numero) + ' mandado', texto: [email, whatsapp && 'WhatsApp ' + whatsapp].filter(Boolean).join(' e ') + ' · acompanhe em Área do Cliente › Meus tickets' });
+      } catch (e) {
+        aviso({ tom: 'erro', titulo: 'O ticket não foi mandado', texto: e instanceof Error ? e.message : String(e) });
+      } finally { setMandando(false); }
     },
   };
 }

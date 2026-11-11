@@ -42,7 +42,9 @@ export function Formulario() {
           </span>
         )}
       </header>
-      {!vm.existe ? (
+      {vm.carregando ? (
+        <Vazio icone="clock" titulo="Abrindo o formulário" texto="Só um instante." />
+      ) : !vm.existe ? (
         <Vazio icone="link" titulo="Link não encontrado" texto="Confira o endereço que você recebeu por e-mail." />
       ) : !vm.valido ? (
         <Vazio icone="clock" titulo="Este link venceu" texto="Se ainda precisar responder, fale com o escritório: enviamos um novo link." />
@@ -83,10 +85,13 @@ function Respostas({ vm }: { vm: VM }) {
         {!vm.revisao && vm.itens[vm.passo]?.falta && <span className="hint">{vm.itens[vm.passo]?.falta}</span>}
         {(vm.passo > 0 || vm.revisao) && <button type="button" className="btn" onClick={() => vm.irPara(vm.passo - 1)}>Anterior</button>}
         {vm.revisao
-          ? <button type="button" className="btn btn-primary" onClick={vm.enviar}>Enviar resposta</button>
+          ? <button type="button" className="btn btn-primary" disabled={vm.enviando} onClick={vm.enviar}>{vm.enviando ? 'Enviando…' : 'Enviar resposta'}</button>
           : <button type="button" className="btn btn-primary" disabled={!vm.podeAvancar} title={vm.itens[vm.passo]?.falta || undefined}
               onClick={() => vm.irPara(vm.passo + 1)}>{ultimo ? 'Revisar' : 'Próximo'}</button>}
       </div>
+      {/* o arquivo subindo para o escritório (no banco, até 25 MB, pode levar uns segundos) */}
+      {vm.subindo.length > 0 && <p className="hint" style={{ margin: '0 0 8px' }}>Enviando {vm.subindo.join(', ')}…</p>}
+      {vm.revisao && vm.erro && <p className="hint ext-neg" style={{ margin: '0 0 8px' }}>{vm.erro}</p>}
       {vm.revisao ? <Revisao vm={vm} /> : <Item vm={vm} />}
     </>
   );

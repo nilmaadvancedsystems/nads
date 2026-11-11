@@ -335,6 +335,8 @@ thead th{position:sticky;top:0;z-index:1;background:var(--surface-2);text-align:
    a tabela rola de lado */
 .table-wrap.mandei-linhas{overflow:visible;max-height:none;}
 @media (max-width:940px){.table-wrap.mandei-linhas{overflow:auto;position:relative;}}
+/* a Central de tickets e as Solicitações (11/11/2026: "tem 2 barras"): a lista cresce com o que abre embaixo da linha; só a página rola (no celular, a tabela ainda rola de lado) */
+.table-wrap.mandei-central{max-height:none;}
 /* a Central do Mandei (11/11/2026): os botões da revisão de cada resposta, e as notas internas e o histórico lado a lado */
 .mandei-acao{min-height:28px;height:28px;padding:0 10px;font-size:var(--fs-12);gap:6px;}
 .mandei-acao svg{width:14px;height:14px;}
