@@ -1003,10 +1003,12 @@ igual('sem nome no assunto: não decide pelo nome', r.desempatarPorNome(fitos, '
     { i: 'a7', n: 'solto.pdf', p: 'dp', t: 'f' },
   ];
   const porMes = dp.arquivosDoDpNaPasta(itens, 'R', '2026', di2.caminhos, di2.chaveDeNome);
-  igual('DP: o mês junta a pasta do mês, a FGTS e a DARF do INSS', (porMes.get('2026-10') || []).map(a => a.i), ['a2', 'a1', 'a5']);
+  // 11/11/2026: separado por setor — a DARF do INSS da pasta FISCAL é do Fiscal e não entra mais no DP
+  igual('DP: o mês junta a pasta do mês e a FGTS; nada da pasta FISCAL', (porMes.get('2026-10') || []).map(a => a.i), ['a2', 'a1']);
   igual('DP: a folha vai pelo ano e mês da pasta', (porMes.get('2026-09') || []).map(a => a.i), ['a4']);
   igual('DP: a pasta onde o arquivo está vai junto', (porMes.get('2026-10') || [])[1].c, 'DEPARTAMENTO PESSOAL/10/FGTS');
-  igual('DP: FUNCIONÁRIOS, DARF de outro tributo, Google Docs e arquivo solto ficam de fora', [...porMes.keys()].sort(), ['2026-09', '2026-10']);
+  igual('DP: FUNCIONÁRIOS, a pasta FISCAL, Google Docs e arquivo solto ficam de fora', [...porMes.keys()].sort(), ['2026-09', '2026-10']);
+  igual('DP: a lista já gravada com a DARF da pasta FISCAL não manda a DARF (com ou sem escolha)', [dp.escolhidos([{ i: 'x', c: 'DEPARTAMENTO PESSOAL/10' }, { i: 'f', c: 'FISCAL/SIMPLES NACIONAL/16. DARF' }], []).map(a => a.i), dp.escolhidos([{ i: 'f', c: 'FISCAL/LUCRO PRESUMIDO/05. DARF' }], ['f']).map(a => a.i)], [['x'], []]);
   igual('DP: sem escolha vão todos', dp.escolhidos([{ i: 'x' }, { i: 'y' }], []).map(a => a.i), ['x', 'y']);
   igual('DP: só vai o escolhido que está na lista (nunca um id de fora)', dp.escolhidos([{ i: 'x' }, { i: 'y' }], ['y', 'zzz']).map(a => a.i), ['y']);
   igual('DP: o arquivo tirado da lista não vai', dp.tirarOsDeFora([{ i: 'x' }, { i: 'y' }], { tudo: false, arquivos: ['y'] }, '2026-10').map(a => a.i), ['x']);
