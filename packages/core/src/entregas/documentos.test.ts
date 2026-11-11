@@ -8,6 +8,7 @@ import {
 import {
   ajustarDiaUtil, barrasDaLinha, clienteDoPdf, codigoDePagamentoDoPdf, competenciaDoPdf, dadosDoPdf, doMesDaGuia, dvMod10, feriadosNacionais,
   guiasNaPasta, mesDaGuia, paradaDoCodigo, pixCopiaECola, pixValido, chavePixNormalizada, tipoDoPdf, valorDoPdf, vencimentoAutomatico, vencimentoDoPdf,
+  temVencimentoAutomatico,
 } from './guiasDoPdf';
 import {
   avaliarLocalDaEntrega, avisoDaParada, chaveDaParada, diasAte, estadoDaOrdemFixa, fechamentoDoDia, janelaDoPeriodo, minutosPorParada, moverNaRota,
@@ -144,6 +145,45 @@ describe('vencimento automático e feriados', () => {
     expect(vencimentoAutomatico('2026-08', [{ tipo: 'DAS' }, { tipo: 'FGTS' }])).toBeNull();
     expect(vencimentoAutomatico('2026-09', [{ tipo: 'Notas' }])).toBeNull();
     expect(ajustarDiaUtil(new Date(2026, 3, 3), 'antecipa').getDate()).toBe(2);
+  });
+});
+
+describe('o 13º salário (11/11/2026)', () => {
+  const primeira = tipoPelaChave('decimo_terceiro_1');
+  const segunda = tipoPelaChave('decimo_terceiro_2');
+  it('duas opções na lista, uma por parcela, sem valor', () => {
+    expect(primeira).toMatchObject({ rotulo: '13º Salário 1ª parcela', semValor: true });
+    expect(segunda).toMatchObject({ rotulo: '13º Salário 2ª parcela', semValor: true });
+    expect(totalDosItens([{ tipo: primeira!.rotulo, valor: null }, { tipo: 'FGTS', valor: 50 }])).toBe(50);
+  });
+  it('a 1ª até 30/11 e a 2ª até 20/12, no ano da competência; fim de semana antecipa', () => {
+    expect(temVencimentoAutomatico('decimo_terceiro_1')).toBe(true);
+    expect(temVencimentoAutomatico('decimo_terceiro_2')).toBe(true);
+    expect(temVencimentoAutomatico('folha_pagamento')).toBe(false);
+    // 30/11/2026 é segunda; 20/12/2026 é domingo (vai para a sexta, 18)
+    expect(vencimentoAutomatico('2026-11', [{ tipo: primeira!.rotulo }])).toBe('2026-11-30');
+    expect(vencimentoAutomatico('2026-12', [{ tipo: segunda!.rotulo }])).toBe('2026-12-18');
+    // a competência de outubro (a guia entregue em novembro) continua no 30/11 do mesmo ano; 30/11/2025 é domingo
+    expect(vencimentoAutomatico('2026-10', [{ tipo: primeira!.rotulo }])).toBe('2026-11-30');
+    expect(vencimentoAutomatico('2025-11', [{ tipo: primeira!.rotulo }])).toBe('2025-11-28');
+    // as duas parcelas juntas (ou o 13º com o FGTS) dão datas diferentes: em branco
+    expect(vencimentoAutomatico('2026-11', [{ tipo: primeira!.rotulo }, { tipo: segunda!.rotulo }])).toBeNull();
+    expect(vencimentoAutomatico('2026-11', [{ tipo: primeira!.rotulo }, { tipo: 'FGTS' }])).toBeNull();
+  });
+  it('o PDF do 13º: a parcela pelo texto, senão pelo mês; o recibo que cita o FGTS continua 13º', () => {
+    expect(tipoDoPdf('RECIBO DE PAGAMENTO 13º SALÁRIO 1ª PARCELA ... Base Cálc. FGTS 2.000,00 FGTS do mês 160,00')).toBe('decimo_terceiro_1');
+    expect(tipoDoPdf('Adiantamento do 13° salário')).toBe('decimo_terceiro_1');
+    expect(tipoDoPdf('DÉCIMO TERCEIRO SALÁRIO - 2ª PARCELA')).toBe('decimo_terceiro_2');
+    expect(tipoDoPdf('13o salario parcela final')).toBe('decimo_terceiro_2');
+    expect(tipoDoPdf('Folha do 13º Salário Competência: 12/2026')).toBe('decimo_terceiro_2');
+    expect(tipoDoPdf('Folha do 13º Salário Competência: 11/2026')).toBe('decimo_terceiro_1');
+    expect(dadosDoPdf('Recibo 13º Salário 2ª parcela ALFA EXEMPLO LTDA CNPJ 11.222.333/0001-81', [A])).toMatchObject({ tipo: 'decimo_terceiro_2', cliente: { id: 'c1' } });
+  });
+  it('a guia do 13º continua guia (DARF, FGTS); o resto não muda', () => {
+    expect(tipoDoPdf('DOCUMENTO DE ARRECADAÇÃO DE RECEITAS FEDERAIS DARF CP SEGURADOS 13º SALÁRIO')).toBe('darf');
+    expect(tipoDoPdf('GUIA DO FGTS DIGITAL 13º salário')).toBe('fgts');
+    expect(tipoDoPdf('RECIBO DE PAGAMENTO DE SALARIO mensal 1ª PARCELA')).toBe('folha_pagamento');
+    expect(tipoDoPdf('FOLHA DE PAGAMENTO 2013 SALARIO')).toBe('folha_pagamento');
   });
 });
 
