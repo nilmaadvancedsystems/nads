@@ -7,7 +7,9 @@
 //      competência, sem abrir o mapa inteiro do Drive. Contam como do DP no mês (Vitor, 27/10/2026: "tudo do DP no mês"):
 //        DEPARTAMENTO PESSOAL/<MM>/...                  o FGTS e o resto do mês (FUNCIONÁRIOS fica de fora: não é do mês)
 //        SOCIETÁRIO/FOLHA DE PAGAMENTO/<AAAA>/<MM>/...  a folha, os holerites, o pró-labore
-//        FISCAL/.../MM-AAAA - DARF INSS ...             a DARF do INSS (DCTFWeb), onde o arquivador guarda
+//      A pasta FISCAL não entra (11/11/2026: "os gmails sejam separados por setor, então envios do fiscal nao devem se
+//      envolver com dp e vice versa"): antes a "MM-AAAA - DARF INSS" de FISCAL/<regime>/DARF ia junto; agora o que é do
+//      Fiscal sai pelo Fiscal (Relatório › Enviar guias). A DARF que o DP quiser mandar vai pelo lote ou pela pasta do DP.
 //        CONTÁBIL/PAGAMENTOS DE FORNECEDORES/<AAAA>/<MM>/<pasta da Nilma>/  o boleto do escritório (28/10/2026: "o boleto do
 //          escritório fica na do contábil"): só o que tem BOLETO no nome ou começa com Fatura_ (o comprovante do que o cliente
 //          já pagou e a NFS-e ficam de fora), no mês ANTERIOR ao da pasta (a fatura de 11 vai com o DP de 10)
@@ -39,10 +41,6 @@ const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julh
 function competenciaDoDp(c, ano) {
   if (c[0] === 'DEPARTAMENTO PESSOAL' && c.length >= 3 && MES.test(c[1])) return ano + '-' + c[1];
   if (c[0] === 'SOCIETARIO' && c[1] === 'FOLHA DE PAGAMENTO' && c.length >= 5 && /^20\d{2}$/.test(c[2]) && MES.test(c[3])) return c[2] + '-' + c[3];
-  if (c[0] === 'FISCAL') {
-    const m = /^(0[1-9]|1[0-2])-(20\d{2}) - DARF INSS\b/.exec(c[c.length - 1]);
-    if (m) return m[2] + '-' + m[1];
-  }
   if (c[0] === 'CONTABIL' && c[1] === 'PAGAMENTOS DE FORNECEDORES' && c.length >= 6 && /^20\d{2}$/.test(c[2]) && MES.test(c[3]) && /NILMA/.test(c[4])) {
     const nome = c[c.length - 1];
     if (/BOLETO/.test(nome) || /^FATURA_/.test(nome)) return mesAnterior(c[2] + '-' + c[3]);
@@ -91,10 +89,14 @@ function arquivosDoDpNaPasta(itens, raizId, ano, caminhos, chaveDeNome) {
   return porMes;
 }
 
-// Os arquivos que vão no e-mail: os pedidos que estão na lista do mês (todos, se o pedido não escolheu nenhum).
+// O arquivo é do setor do DP: nada da pasta FISCAL (11/11/2026). Vale também para a lista já gravada antes da regra.
+const doSetorDoDp = a => !/^FISCAL(\/|$)/i.test(String((a && a.c) || ''));
+
+// Os arquivos que vão no e-mail: os pedidos que estão na lista do mês (todos, se o pedido não escolheu nenhum), só os do DP.
 function escolhidos(lista, pedidos) {
   const ids = new Set((Array.isArray(pedidos) ? pedidos : []).map(String));
-  return ids.size ? lista.filter(a => ids.has(a.i)) : lista.slice();
+  const doDp = lista.filter(doSetorDoDp);
+  return ids.size ? doDp.filter(a => ids.has(a.i)) : doDp;
 }
 
 // Tira o que o DP tirou da lista do mês (DP › Envios, a lixeira; 06/11/2026: "excluir o arquivo em anexo assim como no
@@ -315,5 +317,5 @@ async function mandarEmailDoDp(db, { comp, nome, para, anexos }, ctx) {
 module.exports = {
   gravarArquivosDoDp, atenderEnvioDp, destinatarios, mandarEmailDoDp, mimeDe, MAX_BYTES,
   // puras, pro teste
-  competenciaDoDp, arquivosDoDpNaPasta, nomesNoEmail, documentoDoAnexo, escolhidos, tirarOsDeFora, paraQuem, mesPorExtenso, mesesRecentes, mesAnterior, mensagemDoEnvio, MODELO_PADRAO, COLECAO,
+  competenciaDoDp, arquivosDoDpNaPasta, nomesNoEmail, documentoDoAnexo, escolhidos, doSetorDoDp, tirarOsDeFora, paraQuem, mesPorExtenso, mesesRecentes, mesAnterior, mensagemDoEnvio, MODELO_PADRAO, COLECAO,
 };

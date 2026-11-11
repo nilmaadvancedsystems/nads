@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { arquivosJaEnviados, envioMarcaAEtapa, valoresDoLoteQueVao, type ResultadoComValores } from './enviosDoDp';
+import { arquivoDoSetorDoDp, arquivosJaEnviados, envioMarcaAEtapa, valoresDoLoteQueVao, type ResultadoComValores } from './enviosDoDp';
 import { execucaoNova, fazer, informarValor, voltarPara } from './execucao';
 
 const nova = () => execucaoNova('CONSTRUTOP MATERIAIS DE CONSTRUCAO LTDA', 593, '2026-10', 'dp');
@@ -99,5 +99,19 @@ describe('DP › Lote: os valores vão para a execução só do lote mais novo',
     expect(valoresDoLoteQueVao(antigo, [antigo, novo], { ...ex, valores: { fgts: 120, darf: 40 } })).toEqual({ darf: 50 });
     // o lote de outro cliente não conta
     expect(valoresDoLoteQueVao(antigo, [antigo, r('2026-10-29T10:00:00.000Z', { fgts: 1 }, 7)], { ...ex, valores: { fgts: 90 } })).toEqual({ fgts: 100, darf: 50 });
+  });
+});
+
+describe('DP › Envios: só o que é do setor do DP (11/11/2026)', () => {
+  it('a pasta do DP, a folha e o boleto do escritório entram', () => {
+    expect(arquivoDoSetorDoDp('DEPARTAMENTO PESSOAL/10/FGTS')).toBe(true);
+    expect(arquivoDoSetorDoDp('SOCIETÁRIO/FOLHA DE PAGAMENTO/2026/10')).toBe(true);
+    expect(arquivoDoSetorDoDp('CONTÁBIL/PAGAMENTOS DE FORNECEDORES/2026/11/NILMA')).toBe(true);
+  });
+  it('nada da pasta FISCAL (a DARF INSS que o arquivador guarda lá é do Fiscal)', () => {
+    expect(arquivoDoSetorDoDp('FISCAL/SIMPLES NACIONAL/16. DARF')).toBe(false);
+    expect(arquivoDoSetorDoDp('fiscal/LUCRO PRESUMIDO/05. DARF')).toBe(false);
+    expect(arquivoDoSetorDoDp('FISCAL')).toBe(false);
+    expect(arquivoDoSetorDoDp('FISCALIZACAO/x')).toBe(true);
   });
 });

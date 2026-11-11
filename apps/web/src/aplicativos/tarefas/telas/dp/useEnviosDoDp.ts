@@ -91,7 +91,8 @@ export function useEnviosDoDp() {
     .filter(c => c.obrigacoes.length > 0)
     .map(c => {
       const cod = String(c.codigo);
-      const doMes = lista.porCodigo.get(cod) || NADA;
+      // só o que é do setor do DP (11/11/2026: nada da pasta FISCAL, nem na lista que o robô gravou antes da regra)
+      const doMes = (lista.porCodigo.get(cod) || NADA).filter(a => t.arquivoDoSetorDoDp(a.pasta));
       // os arquivos tirados não contam: nem para enviar, nem para o Enviado (a Entrega marca com os que ficaram)
       const tirado = foraDoMes.porCodigo.get(cod);
       const idsFora = new Set(tirado?.arquivos || []);
