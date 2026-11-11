@@ -304,6 +304,22 @@ export function useNovaEntrega() {
     }
     fechadaConfirmada.current = 0;
     setSalvando(true);
+    // o mesmo documento do mesmo mês já na rota (ou no link) desse cliente: não grava de novo (11/11/2026). Confere só as
+    // entregas do cliente no mês (a consulta do "repetir o mês passado"); sem sinal em 5 s, segue sem conferir
+    if (para.tipo === 'cliente') {
+      const doMes = await Promise.race([
+        repo.doClienteNoMes(para.cliente.id, competencia).catch(() => null),
+        new Promise<null>(r => setTimeout(() => r(null), 5000)),
+      ]);
+      const repetidos = entregas.jaNaRota({ clienteId: para.cliente.id, competencia, itens }, doMes || []);
+      if (repetidos.length) {
+        const aviso = entregas.avisoDeJaNaRota(repetidos, competencia, entregas.rotuloDoCliente(para.cliente));
+        setErros({ itens: aviso });
+        avisar(aviso, 'erro');
+        setSalvando(false);
+        return;
+      }
+    }
     const nova: entregas.EntregaNova = {
       modo, para, competencia, vencimento: vencimento || '', itens, zona: link ? '' : zona, codigoPagamento, foto, fotoEhGuia,
     };

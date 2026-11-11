@@ -44,7 +44,7 @@ function loteFiscalDoBanco(id: string, d: Record<string, unknown>): LoteFiscal {
     ...l, grupo: d.grupo === 'lp' ? 'lp' : 'sn',
     resultados: l.resultados.map(x => ({
       ...x, preenchidos: textos(r[x.chave]?.preenchidos), erroNoRelatorio: texto(r[x.chave]?.erroNoRelatorio),
-      via: viaDaGuia(r[x.chave]?.via), entregaId: texto(r[x.chave]?.entregaId),
+      via: viaDaGuia(r[x.chave]?.via), entregaId: texto(r[x.chave]?.entregaId), jaNaRota: textos(r[x.chave]?.jaNaRota),
     })),
     vias: Object.fromEntries(Object.entries((d.vias || {}) as Record<string, unknown>).map(([k, v]) => [k, viaDaGuia(v)] as const)),
   };

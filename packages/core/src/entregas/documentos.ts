@@ -407,6 +407,35 @@ export function itensDaEdicao(ed: DocumentosEmEdicao): ItemDaEntrega[] {
   ];
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+// o que já está na rota (11/11/2026: "quero que o modulo não deixe eu colocar algo rota sendo que ja esteja em rota")
+// ---------------------------------------------------------------------------------------------------------------------
+/** O documento para comparar: sem acento, sem caixa e sem espaço sobrando ("DAE  ICMS" = "dae icms"). */
+export const chaveDoDocumento = (tipo: string) => semAcento(tipo).replace(/\s+/g, ' ').trim();
+/**
+ * Os documentos da entrega nova que já estão na rota: o mesmo cliente, a mesma competência e o mesmo documento numa parada
+ * que ainda não foi entregue (na rota ou no link). Outro mês do mesmo documento pode (o DAE de setembro e o de outubro); o
+ * repetido dentro da própria entrega nova também (dois DAS). Sem cliente (avulso, banco): nada a conferir.
+ */
+export function jaNaRota(
+  nova: { clienteId: string | null; competencia: string; itens: readonly Pick<ItemDaEntrega, 'tipo'>[] },
+  entregasDoCliente: readonly Pick<Entrega, 'clienteId' | 'competencia' | 'status' | 'itens'>[],
+): string[] {
+  if (!nova.clienteId) return [];
+  const naRota = new Set(entregasDoCliente
+    .filter(e => e.clienteId === nova.clienteId && e.competencia === nova.competencia && (e.status === 'pendente' || e.status === 'link'))
+    .flatMap(e => e.itens.map(i => chaveDoDocumento(i.tipo))));
+  const repetidos: string[] = [];
+  for (const i of nova.itens) if (naRota.has(chaveDoDocumento(i.tipo)) && !repetidos.includes(i.tipo)) repetidos.push(i.tipo);
+  return repetidos;
+}
+/** "DAE ICMS de outubro/2026 já está na rota de 493 - ANTONIA'S LTDA. …" */
+export function avisoDeJaNaRota(repetidos: readonly string[], competencia: string, cliente: string): string {
+  const quais = repetidos.length > 1 ? repetidos.slice(0, -1).join(', ') + ' e ' + repetidos[repetidos.length - 1] : repetidos[0] || '';
+  return quais + ' de ' + rotuloDaCompetencia(competencia) + (repetidos.length > 1 ? ' já estão' : ' já está') + ' na rota de ' + cliente
+    + '. Para mudar, edite ou tire a parada que está lá.';
+}
+
 /** A data em que a entrega aconteceu (ou foi posta na rota). */
 export const quandoFoi = (e: Pick<Entrega, 'confirmadoEm' | 'criadoEm'>) => e.confirmadoEm || e.criadoEm;
 

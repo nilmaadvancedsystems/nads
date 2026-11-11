@@ -80,7 +80,8 @@ function TabelaDosProntos({ vm, grupos, mexe }: { vm: VmEnvioDeGuias; grupos: Vm
           {grupos.flatMap(g => g.arquivos.map((a, k) => {
             const r = vm.noRelatorio(a);
             const erro = g.resultado?.status === 'erro' ? g.resultado.erro : g.via === 'email' && !g.email ? 'sem e-mail no cadastro' : '';
-            const destino = g.via === 'impresso' ? 'vai para a rota do Entregas' : g.via === 'econtador' ? 'vai pelo eContador do Alterdata' : g.via === 'scireport' ? 'vai pelo SCI Report' : g.resultado?.para.length ? g.resultado.para.join(', ') : g.email;
+            const jaNaRota = g.resultado?.jaNaRota || [];
+            const destino = g.via === 'impresso' ? (jaNaRota.length ? 'já estava na rota do Entregas: ' + jaNaRota.join(', ') : 'vai para a rota do Entregas') : g.via === 'econtador' ? 'vai pelo eContador do Alterdata' : g.via === 'scireport' ? 'vai pelo SCI Report' : g.resultado?.para.length ? g.resultado.para.join(', ') : g.email;
             return (
               <tr key={g.chave + '|' + a.id}>
                 {k === 0 && (

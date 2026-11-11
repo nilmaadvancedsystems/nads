@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   clienteCombina, clienteDaRotaDoDocumento, entregaDoDocumento, linhasDoPainel, numerosDoMes, rotaPadraoDoDocumento, rotuloDaCompetencia,
   rotuloDaSituacao, situacaoNoMes, subtituloDaLinhaDoPainel, totalDosItens, valorDigitado, motivoComToque, motivoPadrao, competenciaAnterior,
-  ultimasCompetencias, documentoFormatado, tipoPelaChave, documentosParaEditar, itensDaEdicao, type ClienteDaRota, type Entrega,
+  ultimasCompetencias, documentoFormatado, tipoPelaChave, documentosParaEditar, itensDaEdicao, jaNaRota, avisoDeJaNaRota, type ClienteDaRota, type Entrega,
 } from './documentos';
 import {
   ajustarDiaUtil, barrasDaLinha, clienteDoPdf, codigoDePagamentoDoPdf, competenciaDoPdf, dadosDoPdf, doMesDaGuia, dvMod10, feriadosNacionais,
@@ -145,6 +145,30 @@ describe('vencimento automático e feriados', () => {
     expect(vencimentoAutomatico('2026-08', [{ tipo: 'DAS' }, { tipo: 'FGTS' }])).toBeNull();
     expect(vencimentoAutomatico('2026-09', [{ tipo: 'Notas' }])).toBeNull();
     expect(ajustarDiaUtil(new Date(2026, 3, 3), 'antecipa').getDate()).toBe(2);
+  });
+});
+
+describe('o que já está na rota (11/11/2026)', () => {
+  const doCliente = [
+    { clienteId: 'c493', competencia: '2026-10', status: 'pendente' as const, itens: [{ tipo: 'DAE ICMS', valor: 1 }, { tipo: 'DAS', valor: 2 }] },
+    { clienteId: 'c493', competencia: '2026-09', status: 'pendente' as const, itens: [{ tipo: 'DAE ICMS', valor: 3 }] },
+    { clienteId: 'c493', competencia: '2026-10', status: 'confirmada' as const, itens: [{ tipo: 'FGTS', valor: 4 }] },
+    { clienteId: 'c493', competencia: '2026-10', status: 'link' as const, itens: [{ tipo: 'Honorário', valor: null }] },
+    { clienteId: 'outro', competencia: '2026-10', status: 'pendente' as const, itens: [{ tipo: 'DARF', valor: 5 }] },
+  ];
+  it('o mesmo documento do mesmo mês, numa parada não entregue do cliente (na rota ou no link)', () => {
+    expect(jaNaRota({ clienteId: 'c493', competencia: '2026-10', itens: [{ tipo: 'dae  icms' }, { tipo: 'DAS' }, { tipo: 'Honorário' }] }, doCliente)).toEqual(['dae  icms', 'DAS', 'Honorário']);
+  });
+  it('outro mês, o já entregue, outro cliente, o repetido na própria entrega e o avulso podem', () => {
+    expect(jaNaRota({ clienteId: 'c493', competencia: '2026-11', itens: [{ tipo: 'DAE ICMS' }] }, doCliente)).toEqual([]);
+    expect(jaNaRota({ clienteId: 'c493', competencia: '2026-10', itens: [{ tipo: 'FGTS' }, { tipo: 'DARF' }, { tipo: 'DAE' }] }, doCliente)).toEqual([]);
+    expect(jaNaRota({ clienteId: 'c493', competencia: '2026-10', itens: [{ tipo: 'DAS' }, { tipo: 'DAS' }] }, doCliente)).toEqual(['DAS']);
+    expect(jaNaRota({ clienteId: null, competencia: '2026-10', itens: [{ tipo: 'DAS' }] }, doCliente)).toEqual([]);
+  });
+  it('o aviso diz o que, de que mês e onde', () => {
+    expect(avisoDeJaNaRota(['DAE ICMS'], '2026-10', "493 - ANTONIA'S LTDA"))
+      .toBe("DAE ICMS de outubro/2026 já está na rota de 493 - ANTONIA'S LTDA. Para mudar, edite ou tire a parada que está lá.");
+    expect(avisoDeJaNaRota(['DAE ICMS', 'DAS', 'FGTS'], '2026-10', 'X')).toMatch(/^DAE ICMS, DAS e FGTS de outubro\/2026 já estão na rota de X\./);
   });
 });
 

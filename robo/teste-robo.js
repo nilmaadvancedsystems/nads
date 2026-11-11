@@ -1145,6 +1145,15 @@ igual('sem nome no assunto: não decide pelo nome', r.desempatarPorNome(fitos, '
   const imp = F.linhaDepoisDoEnvio(null, Object.assign({}, envio, { dia: '', entregue: 'impresso' }));
   igual('fiscal impresso: o Relatório fica com o valor e Entregue = Impresso, sem a data', [imp.linha.entregue, imp.linha.data, imp.linha.valores.pis], ['impresso', '', '1.234,56']);
   igual('fiscal impresso: a entrega escrita à mão fica', F.linhaDepoisDoEnvio(escrita, Object.assign({}, envio, { dia: '', entregue: 'email' })).linha.entregue, 'impresso');
+  // o que já está na rota não vai de novo (11/11/2026): o mesmo documento, cliente e competência numa parada não entregue
+  const doCliente = [
+    { competencia: '2026-10', status: 'pendente', itens: [{ tipo: 'DAE ICMS' }, { tipo: 'DAS' }] },
+    { competencia: '2026-09', status: 'pendente', itens: [{ tipo: 'DARF PIS' }] },
+    { competencia: '2026-10', status: 'confirmada', itens: [{ tipo: 'DARF COFINS' }] },
+    { competencia: '2026-10', status: 'link', itens: [{ tipo: 'DAM ISS' }] },
+  ];
+  igual('fiscal impresso: já na rota é o mesmo documento do mês, pendente ou no link (o entregue e o de outro mês podem)',
+    F.jaNaRota(['dae  icms', 'DAS', 'DARF PIS', 'DARF COFINS', 'DAM ISS', 'DARF IRPJ'], doCliente, '2026-10'), [true, true, false, false, true, false]);
   igual('fiscal impresso: o dia da guia em ISO', [F.diaIso('20/10/2026'), F.diaIso('20-10-2026'), F.diaIso('2026-10-20'), F.diaIso('')], ['2026-10-20', '2026-10-20', '2026-10-20', '']);
   igual('fiscal impresso: os anexos, um por guia, sem repetir', F.idsDosAnexos([{ tipo: 'DARF', tributo: 'PIS' }, { tipo: 'DARF', tributo: 'PIS' }, { tipo: 'DAS', tributo: '' }, { tipo: '', tributo: '' }]), ['guia-darf-pis', 'guia-darf-pis-2', 'guia-das', 'guia-outra']);
   const ent = F.entregaDoImpresso({ id: 'c1', codigoOrigem: '58', nome: 'ACME ', zona: 'centro' }, '2026-09', [{ tipo: 'DARF PIS', valor: 10, vencimento: '25/10/2026' }, { tipo: 'DAS', valor: null, vencimento: '20/10/2026' }], { email: 'f@x', nome: 'Ana' }, 'T');

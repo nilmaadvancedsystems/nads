@@ -33,6 +33,8 @@ export interface GuiaDoLote extends Omit<ArquivoDoLote, 'leitura' | 'escolha'> {
 export interface ResultadoDoLoteFiscal extends ResultadoDoLote {
   /** as colunas que o robô preencheu no Relatório (as que estavam em branco); valores: o valor das guias por coluna */
   preenchidos: string[];
+  /** no impresso, as guias que já estavam na rota do Entregas e não foram de novo (11/11/2026) */
+  jaNaRota?: string[];
   /** a linha do Relatório não foi gravada (o e-mail foi): conferir à mão */
   erroNoRelatorio: string;
   /** como foi: pelo Gmail ou impresso (a entrega na rota do Entregas, entregaId) */

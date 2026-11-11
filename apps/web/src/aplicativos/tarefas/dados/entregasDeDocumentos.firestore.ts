@@ -449,7 +449,7 @@ export function criarEntregasDeDocumentosFirestore(pessoa: () => { nome: string;
       return l;
     },
     async doClienteNoMes(clienteId, competencia) {
-      const s = await getDocs(query(collection(db, 'entregas'), where('clienteId', '==', clienteId), where('competencia', '==', competencia), limit(10)));
+      const s = await getDocs(query(collection(db, 'entregas'), where('clienteId', '==', clienteId), where('competencia', '==', competencia), limit(30)));
       return entregasDe(s.docs);
     },
     async comprovante(entregaId): Promise<ComprovanteDaEntrega> {
