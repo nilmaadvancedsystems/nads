@@ -149,7 +149,7 @@ function Cabecalho({ trilha, direita, abas }: { trilha: string[]; direita?: Reac
 }
 const Avatar = () => <button type="button" className="gh-avatar">V</button>;
 
-function Lateral({ itens, titulo }: { titulo?: string; itens: { rotulo: string; icone?: NomeIcone; ativa?: boolean; caixa?: 'vazia' | 'marcada' | 'parada'; apagada?: boolean; travada?: boolean }[] }) {
+function Lateral({ itens, titulo }: { titulo?: string; itens: { rotulo: string; icone?: NomeIcone; ativa?: boolean; caixa?: 'vazia' | 'marcada' | 'parada' | 'laranja'; apagada?: boolean; travada?: boolean }[] }) {
   return (
     <div className="cat-moldura" style={{ maxWidth: 280 }}>
       <nav className="subnav" style={{ position: 'static', height: 'auto' }}>
@@ -157,7 +157,7 @@ function Lateral({ itens, titulo }: { titulo?: string; itens: { rotulo: string; 
           {titulo && <p className="subnav-titulo">{titulo}</p>}
           {itens.map(s => (
             <button key={s.rotulo} type="button" className={'subnav-item' + (s.ativa ? ' active' : '') + (s.travada ? ' is-locked' : '') + (s.apagada ? ' apagada' : '')}>
-              {s.caixa ? <span className={'subnav-caixa ' + s.caixa}>{s.caixa === 'marcada' && <Icone nome="check" />}</span> : <Icone nome={s.icone || 'fileText'} />}
+              {s.caixa ? <span className={'subnav-caixa ' + s.caixa}>{(s.caixa === 'marcada' || s.caixa === 'laranja') && <Icone nome="check" />}</span> : <Icone nome={s.icone || 'fileText'} />}
               <span>{s.rotulo}</span>
             </button>
           ))}

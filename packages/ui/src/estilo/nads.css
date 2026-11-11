@@ -187,6 +187,9 @@ a{color:var(--accent);}
 .gh-topo-menu .menu-seta{width:12px;height:12px;}
 .gh-topo-proximo{background:var(--btn-primary);border-color:transparent;color:#FFFFFF;}
 .gh-topo-proximo:hover:not(:disabled){background:var(--btn-primary-hover);color:#FFFFFF;}
+/* o check laranja do executor: seguir com pendência (a cor de diferença/atenção do sistema) */
+.gh-topo-btn.gh-topo-proximo.seguir-assim,.gh-topo-btn.gh-topo-proximo.seguir-assim:hover:not(:disabled){background:var(--danger);color:#FFFFFF;}
+.gh-topo-btn.gh-topo-proximo.seguir-assim:hover:not(:disabled){filter:brightness(1.1);}
 .gh-avatar{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;padding:0;border:1px solid var(--border);border-radius:50%;background:var(--surface-3);color:var(--ink);font-size:var(--fs-12);font-weight:600;cursor:pointer;}
 .gh-avatar:hover{border-color:var(--border-strong);}
 .gh-avatar .menu-seta{display:none;}
@@ -1260,7 +1263,9 @@ tr.linha-excluida > td{color:var(--ink-muted);text-decoration:line-through;}
 /* a caixinha de cada etapa na lateral */
 .subnav-caixa{width:16px;height:16px;flex:none;display:inline-flex;align-items:center;justify-content:center;border-radius:4px;border:1.5px solid var(--border-strong);}
 .subnav-caixa.marcada{background:var(--success);border-color:var(--success);}
-.subnav-caixa.marcada svg{width:12px;height:12px;color:#FFFFFF;stroke-width:3;}
+.subnav-caixa.marcada svg,.subnav-caixa.laranja svg{width:12px;height:12px;color:#FFFFFF;stroke-width:3;}
+/* feita pelo check laranja do executor (seguiu com pendência) */
+.subnav-caixa.laranja{background:var(--danger);border-color:var(--danger);}
 .subnav-caixa.parada{border-color:var(--danger);background:var(--danger-soft);}
 .subnav-item.active .subnav-caixa.vazia{border-color:var(--ink);}
 
@@ -3144,6 +3149,7 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 /* o Próximo e o Avançar no cabeçalho azul: brancos, com a seta azul */
 :root[data-dev] .gh-header .gh-topo-btn.gh-topo-proximo{background:#FFFFFF;color:var(--cabecalho-dev);}
 :root[data-dev] .gh-header .gh-topo-btn.gh-topo-proximo:hover:not(:disabled){background:#FFFFFF;color:var(--cabecalho-dev);filter:brightness(.92);}
+:root[data-dev] .gh-header .gh-topo-btn.gh-topo-proximo.seguir-assim,:root[data-dev] .gh-header .gh-topo-btn.gh-topo-proximo.seguir-assim:hover:not(:disabled){background:var(--danger);color:#FFFFFF;}
 /* o modo desenvolvedor (Vitor, 06/10/2026): a interface toda em azul no lugar do vermelho da marca, para nunca confundir
    com o uso de verdade (o <html> ganha data-dev; comum/modoDesenvolvedor.ts) */
 :root[data-dev]{

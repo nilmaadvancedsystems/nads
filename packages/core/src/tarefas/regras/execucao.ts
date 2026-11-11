@@ -137,6 +137,17 @@ export function fazer(ex: Execucao, etapa: string, por: string, agora: Date): { 
   return { execucao: mudar(ex, etapa, { situacao: 'feita', por, em }), evento: { tipo: 'feita', etapa, por, em } };
 }
 
+/** a objeção da etapa feita pelo check laranja do executor (seguiu com pendência; Vitor, 11/11/2026) */
+export const CHECK_LARANJA = 'check-laranja';
+
+/** Feita pelo check laranja: conta como concluída, com o que faltava na observação (a caixinha fica laranja). */
+export function fazerComPendencia(ex: Execucao, etapa: string, faltava: string, por: string, agora: Date): { execucao: Execucao; evento: Evento } {
+  const em = agora.toISOString();
+  const obs = faltava.trim();
+  const extra = { objecao: CHECK_LARANJA, ...(obs ? { observacao: obs } : {}) };
+  return { execucao: mudar(ex, etapa, { situacao: 'feita', por, em, ...extra }), evento: { tipo: 'feita', etapa, por, em, ...extra } };
+}
+
 /** "Não se aplica": conta como concluída, com o motivo. */
 export function dispensar(ex: Execucao, etapa: string, objecao: string, observacao: string, por: string, agora: Date): { execucao: Execucao; evento: Evento } {
   const em = agora.toISOString();

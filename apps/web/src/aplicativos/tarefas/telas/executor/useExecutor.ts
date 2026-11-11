@@ -293,9 +293,13 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
    * semCheque: a Importação disse que nenhum banco fecha negativo — o Cheque especial nem aparece: fica dispensado
    * junto (Vitor, 02/10/2026: "se não tiver saldo negativo, nem coloque essa tarefa").
    */
-  async function proximo(semCheque = false) {
+  async function proximo(semCheque = false, laranja: string | null = null) {
     if (!ex || !etapa || conferindo) return;
     const pulaCheque = semCheque && etapa.id === 'extratos';
+    // pelo check laranja: marca sem conferir, com o que faltava (a caixinha fica laranja)
+    const marcar = (exc: t.Execucao) => laranja !== null
+      ? t.fazerComPendencia(exc, etapa.id, laranja, op.nome, new Date())
+      : t.fazer(exc, etapa.id, op.nome, new Date());
     /** grava a etapa feita e, sem dia negativo, o Cheque especial dispensado em cima dela (a mesma execução) */
     const gravarFeita = (ev: ReturnType<typeof t.fazer>, antes: t.Execucao) => {
       repo.gravar(ev.execucao, ev.evento, antes);
@@ -305,12 +309,9 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     };
     setConferindo(true);
     try {
-      if (!CONFERIR_NO_PROXIMO) {
+      if (!CONFERIR_NO_PROXIMO || laranja !== null) {
         // liberado: marca feita em cada mês que falta, sem conferir
-        for (const c of alvos) {
-          const fz = t.fazer(exDe[c], etapa.id, op.nome, new Date());
-          gravarFeita(fz, exDe[c]);
-        }
+        for (const c of alvos) gravarFeita(marcar(exDe[c]), exDe[c]);
         setAviso(null);
         toast(etapa.nome + ': feita' + (varios ? ' em ' + alvos.map(rotuloCurto).join(', ') : '') + '.');
         return;
@@ -348,6 +349,14 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     } finally {
       setConferindo(false);
     }
+  }
+
+  /**
+   * O check laranja ao lado do sino (Vitor, 11/11/2026: "está ocorrendo muitos bugs e está travando a equipe"): segue sem
+   * o que a tela diz que falta; o que faltava fica no histórico da etapa, para olhar depois.
+   */
+  function seguirMesmoAssim(faltava: string[], semCheque = false) {
+    return proximo(semCheque, faltava.join(' · '));
   }
 
   async function naoSeAplica(objecao: t.Objecao) {
@@ -416,6 +425,8 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     etapas: rotina.etapas.map((e, i) => {
       const feitos = meses.filter(c => concluidaEm(e.id, c)).length;
       const parada = meses.some(c => t.situacaoDa(exDe[c] || null, e.id) === 'interrompida');
+      // feita pelo check laranja em algum mês: a caixinha fica laranja
+      const laranja = meses.some(c => exDe[c]?.etapas[e.id]?.objecao === t.CHECK_LARANJA);
       // o grupo na barra lateral (Preparação, Ativo, Passivo…): a mesma seção, o mesmo número
       const grupo = secoes.indexOf(e.secao || '');
       // o Cheque especial dispensado por não ter dia negativo: some da lista
@@ -424,7 +435,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
       const oculta = (e.id === 'cheque-especial' && meses.length > 0 && meses.every(c => exDe[c]?.etapas[e.id]?.objecao === 'sem-saldo-negativo'))
         || (!!e.soQuandoAdicionada && !meses.some(c => t.etapaNoMes(exDe[c] || null, e.id)))
         || (!!e.meses && meses.length > 0 && !meses.some(c => t.etapaNoMesDoAno(e, c)));
-      return { id: e.id, n: i + 1, nome: e.nome, secao: e.secao, grupo, oculta, situacao: feitos === meses.length && meses.length ? 'feita' as const : parada ? 'interrompida' as const : 'pendente' as const, feitos, atual: e.id === vista?.id, daVez: e.id === etapa?.id };
+      return { id: e.id, n: i + 1, nome: e.nome, secao: e.secao, grupo, oculta, situacao: feitos === meses.length && meses.length ? 'feita' as const : parada ? 'interrompida' as const : 'pendente' as const, laranja, feitos, atual: e.id === vista?.id, daVez: e.id === etapa?.id };
     }),
     // a etapa na tela: a da vez ou, revendo, a concluída que a pessoa abriu
     etapa: vista, n: vista ? rotina.etapas.findIndex(e => e.id === vista.id) + 1 : 0, total: rotina.etapas.length,
@@ -502,7 +513,7 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     } : null,
     /** os meses que a etapa ainda precisa (no período) */
     pendentes: pendentes.map(rotuloCurto),
-    aviso, conferindo, proximo,
+    aviso, conferindo, proximo, seguirMesmoAssim,
     abrirEtapa,
     /** a etapa pendente do grupo que abre fora da ordem */
     livre: (id: string) => !dev && !!pendenteLivre(id),

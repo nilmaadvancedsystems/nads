@@ -173,7 +173,7 @@ export function Executor() {
   const checklist = visiveis.filter(e => !vm.etapa || e.secao === vm.etapa.secao || e.id === proxima?.id).map(e => ({
     // em lote é tudo de uma vez (Vitor, 02/10/2026: "não fica 8/9, são os 9"): só o nome da etapa, sem a contagem de meses
     id: e.id, rotulo: e.nome, icone: 'check' as const, grupo: e.grupo, titulo: e.secao, ativa: e.atual,
-    caixa: e.situacao === 'feita' || (e.daVez && liberada) ? 'marcada' as const : e.situacao === 'interrompida' ? 'parada' as const : 'vazia' as const,
+    caixa: e.situacao === 'feita' && e.laranja ? 'laranja' as const : e.situacao === 'feita' || (e.daVez && liberada) ? 'marcada' as const : e.situacao === 'interrompida' ? 'parada' as const : 'vazia' as const,
     // as da frente que ainda não foram feitas: mais apagadas; a próxima, liberada, revelada
     apagada: !vm.delegada && !!vm.etapa && e.n > nDaVez && e.situacao !== 'feita' && e.id !== proxima?.id && !vm.livre(e.id),
   }));
@@ -212,6 +212,14 @@ export function Executor() {
           <MenuSuspenso rotulo={<span className="falta-qtd">{itensQueFaltam.length}</span>} icone="sino" className="gh-topo-btn gh-topo-menu falta-btn"
             dica={'Para seguir, falta: ' + itensQueFaltam.length} titulo="Para seguir, falta" direita largura={380}
             conteudo={fechar => <ListaDoQueFalta itens={itensQueFaltam} onResolver={resolver} fechar={fechar} />} />
+        )}
+        {/* o check laranja (Vitor, 11/11/2026): com pendência, ou a tela sem dizer o que falta, a pessoa marca e segue */}
+        {botoesDaEtapa && (faltam || !requisitosConhecidos) && (
+          <button type="button" className="gh-topo-btn gh-topo-proximo seguir-assim" disabled={vm.conferindo}
+            onClick={() => { void vm.seguirMesmoAssim(faltam || [], semCheque); }}
+            title={vm.conferindo ? 'Conferindo…' : 'Marcar a etapa e seguir mesmo assim'} aria-label="Seguir mesmo assim">
+            {vm.conferindo ? <span className="btn-spinner" /> : <Icone nome="check" />}
+          </button>
         )}
         {/* a última etapa da rotina, tudo ok: sem próxima para clicar, o check conclui */}
         {botoesDaEtapa && !faltam && requisitosConhecidos && !proxima && (
