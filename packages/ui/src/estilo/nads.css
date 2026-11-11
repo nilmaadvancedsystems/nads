@@ -4657,6 +4657,92 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .cad-grade.lcdpr-grade{grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));}
 .lcdpr-grade .lcdpr-corta.largo{max-width:300px;}
 @media (max-width:640px){.lcdpr-corta,.lcdpr-corta.largo{max-width:180px;}}
+/* LCDPR mês a mês (11/11/2026): o mês no topo, a conta de pagamento na linha e a janela do lançamento no jeito do Alterdata
+   (o código, a lupa e o nome; a pesquisa no lugar do corpo) */
+.lcdpr-mes{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+.lcdpr-mes .tarefas-barra-espaco{flex:1;}
+.lcdpr-sieg-andamento{display:inline-flex;align-items:center;gap:6px;color:var(--ink-muted);font-size:var(--fs-13);}
+.lcdpr-conta{min-width:150px;}
+.lcdpr-doc{display:inline-flex;align-items:center;justify-content:flex-end;gap:2px;}
+.lcdpr-ver-nota{min-height:0;height:26px;width:26px;padding:0;justify-content:center;color:var(--ink-muted);}
+.lcdpr-ver-nota:hover{color:var(--accent);}
+.lcdpr-ver-nota svg{width:15px;height:15px;}
+.lcdpr-conta.fora{border-color:var(--warn,#c77700);}
+.modal.lcdpr-janela{max-width:1180px;width:min(1180px,100%);max-height:calc(100dvh - 32px);}
+.lcdpr-janela .registro-topo{flex:none;}
+.lcdpr-janela .registro-corpo{flex:1 1 auto;min-height:0;overflow-y:auto;}
+.lcdpr-janela .registro-pe{flex:none;margin-top:0;}
+.lcdpr-janela-origem{margin-left:auto;margin-right:8px;}
+/* o corpo: o formulário à esquerda e o resumo à direita (o "como vai para o LCDPR") */
+.lcdpr-corpo{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:20px;align-items:stretch;padding-top:4px;padding-bottom:12px;}
+.lcdpr-form{min-width:0;}
+.lcdpr-grade{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:12px 14px;}
+.lcdpr-grade .c-3{grid-column:span 3;}.lcdpr-grade .c-4{grid-column:span 4;}.lcdpr-grade .c-5{grid-column:span 5;}.lcdpr-grade .c-7{grid-column:span 7;}.lcdpr-grade .c-12{grid-column:span 12;}
+.lcdpr-campo{display:flex;flex-direction:column;gap:4px;min-width:0;}
+.lcdpr-rotulo{font-size:var(--fs-12);color:var(--ink-muted);font-weight:500;}
+.lcdpr-form input,.lcdpr-form select{width:100%;min-width:0;height:36px;padding:0 10px;border:1px solid var(--border);border-radius:8px;background:var(--input-bg);box-shadow:var(--shadow-inset);color:var(--ink);font:inherit;font-size:var(--fs-14);transition:border-color .12s,box-shadow .12s;}
+.lcdpr-form input::placeholder{color:var(--ink-faint);}
+.lcdpr-form input:hover,.lcdpr-form select:hover{border-color:var(--ink-faint);}
+.lcdpr-form input:focus,.lcdpr-form select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent);}
+.lcdpr-adorno{position:relative;display:flex;align-items:center;}
+.lcdpr-adorno > svg,.lcdpr-adorno > b{position:absolute;left:10px;pointer-events:none;color:var(--ink-muted);}
+.lcdpr-adorno > svg{width:15px;height:15px;}
+.lcdpr-adorno > b{font-size:var(--fs-13);font-weight:500;}
+.lcdpr-form .lcdpr-adorno input{padding-left:32px;}
+.lcdpr-form .lcdpr-adorno-grande input{height:36px;padding-left:40px;font-size:var(--fs-20);font-weight:600;text-align:right;font-variant-numeric:tabular-nums;}
+.lcdpr-adorno-grande > b{left:12px;font-size:var(--fs-14);}
+.lcdpr-codigo{display:flex;align-items:stretch;width:100%;min-width:0;}
+.lcdpr-form .lcdpr-cod{flex:0 0 84px;width:84px;border-top-right-radius:0;border-bottom-right-radius:0;font-variant-numeric:tabular-nums;}
+.lcdpr-lupa{flex:none;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid var(--border);border-left:0;border-radius:0 8px 8px 0;background:color-mix(in srgb,var(--ink) 4%,var(--input-bg));color:var(--ink-muted);cursor:pointer;}
+.lcdpr-lupa:hover{background:var(--hover-bg);color:var(--ink);}
+.lcdpr-lupa svg{width:15px;height:15px;}
+.lcdpr-cod-nome{flex:1;min-width:0;margin-left:8px;display:flex;align-items:center;padding:0 12px;height:36px;border-radius:8px;background:color-mix(in srgb,var(--ink) 6%,transparent);color:var(--ink);font-size:var(--fs-14);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.lcdpr-cod-nome.vazio{color:var(--ink-faint);font-style:italic;}
+/* o "Pago com": um botão por conta (o logo do banco, o nome e o código), o escolhido com a borda da cor de destaque */
+.lcdpr-pagar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;}
+.lcdpr-pagar-opcao{display:inline-flex;align-items:center;justify-content:center;width:56px;height:44px;padding:0;border:1px solid var(--border);border-radius:10px;background:var(--input-bg);color:var(--ink-muted);cursor:pointer;transition:border-color .12s,background .12s,box-shadow .12s,transform .12s;}
+.lcdpr-pagar-opcao:hover{border-color:var(--ink-faint);transform:translateY(-1px);}
+.lcdpr-pagar-opcao.atual{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 1px var(--accent) inset;color:var(--ink);}
+.lcdpr-pagar-opcao.outra{border-style:dashed;}
+.lcdpr-pagar-opcao.outra.atual{border-style:solid;}
+.lcdpr-pagar-logo{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:7px;overflow:hidden;}
+.lcdpr-pagar-logo img,.lcdpr-pagar-logo svg{width:26px;height:26px;object-fit:contain;}
+/* o resumo: o valor grande, a partida (D e C), o histórico e o que falta */
+.lcdpr-resumo{display:flex;flex-direction:column;gap:8px;min-width:0;padding:16px;border:1px solid var(--border);border-radius:12px;background:color-mix(in srgb,var(--ink) 3%,var(--surface));}
+.lcdpr-resumo-valor{font-size:var(--fs-24);font-weight:700;line-height:1.1;}
+.lcdpr-resumo-data{margin-top:-4px;color:var(--ink-muted);font-size:var(--fs-13);}
+.lcdpr-partida{display:flex;flex-direction:column;gap:6px;padding:10px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
+.lcdpr-partida-linha{display:flex;align-items:center;gap:8px;min-width:0;font-size:var(--fs-13);}
+.lcdpr-partida-linha > span:last-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.lcdpr-partida-dc{flex:none;display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:6px;font-size:var(--fs-12);font-weight:700;}
+.lcdpr-partida-dc.debito{background:color-mix(in srgb,#2f7de1 18%,transparent);color:light-dark(#1d5fb3,#8ab8ff);}
+.lcdpr-partida-dc.credito{background:color-mix(in srgb,#1f9d63 18%,transparent);color:light-dark(#137a4b,#7fd8ad);}
+.lcdpr-resumo .vazio{color:var(--ink-faint);font-style:italic;font-weight:400;}
+.lcdpr-resumo-historico{margin:0;font-size:var(--fs-13);line-height:18px;color:var(--ink);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+.lcdpr-resumo-linha{display:flex;justify-content:space-between;gap:10px;font-size:var(--fs-13);min-width:0;}
+.lcdpr-resumo-linha > span{color:var(--ink-muted);flex:none;}
+.lcdpr-resumo-linha > b{font-weight:500;text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.lcdpr-resumo .tarefas-barra-espaco{flex:1;}
+.lcdpr-resumo-falta,.lcdpr-resumo-ok{display:flex;gap:6px;align-items:flex-start;margin:0;padding:8px 10px;border-radius:8px;font-size:var(--fs-13);line-height:18px;}
+.lcdpr-resumo-falta{background:color-mix(in srgb,var(--warn,#c77700) 12%,transparent);color:var(--ink);}
+.lcdpr-resumo-falta.erro{background:color-mix(in srgb,var(--accent) 14%,transparent);}
+.lcdpr-resumo-ok{background:color-mix(in srgb,#1f9d63 14%,transparent);}
+.lcdpr-resumo-falta svg,.lcdpr-resumo-ok svg{flex:none;width:15px;height:15px;margin-top:1px;}
+.lcdpr-resumo-dica{font-size:var(--fs-11);color:var(--ink-faint);line-height:15px;}
+.lcdpr-pesquisa{display:flex;flex-direction:column;gap:8px;}
+.lcdpr-pesquisa-busca{width:100%;}
+.lcdpr-pesquisa-lista{display:flex;flex-direction:column;border:1px solid var(--border);border-radius:8px;max-height:min(58vh,520px);overflow-y:auto;}
+.lcdpr-pesquisa-cabeca,.lcdpr-pesquisa-linha{display:grid;grid-template-columns:80px minmax(130px,220px) 1fr 90px;gap:12px;align-items:center;padding:7px 12px;text-align:left;}
+.lcdpr-pesquisa-cabeca{position:sticky;top:0;background:var(--surface);border-bottom:1px solid var(--border);font-size:var(--fs-13);color:var(--ink-muted);font-weight:500;}
+.lcdpr-pesquisa-linha{width:100%;border:0;border-bottom:1px solid var(--border);background:transparent;font:inherit;font-size:var(--fs-14);color:var(--accent);cursor:pointer;}
+.lcdpr-pesquisa-linha:hover{background:var(--hover-bg);}
+.lcdpr-pesquisa-linha.sintetica{color:var(--ink);font-weight:600;cursor:default;}
+.lcdpr-pesquisa-linha.atual{background:var(--accent-soft);}
+.lcdpr-pesquisa-linha > span:last-child,.lcdpr-pesquisa-cabeca > span:last-child{color:var(--ink-muted);font-weight:400;}
+.lcdpr-pesquisa-linha > span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.lcdpr-volta{padding:0 4px;min-height:0;}
+@media (max-width:980px){.lcdpr-corpo{grid-template-columns:1fr;}.lcdpr-resumo{display:none;}}
+@media (max-width:720px){.lcdpr-grade .c-3,.lcdpr-grade .c-4,.lcdpr-grade .c-5,.lcdpr-grade .c-7{grid-column:1 / -1;}.lcdpr-pesquisa-cabeca,.lcdpr-pesquisa-linha{grid-template-columns:64px 1fr;}.lcdpr-pesquisa-cabeca > span:nth-child(2n),.lcdpr-pesquisa-linha > span:nth-child(2n){display:none;}}
 /* ---------- Entregas (16/10/2026: a entrega de documentos trazida do Entregas, "no visual igual para não destoar do app") ---------- */
 /* a assinatura (CampoAssinatura): o quadro é papel, branco também no tema escuro; o traço é o do Entregas */
 .assinatura{display:flex;flex-direction:column;gap:6px;}

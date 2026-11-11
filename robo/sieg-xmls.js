@@ -1,7 +1,8 @@
 // Os XMLs que o SIEG manda (nads, 07/10/2026: "quero que tenha como importar os XML direto do SIEG"): o nome de cada
 // arquivo na pasta do cliente (para o Alterdata importar) e o resumo de cada nota que vai para o banco (siegNotas) — só o
 // resumo, nunca o arquivo. Funções puras: o sieg.js baixa e grava; aqui só se lê o XML.
-//   NF-e/NFC-e: a chave, o número, a série, a data, o emitente, o destinatário, o valor e os itens (NCM, CFOP, CST/CSOSN, CEST)
+//   NF-e/NFC-e: a chave, o número, a série, a data, o emitente, o destinatário, o valor e os itens (NCM, CFOP, CST/CSOSN, CEST);
+//   desde o resumo 6, a entrada (tpNF 0), a IE do destinatário e os produtos
 //   CT-e: a chave, o número, a data, o emitente, o valor e o CFOP
 //   NFS-e (o padrão nacional e o ABRASF): o número, a data, o prestador, o tomador, o valor, o NBS, a descrição e as retenções
 //   evento de cancelamento (110111): { cancela: chave }; os outros eventos: só o arquivo
@@ -133,6 +134,14 @@ function resumoDaNota(xml) {
     const tot = tag(xml, 'ICMSTot'), frete = num(tag(tot, 'vFrete')), desconto = num(tag(tot, 'vDesc'));
     if (frete) r.frete = frete;
     if (desconto) r.desconto = desconto;
+    // o LCDPR (11/11/2026: "também quero que puxe do SIEG"), só quando têm: a nota de entrada (tpNF 0: quem emitiu é o
+    // comprador; a do produtor rural é venda, fora do LCDPR), a IE do destinatário (a fazenda → o imóvel rural) e os produtos
+    // (sem repetir, até 80 letras: a coluna Produto da planilha)
+    if (tag(ide, 'tpNF') === '0') r.entrada = true;
+    const ieDest = tag(tag(xml, 'dest'), 'IE');
+    if (ieDest) r.ieDest = ieDest;
+    const produto = [...new Set(blocos(xml, 'det').map(d => tag(tag(d, 'prod'), 'xProd')).filter(Boolean))].join(' | ').slice(0, 80).trim();
+    if (produto) r.produto = produto;
     return r;
   }
   if (t === 'cte') {
@@ -201,7 +210,7 @@ function zipDe(arquivos) {
 }
 
 /** A versão do resumo (2 = os itens com o ICMS, o ICMS-ST, o IPI e o CST do PIS; 13/10/2026; 3 = o frete e o desconto da NF-e; 22/10/2026; 4 = a base, a alíquota e as despesas do item; 22/10/2026;
- * 5 = as NF-e que o CT-e transporta e o ICMS do CT-e; 23/10/2026). */
-const VERSAO_DO_RESUMO = 5;
+ * 5 = as NF-e que o CT-e transporta e o ICMS do CT-e; 23/10/2026; 6 = a NF-e de entrada, a IE do destinatário e os produtos, para o LCDPR; 11/11/2026). */
+const VERSAO_DO_RESUMO = 6;
 
 module.exports = { tomadorDoCte, cteDoCliente, cteQueEntram, VERSAO_DO_RESUMO, tipoDoXml, tipoDeNota, nomeDoArquivo, resumoDaNota, zipDe, crc32 };
