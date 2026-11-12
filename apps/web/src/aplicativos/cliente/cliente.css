@@ -40,7 +40,7 @@
 .cli-app :is(input[type="text"],select,textarea):focus-visible{outline-offset:0;}
 
 /* ------------------------------ as peças do nads, com o acabamento desta versão ------------------------------ */
-.cli-app .card{margin:0;min-width:0;padding:24px;background:var(--cli-cartao);border:1px solid var(--cli-linha);border-radius:var(--cli-raio);box-shadow:var(--cli-sombra);}
+.cli-app .card{margin:0;min-width:0;padding:20px;background:var(--cli-cartao);border:1px solid var(--cli-linha);border-radius:var(--cli-raio);box-shadow:var(--cli-sombra);}
 .cli-app .card-head{margin:0 0 16px;padding:0;min-height:0;background:none;border:0;border-radius:0;align-items:flex-start;}
 .cli-app .card-head h3,.cli-app .card h3{font-size:16px;font-weight:600;letter-spacing:-.01em;line-height:1.35;margin:0;}
 .cli-app .card-head .hint{margin-top:2px;font-size:13px;}
@@ -550,7 +550,7 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
 .cli-app .cli-pendencia > .btn{flex:none;}
 
 /* o resumo do pagamento (ResumoDoPagamento): quanto, até quando e o já pago, numa faixa de fundo suave */
-.cli-app .cli-pagar{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px 24px;margin:0 0 8px;padding:14px 16px;border-radius:10px;background:var(--cli-fundo);}
+.cli-app .cli-pagar{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px 24px;margin:0 0 4px;padding:0 0 14px;border-bottom:1px solid var(--cli-fio);}
 .cli-app .cli-pagar > div{min-width:0;}
 .cli-app .cli-pagar dt{font-size:12.5px;color:var(--ink-muted);}
 .cli-app .cli-pagar-valor{margin-top:2px;font-size:22px;font-weight:700;line-height:1.2;letter-spacing:-.02em;font-variant-numeric:tabular-nums;white-space:nowrap;}
@@ -604,3 +604,31 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
 /* Solicitações: o chamado que o escritório respondeu (esperando o cliente) no fundo verde bem suave, o mesmo do selo */
 .cli-app .cli-chamado-esperando > .cli-linha{background:color-mix(in srgb,var(--success-soft) 55%,transparent);}
 .cli-app .cli-lista > li.cli-chamado-esperando > .cli-linha:hover{background:var(--success-soft);}
+
+/* ---------- a passada do visual (12/11/2026: "aviso do topo, guias a pagar, enviar documento, cores e espaços") ----------
+   - o aviso do topo mais baixo: o ícone menor, o título menor e menos respiro;
+   - as guias numa faixa só: o resumo sem a caixa de fundo (o fio embaixo separa), o valor um pouco menor;
+   - o Enviar mais enxuto: os tipos em chips menores e a área de soltar mais baixa;
+   - menos espaço entre os cartões e dentro deles, títulos dos cartões menores, e o carmim só no que é ação (o "Ver todas"
+     e o chip escolhido em tinta, não em carmim). */
+.cli-app .cli-veredito-ico{width:40px;height:40px;}
+.cli-app .cli-veredito-ico svg{width:20px;height:20px;}
+.cli-app .cli-veredito .cli-sobre{margin-bottom:2px;font-size:11px;}
+.cli-app .cli-veredito .page-title{font-size:20px;line-height:1.25;}
+.cli-app .cli-veredito .page-desc{margin-top:2px;font-size:13.5px;}
+.cli-app .cli-pagar-valor{font-size:20px;}
+.cli-app .cli-v-enviar .chip-row{gap:6px;}
+.cli-app .cli-v-enviar .chip-f{min-height:30px;padding:4px 10px;font-size:12.5px;}
+.cli-app .cli-v-enviar .cli-soltar{padding:18px 12px;}
+.cli-app .cli-v-enviar .cli-soltar svg{margin-bottom:4px;}
+.cli-app .card-head{margin-bottom:12px;}
+.cli-app .card-head h3,.cli-app .card h3{font-size:15px;}
+.cli-app .card-head > .btn-ghost{color:var(--ink-muted);}
+.cli-app .card-head > .btn-ghost:hover{color:var(--ink);}
+.cli-app .chip-f.on{border-color:var(--ink-muted);background:var(--surface-3);color:var(--ink);}
+@media (min-width:768px){
+  .cli-app .cli-veredito{padding:18px 22px;}
+  .cli-app .cli-main{gap:16px;}
+  .cli-app .cli-duas{gap:16px;}
+  .cli-app .cli-coluna{gap:16px;}
+}

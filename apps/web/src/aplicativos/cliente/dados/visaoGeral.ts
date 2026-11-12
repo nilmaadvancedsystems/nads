@@ -89,7 +89,8 @@ export function pendenciasDoCliente(e: Pick<EstadoDaArea, 'guias' | 'chamados' |
     }
   }
   for (const c of e.chamados) {
-    if (c.situacao === 'respondido') lista.push({ id: 'c-' + c.id, origem: 'chamado', tom: 'warn', titulo: 'O escritório respondeu', texto: c.titulo, rotulo: 'Ver resposta', acao: { tipo: 'ver-chamado', chamado: c.id } });
+    // o assunto por extenso (12/11/2026: o título sozinho, "12", não dizia nada)
+    if (c.situacao === 'respondido') lista.push({ id: 'c-' + c.id, origem: 'chamado', tom: 'warn', titulo: 'O escritório respondeu', texto: 'Sua solicitação "' + c.titulo + '" tem resposta.', rotulo: 'Ver resposta', acao: { tipo: 'ver-chamado', chamado: c.id } });
   }
   if (e.certificado) {
     const s = situacaoDoCertificado(e.certificado, hoje);

@@ -197,8 +197,7 @@ export function estadoDoEspelho(p: PartesDoEspelho, novos: ChamadoPendente[] = [
   const documentosDp = p.documentosDp ?? [];
   return {
     ...AREA_VAZIA, carregado: true, valido: true, exemplos: false,
-    // o Registro aparece quando o robô gravou funcionário ou documento do DP
-    secoes: { ...SECOES_DO_BANCO, dp: !!pessoal?.funcionarios.length || documentosDp.length > 0 },
+    secoes: SECOES_DO_BANCO,
     resumo, pessoal, documentosDp,
     guias: p.guias,
     agenda: [...p.agenda].sort((a, b) => a.mes.localeCompare(b.mes)),

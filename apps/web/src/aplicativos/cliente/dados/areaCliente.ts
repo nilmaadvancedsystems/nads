@@ -79,8 +79,11 @@ export interface SecoesDaArea {
   pagas: boolean;
 }
 export const TODAS_AS_SECOES: SecoesDaArea = { documentos: true, dp: true, pagas: true };
-/** o que o banco tem hoje (17/10/2026): o robô espelha guias, agenda, recibos de envio e chamados, e nada disto */
-export const SECOES_DO_BANCO: SecoesDaArea = { documentos: false, dp: false, pagas: false };
+/**
+ * o que o banco tem hoje (17/10/2026): o robô espelha guias, agenda, recibos de envio e chamados; o Registro (12/11/2026)
+ * fica sempre no menu ("as opções do dp que pedi"): sem funcionário nem documento ainda, a aba diz o que vai aparecer
+ */
+export const SECOES_DO_BANCO: SecoesDaArea = { documentos: false, dp: true, pagas: false };
 
 /** Tudo o que o link mostra, já filtrado pelo robô. */
 export interface EstadoDaArea {

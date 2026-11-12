@@ -102,7 +102,7 @@ describe('abrir o link', () => {
     expect(falso.ouvintes.map(o => o.caminho).sort()).toEqual([RAIZ, RAIZ + '/agenda', RAIZ + '/chamados', RAIZ + '/envios', RAIZ + '/guias', RAIZ + '/resumo/atual', RAIZ + '/resumo/pessoal', RAIZ + '/documentos'].sort());
     expect(telas).toHaveLength(1);
     const e = telas[0];
-    expect(e).toMatchObject({ carregado: true, valido: true, exemplos: false, secoes: { documentos: false, dp: false, pagas: false } });
+    expect(e).toMatchObject({ carregado: true, valido: true, exemplos: false, secoes: { documentos: false, dp: true, pagas: false } });
     expect(e.resumo?.empresas).toEqual([{ codigo: 58, nome: 'Padaria Boa Ltda', cnpj: '12.345.678/0001-90' }]);
     expect(e.guias.map(g => g.id)).toEqual(['das-2026-09-58']);
     expect(e.agenda[0].itens).toHaveLength(1);
