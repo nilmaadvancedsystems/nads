@@ -229,7 +229,6 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   }, [dev, carregada, empresa?.nome, periodo, versaoDoGuardado, chaveDasExecucoes]);
   const [aviso, setAviso] = useState<string | null>(null);
   const [conferindo, setConferindo] = useState(false);
-  const [interrompendo, setInterrompendo] = useState(false);
   // rever uma etapa já concluída (Vitor, 05/10/2026): ela abre como estava, com os checks, tudo ofuscado; só o Editar
   // (na barra de cima) desmarca e a faz voltar a ser a da vez
   const [vendo, setVendo] = useState<string | null>(null);
@@ -409,18 +408,6 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     setAviso(null);
   }
 
-  /** depois: para onde ir (a saída que a pessoa clicou); sem isso, volta para a lista */
-  function interromper(objecao: string, observacao: string, depois?: () => void) {
-    if (!ex || !etapa) return;
-    for (const c of alvos) {
-      const i = t.interromper(exDe[c], etapa.id, objecao, observacao, op.nome, new Date());
-      repo.gravar(i.execucao, i.evento, exDe[c]);
-    }
-    setInterrompendo(false);
-    toast('Etapa interrompida: ' + etapa.nome + '.');
-    if (depois) depois(); else voltar();
-  }
-
   /** Solução de uma objeção (os botões embaixo): as que dependem de Drive/Contato ainda estão em desenvolvimento. */
   function resolver(o: t.Objecao) {
     if (o.solucao.tipo === 'orientacao') { avisar({ tom: 'info', titulo: o.texto, texto: o.solucao.texto }); return; }
@@ -520,8 +507,6 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     })(),
     /** o modo desenvolvedor: só ver (o Avançar azul vai para a próxima etapa sem marcar nada) */
     dev,
-    /** o X só sai, sem o "Por que interromper?": no modo desenvolvedor e na rotina que não pede (o LCDPR) */
-    semJustificativa: dev || !!rotina.semInterromper,
     /** o relatório (início e fim): o regime e as etapas que entram no mês, cada uma com a situação, quem e quando */
     relatorio: {
       regime: t.regimeDaEmpresa(empresa?.codigo ?? null),
@@ -594,7 +579,6 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
         repo.gravar(d.execucao, d.evento, exDe[c]);
       }
     },
-    interrompendo, abrirInterromper: () => setInterrompendo(true), fecharInterromper: () => setInterrompendo(false), interromper,
     sair: etapaDelegada ? () => navegar(BASE + '/inicio?aba=minhas') : voltar,
     /** a etapa delegada em aberto: quem recebeu conclui a tarefa daqui mesmo (12/11/2026: a Clara não achava o Concluir) */
     podeConcluirDelegada: !!etapaDelegada && !!recebida && recebida.status !== 'concluida',

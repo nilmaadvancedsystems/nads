@@ -10,10 +10,11 @@
 // aprende pelo Drive e pelos extratos). E o interruptor dessa leitura do robô: config/indiceDrive.contas (só o
 // admin grava, pela regra do Entregas; a gravação mexe só nesse campo).
 import { formatos, type empresas } from '@nads/core';
-import { collection, deleteField, doc, getDoc, getDocs, onSnapshot, setDoc as setDocBruto, writeBatch as writeBatchBruto } from 'firebase/firestore';
+import { deleteField, doc, getDoc, onSnapshot, setDoc as setDocBruto, writeBatch as writeBatchBruto } from 'firebase/firestore';
 import { estamosAtualizando } from '@nads/ui';
 import { criarCacheDaAtualizacao } from '../../../comum/cacheDaAtualizacao';
 import { bancoDoEntregas, contaDoEntregas } from './entregas.firestore';
+import { lerPeloEspelho, ouvirPeloEspelho } from './espelhos.firestore';
 import { bancoDaConferencia } from './tarefas.firestore';
 import { guardar, guardarLote } from '../../../comum/modoDesenvolvedor';
 
@@ -29,7 +30,8 @@ export function portaCadastroFirestore(): empresas.cadastro.PortaCadastro {
   return {
     ouvirCadastro: (id, chegou, falhou) => onSnapshot(doc(db, 'cadastro', id), s => chegou(s.exists() ? s.data() : null), falhou),
     ouvirPlano: (id, chegou, falhou) => onSnapshot(doc(db, 'cadastro', id, 'plano', 'atual'), s => chegou(s.exists() ? s.data() : null), falhou),
-    ouvirTodos: (chegou, falhou) => onSnapshot(collection(db, 'cadastro'), s => chegou(s.docs.map(d => ({ id: d.id, doc: d.data() }))), falhou),
+    // pelo espelho (espelhos.firestore.ts, 12/11/2026): 1 leitura em vez dos ~230 do cadastro
+    ouvirTodos: (chegou, falhou) => ouvirPeloEspelho(db, 'cadastro', docs => chegou(docs.map(d => ({ id: d.id, doc: d.data() }))), falhou),
     async gravarCampos(id, campos, apagar, plano) {
       const b = writeBatch(db);
       // só os campos que mudaram, cada um inteiro (mergeFields: o resto do documento fica como está no banco, até o que
@@ -62,8 +64,7 @@ export async function clientesNoEntregas(): Promise<Record<string, unknown>[]> {
     const guardados = cacheDosClientes.ler(uid);
     if (guardados) return guardados;
   }
-  const s = await getDocs(collection(bancoDoEntregas(), 'clientes'));
-  const docs = s.docs.map(d => d.data());
+  const docs = (await lerPeloEspelho(bancoDoEntregas(), 'clientes')).map(d => d.data());
   if (uid) cacheDosClientes.guardar(uid, docs);
   return docs;
 }
