@@ -37,7 +37,7 @@ export function useNovoUsuario(aoCriar: () => void = () => {}) {
     nome, setNome, senha, setSenha, departamento, setDepartamento, nivel, setNivel,
     login: limpo.length >= 2 ? usuarios.emailDoNome(limpo) : '',
     departamentos: usuarios.DEPARTAMENTOS,
-    niveis: usuarios.NIVEIS,
+    niveis: usuarios.NIVEIS_ESCOLHIVEIS,
     extras: usuarios.PAPEIS.filter(p => EXTRAS.includes(p.id)).map(p => ({ ...p, on: extras.includes(p.id) })),
     alternarExtra: (p: usuarios.Papel) => setExtras(l => (l.includes(p) ? l.filter(x => x !== p) : [...l, p])),
     /** os papéis que a conta vai ter (os do cargo + os marcados) */
