@@ -52,6 +52,32 @@ export interface PagamentoDaConta {
 /** as parcelas criadas juntas (a "Despesa recorrente" do Toriba): o mesmo grupo, a parcela k de N */
 export interface RecorrenciaDaConta { grupo: string; parcela: number; de: number }
 
+/**
+ * A conta ligada à Carteira de um funcionário (12/11/2026: "uma função do financeiro que marca, ao registrar uma conta,
+ * vincular a essa carteira individual do funcionário"): o salário, a comissão, o adiantamento… A pessoa vê a conta (o valor,
+ * se já foi paga e o comprovante) na Carteira dela; as regras do banco deixam só ela (e o Financeiro) ler.
+ */
+export type TipoDoVinculo = 'salario' | 'comissao' | 'adiantamento' | 'reembolso' | 'outro';
+export const TIPOS_DO_VINCULO: readonly { valor: TipoDoVinculo; rotulo: string }[] = [
+  { valor: 'salario', rotulo: 'Salário' },
+  { valor: 'comissao', rotulo: 'Comissão' },
+  { valor: 'adiantamento', rotulo: 'Adiantamento' },
+  { valor: 'reembolso', rotulo: 'Reembolso' },
+  { valor: 'outro', rotulo: 'Outro pagamento' },
+];
+export const rotuloDoVinculo = (t: TipoDoVinculo) => TIPOS_DO_VINCULO.find(x => x.valor === t)?.rotulo ?? 'Pagamento';
+export interface VinculoComFuncionario { uid: string; nome: string; tipo: TipoDoVinculo }
+
+/** O vínculo como veio do banco (null = sem vínculo, ou estragado). */
+export function vinculoDoBanco(v: unknown): VinculoComFuncionario | null {
+  if (!v || typeof v !== 'object') return null;
+  const o = v as Record<string, unknown>;
+  const uid = typeof o.uid === 'string' ? o.uid : '';
+  if (!uid) return null;
+  const tipo = TIPOS_DO_VINCULO.some(x => x.valor === o.tipo) ? (o.tipo as TipoDoVinculo) : 'outro';
+  return { uid, nome: typeof o.nome === 'string' ? o.nome : '', tipo };
+}
+
 export interface ContaAPagar {
   id: string;
   /** o ID da tela (1, 2, 3…), como o do Toriba */
@@ -70,6 +96,8 @@ export interface ContaAPagar {
   observacoes?: string;
   recorrencia?: RecorrenciaDaConta;
   pagamento?: PagamentoDaConta;
+  /** o funcionário a quem a conta paga (aparece na Carteira dele) */
+  funcionario?: VinculoComFuncionario;
   anexos: AnexoDaConta[];
   /** o Auditor do Toriba: quem lançou e quando */
   lancadoEm: string;

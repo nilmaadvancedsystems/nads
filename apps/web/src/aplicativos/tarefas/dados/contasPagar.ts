@@ -20,6 +20,8 @@ export interface RascunhoDaConta {
   linhaDigitavel?: string;
   observacoes?: string;
   recorrencia?: financeiro.RecorrenciaDaConta;
+  /** o funcionário a quem a conta paga (aparece na Carteira dele; 12/11/2026) */
+  funcionario?: financeiro.VinculoComFuncionario;
 }
 
 /** o arquivo que a tela anexa (o PDF do boleto ou o comprovante) */
@@ -99,7 +101,7 @@ export function criarContasPagarMemoria(): RepoContasPagar {
       const novas = rs.map((r): financeiro.ContaAPagar => ({
         id: 'ex-c' + Date.now() + '-' + ++seq, numero: ++numero, fornecedorId: r.fornecedorId, conta: r.conta || undefined, documento: r.documento.trim(), emissao: r.emissao,
         vencimento: r.vencimento, valor: r.valor, linhaDigitavel: r.linhaDigitavel || undefined, observacoes: r.observacoes?.trim() || undefined, recorrencia: r.recorrencia,
-        anexos: [], lancadoEm: AGORA(), lancadoPor: quem,
+        funcionario: r.funcionario, anexos: [], lancadoEm: AGORA(), lancadoPor: quem,
       }));
       contas = [...contas, ...novas];
       mudou();
@@ -108,7 +110,7 @@ export function criarContasPagarMemoria(): RepoContasPagar {
     async alterarConta(r, quem) {
       trocar(r.id, x => ({
         ...x, fornecedorId: r.fornecedorId, conta: r.conta || undefined, documento: r.documento.trim(), emissao: r.emissao, vencimento: r.vencimento, valor: r.valor,
-        linhaDigitavel: r.linhaDigitavel || undefined, observacoes: r.observacoes?.trim() || undefined, atualizadoEm: AGORA(), atualizadoPor: quem,
+        linhaDigitavel: r.linhaDigitavel || undefined, observacoes: r.observacoes?.trim() || undefined, funcionario: r.funcionario, atualizadoEm: AGORA(), atualizadoPor: quem,
       }));
     },
     async definirPagamento(id, p) { trocar(id, x => ({ ...x, pagamento: p ?? undefined })); },
