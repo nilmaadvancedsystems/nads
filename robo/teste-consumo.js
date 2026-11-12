@@ -194,6 +194,49 @@ const dormir = ms => new Promise(r => setTimeout(r, ms));
     igual('o marcador vai para o documento dele, e não toda hora', [gravados, docs.marcador.pageToken, est.token], [['marcador'], 't1', 't3']);
     igual('a raiz não foi regravada', docs.raiz.pageToken, 'velho');
     igual('ao religar, o marcador do documento vale mais que o da raiz', await di.lerMarcador(dbM, {}), 't1');
+    igual('a raiz sem a lista de anos: o robô grava a lista uma vez', est.semAnos, true);
+    docs.raiz.anos = [];
+    const est2 = {};
+    await di.lerMarcador(dbM, est2);
+    igual('a raiz com a lista (mesmo vazia): não grava de novo', est2.semAnos, false);
+  }
+
+  // o seletor de ano do Drive (12/11/2026): um ano anterior é mapeado só a pedido, só o mapa (nada de Pendências,
+  // cadastro, contas, fila ou DP), e o custo é por pasta de cliente: 1 leitura e 2 gravações, mais a raiz do ano
+  {
+    const arvore = {
+      A25: [{ id: 'c1', name: '58 - TORNEARIA', mimeType: 'application/vnd.google-apps.folder' }, { id: 'c2', name: '77 - NOVA', mimeType: 'application/vnd.google-apps.folder' },
+        { id: 'solto', name: 'leia-me.pdf', mimeType: 'application/pdf', size: '5' }],
+      c1: [{ id: 's1', name: 'CONTÁBIL', mimeType: 'application/vnd.google-apps.folder' }, { id: 'f1', name: 'balanco-2025.pdf', mimeType: 'application/pdf', size: '100' }],
+      s1: [{ id: 'f2', name: 'extrato.pdf', mimeType: 'application/pdf', size: '50' }],
+      c2: [{ id: 'f3', name: 'nota.xml', mimeType: 'text/xml', size: '7' }],
+    };
+    di.usarDriveDeTeste({ files: { list: async ({ q }) => {
+      const pais = [...q.matchAll(/'([^']+)' in parents/g)].map(m => m[1]);
+      return { data: { files: [].concat(...pais.map(p => (arvore[p] || []).map(f => Object.assign({ parents: [p] }, f)))) } };
+    } } });
+    const docs = { raiz: { pastaId: 'A26', pastaNome: '2026', clientes: [{ id: 'k26', nomePasta: '58 - TORNEARIA' }], anos: [{ nome: '2025', id: 'A25' }] } };
+    const leu = [], gravou = [];
+    const ref = caminho => ({
+      get: async () => { leu.push(caminho); const x = docs[caminho]; return { exists: !!x, data: () => x }; },
+      set: async (d, op) => { gravou.push(caminho); docs[caminho] = op && op.merge ? Object.assign({}, docs[caminho], d) : d; },
+      delete: async () => { gravou.push(caminho + ' (apagado)'); delete docs[caminho]; },
+      collection: sub => ({ doc: id => ref(caminho + '/' + sub + '/' + id) }),
+    });
+    const dbA = { collection: nome => ({ doc: id => ref(nome === 'driveIndice' ? id : nome + '/' + id) }) };
+    const r = await di.atenderPedidoDoMapa(dbA, () => {}, { dono: new Map() }, { pastaId: 'A25', criadoPor: 'teste' });
+    igual('ano anterior: as pastas de cliente e os arquivos dentro delas', r, { pastas: 2, arquivos: 3 });
+    igual('ano anterior: 1 leitura da raiz + 1 por pasta de cliente', leu.length, 3);
+    igual('ano anterior: 2 gravações por pasta de cliente + a raiz do ano, e só no índice', gravou.sort(), ['c1', 'c1/partes/0', 'c2', 'c2/partes/0', 'raiz-2025']);
+    igual('a raiz do ano anterior no formato da raiz', [docs['raiz-2025'].pastaId, docs['raiz-2025'].pastaNome, docs['raiz-2025'].clientes.map(c => c.codigo)], ['A25', '2025', ['58', '77']]);
+    igual('a raiz do ano corrente não muda', docs.raiz.clientes.length, 1);
+    leu.length = 0; gravou.length = 0;
+    const r2 = await di.atenderPedidoDoMapa(dbA, () => {}, { dono: new Map() }, { pastaId: 'c2', criadoPor: 'teste' });
+    igual('o ⟳ numa pasta de cliente de um ano anterior relê só ela', [r2, gravou.sort()], [{ pastas: 1, arquivos: 1 }, ['c2', 'c2/partes/0', 'raiz-2025']]);
+    let erro = '';
+    await di.atenderPedidoDoMapa(dbA, () => {}, { dono: new Map() }, { pastaId: 'nenhuma' }).catch(e => { erro = e.message; });
+    igual('pasta fora do mapa: recusa', erro, 'essa pasta de cliente não está no mapa');
+    di.usarDriveDeTeste(null);
   }
 
   // o cadastro do arquivador por ouvinte (10/11/2026): lido uma vez, depois só o que muda; o cache com os mesmos campos

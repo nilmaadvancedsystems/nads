@@ -139,8 +139,11 @@ Pedido do Vitor: as funções do Drive e do Gmail das Pendências dentro do nads
 Pendências (os mesmos dados e as mesmas filas do robô do Entregas); nada nas Pendências mudou. Model em
 `packages/core/src/entregas` (com testes); banco em `tarefas/dados/{drive,gmail}.firestore.ts`.
 
-- **Drive › Pastas** (`/tarefas/drive/pastas?c=<pasta do cliente>&p=<pasta>`): as pastas de cliente da pasta do ano
-  (`driveIndice`, o mapa que o robô mantém); dentro, a trilha, a busca (a pasta e tudo abaixo), abrir no navegador,
+- **Drive › Pastas** (`/tarefas/drive/pastas?a=<ano>&c=<pasta do cliente>&p=<pasta>`): as pastas de cliente da pasta do ano
+  (`driveIndice`, o mapa que o robô mantém). O seletor de ano (12/11/2026) lista o ano corrente e as outras pastas de ano
+  do Meu Drive (`driveIndice/raiz.anos`); um ano anterior vem de `driveIndice/raiz-AAAA`, e o que ainda não tem mapa
+  mostra **Mapear AAAA** (um `pedidosMapaDrive` com o id da pasta do ano). Trocar de ano dentro de um cliente vai para a
+  pasta do mesmo código no outro ano. Dentro, a trilha, a busca (a pasta e tudo abaixo), abrir no navegador,
   marcar e baixar (um arquivo ou vários num .zip) e "Baixar pasta". Os pedidos vão em `aberturasDrive`; o robô devolve
   um link de 30 min. Desde 30/09/2026 tem a cara do Explorador do Windows: voltar/avançar/acima e a trilha na barra de
   endereço, a árvore das pastas à esquerda (botão **Árvore**; cada cliente só é lido do banco quando é aberto), a lista

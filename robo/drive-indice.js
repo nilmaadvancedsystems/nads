@@ -8,7 +8,12 @@
 //
 // No banco:
 //   driveIndice/raiz                     a pasta do ano: lista de clientes com
-//                                        totais (e o marcador antigo, só de reserva)
+//                                        totais (e o marcador antigo, só de reserva);
+//                                        em `anos`, as outras pastas de ano do Meu Drive
+//   driveIndice/raiz-AAAA                um ano anterior, no mesmo formato (12/11/2026):
+//                                        mapeado só quando alguém pede na tela (o
+//                                        seletor de ano do Drive) e depois congelado
+//                                        até alguém pedir de novo (o botão ⟳)
 //   driveIndice/marcador                 o marcador de mudanças do Drive (10/11/2026)
 //   driveIndice/{pastaDoCliente}         totais da pasta de um cliente
 //   driveIndice/{pastaDoCliente}/partes/{n}
@@ -53,6 +58,8 @@ function getDrive() {
   if (!drive) drive = google.drive({ version: 'v3', auth: getAuth('robo') });
   return drive;
 }
+// só para o teste: um Drive imitado (teste-consumo.js)
+function usarDriveDeTeste(d) { drive = d; }
 
 // ---------- funções puras (testadas sem rede) ----------
 
@@ -132,6 +139,16 @@ function documentosNaPasta(itens, raizId) {
   return achados;
 }
 
+// As pastas de ano na raiz do Meu Drive ("2025", "2024"...), menos o ano corrente: [{ nome, id }], do mais novo ao mais velho.
+function pastasDeAno(itens, anoCorrente) {
+  const vistos = new Set();
+  return (itens || [])
+    .filter(i => i.t === 'd' && /^\d{4}$/.test(String(i.n || '').trim()) && String(i.n).trim() !== String(anoCorrente))
+    .map(i => ({ nome: String(i.n).trim(), id: i.i }))
+    .filter(a => (vistos.has(a.nome) ? false : vistos.add(a.nome)))
+    .sort((a, b) => b.nome.localeCompare(a.nome));
+}
+
 function totais(itens) {
   const t = { arquivos: 0, pastas: 0, bytes: 0, mod: null };
   itens.forEach(i => {
@@ -185,6 +202,21 @@ async function varrerPasta(pastaId) {
     nivel = proximo;
   }
   return itens;
+}
+
+// As outras pastas de ano do Meu Drive (só a consulta ao Drive; nada no banco).
+async function acharAnosNoDrive() {
+  const itens = [];
+  let pageToken;
+  do {
+    const r = await getDrive().files.list({
+      q: `'root' in parents and mimeType = '${MIME_PASTA}' and trashed = false`,
+      fields: 'nextPageToken, files(id, name)', pageSize: 1000, pageToken,
+    });
+    (r.data.files || []).forEach(f => itens.push({ i: f.id, n: f.name, t: 'd' }));
+    pageToken = r.data.nextPageToken;
+  } while (pageToken);
+  return pastasDeAno(itens, PASTA_ANO);
 }
 
 async function acharPastaDoAno() {
@@ -543,10 +575,51 @@ async function aprenderContasDaPasta(db, cliente, achados, log) {
   if (novas.length) log('contas: ' + cliente.nome + ' — ' + novas.map(c => c.banco + ' ag ' + c.agencia + ' cc ' + c.conta).join('; '));
 }
 
-async function atualizarRaiz(db, raizId, clientes, extra) {
+// ano: um ano anterior (driveIndice/raiz-AAAA); sem ele, a raiz do ano corrente.
+async function atualizarRaiz(db, raizId, clientes, extra, ano) {
   const lista = clientes.map(c => ({ id: c.id, nome: c.nome, nomePasta: c.nomePasta, codigo: c.codigo, arquivos: c.arquivos, pastas: c.pastas, bytes: c.bytes, mod: c.mod }))
     .sort((a, b) => (Number(a.codigo) || 1e9) - (Number(b.codigo) || 1e9) || String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
-  await db.collection(COLECAO).doc('raiz').set(Object.assign({ pastaId: raizId, pastaNome: PASTA_ANO, clientes: lista, atualizadoEm: new Date().toISOString() }, extra || {}), { merge: true });
+  await db.collection(COLECAO).doc(ano ? 'raiz-' + ano : 'raiz').set(Object.assign({ pastaId: raizId, pastaNome: ano || PASTA_ANO, clientes: lista, atualizadoEm: new Date().toISOString() }, extra || {}), { merge: true });
+}
+
+// ---------- os anos anteriores (o seletor de ano do Drive, 12/11/2026) ----------
+// Só o mapa: nada de marcação do Pendências, cadastro, contas, fila do Extratudo ou DP (são do ano corrente). E sem
+// releitura da madrugada nem conferência de mudanças: o ano fica como foi lido até alguém pedir de novo na tela. Custo
+// de mapear um ano: por pasta de cliente, 1 leitura (as partes de antes) e 2 gravações (as partes e o resumo).
+async function mapearAnoAnterior(db, log, ano) {
+  const t0 = Date.now();
+  const topo = (await listarFilhosDe([ano.id])).filter(i => i.t === 'd');
+  const resumos = [];
+  await emParalelo(topo, LEITURAS_EM_PARALELO, async p => {
+    try { resumos.push(await gravarCliente(db, { id: p.i, name: p.n }, await varrerPasta(p.i))); }
+    catch (err) { log('pasta', ano.nome + '/' + p.n, 'não foi lida:', err.message); }
+  });
+  await atualizarRaiz(db, ano.id, resumos, null, ano.nome);
+  const arquivos = resumos.reduce((s, r) => s + (r.arquivos || 0), 0);
+  log('mapa do Drive: ' + ano.nome + ' mapeado, ' + resumos.length + ' pastas de cliente, ' + arquivos + ' arquivos, em ' + Math.round((Date.now() - t0) / 1000) + 's');
+  return { pastas: resumos.length, arquivos };
+}
+
+// Uma pasta de cliente de um ano anterior, relida a pedido (o ⟳ dentro dela): acha o ano dela pelos raiz-AAAA.
+async function relerClienteDeAnoAnterior(db, anos, pastaId) {
+  for (const ano of anos) {
+    const raiz = (await db.collection(COLECAO).doc('raiz-' + ano.nome).get()).data();
+    const c = raiz && (raiz.clientes || []).find(x => x.id === pastaId);
+    if (!c) continue;
+    const resumo = await gravarCliente(db, { id: c.id, name: c.nomePasta }, await varrerPasta(c.id));
+    await atualizarRaiz(db, raiz.pastaId, (raiz.clientes || []).map(x => (x.id === c.id ? resumo : x)), null, ano.nome);
+    return { ano, resumo };
+  }
+  return null;
+}
+
+// A lista das pastas de ano vai para a raiz (que a tela já lê): na releitura completa e, uma vez, quando o robô liga e a
+// raiz ainda não tem a lista (1 gravação).
+async function gravarAnos(db, estado, log) {
+  const anos = await acharAnosNoDrive();
+  await db.collection(COLECAO).doc('raiz').set({ anos }, { merge: true });
+  estado.semAnos = false;
+  log('mapa do Drive: pastas de ano no Drive: ' + (anos.map(a => a.nome).join(', ') || 'nenhuma além de ' + PASTA_ANO));
 }
 
 async function varreduraCompleta(db, log, estado) {
@@ -556,6 +629,8 @@ async function varreduraCompleta(db, log, estado) {
   const inicio = await getDrive().changes.getStartPageToken({});
   const raizId = await acharPastaDoAno();
   const topo = (await listarFilhosDe([raizId])).filter(i => i.t === 'd');
+  // as outras pastas de ano (o seletor da tela): uma consulta ao Drive, e vai junto na gravação da raiz
+  const anos = await acharAnosNoDrive().catch(err => { log('mapa do Drive: não listei as pastas de ano (' + err.message + ')'); return null; });
   const porCodigo = await clientesPorCodigo(db);
   guardarClientesDoMapa(porCodigo);   // a lista lida agora vale para as mudanças dos próximos 30 min
   const soEnsaio = !(await marcacaoLigada(db));
@@ -569,8 +644,8 @@ async function varreduraCompleta(db, log, estado) {
       if (estado) lembrarDonos(estado, p.i, r.itens);
     } catch (err) { log('pasta', p.n, 'não foi lida:', err.message); }
   });
-  await atualizarRaiz(db, raizId, resumos, { pageToken: inicio.data.startPageToken, varreduraEm: new Date().toISOString() });
-  if (estado) { estado.pastaId = raizId; await gravarMarcador(db, estado, inicio.data.startPageToken, true); }
+  await atualizarRaiz(db, raizId, resumos, Object.assign({ pageToken: inicio.data.startPageToken, varreduraEm: new Date().toISOString() }, anos ? { anos } : {}));
+  if (estado) { estado.pastaId = raizId; if (anos) estado.semAnos = false; await gravarMarcador(db, estado, inicio.data.startPageToken, true); }
   const arquivos = resumos.reduce((s, r) => s + r.arquivos, 0);
   log('mapa do Drive: ' + resumos.length + ' pastas de cliente, ' + arquivos + ' arquivos, ' + marcados + ' documento(s) ' + (soEnsaio ? 'que seriam marcados (marcação automática desligada)' : 'marcado(s) pela pasta') + ', em ' + Math.round((Date.now() - t0) / 1000) + 's');
   return { raizId, resumos };
@@ -579,13 +654,15 @@ async function varreduraCompleta(db, log, estado) {
 // ---------- mudanças (tempo real) ----------
 
 // De que pasta de cliente é este arquivo? Sobe pelas pastas-mãe até achar a
-// que está direto na pasta do ano.
+// que está direto na pasta do ano. raizId: a pasta do ano, ou um Set com as
+// pastas de ano aceitas (abrir-do-drive.js: os anos anteriores também).
 async function pastaDoClienteDe(fileId, raizId, cache) {
+  const ehRaiz = raizId instanceof Set ? x => raizId.has(x) : x => x === raizId;
   let id = fileId;
   for (let passo = 0; passo < 30 && id; passo++) {
     if (cache.has(id)) {
       const pai = cache.get(id);
-      if (pai === raizId) return id;
+      if (ehRaiz(pai)) return id;
       if (pai == null) return null;
       id = pai;
       continue;
@@ -595,7 +672,7 @@ async function pastaDoClienteDe(fileId, raizId, cache) {
     catch (e) { return null; }
     const pai = (f.parents || [])[0] || null;
     cache.set(id, pai);
-    if (pai === raizId) return id;
+    if (ehRaiz(pai)) return id;
     id = pai;
   }
   return null;
@@ -607,6 +684,8 @@ async function lerMarcador(db, estado) {
   const [m, r] = await Promise.all([db.collection(COLECAO).doc(MARCADOR).get(), db.collection(COLECAO).doc('raiz').get()]);
   const raiz = r.data() || {};
   estado.pastaId = raiz.pastaId || null;
+  // a raiz de antes do seletor de ano não tem a lista: o robô grava uma vez (gravarAnos)
+  estado.semAnos = !!raiz.pastaId && !Array.isArray(raiz.anos);
   estado.token = (m.data() || {}).pageToken || raiz.pageToken || null;
   return estado.token;
 }
@@ -691,7 +770,8 @@ function lembrarDonos(estado, clienteId, itens) {
 
 // ---------- "Atualizar o mapa" pedido pela tela (Tarefas › Drive, 01/10/2026) ----------
 //   pedidosMapaDrive/{id} { status: 'pendente' → 'atualizando' → 'pronto' | 'erro', pastaId ('' = a pasta do ano
-//                           inteira), criadoEm, criadoPor, criadoPorUid }  — a resposta: pastas, arquivos, prontoEm, erro
+//                           inteira; o id de uma pasta de ano anterior = mapear aquele ano; 12/11/2026), criadoEm,
+//                           criadoPor, criadoPorUid }  — a resposta: pastas, arquivos, prontoEm, erro
 // Uma pasta de cliente relê em segundos; a pasta inteira é a mesma releitura da madrugada (~1 min). Um pedido por vez,
 // com a mesma trava da conferência de mudanças.
 const PEDIDOS_DO_MAPA = 'pedidosMapaDrive';
@@ -700,9 +780,22 @@ const PEDIDO_DO_MAPA_DURA_MS = 24 * 36e5;
 async function atenderPedidoDoMapa(db, log, estado, pedido) {
   const raiz = (await db.collection(COLECAO).doc('raiz').get()).data() || {};
   const pastaId = String(pedido.pastaId || '');
+  const anos = Array.isArray(raiz.anos) ? raiz.anos : [];
+  // um ano anterior inteiro (o seletor de ano da tela)
+  const ano = pastaId && anos.find(a => a.id === pastaId);
+  if (ano) {
+    const r = await mapearAnoAnterior(db, log, ano);
+    log('mapa do Drive: ' + ano.nome + ' mapeado a pedido de', pedido.criadoPor || '?');
+    return r;
+  }
   if (pastaId && raiz.pastaId) {
     const c = (raiz.clientes || []).find(x => x.id === pastaId);
-    if (!c) throw new Error('essa pasta de cliente não está no mapa');
+    if (!c) {
+      const antigo = await relerClienteDeAnoAnterior(db, anos, pastaId);
+      if (!antigo) throw new Error('essa pasta de cliente não está no mapa');
+      log('mapa do Drive: pasta', antigo.ano.nome + '/' + antigo.resumo.nomePasta, 'relida a pedido de', pedido.criadoPor || '?');
+      return { pastas: 1, arquivos: antigo.resumo.arquivos || 0 };
+    }
     const porCodigo = await clientesPorCodigoGuardados(db);
     const soEnsaio = !(await marcacaoLigada(db));
     const r = await releituraDoCliente(db, { id: c.id, name: c.nomePasta }, porCodigo, log, soEnsaio);
@@ -765,6 +858,7 @@ function iniciarIndiceDrive(db, log) {
         estado.pais.clear();
       } else {
         await conferirMudancas(db, estado, log);
+        if (estado.semAnos) await gravarAnos(db, estado, log).catch(err => { estado.semAnos = false; log('mapa do Drive: não listei as pastas de ano (' + err.message + ')'); });
       }
     } catch (err) {
       log('mapa do Drive: erro (' + err.message + '); tento de novo no próximo minuto');
@@ -828,7 +922,9 @@ function iniciarContasDoDrive(db, log, estadoDoIndice) {
 module.exports = {
   iniciarIndiceDrive, varreduraCompleta, conferirMudancas, pastaDoClienteDe, getDrive,
   // puras, pro teste
-  codigoDaPasta, chaveDeNome, caminhos, documentosNaPasta, totais, TIPO_POR_PASTA, bancoDaPasta,
+  codigoDaPasta, chaveDeNome, caminhos, documentosNaPasta, totais, TIPO_POR_PASTA, bancoDaPasta, pastasDeAno,
+  // os anos anteriores (seletor de ano), para o teste com o banco e o Drive imitados
+  mapearAnoAnterior, atenderPedidoDoMapa, usarDriveDeTeste,
   // cadastro pela pasta (bancos, "não se aplica"): exposta pra aplicar/testar fora do robô
   ajustarCadastroPeloIndice, marcarPeloIndice,
   // a lista dos clientes em memória (teste-consumo.js)
