@@ -31,6 +31,8 @@ import { JanelaBuscarNoEmail, useBuscarNoEmail } from './JanelaBuscarNoEmail';
 import { useRecebidosPorEmail } from './useRecebidosPorEmail';
 import { BotaoVer, type Puxado, chaveDoExtrato, esquecerPuxado, guardarPuxado, puxadosDe, useVersaoDosPuxados, abrirPuxado } from '../../../puxados';
 import { usePedirExtratos } from './usePedirExtratos';
+import { useEnviarVariosMeses } from './useEnviarVariosMeses';
+import { JanelaVariosMeses } from './JanelaVariosMeses';
 import { CANCELAR_LOTE_A_QUALQUER_HORA } from '../../../../../../comum/desenvolvimento';
 import { modoDesenvolvedor } from '../../../../../../comum/modoDesenvolvedor';
 import { useColunaAjustavel } from '../../../../../../comum/GradeDosMeses';
@@ -499,7 +501,7 @@ function ImportarTodos({ titulo, aceitar, travado, onArquivos, restantes, onRemo
  * Importar o extrato de todos os meses (vários meses): só o ícone, e ao clicar as duas opções (Vitor, 02/10/2026):
  * do computador (vários arquivos; cada lançamento cai no seu mês) ou do Drive (os meses que faltam).
  */
-function ImportarExtratoTodos({ aceitar, travado, restantes, onArquivos, onDrive, onRemover }: { aceitar: string; travado: boolean; restantes: boolean; onArquivos: (fs: File[]) => void; onDrive: () => void; onRemover?: () => void }) {
+function ImportarExtratoTodos({ aceitar, travado, restantes, onArquivos, onDrive, onVarios, onRemover }: { aceitar: string; travado: boolean; restantes: boolean; onArquivos: (fs: File[]) => void; onDrive: () => void; onVarios: () => void; onRemover?: () => void }) {
   const arquivo = useRef<HTMLInputElement>(null);
   return (
     <>
@@ -509,6 +511,10 @@ function ImportarExtratoTodos({ aceitar, travado, restantes, onArquivos, onDrive
           <>
             <button type="button" className="popover-item" role="menuitem" disabled={travado} onClick={() => { fechar(); arquivo.current?.click(); }}>
               <Icone nome="upload" /><span className="popover-texto">{restantes ? 'Importar os restantes do computador' : 'Importar do computador'}</span>
+            </button>
+            {/* vários arquivos, cada um no seu mês, vendo antes arquivo → mês (Vitor, 12/11/2026) */}
+            <button type="button" className="popover-item" role="menuitem" disabled={travado} onClick={() => { fechar(); onVarios(); }}>
+              <Icone nome="fileUp" /><span className="popover-texto">Enviar vários meses</span>
             </button>
             <button type="button" className="popover-item" role="menuitem" disabled={travado} onClick={() => { fechar(); onDrive(); }}>
               <LogoDrive cor /><span className="popover-texto">{restantes ? 'Adicionar restantes do Drive' : 'Todos pelo Drive'}</span>
@@ -669,6 +675,16 @@ export function TarefaExtratos() {
   useEffect(() => { vm.aoSemMovimento((banco, meses) => { for (const m of meses) ponte.marcarSemMovimento(banco, true, m); }); });
   // meses: de onde o extrato veio (a coluna do mês, a busca no e-mail), para o sem movimento que não diz o mês
   const importarExtrato = (b: (typeof vm.bancos)[number], fs: File[], depois?: () => void, meses?: string[]) => { void vm.importarArquivos(b.id, 'banco', fs, meses).then(ok => { if (ok) { d.subirAoDrive(b, fs, s.nome, meses); depois?.(); } }); };
+  // "Enviar vários meses": cada arquivo no seu mês, igual ao enviar de um mês (importa, vai para o Drive e fica para o olhinho)
+  const varios = useEnviarVariosMeses(vm.periodo.length > 1 ? vm.periodo : [vm.competencia],
+    (conta, mes) => vm.mesesDoBanco(conta, ponte.semMovimentoPorMes).some(m => m.mes === mes && (m.extrato || m.ladoExtrato.doDrive.length > 0)),
+    async (conta, f, meses) => {
+      const b = vm.bancos.find(x => x.id === conta);
+      if (!b || !(await vm.importarArquivos(b.id, 'banco', [f], meses))) return false;
+      d.subirAoDrive(b, [f], s.nome, meses);
+      guardarPuxado(chaveDoExtrato(s.codigo, b.id), f.name, f, 'computador', meses);
+      return true;
+    });
   // "Buscar no e-mail": o anexo escolhido entra como se viesse do computador (Vitor, 13/10/2026); fica para o olhinho dos meses dele
   const em = useBuscarNoEmail((linha, fs, meses) => {
     const b = vm.bancos.find(x => x.id === linha.id);
@@ -950,6 +966,7 @@ export function TarefaExtratos() {
                         ) : (
                           <ImportarExtratoTodos restantes={lote.comExtrato.length > 0} aceitar={cxExtrato.aceitar} travado={ocupadoGeral}
                             onArquivos={fs => importarExtrato(b, fs)} onDrive={() => d.buscarNoPeriodo(b, lote.faltamExtrato)}
+                            onVarios={() => varios.abrir({ id: b.id, nome: b.nome, marca: b.marca })}
                             onRemover={() => { void vm.excluirDoPeriodo(b.id, 'banco', lote.comExtrato); }} />
                         )
                       )}
@@ -1139,6 +1156,7 @@ export function TarefaExtratos() {
         </div>
       )}
       <JanelaBuscarNoEmail vm={em} />
+      <JanelaVariosMeses vm={varios} aceitar={cxExtrato.aceitar} />
       <JanelaPedirExtratos p={pe} />
       <JanelaHistoricoDePedidos p={pe} />
     </section>
