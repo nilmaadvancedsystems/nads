@@ -68,6 +68,16 @@ export function alternarSerieReinf(e: EstadoReinf, competencia: string, serie: S
   return desfazerReinf(base, competencia);
 }
 
+/** Transmitiu a competência com estas séries (as caixinhas do Transmitir; uma ou mais). Sem nenhuma, nada muda. */
+export function transmitirSeriesReinf(e: EstadoReinf, competencia: string, series: readonly SerieReinf[], por: string, agora: Date): EstadoReinf {
+  const ids = SERIES_REINF.map(s => s.id).filter(id => series.includes(id));
+  if (!ids.length) return e;
+  return transmitirReinf({ ...e, series: { ...(e.series || {}), [competencia]: ids } }, competencia, por, agora);
+}
+
+/** O rótulo curto das séries ("2000 · 4000 · MIT"), para a coluna da tela. */
+export const rotuloDasSeries = (series: readonly SerieReinf[]) => series.map(s => (s === 'mit' ? 'MIT' : s)).join(' · ');
+
 /** Retificou a competência (uma vez cada); de novo, tira. */
 export function alternarRetificada(e: EstadoReinf, competencia: string, por: string, agora: Date): EstadoReinf {
   const tem = e.retificadas.includes(competencia);

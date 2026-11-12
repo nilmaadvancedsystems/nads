@@ -5974,11 +5974,12 @@ html[data-sem-animacao] .mx-gaveta-fundo,html[data-sem-animacao] .mx-gaveta{anim
 .fr-tabela col.fr-c-ret{width:52px;}
 .fr-retif .toggle-txt{display:none;}
 /* a REINF, nas mesmas linhas */
-.fr-tabela.fr-reinf{min-width:1060px;}
+.fr-tabela.fr-reinf{min-width:1190px;}
 .fr-tabela col.fr-c-ate{width:112px;}
 .fr-tabela col.fr-c-ultima{width:210px;}
 .fr-tabela col.fr-c-retif{width:150px;}
 .fr-tabela col.fr-c-acoes{width:220px;}
+.fr-tabela col.fr-c-series{width:130px;}
 .fr-tabela.fr-reinf thead tr:first-child th{top:0;height:34px;border-bottom:1px solid var(--border);font-size:var(--fs-11);letter-spacing:0;text-transform:none;color:var(--ink-muted);}
 .fr-tabela th,.fr-tabela td{padding:0 6px;height:34px;border-bottom:1px solid var(--border);background:var(--surface);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:middle;}
 .fr-tabela .fr-num{text-align:right;font-variant-numeric:tabular-nums;}

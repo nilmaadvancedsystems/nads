@@ -69,6 +69,13 @@ export function useAcoesDaReinf(competencia: string) {
       const resp = marcarNoDp(codigo, false);
       aviso({ tom: 'ok', titulo: 'REINF transmitida', texto: codigo + ' · ' + mmaaaa(competencia) + (resp ? ' · no DP, ' + resp + ' é avisado' : '') });
     },
+    /** transmite com as séries marcadas nas caixinhas (uma ou mais); marca no DP como o Transmitir */
+    transmitirSeries: (codigo: number, series: readonly t.SerieReinf[]) => {
+      if (!series.length) return;
+      mudar(codigo, x => t.transmitirSeriesReinf(x, competencia, series, op.nome, new Date()));
+      const resp = marcarNoDp(codigo, false);
+      aviso({ tom: 'ok', titulo: 'REINF transmitida · ' + t.rotuloDasSeries(t.SERIES_REINF.map(s => s.id).filter(id => series.includes(id))), texto: codigo + ' · ' + mmaaaa(competencia) + (resp ? ' · no DP, ' + resp + ' é avisado' : '') });
+    },
     /** marca ou tira uma série (2000, 4000, MIT): a primeira transmite e marca no DP; tirar a última desfaz */
     alternarSerie: (codigo: number, serie: t.SerieReinf) => {
       const e = estados[codigo] || { codigo, retificadas: [] };
