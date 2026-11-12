@@ -38,7 +38,7 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
   const { toast, modal } = useRetorno();
   const eu = repo.eu();
   const uid = eu?.uid || '';
-  // 'documentos': a nova já como pedido de documentos (o botão Pedir documentos do Início; 12/11/2026)
+  // 'documentos': a nova já como pedido de documentos (o botão Delegar documentos do Início; 12/11/2026)
   const pedido = alvo === 'documentos';
   const ehNova = alvo === 'nova' || pedido;
   const { carregadas, tarefas: todas } = repo.lista();
@@ -233,7 +233,7 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
       // o pedido de documentos (12/11/2026: "após anexar, já dá como concluído"; o Vitor escolheu confirmar, porque às vezes são
       // vários arquivos): quem recebeu responde se já anexou tudo
       if (d.pedeDocumentos(tarefa) && tarefa.responsavel.uid === uid && d.emAberto(tarefa)) {
-        const tudo = await modal({ icone: 'check', titulo: 'Anexou tudo?', texto: 'Concluindo, quem pediu vê a tarefa concluída com os documentos.',
+        const tudo = await modal({ icone: 'check', titulo: 'Anexou tudo?', texto: 'Concluindo, quem delegou vê a tarefa concluída com os documentos.',
           botoes: [{ rotulo: 'Ainda falta', valor: false, variante: 'btn-outline' }, { rotulo: 'Anexei tudo, concluir', valor: true, variante: 'btn-primary' }] });
         if (!tudo) return;
         try {
