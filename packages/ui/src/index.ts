@@ -4,7 +4,7 @@ export { Icone, DefsMarca, MarcaN, type NomeIcone } from './icones';
 export { logoNilmaParaImprimir, type LogoParaImprimir } from './logoParaImprimir';
 export { RetornoProvider, useRetorno, classeDaJanela, ordemDosBotoes, type Retorno, type OpcoesAviso, type OpcoesModal, type BotaoModal } from './retorno';
 export { useTema, SeletorTema, type Tema } from './tema';
-export { Alerta, Esqueleto, NumeroQueConta, MensagemFlutuante, CampoArquivo, CampoArquivos, Segmentado, Stat, Interruptor, SeletorMes, BotaoAcao, BotaoIcone, BotaoFechar, Vazio, ConfigLinha, ConfigSecao, Dica, CampoData, useEstadoPorChave, MenuSuspenso, TituloDaConta, MedalhaGov, type ItemMenu } from './componentes';
+export { Alerta, Esqueleto, NumeroQueConta, MensagemFlutuante, CampoArquivo, CampoArquivos, SoltarArquivos, Segmentado, Stat, Interruptor, SeletorMes, BotaoAcao, BotaoIcone, BotaoFechar, Vazio, ConfigLinha, ConfigSecao, Dica, CampoData, useEstadoPorChave, MenuSuspenso, TituloDaConta, MedalhaGov, type ItemMenu } from './componentes';
 export { useJanela } from './janela';
 export { Casca, baixarArquivo, baixarBytes, type SecaoCasca, type PaginaCasca } from './casca';
 export { EscolherEmpresa, type EmpresaNaLista, type PropsEscolherEmpresa } from './escolherEmpresa';
