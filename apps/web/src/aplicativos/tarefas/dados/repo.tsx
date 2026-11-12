@@ -148,6 +148,17 @@ export function useContatoDoEntregas(codigo: number | null): empresas.cadastro.C
   return contato;
 }
 
+/** O e-mail e o WhatsApp que o Entregas tem de todos os clientes, por código (vazio enquanto lê). */
+export function useContatosDoEntregas(): Map<number, empresas.cadastro.ContatoDoEntregas> {
+  const [contatos, setContatos] = useState<Map<number, empresas.cadastro.ContatoDoEntregas>>(() => new Map());
+  useEffect(() => {
+    let vale = true;
+    void contatosDoEntregas().then(m => { if (vale) setContatos(m); });
+    return () => { vale = false; };
+  }, []);
+  return contatos;
+}
+
 /** O interruptor do robô que lê a agência e a conta dos extratos: ao vivo, e como mudar. */
 export function useLeituraDoRobo(): { carregado: boolean; ligado: boolean; mudar: (ligado: boolean) => Promise<void> } {
   const [estado, setEstado] = useState<{ carregado: boolean; ligado: boolean }>({ carregado: false, ligado: true });
