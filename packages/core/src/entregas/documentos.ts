@@ -429,6 +429,37 @@ export function jaNaRota(
   for (const i of nova.itens) if (naRota.has(chaveDoDocumento(i.tipo)) && !repetidos.includes(i.tipo)) repetidos.push(i.tipo);
   return repetidos;
 }
+/**
+ * O que o "Puxar guias" não traz (12/11/2026: "guias que ja foram entregues nao devem ser puxadas por aqui"): o documento
+ * que o cliente já recebeu nesta competência (entregue ou recebido pelo link) ou que já está na rota ou no link. tipos: o
+ * documento de cada guia puxada ("FGTS", "DARF INSS", "Boleto"); -> o que acontece com cada uma, na mesma ordem
+ * ('' = pode vir), e quando foi entregue.
+ */
+export function guiasJaEntregues(
+  clienteId: string, competencia: string, tipos: readonly string[],
+  entregasDoCliente: readonly Pick<Entrega, 'clienteId' | 'competencia' | 'status' | 'itens' | 'confirmadoEm'>[],
+): { situacao: '' | 'entregue' | 'na-rota'; em: string }[] {
+  const doMes = entregasDoCliente.filter(e => e.clienteId === clienteId && e.competencia === competencia);
+  return tipos.map(tipo => {
+    const k = chaveDoDocumento(tipo);
+    const tem = (e: (typeof doMes)[number]) => e.itens.some(i => chaveDoDocumento(i.tipo) === k);
+    const entregue = doMes.find(e => e.status === 'confirmada' && tem(e));
+    if (entregue) return { situacao: 'entregue' as const, em: entregue.confirmadoEm || '' };
+    if (doMes.some(e => (e.status === 'pendente' || e.status === 'link') && tem(e))) return { situacao: 'na-rota' as const, em: '' };
+    return { situacao: '' as const, em: '' };
+  });
+}
+/** "FGTS já foi entregue (12/11) e DARF já está na rota: não vieram de novo." ('' quando todas vieram) */
+export function avisoDasGuiasDeFora(tipos: readonly string[], situacoes: readonly { situacao: '' | 'entregue' | 'na-rota'; em: string }[]): string {
+  const partes = tipos.flatMap((t, k) => {
+    const s = situacoes[k];
+    if (!s?.situacao) return [];
+    return [t + (s.situacao === 'entregue' ? ' já foi entregue' + (s.em ? ' (' + dataBr(s.em).slice(0, 5) + ')' : '') : ' já está na rota')];
+  });
+  if (!partes.length) return '';
+  return (partes.length > 1 ? partes.slice(0, -1).join(', ') + ' e ' + partes[partes.length - 1] : partes[0]) + ': não ' + (partes.length > 1 ? 'vieram' : 'veio') + ' de novo.';
+}
+
 /** "DAE ICMS de outubro/2026 já está na rota de 493 - ANTONIA'S LTDA. …" */
 export function avisoDeJaNaRota(repetidos: readonly string[], competencia: string, cliente: string): string {
   const quais = repetidos.length > 1 ? repetidos.slice(0, -1).join(', ') + ' e ' + repetidos[repetidos.length - 1] : repetidos[0] || '';

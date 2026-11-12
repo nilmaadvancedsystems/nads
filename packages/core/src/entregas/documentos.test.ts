@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   clienteCombina, clienteDaRotaDoDocumento, entregaDoDocumento, linhasDoPainel, numerosDoMes, rotaPadraoDoDocumento, rotuloDaCompetencia,
   rotuloDaSituacao, situacaoNoMes, subtituloDaLinhaDoPainel, totalDosItens, valorDigitado, motivoComToque, motivoPadrao, competenciaAnterior,
-  ultimasCompetencias, documentoFormatado, tipoPelaChave, documentosParaEditar, itensDaEdicao, jaNaRota, avisoDeJaNaRota, type ClienteDaRota, type Entrega,
+  ultimasCompetencias, documentoFormatado, tipoPelaChave, documentosParaEditar, itensDaEdicao, jaNaRota, avisoDeJaNaRota, guiasJaEntregues, avisoDasGuiasDeFora, type ClienteDaRota, type Entrega,
 } from './documentos';
 import {
   ajustarDiaUtil, barrasDaLinha, clienteDoPdf, codigoDePagamentoDoPdf, competenciaDoPdf, dadosDoPdf, doMesDaGuia, dvMod10, feriadosNacionais,
@@ -170,6 +170,24 @@ describe('o que já está na rota (11/11/2026)', () => {
     expect(avisoDeJaNaRota(['DAE ICMS'], '2026-10', "493 - ANTONIA'S LTDA"))
       .toBe("DAE ICMS de outubro/2026 já está na rota de 493 - ANTONIA'S LTDA. Para mudar, edite ou tire a parada que está lá.");
     expect(avisoDeJaNaRota(['DAE ICMS', 'DAS', 'FGTS'], '2026-10', 'X')).toMatch(/^DAE ICMS, DAS e FGTS de outubro\/2026 já estão na rota de X\./);
+  });
+});
+
+describe('o Puxar guias não traz o que já foi entregue (12/11/2026)', () => {
+  const doCliente = [
+    { clienteId: 'v', competencia: '2026-11', status: 'confirmada' as const, confirmadoEm: '2026-11-12T13:00:00', itens: [{ tipo: 'FGTS', valor: 1 }, { tipo: 'DARF INSS', valor: 2 }] },
+    { clienteId: 'v', competencia: '2026-11', status: 'pendente' as const, confirmadoEm: null, itens: [{ tipo: 'Boleto', valor: 3 }] },
+    { clienteId: 'v', competencia: '2026-11', status: 'falha' as const, confirmadoEm: null, itens: [{ tipo: 'DAS', valor: 4 }] },
+    // outubro: as guias de setembro, já entregues, não seguram as de outubro
+    { clienteId: 'v', competencia: '2026-10', status: 'confirmada' as const, confirmadoEm: '2026-10-15T10:00:00', itens: [{ tipo: 'DARF IRRF', valor: 5 }] },
+    { clienteId: 'outro', competencia: '2026-11', status: 'confirmada' as const, confirmadoEm: '2026-11-10T10:00:00', itens: [{ tipo: 'Folha de Pagamento', valor: null }] },
+  ];
+  const tipos = ['FGTS', 'DARF INSS', 'DARF IRRF', 'DAS', 'Folha de Pagamento', 'Boleto'];
+  it('o entregue e o que está na rota ficam de fora; o que não deu certo, o de outro mês e o de outro cliente vêm', () => {
+    const s = guiasJaEntregues('v', '2026-11', tipos, doCliente);
+    expect(s.map(x => x.situacao)).toEqual(['entregue', 'entregue', '', '', '', 'na-rota']);
+    expect(avisoDasGuiasDeFora(tipos, s)).toBe('FGTS já foi entregue (12/11), DARF INSS já foi entregue (12/11) e Boleto já está na rota: não vieram de novo.');
+    expect(avisoDasGuiasDeFora(['DAS'], [{ situacao: '', em: '' }])).toBe('');
   });
 });
 

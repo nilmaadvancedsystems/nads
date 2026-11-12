@@ -31,23 +31,31 @@ export interface PastaDeCliente {
   mod: string | null;
 }
 
+/** Uma pasta de ano na raiz do Meu Drive ("2025"), com o id dela no Drive. */
+export interface AnoDoDrive { nome: string; id: string }
+
 export interface MapaDoDrive {
   /** já chegou do banco (ou falhou) */
   carregado: boolean;
+  /** o documento existe no banco (um ano anterior que ninguém pediu ainda não tem mapa) */
+  mapeado: boolean;
   /** a pasta do ano (2026) */
   pastaAno: { id: string; nome: string } | null;
   clientes: PastaDeCliente[];
   atualizadoEm: string;
+  /** só na raiz do ano corrente: as outras pastas de ano que o robô achou no Meu Drive (para o seletor) */
+  anos: AnoDoDrive[];
   /** sem permissão, robô sem mapa… */
   erro?: string;
 }
 
-export const MAPA_VAZIO: MapaDoDrive = { carregado: false, pastaAno: null, clientes: [], atualizadoEm: '' };
+export const MAPA_VAZIO: MapaDoDrive = { carregado: false, mapeado: false, pastaAno: null, clientes: [], atualizadoEm: '', anos: [] };
 
 const texto = (v: unknown) => (v == null ? '' : String(v));
 const numero = (v: unknown) => (typeof v === 'number' && isFinite(v) ? v : 0);
+const ehAno = (s: string) => /^\d{4}$/.test(s);
 
-/** O documento driveIndice/raiz conferido. */
+/** O documento driveIndice/raiz (ou driveIndice/raiz-AAAA) conferido. */
 export function mapaDaRaiz(doc: Record<string, unknown> | null | undefined): MapaDoDrive {
   if (!doc) return { ...MAPA_VAZIO, carregado: true };
   const clientes = Array.isArray(doc.clientes)
@@ -56,11 +64,40 @@ export function mapaDaRaiz(doc: Record<string, unknown> | null | undefined): Map
       arquivos: numero(c?.arquivos), pastas: numero(c?.pastas), bytes: numero(c?.bytes), mod: texto(c?.mod) || null,
     })).filter(c => c.id)
     : [];
+  const anos = Array.isArray(doc.anos)
+    ? (doc.anos as Record<string, unknown>[]).map(a => ({ nome: texto(a?.nome).trim(), id: texto(a?.id) })).filter(a => ehAno(a.nome) && a.id)
+    : [];
   return {
     carregado: true,
+    mapeado: true,
     pastaAno: doc.pastaId ? { id: texto(doc.pastaId), nome: texto(doc.pastaNome) || 'Drive' } : null,
-    clientes, atualizadoEm: texto(doc.atualizadoEm),
+    clientes, atualizadoEm: texto(doc.atualizadoEm), anos,
   };
+}
+
+// ---------- o seletor de ano (Vitor, 12/11/2026: "preciso colocar a seleção de ano no Drive") ----------
+// O robô mapeia ao vivo a pasta do ano corrente em driveIndice/raiz. Os anos anteriores ficam cada um no seu documento,
+// driveIndice/raiz-AAAA (o mesmo formato), e as pastas de cliente deles em driveIndice/{pasta}, como as de agora (o id é o
+// da pasta no Drive: não se misturam). A raiz do ano corrente lista em `anos` as outras pastas de ano do Meu Drive.
+
+/** O documento do índice com o mapa do ano: '' (ou o ano corrente) é a raiz; outro ano, raiz-AAAA. */
+export function documentoDoAno(ano: string, anoCorrente: string): string {
+  return !ano || ano === anoCorrente ? 'raiz' : 'raiz-' + ano;
+}
+
+/** Os anos do seletor: o corrente e os que o robô achou no Drive, sem repetir, do mais novo para o mais velho. */
+export function anosDoSeletor(raiz: Pick<MapaDoDrive, 'pastaAno' | 'anos'>): AnoDoDrive[] {
+  const porNome = new Map<string, AnoDoDrive>();
+  if (raiz.pastaAno) porNome.set(raiz.pastaAno.nome, { nome: raiz.pastaAno.nome, id: raiz.pastaAno.id });
+  for (const a of raiz.anos) if (ehAno(a.nome) && !porNome.has(a.nome)) porNome.set(a.nome, a);
+  return [...porNome.values()].sort((a, b) => b.nome.localeCompare(a.nome));
+}
+
+/** O ano pedido pelo endereço (?a=2025): vale se está no seletor e não é o corrente; senão, '' (o ano corrente). */
+export function anoEscolhido(pedido: string | null | undefined, raiz: Pick<MapaDoDrive, 'pastaAno' | 'anos'>): string {
+  const a = (pedido || '').trim();
+  if (!ehAno(a) || a === raiz.pastaAno?.nome) return '';
+  return anosDoSeletor(raiz).some(x => x.nome === a) ? a : '';
 }
 
 /** Os itens das partes de uma pasta de cliente (itens estranhos ficam de fora). */

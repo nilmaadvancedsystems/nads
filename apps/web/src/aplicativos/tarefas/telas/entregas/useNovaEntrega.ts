@@ -245,14 +245,27 @@ export function useNovaEntrega() {
     // o código para pagar que já estava antes de puxar (o boleto do Financeiro não passa por cima dele nem do de uma guia)
     let comCodigo = !!codigoPagamento;
     try {
-      // as guias e a folha da pasta do cliente, e o boleto de honorário do Financeiro (11/11/2026), ao mesmo tempo
-      const [guias, boleto] = await Promise.all([repo.guiasDaPasta(c, g), repo.boletoDoFinanceiro(c, competencia)]);
-      if (!guias.length && !boleto) { guiasJaPuxadas.current[chave] = false; setGuiasStatus('Não achei FGTS, DARF, DAS nem a folha de ' + g.mm + '/' + g.aaaa + ' na pasta do cliente, nem o boleto no Financeiro.'); return; }
+      // as guias e a folha da pasta do cliente, o boleto de honorário do Financeiro (11/11/2026) e as entregas do cliente no
+      // mês (12/11/2026: "guias que ja foram entregues nao devem ser puxadas por aqui"), ao mesmo tempo; sem sinal em 5 s
+      // para as entregas, puxa sem conferir (a gravação ainda barra o que já está na rota)
+      const [guias, boletoAchado, doMes] = await Promise.all([
+        repo.guiasDaPasta(c, g), repo.boletoDoFinanceiro(c, competencia),
+        Promise.race([repo.doClienteNoMes(c.id, competencia).catch(() => []), new Promise<Entrega[]>(r => setTimeout(() => r([]), 5000))]),
+      ]);
+      if (!guias.length && !boletoAchado) { guiasJaPuxadas.current[chave] = false; setGuiasStatus('Não achei FGTS, DARF, DAS nem a folha de ' + g.mm + '/' + g.aaaa + ' na pasta do cliente, nem o boleto no Financeiro.'); return; }
       // todos os DARFs do mês, um por tributo (11/11/2026); com mais de um, cada um na sua linha ("DARF INSS", "DARF IRRF")
       const comoEntra = entregas.comoEntraAGuia(guias);
-      setGuiasStatus('Puxando ' + comoEntra.map(x => x.rotulo).join(', ') + ' de ' + g.mm + '/' + g.aaaa + ' da pasta do cliente…');
+      // o que o cliente já recebeu (ou já está na rota) nesta competência fica de fora
+      const tipos = [...comoEntra.map(x => x.rotulo), ...(boletoAchado ? ['Boleto'] : [])];
+      const situacoes = entregas.guiasJaEntregues(c.id, competencia, tipos, doMes);
+      const deFora = entregas.avisoDasGuiasDeFora(tipos, situacoes);
+      const vem = (k: number) => !situacoes[k].situacao;
+      const boleto = boletoAchado && vem(tipos.length - 1) ? boletoAchado : null;
+      if (!guias.some((_, k) => vem(k)) && !boleto) { guiasJaPuxadas.current[chave] = false; setGuiasStatus(deFora); return; }
+      setGuiasStatus('Puxando ' + tipos.filter((_, k) => vem(k)).join(', ') + ' de ' + g.mm + '/' + g.aaaa + '…');
       const trazidas: string[] = [];
       for (const [k, x] of guias.entries()) {
+        if (!vem(k)) continue;
         try {
           const arq = await repo.lerDoDrive(x.arquivo);
           const texto = await textoDoPdf(arq.bytes);
@@ -274,7 +287,7 @@ export function useNovaEntrega() {
         guiasParaAnexar.current.boleto = { tipo: 'boleto', nome: boleto.arquivo, driveId: '', tamanho, pdf: boleto.pdf && tamanho <= entregas.LIMITE_PDF_ANEXO ? base64DosBytes(boleto.pdf) : null };
         trazidas.push('Boleto');
       }
-      setGuiasStatus(trazidas.length ? trazidas.join(', ') + ' de ' + g.mm + '/' + g.aaaa + (boleto ? ' vieram da pasta do cliente e do Financeiro' : ' vieram da pasta do cliente') + ' e vão anexados à entrega. Confira os valores.' : '');
+      setGuiasStatus((trazidas.length ? trazidas.join(', ') + ' de ' + g.mm + '/' + g.aaaa + (boleto ? ' vieram da pasta do cliente e do Financeiro' : ' vieram da pasta do cliente') + ' e vão anexados à entrega. Confira os valores.' : '') + (deFora ? (trazidas.length ? ' ' : '') + deFora : ''));
       guiasJaPuxadas.current[chave] = false;
       if (!trazidas.length) avisar('Não consegui trazer as guias da pasta do cliente. Adicione à mão.', 'erro');
     } catch (e) {

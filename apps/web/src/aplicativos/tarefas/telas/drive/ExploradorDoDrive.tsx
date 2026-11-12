@@ -233,9 +233,11 @@ function Busca({ vm, campo, larga }: { vm: VmDrive; campo: RefObject<HTMLInputEl
   );
 }
 
-/** O ano, como o "main ▾" do GitHub (hoje, só a pasta do ano que o robô mapeia). */
+/** O ano, como o "main ▾" do GitHub: o corrente e as outras pastas de ano do Drive (12/11/2026). */
 function Ano({ vm }: { vm: VmDrive }) {
-  return <MenuSuspenso icone="calendar" rotulo={vm.ano} titulo="Pasta do ano" dica="A pasta do ano no Drive" itens={[{ rotulo: vm.ano, marcado: true, onClick: vm.irParaRaiz }]} />;
+  const anos = vm.anos.length ? vm.anos : [{ nome: vm.ano, marcado: true }];
+  return <MenuSuspenso icone="calendar" rotulo={vm.ano} titulo="Pasta do ano" dica="Escolher a pasta do ano no Drive"
+    itens={anos.map(a => ({ rotulo: a.nome, marcado: a.marcado, onClick: () => vm.escolherAno(a.nome) }))} />;
 }
 
 export function ExploradorDoDrive({ naEmpresa = false }: { naEmpresa?: boolean } = {}) {
@@ -420,7 +422,16 @@ export function ExploradorDoDrive({ naEmpresa = false }: { naEmpresa?: boolean }
             {enviar}
             <BotaoDoArquivador />
           </div>
-          <Lista vm={vm} aoMenu={abrirMenu} acima={false} baixarMarcados={baixarMarcados} />
+          {vm.semMapa ? (
+            <div className="card drive-card">
+              <Vazio icone="calendar" titulo={'A pasta ' + vm.ano + ' ainda não foi mapeada'}
+                texto="O robô mapeia os anos anteriores quando alguém pede. Leva cerca de um minuto; depois, as pastas ficam aqui para todos.">
+                <button type="button" className="btn btn-primary" disabled={!!vm.atualizandoMapa} onClick={vm.atualizarMapa}>
+                  <Icone nome={vm.atualizandoMapa ? 'girar' : 'repeat'} />{vm.atualizandoMapa ? 'Mapeando…' : 'Mapear ' + vm.ano}
+                </button>
+              </Vazio>
+            </div>
+          ) : <Lista vm={vm} aoMenu={abrirMenu} acima={false} baixarMarcados={baixarMarcados} />}
         </div>
         <aside className="card drive-sobre">
           <div className="card-head"><h3>Sobre</h3></div>

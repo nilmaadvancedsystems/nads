@@ -1,6 +1,7 @@
 // O Drive do escritório na Tarefas, pelo robô do Entregas (o mesmo das Pendências), no banco do Entregas com o
 // login de lá. O navegador não fala com o Drive:
 //   driveIndice/raiz e driveIndice/{pasta}/partes   SÓ LEITURA: o mapa das pastas que o robô mantém (admin/contábil)
+//   driveIndice/raiz-AAAA                           SÓ LEITURA: o mapa de um ano anterior (lido quando escolhido no seletor)
 //   aberturasDrive                                   o pedido de abrir, baixar ou juntar num .zip; o robô responde
 //                                                    no próprio pedido com um link temporário (30 min). Cada um lê só o seu.
 //   pedidosMapaDrive                                 "Atualizar o mapa": o robô relê na hora uma pasta (ou tudo) e responde
@@ -39,6 +40,18 @@ export function criarDriveFirestore(quem: () => e.Quem | null): e.RepoDriveDoEnt
       err => { mapa = { ...e.MAPA_VAZIO, carregado: true, erro: err.message }; mudou(); });
   }
 
+  // os anos anteriores (o seletor de ano): cada um no seu driveIndice/raiz-AAAA, ouvido só depois que alguém o escolhe
+  // (1 leitura ao escolher; o robô só regrava quando alguém pede o mapa daquele ano)
+  const anteriores = new Map<string, e.MapaDoDrive>();
+  function mapaDoAno(ano: string): e.MapaDoDrive {
+    const pronto = anteriores.get(ano);
+    if (pronto) return pronto;
+    anteriores.set(ano, e.MAPA_VAZIO);
+    onSnapshot(doc(db, 'driveIndice', 'raiz-' + ano), s => { anteriores.set(ano, e.mapaDaRaiz(s.exists() ? s.data() : null)); mudou(); },
+      err => { anteriores.set(ano, { ...e.MAPA_VAZIO, carregado: true, erro: err.message }); mudou(); });
+    return e.MAPA_VAZIO;
+  }
+
   function ouvirPasta(id: string): Pasta {
     const pronta = pastas.get(id);
     if (pronta) return pronta;
@@ -59,7 +72,11 @@ export function criarDriveFirestore(quem: () => e.Quem | null): e.RepoDriveDoEnt
 
   return {
     exemplos: false,
-    mapa: () => { ouvirMapa(); return mapa; },
+    mapa: ano => {
+      ouvirMapa();
+      if (!ano || !mapa.carregado || e.documentoDoAno(ano, mapa.pastaAno?.nome || '') === 'raiz') return mapa;
+      return mapaDoAno(ano);
+    },
     itens: id => { const p = ouvirPasta(id); return { carregados: p.carregados, itens: p.itens }; },
     pedir(pedido, aoMudar) {
       const q = quem();
