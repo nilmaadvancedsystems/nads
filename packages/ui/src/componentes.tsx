@@ -533,6 +533,10 @@ export function SoltarArquivos({ aceitar, multiplo, titulo, dica, icone = 'uploa
   );
 }
 
+/** A altura máxima do menu flutuante e o mínimo que ele precisa embaixo do botão (três itens) para não subir. */
+const MENU_ALTURA = 420;
+const MENU_ALTURA_MINIMA = 120;
+
 /** Um item do MenuSuspenso. `marcado` (true/false) mostra a coluna do ✓, como os menus do GitHub. */
 export type ItemMenu = { rotulo: ReactNode; icone?: NomeIcone; marcado?: boolean; dica?: ReactNode; desabilitado?: boolean; /** em vermelho (apagar, cancelar) */ perigo?: boolean; onClick: () => void } | 'separador';
 
@@ -563,7 +567,9 @@ export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn
   animado?: boolean;
   /**
    * o menu abre por cima da página, fixo na tela e fora da caixa que rola ((revisão da UI, 18/10/2026): no celular, o do comprovante do
-   * Mandei saía cortado dentro da tabela). Acompanha o botão ao rolar; perto da borda de baixo, abre para cima.
+   * Mandei saía cortado dentro da tabela). Acompanha o botão ao rolar. Abre sempre para baixo, colado no botão, e rola
+   * por dentro quando falta espaço (Vitor, 12/11/2026: "bota eles para abrirem para baixo, não para cima"); só sobe
+   * quando embaixo não cabem nem três itens (o botão no pé da tela).
    */
   flutuante?: boolean;
   /** o menu pequeno, para as linhas das tabelas (30/10/2026: "esse dropdown muito grande") */
@@ -573,16 +579,18 @@ export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn
   const ref = useRef<HTMLDivElement>(null);
   const pop = useRef<HTMLDivElement>(null);
   const botao = useRef<HTMLButtonElement>(null);
-  const [lugar, setLugar] = useState<{ left: number; top?: number; bottom?: number } | null>(null);
+  const [lugar, setLugar] = useState<{ left: number; top?: number; bottom?: number; alto: number } | null>(null);
   useLayoutEffect(() => {
     if (!aberto || !flutuante) { setLugar(null); return; }
     const medir = () => {
       const b = botao.current?.getBoundingClientRect(); if (!b) return;
       const w = Math.min(largura || pop.current?.offsetWidth || 200, window.innerWidth - 16);
-      const h = pop.current?.offsetHeight || 0;
       const left = Math.max(8, Math.min(direita ? b.right - w : b.left, window.innerWidth - w - 8));
-      const cabeEmbaixo = b.bottom + 4 + h <= window.innerHeight - 8;
-      setLugar(acima || !cabeEmbaixo ? { left, bottom: window.innerHeight - b.top + 4 } : { left, top: b.bottom + 4 });
+      // o espaço livre embaixo e em cima do botão (4px de folga dele e 8px da borda da tela)
+      const embaixo = window.innerHeight - b.bottom - 12;
+      const emCima = b.top - 12;
+      const sobe = acima || (embaixo < MENU_ALTURA_MINIMA && emCima > embaixo);
+      setLugar(sobe ? { left, bottom: window.innerHeight - b.top + 4, alto: Math.min(MENU_ALTURA, emCima) } : { left, top: b.bottom + 4, alto: Math.min(MENU_ALTURA, embaixo) });
     };
     medir();
     window.addEventListener('scroll', medir, true);
@@ -621,7 +629,7 @@ export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn
       {aberto && (() => {
         const menu = (
         <div ref={pop} className={'popover menu-pop' + (direita ? ' direita' : '') + (acima ? ' acima' : '') + (animado ? ' animado' : '') + (flutuante ? ' flutuante' : '') + (compacto ? ' compacto' : '')} data-entrada-propria={animado ? '' : undefined} role="menu" aria-label={titulo}
-          style={{ ...(largura ? { width: largura } : {}), ...(flutuante ? { position: 'fixed', right: 'auto', left: lugar?.left ?? -9999, top: lugar?.top ?? 'auto', bottom: lugar?.bottom ?? 'auto', visibility: lugar ? undefined : 'hidden' } : {}) }}>
+          style={{ ...(largura ? { width: largura } : {}), ...(flutuante ? { position: 'fixed', right: 'auto', left: lugar?.left ?? -9999, top: lugar?.top ?? 'auto', bottom: lugar?.bottom ?? 'auto', maxHeight: lugar?.alto, visibility: lugar ? undefined : 'hidden' } : {}) }}>
           {/* sem título em cima (Vitor, 02/10/2026): o título fica só para o leitor de tela */}
           {itens?.map((it, i) => it === 'separador' ? <hr key={i} className="popover-sep" /> : (
             <button key={i} type="button" className={'popover-item' + (it.perigo ? ' perigo' : '')} role="menuitem" disabled={it.desabilitado}
