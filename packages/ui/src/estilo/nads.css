@@ -6688,3 +6688,32 @@ td.fs-fat-sem{color:var(--ink-faint);}
   .lista-arrastavel-alca,.lista-arrastavel-ordem{display:none;}
 }
 @media (prefers-reduced-motion:reduce){.soltar,.soltar.sobre{transform:none;transition:none;}.soltar.sobre .soltar-icone{animation:none;}.pagina-mini-esperando{animation:none;}}
+
+/* A escolha em blocos com ícone (BlocosDeEscolha; 12/11/2026, as Ferramentas: "deixa essa seleção mais bonita"): os grupos
+   com o título pequeno em cima, cada grupo numa faixa cinza, e o bloco escolhido com o fundo que desliza até ele (o
+   indicador do Segmentado), a borda suave da cor de destaque e o ícone no quadradinho cheio de cor. */
+.blocos-escolha{display:flex;flex-wrap:wrap;align-items:flex-start;gap:12px 20px;margin-bottom:16px;}
+.blocos-escolha-grupo{display:flex;flex-direction:column;gap:6px;min-width:0;}
+.blocos-escolha-titulo{padding-left:4px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-muted);}
+.blocos-escolha-opcoes{display:flex;gap:4px;padding:4px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);}
+.bloco-escolha{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:96px;padding:10px 12px 8px;
+  border:none;border-radius:8px;background:transparent;color:var(--ink-muted);font:inherit;font-size:13px;cursor:pointer;transition:color .15s ease,background .15s ease;}
+.bloco-escolha:hover{color:var(--ink);background:var(--hover-bg);}
+.bloco-escolha[aria-current="true"],.bloco-escolha[aria-current="true"]:hover{color:var(--ink);background:transparent;}
+.bloco-escolha:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.bloco-escolha-icone{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:8px;background:var(--surface-3);color:var(--ink-muted);
+  transition:background .2s ease,color .2s ease;}
+.bloco-escolha-icone svg{width:18px;height:18px;}
+.bloco-escolha:hover .bloco-escolha-icone{color:var(--ink);}
+.bloco-escolha[aria-current="true"] .bloco-escolha-icone{background:var(--accent);color:var(--on-accent);}
+.bloco-escolha-nome{font-weight:500;line-height:16px;white-space:nowrap;}
+.bloco-escolha[aria-current="true"] .bloco-escolha-nome{font-weight:600;}
+.blocos-escolha.com-indicador > .indicador{border-radius:8px;background:var(--surface);border:1px solid var(--accent-border);box-shadow:var(--shadow-md);box-sizing:border-box;}
+@media (max-width:640px){
+  /* no celular, uma faixa só que rola para o lado (os grupos em fila; a ponta do próximo bloco mostra que tem mais) */
+  .blocos-escolha{flex-wrap:nowrap;gap:12px;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none;padding-bottom:2px;}
+  .blocos-escolha::-webkit-scrollbar{display:none;}
+  .blocos-escolha-grupo{flex:none;scroll-snap-align:start;}
+  .bloco-escolha{min-width:78px;padding:8px 6px 6px;font-size:12px;}
+  .bloco-escolha-icone{width:32px;height:32px;}
+}
