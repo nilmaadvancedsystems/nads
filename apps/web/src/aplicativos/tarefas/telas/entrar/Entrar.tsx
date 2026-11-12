@@ -26,7 +26,7 @@ export function Entrar({ sessao, titulo = 'Entrar na Tarefas' }: { sessao: Sessa
             <h1 className="auth-title">{titulo}</h1>
             <form className="auth-box" onSubmit={e => { e.preventDefault(); void vm.entrar(); }}>
               <div className="field">
-                <label htmlFor="fLogin">Nome</label>
+                <label htmlFor="fLogin">Nome ou e-mail</label>
                 <input id="fLogin" type="text" autoComplete="username" autoFocus value={vm.login} onChange={e => vm.setLogin(e.target.value)} />
               </div>
               <div className="field" style={{ marginTop: 12 }}>
