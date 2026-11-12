@@ -114,6 +114,29 @@ export function conferirServicos(lista: readonly ServicoComissionado[]): string[
   return erros;
 }
 
+/**
+ * A % própria de uma pessoa (Vitor, 12/11/2026: "as todas as comissões [dele] são de 50%"): vale para todos os serviços
+ * dela, no lugar da % de cada serviço. O Financeiro define em Serviços comissionados.
+ */
+export interface PercentualDaPessoa { uid: string; nome: string; percentual: number }
+
+/** A % da comissão: a própria da pessoa, quando tem; senão, a do serviço (0 = ainda sem %). */
+export function percentualDaComissao(servicos: readonly ServicoComissionado[], porPessoa: readonly PercentualDaPessoa[], uid: string | null | undefined, servico: string): number {
+  const propria = uid ? porPessoa.find(p => p.uid === uid)?.percentual ?? 0 : 0;
+  if (propria > 0) return propria;
+  return servicos.find(s => s.nome === servico)?.percentual ?? 0;
+}
+
+/** O que está errado nas % por pessoa (lista vazia = pode gravar). */
+export function conferirPorPessoa(lista: readonly PercentualDaPessoa[]): string[] {
+  const erros: string[] = [];
+  if (lista.some(p => !p.uid)) erros.push('Escolha a pessoa.');
+  if (lista.some(p => !(p.percentual > 0 && p.percentual <= 100))) erros.push('A % própria fica entre 0 e 100 (maior que zero).');
+  if (new Set(lista.map(p => p.uid)).size !== lista.length) erros.push('Há pessoa repetida.');
+  if (lista.length > 50) erros.push('São pessoas demais (até 50).');
+  return erros;
+}
+
 /** A comissão: o valor do serviço × a % (em centavos). */
 export const valorDaComissao = (valorServico: number, percentual: number) => Math.round(valorServico * percentual) / 100;
 
