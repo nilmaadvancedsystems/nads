@@ -112,7 +112,12 @@ export type PainelDaTarefa = 'sieg' | 'recebimento' | 'sequencia' | 'saidas' | '
   // os XMLs de saída soltos direto na Conferência de saídas (15/10/2026)
   | 'xml-saidas';
 
-export interface Rotina { departamento: Departamento; etapas: Etapa[] }
+export interface Rotina {
+  departamento: Departamento;
+  etapas: Etapa[];
+  /** sair da etapa não pede o "Por que interromper?" (o X só sai; 12/11/2026, o LCDPR: "LCDPR não precisa disso") */
+  semInterromper?: boolean;
+}
 
 export type SituacaoEtapa = 'pendente' | 'feita' | 'dispensada' | 'interrompida';
 

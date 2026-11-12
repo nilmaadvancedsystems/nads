@@ -25,6 +25,8 @@ describe('rotina das empresas com o LCDPR', () => {
     expect(r.departamento).toBe('contabil');
     expect(r.etapas.map(e => e.id)).toEqual(['lcdpr']);
     expect(r.etapas[0].tela?.id).toBe('lcdpr');
+    // sair não pede justificativa; as outras rotinas continuam pedindo
+    expect([r.semInterromper, ROTINA_CONTABIL.semInterromper, ROTINA_FISCAL.semInterromper]).toEqual([true, undefined, undefined]);
     for (const id of ['extratos', 'cheque-especial', 'fiscal', 'dp', 'bancos', 'cartoes', 'honorarios', 'fechamento']) {
       expect(r.etapas.some(e => e.id === id)).toBe(false);
     }

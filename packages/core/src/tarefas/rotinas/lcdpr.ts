@@ -6,6 +6,8 @@ import type { Rotina } from '../tipos';
 
 export const ROTINA_LCDPR: Rotina = {
   departamento: 'contabil',
+  // a pessoa entra, confere, baixa a planilha e sai: sem o "Por que interromper?" (12/11/2026: "LCDPR não precisa disso")
+  semInterromper: true,
   etapas: [
     {
       id: 'lcdpr',

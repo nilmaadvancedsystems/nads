@@ -161,7 +161,7 @@ export function Executor() {
   // sair da execução por qualquer lugar do app (o cabeçalho, o menu, o voltar do navegador) com a etapa aberta:
   // é interromper, com a justificativa; trocar de mês ou período dentro do executor não conta
   const saida = useBlocker(({ currentLocation, nextLocation }) =>
-    !vm.dev && !vm.delegada && !!vm.etapa && !vm.tudoPronto && !vm.interrompendo && !guia.saindo.current && currentLocation.pathname !== nextLocation.pathname && !nextLocation.pathname.startsWith(BASE + '/executar/'));
+    !vm.semJustificativa && !vm.delegada && !!vm.etapa && !vm.tudoPronto && !vm.interrompendo && !guia.saindo.current && currentLocation.pathname !== nextLocation.pathname && !nextLocation.pathname.startsWith(BASE + '/executar/'));
   if (vm.esperandoEmpresa) return null;
   if (!vm.empresa) return <Navigate to={BASE} replace />;
   // o mês faz parte de um período prometido (vários meses): abre o período
@@ -190,6 +190,8 @@ export function Executor() {
   };
   // a lista do grupo da vez e, se a próxima é de outro grupo, ela embaixo (com o nome do grupo dela)
   // (na tarefa em conjunto, as da pessoa de todos os grupos; para os outros, com quem está a etapa delegada)
+  // com uma etapa só (o LCDPR da 62; 12/11/2026: "remove essa sidebar"), a barra lateral não serve para nada: a tela ganha a largura
+  const semLateral = visiveis.length <= 1;
   const checklist = visiveis.filter(e => vm.soAsMinhas || !vm.etapa || e.secao === vm.etapa.secao || e.id === proxima?.id).map(e => ({
     // em lote é tudo de uma vez (Vitor, 02/10/2026: "não fica 8/9, são os 9"): só o nome da etapa, sem a contagem de meses
     id: e.id, rotulo: e.nome + (!vm.soAsMinhas && vm.comQuem(e.id) ? ' · ' + vm.comQuem(e.id).split(' ')[0] : ''), icone: 'check' as const, grupo: e.grupo, titulo: e.secao, ativa: e.atual,
@@ -286,8 +288,8 @@ export function Executor() {
       )}
       {vm.delegada && <button type="button" className="gh-topo-btn gh-topo-fechar" onClick={vm.sair} title="Voltar às tarefas" aria-label="Voltar às tarefas"><Icone nome="x" /></button>}
       {botoesDaEtapa && (
-        // no modo desenvolvedor (Vitor, 06/10/2026: "remova essa opção"): o X só sai, sem o "Por que interromper?"
-        <button type="button" className="gh-topo-btn gh-topo-fechar" onClick={vm.dev ? vm.sair : vm.abrirInterromper} title={vm.dev ? 'Sair da etapa' : 'Interromper a etapa'} aria-label={vm.dev ? 'Sair' : 'Interromper'}>
+        // no modo desenvolvedor (Vitor, 06/10/2026: "remova essa opção") e no LCDPR (12/11/2026): o X só sai, sem o "Por que interromper?"
+        <button type="button" className="gh-topo-btn gh-topo-fechar" onClick={vm.semJustificativa ? vm.sair : vm.abrirInterromper} title={vm.semJustificativa ? 'Sair da etapa' : 'Interromper a etapa'} aria-label={vm.semJustificativa ? 'Sair' : 'Interromper'}>
           <Icone nome="x" />
         </button>
       )}
@@ -320,7 +322,7 @@ export function Executor() {
   const avisos = vm.tela && !vm.carregando ? <>{avisosDoExecutor}<div ref={setAlvoDosAvisos} className="avisos-da-etapa" /></> : avisosDoExecutor;
 
   return (
-    <Casca sistema="Tarefas" temaNaGaveta={false} larga rotuloLateral="Etapas" topoDireita={topo} acimaDoCabecalho={avisos}
+    <Casca sistema="Tarefas" temaNaGaveta={false} larga rotuloLateral="Etapas" lateral={semLateral ? 'nenhuma' : undefined} topoDireita={topo} acimaDoCabecalho={avisos}
       empresa={{ codigo: (vm.empresa.codigo != null ? vm.empresa.codigo + ' · ' : '') + vm.empresa.nome, nome: '' }}
 
       versao={casca.versao} secoes={checklist} paginas={vm.tela && abasDaTela ? abasDaTela.paginas : []} titulo=""

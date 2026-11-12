@@ -189,6 +189,8 @@ export function useLancamentosLcdpr() {
       mes: formatos.mesCurto(mesDoLancamento(l.id)),
       id: l.id, origem: l.origem === 'NF' ? 'NF' : l.origem === 'CTe' ? 'CT-e' : 'À mão', revisar: l.revisar, regra: ROTULO_DA_REGRA[l.origemRegra],
       categoria: l.categoria, data: lcdpr.dataBr(l.data), fornecedor: l.fornecedor, documento: l.documento, valor: formatos.brl(Number(l.valor) || 0),
+      /** os itens da nota (12/11/2026: "preciso saber quais os itens"): os produtos; sem eles, os NCMs */
+      itens: l.produto ? l.produto.split(' | ').join(' · ') : l.ncm ? 'NCM ' + l.ncm : '',
       conta: l.contaCred,
       /** a conta que não está mais entre as de pagamento aparece como está */
       contaFora: !!l.contaCred && !contas.some(c => c.codigo === l.contaCred),
