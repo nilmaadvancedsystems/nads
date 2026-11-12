@@ -118,6 +118,12 @@ export function LancamentosLcdpr() {
 
           <div className="table-wrap lcdpr-tabela">
             <table className="cad-lista lcdpr-lancamentos">
+              {/* as larguras fixas (12/11/2026: "essa lista não pode ficar assim tendo que arrastar pro lado"): o fornecedor
+                  fica com o que sobra e corta com "…" */}
+              <colgroup>
+                <col className="c-marca" /><col className="c-situacao" /><col className="c-categoria" /><col className="c-conta" />
+                {vm.varios && <col className="c-mes" />}<col className="c-data" /><col /><col className="c-documento" /><col className="c-valor" />
+              </colgroup>
               <thead>
                 <tr>
                   <th className="lcdpr-marca"><input type="checkbox" checked={vm.todosVisiveisMarcados} onChange={e => vm.marcarVisiveis(e.target.checked)} aria-label="Selecionar os visíveis" /></th>
