@@ -13,6 +13,10 @@
 //      (G:\Meu Drive\<ano>\<cód> - <nome>\ÁREA DO CLIENTE\<MM>), registra em areaClienteRecebidos/{id}, devolve o recibo
 //      em areasCliente/{token}/envios/{id} e apaga o pedido. Até 50 por link por dia. Drive fora do ar: o envio espera.
 //   5. uma vez por dia apaga os espelhos órfãos (subcoleções de um token que não existe mais).
+//   6. o Registro (12/11/2026, junto do espelho de cada link): resumo/pessoal (os funcionários pelas guias do FGTS, o CPF
+//      mascarado) e os documentos do DP dos últimos meses (a lista dpArquivos; o arquivo lido da pasta do cliente no Drive
+//      deste PC) em documentos/{id} (tipo 'dp') com os bytes em documentos/{id}~{n}. As regras são do core
+//      (areaCliente/pessoal.ts, pelo robo/gerado/danfse.js).
 //
 // As guias de DAS/DAE do espelho são do envios-do-nads.js (ids das-/dae-…): este robô nunca as apaga nem regrava; só
 // mexe nas guias com tipo 'FGTS'.
@@ -34,6 +38,13 @@ const ESPERA_ENTRE_EMPRESAS_MS = 1000;
 const ESPERA_ENTRE_LINKS_MS = 2000;
 const CLIENTES_VALEM_MS = 6 * 36e5;
 const MESES_DE_GUIAS = 12;
+// o Registro: os documentos do DP do mês atual e dos dois anteriores; os funcionários pelas guias de seis meses
+const MESES_DO_DP = 3;
+const MESES_DO_REGISTRO = 6;
+const MAIOR_ARQUIVO_DP = 5 * 1024 * 1024;
+const DP_VALE_MS = 10 * 60 * 1000;
+let geradoDoCore = null;
+const doCore = () => geradoDoCore || (geradoDoCore = require('./gerado/danfse'));
 const CORE = path.join(__dirname, '..', 'packages', 'core', 'src');
 
 const dormir = ms => new Promise(r => setTimeout(r, ms));
@@ -169,6 +180,7 @@ function iniciarAreaDoCliente(db, log) {
   function esquecer(token) {
     for (const m of [hashes, pdfsNoEspelho]) for (const k of [...m.keys()]) if (k.startsWith(token + '/')) m.delete(k);
     fgtsNoEspelho.delete(token);
+    dpNoEspelho.delete(token);
     historicoLido.delete(token);
   }
 
@@ -231,6 +243,128 @@ function iniciarAreaDoCliente(db, log) {
     return gravar(token, 'chamados/' + id, R.chamadoDoCliente(R.chamadoInterno(id, c)), 'chamado');
   }
 
+  // ---------- 6. o Registro ----------
+  const dpNoEspelho = new Map();      // token → Set(ids dos documentos do DP no espelho)
+  const dpDoMes = new Map();          // 'AAAA-MM' → { em, clientes } (a lista dpArquivos do mês)
+  const guiasLidas = new Map();       // 'origem|id|tamanho' → as guias do FGTS lidas daquele PDF
+
+  async function arquivosDoDp(mes) {
+    const c = dpDoMes.get(mes);
+    if (c && Date.now() - c.em < DP_VALE_MS) return c.clientes;
+    let clientesDoMes = {};
+    try { const s = await db.collection('dpArquivos').doc(mes).get(); clientesDoMes = (s.exists && s.get('clientes')) || {}; } catch (e) { log('Registro: dpArquivos/' + mes + ' não veio -', e.message); }
+    dpDoMes.set(mes, { em: Date.now(), clientes: clientesDoMes });
+    return clientesDoMes;
+  }
+
+  /** As guias do FGTS de um PDF (o "Detalhe da Guia Emitida"), lidas uma vez por arquivo. */
+  async function guiasDoPdf(chave, bytes) {
+    if (guiasLidas.has(chave)) return guiasLidas.get(chave);
+    let guias = [];
+    try {
+      const P = doCore();
+      guias = P.guiasDoFgtsDasLinhas(P.linhasDaGuiaDoFgts(await P.itensDoPdf(new Uint8Array(bytes))));
+    } catch (e) { log('Registro: não li a guia do FGTS ' + chave + ' -', e.message); }
+    guiasLidas.set(chave, guias);
+    return guias;
+  }
+
+  /** O id do documento no espelho, a partir do id do arquivo no Drive (só letras, números, - e _). */
+  const idDoDocumentoDp = i => 'dp-' + String(i).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 120);
+  /** Quantos pedaços de base64 (como os do PDF da guia) o arquivo de tantos bytes dá. */
+  const pedacosDe = bytes => { const t = Math.floor(R.PEDACO_PDF / 4) * 4; return Math.max(1, Math.ceil((4 * Math.ceil(bytes / 3)) / t)); };
+
+  async function apagarDocumentoDp(token, id) {
+    const col = espelhoDe(token).collection('documentos');
+    const pedacos = await col.where('de', '==', id).select().get();
+    await Promise.all(pedacos.docs.map(d => d.ref.delete()));
+    await col.doc(id).delete();
+    hashes.delete(token + '/documentos/' + id);
+  }
+
+  /**
+   * O Registro do link: os funcionários pelas guias do FGTS (as do robô do FGTS e as da pasta FGTS do Drive) e os
+   * documentos do DP dos últimos meses. Grava só o que mudou; o arquivo só é lido do Drive quando muda (o tamanho).
+   */
+  async function espelharPessoal(token, link, empresas, hoje) {
+    const P = doCore();
+    let gravados = 0;
+    // os funcionários: as guias do robô do FGTS (pedidosFgts, com o PDF no banco)
+    const guias = [];
+    for (const g of R.guiasDoFgtsDoLink([...pedidosFgts.values()], link.codigos, hoje, MESES_DO_REGISTRO).filter(x => x.temPdf)) {
+      const chave = 'fgts|' + g.id + '|' + R.assinaturaDoPdf(g);
+      if (!guiasLidas.has(chave)) {
+        const arq = await db.collection('pedidosFgts').doc(g.id).collection('arquivo').doc('pdf').get().catch(() => null);
+        const b64 = arq && arq.exists ? arq.get('base64') : '';
+        if (!b64) { guiasLidas.set(chave, []); continue; }
+        await guiasDoPdf(chave, Buffer.from(b64, 'base64'));
+      }
+      guias.push(...guiasLidas.get(chave));
+    }
+    // os documentos do DP dos últimos meses, de cada empresa do link
+    const meses = Array.from({ length: MESES_DO_DP }, (_, k) => R.competenciaDe(new Date(hoje.getFullYear(), hoje.getMonth() - k, 1)));
+    const docs = [];
+    for (const mes of meses) {
+      const clientesDoMes = await arquivosDoDp(mes);
+      for (const e of empresas) {
+        const lista = (clientesDoMes[String(e.codigo)] || {}).arquivos || [];
+        for (const a of lista) {
+          if (!a || !a.i || !a.n || !P.ehDoDp(String(a.c || ''))) continue;
+          const pasta = pastaDoCliente(mes.slice(0, 4), e.codigo, e.nome);
+          docs.push({ id: idDoDocumentoDp(a.i), nome: String(a.n).slice(0, 200), pasta: String(a.c), categoria: P.categoriaDoArquivoDp(String(a.n), String(a.c)), competencia: mes,
+            tamanho: Number(a.s) || 0, arquivo: path.join(pasta, ...String(a.c).split('/'), String(a.n)) });
+        }
+      }
+    }
+    // as guias da pasta FGTS do Drive (o Detalhe da Guia, quando o DP salvou lá)
+    for (const d of docs.filter(x => x.categoria === 'fgts' && /\.pdf$/i.test(x.nome) && x.tamanho <= MAIOR_ARQUIVO_DP)) {
+      const chave = 'drive|' + d.id + '|' + d.tamanho;
+      if (!guiasLidas.has(chave)) {
+        try { await guiasDoPdf(chave, fs.readFileSync(d.arquivo)); } catch (e) { guiasLidas.set(chave, []); }
+      }
+      guias.push(...guiasLidas.get(chave));
+    }
+    const reg = P.registroDasGuias(guias);
+    const vivos = new Set();
+    for (const d of docs) {
+      if (vivos.has(d.id)) continue;
+      const doc = { tipo: 'dp', id: d.id, nome: d.nome, categoria: d.categoria, competencia: d.competencia, tamanho: d.tamanho,
+        funcionario: P.donoDoArquivo(d.nome, reg.funcionarios), partes: d.tamanho > MAIOR_ARQUIVO_DP ? 0 : pedacosDe(d.tamanho) };
+      const ref = espelhoDe(token).collection('documentos').doc(d.id);
+      const chave = token + '/documentos/' + d.id;
+      if (await hashAtual(ref, chave) === R.hashDoEspelho(doc)) { vivos.add(d.id); continue; }
+      if (doc.partes) {
+        let bytes;
+        try { bytes = fs.readFileSync(d.arquivo); } catch (e) { continue; } // ainda não sincronizou neste PC: tenta na próxima volta
+        doc.tamanho = bytes.length;
+        if (bytes.length > MAIOR_ARQUIVO_DP) doc.partes = 0;
+        else {
+          const pedacos = R.pedacosDoPdf(bytes.toString('base64'));
+          doc.partes = pedacos.length;
+          const col = espelhoDe(token).collection('documentos');
+          for (const pd of pedacos) await col.doc(d.id + '~' + pd.n).set(R.conferirListaBranca('pedacoDp', { base64: pd.base64, n: pd.n, total: pd.total, de: d.id }));
+          const velhos = await col.where('de', '==', d.id).select().get();
+          await Promise.all(velhos.docs.filter(x => Number(x.id.split('~')[1]) >= pedacos.length).map(x => x.ref.delete()));
+        }
+      }
+      if (await gravar(token, 'documentos/' + d.id, doc, 'documentoDp')) gravados++;
+      vivos.add(d.id);
+    }
+    // os que saíram (o mês ficou velho, o arquivo foi tirado da pasta)
+    let antes = dpNoEspelho.get(token);
+    if (!antes) antes = new Set((await espelhoDe(token).collection('documentos').where('tipo', '==', 'dp').select().get()).docs.map(x => x.id));
+    for (const id of antes) if (!vivos.has(id)) await apagarDocumentoDp(token, id);
+    dpNoEspelho.set(token, vivos);
+    // o resumo do pessoal: só quando tem funcionário ou documento (sem nada, a aba nem aparece para o cliente)
+    if (reg.funcionarios.length || vivos.size) {
+      if (await gravar(token, 'resumo/pessoal', { funcionarios: reg.funcionarios, competencia: reg.competencia, total: reg.total, atualizadoEm: hoje.toISOString() }, 'pessoal')) gravados++;
+    } else if (await hashAtual(espelhoDe(token).collection('resumo').doc('pessoal'), token + '/resumo/pessoal')) {
+      await espelhoDe(token).collection('resumo').doc('pessoal').delete();
+      hashes.set(token + '/resumo/pessoal', '');
+    }
+    return gravados;
+  }
+
   async function espelhar(token) {
     const link = links.get(token);
     if (!link) return;
@@ -257,6 +391,9 @@ function iniciarAreaDoCliente(db, log) {
       await dormir(ESPERA_ENTRE_EMPRESAS_MS / 4);
     }
     await limparGuiasDoFgts(token, new Set(guias.map(g => g.id)));
+
+    // o Registro (os funcionários e os documentos do DP): um erro aqui não para o resto do espelho
+    try { gravados += await espelharPessoal(token, link, empresas, hoje); } catch (e) { log('Registro: ' + (link.nome || token.slice(0, 6)) + ' falhou -', e.message); }
 
     for (const a of R.agendaDoLink(empresas, comps)) {
       if (await gravar(token, 'agenda/' + a.mes, { mes: a.mes, itens: a.itens, atualizadoEm: agora }, 'agenda')) gravados++;

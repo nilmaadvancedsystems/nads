@@ -127,14 +127,7 @@ export function AreaDoCliente() {
               </nav>
             </div>
             <div>
-            <div className="cli-lateral-pe" title={c.equipe + (c.horario ? ' · ' + c.horario : '')}>
-              <div className="cli-pessoa">
-                <MarcaDoEscritorio tamanho={36} />
-                <div><span className="hint">Seu atendimento</span><b>{c.equipe}</b></div>
-              </div>
-              {c.horario && <p className="hint">{c.horario}</p>}
-              {c.whatsappLink && <button type="button" className="btn" onClick={abrirWhatsapp}><Icone nome="mensagem" width={16} height={16} />WhatsApp do escritório</button>}
-            </div>
+            {/* o cartão "Seu atendimento" do pé saiu (12/11/2026: "remove esse seu atendimento"): o contato fica em Fale com o escritório */}
             {/* recolher a lateral (só no PC), a mesma peça do app: o subnav-colapsar com o ícone do painel */}
             <div className="cli-menu cli-colapsar">
               <button type="button" className="subnav-item subnav-colapsar" aria-expanded={!vm.recolhida} title={vm.recolhida ? 'Mostrar barra lateral' : 'Ocultar barra lateral'} onClick={vm.alternarLateral}>

@@ -10,14 +10,14 @@
 // página aberta, a tela troca na hora. Do documento do link só sai o nome (para o topo, enquanto o robô não grava o
 // resumo); os códigos e quem criou ficam fora da tela. A leitura campo a campo e os pedidos estão em espelho.ts.
 import { getApps, initializeApp } from 'firebase/app';
-import { addDoc, collection, doc, getDocs, getFirestore, initializeFirestore, onSnapshot, serverTimestamp, type Firestore, type FirestoreError } from 'firebase/firestore';
+import { addDoc, collection, doc, getDocs, getFirestore, initializeFirestore, onSnapshot, query, serverTimestamp, where, type Firestore, type FirestoreError } from 'firebase/firestore';
 import { areaCliente as ac } from '@nads/core';
 import { AREA_VAZIA, type EstadoDaArea, type RepoAreaCliente } from './areaCliente';
 import {
-  base64DosBytes, ehTokenDoLink, estadoDoEspelho, lerAgenda, lerChamado, lerGuia, lerRecibo, lerResumo, nomeDoPdfDaGuia, pedidoDeChamado, pedidoDeEnvio, respostaVoltou,
+  base64DosBytes, ehTokenDoLink, estadoDoEspelho, lerAgenda, lerChamado, lerDocumentoDp, lerGuia, lerPessoal, lerRecibo, lerResumo, nomeDoPdfDaGuia, pedidoDeChamado, pedidoDeEnvio, respostaVoltou,
   type ChamadoPendente, type PartesDoEspelho, type RespostaPendente,
 } from './espelho';
-import { juntarPedacosDoPdf, type PedacoDoPdf } from './regras';
+import { juntarPedacosDoPdf, mimeDoArquivo, type PedacoDoPdf } from './regras';
 
 /** Configuração web pública do projeto do Entregas (a mesma das páginas de lá). */
 const CONFIG_ENTREGAS = {
@@ -69,7 +69,8 @@ export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCl
       let parado = false;
       let nomeDoLink = '';
       // undefined = ainda não chegou
-      const partes: { resumo?: ac.ResumoDoCliente | null; guias?: ac.GuiaDoCliente[]; agenda?: ac.AgendaDoMes[]; envios?: ac.ReciboDeEnvio[]; chamados?: ac.ChamadoDoCliente[] } = {};
+      const partes: { resumo?: ac.ResumoDoCliente | null; guias?: ac.GuiaDoCliente[]; agenda?: ac.AgendaDoMes[]; envios?: ac.ReciboDeEnvio[]; chamados?: ac.ChamadoDoCliente[];
+        pessoal?: ac.ResumoDoPessoal | null; documentosDp?: ac.DocumentoDoDp[] } = {};
 
       const parar = () => { parado = true; paradas.splice(0).forEach(f => f()); redesenhar.get(token)?.delete(desenhar); };
       const mostrar = (e: EstadoDaArea) => { if (!parado) aoMudar(e); };
@@ -82,9 +83,9 @@ export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCl
         aoMudar({ ...AREA_VAZIA, carregado: true, erro: 'Não deu para abrir a sua área agora. Tente de novo em alguns minutos.' });
       };
       function desenhar() {
-        const { resumo, guias, agenda, envios, chamados } = partes;
-        if (resumo === undefined || !guias || !agenda || !envios || !chamados) return;
-        const p: PartesDoEspelho = { resumo, nomeDoLink, guias, agenda, envios, chamados };
+        const { resumo, guias, agenda, envios, chamados, pessoal, documentosDp } = partes;
+        if (resumo === undefined || !guias || !agenda || !envios || !chamados || pessoal === undefined || !documentosDp) return;
+        const p: PartesDoEspelho = { resumo, nomeDoLink, guias, agenda, envios, chamados, pessoal, documentosDp };
         ultimo.set(token, p);
         // o que já voltou pelo espelho sai da lista dos pendentes
         novos.set(token, (novos.get(token) ?? []).filter(n => !chamados.some(c => c.id === n.id)));
@@ -115,6 +116,12 @@ export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCl
         ouvirColecao('agenda', lerAgenda, l => { partes.agenda = l; });
         ouvirColecao('envios', lerRecibo, l => { partes.envios = l; });
         ouvirColecao('chamados', lerChamado, l => { partes.chamados = l; });
+        // o Registro (12/11/2026): os funcionários e os documentos do DP (os pedaços dos arquivos ficam de fora: não têm tipo)
+        paradas.push(onSnapshot(doc(espelho, 'resumo', 'pessoal'), r => { partes.pessoal = r.exists() ? lerPessoal(r.data()) : null; desenhar(); }, falhou));
+        paradas.push(onSnapshot(query(collection(espelho, 'documentos'), where('tipo', '==', 'dp')), s => {
+          partes.documentosDp = s.docs.map(d => lerDocumentoDp(d.id, d.data())).filter((x): x is ac.DocumentoDoDp => x != null);
+          desenhar();
+        }, falhou));
       }, falhou));
       return parar;
     },
@@ -160,10 +167,6 @@ export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCl
       }
     },
 
-    async enviarFotoDoFuncionario() {
-      throw new Error('A foto do funcionário ainda não vai pelo site. Mande pelo WhatsApp do escritório.');
-    },
-
     async baixarGuia(token, id) {
       if (!ehTokenDoLink(token) || !/^[A-Za-z0-9_-]{1,128}$/.test(id)) return null;
       try {
@@ -180,5 +183,20 @@ export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCl
     // sem fonte no banco por enquanto (as seções estão escondidas): nada a baixar
     async baixarDocumento() { return null; },
     async baixarComprovante() { return null; },
+
+    // o documento do DP: os pedaços em documentos/{id}~{n}, com 'de' = o id do documento
+    async baixarDocumentoDp(token, id) {
+      if (!ehTokenDoLink(token) || !/^[A-Za-z0-9_-]{1,128}$/.test(id)) return null;
+      try {
+        const s = await getDocs(query(collection(abrir(), 'areasCliente', token, 'documentos'), where('de', '==', id)));
+        const pedacos: PedacoDoPdf[] = s.docs.map(d => d.data()).filter(x => typeof x.base64 === 'string' && typeof x.n === 'number' && typeof x.total === 'number')
+          .map(x => ({ base64: x.base64 as string, n: x.n as number, total: x.total as number }));
+        const nome = ultimo.get(token)?.documentosDp?.find(d => d.id === id)?.nome || 'documento';
+        const arquivo = juntarPedacosDoPdf(pedacos, mimeDoArquivo(nome));
+        return arquivo ? { nome, arquivo } : null;
+      } catch {
+        return null;
+      }
+    },
   };
 }

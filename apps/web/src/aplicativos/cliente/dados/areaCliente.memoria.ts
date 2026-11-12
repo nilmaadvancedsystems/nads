@@ -9,7 +9,7 @@
 // Qualquer outro é um link inválido e não mostra dado nenhum. No modo banco, só o "exemplo" vem daqui (repo.ts).
 import { areaCliente as ac, formatos, mandei } from '@nads/core';
 import { exemplo as mandeiExemplo } from '../../../comum/mandeiExemplo';
-import { AREA_VAZIA, TODAS_AS_SECOES, type DocumentoDoCliente, type Empregado, type EstadoDaArea, type RepoAreaCliente } from './areaCliente';
+import { AREA_VAZIA, TODAS_AS_SECOES, type DocumentoDoCliente, type EstadoDaArea, type RepoAreaCliente } from './areaCliente';
 import { documentoFormatado, estadoDoEspelho } from './espelho';
 
 export const TOKEN_DE_EXEMPLO = 'exemplo';
@@ -104,7 +104,7 @@ export function areaDeExemplo(hoje: Date): EstadoDaArea {
     ],
     documentos: documentosDeExemplo(hoje),
     certificado: { tipo: 'A1', titular: 'PERSONALY COMPANY LTDA', validoAte: iso(emDias(hoje, 25)) },
-    empregados: empregadosDeExemplo(hoje),
+    pessoal: pessoalDeExemplo(hoje), documentosDp: documentosDpDeExemplo(hoje),
     ficha: {
       razaoSocial: 'Personaly Company Ltda', nomeFantasia: 'Personaly', cnpj: '00.000.000/0001-91', inscricaoEstadual: '000.000.000.0000',
       inscricaoMunicipal: '000000-0', regime: 'Simples Nacional', cnae: '47.12-1-00 (comércio varejista de mercadorias em geral)', abertura: '2019-04-02',
@@ -172,16 +172,43 @@ function documentosDeExemplo(hoje: Date): DocumentoDoCliente[] {
   ];
 }
 
-/** Os funcionários ativos (CPF mascarado). */
-function empregadosDeExemplo(hoje: Date): Empregado[] {
-  const ano = hoje.getFullYear();
-  return [
-    { id: 'f1', nome: 'Ana Luiza Ferreira', cpf: '***.491.826-**', cargo: 'Gerente financeira', admissao: '2021-03-12', salario: 5400, ferias: 'vencidas' },
-    { id: 'f2', nome: 'Carlos Eduardo Santos', cpf: '***.102.396-**', cargo: 'Assistente de vendas', admissao: '2023-08-01', salario: 2450, ferias: 'em ferias', retornoEm: iso(emDias(hoje, 9)) },
-    { id: 'f3', nome: 'João Pereira', cpf: '***.774.105-**', cargo: 'Vendedor', admissao: '2022-06-20', salario: 2300, ferias: 'em dia' },
-    { id: 'f4', nome: 'Mariana Oliveira Silva', cpf: '***.883.216-**', cargo: 'Analista de marketing', admissao: ano + '-01-15', salario: 3800, ferias: 'periodo aquisitivo' },
-    { id: 'f5', nome: 'Rodrigo de Almeida', cpf: '***.554.906-**', cargo: 'Auxiliar de estoque', admissao: ano + '-05-10', salario: 1850, ferias: 'periodo aquisitivo' },
+/** O mês 'aaaa-mm' de k meses atrás. */
+const mesAtras = (hoje: Date, k: number) => { const d = new Date(hoje.getFullYear(), hoje.getMonth() - k, 1); return d.getFullYear() + '-' + dois(d.getMonth() + 1); };
+
+/** O Registro de exemplo (12/11/2026), no formato do robô: os funcionários pelas guias do FGTS (o CPF mascarado). */
+function pessoalDeExemplo(hoje: Date): ac.ResumoDoPessoal {
+  const ultimo = mesAtras(hoje, 1);
+  const ano = String(hoje.getFullYear());
+  const funcionarios: ac.FuncionarioDoRegistro[] = [
+    { id: 'f1', nome: 'ANA LUIZA FERREIRA', cpf: '***.491.826-**', matricula: '001', remuneracao: 5400, desde: '2021-03', ultimo, ativo: true },
+    { id: 'f2', nome: 'CARLOS EDUARDO SANTOS', cpf: '***.102.396-**', matricula: '004', remuneracao: 2450, desde: '2023-08', ultimo, ativo: true },
+    { id: 'f3', nome: 'JOAO PEREIRA', cpf: '***.774.105-**', matricula: '003', remuneracao: 2300, desde: '2022-06', ultimo, ativo: true },
+    { id: 'f4', nome: 'MARIANA OLIVEIRA SILVA', cpf: '***.883.216-**', matricula: '007', remuneracao: 3800, desde: ano + '-01', ultimo, ativo: true },
+    { id: 'f5', nome: 'RODRIGO DE ALMEIDA', cpf: '***.554.906-**', matricula: '008', remuneracao: 1850, desde: ano + '-05', ultimo, ativo: true },
+    { id: 'f6', nome: 'PAULO HENRIQUE COSTA', cpf: '***.330.487-**', matricula: '005', remuneracao: 2100, desde: '2022-02', ultimo: mesAtras(hoje, 3), ativo: false },
   ];
+  return { funcionarios, competencia: ultimo, total: 15800, atualizadoEm: comHora(hoje, 7, 30) };
+}
+
+/** Os documentos do DP de exemplo: os três últimos meses, como os da pasta DEPARTAMENTO PESSOAL do Drive. */
+function documentosDpDeExemplo(hoje: Date): ac.DocumentoDoDp[] {
+  const docs: ac.DocumentoDoDp[] = [];
+  const doc = (mes: string, nome: string, categoria: ac.CategoriaDoDp, tamanho: number, funcionario = '') =>
+    docs.push({ tipo: 'dp', id: 'dp-' + mes + '-' + docs.length, nome, categoria, competencia: mes, tamanho, funcionario, partes: 1 });
+  for (const k of [1, 2, 3]) {
+    const mes = mesAtras(hoje, k);
+    const mm = mes.slice(5, 7) + '-' + mes.slice(0, 4);
+    doc(mes, 'Folha de pagamento ' + mm + '.pdf', 'folha', 182000);
+    doc(mes, 'Recibo de Salário ' + mm + '.pdf', 'recibo', 241000);
+    doc(mes, 'Pró-labore ' + mm + '.pdf', 'pro-labore', 64000);
+    doc(mes, 'FGTS ' + mm + '.pdf', 'fgts', 96000);
+    doc(mes, 'DARF INSS ' + mm + '.pdf', 'inss', 58000);
+    doc(mes, 'Cartão de ponto - Carlos Eduardo.xlsx', 'ponto', 21000, 'f2');
+  }
+  doc(mesAtras(hoje, 1), 'Recibo de Férias - Carlos Eduardo Santos.pdf', 'ferias', 88000, 'f2');
+  doc(mesAtras(hoje, 1), 'Previsão - Vencimento de Férias.pdf', 'ferias', 45000);
+  doc(mesAtras(hoje, 3), 'TRCT - Paulo Henrique Costa.pdf', 'rescisao', 120000, 'f6');
+  return docs;
 }
 
 /** Um PDF mínimo (uma página com um texto) para o "Baixar guia" do exemplo. */
@@ -263,10 +290,10 @@ export function criarRepoAreaClienteMemoria(agora: () => Date = () => new Date()
           : { ...c, situacao: 'aberto', mensagens: [...c.mensagens, { de: 'cliente', autor: 'Você', texto: texto.trim(), em: agora().toISOString() }] }),
       }));
     },
-    async enviarFotoDoFuncionario(token, funcionarioId, base64Jpeg) {
-      if (!base64Jpeg) return;
-      const foto = 'data:image/jpeg;base64,' + base64Jpeg;
-      mudar(token, e => ({ ...e, empregados: e.empregados.map(f => f.id === funcionarioId ? { ...f, foto } : f) }));
+    async baixarDocumentoDp(token, id) {
+      const d = de(token)?.documentosDp.find(x => x.id === id);
+      if (!d) return null;
+      return { nome: d.nome.replace(/\.[a-z0-9]{2,5}$/i, '') + '.pdf', arquivo: pdfDeExemplo(['DOCUMENTO DE EXEMPLO', d.nome, 'Referente a ' + formatos.rot(d.competencia), 'Nilma Contabilidade']) };
     },
     async baixarDocumento(token, id) {
       const d = de(token)?.documentos.find(x => x.id === id);

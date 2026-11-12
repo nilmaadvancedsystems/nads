@@ -645,8 +645,14 @@ const CAMPOS_DO_ESPELHO = {
   chamado: ['id', 'tipo', 'titulo', 'situacao', 'mensagens'],
   mensagem: ['de', 'autor', 'texto', 'em'],
   recibo: ['id', 'nome', 'tipo', 'tamanho', 'recebidoEm'],
+  // o Registro (12/11/2026): resumo/pessoal (os funcionários pelas guias do FGTS, o CPF mascarado) e os documentos do DP
+  // (documentos/{id} com tipo 'dp'; os bytes em documentos/{id}~{n}, com 'de' = o id do documento)
+  pessoal: ['funcionarios', 'competencia', 'total', 'atualizadoEm'],
+  funcionario: ['id', 'nome', 'cpf', 'matricula', 'remuneracao', 'desde', 'ultimo', 'ativo'],
+  documentoDp: ['tipo', 'id', 'nome', 'categoria', 'competencia', 'tamanho', 'funcionario', 'partes'],
+  pedacoDp: ['base64', 'n', 'total', 'de'],
 };
-const DENTRO = { resumo: { empresas: 'empresa', escritorio: 'escritorio' }, agenda: { itens: 'item' }, chamado: { mensagens: 'mensagem' } };
+const DENTRO = { resumo: { empresas: 'empresa', escritorio: 'escritorio' }, agenda: { itens: 'item' }, chamado: { mensagens: 'mensagem' }, pessoal: { funcionarios: 'funcionario' } };
 
 /** Joga erro se o documento tiver um campo fora da lista branca (em qualquer nível). Devolve o próprio documento. */
 function conferirListaBranca(tipo, doc) {

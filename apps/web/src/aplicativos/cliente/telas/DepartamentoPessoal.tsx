@@ -1,15 +1,16 @@
-// O Departamento pessoal da Área do Cliente (Vitor, 16/10/2026), no layout da "Gestão de empregados" do protótipo com as
-// peças do nads: o título com Solicitar admissão e Programar férias, os quatro números (stat do nads) e a tabela dos
-// funcionários com a busca e "Exibindo N de M". Os pedidos abrem em janela, como no protótipo, e viram um chamado do tipo
-// certo; a ficha de cada um também abre em janela, com Programar férias e Pedir desligamento. Versão D: os números em
-// cartões soltos, a foto de cada um (ou as iniciais num círculo de tom suave), que se troca ali mesmo, a busca com a lupa e as linhas altas da tabela.
-import { CampoData, Icone, useRetorno } from '@nads/ui';
+// O Registro da Área do Cliente (12/11/2026: "a função de registro, onde o cliente vai ter acesso aos funcionários
+// registrados, folha de pagamento, férias e afins"), no lugar da "Gestão de empregados" do protótipo (Vitor, 16/10/2026):
+// o título com Solicitar admissão e Programar férias; os quatro números; os funcionários (pelas guias do FGTS, com o CPF
+// mascarado; quem saiu, no interruptor) com a ficha de cada um e os documentos dele; e os documentos do DP mês a mês, por
+// categoria (a folha, os recibos, o pró-labore, as férias, as rescisões, o ponto, o FGTS e o INSS), para baixar. Os
+// pedidos abrem em janela, como no protótipo, e viram uma solicitação do tipo certo.
+import { CampoData, Icone, IconeDeArquivo, Interruptor, useRetorno } from '@nads/ui';
 import { useState } from 'react';
-import type { Empregado } from '../dados/areaCliente';
 import { Avatar } from '../partes/Avatar';
 import { ACEITA_FOTO, fotoQuadrada, urlDaFoto } from '../partes/foto';
 import { Vazio } from '../partes/Vazio';
 import type { PedidoDeAdmissao, PedidoDeDemissao, PedidoDeFerias } from '../dados/regras';
+import { formatos } from '@nads/core';
 import { useDp, type DadosDoPedido, type Pedido } from './useDp';
 import type { DaCasca } from './useAreaCliente';
 
@@ -18,19 +19,6 @@ const DIAS = ['30 dias', '20 dias e vender 10', '15 dias (primeira parte)', '10 
 const MOTIVOS = ['O funcionário pediu demissão', 'Dispensa sem justa causa', 'Dispensa com justa causa', 'Fim do contrato de experiência', 'Acordo entre as partes'];
 const AVISOS = ['Trabalhado', 'Indenizado', 'Dispensado'];
 const TITULO: Record<Pedido, string> = { admissao: 'Solicitar admissão', ferias: 'Programar férias', demissao: 'Pedir desligamento' };
-
-/** a foto na ficha do funcionário: o avatar grande, que troca a foto ali mesmo (a janela não se redesenha sozinha) */
-function FotoDaFicha({ e, trocar }: { e: Empregado; trocar: (e: Empregado, f: File) => Promise<string | null> }) {
-  const [foto, setFoto] = useState(e.foto);
-  const [indo, setIndo] = useState(false);
-  const escolheu = async (f: File) => { setIndo(true); const nova = await trocar({ ...e, foto }, f); setIndo(false); if (nova) setFoto(nova); };
-  return (
-    <div className="cli-ficha-foto">
-      <Avatar nome={e.nome} foto={foto} tamanho={72} ocupado={indo} onFoto={f => void escolheu(f)} />
-      <p className="hint">{indo ? 'Enviando a foto…' : foto ? 'Clique na foto para trocar.' : 'Clique para adicionar uma foto (JPG ou PNG).'}</p>
-    </div>
-  );
-}
 
 /** o campo opcional da foto na admissão: prepara a foto na hora e mostra como ficou */
 function CampoDaFoto({ nome, foto, aoMudar }: { nome: string; foto?: string; aoMudar: (b64: string | undefined) => void }) {
@@ -114,6 +102,25 @@ function FormDoPedido({ pedido, inicial, erro, nomes, aoMudar }: { pedido: Pedid
   );
 }
 
+type VM = ReturnType<typeof useDp>;
+type Doc = VM['grupos'][number]['docs'][number];
+
+/** Uma linha de documento: o ícone pelo tipo, o nome, de quem e o mês, e o Baixar (o grande demais, pedir ao escritório). */
+function LinhaDoDocumento({ d, vm }: { d: Doc; vm: VM }) {
+  return (
+    <li className="cli-linha cli-linha-doc">
+      <IconeDeArquivo formato={d.formato} tamanho={32} />
+      <div className="cli-linha-txt">
+        <b className="cli-quebra">{d.nome}</b>
+        <span className="hint">{[d.dono, d.detalhe].filter(Boolean).join(' · ')}</span>
+      </div>
+      {d.podeBaixar
+        ? <button type="button" className="btn" disabled={vm.baixando === d.id} onClick={() => vm.baixar(d.id)} aria-label={'Baixar ' + d.nome}><Icone nome="download" width={16} height={16} />{vm.baixando === d.id ? 'Baixando…' : 'Baixar'}</button>
+        : <span className="hint">Grande demais: peça ao escritório</span>}
+    </li>
+  );
+}
+
 export function DepartamentoPessoal(props: DaCasca) {
   const vm = useDp(props);
   const { modal } = useRetorno();
@@ -131,32 +138,38 @@ export function DepartamentoPessoal(props: DaCasca) {
     if (problema) await abrirPedido(pedido, atual, problema);
   };
 
-  const ficha = async (e: Empregado) => {
+  const ficha = async (f: VM['funcionarios'][number]) => {
     const escolha = await modal<'ferias' | 'demissao' | null>({
-      titulo: e.nome, texto: e.cargo,
+      titulo: f.nome, texto: f.situacao,
       corpo: (
         <div className="cli-app cli-janela">
-          <FotoDaFicha e={e} trocar={vm.trocarFoto} />
+          <div className="cli-ficha-foto"><Avatar nome={f.nome} tamanho={64} /></div>
           <dl className="cli-dados">
-            <dt>CPF</dt><dd>{e.cpf}</dd>
-            <dt>Admissão</dt><dd>{vm.dataBr(e.admissao)}</dd>
-            <dt>Salário</dt><dd>{vm.reais(e.salario)}</dd>
-            <dt>Férias</dt><dd>{vm.rotuloDasFerias(e)}</dd>
+            <dt>CPF</dt><dd>{f.cpf || '—'}</dd>
+            <dt>Matrícula</dt><dd>{f.matricula || '—'}</dd>
+            <dt>No registro desde</dt><dd>{f.desde}</dd>
+            <dt>Remuneração</dt><dd>{f.remuneracao}{vm.competencia ? ' (' + vm.competencia + ')' : ''}</dd>
           </dl>
+          {f.docs.length > 0 && <>
+            <p className="cli-grupo">Documentos</p>
+            <ul className="cli-lista">{f.docs.map(d => <LinhaDoDocumento key={d.id} d={d} vm={vm} />)}</ul>
+          </>}
           <p className="hint" style={{ marginTop: 12 }}>Para mudar um dado ou mandar um atestado, abra uma solicitação.</p>
         </div>
       ),
-      botoes: [{ rotulo: 'Programar férias', valor: 'ferias', variante: 'btn-primary' }, { rotulo: 'Pedir desligamento', valor: 'demissao', variante: 'btn-danger' }, { rotulo: 'Fechar', valor: null, variante: 'btn-outline' }],
+      botoes: f.ativo
+        ? [{ rotulo: 'Programar férias', valor: 'ferias', variante: 'btn-primary' }, { rotulo: 'Pedir desligamento', valor: 'demissao', variante: 'btn-danger' }, { rotulo: 'Fechar', valor: null, variante: 'btn-outline' }]
+        : [{ rotulo: 'Fechar', valor: null, variante: 'btn-outline' }],
     });
-    if (escolha === 'ferias') await abrirPedido('ferias', vm.novasFerias(e.nome));
-    if (escolha === 'demissao') await abrirPedido('demissao', vm.novaDemissao(e.nome));
+    if (escolha === 'ferias') await abrirPedido('ferias', vm.novasFerias(f.nome));
+    if (escolha === 'demissao') await abrirPedido('demissao', vm.novaDemissao(f.nome));
   };
 
   return (
     <>
       <div className="cli-titulo">
         <div>
-          <h1 className="page-title">Departamento pessoal</h1>
+          <h1 className="page-title">Registro</h1>
         </div>
         <div className="cli-acoes">
           <button type="button" className="btn btn-primary" onClick={() => void abrirPedido('admissao', vm.novaAdmissao())}><Icone nome="plus" width={16} height={16} />Solicitar admissão</button>
@@ -165,49 +178,79 @@ export function DepartamentoPessoal(props: DaCasca) {
       </div>
 
       <div className="cli-numeros">
-        <div className="cli-numero"><span className="cli-sobre">Total de ativos</span><span className="cli-numero-valor">{vm.numeros.ativos}</span></div>
-        <div className="cli-numero"><span className="cli-sobre">Em férias</span><span className="cli-numero-valor">{vm.numeros.emFerias}</span></div>
-        <div className="cli-numero"><span className="cli-sobre">Folha bruta</span><span className="cli-numero-valor menor">{vm.reais(vm.numeros.folha)}</span></div>
-        <div className="cli-numero"><span className="cli-sobre">Admissões no ano</span><span className="cli-numero-valor">{vm.numeros.admissoesNoAno}</span></div>
+        <div className="cli-numero"><span className="cli-sobre">Funcionários ativos</span><span className="cli-numero-valor">{vm.numeros.ativos}</span></div>
+        <div className="cli-numero"><span className="cli-sobre">Remuneração{vm.competencia ? ' · ' + vm.competencia : ''}</span><span className="cli-numero-valor menor">{formatos.reais(vm.numeros.folha)}</span></div>
+        <div className="cli-numero"><span className="cli-sobre">Entraram no ano</span><span className="cli-numero-valor">{vm.numeros.admissoesNoAno}</span></div>
+        <div className="cli-numero"><span className="cli-sobre">Saíram</span><span className="cli-numero-valor">{vm.numeros.saidas}</span></div>
       </div>
 
       <section className="card cli-card-tabela">
         <div className="card-head">
           <label className="cli-busca">
             <Icone nome="search" width={16} height={16} />
-            <input type="text" value={vm.busca} onChange={e => vm.mudarBusca(e.target.value)} placeholder="Buscar por nome ou CPF" aria-label="Buscar funcionário" />
+            <input type="text" value={vm.busca} onChange={e => vm.mudarBusca(e.target.value)} placeholder="Buscar por nome, CPF ou matrícula" aria-label="Buscar funcionário" />
           </label>
-          <span className="card-head-ctl">Exibindo {vm.empregados.length} de {vm.total}</span>
+          <span className="card-head-ctl cli-registro-ctl">
+            {vm.saidas > 0 && (
+              <span className="cli-interruptor">
+                <Interruptor ligado={vm.mostrarSaidas} onMudar={vm.alternarSaidas} rotulo="Mostrar quem saiu" />
+                <span>Mostrar quem saiu</span>
+              </span>
+            )}
+            <span>Exibindo {vm.funcionarios.length} de {vm.total}</span>
+          </span>
         </div>
         <table className="cli-tabela">
           <thead>
-            <tr><th>Colaborador</th><th className="cli-so-largo">Cargo</th><th className="cli-so-largo">Admissão</th><th className="cli-so-largo num">Salário base</th><th className="cli-so-largo">Férias</th><th className="num"><span className="sr-only">Ficha</span></th></tr>
+            <tr><th>Colaborador</th><th className="cli-so-largo">Matrícula</th><th className="cli-so-largo">No registro desde</th><th className="cli-so-largo num">Remuneração</th><th className="cli-so-largo">Situação</th><th className="num"><span className="sr-only">Ficha</span></th></tr>
           </thead>
           <tbody>
-            {vm.empregados.map(e => (
-              <tr key={e.id}>
+            {vm.funcionarios.map(f => (
+              <tr key={f.id} className={f.ativo ? undefined : 'cli-saiu'}>
                 <td>
                   <div className="cli-pessoa">
-                    <Avatar nome={e.nome} foto={e.foto} ocupado={vm.enviandoFoto === e.id} onFoto={f => void vm.trocarFoto(e, f)} />
-                    <div><b>{e.nome}</b><span className="hint">CPF {e.cpf}</span></div>
+                    <Avatar nome={f.nome} />
+                    <div><b>{f.nome}</b><span className="hint">{f.cpf ? 'CPF ' + f.cpf : ''}{f.documentos ? (f.cpf ? ' · ' : '') + f.documentos + (f.documentos === 1 ? ' documento' : ' documentos') : ''}</span></div>
                   </div>
                 </td>
-                <td className="cli-so-largo">{e.cargo}</td>
-                <td className="cli-so-largo cli-suave">{vm.dataBr(e.admissao)}</td>
-                <td className="cli-so-largo num"><span className="cli-valor">{vm.reais(e.salario)}</span></td>
-                <td className="cli-so-largo"><span className={vm.seloDasFerias(e)}>{vm.rotuloDasFerias(e)}</span></td>
-                <td className="num"><button type="button" className="btn" onClick={() => void ficha(e)}>Detalhes</button></td>
+                <td className="cli-so-largo cli-suave">{f.matricula || '—'}</td>
+                <td className="cli-so-largo cli-suave">{f.desde}</td>
+                <td className="cli-so-largo num"><span className="cli-valor">{f.remuneracao}</span></td>
+                <td className="cli-so-largo"><span className={'badge ' + (f.ativo ? 'badge-ok' : 'badge-neutral')}>{f.situacao}</span></td>
+                <td className="num"><button type="button" className="btn" onClick={() => void ficha(f)}>Detalhes</button></td>
               </tr>
             ))}
-            {!vm.empregados.length && (
+            {!vm.funcionarios.length && (
               <tr className="cli-sem-passar"><td colSpan={6}>
-                {vm.total
+                {vm.temFuncionarios && vm.busca
                   ? <Vazio icone="search" titulo="Ninguém com esse nome" acao={{ rotulo: 'Limpar a busca', onClick: () => vm.mudarBusca('') }} />
-                  : <Vazio icone="usuario" titulo="Nenhum funcionário ativo" texto="Para registrar alguém, use Solicitar admissão." />}
+                  : <Vazio icone="usuario" titulo="Nenhum funcionário no registro" texto="Os funcionários aparecem aqui quando o escritório emite a guia do FGTS do mês." />}
               </td></tr>
             )}
           </tbody>
         </table>
+      </section>
+
+      {/* os documentos do DP do mês (12/11/2026): a folha, os recibos, as férias… da pasta da empresa no Drive */}
+      <section className="card">
+        <div className="card-head">
+          <h3>Documentos do departamento pessoal</h3>
+          {vm.meses.length > 1 && (
+            <span className="card-head-ctl">
+              <span className="chip-row" role="radiogroup" aria-label="Mês dos documentos" style={{ margin: 0 }}>
+                {vm.meses.map(m => (
+                  <button key={m.valor} type="button" role="radio" aria-checked={vm.mes === m.valor} className={'chip-f' + (vm.mes === m.valor ? ' on' : '')} onClick={() => vm.mudarMes(m.valor)}>{m.rotulo}</button>
+                ))}
+              </span>
+            </span>
+          )}
+        </div>
+        {vm.grupos.length ? vm.grupos.map(g => (
+          <div key={g.categoria}>
+            <p className="cli-grupo">{g.rotulo}</p>
+            <ul className="cli-lista">{g.docs.map(d => <LinhaDoDocumento key={d.id} d={d} vm={vm} />)}</ul>
+          </div>
+        )) : <Vazio icone="pastaAberta" titulo="Nenhum documento ainda" texto="A folha, os recibos e as guias do mês aparecem aqui quando o escritório salva na pasta da empresa." />}
       </section>
     </>
   );

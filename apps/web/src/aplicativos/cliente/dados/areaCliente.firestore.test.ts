@@ -22,6 +22,9 @@ vi.mock('firebase/firestore', () => {
     getFirestore: () => ({ path: '' }),
     doc: ref,
     collection: ref,
+    // a consulta fica com o caminho da coleção (o filtro do Registro: documentos com tipo 'dp', ou os pedaços de um)
+    query: (r: { path: string }) => r,
+    where: () => null,
     serverTimestamp: () => 'HORA-DO-SERVIDOR',
     onSnapshot: (r: { path: string }, proximo: Ouvinte['proximo'], erro: Ouvinte['erro']) => {
       const o = { caminho: r.path, proximo, erro, ativo: true };
@@ -60,6 +63,8 @@ function abrirComEspelho(repo: ReturnType<typeof criarRepoAreaClienteFirestore>)
   ouvinte(RAIZ + '/agenda').proximo(colSnap({ '2026-10': { mes: '2026-10', itens: [{ id: 'das', nome: 'DAS do Simples Nacional', vence: '2026-10-20', situacao: 'a fazer' }], atualizadoEm: 'x' } }));
   ouvinte(RAIZ + '/envios').proximo(colSnap({ e1: { id: 'e1', nome: 'extrato.pdf', tipo: 'extrato', tamanho: 10, recebidoEm: '2026-10-17T09:00:00.000Z' } }));
   ouvinte(RAIZ + '/chamados').proximo(colSnap({ c1: CHAMADO }));
+  ouvinte(RAIZ + '/resumo/pessoal').proximo(docSnap(null));
+  ouvinte(RAIZ + '/documentos').proximo(colSnap({}));
   return { telas, parar };
 }
 
@@ -94,7 +99,7 @@ describe('abrir o link', () => {
 
   it('link bom: ouve o espelho e só mostra quando tudo chegou; nada do documento do link além do nome', () => {
     const { telas } = abrirComEspelho(criarRepoAreaClienteFirestore());
-    expect(falso.ouvintes.map(o => o.caminho).sort()).toEqual([RAIZ, RAIZ + '/agenda', RAIZ + '/chamados', RAIZ + '/envios', RAIZ + '/guias', RAIZ + '/resumo/atual'].sort());
+    expect(falso.ouvintes.map(o => o.caminho).sort()).toEqual([RAIZ, RAIZ + '/agenda', RAIZ + '/chamados', RAIZ + '/envios', RAIZ + '/guias', RAIZ + '/resumo/atual', RAIZ + '/resumo/pessoal', RAIZ + '/documentos'].sort());
     expect(telas).toHaveLength(1);
     const e = telas[0];
     expect(e).toMatchObject({ carregado: true, valido: true, exemplos: false, secoes: { documentos: false, dp: false, pagas: false } });
@@ -180,5 +185,45 @@ describe('o PDF da guia', () => {
     falso.pdf.push({ base64: btoa('x'), n: 1, total: 2 });
     expect(await repo.baixarGuia(TOKEN, 'g1')).toBeNull();
     expect(await repo.baixarGuia(TOKEN, '../segredo')).toBeNull();
+  });
+});
+
+describe('o Registro (12/11/2026)', () => {
+  it('os funcionários e os documentos do DP do espelho; o CPF sem máscara fica de fora; a aba aparece', () => {
+    const telas: EstadoDaArea[] = [];
+    const repo = criarRepoAreaClienteFirestore();
+    repo.assinar(TOKEN, e => telas.push(e));
+    ouvinte(RAIZ).proximo(docSnap({ codigos: [58], nome: 'Padaria Boa' }));
+    ouvinte(RAIZ + '/resumo/atual').proximo(docSnap(null));
+    for (const c of ['guias', 'agenda', 'envios', 'chamados']) ouvinte(RAIZ + '/' + c).proximo(colSnap({}));
+    ouvinte(RAIZ + '/resumo/pessoal').proximo(docSnap({ competencia: '2026-10', total: 2000, atualizadoEm: 'x', funcionarios: [
+      { id: 'f1', nome: 'MARIA SOUZA', cpf: '***.456.789-**', matricula: '1', remuneracao: 2000, desde: '2026-08', ultimo: '2026-10', ativo: true },
+      { id: 'f2', nome: 'VAZOU', cpf: '123.456.789-09', matricula: '2', remuneracao: 1, desde: '2026-08', ultimo: '2026-10', ativo: true },
+    ] }));
+    expect(telas).toHaveLength(0);
+    ouvinte(RAIZ + '/documentos').proximo(colSnap({
+      'dp-a': { tipo: 'dp', id: 'dp-a', nome: 'Folha de pagamento 10-2026.pdf', categoria: 'folha', competencia: '2026-10', tamanho: 1000, funcionario: '', partes: 1 },
+      'dp-a~0': { base64: 'AAAA', n: 0, total: 1, de: 'dp-a' },
+    }));
+    const e = telas[telas.length - 1];
+    expect(e.secoes.dp).toBe(true);
+    expect(e.pessoal?.funcionarios.map(f => [f.nome, f.cpf])).toEqual([['MARIA SOUZA', '***.456.789-**'], ['VAZOU', '']]);
+    expect(e.documentosDp.map(d => [d.id, d.categoria])).toEqual([['dp-a', 'folha']]);
+  });
+
+  it('baixar o documento do DP: os pedaços dele, com o nome e o tipo pelo arquivo', async () => {
+    const repo = criarRepoAreaClienteFirestore();
+    repo.assinar(TOKEN, () => undefined);
+    ouvinte(RAIZ).proximo(docSnap({ codigos: [58], nome: 'Padaria Boa' }));
+    ouvinte(RAIZ + '/resumo/atual').proximo(docSnap(null));
+    for (const c of ['guias', 'agenda', 'envios', 'chamados']) ouvinte(RAIZ + '/' + c).proximo(colSnap({}));
+    ouvinte(RAIZ + '/resumo/pessoal').proximo(docSnap(null));
+    ouvinte(RAIZ + '/documentos').proximo(colSnap({ 'dp-x': { tipo: 'dp', id: 'dp-x', nome: 'Cartão de ponto - Elisene.xlsx', categoria: 'ponto', competencia: '2026-10', tamanho: 3, funcionario: '', partes: 1 } }));
+    falso.pdf.push({ base64: btoa('abc'), n: 0, total: 1, de: 'dp-x' });
+    const r = await repo.baixarDocumentoDp(TOKEN, 'dp-x');
+    expect(r?.nome).toBe('Cartão de ponto - Elisene.xlsx');
+    expect(r?.arquivo.type).toBe('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    expect(falso.lidos).toEqual([RAIZ + '/documentos']);
+    expect(await repo.baixarDocumentoDp(TOKEN, '../outro')).toBeNull();
   });
 });
