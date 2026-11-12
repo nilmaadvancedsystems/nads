@@ -21,8 +21,8 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
   // o Cadastro também com a barra lateral (14/10/2026: "cadê a barra?"), como os outros módulos; as abas no alto não voltam
   // o Fiscal com as páginas no alto, para a tabela usar a tela toda (Vitor, 09/11/2026: "quero colocar esse menu lateral, superior")
   // a Carteira também (Vitor, 12/11/2026: "coloque tudo do menu lateral, no superior"); quem ainda não tem a Carteira só tem
-  // a tela "em desenvolvimento", sem abas
-  const comAbas = app === 'fiscal' || (app === 'carteira' && (a?.paginas.length ?? 0) > 1);
+  // a tela "em desenvolvimento", sem abas. O Financeiro também (Vitor, 12/11/2026: "coloca o menu superior")
+  const comAbas = app === 'fiscal' || app === 'financeiro' || (app === 'carteira' && (a?.paginas.length ?? 0) > 1);
   // dentro da aba Ferramentas do Fiscal, as ferramentas ficam na barra lateral
   const ehFerramenta = (id: string) => FERRAMENTAS_DO_FISCAL.includes(id);
   const emFerramentas = comAbas && ehFerramenta(pagina);
