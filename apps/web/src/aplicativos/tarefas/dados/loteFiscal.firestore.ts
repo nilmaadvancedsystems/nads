@@ -114,6 +114,7 @@ export function criarLoteFiscalFirestore(quem: () => e.Quem | null): RepoLoteFis
         andamento(k + 1, lista.length);
       }
       await updateDoc(ref, { status: 'pendente' });
+      return lista.map((_, k) => String(inicio + k));
     },
     async escolher(lote, arquivo, escolha) {
       // sem a coluna, o campo não vai (o Firestore não aceita undefined): vale a do leitor

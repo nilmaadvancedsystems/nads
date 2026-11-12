@@ -18,6 +18,8 @@ describe('login pelo nome (igual ao Entregas)', () => {
     expect(iniciais('  ')).toBe('?');
     expect(mensagemDeErroDeLogin('auth/too-many-requests')).toMatch(/Muitas tentativas/);
     expect(mensagemDeErroDeLogin('auth/invalid-credential')).toBe('Nome ou senha inválidos.');
+    expect(mensagemDeErroDeLogin('auth/invalid-credential', 'Fulano')).toMatch(/digite o e-mail no lugar do nome/);
+    expect(mensagemDeErroDeLogin('auth/invalid-credential', 'fulano@exemplo.com')).toBe('Nome ou senha inválidos.');
   });
 });
 
