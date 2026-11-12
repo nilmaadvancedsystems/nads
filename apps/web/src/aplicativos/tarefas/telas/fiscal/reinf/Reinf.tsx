@@ -67,16 +67,14 @@ export function Reinf() {
                       ? <span className="fxr-retificadas">{l.retificadas.map(x => <span key={x} className="fxr-retif num">{x}</span>)}</span>
                       : '—'}</td>
                     <td className="fr-g fxr-acoes">
-                      {/* o Transmitir abre as séries, como o CheckList REINF do Alterdata (Vitor, 12/11/2026, chamado KADMFS) */}
-                      <MenuSuspenso direita largura={220} titulo={'O que foi transmitido em ' + vm.rotuloCompetencia}
-                        className={'btn btn-sm ' + (l.transmitida ? 'btn-outline' : 'btn-primary')} icone={l.transmitida ? undefined : 'check'}
-                        rotulo={l.series.length ? l.series.map(s => s === 'mit' ? 'MIT' : s).join(' · ') : l.transmitida ? 'Transmitida' : 'Transmitir'}
-                        dica={l.transmitida ? 'Ver ou mudar o que foi transmitido' : 'Marcar o que foi transmitido'}
-                        itens={[
-                          ...t.SERIES_REINF.map(s => ({ rotulo: s.rotulo, marcado: l.series.includes(s.id), onClick: () => vm.alternarSerie(l.codigo, s.id) })),
-                          'separador' as const,
-                          { rotulo: 'Desfazer a transmissão', icone: 'x' as const, desabilitado: !l.transmitida, onClick: () => vm.desfazer(l.codigo) },
-                        ]} />
+                      {/* as já transmitidas ficam como eram, só o Desfazer (Vitor, 12/11/2026: "as que já foram transmitidas e
+                          marcadas, não mexa"); a que falta abre as séries, como o CheckList REINF do Alterdata (chamado KADMFS). O menu
+                          flutua: a célula corta o que passa dela */}
+                      {l.transmitida
+                        ? <button type="button" className="btn btn-sm btn-outline" onClick={() => vm.desfazer(l.codigo)} title="Desfazer a transmissão desta competência">Desfazer</button>
+                        : <MenuSuspenso flutuante direita largura={200} titulo={'O que foi transmitido em ' + vm.rotuloCompetencia}
+                          className="btn btn-sm btn-primary" icone="check" rotulo="Transmitir" dica="Marcar o que foi transmitido"
+                          itens={t.SERIES_REINF.map(s => ({ rotulo: s.rotulo, onClick: () => vm.alternarSerie(l.codigo, s.id) }))} />}
                       <button type="button" className={'btn btn-sm btn-ghost' + (l.retificadaNaCompetencia ? ' fxr-retificada' : '')} onClick={() => vm.retificar(l.codigo)}
                         aria-pressed={l.retificadaNaCompetencia}
                         title={l.retificadaNaCompetencia ? 'Tirar a retificação desta competência' : 'Retificou esta competência'}>
