@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { DocumentoDoCliente, Empregado } from './areaCliente';
-import { linkDoWhatsapp, partesDaSolicitacao, passoDaSolicitacao, whatsappDaSolicitacao, erroDaAdmissao, erroDaDemissao, erroDasFerias, filtrarDocumentos, juntarPedacosDoPdf, mesesDosDocumentos, notificacoes, resumoDoPessoal, situacaoDoCertificado, textoDaAdmissao, textoDoChamado } from './regras';
+import type { DocumentoDoCliente } from './areaCliente';
+import { linkDoWhatsapp, mimeDoArquivo, nomeDaPessoa, partesDaSolicitacao, passoDaSolicitacao, whatsappDaSolicitacao, erroDaAdmissao, erroDaDemissao, erroDasFerias, filtrarDocumentos, juntarPedacosDoPdf, mesesDosDocumentos, notificacoes, resumoDoPessoal, situacaoDoCertificado, textoDaAdmissao, textoDoChamado } from './regras';
 
 const hoje = new Date(2026, 9, 16, 9, 0);
 
@@ -15,11 +15,17 @@ describe('situacaoDoCertificado', () => {
   });
 });
 
-describe('resumoDoPessoal', () => {
-  const e = (id: string, admissao: string, salario: number, ferias: Empregado['ferias'] = 'em dia'): Empregado => ({ id, nome: id, cpf: '', cargo: '', admissao, salario, ferias });
-  it('conta ativos, férias, folha e admissões do ano', () => {
-    expect(resumoDoPessoal([e('a', '2021-03-12', 5400), e('b', '2026-02-01', 2450.5, 'em ferias'), e('c', '2026-08-10', 1850)], hoje))
-      .toEqual({ ativos: 3, emFerias: 1, folha: 9700.5, admissoesNoAno: 2 });
+describe('resumoDoPessoal (o Registro, 12/11/2026)', () => {
+  it('os ativos, a remuneração do mês, quem entrou no ano e quem saiu', () => {
+    const f = (id: string, desde: string, ativo: boolean) => ({ id, nome: id, cpf: '', matricula: '', remuneracao: 1000, desde, ultimo: ativo ? '2026-09' : '2026-07', ativo });
+    expect(resumoDoPessoal({ funcionarios: [f('a', '2021-03', true), f('b', '2026-02', true), f('c', '2025-01', false)], competencia: '2026-09', total: 2000, atualizadoEm: '' }, hoje))
+      .toEqual({ ativos: 2, folha: 2000, competencia: '2026-09', admissoesNoAno: 1, saidas: 1 });
+    expect(resumoDoPessoal(null, hoje)).toEqual({ ativos: 0, folha: 0, competencia: '', admissoesNoAno: 0, saidas: 0 });
+  });
+  it('o nome como a gente escreve e o tipo do arquivo pelo nome', () => {
+    expect(nomeDaPessoa('  MARIA DA SILVA  E SOUZA ')).toBe('Maria da Silva e Souza');
+    expect(nomeDaPessoa('DE ALMEIDA')).toBe('De Almeida');
+    expect([mimeDoArquivo('Folha.PDF'), mimeDoArquivo('ponto.xlsx'), mimeDoArquivo('sem')]).toEqual(['application/pdf', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/octet-stream']);
   });
 });
 

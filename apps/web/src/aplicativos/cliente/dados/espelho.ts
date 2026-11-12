@@ -46,6 +46,33 @@ export function lerResumo(x: unknown): ac.ResumoDoCliente | null {
   return { empresas, escritorio, atualizadoEm: instante(r.atualizadoEm) };
 }
 
+/** resumo/pessoal (o Registro): { funcionarios: [{ id, nome, cpf (mascarado), matricula, remuneracao, desde, ultimo, ativo }],
+ *  competencia, total, atualizadoEm }. O CPF que não vier mascarado fica de fora. */
+export function lerPessoal(x: unknown): ac.ResumoDoPessoal | null {
+  const r = objeto(x);
+  if (!r) return null;
+  const funcionarios = lista(r.funcionarios).map(objeto).filter((f): f is Solto => !!f && !!texto(f.id) && !!texto(f.nome).trim())
+    .map(f => ({
+      id: texto(f.id), nome: texto(f.nome).trim(), cpf: /^\*{3}\.\d{3}\.\d{3}-\*{2}$/.test(texto(f.cpf)) ? texto(f.cpf) : '', matricula: texto(f.matricula),
+      remuneracao: typeof f.remuneracao === 'number' ? f.remuneracao : 0, desde: COMPETENCIA.test(texto(f.desde)) ? texto(f.desde) : '',
+      ultimo: COMPETENCIA.test(texto(f.ultimo)) ? texto(f.ultimo) : '', ativo: f.ativo === true,
+    }));
+  return { funcionarios, competencia: COMPETENCIA.test(texto(r.competencia)) ? texto(r.competencia) : '', total: typeof r.total === 'number' ? r.total : 0, atualizadoEm: instante(r.atualizadoEm) };
+}
+
+const CATEGORIAS_DP = new Set<string>(ac.ORDEM_DAS_CATEGORIAS_DP);
+
+/** documentos/{id} com tipo 'dp' (o Registro): { tipo, id, nome, categoria, competencia, tamanho, funcionario, partes }. */
+export function lerDocumentoDp(id: string, x: unknown): ac.DocumentoDoDp | null {
+  const d = objeto(x);
+  if (!d || d.tipo !== 'dp' || !texto(d.nome).trim() || !COMPETENCIA.test(texto(d.competencia))) return null;
+  return {
+    tipo: 'dp', id, nome: texto(d.nome).trim(), categoria: (CATEGORIAS_DP.has(texto(d.categoria)) ? texto(d.categoria) : 'outro') as ac.CategoriaDoDp,
+    competencia: texto(d.competencia), tamanho: typeof d.tamanho === 'number' ? d.tamanho : 0, funcionario: texto(d.funcionario),
+    partes: typeof d.partes === 'number' && d.partes >= 0 ? Math.floor(d.partes) : 0,
+  };
+}
+
 const TIPOS_DE_GUIA = new Set<string>(['FGTS', 'DAS', 'DAE', 'outra']);
 const SITUACOES_DA_GUIA = new Set<string>(['a vencer', 'vence hoje', 'vencida']);
 
@@ -152,6 +179,9 @@ export function comPendentes(chamados: ac.ChamadoDoCliente[], novos: ChamadoPend
 
 export interface PartesDoEspelho {
   resumo: ac.ResumoDoCliente | null;
+  /** o Registro (12/11/2026): resumo/pessoal e os documentos do DP (opcionais: o link antigo, ou sem DP, não tem) */
+  pessoal?: ac.ResumoDoPessoal | null;
+  documentosDp?: ac.DocumentoDoDp[];
   /** o nome do link (o documento areasCliente/{token}): só para o topo enquanto o robô não gravou o resumo */
   nomeDoLink: string;
   guias: ac.GuiaDoCliente[];
@@ -163,9 +193,12 @@ export interface PartesDoEspelho {
 /** O que a tela recebe de um link do banco: o que o espelho tem; as seções sem fonte ficam vazias e escondidas. */
 export function estadoDoEspelho(p: PartesDoEspelho, novos: ChamadoPendente[] = [], respostas: RespostaPendente[] = []): EstadoDaArea {
   const resumo = p.resumo ?? (p.nomeDoLink ? { empresas: [{ codigo: 0, nome: p.nomeDoLink, cnpj: '' }], escritorio: {}, atualizadoEm: '' } : null);
+  const pessoal = p.pessoal ?? null;
+  const documentosDp = p.documentosDp ?? [];
   return {
-    ...AREA_VAZIA, carregado: true, valido: true, exemplos: false, secoes: SECOES_DO_BANCO,
-    resumo,
+    ...AREA_VAZIA, carregado: true, valido: true, exemplos: false,
+    secoes: SECOES_DO_BANCO,
+    resumo, pessoal, documentosDp,
     guias: p.guias,
     agenda: [...p.agenda].sort((a, b) => a.mes.localeCompare(b.mes)),
     envios: [...p.envios].sort((a, b) => b.recebidoEm.localeCompare(a.recebidoEm)),

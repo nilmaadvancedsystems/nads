@@ -55,7 +55,7 @@ describe('pendenciasDoCliente e vereditoDoMes', () => {
   });
   it('uma só: o veredito é ela', () => {
     const p = pendenciasDoCliente({ ...vazio, chamados: [{ id: 'c1', tipo: 'documento', titulo: 'Certidão negativa', situacao: 'respondido', mensagens: [] }] }, hoje);
-    expect(vereditoDoMes(p, [])).toEqual({ tom: 'warn', titulo: 'O escritório respondeu', texto: 'Certidão negativa' });
+    expect(vereditoDoMes(p, [])).toEqual({ tom: 'warn', titulo: 'O escritório respondeu', texto: 'Sua solicitação "Certidão negativa" tem resposta.' });
   });
   it('sem PDF, a guia de hoje leva para Guias; o recado sem destino não entra', () => {
     const p = pendenciasDoCliente({ ...vazio, guias: [guia('fgts', 'FGTS', '17/10/2026', false)], avisos: [{ id: 'a', titulo: 'Oi', texto: 'só um recado' }, { id: 'b', titulo: 'Extratos', texto: 'mande', ir: 'documentos' }] }, hoje);

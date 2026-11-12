@@ -166,7 +166,7 @@ describe('o que o cliente mandou e o robô ainda não devolveu', () => {
 describe('o estado da tela', () => {
   it('do banco: sem exemplo, só as seções com fonte; o nome do link enquanto não tem resumo', () => {
     const e = estadoDoEspelho({ resumo: null, nomeDoLink: 'Padaria Boa', guias: [], agenda: [{ mes: '2026-11', itens: [] }, { mes: '2026-10', itens: [] }], envios: [], chamados: [] });
-    expect(e).toMatchObject({ carregado: true, valido: true, exemplos: false, erro: '', secoes: { documentos: false, dp: false, pagas: false } });
+    expect(e).toMatchObject({ carregado: true, valido: true, exemplos: false, erro: '', secoes: { documentos: false, dp: true, pagas: false } });
     expect(e.resumo?.empresas[0].nome).toBe('Padaria Boa');
     expect(e.agenda.map(a => a.mes)).toEqual(['2026-10', '2026-11']);
   });

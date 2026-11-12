@@ -64,7 +64,7 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
   // os filtros avançados (Vitor, 28/10/2026: "reduza esses filtros, coloque um ícone de filtro"): Movimento, Enquadramento,
   // Entrega e Agrupamento numa segunda linha, que o funil abre e fecha
   const [avancados, setAvancados] = useState(false);
-  const algumAvancado = !!(f.movimento.length || f.enquadramento.length || f.entrega.length || f.reinf.length || f.agrupamento.length);
+  const algumAvancado = !!(f.movimento.length || f.enquadramento.length || f.entrega.length || f.agrupamento.length);
   // o 13º salário (Vitor, 13/10/2026): o interruptor no topo da tabela, só em novembro (1ª parcela) e dezembro (2ª)
   const [decimo, setDecimo] = useState(false);
   // o mês do 13º: o da competência escolhida, se for novembro ou dezembro; se não, o de hoje (em novembro a lista ainda
@@ -100,7 +100,7 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
         <MenuDeFiltroVarios rotulo="Status" valores={f.status} mudar={f.setStatus} opcoes={f.statusOpcoes} />
         <MenuDeFiltroVarios rotulo="Pendente em" valores={f.pendenteEm} mudar={f.setPendenteEm} opcoes={f.partes} todos="Todas as partes" />
         <button type="button" className={'btn btn-outline' + (algumAvancado ? ' ativo' : '')} aria-pressed={avancados} onClick={() => setAvancados(a => !a)}
-          title={avancados ? 'Esconder os filtros avançados' : 'Filtros avançados: movimento, enquadramento, entrega, REINF e agrupamento'}
+          title={avancados ? 'Esconder os filtros avançados' : 'Filtros avançados: movimento, enquadramento, entrega e agrupamento'}
           aria-label="Filtros avançados"><Icone nome="funil" /></button>
         {f.algum && <button type="button" className="btn btn-ghost dp-limpar" onClick={f.limpar}><Icone nome="x" />Limpar filtros</button>}
       </div>
@@ -109,7 +109,6 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
           <MenuDeFiltroVarios rotulo="Movimento" valores={f.movimento} mudar={f.setMovimento} opcoes={f.movimentos} />
           <MenuDeFiltroVarios rotulo="Enquadramento" valores={f.enquadramento} mudar={f.setEnquadramento} opcoes={f.enquadramentos} />
           <MenuDeFiltroVarios rotulo="Entrega" valores={f.entrega} mudar={f.setEntrega} opcoes={f.entregas} />
-          <MenuDeFiltroVarios rotulo="REINF" valores={f.reinf} mudar={f.setReinf} opcoes={f.opcoesDaReinf} />
           <MenuDeFiltroVarios rotulo="Agrupamento" valores={f.agrupamento} mudar={f.setAgrupamento} opcoes={f.agrupamentos} />
         </div>
       )}

@@ -105,7 +105,9 @@ const BANCO_MUDO_MS = 12 * 60 * 1000;
 // A Área do Cliente desligada por enquanto (10/11/2026: "pode desativar a area do cliente por enquanto, não estamos usando").
 // Ela ouvia os links, o cadastro, as rotinas, os chamados e os pedidos do FGTS e espelhava cada link a cada 30 min (~900
 // leituras por hora, o dia todo), e o painel consultava as caixas dela a cada volta. Para religar: true.
-const AREA_DO_CLIENTE_LIGADA = false;
+// Religada em 12/11/2026 ("pode religar"): o Registro (os funcionários e os documentos do DP), as guias, a agenda e as
+// solicitações e os arquivos que o cliente manda voltam a andar.
+const AREA_DO_CLIENTE_LIGADA = true;
 // o ponto só vai ao banco quando o estado muda ou, sem mudança, a cada 5 min (batimento.js; as telas: 7 min sem ponto = parado)
 const batidaDoPonto = require('./batimento').criarBatimento({ freioMs: 0 });
 let bancoRespondeuEm = Date.now();

@@ -18,7 +18,7 @@ export const ABAS: { id: IdAba; rotulo: string; icone: NomeIcone }[] = [
   { id: 'inicio', rotulo: 'Visão geral', icone: 'home' },
   { id: 'documentos', rotulo: 'Central de documentos', icone: 'pastaAberta' },
   { id: 'guias', rotulo: 'Guias e obrigações', icone: 'recibo' },
-  { id: 'dp', rotulo: 'Departamento pessoal', icone: 'usuario' },
+  { id: 'dp', rotulo: 'Registro', icone: 'usuario' },
   { id: 'chamados', rotulo: 'Solicitações', icone: 'mensagem' },
 ];
 /** O que a aba aberta pelo irPara já faz ao abrir: abrir a conversa de um chamado, ou o formulário com o assunto e o título. */

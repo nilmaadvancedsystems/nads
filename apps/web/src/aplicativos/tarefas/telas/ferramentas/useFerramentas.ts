@@ -12,18 +12,27 @@ const { arquivos: arq, pdf: regras } = ferramentas;
 
 export type Ferramenta = 'separar' | 'juntar' | 'paginas' | 'comprimir' | 'numerar' | 'imagens' | 'texto' | 'imagem-pdf' | 'planilha';
 
-/** As abas, com o ícone e a frase do que cada uma faz (a primeira coisa que a pessoa lê). */
-export const FERRAMENTAS: { valor: Ferramenta; rotulo: string; icone: NomeIcone; descricao: string }[] = [
-  { valor: 'separar', rotulo: 'Separar', icone: 'copiar', descricao: 'Divida um PDF em vários arquivos: clique na página que começa cada arquivo novo.' },
-  { valor: 'juntar', rotulo: 'Juntar', icone: 'list', descricao: 'Junte PDFs e imagens num arquivo só, na ordem que você arrastar.' },
-  { valor: 'paginas', rotulo: 'Girar e tirar', icone: 'girar', descricao: 'Gire ou tire páginas pelas miniaturas e baixe o PDF arrumado.' },
-  { valor: 'comprimir', rotulo: 'Comprimir', icone: 'minimizar', descricao: 'Diminua o tamanho do PDF para mandar por e-mail ou subir em portal.' },
-  { valor: 'numerar', rotulo: 'Numerar', icone: 'hash', descricao: 'Coloque o número das páginas no rodapé, como "Página 1 de 10".' },
-  { valor: 'imagens', rotulo: 'PDF → imagem', icone: 'imagem', descricao: 'Baixe as páginas do PDF como imagem: uma por uma ou todas num .zip.' },
-  { valor: 'texto', rotulo: 'PDF → texto', icone: 'fileText', descricao: 'Copie o texto do PDF. Se ele for digitalizado (foto), o OCR lê a imagem.' },
-  { valor: 'imagem-pdf', rotulo: 'Imagem → PDF', icone: 'camera', descricao: 'Transforme fotos e prints (JPG, PNG) num PDF, uma página por imagem.' },
-  { valor: 'planilha', rotulo: 'Planilha', icone: 'grade', descricao: 'Converta planilhas entre Excel (.xls, .xlsx), LibreOffice (.ods) e CSV.' },
+/** Os grupos da escolha da ferramenta (12/11/2026: "deixa essa seleção mais bonita"). */
+export type GrupoDaFerramenta = 'Organizar' | 'Otimizar' | 'Converter';
+
+/** As ferramentas, com o grupo, o ícone e a frase do que cada uma faz (a primeira coisa que a pessoa lê). */
+export const FERRAMENTAS: { valor: Ferramenta; rotulo: string; grupo: GrupoDaFerramenta; icone: NomeIcone; descricao: string }[] = [
+  { valor: 'separar', rotulo: 'Separar', grupo: 'Organizar', icone: 'tesoura', descricao: 'Divida um PDF em vários arquivos: clique na página que começa cada arquivo novo.' },
+  { valor: 'juntar', rotulo: 'Juntar', grupo: 'Organizar', icone: 'folhas', descricao: 'Junte PDFs e imagens num arquivo só, na ordem que você arrastar.' },
+  { valor: 'paginas', rotulo: 'Girar e tirar', grupo: 'Organizar', icone: 'girar', descricao: 'Gire ou tire páginas pelas miniaturas e baixe o PDF arrumado.' },
+  { valor: 'comprimir', rotulo: 'Comprimir', grupo: 'Otimizar', icone: 'minimizar', descricao: 'Diminua o tamanho do PDF para mandar por e-mail ou subir em portal.' },
+  { valor: 'numerar', rotulo: 'Numerar', grupo: 'Otimizar', icone: 'hash', descricao: 'Coloque o número das páginas no rodapé, como "Página 1 de 10".' },
+  { valor: 'imagens', rotulo: 'PDF → imagem', grupo: 'Converter', icone: 'imagem', descricao: 'Baixe as páginas do PDF como imagem: uma por uma ou todas num .zip.' },
+  { valor: 'texto', rotulo: 'PDF → texto', grupo: 'Converter', icone: 'fileText', descricao: 'Copie o texto do PDF. Se ele for digitalizado (foto), o OCR lê a imagem.' },
+  { valor: 'imagem-pdf', rotulo: 'Imagem → PDF', grupo: 'Converter', icone: 'camera', descricao: 'Transforme fotos e prints (JPG, PNG) num PDF, uma página por imagem.' },
+  { valor: 'planilha', rotulo: 'Planilha', grupo: 'Converter', icone: 'grade', descricao: 'Converta planilhas entre Excel (.xls, .xlsx), LibreOffice (.ods) e CSV.' },
 ];
+
+/** As ferramentas nos grupos, na ordem da lista (para os blocos da escolha). */
+export const GRUPOS_DAS_FERRAMENTAS = (['Organizar', 'Otimizar', 'Converter'] as const).map(titulo => ({
+  titulo,
+  opcoes: FERRAMENTAS.filter(f => f.grupo === titulo).map(f => ({ valor: f.valor, rotulo: f.rotulo, icone: f.icone, dica: f.descricao })),
+}));
 
 /** As ferramentas que trabalham com um PDF só (escolhido uma vez e usado em qualquer uma delas). */
 export const COM_UM_PDF: readonly Ferramenta[] = ['separar', 'paginas', 'comprimir', 'numerar', 'imagens', 'texto'];

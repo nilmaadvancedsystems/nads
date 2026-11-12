@@ -310,6 +310,20 @@ if (modulo) {
   }));
 }
 
+// ---------- o Registro (12/11/2026): o pessoal e os documentos do DP passam na lista branca; o CPF vai mascarado ----------
+{
+  const G = require('./gerado/danfse');
+  const reg = G.registroDasGuias([{ numero: '1', competencia: '2026-10', vencimento: '', emissao: '', total: 0, trabalhadores: [{ nome: 'MARIA SOUZA', cpf: '123.456.789-09', matricula: '1', base: 2000, valor: 160 }] }]);
+  const pessoal = { funcionarios: reg.funcionarios, competencia: reg.competencia, total: reg.total, atualizadoEm: '2026-11-12T10:00:00.000Z' };
+  igual('o pessoal passa na lista branca', joga(() => R.conferirListaBranca('pessoal', pessoal)), '');
+  igual('o CPF do funcionário vai mascarado', reg.funcionarios[0].cpf, '***.456.789-**');
+  igual('nada do CPF inteiro no espelho', JSON.stringify(pessoal).includes('12345678909') || JSON.stringify(pessoal).includes('123.456.789-09'), false);
+  const doc = { tipo: 'dp', id: 'dp-x', nome: 'Folha.pdf', categoria: G.categoriaDoArquivoDp('Folha de pagamento 10-2026.pdf', 'DEPARTAMENTO PESSOAL/10/FOLHA'), competencia: '2026-10', tamanho: 10, funcionario: '', partes: 1 };
+  igual('o documento do DP passa na lista branca', joga(() => R.conferirListaBranca('documentoDp', doc)), '');
+  igual('a lista branca recusa a pasta do Drive no documento', joga(() => R.conferirListaBranca('documentoDp', Object.assign({}, doc, { pasta: 'G:/x' }))), 'espelho: campo pasta não pode sair em documentoDp');
+  igual('o pedaço do documento passa', joga(() => R.conferirListaBranca('pedacoDp', { base64: 'AAAA', n: 0, total: 1, de: 'dp-x' })), '');
+}
+
 Promise.all(esperar).then(() => {
 console.log(falhas ? '\n' + falhas + ' de ' + total + ' testes FALHARAM' : total + ' testes, todos passaram');
 process.exit(falhas ? 1 : 0);

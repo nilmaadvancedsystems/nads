@@ -2,7 +2,7 @@
 // pessoal, o filtro dos documentos, os avisos do sino e o texto dos pedidos do pessoal (admissão, férias e demissão viram
 // um chamado do tipo certo com os dados no texto). Funções puras, testadas em regras.test.ts.
 import type { areaCliente as ac } from '@nads/core';
-import type { CertificadoDigital, DocumentoDoCliente, Empregado, EstadoDaArea } from './areaCliente';
+import type { CertificadoDigital, DocumentoDoCliente, EstadoDaArea } from './areaCliente';
 
 const DIA = 86_400_000;
 const meioDia = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12).getTime();
@@ -26,14 +26,26 @@ export function situacaoDoCertificado(c: CertificadoDigital, hoje: Date): { dias
 }
 
 /** Os números do pessoal: ativos, de férias, a folha (soma dos salários) e as admissões no ano. */
-export function resumoDoPessoal(empregados: Empregado[], hoje: Date) {
+export function resumoDoPessoal(p: ac.ResumoDoPessoal | null, hoje: Date) {
   const ano = String(hoje.getFullYear());
+  const fs = p?.funcionarios ?? [];
   return {
-    ativos: empregados.length,
-    emFerias: empregados.filter(e => e.ferias === 'em ferias').length,
-    folha: Math.round(empregados.reduce((s, e) => s + e.salario, 0) * 100) / 100,
-    admissoesNoAno: empregados.filter(e => e.admissao.startsWith(ano)).length,
+    ativos: fs.filter(f => f.ativo).length,
+    /** a remuneração dos ativos no mês da guia mais nova (a base do FGTS) */
+    folha: p?.total ?? 0,
+    competencia: p?.competencia ?? '',
+    /** quem entrou no registro neste ano (a primeira guia em que aparece) */
+    admissoesNoAno: fs.filter(f => f.ativo && f.desde.startsWith(ano)).length,
+    /** quem estava e saiu da guia */
+    saidas: fs.filter(f => !f.ativo).length,
   };
+}
+
+/** O tipo do arquivo pelo nome (o Blob do download). */
+export function mimeDoArquivo(nome: string): string {
+  const ext = (/\.([a-z0-9]{2,5})$/i.exec(nome)?.[1] || '').toLowerCase();
+  return ({ pdf: 'application/pdf', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', xls: 'application/vnd.ms-excel',
+    doc: 'application/msword', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', txt: 'text/plain' } as Record<string, string>)[ext] || 'application/octet-stream';
 }
 
 const sem = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -141,14 +153,14 @@ export interface PedacoDoPdf { base64: string; n: number; total: number }
  * Junta os pedaços do PDF na ordem (n = 0 até total-1). Devolve null se falta algum, se sobram pedaços ou se o total não
  * bate entre eles (o PDF ficaria quebrado). Para o repositório do banco, quando a Área do Cliente ler o espelho de verdade.
  */
-export function juntarPedacosDoPdf(pedacos: PedacoDoPdf[]): Blob | null {
+export function juntarPedacosDoPdf(pedacos: PedacoDoPdf[], tipo = 'application/pdf'): Blob | null {
   if (!pedacos.length) return null;
   const total = pedacos[0].total;
   if (!Number.isInteger(total) || total < 1 || pedacos.length !== total || pedacos.some(p => p.total !== total)) return null;
   const ordem = [...pedacos].sort((a, b) => a.n - b.n);
   if (ordem.some((p, i) => p.n !== i)) return null;
   const partes = ordem.map(p => Uint8Array.from(atob(p.base64), c => c.charCodeAt(0)));
-  return new Blob(partes, { type: 'application/pdf' });
+  return new Blob(partes, { type: tipo });
 }
 
 // ─── as solicitações sem chat (11/11/2026) ──────────────────────────────────
@@ -179,4 +191,14 @@ export function partesDaSolicitacao(c: Pick<ac.ChamadoDoCliente, 'mensagens'>): 
 export function whatsappDaSolicitacao(numero: string | undefined, titulo: string): string {
   const link = linkDoWhatsapp(numero);
   return link ? link + '?text=' + encodeURIComponent('Olá! Sobre a solicitação "' + titulo + '":') : '';
+}
+
+/**
+ * O nome da pessoa como a gente escreve (12/11/2026: o Registro vem das guias do FGTS, em maiúsculas):
+ * "MARIA DA SILVA" → "Maria da Silva". As partículas (da, de, do, das, dos, e) ficam minúsculas.
+ */
+export function nomeDaPessoa(nome: string): string {
+  const miudas = new Set(['da', 'de', 'do', 'das', 'dos', 'e']);
+  return nome.trim().toLowerCase().split(/\s+/).filter(Boolean)
+    .map((p, i) => (i > 0 && miudas.has(p) ? p : p.charAt(0).toUpperCase() + p.slice(1))).join(' ');
 }

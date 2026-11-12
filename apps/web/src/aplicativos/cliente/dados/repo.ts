@@ -12,11 +12,11 @@ export function porToken(escolher: (token: string) => RepoAreaCliente): RepoArea
     assinar: (token, aoMudar) => escolher(token).assinar(token, aoMudar),
     enviar: (token, tipo, arquivos) => escolher(token).enviar(token, tipo, arquivos),
     abrirChamado: (token, dados) => escolher(token).abrirChamado(token, dados),
-    enviarFotoDoFuncionario: (token, id, foto) => escolher(token).enviarFotoDoFuncionario(token, id, foto),
     responderChamado: (token, id, texto) => escolher(token).responderChamado(token, id, texto),
     baixarGuia: (token, id) => escolher(token).baixarGuia(token, id),
     baixarDocumento: (token, id) => escolher(token).baixarDocumento(token, id),
     baixarComprovante: (token, id) => escolher(token).baixarComprovante(token, id),
+    baixarDocumentoDp: (token, id) => escolher(token).baixarDocumentoDp(token, id),
   };
 }
 

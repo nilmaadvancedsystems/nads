@@ -184,6 +184,39 @@ export function Segmentado<T extends string>({ valor, opcoes, onMudar, id }: {
   );
 }
 
+/**
+ * A escolha em blocos com ícone, em grupos com título (12/11/2026, as Ferramentas de documentos: "deixa essa seleção
+ * mais bonita" — eram nove abas numa barra só): cada opção é um bloco com o ícone num quadradinho e o nome embaixo; o
+ * escolhido tem a borda e o fundo suave da cor de destaque, que deslizam até o clicado (o indicador do Segmentado).
+ */
+export function BlocosDeEscolha<T extends string>({ valor, grupos, onMudar, rotulo }: {
+  valor: T;
+  grupos: { titulo: string; opcoes: { valor: T; rotulo: string; icone: NomeIcone; dica?: string }[] }[];
+  onMudar: (v: T) => void;
+  /** o nome do conjunto, para o leitor de tela */
+  rotulo?: string;
+}) {
+  const trilho = useIndicador<HTMLDivElement>('.bloco-escolha[aria-current="true"]', [valor, grupos.length], 'fundo');
+  return (
+    <div ref={trilho} className="blocos-escolha com-indicador" role="group" aria-label={rotulo}>
+      {grupos.map(g => (
+        <div key={g.titulo} className="blocos-escolha-grupo">
+          <span className="blocos-escolha-titulo">{g.titulo}</span>
+          <div className="blocos-escolha-opcoes">
+            {g.opcoes.map(o => (
+              <button key={o.valor} type="button" className="bloco-escolha" aria-current={o.valor === valor ? 'true' : 'false'} aria-pressed={o.valor === valor}
+                title={o.dica} onClick={() => onMudar(o.valor)}>
+                <span className="bloco-escolha-icone"><Icone nome={o.icone} /></span>
+                <span className="bloco-escolha-nome">{o.rotulo}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** Um número da faixa (.stat). */
 /** sub: a linha de baixo, pequena (a comparação com o período anterior, a Variação; 23/10/2026) */
 export function Stat({ rotulo, valor, cor, grande = true, sub }: { rotulo: string; valor: ReactNode; cor?: 'entrada' | 'saida'; grande?: boolean; sub?: ReactNode }) {

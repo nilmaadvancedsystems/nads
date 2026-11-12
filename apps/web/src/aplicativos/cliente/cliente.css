@@ -40,7 +40,7 @@
 .cli-app :is(input[type="text"],select,textarea):focus-visible{outline-offset:0;}
 
 /* ------------------------------ as peças do nads, com o acabamento desta versão ------------------------------ */
-.cli-app .card{margin:0;min-width:0;padding:24px;background:var(--cli-cartao);border:1px solid var(--cli-linha);border-radius:var(--cli-raio);box-shadow:var(--cli-sombra);}
+.cli-app .card{margin:0;min-width:0;padding:20px;background:var(--cli-cartao);border:1px solid var(--cli-linha);border-radius:var(--cli-raio);box-shadow:var(--cli-sombra);}
 .cli-app .card-head{margin:0 0 16px;padding:0;min-height:0;background:none;border:0;border-radius:0;align-items:flex-start;}
 .cli-app .card-head h3,.cli-app .card h3{font-size:16px;font-weight:600;letter-spacing:-.01em;line-height:1.35;margin:0;}
 .cli-app .card-head .hint{margin-top:2px;font-size:13px;}
@@ -286,6 +286,15 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
 .cli-app .cli-linha-txt{flex:1 1 200px;min-width:0;}
 .cli-app .cli-linha-txt b{font-weight:600;overflow-wrap:anywhere;}
 .cli-app .cli-linha-txt .hint{margin-top:2px;font-size:12.5px;}
+/* o Registro (12/11/2026): os documentos do DP em linha (o ícone, o nome e o Baixar), o interruptor de quem saiu e a linha
+   de quem saiu, mais apagada */
+.cli-app .cli-linha-doc{flex-wrap:nowrap;}
+.cli-app .cli-linha-doc .cli-linha-txt{flex:1 1 auto;}
+.cli-app .cli-quebra{display:block;overflow-wrap:anywhere;}
+.cli-app .cli-registro-ctl{display:inline-flex;flex-wrap:wrap;align-items:center;gap:8px 16px;}
+.cli-app .cli-interruptor{display:inline-flex;align-items:center;gap:8px;}
+.cli-app tr.cli-saiu td{color:var(--ink-muted);}
+@media (max-width:560px){.cli-app .cli-linha-doc{flex-wrap:wrap;}.cli-app .cli-linha-doc .btn{margin-left:46px;}}
 .cli-app .cli-linha-dir{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-left:auto;}
 .cli-app .cli-linha-valor{min-width:104px;text-align:right;font-size:15px;}
 .cli-app .cli-linha-acoes{display:flex;justify-content:flex-end;gap:6px;min-width:78px;}
@@ -471,7 +480,8 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
    coluna da direita desce, com os dois cartões lado a lado */
 @media (min-width:1024px) and (max-width:1279px){
   .cli-app .cli-duas.cli-guias,.cli-app .cli-duas.cli-iguais,.cli-app .cli-duas.cli-visao{grid-template-columns:minmax(0,1fr) !important;}
-  .cli-app .cli-guias > .cli-coluna:last-child,.cli-app .cli-iguais > .cli-coluna-direita,.cli-app .cli-visao > .cli-coluna:last-child{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;}
+  /* a Visão geral saiu daqui (12/11/2026): sem o atendimento, a coluna da direita só tem o Enviar, na largura toda */
+  .cli-app .cli-guias > .cli-coluna:last-child,.cli-app .cli-iguais > .cli-coluna-direita{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;}
 }
 @media (min-width:1024px){
   .cli-app .cli-numeros{grid-template-columns:repeat(4,minmax(0,1fr));}
@@ -540,7 +550,7 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
 .cli-app .cli-pendencia > .btn{flex:none;}
 
 /* o resumo do pagamento (ResumoDoPagamento): quanto, até quando e o já pago, numa faixa de fundo suave */
-.cli-app .cli-pagar{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px 24px;margin:0 0 8px;padding:14px 16px;border-radius:10px;background:var(--cli-fundo);}
+.cli-app .cli-pagar{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px 24px;margin:0 0 4px;padding:0 0 14px;border-bottom:1px solid var(--cli-fio);}
 .cli-app .cli-pagar > div{min-width:0;}
 .cli-app .cli-pagar dt{font-size:12.5px;color:var(--ink-muted);}
 .cli-app .cli-pagar-valor{margin-top:2px;font-size:22px;font-weight:700;line-height:1.2;letter-spacing:-.02em;font-variant-numeric:tabular-nums;white-space:nowrap;}
@@ -588,11 +598,37 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
   .cli-app .cli-visao > .cli-coluna{display:contents;}
   .cli-app .cli-visao .cli-v-guias{order:1;}
   .cli-app .cli-visao .cli-v-enviar{order:2;}
-  .cli-app .cli-visao .cli-v-atividade{order:3;}
-  .cli-app .cli-visao .cli-v-atendimento{order:4;}
 }
 
 
 /* Solicitações: o chamado que o escritório respondeu (esperando o cliente) no fundo verde bem suave, o mesmo do selo */
 .cli-app .cli-chamado-esperando > .cli-linha{background:color-mix(in srgb,var(--success-soft) 55%,transparent);}
 .cli-app .cli-lista > li.cli-chamado-esperando > .cli-linha:hover{background:var(--success-soft);}
+
+/* ---------- a passada do visual (12/11/2026: "aviso do topo, guias a pagar, enviar documento, cores e espaços") ----------
+   - o aviso do topo mais baixo: o ícone menor, o título menor e menos respiro;
+   - as guias numa faixa só: o resumo sem a caixa de fundo (o fio embaixo separa), o valor um pouco menor;
+   - o Enviar mais enxuto: os tipos em chips menores e a área de soltar mais baixa;
+   - menos espaço entre os cartões e dentro deles, títulos dos cartões menores, e o carmim só no que é ação (o "Ver todas"
+     e o chip escolhido em tinta, não em carmim). */
+.cli-app .cli-veredito-ico{width:40px;height:40px;}
+.cli-app .cli-veredito-ico svg{width:20px;height:20px;}
+.cli-app .cli-veredito .cli-sobre{margin-bottom:2px;font-size:11px;}
+.cli-app .cli-veredito .page-title{font-size:20px;line-height:1.25;}
+.cli-app .cli-veredito .page-desc{margin-top:2px;font-size:13.5px;}
+.cli-app .cli-pagar-valor{font-size:20px;}
+.cli-app .cli-v-enviar .chip-row{gap:6px;}
+.cli-app .cli-v-enviar .chip-f{min-height:30px;padding:4px 10px;font-size:12.5px;}
+.cli-app .cli-v-enviar .cli-soltar{padding:18px 12px;}
+.cli-app .cli-v-enviar .cli-soltar svg{margin-bottom:4px;}
+.cli-app .card-head{margin-bottom:12px;}
+.cli-app .card-head h3,.cli-app .card h3{font-size:15px;}
+.cli-app .card-head > .btn-ghost{color:var(--ink-muted);}
+.cli-app .card-head > .btn-ghost:hover{color:var(--ink);}
+.cli-app .chip-f.on{border-color:var(--ink-muted);background:var(--surface-3);color:var(--ink);}
+@media (min-width:768px){
+  .cli-app .cli-veredito{padding:18px 22px;}
+  .cli-app .cli-main{gap:16px;}
+  .cli-app .cli-duas{gap:16px;}
+  .cli-app .cli-coluna{gap:16px;}
+}

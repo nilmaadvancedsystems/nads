@@ -8,7 +8,6 @@
 // Os quatro números saíram (o veredito e o resumo do pagamento dizem o mesmo, cada um ao lado da ação); o card de avisos
 // virou o "O que precisamos de você". No celular a ordem é: veredito, guias, envio, atividade e atendimento.
 import { Icone, type NomeIcone } from '@nads/ui';
-import { CartaoDeAtendimento } from '../partes/CartaoDeAtendimento';
 import { CartaoDoVeredito, type ItemPendente } from '../partes/CartaoDoVeredito';
 import { LinhaDaAtividade } from '../partes/LinhaDaAtividade';
 import { LinhaDeGuia } from '../partes/LinhaDeGuia';
@@ -71,17 +70,6 @@ export function Inicio(props: DaCasca & { empresa: string; contato: AreaCliente[
             ) : <Vazio icone="checkCircle" titulo="Nada para pagar agora" texto="Quando o escritório gerar uma guia, ela aparece aqui." />}
           </section>
 
-          {vm.atividade.length > 0 && (
-            <section className="card cli-v-atividade">
-              <div className="card-head"><h3>Atividade recente</h3></div>
-              <ul className="cli-lista cli-atividades">
-                {vm.atividade.map(a => (
-                  <LinhaDaAtividade key={a.id} origem={a.origem} titulo={a.titulo} texto={a.texto} quando={a.quando}
-                    onAbrir={a.chamado ? () => vm.irPara('chamados', { chamado: a.chamado }) : undefined} />
-                ))}
-              </ul>
-            </section>
-          )}
         </div>
 
         <div className="cli-coluna">
@@ -91,9 +79,22 @@ export function Inicio(props: DaCasca & { empresa: string; contato: AreaCliente[
             </div>
             <Enviar {...props} />
           </section>
-          <div className="cli-v-atendimento"><CartaoDeAtendimento contato={props.contato} onWhatsapp={props.onWhatsapp} /></div>
         </div>
       </div>
+
+      {/* a atividade recente na largura toda (12/11/2026: "estica essa aba de atividade recente"); o cartão do atendimento
+          saiu ("remove esse seu atendimento"): o contato fica em Fale com o escritório */}
+      {vm.atividade.length > 0 && (
+        <section className="card cli-v-atividade">
+          <div className="card-head"><h3>Atividade recente</h3></div>
+          <ul className="cli-lista cli-atividades">
+            {vm.atividade.map(a => (
+              <LinhaDaAtividade key={a.id} origem={a.origem} titulo={a.titulo} texto={a.texto} quando={a.quando}
+                onAbrir={a.chamado ? () => vm.irPara('chamados', { chamado: a.chamado }) : undefined} />
+            ))}
+          </ul>
+        </section>
+      )}
     </>
   );
 }
