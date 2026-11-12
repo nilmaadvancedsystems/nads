@@ -9,7 +9,7 @@ import { PainelDeEntregas } from '../telas/entregas/PainelDeEntregas';
 import { Solicitacoes } from '../telas/entregas/Solicitacoes';
 import { RotaDeEntregas } from '../telas/entregas/RotaDeEntregas';
 import { CascaTarefas } from './CascaTarefas';
-import { aplicacao, aplicacoesDe, BASE, caminhoDaPagina, type IdAplicacao } from './navegacao';
+import { aplicacao, aplicacoesDe, BASE, caminhoDaPagina, carteiraLiberada, type IdAplicacao } from './navegacao';
 import { useOperador, type Operador } from './operador';
 import type { IdPaginaAdmin } from '../../admin/casca/navegacao';
 
@@ -58,6 +58,7 @@ const ImportarExtrato = pedaco(() => import('../telas/financeiro/ImportarExtrato
 const ContasAPagar = pedaco(() => import('../telas/financeiro/ContasAPagar'), 'ContasAPagar');
 const Boletos = pedaco(() => import('../telas/financeiro/Boletos'), 'Boletos');
 const Ferramentas = pedaco(() => import('../telas/ferramentas/Ferramentas'), 'Ferramentas');
+const Carteira = pedaco(() => import('../telas/carteira/Carteira'), 'Carteira');
 
 function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
   switch (app) {
@@ -78,6 +79,8 @@ function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
     // as Ferramentas de documentos (30/10/2026): PDF e planilha, no navegador
     case 'ferramentas': return <Ferramentas />;
     case 'contato': return pagina === 'historico' ? <HistoricoDoRobo /> : <CaixaDoRobo />;
+    // a Carteira (12/11/2026): por enquanto só o Vitor; os outros, a tela "em desenvolvimento"
+    case 'carteira': return <Carteira pagina={pagina} />;
     default: return <EmDesenvolvimento nome={aplicacao(app)?.nome || app} />;
   }
 }
@@ -102,7 +105,7 @@ export function AplicacaoAberta() {
   if (!a.paginas.some(p => p.id === pagina && !p.emDesenvolvimento)) return <Navigate to={caminhoDaPagina(a.id, (a.paginas.find(p => !p.emDesenvolvimento) || a.paginas[0]).id)} replace />;
   return (
     <TopoProvider>
-      <CascaTarefas app={a.id} pagina={pagina} telaInteira={a.id === 'drive'} semLateral={a.id === 'inicio' || a.id === 'minhas-empresas' || a.id === 'contato' || a.id === 'ferramentas'} larga>
+      <CascaTarefas app={a.id} pagina={pagina} telaInteira={a.id === 'drive'} semLateral={a.id === 'inicio' || a.id === 'minhas-empresas' || a.id === 'contato' || a.id === 'ferramentas' || (a.id === 'carteira' && !carteiraLiberada(op))} larga>
         <NaEspera><Tela app={a.id} pagina={pagina} /></NaEspera>
       </CascaTarefas>
     </TopoProvider>

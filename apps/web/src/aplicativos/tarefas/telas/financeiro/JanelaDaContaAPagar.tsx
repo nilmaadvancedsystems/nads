@@ -46,6 +46,17 @@ function TopicoConta({ vm }: { vm: VmJanelaDaContaAPagar }) {
             {vm.contas.map(c => <option key={c.id} value={c.id}>{c.codigo} · {c.descricao}</option>)}
           </select>
         </Linha>
+        <Linha rotulo="Funcionário" dica="A conta aparece na Carteira da pessoa (o valor, se já foi paga e o comprovante)">
+          <select className="pessoal-select cp-campo" value={vm.funcionarioUid} disabled={travada} onChange={e => vm.setFuncionarioUid(e.target.value)} aria-label="Funcionário">
+            <option value="">Nenhum</option>
+            {vm.pessoas.map(u => <option key={u.uid} value={u.uid}>{u.nome}</option>)}
+          </select>
+          {vm.funcionarioUid && (
+            <select className="pessoal-select" value={vm.tipoDoVinculo} disabled={travada} onChange={e => vm.setTipoDoVinculo(e.target.value as financeiro.TipoDoVinculo)} aria-label="O que a conta paga ao funcionário">
+              {financeiro.TIPOS_DO_VINCULO.map(t => <option key={t.valor} value={t.valor}>{t.rotulo}</option>)}
+            </select>
+          )}
+        </Linha>
         <Linha rotulo="Documento"><input className="usuario-campo cp-campo" type="text" value={vm.documento} disabled={travada} onChange={e => vm.setDocumento(e.target.value)} placeholder="Nº da nota ou do boleto" aria-label="Documento" /></Linha>
         <Linha rotulo="Emissão">{travada ? <span>{vm.emissao || '—'}</span> : <CampoData valor={vm.emissao} onMudar={vm.setEmissao} rotulo="Data de emissão" />}</Linha>
         <Linha rotulo="Vencimento">{travada ? <span>{vm.vencimento}</span> : <CampoData valor={vm.vencimento} onMudar={vm.setVencimento} rotulo="Vencimento" />}</Linha>
