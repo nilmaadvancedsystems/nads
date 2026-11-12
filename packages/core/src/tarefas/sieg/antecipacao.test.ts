@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { arred, calcularAntecipacao, cfopDeEntrada, contaDaAntecipacao, filtrarAntecipacao, htmlDaAntecipacao, linhasDaAntecipacao, resumoDaAntecipacao, totaisDaAntecipacao, type LinhaDaAntecipacao, type NotaDoSieg, type NotasSieg } from '.';
+import { arred, calcularAntecipacao, cfopDeEntrada, contaDaAntecipacao, filtrarAntecipacao, htmlDaAntecipacao, linhasDaAntecipacao, linhasQueCobram, resumoDaAntecipacao, totaisDaAntecipacao, type LinhaDaAntecipacao, type NotaDoSieg, type NotasSieg } from '.';
 
 // a aba CÁLCULO da planilha "Antecipação ICMS-ES 585.xlsx" (Heverton, 22/10/2026): NF-e, data, CST, valor da operação (E),
 // base ICMS NF (F), alíquota interestadual (G), ICMS destacado (H), e o que a planilha calculou: ICMS interno (K) e antecipação (L)
@@ -142,6 +142,9 @@ describe('as linhas a partir dos XMLs do SIEG', () => {
     const t = totaisDaAntecipacao(calcularAntecipacao(PLANILHA.slice(0, 2).map(linhaDa), 17, marcas));
     expect([t.antecipacao, t.aRecolher]).toEqual([615.62, 467.84]);
     expect(linhas[1].situacao).toBe('a-conferir');
+    // o relatório do cliente: só as que entram no a recolher
+    const comMarca = calcularAntecipacao(PLANILHA.slice(0, 2).map(linhaDa), 17, marcas);
+    expect(linhasQueCobram(comMarca).map(l => l.id)).toEqual(['L0']);
   });
 });
 

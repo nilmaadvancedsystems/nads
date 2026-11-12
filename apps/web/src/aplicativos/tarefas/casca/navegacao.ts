@@ -153,6 +153,9 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'comissoes', rotulo: 'Comissões', icone: 'dinheiro', titulo: 'Minhas comissões' },
     { id: 'financas', rotulo: 'Finanças pessoais', icone: 'cartao', titulo: 'Finanças pessoais' },
     { id: 'documentos', rotulo: 'Holerites e pagamentos', icone: 'recibo', titulo: 'Holerites e pagamentos' },
+    // os Insumos (Vitor, 12/11/2026: "um menu de Insumos, onde a pessoa registra impressões, pastas, envelopes e caixas
+    // criadas"): para toda a equipe, mesmo quem ainda não tem a Carteira
+    { id: 'insumos', rotulo: 'Insumos', icone: 'impressora', titulo: 'Insumos' },
   ] },
   // as Configurações (Vitor, 28/10/2026: "Cadastro, esse admin, colocar tudo em um botão Configurações; todos esses botões
   // dos menus nessa tela"): o Cadastro (Empresas e Equipe; o endereço continua /tarefas/cadastro/...) e, só para o admin,
@@ -246,7 +249,7 @@ export function aplicacoesDe(op: Operador): Aplicacao[] {
     .map(a => (op.admin || !a.paginas.some(p => p.soAdmin) ? a : { ...a, paginas: a.paginas.filter(p => !p.soAdmin) }))
     // a Carteira: quem ainda não tem, só a página de abertura (a tela "em desenvolvimento"); e, no Financeiro, as páginas da
     // Carteira (Comissões da equipe e Enviar holerites) só para quem já tem a Carteira, como antes
-    .map(a => (a.id === 'carteira' && !carteiraLiberada(op) ? { ...a, paginas: a.paginas.slice(0, 1) }
+    .map(a => (a.id === 'carteira' && !carteiraLiberada(op) ? { ...a, paginas: a.paginas.filter(p => p.id === 'painel' || p.id === 'insumos') }
       : a.id === 'financeiro' && !carteiraLiberada(op) ? { ...a, paginas: a.paginas.filter(p => !PAGINAS_DA_CARTEIRA_NO_FINANCEIRO.includes(p.id)) } : a))
     // no Entregas, quem não é Diretor só vê o Painel (06/11/2026: "não pode realizar nenhuma entrega"); os links da Nova
     // entrega, da Rota e das Solicitações caem no Painel

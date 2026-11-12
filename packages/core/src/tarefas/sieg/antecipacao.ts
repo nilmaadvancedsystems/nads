@@ -192,6 +192,11 @@ export function totaisDaAntecipacao(linhas: readonly LinhaCalculada[]): TotaisDa
   };
 }
 
+/** As linhas que entram no "a recolher" (sem Dispensado e Não se aplica): as do relatório que vai ao cliente. */
+export function linhasQueCobram(linhas: readonly LinhaCalculada[]): LinhaCalculada[] {
+  return linhas.filter(l => !FORA_DO_RECOLHER.includes(l.situacao));
+}
+
 /** O RESUMO: os totais, a contagem por situação e os totais de cada mês (da data da nota). */
 export interface ResumoDaAntecipacao extends TotaisDaAntecipacao {
   porSituacao: Record<SituacaoDaAntecipacao, number>;

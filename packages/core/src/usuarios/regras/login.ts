@@ -29,10 +29,12 @@ export function iniciais(nome: string): string {
   return (a + b).toUpperCase();
 }
 
-/** Mensagem do erro de login, igual à do Entregas (entregas.html ~L12776-12804). */
-export function mensagemDeErroDeLogin(codigo: string): string {
+/** Mensagem do erro de login, igual à do Entregas (entregas.html ~L12776-12804). Entrou pelo nome e não deu: a conta
+ *  pode ter o e-mail trocado (12/11/2026), e aí o nome não leva mais a ela; a mensagem diz para digitar o e-mail. */
+export function mensagemDeErroDeLogin(codigo: string, digitado = ''): string {
   if (codigo === 'auth/too-many-requests') return 'Muitas tentativas seguidas. Espere um pouco e tente de novo.';
   if (codigo === 'auth/network-request-failed') return 'A conexão caiu no meio da entrada. Tente de novo.';
+  if (digitado.trim() && digitado.indexOf('@') === -1) return 'Nome ou senha inválidos. Se o seu e-mail de entrada foi trocado, digite o e-mail no lugar do nome.';
   return 'Nome ou senha inválidos.';
 }
 
