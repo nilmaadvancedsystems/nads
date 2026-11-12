@@ -127,7 +127,7 @@ export function criarSessaoEntregas(): SessaoEntregas {
       try {
         await signInWithEmailAndPassword(auth, usuarios.emailDoLogin(login), senha);
       } catch (e) {
-        throw new Error(usuarios.mensagemDeErroDeLogin(String((e as { code?: string })?.code || '')), { cause: e });
+        throw new Error(usuarios.mensagemDeErroDeLogin(String((e as { code?: string })?.code || ''), login), { cause: e });
       }
     },
     async sair() { await signOut(auth); await apagarCacheDoEntregas(db); },
