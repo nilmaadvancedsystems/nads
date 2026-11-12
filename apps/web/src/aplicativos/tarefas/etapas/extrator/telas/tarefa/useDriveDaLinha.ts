@@ -142,7 +142,7 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
   async function trazer(linha: Linha, arquivos: creditor.ArquivoAchado[], mes?: string): Promise<boolean | 'vazio'> {
     for (const [i, a] of arquivos.entries()) {
       const conteudo = await drive.baixar(a.id, a.nome);
-      const ok = await vm.importarDoDrive(linha.id, { id: a.id, nome: a.nome }, conteudo, mes, i < arquivos.length - 1);
+      const ok = await vm.importarDoDrive(linha.id, { id: a.id, nome: a.nome }, conteudo, mes, i < arquivos.length - 1, linha.marca);
       if (ok !== 'vazio') return ok;
     }
     return 'vazio';
@@ -151,12 +151,13 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
    * Mais de um arquivo no mês: baixa e passa cada um pela pré-verificação; se só um for o extrato da conta, é ele (Vitor,
    * 10/11/2026: a fatura e a aplicação na pasta do banco empatavam com o extrato). Sobrando dois ou mais, a pessoa escolhe.
    */
-  async function soOExtrato(r: creditor.BuscaNoDrive): Promise<creditor.BuscaNoDrive> {
+  async function soOExtrato(r: creditor.BuscaNoDrive, marca?: string): Promise<creditor.BuscaNoDrive> {
     if (r.situacao !== 'varios') return r;
     const extratos: creditor.ArquivoAchado[] = [];
     for (const c of r.candidatos.filter(a => a.daCompetencia).slice(0, 6)) {
       const lido = await x.lerArquivo(c.nome, new Uint8Array(await drive.baixar(c.id, c.nome)), 'banco');
-      if (!lido.faturaDeCartao && !lido.naoEExtrato) extratos.push(c);
+      // (e o de outro banco, pelo cabeçalho: 12/11/2026)
+      if (!lido.faturaDeCartao && !lido.naoEExtrato && !x.deOutroBanco(lido.bancoNoTexto, marca)) extratos.push(c);
     }
     return extratos.length === 1 ? { ...r, situacao: 'achou', arquivo: extratos[0] } : r;
   }
@@ -199,7 +200,7 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
     setBuscando(linha.id);
     try {
       const pasta = await pastaComOsMeses(linha, [vm.competencia]);
-      const r = await soOExtrato(x.acharExtratoNoDrive(pasta?.itens || [], pasta?.raiz || null, vm.competencia, { nome: linha.nome, marca: linha.marca, conta: linha.numeroConta }));
+      const r = await soOExtrato(x.acharExtratoNoDrive(pasta?.itens || [], pasta?.raiz || null, vm.competencia, { nome: linha.nome, marca: linha.marca, conta: linha.numeroConta }), linha.marca);
       if (r.situacao === 'achou' && r.arquivo) await usar(linha, r.arquivo, doMes(r).slice(1));
       else setEscolha({ linha, texto: x.mensagemDaBuscaDoExtrato(r, vm.competencia.slice(5) + '/' + vm.competencia.slice(0, 4)), candidatos: r.candidatos });
     } catch (e) {
@@ -237,7 +238,7 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
           return;
         }
         setMesAtual(mes);
-        const r = await soOExtrato(x.acharExtratoNoDrive(pasta?.itens || [], pasta?.raiz || null, mes, { nome: linha.nome, marca: linha.marca, conta: linha.numeroConta }));
+        const r = await soOExtrato(x.acharExtratoNoDrive(pasta?.itens || [], pasta?.raiz || null, mes, { nome: linha.nome, marca: linha.marca, conta: linha.numeroConta }), linha.marca);
         const rotulo = mes.slice(5) + '/' + mes.slice(0, 4);
         if (r.situacao !== 'achou' || !r.arquivo) { faltam.push(rotulo); passou(rotulo, false, seguinte); continue; }
         // só conta como trazido o que entrou (Vitor, 19/10/2026: "fala que traz, mas não traz nada")
