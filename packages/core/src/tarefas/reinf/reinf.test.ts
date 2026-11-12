@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { alternarRetificada, alternarSerieReinf, desfazerReinf, EMPRESAS_REINF, empresasDaReinf, estadosIniciaisReinf, resumoReinf, seriesDaReinf, situacaoReinf, temReinfNoFiscal, transmitirReinf } from './reinf';
+import { alternarRetificada, alternarSerieReinf, rotuloDasSeries, transmitirSeriesReinf, desfazerReinf, EMPRESAS_REINF, empresasDaReinf, estadosIniciaisReinf, resumoReinf, seriesDaReinf, situacaoReinf, temReinfNoFiscal, transmitirReinf } from './reinf';
 import { EMPRESAS } from '../../empresas/lista';
 
 const agora = new Date('2026-10-05T12:00:00Z');
@@ -68,5 +68,18 @@ describe('as séries da transmissão (2000, 4000, MIT)', () => {
   it('desfazer limpa as séries da competência', () => {
     const a = alternarSerieReinf(vazio, '2026-10', '2000', 'Ana', quando);
     expect(seriesDaReinf(desfazerReinf(a, '2026-10'), '2026-10')).toEqual([]);
+  });
+});
+
+describe('as caixinhas do Transmitir', () => {
+  const quando = new Date('2026-11-12T10:00:00Z');
+  it('transmite com uma ou mais séries, na ordem do Alterdata', () => {
+    const e = transmitirSeriesReinf({ codigo: 1, retificadas: [] }, '2026-10', ['mit', '2000'], 'Ana', quando);
+    expect(situacaoReinf(e, '2026-10')).toBe('transmitida');
+    expect(rotuloDasSeries(seriesDaReinf(e, '2026-10'))).toBe('2000 · MIT');
+  });
+  it('sem nenhuma marcada, nada muda', () => {
+    const e = { codigo: 1, retificadas: [] };
+    expect(transmitirSeriesReinf(e, '2026-10', [], 'Ana', quando)).toBe(e);
   });
 });

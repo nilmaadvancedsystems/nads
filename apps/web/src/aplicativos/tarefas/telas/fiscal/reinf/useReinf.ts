@@ -63,6 +63,6 @@ export function useReinf() {
     setPorPagina: (n: number) => { escolherPorPagina(n); setPagina(0); },
     pagina: { atual, paginas,
       anterior: () => setPagina(Math.max(0, atual - 1)), proxima: () => setPagina(Math.min(paginas - 1, atual + 1)) },
-    transmitir: acoes.transmitir, desfazer: acoes.desfazer, retificar: acoes.retificar, alternarSerie: acoes.alternarSerie,
+    transmitir: acoes.transmitir, desfazer: acoes.desfazer, retificar: acoes.retificar, alternarSerie: acoes.alternarSerie, transmitirSeries: acoes.transmitirSeries,
   };
 }
