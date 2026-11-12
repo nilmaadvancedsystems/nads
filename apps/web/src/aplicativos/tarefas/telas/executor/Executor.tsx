@@ -23,6 +23,8 @@ import { JanelaInterromper } from './partes/JanelaInterromper';
 import { useChecklistDaFolha } from './useChecklistDaFolha';
 import { FaixaDelegado } from './etapas/delegacao/FaixaDelegado';
 import { JanelaDelegar } from './etapas/delegacao/JanelaDelegar';
+import { JanelaEmConjunto } from './etapas/delegacao/JanelaEmConjunto';
+import { useDelegarEmConjunto } from './etapas/delegacao/useDelegarEmConjunto';
 import { useDelegacao } from './etapas/delegacao/useDelegacaoDaEtapa';
 import { useExecutor } from './useExecutor';
 import { ListaDoQueFalta, type ItemQueFalta } from './partes/OQueFalta';
@@ -55,6 +57,8 @@ export function Executor() {
   // a competência da rota pode ser um período ('2026-06..2026-08'): a Etapa com vários meses
   const { empresa: rota = '', competencia: periodo = '' } = useParams();
   const vm = useExecutor(rota, periodo);
+  // a tarefa em conjunto (Vitor, 12/11/2026): quem delega marca as etapas e escolhe quem faz cada uma
+  const conjunto = useDelegarEmConjunto({ codigo: vm.empresa?.codigo ?? null, nome: vm.empresa?.nome || '', meses: vm.meses, etapas: vm.etapas, emConjunto: vm.emConjunto });
   const casca = useCascaTarefas('minhas-empresas', 'empresas');
   // os Feedbacks do pé da gaveta, também dentro da Tarefa (Vitor, 11/11/2026)
   const [feedbacks, setFeedbacks] = useState(false);
@@ -170,7 +174,9 @@ export function Executor() {
   const botoesDaEtapa = vm.etapa && telaPronta && !vm.interrompendo && saida.state !== 'blocked' && !vm.revendo && !vm.delegada;
   const liberada = !!botoesDaEtapa && !faltam && requisitosConhecidos && !vm.conferindo;
   // a etapa delegada: só ela na lateral, o resto da empresa fica bloqueado
-  const visiveis = vm.delegada ? vm.etapas.filter(e => e.atual) : vm.etapas.filter(e => !e.oculta && !(semCheque && e.id === 'cheque-especial'));
+  // a tarefa em conjunto: quem recebeu vê só as etapas dele (Vitor, 12/11/2026)
+  const visiveis = vm.delegada ? vm.etapas.filter(e => e.atual)
+    : vm.etapas.filter(e => !e.oculta && !(semCheque && e.id === 'cheque-especial') && (!vm.soAsMinhas || vm.ehMinha(e.id)));
   const daVez = vm.etapas.find(x => x.daVez);
   const nDaVez = daVez?.n ?? 0;
   // a que falta no grupo vem antes do grupo seguinte (com as etapas do grupo livres, ela pode estar antes da da vez)
@@ -183,12 +189,13 @@ export function Executor() {
     vm.abrirEtapa(id);
   };
   // a lista do grupo da vez e, se a próxima é de outro grupo, ela embaixo (com o nome do grupo dela)
-  const checklist = visiveis.filter(e => !vm.etapa || e.secao === vm.etapa.secao || e.id === proxima?.id).map(e => ({
+  // (na tarefa em conjunto, as da pessoa de todos os grupos; para os outros, com quem está a etapa delegada)
+  const checklist = visiveis.filter(e => vm.soAsMinhas || !vm.etapa || e.secao === vm.etapa.secao || e.id === proxima?.id).map(e => ({
     // em lote é tudo de uma vez (Vitor, 02/10/2026: "não fica 8/9, são os 9"): só o nome da etapa, sem a contagem de meses
-    id: e.id, rotulo: e.nome, icone: 'check' as const, grupo: e.grupo, titulo: e.secao, ativa: e.atual,
+    id: e.id, rotulo: e.nome + (!vm.soAsMinhas && vm.comQuem(e.id) ? ' · ' + vm.comQuem(e.id).split(' ')[0] : ''), icone: 'check' as const, grupo: e.grupo, titulo: e.secao, ativa: e.atual,
     caixa: e.situacao === 'feita' && e.laranja ? 'laranja' as const : e.situacao === 'feita' || (e.daVez && liberada) ? 'marcada' as const : e.situacao === 'interrompida' ? 'parada' as const : 'vazia' as const,
     // as da frente que ainda não foram feitas: mais apagadas; a próxima, liberada, revelada
-    apagada: !vm.delegada && !!vm.etapa && e.n > nDaVez && e.situacao !== 'feita' && e.id !== proxima?.id && !vm.livre(e.id),
+    apagada: !vm.delegada && !vm.soAsMinhas && !!vm.etapa && e.n > nDaVez && e.situacao !== 'feita' && e.id !== proxima?.id && !vm.livre(e.id),
   }));
 
   // os grupos da rotina num menu só (como o "+ ▾" do GitHub): o ícone do grupo da vez e, aberto, todos (os da frente travados)
@@ -216,7 +223,13 @@ export function Executor() {
           : <PeriodoDaTarefa nome={vm.empresa.nome} codigo={vm.empresa.codigo} meses={vm.meses.length ? vm.meses : [vm.competencia]} />
         )}
         {/* um grupo só (a rotina do LCDPR, 16/10/2026): sem o menu dos grupos */}
-        {vm.grupos.length > 1 && !vm.delegada && (
+        {/* a tarefa em conjunto: quem não recebeu nada na empresa delega as etapas (Vitor, 12/11/2026) */}
+        {vm.departamento === 'contabil' && !vm.delegada && !vm.soAsMinhas && !vm.dev && !vm.carregando && (
+          <button type="button" className="gh-topo-btn" onClick={conjunto.abrir} title="Tarefa em conjunto: delegar etapas" aria-label="Tarefa em conjunto">
+            <Icone nome="aviao" />
+          </button>
+        )}
+        {vm.grupos.length > 1 && !vm.delegada && !vm.soAsMinhas && (
           <MenuSuspenso rotulo="" icone={grupoDaVez ? ICONE_DO_GRUPO[grupoDaVez.nome] || 'list' : 'checkCircle'} className="gh-topo-btn gh-topo-menu"
             dica={grupoDaVez ? grupoDaVez.nome + ' · ' + grupoDaVez.feitas + '/' + grupoDaVez.total : 'Grupos da rotina'} direita largura={300} conteudo={fechar => <MenuDaRotina grupos={itensDosGrupos} emLote={emLote} fechar={fechar} />} />
         )}
@@ -315,7 +328,17 @@ export function Executor() {
       onEmpresa={vm.abrirEmpresa} aplicativos={casca.aplicacoes} onAplicativo={casca.onAplicacao}
       peDaGaveta={peDaGaveta(casca, () => setFeedbacks(true))}>
       {feedbacks && <JanelaDosFeedbacks fechar={() => setFeedbacks(false)} />}
-      {vm.carregando ? null : !vm.etapa ? (
+      {conjunto.aberta && <JanelaEmConjunto vm={conjunto} />}
+      {vm.carregando ? null : vm.minhasFeitas ? (
+        <div className="executor-fim" ref={fim}>
+          <Icone nome="checkCircle" />
+          <h2>Suas etapas em {vm.rotuloCompetencia} estão feitas</h2>
+          <p className="hint">As outras etapas desta empresa estão com quem delegou. Para revisar, abra uma das suas ao lado.</p>
+          <div className="executor-fim-botoes">
+            <button type="button" className="btn btn-primary" onClick={vm.sair}>Voltar às empresas</button>
+          </div>
+        </div>
+      ) : !vm.etapa ? (
         <div className="executor-fim" ref={fim}>
           <span className="executor-fim-onda" aria-hidden="true" />
           <Icone nome="checkCircle" />

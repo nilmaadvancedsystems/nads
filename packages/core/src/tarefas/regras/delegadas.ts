@@ -32,7 +32,8 @@ export interface ContaDelegada { codigo: string; nome: string }
  * como feitas. Quem recebe abre só essa etapa; quem pediu vê as feitas ofuscadas.
  */
 export interface EtapaDelegada {
-  etapa: EtapaQueDelega;
+  /** Clientes, Fornecedores ou a Folha; na tarefa em conjunto, o id de qualquer etapa da rotina */
+  etapa: EtapaQueDelega | (string & {});
   /** o endereço da empresa e o período, como na rota do executor */
   rota: string; periodo: string;
   todas: boolean;
@@ -40,6 +41,11 @@ export interface EtapaDelegada {
   contas: ContaDelegada[];
   /** o código das contas já feitas */
   feitas: string[];
+  /**
+   * a tarefa em conjunto (Vitor, 12/11/2026: "mais de uma pessoa delegada, aí você coloca todas as boxes, quando o usuário
+   * entrar na empresa, vai ter apenas os processos que ele vai fazer"): a etapa inteira, que a pessoa faz e conclui na rotina
+   */
+  conjunto?: true;
 }
 
 export interface TarefaDelegada {
@@ -608,6 +614,20 @@ export function nova(r: Rascunho, o: { id: string; numero: number; por: Pessoa; 
   };
 }
 
+/**
+ * As tarefas em conjunto em aberto desta empresa e período (a rota e o período do executor): a canceladas não entram; as
+ * concluídas, sim (a etapa continua da pessoa, para ela rever).
+ */
+export function tarefasEmConjunto<T extends Pick<TarefaDelegada, 'status' | 'etapaDelegada'>>(lista: readonly T[], rota: string, periodo: string): T[] {
+  return lista.filter(x => !!x.etapaDelegada?.conjunto && x.etapaDelegada.rota === rota && x.etapaDelegada.periodo === periodo && x.status !== 'cancelada');
+}
+
+/** As etapas que estão com a pessoa na tarefa em conjunto (vazio: ela não recebeu nenhuma e vê a empresa inteira). */
+export function etapasDaPessoaEmConjunto(lista: readonly Pick<TarefaDelegada, 'status' | 'etapaDelegada' | 'responsavel'>[], rota: string, periodo: string, uid: string): string[] {
+  if (!uid) return [];
+  return [...new Set(tarefasEmConjunto(lista, rota, periodo).filter(x => x.responsavel.uid === uid).map(x => x.etapaDelegada!.etapa))];
+}
+
 /** A conta está no que foi delegado? */
 export const contaNaDelegacao = (e: EtapaDelegada, codigo: string): boolean => e.todas || e.contas.some(c => c.codigo === codigo);
 
@@ -715,8 +735,9 @@ export function lerTarefa(id: string, x: Record<string, unknown>): TarefaDelegad
   const anexos = Array.isArray(x.anexos) ? x.anexos.map(obj).filter((a): a is Record<string, unknown> => !!a) : [];
   const ed = obj(x.etapaDelegada);
   const lerContas = (v: unknown): ContaDelegada[] => (Array.isArray(v) ? v.map(obj).filter((c): c is Record<string, unknown> => !!c).map(c => ({ codigo: texto(c.codigo), nome: texto(c.nome) })) : []);
-  const etapaDelegada: EtapaDelegada | null = ed && (ed.etapa === 'clientes' || ed.etapa === 'fornecedores' || ed.etapa === 'dp')
-    ? { etapa: ed.etapa, rota: texto(ed.rota), periodo: texto(ed.periodo), todas: ed.todas === true, contas: lerContas(ed.contas), feitas: Array.isArray(ed.feitas) ? ed.feitas.map(texto) : [] }
+  const conjunto = ed?.conjunto === true;
+  const etapaDelegada: EtapaDelegada | null = ed && (ed.etapa === 'clientes' || ed.etapa === 'fornecedores' || ed.etapa === 'dp' || (conjunto && typeof ed.etapa === 'string' && !!ed.etapa))
+    ? { etapa: ed.etapa as string, rota: texto(ed.rota), periodo: texto(ed.periodo), todas: ed.todas === true, contas: lerContas(ed.contas), feitas: Array.isArray(ed.feitas) ? ed.feitas.map(texto) : [], ...(conjunto ? { conjunto: true as const } : {}) }
     : null;
   return {
     id, numero: Number(x.numero) || 0, titulo: texto(x.titulo), descricao: texto(x.descricao),

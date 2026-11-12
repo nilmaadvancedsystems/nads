@@ -457,3 +457,25 @@ describe('o expediente: pausa sozinha no almoço e à noite (12/11/2026)', () =>
     expect(podeMudar(t, CLARA.uid)).toBe(true);
   });
 });
+
+describe('a tarefa em conjunto (12/11/2026)', () => {
+  const em = (etapa: string, responsavel = NILMA, status: Status = 'pendente', p: Partial<d.EtapaDelegada> = {}) =>
+    tarefa({ responsavel, status, etapaDelegada: { etapa, rota: '10-empresa', periodo: '2026-10', todas: true, contas: [], feitas: [], conjunto: true, ...p } });
+  it('a pessoa vê só as etapas que recebeu nesta empresa e período', () => {
+    const lista = [em('clientes'), em('caixa'), em('bancos', CLARA), em('caixa', NILMA, 'cancelada', { etapa: 'estoque' }), em('fornecedores', NILMA, 'pendente', { rota: '11-outra' })];
+    expect(d.etapasDaPessoaEmConjunto(lista, '10-empresa', '2026-10', NILMA.uid)).toEqual(['clientes', 'caixa']);
+    expect(d.etapasDaPessoaEmConjunto(lista, '10-empresa', '2026-10', CLARA.uid)).toEqual(['bancos']);
+    expect(d.etapasDaPessoaEmConjunto(lista, '10-empresa', '2026-09', NILMA.uid)).toEqual([]);
+    expect(d.etapasDaPessoaEmConjunto(lista, '10-empresa', '2026-10', '')).toEqual([]);
+  });
+  it('a delegação de antes (só a etapa, pela tarefa) não é em conjunto', () => {
+    const antiga = tarefa({ etapaDelegada: { etapa: 'clientes', rota: '10-empresa', periodo: '2026-10', todas: true, contas: [], feitas: [] } });
+    expect(d.tarefasEmConjunto([antiga], '10-empresa', '2026-10')).toEqual([]);
+  });
+  it('lê do banco a etapa de qualquer id só na tarefa em conjunto', () => {
+    const doc = (etapaDelegada: object) => ({ ...tarefa(), etapaDelegada });
+    expect(d.lerTarefa('t', doc({ etapa: 'caixa', rota: 'r', periodo: 'p', todas: true, contas: [], feitas: [], conjunto: true }))?.etapaDelegada).toEqual({ etapa: 'caixa', rota: 'r', periodo: 'p', todas: true, contas: [], feitas: [], conjunto: true });
+    expect(d.lerTarefa('t', doc({ etapa: 'caixa', rota: 'r', periodo: 'p', todas: true, contas: [], feitas: [] }))?.etapaDelegada).toBeUndefined();
+    expect(d.lerTarefa('t', doc({ etapa: 'clientes', rota: 'r', periodo: 'p', todas: true, contas: [], feitas: [] }))?.etapaDelegada?.conjunto).toBeUndefined();
+  });
+});

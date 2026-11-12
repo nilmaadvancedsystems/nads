@@ -18,6 +18,16 @@ const TODOS: Record<t.delegadas.EtapaQueDelega, string> = { clientes: 'Todos os 
 /** o item da folha tem código de texto (o id): na lista vai só o nome */
 const nomeDaConta = (c: t.delegadas.ContaDelegada) => (/^\d/.test(c.codigo) ? c.codigo + ' ' + c.nome : c.nome);
 
+/** Quem pode receber a etapa: só quem é do Contábil (a etapa é do Contábil), menos quem delega; as contas reservadas, só para o Diretor e o admin. */
+export function useEquipeQueRecebe(uid: string) {
+  const acesso = useAcesso();
+  const operador = useOperador().operador;
+  const docs = acesso.equipe().docs;
+  return acesso.equipe().lista
+    .filter(u => u.ativo && u.uid !== uid && (u.departamento === 'contabil' || u.papeis.includes('contabil')) && (ehDiretor(operador) || !usuarios.ehContaReservada(u.email)))
+    .map(u => ({ uid: u.uid, nome: u.nome, foto: String(docs[u.uid]?.fotoPerfil || '') || null, iniciais: usuarios.iniciais(u.nome) }));
+}
+
 /** A empresa e os meses da etapa aberta (as telas das etapas). */
 export function useDelegacaoDaEtapa(etapa: t.delegadas.EtapaQueDelega, contas: readonly t.delegadas.ContaDelegada[]) {
   return useDelegacao(etapa, contas, useEtapaAberta());
@@ -28,12 +38,10 @@ export function useDelegacao(etapa: t.delegadas.EtapaQueDelega, contas: readonly
   const { empresa: rota = '', competencia: periodo = '' } = useParams();
   const [params] = useSearchParams();
   const repo = useTarefasDelegadas();
-  const acesso = useAcesso();
-  const operador = useOperador().operador;
   const { toast, modal } = useRetorno();
   const uid = repo.eu()?.uid || '';
-  // as tarefas desta etapa, nesta empresa e período
-  const daEtapa = repo.lista().tarefas.filter(x => x.etapaDelegada?.etapa === etapa && x.etapaDelegada.rota === rota && x.etapaDelegada.periodo === periodo && x.status !== 'cancelada');
+  // as tarefas desta etapa, nesta empresa e período (a tarefa em conjunto é a etapa inteira: fica no executor)
+  const daEtapa = repo.lista().tarefas.filter(x => x.etapaDelegada?.etapa === etapa && !x.etapaDelegada.conjunto && x.etapaDelegada.rota === rota && x.etapaDelegada.periodo === periodo && x.status !== 'cancelada');
   const idRecebida = params.get('delegada');
   const recebida = (idRecebida && daEtapa.find(x => x.id === idRecebida && x.responsavel.uid === uid)) || null;
   const enviadas = daEtapa.filter(x => x.criadaPor.uid === uid);
@@ -50,11 +58,7 @@ export function useDelegacao(etapa: t.delegadas.EtapaQueDelega, contas: readonly
   const [comObservacao, setComObservacao] = useState(false);
   const [gravando, setGravando] = useState(false);
 
-  const docs = acesso.equipe().docs;
-  // só quem é do Contábil recebe (a etapa é do Contábil); as contas reservadas, só para o Diretor e o admin
-  const equipe = acesso.equipe().lista
-    .filter(u => u.ativo && u.uid !== uid && (u.departamento === 'contabil' || u.papeis.includes('contabil')) && (ehDiretor(operador) || !usuarios.ehContaReservada(u.email)))
-    .map(u => ({ uid: u.uid, nome: u.nome, foto: String(docs[u.uid]?.fotoPerfil || '') || null, iniciais: usuarios.iniciais(u.nome) }));
+  const equipe = useEquipeQueRecebe(uid);
   const q = busca.trim().toLowerCase();
   const pessoa = equipe.find(p => p.uid === para) || null;
   const pode = !!pessoa && !gravando && (modo === 'todos' ? contas.length > 0 : escolhidas.size > 0);
