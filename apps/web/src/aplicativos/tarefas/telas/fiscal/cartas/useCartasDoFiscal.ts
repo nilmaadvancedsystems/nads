@@ -1,15 +1,16 @@
 // ViewModel de Fiscal › Cartas (12/11/2026: "preciso de um envio de carta de balanco para varios clientes para o final do
 // ano, e todo mês enviar mandar um cheklist do que ele tem que enviar"). Duas abas:
-//   - Carta de balanço: o ano, o prazo do inventário e os clientes do Cadastro com caixinha (o Fiscal marca quem tem
+//   - Carta de balanço: o ano, o prazo do inventário e as empresas da pessoa com caixinha (o Fiscal marca quem tem
 //     estoque); "Ver a carta" abre o PDF de um cliente (sem a assinatura, que o robô põe), "Mandar teste" manda a carta do
 //     1º marcado só para o escritório e "Enviar" põe um pedido por cliente na fila do robô, depois de confirmar;
 //   - Checklist do mês: quando sai (o último dia útil), o prazo do cliente (2º dia útil do mês seguinte), o que o robô já
 //     mandou neste mês, pausar e tirar clientes.
 // As regras são do core (cartasFiscal); a tela só desenha.
-import { cartasFiscal as cf } from '@nads/core';
+import { cartasFiscal as cf, formatos } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useMemo, useState } from 'react';
-import { useCartasDoFiscal, useTodosOsCadastros } from '../../../dados/repo';
+import { useCartasDoFiscal, useRepo, useTodosOsCadastros } from '../../../dados/repo';
+import { useEmpresasPermitidas } from '../../empresas/andamento';
 
 export type AbaDasCartas = 'balanco' | 'checklist';
 
@@ -38,11 +39,19 @@ export function useTelaDasCartas() {
   const [marcados, setMarcados] = useState<ReadonlySet<number>>(new Set());
   const [pedindo, setPedindo] = useState('');
 
-  const clientes = useMemo(() => [...cadastros.porId.values()]
-    .filter(c => c.codigo != null)
-    .map(c => ({ codigo: Number(c.codigo), nome: c.nome, regime: c.regime || '', email: (c.contato?.email || '').trim() }))
-    .sort((a, b) => a.codigo - b.codigo), [cadastros.porId]);
-  const regimes = useMemo(() => [...new Set(clientes.map(c => c.regime).filter(Boolean))].sort(), [clientes]);
+  // só as empresas da pessoa (12/11/2026: "quero apenas as empresas da pessoa"), como nas outras telas do Fiscal: a lista
+  // do escritório filtrada pelo responsável do Fiscal (o admin e o diretor veem todas); o e-mail vem do Cadastro
+  const permitidas = useEmpresasPermitidas();
+  const empresasDaPessoa = permitidas.filtrar(useRepo().listarEmpresas());
+  const porCodigo = useMemo(() => new Map([...cadastros.porId.values()].filter(c => c.codigo != null).map(c => [Number(c.codigo), c])), [cadastros.porId]);
+  const clientes = empresasDaPessoa
+    .filter(e => e.codigo != null)
+    .map(e => {
+      const c = cadastros.porId.get(formatos.slug(e.nome)) || porCodigo.get(e.codigo as number);
+      return { codigo: e.codigo as number, nome: e.nome, regime: e.regime || c?.regime || '', email: (c?.contato?.email || '').trim() };
+    })
+    .sort((a, b) => a.codigo - b.codigo);
+  const regimes = [...new Set(clientes.map(c => c.regime).filter(Boolean))].sort();
   const filtra = (c: { codigo: number; nome: string; regime: string }) =>
     (!regime || c.regime === regime) && (!busca.trim() || sem(c.nome).includes(sem(busca.trim())) || String(c.codigo) === busca.trim());
 
@@ -134,7 +143,7 @@ export function useTelaDasCartas() {
 
   return {
     exemplos: repo.exemplos, aba, setAba, busca, setBusca, regime, setRegime, regimes, pedindo,
-    carregando: !cadastros.carregada,
+    carregando: !cadastros.carregada || !permitidas.carregada,
     // a carta
     ano, setAno, prazo, setPrazo, problema, linhas, carregandoCartas: !cartas.carregados, contagem,
     marcado: (codigo: number) => marcados.has(codigo), podeMarcar, alternar, marcarTodos,

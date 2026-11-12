@@ -312,38 +312,6 @@ function htmlDoDisparo(o) {
   return { html, imagens };
 }
 
-// O Checklist mensal do Fiscal (12/11/2026, cartas-fiscal.js): o texto do e-mail, o prazo em destaque, cada bloco do
-// checklist num cartão (a nota, os itens em lista e a observação) e o aviso do fim; o mesmo checklist vai em PDF, anexo.
-// { assunto, texto, prazo ('02/12/2026'), mes ('novembro de 2026'), introducao, secoes (cartasFiscal.CHECKLIST), atencao,
-//   anexo: { nome, tamanho }, assinatura, caixa } -> { html, imagens }
-function htmlDoChecklist(o) {
-  const imagens = [];
-  const p = (t, estilo) => '<p style="margin:0 0 10px;font:14px/1.6 ' + FONTE + ';color:' + (estilo || COR.tinta) + '">' + esc(t) + '</p>';
-  const lista = itens => '<ul style="margin:0 0 10px;padding:0 0 0 20px">' +
-    itens.map(i => '<li style="margin:0 0 4px;font:14px/1.5 ' + FONTE + ';color:' + COR.tinta + '">' + esc(i) + '</li>').join('') + '</ul>';
-  const blocos = (o.secoes || []).map(s => cartao(s.titulo,
-    (s.paragrafos || []).map(x => p(x)).join('') +
-    (s.nota ? p(s.nota, COR.suave) : '') +
-    s.grupos.map(g => (g.titulo ? '<div style="margin:4px 0 4px;font:600 13px/18px ' + FONTE + ';color:' + COR.vinho + '">' + esc(g.titulo) + '</div>' : '') + lista(g.itens)).join('') +
-    (s.obs ? '<div style="margin:4px 0 0;padding:10px 12px;background:' + COR.faltaClaro + ';border:1px solid ' + COR.faltaBorda + ';border-radius:8px;font:13px/1.5 ' + FONTE + ';color:' + COR.falta + '"><b>Obs.:</b> ' + esc(s.obs) + '</div>' : ''))).join('');
-  const prazo = '<div style="margin:14px 0 0;padding:12px 14px;background:' + COR.vinhoClaro + ';border-radius:10px;font:700 16px/22px ' + FONTE + ';color:' + COR.vinho + '">' +
-    'Prazo de envio: até ' + esc(o.prazo) + '</div><div style="margin:6px 0 0;font:13px/18px ' + FONTE + ';color:' + COR.suave + '">2º dia útil do mês, com os documentos de ' + esc(o.mes) + '.</div>';
-  const a = o.anexo;
-  const anexo = a ? '<div style="margin:0 0 18px;font:13px/18px ' + FONTE + ';color:' + COR.suave + '">' +
-    (imagem(imagens, PASTA_ICONES, 'anexo', 14, 'display:inline-block;vertical-align:middle;margin-right:6px;opacity:.7') || '') +
-    'Em anexo: <b style="color:' + COR.tinta + '">' + esc(a.nome) + '</b>' + (a.tamanho ? ' (' + kbDe(a.tamanho) + ')' : '') + '</div>' : '';
-  const atencao = o.atencao ? '<div style="margin:0 0 18px;padding:12px 14px;border:1px solid ' + COR.vinho + ';border-radius:10px;font:13px/1.55 ' + FONTE + ';color:' + COR.tinta + '">' +
-    '<b style="color:' + COR.vinho + '">Atenção:</b> ' + esc(o.atencao) + '</div>' : '';
-  const html = moldura({
-    imagens, assinatura: o.assinatura, caixa: o.caixa, chip: 'Fiscal', sobre: 'Checklist mensal de documentos',
-    previa: 'Envie os documentos de ' + (o.mes || 'este mês') + ' até ' + (o.prazo || 'o 2º dia útil') + '.',
-    titulo: 'O que enviar de ' + (o.mes || 'este mês'), cabecalho: prazo,
-    corpo: paragrafos(o.texto) + (o.introducao ? p(o.introducao, COR.suave) : '') + anexo + blocos + atencao,
-    rodape: 'Mensagem enviada pelo sistema do escritório no último dia útil de cada mês. Departamento Fiscal.',
-  });
-  return { html, imagens };
-}
-
 // ---------- O desenho "Recibo" (05/11/2026, Vitor escolheu a opção 1 de 3) ----------
 // A NFS-e e o envio do DP/Fiscal: fundo cinza, o logo no alto, um cartão branco só com o destaque grande no centro (o
 // valor da nota, ou o mês dos documentos), um selo, o texto do modelo, os dados em linhas finas e os anexos; o rodapé
@@ -606,4 +574,75 @@ function htmlDoEnvioDp(o) {
   return { html, imagens };
 }
 
-module.exports = { htmlDaCobranca, htmlDoDisparo, htmlDoChecklist, htmlDaNfse, htmlDoEnvioDp, textoDoPrazo, progresso, PASTA_LOGOS, PASTA_ICONES };
+// As cartas do Fiscal (cartas-fiscal.js: o Checklist mensal e a Carta de balanço) no desenho "Banco digital" do DP/Fiscal
+// (12/11/2026: "quero um modelo menor de gmail tambem, assim como os que estamos usando nos outros setores"): o bloco
+// vinho com o cliente, a manchete e os números; o cartão dos arquivos; o texto num segundo cartão e, no checklist, a lista
+// enxuta (o título da seção e os itens numa linha só); o aviso em letra miúda e o rodapé.
+// { assunto, cliente, manchete, numeros: [[rótulo, valor]], anexos: [{ nome, rotulo }], texto, secoes, atencao, assinatura,
+//   caixa, rodape } -> { html, imagens }
+function htmlDoAvisoFiscal(o) {
+  const imagens = [];
+  const nome = o.assinatura || 'Nilma Contabilidade';
+  const anexos = o.anexos || [];
+  const um = anexos.length === 1;
+  const logo = imagem(imagens, PASTA_ICONES, 'marca', [14, 22], 'display:block;margin:0 auto') || '';
+  const icone = imagem(imagens, PASTA_ICONES, 'arquivo', [22, 26], 'display:block;margin:0 auto') || '';
+  const clipe = imagem(imagens, PASTA_ICONES, 'anexo', 14, 'display:inline-block;vertical-align:middle;margin-right:6px;opacity:.7') || '';
+  const numeros = (o.numeros || []).filter(n => n && n[1]).map((n, k) => numeroDoBloco(n[0], n[1], k === 0)).join('');
+  // o checklist enxuto: o título da seção e, embaixo, cada grupo numa linha ("Vendas: a · b · c")
+  const linha = (t, estilo) => '<div style="font:13px/19px ' + FONTE + ';color:' + (estilo || COR.suave) + ';margin:2px 0 0">' + t + '</div>';
+  const secoes = (o.secoes || []).map((s, k) => '<div style="padding:12px 0;' + (k ? 'border-top:1px solid #F0EAEA;' : '') + '">' +
+    '<div style="font:600 14px/20px ' + FONTE + ';color:' + COR.tinta + '">' + esc(s.titulo) + '</div>' +
+    (s.paragrafos || []).map(x => linha(esc(x))).join('') +
+    (s.grupos || []).map(g => linha((g.titulo ? '<b style="color:' + COR.tinta + '">' + esc(g.titulo) + ':</b> ' : '') + g.itens.map(esc).join(' · '))).join('') +
+    (s.obs ? linha('<b>Obs.:</b> ' + esc(s.obs), COR.falta) : '') +
+    '</div>').join('');
+  const css = '@media only screen and (max-width:520px){.px{padding-left:16px!important;padding-right:16px!important}.hero{padding:26px 22px 60px!important}' +
+    '.manchete{font-size:24px!important;line-height:31px!important}.cartao{padding:4px 18px!important}.texto{padding:20px 18px 6px!important}}';
+  const cartaoBranco = conteudo => '<tr><td class="px" style="padding:16px 24px 0">' +
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FFFFFF;border-radius:20px;border-collapse:separate"><tr><td class="texto" style="padding:24px 28px 10px">' + conteudo + '</td></tr></table></td></tr>';
+  const html = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<meta name="color-scheme" content="light only"><meta name="supported-color-schemes" content="light"><title>' + esc(o.assunto || nome) + '</title>' +
+    '<style>' + css + '</style></head>' +
+    '<body style="margin:0;padding:0;background:' + FUNDO_DP + ';-webkit-text-size-adjust:100%">' +
+    '<div style="display:none;max-height:0;overflow:hidden;mso-hide:all">' + esc(String(o.previa || o.texto || '').replace(/\s+/g, ' ').trim().slice(0, 140)) + '&#8199;&#65279;&#847;'.repeat(20) + '</div>' +
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:' + FUNDO_DP + '"><tr><td align="center" style="padding:0 0 32px">' +
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px">' +
+      // o bloco vinho
+      '<tr><td class="hero" bgcolor="' + VINHO_FUNDO + '" style="background:' + VINHO_FUNDO + ';padding:30px 40px ' + (anexos.length ? 68 : 34) + 'px">' +
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>' +
+          '<td valign="middle"><table role="presentation" cellpadding="0" cellspacing="0"><tr>' +
+            (logo ? '<td width="34" height="34" align="center" valign="middle" style="width:34px;height:34px;background:#FFFFFF;border-radius:10px">' + logo + '</td>' : '') +
+            '<td style="padding-left:10px;font:700 15px/20px ' + FONTE + ';color:#FFFFFF">' + esc(nome) + '</td></tr></table></td>' +
+          '<td align="right" valign="middle"><span style="display:inline-block;padding:4px 12px;border-radius:99px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.28);font:600 12px/16px ' + FONTE + ';color:#FFFFFF;white-space:nowrap">Fiscal</span></td>' +
+        '</tr></table>' +
+        (o.cliente ? '<div style="font:600 12px/16px ' + FONTE + ';color:#F6CFD1;margin-top:30px;text-transform:uppercase;letter-spacing:.07em">' + esc(o.cliente) + '</div>' : '<div style="height:30px;line-height:30px;font-size:0">&nbsp;</div>') +
+        '<div class="manchete" style="font:700 28px/36px ' + FONTE + ';color:#FFFFFF;margin-top:6px">' + esc(o.manchete || '') + '</div>' +
+        (numeros ? '<table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:20px"><tr>' + numeros + '</tr></table>' : '') +
+      '</td></tr>' +
+      // o cartão dos arquivos, encostado no bloco
+      (anexos.length ? '<tr><td class="px" bgcolor="' + FUNDO_DP + '" style="padding:0 24px;background-image:linear-gradient(180deg,' + VINHO_FUNDO + ' 0,' + VINHO_FUNDO + ' 44px,' + FUNDO_DP + ' 44px)">' +
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FFFFFF;border-radius:20px;border-collapse:separate;box-shadow:0 10px 30px rgba(80,20,24,.12)"><tr><td class="cartao" style="padding:6px 24px">' +
+          '<div style="padding:14px 0 2px;font:700 12px/16px ' + FONTE + ';color:' + COR.suave + ';text-transform:uppercase;letter-spacing:.06em">' + clipe +
+            '<span style="vertical-align:middle">' + (um ? '1 arquivo anexado' : anexos.length + ' arquivos anexados') + '</span></div>' +
+          '<table role="presentation" width="100%" cellpadding="0" cellspacing="0">' + anexos.map((a, k) => linhaDoArquivo(a, k, icone)).join('') + '</table>' +
+          '<div style="padding:12px 0 16px;border-top:1px solid #F0EAEA;font:12px/17px ' + FONTE + ';color:' + COR.fraca + '">' + (um ? 'O arquivo está' : 'Os arquivos estão') + ' no fim deste e-mail: é só abrir ou baixar.</div>' +
+        '</td></tr></table>' +
+      '</td></tr>' : '') +
+      // o texto do modelo e, no checklist, a lista enxuta
+      cartaoBranco(textoRecibo(o.texto)) +
+      (secoes ? cartaoBranco('<div style="padding:0 0 10px;font:700 12px/16px ' + FONTE + ';color:' + COR.suave + ';text-transform:uppercase;letter-spacing:.06em">O que enviar</div>' + secoes) : '') +
+      // o aviso (o do checklist: o atraso gera multa), em letra miúda
+      (o.atencao ? '<tr><td class="px" style="padding:16px 24px 0"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #E6DCDC;border-radius:14px;border-collapse:separate"><tr>' +
+        '<td style="padding:14px 16px;font:12px/18px ' + FONTE + ';color:' + COR.suave + '"><b style="color:' + COR.tinta + '">Atenção:</b> ' + esc(o.atencao) + '</td>' +
+      '</tr></table></td></tr>' : '') +
+      // o rodapé
+      '<tr><td align="center" class="px" style="padding:22px 28px 0;font:12px/18px ' + FONTE + ';color:#8C7A7B">' +
+        '<b style="color:' + COR.suave + '">' + esc(nome) + '</b>' + (o.caixa ? ' · <a href="mailto:' + esc(o.caixa) + '" style="color:#8C7A7B">' + esc(o.caixa) + '</a>' : '') +
+        '<br>Dúvidas? É só responder este e-mail.' + (o.rodape ? '<br><span style="color:#A89B9C">' + esc(o.rodape) + '</span>' : '') +
+      '</td></tr>' +
+    '</table></td></tr></table></body></html>';
+  return { html, imagens };
+}
+
+module.exports = { htmlDaCobranca, htmlDoDisparo, htmlDoAvisoFiscal, htmlDaNfse, htmlDoEnvioDp, textoDoPrazo, progresso, PASTA_LOGOS, PASTA_ICONES };

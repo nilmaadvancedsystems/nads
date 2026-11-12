@@ -123,6 +123,9 @@ const ativosDe = lista => ({ size: lista.length, forEach: fn => lista.forEach((c
     assert.strictEqual(mandado.assunto, '[TESTE] Carta de balanço 2026 · Marisfrutas LTDA');
     assert.strictEqual(mandado.anexos[0].nome, 'Carta de balanço 2026 - Marisfrutas LTDA.pdf');
     conferirAssinatura(mandado.anexos[0].buffer, cert.publica);
+    // o desenho do DP/Fiscal: a manchete, o inventário e o prazo curto no bloco vinho
+    assert.ok(mandado.html.includes('Sua carta de balanço de 2026 chegou'));
+    assert.ok(mandado.html.includes('>31/12/2026<') && mandado.html.includes('>10 jan<'));
     assert.strictEqual(r.status, 'enviado');
   });
 
@@ -155,7 +158,11 @@ const ativosDe = lista => ({ size: lista.length, forEach: fn => lista.forEach((c
   await caso('o e-mail do checklist: o prazo, os blocos e o PDF anexo', async () => {
     const e = K.emailDoChecklist({ competencia: '2026-11', cliente: 'Marisfrutas LTDA', pdf: Buffer.from('%PDF-1.4'), de: 'fiscal@x.com', assinatura: 'Nilma' });
     assert.strictEqual(e.assunto, 'Checklist de documentos de novembro de 2026 · Marisfrutas LTDA');
-    assert.ok(e.html.includes('Prazo de envio: até 02/12/2026'));
+    // o desenho do DP/Fiscal: o cliente, a manchete, o prazo curto e a competência no bloco vinho; o checklist enxuto
+    assert.ok(e.html.includes('O checklist de documentos de novembro chegou'));
+    assert.ok(e.html.includes('>2 dez<') && e.html.includes('>novembro/2026<'));
+    assert.ok(e.html.includes('Envie os documentos de novembro de 2026 até 02/12/2026.'));
+    assert.ok(e.html.includes('<b style="color:#') && e.html.includes('Vendas:</b>'));
     assert.ok(e.html.includes('3.1) Retirada de lucros dos sócios'));
     assert.ok(e.html.includes('Extratos bancários de TODAS as contas da empresa (PDF e OFX)'));
     assert.ok(e.corpo.includes('6) SITUAÇÕES ESPECIAIS (ENVIAR QUANDO OCORRER)'));

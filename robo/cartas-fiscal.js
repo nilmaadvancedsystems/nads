@@ -157,9 +157,19 @@ async function atenderCartaBalanco(p, deps) {
   const nome = C.nomeDoPdfDaCarta(empresa, dados.ano);
   const email = C.emailDaCarta(dados);
   const assunto = (p.teste === true ? '[TESTE] ' : '') + email.assunto;
-  const visual = require('./email-html').htmlDoDisparo({ assunto, corpo: email.texto, assinatura: deps.assinatura, caixa: deps.de, anexo: { nome, tamanho: pdf.length } });
+  const visual = require('./email-html').htmlDoAvisoFiscal({
+    assunto, cliente: empresa, manchete: 'Sua carta de balanço de ' + dados.ano + ' chegou', texto: email.texto,
+    numeros: [['Inventário em', dados.inventarioEm], ['Enviar até', diaCurto(dados.prazo)]], anexos: [{ nome }], assinatura: deps.assinatura, caixa: deps.de,
+  });
   const gmailId = await deps.enviar({ para: para.join(', '), assunto, corpo: email.texto + '\n\n- ' + nome, html: visual.html, imagens: visual.imagens, anexos: [{ nome, mime: 'application/pdf', buffer: pdf }] });
   return { status: 'enviado', enviadoEm: new Date(deps.agora()).toISOString(), para, assunto, gmailId: String(gmailId || ''), empresa, arquivo: nome, resumo: (p.teste === true ? 'teste de ' : '') + empresa };
+}
+
+const MES_ABREV = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+/** '02/12/2026' -> '2 dez' (o número grande do e-mail); o que não for data fica como veio */
+function diaCurto(br) {
+  const m = /^(\d{2})\/(\d{2})\/\d{4}$/.exec(String(br || ''));
+  return m && Number(m[2]) >= 1 && Number(m[2]) <= 12 ? Number(m[1]) + ' ' + MES_ABREV[Number(m[2]) - 1] : String(br || '');
 }
 
 /**
@@ -170,9 +180,11 @@ function emailDoChecklist(o) {
   const C = cartas();
   const { assunto, texto } = C.emailDoChecklist(o.competencia, o.cliente);
   const campos = C.camposDoChecklist(o.competencia, o.cliente);
-  const visual = require('./email-html').htmlDoChecklist({
-    assunto, texto, prazo: campos.prazo, mes: campos.mes, introducao: C.CHECKLIST_INTRODUCAO, secoes: C.CHECKLIST, atencao: C.CHECKLIST_ATENCAO,
-    anexo: o.pdf ? { nome: NOME_DO_PDF_DO_CHECKLIST, tamanho: o.pdf.length } : null, assinatura: o.assinatura, caixa: o.de,
+  const visual = require('./email-html').htmlDoAvisoFiscal({
+    assunto, cliente: o.cliente, manchete: 'O checklist de documentos de ' + campos.mes.replace(/ de \d{4}$/, '') + ' chegou', texto,
+    previa: 'Envie os documentos de ' + campos.mes + ' até ' + campos.prazo + '.',
+    numeros: [['Enviar até', diaCurto(campos.prazo)], ['Competência', campos.mes.replace(' de ', '/')]],
+    anexos: o.pdf ? [{ nome: NOME_DO_PDF_DO_CHECKLIST }] : [], secoes: C.CHECKLIST, atencao: C.CHECKLIST_ATENCAO, assinatura: o.assinatura, caixa: o.de,
   });
   return {
     assunto, corpo: texto + '\n\n' + C.checklistEmTexto(), html: visual.html, imagens: visual.imagens,
