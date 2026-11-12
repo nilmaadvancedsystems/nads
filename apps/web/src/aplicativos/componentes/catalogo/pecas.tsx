@@ -196,7 +196,7 @@ export const ICONES: NomeIcone[] = [
   'girar', 'maximizar', 'minimizar', 'painel', 'cartao', 'download', 'grade', 'impressora', 'dinheiro', 'caminhao',
   'arrastar', 'lixeira', 'mapaPin', 'qrCode', 'codigoBarras', 'telefone', 'celular', 'trofeu', 'alvo', 'lampada', 'predio', 'escudo', 'seta', 'aviao', 'clipe',
 ];
-const BANCOS = ['banco-do-brasil', 'banrisul', 'bradesco', 'btg', 'c6', 'caixa', 'inter', 'itau', 'mercado-pago', 'nubank', 'pagbank', 'safra', 'santander', 'sicoob', 'stone', 'cora', 'sicredi', 'bnb'];
+const BANCOS = ['banco-do-brasil', 'banrisul', 'bradesco', 'btg', 'c6', 'caixa', 'inter', 'itau', 'mercado-pago', 'nubank', 'pagbank', 'safra', 'santander', 'sicoob', 'stone', 'cora', 'sicredi', 'bnb', 'infinitepay'];
 const CORES = [
   '--bg', '--surface', '--surface-2', '--surface-3', '--border', '--border-strong', '--ink', '--ink-muted', '--accent', '--accent-strong', '--accent-soft',
   '--btn-bg', '--btn-primary', '--btn-primary-hover', '--success', '--success-soft', '--danger', '--danger-soft', '--warn', '--warn-soft', '--info', '--info-soft',

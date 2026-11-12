@@ -12,6 +12,7 @@ Ponha aqui a imagem original de cada banco, com o **id da marca** como nome do a
 | C6 Bank | `c6.png` |
 | Caixa | `caixa.png` |
 | Cora | `cora.png` |
+| InfinitePay | `infinitepay.png` |
 | Inter | `inter.png` |
 | Itaú | `itau.png` |
 | Mercado Pago | `mercado-pago.png` |
