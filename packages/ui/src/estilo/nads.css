@@ -1321,6 +1321,8 @@ tr.linha-excluida > td{color:var(--ink-muted);text-decoration:line-through;}
   color:var(--ink-muted);border:1px solid var(--border);border-radius:4px;padding:0 5px;pointer-events:none;}
 .iniciar-pop{display:flex;flex-direction:column;}
 .iniciar-lista{display:flex;flex-direction:column;max-height:320px;overflow:auto;}
+/* a lista de um menu com busca (o cliente da comissão, 12/11/2026): a busca fica parada em cima e só a lista rola, baixa, para o menu caber colado no botão */
+.menu-busca-lista{display:flex;flex-direction:column;max-height:min(260px,40vh);overflow:auto;}
 .iniciar-item .num{width:36px;flex:none;text-align:right;}
 .iniciar-item{align-items:center;gap:10px;flex:none;}
 .iniciar-nome{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}

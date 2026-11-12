@@ -26,6 +26,7 @@ import { criarTravaDeRepeticao } from '../../../comum/travaDeRepeticao';
 import type { ListaAoVivo } from './agentes';
 import { boletoDoBanco } from './boletos.firestore';
 import { bancoDoEntregas, contaDoEntregas } from './entregas.firestore';
+import { ouvirPeloEspelho } from './espelhos.firestore';
 import type { ArquivoDoDrive, AtestadoParaBuscar, ComprovanteDaEntrega, EscritaPerdida, GuiaAnexada, LembreteDoCliente, QuemNoEntregas, RepoEntregasDeDocumentos, ResultadoDaGravacao } from './entregasDeDocumentos';
 
 // a trava do modo desenvolvedor (comum/modoDesenvolvedor.ts): com o modo ligado, só ver — nada é gravado
@@ -129,19 +130,20 @@ export function criarEntregasDeDocumentosFirestore(pessoa: () => { nome: string;
   function ouvirClientes(todos: boolean) {
     pararClientes?.();
     if (todos) {
-      // a coleção simples, a mesma consulta do Gmail e do cadastro (10/11/2026, consumo do banco): o banco manda os ~400
-      // clientes uma vez para as três; com orderBy e limit era outra consulta, cobrada à parte (a ordem vem do sort de cima)
-      pararClientes = onSnapshot(collection(db, 'clientes'), s => chegaramClientes(s.docs, true), err => {
+      // pelo espelho (espelhos.firestore.ts, 12/11/2026): 1 leitura em vez dos ~400 clientes (a ordem vem do sort de cima)
+      pararClientes = ouvirPeloEspelho(db, 'clientes', docs => chegaramClientes(docs, true), err => {
         esperandoTodos.splice(0).forEach(f => f());
         clientes = { carregada: true, lista: clientes?.lista || [], erro: erroDe(err) };
         mudou();
       });
       return;
     }
-    pararClientes = onSnapshot(query(collection(db, 'clientes'), where('entrega', '==', true), limit(1000)), s => {
+    // os de entrega, do mesmo espelho (sem consulta à parte no banco)
+    pararClientes = ouvirPeloEspelho(db, 'clientes', docs => {
+      const deEntrega = docs.filter(d => d.data().entrega === true);
       // ninguém marcado ainda: a base inteira, como sempre foi
-      if (s.empty) { ouvirClientes(true); return; }
-      chegaramClientes(s.docs, false);
+      if (!deEntrega.length) { ouvirClientes(true); return; }
+      chegaramClientes(deEntrega, false);
     }, () => ouvirClientes(true));
   }
   function garantirTodos(): Promise<void> {

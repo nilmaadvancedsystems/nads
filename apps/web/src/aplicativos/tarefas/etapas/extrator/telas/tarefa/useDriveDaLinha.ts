@@ -4,6 +4,7 @@
 // Entregas, pede primeiro (o mesmo usuário das Pendências). Não achou um só: a pessoa escolhe entre os
 // candidatos. "Visualizar" pede ao robô um link temporário (~30 min) e só abre; o link não é guardado.
 import { creditor, extrator as x } from '@nads/core';
+import { useOcupado } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
 import { useDrive } from '../../dados/repo';
 import { useGuardado } from '../../../../../../comum/guardado';
@@ -34,6 +35,8 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
   // os extratos que foram para o Drive e ainda não viraram arquivo de lá ('banco|mes' → o envio), guardados (Vitor,
   // 19/10/2026: "deixe um ícone do Drive do lado esquerdo desse check, carregando; quando upar, ele fica igual aos outros")
   const [subindo, setSubindo] = useGuardado<Record<string, { envio: string; em: number }>>('drive-subindo|' + (codigo ?? ''), {});
+  // o extrato sendo lido e mandado ao Drive agora (os bytes ainda saindo deste navegador)
+  const [enviando, setEnviando] = useState(0);
   // sem o relógio de 1 s (19/10/2026: redesenhava a página dos bancos inteira a cada segundo do lote, para uma janela de
   // andamento que não aparece mais na tela)
   // o que fazer depois de entrar, quando o login foi pedido por outra coisa (o Pedir extratos)
@@ -294,6 +297,7 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
       return;
     }
     const mandados: string[] = [];
+    setEnviando(n => n + 1);
     try {
       const pasta = await drive.pastaDoCliente(codigo);
       const conta = { nome: linha.nome, marca: linha.marca, conta: linha.numeroConta };
@@ -319,8 +323,13 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
       if (mandados.length) vm.avisar('Mandado para o Drive: ' + mandados.join(', ') + ' (vai direto para a pasta do banco, em até 2 minutos)');
     } catch (e) {
       vm.avisarErro('Não mandei para o Drive' + (mandados.length ? ' (foram ' + mandados.join(', ') + ')' : ''), mensagemDeErro(e));
-    }
+    } finally { setEnviando(n => n - 1); }
   }
+
+  // enquanto manda, traz ou o ícone do Drive gira, a página não atualiza para a versão nova (Vitor, 12/11/2026: "se o processo
+  // estiver rolando, bloqueie a atualização da página, para que não haja bugs")
+  useOcupado(enviando > 0 || Object.keys(subindo).length > 0, 'Espere terminar de enviar ao Drive.');
+  useOcupado(!!lote && !lote.pronto, 'Espere terminar de trazer do Drive.');
 
   const andamento: AndamentoDeExtratos | null = lote ? (() => {
     const feitos = lote.feitos.length;
