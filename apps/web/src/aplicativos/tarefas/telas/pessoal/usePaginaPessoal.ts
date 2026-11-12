@@ -227,12 +227,14 @@ export function usePaginaPessoal() {
        * o próprio e-mail de entrada (Vitor, 12/11/2026: "deixa o próprio usuário alterar o e-mail dele também"): o robô da
        * nuvem troca o login e o cadastro; a senha continua a mesma
        */
-      trocarEmail: async (email: string): Promise<string | null> => {
+      trocarEmail: async (email: string, senha: string): Promise<string | null> => {
         const novo = email.trim().toLowerCase();
         if (!usuarios.ehEmailDeLogin(novo)) return 'Escreva um e-mail válido (por exemplo, nome@gmail.com).';
-        if (!u) return 'Sem login.';
+        if (!u || !sessao) return 'Sem login.';
         if (novo === u.email.trim().toLowerCase()) return null;
-        try { await acesso.trocarEmail(u.uid, novo); toast('E-mail trocado. Da próxima vez, entre com ' + novo + ' (a senha é a mesma).'); return null; } catch (err) { return err instanceof Error ? err.message : String(err); }
+        if (!senha) return 'Digite a sua senha.';
+        // o Firebase derruba as sessões quando o e-mail muda: a sessão confere a senha, espera o robô e entra de novo
+        try { await sessao.trocarMeuEmail(novo, senha, () => acesso.trocarEmail(u.uid, novo)); toast('E-mail trocado. Você entra com ' + novo + ' ou pelo nome (a senha é a mesma).'); return null; } catch (err) { return err instanceof Error ? err.message : String(err); }
       },
       // só o setor (Vitor, 02/10/2026: "coloque só o setor"), sem o nível
       setor: usuarios.rotuloDoCargo({ departamento: op.departamento, nivel: null, papeis: u?.papeis || [] }),

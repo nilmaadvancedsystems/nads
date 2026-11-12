@@ -61,10 +61,15 @@ function EditarNome({ atual, salvar, rotulo = 'Nome' }: { atual: string; salvar:
 
 /**
  * O e-mail: o texto com o lápis ao lado; só o lápis abre a edição (Vitor, 12/11/2026: "coloca um ícone de lápis, não de
- * editar direto"). Salvou ou cancelou, volta ao texto.
+ * editar direto"). Pede a senha junto: depois da troca a Tarefas entra de novo com o e-mail novo, sem derrubar a pessoa.
  */
-function EditarEmail({ atual, salvar }: { atual: string; salvar: (n: string) => Promise<string | null> }) {
+function EditarEmail({ atual, salvar }: { atual: string; salvar: (email: string, senha: string) => Promise<string | null> }) {
   const [editando, setEditando] = useState(false);
+  const [email, setEmail] = useState(atual);
+  const [senha, setSenha] = useState('');
+  const [erro, setErro] = useState('');
+  const [salvando, setSalvando] = useState(false);
+  const fechar = () => { setEditando(false); setEmail(atual); setSenha(''); setErro(''); };
   if (!editando) {
     return (
       <span className="pessoal-nome">
@@ -74,10 +79,20 @@ function EditarEmail({ atual, salvar }: { atual: string; salvar: (n: string) => 
     );
   }
   return (
-    <span className="pessoal-nome">
-      <EditarNome atual={atual} rotulo="E-mail" salvar={async n => { const e = await salvar(n); if (!e) setEditando(false); return e; }} />
-      <button type="button" className="btn btn-outline" onClick={() => setEditando(false)}>Cancelar</button>
-    </span>
+    <form className="pessoal-form" onSubmit={async ev => {
+      ev.preventDefault(); setSalvando(true);
+      const e = await salvar(email, senha);
+      setSalvando(false);
+      if (e) setErro(e); else fechar();
+    }}>
+      <input type="email" autoComplete="username" placeholder="E-mail novo" aria-label="E-mail novo" value={email} onChange={ev => { setEmail(ev.target.value); setErro(''); }} />
+      <input type="password" autoComplete="current-password" placeholder="Sua senha (a mesma de agora)" aria-label="Senha" value={senha} onChange={ev => { setSenha(ev.target.value); setErro(''); }} />
+      {erro && <p className="pessoal-erro">{erro}</p>}
+      <span className="pessoal-nome">
+        <button type="submit" className="btn btn-primary" disabled={salvando || !senha || email.trim() === atual}>{salvando ? <span className="btn-spinner" /> : null}Trocar</button>
+        <button type="button" className="btn btn-outline" onClick={fechar}>Cancelar</button>
+      </span>
+    </form>
   );
 }
 

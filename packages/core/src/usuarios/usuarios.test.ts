@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  conferirNovaConta, departamentoDaConta, ehContaReservada, docDaContaNova, emailDoLogin, emailDoNome, EQUIPE_EXEMPLO, iniciais, lerUsuario, mensagemDeErroDeLogin,
+  chaveDoNome, conferirNovaConta, departamentoDaConta, mesmoNome, ehContaReservada, docDaContaNova, emailDoLogin, emailDoNome, EQUIPE_EXEMPLO, iniciais, lerUsuario, mensagemDeErroDeLogin,
   mudancaDeCargo, nivelPeloMenos, papeisAoMudarCargo, papeisDaContaNova, papeisDoDoc, papeisFaltando, pode, podeAlgum, recursosDe, rotuloDoCargo,
 } from '.';
 
@@ -161,5 +161,19 @@ describe('as contas reservadas', () => {
     expect(ehContaReservada(' Contabil.Curioso@nilma.local ')).toBe(true);
     expect(ehContaReservada('fiscal@nilma.local')).toBe(false);
     expect(ehContaReservada(undefined)).toBe(false);
+  });
+});
+
+describe('nome único (12/11/2026)', () => {
+  it('compara sem maiúscula, acento nem pontuação', () => {
+    expect(mesmoNome('José da Silva', 'jose  DA silva')).toBe(true);
+    expect(mesmoNome('Ana-Maria', 'ana maria')).toBe(true);
+    expect(mesmoNome('Ana', 'Ana Maria')).toBe(false);
+    expect(chaveDoNome('Sávio')).toBe('savio');
+  });
+  it('a conta nova não repete o nome de quem trocou o e-mail', () => {
+    const c = { nome: 'Fulana', senha: '123456', departamento: 'fiscal', nivel: 'pleno' } as const;
+    expect(conferirNovaConta(c, ['fulana@exemplo.com'], ['FULANA'])).toContain('Já existe um acesso com esse nome.');
+    expect(conferirNovaConta(c, [], ['Beltrana'])).toEqual([]);
   });
 });

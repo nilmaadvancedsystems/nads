@@ -26,7 +26,7 @@ export function useNovoUsuario(aoCriar: () => void = () => {}) {
 
   const conta: usuarios.NovaConta = { nome, senha, departamento, nivel, extras };
   const emails = repo.equipe().lista.map(p => p.email);
-  const erros = usuarios.conferirNovaConta(conta, emails);
+  const erros = usuarios.conferirNovaConta(conta, emails, repo.equipe().lista.map(p => p.nome));
   const limpo = nome.trim().replace(/\s+/g, ' ');
   const papeis = usuarios.papeisDaContaNova(usuarios.ehDepartamento(departamento) ? departamento : null, usuarios.ehNivel(nivel) ? nivel : null, extras)
     .filter(p => p !== 'staff');

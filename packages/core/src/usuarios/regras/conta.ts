@@ -2,7 +2,7 @@
 // usuarios/{uid}. Mesmas regras do formulário de novo acesso do Entregas (~L12128-12157: nome e
 // senha ≥ 6; "Já existe um acesso com esse nome."), mais departamento e nível obrigatórios.
 import type { Departamento, DocUsuario, Nivel, Papel } from '../tipos';
-import { emailDoNome, SENHA_MINIMA } from './login';
+import { emailDoNome, mesmoNome, SENHA_MINIMA } from './login';
 import { ehDepartamento, ehNivel, papeisAoMudarCargo, papeisDaContaNova, papeisDoDoc } from './papeis';
 
 export interface NovaConta {
@@ -14,15 +14,15 @@ export interface NovaConta {
   extras?: Papel[];
 }
 
-/** O que está errado (vazio = pode criar). `emailsExistentes`: os e-mails de login já usados. */
-export function conferirNovaConta(c: NovaConta, emailsExistentes: readonly string[]): string[] {
+/** O que está errado (vazio = pode criar). `emailsExistentes`: os e-mails de login já usados; `nomesExistentes`: os nomes da equipe (o nome é único). */
+export function conferirNovaConta(c: NovaConta, emailsExistentes: readonly string[], nomesExistentes: readonly string[] = []): string[] {
   const erros: string[] = [];
   const nome = c.nome.trim().replace(/\s+/g, ' ');
   if (nome.length < 2) erros.push('Escreva o nome da pessoa.');
   if (c.senha.length < SENHA_MINIMA) erros.push('A senha precisa de pelo menos ' + SENHA_MINIMA + ' caracteres.');
   if (!ehDepartamento(c.departamento)) erros.push('Escolha o departamento.');
   if (!ehNivel(c.nivel)) erros.push('Escolha o nível.');
-  if (nome.length >= 2 && emailsExistentes.includes(emailDoNome(nome))) erros.push('Já existe um acesso com esse nome.');
+  if (nome.length >= 2 && (emailsExistentes.includes(emailDoNome(nome)) || nomesExistentes.some(n => mesmoNome(n, nome)))) erros.push('Já existe um acesso com esse nome.');
   return erros;
 }
 
