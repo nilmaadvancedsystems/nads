@@ -13,7 +13,7 @@ import workerDoPdf from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import { useState } from 'react';
 import { useOperador } from '../../casca/operador';
 import type { ArquivoParaAnexar } from '../../dados/contasPagar';
-import { useCaixa, useContasPagar } from '../../dados/repo';
+import { useAcesso, useCaixa, useContasPagar } from '../../dados/repo';
 import { dataBr, dataHoraBr, hoje, isoDaData, valorDigitado, valorNoCampo } from './formatosDaNota';
 
 extrator.definirWorkerDoPdf(workerDoPdf);
@@ -65,6 +65,11 @@ export function useJanelaDaContaAPagar(id: string | undefined, topicoInicial: To
   const [valor, setValor] = useState(valorNoCampo(existente?.valor ?? 0));
   const [linha, setLinha] = useState(existente?.linhaDigitavel ? financeiro.linhaFormatada(existente.linhaDigitavel) : '');
   const [observacoes, setObservacoes] = useState(existente?.observacoes ?? '');
+  // o funcionário a quem a conta paga: ela aparece na Carteira dele (12/11/2026)
+  const [funcionarioUid, setFuncionarioUid] = useState(existente?.funcionario?.uid ?? '');
+  const [tipoDoVinculo, setTipoDoVinculo] = useState<financeiro.TipoDoVinculo>(existente?.funcionario?.tipo ?? 'salario');
+  const equipe = useAcesso().equipe().lista;
+  const pessoas = equipe.filter(u => u.ativo || u.uid === funcionarioUid).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
   const [recorrente, setRecorrente] = useState(false);
   const [quantidade, setQuantidade] = useState('12');
   const [boleto, setBoleto] = useState<Escolhido | null>(null);
@@ -118,6 +123,7 @@ export function useJanelaDaContaAPagar(id: string | undefined, topicoInicial: To
     topico, setTopico,
     fornecedorId, escolherFornecedor, conta, setConta, documento, setDocumento, emissao, setEmissao, vencimento, setVencimento,
     valor, setValor, linha, setLinha, observacoes, setObservacoes, recorrente, setRecorrente, quantidade, setQuantidade,
+    funcionarioUid, setFuncionarioUid, tipoDoVinculo, setTipoDoVinculo, pessoas,
     boleto, lendo, leitura,
     erros, fazendo,
     /** o rótulo da parcela ("parcela 2 de 12") */
@@ -173,6 +179,7 @@ export function useJanelaDaContaAPagar(id: string | undefined, topicoInicial: To
       const r = {
         fornecedorId, conta: conta || undefined, documento, emissao: emissao.trim() ? isoDaData(emissao) || emissao.trim() : '', vencimento: isoDaData(vencimento),
         valor: valorDigitado(valor), linhaDigitavel: linha.replace(/\D/g, '') || undefined, observacoes,
+        funcionario: funcionarioUid ? { uid: funcionarioUid, nome: equipe.find(u => u.uid === funcionarioUid)?.nome || existente?.funcionario?.nome || '', tipo: tipoDoVinculo } : undefined,
       };
       const n = Number(quantidade);
       const problemas = financeiro.conferirContaAPagar(r, !id && recorrente ? n : undefined);

@@ -4,7 +4,7 @@
 // o executor das etapas é /tarefas/executar/<empresa>/<competência>.
 // O Cadastro é a lista de empresas (/tarefas/cadastro/empresas); a empresa abre numa janela por cima da lista,
 // com as abas dela: /tarefas/cadastro/empresas/<empresa>/<aba>.
-import { tarefas as t, usuarios, type uso } from '@nads/core';
+import { carteira, tarefas as t, usuarios, type uso } from '@nads/core';
 import type { NomeIcone } from '@nads/ui';
 import { PAGINAS_DO_ADMIN } from '../../admin/casca/navegacao';
 import type { Operador } from './operador';
@@ -17,7 +17,7 @@ export const BASE = '/tarefas';
  */
 export const FERRAMENTAS_DO_FISCAL: readonly string[] = ['sintegra', 'faturamento', 'rateio-frete', 'simples', 'antecipacao-es', 'auditoria-itens'];
 
-export type IdAplicacao = 'inicio' | 'minhas-empresas' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'financeiro' | 'entregas' | 'area-cliente' | 'ferramentas';
+export type IdAplicacao = 'inicio' | 'minhas-empresas' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'financeiro' | 'entregas' | 'area-cliente' | 'ferramentas' | 'carteira';
 
 export interface Pagina {
   id: string; rotulo: string; icone: NomeIcone; titulo: string; /** a logo da marca no lugar do ícone (fgts na lateral; as outras nas abas do Fiscal) */ marca?: 'fgts' | 'simples' | 'receita' | 'sped' | 'sieg';
@@ -142,6 +142,18 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'notas', rotulo: 'Notas fiscais', icone: 'recibo', titulo: 'Notas fiscais' },
     { id: 'configuracoes', rotulo: 'Configurações', icone: 'settings', titulo: 'Configurações do emissor' },
   ] },
+  // a Carteira (12/11/2026): o salário, as finanças pessoais e as comissões de cada pessoa; e, para o Financeiro, as
+  // comissões do mês de todos e o envio dos holerites e comprovantes. Por enquanto só o Vitor usa (carteiraLiberada): os
+  // outros veem o botão e a tela "em desenvolvimento"
+  { id: 'carteira', nome: 'Carteira', icone: 'dinheiro', grupo: 'Escritório', pronta: true, paginas: [
+    { id: 'painel', rotulo: 'Visão geral', icone: 'barChart', titulo: 'Minha carteira' },
+    { id: 'comissoes', rotulo: 'Comissões', icone: 'dinheiro', titulo: 'Minhas comissões' },
+    { id: 'financas', rotulo: 'Finanças pessoais', icone: 'cartao', titulo: 'Finanças pessoais' },
+    { id: 'documentos', rotulo: 'Holerites e pagamentos', icone: 'recibo', titulo: 'Holerites e pagamentos' },
+    // o lado do Financeiro: as comissões do mês de todos (aprovar, recusar, pagar) e o envio dos holerites e comprovantes
+    { id: 'pagamentos', rotulo: 'Comissões da equipe', icone: 'checklist', titulo: 'Comissões da equipe', secao: 'Financeiro' },
+    { id: 'enviar', rotulo: 'Enviar holerites', icone: 'upload', titulo: 'Holerites e comprovantes da equipe', secao: 'Financeiro' },
+  ] },
   // as Configurações (Vitor, 28/10/2026: "Cadastro, esse admin, colocar tudo em um botão Configurações; todos esses botões
   // dos menus nessa tela"): o Cadastro (Empresas e Equipe; o endereço continua /tarefas/cadastro/...) e, só para o admin,
   // as páginas do site do admin, as mesmas telas, aqui dentro (o link Admin da gaveta saiu)
@@ -190,6 +202,9 @@ export const temNivelDiretor = (op: Operador | null) => usuarios.nivelDeDiretor(
 /** Quem vê o Financeiro (Vitor, 09/11/2026): quem é Diretor já tem, sem como desligar; os outros, só com o papel Financeiro, que só o Diretor autoriza. */
 export const podeVerOFinanceiro = (op: Operador | null) => !!op && (temNivelDiretor(op) || !!op.financeiro);
 
+/** A Carteira por enquanto só para o Vitor (12/11/2026); os outros veem o botão e a tela "em desenvolvimento". */
+export const carteiraLiberada = (op: Operador | null) => !!op && carteira.liberadaPara(op.nome);
+
 /**
  * Quem abre a rotina e o cadastro de outro setor: o admin e o diretor (Vitor, 06/11/2026: "quem é do fiscal, não é para ter
  * acesso a coisas do contábil"). Os outros ficam no setor deles (o ?dep= de outro setor é ignorado).
@@ -226,6 +241,9 @@ export function aplicacoesDe(op: Operador): Aplicacao[] {
     (a.id !== 'financeiro' || podeVerOFinanceiro(op)))
     // as páginas só do admin (as do Admin, nas Configurações) ficam de fora para os outros
     .map(a => (op.admin || !a.paginas.some(p => p.soAdmin) ? a : { ...a, paginas: a.paginas.filter(p => !p.soAdmin) }))
+    // a Carteira: quem ainda não tem, só a página de abertura (a tela "em desenvolvimento"); o lado do Financeiro, só o Financeiro
+    .map(a => (a.id !== 'carteira' ? a : !carteiraLiberada(op) ? { ...a, paginas: a.paginas.slice(0, 1) }
+      : podeVerOFinanceiro(op) ? a : { ...a, paginas: a.paginas.filter(p => p.secao !== 'Financeiro') }))
     // no Entregas, quem não é Diretor só vê o Painel (06/11/2026: "não pode realizar nenhuma entrega"); os links da Nova
     // entrega, da Rota e das Solicitações caem no Painel
     .map(a => (a.id === 'entregas' && !ehDiretor(op) ? { ...a, paginas: a.paginas.filter(p => p.id === 'painel') } : a))

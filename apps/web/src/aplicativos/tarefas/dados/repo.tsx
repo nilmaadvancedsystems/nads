@@ -4,7 +4,7 @@ import type { empresas, entregas, tarefas, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { RepoAcesso } from './acesso';
-import { repoDeBoletos, assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, dadosDaEmpresaNoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDaAreaCliente, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDoPainelRobo, repoDaIA, repoDeFeedback, repoDeAvisos, repoDeUso, repoDeParcelamentos, repoDeCategoriasDp, repoDoControleTributos, repoDeLegislacaoDp, repoDoLcdpr, repoDoArquivador, repoDosAgentes, repoDoFgts, repoDoAlterdata, repoDeEnviosDp, repoDoLoteDp, repoDoLoteFiscal, repoDeNfse, repoDoCaixa, repoDeHonorarios, repoDeContasPagar, repoDoSieg, repoPessoal, repoDoCofre, repoDeTarefasDelegadas, assinarTesteDoInicio, versaoDoTesteDoInicio, testeDoInicioLigado, ligarTesteDoInicio } from './fonte';
+import { repoDeBoletos, assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, dadosDaEmpresaNoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDaAreaCliente, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDoPainelRobo, repoDaIA, repoDeFeedback, repoDeAvisos, repoDeUso, repoDeParcelamentos, repoDeCategoriasDp, repoDoControleTributos, repoDeLegislacaoDp, repoDoLcdpr, repoDoArquivador, repoDosAgentes, repoDoFgts, repoDoAlterdata, repoDeEnviosDp, repoDoLoteDp, repoDoLoteFiscal, repoDeNfse, repoDoCaixa, repoDeHonorarios, repoDeContasPagar, repoDoSieg, repoPessoal, repoDoCofre, repoDeTarefasDelegadas, assinarTesteDoInicio, versaoDoTesteDoInicio, testeDoInicioLigado, ligarTesteDoInicio, repoDaCarteira } from './fonte';
 import type { RepoCofre } from './cofre';
 import type { RepoAgentes } from './agentes';
 import type { RepoSieg } from './sieg';
@@ -17,6 +17,7 @@ import type { RepoCaixa } from './caixa';
 import type { RepoHonorarios } from './honorarios';
 import type { RepoBoletos } from './boletos';
 import type { RepoContasPagar } from './contasPagar';
+import type { RepoCarteira } from './carteira';
 import type { RepoNfse } from './nfse';
 import { repoDeEntregasDeDocumentos } from './fonte';
 import type { RepoEntregasDeDocumentos } from './entregasDeDocumentos';
@@ -259,6 +260,13 @@ export function useBoletos(): RepoBoletos {
 }
 
 /** As contas a pagar e os fornecedores do financeiro, ao vivo (28/10/2026). */
+/** A Carteira da pessoa (e o lado do Financeiro), ao vivo (12/11/2026). */
+export function useCarteira(): RepoCarteira {
+  const repo = repoDaCarteira();
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  return repo;
+}
+
 export function useContasPagar(): RepoContasPagar {
   const repo = repoDeContasPagar();
   useSyncExternalStore(repo.assinar, repo.versao, repo.versao);

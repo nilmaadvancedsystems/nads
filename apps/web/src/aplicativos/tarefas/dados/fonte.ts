@@ -30,6 +30,8 @@ import { criarHonorariosMemoria, type RepoHonorarios } from './honorarios';
 import { criarBoletosMemoria, type RepoBoletos } from './boletos';
 import { criarHonorariosFirestore } from './honorarios.firestore';
 import { criarContasPagarMemoria, type RepoContasPagar } from './contasPagar';
+import { criarCarteiraMemoria, type RepoCarteira } from './carteira';
+import { criarCarteiraFirestore } from './carteira.firestore';
 import { criarContasPagarFirestore } from './contasPagar.firestore';
 import { criarNfseMemoria, type RepoNfse } from './nfse';
 import { criarNfseFirestore } from './nfse.firestore';
@@ -456,6 +458,14 @@ async function emailsDoContrato(c: financeiro.ContratoDeHonorario): Promise<stri
 export function repoDeHonorarios(): RepoHonorarios {
   if (!honorarios) honorarios = noBanco ? criarHonorariosFirestore() : criarHonorariosMemoria();
   return honorarios;
+}
+
+let carteiraRepo: RepoCarteira | null = null;
+
+/** A Carteira (12/11/2026): as comissões, as finanças, os holerites e as contas ligadas à pessoa; e o lado do Financeiro. */
+export function repoDaCarteira(): RepoCarteira {
+  if (!carteiraRepo) carteiraRepo = noBanco ? criarCarteiraFirestore(quemDasTarefas) : criarCarteiraMemoria(quemDasTarefas);
+  return carteiraRepo;
 }
 
 let contasPagar: RepoContasPagar | null = null;
