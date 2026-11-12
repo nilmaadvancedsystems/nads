@@ -42,7 +42,7 @@ function TopicoConta({ vm }: { vm: VmJanelaDaContaAPagar }) {
           </div>
         )}
         <Linha rotulo="Conta contábil">
-          <EscolherConta valor={vm.conta} contas={vm.contas} onEscolher={vm.setConta} titulo="Conta contábil" travada={travada} className="btn btn-outline cp-campo" />
+          <EscolherConta valor={vm.conta} contas={vm.contas} onEscolher={vm.setConta} titulo="Conta contábil" travada={travada} className="btn btn-outline" caixa="cp-campo" />
         </Linha>
         <Linha rotulo="Funcionário" dica="A conta aparece na Carteira da pessoa (o valor, se já foi paga e o comprovante)">
           <select className="pessoal-select cp-campo" value={vm.funcionarioUid} disabled={travada} onChange={e => vm.setFuncionarioUid(e.target.value)} aria-label="Funcionário">

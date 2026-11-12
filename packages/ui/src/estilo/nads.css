@@ -4325,6 +4325,11 @@ button.cofre-pessoa:hover{background:var(--hover-bg);}
 .registro-prop-valor > input::placeholder{color:var(--ink-faint);}
 .registro-escolha{padding:6px 8px;font-weight:500;}
 .registro-escolha.vazio{color:var(--ink-faint);font-weight:400;}
+/* a conta do plano nas janelas do Financeiro (EscolherConta): o botão com a linha toda; a lista rola dentro (umas 8 linhas) */
+.fin-escolher-conta{flex:1;min-width:0;}
+.fin-escolher-conta > .popover-wrap > .btn{width:100%;justify-content:space-between;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.fin-escolher-conta-lista{max-height:272px;overflow:auto;}
+.fin-escolher-conta-codigo{min-width:56px;color:var(--ink-muted);font-variant-numeric:tabular-nums;}
 .registro-origem{font-size:var(--fs-12);}
 .registro-erros{list-style:none;margin:2px 0 0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:var(--fs-12);color:var(--danger);}
 .registro-erros li{display:flex;align-items:center;gap:6px;}
