@@ -1,26 +1,63 @@
 // Carteira › Holerites e pagamentos (12/11/2026: "o cara do financeiro pode upar o holerite e o comprovante de pagamento,
-// aparecendo pra pessoa"): os holerites e comprovantes que o Financeiro subiu para a pessoa e as contas a pagar que ele
-// ligou a ela (salário, comissão, adiantamento…), com o comprovante quando a conta foi paga.
+// aparecendo pra pessoa"): em cima, os valores do mês e os últimos 6 meses (vieram da Visão geral, que saiu: "na pagina
+// de holerite voce mostra os valores"); embaixo, os holerites e comprovantes que o Financeiro subiu para a pessoa e as
+// contas a pagar que ele ligou a ela (salário, comissão, adiantamento…), com o comprovante quando a conta foi paga.
 import { carteira, formatos } from '@nads/core';
-import { Icone, useCarregando, Vazio } from '@nads/ui';
+import { Icone, useCarregando, Vazio, type NomeIcone } from '@nads/ui';
 import { dataBr } from '../financeiro/formatosDaNota';
-import { mesCurto, tamanhoBr } from './comum';
+import { mesCurto, SeletorDoMes, tamanhoBr } from './comum';
+
+function Numero({ rotulo, valor, dica, icone, tom }: { rotulo: string; valor: string; dica: string; icone: NomeIcone; tom: 'neutro' | 'aviso' | 'ok' }) {
+  return (
+    <div className={'stat painel-numero painel-' + tom}>
+      <span className="painel-numero-icone" aria-hidden="true"><Icone nome={icone} /></span>
+      <p className="stat-label">{rotulo}</p>
+      <p className="stat-value num">{valor}</p>
+      <p className="hint dp-numero-dica">{dica}</p>
+    </div>
+  );
+}
 import { useHoleritesEPagamentos } from './useCarteiraDaPessoa';
 
 export function HoleritesEPagamentos() {
   const vm = useHoleritesEPagamentos();
-  const { pags, erro } = vm;
+  const { m, pags, erro, salario, recebido, totais: t, hist, maior, carregando } = vm;
   const docs = { carregada: vm.docsCarregados, lista: vm.docs };
   const contas = { carregada: vm.contasCarregadas };
   useCarregando(vm.carregando);
   return (
-    <section className="dp-painel">
+    <section className="dp-painel cart-painel">
       <div className="tarefas-barra-topo dp-filtros-linha">
-        <span className="fraco">O Financeiro sobe aqui os seus holerites e comprovantes; os pagamentos que ele lançar para você também aparecem.</span>
+        <SeletorDoMes {...m} />
         <span className="tarefas-barra-espaco" />
         {vm.exemplos && <span className="badge badge-neutral">Exemplos</span>}
       </div>
       {erro && <p className="registro-dica registro-dica-erro"><Icone nome="alert" />{erro}</p>}
+
+      <div className="stat-grid dp-numeros">
+        <Numero rotulo="Salário" icone="recibo" tom="neutro" valor={carregando || salario == null ? '—' : formatos.reais(salario)}
+          dica={salario == null ? 'O holerite do mês ainda não chegou' : 'Líquido do holerite'} />
+        <Numero rotulo="Recebido do escritório" icone="check" tom="ok" valor={carregando ? '—' : formatos.reais(recebido.recebido)}
+          dica={recebido.aReceber ? formatos.reais(recebido.aReceber) + ' a receber' : 'Pagamentos com comprovante'} />
+        <Numero rotulo="Comissões" icone="dinheiro" tom="aviso" valor={carregando ? '—' : formatos.reais(t.total)}
+          dica={t.aprovadas ? formatos.reais(t.aprovadas) + ' aprovadas, a receber' : t.lancadas ? formatos.reais(t.lancadas) + ' esperando aprovação' : t.quantas ? 'Todas pagas' : 'Nenhuma no mês'} />
+      </div>
+
+      <section className="card cart-cartao">
+        <h3 className="cart-titulo">Últimos 6 meses</h3>
+        <div className="cart-grafico" role="img" aria-label="Salário e comissões nos últimos 6 meses">
+          {hist.map(h => (
+            <div key={h.competencia} className={'cart-coluna' + (h.competencia === m.mes ? ' atual' : '')} title={mesCurto(h.competencia) + ': salário ' + formatos.reais(h.salario) + ', comissões ' + formatos.reais(h.comissoes)}>
+              <div className="cart-barras">
+                <span className="cart-barra comissao" style={{ height: (h.comissoes / maior) * 100 + '%' }} />
+                <span className="cart-barra salario" style={{ height: (h.salario / maior) * 100 + '%' }} />
+              </div>
+              <span className="cart-mes">{mesCurto(h.competencia).slice(0, 3)}</span>
+            </div>
+          ))}
+        </div>
+        <p className="cart-legenda"><span className="cart-ponto salario" />Salário <span className="cart-ponto comissao" />Comissões</p>
+      </section>
 
       <section className="card cart-cartao">
         <h3 className="cart-titulo">Holerites e comprovantes</h3>

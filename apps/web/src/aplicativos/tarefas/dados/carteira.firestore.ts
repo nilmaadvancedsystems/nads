@@ -1,7 +1,10 @@
 // A Carteira no banco do Entregas (12/11/2026), nas regras de lá:
 //   - carteiraComissoes/{id}: {uid, nome, competencia, data, cliente, descricao, valor, situacao, criadoEm, decididoPor?,
-//     decididoEm?, motivo?, pagoEm?} — a pessoa lê as dela, cria lançada e mexe enquanto está lançada; o Financeiro lê
-//     todas e decide (aprova, recusa, paga);
+//     decididoEm?, motivo?, pagoEm?, clienteCodigo, porte, servico, valorServico, percentual} — a pessoa lê as dela, cria
+//     lançada (no mês seguinte) e mexe enquanto está lançada; o Financeiro lê todas, decide (aprova, recusa, paga) e
+//     registra a de qualquer pessoa, em qualquer mês, já aprovada (a retroativa; 12/11/2026);
+//   - carteiraConfig/servicos: {lista: [{id, nome, percentual}], atualizadoEm, atualizadoPor} — os serviços comissionados e a %
+//     de cada um; todos leem, o Financeiro grava (12/11/2026);
 //   - usuarios/{uid}/carteiraLancamentos/{id}: {tipo, data, descricao, categoria, valor} — as finanças pessoais: só a dona
 //     (nem o admin, como as Anotações);
 //   - carteiraDocumentos/{id}: {uid, nome, tipo 'holerite'|'comprovante', competencia, valor, arquivo, tamanho, partes,
@@ -38,8 +41,20 @@ function comissaoDoBanco(id: string, d: Record<string, unknown>): carteira.Comis
     valor: numero(d.valor), situacao: SITUACOES.includes(d.situacao as carteira.SituacaoDaComissao) ? (d.situacao as carteira.SituacaoDaComissao) : 'lancada',
     criadoEm: texto(d.criadoEm), decididoPor: texto(d.decididoPor) || undefined, decididoEm: texto(d.decididoEm) || undefined,
     motivo: texto(d.motivo) || undefined, pagoEm: texto(d.pagoEm) || undefined,
+    clienteCodigo: typeof d.clienteCodigo === 'number' ? d.clienteCodigo : null, porte: carteira.PORTES.includes(d.porte as carteira.Porte) ? (d.porte as carteira.Porte) : null,
+    servico: texto(d.servico) || undefined, valorServico: typeof d.valorServico === 'number' ? d.valorServico : undefined, percentual: typeof d.percentual === 'number' ? d.percentual : undefined,
   };
 }
+function servicosDoBanco(d: Record<string, unknown> | undefined): carteira.ServicoComissionado[] {
+  const l = Array.isArray(d?.lista) ? (d!.lista as Record<string, unknown>[]) : null;
+  if (!l) return carteira.servicosPadrao();
+  return l.map(x => ({ id: texto(x.id), nome: texto(x.nome), percentual: numero(x.percentual) })).filter(x => x.id && x.nome);
+}
+/** os campos da comissão no banco (a descrição é o nome do serviço; o valor sai do valor do serviço × a %) */
+const camposDaComissao = (c: carteira.ComissaoParaSalvar) => ({
+  data: c.data, cliente: c.cliente.trim(), clienteCodigo: c.clienteCodigo, porte: c.clienteCodigo == null ? c.porte : null,
+  servico: c.servico, descricao: c.servico, valorServico: centavos(c.valorServico), percentual: c.percentual, valor: carteira.valorDaComissao(c.valorServico, c.percentual),
+});
 function lancamentoDoBanco(id: string, d: Record<string, unknown>): carteira.Lancamento {
   return { id, tipo: d.tipo === 'entrada' ? 'entrada' : 'saida', data: texto(d.data), descricao: texto(d.descricao), categoria: texto(d.categoria) || 'Outros', valor: numero(d.valor) };
 }
@@ -122,6 +137,16 @@ export function criarCarteiraFirestore(quem: QuemNaCarteira): RepoCarteira {
     return docsDoMes.get(c)!;
   }
 
+  // os serviços comissionados: um documento só, ouvido quando a tela pede
+  let servicos = vazia<carteira.ServicoComissionado>();
+  let ouvindoServicos = false;
+  function ouvirServicos() {
+    if (ouvindoServicos) return;
+    ouvindoServicos = true;
+    onSnapshot(doc(db, 'carteiraConfig', 'servicos'), s => { servicos = { carregada: true, lista: servicosDoBanco(s.data()), erro: '' }; mudou(); },
+      err => { servicos = { carregada: true, lista: carteira.servicosPadrao(), erro: erroDe(err) }; mudou(); });
+  }
+
   const precisa = () => { const q = quem(); if (!q) throw new Error('Entre com a conta do Entregas.'); return q; };
 
   return {
@@ -132,9 +157,23 @@ export function criarCarteiraFirestore(quem: QuemNaCarteira): RepoCarteira {
     minhasContas: () => { ouvirAsMinhas(); return contas; },
     async salvarComissao(c, id) {
       const q = precisa();
-      const campos = { competencia: c.competencia, data: c.data, cliente: c.cliente.trim(), descricao: c.descricao.trim(), valor: centavos(c.valor) };
-      if (id) await updateDoc(doc(db, 'carteiraComissoes', id), campos);
-      else await addDoc(collection(db, 'carteiraComissoes'), { ...campos, uid: q.uid, nome: q.nome, situacao: 'lancada', criadoEm: new Date().toISOString() });
+      // o mês do pagamento fica o de quando foi registrada (a pessoa não troca)
+      if (id) await updateDoc(doc(db, 'carteiraComissoes', id), camposDaComissao(c));
+      else await addDoc(collection(db, 'carteiraComissoes'), { ...camposDaComissao(c), competencia: c.competencia, uid: q.uid, nome: q.nome, situacao: 'lancada', criadoEm: new Date().toISOString() });
+    },
+    servicos: () => { ouvirServicos(); return servicos; },
+    async salvarServicos(lista) {
+      const q = precisa();
+      await setDoc(doc(db, 'carteiraConfig', 'servicos'), {
+        lista: lista.map(s => ({ id: s.id, nome: s.nome.trim(), percentual: centavos(s.percentual) })), atualizadoEm: new Date().toISOString(), atualizadoPor: q.nome,
+      });
+    },
+    async registrarComissaoDe(para, c) {
+      const q = precisa();
+      const em = new Date().toISOString();
+      await addDoc(collection(db, 'carteiraComissoes'), {
+        ...camposDaComissao(c), competencia: c.competencia, uid: para.uid, nome: para.nome, situacao: 'aprovada', criadoEm: em, decididoPor: q.nome, decididoEm: em,
+      });
     },
     async apagarComissao(id) { await deleteDoc(doc(db, 'carteiraComissoes', id)); },
     async salvarLancamento(l, id) {

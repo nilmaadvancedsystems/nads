@@ -48,9 +48,77 @@ export interface Comissao {
   decididoEm?: string;
   motivo?: string;
   pagoEm?: string;
+  /** o cliente do cadastro (o código do ERP); null/ausente = cliente avulso ou comissão de antes (12/11/2026) */
+  clienteCodigo?: number | null;
+  /** o porte do cliente avulso */
+  porte?: Porte | null;
+  /** o serviço comissionado, quanto o cliente pagou por ele e a % do Financeiro naquele dia (valor = valorServico × %) */
+  servico?: string;
+  valorServico?: number;
+  percentual?: number;
 }
 
-export interface ComissaoParaSalvar { competencia: string; data: string; cliente: string; descricao: string; valor: number }
+/** O porte do cliente avulso (Vitor, 12/11/2026). */
+export type Porte = 'MEI' | 'ME' | 'EPP' | 'Demais';
+export const PORTES: readonly Porte[] = ['MEI', 'ME', 'EPP', 'Demais'];
+
+/**
+ * O que a pessoa registra: o cliente (do cadastro, ou avulso com o porte), o serviço comissionado e quanto o cliente pagou
+ * por ele; a comissão sai sozinha pela % que o Financeiro definiu para o serviço (Vitor, 12/11/2026: "Sim, sobre o valor do
+ * serviço"). A descrição gravada é o nome do serviço.
+ */
+export interface ComissaoParaSalvar {
+  competencia: string;
+  data: string;
+  cliente: string;
+  clienteCodigo: number | null;
+  porte: Porte | null;
+  servico: string;
+  valorServico: number;
+  percentual: number;
+}
+
+// ── serviços comissionados ──────────────────────────────────────────────────
+
+/** Um serviço que dá comissão e a % dela, que o Financeiro define. */
+export interface ServicoComissionado { id: string; nome: string; percentual: number }
+
+/** Os serviços com que a lista começa (Vitor, 12/11/2026); o Financeiro acrescenta outros e define a % de cada um. */
+export const SERVICOS_PADRAO: readonly string[] = [
+  'Emissão de NFE', 'Emissão de NFSE', 'NF de Carvão', 'Emissão de GTA', 'Contrato de Locação', 'Contrato de Compra e Venda',
+  'Serviços de Licitação', 'Abertura de MEI', 'Declaração de MEI',
+];
+
+const idDoServico = (nome: string) => semAcento(nome).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'servico';
+
+/** A lista padrão, ainda sem a % (o Financeiro define). */
+export const servicosPadrao = (): ServicoComissionado[] => SERVICOS_PADRAO.map(nome => ({ id: idDoServico(nome), nome, percentual: 0 }));
+
+/** Um serviço novo, com um id que não repete os da lista. */
+export function novoServico(lista: readonly ServicoComissionado[], nome: string): ServicoComissionado {
+  const base = idDoServico(nome);
+  let id = base;
+  for (let i = 2; lista.some(s => s.id === id); i++) id = base + '-' + i;
+  return { id, nome: nome.trim(), percentual: 0 };
+}
+
+/** O que está errado na lista de serviços (lista vazia = pode gravar). */
+export function conferirServicos(lista: readonly ServicoComissionado[]): string[] {
+  const erros: string[] = [];
+  if (lista.some(s => !s.nome.trim())) erros.push('Todo serviço precisa de um nome.');
+  if (lista.some(s => s.nome.length > 80)) erros.push('O nome do serviço está grande demais.');
+  if (lista.some(s => !(s.percentual >= 0 && s.percentual <= 100))) erros.push('A % fica entre 0 e 100.');
+  const nomes = lista.map(s => semAcento(s.nome));
+  if (new Set(nomes).size !== nomes.length) erros.push('Há serviço repetido.');
+  if (lista.length > 100) erros.push('São serviços demais (até 100).');
+  return erros;
+}
+
+/** A comissão: o valor do serviço × a % (em centavos). */
+export const valorDaComissao = (valorServico: number, percentual: number) => Math.round(valorServico * percentual) / 100;
+
+/** O mês em que a comissão registrada pela pessoa entra para pagamento: sempre o seguinte ao atual (Vitor, 12/11/2026). */
+export const mesDoPagamento = (hoje: Date) => competenciaDe(new Date(hoje.getFullYear(), hoje.getMonth() + 1, 1));
 
 const COMPETENCIA = /^\d{4}-(0[1-9]|1[0-2])$/;
 const DATA = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
@@ -60,11 +128,14 @@ export function conferirComissao(c: ComissaoParaSalvar): string[] {
   const erros: string[] = [];
   if (!COMPETENCIA.test(c.competencia)) erros.push('Escolha o mês do pagamento.');
   if (!DATA.test(c.data)) erros.push('Informe a data.');
-  if (!c.cliente.trim()) erros.push('Informe o cliente.');
-  if (!c.descricao.trim()) erros.push('Descreva a comissão.');
-  if (!(c.valor > 0)) erros.push('O valor precisa ser maior que zero.');
-  if (c.valor >= 1_000_000) erros.push('Confira o valor: passa de R$ 1 milhão.');
-  if (c.cliente.length > 150 || c.descricao.length > 500) erros.push('O texto está grande demais.');
+  if (!c.cliente.trim()) erros.push(c.clienteCodigo == null ? 'Escreva o nome do cliente avulso.' : 'Escolha o cliente.');
+  if (c.clienteCodigo == null && !c.porte) erros.push('Escolha o porte do cliente avulso.');
+  if (!c.servico.trim()) erros.push('Escolha o serviço.');
+  else if (!(c.percentual > 0)) erros.push('O Financeiro ainda não definiu a % de ' + c.servico + '.');
+  if (!(c.valorServico > 0)) erros.push('Informe quanto o cliente pagou pelo serviço.');
+  if (c.valorServico >= 10_000_000) erros.push('Confira o valor do serviço.');
+  else if (c.valorServico > 0 && c.percentual > 0 && !(valorDaComissao(c.valorServico, c.percentual) > 0)) erros.push('A comissão deu zero: confira o valor.');
+  if (c.cliente.length > 150 || c.servico.length > 80) erros.push('O texto está grande demais.');
   return erros;
 }
 
@@ -235,3 +306,6 @@ export function recebidoNoMes(pags: readonly PagamentoNaCarteira[], competencia:
     aReceber: soma(doMes.filter(p => !p.pago).map(p => p.valor)),
   };
 }
+
+// os Insumos (12/11/2026): impressões, pastas, envelopes e caixas de cada pessoa, por cliente
+export * from './insumos';

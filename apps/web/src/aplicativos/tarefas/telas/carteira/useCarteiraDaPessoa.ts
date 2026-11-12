@@ -1,72 +1,98 @@
 // Os ViewModels da Carteira (12/11/2026): o que cada tela mostra e faz, a partir do repositório (as telas não falam com
 // ele). A lógica de conta é do core (carteira); aqui fica o estado da tela e as ações com o aviso de erro.
-import { carteira, type financeiro } from '@nads/core';
+import { carteira, empresas, type financeiro } from '@nads/core';
 import { useRetorno } from '@nads/ui';
-import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { useMemo, useState } from 'react';
 import type { Decisao } from '../../dados/carteira';
-import { useAcesso, useCarteira } from '../../dados/repo';
+import { empresasNovas } from '../../dados/fonte';
+import { useAcesso, useCarteira, useTodosOsCadastros } from '../../dados/repo';
 import { dataBr, hoje, isoDaData, valorDigitado, valorNoCampo } from '../financeiro/formatosDaNota';
 import { abrirBytes, baixarDaCarteira, mensagem, useMes } from './comum';
 
 /** as contas ligadas à pessoa (a consulta já é só dela) como os pagamentos da Carteira */
 const pagamentosDe = (contas: readonly financeiro.ContaAPagar[]) => carteira.pagamentosDaCarteira(contas, contas[0]?.funcionario?.uid ?? '');
 
-export function useVisaoDaCarteira() {
-  const repo = useCarteira();
-  const m = useMes();
-  const comissoes = repo.minhasComissoes(), lancamentos = repo.meusLancamentos(), docs = repo.meusDocumentos(), contas = repo.minhasContas();
-  const doMes = comissoes.lista.filter(c => c.competencia === m.mes);
-  const hist = carteira.historico(m.meses.slice(0, 6), comissoes.lista, lancamentos.lista, docs.lista);
-  return {
-    m, exemplos: repo.exemplos,
-    carregando: !comissoes.carregada || !lancamentos.carregada || !docs.carregada || !contas.carregada,
-    erro: comissoes.erro || lancamentos.erro || docs.erro || contas.erro,
-    salario: carteira.salarioDoMes(docs.lista, m.mes),
-    recebido: carteira.recebidoNoMes(pagamentosDe(contas.lista), m.mes),
-    totais: carteira.totaisDasComissoes(doMes),
-    financas: carteira.resumoDasFinancas(lancamentos.lista, m.mes),
-    hist, maior: Math.max(1, ...hist.map(h => h.salario + h.comissoes)),
-    doMes,
-  };
-}
-
+/** As comissões da pessoa, pelo mês do pagamento: abre no mês seguinte, onde entram as que ela registra (12/11/2026). */
 export function useMinhasComissoes() {
   const repo = useCarteira();
-  const m = useMes();
-  const [params, setParams] = useSearchParams();
+  const m = useMes('comecar');
   const [aberta, setAberta] = useState<carteira.Comissao | null | 'nova'>(null);
-  // o "Registrar comissão" da Visão geral chega com ?nova=1
-  useEffect(() => { if (params.get('nova')) { setAberta('nova'); setParams({}, { replace: true }); } }, [params, setParams]);
   const todas = repo.minhasComissoes();
   const lista = todas.lista.filter(c => c.competencia === m.mes);
   return { m, exemplos: repo.exemplos, carregada: todas.carregada, erro: todas.erro, lista, totais: carteira.totaisDasComissoes(lista), aberta, setAberta };
 }
 
-export function useJanelaDaComissao(comissao: carteira.Comissao | null, fechar: () => void) {
+/** O cliente do cadastro no menu da comissão (pelo código do ERP). */
+export interface ClienteDaLista { codigo: number; nome: string }
+
+/** Os clientes do escritório para o menu da comissão: a lista do escritório e as empresas cadastradas pelo nads (com código). */
+function useClientesDoEscritorio(): ClienteDaLista[] {
+  const cadastros = useTodosOsCadastros();
+  return useMemo(() => {
+    const porCodigo = new Map<number, string>();
+    for (const e of [...empresas.EMPRESAS_COM_DP, ...empresasNovas()]) if (e.codigo != null && !porCodigo.has(e.codigo)) porCodigo.set(e.codigo, e.nome);
+    return [...porCodigo].map(([codigo, nome]) => ({ codigo, nome })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+    // as empresas novas vêm do cadastro: refaz quando ele muda
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cadastros]);
+}
+
+/**
+ * A janela de registrar a comissão. Pela Carteira, o mês do pagamento é sempre o seguinte ao atual (Vitor, 12/11/2026);
+ * pelo Financeiro (doFinanceiro), escolhe a pessoa e qualquer mês (a retroativa), e a comissão já entra aprovada.
+ */
+export function useJanelaDaComissao(comissao: carteira.Comissao | null, fechar: () => void, doFinanceiro = false) {
   const repo = useCarteira();
   const { toast, modal } = useRetorno();
-  const meses = carteira.ultimosMeses(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1), 6);
-  const [competencia, setCompetencia] = useState(comissao?.competencia ?? carteira.competenciaDe(new Date()));
+  const equipe = useAcesso().equipe();
+  const clientes = useClientesDoEscritorio();
+  const servicos = repo.servicos();
+  const agora = new Date();
+  const [competencia, setCompetencia] = useState(comissao?.competencia ?? (doFinanceiro ? carteira.competenciaDe(agora) : carteira.mesDoPagamento(agora)));
+  const [para, setPara] = useState<{ uid: string; nome: string } | null>(null);
   const [data, setData] = useState(dataBr(comissao?.data ?? hoje()));
-  const [cliente, setCliente] = useState(comissao?.cliente ?? '');
-  const [descricao, setDescricao] = useState(comissao?.descricao ?? '');
-  const [valor, setValor] = useState(valorNoCampo(comissao?.valor ?? 0));
+  // a comissão de antes (sem o código do cliente) abre como avulsa
+  const [avulso, setAvulso] = useState(!!comissao && comissao.clienteCodigo == null);
+  const [clienteCodigo, setClienteCodigo] = useState<number | null>(comissao?.clienteCodigo ?? null);
+  const [nomeAvulso, setNomeAvulso] = useState(comissao && comissao.clienteCodigo == null ? comissao.cliente : '');
+  const [porte, setPorte] = useState<carteira.Porte | null>(comissao?.porte ?? null);
+  const [servico, setServico] = useState(comissao?.servico ?? '');
+  const [valorServico, setValorServico] = useState(valorNoCampo(comissao?.valorServico ?? 0));
   const [erros, setErros] = useState<string[]>([]);
   const [salvando, setSalvando] = useState(false);
   const travada = !!comissao && !carteira.podeEditar(comissao);
+  // a %: a que ficou gravada na comissão já decidida; senão, a de hoje do serviço
+  const percentual = travada ? comissao!.percentual ?? 0 : servicos.lista.find(s => s.nome === servico)?.percentual ?? 0;
+  const vs = valorDigitado(valorServico);
+  const cliente = avulso ? nomeAvulso : clientes.find(c => c.codigo === clienteCodigo)?.nome ?? comissao?.cliente ?? '';
+  const pessoas = equipe.lista.filter(u => u.ativo).map(u => ({ uid: u.uid, nome: u.nome })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
   return {
-    competencia, setCompetencia, data, setData, cliente, setCliente, descricao, setDescricao, valor, setValor, erros, salvando, travada,
-    meses: [...new Set([competencia, ...meses])].sort().reverse(),
+    doFinanceiro, travada, salvando, erros,
+    competencia, setCompetencia, mesesDoFinanceiro: [carteira.mesDoPagamento(agora), ...carteira.ultimosMeses(agora, 12)],
+    pessoas, para, setPara,
+    data, setData,
+    clientes, avulso, clienteCodigo, cliente, nomeAvulso, setNomeAvulso, porte, setPorte,
+    escolherCliente: (codigo: number) => { setAvulso(false); setClienteCodigo(codigo); },
+    marcarAvulso: () => { setAvulso(true); setClienteCodigo(null); },
+    servicos: servicos.lista, servico, setServico, percentual,
+    valorServico, setValorServico,
+    /** a comissão que vai sair (valor do serviço × %) */
+    valor: travada ? comissao!.valor : vs > 0 && percentual > 0 ? carteira.valorDaComissao(vs, percentual) : 0,
     async salvar() {
       if (travada) return;
-      const c = { competencia, data: isoDaData(data), cliente, descricao, valor: valorDigitado(valor) };
-      const problemas = carteira.conferirComissao(c);
+      const c: carteira.ComissaoParaSalvar = {
+        competencia, data: isoDaData(data), cliente: cliente.trim(), clienteCodigo: avulso ? null : clienteCodigo, porte: avulso ? porte : null,
+        servico, valorServico: vs, percentual,
+      };
+      const problemas = [...(doFinanceiro && !para ? ['Escolha a pessoa.'] : []), ...carteira.conferirComissao(c)];
       setErros(problemas);
       if (problemas.length) return;
       setSalvando(true);
-      try { await repo.salvarComissao(c, comissao?.id); toast(comissao ? 'Comissão alterada.' : 'Comissão registrada. O Financeiro vê e aprova.'); fechar(); }
-      catch (e) { setErros([mensagem(e, 'Não consegui gravar.')]); }
+      try {
+        if (doFinanceiro) { await repo.registrarComissaoDe(para!, c); toast('Comissão registrada para ' + para!.nome + ', já aprovada.'); }
+        else { await repo.salvarComissao(c, comissao?.id); toast(comissao ? 'Comissão alterada.' : 'Comissão registrada. O Financeiro vê e aprova.'); }
+        fechar();
+      } catch (e) { setErros([mensagem(e, 'Não consegui gravar.')]); }
       finally { setSalvando(false); }
     },
     async apagar() {
@@ -79,57 +105,56 @@ export function useJanelaDaComissao(comissao: carteira.Comissao | null, fechar: 
   };
 }
 
-export function useFinancasPessoais() {
-  const repo = useCarteira();
-  const m = useMes();
-  const [aberto, setAberto] = useState<carteira.Lancamento | null | 'novo'>(null);
-  const todos = repo.meusLancamentos();
-  return {
-    m, exemplos: repo.exemplos, carregado: todos.carregada, erro: todos.erro, aberto, setAberto,
-    lista: todos.lista.filter(l => l.data.slice(0, 7) === m.mes),
-    resumo: carteira.resumoDasFinancas(todos.lista, m.mes),
-  };
-}
-
-export function useJanelaDoLancamentoPessoal(lancamento: carteira.Lancamento | null, fechar: () => void) {
+/** A janela dos serviços comissionados (o Financeiro): os serviços, a % de cada um, acrescentar e tirar. */
+export function useJanelaDosServicos(fechar: () => void) {
   const repo = useCarteira();
   const { toast } = useRetorno();
-  const [tipo, setTipo] = useState<carteira.TipoDeLancamento>(lancamento?.tipo ?? 'saida');
-  const [data, setData] = useState(dataBr(lancamento?.data ?? hoje()));
-  const [descricao, setDescricao] = useState(lancamento?.descricao ?? '');
-  const [categoria, setCategoria] = useState(lancamento?.categoria ?? 'Outros');
-  const [valor, setValor] = useState(valorNoCampo(lancamento?.valor ?? 0));
+  const salvos = repo.servicos();
+  const [lista, setLista] = useState<{ id: string; nome: string; percentual: string }[] | null>(null);
+  const [novo, setNovo] = useState('');
   const [erros, setErros] = useState<string[]>([]);
   const [salvando, setSalvando] = useState(false);
-  const categorias = carteira.CATEGORIAS[tipo];
+  // a lista que está na tela: a do banco até a pessoa mexer
+  const atual = lista ?? salvos.lista.map(s => ({ id: s.id, nome: s.nome, percentual: s.percentual ? valorNoCampo(s.percentual) : '' }));
+  const comoServicos = () => atual.map(s => ({ id: s.id, nome: s.nome, percentual: s.percentual.trim() ? valorDigitado(s.percentual) : 0 }));
   return {
-    tipo, mudarTipo: (t: carteira.TipoDeLancamento) => { setTipo(t); setCategoria('Outros'); },
-    data, setData, descricao, setDescricao, valor, setValor, erros, salvando, categorias,
-    categoria: categorias.includes(categoria) ? categoria : 'Outros', setCategoria,
+    carregada: salvos.carregada, erro: salvos.erro, lista: atual, novo, setNovo, erros, salvando,
+    mudar: (id: string, campo: 'nome' | 'percentual', v: string) => setLista(atual.map(s => (s.id === id ? { ...s, [campo]: v } : s))),
+    tirar: (id: string) => setLista(atual.filter(s => s.id !== id)),
+    acrescentar() {
+      if (!novo.trim()) return;
+      const s = carteira.novoServico(comoServicos(), novo);
+      setLista([...atual, { id: s.id, nome: s.nome, percentual: '' }]);
+      setNovo('');
+    },
     async salvar() {
-      const l = { tipo, data: isoDaData(data), descricao, categoria: categorias.includes(categoria) ? categoria : 'Outros', valor: valorDigitado(valor) };
-      const problemas = carteira.conferirLancamento(l);
+      const l = comoServicos();
+      const problemas = carteira.conferirServicos(l);
       setErros(problemas);
       if (problemas.length) return;
       setSalvando(true);
-      try { await repo.salvarLancamento(l, lancamento?.id); toast(lancamento ? 'Lançamento alterado.' : 'Lançado.'); fechar(); }
+      try { await repo.salvarServicos(l); toast('Serviços gravados.'); fechar(); }
       catch (e) { setErros([mensagem(e, 'Não consegui gravar.')]); }
       finally { setSalvando(false); }
-    },
-    async apagar() {
-      if (!lancamento) return;
-      try { await repo.apagarLancamento(lancamento.id); toast('Lançamento apagado.'); fechar(); } catch (e) { toast(mensagem(e, 'Não consegui apagar.')); }
     },
   };
 }
 
+/** Holerites e pagamentos (12/11/2026: os valores da Visão geral vieram para cá): o mês, os números e os últimos 6 meses. */
 export function useHoleritesEPagamentos() {
   const repo = useCarteira();
   const { toast } = useRetorno();
-  const docs = repo.meusDocumentos(), contas = repo.minhasContas();
+  const m = useMes();
+  const comissoes = repo.minhasComissoes(), docs = repo.meusDocumentos(), contas = repo.minhasContas();
+  const pags = pagamentosDe(contas.lista);
+  const hist = carteira.historico(m.meses.slice(0, 6), comissoes.lista, [], docs.lista);
   return {
-    exemplos: repo.exemplos, carregando: !docs.carregada || !contas.carregada, erro: docs.erro || contas.erro,
-    docs: docs.lista, docsCarregados: docs.carregada, pags: pagamentosDe(contas.lista), contasCarregadas: contas.carregada,
+    m, exemplos: repo.exemplos, carregando: !comissoes.carregada || !docs.carregada || !contas.carregada, erro: comissoes.erro || docs.erro || contas.erro,
+    salario: carteira.salarioDoMes(docs.lista, m.mes),
+    recebido: carteira.recebidoNoMes(pags, m.mes),
+    totais: carteira.totaisDasComissoes(comissoes.lista.filter(c => c.competencia === m.mes)),
+    hist, maior: Math.max(1, ...hist.map(h => h.salario + h.comissoes)),
+    docs: docs.lista, docsCarregados: docs.carregada, pags, contasCarregadas: contas.carregada,
     abrirDocumento: (d: carteira.DocumentoDaCarteira) => void abrirBytes(() => repo.bytesDoDocumento(d.id), d.arquivo, toast),
     baixarDocumento: (d: carteira.DocumentoDaCarteira) => void baixarDaCarteira(() => repo.bytesDoDocumento(d.id), d.arquivo, toast),
     abrirComprovante: (contaId: string, c: { id: string; nome: string }) => void abrirBytes(() => repo.bytesDoComprovante(contaId, c.id), c.nome, toast),
@@ -139,14 +164,16 @@ export function useHoleritesEPagamentos() {
 export function useComissoesDaEquipe() {
   const repo = useCarteira();
   const { toast, modal } = useRetorno();
-  const m = useMes();
+  const m = useMes('incluir');
   const [aberta, setAberta] = useState('');
   const [fazendo, setFazendo] = useState('');
+  // as janelas do Financeiro: registrar a comissão de alguém (a retroativa) e os serviços comissionados com a %
+  const [janela, setJanela] = useState<'' | 'registrar' | 'servicos'>('');
   const doMes = repo.comissoesDoMes(m.mes);
   return {
     m, exemplos: repo.exemplos, carregada: doMes.carregada, erro: doMes.erro, todas: doMes.lista,
     resumo: carteira.resumoParaPagar(doMes.lista), totais: carteira.totaisDasComissoes(doMes.lista),
-    aberta, alternar: (uid: string) => setAberta(a => (a === uid ? '' : uid)), fazendo,
+    aberta, alternar: (uid: string) => setAberta(a => (a === uid ? '' : uid)), fazendo, janela, setJanela,
     /** aprovar, recusar (com o motivo), marcar como pago (confirma antes) ou voltar para lançada */
     async decidir(chave: string, ids: string[], situacao: Decisao, ok: string, pedirMotivo?: (guardar: (t: string) => void) => unknown) {
       if (!ids.length || fazendo) return;
