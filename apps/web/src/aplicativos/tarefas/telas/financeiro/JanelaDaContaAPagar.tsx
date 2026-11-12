@@ -6,6 +6,7 @@ import { financeiro, formatos } from '@nads/core';
 import { BotaoAcao, CampoArquivos, CampoData, Icone, Interruptor } from '@nads/ui';
 import { Cartao, JanelaLateral, Linha, type TopicoDaJanela } from '../janela/JanelaLateral';
 import { dataBr } from './formatosDaNota';
+import { EscolherConta } from './partes/EscolherConta';
 import { ACEITA_NO_ANEXO, useJanelaDaContaAPagar, type TopicoDaContaAPagar, type VmJanelaDaContaAPagar } from './useJanelaDaContaAPagar';
 
 const TOM: Record<financeiro.SituacaoDaConta, string> = { aberta: 'badge-warn', vencida: 'badge-bad', paga: 'badge-ok' };
@@ -41,10 +42,7 @@ function TopicoConta({ vm }: { vm: VmJanelaDaContaAPagar }) {
           </div>
         )}
         <Linha rotulo="Conta contábil">
-          <select className="pessoal-select cp-campo" value={vm.conta} disabled={travada} onChange={e => vm.setConta(e.target.value)} aria-label="Conta contábil">
-            <option value="">Sem conta</option>
-            {vm.contas.map(c => <option key={c.id} value={c.id}>{c.codigo} · {c.descricao}</option>)}
-          </select>
+          <EscolherConta valor={vm.conta} contas={vm.contas} onEscolher={vm.setConta} titulo="Conta contábil" travada={travada} className="btn btn-outline" caixa="cp-campo" />
         </Linha>
         <Linha rotulo="Funcionário" dica="A conta aparece na Carteira da pessoa (o valor, se já foi paga e o comprovante)">
           <select className="pessoal-select cp-campo" value={vm.funcionarioUid} disabled={travada} onChange={e => vm.setFuncionarioUid(e.target.value)} aria-label="Funcionário">

@@ -98,13 +98,18 @@ export function JanelaDoUsuario({ vm }: { vm: VmUsuarios }) {
               {vm.departamentos.map(d => <option key={d.id} value={d.id}>{d.rotulo}</option>)}
             </select>
           </Linha>
-          <Linha rotulo="Nível" dica="Diretor também vira administrador.">
-            <select className="pessoal-select" value={p.nivel || ''} disabled={!vm.admin} aria-label="Nível"
-              onChange={ev => void vm.mudarCargo(p, p.departamento, (ev.target.value || null) as usuarios.Nivel | null)}>
-              <option value="">—</option>
-              {vm.niveis.map(n => <option key={n.id} value={n.id}>{n.rotulo}</option>)}
-            </select>
-          </Linha>
+          {/* o Dono não aparece na lista e o nível dele não muda por aqui (12/11/2026) */}
+          {p.nivel === 'dono' ? (
+            <Linha rotulo="Nível" dica="O Dono só deixa de ser pela aba Acesso, ele mesmo."><span>Dono</span></Linha>
+          ) : (
+            <Linha rotulo="Nível" dica="Diretor também vira administrador.">
+              <select className="pessoal-select" value={p.nivel || ''} disabled={!vm.admin} aria-label="Nível"
+                onChange={ev => void vm.mudarCargo(p, p.departamento, (ev.target.value || null) as usuarios.Nivel | null)}>
+                <option value="">—</option>
+                {vm.niveis.map(n => <option key={n.id} value={n.id}>{n.rotulo}</option>)}
+              </select>
+            </Linha>
+          )}
         </Cartao>
       )}
       {topico === 'papeis' && (
@@ -139,6 +144,13 @@ export function JanelaDoUsuario({ vm }: { vm: VmUsuarios }) {
                   : <button type="button" className="btn btn-outline" disabled={vm.gerandoSenha} onClick={() => void vm.gerarLinkDeSenha(p)}>
                     {vm.gerandoSenha ? <span className="btn-spinner" aria-hidden="true" /> : <Icone nome="link" />}Gerar link de nova senha
                   </button>}
+              </Linha>
+            </Cartao>
+          )}
+          {vm.ehODonoQueVe(p) && (
+            <Cartao titulo="Dono">
+              <Linha rotulo="Deixar de ser dono" dica="Você volta a Diretor. Virar Dono de novo, só pelo desenvolvedor.">
+                <button type="button" className="btn btn-outline" onClick={() => void vm.deixarDeSerDono(p)}>Deixar de ser dono</button>
               </Linha>
             </Cartao>
           )}

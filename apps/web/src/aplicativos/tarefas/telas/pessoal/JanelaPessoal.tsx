@@ -59,6 +59,28 @@ function EditarNome({ atual, salvar, rotulo = 'Nome' }: { atual: string; salvar:
   );
 }
 
+/**
+ * O e-mail: o texto com o lápis ao lado; só o lápis abre a edição (Vitor, 12/11/2026: "coloca um ícone de lápis, não de
+ * editar direto"). Salvou ou cancelou, volta ao texto.
+ */
+function EditarEmail({ atual, salvar }: { atual: string; salvar: (n: string) => Promise<string | null> }) {
+  const [editando, setEditando] = useState(false);
+  if (!editando) {
+    return (
+      <span className="pessoal-nome">
+        <span className="cfg-valor">{atual || '—'}</span>
+        <button type="button" className="icon-btn icon-btn-sm" title="Trocar o e-mail" aria-label="Trocar o e-mail" onClick={() => setEditando(true)}><Icone nome="lapis" /></button>
+      </span>
+    );
+  }
+  return (
+    <span className="pessoal-nome">
+      <EditarNome atual={atual} rotulo="E-mail" salvar={async n => { const e = await salvar(n); if (!e) setEditando(false); return e; }} />
+      <button type="button" className="btn btn-outline" onClick={() => setEditando(false)}>Cancelar</button>
+    </span>
+  );
+}
+
 /** A senha: a atual (o Firebase pede de novo) e a nova duas vezes. */
 function TrocarSenha({ salvar }: { salvar: (atual: string, nova: string, confirma: string) => Promise<string | null> }) {
   const [aberto, setAberto] = useState(false);
@@ -130,7 +152,7 @@ function MinhaConta({ vm }: { vm: VmPessoal }) {
           {c.comLogin ? <EditarNome atual={c.nome} salvar={c.trocarNome} /> : <span className="cfg-valor">{c.nome}</span>}
         </ConfigLinha>
         <ConfigLinha titulo="E-mail" descricao={c.comLogin ? 'O e-mail com que você entra. A senha continua a mesma.' : undefined}>
-          {c.comLogin ? <EditarNome atual={c.email} salvar={c.trocarEmail} rotulo="E-mail" /> : <span className="cfg-valor">{c.email || '—'}</span>}
+          {c.comLogin ? <EditarEmail atual={c.email} salvar={c.trocarEmail} /> : <span className="cfg-valor">{c.email || '—'}</span>}
         </ConfigLinha>
         <ConfigLinha titulo="Setor" descricao="Quem muda é um administrador."><span className="cfg-valor">{c.setor}</span></ConfigLinha>
         {c.comLogin && <TrocarSenha salvar={c.trocarSenha} />}

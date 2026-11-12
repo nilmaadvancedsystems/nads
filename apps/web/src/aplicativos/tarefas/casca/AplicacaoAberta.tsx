@@ -9,7 +9,7 @@ import { PainelDeEntregas } from '../telas/entregas/PainelDeEntregas';
 import { Solicitacoes } from '../telas/entregas/Solicitacoes';
 import { RotaDeEntregas } from '../telas/entregas/RotaDeEntregas';
 import { CascaTarefas } from './CascaTarefas';
-import { aplicacao, aplicacoesDe, BASE, caminhoDaPagina, carteiraLiberada, type IdAplicacao } from './navegacao';
+import { aplicacao, aplicacoesDe, BASE, caminhoDaPagina, CARTEIRA_PARA_O_FINANCEIRO, carteiraLiberada, type IdAplicacao } from './navegacao';
 import { useOperador, type Operador } from './operador';
 import type { IdPaginaAdmin } from '../../admin/casca/navegacao';
 
@@ -59,6 +59,9 @@ const ContasAPagar = pedaco(() => import('../telas/financeiro/ContasAPagar'), 'C
 const Boletos = pedaco(() => import('../telas/financeiro/Boletos'), 'Boletos');
 const Ferramentas = pedaco(() => import('../telas/ferramentas/Ferramentas'), 'Ferramentas');
 const Carteira = pedaco(() => import('../telas/carteira/Carteira'), 'Carteira');
+// o lado do Financeiro da Carteira, no Financeiro (12/11/2026)
+const ComissoesDaEquipe = pedaco(() => import('../telas/carteira/ComissoesDaEquipe'), 'ComissoesDaEquipe');
+const EnviarHolerites = pedaco(() => import('../telas/carteira/EnviarHolerites'), 'EnviarHolerites');
 
 function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
   switch (app) {
@@ -72,7 +75,7 @@ function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
     case 'cadastro': return pagina === 'usuarios' ? <UsuariosDoNads /> : pagina === 'releitura' ? <ReleituraDosExtratos /> : <TelaDoAdmin pagina={pagina as IdPaginaAdmin} />;
     // a Área do Cliente com o Mandei junto (19/10/2026): Chamados, Recebidos, Meus tickets e a Central de tickets
     case 'area-cliente': return pagina === 'recebidos' ? <RecebidosDoCliente /> : pagina === 'meus' || pagina === 'central' ? <Mandei pagina={pagina} /> : <ChamadosDoCliente />;
-    case 'financeiro': return <LoginLiberadoNoFinanceiro>{pagina === 'painel' ? <PainelFinanceiro /> : pagina === 'devedores' ? <Devedores /> : pagina === 'resultado' ? <PainelFinanceiro comResultado /> : pagina === 'extrato' || pagina === 'conciliacao' ? <ImportarExtrato /> : pagina === 'configuracoes' ? <ConfiguracoesDoFinanceiro /> : pagina === 'caixa' ? <Caixa /> : pagina === 'honorarios' ? <Honorarios /> : pagina === 'pagar' ? <ContasAPagar /> : pagina === 'boletos' ? <Boletos /> : pagina === 'plano' ? <PlanoDeContas /> : <NotasFiscais />}</LoginLiberadoNoFinanceiro>;
+    case 'financeiro': return <LoginLiberadoNoFinanceiro>{pagina === 'painel' ? <PainelFinanceiro /> : pagina === 'devedores' ? <Devedores /> : pagina === 'resultado' ? <PainelFinanceiro comResultado /> : pagina === 'extrato' || pagina === 'conciliacao' ? <ImportarExtrato /> : pagina === 'configuracoes' ? <ConfiguracoesDoFinanceiro /> : pagina === 'caixa' ? <Caixa /> : pagina === 'honorarios' ? <Honorarios /> : pagina === 'pagar' ? <ContasAPagar /> : pagina === 'comissoes-equipe' ? <ComissoesDaEquipe /> : pagina === 'holerites-equipe' ? <EnviarHolerites /> : pagina === 'boletos' ? <Boletos /> : pagina === 'plano' ? <PlanoDeContas /> : <NotasFiscais />}</LoginLiberadoNoFinanceiro>;
     // a entrega de documentos aos clientes, trazida do Entregas (16/10/2026)
     case 'entregas': return pagina === 'painel' ? <PainelDeEntregas /> : pagina === 'solicitacoes' ? <Solicitacoes /> : pagina === 'nova' ? <NovaEntrega /> : <RotaDeEntregas />;
     case 'drive': return <ExploradorDoDrive />;
@@ -96,6 +99,8 @@ export function AplicacaoAberta() {
   // os endereços das abas de antes (o módulo Minhas tarefas e as páginas do Início): a tela é uma só, a aba vai no ?aba=
   if (app === 'minhas-tarefas' || (app === 'inicio' && ['minhas', 'delegadas', 'concluidas'].includes(pagina))) return <Navigate to={BASE + '/inicio?aba=' + (pagina === 'delegadas' || pagina === 'concluidas' ? pagina : 'minhas')} replace />;
   if (app === 'mandei') return <Navigate to={caminhoDaPagina('area-cliente', pagina === 'central' ? 'central' : 'meus')} replace />;
+  // as Comissões da equipe e o Enviar holerites saíram da Carteira para o Financeiro (12/11/2026): os links antigos levam para lá
+  if (app === 'carteira' && CARTEIRA_PARA_O_FINANCEIRO[pagina]) return <Navigate to={caminhoDaPagina('financeiro', CARTEIRA_PARA_O_FINANCEIRO[pagina])} replace />;
   const a = aplicacoesDe(op).find(x => x.id === app);
   if (!a) return <Navigate to={caminhoDaPagina('minhas-empresas', 'empresas')} replace />;
   // os links antigos do Cadastro (Sistema e agentes, Painel do robô e Uso do sistema foram para o site do admin; 22/10/2026) e

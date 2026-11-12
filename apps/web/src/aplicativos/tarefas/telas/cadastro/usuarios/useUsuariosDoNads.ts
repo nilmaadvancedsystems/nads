@@ -87,10 +87,25 @@ export function useUsuariosDoNads() {
     abrirNovo: () => setJanela({ tipo: 'novo' }),
     fechar: () => setJanela(null),
     departamentos: usuarios.DEPARTAMENTOS,
-    niveis: usuarios.NIVEIS,
+    niveis: usuarios.NIVEIS_ESCOLHIVEIS,
     papeis: usuarios.PAPEIS,
-    mudarCargo: (p: usuarios.Usuario, departamento: usuarios.Departamento | null, nivel: usuarios.Nivel | null) =>
-      tentar(() => repo.salvarCargo(p.uid, departamento, nivel), 'Cargo de ' + p.nome + ' salvo.'),
+    mudarCargo: (p: usuarios.Usuario, departamento: usuarios.Departamento | null, nivel: usuarios.Nivel | null) => {
+      // o nível do Dono não muda por aqui, e ninguém vira Dono pelo app (12/11/2026): só o Deixar de ser dono, do próprio Dono
+      if ((p.nivel === 'dono' && nivel !== 'dono') || (nivel === 'dono' && p.nivel !== 'dono')) { toast('O nível do Dono não muda por aqui.'); return Promise.resolve(); }
+      return tentar(() => repo.salvarCargo(p.uid, departamento, nivel), 'Cargo de ' + p.nome + ' salvo.');
+    },
+    /** o Dono vendo a própria ficha: só ele tem o Deixar de ser dono */
+    ehODonoQueVe: (p: usuarios.Usuario) => p.nivel === 'dono' && operador?.nivel === 'dono' && !!operador.email && operador.email.trim().toLowerCase() === p.email.trim().toLowerCase(),
+    /**
+     * O Dono deixa de ser (Vitor, 12/11/2026: "somente deixar de ser dono para quem está na função dono"): volta a Diretor,
+     * com o mesmo departamento. Virar Dono, nunca pelo app.
+     */
+    async deixarDeSerDono(p: usuarios.Usuario) {
+      const ok = await modal<boolean>({ icone: 'alert', titulo: 'Deixar de ser dono?', texto: 'Você volta a Diretor. Para ser Dono de novo, só pedindo ao desenvolvedor.',
+        botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Deixar de ser dono', valor: true, variante: 'btn-danger' }] });
+      if (!ok) return;
+      await tentar(() => repo.salvarCargo(p.uid, p.departamento, 'diretor'), 'Você deixou de ser Dono e voltou a Diretor.');
+    },
     alternarPapel(p: usuarios.Usuario, papel: usuarios.Papel) {
       // o Financeiro: só o Diretor autoriza, e quem é Diretor já tem, sem como desligar (Vitor, 09/11/2026)
       if (papel === 'financeiro' && (!temNivelDiretor(operador) || usuarios.nivelDeDiretor(p.nivel))) return Promise.resolve();

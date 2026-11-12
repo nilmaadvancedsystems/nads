@@ -140,19 +140,19 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'extrato', rotulo: 'Importar extrato', icone: 'fileUp', titulo: 'Importar extrato do banco' },
     { id: 'plano', rotulo: 'Plano de contas', icone: 'list', titulo: 'Plano de contas' },
     { id: 'notas', rotulo: 'Notas fiscais', icone: 'recibo', titulo: 'Notas fiscais' },
+    // o lado do Financeiro da Carteira (Vitor, 12/11/2026: "coloque a função carteira aqui no financeiro, essas funções, e
+    // remova do carteira"): as comissões do mês de todos (aprovar, recusar, pagar) e o envio dos holerites e comprovantes
+    { id: 'comissoes-equipe', rotulo: 'Comissões da equipe', icone: 'checklist', titulo: 'Comissões da equipe' },
+    { id: 'holerites-equipe', rotulo: 'Enviar holerites', icone: 'upload', titulo: 'Holerites e comprovantes da equipe' },
     { id: 'configuracoes', rotulo: 'Configurações', icone: 'settings', titulo: 'Configurações do emissor' },
   ] },
-  // a Carteira (12/11/2026): o salário, as finanças pessoais e as comissões de cada pessoa; e, para o Financeiro, as
-  // comissões do mês de todos e o envio dos holerites e comprovantes. Por enquanto só o Vitor usa (carteiraLiberada): os
-  // outros veem o botão e a tela "em desenvolvimento"
+  // a Carteira (12/11/2026): o salário, as finanças pessoais e as comissões de cada pessoa (o lado do Financeiro foi para o
+  // Financeiro). Por enquanto só o Vitor usa (carteiraLiberada): os outros veem o botão e a tela "em desenvolvimento"
   { id: 'carteira', nome: 'Carteira', icone: 'dinheiro', grupo: 'Escritório', pronta: true, paginas: [
     { id: 'painel', rotulo: 'Visão geral', icone: 'barChart', titulo: 'Minha carteira' },
     { id: 'comissoes', rotulo: 'Comissões', icone: 'dinheiro', titulo: 'Minhas comissões' },
     { id: 'financas', rotulo: 'Finanças pessoais', icone: 'cartao', titulo: 'Finanças pessoais' },
     { id: 'documentos', rotulo: 'Holerites e pagamentos', icone: 'recibo', titulo: 'Holerites e pagamentos' },
-    // o lado do Financeiro: as comissões do mês de todos (aprovar, recusar, pagar) e o envio dos holerites e comprovantes
-    { id: 'pagamentos', rotulo: 'Comissões da equipe', icone: 'checklist', titulo: 'Comissões da equipe', secao: 'Financeiro' },
-    { id: 'enviar', rotulo: 'Enviar holerites', icone: 'upload', titulo: 'Holerites e comprovantes da equipe', secao: 'Financeiro' },
   ] },
   // as Configurações (Vitor, 28/10/2026: "Cadastro, esse admin, colocar tudo em um botão Configurações; todos esses botões
   // dos menus nessa tela"): o Cadastro (Empresas e Equipe; o endereço continua /tarefas/cadastro/...) e, só para o admin,
@@ -204,6 +204,9 @@ export const podeVerOFinanceiro = (op: Operador | null) => !!op && (temNivelDire
 
 /** A Carteira por enquanto só para o Vitor (12/11/2026); os outros veem o botão e a tela "em desenvolvimento". */
 export const carteiraLiberada = (op: Operador | null) => !!op && carteira.liberadaPara(op.nome);
+/** as páginas do Financeiro que eram da Carteira (12/11/2026); os endereços antigos da Carteira levam para elas */
+export const PAGINAS_DA_CARTEIRA_NO_FINANCEIRO = ['comissoes-equipe', 'holerites-equipe'];
+export const CARTEIRA_PARA_O_FINANCEIRO: Record<string, string> = { pagamentos: 'comissoes-equipe', enviar: 'holerites-equipe' };
 
 /**
  * Quem abre a rotina e o cadastro de outro setor: o admin e o diretor (Vitor, 06/11/2026: "quem é do fiscal, não é para ter
@@ -241,9 +244,10 @@ export function aplicacoesDe(op: Operador): Aplicacao[] {
     (a.id !== 'financeiro' || podeVerOFinanceiro(op)))
     // as páginas só do admin (as do Admin, nas Configurações) ficam de fora para os outros
     .map(a => (op.admin || !a.paginas.some(p => p.soAdmin) ? a : { ...a, paginas: a.paginas.filter(p => !p.soAdmin) }))
-    // a Carteira: quem ainda não tem, só a página de abertura (a tela "em desenvolvimento"); o lado do Financeiro, só o Financeiro
-    .map(a => (a.id !== 'carteira' ? a : !carteiraLiberada(op) ? { ...a, paginas: a.paginas.slice(0, 1) }
-      : podeVerOFinanceiro(op) ? a : { ...a, paginas: a.paginas.filter(p => p.secao !== 'Financeiro') }))
+    // a Carteira: quem ainda não tem, só a página de abertura (a tela "em desenvolvimento"); e, no Financeiro, as páginas da
+    // Carteira (Comissões da equipe e Enviar holerites) só para quem já tem a Carteira, como antes
+    .map(a => (a.id === 'carteira' && !carteiraLiberada(op) ? { ...a, paginas: a.paginas.slice(0, 1) }
+      : a.id === 'financeiro' && !carteiraLiberada(op) ? { ...a, paginas: a.paginas.filter(p => !PAGINAS_DA_CARTEIRA_NO_FINANCEIRO.includes(p.id)) } : a))
     // no Entregas, quem não é Diretor só vê o Painel (06/11/2026: "não pode realizar nenhuma entrega"); os links da Nova
     // entrega, da Rota e das Solicitações caem no Painel
     .map(a => (a.id === 'entregas' && !ehDiretor(op) ? { ...a, paginas: a.paginas.filter(p => p.id === 'painel') } : a))

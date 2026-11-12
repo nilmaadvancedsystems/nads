@@ -20,7 +20,9 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
   const a = aplicacoesDe(op).find(x => x.id === app) ?? aplicacao(app);
   // o Cadastro também com a barra lateral (14/10/2026: "cadê a barra?"), como os outros módulos; as abas no alto não voltam
   // o Fiscal com as páginas no alto, para a tabela usar a tela toda (Vitor, 09/11/2026: "quero colocar esse menu lateral, superior")
-  const comAbas = app === 'fiscal';
+  // a Carteira também (Vitor, 12/11/2026: "coloque tudo do menu lateral, no superior"); quem ainda não tem a Carteira só tem
+  // a tela "em desenvolvimento", sem abas
+  const comAbas = app === 'fiscal' || (app === 'carteira' && (a?.paginas.length ?? 0) > 1);
   // dentro da aba Ferramentas do Fiscal, as ferramentas ficam na barra lateral
   const ehFerramenta = (id: string) => FERRAMENTAS_DO_FISCAL.includes(id);
   const emFerramentas = comAbas && ehFerramenta(pagina);
@@ -49,7 +51,7 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
     secoes: comAbas && !emFerramentas ? [] : (a?.paginas || []).filter(p => !comAbas || ehFerramenta(p.id)).map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, marca: p.marca === 'fgts' ? p.marca : undefined, grupo: p.secao ? 1 + [...new Set(a?.paginas.map(x => x.secao))].indexOf(p.secao) : 1, titulo: p.secao, ativa: p.id === pagina, travada: !!p.emDesenvolvimento })),
     paginas: comAbas ? [
       ...(a?.paginas || []).filter(p => !ehFerramenta(p.id)).map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone as NomeIcone, marca: p.marca === 'fgts' ? undefined : p.marca, ativa: p.id === pagina })),
-      { id: 'ferramentas', rotulo: 'Ferramentas', icone: 'wrench' as NomeIcone, ativa: emFerramentas },
+      ...(app === 'fiscal' ? [{ id: 'ferramentas', rotulo: 'Ferramentas', icone: 'wrench' as NomeIcone, ativa: emFerramentas }] : []),
     ] : [],
     /** a aba do alto (o Cadastro): a página, mantendo a competência */
     onPagina: (id: string) => navegar(caminhoDaPagina(app, id === 'ferramentas' ? FERRAMENTAS_DO_FISCAL[0] : id) + search),

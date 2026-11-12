@@ -22,6 +22,12 @@ export const NIVEIS: readonly { id: Nivel; rotulo: string }[] = [
   { id: 'junior', rotulo: 'Júnior' },
 ];
 
+/**
+ * Os níveis que dá para escolher no app (Cadastro › Usuários, Novo usuário, convite): todos menos o Dono. O Dono é um só e
+ * quem põe é o desenvolvedor, direto no banco; pelo app ele só deixa de ser (Vitor, 12/11/2026).
+ */
+export const NIVEIS_ESCOLHIVEIS: readonly { id: Nivel; rotulo: string }[] = NIVEIS.filter(n => n.id !== 'dono');
+
 /** Rótulos dos papéis, na ordem da ficha do Entregas ('staff' é o piso e aparece como "Equipe"). */
 export const PAPEIS: readonly { id: Papel; rotulo: string }[] = [
   { id: 'admin', rotulo: 'Admin' },

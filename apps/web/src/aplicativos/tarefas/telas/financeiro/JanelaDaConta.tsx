@@ -3,6 +3,7 @@
 import { financeiro } from '@nads/core';
 import { BotaoFechar, Icone, Interruptor, useJanela } from '@nads/ui';
 import { useEffect, useRef } from 'react';
+import { EscolherConta } from './partes/EscolherConta';
 import { Propriedade } from './partes/Propriedade';
 import { useJanelaDaConta } from './useJanelaDaConta';
 
@@ -37,10 +38,7 @@ export function JanelaDaConta({ id, pai, fechar }: { id?: string; pai?: string; 
               </select>
             </Propriedade>
             <Propriedade icone="list" rotulo="Conta pai">
-              <select className="pessoal-select" value={vm.pai} onChange={e => vm.setPai(e.target.value)} aria-label="Conta pai">
-                <option value="">Nenhuma (conta de cima)</option>
-                {vm.pais.map(c => <option key={c.id} value={c.id}>{c.codigo} · {c.descricao}</option>)}
-              </select>
+              <EscolherConta valor={vm.pai} contas={vm.pais} onEscolher={vm.setPai} titulo="Conta pai" vazio="Nenhuma (conta de cima)" />
             </Propriedade>
             <Propriedade icone="check" rotulo="Ativa"><Interruptor ligado={vm.ativo} onMudar={() => vm.setAtivo(!vm.ativo)} rotulo="Conta ativa" /></Propriedade>
             <Propriedade icone="dinheiro" rotulo="Recebe lançamento"><Interruptor ligado={vm.movimentavel} onMudar={() => vm.setMovimentavel(!vm.movimentavel)} rotulo="A conta recebe lançamento" /></Propriedade>

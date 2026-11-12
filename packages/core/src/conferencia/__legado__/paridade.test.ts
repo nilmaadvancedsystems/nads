@@ -253,7 +253,9 @@ d('paridade com o original (conferencia.html)', () => {
     for (const lista of [e.contas, outra, []]) {
       leg().usarEmpresa(clone(e));
       expect(assinaturaBalancete(lista)).toEqual(leg().assinaturaBalancete(clone(lista)));
-      expect(verificarBalancete(e, lista)).toEqual(leg().verificarBalancete(clone(lista)));
+      // a `outra` fica de fora: desde 30/10/2026 a semelhança e a conta vinculada ausente saíram do original de propósito
+      // (o Alterdata não lista a conta sem saldo no mês); esse caso é testado em regras/importacao.test.ts
+      if (lista !== outra) expect(verificarBalancete(e, lista)).toEqual(leg().verificarBalancete(clone(lista)));
     }
   });
 });
