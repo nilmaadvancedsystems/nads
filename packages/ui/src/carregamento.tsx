@@ -18,6 +18,31 @@ function mudar(d: number) {
 const assinar = (f: () => void) => { ouvintes.add(f); return () => { ouvintes.delete(f); }; };
 export const algumCarregando = () => ativos > 0;
 
+// o que está enviando ou gravando sem a barra do topo (o extrato subindo ao Drive...): a página não atualiza no meio
+// (Vitor, 12/11/2026: "se o processo estiver rolando, bloqueie a atualização da página")
+const ocupados = new Map<number, string>();
+let proximoOcupado = 0;
+
+/** Enquanto ativo, o Atualizar da versão nova fica travado com este motivo ("Espere terminar de enviar ao Drive."). */
+export function useOcupado(ativo: boolean, motivo: string): void {
+  useEffect(() => {
+    if (!ativo) return;
+    const id = ++proximoOcupado;
+    ocupados.set(id, motivo);
+    for (const f of ouvintes) f();
+    return () => { ocupados.delete(id); for (const f of ouvintes) f(); };
+  }, [ativo, motivo]);
+}
+
+/** Por que esperar para atualizar a página ('' = pode): o que está enviando, ou a barra do topo andando. */
+export function motivoParaEsperar(): string {
+  for (const m of ocupados.values()) return m;
+  return ativos > 0 ? 'Espere terminar de carregar.' : '';
+}
+
+/** O motivoParaEsperar ao vivo (o botão Atualizar se redesenha quando começa ou termina). */
+export const useMotivoParaEsperar = (): string => useSyncExternalStore(assinar, motivoParaEsperar, () => '');
+
 /** A tela está carregando algo (dado do banco, arquivo…): a barra do topo aparece enquanto for true. */
 export function useCarregando(ativo: boolean): void {
   useEffect(() => {

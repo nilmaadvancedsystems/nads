@@ -4,7 +4,7 @@
 // 10 min sem uso, sim (Vitor, 09/11/2026), menos se algo estiver carregando ou gravando (podia cortar um envio no meio).
 // Sem versao.json (rodando local), não faz nada. Uma conferência só para a página toda, por mais telas que usem.
 import { useSyncExternalStore } from 'react';
-import { algumCarregando } from './carregamento';
+import { motivoParaEsperar, useMotivoParaEsperar } from './carregamento';
 import { atualizarSemPerder } from './continuidade';
 import { origemConfiavel, origemDoPai } from './origem';
 
@@ -70,7 +70,7 @@ export function podeAtualizarSozinho(a: { dentroDeEtapa: boolean; versaoNova: st
 }
 
 function olharInatividade() {
-  if (algumCarregando() || !window.dispatchEvent(new Event(ATUALIZAR_SOZINHO, { cancelable: true }))) marcarUso();
+  if (motivoParaEsperar() || !window.dispatchEvent(new Event(ATUALIZAR_SOZINHO, { cancelable: true }))) marcarUso();
   if (!podeAtualizarSozinho({ dentroDeEtapa: window.self !== window.top, versaoNova: nova, parada: Date.now() - ultimoUso, visivel: document.visibilityState === 'visible' })) return;
   // uma vez por versão: se o site ainda entregar a antiga, não fica recarregando a cada 10 min
   try { if (sessionStorage.getItem(JA_ATUALIZOU) === nova) return; sessionStorage.setItem(JA_ATUALIZOU, nova); } catch { /* segue */ }
@@ -85,12 +85,19 @@ export function iniciarAtualizacaoPorInatividade(versaoDaPagina: string): void {
   for (const uso of ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart', 'scroll']) window.addEventListener(uso, marcarUso, { capture: true, passive: true });
   window.addEventListener('message', e => { if ((e.data as { nads?: string } | null)?.nads === 'em-uso' && origemConfiavel(e.origin)) marcarUso(); });
   setInterval(olharInatividade, OLHAR_INATIVIDADE_MS);
+  // recarregar (o F5, fechar a aba) no meio de um envio ou de uma gravação: o navegador pergunta antes (12/11/2026)
+  window.addEventListener('beforeunload', e => {
+    if (!motivoParaEsperar() && window.dispatchEvent(new Event(ATUALIZAR_SOZINHO, { cancelable: true }))) return;
+    e.preventDefault();
+    e.returnValue = '';
+  });
   // voltou para a aba escondida depois de 10 min: atualiza na hora, antes de a pessoa mexer
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') olharInatividade(); });
 }
 
-/** Recarrega a página na versão nova, sem perder o que está na tela (continuidade.ts). */
+/** Recarrega a página na versão nova, sem perder o que está na tela (continuidade.ts); no meio de um envio, espera. */
 export function atualizarVersao() {
+  if (motivoParaEsperar()) return;
   atualizarSemPerder();
 }
 
@@ -101,13 +108,15 @@ export function atualizarVersao() {
  */
 export function TravaDeVersaoNova({ atual }: { atual: string }) {
   const nova = useVersaoNova(atual);
+  const espera = useMotivoParaEsperar();
   if (!nova || window.self !== window.top) return null;
   return (
     <div className="versao-trava" role="alertdialog" aria-modal="true" aria-labelledby="versaoTravaTitulo">
       <div className="versao-trava-caixa">
         <h3 id="versaoTravaTitulo">Saiu uma versão nova</h3>
         <p className="hint">Versão {atual} → <b>{nova}</b>. Nada do que você fez na tela se perde.</p>
-        <button type="button" className="btn btn-primary" autoFocus onClick={atualizarSemPerder}>Atualizar</button>
+        {espera && <p className="hint">{espera}</p>}
+        <button type="button" className="btn btn-primary" autoFocus disabled={!!espera} title={espera || undefined} onClick={atualizarVersao}>Atualizar</button>
       </div>
     </div>
   );
