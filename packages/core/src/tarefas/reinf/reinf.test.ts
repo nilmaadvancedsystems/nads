@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { alternarRetificada, desfazerReinf, EMPRESAS_REINF, empresasDaReinf, estadosIniciaisReinf, resumoReinf, situacaoReinf, temReinfNoFiscal, transmitirReinf } from './reinf';
+import { alternarRetificada, alternarSerieReinf, desfazerReinf, EMPRESAS_REINF, empresasDaReinf, estadosIniciaisReinf, resumoReinf, seriesDaReinf, situacaoReinf, temReinfNoFiscal, transmitirReinf } from './reinf';
 import { EMPRESAS } from '../../empresas/lista';
 
 const agora = new Date('2026-10-05T12:00:00Z');
@@ -47,5 +47,26 @@ describe('quem tem a REINF no Fiscal (05/11/2026: todas, com as filiais)', () =>
     expect(codigos.size).toBeGreaterThan(150);
     for (const c of [10, 66, 86, 298, 544, 579, 593]) expect(codigos.has(c)).toBe(true);
     for (const c of [299, 300, 301, 545, 564, 585, 599]) expect(codigos.has(c)).toBe(true);
+  });
+});
+
+describe('as séries da transmissão (2000, 4000, MIT)', () => {
+  const quando = new Date('2026-11-12T10:00:00Z');
+  const vazio = { codigo: 1, retificadas: [] };
+  it('a primeira série transmite a competência; as outras só se somam', () => {
+    const a = alternarSerieReinf(vazio, '2026-10', '4000', 'Ana', quando);
+    expect(situacaoReinf(a, '2026-10')).toBe('transmitida');
+    const b = alternarSerieReinf(a, '2026-10', '2000', 'Ana', quando);
+    expect(seriesDaReinf(b, '2026-10')).toEqual(['2000', '4000']);
+  });
+  it('tirar a última série desfaz a transmissão', () => {
+    const a = alternarSerieReinf(vazio, '2026-10', 'mit', 'Ana', quando);
+    const b = alternarSerieReinf(a, '2026-10', 'mit', 'Ana', quando);
+    expect(situacaoReinf(b, '2026-10')).toBe('pendente');
+    expect(seriesDaReinf(b, '2026-10')).toEqual([]);
+  });
+  it('desfazer limpa as séries da competência', () => {
+    const a = alternarSerieReinf(vazio, '2026-10', '2000', 'Ana', quando);
+    expect(seriesDaReinf(desfazerReinf(a, '2026-10'), '2026-10')).toEqual([]);
   });
 });

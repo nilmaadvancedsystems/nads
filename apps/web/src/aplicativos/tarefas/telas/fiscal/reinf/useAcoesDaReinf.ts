@@ -69,6 +69,18 @@ export function useAcoesDaReinf(competencia: string) {
       const resp = marcarNoDp(codigo, false);
       aviso({ tom: 'ok', titulo: 'REINF transmitida', texto: codigo + ' · ' + mmaaaa(competencia) + (resp ? ' · no DP, ' + resp + ' é avisado' : '') });
     },
+    /** marca ou tira uma série (2000, 4000, MIT): a primeira transmite e marca no DP; tirar a última desfaz */
+    alternarSerie: (codigo: number, serie: t.SerieReinf) => {
+      const e = estados[codigo] || { codigo, retificadas: [] };
+      const depois = t.alternarSerieReinf(e, competencia, serie, op.nome, new Date());
+      const era = t.situacaoReinf(e, competencia), fica = t.situacaoReinf(depois, competencia);
+      mudar(codigo, x => t.alternarSerieReinf(x, competencia, serie, op.nome, new Date()));
+      const rotulo = t.SERIES_REINF.find(s => s.id === serie)?.rotulo || serie;
+      if (era === 'pendente' && fica === 'transmitida') {
+        const resp = marcarNoDp(codigo, false);
+        aviso({ tom: 'ok', titulo: 'REINF transmitida · ' + rotulo, texto: codigo + ' · ' + mmaaaa(competencia) + (resp ? ' · no DP, ' + resp + ' é avisado' : '') });
+      } else if (era === 'transmitida' && fica === 'pendente') marcarNoDp(codigo, true);
+    },
     desfazer: (codigo: number) => { mudar(codigo, e => t.desfazerReinf(e, competencia)); marcarNoDp(codigo, true); },
     retificar: (codigo: number) => mudar(codigo, e => t.alternarRetificada(e, competencia, op.nome, new Date())),
   };

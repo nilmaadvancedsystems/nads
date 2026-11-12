@@ -41,6 +41,8 @@ export function useReinf() {
         ultima: l.estado.ultima ? quandoDaReinf(l.estado.ultima.em) + ' · ' + l.estado.ultima.por : '',
         retificadas: l.estado.retificadas.map(mmaaaa),
         retificadaNaCompetencia: l.estado.retificadas.includes(competencia),
+        /** as séries transmitidas na competência (2000, 4000, MIT) */
+        series: t.seriesDaReinf(l.estado, competencia),
       };
     });
 
@@ -61,6 +63,6 @@ export function useReinf() {
     setPorPagina: (n: number) => { escolherPorPagina(n); setPagina(0); },
     pagina: { atual, paginas,
       anterior: () => setPagina(Math.max(0, atual - 1)), proxima: () => setPagina(Math.min(paginas - 1, atual + 1)) },
-    transmitir: acoes.transmitir, desfazer: acoes.desfazer, retificar: acoes.retificar,
+    transmitir: acoes.transmitir, desfazer: acoes.desfazer, retificar: acoes.retificar, alternarSerie: acoes.alternarSerie,
   };
 }
