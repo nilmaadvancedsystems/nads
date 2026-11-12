@@ -498,21 +498,6 @@ export const PECAS_BASE: Peca[] = [
   janela('jn-desmarcar', 'Desmarcar Conferência fiscal?', EXECUTOR, { icone: 'checkCircle', titulo: 'Desmarcar Conferência fiscal?', texto: 'A etapa volta a ficar pendente em todos os meses do período.', botoes: [{ rotulo: 'Cancelar' }, { rotulo: 'Desmarcar', variante: 'btn-primary' }] }),
   janela('jn-presta', 'Esta empresa presta serviço?', ['c-relatorio', 'c-importacao'], { icone: 'briefcase', titulo: 'Esta empresa presta serviços?', texto: 'Decide a aba Prestados e os serviços prestados na conferência.', botoes: [{ rotulo: 'Não' }, { rotulo: 'Sim', variante: 'btn-primary' }], obrigatoria: true }),
   virouAviso(janela('jn-orientacao', 'Como resolver (orientação de uma saída)', EXECUTOR, { icone: 'alert', titulo: 'O razão da conta ainda não foi gerado no sistema', texto: 'Gere o razão da conta do banco no Alterdata (Excel ou PDF) e importe na linha "Lançamentos contábeis".', botoes: [{ rotulo: 'Entendi', variante: 'btn-primary' }] }), 'av-orientacao'),
-  { id: 'jn-interromper', tipo: 'janelas', nome: 'Por que interromper?', descricao: 'O ✕ do executor, ou sair da etapa por qualquer lugar do app: os motivos em cartões e a observação', componente: 'JanelaInterromper', classes: ['interromper-janela', 'interromper-opcao', 'interromper-obs'], telas: EXECUTOR,
-    demo: () => (
-      <div className={classeDaJanela({}) + ' interromper-janela cat-parado'} role="dialog">
-        <button type="button" className="modal-x" aria-label="Fechar"><Icone nome="x" /></button>
-        <h3>Por que interromper?</h3>
-        <p className="interromper-etapa">Importação</p>
-        <div className="interromper-opcoes">
-          {['O cliente não enviou o extrato', 'O extrato está no Drive do cliente', 'O razão da conta ainda não foi gerado no sistema', 'Outro motivo'].map((m, k) => (
-            <label key={m} className={'interromper-opcao' + (k === 0 ? ' on' : '')}><input type="radio" name="cat-motivo" defaultChecked={k === 0} /><span>{m}</span></label>
-          ))}
-        </div>
-        <label className="interromper-obs"><span>Observação (opcional)</span><textarea rows={3} /></label>
-        <div className="modal-actions"><button className="btn btn-danger" type="button">Interromper</button></div>
-      </div>
-    ) },
   { id: 'jn-cadastro', tipo: 'janelas', nome: 'Janela da empresa (Cadastro)', descricao: 'A janela grande, com abas', classes: ['cad-janela-fundo', 'cad-janela', 'cad-janela-topo', 'cad-janela-abas', 'cad-janela-aba'], telas: ['t-cadastro', 't-cadastro-janela'], largo: true,
     demo: () => (
       <div className="cad-janela cat-parado" style={{ maxWidth: 760, width: '100%' }}>
