@@ -4,6 +4,7 @@
 // Entregas, pede primeiro (o mesmo usuário das Pendências). Não achou um só: a pessoa escolhe entre os
 // candidatos. "Visualizar" pede ao robô um link temporário (~30 min) e só abre; o link não é guardado.
 import { creditor, extrator as x } from '@nads/core';
+import { useOcupado } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
 import { useDrive } from '../../dados/repo';
 import { useGuardado } from '../../../../../../comum/guardado';
@@ -34,6 +35,8 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
   // os extratos que foram para o Drive e ainda não viraram arquivo de lá ('banco|mes' → o envio), guardados (Vitor,
   // 19/10/2026: "deixe um ícone do Drive do lado esquerdo desse check, carregando; quando upar, ele fica igual aos outros")
   const [subindo, setSubindo] = useGuardado<Record<string, { envio: string; em: number }>>('drive-subindo|' + (codigo ?? ''), {});
+  // o extrato sendo lido e mandado ao Drive agora (os bytes ainda saindo deste navegador)
+  const [enviando, setEnviando] = useState(0);
   // sem o relógio de 1 s (19/10/2026: redesenhava a página dos bancos inteira a cada segundo do lote, para uma janela de
   // andamento que não aparece mais na tela)
   // o que fazer depois de entrar, quando o login foi pedido por outra coisa (o Pedir extratos)
@@ -139,7 +142,7 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
   async function trazer(linha: Linha, arquivos: creditor.ArquivoAchado[], mes?: string): Promise<boolean | 'vazio'> {
     for (const [i, a] of arquivos.entries()) {
       const conteudo = await drive.baixar(a.id, a.nome);
-      const ok = await vm.importarDoDrive(linha.id, { id: a.id, nome: a.nome }, conteudo, mes, i < arquivos.length - 1);
+      const ok = await vm.importarDoDrive(linha.id, { id: a.id, nome: a.nome }, conteudo, mes, i < arquivos.length - 1, linha.marca);
       if (ok !== 'vazio') return ok;
     }
     return 'vazio';
@@ -148,12 +151,13 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
    * Mais de um arquivo no mês: baixa e passa cada um pela pré-verificação; se só um for o extrato da conta, é ele (Vitor,
    * 10/11/2026: a fatura e a aplicação na pasta do banco empatavam com o extrato). Sobrando dois ou mais, a pessoa escolhe.
    */
-  async function soOExtrato(r: creditor.BuscaNoDrive): Promise<creditor.BuscaNoDrive> {
+  async function soOExtrato(r: creditor.BuscaNoDrive, marca?: string): Promise<creditor.BuscaNoDrive> {
     if (r.situacao !== 'varios') return r;
     const extratos: creditor.ArquivoAchado[] = [];
     for (const c of r.candidatos.filter(a => a.daCompetencia).slice(0, 6)) {
       const lido = await x.lerArquivo(c.nome, new Uint8Array(await drive.baixar(c.id, c.nome)), 'banco');
-      if (!lido.faturaDeCartao && !lido.naoEExtrato) extratos.push(c);
+      // (e o de outro banco, pelo cabeçalho: 12/11/2026)
+      if (!lido.faturaDeCartao && !lido.naoEExtrato && !x.deOutroBanco(lido.bancoNoTexto, marca)) extratos.push(c);
     }
     return extratos.length === 1 ? { ...r, situacao: 'achou', arquivo: extratos[0] } : r;
   }
@@ -196,7 +200,7 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
     setBuscando(linha.id);
     try {
       const pasta = await pastaComOsMeses(linha, [vm.competencia]);
-      const r = await soOExtrato(x.acharExtratoNoDrive(pasta?.itens || [], pasta?.raiz || null, vm.competencia, { nome: linha.nome, marca: linha.marca, conta: linha.numeroConta }));
+      const r = await soOExtrato(x.acharExtratoNoDrive(pasta?.itens || [], pasta?.raiz || null, vm.competencia, { nome: linha.nome, marca: linha.marca, conta: linha.numeroConta }), linha.marca);
       if (r.situacao === 'achou' && r.arquivo) await usar(linha, r.arquivo, doMes(r).slice(1));
       else setEscolha({ linha, texto: x.mensagemDaBuscaDoExtrato(r, vm.competencia.slice(5) + '/' + vm.competencia.slice(0, 4)), candidatos: r.candidatos });
     } catch (e) {
@@ -234,7 +238,7 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
           return;
         }
         setMesAtual(mes);
-        const r = await soOExtrato(x.acharExtratoNoDrive(pasta?.itens || [], pasta?.raiz || null, mes, { nome: linha.nome, marca: linha.marca, conta: linha.numeroConta }));
+        const r = await soOExtrato(x.acharExtratoNoDrive(pasta?.itens || [], pasta?.raiz || null, mes, { nome: linha.nome, marca: linha.marca, conta: linha.numeroConta }), linha.marca);
         const rotulo = mes.slice(5) + '/' + mes.slice(0, 4);
         if (r.situacao !== 'achou' || !r.arquivo) { faltam.push(rotulo); passou(rotulo, false, seguinte); continue; }
         // só conta como trazido o que entrou (Vitor, 19/10/2026: "fala que traz, mas não traz nada")
@@ -294,6 +298,7 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
       return;
     }
     const mandados: string[] = [];
+    setEnviando(n => n + 1);
     try {
       const pasta = await drive.pastaDoCliente(codigo);
       const conta = { nome: linha.nome, marca: linha.marca, conta: linha.numeroConta };
@@ -319,8 +324,13 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
       if (mandados.length) vm.avisar('Mandado para o Drive: ' + mandados.join(', ') + ' (vai direto para a pasta do banco, em até 2 minutos)');
     } catch (e) {
       vm.avisarErro('Não mandei para o Drive' + (mandados.length ? ' (foram ' + mandados.join(', ') + ')' : ''), mensagemDeErro(e));
-    }
+    } finally { setEnviando(n => n - 1); }
   }
+
+  // enquanto manda, traz ou o ícone do Drive gira, a página não atualiza para a versão nova (Vitor, 12/11/2026: "se o processo
+  // estiver rolando, bloqueie a atualização da página, para que não haja bugs")
+  useOcupado(enviando > 0 || Object.keys(subindo).length > 0, 'Espere terminar de enviar ao Drive.');
+  useOcupado(!!lote && !lote.pronto, 'Espere terminar de trazer do Drive.');
 
   const andamento: AndamentoDeExtratos | null = lote ? (() => {
     const feitos = lote.feitos.length;

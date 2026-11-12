@@ -366,7 +366,11 @@ function MesesDoBanco({ meses, competencia, buscandoMes, travado, aceitarExtrato
     const nomeLado = lado === 'banco' ? 'extrato' : 'razão';
     // o razão do mês só sobe com o extrato dele (do computador, do e-mail ou do Drive)
     const semExtrato = lado === 'sistema' && !m.extrato && !m.ladoExtrato.doDrive.length ? DICA_SEM_EXTRATO : undefined;
-    return <>{lado === 'banco' && subindo(m.mes) && <SubindoAoDrive />}<BotaoLado lado={info} titulo={(lado === 'banco' ? 'Extrato' : 'Razão') + ' de ' + m.rotulo} aceitar={lado === 'banco' ? aceitarExtrato : aceitarRazao} travado={trava} semExtrato={semExtrato}
+    // subindo para o Drive, só o Drive, sem o check (Vitor, 12/11/2026: "tira o certinho e deixa só o ícone do drive")
+    if (lado === 'banco' && subindo(m.mes)) {
+      return <><SubindoAoDrive />{info.qtdArquivos > 0 && <BotaoVer titulo={'Ver o ' + nomeLado + ' importado de ' + m.rotulo} onVer={() => onVerImportado(lado, m.mes)} />}</>;
+    }
+    return <><BotaoLado lado={info} titulo={(lado === 'banco' ? 'Extrato' : 'Razão') + ' de ' + m.rotulo} aceitar={lado === 'banco' ? aceitarExtrato : aceitarRazao} travado={trava} semExtrato={semExtrato}
       onArquivos={fs => onArquivos(lado, fs, m.mes)} onExcluir={() => onExcluir(lado, m.mes)} />
       {lado === 'banco' && info.qtdArquivos > 0 && <BotaoVer titulo={'Ver o ' + nomeLado + ' importado de ' + m.rotulo} onVer={() => onVerImportado(lado, m.mes)} />}</>;
   };
@@ -973,11 +977,13 @@ export function TarefaExtratos() {
                           <BotaoVer titulo={'Ver o que foi puxado do Drive: ' + doDrive[doDrive.length - 1].nome} onVer={() => visualizarDoDrive(doDrive[doDrive.length - 1])} />
                         </>
                       ) : temExtrato ? (
-                        // importado à mão: fica só o check (do e-mail, com o olhinho; subindo para o Drive, o Drive girando antes)
+                        // importado à mão: fica só o check (do e-mail, com o olhinho); subindo para o Drive, só o Drive girando, sem o
+                        // check (Vitor, 12/11/2026: "tira o certinho e deixa só o ícone do drive")
                         <>
-                          {d.subindoAoDrive(b.id, vm.competencia) && <SubindoAoDrive />}
-                          <BotaoLado lado={b.extrato} titulo="Extrato" aceitar={cxExtrato.aceitar} travado={travado}
-                            onArquivos={() => undefined} onExcluir={() => { esquecerPuxado(chaveDoExtrato(s.codigo, b.id), vm.competencia); void vm.excluirDoBanco(b.id, 'banco'); }} />
+                          {d.subindoAoDrive(b.id, vm.competencia) ? <SubindoAoDrive /> : (
+                            <BotaoLado lado={b.extrato} titulo="Extrato" aceitar={cxExtrato.aceitar} travado={travado}
+                              onArquivos={() => undefined} onExcluir={() => { esquecerPuxado(chaveDoExtrato(s.codigo, b.id), vm.competencia); void vm.excluirDoBanco(b.id, 'banco'); }} />
+                          )}
                           {puxadosDe(chaveDoExtrato(s.codigo, b.id), vm.competencia).length > 0 && (
                             <BotaoVer titulo={'Ver o que foi puxado do e-mail: ' + puxadosDe(chaveDoExtrato(s.codigo, b.id), vm.competencia).map(p => p.nome).join(', ')}
                               onVer={() => puxadosDe(chaveDoExtrato(s.codigo, b.id), vm.competencia).forEach(abrirPuxado)} />

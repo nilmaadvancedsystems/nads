@@ -8,8 +8,9 @@
 // A lógica fica no core (empresas.cadastro.criarRepoCadastro); aqui é só a porta.
 import type { empresas } from '@nads/core';
 import { getAuth } from 'firebase/auth';
-import { collection, deleteField, doc, onSnapshot, writeBatch as writeBatchBruto, type Firestore } from 'firebase/firestore';
+import { deleteField, doc, onSnapshot, writeBatch as writeBatchBruto, type Firestore } from 'firebase/firestore';
 import { abrirBancoDoEntregas } from './conexaoEntregas.firestore';
+import { ouvirPeloEspelho } from './espelhos.firestore';
 import { appDoEntregas } from './driveDasFerramentas.firestore';
 import { guardarLote } from '../../../comum/modoDesenvolvedor';
 
@@ -40,7 +41,8 @@ export function portaCadastroFirestore(): empresas.cadastro.PortaCadastro {
       let parar = () => {};
       let parado = false;
       auth.authStateReady().then(() => {
-        if (!parado) parar = onSnapshot(collection(db, 'cadastro'), s => chegou(s.docs.map(d => ({ id: d.id, doc: d.data() }))), falhou);
+        // pelo espelho (espelhos.firestore.ts, 12/11/2026): 1 leitura em vez dos ~230 do cadastro
+        if (!parado) parar = ouvirPeloEspelho(db, 'cadastro', docs => chegou(docs.map(d => ({ id: d.id, doc: d.data() }))), falhou);
       }, falhou);
       return () => { parado = true; parar(); };
     },

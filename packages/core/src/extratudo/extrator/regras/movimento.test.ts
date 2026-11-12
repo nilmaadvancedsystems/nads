@@ -192,3 +192,15 @@ describe('extrato no Drive: só a pasta dos extratos (19/10/2026)', () => {
     expect(acharExtratoNoDrive(itens, 'raiz', '2026-07', conta).arquivo?.id).toBe('x07');
   });
 });
+
+describe('o extrato de outro banco na pasta da conta (12/11/2026)', () => {
+  const it_ = (i: string, n: string, p: string, t: 'd' | 'f' = 'f'): ItemDrive => ({ i, n, p, t });
+  const itens = [
+    it_('c', 'CONTÁBIL', 'raiz', 'd'), it_('e', 'EXTRATOS', 'c', 'd'), it_('a', '2026', 'e', 'd'), it_('m', '04', 'a', 'd'), it_('b', 'BANCÁRIOS', 'm', 'd'),
+    it_('ip', 'INFINITEPAY', 'b', 'd'), it_('1', 'RELATORIO 04-2026.pdf', 'ip'),
+  ];
+  it('o arquivo da pasta da InfinitePay não vira o extrato do Santander', () => {
+    expect(acharExtratoNoDrive(itens, 'raiz', '2026-04', { nome: 'Santander', marca: 'santander' }).situacao).toBe('nada');
+    expect(acharExtratoNoDrive(itens, 'raiz', '2026-04', { nome: 'InfinitePay', marca: 'infinitepay' }).arquivo?.id).toBe('1');
+  });
+});

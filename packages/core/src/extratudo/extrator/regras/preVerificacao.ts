@@ -83,6 +83,29 @@ export function preVerificarOfx(texto: string): NaoEExtrato | null {
 }
 
 /** O nome (ou a pasta) que já diz que não é o extrato da conta: nem baixa do Drive. O nome da empresa não entra aqui, só o do arquivo. */
+/**
+ * De qual banco é o arquivo, pelo topo do texto (o nome do banco no cabeçalho), quando dá para dizer: um banco só no topo. Os
+ * nomes curtos e comuns ("caixa", "inter", "stone") só com o complemento, para o histórico de um lançamento não enganar. Na
+ * 429 (Vitor, 12/11/2026: "Santander puxou o InfinityPay, Santander é esse layout"), o "Relatório de movimentações" da
+ * InfinitePay (CloudWalk) entrou nos meses do Santander.
+ */
+const BANCO_NO_TOPO: Record<string, RegExp> = {
+  infinitepay: /\binfinite ?pay\b|\binfinity ?pay\b|\bcloudwalk\b/, santander: /\bsantander\b/, itau: /\bitau\b/, bradesco: /\bbradesco\b/,
+  'banco-do-brasil': /\bbanco do brasil\b/, caixa: /\bcaixa economica\b/, sicoob: /\bsicoob\b/, sicredi: /\bsicredi\b/, nubank: /\bnubank\b|\bnu pagamentos\b/,
+  'mercado-pago': /\bmercado ?pago\b/, pagbank: /\bpagbank\b|\bpagseguro\b/, inter: /\bbanco inter\b/, bnb: /\bbanco do nordeste\b/,
+  c6: /\bc6 ?bank\b/, btg: /\bbtg pactual\b/, safra: /\bbanco safra\b/, banrisul: /\bbanrisul\b/, cresol: /\bcresol\b/,
+};
+export function bancoDoTexto(texto: string): string | null {
+  const topo = normalizarTexto(texto).slice(0, TOPO);
+  const achados = Object.keys(BANCO_NO_TOPO).filter(id => BANCO_NO_TOPO[id].test(topo));
+  return achados.length === 1 ? achados[0] : null;
+}
+
+/** O arquivo é de outro banco que não o da conta? Só quando o texto diz o banco e a conta tem a marca de um que dá para reconhecer. */
+export function deOutroBanco(bancoDoArquivo: string | null | undefined, marcaDaConta: string | null | undefined): boolean {
+  return !!bancoDoArquivo && !!marcaDaConta && marcaDaConta in BANCO_NO_TOPO && bancoDoArquivo !== marcaDaConta;
+}
+
 export function nomeDeOutroDocumento(nome: string): boolean {
   return /\b(?:faturas?|cartao|cartoes|aplicac\w*|aplic|investimentos?|comprovantes?|boletos?|recibos?|danfe|contrato|emprestimos?|financiamentos?|consorcio|cdb|rdc|lci|lca|fundos?)\b/.test(normalizarTexto(nome));
 }

@@ -1,5 +1,5 @@
 // Todas as janelas (popups) do sistema que abrem pelo useRetorno().modal — o levantamento de 02/10/2026. Cada uma com
-// o desenho parado e o ▶ que abre a janela de verdade. As janelas próprias (Interromper, Pedir documentos, Janela da
+// o desenho parado e o ▶ que abre a janela de verdade. As janelas próprias (Pedir documentos, Janela da
 // empresa…) ficam em pecas.tsx.
 import { janela, virouAviso } from './pecas';
 import { CONCILIA, EXECUTOR } from './telas';

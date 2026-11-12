@@ -162,10 +162,15 @@ export function useImportacao() {
    * arquivo sem nada (sem lançamento e sem o "sem movimento") não grava nem avisa e volta 'vazio', para quem chama tentar o
    * próximo arquivo do mês (Vitor, 19/10/2026, na 450: o "MM-2026 (1).pdf" eram comprovantes e o nads dizia que trouxe).
    */
-  async function importarDoDrive(banco: string, arquivo: { id: string; nome: string }, conteudo: ArrayBuffer, mes?: string, tentativa = false): Promise<boolean | 'vazio'> {
+  async function importarDoDrive(banco: string, arquivo: { id: string; nome: string }, conteudo: ArrayBuffer, mes?: string, tentativa = false, marca?: string): Promise<boolean | 'vazio'> {
     setMensagemBruta(null);
     setLendoLinha(banco + '|banco');
-    const lido = await x.lerArquivo(arquivo.nome, new Uint8Array(conteudo), 'banco');
+    let lido = await x.lerArquivo(arquivo.nome, new Uint8Array(conteudo), 'banco');
+    // o arquivo de outro banco na pasta desta conta não entra (Vitor, 12/11/2026, na 429: a InfinitePay no Santander)
+    if (x.deOutroBanco(lido.bancoNoTexto, marca)) {
+      const nomeDe = (id?: string) => empresas.BANCOS_CONHECIDOS.find(b => b.id === id)?.nome || id || '';
+      lido = { ...lido, lancamentos: [], semMovimento: undefined, naoEExtrato: true, erro: 'É o extrato do ' + nomeDe(lido.bancoNoTexto) + ', não do ' + nomeDe(marca) + '.' };
+    }
     if (tentativa && !lido.semMovimento && (lido.erro || !lido.lancamentos.length)) { setLendoLinha(null); return 'vazio'; }
     const ok = await gravarLidos('banco', [lido], banco, arquivo, undefined, mes ? [mes] : undefined);
     setLendoLinha(null);
