@@ -457,3 +457,43 @@ describe('o expediente: pausa sozinha no almoço e à noite (12/11/2026)', () =>
     expect(podeMudar(t, CLARA.uid)).toBe(true);
   });
 });
+
+describe('o pedido de documentos e o Visualizado (12/11/2026)', () => {
+  const anexo = { id: 'a', nome: 'nota.pdf', extensao: 'pdf', tamanho: 10, em: EM, por: 'Clara', partes: 1 };
+  it('a nova de pedido leva o tipo; a comum não', () => {
+    expect(nova(rascunho({ responsavel: CLARA, tipo: 'documentos' }), { id: 'x', numero: 1, por: VITOR, em: EM }).tipo).toBe('documentos');
+    expect('tipo' in nova(rascunho(), { id: 'y', numero: 2, por: VITOR, em: EM })).toBe(false);
+  });
+  it('sem anexo, o Concluir de sempre; com anexo, "Anexei tudo, concluir"', () => {
+    const agora = new Date('2026-11-12T10:00:00.000-03:00');
+    const sem = tarefa({ tipo: 'documentos', responsavel: CLARA });
+    expect(d.acoesDaTarefa(sem, agora).map(a => a.rotulo)).toEqual(['Iniciar', 'Concluir']);
+    expect(d.podeConfirmarDocumentos(sem)).toBe(false);
+    const com = { ...sem, anexos: [anexo] };
+    expect(d.podeConfirmarDocumentos(com)).toBe(true);
+    expect(d.acoesDaTarefa(com, agora).find(a => a.id === 'concluir')).toEqual({ id: 'concluir', rotulo: 'Anexei tudo, concluir', status: 'concluida' });
+    expect(d.podeConfirmarDocumentos({ ...com, status: 'concluida' })).toBe(false);
+    expect(d.acoesDaTarefa(tarefa({ anexos: [anexo] }), agora).find(a => a.id === 'concluir')?.rotulo).toBe('Concluir');
+  });
+  it('marca visualizada só quem recebeu, uma vez, e não na que é para si mesmo', () => {
+    const t = tarefa({ criadaPor: VITOR, responsavel: CLARA });
+    expect(d.marcaVisualizada(t, CLARA.uid)).toBe(true);
+    expect(d.marcaVisualizada(t, VITOR.uid)).toBe(false);
+    expect(d.marcaVisualizada({ ...t, visualizadaEm: EM }, CLARA.uid)).toBe(false);
+    expect(d.marcaVisualizada(tarefa({ criadaPor: CLARA, responsavel: CLARA }), CLARA.uid)).toBe(false);
+  });
+  it('o rótulo do Visualizado na hora de Brasília', () => {
+    const t = tarefa({ criadaPor: VITOR, responsavel: CLARA });
+    expect(d.rotuloDaVisualizacao(t)).toBe('Ainda não visualizada');
+    expect(d.rotuloDaVisualizacao({ ...t, visualizadaEm: '2026-11-12T17:03:00.000Z' })).toBe('Visualizada 12/11 14:03');
+    expect(d.rotuloDaVisualizacao({ ...t, visualizadaEm: '2026-11-13T01:30:00.000Z' })).toBe('Visualizada 12/11 22:30');
+    expect(d.rotuloDaVisualizacao(tarefa({ criadaPor: CLARA, responsavel: CLARA }))).toBe('');
+  });
+  it('lê o tipo e o visualizadaEm do banco; o que não é "documentos" some', () => {
+    const base = { numero: 1, titulo: 'x', criadaPor: VITOR, responsavel: CLARA, criadaEm: EM };
+    const t = lerTarefa('a', { ...base, tipo: 'documentos', visualizadaEm: EM });
+    expect([t.tipo, t.visualizadaEm]).toEqual(['documentos', EM]);
+    const u = lerTarefa('b', { ...base, tipo: 'outro' });
+    expect('tipo' in u || 'visualizadaEm' in u).toBe(false);
+  });
+});

@@ -70,6 +70,10 @@ export interface TarefaDelegada {
   historico: Nota[];
   anexos: Anexo[];
   etapaDelegada?: EtapaDelegada;
+  /** o pedido de documentos (12/11/2026): quem recebeu anexa e confirma "Anexei tudo, concluir" */
+  tipo?: 'documentos';
+  /** ISO de quando quem recebeu abriu a tarefa pela primeira vez (o Visualizado de quem delegou; 12/11/2026) */
+  visualizadaEm?: string;
 }
 
 /** O que a pessoa preenche no cadastro da tarefa (a nova e a aberta). */
@@ -84,6 +88,8 @@ export interface Rascunho {
   responsavel: Pessoa | null;
   /** só ao criar: a etapa que esta tarefa delega */
   etapaDelegada?: EtapaDelegada;
+  /** só ao criar: o pedido de documentos */
+  tipo?: 'documentos';
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -509,6 +515,39 @@ export function trechosEmAndamento(t: Pick<TarefaDelegada, 'status' | 'historico
 export const minutosTrabalhados = (t: Pick<TarefaDelegada, 'status' | 'historico' | 'criadaEm'>, agora: Date | string): number =>
   trechosEmAndamento(t, agora).reduce((s, x) => s + minutosDeExpediente(x.de, x.ate), 0);
 
+// ---------------------------------------------------------------------------------------------------------------------
+// o pedido de documentos e o Visualizado (12/11/2026)
+// ---------------------------------------------------------------------------------------------------------------------
+// "Onde o cara que foi delegado a função anexe documentos; após anexar, já dá como concluído": quem recebeu anexa e
+// confirma ("Anexei tudo, concluir"; às vezes são vários arquivos). "Visualizado: se a pessoa clicou e visualizou a
+// tarefa ou não": a primeira vez que quem recebeu abre a tarefa fica gravada.
+
+export const TITULO_DO_PEDIDO = 'Pedido de documentos';
+export const pedeDocumentos = (t: Pick<TarefaDelegada, 'tipo'>): boolean => t.tipo === 'documentos';
+
+/** O pedido de documentos com anexo e em aberto: quem recebeu já pode confirmar que anexou tudo. */
+export const podeConfirmarDocumentos = (t: Pick<TarefaDelegada, 'tipo' | 'anexos' | 'status'>): boolean => pedeDocumentos(t) && t.anexos.length > 0 && emAberto(t);
+
+/** Os botões do pedido de documentos: o Concluir vira "Anexei tudo, concluir" quando já tem anexo. */
+export function acoesDaTarefa(t: Pick<TarefaDelegada, 'status' | 'tipo' | 'anexos'>, agora: Date | string): AcaoDaTarefa[] {
+  const acoes = acoesNoHorario(t, agora);
+  return podeConfirmarDocumentos(t) ? acoes.map(a => (a.id === 'concluir' ? { ...a, rotulo: 'Anexei tudo, concluir' } : a)) : acoes;
+}
+
+/** Quem recebeu abriu agora e ainda não estava marcada: gravar o visualizadaEm (quem delegou para si mesmo não conta). */
+export const marcaVisualizada = (t: Pick<TarefaDelegada, 'responsavel' | 'criadaPor' | 'visualizadaEm'>, uid: string): boolean =>
+  !!uid && t.responsavel.uid === uid && t.criadaPor.uid !== uid && !t.visualizadaEm;
+
+/** O Visualizado para quem delegou: 'Visualizada 12/11 14:03' ou 'Ainda não visualizada' (para si mesmo, vazio). */
+export function rotuloDaVisualizacao(t: Pick<TarefaDelegada, 'responsavel' | 'criadaPor' | 'visualizadaEm'>): string {
+  if (t.responsavel.uid === t.criadaPor.uid) return '';
+  const ms = Date.parse(t.visualizadaEm || '');
+  if (!Number.isFinite(ms)) return 'Ainda não visualizada';
+  const { meiaNoite, minuto } = noDiaDeBrasilia(ms);
+  const dia = new Date(meiaNoite - FUSO_DE_BRASILIA * MIN);
+  return 'Visualizada ' + String(dia.getUTCDate()).padStart(2, '0') + '/' + String(dia.getUTCMonth() + 1).padStart(2, '0') + ' ' + hhmm(minuto);
+}
+
 /** '2h 35min', '40min', '0min'. */
 export function duracaoParaTela(minutos: number): string {
   const h = Math.floor(minutos / 60), m = minutos % 60;
@@ -605,6 +644,7 @@ export function nova(r: Rascunho, o: { id: string; numero: number; por: Pessoa; 
     // a que nasce em andamento ("Já estava fazendo") já leva o Iniciou: o tempo trabalhado conta dali (12/11/2026)
     pareceres: [], historico: [...historicoDaCriacao(base, o.em), ...(r.status === 'andamento' ? [{ por: o.por.nome, em: o.em, texto: 'Iniciou a tarefa' }] : [])], anexos: [],
     ...(r.etapaDelegada ? { etapaDelegada: r.etapaDelegada } : {}),
+    ...(r.tipo === 'documentos' ? { tipo: 'documentos' as const } : {}),
   };
 }
 
@@ -731,6 +771,8 @@ export function lerTarefa(id: string, x: Record<string, unknown>): TarefaDelegad
     anexos: anexos.map(a => ({ id: texto(a.id), nome: texto(a.nome), extensao: texto(a.extensao), tamanho: Number(a.tamanho) || 0, em: texto(a.em), por: texto(a.por), partes: Number(a.partes) || 0, ...(a.gzip === true ? { gzip: true as const } : {}) }))
       .filter(a => a.id && a.partes > 0),
     ...(etapaDelegada ? { etapaDelegada } : {}),
+    ...(x.tipo === 'documentos' ? { tipo: 'documentos' as const } : {}),
+    ...(texto(x.visualizadaEm) ? { visualizadaEm: texto(x.visualizadaEm) } : {}),
   };
 }
 

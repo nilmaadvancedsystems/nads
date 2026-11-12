@@ -9,7 +9,7 @@ import { PainelDeEntregas } from '../telas/entregas/PainelDeEntregas';
 import { Solicitacoes } from '../telas/entregas/Solicitacoes';
 import { RotaDeEntregas } from '../telas/entregas/RotaDeEntregas';
 import { CascaTarefas } from './CascaTarefas';
-import { aplicacao, aplicacoesDe, BASE, caminhoDaPagina, CARTEIRA_PARA_O_FINANCEIRO, carteiraLiberada, type IdAplicacao } from './navegacao';
+import { aplicacao, aplicacoesDe, BASE, caminhoDaPagina, CARTEIRA_PARA_O_FINANCEIRO, type IdAplicacao } from './navegacao';
 import { useOperador, type Operador } from './operador';
 import type { IdPaginaAdmin } from '../../admin/casca/navegacao';
 
@@ -110,7 +110,7 @@ export function AplicacaoAberta() {
   if (!a.paginas.some(p => p.id === pagina && !p.emDesenvolvimento)) return <Navigate to={caminhoDaPagina(a.id, (a.paginas.find(p => !p.emDesenvolvimento) || a.paginas[0]).id)} replace />;
   return (
     <TopoProvider>
-      <CascaTarefas app={a.id} pagina={pagina} telaInteira={a.id === 'drive'} semLateral={a.id === 'inicio' || a.id === 'minhas-empresas' || a.id === 'contato' || a.id === 'ferramentas' || (a.id === 'carteira' && !carteiraLiberada(op))} larga>
+      <CascaTarefas app={a.id} pagina={pagina} telaInteira={a.id === 'drive'} semLateral={a.id === 'inicio' || a.id === 'minhas-empresas' || a.id === 'contato' || a.id === 'ferramentas'} larga>
         <NaEspera><Tela app={a.id} pagina={pagina} /></NaEspera>
       </CascaTarefas>
     </TopoProvider>

@@ -100,6 +100,17 @@ export function AntecipacaoIcms() {
           : <SeletorMes valor={vm.competencia} onMudar={vm.setCompetencia} rotulo={vm.periodo === 'mes' ? 'Mês' : 'Até o mês'} max={vm.ultimoMes} />}
         <span className="tarefas-barra-espaco" />
         <button type="button" className="btn btn-outline" disabled={!vm.linhas.length} onClick={vm.imprimir}><Icone nome="printer" width={16} height={16} />Imprimir</button>
+        {/* o relatório simples do cliente (ticket PK6RIE, 12/11/2026): ver o PDF e mandar pelo "Enviar guias" do Fiscal */}
+        {vm.empresa && (
+          <>
+            <button type="button" className="btn btn-outline" disabled={!!vm.motivoSemEnvio} title={vm.motivoSemEnvio || 'O PDF que o cliente recebe'} onClick={() => void vm.verPdfDoCliente()}>
+              <Icone nome="olho" width={16} height={16} />Relatório do cliente
+            </button>
+            <button type="button" className="btn btn-primary" disabled={!!vm.motivoSemEnvio || vm.enviando} title={vm.motivoSemEnvio || 'Vai no e-mail das guias do mês, pelo "Enviar guias" do Fiscal'} onClick={() => void vm.enviarAoCliente()}>
+              <Icone nome="upload" width={16} height={16} />{vm.enviando ? 'Enviando…' : 'Enviar ao cliente'}
+            </button>
+          </>
+        )}
       </div>
       {vm.exemplos && <p className="hint fxr-exemplos"><Icone nome="ajuda" width={14} height={14} />Dados de exemplo: as notas de entrada do SIEG são inventadas (TESTE) e o que se marca fica só neste navegador.</p>}
       {!vm.empresa ? (

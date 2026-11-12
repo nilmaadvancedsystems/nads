@@ -18,8 +18,9 @@ import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { competenciasDaTela } from '../../../casca/navegacao';
 import { useOperador } from '../../../casca/operador';
-import { useCadastro, useDadosDaEmpresaNoEntregas, useRepo, useSieg } from '../../../dados/repo';
+import { useCadastro, useDadosDaEmpresaNoEntregas, useLoteFiscal, useRepo, useSieg } from '../../../dados/repo';
 import { imprimirHtml } from '../../dp/imprimirHtml';
+import { desenharRelatorioDoCliente } from './relatorioDoClientePdf';
 
 const s = t.sieg;
 const cad = emp.cadastro;
@@ -38,8 +39,10 @@ const regimePorExtenso = (r: string) => ({ Simples: 'Simples Nacional', Presumid
 export function useAntecipacaoIcms() {
   const repo = useRepo();
   const sieg = useSieg();
+  const loteFiscal = useLoteFiscal();
   const por = useOperador().operador?.nome || '';
-  const { toast, aviso } = useRetorno();
+  const { toast, aviso, modal } = useRetorno();
+  const [enviando, setEnviando] = useState(false);
   const [params, setParams] = useSearchParams();
   const [busca, setBusca] = useState('');
   const [ativo, setAtivo] = useState(0);
@@ -132,6 +135,20 @@ export function useAntecipacaoIcms() {
   };
   const anos = [...new Set(competencias.map(m => m.slice(0, 4)))];
 
+  // o relatório do cliente (ticket PK6RIE, 12/11/2026: "a funcao de enviar o calculo do relatório, para o cliente"): de um mês
+  // só (o do filtro da tabela, ou o do período Mês), com as linhas desse mês. Vai pelo "Enviar guias" do Fiscal (o Vitor
+  // escolheu o Gmail do Fiscal): sai no mesmo e-mail das guias do cliente nessa competência
+  const mesDoCliente = mes || (periodo === 'mes' ? mesEscolhido : '');
+  const linhasDoCliente = mesDoCliente ? s.filtrarAntecipacao(todas, { mes: mesDoCliente }) : [];
+  const grupoDoEnvio: t.GrupoDoControleId = /simples/i.test(dadosDaEmpresa.regime) ? 'sn' : 'lp';
+  const rotuloDoGrupo = grupoDoEnvio === 'sn' ? 'Simples Nacional' : 'Lucro Presumido';
+  const periodoPorExtenso = (m: string) => MESES[Number(m.slice(5, 7)) - 1] + ' de ' + m.slice(0, 4);
+  const pdfDoCliente = () => desenharRelatorioDoCliente({ empresa: dadosDaEmpresa, periodo: periodoPorExtenso(mesDoCliente), linhas: linhasDoCliente, aliquotaInterna: aliquota, emitidoEm: new Date() });
+  const nomeDoPdf = () => 'Antecipacao ICMS ' + mesDoCliente.slice(5, 7) + '-' + mesDoCliente.slice(0, 4) + '.pdf';
+  // os lotes de guias de quem está na tela (ouvidos desde já: no clique, o lote aberto já é conhecido)
+  const lotesFiscais = loteFiscal.lotes();
+  const motivoSemEnvio = !mesDoCliente ? 'Escolha um mês na tabela (ou o período Mês)' : !s.linhasQueCobram(linhasDoCliente).length ? 'Nenhuma nota a pagar nesse mês' : '';
+
   return {
     exemplos: sieg.exemplos,
     // a busca da empresa
@@ -199,6 +216,39 @@ export function useAntecipacaoIcms() {
       if (r !== c.cadastro) c.salvar(r);
     },
     rotuloDaSituacao: s.rotuloDaSituacao,
+    // o relatório do cliente
+    motivoSemEnvio, enviando,
+    /** o PDF que o cliente recebe, numa aba nova (para conferir antes de mandar) */
+    async verPdfDoCliente() {
+      const aba = window.open('', '_blank');
+      try {
+        const url = URL.createObjectURL(new Blob([new Uint8Array(await pdfDoCliente())], { type: 'application/pdf' }));
+        if (aba && !aba.closed) aba.location.href = url; else window.open(url, '_blank');
+      } catch (e) { aba?.close(); aviso({ titulo: 'Não deu para montar o PDF', texto: e instanceof Error ? e.message : String(e), tom: 'erro' }); }
+    },
+    /**
+     * manda o PDF ao "Enviar guias" do Fiscal (o lote parado do grupo, senão um novo), já com o cliente e a competência
+     * escolhidos e sem coluna do Relatório: sai no e-mail das guias do cliente quando o lote for disparado
+     */
+    async enviarAoCliente() {
+      if (!empresa?.codigo || motivoSemEnvio || enviando) return;
+      const ok = await modal({
+        icone: 'upload', titulo: 'Enviar o relatório ao cliente?',
+        texto: 'O relatório de ' + periodoPorExtenso(mesDoCliente) + ' vai em PDF para o "Enviar guias" do ' + rotuloDoGrupo + ', no Relatório do Fiscal. Ele sai no mesmo e-mail das guias de ' + empresa.nome + ' nessa competência, quando o lote for disparado de lá.',
+        botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Enviar', valor: true, variante: 'btn-primary' }],
+      });
+      if (!ok) return;
+      setEnviando(true);
+      try {
+        const arquivo = { nome: nomeDoPdf(), bytes: await pdfDoCliente() };
+        const aberto = lotesFiscais.lista.find(l => l.grupo === grupoDoEnvio && l.status === 'lido');
+        const lote = aberto ? aberto.id : await loteFiscal.subir(grupoDoEnvio, [arquivo], () => {});
+        const ids = aberto ? await loteFiscal.adicionar(aberto.id, [arquivo], () => {}) : ['0'];
+        for (const id of ids) await loteFiscal.escolher(lote, id, { cliente: empresa.codigo, tipo: 'OUTRO', competencia: mesDoCliente, coluna: '' });
+        toast('Relatório no "Enviar guias" do ' + rotuloDoGrupo + (aberto ? ', no lote aberto' : ', num lote novo') + ': dispare de lá com as guias');
+      } catch (e) { aviso({ titulo: 'Não deu para enviar o relatório', texto: e instanceof Error ? e.message : String(e), tom: 'erro' }); }
+      finally { setEnviando(false); }
+    },
     imprimir() {
       imprimirHtml(s.htmlDaAntecipacao({
         empresa: dadosDaEmpresa, linhas, aliquotaInterna: aliquota, elaboradoPor: por, emitidoEm: new Date(),

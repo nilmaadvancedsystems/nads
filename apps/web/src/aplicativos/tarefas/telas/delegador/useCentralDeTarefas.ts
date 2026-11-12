@@ -74,7 +74,8 @@ export function useCentralDeTarefas(abaInicial: AbaDaCentral) {
     // os botões de quem faz a tarefa (Minhas tarefas)
     acoes: aba === 'minhas' ? d.acoesNoHorario(doBanco.get(t.id) || t, relogio) : [],
     // o que aconteceu por último (Delegadas por mim)
-    movimento: aba === 'delegadas' ? movimentoDe(t) : '',
+    // e se quem recebeu já abriu a tarefa (o Visualizado, 12/11/2026)
+    movimento: aba === 'delegadas' ? [movimentoDe(t), d.rotuloDaVisualizacao(t)].filter(Boolean).join(' · ') : '',
   });
   return {
     carregando: !carregadas,
@@ -109,6 +110,7 @@ export function useCentralDeTarefas(abaInicial: AbaDaCentral) {
     aberta,
     abrir: (id: string) => setAberta(id),
     nova: () => setAberta('nova'),
+    pedirDocumentos: () => setAberta('documentos'),
     voltar: () => setAberta(null),
     /** depois de criar, a lista da aba onde a tarefa foi parar (a minha: Minhas; para outro: Delegadas) */
     criada: (paraMim: boolean) => { setAberta(null); setAba(paraMim ? 'minhas' : 'delegadas'); limparFiltros(); },
