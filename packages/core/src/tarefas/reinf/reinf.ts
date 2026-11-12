@@ -94,10 +94,13 @@ export function resumoReinf(estados: readonly EstadoReinf[], competencia: string
 /**
  * A empresa tem a REINF no Fiscal (Vitor, 05/11/2026: "todas as empresas tem reinf"): todas, sem olhar o regime (o que vem do
  * Entregas ou da Receita tirava empresas da lista) e com as filiais (05/11/2026: o Heverton tem 43 empresas, as 6 filiais
- * entram).
+ * entram). Menos o empregador doméstico e a pessoa física (Vitor, 12/11/2026: "quem for doméstica e física, não precisa estar
+ * na lista da REINF"), pelos regimes Domésticas e Física do Cadastro.
  */
 export function temReinfNoFiscal(e: { codigo: number | null; nome: string; regime?: string }): boolean {
-  return e.codigo != null;
+  if (e.codigo == null) return false;
+  const regime = (e.regime || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+  return !/^(fisica|domesticas?)$/.test(regime);
 }
 
 /** As empresas da lista que têm a REINF no Fiscal, uma por código, em ordem de código. */
