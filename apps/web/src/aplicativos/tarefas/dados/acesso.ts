@@ -44,7 +44,7 @@ export interface RepoAcesso {
   /** só o admin: o convite para a pessoa trocar a própria senha (convites/{codigo} tipo reset, 24 h); devolve o código */
   criarConviteDeSenha(uid: string): Promise<string>;
   /**
-   * só o Diretor e o Dono: troca o e-mail de entrada da pessoa (12/11/2026). Grava o pedido (pedidosConta) e espera o robô da
+   * troca o e-mail de entrada (12/11/2026): o próprio, qualquer um; o de outra pessoa, só o Diretor e o Dono. Grava o pedido (pedidosConta) e espera o robô da
    * nuvem trocar o login no Firebase Auth e o cadastro; termina quando ele marca feito, ou falha com o motivo dele.
    */
   trocarEmail(uid: string, email: string): Promise<void>;

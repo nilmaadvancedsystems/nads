@@ -213,7 +213,8 @@ export function criarAcessoFirestore(quem: () => Quem): RepoAcesso {
     },
     async trocarEmail(uid, email) {
       const q = eu();
-      if (!q.admin) throw new Error('Só o Diretor ou o Dono troca o e-mail.');
+      // o próprio e-mail, qualquer um (Vitor, 12/11/2026: "deixa o próprio usuário alterar o e-mail dele também"); o dos outros, só o Diretor e o Dono
+      if (!q.admin && uid !== q.uid) throw new Error('Só o Diretor ou o Dono troca o e-mail de outra pessoa.');
       const ref = await addDoc(collection(db, 'pedidosConta'), {
         acao: 'trocarEmail', uidAlvo: uid, emailNovo: email.trim().toLowerCase(), pedidoPor: { uid: q.uid, nome: q.nome }, em: new Date().toISOString(), status: 'fila',
       });

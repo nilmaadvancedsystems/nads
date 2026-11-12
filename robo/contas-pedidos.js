@@ -1,5 +1,5 @@
 // A troca do e-mail de entrada (Vitor, 12/11/2026: "coloca email aqui pro diretor conseguir mudar tbm"): o Diretor ou o
-// Dono pede no nads (Cadastro › Usuários › Acesso; pedidosConta com status 'fila') e aqui, com o Admin SDK, o robô confere
+// Dono pede no nads (Cadastro › Usuários › Acesso), ou a pessoa troca o próprio (Minha conta); pedidosConta com status 'fila'. Aqui, com o Admin SDK, o robô confere
 // quem pediu, troca o login no Firebase Auth e o usuarios/{uid}.email, e marca 'feito' ou 'erro'. O navegador não tem
 // como trocar o login de outra pessoa; o serviço de contas (Apps Script) só redefine senha e exclui acesso.
 const { getAuth } = require('firebase-admin/auth');
@@ -18,11 +18,13 @@ async function atenderUm(db, ref, log) {
   try {
     if (p.acao !== 'trocarEmail') return await falhar('Pedido desconhecido.');
     const quem = (await db.collection('usuarios').doc(String((p.pedidoPor && p.pedidoPor.uid) || '-')).get()).data();
-    if (!podePedir(quem)) return await falhar('Só o Diretor ou o Dono troca o e-mail.');
+    // o próprio e-mail, qualquer um com a conta ativa (Vitor, 12/11/2026: "deixa o próprio usuário alterar o e-mail dele também")
+    const proprio = !!quem && quem.ativo !== false && String(p.uidAlvo || '') === String(p.pedidoPor.uid);
+    if (!proprio && !podePedir(quem)) return await falhar('Só o Diretor ou o Dono troca o e-mail de outra pessoa.');
     const alvoRef = db.collection('usuarios').doc(String(p.uidAlvo || '-'));
     const alvo = (await alvoRef.get()).data();
     if (!alvo) return await falhar('Não achei a pessoa.');
-    if (alvo.nivel === 'dono' && quem.nivel !== 'dono') return await falhar('O e-mail do Dono, só o Dono troca.');
+    if (!proprio && alvo.nivel === 'dono' && quem.nivel !== 'dono') return await falhar('O e-mail do Dono, só o Dono troca.');
     const email = String(p.emailNovo || '').trim().toLowerCase();
     if (!EMAIL.test(email)) return await falhar('O e-mail não é válido.');
     const auth = getAuth();
