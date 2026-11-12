@@ -126,6 +126,17 @@ try {
     // o executor que falha: avisa e não marca como feito (tenta na próxima madrugada)
     fs.mkdirSync(path.join(DRIVE, '2025', '1 - X', 'FISCAL', 'SIMPLES NACIONAL', '12. XML', 'NF-e'), { recursive: true });
     fs.writeFileSync(path.join(DRIVE, '2025', '1 - X', 'FISCAL', 'SIMPLES NACIONAL', '12. XML', 'NF-e', '01-2025_NF-e_1.xml'), 'x');
+    // só de madrugada (12/11/2026): às 6h o executor para no fim de um lote e o resto fica para a noite seguinte
+    avisos.length = 0;
+    let ateRecebido = null;
+    const parcial = F.criarMudancaDaMadrugada(Object.assign({}, base, { anos: [2025], rodarExecutor: (arq, ate) => { ateRecebido = ate; return F.rodarExecutorNumProcesso(arq, null, Date.now() - 1000); } }));
+    igual('madrugada: passou das 6h → o executor para antes do lote e o resto fica para a próxima noite',
+      [await parcial.tique(), existe('2025\\1 - X\\FISCAL\\SIMPLES NACIONAL\\12. XML\\NF-e\\01-2025_NF-e_1.xml'), fs.existsSync(path.join(process.env.ARQ_NOVO_CONTROLE, 'fiscal-por-mes', 'feito-2025.json')), /parte movida/.test(avisos[0] || '')],
+      ['continua', true, false, true]);
+    igual('madrugada: a hora de parar é às 6h do dia', ateRecebido, new Date(2026, 10, 12, 6, 0, 0).getTime());
+    const sim = new C.Correcao({ producao: true, ate: Date.now() - 1, log: () => {} });
+    C.etapaDoPlano(sim, F.planejar(F.lerDoDisco, [{ ano: 2025, raiz: path.join(DRIVE, '2025') }]).plano, 'pasta');
+    igual('executor com a hora vencida: nenhum passo, parouPelaHora', [sim.passos.length, sim.parouPelaHora], [0, true]);
     avisos.length = 0;
     const falha = F.criarMudancaDaMadrugada(Object.assign({}, base, { anos: [2025], rodarExecutor: async () => ({ ok: false, erro: 'PAREI: o lote não conferiu' }) }));
     igual('madrugada: o executor parou → erro na Central, sem o feito', [await falha.tique(), /^erro: /.test(avisos[0] || ''), fs.existsSync(path.join(process.env.ARQ_NOVO_CONTROLE, 'fiscal-por-mes', 'feito-2025.json'))], ['erro', true, false]);
