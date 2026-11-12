@@ -18,6 +18,8 @@ import type { RepoHonorarios } from './honorarios';
 import type { RepoBoletos } from './boletos';
 import type { RepoContasPagar } from './contasPagar';
 import type { RepoCarteira } from './carteira';
+import { repoDosInsumos } from './fonte';
+import type { RepoInsumos } from './insumos';
 import type { RepoNfse } from './nfse';
 import { repoDeEntregasDeDocumentos } from './fonte';
 import type { RepoEntregasDeDocumentos } from './entregasDeDocumentos';
@@ -263,6 +265,13 @@ export function useBoletos(): RepoBoletos {
 /** A Carteira da pessoa (e o lado do Financeiro), ao vivo (12/11/2026). */
 export function useCarteira(): RepoCarteira {
   const repo = repoDaCarteira();
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  return repo;
+}
+
+/** Os Insumos da Carteira (12/11/2026). */
+export function useInsumos(): RepoInsumos {
+  const repo = repoDosInsumos();
   useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
   return repo;
 }

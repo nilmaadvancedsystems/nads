@@ -235,3 +235,6 @@ export function recebidoNoMes(pags: readonly PagamentoNaCarteira[], competencia:
     aReceber: soma(doMes.filter(p => !p.pago).map(p => p.valor)),
   };
 }
+
+// os Insumos (12/11/2026): impressões, pastas, envelopes e caixas de cada pessoa, por cliente
+export * from './insumos';
