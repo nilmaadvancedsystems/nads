@@ -6,8 +6,8 @@
 // de você, os clientes prontos e o Disparar), sem os já enviados. "Enviados": os e-mails que saíram na competência da
 // apuração (o registro do robô; fica mesmo depois que o lote some). "Modelo do e-mail": o assunto e o texto
 // (config/envioFiscal), como o do DP › Envios.
-import { BotaoAcao, BotaoIcone, CampoArquivos, ConfigLinha, ConfigSecao, Esqueleto, Icone, MenuSuspenso, Segmentado, SeletorMes } from '@nads/ui';
-import { useState } from 'react';
+import { BotaoAcao, BotaoIcone, CampoArquivos, ConfigLinha, ConfigSecao, Esqueleto, Icone, LogoWhatsApp, MenuSuspenso, Segmentado, SeletorMes } from '@nads/ui';
+import { useState, type ReactNode } from 'react';
 import type { GuiaDoLote, ViaDaGuia } from '../../../dados/loteFiscal';
 import { JanelaLateral } from '../../janela/JanelaLateral';
 import { efetivoDaGuia, useEnvioDeGuias, type VmEnvioDeGuias } from './useEnvioDeGuias';
@@ -26,7 +26,8 @@ const STATUS_DO_LOTE: Record<string, { classe: string; rotulo: string }> = {
 // o que não é guia (escolhido como OUTRO: o relatório da Antecipação ICMS-ES que vai junto, 12/11/2026) aparece pelo nome do arquivo
 const naoEGuia = (a: GuiaDoLote) => a.escolha?.tipo === 'OUTRO';
 const tipoDaGuia = (a: GuiaDoLote) => naoEGuia(a) ? a.nome.replace(/\.[^.]+$/, '') : [a.leitura?.tipo, (a.leitura?.partes?.length ?? 0) > 1 ? a.leitura!.partes!.map(p => p.tributo).join(' + ') : a.leitura?.tributo].filter(Boolean).join(' ') || '?';
-const VIAS: { valor: ViaDaGuia; rotulo: string }[] = [{ valor: 'email', rotulo: 'Gmail' }, { valor: 'impresso', rotulo: 'Impresso' }, { valor: 'econtador', rotulo: 'eContador' }, { valor: 'scireport', rotulo: 'SCI Report' }, { valor: 'zap', rotulo: 'WhatsApp' }];
+const VIAS: { valor: ViaDaGuia; rotulo: string; icone?: ReactNode }[] = [{ valor: 'email', rotulo: 'Gmail' }, { valor: 'impresso', rotulo: 'Impresso' }, { valor: 'econtador', rotulo: 'eContador' }, { valor: 'scireport', rotulo: 'SCI Report' }, { valor: 'zap', rotulo: 'WhatsApp', icone: <LogoWhatsApp /> }];
+// o ícone do WhatsApp é a imagem que o Vitor mandou (12/11/2026, ticket 1ORUBY: "O icone"), em logos-bancos/whatsapp.png
 const ROTULO_DA_VIA: Record<ViaDaGuia, string> = { email: 'Gmail', impresso: 'Impresso', econtador: 'eContador', scireport: 'SCI Report', zap: 'WhatsApp' };
 /** o número do wa.me para ler: '5527999990000' -> '(27) 99999-0000' */
 const foneLegivel = (n: string) => { const d = n.replace(/^55/, ''); return '(' + d.slice(0, 2) + ') ' + d.slice(2, -4) + '-' + d.slice(-4); };

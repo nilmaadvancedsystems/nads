@@ -179,7 +179,14 @@ function Lateral({ itens, titulo }: { titulo?: string; itens: { rotulo: string; 
 
 function SegmentadoVivo() {
   const [v, setV] = useState('resumido');
-  return <Segmentado valor={v} opcoes={[{ valor: 'resumido', rotulo: 'Resumido' }, { valor: 'detalhado', rotulo: 'Detalhado' }]} onMudar={setV} />;
+  const [via, setVia] = useState('email');
+  // com a logo antes do nome (icone; 12/11/2026, o WhatsApp no Envio das guias do Fiscal)
+  return (
+    <div style={{ display: 'grid', gap: 10, justifyItems: 'start' }}>
+      <Segmentado valor={v} opcoes={[{ valor: 'resumido', rotulo: 'Resumido' }, { valor: 'detalhado', rotulo: 'Detalhado' }]} onMudar={setV} />
+      <Segmentado valor={via} opcoes={[{ valor: 'email', rotulo: 'Gmail' }, { valor: 'impresso', rotulo: 'Impresso' }, { valor: 'zap', rotulo: 'WhatsApp', icone: <LogoWhatsApp /> }]} onMudar={setVia} />
+    </div>
+  );
 }
 function InterruptorVivo() {
   const [v, setV] = useState(true);
@@ -365,7 +372,7 @@ export const PECAS_BASE: Peca[] = [
   // ─── Logos ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   { id: 'logos-bancos', tipo: 'logos', nome: 'Bancos (cinza e colorido)', componente: 'LogoBanco', telas: ['e-importacao', 't-exec-importacao', 't-exec-cheque', 't-cadastro-janela'], largo: true, uso: '<LogoBanco banco="sicoob" cor />',
     demo: () => <div className="cat-icones">{BANCOS.map(b => <span key={b} className="cat-icone"><span style={{ display: 'flex', gap: 8 }}><span className="imp-logo" style={{ width: 28, height: 28 }}><LogoBanco banco={b} /></span><span className="imp-logo" style={{ width: 28, height: 28 }}><LogoBanco banco={b} cor /></span></span>{b}</span>)}</div> },
-  { id: 'logos-apps', tipo: 'logos', nome: 'Aplicativos', componente: 'LogoDrive · LogoGmail · LogoWhatsApp · LogoEcontador · LogoSciReport · LogoSieg · LogoSimplesDaAba · LogoSped', telas: ['e-importacao', 't-drive', 't-gmail', 't-fiscal-relatorio'],
+  { id: 'logos-apps', tipo: 'logos', nome: 'Aplicativos', descricao: 'As logos dos aplicativos. O WhatsApp é o balão verde com o telefone branco que o Vitor mandou (12/11/2026, ticket 1ORUBY: "O icone"), sem o fundo, em logos-bancos/whatsapp.png (a original em originais/whatsapp.jpg)', componente: 'LogoDrive · LogoGmail · LogoWhatsApp · LogoEcontador · LogoSciReport · LogoSieg · LogoSimplesDaAba · LogoSped', telas: ['e-importacao', 't-drive', 't-gmail', 't-fiscal-relatorio'],
     demo: () => <><span style={{ width: 24, height: 24, display: 'inline-flex' }}><LogoSieg /></span><span style={{ width: 24, height: 24, display: 'inline-flex' }}><LogoSimplesDaAba /></span><span style={{ width: 24, height: 24, display: 'inline-flex' }}><LogoSped /></span><span style={{ width: 24, height: 24, display: 'inline-flex' }}><LogoDrive /></span><span style={{ width: 24, height: 24, display: 'inline-flex' }}><LogoDrive cor /></span><span style={{ width: 24, height: 24, display: 'inline-flex' }}><LogoGmail /></span><span style={{ width: 24, height: 24, display: 'inline-flex' }}><LogoWhatsApp /></span><span style={{ width: 24, height: 24, display: 'inline-flex' }}><LogoEcontador /></span><span style={{ width: 24, height: 24, display: 'inline-flex' }}><LogoSciReport /></span></> },
 
   // ─── Campos ─────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -590,7 +597,7 @@ export const PECAS_BASE: Peca[] = [
     demo: () => <AvisoParado tom="erro" titulo="Falta preencher antes de conferir" texto="Escolha a conta · Importe o relatório da conta" />, aoVivo: c => c.aviso({ tom: 'erro', titulo: 'Falta preencher antes de conferir', texto: 'Escolha a conta · Importe o relatório da conta' }) },
   { id: 'abas-menu', tipo: 'abas', nome: 'Abas sublinhadas', classes: ['menu', 'menu-item', 'menu-contador'], telas: TODAS, largo: true,
     demo: () => <nav className="menu">{([['Bancos', 'landmark', true], ['Balancete', 'scale'], ['Entradas', 'arrowDown'], ['Saídas', 'arrowUp'], ['Tomados', 'fileDown']] as [string, NomeIcone, boolean?][]).map(([r, i, a]) => <button key={r} type="button" className={'menu-item' + (a ? ' active' : '')}><Icone nome={i} /><span>{r}</span></button>)}</nav> },
-  { id: 'segmentado', tipo: 'abas', nome: 'Segmentado', componente: 'Segmentado', classes: ['steps', 'step-pill'], telas: ['c-relatorio', 'c-cadastro', 'c-consulta', 'a-arquivador'], demo: () => <SegmentadoVivo /> },
+  { id: 'segmentado', tipo: 'abas', nome: 'Segmentado', descricao: 'A escolha entre poucas opções, com o fundo deslizando até a escolhida. A opção pode ter uma logo antes do nome (icone, 14 px; 12/11/2026: o WhatsApp no Envio das guias do Fiscal)', componente: 'Segmentado', classes: ['steps', 'step-pill'], telas: ['c-relatorio', 'c-cadastro', 'c-consulta', 'a-arquivador'], demo: () => <SegmentadoVivo /> },
   { id: 'imp-meses', tipo: 'abas', nome: 'Meses do período (Em lote)', descricao: 'Uma tabela: meses em cima (clicar abre), Extrato e Razão nas linhas, um ícone por mês', classes: ['imp-meses', 'imp-meses-mes', 'atual', 'imp-mes-sem'], telas: ['e-importacao', 't-exec-importacao'], largo: true,
     demo: () => {
       const ok = <button className="icon-btn icon-btn-sm imp-btn imp-feito" type="button"><Icone nome="check" className="imp-feito-ok" /><Icone nome="x" className="imp-feito-x" /></button>;

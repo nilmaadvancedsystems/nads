@@ -165,8 +165,11 @@ export function CampoArquivo({ id, arquivo = null, onEscolher, onEscolherVarios,
 /** Seletor interno (.steps / .step-pill). Opção travada = apagada, clicar chama onTravada. */
 export function Segmentado<T extends string>({ valor, opcoes, onMudar, id }: {
   valor: T;
-  /** ponto: o pontinho vermelho de "falta configurar" (o texto vai na dica; Vitor, 08/10/2026) */
-  opcoes: { valor: T; rotulo: string; oculta?: boolean; travada?: string | false; ponto?: string }[];
+  /**
+   * ponto: o pontinho vermelho de "falta configurar" (o texto vai na dica; Vitor, 08/10/2026); icone: a logo antes do nome
+   * (12/11/2026, o WhatsApp no Envio das guias do Fiscal)
+   */
+  opcoes: { valor: T; rotulo: string; oculta?: boolean; travada?: string | false; ponto?: string; icone?: ReactNode }[];
   onMudar: (v: T) => void;
   id?: string;
 }) {
@@ -177,7 +180,7 @@ export function Segmentado<T extends string>({ valor, opcoes, onMudar, id }: {
       {opcoes.filter(o => !o.oculta).map(o => (
         <button key={o.valor} type="button" className={'step-pill' + (o.travada ? ' is-locked' : '')} aria-current={o.valor === valor ? 'true' : 'false'} aria-pressed={o.valor === valor}
           aria-disabled={o.travada ? 'true' : undefined} title={o.travada || o.ponto || undefined} onClick={() => onMudar(o.valor)}>
-          {o.rotulo}{o.ponto && <span className="ponto-vermelho" aria-label={o.ponto} />}
+          {o.icone}{o.rotulo}{o.ponto && <span className="ponto-vermelho" aria-label={o.ponto} />}
         </button>
       ))}
     </div>

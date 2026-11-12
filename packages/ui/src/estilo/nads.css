@@ -497,6 +497,7 @@ hr{border:0;border-top:1px solid var(--border);margin:24px 0;}
 .step-pill:hover:not(:disabled):not([aria-current="true"]){background:var(--hover-bg);}
 .step-pill[aria-current="true"]{background:var(--surface);border-color:var(--border-strong);font-weight:600;}
 .step-pill:disabled{opacity:.5;cursor:not-allowed;}
+.step-pill .logo-img{width:14px;height:14px;flex:none;}
 
 /* ---------------------------------- Dialog / Toast ---------------------------------- */
 /* com uma janela aberta, a página de trás não rola nem mostra a barra de rolagem (Vitor, 05/10/2026: "remove esse scroll
