@@ -53,6 +53,15 @@ function novoId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
 
+/** O arquivo lido só com os lançamentos (e saldos do dia) destes meses; o saldo anterior só vale se o primeiro mês ficou. */
+function soDosMeses(lido: x.ArquivoLido, meses: string[]): x.ArquivoLido {
+  const doMes = (data: string) => meses.includes(data.slice(0, 7));
+  const lancamentos = lido.lancamentos.filter(l => doMes(l.data));
+  const primeiro = lido.lancamentos.map(l => l.data).sort()[0];
+  return { ...lido, lancamentos, saldosDoDia: lido.saldosDoDia?.filter(s => doMes(s.data)),
+    saldoAnterior: primeiro && doMes(primeiro) ? lido.saldoAnterior : undefined, conferenciaPeloSaldo: undefined };
+}
+
 export function useImportacao() {
   const s = useSessao();
   const { toast, modal } = useRetorno();
@@ -146,12 +155,16 @@ export function useImportacao() {
   /** Importar direto (na linha do banco): escolheu os arquivos, já importa para aquele banco. */
   /** Devolve se importou (o extrato que entrou pode ir para o Drive: useDriveDaLinha.subirAoDrive). */
   /** `mesesDaBusca`: o mês da coluna ou da busca no e-mail, para o extrato sem movimento que não diz o mês. */
-  async function importarArquivos(banco: string, lado: x.Lado, fs: File[], mesesDaBusca?: string[]): Promise<boolean> {
+  /** `soOsMeses`: do extrato de vários meses, entram só os lançamentos destes (o Enviar vários meses, quando a pessoa escolhe o mês). */
+  async function importarArquivos(banco: string, lado: x.Lado, fs: File[], mesesDaBusca?: string[], soOsMeses?: string[]): Promise<boolean> {
     if (!fs.length) return false;
     setMensagemBruta(null);
     setLendoLinha(banco + '|' + lado);
     const lidos: x.ArquivoLido[] = [];
-    for (const f of fs) lidos.push(await x.lerArquivo(f.name, new Uint8Array(await f.arrayBuffer()), lado));
+    for (const f of fs) {
+      const lido = await x.lerArquivo(f.name, new Uint8Array(await f.arrayBuffer()), lado);
+      lidos.push(soOsMeses ? soDosMeses(lido, soOsMeses) : lido);
+    }
     const ok = await gravarLidos(lado, lidos, banco, undefined, undefined, mesesDaBusca);
     setLendoLinha(null);
     return ok;

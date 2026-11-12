@@ -678,10 +678,10 @@ export function TarefaExtratos() {
   // "Enviar vários meses": cada arquivo no seu mês, igual ao enviar de um mês (importa, vai para o Drive e fica para o olhinho)
   const varios = useEnviarVariosMeses(vm.periodo.length > 1 ? vm.periodo : [vm.competencia],
     (conta, mes) => vm.mesesDoBanco(conta, ponte.semMovimentoPorMes).some(m => m.mes === mes && (m.extrato || m.ladoExtrato.doDrive.length > 0)),
-    async (conta, f, meses) => {
+    async (conta, f, meses, soOsMeses) => {
       const b = vm.bancos.find(x => x.id === conta);
-      if (!b || !(await vm.importarArquivos(b.id, 'banco', [f], meses))) return false;
-      d.subirAoDrive(b, [f], s.nome, meses);
+      if (!b || !(await vm.importarArquivos(b.id, 'banco', [f], meses, soOsMeses ? meses : undefined))) return false;
+      d.subirAoDrive(b, [f], s.nome, meses, soOsMeses);
       guardarPuxado(chaveDoExtrato(s.codigo, b.id), f.name, f, 'computador', meses);
       return true;
     });
