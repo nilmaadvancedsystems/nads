@@ -914,6 +914,9 @@ async function atenderFila() {
         desligar: 'Tirando um e-mail do cliente errado',
         envioDp: 'Documentos do DP para ' + (p.empresa || 'o cliente ' + (p.codigo || '')),
         mandei: 'Mandei ' + (p.numero || '') + ' para ' + (p.empresa || p.para || 'o cliente'),
+        whatsapp: 'WhatsApp para ' + (p.clienteNome || p.para || 'um cliente'),
+        'whatsapp-conectar': 'Conectando o WhatsApp',
+        'whatsapp-desconectar': 'Desconectando o WhatsApp',
       }[p.tipo] || 'Pedido da tela';
       atendeuAlgum = true;
       roboRef.set({ filaAndamento: { ativo: true, atual: oqueAgora, restantes: pendentes.length, desde: agora(), em: agora() } }, { merge: true }).catch(() => {});
@@ -944,6 +947,9 @@ async function atenderFila() {
         else if (p.tipo === 'responder') resultado = await atenderResponder(p, doc.ref);
         else if (p.tipo === 'envioDp') resultado = await atenderEnvioDp(p, doc.id);
         else if (p.tipo === 'mandei') resultado = await atenderMandei(p, doc.id);
+        // o WhatsApp do robô (12/11/2026, robo/whatsapp.js): só liga na nuvem; fora dela, o pedido vira erro com o motivo
+        else if (p.tipo === 'whatsapp') resultado = await require('./whatsapp').atenderPedido(p);
+        else if (p.tipo === 'whatsapp-conectar' || p.tipo === 'whatsapp-desconectar') resultado = await require('./whatsapp').atenderComando(p);
         else throw new Error('tipo de pedido desconhecido: ' + p.tipo);
         await doc.ref.update(resultado);
         // no painel do robô (a leitura do Gmail já se registra sozinha em rodarRobo)
@@ -956,14 +962,15 @@ async function atenderFila() {
           desligar: ['gmail', 'Tirou um e-mail do cliente errado'],
           envioDp: ['gmail', 'Mandou os documentos do DP para ' + (p.empresa || 'o cliente ' + (p.codigo || ''))],
           mandei: ['gmail', 'Mandou o link do Mandei ' + (p.numero || '') + ' para ' + (p.empresa || p.para || 'o cliente')],
+          whatsapp: ['gmail', 'Mandou um WhatsApp para ' + (p.clienteNome || p.para || 'um cliente')],
         }[p.tipo];
         if (feito) painel.atividade(feito[0], feito[1], [p.criadoPor ? 'pedido de ' + p.criadoPor : '', resultado.resumo || ''].filter(Boolean).join(' · '));
       } catch (err) {
         const erro = traduzirErro(err);
         log('pedido', doc.id, 'falhou:', erro);
-        painel.erro(p.tipo === 'um' || p.tipo === 'lote' ? 'cobranca' : 'gmail', ({ um: 'A cobrança de ' + (p.clienteNome || p.para || 'um cliente'), lote: 'A cobrança em lote', verificar: 'A leitura do Gmail', salvar: 'Salvar o e-mail no Drive', disparo: 'O disparo', responder: 'A resposta de e-mail', desligar: 'Tirar o e-mail do cliente errado', envioDp: 'O envio dos documentos do DP', mandei: 'O e-mail do Mandei' }[p.tipo] || 'Um pedido') + ' deu erro', erro);
+        painel.erro(p.tipo === 'um' || p.tipo === 'lote' ? 'cobranca' : 'gmail', ({ whatsapp: 'O WhatsApp' + (p.clienteNome ? ' para ' + p.clienteNome : ''), 'whatsapp-conectar': 'Conectar o WhatsApp', 'whatsapp-desconectar': 'Desconectar o WhatsApp', um: 'A cobrança de ' + (p.clienteNome || p.para || 'um cliente'), lote: 'A cobrança em lote', verificar: 'A leitura do Gmail', salvar: 'Salvar o e-mail no Drive', disparo: 'O disparo', responder: 'A resposta de e-mail', desligar: 'Tirar o e-mail do cliente errado', envioDp: 'O envio dos documentos do DP', mandei: 'O e-mail do Mandei' }[p.tipo] || 'Um pedido') + ' deu erro', erro);
         await doc.ref.update({ status: 'erro', erro, erroEm: agora() }).catch(() => {});
-        const oque = { um: 'a cobrança de ' + (p.clienteNome || p.para), lote: 'a cobrança em lote', verificar: 'a verificação do Gmail', salvar: 'salvar anexo no Drive', disparo: 'o disparo "' + (p.assunto || '') + '"', responder: 'a resposta de e-mail' + (p.para ? ' para ' + p.para : ''), desligar: 'tirar o e-mail do cliente errado', envioDp: 'o envio dos documentos do DP' + (p.empresa ? ' para ' + p.empresa : ''), mandei: 'o e-mail do Mandei ' + (p.numero || '') + (p.empresa ? ' para ' + p.empresa : '') }[p.tipo] || 'um pedido';
+        const oque = { um: 'a cobrança de ' + (p.clienteNome || p.para), lote: 'a cobrança em lote', verificar: 'a verificação do Gmail', salvar: 'salvar anexo no Drive', disparo: 'o disparo "' + (p.assunto || '') + '"', responder: 'a resposta de e-mail' + (p.para ? ' para ' + p.para : ''), desligar: 'tirar o e-mail do cliente errado', envioDp: 'o envio dos documentos do DP' + (p.empresa ? ' para ' + p.empresa : ''), mandei: 'o e-mail do Mandei ' + (p.numero || '') + (p.empresa ? ' para ' + p.empresa : ''), whatsapp: 'o WhatsApp' + (p.clienteNome ? ' para ' + p.clienteNome : ''), 'whatsapp-conectar': 'conectar o WhatsApp', 'whatsapp-desconectar': 'desconectar o WhatsApp' }[p.tipo] || 'um pedido';
         await alertar(oque + ' deu erro', 'Pedido de ' + (p.criadoPor || 'alguém') + ' em ' + new Date(p.criadoEm).toLocaleString('pt-BR') + ':\n' + erro);
       }
     }
@@ -1129,6 +1136,10 @@ async function iniciar() {
     painel.modulo('sefaz', 'Situação na SEFAZ', true);
     try { require('./situacao-notas').iniciarSituacaoDasNotas(db, log); }
     catch (err) { log('situação das notas desligada:', err.message); painel.modulo('sefaz', 'Situação na SEFAZ', false, err.message); }
+    // O WhatsApp do chip do escritório (12/11/2026, robo/whatsapp.js): conectado pelo QR code, só aqui (o mesmo número
+    // em duas máquinas derruba as duas). Sem sessão no disco, fica esperando o QR ser pedido na Central dos robôs.
+    try { require('./whatsapp').iniciarWhatsapp({ db, log, roboRef, painel }); }
+    catch (err) { log('WhatsApp desligado:', err.message); painel.modulo('whatsapp', 'WhatsApp', false, err.message); }
   }
   // Os dois abaixo mandam e-mail pra CLIENTE e vêm desligados: quem liga é o
   // admin em Pendências › Configurações › Automático. Passam pelo mesmo freio

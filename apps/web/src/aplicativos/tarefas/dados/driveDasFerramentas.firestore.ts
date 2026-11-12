@@ -22,7 +22,7 @@
 // arquivamento leva para EXTRATOS/AAAA/MM/BANCÁRIOS/<BANCO>. O nads nunca escreve direto no Drive.
 // E o "Buscar no e-mail" (Vitor, 13/10/2026): buscasEmail (o pedido de busca com o remetente e o período, e o de trazer um
 // anexo que a busca listou; o robô responde no pedido e põe o anexo em partes). Nada é enviado nem mexido no Gmail.
-import { creditor as cr, entregas, extrator as ex } from '@nads/core';
+import { creditor as cr, entregas, extrator as ex, robos } from '@nads/core';
 import { getApps, initializeApp } from 'firebase/app';
 import { abrirBancoDoEntregas } from './conexaoEntregas.firestore';
 import { getAuth, GoogleAuthProvider, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth';
@@ -387,6 +387,35 @@ export function criarDriveFirestore(): cr.RepoDrive {
           if (s.status === 'processando') passo?.('o robô está enviando');
           if (s.status === 'enviado') { clearTimeout(fim); parar(); ok('enviado'); }
           if (s.status === 'erro') { clearTimeout(fim); parar(); falha(new Error('O robô não enviou: ' + (s.erro || 'erro'))); }
+        }, e => { clearTimeout(fim); falha(e); });
+      });
+      return { id: ref.id, situacao };
+    },
+
+    /** O WhatsApp do robô (robo/estado.whatsapp, 12/11/2026): uma leitura ao abrir o pedido. */
+    async whatsappDoRobo() {
+      if (!auth.currentUser) return robos.WHATSAPP_DESLIGADO;
+      const d = await getDoc(doc(db, 'robo', 'estado')).then(s => s.data() || null, () => null);
+      return robos.lerWhatsappDoRobo(d?.whatsapp, new Date());
+    },
+
+    /** Põe a mensagem na fila do robô (solicitacoesEmail, tipo 'whatsapp') e acompanha até ele mandar. */
+    async pedirWhatsapp(p, passo) {
+      const u = auth.currentUser;
+      if (!u) throw new Error('Entre com o usuário do Entregas primeiro.');
+      passo?.('pondo o WhatsApp na fila do robô');
+      const ref = await addDoc(collection(db, 'solicitacoesEmail'), {
+        tipo: robos.TIPOS_DO_WHATSAPP.enviar, clienteId: p.contato.id, clienteNome: p.contato.nome, para: p.para, texto: p.texto, status: 'pendente',
+        criadoEm: serverTimestamp(), criadoPor: acesso.quem || 'nads', criadoPorEmail: u.email || '', criadoPorUid: u.uid, origem: 'nads',
+      });
+      const situacao = await new Promise<'enviado' | 'na-fila'>((ok, falha) => {
+        // o robô espera de 20 a 60 s entre uma mensagem e outra: 2 minutos antes de dizer "na fila"
+        const fim = setTimeout(() => { parar(); ok('na-fila'); }, 2 * ESPERA_DO_EMAIL_MS);
+        const parar = onSnapshot(ref, d => {
+          const s = d.data() || {};
+          if (s.status === 'processando') passo?.('o robô está mandando o WhatsApp');
+          if (s.status === 'enviado') { clearTimeout(fim); parar(); ok('enviado'); }
+          if (s.status === 'erro') { clearTimeout(fim); parar(); falha(new Error(String(s.erro || 'erro'))); }
         }, e => { clearTimeout(fim); falha(e); });
       });
       return { id: ref.id, situacao };

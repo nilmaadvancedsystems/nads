@@ -7,11 +7,12 @@ import type { PessoaDaEquipe, ValoresDoGrupo } from '../dados/ajustes';
 import { IconeDoRobo } from '../partes/IconeDoRobo';
 import { Confirmacao, Janela } from '../partes/Janela';
 import { useAbaAjustes, useAbaAlertas, useAbaHorarios, useAbaQuemPode } from './useAjustes';
+import { useAbaWhatsapp } from './useWhatsapp';
 
-export type AbaDosAjustes = 'conta' | 'robos' | 'horarios' | 'alertas' | 'pessoas';
+export type AbaDosAjustes = 'conta' | 'robos' | 'horarios' | 'alertas' | 'whatsapp' | 'pessoas';
 const ABAS: { id: AbaDosAjustes; nome: string; nivel: 'todos' | 'administrar' | 'admin' }[] = [
   { id: 'conta', nome: 'Conta', nivel: 'todos' }, { id: 'robos', nome: 'Ajustes', nivel: 'administrar' }, { id: 'horarios', nome: 'Horários', nivel: 'administrar' },
-  { id: 'alertas', nome: 'Alertas', nivel: 'administrar' }, { id: 'pessoas', nome: 'Quem pode', nivel: 'admin' },
+  { id: 'alertas', nome: 'Alertas', nivel: 'administrar' }, { id: 'whatsapp', nome: 'WhatsApp', nivel: 'admin' }, { id: 'pessoas', nome: 'Quem pode', nivel: 'admin' },
 ];
 
 export function PainelConfiguracoes({ central, aba, irPara, aoFechar }: { central: Central; aba: string; irPara: (a: AbaDosAjustes) => void; aoFechar: () => void }) {
@@ -30,6 +31,7 @@ export function PainelConfiguracoes({ central, aba, irPara, aoFechar }: { centra
         {atual === 'robos' && <AbaAjustes central={central} />}
         {atual === 'horarios' && <AbaHorarios central={central} />}
         {atual === 'alertas' && <AbaAlertas central={central} />}
+        {atual === 'whatsapp' && <AbaWhatsapp central={central} />}
         {atual === 'pessoas' && <AbaQuemPode central={central} />}
       </div>
     </Janela>
@@ -300,6 +302,57 @@ function FormAlertas({ salvo, pessoas, gravacao }: { salvo: r.AlertasDosRobos; p
       {gravacao.pendente && (
         <Confirmacao titulo={vaiLigar ? 'Ligar os avisos?' : 'Salvar os alertas?'} rotuloSim={vaiLigar ? 'Ligar' : 'Salvar'} perigo={!!vaiLigar} enviando={gravacao.enviando} erro={gravacao.erro} aoConfirmar={() => void gravacao.confirmar()} aoCancelar={gravacao.cancelar}
           texto={<p>{gravacao.pendente.ligado ? 'Vai mandar avisos no celular para ' + (gravacao.pendente.pessoas.length === 1 ? '1 pessoa' : gravacao.pendente.pessoas.length + ' pessoas') + ': ' + pessoas.filter(p => gravacao.pendente!.pessoas.includes(p.uid)).map(p => p.nome).join(', ') + '. No máximo ' + gravacao.pendente.maxPorHora + ' por hora.' : 'Nenhum aviso vai sair enquanto estiver desligado.'}</p>} />
+      )}
+    </div>
+  );
+}
+
+// ---------- WhatsApp ----------
+
+function AbaWhatsapp({ central }: { central: Central }) {
+  const w = useAbaWhatsapp(central.nome);
+  const classe = w.conectado ? (w.pronto ? ' ok-forte' : ' aviso') : w.situacao === 'aguardando-qr' || w.situacao === 'conectando' ? ' aviso' : ' erro';
+  return (
+    <div>
+      <section className="cr-secao">
+        <div className="cr-acao">
+          <div><b>WhatsApp do robô</b><span>{w.conectado ? w.numero + (w.nome ? ' · ' + w.nome : '') + (w.desde ? ' · desde ' + w.desde : '') : 'O chip do escritório, conectado pelo QR code no robô da nuvem.'}</span>{w.motivo && <span>{w.motivo.charAt(0).toUpperCase() + w.motivo.slice(1)}</span>}</div>
+          <span className={'cr-estado' + classe}>{w.texto}</span>
+        </div>
+        {w.qr && (
+          <div className="cr-whats-qr">
+            <img src={w.qr} alt="QR code para conectar o WhatsApp" width={260} height={260} />
+            <ol className="cr-pequeno">
+              <li>No celular do chip novo, abra o WhatsApp.</li>
+              <li>Toque em ⋮ (ou Configurações) › Aparelhos conectados › Conectar um aparelho.</li>
+              <li>Aponte a câmera para este QR. Ele troca sozinho; depois de uns 2 minutos sem ler, peça de novo.</li>
+            </ol>
+          </div>
+        )}
+        <div className="cr-botoes">
+          {!w.conectado && w.situacao !== 'aguardando-qr' && <button type="button" className="cr-botao primario" disabled={!w.podeConectar} onClick={w.conectar}>Mostrar o QR code</button>}
+          {(w.conectado || w.situacao === 'aguardando-qr' || w.situacao === 'conectando') && <button type="button" className="cr-botao" disabled={!!w.ocupado} onClick={w.pedirDesconectar}>Desconectar</button>}
+        </div>
+        {w.ocupado && <p className="cr-fraco cr-pequeno" role="status" style={{ marginTop: 8 }}>{w.ocupado}…</p>}
+        {w.aviso && (w.aviso.ok ? <p className="cr-fraco cr-pequeno" role="status" style={{ marginTop: 8 }}>{w.aviso.texto}</p> : <p className="cr-erro-linha" role="alert" style={{ marginTop: 8 }}>{w.aviso.texto}</p>)}
+      </section>
+      <section className="cr-secao">
+        <h2>Mensagem de teste</h2>
+        <p className="cr-fraco cr-pequeno">Vai para o WhatsApp do escritório{w.numeroDeTeste ? ', ' + w.numeroDeTeste : ''}, pela fila do robô.</p>
+        <label className="cr-campo" style={{ marginTop: 8 }}>
+          <span>Texto</span>
+          <textarea className="cr-whats-texto" rows={3} aria-label="Texto da mensagem de teste" maxLength={1000} value={w.teste.texto} onChange={e => w.teste.escrever(e.target.value)} />
+        </label>
+        <div className="cr-botoes"><button type="button" className="cr-botao" disabled={!w.teste.pode} onClick={w.teste.mandar}>Mandar o teste</button></div>
+      </section>
+      <p className="cr-nota">
+        {w.liberado ? 'Liberado para clientes: o Pedir extratos manda pelo robô quando ele está conectado.' : 'Trava de teste: por enquanto o robô só manda para o WhatsApp do escritório. Para os clientes, o Pedir extratos continua abrindo o WhatsApp com o texto pronto.'}
+        {' '}Não é o WhatsApp oficial: o número pode ser bloqueado. Por isso o robô manda um de cada vez, com intervalo, até 30 por hora e 150 por dia, e só para o telefone do cadastro do cliente.
+        {w.exemplos ? ' Dados de exemplo: nada vai para o banco nem para o WhatsApp.' : ''}
+      </p>
+      {w.confirmarDesconectar && (
+        <Confirmacao titulo="Desconectar o WhatsApp?" rotuloSim="Desconectar" perigo enviando={false} erro="" aoConfirmar={w.desconectar} aoCancelar={w.cancelarDesconectar}
+          texto={<p>O robô sai do chip {w.numero} e para de mandar pelo WhatsApp. Para voltar, é preciso ler o QR code de novo com o celular.</p>} />
       )}
     </div>
   );

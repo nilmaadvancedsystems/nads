@@ -3,6 +3,7 @@
 // com o extrato de 08/2026 (OFX). Nada sai do navegador.
 import type { RepoDrive } from './drive';
 import { EXEMPLO_RELATORIO } from './exemplos';
+import { WHATSAPP_DESLIGADO } from '../../robos/whatsapp';
 import type { ItemDrive } from './regras/drive';
 
 const ITENS_901: ItemDrive[] = [
@@ -87,6 +88,7 @@ export function criarDriveMemoria(): RepoDrive {
       await new Promise(ok => setTimeout(ok, 600));
       return { id: 'exemplo-' + Date.now(), situacao: 'enviado' };
     },
+    async whatsappDoRobo() { return WHATSAPP_DESLIGADO; },
     async situacaoDosEmails(ids) {
       return Object.fromEntries(ids.map(id => [id, { status: 'enviado' as const }]));
     },

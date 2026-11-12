@@ -48,6 +48,10 @@
 // O IP público de cada login do cofre e a cidade dele (2026-10-26, liberado pelo usuário: "Os dois", o IP e o navegador;
 // e "Trocar o ipify pelo ipwho.is", para a cidade), só em aplicativos/tarefas/dados/rede.ts: o ipwho.is (público, sem
 // chave). Nada do nads vai junto; voltam o IP e a cidade.
+// O WhatsApp do robô (2026-11-12, escolha do usuário: "quero o gratuito do qr code", num chip novo), só pelo banco do
+// Entregas: robo/estado.whatsapp (só leitura, a situação e o QR) e os pedidos em solicitacoesEmail (tipos 'whatsapp',
+// 'whatsapp-conectar', 'whatsapp-desconectar'), em robos/dados/whatsapp.firestore.ts e tarefas/dados/
+// driveDasFerramentas.firestore.ts. Quem fala com o WhatsApp é o robô da nuvem (robo/whatsapp.js), nunca o app. Sem fetch.
 // Esta checagem falha se:
 //  1. aparecer dependência de rede fora do permitido (só "firebase", e só no apps/web);
 //  2. código fora de apps/web/src/aplicativos/<app>/dados/*.firestore.ts importar/usar Firebase;
