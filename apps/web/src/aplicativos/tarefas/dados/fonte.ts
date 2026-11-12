@@ -32,6 +32,8 @@ import { criarHonorariosFirestore } from './honorarios.firestore';
 import { criarContasPagarMemoria, type RepoContasPagar } from './contasPagar';
 import { criarCarteiraMemoria, type RepoCarteira } from './carteira';
 import { criarCarteiraFirestore } from './carteira.firestore';
+import { criarInsumosMemoria, type RepoInsumos } from './insumos';
+import { criarInsumosFirestore } from './insumos.firestore';
 import { criarContasPagarFirestore } from './contasPagar.firestore';
 import { criarNfseMemoria, type RepoNfse } from './nfse';
 import { criarNfseFirestore } from './nfse.firestore';
@@ -466,6 +468,14 @@ let carteiraRepo: RepoCarteira | null = null;
 export function repoDaCarteira(): RepoCarteira {
   if (!carteiraRepo) carteiraRepo = noBanco ? criarCarteiraFirestore(quemDasTarefas) : criarCarteiraMemoria(quemDasTarefas);
   return carteiraRepo;
+}
+
+let insumosRepo: RepoInsumos | null = null;
+
+/** Os Insumos da Carteira (12/11/2026): impressões, pastas, envelopes e caixas de cada pessoa, por cliente. */
+export function repoDosInsumos(): RepoInsumos {
+  if (!insumosRepo) insumosRepo = noBanco ? criarInsumosFirestore(quemDasTarefas) : criarInsumosMemoria(quemDasTarefas);
+  return insumosRepo;
 }
 
 let contasPagar: RepoContasPagar | null = null;
