@@ -41,7 +41,7 @@ const PLANILHA: [string, string, string, number, number, number, number, number,
 
 const linhaDa = ([numero, data, cst, valor, base, aliq, icms]: (typeof PLANILHA)[number], i: number): LinhaDaAntecipacao => ({
   id: 'L' + i, chave: 'CH' + numero, numero, data, competencia: data.slice(6) + '-' + data.slice(3, 5), fornecedor: { doc: '', nome: '' },
-  cfop: '2102', cfopDoFornecedor: '6102', cst, valorOperacao: valor, baseNf: base, aliquotaInterestadual: aliq, icmsDestacado: icms,
+  cfop: '2102', cfopDoFornecedor: '6102', cst, valorOperacao: valor, baseNf: base, aliquotaInterestadual: aliq, icmsDestacado: icms, baseProdutos: base,
   aliquotaEstimada: false, ncms: [], sugestao: 'a-conferir', motivo: '',
 });
 const todasConferidas = Object.fromEntries(PLANILHA.map((_, i) => ['L' + i, { situacao: 'conferido' as const, por: 'Heverton', em: '2026-09-30T12:00:00.000Z' }]));
@@ -142,5 +142,27 @@ describe('as linhas a partir dos XMLs do SIEG', () => {
     const t = totaisDaAntecipacao(calcularAntecipacao(PLANILHA.slice(0, 2).map(linhaDa), 17, marcas));
     expect([t.antecipacao, t.aRecolher]).toEqual([615.62, 467.84]);
     expect(linhas[1].situacao).toBe('a-conferir');
+  });
+});
+
+describe('a alíquota corrigida na tela (ticket PK6RIE, 12/11/2026)', () => {
+  const base: LinhaDaAntecipacao = {
+    id: 'X', chave: 'CHX', numero: '100', data: '10/10/2026', competencia: '2026-10', fornecedor: { doc: '', nome: '' }, cfop: '2102', cfopDoFornecedor: '6102',
+    cst: '101', valorOperacao: 1050, baseNf: 0, aliquotaInterestadual: 0, icmsDestacado: 0, baseProdutos: 1000, aliquotaEstimada: false, ncms: [], sugestao: 'a-conferir', motivo: '',
+  };
+  const correcao = { aliquota: 4, por: 'Fulano', em: '2026-11-12T12:00:00.000Z' };
+
+  it('sem base destacada na nota, o ICMS sai do produto e das despesas (sem o IPI); a antecipação acompanha', () => {
+    const [sem] = calcularAntecipacao([base], 17);
+    expect([sem.icmsDestacado, sem.antecipacao, sem.correcao]).toEqual([0, 178.5, null]);
+    const [com] = calcularAntecipacao([base], 17, {}, { X: correcao });
+    expect([com.aliquotaInterestadual, com.icmsDestacado, com.antecipacao]).toEqual([4, 40, 138.5]);
+    expect([com.aliquotaDaNota, com.icmsDaNota, com.correcao]).toEqual([0, 0, correcao]);
+  });
+  it('com base destacada, o ICMS sai dela; a linha sem correção fica como veio', () => {
+    const comBase = { ...base, baseNf: 900, aliquotaInterestadual: 7, icmsDestacado: 63 };
+    const [l] = calcularAntecipacao([comBase], 17, {}, { X: { ...correcao, aliquota: 12 } });
+    expect([l.icmsDestacado, l.icmsDaNota, l.antecipacao]).toEqual([108, 63, 70.5]);
+    expect(calcularAntecipacao([comBase], 17, {}, { OUTRA: correcao })[0].icmsDestacado).toBe(63);
   });
 });

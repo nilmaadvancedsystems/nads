@@ -176,8 +176,39 @@ function antecipacaoDoDocumento(v: unknown): { antecipacaoIcmsEs?: AntecipacaoDo
   for (const [id, m] of Object.entries(s)) {
     if (m && SITUACOES_VALIDAS.includes(texto(m.situacao)) && id.length <= 200) situacoes[id] = { situacao: texto(m.situacao), por: texto(m.por), em: texto(m.em) };
   }
-  const a: AntecipacaoDoFiscal = { ...(aliquota != null ? { aliquota } : {}), ...(Object.keys(situacoes).length ? { situacoes } : {}) };
+  const aliquotas: NonNullable<AntecipacaoDoFiscal['aliquotas']> = {};
+  const al = (o.aliquotas && typeof o.aliquotas === 'object' ? o.aliquotas : {}) as Record<string, Record<string, unknown> | null>;
+  for (const [id, m] of Object.entries(al)) {
+    if (m && aliquotaDaLinhaValida(m.aliquota) && id.length <= 200) aliquotas[id] = { aliquota: m.aliquota, por: texto(m.por), em: texto(m.em) };
+  }
+  const a: AntecipacaoDoFiscal = { ...(aliquota != null ? { aliquota } : {}), ...(Object.keys(situacoes).length ? { situacoes } : {}), ...(Object.keys(aliquotas).length ? { aliquotas } : {}) };
   return Object.keys(a).length ? { antecipacaoIcmsEs: a } : {};
+}
+
+/** a alíquota interestadual de uma linha: de 0 a 99,99% (o zero vale: a nota que não destacou e não tinha de destacar) */
+const aliquotaDaLinhaValida = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && v >= 0 && v < 100;
+
+/**
+ * A alíquota interestadual corrigida de uma linha da antecipação (Heverton, ticket PK6RIE, 12/11/2026: "deixar campo de
+ * alíquota editável"); null volta à da nota. `rotulo` é o que vai no histórico ("NF-e 123"). As mais velhas saem depois de
+ * MAX_SITUACOES_DA_ANTECIPACAO, como as situações.
+ */
+export function corrigirAliquotaDaLinhaDaAntecipacao(c: CadastroDaEmpresa, id: string, aliquota: number | null, rotulo: string, por: string, agora: Date): CadastroDaEmpresa | { erro: string } {
+  if (!id || id.length > 200) return c;
+  if (aliquota != null && !aliquotaDaLinhaValida(aliquota)) return { erro: 'A alíquota vai de 0 a 99,99%.' };
+  const nova = aliquota == null ? null : Math.round(aliquota * 100) / 100;
+  if ((c.antecipacaoIcmsEs?.aliquotas?.[id]?.aliquota ?? null) === nova) return c;
+  const aliquotas = { ...(c.antecipacaoIcmsEs?.aliquotas || {}) };
+  if (nova == null) delete aliquotas[id];
+  else aliquotas[id] = { aliquota: nova, por: por || '—', em: agora.toISOString() };
+  const ids = Object.keys(aliquotas);
+  if (ids.length > MAX_SITUACOES_DA_ANTECIPACAO) {
+    ids.sort((x, y) => aliquotas[x].em.localeCompare(aliquotas[y].em));
+    for (const velho of ids.slice(0, ids.length - MAX_SITUACOES_DA_ANTECIPACAO)) delete aliquotas[velho];
+  }
+  const a: AntecipacaoDoFiscal = { ...(c.antecipacaoIcmsEs || {}), aliquotas };
+  if (!Object.keys(aliquotas).length) delete a.aliquotas;
+  return registrar({ ...c, antecipacaoIcmsEs: a }, por, agora, 'Antecipação ICMS-ES', 'Alíquota da ' + rotulo + ': ' + (nova == null ? 'a da nota' : String(nova).replace('.', ',') + '%'));
 }
 
 /** A alíquota interna da antecipação (de 0,01 a 99,99%; vazio volta à padrão). Fica no histórico. */
@@ -302,7 +333,7 @@ export function documentoDoCadastro(c: CadastroDaEmpresa): Record<string, unknow
     ...(c.transferencias && Object.keys(c.transferencias).length ? { transferencias: c.transferencias } : {}),
     ...(c.nova ? { nova: c.nova } : {}),
     ...(c.documentosFiscais && (Object.keys(c.documentosFiscais.planilhas || {}).length || c.documentosFiscais.outros?.length) ? { documentosFiscais: c.documentosFiscais } : {}),
-    ...(c.antecipacaoIcmsEs && (c.antecipacaoIcmsEs.aliquota != null || Object.keys(c.antecipacaoIcmsEs.situacoes || {}).length) ? { antecipacaoIcmsEs: c.antecipacaoIcmsEs } : {}),
+    ...(c.antecipacaoIcmsEs && (c.antecipacaoIcmsEs.aliquota != null || Object.keys(c.antecipacaoIcmsEs.situacoes || {}).length || Object.keys(c.antecipacaoIcmsEs.aliquotas || {}).length) ? { antecipacaoIcmsEs: c.antecipacaoIcmsEs } : {}),
     historico: c.historico.slice(0, MAX_HISTORICO),
     atualizadoEm: c.atualizadoEm || new Date().toISOString(),
   };

@@ -94,7 +94,11 @@ export interface DocumentosDoFiscal { planilhas?: Partial<Record<PlanilhaDoFisca
  * padrão, 17%) e a situação marcada em cada linha (pelo id da linha: a chave da nota, o CFOP, o CST e a alíquota), com
  * quem marcou e quando. A situação é o id de tarefas.sieg.SITUACOES_DA_ANTECIPACAO.
  */
-export interface AntecipacaoDoFiscal { aliquota?: number; situacoes?: Record<string, { situacao: string; por: string; em: string }> }
+export interface AntecipacaoDoFiscal {
+  aliquota?: number; situacoes?: Record<string, { situacao: string; por: string; em: string }>;
+  /** a alíquota interestadual corrigida de uma linha, pelo id da linha (ticket PK6RIE, 12/11/2026) */
+  aliquotas?: Record<string, { aliquota: number; por: string; em: string }>;
+}
 
 /** Um empréstimo no Cadastro: o contrato, o banco (id da conta bancária) e de quando até quando ele vale ('aaaa-mm'). */
 export interface EmprestimoDaEmpresa { numero: string; banco: string; desde: string; ate?: string }

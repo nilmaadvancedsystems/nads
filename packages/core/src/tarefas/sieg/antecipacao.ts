@@ -58,6 +58,8 @@ export interface LinhaDaAntecipacao {
   cfop: string; cfopDoFornecedor: string;
   cst: string;
   valorOperacao: number; baseNf: number; aliquotaInterestadual: number; icmsDestacado: number;
+  /** o produto e as despesas, sem o IPI: a base do ICMS quando a nota não destacou (a alíquota corrigida na tela) */
+  baseProdutos: number;
   /** a alíquota foi estimada pelo ICMS e pela base (a nota foi baixada antes de o robô guardar a alíquota) */
   aliquotaEstimada: boolean;
   ncms: string[];
@@ -108,10 +110,11 @@ function linhasDaNota(n: NotaDoSieg, competencia: string): LinhaDaAntecipacao[] 
     const id = (n.chave || n.numero) + '|' + cfop + '|' + it.cst + '|' + aliquota;
     const g = grupos.get(id) || {
       id, chave: n.chave, numero: n.numero, data: n.data, competencia, fornecedor: n.emitente, cfop, cfopDoFornecedor: it.cfop, cst: it.cst,
-      valorOperacao: 0, baseNf: 0, aliquotaInterestadual: aliquota, icmsDestacado: 0, aliquotaEstimada: false, ncms: [], sugestao: 'a-conferir' as SituacaoDaAntecipacao, motivo: '', st: false,
+      valorOperacao: 0, baseNf: 0, aliquotaInterestadual: aliquota, icmsDestacado: 0, baseProdutos: 0, aliquotaEstimada: false, ncms: [], sugestao: 'a-conferir' as SituacaoDaAntecipacao, motivo: '', st: false,
     };
     const valor = Number(it.valor) || 0, desp = Number(it.desp) || 0, icms = Number(it.icms) || 0;
     g.valorOperacao += valor + desp + (Number(it.ipi) || 0);
+    g.baseProdutos += valor + desp;
     g.baseNf += Number(it.bc) || (icms ? valor + desp : 0);
     g.icmsDestacado += icms;
     g.aliquotaEstimada ||= estimada;
@@ -120,7 +123,7 @@ function linhasDaNota(n: NotaDoSieg, competencia: string): LinhaDaAntecipacao[] 
     grupos.set(id, g);
   }
   return [...grupos.values()].map(({ st, ...g }) => {
-    const l = { ...g, valorOperacao: arred(g.valorOperacao), baseNf: arred(g.baseNf), icmsDestacado: arred(g.icmsDestacado) };
+    const l = { ...g, valorOperacao: arred(g.valorOperacao), baseNf: arred(g.baseNf), icmsDestacado: arred(g.icmsDestacado), baseProdutos: arred(g.baseProdutos) };
     if (st) return { ...l, sugestao: 'nao-se-aplica' as const, motivo: 'Com ICMS-ST na nota' };
     if (l.cfop !== '2102') return { ...l, sugestao: 'nao-se-aplica' as const, motivo: 'CFOP ' + l.cfop + ': não é compra para comercialização' };
     return l;
@@ -132,19 +135,40 @@ const dataIso = (d: string) => { const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(d)
 /** A marca da situação de uma linha (gravada no cadastro da empresa). */
 export interface MarcaDaAntecipacao { situacao: SituacaoDaAntecipacao; por: string; em: string }
 
+/**
+ * A alíquota interestadual corrigida na tela (Heverton, ticket PK6RIE, 12/11/2026: "deixar campo de alíquota editável"),
+ * gravada no cadastro da empresa pelo id da linha.
+ */
+export interface AliquotaCorrigida { aliquota: number; por: string; em: string }
+
 /** Uma linha com as contas e a situação. */
 export interface LinhaCalculada extends LinhaDaAntecipacao {
   aliquotaInterna: number; baseAntecipacao: number; icmsInterno: number; antecipacao: number;
   situacao: SituacaoDaAntecipacao;
   /** quem marcou e quando (sem = a situação é a sugerida) */
   marca: MarcaDaAntecipacao | null;
+  /** a alíquota e o ICMS que vieram na nota (aliquotaInterestadual e icmsDestacado já são os corrigidos, quando há correção) */
+  aliquotaDaNota: number; icmsDaNota: number;
+  /** quem corrigiu a alíquota e quando (sem = a da nota) */
+  correcao: AliquotaCorrigida | null;
 }
 
-export function calcularAntecipacao(linhas: readonly LinhaDaAntecipacao[], aliquotaInterna: number, marcas: Readonly<Record<string, MarcaDaAntecipacao>> = {}): LinhaCalculada[] {
+/**
+ * As contas de cada linha. Com a alíquota corrigida, o ICMS destacado é refeito pela base da nota (sem base destacada, o
+ * produto e as despesas, sem o IPI) e a antecipação sai dele.
+ */
+export function calcularAntecipacao(linhas: readonly LinhaDaAntecipacao[], aliquotaInterna: number, marcas: Readonly<Record<string, MarcaDaAntecipacao>> = {},
+  correcoes: Readonly<Record<string, AliquotaCorrigida>> = {}): LinhaCalculada[] {
   return linhas.map(l => {
-    const c = contaDaAntecipacao(l.valorOperacao, l.icmsDestacado, aliquotaInterna);
+    const correcao = correcoes[l.id] || null;
+    const aliquota = correcao ? correcao.aliquota : l.aliquotaInterestadual;
+    const icms = correcao ? arred(((l.baseNf || l.baseProdutos) * correcao.aliquota) / 100) : l.icmsDestacado;
+    const c = contaDaAntecipacao(l.valorOperacao, icms, aliquotaInterna);
     const marca = marcas[l.id] || null;
-    return { ...l, aliquotaInterna, baseAntecipacao: c.base, icmsInterno: c.icmsInterno, antecipacao: c.antecipacao, situacao: marca?.situacao || l.sugestao, marca };
+    return {
+      ...l, aliquotaInterestadual: aliquota, icmsDestacado: icms, aliquotaDaNota: l.aliquotaInterestadual, icmsDaNota: l.icmsDestacado, correcao,
+      aliquotaInterna, baseAntecipacao: c.base, icmsInterno: c.icmsInterno, antecipacao: c.antecipacao, situacao: marca?.situacao || l.sugestao, marca,
+    };
   });
 }
 

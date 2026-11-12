@@ -197,8 +197,12 @@ export function AntecipacaoIcms() {
                             <td className="num">{l.cst}</td>
                             <td className="num">{brl(l.valorOperacao)}</td>
                             {calc && <td className="num fxr-calc">{brl(l.baseNf)}</td>}
-                            <td className="num" title={l.aliquotaEstimada ? 'Estimada pelo ICMS e pela base (XML baixado antes da versão 4 do resumo do robô)' : undefined}>{pct(l.aliquotaInterestadual)}{l.aliquotaEstimada ? '*' : ''}</td>
-                            <td className="num">{brl(l.icmsDestacado)}</td>
+                            {/* a alíquota editável (ticket PK6RIE, 12/11/2026): o ICMS e a antecipação da linha acompanham; vazio volta à da nota */}
+                            <td className="num" title={l.correcao ? 'Corrigida por ' + l.correcao.por + ' em ' + new Date(l.correcao.em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) + ' · na nota: ' + pct(l.aliquotaDaNota) + ' (apague para voltar)'
+                              : l.aliquotaEstimada ? 'Estimada pelo ICMS e pela base (XML baixado antes da versão 4 do resumo do robô)' : 'A alíquota da nota: clique para corrigir'}>
+                              <ValorEditavel valor={l.aliquotaInterestadual} zeroVale rotulo={'Alíquota da NF-e ' + l.numero + ' (%)'} aoSalvar={t => vm.corrigirAliquota(l, t)} />%{l.correcao ? '*' : l.aliquotaEstimada ? '*' : ''}
+                            </td>
+                            <td className="num" title={l.correcao ? 'Pela alíquota corrigida · na nota: ' + brl(l.icmsDaNota) : undefined}>{brl(l.icmsDestacado)}</td>
                             {calc && <><td className="num fxr-calc">{brl(l.baseAntecipacao)}</td><td className="num fxr-calc">{brl(l.icmsInterno)}</td></>}
                             <td className="num fxr-antecipacao">{brl(l.antecipacao)}</td>
                             <td>

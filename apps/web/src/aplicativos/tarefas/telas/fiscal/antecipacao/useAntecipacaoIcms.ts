@@ -77,7 +77,9 @@ export function useAntecipacaoIcms() {
   const aliquotaGravada = c.cadastro.antecipacaoIcmsEs?.aliquota;
   const aliquota = aliquotaGravada ?? s.ALIQUOTA_INTERNA_ES;
   const marcas = Object.fromEntries(Object.entries(c.cadastro.antecipacaoIcmsEs?.situacoes || {}).map(([id, m]) => [id, m as t.sieg.MarcaDaAntecipacao]));
-  const todas = s.calcularAntecipacao(s.linhasDaAntecipacao(meses.map(m => m.dados)), aliquota, marcas);
+  // a alíquota corrigida de cada linha (Heverton, ticket PK6RIE, 12/11/2026: "deixar campo de alíquota editável")
+  const correcoes = c.cadastro.antecipacaoIcmsEs?.aliquotas || {};
+  const todas = s.calcularAntecipacao(s.linhasDaAntecipacao(meses.map(m => m.dados)), aliquota, marcas, correcoes);
   const linhas = s.filtrarAntecipacao(todas, { mes, situacao });
   const resumo = s.resumoDaAntecipacao(todas);
   const semXml = meses.filter(m => m.carregadas && !m.dados).map(m => m.competencia);
@@ -182,6 +184,14 @@ export function useAntecipacaoIcms() {
       const r = cad.definirAliquotaDaAntecipacao(c.cadastro, v, por, new Date());
       if ('erro' in r) { aviso({ titulo: 'Alíquota que não vale', texto: r.erro, tom: 'erro' }); return; }
       if (r !== c.cadastro) { c.salvar(r); toast(v == null ? 'Voltou à alíquota padrão (17%)' : 'Alíquota interna: ' + texto.trim().replace('%', '') + '%'); }
+    },
+    /** a alíquota interestadual de uma linha (vazio volta à da nota); o ICMS e a antecipação da linha são refeitos */
+    corrigirAliquota(l: t.sieg.LinhaCalculada, texto: string) {
+      if (!c.carregada || !empresa) return;
+      const v = texto.trim() ? formatos.numeroDigitado(texto.replace('%', '')) ?? NaN : null;
+      const r = cad.corrigirAliquotaDaLinhaDaAntecipacao(c.cadastro, l.id, v === l.aliquotaDaNota ? null : v, 'NF-e ' + l.numero, por, new Date());
+      if ('erro' in r) { aviso({ titulo: 'Alíquota que não vale', texto: r.erro, tom: 'erro' }); return; }
+      if (r !== c.cadastro) { c.salvar(r); toast(v == null || v === l.aliquotaDaNota ? 'NF-e ' + l.numero + ': voltou à alíquota da nota' : 'NF-e ' + l.numero + ': alíquota ' + texto.trim().replace('%', '') + '%'); }
     },
     marcar(id: string, nova: t.sieg.SituacaoDaAntecipacao) {
       if (!c.carregada || !empresa) return;
