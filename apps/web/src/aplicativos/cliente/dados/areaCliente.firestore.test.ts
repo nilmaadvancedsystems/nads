@@ -65,6 +65,8 @@ function abrirComEspelho(repo: ReturnType<typeof criarRepoAreaClienteFirestore>)
   ouvinte(RAIZ + '/chamados').proximo(colSnap({ c1: CHAMADO }));
   ouvinte(RAIZ + '/resumo/pessoal').proximo(docSnap(null));
   ouvinte(RAIZ + '/documentos').proximo(colSnap({}));
+  ouvinte(RAIZ + '/resumo/faturamento').proximo(docSnap(null));
+  ouvinte(RAIZ + '/resumo/marca').proximo(docSnap(null));
   return { telas, parar };
 }
 
@@ -99,7 +101,7 @@ describe('abrir o link', () => {
 
   it('link bom: ouve o espelho e só mostra quando tudo chegou; nada do documento do link além do nome', () => {
     const { telas } = abrirComEspelho(criarRepoAreaClienteFirestore());
-    expect(falso.ouvintes.map(o => o.caminho).sort()).toEqual([RAIZ, RAIZ + '/agenda', RAIZ + '/chamados', RAIZ + '/envios', RAIZ + '/guias', RAIZ + '/resumo/atual', RAIZ + '/resumo/pessoal', RAIZ + '/documentos'].sort());
+    expect(falso.ouvintes.map(o => o.caminho).sort()).toEqual([RAIZ, RAIZ + '/agenda', RAIZ + '/chamados', RAIZ + '/envios', RAIZ + '/guias', RAIZ + '/resumo/atual', RAIZ + '/resumo/pessoal', RAIZ + '/documentos', RAIZ + '/documentos', RAIZ + '/resumo/faturamento', RAIZ + '/resumo/marca'].sort());
     expect(telas).toHaveLength(1);
     const e = telas[0];
     expect(e).toMatchObject({ carregado: true, valido: true, exemplos: false, secoes: { documentos: false, dp: true, pagas: false } });
@@ -200,6 +202,8 @@ describe('o Registro (12/11/2026)', () => {
       { id: 'f1', nome: 'MARIA SOUZA', cpf: '***.456.789-**', matricula: '1', remuneracao: 2000, desde: '2026-08', ultimo: '2026-10', ativo: true },
       { id: 'f2', nome: 'VAZOU', cpf: '123.456.789-09', matricula: '2', remuneracao: 1, desde: '2026-08', ultimo: '2026-10', ativo: true },
     ] }));
+    ouvinte(RAIZ + '/resumo/marca').proximo(docSnap({ logo: 'data:image/svg+xml;base64,PHN2Zz4=' }));
+    ouvinte(RAIZ + '/resumo/faturamento').proximo(docSnap({ fonte: 'SIEG', atualizadoEm: 'x', empresas: [{ codigo: 58, nome: 'Padaria', meses: [{ competencia: '2026-10', nfe: 800, nfce: null, notas: 3, total: 800, variacao: null }, { competencia: 'ruim' }] }] }));
     expect(telas).toHaveLength(0);
     ouvinte(RAIZ + '/documentos').proximo(colSnap({
       'dp-a': { tipo: 'dp', id: 'dp-a', nome: 'Folha de pagamento 10-2026.pdf', categoria: 'folha', competencia: '2026-10', tamanho: 1000, funcionario: '', partes: 1 },
@@ -209,6 +213,9 @@ describe('o Registro (12/11/2026)', () => {
     expect(e.secoes.dp).toBe(true);
     expect(e.pessoal?.funcionarios.map(f => [f.nome, f.cpf])).toEqual([['MARIA SOUZA', '***.456.789-**'], ['VAZOU', '']]);
     expect(e.documentosDp.map(d => [d.id, d.categoria])).toEqual([['dp-a', 'folha']]);
+    expect(e.faturamento?.empresas[0].meses.map(m => [m.competencia, m.total])).toEqual([['2026-10', 800]]);
+    // a logo em SVG não passa (pode carregar código): o topo fica com o ícone
+    expect(e.logo).toBeNull();
   });
 
   it('baixar o documento do DP: os pedaços dele, com o nome e o tipo pelo arquivo', async () => {
@@ -218,6 +225,8 @@ describe('o Registro (12/11/2026)', () => {
     ouvinte(RAIZ + '/resumo/atual').proximo(docSnap(null));
     for (const c of ['guias', 'agenda', 'envios', 'chamados']) ouvinte(RAIZ + '/' + c).proximo(colSnap({}));
     ouvinte(RAIZ + '/resumo/pessoal').proximo(docSnap(null));
+    ouvinte(RAIZ + '/resumo/faturamento').proximo(docSnap(null));
+  ouvinte(RAIZ + '/resumo/marca').proximo(docSnap(null));
     ouvinte(RAIZ + '/documentos').proximo(colSnap({ 'dp-x': { tipo: 'dp', id: 'dp-x', nome: 'Cartão de ponto - Elisene.xlsx', categoria: 'ponto', competencia: '2026-10', tamanho: 3, funcionario: '', partes: 1 } }));
     falso.pdf.push({ base64: btoa('abc'), n: 0, total: 1, de: 'dp-x' });
     const r = await repo.baixarDocumentoDp(TOKEN, 'dp-x');

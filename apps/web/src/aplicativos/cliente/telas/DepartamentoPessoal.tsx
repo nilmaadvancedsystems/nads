@@ -4,9 +4,13 @@
 // mascarado; quem saiu, no interruptor) com a ficha de cada um e os documentos dele; e os documentos do DP mês a mês, por
 // categoria (a folha, os recibos, o pró-labore, as férias, as rescisões, o ponto, o FGTS e o INSS), para baixar. Os
 // pedidos abrem em janela, como no protótipo, e viram uma solicitação do tipo certo.
-import { CampoData, Icone, IconeDeArquivo, Interruptor, useRetorno } from '@nads/ui';
+// Refeito (12/11/2026: "agora o registro"; a escolhida: "equipe + ficha ao lado"): os números no alto; a equipe à esquerda
+// (os ativos ou quem saiu, a busca) e a ficha da pessoa à direita (os dados, os documentos dela e as ações); embaixo, a
+// folha do mês por categoria, no estilo extrato. No celular, a equipe e a ficha um de cada vez.
+import { CampoData, Icone, IconeDeArquivo, useRetorno } from '@nads/ui';
 import { useState } from 'react';
 import { Avatar } from '../partes/Avatar';
+import { JanelaDoArquivo } from '../partes/JanelaDoArquivo';
 import { ACEITA_FOTO, fotoQuadrada, urlDaFoto } from '../partes/foto';
 import { Vazio } from '../partes/Vazio';
 import type { PedidoDeAdmissao, PedidoDeDemissao, PedidoDeFerias } from '../dados/regras';
@@ -105,18 +109,21 @@ function FormDoPedido({ pedido, inicial, erro, nomes, aoMudar }: { pedido: Pedid
 type VM = ReturnType<typeof useDp>;
 type Doc = VM['grupos'][number]['docs'][number];
 
-/** Uma linha de documento: o ícone pelo tipo, o nome, de quem e o mês, e o Baixar (o grande demais, pedir ao escritório). */
+/** Uma linha de documento: o ícone pelo tipo, o nome, de quem e o mês, e o Ver e o Baixar (o grande demais, pedir ao escritório). */
 function LinhaDoDocumento({ d, vm }: { d: Doc; vm: VM }) {
   return (
-    <li className="cli-linha cli-linha-doc">
-      <IconeDeArquivo formato={d.formato} tamanho={32} />
-      <div className="cli-linha-txt">
-        <b className="cli-quebra">{d.nome}</b>
+    <li className="cli-reg-doc">
+      <IconeDeArquivo formato={d.formato} tamanho={30} />
+      <span className="cli-reg-doc-txt">
+        <b>{d.nome}</b>
         <span className="hint">{[d.dono, d.detalhe].filter(Boolean).join(' · ')}</span>
-      </div>
-      {d.podeBaixar
-        ? <button type="button" className="btn" disabled={vm.baixando === d.id} onClick={() => vm.baixar(d.id)} aria-label={'Baixar ' + d.nome}><Icone nome="download" width={16} height={16} />{vm.baixando === d.id ? 'Baixando…' : 'Baixar'}</button>
-        : <span className="hint">Grande demais: peça ao escritório</span>}
+      </span>
+      {d.podeBaixar ? (
+        <span className="cli-reg-doc-acoes">
+          <button type="button" className="icon-btn" title="Ver" aria-label={'Ver ' + d.nome} disabled={vm.vista.abrindo === d.id} onClick={() => vm.verDoc(d.id)}><Icone nome="olho" width={16} height={16} /></button>
+          <button type="button" className="icon-btn" title="Baixar" aria-label={'Baixar ' + d.nome} disabled={vm.baixando === d.id} onClick={() => vm.baixar(d.id)}><Icone nome="download" width={16} height={16} /></button>
+        </span>
+      ) : <span className="hint">Grande demais: peça ao escritório</span>}
     </li>
   );
 }
@@ -138,33 +145,6 @@ export function DepartamentoPessoal(props: DaCasca) {
     if (problema) await abrirPedido(pedido, atual, problema);
   };
 
-  const ficha = async (f: VM['funcionarios'][number]) => {
-    const escolha = await modal<'ferias' | 'demissao' | null>({
-      titulo: f.nome, texto: f.situacao,
-      corpo: (
-        <div className="cli-app cli-janela">
-          <div className="cli-ficha-foto"><Avatar nome={f.nome} tamanho={64} /></div>
-          <dl className="cli-dados">
-            <dt>CPF</dt><dd>{f.cpf || '—'}</dd>
-            <dt>Matrícula</dt><dd>{f.matricula || '—'}</dd>
-            <dt>No registro desde</dt><dd>{f.desde}</dd>
-            <dt>Remuneração</dt><dd>{f.remuneracao}{vm.competencia ? ' (' + vm.competencia + ')' : ''}</dd>
-          </dl>
-          {f.docs.length > 0 && <>
-            <p className="cli-grupo">Documentos</p>
-            <ul className="cli-lista">{f.docs.map(d => <LinhaDoDocumento key={d.id} d={d} vm={vm} />)}</ul>
-          </>}
-          <p className="hint" style={{ marginTop: 12 }}>Para mudar um dado ou mandar um atestado, abra uma solicitação.</p>
-        </div>
-      ),
-      botoes: f.ativo
-        ? [{ rotulo: 'Programar férias', valor: 'ferias', variante: 'btn-primary' }, { rotulo: 'Pedir desligamento', valor: 'demissao', variante: 'btn-danger' }, { rotulo: 'Fechar', valor: null, variante: 'btn-outline' }]
-        : [{ rotulo: 'Fechar', valor: null, variante: 'btn-outline' }],
-    });
-    if (escolha === 'ferias') await abrirPedido('ferias', vm.novasFerias(f.nome));
-    if (escolha === 'demissao') await abrirPedido('demissao', vm.novaDemissao(f.nome));
-  };
-
   return (
     <>
       <div className="cli-titulo">
@@ -177,64 +157,86 @@ export function DepartamentoPessoal(props: DaCasca) {
         </div>
       </div>
 
-      <div className="cli-numeros">
-        <div className="cli-numero"><span className="cli-sobre">Funcionários ativos</span><span className="cli-numero-valor">{vm.numeros.ativos}</span></div>
-        <div className="cli-numero"><span className="cli-sobre">Remuneração{vm.competencia ? ' · ' + vm.competencia : ''}</span><span className="cli-numero-valor menor">{formatos.reais(vm.numeros.folha)}</span></div>
-        <div className="cli-numero"><span className="cli-sobre">Entraram no ano</span><span className="cli-numero-valor">{vm.numeros.admissoesNoAno}</span></div>
-        <div className="cli-numero"><span className="cli-sobre">Saíram</span><span className="cli-numero-valor">{vm.numeros.saidas}</span></div>
+      <div className="cli-numeros cli-numeros-reg">
+        <div className="cli-numero"><span className="cli-sobre">Funcionários ativos</span><span className="cli-numero-valor menor">{vm.numeros.ativos}</span><span className="hint">no registro</span></div>
+        <div className="cli-numero"><span className="cli-sobre">Folha{vm.competencia ? ' de ' + vm.competencia : ''}</span><span className="cli-numero-valor menor">{formatos.reais(vm.numeros.folha)}</span><span className="hint">remuneração dos ativos</span></div>
+        <div className="cli-numero"><span className="cli-sobre">Entraram no ano</span><span className="cli-numero-valor menor">{vm.numeros.admissoesNoAno}</span><span className="hint">admissões</span></div>
+        <div className="cli-numero"><span className="cli-sobre">Saíram</span><span className="cli-numero-valor menor">{vm.numeros.saidas}</span><span className="hint">desligamentos</span></div>
       </div>
 
-      <section className="card cli-card-tabela">
-        <div className="card-head">
-          <label className="cli-busca">
+      <div className={'cli-sol cli-reg' + (vm.fichaNoCelular ? ' painel-aberto' : '')}>
+        {/* a equipe */}
+        <section className="card cli-sol-lista">
+          <div className="cli-sol-filtros" role="tablist" aria-label="Equipe">
+            <button type="button" role="tab" aria-selected={!vm.mostrarSaidas} className={'cli-sol-filtro' + (!vm.mostrarSaidas ? ' ativo' : '')} onClick={vm.verAtivos}>Ativos<b>{vm.ativosN}</b></button>
+            <button type="button" role="tab" aria-selected={vm.mostrarSaidas} className={'cli-sol-filtro' + (vm.mostrarSaidas ? ' ativo' : '')} onClick={vm.verSaidas}>Saíram<b>{vm.saidas}</b></button>
+          </div>
+          <label className="cli-busca cli-reg-busca">
             <Icone nome="search" width={16} height={16} />
-            <input type="text" value={vm.busca} onChange={e => vm.mudarBusca(e.target.value)} placeholder="Buscar por nome, CPF ou matrícula" aria-label="Buscar funcionário" />
+            <input type="text" value={vm.busca} onChange={e => vm.mudarBusca(e.target.value)} placeholder="Nome, CPF ou matrícula" aria-label="Buscar funcionário" />
           </label>
-          <span className="card-head-ctl cli-registro-ctl">
-            {vm.saidas > 0 && (
-              <span className="cli-interruptor">
-                <Interruptor ligado={vm.mostrarSaidas} onMudar={vm.alternarSaidas} rotulo="Mostrar quem saiu" />
-                <span>Mostrar quem saiu</span>
-              </span>
-            )}
-            <span>Exibindo {vm.funcionarios.length} de {vm.total}</span>
-          </span>
-        </div>
-        <table className="cli-tabela">
-          <thead>
-            <tr><th>Colaborador</th><th className="cli-so-largo">Matrícula</th><th className="cli-so-largo">No registro desde</th><th className="cli-so-largo num">Remuneração</th><th className="cli-so-largo">Situação</th><th className="num"><span className="sr-only">Ficha</span></th></tr>
-          </thead>
-          <tbody>
-            {vm.funcionarios.map(f => (
-              <tr key={f.id} className={f.ativo ? undefined : 'cli-saiu'}>
-                <td>
-                  <div className="cli-pessoa">
+          {vm.funcionarios.length ? (
+            <ul>
+              {vm.funcionarios.map(f => (
+                <li key={f.id}>
+                  <button type="button" className={'cli-reg-pessoa' + (f.escolhido ? ' escolhida' : '') + (f.ativo ? '' : ' saiu')} aria-current={f.escolhido ? 'true' : undefined} onClick={() => vm.escolher(f.id)}>
                     <Avatar nome={f.nome} />
-                    <div><b>{f.nome}</b><span className="hint">{f.cpf ? 'CPF ' + f.cpf : ''}{f.documentos ? (f.cpf ? ' · ' : '') + f.documentos + (f.documentos === 1 ? ' documento' : ' documentos') : ''}</span></div>
-                  </div>
-                </td>
-                <td className="cli-so-largo cli-suave">{f.matricula || '—'}</td>
-                <td className="cli-so-largo cli-suave">{f.desde}</td>
-                <td className="cli-so-largo num"><span className="cli-valor">{f.remuneracao}</span></td>
-                <td className="cli-so-largo"><span className={'badge ' + (f.ativo ? 'badge-ok' : 'badge-neutral')}>{f.situacao}</span></td>
-                <td className="num"><button type="button" className="btn" onClick={() => void ficha(f)}>Detalhes</button></td>
-              </tr>
-            ))}
-            {!vm.funcionarios.length && (
-              <tr className="cli-sem-passar"><td colSpan={6}>
-                {vm.temFuncionarios && vm.busca
-                  ? <Vazio icone="search" titulo="Ninguém com esse nome" acao={{ rotulo: 'Limpar a busca', onClick: () => vm.mudarBusca('') }} />
-                  : <Vazio icone="usuario" titulo="Nenhum funcionário no registro" texto="Os funcionários aparecem aqui quando o escritório emite a guia do FGTS do mês." />}
-              </td></tr>
-            )}
-          </tbody>
-        </table>
-      </section>
+                    <span className="cli-reg-pessoa-txt"><b>{f.nome}</b><span className="hint">{f.ativo ? 'desde ' + f.desde : f.situacao}{f.matricula ? ' · mat. ' + f.matricula : ''}</span></span>
+                    <span className="cli-reg-pessoa-valor">{f.remuneracao}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : vm.temFuncionarios && vm.busca ? <p className="hint cli-sol-vazio">Ninguém com esse nome. <button type="button" className="cli-link-mini" onClick={() => vm.mudarBusca('')}>Limpar a busca</button></p>
+            : vm.temFuncionarios ? <p className="hint cli-sol-vazio">{vm.mostrarSaidas ? 'Ninguém saiu do registro.' : 'Nenhum funcionário ativo.'}</p>
+            : <Vazio icone="usuario" titulo="Nenhum funcionário no registro" texto="Os funcionários aparecem aqui quando o escritório emite a guia do FGTS do mês." />}
+        </section>
 
-      {/* os documentos do DP do mês (12/11/2026): a folha, os recibos, as férias… da pasta da empresa no Drive */}
-      <section className="card">
+        {/* a ficha */}
+        <section className="card cli-sol-painel cli-reg-ficha">
+          <button type="button" className="btn btn-ghost btn-sm cli-sol-voltar" onClick={vm.voltar}><Icone nome="chevronLeft" width={16} height={16} />Voltar à equipe</button>
+          {(() => {
+            const f = vm.funcionarios.find(x => x.escolhido);
+            if (!f) return <Vazio icone="usuario" titulo="Escolha alguém da equipe" texto="A ficha mostra os dados e os documentos da pessoa." />;
+            return (
+              <>
+                <div className="cli-reg-cabeca">
+                  <Avatar nome={f.nome} tamanho={52} />
+                  <div>
+                    <h2>{f.nome}</h2>
+                    <p className="hint"><span className={'badge ' + (f.ativo ? 'badge-ok' : 'badge-neutral')}>{f.situacao}</span>{f.matricula && <> · Matrícula {f.matricula}</>}</p>
+                  </div>
+                </div>
+                <div className="cli-ficha-dados">
+                  <div className="cli-ficha-dado"><span className="cli-sobre">CPF</span><b>{f.cpf || '—'}</b></div>
+                  <div className="cli-ficha-dado"><span className="cli-sobre">No registro desde</span><b>{f.desde || '—'}</b></div>
+                  <div className="cli-ficha-dado cli-ficha-largo">
+                    <span className="cli-sobre">Remuneração{vm.competencia && f.ativo ? ' · ' + vm.competencia : ''}</span>
+                    <b className="cli-ficha-valor">{f.remuneracao}</b>
+                  </div>
+                </div>
+                <div className="cli-sol-bloco">
+                  <p className="cli-sol-rotulo">Documentos de {f.nome.split(' ')[0]}</p>
+                  {f.docs.length ? <ul className="cli-reg-docs">{f.docs.map(d => <LinhaDoDocumento key={d.id} d={d} vm={vm} />)}</ul>
+                    : <p className="hint">Nenhum documento só dela(e) nos últimos meses.</p>}
+                </div>
+                <div className="cli-sol-rodape">
+                  <span className="hint">Para mudar um dado ou mandar um atestado, abra uma solicitação.</span>
+                  {f.ativo && <>
+                    <button type="button" className="btn btn-ghost cli-perigo" onClick={() => void abrirPedido('demissao', vm.novaDemissao(f.nome))}>Pedir desligamento</button>
+                    <button type="button" className="btn btn-primary" onClick={() => void abrirPedido('ferias', vm.novasFerias(f.nome))}><Icone nome="calendar" width={16} height={16} />Programar férias</button>
+                  </>}
+                </div>
+              </>
+            );
+          })()}
+        </section>
+      </div>
+
+      {/* a folha do mês: os documentos do DP por categoria (a folha, os recibos, as férias…), no estilo extrato */}
+      <section className="card cli-reg-folha">
         <div className="card-head">
-          <h3>Documentos do departamento pessoal</h3>
+          <h3>Folha {vm.meses.length ? 'de ' + (vm.meses.find(m => m.valor === vm.mes)?.rotulo.toLowerCase() ?? '') : 'do mês'}</h3>
           {vm.meses.length > 1 && (
             <span className="card-head-ctl">
               <span className="chip-row" role="radiogroup" aria-label="Mês dos documentos" style={{ margin: 0 }}>
@@ -246,12 +248,13 @@ export function DepartamentoPessoal(props: DaCasca) {
           )}
         </div>
         {vm.grupos.length ? vm.grupos.map(g => (
-          <div key={g.categoria}>
-            <p className="cli-grupo">{g.rotulo}</p>
-            <ul className="cli-lista">{g.docs.map(d => <LinhaDoDocumento key={d.id} d={d} vm={vm} />)}</ul>
+          <div key={g.categoria} className="cli-reg-grupo">
+            <p className="cli-biblioteca-mes-titulo">{g.rotulo.toUpperCase()}</p>
+            <ul className="cli-reg-docs">{g.docs.map(d => <LinhaDoDocumento key={d.id} d={d} vm={vm} />)}</ul>
           </div>
         )) : <Vazio icone="pastaAberta" titulo="Nenhum documento ainda" texto="A folha, os recibos e as guias do mês aparecem aqui quando o escritório salva na pasta da empresa." />}
       </section>
+      {vm.vista.aberto && <JanelaDoArquivo arquivo={vm.vista.aberto} onBaixar={vm.vista.baixar} onFechar={vm.vista.fechar} />}
     </>
   );
 }

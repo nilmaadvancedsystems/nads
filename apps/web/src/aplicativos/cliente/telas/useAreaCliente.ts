@@ -9,21 +9,28 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { AREA_VAZIA, type EstadoDaArea } from '../dados/areaCliente';
 import { repoAreaCliente } from '../dados/repo';
-import { linkDoWhatsapp, notificacoes } from '../dados/regras';
+import { iniciaisDaEmpresa, linkDoWhatsapp, notificacoes, perfisComEste, type PerfilGuardado } from '../dados/regras';
+import { guardarPerfis, lerPerfis } from '../dados/perfis';
+import { TOKEN_COMO_NO_BANCO, TOKEN_DE_EXEMPLO } from '../dados/areaCliente.memoria';
 import { guiasDoMomento } from '../dados/visaoGeral';
 import { useCopiar } from './useCopiar';
 
-export type IdAba = 'inicio' | 'documentos' | 'guias' | 'dp' | 'chamados';
-export const ABAS: { id: IdAba; rotulo: string; icone: NomeIcone }[] = [
+export type IdAba = 'inicio' | 'documentos' | 'guias' | 'dp' | 'chamados' | 'faturamento' | 'empresa' | 'contato';
+/** As abas do menu; as do Administrativo (12/11/2026: o Faturamento, os Dados cadastrais e o Fale com o escritório, que
+ *  eram janelas) vêm embaixo do título dele. */
+export const ABAS: { id: IdAba; rotulo: string; icone: NomeIcone; administrativo?: boolean }[] = [
   { id: 'inicio', rotulo: 'Visão geral', icone: 'home' },
   { id: 'documentos', rotulo: 'Central de documentos', icone: 'pastaAberta' },
   { id: 'guias', rotulo: 'Guias e obrigações', icone: 'recibo' },
   { id: 'dp', rotulo: 'Registro', icone: 'usuario' },
   { id: 'chamados', rotulo: 'Solicitações', icone: 'mensagem' },
+  { id: 'faturamento', rotulo: 'Faturamento', icone: 'barChart', administrativo: true },
+  { id: 'empresa', rotulo: 'Dados cadastrais', icone: 'predio', administrativo: true },
+  { id: 'contato', rotulo: 'Fale com o escritório', icone: 'telefone', administrativo: true },
 ];
 /** O que a aba aberta pelo irPara já faz ao abrir: abrir a conversa de um chamado, ou o formulário com o assunto e o título. */
 export interface PedidoDaTela { chamado?: string; novoChamado?: { tipo: ac.TipoDeChamado; titulo: string } }
-const APELIDOS: Record<string, IdAba> = { agenda: 'guias', vencimentos: 'guias', enviar: 'documentos', falar: 'chamados' };
+const APELIDOS: Record<string, IdAba> = { agenda: 'guias', vencimentos: 'guias', enviar: 'documentos', falar: 'contato' };
 
 export function useAreaCliente() {
   const { token = '', aba } = useParams();
@@ -36,7 +43,9 @@ export function useAreaCliente() {
   useEffect(() => repoAreaCliente.assinar(token, setArea), [token]);
 
   // as abas que este link consegue mostrar (o banco ainda não tem documentos do escritório nem o pessoal)
-  const abas = ABAS.filter(a => (a.id !== 'documentos' || area.secoes.documentos) && (a.id !== 'dp' || area.secoes.dp));
+  // os Dados cadastrais só com a ficha da empresa (o banco ainda não tem)
+  // a Central de documentos sempre (12/11/2026, a biblioteca: as guias, o DP, as DANFEs e o que o cliente enviou também moram lá)
+  const abas = ABAS.filter(a => (a.id !== 'dp' || area.secoes.dp) && (a.id !== 'empresa' || !!area.ficha));
   const pedida: IdAba = ABAS.find(a => a.id === aba)?.id ?? APELIDOS[aba ?? ''] ?? 'inicio';
   // escondida: o enviar documento mora em Solicitações; o resto volta para a Visão geral
   const atual: IdAba = abas.some(a => a.id === pedida) ? pedida : pedida === 'documentos' ? 'chamados' : 'inicio';
@@ -68,13 +77,33 @@ export function useAreaCliente() {
   };
   const escritorio = area.resumo?.escritorio ?? {};
 
+  // a troca de empresa (12/11/2026): esta empresa entra na lista do aparelho; as outras aparecem no menu do topo
+  const [perfis, setPerfis] = useState<PerfilGuardado[]>(lerPerfis);
+  const nomeDaEmpresa = area.valido ? (empresas.length > 1 ? empresas.map(e => e.nome).join(' · ') : empresas[0]?.nome ?? '') : '';
+  useEffect(() => {
+    if (!area.carregado || !area.valido || !nomeDaEmpresa) return;
+    const lista = perfisComEste(lerPerfis(), { token, nome: nomeDaEmpresa, documento: cnpj, ...(area.logo ? { logo: area.logo } : {}), usadoEm: new Date().toISOString() });
+    guardarPerfis(lista);
+    setPerfis(lista);
+  }, [token, area.carregado, area.valido, nomeDaEmpresa, cnpj, area.logo]);
+  // nos exemplos, as duas versões entram na lista para dar para testar a troca sem abrir outro link
+  const ehExemplo = area.exemplos || token === TOKEN_DE_EXEMPLO || token.startsWith(TOKEN_COMO_NO_BANCO);
+  const exemplos: PerfilGuardado[] = ehExemplo ? [
+    { token: TOKEN_DE_EXEMPLO, nome: 'Personaly Company (exemplo completo)', documento: '00.000.000/0001-91', usadoEm: '' },
+    { token: TOKEN_COMO_NO_BANCO, nome: 'Personaly Company (como no banco)', documento: '00.000.000/0001-91', usadoEm: '' },
+  ].filter(e => !perfis.some(p => p.token === e.token)) : [];
+  const outrasEmpresas = [...perfis, ...exemplos].filter(p => p.token !== token).map(p => ({ ...p, iniciais: iniciaisDaEmpresa(p.nome) }));
+  const trocarDeEmpresa = (outro: string) => { setMenuAberto(false); navegar('/cliente/' + encodeURIComponent(outro) + '/' + atual); window.scrollTo(0, 0); };
+  const esquecerEmpresa = (outro: string) => { const lista = lerPerfis().filter(p => p.token !== outro); guardarPerfis(lista); setPerfis(lista); };
+
   // o sino: o que pede atenção; "Marcar como lidas" esconde as que já estavam lá (nesta página)
   const [lidas, setLidas] = useState<Set<string>>(() => new Set());
   const avisos = notificacoes({ ...area, guias }, hoje, g => g.tipo === 'outra' ? 'Guia' : g.tipo);
   const naoLidas = avisos.filter(n => !lidas.has(n.id));
 
   return {
-    token, area, hoje, aba: atual, abas, contadores, menuAberto, setMenuAberto, recolhida, alternarLateral, irPara, empresa, cnpj, rotuloDoDocumento, exemplos: area.exemplos,
+    token, area, hoje, logo: area.logo, aba: atual, abas,
+    outrasEmpresas, trocarDeEmpresa, esquecerEmpresa, iniciais: iniciaisDaEmpresa(empresa), contadores, menuAberto, setMenuAberto, recolhida, alternarLateral, irPara, empresa, cnpj, rotuloDoDocumento, exemplos: area.exemplos,
     secoes: area.secoes, temFicha: !!area.ficha,
     avisos, naoLidas: naoLidas.length, lida: (id: string) => lidas.has(id), marcarLidas: () => setLidas(new Set(avisos.map(n => n.id))),
     copiar,

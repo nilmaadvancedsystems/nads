@@ -322,6 +322,30 @@ if (modulo) {
   igual('o documento do DP passa na lista branca', joga(() => R.conferirListaBranca('documentoDp', doc)), '');
   igual('a lista branca recusa a pasta do Drive no documento', joga(() => R.conferirListaBranca('documentoDp', Object.assign({}, doc, { pasta: 'G:/x' }))), 'espelho: campo pasta não pode sair em documentoDp');
   igual('o pedaço do documento passa', joga(() => R.conferirListaBranca('pedacoDp', { base64: 'AAAA', n: 0, total: 1, de: 'dp-x' })), '');
+  // o Faturamento (12/11/2026)
+  const fat = G.faturamentoDoCliente([{ codigo: 292, nome: 'FITO', regime: 'Simples' }], ['2026-10'], () => ({ codigo: '292', competencia: '2026-10', em: '', series: [{ modelo: '55', serie: '1', numeros: [1], canceladas: [], valor: 500 }] }), new Date(2026, 10, 12));
+  igual('o faturamento passa na lista branca', joga(() => R.conferirListaBranca('faturamento', fat)), '');
+  igual('o faturamento: o mês do SIEG', fat.empresas[0].meses[0].total, 500);
+  igual('o faturamento: o regime (o limite do Simples/MEI)', fat.empresas[0].regime, 'Simples');
+  igual('o faturamento: as séries do mês (o detalhamento)', fat.empresas[0].meses[0].series.length, 1);
+  {
+    const notas = { codigo: '292', competencia: '2026-10', em: '2026-11-01', pasta: '', arquivos: 1, novos: 0, recebidas: [], emitidas: [
+      { tipo: 'NF-e', chave: '3126', numero: '1', serie: '1', data: '05/10/2026', emitente: { doc: '', nome: '' }, destinatario: { doc: '11222333000181', nome: 'LOJA X' }, valor: 500, cfop: '5102' },
+    ] };
+    const comNotas = G.faturamentoDoCliente([{ codigo: 292, nome: 'FITO', regime: 'Simples' }], ['2026-10'], () => ({ codigo: '292', competencia: '2026-10', em: '', series: [{ modelo: '55', serie: '1', numeros: [1], canceladas: [], valor: 500 }] }), new Date(2026, 10, 12), () => G.notasDoMes(notas));
+    igual('o painel do mês passa na lista branca', joga(() => R.conferirListaBranca('faturamento', comNotas)), '');
+    igual('o painel do mês: o maior cliente', comNotas.empresas[0].meses[0].notasDoMes.clientes[0].nome, 'LOJA X');
+    igual('o painel do mês: o CNPJ de quem comprou não sai', JSON.stringify(comNotas).includes('11222333000181'), false);
+    const lista = G.listaDeNotasDoMes(notas);
+    igual('o relatório do dia passa na lista branca', joga(() => R.conferirListaBranca('notasLista', { codigo: 292, competencia: '2026-10', notas: lista.notas, cortadas: lista.cortadas, atualizadoEm: 'x' })), '');
+    igual('o relatório do dia: o CNPJ de quem comprou não sai', JSON.stringify(lista).includes('11222333000181'), false);
+    igual('a logo passa na lista branca', joga(() => R.conferirListaBranca('marca', { logo: 'data:image/png;base64,AA==', atualizadoEm: 'x' })), '');
+    igual('a logo: o SVG não vale', G.erroDaLogo('data:image/svg+xml;base64,PHN2Zz4=') !== '', true);
+    const chave = '31261011222333000181550010000018421123456789';
+    igual('o pedido de DANFE: a chave pela marca', G.chaveDoPedidoDeDanfe({ tipo: 'documento', titulo: 'DANFE', texto: 'danfe:' + chave }), chave);
+    igual('o chamado comum não é DANFE', G.chaveDoPedidoDeDanfe({ tipo: 'documento', titulo: 'Certidão', texto: 'preciso da certidão' }), '');
+    igual('a DANFE no espelho passa na lista branca', joga(() => R.conferirListaBranca('documentoDanfe', { tipo: 'danfe', id: G.idDaDanfe(chave), nome: 'DANFE 1842.pdf', chave, partes: 1, atualizadoEm: 'x' })), '');
+  }
 }
 
 Promise.all(esperar).then(() => {

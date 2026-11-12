@@ -7,6 +7,7 @@
 // preenche, e `secoes` diz à tela o que esconder quando o repositório não tem de onde tirar.
 import type { areaCliente as ac, mandei } from '@nads/core';
 import type { FormatoDoArquivo } from '@nads/ui';
+import type { DanfeNoEspelho } from './biblioteca';
 
 /** a área do escritório que mandou o documento */
 export type AreaDoDocumento = 'fiscal' | 'dp' | 'contabil' | 'societario';
@@ -110,6 +111,12 @@ export interface EstadoDaArea {
   /** o Registro (12/11/2026): os funcionários (resumo/pessoal) e os documentos do DP (documentos com tipo 'dp') */
   pessoal: ac.ResumoDoPessoal | null;
   documentosDp: ac.DocumentoDoDp[];
+  /** o Faturamento (12/11/2026): os 12 meses de cada empresa pelas notas emitidas no SIEG (resumo/faturamento) */
+  faturamento: ac.ResumoDoFaturamento | null;
+  /** a logo da empresa (12/11/2026), que o gestor põe no nads: data URL (resumo/marca); null = o ícone do prédio */
+  logo: string | null;
+  /** as DANFEs que o cliente já pediu e estão no espelho (documentos/danfe-<chave>): a pasta Notas da Central */
+  danfes: DanfeNoEspelho[];
   ficha: FichaDaEmpresa | null;
   atendimento: Atendimento | null;
   avisos: AvisoDoEscritorio[];
@@ -122,7 +129,7 @@ export interface EstadoDaArea {
 
 export const AREA_VAZIA: EstadoDaArea = {
   carregado: false, valido: false, erro: '', exemplos: false, secoes: SECOES_DO_BANCO, resumo: null, guias: [], codigos: {}, pagas: [], agenda: [], envios: [], chamados: [],
-  documentos: [], certificado: null, pessoal: null, documentosDp: [], ficha: null, atendimento: null, avisos: [], tickets: [],
+  documentos: [], certificado: null, pessoal: null, documentosDp: [], faturamento: null, logo: null, danfes: [], ficha: null, atendimento: null, avisos: [], tickets: [],
 };
 
 export interface RepoAreaCliente {
@@ -144,4 +151,8 @@ export interface RepoAreaCliente {
   baixarComprovante(token: string, id: string): Promise<{ nome: string; arquivo: Blob } | null>;
   /** um documento do DP do Registro (a folha, o recibo, as férias…); null quando não tem */
   baixarDocumentoDp(token: string, id: string): Promise<{ nome: string; arquivo: Blob } | null>;
+  /** as notas emitidas de um mês da empresa (o relatório do dia; resumo/notas-{código}-{mês}); null = ainda não chegou */
+  notasDoMes(token: string, codigo: number, mes: string): Promise<ac.NotaDoRelatorio[] | null>;
+  /** a DANFE da nota (12/11/2026): pede ao robô pela caixa dos chamados e espera o PDF no espelho; ou o porquê de não vir */
+  pedirDanfe(token: string, chave: string): Promise<{ nome: string; arquivo: Blob } | { erro: string }>;
 }

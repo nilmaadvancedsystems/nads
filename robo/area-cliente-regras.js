@@ -651,8 +651,27 @@ const CAMPOS_DO_ESPELHO = {
   funcionario: ['id', 'nome', 'cpf', 'matricula', 'remuneracao', 'desde', 'ultimo', 'ativo'],
   documentoDp: ['tipo', 'id', 'nome', 'categoria', 'competencia', 'tamanho', 'funcionario', 'partes'],
   pedacoDp: ['base64', 'n', 'total', 'de'],
+  // a DANFE pedida pelo relatório do dia (12/11/2026): documentos/danfe-<chave> (os pedaços como os do DP)
+  documentoDanfe: ['tipo', 'id', 'nome', 'chave', 'partes', 'erro', 'atualizadoEm'],
+  // o Faturamento (12/11/2026): resumo/faturamento, os meses de cada empresa pelas notas emitidas no SIEG
+  faturamento: ['empresas', 'fonte', 'atualizadoEm'],
+  empresaFat: ['codigo', 'nome', 'regime', 'meses'],
+  mesFat: ['competencia', 'nfe', 'nfce', 'notas', 'total', 'variacao', 'canceladas', 'series', 'notasDoMes'],
+  // o painel do mês (12/11/2026): só o resumo; nunca a nota, a chave ou o CPF/CNPJ de quem comprou
+  notasFat: ['porDia', 'clientes', 'totalClientes', 'outrosClientes', 'cfops', 'servicos', 'maiorVenda', 'em'],
+  clienteFat: ['nome', 'valor', 'notas'],
+  outrosFat: ['clientes', 'valor'],
+  cfopFat: ['cfop', 'descricao', 'valor'],
+  servicoFat: ['notas', 'valor'],
+  vendaFat: ['valor', 'dia', 'cliente'],
+  // o relatório do dia (12/11/2026): resumo/notas-{código}-{mês}, as notas emitidas sem o documento de quem comprou
+  notasLista: ['codigo', 'competencia', 'notas', 'cortadas', 'atualizadoEm'],
+  notaRel: ['dia', 'tipo', 'numero', 'serie', 'cliente', 'cfop', 'valor', 'cancelada', 'chave'],
+  // a logo da empresa (12/11/2026): resumo/marca
+  marca: ['logo', 'atualizadoEm'],
+  serieFat: ['modelo', 'serie', 'primeira', 'ultima', 'notas', 'canceladas', 'valor'],
 };
-const DENTRO = { resumo: { empresas: 'empresa', escritorio: 'escritorio' }, agenda: { itens: 'item' }, chamado: { mensagens: 'mensagem' }, pessoal: { funcionarios: 'funcionario' } };
+const DENTRO = { resumo: { empresas: 'empresa', escritorio: 'escritorio' }, agenda: { itens: 'item' }, chamado: { mensagens: 'mensagem' }, pessoal: { funcionarios: 'funcionario' }, faturamento: { empresas: 'empresaFat' }, empresaFat: { meses: 'mesFat' }, mesFat: { series: 'serieFat', notasDoMes: 'notasFat' }, notasLista: { notas: 'notaRel' }, notasFat: { clientes: 'clienteFat', outrosClientes: 'outrosFat', cfops: 'cfopFat', servicos: 'servicoFat', maiorVenda: 'vendaFat' } };
 
 /** Joga erro se o documento tiver um campo fora da lista branca (em qualquer nível). Devolve o próprio documento. */
 function conferirListaBranca(tipo, doc) {

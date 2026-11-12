@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import type { areaCliente as ac } from '@nads/core';
 import type { DocumentoDoCliente } from './areaCliente';
-import { linkDoWhatsapp, mimeDoArquivo, nomeDaPessoa, partesDaSolicitacao, passoDaSolicitacao, whatsappDaSolicitacao, erroDaAdmissao, erroDaDemissao, erroDasFerias, filtrarDocumentos, juntarPedacosDoPdf, mesesDosDocumentos, notificacoes, resumoDoPessoal, situacaoDoCertificado, textoDaAdmissao, textoDoChamado } from './regras';
+import { linkDoWhatsapp, mimeDoArquivo, nomeDaPessoa, partesDaSolicitacao, passoDaSolicitacao, whatsappDaSolicitacao, erroDaAdmissao, erroDaDemissao, erroDasFerias, filtrarDocumentos, juntarPedacosDoPdf, mesesDosDocumentos, notificacoes, resumoDoPessoal, situacaoDoCertificado, textoDaAdmissao, textoDoChamado, textoDosAnexos, painelDasGuias, perfisComEste, iniciaisDaEmpresa, MAIS_PERFIS } from './regras';
 
 const hoje = new Date(2026, 9, 16, 9, 0);
 
@@ -119,5 +120,54 @@ describe('as solicitações sem chat (11/11/2026)', () => {
   it('o WhatsApp com o assunto; sem número, nada', () => {
     expect(whatsappDaSolicitacao('(31) 99999-0000', 'Certidão & CND')).toBe('https://wa.me/5531999990000?text=' + encodeURIComponent('Olá! Sobre a solicitação "Certidão & CND":'));
     expect(whatsappDaSolicitacao('', 'x')).toBe('');
+  });
+});
+
+describe('textoDosAnexos (o aviso na solicitação quando o cliente manda arquivos por ela)', () => {
+  it('um arquivo, no singular', () => {
+    expect(textoDosAnexos(['contrato.pdf'])).toBe('Enviei o arquivo: contrato.pdf.');
+  });
+  it('vários, no plural e sem os nomes vazios', () => {
+    expect(textoDosAnexos([' rg.jpg ', '', 'cpf.pdf'])).toBe('Enviei os arquivos: rg.jpg, cpf.pdf.');
+  });
+});
+
+describe('painelDasGuias (os números do mês e o calendário da aba Guias)', () => {
+  const guia = (id: string, vencimento: string, valor: number, situacao: ac.GuiaDoCliente['situacao']): ac.GuiaDoCliente =>
+    ({ id, tipo: 'DAS', competencia: '2026-10', vencimento, valor, situacao, temPdf: true });
+  const guias = [guia('a', '07/11/2026', 300, 'vencida'), guia('b', '15/11/2026', 500, 'a vencer'), guia('c', '12/11/2026', 200, 'vence hoje')];
+  const pagas = [{ nome: 'Honorários', valor: 1000, pagoEm: '06/11/2026' }];
+  const agenda: ac.ItemDaAgenda[] = [{ id: 'x', nome: 'DCTFWeb', vence: '2026-11-13', situacao: 'a fazer' }, { id: 'y', nome: 'EFD', vence: '2026-12-02', situacao: 'a fazer' }];
+
+  it('os totais: a pagar, vencidas e pagas', () => {
+    const p = painelDasGuias(guias, pagas, agenda, '2026-11', new Date(2026, 10, 12), g => g.tipo);
+    expect([p.aPagar, p.vencidas, p.pagas]).toEqual([{ valor: 1000, guias: 3 }, { valor: 300, guias: 1 }, { valor: 1000, guias: 1 }]);
+  });
+
+  it('o calendário: os dias do mês, o dia da semana do dia 1, hoje, e as marcas por dia (só a entrega do mês)', () => {
+    const p = painelDasGuias(guias, pagas, agenda, '2026-11', new Date(2026, 10, 12), g => g.tipo);
+    // 1º de novembro de 2026 é um domingo
+    expect([p.linha.dias, p.linha.primeiroDia, p.linha.hoje]).toEqual([30, 0, 12]);
+    expect(p.linha.marcas.map(x => [x.dia, x.tipo, x.tom, x.curto])).toEqual([[6, 'paga', 'feita', 'Honorários'], [7, 'guia', 'vencida', 'DAS'], [12, 'guia', 'hoje', 'DAS'], [13, 'entrega', 'aberta', 'DCTFWeb'], [15, 'guia', 'aberta', 'DAS']]);
+    expect(painelDasGuias([], [], [], '2026-12', new Date(2026, 10, 12), g => g.tipo).linha).toEqual({ dias: 31, primeiroDia: 2, hoje: null, marcas: [] });
+  });
+});
+
+describe('a troca de empresa (as empresas abertas neste aparelho)', () => {
+  const p = (token: string, usadoEm: string, nome = 'Empresa ' + token) => ({ token, nome, documento: '', usadoEm });
+
+  it('a empresa aberta agora vai para o alto (sem repetir); o resto pela última vez que abriu', () => {
+    const lista = [p('a', '2026-11-01'), p('b', '2026-11-10'), p('c', '2026-11-05')];
+    expect(perfisComEste(lista, p('c', '2026-11-12', 'C nova')).map(x => [x.token, x.nome])).toEqual([['c', 'C nova'], ['b', 'Empresa b'], ['a', 'Empresa a']]);
+  });
+
+  it('guarda no máximo 12 e ignora o guardado torto', () => {
+    const muitos = Array.from({ length: 20 }, (_, i) => p('t' + i, '2026-10-' + String(i + 1).padStart(2, '0')));
+    expect(perfisComEste(muitos, p('novo', '2026-11-12')).length).toBe(MAIS_PERFIS);
+    expect(perfisComEste([null as never, { token: '', nome: 'x', documento: '', usadoEm: '' }], p('a', 'x')).map(x => x.token)).toEqual(['a']);
+  });
+
+  it('as iniciais da empresa, sem o Ltda e as palavras pequenas', () => {
+    expect([iniciaisDaEmpresa('Personaly Company Comércio de Roupas Ltda'), iniciaisDaEmpresa('Padaria'), iniciaisDaEmpresa('')]).toEqual(['PC', 'P', '?']);
   });
 });

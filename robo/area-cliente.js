@@ -17,6 +17,10 @@
 //      mascarado) e os documentos do DP dos últimos meses (a lista dpArquivos; o arquivo lido da pasta do cliente no Drive
 //      deste PC) em documentos/{id} (tipo 'dp') com os bytes em documentos/{id}~{n}. As regras são do core
 //      (areaCliente/pessoal.ts, pelo robo/gerado/danfse.js).
+//   7. o Faturamento (12/11/2026): resumo/faturamento, os meses de cada empresa pelas notas emitidas no SIEG
+//      (siegSaidas, a mesma fonte da relação de faturamento do Fiscal; ouvidas a partir de janeiro do ano passado, para
+//      o acumulado do ano comparar com o ano passado) e o regime (o limite do Simples/MEI); e o painel do mês, pelo
+//      resumo das notas (siegNotas) das empresas com link: a venda por dia, os maiores clientes e as operações.
 //
 // As guias de DAS/DAE do espelho são do envios-do-nads.js (ids das-/dae-…): este robô nunca as apaga nem regrava; só
 // mexe nas guias com tipo 'FGTS'.
@@ -111,6 +115,10 @@ function iniciarAreaDoCliente(db, log) {
   // ---------- o que os ouvintes guardam ----------
   const links = new Map();            // token → { codigos, nome }
   const pedidosFgts = new Map();      // id → pedido pronto
+  const saidasSieg = new Map();       // '<código>_<AAAA-MM>' → as saídas do SIEG do mês (o Faturamento)
+  const notasDoMesSieg = new Map();   // '<código>_<AAAA-MM>' → o resumo das notas do mês (o painel do mês; a nota não fica)
+  const listaDeNotasSieg = new Map(); // '<código>_<AAAA-MM>' → as notas do mês em lista enxuta (o relatório do dia)
+  const logosDasEmpresas = new Map(); // código → a logo (data URL) que o gestor pôs no nads (logosDasEmpresas/{código})
   const cadastroPorCodigo = new Map();
   const cadastroPorSlug = new Map();
   const execucoes = new Map();        // 'codigo|competencia|departamento' → execução
@@ -394,6 +402,31 @@ function iniciarAreaDoCliente(db, log) {
 
     // o Registro (os funcionários e os documentos do DP): um erro aqui não para o resto do espelho
     try { gravados += await espelharPessoal(token, link, empresas, hoje); } catch (e) { log('Registro: ' + (link.nome || token.slice(0, 6)) + ' falhou -', e.message); }
+    // o Faturamento: os 12 meses de cada empresa pelas notas emitidas no SIEG; sem nenhum mês, o resumo sai
+    try {
+      const P = doCore();
+      const fat = P.faturamentoDoCliente(empresas.map(e => ({ codigo: e.codigo, nome: e.nome, regime: e.regime || '' })), P.competenciasDoFaturamento(hoje),
+        (c, m) => saidasSieg.get(c + '_' + m), hoje, (c, m) => notasDoMesSieg.get(c + '_' + m));
+      const ref = espelhoDe(token).collection('resumo').doc('faturamento');
+      if (fat) { if (await gravar(token, 'resumo/faturamento', fat, 'faturamento')) gravados++; }
+      else if (await hashAtual(ref, token + '/resumo/faturamento')) { await ref.delete(); hashes.set(token + '/resumo/faturamento', ''); }
+      // o relatório do dia: a lista das notas de cada mês, um documento por empresa e mês (resumo/notas-{código}-{mês})
+      for (const emp of empresas) {
+        for (const [k, l] of listaDeNotasSieg) {
+          if (!k.startsWith(emp.codigo + '_')) continue;
+          const mes = k.slice(k.indexOf('_') + 1);
+          if (await gravar(token, 'resumo/notas-' + emp.codigo + '-' + mes, { codigo: emp.codigo, competencia: mes, notas: l.notas, cortadas: l.cortadas, atualizadoEm: agora }, 'notasLista')) gravados++;
+        }
+      }
+    } catch (e) { log('Faturamento: ' + (link.nome || token.slice(0, 6)) + ' falhou -', e.message); }
+
+    // a logo da empresa (12/11/2026): a primeira empresa do link que tem logo no nads; sem nenhuma, a marca sai
+    try {
+      const comLogo = empresas.map(e => logosDasEmpresas.get(e.codigo)).find(Boolean);
+      const ref = espelhoDe(token).collection('resumo').doc('marca');
+      if (comLogo) { if (await gravar(token, 'resumo/marca', { logo: comLogo, atualizadoEm: agora }, 'marca')) gravados++; }
+      else if (await hashAtual(ref, token + '/resumo/marca')) { await ref.delete(); hashes.set(token + '/resumo/marca', ''); }
+    } catch (e) { log('Logo: ' + (link.nome || token.slice(0, 6)) + ' falhou -', e.message); }
 
     for (const a of R.agendaDoLink(empresas, comps)) {
       if (await gravar(token, 'agenda/' + a.mes, { mes: a.mes, itens: a.itens, atualizadoEm: agora }, 'agenda')) gravados++;
@@ -443,6 +476,7 @@ function iniciarAreaDoCliente(db, log) {
     for (const t of links.keys()) if (!novos.has(t)) esquecer(t);
     links.clear();
     for (const [t, l] of novos) links.set(t, l);
+    ouvirNotas();
     for (const ch of snap.docChanges()) {
       if (ch.type !== 'removed' && links.has(ch.doc.id)) fila.add(ch.doc.id);
       // revogado ou trocado (o nads apaga o link e deixa o espelho): o espelho dele sai já
@@ -459,6 +493,63 @@ function iniciarAreaDoCliente(db, log) {
     if (!primeiraFgts) for (const ch of snap.docChanges()) tokensDaEmpresa(ch.doc.get('codigo')).forEach(t => fila.add(t));
     primeiraFgts = false;
     pronto('fgts');
+    agendar();
+  }, log);
+
+  // as notas do mês (siegNotas, o "Baixar XMLs do SIEG") só das empresas com link (12/11/2026, o painel do mês do
+  // Faturamento): cada documento vira o resumo (por dia, os clientes, as operações) e só ele fica na memória. O ouvinte
+  // troca quando as empresas dos links mudam; o "in" do Firestore aceita até 30 códigos.
+  let codigosDasNotas = null, pararNotas = null, primeirasNotas = true;
+  function ouvirNotas() {
+    const codigos = [...new Set([...links.values()].flatMap(l => l.codigos))].sort((a, b) => a - b);
+    if (codigos.length > 30) log('Área do Cliente: mais de 30 empresas com link; o painel do mês só das 30 primeiras');
+    const chave = codigos.slice(0, 30).join();
+    if (chave === codigosDasNotas) return;
+    if (pararNotas) { pararNotas(); pararNotas = null; }
+    codigosDasNotas = chave;
+    notasDoMesSieg.clear();
+    primeirasNotas = true;
+    if (!codigos.length) return;
+    const desde = (new Date().getFullYear() - 1) + '-01';
+    pararNotas = ouvir('Área do Cliente: notas do SIEG', () => db.collection('siegNotas').where('codigo', 'in', codigos.slice(0, 30).map(String)), snap => {
+      const P = doCore();
+      for (const ch of snap.docChanges()) {
+        const d = ch.doc.data();
+        const k = Number(d.codigo) + '_' + d.competencia;
+        if (ch.type === 'removed' || !(String(d.competencia || '') >= desde)) { notasDoMesSieg.delete(k); listaDeNotasSieg.delete(k); continue; }
+        try {
+          const r = P.notasDoMes(d); if (r) notasDoMesSieg.set(k, r); else notasDoMesSieg.delete(k);
+          const l = P.listaDeNotasDoMes(d); if (l) listaDeNotasSieg.set(k, l); else listaDeNotasSieg.delete(k);
+        } catch (e) { log('Área do Cliente: notas de', ch.doc.id, 'falharam -', e.message); }
+        if (!primeirasNotas) tokensDaEmpresa(d.codigo).forEach(t => fila.add(t));
+      }
+      primeirasNotas = false;
+      agendar();
+    }, log);
+  }
+
+  // as logos das empresas (12/11/2026): o gestor põe no nads (logosDasEmpresas/{código}); só a que passa no erroDaLogo
+  // (PNG, JPG ou WebP em data URL, dentro do tamanho) vai para o espelho
+  ouvir('Área do Cliente: logos', () => db.collection('logosDasEmpresas'), snap => {
+    const P = doCore();
+    for (const ch of snap.docChanges()) {
+      const cod = Number(ch.doc.id);
+      const logo = ch.doc.get('logo');
+      if (ch.type === 'removed' || P.erroDaLogo(logo)) logosDasEmpresas.delete(cod); else logosDasEmpresas.set(cod, logo);
+      tokensDaEmpresa(cod).forEach(t => fila.add(t));
+    }
+    agendar();
+  }, log);
+
+  // as saídas do SIEG dos últimos 12 meses (o Faturamento): lidas uma vez ao ligar; depois, só o mês que muda
+  let primeirasSaidas = true;
+  ouvir('Área do Cliente: saídas do SIEG', () => db.collection('siegSaidas').where('competencia', '>=', (new Date().getFullYear() - 1) + '-01'), snap => {
+    for (const ch of snap.docChanges()) {
+      const s = ch.doc.data();
+      if (ch.type === 'removed') saidasSieg.delete(ch.doc.id); else saidasSieg.set(ch.doc.id, s);
+      if (!primeirasSaidas) tokensDaEmpresa(s.codigo).forEach(t => fila.add(t));
+    }
+    primeirasSaidas = false;
     agendar();
   }, log);
 
@@ -551,6 +642,9 @@ function iniciarAreaDoCliente(db, log) {
       // o snapshot pode ser de antes de o pedido ser tratado e apagado: relê (senão a resposta entraria duas vezes)
       const atual = await doc.ref.get();
       if (!atual.exists) return;
+      // o pedido de DANFE do relatório do dia (12/11/2026) vem pela mesma caixa, marcado: não vira chamado
+      const chaveDanfe = doCore().chaveDoPedidoDeDanfe(atual.data());
+      if (chaveDanfe) { await tratarDanfe(doc, atual.data(), chaveDanfe); return; }
       const v = R.validarPedidoDeChamado(atual.data());
       const token = v.pedido ? v.pedido.token : '';
       const linkSnap = token ? await espelhoDe(token).get() : null;
@@ -595,6 +689,60 @@ function iniciarAreaDoCliente(db, log) {
       painel.erro('area-cliente', 'Um chamado da Área do Cliente ficou esperando', err.message);
     } finally { tratandoChamados.delete(doc.id); }
   }
+  // ---------- a DANFE pedida pelo relatório do dia (12/11/2026: "quero poder clicar e ver a danfe da nota") ----------
+  // O cliente pede pela caixa dos chamados (título "DANFE", texto "danfe:<chave>"). Só a nota de uma empresa do link (o
+  // CNPJ do emitente na chave); o XML vem do Drive pela mesma busca do robô do SIEG (a pasta arquivada do cliente e a do
+  // Claudio Secretario); a DANFE é o desenho do nads (desenharDanfe). Sem o XML, o documento sai com o erro (a tela diz).
+  const LIMITE_DANFES_POR_DIA = 200;
+  const danfesHoje = { dia: '', porToken: {} };
+  let xmlsGuardados = { chave: '', em: 0, xmls: [] };   // os XMLs do último mês lido (10 min): várias DANFEs do mesmo mês
+  async function xmlDaNota(codigo, competencia, chave) {
+    const k = codigo + '_' + competencia;
+    if (xmlsGuardados.chave !== k || Date.now() - xmlsGuardados.em > 10 * 60_000) {
+      const n = await db.collection('siegNotas').doc(k).get();
+      const pasta = n.exists ? path.basename(String(n.get('pasta') || '').replace(/\\/g, '/')) : '';
+      const r = await require('./sieg').xmlsJaNoDrive(codigo, pasta || String(codigo), competencia, db);
+      xmlsGuardados = { chave: k, em: Date.now(), xmls: r.xmls };
+    }
+    return xmlsGuardados.xmls.find(x => x.includes('Id="NFe' + chave + '"')) || null;
+  }
+  async function tratarDanfe(doc, p, chave) {
+    const P = doCore();
+    const token = R.tokenValido(p.token) ? p.token : '';
+    const linkSnap = token ? await espelhoDe(token).get() : null;
+    if (!linkSnap || !linkSnap.exists) { log('Área do Cliente: pedido de DANFE descartado (o link não existe)'); await doc.ref.delete(); return; }
+    const dia = hojeIso();
+    if (danfesHoje.dia !== dia) { danfesHoje.dia = dia; danfesHoje.porToken = {}; }
+    if ((danfesHoje.porToken[token] || 0) >= LIMITE_DANFES_POR_DIA) { log('Área do Cliente: pedido de DANFE descartado (passou de ' + LIMITE_DANFES_POR_DIA + ' hoje)'); await doc.ref.delete(); return; }
+    danfesHoje.porToken[token] = (danfesHoje.porToken[token] || 0) + 1;
+    const id = P.idDaDanfe(chave);
+    const col = espelhoDe(token).collection('documentos');
+    const ja = await col.doc(id).get();
+    if (ja.exists && !ja.get('erro')) { await doc.ref.delete(); return; }
+    const link = Object.assign({ codigos: [] }, linkSnap.data());
+    const partes = P.partesDaChave(chave);
+    const nome = 'DANFE ' + partes.numero + '.pdf';
+    const mapa = await clientesDoEntregas();
+    const emp = (link.codigos || []).map(Number).map(c => empresaDoCodigo(c, mapa, link)).find(e => e.cnpj === partes.cnpj);
+    const gravarMeta = extra => col.doc(id).set(R.conferirListaBranca('documentoDanfe', Object.assign({ tipo: 'danfe', id, nome, chave, partes: 0, atualizadoEm: new Date().toISOString() }, extra)));
+    if (!emp) { await gravarMeta({ erro: 'Esta nota não é de uma empresa deste link.' }); await doc.ref.delete(); return; }
+    const xml = await xmlDaNota(emp.codigo, partes.competencia, chave);
+    if (!xml) {
+      await gravarMeta({ erro: 'O XML desta nota ainda não chegou ao Drive do escritório. Tente de novo mais tarde.' });
+      await doc.ref.delete();
+      log('Área do Cliente: DANFE sem o XML no Drive -', emp.nome, chave);
+      return;
+    }
+    const bytes = Buffer.from(await require('./gerado/danfse').desenharDanfe(xml));
+    const pedacos = R.pedacosDoPdf(bytes.toString('base64'));
+    // os pedaços primeiro; o documento por último (a tela espera por ele)
+    for (const pd of pedacos) await col.doc(id + '~' + pd.n).set(R.conferirListaBranca('pedacoDp', { base64: pd.base64, n: pd.n, total: pd.total, de: id }));
+    await gravarMeta({ partes: pedacos.length });
+    await doc.ref.delete();
+    log('Área do Cliente: DANFE no espelho -', emp.nome, '· nota', partes.numero);
+    painel.atividade('area-cliente', 'DANFE pedida pelo cliente' + (link.nome ? ' — ' + link.nome : ''), 'nota ' + partes.numero);
+  }
+
   let filaChamados = Promise.resolve();
   ouvir('Área do Cliente: caixa dos chamados', () => db.collection('areaClienteChamados').limit(20), snap => {
     snap.docs.forEach(d => { filaChamados = filaChamados.then(() => tratarChamado(d)); });

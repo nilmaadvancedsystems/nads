@@ -104,7 +104,11 @@ export function areaDeExemplo(hoje: Date): EstadoDaArea {
     ],
     documentos: documentosDeExemplo(hoje),
     certificado: { tipo: 'A1', titular: 'PERSONALY COMPANY LTDA', validoAte: iso(emDias(hoje, 25)) },
-    pessoal: pessoalDeExemplo(hoje), documentosDp: documentosDpDeExemplo(hoje),
+    pessoal: pessoalDeExemplo(hoje), documentosDp: documentosDpDeExemplo(hoje), faturamento: faturamentoDeExemplo(hoje), logo: LOGO_DE_EXEMPLO,
+    danfes: [
+      { id: 'danfe-' + chaveDeExemplo('55', 1842), nome: 'DANFE 1842.pdf', chave: chaveDeExemplo('55', 1842), atualizadoEm: comHora(hoje, 9, 12) },
+      { id: 'danfe-' + chaveDeExemplo('65', 23367), nome: 'DANFE 23367.pdf', chave: chaveDeExemplo('65', 23367), atualizadoEm: comHora(hoje, 9, 15) },
+    ],
     ficha: {
       razaoSocial: 'Personaly Company Ltda', nomeFantasia: 'Personaly', cnpj: '00.000.000/0001-91', inscricaoEstadual: '000.000.000.0000',
       inscricaoMunicipal: '000000-0', regime: 'Simples Nacional', cnae: '47.12-1-00 (comércio varejista de mercadorias em geral)', abertura: '2019-04-02',
@@ -188,6 +192,90 @@ function pessoalDeExemplo(hoje: Date): ac.ResumoDoPessoal {
     { id: 'f6', nome: 'PAULO HENRIQUE COSTA', cpf: '***.330.487-**', matricula: '005', remuneracao: 2100, desde: '2022-02', ultimo: mesAtras(hoje, 3), ativo: false },
   ];
   return { funcionarios, competencia: ultimo, total: 15800, atualizadoEm: comHora(hoje, 7, 30) };
+}
+
+/** O faturamento de exemplo (12/11/2026): 12 meses de notas emitidas, como o robô monta pelo SIEG (o mês de hoje ainda sem dado). */
+/** A logo de exemplo (um monograma; só para ver o topo: o robô aceita só PNG, JPG e WebP). */
+const LOGO_DE_EXEMPLO = 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#1f6feb"/><text x="32" y="42" font-family="Arial,sans-serif" font-size="28" font-weight="700" fill="#fff" text-anchor="middle">PC</text></svg>');
+
+/** Uma chave de exemplo: MG, out/2026, o CNPJ de exemplo, o modelo e o número no lugar certo (o resto zerado). */
+const chaveDeExemplo = (modelo: string, numero: number) => '31' + '2610' + '00000000000191' + modelo + '001' + String(numero).padStart(9, '0') + '1' + '00000000' + '0';
+
+/** As notas de exemplo do relatório do dia: a venda de cada dia em notas (o atacado em NF-e, o balcão em NFC-e). */
+function notasDoDiaDeExemplo(n: ac.NotasDoMes): ac.NotaDoRelatorio[] {
+  const notas: ac.NotaDoRelatorio[] = [];
+  let nfe = 1840, nfce = 23360;
+  const atacado = n.clientes.filter(c => c.nome !== ac.CONSUMIDOR_FINAL).map(c => c.nome);
+  n.porDia.forEach((valor, i) => {
+    if (!valor) return;
+    const partes = 3 + (i % 5);
+    const doAtacado = Math.round(valor * 0.6 * 100) / 100;
+    notas.push({ dia: i + 1, tipo: 'NF-e', numero: String(nfe), serie: '1', cliente: atacado[i % Math.max(1, atacado.length)] ?? 'Loja Estrela', cfop: i % 4 ? '5102' : '5405', valor: doAtacado, chave: chaveDeExemplo('55', nfe++) });
+    for (let k = 0; k < partes; k++) {
+      notas.push({ dia: i + 1, tipo: 'NFC-e', numero: String(nfce), serie: '1', cliente: ac.CONSUMIDOR_FINAL, cfop: '5102', valor: Math.round(((valor - doAtacado) / partes) * 100) / 100, chave: chaveDeExemplo('65', nfce++) });
+    }
+    if (i % 9 === 4) notas.push({ dia: i + 1, tipo: 'NFC-e', numero: String(nfce), serie: '1', cliente: ac.CONSUMIDOR_FINAL, cfop: '5102', valor: 48.9, cancelada: true, chave: chaveDeExemplo('65', nfce++) });
+  });
+  return notas;
+}
+
+/** O painel do mês de exemplo: a venda espalhada pelos dias (mais no sábado), 5 clientes do atacado e o balcão. */
+function notasDoMesDeExemplo(competencia: string, total: number, nfe: number, ateODia: number): ac.NotasDoMes {
+  const ano = Number(competencia.slice(0, 4)), mes = Number(competencia.slice(5, 7));
+  const dias = ateODia || new Date(ano, mes, 0).getDate();
+  const pesos = Array.from({ length: new Date(ano, mes, 0).getDate() }, (_, i) => {
+    if (i >= dias) return 0;
+    const semana = new Date(ano, mes - 1, i + 1).getDay();
+    return semana === 0 ? 0.25 : (semana === 6 ? 1.6 : 1) * (1 + 0.35 * Math.sin((i + mes) * 1.7)) * (i < 6 ? 1.2 : 1);
+  });
+  const soma = pesos.reduce((t, p) => t + p, 0) || 1;
+  const porDia = pesos.map(p => Math.round((total * p) / soma * 100) / 100);
+  const atacado = [['Mercado Bom Preço Ltda', 0.31], ['Distribuidora Central', 0.22], ['Casa & Cia Utilidades', 0.15], ['Loja Estrela', 0.09], ['Bazar da Praça', 0.06]] as const;
+  const clientes = atacado.map(([nome, p], k) => ({ nome, valor: Math.round(nfe * p * 100) / 100, notas: 14 - k * 2 }));
+  const balcao = Math.round((total - clientes.reduce((t, c) => t + c.valor, 0)) * 100) / 100;
+  const maiorDia = porDia.indexOf(Math.max(...porDia));
+  return {
+    porDia,
+    clientes: [{ nome: 'Consumidor final', valor: balcao, notas: 260 }, ...clientes].sort((a, b) => b.valor - a.valor).slice(0, 5),
+    totalClientes: 23,
+    outrosClientes: { clientes: 18, valor: Math.round(nfe * 0.17 * 100) / 100 },
+    cfops: [
+      { cfop: '5102', descricao: 'Venda de mercadoria', valor: Math.round(total * 0.58 * 100) / 100 },
+      { cfop: '5405', descricao: 'Venda com ICMS já retido (ST)', valor: Math.round(total * 0.27 * 100) / 100 },
+      { cfop: '6102', descricao: 'Venda de mercadoria (outro estado)', valor: Math.round(total * 0.11 * 100) / 100 },
+      { cfop: '5910', descricao: 'Bonificação, doação ou brinde', valor: Math.round(total * 0.04 * 100) / 100 },
+    ],
+    servicos: { notas: 3, valor: 4200 },
+    maiorVenda: { valor: Math.round(nfe * 0.08 * 100) / 100, dia: maiorDia + 1, cliente: 'Mercado Bom Preço Ltda' },
+    em: competencia + '-28T06:00:00Z',
+  };
+}
+
+function faturamentoDeExemplo(hoje: Date): ac.ResumoDoFaturamento {
+  // de janeiro do ano passado ao mês de hoje (como o robô junta); o ano passado ~12% abaixo; o mês de hoje, pela metade
+  const valores = [84200, 79350, 91840, 88010, 95760, 102300, 97480, 99120, 108650, 112400, 118930, 121300];
+  const competencias = ac.competenciasDoFaturamento(hoje);
+  let anterior: number | null = null;
+  const meses: ac.MesDoFaturamento[] = competencias.map((competencia, i) => {
+    const k = Number(competencia.slice(5, 7)) - 1;
+    const atual = i === competencias.length - 1;
+    const total = Math.round((valores[k] ?? 0) * (competencia.startsWith(String(hoje.getFullYear())) ? 1 : 0.88) * (atual ? 0.45 : 1) * 100) / 100;
+    const variacao = total != null && anterior ? Math.round(((total - anterior) / anterior) * 1000) / 10 : null;
+    if (total != null) anterior = total;
+    return total == null ? { competencia, nfe: null, nfce: null, notas: 0, total: null, variacao: null }
+      : (() => {
+        const nfe = Math.round(total * 0.62 * 100) / 100, nfce = Math.round((total - nfe) * 100) / 100, notas = 180 + i * 7;
+        const nNfe = Math.round(notas * 0.18), inicioNfe = 1000 + i * 40, inicioNfce = 20000 + i * 160;
+        return {
+          competencia, nfe, nfce, notas, total, variacao, canceladas: i % 3, notasDoMes: notasDoMesDeExemplo(competencia, total, nfe, atual ? hoje.getDate() : 0),
+          series: [
+            { modelo: '55', serie: '1', primeira: inicioNfe, ultima: inicioNfe + nNfe - 1 + (i % 3), notas: nNfe, canceladas: i % 3, valor: nfe },
+            { modelo: '65', serie: '1', primeira: inicioNfce, ultima: inicioNfce + notas - nNfe - 1, notas: notas - nNfe, canceladas: 0, valor: nfce },
+          ],
+        };
+      })();
+  });
+  return { empresas: [{ codigo: 9999, nome: 'Personaly Company', regime: 'Simples', meses }], fonte: 'SIEG · NF-e/NFC-e emitidas', atualizadoEm: comHora(hoje, 7, 30) };
 }
 
 /** Os documentos do DP de exemplo: os três últimos meses, como os da pasta DEPARTAMENTO PESSOAL do Drive. */
@@ -289,6 +377,17 @@ export function criarRepoAreaClienteMemoria(agora: () => Date = () => new Date()
         chamados: e.chamados.map(c => c.id !== id || !ac.chamadoAceitaResposta(c) ? c
           : { ...c, situacao: 'aberto', mensagens: [...c.mensagens, { de: 'cliente', autor: 'Você', texto: texto.trim(), em: agora().toISOString() }] }),
       }));
+    },
+    async pedirDanfe(_token, chave) {
+      const c = ac.chaveDeNota(chave);
+      if (!c) return { erro: 'Esta nota não tem DANFE.' };
+      await new Promise(r => setTimeout(r, 700));
+      const p = ac.partesDaChave(c);
+      return { nome: 'DANFE ' + p.numero + '.pdf', arquivo: pdfDeExemplo(['DANFE DE EXEMPLO (nao vale como documento)', (p.modelo === '65' ? 'NFC-e' : 'NF-e') + ' numero ' + p.numero, 'Chave ' + c.replace(/(\d{4})(?=\d)/g, '$1 '), 'Na versao de verdade, a DANFE e desenhada pelo XML da nota.']) };
+    },
+    async notasDoMes(token, codigo, mes) {
+      const m = de(token)?.faturamento?.empresas.find(e => e.codigo === codigo)?.meses.find(x => x.competencia === mes);
+      return m?.notasDoMes ? notasDoDiaDeExemplo(m.notasDoMes) : null;
     },
     async baixarDocumentoDp(token, id) {
       const d = de(token)?.documentosDp.find(x => x.id === id);

@@ -52,6 +52,9 @@ export interface ListaAoVivo<T> { carregada: boolean; lista: readonly T[]; erro:
 
 export interface EmpresaDoLink { codigo: number; nome: string }
 
+/** logosDasEmpresas/{codigo} (12/11/2026): a logo que a Área do Cliente mostra no topo, como data URL (PNG/JPG/WebP). */
+export interface LogoDaEmpresa { codigo: number; logo: string; atualizadoEm: string }
+
 export interface RepoAreaCliente {
   exemplos: boolean;
   /** os links gerados, um por empresa (pedir já começa a ouvir) */
@@ -64,6 +67,11 @@ export interface RepoAreaCliente {
   trocar(empresa: EmpresaDoLink): Promise<LinkDaEmpresa>;
   /** apaga o link: o cliente deixa de ver a área */
   revogar(codigo: number): Promise<void>;
+  /** as logos das empresas (a Área do Cliente mostra no topo) */
+  logos(): ListaAoVivo<LogoDaEmpresa>;
+  /** grava a logo da empresa (o data URL já diminuído e conferido por erroDaLogo) */
+  gravarLogo(codigo: number, logo: string): Promise<void>;
+  apagarLogo(codigo: number): Promise<void>;
   /** acrescenta a resposta do escritório e passa o chamado para "respondido" */
   responder(chamadoId: string, texto: string): Promise<void>;
   mudarSituacao(chamadoId: string, situacao: ac.SituacaoDoChamado): Promise<void>;
@@ -139,9 +147,13 @@ export function criarAreaClienteMemoria(quem: () => string): RepoAreaCliente {
     { id: 'rx-3', token: tokenDe(356), codigo: 356, empresa: 'A7 COMERCIO DE VEICULOS LTDA', nome: 'comprovante-das-setembro.jpg', tipo: 'comprovante', tamanho: 1294870, pastaDrive: '356 › 2026 › Comprovantes', recebidoEm: ha(60 * 30) },
   ];
   const vazio = <T,>(lista: readonly T[]): ListaAoVivo<T> => ({ carregada: true, lista, erro: '' });
+  let logos: LogoDaEmpresa[] = [];
   return {
     exemplos: true,
     links: () => vazio(links),
+    logos: () => vazio(logos),
+    async gravarLogo(codigo, logo) { logos = [...logos.filter(l => l.codigo !== codigo), { codigo, logo, atualizadoEm: new Date().toISOString() }]; mudou(); },
+    async apagarLogo(codigo) { logos = logos.filter(l => l.codigo !== codigo); mudou(); },
     chamados: () => vazio(chamados),
     recebidos: () => vazio(recebidos),
     async gerar(e) {

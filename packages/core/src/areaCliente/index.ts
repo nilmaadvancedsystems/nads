@@ -22,3 +22,7 @@ export interface AreaDoCliente {
   atualizadoEm: string;
 }
 export * from './pessoal';
+export * from './faturamento';
+export * from './notasDoMes';
+export * from './logo';
+export * from './pedidoDeDanfe';

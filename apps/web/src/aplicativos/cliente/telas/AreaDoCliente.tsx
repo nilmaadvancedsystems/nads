@@ -17,6 +17,7 @@ import { Vazio } from '../partes/Vazio';
 import { Chamados } from './Chamados';
 import { DepartamentoPessoal } from './DepartamentoPessoal';
 import { Documentos } from './Documentos';
+import { Contato, Empresa, Faturamento } from './Administrativo';
 import { Guias } from './Guias';
 import { Inicio } from './Inicio';
 import { useJanelaDeEnvio } from './JanelaDeEnvio';
@@ -25,11 +26,10 @@ import '../cliente.css';
 
 export function AreaDoCliente() {
   const vm = useAreaCliente();
-  const { modal, toast } = useRetorno();
+  const { toast } = useRetorno();
   const { area } = vm;
   const daCasca = { token: vm.token, area, hoje: vm.hoje, irPara: vm.irPara, copiar: vm.copiar, exemplos: vm.exemplos };
   const valido = area.carregado && area.valido;
-  const fechar = [{ rotulo: 'Fechar', valor: null, variante: 'btn-outline' as const }];
   const c = vm.contato;
   const abrirEnvio = useJanelaDeEnvio(daCasca);
   // a gaveta (celular): o foco vai para o ✕ quando abre e volta para o ☰ quando fecha
@@ -47,59 +47,6 @@ export function AreaDoCliente() {
     window.open(c.whatsappLink, '_blank', 'noopener');
   };
 
-  const abrirFicha = () => {
-    const f = area.ficha;
-    vm.setMenuAberto(false);
-    void modal({
-      titulo: 'Ficha cadastral da empresa', botoes: [{ rotulo: 'Entendido', valor: null, variante: 'btn-outline' }],
-      corpo: f ? (
-        <div className="cli-app cli-janela">
-          <dl className="cli-dados">
-            <dt>Razão social</dt><dd><b>{f.razaoSocial}</b></dd>
-            <dt>CNPJ</dt><dd>{f.cnpj}</dd>
-            {f.inscricaoEstadual && <><dt>Inscrição estadual</dt><dd>{f.inscricaoEstadual}</dd></>}
-            {f.inscricaoMunicipal && <><dt>Inscrição municipal</dt><dd>{f.inscricaoMunicipal}</dd></>}
-            <dt>Regime tributário</dt><dd>{f.regime}</dd>
-            <dt>Atividade principal</dt><dd>{f.cnae}</dd>
-            <dt>Endereço</dt><dd>{f.endereco}</dd>
-            {f.socios.length > 0 && <><dt>Sócios</dt><dd>{f.socios.map(s => s.nome + ' (' + s.participacao + ')').join(', ')}</dd></>}
-          </dl>
-        </div>
-      ) : <p>Os dados da empresa ainda não chegaram.</p>,
-    });
-  };
-
-  const abrirContato = () => {
-    vm.setMenuAberto(false);
-    void modal({
-      titulo: 'Fale com o escritório', texto: c.horario || undefined, botoes: fechar,
-      corpo: (
-        <div className="cli-app cli-janela">
-          <ul>
-            {c.whatsapp && (
-              <li className="cli-linha">
-                <div className="cli-linha-txt"><b>WhatsApp</b><p className="hint">{c.whatsapp}</p></div>
-                <button type="button" className="btn btn-primary" onClick={abrirWhatsapp}>Abrir conversa</button>
-              </li>
-            )}
-            {c.telefone && (
-              <li className="cli-linha">
-                <div className="cli-linha-txt"><b>Telefone</b><p className="hint">{c.telefone}</p></div>
-                <button type="button" className="btn" onClick={() => vm.copiar(c.telefone!, 'Telefone')}>Copiar</button>
-              </li>
-            )}
-            {[{ nome: 'E-mail', email: c.email ?? '' }, ...c.setores].filter(s => s.email).map(s => (
-              <li key={s.nome} className="cli-linha">
-                <div className="cli-linha-txt"><b>{s.nome === 'E-mail' ? 'E-mail' : 'E-mail do ' + s.nome.toLowerCase()}</b><p className="hint">{s.email}</p></div>
-                <button type="button" className="btn" onClick={() => vm.copiar(s.email, 'E-mail')}>Copiar</button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ),
-    });
-  };
-
   return (
     <div className={'cli-app' + (valido && vm.recolhida ? ' sidebar-oculta cli-recolhida' : '')}>
       {valido && (
@@ -112,7 +59,7 @@ export function AreaDoCliente() {
                 <button type="button" ref={xDaGaveta} className="drawer-x" aria-label="Fechar o menu" onClick={() => vm.setMenuAberto(false)}><Icone nome="x" width={16} height={16} /></button>
               </div>
               <nav className="cli-menu" aria-label="Seções">
-                {vm.abas.map(a => {
+                {vm.abas.filter(a => !a.administrativo).map(a => {
                   const conta = vm.contadores[a.id];
                   return (
                     <button key={a.id} type="button" title={a.rotulo} className={'subnav-item' + (vm.aba === a.id ? ' active' : '')} aria-current={vm.aba === a.id ? 'page' : undefined} onClick={() => vm.irPara(a.id)}>
@@ -122,8 +69,12 @@ export function AreaDoCliente() {
                   );
                 })}
                 <p className="subnav-title">Administrativo</p>
-                {vm.temFicha && <button type="button" className="subnav-item" title="Dados cadastrais" onClick={abrirFicha}><Icone nome="predio" width={16} height={16} /><span>Dados cadastrais</span></button>}
-                <button type="button" className="subnav-item" title="Fale com o escritório" onClick={abrirContato}><Icone nome="telefone" width={16} height={16} /><span>Fale com o escritório</span></button>
+                {/* o Faturamento, os Dados cadastrais e o Fale com o escritório viraram telas (12/11/2026) */}
+                {vm.abas.filter(a => a.administrativo).map(a => (
+                  <button key={a.id} type="button" title={a.rotulo} className={'subnav-item' + (vm.aba === a.id ? ' active' : '')} aria-current={vm.aba === a.id ? 'page' : undefined} onClick={() => vm.irPara(a.id)}>
+                    <Icone nome={a.icone} width={16} height={16} /><span>{a.rotulo}</span>
+                  </button>
+                ))}
               </nav>
             </div>
             <div>
@@ -147,13 +98,48 @@ export function AreaDoCliente() {
                 <Icone nome="menu" width={16} height={16} />
               </button>
             )}
-            <div className="cli-empresa">
-              <span className="cli-empresa-ico" aria-hidden="true"><Icone nome="predio" width={18} height={18} /></span>
-              <div className="cli-empresa-txt">
-                <b>{valido ? vm.empresa : 'Nilma Contabilidade'}</b>
-                {valido && vm.cnpj && <small>{vm.rotuloDoDocumento} {vm.cnpj}</small>}
-              </div>
-            </div>
+            {/* a empresa no topo; com outras empresas abertas neste aparelho, vira a troca de empresa (12/11/2026) */}
+            {(() => {
+              const ficha = (
+                <>
+                  {valido && vm.logo
+                    ? <span className="cli-empresa-ico cli-empresa-logo"><img src={vm.logo} alt={'Logo de ' + vm.empresa} /></span>
+                    : <span className="cli-empresa-ico" aria-hidden="true"><Icone nome="predio" width={18} height={18} /></span>}
+                  <div className="cli-empresa-txt">
+                    <b>{valido ? vm.empresa : 'Nilma Contabilidade'}</b>
+                    {valido && vm.cnpj && <small>{vm.rotuloDoDocumento} {vm.cnpj}</small>}
+                  </div>
+                </>
+              );
+              // sempre o botão com a seta (12/11/2026: "isso não está com o dropdown"); sem outra empresa, o menu explica
+              if (!valido) return <div className="cli-empresa">{ficha}</div>;
+              return (
+                <MenuSuspenso className="cli-empresa cli-empresa-troca" titulo="Trocar de empresa" dica="Trocar de empresa" largura={340} rotulo={ficha}
+                  conteudo={fechar => (
+                    <div className="cli-troca">
+                      <p className="cli-troca-titulo">Suas empresas neste aparelho</p>
+                      <div className="cli-troca-item atual" aria-current="true">
+                        <span className="cli-troca-marca">{vm.logo ? <img src={vm.logo} alt="" /> : vm.iniciais}</span>
+                        <span className="cli-troca-txt"><b>{vm.empresa}</b>{vm.cnpj && <small>{vm.rotuloDoDocumento} {vm.cnpj}</small>}</span>
+                        <Icone nome="check" width={16} height={16} />
+                      </div>
+                      {vm.outrasEmpresas.map(p => (
+                        <div key={p.token} className="cli-troca-linha">
+                          <button type="button" className="cli-troca-item" onClick={() => { fechar(); vm.trocarDeEmpresa(p.token); }}>
+                            <span className="cli-troca-marca">{p.logo ? <img src={p.logo} alt="" /> : p.iniciais}</span>
+                            <span className="cli-troca-txt"><b>{p.nome}</b>{p.documento && <small>{p.documento.replace(/\D/g, '').length === 11 ? 'CPF' : 'CNPJ'} {p.documento}</small>}</span>
+                          </button>
+                          <button type="button" className="icon-btn icon-btn-sm cli-troca-tirar" title="Tirar desta lista" aria-label={'Tirar ' + p.nome + ' desta lista'} onClick={() => vm.esquecerEmpresa(p.token)}>
+                            <Icone nome="x" width={14} height={14} />
+                          </button>
+                        </div>
+                      ))}
+                      <p className="cli-troca-dica">{vm.outrasEmpresas.length ? 'Para outra empresa aparecer aqui, abra o link dela uma vez neste aparelho.'
+                        : 'Tem outra empresa com o escritório? Abra o link dela uma vez neste aparelho e ela aparece aqui para trocar.'}</p>
+                    </div>
+                  )} />
+              );
+            })()}
           </div>
           {valido && (
             <div className="cli-topo-dir">
@@ -200,6 +186,9 @@ export function AreaDoCliente() {
               {vm.aba === 'guias' && <Guias {...daCasca} />}
               {vm.aba === 'dp' && <DepartamentoPessoal {...daCasca} />}
               {vm.aba === 'chamados' && <Chamados {...daCasca} />}
+              {vm.aba === 'faturamento' && <Faturamento {...daCasca} />}
+              {vm.aba === 'empresa' && <Empresa {...daCasca} />}
+              {vm.aba === 'contato' && <Contato {...daCasca} contato={c} onWhatsapp={c.whatsappLink ? abrirWhatsapp : undefined} />}
             </>
           )}
         </main>

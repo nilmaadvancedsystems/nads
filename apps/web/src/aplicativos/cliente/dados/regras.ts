@@ -202,3 +202,68 @@ export function nomeDaPessoa(nome: string): string {
   return nome.trim().toLowerCase().split(/\s+/).filter(Boolean)
     .map((p, i) => (i > 0 && miudas.has(p) ? p : p.charAt(0).toUpperCase() + p.slice(1))).join(' ');
 }
+
+/** A linha que a solicitação ganha quando o cliente anexa arquivos nela (12/11/2026): "Enviei os arquivos: rg.pdf, cpf.pdf". */
+export function textoDosAnexos(nomes: readonly string[]): string {
+  const lista = nomes.map(n => n.trim()).filter(Boolean);
+  return (lista.length === 1 ? 'Enviei o arquivo: ' : 'Enviei os arquivos: ') + lista.join(', ') + '.';
+}
+
+// ---------- o painel das guias do mês (12/11/2026: "quero melhora nessa aba também") ----------
+
+/** Uma marca na linha do tempo do mês: a guia (pelo vencimento) ou a entrega do escritório (a agenda). */
+/** rotulo: o texto inteiro (a dica); curto: o que cabe na etiqueta do dia no calendário (DAS, FGTS, o nome da entrega) */
+export interface MarcaDoMes { dia: number; tipo: 'guia' | 'paga' | 'entrega'; tom: 'vencida' | 'hoje' | 'aberta' | 'feita'; rotulo: string; curto: string; /** o nome inteiro (a lista da agenda) */ nome: string; /** a guia e a paga */ valor?: number }
+
+export interface PainelDasGuias {
+  aPagar: { valor: number; guias: number };
+  vencidas: { valor: number; guias: number };
+  pagas: { valor: number; guias: number };
+  /** o calendário do mês: os dias, o dia da semana do dia 1 (0 = domingo), o dia de hoje (só no mês de hoje) e as marcas */
+  linha: { dias: number; primeiroDia: number; hoje: number | null; marcas: MarcaDoMes[] };
+}
+
+const centavosDe = (n: number) => Math.round(n * 100) / 100;
+const diaDe = (br: string) => Number(br.slice(0, 2)) || 0;
+
+/** Os números do mês das guias e o calendário do mês (as guias, as pagas e as entregas do escritório). */
+export function painelDasGuias(guias: readonly ac.GuiaDoCliente[], pagas: readonly { nome: string; valor: number; pagoEm: string }[],
+  agenda: readonly ac.ItemDaAgenda[], mes: string, hoje: Date, rotulo: (g: ac.GuiaDoCliente) => string): PainelDasGuias {
+  const soma = (xs: readonly { valor: number }[]) => centavosDe(xs.reduce((t, x) => t + x.valor, 0));
+  const vencidas = guias.filter(g => g.situacao === 'vencida');
+  const aPagar = soma(guias), pago = soma(pagas);
+  const vVencidas = soma(vencidas);
+  const ano = Number(mes.slice(0, 4)), m = Number(mes.slice(5, 7));
+  const ehHoje = hoje.getFullYear() === ano && hoje.getMonth() + 1 === m;
+  const marcas: MarcaDoMes[] = [
+    ...guias.map(g => ({ dia: diaDe(g.vencimento), tipo: 'guia' as const, tom: (g.situacao === 'vencida' ? 'vencida' : g.situacao === 'vence hoje' ? 'hoje' : 'aberta') as MarcaDoMes['tom'], rotulo: rotulo(g) + ' · ' + g.vencimento.slice(0, 5), curto: g.tipo === 'outra' ? 'Guia' : g.tipo, nome: rotulo(g), valor: g.valor })),
+    ...pagas.map(p => ({ dia: diaDe(p.pagoEm), tipo: 'paga' as const, tom: 'feita' as const, rotulo: p.nome + ' · pago em ' + p.pagoEm.slice(0, 5), curto: p.nome, nome: p.nome, valor: p.valor })),
+    ...agenda.filter(i => i.vence.startsWith(mes)).map(i => ({ dia: Number(i.vence.slice(8, 10)) || 0, tipo: 'entrega' as const, tom: (i.situacao === 'feito' ? 'feita' : 'aberta') as MarcaDoMes['tom'], rotulo: i.nome + ' · ' + i.vence.slice(8, 10) + '/' + i.vence.slice(5, 7), curto: i.nome.replace(/\s*\(.*\)$/, ''), nome: i.nome })),
+  ].filter(x => x.dia >= 1).sort((a, b) => a.dia - b.dia || a.tipo.localeCompare(b.tipo));
+  return {
+    aPagar: { valor: aPagar, guias: guias.length },
+    vencidas: { valor: vVencidas, guias: vencidas.length },
+    pagas: { valor: pago, guias: pagas.length },
+    linha: { dias: new Date(ano, m, 0).getDate(), primeiroDia: new Date(ano, m - 1, 1).getDay(), hoje: ehHoje ? hoje.getDate() : null, marcas },
+  };
+}
+
+// ---------- a troca de empresa (12/11/2026: "uma troca de perfil para pessoas que tenham mais de uma empresa") ----------
+
+/** Uma empresa que a pessoa já abriu neste aparelho: o link (o token), o nome e o documento, e quando abriu por último. */
+export interface PerfilGuardado { token: string; nome: string; documento: string; logo?: string; usadoEm: string }
+
+/** quantas empresas o aparelho guarda (as mais usadas ficam) */
+export const MAIS_PERFIS = 12;
+
+/** A lista guardada com a empresa aberta agora: ela entra (ou atualiza) no alto; o resto pela última vez que abriu. */
+export function perfisComEste(lista: readonly PerfilGuardado[], atual: PerfilGuardado): PerfilGuardado[] {
+  const outros = lista.filter(p => p && typeof p.token === 'string' && p.token && p.token !== atual.token && typeof p.nome === 'string');
+  return [atual, ...outros.sort((a, b) => String(b.usadoEm).localeCompare(String(a.usadoEm)))].slice(0, MAIS_PERFIS);
+}
+
+/** As iniciais do nome para o quadradinho da empresa sem logo ("Personaly Company Ltda" → "PC"). */
+export function iniciaisDaEmpresa(nome: string): string {
+  const palavras = nome.replace(/\b(ltda|me|epp|eireli|s\/?a|sa|do|da|de|dos|das|e)\b\.?/gi, ' ').trim().split(/\s+/).filter(Boolean);
+  return ((palavras[0]?.[0] ?? '') + (palavras[1]?.[0] ?? '')).toUpperCase() || '?';
+}

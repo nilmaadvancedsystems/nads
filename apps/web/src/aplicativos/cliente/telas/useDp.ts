@@ -4,11 +4,15 @@
 //   - os documentos do DP dos últimos meses (a folha, os recibos, o pró-labore, as férias, as rescisões, o FGTS, o INSS e o
 //     cartão de ponto), da pasta da empresa no Drive, mês a mês e por categoria; o de um funcionário vai na ficha dele.
 // E os pedidos de admissão, férias e desligamento (Vitor, 16/10/2026), que viram uma solicitação do tipo certo.
+// Refeito como equipe + ficha ao lado (12/11/2026: "agora o registro"; a escolhida: "equipe + ficha ao lado", o mesmo
+// desenho das Solicitações): a equipe (ativos ou quem saiu, com a busca) e a ficha da pessoa escolhida; embaixo, a folha
+// do mês por categoria. No celular, a equipe e a ficha um de cada vez.
 import { areaCliente as ac, formatos } from '@nads/core';
 import { formatoPeloNome, useRetorno } from '@nads/ui';
 import { useState } from 'react';
 import { baixarArquivo } from '../dados/baixar';
 import { repoAreaCliente } from '../dados/repo';
+import { useVisualizar } from './useVisualizar';
 import {
   dataBr, erroDaAdmissao, erroDaDemissao, erroDasFerias, nomeDaPessoa, resumoDoPessoal, textoDaAdmissao, textoDaDemissao, textoDasFerias,
   type PedidoDeAdmissao, type PedidoDeDemissao, type PedidoDeFerias,
@@ -25,6 +29,9 @@ export function useDp({ token, area, hoje }: DaCasca) {
   const { toast } = useRetorno();
   const [busca, setBusca] = useState('');
   const [mostrarSaidas, setMostrarSaidas] = useState(false);
+  const [escolhido, setEscolhido] = useState('');
+  const [fichaNoCelular, setFichaNoCelular] = useState(false);
+  const vista = useVisualizar();
   const meses = ac.mesesDosDocumentosDp(area.documentosDp);
   const [mesEscolhido, setMes] = useState('');
   const mes = meses.includes(mesEscolhido) ? mesEscolhido : meses[0] ?? '';
@@ -59,31 +66,39 @@ export function useDp({ token, area, hoje }: DaCasca) {
   const nomeDe = new Map(funcionarios.map(f => [f.id, nomeDaPessoa(f.nome)]));
   const docsDe = (id: string) => area.documentosDp.filter(d => d.funcionario === id);
   /** um documento como a tela mostra: o nome, de quem, o mês e o tamanho, o ícone e se dá para baixar */
-  const linhaDoDoc = (d: ac.DocumentoDoDp) => ({
-    id: d.id, nome: d.nome, formato: formatoPeloNome(d.nome), dono: d.funcionario ? nomeDe.get(d.funcionario) ?? '' : '',
+  // sem a extensão (o ícone já diz o tipo) e, na ficha da pessoa, sem o nome dela de novo (12/11/2026)
+  const linhaDoDoc = (d: ac.DocumentoDoDp, naFicha = false) => ({
+    id: d.id, nome: d.nome.replace(/\.[a-z0-9]{2,5}$/i, ''), formato: formatoPeloNome(d.nome), dono: d.funcionario && !naFicha ? nomeDe.get(d.funcionario) ?? '' : '',
     detalhe: [mesBr(d.competencia), d.tamanho ? ac.tamanhoLegivel(d.tamanho) : ''].filter(Boolean).join(' · '), podeBaixar: d.partes > 0,
   });
   const b = sem(busca.trim());
-  const visiveis = funcionarios.filter(f => (mostrarSaidas || f.ativo) && (!b || sem(f.nome + ' ' + f.cpf + ' ' + f.matricula).includes(b)));
+  // a equipe: os ativos ou quem saiu (um ou outro), com a busca
+  const visiveis = funcionarios.filter(f => (mostrarSaidas ? !f.ativo : f.ativo) && (!b || sem(f.nome + ' ' + f.cpf + ' ' + f.matricula).includes(b)))
+    .sort((x, y) => nomeDaPessoa(x.nome).localeCompare(nomeDaPessoa(y.nome)));
+  const atualId = visiveis.some(f => f.id === escolhido) ? escolhido : visiveis[0]?.id ?? '';
+  const iniciais = (nome: string) => nome.split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0]).join('').toUpperCase();
 
   return {
     numeros: resumoDoPessoal(area.pessoal, hoje),
     competencia: mesBr(area.pessoal?.competencia ?? ''),
     temFuncionarios: funcionarios.length > 0,
     funcionarios: visiveis.map(f => ({
-      id: f.id, nome: nomeDaPessoa(f.nome), cpf: f.cpf, matricula: f.matricula, desde: mesBr(f.desde), remuneracao: formatos.reais(f.remuneracao),
-      ativo: f.ativo, situacao: f.ativo ? 'Ativo' : 'Saiu em ' + mesBr(f.ultimo), documentos: docsDe(f.id).length,
+      id: f.id, nome: nomeDaPessoa(f.nome), iniciais: iniciais(nomeDaPessoa(f.nome)), cpf: f.cpf, matricula: f.matricula, desde: mesBr(f.desde), remuneracao: formatos.reais(f.remuneracao),
+      ativo: f.ativo, situacao: f.ativo ? 'Ativo' : 'Saiu em ' + mesBr(f.ultimo), documentos: docsDe(f.id).length, escolhido: f.id === atualId,
       /** os documentos dele, o mais novo primeiro (a ficha) */
-      docs: docsDe(f.id).sort((x, y) => y.competencia.localeCompare(x.competencia)).map(linhaDoDoc),
+      docs: docsDe(f.id).sort((x, y) => y.competencia.localeCompare(x.competencia)).map(d => linhaDoDoc(d, true)),
     })),
-    total: funcionarios.filter(f => mostrarSaidas || f.ativo).length,
+    ativosN: funcionarios.filter(f => f.ativo).length,
     saidas: funcionarios.filter(f => !f.ativo).length,
-    mostrarSaidas, alternarSaidas: () => setMostrarSaidas(v => !v),
+    mostrarSaidas, verAtivos: () => setMostrarSaidas(false), verSaidas: () => setMostrarSaidas(true),
+    escolher: (id: string) => { setEscolhido(id); setFichaNoCelular(true); },
+    fichaNoCelular, voltar: () => setFichaNoCelular(false),
+    vista, verDoc: (id: string) => vista.ver(id, () => repoAreaCliente.baixarDocumentoDp(token, id)),
     busca, mudarBusca: setBusca,
     // os documentos do mês, por categoria
     meses: meses.map(m => ({ valor: m, rotulo: formatos.capital(formatos.rot(m).toLowerCase()) })),
     mes, mudarMes: setMes,
-    grupos: ac.documentosPorCategoria(area.documentosDp.filter(d => d.competencia === mes)).map(g => ({ categoria: g.categoria, rotulo: g.rotulo, docs: g.documentos.map(linhaDoDoc) })),
+    grupos: ac.documentosPorCategoria(area.documentosDp.filter(d => d.competencia === mes)).map(g => ({ categoria: g.categoria, rotulo: g.rotulo, docs: g.documentos.map(d => linhaDoDoc(d)) })),
     baixar: (id: string) => { void baixar(id); }, baixando,
     // os pedidos
     pedir, nomes: funcionarios.filter(f => f.ativo).map(f => nomeDaPessoa(f.nome)).sort(),
