@@ -33,6 +33,8 @@ export interface GuiaDoLote extends Omit<ArquivoDoLote, 'leitura' | 'escolha'> {
 export interface ResultadoDoLoteFiscal extends ResultadoDoLote {
   /** as colunas que o robô preencheu no Relatório (as que estavam em branco); valores: o valor das guias por coluna */
   preenchidos: string[];
+  /** no impresso, as guias que já estavam na rota do Entregas e não foram de novo (11/11/2026) */
+  jaNaRota?: string[];
   /** a linha do Relatório não foi gravada (o e-mail foi): conferir à mão */
   erroNoRelatorio: string;
   /** como foi: pelo Gmail ou impresso (a entrega na rota do Entregas, entregaId) */
@@ -81,9 +83,10 @@ export interface RepoLoteFiscal {
   subir(grupo: t.GrupoDoControleId, arquivos: readonly { nome: string; bytes: Uint8Array }[], andamento: (feitos: number, total: number) => void): Promise<string>;
   /**
    * põe mais guias no lote lido, ainda não disparado (05/11/2026: "quero que tenha como upar aquivo num mesmo lote,
-   * atualmente quando voce upa ele simplesmente cria outro lote"): o robô lê só as novas e o lote volta a "lido"
+   * atualmente quando voce upa ele simplesmente cria outro lote"): o robô lê só as novas e o lote volta a "lido". Devolve os
+   * ids das novas (a Antecipação ICMS-ES já grava a escolha do relatório do cliente; 12/11/2026)
    */
-  adicionar(lote: string, arquivos: readonly { nome: string; bytes: Uint8Array }[], andamento: (feitos: number, total: number) => void): Promise<void>;
+  adicionar(lote: string, arquivos: readonly { nome: string; bytes: Uint8Array }[], andamento: (feitos: number, total: number) => void): Promise<string[]>;
   /** a escolha da revisão (null tira a escolha e volta ao que o leitor achou) */
   escolher(lote: string, arquivo: string, escolha: EscolhaDaGuia | null): Promise<void>;
   /** tira do lote ou põe de volta */
@@ -221,6 +224,7 @@ export function criarLoteFiscalMemoria(controle: () => RepoControleTributos): Re
         arquivos.set(id, doLote(id).map((a, k) => (a.status === 'pendente' ? { ...a, status: 'lido', leitura: leituraDeExemplo(a.nome, k, lote.grupo) } : a)));
         mudarLote(id, { status: 'lido', lidos: doLote(id).length });
       }, 1800);
+      return novas.map(a => a.id);
     },
     async escolher(id, a, escolha) { mudarArquivo(id, a, { escolha }); },
     async tirar(id, a, fora) { mudarArquivo(id, a, { fora }); },

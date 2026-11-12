@@ -44,7 +44,7 @@ function loteFiscalDoBanco(id: string, d: Record<string, unknown>): LoteFiscal {
     ...l, grupo: d.grupo === 'lp' ? 'lp' : 'sn',
     resultados: l.resultados.map(x => ({
       ...x, preenchidos: textos(r[x.chave]?.preenchidos), erroNoRelatorio: texto(r[x.chave]?.erroNoRelatorio),
-      via: viaDaGuia(r[x.chave]?.via), entregaId: texto(r[x.chave]?.entregaId),
+      via: viaDaGuia(r[x.chave]?.via), entregaId: texto(r[x.chave]?.entregaId), jaNaRota: textos(r[x.chave]?.jaNaRota),
     })),
     vias: Object.fromEntries(Object.entries((d.vias || {}) as Record<string, unknown>).map(([k, v]) => [k, viaDaGuia(v)] as const)),
   };
@@ -114,6 +114,7 @@ export function criarLoteFiscalFirestore(quem: () => e.Quem | null): RepoLoteFis
         andamento(k + 1, lista.length);
       }
       await updateDoc(ref, { status: 'pendente' });
+      return lista.map((_, k) => String(inicio + k));
     },
     async escolher(lote, arquivo, escolha) {
       // sem a coluna, o campo não vai (o Firestore não aceita undefined): vale a do leitor

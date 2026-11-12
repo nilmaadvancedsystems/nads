@@ -9,12 +9,14 @@ import type { KeyboardEvent } from 'react';
 import { documentoFormatado } from '../../financeiro/formatosDaNota';
 import { SiegDaEtapa } from '../../executor/partes/SiegDaEtapa';
 import { EmpresaDaBarra } from '../partes/EmpresaDaBarra';
-import { EspelhoDaNota } from '../partes/EspelhoDaNota';
+import { VerANota } from '../partes/VerANota';
 import { useBaixarDoSieg, type AbaDaTela, type VmBaixarDoSieg } from './useBaixarDoSieg';
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const reais = (n: number) => 'R$ ' + brl(n);
 const quantas = (n: number, um: string, varios: string) => n + ' ' + (n === 1 ? um : varios);
+/** as canceladas sempre à vista (11/11/2026: "Sim, sempre"), com o valor delas, que fica fora do total */
+const textoDasCanceladas = (n: number, valor: number) => (n ? quantas(n, 'cancelada', 'canceladas') + ' (' + reais(valor) + ')' : 'nenhuma cancelada');
 /** o número ou o traço (zero não diz nada na coluna dos impostos) */
 const ouTraco = (n: number) => (n ? brl(n) : <span className="fraco">—</span>);
 const peloTeclado = (fazer: () => void) => (e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fazer(); } };
@@ -32,7 +34,7 @@ export function BaixarDoSieg() {
   ];
   return (
     <section className="fc">
-      {vm.vendo && <EspelhoDaNota nota={vm.vendo} codigo={vm.empresa?.codigo} competencia={vm.competencia} fechar={vm.fecharNota} />}
+      {vm.vendo && <VerANota nota={vm.vendo} codigo={vm.empresa?.codigo} competencia={vm.competencia} fechar={vm.fecharNota} />}
       <div className="tarefas-barra-topo fc-topo">
         <EmpresaDaBarra vm={vm} id="sieg-empresas" />
         <SeletorMes valor={vm.competencia} onMudar={vm.setCompetencia} rotulo="Competência" />
@@ -49,7 +51,7 @@ export function BaixarDoSieg() {
                 {vm.aba === 'sequencia'
                   ? <SiegDaEtapa key={'s' + codigo + vm.competencia} tipo="saidas" codigo={codigo} competencia={vm.competencia} />
                   : !vm.painel
-                    ? <div className="card fc-cartao"><Vazio icone="download" titulo={'Os XMLs de ' + vm.rotuloCompetencia + ' ainda não foram baixados'} texto="Clique em Baixar XMLs do SIEG, no alto." /></div>
+                    ? <div className="card fc-cartao"><Vazio icone="download" titulo={'Os XMLs de ' + vm.rotuloCompetencia + ' ainda não foram baixados'} texto="Clique em Baixar do SIEG, no alto (XML, PDF ou os dois)." /></div>
                     : vm.resumo && <DaAba vm={vm} />}
               </>
             )}
@@ -62,15 +64,16 @@ export function BaixarDoSieg() {
 /** os números do mês: as notas de cada lado e os impostos que elas trazem */
 function Numeros({ vm }: { vm: VmBaixarDoSieg }) {
   const a = vm.painel!.abas;
-  const canceladas = (n: number) => (n ? ' · ' + quantas(n, 'cancelada', 'canceladas') : '');
+  // as canceladas com o valor delas (11/11/2026), que fica fora do total
+  const canceladas = (n: number, valor: number) => ' · ' + textoDasCanceladas(n, valor);
   return (
     <>
       <div className="stat-grid fin-numeros sieg-numeros">
-        <Stat grande={false} rotulo="Saídas" valor={reais(a.saidas.valor)} sub={quantas(a.saidas.quantidade, 'nota', 'notas') + canceladas(a.saidas.canceladas)} />
-        <Stat grande={false} rotulo="Entradas" valor={reais(a.entradas.valor)} sub={quantas(a.entradas.quantidade, 'nota', 'notas') + canceladas(a.entradas.canceladas)} />
-        <Stat grande={false} rotulo="Serviços prestados" valor={reais(a.prestados.valor)} sub={quantas(a.prestados.quantidade, 'nota', 'notas') + canceladas(a.prestados.canceladas)} />
-        <Stat grande={false} rotulo="Serviços tomados" valor={reais(a.tomados.valor)} sub={quantas(a.tomados.quantidade, 'nota', 'notas') + canceladas(a.tomados.canceladas)} />
-        <Stat grande={false} rotulo="CT-e" valor={reais(a.ctes.valor)} sub={quantas(a.ctes.quantidade, 'conhecimento', 'conhecimentos') + canceladas(a.ctes.canceladas)} />
+        <Stat grande={false} rotulo="Saídas" valor={reais(a.saidas.valor)} sub={quantas(a.saidas.quantidade, 'nota', 'notas') + canceladas(a.saidas.canceladas, a.saidas.valorCanceladas)} />
+        <Stat grande={false} rotulo="Entradas" valor={reais(a.entradas.valor)} sub={quantas(a.entradas.quantidade, 'nota', 'notas') + canceladas(a.entradas.canceladas, a.entradas.valorCanceladas)} />
+        <Stat grande={false} rotulo="Serviços prestados" valor={reais(a.prestados.valor)} sub={quantas(a.prestados.quantidade, 'nota', 'notas') + canceladas(a.prestados.canceladas, a.prestados.valorCanceladas)} />
+        <Stat grande={false} rotulo="Serviços tomados" valor={reais(a.tomados.valor)} sub={quantas(a.tomados.quantidade, 'nota', 'notas') + canceladas(a.tomados.canceladas, a.tomados.valorCanceladas)} />
+        <Stat grande={false} rotulo="CT-e" valor={reais(a.ctes.valor)} sub={quantas(a.ctes.quantidade, 'conhecimento', 'conhecimentos') + canceladas(a.ctes.canceladas, a.ctes.valorCanceladas)} />
       </div>
       <div className="stat-grid fin-numeros sieg-numeros">
         <Stat grande={false} rotulo="ICMS das saídas" valor={reais(a.saidas.icms)} sub={'Nas entradas ' + reais(a.entradas.icms)} />
@@ -139,19 +142,23 @@ function DaAba({ vm }: { vm: VmBaixarDoSieg }) {
   );
 }
 
-/** a tabela das notas da aba, com a busca; clicar abre o espelho (a NFS-e não tem) */
+/** a tabela das notas da aba, com a busca; clicar abre o espelho (a NFS-e, o espelho do serviço; 11/11/2026) */
 function Notas({ vm }: { vm: VmBaixarDoSieg }) {
   const r = vm.resumo!;
   const mercadoria = !vm.servico && vm.aba !== 'ctes';
   const parte = vm.aba === 'saidas' || vm.aba === 'prestados' ? 'Cliente' : vm.aba === 'ctes' ? 'Transportadora' : 'Fornecedor';
-  const abre = (tipo: string) => tipo !== 'NFS-e';
   const colunas = 6 + (mercadoria ? 3 : 0);
   return (
     <section className="card fc-cartao">
       <header className="fc-cartao-topo">
         <h3 className="fc-cartao-titulo">Notas</h3>
-        <span className="fc-contagem">{quantas(r.quantidade, 'nota', 'notas')}{r.canceladas > 0 && ' · ' + quantas(r.canceladas, 'cancelada', 'canceladas')}</span>
+        <span className="fc-contagem">{quantas(r.quantidade, 'nota', 'notas')}{' · ' + textoDasCanceladas(r.canceladas, r.valorCanceladas)}</span>
         <span className="fc-acoes">
+          {/* qual nota foi cancelada (11/11/2026): o filtro só com as canceladas, quando a aba tem alguma */}
+          {r.canceladas > 0 && (
+            <Segmentado valor={vm.soCanceladas ? 'canceladas' : 'todas'} onMudar={v => vm.setSoCanceladas(v === 'canceladas')}
+              opcoes={[{ valor: 'todas', rotulo: 'Todas' }, { valor: 'canceladas', rotulo: 'Canceladas (' + r.canceladas + ')' }]} />
+          )}
           <label className="busca-curta fc-busca">
             <Icone nome="search" width={16} height={16} />
             <input type="text" placeholder="Número, nome ou valor" aria-label="Buscar a nota" value={vm.buscaDaNota} onChange={e => vm.setBuscaDaNota(e.target.value)} />
@@ -172,11 +179,10 @@ function Notas({ vm }: { vm: VmBaixarDoSieg }) {
           </thead>
           <tbody>
             {vm.notas.map(n => {
-              const abrir = () => { if (abre(n.tipo)) vm.verNota(n.id); };
+              const abrir = () => vm.verNota(n.id);
               const retido = n.retencoes.reduce((s, x) => s + x.valor, 0);
               return (
-                <tr key={n.id} className={n.cancelada ? 'fraco' : undefined} tabIndex={abre(n.tipo) ? 0 : undefined} onClick={abrir} onKeyDown={peloTeclado(abrir)}
-                  title={abre(n.tipo) ? 'Ver a nota' : undefined} style={abre(n.tipo) ? undefined : { cursor: 'default' }}>
+                <tr key={n.id} className={n.cancelada ? 'fraco' : undefined} tabIndex={0} onClick={abrir} onKeyDown={peloTeclado(abrir)} title="Ver a nota">
                   <td><b>{n.numero}{n.serie ? '/' + n.serie : ''}</b>{n.tipo === 'NFC-e' && <span className="fraco"> · NFC-e</span>}{n.cancelada && <> <span className="badge badge-bad">Cancelada</span></>}</td>
                   <td>{n.data}</td>
                   <td className="wrap">{n.nome || '—'}{n.doc && <span className="fraco num"> · {documentoFormatado(n.doc)}</span>}{vm.servico && n.descricao && <span className="fraco"> · {n.descricao}</span>}</td>
@@ -186,11 +192,11 @@ function Notas({ vm }: { vm: VmBaixarDoSieg }) {
                     ? <td className="num" title={n.retencoes.map(x => x.imposto + ' ' + brl(x.valor)).join(' · ')}>{retido ? brl(retido) : <span className="fraco">—</span>}{n.retencoes.length > 0 && <span className="fraco"> · {n.retencoes.map(x => x.imposto).join(', ')}</span>}</td>
                     : <td className="num">{ouTraco(n.icms)}</td>}
                   {mercadoria && <td className="num">{ouTraco(n.st)}</td>}{mercadoria && <td className="num">{ouTraco(n.ipi)}</td>}
-                  <td className="fc-acao">{abre(n.tipo) && <BotaoIcone icone="olho" pequeno titulo="Ver a nota" onClick={ev => { ev.stopPropagation(); vm.verNota(n.id); }} onKeyDown={ev => ev.stopPropagation()} />}</td>
+                  <td className="fc-acao"><BotaoIcone icone="olho" pequeno titulo="Ver a nota" onClick={ev => { ev.stopPropagation(); vm.verNota(n.id); }} onKeyDown={ev => ev.stopPropagation()} /></td>
                 </tr>
               );
             })}
-            {!vm.notas.length && <tr><td colSpan={colunas} className="hint">Nenhuma nota com essa busca.</td></tr>}
+            {!vm.notas.length && <tr><td colSpan={colunas} className="hint">{vm.soCanceladas ? 'Nenhuma cancelada com essa busca.' : 'Nenhuma nota com essa busca.'}</td></tr>}
           </tbody>
         </table>
       </div>

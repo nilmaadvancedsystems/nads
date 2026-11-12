@@ -87,13 +87,28 @@ export function useUsuariosDoNads() {
     abrirNovo: () => setJanela({ tipo: 'novo' }),
     fechar: () => setJanela(null),
     departamentos: usuarios.DEPARTAMENTOS,
-    niveis: usuarios.NIVEIS,
+    niveis: usuarios.NIVEIS_ESCOLHIVEIS,
     papeis: usuarios.PAPEIS,
-    mudarCargo: (p: usuarios.Usuario, departamento: usuarios.Departamento | null, nivel: usuarios.Nivel | null) =>
-      tentar(() => repo.salvarCargo(p.uid, departamento, nivel), 'Cargo de ' + p.nome + ' salvo.'),
+    mudarCargo: (p: usuarios.Usuario, departamento: usuarios.Departamento | null, nivel: usuarios.Nivel | null) => {
+      // o nível do Dono não muda por aqui, e ninguém vira Dono pelo app (12/11/2026): só o Deixar de ser dono, do próprio Dono
+      if ((p.nivel === 'dono' && nivel !== 'dono') || (nivel === 'dono' && p.nivel !== 'dono')) { toast('O nível do Dono não muda por aqui.'); return Promise.resolve(); }
+      return tentar(() => repo.salvarCargo(p.uid, departamento, nivel), 'Cargo de ' + p.nome + ' salvo.');
+    },
+    /** o Dono vendo a própria ficha: só ele tem o Deixar de ser dono */
+    ehODonoQueVe: (p: usuarios.Usuario) => p.nivel === 'dono' && operador?.nivel === 'dono' && !!operador.email && operador.email.trim().toLowerCase() === p.email.trim().toLowerCase(),
+    /**
+     * O Dono deixa de ser (Vitor, 12/11/2026: "somente deixar de ser dono para quem está na função dono"): volta a Diretor,
+     * com o mesmo departamento. Virar Dono, nunca pelo app.
+     */
+    async deixarDeSerDono(p: usuarios.Usuario) {
+      const ok = await modal<boolean>({ icone: 'alert', titulo: 'Deixar de ser dono?', texto: 'Você volta a Diretor. Para ser Dono de novo, só pedindo ao desenvolvedor.',
+        botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Deixar de ser dono', valor: true, variante: 'btn-danger' }] });
+      if (!ok) return;
+      await tentar(() => repo.salvarCargo(p.uid, p.departamento, 'diretor'), 'Você deixou de ser Dono e voltou a Diretor.');
+    },
     alternarPapel(p: usuarios.Usuario, papel: usuarios.Papel) {
       // o Financeiro: só o Diretor autoriza, e quem é Diretor já tem, sem como desligar (Vitor, 09/11/2026)
-      if (papel === 'financeiro' && (!temNivelDiretor(operador) || p.nivel === 'diretor')) return Promise.resolve();
+      if (papel === 'financeiro' && (!temNivelDiretor(operador) || usuarios.nivelDeDiretor(p.nivel))) return Promise.resolve();
       const tem = p.papeis.includes(papel);
       const novos = tem ? p.papeis.filter(x => x !== papel) : [...p.papeis, papel];
       return tentar(() => repo.salvarPapeis(p.uid, novos), (tem ? 'Tirei ' : 'Dei ') + 'o papel ' + (usuarios.PAPEIS.find(x => x.id === papel)?.rotulo || papel) + (tem ? ' de ' : ' a ') + p.nome + '.');
@@ -118,6 +133,22 @@ export function useUsuariosDoNads() {
         setLinkDeSenha({ uid: p.uid, link: location.origin + BASE + '/convite/' + codigo });
         toast('Link de nova senha de ' + p.nome + ' criado: vale 24 horas.');
       } catch (err) { toast('Não consegui gerar o link: ' + (err as Error).message); } finally { setGerandoSenha(false); }
+    },
+    /**
+     * O e-mail de entrada (Vitor, 12/11/2026: "coloca email aqui pro diretor conseguir mudar tbm"): só o Diretor e o Dono
+     * trocam; o do Dono, só o Dono. Quem troca de fato é o robô da nuvem (repo.trocarEmail espera ele terminar).
+     */
+    podeTrocarEmail: (p: usuarios.Usuario) => admin && temNivelDiretor(operador) && (p.nivel !== 'dono' || operador?.nivel === 'dono'),
+    async trocarEmail(p: usuarios.Usuario, email: string): Promise<boolean> {
+      const novo = email.trim().toLowerCase();
+      if (!usuarios.ehEmailDeLogin(novo)) { toast('Escreva um e-mail válido (por exemplo, nome@nilma.local).'); return false; }
+      if (novo === p.email.trim().toLowerCase()) return true;
+      if (equipe.lista.some(x => x.uid !== p.uid && x.email.trim().toLowerCase() === novo)) { toast('Esse e-mail já é o login de outra pessoa.'); return false; }
+      let deu = false;
+      await comLinha('email:' + p.uid, async () => {
+        try { await repo.trocarEmail(p.uid, novo); deu = true; toast('E-mail de ' + p.nome + ' trocado. Agora ' + p.nome + ' entra com ' + novo + '.'); } catch (err) { toast('Não troquei o e-mail: ' + (err as Error).message); }
+      });
+      return deu;
     },
     copiar: (link: string) => { void navigator.clipboard.writeText(link).then(() => toast('Link copiado.'), () => toast('Não consegui copiar; selecione o link e copie.')); },
     fazendo: (chave: string) => fazendo.has(chave),

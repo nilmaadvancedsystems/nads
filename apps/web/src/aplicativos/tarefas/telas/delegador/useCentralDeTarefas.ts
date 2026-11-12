@@ -6,6 +6,7 @@ import { formatos, tarefas } from '@nads/core';
 import { baixarArquivo, baixarBytes } from '@nads/ui';
 import { useState } from 'react';
 import { useTarefasDelegadas } from '../../dados/repo';
+import { useAgoraDoExpediente } from './useAgoraDoExpediente';
 
 const d = tarefas.delegadas;
 export type AbaDaCentral = tarefas.delegadas.Aba;
@@ -44,8 +45,11 @@ export function useCentralDeTarefas(abaInicial: AbaDaCentral) {
   const { carregadas, tarefas: todas, erro } = repo.lista();
   const hoje = d.hojeIso();
   const agora = new Date().toTimeString().slice(0, 5);
+  // a em andamento aparece Pausada nos intervalos (11:05–13:00 e 18:05–07:00); o banco segue Em andamento
+  const relogio = useAgoraDoExpediente();
+  const doBanco = new Map(todas.map(t => [t.id, t]));
   const contadores = d.contarAbas(todas, uid);
-  const daAba = d.daAba(todas, aba, uid);
+  const daAba = d.daAba(todas, aba, uid).map(t => ({ ...t, status: d.situacaoNoHorario(t, relogio).status }));
   const pessoa = (t: tarefas.delegadas.TarefaDelegada) => {
     if (aba === 'minhas') return t.criadaPor.uid === uid ? 'Você mesmo' : t.criadaPor.nome;
     if (aba === 'delegadas') return t.responsavel.nome;
@@ -60,7 +64,7 @@ export function useCentralDeTarefas(abaInicial: AbaDaCentral) {
   const nomeDoArquivo = 'tarefas-' + aba + '-' + hoje;
   const linha = (t: tarefas.delegadas.TarefaDelegada) => ({
     id: t.id, numero: t.numero, titulo: t.titulo,
-    status: { valor: t.status, rotulo: d.rotuloDoStatus(t.status) },
+    status: { valor: t.status, rotulo: d.rotuloNoHorario(doBanco.get(t.id) || t, relogio) },
     prioridade: { valor: t.prioridade, rotulo: d.rotuloDaPrioridade(t.prioridade) },
     prazo: d.prazoComHora(t), atrasada: d.atrasada(t, hoje, agora),
     cliente: t.clientes[0] ? nomeDoCliente(t.clientes[0]) : '',
@@ -68,9 +72,10 @@ export function useCentralDeTarefas(abaInicial: AbaDaCentral) {
     clientes: t.clientes.map(nomeDoCliente).join('\n'),
     pessoa: pessoa(t), anexos: t.anexos.length, pareceres: t.pareceres.length,
     // os botões de quem faz a tarefa (Minhas tarefas)
-    acoes: aba === 'minhas' ? d.acoesDoStatus(t.status) : [],
+    acoes: aba === 'minhas' ? d.acoesNoHorario(doBanco.get(t.id) || t, relogio) : [],
     // o que aconteceu por último (Delegadas por mim)
-    movimento: aba === 'delegadas' ? movimentoDe(t) : '',
+    // e se quem recebeu já abriu a tarefa (o Visualizado, 12/11/2026)
+    movimento: aba === 'delegadas' ? [movimentoDe(t), d.rotuloDaVisualizacao(t)].filter(Boolean).join(' · ') : '',
   });
   return {
     carregando: !carregadas,
@@ -105,6 +110,7 @@ export function useCentralDeTarefas(abaInicial: AbaDaCentral) {
     aberta,
     abrir: (id: string) => setAberta(id),
     nova: () => setAberta('nova'),
+    pedirDocumentos: () => setAberta('documentos'),
     voltar: () => setAberta(null),
     /** depois de criar, a lista da aba onde a tarefa foi parar (a minha: Minhas; para outro: Delegadas) */
     criada: (paraMim: boolean) => { setAberta(null); setAba(paraMim ? 'minhas' : 'delegadas'); limparFiltros(); },

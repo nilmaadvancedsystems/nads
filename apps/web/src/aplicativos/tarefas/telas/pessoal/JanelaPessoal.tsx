@@ -44,7 +44,7 @@ function Foto({ foto, iniciais, grande }: { foto: string | null; iniciais: strin
 }
 
 /** O nome: o texto com o Salvar ao lado (Enter salva). */
-function EditarNome({ atual, salvar }: { atual: string; salvar: (n: string) => Promise<string | null> }) {
+function EditarNome({ atual, salvar, rotulo = 'Nome' }: { atual: string; salvar: (n: string) => Promise<string | null>; rotulo?: string }) {
   const [nome, setNome] = useState(atual);
   const [erro, setErro] = useState('');
   const [salvando, setSalvando] = useState(false);
@@ -52,9 +52,31 @@ function EditarNome({ atual, salvar }: { atual: string; salvar: (n: string) => P
   const ir = async () => { setSalvando(true); const e = await salvar(nome); setSalvando(false); setErro(e || ''); };
   return (
     <span className="pessoal-nome">
-      <input value={nome} onChange={ev => { setNome(ev.target.value); setErro(''); }} onKeyDown={ev => { if (ev.key === 'Enter' && mudou) void ir(); }} aria-label="Nome" />
+      <input value={nome} onChange={ev => { setNome(ev.target.value); setErro(''); }} onKeyDown={ev => { if (ev.key === 'Enter' && mudou) void ir(); }} aria-label={rotulo} />
       {mudou && <button type="button" className="btn btn-primary" disabled={salvando} onClick={() => void ir()}>{salvando ? <span className="btn-spinner" /> : null}Salvar</button>}
       {erro && <span className="pessoal-erro">{erro}</span>}
+    </span>
+  );
+}
+
+/**
+ * O e-mail: o texto com o lápis ao lado; só o lápis abre a edição (Vitor, 12/11/2026: "coloca um ícone de lápis, não de
+ * editar direto"). Salvou ou cancelou, volta ao texto.
+ */
+function EditarEmail({ atual, salvar }: { atual: string; salvar: (n: string) => Promise<string | null> }) {
+  const [editando, setEditando] = useState(false);
+  if (!editando) {
+    return (
+      <span className="pessoal-nome">
+        <span className="cfg-valor">{atual || '—'}</span>
+        <button type="button" className="icon-btn icon-btn-sm" title="Trocar o e-mail" aria-label="Trocar o e-mail" onClick={() => setEditando(true)}><Icone nome="lapis" /></button>
+      </span>
+    );
+  }
+  return (
+    <span className="pessoal-nome">
+      <EditarNome atual={atual} rotulo="E-mail" salvar={async n => { const e = await salvar(n); if (!e) setEditando(false); return e; }} />
+      <button type="button" className="btn btn-outline" onClick={() => setEditando(false)}>Cancelar</button>
     </span>
   );
 }
@@ -129,7 +151,9 @@ function MinhaConta({ vm }: { vm: VmPessoal }) {
         <ConfigLinha titulo="Nome">
           {c.comLogin ? <EditarNome atual={c.nome} salvar={c.trocarNome} /> : <span className="cfg-valor">{c.nome}</span>}
         </ConfigLinha>
-        <ConfigLinha titulo="E-mail"><span className="cfg-valor">{c.email || '—'}</span></ConfigLinha>
+        <ConfigLinha titulo="E-mail" descricao={c.comLogin ? 'O e-mail com que você entra. A senha continua a mesma.' : undefined}>
+          {c.comLogin ? <EditarEmail atual={c.email} salvar={c.trocarEmail} /> : <span className="cfg-valor">{c.email || '—'}</span>}
+        </ConfigLinha>
         <ConfigLinha titulo="Setor" descricao="Quem muda é um administrador."><span className="cfg-valor">{c.setor}</span></ConfigLinha>
         {c.comLogin && <TrocarSenha salvar={c.trocarSenha} />}
       </ConfigSecao>

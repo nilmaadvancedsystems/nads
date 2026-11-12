@@ -151,6 +151,17 @@ function EdicaoDaParada({ vm }: { vm: Vm }) {
             </li>
           ))}</ul></div>
       )}
+      {ed.aMais.length > 0 && (
+        <div className="field"><label>Também nesta parada</label>
+          <ul className="ent-docs">{ed.aMais.map((a, k) => (
+            <li key={k} className="ent-doc-grupo">
+              <div className="ent-doc"><span className="ent-doc-tipo">{a.tipo}{a.funcionario ? ' · ' + a.funcionario : ''}</span>
+                <input type="text" inputMode="decimal" className="ent-doc-valor num" placeholder="R$ 0,00" aria-label={'Valor de ' + a.tipo} value={a.valor}
+                  onChange={ev => vm.mudarValorAMais(k, ev.target.value)} />
+                <BotaoIcone icone="x" titulo={'Tirar ' + a.tipo + ' da parada'} pequeno onClick={() => vm.tirarAMais(k)} /></div>
+            </li>
+          ))}</ul></div>
+      )}
       <BotaoAcao className="btn btn-outline" carregando={vm.salvandoEdicao} textoCarregando="Salvando…" onClick={() => void vm.salvarEdicao()}><Icone nome="check" />Salvar alterações</BotaoAcao>
     </div>
   );

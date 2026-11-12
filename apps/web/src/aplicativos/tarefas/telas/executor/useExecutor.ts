@@ -72,14 +72,32 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   const exDe: Record<string, t.Execucao> = {};
   if (empresa) for (const m of porMes) exDe[m.competencia] = m.execucoes.find(e => e.empresa === empresa.nome) || t.execucaoNova(empresa.nome, empresa.codigo, m.competencia, rotina.departamento);
   const concluidaEm = (id: string, c: string) => t.concluida(t.situacaoDa(exDe[c] || null, id));
+  // as tarefas delegadas: a etapa aberta pela tarefa (?delegada=) e a tarefa em conjunto
+  const [paramsDaUrl] = useSearchParams();
+  const idDelegada = paramsDaUrl.get('delegada');
+  const repoDelegadas = useTarefasDelegadas();
+  const listaDelegadas = repoDelegadas.lista();
+  const euNaDelegacao = repoDelegadas.eu()?.uid || '';
+  // a tarefa em conjunto (Vitor, 12/11/2026: "mais de uma pessoa delegada, aí você coloca todas as boxes, quando o usuário
+  // entrar na empresa, vai ter apenas os processos que ele vai fazer"): quem recebeu etapas desta empresa e período vê só
+  // elas e as conclui na rotina; quem delegou (e quem não recebeu nada) continua com a empresa inteira
+  const emConjunto = t.delegadas.tarefasEmConjunto(listaDelegadas.tarefas, rotaEmpresa, periodo);
+  const minhas = dev ? [] : t.delegadas.etapasDaPessoaEmConjunto(listaDelegadas.tarefas, rotaEmpresa, periodo, euNaDelegacao).filter(id => rotina.etapas.some(e => e.id === id));
+  const soAsMinhas = minhas.length > 0;
+  const minhaPendente = (id: string) => (soAsMinhas && minhas.includes(id) && meses.some(c => !concluidaEm(id, c)) ? rotina.etapas.find(e => e.id === id) || null : null);
   // a primeira que falta em algum mês do período
   const primeira = empresa && meses.length ? rotina.etapas.find(e => meses.some(c => !concluidaEm(e.id, c))) || null : null;
+  // a rotina concluída em todos os meses (o "Tudo pronto"): dá para rever as etapas e reabrir a empresa (11/11/2026)
+  const tudoPronto = !!empresa && carregada && meses.length > 0 && !primeira;
   // a pendente do grupo que dá para abrir fora da ordem (t.etapaLivre)
-  const pendenteLivre = (id: string) => { const e = t.etapaLivre(rotina, primeira, id); return e && meses.some(c => !concluidaEm(e.id, c)) ? e : null; };
+  // (na tarefa em conjunto, qualquer uma das da pessoa que falte, fora da ordem)
+  const pendenteLivre = (id: string) => { if (soAsMinhas) return minhaPendente(id); const e = t.etapaLivre(rotina, primeira, id); return e && meses.some(c => !concluidaEm(e.id, c)) ? e : null; };
   // a que a pessoa abriu no grupo fica guardada, como o resto do "onde parou"; concluída, volta a primeira que falta
   const [escolhida, setEscolhida] = useGuardado<string | null>(empresa ? 'etapa-escolhida|' + dep + '|' + formatos.slug(empresa.nome) + '|' + periodo : null, null);
   // a etapa da vez: a que a pessoa abriu no grupo ou a primeira que falta
-  const etapa = (escolhida ? pendenteLivre(escolhida) : null) || primeira;
+  const etapa = (escolhida ? pendenteLivre(escolhida) : null) || (soAsMinhas ? rotina.etapas.find(e => minhaPendente(e.id)) || null : primeira);
+  // a pessoa da tarefa em conjunto já fez todas as dela
+  const minhasFeitas = soAsMinhas && carregada && !etapa;
   const pendentes = etapa ? meses.filter(c => !concluidaEm(etapa.id, c)) : [];
   // em lote (vários meses: o período escolhido na Importação), toda etapa trabalha o período inteiro, do começo ao fim
   // (Vitor, 02/10/2026): as ações valem para todos os meses que faltam. Num mês só, a ferramenta de período também.
@@ -88,13 +106,10 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   const competencia = pendentes[0] || meses[meses.length - 1] || '';
   const ex = exDe[competencia] || null;
   // a etapa delegada (Vitor, 10/11/2026: "o resto da empresa fica bloqueada"): aberta pela tarefa, só ela e sem concluir a rotina
-  const [paramsDaUrl] = useSearchParams();
-  const idDelegada = paramsDaUrl.get('delegada');
-  const repoDelegadas = useTarefasDelegadas();
-  const listaDelegadas = repoDelegadas.lista();
-  const recebida = idDelegada ? listaDelegadas.tarefas.find(x => x.id === idDelegada && !!x.etapaDelegada && x.responsavel.uid === repoDelegadas.eu()?.uid && x.status !== 'cancelada') : undefined;
+  // (a tarefa em conjunto aberta pela tarefa não: vale o de cima, as etapas da pessoa)
+  const recebida = idDelegada ? listaDelegadas.tarefas.find(x => x.id === idDelegada && !!x.etapaDelegada && !x.etapaDelegada.conjunto && x.responsavel.uid === euNaDelegacao && x.status !== 'cancelada') : undefined;
   const etapaDelegada = recebida ? rotina.etapas.find(e => e.id === recebida.etapaDelegada?.etapa) || null : null;
-  const carregando = !carregada || (!!idDelegada && !listaDelegadas.carregadas);
+  const carregando = !carregada || ((!!idDelegada || soAsMinhas) && !listaDelegadas.carregadas);
   // um mês só, mas que faz parte de um período prometido: o executor leva para o período
   const periodoDoMes = !varios && carregada && ex?.periodo && ex.periodo !== periodo && t.competenciasDoPeriodo(ex.periodo).length > 1 ? ex.periodo : null;
   const concluido = varios && carregada && t.periodoConcluido(meses.map(c => exDe[c] || null), rotina);
@@ -228,6 +243,19 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   const compV = mesesDaEtapa[0] || (revista ? meses[meses.length - 1] || competencia : competencia);
   const juntosV = varios || !!vista?.tela?.periodo;
 
+  // a etapa em conjunto concluída em todos os meses: a tarefa de quem recebeu conclui junto (uma vez por tarefa nesta tela;
+  // se o banco negar, não pede de novo sem parar)
+  const concluiuTarefa = useRef(new Set<string>());
+  useEffect(() => {
+    if (dev || !carregada || !soAsMinhas || !meses.length) return;
+    for (const x of emConjunto) {
+      const id = x.etapaDelegada?.etapa || '';
+      if (x.responsavel.uid !== euNaDelegacao || x.status === 'concluida' || concluiuTarefa.current.has(x.id) || !meses.every(c => concluidaEm(id, c))) continue;
+      concluiuTarefa.current.add(x.id);
+      repoDelegadas.salvar(x.id, { status: 'concluida' }).catch((e: unknown) => toast('Não concluí a tarefa: ' + (e instanceof Error ? e.message : String(e))));
+    }
+  });
+
   // começou (ou voltou a) uma etapa: um evento por etapa aberta (conta o tempo de cada uma)
   const iniciadas = useRef(new Set<string>());
   const chaveDosAlvos = alvos.join(',');
@@ -246,9 +274,10 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
    * ficam como estão). Uma da frente pergunta antes. Etapa da vez: não faz nada.
    */
   async function voltarPara(id: string, confirmado = false) {
-    if (!etapa || carregando || conferindo) return;
+    // a rotina concluída (sem etapa da vez) também volta: é reabrir a empresa (11/11/2026)
+    if ((!etapa && !tudoPronto) || carregando || conferindo) return;
     const alvo = rotina.etapas.findIndex(e => e.id === id);
-    const daVez = rotina.etapas.findIndex(e => e.id === etapa.id);
+    const daVez = etapa ? rotina.etapas.findIndex(e => e.id === etapa.id) : rotina.etapas.length;
     if (alvo < 0 || alvo === daVez) return;
     // uma etapa da frente já marcada (Vitor, 01/10/2026: "desmarque esses"): pergunta e desmarca só ela
     if (alvo > daVez) {
@@ -264,8 +293,9 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     // no período: volta em todos os meses em que ela estava feita
     // (30/10/2026: a cópia é a do clique, de antes da janela; com ela junto, o banco tira só o check desta etapa, sem
     // apagar o que chegou com a janela aberta)
+    // a empresa concluída no mês: é reabrir a rotina (guarda quem reabriu e quando); senão, só a etapa volta
     for (const c of meses.filter(m => concluidaEm(id, m))) {
-      const v = t.voltarPara(exDe[c], id, op.nome, new Date());
+      const v = t.reabrirRotina(exDe[c], rotina, id, op.nome, new Date()) || t.voltarPara(exDe[c], id, op.nome, new Date());
       iniciadas.current.delete(id + '|' + c);
       repo.gravar(v.execucao, v.evento, exDe[c]);
     }
@@ -278,6 +308,10 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
   function abrirEtapa(id: string) {
     // desenvolvedor: abre qualquer uma, só para ver
     if (dev) { setVendo(id === etapa?.id ? null : id); return; }
+    // tudo pronto: a etapa clicada abre para rever (antes o clique não fazia nada e a empresa ficava presa no "Tudo pronto")
+    if (tudoPronto) { if (meses.some(c => concluidaEm(id, c))) { setVendo(id); setAviso(null); } return; }
+    // a tarefa em conjunto com todas as da pessoa feitas: abre a clicada para rever
+    if (minhasFeitas) { if (minhas.includes(id) && meses.some(c => concluidaEm(id, c))) { setVendo(id); setAviso(null); } return; }
     if (!etapa || carregando || conferindo) return;
     if (id === etapa.id) { setVendo(null); return; }
     if (pendenteLivre(id)) { setEscolhida(id); setVendo(null); setAviso(null); return; }
@@ -444,16 +478,50 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     revendo: !etapaDelegada && !!revista && meses.some(c => concluidaEm(revista.id, c)),
     /** aberta pela tarefa delegada: só esta etapa */
     delegada: !!etapaDelegada,
+    /** a tarefa em conjunto: a pessoa recebeu etapas desta empresa e vê só elas */
+    soAsMinhas, minhasFeitas,
+    ehMinha: (id: string) => minhas.includes(id),
+    /** com quem está a etapa na tarefa em conjunto (o nome; '' = com ninguém) */
+    comQuem: (id: string) => emConjunto.find(x => x.etapaDelegada?.etapa === id)?.responsavel.nome || '',
+    /** as tarefas em conjunto desta empresa e período (a janela de quem delega) */
+    emConjunto,
     // o Editar pergunta antes de desmarcar (Vitor, 05/10/2026)
+    // a empresa concluída: o Editar reabre a rotina nesta etapa (as outras continuam feitas; fica guardado quem reabriu)
     editar: async () => {
       if (!revista) return;
-      const ok = await modal<boolean>({ titulo: 'Desmarcar ' + revista.nome + '?', texto: 'A etapa volta a ficar pendente' + (varios ? ' em todos os meses do período' : '') + ' e vira a etapa da vez.',
-        botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Desmarcar', valor: true, variante: 'btn-primary' }] });
-      if (ok) await voltarPara(revista.id, true);
+      const ok = tudoPronto
+        ? await modal<boolean>({ icone: 'repeat', titulo: 'Reabrir ' + (empresa?.nome || 'a empresa') + '?', texto: revista.nome + ' volta a ficar pendente' + (varios ? ' em todos os meses do período' : '')
+            + ' e a empresa sai de Concluída. As outras etapas continuam feitas, como estão. Fica registrado que ' + op.nome + ' reabriu agora.',
+          botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Reabrir', valor: true, variante: 'btn-primary' }] })
+        : await modal<boolean>({ titulo: 'Desmarcar ' + revista.nome + '?', texto: 'A etapa volta a ficar pendente' + (varios ? ' em todos os meses do período' : '') + ' e vira a etapa da vez.',
+          botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Desmarcar', valor: true, variante: 'btn-primary' }] });
+      if (!ok) return;
+      await voltarPara(revista.id, true);
+      if (tudoPronto) toast((empresa?.nome || 'Empresa') + ' reaberta em ' + revista.nome + '.');
     },
     voltarAEtapaDaVez: () => setVendo(null),
+    /** a rotina concluída em todos os meses: sem etapa da vez (o "Tudo pronto"); as etapas abrem para rever e reabrir */
+    tudoPronto,
+    /** Tudo pronto › Revisar: abre a primeira etapa feita, para rever (sem desmarcar nada) */
+    revisar: () => {
+      const p = rotina.etapas.find(e => meses.some(c => !!t.estadoDa(exDe[c] || null, e.id) && t.etapaNoMes(exDe[c] || null, e.id)));
+      if (p) { setVendo(p.id); setAviso(null); }
+    },
+    /**
+     * a última reabertura da empresa (quem, quando, em qual etapa): emAberto enquanto não foi concluída de novo (a faixa
+     * acima do cabeçalho); depois, só a lembrança no "Tudo pronto"
+     */
+    reabertura: (() => {
+      const r = meses.map(c => exDe[c]?.rotinaReaberta).filter((x): x is t.ReaberturaDaRotina => !!x).sort((a, b) => b.em.localeCompare(a.em))[0];
+      if (!r) return null;
+      const nome = rotina.etapas.find(e => e.id === r.etapa)?.nome || r.etapa;
+      const quando = new Date(r.em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+      return { texto: 'Reaberta por ' + r.por + ' em ' + quando + ', na etapa ' + nome, emAberto: meses.some(c => !!t.reaberturaEmAberto(exDe[c] || null, rotina)) };
+    })(),
     /** o modo desenvolvedor: só ver (o Avançar azul vai para a próxima etapa sem marcar nada) */
     dev,
+    /** o X só sai, sem o "Por que interromper?": no modo desenvolvedor e na rotina que não pede (o LCDPR) */
+    semJustificativa: dev || !!rotina.semInterromper,
     /** o relatório (início e fim): o regime e as etapas que entram no mês, cada uma com a situação, quem e quando */
     relatorio: {
       regime: t.regimeDaEmpresa(empresa?.codigo ?? null),
@@ -528,6 +596,16 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     },
     interrompendo, abrirInterromper: () => setInterrompendo(true), fecharInterromper: () => setInterrompendo(false), interromper,
     sair: etapaDelegada ? () => navegar(BASE + '/inicio?aba=minhas') : voltar,
+    /** a etapa delegada em aberto: quem recebeu conclui a tarefa daqui mesmo (12/11/2026: a Clara não achava o Concluir) */
+    podeConcluirDelegada: !!etapaDelegada && !!recebida && recebida.status !== 'concluida',
+    concluirDelegada: async () => {
+      if (!recebida) return;
+      try {
+        await repoDelegadas.salvar(recebida.id, { status: 'concluida' });
+        toast('Tarefa concluída.');
+        navegar(BASE + '/inicio?aba=minhas');
+      } catch (e) { toast('Não concluí a tarefa: ' + (e instanceof Error ? e.message : String(e))); }
+    },
     /** Os bancos sem movimento de cada mês (a ferramenta da etapa mostra a linha marcada no mês que estiver aberto). */
     semMovimentoPorMes: Object.fromEntries(meses.map(c => [c, exDe[c]?.semMovimento || []])) as Record<string, string[]>,
     marcarSemMovimento: (banco: string, marcado: boolean, mes?: string) => {

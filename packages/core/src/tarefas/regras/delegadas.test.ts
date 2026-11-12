@@ -52,7 +52,7 @@ describe('os números do alto da lista (09/11/2026)', () => {
 describe('a tarefa aprimorada (09/11/2026)', () => {
   it('os botões do responsável seguem o status', () => {
     const ids = (s: Status) => acoesDoStatus(s).map(a => a.id);
-    expect(ids('pendente')).toEqual(['iniciar']);
+    expect(ids('pendente')).toEqual(['iniciar', 'concluir']);
     expect(ids('andamento')).toEqual(['pausar', 'concluir']);
     expect(ids('pausada')).toEqual(['retomar', 'concluir']);
     expect(ids('concluida')).toEqual([]);
@@ -373,5 +373,149 @@ describe('a etapa delegada (Clientes e Fornecedores, 10/11/2026)', () => {
     expect(feita.historico.at(-1)?.texto).toBe('Marcou como feita: 111 Exemplo');
     expect(d.comContaFeita(feita, etapaDelegada.contas[0], false, 'Bia', '2026-11-10T12:00:00.000Z').etapaDelegada?.feitas).toEqual([]);
     expect(d.lerTarefa('x', feita as unknown as Record<string, unknown>).etapaDelegada).toEqual(feita.etapaDelegada);
+  });
+});
+
+describe('o expediente: pausa sozinha no almoço e à noite (12/11/2026)', () => {
+  // horas de Brasília (UTC−3)
+  const br = (dia: string, hora: string) => new Date(dia + 'T' + hora + ':00.000-03:00');
+  const DIA = '2026-11-12';
+  it('pausa às 11:05, volta às 13:00, pausa às 18:05 e volta às 07:00', () => {
+    expect(d.noIntervalo(br(DIA, '11:04'))).toBe(false);
+    expect(d.noIntervalo(br(DIA, '11:05'))).toBe(true);
+    expect(d.noIntervalo(br(DIA, '12:59'))).toBe(true);
+    expect(d.noIntervalo(br(DIA, '13:00'))).toBe(false);
+    expect(d.noIntervalo(br(DIA, '18:04'))).toBe(false);
+    expect(d.noIntervalo(br(DIA, '18:05'))).toBe(true);
+    expect(d.noIntervalo(br(DIA, '23:30'))).toBe(true);
+    expect(d.noIntervalo(br('2026-11-13', '06:59'))).toBe(true);
+    expect(d.noIntervalo(br('2026-11-13', '07:00'))).toBe(false);
+  });
+  it('não depende do fuso do computador: 11:05 em Brasília é 14:05 UTC', () => {
+    expect(d.noIntervalo('2026-11-12T14:04:00.000Z')).toBe(false);
+    expect(d.noIntervalo('2026-11-12T14:05:00.000Z')).toBe(true);
+  });
+  it('a em andamento aparece Pausada no intervalo, com a hora da volta, e só tem o Concluir', () => {
+    const t = tarefa({ status: 'andamento' });
+    expect(d.situacaoNoHorario(t, br(DIA, '12:00'))).toEqual({ status: 'pausada', automatica: true, volta: '13:00' });
+    expect(d.rotuloNoHorario(t, br(DIA, '20:00'))).toBe('Pausada até 07:00');
+    expect(d.rotuloNoHorario(t, br(DIA, '02:00'))).toBe('Pausada até 07:00');
+    expect(d.acoesNoHorario(t, br(DIA, '12:00')).map(a => a.id)).toEqual(['concluir']);
+    expect(d.situacaoNoHorario(t, br(DIA, '13:00'))).toEqual({ status: 'andamento', automatica: false, volta: '' });
+    expect(d.acoesNoHorario(t, br(DIA, '13:00')).map(a => a.id)).toEqual(['pausar', 'concluir']);
+  });
+  it('a pendente, a pausada à mão e a encerrada não mudam no intervalo', () => {
+    for (const status of ['pendente', 'pausada', 'concluida'] as Status[]) expect(d.situacaoNoHorario(tarefa({ status }), br(DIA, '12:00')).automatica).toBe(false);
+    expect(d.acoesNoHorario(tarefa({ status: 'pendente' }), br(DIA, '20:00')).map(a => a.id)).toEqual(['iniciar', 'concluir']);
+  });
+  it('a próxima virada: a tela se redesenha na pausa e na volta', () => {
+    expect(d.proximaVirada(br(DIA, '10:00')).getTime()).toBe(br(DIA, '11:05').getTime());
+    expect(d.proximaVirada(br(DIA, '11:05')).getTime()).toBe(br(DIA, '13:00').getTime());
+    expect(d.proximaVirada(br(DIA, '18:10')).getTime()).toBe(br('2026-11-13', '07:00').getTime());
+    expect(d.proximaVirada(br(DIA, '05:00')).getTime()).toBe(br(DIA, '07:00').getTime());
+  });
+  it('o tempo de expediente desconta o almoço e a noite', () => {
+    const m = (a: Date, b: Date) => d.minutosDeExpediente(a.getTime(), b.getTime());
+    expect(m(br(DIA, '10:00'), br(DIA, '14:00'))).toBe(65 + 60);
+    expect(m(br(DIA, '17:00'), br('2026-11-13', '08:00'))).toBe(65 + 60);
+    expect(m(br(DIA, '12:00'), br(DIA, '12:50'))).toBe(0);
+    expect(m(br(DIA, '07:00'), br('2026-11-13', '07:00'))).toBe(245 + 305);
+    expect(m(br(DIA, '14:00'), br(DIA, '10:00'))).toBe(0);
+  });
+  it('o tempo trabalhado vem do histórico: Iniciou, Pausou, Retomou e Concluiu', () => {
+    const h = (hora: string, texto: string) => ({ por: 'Clara', em: br(DIA, hora).toISOString(), texto });
+    const t = tarefa({ status: 'concluida', responsavel: CLARA, historico: [
+      h('08:00', 'Criou a tarefa'), h('09:00', 'Iniciou a tarefa'), h('10:00', 'Pausou a tarefa'), h('10:30', 'Retomou a tarefa'), h('14:00', 'Concluiu a tarefa'),
+    ] });
+    // 09–10 (60) + 10:30–11:05 (35) + 13:00–14:00 (60)
+    expect(d.minutosTrabalhados(t, br(DIA, '20:00'))).toBe(155);
+    expect(d.duracaoParaTela(155)).toBe('2h 35min');
+    expect(d.duracaoParaTela(40)).toBe('40min');
+    expect(d.duracaoParaTela(120)).toBe('2h');
+  });
+  it('a em andamento conta até agora, pulando a noite', () => {
+    const t = tarefa({ status: 'andamento', historico: [{ por: 'Clara', em: br(DIA, '17:00').toISOString(), texto: 'Iniciou a tarefa' }] });
+    expect(d.minutosTrabalhados(t, br('2026-11-13', '07:30'))).toBe(65 + 30);
+  });
+  it('a nascida em andamento ("Já estava fazendo") leva o Iniciou e conta desde a criação', () => {
+    const t = nova(rascunho({ status: 'andamento' }), { id: 'x', numero: 1, por: NILMA, em: br(DIA, '09:00').toISOString() });
+    expect(t.historico.map(n => n.texto)).toEqual(['Criou a tarefa', 'Iniciou a tarefa']);
+    expect(d.minutosTrabalhados(t, br(DIA, '09:45'))).toBe(45);
+    // a de antes, sem a linha do Iniciou: conta desde criadaEm
+    const antiga = tarefa({ status: 'andamento', criadaEm: br(DIA, '09:00').toISOString(), historico: [] });
+    expect(d.minutosTrabalhados(antiga, br(DIA, '09:30'))).toBe(30);
+  });
+  it('concluída direto da pendente: sem tempo trabalhado', () => {
+    const t = tarefa({ status: 'concluida', historico: [{ por: 'Clara', em: br(DIA, '09:00').toISOString(), texto: 'Concluiu a tarefa' }] });
+    expect(d.minutosTrabalhados(t, br(DIA, '10:00'))).toBe(0);
+  });
+  it('quem recebeu conclui a pendente pelo botão: grava concluida e a data', () => {
+    const t = tarefa({ status: 'pendente', responsavel: CLARA });
+    const { campos, linhas } = gravacaoDasMudancas(t, { status: 'concluida' }, CLARA, EM);
+    expect(campos).toEqual({ status: 'concluida', concluidaEm: EM });
+    expect(linhas.map(l => l.texto)).toEqual(['Concluiu a tarefa']);
+    expect(podeMudar(t, CLARA.uid)).toBe(true);
+  });
+});
+
+describe('a tarefa em conjunto (12/11/2026)', () => {
+  const em = (etapa: string, responsavel = NILMA, status: Status = 'pendente', p: Partial<d.EtapaDelegada> = {}) =>
+    tarefa({ responsavel, status, etapaDelegada: { etapa, rota: '10-empresa', periodo: '2026-10', todas: true, contas: [], feitas: [], conjunto: true, ...p } });
+  it('a pessoa vê só as etapas que recebeu nesta empresa e período', () => {
+    const lista = [em('clientes'), em('caixa'), em('bancos', CLARA), em('caixa', NILMA, 'cancelada', { etapa: 'estoque' }), em('fornecedores', NILMA, 'pendente', { rota: '11-outra' })];
+    expect(d.etapasDaPessoaEmConjunto(lista, '10-empresa', '2026-10', NILMA.uid)).toEqual(['clientes', 'caixa']);
+    expect(d.etapasDaPessoaEmConjunto(lista, '10-empresa', '2026-10', CLARA.uid)).toEqual(['bancos']);
+    expect(d.etapasDaPessoaEmConjunto(lista, '10-empresa', '2026-09', NILMA.uid)).toEqual([]);
+    expect(d.etapasDaPessoaEmConjunto(lista, '10-empresa', '2026-10', '')).toEqual([]);
+  });
+  it('a delegação de antes (só a etapa, pela tarefa) não é em conjunto', () => {
+    const antiga = tarefa({ etapaDelegada: { etapa: 'clientes', rota: '10-empresa', periodo: '2026-10', todas: true, contas: [], feitas: [] } });
+    expect(d.tarefasEmConjunto([antiga], '10-empresa', '2026-10')).toEqual([]);
+  });
+  it('lê do banco a etapa de qualquer id só na tarefa em conjunto', () => {
+    const doc = (etapaDelegada: object) => ({ ...tarefa(), etapaDelegada });
+    expect(d.lerTarefa('t', doc({ etapa: 'caixa', rota: 'r', periodo: 'p', todas: true, contas: [], feitas: [], conjunto: true }))?.etapaDelegada).toEqual({ etapa: 'caixa', rota: 'r', periodo: 'p', todas: true, contas: [], feitas: [], conjunto: true });
+    expect(d.lerTarefa('t', doc({ etapa: 'caixa', rota: 'r', periodo: 'p', todas: true, contas: [], feitas: [] }))?.etapaDelegada).toBeUndefined();
+    expect(d.lerTarefa('t', doc({ etapa: 'clientes', rota: 'r', periodo: 'p', todas: true, contas: [], feitas: [] }))?.etapaDelegada?.conjunto).toBeUndefined();
+  });
+});
+
+describe('o pedido de documentos e o Visualizado (12/11/2026)', () => {
+  const anexo = { id: 'a', nome: 'nota.pdf', extensao: 'pdf', tamanho: 10, em: EM, por: 'Clara', partes: 1 };
+  it('a nova de pedido leva o tipo; a comum não', () => {
+    expect(nova(rascunho({ responsavel: CLARA, tipo: 'documentos' }), { id: 'x', numero: 1, por: VITOR, em: EM }).tipo).toBe('documentos');
+    expect('tipo' in nova(rascunho(), { id: 'y', numero: 2, por: VITOR, em: EM })).toBe(false);
+  });
+  it('sem anexo, o Concluir de sempre; com anexo, "Anexei tudo, concluir"', () => {
+    const agora = new Date('2026-11-12T10:00:00.000-03:00');
+    const sem = tarefa({ tipo: 'documentos', responsavel: CLARA });
+    expect(d.acoesDaTarefa(sem, agora).map(a => a.rotulo)).toEqual(['Iniciar', 'Concluir']);
+    expect(d.podeConfirmarDocumentos(sem)).toBe(false);
+    const com = { ...sem, anexos: [anexo] };
+    expect(d.podeConfirmarDocumentos(com)).toBe(true);
+    expect(d.acoesDaTarefa(com, agora).find(a => a.id === 'concluir')).toEqual({ id: 'concluir', rotulo: 'Anexei tudo, concluir', status: 'concluida' });
+    expect(d.podeConfirmarDocumentos({ ...com, status: 'concluida' })).toBe(false);
+    expect(d.acoesDaTarefa(tarefa({ anexos: [anexo] }), agora).find(a => a.id === 'concluir')?.rotulo).toBe('Concluir');
+  });
+  it('marca visualizada só quem recebeu, uma vez, e não na que é para si mesmo', () => {
+    const t = tarefa({ criadaPor: VITOR, responsavel: CLARA });
+    expect(d.marcaVisualizada(t, CLARA.uid)).toBe(true);
+    expect(d.marcaVisualizada(t, VITOR.uid)).toBe(false);
+    expect(d.marcaVisualizada({ ...t, visualizadaEm: EM }, CLARA.uid)).toBe(false);
+    expect(d.marcaVisualizada(tarefa({ criadaPor: CLARA, responsavel: CLARA }), CLARA.uid)).toBe(false);
+  });
+  it('o rótulo do Visualizado na hora de Brasília', () => {
+    const t = tarefa({ criadaPor: VITOR, responsavel: CLARA });
+    expect(d.rotuloDaVisualizacao(t)).toBe('Ainda não visualizada');
+    expect(d.rotuloDaVisualizacao({ ...t, visualizadaEm: '2026-11-12T17:03:00.000Z' })).toBe('Visualizada 12/11 14:03');
+    expect(d.rotuloDaVisualizacao({ ...t, visualizadaEm: '2026-11-13T01:30:00.000Z' })).toBe('Visualizada 12/11 22:30');
+    expect(d.rotuloDaVisualizacao(tarefa({ criadaPor: CLARA, responsavel: CLARA }))).toBe('');
+  });
+  it('lê o tipo e o visualizadaEm do banco; o que não é "documentos" some', () => {
+    const base = { numero: 1, titulo: 'x', criadaPor: VITOR, responsavel: CLARA, criadaEm: EM };
+    const t = lerTarefa('a', { ...base, tipo: 'documentos', visualizadaEm: EM });
+    expect([t.tipo, t.visualizadaEm]).toEqual(['documentos', EM]);
+    const u = lerTarefa('b', { ...base, tipo: 'outro' });
+    expect('tipo' in u || 'visualizadaEm' in u).toBe(false);
   });
 });

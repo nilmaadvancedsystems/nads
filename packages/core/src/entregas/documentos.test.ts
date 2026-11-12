@@ -3,17 +3,18 @@ import { describe, expect, it } from 'vitest';
 import {
   clienteCombina, clienteDaRotaDoDocumento, entregaDoDocumento, linhasDoPainel, numerosDoMes, rotaPadraoDoDocumento, rotuloDaCompetencia,
   rotuloDaSituacao, situacaoNoMes, subtituloDaLinhaDoPainel, totalDosItens, valorDigitado, motivoComToque, motivoPadrao, competenciaAnterior,
-  ultimasCompetencias, documentoFormatado, tipoPelaChave, type ClienteDaRota, type Entrega,
+  ultimasCompetencias, documentoFormatado, tipoPelaChave, documentosParaEditar, itensDaEdicao, jaNaRota, avisoDeJaNaRota, type ClienteDaRota, type Entrega,
 } from './documentos';
 import {
   ajustarDiaUtil, barrasDaLinha, clienteDoPdf, codigoDePagamentoDoPdf, competenciaDoPdf, dadosDoPdf, doMesDaGuia, dvMod10, feriadosNacionais,
   guiasNaPasta, mesDaGuia, paradaDoCodigo, pixCopiaECola, pixValido, chavePixNormalizada, tipoDoPdf, valorDoPdf, vencimentoAutomatico, vencimentoDoPdf,
-  temVencimentoAutomatico,
+  temVencimentoAutomatico, tributoDoDarf, comoEntraAGuia, idsDosAnexosDasGuias, anexosDeGuiaDaEntrega, boletoParaAEntrega, linhaDoBoleto,
 } from './guiasDoPdf';
 import {
   avaliarLocalDaEntrega, avisoDaParada, chaveDaParada, diasAte, estadoDaOrdemFixa, fechamentoDoDia, janelaDoPeriodo, minutosPorParada, moverNaRota,
   moverPara, obrigacoesDoMes, ordemComAsVisiveis, ordemCompletaDaRota, ordenarParadas, ordenarPendentes, previsaoDaRota, projecaoDoLink, protocolosVisiveis,
-  qualidadeDaRota, rotaPadraoDoEstado, textoPrazo, vencimentosDaRota, OBRIGACOES_PADRAO, linkDeRotaDoDocumento,
+  qualidadeDaRota, rotaPadraoDoEstado, textoPrazo, vencimentosDaRota, OBRIGACOES_PADRAO, linkDeRotaDoDocumento, ordemPelaRotaFixa, temOrdemFixa,
+  aglutinarParadas, textoDaParadaAglutinada, moverParadaAglutinada,
 } from './rotaDeEntregas';
 import {
   comprovanteDaConfirmacao, dadosDaConfirmacao, dadosDaEdicao, dadosDaEntregaNova, dadosDaNovaTentativa, dadosDoLote, faltasNaConfirmacao, faltasNaEntrega,
@@ -148,6 +149,48 @@ describe('vencimento automático e feriados', () => {
   });
 });
 
+describe('o que já está na rota (11/11/2026)', () => {
+  const doCliente = [
+    { clienteId: 'c493', competencia: '2026-10', status: 'pendente' as const, itens: [{ tipo: 'DAE ICMS', valor: 1 }, { tipo: 'DAS', valor: 2 }] },
+    { clienteId: 'c493', competencia: '2026-09', status: 'pendente' as const, itens: [{ tipo: 'DAE ICMS', valor: 3 }] },
+    { clienteId: 'c493', competencia: '2026-10', status: 'confirmada' as const, itens: [{ tipo: 'FGTS', valor: 4 }] },
+    { clienteId: 'c493', competencia: '2026-10', status: 'link' as const, itens: [{ tipo: 'Honorário', valor: null }] },
+    { clienteId: 'outro', competencia: '2026-10', status: 'pendente' as const, itens: [{ tipo: 'DARF', valor: 5 }] },
+  ];
+  it('o mesmo documento do mesmo mês, numa parada não entregue do cliente (na rota ou no link)', () => {
+    expect(jaNaRota({ clienteId: 'c493', competencia: '2026-10', itens: [{ tipo: 'dae  icms' }, { tipo: 'DAS' }, { tipo: 'Honorário' }] }, doCliente)).toEqual(['dae  icms', 'DAS', 'Honorário']);
+  });
+  it('outro mês, o já entregue, outro cliente, o repetido na própria entrega e o avulso podem', () => {
+    expect(jaNaRota({ clienteId: 'c493', competencia: '2026-11', itens: [{ tipo: 'DAE ICMS' }] }, doCliente)).toEqual([]);
+    expect(jaNaRota({ clienteId: 'c493', competencia: '2026-10', itens: [{ tipo: 'FGTS' }, { tipo: 'DARF' }, { tipo: 'DAE' }] }, doCliente)).toEqual([]);
+    expect(jaNaRota({ clienteId: 'c493', competencia: '2026-10', itens: [{ tipo: 'DAS' }, { tipo: 'DAS' }] }, doCliente)).toEqual(['DAS']);
+    expect(jaNaRota({ clienteId: null, competencia: '2026-10', itens: [{ tipo: 'DAS' }] }, doCliente)).toEqual([]);
+  });
+  it('o aviso diz o que, de que mês e onde', () => {
+    expect(avisoDeJaNaRota(['DAE ICMS'], '2026-10', "493 - ANTONIA'S LTDA"))
+      .toBe("DAE ICMS de outubro/2026 já está na rota de 493 - ANTONIA'S LTDA. Para mudar, edite ou tire a parada que está lá.");
+    expect(avisoDeJaNaRota(['DAE ICMS', 'DAS', 'FGTS'], '2026-10', 'X')).toMatch(/^DAE ICMS, DAS e FGTS de outubro\/2026 já estão na rota de X\./);
+  });
+});
+
+describe('editar os documentos da parada', () => {
+  it('os documentos que a edição não desenha (o 2º DARF, o repetido) continuam ao salvar (11/11/2026)', () => {
+    const itens = [
+      { tipo: 'DARF INSS', valor: 100 }, { tipo: 'DARF IRRF', valor: 20.5 }, { tipo: 'DAS', valor: 30 }, { tipo: 'DAS', valor: 40 },
+      { tipo: 'Multa Rescisória', valor: 5, funcionario: 'Fulano' }, { tipo: 'Notas', valor: null },
+    ];
+    const ed = documentosParaEditar(itens);
+    expect(ed).toMatchObject({ marcados: ['das', 'multa_rescisoria', 'notas'], outro: 'DARF INSS', valores: { 'DARF INSS': '100', DAS: '30' } });
+    expect(ed.aMais).toEqual([{ tipo: 'DARF IRRF', valor: '20.5' }, { tipo: 'DAS', valor: '40' }]);
+    expect(itensDaEdicao(ed)).toEqual([
+      { tipo: 'DAS', valor: 30 }, { tipo: 'Notas', valor: null }, { tipo: 'Multa Rescisória', valor: 5, funcionario: 'Fulano' },
+      { tipo: 'DARF INSS', valor: 100 }, { tipo: 'DARF IRRF', valor: 20.5 }, { tipo: 'DAS', valor: 40 },
+    ]);
+    // tirar um a mais e mudar o valor de outro
+    expect(itensDaEdicao({ ...ed, aMais: [{ tipo: 'DARF IRRF', valor: '21,00' }] }).slice(-1)).toEqual([{ tipo: 'DARF IRRF', valor: 21 }]);
+  });
+});
+
 describe('o 13º salário (11/11/2026)', () => {
   const primeira = tipoPelaChave('decimo_terceiro_1');
   const segunda = tipoPelaChave('decimo_terceiro_2');
@@ -206,8 +249,85 @@ describe('as guias da pasta do cliente', () => {
     expect(mesDaGuia('2026-01')).toEqual({ mm: '12', aaaa: '2025' });
     expect(doMesDaGuia(['X', 'FGTS 09-2026.PDF'], { mm: '09', aaaa: '2026' })).toBe(true);
   });
+  it('o vencimento no nome não conta como o mês (11/11/2026: veio o DARF de setembro no lugar do de outubro)', () => {
+    const setembro = '09-2026 - DARF INSS - VALOR R$1.234,56 - VENCIMENTO 20-10-2026.PDF';
+    const outubro = '10-2026 - DARF INSS - VALOR R$1.300,00 - VENCIMENTO 20-11-2026.PDF';
+    expect(doMesDaGuia(['FISCAL', '16. DARF', setembro], { mm: '10', aaaa: '2026' })).toBe(false);
+    expect(doMesDaGuia(['FISCAL', '16. DARF', setembro], { mm: '09', aaaa: '2026' })).toBe(true);
+    expect(doMesDaGuia(['FISCAL', '16. DARF', outubro], { mm: '10', aaaa: '2026' })).toBe(true);
+    expect(doMesDaGuia(['X', 'DAS 20.10.2026.PDF'], { mm: '10', aaaa: '2026' })).toBe(false);
+    // o de outubro ainda não está na pasta: nada de DARF, em vez do de setembro
+    const pasta: ItemDoDrive[] = [
+      { i: 'raiz', n: '77 - SU EXEMPLO', p: '', t: 'd' },
+      { i: 'fis', n: 'FISCAL', p: 'raiz', t: 'd' },
+      { i: 'darf', n: '16. DARF', p: 'fis', t: 'd' },
+      { i: 'set', n: setembro, p: 'darf', t: 'f', m: '2026-10-10' },
+    ];
+    expect(guiasNaPasta(pasta, { mm: '10', aaaa: '2026' })).toEqual([]);
+    expect(guiasNaPasta([...pasta, { i: 'out', n: outubro, p: 'darf', t: 'f', m: '2026-11-11' }], { mm: '10', aaaa: '2026' }).map(x => x.arquivo.i)).toEqual(['out']);
+  });
+  describe('todos os DARFs do mês, um por tributo (11/11/2026)', () => {
+    const darf = (i: string, tributo: string, m: string): ItemDoDrive => ({ i, n: '10-2026 - DARF ' + tributo + ' - VALOR R$10,00 - VENCIMENTO 20-11-2026.pdf', p: 'darf', t: 'f', m });
+    const pasta: ItemDoDrive[] = [
+      { i: 'raiz', n: '77 - SU EXEMPLO', p: '', t: 'd' },
+      { i: 'fis', n: 'FISCAL', p: 'raiz', t: 'd' },
+      { i: 'darf', n: '16. DARF', p: 'fis', t: 'd' },
+      darf('inss', 'INSS', '2026-11-05'), darf('irrf', 'IRRF', '2026-11-05'),
+      // o INSS refeito: fica o mais novo
+      darf('inss2', 'INSS', '2026-11-08'),
+      { i: 'das', n: '01. DAS', p: 'fis', t: 'd' },
+      { i: 'd1', n: '10-2026.pdf', p: 'das', t: 'f', m: '2026-11-01' },
+    ];
+    const g = { mm: '10', aaaa: '2026' };
+    it('o tributo pelo nome do arquivo', () => {
+      expect(tributoDoDarf('09-2026 - DARF INSS - VALOR R$1.234,56 - VENCIMENTO 20-10-2026.pdf')).toBe('INSS');
+      expect(tributoDoDarf('DARF IRRF FOLHA.pdf')).toBe('IRRF FOLHA');
+      expect(tributoDoDarf('GUIA DARF 10-2026.pdf')).toBe('');
+      expect(tributoDoDarf('darf.pdf')).toBe('');
+    });
+    it('acha o DARF de cada tributo (o mais novo), na ordem FGTS, DARF, DAS', () => {
+      const r = guiasNaPasta(pasta, g);
+      expect(r.map(x => x.guia.tipo + ':' + x.tributo + ':' + x.arquivo.i)).toEqual(['darf:INSS:inss2', 'darf:IRRF:irrf', 'das::d1']);
+    });
+    it('com mais de um DARF, cada um na sua linha; com um só, no DARF da lista como sempre', () => {
+      expect(comoEntraAGuia(guiasNaPasta(pasta, g))).toEqual([
+        { principal: false, rotulo: 'DARF INSS' }, { principal: false, rotulo: 'DARF IRRF' }, { principal: true, rotulo: 'DAS' },
+      ]);
+      const umSo = guiasNaPasta(pasta.filter(x => x.i !== 'irrf'), g);
+      expect(comoEntraAGuia(umSo)).toEqual([{ principal: true, rotulo: 'DARF' }, { principal: true, rotulo: 'DAS' }]);
+      // o DARF cujo nome não diz o tributo fica no DARF da lista; o do INSS, na linha dele
+      const semNome = guiasNaPasta([...pasta.filter(x => x.i !== 'irrf'), { i: 'x', n: 'DARF 10-2026.pdf', p: 'darf', t: 'f', m: '2026-11-02' }], g);
+      expect(comoEntraAGuia(semNome).map(x => x.rotulo)).toEqual(['DARF', 'DARF INSS', 'DAS']);
+    });
+    it('os anexos: a mesma regra do lote do Fiscal; ao excluir, saem os de sempre e os dos documentos', () => {
+      expect(idsDosAnexosDasGuias([{ tipo: 'fgts' }, { tipo: 'darf', tributo: 'INSS' }, { tipo: 'darf', tributo: 'IRRF FOLHA' }, { tipo: 'darf' }, { tipo: 'darf', tributo: 'INSS' }]))
+        .toEqual(['guia-fgts', 'guia-darf-inss', 'guia-darf-irrf-folha', 'guia-darf', 'guia-darf-inss-2']);
+      expect(anexosDeGuiaDaEntrega([{ tipo: 'DARF INSS' }, { tipo: 'DARF IRRF' }, { tipo: 'Honorário' }, { tipo: 'FGTS' }]))
+        .toEqual(['guia-fgts', 'guia-darf', 'guia-das', 'guia-folha-pagamento', 'guia-boleto', 'guia-darf-inss', 'guia-darf-irrf']);
+    });
+  });
   it('acha a mais nova de cada tipo, sem a certidão', () => {
     expect(guiasNaPasta(itens, { mm: '09', aaaa: '2026' }).map(g => g.guia.tipo + ':' + g.arquivo.i)).toEqual(['fgts:f2', 'das:d1']);
+  });
+  it('a folha do DP (11/11/2026): na pasta da folha do Societário ou com FOLHA no DP; a guia do FGTS de lá continua FGTS', () => {
+    const comFolha: ItemDoDrive[] = [
+      ...itens,
+      { i: 'soc', n: 'SOCIETÁRIO', p: 'raiz', t: 'd' }, { i: 'fp', n: 'FOLHA DE PAGAMENTO', p: 'soc', t: 'd' },
+      { i: 'a26', n: '2026', p: 'fp', t: 'd' }, { i: 'fp09', n: '09', p: 'a26', t: 'd' },
+      { i: 'fol1', n: 'FOLHA ANALITICA.pdf', p: 'fp09', t: 'f', m: '2026-10-03' },
+      { i: 'fol2', n: 'FOLHA ANALITICA (2).pdf', p: 'fp09', t: 'f', m: '2026-10-04' },
+      { i: 'dpf', n: 'FOLHA', p: 'm09', t: 'd' }, { i: 'fol0', n: 'resumo.pdf', p: 'dpf', t: 'f', m: '2026-10-01' },
+    ];
+    expect(guiasNaPasta(comFolha, { mm: '09', aaaa: '2026' }).map(g => g.guia.tipo + ':' + g.arquivo.i)).toEqual(['fgts:f2', 'das:d1', 'folha_pagamento:fol2']);
+    expect(guiasNaPasta(comFolha.filter(x => !x.i.startsWith('fol') || x.i === 'fol0'), { mm: '09', aaaa: '2026' }).map(g => g.guia.tipo + ':' + g.arquivo.i)).toEqual(['fgts:f2', 'das:d1', 'folha_pagamento:fol0']);
+  });
+  it('o boleto de honorário do Financeiro: o da competência, senão o do mês anterior; nunca o tirado do lote nem o de outro cliente', () => {
+    const b = (id: string, contratoId: string, competencia: string, d: Record<string, unknown> = {}) => ({ id, contratoId, competencia, vencimento: competencia + '-28', ...d });
+    const lista = [b('x1', 'h1', '2026-10'), b('x2', 'h1', '2026-11', { fora: true }), b('x3', 'h2', '2026-11'), b('x4', 'h1', '2026-09')];
+    expect(boletoParaAEntrega(lista, ['h1'], '2026-11')?.id).toBe('x1');
+    expect(boletoParaAEntrega([...lista, b('x5', 'h1', '2026-11')], ['h1'], '2026-11')?.id).toBe('x5');
+    expect(boletoParaAEntrega(lista, ['h9'], '2026-11')).toBeNull();
+    expect(linhaDoBoleto('23793381286000000000300000000400185670000012345')).toBe('23793.38128 60000.000003 00000.000400 1 85670000012345');
   });
 });
 
@@ -329,6 +449,35 @@ describe('rota', () => {
     const e = estadoDaOrdemFixa({ zonas: { a: 'central', b: 'central', c: 'superior', z: 'central' }, ordem: { a: 2, b: 1, c: 1, z: 3 } }, id => id !== 'z');
     expect(e).toEqual({ superior: ['c'], central: ['b', 'a'], inferior: [] });
     expect(rotaPadraoDoEstado(e)).toEqual({ zonas: { c: 'superior', b: 'central', a: 'central' }, ordem: { c: 1, b: 1, a: 2 } });
+  });
+  it('aglutinar: uma linha por parada, os meses de cada uma e mover a parada inteira (11/11/2026)', () => {
+    const vizinho = cliente('c7', 'VIZINHO', { grupoLocal: 'c2' });
+    const m = new Map([[A.id, A], [B.id, B], [vizinho.id, vizinho]]);
+    const l = [
+      entrega('a1', { clienteId: 'c1', clienteNome: '1 - ALFA', competencia: '2026-10', itens: [{ tipo: 'DAE ICMS', valor: 100 }, { tipo: 'DAS', valor: 50 }], zona: 'superior' }),
+      entrega('b1', { clienteId: 'c2', clienteNome: '2 - BETA', competencia: '2026-11', itens: [{ tipo: 'FGTS', valor: 10 }] }),
+      entrega('a2', { clienteId: 'c1', clienteNome: '1 - ALFA', competencia: '2026-09', itens: [{ tipo: 'DAE ICMS', valor: 25.5 }] }),
+      entrega('v1', { clienteId: 'c7', clienteNome: '7 - VIZINHO', competencia: '2026-11', itens: [{ tipo: 'DARF', valor: 1 }] }),
+    ];
+    const g = aglutinarParadas(l, m);
+    expect(g.map(x => x.entregas.map(e => e.id))).toEqual([['a1', 'a2'], ['b1', 'v1']]);
+    expect(textoDaParadaAglutinada(g[0].entregas).replace(/\s/g, ' ')).toBe('outubro/2026 · DAE ICMS, DAS · setembro/2026 · DAE ICMS · R$ 175,50 · Parte superior');
+    // BETA vai para a frente levando o vizinho; ALFA vai junta para trás
+    expect(moverParadaAglutinada(g, 'b1', 0)).toEqual(['b1', 'v1', 'a1', 'a2']);
+  });
+  it('organizar pela ordem fixa esquece o que foi arrastado (11/11/2026)', () => {
+    const fixa = { zonas: { c1: 'superior', c2: 'superior', c3: 'central' }, ordem: { c1: 2, c2: 1, c3: 1 } };
+    // alguém arrastou: c3 primeiro, c1 depois, c2 por último; c9 não está na ordem fixa (entra no fim, por quem entrou primeiro)
+    const l = [
+      entrega('p3', { clienteId: 'c3', zona: 'central', ordemRota: 0 }), entrega('p1', { clienteId: 'c1', zona: 'superior', ordemRota: 1 }),
+      entrega('p1b', { clienteId: 'c1', zona: 'superior', ordemRota: 3, criadoEm: '2026-10-02T10:00:00Z' }), entrega('p2', { clienteId: 'c2', zona: 'superior', ordemRota: 2 }),
+      entrega('p9', { clienteId: 'c9', zona: 'inferior', ordemRota: 4 }),
+    ];
+    expect(ordenarPendentes(l, fixa, new Map()).map(e => e.id)).toEqual(['p3', 'p1', 'p2', 'p1b', 'p9']);
+    // a superior primeiro (c2, c1 e as duas do c1 juntas), depois a central, depois quem não está na ordem fixa
+    expect(ordemPelaRotaFixa(l, fixa, new Map())).toEqual(['p2', 'p1', 'p1b', 'p3', 'p9']);
+    expect(temOrdemFixa(fixa)).toBe(true);
+    expect(temOrdemFixa({ zonas: {}, ordem: {} })).toBe(false);
   });
   it('os protocolos do período, a busca e o fechamento do dia', () => {
     expect(janelaDoPeriodo('2026-10-16', '2026-10-15')).toMatchObject({ de: '2026-10-15', ate: '2026-10-16' });

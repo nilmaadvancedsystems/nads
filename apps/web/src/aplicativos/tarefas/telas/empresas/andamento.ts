@@ -1,6 +1,6 @@
 // O andamento das empresas na competência, usado pela lista (Empresas) e pelos números (Insights):
 // a competência escolhida (na URL), e para cada empresa as etapas feitas, a situação e a próxima etapa.
-import { empresas, formatos, tarefas as t } from '@nads/core';
+import { empresas, formatos, tarefas as t, usuarios } from '@nads/core';
 import { useSearchParams } from 'react-router';
 import { useAcesso, useExecucoes, useRegimesDoEntregas, useRepo, useTodosOsCadastros } from '../../dados/repo';
 import { useOperador, type Operador } from '../../casca/operador';
@@ -72,7 +72,7 @@ export function useEmpresasDoOperador(op: Operador | null) {
   };
   return {
     /** o admin, o diretor (26/10/2026) e as contas liberadas pelo login podem ver todas */
-    podeVerTodas: !op || !!op.admin || op.nivel === 'diretor' || (!!op.email && LOGINS_COM_TODAS_AS_EMPRESAS.includes(op.email.trim().toLowerCase())),
+    podeVerTodas: !op || !!op.admin || usuarios.nivelDeDiretor(op.nivel) || (!!op.email && LOGINS_COM_TODAS_AS_EMPRESAS.includes(op.email.trim().toLowerCase())),
     /**
      * o Cadastro chegou de verdade (a lista que falhou não conta: vazia, ela barraria todo mundo; 30/10/2026), e a equipe
      * (quem é de cada departamento decide se o escolhido vale)

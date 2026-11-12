@@ -3,7 +3,7 @@
 // cartões com uma opção por linha. JanelaDoUsuario: Cargo, Papéis e Acesso de uma pessoa (só o admin muda).
 // JanelaNovoUsuario: Dados, Cargo e Papéis do acesso novo, com o Criar acesso sempre no pé. Fecham no ×, no Esc e
 // clicando fora.
-import type { usuarios } from '@nads/core';
+import { usuarios } from '@nads/core';
 import { BotaoAcao, Icone, Interruptor } from '@nads/ui';
 import { useState } from 'react';
 import { Cartao, JanelaLateral, Linha, type TopicoDaJanela } from '../../janela/JanelaLateral';
@@ -28,6 +28,28 @@ function Foto({ foto, iniciais }: { foto?: string | null; iniciais: string }) {
 }
 
 /** o papel Desenvolvedor (06/11/2026): o que ele libera */
+/** O e-mail de entrada, com o Trocar para o Diretor e o Dono (12/11/2026). */
+function EmailDaConta({ vm, p }: { vm: VmUsuarios; p: usuarios.Usuario }) {
+  const [editando, setEditando] = useState<string | null>(null);
+  if (editando === null) {
+    return (
+      <span className="btn-row" style={{ alignItems: 'center' }}>
+        <span>{p.email}</span>
+        {vm.podeTrocarEmail(p) && <button type="button" className="btn btn-outline" onClick={() => setEditando(p.email)}><Icone nome="lapis" />Trocar</button>}
+      </span>
+    );
+  }
+  const salvar = async () => { if (await vm.trocarEmail(p, editando)) setEditando(null); };
+  return (
+    <span className="btn-row" style={{ alignItems: 'center' }}>
+      <input className="usuario-campo" type="email" aria-label={'E-mail de ' + p.nome} value={editando} autoFocus
+        onChange={e => setEditando(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void salvar(); if (e.key === 'Escape') setEditando(null); }} />
+      <button type="button" className="btn btn-outline" onClick={() => setEditando(null)}>Cancelar</button>
+      <BotaoAcao className="btn btn-primary" carregando={vm.fazendo('email:' + p.uid)} textoCarregando="Trocando…" onClick={() => void salvar()}>Salvar</BotaoAcao>
+    </span>
+  );
+}
+
 const DICA_FINANCEIRO = 'Quem é Diretor sempre tem. Os outros, só com a autorização do Diretor.';
 const SempreLigado = () => <span className="badge badge-neutral">Sempre ligado</span>;
 const DICA_DEV = 'Libera o Modo desenvolvedor no menu do avatar (só ver, sem gravar nada).';
@@ -76,20 +98,25 @@ export function JanelaDoUsuario({ vm }: { vm: VmUsuarios }) {
               {vm.departamentos.map(d => <option key={d.id} value={d.id}>{d.rotulo}</option>)}
             </select>
           </Linha>
-          <Linha rotulo="Nível" dica="Diretor também vira administrador.">
-            <select className="pessoal-select" value={p.nivel || ''} disabled={!vm.admin} aria-label="Nível"
-              onChange={ev => void vm.mudarCargo(p, p.departamento, (ev.target.value || null) as usuarios.Nivel | null)}>
-              <option value="">—</option>
-              {vm.niveis.map(n => <option key={n.id} value={n.id}>{n.rotulo}</option>)}
-            </select>
-          </Linha>
+          {/* o Dono não aparece na lista e o nível dele não muda por aqui (12/11/2026) */}
+          {p.nivel === 'dono' ? (
+            <Linha rotulo="Nível" dica="O Dono só deixa de ser pela aba Acesso, ele mesmo."><span>Dono</span></Linha>
+          ) : (
+            <Linha rotulo="Nível" dica="Diretor também vira administrador.">
+              <select className="pessoal-select" value={p.nivel || ''} disabled={!vm.admin} aria-label="Nível"
+                onChange={ev => void vm.mudarCargo(p, p.departamento, (ev.target.value || null) as usuarios.Nivel | null)}>
+                <option value="">—</option>
+                {vm.niveis.map(n => <option key={n.id} value={n.id}>{n.rotulo}</option>)}
+              </select>
+            </Linha>
+          )}
         </Cartao>
       )}
       {topico === 'papeis' && (
         <Cartao titulo="Papéis">
           {vm.papeis.filter(x => x.id !== 'financeiro' || temNivelDiretor(operador)).map(x => (
             <Linha key={x.id} rotulo={x.rotulo} dica={x.id === 'desenvolvedor' ? DICA_DEV : x.id === 'financeiro' ? DICA_FINANCEIRO : undefined}>
-              {x.id === 'financeiro' && p.nivel === 'diretor'
+              {x.id === 'financeiro' && usuarios.nivelDeDiretor(p.nivel)
                 ? <SempreLigado />
                 : <Interruptor ligado={p.papeis.includes(x.id)} onMudar={() => void vm.alternarPapel(p, x.id)} rotulo={x.rotulo + ' de ' + p.nome} />}
             </Linha>
@@ -101,6 +128,9 @@ export function JanelaDoUsuario({ vm }: { vm: VmUsuarios }) {
           <Cartao titulo="Conta">
             <Linha rotulo="No nads">
               <span className="usuarios-estado"><span className={'usuarios-ponto' + (p.online ? ' ok' : '')} aria-hidden="true" />{p.presenca}</span>
+            </Linha>
+            <Linha rotulo="E-mail" dica="O login. Com e-mail fora do padrão nome@nilma.local, a pessoa entra digitando o e-mail no lugar do nome.">
+              <EmailDaConta vm={vm} p={p} />
             </Linha>
             <Linha rotulo="Conta ativa">
               <Interruptor ligado={p.ativo} onMudar={() => void vm.ativar(p)} rotulo={(p.ativo ? 'Desativar ' : 'Ativar ') + p.nome} />
@@ -114,6 +144,13 @@ export function JanelaDoUsuario({ vm }: { vm: VmUsuarios }) {
                   : <button type="button" className="btn btn-outline" disabled={vm.gerandoSenha} onClick={() => void vm.gerarLinkDeSenha(p)}>
                     {vm.gerandoSenha ? <span className="btn-spinner" aria-hidden="true" /> : <Icone nome="link" />}Gerar link de nova senha
                   </button>}
+              </Linha>
+            </Cartao>
+          )}
+          {vm.ehODonoQueVe(p) && (
+            <Cartao titulo="Dono">
+              <Linha rotulo="Deixar de ser dono" dica="Você volta a Diretor. Virar Dono de novo, só pelo desenvolvedor.">
+                <button type="button" className="btn btn-outline" onClick={() => void vm.deixarDeSerDono(p)}>Deixar de ser dono</button>
               </Linha>
             </Cartao>
           )}
@@ -209,7 +246,7 @@ export function JanelaNovoUsuario({ fechar }: { fechar: () => void }) {
         <Cartao titulo="Papéis a mais">
           {vm.extras.filter(x => x.id !== 'financeiro' || temNivelDiretor(operador)).map(x => (
             <Linha key={x.id} rotulo={x.rotulo} dica={x.id === 'desenvolvedor' ? DICA_DEV : x.id === 'financeiro' ? DICA_FINANCEIRO : undefined}>
-              {x.id === 'financeiro' && vm.nivel === 'diretor'
+              {x.id === 'financeiro' && usuarios.nivelDeDiretor(vm.nivel)
                 ? <SempreLigado />
                 : <Interruptor ligado={x.on} onMudar={() => vm.alternarExtra(x.id)} rotulo={x.rotulo} />}
             </Linha>

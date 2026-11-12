@@ -309,12 +309,21 @@ export function vencimentoAutomatico(competencia: string, itens: readonly Pick<I
 // ---------------------------------------------------------------------------------------------------------------------
 // as guias que já estão na pasta do cliente no Drive (13/10/2026, no Entregas: "puxe as guias de FGTS e DARF da pasta")
 // ---------------------------------------------------------------------------------------------------------------------
-export interface GuiaDaPasta { tipo: 'fgts' | 'darf' | 'das'; nome: string; casa: (caminho: readonly string[]) => boolean }
+export interface GuiaDaPasta { tipo: 'fgts' | 'darf' | 'das' | 'folha_pagamento'; nome: string; casa: (caminho: readonly string[]) => boolean }
 export const GUIAS_DA_PASTA: readonly GuiaDaPasta[] = [
   { tipo: 'fgts', nome: 'FGTS', casa: p => { const t = p.join(' / '); return t.includes('FGTS') && !t.includes('CERTID'); } },
   { tipo: 'darf', nome: 'DARF', casa: p => p.join(' / ').includes('DARF') },
   // a pasta "01. DAS" (ou "DAS") ou o arquivo que começa com "DAS" — não qualquer nome com "das" no meio
   { tipo: 'das', nome: 'DAS', casa: p => p.slice(0, -1).some(s => /^(\d+\.\s*)?DAS$/.test(s)) || /^DAS[\s._-]/.test(p[p.length - 1] || '') },
+  // a folha do DP (11/11/2026: "no entregas tambem tenha a opção de puxar as folhas de pagamento"), onde o DP › Envios
+  // também acha: SOCIETÁRIO/FOLHA DE PAGAMENTO/AAAA/MM/… ou DEPARTAMENTO PESSOAL/MM/… com FOLHA no caminho; a guia do
+  // FGTS ou o DARF que estejam na mesma pasta ficam com o tipo deles
+  { tipo: 'folha_pagamento', nome: 'Folha de Pagamento', casa: p => {
+    const t = p.join(' / ');
+    if (/FGTS|DARF|CERTID/.test(t)) return false;
+    const dp = p.indexOf('DEPARTAMENTO PESSOAL');
+    return t.includes('FOLHA DE PAGAMENTO') || (dp >= 0 && /FOLHA/.test(p.slice(dp + 1).join(' / ')));
+  } },
 ];
 const MESES_POR_EXTENSO = ['JANEIRO', 'FEVEREIRO', 'MARCO', 'ABRIL', 'MAIO', 'JUNHO', 'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'];
 /** O mês da guia: o anterior ao da entrega (a guia de setembro é entregue em outubro). */
@@ -324,16 +333,34 @@ export function mesDaGuia(competencia: string, hoje = new Date()): { mm: string;
   d.setMonth(d.getMonth() - 1);
   return { mm: String(d.getMonth() + 1).padStart(2, '0'), aaaa: String(d.getFullYear()) };
 }
-/** O caminho (já normalizado) é do mês da guia? pela pasta "09" ou pelo nome ("09-2026", "06.2026", "SETEMBRO 2026"). */
+/**
+ * O caminho (já normalizado) é do mês da guia? pela pasta "09" ou pelo nome ("09-2026", "06.2026", "SETEMBRO 2026"). A data
+ * inteira do nome (o vencimento, o pagamento) não conta: o arquivador grava "09-2026 - DARF INSS - VALOR … - VENCIMENTO
+ * 20-10-2026.pdf", e o "10-2026" do vencimento fazia o DARF de setembro passar pelo de outubro (11/11/2026: "fui puxar uma
+ * guia … e veio o darf do mes passado ao invez do novo (que nem foi salvo ainda)").
+ */
 export function doMesDaGuia(p: readonly string[], g: { mm: string; aaaa: string }): boolean {
-  const nome = p[p.length - 1] || '';
+  const nome = (p[p.length - 1] || '').replace(/(^|\D)\d{1,2}[\s._/-]\d{1,2}[\s._/-]\d{4}(?!\d)/g, '$1 ');
   if (p.slice(0, -1).includes(g.mm)) return true;
   if (new RegExp('(^|\\D)' + g.mm + '[\\s._/-]?' + g.aaaa + '(\\D|$)').test(nome)) return true;
   const extenso = MESES_POR_EXTENSO[Number(g.mm) - 1];
   return nome.includes(extenso) && nome.includes(g.aaaa);
 }
-/** As guias do mês na pasta do cliente: a mais nova de cada tipo (FGTS, DARF, DAS), só PDF. */
-export function guiasNaPasta(itens: readonly ItemDoDrive[], g: { mm: string; aaaa: string }): { guia: GuiaDaPasta; arquivo: ItemDoDrive }[] {
+/**
+ * O tributo do DARF pelo nome do arquivo (já normalizado), como o arquivador grava ("09-2026 - DARF INSS - VALOR …" → "INSS",
+ * "DARF IRRF FOLHA.PDF" → "IRRF FOLHA"); '' quando o nome não diz.
+ */
+export function tributoDoDarf(nome: string): string {
+  const m = /\bDARF\s+([A-Z][A-Z0-9]*(?:\s+[A-Z][A-Z0-9]*)*)/.exec(textoNormalizado(nome).replace(/\.PDF$/, ''));
+  return m ? m[1] : '';
+}
+/** Uma guia achada na pasta; tributo: o do DARF ('' nos outros e no DARF cujo nome não diz). */
+export interface GuiaAchadaNaPasta { guia: GuiaDaPasta; arquivo: ItemDoDrive; tributo: string }
+/**
+ * As guias do mês na pasta do cliente, só PDF: a mais nova de cada tipo (FGTS, DAS) e, do DARF, a mais nova de cada tributo
+ * (11/11/2026: o cliente com DARF INSS e DARF IRRF recebia só um). Na ordem FGTS, DARF, DAS; os DARFs pelo tributo.
+ */
+export function guiasNaPasta(itens: readonly ItemDoDrive[], g: { mm: string; aaaa: string }): GuiaAchadaNaPasta[] {
   const porId = new Map(itens.map(it => [it.i, it]));
   const caminho = (it: ItemDoDrive) => {
     const p: string[] = [];
@@ -342,18 +369,76 @@ export function guiasNaPasta(itens: readonly ItemDoDrive[], g: { mm: string; aaa
     while (x && n++ < 20) { p.unshift(textoNormalizado(x.n)); x = porId.get(x.p); }
     return p;
   };
-  const achadas: Record<string, { guia: GuiaDaPasta; arquivo: ItemDoDrive }> = {};
+  const achadas = new Map<string, GuiaAchadaNaPasta>();
   for (const it of itens) {
     if (it.t !== 'f' || !/\.pdf$/i.test(it.n)) continue;
     const p = caminho(it);
     if (!doMesDaGuia(p, g)) continue;
     for (const gp of GUIAS_DA_PASTA) {
       if (!gp.casa(p)) continue;
-      const atual = achadas[gp.tipo];
-      if (!atual || String(it.m || '') > String(atual.arquivo.m || '')) achadas[gp.tipo] = { guia: gp, arquivo: it };
+      const tributo = gp.tipo === 'darf' ? tributoDoDarf(it.n) : '';
+      const chave = gp.tipo + '|' + tributo;
+      const atual = achadas.get(chave);
+      if (!atual || String(it.m || '') > String(atual.arquivo.m || '')) achadas.set(chave, { guia: gp, arquivo: it, tributo });
     }
   }
-  return GUIAS_DA_PASTA.map(gp => achadas[gp.tipo]).filter(Boolean);
+  const ordem = (x: GuiaAchadaNaPasta) => GUIAS_DA_PASTA.indexOf(x.guia);
+  return [...achadas.values()].sort((a, b) => ordem(a) - ordem(b) || a.tributo.localeCompare(b.tributo, 'pt-BR'));
+}
+
+/**
+ * Como cada guia puxada entra na Nova entrega: no documento da lista (FGTS, DARF, DAS), como sempre; com mais de um DARF, os
+ * que dizem o tributo entram cada um na sua linha, "DARF INSS", "DARF IRRF" (o mesmo nome que o lote do Fiscal grava).
+ */
+export function comoEntraAGuia(guias: readonly Pick<GuiaAchadaNaPasta, 'guia' | 'tributo'>[]): { principal: boolean; rotulo: string }[] {
+  const darfs = guias.filter(x => x.guia.tipo === 'darf').length;
+  return guias.map(x => (x.guia.tipo === 'darf' && darfs > 1 && x.tributo
+    ? { principal: false, rotulo: 'DARF ' + x.tributo }
+    : { principal: true, rotulo: x.guia.nome }));
+}
+
+/**
+ * Os ids dos anexos das guias na entrega (entregas/{id}/anexos/<id>), a mesma regra do lote do Fiscal (robo/lote-fiscal.js,
+ * idsDosAnexos): 'guia-fgts', 'guia-darf', 'guia-darf-inss', e '-2' quando repete.
+ */
+export function idsDosAnexosDasGuias(guias: readonly { tipo: string; tributo?: string }[]): string[] {
+  const usados = new Set<string>();
+  return guias.map(gu => {
+    const base = 'guia-' + ([gu.tipo, gu.tributo].filter(Boolean).join('-').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'outra');
+    let id = base;
+    for (let n = 2; usados.has(id); n++) id = base + '-' + n;
+    usados.add(id);
+    return id;
+  });
+}
+/**
+ * Os anexos de guia que podem existir numa entrega, para sair junto com ela: os de sempre (FGTS, DARF, DAS) e os que os
+ * documentos dela indicam ("DARF INSS" → 'guia-darf-inss', o que o Puxar guias e o lote do Fiscal gravam).
+ */
+export function anexosDeGuiaDaEntrega(itens: readonly Pick<ItemDaEntrega, 'tipo'>[]): string[] {
+  const daEntrega = idsDosAnexosDasGuias(itens.filter(i => /^(FGTS|DARF|DAS)\b/i.test(i.tipo)).map(i => ({ tipo: i.tipo })));
+  return [...new Set(['guia-fgts', 'guia-darf', 'guia-das', 'guia-folha-pagamento', 'guia-boleto', ...daEntrega])];
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// o boleto de honorário do Financeiro (11/11/2026: "e boletos (financeiro)"): o do cliente em Financeiro › Boletos
+// ---------------------------------------------------------------------------------------------------------------------
+/** O boleto do Financeiro que a entrega leva: o da competência; sem ele, o do mês anterior (o das guias). Nunca o tirado do lote. */
+export function boletoParaAEntrega<B extends { competencia: string; contratoId: string; fora?: boolean; vencimento: string | null }>(
+  boletos: readonly B[], contratos: readonly string[], competencia: string,
+): B | null {
+  const doCliente = boletos.filter(b => contratos.includes(b.contratoId) && !b.fora);
+  const m = /^(\d{4})-(\d{2})$/.exec(competencia);
+  const anterior = m ? (() => { const d = new Date(Number(m[1]), Number(m[2]) - 2, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); })() : '';
+  const maisNovo = (l: B[]) => [...l].sort((a, b) => String(b.vencimento || '').localeCompare(String(a.vencimento || '')))[0] || null;
+  return maisNovo(doCliente.filter(b => b.competencia === competencia)) || maisNovo(doCliente.filter(b => b.competencia === anterior));
+}
+/** A linha digitável (só os dígitos) como o banco imprime: 47 (boleto) em 5 campos; 48 (arrecadação) em 4 blocos de 12. */
+export function linhaDoBoleto(digitos: string): string {
+  const d = String(digitos || '').replace(/\D/g, '');
+  if (d.length === 47) return d.slice(0, 5) + '.' + d.slice(5, 10) + ' ' + d.slice(10, 15) + '.' + d.slice(15, 21) + ' ' + d.slice(21, 26) + '.' + d.slice(26, 32) + ' ' + d[32] + ' ' + d.slice(33);
+  if (d.length === 48) return [0, 12, 24, 36].map(i => d.slice(i, i + 12)).join(' ');
+  return d;
 }
 /** O PDF anexado à entrega cabe no documento do banco? (o documento aceita ~1 MB e o Base64 cresce 1/3) */
 export const LIMITE_PDF_ANEXO = 700000;

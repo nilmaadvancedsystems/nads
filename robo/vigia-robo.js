@@ -381,6 +381,27 @@ async function atenderEnvioDp(p, pedidoId) {
   return r;
 }
 
+// O e-mail do Mandei (nads, 11/11/2026): o link do formulário para o cliente; a conferência e a trava em mandei.js
+async function atenderMandei(p, pedidoId) {
+  const dep = await departamentoDoPedido(p);
+  const envio = await envioDoSetor(dep);
+  if (!dentroDoLimite(1, envio.caixa)) throw new Error('limite de ' + MAX_ENVIOS_POR_HORA + ' envios por hora atingido; tente mais tarde');
+  const r = await require('./mandei').atenderMandei(p, {
+    db, pedidoId, log, agora,
+    visual: async () => {
+      const cfg = await configDaCobranca(dep);
+      return htmlDoDisparo({ assunto: p.assunto, corpo: p.corpo, assinatura: cfg.assinatura || 'Nilma Contabilidade', caixa: envio.de });
+    },
+    enviar: async dados => {
+      const id = await enviar(Object.assign({}, dados, envio.respostas ? { respostasPara: envio.respostas } : {}), envio.caixa);
+      enviosDa(envio.caixa).push(Date.now());
+      return id;
+    },
+  });
+  auditoria('mandei_email', (p.numero || p.ticket) + ' · ' + (p.empresa || '') + ' · para ' + r.para, p);
+  return r;
+}
+
 async function atenderDisparo(p, ref) {
   // o arquivo não fica no banco, dando certo ou não
   try { return await dispararPara(p, ref); }
@@ -892,6 +913,7 @@ async function atenderFila() {
         responder: 'Resposta de e-mail' + (p.para ? ' para ' + p.para : ''),
         desligar: 'Tirando um e-mail do cliente errado',
         envioDp: 'Documentos do DP para ' + (p.empresa || 'o cliente ' + (p.codigo || '')),
+        mandei: 'Mandei ' + (p.numero || '') + ' para ' + (p.empresa || p.para || 'o cliente'),
       }[p.tipo] || 'Pedido da tela';
       atendeuAlgum = true;
       roboRef.set({ filaAndamento: { ativo: true, atual: oqueAgora, restantes: pendentes.length, desde: agora(), em: agora() } }, { merge: true }).catch(() => {});
@@ -921,6 +943,7 @@ async function atenderFila() {
         } else if (p.tipo === 'disparo') resultado = await atenderDisparo(p, doc.ref);
         else if (p.tipo === 'responder') resultado = await atenderResponder(p, doc.ref);
         else if (p.tipo === 'envioDp') resultado = await atenderEnvioDp(p, doc.id);
+        else if (p.tipo === 'mandei') resultado = await atenderMandei(p, doc.id);
         else throw new Error('tipo de pedido desconhecido: ' + p.tipo);
         await doc.ref.update(resultado);
         // no painel do robô (a leitura do Gmail já se registra sozinha em rodarRobo)
@@ -932,14 +955,15 @@ async function atenderFila() {
           responder: ['gmail', 'Respondeu um e-mail' + (p.para ? ' para ' + p.para : '')],
           desligar: ['gmail', 'Tirou um e-mail do cliente errado'],
           envioDp: ['gmail', 'Mandou os documentos do DP para ' + (p.empresa || 'o cliente ' + (p.codigo || ''))],
+          mandei: ['gmail', 'Mandou o link do Mandei ' + (p.numero || '') + ' para ' + (p.empresa || p.para || 'o cliente')],
         }[p.tipo];
         if (feito) painel.atividade(feito[0], feito[1], [p.criadoPor ? 'pedido de ' + p.criadoPor : '', resultado.resumo || ''].filter(Boolean).join(' · '));
       } catch (err) {
         const erro = traduzirErro(err);
         log('pedido', doc.id, 'falhou:', erro);
-        painel.erro(p.tipo === 'um' || p.tipo === 'lote' ? 'cobranca' : 'gmail', ({ um: 'A cobrança de ' + (p.clienteNome || p.para || 'um cliente'), lote: 'A cobrança em lote', verificar: 'A leitura do Gmail', salvar: 'Salvar o e-mail no Drive', disparo: 'O disparo', responder: 'A resposta de e-mail', desligar: 'Tirar o e-mail do cliente errado', envioDp: 'O envio dos documentos do DP' }[p.tipo] || 'Um pedido') + ' deu erro', erro);
+        painel.erro(p.tipo === 'um' || p.tipo === 'lote' ? 'cobranca' : 'gmail', ({ um: 'A cobrança de ' + (p.clienteNome || p.para || 'um cliente'), lote: 'A cobrança em lote', verificar: 'A leitura do Gmail', salvar: 'Salvar o e-mail no Drive', disparo: 'O disparo', responder: 'A resposta de e-mail', desligar: 'Tirar o e-mail do cliente errado', envioDp: 'O envio dos documentos do DP', mandei: 'O e-mail do Mandei' }[p.tipo] || 'Um pedido') + ' deu erro', erro);
         await doc.ref.update({ status: 'erro', erro, erroEm: agora() }).catch(() => {});
-        const oque = { um: 'a cobrança de ' + (p.clienteNome || p.para), lote: 'a cobrança em lote', verificar: 'a verificação do Gmail', salvar: 'salvar anexo no Drive', disparo: 'o disparo "' + (p.assunto || '') + '"', responder: 'a resposta de e-mail' + (p.para ? ' para ' + p.para : ''), desligar: 'tirar o e-mail do cliente errado', envioDp: 'o envio dos documentos do DP' + (p.empresa ? ' para ' + p.empresa : '') }[p.tipo] || 'um pedido';
+        const oque = { um: 'a cobrança de ' + (p.clienteNome || p.para), lote: 'a cobrança em lote', verificar: 'a verificação do Gmail', salvar: 'salvar anexo no Drive', disparo: 'o disparo "' + (p.assunto || '') + '"', responder: 'a resposta de e-mail' + (p.para ? ' para ' + p.para : ''), desligar: 'tirar o e-mail do cliente errado', envioDp: 'o envio dos documentos do DP' + (p.empresa ? ' para ' + p.empresa : ''), mandei: 'o e-mail do Mandei ' + (p.numero || '') + (p.empresa ? ' para ' + p.empresa : '') }[p.tipo] || 'um pedido';
         await alertar(oque + ' deu erro', 'Pedido de ' + (p.criadoPor || 'alguém') + ' em ' + new Date(p.criadoEm).toLocaleString('pt-BR') + ':\n' + erro);
       }
     }
@@ -1071,6 +1095,9 @@ async function iniciar() {
         log, caixa: CAIXA, enviar: dados => enviar(dados), config: () => configDaCobranca(),
       }));
     } catch (err) { log('boletos do Financeiro desligados:', err.message); }
+    // a troca do e-mail de entrada (12/11/2026, nads › Cadastro › Usuários › Acesso): o Diretor ou o Dono pede, o robô troca
+    try { tarefa('pedidos-de-conta', () => require('./contas-pedidos').iniciarPedidosDeConta(db, log)); }
+    catch (err) { log('pedidos de conta desligados:', err.message); }
   }
   // Mapa da pasta do ano no Drive (explorador do Pendências, status pela
   // pasta) e "abrir arquivo" pelo app. Só onde o robô fala com o Drive pela

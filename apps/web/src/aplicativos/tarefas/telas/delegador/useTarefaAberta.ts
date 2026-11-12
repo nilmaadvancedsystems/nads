@@ -5,13 +5,14 @@
 // anexos sobem e saem na hora; na nova, ficam esperando o Salvar.
 import { empresas as emp, entregas, tarefas, usuarios } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ehDiretor, caminhoDoExecutor } from '../../casca/navegacao';
 import { useOperador } from '../../casca/operador';
 import { useAcesso, useRepo, useTarefasDelegadas } from '../../dados/repo';
 import { bytesDoAnexo, encolherAnexo } from '../../dados/encolherAnexo';
 import { tamanhoDoArquivo, type ArquivoParaAnexar } from '../../dados/tarefasDelegadas';
 import { useEmpresasPermitidas } from '../empresas/andamento';
+import { useAgoraDoExpediente } from './useAgoraDoExpediente';
 
 const d = tarefas.delegadas;
 type Rascunho = tarefas.delegadas.Rascunho;
@@ -37,12 +38,20 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
   const { toast, modal } = useRetorno();
   const eu = repo.eu();
   const uid = eu?.uid || '';
-  const ehNova = alvo === 'nova';
+  // 'documentos': a nova já como pedido de documentos (o botão Pedir documentos do Início; 12/11/2026)
+  const pedido = alvo === 'documentos';
+  const ehNova = alvo === 'nova' || pedido;
   const { carregadas, tarefas: todas } = repo.lista();
   const tarefa = ehNova ? null : todas.find(t => t.id === alvo) || null;
+  const relogio = useAgoraDoExpediente();
+  // o Visualizado (12/11/2026): a primeira vez que quem recebeu abre a tarefa, a hora vai ao banco (sem a regra no ar, fica sem)
+  const marcar = !!tarefa && d.marcaVisualizada(tarefa, uid);
+  useEffect(() => {
+    if (marcar && tarefa) repo.marcarVisualizada(tarefa.id).catch(() => { /* sem rede ou sem a regra: tenta na próxima vez que abrir */ });
+  }, [marcar, tarefa?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // o rascunho começa da tarefa (ou vazio); o prazo fica no texto do CampoData (dd/mm/aaaa) até salvar
-  const [inicial, setInicial] = useState<Rascunho>(() => (tarefa ? d.rascunhoDe(tarefa) : d.rascunhoVazio(null)));
+  const [inicial, setInicial] = useState<Rascunho>(() => (tarefa ? d.rascunhoDe(tarefa) : pedido ? { ...d.rascunhoVazio(null), titulo: d.TITULO_DO_PEDIDO, tipo: 'documentos' } : d.rascunhoVazio(null)));
   const [r, setR] = useState<Rascunho>(inicial);
   const [prazoTexto, setPrazoTexto] = useState(() => d.prazoParaTela(inicial.prazo));
   const [aba, setAba] = useState<AbaDaTarefa>('tarefa');
@@ -52,7 +61,8 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
   const [erro, setErro] = useState('');
   // o toggle Delegar (09/11/2026: "caso esteja off, não é para a tarefa ser delegada, é para o próprio usuário"): enquanto a
   // pessoa não mexe, segue a tarefa (de outra pessoa = ligado; a nova e a dela mesma = desligado)
-  const [delegarEscolhido, setDelegarEscolhido] = useState<boolean | null>(null);
+  // (o pedido de documentos já abre delegando: é para outra pessoa anexar)
+  const [delegarEscolhido, setDelegarEscolhido] = useState<boolean | null>(pedido ? true : null);
 
   // a tarefa que chega do banco depois de aberta (a lista ainda carregava, ou outra pessoa mudou; 29/10/2026: "não salva
   // nada"): o formulário acompanha o banco nos campos que a pessoa não mexeu, e o que ela mudou fica por cima (30/10/2026:
@@ -80,7 +90,7 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
   // o que a pessoa mudou desde que abriu: é só isso que o Salvar grava
   const mudancas = ehNova ? {} : d.mudancasDoRascunho(inicial, final);
   const mudou = ehNova
-    ? !!(r.titulo.trim() || r.descricao.trim() || r.clientes.length || r.responsavel || prazoTexto || r.prazoHora || pendentes.length || r.prioridade !== 'normal' || r.status !== 'pendente')
+    ? !!(r.titulo.trim() !== inicial.titulo || r.descricao.trim() || r.clientes.length || r.responsavel || prazoTexto || r.prazoHora || pendentes.length || r.prioridade !== 'normal' || r.status !== 'pendente')
     : !!tarefa && (Object.keys(mudancas).length > 0 || prazo === null);
   const podeMudar = ehNova || (!!tarefa && d.podeMudar(tarefa, uid));
   // a etapa delegada a esta pessoa (Vitor, 10/11/2026): abre só ela, com o resto da empresa bloqueado
@@ -132,7 +142,8 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
     sumiu: !ehNova && carregadas && !tarefa,
     ehNova,
     numero: tarefa?.numero || null,
-    status: tarefa ? { rotulo: d.rotuloDoStatus(tarefa.status), tom: d.tomDoStatus(tarefa.status) } : null,
+    // nos intervalos (11:05–13:00 e 18:05–07:00) a em andamento aparece Pausada, e volta sozinha (12/11/2026)
+    status: tarefa ? { rotulo: d.rotuloNoHorario(tarefa, relogio), tom: d.tomDoStatus(d.situacaoNoHorario(tarefa, relogio).status) } : null,
     podeMudar,
     podeExcluir: !!tarefa && d.podeExcluir(tarefa, uid, admin),
     aba, setAba,
@@ -164,7 +175,10 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
     /** o seletor de status é de quem criou (o controle de quem delegou); quem recebeu usa os botões */
     mudaStatus: !!tarefa && (tarefa.criadaPor.uid === uid || admin),
     /** Iniciar, Pausar, Retomar e Concluir: de quem vai fazer a tarefa */
-    acoes: tarefa && tarefa.responsavel.uid === uid ? d.acoesDoStatus(tarefa.status) : [],
+    acoes: tarefa && tarefa.responsavel.uid === uid ? d.acoesDaTarefa(tarefa, relogio) : [],
+    /** o pedido de documentos: o aviso no alto da janela */
+    pedeDocumentos: pedido || (!!tarefa && d.pedeDocumentos(tarefa)),
+    souQuemFaz: !!tarefa && tarefa.responsavel.uid === uid,
     async fazerAcao(status: tarefas.delegadas.Status) {
       if (!tarefa) return;
       try {
@@ -193,6 +207,9 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
     datas: tarefa ? [
       { rotulo: 'Criada em', valor: quando(tarefa.criadaEm) + ' por ' + tarefa.criadaPor.nome },
       { rotulo: 'Concluída em', valor: tarefa.concluidaEm ? quando(tarefa.concluidaEm) : '—' },
+      // só o expediente conta: os intervalos e a noite ficam de fora
+      ...(tarefa.criadaPor.uid === uid && d.rotuloDaVisualizacao(tarefa) ? [{ rotulo: 'Visualizado', valor: d.rotuloDaVisualizacao(tarefa).replace(/^Visualizada /, 'Sim, ') }] : []),
+      { rotulo: 'Tempo trabalhado', valor: d.duracaoParaTela(d.minutosTrabalhados(tarefa, relogio)) },
     ] : [],
 
     // ---- os anexos: na nova, esperando o Salvar; na que existe, sobem na hora
@@ -212,7 +229,19 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
       try {
         await repo.anexar(tarefa.id, arquivos);
         toast(arquivos.length === 1 ? 'Arquivo anexado.' : arquivos.length + ' arquivos anexados.');
-      } catch (e) { toast('Não anexei: ' + (e instanceof Error ? e.message : String(e))); } finally { setOcupado(''); }
+      } catch (e) { toast('Não anexei: ' + (e instanceof Error ? e.message : String(e))); return; } finally { setOcupado(''); }
+      // o pedido de documentos (12/11/2026: "após anexar, já dá como concluído"; o Vitor escolheu confirmar, porque às vezes são
+      // vários arquivos): quem recebeu responde se já anexou tudo
+      if (d.pedeDocumentos(tarefa) && tarefa.responsavel.uid === uid && d.emAberto(tarefa)) {
+        const tudo = await modal({ icone: 'check', titulo: 'Anexou tudo?', texto: 'Concluindo, quem pediu vê a tarefa concluída com os documentos.',
+          botoes: [{ rotulo: 'Ainda falta', valor: false, variante: 'btn-outline' }, { rotulo: 'Anexei tudo, concluir', valor: true, variante: 'btn-primary' }] });
+        if (!tudo) return;
+        try {
+          await repo.salvar(tarefa.id, { status: 'concluida' });
+          toast('Tarefa concluída.');
+          if (!mudou) voltar();
+        } catch (e) { setErro('Não concluí: ' + (e instanceof Error ? e.message : String(e))); }
+      }
     },
     async tirarAnexo(id: string) {
       if (ehNova) { setPendentes(p => p.filter((_, i) => 'p' + i !== id)); return; }

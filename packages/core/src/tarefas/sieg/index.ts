@@ -44,6 +44,8 @@ export interface NotaDoSieg {
   /** CT-e, desde o resumo 5 (23/10/2026), só quando têm: as chaves das NF-e que ele transporta (infDoc/infNFe) e o ICMS dele */
   nfes?: string[]; icms?: number;
   cancelada?: boolean;
+  /** NF-e, desde o resumo 6 (11/11/2026, o LCDPR), só quando têm: a nota de entrada (tpNF 0), a IE do destinatário e os produtos (até 80 letras) */
+  entrada?: boolean; ieDest?: string; produto?: string;
   itens?: ItemDoXml[];
   cfop?: string;
   /** NFS-e */
@@ -59,7 +61,7 @@ export interface NotasSieg {
   emitidas: NotaDoSieg[]; recebidas: NotaDoSieg[];
   /** o resumo passou do tamanho de um documento: saíram os itens */
   itensCortados?: boolean;
-  /** a versão do resumo (2 = os itens com o ICMS, o ST, o IPI e o CST do PIS; 3 = o frete e o desconto da nota; 4 = mais a base, a alíquota e as despesas de cada item; sem = 1) */
+  /** a versão do resumo (2 = os itens com o ICMS, o ST, o IPI e o CST do PIS; 3 = o frete e o desconto da nota; 4 = mais a base, a alíquota e as despesas de cada item; 5 = as NF-e do CT-e; 6 = a entrada, a IE do destinatário e os produtos da NF-e; sem = 1) */
   resumo?: number;
 }
 
@@ -213,9 +215,10 @@ export { errosDeTributacao, conferirValores, type ErroDeTributacao, type NotaQue
 export { segregacaoDasSaidas, previaDoDas, aliquotaEfetiva, avisoDeLimite, reinfDasNotas, servicosDoMes, grupoMonofasico, temIcmsSt, ANEXOS, MONOFASICOS, SUBLIMITE, TETO, LIMITE_MEI, type Anexo, type Segregacao, type PreviaDoDas, type ParcelaDaReceita, type LinhaDaReinf } from './simples';
 export { receitasDoMes, creditosDoMes, pisCofins, icmsDoMes, irpjCsll, receitaParaIrpj, mesesDoTrimestre, temImpostosNoXml, ehVenda, PRESUNCOES, ALIQUOTAS_PIS_COFINS, type ReceitasDoMes, type CreditosDoMes, type PisCofins, type IcmsDoMes, type IrpjCsll, type ReceitaParaIrpj, type Presuncao, type RegimeDoLucro } from './lucro';
 export { percentuaisEfetivos, calculoDoSimples, fatorR, PARCELAS_DA_RECEITA, TRIBUTOS_DO_SIMPLES, ROTULO_DO_TRIBUTO, TETO_DO_ISS, FATOR_R_MINIMO, type TributoDoSimples, type PercentuaisEfetivos, type ParcelaDoCalculo, type CalculoDoSimples, type FolhaDoMes } from './calculadora';
-export { espelhoDaNota, type EspelhoDaNota } from './espelho';
+export { espelhoDaNota, comoVerANota, type EspelhoDaNota } from './espelho';
+export { espelhoDoServico, type EspelhoDoServico } from './espelhoDoServico';
 export { competenciasDoPeriodo, faturamentoDasSaidas, linhasDoFaturamento, mesesDoDetalhe, resumoDasEmitidas, curvaAbc, type ClasseAbc, type CurvaAbc, type MesDoDetalhe, type ResumoDasEmitidas, planilhaDoFaturamento, htmlDoFaturamento, mesCurto, PERIODOS_DO_FATURAMENTO, FONTE_SIEG, FONTE_SIEG_CURTA, type PeriodoDoFaturamento, type LinhaDoFaturamento, type EmpresaDoFaturamento, type ValorDoFaturamento } from './faturamento';
 export { ratear, repartir, tributacaoDoItem, valoresDaNota, gruposDaNota, rateioDosNcms, rateioDoCte, TRIBUTACOES, type Rateio, type LinhaRateada, type LinhaParaRatear, type Tributacao, type ValoresDaNota, type GrupoDaNota, type AgruparPor, type RateioDoCte } from './rateio';
-export { linhasDaAntecipacao, calcularAntecipacao, contaDaAntecipacao, totaisDaAntecipacao, resumoDaAntecipacao, filtrarAntecipacao, htmlDaAntecipacao, cfopDeEntrada, rotuloDaSituacao, mesDaLinha, arred, SITUACOES_DA_ANTECIPACAO, ALIQUOTA_INTERNA_ES, type SituacaoDaAntecipacao, type LinhaDaAntecipacao, type LinhaCalculada, type MarcaDaAntecipacao, type TotaisDaAntecipacao, type ResumoDaAntecipacao, type EmpresaDoRelatorio } from './antecipacao';
-export { danfeDoXml, htmlDaDanfe, chaveEmGrupos, docFormatado, type Danfe, type ItemDaDanfe, type PessoaDaDanfe } from './danfe';
+export { linhasDaAntecipacao, calcularAntecipacao, contaDaAntecipacao, totaisDaAntecipacao, linhasQueCobram, resumoDaAntecipacao, filtrarAntecipacao, htmlDaAntecipacao, cfopDeEntrada, rotuloDaSituacao, mesDaLinha, arred, SITUACOES_DA_ANTECIPACAO, ALIQUOTA_INTERNA_ES, type SituacaoDaAntecipacao, type LinhaDaAntecipacao, type LinhaCalculada, type MarcaDaAntecipacao, type AliquotaCorrigida, type TotaisDaAntecipacao, type ResumoDaAntecipacao, type EmpresaDoRelatorio } from './antecipacao';
+export { danfeDoXml, chaveEmGrupos, docFormatado, type Danfe, type ItemDaDanfe, type PessoaDaDanfe } from './danfe';
 export { painelDoSieg, notaDaLinha, linhaCombina, ABAS_DO_SIEG, type AbaDoSieg, type PainelDoSieg, type ResumoDaAba, type LinhaDaNotaSieg, type GrupoDoSieg } from './painel';

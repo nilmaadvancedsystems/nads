@@ -14,6 +14,23 @@ export interface EstadoReinf {
   ultima?: UltimaTransmissao;
   /** 'aaaa-mm' de cada retificação */
   retificadas: string[];
+  /** o que foi transmitido em cada competência ('aaaa-mm' → as séries), como o CheckList REINF do Alterdata */
+  series?: Record<string, SerieReinf[]>;
+}
+
+/**
+ * As partes da transmissão (Vitor, 12/11/2026, chamado KADMFS do Savio: "ao clicar em transmitir, aparece um submenu: 2000,
+ * 4000, MIT"), as mesmas do CheckList REINF do Alterdata.
+ */
+export type SerieReinf = '2000' | '4000' | 'mit';
+export const SERIES_REINF: readonly { id: SerieReinf; rotulo: string }[] = [
+  { id: '2000', rotulo: 'Série 2000' }, { id: '4000', rotulo: 'Série 4000' }, { id: 'mit', rotulo: 'MIT' },
+];
+
+/** As séries transmitidas na competência, na ordem do Alterdata. */
+export function seriesDaReinf(e: EstadoReinf | undefined, competencia: string): SerieReinf[] {
+  const tem = e?.series?.[competencia] || [];
+  return SERIES_REINF.map(s => s.id).filter(id => tem.includes(id));
 }
 
 export type SituacaoReinf = 'transmitida' | 'pendente';
@@ -30,11 +47,36 @@ export function transmitirReinf(e: EstadoReinf, competencia: string, por: string
 
 /** Desfaz a transmissão da competência (marcou sem querer): o "até" volta para o mês anterior. */
 export function desfazerReinf(e: EstadoReinf, competencia: string): EstadoReinf {
+  if (e.series?.[competencia]) { const series = { ...e.series }; delete series[competencia]; e = { ...e, series }; }
   if (!e.transmitidoAte || e.transmitidoAte < competencia) return e;
   const [a, m] = competencia.split('-').map(Number);
   const antes = m === 1 ? (a - 1) + '-12' : a + '-' + String(m - 1).padStart(2, '0');
   return { ...e, transmitidoAte: antes };
 }
+
+/**
+ * Marca (ou tira) uma série da competência. A primeira série marcada transmite a competência; tirar a última desfaz.
+ */
+export function alternarSerieReinf(e: EstadoReinf, competencia: string, serie: SerieReinf, por: string, agora: Date): EstadoReinf {
+  const antes = seriesDaReinf(e, competencia);
+  const agoraSeries = antes.includes(serie) ? antes.filter(s => s !== serie) : [...antes, serie];
+  const series = { ...(e.series || {}) };
+  if (agoraSeries.length) series[competencia] = SERIES_REINF.map(s => s.id).filter(id => agoraSeries.includes(id));
+  else delete series[competencia];
+  const base = { ...e, series };
+  if (agoraSeries.length) return transmitirReinf(base, competencia, por, agora);
+  return desfazerReinf(base, competencia);
+}
+
+/** Transmitiu a competência com estas séries (as caixinhas do Transmitir; uma ou mais). Sem nenhuma, nada muda. */
+export function transmitirSeriesReinf(e: EstadoReinf, competencia: string, series: readonly SerieReinf[], por: string, agora: Date): EstadoReinf {
+  const ids = SERIES_REINF.map(s => s.id).filter(id => series.includes(id));
+  if (!ids.length) return e;
+  return transmitirReinf({ ...e, series: { ...(e.series || {}), [competencia]: ids } }, competencia, por, agora);
+}
+
+/** O rótulo curto das séries ("2000 · 4000 · MIT"), para a coluna da tela. */
+export const rotuloDasSeries = (series: readonly SerieReinf[]) => series.map(s => (s === 'mit' ? 'MIT' : s)).join(' · ');
 
 /** Retificou a competência (uma vez cada); de novo, tira. */
 export function alternarRetificada(e: EstadoReinf, competencia: string, por: string, agora: Date): EstadoReinf {
@@ -52,10 +94,13 @@ export function resumoReinf(estados: readonly EstadoReinf[], competencia: string
 /**
  * A empresa tem a REINF no Fiscal (Vitor, 05/11/2026: "todas as empresas tem reinf"): todas, sem olhar o regime (o que vem do
  * Entregas ou da Receita tirava empresas da lista) e com as filiais (05/11/2026: o Heverton tem 43 empresas, as 6 filiais
- * entram).
+ * entram). Menos o empregador doméstico e a pessoa física (Vitor, 12/11/2026: "quem for doméstica e física, não precisa estar
+ * na lista da REINF"; e depois: "MEI também não precisa"), pelos regimes Domésticas, Física e MEI do Cadastro.
  */
 export function temReinfNoFiscal(e: { codigo: number | null; nome: string; regime?: string }): boolean {
-  return e.codigo != null;
+  if (e.codigo == null) return false;
+  const regime = (e.regime || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+  return !/^(fisica|domesticas?|mei)$/.test(regime);
 }
 
 /** As empresas da lista que têm a REINF no Fiscal, uma por código, em ordem de código. */

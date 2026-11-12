@@ -21,6 +21,11 @@ import { useSinalDeOnde } from './ondeEstou';
 import { useOperador } from '../../casca/operador';
 import { JanelaInterromper } from './partes/JanelaInterromper';
 import { useChecklistDaFolha } from './useChecklistDaFolha';
+import { FaixaDelegado } from './etapas/delegacao/FaixaDelegado';
+import { JanelaDelegar } from './etapas/delegacao/JanelaDelegar';
+import { JanelaEmConjunto } from './etapas/delegacao/JanelaEmConjunto';
+import { useDelegarEmConjunto } from './etapas/delegacao/useDelegarEmConjunto';
+import { useDelegacao } from './etapas/delegacao/useDelegacaoDaEtapa';
 import { useExecutor } from './useExecutor';
 import { ListaDoQueFalta, type ItemQueFalta } from './partes/OQueFalta';
 import { MenuDaRotina, type GrupoDoMenu } from './partes/MenuDaRotina';
@@ -52,6 +57,8 @@ export function Executor() {
   // a competência da rota pode ser um período ('2026-06..2026-08'): a Etapa com vários meses
   const { empresa: rota = '', competencia: periodo = '' } = useParams();
   const vm = useExecutor(rota, periodo);
+  // a tarefa em conjunto (Vitor, 12/11/2026): quem delega marca as etapas e escolhe quem faz cada uma
+  const conjunto = useDelegarEmConjunto({ codigo: vm.empresa?.codigo ?? null, nome: vm.empresa?.nome || '', meses: vm.meses, etapas: vm.etapas, emConjunto: vm.emConjunto });
   const casca = useCascaTarefas('minhas-empresas', 'empresas');
   // os Feedbacks do pé da gaveta, também dentro da Tarefa (Vitor, 11/11/2026)
   const [feedbacks, setFeedbacks] = useState(false);
@@ -105,6 +112,12 @@ export function Executor() {
   const terminou = !vm.carregando && !vm.etapa;
   useEffect(() => { if (terminou) animarPronto(fim.current); }, [terminou]);
   const folha = useChecklistDaFolha(temChecklist, vm.empresa?.nome || '', vm.meses.length ? vm.meses : [vm.competencia], fixo);
+  // delegar itens da Contabilização da Folha (Vitor, 11/11/2026: "coloca um botão de delegar aqui, e adicionar o que eu quero
+  // delegar da página com as observações"): como em Clientes e Fornecedores, cada item é uma "conta" da delegação
+  const naFolha = !!vm.etapa?.checklistDaFolha;
+  const itensDaFolha = naFolha && folha.itens ? folha.itens.map(i => ({ codigo: i.id, nome: i.nome })) : [];
+  const delegacao = useDelegacao('dp', itensDaFolha, { codigo: vm.empresa?.codigo ?? null, nome: vm.empresa?.nome || '', meses: vm.meses.length ? vm.meses : [vm.competencia] });
+  const itensDoChecklist = folha.itens && naFolha ? folha.itens.filter(i => delegacao.visivel(i.id)) : folha.itens;
   const faltamFerramenta = vm.tela && requisitos && !requisitos.pronto ? requisitos.faltam : null;
   // o Caixa: sem o razão importado não dá para saber se o Creditor entra (Vitor, 05/10/2026)
   const faltaRazao = vm.etapa?.razao && !razao.carregado ? ['Importar o razão do ' + vm.etapa.razao.conta] : null;
@@ -148,7 +161,7 @@ export function Executor() {
   // sair da execução por qualquer lugar do app (o cabeçalho, o menu, o voltar do navegador) com a etapa aberta:
   // é interromper, com a justificativa; trocar de mês ou período dentro do executor não conta
   const saida = useBlocker(({ currentLocation, nextLocation }) =>
-    !vm.dev && !vm.delegada && !!vm.etapa && !vm.interrompendo && !guia.saindo.current && currentLocation.pathname !== nextLocation.pathname && !nextLocation.pathname.startsWith(BASE + '/executar/'));
+    !vm.semJustificativa && !vm.delegada && !!vm.etapa && !vm.tudoPronto && !vm.interrompendo && !guia.saindo.current && currentLocation.pathname !== nextLocation.pathname && !nextLocation.pathname.startsWith(BASE + '/executar/'));
   if (vm.esperandoEmpresa) return null;
   if (!vm.empresa) return <Navigate to={BASE} replace />;
   // o mês faz parte de um período prometido (vários meses): abre o período
@@ -161,7 +174,9 @@ export function Executor() {
   const botoesDaEtapa = vm.etapa && telaPronta && !vm.interrompendo && saida.state !== 'blocked' && !vm.revendo && !vm.delegada;
   const liberada = !!botoesDaEtapa && !faltam && requisitosConhecidos && !vm.conferindo;
   // a etapa delegada: só ela na lateral, o resto da empresa fica bloqueado
-  const visiveis = vm.delegada ? vm.etapas.filter(e => e.atual) : vm.etapas.filter(e => !e.oculta && !(semCheque && e.id === 'cheque-especial'));
+  // a tarefa em conjunto: quem recebeu vê só as etapas dele (Vitor, 12/11/2026)
+  const visiveis = vm.delegada ? vm.etapas.filter(e => e.atual)
+    : vm.etapas.filter(e => !e.oculta && !(semCheque && e.id === 'cheque-especial') && (!vm.soAsMinhas || vm.ehMinha(e.id)));
   const daVez = vm.etapas.find(x => x.daVez);
   const nDaVez = daVez?.n ?? 0;
   // a que falta no grupo vem antes do grupo seguinte (com as etapas do grupo livres, ela pode estar antes da da vez)
@@ -174,12 +189,15 @@ export function Executor() {
     vm.abrirEtapa(id);
   };
   // a lista do grupo da vez e, se a próxima é de outro grupo, ela embaixo (com o nome do grupo dela)
-  const checklist = visiveis.filter(e => !vm.etapa || e.secao === vm.etapa.secao || e.id === proxima?.id).map(e => ({
+  // (na tarefa em conjunto, as da pessoa de todos os grupos; para os outros, com quem está a etapa delegada)
+  // com uma etapa só (o LCDPR da 62; 12/11/2026: "remove essa sidebar"), a barra lateral não serve para nada: a tela ganha a largura
+  const semLateral = visiveis.length <= 1;
+  const checklist = visiveis.filter(e => vm.soAsMinhas || !vm.etapa || e.secao === vm.etapa.secao || e.id === proxima?.id).map(e => ({
     // em lote é tudo de uma vez (Vitor, 02/10/2026: "não fica 8/9, são os 9"): só o nome da etapa, sem a contagem de meses
-    id: e.id, rotulo: e.nome, icone: 'check' as const, grupo: e.grupo, titulo: e.secao, ativa: e.atual,
+    id: e.id, rotulo: e.nome + (!vm.soAsMinhas && vm.comQuem(e.id) ? ' · ' + vm.comQuem(e.id).split(' ')[0] : ''), icone: 'check' as const, grupo: e.grupo, titulo: e.secao, ativa: e.atual,
     caixa: e.situacao === 'feita' && e.laranja ? 'laranja' as const : e.situacao === 'feita' || (e.daVez && liberada) ? 'marcada' as const : e.situacao === 'interrompida' ? 'parada' as const : 'vazia' as const,
     // as da frente que ainda não foram feitas: mais apagadas; a próxima, liberada, revelada
-    apagada: !vm.delegada && !!vm.etapa && e.n > nDaVez && e.situacao !== 'feita' && e.id !== proxima?.id && !vm.livre(e.id),
+    apagada: !vm.delegada && !vm.soAsMinhas && !!vm.etapa && e.n > nDaVez && e.situacao !== 'feita' && e.id !== proxima?.id && !vm.livre(e.id),
   }));
 
   // os grupos da rotina num menu só (como o "+ ▾" do GitHub): o ícone do grupo da vez e, aberto, todos (os da frente travados)
@@ -207,7 +225,13 @@ export function Executor() {
           : <PeriodoDaTarefa nome={vm.empresa.nome} codigo={vm.empresa.codigo} meses={vm.meses.length ? vm.meses : [vm.competencia]} />
         )}
         {/* um grupo só (a rotina do LCDPR, 16/10/2026): sem o menu dos grupos */}
-        {vm.grupos.length > 1 && !vm.delegada && (
+        {/* a tarefa em conjunto: quem não recebeu nada na empresa delega as etapas (Vitor, 12/11/2026) */}
+        {vm.departamento === 'contabil' && !vm.delegada && !vm.soAsMinhas && !vm.dev && !vm.carregando && (
+          <button type="button" className="gh-topo-btn" onClick={conjunto.abrir} title="Tarefa em conjunto: delegar etapas" aria-label="Tarefa em conjunto">
+            <Icone nome="aviao" />
+          </button>
+        )}
+        {vm.grupos.length > 1 && !vm.delegada && !vm.soAsMinhas && (
           <MenuSuspenso rotulo="" icone={grupoDaVez ? ICONE_DO_GRUPO[grupoDaVez.nome] || 'list' : 'checkCircle'} className="gh-topo-btn gh-topo-menu"
             dica={grupoDaVez ? grupoDaVez.nome + ' · ' + grupoDaVez.feitas + '/' + grupoDaVez.total : 'Grupos da rotina'} direita largura={300} conteudo={fechar => <MenuDaRotina grupos={itensDosGrupos} emLote={emLote} fechar={fechar} />} />
         )}
@@ -257,10 +281,15 @@ export function Executor() {
           { rotulo: casca.perfil.sair, icone: 'logOut', onClick: casca.trocarPessoa },
         ]} />
       {/* interromper: o último, em vermelho (Vitor, 02/10/2026) */}
+      {vm.podeConcluirDelegada && (
+        <button type="button" className="gh-topo-btn gh-topo-proximo" onClick={() => { void vm.concluirDelegada(); }} title="Concluir a tarefa" aria-label="Concluir a tarefa">
+          <Icone nome="check" />
+        </button>
+      )}
       {vm.delegada && <button type="button" className="gh-topo-btn gh-topo-fechar" onClick={vm.sair} title="Voltar às tarefas" aria-label="Voltar às tarefas"><Icone nome="x" /></button>}
       {botoesDaEtapa && (
-        // no modo desenvolvedor (Vitor, 06/10/2026: "remova essa opção"): o X só sai, sem o "Por que interromper?"
-        <button type="button" className="gh-topo-btn gh-topo-fechar" onClick={vm.dev ? vm.sair : vm.abrirInterromper} title={vm.dev ? 'Sair da etapa' : 'Interromper a etapa'} aria-label={vm.dev ? 'Sair' : 'Interromper'}>
+        // no modo desenvolvedor (Vitor, 06/10/2026: "remova essa opção") e no LCDPR (12/11/2026): o X só sai, sem o "Por que interromper?"
+        <button type="button" className="gh-topo-btn gh-topo-fechar" onClick={vm.semJustificativa ? vm.sair : vm.abrirInterromper} title={vm.semJustificativa ? 'Sair da etapa' : 'Interromper a etapa'} aria-label={vm.semJustificativa ? 'Sair' : 'Interromper'}>
           <Icone nome="x" />
         </button>
       )}
@@ -275,19 +304,25 @@ export function Executor() {
     </div>
   ) : vm.revendo ? (
     <div className="alerta-linha">
-      <Alerta naLinha tom="ok" titulo={vm.etapa.nome + ' já foi concluída'}>
+      {/* a empresa toda concluída: o Editar é reabrir a empresa nesta etapa (11/11/2026) */}
+      <Alerta naLinha tom="ok" titulo={vm.etapa.nome + ' já foi concluída' + (vm.tudoPronto ? ' · a empresa está concluída' : '')}>
         <div className="btn-row">
-          <button type="button" className="btn btn-primary" onClick={() => { void vm.editar(); }}>Editar</button>
-          <button type="button" className="btn" onClick={vm.voltarAEtapaDaVez}>Ir para a etapa da vez</button>
+          <button type="button" className="btn btn-primary" onClick={() => { void vm.editar(); }}>{vm.tudoPronto ? 'Reabrir nesta etapa' : 'Editar'}</button>
+          <button type="button" className="btn" onClick={vm.voltarAEtapaDaVez}>{vm.tudoPronto ? 'Voltar ao resumo' : 'Ir para a etapa da vez'}</button>
         </div>
       </Alerta>
+    </div>
+  ) : vm.reabertura?.emAberto ? (
+    // reaberta e ainda não concluída de novo: quem reabriu e quando, à vista de quem está trabalhando
+    <div className="alerta-linha">
+      <Alerta naLinha titulo={vm.reabertura.texto} />
     </div>
   ) : null;
   // e embaixo deles, os da tela da etapa (AvisoAcimaDoCabecalho)
   const avisos = vm.tela && !vm.carregando ? <>{avisosDoExecutor}<div ref={setAlvoDosAvisos} className="avisos-da-etapa" /></> : avisosDoExecutor;
 
   return (
-    <Casca sistema="Tarefas" temaNaGaveta={false} larga rotuloLateral="Etapas" topoDireita={topo} acimaDoCabecalho={avisos}
+    <Casca sistema="Tarefas" temaNaGaveta={false} larga rotuloLateral="Etapas" lateral={semLateral ? 'nenhuma' : undefined} topoDireita={topo} acimaDoCabecalho={avisos}
       empresa={{ codigo: (vm.empresa.codigo != null ? vm.empresa.codigo + ' · ' : '') + vm.empresa.nome, nome: '' }}
 
       versao={casca.versao} secoes={checklist} paginas={vm.tela && abasDaTela ? abasDaTela.paginas : []} titulo=""
@@ -295,13 +330,27 @@ export function Executor() {
       onEmpresa={vm.abrirEmpresa} aplicativos={casca.aplicacoes} onAplicativo={casca.onAplicacao}
       peDaGaveta={peDaGaveta(casca, () => setFeedbacks(true))}>
       {feedbacks && <JanelaDosFeedbacks fechar={() => setFeedbacks(false)} />}
-      {vm.carregando ? null : !vm.etapa ? (
+      {conjunto.aberta && <JanelaEmConjunto vm={conjunto} />}
+      {vm.carregando ? null : vm.minhasFeitas ? (
+        <div className="executor-fim" ref={fim}>
+          <Icone nome="checkCircle" />
+          <h2>Suas etapas em {vm.rotuloCompetencia} estão feitas</h2>
+          <p className="hint">As outras etapas desta empresa estão com quem delegou. Para revisar, abra uma das suas ao lado.</p>
+          <div className="executor-fim-botoes">
+            <button type="button" className="btn btn-primary" onClick={vm.sair}>Voltar às empresas</button>
+          </div>
+        </div>
+      ) : !vm.etapa ? (
         <div className="executor-fim" ref={fim}>
           <span className="executor-fim-onda" aria-hidden="true" />
           <Icone nome="checkCircle" />
           <h2>Tudo pronto em {vm.rotuloCompetencia}</h2>
+          {/* voltar numa empresa concluída (11/11/2026): rever as etapas e, se faltou algo, reabrir numa delas */}
+          <p className="hint">Para revisar ou reabrir, abra uma etapa ao lado ou clique em Revisar; nada do que foi feito se perde.</p>
+          {vm.reabertura && <p className="hint">{vm.reabertura.texto}, e concluída de novo.</p>}
           <div className="executor-fim-botoes">
             {vm.varios && <button type="button" className="btn btn-outline" onClick={vm.encerrarPeriodo}>Cancelar função</button>}
+            <button type="button" className="btn btn-outline" onClick={vm.revisar}><Icone nome="repeat" />Revisar</button>
             <button type="button" className="btn btn-primary" onClick={vm.sair}>Voltar às empresas</button>
           </div>
         </div>
@@ -325,23 +374,32 @@ export function Executor() {
               <ChecklistDisfarcado titulo={vm.etapa.nome} itens={folha.itens} definicao={vm.etapa.checklist} alternar={folha.alternar}
                 empresa={vm.empresa.nome} codigo={vm.empresa.codigo != null ? String(vm.empresa.codigo) : ''} competencia={vm.competencia} meses={vm.meses}
                 valores={vm.valores} informar={vm.informarValor} relatorio={vm.relatorio} />
-            ) : temChecklist && folha.itens ? (
+            ) : temChecklist && folha.itens && itensDoChecklist ? (
               // o checklist da etapa: a Contabilização da Folha (pelo balancete) ou as tarefas fixas do Contábil (o Estoque de
-              // dezembro: enviado e lançado), marcando em ordem
+              // dezembro: enviado e lançado), marcando em ordem. Quem recebeu a folha delegada vê só os itens pedidos e marca
+              // cada um, sem ordem (o check fica na tarefa); quem pediu vê com quem está e os feitos ofuscados
               <div className="card folha-check">
                 <div className="folha-check-topo">
                   <h3>{vm.etapa.checklistDaFolha ? 'Contabilização da Folha' : vm.etapa.nome}</h3>
-                  {folha.itens.length > 0 && <span className="folha-check-qtd">{folha.itens.filter(i => i.marcado).length}/{folha.itens.length}</span>}
+                  <span className="btn-row" style={{ alignItems: 'center' }}>
+                    {itensDoChecklist.length > 0 && <span className="folha-check-qtd">{(delegacao.recebida ? itensDoChecklist.filter(i => delegacao.feita(i.id)) : itensDoChecklist.filter(i => i.marcado)).length}/{itensDoChecklist.length}</span>}
+                    {naFolha && delegacao.podeDelegar && <button type="button" className="btn" onClick={delegacao.abrir}><Icone nome="aviao" />Delegar</button>}
+                  </span>
                 </div>
-                {folha.itens.length ? (
+                {delegacao.recebida && <p className="hint">Delegado por {delegacao.recebida.criadaPor.nome}{delegacao.recebida.descricao ? ': ' + delegacao.recebida.descricao : ''}</p>}
+                {naFolha && <FaixaDelegado vm={delegacao} />}
+                {itensDoChecklist.length ? (
                   <ul className="folha-check-lista">
-                    {folha.itens.map(i => (
-                      <li key={i.id} data-folha={i.nome} className={(i.marcado ? 'feito' : '') + (i.liberado ? '' : ' travado')}>
+                    {itensDoChecklist.map(i => (
+                      <li key={i.id} data-folha={i.nome} className={(i.marcado ? 'feito' : '') + (i.liberado || delegacao.recebida ? '' : ' travado')}
+                        style={naFolha && delegacao.ofuscada(i.id) ? { opacity: 0.45 } : undefined}>
                         <label>
-                          <input type="checkbox" checked={i.marcado} disabled={!i.liberado} onChange={() => folha.alternar(i.id)}
-                            title={i.liberado ? undefined : i.marcado ? 'Desmarque antes os de baixo' : 'Conclua o item de cima primeiro'} />
+                          {delegacao.recebida
+                            ? <input type="checkbox" checked={delegacao.feita(i.id)} onChange={() => delegacao.alternar({ codigo: i.id, nome: i.nome })} title="Feito" />
+                            : <input type="checkbox" checked={i.marcado} disabled={!i.liberado} onChange={() => folha.alternar(i.id)}
+                              title={i.liberado ? undefined : i.marcado ? 'Desmarque antes os de baixo' : 'Conclua o item de cima primeiro'} />}
                           <span className="folha-check-texto">
-                            <b>{i.nome}</b>
+                            <b>{i.nome}{naFolha && delegacao.para(i.id) && <> <span className="badge badge-neutral">{delegacao.para(i.id)}</span></>}</b>
                             {i.contas.length > 0 && <span className="hint">{i.contas.join(' · ')}</span>}
                             {i.aviso && <span className="folha-check-aviso"><Icone nome="alert" />{i.aviso}</span>}
                           </span>
@@ -355,6 +413,7 @@ export function Executor() {
                 ) : (
                   <p className="hint">Pelo balancete importado, a empresa não tem folha (nenhuma conta da folha no Passivo: salários, pró-labore, férias, rescisão).</p>
                 )}
+                {naFolha && delegacao.aberta && <JanelaDelegar vm={delegacao} />}
               </div>
             ) : vm.etapa.conferenciaDoInss ? (
               <InssDaEtapa inss={inss} conferir={vm.etapa.conferir} teste={vm.dev ? opcoesDeTeste : []} />

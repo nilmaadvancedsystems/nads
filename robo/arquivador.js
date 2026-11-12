@@ -748,6 +748,17 @@ async function iniciar() {
     // o pedido de reprocesso dos NÃO IDENTIFICADOS (05/11/2026): só esta sessão vê o G:
     try { require('./reprocesso-pedido').iniciar({ controle: require('./pastas-locais').CONTROLE, log }); }
     catch (err) { log('pedido de reprocesso não ligou:', err.message); }
+    // o fiscal por mês nos já arquivados (11/11/2026: "o robô faz sozinho"): uma madrugada, entre 1h e 5h, o plano e o executor
+    // de sempre em produção; o "ocupado" segura o contínuo e o botão enquanto ele move (arquivador-fiscal-por-mes.js)
+    try {
+      const FM = require('./arquivador-fiscal-por-mes');
+      const mudanca = FM.criarMudancaDaMadrugada({
+        log, painel, ocupado: () => ocupado, ocupar: () => { ocupado = true; }, desocupar: () => { ocupado = false; },
+        controle: require('./pastas-locais').CONTROLE, drive: path.dirname(require('./arquivador-regras').RAIZ_CLIENTES),
+        travaDaRotinaAntiga: path.join(CONTROLE, '_execucao.lock'), rodarExecutor: arq => FM.rodarExecutorNumProcesso(arq, log),
+      });
+      setInterval(() => { mudanca.tique().catch(err => log('fiscal por mês:', err.message)); }, 10 * 60 * 1000);
+    } catch (err) { log('o fiscal por mês não ligou:', err.message); }
     // a Central dos robôs (07/11/2026, central.js): os comandos do site robos-nilma para ESTA máquina (lista fechada), o
     // espelho do log de cada robô e o estado da máquina (CPU, memória, disco)
     try {

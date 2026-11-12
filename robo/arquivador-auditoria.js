@@ -237,7 +237,22 @@ const anoDaParte = p => (/^((?:19|20)\d{2})$/.exec(p) || [])[1];
 const MESMO_DONO = [[55, 174]];
 const ANUAIS = /^(DEFIS|DIRF|ECF|BALANCETE)$/;   // ficam no ano da ENTREGA (Vitor, 23/10/2026); o INFORME DE RENDIMENTOS fica no ano-base (Vitor, 26/10/2026), como nas regras
 const COM_EXTENSAO = /\.(pdf|xml|ofx|txt|xlsx|xls|csv|zip|rar|7z|jpe?g|png|docx?|pfx|p12)$/i;
+/**
+ * O fiscal por mês (11/11/2026): as regras põem a pasta do mês em <nº>. DOCUMENTOS FISCAIS\<MM>\… e em <nº>. XML\<tipo>\[EVENTOS\]<MM>.
+ * A auditoria analisa o caminho sem ela (a mesma árvore de antes); devolve o mesmo array quando não há pasta do mês.
+ */
+function semPastaDoMesFiscal(sub) {
+  if (sub[0] !== 'FISCAL' || sub.length < 4) return sub;
+  const mes = s => /^\d{2}$/.test(String(s || ''));
+  if (/DOCUMENTOS FISCAIS$/i.test(sub[2]) && mes(sub[3])) return sub.slice(0, 3).concat(sub.slice(4));
+  if (/^\d+\.\s*XML$/i.test(sub[2])) {
+    if (mes(sub[4])) return sub.slice(0, 4).concat(sub.slice(5));
+    if (String(sub[4] || '').toUpperCase() === 'EVENTOS' && mes(sub[5])) return sub.slice(0, 5).concat(sub.slice(6));
+  }
+  return sub;
+}
 function analisarLocal(sub, nome, cli) {
+  { const s = semPastaDoMesFiscal(sub); if (s !== sub) return analisarLocal(s, nome, cli); }
   // a rotina antiga deixou PASTAS com nome de arquivo ("…\NFC-e\09-2026_NFC-e_31411.xml\09-2026_NFC-e_31411.xml",
   // "…\17896320\CONTRATO.pdf\…"): o arquivo sobe para a pasta de cima; o resto da análise vale para o caminho sem ela
   const iArq = sub.findIndex(p => COM_EXTENSAO.test(p));

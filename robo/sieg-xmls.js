@@ -1,10 +1,11 @@
 // Os XMLs que o SIEG manda (nads, 07/10/2026: "quero que tenha como importar os XML direto do SIEG"): o nome de cada
 // arquivo na pasta do cliente (para o Alterdata importar) e o resumo de cada nota que vai para o banco (siegNotas) — só o
 // resumo, nunca o arquivo. Funções puras: o sieg.js baixa e grava; aqui só se lê o XML.
-//   NF-e/NFC-e: a chave, o número, a série, a data, o emitente, o destinatário, o valor e os itens (NCM, CFOP, CST/CSOSN, CEST)
+//   NF-e/NFC-e: a chave, o número, a série, a data, o emitente, o destinatário, o valor e os itens (NCM, CFOP, CST/CSOSN, CEST);
+//   desde o resumo 6, a entrada (tpNF 0), a IE do destinatário e os produtos
 //   CT-e: a chave, o número, a data, o emitente, o valor e o CFOP
 //   NFS-e (o padrão nacional e o ABRASF): o número, a data, o prestador, o tomador, o valor, o NBS, a descrição e as retenções
-//   evento de cancelamento (110111): { cancela: chave }; os outros eventos: só o arquivo
+//   evento de cancelamento (110111 da NF-e, NFC-e e CT-e; o da NFS-e nacional): { cancela: chave }; os outros eventos: só o arquivo
 const crypto = require('crypto');
 
 const re = (nome, g) => new RegExp('<(?:\\w+:)?' + nome + '(?:\\s[^>]*)?>([\\s\\S]*?)</(?:\\w+:)?' + nome + '>', g);
@@ -21,7 +22,8 @@ const pessoa = bloco => ({ doc: primeira(bloco, 'CNPJ', 'CPF', 'Cnpj', 'Cpf'), n
 
 /** O que é o XML: 'nfe' (NF-e e NFC-e), 'cte', 'evento', 'nfse' ou null. */
 function tipoDoXml(xml) {
-  if (/<(?:\w+:)?tpEvento>/.test(xml)) return 'evento';
+  // o evento da NFS-e nacional (11/11/2026) não tem tpEvento: <evento><infEvento><pedRegEvento><infPedReg> com a chave de 50 dígitos
+  if (/<(?:\w+:)?tpEvento>/.test(xml) || /<(?:\w+:)?infPedReg[\s>]/.test(xml)) return 'evento';
   if (/Id="NFe\d{44}"/.test(xml)) return 'nfe';
   if (/Id="CTe\d{44}"/.test(xml)) return 'cte';
   if (/<(?:\w+:)?(?:NFSe|CompNfse|Nfse|InfNfse|infNFSe)[\s>]/.test(xml)) return 'nfse';
@@ -30,7 +32,7 @@ function tipoDoXml(xml) {
 
 /** O tipo de nota de qualquer XML do mês, a nota ou um evento dela (pelo modelo na chave: 55, 65, 57, 59); '' se não sabe. */
 function tipoDeNota(xml) {
-  if (tipoDoXml(xml) === 'nfse') return 'NFS-e';
+  if (tipoDoXml(xml) === 'nfse' || /<(?:\w+:)?chNFSe>/.test(xml)) return 'NFS-e';
   const m = /Id="(?:NFe|CTe)(\d{44})"/.exec(xml) || /<(?:\w+:)?ch(?:NFe|CTe)>(\d{44})</.exec(xml);
   return m ? ({ 55: 'NF-e', 65: 'NFC-e', 57: 'CT-e', 67: 'CT-e', 59: 'CF-e' }[m[1].slice(20, 22)] || '') : '';
 }
@@ -75,13 +77,47 @@ function nomeDoArquivo(xml) {
   const hash = crypto.createHash('md5').update(xml).digest('hex').slice(0, 10);
   if (t === 'nfe') return /Id="NFe(\d{44})"/.exec(xml)[1] + '-nfe.xml';
   if (t === 'cte') return /Id="CTe(\d{44})"/.exec(xml)[1] + '-cte.xml';
-  if (t === 'evento') return (primeira(xml, 'chNFe', 'chCTe') || hash) + '-evento-' + (tag(xml, 'tpEvento') || 'x') + '-' + (tag(xml, 'nSeqEvento') || '1') + '.xml';
+  if (t === 'evento') return (primeira(xml, 'chNFe', 'chCTe', 'chNFSe') || hash) + '-evento-' + (tag(xml, 'tpEvento') || codigoDoEventoNfse(xml) || 'x') + '-' + (tag(xml, 'nSeqEvento') || '1') + '.xml';
   if (t === 'nfse') {
     const n = primeira(xml, 'nNFSe', 'Numero');
     const prest = pessoa(primeira(xml, 'emit', 'PrestadorServico', 'Prestador')).doc;
     return 'nfse-' + (prest ? prest + '-' : '') + (n || hash) + '.xml';
   }
   return 'xml-' + hash + '.xml';
+}
+
+// ---------- o evento de cancelamento (11/11/2026: "preciso que ele puxe evento de cancelamento") ----------
+/** O código do evento da NFS-e nacional, pelo nome do grupo dentro do infPedReg (<e101101>: 101101), ou ''. */
+const codigoDoEventoNfse = xml => { const m = /<(?:\w+:)?e(\d{6})[\s>]/.exec(tag(xml, 'infPedReg')); return m ? m[1] : ''; };
+const semZeros = v => String(v || '').replace(/\D/g, '').replace(/^0+/, '');
+/**
+ * O XML é o evento de cancelamento de uma nota: o 110111 da NF-e, da NFC-e e do CT-e, ou o cancelamento da NFS-e nacional
+ * (o grupo e101101, "Cancelamento de NFS-e", e os outros "Cancelamento de NFS-e…" pela descrição, menos o indeferido). Só o cancelamento: a carta
+ * de correção, a ciência e os outros eventos não.
+ */
+function ehCancelamento(xml) {
+  if (tipoDoXml(xml) !== 'evento') return false;
+  if (tag(xml, 'tpEvento')) return tag(xml, 'tpEvento') === '110111';
+  const desc = tag(tag(xml, 'infPedReg'), 'xDesc');
+  return codigoDoEventoNfse(xml) === '101101' || (/^cancelamento de nfs-?e\b/i.test(desc) && !/indeferid/i.test(desc));
+}
+/**
+ * A identidade da nota cancelada: a chave de 44 dígitos (NF-e, NFC-e, CT-e) ou, na NFS-e nacional (chave de 50 dígitos: o
+ * município, o ambiente, o tipo e a inscrição do prestador, o número…), "NFSE:<prestador>:<número>", que é como a nota
+ * aparece no resumo (idParaCancelamento). '' quando não dá para dizer.
+ */
+function chaveCancelada(xml) {
+  const ch = primeira(xml, 'chNFe', 'chCTe');
+  if (ch) return ch;
+  const n = tag(xml, 'chNFSe');
+  return /^\d{50}$/.test(n) ? 'NFSE:' + semZeros(n.slice(9, 23)) + ':' + semZeros(n.slice(23, 36)) : '';
+}
+/** A identidade de uma nota do resumo para casar com o cancelamento (chaveCancelada). */
+const idParaCancelamento = n => (n && n.chave) || (n && n.tipo === 'NFS-e' && n.numero ? 'NFSE:' + semZeros(n.emitente && n.emitente.doc) + ':' + semZeros(n.numero) : '');
+/** Marca n.cancelada nas notas do resumo ({ emitidas, recebidas }) que estão em `canceladas` (as chaveCancelada). */
+function marcarCanceladas(resumo, canceladas) {
+  for (const g of ['emitidas', 'recebidas']) for (const n of resumo[g] || []) { const id = idParaCancelamento(n); if (id && canceladas.has(id)) n.cancelada = true; }
+  return resumo;
 }
 
 /** O CST do item: o CSOSN (Simples) ou a origem + o CST (ex.: 060). */
@@ -120,7 +156,7 @@ function itemDoXml(det) {
 /** O resumo de uma nota (o que vai para o banco), { cancela } para o cancelamento, ou null (outro evento, XML desconhecido). */
 function resumoDaNota(xml) {
   const t = tipoDoXml(xml);
-  if (t === 'evento') return tag(xml, 'tpEvento') === '110111' ? { cancela: primeira(xml, 'chNFe', 'chCTe') } : null;
+  if (t === 'evento') return ehCancelamento(xml) && chaveCancelada(xml) ? { cancela: chaveCancelada(xml) } : null;
   if (t === 'nfe') {
     const ide = tag(xml, 'ide');
     const r = {
@@ -133,6 +169,14 @@ function resumoDaNota(xml) {
     const tot = tag(xml, 'ICMSTot'), frete = num(tag(tot, 'vFrete')), desconto = num(tag(tot, 'vDesc'));
     if (frete) r.frete = frete;
     if (desconto) r.desconto = desconto;
+    // o LCDPR (11/11/2026: "também quero que puxe do SIEG"), só quando têm: a nota de entrada (tpNF 0: quem emitiu é o
+    // comprador; a do produtor rural é venda, fora do LCDPR), a IE do destinatário (a fazenda → o imóvel rural) e os produtos
+    // (sem repetir, até 80 letras: a coluna Produto da planilha)
+    if (tag(ide, 'tpNF') === '0') r.entrada = true;
+    const ieDest = tag(tag(xml, 'dest'), 'IE');
+    if (ieDest) r.ieDest = ieDest;
+    const produto = [...new Set(blocos(xml, 'det').map(d => tag(tag(d, 'prod'), 'xProd')).filter(Boolean))].join(' | ').slice(0, 80).trim();
+    if (produto) r.produto = produto;
     return r;
   }
   if (t === 'cte') {
@@ -201,7 +245,7 @@ function zipDe(arquivos) {
 }
 
 /** A versão do resumo (2 = os itens com o ICMS, o ICMS-ST, o IPI e o CST do PIS; 13/10/2026; 3 = o frete e o desconto da NF-e; 22/10/2026; 4 = a base, a alíquota e as despesas do item; 22/10/2026;
- * 5 = as NF-e que o CT-e transporta e o ICMS do CT-e; 23/10/2026). */
-const VERSAO_DO_RESUMO = 5;
+ * 5 = as NF-e que o CT-e transporta e o ICMS do CT-e; 23/10/2026; 6 = a NF-e de entrada, a IE do destinatário e os produtos, para o LCDPR; 11/11/2026). */
+const VERSAO_DO_RESUMO = 6;
 
-module.exports = { tomadorDoCte, cteDoCliente, cteQueEntram, VERSAO_DO_RESUMO, tipoDoXml, tipoDeNota, nomeDoArquivo, resumoDaNota, zipDe, crc32 };
+module.exports = { ehCancelamento, chaveCancelada, idParaCancelamento, marcarCanceladas, tomadorDoCte, cteDoCliente, cteQueEntram, VERSAO_DO_RESUMO, tipoDoXml, tipoDeNota, nomeDoArquivo, resumoDaNota, zipDe, crc32 };

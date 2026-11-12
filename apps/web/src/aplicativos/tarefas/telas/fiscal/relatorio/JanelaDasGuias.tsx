@@ -23,7 +23,9 @@ const STATUS_DO_LOTE: Record<string, { classe: string; rotulo: string }> = {
 };
 /** o tipo da guia como no nome do arquivador: "DAS", "DARF PIS", "DAE ICMS" */
 // o DARF de mais de um tributo: "DARF PIS + COFINS" (05/11/2026)
-const tipoDaGuia = (a: GuiaDoLote) => [a.leitura?.tipo, (a.leitura?.partes?.length ?? 0) > 1 ? a.leitura!.partes!.map(p => p.tributo).join(' + ') : a.leitura?.tributo].filter(Boolean).join(' ') || '?';
+// o que não é guia (escolhido como OUTRO: o relatório da Antecipação ICMS-ES que vai junto, 12/11/2026) aparece pelo nome do arquivo
+const naoEGuia = (a: GuiaDoLote) => a.escolha?.tipo === 'OUTRO';
+const tipoDaGuia = (a: GuiaDoLote) => naoEGuia(a) ? a.nome.replace(/\.[^.]+$/, '') : [a.leitura?.tipo, (a.leitura?.partes?.length ?? 0) > 1 ? a.leitura!.partes!.map(p => p.tributo).join(' + ') : a.leitura?.tributo].filter(Boolean).join(' ') || '?';
 const VIAS: { valor: ViaDaGuia; rotulo: string }[] = [{ valor: 'email', rotulo: 'Gmail' }, { valor: 'impresso', rotulo: 'Impresso' }, { valor: 'econtador', rotulo: 'eContador' }, { valor: 'scireport', rotulo: 'SCI Report' }];
 const ROTULO_DA_VIA: Record<ViaDaGuia, string> = { email: 'Gmail', impresso: 'Impresso', econtador: 'eContador', scireport: 'SCI Report' };
 
@@ -80,7 +82,8 @@ function TabelaDosProntos({ vm, grupos, mexe }: { vm: VmEnvioDeGuias; grupos: Vm
           {grupos.flatMap(g => g.arquivos.map((a, k) => {
             const r = vm.noRelatorio(a);
             const erro = g.resultado?.status === 'erro' ? g.resultado.erro : g.via === 'email' && !g.email ? 'sem e-mail no cadastro' : '';
-            const destino = g.via === 'impresso' ? 'vai para a rota do Entregas' : g.via === 'econtador' ? 'vai pelo eContador do Alterdata' : g.via === 'scireport' ? 'vai pelo SCI Report' : g.resultado?.para.length ? g.resultado.para.join(', ') : g.email;
+            const jaNaRota = g.resultado?.jaNaRota || [];
+            const destino = g.via === 'impresso' ? (jaNaRota.length ? 'já estava na rota do Entregas: ' + jaNaRota.join(', ') : 'vai para a rota do Entregas') : g.via === 'econtador' ? 'vai pelo eContador do Alterdata' : g.via === 'scireport' ? 'vai pelo SCI Report' : g.resultado?.para.length ? g.resultado.para.join(', ') : g.email;
             return (
               <tr key={g.chave + '|' + a.id}>
                 {k === 0 && (
@@ -97,11 +100,11 @@ function TabelaDosProntos({ vm, grupos, mexe }: { vm: VmEnvioDeGuias; grupos: Vm
                 )}
                 <td className="dp-guia">
                   <button type="button" className="link-btn" title={'Ver a guia: ' + (a.leitura?.nomeFinal || a.nome)} onClick={() => vm.abrirDoLote(a)}>{tipoDaGuia(a)}</button>
-                  {a.leitura?.vencimento && <span className="fraco dp-guia-vence">vence {a.leitura.vencimento.replace(/-/g, '/')}</span>}
+                  {a.leitura?.vencimento && !naoEGuia(a) && <span className="fraco dp-guia-vence">vence {a.leitura.vencimento.replace(/-/g, '/')}</span>}
                 </td>
                 {/* o valor e, embaixo, a coluna do Relatório (06/11/2026: com o SCI Report no Envio, a coluna à parte ficava cortada) */}
                 <td className="num dp-guia-valor">
-                  <span className="dp-guia-valor-num">{r.valor || <span className="fraco">—</span>}</span>
+                  <span className="dp-guia-valor-num">{(!naoEGuia(a) && r.valor) || <span className="fraco">—</span>}</span>
                   {mexe ? <MenuDeColuna vm={vm} arquivo={a} compacto /> : <span className="fraco">{r.coluna || 'sem coluna'}</span>}
                 </td>
                 {/* sempre à vista, preso à direita (06/11/2026: "excluir somente uma delas"; com a tabela larga ele ficava escondido no fim) */}

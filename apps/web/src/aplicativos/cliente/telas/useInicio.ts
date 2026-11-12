@@ -6,6 +6,7 @@
 import { areaCliente as ac, formatos } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useState } from 'react';
+import { useNavigate } from 'react-router';
 import { baixarArquivo } from '../dados/baixar';
 import { repoAreaCliente } from '../dados/repo';
 import { chaveDoMes } from '../dados/regras';
@@ -17,6 +18,7 @@ const mesDaData = (br: string) => br.slice(6, 10) + '-' + br.slice(3, 5);
 
 export function useInicio({ token, area, hoje, irPara, copiar }: DaCasca, abrirEnvio: () => void) {
   const { toast } = useRetorno();
+  const navegar = useNavigate();
   const [baixando, setBaixando] = useState('');
   const guias = guiasDoMomento(area.guias, hoje);
   const mes = chaveDoMes(hoje);
@@ -44,6 +46,8 @@ export function useInicio({ token, area, hoje, irPara, copiar }: DaCasca, abrirE
       case 'pedir-renovacao': irPara('chamados', { novoChamado: { tipo: 'documento', titulo: 'Renovação do certificado digital' } }); break;
       case 'enviar': abrirEnvio(); break;
       case 'ir': irPara(a.aba); break;
+      // o formulário do Mandei, neste mesmo site (11/11/2026)
+      case 'abrir-ticket': navegar('/mandei/' + encodeURIComponent(a.codigo)); break;
     }
   }
 

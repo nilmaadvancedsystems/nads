@@ -48,7 +48,10 @@ export function configPadrao(): ConfigLcdpr {
       cat('Taxas Cartoriais', '931', '91327', M.fixo),
     ],
     planoContas: ([
-      ['35', 'Caixa', 'Disponível'], ['805', 'Fretes e Carretos', 'Despesa'], ['784', 'Conservação e Manutenção de Máquinas/Equip.', 'Despesa'],
+      ['35', 'Caixa', 'Disponível'],
+      // os bancos do produtor (11/11/2026: "optando pelos bancos de carlos lucas e caixa"): as contas de pagamento, com o Caixa
+      ['49', 'Banco do Brasil', 'Disponível'], ['56', 'Banco Bradesco', 'Disponível'], ['63', 'Banco do Nordeste', 'Disponível'], ['71', 'Banco Sicoob', 'Disponível'],
+      ['805', 'Fretes e Carretos', 'Despesa'], ['784', 'Conservação e Manutenção de Máquinas/Equip.', 'Despesa'],
       ['924', 'Combustíveis e Lubrificantes', 'Despesa'], ['812', 'Materiais de Uso e Consumo', 'Despesa'], ['847', 'Material de Construção/Manutenção Geral', 'Despesa'],
       ['722', 'Adubos, Defensivos e Fertilizantes', 'Despesa'], ['85', 'Compra de Insumos para Animais', 'Despesa'], ['730', 'Compra de Bovinos', 'Despesa'],
       ['735', 'Custos de Aquisição de Máq. e Impl. Agrícolas', 'Despesa'], ['1292', 'Compra de Material Siderúrgico', 'Despesa'], ['910', 'Ferragens', 'Despesa'],

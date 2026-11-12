@@ -1,7 +1,7 @@
 // O SIEG no Fiscal (06/10/2026): as contagens de notas do mês e as saídas (a sequência), que o robô do PC do escritório
 // grava (Entregas/scripts/sieg.js), e o pedido de baixar as saídas de uma empresa. Interface + a versão de exemplo; a do
 // banco é sieg.firestore.ts.
-import { tarefas as t } from '@nads/core';
+import { lcdpr, tarefas as t } from '@nads/core';
 
 export interface PedidoSieg {
   status: string; andamento: string; erro: string; em: string;
@@ -113,6 +113,36 @@ function xmlsDeExemplo(competencia: string): Pick<t.sieg.NotasSieg, 'emitidas' |
   };
 }
 
+/** As notas de exemplo do produtor rural (o LCDPR, 11/11/2026; o resumo 6, com a entrada, a IE da fazenda e os produtos):
+ * combustível, adubo e peças que as regras de NCM pegam, duas do mesmo fornecedor sem regra (REVISAR), uma cancelada, a
+ * nota de entrada da venda do café (fica de fora) e um frete tomado. */
+function xmlsDoProdutorDeExemplo(competencia: string): Pick<t.sieg.NotasSieg, 'emitidas' | 'recebidas' | 'resumo'> {
+  const [a, m] = competencia.split('-');
+  const dia = (d: number) => String(d).padStart(2, '0') + '/' + m + '/' + a;
+  const eu = { doc: '52998224725', nome: 'PRODUTOR RURAL (TESTE)' };
+  const posto = { doc: '11222333000181', nome: 'POSTO DO TREVO (TESTE)' };
+  const coop = { doc: '22333444000172', nome: 'COOPERATIVA AGRO (TESTE)' };
+  const loja = { doc: '33444555000163', nome: 'LOJA DE ELETRICA (TESTE)' };
+  const it = (ncm: string, valor: number) => ({ ncm, cfop: '5102', cst: '000', cest: '', valor });
+  const nota = (numero: string, d: number, emitente: { doc: string; nome: string }, valor: number, itens: ReturnType<typeof it>[], produto: string, extra: Partial<t.sieg.NotaDoSieg> = {}): t.sieg.NotaDoSieg =>
+    ({ tipo: 'NF-e', chave: 'L' + numero, numero, serie: '1', data: dia(d), emitente, destinatario: eu, valor, itens, produto, ieDest: '0011288860080', ...extra });
+  return {
+    resumo: 6,
+    emitidas: [],
+    recebidas: [
+      nota('T4101', 3, posto, 1850.4, [it('27101921', 1850.4)], 'OLEO DIESEL S10'),
+      nota('T4102', 17, posto, 920, [it('27101921', 900), it('34031900', 20)], 'OLEO DIESEL S10 | GRAXA', { ieDest: '0011288860404' }),
+      nota('T880', 8, coop, 12400, [it('31052000', 12000), it('38089329', 400)], 'ADUBO NPK 20-05-20 | HERBICIDA'),
+      nota('T881', 22, coop, 3150.75, [it('84314990', 3150.75)], 'LAMINA DE ARADO'),
+      nota('T55', 10, loja, 486.2, [it('94054090', 486.2)], 'REFLETOR LED'),
+      nota('T56', 25, loja, 129.9, [it('94054090', 129.9)], 'LAMPADA LED'),
+      nota('T882', 12, coop, 700, [it('31052000', 700)], 'ADUBO NPK', { cancelada: true }),
+      nota('T9001', 28, { doc: '44555666000154', nome: 'TRADING DE CAFE (TESTE)' }, 98000, [it('09011110', 98000)], 'CAFE ARABICA', { entrada: true }),
+      { tipo: 'CT-e', chave: 'LC1', numero: 'T310', serie: '1', data: dia(8), emitente: { doc: '55666777000145', nome: 'TRANSPORTES DO CAMPO (TESTE)' }, destinatario: eu, valor: 640 },
+    ],
+  };
+}
+
 /** Nos exemplos: contagens inventadas e uma sequência com dois buracos e uma cancelada (o pedido "baixa" em 2 s). */
 export function criarSiegMemoria(): RepoSieg {
   let ver = 0;
@@ -153,6 +183,8 @@ export function criarSiegMemoria(): RepoSieg {
     // como a contagem: os XMLs de exemplo já estão "baixados" (as tabelas de verificação aparecem sem pedir)
     notas(codigo, competencia) {
       const k = codigo + '_' + competencia;
+      // o produtor rural (o LCDPR) começa sem nada baixado: o "Puxar do SIEG" pede e traz as notas dele
+      if (lcdpr.temLcdpr(Number(codigo))) return { carregadas: true, dados: notasBaixadas.get(k) || null };
       if (!notasBaixadas.has(k)) notasBaixadas.set(k, { codigo, competencia, em: agora(), pasta: 'Claudio Secretario/' + competencia + '/EMPRESA ' + codigo, arquivos: 4, novos: 4, ...xmlsDeExemplo(competencia) });
       return { carregadas: true, dados: notasBaixadas.get(k)! };
     },
@@ -212,7 +244,7 @@ export function criarSiegMemoria(): RepoSieg {
       for (let i = 1; i <= 4; i++) passo(4600 + i * 300, 'drive', 84 + i * 3, 'Salvando no Drive (' + i * 11 + ' de 44)', { xmls: 104, novos: i * 11, jaSalvos: 60, doDrive: 60 });
       setTimeout(() => {
         const pasta = 'Claudio Secretario/' + competencia + '/EMPRESA ' + codigo;
-        notasBaixadas.set(k, { codigo, competencia, em: agora(), pasta, arquivos: 104, novos: 104, ...xmlsDeExemplo(competencia) });
+        notasBaixadas.set(k, { codigo, competencia, em: agora(), pasta, arquivos: 104, novos: 104, ...(lcdpr.temLcdpr(Number(codigo)) ? xmlsDoProdutorDeExemplo(competencia) : xmlsDeExemplo(competencia)) });
         pedidos.set('xmls|' + k, { id, status: 'concluido', andamento: '', erro: '', em, zip, fase: 'pronto', pct: 100, numeros: { xmls: 104, novos: 44, jaSalvos: 60, doDrive: 60 }, resultado: { arquivos: 104, novos: 44, jaSalvos: 60, pasta, zip: zip.nome, emitidas: 62, recebidas: 38 } });
         mudou();
       }, 6200);

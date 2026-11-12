@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { DocumentoDoCliente, Empregado } from './areaCliente';
-import { linkDoWhatsapp, erroDaAdmissao, erroDaDemissao, erroDasFerias, filtrarDocumentos, juntarPedacosDoPdf, mesesDosDocumentos, notificacoes, resumoDoPessoal, situacaoDoCertificado, textoDaAdmissao, textoDoChamado } from './regras';
+import { linkDoWhatsapp, partesDaSolicitacao, passoDaSolicitacao, whatsappDaSolicitacao, erroDaAdmissao, erroDaDemissao, erroDasFerias, filtrarDocumentos, juntarPedacosDoPdf, mesesDosDocumentos, notificacoes, resumoDoPessoal, situacaoDoCertificado, textoDaAdmissao, textoDoChamado } from './regras';
 
 const hoje = new Date(2026, 9, 16, 9, 0);
 
@@ -92,5 +92,26 @@ describe('juntarPedacosDoPdf', () => {
     expect(juntarPedacosDoPdf([{ base64: b64('a'), n: 0, total: 2 }])).toBeNull();
     expect(juntarPedacosDoPdf([{ base64: b64('a'), n: 1, total: 2 }, { base64: b64('b'), n: 2, total: 2 }])).toBeNull();
     expect(juntarPedacosDoPdf([{ base64: b64('a'), n: 0, total: 2 }, { base64: b64('b'), n: 1, total: 3 }])).toBeNull();
+  });
+});
+
+describe('as solicitações sem chat (11/11/2026)', () => {
+  it('o passo e o rótulo da situação', () => {
+    expect(passoDaSolicitacao('aberto')).toEqual({ passo: 0, rotulo: 'Recebida' });
+    expect(passoDaSolicitacao('em andamento')).toEqual({ passo: 1, rotulo: 'Em andamento' });
+    expect(passoDaSolicitacao('respondido')).toEqual({ passo: 2, rotulo: 'Respondida' });
+    expect(passoDaSolicitacao('concluido')).toEqual({ passo: 2, rotulo: 'Concluída' });
+  });
+  it('o pedido, o que o cliente somou depois e as respostas do escritório', () => {
+    const p = partesDaSolicitacao({ mensagens: [
+      { de: 'cliente', autor: 'Você', texto: 'Preciso da certidão', em: '2026-10-01T10:00:00Z' },
+      { de: 'escritorio', autor: 'Escritório', texto: 'Está em Documentos', em: '2026-10-02T10:00:00Z' },
+      { de: 'cliente', autor: 'Você', texto: 'A estadual também', em: '2026-10-03T10:00:00Z' },
+    ] });
+    expect(p).toEqual({ pedido: 'Preciso da certidão', complementos: ['A estadual também'], respostas: [{ texto: 'Está em Documentos', em: '2026-10-02T10:00:00Z' }] });
+  });
+  it('o WhatsApp com o assunto; sem número, nada', () => {
+    expect(whatsappDaSolicitacao('(31) 99999-0000', 'Certidão & CND')).toBe('https://wa.me/5531999990000?text=' + encodeURIComponent('Olá! Sobre a solicitação "Certidão & CND":'));
+    expect(whatsappDaSolicitacao('', 'x')).toBe('');
   });
 });

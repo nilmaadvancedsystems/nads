@@ -30,7 +30,7 @@ const CONFIG_ENTREGAS = {
 };
 
 /** O banco, aberto na primeira vez que alguém precisa (o token "exemplo" nunca abre). */
-function bancoDoCliente(): Firestore {
+export function bancoDoCliente(): Firestore {
   const app = getApps().find(a => a.name === 'cliente') ?? initializeApp(CONFIG_ENTREGAS, 'cliente');
   try {
     return initializeFirestore(app, { ignoreUndefinedProperties: true });

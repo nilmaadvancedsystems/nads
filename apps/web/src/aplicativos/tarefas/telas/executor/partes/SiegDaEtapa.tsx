@@ -1,16 +1,16 @@
 // O painel do SIEG dentro do checklist da etapa do Fiscal: na Inicial, as notas do mês (emitidas e recebidas, por tipo);
 // na Conferência de Saídas, a sequência (série por série: da primeira à última, os números que faltam e as canceladas),
 // com o Baixar do SIEG (o robô do PC baixa as saídas do mês) e o Atualizar.
-import { Alerta, BotaoAcao, BotaoFechar, Esqueleto, Icone } from '@nads/ui';
+import { Alerta, BotaoAcao, BotaoFechar, Esqueleto, Icone, Segmentado } from '@nads/ui';
 import { createPortal } from 'react-dom';
-import { EspelhoDaNota } from '../../fiscal/partes/EspelhoDaNota';
+import { VerANota } from '../../fiscal/partes/VerANota';
 import { useSiegDaEtapa } from '../useSiegDaEtapa';
 
 export function SiegDaEtapa({ tipo, codigo, competencia }: { tipo: 'contagem' | 'saidas'; codigo: string; competencia: string }) {
   const vm = useSiegDaEtapa(tipo, codigo, competencia);
   return (
     <section className="sieg-painel">
-      {vm.vendo && <EspelhoDaNota nota={vm.vendo} codigo={codigo} competencia={competencia} fechar={vm.fecharNota} />}
+      {vm.vendo && <VerANota nota={vm.vendo} codigo={codigo} competencia={competencia} fechar={vm.fecharNota} />}
       <header className="sieg-topo">
         <b>SIEG</b>
         {vm.exemplos && <span className="fraco">dados de exemplo</span>}
@@ -53,7 +53,7 @@ export function SiegDaEtapa({ tipo, codigo, competencia }: { tipo: 'contagem' | 
           {vm.andamento.resultado && <p className="hint" style={{ margin: 0 }}>{vm.andamento.resultado}</p>}
           {vm.andamento.xmls && vm.zip && (
             <div className="sieg-acoes">
-              <BotaoAcao className="btn btn-outline" carregando={vm.baixandoZip} textoCarregando="Baixando…" onClick={() => { void vm.baixarZip(); }}><Icone nome="download" />Baixar o .zip ({vm.zip.tamanho})</BotaoAcao>
+              <BotaoAcao className="btn btn-outline" carregando={vm.baixandoZip} textoCarregando="Baixando…" onClick={() => { void vm.baixarZip(); }}><Icone nome="download" />Baixar o .zip{vm.zip.tamanho ? ' (' + vm.zip.tamanho + ')' : ''}</BotaoAcao>
             </div>
           )}
         </div>,
@@ -80,14 +80,18 @@ export function SiegDaEtapa({ tipo, codigo, competencia }: { tipo: 'contagem' | 
             {/* contar de novo, na hora (07/10/2026: "tem como ter um botão para puxar na hora?") */}
             <div className="sieg-acoes">
               <BotaoAcao className="btn btn-outline" carregando={vm.contando} textoCarregando="Contando…" onClick={() => { void vm.contar(); }}><Icone nome="girar" />Contar de novo</BotaoAcao>
-              <BotaoAcao className="btn btn-primary" carregando={vm.baixandoXmls} textoCarregando="Baixando…" onClick={() => { void vm.baixarXmls(); }}><Icone nome="download" />Baixar XMLs do SIEG</BotaoAcao>
+              {/* o formato do .zip (11/11/2026): XML, PDF ou os dois */}
+              <Segmentado valor={vm.formato} onMudar={vm.escolherFormato} opcoes={vm.formatos} />
+              <BotaoAcao className="btn btn-primary" carregando={vm.baixandoXmls} textoCarregando="Baixando…" onClick={() => { void vm.baixarXmls(); }}><Icone nome="download" />{vm.rotuloDoBotao}</BotaoAcao>
             </div>
           </div>
         ) : (
           <div className="sieg-acoes">
             <p className="fraco" style={{ margin: 0, flex: 1 }}>O SIEG ainda não contou as notas deste mês (a contagem roda de madrugada).</p>
             <BotaoAcao className="btn btn-outline" carregando={vm.contando} textoCarregando="Contando…" onClick={() => { void vm.contar(); }}><Icone nome="girar" />Contar agora</BotaoAcao>
-            <BotaoAcao className="btn btn-primary" carregando={vm.baixandoXmls} textoCarregando="Baixando…" onClick={() => { void vm.baixarXmls(); }}><Icone nome="download" />Baixar XMLs do SIEG</BotaoAcao>
+            {/* o formato do .zip (11/11/2026): XML, PDF ou os dois */}
+              <Segmentado valor={vm.formato} onMudar={vm.escolherFormato} opcoes={vm.formatos} />
+              <BotaoAcao className="btn btn-primary" carregando={vm.baixandoXmls} textoCarregando="Baixando…" onClick={() => { void vm.baixarXmls(); }}><Icone nome="download" />{vm.rotuloDoBotao}</BotaoAcao>
           </div>
         )}
         {vm.erroDaContagem && <p className="fraco sieg-aviso"><Icone nome="alert" />A contagem não deu certo: {vm.erroDaContagem}</p>}

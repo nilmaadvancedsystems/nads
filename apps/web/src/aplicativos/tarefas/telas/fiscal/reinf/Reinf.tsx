@@ -2,9 +2,40 @@
 // do simples nacional e lucro presumido, no mesmo layout"): em cima a competência, o Status, o Por página e a busca; embaixo
 // um .card com o andamento no topo e uma linha por empresa — código, cliente, até quando foi transmitida, a última
 // transmissão (quando e quem), as retificadas, as ações (Transmitir ou Desfazer, e Retificar) e a situação.
+import { tarefas as t } from '@nads/core';
 import { BotaoIcone, Icone, MenuSuspenso } from '@nads/ui';
 import { MenuDeFiltro } from '../../dp/MenuDeFiltro';
+import { useState } from 'react';
 import { useReinf } from './useReinf';
+
+/**
+ * O Transmitir com as caixinhas das séries (Vitor, 12/11/2026: "coloca um check, para a pessoa marcar um ou mais de um"): marca
+ * as que foram e confirma; o menu flutua porque a célula da tabela corta o que passa dela.
+ */
+function MenuTransmitir({ titulo, onTransmitir }: { titulo: string; onTransmitir: (s: t.SerieReinf[]) => void }) {
+  const [marcadas, setMarcadas] = useState<t.SerieReinf[]>([]);
+  const alternar = (id: t.SerieReinf) => setMarcadas(m => (m.includes(id) ? m.filter(x => x !== id) : [...m, id]));
+  return (
+    <MenuSuspenso flutuante direita largura={200} titulo={titulo} className="btn btn-sm btn-primary" icone="check" rotulo="Transmitir" dica="Marcar o que foi transmitido"
+      conteudo={fechar => (
+        <>
+          {t.SERIES_REINF.map(s => (
+            <label key={s.id} className="popover-item">
+              <input type="checkbox" checked={marcadas.includes(s.id)} onChange={() => alternar(s.id)} />
+              <span className="popover-texto">{s.rotulo}</span>
+            </label>
+          ))}
+          <div className="popover-sep" />
+          <div style={{ padding: '4px 8px 6px' }}>
+            <button type="button" className="btn btn-sm btn-primary" style={{ width: '100%' }} disabled={!marcadas.length}
+              onClick={() => { onTransmitir(marcadas); setMarcadas([]); fechar(); }}>
+              <Icone nome="check" />Transmitir{marcadas.length ? ' ' + t.rotuloDasSeries(t.SERIES_REINF.map(s => s.id).filter(id => marcadas.includes(id))) : ''}
+            </button>
+          </div>
+        </>
+      )} />
+  );
+}
 
 const STATUS = [{ valor: 'pendentes', rotulo: 'Pendentes' }, { valor: 'transmitidas', rotulo: 'Transmitidas' }];
 
@@ -47,11 +78,11 @@ export function Reinf() {
           <div className="fr-rola">
             <table className="fr-tabela fr-reinf">
               <colgroup>
-                <col className="fr-c-cod" /><col className="fr-c-cliente" /><col className="fr-c-ate" /><col className="fr-c-ultima" /><col className="fr-c-retif" /><col className="fr-c-acoes" /><col className="fr-c-sit" />
+                <col className="fr-c-cod" /><col className="fr-c-cliente" /><col className="fr-c-ate" /><col className="fr-c-ultima" /><col className="fr-c-retif" /><col className="fr-c-series" /><col className="fr-c-acoes" /><col className="fr-c-sit" />
               </colgroup>
               <thead>
                 <tr>
-                  <th className="fr-num">Cód.</th><th>Cliente</th><th className="fr-centro fr-g">Transmitido até</th><th className="fr-g">Última transmissão</th><th className="fr-g">Retificadas</th>
+                  <th className="fr-num">Cód.</th><th>Cliente</th><th className="fr-centro fr-g">Transmitido até</th><th className="fr-g">Última transmissão</th><th className="fr-g">Retificadas</th><th className="fr-g" title="O que foi transmitido na competência">Séries</th>
                   <th className="fr-g"><span className="sr-only">Ações</span></th><th className="fr-centro" title="Situação">Sit.</th>
                 </tr>
               </thead>
@@ -65,11 +96,15 @@ export function Reinf() {
                     <td className="fr-g">{l.retificadas.length
                       ? <span className="fxr-retificadas">{l.retificadas.map(x => <span key={x} className="fxr-retif num">{x}</span>)}</span>
                       : '—'}</td>
+                    {/* a coluna das séries (Vitor, 12/11/2026: "para saber quais são") */}
+                    <td className="fr-g">{l.series.length ? t.rotuloDasSeries(l.series) : '—'}</td>
                     <td className="fr-g fxr-acoes">
+                      {/* as já transmitidas ficam como eram, só o Desfazer (Vitor, 12/11/2026: "as que já foram transmitidas e
+                          marcadas, não mexa"); a que falta abre as séries, como o CheckList REINF do Alterdata (chamado KADMFS). O menu
+                          flutua: a célula corta o que passa dela */}
                       {l.transmitida
                         ? <button type="button" className="btn btn-sm btn-outline" onClick={() => vm.desfazer(l.codigo)} title="Desfazer a transmissão desta competência">Desfazer</button>
-                        : <button type="button" className="btn btn-sm btn-primary" onClick={() => vm.transmitir(l.codigo)}><Icone nome="check" />Transmitir</button>}
-                      <button type="button" className={'btn btn-sm btn-ghost' + (l.retificadaNaCompetencia ? ' fxr-retificada' : '')} onClick={() => vm.retificar(l.codigo)}
+                        : <MenuTransmitir titulo={'O que foi transmitido em ' + vm.rotuloCompetencia} onTransmitir={series => vm.transmitirSeries(l.codigo, series)} />}                      <button type="button" className={'btn btn-sm btn-ghost' + (l.retificadaNaCompetencia ? ' fxr-retificada' : '')} onClick={() => vm.retificar(l.codigo)}
                         aria-pressed={l.retificadaNaCompetencia}
                         title={l.retificadaNaCompetencia ? 'Tirar a retificação desta competência' : 'Retificou esta competência'}>
                         {l.retificadaNaCompetencia ? 'Retificada' : 'Retificar'}

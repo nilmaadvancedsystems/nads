@@ -3,9 +3,10 @@
 // filtros, a lista na ordem da rota com o puxador para arrastar, e os cartões Vencendo, Atestados para buscar e Obrigações
 // do mês), Ordem fixa (o admin), Protocolos e Qualidade (o admin). As peças: cartão, busca, seleção, menu suspenso,
 // tabela, selo, botão.
-import { BotaoIcone, CampoData, Esqueleto, Icone, MenuSuspenso, Vazio, useCarregando, useLinhasQueSeMovem } from '@nads/ui';
+import { BotaoAcao, BotaoIcone, CampoData, Esqueleto, Icone, MenuSuspenso, Vazio, useCarregando, useLinhasQueSeMovem } from '@nads/ui';
 import { useRef, type PointerEvent as EventoDoPonteiro } from 'react';
 import { FaixaDasGravacoes } from './FaixaDasGravacoes';
+import { JanelaDoDecimoDoDp } from './JanelaDoDecimoDoDp';
 import { JanelasDasEntregas } from './JanelasDasEntregas';
 import { useRotaDeEntregas } from './useRotaDeEntregas';
 
@@ -32,6 +33,7 @@ function Rota() {
       )}
       {vm.erro && <p className="registro-dica registro-dica-erro"><Icone nome="alert" />{vm.erro}</p>}
       {vm.categoria === 'paradas' && <Paradas vm={vm} />}
+      {vm.decimoDoDp?.aberto && <JanelaDoDecimoDoDp onFechar={vm.decimoDoDp.fechar} />}
       {vm.categoria === 'ordem' && <OrdemFixa vm={vm} />}
       {vm.categoria === 'protocolos' && <Protocolos vm={vm} />}
       {vm.categoria === 'qualidade' && <Qualidade vm={vm} />}
@@ -62,7 +64,9 @@ function Paradas({ vm }: { vm: Vm }) {
           <span className="card-head-ctl">
             {vm.exemplos && <span className="badge badge-neutral">Exemplos</span>}
             {vm.lerGuia && <button type="button" className="btn btn-outline" onClick={vm.lerGuia}><Icone nome="codigoBarras" />Ler guia</button>}
+            {vm.organizarPelaFixa && <BotaoAcao className="btn btn-outline" carregando={vm.organizando} textoCarregando="Organizando…" onClick={vm.organizarPelaFixa}><Icone nome="list" />Organizar pela ordem fixa</BotaoAcao>}
             <button type="button" className="btn btn-outline" onClick={vm.protocoloDaRota}><Icone nome="printer" />Protocolo</button>
+            {vm.decimoDoDp && <button type="button" className="btn btn-outline" onClick={vm.decimoDoDp.abrir}><Icone nome="caminhao" />13º do DP</button>}
             <button type="button" className="btn btn-primary" onClick={vm.adicionarARota}><Icone nome="plus" />Adicionar à rota</button>
           </span>
         </div>
@@ -75,13 +79,17 @@ function Paradas({ vm }: { vm: Vm }) {
           </select>
           <MenuSuspenso icone="mapaPin" rotulo={vm.rotuloDasZonas} titulo="Região" className={'btn btn-outline' + (vm.zonas.length ? ' ativo' : '')}
             itens={vm.zonasDaRota.map(z => ({ rotulo: z.rotulo, marcado: vm.zonas.includes(z.valor), onClick: () => vm.alternarZona(z.valor) }))} />
+          <button type="button" className={'btn btn-outline' + (vm.aglutinar ? ' ativo' : '')} aria-pressed={vm.aglutinar} onClick={vm.alternarAglutinar}
+            title={vm.aglutinar ? 'Uma linha por cliente (as entregas do mesmo cliente juntas). Clique para ver uma linha por entrega.' : 'Uma linha por entrega. Clique para juntar as do mesmo cliente.'}>
+            <Icone nome="checklist" />Aglutinar
+          </button>
         </div>
         {vm.carregando ? <Esqueleto linhas={4} /> : !vm.linhas.length ? <Vazio icone="caminhao" texto="Nenhuma entrega na rota." /> : (
           <div className="table-wrap ent-rota-wrap" ref={corpo}>
             <table className="cad-lista ent-rota">
               <tbody>
                 {vm.linhas.map(l => (
-                  <tr key={l.e.id} data-linha={l.e.id} className="linha-abre" onClick={ev => { if (!(ev.target as HTMLElement).closest('.ent-puxador, .ent-juntas')) vm.abrirParada(l.e); }}>
+                  <tr key={l.e.id} data-linha={l.e.id} className="linha-abre" onClick={ev => { if (!(ev.target as HTMLElement).closest('.ent-puxador, .ent-juntas')) l.assinar(); }}>
                     <td className="ent-puxa-td">
                       <button type="button" className="icon-btn icon-btn-sm ent-puxador" aria-label={'Mover ' + (l.e.clienteNome || 'parada') + ' na ordem da rota. Alt com seta para cima ou para baixo.'} title="Arrastar para mudar a ordem"
                         onPointerDown={ev => { ev.preventDefault(); ev.currentTarget.setPointerCapture(ev.pointerId); arraste.current = { id: l.e.id }; }}
@@ -94,14 +102,15 @@ function Paradas({ vm }: { vm: Vm }) {
                     </td>
                     <td className="num fraco ent-pos">{l.posicao}</td>
                     <td className="ent-rota-conteudo">
-                      <span className="cad-empresa-nome">{l.e.clienteNome}</span>
+                      <span className="cad-empresa-nome">{l.titulo}</span>
+                      {l.quantas > 1 && <span className="badge badge-neutral" title="Entregas aglutinadas nesta parada">{l.quantas} entregas</span>}
                       {l.lembretes > 0 && <span className="ent-sino" title={'Lembrete pra falar com o cliente: ' + l.lembretesTexto}><Icone nome="sino" width={14} height={14} />{l.lembretes > 1 && l.lembretes}</span>}
                       <span className="fraco ent-rota-sub">{l.sub}</span>
                       {l.aviso && <span className="ent-aviso"><Icone nome="alert" width={12} height={12} />{l.aviso}</span>}
                     </td>
                     <td className="ent-acoes">
-                      {l.e.tentativa > 1 && <span className="badge badge-danger">{l.e.tentativa}ª vez</span>}
-                      <button type="button" className="btn btn-outline" onClick={ev => { ev.stopPropagation(); vm.abrirParada(l.e); }}><Icone nome="lapis" />Assinar</button>
+                      {l.tentativa > 1 && <span className="badge badge-danger">{l.tentativa}ª vez</span>}
+                      <button type="button" className="btn btn-outline" onClick={ev => { ev.stopPropagation(); l.assinar(); }}><Icone nome="lapis" />Assinar{l.quantas > 1 ? ' as ' + l.quantas : ''}</button>
                       {l.juntas && <button type="button" className="btn btn-outline ent-juntas" title={l.juntas.dica} onClick={ev => { ev.stopPropagation(); if (l.juntas) vm.abrirJuntas(l.juntas.titulo, l.juntas.lista); }}><Icone nome="checklist" />Assinar as {l.juntas.n}</button>}
                     </td>
                   </tr>

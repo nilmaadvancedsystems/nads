@@ -103,7 +103,8 @@ const enviosRecentes = [];
 async function ehDiretor(db, uid) {
   if (!uid) return false;
   const u = (await db.collection('usuarios').doc(String(uid)).get()).data() || {};
-  return u.nivel === 'diretor';
+  // o Dono tem tudo o que o Diretor tem (12/11/2026)
+  return u.nivel === 'diretor' || u.nivel === 'dono';
 }
 
 /** 'fila' -> 'enviando' numa transação; devolve o documento, ou null se outro já pegou. */

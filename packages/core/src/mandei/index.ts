@@ -25,7 +25,7 @@ export interface ItemDoTicket { id: string; titulo: string; valor?: string; deta
 
 export type StatusDoArquivo = 'subindo' | 'na-fila' | 'no-drive' | 'erro';
 /** Um arquivo que o cliente anexou (o arquivo em si vai para o Drive; aqui, o nome e o andamento). */
-export interface ArquivoDoTicket { id: string; nome: string; tamanho: number; itemId?: string; enviadoEm: string; status: StatusDoArquivo; envioId?: string; erro?: string }
+export interface ArquivoDoTicket { id: string; nome: string; tamanho: number; itemId?: string; enviadoEm: string; status: StatusDoArquivo; envioId?: string; erro?: string; /** onde o robô guardou no Drive (a pasta e o nome) */ local?: string }
 
 /** A resposta de um item (ou de uma linha dele): a opção escolhida e/ou o texto. */
 export interface RespostaDoItem { opcao?: string; texto?: string }
@@ -45,7 +45,26 @@ export interface LinkDoTicket {
   emailId?: string; enviadoEm?: string; erroDoEmail?: string;
   /** a primeira vez que o cliente abriu o link */
   abertoEm?: string;
+  /** o link da volta (11/11/2026): o escritório pediu para refazer respostas; vale 3 dias úteis, como um 1º link */
+  refazer?: boolean;
 }
+
+/**
+ * A revisão de uma resposta pelo escritório (11/11/2026, no padrão do Content Snare e do Onvio: aprovar ou pedir de novo,
+ * com o motivo). Aceita: confere. Refazer: a resposta volta ao cliente com o motivo, até ele responder de novo.
+ */
+export interface RevisaoDaResposta { estado: 'aceita' | 'refazer'; motivo?: string; por: string; em: string }
+
+/** O que aconteceu com o ticket (o histórico da central, 11/11/2026). */
+export type TipoDeEvento = 'criado' | 'enviado' | 'aberto' | 'respondido' | 'arquivo' | 'segundo-link' | 'aceita' | 'refazer' | 'resolvido';
+export interface EventoDoTicket { em: string; tipo: TipoDeEvento; por?: string; texto?: string }
+export const ROTULO_DO_EVENTO: Record<TipoDeEvento, string> = {
+  criado: 'Ticket criado', enviado: 'Link enviado', aberto: 'O cliente abriu o link', respondido: 'O cliente enviou as respostas',
+  arquivo: 'O cliente anexou um arquivo', 'segundo-link': '2º link gerado', aceita: 'Respostas aceitas', refazer: 'Pedido para refazer', resolvido: 'Resolvido',
+};
+
+/** Uma nota interna do escritório no ticket (o cliente não vê). */
+export interface NotaDoTicket { texto: string; por: string; em: string }
 
 export interface Ticket {
   id: string;
@@ -66,8 +85,14 @@ export interface Ticket {
   arquivos: ArquivoDoTicket[];
   /** o cliente mandou o formulário (a última vez) */
   respondidoEm?: string;
+  /** a última vez que o formulário guardou o rascunho (o cliente ainda não mandou) */
+  rascunhoEm?: string;
   resolvidoEm?: string;
   resolvidoPor?: string;
+  /** a revisão de cada resposta (a chave da linha, ou a do item sem linhas) */
+  revisao?: Record<string, RevisaoDaResposta>;
+  notas?: NotaDoTicket[];
+  historico?: EventoDoTicket[];
 }
 
 /**
@@ -90,11 +115,11 @@ export const OPCOES_PADRAO = [
   'Outro (explico abaixo)',
 ];
 
-/** O campo de explicação só abre no "Outro" e no "Foi pago de outra conta" (Vitor, 07/10/2026). */
-export const pedeExplicacao = (opcao: string): boolean => /^outro|^foi pago de outra conta/i.test(opcao.trim());
+/** O campo de explicação só abre no "Outro" e no "Foi pago de outra conta" (Vitor, 07/10/2026); e no "Respondo abaixo". */
+export const pedeExplicacao = (opcao: string): boolean => /^outro|^foi pago de outra conta|^respondo abaixo/i.test(opcao.trim());
 
-/** O anexar só abre em "Já foi pago" e "Foi pago de outra conta" (Vitor, 07/10/2026). */
-export const pedeComprovante = (opcao: string): boolean => /^já foi pago|^foi pago de outra conta/i.test(opcao.trim());
+/** O anexar só abre em "Já foi pago" e "Foi pago de outra conta" (Vitor, 07/10/2026); e no "Envio o arquivo". */
+export const pedeComprovante = (opcao: string): boolean => /^já foi pago|^foi pago de outra conta|^envio o arquivo/i.test(opcao.trim());
 
 export const PRAZO_DO_1O_LINK_DIAS_UTEIS = 3;
 export const PRAZO_DO_2O_LINK_DIAS = 5;
@@ -150,20 +175,62 @@ export interface DadosDoTicket {
   criadoPor: Ticket['criadoPor']; origem: Ticket['origem']; itens: ItemDoTicket[];
 }
 
+/** Um evento a mais no histórico. */
+export function comEvento(t: Ticket, e: EventoDoTicket): Ticket {
+  return { ...t, historico: [...(t.historico || []), e] };
+}
+
 /** O ticket novo, com o 1º link (3 dias úteis). O id e o número vêm de quem guarda. */
 export function novoTicket(d: DadosDoTicket, id: string, numero: number, codigo: string, agora: Date): Ticket {
   return {
     id, numero, ...d, criadoEm: agora.toISOString(),
     links: [{ codigo, numero: 1, criadoEm: agora.toISOString(), validoAte: somarDiasUteis(agora, PRAZO_DO_1O_LINK_DIAS_UTEIS).toISOString() }],
     respostas: {}, arquivos: [],
+    historico: [{ em: agora.toISOString(), tipo: 'criado', ...(d.criadoPor.nome ? { por: d.criadoPor.nome } : {}) }],
   };
 }
 
 export const linkAtual = (t: Ticket): LinkDoTicket => t.links[t.links.length - 1];
 
+/** O que falta numa resposta: a opção, a explicação (quando a opção pede) ou o comprovante (quando a opção pede). */
+export type FaltaNaResposta = 'resposta' | 'explicacao' | 'comprovante';
+
+/** As chaves que ainda não estão completas, com o que falta em cada uma. */
+export function faltaNoTicket(t: Pick<Ticket, 'itens' | 'respostas' | 'arquivos'>): { chave: string; falta: FaltaNaResposta }[] {
+  const comArquivo = new Set(t.arquivos.filter(a => a.status !== 'erro' && a.itemId).map(a => a.itemId as string));
+  const lista: { chave: string; falta: FaltaNaResposta }[] = [];
+  for (const it of t.itens) {
+    for (const chave of chavesDoItem(it)) {
+      const r = t.respostas[chave];
+      if (!r?.opcao) lista.push({ chave, falta: 'resposta' });
+      else if (pedeExplicacao(r.opcao) && !r.texto?.trim()) lista.push({ chave, falta: 'explicacao' });
+      else if (pedeComprovante(r.opcao) && !comArquivo.has(chave)) lista.push({ chave, falta: 'comprovante' });
+    }
+  }
+  return lista;
+}
+
+/** As chaves que o escritório pediu para refazer e o cliente ainda não respondeu de novo. */
+export const chavesParaRefazer = (t: Pick<Ticket, 'revisao'>): string[] =>
+  Object.entries(t.revisao || {}).filter(([, r]) => r.estado === 'refazer').map(([k]) => k);
+
+/** As respostas que o cliente mandou e o escritório ainda não aceitou nem pediu de novo. */
+export function chavesParaRevisar(t: Pick<Ticket, 'itens' | 'respostas' | 'revisao' | 'respondidoEm'>): string[] {
+  if (!t.respondidoEm) return [];
+  return t.itens.flatMap(chavesDoItem).filter(k => !!t.respostas[k] && !t.revisao?.[k]);
+}
+
+/**
+ * Respondido: o cliente mandou o formulário com tudo completo (11/11/2026: antes só contava com arquivo, e quem respondia
+ * "Foi pago em dinheiro" em tudo recebia o 2º link "ainda não recebemos os arquivos"), ou anexou algum arquivo. Com
+ * resposta pedida de novo, volta a aguardar o cliente (pelo link da volta).
+ */
 export function situacaoDoTicket(t: Ticket, agora: Date): SituacaoDoTicket {
   if (t.resolvidoEm) return 'resolvido';
-  if (t.arquivos.some(a => a.status !== 'erro')) return 'respondido';
+  if (!chavesParaRefazer(t).length) {
+    if (t.arquivos.some(a => a.status !== 'erro')) return 'respondido';
+    if (t.respondidoEm && !faltaNoTicket(t).length) return 'respondido';
+  }
   const l = linkAtual(t);
   if (agora.getTime() <= new Date(l.validoAte).getTime()) return l.numero === 1 ? 'aguardando' : 'aguardando-2';
   return l.numero === 1 ? 'segundo-link' : 'ligar';
@@ -172,13 +239,16 @@ export function situacaoDoTicket(t: Ticket, agora: Date): SituacaoDoTicket {
 /** O 2º link (5 dias corridos): só quando o 1º venceu sem arquivo. */
 export function comSegundoLink(t: Ticket, codigo: string, agora: Date): Ticket {
   if (situacaoDoTicket(t, agora) !== 'segundo-link') return t;
-  return { ...t, links: [...t.links, { codigo, numero: 2, criadoEm: agora.toISOString(), validoAte: somarDias(agora, PRAZO_DO_2O_LINK_DIAS).toISOString() }] };
+  return comEvento({ ...t, links: [...t.links, { codigo, numero: 2, criadoEm: agora.toISOString(), validoAte: somarDias(agora, PRAZO_DO_2O_LINK_DIAS).toISOString() }] },
+    { em: agora.toISOString(), tipo: 'segundo-link' });
 }
 
 const noLink = (t: Ticket, codigo: string, f: (l: LinkDoTicket) => LinkDoTicket): Ticket => ({ ...t, links: t.links.map(l => (l.codigo === codigo ? f(l) : l)) });
 
 export function linkEnviado(t: Ticket, codigo: string, quando: Date, emailId?: string): Ticket {
-  return noLink(t, codigo, l => ({ ...l, enviadoEm: quando.toISOString(), ...(emailId ? { emailId } : {}) }));
+  const l = t.links.find(x => x.codigo === codigo);
+  const enviado = noLink(t, codigo, x => ({ ...x, enviadoEm: quando.toISOString(), ...(emailId ? { emailId } : {}) }));
+  return l ? comEvento(enviado, { em: quando.toISOString(), tipo: 'enviado', texto: l.refazer ? 'link da volta' : l.numero + 'º link' }) : enviado;
 }
 
 /** O link vale? (o código é o atual e não venceu; ticket resolvido não aceita mais nada) */
@@ -189,30 +259,116 @@ export function linkValido(t: Ticket, codigo: string, agora: Date): boolean {
 
 /** O cliente abriu o link (a primeira vez fica). */
 export function linkAberto(t: Ticket, codigo: string, agora: Date): Ticket {
-  return noLink(t, codigo, l => (l.abertoEm ? l : { ...l, abertoEm: agora.toISOString() }));
+  const l = t.links.find(x => x.codigo === codigo);
+  if (!l || l.abertoEm) return t;
+  return comEvento(noLink(t, codigo, x => ({ ...x, abertoEm: agora.toISOString() })), { em: agora.toISOString(), tipo: 'aberto' });
 }
 
-/** O cliente mandou as respostas (só das linhas dos itens do ticket, ou do item sem linhas; sem campo vazio). */
-export function responder(t: Ticket, respostas: Record<string, RespostaDoItem>, agora: Date): Ticket {
-  const certas: Record<string, RespostaDoItem> = {};
+/**
+ * As respostas que valem, por chave: só as linhas dos itens do ticket (ou o item sem linhas), a opção que existe no item
+ * e o texto até 2.000 letras. A chave mandada vazia fica null (o cliente apagou a resposta).
+ */
+function respostasQueValem(t: Pick<Ticket, 'itens'>, respostas: Record<string, RespostaDoItem>): Record<string, RespostaDoItem | null> {
+  const certas: Record<string, RespostaDoItem | null> = {};
   for (const it of t.itens) {
     for (const chave of chavesDoItem(it)) {
       const r = respostas[chave];
       if (!r) continue;
       const opcao = r.opcao && it.opcoes.includes(r.opcao) ? r.opcao : undefined;
       const texto = r.texto?.trim().slice(0, 2000) || undefined;
-      if (opcao || texto) certas[chave] = { ...(opcao ? { opcao } : {}), ...(texto ? { texto } : {}) };
+      certas[chave] = opcao || texto ? { ...(opcao ? { opcao } : {}), ...(texto ? { texto } : {}) } : null;
     }
   }
-  return { ...t, respostas: { ...t.respostas, ...certas }, respondidoEm: agora.toISOString() };
+  return certas;
+}
+
+function comRespostas(t: Pick<Ticket, 'respostas'>, certas: Record<string, RespostaDoItem | null>): Record<string, RespostaDoItem> {
+  const r = { ...t.respostas };
+  for (const [k, v] of Object.entries(certas)) { if (v) r[k] = v; else delete r[k]; }
+  return r;
+}
+
+/**
+ * As respostas do formulário depois de uma mudança (o banco, 11/11/2026: o formulário só tem o documento do link, sem o
+ * ticket): só as chaves dos itens, a opção que existe e o texto até 2.000 letras; a chave mandada vazia sai.
+ */
+export function aplicarRespostas(itens: readonly ItemDoTicket[], atuais: Record<string, RespostaDoItem>, novas: Record<string, RespostaDoItem>): Record<string, RespostaDoItem> {
+  return comRespostas({ respostas: atuais }, respostasQueValem({ itens: [...itens] }, novas));
+}
+
+/**
+ * O rascunho (11/11/2026, como o Content Snare e o Typeform: o cliente volta pelo mesmo link e continua): guarda cada
+ * resposta enquanto ele preenche, sem dar o formulário como enviado.
+ */
+export function salvarRascunho(t: Ticket, respostas: Record<string, RespostaDoItem>, agora: Date): Ticket {
+  return { ...t, respostas: comRespostas(t, respostasQueValem(t, respostas)), rascunhoEm: agora.toISOString() };
+}
+
+/**
+ * O cliente mandou as respostas (só das linhas dos itens do ticket, ou do item sem linhas; sem campo vazio). O que o
+ * escritório tinha pedido de novo e ele respondeu sai do "refazer" e volta para a revisão.
+ */
+export function responder(t: Ticket, respostas: Record<string, RespostaDoItem>, agora: Date): Ticket {
+  const certas = respostasQueValem(t, respostas);
+  const novas = comRespostas(t, certas);
+  const revisao = { ...(t.revisao || {}) };
+  for (const k of chavesParaRefazer(t)) if (novas[k]?.opcao || novas[k]?.texto) delete revisao[k];
+  const semRevisao = !Object.keys(revisao).length;
+  const base: Ticket = { ...t, respostas: novas, respondidoEm: agora.toISOString() };
+  delete base.revisao;
+  return comEvento(semRevisao ? base : { ...base, revisao }, { em: agora.toISOString(), tipo: 'respondido' });
 }
 
 export function comArquivo(t: Ticket, a: ArquivoDoTicket): Ticket {
-  return { ...t, arquivos: [...t.arquivos.filter(x => x.id !== a.id), a] };
+  const novo = !t.arquivos.some(x => x.id === a.id);
+  const com = { ...t, arquivos: [...t.arquivos.filter(x => x.id !== a.id), a] };
+  return novo ? comEvento(com, { em: a.enviadoEm, tipo: 'arquivo', texto: a.nome }) : com;
 }
 
 export function resolver(t: Ticket, por: string, agora: Date): Ticket {
-  return { ...t, resolvidoEm: agora.toISOString(), resolvidoPor: por };
+  return comEvento({ ...t, resolvidoEm: agora.toISOString(), resolvidoPor: por }, { em: agora.toISOString(), tipo: 'resolvido', por });
+}
+
+// ─── a revisão do escritório (11/11/2026) ────────────────────────────────────
+
+/** Aceita as respostas dessas chaves (as que existem e têm resposta). */
+export function aceitar(t: Ticket, chaves: readonly string[], por: string, agora: Date): Ticket {
+  const validas = new Set(t.itens.flatMap(chavesDoItem));
+  const certas = chaves.filter(k => validas.has(k) && !!t.respostas[k]);
+  if (!certas.length) return t;
+  const revisao = { ...(t.revisao || {}) };
+  for (const k of certas) revisao[k] = { estado: 'aceita', por, em: agora.toISOString() };
+  return comEvento({ ...t, revisao }, { em: agora.toISOString(), tipo: 'aceita', por, texto: certas.length === 1 ? '1 resposta' : certas.length + ' respostas' });
+}
+
+/**
+ * Pede de novo (o "Redo" do Content Snare): cada chave volta ao cliente com o motivo, a resposta dela sai (ele responde
+ * de novo) e o ticket ganha o link da volta, com 3 dias úteis, como um 1º link (vencido sem resposta, sai o 2º). O
+ * motivo é obrigatório: é o que o cliente lê.
+ */
+export function pedirDeNovo(t: Ticket, pedidos: readonly { chave: string; motivo: string }[], por: string, codigo: string, agora: Date): Ticket {
+  if (t.resolvidoEm) return t;
+  const validas = new Set(t.itens.flatMap(chavesDoItem));
+  const certos = pedidos.map(p => ({ chave: p.chave, motivo: p.motivo.trim().slice(0, 500) })).filter(p => validas.has(p.chave) && !!p.motivo);
+  if (!certos.length) return t;
+  const revisao = { ...(t.revisao || {}) };
+  const respostas = { ...t.respostas };
+  for (const p of certos) {
+    revisao[p.chave] = { estado: 'refazer', motivo: p.motivo, por, em: agora.toISOString() };
+    delete respostas[p.chave];
+  }
+  const base: Ticket = {
+    ...t, revisao, respostas,
+    links: [...t.links, { codigo, numero: 1, refazer: true, criadoEm: agora.toISOString(), validoAte: somarDiasUteis(agora, PRAZO_DO_1O_LINK_DIAS_UTEIS).toISOString() }],
+  };
+  delete base.respondidoEm;
+  return comEvento(base, { em: agora.toISOString(), tipo: 'refazer', por, texto: certos.length === 1 ? '1 resposta' : certos.length + ' respostas' });
+}
+
+/** Uma nota interna (o cliente não vê). */
+export function comNota(t: Ticket, texto: string, por: string, agora: Date): Ticket {
+  const limpo = texto.trim().slice(0, 2000);
+  return limpo ? { ...t, notas: [...(t.notas || []), { texto: limpo, por, em: agora.toISOString() }] } : t;
 }
 
 // ─── o que o cliente vê ──────────────────────────────────────────────────────
@@ -221,6 +377,8 @@ export function resolver(t: Ticket, por: string, agora: Date): Ticket {
 export interface VistaDoCliente {
   numero: string; empresa: string; mensagem: string; itens: ItemDoTicket[]; respostas: Record<string, RespostaDoItem>;
   arquivos: { nome: string; itemId?: string }[]; validoAte: string; respondidoEm?: string;
+  /** o que o escritório pediu de novo: a chave e o motivo */
+  refazer: Record<string, string>;
 }
 
 export function vistaDoCliente(t: Ticket): VistaDoCliente {
@@ -228,22 +386,50 @@ export function vistaDoCliente(t: Ticket): VistaDoCliente {
     numero: rotuloDoNumero(t.numero), empresa: t.empresa.nome, mensagem: t.mensagem, itens: t.itens, respostas: t.respostas,
     arquivos: t.arquivos.filter(a => a.status !== 'erro').map(a => ({ nome: a.nome, ...(a.itemId ? { itemId: a.itemId } : {}) })),
     validoAte: linkAtual(t).validoAte, ...(t.respondidoEm ? { respondidoEm: t.respondidoEm } : {}),
+    refazer: Object.fromEntries(chavesParaRefazer(t).map(k => [k, t.revisao?.[k]?.motivo || ''])),
   };
+}
+
+/** Um ticket esperando o cliente, para a Área do Cliente (11/11/2026: o que o escritório pede, num lugar só). */
+export interface TicketNaArea {
+  codigo: string; numero: string; assunto: string; validoAte: string;
+  /** quantas respostas o formulário tem e quantas faltam */
+  total: number; faltam: number;
+  /** quantas o escritório pediu de novo */
+  refazer: number;
+}
+
+/**
+ * Os tickets das empresas do link que esperam o cliente (o link atual valendo, ainda sem resposta completa), o que vence
+ * primeiro antes. Respondido, resolvido ou com o link vencido não aparece (o vencido gera o 2º link, que aparece).
+ */
+export function ticketsDaArea(tickets: readonly Ticket[], codigos: readonly number[], agora: Date): TicketNaArea[] {
+  return tickets
+    .filter(t => t.empresa.codigo != null && codigos.includes(t.empresa.codigo))
+    .filter(t => { const s = situacaoDoTicket(t, agora); return s === 'aguardando' || s === 'aguardando-2'; })
+    .map(t => {
+      const l = linkAtual(t);
+      return { codigo: l.codigo, numero: rotuloDoNumero(t.numero), assunto: t.assunto, validoAte: l.validoAte, total: t.itens.flatMap(chavesDoItem).length, faltam: faltaNoTicket(t).length, refazer: chavesParaRefazer(t).length };
+    })
+    .sort((a, b) => a.validoAte.localeCompare(b.validoAte));
 }
 
 // ─── o e-mail ────────────────────────────────────────────────────────────────
 
 const dataBR = (iso: string) => { const d = new Date(iso); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear(); };
 
-/** O e-mail com o link (o 1º ou o 2º), em texto: o robô do Entregas monta e envia. */
+/** O e-mail com o link (o 1º, o 2º ou o da volta), em texto: o robô do Entregas monta e envia. */
 export function emailDoLink(t: Ticket, link: LinkDoTicket, urlDoLink: string): { assunto: string; corpo: string } {
   const segundo = link.numero === 2;
+  const refazer = chavesParaRefazer(t).length;
   return {
-    assunto: (segundo ? 'Lembrete: ' : '') + t.assunto + ' — ' + rotuloDoNumero(t.numero),
+    assunto: (link.refazer ? 'Falta pouco: ' : segundo ? 'Lembrete: ' : '') + t.assunto + ' — ' + rotuloDoNumero(t.numero),
     corpo: [
       'Olá' + (t.para.nome ? ', ' + t.para.nome : '') + '!',
       '',
-      segundo ? 'Ainda não recebemos os arquivos do pedido abaixo. Este é um novo link:' : t.mensagem,
+      link.refazer
+        ? 'Conferimos as suas respostas e precisamos que veja de novo ' + (refazer === 1 ? '1 delas' : refazer + ' delas') + ' (o motivo está no formulário).'
+        : segundo ? 'Ainda não recebemos a sua resposta do pedido abaixo. Este é um novo link:' : t.mensagem,
       '',
       'Responda e anexe os arquivos por este link (vale até ' + dataBR(link.validoAte) + '):',
       urlDoLink,
@@ -253,3 +439,6 @@ export function emailDoLink(t: Ticket, link: LinkDoTicket, urlDoLink: string): {
     ].join('\n'),
   };
 }
+
+export * from './modelos';
+export * from './banco';

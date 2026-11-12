@@ -30,6 +30,10 @@ import { criarHonorariosMemoria, type RepoHonorarios } from './honorarios';
 import { criarBoletosMemoria, type RepoBoletos } from './boletos';
 import { criarHonorariosFirestore } from './honorarios.firestore';
 import { criarContasPagarMemoria, type RepoContasPagar } from './contasPagar';
+import { criarCarteiraMemoria, type RepoCarteira } from './carteira';
+import { criarCarteiraFirestore } from './carteira.firestore';
+import { criarInsumosMemoria, type RepoInsumos } from './insumos';
+import { criarInsumosFirestore } from './insumos.firestore';
 import { criarContasPagarFirestore } from './contasPagar.firestore';
 import { criarNfseMemoria, type RepoNfse } from './nfse';
 import { criarNfseFirestore } from './nfse.firestore';
@@ -458,6 +462,22 @@ export function repoDeHonorarios(): RepoHonorarios {
   return honorarios;
 }
 
+let carteiraRepo: RepoCarteira | null = null;
+
+/** A Carteira (12/11/2026): as comissões, as finanças, os holerites e as contas ligadas à pessoa; e o lado do Financeiro. */
+export function repoDaCarteira(): RepoCarteira {
+  if (!carteiraRepo) carteiraRepo = noBanco ? criarCarteiraFirestore(quemDasTarefas) : criarCarteiraMemoria(quemDasTarefas);
+  return carteiraRepo;
+}
+
+let insumosRepo: RepoInsumos | null = null;
+
+/** Os Insumos da Carteira (12/11/2026): impressões, pastas, envelopes e caixas de cada pessoa, por cliente. */
+export function repoDosInsumos(): RepoInsumos {
+  if (!insumosRepo) insumosRepo = noBanco ? criarInsumosFirestore(quemDasTarefas) : criarInsumosMemoria(quemDasTarefas);
+  return insumosRepo;
+}
+
 let contasPagar: RepoContasPagar | null = null;
 
 /** As contas a pagar do escritório (28/10/2026: "o Contas a Pagar do Toriba, no nads"): os fornecedores e as contas. */
@@ -613,7 +633,7 @@ let lcdprRepo: RepoLcdpr | null = null;
 
 /** O Importador LCDPR (16/10/2026): as regras e os cadastros no lcdpr/config do Entregas (o mesmo da página antiga); nos exemplos, na memória. */
 export function repoDoLcdpr(): RepoLcdpr {
-  if (!lcdprRepo) lcdprRepo = noBanco ? criarLcdprFirestore() : criarLcdprMemoria();
+  if (!lcdprRepo) lcdprRepo = noBanco ? criarLcdprFirestore(() => quemPede()?.nome || '') : criarLcdprMemoria();
   return lcdprRepo;
 }
 

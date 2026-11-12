@@ -4,7 +4,8 @@
 //     criadoPor?, atualizadoEm?, atualizadoPor?}; os que vieram do Toriba têm o id toriba-<n>; ao vivo;
 //   - financeiroContasPagar/{id}: {numero, fornecedorId, conta?, documento, emissao, vencimento, valor, linhaDigitavel?,
 //     observacoes?, recorrencia?: {grupo, parcela, de}, pagamento?: {data, valorPago, juros, desconto, lancamentoId?, por,
-//     em}, anexos: [{id, tipo 'boleto'|'comprovante', nome, tamanho, partes, enviadoEm, enviadoPor}], lancadoEm, lancadoPor,
+//     em}, funcionario?: {uid, nome, tipo} (a conta ligada à Carteira da pessoa: ela lê a conta e os anexos; 12/11/2026),
+//     anexos: [{id, tipo 'boleto'|'comprovante', nome, tamanho, partes, enviadoEm, enviadoPor}], lancadoEm, lancadoPor,
 //     atualizadoEm?, atualizadoPor?}; ao vivo;
 //   - financeiroContasPagar/{id}/anexos/{anexo}: {tipo, nome, tamanho, partes, enviadoEm, enviadoPor} e
 //     .../anexos/{anexo}/partes/{n}: {dados: Bytes} (os pedaços do arquivo, como o envio do Drive; lidos só ao abrir);
@@ -52,7 +53,8 @@ function anexoDoBanco(v: unknown): financeiro.AnexoDaConta | null {
   };
 }
 
-function contaDoBanco(id: string, d: Record<string, unknown>): financeiro.ContaAPagar {
+/** a conta como veio do banco (a Carteira usa também, para as contas ligadas à pessoa) */
+export function contaDoBanco(id: string, d: Record<string, unknown>): financeiro.ContaAPagar {
   const r = objeto(d.recorrencia), p = objeto(d.pagamento);
   return {
     id, numero: numero(d.numero), fornecedorId: texto(d.fornecedorId), conta: texto(d.conta) || undefined, documento: texto(d.documento),
@@ -63,6 +65,7 @@ function contaDoBanco(id: string, d: Record<string, unknown>): financeiro.ContaA
       data: texto(p.data), valorPago: numero(p.valorPago), juros: numero(p.juros), desconto: numero(p.desconto), lancamentoId: texto(p.lancamentoId) || undefined,
       por: texto(p.por), em: texto(p.em),
     } : undefined,
+    funcionario: financeiro.vinculoDoBanco(d.funcionario) ?? undefined,
     anexos: Array.isArray(d.anexos) ? d.anexos.map(anexoDoBanco).filter((a): a is financeiro.AnexoDaConta => !!a) : [],
     lancadoEm: texto(d.lancadoEm), lancadoPor: texto(d.lancadoPor), atualizadoEm: texto(d.atualizadoEm) || undefined, atualizadoPor: texto(d.atualizadoPor) || undefined,
   };
@@ -143,6 +146,7 @@ export function criarContasPagarFirestore(): RepoContasPagar {
           numero: ultimo + k + 1, fornecedorId: r.fornecedorId, documento: r.documento.trim(), emissao: r.emissao, vencimento: r.vencimento, valor: centavos(r.valor),
           ...(r.conta ? { conta: r.conta } : {}), ...(r.linhaDigitavel ? { linhaDigitavel: r.linhaDigitavel } : {}),
           ...(r.observacoes?.trim() ? { observacoes: r.observacoes.trim() } : {}), ...(r.recorrencia ? { recorrencia: { ...r.recorrencia } } : {}),
+          ...(r.funcionario ? { funcionario: { ...r.funcionario } } : {}),
           anexos: [], lancadoEm: agora, lancadoPor: quem,
         }));
         t.set(contador, { ultimo: ultimo + rs.length });
@@ -153,6 +157,7 @@ export function criarContasPagarFirestore(): RepoContasPagar {
       await updateDoc(doc(db, 'financeiroContasPagar', r.id), {
         fornecedorId: r.fornecedorId, documento: r.documento.trim(), emissao: r.emissao, vencimento: r.vencimento, valor: centavos(r.valor),
         conta: r.conta || deleteField(), linhaDigitavel: r.linhaDigitavel || deleteField(), observacoes: r.observacoes?.trim() || deleteField(),
+        funcionario: r.funcionario ? { ...r.funcionario } : deleteField(),
         atualizadoEm: new Date().toISOString(), atualizadoPor: quem,
       });
     },

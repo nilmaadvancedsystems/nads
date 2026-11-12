@@ -2,6 +2,7 @@
 // conta do plano e as observações. Com `id`, abre o lançamento para alterar (e dá o Excluir). Ctrl+Enter grava.
 import { BotaoFechar, CampoData, Icone, Segmentado, useJanela } from '@nads/ui';
 import { useEffect, useRef } from 'react';
+import { EscolherConta } from './partes/EscolherConta';
 import { Propriedade } from './partes/Propriedade';
 import { useJanelaDoLancamento } from './useJanelaDoLancamento';
 
@@ -35,10 +36,7 @@ export function JanelaDoLancamento({ id, valor, fechar }: { id?: string; valor?:
               <input type="text" inputMode="decimal" value={vm.valor} onChange={e => vm.setValor(e.target.value)} placeholder="0,00" aria-label="Valor do lançamento" />
             </Propriedade>
             <Propriedade icone="list" rotulo="Conta">
-              <select className="pessoal-select" value={vm.conta} onChange={e => vm.setConta(e.target.value)} aria-label="Conta do plano de contas">
-                <option value="">Sem conta</option>
-                {vm.contas.map(c => <option key={c.id} value={c.id}>{c.codigo} · {c.descricao}</option>)}
-              </select>
+              <EscolherConta valor={vm.conta} contas={vm.contas} onEscolher={vm.setConta} titulo="Conta do plano de contas" />
             </Propriedade>
             <Propriedade icone="mensagem" rotulo="Observações">
               <textarea className="nf-texto" rows={2} value={vm.observacoes} onChange={e => vm.setObservacoes(e.target.value)} placeholder="Opcional" aria-label="Observações" />

@@ -171,6 +171,11 @@ export function criarTarefasDelegadasFirestore(quem: () => Pessoa | null): RepoT
       });
       await reler();
     },
+    async marcarVisualizada(id) {
+      // só a hora (sem histórico nem atualizadaEm: abrir não é mudar a tarefa); quem já marcou não grava de novo
+      if (daTarefa(id).visualizadaEm) return;
+      await updateDoc(doc(db, COLECAO, id), { visualizadaEm: new Date().toISOString() });
+    },
     async comentar(id, texto) {
       const por = eu();
       const t = await noBanco(id);

@@ -46,7 +46,7 @@ export function useRateioDeFrete() {
   const [buscaDaNota, setBuscaDaNota] = useState('');
   const [agrupar, setAgrupar] = useState<t.sieg.AgruparPor>('tributacao');
   const [aberto, setAberto] = useState('');
-  // a nota aberta no espelho (23/10/2026: "conferir as danfe direto pelo app")
+  // a nota aberta no Ver (23/10/2026: "conferir as danfe direto pelo app"; a NF-e na DANFE, o CT-e no espelho: VerANota)
   const [vendo, setVendo] = useState('');
   // o que a pessoa mudou nos valores (de qual CT-e; outro CT-e volta aos dele)
   const [mudados, setMudados] = useState<{ de: string } & Partial<Record<Campo, number>>>({ de: '' });

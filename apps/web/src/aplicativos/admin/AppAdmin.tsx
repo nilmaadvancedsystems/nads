@@ -18,7 +18,7 @@ import './admin.css';
  * entra assim mesmo: aqui o departamento não escolhe nada (as telas olham só o "admin").
  */
 function operadorDoAdmin(u: usuarios.Usuario): Operador {
-  return operadorDaConta(u) ?? { nome: u.nome, departamento: 'contabil', nivel: u.nivel, admin: u.papeis.includes('admin'), desenvolvedor: u.papeis.includes('desenvolvedor') };
+  return operadorDaConta(u) ?? { nome: u.nome, departamento: 'contabil', nivel: u.nivel, admin: u.papeis.includes('admin'), desenvolvedor: u.papeis.includes('desenvolvedor') && u.nivel !== 'dono' };
 }
 
 function SoAdmin({ children }: { children: ReactNode }) {

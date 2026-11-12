@@ -1,7 +1,7 @@
 // As ações sobre o link do cliente (Vitor, 16/10/2026), as mesmas na página Links e no bloco "Link do cliente" da janela da
 // empresa no Cadastro: gerar, copiar, mandar no WhatsApp com o texto pronto, trocar e revogar (estes dois pedem confirmação).
 // Só o admin e os diretores mexem (os botões nem aparecem para os outros); ver quem tem link, todos veem.
-import { extrator, formatos } from '@nads/core';
+import { extrator, formatos, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useState } from 'react';
 import { useOperador, type Operador } from '../../casca/operador';
@@ -9,7 +9,7 @@ import { enderecoDoLink, textoDoWhatsApp, type EmpresaDoLink } from '../../dados
 import { useAreaCliente, useTodosOsCadastros } from '../../dados/repo';
 
 /** Quem gera, troca e revoga link: o admin e os diretores (Vitor, 16/10/2026). */
-export const podeMexerNosLinks = (op: Operador | null) => !!op && (op.admin || op.nivel === 'diretor');
+export const podeMexerNosLinks = (op: Operador | null) => !!op && (op.admin || usuarios.nivelDeDiretor(op.nivel));
 
 const motivo = (e: unknown) => (e instanceof Error ? e.message : String(e));
 

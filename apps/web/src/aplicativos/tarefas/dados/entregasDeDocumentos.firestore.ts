@@ -18,12 +18,13 @@
 // O e-mail de quem grava é o do login (as regras conferem entregadoPor == o e-mail do token).
 import { entregas } from '@nads/core';
 import {
-  addDoc as addDocBruto, collection, deleteDoc as deleteDocBruto, deleteField, doc, getDoc, getDocFromServer, getDocs, getDocsFromServer, limit, onSnapshot, orderBy, query,
+  addDoc as addDocBruto, Bytes, collection, deleteDoc as deleteDocBruto, deleteField, doc, getDoc, getDocFromServer, getDocs, getDocsFromServer, limit, onSnapshot, orderBy, query,
   setDoc as setDocBruto, Timestamp, updateDoc as updateDocBruto, where, writeBatch as writeBatchBruto, type DocumentData, type Unsubscribe,
 } from 'firebase/firestore';
 import { guardar, guardarLote, guardarPedido } from '../../../comum/modoDesenvolvedor';
 import { criarTravaDeRepeticao } from '../../../comum/travaDeRepeticao';
 import type { ListaAoVivo } from './agentes';
+import { boletoDoBanco } from './boletos.firestore';
 import { bancoDoEntregas, contaDoEntregas } from './entregas.firestore';
 import type { ArquivoDoDrive, AtestadoParaBuscar, ComprovanteDaEntrega, EscritaPerdida, GuiaAnexada, LembreteDoCliente, QuemNoEntregas, RepoEntregasDeDocumentos, ResultadoDaGravacao } from './entregasDeDocumentos';
 
@@ -449,7 +450,7 @@ export function criarEntregasDeDocumentosFirestore(pessoa: () => { nome: string;
       return l;
     },
     async doClienteNoMes(clienteId, competencia) {
-      const s = await getDocs(query(collection(db, 'entregas'), where('clienteId', '==', clienteId), where('competencia', '==', competencia), limit(10)));
+      const s = await getDocs(query(collection(db, 'entregas'), where('clienteId', '==', clienteId), where('competencia', '==', competencia), limit(30)));
       return entregasDe(s.docs);
     },
     async comprovante(entregaId): Promise<ComprovanteDaEntrega> {
@@ -504,12 +505,15 @@ export function criarEntregasDeDocumentosFirestore(pessoa: () => { nome: string;
       const lote = writeBatch(db);
       lote.set(ref, dados);
       if (n.foto) lote.set(doc(db, 'entregas', ref.id, 'anexos', 'comprovante'), { foto: n.foto });
-      // as guias que vieram da pasta do cliente (FGTS, DARF, DAS): o PDF fica anexado à entrega
-      for (const g of guias) {
+      // as guias que vieram da pasta do cliente (FGTS, DARF, DAS): o PDF fica anexado à entrega; um DARF por tributo vai em
+      // anexos/guia-darf-<tributo>, como o lote do Fiscal grava
+      const idsDosAnexos = entregas.idsDosAnexosDasGuias(guias);
+      guias.forEach((g, k) => {
         const guia: Record<string, unknown> = { tipo: g.tipo, nome: g.nome, driveId: g.driveId, tamanho: g.tamanho, em: agora() };
+        if (g.tributo) guia.tributo = g.tributo;
         if (g.pdf) guia.pdf = g.pdf;
-        lote.set(doc(db, 'entregas', ref.id, 'anexos', 'guia-' + g.tipo), guia);
-      }
+        lote.set(doc(db, 'entregas', ref.id, 'anexos', idsDosAnexos[k]), guia);
+      });
       const clienteId = n.para.tipo === 'cliente' ? n.para.cliente.id : null;
       linkMudou(clienteId);
       marcarClienteDeEntrega(clienteId);
@@ -602,6 +606,14 @@ export function criarEntregasDeDocumentosFirestore(pessoa: () => { nome: string;
       return naoTrava(p, 'a edição da parada de ' + (e.clienteNome || 'um cliente'));
     },
     async excluir(e) {
+      // o DARF de cada tributo (anexos/guia-darf-inss, do Puxar guias e do lote do Fiscal) sai antes, à parte: se a regra do
+      // banco recusar, a exclusão de sempre continua como era
+      const aMais = entregas.anexosDeGuiaDaEntrega(e.itens).filter(id => !GUIAS_ANEXADAS.includes(id.slice(6)));
+      if (aMais.length) {
+        const antes = writeBatch(db);
+        for (const id of aMais) antes.delete(doc(db, 'entregas', e.id, 'anexos', id));
+        void antes.commit().catch(() => undefined);
+      }
       // no lote, ou os dois somem, ou nenhum some (antes sobrava uma entrega sem a prova)
       const lote = writeBatch(db);
       lote.delete(doc(db, 'entregas', e.id, 'anexos', 'comprovante'));
@@ -815,6 +827,31 @@ export function criarEntregasDeDocumentosFirestore(pessoa: () => { nome: string;
       const partes = await getDocs(collection(db, 'driveIndice', pasta.id, 'partes'));
       const itens = entregas.itensDasPartes([...partes.docs].sort((a, b) => Number(a.id) - Number(b.id)).map(d => d.data()));
       return entregas.guiasNaPasta(itens, m);
+    },
+    async boletoDoFinanceiro(c, competencia) {
+      // os contratos de honorário do cliente (pelo id do Entregas e pelo código), depois os boletos deles: consultas
+      // pequenas, sem ler o lote do mês inteiro; sem permissão no Financeiro, fica sem boleto (o resto do Puxar guias segue)
+      try {
+        const honorarios = collection(db, 'financeiroHonorarios');
+        const [porId, porCodigo] = await Promise.all([
+          getDocs(query(honorarios, where('clienteId', '==', c.id))),
+          c.codigoOrigem.trim() ? getDocs(query(honorarios, where('codigo', '==', c.codigoOrigem.trim()))) : Promise.resolve(null),
+        ]);
+        const contratos = [...new Set([...porId.docs, ...(porCodigo?.docs || [])].map(d => d.id))];
+        if (!contratos.length) return null;
+        const s = await getDocs(query(collection(db, 'financeiroBoletos'), where('contratoId', 'in', contratos.slice(0, 30))));
+        const b = entregas.boletoParaAEntrega(s.docs.map(d => boletoDoBanco(d.id, d.data())), contratos, competencia);
+        if (!b) return null;
+        const partes = await getDocs(collection(db, 'financeiroBoletos', b.id, 'partes'));
+        const pedacos = partes.docs.sort((x, y) => Number(x.id) - Number(y.id)).map(x => (x.data().dados as Bytes).toUint8Array());
+        const pdf = pedacos.length ? new Uint8Array(pedacos.reduce((t, p) => t + p.length, 0)) : null;
+        let i = 0;
+        if (pdf) for (const p of pedacos) { pdf.set(p, i); i += p.length; }
+        return { arquivo: b.arquivo, linha: b.linha, valor: b.valor, vencimento: b.vencimento, pdf };
+      } catch (err) {
+        if (codigo(err) !== 'permission-denied') console.warn('boleto do Financeiro:', err);
+        return null;
+      }
     },
     async lerDoDrive(arq): Promise<ArquivoDoDrive> {
       const q = precisaDeQuem();

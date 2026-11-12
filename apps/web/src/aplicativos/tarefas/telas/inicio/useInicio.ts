@@ -1,5 +1,5 @@
 // ViewModel do Início da Tarefas: o mural de avisos (o admin e o diretor escrevem, fixam e apagam; todos leem).
-import { tarefas as t } from '@nads/core';
+import { tarefas as t, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useState } from 'react';
 import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
@@ -17,7 +17,7 @@ export function useInicio() {
   const [publicando, setPublicando] = useState(false);
   const [novoAberto, setNovoAberto] = useState(false);
   const agora = new Date();
-  const escreve = op.admin || op.nivel === 'diretor';
+  const escreve = op.admin || usuarios.nivelDeDiretor(op.nivel);
   const mural = repo.lista();
   // abriu o Início: os avisos do mural ficam lidos (o número da gaveta some; 06/11/2026)
   useMuralLido(mural.carregados ? mural.avisos.map(x => x.id) : []);

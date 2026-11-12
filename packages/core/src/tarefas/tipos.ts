@@ -112,7 +112,12 @@ export type PainelDaTarefa = 'sieg' | 'recebimento' | 'sequencia' | 'saidas' | '
   // os XMLs de saída soltos direto na Conferência de saídas (15/10/2026)
   | 'xml-saidas';
 
-export interface Rotina { departamento: Departamento; etapas: Etapa[] }
+export interface Rotina {
+  departamento: Departamento;
+  etapas: Etapa[];
+  /** sair da etapa não pede o "Por que interromper?" (o X só sai; 12/11/2026, o LCDPR: "LCDPR não precisa disso") */
+  semInterromper?: boolean;
+}
 
 export type SituacaoEtapa = 'pendente' | 'feita' | 'dispensada' | 'interrompida';
 
@@ -164,6 +169,18 @@ export interface Execucao {
    * sozinho (o envio do DP marca a Entrega) precisa saber que alguém a desfez depois (30/10/2026)
    */
   reabertas?: Record<string, string>;
+  /**
+   * a última vez que a rotina, já concluída, foi reaberta (11/11/2026: "quando eu termino uma empresa, quero ter a opção de
+   * voltar nela"): quem, quando (ISO) e por qual etapa. O histórico inteiro fica nos eventos (tipo 'reaberta').
+   */
+  rotinaReaberta?: ReaberturaDaRotina;
+}
+
+/** Quem reabriu a rotina concluída, quando (ISO) e em qual etapa. */
+export interface ReaberturaDaRotina {
+  por: string;
+  em: string;
+  etapa: string;
 }
 
 export type TipoEvento = 'inicio' | 'feita' | 'dispensada' | 'interrompida' | 'verificacao-falhou' | 'sem-movimento' | 'com-movimento' | 'reaberta'

@@ -19,7 +19,6 @@ import { Avatar as AvatarDoCliente } from '../../cliente/partes/Avatar';
 import { CartaoDeAtendimento } from '../../cliente/partes/CartaoDeAtendimento';
 import { CartaoDeGuia } from '../../cliente/partes/CartaoDeGuia';
 import { CartaoDoVeredito } from '../../cliente/partes/CartaoDoVeredito';
-import { ConversaDoChamado } from '../../cliente/partes/ConversaDoChamado';
 import { EsqueletoDaArea } from '../../cliente/partes/EsqueletoDaArea';
 import { LinhaDaAgenda } from '../../cliente/partes/LinhaDaAgenda';
 import { LinhaDaAtividade } from '../../cliente/partes/LinhaDaAtividade';
@@ -36,7 +35,7 @@ import { ContadorDeCedulas } from '../../tarefas/telas/financeiro/partes/Contado
 import { LinhaDoPlano } from '../../tarefas/telas/financeiro/partes/LinhaDoPlano';
 import { ValorDoCaixa } from '../../tarefas/telas/financeiro/partes/ValorDoCaixa';
 import { BotoesDoLink } from '../../tarefas/telas/area-cliente/partes/BotoesDoLink';
-import { ConversaDoEscritorio } from '../../tarefas/telas/area-cliente/partes/ConversaDoEscritorio';
+import { PedidoDoChamado } from '../../tarefas/telas/area-cliente/partes/PedidoDoChamado';
 import { CartaoDoRobo } from '../../tarefas/telas/cadastro/painel-robo/partes/CartaoDoRobo';
 import { CartaoDeSaudeDoRobo } from '../../tarefas/telas/cadastro/painel-robo/partes/CartaoDeSaudeDoRobo';
 import { LinhaDoTempoDoRobo } from '../../tarefas/telas/cadastro/painel-robo/partes/LinhaDoTempoDoRobo';
@@ -197,7 +196,7 @@ export const ICONES: NomeIcone[] = [
   'girar', 'maximizar', 'minimizar', 'painel', 'cartao', 'download', 'grade', 'impressora', 'dinheiro', 'caminhao',
   'arrastar', 'lixeira', 'mapaPin', 'qrCode', 'codigoBarras', 'telefone', 'celular', 'trofeu', 'alvo', 'lampada', 'predio', 'escudo', 'seta', 'aviao', 'clipe',
 ];
-const BANCOS = ['banco-do-brasil', 'banrisul', 'bradesco', 'btg', 'c6', 'caixa', 'inter', 'itau', 'mercado-pago', 'nubank', 'pagbank', 'safra', 'santander', 'sicoob', 'stone', 'cora', 'sicredi', 'bnb'];
+const BANCOS = ['banco-do-brasil', 'banrisul', 'bradesco', 'btg', 'c6', 'caixa', 'inter', 'itau', 'mercado-pago', 'nubank', 'pagbank', 'safra', 'santander', 'sicoob', 'stone', 'cora', 'sicredi', 'bnb', 'infinitepay'];
 const CORES = [
   '--bg', '--surface', '--surface-2', '--surface-3', '--border', '--border-strong', '--ink', '--ink-muted', '--accent', '--accent-strong', '--accent-soft',
   '--btn-bg', '--btn-primary', '--btn-primary-hover', '--success', '--success-soft', '--danger', '--danger-soft', '--warn', '--warn-soft', '--info', '--info-soft',
@@ -918,13 +917,15 @@ export const PECAS_BASE: Peca[] = [
         <LinhaDaAgenda item={{ id: 'darf-inss', nome: 'DARF do INSS da folha', vence: '2026-10-20', situacao: 'a fazer' }} semSituacao />
       </ul></div>
     ) },
-  { id: 'conversa-chamado', tipo: 'listas', nome: 'Conversa do chamado (Área do Cliente)', descricao: 'Das Solicitações da Área do Cliente (Vitor, 16/10/2026): os balões da conversa em ordem, como o balão do nads — o do cliente à direita (carmim clarinho, sem borda), o do escritório à esquerda (no branco do cartão, com a borda fina); o escritório sempre aparece como "Escritório". A conversa abre embaixo da linha dela, com o campo de responder', componente: 'ConversaDoChamado', classes: ['cli-conversa', 'cli-balao', 'cli-balao-cliente', 'cli-balao-escritorio'], telas: ['c-cliente-chamados'], largo: true,
+  { id: 'solicitacao-aberta', tipo: 'listas', nome: 'Solicitação aberta (Área do Cliente)', descricao: 'Das Solicitações da Área do Cliente, sem chat (11/11/2026: "por existir o WhatsApp, não precisa de um chat; o chat só fica bom no PC"): os passos da situação (Recebida › Em andamento › Pronta), o pedido do cliente e a resposta do escritório, um embaixo do outro, e o Falar no WhatsApp já com o assunto. Abre embaixo da linha dela', classes: ['cli-solicitacao', 'cli-passos', 'cli-complemento'], telas: ['c-cliente-chamados'], largo: true,
     demo: () => (
       <div className="cli-app cli-demo" style={{ width: '100%' }}>
-        <ConversaDoChamado mensagens={[
-          { de: 'cliente', autor: 'Você', texto: 'O João pode tirar 10 dias de férias e vender os outros 20?', em: '2026-10-08T09:40:00.000Z' },
-          { de: 'escritorio', autor: 'Escritório', texto: 'Pode tirar 20 dias e vender até 10. Avise com 30 dias de antecedência.', em: '2026-10-08T12:55:00.000Z' },
-        ]} />
+        <div className="cli-solicitacao">
+          <ol className="cli-passos" aria-label="Situação"><li className="feito">Recebida</li><li className="feito">Em andamento</li><li className="atual" aria-current="step">Respondida</li></ol>
+          <div><h4>Seu pedido</h4><p>O João pode tirar 10 dias de férias e vender os outros 20?</p></div>
+          <div><h4>Resposta do escritório</h4><p>Pode tirar 20 dias e vender até 10. Avise com 30 dias de antecedência.<span className="hint"> · 08/10, 12:55</span></p></div>
+          <div className="cli-acoes"><a className="btn" href="#whatsapp" onClick={e => e.preventDefault()}><Icone nome="celular" width={16} height={16} />Falar no WhatsApp</a></div>
+        </div>
       </div>
     ) },
   { id: 'linha-guia', tipo: 'listas', nome: 'Linha de guia (Área do Cliente)', descricao: 'Das "Obrigações e guias próximas" da Visão geral da Área do Cliente (versão D, Vitor, 16/10/2026): uma grade de colunas fixas, igual em todas as linhas (17/10/2026: "quero que melhore esse layout") — a logo do órgão solta (40 px), o nome com a competência e o vencimento, o selo da situação (largura fixa, à esquerda), o valor (largura fixa, à direita, tabular) e as ações (copiar e baixar, à direita); no celular o selo, o valor e as ações descem para a segunda linha. Na Visão geral, separadas em A pagar e Pagas (as pagas mais discretas). Nada vira "…": o nome e o detalhe quebram a linha, e cada pedaço do detalhe (o vencimento, a competência) fica inteiro (cli-junto). "Melhora mais" de 17/10/2026: a ação principal com nome — Baixar (carmim só na próxima a pagar) com o copiar o código ao lado; na vencida, Pedir nova (a guia vencida não passa no banco; abre o chamado já com o título), com o PDF antigo no ícone; no celular as ações descem para uma terceira linha', componente: 'LinhaDeGuia', classes: ['cli-lista', 'cli-linha', 'cli-linha-guia', 'cli-g-logo', 'cli-g-txt', 'cli-g-selo', 'cli-g-valor', 'cli-g-acoes', 'cli-grupo', 'badge', 'icon-btn', 'cli-junto'], telas: ['c-cliente', 'c-cliente-guias'], largo: true,
@@ -947,9 +948,9 @@ export const PECAS_BASE: Peca[] = [
       <BlocoDoLink endereco="https://cliente.nilmacontabilidade.com/cliente/9f2c1a7e4b8d0356ac91e2f7d4b6a80c13e5f792" data="04/10/2026" podeMexer
         aoGerar={nada} aoCopiar={nada} aoWhatsApp={nada} aoTrocar={nada} aoRevogar={nada} />
     ) },
-  { id: 'conversa-escritorio', tipo: 'listas', nome: 'Conversa do chamado (visão do escritório)', descricao: 'Os balões do chamado em Área do Cliente › Chamados: o do cliente à esquerda e o do escritório, com o nome de quem respondeu, à direita (Vitor, 16/10/2026)', classes: ['ac-conversa', 'ac-balao', 'ac-balao-cliente', 'ac-balao-escritorio'], telas: ['t-area-chamados'], largo: true,
+  { id: 'pedido-escritorio', tipo: 'listas', nome: 'Solicitação do cliente (visão do escritório)', descricao: 'Em Área do Cliente › Chamados, sem chat (11/11/2026): o pedido do cliente e a resposta do escritório (com o nome de quem respondeu), um bloco embaixo do outro; o Responder e o Responder e concluir ficam embaixo', componente: 'PedidoDoChamado', classes: ['ac-pedido'], telas: ['t-area-chamados'], largo: true,
     demo: () => (
-      <ConversaDoEscritorio mensagens={[
+      <PedidoDoChamado mensagens={[
         { de: 'cliente', autor: 'Você', texto: 'Vamos contratar o Marcos, começa dia 1º. O que preciso mandar?', em: '2026-10-15T10:20:00' },
         { de: 'escritorio', autor: 'Camila', texto: 'Oi! Precisamos do RG, CPF, comprovante de residência e o exame admissional.', em: '2026-10-15T11:05:00' },
       ]} />

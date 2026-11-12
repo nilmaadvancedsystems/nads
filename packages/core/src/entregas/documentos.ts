@@ -371,6 +371,71 @@ export const textoDosItens = (itens: readonly ItemDaEntrega[]) => itens.map(i =>
 /** "DAS · R$ 10,00 · Fulano" (a ficha de cada documento nas janelas). */
 export const fichaDoItem = (i: ItemDaEntrega) => i.tipo + (i.valor != null ? ' · ' + dinheiro(i.valor) : '') + (i.funcionario ? ' · ' + i.funcionario : '');
 
+// ---------------------------------------------------------------------------------------------------------------------
+// editar os documentos da parada (abrirEdicaoPendente): os tipos marcados, um "outro", os valores pelo rótulo
+// ---------------------------------------------------------------------------------------------------------------------
+/** Um documento que a edição não sabe desenhar como tipo marcado nem como "outro" (o 2º DARF, o repetido): vai como está. */
+export interface DocumentoAMaisNaEdicao { tipo: string; valor: string; funcionario?: string }
+export interface DocumentosEmEdicao {
+  marcados: string[];
+  outro: string;
+  valores: Record<string, string>;
+  funcionarios: Record<string, string>;
+  /** os que sobravam e sumiam ao salvar (11/11/2026: "DARF INSS" e "DARF IRRF" na mesma parada ficavam só com um) */
+  aMais: DocumentoAMaisNaEdicao[];
+}
+/** Os documentos da parada no formulário da edição. */
+export function documentosParaEditar(itens: readonly ItemDaEntrega[]): DocumentosEmEdicao {
+  const r: DocumentosEmEdicao = { marcados: [], outro: '', valores: {}, funcionarios: {}, aMais: [] };
+  const comValor = (i: ItemDaEntrega) => (i.valor != null ? String(i.valor) : '');
+  for (const i of itens) {
+    const t = tipoPeloRotulo(i.tipo);
+    const cabe = t ? !r.marcados.includes(t.chave) : !r.outro;
+    if (!cabe) { r.aMais.push({ tipo: i.tipo, valor: comValor(i), ...(i.funcionario ? { funcionario: i.funcionario } : {}) }); continue; }
+    if (t) r.marcados.push(t.chave); else r.outro = i.tipo;
+    if (i.valor != null) r.valores[i.tipo] = comValor(i);
+    if (i.funcionario) r.funcionarios[i.tipo] = i.funcionario;
+  }
+  return r;
+}
+/** Os documentos que a edição grava: os tipos marcados (na ordem da lista), o outro e os a mais. */
+export function itensDaEdicao(ed: DocumentosEmEdicao): ItemDaEntrega[] {
+  const linhas = [...TIPOS_DE_DOCUMENTO.filter(t => ed.marcados.includes(t.chave)), ...(ed.outro.trim() ? [{ rotulo: ed.outro.trim() } as TipoDeDocumento] : [])];
+  return [
+    ...linhas.map(l => ({ tipo: l.rotulo, valor: l.semValor ? null : valorDigitado(ed.valores[l.rotulo]), ...(l.pedeFuncionario ? { funcionario: (ed.funcionarios[l.rotulo] || '').trim() } : {}) })),
+    ...ed.aMais.map(a => ({ tipo: a.tipo, valor: tipoPeloRotulo(a.tipo)?.semValor ? null : valorDigitado(a.valor), ...(a.funcionario !== undefined ? { funcionario: a.funcionario.trim() } : {}) })),
+  ];
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// o que já está na rota (11/11/2026: "quero que o modulo não deixe eu colocar algo rota sendo que ja esteja em rota")
+// ---------------------------------------------------------------------------------------------------------------------
+/** O documento para comparar: sem acento, sem caixa e sem espaço sobrando ("DAE  ICMS" = "dae icms"). */
+export const chaveDoDocumento = (tipo: string) => semAcento(tipo).replace(/\s+/g, ' ').trim();
+/**
+ * Os documentos da entrega nova que já estão na rota: o mesmo cliente, a mesma competência e o mesmo documento numa parada
+ * que ainda não foi entregue (na rota ou no link). Outro mês do mesmo documento pode (o DAE de setembro e o de outubro); o
+ * repetido dentro da própria entrega nova também (dois DAS). Sem cliente (avulso, banco): nada a conferir.
+ */
+export function jaNaRota(
+  nova: { clienteId: string | null; competencia: string; itens: readonly Pick<ItemDaEntrega, 'tipo'>[] },
+  entregasDoCliente: readonly Pick<Entrega, 'clienteId' | 'competencia' | 'status' | 'itens'>[],
+): string[] {
+  if (!nova.clienteId) return [];
+  const naRota = new Set(entregasDoCliente
+    .filter(e => e.clienteId === nova.clienteId && e.competencia === nova.competencia && (e.status === 'pendente' || e.status === 'link'))
+    .flatMap(e => e.itens.map(i => chaveDoDocumento(i.tipo))));
+  const repetidos: string[] = [];
+  for (const i of nova.itens) if (naRota.has(chaveDoDocumento(i.tipo)) && !repetidos.includes(i.tipo)) repetidos.push(i.tipo);
+  return repetidos;
+}
+/** "DAE ICMS de outubro/2026 já está na rota de 493 - ANTONIA'S LTDA. …" */
+export function avisoDeJaNaRota(repetidos: readonly string[], competencia: string, cliente: string): string {
+  const quais = repetidos.length > 1 ? repetidos.slice(0, -1).join(', ') + ' e ' + repetidos[repetidos.length - 1] : repetidos[0] || '';
+  return quais + ' de ' + rotuloDaCompetencia(competencia) + (repetidos.length > 1 ? ' já estão' : ' já está') + ' na rota de ' + cliente
+    + '. Para mudar, edite ou tire a parada que está lá.';
+}
+
 /** A data em que a entrega aconteceu (ou foi posta na rota). */
 export const quandoFoi = (e: Pick<Entrega, 'confirmadoEm' | 'criadoEm'>) => e.confirmadoEm || e.criadoEm;
 

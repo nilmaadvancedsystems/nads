@@ -656,3 +656,4 @@ export function textoDaMensagem(modelo: string, empresa: string, mes: string, li
 export { sugestoesDeBaixa, selosDaSugestao, palavrasDoNome, mesmoLancamento, comBaixa, faltaDaNota, baixasGuardadas, type LancamentoDoBanco, type SugestaoDeBaixa, type BaixaAceita, type ComoBate, type SeloDaSugestao } from './sugestaoDeBaixa';
 export { conferirFechamento, type PendenciaDoFechamento, type ContaNoFechamento } from './fechamento';
 export { dinamicoCompletoDeTeste } from './deTeste';
+export * from './envioDoMes';

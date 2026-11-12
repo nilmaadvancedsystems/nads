@@ -3,15 +3,14 @@
 // "Corrigi, irei reimportar" no lugar do Próximo), Clientes (todas as contas de cliente com o selo do sistema: Saldo, Conferido pelo razão ou Ok, o Ok do sistema na conta zerada, a observação do conferido e o razão da conta no fim da linha) e
 // Envio (a relação dos conferidos e o Mandar pelo Mandei, para o e-mail e o WhatsApp da empresa no Cadastro).
 // As marcas ficam guardadas por mês; os conferidos do mês anterior aparecem de novo para revisar.
-import { clientes as cl, conferencia as c, demo, extrator as x, formatos, mandei as md, releitura, tarefas } from '@nads/core';
+import { clientes as cl, conferencia as c, demo, extrator as x, formatos, releitura, tarefas } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMarcasDoMes } from '../../../../dados/clientes';
-import { useCadastro, useContatoDoEntregas } from '../../../../dados/repo';
+import { useCadastro } from '../../../../dados/repo';
 import { useExtratorDaEmpresa } from '../../../../dados/extrator';
-import { criarTicket } from '../../../../dados/mandei';
-import { useOperador } from '../../../../casca/operador';
 import { useChaveDaEtapa, useDadosDeTesteDaEtapa, useEtapaAberta, useEtapaPeloBalancete, useRequisitosDaEtapa } from '../contexto';
+import { useEnvioDoMes } from './useEnvioDoMes';
 import { useGuardado } from '../../../../../../comum/guardado';
 import { useContabilDaEmpresa } from '../../../../../../comum/contabilDaEmpresa';
 
@@ -66,9 +65,6 @@ export function useClientes() {
   const dinamico = dinamicoProprio || contabil.dinamico;
   const [filtro, setFiltro] = useState<FiltroClientes>('todos');
   const [busca, setBusca] = useState('');
-  // o Mandei (Vitor, 07/10/2026): o ticket com o link para o cliente responder, anexar e a gente acompanhar
-  const op = useOperador().operador;
-  // o e-mail e o WhatsApp da empresa ficam no Cadastro (Vitor, 07/10/2026): o Mandei manda pelos dois
   const vivo = useCadastro(s.nome, s.codigo);
   // os lançamentos dos extratos importados (todos os bancos), para a sugestão de baixa das notas em aberto (Vitor, 15/10/2026)
   const ext = useExtratorDaEmpresa(s.nome);
@@ -82,9 +78,6 @@ export function useClientes() {
       return a.lancamentos.map(l => ({ data: l.data, valor: l.valor, historico: l.historico, banco: banco?.nome || b, marca: banco?.marca || b }));
     });
   }, [ext, cadastroVivo, s.codigo, s.meses, s.competencia]);
-  // sem o contato no Cadastro do nads, o que o Entregas já tem do cliente (Vitor, 08/10/2026: "já tenho no mínimo 1 canal")
-  const doEntregas = useContatoDoEntregas(s.codigo);
-  const contato = { email: vivo.cadastro.contato?.email || doEntregas?.email || '', whatsapp: vivo.cadastro.contato?.whatsapp || doEntregas?.whatsapp || '' };
   const avisar = (m: string) => aviso({ tom: 'erro', titulo: 'Clientes', texto: m });
   const marcas = useMarcasDoMes(s.nome, mes, avisar);
   const anterior = useMarcasDoMes(s.nome, mes ? mesAntes(mes) : '');
@@ -215,15 +208,12 @@ export function useClientes() {
   // na Tarefa: os arquivos e nenhum credor (a pessoa pode dar o check normal depois; os conferidos passam para o mês seguinte)
 
   const conferidos = linhas.filter(l => l.situacao === 'conferido');
-  // o que vai para o cliente: os conferidos com alguma linha adicionada no +
-  const paraEnviar = conferidos.filter(l => cl.itensEscolhidos(l.razao, l.perguntar).length > 0);
   const faltamDosArquivos = !arquivosProntos ? ['Importar o balancete dinâmico'] : credores.length ? ['Corrigir ' + credores.length + (credores.length === 1 ? ' cliente' : ' clientes') + ' com saldo credor'] : [];
-  // o que vai ser questionado e ainda não foi mandado trava o avançar da Tarefa (Vitor, 08/10/2026: "a partir do momento
-  // que a pessoa upa e quer questionar, bloqueie o avançar"); mudou depois de mandar, trava de novo
-  const assinatura = cl.assinaturaDoEnvio(paraEnviar.map(l => ({ codigo: l.codigo, perguntar: cl.itensEscolhidos(l.razao, l.perguntar).map(cl.chaveDoItem) })));
-  const faltaMandar = !!assinatura && marcas.doc.enviado !== assinatura;
-  // o que vai para o cliente é mandado no Fechamento, num envio só com o de Fornecedores (Vitor, 16/10/2026)
-  void faltaMandar;
+  // o Envio do mês (11/11/2026): o que foi marcado no "+" de Clientes e de Fornecedores vai num ticket só, pelo Envio de
+  // qualquer uma das duas; o que ainda não foi mandado trava o avançar em Fornecedores, a última das duas (Vitor,
+  // 08/10/2026: "a partir do momento que a pessoa upa e quer questionar, bloqueie o avançar")
+  const envio = useEnvioDoMes();
+  const temQuestao = envio.questoes.length > 0;
   const faltam = [...faltamDosArquivos];
   useRequisitosDaEtapa({ pronto: !faltam.length, faltam });
   // o dinâmico diz se o Adiantamento a fornecedores e o de clientes entram (Vitor, 15/10/2026: "a 58 não tem, então não
@@ -239,15 +229,15 @@ export function useClientes() {
   return {
     mes: rotuloMes,
     // sem questionamento, o Envio fica travado (Vitor, 15/10/2026): quem estava nele volta para a lista
-    tela: telas.includes(tela) ? (tela === 'envio' && !paraEnviar.length ? 'clientes' : tela) : 'arquivos',
-    telas: telas.map((t, k) => ({ valor: t, rotulo: t === 'arquivos' ? 'Arquivos' : t === 'clientes' ? 'Clientes' : 'Envio', oculta: t === 'envio', travada: t === 'envio' && !paraEnviar.length ? 'Nada para questionar' : k > alcancada ? 'Chega aqui pelo Próximo' : false as const })),
-    irPara: (t: TelaClientes) => { if (telas.indexOf(t) <= alcancada && (t !== 'envio' || paraEnviar.length)) setTela(t); },
+    tela: telas.includes(tela) ? (tela === 'envio' && !temQuestao ? 'clientes' : tela) : 'arquivos',
+    telas: telas.map((t, k) => ({ valor: t, rotulo: t === 'arquivos' ? 'Arquivos' : t === 'clientes' ? 'Clientes' : 'Envio', oculta: t === 'envio' && !temQuestao, travada: t === 'envio' && !temQuestao ? 'Nada para questionar' : k > alcancada ? 'Chega aqui pelo Próximo' : false as const })),
+    irPara: (t: TelaClientes) => { if (telas.indexOf(t) <= alcancada && (t !== 'envio' || temQuestao)) setTela(t); },
     // sem questionamento, sem o Próximo para o Envio (Vitor, 15/10/2026)
-    temProxima: i < telas.length - 1 && telas[i] !== 'clientes',
+    temProxima: i < telas.length - 1 && (telas[i] !== 'clientes' || temQuestao),
     /** na lista, tudo certo e nada para questionar: segue pela seta da próxima etapa, lá em cima */
     semQuestionamento: tela === 'clientes' && !faltam.length,
-    /** a dica no lugar do Próximo: o que vai ser questionado segue para o Fechamento */
-    dicaDoFim: paraEnviar.length ? 'O que vai ser questionado vai junto no Fechamento (um envio só): siga pela seta acima' : '',
+    /** a dica no lugar do Próximo: nada para questionar, segue pela seta da próxima etapa */
+    dicaDoFim: temQuestao ? '' : 'Nada para questionar: siga para a próxima etapa pela seta acima',
     podeSeguir,
     proximo: () => { if (podeSeguir && i < telas.length - 1) setTela(telas[i + 1]); },
     /** nos Arquivos com cliente credor no mês: o "Corrigi, irei reimportar" no lugar do Próximo (deu tudo ok, volta o Próximo) */
@@ -355,35 +345,7 @@ export function useClientes() {
       return { ...n, ...(razao ? { razao } : {}), ...(perguntar.length ? { perguntar } : {}) };
     }),
     tirarRazao: (codigo: string) => marcar(codigo, m => { const n = { ...m, situacao: 'pendente' as const }; delete n.razao; delete n.perguntar; delete n.baixas; delete n.recusadas; return n; }),
-    // Envio
-    conferidos: paraEnviar.map(l => ({ codigo: l.codigo, nome: l.nome, valor: reais(l.saldo), perguntar: cl.itensEscolhidos(l.razao, l.perguntar).map(cl.rotuloDoItem).join(' · '), notas: cl.textoDasNotas(l.razao?.notas) })),
-    // o Mandei: um ticket com os conferidos (cada um, um item com a nossa pergunta), o link vai por e-mail
-    /** o e-mail e o WhatsApp da empresa, do Cadastro */
-    contato,
-    /** o que falta no Cadastro para mandar (vazio = pode): um dos dois basta (Vitor, 07/10/2026) */
-    faltaNoCadastro: !vivo.carregada ? ['o cadastro (carregando)'] : contato.email || contato.whatsapp ? [] : ['o e-mail ou o WhatsApp'],
-    /** o que vai ser questionado já foi mandado (e não mudou depois) */
-    jaMandado: !!assinatura && !faltaMandar,
-    mandarPeloMandei: () => {
-      const email = contato.email;
-      const whatsapp = contato.whatsapp;
-      // um dos dois basta (Vitor, 07/10/2026: "não precisa ser obrigatório ter e-mail e WhatsApp")
-      if (!email && !whatsapp) { aviso({ tom: 'erro', titulo: 'Mandei', texto: 'Cadastre o e-mail ou o WhatsApp da empresa em Cadastro › Empresa.' }); return; }
-      const t = criarTicket({
-        empresa: { nome: s.nome, codigo: s.codigo }, para: { nome: '', email, ...(whatsapp ? { whatsapp } : {}) },
-        assunto: 'Clientes em aberto — ' + rotuloMes,
-        mensagem: 'Na conferência dos clientes de ' + rotuloMes + ', estes saldos ficaram em aberto. Pode nos dizer o que aconteceu com cada um?',
-        criadoPor: { nome: op?.nome || '' },
-        origem: { titulo: 'Clientes · ' + rotuloMes, rota: window.location.pathname, competencia: mes },
-        // os lançamentos de cada um (Vitor, 07/10/2026: "Data, nota fiscal, descrição, valor"): os do razão importado (sem a
-        // duplicidade, que é só nossa) ou, sem o razão, o saldo do fim do mês
-        itens: paraEnviar.map(l => ({
-          id: l.codigo, titulo: l.nome, valor: reais(l.saldo), opcoes: md.OPCOES_PADRAO,
-          linhas: cl.linhasParaOTicket(l.razao, l.saldo, mes, l.perguntar, 'clientes', l.baixas),
-        })),
-      });
-      marcas.salvar({ ...marcas.doc, enviado: assinatura });
-      aviso({ tom: 'ok', titulo: 'Ticket ' + md.rotuloDoNumero(t.numero) + ' mandado', texto: [email, whatsapp && 'WhatsApp ' + whatsapp].filter(Boolean).join(' e ') + ' · acompanhe em Mandei' });
-    },
+    // Envio: os dois lados num ticket só (useEnvioDoMes)
+    envio,
   };
 }

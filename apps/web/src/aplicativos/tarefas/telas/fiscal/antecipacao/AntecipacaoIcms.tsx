@@ -100,6 +100,17 @@ export function AntecipacaoIcms() {
           : <SeletorMes valor={vm.competencia} onMudar={vm.setCompetencia} rotulo={vm.periodo === 'mes' ? 'Mês' : 'Até o mês'} max={vm.ultimoMes} />}
         <span className="tarefas-barra-espaco" />
         <button type="button" className="btn btn-outline" disabled={!vm.linhas.length} onClick={vm.imprimir}><Icone nome="printer" width={16} height={16} />Imprimir</button>
+        {/* o relatório simples do cliente (ticket PK6RIE, 12/11/2026): ver o PDF e mandar pelo "Enviar guias" do Fiscal */}
+        {vm.empresa && (
+          <>
+            <button type="button" className="btn btn-outline" disabled={!!vm.motivoSemEnvio} title={vm.motivoSemEnvio || 'O PDF que o cliente recebe'} onClick={() => void vm.verPdfDoCliente()}>
+              <Icone nome="olho" width={16} height={16} />Relatório do cliente
+            </button>
+            <button type="button" className="btn btn-primary" disabled={!!vm.motivoSemEnvio || vm.enviando} title={vm.motivoSemEnvio || 'Vai no e-mail das guias do mês, pelo "Enviar guias" do Fiscal'} onClick={() => void vm.enviarAoCliente()}>
+              <Icone nome="upload" width={16} height={16} />{vm.enviando ? 'Enviando…' : 'Enviar ao cliente'}
+            </button>
+          </>
+        )}
       </div>
       {vm.exemplos && <p className="hint fxr-exemplos"><Icone nome="ajuda" width={14} height={14} />Dados de exemplo: as notas de entrada do SIEG são inventadas (TESTE) e o que se marca fica só neste navegador.</p>}
       {!vm.empresa ? (
@@ -197,8 +208,12 @@ export function AntecipacaoIcms() {
                             <td className="num">{l.cst}</td>
                             <td className="num">{brl(l.valorOperacao)}</td>
                             {calc && <td className="num fxr-calc">{brl(l.baseNf)}</td>}
-                            <td className="num" title={l.aliquotaEstimada ? 'Estimada pelo ICMS e pela base (XML baixado antes da versão 4 do resumo do robô)' : undefined}>{pct(l.aliquotaInterestadual)}{l.aliquotaEstimada ? '*' : ''}</td>
-                            <td className="num">{brl(l.icmsDestacado)}</td>
+                            {/* a alíquota editável (ticket PK6RIE, 12/11/2026): o ICMS e a antecipação da linha acompanham; vazio volta à da nota */}
+                            <td className="num" title={l.correcao ? 'Corrigida por ' + l.correcao.por + ' em ' + new Date(l.correcao.em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) + ' · na nota: ' + pct(l.aliquotaDaNota) + ' (apague para voltar)'
+                              : l.aliquotaEstimada ? 'Estimada pelo ICMS e pela base (XML baixado antes da versão 4 do resumo do robô)' : 'A alíquota da nota: clique para corrigir'}>
+                              <ValorEditavel valor={l.aliquotaInterestadual} zeroVale rotulo={'Alíquota da NF-e ' + l.numero + ' (%)'} aoSalvar={t => vm.corrigirAliquota(l, t)} />%{l.correcao ? '*' : l.aliquotaEstimada ? '*' : ''}
+                            </td>
+                            <td className="num" title={l.correcao ? 'Pela alíquota corrigida · na nota: ' + brl(l.icmsDaNota) : undefined}>{brl(l.icmsDestacado)}</td>
                             {calc && <><td className="num fxr-calc">{brl(l.baseAntecipacao)}</td><td className="num fxr-calc">{brl(l.icmsInterno)}</td></>}
                             <td className="num fxr-antecipacao">{brl(l.antecipacao)}</td>
                             <td>

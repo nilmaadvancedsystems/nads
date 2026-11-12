@@ -14,14 +14,18 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useOperador } from '../../casca/operador';
 import { useEntregasDeDocumentos } from '../../dados/repo';
 import type { GuiaParaAnexar } from '../../dados/entregasDeDocumentos';
+import { base64DosBytes } from '../../../cliente/dados/espelho';
 import { lerPdfDaGuia, textoDoPdf } from './arquivosDaEntrega';
 
 type Cliente = ReturnType<typeof entregas.clienteDaRotaDoDocumento>;
 type Entrega = ReturnType<typeof entregas.entregaDoDocumento>;
 type CodigoPagamento = NonNullable<Entrega['codigoPagamento']>;
 
-/** Um documento repetido (dois DAS, o FGTS de duas folhas…): uma linha a mais, com o valor dela. */
-export interface DuplicataDoDocumento { id: string; rotulo: string; pedeFuncionario: boolean; valor: string; funcionario: string }
+/**
+ * Um documento repetido (dois DAS, o FGTS de duas folhas…): uma linha a mais, com o valor dela. daPasta: o DARF de um tributo
+ * que veio do "Puxar guias" ("DARF INSS", "DARF IRRF"), com o nome dele em vez de "(repetido)".
+ */
+export interface DuplicataDoDocumento { id: string; rotulo: string; pedeFuncionario: boolean; valor: string; funcionario: string; daPasta?: boolean }
 /** Uma linha dos documentos da entrega (na ordem do Entregas: os tipos, o outro, as repetições). */
 export interface LinhaDoDocumento { chave: string; rotulo: string; semValor: boolean; pedeFuncionario: boolean; valor: string; funcionario: string; outro?: boolean; dup?: DuplicataDoDocumento }
 
@@ -85,7 +89,7 @@ export function useNovaEntrega() {
       chave: t.chave, rotulo: t.rotulo, semValor: !!t.semValor, pedeFuncionario: !!t.pedeFuncionario, valor: valores[t.chave] || '', funcionario: funcionarios[t.chave] || '',
     }));
     if (outro.trim() || outroAberto) l.push({ chave: 'outro', rotulo: outro.trim() || 'Outro documento', semValor: false, pedeFuncionario: false, valor: valores.outro || '', funcionario: '', outro: true });
-    for (const d of duplicatas) l.push({ chave: d.id, rotulo: d.rotulo + ' (repetido)', semValor: false, pedeFuncionario: d.pedeFuncionario, valor: d.valor, funcionario: d.funcionario, dup: d });
+    for (const d of duplicatas) l.push({ chave: d.id, rotulo: d.daPasta ? d.rotulo : d.rotulo + ' (repetido)', semValor: false, pedeFuncionario: d.pedeFuncionario, valor: d.valor, funcionario: d.funcionario, dup: d });
     return l;
   }, [marcados, valores, funcionarios, outro, outroAberto, duplicatas]);
   const itens: entregas.ItemDaEntrega[] = useMemo(() => [
@@ -185,6 +189,12 @@ export function useNovaEntrega() {
     if (d.cliente && !daPasta) { escolher(d.cliente); achados.push('cliente'); }
     if (d.tipo) { setMarcados(m => (m.includes(d.tipo as string) ? m : [...m, d.tipo as string])); achados.push('tipo de documento'); }
     if (d.competencia && !daPasta) { setCompetencia(d.competencia); achados.push('competência'); }
+    aplicarPagamento(d, daPasta, achados);
+    if (d.tipo && d.valor) { setValores(v => ({ ...v, [d.tipo as string]: d.valor as string })); achados.push('valor'); }
+    return achados;
+  }
+  /** O código para pagar e o vencimento do PDF (o impresso; sem ele, o da regra do tipo). */
+  function aplicarPagamento(d: entregas.DadosDoPdf, daPasta: boolean, achados: string[]) {
     if (d.codigo) { setCodigoPagamento(d.codigo); achados.push(d.codigo.tipo === 'pix' ? 'código PIX' : 'código de barras'); }
     if (d.vencimento) { ultimoAuto.current = null; setVencimentoIso(d.vencimento); setVencimentoTexto(dataBr(d.vencimento)); achados.push('vencimento'); }
     else if (d.tipo && (d.competencia || daPasta)) {
@@ -192,7 +202,16 @@ export function useNovaEntrega() {
       const v = entregas.vencimentoAutomatico(d.competencia || competencia, [{ tipo: rot }]);
       if (v) { ultimoAuto.current = v; setVencimentoIso(v); setVencimentoTexto(dataBr(v)); achados.push('vencimento (estimado)'); }
     }
-    if (d.tipo && d.valor) { setValores(v => ({ ...v, [d.tipo as string]: d.valor as string })); achados.push('valor'); }
+  }
+  /** O DARF de um tributo puxado da pasta, na linha dele ("DARF INSS"); puxar de novo só troca o valor. */
+  function aplicarDarfDoTributo(texto: string, id: string, rotulo: string): string[] {
+    const d = entregas.dadosDoPdf(texto, clientes.lista, 'darf');
+    const achados: string[] = [];
+    aplicarPagamento(d, true, achados);
+    setErros(e => ({ ...e, itens: undefined }));
+    setDuplicatas(ds => (ds.some(x => x.id === id)
+      ? ds.map(x => (x.id === id ? { ...x, valor: d.valor || x.valor } : x))
+      : [...ds, { id, rotulo, pedeFuncionario: false, valor: d.valor || '', funcionario: '', daPasta: true }]));
     return achados;
   }
   async function anexarPdf(arquivos: File[]) {
@@ -223,21 +242,39 @@ export function useNovaEntrega() {
     guiasJaPuxadas.current[chave] = true;
     setPuxandoGuias(true);
     setGuiasStatus('Procurando as guias de ' + g.mm + '/' + g.aaaa + ' na pasta do cliente…');
+    // o código para pagar que já estava antes de puxar (o boleto do Financeiro não passa por cima dele nem do de uma guia)
+    let comCodigo = !!codigoPagamento;
     try {
-      const guias = await repo.guiasDaPasta(c, g);
-      if (!guias.length) { guiasJaPuxadas.current[chave] = false; setGuiasStatus('Não achei FGTS, DARF nem DAS de ' + g.mm + '/' + g.aaaa + ' na pasta do cliente.'); return; }
-      setGuiasStatus('Puxando ' + guias.map(x => x.guia.nome).join(' e ') + ' de ' + g.mm + '/' + g.aaaa + ' da pasta do cliente…');
+      // as guias e a folha da pasta do cliente, e o boleto de honorário do Financeiro (11/11/2026), ao mesmo tempo
+      const [guias, boleto] = await Promise.all([repo.guiasDaPasta(c, g), repo.boletoDoFinanceiro(c, competencia)]);
+      if (!guias.length && !boleto) { guiasJaPuxadas.current[chave] = false; setGuiasStatus('Não achei FGTS, DARF, DAS nem a folha de ' + g.mm + '/' + g.aaaa + ' na pasta do cliente, nem o boleto no Financeiro.'); return; }
+      // todos os DARFs do mês, um por tributo (11/11/2026); com mais de um, cada um na sua linha ("DARF INSS", "DARF IRRF")
+      const comoEntra = entregas.comoEntraAGuia(guias);
+      setGuiasStatus('Puxando ' + comoEntra.map(x => x.rotulo).join(', ') + ' de ' + g.mm + '/' + g.aaaa + ' da pasta do cliente…');
       const trazidas: string[] = [];
-      for (const x of guias) {
+      for (const [k, x] of guias.entries()) {
         try {
           const arq = await repo.lerDoDrive(x.arquivo);
           const texto = await textoDoPdf(arq.bytes);
-          aplicarDadosDoPdf(texto, null, x.guia.tipo);
-          guiasParaAnexar.current[x.guia.tipo] = { tipo: x.guia.tipo, nome: x.arquivo.n, driveId: x.arquivo.i, tamanho: arq.tamanho, pdf: arq.tamanho <= entregas.LIMITE_PDF_ANEXO ? arq.base64 : null };
-          trazidas.push(x.guia.nome);
+          // a linha da guia: o documento da lista (fgts, darf, das) ou a do DARF daquele tributo
+          const linha = comoEntra[k].principal ? x.guia.tipo : entregas.idsDosAnexosDasGuias([{ tipo: x.guia.tipo, tributo: x.tributo }])[0];
+          const achou = comoEntra[k].principal ? aplicarDadosDoPdf(texto, null, x.guia.tipo) : aplicarDarfDoTributo(texto, linha, comoEntra[k].rotulo);
+          if (achou.some(a => a.startsWith('código'))) comCodigo = true;
+          guiasParaAnexar.current[linha] = { tipo: x.guia.tipo, tributo: comoEntra[k].principal ? '' : x.tributo, nome: x.arquivo.n, driveId: x.arquivo.i, tamanho: arq.tamanho, pdf: arq.tamanho <= entregas.LIMITE_PDF_ANEXO ? arq.base64 : null };
+          trazidas.push(comoEntra[k].rotulo);
         } catch { /* a próxima */ }
       }
-      setGuiasStatus(trazidas.length ? trazidas.join(' e ') + ' de ' + g.mm + '/' + g.aaaa + ' vieram da pasta do cliente e vão anexados à entrega. Confira os valores.' : '');
+      // o boleto de honorário: o "Boleto" com o valor, o PDF anexado e o código para pagar (se nenhuma guia trouxe o dela)
+      if (boleto) {
+        setMarcados(m => (m.includes('boleto') ? m : [...m, 'boleto']));
+        if (boleto.valor != null) setValores(v => ({ ...v, boleto: entregas.valorParaCampo(boleto.valor) }));
+        if (!comCodigo && boleto.linha) setCodigoPagamento({ tipo: 'boleto', codigo: entregas.linhaDoBoleto(boleto.linha) });
+        if (!guias.length && boleto.vencimento) { ultimoAuto.current = null; setVencimentoIso(boleto.vencimento); setVencimentoTexto(dataBr(boleto.vencimento)); }
+        const tamanho = boleto.pdf?.length || 0;
+        guiasParaAnexar.current.boleto = { tipo: 'boleto', nome: boleto.arquivo, driveId: '', tamanho, pdf: boleto.pdf && tamanho <= entregas.LIMITE_PDF_ANEXO ? base64DosBytes(boleto.pdf) : null };
+        trazidas.push('Boleto');
+      }
+      setGuiasStatus(trazidas.length ? trazidas.join(', ') + ' de ' + g.mm + '/' + g.aaaa + (boleto ? ' vieram da pasta do cliente e do Financeiro' : ' vieram da pasta do cliente') + ' e vão anexados à entrega. Confira os valores.' : '');
       guiasJaPuxadas.current[chave] = false;
       if (!trazidas.length) avisar('Não consegui trazer as guias da pasta do cliente. Adicione à mão.', 'erro');
     } catch (e) {
@@ -283,10 +320,28 @@ export function useNovaEntrega() {
     }
     fechadaConfirmada.current = 0;
     setSalvando(true);
+    // o mesmo documento do mesmo mês já na rota (ou no link) desse cliente: não grava de novo (11/11/2026). Confere só as
+    // entregas do cliente no mês (a consulta do "repetir o mês passado"); sem sinal em 5 s, segue sem conferir
+    if (para.tipo === 'cliente') {
+      const doMes = await Promise.race([
+        repo.doClienteNoMes(para.cliente.id, competencia).catch(() => null),
+        new Promise<null>(r => setTimeout(() => r(null), 5000)),
+      ]);
+      const repetidos = entregas.jaNaRota({ clienteId: para.cliente.id, competencia, itens }, doMes || []);
+      if (repetidos.length) {
+        const aviso = entregas.avisoDeJaNaRota(repetidos, competencia, entregas.rotuloDoCliente(para.cliente));
+        setErros({ itens: aviso });
+        avisar(aviso, 'erro');
+        setSalvando(false);
+        return;
+      }
+    }
     const nova: entregas.EntregaNova = {
       modo, para, competencia, vencimento: vencimento || '', itens, zona: link ? '' : zona, codigoPagamento, foto, fotoEhGuia,
     };
-    const guias = para.tipo === 'cliente' ? Object.values(guiasParaAnexar.current).filter(g => marcados.includes(g.tipo)) : [];
+    // só as guias das linhas que continuam na entrega (o documento da lista ou o DARF daquele tributo)
+    const linhasNaEntrega = new Set([...marcados, ...duplicatas.map(d => d.id)]);
+    const guias = para.tipo === 'cliente' ? Object.entries(guiasParaAnexar.current).filter(([linha]) => linhasNaEntrega.has(linha)).map(([, g]) => g) : [];
     try {
       const { resultado } = await repo.registrar(nova, guias);
       avisar(resultado === 'aparelho' ? 'Salvo no aparelho. Sobe sozinho quando voltar o sinal.' : entregas.avisoDaEntregaNova(modo));

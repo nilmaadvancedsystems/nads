@@ -41,12 +41,15 @@ describe('o ticket', () => {
     expect(linkValido(t2, 'COD2', depois)).toBe(true);
     expect(situacaoDoTicket(t2, new Date(2026, 9, 20, 9))).toBe('ligar');
   });
-  it('responder sem arquivo não resolve; com arquivo, respondido; resolvido fecha o link', () => {
+  it('respondido: tudo respondido sem pedir arquivo (11/11/2026), ou com arquivo; resolvido fecha o link', () => {
     const r = responder(linkAberto(t, 'COD1', AGORA), { '12006': { opcao: 'Foi pago em dinheiro', texto: '  no caixa  ' }, x: { texto: 'fora' } }, AGORA);
     expect(r.respostas).toEqual({ '12006': { opcao: 'Foi pago em dinheiro', texto: 'no caixa' } });
     expect(r.links[0].abertoEm).toBe(AGORA.toISOString());
-    expect(situacaoDoTicket(r, AGORA)).toBe('aguardando');
-    const a = comArquivo(r, { id: 'a1', nome: 'comprovante.pdf', tamanho: 1000, enviadoEm: AGORA.toISOString(), status: 'na-fila' });
+    // antes, ficava "aguardando" e recebia o 2º link dizendo que faltavam arquivos
+    expect(situacaoDoTicket(r, new Date(2026, 9, 30))).toBe('respondido');
+    // só com o "Outro" sem explicar, ainda falta
+    expect(situacaoDoTicket(responder(t, { '12006': { opcao: 'Outro' } }, AGORA), AGORA)).toBe('aguardando');
+    const a = comArquivo(t, { id: 'a1', nome: 'comprovante.pdf', tamanho: 1000, enviadoEm: AGORA.toISOString(), status: 'na-fila' });
     expect(situacaoDoTicket(a, new Date(2026, 9, 30))).toBe('respondido');
     const f = resolver(a, 'Vitor', AGORA);
     expect(situacaoDoTicket(f, AGORA)).toBe('resolvido');
@@ -66,7 +69,7 @@ describe('o ticket', () => {
   });
   it('o cliente vê só o formulário; o e-mail leva o link e o prazo', () => {
     const v = vistaDoCliente(t);
-    expect(Object.keys(v).sort()).toEqual(['arquivos', 'empresa', 'itens', 'mensagem', 'numero', 'respostas', 'validoAte']);
+    expect(Object.keys(v).sort()).toEqual(['arquivos', 'empresa', 'itens', 'mensagem', 'numero', 'refazer', 'respostas', 'validoAte']);
     const e = emailDoLink(t, t.links[0], 'https://mandei-nilma.web.app/COD1');
     expect(e.assunto).toBe('Clientes em aberto — #0001');
     expect(e.corpo).toContain('vale até 13/10/2026');

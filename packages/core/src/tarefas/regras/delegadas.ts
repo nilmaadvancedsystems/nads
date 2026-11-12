@@ -21,15 +21,19 @@ export interface Nota { por: string; em: string; texto: string }
  */
 export interface Anexo { id: string; nome: string; extensao: string; tamanho: number; em: string; por: string; partes: number; gzip?: true }
 
-/** A etapa que dá para delegar (Vitor, 10/11/2026: por enquanto Clientes e Fornecedores). */
-export type EtapaQueDelega = 'clientes' | 'fornecedores';
+/**
+ * A etapa que dá para delegar (Vitor, 10/11/2026: Clientes e Fornecedores; 11/11/2026: a Contabilização da Folha, id 'dp', em
+ * que os "contas" são os itens do checklist: o código é o id do item).
+ */
+export type EtapaQueDelega = 'clientes' | 'fornecedores' | 'dp';
 export interface ContaDelegada { codigo: string; nome: string }
 /**
  * A etapa da Tarefa que foi delegada: a empresa, o período, todas as contas ou só as escolhidas e as que quem recebeu já marcou
  * como feitas. Quem recebe abre só essa etapa; quem pediu vê as feitas ofuscadas.
  */
 export interface EtapaDelegada {
-  etapa: EtapaQueDelega;
+  /** Clientes, Fornecedores ou a Folha; na tarefa em conjunto, o id de qualquer etapa da rotina */
+  etapa: EtapaQueDelega | (string & {});
   /** o endereço da empresa e o período, como na rota do executor */
   rota: string; periodo: string;
   todas: boolean;
@@ -37,6 +41,11 @@ export interface EtapaDelegada {
   contas: ContaDelegada[];
   /** o código das contas já feitas */
   feitas: string[];
+  /**
+   * a tarefa em conjunto (Vitor, 12/11/2026: "mais de uma pessoa delegada, aí você coloca todas as boxes, quando o usuário
+   * entrar na empresa, vai ter apenas os processos que ele vai fazer"): a etapa inteira, que a pessoa faz e conclui na rotina
+   */
+  conjunto?: true;
 }
 
 export interface TarefaDelegada {
@@ -67,6 +76,10 @@ export interface TarefaDelegada {
   historico: Nota[];
   anexos: Anexo[];
   etapaDelegada?: EtapaDelegada;
+  /** o pedido de documentos (12/11/2026): quem recebeu anexa e confirma "Anexei tudo, concluir" */
+  tipo?: 'documentos';
+  /** ISO de quando quem recebeu abriu a tarefa pela primeira vez (o Visualizado de quem delegou; 12/11/2026) */
+  visualizadaEm?: string;
 }
 
 /** O que a pessoa preenche no cadastro da tarefa (a nova e a aberta). */
@@ -81,6 +94,8 @@ export interface Rascunho {
   responsavel: Pessoa | null;
   /** só ao criar: a etapa que esta tarefa delega */
   etapaDelegada?: EtapaDelegada;
+  /** só ao criar: o pedido de documentos */
+  tipo?: 'documentos';
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -380,11 +395,12 @@ export interface AcaoDaTarefa { id: 'iniciar' | 'retomar' | 'pausar' | 'concluir
 
 /**
  * Os botões do responsável (09/11/2026: "um botão de iniciar, ele pode pausar, e ele pode clicar em concluir"): a pendente
- * só inicia; a em andamento pausa ou conclui; a pausada retoma ou conclui; a encerrada não tem botão.
+ * inicia ou conclui; a em andamento pausa ou conclui; a pausada retoma ou conclui; a encerrada não tem botão. O Concluir
+ * fica em toda tarefa em aberto (12/11/2026: a Clara não conseguiu concluir a que recebeu, a pendente só tinha o Iniciar).
  */
 export function acoesDoStatus(s: Status): AcaoDaTarefa[] {
   const concluir: AcaoDaTarefa = { id: 'concluir', rotulo: 'Concluir', status: 'concluida' };
-  if (s === 'pendente') return [{ id: 'iniciar', rotulo: 'Iniciar', status: 'andamento' }];
+  if (s === 'pendente') return [{ id: 'iniciar', rotulo: 'Iniciar', status: 'andamento' }, concluir];
   if (s === 'andamento') return [{ id: 'pausar', rotulo: 'Pausar', status: 'pausada' }, concluir];
   if (s === 'pausada') return [{ id: 'retomar', rotulo: 'Retomar', status: 'andamento' }, concluir];
   return [];
@@ -396,6 +412,152 @@ const MOVIMENTO = /^(Iniciou|Retomou|Pausou|Concluiu) a tarefa$|^Mudou o status 
 export function ultimoMovimento(t: Pick<TarefaDelegada, 'historico'>): Nota | null {
   for (let i = t.historico.length - 1; i >= 0; i--) if (MOVIMENTO.test(t.historico[i].texto)) return t.historico[i];
   return null;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// o expediente: a pausa sozinha no almoço e à noite (12/11/2026)
+// ---------------------------------------------------------------------------------------------------------------------
+// "a pessoa clica em Iniciar; o sistema pausa sozinho às 11:05 e despausa às 13:00; pausa de novo às 18:05 e despausa às
+// 07:00 do dia seguinte". O banco não muda: a tarefa segue Em andamento e a tela mostra Pausada nos intervalos; o tempo
+// trabalhado conta só o que caiu dentro do expediente. Os horários são os de Brasília (UTC−3, sem horário de verão desde
+// 2019), não os do computador.
+
+const MIN = 60_000;
+const FUSO_DE_BRASILIA = -3 * 60;
+/** os trechos do dia em que a tarefa em andamento corre, em minutos desde a meia-noite: 07:00–11:05 e 13:00–18:05 */
+export const EXPEDIENTE: readonly { de: number; ate: number }[] = [{ de: 7 * 60, ate: 11 * 60 + 5 }, { de: 13 * 60, ate: 18 * 60 + 5 }];
+
+const hhmm = (m: number) => String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+const msDe = (quando: Date | string) => (typeof quando === 'string' ? Date.parse(quando) : quando.getTime());
+/** a meia-noite de Brasília do dia de "ms" (em ms UTC) e os minutos desde ela */
+function noDiaDeBrasilia(ms: number): { meiaNoite: number; minuto: number } {
+  const local = ms + FUSO_DE_BRASILIA * MIN;
+  const meiaNoiteLocal = Math.floor(local / (1440 * MIN)) * 1440 * MIN;
+  return { meiaNoite: meiaNoiteLocal - FUSO_DE_BRASILIA * MIN, minuto: Math.floor((local - meiaNoiteLocal) / MIN) };
+}
+
+/** Agora é intervalo (11:05–13:00 ou 18:05–07:00)? */
+export function noIntervalo(agora: Date | string): boolean {
+  const ms = msDe(agora);
+  if (!Number.isFinite(ms)) return false;
+  const { minuto } = noDiaDeBrasilia(ms);
+  return !EXPEDIENTE.some(e => minuto >= e.de && minuto < e.ate);
+}
+
+/** A próxima virada (pausa ou volta) depois de agora: a tela se redesenha nela. */
+export function proximaVirada(agora: Date | string): Date {
+  const ms = msDe(agora);
+  const { meiaNoite } = noDiaDeBrasilia(ms);
+  const viradas = [0, 1].flatMap(dia => EXPEDIENTE.flatMap(e => [e.de, e.ate]).map(m => meiaNoite + (dia * 1440 + m) * MIN));
+  return new Date(viradas.find(v => v > ms) as number);
+}
+
+/** A hora em que o intervalo de agora acaba ('13:00' ou '07:00'); fora do intervalo, ''. */
+export function voltaDoIntervalo(agora: Date | string): string {
+  if (!noIntervalo(agora)) return '';
+  const { minuto } = noDiaDeBrasilia(msDe(proximaVirada(agora)));
+  return hhmm(minuto);
+}
+
+/** A situação da tarefa na tela agora: a em andamento aparece Pausada nos intervalos (automatica), e diz quando volta. */
+export function situacaoNoHorario(t: Pick<TarefaDelegada, 'status'>, agora: Date | string): { status: Status; automatica: boolean; volta: string } {
+  if (t.status !== 'andamento' || !noIntervalo(agora)) return { status: t.status, automatica: false, volta: '' };
+  return { status: 'pausada', automatica: true, volta: voltaDoIntervalo(agora) };
+}
+
+/** O rótulo do status na tela, com a pausa do intervalo ("Pausada até 13:00"). */
+export function rotuloNoHorario(t: Pick<TarefaDelegada, 'status'>, agora: Date | string): string {
+  const s = situacaoNoHorario(t, agora);
+  return s.automatica ? 'Pausada até ' + s.volta : rotuloDoStatus(s.status);
+}
+
+/** Os botões na tela agora: no intervalo, só o Concluir (a tarefa volta sozinha no horário). */
+export function acoesNoHorario(t: Pick<TarefaDelegada, 'status'>, agora: Date | string): AcaoDaTarefa[] {
+  const acoes = acoesDoStatus(t.status);
+  return situacaoNoHorario(t, agora).automatica ? acoes.filter(a => a.id === 'concluir') : acoes;
+}
+
+/** Os minutos de expediente entre dois instantes (ms UTC): o que cai fora de 07:00–11:05 e 13:00–18:05 não conta. */
+export function minutosDeExpediente(inicio: number, fim: number): number {
+  if (!(fim > inicio)) return 0;
+  let total = 0;
+  for (let dia = noDiaDeBrasilia(inicio).meiaNoite; dia < fim; dia += 1440 * MIN) {
+    for (const e of EXPEDIENTE) total += Math.max(0, Math.min(fim, dia + e.ate * MIN) - Math.max(inicio, dia + e.de * MIN));
+  }
+  return Math.round(total / MIN);
+}
+
+const COMECA = /^(Iniciou|Retomou) a tarefa$|^Mudou o status de .* para Em andamento$/;
+const PARA = /^(Pausou|Concluiu) a tarefa$|^Mudou o status de Em andamento para /;
+
+/**
+ * Os trechos em que a tarefa esteve em andamento, pelo histórico (Iniciou/Retomou até Pausou/Concluiu); o que ainda está
+ * em andamento vai até agora. A tarefa criada já em andamento ("Já estava fazendo") sem a linha do Iniciou começa em criadaEm.
+ */
+export function trechosEmAndamento(t: Pick<TarefaDelegada, 'status' | 'historico' | 'criadaEm'>, agora: Date | string): { de: number; ate: number }[] {
+  const trechos: { de: number; ate: number }[] = [];
+  let desde: number | null = null;
+  let algumMovimento = false;
+  for (const h of t.historico) {
+    const em = Date.parse(h.em);
+    if (!Number.isFinite(em)) continue;
+    if (COMECA.test(h.texto)) { algumMovimento = true; if (desde === null) desde = em; }
+    else if (PARA.test(h.texto)) {
+      // parou sem ter começado no histórico: a tarefa nasceu em andamento
+      if (desde === null && !algumMovimento && /^Pausou|^Mudou/.test(h.texto)) desde = Date.parse(t.criadaEm);
+      algumMovimento = true;
+      if (desde !== null && Number.isFinite(desde)) trechos.push({ de: desde, ate: em });
+      desde = null;
+    }
+  }
+  if (t.status === 'andamento') {
+    if (desde === null && !algumMovimento) desde = Date.parse(t.criadaEm);
+    if (desde !== null && Number.isFinite(desde)) trechos.push({ de: desde, ate: msDe(agora) });
+  }
+  return trechos;
+}
+
+/** Os minutos trabalhados na tarefa: os trechos em andamento, sem os intervalos. */
+export const minutosTrabalhados = (t: Pick<TarefaDelegada, 'status' | 'historico' | 'criadaEm'>, agora: Date | string): number =>
+  trechosEmAndamento(t, agora).reduce((s, x) => s + minutosDeExpediente(x.de, x.ate), 0);
+
+// ---------------------------------------------------------------------------------------------------------------------
+// o pedido de documentos e o Visualizado (12/11/2026)
+// ---------------------------------------------------------------------------------------------------------------------
+// "Onde o cara que foi delegado a função anexe documentos; após anexar, já dá como concluído": quem recebeu anexa e
+// confirma ("Anexei tudo, concluir"; às vezes são vários arquivos). "Visualizado: se a pessoa clicou e visualizou a
+// tarefa ou não": a primeira vez que quem recebeu abre a tarefa fica gravada.
+
+export const TITULO_DO_PEDIDO = 'Pedido de documentos';
+export const pedeDocumentos = (t: Pick<TarefaDelegada, 'tipo'>): boolean => t.tipo === 'documentos';
+
+/** O pedido de documentos com anexo e em aberto: quem recebeu já pode confirmar que anexou tudo. */
+export const podeConfirmarDocumentos = (t: Pick<TarefaDelegada, 'tipo' | 'anexos' | 'status'>): boolean => pedeDocumentos(t) && t.anexos.length > 0 && emAberto(t);
+
+/** Os botões do pedido de documentos: o Concluir vira "Anexei tudo, concluir" quando já tem anexo. */
+export function acoesDaTarefa(t: Pick<TarefaDelegada, 'status' | 'tipo' | 'anexos'>, agora: Date | string): AcaoDaTarefa[] {
+  const acoes = acoesNoHorario(t, agora);
+  return podeConfirmarDocumentos(t) ? acoes.map(a => (a.id === 'concluir' ? { ...a, rotulo: 'Anexei tudo, concluir' } : a)) : acoes;
+}
+
+/** Quem recebeu abriu agora e ainda não estava marcada: gravar o visualizadaEm (quem delegou para si mesmo não conta). */
+export const marcaVisualizada = (t: Pick<TarefaDelegada, 'responsavel' | 'criadaPor' | 'visualizadaEm'>, uid: string): boolean =>
+  !!uid && t.responsavel.uid === uid && t.criadaPor.uid !== uid && !t.visualizadaEm;
+
+/** O Visualizado para quem delegou: 'Visualizada 12/11 14:03' ou 'Ainda não visualizada' (para si mesmo, vazio). */
+export function rotuloDaVisualizacao(t: Pick<TarefaDelegada, 'responsavel' | 'criadaPor' | 'visualizadaEm'>): string {
+  if (t.responsavel.uid === t.criadaPor.uid) return '';
+  const ms = Date.parse(t.visualizadaEm || '');
+  if (!Number.isFinite(ms)) return 'Ainda não visualizada';
+  const { meiaNoite, minuto } = noDiaDeBrasilia(ms);
+  const dia = new Date(meiaNoite - FUSO_DE_BRASILIA * MIN);
+  return 'Visualizada ' + String(dia.getUTCDate()).padStart(2, '0') + '/' + String(dia.getUTCMonth() + 1).padStart(2, '0') + ' ' + hhmm(minuto);
+}
+
+/** '2h 35min', '40min', '0min'. */
+export function duracaoParaTela(minutos: number): string {
+  const h = Math.floor(minutos / 60), m = minutos % 60;
+  return h ? h + 'h' + (m ? ' ' + m + 'min' : '') : m + 'min';
 }
 // ---------------------------------------------------------------------------------------------------------------------
 // o histórico de cada mudança
@@ -485,9 +647,25 @@ export function nova(r: Rascunho, o: { id: string; numero: number; por: Pessoa; 
     id: o.id, numero: o.numero, titulo: limparTexto(r.titulo), descricao: limparTexto(r.descricao), ...comOsClientes(r.clientes),
     prioridade: r.prioridade, prazo: r.prazo, prazoHora: r.prazoHora, status: r.status, ...base,
     criadaEm: o.em, concluidaEm: r.status === 'concluida' ? o.em : '', atualizadaEm: o.em,
-    pareceres: [], historico: historicoDaCriacao(base, o.em), anexos: [],
+    // a que nasce em andamento ("Já estava fazendo") já leva o Iniciou: o tempo trabalhado conta dali (12/11/2026)
+    pareceres: [], historico: [...historicoDaCriacao(base, o.em), ...(r.status === 'andamento' ? [{ por: o.por.nome, em: o.em, texto: 'Iniciou a tarefa' }] : [])], anexos: [],
     ...(r.etapaDelegada ? { etapaDelegada: r.etapaDelegada } : {}),
+    ...(r.tipo === 'documentos' ? { tipo: 'documentos' as const } : {}),
   };
+}
+
+/**
+ * As tarefas em conjunto em aberto desta empresa e período (a rota e o período do executor): a canceladas não entram; as
+ * concluídas, sim (a etapa continua da pessoa, para ela rever).
+ */
+export function tarefasEmConjunto<T extends Pick<TarefaDelegada, 'status' | 'etapaDelegada'>>(lista: readonly T[], rota: string, periodo: string): T[] {
+  return lista.filter(x => !!x.etapaDelegada?.conjunto && x.etapaDelegada.rota === rota && x.etapaDelegada.periodo === periodo && x.status !== 'cancelada');
+}
+
+/** As etapas que estão com a pessoa na tarefa em conjunto (vazio: ela não recebeu nenhuma e vê a empresa inteira). */
+export function etapasDaPessoaEmConjunto(lista: readonly Pick<TarefaDelegada, 'status' | 'etapaDelegada' | 'responsavel'>[], rota: string, periodo: string, uid: string): string[] {
+  if (!uid) return [];
+  return [...new Set(tarefasEmConjunto(lista, rota, periodo).filter(x => x.responsavel.uid === uid).map(x => x.etapaDelegada!.etapa))];
 }
 
 /** A conta está no que foi delegado? */
@@ -597,8 +775,9 @@ export function lerTarefa(id: string, x: Record<string, unknown>): TarefaDelegad
   const anexos = Array.isArray(x.anexos) ? x.anexos.map(obj).filter((a): a is Record<string, unknown> => !!a) : [];
   const ed = obj(x.etapaDelegada);
   const lerContas = (v: unknown): ContaDelegada[] => (Array.isArray(v) ? v.map(obj).filter((c): c is Record<string, unknown> => !!c).map(c => ({ codigo: texto(c.codigo), nome: texto(c.nome) })) : []);
-  const etapaDelegada: EtapaDelegada | null = ed && (ed.etapa === 'clientes' || ed.etapa === 'fornecedores')
-    ? { etapa: ed.etapa, rota: texto(ed.rota), periodo: texto(ed.periodo), todas: ed.todas === true, contas: lerContas(ed.contas), feitas: Array.isArray(ed.feitas) ? ed.feitas.map(texto) : [] }
+  const conjunto = ed?.conjunto === true;
+  const etapaDelegada: EtapaDelegada | null = ed && (ed.etapa === 'clientes' || ed.etapa === 'fornecedores' || ed.etapa === 'dp' || (conjunto && typeof ed.etapa === 'string' && !!ed.etapa))
+    ? { etapa: ed.etapa as string, rota: texto(ed.rota), periodo: texto(ed.periodo), todas: ed.todas === true, contas: lerContas(ed.contas), feitas: Array.isArray(ed.feitas) ? ed.feitas.map(texto) : [], ...(conjunto ? { conjunto: true as const } : {}) }
     : null;
   return {
     id, numero: Number(x.numero) || 0, titulo: texto(x.titulo), descricao: texto(x.descricao),
@@ -613,6 +792,8 @@ export function lerTarefa(id: string, x: Record<string, unknown>): TarefaDelegad
     anexos: anexos.map(a => ({ id: texto(a.id), nome: texto(a.nome), extensao: texto(a.extensao), tamanho: Number(a.tamanho) || 0, em: texto(a.em), por: texto(a.por), partes: Number(a.partes) || 0, ...(a.gzip === true ? { gzip: true as const } : {}) }))
       .filter(a => a.id && a.partes > 0),
     ...(etapaDelegada ? { etapaDelegada } : {}),
+    ...(x.tipo === 'documentos' ? { tipo: 'documentos' as const } : {}),
+    ...(texto(x.visualizadaEm) ? { visualizadaEm: texto(x.visualizadaEm) } : {}),
   };
 }
 

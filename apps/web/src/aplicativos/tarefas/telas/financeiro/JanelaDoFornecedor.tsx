@@ -2,6 +2,7 @@
 // plano: a razão social, o nome fantasia, o CNPJ ou CPF, a conta contábil padrão e o ativo. Ctrl+Enter grava.
 import { BotaoFechar, Icone, Interruptor, useJanela } from '@nads/ui';
 import { useEffect, useRef } from 'react';
+import { EscolherConta } from './partes/EscolherConta';
 import { Propriedade } from './partes/Propriedade';
 import { useJanelaDoFornecedor } from './useJanelaDoFornecedor';
 
@@ -34,10 +35,7 @@ export function JanelaDoFornecedor({ id, fechar }: { id?: string; fechar: () => 
               <input type="text" inputMode="numeric" value={vm.documento} onChange={e => vm.setDocumento(e.target.value)} onBlur={vm.formatarDocumento} placeholder="Opcional" aria-label="CNPJ ou CPF" />
             </Propriedade>
             <Propriedade icone="list" rotulo="Conta contábil">
-              <select className="pessoal-select" value={vm.contaPadrao} onChange={e => vm.setContaPadrao(e.target.value)} aria-label="Conta contábil padrão">
-                <option value="">Sem conta</option>
-                {vm.contas.map(c => <option key={c.id} value={c.id}>{c.codigo} · {c.descricao}</option>)}
-              </select>
+              <EscolherConta valor={vm.contaPadrao} contas={vm.contas} onEscolher={vm.setContaPadrao} titulo="Conta contábil padrão" />
             </Propriedade>
             <Propriedade icone="check" rotulo="Ativo"><Interruptor ligado={vm.ativo} onMudar={() => vm.setAtivo(!vm.ativo)} rotulo="Fornecedor ativo" /></Propriedade>
           </div>
