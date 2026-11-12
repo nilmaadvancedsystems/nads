@@ -9,7 +9,7 @@ export { useJanela } from './janela';
 export { Casca, baixarArquivo, baixarBytes, type SecaoCasca, type PaginaCasca } from './casca';
 export { EscolherEmpresa, type EmpresaNaLista, type PropsEscolherEmpresa } from './escolherEmpresa';
 export { LOGOS_BANDEIRAS } from './logosBandeiras';
-export { BarraDeCarregamento, carregandoAte, trocarDeTelaComBarra, useCarregando } from './carregamento';
+export { BarraDeCarregamento, carregandoAte, motivoParaEsperar, trocarDeTelaComBarra, useCarregando, useMotivoParaEsperar, useOcupado } from './carregamento';
 export { MOLA, MOLA_VIVA, molaViva, mola, garantir, tudoAnima, entradasFeitas, semMovimento, semMovimentoForte, animacoesPedidas, nivelDeAnimacao, definirNivelDeAnimacao, NIVEIS_DE_ANIMACAO, type NivelDeAnimacao, useEntradaAnimada, useLinhasQueSeMovem, useIndicador, useNumeroAnimado, lerNumero, contar, desenharCheck, revelarTitulo, encerrarPaginas, moverIndicador, marcarOrigem, pegarOrigem, origemDe, crescerDaOrigem, voltarParaOrigem, apagarFundo, type Origem, type FormaDoIndicador, animar, entrar, sairComo, afundar, voltar, definirJeito, jeitoAtual, JEITOS, ENTRAR, MOVER, GAVETA, SUAVE, type Jeito, type Peca } from './animacao';
 export { iniciarAnimador } from './animador';
 export { atualizarVersao, iniciarAtualizacaoPorInatividade, useVersaoNova, TravaDeVersaoNova } from './versaoNova';
