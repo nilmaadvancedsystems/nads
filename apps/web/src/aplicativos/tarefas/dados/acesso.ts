@@ -43,6 +43,11 @@ export interface RepoAcesso {
   criarConviteDeCadastro(c: { departamento: usuarios.Departamento; nivel: usuarios.Nivel; extras: usuarios.Papel[] }): Promise<string>;
   /** só o admin: o convite para a pessoa trocar a própria senha (convites/{codigo} tipo reset, 24 h); devolve o código */
   criarConviteDeSenha(uid: string): Promise<string>;
+  /**
+   * só o Diretor e o Dono: troca o e-mail de entrada da pessoa (12/11/2026). Grava o pedido (pedidosConta) e espera o robô da
+   * nuvem trocar o login no Firebase Auth e o cadastro; termina quando ele marca feito, ou falha com o motivo dele.
+   */
+  trocarEmail(uid: string, email: string): Promise<void>;
   assinar(aoMudar: () => void): () => void;
   versao(): number;
 }
@@ -121,6 +126,7 @@ export function criarAcessoMemoria(quem: () => { nome: string } | null): RepoAce
     // nos exemplos o convite não vai para lugar nenhum: só o código, para ver o link
     async criarConviteDeCadastro() { return 'exemplo' + Date.now().toString(36) + 'cadastro00'; },
     async criarConviteDeSenha() { return 'exemplo' + Date.now().toString(36) + 'senha00000'; },
+    async trocarEmail(uid, email) { docs[uid].email = email; mudou(); },
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,
   };

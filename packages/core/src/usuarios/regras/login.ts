@@ -35,3 +35,8 @@ export function mensagemDeErroDeLogin(codigo: string): string {
   if (codigo === 'auth/network-request-failed') return 'A conexão caiu no meio da entrada. Tente de novo.';
   return 'Nome ou senha inválidos.';
 }
+
+/** O e-mail de entrada que dá para pôr numa conta (a troca do e-mail, 12/11/2026): algo@algo.algo, sem espaço. */
+export function ehEmailDeLogin(email: string): boolean {
+  return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim());
+}
