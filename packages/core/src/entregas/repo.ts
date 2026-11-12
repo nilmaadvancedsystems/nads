@@ -9,8 +9,8 @@ export interface Quem { nome: string; uid: string; email: string }
 
 export interface RepoDriveDoEntregas {
   readonly exemplos: boolean;
-  /** o mapa da pasta do ano, ao vivo */
-  mapa(): MapaDoDrive;
+  /** o mapa da pasta do ano, ao vivo; com um ano anterior ("2025"), o mapa dele (driveIndice/raiz-2025), lido só quando pedido */
+  mapa(ano?: string): MapaDoDrive;
   /** os itens da pasta de um cliente (carregam quando pedidos; voltam a carregar quando o robô atualiza a pasta) */
   itens(pastaDoCliente: string): { carregados: boolean; itens: ItemDoDrive[] };
   /** pede ao robô (abrir, baixar, zip) e acompanha; devolve como parar de acompanhar */
@@ -19,7 +19,7 @@ export interface RepoDriveDoEntregas {
   lerArquivo(item: Pick<ItemDoDrive, 'i' | 'n'>): Promise<Uint8Array>;
   /** manda um arquivo para a pasta Claudio Secretario (o robô grava) e acompanha; devolve como parar de acompanhar */
   enviar(arquivo: ArquivoParaEnviar, destino: DestinoDoEnvio, aoMudar: (a: AndamentoDoEnvio) => void): () => void;
-  /** pede ao robô para reler agora uma pasta de cliente (ou '' = a pasta do ano inteira) e acompanha */
+  /** pede ao robô para reler agora uma pasta de cliente (ou '' = a pasta do ano inteira; o id da pasta de um ano anterior = o mapa daquele ano) e acompanha */
   atualizarMapa(pastaId: string, aoMudar: (a: AndamentoDoMapa) => void): () => void;
   /** os meus envios dos últimos 30 dias (mais novo primeiro) e onde cada um foi parar, ao vivo */
   meusEnvios(): { carregados: boolean; lista: EnvioFeito[] };

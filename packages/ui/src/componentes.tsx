@@ -1,5 +1,5 @@
 // Peças pequenas da Conferência, com as mesmas classes do CSS original.
-import { useEffect, useId, useLayoutEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode, type Ref } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ButtonHTMLAttributes, type DragEvent, type ReactNode, type Ref } from 'react';
 import { createPortal } from 'react-dom';
 import { animate, cleanInlineStyles, spring, stagger } from 'animejs';
 import { animacoesPedidas, useIndicador, useNumeroAnimado } from './animacao';
@@ -449,6 +449,54 @@ export function CampoArquivos({ id, onEscolher, aceitar, rotulo = 'Escolher arqu
       <input ref={input} type="file" id={id} accept={aceitar} multiple={!camera} capture={camera ? 'environment' : undefined} className="sr-only" disabled={desabilitado}
         onChange={ev => { const fs = Array.from(ev.target.files || []); if (input.current) input.current.value = ''; if (fs.length) onEscolher(fs); }} />
     </>
+  );
+}
+
+/**
+ * A área de soltar arquivos (12/11/2026, as Ferramentas de documentos: "arrastar e soltar o arquivo"): arrastar os
+ * arquivos para cima dela ou clicar para escolher; o desenho da área do certificado A1 (a moldura tracejada grande, o
+ * ícone na bolinha que pula quando o arquivo está por cima). Com `children`, ela não desenha a caixa: só aceita soltar
+ * em cima do que estiver dentro (o arquivo já escolhido, para trocar soltando outro), com a moldura por cima.
+ */
+export function SoltarArquivos({ aceitar, multiplo, titulo, dica, icone = 'upload', desabilitada, onArquivos, children, className }: {
+  aceitar: string;
+  multiplo?: boolean;
+  titulo?: ReactNode;
+  dica?: ReactNode;
+  icone?: NomeIcone;
+  desabilitada?: boolean;
+  onArquivos: (fs: File[]) => void;
+  children?: ReactNode;
+  className?: string;
+}) {
+  const id = useId();
+  const [sobre, setSobre] = useState(false);
+  // o dragleave dispara ao passar por cima de cada filho: conta as entradas para saber quando saiu de verdade
+  const dentro = useRef(0);
+  const eventos = {
+    onDragEnter: (ev: DragEvent) => { if (!ev.dataTransfer.types.includes('Files')) return; ev.preventDefault(); dentro.current++; if (!desabilitada) setSobre(true); },
+    onDragOver: (ev: DragEvent) => { if (ev.dataTransfer.types.includes('Files')) ev.preventDefault(); },
+    onDragLeave: () => { dentro.current = Math.max(0, dentro.current - 1); if (!dentro.current) setSobre(false); },
+    onDrop: (ev: DragEvent) => {
+      if (!ev.dataTransfer.types.includes('Files')) return;
+      ev.preventDefault();
+      dentro.current = 0;
+      setSobre(false);
+      const fs = Array.from(ev.dataTransfer.files);
+      if (!desabilitada && fs.length) onArquivos(multiplo ? fs : fs.slice(0, 1));
+    },
+  };
+  const classe = (base: string) => base + (sobre ? ' sobre' : '') + (desabilitada ? ' is-locked' : '') + (className ? ' ' + className : '');
+  if (children) return <div className={classe('soltar-por-cima')} {...eventos}>{children}</div>;
+  return (
+    <label htmlFor={id} className={classe('soltar')} aria-disabled={desabilitada || undefined} {...eventos}>
+      <span className="soltar-icone"><Icone nome={icone} /></span>
+      <b>{titulo ?? (multiplo ? 'Arraste os arquivos para cá' : 'Arraste o arquivo para cá')}</b>
+      <span className="soltar-ou">ou <u>clique para escolher</u> no computador</span>
+      {dica && <small className="hint">{dica}</small>}
+      <input id={id} type="file" className="sr-only" multiple={multiplo} accept={aceitar} disabled={desabilitada}
+        onChange={ev => { const fs = Array.from(ev.target.files || []); ev.target.value = ''; if (fs.length) onArquivos(fs); }} />
+    </label>
   );
 }
 

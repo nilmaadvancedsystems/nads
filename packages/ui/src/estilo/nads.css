@@ -1321,6 +1321,8 @@ tr.linha-excluida > td{color:var(--ink-muted);text-decoration:line-through;}
   color:var(--ink-muted);border:1px solid var(--border);border-radius:4px;padding:0 5px;pointer-events:none;}
 .iniciar-pop{display:flex;flex-direction:column;}
 .iniciar-lista{display:flex;flex-direction:column;max-height:320px;overflow:auto;}
+/* a lista de um menu com busca (o cliente da comissão, 12/11/2026): a busca fica parada em cima e só a lista rola, baixa, para o menu caber colado no botão */
+.menu-busca-lista{display:flex;flex-direction:column;max-height:min(260px,40vh);overflow:auto;}
 .iniciar-item .num{width:36px;flex:none;text-align:right;}
 .iniciar-item{align-items:center;gap:10px;flex:none;}
 .iniciar-nome{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -4689,10 +4691,23 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .lcdpr-sieg-andamento b{color:var(--ink);font-weight:600;}
 .lcdpr-sieg-barra{position:absolute;left:0;right:0;bottom:0;height:2px;background:color-mix(in srgb,var(--ink) 8%,transparent);}
 .lcdpr-sieg-barra > span{display:block;height:100%;background:var(--accent);transition:width .4s ease;}
-.lcdpr-conta{min-width:150px;}
-.lcdpr-fornecedor{display:flex;flex-direction:column;gap:1px;min-width:0;max-width:420px;}
+.lcdpr-conta{min-width:0;}
+/* a lista cabe na largura (12/11/2026): larguras fixas, os selects ocupam a coluna e o fornecedor corta com "…" */
+.lcdpr-lancamentos{table-layout:fixed;width:100%;}
+.lcdpr-lancamentos .c-marca{width:40px;}
+.lcdpr-lancamentos .c-situacao{width:146px;}
+.lcdpr-lancamentos .c-categoria{width:21%;}
+.lcdpr-lancamentos .c-conta{width:13%;}
+.lcdpr-lancamentos .c-mes{width:64px;}
+.lcdpr-lancamentos .c-data{width:92px;}
+.lcdpr-lancamentos .c-documento{width:124px;}
+.lcdpr-lancamentos .c-valor{width:112px;}
+.lcdpr-lancamentos td,.lcdpr-lancamentos th{overflow:hidden;}
+.lcdpr-lancamentos select.select-compact.lanc-sel{width:100%;max-width:none;min-width:0;text-overflow:ellipsis;}
+.lcdpr-lancamentos .lcdpr-corta{max-width:100%;}
+.lcdpr-fornecedor{display:flex;flex-direction:column;gap:1px;min-width:0;max-width:100%;}
 .lcdpr-itens{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-12);color:var(--ink-muted);}
-.lcdpr-doc{display:inline-flex;align-items:center;justify-content:flex-end;gap:2px;}
+.lcdpr-doc{display:inline-flex;align-items:center;justify-content:flex-end;gap:2px;max-width:100%;min-width:0;}
 .lcdpr-ver-nota{min-height:0;height:26px;width:26px;padding:0;justify-content:center;color:var(--ink-muted);}
 .lcdpr-ver-nota:hover{color:var(--accent);}
 .lcdpr-ver-nota svg{width:15px;height:15px;}
@@ -6547,3 +6562,131 @@ td.fs-fat-sem{color:var(--ink-faint);}
 .cart-arquivo-escolhido{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;}
 .cart-arquivo-escolhido svg{width:14px;height:14px;}
 @media (max-width:640px){.cart-categorias li{grid-template-columns:90px minmax(0,1fr) auto;}.cart-docs li{flex-wrap:wrap;}}
+
+/* ───────────── As Ferramentas de documentos (12/11/2026: "melhorar o visual e as funcionalidades da aba de Ferramentas") ─────────────
+   A área de soltar (SoltarArquivos, o desenho da do certificado A1), as páginas em miniatura (a grade das ferramentas de
+   PDF), a lista arrastável (Juntar e Imagem → PDF) e a página: a área principal à esquerda e as opções com o botão à
+   direita, que desce junto com a rolagem. */
+.soltar{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:280px;padding:32px 16px;text-align:center;
+  border:2px dashed var(--border-strong);border-radius:14px;background:var(--surface);color:var(--ink-muted);cursor:pointer;font-size:var(--fs-14);
+  transition:border-color .2s ease,background .2s ease,transform .2s ease;}
+.soltar b{color:var(--ink);font-size:var(--fs-16);font-weight:600;}
+.soltar u{color:var(--accent-ink);text-underline-offset:3px;}
+.soltar .hint{max-width:56ch;margin-top:6px;}
+.soltar:hover{border-color:var(--accent);background:var(--hover-bg);}
+.soltar.sobre{border-color:var(--accent);background:var(--accent-soft);transform:scale(1.01);}
+.soltar.is-locked{opacity:.55;cursor:not-allowed;}
+.soltar:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:2px;}
+.soltar-icone{display:inline-flex;align-items:center;justify-content:center;width:64px;height:64px;margin-bottom:8px;border-radius:50%;background:var(--hover-bg);color:var(--accent);}
+.soltar-icone svg{width:28px;height:28px;}
+.soltar.sobre .soltar-icone{animation:certPulsa 1s ease-in-out infinite;}
+/* soltar por cima do que já está na tela (trocar o arquivo, mais arquivos na lista): a moldura aparece por cima */
+.soltar-por-cima{position:relative;}
+.soltar-por-cima.sobre::after{content:'Solte para usar este arquivo';position:absolute;inset:-4px;z-index:5;display:flex;align-items:center;justify-content:center;
+  border:2px dashed var(--accent);border-radius:14px;background:color-mix(in srgb, var(--accent-soft) 85%, transparent);color:var(--accent-ink);
+  font-weight:600;font-size:var(--fs-16);pointer-events:none;}
+.ferramentas-principal .soltar-por-cima.sobre::after{content:'Solte para pôr no fim da lista';}
+
+.ferramentas-descricao{display:flex;align-items:center;gap:8px;margin:-4px 0 16px;color:var(--ink-muted);font-size:var(--fs-14);}
+.ferramentas-descricao svg{width:16px;height:16px;flex:none;color:var(--accent);}
+.ferramentas-corpo{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px;align-items:start;}
+.ferramentas-corpo > .card{margin-bottom:0;}
+.ferramentas-principal{min-height:420px;}
+.ferramentas-lado{position:sticky;top:16px;display:flex;flex-direction:column;gap:8px;}
+.ferramentas-lado > h3:first-child{margin-bottom:8px;}
+.ferramentas-lado .steps{margin-bottom:0;}
+.ferramentas-lado .hint{margin-top:0;}
+.ferramentas-lado label.hint{margin-top:4px;}
+.ferramentas-arquivo{display:flex;align-items:center;gap:10px;min-width:0;flex:1;}
+.ferramentas-arquivo > div{display:flex;flex-direction:column;min-width:0;}
+.ferramentas-arquivo b{font-size:var(--fs-14);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ferramentas-arquivo .hint{margin-top:0;}
+.ferramentas-cabeca-botoes{display:inline-flex;align-items:center;gap:8px;}
+.ferramentas-dica-grade{display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin:0 0 12px;}
+.ferramentas-dica-grade svg{width:13px;height:13px;}
+.ferramentas-resumo{list-style:none;margin:0;padding:0;border:1px solid var(--border);border-radius:6px;font-size:var(--fs-14);}
+.ferramentas-resumo li{display:flex;justify-content:space-between;gap:12px;padding:6px 12px;}
+.ferramentas-resumo li + li{border-top:1px solid var(--border);}
+.ferramentas-resumo li > span:last-child{font-weight:600;font-variant-numeric:tabular-nums;text-align:right;}
+.ferramentas-resumo li.hint{justify-content:center;margin:0;}
+.ferramentas-atalhos{display:flex;flex-wrap:wrap;gap:8px;}
+.ferramentas-acoes{display:flex;flex-direction:column;gap:8px;margin-top:8px;padding-top:12px;border-top:1px solid var(--border);}
+.ferramentas-acoes .btn{width:100%;justify-content:center;}
+.ferramentas-alerta{display:flex;gap:8px;align-items:flex-start;margin:0;padding:8px 12px;border-radius:6px;font-size:var(--fs-12);
+  border:1px solid color-mix(in srgb, var(--warn) 40%, transparent);background:var(--warn-soft);color:var(--ink);}
+.ferramentas-alerta svg{width:14px;height:14px;flex:none;margin-top:1px;color:var(--warn);}
+.ferramentas-erro{color:var(--destructive);}
+.ferramentas-andamento{display:flex;align-items:center;gap:8px;margin:0;font-size:var(--fs-12);color:var(--ink-muted);}
+.ferramentas-andamento .btn-spinner{width:12px;height:12px;color:var(--accent);}
+.ferramentas-resultado{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;padding:10px 12px;border-radius:6px;background:var(--success-soft);}
+.ferramentas-resultado b{font-size:20px;font-variant-numeric:tabular-nums;}
+.ferramentas-texto{width:100%;min-height:480px;resize:vertical;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:13px;line-height:1.5;
+  border:1px solid var(--border);border-radius:6px;padding:12px;background:var(--input-bg);color:var(--ink);}
+.ferramentas-numero{max-width:120px;}
+
+/* as páginas em miniatura */
+.paginas-grade{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:20px 16px;}
+.pagina-mini{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0;}
+.pagina-mini-botao{display:block;width:100%;padding:0;border:none;background:none;cursor:pointer;border-radius:8px;}
+.pagina-mini-botao:focus-visible{outline:2px solid var(--accent);outline-offset:3px;}
+.pagina-mini-folha{position:relative;display:flex;align-items:center;justify-content:center;width:100%;aspect-ratio:1;padding:8px;
+  border:1px solid var(--border);border-radius:8px;background:var(--surface-2);overflow:hidden;transition:border-color .15s ease,box-shadow .15s ease,opacity .15s ease;}
+/* a página no tamanho dela (a proporção vem da miniatura): em pé ocupa a altura, deitada a largura; gira inteira */
+.pagina-mini-pagina{position:relative;display:block;height:100%;width:auto;max-width:100%;background:#fff;box-shadow:var(--shadow-md);transition:transform .25s ease;}
+.pagina-mini-pagina.deitada{width:100%;height:auto;max-height:100%;}
+.pagina-mini-pagina img{display:block;width:100%;height:100%;}
+.pagina-mini-esperando{width:70%;height:90%;border-radius:2px;background:var(--surface-3);animation:paginaEsperando 1.2s ease-in-out infinite alternate;}
+@keyframes paginaEsperando{from{opacity:.45;}to{opacity:1;}}
+.pagina-mini-num{font-size:var(--fs-12);color:var(--ink-muted);font-variant-numeric:tabular-nums;}
+.pagina-mini-botao:hover .pagina-mini-folha{border-color:var(--accent);}
+.pagina-mini-selo{position:absolute;top:6px;left:6px;z-index:1;padding:0 7px;border-radius:999px;font-size:11px;font-weight:600;line-height:18px;
+  background:var(--accent);color:var(--on-accent);box-shadow:var(--shadow);}
+.pagina-mini-selo.perigo{background:var(--destructive);}
+.pagina-mini-acoes{position:absolute;right:6px;bottom:6px;z-index:1;display:flex;gap:4px;opacity:0;transition:opacity .15s ease;}
+.pagina-mini:hover .pagina-mini-acoes,.pagina-mini:focus-within .pagina-mini-acoes,.pagina-mini.tirada .pagina-mini-acoes{opacity:1;}
+@media (hover:none){.pagina-mini-acoes{opacity:1;}}
+.pagina-mini-acoes .icon-btn{box-shadow:var(--shadow-md);}
+/* o Separar: a página que começa um arquivo novo leva a barra de corte à esquerda; a que não entra em arquivo nenhum fica apagada */
+.pagina-mini.corte .pagina-mini-folha{border-color:var(--accent);box-shadow:inset 4px 0 0 0 var(--accent);}
+.pagina-mini.fora .pagina-mini-folha{opacity:.4;}
+/* o Girar e tirar */
+.pagina-mini.girada .pagina-mini-folha{border-color:var(--accent);}
+.pagina-mini.tirada .pagina-mini-folha{border-color:var(--destructive);background:var(--destructive-soft);}
+.pagina-mini.tirada .pagina-mini-pagina{opacity:.3;filter:grayscale(1);}
+.pagina-mini.tirada .pagina-mini-num{color:var(--destructive);text-decoration:line-through;}
+/* o Numerar: a prévia do número no rodapé da miniatura */
+.pagina-mini-numero{position:absolute;bottom:5%;z-index:1;padding:0 4px;border-radius:3px;background:var(--accent);color:var(--on-accent);
+  font-size:9px;font-weight:600;line-height:14px;white-space:nowrap;}
+.numerar-esquerda .pagina-mini-numero{left:5%;}
+.numerar-centro .pagina-mini-numero{left:50%;transform:translateX(-50%);}
+.numerar-direita .pagina-mini-numero{right:5%;}
+
+/* a lista arrastável (Juntar, Imagem → PDF) */
+.lista-arrastavel{list-style:none;margin:0 0 12px;padding:0;border:1px solid var(--border);border-radius:6px;}
+.lista-arrastavel li{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--surface);cursor:grab;transition:background .15s ease,opacity .15s ease;}
+.lista-arrastavel li + li{border-top:1px solid var(--border);}
+.lista-arrastavel li:first-child{border-radius:6px 6px 0 0;}
+.lista-arrastavel li:last-child{border-radius:0 0 6px 6px;}
+.lista-arrastavel li:hover{background:var(--hover-bg);}
+.lista-arrastavel li.arrastando{opacity:.4;cursor:grabbing;}
+.lista-arrastavel-alca{display:inline-flex;color:var(--ink-muted);}
+.lista-arrastavel-alca svg{width:16px;height:16px;}
+.lista-arrastavel-ordem{min-width:20px;font-size:var(--fs-12);font-weight:600;color:var(--ink-muted);font-variant-numeric:tabular-nums;text-align:right;}
+.lista-arrastavel-mini{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;flex:none;border:1px solid var(--border);border-radius:4px;background:var(--surface-2);overflow:hidden;}
+.lista-arrastavel-mini img{max-width:100%;max-height:100%;object-fit:contain;background:#fff;}
+.lista-arrastavel-nome{display:flex;flex-direction:column;flex:1;min-width:0;}
+.lista-arrastavel-nome b{font-size:var(--fs-14);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.lista-arrastavel-nome .hint{margin-top:0;}
+.lista-arrastavel-botoes{display:inline-flex;gap:4px;flex:none;}
+
+@media (max-width:900px){
+  .ferramentas-corpo{grid-template-columns:minmax(0,1fr);}
+  .ferramentas-lado{position:static;}
+  .ferramentas-principal{min-height:0;}
+}
+@media (max-width:640px){
+  .paginas-grade{grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:14px 10px;}
+  .soltar{min-height:200px;padding:24px 12px;}
+  .lista-arrastavel-alca,.lista-arrastavel-ordem{display:none;}
+}
+@media (prefers-reduced-motion:reduce){.soltar,.soltar.sobre{transform:none;transition:none;}.soltar.sobre .soltar-icone{animation:none;}.pagina-mini-esperando{animation:none;}}

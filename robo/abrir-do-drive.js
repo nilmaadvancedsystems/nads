@@ -48,12 +48,29 @@ function iniciarAberturaDoDrive(db, log, opcoes) {
   const pais = new Map();
   const copias = new Map();   // fileId -> { url, caminho, ate, nome, tamanho }
   const lidos = new Map();    // pedido 'ler' -> quando apagar os pedaços
-  let raizId = null;
-
-  async function pastaDoAno() {
-    if (raizId) return raizId;
-    raizId = ((await db.collection('driveIndice').doc('raiz').get()).data() || {}).pastaId || null;
-    return raizId;
+  // As pastas de ano aceitas: a do ano corrente e as dos anos anteriores (driveIndice/raiz.anos, o seletor de ano da
+  // tela; 12/11/2026). Lidas uma vez; um item que não está em nenhuma relê a lista (no máximo a cada 10 min), para um
+  // ano que entrou depois de o robô ligar.
+  let raizes = null;
+  let raizesEm = 0;
+  async function pastasDosAnos(forcar) {
+    if (raizes && raizes.size && !forcar) return raizes;
+    const d = (await db.collection('driveIndice').doc('raiz').get()).data() || {};
+    raizes = new Set([d.pastaId].concat((Array.isArray(d.anos) ? d.anos : []).map(a => a && a.id)).filter(Boolean));
+    raizesEm = Date.now();
+    return raizes;
+  }
+  /** A pasta de cliente (de qualquer ano aceito) onde o item está; null se ele não está numa pasta de ano. */
+  async function donoDe(id) {
+    let r = await pastasDosAnos(false);
+    if (!r.size) throw new Error('o mapa do Drive ainda não foi montado');
+    if (r.has(id)) return null;   // a pasta do ano inteira não
+    let dono = await indice.pastaDoClienteDe(id, r, pais);
+    if (!dono && Date.now() - raizesEm > 10 * 60 * 1000) {
+      r = await pastasDosAnos(true);
+      dono = r.has(id) ? null : await indice.pastaDoClienteDe(id, r, pais);
+    }
+    return dono;
   }
 
   async function atender(doc) {
@@ -77,12 +94,10 @@ function iniciarAberturaDoDrive(db, log, opcoes) {
         return;
       }
 
-      // Só arquivo que está dentro da pasta do ano: o pedido não pode virar um
-      // jeito de ler qualquer coisa do Drive do escritório.
-      const raiz = await pastaDoAno();
-      if (!raiz) throw new Error('o mapa do Drive ainda não foi montado');
-      const dono = await indice.pastaDoClienteDe(fileId, raiz, pais);
-      if (!dono) throw new Error('este arquivo não está na pasta ' + (process.env.DRIVE_PASTA_ANO || '2026'));
+      // Só arquivo que está dentro de uma pasta de ano: o pedido não pode virar
+      // um jeito de ler qualquer coisa do Drive do escritório.
+      const dono = await donoDe(fileId);
+      if (!dono) throw new Error('este arquivo não está numa pasta de ano do Drive');
 
       const drive = indice.getDrive();
       const meta = (await drive.files.get({ fileId, fields: 'id, name, mimeType, size' })).data;
@@ -149,8 +164,6 @@ function iniciarAberturaDoDrive(db, log, opcoes) {
     const ref = doc.ref;
     try {
       await ref.update({ status: 'buscando', buscandoEm: new Date().toISOString(), progresso: 'listando os arquivos' });
-      const raiz = await pastaDoAno();
-      if (!raiz) throw new Error('o mapa do Drive ainda não foi montado');
       const pedidos = [].concat(Array.isArray(p.fileIds) ? p.fileIds : [], p.pastaId ? [p.pastaId] : [])
         .map(String).filter(id => /^[\w-]{10,}$/.test(id));
       if (!pedidos.length) throw new Error('nenhum arquivo selecionado');
@@ -192,11 +205,9 @@ function iniciarAberturaDoDrive(db, log, opcoes) {
       }
 
       for (const id of pedidos) {
-        // Cada item pedido tem que estar dentro da pasta do ano, e não pode ser
-        // a pasta do ano inteira.
-        if (id === raiz || !(await indice.pastaDoClienteDe(id, raiz, pais))) {
-          throw new Error('um dos itens não está na pasta ' + (process.env.DRIVE_PASTA_ANO || '2026'));
-        }
+        // Cada item pedido tem que estar dentro de uma pasta de ano, e não pode
+        // ser a pasta do ano inteira.
+        if (!(await donoDe(id))) throw new Error('um dos itens não está numa pasta de ano do Drive');
         const meta = (await drive.files.get({ fileId: id, fields: 'id, name, mimeType, size' })).data;
         // Pasta pedida sozinha: o .zip já tem o nome dela, os arquivos vão na raiz dele.
         await juntar(meta, meta.mimeType === PASTA && pedidos.length === 1 ? '\u0000' : '');

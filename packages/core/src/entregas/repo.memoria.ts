@@ -37,6 +37,24 @@ const ITENS: Record<string, ItemDoDrive[]> = {
   ],
 };
 
+// os anos anteriores (o seletor de ano): 2025 já mapeado, com as mesmas pastas de exemplo; 2024 ainda sem mapa (o
+// "Mapear 2024" finge o robô e passa a mostrar as pastas)
+const ANOS_ANTERIORES = [{ nome: '2025', id: 'ano2025' }, { nome: '2024', id: 'ano2024' }];
+const SEM_MAPA = mapaDaRaiz(null);
+
+/** As pastas de exemplo como estariam num ano anterior (ids próprios, datas e nomes do ano). */
+function pastasDoAno(ano: string) {
+  return PASTAS.map(c => ({ ...c, id: c.id + '-' + ano, mod: ano + '-12-20T12:00:00.000Z' }));
+}
+function itensDoAno(ano: string): Record<string, ItemDoDrive[]> {
+  const saida: Record<string, ItemDoDrive[]> = {};
+  for (const [cliente, itens] of Object.entries(ITENS)) {
+    const id = (x: string) => (x === cliente ? cliente + '-' + ano : x + '-' + ano);
+    saida[cliente + '-' + ano] = itens.map(x => ({ ...x, i: id(x.i), p: id(x.p), n: x.n.replace(/2026/g, ano), ...(x.m ? { m: x.m.replace(/^2026/, ano) } : {}) }));
+  }
+  return saida;
+}
+
 function ouvintes() {
   let ver = 0;
   const fs = new Set<() => void>();
@@ -45,7 +63,9 @@ function ouvintes() {
 
 export function criarDriveDoEntregasMemoria(): RepoDriveDoEntregas {
   const o = ouvintes();
-  const mapa = mapaDaRaiz({ pastaId: 'ano', pastaNome: '2026', atualizadoEm: agora(), clientes: PASTAS });
+  const mapa = mapaDaRaiz({ pastaId: 'ano', pastaNome: '2026', atualizadoEm: agora(), clientes: PASTAS, anos: ANOS_ANTERIORES });
+  const anteriores = new Map(['2025'].map(a => [a, mapaDaRaiz({ pastaId: 'ano' + a, pastaNome: a, atualizadoEm: agora(), clientes: pastasDoAno(a) })]));
+  const itensAnteriores: Record<string, ItemDoDrive[]> = { ...itensDoAno('2025'), ...itensDoAno('2024') };
   const ha = (min: number) => new Date(Date.now() - min * 60000).toISOString();
   let envios: EnvioFeito[] = [
     { id: 'e2', nome: 'nota 553.xml', criadoEm: ha(20), status: 'pronto', pasta: '2026-10/Enviados pelo nads', erro: '', arquivamento: null },
@@ -54,8 +74,8 @@ export function criarDriveDoEntregasMemoria(): RepoDriveDoEntregas {
   ];
   return {
     exemplos: true,
-    mapa: () => mapa,
-    itens: id => ({ carregados: true, itens: ITENS[id] || [] }),
+    mapa: ano => (!ano || ano === '2026' ? mapa : anteriores.get(ano) || SEM_MAPA),
+    itens: id => ({ carregados: true, itens: ITENS[id] || itensAnteriores[id] || [] }),
     pedir(p, aoMudar) {
       let vivo = true;
       const passos: AndamentoDoPedido[] = [
@@ -107,10 +127,18 @@ export function criarDriveDoEntregasMemoria(): RepoDriveDoEntregas {
     },
     meusEnvios: () => ({ carregados: true, lista: envios }),
     atualizarMapa(pastaId, aoMudar) {
-      // exemplos: finge o robô relendo (nada muda no mapa de exemplo)
+      // exemplos: finge o robô relendo (nada muda no mapa de exemplo; um ano anterior sem mapa passa a ter)
       let vivo = true;
-      const passos: AndamentoDoMapa[] = [{ status: 'atualizando' }, { status: 'pronto', pastas: pastaId ? 1 : PASTAS.length, arquivos: pastaId ? (ITENS[pastaId] || []).length : 12 }];
-      passos.forEach((a, i) => setTimeout(() => { if (vivo) aoMudar(a); }, 700 * (i + 1)));
+      const ano = ANOS_ANTERIORES.find(a => a.id === pastaId);
+      const inteira = !pastaId || !!ano;
+      const passos: AndamentoDoMapa[] = [{ status: 'atualizando' }, { status: 'pronto', pastas: inteira ? PASTAS.length : 1, arquivos: inteira ? 12 : (ITENS[pastaId] || itensAnteriores[pastaId] || []).length }];
+      passos.forEach((a, i) => setTimeout(() => {
+        if (ano && i === passos.length - 1 && !anteriores.has(ano.nome)) {
+          anteriores.set(ano.nome, mapaDaRaiz({ pastaId: ano.id, pastaNome: ano.nome, atualizadoEm: agora(), clientes: pastasDoAno(ano.nome) }));
+          o.mudou();
+        }
+        if (vivo) aoMudar(a);
+      }, 700 * (i + 1)));
       return () => { vivo = false; };
     },
     assinar: o.assinar,
