@@ -266,6 +266,11 @@ export function Executor() {
           { rotulo: casca.perfil.sair, icone: 'logOut', onClick: casca.trocarPessoa },
         ]} />
       {/* interromper: o último, em vermelho (Vitor, 02/10/2026) */}
+      {vm.podeConcluirDelegada && (
+        <button type="button" className="gh-topo-btn gh-topo-proximo" onClick={() => { void vm.concluirDelegada(); }} title="Concluir a tarefa" aria-label="Concluir a tarefa">
+          <Icone nome="check" />
+        </button>
+      )}
       {vm.delegada && <button type="button" className="gh-topo-btn gh-topo-fechar" onClick={vm.sair} title="Voltar às tarefas" aria-label="Voltar às tarefas"><Icone nome="x" /></button>}
       {botoesDaEtapa && (
         // no modo desenvolvedor (Vitor, 06/10/2026: "remova essa opção"): o X só sai, sem o "Por que interromper?"

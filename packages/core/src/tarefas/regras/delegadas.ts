@@ -383,11 +383,12 @@ export interface AcaoDaTarefa { id: 'iniciar' | 'retomar' | 'pausar' | 'concluir
 
 /**
  * Os botões do responsável (09/11/2026: "um botão de iniciar, ele pode pausar, e ele pode clicar em concluir"): a pendente
- * só inicia; a em andamento pausa ou conclui; a pausada retoma ou conclui; a encerrada não tem botão.
+ * inicia ou conclui; a em andamento pausa ou conclui; a pausada retoma ou conclui; a encerrada não tem botão. O Concluir
+ * fica em toda tarefa em aberto (12/11/2026: a Clara não conseguiu concluir a que recebeu, a pendente só tinha o Iniciar).
  */
 export function acoesDoStatus(s: Status): AcaoDaTarefa[] {
   const concluir: AcaoDaTarefa = { id: 'concluir', rotulo: 'Concluir', status: 'concluida' };
-  if (s === 'pendente') return [{ id: 'iniciar', rotulo: 'Iniciar', status: 'andamento' }];
+  if (s === 'pendente') return [{ id: 'iniciar', rotulo: 'Iniciar', status: 'andamento' }, concluir];
   if (s === 'andamento') return [{ id: 'pausar', rotulo: 'Pausar', status: 'pausada' }, concluir];
   if (s === 'pausada') return [{ id: 'retomar', rotulo: 'Retomar', status: 'andamento' }, concluir];
   return [];
@@ -399,6 +400,119 @@ const MOVIMENTO = /^(Iniciou|Retomou|Pausou|Concluiu) a tarefa$|^Mudou o status 
 export function ultimoMovimento(t: Pick<TarefaDelegada, 'historico'>): Nota | null {
   for (let i = t.historico.length - 1; i >= 0; i--) if (MOVIMENTO.test(t.historico[i].texto)) return t.historico[i];
   return null;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// o expediente: a pausa sozinha no almoço e à noite (12/11/2026)
+// ---------------------------------------------------------------------------------------------------------------------
+// "a pessoa clica em Iniciar; o sistema pausa sozinho às 11:05 e despausa às 13:00; pausa de novo às 18:05 e despausa às
+// 07:00 do dia seguinte". O banco não muda: a tarefa segue Em andamento e a tela mostra Pausada nos intervalos; o tempo
+// trabalhado conta só o que caiu dentro do expediente. Os horários são os de Brasília (UTC−3, sem horário de verão desde
+// 2019), não os do computador.
+
+const MIN = 60_000;
+const FUSO_DE_BRASILIA = -3 * 60;
+/** os trechos do dia em que a tarefa em andamento corre, em minutos desde a meia-noite: 07:00–11:05 e 13:00–18:05 */
+export const EXPEDIENTE: readonly { de: number; ate: number }[] = [{ de: 7 * 60, ate: 11 * 60 + 5 }, { de: 13 * 60, ate: 18 * 60 + 5 }];
+
+const hhmm = (m: number) => String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+const msDe = (quando: Date | string) => (typeof quando === 'string' ? Date.parse(quando) : quando.getTime());
+/** a meia-noite de Brasília do dia de "ms" (em ms UTC) e os minutos desde ela */
+function noDiaDeBrasilia(ms: number): { meiaNoite: number; minuto: number } {
+  const local = ms + FUSO_DE_BRASILIA * MIN;
+  const meiaNoiteLocal = Math.floor(local / (1440 * MIN)) * 1440 * MIN;
+  return { meiaNoite: meiaNoiteLocal - FUSO_DE_BRASILIA * MIN, minuto: Math.floor((local - meiaNoiteLocal) / MIN) };
+}
+
+/** Agora é intervalo (11:05–13:00 ou 18:05–07:00)? */
+export function noIntervalo(agora: Date | string): boolean {
+  const ms = msDe(agora);
+  if (!Number.isFinite(ms)) return false;
+  const { minuto } = noDiaDeBrasilia(ms);
+  return !EXPEDIENTE.some(e => minuto >= e.de && minuto < e.ate);
+}
+
+/** A próxima virada (pausa ou volta) depois de agora: a tela se redesenha nela. */
+export function proximaVirada(agora: Date | string): Date {
+  const ms = msDe(agora);
+  const { meiaNoite } = noDiaDeBrasilia(ms);
+  const viradas = [0, 1].flatMap(dia => EXPEDIENTE.flatMap(e => [e.de, e.ate]).map(m => meiaNoite + (dia * 1440 + m) * MIN));
+  return new Date(viradas.find(v => v > ms) as number);
+}
+
+/** A hora em que o intervalo de agora acaba ('13:00' ou '07:00'); fora do intervalo, ''. */
+export function voltaDoIntervalo(agora: Date | string): string {
+  if (!noIntervalo(agora)) return '';
+  const { minuto } = noDiaDeBrasilia(msDe(proximaVirada(agora)));
+  return hhmm(minuto);
+}
+
+/** A situação da tarefa na tela agora: a em andamento aparece Pausada nos intervalos (automatica), e diz quando volta. */
+export function situacaoNoHorario(t: Pick<TarefaDelegada, 'status'>, agora: Date | string): { status: Status; automatica: boolean; volta: string } {
+  if (t.status !== 'andamento' || !noIntervalo(agora)) return { status: t.status, automatica: false, volta: '' };
+  return { status: 'pausada', automatica: true, volta: voltaDoIntervalo(agora) };
+}
+
+/** O rótulo do status na tela, com a pausa do intervalo ("Pausada até 13:00"). */
+export function rotuloNoHorario(t: Pick<TarefaDelegada, 'status'>, agora: Date | string): string {
+  const s = situacaoNoHorario(t, agora);
+  return s.automatica ? 'Pausada até ' + s.volta : rotuloDoStatus(s.status);
+}
+
+/** Os botões na tela agora: no intervalo, só o Concluir (a tarefa volta sozinha no horário). */
+export function acoesNoHorario(t: Pick<TarefaDelegada, 'status'>, agora: Date | string): AcaoDaTarefa[] {
+  const acoes = acoesDoStatus(t.status);
+  return situacaoNoHorario(t, agora).automatica ? acoes.filter(a => a.id === 'concluir') : acoes;
+}
+
+/** Os minutos de expediente entre dois instantes (ms UTC): o que cai fora de 07:00–11:05 e 13:00–18:05 não conta. */
+export function minutosDeExpediente(inicio: number, fim: number): number {
+  if (!(fim > inicio)) return 0;
+  let total = 0;
+  for (let dia = noDiaDeBrasilia(inicio).meiaNoite; dia < fim; dia += 1440 * MIN) {
+    for (const e of EXPEDIENTE) total += Math.max(0, Math.min(fim, dia + e.ate * MIN) - Math.max(inicio, dia + e.de * MIN));
+  }
+  return Math.round(total / MIN);
+}
+
+const COMECA = /^(Iniciou|Retomou) a tarefa$|^Mudou o status de .* para Em andamento$/;
+const PARA = /^(Pausou|Concluiu) a tarefa$|^Mudou o status de Em andamento para /;
+
+/**
+ * Os trechos em que a tarefa esteve em andamento, pelo histórico (Iniciou/Retomou até Pausou/Concluiu); o que ainda está
+ * em andamento vai até agora. A tarefa criada já em andamento ("Já estava fazendo") sem a linha do Iniciou começa em criadaEm.
+ */
+export function trechosEmAndamento(t: Pick<TarefaDelegada, 'status' | 'historico' | 'criadaEm'>, agora: Date | string): { de: number; ate: number }[] {
+  const trechos: { de: number; ate: number }[] = [];
+  let desde: number | null = null;
+  let algumMovimento = false;
+  for (const h of t.historico) {
+    const em = Date.parse(h.em);
+    if (!Number.isFinite(em)) continue;
+    if (COMECA.test(h.texto)) { algumMovimento = true; if (desde === null) desde = em; }
+    else if (PARA.test(h.texto)) {
+      // parou sem ter começado no histórico: a tarefa nasceu em andamento
+      if (desde === null && !algumMovimento && /^Pausou|^Mudou/.test(h.texto)) desde = Date.parse(t.criadaEm);
+      algumMovimento = true;
+      if (desde !== null && Number.isFinite(desde)) trechos.push({ de: desde, ate: em });
+      desde = null;
+    }
+  }
+  if (t.status === 'andamento') {
+    if (desde === null && !algumMovimento) desde = Date.parse(t.criadaEm);
+    if (desde !== null && Number.isFinite(desde)) trechos.push({ de: desde, ate: msDe(agora) });
+  }
+  return trechos;
+}
+
+/** Os minutos trabalhados na tarefa: os trechos em andamento, sem os intervalos. */
+export const minutosTrabalhados = (t: Pick<TarefaDelegada, 'status' | 'historico' | 'criadaEm'>, agora: Date | string): number =>
+  trechosEmAndamento(t, agora).reduce((s, x) => s + minutosDeExpediente(x.de, x.ate), 0);
+
+/** '2h 35min', '40min', '0min'. */
+export function duracaoParaTela(minutos: number): string {
+  const h = Math.floor(minutos / 60), m = minutos % 60;
+  return h ? h + 'h' + (m ? ' ' + m + 'min' : '') : m + 'min';
 }
 // ---------------------------------------------------------------------------------------------------------------------
 // o histórico de cada mudança
@@ -488,7 +602,8 @@ export function nova(r: Rascunho, o: { id: string; numero: number; por: Pessoa; 
     id: o.id, numero: o.numero, titulo: limparTexto(r.titulo), descricao: limparTexto(r.descricao), ...comOsClientes(r.clientes),
     prioridade: r.prioridade, prazo: r.prazo, prazoHora: r.prazoHora, status: r.status, ...base,
     criadaEm: o.em, concluidaEm: r.status === 'concluida' ? o.em : '', atualizadaEm: o.em,
-    pareceres: [], historico: historicoDaCriacao(base, o.em), anexos: [],
+    // a que nasce em andamento ("Já estava fazendo") já leva o Iniciou: o tempo trabalhado conta dali (12/11/2026)
+    pareceres: [], historico: [...historicoDaCriacao(base, o.em), ...(r.status === 'andamento' ? [{ por: o.por.nome, em: o.em, texto: 'Iniciou a tarefa' }] : [])], anexos: [],
     ...(r.etapaDelegada ? { etapaDelegada: r.etapaDelegada } : {}),
   };
 }

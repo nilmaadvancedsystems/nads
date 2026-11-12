@@ -168,7 +168,7 @@ describe('o CSV do delegador', () => {
   });
 
   it('as ações de cada status só levam para status válidos; a encerrada não tem botão', () => {
-    const caminho: Record<Status, Status[]> = { pendente: ['andamento'], andamento: ['pausada', 'concluida'], pausada: ['andamento', 'concluida'], concluida: [], cancelada: [] };
+    const caminho: Record<Status, Status[]> = { pendente: ['andamento', 'concluida'], andamento: ['pausada', 'concluida'], pausada: ['andamento', 'concluida'], concluida: [], cancelada: [] };
     for (const [s, destino] of Object.entries(caminho) as [Status, Status[]][]) expect(acoesDoStatus(s).map(a => a.status)).toEqual(destino);
     expect(emAberto({ status: 'pausada' })).toBe(true);
     expect(emAberto({ status: 'cancelada' })).toBe(false);

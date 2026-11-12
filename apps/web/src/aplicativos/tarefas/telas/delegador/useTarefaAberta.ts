@@ -12,6 +12,7 @@ import { useAcesso, useRepo, useTarefasDelegadas } from '../../dados/repo';
 import { bytesDoAnexo, encolherAnexo } from '../../dados/encolherAnexo';
 import { tamanhoDoArquivo, type ArquivoParaAnexar } from '../../dados/tarefasDelegadas';
 import { useEmpresasPermitidas } from '../empresas/andamento';
+import { useAgoraDoExpediente } from './useAgoraDoExpediente';
 
 const d = tarefas.delegadas;
 type Rascunho = tarefas.delegadas.Rascunho;
@@ -40,6 +41,7 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
   const ehNova = alvo === 'nova';
   const { carregadas, tarefas: todas } = repo.lista();
   const tarefa = ehNova ? null : todas.find(t => t.id === alvo) || null;
+  const relogio = useAgoraDoExpediente();
 
   // o rascunho começa da tarefa (ou vazio); o prazo fica no texto do CampoData (dd/mm/aaaa) até salvar
   const [inicial, setInicial] = useState<Rascunho>(() => (tarefa ? d.rascunhoDe(tarefa) : d.rascunhoVazio(null)));
@@ -132,7 +134,8 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
     sumiu: !ehNova && carregadas && !tarefa,
     ehNova,
     numero: tarefa?.numero || null,
-    status: tarefa ? { rotulo: d.rotuloDoStatus(tarefa.status), tom: d.tomDoStatus(tarefa.status) } : null,
+    // nos intervalos (11:05–13:00 e 18:05–07:00) a em andamento aparece Pausada, e volta sozinha (12/11/2026)
+    status: tarefa ? { rotulo: d.rotuloNoHorario(tarefa, relogio), tom: d.tomDoStatus(d.situacaoNoHorario(tarefa, relogio).status) } : null,
     podeMudar,
     podeExcluir: !!tarefa && d.podeExcluir(tarefa, uid, admin),
     aba, setAba,
@@ -164,7 +167,7 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
     /** o seletor de status é de quem criou (o controle de quem delegou); quem recebeu usa os botões */
     mudaStatus: !!tarefa && (tarefa.criadaPor.uid === uid || admin),
     /** Iniciar, Pausar, Retomar e Concluir: de quem vai fazer a tarefa */
-    acoes: tarefa && tarefa.responsavel.uid === uid ? d.acoesDoStatus(tarefa.status) : [],
+    acoes: tarefa && tarefa.responsavel.uid === uid ? d.acoesNoHorario(tarefa, relogio) : [],
     async fazerAcao(status: tarefas.delegadas.Status) {
       if (!tarefa) return;
       try {
@@ -193,6 +196,8 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
     datas: tarefa ? [
       { rotulo: 'Criada em', valor: quando(tarefa.criadaEm) + ' por ' + tarefa.criadaPor.nome },
       { rotulo: 'Concluída em', valor: tarefa.concluidaEm ? quando(tarefa.concluidaEm) : '—' },
+      // só o expediente conta: os intervalos e a noite ficam de fora
+      { rotulo: 'Tempo trabalhado', valor: d.duracaoParaTela(d.minutosTrabalhados(tarefa, relogio)) },
     ] : [],
 
     // ---- os anexos: na nova, esperando o Salvar; na que existe, sobem na hora

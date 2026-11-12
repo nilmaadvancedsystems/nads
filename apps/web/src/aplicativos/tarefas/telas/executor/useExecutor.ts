@@ -559,6 +559,16 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     },
     interrompendo, abrirInterromper: () => setInterrompendo(true), fecharInterromper: () => setInterrompendo(false), interromper,
     sair: etapaDelegada ? () => navegar(BASE + '/inicio?aba=minhas') : voltar,
+    /** a etapa delegada em aberto: quem recebeu conclui a tarefa daqui mesmo (12/11/2026: a Clara não achava o Concluir) */
+    podeConcluirDelegada: !!etapaDelegada && !!recebida && recebida.status !== 'concluida',
+    concluirDelegada: async () => {
+      if (!recebida) return;
+      try {
+        await repoDelegadas.salvar(recebida.id, { status: 'concluida' });
+        toast('Tarefa concluída.');
+        navegar(BASE + '/inicio?aba=minhas');
+      } catch (e) { toast('Não concluí a tarefa: ' + (e instanceof Error ? e.message : String(e))); }
+    },
     /** Os bancos sem movimento de cada mês (a ferramenta da etapa mostra a linha marcada no mês que estiver aberto). */
     semMovimentoPorMes: Object.fromEntries(meses.map(c => [c, exDe[c]?.semMovimento || []])) as Record<string, string[]>,
     marcarSemMovimento: (banco: string, marcado: boolean, mes?: string) => {
