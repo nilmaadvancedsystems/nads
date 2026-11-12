@@ -28,6 +28,28 @@ function Foto({ foto, iniciais }: { foto?: string | null; iniciais: string }) {
 }
 
 /** o papel Desenvolvedor (06/11/2026): o que ele libera */
+/** O e-mail de entrada, com o Trocar para o Diretor e o Dono (12/11/2026). */
+function EmailDaConta({ vm, p }: { vm: VmUsuarios; p: usuarios.Usuario }) {
+  const [editando, setEditando] = useState<string | null>(null);
+  if (editando === null) {
+    return (
+      <span className="btn-row" style={{ alignItems: 'center' }}>
+        <span>{p.email}</span>
+        {vm.podeTrocarEmail(p) && <button type="button" className="btn btn-outline" onClick={() => setEditando(p.email)}><Icone nome="lapis" />Trocar</button>}
+      </span>
+    );
+  }
+  const salvar = async () => { if (await vm.trocarEmail(p, editando)) setEditando(null); };
+  return (
+    <span className="btn-row" style={{ alignItems: 'center' }}>
+      <input className="usuario-campo" type="email" aria-label={'E-mail de ' + p.nome} value={editando} autoFocus
+        onChange={e => setEditando(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void salvar(); if (e.key === 'Escape') setEditando(null); }} />
+      <button type="button" className="btn btn-outline" onClick={() => setEditando(null)}>Cancelar</button>
+      <BotaoAcao className="btn btn-primary" carregando={vm.fazendo('email:' + p.uid)} textoCarregando="Trocando…" onClick={() => void salvar()}>Salvar</BotaoAcao>
+    </span>
+  );
+}
+
 const DICA_FINANCEIRO = 'Quem é Diretor sempre tem. Os outros, só com a autorização do Diretor.';
 const SempreLigado = () => <span className="badge badge-neutral">Sempre ligado</span>;
 const DICA_DEV = 'Libera o Modo desenvolvedor no menu do avatar (só ver, sem gravar nada).';
@@ -101,6 +123,9 @@ export function JanelaDoUsuario({ vm }: { vm: VmUsuarios }) {
           <Cartao titulo="Conta">
             <Linha rotulo="No nads">
               <span className="usuarios-estado"><span className={'usuarios-ponto' + (p.online ? ' ok' : '')} aria-hidden="true" />{p.presenca}</span>
+            </Linha>
+            <Linha rotulo="E-mail" dica="O login. Com e-mail fora do padrão nome@nilma.local, a pessoa entra digitando o e-mail no lugar do nome.">
+              <EmailDaConta vm={vm} p={p} />
             </Linha>
             <Linha rotulo="Conta ativa">
               <Interruptor ligado={p.ativo} onMudar={() => void vm.ativar(p)} rotulo={(p.ativo ? 'Desativar ' : 'Ativar ') + p.nome} />

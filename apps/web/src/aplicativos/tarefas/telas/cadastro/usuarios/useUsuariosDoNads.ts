@@ -119,6 +119,22 @@ export function useUsuariosDoNads() {
         toast('Link de nova senha de ' + p.nome + ' criado: vale 24 horas.');
       } catch (err) { toast('Não consegui gerar o link: ' + (err as Error).message); } finally { setGerandoSenha(false); }
     },
+    /**
+     * O e-mail de entrada (Vitor, 12/11/2026: "coloca email aqui pro diretor conseguir mudar tbm"): só o Diretor e o Dono
+     * trocam; o do Dono, só o Dono. Quem troca de fato é o robô da nuvem (repo.trocarEmail espera ele terminar).
+     */
+    podeTrocarEmail: (p: usuarios.Usuario) => admin && temNivelDiretor(operador) && (p.nivel !== 'dono' || operador?.nivel === 'dono'),
+    async trocarEmail(p: usuarios.Usuario, email: string): Promise<boolean> {
+      const novo = email.trim().toLowerCase();
+      if (!usuarios.ehEmailDeLogin(novo)) { toast('Escreva um e-mail válido (por exemplo, nome@nilma.local).'); return false; }
+      if (novo === p.email.trim().toLowerCase()) return true;
+      if (equipe.lista.some(x => x.uid !== p.uid && x.email.trim().toLowerCase() === novo)) { toast('Esse e-mail já é o login de outra pessoa.'); return false; }
+      let deu = false;
+      await comLinha('email:' + p.uid, async () => {
+        try { await repo.trocarEmail(p.uid, novo); deu = true; toast('E-mail de ' + p.nome + ' trocado. Agora ' + p.nome + ' entra com ' + novo + '.'); } catch (err) { toast('Não troquei o e-mail: ' + (err as Error).message); }
+      });
+      return deu;
+    },
     copiar: (link: string) => { void navigator.clipboard.writeText(link).then(() => toast('Link copiado.'), () => toast('Não consegui copiar; selecione o link e copie.')); },
     fazendo: (chave: string) => fazendo.has(chave),
     revogar: (s: usuarios.SessaoLiberada) => comLinha('revogar:' + s.id, () => tentar(() => repo.revogar(s), 'Liberação de ' + s.nome + ' (' + s.computador + ') revogada: o código não vale mais.')),
