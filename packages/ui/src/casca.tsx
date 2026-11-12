@@ -9,6 +9,7 @@ import { Icone, MarcaN, type NomeIcone } from './icones';
 import { LogoDrive, LogoFgts, LogoGmail, LogoReceitaFederal, LogoSieg, LogoSimplesDaAba, LogoSped } from './logos';
 import { SeletorTema } from './tema';
 import { atualizarVersao, useVersaoNova } from './versaoNova';
+import { useMotivoParaEsperar } from './carregamento';
 import { BotaoFechar } from './componentes';
 import { useJanela } from './janela';
 
@@ -178,6 +179,8 @@ export function Casca(p: {
   }, [p.titulo]);
   // saiu versão nova do nads: um pontinho no ☰ e "Atualizar para …" ao lado da versão, no menu
   const versaoNova = useVersaoNova(p.versao || '');
+  // algo carregando ou enviando: o Atualizar espera (Vitor, 12/11/2026: "para que não haja bugs")
+  const espera = useMotivoParaEsperar();
   const cabecalho = useRef<HTMLElement>(null);
   // dentro de uma etapa da Tarefas: a página diz a altura dela (quem rola é a Tarefas, uma barra só)
   useAlturaNaEtapa(embutida() && !acoplada());
@@ -308,7 +311,7 @@ export function Casca(p: {
           <div className="drawer-foot">
             {p.temaNaGaveta !== false && <SeletorTema />}
             {p.peDaGaveta?.(fecharGaveta)}
-            <p>Versão do sistema: {p.versao}{versaoNova && <> · <button type="button" className="drawer-atualizar" onClick={atualizarVersao}>Atualizar para {versaoNova}</button></>}</p>
+            <p>Versão do sistema: {p.versao}{versaoNova && <> · <button type="button" className="drawer-atualizar" disabled={!!espera} title={espera || undefined} onClick={atualizarVersao}>Atualizar para {versaoNova}</button></>}</p>
           </div>
         </aside>
       )}
@@ -353,8 +356,8 @@ export function Casca(p: {
             {versaoNova && !oculta && (
               <div className="versao-card" role="status">
                 <b>Saiu a versão {versaoNova}</b>
-                <span className="hint">Atualize quando quiser: nada do que você fez na tela se perde.</span>
-                <button type="button" className="btn btn-primary" onClick={atualizarVersao}>Atualizar</button>
+                <span className="hint">{espera || 'Atualize quando quiser: nada do que você fez na tela se perde.'}</span>
+                <button type="button" className="btn btn-primary" disabled={!!espera} title={espera || undefined} onClick={atualizarVersao}>Atualizar</button>
               </div>
             )}
             <button type="button" className="subnav-item subnav-colapsar" aria-expanded={!oculta} title={oculta ? 'Mostrar barra lateral' : 'Ocultar barra lateral'} onClick={alternarLateral}>

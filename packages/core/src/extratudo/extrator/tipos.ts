@@ -130,6 +130,8 @@ export interface ArquivoLido {
   faturaDeCartao?: boolean;
   /** a pré-verificação viu que é outro documento (aplicação, comprovante, boleto…): não entra, e o que já entrou sai na releitura (Vitor, 10/11/2026) */
   naoEExtrato?: boolean;
+  /** de qual banco é o arquivo, pelo nome no cabeçalho (preVerificacao.bancoDoTexto); sem = não deu para dizer */
+  bancoNoTexto?: string;
   /** lido pelo OCR (o PDF escaneado ou a imagem): a tela avisa para conferir (Vitor, 13/10/2026) */
   ocr?: boolean;
   /** o extrato conferido pelo saldo impresso, quando ele tem: o que não fecha é leitura a conferir */

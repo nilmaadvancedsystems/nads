@@ -1019,6 +1019,9 @@ async function iniciar() {
   catch (err) { log('backup diário desligado:', err.message); }
   try { require('./clientes-cache').manterArquivo(db, log); }
   catch (err) { log('arquivo local de clientes desligado:', err.message); }
+  // os espelhos dos clientes e do cadastro (12/11/2026, consumo do banco): as telas leem um documento em vez da coleção
+  try { tarefa('espelhos', () => require('./espelhos').iniciarEspelhos(db, log)); }
+  catch (err) { log('espelhos dos clientes e do cadastro desligados:', err.message); }
   try { require('./entrega-pelo-link').iniciarEntregaPeloLink(db, log); }
   catch (err) { log('entrega pelo link desligada:', err.message); }
   try { require('./resumo-semanal').iniciarResumoSemanal({ db, log, enviar, destino: destinoDosAvisos }); }
