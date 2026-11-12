@@ -1,5 +1,5 @@
 // A janela de registrar (ou mudar) uma comissão (12/11/2026), no desenho das janelas do Financeiro. Pela Carteira, o mês do
-// pagamento é sempre o seguinte (travado); o cliente vem do cadastro (o menu com a busca) ou é avulso (o nome e o porte);
+// pagamento é sempre o seguinte (e não aparece); o cliente vem do cadastro (o menu com a busca) ou é avulso (o nome e o porte);
 // o serviço é um dos comissionados e a comissão sai sozinha, do valor do serviço × a % que o Financeiro definiu. Pelo
 // Financeiro (doFinanceiro): a pessoa e qualquer mês (a retroativa), já aprovada. Depois de decidida, só ver.
 import { carteira, formatos } from '@nads/core';
@@ -72,12 +72,14 @@ export function JanelaDaComissao({ comissao, fechar, doFinanceiro = false }: { c
                   itens={vm.pessoas.map(p => ({ rotulo: p.nome, marcado: p.uid === vm.para?.uid, onClick: () => vm.setPara(p) }))} />
               </Propriedade>
             )}
-            <Propriedade icone="calendar" rotulo="Pagar em">
-              {doFinanceiro ? (
+            {/* o mês do pagamento só aparece para o Financeiro (a retroativa); pela Carteira ele é sempre o seguinte, sem a linha
+                (Vitor, 12/11/2026: "Não precisa do pagar em") */}
+            {doFinanceiro && (
+              <Propriedade icone="calendar" rotulo="Pagar em">
                 <MenuSuspenso rotulo={comMaiuscula(carteira.mesPorExtenso(vm.competencia))} className={ESCOLHA} titulo="O mês do pagamento" flutuante largura={240}
                   itens={vm.mesesDoFinanceiro.map(x => ({ rotulo: comMaiuscula(carteira.mesPorExtenso(x)), marcado: x === vm.competencia, onClick: () => vm.setCompetencia(x) }))} />
-              ) : <span title="A comissão entra sempre no mês seguinte; a retroativa, só o Financeiro registra"><Icone nome="lock" /> {comMaiuscula(carteira.mesPorExtenso(vm.competencia))}</span>}
-            </Propriedade>
+              </Propriedade>
+            )}
             <Propriedade icone="calendar" rotulo="Data">{travada ? <span>{vm.data}</span> : <CampoData valor={vm.data} onMudar={vm.setData} rotulo="Data da venda ou do serviço" />}</Propriedade>
             <Propriedade icone="predio" rotulo="Cliente">
               <EscolherCliente clientes={vm.clientes} codigo={vm.clienteCodigo} avulso={vm.avulso} rotulo={vm.avulso ? '' : vm.cliente} travada={travada}
