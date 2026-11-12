@@ -2,7 +2,7 @@
 // de cada tipo dá o código (BT-01, BT-02…): peça nova entra no FIM do tipo, para os códigos não mudarem.
 import {
   LogoSieg, LogoSimplesDaAba, LogoSped, Alerta, AnelDeContagem, BarrasEmColuna, BotaoAcao, BotaoFechar, Vazio, CartaoComAnel, RoscaComLegenda, ConfigLinha, ConfigSecao, Dica, MedalhaGov, classeDaJanela, ordemDosBotoes, BotaoIcone, CampoArquivos, CampoData, Esqueleto, Icone, Interruptor, LogoBanco, LogoDrive, LogoEcontador, LogoGmail, LogoSciReport, MapaDeCalor, Variacao,
-  LogoFgts, LogoGovernoMinas, LogoInss, LogoReceitaFederal, LogoSimplesNacional, LogoWhatsApp, MarcaN, MenuSuspenso, Segmentado, SeletorMes, SeletorTema, Stat, type NomeIcone, type OpcoesModal,
+  LogoFgts, LogoGovernoMinas, LogoInss, LogoReceitaFederal, LogoSimplesNacional, LogoWhatsApp, MarcaN, MenuSuspenso, Segmentado, SoltarArquivos, BlocosDeEscolha, SeletorMes, SeletorTema, Stat, type NomeIcone, type OpcoesModal,
 } from '@nads/ui';
 import { useState, type ReactNode } from 'react';
 import { CampoAssinatura, FORMATOS_DE_ARQUIVO, IconeDeArquivo } from '@nads/ui';
@@ -57,6 +57,16 @@ const TAREFAS_DE_EXEMPLO: LinhaDaListaDeTarefas[] = [
   { id: '2', numero: 2, titulo: 'Mandar a guia do DAS para o cliente', status: { valor: 'andamento', rotulo: 'Em andamento' }, prioridade: { valor: 'urgente', rotulo: 'Urgente' }, prazo: '29/10/2026', atrasada: false, cliente: '14 · ALFA COMERCIO LTDA', pessoa: 'Heverton', anexos: 0, pareceres: 0 },
   { id: '3', numero: 3, titulo: 'Atualizar o cadastro dos sócios', status: { valor: 'pendente', rotulo: 'Pendente' }, prioridade: { valor: 'normal', rotulo: 'Normal' }, prazo: '', atrasada: false, cliente: '', pessoa: 'Você mesmo', anexos: 0, pareceres: 0 },
 ];
+/** A escolha em blocos do catálogo (as Ferramentas de documentos), trocando de verdade. */
+function DemoBlocos() {
+  const [v, setV] = useState('separar');
+  return (
+    <BlocosDeEscolha valor={v} onMudar={setV} rotulo="A ferramenta" grupos={[
+      { titulo: 'Organizar', opcoes: [{ valor: 'separar', rotulo: 'Separar', icone: 'tesoura' }, { valor: 'juntar', rotulo: 'Juntar', icone: 'folhas' }, { valor: 'girar', rotulo: 'Girar e tirar', icone: 'girar' }] },
+      { titulo: 'Otimizar', opcoes: [{ valor: 'comprimir', rotulo: 'Comprimir', icone: 'minimizar' }, { valor: 'numerar', rotulo: 'Numerar', icone: 'hash' }] },
+    ]} />
+  );
+}
 /** A calculadora do catálogo, funcionando pelas teclas da tela. */
 function DemoDaCalculadora() {
   const [e, setE] = useState<financeiro.EstadoDaCalculadora>(financeiro.CALCULADORA_INICIAL);
@@ -498,7 +508,7 @@ export const PECAS_BASE: Peca[] = [
   janela('jn-desmarcar', 'Desmarcar Conferência fiscal?', EXECUTOR, { icone: 'checkCircle', titulo: 'Desmarcar Conferência fiscal?', texto: 'A etapa volta a ficar pendente em todos os meses do período.', botoes: [{ rotulo: 'Cancelar' }, { rotulo: 'Desmarcar', variante: 'btn-primary' }] }),
   janela('jn-presta', 'Esta empresa presta serviço?', ['c-relatorio', 'c-importacao'], { icone: 'briefcase', titulo: 'Esta empresa presta serviços?', texto: 'Decide a aba Prestados e os serviços prestados na conferência.', botoes: [{ rotulo: 'Não' }, { rotulo: 'Sim', variante: 'btn-primary' }], obrigatoria: true }),
   virouAviso(janela('jn-orientacao', 'Como resolver (orientação de uma saída)', EXECUTOR, { icone: 'alert', titulo: 'O razão da conta ainda não foi gerado no sistema', texto: 'Gere o razão da conta do banco no Alterdata (Excel ou PDF) e importe na linha "Lançamentos contábeis".', botoes: [{ rotulo: 'Entendi', variante: 'btn-primary' }] }), 'av-orientacao'),
-  { id: 'jn-interromper', tipo: 'janelas', nome: 'Por que interromper?', descricao: 'O ✕ do executor, ou sair da etapa por qualquer lugar do app: os motivos em cartões e a observação', componente: 'JanelaInterromper', classes: ['interromper-janela', 'interromper-opcao', 'interromper-obs'], telas: EXECUTOR,
+  { id: 'jn-interromper', removida: { como: 'excluida', em: '12/11/2026', motivo: 'Vitor, 12/11: não quer mais o Por que interromper. O ✕ e as outras saídas só saem da etapa.' }, tipo: 'janelas', nome: 'Por que interromper?', descricao: 'O ✕ do executor, ou sair da etapa por qualquer lugar do app: os motivos em cartões e a observação', componente: 'JanelaInterromper', classes: ['interromper-janela', 'interromper-opcao', 'interromper-obs'], telas: EXECUTOR,
     demo: () => (
       <div className={classeDaJanela({}) + ' interromper-janela cat-parado'} role="dialog">
         <button type="button" className="modal-x" aria-label="Fechar"><Icone nome="x" /></button>
@@ -1173,5 +1183,43 @@ export const PECAS_BASE: Peca[] = [
         <AnexosDaTarefa id="cat-anexos-tarefa" podeMudar anexando={false} anexar={nada} baixar={nada} tirar={nada} limite="Até 20 arquivos de 10 MB cada (30 MB por tarefa)."
           anexos={[{ id: 'a', nome: 'extrato-sicoob-09-2026.pdf', detalhe: 'PDF · 182 KB · 27/10/2026 16:44 · Vitor' }, { id: 'b', nome: 'conferencia.xlsx', detalhe: 'XLSX · 24 KB · 28/10/2026 09:10 · Nilma' }]} />
       </div>
+    ) },
+  // ─── as Ferramentas de documentos (12/11/2026: "melhorar o visual e as funcionalidades da aba de Ferramentas") ───
+  { id: 'soltar-arquivos', tipo: 'campos', nome: 'Área de soltar arquivos (nads)', descricao: 'Arrastar o arquivo para cima dela ou clicar para escolher, no desenho da área do certificado A1: a moldura tracejada grande, o ícone na bolinha (pula quando o arquivo está por cima), o título, "ou clique para escolher" e a dica do que aceita. Com children ela não desenha a caixa: aceita soltar em cima do que estiver dentro (o arquivo escolhido, para trocar soltando outro) e mostra a moldura por cima', componente: 'SoltarArquivos', classes: ['soltar', 'soltar-icone', 'sobre', 'soltar-por-cima'], telas: ['t-ferramentas'], largo: true,
+    uso: '<SoltarArquivos aceitar=".pdf" titulo="Arraste o PDF para cá" dica="…" onArquivos={fs => …} />',
+    demo: () => <div style={{ width: '100%' }}><SoltarArquivos aceitar=".pdf" titulo="Arraste o PDF para cá" icone="copiar" dica="O arquivo é aberto aqui no navegador: nada sai do seu computador." onArquivos={nada} /></div> },
+  { id: 'blocos-de-escolha', tipo: 'abas', nome: 'Escolha em blocos com ícone', descricao: 'A escolha da ferramenta nas Ferramentas de documentos (12/11/2026: "deixa essa seleção mais bonita"; eram nove abas numa barra só): os grupos (Organizar, Otimizar, Converter) com o título pequeno em cima e as opções numa faixa cinza; cada opção é um bloco com o ícone num quadradinho e o nome embaixo. O escolhido ganha o ícone cheio da cor de destaque e o fundo com a borda suave, que desliza até o clicado (o indicador do Segmentado). A frase de cada opção vai na dica. No celular os blocos viram uma grade', componente: 'BlocosDeEscolha', classes: ['blocos-escolha', 'blocos-escolha-grupo', 'blocos-escolha-titulo', 'blocos-escolha-opcoes', 'bloco-escolha', 'bloco-escolha-icone'], telas: ['t-ferramentas'], largo: true,
+    uso: '<BlocosDeEscolha valor={v} onMudar={setV} grupos={[{ titulo: "Organizar", opcoes: [{ valor: "separar", rotulo: "Separar", icone: "tesoura" }] }]} />',
+    demo: () => <DemoBlocos /> },
+  { id: 'paginas-em-miniatura', tipo: 'listas', nome: 'Páginas em miniatura', descricao: 'A grade das páginas do PDF nas Ferramentas: a folha num quadrado (a imagem girada como vai ficar), o número embaixo e, por cima, o selo (Arquivo 2, 90°, Sai) e os botões que aparecem ao passar o mouse. A página que começa um arquivo novo no Separar leva a barra de corte à esquerda; a que sai no Girar e tirar fica vermelha e apagada; enquanto a imagem não chega, a folha cinza pulsando', classes: ['paginas-grade', 'pagina-mini', 'pagina-mini-folha', 'pagina-mini-num', 'pagina-mini-selo', 'pagina-mini-acoes', 'corte', 'tirada', 'girada'], telas: ['t-ferramentas'], largo: true,
+    demo: () => (
+      <ol className="paginas-grade" style={{ width: '100%' }}>
+        {['', 'corte', 'girada', 'tirada', 'esperando'].map((c, i) => (
+          <li key={c} className={'pagina-mini ' + c}>
+            <span className="pagina-mini-folha">
+              {c === 'esperando' ? <span className="pagina-mini-esperando" /> : <span style={{ width: '68%', height: '92%', background: '#fff', boxShadow: 'var(--shadow-md)', transform: c === 'girada' ? 'rotate(90deg)' : undefined, opacity: c === 'tirada' ? 0.3 : 1 }} />}
+              {c === 'corte' && <span className="pagina-mini-selo">Arquivo 2</span>}
+              {c === 'girada' && <span className="pagina-mini-selo">90°</span>}
+              {c === 'tirada' && <span className="pagina-mini-selo perigo">Sai</span>}
+              {(c === 'girada' || c === 'tirada') && <span className="pagina-mini-acoes"><BotaoIcone icone="girar" titulo="Girar" pequeno /><BotaoIcone icone={c === 'tirada' ? 'repeat' : 'lixeira'} titulo="Tirar" pequeno /></span>}
+            </span>
+            <span className="pagina-mini-num">{i + 1}</span>
+          </li>
+        ))}
+      </ol>
+    ) },
+  { id: 'lista-arrastavel', tipo: 'listas', nome: 'Lista arrastável', descricao: 'A ordem dos arquivos no Juntar e no Imagem → PDF: arrastar a linha (a alça ⋮⋮) muda a ordem; a miniatura da primeira página (ou a imagem), o nome, as páginas e o tamanho; à direita subir, descer e tirar. A linha arrastada fica apagada', classes: ['lista-arrastavel', 'lista-arrastavel-alca', 'lista-arrastavel-mini', 'lista-arrastavel-nome', 'arrastando'], telas: ['t-ferramentas'], largo: true,
+    demo: () => (
+      <ol className="lista-arrastavel" style={{ width: '100%' }}>
+        {[['contrato-social.pdf', '4 páginas · 312 KB'], ['rg-socio.jpg', 'imagem · 1,2 MB']].map(([nome, detalhe], i) => (
+          <li key={nome}>
+            <span className="lista-arrastavel-alca"><Icone nome="arrastar" /></span>
+            <span className="lista-arrastavel-ordem">{i + 1}</span>
+            <span className="lista-arrastavel-mini"><Icone nome={i ? 'imagem' : 'fileText'} /></span>
+            <span className="lista-arrastavel-nome"><b>{nome}</b><span className="hint">{detalhe}</span></span>
+            <span className="lista-arrastavel-botoes"><BotaoIcone icone="arrowUp" titulo="Subir" pequeno disabled={i === 0} /><BotaoIcone icone="arrowDown" titulo="Descer" pequeno disabled={i === 1} /><BotaoIcone icone="x" titulo="Tirar da lista" pequeno /></span>
+          </li>
+        ))}
+      </ol>
     ) },
 ];

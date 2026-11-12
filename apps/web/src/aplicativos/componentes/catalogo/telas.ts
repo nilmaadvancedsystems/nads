@@ -67,6 +67,8 @@ export const TELAS: Tela[] = [
   { id: 't-fin-caixa', app: 'Tarefas', nome: 'Financeiro › Caixa' },
   { id: 't-fin-honorarios', app: 'Tarefas', nome: 'Financeiro › Honorários' },
   { id: 't-fin-plano', app: 'Tarefas', nome: 'Financeiro › Plano de contas' },
+  // as Ferramentas de documentos (12/11/2026): o botão Ferramentas no pé da gaveta
+  { id: 't-ferramentas', app: 'Tarefas', nome: 'Ferramentas de documentos (PDF, imagem e planilha)' },
   // o site do admin (Vitor, 21/10/2026): só para quem é admin
   { id: 'a-visao-geral', app: 'Admin', nome: 'Visão geral' },
   { id: 'a-robo', app: 'Admin', nome: 'Robô' },

@@ -23,6 +23,8 @@ const APELIDOS: Record<string, string[]> = {
   itau: ['itau'], bradesco: ['bradesco'], santander: ['santander'], sicoob: ['sicoob'], sicredi: ['sicredi'], inter: ['inter'],
   nubank: ['nubank'], btg: ['btg'], c6: ['c6'], cora: ['cora'], 'mercado-pago': ['mercado pago'], pagbank: ['pagbank', 'pagseguro'],
   safra: ['safra'], stone: ['stone'], banrisul: ['banrisul'], cresol: ['cresol'],
+  // (Vitor, 12/11/2026, na 429: sem ela, o relatório da InfinitePay na pasta dela entrava como o extrato do Santander)
+  infinitepay: ['infinitepay', 'infinite pay', 'infinity pay', 'infinitypay', 'cloudwalk'], efi: ['efi', 'gerencianet'],
 };
 const temPalavra = (texto: string, p: string) => (' ' + texto + ' ').includes(' ' + p + ' ');
 

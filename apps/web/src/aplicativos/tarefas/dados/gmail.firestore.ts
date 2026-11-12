@@ -9,6 +9,7 @@
 import { entregas as e } from '@nads/core';
 import { addDoc as addDocBruto, arrayRemove, arrayUnion, collection, doc, onSnapshot, query, setDoc as setDocBruto, updateDoc as updateDocBruto, where } from 'firebase/firestore';
 import { bancoDoEntregas } from './entregas.firestore';
+import { ouvirPeloEspelho } from './espelhos.firestore';
 import { guardar, guardarPedido } from '../../../comum/modoDesenvolvedor';
 
 // a trava do modo desenvolvedor (comum/modoDesenvolvedor.ts): com o modo ligado, só ver — nada é gravado
@@ -42,8 +43,9 @@ export function criarGmailFirestore(quem: () => (e.Quem | null), competencia: ()
     ouvindo = true;
     onSnapshot(doc(db, 'robo', 'estado'), s => { docEstado = s.exists() ? s.data() : null; recalcular(); },
       err => { estado = { ...e.ESTADO_VAZIO, carregado: true, erro: err.message }; mudou(); });
-    onSnapshot(collection(db, 'clientes'), s => {
-      const docs = s.docs.map(d => ({ id: d.id, dados: d.data() }));
+    // pelo espelho (espelhos.firestore.ts): 1 leitura em vez dos ~400 clientes
+    ouvirPeloEspelho(db, 'clientes', lista => {
+      const docs = lista.map(d => ({ id: d.id, dados: d.data() }));
       clientes = { carregados: true, lista: e.clientesDoEntregas(docs) };
       documentos = e.documentosDoEntregas(docs);
       mudou();

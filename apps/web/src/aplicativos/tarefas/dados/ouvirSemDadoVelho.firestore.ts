@@ -29,10 +29,22 @@ let medindo = false;
 let telaDaLeitura = '';
 const leituras = new Map<string, number>();
 let relogioDasOuvidas: ReturnType<typeof setInterval> | null = null;
+let diagnosticou = false;
 /** liga ou desliga o medidor (desligado, esquece o que tinha) */
 export function medirLeituras(ligado: boolean) {
   medindo = ligado;
   if (!ligado) leituras.clear();
+  // o diagnóstico do cache (12/11/2026): uma vez por sessão, este navegador tem o banco local do Firebase?
+  if (ligado && !diagnosticou && typeof indexedDB !== 'undefined' && typeof indexedDB.databases === 'function') {
+    diagnosticou = true;
+    setTimeout(() => {
+      indexedDB.databases().then(dbs => {
+        const tem = dbs.some(d => String(d.name).startsWith('firestore/entregas/'));
+        const k = '_cache-local ' + (tem ? 'ativo' : 'INATIVO');
+        leituras.set(k, (leituras.get(k) || 0) + 1);
+      }, () => undefined);
+    }, 30 * 1000);
+  }
   if (ligado && !relogioDasOuvidas && typeof window !== 'undefined') {
     relogioDasOuvidas = setInterval(() => { for (const e of escutasLigadas) marcarOuvida(colecaoDaReferencia(e.ref)); }, 2 * 60 * 1000);
   }

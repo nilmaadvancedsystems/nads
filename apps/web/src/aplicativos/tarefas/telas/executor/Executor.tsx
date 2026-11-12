@@ -8,7 +8,7 @@
 import { AberturaN, Alerta, Casca, destacarNaTela, Icone, MenuSuspenso, useCarregando, type NomeIcone } from '@nads/ui';
 import { demo } from '@nads/core';
 import { useEffect, useRef, useState } from 'react';
-import { Navigate, useBlocker, useParams } from 'react-router';
+import { Navigate, useParams } from 'react-router';
 import { useAvisoDeBloqueio } from '../../../../comum/modoDesenvolvedor';
 import { implantarNotasFiscaisDeTeste } from '../../etapas/conferencia/importadosNaEtapa';
 import { BASE } from '../../casca/navegacao';
@@ -19,7 +19,6 @@ import { useDepartamentoDaTela } from '../../casca/departamento';
 import { useGuiaUnica } from '../../casca/guiaUnica';
 import { useSinalDeOnde } from './ondeEstou';
 import { useOperador } from '../../casca/operador';
-import { JanelaInterromper } from './partes/JanelaInterromper';
 import { useChecklistDaFolha } from './useChecklistDaFolha';
 import { FaixaDelegado } from './etapas/delegacao/FaixaDelegado';
 import { JanelaDelegar } from './etapas/delegacao/JanelaDelegar';
@@ -67,7 +66,7 @@ export function Executor() {
   // uma guia só por pessoa, departamento e empresa: a nova pergunta e a anterior volta para a tela inicial (Vitor, 05/10/2026)
   const operador = useOperador().operador;
   const { dep } = useDepartamentoDaTela();
-  const guia = useGuiaUnica(vm.empresa && operador ? operador.nome + '|' + dep + '|' + rota : null);
+  useGuiaUnica(vm.empresa && operador ? operador.nome + '|' + dep + '|' + rota : null);
   // onde a pessoa está, para Usuários: só no Contábil, por enquanto (Vitor, 09/11/2026)
   useSinalDeOnde(dep === 'contabil' && vm.empresa && vm.etapa ? { codigo: vm.empresa.codigo, empresa: vm.empresa.nome, etapa: vm.etapa.nome, competencia: vm.rotuloCompetencia } : null);
   // o razão da etapa (o Caixa): importado do computador, vale para a empresa, a etapa e o período abertos; a liquidação
@@ -158,10 +157,7 @@ export function Executor() {
     vm.dispensarSemCheque();
   }, [chequeDesnecessario, chaveDaTela, vm]);
   const requisitosConhecidos = temChecklist ? folha.faltam !== null : vm.tela ? !!requisitos : true;
-  // sair da execução por qualquer lugar do app (o cabeçalho, o menu, o voltar do navegador) com a etapa aberta:
-  // é interromper, com a justificativa; trocar de mês ou período dentro do executor não conta
-  const saida = useBlocker(({ currentLocation, nextLocation }) =>
-    !vm.semJustificativa && !vm.delegada && !!vm.etapa && !vm.tudoPronto && !vm.interrompendo && !guia.saindo.current && currentLocation.pathname !== nextLocation.pathname && !nextLocation.pathname.startsWith(BASE + '/executar/'));
+  // sair da etapa por qualquer lugar do app só sai: o "Por que interromper?" saiu (Vitor, 12/11/2026: "Remove isso aqui, não quero mais")
   if (vm.esperandoEmpresa) return null;
   if (!vm.empresa) return <Navigate to={BASE} replace />;
   // o mês faz parte de um período prometido (vários meses): abre o período
@@ -171,7 +167,7 @@ export function Executor() {
   // sem dia negativo (a Importação disse), o Cheque especial nem aparece; ao seguir, ele fica dispensado (Vitor, 02/10/2026)
   const semCheque = vm.etapa?.id === 'extratos' && requisitos?.precisaChequeEspecial === false;
   // tudo ok na etapa da vez (Vitor, 28/10/2026): o check automático e a próxima etapa revelada, para a pessoa clicar
-  const botoesDaEtapa = vm.etapa && telaPronta && !vm.interrompendo && saida.state !== 'blocked' && !vm.revendo && !vm.delegada;
+  const botoesDaEtapa = vm.etapa && telaPronta && !vm.revendo && !vm.delegada;
   const liberada = !!botoesDaEtapa && !faltam && requisitosConhecidos && !vm.conferindo;
   // a etapa delegada: só ela na lateral, o resto da empresa fica bloqueado
   // a tarefa em conjunto: quem recebeu vê só as etapas dele (Vitor, 12/11/2026)
@@ -271,7 +267,7 @@ export function Executor() {
       <span className="gh-topo-sep" aria-hidden="true" />
       <MenuSuspenso rotulo={casca.perfil.foto ? <img className="gh-avatar-foto" src={casca.perfil.foto} alt="" /> : casca.perfil.iniciais} className="gh-avatar" dica={casca.perfil.nome} titulo={casca.perfil.nome} direita
         // o mesmo menu do avatar das outras telas (a Minha página) e, aqui, o Voltar às empresas; sair da etapa por
-        // qualquer um deles é interromper (com a justificativa), como o resto do executor
+        // qualquer um deles só sai, como o X
         itens={[
           { rotulo: 'Voltar às empresas', icone: 'home', onClick: vm.sair },
           'separador',
@@ -280,7 +276,7 @@ export function Executor() {
           'separador',
           { rotulo: casca.perfil.sair, icone: 'logOut', onClick: casca.trocarPessoa },
         ]} />
-      {/* interromper: o último, em vermelho (Vitor, 02/10/2026) */}
+      {/* o X: o último, em vermelho (Vitor, 02/10/2026) */}
       {vm.podeConcluirDelegada && (
         <button type="button" className="gh-topo-btn gh-topo-proximo" onClick={() => { void vm.concluirDelegada(); }} title="Concluir a tarefa" aria-label="Concluir a tarefa">
           <Icone nome="check" />
@@ -288,8 +284,8 @@ export function Executor() {
       )}
       {vm.delegada && <button type="button" className="gh-topo-btn gh-topo-fechar" onClick={vm.sair} title="Voltar às tarefas" aria-label="Voltar às tarefas"><Icone nome="x" /></button>}
       {botoesDaEtapa && (
-        // no modo desenvolvedor (Vitor, 06/10/2026: "remova essa opção") e no LCDPR (12/11/2026): o X só sai, sem o "Por que interromper?"
-        <button type="button" className="gh-topo-btn gh-topo-fechar" onClick={vm.semJustificativa ? vm.sair : vm.abrirInterromper} title={vm.semJustificativa ? 'Sair da etapa' : 'Interromper a etapa'} aria-label={vm.semJustificativa ? 'Sair' : 'Interromper'}>
+        // o X só sai, sem o "Por que interromper?" (Vitor, 12/11/2026: "Remove isso aqui, não quero mais")
+        <button type="button" className="gh-topo-btn gh-topo-fechar" onClick={vm.sair} title="Sair da etapa" aria-label="Sair">
           <Icone nome="x" />
         </button>
       )}
@@ -430,11 +426,6 @@ export function Executor() {
             )}
           </div>
           {vm.aviso && <Alerta titulo="Ainda não dá para seguir" texto={vm.aviso} />}
-          {vm.interrompendo && <JanelaInterromper etapa={vm.etapa} onInterromper={vm.interromper} onCancelar={vm.fecharInterromper} />}
-          {/* saiu por outro lugar: a mesma janela; interrompeu, segue para onde clicou; cancelou, fica */}
-          {saida.state === 'blocked' && !vm.interrompendo && (
-            <JanelaInterromper etapa={vm.etapa} onInterromper={(o, obs) => vm.interromper(o, obs, () => saida.proceed())} onCancelar={() => saida.reset()} />
-          )}
         </div>
       )}
     </Casca>

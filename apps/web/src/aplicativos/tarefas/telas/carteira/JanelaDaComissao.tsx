@@ -11,7 +11,11 @@ import { useJanelaDaComissao, type ClienteDaLista } from './useCarteiraDaPessoa'
 const ESCOLHA = 'btn btn-ghost registro-escolha';
 const comMaiuscula = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-/** O cliente: o menu com a busca nos clientes do cadastro e, no alto, o "Cliente avulso" (não está no cadastro). */
+/**
+ * O cliente: o menu com a busca nos clientes do cadastro e, no alto, o "Cliente avulso" (não está no cadastro). A busca fica
+ * parada em cima e só a lista rola, baixa, para o menu caber colado no botão (Vitor, 12/11/2026: "Dropdown tá estranho" —
+ * a lista inteira abria para cima, cortada no topo da tela, e a busca sumia junto).
+ */
 function EscolherCliente({ clientes, codigo, avulso, rotulo, travada, onCliente, onAvulso }: {
   clientes: readonly ClienteDaLista[]; codigo: number | null; avulso: boolean; rotulo: string; travada: boolean;
   onCliente: (codigo: number) => void; onAvulso: () => void;
@@ -20,23 +24,31 @@ function EscolherCliente({ clientes, codigo, avulso, rotulo, travada, onCliente,
   const q = busca.trim().toLowerCase();
   const achados = (q ? clientes.filter(c => (c.codigo + ' ' + c.nome).toLowerCase().includes(q)) : clientes).slice(0, 80);
   if (travada) return <span>{rotulo || '—'}</span>;
+  const escolher = (fechar: () => void, f: () => void) => { fechar(); f(); setBusca(''); };
   return (
     <MenuSuspenso rotulo={avulso ? 'Cliente avulso' : rotulo || 'Escolher o cliente'} className={ESCOLHA + (avulso || rotulo ? '' : ' vazio')} titulo="O cliente" flutuante largura={380}
       conteudo={fechar => (
         <>
-          <label className="busca-curta">
+          <label className="busca-curta larga">
             <Icone nome="search" />
-            <input type="text" placeholder="Buscar pelo nome ou código" aria-label="Buscar o cliente" value={busca} autoFocus onChange={e => setBusca(e.target.value)} />
+            {/* o foco depois de o menu aparecer (ele nasce escondido, enquanto mede onde cabe, e o autoFocus se perdia) */}
+            <input type="text" placeholder="Buscar pelo nome ou código" aria-label="Buscar o cliente" value={busca} onChange={e => setBusca(e.target.value)}
+              ref={el => { if (el && document.activeElement !== el) setTimeout(() => el.focus(), 0); }}
+              onKeyDown={e => { if (e.key === 'Enter' && achados.length === 1) escolher(fechar, () => onCliente(achados[0].codigo)); }} />
           </label>
-          <button type="button" className="popover-item" role="menuitemcheckbox" aria-checked={avulso} onClick={() => { fechar(); onAvulso(); setBusca(''); }}>
-            <span className="popover-texto"><b>Cliente avulso</b><br /><span className="hint">Não está no cadastro: escreva o nome e o porte</span></span>
-          </button>
-          {achados.map(c => (
-            <button key={c.codigo} type="button" className="popover-item" role="menuitemcheckbox" aria-checked={!avulso && c.codigo === codigo} onClick={() => { fechar(); onCliente(c.codigo); setBusca(''); }}>
-              <span className="num fraco">{c.codigo}</span><span className="popover-texto">{c.nome}</span>
+          <div className="menu-busca-lista">
+            <button type="button" className="popover-item" role="menuitemcheckbox" aria-checked={avulso} onClick={() => escolher(fechar, onAvulso)}>
+              <span className="popover-marca">{avulso && <Icone nome="check" />}</span>
+              <span className="popover-texto"><b>Cliente avulso</b><br /><span className="hint">Não está no cadastro: escreva o nome e o porte</span></span>
             </button>
-          ))}
-          {!achados.length && <p className="hint">Nenhum cliente com essa busca.</p>}
+            {achados.map(c => (
+              <button key={c.codigo} type="button" className="popover-item" role="menuitemcheckbox" aria-checked={!avulso && c.codigo === codigo} onClick={() => escolher(fechar, () => onCliente(c.codigo))}>
+                <span className="popover-marca">{!avulso && c.codigo === codigo && <Icone nome="check" />}</span>
+                <span className="popover-texto"><b className="num">{c.codigo}</b> {c.nome}</span>
+              </button>
+            ))}
+            {!achados.length && <p className="hint">Nenhum cliente com essa busca.</p>}
+          </div>
         </>
       )} />
   );
