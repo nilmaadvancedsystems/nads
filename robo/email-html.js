@@ -312,6 +312,38 @@ function htmlDoDisparo(o) {
   return { html, imagens };
 }
 
+// O Checklist mensal do Fiscal (12/11/2026, cartas-fiscal.js): o texto do e-mail, o prazo em destaque, cada bloco do
+// checklist num cartão (a nota, os itens em lista e a observação) e o aviso do fim; o mesmo checklist vai em PDF, anexo.
+// { assunto, texto, prazo ('02/12/2026'), mes ('novembro de 2026'), introducao, secoes (cartasFiscal.CHECKLIST), atencao,
+//   anexo: { nome, tamanho }, assinatura, caixa } -> { html, imagens }
+function htmlDoChecklist(o) {
+  const imagens = [];
+  const p = (t, estilo) => '<p style="margin:0 0 10px;font:14px/1.6 ' + FONTE + ';color:' + (estilo || COR.tinta) + '">' + esc(t) + '</p>';
+  const lista = itens => '<ul style="margin:0 0 10px;padding:0 0 0 20px">' +
+    itens.map(i => '<li style="margin:0 0 4px;font:14px/1.5 ' + FONTE + ';color:' + COR.tinta + '">' + esc(i) + '</li>').join('') + '</ul>';
+  const blocos = (o.secoes || []).map(s => cartao(s.titulo,
+    (s.paragrafos || []).map(x => p(x)).join('') +
+    (s.nota ? p(s.nota, COR.suave) : '') +
+    s.grupos.map(g => (g.titulo ? '<div style="margin:4px 0 4px;font:600 13px/18px ' + FONTE + ';color:' + COR.vinho + '">' + esc(g.titulo) + '</div>' : '') + lista(g.itens)).join('') +
+    (s.obs ? '<div style="margin:4px 0 0;padding:10px 12px;background:' + COR.faltaClaro + ';border:1px solid ' + COR.faltaBorda + ';border-radius:8px;font:13px/1.5 ' + FONTE + ';color:' + COR.falta + '"><b>Obs.:</b> ' + esc(s.obs) + '</div>' : ''))).join('');
+  const prazo = '<div style="margin:14px 0 0;padding:12px 14px;background:' + COR.vinhoClaro + ';border-radius:10px;font:700 16px/22px ' + FONTE + ';color:' + COR.vinho + '">' +
+    'Prazo de envio: até ' + esc(o.prazo) + '</div><div style="margin:6px 0 0;font:13px/18px ' + FONTE + ';color:' + COR.suave + '">2º dia útil do mês, com os documentos de ' + esc(o.mes) + '.</div>';
+  const a = o.anexo;
+  const anexo = a ? '<div style="margin:0 0 18px;font:13px/18px ' + FONTE + ';color:' + COR.suave + '">' +
+    (imagem(imagens, PASTA_ICONES, 'anexo', 14, 'display:inline-block;vertical-align:middle;margin-right:6px;opacity:.7') || '') +
+    'Em anexo: <b style="color:' + COR.tinta + '">' + esc(a.nome) + '</b>' + (a.tamanho ? ' (' + kbDe(a.tamanho) + ')' : '') + '</div>' : '';
+  const atencao = o.atencao ? '<div style="margin:0 0 18px;padding:12px 14px;border:1px solid ' + COR.vinho + ';border-radius:10px;font:13px/1.55 ' + FONTE + ';color:' + COR.tinta + '">' +
+    '<b style="color:' + COR.vinho + '">Atenção:</b> ' + esc(o.atencao) + '</div>' : '';
+  const html = moldura({
+    imagens, assinatura: o.assinatura, caixa: o.caixa, chip: 'Fiscal', sobre: 'Checklist mensal de documentos',
+    previa: 'Envie os documentos de ' + (o.mes || 'este mês') + ' até ' + (o.prazo || 'o 2º dia útil') + '.',
+    titulo: 'O que enviar de ' + (o.mes || 'este mês'), cabecalho: prazo,
+    corpo: paragrafos(o.texto) + (o.introducao ? p(o.introducao, COR.suave) : '') + anexo + blocos + atencao,
+    rodape: 'Mensagem enviada pelo sistema do escritório no último dia útil de cada mês. Departamento Fiscal.',
+  });
+  return { html, imagens };
+}
+
 // ---------- O desenho "Recibo" (05/11/2026, Vitor escolheu a opção 1 de 3) ----------
 // A NFS-e e o envio do DP/Fiscal: fundo cinza, o logo no alto, um cartão branco só com o destaque grande no centro (o
 // valor da nota, ou o mês dos documentos), um selo, o texto do modelo, os dados em linhas finas e os anexos; o rodapé
@@ -574,4 +606,4 @@ function htmlDoEnvioDp(o) {
   return { html, imagens };
 }
 
-module.exports = { htmlDaCobranca, htmlDoDisparo, htmlDaNfse, htmlDoEnvioDp, textoDoPrazo, progresso, PASTA_LOGOS, PASTA_ICONES };
+module.exports = { htmlDaCobranca, htmlDoDisparo, htmlDoChecklist, htmlDaNfse, htmlDoEnvioDp, textoDoPrazo, progresso, PASTA_LOGOS, PASTA_ICONES };

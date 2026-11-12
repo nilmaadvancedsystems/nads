@@ -402,6 +402,26 @@ async function atenderMandei(p, pedidoId) {
   return r;
 }
 
+// A Carta de balanço do Fiscal (12/11/2026, Fiscal › Cartas): o PDF assinado com o certificado do escritório, pela caixa
+// do Fiscal; a conferência e a trava em cartas-fiscal.js
+async function atenderCartaBalanco(p) {
+  const envio = await envioDoSetor('fiscal');
+  if (!dentroDoLimite(1, envio.caixa)) throw new Error('limite de ' + MAX_ENVIOS_POR_HORA + ' envios por hora atingido; tente mais tarde');
+  const cfg = await configDaCobranca('fiscal');
+  const r = await require('./cartas-fiscal').atenderCartaBalanco(p, {
+    db, agora: () => Date.now(), de: envio.de, assinatura: cfg.assinatura || 'Nilma Contabilidade',
+    clientesAtivos: () => require('./clientes-cache').clientesAtivos(db, m => log(m)),
+    certificado: () => require('./nfse').lerCertificadoComChave(),
+    enviar: async dados => {
+      const id = await enviar(Object.assign({}, dados, envio.respostas ? { respostasPara: envio.respostas } : {}), envio.caixa);
+      enviosDa(envio.caixa).push(Date.now());
+      return id;
+    },
+  });
+  auditoria('carta_balanco', (p.teste ? 'teste · ' : '') + r.empresa + ' (' + p.codigo + ') · ' + p.ano + ' · para ' + r.para.join(', '), p);
+  return r;
+}
+
 async function atenderDisparo(p, ref) {
   // o arquivo não fica no banco, dando certo ou não
   try { return await dispararPara(p, ref); }
@@ -802,9 +822,13 @@ async function montarResumo(hoje) {
   });
   marcados.sort();
 
-  const pedidos = (await fila.where('criadoEm', '>=', new Date(Date.now() - 2 * 864e5).toISOString()).get()).docs.map(d => d.data());
+  const todos = (await fila.where('criadoEm', '>=', new Date(Date.now() - 2 * 864e5).toISOString()).get()).docs.map(d => d.data());
+  // o checklist do mês (cartas-fiscal.js) é um registro por cliente: no resumo, só a conta
+  const checklist = todos.filter(p => p.tipo === 'checklistMensal');
+  const pedidos = todos.filter(p => p.tipo !== 'checklistMensal');
   const enviados = pedidos.filter(p => p.status === 'enviado' && deHoje(p.enviadoEm));
   const comErro = pedidos.filter(p => p.status === 'erro' && deHoje(p.erroEm) && !/^substitu/.test(p.erro || ''));
+  const checklistHoje = { enviados: checklist.filter(p => p.status === 'enviado' && deHoje(p.enviadoEm)).length, erros: checklist.filter(p => p.status === 'erro' && deHoje(p.erroEm)).length };
 
   const d = new Date();
   const compAtual = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
@@ -832,6 +856,7 @@ async function montarResumo(hoje) {
   L.push('');
   L.push('Cobranças enviadas pelo robô hoje: ' + (enviados.length || 'nenhuma'));
   enviados.forEach(p => L.push('  ' + (p.tipo === 'lote' ? 'em lote, ' + plural(p.enviadosPara || 0, 'cliente', 'clientes') : (p.clienteNome || p.para)) + ' (' + (p.criadoPor || '') + ')'));
+  if (checklistHoje.enviados || checklistHoje.erros) L.push('', 'Checklist do mês do Fiscal hoje: ' + plural(checklistHoje.enviados, 'cliente', 'clientes') + (checklistHoje.erros ? ', ' + checklistHoje.erros + ' com erro (veja em Fiscal › Cartas)' : ''));
   if (comErro.length) {
     L.push('', 'Pedidos que deram erro hoje: ' + comErro.length);
     comErro.forEach(p => L.push('  ' + (p.clienteNome || p.para || p.tipo) + ': ' + p.erro));
@@ -914,6 +939,7 @@ async function atenderFila() {
         desligar: 'Tirando um e-mail do cliente errado',
         envioDp: 'Documentos do DP para ' + (p.empresa || 'o cliente ' + (p.codigo || '')),
         mandei: 'Mandei ' + (p.numero || '') + ' para ' + (p.empresa || p.para || 'o cliente'),
+        cartaBalanco: 'Carta de balanço ' + (p.teste ? '(teste) ' : '') + 'para ' + (p.empresa || 'o cliente ' + (p.codigo || '')),
       }[p.tipo] || 'Pedido da tela';
       atendeuAlgum = true;
       roboRef.set({ filaAndamento: { ativo: true, atual: oqueAgora, restantes: pendentes.length, desde: agora(), em: agora() } }, { merge: true }).catch(() => {});
@@ -944,6 +970,7 @@ async function atenderFila() {
         else if (p.tipo === 'responder') resultado = await atenderResponder(p, doc.ref);
         else if (p.tipo === 'envioDp') resultado = await atenderEnvioDp(p, doc.id);
         else if (p.tipo === 'mandei') resultado = await atenderMandei(p, doc.id);
+        else if (p.tipo === 'cartaBalanco') resultado = await atenderCartaBalanco(p);
         else throw new Error('tipo de pedido desconhecido: ' + p.tipo);
         await doc.ref.update(resultado);
         // no painel do robô (a leitura do Gmail já se registra sozinha em rodarRobo)
@@ -956,14 +983,15 @@ async function atenderFila() {
           desligar: ['gmail', 'Tirou um e-mail do cliente errado'],
           envioDp: ['gmail', 'Mandou os documentos do DP para ' + (p.empresa || 'o cliente ' + (p.codigo || ''))],
           mandei: ['gmail', 'Mandou o link do Mandei ' + (p.numero || '') + ' para ' + (p.empresa || p.para || 'o cliente')],
+          cartaBalanco: ['gmail', 'Mandou a carta de balanço ' + (p.teste ? '(teste) ' : '') + 'de ' + (p.empresa || 'o cliente ' + (p.codigo || ''))],
         }[p.tipo];
         if (feito) painel.atividade(feito[0], feito[1], [p.criadoPor ? 'pedido de ' + p.criadoPor : '', resultado.resumo || ''].filter(Boolean).join(' · '));
       } catch (err) {
         const erro = traduzirErro(err);
         log('pedido', doc.id, 'falhou:', erro);
-        painel.erro(p.tipo === 'um' || p.tipo === 'lote' ? 'cobranca' : 'gmail', ({ um: 'A cobrança de ' + (p.clienteNome || p.para || 'um cliente'), lote: 'A cobrança em lote', verificar: 'A leitura do Gmail', salvar: 'Salvar o e-mail no Drive', disparo: 'O disparo', responder: 'A resposta de e-mail', desligar: 'Tirar o e-mail do cliente errado', envioDp: 'O envio dos documentos do DP', mandei: 'O e-mail do Mandei' }[p.tipo] || 'Um pedido') + ' deu erro', erro);
+        painel.erro(p.tipo === 'um' || p.tipo === 'lote' ? 'cobranca' : 'gmail', ({ um: 'A cobrança de ' + (p.clienteNome || p.para || 'um cliente'), lote: 'A cobrança em lote', verificar: 'A leitura do Gmail', salvar: 'Salvar o e-mail no Drive', disparo: 'O disparo', responder: 'A resposta de e-mail', desligar: 'Tirar o e-mail do cliente errado', envioDp: 'O envio dos documentos do DP', mandei: 'O e-mail do Mandei', cartaBalanco: 'A carta de balanço' }[p.tipo] || 'Um pedido') + ' deu erro', erro);
         await doc.ref.update({ status: 'erro', erro, erroEm: agora() }).catch(() => {});
-        const oque = { um: 'a cobrança de ' + (p.clienteNome || p.para), lote: 'a cobrança em lote', verificar: 'a verificação do Gmail', salvar: 'salvar anexo no Drive', disparo: 'o disparo "' + (p.assunto || '') + '"', responder: 'a resposta de e-mail' + (p.para ? ' para ' + p.para : ''), desligar: 'tirar o e-mail do cliente errado', envioDp: 'o envio dos documentos do DP' + (p.empresa ? ' para ' + p.empresa : ''), mandei: 'o e-mail do Mandei ' + (p.numero || '') + (p.empresa ? ' para ' + p.empresa : '') }[p.tipo] || 'um pedido';
+        const oque = { um: 'a cobrança de ' + (p.clienteNome || p.para), lote: 'a cobrança em lote', verificar: 'a verificação do Gmail', salvar: 'salvar anexo no Drive', disparo: 'o disparo "' + (p.assunto || '') + '"', responder: 'a resposta de e-mail' + (p.para ? ' para ' + p.para : ''), desligar: 'tirar o e-mail do cliente errado', envioDp: 'o envio dos documentos do DP' + (p.empresa ? ' para ' + p.empresa : ''), mandei: 'o e-mail do Mandei ' + (p.numero || '') + (p.empresa ? ' para ' + p.empresa : ''), cartaBalanco: 'a carta de balanço' + (p.empresa ? ' para ' + p.empresa : '') }[p.tipo] || 'um pedido';
         await alertar(oque + ' deu erro', 'Pedido de ' + (p.criadoPor || 'alguém') + ' em ' + new Date(p.criadoEm).toLocaleString('pt-BR') + ':\n' + erro);
       }
     }
@@ -1098,6 +1126,25 @@ async function iniciar() {
         log, caixa: CAIXA, enviar: dados => enviar(dados), config: () => configDaCobranca(),
       }));
     } catch (err) { log('boletos do Financeiro desligados:', err.message); }
+    // o Checklist mensal do Fiscal (12/11/2026, cartas-fiscal.js): no último dia útil do mês, um e-mail por cliente ativo
+    // com o checklist e o PDF do escritório, pela caixa do Fiscal e dentro do freio dela; travado até liberar no código
+    try {
+      tarefa('checklist-mensal', () => require('./cartas-fiscal').iniciarChecklistMensal(db, {
+        log, clientesAtivos: () => require('./clientes-cache').clientesAtivos(db, m => log(m)),
+        envio: async () => {
+          const e = await envioDoSetor('fiscal');
+          const cfg = await configDaCobranca('fiscal');
+          return {
+            de: e.de, assinatura: cfg.assinatura || 'Nilma Contabilidade', podeMais: () => dentroDoLimite(1, e.caixa),
+            enviar: async dados => {
+              const id = await enviar(Object.assign({}, dados, e.respostas ? { respostasPara: e.respostas } : {}), e.caixa);
+              enviosDa(e.caixa).push(Date.now());
+              return id;
+            },
+          };
+        },
+      }));
+    } catch (err) { log('checklist do mês desligado:', err.message); }
     // a troca do e-mail de entrada (12/11/2026, nads › Cadastro › Usuários › Acesso): o Diretor ou o Dono pede, o robô troca
     try { tarefa('pedidos-de-conta', () => require('./contas-pedidos').iniciarPedidosDeConta(db, log)); }
     catch (err) { log('pedidos de conta desligados:', err.message); }

@@ -27,3 +27,4 @@ export * as ferramentas from './ferramentas';
 export * as robos from './robos';
 export * as releitura from './releitura';
 export * as carteira from './carteira';
+export * as cartasFiscal from './cartasFiscal';

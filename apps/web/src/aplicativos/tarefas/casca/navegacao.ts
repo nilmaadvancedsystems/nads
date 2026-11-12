@@ -82,6 +82,9 @@ export const APLICACOES: readonly Aplicacao[] = [
     // a auditoria tributária dos itens (04/11/2026: o prompt "Gestor Fiscal e Auditor Tributário" virou ferramenta): a
     // planilha de itens ganha o PIS/COFINS (monofásico, alíquota zero) e o ICMS-ST de MG, e sai auditada
     { id: 'auditoria-itens', rotulo: 'Auditoria de itens', icone: 'checklist', titulo: 'Auditoria de itens — PIS/COFINS e ICMS-ST MG', secao: 'Ferramentas' },
+    // as cartas aos clientes (12/11/2026: "preciso de um envio de carta de balanco para varios clientes para o final do ano,
+    // e todo mês enviar mandar um cheklist do que ele tem que enviar"): a Carta de balanço e o Checklist mensal, pelo robô
+    { id: 'cartas', rotulo: 'Cartas aos clientes', icone: 'envelope', titulo: 'Cartas aos clientes', secao: 'Ferramentas' },
   ] },
   // o DP (Vitor, 06/10/2026: o Checklist Folha "seria a rotina do dp"): as empresas com a rotina do DP, o painel da
   // planilha (números, gráficos, o progresso por responsável e as obrigações de cada cliente), a visão e as paradas

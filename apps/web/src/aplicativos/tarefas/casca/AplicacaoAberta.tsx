@@ -38,6 +38,7 @@ const PaginaSintegra = pedaco(() => import('../telas/fiscal/sintegra/PaginaSinte
 const FaturamentoDosClientes = pedaco(() => import('../telas/fiscal/faturamento/FaturamentoDosClientes'), 'FaturamentoDosClientes');
 const AntecipacaoIcms = pedaco(() => import('../telas/fiscal/antecipacao/AntecipacaoIcms'), 'AntecipacaoIcms');
 const AuditoriaDeItens = pedaco(() => import('../telas/fiscal/auditoria/AuditoriaDeItens'), 'AuditoriaDeItens');
+const CartasDoFiscal = pedaco(() => import('../telas/fiscal/cartas/CartasDoFiscal'), 'CartasDoFiscal');
 const RelatorioGeral = pedaco(() => import('../telas/fiscal/relatorio/RelatorioGeral'), 'RelatorioGeral');
 const RateioDeFrete = pedaco(() => import('../telas/fiscal/rateio/RateioDeFrete'), 'RateioDeFrete');
 const BaixarDoSieg = pedaco(() => import('../telas/fiscal/sieg/BaixarDoSieg'), 'BaixarDoSieg');
@@ -68,7 +69,7 @@ function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
     case 'inicio': return <Inicio />;
     case 'minhas-empresas': return <MinhasEmpresas />;
     // as Empresas, o Painel, a Visão geral e as Paradas do Fiscal saíram (27/10/2026): ficam as ferramentas
-    case 'fiscal': return pagina === 'sintegra' ? <PaginaSintegra /> : pagina === 'faturamento' ? <FaturamentoDosClientes /> : pagina === 'simples' ? <CalculadoraDoSimples /> : pagina === 'rateio-frete' ? <RateioDeFrete /> : pagina === 'sieg' ? <BaixarDoSieg /> : pagina === 'antecipacao-es' ? <AntecipacaoIcms /> : pagina === 'auditoria-itens' ? <AuditoriaDeItens /> : pagina === 'relatorio-presumido' || pagina === 'particularidades-presumido' ? <RelatorioGeral regime="lp" /> : pagina === 'relatorio-simples' || pagina === 'relatorio' || pagina === 'controle-tributos' || pagina === 'particularidades-simples' ? <RelatorioGeral regime="sn" /> : <Reinf />;
+    case 'fiscal': return pagina === 'sintegra' ? <PaginaSintegra /> : pagina === 'faturamento' ? <FaturamentoDosClientes /> : pagina === 'simples' ? <CalculadoraDoSimples /> : pagina === 'rateio-frete' ? <RateioDeFrete /> : pagina === 'sieg' ? <BaixarDoSieg /> : pagina === 'antecipacao-es' ? <AntecipacaoIcms /> : pagina === 'auditoria-itens' ? <AuditoriaDeItens /> : pagina === 'cartas' ? <CartasDoFiscal /> : pagina === 'relatorio-presumido' || pagina === 'particularidades-presumido' ? <RelatorioGeral regime="lp" /> : pagina === 'relatorio-simples' || pagina === 'relatorio' || pagina === 'controle-tributos' || pagina === 'particularidades-simples' ? <RelatorioGeral regime="sn" /> : <Reinf />;
     case 'dp': return ABAS_DO_PAINEL.includes(pagina as AbaDoPainel) ? <PainelDoDp aba={pagina as AbaDoPainel} /> : pagina === 'configuracoes' ? <ConfiguracoesDoDp /> : pagina === 'fgts' ? <FgtsDoDp /> : pagina === 'envios' ? <EnviosDoDp /> : pagina === 'legislacao' ? <LegislacaoDoDp /> : <VisaoContabil pagina={pagina} dep="dp" />;
     case 'senhas': return pagina === 'acesso' ? <AcessoAoCofre /> : pagina === 'gov' ? <ContasGov /> : pagina === 'certificados' ? <Certificados /> : <SenhasDasEmpresas />;
     // as Configurações (28/10/2026): a Equipe e as páginas do admin (as Empresas têm rota própria, CadastroAberto)
