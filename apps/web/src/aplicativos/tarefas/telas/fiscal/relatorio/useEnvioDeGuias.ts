@@ -11,7 +11,7 @@
 // Cadastro do nads, senão o do Entregas) com o texto do Modelo do e-mail e baixa as guias para anexar; no disparo, o robô faz
 // como no SCI Report (o Drive e o Relatório com Entregue = WhatsApp, com a data).
 import { financeiro, formatos, tarefas as t } from '@nads/core';
-import { useRetorno } from '@nads/ui';
+import { baixarBytes, useRetorno } from '@nads/ui';
 import { useEffect, useState } from 'react';
 import { useContatosDoEntregas, useControleTributos, useDriveDoEntregas, useGmailDoEntregas, useLoteFiscal, useRepo, useTodosOsCadastros } from '../../../dados/repo';
 import { colunaQueVale, MODELO_PADRAO_DAS_GUIAS, valorDaGuia, valoresDaGuia, type EscolhaDaGuia, type GuiaDoLote, type ViaDaGuia } from '../../../dados/loteFiscal';
@@ -245,12 +245,7 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
         try {
           for (const a of g.arquivos) {
             const b = await repo.bytesDaGuia(lote, a.id);
-            const url = URL.createObjectURL(new Blob([b as BlobPart], { type: 'application/pdf' }));
-            const el = document.createElement('a');
-            el.href = url;
-            el.download = a.leitura?.nomeFinal || a.nome;
-            el.click();
-            setTimeout(() => URL.revokeObjectURL(url), 60 * 1000);
+            baixarBytes(b, a.leitura?.nomeFinal || a.nome, 'application/pdf');
           }
           toast(g.arquivos.length === 1 ? 'A guia foi baixada: anexe na conversa do WhatsApp.' : 'As ' + g.arquivos.length + ' guias foram baixadas: anexe na conversa do WhatsApp.');
         } catch (e) { toast('Não consegui baixar as guias: ' + (e instanceof Error ? e.message : String(e))); }
