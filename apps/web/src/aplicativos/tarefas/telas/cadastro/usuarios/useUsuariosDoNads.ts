@@ -46,7 +46,9 @@ export function useUsuariosDoNads() {
     .map(p => ({
       ...p,
       cargo: p.departamento || p.nivel ? usuarios.rotuloDoCargo(p) : '',
-      iniciais: usuarios.iniciais(p.nome),
+      /** nome e sobrenome (12/11/2026); as contas antigas, só o nome até completar */
+      completo: usuarios.nomeCompleto(p),
+      iniciais: usuarios.iniciais(usuarios.nomeCompleto(p)),
       rotulosDosPapeis: usuarios.PAPEIS.filter(x => p.papeis.includes(x.id)).map(x => x.rotulo),
       computadores: sessoes.filter(s => s.uid === p.uid),
       online: p.ativo && usuarios.estaOnline(p.vistoNoNads, agora),

@@ -142,7 +142,7 @@ function MinhaConta({ vm }: { vm: VmPessoal }) {
         <div className="cfg-linha pessoal-foto-linha">
           <Foto foto={c.foto} iniciais={c.iniciais} grande />
           <div className="cfg-linha-texto">
-            <span className="cfg-linha-titulo">{c.nome}</span>
+            <span className="cfg-linha-titulo">{c.completo}</span>
           </div>
           <div className="cfg-linha-controle">
             <CampoArquivo semCaixa semFoco ref={arquivo} aceitar="image/*" onEscolher={f => { if (f) c.trocarFoto(f); }} />
@@ -163,9 +163,14 @@ function MinhaConta({ vm }: { vm: VmPessoal }) {
         </div>
       </ConfigSecao>
       <ConfigSecao titulo="Conta">
-        <ConfigLinha titulo="Nome">
+        <ConfigLinha titulo="Nome" descricao={c.comLogin ? 'O seu nome de usuário: você entra com ele. Não pode repetir o de outra pessoa.' : undefined}>
           {c.comLogin ? <EditarNome atual={c.nome} salvar={c.trocarNome} /> : <span className="cfg-valor">{c.nome}</span>}
         </ConfigLinha>
+        {c.comLogin && (
+          <ConfigLinha titulo="Sobrenome">
+            <EditarNome atual={c.sobrenome} rotulo="Sobrenome" salvar={c.trocarSobrenome} />
+          </ConfigLinha>
+        )}
         <ConfigLinha titulo="E-mail" descricao={c.comLogin ? 'O e-mail com que você entra. A senha continua a mesma.' : undefined}>
           {c.comLogin ? <EditarEmail atual={c.email} salvar={c.trocarEmail} /> : <span className="cfg-valor">{c.email || '—'}</span>}
         </ConfigLinha>

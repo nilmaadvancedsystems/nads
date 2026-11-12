@@ -30,6 +30,11 @@ export function emailDoLogin(digitado: string): string {
   return t.indexOf('@') !== -1 ? t : emailDoNome(t);
 }
 
+/** O nome com o sobrenome, para as telas ("Maria" + "Souza" → "Maria Souza"); sem sobrenome, só o nome. */
+export function nomeCompleto(u: { nome: string; sobrenome?: string }): string {
+  return [u.nome.trim(), (u.sobrenome || '').trim()].filter(Boolean).join(' ');
+}
+
 /** Iniciais para a foto padrão: primeira letra do primeiro e do último nome ("Gustavo Santos" → "GS"). */
 export function iniciais(nome: string): string {
   const partes = nome.trim().split(/\s+/).filter(Boolean);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  chaveDoNome, conferirNovaConta, departamentoDaConta, mesmoNome, ehContaReservada, docDaContaNova, emailDoLogin, emailDoNome, EQUIPE_EXEMPLO, iniciais, lerUsuario, mensagemDeErroDeLogin,
+  chaveDoNome, conferirNovaConta, nomeCompleto, departamentoDaConta, mesmoNome, ehContaReservada, docDaContaNova, emailDoLogin, emailDoNome, EQUIPE_EXEMPLO, iniciais, lerUsuario, mensagemDeErroDeLogin,
   mudancaDeCargo, nivelPeloMenos, papeisAoMudarCargo, papeisDaContaNova, papeisDoDoc, papeisFaltando, pode, podeAlgum, recursosDe, rotuloDoCargo,
 } from '.';
 
@@ -86,17 +86,17 @@ describe('quem pode o quê', () => {
 
 describe('conta nova', () => {
   it('confere nome, senha, departamento, nível e nome repetido', () => {
-    expect(conferirNovaConta({ nome: 'Ana', senha: '123456', departamento: 'contabil', nivel: 'junior' }, [])).toEqual([]);
-    expect(conferirNovaConta({ nome: ' ', senha: '12', departamento: '', nivel: '' }, [])).toEqual([
-      'Escreva o nome da pessoa.', 'A senha precisa de pelo menos 6 caracteres.', 'Escolha o departamento.', 'Escolha o nível.',
+    expect(conferirNovaConta({ nome: 'Ana', sobrenome: 'Lima', senha: '123456', departamento: 'contabil', nivel: 'junior' }, [])).toEqual([]);
+    expect(conferirNovaConta({ nome: ' ', sobrenome: '', senha: '12', departamento: '', nivel: '' }, [])).toEqual([
+      'Escreva o nome da pessoa.', 'Escreva o sobrenome.', 'A senha precisa de pelo menos 6 caracteres.', 'Escolha o departamento.', 'Escolha o nível.',
     ]);
-    expect(conferirNovaConta({ nome: 'Clara', senha: '123456', departamento: 'contabil', nivel: 'junior' }, ['clara@nilma.local']))
+    expect(conferirNovaConta({ nome: 'Clara', sobrenome: 'Souza', senha: '123456', departamento: 'contabil', nivel: 'junior' }, ['clara@nilma.local']))
       .toEqual(['Já existe um acesso com esse nome.']);
   });
   it('documento com os campos do Entregas + departamento/nível/ativo', () => {
-    const d = docDaContaNova({ nome: '  Clara   Souza ', senha: 'x', departamento: 'contabil', nivel: 'junior', extras: ['equipe_geral'] }, new Date('2026-09-29T10:00:00Z'));
+    const d = docDaContaNova({ nome: '  Clara   Souza ', sobrenome: ' Lima ', senha: 'x', departamento: 'contabil', nivel: 'junior', extras: ['equipe_geral'] }, new Date('2026-09-29T10:00:00Z'));
     expect(d).toEqual({
-      nome: 'Clara Souza', email: 'clara.souza@nilma.local', roles: ['staff', 'contabil', 'equipe_geral'],
+      nome: 'Clara Souza', sobrenome: 'Lima', email: 'clara.souza@nilma.local', roles: ['staff', 'contabil', 'equipe_geral'],
       departamento: 'contabil', nivel: 'junior', ativo: true, criadoEm: '2026-09-29T10:00:00.000Z',
     });
   });
@@ -170,9 +170,11 @@ describe('nome único (12/11/2026)', () => {
     expect(mesmoNome('Ana-Maria', 'ana maria')).toBe(true);
     expect(mesmoNome('Ana', 'Ana Maria')).toBe(false);
     expect(chaveDoNome('Sávio')).toBe('savio');
+    expect(nomeCompleto({ nome: 'Maria', sobrenome: ' Souza ' })).toBe('Maria Souza');
+    expect(nomeCompleto({ nome: 'Maria' })).toBe('Maria');
   });
   it('a conta nova não repete o nome de quem trocou o e-mail', () => {
-    const c = { nome: 'Fulana', senha: '123456', departamento: 'fiscal', nivel: 'pleno' } as const;
+    const c = { nome: 'Fulana', sobrenome: 'Silva', senha: '123456', departamento: 'fiscal', nivel: 'pleno' } as const;
     expect(conferirNovaConta(c, ['fulana@exemplo.com'], ['FULANA'])).toContain('Já existe um acesso com esse nome.');
     expect(conferirNovaConta(c, [], ['Beltrana'])).toEqual([]);
   });

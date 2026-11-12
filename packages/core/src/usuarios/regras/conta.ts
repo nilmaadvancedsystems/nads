@@ -6,7 +6,10 @@ import { emailDoNome, mesmoNome, SENHA_MINIMA } from './login';
 import { ehDepartamento, ehNivel, papeisAoMudarCargo, papeisDaContaNova, papeisDoDoc } from './papeis';
 
 export interface NovaConta {
+  /** o nome de usuário (o login; único) */
   nome: string;
+  /** obrigatório na conta nova (12/11/2026) */
+  sobrenome: string;
   senha: string;
   departamento: Departamento | '';
   nivel: Nivel | '';
@@ -19,6 +22,7 @@ export function conferirNovaConta(c: NovaConta, emailsExistentes: readonly strin
   const erros: string[] = [];
   const nome = c.nome.trim().replace(/\s+/g, ' ');
   if (nome.length < 2) erros.push('Escreva o nome da pessoa.');
+  if (c.sobrenome.trim().replace(/[^\p{L}]/gu, '').length < 2) erros.push('Escreva o sobrenome.');
   if (c.senha.length < SENHA_MINIMA) erros.push('A senha precisa de pelo menos ' + SENHA_MINIMA + ' caracteres.');
   if (!ehDepartamento(c.departamento)) erros.push('Escolha o departamento.');
   if (!ehNivel(c.nivel)) erros.push('Escolha o nível.');
@@ -33,6 +37,7 @@ export function docDaContaNova(c: NovaConta, agora: Date): DocUsuario & { roles:
   const nivel = ehNivel(c.nivel) ? c.nivel : null;
   return {
     nome,
+    sobrenome: c.sobrenome.trim().replace(/\s+/g, ' '),
     email: emailDoNome(nome),
     roles: papeisDaContaNova(departamento, nivel, c.extras),
     ...(departamento ? { departamento } : {}),

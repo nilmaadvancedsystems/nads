@@ -12,11 +12,12 @@ export interface Sessao extends EstadoSessao {
   trocarSenha: (atual: string, nova: string) => Promise<void>;
   trocarNome: (nome: string) => Promise<void>;
   trocarMeuEmail: (novo: string, senha: string, pedir: () => Promise<void>) => Promise<void>;
+  trocarSobrenome: (sobrenome: string) => Promise<void>;
 }
 
 export function useSessao(): Sessao | null {
   const s = sessaoDaTarefas();
   useSyncExternalStore(s ? s.assinar : nada, s ? s.versao : zero, s ? s.versao : zero);
   if (!s) return null;
-  return { ...s.estado(), entrar: (l, p) => s.entrar(l, p), sair: () => { void s.sair(); }, trocarSenha: (a, n) => s.trocarSenha(a, n), trocarNome: n => s.trocarNome(n), trocarMeuEmail: (e, p, f) => s.trocarMeuEmail(e, p, f) };
+  return { ...s.estado(), entrar: (l, p) => s.entrar(l, p), sair: () => { void s.sair(); }, trocarSenha: (a, n) => s.trocarSenha(a, n), trocarNome: n => s.trocarNome(n), trocarMeuEmail: (e, p, f) => s.trocarMeuEmail(e, p, f), trocarSobrenome: n => s.trocarSobrenome(n) };
 }

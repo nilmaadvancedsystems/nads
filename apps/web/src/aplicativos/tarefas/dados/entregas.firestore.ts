@@ -42,6 +42,8 @@ export interface SessaoEntregas {
    * pessoa caía da Tarefas.
    */
   trocarMeuEmail(novo: string, senha: string, pedir: () => Promise<void>): Promise<void>;
+  /** troca o próprio sobrenome (usuarios/{uid}.sobrenome; 12/11/2026) */
+  trocarSobrenome(sobrenome: string): Promise<void>;
   assinar(aoMudar: () => void): () => void;
   versao(): number;
 }
@@ -174,6 +176,12 @@ export function criarSessaoEntregas(): SessaoEntregas {
       if (equipe.docs.some(d => d.id !== u.uid && usuarios.mesmoNome(String(d.data().nome || ''), nome))) throw new Error('Já existe alguém com esse nome na equipe. Escolha outro (por exemplo, com o sobrenome).');
       await updateDoc(doc(db, 'usuarios', u.uid), { nome });
       mudar({ ...estado, usuario: { ...estado.usuario, nome } });
+    },
+    async trocarSobrenome(sobrenome) {
+      const u = auth.currentUser;
+      if (!u || !estado.usuario) throw new Error('Sem login.');
+      await updateDoc(doc(db, 'usuarios', u.uid), { sobrenome });
+      mudar({ ...estado, usuario: { ...estado.usuario, sobrenome } });
     },
     async trocarMeuEmail(novo, senha, pedir) {
       const u = auth.currentUser;

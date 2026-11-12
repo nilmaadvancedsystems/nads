@@ -72,7 +72,7 @@ export function JanelaDoUsuario({ vm }: { vm: VmUsuarios }) {
     <JanelaLateral rotulo={p.nome} topicos={topicos} topico={topico} mudar={setTopico} fechar={vm.fechar} resumo={(
       <div className="usuario-quem">
         <Foto foto={p.fotoPerfil} iniciais={p.iniciais} />
-        <b>{p.nome}</b>
+        <b>{p.completo}</b>
         <span className="fraco">{p.email}</span>
         <span className={'badge ' + (p.online ? 'badge-ok' : 'badge-neutral')}>{!p.ativo ? 'Inativo' : p.online ? 'Online' : 'Ativo'}</span>
         {p.ativo && !p.online && <span className="fraco">{p.presenca}</span>}
@@ -217,8 +217,11 @@ export function JanelaNovoUsuario({ fechar }: { fechar: () => void }) {
       )}
       {topico === 'dados' && (
         <Cartao titulo="Dados">
-          <Linha rotulo="Nome">
-            <input className="usuario-campo" type="text" aria-label="Nome" value={vm.nome} onChange={ev => vm.setNome(ev.target.value)} placeholder="Ex.: Maria Souza" autoComplete="off" autoFocus />
+          <Linha rotulo="Nome" dica="É o login: a pessoa entra com ele. Não pode repetir o de outra pessoa.">
+            <input className="usuario-campo" type="text" aria-label="Nome" value={vm.nome} onChange={ev => vm.setNome(ev.target.value)} placeholder="Ex.: Maria" autoComplete="off" autoFocus />
+          </Linha>
+          <Linha rotulo="Sobrenome">
+            <input className="usuario-campo" type="text" aria-label="Sobrenome" value={vm.sobrenome} onChange={ev => vm.setSobrenome(ev.target.value)} placeholder="Ex.: Souza" autoComplete="off" />
           </Linha>
           <Linha rotulo="Senha" dica="Pelo menos 6 caracteres.">
             <input className="usuario-campo" type="password" aria-label="Senha" value={vm.senha} onChange={ev => vm.setSenha(ev.target.value)} autoComplete="new-password"

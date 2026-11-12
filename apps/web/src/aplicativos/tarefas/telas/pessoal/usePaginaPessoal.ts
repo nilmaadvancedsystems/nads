@@ -197,6 +197,7 @@ export function usePaginaPessoal() {
     // Minha conta
     conta: {
       nome: op.nome,
+      completo: usuarios.nomeCompleto({ nome: op.nome, sobrenome: sessao?.usuario?.sobrenome }),
       iniciais: usuarios.iniciais(op.nome),
       foto,
       salvandoFoto,
@@ -214,6 +215,14 @@ export function usePaginaPessoal() {
         if (limpo.replace(/[^\p{L}]/gu, '').length < 2) return 'O nome precisa ter pelo menos 2 letras.';
         if (!sessao) return 'Sem login.';
         try { await sessao.trocarNome(limpo); toast('Nome trocado para ' + limpo + '.'); return null; } catch (err) { return err instanceof Error ? err.message : String(err); }
+      },
+      /** o sobrenome (12/11/2026): aparece junto do nome nas telas; o login continua pelo nome */
+      sobrenome: sessao?.usuario?.sobrenome || '',
+      trocarSobrenome: async (sobrenome: string): Promise<string | null> => {
+        const limpo = sobrenome.replace(/\s+/g, ' ').trim();
+        if (limpo.replace(/[^\p{L}]/gu, '').length < 2) return 'O sobrenome precisa ter pelo menos 2 letras.';
+        if (!sessao) return 'Sem login.';
+        try { await sessao.trocarSobrenome(limpo); toast('Sobrenome trocado para ' + limpo + '.'); return null; } catch (err) { return err instanceof Error ? err.message : String(err); }
       },
       trocarSenha: async (atual: string, nova: string, confirma: string): Promise<string | null> => {
         if (!atual) return 'Digite a senha atual.';
