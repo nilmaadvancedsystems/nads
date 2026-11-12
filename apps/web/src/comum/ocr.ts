@@ -62,8 +62,8 @@ function pretoEBranco(ctx: CanvasRenderingContext2D, w: number, h: number) {
 }
 
 
-/** O OCR do arquivo: uma lista de pedaços por página (o formato do extrator.ItemDeTexto). */
-export async function ocrDoArquivo(bytes: Uint8Array, tipo: 'pdf' | 'imagem'): Promise<Item[][]> {
+/** O OCR do arquivo: uma lista de pedaços por página (o formato do extrator.ItemDeTexto). aoAndar: as páginas já lidas (as Ferramentas mostram o andamento). */
+export async function ocrDoArquivo(bytes: Uint8Array, tipo: 'pdf' | 'imagem', aoAndar?: (feitas: number, total: number) => void): Promise<Item[][]> {
   if (tipo === 'imagem') {
     // a foto também em preto e branco (o OCR erra menos)
     const bmp = await createImageBitmap(new Blob([bytes.slice()]));
@@ -99,6 +99,7 @@ export async function ocrDoArquivo(bytes: Uint8Array, tipo: 'pdf' | 'imagem'): P
       await pagina.render({ canvas, canvasContext: ctx, viewport: vista, intent: 'print' }).promise;
       pretoEBranco(ctx, canvas.width, canvas.height);
       paginas.push(await itensDaImagem(canvas, canvas.height, ESCALA));
+      aoAndar?.(n, doc.numPages);
       canvas.width = canvas.height = 0;
     }
     return paginas;
