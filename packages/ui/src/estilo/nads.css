@@ -4690,6 +4690,8 @@ html[data-animacoes=todas] tbody tr:hover{transition-duration:0s;}
 .lcdpr-sieg-barra{position:absolute;left:0;right:0;bottom:0;height:2px;background:color-mix(in srgb,var(--ink) 8%,transparent);}
 .lcdpr-sieg-barra > span{display:block;height:100%;background:var(--accent);transition:width .4s ease;}
 .lcdpr-conta{min-width:150px;}
+.lcdpr-fornecedor{display:flex;flex-direction:column;gap:1px;min-width:0;max-width:420px;}
+.lcdpr-itens{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--fs-12);color:var(--ink-muted);}
 .lcdpr-doc{display:inline-flex;align-items:center;justify-content:flex-end;gap:2px;}
 .lcdpr-ver-nota{min-height:0;height:26px;width:26px;padding:0;justify-content:center;color:var(--ink-muted);}
 .lcdpr-ver-nota:hover{color:var(--accent);}

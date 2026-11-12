@@ -60,6 +60,9 @@ const relDoDrive = p => W.relative(MEU_DRIVE, p);
 class Correcao {
   constructor(opcoes) {
     this.producao = !!opcoes.producao;
+    // (12/11/2026) a hora de parar (ms): o lote que está andando termina e conferido, o próximo não começa (o fiscal por mês só de madrugada)
+    this.ate = Number.isFinite(opcoes.ate) ? opcoes.ate : null;
+    this.parouPelaHora = false;
     this.log = opcoes.log || (m => console.log(new Date().toLocaleTimeString('pt-BR'), m));
     const agora = new Date();
     this.id = (this.producao ? 'CORRECAO-' : 'SIMCORRECAO-') + carimbo(agora);
@@ -172,6 +175,7 @@ class Correcao {
   /** Executa uma lista de funções (um passo cada) em lotes de 200, conferindo depois de cada lote. */
   emLotes(nome, fns) {
     for (let i = 0; i < fns.length; i += LOTE) {
+      if (this.ate && Date.now() >= this.ate) { this.parouPelaHora = true; this.log('  ' + nome + ': parei na hora marcada, ' + i + '/' + fns.length + ' feitos (o resto fica para a próxima vez)'); return; }
       for (const f of fns.slice(i, i + LOTE)) f();
       this.conferirLote();
       this.log('  ' + nome + ': ' + Math.min(i + LOTE, fns.length) + '/' + fns.length + ' conferidos');
@@ -289,7 +293,7 @@ if (require.main === module) {
       const trava = W.join(process.env.ARQUIVO_RAIZ || 'C:\\Users\\DPTO FISCAL 004\\GUSTAVO\\claudio', '_CONTROLE', '_execucao.lock');
       try { if (Date.now() - fs.statSync(trava).mtimeMs < 4 * 36e5) throw new Error('a rotina antiga está rodando (_execucao.lock)'); } catch (e) { if (e.code !== 'ENOENT') throw e; }
     }
-    const c = new Correcao({ producao });
+    const c = new Correcao({ producao, ate: valor('--ate') ? Date.parse(valor('--ate')) : NaN });
     c.log(c.id + (producao ? ' — PRODUCAO' : ' — SIMULAÇÃO (nada é mexido)'));
     const t0 = Date.now();
     const saida = { id: c.id, modo: producao ? 'PRODUCAO' : 'SIMULACAO', etapas: {} };
@@ -307,6 +311,7 @@ if (require.main === module) {
         c.log('etapa ' + e + ': ' + JSON.stringify(saida.etapas[e]));
       }
     }
+    saida.parouPelaHora = c.parouPelaHora;
     saida.lidos = c.lidos; saida.mbLidos = +(c.bytesLidos / 1048576).toFixed(1); saida.ms = Date.now() - t0; saida.diario = c.diario;
     console.log(JSON.stringify(saida, null, 1));
   })().catch(e => { console.error('PAREI: ' + e.message); process.exitCode = 1; });

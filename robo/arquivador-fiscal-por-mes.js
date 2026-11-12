@@ -157,7 +157,7 @@ function resumir(r) {
 // seguinte (o executor para no primeiro erro de um lote, e o que já foi movido sai do plano da próxima vez).
 /**
  * o: { log, painel, ocupado(): bool, ocupar(), desocupar(), controle, drive, anos: [2026], agora(): Date, ler (o lerDoDisco),
- * rodarExecutor(arqPlano) → Promise<{ ok, saida?, erro? }>, travaDaRotinaAntiga (o _execucao.lock) }. Devolve { tique() }.
+ * rodarExecutor(arqPlano, ate) → Promise<{ ok, saida?, erro? }> (ate: a hora de parar, 6h), travaDaRotinaAntiga (o _execucao.lock) }. Devolve { tique() }.
  */
 function criarMudancaDaMadrugada(o) {
   const log = o.log || (() => {});
@@ -197,11 +197,20 @@ function criarMudancaDaMadrugada(o) {
       let exec = { ok: true, saida: null };
       if (r.plano.length) {
         log('fiscal por mês: movendo ' + r.plano.length + ' arquivo(s) de ' + res.clientes + ' cliente(s) (o executor, em produção)');
-        exec = await o.rodarExecutor(arqPlano);
+        // só de madrugada (12/11/2026: a primeira noite foi de 1h44 até a tarde, com o arquivador parado): para às 6h, no fim de um lote
+        const ate = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 6, 0, 0).getTime();
+        exec = await o.rodarExecutor(arqPlano, ate);
       }
       const feito = Object.assign({ em: new Date().toISOString(), ano, pasta: saida, executor: exec.saida || null }, res);
       fs.writeFileSync(W.join(saida, 'resumo.json'), JSON.stringify(Object.assign({ ok: exec.ok, erro: exec.erro || null }, feito), null, 1));
       if (!exec.ok) throw new Error(exec.erro || 'o executor parou');
+      if (exec.saida && exec.saida.parouPelaHora) {
+        const feitos = exec.saida.etapas && exec.saida.etapas.pasta ? exec.saida.etapas.pasta.passos || 0 : 0;
+        const parcial = feitos + ' de ' + r.plano.length + ' arquivo(s) movidos esta noite; o resto na próxima madrugada';
+        log('fiscal por mês: parei às 6h - ' + parcial + ' (' + saida + ')');
+        if (o.painel) o.painel.atividade('arquivamento', 'Fiscal de ' + ano + ' por mês: parte movida', parcial);
+        return 'continua';
+      }
       fs.writeFileSync(arqFeito(ano), JSON.stringify(feito, null, 1));
       const movidos = exec.saida && exec.saida.etapas && exec.saida.etapas.pasta ? exec.saida.etapas.pasta.porTipo || {} : {};
       const texto = r.plano.length + ' arquivo(s) de ' + res.clientes + ' cliente(s) para as pastas do mês' + (res.ficam ? '; ' + res.ficam + ' ficaram onde estavam (sem o mês no nome ou de outro ano: ficam.csv)' : '');
@@ -222,15 +231,19 @@ function criarMudancaDaMadrugada(o) {
 }
 
 /** O executor de sempre em produção, num processo à parte (o arquivador segue respondendo); devolve { ok, saida, erro }. */
-function rodarExecutorNumProcesso(arqPlano, log) {
+function rodarExecutorNumProcesso(arqPlano, log, ate) {
   return new Promise(resolve => {
     const { spawn } = require('child_process');
-    const p = spawn(process.execPath, [path.join(__dirname, 'arquivador-correcao.js'), '--plano', arqPlano, '--etapas', 'pasta', '--producao', '--confirmo', '--pelo-arquivador'], { cwd: __dirname, windowsHide: true });
+    const p = spawn(process.execPath, [path.join(__dirname, 'arquivador-correcao.js'), '--plano', arqPlano, '--etapas', 'pasta', '--producao', '--confirmo', '--pelo-arquivador'].concat(Number.isFinite(ate) ? ['--ate', new Date(ate).toISOString()] : []), { cwd: __dirname, windowsHide: true });
+    // o arquivador que sai (a atualização, o desligar) leva o executor junto: ele não fica movendo sozinho com o contínuo de volta
+    const matar = () => { try { p.kill(); } catch (_) { /* já saiu */ } };
+    process.once('exit', matar);
     let out = '', err = '';
     p.stdout.on('data', b => { out += b; });
     p.stderr.on('data', b => { err += b; if (log) for (const l of String(b).split(/\r?\n/).filter(Boolean)) log('fiscal por mês: ' + l); });
     p.on('error', e => resolve({ ok: false, erro: e.message }));
     p.on('close', code => {
+      process.removeListener('exit', matar);
       const i = out.lastIndexOf('\n{');
       let saida = null;
       try { saida = JSON.parse(i >= 0 ? out.slice(i + 1) : out); } catch (_) { /* sem o resumo */ }

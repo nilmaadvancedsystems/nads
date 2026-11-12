@@ -305,21 +305,37 @@ async function clienteDaPasta(db, codigo, porCodigo) {
 //     chegar um arquivo novo;
 //   - não passa por cima de quem já marcou (Gmail, link, alguém da equipe):
 //     nesses casos só anota que o arquivo também está na pasta.
+// O que este processo já gravou em documentosMensal.pasta (12/11/2026, consumo do banco): a cada pasta de cliente que
+// muda (o arquivador mexe nelas o dia todo), o robô relia o documento do mês de cada mês dos últimos 18 e de cada tipo,
+// para quase sempre não achar arquivo novo (~2.000 a 2.700 leituras por hora no expediente). Agora lembra, por cliente,
+// mês e tipo, os arquivos que já gravou: sem arquivo novo, nem lê. O robô que reinicia lê de novo uma vez.
+const pastaJaGravada = new WeakMap();   // db → Map('clienteId_AAAA-MM|tipo' → Set(ids))
+function jaGravadosDo(db) {
+  let m = pastaJaGravada.get(db);
+  if (!m || m.size > 50000) { m = new Map(); pastaJaGravada.set(db, m); }
+  return m;
+}
+
 async function marcarPeloIndice(db, cliente, achados, log, soEnsaio) {
   if (!cliente || !achados.size) return 0;
   let marcados = 0;
+  const gravados = jaGravadosDo(db);
+  const lidos = new Map();   // o documento do mês lido nesta volta (um por mês, não um por tipo)
   const hoje = new Date();
   const limite = new Date(hoje.getFullYear(), hoje.getMonth() - 18, 1);
   for (const [chave, arquivos] of achados) {
     const [competencia, tipo] = chave.split('|');
     const [a, m] = competencia.split('-').map(Number);
     if (new Date(a, m - 1, 1) < limite) continue;
+    const chaveDaMemoria = cliente.id + '_' + competencia + '|' + tipo;
+    const naMemoria = gravados.get(chaveDaMemoria);
+    if (naMemoria && arquivos.every(x => naMemoria.has(x.id))) continue;
     const ref = db.collection('documentosMensal').doc(cliente.id + '_' + competencia);
-    const snap = await ref.get();
-    const d = snap.exists ? snap.data() : {};
+    if (!lidos.has(competencia)) { const snap = await ref.get(); lidos.set(competencia, snap.exists ? snap.data() : {}); }
+    const d = lidos.get(competencia);
     const vistos = new Set(((d.pasta || {})[tipo]) || []);
     const novos = arquivos.filter(x => !vistos.has(x.id));
-    if (!novos.length) continue;
+    if (!novos.length) { gravados.set(chaveDaMemoria, vistos); continue; }
     const agora = new Date().toISOString();
     const patch = {
       clienteId: cliente.id, clienteNome: cliente.nome || '', competencia,
@@ -331,13 +347,15 @@ async function marcarPeloIndice(db, cliente, achados, log, soEnsaio) {
     const bancos = Array.from(new Set(novos.map(x => x.banco).filter(Boolean)));
     if (bancos.length && !soEnsaio) patch.bancosPorTipo = { [tipo]: FieldValue.arrayUnion(...bancos) };
     if (d[tipo] !== true) {
-      if (soEnsaio) { marcados++; continue; }       // só conta o que marcaria
+      // só conta o que marcaria (e lembra, para não ler de novo o mesmo mês a cada mudança da pasta)
+      if (soEnsaio) { marcados++; gravados.set(chaveDaMemoria, new Set([...vistos, ...novos.map(x => x.id)])); continue; }
       patch[tipo] = true;
       patch.detalhes = { [tipo]: Object.assign({ origem: 'pasta', em: agora, arquivos: novos.slice(0, 20).map(x => x.nome) }, bancos.length ? { bancos } : {}) };
       marcados++;
       log('pasta do cliente:', (cliente.nome || cliente.id) + ',', tipo, competencia, 'marcado como recebido');
     }
     await ref.set(patch, { merge: true });
+    gravados.set(chaveDaMemoria, new Set(patch.pasta[tipo]));
   }
   return marcados;
 }

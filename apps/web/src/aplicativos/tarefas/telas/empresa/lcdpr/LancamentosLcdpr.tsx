@@ -152,7 +152,12 @@ export function LancamentosLcdpr() {
                     </td>
                     {vm.varios && <td className="fraco">{l.mes}</td>}
                     <td className="num fraco">{l.data}</td>
-                    <td><span className="lcdpr-corta" title={l.fornecedor}>{l.fornecedor}</span></td>
+                    <td>
+                      <span className="lcdpr-fornecedor">
+                        <span className="lcdpr-corta" title={l.fornecedor}>{l.fornecedor}</span>
+                        {l.itens && <span className="lcdpr-itens" title={l.itens}>{l.itens}</span>}
+                      </span>
+                    </td>
                     <td className="num">
                       <span className="lcdpr-doc">
                         {l.documento}

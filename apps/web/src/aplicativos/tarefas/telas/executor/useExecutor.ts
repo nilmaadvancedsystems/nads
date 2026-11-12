@@ -520,6 +520,8 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     })(),
     /** o modo desenvolvedor: só ver (o Avançar azul vai para a próxima etapa sem marcar nada) */
     dev,
+    /** o X só sai, sem o "Por que interromper?": no modo desenvolvedor e na rotina que não pede (o LCDPR) */
+    semJustificativa: dev || !!rotina.semInterromper,
     /** o relatório (início e fim): o regime e as etapas que entram no mês, cada uma com a situação, quem e quando */
     relatorio: {
       regime: t.regimeDaEmpresa(empresa?.codigo ?? null),

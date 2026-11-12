@@ -755,7 +755,7 @@ async function iniciar() {
       const mudanca = FM.criarMudancaDaMadrugada({
         log, painel, ocupado: () => ocupado, ocupar: () => { ocupado = true; }, desocupar: () => { ocupado = false; },
         controle: require('./pastas-locais').CONTROLE, drive: path.dirname(require('./arquivador-regras').RAIZ_CLIENTES),
-        travaDaRotinaAntiga: path.join(CONTROLE, '_execucao.lock'), rodarExecutor: arq => FM.rodarExecutorNumProcesso(arq, log),
+        travaDaRotinaAntiga: path.join(CONTROLE, '_execucao.lock'), rodarExecutor: (arq, ate) => FM.rodarExecutorNumProcesso(arq, log, ate),
       });
       setInterval(() => { mudanca.tique().catch(err => log('fiscal por mês:', err.message)); }, 10 * 60 * 1000);
     } catch (err) { log('o fiscal por mês não ligou:', err.message); }
