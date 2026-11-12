@@ -3,6 +3,7 @@
 // O compasso era de 3 min (10/11/2026, consumo do banco): cada aba aberta escuta a coleção usuarios inteira, então cada
 // ponto de cada pessoa virava uma leitura em toda aba do escritório (pessoas × abas, o dia todo). Com 10 min, voltar para a
 // aba só bate de novo depois de 5 min, e o sinal da etapa (nadsOnde) leva o ponto junto, na mesma gravação.
+import { nivelDeDiretor } from './papeis';
 import type { DocUsuario, OndeNoNads } from '../tipos';
 
 /** Quanto tempo sem sinal ainda conta como online (o ponto é a cada 10 min; sobra folga para um atraso). */
@@ -45,7 +46,7 @@ export function atividadeAtual(onde: OndeNoNads | null | undefined, agora: Date)
  * setores"). Ser admin não conta: o que vale é o nível.
  */
 export function veAtividade(quem: { nivel?: string | null; departamento?: string | null }, pessoa: { departamento?: string | null }): boolean {
-  if (quem.nivel === 'diretor') return true;
+  if (nivelDeDiretor(quem.nivel)) return true;
   return quem.nivel === 'senior' && !!quem.departamento && quem.departamento === pessoa.departamento;
 }
 

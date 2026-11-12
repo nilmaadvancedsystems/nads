@@ -14,6 +14,8 @@ export const DEPARTAMENTOS: readonly { id: Departamento; rotulo: string }[] = [
 
 /** Do mais alto ao mais baixo. */
 export const NIVEIS: readonly { id: Nivel; rotulo: string }[] = [
+  // o Dono (Vitor, 12/11/2026: "o master do master, tem acesso a tudo"): tudo o que o Diretor pode; só o modo desenvolvedor não
+  { id: 'dono', rotulo: 'Dono' },
   { id: 'diretor', rotulo: 'Diretor' },
   { id: 'senior', rotulo: 'Sênior' },
   { id: 'pleno', rotulo: 'Pleno' },
@@ -37,8 +39,11 @@ export const PAPEIS: readonly { id: Papel; rotulo: string }[] = [
 /** O papel que cada departamento dá. */
 const PAPEL_DO_DEPARTAMENTO: Record<Departamento, Papel> = { fiscal: 'fiscal', dp: 'dp', contabil: 'contabil' };
 
-/** Diretor administra (é o Admin do Entregas: equipe, clientes, ajustes). */
-const NIVEIS_ADMIN: readonly Nivel[] = ['diretor'];
+/** Dono e Diretor administram (é o Admin do Entregas: equipe, clientes, ajustes). */
+const NIVEIS_ADMIN: readonly Nivel[] = ['dono', 'diretor'];
+
+/** O nível que abre o que é do Diretor: o Diretor e o Dono, que tem tudo o que o Diretor tem (12/11/2026). */
+export const nivelDeDiretor = (nivel: string | null | undefined): boolean => nivel === 'dono' || nivel === 'diretor';
 
 export function ehDepartamento(v: unknown): v is Departamento {
   return DEPARTAMENTOS.some(d => d.id === v);

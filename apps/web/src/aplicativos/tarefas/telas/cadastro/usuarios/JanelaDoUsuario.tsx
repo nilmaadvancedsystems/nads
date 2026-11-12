@@ -3,7 +3,7 @@
 // cartões com uma opção por linha. JanelaDoUsuario: Cargo, Papéis e Acesso de uma pessoa (só o admin muda).
 // JanelaNovoUsuario: Dados, Cargo e Papéis do acesso novo, com o Criar acesso sempre no pé. Fecham no ×, no Esc e
 // clicando fora.
-import type { usuarios } from '@nads/core';
+import { usuarios } from '@nads/core';
 import { BotaoAcao, Icone, Interruptor } from '@nads/ui';
 import { useState } from 'react';
 import { Cartao, JanelaLateral, Linha, type TopicoDaJanela } from '../../janela/JanelaLateral';
@@ -89,7 +89,7 @@ export function JanelaDoUsuario({ vm }: { vm: VmUsuarios }) {
         <Cartao titulo="Papéis">
           {vm.papeis.filter(x => x.id !== 'financeiro' || temNivelDiretor(operador)).map(x => (
             <Linha key={x.id} rotulo={x.rotulo} dica={x.id === 'desenvolvedor' ? DICA_DEV : x.id === 'financeiro' ? DICA_FINANCEIRO : undefined}>
-              {x.id === 'financeiro' && p.nivel === 'diretor'
+              {x.id === 'financeiro' && usuarios.nivelDeDiretor(p.nivel)
                 ? <SempreLigado />
                 : <Interruptor ligado={p.papeis.includes(x.id)} onMudar={() => void vm.alternarPapel(p, x.id)} rotulo={x.rotulo + ' de ' + p.nome} />}
             </Linha>
@@ -209,7 +209,7 @@ export function JanelaNovoUsuario({ fechar }: { fechar: () => void }) {
         <Cartao titulo="Papéis a mais">
           {vm.extras.filter(x => x.id !== 'financeiro' || temNivelDiretor(operador)).map(x => (
             <Linha key={x.id} rotulo={x.rotulo} dica={x.id === 'desenvolvedor' ? DICA_DEV : x.id === 'financeiro' ? DICA_FINANCEIRO : undefined}>
-              {x.id === 'financeiro' && vm.nivel === 'diretor'
+              {x.id === 'financeiro' && usuarios.nivelDeDiretor(vm.nivel)
                 ? <SempreLigado />
                 : <Interruptor ligado={x.on} onMudar={() => vm.alternarExtra(x.id)} rotulo={x.rotulo} />}
             </Linha>

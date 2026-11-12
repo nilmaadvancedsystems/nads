@@ -16,7 +16,7 @@ export interface Operador { nome: string; email?: string; departamento: usuarios
 export function operadorDaConta(u: usuarios.Usuario): Operador | null {
   const departamento = usuarios.departamentoDaConta(u);
   if (!departamento) return null;
-  return { nome: u.nome, email: u.email, departamento, nivel: u.nivel, admin: u.papeis.includes('admin'), desenvolvedor: u.papeis.includes('desenvolvedor'), financeiro: u.papeis.includes('financeiro') };
+  return { nome: u.nome, email: u.email, departamento, nivel: u.nivel, admin: u.papeis.includes('admin'), desenvolvedor: u.papeis.includes('desenvolvedor') && u.nivel !== 'dono', financeiro: u.papeis.includes('financeiro') };
 }
 
 function daEquipe(nome: string | null): Operador | null {

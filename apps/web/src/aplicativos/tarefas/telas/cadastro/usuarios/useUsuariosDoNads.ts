@@ -93,7 +93,7 @@ export function useUsuariosDoNads() {
       tentar(() => repo.salvarCargo(p.uid, departamento, nivel), 'Cargo de ' + p.nome + ' salvo.'),
     alternarPapel(p: usuarios.Usuario, papel: usuarios.Papel) {
       // o Financeiro: só o Diretor autoriza, e quem é Diretor já tem, sem como desligar (Vitor, 09/11/2026)
-      if (papel === 'financeiro' && (!temNivelDiretor(operador) || p.nivel === 'diretor')) return Promise.resolve();
+      if (papel === 'financeiro' && (!temNivelDiretor(operador) || usuarios.nivelDeDiretor(p.nivel))) return Promise.resolve();
       const tem = p.papeis.includes(papel);
       const novos = tem ? p.papeis.filter(x => x !== papel) : [...p.papeis, papel];
       return tentar(() => repo.salvarPapeis(p.uid, novos), (tem ? 'Tirei ' : 'Dei ') + 'o papel ' + (usuarios.PAPEIS.find(x => x.id === papel)?.rotulo || papel) + (tem ? ' de ' : ' a ') + p.nome + '.');

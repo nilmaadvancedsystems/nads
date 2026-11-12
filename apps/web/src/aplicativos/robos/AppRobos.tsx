@@ -16,7 +16,7 @@ import { QuemSouEu } from '../tarefas/telas/quem/QuemSouEu';
 import './robos.css';
 
 function operadorDoAdmin(u: usuarios.Usuario): Operador {
-  return operadorDaConta(u) ?? { nome: u.nome, departamento: 'contabil', nivel: u.nivel, admin: u.papeis.includes('admin'), desenvolvedor: u.papeis.includes('desenvolvedor') };
+  return operadorDaConta(u) ?? { nome: u.nome, departamento: 'contabil', nivel: u.nivel, admin: u.papeis.includes('admin'), desenvolvedor: u.papeis.includes('desenvolvedor') && u.nivel !== 'dono' };
 }
 
 function SoComAcesso({ children }: { children: ReactNode }) {

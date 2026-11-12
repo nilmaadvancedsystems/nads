@@ -4,7 +4,7 @@
 // o executor das etapas é /tarefas/executar/<empresa>/<competência>.
 // O Cadastro é a lista de empresas (/tarefas/cadastro/empresas); a empresa abre numa janela por cima da lista,
 // com as abas dela: /tarefas/cadastro/empresas/<empresa>/<aba>.
-import { tarefas as t, type uso } from '@nads/core';
+import { tarefas as t, usuarios, type uso } from '@nads/core';
 import type { NomeIcone } from '@nads/ui';
 import { PAGINAS_DO_ADMIN } from '../../admin/casca/navegacao';
 import type { Operador } from './operador';
@@ -183,10 +183,10 @@ export const APLICACOES: readonly Aplicacao[] = [
  * que coloque uma opção onde os sênior possam ver e mexer no cadastro das empresas"). Excluir a empresa (só o admin, pelas
  * regras do banco) e o Link do cliente (useAcoesDoLink: o admin e o diretor) continuam de fora para o sênior.
  */
-export const podeMexerNoCadastro = (op: Operador | null) => !!op && (op.admin || op.nivel === 'diretor' || op.nivel === 'senior');
+export const podeMexerNoCadastro = (op: Operador | null) => !!op && (op.admin || usuarios.nivelDeDiretor(op.nivel) || op.nivel === 'senior');
 
 /** Só o nível Diretor: o admin sem esse nível não conta para o Financeiro (30/10/2026: "remova o acesso de admin ao financeiro"). */
-export const temNivelDiretor = (op: Operador | null) => op?.nivel === 'diretor';
+export const temNivelDiretor = (op: Operador | null) => usuarios.nivelDeDiretor(op?.nivel);
 /** Quem vê o Financeiro (Vitor, 09/11/2026): quem é Diretor já tem, sem como desligar; os outros, só com o papel Financeiro, que só o Diretor autoriza. */
 export const podeVerOFinanceiro = (op: Operador | null) => !!op && (temNivelDiretor(op) || !!op.financeiro);
 
@@ -194,13 +194,13 @@ export const podeVerOFinanceiro = (op: Operador | null) => !!op && (temNivelDire
  * Quem abre a rotina e o cadastro de outro setor: o admin e o diretor (Vitor, 06/11/2026: "quem é do fiscal, não é para ter
  * acesso a coisas do contábil"). Os outros ficam no setor deles (o ?dep= de outro setor é ignorado).
  */
-export const podeVerOutrosSetores = (op: Operador | null) => !!op && (op.admin || op.nivel === 'diretor');
+export const podeVerOutrosSetores = (op: Operador | null) => !!op && (op.admin || usuarios.nivelDeDiretor(op.nivel));
 
 /**
  * O que só o Diretor (ou o admin) faz; Sênior, Pleno e Júnior de todos os setores não (Vitor, 06/11/2026): excluir
  * certificado, fazer entrega (no Entregas eles só veem o Painel) e trocar empresas entre responsáveis.
  */
-export const ehDiretor = (op: Operador | null) => !!op && (op.admin || op.nivel === 'diretor');
+export const ehDiretor = (op: Operador | null) => !!op && (op.admin || usuarios.nivelDeDiretor(op.nivel));
 
 /** As abas da janela da empresa no Cadastro que a pessoa vê: as do Contábil só para o Contábil (e quem vê os outros setores). */
 export const abasDoCadastroDe = (op: Operador | null) =>

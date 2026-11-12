@@ -7,7 +7,7 @@
 export type Departamento = 'fiscal' | 'dp' | 'contabil';
 
 /** Nível na carreira, do mais alto ao mais baixo. */
-export type Nivel = 'diretor' | 'senior' | 'pleno' | 'junior';
+export type Nivel = 'dono' | 'diretor' | 'senior' | 'pleno' | 'junior';
 
 /**
  * Papéis que os sistemas do Entregas conferem (temPapel). 'staff' é o piso de quem tem conta;
