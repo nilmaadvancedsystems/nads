@@ -38,10 +38,10 @@ describe('quem tem a REINF no Fiscal (05/11/2026: todas, com as filiais)', () =>
     expect(temReinfNoFiscal({ codigo: 494, nome: 'CAIXA ESCOLAR JOVITA SECUNDINA REGO', regime: 'Isentas' })).toBe(true);
     expect(temReinfNoFiscal({ codigo: 299, nome: 'TEOBALDO MENDES DE OLIVEIRA LTDA - FILIAL 02', regime: 'Simples' })).toBe(true);
     expect(temReinfNoFiscal({ codigo: 449, nome: 'GRANMIX COMERCIO DE ALIMENTOS LTDA - MATRIZ', regime: 'Simples' })).toBe(true);
-    expect(temReinfNoFiscal({ codigo: 499, nome: 'FARLEN XAVIER SANTOS 36075344896', regime: 'MEI' })).toBe(true);
     // doméstica e pessoa física saem (Vitor, 12/11/2026)
     expect(temReinfNoFiscal({ codigo: 1, nome: 'EMPREGADOR EXEMPLO', regime: 'Domésticas' })).toBe(false);
     expect(temReinfNoFiscal({ codigo: 2, nome: 'PESSOA EXEMPLO', regime: 'Física' })).toBe(false);
+    expect(temReinfNoFiscal({ codigo: 3, nome: 'MEI EXEMPLO', regime: 'MEI' })).toBe(false);
     expect(temReinfNoFiscal({ codigo: null, nome: 'SEM CODIGO LTDA', regime: 'Simples' })).toBe(false);
   });
   it('na lista do escritório: as da lista antiga continuam', () => {
