@@ -2,7 +2,8 @@
 // a árvore das pastas à esquerda (abre sob demanda), a barra de endereço (voltar, avançar, acima, a trilha), a lista em
 // Detalhes (Nome, Data de modificação, Tipo, Tamanho; clicar no título ordena) ou em Ícones, a seleção (a caixinha de
 // cada linha e a do título, Ctrl e Shift) e a barra de status. A pasta aberta fica na URL (?c=<pasta do cliente>&p=<pasta>), então o voltar do
-// navegador funciona. Os pedidos ao robô (abrir, baixar, .zip) recomeçam o prazo a cada avanço que ele informa.
+// navegador funciona. O ano também (?a=2025; sem ele, o ano corrente): o seletor de ano lista o corrente e as outras pastas de
+// ano que o robô achou no Drive; trocar de ano dentro de um cliente vai para a pasta do mesmo cliente no outro ano. Os pedidos ao robô (abrir, baixar, .zip) recomeçam o prazo a cada avanço que ele informa.
 // A exibição, a árvore, a tela cheia e a ordem ficam guardadas neste navegador (localStorage; se ele recusar, vale o padrão).
 import { entregas as e } from '@nads/core';
 import { useRetorno } from '@nads/ui';
@@ -38,6 +39,13 @@ function guardarPreferencias(p: Preferencias) {
   try { localStorage.setItem(GUARDADO, JSON.stringify(p)); } catch { /* navegador sem armazenamento */ }
 }
 
+/** Só as pastas das empresas da pessoa (codigos: os códigos permitidos, separados por vírgula). */
+function soAsPermitidas(m: e.MapaDoDrive, filtra: boolean, codigos: string): e.MapaDoDrive {
+  if (!filtra) return m;
+  const ok = new Set(codigos.split(','));
+  return { ...m, clientes: m.clientes.filter(c => ok.has(c.codigo)) };
+}
+
 const quando = (iso: string | null) => (iso ? new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '');
 
 /** naEmpresa: dentro da empresa aberta (27/10/2026: "o layout ta todo porco"), já na pasta dela: a árvore começa fechada
@@ -64,12 +72,17 @@ export function useExploradorDoDrive({ naEmpresa = false }: { naEmpresa?: boolea
   const permitidas = useEmpresasPermitidas();
   const doEscritorio = useRepo().listarEmpresas();
   const codigos = permitidas.filtra ? permitidas.filtrar(doEscritorio).map(x => String(x.codigo)).join(',') : '';
-  const mapaTodo = repo.mapa();
-  const mapa = useMemo(() => {
-    if (!permitidas.filtra) return mapaTodo;
-    const ok = new Set(codigos.split(','));
-    return { ...mapaTodo, clientes: mapaTodo.clientes.filter(c => ok.has(c.codigo)) };
-  }, [mapaTodo, codigos, permitidas.filtra]);
+  // o ano: o corrente (a raiz, sempre ouvida) ou um anterior, pelo endereço
+  const raizToda = repo.mapa();
+  const ano = e.anoEscolhido(params.get('a'), raizToda);
+  const anos = useMemo(() => e.anosDoSeletor(raizToda), [raizToda]);
+  const pastaDoAno = ano ? anos.find(x => x.nome === ano) || null : null;
+  const mapaTodo = repo.mapa(ano || undefined);
+  const mapa = useMemo(() => soAsPermitidas(mapaTodo, permitidas.filtra, codigos), [mapaTodo, codigos, permitidas.filtra]);
+  const raiz = useMemo(() => soAsPermitidas(raizToda, permitidas.filtra, codigos), [raizToda, codigos, permitidas.filtra]);
+  /** o ano escolhido ainda não tem mapa no banco (ninguém pediu ao robô) */
+  const semMapa = !!ano && mapa.carregado && !mapa.mapeado && !mapa.erro;
+  const nomeDoAno = ano || raiz.pastaAno?.nome || 'Drive';
   // a pasta de outra pessoa não abre nem pelo endereço (?c=)
   const pedido = params.get('c') || '';
   const cliente = pedido && (!permitidas.filtra || mapa.clientes.some(x => x.id === pedido)) ? pedido : '';
@@ -103,6 +116,14 @@ export function useExploradorDoDrive({ naEmpresa = false }: { naEmpresa?: boolea
 
   // "Abrir a pasta" de um envio arquivado: vai para o cliente e, quando as pastas dele chegarem, desce pelo caminho
   const [destino, setDestino] = useState<{ cliente: string; subpasta: string } | null>(null);
+  // trocou de ano dentro de um cliente: quando o mapa do outro ano chegar, entra na pasta do mesmo código
+  const [trocaDeAno, setTrocaDeAno] = useState<{ ano: string; codigo: string } | null>(null);
+  useEffect(() => {
+    if (!trocaDeAno || trocaDeAno.ano !== ano || !mapa.carregado) return;
+    setTrocaDeAno(null);
+    const c = mapa.clientes.find(x => x.codigo === trocaDeAno.codigo);
+    if (c) irAgora.current(c.id);
+  }, [trocaDeAno, ano, mapa]);
   // "Atualizar o mapa": o robô relê na hora (a pasta do cliente aberta, ou a pasta do ano inteira)
   const [atualizandoMapa, setAtualizandoMapa] = useState('');
   useEffect(() => {
@@ -116,11 +137,12 @@ export function useExploradorDoDrive({ naEmpresa = false }: { naEmpresa?: boolea
   const irAgora = useRef(ir);
   irAgora.current = ir;
 
-  function ir(c: string, p?: string) {
+  function ir(c: string, p?: string, noAno = ano) {
     setBusca('');
     setMarcados(new Set());
     setAncora(null);
     const novo = new URLSearchParams();
+    if (noAno) novo.set('a', noAno);
     if (c) novo.set('c', c);
     if (p && p !== c) novo.set('p', p);
     setParams(novo);
@@ -180,7 +202,18 @@ export function useExploradorDoDrive({ naEmpresa = false }: { naEmpresa?: boolea
     exemplos: repo.exemplos,
     carregando: !mapa.carregado || (!!cliente && !conteudo.carregados),
     erro: mapa.erro ? 'Não consegui ler o mapa do Drive (' + mapa.erro + '). Ele é do robô do Entregas; confira se sua conta é do contábil.' : '',
-    ano: mapa.pastaAno?.nome || 'Drive',
+    ano: nomeDoAno,
+    /** o seletor de ano: os anos (do mais novo ao mais velho) e qual está escolhido */
+    anos: anos.map(x => ({ nome: x.nome, marcado: x.nome === nomeDoAno })),
+    /** troca de ano (dentro de um cliente, vai para a pasta dele no outro ano, se houver) */
+    escolherAno(nome: string) {
+      const novo = nome === raiz.pastaAno?.nome ? '' : nome;
+      if (novo === ano) { ir('', undefined, novo); return; }
+      setTrocaDeAno(pastaCliente?.codigo ? { ano: novo, codigo: pastaCliente.codigo } : null);
+      ir('', undefined, novo);
+    },
+    /** um ano anterior que ainda não tem mapa: a tela oferece pedir ao robô (atualizarMapa) */
+    semMapa,
     atualizado: quando(mapa.atualizadoEm || null),
     naRaiz: !cliente,
     /** a trilha da barra de endereço, depois do ano */
@@ -190,7 +223,7 @@ export function useExploradorDoDrive({ naEmpresa = false }: { naEmpresa?: boolea
     ],
     busca, setBusca,
     buscando,
-    placeholderBusca: 'Pesquisar em ' + (pastaAtual?.n || mapa.pastaAno?.nome || 'Drive'),
+    placeholderBusca: 'Pesquisar em ' + (pastaAtual?.n || nomeDoAno),
 
     // lista
     entradas,
@@ -229,10 +262,13 @@ export function useExploradorDoDrive({ naEmpresa = false }: { naEmpresa?: boolea
     irParaRaiz: () => ir(''),
     atualizandoMapa,
     /** o que o botão ⟳ relê: a pasta do cliente aberta, ou tudo */
-    dicaDoAtualizar: cliente ? 'Atualizar o mapa desta pasta (o robô relê agora, em segundos)' : 'Atualizar o mapa da pasta ' + (mapa.pastaAno?.nome || 'do ano') + ' inteira (o robô relê agora, cerca de 1 minuto)',
+    dicaDoAtualizar: cliente ? 'Atualizar o mapa desta pasta (o robô relê agora, em segundos)' : 'Atualizar o mapa da pasta ' + nomeDoAno + ' inteira (o robô relê agora, cerca de 1 minuto)',
     atualizarMapa() {
       if (atualizandoMapa) return;
-      const rotulo = pastaCliente ? 'a pasta ' + pastaCliente.nomePasta : 'a pasta ' + (mapa.pastaAno?.nome || 'do ano') + ' inteira';
+      // num ano anterior, a pasta inteira é a pasta daquele ano (o robô reconhece pelo id dela)
+      const alvo = cliente || (ano ? pastaDoAno?.id || '' : '');
+      if (ano && !alvo) { toast('Não achei a pasta ' + ano + ' no Drive.'); return; }
+      const rotulo = pastaCliente ? 'a pasta ' + pastaCliente.nomePasta : 'a pasta ' + nomeDoAno + ' inteira';
       setAtualizandoMapa('Pedindo ao robô para reler ' + rotulo + '…');
       let parar = () => {};
       const prazo = setTimeout(() => {
@@ -240,7 +276,7 @@ export function useExploradorDoDrive({ naEmpresa = false }: { naEmpresa?: boolea
         setAtualizandoMapa('');
         toast('O robô não respondeu a tempo. Confira se ele está ligado (Cadastro › Configurações › Saúde do robô).');
       }, (cliente ? 3 : 8) * 60 * 1000);
-      parar = repo.atualizarMapa(cliente, a => {
+      parar = repo.atualizarMapa(alvo, a => {
         if (a.status === 'atualizando') setAtualizandoMapa('O robô está relendo ' + rotulo + '…');
         else if (a.status === 'pronto' || a.status === 'erro') {
           clearTimeout(prazo);
@@ -253,10 +289,12 @@ export function useExploradorDoDrive({ naEmpresa = false }: { naEmpresa?: boolea
     },
     /** abre a pasta onde o arquivamento pôs o arquivo (pelo código do cliente e o caminho dentro dele) */
     abrirDestino(codigo: string, subpasta: string): boolean {
-      const c = mapa.clientes.find(x => x.codigo === codigo);
+      // o arquivamento grava no ano corrente
+      const c = raiz.clientes.find(x => x.codigo === codigo);
       if (!c) { toast('Não achei a pasta do cliente ' + codigo + ' no mapa do Drive.'); return false; }
       setDestino({ cliente: c.id, subpasta });
-      ir(c.id);
+      setTrocaDeAno(null);
+      ir(c.id, undefined, '');
       return true;
     },
     podeSubir: !!acima,

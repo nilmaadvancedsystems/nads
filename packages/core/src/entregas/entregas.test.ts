@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  remetenteDoPedido, setorDoUsuario,
+  remetenteDoPedido, setorDoUsuario, anoEscolhido, anosDoSeletor, documentoDoAno, MAPA_VAZIO,
   buscarClientes, buscarNaPasta, caminhoAte, clienteParecido, clientesDoEntregas, documentosDoEntregas, entradaDoCliente, entradaDoItem, estadoDoRobo,
   filhosDe, itensDasPartes, linhasDaArvore, mapaDaRaiz, ordenarEntradas, tipoDoItem, mensagemIdValido, pedidoDaPasta, pedidoDeZip, quantosDentro, semCliente, tamanhoLegivel, type ItemDoDrive,
 } from '.';
@@ -19,6 +19,26 @@ describe('mapa do Drive', () => {
     expect(m.pastaAno).toEqual({ id: 'ano', nome: '2026' });
     expect(m.clientes.map(c => c.codigo)).toEqual(['58']);
     expect(itensDasPartes([{ itens: [{ i: 'x', n: 'a', p: 'r', t: 'f', s: 3 }, { i: 'y', t: 'q' }] }, { itens: 'nada' }])).toEqual([{ i: 'x', n: 'a', p: 'r', t: 'f', s: 3 }]);
+  });
+
+  it('seletor de ano: o corrente e os do Drive, do mais novo ao mais velho; o documento de cada ano; o ano da URL', () => {
+    const raiz = mapaDaRaiz({ pastaId: 'p26', pastaNome: '2026', anos: [{ nome: '2024', id: 'p24' }, { nome: '2025', id: 'p25' }, { nome: '2026', id: 'outra' }, { nome: 'Fotos', id: 'x' }, { nome: '2023' }] });
+    expect(raiz.mapeado).toBe(true);
+    expect(raiz.anos.map(a => a.nome)).toEqual(['2024', '2025', '2026']);
+    expect(anosDoSeletor(raiz)).toEqual([{ nome: '2026', id: 'p26' }, { nome: '2025', id: 'p25' }, { nome: '2024', id: 'p24' }]);
+    // a raiz antiga (sem anos): só o corrente, como era
+    expect(anosDoSeletor(mapaDaRaiz({ pastaId: 'p26', pastaNome: '2026' }))).toEqual([{ nome: '2026', id: 'p26' }]);
+    expect(anosDoSeletor(MAPA_VAZIO)).toEqual([]);
+    expect(documentoDoAno('', '2026')).toBe('raiz');
+    expect(documentoDoAno('2026', '2026')).toBe('raiz');
+    expect(documentoDoAno('2025', '2026')).toBe('raiz-2025');
+    expect(anoEscolhido('2025', raiz)).toBe('2025');
+    expect(anoEscolhido('2026', raiz)).toBe('');
+    expect(anoEscolhido('2019', raiz)).toBe('');
+    expect(anoEscolhido('abc', raiz)).toBe('');
+    expect(anoEscolhido(null, raiz)).toBe('');
+    // o ano que ainda não tem mapa: carregado, mas não mapeado
+    expect(mapaDaRaiz(null)).toMatchObject({ carregado: true, mapeado: false, clientes: [] });
   });
 
   it('filhos: pastas primeiro e ordem natural; caminho e contagem', () => {

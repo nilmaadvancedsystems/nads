@@ -519,6 +519,11 @@ igual('pasta sem código', di.codigoDaPasta('MODELOS').codigo, null);
 igual('totais contam arquivos e pastas', [di.totais(itensPasta).arquivos, di.totais(itensPasta).pastas], [5, 13]);
 igual('o extrato em SUBSTITUÍDOS não prova o mês (06/11/2026)',
   (di.documentosNaPasta([...itensPasta, { i: 'sb', n: 'SUBSTITUÍDOS', p: 'bb', t: 'd' }, { i: 'f9', n: '06-2026.pdf', p: 'sb', t: 'f' }], 'R').get('2026-06|extrato') || []).map(a => a.id), ['f1']);
+// o seletor de ano (12/11/2026): as pastas de ano da raiz do Meu Drive, sem o ano corrente, do mais novo ao mais velho
+igual('pastas de ano: só pastas com 4 dígitos, sem o corrente e sem repetir', di.pastasDeAno([
+  { i: 'p24', n: '2024', t: 'd' }, { i: 'p26', n: '2026', t: 'd' }, { i: 'p25', n: ' 2025 ', t: 'd' }, { i: 'x', n: 'Claudio Secretario', t: 'd' },
+  { i: 'arq', n: '2023', t: 'f' }, { i: 'p25b', n: '2025', t: 'd' }, { i: 'p202', n: '202', t: 'd' },
+], '2026'), [{ nome: '2025', id: 'p25' }, { nome: '2024', id: 'p24' }]);
 
 // ---------- texto completo do e-mail (painel da tela do Robô) ----------
 const lg = require('./leituras-gmail');
