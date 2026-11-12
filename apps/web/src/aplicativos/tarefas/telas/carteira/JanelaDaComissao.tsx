@@ -113,15 +113,15 @@ export function JanelaDaComissao({ comissao, fechar, doFinanceiro = false }: { c
             <Propriedade icone="checklist" rotulo="Serviço">
               {travada ? <span>{vm.servico || comissao?.descricao || '—'}</span> : (
                 <MenuSuspenso rotulo={vm.servico || 'Escolher o serviço'} className={ESCOLHA + (vm.servico ? '' : ' vazio')} titulo="O serviço comissionado" flutuante largura={320}
-                  itens={vm.servicos.map(s => ({ rotulo: s.nome + (s.percentual ? ' · ' + s.percentual.toLocaleString('pt-BR') + '%' : ' · sem %'), marcado: s.nome === vm.servico, onClick: () => vm.setServico(s.nome) }))} />
+                  itens={vm.servicos.map(s => ({ rotulo: s.nome + (vm.propria ? '' : s.percentual ? ' · ' + s.percentual.toLocaleString('pt-BR') + '%' : ' · sem %'), marcado: s.nome === vm.servico, onClick: () => vm.setServico(s.nome) }))} />
               )}
             </Propriedade>
             <Propriedade icone="dinheiro" rotulo="Valor do serviço">
               <input type="text" inputMode="decimal" value={vm.valorServico} disabled={travada} onChange={e => vm.setValorServico(e.target.value)} placeholder="Quanto o cliente pagou" aria-label="Valor do serviço" />
             </Propriedade>
             <Propriedade icone="check" rotulo="Comissão">
-              <span className="num"><b>{formatos.reais(vm.valor)}</b>{vm.percentual > 0 && <span className="fraco"> · {vm.percentual.toLocaleString('pt-BR')}% do serviço</span>}
-                {!travada && vm.servico && doServico && !doServico.percentual && <span className="fraco"> · o Financeiro ainda não definiu a %</span>}</span>
+              <span className="num"><b>{formatos.reais(vm.valor)}</b>{vm.percentual > 0 && <span className="fraco"> · {vm.percentual.toLocaleString('pt-BR')}% {vm.propria ? '(a % própria da pessoa)' : 'do serviço'}</span>}
+                {!travada && !vm.propria && vm.servico && doServico && !doServico.percentual && <span className="fraco"> · o Financeiro ainda não definiu a %</span>}</span>
             </Propriedade>
           </div>
           {erros.length > 0 && <ul className="registro-erros">{erros.map(e => <li key={e}><Icone nome="alert" />{e}</li>)}</ul>}

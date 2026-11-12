@@ -528,7 +528,7 @@ export const minutosTrabalhados = (t: Pick<TarefaDelegada, 'status' | 'historico
 // confirma ("Anexei tudo, concluir"; às vezes são vários arquivos). "Visualizado: se a pessoa clicou e visualizou a
 // tarefa ou não": a primeira vez que quem recebeu abre a tarefa fica gravada.
 
-export const TITULO_DO_PEDIDO = 'Pedido de documentos';
+export const TITULO_DO_PEDIDO = 'Documentos delegados';
 export const pedeDocumentos = (t: Pick<TarefaDelegada, 'tipo'>): boolean => t.tipo === 'documentos';
 
 /** O pedido de documentos com anexo e em aberto: quem recebeu já pode confirmar que anexou tudo. */

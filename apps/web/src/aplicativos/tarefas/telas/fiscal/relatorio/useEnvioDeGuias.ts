@@ -7,10 +7,13 @@
 // A via de cada cliente (04/11/2026: "preciso que quando eu va em enviar guias tenha a opção de impresso ou gmail, impresso
 // cria na rotina do entregas a entrega"): Gmail ou Impresso. Sem escolha, vale a do Relatório do mês anterior (Entregue =
 // Impresso lá, impresso aqui) e, sem e-mail no cadastro, impresso; a escolha vai para o lote (vias) e o robô segue.
-import { formatos, tarefas as t } from '@nads/core';
+// O WhatsApp (12/11/2026, ticket 1ORUBY: "Inserir tipo de envio 'Whastapp'"): "Abrir no WhatsApp" abre o wa.me do cliente (o do
+// Cadastro do nads, senão o do Entregas) com o texto do Modelo do e-mail e baixa as guias para anexar; no disparo, o robô faz
+// como no SCI Report (o Drive e o Relatório com Entregue = WhatsApp, com a data).
+import { financeiro, formatos, tarefas as t } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useEffect, useState } from 'react';
-import { useControleTributos, useDriveDoEntregas, useGmailDoEntregas, useLoteFiscal, useRepo, useTodosOsCadastros } from '../../../dados/repo';
+import { useContatosDoEntregas, useControleTributos, useDriveDoEntregas, useGmailDoEntregas, useLoteFiscal, useRepo, useTodosOsCadastros } from '../../../dados/repo';
 import { colunaQueVale, MODELO_PADRAO_DAS_GUIAS, valorDaGuia, valoresDaGuia, type EscolhaDaGuia, type GuiaDoLote, type ViaDaGuia } from '../../../dados/loteFiscal';
 import { CURTO, type RegimeDoRelatorio } from './useRelatorioGeral';
 
@@ -55,6 +58,7 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
   const gmail = useGmailDoEntregas();
   const drive = useDriveDoEntregas();
   const controle = useControleTributos();
+  const contatosDoEntregas = useContatosDoEntregas();
 
   /** espera o mapa do Drive responder (ele carrega quando pedido), até o prazo */
   function esperarDrive<T>(ler: () => T | null): Promise<T> {
@@ -102,11 +106,12 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
   const [subindo, setSubindo] = useState<{ feitos: number; total: number } | null>(null);
   const [disparando, setDisparando] = useState(false);
 
-  // os clientes para escolher e para mostrar: o nome da lista do escritório e o e-mail (o do Cadastro do nads, senão o do Entregas)
+  // os clientes para escolher e para mostrar: o nome da lista do escritório, o e-mail e o WhatsApp (os do Cadastro do nads, senão os do Entregas)
   const emailsDoEntregas = new Map(gmail.clientes().lista.map(c => [c.codigo, [c.email, ...c.emails].filter(Boolean)]));
   const clientes = tarefas.listarEmpresas().filter(e => e.codigo != null).map(e => ({
     codigo: e.codigo as number, nome: e.nome,
     email: (cadastros.porId.get(formatos.slug(e.nome))?.contato?.email || '').trim().toLowerCase() || (emailsDoEntregas.get(String(e.codigo)) || [])[0] || (repo.exemplos ? 'financeiro@exemplo.com.br' : ''),
+    whatsapp: financeiro.telefoneParaWhatsapp(cadastros.porId.get(formatos.slug(e.nome))?.contato?.whatsapp || contatosDoEntregas.get(e.codigo as number)?.whatsapp || (repo.exemplos ? '11999990000' : '')),
   })).sort((a, b) => a.codigo - b.codigo);
   const doCodigo = new Map(clientes.map(c => [c.codigo, c]));
 
@@ -135,12 +140,12 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
     const escolhida = atual?.vias[String(codigo)];
     if (escolhida) return escolhida;
     const antes = controle.doMes(t.somarMesesDaCompetencia(competencia, -1)).linhas.get(codigo);
-    if (antes?.entregue === 'econtador' || antes?.entregue === 'scireport') return antes.entregue;
+    if (antes?.entregue === 'econtador' || antes?.entregue === 'scireport' || antes?.entregue === 'zap') return antes.entregue;
     return antes?.entregue === 'impresso' || !email ? 'impresso' : 'email';
   };
   const grupos = [...porChave.entries()].map(([chave, g]) => {
     const email = doCodigo.get(g.codigo)?.email || '';
-    return { chave, ...g, nome: doCodigo.get(g.codigo)?.nome || '', email, via: viaDe(g.codigo, g.competencia, email), resultado: resultadoDe.get(chave) || null };
+    return { chave, ...g, nome: doCodigo.get(g.codigo)?.nome || '', email, whatsapp: doCodigo.get(g.codigo)?.whatsapp || '', via: viaDe(g.codigo, g.competencia, email), resultado: resultadoDe.get(chave) || null };
   }).sort((a, b) => a.codigo - b.codigo || a.competencia.localeCompare(b.competencia));
   const pendentes = grupos.filter(g => g.resultado?.status !== 'enviado');
 
@@ -154,8 +159,13 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
   const modelo = repo.modelo();
   const exemplo = grupos[0];
   const comp = exemplo?.competencia || competenciaDaTela;
-  const campos: Record<string, string> = { cliente: exemplo?.nome || 'EMPRESA EXEMPLO LTDA', competencia: comp.slice(5) + '/' + comp.slice(0, 4), mes: t.rotuloCompetencia(comp).toLowerCase().replace('/', ' de ') };
-  const encher = (m: string) => m.replace(/\{(\w+)\}/g, (tudo, nome: string) => campos[nome] ?? tudo);
+  const camposDe = (cliente: string, c: string): Record<string, string> => ({ cliente, competencia: c.slice(5) + '/' + c.slice(0, 4), mes: t.rotuloCompetencia(c).toLowerCase().replace('/', ' de ') });
+  const encherCom = (m: string, campos: Record<string, string>) => m.replace(/\{(\w+)\}/g, (tudo, nome: string) => campos[nome] ?? tudo);
+  const encher = (m: string) => encherCom(m, camposDe(exemplo?.nome || 'EMPRESA EXEMPLO LTDA', comp));
+  /** o wa.me do cliente com o texto do Modelo do e-mail (o assunto não vai: no WhatsApp é só a mensagem, e o "e-mail" do texto vira "mensagem"); '' sem número */
+  const linkDoZap = (codigo: number, nome: string, competencia: string) =>
+    financeiro.linkDoWhatsapp(doCodigo.get(codigo)?.whatsapp || '', encherCom(modelo.texto || MODELO_PADRAO_DAS_GUIAS.texto, camposDe(nome || doCodigo.get(codigo)?.nome || 'Cliente ' + codigo, competencia))
+      .replace(/\beste e-mail\b/gi, 'esta mensagem'));
 
   return {
     exemplos: repo.exemplos,
@@ -220,6 +230,38 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
         });
       }, m => toast('Não consegui abrir a guia: ' + m));
     },
+    /**
+     * "Abrir no WhatsApp" (12/11/2026, ticket 1ORUBY): a conversa do cliente com a mensagem do modelo, numa aba nova (aberta
+     * já no clique, senão o navegador bloqueia), e as guias baixadas para anexar lá. Só antes do disparo: depois, o robô
+     * apaga os pedaços e as guias ficam no Drive (em "Enviados").
+     */
+    abrirWhatsApp(g: { codigo: number; nome: string; competencia: string; arquivos: GuiaDoLote[] }) {
+      const link = linkDoZap(g.codigo, g.nome, g.competencia);
+      if (!link) { toast('O cliente ' + g.codigo + ' não tem WhatsApp no Cadastro nem no Entregas.'); return; }
+      window.open(link, '_blank', 'noopener');
+      if (!atual) return;
+      const lote = atual.id;
+      void (async () => {
+        try {
+          for (const a of g.arquivos) {
+            const b = await repo.bytesDaGuia(lote, a.id);
+            const url = URL.createObjectURL(new Blob([b as BlobPart], { type: 'application/pdf' }));
+            const el = document.createElement('a');
+            el.href = url;
+            el.download = a.leitura?.nomeFinal || a.nome;
+            el.click();
+            setTimeout(() => URL.revokeObjectURL(url), 60 * 1000);
+          }
+          toast(g.arquivos.length === 1 ? 'A guia foi baixada: anexe na conversa do WhatsApp.' : 'As ' + g.arquivos.length + ' guias foram baixadas: anexe na conversa do WhatsApp.');
+        } catch (e) { toast('Não consegui baixar as guias: ' + (e instanceof Error ? e.message : String(e))); }
+      })();
+    },
+    /** "Enviados" pelo WhatsApp: a conversa do cliente com a mensagem do modelo (as guias abrem pelo nome, do Drive) */
+    abrirWhatsAppDoEnviado(x: { codigo: number; empresa: string; competencia: string }) {
+      const link = linkDoZap(x.codigo, x.empresa, x.competencia);
+      if (!link) { toast('O cliente ' + x.codigo + ' não tem WhatsApp no Cadastro nem no Entregas.'); return; }
+      window.open(link, '_blank', 'noopener');
+    },
     /** o lote aberto pode ser excluído: parado (lido, com erro, ou disparado com alguém que não recebeu), não no meio do robô */
     podeExcluir: !!atual && ['lido', 'disparado', 'erro'].includes(atual.status),
     /** exclui o lote aberto, depois de confirmar (04/11/2026: "Coloca o botão de excluir o para enviar"); quem já recebeu continua em Enviados */
@@ -238,7 +280,7 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
     },
     /** quantos clientes vão no disparo (os ainda não enviados) */
     paraDisparar: pendentes.length,
-    /** muda a via do cliente (Gmail ou Impresso) no lote aberto */
+    /** muda a via do cliente (Gmail, Impresso, eContador, SCI Report ou WhatsApp) no lote aberto */
     async mudarVia(codigo: number, via: ViaDaGuia) {
       if (!atual) return;
       try { await repo.definirVias(atual.id, { ...atual.vias, [String(codigo)]: via }); }
@@ -291,16 +333,20 @@ export function useEnvioDeGuias(grupo: RegimeDoRelatorio, competenciaDaTela: str
       const impressos = pendentes.filter(g => g.via === 'impresso').length;
       const noEcontador = pendentes.filter(g => g.via === 'econtador').length;
       const noSci = pendentes.filter(g => g.via === 'scireport').length;
+      const noZap = pendentes.filter(g => g.via === 'zap').length;
       const semEmail = pendentes.filter(g => g.via === 'email' && !g.email).length;
+      const semZap = pendentes.filter(g => g.via === 'zap' && !g.whatsapp).length;
       const ok = await modal({
         icone: 'envelope', titulo: 'Disparar para ' + n + (n === 1 ? ' cliente?' : ' clientes?'),
         texto: (porEmail ? porEmail + (porEmail === 1 ? ' cliente recebe' : ' clientes recebem') + ' as guias no e-mail do cadastro. ' : '') +
           (impressos ? impressos + (impressos === 1 ? ' cliente vai' : ' clientes vão') + ' para a rota do Entregas, com as guias anexadas para imprimir. ' : '') +
           (noEcontador ? noEcontador + (noEcontador === 1 ? ' cliente fica' : ' clientes ficam') + ' com Entregue = eContador (as guias no Drive, para postar no eContador). ' : '') +
           (noSci ? noSci + (noSci === 1 ? ' cliente fica' : ' clientes ficam') + ' com Entregue = SCI Report (as guias no Drive, para mandar pelo SCI Report). ' : '') +
+          (noZap ? noZap + (noZap === 1 ? ' cliente fica' : ' clientes ficam') + ' com Entregue = WhatsApp (a mensagem vai pelo "Abrir no WhatsApp" de cada um). ' : '') +
           'O robô grava cada guia na pasta do cliente no Drive e preenche o ' + doGrupo.rotulo +
-          ' no Relatório: o valor de cada coluna e o Entregue (e-mail, com a data, impresso, eContador ou SCI Report), só onde está em branco.' +
+          ' no Relatório: o valor de cada coluna e o Entregue (e-mail, com a data, impresso, eContador, SCI Report ou WhatsApp), só onde está em branco.' +
           (semEmail ? ' ' + semEmail + (semEmail === 1 ? ' cliente está' : ' clientes estão') + ' sem e-mail e vai dar erro.' : '') +
+          (semZap ? ' ' + semZap + (semZap === 1 ? ' cliente do WhatsApp está' : ' clientes do WhatsApp estão') + ' sem número no Cadastro e no Entregas.' : '') +
           (faltam.length ? ' ' + faltam.length + (faltam.length === 1 ? ' guia sem cliente fica' : ' guias sem cliente ficam') + ' de fora.' : ''),
         botoes: [{ rotulo: 'Disparar', valor: true, variante: 'btn-primary' }, { rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }],
       });

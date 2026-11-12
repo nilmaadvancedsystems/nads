@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ContaAPagar } from '../financeiro/contasPagar';
 import {
-  conferirComissao, conferirLancamento, conferirServicos, mesDoPagamento, novoServico, servicosPadrao, valorDaComissao, historico, liberadaPara, pagamentosDaCarteira, recebidoNoMes, resumoDasFinancas,
+  conferirComissao, conferirLancamento, conferirPorPessoa, conferirServicos, percentualDaComissao, mesDoPagamento, novoServico, servicosPadrao, valorDaComissao, historico, liberadaPara, pagamentosDaCarteira, recebidoNoMes, resumoDasFinancas,
   resumoParaPagar, salarioDoMes, totaisDasComissoes, ultimosMeses, type Comissao, type DocumentoDaCarteira, type Lancamento,
 } from '.';
 
@@ -77,5 +77,22 @@ describe('Carteira', () => {
     const ps = pagamentosDaCarteira([conta('1', 'v', '2026-10-05', true), conta('2', 'v', '2026-11-05', false), conta('3', 'outro', '2026-11-05', true), conta('4', null, '2026-11-05', true)], 'v');
     expect(ps.map(p => [p.id, p.rotulo, p.pago, p.comprovantes.map(c => c.nome)])).toEqual([['2', 'Salário · NOV', false, []], ['1', 'Salário · NOV', true, ['pix.pdf']]]);
     expect([recebidoNoMes(ps, '2026-10'), recebidoNoMes(ps, '2026-11')]).toEqual([{ recebido: 2990, aReceber: 0 }, { recebido: 0, aReceber: 3000 }]);
+  });
+});
+
+describe('a % própria da pessoa', () => {
+  const servicos = [{ id: 'a', nome: 'Abertura de MEI', percentual: 10 }, { id: 'b', nome: 'Emissão de GTA', percentual: 0 }];
+  const porPessoa = [{ uid: 'v', nome: 'Pessoa A', percentual: 50 }];
+  it('vale para todos os serviços dela, até o que não tem %', () => {
+    expect(percentualDaComissao(servicos, porPessoa, 'v', 'Abertura de MEI')).toBe(50);
+    expect(percentualDaComissao(servicos, porPessoa, 'v', 'Emissão de GTA')).toBe(50);
+  });
+  it('os outros seguem com a % do serviço', () => {
+    expect(percentualDaComissao(servicos, porPessoa, 'c', 'Abertura de MEI')).toBe(10);
+    expect(percentualDaComissao(servicos, porPessoa, null, 'Emissão de GTA')).toBe(0);
+  });
+  it('confere a lista', () => {
+    expect(conferirPorPessoa(porPessoa)).toEqual([]);
+    expect(conferirPorPessoa([...porPessoa, { uid: 'v', nome: 'Pessoa A', percentual: 0 }])).toEqual(['A % própria fica entre 0 e 100 (maior que zero).', 'Há pessoa repetida.']);
   });
 });

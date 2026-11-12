@@ -382,6 +382,8 @@ async function impresso(db, ref, lote, { codigo, competencia, itens, ativos, gru
 // 6. o eContador do Alterdata (04/11/2026: "preciso que coloque a opção econtador do alterdata como envio e tambem preciso que preencha dae e icms na planilha la, enviei 2 dae via impresso e não preencheu"): as guias no Drive, o registro (a aba "Enviados", via 'econtador') e o
 // Relatório com o valor de cada coluna, a data do disparo e Entregue = eContador; sem e-mail e sem entrega na rota
 // e o SCI Report (06/11/2026: "quero que coloque la em envio o sci report"): o mesmo, com via e Entregue = 'scireport'
+// e o WhatsApp (12/11/2026, ticket 1ORUBY: "Inserir tipo de envio 'Whastapp'"): o mesmo, com via e Entregue = 'zap'; quem manda
+// é a pessoa, pela tela (o wa.me com a mensagem do modelo e as guias baixadas para anexar)
 async function econtador(db, ref, lote, { codigo, competencia, itens, ativos, grupo, salvarNoDrive, via = 'econtador' }) {
   let doc = null;
   ativos.forEach(d => { if (!doc && String(d.data().codigoOrigem || '').trim() === String(codigo)) doc = d; });
@@ -405,7 +407,7 @@ async function econtador(db, ref, lote, { codigo, competencia, itens, ativos, gr
       .catch(err => { resultado.erroNoEcontador = String(err.message || err).slice(0, 200); return ''; });
   }
   try {
-    resultado.preenchidos = await gravarNoRelatorio(db, { competencia, codigo, grupo, valores: valoresPorColuna(itens), dia: diaEmBrasilia(new Date(agora)), entregue: via, agora, quem: 'robô (' + (via === 'scireport' ? 'SCI Report' : 'eContador') + ' de ' + (lote.disparadoPor || 'guias') + ')' });
+    resultado.preenchidos = await gravarNoRelatorio(db, { competencia, codigo, grupo, valores: valoresPorColuna(itens), dia: diaEmBrasilia(new Date(agora)), entregue: via, agora, quem: 'robô (' + (via === 'scireport' ? 'SCI Report' : via === 'zap' ? 'WhatsApp' : 'eContador') + ' de ' + (lote.disparadoPor || 'guias') + ')' });
   } catch (err) { resultado.erroNoRelatorio = String(err.message || err).slice(0, 200); }
   return resultado;
 }
@@ -444,7 +446,7 @@ async function dispararLote(db, ref, lote, deps) {
     // disparar de novo (depois de corrigir o e-mail de quem deu erro) não manda outra vez para quem já recebeu
     if (lote.resultados && lote.resultados[chave] && lote.resultados[chave].status === 'enviado') { enviados++; continue; }
     const { codigo, competencia } = itens[0].vai;
-    const via = ['impresso', 'econtador', 'scireport'].includes(vias[String(codigo)]) ? vias[String(codigo)] : 'email';
+    const via = ['impresso', 'econtador', 'scireport', 'zap'].includes(vias[String(codigo)]) ? vias[String(codigo)] : 'email';
     const resultado = { codigo, competencia, via, arquivos: itens.map(i => i.vai.nome), valores: valoresPorColuna(itens), preenchidos: [], erroNoRelatorio: '' };
     try {
       if (via !== 'email') {

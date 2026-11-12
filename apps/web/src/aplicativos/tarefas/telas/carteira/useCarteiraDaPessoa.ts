@@ -47,6 +47,7 @@ export function useJanelaDaComissao(comissao: carteira.Comissao | null, fechar: 
   const equipe = useAcesso().equipe();
   const clientes = useClientesDoEscritorio();
   const servicos = repo.servicos();
+  const porPessoa = repo.porPessoa();
   const agora = new Date();
   const [competencia, setCompetencia] = useState(comissao?.competencia ?? (doFinanceiro ? carteira.competenciaDe(agora) : carteira.mesDoPagamento(agora)));
   const [para, setPara] = useState<{ uid: string; nome: string } | null>(null);
@@ -61,8 +62,11 @@ export function useJanelaDaComissao(comissao: carteira.Comissao | null, fechar: 
   const [erros, setErros] = useState<string[]>([]);
   const [salvando, setSalvando] = useState(false);
   const travada = !!comissao && !carteira.podeEditar(comissao);
-  // a %: a que ficou gravada na comissão já decidida; senão, a de hoje do serviço
-  const percentual = travada ? comissao!.percentual ?? 0 : servicos.lista.find(s => s.nome === servico)?.percentual ?? 0;
+  // a %: a que ficou gravada na comissão já decidida; senão, a própria da pessoa (quando o Financeiro definiu) ou a de hoje
+  // do serviço
+  const uidDaComissao = doFinanceiro ? para?.uid ?? null : comissao?.uid ?? repo.meuUid();
+  const propria = !travada && (porPessoa.lista.find(p => p.uid === uidDaComissao)?.percentual ?? 0) > 0;
+  const percentual = travada ? comissao!.percentual ?? 0 : carteira.percentualDaComissao(servicos.lista, porPessoa.lista, uidDaComissao, servico);
   const vs = valorDigitado(valorServico);
   const cliente = avulso ? nomeAvulso : clientes.find(c => c.codigo === clienteCodigo)?.nome ?? comissao?.cliente ?? '';
   const pessoas = equipe.lista.filter(u => u.ativo).map(u => ({ uid: u.uid, nome: u.nome })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
@@ -74,7 +78,7 @@ export function useJanelaDaComissao(comissao: carteira.Comissao | null, fechar: 
     clientes, avulso, clienteCodigo, cliente, nomeAvulso, setNomeAvulso, porte, setPorte,
     escolherCliente: (codigo: number) => { setAvulso(false); setClienteCodigo(codigo); },
     marcarAvulso: () => { setAvulso(true); setClienteCodigo(null); },
-    servicos: servicos.lista, servico, setServico, percentual,
+    servicos: servicos.lista, servico, setServico, percentual, propria,
     valorServico, setValorServico,
     /** a comissão que vai sair (valor do serviço × %) */
     valor: travada ? comissao!.valor : vs > 0 && percentual > 0 ? carteira.valorDaComissao(vs, percentual) : 0,
@@ -110,6 +114,9 @@ export function useJanelaDosServicos(fechar: () => void) {
   const repo = useCarteira();
   const { toast } = useRetorno();
   const salvos = repo.servicos();
+  const salvasPorPessoa = repo.porPessoa();
+  const equipe = useAcesso().equipe();
+  const [pessoas, setPessoas] = useState<{ uid: string; nome: string; percentual: string }[] | null>(null);
   const [lista, setLista] = useState<{ id: string; nome: string; percentual: string }[] | null>(null);
   const [novo, setNovo] = useState('');
   const [erros, setErros] = useState<string[]>([]);
@@ -117,8 +124,16 @@ export function useJanelaDosServicos(fechar: () => void) {
   // a lista que está na tela: a do banco até a pessoa mexer
   const atual = lista ?? salvos.lista.map(s => ({ id: s.id, nome: s.nome, percentual: s.percentual ? valorNoCampo(s.percentual) : '' }));
   const comoServicos = () => atual.map(s => ({ id: s.id, nome: s.nome, percentual: s.percentual.trim() ? valorDigitado(s.percentual) : 0 }));
+  // a % própria por pessoa (12/11/2026): vale para todos os serviços dela
+  const pessoasAtuais = pessoas ?? salvasPorPessoa.lista.map(p => ({ uid: p.uid, nome: p.nome, percentual: valorNoCampo(p.percentual) }));
+  const comoPorPessoa = () => pessoasAtuais.map(p => ({ uid: p.uid, nome: p.nome, percentual: p.percentual.trim() ? valorDigitado(p.percentual) : 0 }));
+  const semPropria = equipe.lista.filter(u => u.ativo && !pessoasAtuais.some(p => p.uid === u.uid)).map(u => ({ uid: u.uid, nome: u.nome })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
   return {
     carregada: salvos.carregada, erro: salvos.erro, lista: atual, novo, setNovo, erros, salvando,
+    pessoas: pessoasAtuais, semPropria,
+    acrescentarPessoa: (p: { uid: string; nome: string }) => setPessoas([...pessoasAtuais, { ...p, percentual: '' }]),
+    mudarPessoa: (uid: string, v: string) => setPessoas(pessoasAtuais.map(p => (p.uid === uid ? { ...p, percentual: v } : p))),
+    tirarPessoa: (uid: string) => setPessoas(pessoasAtuais.filter(p => p.uid !== uid)),
     mudar: (id: string, campo: 'nome' | 'percentual', v: string) => setLista(atual.map(s => (s.id === id ? { ...s, [campo]: v } : s))),
     tirar: (id: string) => setLista(atual.filter(s => s.id !== id)),
     acrescentar() {
@@ -129,11 +144,12 @@ export function useJanelaDosServicos(fechar: () => void) {
     },
     async salvar() {
       const l = comoServicos();
-      const problemas = carteira.conferirServicos(l);
+      const p = comoPorPessoa();
+      const problemas = [...carteira.conferirServicos(l), ...carteira.conferirPorPessoa(p)];
       setErros(problemas);
       if (problemas.length) return;
       setSalvando(true);
-      try { await repo.salvarServicos(l); toast('Serviços gravados.'); fechar(); }
+      try { await repo.salvarServicos(l, p); toast('Serviços gravados.'); fechar(); }
       catch (e) { setErros([mensagem(e, 'Não consegui gravar.')]); }
       finally { setSalvando(false); }
     },

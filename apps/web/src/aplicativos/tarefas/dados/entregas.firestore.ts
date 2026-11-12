@@ -8,7 +8,7 @@
 import { usuarios } from '@nads/core';
 import { deleteApp, getApps, initializeApp } from 'firebase/app';
 import { createUserWithEmailAndPassword, EmailAuthProvider, getAuth, onAuthStateChanged, reauthenticateWithCredential, signInWithEmailAndPassword, signOut, updatePassword } from 'firebase/auth';
-import { doc, getDoc, updateDoc as updateDocBruto, type Firestore } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, updateDoc as updateDocBruto, type Firestore } from 'firebase/firestore';
 import { abrirBancoDoEntregas, apagarCacheDoEntregas } from './conexaoEntregas.firestore';
 import { guardar } from '../../../comum/modoDesenvolvedor';
 
@@ -34,8 +34,16 @@ export interface SessaoEntregas {
   sair(): Promise<void>;
   /** troca a senha (pede a atual de novo, como o Entregas: o Firebase exige o login recente) */
   trocarSenha(atual: string, nova: string): Promise<void>;
-  /** troca o nome (usuarios/{uid}.nome; o dono pode): vale já em toda a Tarefas */
+  /** troca o nome (usuarios/{uid}.nome; o dono pode): vale já em toda a Tarefas; o nome é único na equipe */
   trocarNome(nome: string): Promise<void>;
+  /**
+   * troca o próprio e-mail de entrada (12/11/2026): confere a senha, `pedir` manda o pedido ao robô e espera ele trocar, e
+   * entra de novo com o e-mail novo. O Firebase derruba as sessões da conta quando o e-mail muda; sem entrar de novo, a
+   * pessoa caía da Tarefas.
+   */
+  trocarMeuEmail(novo: string, senha: string, pedir: () => Promise<void>): Promise<void>;
+  /** troca o próprio sobrenome (usuarios/{uid}.sobrenome; 12/11/2026) */
+  trocarSobrenome(sobrenome: string): Promise<void>;
   assinar(aoMudar: () => void): () => void;
   versao(): number;
 }
@@ -98,6 +106,24 @@ export function bancoDoEntregas(): Firestore {
 export function criarSessaoEntregas(): SessaoEntregas {
   const auth = getAuth(appDoEntregas());
   const db = bancoDoEntregas();
+
+  /**
+   * O e-mail de entrada do que foi digitado (Vitor, 12/11/2026: "deixe logar com o usuário ou e-mail"). Com "@", é o
+   * e-mail. Pelo nome: loginPorNome/{chave do nome}, o índice que o robô da nuvem mantém a partir da equipe (quem trocou
+   * o nome ou o e-mail não é mais nome@nilma.local); sem o índice, o nome@nilma.local de sempre.
+   */
+  async function emailParaEntrar(login: string): Promise<string> {
+    if (login.indexOf('@') !== -1) return login.trim();
+    const chave = usuarios.chaveDoNome(login);
+    if (chave) {
+      try {
+        const d = await getDoc(doc(db, 'loginPorNome', chave));
+        const email = String(d.data()?.email || '');
+        if (usuarios.ehEmailDeLogin(email)) return email;
+      } catch { /* sem o índice (regra ainda não publicada, sem rede): segue pelo nome */ }
+    }
+    return usuarios.emailDoLogin(login);
+  }
   let estado: EstadoSessao = { pronta: false, usuario: null, aviso: '' };
   let ver = 0;
   const ouvintes = new Set<() => void>();
@@ -125,7 +151,7 @@ export function criarSessaoEntregas(): SessaoEntregas {
     async entrar(login, senha) {
       mudar({ ...estado, aviso: '' });
       try {
-        await signInWithEmailAndPassword(auth, usuarios.emailDoLogin(login), senha);
+        await signInWithEmailAndPassword(auth, await emailParaEntrar(login), senha);
       } catch (e) {
         throw new Error(usuarios.mensagemDeErroDeLogin(String((e as { code?: string })?.code || ''), login), { cause: e });
       }
@@ -145,8 +171,29 @@ export function criarSessaoEntregas(): SessaoEntregas {
     async trocarNome(nome) {
       const u = auth.currentUser;
       if (!u || !estado.usuario) throw new Error('Sem login.');
+      // o nome é único (Vitor, 12/11/2026): ele também é o login de quem entra pelo nome
+      const equipe = await getDocs(collection(db, 'usuarios'));
+      if (equipe.docs.some(d => d.id !== u.uid && usuarios.mesmoNome(String(d.data().nome || ''), nome))) throw new Error('Já existe alguém com esse nome na equipe. Escolha outro (por exemplo, com o sobrenome).');
       await updateDoc(doc(db, 'usuarios', u.uid), { nome });
       mudar({ ...estado, usuario: { ...estado.usuario, nome } });
+    },
+    async trocarSobrenome(sobrenome) {
+      const u = auth.currentUser;
+      if (!u || !estado.usuario) throw new Error('Sem login.');
+      await updateDoc(doc(db, 'usuarios', u.uid), { sobrenome });
+      mudar({ ...estado, usuario: { ...estado.usuario, sobrenome } });
+    },
+    async trocarMeuEmail(novo, senha, pedir) {
+      const u = auth.currentUser;
+      if (!u || !u.email) throw new Error('Sem login.');
+      try {
+        await reauthenticateWithCredential(u, EmailAuthProvider.credential(u.email, senha));
+      } catch (e) {
+        const c = String((e as { code?: string })?.code || '');
+        throw new Error(c === 'auth/wrong-password' || c === 'auth/invalid-credential' ? 'Senha incorreta.' : 'Não consegui conferir a senha (' + c + ').', { cause: e });
+      }
+      await pedir();
+      await signInWithEmailAndPassword(auth, novo, senha);
     },
     assinar(f) {
       ouvintes.add(f);
