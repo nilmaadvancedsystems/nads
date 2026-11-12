@@ -1,5 +1,6 @@
 // "Enviar vários meses" (Vitor, 12/11/2026: "uma popup para eu upar vários arquivos de uma vez e ele separar pelos meses"): os
-// extratos de vários meses de um banco de uma vez. Lê cada arquivo, mostra de que mês ele é (com o aviso do de outro banco, do
+// extratos de vários meses de um banco de uma vez. Lê cada arquivo, mostra de que mês ele é pelo extrato (as datas dos
+// lançamentos lidos, nunca o nome do arquivo: "identificando pelo extrato"; o de vários meses ou sem o mês, a pessoa escolhe) (com o aviso do de outro banco, do
 // mês fora do período da Tarefa e do mês que já tem extrato) e, ao confirmar, cada um entra no seu mês, igual ao enviar de um
 // mês só (e vai para o Drive). ViewModel da JanelaVariosMeses.
 import { empresas, extrator as x, tarefas } from '@nads/core';
@@ -10,9 +11,11 @@ export interface ContaDoEnvio { id: string; nome: string; marca?: string }
 export interface ArquivoDoEnvio {
   chave: string;
   arquivo: File;
-  /** os meses do arquivo ('aaaa-mm'): os das datas dos lançamentos ou os do "sem movimento" */
+  /** os meses em que o arquivo vai entrar ('aaaa-mm'): de início, todos os do arquivo */
   meses: string[];
-  /** o arquivo não diz o mês (o sem movimento sem data): a pessoa escolhe */
+  /** os meses do extrato: os das datas dos lançamentos ou os do "sem movimento" */
+  doArquivo: string[];
+  /** a pessoa escolhe o mês: o extrato de vários meses (todos ou um só) ou o sem movimento que não diz o mês */
   escolherMes: boolean;
   marcado: boolean;
   /** não entra de jeito nenhum (não é extrato, não leu) */
@@ -29,7 +32,7 @@ const nomeDoBanco = (id?: string) => empresas.BANCOS_CONHECIDOS.find(b => b.id =
  * um mês (importa; deu certo, manda para o Drive) e devolve se entrou.
  */
 export function useEnviarVariosMeses(periodo: string[], jaTem: (conta: string, mes: string) => boolean,
-  enviar: (conta: string, arquivo: File, meses: string[]) => Promise<boolean>) {
+  enviar: (conta: string, arquivo: File, meses: string[], soOsMeses: boolean) => Promise<boolean>) {
   const [e, setE] = useState<Estado | null>(null);
   const mm = tarefas.rotuloNumericoCompetencia;
 
@@ -45,21 +48,24 @@ export function useEnviarVariosMeses(periodo: string[], jaTem: (conta: string, m
   async function ler(conta: ContaDoEnvio, f: File): Promise<ArquivoDoEnvio> {
     const chave = f.name + '|' + f.size + '|' + f.lastModified;
     const lido = await x.lerArquivo(f.name, new Uint8Array(await f.arrayBuffer()), 'banco');
-    const base = { chave, arquivo: f, escolherMes: false };
+    const base = { chave, arquivo: f, escolherMes: false, doArquivo: [] as string[] };
     if (x.deOutroBanco(lido.bancoNoTexto, conta.marca)) {
       return { ...base, meses: [], marcado: false, bloqueado: true, avisos: [{ texto: 'É o extrato do ' + nomeDoBanco(lido.bancoNoTexto) + ', não do ' + nomeDoBanco(conta.marca) + '.', tom: 'erro' }] };
     }
     if (lido.semMovimento) {
       const meses = [...lido.semMovimento].sort();
       if (!meses.length) return { ...base, meses: [], escolherMes: true, marcado: false, bloqueado: false, avisos: [{ texto: 'Sem movimento, e o extrato não diz o mês: escolha o mês', tom: 'aviso' }] };
-      return { ...base, meses, marcado: meses.every(m => periodo.includes(m)), bloqueado: false, avisos: [{ texto: 'Sem movimento', tom: 'aviso' }, ...avisosDe(conta, meses)] };
+      return { ...base, meses, doArquivo: meses, marcado: meses.every(m => periodo.includes(m)), bloqueado: false, avisos: [{ texto: 'Sem movimento', tom: 'aviso' }, ...avisosDe(conta, meses)] };
     }
     if (lido.erro || lido.faturaDeCartao || lido.naoEExtrato || !lido.lancamentos.length) {
       return { ...base, meses: [], marcado: false, bloqueado: true, avisos: [{ texto: lido.erro || (lido.faturaDeCartao ? 'É fatura de cartão' : 'Nenhum lançamento'), tom: 'erro' }] };
     }
     const meses = [...new Set(lido.lancamentos.map(l => l.data.slice(0, 7)))].sort();
-    // o mês fora do período fica desmarcado (a pessoa marca se quiser)
-    return { ...base, meses, marcado: meses.some(m => periodo.includes(m)), bloqueado: false, avisos: avisosDe(conta, meses) };
+    // o mês fora do período fica desmarcado (a pessoa marca se quiser); o de vários meses entra em todos, ou no que ela escolher
+    const doPeriodo = meses.filter(m => periodo.includes(m));
+    const entra = meses.length > 1 && doPeriodo.length ? doPeriodo : meses;
+    return { ...base, meses: entra, doArquivo: meses, escolherMes: meses.length > 1, marcado: doPeriodo.length > 0, bloqueado: false,
+      avisos: [...(meses.length > 1 ? [{ texto: 'O extrato tem ' + meses.length + ' meses: ' + meses.map(mm).join(', '), tom: 'aviso' as const }] : []), ...avisosDe(conta, entra)] };
   }
 
   async function acrescentar(fs: FileList | File[]) {
@@ -85,7 +91,8 @@ export function useEnviarVariosMeses(periodo: string[], jaTem: (conta: string, m
     const conta = e.conta.id;
     // um arquivo depois do outro: cada um pergunta o seu "sobrepor" e manda o seu pedaço para o Drive
     for (const a of prontos) {
-      const ok = await enviar(conta, a.arquivo, a.meses);
+      // escolheu menos meses do que o extrato tem: só os lançamentos deles
+      const ok = await enviar(conta, a.arquivo, a.meses, a.doArquivo.length > 1 && a.meses.length < a.doArquivo.length);
       setE(v => (v ? { ...v, arquivos: ok ? v.arquivos.filter(b => b.chave !== a.chave) : v.arquivos } : v));
     }
     setE(v => (v && !v.arquivos.some(a => a.marcado && !a.bloqueado) ? null : v ? { ...v, enviando: false } : v));
@@ -99,9 +106,12 @@ export function useEnviarVariosMeses(periodo: string[], jaTem: (conta: string, m
     fechar: () => setE(v => (v?.enviando ? v : null)),
     acrescentar,
     marcar: (chave: string) => mudar(chave, a => (a.bloqueado || !a.meses.length ? a : { ...a, marcado: !a.marcado })),
-    escolherMes: (chave: string, mes: string) => {
+    /** meses: um só, ou todos os do extrato */
+    escolherMes: (chave: string, meses: string[]) => {
       const conta = e?.conta;
-      if (conta) mudar(chave, a => ({ ...a, meses: [mes], marcado: true, avisos: [{ texto: 'Sem movimento', tom: 'aviso' }, ...avisosDe(conta, [mes])] }));
+      if (conta) mudar(chave, a => ({ ...a, meses, marcado: true, avisos: [
+        ...(a.doArquivo.length > 1 ? [{ texto: 'O extrato tem ' + a.doArquivo.length + ' meses: ' + a.doArquivo.map(mm).join(', '), tom: 'aviso' as const }] : [{ texto: 'Sem movimento', tom: 'aviso' as const }]),
+        ...avisosDe(conta, meses)] }));
     },
     tirar: (chave: string) => setE(v => (v ? { ...v, arquivos: v.arquivos.filter(a => a.chave !== chave) } : v)),
     confirmar,

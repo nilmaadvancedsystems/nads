@@ -43,13 +43,21 @@ export function JanelaVariosMeses({ vm, aceitar }: { vm: VmVariosMeses; aceitar:
                       </td>
                       <td>
                         {a.escolherMes ? (
-                          <MenuSuspenso flutuante className="btn btn-outline" rotulo={a.meses[0] ? mm(a.meses[0]) : 'Escolha o mês'} dica="De que mês é este extrato"
+                          // o extrato de vários meses: todos (cada lançamento no seu mês) ou um só; o sem movimento sem o mês: os do período
+                          <MenuSuspenso flutuante className="btn btn-outline" dica="Em que mês entra este extrato"
+                            rotulo={!a.meses.length ? 'Escolha o mês' : a.doArquivo.length > 1 && a.meses.length === a.doArquivo.length ? 'Todos os meses' : a.meses.map(mm).join(', ')}
                             conteudo={fechar => (
                               <>
-                                {vm.periodo.map(m => (
-                                  <button key={m} type="button" className="popover-item" role="menuitem" onClick={() => { vm.escolherMes(a.chave, m); fechar(); }}>
-                                    <span className="popover-texto">{tarefas.rotuloCompetencia(m)}</span>
-                                    {a.meses[0] === m && <Icone nome="check" width={16} height={16} />}
+                                {a.doArquivo.length > 1 && (
+                                  <button type="button" className="popover-item" role="menuitem" onClick={() => { vm.escolherMes(a.chave, a.doArquivo); fechar(); }}>
+                                    <span className="popover-texto">Todos ({a.doArquivo.map(mm).join(', ')})</span>
+                                    {a.meses.length === a.doArquivo.length && <Icone nome="check" width={16} height={16} />}
+                                  </button>
+                                )}
+                                {(a.doArquivo.length > 1 ? a.doArquivo : vm.periodo).map(m => (
+                                  <button key={m} type="button" className="popover-item" role="menuitem" onClick={() => { vm.escolherMes(a.chave, [m]); fechar(); }}>
+                                    <span className="popover-texto">Só {tarefas.rotuloCompetencia(m)}</span>
+                                    {a.meses.length === 1 && a.meses[0] === m && a.doArquivo.length !== 1 && <Icone nome="check" width={16} height={16} />}
                                   </button>
                                 ))}
                               </>
