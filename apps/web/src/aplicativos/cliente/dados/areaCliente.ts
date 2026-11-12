@@ -34,26 +34,6 @@ export type { FormatoDoArquivo };
 /** O certificado digital da empresa (o e-CNPJ). */
 export interface CertificadoDigital { tipo: 'A1' | 'A3'; titular: string; /** 'aaaa-mm-dd' */ validoAte: string }
 
-export type SituacaoDasFerias = 'em dia' | 'em ferias' | 'periodo aquisitivo' | 'vencidas';
-export const ROTULO_DAS_FERIAS: Record<SituacaoDasFerias, string> = { 'em dia': 'Em dia', 'em ferias': 'Em férias', 'periodo aquisitivo': 'Período aquisitivo', vencidas: 'Férias vencidas' };
-
-/** Um empregado ativo (o CPF já vem mascarado). */
-export interface Empregado {
-  id: string;
-  nome: string;
-  /** '***.491.826-**' */
-  cpf: string;
-  cargo: string;
-  /** 'aaaa-mm-dd' */
-  admissao: string;
-  salario: number;
-  ferias: SituacaoDasFerias;
-  /** 'aaaa-mm-dd', quando está de férias */
-  retornoEm?: string;
-  /** a foto (Vitor, 16/10/2026: "subir a foto da pessoa que foi contratada"): o JPEG 256×256 como data URL */
-  foto?: string;
-}
-
 /** A ficha cadastral da empresa. */
 export interface FichaDaEmpresa {
   razaoSocial: string;
@@ -93,7 +73,7 @@ export interface GuiaPaga { id: string; /** de que é (a logo do órgão no quad
 export interface SecoesDaArea {
   /** a Central de documentos (os documentos que o escritório deixa para o cliente) */
   documentos: boolean;
-  /** o Departamento pessoal (os funcionários e os pedidos de admissão, férias e desligamento com a foto) */
+  /** o Registro (12/11/2026): os funcionários pelas guias do FGTS e os documentos do DP; no banco, quando o robô gravou */
   dp: boolean;
   /** as guias já pagas, com o comprovante */
   pagas: boolean;
@@ -124,7 +104,9 @@ export interface EstadoDaArea {
   chamados: ac.ChamadoDoCliente[];
   documentos: DocumentoDoCliente[];
   certificado: CertificadoDigital | null;
-  empregados: Empregado[];
+  /** o Registro (12/11/2026): os funcionários (resumo/pessoal) e os documentos do DP (documentos com tipo 'dp') */
+  pessoal: ac.ResumoDoPessoal | null;
+  documentosDp: ac.DocumentoDoDp[];
   ficha: FichaDaEmpresa | null;
   atendimento: Atendimento | null;
   avisos: AvisoDoEscritorio[];
@@ -137,7 +119,7 @@ export interface EstadoDaArea {
 
 export const AREA_VAZIA: EstadoDaArea = {
   carregado: false, valido: false, erro: '', exemplos: false, secoes: SECOES_DO_BANCO, resumo: null, guias: [], codigos: {}, pagas: [], agenda: [], envios: [], chamados: [],
-  documentos: [], certificado: null, empregados: [], ficha: null, atendimento: null, avisos: [], tickets: [],
+  documentos: [], certificado: null, pessoal: null, documentosDp: [], ficha: null, atendimento: null, avisos: [], tickets: [],
 };
 
 export interface RepoAreaCliente {
@@ -149,9 +131,6 @@ export interface RepoAreaCliente {
    *  (o JPEG 256×256 em base64, sem o prefixo data:; só no exemplo: a caixa do banco ainda não tem campo para ela).
    *  Erro (link revogado, sem rede): joga um Error com a mensagem em português */
   abrirChamado(token: string, dados: { tipo: ac.TipoDeChamado; texto: string; foto?: string }): Promise<string>;
-  /** a foto de um funcionário (o JPEG 256×256 em base64, sem o prefixo data:). No banco vai pela caixa areaClienteEnvios
-   *  com o tipo 'foto' e o id do funcionário, e o robô grava no espelho e no Drive (o contrato e as regras ainda faltam) */
-  enviarFotoDoFuncionario(token: string, funcionarioId: string, base64Jpeg: string): Promise<void>;
   /** a resposta do cliente num chamado que já existe */
   responderChamado(token: string, id: string, texto: string): Promise<void>;
   /** o PDF da guia; null quando não tem */
@@ -160,4 +139,6 @@ export interface RepoAreaCliente {
   baixarDocumento(token: string, id: string): Promise<{ nome: string; arquivo: Blob } | null>;
   /** o comprovante de uma guia paga; null quando não tem */
   baixarComprovante(token: string, id: string): Promise<{ nome: string; arquivo: Blob } | null>;
+  /** um documento do DP do Registro (a folha, o recibo, as férias…); null quando não tem */
+  baixarDocumentoDp(token: string, id: string): Promise<{ nome: string; arquivo: Blob } | null>;
 }

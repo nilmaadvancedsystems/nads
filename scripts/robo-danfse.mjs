@@ -26,6 +26,11 @@ const codigo = [
   // a DANFE da NF-e/NFC-e (09/11/2026: os PDFs do SIEG, robo/sieg-pdfs.js)
   'export { danfeDoXml } from ' + caminho('packages/core/src/tarefas/sieg/danfe.ts') + ';',
   'export { desenharDanfe } from ' + caminho('apps/web/src/aplicativos/tarefas/telas/fiscal/partes/danfePdf.ts') + ';',
+  // o Registro da Área do Cliente (12/11/2026, robo/area-cliente.js): os funcionários pelas guias do FGTS (o texto do PDF
+  // com a posição, pelo pdf.js do próprio robô) e o que é cada documento do DP
+  'export { registroDasGuias, categoriaDoArquivoDp, ehDoDp, donoDoArquivo, mascararCpf } from ' + caminho('packages/core/src/areaCliente/pessoal.ts') + ';',
+  'export { guiasDoFgtsDasLinhas, linhasDaGuiaDoFgts } from ' + caminho('packages/core/src/tarefas/regras/fgts.ts') + ';',
+  'export { itensDoPdf } from ' + caminho('packages/core/src/extratudo/extrator/arquivos/pdf.ts') + ';',
   'export { dadosDaDanfse, desenharDanfse, camposDaNota, configDoEmail, emailValido, mensagemDaNota, EMAIL_PADRAO, AVISO_SEM_VALOR };',
   '/** O PDF da DANFSe (Uint8Array) a partir do XML da NFS-e autorizada. */',
   'export async function pdfDaDanfse(xml, municipios) { return desenharDanfse(dadosDaDanfse(xml, municipios)); }',
@@ -44,6 +49,8 @@ async function gerar() {
     // 'browser': o qrcode sem o pngjs/fs (só o create, puro); o que sai não usa nada do navegador e roda no Node
     platform: 'browser',
     logLevel: 'warn',
+    // o pdf.js fica de fora: o robô tem o dele (robo/node_modules), carregado só quando lê um PDF
+    external: [/^pdfjs-dist/],
     plugins: [{ name: 'entrada-do-robo', resolveId: id => (id === ENTRADA ? id : null), load: id => (id === ENTRADA ? codigo : null) }],
   });
   const { output } = await pacote.generate({ format: 'cjs', codeSplitting: false, minify: true, comments: false });

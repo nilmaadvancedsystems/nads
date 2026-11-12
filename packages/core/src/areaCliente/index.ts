@@ -21,3 +21,4 @@ export interface AreaDoCliente {
   criadoEm: string;
   atualizadoEm: string;
 }
+export * from './pessoal';
