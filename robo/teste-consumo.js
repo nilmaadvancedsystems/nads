@@ -214,6 +214,25 @@ const dormir = ms => new Promise(r => setTimeout(r, ms));
     try { fs.unlinkSync(arq); } catch (e) { /* segue */ }
   }
 
+  // o mapa do Drive lembra o que já gravou em documentosMensal (12/11/2026): a pasta que muda sem arquivo novo não lê nada
+  {
+    let leituras = 0, gravacoes = 0; const docs = {};
+    const dbM = { collection: () => ({ doc: id => ({
+      get: async () => { leituras++; return { exists: !!docs[id], data: () => docs[id] }; },
+      set: async p => { gravacoes++; docs[id] = Object.assign({}, docs[id], p, { pasta: Object.assign({}, (docs[id] || {}).pasta, p.pasta) }); },
+    }) }) };
+    const hoje = new Date(); const comp = hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2, '0');
+    const achados = new Map([[comp + '|extrato', [{ id: 'a1', nome: 'x.pdf' }]], [comp + '|comprovante', [{ id: 'b1', nome: 'y.pdf' }]]]);
+    const cli = { id: 'c1', nome: 'C' };
+    await di.marcarPeloIndice(dbM, cli, achados, () => {}, false);
+    igual('documentosMensal: um por mês, não um por tipo', [leituras, gravacoes], [1, 2]);
+    await di.marcarPeloIndice(dbM, cli, achados, () => {}, false);
+    igual('a pasta mudou sem arquivo novo: não lê nem grava', [leituras, gravacoes], [1, 2]);
+    achados.get(comp + '|extrato').push({ id: 'a2', nome: 'z.pdf' });
+    await di.marcarPeloIndice(dbM, cli, achados, () => {}, false);
+    igual('arquivo novo: lê o mês e grava', [leituras, gravacoes, docs['c1_' + comp].pasta.extrato], [2, 3, ['a1', 'a2']]);
+  }
+
   // os clientes ativos sem o arquivo do vigia: a leitura vale 10 min no processo
   const cache = require('./clientes-cache');
   if (!cache.lerDoArquivo()) {
