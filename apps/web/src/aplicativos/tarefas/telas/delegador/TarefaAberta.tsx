@@ -21,7 +21,7 @@ function FormularioDaTarefa({ vm }: { vm: Vm }) {
     <>
       <div className="tdl-form">
         {/* o pedido de documentos (12/11/2026): quem recebe anexa no painel Anexos e confirma que anexou tudo */}
-        {vm.pedeDocumentos && <p className="hint tdl-campo-largo">{vm.souQuemFaz ? 'Anexe os documentos no painel Anexos. Quando terminar, confirme em "Anexei tudo, concluir".' : 'Pedido de documentos: quem receber anexa os arquivos aqui e confirma, e a tarefa fica concluída.'}</p>}
+        {vm.pedeDocumentos && <p className="hint tdl-campo-largo">{vm.souQuemFaz ? 'Anexe os documentos no painel Anexos. Quando terminar, confirme em "Anexei tudo, concluir".' : 'Documentos delegados: quem receber anexa os arquivos aqui e confirma, e a tarefa fica concluída.'}</p>}
         {vm.caminhoDaEtapa && <div className="tdl-campo-largo"><Link className="btn btn-primary" to={vm.caminhoDaEtapa}><Icone nome="play" />Abrir a etapa</Link></div>}
         {vm.ehNova && !vm.delegar && (
           <label className="tdl-ja-fazendo tdl-campo-largo">
@@ -205,7 +205,7 @@ export function TarefaAberta({ alvo, voltar, criada, saida }: {
   const ICONE = { iniciar: 'play', retomar: 'play', pausar: 'clock', concluir: 'check' } as const;
   return (
     <div className="modal-overlay">
-      <div ref={janela} className="modal tdl-janela" role="dialog" aria-modal="true" aria-label={vm.ehNova ? 'Nova tarefa' : 'Tarefa ' + (vm.numero || '')}>
+      <div ref={janela} className="modal tdl-janela" role="dialog" aria-modal="true" aria-label={vm.ehNova ? (vm.pedeDocumentos ? 'Delegar documentos' : 'Nova tarefa') : 'Tarefa ' + (vm.numero || '')}>
         <header className="tdl-janela-topo">
           {vm.numero && <span className="fraco num">{vm.numero}</span>}
           {so ? <h2 className="tdl-tarefa-titulo">{vm.rascunho.titulo}</h2> : (

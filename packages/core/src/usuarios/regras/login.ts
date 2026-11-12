@@ -5,19 +5,34 @@
 export const DOMINIO_LOGIN = '@nilma.local';
 export const SENHA_MINIMA = 6;
 
-/** Nome → e-mail de login: sem acento, minúsculo, tudo que não é letra/número vira um ponto. */
+/** Nome → e-mail de login: a chave do nome com o domínio. */
 export function emailDoNome(nome: string): string {
-  const slug = nome.trim().toLowerCase()
+  return chaveDoNome(nome) + DOMINIO_LOGIN;
+}
+
+/** Dois nomes iguais para o login (Vitor, 12/11/2026: "não deixa criar dois usuários com o mesmo nome"): sem diferenciar maiúscula, acento nem pontuação. */
+export function mesmoNome(a: string, b: string): boolean {
+  const ca = chaveDoNome(a);
+  return !!ca && ca === chaveDoNome(b);
+}
+
+/** A chave do nome: sem acento, minúsculo, tudo que não é letra/número vira um ponto ("José da Silva" → "jose.da.silva"). */
+export function chaveDoNome(nome: string): string {
+  return nome.trim().toLowerCase()
     .normalize('NFD').replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z0-9]+/g, '.')
     .replace(/^\.+|\.+$/g, '');
-  return slug + DOMINIO_LOGIN;
 }
 
 /** O que foi digitado no campo Nome: com "@" é um e-mail (contas antigas); senão, vira o e-mail do nome. */
 export function emailDoLogin(digitado: string): string {
   const t = digitado.trim();
   return t.indexOf('@') !== -1 ? t : emailDoNome(t);
+}
+
+/** O nome com o sobrenome, para as telas ("Maria" + "Souza" → "Maria Souza"); sem sobrenome, só o nome. */
+export function nomeCompleto(u: { nome: string; sobrenome?: string }): string {
+  return [u.nome.trim(), (u.sobrenome || '').trim()].filter(Boolean).join(' ');
 }
 
 /** Iniciais para a foto padrão: primeira letra do primeiro e do último nome ("Gustavo Santos" → "GS"). */

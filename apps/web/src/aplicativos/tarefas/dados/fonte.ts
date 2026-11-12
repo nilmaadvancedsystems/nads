@@ -24,6 +24,8 @@ import { criarLoteDpFirestore } from './loteDp.firestore';
 import { criarBoletosFirestore } from './boletos.firestore';
 import { criarLoteFiscalMemoria, type RepoLoteFiscal } from './loteFiscal';
 import { criarLoteFiscalFirestore } from './loteFiscal.firestore';
+import { criarCartasFiscalMemoria, type RepoCartasFiscal } from './cartasFiscal';
+import { criarCartasFiscalFirestore } from './cartasFiscal.firestore';
 import { criarCaixaMemoria, type RepoCaixa } from './caixa';
 import { criarCaixaFirestore } from './caixa.firestore';
 import { criarHonorariosMemoria, type RepoHonorarios } from './honorarios';
@@ -415,6 +417,14 @@ let loteFiscal: RepoLoteFiscal | null = null;
 export function repoDoLoteFiscal(): RepoLoteFiscal {
   if (!loteFiscal) loteFiscal = noBanco ? criarLoteFiscalFirestore(quemPede) : criarLoteFiscalMemoria(repoDoControleTributos);
   return loteFiscal;
+}
+
+let cartasDoFiscal: RepoCartasFiscal | null = null;
+
+/** Fiscal › Cartas (12/11/2026): a Carta de balanço (pedidos ao robô) e o Checklist mensal (o que o robô mandou). */
+export function repoDasCartasDoFiscal(): RepoCartasFiscal {
+  if (!cartasDoFiscal) cartasDoFiscal = noBanco ? criarCartasFiscalFirestore(quemPede) : criarCartasFiscalMemoria();
+  return cartasDoFiscal;
 }
 
 let notasFiscais: RepoNfse | null = null;

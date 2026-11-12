@@ -46,7 +46,9 @@ export function useUsuariosDoNads() {
     .map(p => ({
       ...p,
       cargo: p.departamento || p.nivel ? usuarios.rotuloDoCargo(p) : '',
-      iniciais: usuarios.iniciais(p.nome),
+      /** nome e sobrenome (12/11/2026); as contas antigas, só o nome até completar */
+      completo: usuarios.nomeCompleto(p),
+      iniciais: usuarios.iniciais(usuarios.nomeCompleto(p)),
       rotulosDosPapeis: usuarios.PAPEIS.filter(x => p.papeis.includes(x.id)).map(x => x.rotulo),
       computadores: sessoes.filter(s => s.uid === p.uid),
       online: p.ativo && usuarios.estaOnline(p.vistoNoNads, agora),
@@ -143,6 +145,8 @@ export function useUsuariosDoNads() {
       const novo = email.trim().toLowerCase();
       if (!usuarios.ehEmailDeLogin(novo)) { toast('Escreva um e-mail válido (por exemplo, nome@nilma.local).'); return false; }
       if (novo === p.email.trim().toLowerCase()) return true;
+      // o próprio, em Minha conta: lá a Tarefas pede a senha e entra de novo com o e-mail novo (aqui a sessão cairia)
+      if (!!operador?.email && operador.email.trim().toLowerCase() === p.email.trim().toLowerCase()) { toast('O seu e-mail você troca em Minha conta (clique na sua foto): lá a Tarefas pede a senha e você continua dentro.'); return false; }
       if (equipe.lista.some(x => x.uid !== p.uid && x.email.trim().toLowerCase() === novo)) { toast('Esse e-mail já é o login de outra pessoa.'); return false; }
       let deu = false;
       await comLinha('email:' + p.uid, async () => {

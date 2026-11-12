@@ -4,7 +4,7 @@ import type { empresas, entregas, tarefas, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { RepoAcesso } from './acesso';
-import { repoDeBoletos, assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, dadosDaEmpresaNoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDaAreaCliente, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDoPainelRobo, repoDaIA, repoDeFeedback, repoDeAvisos, repoDeUso, repoDeParcelamentos, repoDeCategoriasDp, repoDoControleTributos, repoDeLegislacaoDp, repoDoLcdpr, repoDoArquivador, repoDosAgentes, repoDoFgts, repoDoAlterdata, repoDeEnviosDp, repoDoLoteDp, repoDoLoteFiscal, repoDeNfse, repoDoCaixa, repoDeHonorarios, repoDeContasPagar, repoDoSieg, repoPessoal, repoDoCofre, repoDeTarefasDelegadas, assinarTesteDoInicio, versaoDoTesteDoInicio, testeDoInicioLigado, ligarTesteDoInicio, repoDaCarteira } from './fonte';
+import { repoDeBoletos, assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, dadosDaEmpresaNoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDaAreaCliente, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDoPainelRobo, repoDaIA, repoDeFeedback, repoDeAvisos, repoDeUso, repoDeParcelamentos, repoDeCategoriasDp, repoDoControleTributos, repoDeLegislacaoDp, repoDoLcdpr, repoDoArquivador, repoDosAgentes, repoDoFgts, repoDoAlterdata, repoDeEnviosDp, repoDoLoteDp, repoDoLoteFiscal, repoDasCartasDoFiscal, repoDeNfse, repoDoCaixa, repoDeHonorarios, repoDeContasPagar, repoDoSieg, repoPessoal, repoDoCofre, repoDeTarefasDelegadas, assinarTesteDoInicio, versaoDoTesteDoInicio, testeDoInicioLigado, ligarTesteDoInicio, repoDaCarteira } from './fonte';
 import type { RepoCofre } from './cofre';
 import type { RepoAgentes } from './agentes';
 import type { RepoSieg } from './sieg';
@@ -13,6 +13,7 @@ import type { RepoAlterdata } from './alterdata';
 import type { RepoEnviosDp } from './enviosDp';
 import type { RepoLoteDp } from './loteDp';
 import type { RepoLoteFiscal } from './loteFiscal';
+import type { RepoCartasFiscal } from './cartasFiscal';
 import type { RepoCaixa } from './caixa';
 import type { RepoHonorarios } from './honorarios';
 import type { RepoBoletos } from './boletos';
@@ -147,6 +148,17 @@ export function useContatoDoEntregas(codigo: number | null): empresas.cadastro.C
   return contato;
 }
 
+/** O e-mail e o WhatsApp que o Entregas tem de todos os clientes, por código (vazio enquanto lê). */
+export function useContatosDoEntregas(): Map<number, empresas.cadastro.ContatoDoEntregas> {
+  const [contatos, setContatos] = useState<Map<number, empresas.cadastro.ContatoDoEntregas>>(() => new Map());
+  useEffect(() => {
+    let vale = true;
+    void contatosDoEntregas().then(m => { if (vale) setContatos(m); });
+    return () => { vale = false; };
+  }, []);
+  return contatos;
+}
+
 /** O interruptor do robô que lê a agência e a conta dos extratos: ao vivo, e como mudar. */
 export function useLeituraDoRobo(): { carregado: boolean; ligado: boolean; mudar: (ligado: boolean) => Promise<void> } {
   const [estado, setEstado] = useState<{ carregado: boolean; ligado: boolean }>({ carregado: false, ligado: true });
@@ -229,6 +241,13 @@ export function useLoteDp(): RepoLoteDp {
 /** O lote de guias do Fiscal (Relatório › Enviar guias), ao vivo: os lotes de quem está no nads e o modelo do e-mail. */
 export function useLoteFiscal(): RepoLoteFiscal {
   const repo = repoDoLoteFiscal();
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  return repo;
+}
+
+/** Fiscal › Cartas, ao vivo: os pedidos da Carta de balanço e o Checklist mensal (o que o robô mandou e a configuração). */
+export function useCartasDoFiscal(): RepoCartasFiscal {
+  const repo = repoDasCartasDoFiscal();
   useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
   return repo;
 }

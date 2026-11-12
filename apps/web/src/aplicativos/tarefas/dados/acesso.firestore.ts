@@ -177,7 +177,7 @@ export function criarAcessoFirestore(quem: () => Quem): RepoAcesso {
     // o "Criar acesso" do Entregas: o login (numa instância à parte) e o cadastro gravado pela sessão do admin (a regra
     // só deixa o admin criar usuarios/{uid} de outra pessoa)
     async criarConta(c) {
-      const erros = u.conferirNovaConta(c, Object.values(equipe.docs).map(d => String(d.email || '')));
+      const erros = u.conferirNovaConta(c, Object.values(equipe.docs).map(d => String(d.email || '')), Object.values(equipe.docs).map(d => String(d.nome || '')));
       if (erros.length) throw new Error(erros.join(' '));
       const novo = u.docDaContaNova(c, new Date());
       const uid = await criarLoginNoEntregas(String(novo.email), c.senha);

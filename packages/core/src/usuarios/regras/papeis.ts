@@ -108,6 +108,7 @@ export function lerUsuario(uid: string, doc: DocUsuario): Usuario {
   return {
     uid,
     nome: (doc.nome || doc.email || '').trim(),
+    sobrenome: (doc.sobrenome || '').trim(),
     email: doc.email || '',
     departamento: ehDepartamento(doc.departamento) ? doc.departamento : null,
     nivel: ehNivel(doc.nivel) ? doc.nivel : null,

@@ -116,7 +116,7 @@ export function criarAcessoMemoria(quem: () => { nome: string } | null): RepoAce
     },
     async ativar(uid, ativo) { docs[uid].ativo = ativo; mudou(); },
     async criarConta(c) {
-      const erros = usuarios.conferirNovaConta(c, Object.values(docs).map(d => String(d.email || '')));
+      const erros = usuarios.conferirNovaConta(c, Object.values(docs).map(d => String(d.email || '')), Object.values(docs).map(d => String(d.nome || '')));
       if (erros.length) throw new Error(erros.join(' '));
       const novo = usuarios.docDaContaNova(c, new Date());
       docs['exemplo-' + Date.now()] = novo;

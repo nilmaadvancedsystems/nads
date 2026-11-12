@@ -287,13 +287,13 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
    * certo, então ele sobe e o do Drive vai para a pasta SUBSTITUÍDOS (o robô move; nada é apagado). Só nos meses em que a
    * pessoa importou (meses; sem eles, todos os do arquivo) e quando o do Drive é um só; mais de um, ou só candidato, não vai.
    */
-  async function subirAoDrive(linha: Linha, fs: File[], cliente: string, meses?: string[]) {
+  async function subirAoDrive(linha: Linha, fs: File[], cliente: string, meses?: string[], soOsMeses = false) {
     if (!drive.enviarAoDrive || !fs.length) return;
     // sem o Drive conectado, pede o login e manda depois (Vitor, 19/10/2026: na 289, o 06 e o 07 do Sicoob entraram e nunca
     // foram para o Drive, sem aviso; o olhinho não tinha o PDF para abrir)
     if (!acesso.entrou) {
       if (drive.loginDeFora || drive.exemplos) return;
-      depois.current = () => { void subirAoDrive(linha, fs, cliente, meses); };
+      depois.current = () => { void subirAoDrive(linha, fs, cliente, meses, soOsMeses); };
       setLogin(l => ({ ...l, aberto: true, erro: '' }));
       return;
     }
@@ -310,6 +310,8 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
         const pedacos = lido.semMovimento?.length === 1 ? [{ mes: lido.semMovimento[0], nome: x.nomeDoExtratoDoMes(linha.nome, lido.semMovimento[0], ext), bytes }]
           : lido.erro ? [] : await x.extratoPorMes(f.name, bytes, lido, linha.nome);
         for (const p of pedacos) {
+          // só os meses escolhidos (o Enviar vários meses, com o mês escolhido no extrato de vários meses)
+          if (soOsMeses && meses && !meses.includes(p.mes)) continue;
           const r = x.acharExtratoNoDrive(pasta?.itens || [], pasta?.raiz || null, p.mes, conta);
           // já tem o extrato DESTE mês no Drive: não manda de novo. (Vitor, 19/10/2026: "não está sendo armazenado" — o mês
           // sem arquivo devolve como candidatos os extratos dos OUTROS meses, e o envio era pulado em toda empresa que já
@@ -418,7 +420,7 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
     cancelando,
     cancelar: () => { cancelado.current = true; setCancelando(true); },
     buscar: (linha: Linha) => { void buscar(linha); },
-    subirAoDrive: (linha: Linha, fs: File[], cliente: string, meses?: string[]) => { void subirAoDrive(linha, fs, cliente, meses); },
+    subirAoDrive: (linha: Linha, fs: File[], cliente: string, meses?: string[], soOsMeses = false) => { void subirAoDrive(linha, fs, cliente, meses, soOsMeses); },
     buscarNoPeriodo: (linha: Linha, meses: string[]) => { void buscarNoPeriodo(linha, meses); },
     login: { ...login, set: (m: Partial<typeof login>) => setLogin(l => ({ ...l, ...m })), entrar: () => { void entrar(); }, fechar: () => { setPendente(null); depois.current = null; setLogin(l => ({ ...l, aberto: false })); } },
     /** pede o login do Entregas e, ao entrar, faz `f` */
