@@ -17,8 +17,10 @@ export interface RepoCarteira {
   meusDocumentos(): ListaAoVivo<carteira.DocumentoDaCarteira>;
   /** as contas a pagar que o Financeiro ligou à pessoa */
   minhasContas(): ListaAoVivo<financeiro.ContaAPagar>;
-  /** cria (sem id) ou altera a comissão (só enquanto lançada) */
+  /** cria (sem id) ou altera a comissão (só enquanto lançada; o mês do pagamento não muda) */
   salvarComissao(c: carteira.ComissaoParaSalvar, id?: string): Promise<void>;
+  /** os serviços comissionados e a % de cada um (o Financeiro define; sem nada gravado, os 9 do começo, sem a %) */
+  servicos(): ListaAoVivo<carteira.ServicoComissionado>;
   apagarComissao(id: string): Promise<void>;
   salvarLancamento(l: carteira.LancamentoParaSalvar, id?: string): Promise<void>;
   apagarLancamento(id: string): Promise<void>;
@@ -29,6 +31,9 @@ export interface RepoCarteira {
   comissoesDoMes(competencia: string): ListaAoVivo<carteira.Comissao>;
   documentosDoMes(competencia: string): ListaAoVivo<carteira.DocumentoDaCarteira>;
   decidirComissoes(ids: string[], situacao: Decisao, motivo?: string): Promise<void>;
+  /** a comissão que o Financeiro registra para a pessoa (a retroativa, em qualquer mês): já entra aprovada */
+  registrarComissaoDe(para: { uid: string; nome: string }, c: carteira.ComissaoParaSalvar): Promise<void>;
+  salvarServicos(lista: readonly carteira.ServicoComissionado[]): Promise<void>;
   enviarDocumento(d: DocumentoParaEnviar, arquivo: ArquivoDaCarteira): Promise<void>;
   apagarDocumento(id: string): Promise<void>;
   assinar(aoMudar: () => void): () => void;
@@ -52,8 +57,11 @@ export function criarCarteiraMemoria(quem: QuemNaCarteira): RepoCarteira {
   let seq = 0;
   const novoId = (p: string) => p + '-' + Date.now().toString(36) + '-' + ++seq;
   const c = (id: string, uid: string, nome: string, competencia: string, cliente: string, valor: number, situacao: carteira.SituacaoDaComissao): carteira.Comissao => ({
-    id, uid, nome, competencia, data: competencia + '-08', cliente, descricao: 'Abertura de empresa (EXEMPLO)', valor, situacao, criadoEm: competencia + '-08T10:00:00.000Z',
+    id, uid, nome, competencia, data: competencia + '-08', cliente, descricao: 'Abertura de MEI', valor, situacao, criadoEm: competencia + '-08T10:00:00.000Z',
+    clienteCodigo: null, porte: 'MEI', servico: 'Abertura de MEI', valorServico: valor * 10, percentual: 10,
   });
+  let servicos = carteira.servicosPadrao().map((s, i) => ({ ...s, percentual: i < 3 ? 10 : 0 }));
+  const comissaoDe = (x: carteira.ComissaoParaSalvar) => ({ ...x, descricao: x.servico, valor: carteira.valorDaComissao(x.valorServico, x.percentual) });
   let comissoes: carteira.Comissao[] = [
     c('c1', eu().uid, eu().nome, mes, 'PADARIA EXEMPLO LTDA', 350, 'lancada'),
     c('c2', eu().uid, eu().nome, mes, 'MERCADO EXEMPLO', 520, 'aprovada'),
@@ -86,8 +94,14 @@ export function criarCarteiraMemoria(quem: QuemNaCarteira): RepoCarteira {
     meusDocumentos: () => lista(documentos.filter(x => x.uid === eu().uid)),
     minhasContas: () => lista(contas.filter(x => x.funcionario?.uid === eu().uid)),
     async salvarComissao(x, id) {
-      if (id) trocar(id, o => ({ ...o, ...x, valor: r2(x.valor) }));
-      else { comissoes = [...comissoes, { ...x, valor: r2(x.valor), id: novoId('c'), uid: eu().uid, nome: eu().nome, situacao: 'lancada', criadoEm: agora() }]; mudou(); }
+      if (id) trocar(id, o => ({ ...o, ...comissaoDe(x), competencia: o.competencia }));
+      else { comissoes = [...comissoes, { ...comissaoDe(x), id: novoId('c'), uid: eu().uid, nome: eu().nome, situacao: 'lancada', criadoEm: agora() }]; mudou(); }
+    },
+    servicos: () => lista(servicos),
+    async salvarServicos(l) { servicos = l.map(s => ({ ...s, percentual: r2(s.percentual) })); mudou(); },
+    async registrarComissaoDe(para, x) {
+      comissoes = [...comissoes, { ...comissaoDe(x), id: novoId('c'), uid: para.uid, nome: para.nome, situacao: 'aprovada', criadoEm: agora(), decididoPor: eu().nome, decididoEm: agora() }];
+      mudou();
     },
     async apagarComissao(id) { comissoes = comissoes.filter(x => x.id !== id); mudou(); },
     async salvarLancamento(l, id) {

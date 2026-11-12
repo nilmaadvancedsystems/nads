@@ -10,10 +10,14 @@ export const mensagem = (e: unknown, o: string) => (e instanceof Error && e.mess
 export const mesCurto = (c: string) => { const m = /^(\d{4})-(\d{2})$/.exec(c); return m ? carteira.mesPorExtenso(c).slice(0, 3).replace(/^./, x => x.toUpperCase()) + '/' + m[1] : c; };
 const comMaiuscula = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-/** O mês escolhido na tela (o atual, para começar) e os últimos 12 para escolher. */
-export function useMes() {
-  const meses = carteira.ultimosMeses(new Date(), 12);
-  const [mes, setMes] = useState(meses[0]);
+/**
+ * O mês escolhido na tela e os últimos 12 para escolher. proximo: 'incluir' põe também o mês seguinte (onde entram as
+ * comissões que a equipe registra; 12/11/2026) e 'comecar' já abre nele.
+ */
+export function useMes(proximo: false | 'incluir' | 'comecar' = false) {
+  const seguinte = carteira.mesDoPagamento(new Date());
+  const meses = [...(proximo ? [seguinte] : []), ...carteira.ultimosMeses(new Date(), 12)];
+  const [mes, setMes] = useState(proximo === 'comecar' ? seguinte : carteira.competenciaDe(new Date()));
   return { mes, setMes, meses };
 }
 
@@ -22,6 +26,11 @@ export function SeletorDoMes({ mes, setMes, meses }: ReturnType<typeof useMes>) 
     <MenuSuspenso rotulo={comMaiuscula(carteira.mesPorExtenso(mes))} icone="calendar" titulo="O mês" dica="Trocar o mês" largura={220}
       itens={meses.map(m => ({ rotulo: comMaiuscula(carteira.mesPorExtenso(m)), marcado: m === mes, onClick: () => setMes(m) }))} />
   );
+}
+
+const TOM: Record<carteira.SituacaoDaComissao, string> = { lancada: 'badge-warn', aprovada: 'badge-suave badge-info', paga: 'badge-ok', recusada: 'badge-bad' };
+export function SeloDaComissao({ s }: { s: carteira.SituacaoDaComissao }) {
+  return <span className={'badge ' + TOM[s]}>{carteira.rotuloDaSituacao(s)}</span>;
 }
 
 /** Abre numa aba nova (a aba nasce no clique; o arquivo chega depois, como nos anexos das contas). */

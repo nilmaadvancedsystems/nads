@@ -146,12 +146,12 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'holerites-equipe', rotulo: 'Enviar holerites', icone: 'upload', titulo: 'Holerites e comprovantes da equipe' },
     { id: 'configuracoes', rotulo: 'Configurações', icone: 'settings', titulo: 'Configurações do emissor' },
   ] },
-  // a Carteira (12/11/2026): o salário, as finanças pessoais e as comissões de cada pessoa (o lado do Financeiro foi para o
-  // Financeiro). Por enquanto só o Vitor usa (carteiraLiberada): os outros veem o botão e a tela "em desenvolvimento"
+  // a Carteira (12/11/2026): as comissões de cada pessoa e os holerites e pagamentos (o lado do Financeiro foi para o
+  // Financeiro). A Visão geral e as Finanças pessoais saíram (Vitor, 12/11/2026: "deixe somente em carteira, o comissões e
+  // holerites de pagamento"; os valores foram para os Holerites). Por enquanto só o Vitor usa (carteiraLiberada): os outros
+  // veem o botão e a tela "em desenvolvimento"
   { id: 'carteira', nome: 'Carteira', icone: 'dinheiro', grupo: 'Escritório', pronta: true, paginas: [
-    { id: 'painel', rotulo: 'Visão geral', icone: 'barChart', titulo: 'Minha carteira' },
     { id: 'comissoes', rotulo: 'Comissões', icone: 'dinheiro', titulo: 'Minhas comissões' },
-    { id: 'financas', rotulo: 'Finanças pessoais', icone: 'cartao', titulo: 'Finanças pessoais' },
     { id: 'documentos', rotulo: 'Holerites e pagamentos', icone: 'recibo', titulo: 'Holerites e pagamentos' },
     // os Insumos (Vitor, 12/11/2026: "um menu de Insumos, onde a pessoa registra impressões, pastas, envelopes e caixas
     // criadas"): para toda a equipe, mesmo quem ainda não tem a Carteira

@@ -6,9 +6,10 @@ import { carteira, formatos } from '@nads/core';
 import { BotaoIcone, Icone, useCarregando, Vazio } from '@nads/ui';
 import { Fragment } from 'react';
 import type { Decisao } from '../../dados/carteira';
-import { SeletorDoMes } from './comum';
+import { SeletorDoMes, SeloDaComissao } from './comum';
+import { JanelaDaComissao } from './JanelaDaComissao';
+import { JanelaDosServicos } from './JanelaDosServicos';
 import { useComissoesDaEquipe } from './useCarteiraDaPessoa';
-import { SeloDaComissao } from './VisaoDaCarteira';
 
 export function ComissoesDaEquipe() {
   const vm = useComissoesDaEquipe();
@@ -23,7 +24,11 @@ export function ComissoesDaEquipe() {
         <SeletorDoMes {...m} />
         <span className="tarefas-barra-espaco" />
         {vm.exemplos && <span className="badge badge-neutral">Exemplos</span>}
+        <button type="button" className="btn btn-outline" onClick={() => vm.setJanela('servicos')}><Icone nome="settings" />Serviços</button>
+        <button type="button" className="btn btn-primary" onClick={() => vm.setJanela('registrar')}><Icone nome="plus" />Registrar comissão</button>
       </div>
+      {vm.janela === 'registrar' && <JanelaDaComissao comissao={null} doFinanceiro fechar={() => vm.setJanela('')} />}
+      {vm.janela === 'servicos' && <JanelaDosServicos fechar={() => vm.setJanela('')} />}
       {doMes.erro && <p className="registro-dica registro-dica-erro"><Icone nome="alert" />{doMes.erro}</p>}
       <div className="stat-grid dp-numeros">
         <div className="stat painel-numero painel-aviso"><span className="painel-numero-icone" aria-hidden="true"><Icone nome="clock" /></span><p className="stat-label">Para revisar</p><p className="stat-value num">{formatos.reais(t.lancadas)}</p></div>

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ContaAPagar } from '../financeiro/contasPagar';
 import {
-  conferirComissao, conferirLancamento, historico, liberadaPara, pagamentosDaCarteira, recebidoNoMes, resumoDasFinancas,
+  conferirComissao, conferirLancamento, conferirServicos, mesDoPagamento, novoServico, servicosPadrao, valorDaComissao, historico, liberadaPara, pagamentosDaCarteira, recebidoNoMes, resumoDasFinancas,
   resumoParaPagar, salarioDoMes, totaisDasComissoes, ultimosMeses, type Comissao, type DocumentoDaCarteira, type Lancamento,
 } from '.';
 
@@ -19,10 +19,31 @@ describe('Carteira', () => {
   });
 
   it('confere a comissão e o lançamento antes de salvar', () => {
-    expect(conferirComissao({ competencia: '2026-11', data: '2026-11-05', cliente: 'A', descricao: 'B', valor: 10 })).toEqual([]);
-    expect(conferirComissao({ competencia: '2026-13', data: '', cliente: ' ', descricao: '', valor: 0 })).toHaveLength(5);
+    const c = { competencia: '2026-12', data: '2026-11-05', cliente: 'A', clienteCodigo: 10, porte: null, servico: 'Emissão de NFE', valorServico: 200, percentual: 10 };
+    expect(conferirComissao(c)).toEqual([]);
+    // o avulso sem o porte; o serviço sem a % do Financeiro
+    expect(conferirComissao({ ...c, clienteCodigo: null })).toEqual(['Escolha o porte do cliente avulso.']);
+    expect(conferirComissao({ ...c, clienteCodigo: null, porte: 'ME' })).toEqual([]);
+    expect(conferirComissao({ ...c, percentual: 0 })).toEqual(['O Financeiro ainda não definiu a % de Emissão de NFE.']);
+    expect(conferirComissao({ competencia: '2026-13', data: '', cliente: ' ', clienteCodigo: 1, porte: null, servico: '', valorServico: 0, percentual: 0 })).toHaveLength(5);
     expect(conferirLancamento({ tipo: 'saida', data: '2026-11-01', descricao: 'Luz', categoria: 'Contas', valor: 120 })).toEqual([]);
     expect(conferirLancamento({ tipo: 'saida', data: '01/11', descricao: '', categoria: '', valor: -1 })).toHaveLength(3);
+  });
+
+  it('a comissão sai do valor do serviço × a %; o mês do pagamento é sempre o seguinte', () => {
+    expect(valorDaComissao(350, 10)).toBe(35);
+    expect(valorDaComissao(199.99, 12.5)).toBe(25);
+    expect(mesDoPagamento(new Date(2026, 10, 12))).toBe('2026-12');
+    expect(mesDoPagamento(new Date(2026, 11, 31))).toBe('2027-01');
+  });
+
+  it('os serviços comissionados: os 9 do começo, um novo sem repetir o id e a conferência', () => {
+    const l = servicosPadrao();
+    expect(l).toHaveLength(9);
+    expect(l[0]).toEqual({ id: 'emissao-de-nfe', nome: 'Emissão de NFE', percentual: 0 });
+    expect(novoServico(l, 'Emissão de NFE ').id).toBe('emissao-de-nfe-2');
+    expect(conferirServicos(l)).toEqual([]);
+    expect(conferirServicos([...l, { id: 'x', nome: 'emissao de nfe', percentual: 120 }])).toEqual(['A % fica entre 0 e 100.', 'Há serviço repetido.']);
   });
 
   it('totais das comissões e o resumo para o Financeiro pagar, por pessoa', () => {

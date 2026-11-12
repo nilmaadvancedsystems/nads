@@ -2,10 +2,9 @@
 // recusada com o motivo). Em cima, os números do mês; clicar numa linha abre a comissão (muda enquanto está lançada).
 import { carteira, formatos } from '@nads/core';
 import { Icone, useCarregando, Vazio } from '@nads/ui';
-import { SeletorDoMes } from './comum';
+import { SeletorDoMes, SeloDaComissao } from './comum';
 import { JanelaDaComissao } from './JanelaDaComissao';
 import { useMinhasComissoes } from './useCarteiraDaPessoa';
-import { SeloDaComissao } from './VisaoDaCarteira';
 
 export function MinhasComissoes() {
   const vm = useMinhasComissoes();
@@ -39,18 +38,18 @@ export function MinhasComissoes() {
       </div>
       <section className="card dp-lista">
         {todas.carregada && !lista.length ? (
-          <Vazio icone="dinheiro" titulo={'Nenhuma comissão em ' + carteira.mesPorExtenso(m.mes)} texto="Registre cada comissão aqui: o Financeiro vê, aprova e paga.">
+          <Vazio icone="dinheiro" titulo={'Nenhuma comissão em ' + carteira.mesPorExtenso(m.mes)} texto="Registre cada comissão aqui: ela entra para pagamento no mês seguinte, e o Financeiro vê, aprova e paga.">
             <button type="button" className="btn btn-primary" onClick={() => setAberta('nova')}><Icone nome="plus" />Registrar comissão</button>
           </Vazio>
         ) : (
           <div className="table-wrap">
             <table className="dp-tabela">
-              <thead><tr><th>Data</th><th>Cliente</th><th>Descrição</th><th className="num">Valor</th><th>Situação</th></tr></thead>
+              <thead><tr><th>Data</th><th>Cliente</th><th>Serviço</th><th className="num">Valor</th><th>Situação</th></tr></thead>
               <tbody>
                 {lista.map(c => (
                   <tr key={c.id} className="linha-abre" tabIndex={0} title="Abrir a comissão" onClick={() => setAberta(c)} onKeyDown={e => { if (e.key === 'Enter') setAberta(c); }}>
                     <td className="num">{c.data.split('-').reverse().join('/')}</td>
-                    <td>{c.cliente}</td>
+                    <td>{c.cliente}{c.porte && <span className="fraco"> · {c.porte}</span>}</td>
                     <td className="fraco">{c.descricao}{c.situacao === 'recusada' && c.motivo ? ' · recusada: ' + c.motivo : ''}</td>
                     <td className="num">{formatos.reais(c.valor)}</td>
                     <td><SeloDaComissao s={c.situacao} />{c.pagoEm && <span className="fraco cp-pago-em">em {c.pagoEm.slice(0, 10).split('-').reverse().join('/').slice(0, 5)}</span>}</td>
