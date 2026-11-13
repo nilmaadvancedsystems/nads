@@ -61,7 +61,9 @@ export function NovoComunicado({ fechar, tipo = 'aviso' }: { fechar: () => void;
   );
 }
 
-export function NotificacoesDoInicio({ vm, mural }: { vm: ReturnType<typeof useInicioNovo>; mural: ReturnType<typeof useInicio> }) {
+/** podeMexer: fixar, soltar e apagar, só o Diretor e o Dono (Vitor, 13/11/2026: "Quem pode soltar aviso é só diretor e dono"; o nível
+ * simulado do ⚡ vale); os outros só leem */
+export function NotificacoesDoInicio({ vm, mural, podeMexer }: { vm: ReturnType<typeof useInicioNovo>; mural: ReturnType<typeof useInicio>; podeMexer: boolean }) {
   const c = vm.comunicado;
   return (
     <section className="ini-lista">
@@ -85,7 +87,7 @@ export function NotificacoesDoInicio({ vm, mural }: { vm: ReturnType<typeof useI
             <section className="card ini-detalhe">
               <div className="ini-detalhe-topo">
                 <h2>{c.titulo || c.tipoRotulo}</h2>
-                {mural.escreve && (
+                {podeMexer && (
                   <span className="ini-detalhe-acoes">
                     <button type="button" className="btn btn-outline" onClick={() => void mural.fixar(c.id, !c.fixado)}><Icone nome="mapaPin" />{c.fixado ? 'Soltar' : 'Fixar no alto'}</button>
                     <button type="button" className="btn btn-outline btn-danger" onClick={() => void mural.apagar(c.id)}><Icone nome="lixeira" />Apagar</button>
