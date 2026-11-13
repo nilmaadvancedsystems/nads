@@ -6875,7 +6875,7 @@ p.tdl-cobranca{flex-direction:row;align-items:center;}
 /* o sino nas listas: quem faz vê que foi cobrado; quem delegou, o botão de cobrar */
 .ini-sino{display:inline-flex;align-items:center;gap:4px;font-size:var(--fs-12);color:var(--warn);white-space:nowrap;}
 .ini-sino svg{width:14px;height:14px;flex:none;}
-.ini-tarefa-com-sino{display:inline-flex;align-items:center;gap:8px;min-width:0;}
+.ini-pessoa-com-sino{display:inline-flex;align-items:center;gap:8px;min-width:0;}
 /* o cronômetro das delegadas (Início novo): o relógio pequeno e o tempo numa linha só; em andamento, o relógio pisca devagar
    (só a opacidade); pausada, fica parado. Pisca em qualquer nível de animação, porque diz a situação (Vitor, 13/11/2026: "em
    progresso o icone fica piscando, se ela pausar, para de piscar"); com "menos movimento" no sistema, fica parado */

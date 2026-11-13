@@ -76,23 +76,23 @@ export function ListaDoInicio({ documentos = false, lista: qual = 'minhas', busc
                           ? <button type="button" className="subnav-caixa vazia" title="Concluir" aria-label={'Concluir ' + l.titulo} onClick={() => vm.fazerAcao(l.id, concluir.status)} />
                           : <span className={'subnav-caixa ' + (l.status.valor === 'concluida' ? 'marcada' : 'vazia')} aria-hidden="true">{l.status.valor === 'concluida' && <Icone nome="check" />}</span>}
                       </td>
+                      <td><button type="button" className="ini-abrir" onClick={e => { e.stopPropagation(); abrir(l.id); }}>{l.titulo}</button></td>
+                      <td className={l.atrasada ? 'tdl-atrasada' : undefined}>{l.prazoCurto || '—'}</td>
+                      <td><SeloDoStatus rotulo={l.status.rotulo} tom={TOM[l.status.valor] || 'neutral'} /></td>
+                      <td><SeloDaPrioridade valor={l.prioridade.valor} rotulo={l.prioridade.rotulo} /></td>
+                      <td title={l.clientes}>{l.cliente ? <span className="ini-empresa">{l.cliente}</span> : '—'}{(l.maisClientes ?? 0) > 0 && <span className="fraco"> +{l.maisClientes}</span>}</td>
                       <td>
-                        <span className="ini-tarefa-com-sino">
-                          <button type="button" className="ini-abrir" onClick={e => { e.stopPropagation(); abrir(l.id); }}>{l.titulo}</button>
+                        {/* o sino ao lado da pessoa (Vitor, 13/11/2026: "Coloca o sino do lado do responsavel"): cobrar quem faz, a
+                            cobrança esperando a resposta, ou (em Minhas tarefas) que quem delegou cobrou */}
+                        <span className="ini-pessoa-com-sino">
+                          {vm.aba === 'minhas' || documentos ? l.pessoa
+                            : <span className="ini-pessoa"><Foto p={comFoto(l.responsavel)} />{l.responsavel.nome}</span>}
                           {cobrarLigado && l.cobranca === 'cobrada' && <span className="ini-sino" title="Cobraram uma atualização: abra a tarefa e responda"><Icone nome="sino" />Cobrada</span>}
                           {cobrarLigado && l.cobranca === 'esperando' && <span className="ini-sino" title="Você cobrou uma atualização: esperando a resposta"><Icone nome="sino" /></span>}
                           {cobrarLigado && l.cobranca === 'cobrar' && (
                             <span onClick={e => e.stopPropagation()}><BotaoIcone pequeno icone="sino" titulo={'Cobrar uma atualização de ' + l.responsavel.nome} onClick={() => { void vm.cobrar(l.id); }} /></span>
                           )}
                         </span>
-                      </td>
-                      <td className={l.atrasada ? 'tdl-atrasada' : undefined}>{l.prazoCurto || '—'}</td>
-                      <td><SeloDoStatus rotulo={l.status.rotulo} tom={TOM[l.status.valor] || 'neutral'} /></td>
-                      <td><SeloDaPrioridade valor={l.prioridade.valor} rotulo={l.prioridade.rotulo} /></td>
-                      <td title={l.clientes}>{l.cliente ? <span className="ini-empresa">{l.cliente}</span> : '—'}{(l.maisClientes ?? 0) > 0 && <span className="fraco"> +{l.maisClientes}</span>}</td>
-                      <td>
-                        {vm.aba === 'minhas' || documentos ? l.pessoa
-                          : <span className="ini-pessoa"><Foto p={comFoto(l.responsavel)} />{l.responsavel.nome}</span>}
                       </td>
                     </tr>
                   );
