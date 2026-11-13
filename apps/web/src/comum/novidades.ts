@@ -12,8 +12,9 @@ export const NOVIDADES = {
   administrativo: { desde: '13/11/2026', aprovada: false },
   /** a situação da tarefa não se escolhe mais (13/11/2026: "remove em todas, situacao nao deve ser setada"): só o selo e os botões de quem faz */
   'tarefa-sem-situacao': { desde: '13/11/2026', aprovada: false },
-  /** o sino de cobrar a tarefa delegada e o Responder cobrança de quem faz (13/11/2026: "Adiciona um icone de sino, nas tarefas delegadas") */
-  'cobrar-tarefa': { desde: '13/11/2026', aprovada: false },
+  /** o sino de cobrar a tarefa delegada e o Responder cobrança de quem faz (13/11/2026: "Adiciona um icone de sino, nas tarefas delegadas");
+   *  aprovado no mesmo dia, para todos ("Aprova para todos") */
+  'cobrar-tarefa': { desde: '13/11/2026', aprovada: true },
 } satisfies Record<string, { desde: string; aprovada: boolean }>;
 
 export type IdNovidade = keyof typeof NOVIDADES;

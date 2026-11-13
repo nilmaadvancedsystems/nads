@@ -22,7 +22,7 @@ export function ListaDoInicio({ documentos = false, lista: qual = 'minhas', busc
   lugarDosFiltros?: HTMLElement | null; lugarDoFim?: HTMLElement | null;
 }) {
   const vm = useCentralDeTarefas(qual, { agenda: true, documentos, semDocumentos: !documentos, busca, filtrar });
-  // o sino de cobrar (a novidade 'cobrar-tarefa', só no modo desenvolvedor até o Vitor aprovar)
+  // o sino de cobrar (a novidade 'cobrar-tarefa', aprovada para todos em 13/11/2026)
   const cobrarLigado = useNovidade('cobrar-tarefa');
   const filtros = !vm.abaVazia && (
     <>

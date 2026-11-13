@@ -59,7 +59,7 @@ function Cronometro({ minutos, andando }: { minutos: (agora: Date) => number; an
 
 export function PainelDoInicio({ vm }: { vm: Vm }) {
   const c = vm.calendario;
-  // o sino de cobrar (a novidade 'cobrar-tarefa', só no modo desenvolvedor até o Vitor aprovar)
+  // o sino de cobrar (a novidade 'cobrar-tarefa', aprovada para todos em 13/11/2026)
   const cobrarLigado = useNovidade('cobrar-tarefa');
   const p = vm.paraConfirmar[0];
   const abrir = (id: string) => { vm.escolherComunicado(id); vm.mudarAba('notificacoes'); };

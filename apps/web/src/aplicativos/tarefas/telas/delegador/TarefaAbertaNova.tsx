@@ -419,7 +419,7 @@ export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
   // sem Salvar nem Excluir; o título, os detalhes, os anexos e as informações continuam à vista
   const concluida = !aberta.ehNova && aberta.rascunho.status === 'concluida';
   const vm: typeof aberta = concluida ? { ...aberta, podeMudar: false, podeExcluir: false, acoes: [] } : aberta;
-  // o sino de cobrar e o Responder cobrança (a novidade 'cobrar-tarefa', só no modo desenvolvedor até o Vitor aprovar)
+  // o sino de cobrar e o Responder cobrança (a novidade 'cobrar-tarefa', aprovada para todos em 13/11/2026)
   const cobrarLigado = useNovidade('cobrar-tarefa');
   useEffect(() => {
     saida.current = depois => { void vm.largar(depois); };
