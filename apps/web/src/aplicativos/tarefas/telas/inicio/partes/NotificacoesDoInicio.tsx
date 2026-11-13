@@ -5,7 +5,7 @@
 // as reuniões (pedidas pelo Sênior ou marcadas pelo Diretor), com o detalhe e as ações à direita (ReunioesDoInicio). O aviso
 // que pede confirmação tem o Recebido; quem escreveu vê quem marcou e quem falta. Só os destinatários veem o aviso.
 import { BotaoFechar, CampoData, Icone, MenuSuspenso, useJanela, Vazio, type NomeIcone } from '@nads/ui';
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import { Propriedade } from '../../financeiro/partes/Propriedade';
 import type { useInicio } from '../useInicio';
 import { useNovoComunicado, type useInicioNovo } from '../useInicioNovo';
@@ -26,7 +26,7 @@ export function NovoComunicado({ fechar, tipo = 'aviso' }: { fechar: () => void;
     <div className="modal-overlay">
       <div ref={janela} className="modal registro-novo" role="dialog" aria-modal="true" aria-label="Novo comunicado">
         <header className="registro-topo">
-          <span className="registro-caminho"><Icone nome="sino" />Notificações<Icone nome="chevronRight" /><b>Novo comunicado</b></span>
+          <span className="registro-caminho"><b>Novo comunicado</b></span>
           <BotaoFechar onClick={fechar} />
         </header>
         <div className="registro-corpo">
