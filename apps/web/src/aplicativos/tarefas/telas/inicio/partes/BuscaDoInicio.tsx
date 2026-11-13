@@ -12,7 +12,7 @@ function EscolherCliente({ vm }: { vm: ReturnType<typeof useInicioNovo> }) {
   if (vm.cliente) {
     return (
       <button type="button" className="chip-f on" title="Tirar o filtro do cliente" onClick={() => vm.escolherCliente('')}>
-        <Icone nome="briefcase" width={14} height={14} />{vm.cliente}<Icone nome="x" width={12} height={12} />
+        <Icone nome="briefcase" width={14} height={14} /><span className="ini-empresa">{vm.cliente}</span><Icone nome="x" width={12} height={12} />
       </button>
     );
   }

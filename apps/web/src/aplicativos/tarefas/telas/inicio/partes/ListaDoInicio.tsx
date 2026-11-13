@@ -77,7 +77,7 @@ export function ListaDoInicio({ documentos = false, lista: qual = 'minhas', busc
                       <td className={l.atrasada ? 'tdl-atrasada' : undefined}>{l.prazoCurto || '—'}</td>
                       <td><SeloDoStatus rotulo={l.status.rotulo} tom={TOM[l.status.valor] || 'neutral'} /></td>
                       <td><SeloDaPrioridade valor={l.prioridade.valor} rotulo={l.prioridade.rotulo} /></td>
-                      <td title={l.clientes}>{l.cliente || '—'}{(l.maisClientes ?? 0) > 0 && <span className="fraco"> +{l.maisClientes}</span>}</td>
+                      <td title={l.clientes}>{l.cliente ? <span className="ini-empresa">{l.cliente}</span> : '—'}{(l.maisClientes ?? 0) > 0 && <span className="fraco"> +{l.maisClientes}</span>}</td>
                       <td>
                         {vm.aba === 'minhas' || documentos ? l.pessoa
                           : <span className="ini-pessoa"><Foto p={comFoto(l.responsavel)} />{l.responsavel.nome}</span>}

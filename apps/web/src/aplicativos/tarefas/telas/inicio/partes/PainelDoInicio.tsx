@@ -114,7 +114,7 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
             <div key={t.id} className="ini-linha">
               <Foto p={t.responsavel} />
               <span className="ini-linha-texto">
-                <button type="button" className="ini-abrir" onClick={() => vm.abrir(t.id)}>{t.cliente || t.titulo}</button>
+                <button type="button" className="ini-abrir" onClick={() => vm.abrir(t.id)}>{t.cliente ? <span className="ini-empresa">{t.cliente}</span> : t.titulo}</button>
                 {t.cliente && <><br /><span className="hint">{t.titulo}</span></>}
               </span>
               <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
