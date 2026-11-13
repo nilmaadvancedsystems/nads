@@ -9,6 +9,7 @@ import { useSearchParams } from 'react-router';
 import { AcoesDoTopo } from '../../../../comum/topo';
 import { listaDaUrl } from './abasDoInicio';
 import { TarefaAbertaNova } from '../delegador/TarefaAbertaNova';
+import { useLembreteDoRecebimento } from '../delegador/useLembreteDoRecebimento';
 import { BuscaDoInicio } from './partes/BuscaDoInicio';
 import { ListaDoInicio } from './partes/ListaDoInicio';
 import { NotificacoesDoInicio } from './partes/NotificacoesDoInicio';
@@ -20,6 +21,8 @@ import { useInicioNovo } from './useInicioNovo';
 
 export function InicioNovo() {
   const vm = useInicioNovo();
+  // o envio de documentos visto e sem confirmar: pede a confirmação de 10 em 10 minutos (13/11/2026)
+  useLembreteDoRecebimento(vm.abrir);
   const mural = useInicio();
   // a lista das Tarefas (Minhas, Delegadas por mim, Concluídas) vem da barra lateral padrão da casca (?lista=)
   const [params] = useSearchParams();

@@ -137,6 +137,23 @@ function maisExemplos(agora: Date, eu: Pessoa): TarefaDelegada[] {
       historico: [...criada(heverton, eu, 110), { por: eu.nome, em: ha(50), texto: 'Anexou o arquivo notas-outubro.pdf' }, { por: eu.nome, em: ha(50), texto: 'Mudou o status de Pendente para Concluída' }] }),
     t(18, { tipo: 'documentos', titulo: d.TITULO_DO_PEDIDO, descricao: 'O contrato social atualizado.', clientes: [gama], prioridade: 'alta', prazo: dia(0), status: 'pendente', criadaPor: eu, responsavel: fernando, criadaEm: ha(4), atualizadaEm: ha(4), historico: criada(eu, fernando, 4) }),
     t(16, { tipo: 'documentos', titulo: d.TITULO_DO_PEDIDO, descricao: 'Os recibos de aluguel de setembro e outubro.', clientes: [alfa], prioridade: 'normal', prazo: dia(6), status: 'pendente', criadaPor: eu, responsavel: clara, criadaEm: ha(14), atualizadaEm: ha(14), historico: criada(eu, clara, 14) }),
+    // o envio e o requerer (13/11/2026): enviado aguardando a confirmação, recebido para confirmar, requerido contestado e
+    // repassado, e requerido para mim (para anexar e enviar)
+    t(19, { tipo: 'envio', titulo: d.TITULO_DO_ENVIO, descricao: 'O contrato social e a última alteração. (EXEMPLO)', clientes: [alfa], prioridade: 'normal', prazo: '', status: 'pendente', criadaPor: eu, responsavel: clara,
+      criadaEm: ha(3), atualizadaEm: ha(3), visualizadaEm: ha(2), historico: criada(eu, clara, 3),
+      anexos: [{ id: 'ax-1', nome: 'contrato-social.txt', extensao: 'txt', tamanho: 74, em: ha(3), por: eu.nome, partes: 1 }] }),
+    t(20, { tipo: 'envio', titulo: d.TITULO_DO_ENVIO, descricao: 'As guias de outubro para conferir. (EXEMPLO)', clientes: [beta], prioridade: 'normal', prazo: '', status: 'pendente', criadaPor: savio, responsavel: eu,
+      criadaEm: ha(1), atualizadaEm: ha(1), visualizadaEm: ha(1), historico: criada(savio, eu, 1),
+      links: [{ url: 'https://exemplo.com/guias-outubro', por: 'Sávio', em: ha(1) }] }),
+    t(21, { tipo: 'documentos', titulo: d.TITULO_DO_PEDIDO_NOVO, descricao: 'Os extratos do Itaú de setembro e outubro. (EXEMPLO)', clientes: [gama], prioridade: 'alta', prazo: dia(1), status: 'pendente', criadaPor: eu, responsavel: heverton,
+      entrega: 'contestada', criadaEm: ha(30), atualizadaEm: ha(2), visualizadaEm: ha(5),
+      pareceres: [{ por: 'Clara', em: ha(20), texto: 'Quem tem os extratos do Itaú é o Heverton.' }, { por: eu.nome, em: ha(2), texto: 'Veio só setembro; falta outubro.' }],
+      anexos: [{ id: 'ax-21', nome: 'itau-setembro.pdf', extensao: 'pdf', tamanho: 95200, em: ha(4), por: 'Heverton', partes: 1 }],
+      historico: [...criada(eu, clara, 30), { por: 'Clara', em: ha(20), texto: 'Escreveu um parecer' }, { por: 'Clara', em: ha(20), texto: 'Delegou de Clara para Heverton' },
+        { por: 'Heverton', em: ha(4), texto: 'Anexou o arquivo itau-setembro.pdf' }, { por: 'Heverton', em: ha(4), texto: 'Enviou os documentos para conferir' },
+        { por: eu.nome, em: ha(2), texto: 'Escreveu um parecer' }, { por: eu.nome, em: ha(2), texto: 'Contestou os documentos' }] }),
+    t(22, { tipo: 'documentos', titulo: d.TITULO_DO_PEDIDO_NOVO, descricao: 'O comprovante do aluguel de novembro. (EXEMPLO)', clientes: [delta], prioridade: 'normal', prazo: dia(2), status: 'pendente', criadaPor: fernando, responsavel: eu,
+      entrega: '', criadaEm: ha(6), atualizadaEm: ha(6), historico: criada(fernando, eu, 6) }),
   ];
 }
 
