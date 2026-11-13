@@ -1,6 +1,6 @@
 // O Início novo (Vitor, 13/11/2026: "Quero fazer o tarefas nesse estilo, mas sem ser da interface, claro, só quero o
 // posicionamento das coisas e tudo com a UI do nads"): a novidade 'inicio-novo' (comum/novidades.ts), só com o modo
-// desenvolvedor ligado "até eu testar tudo". No alto, o olá, a busca com as pílulas, o ⚡, o Delegar documentos e o Nova
+// desenvolvedor ligado "até eu testar tudo". O "Olá, Vitor." é o título da página (a casca); no alto, a busca com as pílulas, o ⚡, o Delegar documentos e o Nova
 // tarefa; embaixo, as abas (o menu lateral do print fica no alto: "O menu lateral é superior, ok?") Painel, Minhas
 // tarefas, Documentos e Notificações. A tarefa abre na janela de duas colunas (TarefaAbertaNova), por cima de qualquer aba.
 import { Icone, useCarregando } from '@nads/ui';
@@ -23,7 +23,6 @@ export function InicioNovo() {
   return (
     <section className="ini-novo">
       <div className="ini-topo">
-        <p className="hint">Olá, {vm.nome}.</p>
         <BuscaDoInicio vm={vm} />
         <span className="tarefas-barra-espaco" />
         {vm.exemplos && <span className="badge badge-neutral">Exemplos</span>}

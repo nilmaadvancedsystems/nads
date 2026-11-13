@@ -10,6 +10,7 @@ import { useOperador, type Operador } from './operador';
 import { useAcesso } from '../dados/repo';
 import { usePessoal } from '../telas/pessoal/contexto';
 import { useModoDesenvolvedor } from '../../../comum/modoDesenvolvedor';
+import { useNovidade } from '../../../comum/novidades';
 
 export function useCascaTarefas(app: IdAplicacao, pagina: string) {
   const navegar = useNavigate();
@@ -35,12 +36,14 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
   const podeDev = op.desenvolvedor;
   useEffect(() => { if (dev && !podeDev) setDev(false); }, [dev, podeDev, setDev]);
   const { aviso } = useRetorno();
+  // o Início novo (só no modo desenvolvedor): o "Olá, Vitor." no lugar do título "Início" (Vitor, 13/11/2026: "Olá, Vitor. deixa no lugar do inicio")
+  const inicioNovo = useNovidade('inicio-novo');
   return {
     // a Tarefas não tem uma empresa aberta: a trilha fica só com o caminho (Vitor, 05/10/2026: sem o "Vitor · Sair da
     // conta" — sair fica no avatar)
     empresa: null,
     versao: VERSAO_SISTEMA,
-    titulo: a?.paginas.find(p => p.id === pagina)?.titulo || a?.nome || '',
+    titulo: app === 'inicio' && inicioNovo ? 'Olá, ' + op.nome.split(/[ .]/)[0] + '.' : a?.paginas.find(p => p.id === pagina)?.titulo || a?.nome || '',
     // o Cadastro com as páginas em abas no alto (Empresas, Usuários, Configurações; Vitor, 05/10/2026), sem a barra lateral
     comAbas,
     /** sem a barra lateral: as abas no alto dão conta (só a aba Ferramentas do Fiscal tem barra) */
