@@ -265,3 +265,33 @@ describe('no modo desenvolvedor', () => {
     expect(telas.at(-1)!.chamados.map(c => c.id)).toEqual(['c1']);
   });
 });
+
+// a empresa de teste (13/11/2026: "quero que a personaly company sempre fique com dados de teste")
+describe('o link da PERSONALY COMPANY (código 9999)', () => {
+  it('mostra os dados de exemplo, para de ouvir o banco e nada do que se faz ali vai para as caixas', async () => {
+    const { criarRepoAreaClienteMemoria, TOKEN_DE_EXEMPLO } = await import('./areaCliente.memoria');
+    const repo = criarRepoAreaClienteFirestore(undefined, { repo: criarRepoAreaClienteMemoria(), token: TOKEN_DE_EXEMPLO });
+    const telas: EstadoDaArea[] = [];
+    const parar = repo.assinar(TOKEN, e => telas.push(e));
+    ouvinte(RAIZ).proximo(docSnap({ codigos: [9999], nome: 'PERSONALY COMPANY' }));
+    const e = telas.at(-1)!;
+    expect(e).toMatchObject({ carregado: true, valido: true, exemplos: true });
+    expect(e.resumo?.empresas[0].nome).toBe('Personaly Company');
+    expect(e.guias.length).toBeGreaterThan(0);
+    // nada mais do banco: o link e o resto do espelho deixam de ser ouvidos
+    expect(falso.ouvintes.filter(o => o.ativo)).toHaveLength(0);
+    const id = await repo.abrirChamado(TOKEN, { tipo: 'documento', texto: 'Teste da Personaly' });
+    await repo.enviar(TOKEN, 'extrato', [new File([new Uint8Array(10)], 'a.pdf')]);
+    expect(falso.gravados).toEqual([]);
+    expect(telas.at(-1)!.chamados.some(c => c.id === id)).toBe(true);
+    parar();
+  });
+
+  it('outra empresa continua no banco', async () => {
+    const { criarRepoAreaClienteMemoria, TOKEN_DE_EXEMPLO } = await import('./areaCliente.memoria');
+    const repo = criarRepoAreaClienteFirestore(undefined, { repo: criarRepoAreaClienteMemoria(), token: TOKEN_DE_EXEMPLO });
+    abrirComEspelho(repo);
+    await repo.abrirChamado(TOKEN, { tipo: 'documento', texto: 'Preciso da CND estadual' });
+    expect(falso.gravados.map(g => g.caminho)).toEqual(['areaClienteChamados']);
+  });
+});

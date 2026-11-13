@@ -11,7 +11,7 @@
 // resumo); os códigos e quem criou ficam fora da tela. A leitura campo a campo e os pedidos estão em espelho.ts.
 import { getApps, initializeApp } from 'firebase/app';
 import { addDoc as addDocBruto, collection, doc, getDoc, getDocs, getFirestore, initializeFirestore, onSnapshot, query, serverTimestamp, where, type Firestore, type FirestoreError } from 'firebase/firestore';
-import { areaCliente as ac } from '@nads/core';
+import { areaCliente as ac, demo } from '@nads/core';
 import { MENSAGEM_BLOQUEADO, recusarNoModoDev } from '../../../comum/travaDoModoDev';
 import { AREA_VAZIA, type EstadoDaArea, type RepoAreaCliente } from './areaCliente';
 import type { DanfeNoEspelho } from './biblioteca';
@@ -56,7 +56,20 @@ function mensagemDoErro(e: unknown): string {
 /** o link não existe, foi revogado ou trocado: as regras recusam a leitura */
 const linkRecusado = (e: FirestoreError) => e.code === 'permission-denied' || e.code === 'not-found';
 
-export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCliente): RepoAreaCliente {
+/**
+ * A empresa de teste (Vitor, 13/11/2026: "quero que a personaly company sempre fique com dados de teste"): o link da
+ * PERSONALY COMPANY (código 9999, @nads/core/demo) tem o espelho quase vazio no banco. Aberto, ele mostra os dados de
+ * exemplo da Área do Cliente (o repositório de exemplo, com o token dele), e o que a pessoa faz ali (solicitação, envio,
+ * DANFE) fica só na página, sem ir ao banco.
+ */
+export interface AreaDeTeste { repo: RepoAreaCliente; token: string }
+
+/** O link é da empresa de teste? (os códigos do documento do link) */
+export const linkDaEmpresaDeTeste = (codigos: unknown) => Array.isArray(codigos) && codigos.includes(demo.EMPRESA_DEMO.codigo);
+
+export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCliente, teste?: AreaDeTeste): RepoAreaCliente {
+  // os links abertos nesta página que são da empresa de teste: dali em diante, tudo deles vai para o exemplo
+  const deTeste = new Set<string>();
   let db: Firestore | null = null;
   const abrir = () => (db ??= banco());
 
@@ -68,7 +81,7 @@ export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCl
   const redesenhar = new Map<string, Set<() => void>>();
   const avisarToken = (token: string) => redesenhar.get(token)?.forEach(f => f());
 
-  return {
+  const doBanco: RepoAreaCliente = {
     assinar(token, aoMudar) {
       if (!ehTokenDoLink(token)) { aoMudar({ ...AREA_VAZIA, carregado: true }); return () => undefined; }
       const banco = abrir();
@@ -113,8 +126,17 @@ export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCl
 
       let ouvindoEspelho = false;
       // primeiro o link: só com ele de pé o resto é ouvido (link ruim = um só "permission-denied", não seis)
+      let pararTeste: (() => void) | null = null;
       paradas.push(onSnapshot(espelho, s => {
         if (!s.exists()) { invalido(); return; }
+        // a empresa de teste: para de ouvir o banco e mostra os dados de exemplo
+        if (teste && linkDaEmpresaDeTeste(s.get('codigos'))) {
+          if (pararTeste) return;
+          parar();
+          deTeste.add(token);
+          pararTeste = teste.repo.assinar(teste.token, aoMudar);
+          return;
+        }
         const nome = s.get('nome');
         nomeDoLink = typeof nome === 'string' ? nome.trim() : '';
         if (ouvindoEspelho) { desenhar(); return; }
@@ -140,7 +162,7 @@ export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCl
           desenhar();
         }, () => { partes.danfes = []; desenhar(); }));
       }, falhou));
-      return parar;
+      return () => { parar(); pararTeste?.(); };
     },
 
     async abrirChamado(token, { tipo, texto }) {
@@ -259,5 +281,23 @@ export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCl
         return null;
       }
     },
+  };
+  if (!teste) return doBanco;
+
+  // o link da empresa de teste: cada pedido vai para o exemplo (com o token dele), nada para o banco
+  const t = teste;
+  const de = (token: string): RepoAreaCliente => (deTeste.has(token) ? t.repo : doBanco);
+  const tk = (token: string) => (deTeste.has(token) ? t.token : token);
+  return {
+    assinar: doBanco.assinar,
+    enviar: (token, tipo, arquivos) => de(token).enviar(tk(token), tipo, arquivos),
+    abrirChamado: (token, dados) => de(token).abrirChamado(tk(token), dados),
+    responderChamado: (token, id, texto) => de(token).responderChamado(tk(token), id, texto),
+    baixarGuia: (token, id) => de(token).baixarGuia(tk(token), id),
+    baixarDocumento: (token, id) => de(token).baixarDocumento(tk(token), id),
+    baixarComprovante: (token, id) => de(token).baixarComprovante(tk(token), id),
+    baixarDocumentoDp: (token, id) => de(token).baixarDocumentoDp(tk(token), id),
+    notasDoMes: (token, codigo, mes) => de(token).notasDoMes(tk(token), codigo, mes),
+    pedirDanfe: (token, chave) => de(token).pedirDanfe(tk(token), chave),
   };
 }
