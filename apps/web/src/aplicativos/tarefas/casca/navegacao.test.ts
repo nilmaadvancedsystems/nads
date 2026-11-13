@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { aplicacoesDe, ehDiretor, podeMexerNoCadastro, podeVerOFinanceiro } from './navegacao';
 import type { Operador } from './operador';
 
@@ -76,5 +76,25 @@ describe('os usuários cadastrados só para o Diretor e o admin (Vitor, 06/11/20
       expect(paginas(o, 'cadastro')).toContain('usuarios');
       expect(paginas(o, 'senhas')).toContain('acesso');
     }
+  });
+});
+
+// o módulo Desenvolvedor (13/11/2026): a Área do Cliente e a Central dos robôs dentro do nads, só no modo desenvolvedor
+describe('o módulo Desenvolvedor', () => {
+  afterEach(() => { vi.unstubAllGlobals(); });
+  const comModoDev = (ligado: boolean) => vi.stubGlobal('localStorage', { getItem: (k: string) => (ligado && k === 'nads-modo-desenvolvedor' ? '1' : null) });
+  const vê = (o: Operador) => aplicacoesDe(o).some(a => a.id === 'desenvolvedor');
+
+  it('aparece para quem é desenvolvedor, só com o modo ligado', () => {
+    comModoDev(true);
+    expect(vê({ ...op('diretor', true), desenvolvedor: true })).toBe(true);
+    comModoDev(false);
+    expect(vê({ ...op('diretor', true), desenvolvedor: true })).toBe(false);
+  });
+
+  it('quem não é desenvolvedor não vê, nem o admin, nem com a chave ligada', () => {
+    comModoDev(true);
+    expect(vê(op('diretor', true))).toBe(false);
+    expect(vê(op('pleno'))).toBe(false);
   });
 });

@@ -62,7 +62,6 @@ function somarDias(dias: Record<number, number>, mais: number[]): Record<number,
   return r;
 }
 
-const quandoCurto = (iso: string) => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 
 export function useInicioNovo() {
   const op = useOperador().operador as Operador;
