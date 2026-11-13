@@ -211,8 +211,10 @@ export function useInicioNovo() {
         status: vista ? { rotulo: 'Visualizada', tom: 'warn' as const }
           : pendente ? { rotulo: 'Pendente', tom: 'neutral' as const }
           : { rotulo: d.rotuloNoHorario(t, relogio), tom: d.tomDoStatus(d.situacaoNoHorario(t, relogio).status) },
-        /** em andamento: os minutos trabalhados até "agora" (o cronômetro da tela pede de minuto em minuto) */
-        minutos: t.status === 'andamento' ? (agora: Date) => d.minutosTrabalhados(t, agora) : null,
+        /** em andamento ou pausada: os minutos trabalhados até "agora" (o cronômetro da tela pede de minuto em minuto) */
+        minutos: t.status === 'andamento' || t.status === 'pausada' ? (agora: Date) => d.minutosTrabalhados(t, agora) : null,
+        /** o relógio pisca enquanto está em andamento; pausada, para (Vitor, 13/11/2026: "em progresso o icone fica piscando, se ela pausar, para de piscar") */
+        andando: t.status === 'andamento',
       };
     }),
     // as próximas: as reuniões aprovadas (ou remarcadas) e os comunicados de reunião, a mais perto primeiro

@@ -6812,6 +6812,14 @@ td.fs-fat-sem{color:var(--ink-faint);}
 .topbar:has(.ini-topo) #topbarActions{flex:1;min-width:0;flex-wrap:nowrap !important;}
 .ini-topo{flex-wrap:nowrap;}
 .ini-topo-lugar{display:contents;}
+/* o cronômetro das delegadas (Início novo): o relógio pequeno e o tempo numa linha só; em andamento, o relógio pisca devagar
+   (só a opacidade); pausada, fica parado. Pisca em qualquer nível de animação, porque diz a situação (Vitor, 13/11/2026: "em
+   progresso o icone fica piscando, se ela pausar, para de piscar"); com "menos movimento" no sistema, fica parado */
+.ini-cronometro{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;}
+.ini-cronometro svg{width:14px;height:14px;flex:none;}
+@keyframes cronometroPisca{0%,100%{opacity:1;}50%{opacity:.25;}}
+.ini-cronometro.andando svg{color:var(--accent);animation:cronometroPisca 1.6s ease-in-out infinite !important;}
+@media (prefers-reduced-motion: reduce){.ini-cronometro.andando svg{animation:none !important;}}
 .ini-topo .btn,.ini-topo .popover-wrap{flex:none;}
 @media (max-width:900px){
   .topbar-saudacao,.topbar-saudacao #topbarActions,.topbar-saudacao .ini-topo,

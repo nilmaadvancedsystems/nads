@@ -35,17 +35,22 @@ function tempoPorExtenso(minutos: number): string {
   return m ? h + 'h ' + m + 'min' : h + 'h';
 }
 
-/** O cronômetro da em andamento (horas e minutos trabalhados, por extenso, com o relógio): se redesenha sozinho na virada de cada minuto, sem animação. */
-function Cronometro({ minutos }: { minutos: (agora: Date) => number }) {
+/**
+ * O cronômetro da em andamento ou pausada (horas e minutos trabalhados, por extenso, com o relógio pequeno numa linha só): o
+ * número se redesenha sozinho na virada de cada minuto; o relógio pisca enquanto anda e para quando ela pausa (Vitor,
+ * 13/11/2026: "Icone relogio buugado, deixa ele animado, em progresso o icone fica piscando, se ela pausar, para de piscar").
+ */
+function Cronometro({ minutos, andando }: { minutos: (agora: Date) => number; andando: boolean }) {
   const [agora, setAgora] = useState(() => new Date());
   useEffect(() => {
+    if (!andando) return;
     const id = setTimeout(() => setAgora(new Date()), 60_000 - (Date.now() % 60_000) + 50);
     return () => clearTimeout(id);
-  }, [agora]);
+  }, [agora, andando]);
   const tempo = tempoPorExtenso(minutos(agora));
   return (
-    <span className="hint num" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
-      title={'Em andamento há ' + tempo + ' de trabalho, desde que foi iniciada (conta só o horário de expediente)'}>
+    <span className={'hint num ini-cronometro' + (andando ? ' andando' : '')}
+      title={(andando ? 'Em andamento: ' : 'Pausada: ') + tempo + ' de trabalho desde que foi iniciada (conta só o horário de expediente)'}>
       <Icone nome="clock" />{tempo + ' de trabalho'}
     </span>
   );
@@ -114,7 +119,7 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
               </span>
               <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
                 <SeloDoStatus rotulo={t.status.rotulo} tom={t.status.tom} />
-                {t.minutos && <Cronometro minutos={t.minutos} />}
+                {t.minutos && <Cronometro minutos={t.minutos} andando={t.andando} />}
               </span>
             </div>
           )) : <Vazio compacto icone="aviao" titulo="Nada delegado em aberto" />}
