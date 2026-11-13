@@ -1,15 +1,15 @@
 // A janela da tarefa do Início novo (13/11/2026, só no modo desenvolvedor; o mesmo ViewModel da TarefaAberta). A tarefa nova
 // em dois passos (Vitor, 13/11/2026: "To achando poluido"): primeiro "Qual cliente vai ser essa tarefa?" (o menu com a busca
 // ou o Avulso, com o campo e o ✓); depois, no desenho das janelas de registro, o cliente no alto (com Trocar), o nome, as
-// propriedades (o prazo com as pílulas Hoje e Amanhã, a prioridade, para quem), os Detalhes e o clipe e o link. A tarefa que existe (o print da tarefa aberta) tem duas
-// colunas: à esquerda o título, a descrição e as informações; à direita os comentários (o parecer) ou o histórico, os anexos
-// e, embaixo, a caixa de escrever. Clicar fora não fecha; o Esc e o ✕ perguntam antes de largar o que mudou.
+// propriedades (o prazo com as pílulas Hoje e Amanhã, a prioridade, para quem), os Detalhes e o clipe e o link. A tarefa que existe
+// numa coluna só: o título, a descrição, os anexos e as informações (Vitor, 13/11/2026: "APENAS QUEM CRIOU A TAREFA pode setar:
+// Prazo, prioridade, cliuentes, fica com e remova situação"; "Remove comentários e remove históricos!"). Clicar fora não fecha;
+// o Esc e o ✕ perguntam antes de largar o que mudou.
 import { tarefas } from '@nads/core';
 import { Alerta, BotaoAcao, BotaoFechar, BotaoIcone, CampoData, Esqueleto, Icone, Interruptor, MenuSuspenso, Segmentado, useJanela, Vazio } from '@nads/ui';
 import { useEffect, useId, useRef, useState, type RefObject } from 'react';
 import { Link } from 'react-router';
 import { Propriedade } from '../financeiro/partes/Propriedade';
-import { LinhaDoTempoDaTarefa } from './partes/LinhaDoTempoDaTarefa';
 import { SeloDoStatus } from './partes/SelosDaTarefa';
 import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
 import { lembrarAgora } from './useLembreteDoRecebimento';
@@ -26,6 +26,8 @@ function Propriedades({ vm }: { vm: Vm }) {
   const id = useId();
   const r = vm.rascunho;
   const so = !vm.podeMudar;
+  // o prazo, a prioridade, os clientes e para quem: só quem criou a tarefa muda
+  const travado = so || !vm.criouEu;
   const hoje = d.prazoParaTela(d.hojeIso());
   const amanha = d.prazoParaTela(tarefas.agenda.somarDias(d.hojeIso(), 1));
   const prioridade = vm.prioridades.find(p => p.valor === r.prioridade)?.rotulo || '';
@@ -34,7 +36,7 @@ function Propriedades({ vm }: { vm: Vm }) {
   return (
     <div className="registro-props">
       {!envio && <Propriedade icone="clock" rotulo="Prazo">
-        {so ? <span>{vm.prazoTexto ? vm.prazoTexto + (vm.prazoHora ? ' ' + vm.prazoHora : '') : '—'}</span> : (
+        {travado ? <span>{vm.prazoTexto ? vm.prazoTexto + (vm.prazoHora ? ' ' + vm.prazoHora : '') : '—'}</span> : (
           <span className="ini-prazo">
             <span className="chip-row">
               <button type="button" className={'chip-f' + (vm.prazoTexto === hoje ? ' on' : '')} aria-pressed={vm.prazoTexto === hoje} onClick={() => vm.setPrazo(vm.prazoTexto === hoje ? '' : hoje)}>Hoje</button>
@@ -49,24 +51,18 @@ function Propriedades({ vm }: { vm: Vm }) {
       </Propriedade>}
       {vm.prazoInvalido && <p className="hint tdl-atrasada">Data incompleta ou que não existe.</p>}
       {!envio && <Propriedade icone="alert" rotulo="Prioridade">
-        {so ? <span>{prioridade}</span> : (
+        {travado ? <span>{prioridade}</span> : (
           <MenuSuspenso rotulo={prioridade} className={ESCOLHA} titulo="A prioridade" flutuante largura={200}
             itens={vm.prioridades.map(p => ({ rotulo: p.rotulo, marcado: p.valor === r.prioridade, onClick: () => vm.setPrioridade(p.valor) }))} />
         )}
       </Propriedade>}
-      {!vm.ehNova && <Propriedade icone="briefcase" rotulo="Clientes"><ClientesDaTarefa vm={vm} so={so} /></Propriedade>}
-      <Propriedade icone="usuario" rotulo={vm.delegar || so ? 'Para quem' : 'Fica com'}>
+      {!vm.ehNova && <Propriedade icone="briefcase" rotulo="Clientes"><ClientesDaTarefa vm={vm} so={travado} /></Propriedade>}
+      <Propriedade icone="usuario" rotulo={vm.delegar || travado ? 'Para quem' : 'Fica com'}>
         <span className="ini-delegar">
-          {so || vm.delegar ? <EscolherPessoa vm={vm} so={so} rotuloId={id + '-quem'} /> : <FicaComVoce vm={vm} />}
-          {!so && !docs && <Interruptor ligado={vm.delegar} onMudar={vm.alternarDelegar} rotulo="Delegar para outra pessoa" />}
+          {travado || vm.delegar ? <EscolherPessoa vm={vm} so={travado} rotuloId={id + '-quem'} /> : <FicaComVoce vm={vm} />}
+          {!travado && !docs && <Interruptor ligado={vm.delegar} onMudar={vm.alternarDelegar} rotulo="Delegar para outra pessoa" />}
         </span>
       </Propriedade>
-      {!vm.ehNova && (
-        <Propriedade icone="checklist" rotulo="Situação">
-          {so || !vm.mudaStatus ? <SeloDoStatus rotulo={vm.status?.rotulo || ''} tom={vm.status?.tom || 'neutral'} />
-            : <Segmentado valor={r.status} opcoes={vm.opcoesDeStatus} onMudar={vm.setStatus} />}
-        </Propriedade>
-      )}
       {vm.ehNova && !vm.delegar && (
         <label className="tdl-ja-fazendo"><input type="checkbox" checked={vm.jaFazendo} onChange={e => vm.setJaFazendo(e.target.checked)} />Já estava fazendo</label>
       )}
@@ -322,32 +318,6 @@ function TesteDosDocumentos({ vm }: { vm: Vm }) {
   );
 }
 
-/** a coluna da direita: os comentários (o parecer) ou o histórico, os anexos e a caixa de escrever */
-function Conversa({ vm }: { vm: Vm }) {
-  const [qual, setQual] = useState<'comentarios' | 'historico'>('comentarios');
-  return (
-    <div className="ini-tarefa-direita">
-      <Segmentado valor={qual} onMudar={setQual} opcoes={[{ valor: 'comentarios', rotulo: vm.abas[1].rotulo.replace('Parecer', 'Comentários') }, { valor: 'historico', rotulo: 'Histórico' }]} />
-      <div className="ini-tarefa-rola">
-        {qual === 'comentarios'
-          ? <LinhaDoTempoDaTarefa itens={vm.pareceres} vazio="Nenhum comentário ainda" comentario />
-          : <LinhaDoTempoDaTarefa itens={vm.historico} vazio="Nada no histórico" />}
-        <Anexos vm={vm} />
-      </div>
-      {vm.podeMudar && qual === 'comentarios' && (
-        <div className="ini-escrever">
-          <textarea rows={2} value={vm.parecer} maxLength={vm.maiorParecer} placeholder="Escrever um comentário" aria-label="Escrever um comentário"
-            onChange={e => vm.setParecer(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && vm.parecer.trim()) { e.preventDefault(); void vm.escreverParecer(); } }} />
-          <BotaoAcao className="btn btn-primary" carregando={vm.escrevendo} textoCarregando="Gravando" disabled={!vm.parecer.trim()} onClick={() => { void vm.escreverParecer(); }}>
-            <Icone nome="mensagem" />Comentar
-          </BotaoAcao>
-        </div>
-      )}
-    </div>
-  );
-}
-
 export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
   alvo: string; voltar: () => void; criada: (paraMim: boolean) => void; saida: RefObject<((depois: () => void) => void) | null>;
 }) {
@@ -392,7 +362,7 @@ export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
 
   return (
     <div className="modal-overlay">
-      <div ref={janela} className={'modal registro-novo' + (vm.ehNova ? '' : ' ini-tarefa')} role="dialog" aria-modal="true" aria-label={nome}>
+      <div ref={janela} className="modal registro-novo" role="dialog" aria-modal="true" aria-label={nome}>
         <header className="registro-topo">
           <span className="registro-caminho"><b>{nome}</b></span>
           {vm.status && <SeloDoStatus rotulo={vm.status.rotulo} tom={vm.status.tom} />}
@@ -458,19 +428,18 @@ export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
           </>
         ) : (
           <>
-            <div className="ini-tarefa-corpo">
-              <div className="ini-tarefa-esquerda">
-                {deDocumentos && <p className="registro-dica"><Icone nome="clipe" />{vm.documentos.situacao}</p>}
-                {vm.caminhoDaEtapa && <Link className="btn btn-primary" to={vm.caminhoDaEtapa}><Icone nome="play" />Abrir a etapa</Link>}
-                {titulo}
-                <Descricao vm={vm} />
-                <h3 className="ini-tarefa-sub">Informações</h3>
-                <Propriedades vm={vm} />
-                {vm.datas.length > 0 && <dl className="ent-dados">{vm.datas.map(x => <div key={x.rotulo}><dt>{x.rotulo}</dt><dd>{x.valor}</dd></div>)}</dl>}
-                {so && <p className="hint">Só quem criou a tarefa e o responsável mudam esta tarefa.</p>}
-                {vm.erro && <Alerta naLinha titulo={vm.erro} />}
-              </div>
-              <Conversa vm={vm} />
+            <div className="registro-corpo">
+              {deDocumentos && <p className="registro-dica"><Icone nome="clipe" />{vm.documentos.situacao}</p>}
+              {vm.caminhoDaEtapa && <Link className="btn btn-primary" to={vm.caminhoDaEtapa}><Icone nome="play" />Abrir a etapa</Link>}
+              {titulo}
+              <Descricao vm={vm} />
+              <Anexos vm={vm} />
+              <h3 className="ini-tarefa-sub">Informações</h3>
+              <Propriedades vm={vm} />
+              {vm.datas.length > 0 && <dl className="ent-dados">{vm.datas.map(x => <div key={x.rotulo}><dt>{x.rotulo}</dt><dd>{x.valor}</dd></div>)}</dl>}
+              {so ? <p className="hint">Só quem criou a tarefa e o responsável mudam esta tarefa.</p>
+                : !vm.criouEu && <p className="hint">O prazo, a prioridade, os clientes e para quem só quem criou a tarefa muda.</p>}
+              {vm.erro && <Alerta naLinha titulo={vm.erro} />}
             </div>
             {pe}
           </>
