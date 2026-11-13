@@ -6836,3 +6836,22 @@ td.fs-fat-sem{color:var(--ink-faint);}
 .ini-tarefas{display:grid;grid-template-columns:220px minmax(0,1fr);gap:24px;align-items:start;}
 .ini-lateral.subnav{min-height:0;padding:0 12px 0 0;}
 @media (max-width:760px){.ini-tarefas{grid-template-columns:1fr;}.ini-lateral.subnav{border-right:none;padding:0;}}
+/* a tarefa nova do Início novo: o passo do cliente, o cliente escolhido no alto e os anexos curtos (o clipe e o link) */
+.ini-passo-titulo{font-size:var(--fs-18);font-weight:600;margin:4px 0 6px;}
+.ini-qual-cliente{gap:12px;}
+.ini-qual-menu{align-self:flex-start;min-width:280px;justify-content:space-between;}
+.ini-avulso{display:flex;align-items:center;gap:8px;}
+.ini-avulso input{flex:1;}
+.ini-sem-cliente{align-self:flex-start;}
+.ini-cliente-escolhido{display:flex;align-items:center;gap:8px;font-size:var(--fs-13);color:var(--ink-muted);}
+.ini-cliente-escolhido > svg{width:16px;height:16px;flex:none;}
+.ini-cliente-escolhido > span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink);}
+.ini-anexos{display:flex;flex-direction:column;gap:6px;}
+.ini-anexos-botoes{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.ini-anexos-link{display:inline-flex;align-items:center;gap:6px;flex:1;min-width:220px;}
+.ini-anexos-link input{flex:1;}
+.ini-anexos-lista{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px;}
+.ini-anexos-lista li{display:flex;align-items:center;gap:8px;min-height:30px;font-size:var(--fs-13);}
+.ini-anexos-lista li > svg{width:14px;height:14px;flex:none;color:var(--ink-muted);}
+.ini-anexos-lista li > a,.ini-anexos-lista li > .ini-abrir{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ini-anexos-lista li > .hint{margin-left:auto;white-space:nowrap;}

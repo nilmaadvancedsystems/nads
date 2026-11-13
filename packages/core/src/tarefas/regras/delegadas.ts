@@ -19,6 +19,9 @@ export interface Nota { por: string; em: string; texto: string }
  * Um anexo: o arquivo vai em pedaços no banco; aqui só o que a lista mostra. tamanho = o do arquivo (o que a pessoa baixa);
  * gzip = os pedaços estão em gzip (descomprime ao baixar; sem o campo, os bytes são o próprio arquivo).
  */
+/** Um link fixado na tarefa: o endereço, quem fixou e quando. */
+export interface LinkDaTarefa { url: string; por: string; em: string }
+
 export interface Anexo { id: string; nome: string; extensao: string; tamanho: number; em: string; por: string; partes: number; gzip?: true }
 
 /**
@@ -75,6 +78,8 @@ export interface TarefaDelegada {
   pareceres: Nota[];
   historico: Nota[];
   anexos: Anexo[];
+  /** os links fixados (o Início novo; 13/11/2026: "coloque o icone de link, para fixar o link") */
+  links?: LinkDaTarefa[];
   etapaDelegada?: EtapaDelegada;
   /** o pedido de documentos (12/11/2026): quem recebeu anexa e confirma "Anexei tudo, concluir" */
   tipo?: 'documentos';
@@ -745,6 +750,33 @@ export function comAnexos(t: TarefaDelegada, anexos: readonly Anexo[], por: stri
   return { ...t, anexos: [...t.anexos, ...anexos], historico: noHistorico(t.historico, anexos.map(a => historicoDoAnexo('anexou', a.nome, por, em))), atualizadaEm: em };
 }
 
+/** Até quantos links e o maior endereço. */
+export const MAIS_LINKS = 20;
+export const MAIOR_LINK_DA_TAREFA = 500;
+
+/** O que impede de fixar o link ('' quando pode): só http(s), sem repetir e até MAIS_LINKS. */
+export function problemaDoLink(url: string, atuais: readonly Pick<LinkDaTarefa, 'url'>[] = []): string {
+  const u = url.trim();
+  if (!u) return 'Cole o link.';
+  if (u.length > MAIOR_LINK_DA_TAREFA) return 'O link passou de ' + MAIOR_LINK_DA_TAREFA + ' caracteres.';
+  try { const x = new URL(u); if (x.protocol !== 'https:' && x.protocol !== 'http:') return 'O link precisa começar com https://'; } catch { return 'O link precisa começar com https://'; }
+  if (atuais.some(l => l.url === u)) return 'Este link já está na tarefa.';
+  if (atuais.length >= MAIS_LINKS) return 'Até ' + MAIS_LINKS + ' links por tarefa.';
+  return '';
+}
+
+export const historicoDoLink = (acao: 'fixou' | 'tirou', url: string, por: string, em: string): Nota => ({ por, em, texto: (acao === 'fixou' ? 'Fixou o link ' : 'Tirou o link ') + url });
+
+export function comLink(t: TarefaDelegada, url: string, por: string, em: string): TarefaDelegada {
+  const u = url.trim();
+  return { ...t, links: [...(t.links || []), { url: u, por, em }], historico: noHistorico(t.historico, [historicoDoLink('fixou', u, por, em)]), atualizadaEm: em };
+}
+
+export function semLink(t: TarefaDelegada, url: string, por: string, em: string): TarefaDelegada {
+  if (!(t.links || []).some(l => l.url === url)) return t;
+  return { ...t, links: (t.links || []).filter(l => l.url !== url), historico: noHistorico(t.historico, [historicoDoLink('tirou', url, por, em)]), atualizadaEm: em };
+}
+
 export function semAnexo(t: TarefaDelegada, anexoId: string, por: string, em: string): TarefaDelegada {
   const a = t.anexos.find(x => x.id === anexoId);
   if (!a) return t;
@@ -791,6 +823,7 @@ export function lerTarefa(id: string, x: Record<string, unknown>): TarefaDelegad
     pareceres: lerNotas(x.pareceres), historico: lerNotas(x.historico),
     anexos: anexos.map(a => ({ id: texto(a.id), nome: texto(a.nome), extensao: texto(a.extensao), tamanho: Number(a.tamanho) || 0, em: texto(a.em), por: texto(a.por), partes: Number(a.partes) || 0, ...(a.gzip === true ? { gzip: true as const } : {}) }))
       .filter(a => a.id && a.partes > 0),
+    ...(Array.isArray(x.links) && x.links.length ? { links: x.links.map(obj).filter((l): l is Record<string, unknown> => !!l && !!texto(l.url)).map(l => ({ url: texto(l.url), por: texto(l.por), em: texto(l.em) })) } : {}),
     ...(etapaDelegada ? { etapaDelegada } : {}),
     ...(x.tipo === 'documentos' ? { tipo: 'documentos' as const } : {}),
     ...(texto(x.visualizadaEm) ? { visualizadaEm: texto(x.visualizadaEm) } : {}),

@@ -56,6 +56,8 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
   const [prazoTexto, setPrazoTexto] = useState(() => d.prazoParaTela(inicial.prazo));
   const [aba, setAba] = useState<AbaDaTarefa>('tarefa');
   const [pendentes, setPendentes] = useState<ArquivoParaAnexar[]>([]);
+  // os links da tarefa nova esperam o Criar, como os anexos (o Início novo; 13/11/2026)
+  const [linksPendentes, setLinksPendentes] = useState<string[]>([]);
   const [parecer, setParecer] = useState('');
   const [ocupado, setOcupado] = useState<'' | 'salvar' | 'excluir' | 'anexar' | 'parecer'>('');
   const [erro, setErro] = useState('');
@@ -90,7 +92,7 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
   // o que a pessoa mudou desde que abriu: é só isso que o Salvar grava
   const mudancas = ehNova ? {} : d.mudancasDoRascunho(inicial, final);
   const mudou = ehNova
-    ? !!(r.titulo.trim() !== inicial.titulo || r.descricao.trim() || r.clientes.length || r.responsavel || prazoTexto || r.prazoHora || pendentes.length || r.prioridade !== 'normal' || r.status !== 'pendente')
+    ? !!(r.titulo.trim() !== inicial.titulo || r.descricao.trim() || r.clientes.length || r.responsavel || prazoTexto || r.prazoHora || pendentes.length || r.prioridade !== 'normal' || r.status !== 'pendente' || linksPendentes.length)
     : !!tarefa && (Object.keys(mudancas).length > 0 || prazo === null);
   const podeMudar = ehNova || (!!tarefa && d.podeMudar(tarefa, uid));
   // a etapa delegada a esta pessoa (Vitor, 10/11/2026): abre só ela, com o resto da empresa bloqueado
@@ -265,6 +267,21 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
     // ---- salvar, cancelar e excluir
     salvando: ocupado === 'salvar',
     excluindo: ocupado === 'excluir',
+    // ---- os links fixados (o Início novo): na nova, esperando o Criar; na que existe, gravam na hora
+    links: ehNova ? linksPendentes.map(u => ({ url: u, detalhe: 'vai ao salvar' })) : (tarefa?.links || []).map(l => ({ url: l.url, detalhe: [l.por, quando(l.em)].filter(Boolean).join(' · ') })),
+    async fixarLink(url: string): Promise<boolean> {
+      const u = url.trim();
+      const problema = d.problemaDoLink(u, ehNova ? linksPendentes.map(x => ({ url: x })) : tarefa?.links);
+      if (problema) { toast(problema); return false; }
+      if (ehNova) { setLinksPendentes(x => [...x, u]); return true; }
+      if (!tarefa) return false;
+      try { await repo.fixarLink(tarefa.id, u); toast('Link fixado.'); return true; } catch (e) { toast('Não fixei: ' + (e instanceof Error ? e.message : String(e))); return false; }
+    },
+    async tirarLink(url: string) {
+      if (ehNova) { setLinksPendentes(x => x.filter(y => y !== url)); return; }
+      if (!tarefa) return;
+      try { await repo.tirarLink(tarefa.id, url); } catch (e) { toast('Não tirei: ' + (e instanceof Error ? e.message : String(e))); }
+    },
     async salvar() {
       if (prazo === null) { setErro('O prazo não é uma data válida (dd/mm/aaaa).'); return; }
       const problema = d.problemaDaTarefa(final);
@@ -272,7 +289,8 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
       setOcupado('salvar');
       try {
         if (ehNova) {
-          await repo.criar(final, pendentes);
+          const id = await repo.criar(final, pendentes);
+          for (const u of linksPendentes) await repo.fixarLink(id, u);
           const paraMim = final.responsavel?.uid === uid;
           toast(paraMim ? 'Tarefa criada.' : 'Tarefa delegada para ' + final.responsavel?.nome + '.');
           criada(paraMim);

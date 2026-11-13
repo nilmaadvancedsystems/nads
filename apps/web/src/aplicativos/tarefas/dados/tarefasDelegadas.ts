@@ -46,6 +46,12 @@ export interface RepoTarefasDelegadas {
   /** a conta da etapa delegada marcada (ou desmarcada) como feita por quem recebeu */
   marcarContaFeita(id: string, conta: tarefas.delegadas.ContaDelegada, feita: boolean): Promise<void>;
   anexar(id: string, arquivos: ArquivoParaAnexar[]): Promise<void>;
+  /**
+   * fixa um link na tarefa e tira (o Início novo; 13/11/2026). No banco, o campo links só passa quando a regra do
+   * nadsTarefasDelegadas aceitar (ainda não publicada)
+   */
+  fixarLink(id: string, url: string): Promise<void>;
+  tirarLink(id: string, url: string): Promise<void>;
   tirarAnexo(id: string, anexoId: string): Promise<void>;
   /** os bytes do anexo, para baixar (null = não achou) */
   baixarAnexo(id: string, anexoId: string): Promise<Uint8Array | null>;
@@ -199,6 +205,13 @@ export function criarTarefasDelegadasMemoria(quem: () => Pessoa | null, paraQuem
       const em = new Date().toISOString();
       trocar(d.comAnexos(t, subir(arquivos, eu().nome, em), eu().nome, em));
     },
+    async fixarLink(id, url) {
+      const t = daTarefa(id);
+      const problema = d.problemaDoLink(url, t.links);
+      if (problema) throw new Error(problema);
+      trocar(d.comLink(t, url, eu().nome, new Date().toISOString()));
+    },
+    async tirarLink(id, url) { trocar(d.semLink(daTarefa(id), url, eu().nome, new Date().toISOString())); },
     async tirarAnexo(id, anexoId) {
       bytes.delete(anexoId);
       trocar(d.semAnexo(daTarefa(id), anexoId, eu().nome, new Date().toISOString()));

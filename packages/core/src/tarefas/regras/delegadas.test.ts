@@ -519,3 +519,20 @@ describe('o pedido de documentos e o Visualizado (12/11/2026)', () => {
     expect('tipo' in u || 'visualizadaEm' in u).toBe(false);
   });
 });
+
+describe('os links fixados na tarefa (o Início novo)', () => {
+  it('aceita só http(s), sem repetir', () => {
+    expect(d.problemaDoLink('https://www.gov.br')).toBe('');
+    expect(d.problemaDoLink('javascript:alert(1)')).toMatch(/https/);
+    expect(d.problemaDoLink('')).toBe('Cole o link.');
+    expect(d.problemaDoLink('https://a.com', [{ url: 'https://a.com' }])).toMatch(/já está/);
+  });
+  it('fixa e tira, com o histórico', () => {
+    const t = d.comLink(tarefa(), ' https://a.com ', 'Vitor', EM);
+    expect(t.links).toEqual([{ url: 'https://a.com', por: 'Vitor', em: EM }]);
+    expect(t.historico.at(-1)?.texto).toBe('Fixou o link https://a.com');
+    const sem = d.semLink(t, 'https://a.com', 'Vitor', EM);
+    expect(sem.links).toEqual([]);
+    expect(d.lerTarefa('x', { links: [{ url: 'https://b.com', por: 'V', em: EM }, { url: '' }] }).links).toEqual([{ url: 'https://b.com', por: 'V', em: EM }]);
+  });
+});

@@ -1,14 +1,14 @@
 // A janela da tarefa do Início novo (13/11/2026, só no modo desenvolvedor; o mesmo ViewModel da TarefaAberta). A tarefa nova
-// (o print do New task) é uma coluna no desenho das janelas de registro: o título, as propriedades (o prazo com as pílulas
-// Hoje e Amanhã, a prioridade, os clientes, para quem) e a descrição. A tarefa que existe (o print da tarefa aberta) tem duas
+// em dois passos (Vitor, 13/11/2026: "To achando poluido"): primeiro "Qual cliente vai ser essa tarefa?" (o menu com a busca
+// ou o Avulso, com o campo e o ✓); depois, no desenho das janelas de registro, o cliente no alto (com Trocar), o nome, as
+// propriedades (o prazo com as pílulas Hoje e Amanhã, a prioridade, para quem), os Detalhes e o clipe e o link. A tarefa que existe (o print da tarefa aberta) tem duas
 // colunas: à esquerda o título, a descrição e as informações; à direita os comentários (o parecer) ou o histórico, os anexos
 // e, embaixo, a caixa de escrever. Clicar fora não fecha; o Esc e o ✕ perguntam antes de largar o que mudou.
 import { tarefas } from '@nads/core';
-import { Alerta, BotaoAcao, BotaoFechar, CampoData, Esqueleto, Icone, Interruptor, MenuSuspenso, Segmentado, useJanela, Vazio } from '@nads/ui';
+import { Alerta, BotaoAcao, BotaoFechar, BotaoIcone, CampoData, Esqueleto, Icone, Interruptor, MenuSuspenso, Segmentado, useJanela, Vazio } from '@nads/ui';
 import { useEffect, useId, useRef, useState, type RefObject } from 'react';
 import { Link } from 'react-router';
 import { Propriedade } from '../financeiro/partes/Propriedade';
-import { AnexosDaTarefa } from './partes/AnexosDaTarefa';
 import { LinhaDoTempoDaTarefa } from './partes/LinhaDoTempoDaTarefa';
 import { SeloDoStatus } from './partes/SelosDaTarefa';
 import { ClientesDaTarefa, EscolherPessoa, FicaComVoce } from './TarefaAberta';
@@ -50,7 +50,7 @@ function Propriedades({ vm }: { vm: Vm }) {
             itens={vm.prioridades.map(p => ({ rotulo: p.rotulo, marcado: p.valor === r.prioridade, onClick: () => vm.setPrioridade(p.valor) }))} />
         )}
       </Propriedade>
-      <Propriedade icone="briefcase" rotulo="Clientes"><ClientesDaTarefa vm={vm} so={so} /></Propriedade>
+      {!vm.ehNova && <Propriedade icone="briefcase" rotulo="Clientes"><ClientesDaTarefa vm={vm} so={so} /></Propriedade>}
       <Propriedade icone="usuario" rotulo={vm.delegar || so ? 'Para quem' : 'Fica com'}>
         <span className="ini-delegar">
           {so || vm.delegar ? <EscolherPessoa vm={vm} so={so} rotuloId={id + '-quem'} /> : <FicaComVoce vm={vm} />}
@@ -74,18 +74,105 @@ function Descricao({ vm }: { vm: Vm }) {
   const id = useId();
   return (
     <div className="field">
-      <label htmlFor={id}>Descrição</label>
+      <label htmlFor={id}>Detalhes</label>
       <textarea id={id} rows={4} value={vm.rascunho.descricao} maxLength={vm.maiorDescricao} readOnly={!vm.podeMudar}
         placeholder="Os detalhes, o que já foi visto, onde estão os documentos" onChange={e => vm.setDescricao(e.target.value)} />
     </div>
   );
 }
 
+/**
+ * os anexos e os links, curtos (Vitor, 13/11/2026: "Anexos a box tá muito grande, deixa só o icone do clip, tambem coloque o
+ * icone de link, para fixar o link"): o clipe escolhe os arquivos, a corrente abre o campo do link; a lista só com algum
+ */
 function Anexos({ vm }: { vm: Vm }) {
   const id = useId();
+  const [link, setLink] = useState<string | null>(null);
+  const fixar = async () => { if (link != null && await vm.fixarLink(link)) setLink(null); };
+  const tem = vm.anexos.length > 0 || vm.links.length > 0;
   return (
-    <AnexosDaTarefa id={id} anexos={vm.anexos} limite={vm.limiteDosAnexos} podeMudar={vm.podeMudar} anexando={vm.anexando}
-      anexar={fs => { void vm.anexar(fs); }} baixar={a => { void vm.baixarAnexo(a); }} tirar={a => { void vm.tirarAnexo(a); }} />
+    <section className="ini-anexos" aria-label="Anexos e links">
+      {vm.podeMudar && (
+        <div className="ini-anexos-botoes">
+          <label className={'icon-btn' + (vm.anexando ? ' is-disabled' : '')} title="Anexar arquivos" htmlFor={id}>
+            <Icone nome="clipe" />
+            <input id={id} type="file" multiple className="sr-only" disabled={vm.anexando} onChange={e => { const fs = Array.from(e.target.files || []); e.target.value = ''; if (fs.length) void vm.anexar(fs); }} />
+          </label>
+          <BotaoIcone icone="link" titulo="Fixar um link" aria-pressed={link != null} onClick={() => setLink(link == null ? '' : null)} />
+          {link != null && (
+            <span className="ini-anexos-link">
+              <input type="url" value={link} autoFocus placeholder="Cole o link (https://…)" aria-label="O link" onChange={e => setLink(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); void fixar(); } if (e.key === 'Escape') { e.stopPropagation(); setLink(null); } }} />
+              <BotaoIcone icone="check" titulo="Fixar o link" onClick={() => void fixar()} />
+            </span>
+          )}
+          {vm.anexando && <span className="hint">Anexando…</span>}
+        </div>
+      )}
+      {tem && (
+        <ul className="ini-anexos-lista">
+          {vm.anexos.map(a => (
+            <li key={a.id}>
+              <Icone nome="clipe" />
+              <button type="button" className="ini-abrir" title="Baixar" onClick={() => void vm.baixarAnexo(a.id)}>{a.nome}</button>
+              <span className="hint">{a.detalhe}</span>
+              {vm.podeMudar && <BotaoIcone pequeno icone="x" titulo={'Tirar ' + a.nome} onClick={() => void vm.tirarAnexo(a.id)} />}
+            </li>
+          ))}
+          {vm.links.map(l => (
+            <li key={l.url}>
+              <Icone nome="link" />
+              <a href={l.url} target="_blank" rel="noopener noreferrer">{l.url}</a>
+              <span className="hint">{l.detalhe}</span>
+              {vm.podeMudar && <BotaoIcone pequeno icone="x" titulo="Tirar o link" onClick={() => void vm.tirarLink(l.url)} />}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+/** o passo 1 da tarefa nova: o cliente do menu (com a busca) ou o Avulso (o nome e o ✓); ou sem cliente */
+function QualCliente({ vm, seguir }: { vm: Vm; seguir: () => void }) {
+  const [q, setQ] = useState('');
+  const [avulso, setAvulso] = useState(false);
+  const [nome, setNome] = useState('');
+  const achadas = vm.achadasPara(q);
+  const escolher = (fechar: () => void, e: { codigo: number | null; nome: string }) => { fechar(); vm.adicionarCliente(e); setQ(''); seguir(); };
+  const doAvulso = () => { const n = nome.trim(); if (!n) return; vm.adicionarCliente({ codigo: null, nome: n }); seguir(); };
+  return (
+    <div className="registro-corpo ini-qual-cliente">
+      <h2 className="ini-passo-titulo">Qual cliente vai ser essa tarefa?</h2>
+      <MenuSuspenso rotulo="Escolher o cliente" className="btn btn-outline ini-qual-menu" titulo="O cliente da tarefa" flutuante largura={420}
+        conteudo={fechar => (
+          <>
+            <label className="busca-curta larga">
+              <Icone nome="search" />
+              <input type="text" placeholder="Buscar pelo nome ou código" aria-label="Buscar o cliente" value={q} onChange={e => setQ(e.target.value)}
+                ref={el => { if (el && document.activeElement !== el) setTimeout(() => el.focus(), 0); }}
+                onKeyDown={e => { if (e.key === 'Enter' && achadas[0]) escolher(fechar, achadas[0]); }} />
+            </label>
+            <div className="menu-busca-lista">
+              {achadas.map(e => (
+                <button key={String(e.codigo) + e.nome} type="button" className="popover-item" onClick={() => escolher(fechar, e)}>
+                  <span className="popover-texto"><b className="num">{e.codigo ?? '—'}</b> {e.nome}</span>
+                </button>
+              ))}
+              {!achadas.length && <p className="hint">Nenhuma empresa com isso.</p>}
+            </div>
+          </>
+        )} />
+      <label className="tdl-ja-fazendo"><input type="checkbox" checked={avulso} onChange={e => setAvulso(e.target.checked)} />Avulso (não está no cadastro)</label>
+      {avulso && (
+        <span className="ini-avulso">
+          <input type="text" value={nome} autoFocus maxLength={150} placeholder="O nome do cliente" aria-label="O nome do cliente avulso" onChange={e => setNome(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); doAvulso(); } }} />
+          <BotaoIcone icone="check" titulo="Usar este nome" disabled={!nome.trim()} onClick={doAvulso} />
+        </span>
+      )}
+      <button type="button" className="btn btn-ghost ini-sem-cliente" onClick={seguir}>Tarefa sem cliente<Icone nome="chevronRight" /></button>
+    </div>
   );
 }
 
@@ -126,6 +213,9 @@ export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
   const janela = useRef<HTMLDivElement>(null);
   useJanela(janela, vm.cancelar);
   const so = !vm.podeMudar;
+  // a tarefa nova começa pelo cliente (o passo 1); com o cliente escolhido (ou sem cliente), vai para o resto
+  const [passo, setPasso] = useState<'cliente' | 'tarefa'>('cliente');
+  const trocarCliente = () => { vm.clientes.forEach(() => vm.tirarCliente(0)); setPasso('cliente'); };
   const nome = vm.ehNova ? (vm.pedeDocumentos ? 'Delegar documentos' : 'Nova tarefa') : 'Tarefa ' + (vm.numero || '');
 
   const titulo = so ? <h2 className="tdl-tarefa-titulo">{vm.rascunho.titulo}</h2> : (
@@ -160,10 +250,20 @@ export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
         </header>
         {vm.carregando ? <div className="registro-corpo"><Esqueleto linhas={6} /></div> : vm.sumiu ? (
           <div className="registro-corpo"><Vazio icone="checklist" titulo="Esta tarefa não está mais na sua lista" texto="Ela foi excluída ou delegada para outra pessoa." /></div>
+        ) : vm.ehNova && passo === 'cliente' ? (
+          <>
+            <QualCliente vm={vm} seguir={() => setPasso('tarefa')} />
+            <footer className="registro-pe"><span className="tarefas-barra-espaco" /><button type="button" className="btn btn-outline" onClick={vm.cancelar}>Cancelar</button></footer>
+          </>
         ) : vm.ehNova ? (
           <>
             <div className="registro-corpo">
               {vm.pedeDocumentos && <p className="registro-dica"><Icone nome="clipe" />Quem receber anexa os arquivos e confirma; a tarefa fica concluída.</p>}
+              <div className="ini-cliente-escolhido">
+                <Icone nome="briefcase" />
+                <span>{vm.clientes.length ? vm.clientes.map(c => (c.codigo != null ? c.codigo + ' · ' : '') + c.nome).join(', ') : 'Sem cliente'}{vm.clientes.some(c => c.codigo == null) && <span className="fraco"> · avulso</span>}</span>
+                <button type="button" className="btn btn-ghost" onClick={trocarCliente}><Icone nome="repeat" />Trocar</button>
+              </div>
               {titulo}
               <Propriedades vm={vm} />
               <Descricao vm={vm} />
