@@ -255,6 +255,23 @@ function iniciarAreaDoCliente(db, log) {
   const dpNoEspelho = new Map();      // token → Set(ids dos documentos do DP no espelho)
   const dpDoMes = new Map();          // 'AAAA-MM' → { em, clientes } (a lista dpArquivos do mês)
   const guiasLidas = new Map();       // 'origem|id|tamanho' → as guias do FGTS lidas daquele PDF
+  const folhasLidas = new Map();      // 'folha|id|tamanho' → { holerites, ferias } lidos daquele PDF (13/11/2026)
+
+  /**
+   * Os holerites e a previsão de férias de um PDF do DP (folhaLida.ts), lidos uma vez por arquivo. O CPF do holerite só
+   * fica nesta memória (serve para achar a pessoa); para o espelho vai o que a lista branca deixa.
+   */
+  async function folhaDoPdf(chave, bytes) {
+    if (folhasLidas.has(chave)) return folhasLidas.get(chave);
+    let lido = { holerites: [], ferias: null };
+    try {
+      const P = doCore();
+      const paginas = await P.itensDoPdf(new Uint8Array(bytes));
+      lido = { holerites: P.holeritesDasPaginas(paginas), ferias: P.feriasDasPaginas(paginas) };
+    } catch (e) { log('Registro: não li a folha ' + chave + ' -', e.message); }
+    folhasLidas.set(chave, lido);
+    return lido;
+  }
 
   async function arquivosDoDp(mes) {
     const c = dpDoMes.get(mes);
@@ -332,7 +349,22 @@ function iniciarAreaDoCliente(db, log) {
       }
       guias.push(...guiasLidas.get(chave));
     }
-    const reg = P.registroDasGuias(guias);
+    // (13/11/2026) a folha de verdade: os holerites (a folha e os recibos de salário) e a previsão de férias do DP
+    // completam o que as guias dão; sem eles, fica a estimativa pelas guias
+    const holerites = [];
+    const feriasDaFolha = [];
+    for (const d of docs.filter(x => ['folha', 'recibo', 'ferias'].includes(x.categoria) && /\.pdf$/i.test(x.nome) && x.tamanho <= MAIOR_ARQUIVO_DP)) {
+      const chave = 'folha|' + d.id + '|' + d.tamanho;
+      if (!folhasLidas.has(chave)) {
+        let bytes;
+        try { bytes = fs.readFileSync(d.arquivo); } catch (e) { continue; } // ainda não sincronizou neste PC
+        await folhaDoPdf(chave, bytes);
+      }
+      const lido = folhasLidas.get(chave);
+      if (d.categoria !== 'ferias') holerites.push(...lido.holerites);
+      if (lido.ferias) feriasDaFolha.push(lido.ferias);
+    }
+    const reg = P.registroComAFolha(P.registroDasGuias(guias), holerites, feriasDaFolha);
     const vivos = new Set();
     for (const d of docs) {
       if (vivos.has(d.id)) continue;
@@ -365,7 +397,8 @@ function iniciarAreaDoCliente(db, log) {
     dpNoEspelho.set(token, vivos);
     // o resumo do pessoal: só quando tem funcionário ou documento (sem nada, a aba nem aparece para o cliente)
     if (reg.funcionarios.length || vivos.size) {
-      if (await gravar(token, 'resumo/pessoal', { funcionarios: reg.funcionarios, competencia: reg.competencia, total: reg.total, atualizadoEm: hoje.toISOString() }, 'pessoal')) gravados++;
+      // (13/11/2026) e a folha mês a mês pelas mesmas guias: o custo da folha no Registro
+      if (await gravar(token, 'resumo/pessoal', { funcionarios: reg.funcionarios, competencia: reg.competencia, total: reg.total, historico: P.historicoComAFolha(P.historicoDaFolha(guias), holerites), atualizadoEm: hoje.toISOString() }, 'pessoal')) gravados++;
     } else if (await hashAtual(espelhoDe(token).collection('resumo').doc('pessoal'), token + '/resumo/pessoal')) {
       await espelhoDe(token).collection('resumo').doc('pessoal').delete();
       hashes.set(token + '/resumo/pessoal', '');
@@ -408,8 +441,19 @@ function iniciarAreaDoCliente(db, log) {
       const fat = P.faturamentoDoCliente(empresas.map(e => ({ codigo: e.codigo, nome: e.nome, regime: e.regime || '' })), P.competenciasDoFaturamento(hoje),
         (c, m) => saidasSieg.get(c + '_' + m), hoje, (c, m) => notasDoMesSieg.get(c + '_' + m));
       const ref = espelhoDe(token).collection('resumo').doc('faturamento');
-      if (fat) { if (await gravar(token, 'resumo/faturamento', fat, 'faturamento')) gravados++; }
+      // o que entrou no banco em cada mês, pelos extratos que o escritório leu (13/11/2026); sem acesso, o faturamento segue sem
+      const banco = fat ? await entradasDoBanco(empresas) : new Map();
+      const fatComBanco = fat && banco.size ? P.comOBanco(fat, c => banco.get(c) || null) : fat;
+      if (fatComBanco) { if (await gravar(token, 'resumo/faturamento', fatComBanco, 'faturamento')) gravados++; }
       else if (await hashAtual(ref, token + '/resumo/faturamento')) { await ref.delete(); hashes.set(token + '/resumo/faturamento', ''); }
+      // os lançamentos de cada mês com extrato (os últimos 6), um documento por empresa e mês (13/11/2026)
+      for (const emp of empresas) {
+        const lancs = lancamentosEmCache.get(emp.codigo);
+        if (!lancs) continue;
+        for (const [mes, l] of lancs) {
+          if (await gravar(token, 'resumo/extrato-' + emp.codigo + '-' + mes, { codigo: emp.codigo, competencia: mes, lancamentos: l.lancamentos, cortados: l.cortados, atualizadoEm: agora }, 'extratoLista')) gravados++;
+        }
+      }
       // o relatório do dia: a lista das notas de cada mês, um documento por empresa e mês (resumo/notas-{código}-{mês})
       for (const emp of empresas) {
         for (const [k, l] of listaDeNotasSieg) {
@@ -500,6 +544,53 @@ function iniciarAreaDoCliente(db, log) {
   // Faturamento): cada documento vira o resumo (por dia, os clientes, as operações) e só ele fica na memória. O ouvinte
   // troca quando as empresas dos links mudam; o "in" do Firestore aceita até 30 códigos.
   let codigosDasNotas = null, pararNotas = null, primeirasNotas = true;
+  // ---------------------------------------------------------------------------------------------------------------
+  // Os extratos (13/11/2026: "no faturamento quero comparação com os extratos bancários"): ficam no projeto da Conferência
+  // (conferencia-nilma, extrator/{nome da empresa}/arquivos), não no do Entregas. Um app do firebase-admin com nome
+  // próprio para ele (o padrão é o do Entregas); as entradas de cada empresa guardadas por 6 horas (cada leitura traz os
+  // arquivos inteiros). Sem permissão nesse projeto, avisa uma vez e o faturamento segue sem o banco.
+  const EXTRATOS_A_CADA_MS = 6 * 36e5;
+  const entradasEmCache = new Map(); // codigo -> { em, porMes }
+  const lancamentosEmCache = new Map(); // codigo -> Map(mês -> { lancamentos, cortados }), os últimos 6 meses com extrato
+  let dbConferencia = null, semConferencia = false;
+  function conferencia() {
+    if (dbConferencia || semConferencia) return dbConferencia;
+    try {
+      const admin = require('firebase-admin');
+      const app = admin.apps.find(a => a && a.name === 'conferencia') || admin.initializeApp({ projectId: 'conferencia-nilma' }, 'conferencia');
+      dbConferencia = admin.firestore(app);
+    } catch (e) { semConferencia = true; log('Área do Cliente: os extratos da Conferência não abriram -', e.message); }
+    return dbConferencia;
+  }
+  async function entradasDoBanco(empresas) {
+    const porCodigo = new Map();
+    const dbc = conferencia();
+    if (!dbc) return porCodigo;
+    for (const e of empresas) {
+      const guardado = entradasEmCache.get(e.codigo);
+      if (guardado && Date.now() - guardado.em < EXTRATOS_A_CADA_MS) { if (guardado.porMes) porCodigo.set(e.codigo, guardado.porMes); continue; }
+      try {
+        const doc = dbc.collection('extrator').doc(R.slug(e.nome));
+        const snap = await doc.collection('arquivos').where('lado', '==', 'banco').get();
+        // os bancos da empresa no Extrator (o nome e a marca de cada conta, para a escolha do banco no Faturamento)
+        const bancos = snap.empty ? [] : ((await doc.get()).data()?.bancos || []).map(b => ({ id: String(b.id || ''), nome: String(b.nome || ''), marca: b.marca ? String(b.marca) : undefined })).filter(b => b.id);
+        const arquivos = snap.docs.map(d => d.data());
+        const porMes = snap.empty ? null : doCore().entradasDosExtratos(arquivos, bancos);
+        // os lançamentos dos últimos 6 meses com extrato (a lista do mês na aba Banco do Faturamento)
+        if (porMes) {
+          const meses = Object.keys(porMes).sort().slice(-6);
+          lancamentosEmCache.set(e.codigo, new Map(meses.map(m => [m, doCore().lancamentosDoMes(arquivos, m, bancos)])));
+        } else lancamentosEmCache.delete(e.codigo);
+        entradasEmCache.set(e.codigo, { em: Date.now(), porMes: porMes && Object.keys(porMes).length ? porMes : null });
+        if (porMes && Object.keys(porMes).length) porCodigo.set(e.codigo, porMes);
+      } catch (x) {
+        if (/permission|PERMISSION_DENIED|7 /i.test(String(x.message))) { semConferencia = true; log('Área do Cliente: sem permissão nos extratos da Conferência; o faturamento segue sem o banco -', x.message); break; }
+        log('Área do Cliente: extratos de ' + e.nome + ' falharam -', x.message);
+      }
+    }
+    return porCodigo;
+  }
+
   function ouvirNotas() {
     const codigos = [...new Set([...links.values()].flatMap(l => l.codigos))].sort((a, b) => a - b);
     if (codigos.length > 30) log('Área do Cliente: mais de 30 empresas com link; o painel do mês só das 30 primeiras');

@@ -1,7 +1,8 @@
 // As telas do Administrativo da Área do Cliente (12/11/2026): os Dados cadastrais e o Fale com o escritório (antes,
 // janelas; "quero uma tela melhor disso aqui") e o Faturamento ("quero o faturamento do cliente aqui via fiscal"). Só
 // desenham: os dados vêm de useAdministrativo.ts.
-import { Icone, LogoExcel, SeletorMes, useRetorno } from '@nads/ui';
+import { Icone, LogoBanco, LogoExcel, LogoGmail, SeletorMes, useRetorno } from '@nads/ui';
+import { WhatsAppContorno } from '../partes/WhatsAppContorno';
 import { useRef } from 'react';
 import { MarcaDoEscritorio } from '../partes/MarcaDoEscritorio';
 import { Avatar } from '../partes/Avatar';
@@ -61,7 +62,7 @@ function RelatorioDoDia({ r, onCopiar, pegarDanfe }: { r: VistaDoRelatorio; onCo
  * O gráfico de colunas do Faturamento (os 12 meses, os dias do mês): colunas finas com a ponta arredondada, cinza; a
  * coluna em foco em carmim com o valor no topo; a grade em linha fina; o eixo numa coluna própria.
  */
-function Colunas({ colunas, eixo, rotulo, onFoco, onClique, compacto }: {
+export function Colunas({ colunas, eixo, rotulo, onFoco, onClique, compacto }: {
   colunas: ColunaDoGrafico[]; eixo: { valor: string; posicao: number }[]; rotulo: string;
   onFoco?: (i: number | null) => void; onClique?: (chave: string) => void; compacto?: boolean;
 }) {
@@ -121,47 +122,69 @@ function Ranking({ itens, fim }: { itens: { chave: string; nome: string; detalhe
 export function Empresa(props: DaCasca) {
   const vm = useEmpresa(props);
   if (!vm.tem) return <Vazio icone="predio" titulo="Os dados da empresa ainda não chegaram" texto="Quando o escritório completar o cadastro, eles aparecem aqui." />;
+  // um valor com o copiar ao lado (aparece ao passar o mouse; no toque, sempre)
+  const comCopiar = (valor: string, rotulo: string) => (
+    <span className="cli-fi-valor">
+      <span>{valor}</span>
+      <button type="button" className="cli-fi-copiar" title={'Copiar ' + rotulo.toLowerCase()} aria-label={'Copiar ' + rotulo.toLowerCase()} onClick={() => vm.copiar(valor, rotulo)}><Icone nome="copiar" width={14} height={14} /></button>
+    </span>
+  );
   return (
     <>
-      <div className="cli-titulo"><div><h1 className="page-title">Dados cadastrais</h1></div></div>
-      {/* o cartão da empresa: a identificação no alto, os dados em duas colunas e os sócios embaixo */}
-      <section className="card cli-ce">
-        <div className="cli-ce-topo">
-          <span className="cli-ce-marca">{vm.logo ? <img src={vm.logo} alt={'Logo de ' + vm.razaoSocial} /> : vm.iniciais}</span>
-          <div className="cli-ce-nome">
+      <div className="cli-titulo">
+        <div><h1 className="page-title">Dados cadastrais</h1></div>
+        <div className="cli-acoes"><button type="button" className="btn" onClick={vm.copiarTudo}><Icone nome="copiar" width={16} height={16} />Copiar todos os dados</button></div>
+      </div>
+      {/* a ficha da empresa (13/11/2026: "tá com muita cara de IA"): o nome no alto e os dados em linhas, rótulo e valor, por seção */}
+      <section className="card cli-fi">
+        <header className="cli-fi-topo">
+          <span className="cli-fi-marca">{vm.logo ? <img src={vm.logo} alt={'Logo de ' + vm.razaoSocial} /> : vm.iniciais}</span>
+          <div className="cli-fi-nome">
             <h2>{vm.razaoSocial}</h2>
-            {vm.nomeFantasia && <span className="hint">{vm.nomeFantasia}</span>}
-            <span className="cli-ce-selos">
-              <button type="button" className="cli-ce-cnpj" title="Copiar o CNPJ" onClick={() => vm.copiar(vm.cnpj, 'CNPJ')}>
-                <span className="cli-sobre">CNPJ</span><b>{vm.cnpj}</b><Icone nome="copiar" width={13} height={13} />
-              </button>
-              {vm.regime && <span className="badge badge-neutral">{vm.regime}</span>}
-            </span>
+            <p>{[vm.nomeFantasia && 'Nome fantasia: ' + vm.nomeFantasia, vm.tempo && 'aberta ' + vm.tempo].filter(Boolean).join(' · ')}</p>
           </div>
-        </div>
-        {vm.campos.length > 0 && (
-          <dl className="cli-ce-campos">
-            {vm.campos.map(f => (
-              <div key={f.rotulo} className={'cli-ce-campo' + (f.largo ? ' largo' : '')}>
-                <dt>{f.rotulo}</dt>
-                <dd>
-                  <span>{f.valor}</span>
-                  {f.copiar && <button type="button" className="icon-btn icon-btn-sm" title={'Copiar ' + f.rotulo.toLowerCase()} aria-label={'Copiar ' + f.rotulo.toLowerCase()} onClick={() => vm.copiar(f.valor, f.rotulo)}><Icone nome="copiar" width={14} height={14} /></button>}
-                </dd>
-              </div>
-            ))}
+        </header>
+
+        <div className="cli-fi-secao">
+          <h3>Identificação</h3>
+          <dl>
+            <div><dt>CNPJ</dt><dd>{comCopiar(vm.cnpj, 'CNPJ')}</dd></div>
+            {vm.regime && <div><dt>Regime tributário</dt><dd><span className={vm.seloDoRegime}>{vm.regime}</span></dd></div>}
+            {vm.abertura && <div><dt>Abertura</dt><dd>{vm.abertura}{vm.tempo && <span className="cli-fi-fraco"> · {vm.tempo}</span>}</dd></div>}
+            {vm.inscricaoEstadual && <div><dt>Inscrição estadual</dt><dd>{comCopiar(vm.inscricaoEstadual, 'Inscrição estadual')}</dd></div>}
+            {vm.inscricaoMunicipal && <div><dt>Inscrição municipal</dt><dd>{comCopiar(vm.inscricaoMunicipal, 'Inscrição municipal')}</dd></div>}
+            {(vm.cnaeCodigo || vm.cnaeTexto) && <div className="largo"><dt>Atividade principal</dt><dd>{vm.cnaeCodigo && <code className="cli-fi-cnae">{vm.cnaeCodigo}</code>}{vm.cnaeTexto}</dd></div>}
           </dl>
+        </div>
+
+        {vm.endereco && (
+          <div className="cli-fi-secao">
+            <h3>Endereço</h3>
+            <dl>
+              <div className="largo"><dt>Sede</dt><dd>
+                {comCopiar(vm.endereco, 'Endereço')}
+                <a className="cli-fi-mapa" href={vm.mapa} target="_blank" rel="noreferrer"><Icone nome="mapaPin" width={14} height={14} />Ver no mapa</a>
+              </dd></div>
+            </dl>
+          </div>
         )}
+
         {vm.socios.length > 0 && (
-          <div className="cli-ce-socios">
-            <span className="cli-sobre">Sócios</span>
-            <ul>
+          <div className="cli-fi-secao">
+            <h3>Quadro societário</h3>
+            <ul className="cli-fi-socios">
               {vm.socios.map(s => (
-                <li key={s.nome}><Avatar nome={s.nome} tamanho={28} /><b>{s.nome}</b>{s.participacao && <span className="cli-ce-pct">{s.participacao}</span>}</li>
+                <li key={s.nome}>
+                  <Avatar nome={s.nome} tamanho={32} />
+                  <span className="cli-fi-socio-nome">{s.nome}</span>
+                  <span className="cli-fi-socio-barra" aria-hidden="true"><span style={{ width: s.largura + '%' }} /></span>
+                  <span className="cli-fi-socio-pct">{s.participacao}</span>
+                </li>
               ))}
             </ul>
           </div>
         )}
+        <p className="cli-fi-pe">Algum dado mudou? <button type="button" className="cli-link-mini" onClick={() => props.irPara('chamados')}>Avise o escritório</button></p>
       </section>
     </>
   );
@@ -184,28 +207,29 @@ export function Contato(props: DaCasca & { contato: Parameters<typeof useContato
             {vm.horario && <span className="hint">{vm.horario}</span>}
           </div>
           <span className="cli-acoes">
-            <button type="button" className="icon-btn" title="Copiar o número" aria-label="Copiar o número do WhatsApp" onClick={() => vm.copiar(vm.whatsapp, 'WhatsApp')}><Icone nome="copiar" width={16} height={16} /></button>
+            {vm.emailGeral && <a className="btn" href={'mailto:' + vm.emailGeral} title={vm.emailGeral}><Icone nome="envelope" width={16} height={16} />E-mail</a>}
             {props.onWhatsapp && <button type="button" className="btn btn-primary" onClick={props.onWhatsapp}><Icone nome="mensagem" width={16} height={16} />Abrir conversa</button>}
           </span>
         </section>
       )}
-      {/* os outros contatos num cartão só, uma linha por contato */}
-      {vm.linhas.length > 0 && (
-        <section className="card cli-fc">
-          <div className="card-head"><h3>Telefone e e-mails</h3></div>
-          <ul className="cli-fc-lista">
-            {vm.linhas.map(l => (
-              <li key={l.chave} className="cli-fc-linha">
-                <span className="cli-fc-ico" aria-hidden="true"><Icone nome={l.icone} width={16} height={16} /></span>
-                <span className="cli-fc-txt"><span className="cli-sobre">{l.setor}</span><b>{l.usuario}{l.dominio && <><wbr />{l.dominio}</>}</b></span>
-                <span className="cli-fc-acoes">
-                  <a className="btn btn-sm" href={l.href}>{l.acao}</a>
-                  <button type="button" className="icon-btn" title={'Copiar ' + (l.icone === 'telefone' ? 'o telefone' : 'o e-mail')} aria-label={'Copiar ' + l.valor} onClick={() => vm.copiar(l.valor, l.rotuloDoCopiar)}><Icone nome="copiar" width={16} height={16} /></button>
+      {/* os setores em cartões pequenos (13/11/2026: "muita informação para o cliente"): o nome, o que cuida e dois
+          botões; o número e o e-mail ficam no passar do mouse */}
+      {vm.setores.length > 0 && (
+        <>
+          <h2 className="cli-st-titulo">Fale direto com o setor</h2>
+          <ul className="cli-st-grade">
+            {vm.setores.map(x => (
+              <li key={x.setor} className="card cli-st-cartao">
+                <b>{x.setor}</b>
+                {x.cuida && <span className="hint">{x.cuida}</span>}
+                <span className="cli-st-botoes">
+                  {x.whatsapp && <a className="btn btn-sm" href={x.whatsapp.link} target="_blank" rel="noreferrer" title={'WhatsApp ' + x.whatsapp.numero}><span className="cli-st-logo" aria-hidden="true"><WhatsAppContorno /></span>WhatsApp</a>}
+                  {x.email && <a className="btn btn-sm" href={x.email.mailto} title={x.email.email}><span className="cli-st-logo" aria-hidden="true"><LogoGmail /></span>E-mail</a>}
                 </span>
               </li>
             ))}
           </ul>
-        </section>
+        </>
       )}
     </>
   );
@@ -245,7 +269,19 @@ export function Faturamento(props: DaCasca) {
         <section className="card"><Vazio icone="calendar" titulo="Sem dados deste mês" texto="Escolha um mês dos últimos dois anos." /></section>
       ) : (
         <>
+          {/* as abas (13/11/2026: "muita informação aqui"): o mês, o banco e os clientes, uma parte por vez */}
+          {vm.secoes.length > 1 && (
+            <nav className="cli-fat-abas" role="tablist" aria-label="Partes do faturamento">
+              {vm.secoes.map(x => (
+                <button key={x.id} type="button" role="tab" aria-selected={x.ativa} className={'cli-fat-aba' + (x.ativa ? ' ativa' : '')} onClick={() => vm.escolherSecao(x.id)}>
+                  <Icone nome={x.icone} width={15} height={15} />{x.rotulo}
+                </button>
+              ))}
+            </nav>
+          )}
+
           {/* ---------- o mês ---------- */}
+          {vm.secao === 'mes' && <>
           <div className="cli-numeros cli-numeros-fat">
             <div className="cli-numero cli-numero-principal">
               <span className="cli-sobre">{p.emAndamento && <span className="cli-ponto-vivo" aria-hidden="true" />}Faturado em {p.titulo.toLowerCase()}</span>
@@ -268,9 +304,10 @@ export function Faturamento(props: DaCasca) {
           {!p.temNotas && p.tem && (
             <div className="cli-aviso-fat"><Icone nome="lampada" width={16} height={16} /><span>A venda por dia, os clientes e as operações aparecem quando o escritório baixa os XMLs do mês no SIEG.</span></div>
           )}
+          </>}
 
-          <div className="cli-painel-fat">
-            <section className="card cli-painel-dias">
+          {vm.secao !== 'banco' && <div className="cli-painel-fat so-um">
+            {vm.secao === 'mes' && <section className="card cli-painel-dias">
               <div className="card-head">
                 <h3>Venda por dia</h3>
                 {p.temNotas && <span className="card-head-ctl hint">{p.dias.diasComVenda}</span>}
@@ -286,9 +323,9 @@ export function Faturamento(props: DaCasca) {
                   <Colunas colunas={p.dias.colunas} eixo={p.dias.eixo} rotulo="A venda de cada dia do mês. Clique num dia para ver as notas dele" onFoco={vm.focarDia} onClique={c => void abrirDia(Number(c) - 1)} compacto />
                 </>
               ) : <Vazio icone="barChart" titulo="Ainda sem o detalhe do mês" texto="Chega com os XMLs do SIEG." />}
-            </section>
+            </section>}
 
-            <section className="card cli-painel-como">
+            {vm.secao === 'clientes' && <section className="card cli-painel-como">
               <div className="card-head"><h3>Como vendeu</h3></div>
               {p.composicao.partes ? (
                 <>
@@ -303,10 +340,118 @@ export function Faturamento(props: DaCasca) {
                   </ul>
                 </>
               ) : <Vazio icone="recibo" titulo="Nenhuma nota no mês" texto="Sem venda de produto neste mês." />}
-            </section>
-          </div>
+            </section>}
+          </div>}
 
-          {p.temNotas && p.clientes.length > 0 && (
+          {/* o faturado contra o que entrou no banco (13/11/2026: "comparação com os extratos bancários") */}
+          {vm.banco && vm.secao === 'banco' && (
+            <section className="card cli-fb">
+              <div className="card-head">
+                <h3>Faturado × entrou no banco</h3>
+                {vm.banco.contas && <span className="card-head-ctl hint">pelos extratos de {vm.banco.contas}</span>}
+              </div>
+              {/* a escolha do banco (13/11/2026: "subseleção por banco") */}
+              {vm.banco.contasDaEmpresa.length > 0 && (
+                <div className="cli-fb-contas" role="radiogroup" aria-label="Conta">
+                  {vm.banco.contasDaEmpresa.map(b => (
+                    <button key={b.id || 'todas'} type="button" role="radio" aria-checked={b.ativo} className={'cli-fb-conta' + (b.ativo ? ' ativa' : '')} onClick={() => vm.banco!.escolherBanco(b.id)}>
+                      <span className="cli-fb-conta-logo" aria-hidden="true">{b.marca ? <LogoBanco banco={b.marca} cor /> : <Icone nome="landmark" width={15} height={15} />}</span>
+                      {b.nome}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="cli-fb-corpo">
+                <div className="cli-fb-mes">
+                  {/* (13/11/2026: "os gráficos estão confusos"): os dois valores lado a lado, sem as barras */}
+                  <div className="cli-fb-dois">
+                    <div><span className="cli-fb-rotulo"><span className="cli-fb-ponto fat" />Faturado (notas)</span><b className="cli-valor">{vm.banco.faturado}</b></div>
+                    <div><span className="cli-fb-rotulo"><span className="cli-fb-ponto banco" />{vm.banco.rotuloEntradas}</span><b className="cli-valor">{vm.banco.entradas}</b></div>
+                  </div>
+                  <div className={'cli-fb-leitura t-' + vm.banco.tom}>
+                    <Icone nome={vm.banco.tom === 'bom' ? 'checkCircle' : vm.banco.tom === 'atencao' ? 'ajuda' : 'clock'} width={16} height={16} />
+                    <span>
+                      {vm.banco.cobertura && <b>{vm.banco.cobertura} do faturado entrou no banco{vm.banco.diferenca && ' (' + vm.banco.diferenca + ')'}. </b>}
+                      {vm.banco.leitura}
+                    </span>
+                  </div>
+                </div>
+                <div className="cli-fb-grafico">
+                <p className="cli-fb-legenda"><span><span className="cli-fb-ponto fat" />Faturado</span><span><span className="cli-fb-ponto banco" />{vm.banco.rotuloEntradas}</span><span className="hint">últimos {vm.banco.serie.length} meses · toque num mês</span></p>
+                <div className="cli-fb-meses" role="img" aria-label="Os últimos meses: o faturado e o que entrou no banco, lado a lado">
+                  {vm.banco.serie.map(x => (
+                    <button key={x.chave} type="button" className={'cli-fb-col' + (x.escolhido ? ' escolhido' : '')} title={x.aria} aria-label={x.aria} onClick={() => vm.abrirMes(x.chave)}>
+                      <span className="cli-fb-par">
+                        <span className="fat" style={{ height: x.faturado + '%' }} />
+                        <span className={'banco' + (x.semBanco ? ' vazio' : '')} style={{ height: (x.semBanco ? 100 : x.entradas) + '%' }} />
+                      </span>
+                      <span className="cli-fb-mes-rot">{x.rotulo}</span>
+                    </button>
+                  ))}
+                </div>
+                </div>
+              </div>
+              {/* o movimento das contas no mês (13/11/2026: "quero mais informações do banco") */}
+              {vm.banco.movimento && (vm.banco.movimento.saiu !== '—' || vm.banco.movimento.contas.length > 1) && (
+                <div className="cli-mv">
+                  {vm.banco.movimento.saiu !== '—' && <div className="cli-mv-numeros">
+                    <div><span className="cli-sobre">Entrou</span><b className="cli-valor">{vm.banco.movimento.entrou}</b></div>
+                    <div><span className="cli-sobre">Saiu</span><b className="cli-valor">{vm.banco.movimento.saiu}</b></div>
+                    {vm.banco.movimento.saldo && <div><span className="cli-sobre">Saldo atual</span><b className={'cli-valor cli-variacao ' + vm.banco.movimento.saldoTom}>{vm.banco.movimento.saldo}</b><span className="hint">{vm.banco.movimento.saldoEm}</span></div>}
+                  </div>}
+                  {vm.banco.movimento.contas.length > 1 && (
+                    <div className="cli-mv-tabela" role="table" aria-label="O movimento de cada conta no mês">
+                      <div className="cli-mv-linha cli-mv-cabeca" role="row"><span role="columnheader">Conta</span><span role="columnheader">Parte das entradas</span><span role="columnheader">Entrou</span><span role="columnheader">Saiu</span><span role="columnheader">Saldo</span></div>
+                      {vm.banco.movimento.contas.map(x => (
+                        <div key={x.id} className="cli-mv-linha" role="row">
+                          <span className="cli-mv-conta" role="cell"><span className="cli-fb-conta-logo" aria-hidden="true">{x.marca ? <LogoBanco banco={x.marca} cor /> : <Icone nome="landmark" width={15} height={15} />}</span>{x.nome}</span>
+                          <span className="cli-mv-parte" role="cell"><span className="cli-mv-barra"><span style={{ width: x.largura + '%' }} /></span>{x.parte}</span>
+                          <span className="cli-valor" role="cell">{x.entrou}</span>
+                          <span className="cli-valor cli-mv-fraco" role="cell">{x.saiu}</span>
+                          <span className={'cli-valor cli-variacao ' + x.saldoTom} role="cell">{x.saldo}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              {/* os lançamentos do mês (13/11/2026): cada valor que entrou e saiu, como no extrato */}
+              {vm.lancamentos && (vm.lancamentos.carregando || vm.lancamentos.tem) && (
+                <div className="cli-lc">
+                  <div className="cli-lc-topo">
+                    <h4>Lançamentos do mês</h4>
+                    <span className="cli-lc-filtros" role="radiogroup" aria-label="Mostrar">
+                      {(['todos', 'entradas', 'saidas'] as const).map(f => (
+                        <button key={f} type="button" role="radio" aria-checked={vm.lancamentos!.filtro === f} className={'cli-lc-filtro' + (vm.lancamentos!.filtro === f ? ' ativo' : '')} onClick={() => vm.lancamentos!.filtrar(f)}>
+                          {{ todos: 'Todos', entradas: 'Entradas', saidas: 'Saídas' }[f]}
+                        </button>
+                      ))}
+                    </span>
+                  </div>
+                  {vm.lancamentos.carregando ? <p className="hint">Carregando os lançamentos…</p> : (
+                    <>
+                      <p className="hint cli-lc-resumo">{vm.lancamentos.quantos} {vm.lancamentos.quantos === 1 ? 'lançamento' : 'lançamentos'} · entrou {vm.lancamentos.entrou} · saiu {vm.lancamentos.saiu}</p>
+                      <ul className={'cli-lc-lista' + (vm.lancamentos.linhas.some(l => l.conta) ? ' com-conta' : '')}>
+                        {vm.lancamentos.linhas.map(l => (
+                          <li key={l.chave} className="cli-lc-linha">
+                            <span className="cli-lc-data">{l.data}</span>
+                            <span className="cli-lc-hist" title={l.historico}>{l.historico}</span>
+                            {l.conta && <span className="cli-lc-conta"><span className="cli-fb-conta-logo" aria-hidden="true">{l.conta.marca ? <LogoBanco banco={l.conta.marca} cor /> : <Icone nome="landmark" width={14} height={14} />}</span>{l.conta.nome}</span>}
+                            <span className={'cli-valor cli-lc-valor' + (l.entrada ? ' entra' : ' sai')}>{l.valor}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      {vm.lancamentos.mais > 0 && <button type="button" className="btn btn-sm cli-lc-mais" onClick={vm.lancamentos.verMais}>Mostrar mais ({vm.lancamentos.mais})</button>}
+                      {vm.lancamentos.cortados > 0 && <p className="hint">Mais {vm.lancamentos.cortados} lançamentos no extrato: peça o extrato completo ao escritório.</p>}
+                    </>
+                  )}
+                </div>
+              )}
+              <p className="hint cli-fb-nota">As entradas são todos os créditos dos extratos: entram também transferências entre as suas contas, empréstimos e aportes.</p>
+            </section>
+          )}
+
+          {vm.secao === 'clientes' && p.temNotas && p.clientes.length > 0 && (
               <section className="card">
                 <div className="card-head"><h3>Maiores clientes</h3><span className="card-head-ctl hint">{p.numeros.clientes} no mês</span></div>
                 {p.clientes.length ? <Ranking itens={p.clientes.map(c => ({ chave: c.chave, nome: c.nome, detalhe: c.notas, valor: c.valor, parte: c.parte, largura: c.largura }))} fim={p.outrosClientes} />
@@ -315,11 +460,11 @@ export function Faturamento(props: DaCasca) {
           )}
 
           {/* ---------- o ano: recolhido (12/11/2026: "ficou muita informação") ---------- */}
-          <button type="button" className="cli-ver-ano" aria-expanded={vm.anoAberto} onClick={vm.alternarAno}>
+          {vm.secao === 'mes' && <button type="button" className="cli-ver-ano" aria-expanded={vm.anoAberto} onClick={vm.alternarAno}>
             <span><b>O ano</b><span className="hint">{vm.anoResumo}</span></span>
             <Icone nome="chevronDown" width={16} height={16} className={vm.anoAberto ? 'aberta' : ''} />
-          </button>
-          {vm.anoAberto && <>
+          </button>}
+          {vm.secao === 'mes' && vm.anoAberto && <>
           <div className="cli-numeros cli-numeros-fat">
             {vm.ano.acumulado && (
               <div className="cli-numero">

@@ -117,7 +117,7 @@ export function areaDeExemplo(hoje: Date): EstadoDaArea {
     },
     atendimento: {
       equipe: 'Equipe Nilma Contabilidade', horario: 'Segunda a sexta, das 8h às 18h',
-      setores: [{ nome: 'Fiscal', email: 'fiscal@nilma.example' }, { nome: 'Pessoal', email: 'dp@nilma.example' }, { nome: 'Contábil', email: 'contabil@nilma.example' }],
+      setores: [{ nome: 'Fiscal', email: 'fiscal@nilma.example', whatsapp: '(31) 98888-0001' }, { nome: 'Pessoal', email: 'dp@nilma.example', whatsapp: '(31) 98888-0002' }, { nome: 'Contábil', email: 'contabil@nilma.example', whatsapp: '(31) 98888-0003' }],
     },
     avisos: [
       { id: 'a1', titulo: 'Extratos de ' + formatos.rot(mesDe(hoje)).toLowerCase(), texto: 'Mande os extratos bancários do mês até o dia 5 de ' + formatos.rot(mesDe(new Date(hoje.getFullYear(), hoje.getMonth() + 1, 1))).toLowerCase() + ' para o escritório fechar a contabilidade.', ir: 'documentos' },
@@ -184,14 +184,27 @@ function pessoalDeExemplo(hoje: Date): ac.ResumoDoPessoal {
   const ultimo = mesAtras(hoje, 1);
   const ano = String(hoje.getFullYear());
   const funcionarios: ac.FuncionarioDoRegistro[] = [
-    { id: 'f1', nome: 'ANA LUIZA FERREIRA', cpf: '***.491.826-**', matricula: '001', remuneracao: 5400, desde: '2021-03', ultimo, ativo: true },
-    { id: 'f2', nome: 'CARLOS EDUARDO SANTOS', cpf: '***.102.396-**', matricula: '004', remuneracao: 2450, desde: '2023-08', ultimo, ativo: true },
-    { id: 'f3', nome: 'JOAO PEREIRA', cpf: '***.774.105-**', matricula: '003', remuneracao: 2300, desde: '2022-06', ultimo, ativo: true },
+    { id: 'f1', nome: 'ANA LUIZA FERREIRA', cpf: '***.491.826-**', matricula: '001', remuneracao: 5400, desde: '2021-03', ultimo, ativo: true,
+      cargo: 'Gerente administrativa', admissao: '2021-03-08', salarioBase: 5400, liquido: 4321.87, fonte: 'folha' },
+    { id: 'f2', nome: 'CARLOS EDUARDO SANTOS', cpf: '***.102.396-**', matricula: '004', remuneracao: 2450, desde: '2023-08', ultimo, ativo: true,
+      cargo: 'Auxiliar de logística', admissao: '2023-08-14', salarioBase: 2450, liquido: 2143.12, fonte: 'folha',
+      periodosDeFerias: [{ inicio: '2024-08-14', fim: '2025-08-13', direito: 30, gozados: 30, aGozar: 0, concederAte: '2026-08-13' }, { inicio: '2025-08-14', fim: '2026-08-13', direito: 30, gozados: 0, aGozar: 30, concederAte: '2027-08-13' }] },
+    { id: 'f3', nome: 'JOAO PEREIRA', cpf: '***.774.105-**', matricula: '003', remuneracao: 2300, desde: '2022-06', ultimo, ativo: true,
+      cargo: 'Vendedor', admissao: '2022-06-01', salarioBase: 2300, liquido: 2032.4, fonte: 'folha', afastadoDe: mesAtras(hoje, 1) + '-20', afastadoAte: mesAtras(hoje, 1) + '-24' },
     { id: 'f4', nome: 'MARIANA OLIVEIRA SILVA', cpf: '***.883.216-**', matricula: '007', remuneracao: 3800, desde: ano + '-01', ultimo, ativo: true },
     { id: 'f5', nome: 'RODRIGO DE ALMEIDA', cpf: '***.554.906-**', matricula: '008', remuneracao: 1850, desde: ano + '-05', ultimo, ativo: true },
     { id: 'f6', nome: 'PAULO HENRIQUE COSTA', cpf: '***.330.487-**', matricula: '005', remuneracao: 2100, desde: '2022-02', ultimo: mesAtras(hoje, 3), ativo: false },
   ];
-  return { funcionarios, competencia: ultimo, total: 15800, atualizadoEm: comHora(hoje, 7, 30) };
+  // a folha mês a mês (13/11/2026): 12 meses, crescendo com as admissões do ano
+  const historico = Array.from({ length: 12 }, (_, k) => {
+    const competencia = mesAtras(hoje, 12 - k);
+    const ativosNoMes = funcionarios.filter(f => f.desde <= competencia && (f.ativo || f.ultimo >= competencia));
+    const base = Math.round(ativosNoMes.reduce((t, f) => t + f.remuneracao, 0) * (0.97 + (k % 3) * 0.015) * 100) / 100;
+    // os três últimos meses com os holerites (13/11/2026: a folha de verdade)
+    const holerite = k >= 9 ? { proventos: base, inss: Math.round(base * 0.085 * 100) / 100, irrf: Math.round(base * 0.021 * 100) / 100, descontos: Math.round(base * 0.142 * 100) / 100, liquido: Math.round(base * 0.858 * 100) / 100, holerites: ativosNoMes.length } : {};
+    return { competencia, base, fgts: Math.round(base * 0.08 * 100) / 100, funcionarios: ativosNoMes.length, ...holerite };
+  });
+  return { funcionarios, competencia: ultimo, total: 15800, historico, atualizadoEm: comHora(hoje, 7, 30) };
 }
 
 /** O faturamento de exemplo (12/11/2026): 12 meses de notas emitidas, como o robô monta pelo SIEG (o mês de hoje ainda sem dado). */
@@ -268,6 +281,20 @@ function faturamentoDeExemplo(hoje: Date): ac.ResumoDoFaturamento {
         const nNfe = Math.round(notas * 0.18), inicioNfe = 1000 + i * 40, inicioNfce = 20000 + i * 160;
         return {
           competencia, nfe, nfce, notas, total, variacao, canceladas: i % 3, notasDoMes: notasDoMesDeExemplo(competencia, total, nfe, atual ? hoje.getDate() : 0),
+          // o que entrou nas contas pelos extratos (13/11/2026); o mês de hoje ainda sem extrato
+          ...(atual ? {} : (() => {
+            const entradas = Math.round(total * [0.96, 1.04, 0.92, 0.98, 1.12, 0.95, 0.83, 1.01, 0.97, 0.94, 1.06, 0.99][k] * 100) / 100;
+            const itau = Math.round(entradas * (0.58 + (k % 4) * 0.04) * 100) / 100;
+            const sicoob = Math.round((entradas - itau) * 100) / 100;
+            const saiItau = Math.round(itau * (0.86 + (k % 3) * 0.05) * 100) / 100, saiSicoob = Math.round(sicoob * (0.78 + (k % 2) * 0.1) * 100) / 100;
+            // o saldo no último dia do mês (o extrato imprime): cresce devagar mês a mês
+            const fim = competencia + '-' + String(new Date(Number(competencia.slice(0, 4)), Number(competencia.slice(5, 7)), 0).getDate()).padStart(2, '0');
+            const sItau = Math.round((18400 + i * 1210.5) * 100) / 100, sSicoob = Math.round((7300 + i * 640.25) * 100) / 100;
+            return { banco: { entradas, saidas: Math.round((saiItau + saiSicoob) * 100) / 100, contas: 2, saldo: { valor: Math.round((sItau + sSicoob) * 100) / 100, data: fim }, porBanco: [
+              { id: 'itau-3001-12345', nome: 'Itaú', marca: 'itau', entradas: itau, saidas: saiItau, saldo: { valor: sItau, data: fim } },
+              { id: 'sicoob-4027-998', nome: 'Sicoob', marca: 'sicoob', entradas: sicoob, saidas: saiSicoob, saldo: { valor: sSicoob, data: fim } },
+            ] } };
+          })()),
           series: [
             { modelo: '55', serie: '1', primeira: inicioNfe, ultima: inicioNfe + nNfe - 1 + (i % 3), notas: nNfe, canceladas: i % 3, valor: nfe },
             { modelo: '65', serie: '1', primeira: inicioNfce, ultima: inicioNfce + notas - nNfe - 1, notas: notas - nNfe, canceladas: 0, valor: nfce },
@@ -297,6 +324,29 @@ function documentosDpDeExemplo(hoje: Date): ac.DocumentoDoDp[] {
   doc(mesAtras(hoje, 1), 'Previsão - Vencimento de Férias.pdf', 'ferias', 45000);
   doc(mesAtras(hoje, 3), 'TRCT - Paulo Henrique Costa.pdf', 'rescisao', 120000, 'f6');
   return docs;
+}
+
+/** Os lançamentos de exemplo de um mês (13/11/2026): as entradas e as saídas de cada conta, espalhadas pelos dias, somando o
+ *  que o resumo do mês diz. */
+function lancamentosDeExemplo(mes: string, contas: readonly ac.EntradaDoBanco[]): { lancamentos: ac.LancamentoDoCliente[]; cortados: number } {
+  const ENTRA = ['PIX RECEBIDO', 'TED RECEBIDA', 'CARTAO CREDITO - REPASSE', 'CARTAO DEBITO - REPASSE', 'DEPOSITO', 'BOLETO RECEBIDO'];
+  const SAI = ['PAG BOLETO FORNECEDOR', 'PIX ENVIADO', 'TARIFA BANCARIA', 'DEBITO AUTOMATICO ENERGIA', 'PAG SALARIOS', 'DAS SIMPLES NACIONAL', 'TED ENVIADA'];
+  const dias = new Date(Number(mes.slice(0, 4)), Number(mes.slice(5, 7)), 0).getDate();
+  const lancamentos: ac.LancamentoDoCliente[] = [];
+  for (const c of contas) {
+    const reparte = (total: number, n: number, sinal: 1 | -1, nomes: string[]) => {
+      let resto = Math.round(total * 100);
+      for (let k = 0; k < n; k++) {
+        const v = k === n - 1 ? resto : Math.round((resto / (n - k)) * (0.6 + ((k * 37) % 9) / 10));
+        resto -= v;
+        lancamentos.push({ dia: 1 + ((k * 7 + (sinal > 0 ? 2 : 5)) % dias), historico: nomes[k % nomes.length] + (nomes === ENTRA && k % 3 === 0 ? ' - CLIENTE ' + (100 + k) : ''), valor: (sinal * v) / 100, conta: c.id });
+      }
+    };
+    reparte(c.entradas, 14, 1, ENTRA);
+    if (c.saidas) reparte(c.saidas, 11, -1, SAI);
+  }
+  lancamentos.sort((a, b) => a.dia - b.dia);
+  return { lancamentos, cortados: 0 };
 }
 
 /** Um PDF mínimo (uma página com um texto) para o "Baixar guia" do exemplo. */
@@ -384,6 +434,10 @@ export function criarRepoAreaClienteMemoria(agora: () => Date = () => new Date()
       await new Promise(r => setTimeout(r, 700));
       const p = ac.partesDaChave(c);
       return { nome: 'DANFE ' + p.numero + '.pdf', arquivo: pdfDeExemplo(['DANFE DE EXEMPLO (nao vale como documento)', (p.modelo === '65' ? 'NFC-e' : 'NF-e') + ' numero ' + p.numero, 'Chave ' + c.replace(/(\d{4})(?=\d)/g, '$1 '), 'Na versao de verdade, a DANFE e desenhada pelo XML da nota.']) };
+    },
+    async extratoDoMes(token, codigo, mes) {
+      const m = de(token)?.faturamento?.empresas.find(e => e.codigo === codigo)?.meses.find(x => x.competencia === mes);
+      return m?.banco?.porBanco ? lancamentosDeExemplo(mes, m.banco.porBanco) : null;
     },
     async notasDoMes(token, codigo, mes) {
       const m = de(token)?.faturamento?.empresas.find(e => e.codigo === codigo)?.meses.find(x => x.competencia === mes);

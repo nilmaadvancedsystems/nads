@@ -25,6 +25,10 @@ export interface MesDoFaturamento {
   series?: SerieDoMes[];
   /** o resumo das notas do mês (o painel do mês: por dia, os clientes, as operações), quando o SIEG baixou os XMLs */
   notasDoMes?: NotasDoMes;
+  /** o que entrou nas contas da empresa no mês, pelos extratos que o escritório leu (13/11/2026: "comparação com os
+   *  extratos bancários"); sem o campo, o mês não tem extrato */
+  banco?: { entradas: number; /** o que saiu das contas no mês (13/11/2026: "mais informações do banco") */ saidas?: number; contas: number;
+    /** a soma dos saldos de fim de mês das contas, quando todas trazem (a data é a mais nova) */ saldo?: { valor: number; data: string }; /** cada conta, a maior primeiro (13/11/2026: "subseleção por banco") */ porBanco?: EntradaDoBanco[] };
 }
 
 /** Uma série de notas do mês: modelo '55' (NF-e) ou '65' (NFC-e). */
@@ -229,4 +233,208 @@ export function detalheDoMes(meses: readonly MesDoFaturamento[], competencia: st
     anoPassado: total == null ? null : comparar(total, meses.find(m => m.competencia === (Number(ano) - 1) + competencia.slice(4))),
     noAno: total != null && doAno > 0 ? Math.round((total / doAno) * 1000) / 10 : null,
   };
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// O faturado contra o que entrou no banco (13/11/2026: "no faturamento quero que tenha comparação com os extratos
+// bancários"). As entradas são os créditos dos extratos lidos pelo escritório, de todas as contas da empresa no mês: entram
+// também transferências entre as contas, empréstimos e aportes, então a diferença é um sinal, não uma conta exata.
+
+/** O que entrou numa conta no mês: o id da conta no Extrator, o nome, a marca (o logo) e o valor. */
+export interface EntradaDoBanco {
+  id: string; nome: string; marca?: string; entradas: number; saidas?: number;
+  /** o saldo no último dia do mês que o extrato imprime (13/11/2026: "saldo atual"), com a data 'aaaa-mm-dd' */
+  saldo?: { valor: number; data: string };
+}
+
+export interface MesNoBanco { competencia: string; faturado: number | null; entradas: number | null; contas: number }
+export interface FaturadoXBanco {
+  /** o mês escolhido */
+  mes: MesNoBanco & {
+    /** entradas − faturado */
+    diferenca: number | null;
+    /** quanto do faturado entrou no banco, em % */
+    cobertura: number | null;
+    /** a leitura em português do mês */
+    leitura: string;
+    tom: 'bom' | 'atencao' | 'neutro';
+  };
+  /** os últimos 6 meses com algum dos dois (o mais velho primeiro), para o gráfico lado a lado */
+  serie: MesNoBanco[];
+  /** algum mês tem extrato */
+  temBanco: boolean;
+}
+
+/** As contas que aparecem nos meses (para a escolha do banco), a que mais recebeu primeiro. */
+export function bancosDoFaturamento(meses: readonly MesDoFaturamento[]): { id: string; nome: string; marca?: string }[] {
+  const soma = new Map<string, { id: string; nome: string; marca?: string; total: number }>();
+  for (const m of meses) for (const b of m.banco?.porBanco ?? []) {
+    const x = soma.get(b.id) ?? { id: b.id, nome: b.nome, ...(b.marca ? { marca: b.marca } : {}), total: 0 };
+    x.total += b.entradas;
+    soma.set(b.id, x);
+  }
+  return [...soma.values()].sort((a, b) => b.total - a.total).map(({ total: _t, ...b }) => b);
+}
+
+/** A comparação do mês escolhido e a série dos 6 meses até ele; com um banco escolhido, só o que entrou nele. */
+export function faturadoXBanco(meses: readonly MesDoFaturamento[], competencia: string, banco?: string): FaturadoXBanco {
+  const entradasDo = (m: MesDoFaturamento | undefined): number | null => {
+    if (!m?.banco) return null;
+    if (!banco) return m.banco.entradas;
+    return m.banco.porBanco?.find(b => b.id === banco)?.entradas ?? 0;
+  };
+  const doMes = (m: MesDoFaturamento | undefined, c: string): MesNoBanco =>
+    ({ competencia: c, faturado: m?.total ?? null, entradas: entradasDo(m), contas: banco ? (m?.banco ? 1 : 0) : m?.banco?.contas ?? 0 });
+  const porMes = new Map(meses.map(m => [m.competencia, m]));
+  // a série é sempre a dos últimos 6 meses com dado (13/11/2026: "o gráfico indo para trás infinito tá estranho"): o mês
+  // escolhido só fica destacado nela, não muda a janela
+  const serieFixa = () => [...porMes.keys()].sort().map(c => doMes(porMes.get(c), c)).filter(m => m.faturado != null || m.entradas != null).slice(-6);
+  const base = doMes(porMes.get(competencia), competencia);
+  const diferenca = base.faturado != null && base.entradas != null ? centavos(base.entradas - base.faturado) : null;
+  const cobertura = base.faturado != null && base.faturado > 0 && base.entradas != null ? Math.round((base.entradas / base.faturado) * 1000) / 10 : null;
+  let leitura: string, tom: FaturadoXBanco['mes']['tom'] = 'neutro';
+  const doMesTodo = porMes.get(competencia)?.banco;
+  if (banco && base.entradas != null && doMesTodo) {
+    const nome = doMesTodo.porBanco?.find(b => b.id === banco)?.nome ?? 'Esta conta';
+    const parte = doMesTodo.entradas > 0 ? Math.round((base.entradas / doMesTodo.entradas) * 1000) / 10 : 0;
+    const fb = faturadoXBanco(meses, competencia);
+    return { mes: { ...base, diferenca, cobertura, leitura: nome + ' recebeu ' + String(parte).replace('.', ',') + '% do que entrou nas contas no mês.', tom: 'neutro' },
+      serie: serieFixa(),
+      temBanco: fb.temBanco };
+  }
+  if (base.entradas == null) leitura = 'O escritório ainda não leu os extratos deste mês.';
+  else if (base.faturado == null || base.faturado === 0) leitura = 'Entrou dinheiro no banco, mas o mês não tem nota emitida.';
+  else if (cobertura != null && cobertura >= 90 && cobertura <= 115) { leitura = 'O que entrou no banco acompanha o faturado.'; tom = 'bom'; }
+  else if (cobertura != null && cobertura < 90) { leitura = 'Entrou menos do que o faturado: vendas a prazo, cartão a receber ou pagamento em dinheiro.'; tom = 'atencao'; }
+  else { leitura = 'Entrou mais do que o faturado: pode ser recebimento de meses anteriores, transferência entre contas ou empréstimo.'; tom = 'atencao'; }
+  const serie = serieFixa();
+  return { mes: { ...base, diferenca, cobertura, leitura, tom }, serie, temBanco: meses.some(m => m.banco) };
+}
+
+/** Um arquivo lido pelo Extrator (conferencia-nilma, extrator/{empresa}/arquivos): só o que esta conta precisa. */
+export interface ArquivoDoExtrato {
+  lado?: string; banco?: string; lancamentos?: readonly { data?: string; valor?: number; historico?: string }[];
+  /** o saldo que o extrato imprime no fim de cada dia (centavos), quando ele traz */
+  saldosDoDia?: readonly { data?: string; saldo?: number }[];
+}
+
+/**
+ * As entradas de cada mês pelos extratos (13/11/2026): a soma dos créditos (valor > 0, em centavos) dos arquivos do lado
+ * do banco, em reais; o mesmo lançamento em dois arquivos (o mesmo banco, a data, o valor e o histórico) conta uma vez;
+ * e quantas contas (bancos) tiveram extrato no mês.
+ */
+export function entradasDosExtratos(arquivos: readonly ArquivoDoExtrato[], bancos: readonly { id: string; nome?: string; marca?: string }[] = []): Record<string, { entradas: number; saidas: number; contas: number; saldo?: { valor: number; data: string }; porBanco: EntradaDoBanco[] }> {
+  const vistos = new Set<string>();
+  const soma = new Map<string, { centavos: number; saem: number; bancos: Set<string>; porBanco: Map<string, number>; saidasPorBanco: Map<string, number> }>();
+  // sem o banco no arquivo, é o primeiro da empresa (arquivos de antes de ela ter mais de um)
+  const primeiro = bancos[0]?.id ?? 'banco';
+  const doBanco = new Map(bancos.map(b => [b.id, b]));
+  const nomeDa = (id: string) => doBanco.get(id)?.nome || (id === 'banco' || id === 'conta' ? 'Conta' : id.split('-')[0].replace(/^./, x => x.toUpperCase()));
+  // o saldo de cada conta no último dia de cada mês que o extrato imprime: '<banco>|<mês>' → { data, centavos }
+  const saldos = new Map<string, { data: string; centavos: number }>();
+  for (const a of arquivos) {
+    if (a.lado !== 'banco') continue;
+    const banco = a.banco || primeiro;
+    for (const sd of a.saldosDoDia ?? []) {
+      const mes = /^(\d{4}-\d{2})/.exec(sd.data ?? '')?.[1];
+      if (!mes || typeof sd.saldo !== 'number' || !Number.isFinite(sd.saldo)) continue;
+      const k = banco + '|' + mes, ja = saldos.get(k);
+      if (!ja || (sd.data as string) >= ja.data) saldos.set(k, { data: sd.data as string, centavos: sd.saldo });
+    }
+  }
+  for (const a of arquivos) {
+    if (a.lado !== 'banco') continue;
+    const banco = a.banco || primeiro;
+    for (const l of a.lancamentos ?? []) {
+      const mes = /^(\d{4}-\d{2})/.exec(l.data ?? '')?.[1];
+      if (!mes || typeof l.valor !== 'number' || !Number.isFinite(l.valor)) continue;
+      const chave = banco + '|' + l.data + '|' + l.valor + '|' + (l.historico ?? '');
+      if (vistos.has(chave)) continue;
+      vistos.add(chave);
+      const m = soma.get(mes) ?? { centavos: 0, saem: 0, bancos: new Set<string>(), porBanco: new Map<string, number>(), saidasPorBanco: new Map<string, number>() };
+      m.bancos.add(banco);
+      if (!m.porBanco.has(banco)) m.porBanco.set(banco, 0);
+      if (l.valor > 0) { m.centavos += l.valor; m.porBanco.set(banco, (m.porBanco.get(banco) ?? 0) + l.valor); }
+      else if (l.valor < 0) { m.saem += -l.valor; m.saidasPorBanco.set(banco, (m.saidasPorBanco.get(banco) ?? 0) - l.valor); }
+      soma.set(mes, m);
+    }
+  }
+  return Object.fromEntries([...soma].map(([mes, m]) => {
+    const porBanco: EntradaDoBanco[] = [...m.porBanco].sort((x, y) => y[1] - x[1]).map(([id, centavos]) => {
+      const marca = doBanco.get(id)?.marca;
+      const sd = saldos.get(id + '|' + mes);
+      return { id, nome: nomeDa(id), ...(marca ? { marca } : {}), entradas: Math.round(centavos) / 100, saidas: Math.round(m.saidasPorBanco.get(id) ?? 0) / 100,
+        ...(sd ? { saldo: { valor: Math.round(sd.centavos) / 100, data: sd.data } } : {}) };
+    });
+    // o saldo de todas as contas só quando todas trazem o delas
+    const todas = porBanco.every(b => b.saldo);
+    const saldo = todas && porBanco.length ? {
+      valor: Math.round(porBanco.reduce((t, b) => t + (b.saldo?.valor ?? 0) * 100, 0)) / 100,
+      data: porBanco.map(b => b.saldo?.data ?? '').sort().pop() ?? '',
+    } : null;
+    return [mes, { entradas: Math.round(m.centavos) / 100, saidas: Math.round(m.saem) / 100, contas: m.bancos.size, ...(saldo ? { saldo } : {}), porBanco }];
+  }));
+}
+
+/** O faturamento com as entradas do banco em cada mês que tem extrato (o robô junta antes de gravar no espelho). */
+export function comOBanco(fat: ResumoDoFaturamento, doBanco: (codigo: number) => Record<string, NonNullable<MesDoFaturamento['banco']>> | null): ResumoDoFaturamento {
+  return {
+    ...fat,
+    empresas: fat.empresas.map(e => {
+      const b = doBanco(e.codigo);
+      return b ? { ...e, meses: e.meses.map(m => (b[m.competencia] ? { ...m, banco: b[m.competencia] } : m)) } : e;
+    }),
+  };
+}
+
+/** O movimento das contas no mês (13/11/2026: "quero mais informações do banco"): o que entrou, o que saiu e o que ficou,
+ *  no total e em cada conta (com a parte dela nas entradas); null sem extrato no mês. */
+export interface MovimentoDasContas {
+  entradas: number; saidas: number | null; resultado: number | null;
+  /** o saldo no fim do mês (o último que os extratos imprimem); null quando algum extrato não traz */
+  saldo: { valor: number; data: string } | null;
+  contas: { id: string; nome: string; marca?: string; entradas: number; saidas: number | null; resultado: number | null; parte: number; saldo: { valor: number; data: string } | null }[];
+}
+export function movimentoDasContas(meses: readonly MesDoFaturamento[], competencia: string): MovimentoDasContas | null {
+  const b = meses.find(m => m.competencia === competencia)?.banco;
+  if (!b) return null;
+  const cent = (v: number) => Math.round(v * 100) / 100;
+  return {
+    entradas: b.entradas, saidas: b.saidas ?? null, resultado: b.saidas != null ? cent(b.entradas - b.saidas) : null, saldo: b.saldo ?? null,
+    contas: (b.porBanco ?? []).map(x => ({ saldo: x.saldo ?? null,
+      id: x.id, nome: x.nome, ...(x.marca ? { marca: x.marca } : {}), entradas: x.entradas, saidas: x.saidas ?? null,
+      resultado: x.saidas != null ? cent(x.entradas - x.saidas) : null,
+      parte: b.entradas > 0 ? Math.round((x.entradas / b.entradas) * 1000) / 10 : 0,
+    })),
+  };
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Os lançamentos do mês (13/11/2026: "escolhendo um banco, os lançamentos do mês"): cada valor que entrou e saiu das
+// contas no mês, como no extrato (o dia, o histórico, o valor com o sinal e a conta), sem repetir o mesmo lançamento.
+// O robô grava um documento por empresa e mês (resumo/extrato-{código}-{mês}); a lista tem um teto para caber nele.
+
+export const MAIOR_LISTA_DE_LANCAMENTOS = 2500;
+export interface LancamentoDoCliente { dia: number; historico: string; /** em reais; negativo = saiu */ valor: number; /** o id da conta */ conta: string }
+
+/** Os lançamentos de um mês, por dia (e na ordem do extrato dentro do dia); cortados = quantos passaram do teto. */
+export function lancamentosDoMes(arquivos: readonly ArquivoDoExtrato[], mes: string, bancos: readonly { id: string }[] = []): { lancamentos: LancamentoDoCliente[]; cortados: number } {
+  const primeiro = bancos[0]?.id ?? 'banco';
+  const vistos = new Set<string>();
+  const todos: (LancamentoDoCliente & { ordem: number })[] = [];
+  let ordem = 0;
+  for (const a of arquivos) {
+    if (a.lado !== 'banco') continue;
+    const conta = a.banco || primeiro;
+    for (const l of a.lancamentos ?? []) {
+      if (!(l.data ?? '').startsWith(mes + '-') || typeof l.valor !== 'number' || !Number.isFinite(l.valor) || l.valor === 0) continue;
+      const chave = conta + '|' + l.data + '|' + l.valor + '|' + (l.historico ?? '');
+      if (vistos.has(chave)) continue;
+      vistos.add(chave);
+      todos.push({ dia: Number((l.data as string).slice(8, 10)) || 0, historico: (l.historico ?? '').replace(/\s+/g, ' ').trim().slice(0, 140), valor: l.valor / 100, conta, ordem: ordem++ });
+    }
+  }
+  todos.sort((x, y) => x.dia - y.dia || x.ordem - y.ordem);
+  const cortados = Math.max(0, todos.length - MAIOR_LISTA_DE_LANCAMENTOS);
+  return { lancamentos: todos.slice(0, MAIOR_LISTA_DE_LANCAMENTOS).map(({ ordem: _o, ...l }) => l), cortados };
 }

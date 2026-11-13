@@ -16,7 +16,7 @@ import { MENSAGEM_BLOQUEADO, recusarNoModoDev } from '../../../comum/travaDoModo
 import { AREA_VAZIA, type EstadoDaArea, type RepoAreaCliente } from './areaCliente';
 import type { DanfeNoEspelho } from './biblioteca';
 import {
-  base64DosBytes, ehTokenDoLink, estadoDoEspelho, lerAgenda, lerChamado, lerDocumentoDp, lerFaturamento, lerDanfe, lerGuia, lerListaDeNotas, lerMarca, lerPessoal, lerRecibo, lerResumo, nomeDoPdfDaGuia, pedidoDeChamado, pedidoDeEnvio, respostaVoltou,
+  base64DosBytes, ehTokenDoLink, estadoDoEspelho, lerAgenda, lerChamado, lerDocumentoDp, lerFaturamento, lerDanfe, lerGuia, lerListaDeNotas, lerExtratoDoMes, lerMarca, lerPessoal, lerRecibo, lerResumo, nomeDoPdfDaGuia, pedidoDeChamado, pedidoDeEnvio, respostaVoltou,
   type ChamadoPendente, type PartesDoEspelho, type RespostaPendente,
 } from './espelho';
 import { juntarPedacosDoPdf, mimeDoArquivo, type PedacoDoPdf } from './regras';
@@ -240,6 +240,17 @@ export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCl
       try {
         const s = await getDoc(doc(abrir(), 'areasCliente', token, 'resumo', 'notas-' + codigo + '-' + mes));
         return s.exists() ? lerListaDeNotas(s.data()) : null;
+      } catch {
+        return null;
+      }
+    },
+
+    // os lançamentos do mês pelos extratos (13/11/2026): um documento por empresa e mês, lido ao abrir a aba Banco
+    async extratoDoMes(token, codigo, mes) {
+      if (!ehTokenDoLink(token) || !Number.isInteger(codigo) || !/^\d{4}-\d{2}$/.test(mes)) return null;
+      try {
+        const s = await getDoc(doc(abrir(), 'areasCliente', token, 'resumo', 'extrato-' + codigo + '-' + mes));
+        return s.exists() ? lerExtratoDoMes(s.data()) : null;
       } catch {
         return null;
       }

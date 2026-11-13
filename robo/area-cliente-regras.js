@@ -654,8 +654,15 @@ const CAMPOS_DO_ESPELHO = {
   recibo: ['id', 'nome', 'tipo', 'tamanho', 'recebidoEm'],
   // o Registro (12/11/2026): resumo/pessoal (os funcionários pelas guias do FGTS, o CPF mascarado) e os documentos do DP
   // (documentos/{id} com tipo 'dp'; os bytes em documentos/{id}~{n}, com 'de' = o id do documento)
-  pessoal: ['funcionarios', 'competencia', 'total', 'atualizadoEm'],
-  funcionario: ['id', 'nome', 'cpf', 'matricula', 'remuneracao', 'desde', 'ultimo', 'ativo'],
+  pessoal: ['funcionarios', 'competencia', 'total', 'historico', 'atualizadoEm'],
+  // a folha mês a mês pelas guias do FGTS (13/11/2026): só as somas, nenhum nome
+  // (13/11/2026) e, quando o DP salvou a folha do mês, as somas dos holerites (folhaLida.ts)
+  mesFolha: ['competencia', 'base', 'fgts', 'funcionarios', 'proventos', 'descontos', 'liquido', 'inss', 'irrf', 'holerites'],
+  // (13/11/2026) o que o holerite e a previsão de férias acrescentam: nunca o CPF inteiro, banco/agência/conta, as rubricas
+  // uma a uma (o consignado) nem o motivo do afastamento (dado de saúde)
+  funcionario: ['id', 'nome', 'cpf', 'matricula', 'remuneracao', 'desde', 'ultimo', 'ativo',
+    'cargo', 'admissao', 'salarioBase', 'liquido', 'feriasVencidas', 'afastadoDe', 'afastadoAte', 'periodosDeFerias', 'fonte'],
+  periodoFerias: ['inicio', 'fim', 'direito', 'gozados', 'aGozar', 'concederAte'],
   documentoDp: ['tipo', 'id', 'nome', 'categoria', 'competencia', 'tamanho', 'funcionario', 'partes'],
   pedacoDp: ['base64', 'n', 'total', 'de'],
   // a DANFE pedida pelo relatório do dia (12/11/2026): documentos/danfe-<chave> (os pedaços como os do DP)
@@ -663,7 +670,15 @@ const CAMPOS_DO_ESPELHO = {
   // o Faturamento (12/11/2026): resumo/faturamento, os meses de cada empresa pelas notas emitidas no SIEG
   faturamento: ['empresas', 'fonte', 'atualizadoEm'],
   empresaFat: ['codigo', 'nome', 'regime', 'meses'],
-  mesFat: ['competencia', 'nfe', 'nfce', 'notas', 'total', 'variacao', 'canceladas', 'series', 'notasDoMes'],
+  mesFat: ['competencia', 'nfe', 'nfce', 'notas', 'total', 'variacao', 'canceladas', 'series', 'notasDoMes', 'banco'],
+  // o que entrou nas contas pelos extratos (13/11/2026): só a soma do mês e quantas contas, nenhum lançamento
+  bancoFat: ['entradas', 'saidas', 'contas', 'saldo', 'porBanco'],
+  saldoFat: ['valor', 'data'],
+  // cada conta do mês: o id, o nome, a marca (o logo) e o que entrou (13/11/2026: a escolha do banco)
+  bancoDoMesFat: ['id', 'nome', 'marca', 'entradas', 'saidas', 'saldo'],
+  // os lançamentos do mês pelos extratos (13/11/2026): resumo/extrato-{código}-{mês}
+  extratoLista: ['codigo', 'competencia', 'lancamentos', 'cortados', 'atualizadoEm'],
+  lancExt: ['dia', 'historico', 'valor', 'conta'],
   // o painel do mês (12/11/2026): só o resumo; nunca a nota, a chave ou o CPF/CNPJ de quem comprou
   notasFat: ['porDia', 'clientes', 'totalClientes', 'outrosClientes', 'cfops', 'servicos', 'maiorVenda', 'em'],
   clienteFat: ['nome', 'valor', 'notas'],
@@ -678,7 +693,7 @@ const CAMPOS_DO_ESPELHO = {
   marca: ['logo', 'atualizadoEm'],
   serieFat: ['modelo', 'serie', 'primeira', 'ultima', 'notas', 'canceladas', 'valor'],
 };
-const DENTRO = { resumo: { empresas: 'empresa', escritorio: 'escritorio' }, agenda: { itens: 'item' }, chamado: { mensagens: 'mensagem' }, pessoal: { funcionarios: 'funcionario' }, faturamento: { empresas: 'empresaFat' }, empresaFat: { meses: 'mesFat' }, mesFat: { series: 'serieFat', notasDoMes: 'notasFat' }, notasLista: { notas: 'notaRel' }, notasFat: { clientes: 'clienteFat', outrosClientes: 'outrosFat', cfops: 'cfopFat', servicos: 'servicoFat', maiorVenda: 'vendaFat' } };
+const DENTRO = { resumo: { empresas: 'empresa', escritorio: 'escritorio' }, agenda: { itens: 'item' }, chamado: { mensagens: 'mensagem' }, pessoal: { funcionarios: 'funcionario', historico: 'mesFolha' }, funcionario: { periodosDeFerias: 'periodoFerias' },faturamento: { empresas: 'empresaFat' }, empresaFat: { meses: 'mesFat' }, mesFat: { series: 'serieFat', notasDoMes: 'notasFat', banco: 'bancoFat' }, bancoFat: { porBanco: 'bancoDoMesFat', saldo: 'saldoFat' }, bancoDoMesFat: { saldo: 'saldoFat' }, extratoLista: { lancamentos: 'lancExt' }, notasLista: { notas: 'notaRel' }, notasFat: { clientes: 'clienteFat', outrosClientes: 'outrosFat', cfops: 'cfopFat', servicos: 'servicoFat', maiorVenda: 'vendaFat' } };
 
 /** Joga erro se o documento tiver um campo fora da lista branca (em qualquer nível). Devolve o próprio documento. */
 function conferirListaBranca(tipo, doc) {
