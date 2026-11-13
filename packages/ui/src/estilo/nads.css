@@ -6812,6 +6812,9 @@ td.fs-fat-sem{color:var(--ink-faint);}
 .topbar:has(.ini-topo) #topbarActions{flex:1;min-width:0;flex-wrap:nowrap !important;}
 .ini-topo{flex-wrap:nowrap;}
 .ini-topo-lugar{display:contents;}
+/* o código e o nome da empresa em negrito, em todo o Início novo: o Painel, as listas, a busca e a janela da tarefa (Vitor,
+   13/11/2026: "Coloca em negrito o nome das empresas, codigo e nome, em todo o inicio") */
+.ini-empresa{font-weight:600;}
 /* o cronômetro das delegadas (Início novo): o relógio pequeno e o tempo numa linha só; em andamento, o relógio pisca devagar
    (só a opacidade); pausada, fica parado. Pisca em qualquer nível de animação, porque diz a situação (Vitor, 13/11/2026: "em
    progresso o icone fica piscando, se ela pausar, para de piscar"); com "menos movimento" no sistema, fica parado */

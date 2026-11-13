@@ -199,7 +199,7 @@ function ClienteDosDocumentos({ vm }: { vm: Vm }) {
   if (!c) return <span className="ini-qual-cliente"><EscolherCliente vm={vm} depois={() => undefined} /></span>;
   return (
     <span className="ini-cliente-escolhido">
-      <span>{nomeDoCliente(c)}{c.codigo == null && <span className="fraco"> · avulso</span>}</span>
+      <span><span className="ini-empresa">{nomeDoCliente(c)}</span>{c.codigo == null && <span className="fraco"> · avulso</span>}</span>
       <button type="button" className="btn btn-ghost" onClick={() => vm.tirarCliente(0)}><Icone nome="repeat" />Trocar</button>
     </span>
   );
@@ -395,7 +395,7 @@ export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
               <p className="registro-dica"><Icone nome="clipe" />{vm.documentos.modo === 'enviar' ? 'Anexe os arquivos ou cole o link do que vai enviar.' : 'Diga quais documentos precisa; quem receber anexa e envia.'}</p>
               <div className="ini-cliente-escolhido">
                 <Icone nome="briefcase" />
-                <span>{vm.clientes.map(nomeDoCliente).join(', ')}</span>
+                <span className="ini-empresa">{vm.clientes.map(nomeDoCliente).join(', ')}</span>
                 <button type="button" className="btn btn-ghost" onClick={() => setPasso('cliente')}><Icone nome="chevronLeft" />Voltar</button>
               </div>
               <PropriedadesDosDocumentos vm={vm} />
@@ -422,7 +422,7 @@ export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
               {vm.pedeDocumentos && <p className="registro-dica"><Icone nome="clipe" />Quem receber anexa os arquivos e confirma; a tarefa fica concluída.</p>}
               <div className="ini-cliente-escolhido">
                 <Icone nome="briefcase" />
-                <span>{vm.clientes.length ? vm.clientes.map(c => (c.codigo != null ? c.codigo + ' · ' : '') + c.nome).join(', ') : 'Sem cliente'}{vm.clientes.some(c => c.codigo == null) && <span className="fraco"> · avulso</span>}</span>
+                <span>{vm.clientes.length ? <span className="ini-empresa">{vm.clientes.map(nomeDoCliente).join(', ')}</span> : 'Sem cliente'}{vm.clientes.some(c => c.codigo == null) && <span className="fraco"> · avulso</span>}</span>
                 <button type="button" className="btn btn-ghost" onClick={trocarCliente}><Icone nome="repeat" />Trocar</button>
               </div>
               {titulo}
