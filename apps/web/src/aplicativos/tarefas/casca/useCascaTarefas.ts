@@ -48,14 +48,16 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
   const daEquipe = acesso.equipe().lista.find(u => u.nome === op.nome);
   const real = { agora: new Date(), aniversario: String((daEquipe && acesso.equipe().docs[daEquipe.uid]?.aniversario) || '') };
   const s = dev ? aplicarSimulacao(real.agora, real.aniversario, simulada) : real;
-  const tituloDoInicio = inicioNovo ? tarefas.saudacao.saudacao({ nome: op.nome, quem: daEquipe?.uid || op.nome, agora: s.agora, aniversario: s.aniversario, troca: dev ? simulada.troca : 0, simulando: dev && Object.keys(simulada).length > 0 }) : '';
   const abaDoInicio = abaDaUrl(new URLSearchParams(search).get('aba'));
+  // a saudação só no Painel (Vitor, 13/11/2026: "Saudações só no painel principal, remova dessas paginas"): nas outras abas, a linha
+  // do título fica só com as ações
+  const tituloDoInicio = inicioNovo && abaDoInicio === 'painel' ? tarefas.saudacao.saudacao({ nome: op.nome, quem: daEquipe?.uid || op.nome, agora: s.agora, aniversario: s.aniversario, troca: dev ? simulada.troca : 0, simulando: dev && Object.keys(simulada).length > 0 }) : '';
   // as Tarefas do Início novo com a barra lateral padrão do nads (Vitor, 13/11/2026: "Menu lateral padrão nads!"): Minhas tarefas,
-  // Delegadas por mim e Concluídas, com quantas tem
+  // Delegadas por mim e Concluídas, com quantas tem (sem os documentos delegados, que ficam só na aba Documentos)
   const tarefasNoInicio = inicioNovo && abaDoInicio === 'tarefas';
   const listaDoInicio = listaDaUrl(new URLSearchParams(search).get('lista'));
   const delegadas = useTarefasDelegadas();
-  const quantas = tarefasNoInicio ? tarefas.delegadas.contarAbas(delegadas.lista().tarefas, delegadas.eu()?.uid || '') : null;
+  const quantas = tarefasNoInicio ? tarefas.delegadas.contarAbas(delegadas.lista().tarefas.filter(t => !tarefas.delegadas.pedeDocumentos(t)), delegadas.eu()?.uid || '') : null;
   return {
     // a Tarefas não tem uma empresa aberta: a trilha fica só com o caminho (Vitor, 05/10/2026: sem o "Vitor · Sair da
     // conta" — sair fica no avatar)

@@ -124,7 +124,7 @@ export function useInicioNovo() {
     quandoFoi: tarefas.quandoFoi(a.em, agoraIso),
     reuniao: a.quando ? new Date(a.quando).toLocaleString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '',
     // o Recebido: a pessoa ainda precisa marcar? quem escreveu (e o Diretor) vê quem marcou e quem falta
-    precisaReceber: !!a.pedeConfirmacao && a.porUid !== uid && !tarefas.recebeu(a, uid),
+    precisaReceber: !!a.pedeConfirmacao && a.porUid !== uid && !tarefas.recebeu(a, uid) && tarefas.avisoParaMim(a, { uid, departamento: op.departamento }),
     jaRecebi: tarefas.recebeu(a, uid),
     acompanha: !!a.pedeConfirmacao && (a.porUid === uid || veTodos),
     faltaReceber: tarefas.faltaReceber(a, equipeComSetor).map(p => p.nome),
@@ -152,7 +152,7 @@ export function useInicioNovo() {
     aba, mudarAba,
     abas: ABAS_DO_INICIO.map(a => ({
       ...a, ativa: a.id === aba,
-      qtd: a.id === 'tarefas' ? minhas.length : a.id === 'documentos' ? abertas.filter(d.pedeDocumentos).length : a.id === 'notificacoes' ? mural.avisos.length : 0,
+      qtd: a.id === 'tarefas' ? minhas.filter(t => !d.pedeDocumentos(t)).length : a.id === 'documentos' ? abertas.filter(d.pedeDocumentos).length : a.id === 'notificacoes' ? mural.avisos.length : 0,
     })),
     // a tarefa aberta
     aberta, abrir: (id: string) => setAberta(id), nova: () => setAberta('nova'), pedirDocumentos: () => setAberta('documentos'), fechar: () => setAberta(null),
@@ -210,6 +210,17 @@ export function useInicioNovo() {
       ...reunioes.proximas.map(x => ({ id: x.id, tituloNaLista: x.titulo, reuniao: x.quandoTexto, quando: x.quando, rotulo: x.rotulo })),
       ...tarefas.proximasReunioes(comunicados, agoraLocal).map(c => ({ id: c.id, tituloNaLista: c.tituloNaLista, reuniao: c.reuniao, quando: c.quando || '', rotulo: '' })),
     ].sort((a, b) => a.quando.localeCompare(b.quando)).slice(0, 4),
+    /**
+     * o que espera a confirmação da pessoa, por cima do calendário do Painel (Vitor, 13/11/2026: "Se for algo que precisa de
+     * confirmação faça aquele esquema de colocar sobrepondo o calendário"): a reunião sem a resposta de presença e o aviso
+     * sem o Recebido, um de cada vez; respondeu, aparece o próximo
+     */
+    paraConfirmar: [
+      ...reunioes.lista.filter(x => x.acoes.includes('confirmar') && x.minhaPresenca === null)
+        .map(x => ({ tipo: 'reuniao' as const, id: x.id, titulo: x.titulo, texto: x.pauta, quem: x.criadaPor.nome, quando: x.quandoTexto })),
+      ...comunicados.filter(c => c.precisaReceber)
+        .map(c => ({ tipo: 'aviso' as const, id: c.id, titulo: c.tituloNaLista, texto: c.texto, quem: c.por, quando: c.quandoFoi })),
+    ],
     /** o ViewModel das reuniões (os botões das Notificações e o detalhe) */
     reunioesVm: reunioes,
     comFoto,

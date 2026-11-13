@@ -6903,3 +6903,9 @@ td.fs-fat-sem{color:var(--ink-faint);}
 .ini-reuniao-comentario{margin:4px 0;}
 .ini-reuniao-historico{margin-top:12px;}
 .ini-destino{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;}
+/* o que pede confirmação, por cima do calendário do Painel (o Início novo): o calendário embaçado e o aviso em cima */
+.ini-calendario-caixa{position:relative;}
+.ini-calendario-embacado{filter:blur(2px);pointer-events:none;user-select:none;}
+.ini-calendario-aviso{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:8px;background:var(--fundo-janela);}
+.ini-calendario-cartao{display:flex;flex-direction:column;gap:6px;padding:16px;max-width:100%;width:340px;}
+.ini-calendario-texto{margin:0;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}

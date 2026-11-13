@@ -17,7 +17,7 @@ export function ListaDoInicio({ documentos = false, lista: qual = 'minhas', busc
   documentos?: boolean; lista?: AbaDaCentral; busca: string; filtrar: (t: tarefas.delegadas.TarefaDelegada) => boolean;
   abrir: (id: string) => void; comFoto: (p: { uid: string; nome: string }) => PessoaComFoto;
 }) {
-  const vm = useCentralDeTarefas(qual, { agenda: true, documentos, busca, filtrar });
+  const vm = useCentralDeTarefas(qual, { agenda: true, documentos, semDocumentos: !documentos, busca, filtrar });
   return (
     <section className="ini-lista">
       <div className="tarefas-barra-topo">
