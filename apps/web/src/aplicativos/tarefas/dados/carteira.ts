@@ -49,8 +49,8 @@ export type QuemNaCarteira = () => { uid: string; nome: string } | null;
 const agora = () => new Date().toISOString();
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
-/** Nos exemplos: algumas comissões, lançamentos, um holerite e uma conta de salário paga, para quem está. */
-export function criarCarteiraMemoria(quem: QuemNaCarteira): RepoCarteira {
+/** Nos exemplos: algumas comissões, lançamentos, um holerite e uma conta de salário paga, para quem está; com propria, a % própria de 50% para quem está e uma colega. */
+export function criarCarteiraMemoria(quem: QuemNaCarteira, propria = false): RepoCarteira {
   let ver = 0;
   const ouvintes = new Set<() => void>();
   const mudou = () => { ver++; for (const f of ouvintes) f(); };
@@ -65,7 +65,7 @@ export function criarCarteiraMemoria(quem: QuemNaCarteira): RepoCarteira {
     clienteCodigo: null, porte: 'MEI', servico: 'Abertura de MEI', valorServico: valor * 10, percentual: 10,
   });
   let servicos = carteira.servicosPadrao().map((s, i) => ({ ...s, percentual: i < 3 ? 10 : 0 }));
-  let porPessoa: carteira.PercentualDaPessoa[] = [];
+  let porPessoa: carteira.PercentualDaPessoa[] = propria ? [{ uid: eu().uid, nome: eu().nome, percentual: 50 }, { uid: 'uid-clara', nome: 'Clara', percentual: 50 }] : [];
   const comissaoDe = (x: carteira.ComissaoParaSalvar) => ({ ...x, descricao: x.servico, valor: carteira.valorDaComissao(x.valorServico, x.percentual) });
   let comissoes: carteira.Comissao[] = [
     c('c1', eu().uid, eu().nome, mes, 'PADARIA EXEMPLO LTDA', 350, 'lancada'),

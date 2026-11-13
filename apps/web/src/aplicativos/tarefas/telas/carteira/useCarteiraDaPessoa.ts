@@ -5,7 +5,8 @@ import { useRetorno } from '@nads/ui';
 import { useMemo, useState } from 'react';
 import type { Decisao } from '../../dados/carteira';
 import { empresasNovas } from '../../dados/fonte';
-import { useAcesso, useCarteira, useTodosOsCadastros } from '../../dados/repo';
+import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
+import { useAcesso, useCarteira, useTesteDaCarteira, useTodosOsCadastros } from '../../dados/repo';
 import { dataBr, hoje, isoDaData, valorDigitado, valorNoCampo } from '../financeiro/formatosDaNota';
 import { abrirBytes, baixarDaCarteira, mensagem, useMes } from './comum';
 
@@ -186,8 +187,9 @@ export function useComissoesDaEquipe() {
   // as janelas do Financeiro: registrar a comissão de alguém (a retroativa) e os serviços comissionados com a %
   const [janela, setJanela] = useState<'' | 'registrar' | 'servicos'>('');
   const doMes = repo.comissoesDoMes(m.mes);
+  const [dev] = useModoDesenvolvedor();
   return {
-    m, exemplos: repo.exemplos, carregada: doMes.carregada, erro: doMes.erro, todas: doMes.lista,
+    m, exemplos: repo.exemplos, dev, teste: useTesteDaCarteira(), carregada: doMes.carregada, erro: doMes.erro, todas: doMes.lista,
     resumo: carteira.resumoParaPagar(doMes.lista), totais: carteira.totaisDasComissoes(doMes.lista),
     aberta, alternar: (uid: string) => setAberta(a => (a === uid ? '' : uid)), fazendo, janela, setJanela,
     /** aprovar, recusar (com o motivo), marcar como pago (confirma antes) ou voltar para lançada */
