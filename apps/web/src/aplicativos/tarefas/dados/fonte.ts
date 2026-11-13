@@ -60,6 +60,7 @@ import { criarLcdprFirestore } from './lcdpr.firestore';
 import { criarFeedbackFirestore } from './feedback.firestore';
 import { criarAvisosFirestore } from './avisos.firestore';
 import { criarAvisosMemoria, type RepoAvisos } from './avisos';
+import { criarEntradasMemoria, type RepoEntradas } from './administrativo';
 import { criarSolicitacoesFirestore } from './solicitacoes.firestore';
 import { criarSolicitacoesMemoria, type RepoSolicitacoes } from './solicitacoes';
 import { criarTarefasDelegadasMemoria, type RepoTarefasDelegadas } from './tarefasDelegadas';
@@ -574,6 +575,25 @@ export function ligarTesteDoInicio(q: DadosDeTesteDoInicio, ligar: boolean) {
   else teste.tarefas = ligar ? criarTarefasDelegadasMemoria(quemDasTarefas, true) : null;
   teste.ver++;
   for (const f of ouvintesDoTeste) f();
+}
+
+// o Administrativo (13/11/2026, protótipo do modo desenvolvedor): as entradas de clientes só na memória; o ⚡ troca pelas de exemplo
+let entradas: RepoEntradas | null = null;
+let entradasDeTeste: RepoEntradas | null = null;
+const ouvintesDasEntradas = new Set<() => void>();
+let versaoDasEntradas = 0;
+export const assinarTesteDasEntradas = (f: () => void) => { ouvintesDasEntradas.add(f); return () => { ouvintesDasEntradas.delete(f); }; };
+export const versaoDoTesteDasEntradas = () => versaoDasEntradas;
+export const testeDasEntradasLigado = () => !!entradasDeTeste;
+export function ligarTesteDasEntradas(ligar: boolean) {
+  entradasDeTeste = ligar ? criarEntradasMemoria(true) : null;
+  versaoDasEntradas++;
+  for (const f of ouvintesDasEntradas) f();
+}
+export function repoDasEntradas(): RepoEntradas {
+  if (entradasDeTeste) return entradasDeTeste;
+  if (!entradas) entradas = criarEntradasMemoria();
+  return entradas;
 }
 
 let avisos: RepoAvisos | null = null;

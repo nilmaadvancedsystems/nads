@@ -8,6 +8,7 @@ import { carteira, tarefas as t, usuarios, type uso } from '@nads/core';
 import type { NomeIcone } from '@nads/ui';
 import { PAGINAS_DO_ADMIN } from '../../admin/casca/navegacao';
 import type { Operador } from './operador';
+import { novidadeLigada } from '../../../comum/novidades';
 
 export const BASE = '/tarefas';
 
@@ -17,7 +18,7 @@ export const BASE = '/tarefas';
  */
 export const FERRAMENTAS_DO_FISCAL: readonly string[] = ['sintegra', 'faturamento', 'rateio-frete', 'simples', 'antecipacao-es', 'auditoria-itens'];
 
-export type IdAplicacao = 'inicio' | 'minhas-empresas' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'financeiro' | 'entregas' | 'area-cliente' | 'ferramentas' | 'carteira';
+export type IdAplicacao = 'inicio' | 'minhas-empresas' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'financeiro' | 'entregas' | 'area-cliente' | 'ferramentas' | 'carteira' | 'administrativo';
 
 export interface Pagina {
   id: string; rotulo: string; icone: NomeIcone; titulo: string; /** a logo da marca no lugar do ícone (fgts na lateral; as outras nas abas do Fiscal) */ marca?: 'fgts' | 'simples' | 'receita' | 'sped' | 'sieg';
@@ -160,6 +161,13 @@ export const APLICACOES: readonly Aplicacao[] = [
     // criadas"): para toda a equipe, mesmo quem ainda não tem a Carteira
     { id: 'insumos', rotulo: 'Insumos', icone: 'impressora', titulo: 'Insumos' },
   ] },
+  // o Administrativo (Vitor, 13/11/2026: "Coloca um botão Admistrativo. Quem vai ter acesso só diretor e dono. Dentro dessa
+  // pagina vai ter funcoes do administrativo, contratos, fichar pre cadastrais etc"): a novidade 'administrativo', só no modo
+  // desenvolvedor por enquanto
+  { id: 'administrativo', nome: 'Administrativo', icone: 'briefcase', grupo: 'Escritório', pronta: true, paginas: [
+    { id: 'entradas', rotulo: 'Entrada de clientes', icone: 'usuario', titulo: 'Entrada de clientes' },
+    { id: 'contratos', rotulo: 'Contratos', icone: 'fileText', titulo: 'Contratos', emDesenvolvimento: true },
+  ] },
   // as Configurações (Vitor, 28/10/2026: "Cadastro, esse admin, colocar tudo em um botão Configurações; todos esses botões
   // dos menus nessa tela"): o Cadastro (Empresas e Equipe; o endereço continua /tarefas/cadastro/...) e, só para o admin,
   // as páginas do site do admin, as mesmas telas, aqui dentro (o link Admin da gaveta saiu)
@@ -247,7 +255,9 @@ export function aplicacoesDe(op: Operador): Aplicacao[] {
     // o Cadastro (empresas e equipe): o admin, o diretor (Vitor, 05/10/2026) e o sênior (19/10/2026)
     (a.id !== 'cadastro' || podeMexerNoCadastro(op)) &&
     // o Financeiro (as notas fiscais do escritório): o Diretor e quem ele autorizar (09/11/2026)
-    (a.id !== 'financeiro' || podeVerOFinanceiro(op)))
+    (a.id !== 'financeiro' || podeVerOFinanceiro(op)) &&
+    // o Administrativo: só o Diretor e o Dono (o nível, não o admin), e só no modo desenvolvedor até o Vitor aprovar
+    (a.id !== 'administrativo' || (usuarios.nivelDeDiretor(op.nivel) && novidadeLigada('administrativo'))))
     // as páginas só do admin (as do Admin, nas Configurações) ficam de fora para os outros
     .map(a => (op.admin || !a.paginas.some(p => p.soAdmin) ? a : { ...a, paginas: a.paginas.filter(p => !p.soAdmin) }))
     // a Carteira: quem ainda não tem, só a página de abertura (a tela "em desenvolvimento"); e, no Financeiro, as páginas da

@@ -7,6 +7,8 @@ import { modoDesenvolvedor, useModoDesenvolvedor } from './modoDesenvolvedor';
 export const NOVIDADES = {
   /** o Início repaginado (13/11/2026: só no modo desenvolvedor "até eu testar tudo") */
   'inicio-novo': { desde: '13/11/2026', aprovada: false },
+  /** o Administrativo, só para o Diretor e o Dono (13/11/2026: a entrada de clientes no escritório, "desenvolve o prototipo") */
+  administrativo: { desde: '13/11/2026', aprovada: false },
 } satisfies Record<string, { desde: string; aprovada: boolean }>;
 
 export type IdNovidade = keyof typeof NOVIDADES;

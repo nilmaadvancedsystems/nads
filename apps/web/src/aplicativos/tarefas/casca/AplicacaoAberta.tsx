@@ -24,6 +24,7 @@ const CaixaDoRobo = pedaco(() => import('../telas/gmail/CaixaDoRobo'), 'CaixaDoR
 const HistoricoDoRobo = pedaco(() => import('../telas/gmail/HistoricoDoRobo'), 'HistoricoDoRobo');
 const MinhasEmpresas = pedaco(() => import('../telas/empresas/MinhasEmpresas'), 'MinhasEmpresas');
 const Inicio = pedaco(() => import('../telas/inicio/Inicio'), 'Inicio');
+const Administrativo = pedaco(() => import('../telas/administrativo/Administrativo'), 'Administrativo');
 const EmDesenvolvimento = pedaco(() => import('../telas/em-desenvolvimento/EmDesenvolvimento'), 'EmDesenvolvimento');
 const Reinf = pedaco(() => import('../telas/fiscal/reinf/Reinf'), 'Reinf');
 const PainelDoDp = pedaco(() => import('../telas/dp/PainelDoDp'), 'PainelDoDp');
@@ -85,6 +86,7 @@ function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
     case 'contato': return pagina === 'historico' ? <HistoricoDoRobo /> : <CaixaDoRobo />;
     // a Carteira (12/11/2026): por enquanto só o Vitor; os outros, a tela "em desenvolvimento"
     case 'carteira': return <Carteira pagina={pagina} />;
+    case 'administrativo': return <Administrativo pagina={pagina} />;
     default: return <EmDesenvolvimento nome={aplicacao(app)?.nome || app} />;
   }
 }

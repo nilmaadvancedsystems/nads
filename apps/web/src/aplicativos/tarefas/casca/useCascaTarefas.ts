@@ -28,7 +28,7 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
   // a tela "em desenvolvimento", sem abas. O Financeiro também (Vitor, 12/11/2026: "coloca o menu superior") e o DP ("para aumentar o espaço da tabela")
   // o Início novo (só no modo desenvolvedor) também (Vitor, 13/11/2026: "Menu superior abaixo do cabeçalho!")
   const inicioNovo = useNovidade('inicio-novo') && app === 'inicio';
-  const comAbas = inicioNovo || app === 'fiscal' || app === 'financeiro' || app === 'dp' || (app === 'carteira' && (a?.paginas.length ?? 0) > 1);
+  const comAbas = inicioNovo || app === 'administrativo' || app === 'fiscal' || app === 'financeiro' || app === 'dp' || (app === 'carteira' && (a?.paginas.length ?? 0) > 1);
   // dentro da aba Ferramentas do Fiscal, as ferramentas ficam na barra lateral
   const ehFerramenta = (id: string) => FERRAMENTAS_DO_FISCAL.includes(id);
   const emFerramentas = comAbas && ehFerramenta(pagina);
