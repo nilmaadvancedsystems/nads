@@ -10,8 +10,9 @@
 // página aberta, a tela troca na hora. Do documento do link só sai o nome (para o topo, enquanto o robô não grava o
 // resumo); os códigos e quem criou ficam fora da tela. A leitura campo a campo e os pedidos estão em espelho.ts.
 import { getApps, initializeApp } from 'firebase/app';
-import { addDoc, collection, doc, getDoc, getDocs, getFirestore, initializeFirestore, onSnapshot, query, serverTimestamp, where, type Firestore, type FirestoreError } from 'firebase/firestore';
+import { addDoc as addDocBruto, collection, doc, getDoc, getDocs, getFirestore, initializeFirestore, onSnapshot, query, serverTimestamp, where, type Firestore, type FirestoreError } from 'firebase/firestore';
 import { areaCliente as ac } from '@nads/core';
+import { MENSAGEM_BLOQUEADO, recusarNoModoDev } from '../../../comum/travaDoModoDev';
 import { AREA_VAZIA, type EstadoDaArea, type RepoAreaCliente } from './areaCliente';
 import type { DanfeNoEspelho } from './biblioteca';
 import {
@@ -19,6 +20,11 @@ import {
   type ChamadoPendente, type PartesDoEspelho, type RespostaPendente,
 } from './espelho';
 import { juntarPedacosDoPdf, mimeDoArquivo, type PedacoDoPdf } from './regras';
+
+// o modo desenvolvedor do nads (13/11/2026: a Área do Cliente aberta dentro da Tarefas, no módulo Desenvolvedor): lê o banco
+// de verdade, mas nenhum pedido sai — solicitação, resposta, envio de arquivo e pedido de DANFE (que aciona o robô). A trava
+// é a leve (travaDoModoDev.ts, sem imports): nada do escritório entra no pacote do site do cliente.
+const addDoc = recusarNoModoDev(addDocBruto) as typeof addDocBruto;
 
 /** Configuração web pública do projeto do Entregas (a mesma das páginas de lá). */
 const CONFIG_ENTREGAS = {
@@ -43,6 +49,7 @@ export function bancoDoCliente(): Firestore {
 const LINK_RUIM = 'Este link não vale mais. Peça um novo ao escritório.';
 /** a mensagem do erro do banco para o cliente: o link revogado ou a internet */
 function mensagemDoErro(e: unknown): string {
+  if (e instanceof Error && e.message === MENSAGEM_BLOQUEADO) return MENSAGEM_BLOQUEADO;
   const codigo = (e as { code?: string } | null)?.code ?? '';
   return codigo === 'permission-denied' ? LINK_RUIM : 'Não deu para mandar agora. Confira a internet e tente de novo.';
 }

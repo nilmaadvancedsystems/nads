@@ -9,6 +9,7 @@ import type { NomeIcone } from '@nads/ui';
 import { PAGINAS_DO_ADMIN } from '../../admin/casca/navegacao';
 import type { Operador } from './operador';
 import { novidadeLigada } from '../../../comum/novidades';
+import { modoDesenvolvedor } from '../../../comum/modoDesenvolvedor';
 
 export const BASE = '/tarefas';
 
@@ -18,7 +19,7 @@ export const BASE = '/tarefas';
  */
 export const FERRAMENTAS_DO_FISCAL: readonly string[] = ['sintegra', 'faturamento', 'rateio-frete', 'simples', 'antecipacao-es', 'auditoria-itens'];
 
-export type IdAplicacao = 'inicio' | 'minhas-empresas' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'financeiro' | 'entregas' | 'area-cliente' | 'ferramentas' | 'carteira' | 'administrativo';
+export type IdAplicacao = 'inicio' | 'minhas-empresas' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'financeiro' | 'entregas' | 'area-cliente' | 'ferramentas' | 'carteira' | 'administrativo' | 'desenvolvedor';
 
 export interface Pagina {
   id: string; rotulo: string; icone: NomeIcone; titulo: string; /** a logo da marca no lugar do ícone (fgts na lateral; as outras nas abas do Fiscal) */ marca?: 'fgts' | 'simples' | 'receita' | 'sped' | 'sieg';
@@ -195,6 +196,12 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'meus', rotulo: 'Meus tickets', icone: 'usuario', titulo: 'Meus tickets' },
     { id: 'central', rotulo: 'Central de tickets', icone: 'list', titulo: 'Central de tickets' },
   ] },
+  // o Desenvolvedor (Vitor, 13/11/2026: "quero que a Área do Cliente e a do robô estejam no modo dev do nads"; "um botão que
+  // só aparece ou funciona no modo dev"): só com o modo desenvolvedor ligado. Abre, dentro do nads, a Área do Cliente de uma
+  // empresa (como o cliente vê) e a Central dos robôs, lendo o banco de verdade e sem gravar nada (rotasDoModoDev.tsx)
+  { id: 'desenvolvedor', nome: 'Desenvolvedor', icone: 'monitor', grupo: 'Escritório', pronta: true, paginas: [
+    { id: 'sites', rotulo: 'Outros sites', icone: 'monitor', titulo: 'Outros sites no modo desenvolvedor' },
+  ] },
   { id: 'drive', nome: 'Drive', icone: 'pasta', grupo: 'Comunicação', marca: 'drive', pronta: true, paginas: [
     { id: 'pastas', rotulo: 'Pastas', icone: 'pasta', titulo: 'Pasta do ano' },
   ] },
@@ -257,7 +264,9 @@ export function aplicacoesDe(op: Operador): Aplicacao[] {
     // o Financeiro (as notas fiscais do escritório): o Diretor e quem ele autorizar (09/11/2026)
     (a.id !== 'financeiro' || podeVerOFinanceiro(op)) &&
     // o Administrativo: só o Diretor e o Dono (o nível, não o admin), e só no modo desenvolvedor até o Vitor aprovar
-    (a.id !== 'administrativo' || (usuarios.nivelDeDiretor(op.nivel) && novidadeLigada('administrativo'))))
+    (a.id !== 'administrativo' || (usuarios.nivelDeDiretor(op.nivel) && novidadeLigada('administrativo'))) &&
+    // o Desenvolvedor: só para quem é desenvolvedor, com o modo ligado (ligar e desligar recarrega a página)
+    (a.id !== 'desenvolvedor' || (op.desenvolvedor && modoDesenvolvedor())))
     // as páginas só do admin (as do Admin, nas Configurações) ficam de fora para os outros
     .map(a => (op.admin || !a.paginas.some(p => p.soAdmin) ? a : { ...a, paginas: a.paginas.filter(p => !p.soAdmin) }))
     // a Carteira: quem ainda não tem, só a página de abertura (a tela "em desenvolvimento"); e, no Financeiro, as páginas da
@@ -284,7 +293,7 @@ const ORDEM_DOS_GRUPOS: readonly Aplicacao['grupo'][] = ['Rotinas', 'Comunicaç�
 export function telasDaNavegacao(): uso.TelaDaNavegacao[] {
   const telas: uso.TelaDaNavegacao[] = [];
   for (const a of APLICACOES) {
-    if (a.id === 'mandei') continue;
+    if (a.id === 'mandei' || a.id === 'desenvolvedor') continue;
     for (const p of a.paginas) {
       if (p.emDesenvolvimento) continue;
       if (a.id === 'cadastro' && p.id === 'empresas') {

@@ -62,7 +62,6 @@ function somarDias(dias: Record<number, number>, mais: number[]): Record<number,
   return r;
 }
 
-const quandoCurto = (iso: string) => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 
 export function useInicioNovo() {
   const op = useOperador().operador as Operador;
@@ -198,13 +197,22 @@ export function useInicioNovo() {
         concluir: () => concluir(t),
       })),
     },
+    /**
+     * As delegadas por mim (Vitor, 13/11/2026): a foto de quem faz, "código – cliente" e, embaixo, a tarefa. A cápsula: Pendente
+     * em cinza, Visualizada em amarelo, Em andamento como sempre, com o cronômetro (horas e minutos trabalhados) embaixo.
+     */
     delegadasPorMim: delegadas.slice(0, 5).map(t => {
-      const m = d.ultimoMovimento(t);
+      const c = t.clientes[0];
+      const pendente = d.situacaoNoHorario(t, relogio).status === 'pendente';
+      const vista = pendente && !!t.visualizadaEm && t.responsavel.uid !== t.criadaPor.uid;
       return {
         id: t.id, titulo: t.titulo, responsavel: comFoto(t.responsavel),
-        status: { rotulo: d.rotuloNoHorario(t, relogio), tom: d.tomDoStatus(d.situacaoNoHorario(t, relogio).status) },
-        // a linha já começa com quem faz: o nome só entra quando o movimento é de outra pessoa
-        movimento: m ? (m.por === t.responsavel.nome ? '' : m.por + ' ') + m.texto.replace(/ a tarefa$/, '').toLowerCase() + ' · ' + quandoCurto(m.em) : d.rotuloDaVisualizacao(t) || 'Ainda não abriu',
+        cliente: c ? (c.codigo != null ? c.codigo + ' – ' : '') + c.nome + (t.clientes.length > 1 ? ' +' + (t.clientes.length - 1) : '') : '',
+        status: vista ? { rotulo: 'Visualizada', tom: 'warn' as const }
+          : pendente ? { rotulo: 'Pendente', tom: 'neutral' as const }
+          : { rotulo: d.rotuloNoHorario(t, relogio), tom: d.tomDoStatus(d.situacaoNoHorario(t, relogio).status) },
+        /** em andamento: os minutos trabalhados até "agora" (o cronômetro da tela pede de minuto em minuto) */
+        minutos: t.status === 'andamento' ? (agora: Date) => d.minutosTrabalhados(t, agora) : null,
       };
     }),
     // as próximas: as reuniões aprovadas (ou remarcadas) e os comunicados de reunião, a mais perto primeiro

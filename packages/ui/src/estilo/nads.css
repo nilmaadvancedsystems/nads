@@ -3172,6 +3172,27 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
   --btn-bg:light-dark(#F6F8FA, #21262D); --btn-hover:light-dark(#F3F4F6, #30363D); --btn-border:light-dark(#D0D7DE, #F0F6FC1A);
   --header-bg:light-dark(#F6F8FA, #010409); --drawer-bg:light-dark(#FFFFFF, #010409); --input-bg:light-dark(#FFFFFF, #0D1117); --overlay-bg:light-dark(#FFFFFF, #161B22); --hover-bg:light-dark(#D0D7DE52, #B1BAC41F);
 }
+/* a faixa do modo desenvolvedor na Área do Cliente e na Central dos robôs abertas pelo nads (13/11/2026, rotasDoModoDev.tsx):
+   no canto, por cima das telas deles, com o caminho de volta ao módulo Desenvolvedor */
+.faixa-modo-dev{position:fixed;right:16px;bottom:16px;z-index:9000;display:flex;align-items:center;gap:12px;max-width:calc(100vw - 32px);
+  padding:8px 8px 8px 14px;border-radius:12px;background:light-dark(#0550AE, #0D419D);color:#FFFFFF;box-shadow:0 8px 24px #0000003D;font-size:var(--fs-13);}
+.faixa-modo-dev-txt{display:flex;flex-direction:column;line-height:1.25;min-width:0;}
+.faixa-modo-dev-txt small{color:#FFFFFFCC;font-size:var(--fs-12);}
+.faixa-modo-dev .btn{flex:none;background:#FFFFFF;color:#0550AE;border-color:transparent;}
+@media (max-width:640px){.faixa-modo-dev{bottom:76px;}.faixa-modo-dev-txt small{display:none;}}
+/* o módulo Desenvolvedor da Tarefas (13/11/2026): a Área do Cliente de uma empresa e a Central dos robôs */
+.outros-sites{display:flex;flex-direction:column;gap:16px;max-width:760px;}
+.outros-sites .card{margin:0;}
+.outros-sites .card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.outros-sites .card-head h3{display:inline-flex;align-items:center;gap:8px;}
+.outros-sites-texto{margin:0 0 12px;}
+.outros-sites-lista{list-style:none;margin:0;padding:0;max-height:420px;overflow:auto;border:1px solid var(--border);border-radius:6px;}
+.outros-sites-lista li+li{border-top:1px solid var(--border-muted);}
+.outros-sites-item{display:flex;align-items:center;gap:12px;width:100%;padding:10px 12px;border:none;background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer;}
+.outros-sites-item:hover{background:var(--hover-bg);}
+.outros-sites-item svg{color:var(--ink-muted);flex:none;}
+.outros-sites-codigo{min-width:44px;color:var(--ink-muted);font-size:var(--fs-12);}
+.outros-sites-nome{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 /* O SIEG na etapa do Fiscal (06/10/2026): as notas do mês e a sequência das saídas, dentro do checklist */
 .sieg-painel{display:flex;flex-direction:column;gap:10px;margin:0 0 14px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);font-size:var(--fs-13);}
 .sieg-topo{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
@@ -6750,21 +6771,30 @@ td.fs-fat-sem{color:var(--ink-faint);}
 .popover.menu-pop.flutuante{z-index:1300;}
 
 /* o Calendário do mês (CalendarioDoMes; 13/11/2026, o Início novo): hoje na cor da marca, o escolhido com o contorno, a bolinha nos dias marcados */
-.cal-mes{display:flex;flex-direction:column;gap:6px;}
+/* o Calendário do mês (13/11/2026, redesenhado: quadradinhos do GitHub, sem animação) */
+.cal-mes{display:flex;flex-direction:column;gap:8px;}
 .cal-mes-topo{display:flex;align-items:center;gap:2px;}
 .cal-mes-topo b{flex:1;font-size:var(--fs-14);font-weight:600;}
-.cal-mes-grade{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;justify-items:center;}
-.cal-mes-sem{font-size:var(--fs-12);color:var(--ink-muted);padding:4px 0;}
-.cal-mes-dia{position:relative;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;padding:0;border:none;border-radius:50%;
-  background:none;color:var(--ink);font:inherit;font-size:var(--fs-13);font-variant-numeric:tabular-nums;cursor:pointer;}
-.cal-mes-dia:hover:not(:disabled):not(.hoje){background:var(--hover-bg);}
+.cal-mes-ano{font-weight:400;color:var(--ink-muted);}
+.cal-mes-grade{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+.cal-mes-sem{font-size:var(--fs-12);color:var(--ink-muted);text-align:center;padding:2px 0 4px;}
+.cal-mes-sem.hoje{color:var(--accent-ink);font-weight:600;}
+.cal-mes-dia{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;height:36px;padding:0;
+  border:1px solid transparent;border-radius:6px;background:none;color:var(--ink);font:inherit;font-size:var(--fs-13);
+  font-variant-numeric:tabular-nums;cursor:pointer;}
+.cal-mes-dia.semana{background:var(--hover-bg);}
+.cal-mes-dia:hover:not(:disabled):not(.hoje){border-color:var(--border-strong);}
 .cal-mes-dia:disabled{cursor:default;}
-.cal-mes-dia.fora{color:var(--ink-muted);opacity:.45;cursor:default;}
-.cal-mes-dia.hoje{background:var(--accent);color:var(--on-accent);font-weight:600;}
-.cal-mes-dia.escolhido{box-shadow:inset 0 0 0 2px var(--accent);}
-.cal-mes-dia.hoje.escolhido{box-shadow:inset 0 0 0 2px var(--on-accent), 0 0 0 2px var(--accent);}
-.cal-mes-dia.marcado::after{content:'';position:absolute;bottom:3px;left:50%;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:var(--accent);}
-.cal-mes-dia.hoje.marcado::after{background:var(--on-accent);}
+.cal-mes-dia.passou{color:var(--ink-muted);}
+.cal-mes-dia.fora{color:var(--ink-faint);opacity:.4;cursor:default;}
+.cal-mes-dia.marcado{background:var(--accent-soft);color:var(--accent-ink);font-weight:600;}
+.cal-mes-dia.hoje{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:700;}
+.cal-mes-dia.escolhido{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);}
+.cal-mes-dia.hoje.escolhido{box-shadow:inset 0 0 0 2px var(--on-accent);}
+.cal-mes-num{line-height:1;}
+.cal-mes-pontos{display:flex;gap:2px;height:4px;}
+.cal-mes-pontos i{width:4px;height:4px;border-radius:50%;background:var(--accent);}
+.cal-mes-dia.hoje .cal-mes-pontos i{background:var(--on-accent);}
 
 /* o Início novo (13/11/2026, só no modo desenvolvedor): só a disposição; as peças são as do catálogo */
 .ini-topo{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;flex:1;min-width:0;}

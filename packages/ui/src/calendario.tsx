@@ -1,7 +1,9 @@
 // O Calendário do mês (Vitor, 13/11/2026: a peça nova do Início novo, "Pode criar"): o nome do mês com ‹ ›, a semana de
-// domingo a sábado e os dias; hoje na cor da marca, o dia escolhido com o contorno e os dias marcados (os que têm prazo de
-// tarefa) com a bolinha embaixo. Clicar num dia escolhe (de novo, solta). Os dias do mês de antes e do de depois ficam
-// apagados e não clicam.
+// domingo a sábado e os dias. Clicar num dia escolhe (de novo, solta). Redesenhado no mesmo dia ("Tem como fazer outro
+// calendário mais bonitinho?"), no visual do GitHub e sem animação: os dias em quadradinhos de canto arredondado; hoje cheio
+// na cor da marca, com a semana dele num fundo leve e o nome do dia da semana em destaque; o dia marcado (prazo de tarefa,
+// reunião ou aviso) com o fundo da marca clarinho e até 3 pontinhos (um por evento); os dias que já passaram mais
+// apagados; os do mês de antes e do de depois quase sumidos, sem clique. Fora do mês de hoje, o botão volta para ele.
 import { BotaoIcone } from './componentes';
 
 const SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -40,27 +42,35 @@ export function CalendarioDoMes({ mes, hoje, marcados = {}, escolhido = null, on
     return { n, fora: false };
   });
   const iso = (n: number) => mes + '-' + String(n).padStart(2, '0');
+  const mesDeHoje = hoje.slice(0, 7) === mes;
+  // a casa de hoje na grade: a linha dela é a semana de hoje e a coluna, o dia da semana
+  const casaDeHoje = mesDeHoje ? primeiro + Number(hoje.slice(8, 10)) - 1 : -1;
   return (
     <div className="cal-mes">
       <div className="cal-mes-topo">
-        <b>{MESES[m - 1]} de {a}</b>
+        <b>{MESES[m - 1]} <span className="cal-mes-ano">{a}</span></b>
         {onMes && <>
+          {!mesDeHoje && <BotaoIcone pequeno icone="calendar" titulo="Voltar para o mês de hoje" onClick={() => onMes(hoje.slice(0, 7))} />}
           <BotaoIcone pequeno icone="chevronLeft" titulo="O mês de antes" onClick={() => onMes(somarMeses(mes, -1))} />
           <BotaoIcone pequeno icone="chevronRight" titulo="O mês seguinte" onClick={() => onMes(somarMeses(mes, 1))} />
         </>}
       </div>
       <div className="cal-mes-grade" role="grid" aria-label={MESES[m - 1] + ' de ' + a}>
-        {SEMANA.map(s => <span key={s} className="cal-mes-sem" role="columnheader">{s}</span>)}
+        {SEMANA.map((s, i) => (
+          <span key={s} className={'cal-mes-sem' + (casaDeHoje >= 0 && casaDeHoje % 7 === i ? ' hoje' : '')} role="columnheader">{s}</span>
+        ))}
         {casas.map((c, i) => {
-          if (c.fora) return <span key={i} className="cal-mes-dia fora" aria-hidden="true">{c.n}</span>;
+          const naSemana = casaDeHoje >= 0 && Math.floor(i / 7) === Math.floor(casaDeHoje / 7) ? ' semana' : '';
+          if (c.fora) return <span key={i} className={'cal-mes-dia fora' + naSemana} aria-hidden="true">{c.n}</span>;
           const dia = iso(c.n);
           const qtd = marcados[c.n] || 0;
-          const classe = 'cal-mes-dia' + (dia === hoje ? ' hoje' : '') + (dia === escolhido ? ' escolhido' : '') + (qtd ? ' marcado' : '');
+          const classe = 'cal-mes-dia' + naSemana + (dia === hoje ? ' hoje' : dia < hoje ? ' passou' : '') + (dia === escolhido ? ' escolhido' : '') + (qtd ? ' marcado' : '');
           const dica = qtd ? (dicaDoMarcado ? dicaDoMarcado(qtd) : String(qtd)) : undefined;
           return (
             <button key={i} type="button" className={classe} role="gridcell" aria-pressed={dia === escolhido} aria-current={dia === hoje ? 'date' : undefined}
-              title={dica} aria-label={c.n + (dica ? ', ' + dica : '')} disabled={!onDia} onClick={() => onDia?.(dia === escolhido ? null : dia)}>
-              {c.n}
+              title={dica} aria-label={c.n + (dia === hoje ? ', hoje' : '') + (dica ? ', ' + dica : '')} disabled={!onDia} onClick={() => onDia?.(dia === escolhido ? null : dia)}>
+              <span className="cal-mes-num">{c.n}</span>
+              {qtd > 0 && <span className="cal-mes-pontos" aria-hidden="true">{Array.from({ length: Math.min(qtd, 3) }, (_, k) => <i key={k} />)}</span>}
             </button>
           );
         })}

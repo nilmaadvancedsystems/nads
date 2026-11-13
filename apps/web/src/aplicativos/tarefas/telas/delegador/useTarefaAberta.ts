@@ -27,8 +27,9 @@ const lerArquivos = (fs: File[]): Promise<ArquivoParaAnexar[]> => Promise.all(fs
 
 /**
  * alvo: o id da tarefa ou 'nova'. voltar: para a lista. criada: depois de criar (paraMim: a tarefa ficou com quem criou).
+ * novo: a janela do Início novo (os documentos com o fluxo de enviar, conferir e contestar; 13/11/2026).
  */
-export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraMim: boolean) => void) {
+export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraMim: boolean) => void, novo = false) {
   const repo = useTarefasDelegadas();
   const acesso = useAcesso();
   // o cliente vinculado: só as empresas da pessoa (29/10/2026)
@@ -192,20 +193,68 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
     /** delegar documentos no Início novo: o passo 1 (pedir ou enviar, o cliente, para quem) e o ⚡ */
     documentos: {
       modo: modoDocs,
-      escolherModo(m: tarefas.delegadas.ModoDosDocumentos) { setModoDocs(m); setR(x => d.rascunhoDosDocumentos(x, m)); setErro(''); },
+      escolherModo(m: tarefas.delegadas.ModoDosDocumentos) {
+        setModoDocs(m);
+        setR(x => d.rascunhoDosDocumentos(x, m));
+        // o requerer vai para uma pessoa só; o envio não tem prazo
+        if (m === 'requerer') setPessoasDocs(p => p.slice(0, 1)); else setPrazoTexto('');
+        setErro('');
+      },
       pessoas: pessoasDocs,
-      alternarPessoa(u: string) { setPessoasDocs(p => (p.includes(u) ? p.filter(x => x !== u) : [...p, u])); setErro(''); },
-      /** o que falta no passo 1 (o arquivo e o link são do passo 2) */
-      faltaNoPasso1: d.problemaDosDocumentos({ modo: modoDocs, clientes: r.clientes.length, pessoas: pessoasDocs.length, anexos: 1, links: 1 }),
+      /** o envio marca e desmarca (uma ou mais); o requerer troca a pessoa (uma só) */
+      alternarPessoa(u: string) {
+        setPessoasDocs(p => (modoDocs === 'requerer' ? [u] : p.includes(u) ? p.filter(x => x !== u) : [...p, u]));
+        setErro('');
+      },
+      /** o que falta no passo 1: o modo e o cliente */
+      faltaNoPasso1: d.problemaDosDocumentos({ modo: modoDocs, clientes: r.clientes.length, pessoas: 1, anexos: 1, links: 1, prazo: '-' }),
       deTeste,
-      /** o ⚡ Dados de teste: preenche com o exemplo; nada vai para o banco */
-      preencherExemplo() {
-        setModoDocs('pedir');
-        setR(x => ({ ...d.rascunhoDosDocumentos(x, 'pedir'), clientes: [{ codigo: null, nome: 'Cliente de teste (EXEMPLO)' }], descricao: 'O extrato de outubro e as notas de entrada do mês (EXEMPLO)' }));
-        const outro = equipe.find(p => !p.voce) || equipe[0];
-        setPessoasDocs(outro ? [outro.uid] : []);
+      /** o ⚡ Dados de teste: preenche com o exemplo do envio ou do requerer; nada vai para o banco */
+      preencherExemplo(m: tarefas.delegadas.ModoDosDocumentos) {
+        setModoDocs(m);
+        setR(x => ({ ...d.rascunhoDosDocumentos(x, m), clientes: [{ codigo: null, nome: 'Cliente de teste (EXEMPLO)' }], prioridade: m === 'requerer' ? 'alta' : 'normal',
+          descricao: m === 'requerer' ? 'Os extratos de outubro e as notas de entrada do mês (EXEMPLO)' : 'O contrato social e a última alteração (EXEMPLO)' }));
+        const outros = equipe.filter(p => !p.voce);
+        setPessoasDocs((m === 'requerer' ? outros.slice(0, 1) : outros.slice(0, 2)).map(p => p.uid));
+        setPrazoTexto(m === 'requerer' ? d.prazoParaTela(tarefas.agenda.somarDias(d.hojeIso(), 2)) : '');
+        if (m === 'enviar' && !linksPendentes.length) setLinksPendentes(['https://exemplo.com/contrato-social']);
         setDeTeste(true);
         setErro('');
+      },
+      // ---- a tarefa de documentos que já existe: onde está e os botões de quem está com ela
+      situacao: tarefa ? d.situacaoDosDocumentos(tarefa) : '',
+      /** o envio não tem prazo nem prioridade */
+      ehEnvio: !!tarefa && d.enviaDocumentos(tarefa),
+      acoes: tarefa && novo ? d.acoesDosDocumentos(tarefa, uid) : [],
+      /** para quem dá para repassar o requerer: a equipe, menos quem pediu e quem está com ele */
+      paraRepassar: tarefa ? equipe.filter(p => p.uid !== tarefa.criadaPor.uid && p.uid !== tarefa.responsavel.uid) : [],
+      async repassarPara(uidNovo: string) {
+        const p = equipe.find(x => x.uid === uidNovo);
+        if (!tarefa || !p) return;
+        const ok = await modal({ icone: 'repeat', titulo: 'Repassar para ' + p.nome + '?', texto: 'A conversa segue entre ' + tarefa.criadaPor.nome + ' e ' + p.nome + ', com o histórico. A tarefa sai da sua lista.',
+          botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Repassar', valor: true, variante: 'btn-primary' }] });
+        if (!ok) return;
+        try {
+          await repo.salvar(tarefa.id, { responsavel: { uid: p.uid, nome: p.nome }, entrega: '' });
+          toast('Repassado para ' + p.nome + '.');
+          voltar();
+        } catch (e) { setErro('Não repassei: ' + (e instanceof Error ? e.message : String(e))); }
+      },
+      async fazer(id: tarefas.delegadas.AcaoDosDocumentos) {
+        if (!tarefa) return;
+        try {
+          if (id === 'confirmarRecebimento') { await repo.salvar(tarefa.id, { status: 'concluida' }); toast('Recebimento confirmado.'); voltar(); }
+          if (id === 'enviarDocumentos') { await repo.salvar(tarefa.id, { entrega: 'enviada' }); toast('Enviado para ' + tarefa.criadaPor.nome + ' conferir.'); }
+          if (id === 'confirmarTudo') { await repo.salvar(tarefa.id, { status: 'concluida' }); toast('Tarefa concluída.'); voltar(); }
+          if (id === 'contestar') {
+            // o que faltou vai no comentário (Vitor: "se faltou algo, pode contestar")
+            if (!parecer.trim()) { setErro('Escreva no comentário o que faltou e clique em Contestar.'); return; }
+            if (!(await gravarParecer())) return;
+            await repo.salvar(tarefa.id, { entrega: 'contestada' });
+            toast('Contestado: volta para ' + tarefa.responsavel.nome + '.');
+          }
+          setErro('');
+        } catch (e) { setErro('Não gravei: ' + (e instanceof Error ? e.message : String(e))); }
       },
     },
     async fazerAcao(status: tarefas.delegadas.Status) {
@@ -261,7 +310,14 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
       } catch (e) { toast('Não anexei: ' + (e instanceof Error ? e.message : String(e))); return; } finally { setOcupado(''); }
       // o pedido de documentos (12/11/2026: "após anexar, já dá como concluído"; o Vitor escolheu confirmar, porque às vezes são
       // vários arquivos): quem recebeu responde se já anexou tudo
-      if (d.pedeDocumentos(tarefa) && tarefa.responsavel.uid === uid && d.emAberto(tarefa)) {
+      if (novo && d.requerDocumentos(tarefa) && tarefa.responsavel.uid === uid && tarefa.criadaPor.uid !== uid && d.emAberto(tarefa) && tarefa.entrega !== 'enviada') {
+        const enviar = await modal({ icone: 'check', titulo: 'Enviar os documentos?', texto: tarefa.criadaPor.nome + ' confere e conclui, ou contesta o que faltou.',
+          botoes: [{ rotulo: 'Ainda falta', valor: false, variante: 'btn-outline' }, { rotulo: 'Enviar para conferir', valor: true, variante: 'btn-primary' }] });
+        if (!enviar) return;
+        try { await repo.salvar(tarefa.id, { entrega: 'enviada' }); toast('Enviado para ' + tarefa.criadaPor.nome + ' conferir.'); } catch (e) { setErro('Não enviei: ' + (e instanceof Error ? e.message : String(e))); }
+        return;
+      }
+      if (!novo && d.requerDocumentos(tarefa) && tarefa.responsavel.uid === uid && d.emAberto(tarefa)) {
         const tudo = await modal({ icone: 'check', titulo: 'Anexou tudo?', texto: 'Concluindo, quem delegou vê a tarefa concluída com os documentos.',
           botoes: [{ rotulo: 'Ainda falta', valor: false, variante: 'btn-outline' }, { rotulo: 'Anexei tudo, concluir', valor: true, variante: 'btn-primary' }] });
         if (!tudo) return;
@@ -311,7 +367,8 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
     },
     async salvar() {
       if (pedido && modoDocs) {
-        const problema = d.problemaDosDocumentos({ modo: modoDocs, clientes: r.clientes.length, pessoas: pessoasDocs.length, anexos: pendentes.length, links: linksPendentes.length });
+        if (prazo === null) { setErro('O prazo não é uma data válida (dd/mm/aaaa).'); return; }
+        const problema = d.problemaDosDocumentos({ modo: modoDocs, clientes: r.clientes.length, pessoas: pessoasDocs.length, anexos: pendentes.length, links: linksPendentes.length, prazo: prazo || '' });
         if (problema) { setErro(problema); return; }
         if (deTeste) { toast('Teste: nada foi gravado no banco.'); voltar(); return; }
         const para = pessoasDocs.map(u => equipe.find(p => p.uid === u)).filter((p): p is (typeof equipe)[number] => !!p);
@@ -319,11 +376,11 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
         setOcupado('salvar');
         try {
           for (const p of para) {
-            const id = await repo.criar({ ...r, responsavel: { uid: p.uid, nome: p.nome }, status: 'pendente' }, pendentes);
+            const id = await repo.criar({ ...r, prazo: modoDocs === 'requerer' ? prazo || '' : '', prazoHora: '', responsavel: { uid: p.uid, nome: p.nome }, status: 'pendente' }, pendentes);
             for (const u of linksPendentes) await repo.fixarLink(id, u);
             feitos.push(p.nome);
           }
-          toast((modoDocs === 'pedir' ? 'Pedido delegado para ' : 'Documentos enviados para ') + feitos.join(', ') + '.');
+          toast((modoDocs === 'requerer' ? 'Pedido delegado para ' : 'Documentos enviados para ') + feitos.join(', ') + '.');
           criada(false);
         } catch (e) {
           setErro('Não delegei' + (feitos.length ? ' para todos (já foi para ' + feitos.join(', ') + ')' : '') + ': ' + (e instanceof Error ? e.message : String(e)));

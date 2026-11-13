@@ -12,6 +12,7 @@ import { Link } from 'react-router';
 import { Propriedade } from '../financeiro/partes/Propriedade';
 import { SeloDoStatus } from './partes/SelosDaTarefa';
 import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
+import { lembrarAgora } from './useLembreteDoRecebimento';
 import { ClientesDaTarefa, EscolherPessoa, FicaComVoce, FotoDaPessoa } from './TarefaAberta';
 import { useTarefaAberta } from './useTarefaAberta';
 
@@ -30,9 +31,11 @@ function Propriedades({ vm }: { vm: Vm }) {
   const hoje = d.prazoParaTela(d.hojeIso());
   const amanha = d.prazoParaTela(tarefas.agenda.somarDias(d.hojeIso(), 1));
   const prioridade = vm.prioridades.find(p => p.valor === r.prioridade)?.rotulo || '';
+  // os documentos (13/11/2026): o prazo sem hora, o envio sem prazo nem prioridade, e sem a chave do delegar
+  const docs = vm.pedeDocumentos, envio = vm.documentos.ehEnvio;
   return (
     <div className="registro-props">
-      <Propriedade icone="clock" rotulo="Prazo">
+      {!envio && <Propriedade icone="clock" rotulo="Prazo">
         {travado ? <span>{vm.prazoTexto ? vm.prazoTexto + (vm.prazoHora ? ' ' + vm.prazoHora : '') : '—'}</span> : (
           <span className="ini-prazo">
             <span className="chip-row">
@@ -41,23 +44,23 @@ function Propriedades({ vm }: { vm: Vm }) {
             </span>
             <span className="tdl-prazo-campos">
               <CampoData id={id + '-prazo'} rotulo="Prazo" valor={vm.prazoTexto} onMudar={vm.setPrazo} />
-              <input type="time" value={vm.prazoHora} aria-label="Hora do prazo" onChange={e => vm.setPrazoHora(e.target.value)} />
+              {!docs && <input type="time" value={vm.prazoHora} aria-label="Hora do prazo" onChange={e => vm.setPrazoHora(e.target.value)} />}
             </span>
           </span>
         )}
-      </Propriedade>
+      </Propriedade>}
       {vm.prazoInvalido && <p className="hint tdl-atrasada">Data incompleta ou que não existe.</p>}
-      <Propriedade icone="alert" rotulo="Prioridade">
+      {!envio && <Propriedade icone="alert" rotulo="Prioridade">
         {travado ? <span>{prioridade}</span> : (
           <MenuSuspenso rotulo={prioridade} className={ESCOLHA} titulo="A prioridade" flutuante largura={200}
             itens={vm.prioridades.map(p => ({ rotulo: p.rotulo, marcado: p.valor === r.prioridade, onClick: () => vm.setPrioridade(p.valor) }))} />
         )}
-      </Propriedade>
+      </Propriedade>}
       {!vm.ehNova && <Propriedade icone="briefcase" rotulo="Clientes"><ClientesDaTarefa vm={vm} so={travado} /></Propriedade>}
       <Propriedade icone="usuario" rotulo={vm.delegar || travado ? 'Para quem' : 'Fica com'}>
         <span className="ini-delegar">
           {travado || vm.delegar ? <EscolherPessoa vm={vm} so={travado} rotuloId={id + '-quem'} /> : <FicaComVoce vm={vm} />}
-          {!travado && <Interruptor ligado={vm.delegar} onMudar={vm.alternarDelegar} rotulo="Delegar para outra pessoa" />}
+          {!travado && !docs && <Interruptor ligado={vm.delegar} onMudar={vm.alternarDelegar} rotulo="Delegar para outra pessoa" />}
         </span>
       </Propriedade>
       {vm.ehNova && !vm.delegar && (
@@ -199,20 +202,21 @@ function ClienteDosDocumentos({ vm }: { vm: Vm }) {
   );
 }
 
-/** para quem: uma ou mais pessoas (cada uma recebe a sua tarefa) */
+/** para quem: no envio, uma ou mais pessoas (cada uma recebe a sua tarefa); no requerer, uma só */
 function PessoasDosDocumentos({ vm }: { vm: Vm }) {
+  const varias = vm.documentos.modo === 'enviar';
   const escolhidas = vm.equipe.filter(p => vm.documentos.pessoas.includes(p.uid));
   const rotulo = escolhidas.length
     ? <span className="pessoa-escolhida">{escolhidas.length === 1 && <FotoDaPessoa p={escolhidas[0]} />}<span>{escolhidas.map(p => p.nome).join(', ')}</span></span>
-    : <span className="pessoa-escolhida fraco">Escolha as pessoas</span>;
+    : <span className="pessoa-escolhida fraco">{varias ? 'Escolha as pessoas' : 'Escolha a pessoa'}</span>;
   return (
-    <MenuSuspenso rotulo={rotulo} flutuante className="btn btn-outline pessoa-botao" titulo="Para quem" dica="Uma ou mais pessoas"
-      conteudo={() => (
-        <div className="pessoa-lista" role="listbox" aria-multiselectable="true" aria-label="Para quem">
+    <MenuSuspenso rotulo={rotulo} flutuante className="btn btn-outline pessoa-botao" titulo="Para quem" dica={varias ? 'Uma ou mais pessoas' : 'Uma pessoa'}
+      conteudo={fechar => (
+        <div className="pessoa-lista" role="listbox" aria-multiselectable={varias} aria-label="Para quem">
           {vm.equipe.filter(p => !p.voce).map(p => {
             const sim = vm.documentos.pessoas.includes(p.uid);
             return (
-              <button key={p.uid} type="button" className="popover-item" role="option" aria-selected={sim} onClick={() => vm.documentos.alternarPessoa(p.uid)}>
+              <button key={p.uid} type="button" className="popover-item" role="option" aria-selected={sim} onClick={() => { vm.documentos.alternarPessoa(p.uid); if (!varias) fechar(); }}>
                 <FotoDaPessoa p={p} />
                 <span className="popover-texto">{p.nome}</span>
                 {sim && <Icone nome="check" width={16} height={16} />}
@@ -224,37 +228,100 @@ function PessoasDosDocumentos({ vm }: { vm: Vm }) {
   );
 }
 
-/** o passo 1 dos documentos: pedir ou enviar, o cliente e para quem */
+/** o passo 1 dos documentos: enviar ou requerer, e o cliente (ou avulso) */
 function DocumentosPasso1({ vm }: { vm: Vm }) {
   const m = vm.documentos.modo;
   return (
     <div className="registro-corpo ini-qual-cliente">
-      <h2 className="ini-passo-titulo">Pedir ou enviar documentos?</h2>
+      <h2 className="ini-passo-titulo">Enviar ou requerer documentos?</h2>
       <Segmentado<'' | tarefas.delegadas.ModoDosDocumentos> valor={m ?? ''} onMudar={v => { if (v) vm.documentos.escolherModo(v); }}
-        opcoes={[{ valor: 'pedir', rotulo: 'Pedir documentos' }, { valor: 'enviar', rotulo: 'Enviar documentos' }]} />
-      {m && <p className="registro-dica"><Icone nome="clipe" />{m === 'pedir' ? 'Quem recebe anexa os arquivos e confirma; a tarefa fica concluída.' : 'Você anexa os arquivos ou o link; quem recebe confere e conclui.'}</p>}
+        opcoes={[{ valor: 'enviar', rotulo: 'Enviar documentos' }, { valor: 'requerer', rotulo: 'Requerer documentos' }]} />
+      {m && <p className="registro-dica"><Icone nome="clipe" />{m === 'requerer' ? 'Quem recebe anexa os arquivos e envia; você confere e conclui, ou contesta o que faltou.' : 'Quem recebe baixa os arquivos e confirma o recebimento.'}</p>}
       <div className="registro-props">
         <Propriedade icone="briefcase" rotulo="Cliente"><ClienteDosDocumentos vm={vm} /></Propriedade>
-        <Propriedade icone="usuario" rotulo="Para quem"><PessoasDosDocumentos vm={vm} /></Propriedade>
       </div>
     </div>
   );
 }
 
-/** o ⚡ Dados de teste da janela (só no modo desenvolvedor): preenche com o exemplo, e o Criar não grava nada */
+/** o passo 2 dos documentos: para quem e, no requerer, o prazo (sem hora) e a prioridade */
+function PropriedadesDosDocumentos({ vm }: { vm: Vm }) {
+  const id = useId();
+  const hoje = d.prazoParaTela(d.hojeIso());
+  const amanha = d.prazoParaTela(tarefas.agenda.somarDias(d.hojeIso(), 1));
+  const prioridade = vm.prioridades.find(p => p.valor === vm.rascunho.prioridade)?.rotulo || '';
+  return (
+    <div className="registro-props">
+      <Propriedade icone="usuario" rotulo="Para quem"><PessoasDosDocumentos vm={vm} /></Propriedade>
+      {vm.documentos.modo === 'requerer' && (
+        <>
+          <Propriedade icone="clock" rotulo="Prazo">
+            <span className="ini-prazo">
+              <span className="chip-row">
+                <button type="button" className={'chip-f' + (vm.prazoTexto === hoje ? ' on' : '')} aria-pressed={vm.prazoTexto === hoje} onClick={() => vm.setPrazo(vm.prazoTexto === hoje ? '' : hoje)}>Hoje</button>
+                <button type="button" className={'chip-f' + (vm.prazoTexto === amanha ? ' on' : '')} aria-pressed={vm.prazoTexto === amanha} onClick={() => vm.setPrazo(vm.prazoTexto === amanha ? '' : amanha)}>Amanhã</button>
+              </span>
+              <CampoData id={id + '-prazo'} rotulo="Prazo" valor={vm.prazoTexto} onMudar={vm.setPrazo} />
+            </span>
+          </Propriedade>
+          {vm.prazoInvalido && <p className="hint tdl-atrasada">Data incompleta ou que não existe.</p>}
+          <Propriedade icone="alert" rotulo="Prioridade">
+            <MenuSuspenso rotulo={prioridade} className={ESCOLHA} titulo="A prioridade" flutuante largura={200}
+              itens={vm.prioridades.map(p => ({ rotulo: p.rotulo, marcado: p.valor === vm.rascunho.prioridade, onClick: () => vm.setPrioridade(p.valor) }))} />
+          </Propriedade>
+        </>
+      )}
+    </div>
+  );
+}
+
+/** os botões da tarefa de documentos que já existe: confirmar o recebimento, enviar, repassar, contestar, confirmar que veio tudo */
+function AcoesDosDocumentos({ vm }: { vm: Vm }) {
+  return (
+    <>
+      {vm.documentos.acoes.map(a => (a.id === 'repassar' ? (
+        <MenuSuspenso key={a.id} rotulo="Repassar" icone="repeat" className="btn btn-outline" flutuante titulo="Repassar para" dica="Quem pode ter o documento"
+          conteudo={fechar => (
+            <div className="pessoa-lista" role="listbox" aria-label="Repassar para">
+              {vm.documentos.paraRepassar.map(p => (
+                <button key={p.uid} type="button" className="popover-item" role="option" aria-selected={false} onClick={() => { fechar(); void vm.documentos.repassarPara(p.uid); }}>
+                  <FotoDaPessoa p={p} /><span className="popover-texto">{p.nome}</span>
+                </button>
+              ))}
+            </div>
+          )} />
+      ) : (
+        <button key={a.id} type="button" className={'btn ' + (a.id === 'contestar' ? 'btn-outline' : 'btn-primary')} onClick={() => { void vm.documentos.fazer(a.id); }}>
+          <Icone nome={a.id === 'contestar' ? 'alert' : 'check'} />{a.rotulo}
+        </button>
+      )))}
+    </>
+  );
+}
+
+/**
+ * o ⚡ Dados de teste da janela (só no modo desenvolvedor): preenche o envio ou o requerer de exemplo (e o Criar não grava
+ * nada) e mostra o lembrete de confirmar o recebimento sem esperar os 10 minutos. Os casos já andando (enviado esperando a
+ * confirmação, requerido contestado e repassado) vêm no "Tarefas de exemplo" do ⚡ do Início.
+ */
 function TesteDosDocumentos({ vm }: { vm: Vm }) {
   const [dev] = useModoDesenvolvedor();
   if (!dev) return null;
   return (
-    <MenuSuspenso rotulo="Dados de teste" icone="zap" className="btn btn-outline" direita largura={260} titulo="Modo desenvolvedor · nada vai para o banco"
-      itens={[{ rotulo: 'Preencher com exemplo', icone: 'zap', marcado: vm.documentos.deTeste, onClick: vm.documentos.preencherExemplo }]} />
+    <MenuSuspenso rotulo="Dados de teste" icone="zap" className="btn btn-outline" direita largura={300} titulo="Modo desenvolvedor · nada vai para o banco"
+      itens={[
+        { rotulo: 'Exemplo de envio', icone: 'zap', marcado: vm.documentos.deTeste && vm.documentos.modo === 'enviar', onClick: () => vm.documentos.preencherExemplo('enviar') },
+        { rotulo: 'Exemplo de requerer', icone: 'zap', marcado: vm.documentos.deTeste && vm.documentos.modo === 'requerer', onClick: () => vm.documentos.preencherExemplo('requerer') },
+        'separador',
+        { rotulo: 'Mostrar o lembrete de confirmar', icone: 'clock', onClick: lembrarAgora },
+      ]} />
   );
 }
 
 export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
   alvo: string; voltar: () => void; criada: (paraMim: boolean) => void; saida: RefObject<((depois: () => void) => void) | null>;
 }) {
-  const vm = useTarefaAberta(alvo, voltar, criada);
+  const vm = useTarefaAberta(alvo, voltar, criada, true);
   useEffect(() => {
     saida.current = depois => { void vm.largar(depois); };
     return () => { saida.current = null; };
@@ -266,6 +333,8 @@ export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
   const [passo, setPasso] = useState<'cliente' | 'tarefa'>('cliente');
   // os documentos no Início novo: a janela própria em dois passos (sem o título, o prazo e a prioridade)
   const docs = vm.ehNova && vm.pedeDocumentos;
+  // a tarefa de documentos que já existe: o fluxo dela no lugar do Iniciar, Pausar e Concluir
+  const deDocumentos = !vm.ehNova && vm.pedeDocumentos;
   const trocarCliente = () => { vm.clientes.forEach(() => vm.tirarCliente(0)); setPasso('cliente'); };
   const nome = vm.ehNova ? (vm.pedeDocumentos ? 'Delegar documentos' : 'Nova tarefa') : 'Tarefa ' + (vm.numero || '');
 
@@ -280,7 +349,7 @@ export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
           <Icone nome="lixeira" />Excluir
         </BotaoAcao>
       )}
-      {vm.acoes.map(a => (
+      {deDocumentos ? <AcoesDosDocumentos vm={vm} /> : vm.acoes.map(a => (
         <button key={a.id} type="button" className="btn btn-outline" onClick={() => { void vm.fazerAcao(a.status); }}><Icone nome={ICONE[a.id]} />{a.rotulo}</button>
       ))}
       <span className="tarefas-barra-espaco" />
@@ -316,12 +385,13 @@ export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
         ) : docs ? (
           <>
             <div className="registro-corpo">
-              <p className="registro-dica"><Icone nome="clipe" />{vm.documentos.modo === 'enviar' ? 'Anexe os arquivos ou cole o link do que vai enviar.' : 'Diga quais documentos precisa; quem receber anexa e confirma.'}</p>
+              <p className="registro-dica"><Icone nome="clipe" />{vm.documentos.modo === 'enviar' ? 'Anexe os arquivos ou cole o link do que vai enviar.' : 'Diga quais documentos precisa; quem receber anexa e envia.'}</p>
               <div className="ini-cliente-escolhido">
                 <Icone nome="briefcase" />
-                <span>{vm.clientes.map(nomeDoCliente).join(', ')}<span className="fraco"> · para {vm.equipe.filter(p => vm.documentos.pessoas.includes(p.uid)).map(p => p.nome).join(', ')}</span></span>
+                <span>{vm.clientes.map(nomeDoCliente).join(', ')}</span>
                 <button type="button" className="btn btn-ghost" onClick={() => setPasso('cliente')}><Icone nome="chevronLeft" />Voltar</button>
               </div>
+              <PropriedadesDosDocumentos vm={vm} />
               <Descricao vm={vm} />
               <Anexos vm={vm} />
               {vm.erro && <Alerta naLinha titulo={vm.erro} />}
@@ -330,7 +400,7 @@ export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
               <span className="tarefas-barra-espaco" />
               <button type="button" className="btn btn-outline" onClick={vm.cancelar}>Cancelar</button>
               <BotaoAcao className="btn btn-primary" carregando={vm.salvando} textoCarregando="Delegando" onClick={() => { void vm.salvar(); }}>
-                <Icone nome="check" />{vm.documentos.modo === 'enviar' ? 'Enviar documentos' : 'Pedir documentos'}
+                <Icone nome="check" />{vm.documentos.modo === 'enviar' ? 'Enviar documentos' : 'Requerer documentos'}
               </BotaoAcao>
             </footer>
           </>
@@ -359,7 +429,7 @@ export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
         ) : (
           <>
             <div className="registro-corpo">
-              {vm.pedeDocumentos && <p className="registro-dica"><Icone nome="clipe" />{vm.souQuemFaz ? 'Anexe os documentos e confirme em "Anexei tudo, concluir".' : 'Documentos delegados: quem recebe anexa e confirma.'}</p>}
+              {deDocumentos && <p className="registro-dica"><Icone nome="clipe" />{vm.documentos.situacao}</p>}
               {vm.caminhoDaEtapa && <Link className="btn btn-primary" to={vm.caminhoDaEtapa}><Icone nome="play" />Abrir a etapa</Link>}
               {titulo}
               <Descricao vm={vm} />
