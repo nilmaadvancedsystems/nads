@@ -69,6 +69,8 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
     /** sem a barra lateral: as abas no alto dão conta (só a aba Ferramentas do Fiscal tem barra) */
     soAbas: comAbas && !emFerramentas && !tarefasNoInicio,
     /** as tabelas do Fiscal sem o título, que repetia a aba (09/11/2026: "um aproveitamento maior da tela") */
+    /** o título é a saudação do Início novo (maior e digitada; 13/11/2026) */
+    saudacao: inicioNovo && !!tituloDoInicio,
     semTitulo: app === 'fiscal' && ['relatorio-simples', 'relatorio-presumido', 'reinf'].includes(pagina),
     // os blocos com nome (as Configurações: Cadastro e Admin; 28/10/2026): o nome em cima da primeira página de cada um
     secoes: tarefasNoInicio ? LISTAS_DAS_TAREFAS.map(l => ({ id: l.id, rotulo: l.rotulo, icone: l.icone, grupo: 1, ativa: l.id === listaDoInicio, contador: quantas && quantas[l.id] ? String(quantas[l.id]) : undefined }))

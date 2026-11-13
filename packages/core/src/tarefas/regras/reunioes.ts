@@ -172,7 +172,9 @@ export const problemaDaRecusa = (justificativa: string) => (justificativa.trim()
 export function decidir(r: Reuniao, aprovar: boolean, observacao: string, por: string, em: string): Reuniao {
   if (!aprovar && problemaDaRecusa(observacao)) throw new Error(problemaDaRecusa(observacao));
   const obs = observacao.trim().slice(0, MAIOR_OBSERVACAO);
-  const { prazoDaRevisao: _p, ...resto } = r;
+  // o prazo da revisão sai com a decisão
+  const resto: Reuniao = { ...r };
+  delete resto.prazoDaRevisao;
   return { ...resto, status: aprovar ? 'aprovada' : 'recusada', decididoPor: por, ...(obs ? { observacao: obs } : {}), historico: [...r.historico, nota(por, em, aprovar ? 'Aprovou a reunião' : 'Recusou a reunião')] };
 }
 

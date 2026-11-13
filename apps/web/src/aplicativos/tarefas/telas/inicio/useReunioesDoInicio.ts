@@ -26,7 +26,6 @@ export function useNivelDoInicio() {
 }
 
 export function useReunioesDoInicio() {
-  const op = useOperador().operador as Operador;
   const { toast, aviso } = useRetorno();
   const nivel = useNivelDoInicio();
   const papel = r.papelPeloNivel(nivel);

@@ -103,8 +103,21 @@ export interface AntecipacaoDoFiscal {
 /** Um empréstimo no Cadastro: o contrato, o banco (id da conta bancária) e de quando até quando ele vale ('aaaa-mm'). */
 export interface EmprestimoDaEmpresa { numero: string; banco: string; desde: string; ate?: string }
 
+/** Uma razão social que a empresa já teve no nads: o nome e até quando valeu (ISO). */
+export interface RazaoSocialAnterior { nome: string; ate: string }
+
+/**
+ * A razão social trocada pelo nads (13/11/2026: "poder trocar a razão social pelo próprio sistema"). Só para mostrar e
+ * buscar: a chave da empresa continua o `nome` (o slug dele é o id do cadastro, dos extratos, da Conferência, das rotinas,
+ * do cofre e do "onde parou"), para nada se perder. Quem trocou e quando; as anteriores, a mais nova primeiro.
+ */
+export interface RazaoSocialDoCadastro { atual: string; em: string; por: string; anteriores: RazaoSocialAnterior[] }
+
 export interface CadastroDaEmpresa {
+  /** o nome de sempre: é a CHAVE da empresa (nunca muda). Para mostrar, vale a razão social (razaoSocialDoCadastro) */
   nome: string;
+  /** a razão social trocada no nads (sem = vale o nome) */
+  razaoSocial?: RazaoSocialDoCadastro;
   codigo: number | null;
   /** null = os bancos nunca foram cadastrados (os aplicativos seguem com o que tinham antes) */
   bancos: ContaBancaria[] | null;

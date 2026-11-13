@@ -3,7 +3,7 @@
 // gaveta ☰ com tema e a área da página (título + ações no canto direito). Marcação e classes iguais às do conferencia.html (~L973-1033).
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { cleanInlineStyles } from 'animejs';
-import { animar, ENTRAR, entrar, revelarTitulo, sairComo, useIndicador } from './animacao';
+import { animar, digitarTitulo, ENTRAR, entrar, revelarTitulo, sairComo, useIndicador } from './animacao';
 import { useAbasParaAEtapa, useAlturaNaEtapa } from './etapa';
 import { Icone, MarcaN, type NomeIcone } from './icones';
 import { LogoDrive, LogoFgts, LogoGmail, LogoReceitaFederal, LogoSieg, LogoSimplesDaAba, LogoSped } from './logos';
@@ -71,6 +71,8 @@ export function Casca(p: {
   secoes: SecaoCasca[];
   paginas: PaginaCasca[];
   titulo: string;
+  /** o título é a saudação do Início novo (13/11/2026): maior, digitado letra a letra e na mesma linha da fileira de ações */
+  saudacao?: boolean;
   /** uma linha embaixo do título (cinza) */
   descricao?: string;
   acoes?: ReactNode;
@@ -176,7 +178,8 @@ export function Casca(p: {
   const titulo = useRef<HTMLHeadingElement>(null);
   useLayoutEffect(() => {
     const el = titulo.current;
-    return el ? revelarTitulo(el) ?? undefined : undefined;
+    return el ? (p.saudacao ? digitarTitulo(el) : revelarTitulo(el)) ?? undefined : undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [p.titulo]);
   // saiu versão nova do nads: um pontinho no ☰ e "Atualizar para …" ao lado da versão, no menu
   const versaoNova = useVersaoNova(p.versao || '');
@@ -212,7 +215,7 @@ export function Casca(p: {
   const principal = (
     <main className="main">
       {/* sem título nem descrição, some — e, dentro de uma etapa, mesmo com o lugar das ações */}
-      <header className="topbar" hidden={!p.titulo && !p.descricao && (!p.acoes || embutida())}>
+      <header className={'topbar' + (p.saudacao ? ' topbar-saudacao' : '')} hidden={!p.titulo && !p.descricao && (!p.acoes || embutida())}>
         <div>
           <h2 ref={titulo} key={p.titulo} className="page-title">{p.titulo}</h2>
           {p.descricao && <p className="page-desc">{p.descricao}</p>}

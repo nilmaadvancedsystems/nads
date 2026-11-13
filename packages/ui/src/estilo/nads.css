@@ -4284,6 +4284,9 @@ button.cofre-pessoa:hover{background:var(--hover-bg);}
 /* um sócio por linha: o nome, o CPF e o ✕ */
 .cfg-socio{display:grid;grid-template-columns:minmax(0,1fr) 160px auto;gap:8px;padding:6px 0;}
 .cfg-socio input{min-width:0;}
+/* a razão social (13/11/2026): o valor com o lápis; trocando, o campo com Salvar e Cancelar */
+.cfg-razao{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;}
+.cfg-razao input{width:min(420px,100%);min-width:0;}
 @media (max-width:760px){.cad-janela-conteudo{padding:14px 12px;}.cfg-socio{grid-template-columns:minmax(0,1fr) 120px auto;}}
 /* no celular, a linha que só mostra um valor (o CNPJ, o porte…) fica com o nome e o valor lado a lado */
 @media (max-width:640px){
@@ -6765,6 +6768,19 @@ td.fs-fat-sem{color:var(--ink-faint);}
 
 /* o Início novo (13/11/2026, só no modo desenvolvedor): só a disposição; as peças são as do catálogo */
 .ini-topo{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;flex:1;min-width:0;}
+/* a saudação do Início novo (Vitor, 13/11/2026: "As saudações deixa ela maior, com uma animação de digitação alinhado com o resto
+   dos elementos"): maior, e ela e a fileira (Buscar, ⚡, botões, Nova tarefa) numa linha só, centradas na altura; a fileira
+   ocupa o resto da linha e não quebra (no celular, quebra como antes) */
+.topbar-saudacao{flex-wrap:nowrap;align-items:center;}
+.topbar-saudacao > div:first-child{flex:none;}
+.topbar-saudacao .page-title{font-size:var(--fs-24);font-weight:600;line-height:32px;white-space:nowrap;}
+.topbar-saudacao .page-title.digitando::after{content:'';display:inline-block;width:2px;height:1em;margin-left:2px;vertical-align:-.12em;background:currentColor;}
+.topbar-saudacao #topbarActions{flex:1;min-width:0;flex-wrap:nowrap !important;}
+.topbar-saudacao .ini-topo{flex-wrap:nowrap;}
+@media (max-width:900px){
+  .topbar-saudacao,.topbar-saudacao #topbarActions,.topbar-saudacao .ini-topo{flex-wrap:wrap !important;}
+  .topbar-saudacao .page-title{white-space:normal;}
+}
 .ini-topo > .hint{margin:0;}
 .ini-busca{flex:0 1 240px;min-width:150px;display:flex;align-items:center;gap:6px;}
 .ini-busca .busca-curta{width:100%;margin-bottom:0;}
