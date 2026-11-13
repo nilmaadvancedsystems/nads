@@ -6829,6 +6829,22 @@ td.fs-fat-sem{color:var(--ink-faint);}
 .tdl-data dt svg{width:14px;height:14px;flex:none;}
 .tdl-data dd{margin:0;font-size:var(--fs-13);font-weight:500;color:var(--ink);overflow-wrap:anywhere;}
 .tdl-data dd .fraco{display:block;font-weight:400;font-size:var(--fs-12);}
+/* o prazo da tarefa (13/11/2026: "De a opcao 'Colocar prazo'... o sistema faz uma animacao, que aparece data e hora"): a chave e,
+   ligada, a data (calendário), o Hoje e o Amanhã e a hora (lista) entrando com a curva da casa */
+.tdl-prazo{display:flex;flex-direction:column;align-items:flex-start;gap:8px;min-width:0;}
+.tdl-prazo-chave{display:inline-flex;align-items:center;gap:8px;}
+.tdl-prazo-chave .toggle-txt{display:none;}
+.tdl-prazo-rotulo{appearance:none;background:none;border:0;padding:0;font:inherit;color:var(--ink);cursor:pointer;}
+.tdl-prazo-escolhas{display:flex;align-items:center;gap:6px;flex-wrap:wrap;animation:prazoAbre .36s cubic-bezier(.23,1,.32,1) both;}
+.tdl-prazo-escolhas > *{animation:prazoPeca .42s cubic-bezier(.23,1,.32,1) both;}
+.tdl-prazo-escolhas > :nth-child(2){animation-delay:.04s;}
+.tdl-prazo-escolhas > :nth-child(3){animation-delay:.08s;}
+.tdl-prazo-escolhas > :nth-child(4){animation-delay:.12s;}
+@keyframes prazoAbre{from{opacity:0;}to{opacity:1;}}
+@keyframes prazoPeca{from{opacity:0;transform:translateY(-6px) scale(.97);}to{opacity:1;transform:none;}}
+.tdl-prazo-escolhas .btn.vazio{color:var(--ink-muted);}
+.tdl-prazo-calendario{padding:10px;}
+@media (prefers-reduced-motion: reduce){.tdl-prazo-escolhas,.tdl-prazo-escolhas > *{animation:none;}}
 /* o cronômetro das delegadas (Início novo): o relógio pequeno e o tempo numa linha só; em andamento, o relógio pisca devagar
    (só a opacidade); pausada, fica parado. Pisca em qualquer nível de animação, porque diz a situação (Vitor, 13/11/2026: "em
    progresso o icone fica piscando, se ela pausar, para de piscar"); com "menos movimento" no sistema, fica parado */

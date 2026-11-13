@@ -1,5 +1,5 @@
 // ViewModel do Início novo (Vitor, 13/11/2026: "Quero fazer o tarefas nesse estilo… só quero o posicionamento das coisas e
-// tudo com a UI do nads"; a novidade 'inicio-novo', só no modo desenvolvedor). As abas no alto ("O menu lateral é superior"):
+// tudo com a UI do nads"; a novidade 'inicio-novo', aprovada para todos em 13/11/2026). As abas no alto ("O menu lateral é superior"):
 // Painel, Minhas tarefas, Documentos e Notificações. O Painel tem os cartões do print: o calendário do mês (prazos e reuniões),
 // as próximas tarefas, as delegadas por mim e as próximas reuniões. As Notificações são a
 // comunicação da equipe ("Reuniões, avisos vai ficar fixado nessa pagina, links de estudos da legislação… sem chats"). A tarefa

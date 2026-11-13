@@ -5,8 +5,9 @@
 import { modoDesenvolvedor, useModoDesenvolvedor } from './modoDesenvolvedor';
 
 export const NOVIDADES = {
-  /** o Início repaginado (13/11/2026: só no modo desenvolvedor "até eu testar tudo") */
-  'inicio-novo': { desde: '13/11/2026', aprovada: false },
+  /** o Início repaginado (13/11/2026: só no modo desenvolvedor "até eu testar tudo"; aprovado no mesmo dia, para todos: "pode tirar
+   *  do modo desenvolvedor e publicar para todos os usuarios, a nova versao do inicio!") */
+  'inicio-novo': { desde: '13/11/2026', aprovada: true },
   /** o Administrativo, só para o Diretor e o Dono (13/11/2026: a entrada de clientes no escritório, "desenvolve o prototipo") */
   administrativo: { desde: '13/11/2026', aprovada: false },
   /** a situação da tarefa não se escolhe mais (13/11/2026: "remove em todas, situacao nao deve ser setada"): só o selo e os botões de quem faz */

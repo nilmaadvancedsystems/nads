@@ -6,7 +6,7 @@
 // Prazo, prioridade, cliuentes, fica com e remova situação"; "Remove comentários e remove históricos!"). Clicar fora não fecha;
 // o Esc e o ✕ perguntam antes de largar o que mudou.
 import { tarefas } from '@nads/core';
-import { Alerta, BotaoAcao, BotaoFechar, BotaoIcone, CampoData, Esqueleto, Icone, Interruptor, MenuSuspenso, Segmentado, useJanela, Vazio, type NomeIcone } from '@nads/ui';
+import { Alerta, BotaoAcao, BotaoFechar, BotaoIcone, CalendarioDoMes, CampoData, Esqueleto, Icone, Interruptor, MenuSuspenso, Segmentado, useJanela, Vazio, type NomeIcone } from '@nads/ui';
 import { useEffect, useId, useRef, useState, type RefObject } from 'react';
 import { Link } from 'react-router';
 import { Propriedade } from '../financeiro/partes/Propriedade';
@@ -46,6 +46,57 @@ function DatasDaTarefa({ datas }: { datas: readonly { rotulo: string; valor: str
   );
 }
 
+/** as horas para escolher no prazo: de meia em meia hora, das 7h às 19h */
+const HORAS_DO_PRAZO = Array.from({ length: 25 }, (_, i) => String(7 + Math.floor(i / 2)).padStart(2, '0') + (i % 2 ? ':30' : ':00'));
+
+/**
+ * O prazo da tarefa (Vitor, 13/11/2026: "De a opcao 'Colocar prazo', marcando na criacao o sistema faz uma animacao, que aparece
+ * data e hora, a data ele consegue selecionar tbm, aparecendo o calendario, nao precisa ser manual, mesma coisa da hora"): a chave
+ * Colocar prazo (desligada, a tarefa fica sem prazo e nada mais aparece); ligada, abre com animação a data, escolhida no
+ * calendário (com o Hoje e o Amanhã de atalho), e a hora, escolhida na lista (ou sem hora). Desligar apaga a data e a hora.
+ */
+function PrazoDaTarefa({ vm }: { vm: Vm }) {
+  const [ligado, setLigado] = useState(() => !!vm.prazoTexto || !!vm.prazoHora);
+  const hojeIso = d.hojeIso();
+  const escolhido = d.prazoDaTela(vm.prazoTexto) || null;
+  const [mes, setMes] = useState(() => (escolhido || hojeIso).slice(0, 7));
+  const hoje = d.prazoParaTela(hojeIso);
+  const amanha = d.prazoParaTela(tarefas.agenda.somarDias(hojeIso, 1));
+  const alternar = () => {
+    if (ligado) { vm.setPrazo(''); vm.setPrazoHora(''); }
+    setLigado(!ligado);
+  };
+  return (
+    <span className="tdl-prazo">
+      <span className="tdl-prazo-chave">
+        <Interruptor ligado={ligado} onMudar={alternar} rotulo="Colocar prazo" />
+        <button type="button" className="tdl-prazo-rotulo" onClick={alternar}>Colocar prazo</button>
+      </span>
+      {ligado && (
+        <span className="tdl-prazo-escolhas">
+          <MenuSuspenso flutuante largura={300} icone="calendar" className={'btn btn-outline tdl-prazo-data' + (vm.prazoTexto ? '' : ' vazio')}
+            titulo="A data do prazo" rotulo={vm.prazoTexto || 'Escolher a data'}
+            conteudo={fechar => (
+              <div className="tdl-prazo-calendario">
+                <CalendarioDoMes mes={mes} hoje={hojeIso} escolhido={escolhido} onMes={setMes}
+                  onDia={dia => { if (dia) { vm.setPrazo(d.prazoParaTela(dia)); fechar(); } }} />
+              </div>
+            )} />
+          <button type="button" className={'chip-f' + (vm.prazoTexto === hoje ? ' on' : '')} aria-pressed={vm.prazoTexto === hoje} onClick={() => { vm.setPrazo(hoje); setMes(hojeIso.slice(0, 7)); }}>Hoje</button>
+          <button type="button" className={'chip-f' + (vm.prazoTexto === amanha ? ' on' : '')} aria-pressed={vm.prazoTexto === amanha} onClick={() => { vm.setPrazo(amanha); setMes(tarefas.agenda.somarDias(hojeIso, 1).slice(0, 7)); }}>Amanhã</button>
+          <MenuSuspenso flutuante compacto largura={150} icone="clock" className={'btn btn-outline tdl-prazo-hora' + (vm.prazoHora ? '' : ' vazio')}
+            titulo="A hora do prazo" rotulo={vm.prazoHora || 'Sem hora'}
+            itens={[
+              { rotulo: 'Sem hora', marcado: !vm.prazoHora, onClick: () => vm.setPrazoHora('') },
+              'separador',
+              ...HORAS_DO_PRAZO.map(h => ({ rotulo: h, marcado: vm.prazoHora === h, onClick: () => vm.setPrazoHora(h) })),
+            ]} />
+        </span>
+      )}
+    </span>
+  );
+}
+
 /** as propriedades da tarefa (a nova e a coluna da esquerda da que existe) */
 function Propriedades({ vm }: { vm: Vm }) {
   const id = useId();
@@ -62,7 +113,7 @@ function Propriedades({ vm }: { vm: Vm }) {
     <div className="registro-props">
       {/* o prazo em branco, só para ler: some (Vitor, 13/11/2026: "Se o prazo nao foi preenchido, so oculta ele... nao deixa exposto") */}
       {!envio && !(travado && !vm.prazoTexto) && <Propriedade icone="clock" rotulo="Prazo">
-        {travado ? <span>{vm.prazoTexto ? vm.prazoTexto + (vm.prazoHora ? ' ' + vm.prazoHora : '') : '—'}</span> : (
+        {travado ? <span>{vm.prazoTexto ? vm.prazoTexto + (vm.prazoHora ? ' ' + vm.prazoHora : '') : '—'}</span> : !docs ? <PrazoDaTarefa vm={vm} /> : (
           <span className="ini-prazo">
             <span className="chip-row">
               <button type="button" className={'chip-f' + (vm.prazoTexto === hoje ? ' on' : '')} aria-pressed={vm.prazoTexto === hoje} onClick={() => vm.setPrazo(vm.prazoTexto === hoje ? '' : hoje)}>Hoje</button>
@@ -477,7 +528,6 @@ export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
               {titulo}
               <Descricao vm={vm} />
               <Anexos vm={vm} />
-              <h3 className="ini-tarefa-sub">Informações</h3>
               <Propriedades vm={vm} />
               <DatasDaTarefa datas={vm.datas} />
               {concluida ? <p className="hint">Tarefa concluída: fica só para consulta.</p>
