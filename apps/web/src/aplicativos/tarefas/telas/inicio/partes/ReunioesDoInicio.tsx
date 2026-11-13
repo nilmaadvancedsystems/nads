@@ -67,7 +67,9 @@ function NovaReuniao({ vm, fechar }: { vm: Vm; fechar: () => void }) {
   const [link, setLink] = useState('');
   const [pauta, setPauta] = useState('');
   const [participantes, setParticipantes] = useState<Pessoa[]>([]);
-  const pedido = { titulo, pauta, link, quando: dataDoCampo(data, hora), participantes };
+  const [tipo, setTipo] = useState<tarefas.reunioes.TipoDaReuniao>('equipe');
+  const [duracao, setDuracao] = useState(0);
+  const pedido = { titulo, pauta, link: tipo === 'live' ? link : '', quando: dataDoCampo(data, hora), participantes, tipo, duracao };
   const problema = vm.problemaDoPedido(pedido);
   const enviar = async () => { if (!problema && await vm.pedir(pedido)) fechar(); };
   const alternar = (p: Pessoa) => setParticipantes(x => (x.some(y => y.uid === p.uid) ? x.filter(y => y.uid !== p.uid) : [...x, p]));
@@ -78,18 +80,26 @@ function NovaReuniao({ vm, fechar }: { vm: Vm; fechar: () => void }) {
       <p className="registro-dica"><Icone nome="lampada" />{direta ? 'Marcada por você, a reunião já aparece para todos.' : 'Solicite a reunião com seus colegas preenchendo os dados abaixo.'}</p>
       <input className="tdl-janela-titulo" type="text" value={titulo} autoFocus maxLength={tarefas.MAIOR_TITULO_DO_COMUNICADO} placeholder="O assunto da reunião" aria-label="O assunto da reunião" onChange={e => setTitulo(e.target.value)} />
       <div className="registro-props">
+        <Propriedade icone="list" rotulo="Tipo">
+          <MenuSuspenso rotulo={tarefas.reunioes.rotuloDoTipoDaReuniao(tipo)} className="btn btn-ghost registro-escolha" titulo="O tipo da reunião" flutuante largura={220}
+            itens={vm.tipos.map(t => ({ rotulo: t.rotulo, icone: t.valor === 'live' ? 'link' : 'usuario', marcado: t.valor === tipo, onClick: () => setTipo(t.valor) }))} />
+        </Propriedade>
         <Propriedade icone="calendar" rotulo="Dia e hora">
           <span className="tdl-prazo-campos">
             <CampoData rotulo="Dia da reunião" valor={data} onMudar={setData} />
             <input type="time" value={hora} aria-label="Hora da reunião" onChange={e => setHora(e.target.value)} />
           </span>
         </Propriedade>
-        <Propriedade icone="usuario" rotulo="Quem vai"><EscolherPessoas equipe={vm.equipe} escolhidas={participantes} alternar={alternar} vazio="Escolher os convidados" /></Propriedade>
-        <Propriedade icone="link" rotulo="Link"><input type="url" value={link} onChange={e => setLink(e.target.value)} placeholder="Opcional (https://…)" aria-label="Link da reunião" /></Propriedade>
+        <Propriedade icone="clock" rotulo="Duração">
+          <MenuSuspenso rotulo={tarefas.reunioes.rotuloDaDuracao(duracao) || 'Escolher a duração'} className={'btn btn-ghost registro-escolha' + (duracao ? '' : ' vazio')} titulo="Quanto tempo dura" flutuante largura={180}
+            itens={vm.duracoes.map(d => ({ rotulo: d.rotulo, marcado: d.valor === duracao, onClick: () => setDuracao(d.valor) }))} />
+        </Propriedade>
+        {!direta && <Propriedade icone="usuario" rotulo="Quem vai"><EscolherPessoas equipe={vm.equipe} escolhidas={participantes} alternar={alternar} vazio="Escolher os convidados" /></Propriedade>}
+        {tipo === 'live' && <Propriedade icone="link" rotulo="Link da LIVE"><input type="url" value={link} onChange={e => setLink(e.target.value)} placeholder="https://…" aria-label="Link da LIVE" /></Propriedade>}
       </div>
       <div className="field">
-        <label htmlFor="ini-pauta">Pauta</label>
-        <textarea id="ini-pauta" rows={4} value={pauta} onChange={e => setPauta(e.target.value)} placeholder="O que vai ser tratado" />
+        <label htmlFor="ini-pauta">{direta ? 'Texto' : 'Pauta'}</label>
+        <textarea id="ini-pauta" rows={4} value={pauta} onChange={e => setPauta(e.target.value)} placeholder={direta ? 'O que a equipe precisa saber da reunião' : 'O que vai ser tratado'} />
       </div>
     </Janela>
   );
@@ -100,10 +110,12 @@ function Solicitacoes({ vm, fechar, escolher }: { vm: Vm; fechar: () => void; es
   return (
     <Janela titulo="Solicitações" fechar={fechar}>
       {vm.solicitacoes.length ? vm.solicitacoes.map(x => (
-        <button key={x.id} type="button" className="popover-item ini-comunicado" onClick={() => { escolher(x.id); fechar(); }}>
-          <Icone nome="calendar" />
-          <span className="popover-texto"><b>{x.titulo}</b><br /><span className="hint">{x.quandoTexto} · pedida por {x.criadaPor.nome}</span></span>
-          <SeloDaReuniao x={x} />
+        <button key={x.id} type="button" className="card ini-solicitacao" onClick={() => { escolher(x.id); fechar(); }}>
+          <span className="ini-solicitacao-topo"><b>{x.titulo}</b><SeloDaReuniao x={x} /></span>
+          <span className="hint"><Icone nome="calendar" width={12} height={12} /> {x.quandoTexto}{x.duracaoTexto && ' · ' + x.duracaoTexto} · {x.tipoRotulo}</span>
+          <span className="hint"><Icone nome="usuario" width={12} height={12} /> Pedida por {x.criadaPor.nome}{x.participantes.length > 0 && ' · com ' + x.participantes.map(p => p.nome).join(', ')}</span>
+          {x.status === 'revisando' && x.prazoDaRevisao && <span className="hint">Resposta até {x.prazoDaRevisao.split('-').reverse().join('/')}</span>}
+          {x.status === 'recusada' && x.observacao && <span><b>Justificativa:</b> {x.observacao}</span>}
         </button>
       )) : <Vazio compacto icone="calendar" titulo={vm.papel === 'aprova' ? 'Nenhuma reunião esperando a decisão' : 'Você ainda não pediu reunião'} />}
     </Janela>
@@ -161,6 +173,7 @@ export function DetalheDaReuniao({ x, vm }: { x: Item; vm: Vm }) {
   const [prazo, setPrazo] = useState('');
   const [nova, setNova] = useState({ data: '', hora: '' });
   const [comentario, setComentario] = useState('');
+  const [recusando, setRecusando] = useState(false);
   const pode = (a: tarefas.reunioes.AcaoDaReuniao) => x.acoes.includes(a);
   const presenca = (p: Pessoa) => { const r = x.presencas.find(y => y.uid === p.uid); return r ? (r.vai ? ' · vai' : ' · não vai') : ' · sem resposta'; };
   return (
@@ -170,14 +183,15 @@ export function DetalheDaReuniao({ x, vm }: { x: Item; vm: Vm }) {
         <SeloDaReuniao x={x} />
       </div>
       <div className="registro-props">
-        <Propriedade icone="calendar" rotulo="Quando"><b>{x.quandoTexto}</b></Propriedade>
+        <Propriedade icone="calendar" rotulo="Quando"><span><b>{x.quandoTexto}</b>{x.duracaoTexto && <span className="fraco"> · {x.duracaoTexto}</span>}</span></Propriedade>
+        <Propriedade icone="list" rotulo="Tipo"><span>{x.tipoRotulo}</span></Propriedade>
         <Propriedade icone="usuario" rotulo={x.origem === 'direta' ? 'Marcada por' : 'Pedida por'}><span>{x.criadaPor.nome} · {x.pedidaEm}</span></Propriedade>
         <Propriedade icone="usuario" rotulo="Quem vai">
           <span>{x.participantes.length ? x.participantes.map(p => p.nome + presenca(p)).join(', ') : (x.origem === 'direta' ? 'Todos' : '—')}{x.comDiretor && x.origem === 'pedido' && <span className="fraco"> · com o Diretor</span>}</span>
         </Propriedade>
         {x.link && <Propriedade icone="link" rotulo="Link"><a href={x.link} target="_blank" rel="noopener noreferrer">{x.link}</a></Propriedade>}
         {x.status === 'revisando' && x.prazoDaRevisao && <Propriedade icone="clock" rotulo="Resposta até"><span>{x.prazoDaRevisao.split('-').reverse().join('/')}</span></Propriedade>}
-        {x.decididoPor && <Propriedade icone="check" rotulo={x.status === 'recusada' ? 'Recusada por' : 'Aprovada por'}><span>{x.decididoPor}{x.observacao && <><br /><b>Observação:</b> {x.observacao}</>}</span></Propriedade>}
+        {x.decididoPor && <Propriedade icone="check" rotulo={x.status === 'recusada' ? 'Recusada por' : 'Aprovada por'}><span>{x.decididoPor}{x.observacao && <><br /><b>{x.status === 'recusada' ? 'Justificativa' : 'Observação'}:</b> {x.observacao}</>}</span></Propriedade>}
       </div>
       <p className="ini-detalhe-texto">{x.pauta}</p>
 
@@ -215,7 +229,7 @@ export function DetalheDaReuniao({ x, vm }: { x: Item; vm: Vm }) {
         {pode('aprovar') && (
           <div className="ini-reuniao-linha">
             <input type="text" value={obs} maxLength={tarefas.reunioes.MAIOR_OBSERVACAO} placeholder="Observação (opcional)" aria-label="Observação" onChange={e => setObs(e.target.value)} />
-            <button type="button" className="btn btn-outline" onClick={() => void vm.decidir(x.id, false, obs)}><Icone nome="x" />Recusar</button>
+            <button type="button" className="btn btn-outline" onClick={() => setRecusando(true)}><Icone nome="x" />Recusar</button>
             <button type="button" className="btn btn-primary" onClick={() => void vm.decidir(x.id, true, obs)}><Icone nome="check" />Aprovar</button>
           </div>
         )}
@@ -246,7 +260,26 @@ export function DetalheDaReuniao({ x, vm }: { x: Item; vm: Vm }) {
           </div>
         )}
       </div>
+      {recusando && <ConfirmarRecusa x={x} vm={vm} fechar={() => setRecusando(false)} />}
       {x.historico.length > 0 && <p className="hint ini-reuniao-historico">{x.historico.slice(-4).map(h => h.por + ': ' + h.texto).join(' · ')}</p>}
     </section>
+  );
+}
+
+/** a confirmação da recusa (Vitor, 13/11/2026: "Confirmacao de recusa tambem… Tem que ter justificativa da recusa… Para que o
+ * senior saiba"): a justificativa é obrigatória e quem pediu a vê no detalhe e nas Solicitações */
+function ConfirmarRecusa({ x, vm, fechar }: { x: Item; vm: Vm; fechar: () => void }) {
+  const [justificativa, setJustificativa] = useState('');
+  const problema = vm.problemaDaRecusa(justificativa);
+  return (
+    <Janela titulo="Recusar a reunião" fechar={fechar}
+      pe={<><span className="tarefas-barra-espaco" /><button type="button" className="btn btn-outline" onClick={fechar}>Cancelar</button>
+        <button type="button" className="btn btn-danger" disabled={!!problema} title={problema || undefined} onClick={() => { void vm.decidir(x.id, false, justificativa); fechar(); }}><Icone nome="x" />Recusar a reunião</button></>}>
+      <p className="registro-dica"><Icone nome="lampada" />Recusar "{x.titulo}", pedida por {x.criadaPor.nome}? A justificativa aparece para quem pediu.</p>
+      <div className="field">
+        <label htmlFor="ini-recusa">Justificativa</label>
+        <textarea id="ini-recusa" rows={4} autoFocus value={justificativa} maxLength={tarefas.reunioes.MAIOR_OBSERVACAO} onChange={e => setJustificativa(e.target.value)} placeholder="Por que a reunião foi recusada" />
+      </div>
+    </Janela>
   );
 }

@@ -2,6 +2,7 @@
 // diretor escrevem, fixam e apagam; toda a equipe lê. Interface + a versão de exemplo (na memória); a do banco é
 // avisos.firestore.ts (coleção nadsAvisos do Entregas).
 import { tarefas as t } from '@nads/core';
+import { anexoDe, idNovo, type ArquivoParaAnexar } from './tarefasDelegadas';
 
 export interface RepoAvisos {
   exemplos: boolean;
@@ -9,7 +10,10 @@ export interface RepoAvisos {
   lista(): { carregados: boolean; avisos: t.AvisoDoEscritorio[] };
   /** extras: o comunicado do Início novo (o tipo, o título, o link e o dia da reunião; 13/11/2026) */
   /** porUid: o login de quem escreveu (quem escreveu sempre vê o aviso e vê quem marcou o Recebido) */
-  publicar(texto: string, por: string, extras?: t.ExtrasDoComunicado, porUid?: string): Promise<void>;
+  /** pdf: a norma da empresa (13/11/2026) */
+  publicar(texto: string, por: string, extras?: t.ExtrasDoComunicado, porUid?: string, pdf?: ArquivoParaAnexar): Promise<void>;
+  /** os bytes do PDF da norma (null = não achou) */
+  baixar(id: string): Promise<Uint8Array | null>;
   /** o Recebido de quem leu o aviso que pede confirmação (13/11/2026) */
   marcarRecebido(id: string, quem: { uid: string; nome: string }): Promise<void>;
   fixar(id: string, fixado: boolean): Promise<void>;
@@ -25,10 +29,15 @@ export function criarAvisosMemoria(completo = false): RepoAvisos {
   const mudou = () => { ver++; for (const f of ouvintes) f(); };
   const ha = (h: number) => new Date(Date.now() - h * 3600_000).toISOString();
   const diaEHora = (dias: number, hora: string) => t.delegadas.hojeIso(new Date(Date.now() + dias * 86400_000)) + 'T' + hora;
+  const bytes = new Map<string, Uint8Array>();
+  const pdfDeExemplo = (id: string, nome: string) => ({ id, nome, extensao: 'pdf', tamanho: 84_300, em: ha(20), por: 'Nilma', partes: 1 });
   let avisos: t.AvisoDoEscritorio[] = [
     { id: 'av-1', texto: 'Fechamento de outubro: as rotinas do Fiscal até o dia 10.', por: 'Vitor', em: ha(30), fixado: true },
     { id: 'av-2', texto: 'Sexta-feira o escritório fecha às 16h.', por: 'Vitor', em: ha(4) },
     ...(completo ? [
+      // os jeitos do aviso: a norma da empresa (com o PDF) e o de datas
+      { id: 'av-14', tipo: 'aviso' as const, jeito: 'norma' as const, titulo: 'Norma de uso do e-mail do escritório', texto: 'Leiam a norma em PDF: o que pode e o que não pode no e-mail do escritório.', por: 'Nilma', porUid: 'exemplo-1', em: ha(20), pedeConfirmacao: true, anexo: pdfDeExemplo('ax-norma', 'norma-email.pdf') },
+      { id: 'av-15', tipo: 'aviso' as const, jeito: 'datas' as const, titulo: 'Recesso de fim de ano', texto: 'O escritório fecha de 24/12 a 01/01. Voltamos dia 02/01.', por: 'Sávio', em: ha(40) },
       { id: 'av-3', tipo: 'reuniao' as const, titulo: 'Reunião do fechamento', texto: 'Pauta: o que ficou pendente de outubro e a divisão das empresas novas.', por: 'Nilma', em: ha(6), quando: diaEHora(3, '09:00'), link: 'https://meet.google.com/' },
       { id: 'av-4', tipo: 'estudo' as const, titulo: 'Reforma tributária: o que muda em 2027', texto: 'Leiam antes da reunião: o resumo da Receita sobre a CBS e o IBS.', por: 'Vitor', em: ha(26), link: 'https://www.gov.br/receitafederal/' },
       { id: 'av-5', tipo: 'geral' as const, titulo: 'Novo horário do almoço', texto: 'A partir de segunda, o almoço passa a ser das 11h às 13h.', por: 'Sávio', em: ha(50) },
@@ -45,14 +54,22 @@ export function criarAvisosMemoria(completo = false): RepoAvisos {
   return {
     exemplos: true,
     lista: () => ({ carregados: true, avisos }),
-    async publicar(texto, por, extras, porUid) {
-      if (extras) { const problema = t.problemaDoComunicado(texto, extras); if (problema) throw new Error(problema); }
-      avisos = [...avisos, { id: 'av-' + Date.now(), texto: t.limparAviso(texto), por, em: new Date().toISOString(), ...(porUid ? { porUid } : {}), ...(extras ? t.camposDoComunicado(extras) : {}) }];
+    async publicar(texto, por, extras, porUid, pdf) {
+      if (extras) { const problema = t.problemaDoComunicado(texto, { ...extras, comPdf: !!pdf }); if (problema) throw new Error(problema); }
+      const em = new Date().toISOString();
+      const anexoId = 'ax-' + idNovo();
+      if (pdf) bytes.set(anexoId, pdf.bytes);
+      avisos = [...avisos, { id: 'av-' + Date.now(), texto: t.limparAviso(texto), por, em, ...(porUid ? { porUid } : {}), ...(extras ? t.camposDoComunicado(extras) : {}), ...(pdf ? { anexo: anexoDe(pdf, { id: anexoId, em, por, partes: 1 }) } : {}) }];
       mudou();
     },
     async fixar(id, fixado) { avisos = avisos.map(a => (a.id === id ? { ...a, fixado } : a)); mudou(); },
     async marcarRecebido(id, quem) { avisos = avisos.map(a => (a.id === id ? t.comRecebido(a, quem, new Date().toISOString()) : a)); mudou(); },
     async apagar(id) { avisos = avisos.filter(a => a.id !== id); mudou(); },
+    async baixar(id) {
+      const a = avisos.find(x => x.id === id)?.anexo;
+      if (!a) return null;
+      return bytes.get(a.id) || new TextEncoder().encode('PDF de exemplo: ' + a.nome);
+    },
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,
   };

@@ -40,13 +40,16 @@ export interface Reuniao {
   origem: 'pedido' | 'direta';
   /** quem vai (sem quem criou): só eles comentam */
   participantes: Pessoa[];
+  /** da equipe (sem isto) ou LIVE (só a LIVE tem link) e quanto tempo dura, em minutos */
+  tipo?: TipoDaReuniao;
+  duracao?: number;
   /** o Diretor ou o Dono participa (o sistema descobre pelo nível dos convidados: comDiretorEntre) */
   comDiretor: boolean;
   status: StatusGuardado;
   /** Revisando: até quando o Diretor responde ('aaaa-mm-dd') */
   prazoDaRevisao?: string;
   decididoPor?: string;
-  /** a observação de quem aprovou ou recusou */
+  /** a observação de quem aprovou ou a justificativa de quem recusou (obrigatória na recusa) */
   observacao?: string;
   problema?: Anexo;
   solucao?: Anexo;
@@ -105,7 +108,20 @@ export function acoes(r: Reuniao, quem: { uid: string; aprova: boolean }, agora:
 // pedir e marcar
 // ---------------------------------------------------------------------------------------------------------------------
 
-export interface PedidoDeReuniao { titulo: string; pauta: string; quando: string; link: string; participantes: Pessoa[]; comDiretor: boolean }
+export interface PedidoDeReuniao { titulo: string; pauta: string; quando: string; link: string; participantes: Pessoa[]; comDiretor: boolean; tipo: TipoDaReuniao; duracao: number }
+
+/** Vitor, 13/11/2026: "Tipo: Reunião da Equipe e LIVE / Dia e hora / link apenas se for LIVE". */
+export type TipoDaReuniao = 'equipe' | 'live';
+export const TIPOS_DA_REUNIAO: readonly { valor: TipoDaReuniao; rotulo: string }[] = [{ valor: 'equipe', rotulo: 'Reunião da equipe' }, { valor: 'live', rotulo: 'LIVE' }];
+export const rotuloDoTipoDaReuniao = (t: TipoDaReuniao | undefined) => (t === 'live' ? 'LIVE' : 'Reunião da equipe');
+
+/** As durações do menu, em minutos ("Coloca duração, faltou no formulario do senior"). */
+export const DURACOES = [15, 30, 45, 60, 90, 120] as const;
+export function rotuloDaDuracao(min: number | undefined): string {
+  if (!min) return '';
+  const h = Math.floor(min / 60), m = min % 60;
+  return h ? h + ' h' + (m ? ' ' + m + ' min' : '') : m + ' min';
+}
 
 /** Algum convidado é Diretor ou Dono? (Vitor, 13/11/2026: sem a caixinha, "o sistema vai identificar a hierarquia de cada um") */
 export function comDiretorEntre(participantes: Pick<Pessoa, 'uid'>[], equipe: { uid: string; nivel: Nivel | null }[]): boolean {
@@ -118,7 +134,9 @@ export function problemaDoPedido(p: PedidoDeReuniao): string {
   if (!titulo) return 'Dê um título para a reunião.';
   if (titulo.length > MAIOR_TITULO_DO_COMUNICADO) return 'O título passou de ' + MAIOR_TITULO_DO_COMUNICADO + ' caracteres.';
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(p.quando)) return 'Escolha o dia e a hora da reunião.';
-  if (p.link.trim() && !linkValido(p.link.trim())) return 'O link precisa começar com https://';
+  if (!p.duracao || p.duracao <= 0) return 'Escolha a duração.';
+  if (p.tipo === 'live' && !p.link.trim()) return 'Ponha o link da LIVE.';
+  if (p.tipo === 'live' && !linkValido(p.link.trim())) return 'O link precisa começar com https://';
   const pauta = limparAviso(p.pauta);
   if (!pauta) return 'Escreva a pauta.';
   if (pauta.length > MAIOR_AVISO) return 'A pauta passou de ' + MAIOR_AVISO + ' caracteres.';
@@ -130,7 +148,8 @@ const nota = (por: string, em: string, texto: string): Nota => ({ por, em, texto
 /** A reunião nova: a do Sênior entra Em análise; a do Diretor ou do Dono já entra Aprovada (aparece para todos). */
 export function nova(p: PedidoDeReuniao, o: { id: string; por: Pessoa; em: string; direta: boolean }): Reuniao {
   return {
-    id: o.id, titulo: p.titulo.trim(), pauta: limparAviso(p.pauta), quando: p.quando, ...(p.link.trim() ? { link: p.link.trim() } : {}),
+    id: o.id, titulo: p.titulo.trim(), pauta: limparAviso(p.pauta), quando: p.quando, ...(p.tipo === 'live' && p.link.trim() ? { link: p.link.trim(), tipo: 'live' as const } : {}),
+    ...(p.duracao > 0 ? { duracao: p.duracao } : {}),
     criadaPor: o.por, origem: o.direta ? 'direta' : 'pedido', participantes: p.participantes.filter(x => x.uid !== o.por.uid), comDiretor: o.direta || p.comDiretor,
     status: o.direta ? 'aprovada' : 'em-analise', comentarios: [], presencas: [], historico: [nota(o.por.nome, o.em, o.direta ? 'Marcou a reunião' : 'Pediu a reunião')], em: o.em,
   };
@@ -147,7 +166,11 @@ export function revisar(r: Reuniao, prazo: string, por: string, em: string): Reu
   return { ...r, status: 'revisando', prazoDaRevisao: prazo, historico: [...r.historico, nota(por, em, 'Abriu para revisar, com resposta até ' + prazo.split('-').reverse().join('/'))] };
 }
 
+/** A recusa pede a justificativa (Vitor, 13/11/2026: "Tem que ter justificativa da recusa… Para que o senior saiba"). */
+export const problemaDaRecusa = (justificativa: string) => (justificativa.trim() ? '' : 'Escreva a justificativa da recusa.');
+
 export function decidir(r: Reuniao, aprovar: boolean, observacao: string, por: string, em: string): Reuniao {
+  if (!aprovar && problemaDaRecusa(observacao)) throw new Error(problemaDaRecusa(observacao));
   const obs = observacao.trim().slice(0, MAIOR_OBSERVACAO);
   const { prazoDaRevisao: _p, ...resto } = r;
   return { ...resto, status: aprovar ? 'aprovada' : 'recusada', decididoPor: por, ...(obs ? { observacao: obs } : {}), historico: [...r.historico, nota(por, em, aprovar ? 'Aprovou a reunião' : 'Recusou a reunião')] };
