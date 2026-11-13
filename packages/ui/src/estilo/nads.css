@@ -3172,6 +3172,27 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
   --btn-bg:light-dark(#F6F8FA, #21262D); --btn-hover:light-dark(#F3F4F6, #30363D); --btn-border:light-dark(#D0D7DE, #F0F6FC1A);
   --header-bg:light-dark(#F6F8FA, #010409); --drawer-bg:light-dark(#FFFFFF, #010409); --input-bg:light-dark(#FFFFFF, #0D1117); --overlay-bg:light-dark(#FFFFFF, #161B22); --hover-bg:light-dark(#D0D7DE52, #B1BAC41F);
 }
+/* a faixa do modo desenvolvedor na Área do Cliente e na Central dos robôs abertas pelo nads (13/11/2026, rotasDoModoDev.tsx):
+   no canto, por cima das telas deles, com o caminho de volta ao módulo Desenvolvedor */
+.faixa-modo-dev{position:fixed;right:16px;bottom:16px;z-index:9000;display:flex;align-items:center;gap:12px;max-width:calc(100vw - 32px);
+  padding:8px 8px 8px 14px;border-radius:12px;background:light-dark(#0550AE, #0D419D);color:#FFFFFF;box-shadow:0 8px 24px #0000003D;font-size:var(--fs-13);}
+.faixa-modo-dev-txt{display:flex;flex-direction:column;line-height:1.25;min-width:0;}
+.faixa-modo-dev-txt small{color:#FFFFFFCC;font-size:var(--fs-12);}
+.faixa-modo-dev .btn{flex:none;background:#FFFFFF;color:#0550AE;border-color:transparent;}
+@media (max-width:640px){.faixa-modo-dev{bottom:76px;}.faixa-modo-dev-txt small{display:none;}}
+/* o módulo Desenvolvedor da Tarefas (13/11/2026): a Área do Cliente de uma empresa e a Central dos robôs */
+.outros-sites{display:flex;flex-direction:column;gap:16px;max-width:760px;}
+.outros-sites .card{margin:0;}
+.outros-sites .card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.outros-sites .card-head h3{display:inline-flex;align-items:center;gap:8px;}
+.outros-sites-texto{margin:0 0 12px;}
+.outros-sites-lista{list-style:none;margin:0;padding:0;max-height:420px;overflow:auto;border:1px solid var(--border);border-radius:6px;}
+.outros-sites-lista li+li{border-top:1px solid var(--border-muted);}
+.outros-sites-item{display:flex;align-items:center;gap:12px;width:100%;padding:10px 12px;border:none;background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer;}
+.outros-sites-item:hover{background:var(--hover-bg);}
+.outros-sites-item svg{color:var(--ink-muted);flex:none;}
+.outros-sites-codigo{min-width:44px;color:var(--ink-muted);font-size:var(--fs-12);}
+.outros-sites-nome{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 /* O SIEG na etapa do Fiscal (06/10/2026): as notas do mês e a sequência das saídas, dentro do checklist */
 .sieg-painel{display:flex;flex-direction:column;gap:10px;margin:0 0 14px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);font-size:var(--fs-13);}
 .sieg-topo{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}

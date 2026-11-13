@@ -1,6 +1,6 @@
 // O repositório do banco da Área do Cliente com um Firestore de mentira (vi.mock): o que ele ouve, quando a tela vira
 // "link inválido" e o que ele grava nas caixas (as chaves exatas das regras). Nada vai ao banco de verdade.
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { EstadoDaArea } from './areaCliente';
 
 type Dados = Record<string, unknown>;
@@ -36,6 +36,7 @@ vi.mock('firebase/firestore', () => {
       falso.gravados.push({ caminho: r.path, dados });
       return { id: 'pedido' + falso.gravados.length };
     },
+    getDoc: async (r: { path: string }) => { falso.lidos.push(r.path); return { data: () => undefined }; },
     getDocs: async (r: { path: string }) => { falso.lidos.push(r.path); return { docs: falso.pdf.map((x, i) => ({ id: String(i), data: () => x })) }; },
   };
 });
@@ -234,5 +235,33 @@ describe('o Registro (12/11/2026)', () => {
     expect(r?.arquivo.type).toBe('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     expect(falso.lidos).toEqual([RAIZ + '/documentos']);
     expect(await repo.baixarDocumentoDp(TOKEN, '../outro')).toBeNull();
+  });
+});
+
+// o modo desenvolvedor do nads (13/11/2026): a Área do Cliente aberta dentro da Tarefas lê o banco, mas nada sai dela
+describe('no modo desenvolvedor', () => {
+  beforeEach(() => {
+    vi.stubGlobal('localStorage', { getItem: (k: string) => (k === 'nads-modo-desenvolvedor' ? '1' : null) });
+    vi.stubGlobal('window', { dispatchEvent: () => true });
+  });
+  afterEach(() => { vi.unstubAllGlobals(); });
+
+  it('lê o espelho do link como sempre', () => {
+    const { telas } = abrirComEspelho(criarRepoAreaClienteFirestore());
+    expect(telas.at(-1)).toMatchObject({ carregado: true, valido: true });
+  });
+
+  it('solicitação, resposta, envio e pedido de DANFE: nada chega às caixas do banco', async () => {
+    const repo = criarRepoAreaClienteFirestore();
+    const { telas } = abrirComEspelho(repo);
+    await expect(repo.abrirChamado(TOKEN, { tipo: 'documento', texto: 'Preciso da CND estadual' })).rejects.toThrow('Modo desenvolvedor: nada foi enviado.');
+    await expect(repo.responderChamado(TOKEN, 'c1', 'Obrigado')).rejects.toThrow('Modo desenvolvedor: nada foi enviado.');
+    await expect(repo.enviar(TOKEN, 'extrato', [new File([new Uint8Array(10)], 'a.pdf')])).rejects.toThrow('Modo desenvolvedor: nada foi enviado.');
+    // a DANFE que ainda não está no espelho seria pedida ao robô: o pedido não sai
+    const chave = '31' + '2610' + '11222333000181' + '55' + '001' + '000001842' + '1' + '12345678' + '9';
+    await expect(repo.pedirDanfe(TOKEN, chave)).resolves.toEqual({ erro: 'Modo desenvolvedor: nada foi enviado.' });
+    expect(falso.gravados).toEqual([]);
+    // e a tela não mostra como enviado o que não foi
+    expect(telas.at(-1)!.chamados.map(c => c.id)).toEqual(['c1']);
   });
 });
