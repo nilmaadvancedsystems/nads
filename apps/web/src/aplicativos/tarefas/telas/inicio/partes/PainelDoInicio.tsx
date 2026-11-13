@@ -27,15 +27,28 @@ function Cartao({ titulo, acao, children }: { titulo: ReactNode; acao?: ReactNod
 
 const quantas = (n: number) => n + (n === 1 ? ' tarefa' : ' tarefas');
 
-/** O cronômetro da em andamento (horas:minutos trabalhados): se redesenha sozinho na virada de cada minuto, sem animação. */
+/** O tempo por extenso: "24 min", "6h", "6h 24min" (Vitor, 13/11/2026: o "06:24" sozinho não dizia o que era). */
+function tempoPorExtenso(minutos: number): string {
+  const h = Math.floor(minutos / 60);
+  const m = minutos % 60;
+  if (!h) return m + ' min';
+  return m ? h + 'h ' + m + 'min' : h + 'h';
+}
+
+/** O cronômetro da em andamento (horas e minutos trabalhados, por extenso, com o relógio): se redesenha sozinho na virada de cada minuto, sem animação. */
 function Cronometro({ minutos }: { minutos: (agora: Date) => number }) {
   const [agora, setAgora] = useState(() => new Date());
   useEffect(() => {
     const id = setTimeout(() => setAgora(new Date()), 60_000 - (Date.now() % 60_000) + 50);
     return () => clearTimeout(id);
   }, [agora]);
-  const m = minutos(agora);
-  return <span className="hint num" title="Tempo trabalhado desde que foi iniciada">{String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0')}</span>;
+  const tempo = tempoPorExtenso(minutos(agora));
+  return (
+    <span className="hint num" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+      title={'Em andamento há ' + tempo + ' de trabalho, desde que foi iniciada (conta só o horário de expediente)'}>
+      <Icone nome="clock" />{tempo + ' de trabalho'}
+    </span>
+  );
 }
 
 export function PainelDoInicio({ vm }: { vm: Vm }) {

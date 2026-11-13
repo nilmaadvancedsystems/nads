@@ -6782,7 +6782,6 @@ td.fs-fat-sem{color:var(--ink-faint);}
 .cal-mes-dia{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;height:36px;padding:0;
   border:1px solid transparent;border-radius:6px;background:none;color:var(--ink);font:inherit;font-size:var(--fs-13);
   font-variant-numeric:tabular-nums;cursor:pointer;}
-.cal-mes-dia.semana{background:var(--hover-bg);}
 .cal-mes-dia:hover:not(:disabled):not(.hoje){border-color:var(--border-strong);}
 .cal-mes-dia:disabled{cursor:default;}
 .cal-mes-dia.passou{color:var(--ink-muted);}
@@ -6807,8 +6806,16 @@ td.fs-fat-sem{color:var(--ink-faint);}
 .topbar-saudacao .page-title.digitando::after{content:'';display:inline-block;width:2px;height:1em;margin-left:2px;vertical-align:-.12em;background:currentColor;}
 .topbar-saudacao #topbarActions{flex:1;min-width:0;flex-wrap:nowrap !important;}
 .topbar-saudacao .ini-topo{flex-wrap:nowrap;}
+/* em todas as abas do Início, com ou sem a saudação, a fileira é uma linha só: os filtros da lista (começo), a busca, o ⚡, os
+   botões e a planilha (fim) (Vitor, 13/11/2026: "todos esses elementos em uma linha so? no inicio todo, em todas as paginas") */
+.topbar:has(.ini-topo){flex-wrap:nowrap;align-items:center;}
+.topbar:has(.ini-topo) #topbarActions{flex:1;min-width:0;flex-wrap:nowrap !important;}
+.ini-topo{flex-wrap:nowrap;}
+.ini-topo-lugar{display:contents;}
+.ini-topo .btn,.ini-topo .popover-wrap{flex:none;}
 @media (max-width:900px){
-  .topbar-saudacao,.topbar-saudacao #topbarActions,.topbar-saudacao .ini-topo{flex-wrap:wrap !important;}
+  .topbar-saudacao,.topbar-saudacao #topbarActions,.topbar-saudacao .ini-topo,
+  .topbar:has(.ini-topo),.topbar:has(.ini-topo) #topbarActions,.ini-topo{flex-wrap:wrap !important;}
   .topbar-saudacao .page-title{white-space:normal;}
 }
 .ini-topo > .hint{margin:0;}

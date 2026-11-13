@@ -1,7 +1,8 @@
 // O Calendário do mês (Vitor, 13/11/2026: a peça nova do Início novo, "Pode criar"): o nome do mês com ‹ ›, a semana de
 // domingo a sábado e os dias. Clicar num dia escolhe (de novo, solta). Redesenhado no mesmo dia ("Tem como fazer outro
 // calendário mais bonitinho?"), no visual do GitHub e sem animação: os dias em quadradinhos de canto arredondado; hoje cheio
-// na cor da marca, com a semana dele num fundo leve e o nome do dia da semana em destaque; o dia marcado (prazo de tarefa,
+// na cor da marca e o nome do dia da semana em destaque (a semana de hoje num fundo leve saiu: Vitor, 13/11/2026, "Tira esse
+// negocio da semana", "Deixa normal"); o dia marcado (prazo de tarefa,
 // reunião ou aviso) com o fundo da marca clarinho e até 3 pontinhos (um por evento); os dias que já passaram mais
 // apagados; os do mês de antes e do de depois quase sumidos, sem clique. Fora do mês de hoje, o botão volta para ele.
 import { BotaoIcone } from './componentes';
@@ -43,7 +44,7 @@ export function CalendarioDoMes({ mes, hoje, marcados = {}, escolhido = null, on
   });
   const iso = (n: number) => mes + '-' + String(n).padStart(2, '0');
   const mesDeHoje = hoje.slice(0, 7) === mes;
-  // a casa de hoje na grade: a linha dela é a semana de hoje e a coluna, o dia da semana
+  // a casa de hoje na grade: a coluna dela é o dia da semana em destaque
   const casaDeHoje = mesDeHoje ? primeiro + Number(hoje.slice(8, 10)) - 1 : -1;
   return (
     <div className="cal-mes">
@@ -60,11 +61,10 @@ export function CalendarioDoMes({ mes, hoje, marcados = {}, escolhido = null, on
           <span key={s} className={'cal-mes-sem' + (casaDeHoje >= 0 && casaDeHoje % 7 === i ? ' hoje' : '')} role="columnheader">{s}</span>
         ))}
         {casas.map((c, i) => {
-          const naSemana = casaDeHoje >= 0 && Math.floor(i / 7) === Math.floor(casaDeHoje / 7) ? ' semana' : '';
-          if (c.fora) return <span key={i} className={'cal-mes-dia fora' + naSemana} aria-hidden="true">{c.n}</span>;
+          if (c.fora) return <span key={i} className={'cal-mes-dia fora'} aria-hidden="true">{c.n}</span>;
           const dia = iso(c.n);
           const qtd = marcados[c.n] || 0;
-          const classe = 'cal-mes-dia' + naSemana + (dia === hoje ? ' hoje' : dia < hoje ? ' passou' : '') + (dia === escolhido ? ' escolhido' : '') + (qtd ? ' marcado' : '');
+          const classe = 'cal-mes-dia' + (dia === hoje ? ' hoje' : dia < hoje ? ' passou' : '') + (dia === escolhido ? ' escolhido' : '') + (qtd ? ' marcado' : '');
           const dica = qtd ? (dicaDoMarcado ? dicaDoMarcado(qtd) : String(qtd)) : undefined;
           return (
             <button key={i} type="button" className={classe} role="gridcell" aria-pressed={dia === escolhido} aria-current={dia === hoje ? 'date' : undefined}

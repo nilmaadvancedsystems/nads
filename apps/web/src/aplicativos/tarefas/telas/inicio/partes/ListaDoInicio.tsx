@@ -6,6 +6,7 @@
 // (useCentralDeTarefas), com os grupos do print e, nos Documentos, todos os documentos delegados juntos.
 import { tarefas } from '@nads/core';
 import { Icone, LogoExcel, MenuSuspenso, Vazio } from '@nads/ui';
+import { createPortal } from 'react-dom';
 import { MenuDeFiltro } from '../../dp/MenuDeFiltro';
 import { SeloDaPrioridade, SeloDoStatus } from '../../delegador/partes/SelosDaTarefa';
 import { useCentralDeTarefas, type AbaDaCentral } from '../../delegador/useCentralDeTarefas';
@@ -13,30 +14,36 @@ import type { PessoaComFoto } from '../useInicioNovo';
 import { Foto } from './PainelDoInicio';
 
 const TOM: Record<string, 'warn' | 'info' | 'neutral' | 'ok'> = { pendente: 'warn', andamento: 'info', pausada: 'neutral', concluida: 'ok', cancelada: 'neutral' };
-export function ListaDoInicio({ documentos = false, lista: qual = 'minhas', busca, filtrar, abrir, comFoto }: {
+export function ListaDoInicio({ documentos = false, lista: qual = 'minhas', busca, filtrar, abrir, comFoto, lugarDosFiltros, lugarDoFim }: {
   documentos?: boolean; lista?: AbaDaCentral; busca: string; filtrar: (t: tarefas.delegadas.TarefaDelegada) => boolean;
   abrir: (id: string) => void; comFoto: (p: { uid: string; nome: string }) => PessoaComFoto;
+  /** onde ficam os filtros e a planilha na fileira do alto (13/11/2026: "todos esses elementos em uma linha so"); sem eles, numa barra própria */
+  lugarDosFiltros?: HTMLElement | null; lugarDoFim?: HTMLElement | null;
 }) {
   const vm = useCentralDeTarefas(qual, { agenda: true, documentos, semDocumentos: !documentos, busca, filtrar });
+  const filtros = !vm.abaVazia && (
+    <>
+      <MenuDeFiltro rotulo="Prioridade" valor={vm.prioridade} mudar={vm.setPrioridade} todos="Todas as prioridades" opcoes={vm.opcoesDePrioridade} />
+      {vm.pessoas.length > 0 && <MenuDeFiltro rotulo={vm.colunaDaPessoa} valor={vm.quem} mudar={vm.setQuem} todos="Todas as pessoas" opcoes={vm.pessoas} />}
+      {vm.algumFiltro && <button type="button" className="btn btn-ghost dp-limpar" onClick={vm.limparFiltros}><Icone nome="x" />Limpar</button>}
+    </>
+  );
+  const planilha = !vm.abaVazia && (
+    <MenuSuspenso rotulo={<LogoExcel />} semSeta className="icon-btn" titulo="Exportar a lista" dica="Exportar a lista" direita
+      itens={[
+        { rotulo: 'Planilha do Excel (.xlsx)', icone: 'relatorio', desabilitado: !vm.podeExportar, onClick: () => vm.exportar('xlsx') },
+        { rotulo: 'Texto separado (.csv)', icone: 'relatorio', desabilitado: !vm.podeExportar, onClick: () => vm.exportar('csv') },
+      ]} />
+  );
   return (
     <section className="ini-lista">
-      <div className="tarefas-barra-topo">
-        {!vm.abaVazia && (
-          <>
-            <MenuDeFiltro rotulo="Prioridade" valor={vm.prioridade} mudar={vm.setPrioridade} todos="Todas as prioridades" opcoes={vm.opcoesDePrioridade} />
-            {vm.pessoas.length > 0 && <MenuDeFiltro rotulo={vm.colunaDaPessoa} valor={vm.quem} mudar={vm.setQuem} todos="Todas as pessoas" opcoes={vm.pessoas} />}
-            {vm.algumFiltro && <button type="button" className="btn btn-ghost dp-limpar" onClick={vm.limparFiltros}><Icone nome="x" />Limpar</button>}
-          </>
-        )}
-        <span className="tarefas-barra-espaco" />
-        {!vm.abaVazia && (
-          <MenuSuspenso rotulo={<LogoExcel />} semSeta className="icon-btn" titulo="Exportar a lista" dica="Exportar a lista" direita
-            itens={[
-              { rotulo: 'Planilha do Excel (.xlsx)', icone: 'relatorio', desabilitado: !vm.podeExportar, onClick: () => vm.exportar('xlsx') },
-              { rotulo: 'Texto separado (.csv)', icone: 'relatorio', desabilitado: !vm.podeExportar, onClick: () => vm.exportar('csv') },
-            ]} />
-        )}
-      </div>
+      {lugarDosFiltros && lugarDoFim ? <>{createPortal(filtros, lugarDosFiltros)}{createPortal(planilha, lugarDoFim)}</> : (
+        <div className="tarefas-barra-topo">
+          {filtros}
+          <span className="tarefas-barra-espaco" />
+          {planilha}
+        </div>
+      )}
       {vm.erro && <p className="registro-dica registro-dica-erro"><Icone nome="alert" />{vm.erro}</p>}
       {!vm.carregando && !vm.temLinhas && (
         <section className="card">

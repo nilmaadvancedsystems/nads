@@ -35,7 +35,8 @@ function Propriedades({ vm }: { vm: Vm }) {
   const docs = vm.pedeDocumentos, envio = vm.documentos.ehEnvio;
   return (
     <div className="registro-props">
-      {!envio && <Propriedade icone="clock" rotulo="Prazo">
+      {/* o prazo em branco, só para ler: some (Vitor, 13/11/2026: "Se o prazo nao foi preenchido, so oculta ele... nao deixa exposto") */}
+      {!envio && !(travado && !vm.prazoTexto) && <Propriedade icone="clock" rotulo="Prazo">
         {travado ? <span>{vm.prazoTexto ? vm.prazoTexto + (vm.prazoHora ? ' ' + vm.prazoHora : '') : '—'}</span> : (
           <span className="ini-prazo">
             <span className="chip-row">
@@ -72,6 +73,8 @@ function Propriedades({ vm }: { vm: Vm }) {
 
 function Descricao({ vm }: { vm: Vm }) {
   const id = useId();
+  // em branco e só para ler (a concluída, ou de quem não muda): some, como o prazo (13/11/2026: "so oculta ele... nao deixa exposto")
+  if (!vm.podeMudar && !vm.rascunho.descricao.trim()) return null;
   return (
     <div className="field">
       <label htmlFor={id}>Detalhes</label>
@@ -321,7 +324,11 @@ function TesteDosDocumentos({ vm }: { vm: Vm }) {
 export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
   alvo: string; voltar: () => void; criada: (paraMim: boolean) => void; saida: RefObject<((depois: () => void) => void) | null>;
 }) {
-  const vm = useTarefaAberta(alvo, voltar, criada, true);
+  const aberta = useTarefaAberta(alvo, voltar, criada, true);
+  // a tarefa concluída não se edita mais (Vitor, 13/11/2026: "Tarefa concluida nao pode ser editada"): tudo só para leitura,
+  // sem Salvar nem Excluir; o título, os detalhes, os anexos e as informações continuam à vista
+  const concluida = !aberta.ehNova && aberta.rascunho.status === 'concluida';
+  const vm: typeof aberta = concluida ? { ...aberta, podeMudar: false, podeExcluir: false, acoes: [] } : aberta;
   useEffect(() => {
     saida.current = depois => { void vm.largar(depois); };
     return () => { saida.current = null; };
@@ -444,7 +451,8 @@ export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
               <h3 className="ini-tarefa-sub">Informações</h3>
               <Propriedades vm={vm} />
               {vm.datas.length > 0 && <dl className="ent-dados">{vm.datas.map(x => <div key={x.rotulo}><dt>{x.rotulo}</dt><dd>{x.valor}</dd></div>)}</dl>}
-              {so ? <p className="hint">Só quem criou a tarefa e o responsável mudam esta tarefa.</p>
+              {concluida ? <p className="hint">Tarefa concluída: fica só para consulta.</p>
+                : so ? <p className="hint">Só quem criou a tarefa e o responsável mudam esta tarefa.</p>
                 : !vm.criouEu && <p className="hint">O prazo, a prioridade, os clientes e para quem só quem criou a tarefa muda.</p>}
               {vm.erro && <Alerta naLinha titulo={vm.erro} />}
             </div>

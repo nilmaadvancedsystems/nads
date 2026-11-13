@@ -4,7 +4,7 @@
 // lugar do título ficam na casca (useCascaTarefas): as abas na barra logo abaixo do cabeçalho ("Menu superior abaixo do
 // cabeçalho!"). Aqui, a busca com as pílulas, o ⚡, o Delegar documentos e o Nova tarefa. A tarefa abre na janela de duas colunas (TarefaAbertaNova), por cima de qualquer aba.
 import { Icone, useCarregando } from '@nads/ui';
-import { useLayoutEffect, useRef } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { AcoesDoTopo } from '../../../../comum/topo';
 import { listaDaUrl } from './abasDoInicio';
@@ -32,6 +32,9 @@ export function InicioNovo() {
   useCarregando(vm.carregando);
   // a tarefa aberta pergunta antes de ser largada (se mudou algo)
   const saida = useRef<((depois: () => void) => void) | null>(null);
+  // os dois lugares da fileira do alto onde a lista põe os filtros (começo) e a planilha (fim)
+  const [lugarDosFiltros, setLugarDosFiltros] = useState<HTMLElement | null>(null);
+  const [lugarDoFim, setLugarDoFim] = useState<HTMLElement | null>(null);
   // a proteção: trocou de aba, a caixa de outra aba que ficou na tela (sem o React saber dela) sai, com o aviso no console
   const conteudo = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
@@ -48,8 +51,12 @@ export function InicioNovo() {
   return (
     <section className="ini-novo">
       {/* a fileira na linha do "Bom dia" (o título da casca), em todas as abas (Vitor, 13/11/2026: "Na mesma linha do bom dia, em todo o inicio!") */}
+      {/* tudo numa linha só, em todas as abas (Vitor, 13/11/2026: "Da pra deixar todos esses elementos em uma linha so? no inicio
+          todo, em todas as paginas"): os filtros da lista (Prioridade, Quem delegou) entram no começo da fileira e a planilha
+          no fim, pelos dois lugares abaixo (a ListaDoInicio desenha neles) */}
       <AcoesDoTopo>
       <div className="ini-topo">
+        <span ref={setLugarDosFiltros} className="ini-topo-lugar" />
         <span className="tarefas-barra-espaco" />
         {/* a busca na fileira dos botões, à esquerda do ⚡ (Vitor, 13/11/2026: "Coloca a barra de pesquisa nesse regiao") */}
         <BuscaDoInicio vm={vm} />
@@ -57,18 +64,20 @@ export function InicioNovo() {
         {mural.dev && <DadosDeTesteDoInicio teste={mural.teste} />}
         {daSolicitacao ? <BotoesDasNotificacoes vm={vm.reunioesVm} escolher={vm.escolherComunicado} /> : (
           <>
-            {/* o Delegar documentos só no Painel (Vitor, 13/11/2026: "Remova o botao delegar documentos" da aba Documentos e da aba Tarefas) */}
-            {vm.aba === 'painel' && <button type="button" className="btn btn-outline" onClick={vm.pedirDocumentos} title="Delegar a alguém do escritório: quem recebe anexa os documentos e confirma"><Icone nome="clipe" />Delegar documentos</button>}
-            <button type="button" className="btn btn-primary" onClick={vm.nova}><Icone nome="plus" />Nova tarefa</button>
+            {/* o Delegar documentos no Painel e nos Documentos; nos Documentos, só ele (Vitor, 13/11/2026: "No documentos nova
+                tarefa? cade o botao de documentos, deixa so ele"); nas Tarefas, só o Nova tarefa */}
+            {(vm.aba === 'painel' || vm.aba === 'documentos') && <button type="button" className={'btn ' + (vm.aba === 'documentos' ? 'btn-primary' : 'btn-outline')} onClick={vm.pedirDocumentos} title="Delegar a alguém do escritório: quem recebe anexa os documentos e confirma"><Icone nome="clipe" />Delegar documentos</button>}
+            {vm.aba !== 'documentos' && <button type="button" className="btn btn-primary" onClick={vm.nova}><Icone nome="plus" />Nova tarefa</button>}
           </>
         )}
+        <span ref={setLugarDoFim} className="ini-topo-lugar" />
       </div>
       </AcoesDoTopo>
       {/* cada aba numa caixa com o nome dela (13/11/2026, "Tem negocio de documento delegado bugando o programa": na conta do
           Vitor, o bloco dos Documentos ficava na tela depois de trocar de aba, um a cada visita; aqui não se repetiu) */}
       <div ref={conteudo} key={vm.aba} className="ini-conteudo" data-aba={vm.aba}>
         {vm.aba === 'painel' && <PainelDoInicio vm={vm} />}
-        {(vm.aba === 'tarefas' || vm.aba === 'documentos') && <ListaDoInicio key={vm.aba + lista} documentos={vm.aba === 'documentos'} lista={lista} busca={vm.busca} filtrar={vm.filtrarLista} abrir={vm.abrir} comFoto={vm.comFoto} />}
+        {(vm.aba === 'tarefas' || vm.aba === 'documentos') && <ListaDoInicio key={vm.aba + lista} lugarDosFiltros={lugarDosFiltros} lugarDoFim={lugarDoFim} documentos={vm.aba === 'documentos'} lista={lista} busca={vm.busca} filtrar={vm.filtrarLista} abrir={vm.abrir} comFoto={vm.comFoto} />}
         {vm.aba === 'notificacoes' && <NotificacoesDoInicio vm={vm} mural={mural} podeMexer={vm.reunioesVm.papel === 'aprova'} />}
       </div>
       {vm.aberta && <TarefaAbertaNova key={vm.aberta} alvo={vm.aberta} voltar={vm.fechar} criada={vm.criada} saida={saida} />}
