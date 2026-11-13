@@ -323,6 +323,21 @@ if (modulo) {
   igual('o documento do DP passa na lista branca', joga(() => R.conferirListaBranca('documentoDp', doc)), '');
   igual('a lista branca recusa a pasta do Drive no documento', joga(() => R.conferirListaBranca('documentoDp', Object.assign({}, doc, { pasta: 'G:/x' }))), 'espelho: campo pasta não pode sair em documentoDp');
   igual('o pedaço do documento passa', joga(() => R.conferirListaBranca('pedacoDp', { base64: 'AAAA', n: 0, total: 1, de: 'dp-x' })), '');
+  // a folha de verdade (13/11/2026): o holerite completa o funcionário; o CPF inteiro, as rubricas e o motivo do afastamento não vão
+  {
+    const h = { empresa: '00999', competencia: '2026-10', matricula: '000001', nome: 'MARIA SOUZA', cpf: '12345678909', cargo: 'VENDEDORA', admissao: '2023-06-15',
+      rubricas: [{ codigo: '642', descricao: 'Empréstimo consignado', referencia: '', valor: 100, tipo: 'desconto' }], proventos: 2000, descontos: 100, liquido: 1900,
+      salarioBase: 2000, baseInss: 2000, baseFgts: 2000, fgts: 160, baseIrrf: 1800, inss: 0, irrf: 0, feriasVencidas: false,
+      afastamentos: [{ de: '2026-10-08', ate: '2026-10-22', motivo: 'Auxílio Doença' }], confere: true };
+    const ferias = { empresa: '999', dataBase: '2026-11-30', funcionarios: [{ matricula: '1', nome: 'MARIA SOUZA', admissao: '2023-06-15', periodos: [{ inicio: '2025-06-15', fim: '2026-06-14', faltas: 0, gozados: 0, direito: 30, aGozar: 30, concederAte: '2027-05-15' }] }] };
+    const regFolha = G.registroComAFolha(reg, [h], [ferias]);
+    const comFolha = { funcionarios: regFolha.funcionarios, competencia: regFolha.competencia, total: regFolha.total, historico: G.historicoComAFolha([], [h]), atualizadoEm: '2026-11-13T10:00:00.000Z' };
+    igual('o pessoal com a folha passa na lista branca', joga(() => R.conferirListaBranca('pessoal', comFolha)), '');
+    igual('a folha completa o funcionário', [regFolha.funcionarios[0].cargo, regFolha.funcionarios[0].liquido, regFolha.funcionarios[0].periodosDeFerias.length], ['VENDEDORA', 1900, 1]);
+    const texto = JSON.stringify(comFolha);
+    igual('nada do CPF inteiro, das rubricas nem do motivo do afastamento', ['12345678909', 'consignado', 'Doen'].filter(x => texto.includes(x)), []);
+    igual('a lista branca recusa as rubricas no funcionário', joga(() => R.conferirListaBranca('pessoal', Object.assign({}, comFolha, { funcionarios: [Object.assign({}, regFolha.funcionarios[0], { rubricas: [] })] }))), 'espelho: campo rubricas não pode sair em funcionario');
+  }
   // o Faturamento (12/11/2026)
   const fat = G.faturamentoDoCliente([{ codigo: 292, nome: 'FITO', regime: 'Simples' }], ['2026-10'], () => ({ codigo: '292', competencia: '2026-10', em: '', series: [{ modelo: '55', serie: '1', numeros: [1], canceladas: [], valor: 500 }] }), new Date(2026, 10, 12));
   igual('o faturamento passa na lista branca', joga(() => R.conferirListaBranca('faturamento', fat)), '');

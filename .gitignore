@@ -22,6 +22,7 @@ robo/robo-vivo-*.json.tmp
 robo/arquivador-partidas.json
 robo/avisos-vencimento-feitos.json
 robo/clientes-cache.json
+robo/mapa-drive-memoria.json
 robo/gemini_key.json
 robo/gmail-processados-*.json
 robo/gmail-processados.json

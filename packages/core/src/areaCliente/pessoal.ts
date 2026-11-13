@@ -8,6 +8,7 @@
 //     dono de um arquivo sai pelo nome dele (o cartão de ponto "Elisene.xlsx", o "RECIBO DE FERIAS - JOAO DA SILVA").
 // Funções puras: o robô (robo/area-cliente.js, pelo robo/gerado) monta o espelho com elas; a tela lê o espelho.
 import type { GuiaDoFgts } from '../tarefas/regras/fgts';
+import type { MesDaFolha } from './dp';
 
 export type CategoriaDoDp = 'folha' | 'recibo' | 'pro-labore' | 'ferias' | 'decimo-terceiro' | 'rescisao' | 'admissao' | 'fgts' | 'inss' | 'ponto' | 'outro';
 
@@ -58,6 +59,34 @@ export interface FuncionarioDoRegistro {
   ultimo: string;
   /** está na guia do mês mais novo */
   ativo: boolean;
+  // (13/11/2026) o que vem do holerite e da previsão de férias do DP (folhaLida.ts); sem eles, fica a estimativa das guias
+  /** o cargo do holerite */
+  cargo?: string;
+  /** a admissão de verdade, 'aaaa-mm-dd' */
+  admissao?: string;
+  salarioBase?: number;
+  /** o líquido do holerite mais novo */
+  liquido?: number;
+  /** o holerite marca "Férias Vencidas" */
+  feriasVencidas?: boolean;
+  /** afastado no mês do holerite mais novo ('aaaa-mm-dd'; o motivo não vai: é dado de saúde) */
+  afastadoDe?: string;
+  afastadoAte?: string;
+  /** os períodos de férias ainda com dias a gozar (a previsão de férias do DP) */
+  periodosDeFerias?: PeriodoDeFerias[];
+  /** 'folha' = completado pelo holerite */
+  fonte?: 'folha';
+}
+
+/** Um período aquisitivo de férias (a previsão de férias do DP). Datas 'aaaa-mm-dd'. */
+export interface PeriodoDeFerias {
+  inicio: string;
+  fim: string;
+  direito: number;
+  gozados: number;
+  aGozar: number;
+  /** o último dia para conceder */
+  concederAte: string;
 }
 
 /** O que vai para o espelho: os funcionários, a competência da guia mais nova e a soma das remunerações dos ativos. */
@@ -65,6 +94,8 @@ export interface ResumoDoPessoal {
   funcionarios: FuncionarioDoRegistro[];
   competencia: string;
   total: number;
+  /** a folha mês a mês pelas guias do FGTS (13/11/2026: o custo da folha) */
+  historico?: MesDaFolha[];
   atualizadoEm: string;
 }
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { areaCliente as ac } from '@nads/core';
 import type { DocumentoDoCliente } from './areaCliente';
-import { linkDoWhatsapp, mimeDoArquivo, nomeDaPessoa, partesDaSolicitacao, passoDaSolicitacao, whatsappDaSolicitacao, erroDaAdmissao, erroDaDemissao, erroDasFerias, filtrarDocumentos, juntarPedacosDoPdf, mesesDosDocumentos, notificacoes, resumoDoPessoal, situacaoDoCertificado, textoDaAdmissao, textoDoChamado, textoDosAnexos, painelDasGuias, perfisComEste, iniciaisDaEmpresa, MAIS_PERFIS } from './regras';
+import { linkDoWhatsapp, mimeDoArquivo, nomeDaPessoa, partesDaSolicitacao, passoDaSolicitacao, whatsappDaSolicitacao, erroDaAdmissao, erroDaDemissao, erroDasFerias, filtrarDocumentos, juntarPedacosDoPdf, mesesDosDocumentos, notificacoes, resumoDoPessoal, situacaoDoCertificado, textoDaAdmissao, textoDoChamado, textoDosAnexos, painelDasGuias, perfisComEste, iniciaisDaEmpresa, MAIS_PERFIS, ultimaEmpresa, abasDoCelular, seloDoRegime, tempoDeEmpresa, dadosParaCopiar, tokenDoLink, diaRelativo, contaDasFerias, contaDaAdmissao, primeiraDataDasFerias, mesDasFerias, marcarNoCalendario, textoDosDias } from './regras';
 
 const hoje = new Date(2026, 9, 16, 9, 0);
 
@@ -170,5 +170,121 @@ describe('a troca de empresa (as empresas abertas neste aparelho)', () => {
 
   it('as iniciais da empresa, sem o Ltda e as palavras pequenas', () => {
     expect([iniciaisDaEmpresa('Personaly Company Comércio de Roupas Ltda'), iniciaisDaEmpresa('Padaria'), iniciaisDaEmpresa('')]).toEqual(['PC', 'P', '?']);
+  });
+});
+
+describe('o app no celular (13/11/2026)', () => {
+  it('sem link, abre a última empresa usada neste aparelho', () => {
+    const p = (token: string, usadoEm: string) => ({ token, nome: token, documento: '', usadoEm });
+    expect(ultimaEmpresa([p('a', '2026-11-10'), p('b', '2026-11-12'), p('c', '2026-11-11')])).toBe('b');
+    expect(ultimaEmpresa([p('exemplo', '')])).toBe('');
+    expect(ultimaEmpresa([])).toBe('');
+  });
+  it('as abas de baixo: Visão geral, Guias, Documentos (se tem) e Solicitações', () => {
+    expect(abasDoCelular(['inicio', 'documentos', 'guias', 'dp', 'chamados', 'empresa'])).toEqual(['inicio', 'guias', 'documentos', 'chamados']);
+    expect(abasDoCelular(['inicio', 'guias', 'chamados'])).toEqual(['inicio', 'guias', 'chamados']);
+  });
+});
+
+describe('o selo do regime (13/11/2026)', () => {
+  it('o Simples e o MEI em verde; o resto neutro', () => {
+    expect(seloDoRegime('Simples Nacional')).toBe('badge badge-ok');
+    expect(seloDoRegime('MEI')).toBe('badge badge-ok');
+    expect(seloDoRegime('Lucro Presumido')).toBe('badge badge-neutral');
+  });
+});
+
+describe('os dados cadastrais (13/11/2026)', () => {
+  it('há quanto tempo a empresa abriu', () => {
+    const hoje = new Date(2026, 10, 13);
+    expect(tempoDeEmpresa('2019-04-02', hoje)).toBe('há 7 anos');
+    expect(tempoDeEmpresa('2026-06-10', hoje)).toBe('há 5 meses');
+    expect(tempoDeEmpresa('2026-10-01', hoje)).toBe('há 1 mês');
+    expect(tempoDeEmpresa('2026-11-01', hoje)).toBe('este mês');
+    expect(tempoDeEmpresa('', hoje)).toBe('');
+  });
+  it('os dados num texto para colar, sem as linhas vazias', () => {
+    expect(dadosParaCopiar({ razaoSocial: 'A Ltda', cnpj: '00.000.000/0001-91', nomeFantasia: '', regime: 'Simples Nacional' }))
+      .toBe('Razão social: A Ltda\nCNPJ: 00.000.000/0001-91\nRegime: Simples Nacional');
+  });
+});
+
+describe('a troca de empresa (13/11/2026)', () => {
+  it('o token no link colado (ou só o token)', () => {
+    expect(tokenDoLink('https://cliente.nilmacontabilidade.com/cliente/AbC123xyz/guias')).toBe('AbC123xyz');
+    expect(tokenDoLink('  AbC123xyz ')).toBe('AbC123xyz');
+    expect(tokenDoLink('oi')).toBe('');
+    expect(tokenDoLink('https://exemplo.com/outra/coisa')).toBe('');
+  });
+  it('o dia relativo', () => {
+    const hoje = new Date(2026, 10, 13, 15);
+    expect(diaRelativo(new Date(2026, 10, 13, 9).toISOString(), hoje)).toBe('hoje');
+    expect(diaRelativo(new Date(2026, 10, 12, 9).toISOString(), hoje)).toBe('ontem');
+    expect(diaRelativo(new Date(2026, 9, 2, 9).toISOString(), hoje)).toBe('02/10');
+  });
+});
+
+describe('as contas das janelas do DP (13/11/2026)', () => {
+  const agora = new Date(2026, 10, 13, 9);
+  it('as férias: de quando a quando, a volta, o pagamento e os avisos', () => {
+    expect(contaDasFerias({ inicio: '', dias: '30 dias' }, agora)).toBeNull();
+    expect(contaDasFerias({ inicio: '07/12/2026', dias: '30 dias' }, agora)).toEqual({ de: '07/12', ate: '05/01/2027', dias: 30, vende: 0, volta: 'qua, 06/01/2027', pagarAte: 'sex, 04/12/2026', avisos: ['Faltam 24 dias: a lei pede o aviso de férias 30 dias antes. O escritório confere se dá.'] });
+    const vendendo = contaDasFerias({ inicio: '04/01/2027', dias: '20 dias e vender 10' }, agora);
+    expect(vendendo).toMatchObject({ dias: 20, vende: 10, ate: '23/01/2027', avisos: [] });
+    expect(contaDasFerias({ inicio: '08/01/2027', dias: '30 dias' }, agora)?.avisos[0]).toMatch(/^Começa na sexta/);
+    expect(contaDasFerias({ inicio: '01/11/2026', dias: '30 dias' }, agora)?.avisos[0]).toBe('Essa data já passou.');
+  });
+  it('a admissão: o prazo do eSocial e a experiência', () => {
+    expect(contaDaAdmissao({ inicio: '01/12/2026', contrato: 'Prazo indeterminado' }, agora)).toEqual({ registrarAte: 'seg, 30/11/2026', experiencia: '', aviso: '' });
+    expect(contaDaAdmissao({ inicio: '01/12/2026', contrato: 'Experiência (45 + 45 dias)' }, agora)?.experiencia).toBe('Experiência até 14/01, prorrogável até dom, 28/02/2027');
+    expect(contaDaAdmissao({ inicio: '14/11/2026', contrato: 'Estágio' }, agora)?.aviso).toMatch(/^Em cima da hora/);
+  });
+});
+
+describe('o calendário da janela de férias (13/11/2026)', () => {
+  const agora = new Date(2026, 10, 13, 9);
+  it('a primeira segunda com 30 dias de aviso', () => {
+    expect(primeiraDataDasFerias(agora)).toBe('14/12/2026');
+  });
+  it('o mês em semanas de domingo, com o pagamento, as férias e a volta marcados', () => {
+    const dez = mesDasFerias('2026-12', { inicio: '14/12/2026', dias: '10 dias (uma parte)' }, agora);
+    expect(dez.length).toBe(35);
+    expect(dez[0]).toMatchObject({ br: '29/11/2026', doMes: false });
+    const de = (br: string) => dez.find(d => d.br === br)!;
+    expect(de('11/12/2026')).toMatchObject({ pagamento: true, evitar: true });
+    expect(de('14/12/2026')).toMatchObject({ inicio: true, ferias: true });
+    expect(de('23/12/2026')).toMatchObject({ fim: true, ferias: true });
+    expect(de('24/12/2026')).toMatchObject({ volta: true, ferias: false });
+    expect(mesDasFerias('2026-11', { inicio: '', dias: '30 dias' }, agora).find(d => d.br === '12/11/2026')?.passou).toBe(true);
+  });
+  it('o aviso de quando passa do limite do período', () => {
+    expect(contaDasFerias({ inicio: '15/02/2027', dias: '30 dias' }, agora, '2027-02')?.avisos).toContain('Termina depois de 02/2027, o limite do período: os dias que passarem são pagos em dobro.');
+    expect(contaDasFerias({ inicio: '01/02/2027', dias: '20 dias e vender 10' }, agora, '2027-02')?.avisos).toEqual([]);
+  });
+});
+
+describe('marcar as férias no calendário, como hotel (13/11/2026)', () => {
+  const agora = new Date(2026, 10, 13, 9);
+  it('o primeiro toque é o começo; o segundo, o último dia', () => {
+    const um = marcarNoCalendario({ inicio: '', dias: '30 dias' }, '14/12/2026', 'inicio');
+    expect(um).toEqual({ inicio: '14/12/2026', dias: '30 dias', fase: 'fim' });
+    expect(marcarNoCalendario(um, '20/12/2026', 'fim')).toEqual({ inicio: '14/12/2026', dias: '7 dias corridos', fase: 'inicio' });
+    expect(marcarNoCalendario(um, '28/12/2026', 'fim').dias).toBe('15 dias (primeira parte)');
+    // antes do começo: recomeça dali
+    expect(marcarNoCalendario(um, '10/12/2026', 'fim')).toEqual({ inicio: '10/12/2026', dias: '30 dias', fase: 'fim' });
+    expect(textoDosDias(30)).toBe('30 dias');
+  });
+  it('as partes: 7 dias pode (com o aviso), menos de 5 não, mais de 30 não', () => {
+    const p = (dias: string) => ({ empregado: 'Ana', inicio: '14/12/2026', dias, adiantar13: false, observacoes: '' });
+    expect(erroDasFerias(p('7 dias corridos'))).toBe('');
+    expect(erroDasFerias(p('4 dias corridos'))).toContain('pelo menos 5');
+    expect(erroDasFerias(p('31 dias corridos'))).toContain('no máximo 30');
+    expect(contaDasFerias({ inicio: '14/12/2026', dias: '7 dias corridos' }, agora)).toMatchObject({ dias: 7, ate: '20/12/2026', volta: 'seg, 21/12/2026' });
+    expect(contaDasFerias({ inicio: '14/12/2026', dias: '7 dias corridos' }, agora)?.avisos[0]).toMatch(/^Com 7 dias, esta é uma das partes/);
+  });
+  it('a prévia do último dia no calendário', () => {
+    const dez = mesDasFerias('2026-12', { inicio: '14/12/2026', dias: '30 dias' }, agora, '18/12/2026');
+    expect(dez.find(d => d.br === '18/12/2026')).toMatchObject({ fim: true, ferias: true });
+    expect(dez.find(d => d.br === '19/12/2026')).toMatchObject({ volta: true, ferias: false });
   });
 });

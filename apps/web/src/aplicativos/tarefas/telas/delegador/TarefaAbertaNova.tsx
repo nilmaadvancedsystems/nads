@@ -6,7 +6,7 @@
 // Prazo, prioridade, cliuentes, fica com e remova situação"; "Remove comentários e remove históricos!"). Clicar fora não fecha;
 // o Esc e o ✕ perguntam antes de largar o que mudou.
 import { tarefas } from '@nads/core';
-import { Alerta, BotaoAcao, BotaoFechar, BotaoIcone, CampoData, Esqueleto, Icone, Interruptor, MenuSuspenso, Segmentado, useJanela, Vazio } from '@nads/ui';
+import { Alerta, BotaoAcao, BotaoFechar, BotaoIcone, CampoData, Esqueleto, Icone, Interruptor, MenuSuspenso, Segmentado, useJanela, Vazio, type NomeIcone } from '@nads/ui';
 import { useEffect, useId, useRef, useState, type RefObject } from 'react';
 import { Link } from 'react-router';
 import { Propriedade } from '../financeiro/partes/Propriedade';
@@ -20,6 +20,31 @@ type Vm = ReturnType<typeof useTarefaAberta>;
 const d = tarefas.delegadas;
 const ESCOLHA = 'btn btn-ghost registro-escolha';
 const ICONE = { iniciar: 'play', retomar: 'play', pausar: 'clock', concluir: 'check' } as const;
+/** as ações que ficam só com o ícone no pé da janela (13/11/2026: "Iniciar e excluir, deixa apenas o icone") */
+const SO_ICONE = new Set<string>(['iniciar', 'retomar']);
+
+/**
+ * As datas da tarefa numa caixa (Vitor, 13/11/2026: "Melhora o visual da box"): cada uma com o ícone e o nome em cima e o
+ * valor embaixo, lado a lado; o "por quem" numa linha própria, mais apagado; a que ainda não aconteceu ("—") some.
+ */
+const ICONE_DA_DATA: Record<string, NomeIcone> = { 'Criada em': 'calendar', 'Concluída em': 'checkCircle', Visualizado: 'olho', 'Tempo trabalhado': 'clock' };
+function DatasDaTarefa({ datas }: { datas: readonly { rotulo: string; valor: string }[] }) {
+  const visiveis = datas.filter(x => x.valor && x.valor !== '—');
+  if (!visiveis.length) return null;
+  return (
+    <dl className="tdl-datas">
+      {visiveis.map(x => {
+        const [valor, por] = x.valor.split(' por ');
+        return (
+          <div key={x.rotulo} className="tdl-data">
+            <dt><Icone nome={ICONE_DA_DATA[x.rotulo] || 'calendar'} />{x.rotulo.replace(/ em$/, '')}</dt>
+            <dd>{valor}{por && <span className="fraco">por {por}</span>}</dd>
+          </div>
+        );
+      })}
+    </dl>
+  );
+}
 
 /** as propriedades da tarefa (a nova e a coluna da esquerda da que existe) */
 function Propriedades({ vm }: { vm: Vm }) {
@@ -352,11 +377,15 @@ export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
   const pe = vm.podeMudar && (
     <footer className="registro-pe">
       {!vm.ehNova && vm.podeExcluir && (
-        <BotaoAcao className="btn btn-outline btn-danger" carregando={vm.excluindo} textoCarregando="Excluindo" onClick={() => { void vm.excluir(); }}>
-          <Icone nome="lixeira" />Excluir
+        // a lixeira só com o ícone, toda vermelha (Vitor, 13/11/2026: "Iniciar e excluir, deixa apenas o icone, botao da lixeira todo vermelho")
+        <BotaoAcao className="btn btn-so-icone btn-lixeira" carregando={vm.excluindo} title="Excluir a tarefa" aria-label="Excluir a tarefa" onClick={() => { void vm.excluir(); }}>
+          <Icone nome="lixeira" />
         </BotaoAcao>
       )}
-      {deDocumentos ? <AcoesDosDocumentos vm={vm} /> : vm.acoes.map(a => (
+      {deDocumentos ? <AcoesDosDocumentos vm={vm} /> : vm.acoes.map(a => SO_ICONE.has(a.id) ? (
+        // o Iniciar (e o Retomar, o mesmo play) só com o ícone; o nome fica na dica
+        <button key={a.id} type="button" className="btn btn-outline btn-so-icone" title={a.rotulo} aria-label={a.rotulo} onClick={() => { void vm.fazerAcao(a.status); }}><Icone nome={ICONE[a.id]} /></button>
+      ) : (
         <button key={a.id} type="button" className="btn btn-outline" onClick={() => { void vm.fazerAcao(a.status); }}><Icone nome={ICONE[a.id]} />{a.rotulo}</button>
       ))}
       <span className="tarefas-barra-espaco" />
@@ -450,7 +479,7 @@ export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
               <Anexos vm={vm} />
               <h3 className="ini-tarefa-sub">Informações</h3>
               <Propriedades vm={vm} />
-              {vm.datas.length > 0 && <dl className="ent-dados">{vm.datas.map(x => <div key={x.rotulo}><dt>{x.rotulo}</dt><dd>{x.valor}</dd></div>)}</dl>}
+              <DatasDaTarefa datas={vm.datas} />
               {concluida ? <p className="hint">Tarefa concluída: fica só para consulta.</p>
                 : so ? <p className="hint">Só quem criou a tarefa e o responsável mudam esta tarefa.</p>
                 : !vm.criouEu && <p className="hint">O prazo, a prioridade, os clientes e para quem só quem criou a tarefa muda.</p>}

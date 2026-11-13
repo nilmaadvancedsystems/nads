@@ -118,6 +118,9 @@ export function useChamados({ token, area }: DaCasca) {
   return {
     filtros: (['todas', 'abertas', 'respondidas', 'concluidas'] as const).map(f => ({
       id: f, rotulo: { todas: 'Todas', abertas: 'Abertas', respondidas: 'Respondidas', concluidas: 'Concluídas' }[f], n: contagem[f], ativo: filtro === f,
+      // nos cartões do alto (13/11/2026: o mesmo padrão da Central): o ícone e o tom de cada situação
+      icone: ({ todas: 'mensagem', abertas: 'clock', respondidas: 'checkCircle', concluidas: 'check' } as const)[f],
+      tom: ({ todas: 'carmim', abertas: 'ambar', respondidas: 'verde', concluidas: 'neutro' } as const)[f],
     })),
     escolherFiltro: setFiltro,
     lista: visiveis.map(vista), total: todas.length,

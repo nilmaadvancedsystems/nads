@@ -9,12 +9,13 @@ import { ROTULO_DA_AREA, type DocumentoDoCliente, type FormatoDoArquivo } from '
 
 export type PastaDaBiblioteca = 'guias' | 'dp' | 'notas' | 'escritorio' | 'enviados';
 
-export const PASTAS_DA_BIBLIOTECA: { id: PastaDaBiblioteca; rotulo: string; icone: NomeIcone }[] = [
-  { id: 'guias', rotulo: 'Guias', icone: 'recibo' },
-  { id: 'dp', rotulo: 'Folha e DP', icone: 'usuario' },
-  { id: 'notas', rotulo: 'Notas (DANFE)', icone: 'arquivo' },
-  { id: 'escritorio', rotulo: 'Do escritório', icone: 'pastaAberta' },
-  { id: 'enviados', rotulo: 'Enviados por você', icone: 'upload' },
+/** As pastas, com o ícone e o tom do cartão e do selo da linha (13/11/2026: as pastas em cartões no alto). */
+export const PASTAS_DA_BIBLIOTECA: { id: PastaDaBiblioteca; rotulo: string; icone: NomeIcone; tom: 'ambar' | 'azul' | 'verde' | 'carmim' | 'neutro'; /** no cartão, quando o rótulo não cabe */ curto?: string }[] = [
+  { id: 'guias', rotulo: 'Guias', icone: 'recibo', tom: 'ambar' },
+  { id: 'dp', rotulo: 'Folha e DP', icone: 'usuario', tom: 'azul' },
+  { id: 'notas', rotulo: 'Notas (DANFE)', icone: 'arquivo', tom: 'verde' },
+  { id: 'escritorio', rotulo: 'Do escritório', icone: 'pastaAberta', tom: 'carmim' },
+  { id: 'enviados', rotulo: 'Enviados por você', icone: 'upload', tom: 'neutro', curto: 'Enviados' },
 ];
 
 /** Uma DANFE que já está no espelho (documentos/danfe-<chave>, sem erro). */
@@ -115,4 +116,30 @@ export function porMesDaBiblioteca(itens: readonly ItemDaBiblioteca[]): { mes: s
     if (g && g.mes === i.mes) g.itens.push(i); else grupos.push({ mes: i.mes, itens: [i] });
   }
   return grupos;
+}
+
+/**
+ * Os nomes dos arquivos dentro do .zip (13/11/2026: "baixar vários de uma vez"): sem barra nem caractere que o Windows
+ * recusa, e sem repetir (o segundo "Recibo.pdf" vira "Recibo (2).pdf"; a comparação ignora maiúsculas).
+ */
+export function nomesParaOZip(nomes: readonly string[]): string[] {
+  const usados = new Set<string>();
+  return nomes.map(bruto => {
+    // eslint-disable-next-line no-control-regex -- os caracteres de controle também saem do nome (o Windows recusa)
+    const limpo = (bruto.replace(/[\\/:*?"<>|\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim()) || 'arquivo';
+    const ponto = limpo.lastIndexOf('.');
+    const base = ponto > 0 ? limpo.slice(0, ponto) : limpo;
+    const ext = ponto > 0 ? limpo.slice(ponto) : '';
+    let nome = limpo;
+    for (let n = 2; usados.has(nome.toLowerCase()); n++) nome = base + ' (' + n + ')' + ext;
+    usados.add(nome.toLowerCase());
+    return nome;
+  });
+}
+
+/** O nome do .zip: "Documentos <empresa> <mês>.zip" (o mês por extenso quando é de um mês só; "Guias", "Folha"…). */
+export function nomeDoZip(empresa: string, mes?: string, oQue = 'Documentos'): string {
+  const quem = empresa.replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const quando = mes ? ' ' + formatos.capital(formatos.rot(mes).toLowerCase()) : '';
+  return (oQue + ' ' + quem + quando).replace(/\s+/g, ' ').trim() + '.zip';
 }

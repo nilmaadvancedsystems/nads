@@ -19,6 +19,7 @@ export function porToken(escolher: (token: string) => RepoAreaCliente): RepoArea
     baixarComprovante: (token, id) => escolher(token).baixarComprovante(token, id),
     baixarDocumentoDp: (token, id) => escolher(token).baixarDocumentoDp(token, id),
     notasDoMes: (token, codigo, mes) => escolher(token).notasDoMes(token, codigo, mes),
+    extratoDoMes: (token, codigo, mes) => escolher(token).extratoDoMes(token, codigo, mes),
     pedirDanfe: (token, chave) => escolher(token).pedirDanfe(token, chave),
   };
 }

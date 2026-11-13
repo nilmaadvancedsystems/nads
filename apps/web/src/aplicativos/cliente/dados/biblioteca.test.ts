@@ -1,7 +1,7 @@
 // A Central de documentos como biblioteca (12/11/2026).
 import { describe, expect, it } from 'vitest';
 import type { areaCliente as ac } from '@nads/core';
-import { bibliotecaDoCliente, contagemDasPastas, filtrarBiblioteca, formatoPeloNome, porMesDaBiblioteca } from './biblioteca';
+import { bibliotecaDoCliente, contagemDasPastas, filtrarBiblioteca, formatoPeloNome, nomeDoZip, nomesParaOZip, porMesDaBiblioteca } from './biblioteca';
 
 const guia = (id: string, competencia: string, vencimento: string, temPdf = true): ac.GuiaDoCliente =>
   ({ id, tipo: 'FGTS', competencia, vencimento, valor: 917.42, situacao: 'a vencer', temPdf });
@@ -41,5 +41,17 @@ describe('a biblioteca da Central de documentos', () => {
   it('os grupos por mês e o formato pelo nome', () => {
     expect(porMesDaBiblioteca(itens).map(g => [g.mes, g.itens.length])).toEqual([['2026-11', 1], ['2026-10', 3], ['2026-09', 1]]);
     expect([formatoPeloNome('a.PDF'), formatoPeloNome('b.xls'), formatoPeloNome('c')]).toEqual(['PDF', 'XLSX', 'PDF']);
+  });
+});
+
+describe('baixar vários num .zip (13/11/2026)', () => {
+  it('os nomes dentro do .zip: sem repetir e sem caractere que o Windows recusa', () => {
+    expect(nomesParaOZip(['Recibo.pdf', 'recibo.PDF', 'Recibo.pdf', 'a/b:c.pdf', '', 'Folha'])).toEqual(
+      ['Recibo.pdf', 'recibo (2).PDF', 'Recibo (3).pdf', 'a b c.pdf', 'arquivo', 'Folha']);
+  });
+  it('o nome do .zip, com o mês por extenso quando é de um mês só', () => {
+    expect(nomeDoZip('Personaly Company')).toBe('Documentos Personaly Company.zip');
+    expect(nomeDoZip('Personaly Company', '2026-10', 'Guias')).toMatch(/^Guias Personaly Company Outubro.*2026\.zip$/);
+    expect(nomeDoZip('A/B Ltda', '2026-10')).toMatch(/^Documentos A B Ltda Outubro.*2026\.zip$/);
   });
 });

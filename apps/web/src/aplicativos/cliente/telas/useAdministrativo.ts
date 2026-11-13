@@ -3,10 +3,10 @@
 // Faturamento, que eram janelas (os dois primeiros) e agora são telas do menu.
 import { areaCliente as ac, formatos } from '@nads/core';
 import { useRetorno } from '@nads/ui';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { baixarArquivo } from '../dados/baixar';
 import { repoAreaCliente } from '../dados/repo';
-import { dataBr, iniciaisDaEmpresa } from '../dados/regras';
+import { dadosParaCopiar, dataBr, iniciaisDaEmpresa, linkDoWhatsapp, seloDoRegime, tempoDeEmpresa } from '../dados/regras';
 import type { DaCasca } from './useAreaCliente';
 
 /** Os Dados cadastrais: a ficha da empresa em blocos (a identificação, a tributação, o endereço e os sócios). */
@@ -15,38 +15,50 @@ import type { DaCasca } from './useAreaCliente';
  * social, o nome fantasia, o CNPJ com o copiar e o regime; embaixo os outros dados em duas colunas (a atividade e o
  * endereço na largura toda) e os sócios numa linha só, com a participação.
  */
-export function useEmpresa({ area, copiar }: DaCasca) {
+export function useEmpresa({ area, copiar, hoje }: DaCasca) {
   const f = area.ficha;
-  const campos: { rotulo: string; valor: string; copiar?: boolean; largo?: boolean }[] = f ? [
-    ...(f.inscricaoEstadual ? [{ rotulo: 'Inscrição estadual', valor: f.inscricaoEstadual, copiar: true }] : []),
-    ...(f.inscricaoMunicipal ? [{ rotulo: 'Inscrição municipal', valor: f.inscricaoMunicipal, copiar: true }] : []),
-    ...(f.abertura ? [{ rotulo: 'Abertura', valor: dataBr(f.abertura) }] : []),
-    ...(f.cnae ? [{ rotulo: 'Atividade principal', valor: f.cnae, largo: true }] : []),
-    ...(f.endereco ? [{ rotulo: 'Endereço', valor: f.endereco, copiar: true, largo: true }] : []),
-  ] : [];
+  const cnae = /^([\d./-]+)\s*\(?(.*?)\)?$/.exec(f?.cnae ?? '');
   return {
     tem: !!f,
-    razaoSocial: f?.razaoSocial ?? '', nomeFantasia: f?.nomeFantasia ?? '', cnpj: f?.cnpj ?? '', regime: f?.regime ?? '',
+    razaoSocial: f?.razaoSocial ?? '', nomeFantasia: f?.nomeFantasia ?? '', cnpj: f?.cnpj ?? '',
+    regime: f?.regime ?? '', seloDoRegime: seloDoRegime(f?.regime ?? ''),
     logo: area.logo, iniciais: iniciaisDaEmpresa(f?.nomeFantasia || f?.razaoSocial || ''),
-    campos,
-    socios: (f?.socios ?? []).map(s => ({ nome: s.nome, participacao: s.participacao })),
+    abertura: f?.abertura ? dataBr(f.abertura) : '', tempo: f?.abertura ? tempoDeEmpresa(f.abertura, hoje) : '',
+    // a atividade: o código à parte da descrição
+    cnaeCodigo: cnae ? cnae[1] : '', cnaeTexto: cnae ? cnae[2] : f?.cnae ?? '',
+    inscricaoEstadual: f?.inscricaoEstadual ?? '', inscricaoMunicipal: f?.inscricaoMunicipal ?? '',
+    endereco: f?.endereco ?? '',
+    mapa: f?.endereco ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(f.endereco) : '',
+    socios: (f?.socios ?? []).map(s => ({ nome: s.nome, participacao: s.participacao, largura: Math.max(0, Math.min(100, Number(s.participacao.replace(',', '.').replace(/[^\d.]/g, '')) || 0)) })),
     copiar: (valor: string, rotulo: string) => copiar(valor, rotulo),
+    copiarTudo: () => { if (f) copiar(dadosParaCopiar(f), 'Dados da empresa'); },
   };
 }
 
 /**
- * O Fale com o escritório (12/11/2026: "refaz esses 2"): o WhatsApp em destaque e, num cartão só, uma linha por contato
- * (o telefone e o e-mail de cada setor) com o ícone, o setor, o contato, a ação (ligar ou escrever) e o copiar.
+ * O Fale com o escritório (13/11/2026: "remove esse telefone e coloca o número dos setores do WhatsApp"): o WhatsApp do
+ * escritório em destaque; o WhatsApp de cada setor (conversar e copiar) e os e-mails (escrever e copiar), com as logos.
  */
-export function useContato({ copiar, irPara }: DaCasca, contato: { whatsapp?: string; telefone?: string; email?: string; horario: string; setores: { nome: string; email: string }[] }) {
-  const emails = [{ nome: 'Atendimento', email: contato.email ?? '' }, ...contato.setores].filter(s => s.email);
-  const linhas: { chave: string; icone: 'telefone' | 'envelope'; setor: string; valor: string; usuario: string; dominio: string; href: string; acao: string; rotuloDoCopiar: string }[] = [
-    ...(contato.telefone ? [{ chave: 'tel', icone: 'telefone' as const, setor: 'Telefone', valor: contato.telefone, usuario: contato.telefone, dominio: '', href: 'tel:' + contato.telefone.replace(/\D/g, ''), acao: 'Ligar', rotuloDoCopiar: 'Telefone' }] : []),
-    // o e-mail quebra só antes do @ (12/11/2026: "o gmail tá clipando": quebrava no meio do domínio)
-    ...emails.map(s => ({ chave: 'e-' + s.nome, icone: 'envelope' as const, setor: s.nome, valor: s.email, usuario: s.email.split('@')[0], dominio: s.email.includes('@') ? '@' + s.email.split('@').slice(1).join('@') : '', href: 'mailto:' + s.email, acao: 'Escrever', rotuloDoCopiar: 'E-mail' })),
-  ];
+const CUIDA_DO_SETOR: Record<string, string> = {
+  atendimento: 'Dúvidas em geral', fiscal: 'Notas e impostos', pessoal: 'Folha, férias e admissões', 'departamento pessoal': 'Folha, férias e admissões',
+  contábil: 'Balanço e livros', contabil: 'Balanço e livros', societário: 'Contrato e alterações', financeiro: 'Honorários e boletos',
+};
+
+export function useContato({ copiar, irPara }: DaCasca, contato: { whatsapp?: string; email?: string; horario: string; setores: { nome: string; email: string; whatsapp?: string }[] }) {
+  // por setor (13/11/2026: "tem que ficar alinhado; por setor fica melhor"): cada linha com o WhatsApp e o e-mail do setor;
+  // o Atendimento leva o WhatsApp e o e-mail gerais do escritório
+  // (o atendimento geral fica no cartão do alto: o WhatsApp e o e-mail do escritório)
+  const setores = contato.setores.filter(s => s.email || linkDoWhatsapp(s.whatsapp));
   return {
-    whatsapp: contato.whatsapp ?? '', horario: contato.horario, linhas,
+    whatsapp: contato.whatsapp ?? '', horario: contato.horario, emailGeral: contato.email ?? '',
+    setores: setores.map(s => ({
+      setor: s.nome,
+      // o que o setor cuida, numa linha (13/11/2026: "muita informação": no lugar do número e do e-mail à mostra)
+      cuida: CUIDA_DO_SETOR[s.nome.toLowerCase()] ?? '',
+      whatsapp: linkDoWhatsapp(s.whatsapp) ? { numero: s.whatsapp ?? '', link: linkDoWhatsapp(s.whatsapp) } : null,
+      // o e-mail quebra só antes do @ (12/11/2026: "o gmail tá clipando": quebrava no meio do domínio)
+      email: s.email ? { email: s.email, usuario: s.email.split('@')[0], dominio: s.email.includes('@') ? '@' + s.email.split('@').slice(1).join('@') : '', mailto: 'mailto:' + s.email } : null,
+    })),
     copiar: (valor: string, rotulo: string) => copiar(valor, rotulo),
     novaSolicitacao: () => irPara('chamados'),
   };
@@ -57,7 +69,7 @@ const mesPorExtenso = (c: string) => formatos.capital(formatos.rot(c).toLowerCas
 const porcento = (v: number) => (v > 0 ? '+' : '') + String(v).replace('.', ',') + '%';
 
 /** O valor curto do eixo, do topo da barra e do limite: 120 mil, 4,8 mi (com o R$ fora do eixo). */
-function curto(n: number): string {
+export function curto(n: number): string {
   if (n >= 1_000_000) return String(Math.round(n / 100_000) / 10).replace('.', ',') + ' mi';
   if (n >= 1_000) return String(Math.round(n / 100) / 10).replace('.', ',').replace(/,0$/, '') + ' mil';
   return String(Math.round(n));
@@ -65,7 +77,7 @@ function curto(n: number): string {
 const reaisCurto = (n: number) => 'R$ ' + curto(n);
 
 /** O topo redondo do eixo (um degrau redondo logo acima do maior mês: 120 mil, 150 mil, 2 mi…). */
-function topoDoEixo(maior: number): number {
+export function topoDoEixo(maior: number): number {
   if (maior <= 0) return 1;
   const p = 10 ** Math.floor(Math.log10(maior));
   return ([1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].map(f => f * p).find(v => v >= maior) ?? 10 * p);
@@ -124,6 +136,14 @@ export function useFaturamento({ token, area, hoje, copiar }: DaCasca) {
   const [mesEscolhido, setMesEscolhido] = useState<string | null>(null);
   const [diaEmFoco, setDiaEmFoco] = useState<number | null>(null);
   const [anoAberto, setAnoAberto] = useState(false);
+  // as abas do Faturamento (13/11/2026: "muita informação aqui"; a escolhida: abas dentro da tela)
+  const [secaoEscolhida, setSecao] = useState<'mes' | 'banco' | 'clientes'>('mes');
+  // a escolha do banco na aba Banco (13/11/2026: "quero uma subseleção por banco"); '' = todas as contas
+  const [bancoEscolhido, setBancoEscolhido] = useState('');
+  // os lançamentos do mês (13/11/2026: "escolhendo um banco, os lançamentos do mês"): lidos ao abrir a aba Banco
+  const [extrato, setExtrato] = useState<{ chave: string; dados: { lancamentos: ac.LancamentoDoCliente[]; cortados: number } | null } | null>(null);
+  const [filtroDoExtrato, setFiltroDoExtrato] = useState<'todos' | 'entradas' | 'saidas'>('todos');
+  const [quantosLancamentos, setQuantosLancamentos] = useState(40);
   const e = empresas[Math.min(escolhida, Math.max(0, empresas.length - 1))];
   const todos = e?.meses ?? [];
   const p = ac.painelDoFaturamento(todos, e?.regime, hoje);
@@ -204,8 +224,98 @@ export function useFaturamento({ token, area, hoje, copiar }: DaCasca) {
     rotulo: formatos.mesCurto(x.competencia), rotuloCurto: formatos.mesCurto(x.competencia).split('/')[0],
   }));
 
+  // o faturado contra o que entrou no banco (13/11/2026: "comparação com os extratos bancários")
+  const bancosDaEmpresa = ac.bancosDoFaturamento(todos);
+  const bancoAtual = bancosDaEmpresa.some(b => b.id === bancoEscolhido) ? bancoEscolhido : '';
+  const fb = ac.faturadoXBanco(todos, mes, bancoAtual || undefined);
+  const topoBanco = Math.max(1, ...fb.serie.flatMap(x => [x.faturado ?? 0, x.entradas ?? 0]));
+  const banco = fb.temBanco ? {
+    faturado: fb.mes.faturado != null ? formatos.reais(fb.mes.faturado) : '—',
+    entradas: fb.mes.entradas != null ? formatos.reais(fb.mes.entradas) : '—',
+    contas: fb.mes.contas ? fb.mes.contas + (fb.mes.contas === 1 ? ' conta' : ' contas') : '',
+    diferenca: fb.mes.diferenca != null ? reaisComSinal(fb.mes.diferenca) : '',
+    cobertura: fb.mes.cobertura != null ? pctTexto(fb.mes.cobertura) : '',
+    // as duas barras do mês, na mesma escala
+    larguraFaturado: fb.mes.faturado != null ? Math.round((fb.mes.faturado / Math.max(fb.mes.faturado, fb.mes.entradas ?? 0, 1)) * 100) : 0,
+    larguraEntradas: fb.mes.entradas != null ? Math.round((fb.mes.entradas / Math.max(fb.mes.faturado ?? 0, fb.mes.entradas, 1)) * 100) : 0,
+    leitura: fb.mes.leitura, tom: fb.mes.tom,
+    // a escolha do banco: todas as contas ou uma
+    contasDaEmpresa: bancosDaEmpresa.length > 1 ? [{ id: '', nome: 'Todas as contas', marca: undefined as string | undefined, ativo: bancoAtual === '' },
+      ...bancosDaEmpresa.map(b => ({ id: b.id, nome: b.nome, marca: b.marca, ativo: bancoAtual === b.id }))] : [],
+    escolherBanco: (id: string) => setBancoEscolhido(id),
+    // o movimento das contas no mês: entrou, saiu e ficou, no total (ou da conta escolhida) e por conta
+    movimento: (() => {
+      const mv = ac.movimentoDasContas(todos, mes);
+      if (!mv) return null;
+      const daConta = bancoAtual ? mv.contas.find(x => x.id === bancoAtual) : null;
+      const base = daConta ?? mv;
+      const r = (v: number | null) => (v == null ? '—' : formatos.reais(v));
+      // o saldo de verdade (13/11/2026: "muda o nome para saldo atual"): o último que o extrato imprime no mês
+      const dataCurta = (d: string) => d.slice(8, 10) + '/' + d.slice(5, 7);
+      return {
+        entrou: r(base.entradas), saiu: r(base.saidas),
+        saldo: base.saldo ? formatos.reais(base.saldo.valor) : '', saldoEm: base.saldo ? 'no extrato de ' + dataCurta(base.saldo.data) : '',
+        saldoTom: base.saldo ? (base.saldo.valor >= 0 ? '' : 'desce') : '',
+        contas: bancoAtual ? [] : mv.contas.map(x => ({
+          id: x.id, nome: x.nome, marca: x.marca, entrou: r(x.entradas), saiu: r(x.saidas),
+          saldo: x.saldo ? formatos.reais(x.saldo.valor) : '—', saldoTom: x.saldo && x.saldo.valor < 0 ? 'desce' : '',
+          parte: pctTexto(x.parte), largura: x.parte,
+        })),
+      };
+    })(),
+    rotuloEntradas: bancoAtual ? 'Entrou no ' + (bancosDaEmpresa.find(b => b.id === bancoAtual)?.nome ?? 'banco') : 'Entrou no banco',
+    // os 6 meses lado a lado
+    serie: fb.serie.map(x => ({
+      chave: x.competencia, rotulo: formatos.mesCurto(x.competencia).split('/')[0], escolhido: x.competencia === mes,
+      faturado: x.faturado != null ? Math.max(2, Math.round((x.faturado / topoBanco) * 100)) : 0,
+      entradas: x.entradas != null ? Math.max(2, Math.round((x.entradas / topoBanco) * 100)) : 0,
+      semBanco: x.entradas == null,
+      aria: mesPorExtenso(x.competencia) + ': faturado ' + (x.faturado != null ? formatos.reais(x.faturado) : 'sem nota') + ', entrou no banco ' + (x.entradas != null ? formatos.reais(x.entradas) : 'sem extrato'),
+    })),
+  } : null;
+
+  const secoes = [
+    { id: 'mes' as const, rotulo: 'O mês', icone: 'barChart' as const },
+    ...(banco ? [{ id: 'banco' as const, rotulo: 'Banco', icone: 'landmark' as const }] : []),
+    ...(n ? [{ id: 'clientes' as const, rotulo: 'Clientes', icone: 'usuario' as const }] : []),
+  ];
+  const secao = secoes.some(x => x.id === secaoEscolhida) ? secaoEscolhida : 'mes';
+
+  // lê os lançamentos do mês quando a aba Banco está aberta (uma leitura por empresa e mês)
+  const chaveDoExtrato = secao === 'banco' && e ? e.codigo + '|' + mes : '';
+  useEffect(() => {
+    if (!chaveDoExtrato || extrato?.chave === chaveDoExtrato) return;
+    let vivo = true;
+    const [cod, m2] = chaveDoExtrato.split('|');
+    void repoAreaCliente.extratoDoMes(token, Number(cod), m2).then(d => { if (vivo) { setExtrato({ chave: chaveDoExtrato, dados: d }); setQuantosLancamentos(40); } });
+    return () => { vivo = false; };
+  }, [chaveDoExtrato, extrato?.chave, token]);
+  const contaPorId = new Map(bancosDaEmpresa.map(b => [b.id, b]));
+  const lancs = extrato?.chave === chaveDoExtrato ? extrato.dados : null;
+  const filtrados = (lancs?.lancamentos ?? []).filter(l => (!bancoAtual || l.conta === bancoAtual)
+    && (filtroDoExtrato === 'todos' || (filtroDoExtrato === 'entradas' ? l.valor > 0 : l.valor < 0)));
+  const somaDe = (f: (v: number) => boolean) => Math.round(filtrados.filter(l => f(l.valor)).reduce((t, l) => t + l.valor * 100, 0)) / 100;
+  const lancamentos = chaveDoExtrato ? {
+    carregando: !lancs && extrato?.chave !== chaveDoExtrato,
+    tem: !!lancs && lancs.lancamentos.length > 0,
+    filtro: filtroDoExtrato, filtrar: (f: 'todos' | 'entradas' | 'saidas') => { setFiltroDoExtrato(f); setQuantosLancamentos(40); },
+    quantos: filtrados.length, entrou: formatos.reais(somaDe(v => v > 0)), saiu: formatos.reais(-somaDe(v => v < 0)),
+    linhas: filtrados.slice(0, quantosLancamentos).map((l, k) => {
+      const conta = contaPorId.get(l.conta);
+      return { chave: k + '-' + l.dia + '-' + l.valor, data: String(l.dia).padStart(2, '0') + '/' + mes.slice(5, 7), historico: l.historico || 'Lançamento',
+        conta: !bancoAtual && bancosDaEmpresa.length > 1 ? { nome: conta?.nome ?? l.conta, marca: conta?.marca } : null,
+        valor: (l.valor > 0 ? '+' : '−') + formatos.reais(Math.abs(l.valor)), entrada: l.valor > 0 };
+    }),
+    mais: filtrados.length > quantosLancamentos ? filtrados.length - quantosLancamentos : 0,
+    verMais: () => setQuantosLancamentos(q => q + 80),
+    cortados: lancs?.cortados ?? 0,
+  } : null;
+
   return {
     tem: empresas.length > 0,
+    banco,
+    secao, secoes: secoes.map(x => ({ ...x, ativa: x.id === secao })), escolherSecao: setSecao,
+    lancamentos,
     empresas: empresas.map((x, i) => ({ i, nome: x.nome, ativa: x === e })),
     escolher: (i: number) => { setEscolhida(i); setMesEscolhido(null); setDiaEmFoco(null); },
     fonte,

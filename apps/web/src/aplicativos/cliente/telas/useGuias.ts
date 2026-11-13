@@ -7,6 +7,8 @@ import { useRetorno } from '@nads/ui';
 import { useState } from 'react';
 import { baixarArquivo } from '../dados/baixar';
 import { repoAreaCliente } from '../dados/repo';
+import { nomeDoZip } from '../dados/biblioteca';
+import { useBaixarVarios } from './useBaixarVarios';
 import { useVisualizar } from './useVisualizar';
 import { chaveDoMes, painelDasGuias, situacaoDoCertificado, type MarcaDoMes } from '../dados/regras';
 import { tituloDaGuiaNova } from '../dados/visaoGeral';
@@ -34,6 +36,7 @@ export function useGuias({ token, area, hoje, irPara, copiar }: DaCasca) {
   // a pré-visualização da guia (12/11/2026: "quero que a pessoa tenha uma pré-visualização")
   const vista = useVisualizar();
   const verGuia = (id: string) => vista.ver(id, () => repoAreaCliente.baixarGuia(token, id));
+  const zip = useBaixarVarios();
 
   async function baixar(id: string) {
     setBaixando(id);
@@ -166,7 +169,11 @@ export function useGuias({ token, area, hoje, irPara, copiar }: DaCasca) {
     // passa mais no banco, ela leva o "Pedir nova")
     urgente: proxima?.id ?? '',
     pedirGuiaNova: (g: ac.GuiaDoCliente) => irPara('chamados', { novoChamado: { tipo: 'documento', titulo: tituloDaGuiaNova(g) } }),
-    guias, codigos: area.codigos, vista, verGuia, baixando, baixar, copiarCodigo: (c: string) => copiar(c, 'Código'),
+    guias, codigos: area.codigos, vista, verGuia, baixando, baixar,
+    // o mesmo padrão da Central (13/11/2026): as setas da janela andam pelas guias a pagar; todas num .zip
+    setas: vista.setas(guias.filter(g => g.temPdf).map(g => g.id), id => repoAreaCliente.baixarGuia(token, id)),
+    comPdf: guias.filter(g => g.temPdf).length, juntando: zip.juntando,
+    baixarTodas: () => { void zip.baixarVarios(guias.filter(g => g.temPdf).map(g => g.id), id => repoAreaCliente.baixarGuia(token, id), nomeDoZip(area.resumo?.empresas?.[0]?.nome ?? '', mes, 'Guias')); }, copiarCodigo: (c: string) => copiar(c, 'Código'),
     pagas, comprovante, mostraPagas: area.secoes.pagas,
     certificado: area.certificado ? { ...area.certificado, ...situacaoDoCertificado(area.certificado, hoje) } : null,
     avisos: area.avisos, irPara, agenda,
