@@ -1197,7 +1197,16 @@ async function iniciar() {
   const correioDoRobo = { enviar, podeEnviar: n => dentroDoLimite(n), contar: () => enviosRecentes.push(Date.now()), registrarCobranca };
   conferirCaixas().then(cx => log('caixas do Gmail:', Object.entries(cx).map(([k, v]) => k + '=' + (v.autorizada ? (v.email || v.erro || '?') : 'não autorizada')).join(', ')));
   setInterval(conferirCaixas, 30 * 60 * 1000);
-  try { require('./comprovante-email').iniciarComprovantePorEmail({ db, log, correio: correioDoRobo }); }
+  try {
+    require('./comprovante-email').iniciarComprovantePorEmail({
+      db, log, correio: correioDoRobo,
+      // a entrega do impresso do Fiscal feita: a data no Relatório (13/11/2026)
+      aoConfirmar: async e => {
+        const feitas = await require('./lote-fiscal').dataDaEntregaDoImpresso(db, e);
+        if (feitas.length) log('Relatório do Fiscal: a data da entrega do impresso em ' + feitas.join(', '));
+      },
+    });
+  }
   catch (err) { log('comprovante por e-mail desligado:', err.message); }
   try { require('./regua-cobranca').iniciarReguaDeCobranca({ db, log, correio }); }
   catch (err) { log('régua de cobrança desligada:', err.message); }
