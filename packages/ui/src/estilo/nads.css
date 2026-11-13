@@ -6766,10 +6766,13 @@ td.fs-fat-sem{color:var(--ink-faint);}
 /* o Início novo (13/11/2026, só no modo desenvolvedor): só a disposição; as peças são as do catálogo */
 .ini-topo{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
 .ini-topo > .hint{margin:0;}
-.ini-busca{flex:0 1 360px;min-width:220px;}
-.ini-busca .busca-curta{width:100%;}
-.ini-busca-pop{top:calc(100% + 4px);left:0;width:min(440px,calc(100vw - 32px));max-height:min(480px,70vh);overflow:auto;}
-.ini-busca-pop .chip-row{padding:0 8px 6px;flex-wrap:wrap;}
+.ini-busca{flex:0 1 300px;min-width:200px;}
+.ini-busca .busca-curta{width:100%;margin-bottom:0;}
+.ini-busca-pop{top:calc(100% + 4px);left:auto;right:0;width:min(440px,calc(100vw - 32px));max-height:min(480px,70vh);overflow:auto;}
+.ini-busca-pop .chip-row{margin:0;padding:0 8px 6px;gap:8px;flex-wrap:wrap;}
+/* as pílulas com o ícone: 6px entre o ícone e o texto, o ícone no meio, todas da mesma altura ("tá torto") */
+.ini-busca-pop .chip-f{display:inline-flex;align-items:center;gap:6px;height:28px;}
+.ini-busca-pop .chip-f svg{flex:none;}
 .ini-busca-vazio{padding:4px 8px;margin:0;}
 .ini-novo > .imp-abas{margin-bottom:16px;}
 .ini-painel{display:grid;grid-template-columns:minmax(280px,1fr) minmax(360px,1.6fr);gap:20px;align-items:start;}

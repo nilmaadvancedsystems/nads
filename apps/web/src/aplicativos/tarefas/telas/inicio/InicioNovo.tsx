@@ -23,8 +23,9 @@ export function InicioNovo() {
   return (
     <section className="ini-novo">
       <div className="ini-topo">
-        <BuscaDoInicio vm={vm} />
         <span className="tarefas-barra-espaco" />
+        {/* a busca na fileira dos botões, à esquerda do ⚡ (Vitor, 13/11/2026: "Coloca a barra de pesquisa nesse regiao") */}
+        <BuscaDoInicio vm={vm} />
         {vm.exemplos && <span className="badge badge-neutral">Exemplos</span>}
         {mural.dev && <DadosDeTesteDoInicio teste={mural.teste} />}
         <button type="button" className="btn btn-outline" onClick={vm.pedirDocumentos} title="Delegar a alguém do escritório: quem recebe anexa os documentos e confirma"><Icone nome="clipe" />Delegar documentos</button>
