@@ -4,6 +4,7 @@
 // usava (a lista provisória de empresas/bancos.ts e os bancos adicionados na tela dele).
 import { nomeNorm } from '../../formatos';
 import { cnpjFormatado, documentoValido } from './receita';
+import { razaoSocialDoDocumento } from './razaoSocial';
 import { BANCOS_CONHECIDOS, bancosDaEmpresa, idDaConta, rotuloDaConta, type BancoDaEmpresa } from '../bancos';
 import {
   type BancoDoRelatorio, BANCOS_DO_RELATORIO, type CadastroDaEmpresa, type EmprestimoDaEmpresa, type CampoContaPadrao, type ContaBancaria, type ContaDoPlano, type ContaPadraoDoPlano, type ContasPadrao, type PlanoDeContas, type RegistroCadastro, type Socio, type TipoContaBancaria, type DepartamentoDoResponsavel, type ParametrosDoDp, type ParametrosDoDpDoMes, DEPARTAMENTOS_DO_RESPONSAVEL, type TransferenciaDeResponsavel, type ArquivoDoFiscal, type DocumentosDoFiscal, type PlanilhaDoFiscal, type AntecipacaoDoFiscal,
@@ -303,6 +304,7 @@ export function cadastroDoDocumento(nome: string, codigo: number | null, doc: Re
     ...responsaveisDoDocumento(doc.responsaveis), ...dpDoDocumento(doc.dp), ...fiscalDoDocumento(doc.fiscal), ...transferenciasDoDocumento(doc.transferencias),
     ...documentosFiscaisDoDocumento(doc.documentosFiscais),
     ...antecipacaoDoDocumento(doc.antecipacaoIcmsEs),
+    ...razaoSocialDoDocumento(doc.razaoSocial),
     ...(doc.nova && typeof doc.nova === 'object' && texto((doc.nova as Record<string, unknown>).regime)
       ? { nova: { regime: texto((doc.nova as Record<string, unknown>).regime), criadaEm: texto((doc.nova as Record<string, unknown>).criadaEm) } } : {}),
   };
@@ -332,6 +334,7 @@ export function documentoDoCadastro(c: CadastroDaEmpresa): Record<string, unknow
     ...(c.fiscal && Object.keys(c.fiscal).length ? { fiscal: c.fiscal } : {}),
     ...(c.transferencias && Object.keys(c.transferencias).length ? { transferencias: c.transferencias } : {}),
     ...(c.nova ? { nova: c.nova } : {}),
+    ...(c.razaoSocial ? { razaoSocial: c.razaoSocial } : {}),
     ...(c.documentosFiscais && (Object.keys(c.documentosFiscais.planilhas || {}).length || c.documentosFiscais.outros?.length) ? { documentosFiscais: c.documentosFiscais } : {}),
     ...(c.antecipacaoIcmsEs && (c.antecipacaoIcmsEs.aliquota != null || Object.keys(c.antecipacaoIcmsEs.situacoes || {}).length || Object.keys(c.antecipacaoIcmsEs.aliquotas || {}).length) ? { antecipacaoIcmsEs: c.antecipacaoIcmsEs } : {}),
     historico: c.historico.slice(0, MAX_HISTORICO),

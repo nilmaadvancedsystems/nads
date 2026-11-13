@@ -4284,6 +4284,9 @@ button.cofre-pessoa:hover{background:var(--hover-bg);}
 /* um sócio por linha: o nome, o CPF e o ✕ */
 .cfg-socio{display:grid;grid-template-columns:minmax(0,1fr) 160px auto;gap:8px;padding:6px 0;}
 .cfg-socio input{min-width:0;}
+/* a razão social (13/11/2026): o valor com o lápis; trocando, o campo com Salvar e Cancelar */
+.cfg-razao{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;}
+.cfg-razao input{width:min(420px,100%);min-width:0;}
 @media (max-width:760px){.cad-janela-conteudo{padding:14px 12px;}.cfg-socio{grid-template-columns:minmax(0,1fr) 120px auto;}}
 /* no celular, a linha que só mostra um valor (o CNPJ, o porte…) fica com o nome e o valor lado a lado */
 @media (max-width:640px){
