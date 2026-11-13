@@ -2,7 +2,7 @@
 // de cada tipo dá o código (BT-01, BT-02…): peça nova entra no FIM do tipo, para os códigos não mudarem.
 import {
   LogoSieg, LogoSimplesDaAba, LogoSped, Alerta, AnelDeContagem, BarrasEmColuna, BotaoAcao, BotaoFechar, Vazio, CartaoComAnel, RoscaComLegenda, ConfigLinha, ConfigSecao, Dica, MedalhaGov, classeDaJanela, ordemDosBotoes, BotaoIcone, CampoArquivos, CampoData, Esqueleto, Icone, Interruptor, LogoBanco, LogoDrive, LogoEcontador, LogoGmail, LogoSciReport, MapaDeCalor, Variacao,
-  LogoFgts, LogoGovernoMinas, LogoInss, LogoReceitaFederal, LogoSimplesNacional, LogoWhatsApp, MarcaN, MenuSuspenso, Segmentado, SoltarArquivos, BlocosDeEscolha, SeletorMes, SeletorTema, Stat, type NomeIcone, type OpcoesModal,
+  CalendarioDoMes, LogoFgts, LogoGovernoMinas, LogoInss, LogoReceitaFederal, LogoSimplesNacional, LogoWhatsApp, MarcaN, MenuSuspenso, Segmentado, SoltarArquivos, BlocosDeEscolha, SeletorMes, SeletorTema, Stat, type NomeIcone, type OpcoesModal,
 } from '@nads/ui';
 import { useState, type ReactNode } from 'react';
 import { CampoAssinatura, FORMATOS_DE_ARQUIVO, IconeDeArquivo } from '@nads/ui';
@@ -386,6 +386,8 @@ export const PECAS_BASE: Peca[] = [
     demo: () => <><input type="checkbox" /><input type="checkbox" defaultChecked /><input type="checkbox" disabled /><input type="checkbox" className="chk-auto" defaultChecked /></> },
   { id: 'interruptor', tipo: 'campos', nome: 'Interruptor', componente: 'Interruptor', classes: ['toggle-switch'], telas: ['c-consulta', 'a-sistema', 't-fiscal-controle'], demo: () => <InterruptorVivo /> },
   { id: 'data', tipo: 'campos', nome: 'Data (dd/mm/aaaa)', componente: 'CampoData', classes: ['data-mask'], telas: ['c-consulta', 'e-cheque', 'c-cliente-dp'], demo: () => <DataVivo /> },
+  { id: 'calendario-mes', tipo: 'campos', nome: 'Calendário do mês', descricao: 'O mês com ‹ ›, a semana de domingo a sábado e os dias: hoje na cor da marca, o dia escolhido com o contorno e a bolinha nos dias marcados (os prazos de tarefa). Clicar escolhe o dia; de novo, solta (13/11/2026, o Início novo: "Pode criar")', componente: 'CalendarioDoMes', classes: ['cal-mes', 'cal-mes-dia', 'hoje', 'escolhido', 'marcado'], telas: ['t-inicio'],
+    demo: () => <div style={{ width: 280 }}><CalendarioDoMes mes="2026-11" hoje="2026-11-13" escolhido="2026-11-18" marcados={{ 13: 2, 14: 1, 18: 3, 25: 1 }} dicaDoMarcado={n => n + (n === 1 ? ' tarefa' : ' tarefas')} onDia={nada} onMes={nada} /></div> },
   { id: 'mes', tipo: 'campos', nome: 'Seletor de mês', componente: 'SeletorMes', classes: ['seletor-mes'], telas: ['t-empresas', 't-contabil', 'c-cliente-guias'], demo: () => <MesVivo /> },
   { id: 'arquivos', tipo: 'campos', nome: 'Escolher arquivos', componente: 'CampoArquivos', classes: ['file-picker'], telas: ['t-empresa-lcdpr', 'c-importacao', 'e-cheque', 'e-creditor', 'c-cliente-chamados'],
     demo: () => <><CampoArquivos id="cat-arq" onEscolher={nada} aceitar=".xls,.xlsx" /><CampoArquivos id="cat-arq2" onEscolher={nada} aceitar=".xls" compacto rotulo="Importar todos os meses" /></> },

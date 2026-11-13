@@ -567,7 +567,7 @@ export const testeDoInicioLigado = (q: DadosDeTesteDoInicio) => !!teste[q];
 
 /** Liga ou desliga os dados de teste do Início (desligar volta ao que estava na tela). */
 export function ligarTesteDoInicio(q: DadosDeTesteDoInicio, ligar: boolean) {
-  if (q === 'avisos') teste.avisos = ligar ? criarAvisosMemoria() : null;
+  if (q === 'avisos') teste.avisos = ligar ? criarAvisosMemoria(true) : null;
   else teste.tarefas = ligar ? criarTarefasDelegadasMemoria(quemDasTarefas, true) : null;
   teste.ver++;
   for (const f of ouvintesDoTeste) f();

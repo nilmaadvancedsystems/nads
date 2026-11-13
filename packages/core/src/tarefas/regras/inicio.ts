@@ -14,6 +14,64 @@ export interface AvisoDoEscritorio {
   em: string;
   /** fica em cima dos outros */
   fixado?: boolean;
+  // o comunicado das Notificações do Início novo (13/11/2026: "Reuniões, avisos vai ficar fixado nessa pagina, links de
+  // estudos da legislação, etc, comunicação de equipe em geral (sem chats)"); o aviso antigo não tem nada disso
+  /** o tipo (sem tipo, é um aviso) */
+  tipo?: TipoDeComunicado;
+  /** o título curto (sem título, a lista mostra o começo do texto) */
+  titulo?: string;
+  /** o link (o estudo da legislação, a sala da reunião): só http(s) */
+  link?: string;
+  /** o dia e a hora da reunião, 'aaaa-mm-ddThh:mm' */
+  quando?: string;
+}
+
+/** Os tipos de comunicado da equipe, na ordem do menu. */
+export type TipoDeComunicado = 'aviso' | 'reuniao' | 'estudo' | 'geral';
+export const TIPOS_DE_COMUNICADO: readonly { valor: TipoDeComunicado; rotulo: string }[] = [
+  { valor: 'aviso', rotulo: 'Aviso' },
+  { valor: 'reuniao', rotulo: 'Reunião' },
+  { valor: 'estudo', rotulo: 'Estudo da legislação' },
+  { valor: 'geral', rotulo: 'Comunicado' },
+];
+export const ehTipoDeComunicado = (v: unknown): v is TipoDeComunicado => TIPOS_DE_COMUNICADO.some(x => x.valor === v);
+export const rotuloDoComunicado = (t: TipoDeComunicado | undefined): string => TIPOS_DE_COMUNICADO.find(x => x.valor === (t || 'aviso'))?.rotulo || 'Aviso';
+
+/** O maior título e o maior link (em caracteres). */
+export const MAIOR_TITULO_DO_COMUNICADO = 120;
+export const MAIOR_LINK = 500;
+
+/** O link é um endereço da internet (http ou https)? */
+export function linkValido(link: string): boolean {
+  if (!link) return false;
+  try { const u = new URL(link); return (u.protocol === 'https:' || u.protocol === 'http:') && link.length <= MAIOR_LINK; } catch { return false; }
+}
+
+/** O que vai além do texto num comunicado novo. */
+export interface ExtrasDoComunicado { tipo: TipoDeComunicado; titulo: string; link: string; quando: string }
+
+/** O que impede de publicar o comunicado ('' quando pode): o texto, o título, o link e, na reunião, o dia e a hora. */
+export function problemaDoComunicado(texto: string, x: ExtrasDoComunicado): string {
+  if (x.titulo.trim().length > MAIOR_TITULO_DO_COMUNICADO) return 'O título passou de ' + MAIOR_TITULO_DO_COMUNICADO + ' caracteres.';
+  if (x.link.trim() && !linkValido(x.link.trim())) return 'O link precisa começar com https://';
+  if (x.tipo === 'estudo' && !x.link.trim()) return 'Ponha o link do estudo.';
+  if (x.tipo === 'reuniao' && !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(x.quando)) return 'Escolha o dia e a hora da reunião.';
+  return problemaDoAviso(texto);
+}
+
+/** Os campos de um comunicado novo para gravar (só os que têm valor; o aviso simples fica como o antigo). */
+export function camposDoComunicado(x: ExtrasDoComunicado): Partial<Pick<AvisoDoEscritorio, 'tipo' | 'titulo' | 'link' | 'quando'>> {
+  return {
+    ...(x.tipo !== 'aviso' ? { tipo: x.tipo } : {}),
+    ...(x.titulo.trim() ? { titulo: x.titulo.trim() } : {}),
+    ...(x.link.trim() ? { link: x.link.trim() } : {}),
+    ...(x.tipo === 'reuniao' && x.quando ? { quando: x.quando } : {}),
+  };
+}
+
+/** As reuniões que ainda vão acontecer ('aaaa-mm-ddThh:mm' de agora), a mais próxima primeiro. */
+export function proximasReunioes<T extends Pick<AvisoDoEscritorio, 'tipo' | 'quando'>>(lista: readonly T[], agora: string): T[] {
+  return lista.filter(a => a.tipo === 'reuniao' && !!a.quando && a.quando >= agora).sort((a, b) => a.quando!.localeCompare(b.quando!));
 }
 
 /** O maior aviso (em caracteres). */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { juntarAvisos, limparAviso, MAIOR_AVISO, ordenarAvisos, porcentagemDe, problemaDoAviso, resumoDoProgresso } from './inicio';
+import { camposDoComunicado, juntarAvisos, limparAviso, linkValido, MAIOR_AVISO, ordenarAvisos, porcentagemDe, problemaDoAviso, problemaDoComunicado, proximasReunioes, resumoDoProgresso, type ExtrasDoComunicado } from './inicio';
 
 describe('avisos do escritório', () => {
   it('limpa as pontas e as linhas em branco repetidas', () => {
@@ -47,5 +47,28 @@ describe('resumo do progresso', () => {
     expect(porcentagemDe(999, 1000)).toBe(99);
     expect(porcentagemDe(10, 10)).toBe(100);
     expect(porcentagemDe(3, 0)).toBe(0);
+  });
+});
+
+describe('comunicados da equipe (as Notificações do Início novo)', () => {
+  const extras = (p: Partial<ExtrasDoComunicado> = {}): ExtrasDoComunicado => ({ tipo: 'aviso', titulo: '', link: '', quando: '', ...p });
+  it('aceita só link http(s)', () => {
+    expect(linkValido('https://www.gov.br/receitafederal')).toBe(true);
+    expect(linkValido('javascript:alert(1)')).toBe(false);
+    expect(linkValido('www.gov.br')).toBe(false);
+  });
+  it('pede o link no estudo e o dia e a hora na reunião', () => {
+    expect(problemaDoComunicado('Ler a IN', extras({ tipo: 'estudo' }))).toMatch(/link/);
+    expect(problemaDoComunicado('Pauta', extras({ tipo: 'reuniao', quando: '2026-11-20' }))).toMatch(/dia e a hora/);
+    expect(problemaDoComunicado('Pauta', extras({ tipo: 'reuniao', quando: '2026-11-20T09:00' }))).toBe('');
+    expect(problemaDoComunicado('', extras())).toBe('Escreva o aviso.');
+  });
+  it('grava só os campos com valor (o aviso simples fica como o antigo)', () => {
+    expect(camposDoComunicado(extras())).toEqual({});
+    expect(camposDoComunicado(extras({ tipo: 'reuniao', titulo: ' Fechamento ', quando: '2026-11-20T09:00' }))).toEqual({ tipo: 'reuniao', titulo: 'Fechamento', quando: '2026-11-20T09:00' });
+  });
+  it('lista as próximas reuniões, a mais perto primeiro', () => {
+    const l = [{ tipo: 'reuniao' as const, quando: '2026-11-21T09:00' }, { tipo: 'reuniao' as const, quando: '2026-11-10T09:00' }, { tipo: 'reuniao' as const, quando: '2026-11-15T14:00' }, { quando: '2026-11-16T09:00' }];
+    expect(proximasReunioes(l, '2026-11-13T10:00').map(x => x.quando)).toEqual(['2026-11-15T14:00', '2026-11-21T09:00']);
   });
 });

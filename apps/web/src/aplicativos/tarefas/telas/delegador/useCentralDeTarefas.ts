@@ -9,6 +9,7 @@ import { useTarefasDelegadas } from '../../dados/repo';
 import { useAgoraDoExpediente } from './useAgoraDoExpediente';
 
 const d = tarefas.delegadas;
+const ag = tarefas.agenda;
 export type AbaDaCentral = tarefas.delegadas.Aba;
 type Status = tarefas.delegadas.Status;
 type Filtro = tarefas.delegadas.FiltroDaLista;
@@ -31,7 +32,11 @@ function movimentoDe(t: tarefas.delegadas.TarefaDelegada): string {
   return m.por + ' · ' + m.texto.replace(/ a tarefa$/, '').toLowerCase() + ' · ' + quando;
 }
 
-export function useCentralDeTarefas(abaInicial: AbaDaCentral) {
+/**
+ * opcoes, do Início novo (13/11/2026, só no modo desenvolvedor): agenda = os grupos Hoje, Amanhã e Esta semana (o print) em
+ * vez dos do prazo; documentos = só os documentos delegados (a aba Documentos).
+ */
+export function useCentralDeTarefas(abaInicial: AbaDaCentral, opcoes: { agenda?: boolean; documentos?: boolean } = {}) {
   const repo = useTarefasDelegadas();
   const [aba, setAba] = useState<AbaDaCentral>(abaInicial);
   const [busca, setBusca] = useState('');
@@ -42,7 +47,9 @@ export function useCentralDeTarefas(abaInicial: AbaDaCentral) {
   const [aberta, setAberta] = useState<string | null>(null);
   const [erroDaAcao, setErroDaAcao] = useState('');
   const uid = repo.eu()?.uid || '';
-  const { carregadas, tarefas: todas, erro } = repo.lista();
+  const lidas = repo.lista();
+  const { carregadas, erro } = lidas;
+  const todas = opcoes.documentos ? lidas.tarefas.filter(d.pedeDocumentos) : lidas.tarefas;
   const hoje = d.hojeIso();
   const agora = new Date().toTimeString().slice(0, 5);
   // a em andamento aparece Pausada nos intervalos (11:05–13:00 e 18:05–07:00); o banco segue Em andamento
@@ -71,6 +78,8 @@ export function useCentralDeTarefas(abaInicial: AbaDaCentral) {
     maisClientes: t.clientes.length - 1,
     clientes: t.clientes.map(nomeDoCliente).join('\n'),
     pessoa: pessoa(t), anexos: t.anexos.length, pareceres: t.pareceres.length,
+    // o Início novo: o prazo curto ("Hoje", "Quarta") e o responsável (a foto na coluna)
+    prazoCurto: ag.prazoCurto(t.prazo, hoje) + (t.prazoHora ? ' ' + t.prazoHora : ''), responsavel: t.responsavel,
     // os botões de quem faz a tarefa (Minhas tarefas)
     acoes: aba === 'minhas' ? d.acoesNoHorario(doBanco.get(t.id) || t, relogio) : [],
     // o que aconteceu por último (Delegadas por mim)
@@ -105,7 +114,9 @@ export function useCentralDeTarefas(abaInicial: AbaDaCentral) {
     /** as linhas agrupadas pelo prazo, na ordem do core em cada grupo; as encerradas num grupo só */
     grupos: aba === 'concluidas'
       ? [{ id: 'encerradas', rotulo: '', linhas: lista.map(linha) }]
-      : d.GRUPOS_DO_PRAZO.map(g => ({ id: g.valor as string, rotulo: g.rotulo, linhas: lista.filter(t => d.grupoDoPrazo(t, hoje, agora) === g.valor).map(linha) })).filter(g => g.linhas.length > 0),
+      : opcoes.agenda
+        ? ag.GRUPOS_DA_AGENDA.map(g => ({ id: g.valor as string, rotulo: g.rotulo, linhas: lista.filter(t => ag.grupoDaAgenda(t, hoje, agora) === g.valor).map(linha) })).filter(g => g.linhas.length > 0)
+        : d.GRUPOS_DO_PRAZO.map(g => ({ id: g.valor as string, rotulo: g.rotulo, linhas: lista.filter(t => d.grupoDoPrazo(t, hoje, agora) === g.valor).map(linha) })).filter(g => g.linhas.length > 0),
     temLinhas: lista.length > 0,
     aberta,
     abrir: (id: string) => setAberta(id),

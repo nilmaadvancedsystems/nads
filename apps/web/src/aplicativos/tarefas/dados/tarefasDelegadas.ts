@@ -86,6 +86,47 @@ function exemplos(agora = new Date(), eu: Pessoa | null = null): TarefaDelegada[
     { ...base, id: 'td-4', numero: 4, titulo: 'Revisar as férias de outubro', prioridade: 'normal', prazo: dia(-3), status: 'concluida', criadaPor: savio, responsavel: nilma,
       criadaEm: ha(120), concluidaEm: ha(30), atualizadaEm: ha(30),
       historico: [{ por: 'Sávio', em: ha(120), texto: 'Criou a tarefa' }, { por: 'Sávio', em: ha(120), texto: 'Delegou para ' + nilma.nome }, { por: nilma.nome, em: ha(30), texto: 'Mudou o status de Pendente para Concluída' }] },
+    ...(eu ? maisExemplos(agora, eu) : []),
+  ];
+}
+
+/**
+ * Mais tarefas para o ⚡ do Início (o modo desenvolvedor; 13/11/2026: "SEMPRE desenvolver formas de preenchimento de dados
+ * ficticios para meu teste"): enchem Hoje, Amanhã e Esta semana, os documentos delegados, os comentários e o Por cliente
+ * do Início novo. Só empresas fictícias (o repositório é público).
+ */
+function maisExemplos(agora: Date, eu: Pessoa): TarefaDelegada[] {
+  const ha = (h: number) => new Date(agora.getTime() - h * 3600_000).toISOString();
+  const dia = (n: number) => d.hojeIso(new Date(agora.getTime() + n * 86400_000));
+  const p = (uid: string, nome: string) => ({ uid, nome });
+  const savio = p('exemplo-2', 'Sávio'), vitor = p('exemplo-3', 'Vitor'), clara = p('exemplo-6', 'Clara'), heverton = p('exemplo-7', 'Heverton'), fernando = p('exemplo-4', 'Fernando');
+  const alfa = { codigo: 14, nome: 'ALFA COMERCIO LTDA' }, beta = { codigo: 27, nome: 'BETA SERVICOS LTDA' }, gama = { codigo: 33, nome: 'GAMA TRANSPORTES LTDA' }, delta = { codigo: 41, nome: 'DELTA AGROPECUARIA LTDA' };
+  const base = { descricao: '', prazoHora: '', concluidaEm: '', pareceres: [], anexos: [] };
+  const criada = (de: Pessoa, para: Pessoa, h: number) => [{ por: de.nome, em: ha(h), texto: 'Criou a tarefa' }, { por: de.nome, em: ha(h), texto: 'Delegou para ' + para.nome }];
+  const t = (n: number, x: Omit<TarefaDelegada, 'id' | 'numero' | 'cliente' | 'descricao' | 'prazoHora' | 'concluidaEm' | 'pareceres' | 'anexos'> & Partial<TarefaDelegada>): TarefaDelegada =>
+    ({ ...base, id: 'td-' + n, numero: n, cliente: x.clientes[0] || null, ...x });
+  return [
+    t(5, { titulo: 'Fechar a folha de novembro', clientes: [alfa], prioridade: 'alta', prazo: dia(0), prazoHora: '17:00', status: 'andamento', criadaPor: savio, responsavel: eu, criadaEm: ha(30), atualizadaEm: ha(3),
+      pareceres: [{ por: 'Sávio', em: ha(3), texto: 'As horas extras do mês vieram na planilha anexada.' }],
+      historico: [...criada(savio, eu, 30), { por: eu.nome, em: ha(10), texto: 'Iniciou a tarefa' }, { por: 'Sávio', em: ha(3), texto: 'Escreveu um parecer' }] }),
+    t(6, { titulo: 'Conferir as notas de entrada', clientes: [beta], prioridade: 'normal', prazo: dia(0), status: 'pendente', criadaPor: heverton, responsavel: eu, criadaEm: ha(28), atualizadaEm: ha(28), historico: criada(heverton, eu, 28) }),
+    t(7, { titulo: 'Emitir a guia do FGTS', clientes: [gama], prioridade: 'urgente', prazo: dia(1), status: 'pendente', criadaPor: savio, responsavel: eu, criadaEm: ha(12), atualizadaEm: ha(12), historico: criada(savio, eu, 12) }),
+    t(8, { titulo: 'Responder o e-mail do sócio sobre o pró-labore', clientes: [alfa], prioridade: 'baixa', prazo: dia(1), status: 'pendente', criadaPor: eu, responsavel: eu, criadaEm: ha(6), atualizadaEm: ha(6),
+      historico: [{ por: eu.nome, em: ha(6), texto: 'Criou a tarefa' }] }),
+    t(9, { titulo: 'Lançar o extrato do Sicoob', clientes: [delta], prioridade: 'normal', prazo: dia(3), status: 'pausada', criadaPor: vitor, responsavel: eu, criadaEm: ha(40), atualizadaEm: ha(9),
+      pareceres: [{ por: 'Vitor', em: ha(9), texto: 'O extrato de outubro ainda não chegou, pedi para o cliente.' }],
+      historico: [...criada(vitor, eu, 40), { por: eu.nome, em: ha(20), texto: 'Iniciou a tarefa' }, { por: eu.nome, em: ha(9), texto: 'Pausou a tarefa' }, { por: 'Vitor', em: ha(9), texto: 'Escreveu um parecer' }] }),
+    t(10, { titulo: 'Revisar o balancete do trimestre', clientes: [beta, gama], prioridade: 'alta', prazo: dia(5), status: 'pendente', criadaPor: fernando, responsavel: eu, criadaEm: ha(16), atualizadaEm: ha(16), historico: criada(fernando, eu, 16) }),
+    t(11, { titulo: 'Organizar a pasta do Drive', clientes: [], prioridade: 'baixa', prazo: '', status: 'pendente', criadaPor: eu, responsavel: eu, criadaEm: ha(70), atualizadaEm: ha(70), historico: [{ por: eu.nome, em: ha(70), texto: 'Criou a tarefa' }] }),
+    t(12, { titulo: 'Apurar o Simples de outubro', clientes: [delta], prioridade: 'normal', prazo: dia(12), status: 'pendente', criadaPor: heverton, responsavel: eu, criadaEm: ha(5), atualizadaEm: ha(5), historico: criada(heverton, eu, 5) }),
+    // o que eu deleguei (o cartão Delegadas por mim)
+    t(13, { titulo: 'Cadastrar os funcionários novos', clientes: [gama], prioridade: 'normal', prazo: dia(2), status: 'andamento', criadaPor: eu, responsavel: savio, criadaEm: ha(26), atualizadaEm: ha(4), visualizadaEm: ha(20),
+      pareceres: [{ por: 'Sávio', em: ha(4), texto: 'Faltam os documentos de dois funcionários.' }],
+      historico: [...criada(eu, savio, 26), { por: 'Sávio', em: ha(18), texto: 'Iniciou a tarefa' }, { por: 'Sávio', em: ha(4), texto: 'Escreveu um parecer' }] }),
+    t(14, { titulo: 'Conferir o ICMS do mês', clientes: [beta], prioridade: 'alta', prazo: dia(4), status: 'pendente', criadaPor: eu, responsavel: heverton, criadaEm: ha(3), atualizadaEm: ha(3), historico: criada(eu, heverton, 3) }),
+    // os documentos delegados (a aba Documentos)
+    t(15, { tipo: 'documentos', titulo: d.TITULO_DO_PEDIDO, descricao: 'Os contratos de locação assinados.', clientes: [delta], prioridade: 'normal', prazo: dia(2), status: 'pendente', criadaPor: vitor, responsavel: eu, criadaEm: ha(8), atualizadaEm: ha(8), historico: criada(vitor, eu, 8) }),
+    t(16, { tipo: 'documentos', titulo: d.TITULO_DO_PEDIDO, descricao: 'Os recibos de aluguel de setembro e outubro.', clientes: [alfa], prioridade: 'normal', prazo: dia(6), status: 'pendente', criadaPor: eu, responsavel: clara, criadaEm: ha(14), atualizadaEm: ha(14), historico: criada(eu, clara, 14) }),
   ];
 }
 

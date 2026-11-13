@@ -12,7 +12,17 @@ const updateDoc = guardar(updateDocBruto) as typeof updateDocBruto;
 const deleteDoc = guardar(deleteDocBruto) as typeof deleteDocBruto;
 
 const texto = (v: unknown) => (v == null ? '' : String(v));
-const avisosDe = (s: QuerySnapshot): t.AvisoDoEscritorio[] => s.docs.map(d => { const x = d.data(); return { id: d.id, texto: texto(x.texto), por: texto(x.por), em: texto(x.em), fixado: x.fixado === true }; });
+// o comunicado do Início novo (13/11/2026): o tipo, o título, o link e o dia da reunião só entram quando o documento tem
+const avisosDe = (s: QuerySnapshot): t.AvisoDoEscritorio[] => s.docs.map(d => {
+  const x = d.data();
+  return {
+    id: d.id, texto: texto(x.texto), por: texto(x.por), em: texto(x.em), fixado: x.fixado === true,
+    ...(t.ehTipoDeComunicado(x.tipo) ? { tipo: x.tipo } : {}),
+    ...(x.titulo ? { titulo: texto(x.titulo) } : {}),
+    ...(x.link && t.linkValido(texto(x.link)) ? { link: texto(x.link) } : {}),
+    ...(x.quando ? { quando: texto(x.quando) } : {}),
+  };
+});
 
 export function criarAvisosFirestore(): RepoAvisos {
   const db = bancoDoEntregas();
@@ -42,10 +52,11 @@ export function criarAvisosFirestore(): RepoAvisos {
       }
       return estado;
     },
-    async publicar(textoDoAviso, por) {
-      const problema = t.problemaDoAviso(textoDoAviso);
+    // os campos do comunicado (extras) só passam no banco quando a regra do nadsAvisos aceitar (ainda não publicada: 13/11/2026)
+    async publicar(textoDoAviso, por, extras) {
+      const problema = extras ? t.problemaDoComunicado(textoDoAviso, extras) : t.problemaDoAviso(textoDoAviso);
       if (problema) throw new Error(problema);
-      await setDoc(doc(collection(db, 'nadsAvisos')), { texto: t.limparAviso(textoDoAviso), por, em: new Date().toISOString(), fixado: false });
+      await setDoc(doc(collection(db, 'nadsAvisos')), { texto: t.limparAviso(textoDoAviso), por, em: new Date().toISOString(), fixado: false, ...(extras ? t.camposDoComunicado(extras) : {}) });
     },
     async fixar(id, fixado) { await updateDoc(doc(db, 'nadsAvisos', id), { fixado }); },
     async apagar(id) { await deleteDoc(doc(db, 'nadsAvisos', id)); },
