@@ -1,10 +1,11 @@
-// Minhas tarefas e Documentos do Início novo (o print de My tasks): um cartão por grupo (Atrasadas, Hoje, Amanhã, Esta
-// semana, Mais adiante, Sem prazo), cada um com a tabela: a caixinha (concluir), a tarefa, o prazo, a situação, a
-// prioridade, o cliente (no lugar de Team) e o responsável. Em cima, quais (Minhas, Delegadas por mim, Concluídas; nos
-// Documentos, Recebidos, Enviados, Concluídos), a busca e os filtros (a prioridade, o cliente e a pessoa). O ViewModel é o da Central (useCentralDeTarefas), com
-// os grupos do print e, nos Documentos, só os documentos delegados.
-import { Icone, LogoExcel, MenuSuspenso, Segmentado, Vazio, type NomeIcone } from '@nads/ui';
-import { useState } from 'react';
+// As Tarefas e os Documentos do Início novo (o print de My tasks): um cartão por grupo (Atrasadas, Hoje, Amanhã, Esta semana,
+// Mais adiante, Sem prazo; nos Documentos, também os Concluídos), cada um com a tabela: a caixinha (concluir), a tarefa, o
+// prazo, a situação, a prioridade, o cliente (no lugar de Team) e a pessoa. Qual lista das Tarefas (Minhas, Delegadas por mim,
+// Concluídas) vem da barra lateral padrão da casca ("Menu lateral padrão nads!"); a busca, as pílulas e o cliente vêm da busca
+// do alto (uma busca só na tela); aqui ficam a prioridade, a pessoa e a planilha. O ViewModel é o da Central
+// (useCentralDeTarefas), com os grupos do print e, nos Documentos, todos os documentos delegados juntos.
+import { tarefas } from '@nads/core';
+import { Icone, LogoExcel, MenuSuspenso, Vazio } from '@nads/ui';
 import { MenuDeFiltro } from '../../dp/MenuDeFiltro';
 import { SeloDaPrioridade, SeloDoStatus } from '../../delegador/partes/SelosDaTarefa';
 import { useCentralDeTarefas, type AbaDaCentral } from '../../delegador/useCentralDeTarefas';
@@ -12,58 +13,17 @@ import type { PessoaComFoto } from '../useInicioNovo';
 import { Foto } from './PainelDoInicio';
 
 const TOM: Record<string, 'warn' | 'info' | 'neutral' | 'ok'> = { pendente: 'warn', andamento: 'info', pausada: 'neutral', concluida: 'ok', cancelada: 'neutral' };
-const ROTULO_DOS_DOCUMENTOS: Record<AbaDaCentral, string> = { minhas: 'Recebidos', delegadas: 'Enviados', concluidas: 'Concluídos' };
-const ICONE_DA_LATERAL: Record<AbaDaCentral, NomeIcone> = { minhas: 'caixaEntrada', delegadas: 'aviao', concluidas: 'checkCircle' };
-
-/** o filtro por cliente (Vitor, 13/11/2026: "Coloca filtro por cliente"): o menu com a busca, como o cliente da comissão */
-function FiltroDeCliente({ valor, mudar, opcoes }: { valor: string; mudar: (v: string) => void; opcoes: readonly string[] }) {
-  const [q, setQ] = useState('');
-  const achados = (q.trim() ? opcoes.filter(o => o.toLowerCase().includes(q.trim().toLowerCase())) : opcoes).slice(0, 80);
-  const escolher = (fechar: () => void, v: string) => { fechar(); mudar(v); setQ(''); };
+export function ListaDoInicio({ documentos = false, lista: qual = 'minhas', busca, filtrar, abrir, comFoto }: {
+  documentos?: boolean; lista?: AbaDaCentral; busca: string; filtrar: (t: tarefas.delegadas.TarefaDelegada) => boolean;
+  abrir: (id: string) => void; comFoto: (p: { uid: string; nome: string }) => PessoaComFoto;
+}) {
+  const vm = useCentralDeTarefas(qual, { agenda: true, documentos, busca, filtrar });
   return (
-    <MenuSuspenso rotulo={valor ? 'Cliente: ' + valor : 'Cliente'} className={'btn btn-outline ini-filtro-cliente' + (valor ? ' ativo' : '')} titulo="Filtrar pelo cliente" flutuante largura={380}
-      conteudo={fechar => (
-        <>
-          <label className="busca-curta larga">
-            <Icone nome="search" />
-            <input type="text" placeholder="Buscar pelo nome ou código" aria-label="Buscar o cliente" value={q} onChange={e => setQ(e.target.value)}
-              ref={el => { if (el && document.activeElement !== el) setTimeout(() => el.focus(), 0); }}
-              onKeyDown={e => { if (e.key === 'Enter' && achados.length === 1) escolher(fechar, achados[0]); }} />
-          </label>
-          <div className="menu-busca-lista">
-            <button type="button" className="popover-item" role="menuitemcheckbox" aria-checked={!valor} onClick={() => escolher(fechar, '')}>
-              <span className="popover-marca">{!valor && <Icone nome="check" />}</span><span className="popover-texto">Todos os clientes</span>
-            </button>
-            {achados.map(o => (
-              <button key={o} type="button" className="popover-item" role="menuitemcheckbox" aria-checked={o === valor} onClick={() => escolher(fechar, o)}>
-                <span className="popover-marca">{o === valor && <Icone nome="check" />}</span><span className="popover-texto">{o}</span>
-              </button>
-            ))}
-            {!achados.length && <p className="hint">Nenhum cliente com essa busca.</p>}
-          </div>
-        </>
-      )} />
-  );
-}
-
-export function ListaDoInicio({ documentos = false, abrir, comFoto }: { documentos?: boolean; abrir: (id: string) => void; comFoto: (p: { uid: string; nome: string }) => PessoaComFoto }) {
-  const vm = useCentralDeTarefas('minhas', { agenda: true, documentos });
-  // nas Tarefas, Minhas tarefas / Delegadas por mim / Concluídas num menu lateral (Vitor, 13/11/2026: "Abre um menu lateral, minhas
-  // tarefas/Delegadas"); nos Documentos, continuam em cima
-  const lista = (
     <section className="ini-lista">
       <div className="tarefas-barra-topo">
-        {documentos && <Segmentado valor={vm.aba} onMudar={vm.mudarAba}
-          opcoes={vm.abas.map(a => ({ valor: a.id, rotulo: ROTULO_DOS_DOCUMENTOS[a.id] + (a.qtd ? ' (' + a.qtd + ')' : '') }))} />}
         {!vm.abaVazia && (
           <>
-            <label className="busca-curta">
-              <Icone nome="search" />
-              <input type="text" placeholder="Buscar por número, título ou cliente" aria-label="Buscar nesta lista" value={vm.busca}
-                onChange={e => vm.setBusca(e.target.value)} onKeyDown={e => { if (e.key === 'Escape') vm.setBusca(''); }} />
-            </label>
             <MenuDeFiltro rotulo="Prioridade" valor={vm.prioridade} mudar={vm.setPrioridade} todos="Todas as prioridades" opcoes={vm.opcoesDePrioridade} />
-            {vm.clientes.length > 0 && <FiltroDeCliente valor={vm.cliente} mudar={vm.setCliente} opcoes={vm.clientes} />}
             {vm.pessoas.length > 0 && <MenuDeFiltro rotulo={vm.colunaDaPessoa} valor={vm.quem} mudar={vm.setQuem} todos="Todas as pessoas" opcoes={vm.pessoas} />}
             {vm.algumFiltro && <button type="button" className="btn btn-ghost dp-limpar" onClick={vm.limparFiltros}><Icone nome="x" />Limpar</button>}
           </>
@@ -91,7 +51,7 @@ export function ListaDoInicio({ documentos = false, abrir, comFoto }: { document
           <div className="table-wrap">
             <table className="table-compact ini-tabela">
               <thead>
-                <tr><th aria-label="Concluir" /><th>Tarefa</th><th>Prazo</th><th>Situação</th><th>Prioridade</th><th>Cliente</th><th>{vm.aba === 'minhas' ? 'Quem delegou' : 'Responsável'}</th></tr>
+                <tr><th aria-label="Concluir" /><th>Tarefa</th><th>Prazo</th><th>Situação</th><th>Prioridade</th><th>Cliente</th><th>{documentos ? vm.colunaDaPessoa : vm.aba === 'minhas' ? 'Quem delegou' : 'Responsável'}</th></tr>
               </thead>
               <tbody>
                 {g.linhas.map(l => {
@@ -110,7 +70,7 @@ export function ListaDoInicio({ documentos = false, abrir, comFoto }: { document
                       <td><SeloDaPrioridade valor={l.prioridade.valor} rotulo={l.prioridade.rotulo} /></td>
                       <td title={l.clientes}>{l.cliente || '—'}{(l.maisClientes ?? 0) > 0 && <span className="fraco"> +{l.maisClientes}</span>}</td>
                       <td>
-                        {vm.aba === 'minhas' ? l.pessoa
+                        {vm.aba === 'minhas' || documentos ? l.pessoa
                           : <span className="ini-pessoa"><Foto p={comFoto(l.responsavel)} />{l.responsavel.nome}</span>}
                       </td>
                     </tr>
@@ -122,19 +82,5 @@ export function ListaDoInicio({ documentos = false, abrir, comFoto }: { document
         </section>
       ))}
     </section>
-  );
-  if (documentos) return lista;
-  return (
-    <div className="ini-tarefas">
-      <nav className="subnav ini-lateral" aria-label="Tarefas">
-        {vm.abas.map(a => (
-          <button key={a.id} type="button" className={'subnav-item' + (a.ativa ? ' active' : '')} aria-current={a.ativa ? 'page' : undefined} onClick={() => vm.mudarAba(a.id)}>
-            <Icone nome={ICONE_DA_LATERAL[a.id]} /><span>{a.rotulo}</span>
-            {a.qtd > 0 && <span className="subnav-count">{a.qtd}</span>}
-          </button>
-        ))}
-      </nav>
-      {lista}
-    </div>
   );
 }

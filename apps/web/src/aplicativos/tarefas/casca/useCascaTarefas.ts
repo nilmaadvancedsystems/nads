@@ -7,12 +7,12 @@ import { useLocation, useNavigate } from 'react-router';
 import { VERSAO_SISTEMA } from '../../../versao';
 import { aplicacao, aplicacoesDe, BASE, caminhoDaPagina, FERRAMENTAS_DO_FISCAL, type IdAplicacao } from './navegacao';
 import { useOperador, type Operador } from './operador';
-import { useAcesso } from '../dados/repo';
+import { useAcesso, useTarefasDelegadas } from '../dados/repo';
 import { usePessoal } from '../telas/pessoal/contexto';
 import { useModoDesenvolvedor } from '../../../comum/modoDesenvolvedor';
 import { useNovidade } from '../../../comum/novidades';
 import { tarefas } from '@nads/core';
-import { abaDaUrl, ABAS_DO_INICIO } from '../telas/inicio/abasDoInicio';
+import { abaDaUrl, ABAS_DO_INICIO, LISTAS_DAS_TAREFAS, listaDaUrl } from '../telas/inicio/abasDoInicio';
 import { aplicarSimulacao, useSaudacaoSimulada } from '../telas/inicio/saudacaoSimulada';
 
 export function useCascaTarefas(app: IdAplicacao, pagina: string) {
@@ -50,6 +50,12 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
   const s = dev ? aplicarSimulacao(real.agora, real.aniversario, simulada) : real;
   const tituloDoInicio = inicioNovo ? tarefas.saudacao.saudacao({ nome: op.nome, quem: daEquipe?.uid || op.nome, agora: s.agora, aniversario: s.aniversario, troca: dev ? simulada.troca : 0, simulando: dev && Object.keys(simulada).length > 0 }) : '';
   const abaDoInicio = abaDaUrl(new URLSearchParams(search).get('aba'));
+  // as Tarefas do Início novo com a barra lateral padrão do nads (Vitor, 13/11/2026: "Menu lateral padrão nads!"): Minhas tarefas,
+  // Delegadas por mim e Concluídas, com quantas tem
+  const tarefasNoInicio = inicioNovo && abaDoInicio === 'tarefas';
+  const listaDoInicio = listaDaUrl(new URLSearchParams(search).get('lista'));
+  const delegadas = useTarefasDelegadas();
+  const quantas = tarefasNoInicio ? tarefas.delegadas.contarAbas(delegadas.lista().tarefas, delegadas.eu()?.uid || '') : null;
   return {
     // a Tarefas não tem uma empresa aberta: a trilha fica só com o caminho (Vitor, 05/10/2026: sem o "Vitor · Sair da
     // conta" — sair fica no avatar)
@@ -59,11 +65,12 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
     // o Cadastro com as páginas em abas no alto (Empresas, Usuários, Configurações; Vitor, 05/10/2026), sem a barra lateral
     comAbas,
     /** sem a barra lateral: as abas no alto dão conta (só a aba Ferramentas do Fiscal tem barra) */
-    soAbas: comAbas && !emFerramentas,
+    soAbas: comAbas && !emFerramentas && !tarefasNoInicio,
     /** as tabelas do Fiscal sem o título, que repetia a aba (09/11/2026: "um aproveitamento maior da tela") */
     semTitulo: app === 'fiscal' && ['relatorio-simples', 'relatorio-presumido', 'reinf'].includes(pagina),
     // os blocos com nome (as Configurações: Cadastro e Admin; 28/10/2026): o nome em cima da primeira página de cada um
-    secoes: comAbas && !emFerramentas ? [] : (a?.paginas || []).filter(p => !comAbas || ehFerramenta(p.id)).map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, marca: p.marca === 'fgts' ? p.marca : undefined, grupo: p.secao ? 1 + [...new Set(a?.paginas.map(x => x.secao))].indexOf(p.secao) : 1, titulo: p.secao, ativa: p.id === pagina, travada: !!p.emDesenvolvimento })),
+    secoes: tarefasNoInicio ? LISTAS_DAS_TAREFAS.map(l => ({ id: l.id, rotulo: l.rotulo, icone: l.icone, grupo: 1, ativa: l.id === listaDoInicio, contador: quantas && quantas[l.id] ? String(quantas[l.id]) : undefined }))
+      : comAbas && !emFerramentas ? [] : (a?.paginas || []).filter(p => !comAbas || ehFerramenta(p.id)).map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, marca: p.marca === 'fgts' ? p.marca : undefined, grupo: p.secao ? 1 + [...new Set(a?.paginas.map(x => x.secao))].indexOf(p.secao) : 1, titulo: p.secao, ativa: p.id === pagina, travada: !!p.emDesenvolvimento })),
     paginas: inicioNovo ? ABAS_DO_INICIO.map(x => ({ id: x.id, rotulo: x.rotulo, icone: x.icone as NomeIcone, ativa: x.id === abaDoInicio })) : comAbas ? [
       ...(a?.paginas || []).filter(p => !ehFerramenta(p.id)).map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone as NomeIcone, marca: p.marca === 'fgts' ? undefined : p.marca, ativa: p.id === pagina })),
       ...(app === 'fiscal' ? [{ id: 'ferramentas', rotulo: 'Ferramentas', icone: 'wrench' as NomeIcone, ativa: emFerramentas }] : []),
@@ -76,6 +83,7 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
     // páginas da mesma aplicação mantêm a competência escolhida (fica na URL)
     // a página em desenvolvimento não abre: só o aviso (21/10/2026)
     onSecao: (id: string) => {
+      if (tarefasNoInicio) { navegar(BASE + '/inicio?aba=tarefas&lista=' + id, { replace: true }); return; }
       const p = a?.paginas.find(x => x.id === id);
       if (p?.emDesenvolvimento) { aviso({ tom: 'info', titulo: p.rotulo + ': em desenvolvimento', texto: 'Esta tela ainda não está liberada.' }); return; }
       navegar(caminhoDaPagina(app, id) + search);

@@ -34,9 +34,11 @@ function movimentoDe(t: tarefas.delegadas.TarefaDelegada): string {
 
 /**
  * opcoes, do Início novo (13/11/2026, só no modo desenvolvedor): agenda = os grupos Hoje, Amanhã e Esta semana (o print) em
- * vez dos do prazo; documentos = só os documentos delegados (a aba Documentos).
+ * vez dos do prazo; documentos = só os documentos delegados (a aba Documentos), todos juntos (recebidos, enviados e
+ * concluídos; 13/11/2026: os filtros ficam na busca do alto); busca e filtrar = a busca e as pílulas do alto do Início novo
+ * (uma busca só na tela).
  */
-export function useCentralDeTarefas(abaInicial: AbaDaCentral, opcoes: { agenda?: boolean; documentos?: boolean } = {}) {
+export function useCentralDeTarefas(abaInicial: AbaDaCentral, opcoes: { agenda?: boolean; documentos?: boolean; busca?: string; filtrar?: (t: tarefas.delegadas.TarefaDelegada) => boolean } = {}) {
   const repo = useTarefasDelegadas();
   const [aba, setAba] = useState<AbaDaCentral>(abaInicial);
   const [busca, setBusca] = useState('');
@@ -58,15 +60,15 @@ export function useCentralDeTarefas(abaInicial: AbaDaCentral, opcoes: { agenda?:
   const relogio = useAgoraDoExpediente();
   const doBanco = new Map(todas.map(t => [t.id, t]));
   const contadores = d.contarAbas(todas, uid);
-  const daAba = d.daAba(todas, aba, uid).map(t => ({ ...t, status: d.situacaoNoHorario(t, relogio).status }));
+  const daAba = (opcoes.documentos ? todas : d.daAba(todas, aba, uid)).map(t => ({ ...t, status: d.situacaoNoHorario(t, relogio).status }));
   const pessoa = (t: tarefas.delegadas.TarefaDelegada) => {
-    if (aba === 'minhas') return t.criadaPor.uid === uid ? 'Você mesmo' : t.criadaPor.nome;
+    if (aba === 'minhas' && !opcoes.documentos) return t.criadaPor.uid === uid ? 'Você mesmo' : t.criadaPor.nome;
     if (aba === 'delegadas') return t.responsavel.nome;
     if (t.criadaPor.uid === t.responsavel.uid) return 'Você mesmo';
     return t.responsavel.uid === uid ? 'de ' + t.criadaPor.nome : 'para ' + t.responsavel.nome;
   };
   // os filtros de cima e a busca valem para os números; o número clicado só escolhe o que a lista mostra
-  const filtradas = d.buscar(daAba, busca).filter(t => (!prioridade || t.prioridade === prioridade) && (!quem || pessoa(t) === quem) && (!cliente || t.clientes.some(x => nomeDoCliente(x) === cliente)));
+  const filtradas = d.buscar(daAba, opcoes.busca ?? busca).filter(t => (!opcoes.filtrar || opcoes.filtrar(t)) && (!prioridade || t.prioridade === prioridade) && (!quem || pessoa(t) === quem) && (!cliente || t.clientes.some(x => nomeDoCliente(x) === cliente)));
   const lista = d.ordenar(d.filtrarPorSituacao(filtradas, filtro, hoje, agora), hoje, agora);
   const algumFiltro = !!filtro || !!prioridade || !!quem || !!cliente || !!busca.trim();
   const limparFiltros = () => { setFiltro(''); setPrioridade(''); setQuem(''); setCliente(''); setBusca(''); };
@@ -83,7 +85,7 @@ export function useCentralDeTarefas(abaInicial: AbaDaCentral, opcoes: { agenda?:
     // o Início novo: o prazo curto ("Hoje", "Quarta") e o responsável (a foto na coluna)
     prazoCurto: ag.prazoCurto(t.prazo, hoje) + (t.prazoHora ? ' ' + t.prazoHora : ''), responsavel: t.responsavel,
     // os botões de quem faz a tarefa (Minhas tarefas)
-    acoes: aba === 'minhas' ? d.acoesNoHorario(doBanco.get(t.id) || t, relogio) : [],
+    acoes: (aba === 'minhas' || (opcoes.documentos && t.responsavel.uid === uid)) ? d.acoesNoHorario(doBanco.get(t.id) || t, relogio) : [],
     // o que aconteceu por último (Delegadas por mim)
     // e se quem recebeu já abriu a tarefa (o Visualizado, 12/11/2026)
     movimento: aba === 'delegadas' ? [movimentoDe(t), d.rotuloDaVisualizacao(t)].filter(Boolean).join(' · ') : '',
@@ -111,13 +113,15 @@ export function useCentralDeTarefas(abaInicial: AbaDaCentral, opcoes: { agenda?:
     algumFiltro, limparFiltros,
     /** a aba não tem tarefa nenhuma (o Vazio chama para criar; com filtro, para limpar) */
     abaVazia: !daAba.length,
-    colunaDaPessoa: COLUNA_DA_PESSOA[aba],
+    colunaDaPessoa: opcoes.documentos ? 'Delegação' : COLUNA_DA_PESSOA[aba],
     /** os botões de quem faz a tarefa, só nas minhas (nas delegadas, o andamento vai na linha: 09/11/2026 "eu tenha esse controle") */
     comAcoes: aba === 'minhas',
     fazerAcao: (id: string, novo: Status) => { repo.salvar(id, { status: novo }).catch((e: unknown) => setErroDaAcao('Não gravei: ' + (e instanceof Error ? e.message : String(e)))); },
     vazio: daAba.length ? { titulo: 'Nenhuma tarefa com isso', texto: '' } : VAZIO_DA_ABA[aba],
     /** as linhas agrupadas pelo prazo, na ordem do core em cada grupo; as encerradas num grupo só */
-    grupos: aba === 'concluidas'
+    grupos: opcoes.documentos
+      ? [...ag.GRUPOS_DA_AGENDA.map(g => ({ id: g.valor as string, rotulo: g.rotulo, linhas: lista.filter(t => d.emAberto(t) && ag.grupoDaAgenda(t, hoje, agora) === g.valor).map(linha) })), { id: 'encerradas', rotulo: 'Concluídos', linhas: lista.filter(t => !d.emAberto(t)).map(linha) }].filter(g => g.linhas.length > 0)
+      : aba === 'concluidas'
       ? [{ id: 'encerradas', rotulo: '', linhas: lista.map(linha) }]
       : opcoes.agenda
         ? ag.GRUPOS_DA_AGENDA.map(g => ({ id: g.valor as string, rotulo: g.rotulo, linhas: lista.filter(t => ag.grupoDaAgenda(t, hoje, agora) === g.valor).map(linha) })).filter(g => g.linhas.length > 0)

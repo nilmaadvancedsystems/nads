@@ -6764,10 +6764,11 @@ td.fs-fat-sem{color:var(--ink-faint);}
 .cal-mes-dia.hoje.marcado::after{background:var(--on-accent);}
 
 /* o Início novo (13/11/2026, só no modo desenvolvedor): só a disposição; as peças são as do catálogo */
-.ini-topo{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+.ini-topo{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;flex:1;min-width:0;}
 .ini-topo > .hint{margin:0;}
-.ini-busca{flex:0 1 300px;min-width:200px;}
+.ini-busca{flex:0 1 240px;min-width:150px;display:flex;align-items:center;gap:6px;}
 .ini-busca .busca-curta{width:100%;margin-bottom:0;}
+.ini-busca-ligados{display:inline-flex;align-items:center;gap:4px;flex:none;}
 .ini-busca-pop{top:calc(100% + 4px);left:auto;right:0;width:min(440px,calc(100vw - 32px));max-height:min(480px,70vh);overflow:auto;}
 .ini-busca-pop .chip-row{margin:0;padding:0 8px 6px;gap:8px;flex-wrap:wrap;}
 /* as pílulas com o ícone: 6px entre o ícone e o texto, o ícone no meio, todas da mesma altura ("tá torto") */
@@ -6831,11 +6832,6 @@ td.fs-fat-sem{color:var(--ink-faint);}
 .ini-marca .subnav-caixa{width:18px;height:18px;cursor:pointer;background:none;padding:0;}
 .ini-marca button.subnav-caixa:hover{border-color:var(--success);}
 .ini-marca .subnav-caixa svg{width:12px;height:12px;}
-.ini-filtro-cliente{max-width:320px;overflow:hidden;}
-/* as Tarefas do Início novo: o menu lateral (Minhas tarefas, Delegadas por mim, Concluídas) e a lista ao lado */
-.ini-tarefas{display:grid;grid-template-columns:220px minmax(0,1fr);gap:24px;align-items:start;}
-.ini-lateral.subnav{min-height:0;padding:0 12px 0 0;}
-@media (max-width:760px){.ini-tarefas{grid-template-columns:1fr;}.ini-lateral.subnav{border-right:none;padding:0;}}
 /* a tarefa nova do Início novo: o passo do cliente, o cliente escolhido no alto e os anexos curtos (o clipe e o link) */
 .ini-passo-titulo{font-size:var(--fs-18);font-weight:600;margin:4px 0 6px;}
 .ini-qual-cliente{gap:12px;}

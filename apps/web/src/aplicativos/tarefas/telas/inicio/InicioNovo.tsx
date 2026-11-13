@@ -5,6 +5,9 @@
 // cabeçalho!"). Aqui, a busca com as pílulas, o ⚡, o Delegar documentos e o Nova tarefa. A tarefa abre na janela de duas colunas (TarefaAbertaNova), por cima de qualquer aba.
 import { Icone, useCarregando } from '@nads/ui';
 import { useLayoutEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router';
+import { AcoesDoTopo } from '../../../../comum/topo';
+import { listaDaUrl } from './abasDoInicio';
 import { TarefaAbertaNova } from '../delegador/TarefaAbertaNova';
 import { BuscaDoInicio } from './partes/BuscaDoInicio';
 import { ListaDoInicio } from './partes/ListaDoInicio';
@@ -19,6 +22,9 @@ import { useInicioNovo } from './useInicioNovo';
 export function InicioNovo() {
   const vm = useInicioNovo();
   const mural = useInicio();
+  // a lista das Tarefas (Minhas, Delegadas por mim, Concluídas) vem da barra lateral padrão da casca (?lista=)
+  const [params] = useSearchParams();
+  const lista = listaDaUrl(params.get('lista'));
   const solicitacoes = useSolicitacoesDoInicio();
   // nas Notificações, o Sênior, o Diretor e o Dono trocam o Delegar documentos e o Nova tarefa pelas solicitações de reunião
   const daSolicitacao = vm.aba === 'notificacoes' && solicitacoes.papel !== 'nenhum';
@@ -40,6 +46,8 @@ export function InicioNovo() {
   }, [vm.aba]);
   return (
     <section className="ini-novo">
+      {/* a fileira na linha do "Bom dia" (o título da casca), em todas as abas (Vitor, 13/11/2026: "Na mesma linha do bom dia, em todo o inicio!") */}
+      <AcoesDoTopo>
       <div className="ini-topo">
         <span className="tarefas-barra-espaco" />
         {/* a busca na fileira dos botões, à esquerda do ⚡ (Vitor, 13/11/2026: "Coloca a barra de pesquisa nesse regiao") */}
@@ -53,11 +61,12 @@ export function InicioNovo() {
           </>
         )}
       </div>
+      </AcoesDoTopo>
       {/* cada aba numa caixa com o nome dela (13/11/2026, "Tem negocio de documento delegado bugando o programa": na conta do
           Vitor, o bloco dos Documentos ficava na tela depois de trocar de aba, um a cada visita; aqui não se repetiu) */}
       <div ref={conteudo} key={vm.aba} className="ini-conteudo" data-aba={vm.aba}>
         {vm.aba === 'painel' && <PainelDoInicio vm={vm} />}
-        {(vm.aba === 'tarefas' || vm.aba === 'documentos') && <ListaDoInicio documentos={vm.aba === 'documentos'} abrir={vm.abrir} comFoto={vm.comFoto} />}
+        {(vm.aba === 'tarefas' || vm.aba === 'documentos') && <ListaDoInicio key={vm.aba + lista} documentos={vm.aba === 'documentos'} lista={lista} busca={vm.busca} filtrar={vm.filtrarLista} abrir={vm.abrir} comFoto={vm.comFoto} />}
         {vm.aba === 'notificacoes' && <NotificacoesDoInicio vm={vm} mural={mural} />}
       </div>
       {vm.aberta && <TarefaAbertaNova key={vm.aberta} alvo={vm.aberta} voltar={vm.fechar} criada={vm.criada} saida={saida} />}

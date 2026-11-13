@@ -16,7 +16,8 @@ import { useJanela } from './janela';
 /** caixa: no lugar do ícone, uma caixinha de checklist (vazia, marcada ou parada) — as etapas de uma tarefa */
 /** titulo: o nome do grupo, em cima da primeira seção dele (Ativo, Passivo…) */
 /** foraDaEtapa: a seção some quando o aplicativo está inteiro dentro de uma etapa (ex.: a Importação da Conferência, que foi para a primeira etapa) */
-export interface SecaoCasca { id: string; rotulo: string; icone: NomeIcone; grupo: number; ativa?: boolean; travada?: boolean; caixa?: 'vazia' | 'marcada' | 'parada' | 'laranja'; titulo?: string; foraDaEtapa?: boolean; apagada?: boolean; /** a logo da marca no lugar do ícone (o FGTS Digital no DP) */ marca?: 'fgts' }
+export interface SecaoCasca { id: string; rotulo: string; icone: NomeIcone; grupo: number; ativa?: boolean; travada?: boolean; caixa?: 'vazia' | 'marcada' | 'parada' | 'laranja'; titulo?: string; foraDaEtapa?: boolean; apagada?: boolean; /** a logo da marca no lugar do ícone (o FGTS Digital no DP) */ marca?: 'fgts';
+  /** o número ao lado do nome (as Tarefas do Início novo: quantas em cada lista; 13/11/2026) */ contador?: string }
 /** contador: o número ao lado do nome, como o "Issues 12" do GitHub (ex.: "2/7") */
 /** ponto: o pontinho vermelho de "falta configurar" ao lado do nome (Vitor, 08/10/2026); o texto vai na dica */
 export interface PaginaCasca { id: string; rotulo: string; icone: NomeIcone; ativa?: boolean; travada?: boolean; oculta?: boolean; contador?: string; ponto?: string;
@@ -346,6 +347,7 @@ export function Casca(p: {
                     aria-current={s.ativa ? 'page' : undefined} aria-disabled={s.travada ? 'true' : undefined} title={s.rotulo} onClick={() => p.onSecao(s.id)}>
                     {s.caixa ? <span className={'subnav-caixa ' + s.caixa} aria-hidden="true">{(s.caixa === 'marcada' || s.caixa === 'laranja') && <Icone nome="check" />}</span> : s.marca === 'fgts' ? <span className="subnav-marca" aria-hidden="true"><LogoFgts cor /></span> : <Icone nome={s.icone} />}
                     <span>{s.rotulo}</span>
+                    {s.contador && <span className="subnav-count">{s.contador}</span>}
                   </button>
                 </span>
               );

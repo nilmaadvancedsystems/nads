@@ -12,6 +12,15 @@ export const ABAS_DO_INICIO: readonly { id: AbaDoInicio; rotulo: string; icone: 
 ];
 
 /** As abas de antes (?aba=minhas, delegadas, concluidas) caem em Minhas tarefas. */
+/** as listas das Tarefas, na barra lateral padrão (a casca) */
+export const LISTAS_DAS_TAREFAS: readonly { id: 'minhas' | 'delegadas' | 'concluidas'; rotulo: string; icone: 'caixaEntrada' | 'aviao' | 'checkCircle' }[] = [
+  { id: 'minhas', rotulo: 'Minhas tarefas', icone: 'caixaEntrada' },
+  { id: 'delegadas', rotulo: 'Delegadas por mim', icone: 'aviao' },
+  { id: 'concluidas', rotulo: 'Concluídas', icone: 'checkCircle' },
+];
+export type ListaDasTarefas = (typeof LISTAS_DAS_TAREFAS)[number]['id'];
+export const listaDaUrl = (v: string | null): ListaDasTarefas => (v === 'delegadas' || v === 'concluidas' ? v : 'minhas');
+
 export function abaDaUrl(v: string | null): AbaDoInicio {
   if (v === 'painel' || v === 'tarefas' || v === 'documentos' || v === 'notificacoes') return v;
   return v === 'minhas' || v === 'delegadas' || v === 'concluidas' ? 'tarefas' : 'painel';

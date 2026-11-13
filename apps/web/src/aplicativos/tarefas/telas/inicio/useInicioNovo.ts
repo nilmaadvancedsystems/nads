@@ -19,15 +19,38 @@ const ag = tarefas.agenda;
 /** Uma pessoa com a foto (a do Entregas) ou as iniciais. */
 export interface PessoaComFoto { uid: string; nome: string; foto: string | null; iniciais: string }
 
-/** as pílulas da busca (o print: "Add filters"): cada uma estreita o que a busca acha */
-export const FILTROS_DA_BUSCA = [
+/**
+ * as pílulas da busca (o print: "Add filters"), de cada aba (Vitor, 13/11/2026: "Se eu to na tela de documento, os filtros vão
+ * ser só de documento"; "Da mesma forma para tarefas"): no Painel, as gerais; nas Tarefas, as de tarefa; nos Documentos, as de
+ * documento; nas Notificações, as dos comunicados. Nas Tarefas e nos Documentos também o Cliente ("em ambos coloca um filtro
+ * de cliente")
+ */
+type IdDoFiltro = 'atrasadas' | 'hoje' | 'urgentes' | 'delegadas' | 'documentos' | 'recebidos' | 'enviados' | 'pendentes' | 'concluidos' | 'avisos' | 'reunioes' | 'estudos' | 'fixados';
+type Filtro = { id: IdDoFiltro; rotulo: string; icone: 'alert' | 'clock' | 'zap' | 'aviao' | 'clipe' | 'caixaEntrada' | 'checkCircle' | 'calendar' | 'lampada' | 'mapaPin' };
+const DE_TAREFA: Filtro[] = [
   { id: 'atrasadas', rotulo: 'Atrasadas', icone: 'alert' },
   { id: 'hoje', rotulo: 'Para hoje', icone: 'clock' },
   { id: 'urgentes', rotulo: 'Urgentes', icone: 'zap' },
   { id: 'delegadas', rotulo: 'Delegadas por mim', icone: 'aviao' },
-  { id: 'documentos', rotulo: 'Documentos', icone: 'clipe' },
-] as const;
-type FiltroDaBusca = (typeof FILTROS_DA_BUSCA)[number]['id'];
+];
+export const FILTROS_POR_ABA: Record<AbaDoInicio, Filtro[]> = {
+  painel: [...DE_TAREFA, { id: 'documentos', rotulo: 'Documentos', icone: 'clipe' }],
+  tarefas: DE_TAREFA,
+  documentos: [
+    { id: 'recebidos', rotulo: 'Recebidos', icone: 'caixaEntrada' },
+    { id: 'enviados', rotulo: 'Enviados', icone: 'aviao' },
+    { id: 'pendentes', rotulo: 'Pendentes', icone: 'clock' },
+    { id: 'concluidos', rotulo: 'Concluídos', icone: 'checkCircle' },
+  ],
+  notificacoes: [
+    { id: 'avisos', rotulo: 'Avisos', icone: 'alert' },
+    { id: 'reunioes', rotulo: 'Reuniões', icone: 'calendar' },
+    { id: 'estudos', rotulo: 'Estudos', icone: 'lampada' },
+    { id: 'fixados', rotulo: 'Fixados', icone: 'mapaPin' },
+  ],
+};
+const PLACEHOLDER: Record<AbaDoInicio, string> = { painel: 'Buscar nas tarefas', tarefas: 'Buscar nas tarefas', documentos: 'Buscar nos documentos', notificacoes: 'Buscar nas notificações' };
+const nomeDoCliente = (c: tarefas.delegadas.ClienteVinculado) => (c.codigo != null ? c.codigo + ' · ' : '') + c.nome;
 
 /** os dias do calendário mais os dias de reunião (cada reunião conta um) */
 function somarDias(dias: Record<number, number>, mais: number[]): Record<number, number> {
@@ -60,14 +83,21 @@ export function useInicioNovo() {
   const delegadas = d.ordenar(d.daAba(todas, 'delegadas', uid), hoje, agora);
   const abertas = [...minhas, ...delegadas];
 
-  // a busca do alto, com as pílulas: acha em todas as tarefas da pessoa (abertas e encerradas)
+  // a busca do alto, uma só na tela (13/11/2026: "tem duas buscas na mesma tela… deixe uma só"), com as pílulas de cada aba e o
+  // cliente; no Painel acha em todas as tarefas da pessoa; nas outras abas, filtra a própria lista
   const [busca, setBusca] = useState('');
-  const [filtros, setFiltros] = useState<FiltroDaBusca[]>([]);
-  const passa = (t: tarefas.delegadas.TarefaDelegada) => filtros.every(f =>
+  const [filtrosPorAba, setFiltrosPorAba] = useState<Partial<Record<AbaDoInicio, IdDoFiltro[]>>>({});
+  const [clientePorAba, setClientePorAba] = useState<Partial<Record<AbaDoInicio, string>>>({});
+  const filtros = filtrosPorAba[aba] || [];
+  const cliente = clientePorAba[aba] || '';
+  const passa = (t: tarefas.delegadas.TarefaDelegada) => (!cliente || t.clientes.some(c => nomeDoCliente(c) === cliente)) && filtros.every(f =>
     f === 'atrasadas' ? d.atrasada(t, hoje, agora) : f === 'hoje' ? t.prazo === hoje && d.emAberto(t) : f === 'urgentes' ? t.prioridade === 'urgente'
-      : f === 'delegadas' ? t.criadaPor.uid === uid && t.responsavel.uid !== uid : d.pedeDocumentos(t));
-  const buscando = !!busca.trim() || filtros.length > 0;
-  const achados = buscando ? d.ordenar(d.buscar(todas.filter(passa), busca), hoje, agora).slice(0, 8) : [];
+      : f === 'delegadas' ? t.criadaPor.uid === uid && t.responsavel.uid !== uid : f === 'documentos' ? d.pedeDocumentos(t)
+        : f === 'recebidos' ? t.responsavel.uid === uid : f === 'enviados' ? t.criadaPor.uid === uid && t.responsavel.uid !== uid
+          : f === 'pendentes' ? d.emAberto(t) : f === 'concluidos' ? !d.emAberto(t) : true);
+  const buscando = !!busca.trim() || filtros.length > 0 || !!cliente;
+  const achados = aba === 'painel' && buscando ? d.ordenar(d.buscar(todas.filter(passa), busca), hoje, agora).slice(0, 8) : [];
+  const clientesDaAba = [...new Set((aba === 'documentos' ? todas.filter(d.pedeDocumentos) : todas).flatMap(t => t.clientes.map(nomeDoCliente)))].sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }));
 
   // a tarefa aberta (o id, 'nova' ou 'documentos'), por cima de qualquer aba
   const [aberta, setAberta] = useState<string | null>(null);
@@ -76,7 +106,11 @@ export function useInicioNovo() {
   const avisos = useAvisos();
   const mural = avisos.lista();
   const agoraIso = new Date();
-  const comunicados = tarefas.ordenarAvisos(mural.avisos).map(a => ({
+  // nas Notificações, a busca e as pílulas filtram os comunicados
+  const q = busca.trim().toLowerCase();
+  const passaComunicado = (a: tarefas.AvisoDoEscritorio) => aba !== 'notificacoes' || ((!q || ((a.titulo || '') + ' ' + a.texto + ' ' + a.por).toLowerCase().includes(q)) && filtros.every(f =>
+    f === 'avisos' ? !a.tipo || a.tipo === 'aviso' || a.tipo === 'geral' : f === 'reunioes' ? a.tipo === 'reuniao' : f === 'estudos' ? a.tipo === 'estudo' : f === 'fixados' ? !!a.fixado : true));
+  const comunicados = tarefas.ordenarAvisos(mural.avisos.filter(passaComunicado)).map(a => ({
     ...a,
     tipoRotulo: tarefas.rotuloDoComunicado(a.tipo),
     tituloNaLista: a.titulo || a.texto.split('\n')[0].slice(0, 80),
@@ -113,10 +147,19 @@ export function useInicioNovo() {
 
     // a busca do alto
     busca, setBusca,
-    filtrosDaBusca: FILTROS_DA_BUSCA.map(f => ({ ...f, ligado: filtros.includes(f.id) })),
-    alternarFiltro: (id: FiltroDaBusca) => setFiltros(x => (x.includes(id) ? x.filter(y => y !== id) : [...x, id])),
-    limparBusca: () => { setBusca(''); setFiltros([]); },
+    placeholder: PLACEHOLDER[aba],
+    filtrosDaBusca: FILTROS_POR_ABA[aba].map(f => ({ ...f, ligado: filtros.includes(f.id) })),
+    alternarFiltro: (id: IdDoFiltro) => setFiltrosPorAba(x => { const l = x[aba] || []; return { ...x, [aba]: l.includes(id) ? l.filter(y => y !== id) : [...l, id] }; }),
+    /** o filtro do cliente (nas Tarefas e nos Documentos) */
+    comCliente: aba === 'tarefas' || aba === 'documentos',
+    cliente, clientes: clientesDaAba,
+    escolherCliente: (c: string) => setClientePorAba(x => ({ ...x, [aba]: c })),
+    limparBusca: () => { setBusca(''); setFiltrosPorAba(x => ({ ...x, [aba]: [] })); setClientePorAba(x => ({ ...x, [aba]: '' })); },
     buscando,
+    /** quantos filtros ligados (a marca ao lado da busca) */
+    quantosFiltros: filtros.length + (cliente ? 1 : 0),
+    /** a busca e as pílulas valendo na lista das Tarefas e dos Documentos */
+    filtrarLista: passa,
     achados: achados.map(t => ({
       id: t.id, titulo: t.titulo, feita: !d.emAberto(t),
       detalhe: [t.clientes[0] ? (t.clientes[0].codigo != null ? t.clientes[0].codigo + ' · ' : '') + t.clientes[0].nome : '', d.rotuloDaPrioridade(t.prioridade), ag.prazoCurto(t.prazo, hoje)].filter(Boolean).join(' · '),
