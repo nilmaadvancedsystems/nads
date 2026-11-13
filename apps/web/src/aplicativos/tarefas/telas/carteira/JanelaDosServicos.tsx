@@ -37,7 +37,8 @@ export function JanelaDosServicos({ fechar }: { fechar: () => void }) {
               </tbody>
             </table>
           </div>
-          {/* a % própria por pessoa (Vitor, 12/11/2026): vale para todos os serviços dela, no lugar da % do serviço */}
+          {/* a % própria por pessoa (Vitor, 12/11/2026): vale para todos os serviços dela, no lugar da % do serviço; só o Diretor vê (13/11/2026) */}
+          {vm.vePropria && <>
           <p className="registro-dica"><Icone nome="usuario" />% própria por pessoa: vale para todos os serviços dela, no lugar da % de cada serviço.</p>
           <div className="table-wrap">
             <table className="dp-tabela">
@@ -59,6 +60,7 @@ export function JanelaDosServicos({ fechar }: { fechar: () => void }) {
               </tbody>
             </table>
           </div>
+          </>}
           {vm.erros.length > 0 && <ul className="registro-erros">{vm.erros.map(e => <li key={e}><Icone nome="alert" />{e}</li>)}</ul>}
         </div>
         <footer className="registro-pe">
