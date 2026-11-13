@@ -27,7 +27,7 @@ function Janela({ titulo, fechar, children, pe }: { titulo: string; fechar: () =
     <div className="modal-overlay">
       <div ref={janela} className="modal registro-novo" role="dialog" aria-modal="true" aria-label={titulo}>
         <header className="registro-topo">
-          <span className="registro-caminho"><Icone nome="sino" />Notificações<Icone nome="chevronRight" /><b>{titulo}</b></span>
+          <span className="registro-caminho"><b>{titulo}</b></span>
           <BotaoFechar onClick={fechar} />
         </header>
         <div className="registro-corpo">{children}</div>

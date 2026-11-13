@@ -23,7 +23,7 @@ export function NovoComunicado({ fechar, tipo = 'aviso' }: { fechar: () => void;
     <div className="modal-overlay">
       <div ref={janela} className="modal registro-novo" role="dialog" aria-modal="true" aria-label="Novo comunicado">
         <header className="registro-topo">
-          <span className="registro-caminho"><Icone nome="sino" />Notificações<Icone nome="chevronRight" /><b>Novo comunicado</b></span>
+          <span className="registro-caminho"><b>Novo comunicado</b></span>
           <BotaoFechar onClick={fechar} />
         </header>
         <div className="registro-corpo">
