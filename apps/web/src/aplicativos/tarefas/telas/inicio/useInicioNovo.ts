@@ -12,6 +12,7 @@ import { useAcesso, useAvisos, useTarefasDelegadas } from '../../dados/repo';
 import { useOperador, type Operador } from '../../casca/operador';
 import { useAgoraDoExpediente } from '../delegador/useAgoraDoExpediente';
 import { abaDaUrl, ABAS_DO_INICIO, type AbaDoInicio } from './abasDoInicio';
+import { useNivelDoInicio, useReunioesDoInicio } from './useReunioesDoInicio';
 
 const d = tarefas.delegadas;
 const ag = tarefas.agenda;
@@ -63,6 +64,8 @@ const quandoCurto = (iso: string) => new Date(iso).toLocaleString('pt-BR', { day
 
 export function useInicioNovo() {
   const op = useOperador().operador as Operador;
+  // as reuniões das Notificações (o Sênior pede, o Diretor e o Dono decidem): também no Painel e no calendário
+  const reunioes = useReunioesDoInicio();
   const { toast, aviso } = useRetorno();
   const [params, setParams] = useSearchParams();
   const aba = abaDaUrl(params.get('aba'));
@@ -110,12 +113,22 @@ export function useInicioNovo() {
   const q = busca.trim().toLowerCase();
   const passaComunicado = (a: tarefas.AvisoDoEscritorio) => aba !== 'notificacoes' || ((!q || ((a.titulo || '') + ' ' + a.texto + ' ' + a.por).toLowerCase().includes(q)) && filtros.every(f =>
     f === 'avisos' ? !a.tipo || a.tipo === 'aviso' || a.tipo === 'geral' : f === 'reunioes' ? a.tipo === 'reuniao' : f === 'estudos' ? a.tipo === 'estudo' : f === 'fixados' ? !!a.fixado : true));
-  const comunicados = tarefas.ordenarAvisos(mural.avisos.filter(passaComunicado)).map(a => ({
+  // só os avisos para a pessoa (todos, o setor dela ou ela escolhida; o Diretor, o Dono e o admin veem todos)
+  const veTodos = op.admin || reunioes.papel === 'aprova';
+  const equipeComSetor = acesso.equipe().lista.filter(u => u.ativo).map(u => ({ uid: u.uid, nome: u.nome, departamento: u.departamento }));
+  const paraMim = (a: tarefas.AvisoDoEscritorio) => veTodos || tarefas.avisoParaMim(a, { uid, departamento: op.departamento });
+  const comunicados = tarefas.ordenarAvisos(mural.avisos.filter(paraMim).filter(passaComunicado)).map(a => ({
     ...a,
     tipoRotulo: tarefas.rotuloDoComunicado(a.tipo),
     tituloNaLista: a.titulo || a.texto.split('\n')[0].slice(0, 80),
     quandoFoi: tarefas.quandoFoi(a.em, agoraIso),
     reuniao: a.quando ? new Date(a.quando).toLocaleString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '',
+    // o Recebido: a pessoa ainda precisa marcar? quem escreveu (e o Diretor) vê quem marcou e quem falta
+    precisaReceber: !!a.pedeConfirmacao && a.porUid !== uid && !tarefas.recebeu(a, uid),
+    jaRecebi: tarefas.recebeu(a, uid),
+    acompanha: !!a.pedeConfirmacao && (a.porUid === uid || veTodos),
+    faltaReceber: tarefas.faltaReceber(a, equipeComSetor).map(p => p.nome),
+    destino: tarefas.rotuloDoDestino(a.para, usuarios.DEPARTAMENTOS),
   }));
   // o calendário: o mês mostrado e o dia escolhido (filtra as próximas tarefas)
   const [mes, setMes] = useState(hoje.slice(0, 7));
@@ -170,7 +183,10 @@ export function useInicioNovo() {
       mes, setMes, hoje, dia,
       escolher: (x: string | null) => { setDia(x); if (x) setMes(x.slice(0, 7)); },
       // os dias com prazo de tarefa e os dias com reunião (das Notificações)
-      marcados: somarDias(ag.diasComPrazo(abertas, mes), comunicados.filter(c => c.tipo === 'reuniao' && c.quando?.startsWith(mes + '-')).map(c => Number(c.quando!.slice(8, 10)))),
+      marcados: somarDias(ag.diasComPrazo(abertas, mes), [
+        ...comunicados.filter(c => c.tipo === 'reuniao' && c.quando?.startsWith(mes + '-')).map(c => Number(c.quando!.slice(8, 10))),
+        ...reunioes.proximas.filter(x => x.quando.startsWith(mes + '-')).map(x => Number(x.quando.slice(8, 10))),
+      ]),
     },
     proximas: {
       titulo: dia ? 'Prazo em ' + d.prazoParaTela(dia) : 'Minhas tarefas',
@@ -189,14 +205,26 @@ export function useInicioNovo() {
         movimento: m ? (m.por === t.responsavel.nome ? '' : m.por + ' ') + m.texto.replace(/ a tarefa$/, '').toLowerCase() + ' · ' + quandoCurto(m.em) : d.rotuloDaVisualizacao(t) || 'Ainda não abriu',
       };
     }),
-    reunioes: tarefas.proximasReunioes(comunicados, agoraLocal).slice(0, 3),
+    // as próximas: as reuniões aprovadas (ou remarcadas) e os comunicados de reunião, a mais perto primeiro
+    reunioes: [
+      ...reunioes.proximas.map(x => ({ id: x.id, tituloNaLista: x.titulo, reuniao: x.quandoTexto, quando: x.quando, rotulo: x.rotulo })),
+      ...tarefas.proximasReunioes(comunicados, agoraLocal).map(c => ({ id: c.id, tituloNaLista: c.tituloNaLista, reuniao: c.reuniao, quando: c.quando || '', rotulo: '' })),
+    ].sort((a, b) => a.quando.localeCompare(b.quando)).slice(0, 4),
+    /** o ViewModel das reuniões (os botões das Notificações e o detalhe) */
+    reunioesVm: reunioes,
     comFoto,
 
     // as Notificações
     carregandoMural: !mural.carregados,
     comunicados,
-    comunicado: comunicados.find(c => c.id === comunicado) || comunicados[0] || null,
+    comunicado: comunicados.find(c => c.id === comunicado) || (reunioes.lista.some(x => x.id === comunicado) ? null : comunicados[0]) || null,
+    /** a reunião escolhida (o mesmo escolher dos comunicados: o id diz qual é) */
+    reuniao: reunioes.lista.find(x => x.id === comunicado) || null,
     escolherComunicado: setComunicado,
+    /** as reuniões na lista das Notificações (a busca e a pílula Reuniões valem para elas) */
+    reunioesNaLista: reunioes.lista.filter(x => (!q || (x.titulo + ' ' + x.pauta + ' ' + x.criadaPor.nome).toLowerCase().includes(q)) && filtros.every(f => f === 'reunioes')),
+    marcarRecebido: (id: string) => avisos.marcarRecebido(id, { uid, nome: meuNome }).then(() => toast('Marcado como recebido.'))
+      .catch((e: unknown) => aviso({ tom: 'erro', titulo: 'Não deu para marcar', texto: e instanceof Error ? e.message : String(e) })),
   };
 }
 
@@ -205,6 +233,7 @@ export function useNovoComunicado(fechar: () => void, tipoInicial: tarefas.TipoD
   const op = useOperador().operador as Operador;
   const { toast, aviso } = useRetorno();
   const repo = useAvisos();
+  const nivel = useNivelDoInicio();
   const [tipo, setTipo] = useState<tarefas.TipoDeComunicado>(tipoInicial);
   const [titulo, setTitulo] = useState('');
   const [link, setLink] = useState('');
@@ -212,8 +241,16 @@ export function useNovoComunicado(fechar: () => void, tipoInicial: tarefas.TipoD
   const [hora, setHora] = useState('');
   const [texto, setTexto] = useState('');
   const [publicando, setPublicando] = useState(false);
+  // o Diretor e o Dono pedem o Recebido e escolhem para quem é (todos, setores ou pessoas)
+  const [pedeConfirmacao, setPedeConfirmacao] = useState(false);
+  const [destino, setDestino] = useState<'todos' | 'setor' | 'pessoas'>('todos');
+  const [setores, setSetores] = useState<string[]>([]);
+  const [pessoas, setPessoas] = useState<tarefas.delegadas.Pessoa[]>([]);
+  const acesso = useAcesso();
+  const uid = useTarefasDelegadas().eu()?.uid || '';
+  const para: tarefas.DestinoDoAviso = destino === 'setor' ? { tipo: 'setor', setores } : destino === 'pessoas' ? { tipo: 'pessoas', pessoas } : { tipo: 'todos' };
   const dia = d.prazoDaTela(data);
-  const extras: tarefas.ExtrasDoComunicado = { tipo, titulo, link, quando: tipo === 'reuniao' && dia && hora ? dia + 'T' + hora : '' };
+  const extras: tarefas.ExtrasDoComunicado = { tipo, titulo, link, quando: tipo === 'reuniao' && dia && hora ? dia + 'T' + hora : '', pedeConfirmacao, para };
   const problema = tarefas.problemaDoComunicado(texto, extras);
   return {
     tipo, setTipo, tipos: tarefas.TIPOS_DE_COMUNICADO, rotuloDoTipo: tarefas.rotuloDoComunicado(tipo),
@@ -221,10 +258,19 @@ export function useNovoComunicado(fechar: () => void, tipoInicial: tarefas.TipoD
     link, setLink, data, setData, hora, setHora, texto, setTexto,
     faltam: tarefas.MAIOR_AVISO - tarefas.limparAviso(texto).length,
     problema, publicando,
+    /** só o Diretor, o Dono e o admin pedem o Recebido */
+    podePedirConfirmacao: op.admin || usuarios.nivelDeDiretor(nivel),
+    pedeConfirmacao, setPedeConfirmacao,
+    destino, setDestino, setores, pessoas,
+    opcoesDeSetor: usuarios.DEPARTAMENTOS,
+    equipe: acesso.equipe().lista.filter(u => u.ativo && u.uid !== uid && !usuarios.ehContaReservada(u.email)).map(u => ({ uid: u.uid, nome: u.nome })),
+    alternarSetor: (s: string) => setSetores(x => (x.includes(s) ? x.filter(y => y !== s) : [...x, s])),
+    alternarPessoa: (p: tarefas.delegadas.Pessoa) => setPessoas(x => (x.some(y => y.uid === p.uid) ? x.filter(y => y.uid !== p.uid) : [...x, p])),
+    rotuloDoDestino: tarefas.rotuloDoDestino(para, usuarios.DEPARTAMENTOS),
     async publicar() {
       if (problema) { aviso({ tom: 'erro', titulo: problema }); return; }
       setPublicando(true);
-      try { await repo.publicar(texto, op.nome, extras); toast('Publicado nas Notificações.'); fechar(); }
+      try { await repo.publicar(texto, op.nome, extras, uid || undefined); toast('Publicado nas Notificações.'); fechar(); }
       catch (e) { aviso({ tom: 'erro', titulo: 'Não foi publicado', texto: e instanceof Error ? e.message : String(e) }); }
       finally { setPublicando(false); }
     },

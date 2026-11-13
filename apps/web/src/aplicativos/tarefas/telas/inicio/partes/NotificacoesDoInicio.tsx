@@ -1,12 +1,15 @@
 // As Notificações do Início novo: a comunicação da equipe (Vitor, 13/11/2026: "Reuniões, avisos vai ficar fixado nessa
 // pagina, links de estudos da legislação, etc, comunicação de equipe em geral (sem chats)"). No print, as notificações em
 // lista à esquerda e o detalhe à direita: aqui, os comunicados (os fixados em cima) e o escolhido, com o tipo, quem, quando,
-// o dia da reunião e o link. O admin e o diretor publicam (Novo comunicado), fixam e apagam; todos leem.
+// o dia da reunião e o link. O admin e o diretor publicam (Novo comunicado), fixam e apagam; todos leem. Em cima da lista,
+// as reuniões (pedidas pelo Sênior ou marcadas pelo Diretor), com o detalhe e as ações à direita (ReunioesDoInicio). O aviso
+// que pede confirmação tem o Recebido; quem escreveu vê quem marcou e quem falta. Só os destinatários veem o aviso.
 import { BotaoFechar, CampoData, Icone, MenuSuspenso, useJanela, Vazio, type NomeIcone } from '@nads/ui';
 import { useRef, useState } from 'react';
 import { Propriedade } from '../../financeiro/partes/Propriedade';
 import type { useInicio } from '../useInicio';
 import { useNovoComunicado, type useInicioNovo } from '../useInicioNovo';
+import { DetalheDaReuniao, EscolherPessoas, SeloDaReuniao } from './ReunioesDoInicio';
 
 const ICONE_DO_TIPO: Record<string, NomeIcone> = { aviso: 'alert', reuniao: 'calendar', estudo: 'lampada', geral: 'mensagem' };
 const ESCOLHA = 'btn btn-ghost registro-escolha';
@@ -38,6 +41,21 @@ export function NovoComunicado({ fechar, tipo = 'aviso' }: { fechar: () => void;
                 </span>
               </Propriedade>
             )}
+            <Propriedade icone="usuario" rotulo="Para quem">
+              <span className="ini-destino">
+                <MenuSuspenso rotulo={vm.destino === 'todos' ? 'Todos' : vm.destino === 'setor' ? 'Setores' : 'Pessoas'} className={ESCOLHA} titulo="Para quem é o aviso" flutuante largura={200}
+                  itens={[
+                    { rotulo: 'Todos', marcado: vm.destino === 'todos', onClick: () => vm.setDestino('todos') },
+                    { rotulo: 'Setores', marcado: vm.destino === 'setor', onClick: () => vm.setDestino('setor') },
+                    { rotulo: 'Pessoas', marcado: vm.destino === 'pessoas', onClick: () => vm.setDestino('pessoas') },
+                  ]} />
+                {vm.destino === 'setor' && vm.opcoesDeSetor.map(s => (
+                  <button key={s.id} type="button" className={'chip-f' + (vm.setores.includes(s.id) ? ' on' : '')} aria-pressed={vm.setores.includes(s.id)} onClick={() => vm.alternarSetor(s.id)}>{s.rotulo}</button>
+                ))}
+                {vm.destino === 'pessoas' && <EscolherPessoas equipe={vm.equipe} escolhidas={vm.pessoas} alternar={vm.alternarPessoa} />}
+              </span>
+            </Propriedade>
+            {vm.podePedirConfirmacao && <label className="tdl-ja-fazendo"><input type="checkbox" checked={vm.pedeConfirmacao} onChange={e => vm.setPedeConfirmacao(e.target.checked)} />Pedir confirmação (cada um marca "Recebido")</label>}
             <Propriedade icone="link" rotulo="Link">
               <input type="url" value={vm.link} onChange={e => vm.setLink(e.target.value)} placeholder={vm.tipo === 'estudo' ? 'O link do estudo (https://…)' : 'Opcional (https://…)'} aria-label="Link" />
             </Propriedade>
@@ -65,12 +83,26 @@ export function NovoComunicado({ fechar, tipo = 'aviso' }: { fechar: () => void;
  * simulado do ⚡ vale); os outros só leem */
 export function NotificacoesDoInicio({ vm, mural, podeMexer }: { vm: ReturnType<typeof useInicioNovo>; mural: ReturnType<typeof useInicio>; podeMexer: boolean }) {
   const c = vm.comunicado;
+  const r = vm.reuniao;
   return (
     <section className="ini-lista">
-      {!vm.carregandoMural && !vm.comunicados.length ? (
+      {!vm.carregandoMural && !vm.comunicados.length && !vm.reunioesNaLista.length ? (
         <section className="card"><Vazio icone="sino" titulo="Nada por aqui" texto="Os avisos, as reuniões e os estudos da equipe aparecem aqui." /></section>
       ) : (
         <div className="ini-notificacoes">
+          <div className="ini-coluna">
+          {vm.reunioesNaLista.length > 0 && (
+            <section className="card ini-cartao">
+              <div className="card-head"><h3>Reuniões</h3></div>
+              {vm.reunioesNaLista.map(x => (
+                <button key={x.id} type="button" className={'popover-item ini-comunicado' + (r?.id === x.id ? ' ativo' : '')} aria-pressed={r?.id === x.id} onClick={() => vm.escolherComunicado(x.id)}>
+                  <Icone nome="calendar" />
+                  <span className="popover-texto"><b>{x.titulo}</b><br /><span className="hint">{x.quandoTexto} · {x.criadaPor.nome}</span></span>
+                  <SeloDaReuniao x={x} />
+                </button>
+              ))}
+            </section>
+          )}
           <section className="card ini-cartao">
             <div className="card-head"><h3>Comunicados da equipe</h3></div>
             {vm.comunicados.map(x => (
@@ -80,10 +112,14 @@ export function NotificacoesDoInicio({ vm, mural, podeMexer }: { vm: ReturnType<
                   <b>{x.tituloNaLista}</b>
                   <br /><span className="hint">{x.fixado && <><Icone nome="mapaPin" width={12} height={12} /> Fixado · </>}{x.tipoRotulo} · {x.por} · {x.quandoFoi}</span>
                 </span>
+                {x.precisaReceber && <span className="badge badge-suave badge-warn">Marcar recebido</span>}
               </button>
             ))}
+            {!vm.comunicados.length && <Vazio compacto icone="sino" titulo="Nenhum comunicado" />}
           </section>
-          {c && (
+          </div>
+          {r && <DetalheDaReuniao x={r} vm={vm.reunioesVm} />}
+          {!r && c && (
             <section className="card ini-detalhe">
               <div className="ini-detalhe-topo">
                 <h2>{c.titulo || c.tipoRotulo}</h2>
@@ -100,8 +136,16 @@ export function NotificacoesDoInicio({ vm, mural, podeMexer }: { vm: ReturnType<
                 <Propriedade icone="clock" rotulo="Publicado"><span title={new Date(c.em).toLocaleString('pt-BR')}>{c.quandoFoi}</span></Propriedade>
                 {c.reuniao && <Propriedade icone="calendar" rotulo="Reunião"><b>{c.reuniao}</b></Propriedade>}
                 {c.link && <Propriedade icone="link" rotulo="Link"><a href={c.link} target="_blank" rel="noopener noreferrer">{c.link}</a></Propriedade>}
+                {c.para && <Propriedade icone="usuario" rotulo="Para"><span>{c.destino}</span></Propriedade>}
+                {c.acompanha && <Propriedade icone="checkCircle" rotulo="Recebido"><span>{(c.recebidos || []).map(x => x.nome).join(', ') || 'Ninguém ainda'}{c.faltaReceber.length > 0 && <><br /><span className="fraco">Falta: {c.faltaReceber.join(', ')}</span></>}</span></Propriedade>}
               </div>
               <p className="ini-detalhe-texto">{c.texto}</p>
+              {c.pedeConfirmacao && !c.acompanha && (
+                <div className="ini-reuniao-linha">
+                  {c.jaRecebi ? <span className="badge badge-suave badge-ok">Você marcou como recebido</span>
+                    : <><span>Este aviso pede que você confirme que leu.</span><button type="button" className="btn btn-primary" onClick={() => void vm.marcarRecebido(c.id)}><Icone nome="check" />Recebido</button></>}
+                </div>
+              )}
             </section>
           )}
         </div>

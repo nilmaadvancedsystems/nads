@@ -53,6 +53,6 @@ export * as delegadas from './regras/delegadas';
 export * as agenda from './regras/agenda';
 // a saudação do Início novo (13/11/2026): pelo turno, a segunda-feira, o aniversário e as frases personalizadas
 export * as saudacao from './regras/saudacao';
-// as solicitações de reunião das Notificações do Início novo (13/11/2026): o Sênior pede, o Diretor e o Dono aprovam
-export * as solicitacoes from './regras/solicitacoes';
+// as reuniões das Notificações do Início novo (13/11/2026): o Sênior pede, o Diretor e o Dono aprovam e marcam direto
+export * as reunioes from './regras/reunioes';
 export * from './regras/historicosDoContabil';

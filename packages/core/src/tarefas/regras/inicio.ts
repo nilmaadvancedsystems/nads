@@ -24,6 +24,49 @@ export interface AvisoDoEscritorio {
   link?: string;
   /** o dia e a hora da reunião, 'aaaa-mm-ddThh:mm' */
   quando?: string;
+  // (Vitor, 13/11/2026: "Avisos que o diretor/dono marca como 'Pedir confirmação' o usuario deve marcar 'Recebido'"; "O aviso tb
+  // pode ser lançado no mural para determinados colaboradores apenas (setor, usuarios)")
+  /** o login de quem escreveu (o aviso antigo só tem o nome) */
+  porUid?: string;
+  /** cada destinatário marca "Recebido" */
+  pedeConfirmacao?: boolean;
+  recebidos?: { uid: string; nome: string; em: string }[];
+  /** para quem é (sem isto, todos) */
+  para?: DestinoDoAviso;
+}
+
+/** Para quem é o aviso: todos, os setores escolhidos ou as pessoas escolhidas. */
+export type DestinoDoAviso = { tipo: 'todos' } | { tipo: 'setor'; setores: string[] } | { tipo: 'pessoas'; pessoas: { uid: string; nome: string }[] };
+
+/** A pessoa vê o aviso? (todos; o setor dela; ela escolhida; ou foi ela que escreveu) */
+export function avisoParaMim(a: Pick<AvisoDoEscritorio, 'para' | 'porUid'>, eu: { uid: string; departamento?: string | null }): boolean {
+  const p = a.para;
+  if (!p || p.tipo === 'todos' || (a.porUid && a.porUid === eu.uid)) return true;
+  if (p.tipo === 'setor') return !!eu.departamento && p.setores.includes(eu.departamento);
+  return p.pessoas.some(x => x.uid === eu.uid);
+}
+
+/** A pessoa já marcou o Recebido? */
+export const recebeu = (a: Pick<AvisoDoEscritorio, 'recebidos'>, uid: string) => (a.recebidos || []).some(x => x.uid === uid);
+
+/** O aviso com o Recebido da pessoa (uma vez só). */
+export function comRecebido<T extends AvisoDoEscritorio>(a: T, quem: { uid: string; nome: string }, em: string): T {
+  if (recebeu(a, quem.uid)) return a;
+  return { ...a, recebidos: [...(a.recebidos || []), { uid: quem.uid, nome: quem.nome, em }] };
+}
+
+/** Quem devia marcar o Recebido e ainda não marcou (da equipe, os destinatários sem quem escreveu). */
+export function faltaReceber(a: AvisoDoEscritorio, equipe: readonly { uid: string; nome: string; departamento?: string | null }[]): { uid: string; nome: string }[] {
+  if (!a.pedeConfirmacao) return [];
+  return equipe.filter(p => p.uid !== a.porUid && avisoParaMim({ para: a.para }, p) && !recebeu(a, p.uid)).map(p => ({ uid: p.uid, nome: p.nome }));
+}
+
+/** O nome do destino na tela ("Todos", "Fiscal e DP", "Clara e Felipe"). */
+export function rotuloDoDestino(p: DestinoDoAviso | undefined, setores: readonly { id: string; rotulo: string }[] = []): string {
+  const junta = (l: string[]) => (l.length > 1 ? l.slice(0, -1).join(', ') + ' e ' + l[l.length - 1] : l[0] || '');
+  if (!p || p.tipo === 'todos') return 'Todos';
+  if (p.tipo === 'setor') return junta(p.setores.map(s => setores.find(x => x.id === s)?.rotulo || s));
+  return junta(p.pessoas.map(x => x.nome));
 }
 
 /** Os tipos de comunicado da equipe, na ordem do menu. */
@@ -48,7 +91,7 @@ export function linkValido(link: string): boolean {
 }
 
 /** O que vai além do texto num comunicado novo. */
-export interface ExtrasDoComunicado { tipo: TipoDeComunicado; titulo: string; link: string; quando: string }
+export interface ExtrasDoComunicado { tipo: TipoDeComunicado; titulo: string; link: string; quando: string; pedeConfirmacao?: boolean; para?: DestinoDoAviso }
 
 /** O que impede de publicar o comunicado ('' quando pode): o texto, o título, o link e, na reunião, o dia e a hora. */
 export function problemaDoComunicado(texto: string, x: ExtrasDoComunicado): string {
@@ -56,16 +99,20 @@ export function problemaDoComunicado(texto: string, x: ExtrasDoComunicado): stri
   if (x.link.trim() && !linkValido(x.link.trim())) return 'O link precisa começar com https://';
   if (x.tipo === 'estudo' && !x.link.trim()) return 'Ponha o link do estudo.';
   if (x.tipo === 'reuniao' && !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(x.quando)) return 'Escolha o dia e a hora da reunião.';
+  if (x.para?.tipo === 'setor' && !x.para.setores.length) return 'Escolha o setor.';
+  if (x.para?.tipo === 'pessoas' && !x.para.pessoas.length) return 'Escolha as pessoas.';
   return problemaDoAviso(texto);
 }
 
 /** Os campos de um comunicado novo para gravar (só os que têm valor; o aviso simples fica como o antigo). */
-export function camposDoComunicado(x: ExtrasDoComunicado): Partial<Pick<AvisoDoEscritorio, 'tipo' | 'titulo' | 'link' | 'quando'>> {
+export function camposDoComunicado(x: ExtrasDoComunicado): Partial<Pick<AvisoDoEscritorio, 'tipo' | 'titulo' | 'link' | 'quando' | 'pedeConfirmacao' | 'para'>> {
   return {
     ...(x.tipo !== 'aviso' ? { tipo: x.tipo } : {}),
     ...(x.titulo.trim() ? { titulo: x.titulo.trim() } : {}),
     ...(x.link.trim() ? { link: x.link.trim() } : {}),
     ...(x.tipo === 'reuniao' && x.quando ? { quando: x.quando } : {}),
+    ...(x.pedeConfirmacao ? { pedeConfirmacao: true } : {}),
+    ...(x.para && x.para.tipo !== 'todos' ? { para: x.para } : {}),
   };
 }
 

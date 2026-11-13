@@ -8,7 +8,10 @@ export interface RepoAvisos {
   /** os avisos, ao vivo (carregados: já chegou do banco, ou falhou) */
   lista(): { carregados: boolean; avisos: t.AvisoDoEscritorio[] };
   /** extras: o comunicado do Início novo (o tipo, o título, o link e o dia da reunião; 13/11/2026) */
-  publicar(texto: string, por: string, extras?: t.ExtrasDoComunicado): Promise<void>;
+  /** porUid: o login de quem escreveu (quem escreveu sempre vê o aviso e vê quem marcou o Recebido) */
+  publicar(texto: string, por: string, extras?: t.ExtrasDoComunicado, porUid?: string): Promise<void>;
+  /** o Recebido de quem leu o aviso que pede confirmação (13/11/2026) */
+  marcarRecebido(id: string, quem: { uid: string; nome: string }): Promise<void>;
   fixar(id: string, fixado: boolean): Promise<void>;
   apagar(id: string): Promise<void>;
   assinar(f: () => void): () => void;
@@ -33,18 +36,22 @@ export function criarAvisosMemoria(completo = false): RepoAvisos {
       { id: 'av-7', tipo: 'estudo' as const, titulo: 'eSocial: a nova versão do leiaute', texto: 'O que muda nos eventos de folha a partir do ano que vem. Vale a leitura para o DP.', por: 'Sávio', em: ha(75), link: 'https://www.gov.br/esocial/' },
       { id: 'av-8', tipo: 'aviso' as const, titulo: 'Senha do Wi-Fi trocada', texto: 'A senha nova está colada na recepção.', por: 'Nilma', em: ha(96) },
       { id: 'av-9', tipo: 'reuniao' as const, titulo: 'Alinhamento do Fiscal', texto: 'As apurações de novembro e quem fica com cada empresa.', por: 'Heverton', em: ha(1), quando: diaEHora(7, '10:30'), fixado: true },
+      { id: 'av-11', tipo: 'aviso' as const, titulo: 'Novo procedimento das guias', texto: 'A partir de hoje as guias saem só pelo nads. Marquem o Recebido depois de ler.', por: 'Nilma', porUid: 'exemplo-1', em: ha(3), pedeConfirmacao: true, recebidos: [{ uid: 'exemplo-6', nome: 'Clara', em: ha(2) }] },
+      { id: 'av-12', tipo: 'aviso' as const, titulo: 'Só para o Fiscal: SPED de outubro', texto: 'O SPED de outubro vai até o dia 20. Avisem se faltar nota.', por: 'Nilma', porUid: 'exemplo-1', em: ha(7), pedeConfirmacao: true, para: { tipo: 'setor' as const, setores: ['fiscal'] } },
+      { id: 'av-13', tipo: 'geral' as const, titulo: 'Para o Vitor e a Clara: cliente novo', texto: 'Vocês ficam com o cliente novo a partir de dezembro.', por: 'Nilma', porUid: 'exemplo-1', em: ha(9), para: { tipo: 'pessoas' as const, pessoas: [{ uid: 'exemplo-3', nome: 'Vitor' }, { uid: 'exemplo-6', nome: 'Clara' }] } },
       { id: 'av-10', tipo: 'geral' as const, titulo: 'Confraternização de fim de ano', texto: 'Dia 18 de dezembro, depois do expediente. Confirmem até o dia 10.', por: 'Vitor', em: ha(120) },
     ] : []),
   ];
   return {
     exemplos: true,
     lista: () => ({ carregados: true, avisos }),
-    async publicar(texto, por, extras) {
+    async publicar(texto, por, extras, porUid) {
       if (extras) { const problema = t.problemaDoComunicado(texto, extras); if (problema) throw new Error(problema); }
-      avisos = [...avisos, { id: 'av-' + Date.now(), texto: t.limparAviso(texto), por, em: new Date().toISOString(), ...(extras ? t.camposDoComunicado(extras) : {}) }];
+      avisos = [...avisos, { id: 'av-' + Date.now(), texto: t.limparAviso(texto), por, em: new Date().toISOString(), ...(porUid ? { porUid } : {}), ...(extras ? t.camposDoComunicado(extras) : {}) }];
       mudou();
     },
     async fixar(id, fixado) { avisos = avisos.map(a => (a.id === id ? { ...a, fixado } : a)); mudou(); },
+    async marcarRecebido(id, quem) { avisos = avisos.map(a => (a.id === id ? t.comRecebido(a, quem, new Date().toISOString()) : a)); mudou(); },
     async apagar(id) { avisos = avisos.filter(a => a.id !== id); mudou(); },
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,

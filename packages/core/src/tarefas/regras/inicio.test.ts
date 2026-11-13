@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { camposDoComunicado, juntarAvisos, limparAviso, linkValido, MAIOR_AVISO, ordenarAvisos, porcentagemDe, problemaDoAviso, problemaDoComunicado, proximasReunioes, resumoDoProgresso, type ExtrasDoComunicado } from './inicio';
+import { avisoParaMim, comRecebido, faltaReceber, rotuloDoDestino, camposDoComunicado, juntarAvisos, limparAviso, linkValido, MAIOR_AVISO, ordenarAvisos, porcentagemDe, problemaDoAviso, problemaDoComunicado, proximasReunioes, resumoDoProgresso, type AvisoDoEscritorio, type ExtrasDoComunicado } from './inicio';
 
 describe('avisos do escritório', () => {
   it('limpa as pontas e as linhas em branco repetidas', () => {
@@ -70,5 +70,30 @@ describe('comunicados da equipe (as Notificações do Início novo)', () => {
   it('lista as próximas reuniões, a mais perto primeiro', () => {
     const l = [{ tipo: 'reuniao' as const, quando: '2026-11-21T09:00' }, { tipo: 'reuniao' as const, quando: '2026-11-10T09:00' }, { tipo: 'reuniao' as const, quando: '2026-11-15T14:00' }, { quando: '2026-11-16T09:00' }];
     expect(proximasReunioes(l, '2026-11-13T10:00').map(x => x.quando)).toEqual(['2026-11-15T14:00', '2026-11-21T09:00']);
+  });
+});
+
+describe('o aviso com destinatários e o Recebido', () => {
+  const equipe = [{ uid: 'a', nome: 'Ana', departamento: 'fiscal' }, { uid: 'b', nome: 'Bia', departamento: 'dp' }, { uid: 'c', nome: 'Caio', departamento: 'fiscal' }];
+  it('só os destinatários veem; quem escreveu também', () => {
+    expect(avisoParaMim({}, { uid: 'b' })).toBe(true);
+    expect(avisoParaMim({ para: { tipo: 'setor', setores: ['fiscal'] } }, { uid: 'b', departamento: 'dp' })).toBe(false);
+    expect(avisoParaMim({ para: { tipo: 'setor', setores: ['fiscal'] } }, { uid: 'a', departamento: 'fiscal' })).toBe(true);
+    expect(avisoParaMim({ para: { tipo: 'pessoas', pessoas: [{ uid: 'c', nome: 'Caio' }] }, porUid: 'b' }, { uid: 'b' })).toBe(true);
+    expect(avisoParaMim({ para: { tipo: 'pessoas', pessoas: [{ uid: 'c', nome: 'Caio' }] } }, { uid: 'a' })).toBe(false);
+  });
+  it('quem falta marcar o Recebido', () => {
+    const a: AvisoDoEscritorio = { id: '1', texto: 'x', por: 'Nilma', porUid: 'n', em: '', pedeConfirmacao: true, para: { tipo: 'setor' as const, setores: ['fiscal'] } };
+    expect(faltaReceber(a, equipe).map(p => p.nome)).toEqual(['Ana', 'Caio']);
+    const marcado = comRecebido(a, { uid: 'a', nome: 'Ana' }, 'agora');
+    expect(faltaReceber(marcado, equipe).map(p => p.nome)).toEqual(['Caio']);
+    expect(comRecebido(marcado, { uid: 'a', nome: 'Ana' }, 'depois').recebidos).toHaveLength(1);
+    expect(faltaReceber({ ...a, pedeConfirmacao: false }, equipe)).toEqual([]);
+    expect(rotuloDoDestino(a.para, [{ id: 'fiscal', rotulo: 'Fiscal' }])).toBe('Fiscal');
+  });
+  it('grava o destino e o pedido de confirmação', () => {
+    expect(camposDoComunicado({ tipo: 'aviso', titulo: '', link: '', quando: '', pedeConfirmacao: true, para: { tipo: 'pessoas', pessoas: [{ uid: 'c', nome: 'Caio' }] } }))
+      .toEqual({ pedeConfirmacao: true, para: { tipo: 'pessoas', pessoas: [{ uid: 'c', nome: 'Caio' }] } });
+    expect(problemaDoComunicado('x', { tipo: 'aviso', titulo: '', link: '', quando: '', para: { tipo: 'setor', setores: [] } })).toMatch(/setor/);
   });
 });

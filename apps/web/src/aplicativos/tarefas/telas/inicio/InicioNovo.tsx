@@ -13,8 +13,7 @@ import { BuscaDoInicio } from './partes/BuscaDoInicio';
 import { ListaDoInicio } from './partes/ListaDoInicio';
 import { NotificacoesDoInicio } from './partes/NotificacoesDoInicio';
 import { PainelDoInicio } from './partes/PainelDoInicio';
-import { BotoesDasNotificacoes } from './partes/SolicitacoesDoInicio';
-import { useSolicitacoesDoInicio } from './useSolicitacoesDoInicio';
+import { BotoesDasNotificacoes } from './partes/ReunioesDoInicio';
 import { DadosDeTesteDoInicio } from './DadosDeTesteDoInicio';
 import { useInicio } from './useInicio';
 import { useInicioNovo } from './useInicioNovo';
@@ -25,9 +24,8 @@ export function InicioNovo() {
   // a lista das Tarefas (Minhas, Delegadas por mim, Concluídas) vem da barra lateral padrão da casca (?lista=)
   const [params] = useSearchParams();
   const lista = listaDaUrl(params.get('lista'));
-  const solicitacoes = useSolicitacoesDoInicio();
-  // nas Notificações, o Sênior, o Diretor e o Dono trocam o Delegar documentos e o Nova tarefa pelas solicitações de reunião
-  const daSolicitacao = vm.aba === 'notificacoes' && solicitacoes.papel !== 'nenhum';
+  // nas Notificações, o Sênior, o Diretor e o Dono trocam o Delegar documentos e o Nova tarefa pelas reuniões
+  const daSolicitacao = vm.aba === 'notificacoes' && vm.reunioesVm.papel !== 'participa';
   useCarregando(vm.carregando);
   // a tarefa aberta pergunta antes de ser largada (se mudou algo)
   const saida = useRef<((depois: () => void) => void) | null>(null);
@@ -54,7 +52,7 @@ export function InicioNovo() {
         <BuscaDoInicio vm={vm} />
         {vm.exemplos && <span className="badge badge-neutral">Exemplos</span>}
         {mural.dev && <DadosDeTesteDoInicio teste={mural.teste} />}
-        {daSolicitacao ? <BotoesDasNotificacoes vm={solicitacoes} /> : (
+        {daSolicitacao ? <BotoesDasNotificacoes vm={vm.reunioesVm} escolher={vm.escolherComunicado} /> : (
           <>
             <button type="button" className="btn btn-outline" onClick={vm.pedirDocumentos} title="Delegar a alguém do escritório: quem recebe anexa os documentos e confirma"><Icone nome="clipe" />Delegar documentos</button>
             <button type="button" className="btn btn-primary" onClick={vm.nova}><Icone nome="plus" />Nova tarefa</button>
@@ -67,7 +65,7 @@ export function InicioNovo() {
       <div ref={conteudo} key={vm.aba} className="ini-conteudo" data-aba={vm.aba}>
         {vm.aba === 'painel' && <PainelDoInicio vm={vm} />}
         {(vm.aba === 'tarefas' || vm.aba === 'documentos') && <ListaDoInicio key={vm.aba + lista} documentos={vm.aba === 'documentos'} lista={lista} busca={vm.busca} filtrar={vm.filtrarLista} abrir={vm.abrir} comFoto={vm.comFoto} />}
-        {vm.aba === 'notificacoes' && <NotificacoesDoInicio vm={vm} mural={mural} podeMexer={solicitacoes.papel === 'aprova'} />}
+        {vm.aba === 'notificacoes' && <NotificacoesDoInicio vm={vm} mural={mural} podeMexer={vm.reunioesVm.papel === 'aprova'} />}
       </div>
       {vm.aberta && <TarefaAbertaNova key={vm.aberta} alvo={vm.aberta} voltar={vm.fechar} criada={vm.criada} saida={saida} />}
     </section>

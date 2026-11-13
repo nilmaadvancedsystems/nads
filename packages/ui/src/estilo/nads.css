@@ -6893,3 +6893,13 @@ td.fs-fat-sem{color:var(--ink-faint);}
 .adm-nota{display:flex;align-items:center;gap:8px;margin:0 0 4px;font-size:var(--fs-14);}
 .adm-nota .num{font-size:var(--fs-24);}
 .adm-hist{margin:0 0 8px;font-size:var(--fs-13);}
+/* as reuniões e o Recebido (as Notificações do Início novo) */
+.ini-notificacoes > .ini-coluna{gap:16px;}
+.ini-reuniao-acoes{display:flex;flex-direction:column;gap:8px;margin-top:12px;}
+.ini-reuniao-linha{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;}
+.ini-reuniao-linha > input[type="text"],.ini-reuniao-linha > textarea{flex:1;min-width:200px;}
+.ini-reuniao-arquivo li{gap:8px;}
+.ini-reuniao-anexar{margin-left:auto;}
+.ini-reuniao-comentario{margin:4px 0;}
+.ini-reuniao-historico{margin-top:12px;}
+.ini-destino{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;}
