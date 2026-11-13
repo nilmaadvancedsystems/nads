@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import roboImportado from '../../../../../../robo/area-cliente-regras.js';
 import {
   base64DosBytes, comPendentes, documentoFormatado, ehTokenDoLink, estadoDoEspelho, lerAgenda, lerChamado, lerGuia, lerRecibo, lerResumo,
-  nomeDoPdfDaGuia, pedidoDeChamado, pedidoDeEnvio, respostaVoltou,
+  nomeDoPdfDaGuia, pedidoDeChamado, pedidoDeEnvio, respostaVoltou, lerExtratoDoMes,
 } from './espelho';
 
 type Solto = Record<string, unknown>;
@@ -175,5 +175,32 @@ describe('o estado da tela', () => {
   it('o nome do PDF da guia', () => {
     expect(nomeDoPdfDaGuia({ tipo: 'FGTS', competencia: '2026-09' })).toBe('guia-fgts-2026-09.pdf');
     expect(nomeDoPdfDaGuia(null)).toBe('guia.pdf');
+  });
+});
+
+describe('os lançamentos do mês pelos extratos (13/11/2026)', () => {
+  it('o que o robô grava (a lista branca) é o que o site lê', () => {
+    const gravado = { codigo: 58, competencia: '2026-10', lancamentos: [{ dia: 2, historico: 'PIX', valor: 10.5, conta: 'itau' }, { dia: 3, historico: 'TARIFA', valor: -2, conta: 'itau' }], cortados: 0, atualizadoEm: '2026-11-13T10:00:00.000Z' };
+    R.conferirListaBranca('extratoLista', gravado);
+    expect(lerExtratoDoMes(gravado)).toEqual({ lancamentos: gravado.lancamentos, cortados: 0 });
+    expect(lerExtratoDoMes({ lancamentos: [{ dia: 1, valor: 'x' }] })).toEqual({ lancamentos: [], cortados: 0 });
+    expect(lerExtratoDoMes(null)).toBeNull();
+  });
+});
+
+describe('o Registro com a folha de verdade (13/11/2026)', () => {
+  it('o que o robô grava (a lista branca) é o que o site lê; o torto fica de fora', async () => {
+    const { lerPessoal } = await import('./espelho');
+    const funcionario = { id: 'f1', nome: 'MARIA', cpf: '***.456.789-**', matricula: '1', remuneracao: 2000, desde: '2023-06', ultimo: '2026-10', ativo: true,
+      cargo: 'VENDEDORA', admissao: '2023-06-15', salarioBase: 2000, liquido: 1630, feriasVencidas: true, afastadoDe: '2026-10-08', afastadoAte: '2026-10-22',
+      periodosDeFerias: [{ inicio: '2025-06-15', fim: '2026-06-14', direito: 30, gozados: 0, aGozar: 30, concederAte: '2027-05-15' }], fonte: 'folha' };
+    const gravado = { funcionarios: [funcionario], competencia: '2026-10', total: 2000, atualizadoEm: '2026-11-13T10:00:00.000Z',
+      historico: [{ competencia: '2026-10', base: 2000, fgts: 160, funcionarios: 1, proventos: 2000, descontos: 370, liquido: 1630, inss: 150, irrf: 0, holerites: 1 }] };
+    R.conferirListaBranca('pessoal', gravado);
+    expect(lerPessoal(gravado)).toEqual(gravado);
+    const torto = lerPessoal({ ...gravado, funcionarios: [{ ...funcionario, admissao: '15/06/2023', liquido: 'x', periodosDeFerias: [{ inicio: 'ontem' }] }] });
+    expect(torto?.funcionarios[0]).not.toHaveProperty('admissao');
+    expect(torto?.funcionarios[0]).not.toHaveProperty('liquido');
+    expect(torto?.funcionarios[0]).not.toHaveProperty('periodosDeFerias');
   });
 });

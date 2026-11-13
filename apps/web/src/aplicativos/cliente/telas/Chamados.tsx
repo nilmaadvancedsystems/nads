@@ -26,20 +26,23 @@ export function Chamados(props: DaCasca) {
           <h1 className="page-title">Solicitações</h1>
         </div>
         <div className="cli-acoes">
-          <button type="button" className="btn btn-primary" onClick={vm.nova}><Icone nome="plus" width={16} height={16} />Nova solicitação</button>
+          <button type="button" className="btn btn-primary" data-tutorial="nova-solicitacao" onClick={vm.nova}><Icone nome="plus" width={16} height={16} />Nova solicitação</button>
         </div>
       </div>
+
+      {/* os filtros em cartões no alto, como as pastas da Central (13/11/2026) */}
+      <nav className="cli-pastas-cartoes cli-sol-cartoes" aria-label="Filtrar as solicitações">
+        {vm.filtros.map(f => (
+          <button key={f.id} type="button" className={'cli-pasta-cartao t-' + f.tom + (f.ativo ? ' ativa' : '')} aria-pressed={f.ativo} onClick={() => vm.escolherFiltro(f.id)}>
+            <span className="cli-pasta-cartao-ico" aria-hidden="true"><Icone nome={f.icone} width={17} height={17} /></span>
+            <span className="cli-pasta-cartao-txt"><b>{f.n}</b><span>{f.rotulo}</span></span>
+          </button>
+        ))}
+      </nav>
 
       <div className={'cli-sol' + (vm.painelNoCelular ? ' painel-aberto' : '')}>
         {/* a lista */}
         <section className="card cli-sol-lista">
-          <div className="cli-sol-filtros" role="tablist" aria-label="Filtrar">
-            {vm.filtros.map(f => (
-              <button key={f.id} type="button" role="tab" aria-selected={f.ativo} className={'cli-sol-filtro' + (f.ativo ? ' ativo' : '')} onClick={() => vm.escolherFiltro(f.id)}>
-                {f.rotulo}<b>{f.n}</b>
-              </button>
-            ))}
-          </div>
           {vm.lista.length ? (
             <ul>
               {vm.lista.map(c => (

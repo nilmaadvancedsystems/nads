@@ -124,8 +124,11 @@ export function Guias(props: DaCasca) {
 
       <div className={temAvisos ? 'cli-duas cli-guias' : ''}>
         <div className="cli-coluna">
-          <section className="card">
-            <div className="card-head"><h3>A pagar</h3>{vm.guias.length > 0 && <span className="cli-conta">{vm.guias.length}</span>}</div>
+          <section className="card" data-tutorial="a-pagar">
+            <div className="card-head">
+              <h3>A pagar</h3>{vm.guias.length > 0 && <span className="cli-conta">{vm.guias.length}</span>}
+              {vm.comPdf > 1 && <span className="card-head-ctl"><button type="button" className="cli-baixar-tudo" disabled={!!vm.juntando} onClick={vm.baixarTodas} title="Baixar as guias num .zip"><Icone nome="download" width={15} height={15} />{vm.juntando || <>Baixar todas<span className="cli-baixar-n">{vm.comPdf}</span></>}</button></span>}
+            </div>
             {vm.guias.length ? (
               <ul className="cli-lista">
                 {vm.guias.map(g => (
@@ -184,7 +187,8 @@ export function Guias(props: DaCasca) {
 
       {/* o que o escritório entrega no mês está na agenda do mês, no alto (12/11/2026: o cartão daqui repetia) */}
       {/* a pré-visualização da guia (12/11/2026) */}
-      {vm.vista.aberto && <JanelaDoArquivo arquivo={vm.vista.aberto} onBaixar={vm.vista.baixar} onFechar={vm.vista.fechar} />}
+      {vm.vista.aberto && <JanelaDoArquivo arquivo={vm.vista.aberto} onBaixar={vm.vista.baixar} onFechar={vm.vista.fechar}
+        onAnterior={vm.setas.anterior} onProximo={vm.setas.proximo} posicao={vm.setas.posicao} abrindo={!!vm.vista.abrindo} />}
     </>
   );
 }

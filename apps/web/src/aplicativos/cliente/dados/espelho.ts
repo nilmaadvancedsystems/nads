@@ -47,6 +47,25 @@ export function lerResumo(x: unknown): ac.ResumoDoCliente | null {
   return { empresas, escritorio, atualizadoEm: instante(r.atualizadoEm) };
 }
 
+/**
+ * O que o holerite e a previsão de férias do DP acrescentam ao funcionário (13/11/2026, folhaLida.ts): o cargo, a
+ * admissão, o salário base, o líquido, as férias vencidas, o afastamento e os períodos de férias. O que vier torto fica de fora.
+ */
+function daFolha(f: Solto): Partial<ac.FuncionarioDoRegistro> {
+  const x: Partial<ac.FuncionarioDoRegistro> = {};
+  if (texto(f.cargo).trim()) x.cargo = texto(f.cargo).trim().slice(0, 80);
+  if (DIA.test(texto(f.admissao))) x.admissao = texto(f.admissao);
+  if (numeroOuNulo(f.salarioBase) != null) x.salarioBase = f.salarioBase as number;
+  if (numeroOuNulo(f.liquido) != null) x.liquido = f.liquido as number;
+  if (f.feriasVencidas === true) x.feriasVencidas = true;
+  if (DIA.test(texto(f.afastadoDe)) && DIA.test(texto(f.afastadoAte))) { x.afastadoDe = texto(f.afastadoDe); x.afastadoAte = texto(f.afastadoAte); }
+  const periodos = lista(f.periodosDeFerias).map(objeto).filter((p): p is Solto => !!p && DIA.test(texto(p.inicio)) && DIA.test(texto(p.fim)) && DIA.test(texto(p.concederAte)))
+    .map(p => ({ inicio: texto(p.inicio), fim: texto(p.fim), concederAte: texto(p.concederAte), direito: numeroOuNulo(p.direito) ?? 0, gozados: numeroOuNulo(p.gozados) ?? 0, aGozar: numeroOuNulo(p.aGozar) ?? 0 }));
+  if (periodos.length) x.periodosDeFerias = periodos;
+  if (f.fonte === 'folha') x.fonte = 'folha';
+  return x;
+}
+
 /** resumo/pessoal (o Registro): { funcionarios: [{ id, nome, cpf (mascarado), matricula, remuneracao, desde, ultimo, ativo }],
  *  competencia, total, atualizadoEm }. O CPF que não vier mascarado fica de fora. */
 export function lerPessoal(x: unknown): ac.ResumoDoPessoal | null {
@@ -57,8 +76,17 @@ export function lerPessoal(x: unknown): ac.ResumoDoPessoal | null {
       id: texto(f.id), nome: texto(f.nome).trim(), cpf: /^\*{3}\.\d{3}\.\d{3}-\*{2}$/.test(texto(f.cpf)) ? texto(f.cpf) : '', matricula: texto(f.matricula),
       remuneracao: typeof f.remuneracao === 'number' ? f.remuneracao : 0, desde: COMPETENCIA.test(texto(f.desde)) ? texto(f.desde) : '',
       ultimo: COMPETENCIA.test(texto(f.ultimo)) ? texto(f.ultimo) : '', ativo: f.ativo === true,
+      ...daFolha(f),
     }));
-  return { funcionarios, competencia: COMPETENCIA.test(texto(r.competencia)) ? texto(r.competencia) : '', total: typeof r.total === 'number' ? r.total : 0, atualizadoEm: instante(r.atualizadoEm) };
+  // a folha mês a mês (13/11/2026); com as somas dos holerites quando o DP salvou a folha do mês
+  const historico = lista(r.historico).map(objeto).filter((m): m is Solto => !!m && COMPETENCIA.test(texto(m.competencia)) && typeof m.base === 'number')
+    .map(m => {
+      const extra: Partial<ac.MesDaFolha> = {};
+      for (const k of ['proventos', 'descontos', 'liquido', 'inss', 'irrf', 'holerites'] as const) if (typeof m[k] === 'number' && Number.isFinite(m[k])) extra[k] = m[k] as number;
+      return { competencia: texto(m.competencia), base: m.base as number, fgts: typeof m.fgts === 'number' ? m.fgts : 0, funcionarios: typeof m.funcionarios === 'number' ? m.funcionarios : 0, ...extra };
+    });
+  return { funcionarios, competencia: COMPETENCIA.test(texto(r.competencia)) ? texto(r.competencia) : '', total: typeof r.total === 'number' ? r.total : 0,
+    ...(historico.length ? { historico } : {}), atualizadoEm: instante(r.atualizadoEm) };
 }
 
 const numeroOuNulo = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
@@ -82,6 +110,12 @@ function lerNotasDoMes(x: unknown): ac.NotasDoMes | null {
 }
 
 /** resumo/faturamento (12/11/2026): { empresas: [{ codigo, nome, regime, meses: [{ competencia, nfe, nfce, notas, total, variacao }] }], fonte, atualizadoEm }. */
+/** o saldo de fim de mês de uma conta (ou de todas): { valor, data 'aaaa-mm-dd' } */
+function lerSaldo(x: unknown): { valor: number; data: string } | null {
+  const s = objeto(x);
+  return s && typeof s.valor === 'number' && Number.isFinite(s.valor) && /^\d{4}-\d{2}-\d{2}$/.test(texto(s.data)) ? { valor: s.valor, data: texto(s.data) } : null;
+}
+
 export function lerFaturamento(x: unknown): ac.ResumoDoFaturamento | null {
   const r = objeto(x);
   if (!r) return null;
@@ -96,6 +130,16 @@ export function lerFaturamento(x: unknown): ac.ResumoDoFaturamento | null {
         notas: typeof x.notas === 'number' ? x.notas : 0, canceladas: typeof x.canceladas === 'number' ? x.canceladas : 0, valor: numeroOuNulo(x.valor) ?? 0,
       })) } : {}),
       ...(() => { const n = lerNotasDoMes(m.notasDoMes); return n ? { notasDoMes: n } : {}; })(),
+      // o que entrou no banco pelos extratos (13/11/2026)
+      ...(() => {
+        const b = objeto(m.banco);
+        if (!b || typeof b.entradas !== 'number') return {};
+        const porBanco = lista(b.porBanco).map(objeto).filter((x): x is Solto => !!x && !!texto(x.id) && typeof x.entradas === 'number')
+          .map(x => ({ id: texto(x.id), nome: texto(x.nome) || texto(x.id), ...(texto(x.marca) ? { marca: texto(x.marca) } : {}), entradas: x.entradas as number,
+            ...(typeof x.saidas === 'number' ? { saidas: x.saidas } : {}), ...(() => { const sd = lerSaldo(x.saldo); return sd ? { saldo: sd } : {}; })() }));
+        const saldo = lerSaldo(b.saldo);
+        return { banco: { entradas: b.entradas, ...(typeof b.saidas === 'number' ? { saidas: b.saidas } : {}), contas: typeof b.contas === 'number' ? b.contas : 0, ...(saldo ? { saldo } : {}), ...(porBanco.length ? { porBanco } : {}) } };
+      })(),
     })),
   })).filter(e => e.meses.length);
   return empresas.length ? { empresas, fonte: texto(r.fonte), atualizadoEm: instante(r.atualizadoEm) } : null;
@@ -115,6 +159,17 @@ export function lerDanfe(id: string, x: unknown): DanfeNoEspelho | null {
   if (!d || d.tipo !== 'danfe' || d.erro || !(typeof d.partes === 'number' && d.partes > 0)) return null;
   const chave = ac.chaveDeNota(d.chave);
   return chave ? { id, nome: texto(d.nome) || 'DANFE.pdf', chave, atualizadoEm: instante(d.atualizadoEm) } : null;
+}
+
+/** resumo/extrato-{código}-{mês} (13/11/2026): { codigo, competencia, lancamentos: [{ dia, historico, valor, conta }], cortados }. */
+export function lerExtratoDoMes(x: unknown): { lancamentos: ac.LancamentoDoCliente[]; cortados: number } | null {
+  const r = objeto(x);
+  if (!r || !Array.isArray(r.lancamentos)) return null;
+  return {
+    lancamentos: lista(r.lancamentos).map(objeto).filter((l): l is Solto => !!l && typeof l.dia === 'number' && typeof l.valor === 'number' && Number.isFinite(l.valor))
+      .map(l => ({ dia: l.dia as number, historico: texto(l.historico), valor: l.valor as number, conta: texto(l.conta) })),
+    cortados: typeof r.cortados === 'number' ? r.cortados : 0,
+  };
 }
 
 /** resumo/notas-{código}-{mês} (12/11/2026, o relatório do dia): { codigo, competencia, notas: [{ dia, tipo, numero, serie, cliente, cfop, valor, cancelada?, chave }], cortadas }. */

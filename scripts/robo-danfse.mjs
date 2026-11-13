@@ -29,9 +29,12 @@ const codigo = [
   // o Registro da Área do Cliente (12/11/2026, robo/area-cliente.js): os funcionários pelas guias do FGTS (o texto do PDF
   // com a posição, pelo pdf.js do próprio robô) e o que é cada documento do DP
   'export { registroDasGuias, categoriaDoArquivoDp, ehDoDp, donoDoArquivo, mascararCpf } from ' + caminho('packages/core/src/areaCliente/pessoal.ts') + ';',
+  'export { historicoDaFolha } from ' + caminho('packages/core/src/areaCliente/dp.ts') + ';',
+  // a folha de verdade (13/11/2026): os holerites e a previsão de férias dos PDFs do DP
+  'export { holeritesDasPaginas, feriasDasPaginas, registroComAFolha, historicoComAFolha } from ' + caminho('packages/core/src/areaCliente/folhaLida.ts') + ';',
   'export { guiasDoFgtsDasLinhas, linhasDaGuiaDoFgts } from ' + caminho('packages/core/src/tarefas/regras/fgts.ts') + ';',
   // o Faturamento da Área do Cliente (12/11/2026): os 12 meses de cada empresa pelas notas emitidas no SIEG
-  'export { faturamentoDoCliente, competenciasDoFaturamento } from ' + caminho('packages/core/src/areaCliente/faturamento.ts') + ';',
+  'export { faturamentoDoCliente, competenciasDoFaturamento, entradasDosExtratos, comOBanco, lancamentosDoMes } from ' + caminho('packages/core/src/areaCliente/faturamento.ts') + ';',
   'export { notasDoMes, listaDeNotasDoMes } from ' + caminho('packages/core/src/areaCliente/notasDoMes.ts') + ';',
   'export { erroDaLogo } from ' + caminho('packages/core/src/areaCliente/logo.ts') + ';',
   'export { chaveDoPedidoDeDanfe, idDaDanfe, partesDaChave } from ' + caminho('packages/core/src/areaCliente/pedidoDeDanfe.ts') + ';',

@@ -54,7 +54,8 @@ export interface FichaDaEmpresa {
 export interface Atendimento {
   equipe: string;
   horario: string;
-  setores: { nome: string; email: string }[];
+  /** cada setor com o e-mail e o WhatsApp dele (13/11/2026: "colocar número dos setores do WhatsApp") */
+  setores: { nome: string; email: string; whatsapp?: string }[];
 }
 
 /** Um recado do escritório (ex.: mandar os extratos até o dia 5). */
@@ -153,6 +154,8 @@ export interface RepoAreaCliente {
   baixarDocumentoDp(token: string, id: string): Promise<{ nome: string; arquivo: Blob } | null>;
   /** as notas emitidas de um mês da empresa (o relatório do dia; resumo/notas-{código}-{mês}); null = ainda não chegou */
   notasDoMes(token: string, codigo: number, mes: string): Promise<ac.NotaDoRelatorio[] | null>;
+  /** os lançamentos do mês pelos extratos (13/11/2026; resumo/extrato-{código}-{mês}); null = ainda não chegou */
+  extratoDoMes(token: string, codigo: number, mes: string): Promise<{ lancamentos: ac.LancamentoDoCliente[]; cortados: number } | null>;
   /** a DANFE da nota (12/11/2026): pede ao robô pela caixa dos chamados e espera o PDF no espelho; ou o porquê de não vir */
   pedirDanfe(token: string, chave: string): Promise<{ nome: string; arquivo: Blob } | { erro: string }>;
 }

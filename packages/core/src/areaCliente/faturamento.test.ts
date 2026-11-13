@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import * as XLSX from 'xlsx';
 import type { SaidasSieg } from '../tarefas/sieg';
-import { competenciasDoFaturamento, detalheDoMes, faturamentoDoCliente, painelDoFaturamento, planilhaDoFaturamento, seriesDoMes, type MesDoFaturamento } from './faturamento';
+import { bancosDoFaturamento, comOBanco, competenciasDoFaturamento, lancamentosDoMes, MAIOR_LISTA_DE_LANCAMENTOS, movimentoDasContas, detalheDoMes, entradasDosExtratos, faturadoXBanco, faturamentoDoCliente, painelDoFaturamento, planilhaDoFaturamento, seriesDoMes, type MesDoFaturamento } from './faturamento';
 
 const saida = (codigo: string, competencia: string, nfe: number, nfce = 0): SaidasSieg => ({
   codigo, competencia, em: '',
@@ -116,5 +116,112 @@ describe('o detalhamento do mês (o clique na tabela ou no gráfico)', () => {
       { modelo: '65', serie: '2', primeira: 5, ultima: 7, notas: 3, canceladas: 0, valor: 30 },
     ]);
     expect(seriesDoMes(null)).toEqual([]);
+  });
+});
+
+describe('o faturado contra o que entrou no banco (13/11/2026)', () => {
+  const mes = (competencia: string, total: number | null, entradas?: number) => ({
+    competencia, nfe: null, nfce: null, notas: 0, total, variacao: null, ...(entradas != null ? { banco: { entradas, contas: 2 } } : {}),
+  });
+  const meses = [mes('2026-05', 100), mes('2026-06', 100, 95), mes('2026-07', 100, 70), mes('2026-08', 100, 140), mes('2026-09', null, 50), mes('2026-10', 200)];
+  it('acompanha (90% a 115%), entrou menos, entrou mais', () => {
+    expect(faturadoXBanco(meses, '2026-06').mes).toMatchObject({ faturado: 100, entradas: 95, diferenca: -5, cobertura: 95, tom: 'bom' });
+    expect(faturadoXBanco(meses, '2026-07').mes).toMatchObject({ cobertura: 70, tom: 'atencao' });
+    expect(faturadoXBanco(meses, '2026-07').mes.leitura).toMatch(/menos/);
+    expect(faturadoXBanco(meses, '2026-08').mes.leitura).toMatch(/mais/);
+  });
+  it('sem extrato, sem nota', () => {
+    expect(faturadoXBanco(meses, '2026-10').mes).toMatchObject({ entradas: null, diferenca: null, cobertura: null, tom: 'neutro' });
+    expect(faturadoXBanco(meses, '2026-09').mes.leitura).toMatch(/não tem nota/);
+  });
+  it('a série dos 6 meses até o escolhido e se há banco', () => {
+    const r = faturadoXBanco(meses, '2026-10');
+    expect(r.serie.map(m => m.competencia)).toEqual(['2026-05', '2026-06', '2026-07', '2026-08', '2026-09', '2026-10']);
+    expect(r.temBanco).toBe(true);
+    expect(faturadoXBanco([mes('2026-05', 100)], '2026-05').temBanco).toBe(false);
+    // a série não anda com o mês escolhido: são sempre os últimos 6 meses com dado
+    expect(faturadoXBanco(meses, '2026-05').serie.map(m => m.competencia)).toEqual(r.serie.map(m => m.competencia));
+  });
+});
+
+describe('as entradas dos extratos (13/11/2026)', () => {
+  it('soma os créditos do lado do banco por mês, sem repetir o mesmo lançamento, e conta as contas', () => {
+    const r = entradasDosExtratos([
+      { lado: 'banco', banco: 'bb', lancamentos: [{ data: '2026-10-02', valor: 10000, historico: 'PIX' }, { data: '2026-10-03', valor: -5000 }, { data: '2026-11-01', valor: 250 }] },
+      { lado: 'banco', banco: 'bb', lancamentos: [{ data: '2026-10-02', valor: 10000, historico: 'PIX' }] },
+      { lado: 'banco', banco: 'itau', lancamentos: [{ data: '2026-10-10', valor: 1999 }] },
+      { lado: 'sistema', banco: 'bb', lancamentos: [{ data: '2026-10-05', valor: 99999 }] },
+    ]);
+    expect(r).toEqual({
+      '2026-10': { entradas: 119.99, saidas: 50, contas: 2, porBanco: [{ id: 'bb', nome: 'Bb', entradas: 100, saidas: 50 }, { id: 'itau', nome: 'Itau', entradas: 19.99, saidas: 0 }] },
+      '2026-11': { entradas: 2.5, saidas: 0, contas: 1, porBanco: [{ id: 'bb', nome: 'Bb', entradas: 2.5, saidas: 0 }] },
+    });
+    // com os bancos do Extrator: o nome e a marca; o arquivo sem banco é do primeiro
+    const r2 = entradasDosExtratos([{ lado: 'banco', lancamentos: [{ data: '2026-10-02', valor: 500 }] }], [{ id: 'itau-1-2', nome: 'Itaú', marca: 'itau' }]);
+    expect(r2['2026-10'].porBanco).toEqual([{ id: 'itau-1-2', nome: 'Itaú', marca: 'itau', entradas: 5, saidas: 0 }]);
+  });
+  it('o faturamento com o banco só nos meses e empresas que têm extrato', () => {
+    const fat = { fonte: 'x', atualizadoEm: '', empresas: [
+      { codigo: 1, nome: 'A', meses: [{ competencia: '2026-10', nfe: null, nfce: null, notas: 0, total: 100, variacao: null }, { competencia: '2026-11', nfe: null, nfce: null, notas: 0, total: 50, variacao: null }] },
+      { codigo: 2, nome: 'B', meses: [{ competencia: '2026-10', nfe: null, nfce: null, notas: 0, total: 10, variacao: null }] },
+    ] };
+    const r = comOBanco(fat, c => (c === 1 ? { '2026-10': { entradas: 90, contas: 1 } } : null));
+    expect(r.empresas[0].meses.map(m => m.banco ?? null)).toEqual([{ entradas: 90, contas: 1 }, null]);
+    expect(r.empresas[1]).toBe(fat.empresas[1]);
+  });
+});
+
+describe('a escolha do banco no Faturamento (13/11/2026)', () => {
+  const mes = (competencia: string, total: number, por: [string, number][]) => ({
+    competencia, nfe: null, nfce: null, notas: 0, total, variacao: null,
+    banco: { entradas: por.reduce((a, [, v]) => a + v, 0), contas: por.length, porBanco: por.map(([id, entradas]) => ({ id, nome: id.toUpperCase(), entradas })) },
+  });
+  const meses = [mes('2026-09', 100, [['itau', 60], ['sicoob', 30]]), mes('2026-10', 100, [['itau', 70], ['sicoob', 25]])];
+  it('os bancos, o que mais recebeu primeiro', () => {
+    expect(bancosDoFaturamento(meses).map(b => b.id)).toEqual(['itau', 'sicoob']);
+  });
+  it('com um banco, as entradas só dele e a parte dele no mês', () => {
+    const r = faturadoXBanco(meses, '2026-10', 'sicoob');
+    expect(r.mes).toMatchObject({ entradas: 25, cobertura: 25, tom: 'neutro' });
+    expect(r.mes.leitura).toBe('SICOOB recebeu 26,3% do que entrou nas contas no mês.');
+    expect(r.serie.map(m => m.entradas)).toEqual([30, 25]);
+    expect(faturadoXBanco(meses, '2026-10').mes.entradas).toBe(95);
+  });
+});
+
+describe('o movimento das contas no mês (13/11/2026)', () => {
+  it('entrou, saiu e ficou, no total e por conta, com a parte de cada uma', () => {
+    const meses = [{ competencia: '2026-10', nfe: null, nfce: null, notas: 0, total: 100, variacao: null,
+      banco: { entradas: 100, saidas: 70, contas: 2, porBanco: [{ id: 'a', nome: 'A', entradas: 75, saidas: 60 }, { id: 'b', nome: 'B', entradas: 25, saidas: 10 }] } }];
+    expect(movimentoDasContas(meses, '2026-10')).toEqual({
+      entradas: 100, saidas: 70, resultado: 30, saldo: null,
+      contas: [{ id: 'a', nome: 'A', entradas: 75, saidas: 60, resultado: 15, parte: 75, saldo: null }, { id: 'b', nome: 'B', entradas: 25, saidas: 10, resultado: 15, parte: 25, saldo: null }],
+    });
+    expect(movimentoDasContas(meses, '2026-09')).toBeNull();
+  });
+});
+
+describe('o saldo e os lançamentos do mês (13/11/2026)', () => {
+  const arquivos = [
+    { lado: 'banco', banco: 'a', lancamentos: [{ data: '2026-10-05', valor: 10000, historico: 'PIX   RECEBIDO' }, { data: '2026-10-02', valor: -2500, historico: 'TARIFA' }],
+      saldosDoDia: [{ data: '2026-10-02', saldo: 50000 }, { data: '2026-10-31', saldo: 57500 }, { data: '2026-11-03', saldo: 1 }] },
+    { lado: 'banco', banco: 'b', lancamentos: [{ data: '2026-10-05', valor: 3000, historico: 'TED' }], saldosDoDia: [{ data: '2026-10-30', saldo: 12000 }] },
+    { lado: 'banco', banco: 'a', lancamentos: [{ data: '2026-10-05', valor: 10000, historico: 'PIX   RECEBIDO' }] },
+  ];
+  it('o saldo de cada conta no último dia do mês, e o de todas quando todas trazem', () => {
+    const r = entradasDosExtratos(arquivos);
+    expect(r['2026-10'].porBanco.map(b => [b.id, b.saldo])).toEqual([['a', { valor: 575, data: '2026-10-31' }], ['b', { valor: 120, data: '2026-10-30' }]]);
+    expect(r['2026-10'].saldo).toEqual({ valor: 695, data: '2026-10-31' });
+    const sem = entradasDosExtratos([arquivos[0], { lado: 'banco', banco: 'c', lancamentos: [{ data: '2026-10-09', valor: 100 }] }]);
+    expect(sem['2026-10'].saldo).toBeUndefined();
+  });
+  it('os lançamentos do mês por dia, sem repetir, com o histórico limpo e o teto', () => {
+    expect(lancamentosDoMes(arquivos, '2026-10')).toEqual({ cortados: 0, lancamentos: [
+      { dia: 2, historico: 'TARIFA', valor: -25, conta: 'a' },
+      { dia: 5, historico: 'PIX RECEBIDO', valor: 100, conta: 'a' },
+      { dia: 5, historico: 'TED', valor: 30, conta: 'b' },
+    ] });
+    const muitos = [{ lado: 'banco', banco: 'a', lancamentos: Array.from({ length: MAIOR_LISTA_DE_LANCAMENTOS + 3 }, (_, i) => ({ data: '2026-10-01', valor: i + 1, historico: 'x' })) }];
+    expect(lancamentosDoMes(muitos, '2026-10').cortados).toBe(3);
   });
 });

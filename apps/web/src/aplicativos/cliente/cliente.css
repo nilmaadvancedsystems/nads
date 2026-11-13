@@ -1288,3 +1288,921 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
 .cli-app.cli-janela-envio .cli-soltar{padding:26px 16px;}
 /* o nome de quem do escritório respondeu, com o selo "Escritório" ao lado (12/11/2026) */
 .cli-app .cli-sol-do-escritorio{padding:1px 7px;border-radius:999px;background:var(--success-soft);color:var(--success-ink);font-size:11px;font-weight:600;}
+/* ---------------- a passada de acabamento (13/11/2026: "vamos melhorar ainda mais"; a escolhida: visual geral) ----------------
+   um só jeito de mostrar o que está escolhido (o fundo carmim suave), os rótulos de seção iguais, o seletor de mês
+   neutro (o carmim fica só para a ação principal da tela), o nome longo do extrato com reticências e o ranking em linha */
+.cli-app .seletor-mes-atual.btn-primary{background:var(--cli-cartao);border-color:var(--cli-linha);color:var(--ink);box-shadow:0 1px 1px color-mix(in srgb,var(--cli-sombra-cor) 5%,transparent);}
+.cli-app .seletor-mes-atual.btn-primary:hover:not(:disabled){background:var(--cli-fundo);border-color:var(--border);}
+.cli-app .seletor-mes-atual.btn-primary svg{color:var(--ink-muted);}
+.cli-app .chip-f.on{border-color:color-mix(in srgb,var(--accent) 45%,transparent);background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--ink);font-weight:600;}
+.cli-app :is(.cli-grupo,.cli-secao-fat,.cli-sol-rotulo,.cli-biblioteca-mes-titulo){font-size:11.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-muted);}
+.cli-app .cli-extrato-nome{display:block;}
+.cli-app .cli-extrato-nome small{display:block;}
+.cli-app .cli-ranking{container-type:inline-size;}
+@container (min-width:640px){
+  .cli-app .cli-ranking li{display:grid;grid-template-columns:minmax(0,260px) minmax(0,1fr) 200px;align-items:center;gap:20px;}
+  .cli-app .cli-ranking-topo{display:contents;}
+  .cli-app .cli-ranking-nome{grid-column:1;grid-row:1;}
+  .cli-app .cli-ranking-barra{grid-column:2;grid-row:1;}
+  .cli-app .cli-ranking-num{grid-column:3;grid-row:1;justify-content:flex-end;}
+}
+.cli-app .cli-ranking-num .hint{min-width:42px;text-align:right;}
+/* a linha da guia: o vencimento numa linha e a competência embaixo (antes, o "· competência" quebrava torto) */
+.cli-app .cli-g-txt .cli-g-comp{display:block;}
+
+/* ---------- a Central de documentos, segunda volta (13/11/2026: "preciso de mais melhoras", "tudo isso") ----------
+   as pastas em cartões no alto; a lista sem a coluna das pastas: marcar, o ícone, o nome (abre a visualização), a pasta
+   num selo colorido, a data e as ações que aparecem ao passar o mouse; a barra dos marcados com o Baixar .zip */
+.cli-app .cli-biblioteca{display:block;}
+.cli-app .cli-pastas-cartoes{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;}
+.cli-app .cli-pasta-cartao{display:flex;align-items:center;gap:12px;min-width:0;padding:14px 16px;border:1px solid var(--cli-linha);border-radius:var(--cli-raio);background:var(--cli-cartao);color:var(--ink);font:inherit;text-align:left;cursor:pointer;box-shadow:var(--cli-sombra);transition:border-color .15s ease,background-color .15s ease;}
+.cli-app .cli-pasta-cartao:hover{border-color:color-mix(in srgb,var(--ink) 28%,var(--cli-linha));}
+.cli-app .cli-pasta-cartao.ativa{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 9%,var(--cli-cartao));}
+.cli-app .cli-pasta-cartao-ico{display:flex;align-items:center;justify-content:center;flex:none;width:38px;height:38px;border-radius:10px;background:var(--surface-3);color:var(--ink-muted);}
+.cli-app .cli-pasta-cartao-txt{display:flex;flex-direction:column;min-width:0;line-height:1.25;}
+.cli-app .cli-pasta-cartao-txt b{font-size:20px;font-weight:700;letter-spacing:-.01em;font-variant-numeric:tabular-nums;}
+.cli-app .cli-pasta-cartao-txt span{font-size:12.5px;color:var(--ink-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* os tons das pastas (o cartão e o selo da linha) */
+.cli-app :is(.cli-pasta-cartao,.cli-selo-pasta).t-ambar{--tom:var(--warn);--tom-suave:var(--warn-soft);}
+.cli-app :is(.cli-pasta-cartao,.cli-selo-pasta).t-azul{--tom:var(--info);--tom-suave:var(--info-soft);}
+.cli-app :is(.cli-pasta-cartao,.cli-selo-pasta).t-verde{--tom:var(--success-ink);--tom-suave:var(--success-soft);}
+.cli-app :is(.cli-pasta-cartao,.cli-selo-pasta).t-carmim{--tom:var(--accent-ink);--tom-suave:var(--accent-soft);}
+.cli-app :is(.cli-pasta-cartao,.cli-selo-pasta).t-neutro{--tom:var(--ink-muted);--tom-suave:var(--surface-3);}
+.cli-app .cli-pasta-cartao .cli-pasta-cartao-ico{background:var(--tom-suave);color:var(--tom);}
+.cli-app .cli-selo-pasta{display:inline-block;max-width:100%;padding:2px 9px;border-radius:999px;background:var(--tom-suave);color:var(--tom);font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:middle;}
+@media (max-width:640px){
+  .cli-app .cli-pastas-cartoes{display:flex;overflow-x:auto;gap:8px;margin:0 -16px;padding:0 16px 4px;scrollbar-width:none;}
+  .cli-app .cli-pastas-cartoes::-webkit-scrollbar{display:none;}
+  .cli-app .cli-pasta-cartao{flex:none;padding:10px 14px;}
+  .cli-app .cli-pasta-cartao-ico{width:32px;height:32px;}
+  .cli-app .cli-pasta-cartao-txt b{font-size:17px;}
+}
+/* os filtros com o marcar todos */
+.cli-app .cli-biblioteca-filtros{align-items:center;}
+.cli-app .cli-marcar-todos{display:flex;align-items:center;justify-content:center;width:22px;flex:none;margin-left:6px;}
+.cli-app :is(.cli-marcar-todos input,input.cli-biblioteca-marca){width:16px;height:16px;margin:0;accent-color:var(--accent);cursor:pointer;}
+/* o mês com o "Baixar o mês" */
+.cli-app .cli-biblioteca-mes-topo{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 4px;padding-bottom:6px;border-bottom:1px solid var(--cli-fio);}
+.cli-app .cli-biblioteca-mes-topo .cli-biblioteca-mes-titulo{margin:0;padding:0;border:0;}
+.cli-app .cli-baixar-mes{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;}
+/* a linha: marcar, ícone, nome, selo da pasta, data, ações */
+.cli-app .cli-biblioteca-item{grid-template-columns:22px 34px minmax(0,1fr) 150px 56px 84px;padding:8px 6px;}
+.cli-app .cli-biblioteca-marca{justify-self:center;}
+.cli-app .cli-biblioteca-item.marcado{background:color-mix(in srgb,var(--accent) 7%,transparent);}
+.cli-app .cli-biblioteca-item.novo .cli-biblioteca-txt b{color:var(--ink);}
+.cli-app .cli-biblioteca-abrir{appearance:none;padding:4px 0;border:0;background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer;}
+.cli-app .cli-biblioteca-abrir:hover b{text-decoration:underline;text-decoration-color:color-mix(in srgb,var(--ink) 40%,transparent);text-underline-offset:3px;}
+.cli-app .cli-biblioteca-abrir:disabled{cursor:progress;opacity:.7;}
+/* as ações aparecem ao passar o mouse (no toque, sempre) */
+@media (hover:hover){
+  .cli-app .cli-biblioteca-item .cli-biblioteca-acoes .icon-btn{opacity:0;transition:opacity .12s ease;}
+  .cli-app .cli-biblioteca-item:is(:hover,:focus-within,.marcado) .cli-biblioteca-acoes .icon-btn{opacity:1;}
+}
+@media (max-width:767px){.cli-app .cli-biblioteca-item{grid-template-columns:22px 34px minmax(0,1fr) auto;}}
+/* a barra dos marcados, flutuando embaixo */
+.cli-app .cli-barra-marcados{position:sticky;bottom:16px;z-index:5;display:flex;align-items:center;gap:10px;align-self:center;margin-top:-4px;padding:8px 8px 8px 18px;border:1px solid var(--cli-linha);border-radius:999px;background:var(--cli-cartao);box-shadow:var(--cli-sombra-alta);}
+.cli-app .cli-barra-marcados b{font-size:13.5px;font-weight:600;white-space:nowrap;}
+.cli-app .cli-barra-marcados .btn{border-radius:999px;}
+/* as setas da janela de visualização */
+.cli-arquivo-setas{display:flex;align-items:center;gap:6px;flex:none;}
+.cli-arquivo-posicao{min-width:56px;font-size:12.5px;color:var(--ink-muted);text-align:center;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.cli-arquivo-corpo.abrindo{opacity:.55;transition:opacity .15s ease;}
+
+/* ---------- cara de app no celular (13/11/2026) ----------
+   a barra de abas embaixo (Início, Guias, Documentos, Solicitações e o Mais, que abre o menu); o ☰ do topo sai; o
+   conteúdo ganha espaço embaixo para a barra não cobrir; a barra dos marcados da Central sobe acima dela */
+.cli-app .cli-abas-baixo{display:none;}
+@media (max-width:767px){
+  .cli-app .cli-abas-baixo{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);
+    padding:6px 4px calc(6px + env(safe-area-inset-bottom));border-top:1px solid var(--cli-linha);
+    background:color-mix(in srgb,var(--cli-cartao) 92%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);}
+  .cli-app .cli-aba-baixo{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0;min-height:52px;padding:4px 2px;border:0;border-radius:12px;background:none;
+    color:var(--ink-muted);font:inherit;font-size:11px;font-weight:500;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+  .cli-app .cli-aba-baixo > span:last-child{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .cli-app .cli-aba-baixo-ico{position:relative;display:flex;align-items:center;justify-content:center;width:52px;height:28px;border-radius:999px;transition:background-color .15s ease;}
+  .cli-app .cli-aba-baixo.ativa{color:var(--ink);font-weight:600;}
+  .cli-app .cli-aba-baixo.ativa .cli-aba-baixo-ico{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent-ink);}
+  .cli-app .cli-aba-baixo:active .cli-aba-baixo-ico{background:var(--cli-passa);}
+  .cli-app .cli-aba-baixo-conta{position:absolute;top:-4px;right:6px;min-width:17px;height:17px;padding:0 4px;border-radius:999px;background:var(--accent);color:var(--on-accent,#fff);
+    font-size:10.5px;font-weight:700;line-height:17px;text-align:center;box-shadow:0 0 0 2px var(--cli-cartao);}
+  .cli-app .cli-topo .gh-hamb{display:none;}
+  .cli-app .cli-main{padding-bottom:calc(96px + env(safe-area-inset-bottom));}
+  .cli-app .cli-barra-marcados{bottom:calc(80px + env(safe-area-inset-bottom));}
+}
+
+/* ---------- a busca geral (13/11/2026) ----------
+   no topo, um campo que é botão (Buscar · Ctrl K; no celular, só a lupa); a janela no alto da tela, como uma paleta:
+   o campo grande, os achados em grupos com o ícone, o título e o detalhe; o achado em foco no fundo carmim suave */
+.cli-app .cli-busca-topo{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 8px 0 12px;border:1px solid var(--cli-linha);border-radius:var(--cli-raio-p);
+  background:var(--cli-fundo);color:var(--ink-muted);font:inherit;font-size:13px;cursor:pointer;transition:border-color .15s ease,color .15s ease;}
+.cli-app .cli-busca-topo:hover{border-color:var(--border);color:var(--ink);}
+@media (min-width:768px){.cli-app .cli-busca-topo{min-width:220px;}.cli-app .cli-busca-topo kbd{margin-left:auto;}}
+@media (max-width:767px){.cli-app .cli-busca-topo{width:44px;height:44px;justify-content:center;padding:0;}}
+.cli-tecla{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 5px;border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;
+  background:var(--surface);color:var(--ink-muted);font:600 11px/1 var(--font-body);}
+.modal-overlay.cli-busca-fundo{align-items:flex-start;padding-top:min(12vh,96px);}
+.cli-app.cli-busca-janela{display:flex;flex-direction:column;width:min(640px,calc(100vw - 24px));max-height:min(72vh,620px);min-height:0;overflow:hidden;
+  border:1px solid var(--cli-linha);border-radius:16px;background:var(--cli-cartao);box-shadow:0 24px 60px -20px rgba(0,0,0,.55);}
+.cli-busca-campo{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--cli-fio);color:var(--ink-muted);}
+.cli-busca-campo input{flex:1;min-width:0;border:0;outline:0;background:none;color:var(--ink);font:inherit;font-size:16px;}
+.cli-app .cli-busca-campo input:focus-visible{outline:0;}
+.cli-busca-achados{flex:1;min-height:0;overflow:auto;padding:6px 8px 10px;}
+.cli-busca-grupo-titulo{margin:10px 8px 4px;font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-muted);}
+.cli-busca-item{display:grid;grid-template-columns:32px minmax(0,1fr) 14px;align-items:center;gap:12px;width:100%;padding:8px 10px;border:0;border-radius:10px;background:none;
+  color:var(--ink);font:inherit;text-align:left;cursor:pointer;}
+.cli-busca-item.foco{background:color-mix(in srgb,var(--accent) 12%,transparent);}
+.cli-busca-item-ico{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:9px;background:var(--surface-3);color:var(--ink-muted);}
+.cli-busca-item.foco .cli-busca-item-ico{color:var(--accent-ink);}
+.cli-busca-item-txt{display:flex;flex-direction:column;min-width:0;}
+.cli-busca-item-txt b{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cli-busca-item-txt span{font-size:12.5px;color:var(--ink-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cli-busca-item-seta{color:var(--ink-muted);opacity:0;}
+.cli-busca-item.foco .cli-busca-item-seta{opacity:1;}
+.cli-busca-nada{margin:18px 12px;}
+.cli-busca-rodape{display:flex;gap:16px;margin:0;padding:8px 16px;border-top:1px solid var(--cli-fio);font-size:12px;color:var(--ink-muted);}
+.cli-busca-rodape span{display:inline-flex;align-items:center;gap:4px;}
+@media (max-width:767px){.cli-busca-rodape{display:none;}.modal-overlay.cli-busca-fundo{padding-top:12px;}}
+
+/* ---------- primeira impressão (13/11/2026) ----------
+   o esqueleto no formato da Visão geral de hoje; as boas-vindas da primeira vez (três dicas com o ícone no tom e o
+   "Entendi"); o link inválido com as empresas já abertas neste aparelho */
+.cli-app .cli-esq-titulo{display:flex;flex-direction:column;gap:10px;}
+.cli-app .cli-esq-linha{display:grid;grid-template-columns:34px minmax(0,1fr) 110px;align-items:center;gap:12px;padding:6px 0;}
+.cli-app :is(.cli-esq-bola,.cli-esq-botao,.cli-esq-tipo,.cli-esq-soltar){display:block;background:var(--surface-3);animation:cli-esq-pulsa 1.4s ease-in-out infinite;}
+.cli-app .cli-esq-bola{width:34px;height:34px;border-radius:50%;}
+.cli-app .cli-esq-botao{height:34px;border-radius:var(--cli-raio-p);}
+.cli-app .cli-esq-txt{display:flex;flex-direction:column;gap:8px;}
+.cli-app .cli-esq-duas{display:grid;grid-template-columns:minmax(0,1fr);gap:20px;}
+@media (min-width:1000px){.cli-app .cli-esq-duas{grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);}}
+.cli-app .cli-esq-tipos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+.cli-app .cli-esq-tipo{height:40px;border-radius:10px;}
+.cli-app .cli-esq-soltar{height:110px;border-radius:var(--cli-raio);}
+.cli-app .cli-esq-texto{margin:0;text-align:center;font-size:13px;color:var(--ink-muted);}
+@keyframes cli-esq-pulsa{50%{opacity:.55;}}
+@media (prefers-reduced-motion:reduce){.cli-app :is(.cli-esq-bola,.cli-esq-botao,.cli-esq-tipo,.cli-esq-soltar){animation:none;}}
+
+.cli-app .cli-link-ruim-empresas{display:flex;flex-direction:column;gap:4px;margin-top:18px;padding-top:16px;border-top:1px solid var(--cli-fio);text-align:left;}
+.cli-app .cli-link-ruim-empresas .cli-troca-item{width:100%;}
+.cli-app .cli-empresa-n{display:flex;height:20px;}
+.cli-app .cli-empresa-n svg{height:100%;width:auto;}
+
+/* o mesmo padrão da Central nas outras abas (13/11/2026): as ações dos documentos do Registro ao passar o mouse; a folha
+   num .zip ao lado dos meses; nas Solicitações, os cartões no lugar das abas de filtro (no celular, só quando a lista
+   está aberta) */
+@media (hover:hover){
+  .cli-app .cli-reg-doc .cli-reg-doc-acoes .icon-btn{opacity:0;transition:opacity .12s ease;}
+  .cli-app .cli-reg-doc:is(:hover,:focus-within) .cli-reg-doc-acoes .icon-btn{opacity:1;}
+}
+.cli-app .cli-reg-doc:hover{background:var(--cli-passa);}
+.cli-app .cli-reg-folha-ctl{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:12px;}
+.cli-app .cli-sol-lista{padding-top:8px;}
+@media (max-width:999px){.cli-app .cli-sol-cartoes:has(+ .cli-sol.painel-aberto){display:none;}}
+
+/* ---------- o tutorial guiado (13/11/2026) ----------
+   a tela escurece; a janela clara (o destaque) anda até a parte explicada, com o anel carmim que pulsa de leve; o balão
+   ao lado, com o ícone do passo, a contagem, o título, o texto, a barra de progresso e os botões. O primeiro e o último
+   passo são o cartão no meio, com a marca da Nilma (ou o ícone) em destaque */
+.cli-tut{position:fixed;inset:0;z-index:2000;}
+.cli-app.cli-tut{min-height:0;background:none;}
+.cli-tut-trava{position:absolute;inset:0;}
+.cli-tut-fundo{position:absolute;inset:0;background:rgba(6,6,9,.66);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);animation:cli-tut-aparece .25s ease;}
+.cli-tut-destaque{position:absolute;top:0;left:0;border-radius:14px;box-shadow:0 0 0 200vmax rgba(6,6,9,.66),0 0 0 2px var(--accent),0 0 0 7px color-mix(in srgb,var(--accent) 22%,transparent);
+  transition:transform .42s cubic-bezier(.22,1,.36,1),width .42s cubic-bezier(.22,1,.36,1),height .42s cubic-bezier(.22,1,.36,1);animation:cli-tut-anel 2.2s ease-in-out infinite;pointer-events:none;}
+@keyframes cli-tut-anel{50%{box-shadow:0 0 0 200vmax rgba(6,6,9,.66),0 0 0 2px var(--accent),0 0 0 11px color-mix(in srgb,var(--accent) 12%,transparent);}}
+@keyframes cli-tut-aparece{from{opacity:0;}}
+@keyframes cli-tut-entra{from{opacity:0;transform:translateY(8px) scale(.98);}}
+.cli-tut-balao{position:absolute;z-index:1;width:min(360px,calc(100vw - 24px));padding:18px 18px 14px;border:1px solid var(--cli-linha);border-radius:16px;background:var(--cli-cartao);color:var(--ink);
+  box-shadow:0 24px 60px -18px rgba(0,0,0,.6),0 2px 6px rgba(0,0,0,.2);transition:left .42s cubic-bezier(.22,1,.36,1),top .42s cubic-bezier(.22,1,.36,1);animation:cli-tut-entra .3s cubic-bezier(.22,1,.36,1);}
+.cli-tut-balao h2{margin:10px 0 6px;font-size:17px;font-weight:700;letter-spacing:-.01em;line-height:1.3;}
+.cli-tut-balao p{margin:0;font-size:14px;line-height:1.55;color:var(--ink-muted);}
+.cli-tut-topo{display:flex;align-items:center;gap:10px;}
+.cli-tut-ico{display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:9px;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent-ink);}
+.cli-tut-conta{font-size:12px;font-weight:600;letter-spacing:.04em;color:var(--ink-muted);}
+.cli-tut-x{display:flex;align-items:center;justify-content:center;width:28px;height:28px;margin-left:auto;border:0;border-radius:8px;background:none;color:var(--ink-muted);cursor:pointer;}
+.cli-tut-x:hover{background:var(--cli-passa);color:var(--ink);}
+.cli-tut-progresso{height:4px;margin:16px 0 12px;border-radius:99px;background:var(--surface-3);overflow:hidden;}
+.cli-tut-progresso span{display:block;height:100%;border-radius:99px;background:var(--accent);transition:width .42s cubic-bezier(.22,1,.36,1);}
+.cli-tut-pe{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.cli-tut-botoes{display:flex;gap:6px;}
+.cli-tut-pular{padding:6px 2px;border:0;background:none;color:var(--ink-muted);font:inherit;font-size:13px;cursor:pointer;}
+.cli-tut-pular:hover{color:var(--ink);text-decoration:underline;}
+/* o cartão do meio (o primeiro e o último passo) */
+.cli-tut.no-meio{display:flex;align-items:center;justify-content:center;padding:16px;}
+.cli-tut-balao.cartao{position:relative;width:min(440px,100%);padding:30px 28px 22px;text-align:center;}
+.cli-tut-balao.cartao h2{margin:16px 0 8px;font-size:22px;}
+.cli-tut-balao.cartao p{font-size:14.5px;}
+.cli-tut-balao.cartao .cli-tut-pe{justify-content:center;margin-top:22px;}
+.cli-tut-balao.cartao .cli-tut-pe .btn{min-width:130px;}
+.cli-tut-heroi{display:flex;align-items:center;justify-content:center;width:76px;height:76px;margin:0 auto;border-radius:22px;
+  background:radial-gradient(circle at 30% 25%,color-mix(in srgb,var(--accent) 30%,transparent),color-mix(in srgb,var(--accent) 8%,transparent));color:var(--accent-ink);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 30%,transparent);}
+.cli-tut-marca{display:flex;height:40px;}
+.cli-tut-marca svg{height:100%;width:auto;}
+.cli-app .cli-menu-tutorial{margin-bottom:2px;}
+@media (max-width:767px){
+  .cli-tut-balao:not(.cartao){width:calc(100vw - 24px);}
+  .cli-tut-balao.cartao{padding:26px 20px 20px;}
+}
+@media (prefers-reduced-motion:reduce){.cli-tut-destaque,.cli-tut-balao,.cli-tut-progresso span{transition:none;animation:none;}}
+
+/* a troca de empresa mais completa (13/11/2026: "muito simples"): a empresa aberta no alto com o regime e os atalhos;
+   "Trocar para" com as outras (o nome em até duas linhas, o documento e quando foi aberta); a dica com o ícone */
+.cli-troca{padding:8px;gap:4px;}
+.cli-troca-aberta{display:flex;align-items:flex-start;gap:12px;padding:10px 10px 6px;}
+.cli-troca-marca.grande{width:44px;height:44px;border-radius:12px;font-size:15px;}
+.cli-troca-nome{display:-webkit-box !important;-webkit-line-clamp:2;-webkit-box-orient:vertical;white-space:normal !important;line-height:1.3;}
+.cli-troca-regime{align-self:flex-start;margin-top:6px;}
+.cli-troca-atalhos{display:flex;gap:6px;padding:4px 10px 10px 66px;}
+.cli-troca-atalhos .btn{min-height:30px;padding:4px 10px;font-size:12.5px;}
+.cli-troca-titulo{margin:4px 10px 4px;padding-top:10px;border-top:1px solid var(--border);}
+.cli-troca-seta{flex:none;color:var(--ink-muted);opacity:0;transition:opacity .12s ease;}
+.cli-troca-item:hover .cli-troca-seta{opacity:1;}
+.cli-troca-dica{display:flex;align-items:flex-start;gap:8px;line-height:1.45;}
+.cli-troca-dica svg{flex:none;margin-top:1px;}
+
+/* o Fale com o escritório com o WhatsApp dos setores e os e-mails, cada linha com a logo (13/11/2026) */
+.cli-app .cli-fc-duas{align-items:start;}
+.cli-app .cli-fc-logo{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:10px;background:var(--surface-3);}
+.cli-app .cli-fc-logo svg,.cli-app .cli-fc-logo img{width:20px;height:20px;object-fit:contain;}
+.cli-app .cli-fc-setor{font-size:12.5px;color:var(--ink-muted);}
+@media (min-width:768px){.cli-app .cli-duas.cli-fc-duas{grid-template-columns:repeat(2,minmax(0,1fr));}}
+
+/* os Dados cadastrais como uma ficha de verdade (13/11/2026: "tá com muita cara de IA"): sem degradê nem selos enfeitados;
+   o nome no alto, e cada seção com as linhas de rótulo à esquerda e valor à direita, separadas por um fio; o copiar
+   aparece ao passar o mouse; os sócios com a participação numa barra fina */
+.cli-app .cli-fi{padding:0;overflow:hidden;}
+.cli-app .cli-fi-topo{display:flex;align-items:center;gap:16px;padding:22px 24px;border-bottom:1px solid var(--cli-fio);}
+.cli-app .cli-fi-marca{display:flex;align-items:center;justify-content:center;flex:none;width:52px;height:52px;border:1px solid var(--cli-linha);border-radius:12px;background:var(--surface-2);color:var(--ink-muted);font-size:17px;font-weight:700;letter-spacing:.02em;overflow:hidden;}
+.cli-app .cli-fi-marca img{width:100%;height:100%;object-fit:contain;background:#fff;}
+.cli-app .cli-fi-nome{min-width:0;}
+.cli-app .cli-fi-nome h2{margin:0;font-size:19px;font-weight:700;letter-spacing:-.01em;overflow-wrap:anywhere;}
+.cli-app .cli-fi-nome p{margin:3px 0 0;font-size:13px;color:var(--ink-muted);}
+.cli-app .cli-fi-secao{padding:18px 24px 6px;border-bottom:1px solid var(--cli-fio);}
+.cli-app .cli-fi-secao h3{margin:0 0 6px;font-size:14px;font-weight:600;}
+.cli-app .cli-fi-secao dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:40px;margin:0;}
+.cli-app .cli-fi-secao dl > div{display:grid;grid-template-columns:160px minmax(0,1fr);align-items:baseline;gap:12px;padding:11px 0;border-top:1px solid var(--cli-fio);}
+.cli-app .cli-fi-secao dl > div.largo{grid-column:1 / -1;}
+.cli-app .cli-fi-secao dt{font-size:13px;color:var(--ink-muted);}
+.cli-app .cli-fi-secao dd{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin:0;font-weight:500;min-width:0;overflow-wrap:anywhere;}
+.cli-app .cli-fi-valor{display:inline-flex;align-items:center;gap:6px;min-width:0;}
+.cli-app .cli-fi-valor > span{font-variant-numeric:tabular-nums;}
+.cli-app .cli-fi-copiar{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border:0;border-radius:6px;background:none;color:var(--ink-muted);cursor:pointer;}
+.cli-app .cli-fi-copiar:hover{background:var(--cli-passa);color:var(--ink);}
+@media (hover:hover){.cli-app .cli-fi-copiar{opacity:0;transition:opacity .12s ease;}.cli-app .cli-fi-secao dl > div:is(:hover,:focus-within) .cli-fi-copiar{opacity:1;}}
+.cli-app .cli-fi-fraco{color:var(--ink-muted);font-weight:400;}
+.cli-app .cli-fi-cnae{margin-right:8px;padding:1px 6px;border:1px solid var(--cli-linha);border-radius:5px;background:var(--surface-2);font:500 12.5px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;}
+.cli-app .cli-fi-mapa{display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:500;color:var(--accent-ink);text-decoration:none;}
+.cli-app .cli-fi-mapa:hover{text-decoration:underline;}
+.cli-app .cli-fi-socios{margin:0;padding:0 0 8px;list-style:none;}
+.cli-app .cli-fi-socios li{display:grid;grid-template-columns:32px minmax(0,220px) minmax(0,1fr) 52px;align-items:center;gap:14px;padding:10px 0;border-top:1px solid var(--cli-fio);}
+.cli-app .cli-fi-socio-nome{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cli-app .cli-fi-socio-barra{height:6px;border-radius:99px;background:var(--surface-3);overflow:hidden;}
+.cli-app .cli-fi-socio-barra span{display:block;height:100%;border-radius:99px;background:color-mix(in srgb,var(--ink) 45%,transparent);}
+.cli-app .cli-fi-socio-pct{text-align:right;font-weight:600;font-variant-numeric:tabular-nums;}
+.cli-app .cli-fi-pe{margin:0;padding:14px 24px;font-size:13px;color:var(--ink-muted);}
+@media (max-width:767px){
+  .cli-app .cli-fi-topo{padding:18px;}
+  .cli-app .cli-fi-secao{padding:16px 18px 4px;}
+  .cli-app .cli-fi-secao dl{grid-template-columns:minmax(0,1fr);}
+  .cli-app .cli-fi-secao dl > div{grid-template-columns:minmax(0,1fr);gap:2px;}
+  .cli-app .cli-fi-socios li{grid-template-columns:32px minmax(0,1fr) 48px;}
+  .cli-app .cli-fi-socio-barra{display:none;}
+  .cli-app .cli-fi-pe{padding:14px 18px;}
+}
+
+/* o "baixar tudo" como botão de verdade, com a contagem num selinho (13/11/2026) */
+.cli-app .cli-baixar-tudo{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 6px 0 11px;border:1px solid var(--cli-linha);border-radius:8px;background:var(--cli-cartao);
+  color:var(--ink);font:inherit;font-size:13px;font-weight:600;white-space:nowrap;cursor:pointer;transition:background-color .15s ease,border-color .15s ease;}
+.cli-app .cli-baixar-tudo:hover:not(:disabled){background:var(--cli-fundo);border-color:var(--border);}
+.cli-app .cli-baixar-tudo svg{color:var(--ink-muted);}
+.cli-app .cli-baixar-tudo:disabled{cursor:progress;opacity:.75;padding-right:11px;}
+.cli-app .cli-baixar-n{min-width:20px;height:20px;padding:0 6px;border-radius:6px;background:var(--surface-3);color:var(--ink-muted);font-size:11.5px;font-weight:700;line-height:20px;text-align:center;font-variant-numeric:tabular-nums;}
+
+/* a ficha do funcionário refeita (13/11/2026): alinhada à esquerda; a pessoa com o avatar grande no alto; a faixa dos
+   números com divisórias (sem as caixas); os documentos dele; as ações à direita, o desligar em contorno vermelho */
+.modal.modal-centro:has(.cli-ficha){max-width:min(620px,calc(100vw - 32px));text-align:left;}
+.modal.modal-centro:has(.cli-ficha) > h3{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);}
+.modal.modal-centro:has(.cli-ficha) .modal-actions{justify-content:flex-end;}
+.cli-app.cli-ficha{margin-top:0;}
+.cli-app .cli-ficha-cabeca{display:flex;align-items:center;gap:16px;padding-right:32px;}
+.cli-app .cli-ficha-quem{display:flex;flex-direction:column;gap:6px;min-width:0;}
+.cli-app .cli-ficha-nome{font-size:20px;font-weight:700;letter-spacing:-.01em;line-height:1.25;}
+.cli-app .cli-ficha-linha{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;font-size:13px;color:var(--ink-muted);}
+.cli-app .cli-ficha-faixa{display:grid;grid-template-columns:1.3fr 1fr 1fr;margin:20px 0 0;border:1px solid var(--cli-linha);border-radius:12px;background:var(--cli-fundo);}
+.cli-app .cli-ficha-faixa > div{padding:12px 16px;min-width:0;}
+.cli-app .cli-ficha-faixa > div + div{border-left:1px solid var(--cli-linha);}
+.cli-app .cli-ficha-faixa dt{font-size:12px;color:var(--ink-muted);}
+.cli-app .cli-ficha-faixa dd{margin:3px 0 0;font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
+.cli-app .cli-ficha-faixa .cli-ficha-dinheiro{font-size:18px;font-weight:700;}
+.cli-app .cli-ficha-docs{margin-top:18px;}
+.cli-app .cli-ficha-sub{margin:0 0 4px;font-size:13.5px;font-weight:600;}
+.cli-app .cli-ficha-sem{margin:4px 0 0;font-size:13px;}
+.cli-app .cli-ficha-dica{display:flex;align-items:center;gap:6px;margin:16px 0 0;font-size:12.5px;}
+.modal:has(.cli-ficha) .btn.cli-perigo{background:none;border:1px solid color-mix(in srgb,var(--danger) 55%,transparent);color:var(--danger-ink);}
+.modal:has(.cli-ficha) .btn.cli-perigo:hover{background:color-mix(in srgb,var(--danger) 10%,transparent);}
+@media (max-width:560px){
+  .cli-app .cli-ficha-faixa{grid-template-columns:1fr 1fr;}
+  .cli-app .cli-ficha-faixa > div:first-child{grid-column:1 / -1;border-bottom:1px solid var(--cli-linha);}
+  .cli-app .cli-ficha-faixa > div:nth-child(2){border-left:0;}
+}
+
+/* menos zoom no PC (13/11/2026: "deixe nesse layout do PC com as coisas com menos zoom", como no modo dev do nads): a
+   página inteira a 90% em tela de computador; no celular e no tablet, o tamanho de sempre */
+@media (min-width:1100px){.cli-app.cli-raiz{zoom:.9;min-height:calc(100vh / .9);}}
+.cli-app .subnav-item > span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+/* o tutorial, segunda volta (13/11/2026: "ficou legal mas acho que consegue fazer melhor"): a setinha do balão para a
+   parte; a contagem pelo capítulo; a barra em pedaços (um por capítulo); o roteiro no começo e o resumo no fim */
+.cli-tut-balao:not(.cartao)::before{content:'';position:absolute;width:12px;height:12px;background:var(--cli-cartao);border:1px solid var(--cli-linha);transform:rotate(45deg);}
+.cli-tut-balao.lado-baixo::before{top:-7px;left:calc(var(--seta) - 6px);border-right:0;border-bottom:0;}
+.cli-tut-balao.lado-cima::before{bottom:-7px;left:calc(var(--seta) - 6px);border-left:0;border-top:0;}
+.cli-tut-balao.lado-direita::before{left:-7px;top:calc(var(--seta) - 6px);border-right:0;border-top:0;}
+.cli-tut-balao.lado-esquerda::before{right:-7px;top:calc(var(--seta) - 6px);border-left:0;border-bottom:0;}
+.cli-tut-conta b{color:var(--ink);font-weight:600;}
+.cli-tut-capitulos{display:flex;gap:4px;margin:16px 0 12px;}
+.cli-tut-cap{flex:1;height:4px;border-radius:99px;background:var(--surface-3);overflow:hidden;}
+.cli-tut-cap > span{display:block;height:100%;border-radius:99px;background:color-mix(in srgb,var(--accent) 55%,transparent);transition:width .42s cubic-bezier(.22,1,.36,1);}
+.cli-tut-cap.atual > span{background:var(--accent);}
+.cli-tut-roteiro{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin:18px 0 0;padding:0;list-style:none;}
+.cli-tut-roteiro li{display:inline-flex;align-items:center;gap:6px;padding:5px 10px 5px 6px;border:1px solid var(--cli-linha);border-radius:999px;background:var(--cli-fundo);font-size:12.5px;font-weight:500;
+  animation:cli-tut-entra .35s cubic-bezier(.22,1,.36,1) backwards;}
+.cli-tut-roteiro li:nth-child(2){animation-delay:.04s;}.cli-tut-roteiro li:nth-child(3){animation-delay:.08s;}.cli-tut-roteiro li:nth-child(4){animation-delay:.12s;}
+.cli-tut-roteiro li:nth-child(5){animation-delay:.16s;}.cli-tut-roteiro li:nth-child(6){animation-delay:.2s;}.cli-tut-roteiro li:nth-child(7){animation-delay:.24s;}
+.cli-tut-roteiro-ico{display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent-ink);}
+.cli-tut-roteiro.visto .cli-tut-roteiro-ico{background:var(--success-soft);color:var(--success-ink);}
+.cli-tut-balao.cartao p.cli-tut-tempo{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:14px;font-size:12.5px;}
+
+/* o tutorial com menos animação (13/11/2026: "tem muita animação"): sem o anel pulsando, sem a cascata do roteiro; o
+   balão só aparece num fade curto; o destaque continua deslizando de uma parte para a outra */
+.cli-tut-destaque{animation:none;}
+.cli-tut-balao{animation:cli-tut-aparece .16s ease;}
+.cli-tut-roteiro li{animation:none;}
+.cli-tut-fundo{animation:none;}
+.cli-tut-balao.cartao .cli-tut-roteiro{margin-top:20px;}
+
+/* o deslizar só na troca de passo (na rolagem, o destaque e o balão acompanham sem atraso) */
+.cli-tut-destaque{transition:none;}
+.cli-tut-destaque.anda{transition:transform .38s cubic-bezier(.22,1,.36,1),width .38s cubic-bezier(.22,1,.36,1),height .38s cubic-bezier(.22,1,.36,1);}
+.cli-tut-balao{transition:none;animation:none;}
+.cli-tut-balao.anda{transition:left .38s cubic-bezier(.22,1,.36,1),top .38s cubic-bezier(.22,1,.36,1);}
+.cli-tut-balao.cartao{animation:cli-tut-aparece .16s ease;}
+
+/* ---------- a melhora completa no celular (13/11/2026: "quero melhora completa no mobile") ---------- */
+@media (max-width:767px){
+  /* os números numa faixa que desliza para o lado (antes, um cartão grande embaixo do outro) */
+  .cli-app .cli-numeros{display:flex !important;gap:10px;margin:0;padding:0 0 2px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;}
+  .cli-app .cli-numeros::-webkit-scrollbar{display:none;}
+  .cli-app .cli-numeros > .cli-numero{flex:0 0 min(74%,240px);scroll-snap-align:start;padding:12px 14px;}
+  .cli-app .cli-numeros .cli-numero-valor{font-size:21px;}
+  /* "Precisa de você": o texto na largura toda e o botão embaixo dele */
+  .cli-app .cli-precisa-item{grid-template-columns:34px minmax(0,1fr);align-items:start;row-gap:10px;}
+  .cli-app .cli-precisa-item > .btn{grid-column:2;justify-self:start;min-height:38px;}
+  .cli-app .cli-precisa-ico{margin-top:2px;}
+  /* a lista da Central: o nome em até duas linhas; tocar no nome abre (o Ver e o Baixar estão na janela) */
+  .cli-app .cli-biblioteca-item{grid-template-columns:22px 30px minmax(0,1fr) auto;gap:10px;padding:10px 2px;}
+  .cli-app .cli-biblioteca-item .cli-biblioteca-acoes .icon-btn{display:none;}
+  .cli-app .cli-biblioteca-txt b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;white-space:normal;line-height:1.3;}
+  .cli-app .cli-biblioteca-recebido{font-size:0;gap:0;}
+  .cli-app .cli-biblioteca-recebido svg{width:16px;height:16px;}
+  .cli-app .cli-biblioteca-mes-topo{flex-wrap:wrap;}
+  /* a folha do Registro: o baixar na linha de cima e os meses numa fila que desliza */
+  .cli-app .cli-reg-folha > .card-head{flex-direction:column;align-items:stretch;gap:10px;}
+  .cli-app .cli-reg-folha-ctl{flex-direction:column;align-items:stretch;justify-content:flex-start;}
+  .cli-app .cli-reg-folha-ctl .chip-row{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -16px !important;padding:0 16px;}
+  .cli-app .cli-reg-folha-ctl .chip-f{flex:none;}
+  .cli-app .cli-reg-folha-ctl .cli-baixar-tudo{align-self:flex-start;}
+  .cli-app .cli-reg-docs .cli-reg-doc-acoes .icon-btn{width:36px;height:36px;}
+  .cli-app .cli-reg-doc-txt b{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+  /* o título com as ações: os botões dividem a linha */
+  .cli-app .cli-titulo .cli-acoes{width:100%;}
+  .cli-app .cli-titulo .cli-acoes > *{flex:1 1 0;justify-content:center;}
+  /* os cartões das pastas e dos filtros um pouco menores */
+  .cli-app .cli-pasta-cartao{padding:9px 12px;gap:10px;}
+  .cli-app .cli-pasta-cartao-txt b{font-size:16px;}
+  /* o aviso de exemplo mais discreto */
+  .cli-app .cli-exemplo{font-size:12px;padding:6px 12px;}
+}
+
+/* a troca de empresa, segunda volta (13/11/2026: "ainda dá para fazer melhor"): o nome numa linha, o documento embaixo e
+   o dia à direita; "Abrir outra empresa" vira o campo para colar o link */
+.cli-troca-um{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cli-troca-quando{flex:none;font-size:11.5px;color:var(--ink-muted);}
+.cli-troca-mais{display:flex;align-items:center;gap:12px;width:100%;margin-top:4px;padding:10px;border:1px dashed var(--border);border-radius:10px;background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer;}
+.cli-troca-mais:hover{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 6%,transparent);}
+.cli-troca-mais > span:last-child{display:flex;flex-direction:column;}
+.cli-troca-mais b{font-size:13.5px;font-weight:600;}
+.cli-troca-mais small{font-size:12px;color:var(--ink-muted);}
+.cli-troca-mais-ico{display:flex;align-items:center;justify-content:center;flex:none;width:34px;height:34px;border-radius:9px;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent-ink);}
+.cli-troca-colar{margin-top:4px;padding:10px;border:1px solid var(--border);border-radius:10px;}
+.cli-troca-colar-linha{display:flex;gap:8px;}
+.cli-troca-colar input{flex:1;min-width:0;height:34px;padding:0 10px;border:1px solid var(--border);border-radius:8px;background:var(--input-bg);color:var(--ink);font:inherit;font-size:13px;}
+.cli-troca-colar .cli-erro{margin:8px 0 0;font-size:12.5px;color:var(--danger-ink);}
+.cli-troca-dica-mini{margin:8px 0 0;font-size:12px;color:var(--ink-muted);}
+
+/* as marcas numeradas do tutorial: o número carmim em cima de cada parte de dentro e a mesma numeração no balão */
+.cli-tut-marca-n{position:absolute;top:0;left:0;z-index:1;display:flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;
+  background:var(--accent);color:var(--on-accent,#fff);font:700 11.5px/1 var(--font-body);box-shadow:0 0 0 2px var(--cli-cartao),0 2px 6px rgba(0,0,0,.4);pointer-events:none;}
+.cli-tut-marcas{display:flex;flex-direction:column;gap:6px;margin:12px 0 0;padding:0;list-style:none;}
+.cli-tut-marcas li{display:flex;align-items:flex-start;gap:8px;font-size:13px;line-height:1.45;color:var(--ink);}
+.cli-tut-num{display:flex;align-items:center;justify-content:center;flex:none;width:18px;height:18px;margin-top:1px;border-radius:50%;background:var(--accent);color:var(--on-accent,#fff);font-size:11px;font-weight:700;}
+
+/* o faturado contra o que entrou no banco (13/11/2026): à esquerda o mês (as duas barras na mesma escala e a leitura no
+   tom), à direita os últimos meses lado a lado (o faturado em cinza, o banco em verde; sem extrato, tracejado) */
+.cli-app .cli-fb-corpo{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:28px;align-items:center;}
+.cli-app .cli-fb-mes{display:flex;flex-direction:column;gap:14px;}
+.cli-app .cli-fb-linha{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:baseline;gap:4px 12px;}
+.cli-app .cli-fb-rotulo{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-muted);}
+.cli-app .cli-fb-linha .cli-valor{font-size:20px;font-weight:700;}
+.cli-app .cli-fb-barra{grid-column:1 / -1;height:10px;border-radius:99px;background:var(--surface-3);overflow:hidden;}
+.cli-app .cli-fb-barra > span{display:block;height:100%;border-radius:99px;transition:width .4s ease;}
+.cli-app :is(.cli-fb-barra,.cli-fb-par) .fat,.cli-app .cli-fb-ponto.fat{background:color-mix(in srgb,var(--ink) 42%,transparent);}
+.cli-app :is(.cli-fb-barra,.cli-fb-par) .banco,.cli-app .cli-fb-ponto.banco{background:var(--success);}
+.cli-app .cli-fb-ponto{width:9px;height:9px;border-radius:3px;}
+.cli-app .cli-fb-leitura{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:10px;background:var(--cli-fundo);border:1px solid var(--cli-linha);font-size:13px;line-height:1.5;}
+.cli-app .cli-fb-leitura svg{flex:none;margin-top:2px;}
+.cli-app .cli-fb-leitura.t-bom{background:var(--success-soft);border-color:color-mix(in srgb,var(--success) 30%,transparent);}
+.cli-app .cli-fb-leitura.t-bom svg{color:var(--success-ink);}
+.cli-app .cli-fb-leitura.t-atencao{background:var(--warn-soft);border-color:color-mix(in srgb,var(--warn) 30%,transparent);}
+.cli-app .cli-fb-leitura.t-atencao svg{color:var(--warn);}
+.cli-app .cli-fb-leitura b{font-weight:600;}
+.cli-app .cli-fb-meses{display:flex;align-items:flex-end;justify-content:space-between;gap:8px;height:170px;padding:0 4px;border-bottom:1px solid var(--cli-fio);}
+.cli-app .cli-fb-col{display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;height:100%;padding:0;border:0;background:none;color:var(--ink-muted);font:inherit;cursor:pointer;}
+.cli-app .cli-fb-par{display:flex;align-items:flex-end;justify-content:center;gap:3px;flex:1;width:100%;padding-top:6px;border-radius:8px;}
+.cli-app .cli-fb-par > span{width:min(16px,40%);border-radius:4px 4px 0 0;transition:height .4s ease;}
+.cli-app .cli-fb-par > .banco.vazio{background:none;border:1px dashed var(--cli-linha);border-bottom:0;height:30% !important;}
+.cli-app .cli-fb-mes-rot{margin-bottom:-22px;font-size:12px;text-transform:capitalize;}
+.cli-app .cli-fb-col:hover .cli-fb-par{background:var(--cli-passa);}
+.cli-app .cli-fb-col.escolhido{color:var(--ink);font-weight:600;}
+.cli-app .cli-fb-col.escolhido .cli-fb-par{background:color-mix(in srgb,var(--accent) 7%,transparent);}
+.cli-app .cli-fb-nota{margin:30px 0 0;font-size:12px;}
+@media (max-width:767px){.cli-app .cli-fb-corpo{grid-template-columns:minmax(0,1fr);gap:34px;}.cli-app .cli-fb-meses{height:140px;}}
+
+/* os contatos por setor em colunas alinhadas (13/11/2026: "tem que ficar alinhado; por setor fica melhor"): o setor, o
+   WhatsApp e o e-mail, cada um com a logo, o valor e as ações; no celular, um bloco por setor */
+.cli-app .cli-st{padding:6px 20px 8px;}
+.cli-app :is(.cli-st-cabeca,.cli-st-linha){display:grid;grid-template-columns:150px minmax(0,1fr) minmax(0,1.15fr);column-gap:28px;align-items:center;}
+.cli-app .cli-st-cabeca{padding:10px 0;border-bottom:1px solid var(--cli-fio);font-size:12px;font-weight:600;color:var(--ink-muted);}
+.cli-app .cli-st-lista{margin:0;padding:0;list-style:none;}
+.cli-app .cli-st-linha{padding:12px 0;border-top:1px solid var(--cli-fio);}
+.cli-app .cli-st-linha:first-child{border-top:0;}
+.cli-app .cli-st-setor{font-size:14px;font-weight:600;}
+.cli-app .cli-st-canal{display:grid;grid-template-columns:36px minmax(0,1fr) auto;align-items:center;gap:12px;min-width:0;}
+.cli-app .cli-st-valor{font-weight:600;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
+.cli-app .cli-st-acoes{display:flex;align-items:center;gap:6px;}
+.cli-app .cli-st-sem{grid-column:1 / -1;margin:0;}
+@media (max-width:899px){
+  .cli-app .cli-st{padding:4px 16px;}
+  .cli-app .cli-st-cabeca{display:none;}
+  .cli-app .cli-st-linha{grid-template-columns:minmax(0,1fr);row-gap:10px;padding:14px 0;}
+  .cli-app .cli-st-sem{display:none;}
+}
+.cli-app .cli-st-acoes .btn{min-width:108px;justify-content:center;}
+
+/* o balão aparece no lugar, num fade curto, quando a parte parou (sem deslizar pela tela) */
+.cli-tut-balao,.cli-tut-balao.anda{transition:opacity .16s ease;animation:none;}
+.cli-tut-balao.escondido{opacity:0;pointer-events:none;}
+.cli-tut-balao.cartao{animation:cli-tut-aparece .16s ease;}
+.cli-tut-balao,.cli-tut-balao.anda{transition:opacity .12s ease;}
+
+/* os setores em cartões pequenos (13/11/2026: "muita informação"): o nome, o que cuida e os dois botões */
+.cli-app .cli-st-titulo{margin:6px 0 -6px;font-size:15px;font-weight:600;}
+.cli-app .cli-st-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin:0;padding:0;list-style:none;}
+.cli-app .cli-st-cartao{display:flex;flex-direction:column;gap:3px;padding:16px;}
+.cli-app .cli-st-cartao b{font-size:15px;font-weight:600;}
+.cli-app .cli-st-cartao .hint{margin:0;font-size:12.5px;}
+.cli-app .cli-st-botoes{display:flex;gap:8px;margin-top:12px;}
+.cli-app .cli-st-botoes .btn{flex:1;justify-content:center;}
+.cli-app .cli-st-botoes .btn svg{color:var(--ink-muted);}
+@media (max-width:560px){.cli-app .cli-st-grade{grid-template-columns:minmax(0,1fr);gap:10px;}}
+
+/* os botões dos setores dividem a largura sem passar da borda, com os logos do WhatsApp e do Gmail (13/11/2026) */
+.cli-app .cli-st-grade{grid-template-columns:repeat(auto-fill,minmax(260px,1fr));}
+.cli-app .cli-st-botoes .btn{flex:1 1 0;min-width:0;gap:7px;padding:0 10px;}
+.cli-app .cli-st-logo{display:inline-flex;flex:none;width:16px;height:16px;}
+.cli-app .cli-st-logo :is(svg,img){width:100%;height:100%;object-fit:contain;}
+.cli-app .cli-st-grade{grid-template-columns:repeat(auto-fit,minmax(260px,1fr));}
+
+/* as abas do Faturamento (13/11/2026: "muita informação aqui"): o mês, o banco e os clientes, uma parte por vez */
+.cli-app .cli-fat-abas{display:flex;gap:4px;align-self:flex-start;padding:4px;border:1px solid var(--cli-linha);border-radius:12px;background:var(--cli-cartao);}
+.cli-app .cli-fat-aba{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 14px;border:0;border-radius:8px;background:none;color:var(--ink-muted);font:inherit;font-size:13.5px;font-weight:500;cursor:pointer;}
+.cli-app .cli-fat-aba:hover{color:var(--ink);background:var(--cli-passa);}
+.cli-app .cli-fat-aba.ativa{background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--ink);font-weight:600;}
+.cli-app .cli-fat-aba.ativa svg{color:var(--accent-ink);}
+.cli-app .cli-painel-fat.so-um{grid-template-columns:minmax(0,1fr) !important;}
+@media (max-width:560px){.cli-app .cli-fat-abas{align-self:stretch;}.cli-app .cli-fat-aba{flex:1;justify-content:center;padding:0 8px;}}
+
+/* a escolha do banco na aba Banco do Faturamento (13/11/2026): todas as contas ou uma, com o logo */
+.cli-app .cli-fb-contas{display:flex;flex-wrap:wrap;gap:8px;margin:-4px 0 18px;}
+.cli-app .cli-fb-conta{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 12px 0 8px;border:1px solid var(--cli-linha);border-radius:999px;background:var(--cli-cartao);color:var(--ink-muted);font:inherit;font-size:13px;font-weight:500;cursor:pointer;}
+.cli-app .cli-fb-conta:hover{color:var(--ink);border-color:var(--border);}
+.cli-app .cli-fb-conta.ativa{color:var(--ink);font-weight:600;border-color:color-mix(in srgb,var(--accent) 50%,transparent);background:color-mix(in srgb,var(--accent) 10%,var(--cli-cartao));}
+.cli-app .cli-fb-conta-logo{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:5px;overflow:hidden;color:var(--ink-muted);}
+.cli-app .cli-fb-conta-logo :is(svg,img){width:100%;height:100%;object-fit:contain;}
+
+/* o movimento das contas no mês na aba Banco (13/11/2026: "mais informações do banco"): entrou, saiu e ficou; e cada
+   conta com a parte dela nas entradas */
+.cli-app .cli-mv{margin-top:26px;padding-top:18px;border-top:1px solid var(--cli-fio);}
+.cli-app .cli-mv-numeros{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;}
+.cli-app .cli-mv-numeros > div{display:flex;flex-direction:column;gap:4px;padding:12px 14px;border:1px solid var(--cli-linha);border-radius:10px;background:var(--cli-fundo);}
+.cli-app .cli-mv-numeros .cli-valor{font-size:18px;font-weight:700;}
+.cli-app .cli-variacao.sobe{color:var(--success-ink);}
+.cli-app .cli-variacao.desce{color:var(--danger-ink);}
+.cli-app .cli-mv-tabela{margin-top:16px;}
+.cli-app .cli-mv-linha{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1.2fr) repeat(3,minmax(0,.8fr));align-items:center;gap:16px;padding:11px 2px;border-top:1px solid var(--cli-fio);}
+.cli-app .cli-mv-linha > :nth-child(n+3){text-align:right;}
+.cli-app .cli-mv-cabeca{padding:6px 2px;border-top:0;font-size:12px;color:var(--ink-muted);}
+.cli-app .cli-mv-conta{display:inline-flex;align-items:center;gap:10px;font-weight:600;}
+.cli-app .cli-mv-parte{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--ink-muted);font-variant-numeric:tabular-nums;}
+.cli-app .cli-mv-barra{flex:1;height:6px;border-radius:99px;background:var(--surface-3);overflow:hidden;}
+.cli-app .cli-mv-barra > span{display:block;height:100%;border-radius:99px;background:var(--success);}
+.cli-app .cli-mv-fraco{color:var(--ink-muted);}
+@media (max-width:767px){
+  .cli-app .cli-mv-numeros{grid-template-columns:minmax(0,1fr);}
+  .cli-app .cli-mv-cabeca{display:none;}
+  .cli-app .cli-mv-linha{grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;}
+  .cli-app .cli-mv-parte{grid-column:1 / -1;order:5;}
+  .cli-app .cli-mv-linha > :nth-child(3){grid-column:2;grid-row:1;}
+  .cli-app .cli-mv-linha > :nth-child(4),.cli-app .cli-mv-linha > :nth-child(5){font-size:12.5px;}
+}
+
+/* os gráficos do Banco mais claros (13/11/2026: "os gráficos estão um pouco confusos"): os dois valores lado a lado; o
+   gráfico dos meses com a legenda em cima e as barras mais largas */
+.cli-app .cli-fb-dois{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+.cli-app .cli-fb-dois > div{display:flex;flex-direction:column;gap:6px;padding:14px 16px;border:1px solid var(--cli-linha);border-radius:10px;background:var(--cli-fundo);}
+.cli-app .cli-fb-dois .cli-valor{font-size:22px;font-weight:700;}
+.cli-app .cli-fb-grafico{display:flex;flex-direction:column;gap:10px;}
+.cli-app .cli-fb-legenda{display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;margin:0;font-size:12.5px;color:var(--ink-muted);}
+.cli-app .cli-fb-legenda > span:not(.hint){display:inline-flex;align-items:center;gap:6px;}
+.cli-app .cli-fb-legenda .hint{margin:0 0 0 auto;font-size:12px;}
+.cli-app .cli-fb-par > span{width:min(22px,42%);}
+.cli-app .cli-fb-mes-rot{margin-bottom:-24px;}
+@media (max-width:560px){.cli-app .cli-fb-dois{grid-template-columns:minmax(0,1fr);}.cli-app .cli-fb-legenda .hint{display:none;}}
+
+/* o saldo atual com a data do extrato; os lançamentos do mês (13/11/2026) */
+.cli-app .cli-mv-numeros .hint{margin:0;font-size:12px;}
+.cli-app .cli-lc{margin-top:22px;padding-top:18px;border-top:1px solid var(--cli-fio);}
+.cli-app .cli-lc-topo{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;}
+.cli-app .cli-lc-topo h4{margin:0;font-size:14.5px;font-weight:600;}
+.cli-app .cli-lc-filtros{display:inline-flex;gap:2px;padding:3px;border:1px solid var(--cli-linha);border-radius:10px;background:var(--cli-fundo);}
+.cli-app .cli-lc-filtro{height:28px;padding:0 12px;border:0;border-radius:7px;background:none;color:var(--ink-muted);font:inherit;font-size:12.5px;font-weight:500;cursor:pointer;}
+.cli-app .cli-lc-filtro.ativo{background:var(--cli-cartao);color:var(--ink);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.25);}
+.cli-app .cli-lc-resumo{margin:10px 0 4px;font-size:12.5px;}
+.cli-app .cli-lc-lista{margin:0;padding:0;list-style:none;}
+.cli-app .cli-lc-linha{display:grid;grid-template-columns:52px minmax(0,1fr) auto auto;align-items:center;gap:14px;padding:9px 2px;border-top:1px solid var(--cli-fio);font-size:13.5px;}
+.cli-app .cli-lc-data{color:var(--ink-muted);font-variant-numeric:tabular-nums;font-size:12.5px;}
+.cli-app .cli-lc-hist{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cli-app .cli-lc-conta{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-muted);}
+.cli-app .cli-lc-valor{text-align:right;min-width:110px;}
+.cli-app .cli-lc-valor.entra{color:var(--success-ink);}
+.cli-app .cli-lc-valor.sai{color:var(--ink);}
+.cli-app .cli-lc-mais{margin-top:10px;}
+@media (max-width:600px){
+  .cli-app .cli-lc-linha{grid-template-columns:44px minmax(0,1fr) auto;gap:4px 10px;}
+  .cli-app .cli-lc-conta{grid-column:2;grid-row:2;}
+  .cli-app .cli-lc-valor{min-width:0;grid-row:1 / span 2;grid-column:3;}
+}
+
+/* a aparência no pé do menu (13/11/2026): sistema, claro, escuro e OLED num segmentado */
+.cli-app .cli-aparencia{display:flex;flex-direction:column;gap:6px;margin:0 12px 8px;}
+.cli-app .cli-aparencia-rotulo{padding-left:4px;font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-muted);}
+.cli-app .cli-aparencia-opcoes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2px;padding:3px;border:1px solid var(--cli-linha);border-radius:10px;background:var(--cli-fundo);}
+.cli-app .cli-aparencia-opcao{display:flex;align-items:center;justify-content:center;height:28px;border:0;border-radius:7px;background:none;color:var(--ink-muted);font:inherit;cursor:pointer;}
+.cli-app .cli-aparencia-opcao:hover{color:var(--ink);}
+.cli-app .cli-aparencia-opcao.ativa{background:var(--cli-cartao);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.25);}
+.cli-app .cli-aparencia-oled{font-size:9.5px;font-weight:800;letter-spacing:.04em;}
+.cli-app .cli-aparencia.recolhida{margin:0 8px 8px;}
+.cli-app .cli-aparencia.recolhida .cli-aparencia-opcoes{grid-template-columns:minmax(0,1fr);}
+
+/* o modo OLED (13/11/2026: "quero um modo para tela OLED"): o preto puro no fundo, nos cartões, nos menus e nas janelas;
+   o que separa as partes são bordas finas (sem sombra, que no preto não aparece); o carmim continua o mesmo */
+:root[data-oled]{color-scheme:dark;
+  --bg:#000;--surface:#000;--surface-2:#000;--surface-3:#141416;--border:#26262B;--border-muted:#26262BB3;--border-strong:#55555C;
+  --input-bg:#000;--overlay-bg:#000;--header-bg:#000;--drawer-bg:#000;--btn-bg:#0B0B0D;--btn-hover:#16161A;--btn-border:#2A2A30;--hover-bg:#FFFFFF0F;
+  --shadow-lg:0 0 0 1px #26262B;}
+:root[data-oled] body{background:#000;}
+:root[data-oled] .cli-app{--cli-fundo:#000;--cli-cartao:#000;--cli-linha:#232328;--cli-fio:#18181C;--cli-passa:#FFFFFF0D;--cli-sombra:none;--cli-sombra-alta:0 0 0 1px #2A2A30;}
+:root[data-oled] .cli-app .card{box-shadow:none;}
+:root[data-oled] .cli-app .cli-topo,:root[data-oled] .cli-app .cli-lateral{background:#000;}
+:root[data-oled] .cli-app .cli-abas-baixo{background:rgba(0,0,0,.92);}
+:root[data-oled] .modal,:root[data-oled] .popover,:root[data-oled] .cli-arquivo-janela{background:#000;border:1px solid #26262B;}
+.cli-app .cli-aparencia-opcao{gap:6px;font-size:12.5px;font-weight:500;}
+.cli-app .cli-aparencia-nome{white-space:nowrap;}
+
+/* os lançamentos com a coluna da conta de largura fixa (13/11/2026: "tá desalinhado") */
+.cli-app .cli-lc-lista .cli-lc-linha{grid-template-columns:52px minmax(0,1fr) 120px;}
+.cli-app .cli-lc-lista.com-conta .cli-lc-linha{grid-template-columns:52px minmax(0,1fr) 110px 120px;}
+.cli-app .cli-lc-conta{justify-self:start;}
+@media (max-width:600px){
+  .cli-app .cli-lc-lista .cli-lc-linha,.cli-app .cli-lc-lista.com-conta .cli-lc-linha{grid-template-columns:44px minmax(0,1fr) auto;}
+}
+
+/* ---------- o Registro, segunda volta (13/11/2026: "quero trabalhar no DP") ---------- */
+.cli-app .cli-numeros-reg{grid-template-columns:repeat(auto-fit,minmax(220px,1fr)) !important;}
+.cli-app .cli-numero-clica{appearance:none;font:inherit;color:inherit;text-align:left;cursor:pointer;border:1px solid var(--cli-linha);}
+.cli-app .cli-numero-clica:hover{border-color:var(--border);}
+.cli-app .cli-numero-clica.alerta{border-color:color-mix(in srgb,var(--warn) 45%,transparent);}
+.cli-app .cli-aba-conta{min-width:18px;height:18px;margin-left:2px;padding:0 5px;border-radius:999px;background:var(--warn);color:#111;font-size:11px;font-weight:700;line-height:18px;text-align:center;}
+/* a equipe em cartões */
+.cli-app .cli-eq-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin:0;padding:0;list-style:none;}
+.cli-app .cli-eq-cartao{display:flex;flex-direction:column;gap:14px;width:100%;padding:16px;border:1px solid var(--cli-linha);border-radius:12px;background:var(--cli-cartao);color:var(--ink);font:inherit;text-align:left;cursor:pointer;transition:border-color .15s ease;}
+.cli-app .cli-eq-cartao:hover{border-color:var(--border);}
+.cli-app .cli-eq-cartao.saiu{opacity:.7;}
+.cli-app .cli-eq-topo{display:flex;align-items:center;gap:12px;min-width:0;}
+.cli-app .cli-eq-quem{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.cli-app .cli-eq-quem b{font-size:14.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cli-app .cli-eq-quem .hint{margin:0;font-size:12.5px;}
+.cli-app .cli-eq-pe{display:flex;align-items:flex-end;gap:8px;padding-top:12px;border-top:1px solid var(--cli-fio);}
+.cli-app .cli-eq-valor{display:flex;flex-direction:column;gap:2px;margin-right:auto;}
+.cli-app .cli-eq-valor .cli-sobre{font-size:10.5px;}
+.cli-app .cli-eq-valor .cli-valor{font-size:15px;}
+.cli-app .cli-eq-ferias{display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:999px;font-size:11.5px;font-weight:600;white-space:nowrap;}
+.cli-app .cli-eq-ferias.t-ruim{background:var(--danger-soft);color:var(--danger-ink);}
+.cli-app .cli-eq-ferias.t-atencao{background:var(--warn-soft);color:var(--warn);}
+.cli-app .cli-eq-ferias.t-bom{background:var(--success-soft);color:var(--success-ink);}
+.cli-app .cli-eq-ferias.t-neutro{background:var(--surface-3);color:var(--ink-muted);}
+.cli-app .cli-eq-docs{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:999px;background:var(--surface-3);color:var(--ink-muted);font-size:11.5px;font-weight:600;}
+/* as férias */
+.cli-app .cli-fe-lista{margin:0;padding:0;list-style:none;}
+.cli-app .cli-fe-linha{display:grid;grid-template-columns:36px minmax(0,1fr) auto 112px;align-items:center;gap:14px;padding:11px 0;border-top:1px solid var(--cli-fio);}
+.cli-app .cli-fe-linha:first-child{border-top:0;}
+.cli-app .cli-fe-txt{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.cli-app .cli-fe-txt b{font-weight:600;}
+.cli-app .cli-fe-txt .hint{margin:0;font-size:12.5px;}
+.cli-app .cli-fe-linha .btn{justify-content:center;}
+.cli-app .cli-fe-nota{margin:14px 0 0;font-size:12px;}
+@media (max-width:640px){.cli-app .cli-fe-linha{grid-template-columns:36px minmax(0,1fr) auto;}.cli-app .cli-fe-linha > :last-child{grid-column:2 / -1;justify-self:start;}.cli-app .cli-fe-vaga{display:none;}}
+/* o custo da folha */
+.cli-app .cli-cf-corpo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:28px;align-items:end;}
+.cli-app .cli-cf-numeros{display:flex;flex-direction:column;gap:16px;}
+.cli-app .cli-cf-numeros > div:first-child{display:flex;flex-direction:column;gap:4px;}
+.cli-app .cli-cf-total{font-size:26px;font-weight:700;}
+.cli-app .cli-cf-partes{display:flex;flex-direction:column;gap:8px;}
+.cli-app .cli-cf-partes > span{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-muted);}
+.cli-app .cli-cf-partes .cli-valor{margin-left:auto;color:var(--ink);}
+.cli-app .cli-cf-ponto{width:9px;height:9px;border-radius:3px;background:var(--surface-3);}
+.cli-app .cli-cf-ponto.base,.cli-app .cli-cf-pilha .base{background:color-mix(in srgb,var(--ink) 42%,transparent);}
+.cli-app .cli-cf-ponto.fgts,.cli-app .cli-cf-pilha .fgts{background:var(--accent);}
+.cli-app .cli-cf-grafico{display:flex;align-items:flex-end;gap:8px;height:190px;padding-bottom:24px;border-bottom:1px solid var(--cli-fio);}
+.cli-app .cli-cf-col{position:relative;display:flex;flex-direction:column;align-items:center;flex:1;height:100%;}
+.cli-app .cli-cf-pilha{display:flex;flex-direction:column-reverse;justify-content:flex-start;flex:1;width:min(26px,70%);}
+.cli-app .cli-cf-pilha > span{display:block;width:100%;}
+.cli-app .cli-cf-pilha .fgts{border-radius:4px 4px 0 0;}
+.cli-app .cli-cf-col.ultimo .cli-cf-pilha .base{background:color-mix(in srgb,var(--ink) 65%,transparent);}
+.cli-app .cli-cf-rot{position:absolute;bottom:-22px;font-size:11.5px;color:var(--ink-muted);text-transform:capitalize;}
+.cli-app .cli-cf-col.ultimo .cli-cf-rot{color:var(--ink);font-weight:600;}
+@media (max-width:767px){.cli-app .cli-cf-corpo{grid-template-columns:minmax(0,1fr);}.cli-app .cli-cf-grafico{height:150px;}}
+/* o calendário do DP */
+.cli-app .cli-cd-mes{display:inline-flex;align-items:center;gap:8px;}
+.cli-app .cli-cd-mes b{min-width:130px;text-align:center;font-weight:600;}
+.cli-app .cli-cd-lista{margin:0;padding:0;list-style:none;}
+.cli-app .cli-cd-linha{display:grid;grid-template-columns:54px minmax(0,1fr);align-items:center;gap:14px;padding:11px 0;border-top:1px solid var(--cli-fio);}
+.cli-app .cli-cd-linha:first-child{border-top:0;}
+.cli-app .cli-cd-linha.passou{opacity:.55;}
+.cli-app .cli-cd-dia{display:flex;flex-direction:column;align-items:center;justify-content:center;height:48px;border-radius:10px;background:var(--surface-3);}
+.cli-app .cli-cd-dia b{font-size:17px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums;}
+.cli-app .cli-cd-dia span{font-size:10.5px;color:var(--ink-muted);text-transform:uppercase;letter-spacing:.04em;}
+.cli-app .cli-cd-linha.t-salario .cli-cd-dia{background:var(--success-soft);color:var(--success-ink);}
+.cli-app .cli-cd-linha.t-decimo .cli-cd-dia{background:var(--info-soft);color:var(--info);}
+.cli-app .cli-cd-linha.t-aniversario .cli-cd-dia,.cli-app .cli-cd-linha.t-ferias .cli-cd-dia{background:var(--warn-soft);color:var(--warn);}
+.cli-app .cli-cd-txt{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.cli-app .cli-cd-txt b{font-weight:600;}
+.cli-app .cli-cd-txt .hint{margin:0;font-size:12.5px;}
+
+/* o custo da folha no gráfico de colunas do Faturamento (13/11/2026: "esse gráfico tá feio") */
+.cli-app .cli-cf-grafico{display:block;height:auto;padding:0;border:0;}
+.cli-app .cli-cf-corpo{align-items:center;}
+.cli-app .cli-cf-partes{padding-top:12px;border-top:1px solid var(--cli-fio);}
+
+/* as janelas de férias e de admissão refeitas (13/11/2026: "melhore visualmente esses dois, principalmente a parte de
+   programar férias"): o título à esquerda, os botões à direita; a pessoa por cartões, os dias em botões e a conta */
+.modal.modal-centro:has(.cli-pf),.modal.modal-centro:has(.cli-pa){max-width:min(660px,calc(100vw - 32px));text-align:left;}
+.modal.modal-centro:has(.cli-pf) > h3,.modal.modal-centro:has(.cli-pa) > h3{text-align:left;padding-right:40px;}
+.modal.modal-centro:has(.cli-pf) .modal-actions,.modal.modal-centro:has(.cli-pa) .modal-actions{justify-content:flex-end;padding-top:16px;margin-top:18px;border-top:1px solid var(--cli-fio);}
+.cli-app.cli-pedido.cli-pf,.cli-app.cli-pedido.cli-pa{gap:14px 14px;margin-top:6px;}
+.cli-app .cli-pf-rotulo{margin:4px 0 8px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-muted);}
+.cli-app.cli-pa .cli-pf-rotulo{margin:6px 0 -4px;}
+.cli-app .cli-pf-opc{margin-left:4px;font-weight:400;color:var(--ink-muted);font-size:12px;}
+/* a pessoa: cartões em duas colunas, o escolhido com a borda da cor e a marca */
+.cli-app .cli-pf-pessoas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;max-height:236px;overflow:auto;padding:2px;}
+.cli-app .cli-pf-pessoa{position:relative;display:flex;align-items:center;gap:10px;min-width:0;padding:9px 34px 9px 10px;border:1px solid var(--cli-linha);border-radius:12px;background:var(--surface);color:inherit;font:inherit;text-align:left;cursor:pointer;transition:border-color .15s,background .15s,box-shadow .15s;}
+.cli-app .cli-pf-pessoa:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--cli-linha));}
+.cli-app .cli-pf-pessoa.sel{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 6%,var(--surface));box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 14%,transparent);}
+.cli-app .cli-pf-pessoa-txt{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0;}
+.cli-app .cli-pf-pessoa-txt b{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13.5px;font-weight:600;}
+.cli-app .cli-pf-pessoa .cli-eq-ferias{height:19px;padding:0 7px;font-size:10.5px;}
+.cli-app .cli-pf-marca{position:absolute;top:50%;right:10px;display:grid;place-items:center;width:18px;height:18px;margin-top:-9px;border:1.5px solid var(--cli-linha);border-radius:50%;color:transparent;transition:all .15s;}
+.cli-app .cli-pf-pessoa.sel .cli-pf-marca{border-color:var(--accent);background:var(--accent);color:#fff;}
+/* os dias: quatro botões, o número grande */
+.cli-app .cli-pf-dias{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;}
+.cli-app .cli-pf-dia{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-height:48px;padding:5px 2px;border:1px solid var(--cli-linha);border-radius:10px;background:var(--surface);color:inherit;font:inherit;cursor:pointer;transition:border-color .15s,background .15s;}
+.cli-app .cli-pf-dia b{font-size:16px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums;}
+.cli-app .cli-pf-dia span{font-size:10.5px;color:var(--ink-muted);white-space:nowrap;}
+.cli-app .cli-pf-dia:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--cli-linha));}
+.cli-app .cli-pf-dia.sel{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--surface));}
+.cli-app .cli-pf-dia.sel b{color:var(--accent);}
+/* a conta: uma faixa com os passos (no PC lado a lado, separados por um fio) */
+.cli-app .cli-pf-resumo{display:flex;gap:0;margin:2px 0 0;padding:14px 16px;list-style:none;border-radius:12px;background:var(--surface-2);border:1px solid var(--cli-fio);}
+.cli-app .cli-pf-passo{position:relative;display:flex;align-items:flex-start;gap:10px;flex:1;min-width:0;}
+.cli-app .cli-pf-linha-do-tempo .cli-pf-passo + .cli-pf-passo{padding-left:14px;}
+.cli-app .cli-pf-linha-do-tempo .cli-pf-passo + .cli-pf-passo::before{content:"";position:absolute;left:0;top:6px;bottom:6px;width:1px;background:var(--cli-linha);}
+.cli-app .cli-pf-resumo:not(.cli-pf-linha-do-tempo){flex-direction:column;gap:12px;}
+.cli-app .cli-pf-passo-ico{display:grid;place-items:center;flex:none;width:32px;height:32px;border-radius:9px;background:color-mix(in srgb,var(--accent) 10%,var(--surface));color:var(--accent);}
+.cli-app .cli-pf-passo-txt{display:flex;flex-direction:column;gap:1px;min-width:0;}
+.cli-app .cli-pf-passo-txt .hint{margin:0;font-size:11.5px;}
+.cli-app .cli-pf-passo-txt b{font-size:13.5px;font-weight:650;font-variant-numeric:tabular-nums;}
+.cli-app .cli-pf-vazio{display:flex;align-items:center;gap:8px;margin:2px 0 0;padding:13px 16px;border:1px dashed var(--cli-linha);border-radius:12px;color:var(--ink-muted);font-size:13px;}
+.cli-app .cli-pf-aviso{display:flex;align-items:flex-start;gap:8px;margin:-4px 0 0;padding:9px 12px;border-radius:10px;background:var(--warn-soft);color:var(--warn);font-size:12.5px;line-height:1.4;}
+.cli-app .cli-pf-aviso svg{flex:none;margin-top:1px;}
+/* o 13º: uma chave em vez da caixinha */
+.cli-app .cli-pf-chave{position:relative;display:flex;align-items:center;gap:12px;padding:11px 14px;border:1px solid var(--cli-linha);border-radius:12px;cursor:pointer;}
+.cli-app .cli-pf-chave input{position:absolute;opacity:0;width:1px;height:1px;}
+.cli-app .cli-pf-chave-trilho{position:relative;flex:none;width:36px;height:20px;border-radius:999px;background:var(--surface-3);border:1px solid var(--cli-linha);transition:background .15s;}
+.cli-app .cli-pf-chave-trilho::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgb(0 0 0 / .25);transition:transform .15s;}
+.cli-app .cli-pf-chave input:checked + .cli-pf-chave-trilho{background:var(--accent);border-color:var(--accent);}
+.cli-app .cli-pf-chave input:checked + .cli-pf-chave-trilho::after{transform:translateX(16px);}
+.cli-app .cli-pf-chave input:focus-visible + .cli-pf-chave-trilho{outline:2px solid var(--accent);outline-offset:2px;}
+.cli-app .cli-pf-chave-txt{display:flex;flex-direction:column;gap:1px;}
+.cli-app .cli-pf-chave-txt b{font-size:13.5px;font-weight:600;}
+.cli-app .cli-pf-chave-txt .hint{margin:0;font-size:12px;}
+/* a admissão: a foto e o nome no alto */
+.cli-app .cli-pa-topo{display:flex;align-items:center;gap:14px;padding:12px 14px;border-radius:12px;background:var(--surface-2);border:1px solid var(--cli-fio);}
+.cli-app .cli-pa-quem{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;}
+.cli-app .cli-pa-quem b{font-size:15.5px;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cli-app .cli-pa-quem .hint{margin:0;font-size:12px;}
+@media (max-width:560px){
+  .cli-app .cli-pf-pessoas{grid-template-columns:minmax(0,1fr);max-height:200px;}
+  .cli-app .cli-pf-dias{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .cli-app .cli-pf-linha-do-tempo{flex-direction:column;gap:12px;}
+  .cli-app .cli-pf-linha-do-tempo .cli-pf-passo + .cli-pf-passo{padding-left:0;}
+  .cli-app .cli-pf-linha-do-tempo .cli-pf-passo + .cli-pf-passo::before{display:none;}
+  .modal.modal-centro:has(.cli-pf) .modal-actions,.modal.modal-centro:has(.cli-pa) .modal-actions{flex-direction:column-reverse;}
+  .modal.modal-centro:has(.cli-pf) .modal-actions .btn,.modal.modal-centro:has(.cli-pa) .modal-actions .btn{width:100%;}
+}
+.cli-app.cli-pedido .cli-largo{margin-top:0;}
+.cli-app.cli-pedido p.cli-pf-vazio{padding:13px 16px;margin:2px 0 0;}
+.cli-app.cli-pedido p.cli-pf-aviso{padding:9px 12px;margin:-4px 0 0;}
+.cli-app .cli-pa-sem-foto{display:grid;place-items:center;flex:none;width:60px;height:60px;border-radius:50%;border:1.5px dashed color-mix(in srgb,var(--accent) 55%,var(--cli-linha));background:color-mix(in srgb,var(--accent) 7%,var(--surface));color:var(--accent);cursor:pointer;transition:background .15s,transform .15s;}
+.cli-app .cli-pa-sem-foto:hover{background:color-mix(in srgb,var(--accent) 14%,var(--surface));transform:scale(1.03);}
+.cli-app .cli-pa-sem-foto:focus-within{outline:2px solid var(--accent);outline-offset:2px;}
+.cli-app.cli-pedido.cli-pf,.cli-app.cli-pedido.cli-pa{margin-top:16px;}
+.cli-app .cli-pf-pessoas{padding:4px;margin:-4px;}
+
+/* a janela de férias, terceira volta (13/11/2026: "gostei, mas dá uma trabalhada a mais nisso"): as pessoas em três
+   colunas, o que se sabe das férias de quem foi escolhido, e o "Quando" com o calendário ao lado da data e dos dias */
+.modal.modal-centro:has(.cli-pf){max-width:min(780px,calc(100vw - 32px));}
+.cli-app .cli-pf-pessoas{grid-template-columns:repeat(3,minmax(0,1fr));max-height:none;}
+.cli-app .cli-pf-pessoa{padding:8px 30px 8px 9px;gap:9px;}
+.cli-app .cli-pf-pessoa-txt{gap:3px;}
+.cli-app .cli-pf-pessoa-txt b{font-size:13px;}
+.cli-app .cli-pf-marca{right:9px;width:16px;height:16px;margin-top:-8px;}
+.cli-app.cli-pedido p.cli-pf-sobre{display:flex;align-items:flex-start;gap:7px;margin:10px 0 0;font-size:12.5px;color:var(--ink-muted);}
+.cli-app .cli-pf-sobre svg{flex:none;margin-top:2px;}
+.cli-app .cli-pf-sobre b{color:var(--ink);font-weight:600;}
+.cli-app.cli-pedido p.cli-pf-rotulo-quando{margin:6px 0 -6px;}
+.cli-app .cli-pf-quando{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);gap:18px;align-items:start;}
+.cli-app .cli-pf-lado{display:flex;flex-direction:column;gap:14px;min-width:0;}
+.cli-app .cli-pf-lado .field{margin:0;}
+.cli-app .cli-pf-lado .cli-pf-dias{grid-template-columns:repeat(2,minmax(0,1fr));}
+.cli-app .cli-pf-sugestao{display:flex;align-items:center;gap:7px;width:100%;margin-top:8px;padding:7px 10px;border:1px solid color-mix(in srgb,var(--accent) 30%,var(--cli-linha));border-radius:9px;background:color-mix(in srgb,var(--accent) 5%,var(--surface));color:var(--ink-muted);font:inherit;font-size:12px;text-align:left;cursor:pointer;transition:background .15s,border-color .15s;}
+.cli-app .cli-pf-sugestao:hover{background:color-mix(in srgb,var(--accent) 10%,var(--surface));border-color:var(--accent);}
+.cli-app .cli-pf-sugestao svg{flex:none;color:var(--accent);}
+.cli-app .cli-pf-sugestao b{color:var(--ink);font-weight:650;}
+/* o calendário */
+.cli-app .cli-pf-cal{padding:12px 12px 10px;border:1px solid var(--cli-linha);border-radius:14px;background:var(--surface);}
+.cli-app .cli-pf-cal-topo{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;}
+.cli-app .cli-pf-cal-topo b{font-size:13.5px;font-weight:650;}
+.cli-app .cli-pf-cal-topo .icon-btn{width:30px;height:30px;}
+.cli-app .cli-pf-cal-grade{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));row-gap:3px;}
+.cli-app .cli-pf-cal-sem{display:grid;place-items:center;height:22px;font-size:10.5px;font-weight:700;color:var(--ink-muted);}
+.cli-app .cli-pf-cal-dia{position:relative;display:grid;place-items:center;height:36px;padding:0;border:0;background:none;color:inherit;font:inherit;font-size:12.5px;font-variant-numeric:tabular-nums;cursor:pointer;}
+.cli-app .cli-pf-cal-dia > span{position:relative;z-index:1;display:grid;place-items:center;width:32px;height:32px;border-radius:50%;transition:background .12s;}
+.cli-app .cli-pf-cal-dia:hover:not(:disabled) > span{background:var(--surface-3);}
+.cli-app .cli-pf-cal-dia.fora{color:var(--ink-muted);opacity:.45;}
+.cli-app .cli-pf-cal-dia:disabled{cursor:default;color:var(--ink-muted);opacity:.3;}
+.cli-app .cli-pf-cal-dia.evitar:not(.ferias):not(:disabled){color:var(--ink-muted);}
+.cli-app .cli-pf-cal-dia.hoje > span{box-shadow:inset 0 0 0 1px var(--ink-muted);}
+/* as férias: uma faixa de ponta a ponta; o começo e o fim, redondos e cheios */
+.cli-app .cli-pf-cal-dia.ferias::before{content:"";position:absolute;inset:2px 0;background:color-mix(in srgb,var(--accent) 14%,transparent);}
+.cli-app .cli-pf-cal-dia.ferias.ini::before{left:50%;}
+.cli-app .cli-pf-cal-dia.ferias.fim::before{right:50%;}
+.cli-app .cli-pf-cal-dia.ferias.ini.fim::before{display:none;}
+.cli-app .cli-pf-cal-grade > .cli-pf-cal-dia.ferias:nth-child(7n+1):not(.ini)::before{border-radius:10px 0 0 10px;}
+.cli-app .cli-pf-cal-grade > .cli-pf-cal-dia.ferias:nth-child(7n):not(.fim)::before{border-radius:0 10px 10px 0;}
+.cli-app .cli-pf-cal-dia.ferias{color:var(--ink);opacity:1;}
+.cli-app .cli-pf-cal-dia:is(.ini,.fim) > span{background:var(--accent);color:#fff;font-weight:700;}
+.cli-app .cli-pf-cal-dia:is(.ini,.fim):hover > span{background:var(--accent) !important;}
+.cli-app .cli-pf-cal-dia.volta > span{box-shadow:inset 0 0 0 2px var(--success);color:var(--success-ink);font-weight:700;}
+.cli-app .cli-pf-cal-dia.pag > span{box-shadow:inset 0 0 0 2px var(--warn);color:var(--warn);font-weight:700;}
+.cli-app .cli-pf-cal-legenda{display:flex;justify-content:center;gap:14px;margin-top:8px;padding-top:8px;border-top:1px solid var(--cli-fio);font-size:11px;color:var(--ink-muted);}
+.cli-app .cli-pf-cal-legenda span{display:inline-flex;align-items:center;gap:5px;}
+.cli-app .cli-pf-cal-legenda i{display:inline-block;width:10px;height:10px;border-radius:50%;}
+.cli-app .cli-pf-cal-legenda i.pag{box-shadow:inset 0 0 0 2px var(--warn);}
+.cli-app .cli-pf-cal-legenda i.ferias{width:16px;border-radius:5px;background:var(--accent);}
+.cli-app .cli-pf-cal-legenda i.volta{box-shadow:inset 0 0 0 2px var(--success);}
+@media (max-width:700px){
+  .cli-app .cli-pf-pessoas{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .cli-app .cli-pf-quando{grid-template-columns:minmax(0,1fr);}
+}
+@media (max-width:560px){
+  .cli-app .cli-pf-pessoas{grid-template-columns:minmax(0,1fr);max-height:212px;}
+}
+
+/* marcar como hotel (13/11/2026): os dois passos no alto, a prévia mais clara enquanto escolhe o último dia */
+.cli-app.cli-pedido p.cli-pf-cal-passo{display:flex;align-items:center;justify-content:center;gap:8px;margin:0 0 8px;padding:6px 8px;border-radius:9px;background:var(--surface-2);font-size:11.5px;color:var(--ink-muted);}
+.cli-app .cli-pf-cal-etapa{display:inline-flex;align-items:center;gap:6px;transition:color .15s;}
+.cli-app .cli-pf-cal-etapa i{display:grid;place-items:center;width:17px;height:17px;border-radius:50%;border:1px solid var(--cli-linha);font-style:normal;font-size:10px;font-weight:700;}
+.cli-app .cli-pf-cal-etapa.agora{color:var(--ink);font-weight:600;}
+.cli-app .cli-pf-cal-etapa.agora i{background:var(--accent);border-color:var(--accent);color:#fff;}
+.cli-app .cli-pf-cal-etapa.feita i{background:color-mix(in srgb,var(--accent) 18%,transparent);border-color:transparent;color:var(--accent);}
+.cli-app .cli-pf-cal-seta{width:22px;height:1px;background:var(--cli-linha);}
+.cli-app .cli-pf-cal.escolhendo .cli-pf-cal-dia.ferias::before{background:color-mix(in srgb,var(--accent) 9%,transparent);}
+.cli-app .cli-pf-cal.escolhendo .cli-pf-cal-dia.fim > span{background:color-mix(in srgb,var(--accent) 70%,transparent);}
+.cli-app .cli-pf-cal.escolhendo .cli-pf-cal-dia:not(:disabled){cursor:pointer;}
+.cli-app.cli-pedido p.cli-pf-marcado{display:flex;align-items:center;gap:7px;margin:8px 0 0;padding:7px 10px;border:1px solid var(--accent);border-radius:9px;background:color-mix(in srgb,var(--accent) 8%,var(--surface));font-size:12.5px;color:var(--ink-muted);}
+.cli-app .cli-pf-marcado svg{flex:none;color:var(--accent);}
+.cli-app .cli-pf-marcado b{color:var(--accent);font-weight:700;}
+.cli-app .cli-pf-cal-grade > .cli-pf-cal-dia.ferias.fim:nth-child(7n+1)::before,.cli-app .cli-pf-cal-grade > .cli-pf-cal-dia.ferias.ini:nth-child(7n)::before{display:none;}
+
+/* a janela não passa da tela (13/11/2026: "fica enorme e não consigo clicar"): o miolo rola por dentro, o título e os
+   botões ficam sempre à vista; e tudo um pouco mais compacto */
+.modal.modal-centro:has(.cli-pf),.modal.modal-centro:has(.cli-pa){display:flex;flex-direction:column;max-height:calc(100dvh - 32px);}
+.modal.modal-centro:has(.cli-pf) > :is(h3,.modal-actions),.modal.modal-centro:has(.cli-pa) > :is(h3,.modal-actions){flex:none;}
+.modal.modal-centro > .cli-app.cli-pedido:is(.cli-pf,.cli-pa){flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;margin:10px -6px 0;padding:6px;}
+.modal.modal-centro:has(.cli-pf) .modal-actions,.modal.modal-centro:has(.cli-pa) .modal-actions{margin-top:10px;padding-top:14px;}
+.cli-app.cli-pedido.cli-pf{gap:12px 14px;}
+.cli-app .cli-pf-pessoa{padding:6px 28px 6px 8px;border-radius:10px;}
+.cli-app .cli-pf-pessoa-txt{gap:2px;}
+.cli-app .cli-pf-pessoa .cli-eq-ferias{height:17px;font-size:10px;}
+.cli-app .cli-pf-cal{padding:10px 10px 8px;}
+.cli-app .cli-pf-cal-dia{height:32px;}
+.cli-app .cli-pf-cal-dia > span{width:29px;height:29px;}
+.cli-app .cli-pf-cal-sem{height:18px;}
+.cli-app.cli-pedido p.cli-pf-cal-passo{margin-bottom:4px;padding:4px 8px;}
+.cli-app .cli-pf-cal-legenda{margin-top:6px;padding-top:6px;}
+.cli-app .cli-pf-resumo{padding:10px 14px;}
+.cli-app .cli-pf-passo-ico{width:28px;height:28px;}
+.cli-app .cli-pf-lado{gap:12px;}
+.cli-app .cli-pf-dia{min-height:42px;}
+.cli-app .cli-pf-chave{padding:9px 12px;}
+.cli-app.cli-pedido div.cli-pf-aviso{display:flex;align-items:flex-start;gap:8px;margin:-2px 0 0;padding:9px 12px;border-radius:10px;background:var(--warn-soft);color:var(--warn);font-size:12.5px;line-height:1.4;}
+.cli-app .cli-pf-aviso ul{margin:0;padding-left:16px;display:flex;flex-direction:column;gap:3px;}
+@media (max-width:560px){.cli-app .cli-pf-pessoas{max-height:none;overflow:visible;}}
+
+/* a folha de verdade nas telas (13/11/2026): o afastamento na ficha, quatro números na faixa, os holerites no custo */
+.cli-app.cli-ficha p.cli-ficha-afastado{display:flex;align-items:center;gap:7px;margin:16px 0 0;padding:8px 12px;border-radius:10px;background:var(--surface-2);font-size:12.5px;color:var(--ink-muted);}
+.cli-app .cli-ficha-faixa.quatro{grid-template-columns:1.1fr 1.2fr 1fr 1.1fr;}
+.cli-app .cli-cf-holerite{margin-top:12px;}
+.cli-app .cli-cf-holerite .cli-sobre{display:block;margin-bottom:2px;}
+.cli-app .cli-cf-liquido{padding-top:6px;border-top:1px dashed var(--cli-fio);font-weight:600;color:var(--ink);}
+
+/* a janela de férias numa tela só (13/11/2026: "não quero scroll para baixo") */
+.cli-app.cli-pedido.cli-pf{gap:12px 14px;}
+.cli-app .cli-pf-quem{display:flex;flex-direction:column;gap:8px;}
+.cli-app .cli-pf-fichas{display:flex;flex-wrap:wrap;gap:6px;}
+.cli-app .cli-pf-ficha{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 11px 0 5px;border:1px solid var(--cli-linha);border-radius:999px;background:var(--surface);color:inherit;font:inherit;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;transition:border-color .15s,background .15s;}
+.cli-app .cli-pf-ficha:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--cli-linha));}
+.cli-app .cli-pf-ficha.sel{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,var(--surface));font-weight:650;}
+.cli-app .cli-pf-ficha-ponto{width:7px;height:7px;border-radius:50%;background:var(--ink-muted);}
+.cli-app .cli-pf-ficha-ponto.t-ruim{background:var(--danger);}
+.cli-app .cli-pf-ficha-ponto.t-atencao{background:var(--warn);}
+.cli-app .cli-pf-ficha-ponto.t-bom{background:var(--success);}
+.cli-app .cli-pf-ficha-ponto.t-neutro{background:color-mix(in srgb,var(--ink-muted) 60%,transparent);}
+.cli-app.cli-pedido p.cli-pf-sobre{display:flex;align-items:center;gap:8px;min-height:22px;margin:0;font-size:12.5px;color:var(--ink-muted);}
+.cli-app .cli-pf-sobre .cli-eq-ferias{height:20px;font-size:10.5px;}
+.cli-app .cli-pf-quando{grid-template-columns:minmax(0,292px) minmax(0,1fr);gap:16px;}
+.cli-app .cli-pf-lado{gap:10px;}
+.cli-app .cli-pf-lado .cli-pf-dias{grid-template-columns:repeat(4,minmax(0,1fr));}
+.cli-app .cli-pf-dia{min-height:40px;padding:3px 2px;}
+.cli-app .cli-pf-dia b{font-size:15px;}
+.cli-app .cli-pf-dia span{font-size:10px;}
+/* a conta: em pé, ao lado do calendário */
+.cli-app .cli-pf-lado .cli-pf-resumo{flex-direction:column;gap:8px;margin:0;padding:10px 12px;}
+.cli-app .cli-pf-lado .cli-pf-passo{align-items:center;}
+.cli-app .cli-pf-lado .cli-pf-passo-ico{width:26px;height:26px;border-radius:8px;}
+.cli-app .cli-pf-lado .cli-pf-passo-txt{flex-direction:row;align-items:baseline;justify-content:space-between;gap:10px;flex:1;}
+.cli-app .cli-pf-lado .cli-pf-passo-txt .hint{font-size:12px;}
+.cli-app .cli-pf-lado .cli-pf-passo-txt b{font-size:13px;text-align:right;}
+.cli-app .cli-pf-lado div.cli-pf-vazio{display:flex;flex-direction:column;align-items:stretch;gap:8px;margin:0;padding:12px;border:1px dashed var(--cli-linha);border-radius:12px;color:var(--ink-muted);font-size:12.5px;}
+.cli-app .cli-pf-lado .cli-pf-sugestao{margin-top:0;}
+.cli-app.cli-pedido .cli-pf-lado div.cli-pf-aviso{margin:0;padding:8px 10px;font-size:12px;}
+.cli-app .cli-pf-lado .cli-pf-chave{padding:8px 12px;}
+.cli-app .cli-pf-lado .cli-pf-chave-txt .hint{font-size:11.5px;}
+/* o calendário um pouco mais baixo */
+.cli-app .cli-pf-cal-dia{height:30px;}
+.cli-app .cli-pf-cal-dia > span{width:28px;height:28px;}
+.cli-app .cli-pf-cal-topo{margin-bottom:6px;}
+.cli-app .cli-pf-cal-topo .icon-btn{width:28px;height:28px;}
+@media (max-width:700px){
+  .cli-app .cli-pf-quando{grid-template-columns:minmax(0,1fr);}
+}
+.modal.modal-centro:has(.cli-pf){max-width:min(860px,calc(100vw - 32px));}
+.cli-app .cli-pf-quando{grid-template-columns:minmax(0,300px) minmax(0,1fr);gap:20px;}
+/* as duas colunas do mesmo tamanho (13/11/2026: "fica desalinhado"): o calendário e a coluna da direita começam juntos e
+   terminam juntos; a legenda e o 13º vão para o pé */
+.cli-app .cli-pf-quando{align-items:stretch;}
+.cli-app .cli-pf-cal{display:flex;flex-direction:column;}
+.cli-app .cli-pf-cal-legenda{margin-top:auto;}
+.cli-app .cli-pf-cal-grade{margin-bottom:6px;}
+.cli-app .cli-pf-lado > .cli-pf-chave{margin-top:auto;}
+.cli-app .cli-pf-lado .cli-pf-dia{min-height:46px;}
+.cli-app .cli-pf-ficha{height:32px;}
