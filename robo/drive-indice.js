@@ -310,10 +310,50 @@ async function clienteDaPasta(db, codigo, porCodigo) {
 // para quase sempre não achar arquivo novo (~2.000 a 2.700 leituras por hora no expediente). Agora lembra, por cliente,
 // mês e tipo, os arquivos que já gravou: sem arquivo novo, nem lê. O robô que reinicia lê de novo uma vez.
 const pastaJaGravada = new WeakMap();   // db → Map('clienteId_AAAA-MM|tipo' → Set(ids))
+// Em disco (13/11/2026): o robô da nuvem é reiniciado várias vezes por dia (a cada atualização) e, com a memória só no
+// processo, relia tudo a cada vez (~1.700 leituras na hora seguinte). O arquivo vale 24 h e é zerado na releitura
+// completa da madrugada, que confere tudo de novo: o que mudar por fora se corrige em até um dia.
+const MEMORIA_VALE_MS = 24 * 36e5;
+let arquivoDaMemoria = null;
+let memoriaDesde = Date.now();
+let memoriaSuja = false;
+/** Liga a memória em disco (o robô, ao ligar o mapa do Drive; o teste, num arquivo à parte). */
+function usarArquivoDaMemoria(arquivo) { arquivoDaMemoria = arquivo; }
+function carregarMemoria() {
+  const m = new Map();
+  memoriaDesde = Date.now();
+  if (!arquivoDaMemoria) return m;
+  try {
+    const j = JSON.parse(require('fs').readFileSync(arquivoDaMemoria, 'utf8'));
+    const desde = Date.parse(j.desde || '');
+    if (Number.isFinite(desde) && Date.now() - desde < MEMORIA_VALE_MS) {
+      for (const [k, ids] of Object.entries(j.chaves || {})) m.set(k, new Set(ids));
+      memoriaDesde = desde;
+    }
+  } catch (e) { /* sem arquivo (ou estragado): começa vazia */ }
+  return m;
+}
 function jaGravadosDo(db) {
   let m = pastaJaGravada.get(db);
-  if (!m || m.size > 50000) { m = new Map(); pastaJaGravada.set(db, m); }
+  if (!m) { m = carregarMemoria(); pastaJaGravada.set(db, m); }
+  if (m.size > 50000 || Date.now() - memoriaDesde >= MEMORIA_VALE_MS) { m.clear(); memoriaDesde = Date.now(); memoriaSuja = true; }
   return m;
+}
+/** Zera a memória (a releitura completa da madrugada confere tudo de novo). */
+function esquecerMemoria(db) { const m = jaGravadosDo(db); m.clear(); memoriaDesde = Date.now(); memoriaSuja = true; }
+/** Grava a memória no disco, se mudou (o relógio do mapa, de minuto em minuto). */
+function salvarMemoria(db) {
+  if (!arquivoDaMemoria || !memoriaSuja) return;
+  const m = pastaJaGravada.get(db);
+  if (!m) return;
+  try {
+    const fs = require('fs');
+    const chaves = {};
+    for (const [k, ids] of m) chaves[k] = [...ids];
+    fs.writeFileSync(arquivoDaMemoria + '.tmp', JSON.stringify({ desde: new Date(memoriaDesde).toISOString(), chaves }));
+    fs.renameSync(arquivoDaMemoria + '.tmp', arquivoDaMemoria);
+    memoriaSuja = false;
+  } catch (e) { /* fica para a próxima volta */ }
 }
 
 async function marcarPeloIndice(db, cliente, achados, log, soEnsaio) {
@@ -335,7 +375,7 @@ async function marcarPeloIndice(db, cliente, achados, log, soEnsaio) {
     const d = lidos.get(competencia);
     const vistos = new Set(((d.pasta || {})[tipo]) || []);
     const novos = arquivos.filter(x => !vistos.has(x.id));
-    if (!novos.length) { gravados.set(chaveDaMemoria, vistos); continue; }
+    if (!novos.length) { gravados.set(chaveDaMemoria, vistos); memoriaSuja = true; continue; }
     const agora = new Date().toISOString();
     const patch = {
       clienteId: cliente.id, clienteNome: cliente.nome || '', competencia,
@@ -348,7 +388,7 @@ async function marcarPeloIndice(db, cliente, achados, log, soEnsaio) {
     if (bancos.length && !soEnsaio) patch.bancosPorTipo = { [tipo]: FieldValue.arrayUnion(...bancos) };
     if (d[tipo] !== true) {
       // só conta o que marcaria (e lembra, para não ler de novo o mesmo mês a cada mudança da pasta)
-      if (soEnsaio) { marcados++; gravados.set(chaveDaMemoria, new Set([...vistos, ...novos.map(x => x.id)])); continue; }
+      if (soEnsaio) { marcados++; gravados.set(chaveDaMemoria, new Set([...vistos, ...novos.map(x => x.id)])); memoriaSuja = true; continue; }
       patch[tipo] = true;
       patch.detalhes = { [tipo]: Object.assign({ origem: 'pasta', em: agora, arquivos: novos.slice(0, 20).map(x => x.nome) }, bancos.length ? { bancos } : {}) };
       marcados++;
@@ -356,6 +396,7 @@ async function marcarPeloIndice(db, cliente, achados, log, soEnsaio) {
     }
     await ref.set(patch, { merge: true });
     gravados.set(chaveDaMemoria, new Set(patch.pasta[tipo]));
+    memoriaSuja = true;
   }
   return marcados;
 }
@@ -642,6 +683,7 @@ async function gravarAnos(db, estado, log) {
 
 async function varreduraCompleta(db, log, estado) {
   const t0 = Date.now();
+  esquecerMemoria(db);
   // O marcador de mudanças é pego ANTES de ler: o que mudar durante a leitura
   // aparece na primeira conferência de mudanças, em vez de se perder.
   const inicio = await getDrive().changes.getStartPageToken({});
@@ -831,6 +873,10 @@ async function atenderPedidoDoMapa(db, log, estado, pedido) {
 
 function iniciarIndiceDrive(db, log) {
   const estado = { dono: new Map(), pais: new Map(), nomes: null, ocupado: false, ultimaCompleta: '' };
+  // a memória do que já foi gravado em documentosMensal sobrevive ao reinício (fora do git: .gitignore)
+  usarArquivoDaMemoria(require('path').join(__dirname, 'mapa-drive-memoria.json'));
+  const relogioDaMemoria = setInterval(() => salvarMemoria(db), 60 * 1000);
+  if (relogioDaMemoria.unref) relogioDaMemoria.unref();
   const hojeIso = () => new Date().toISOString().slice(0, 10);
 
   // os pedidos da tela esperam a vez (a trava é a mesma da volta de cada minuto)
@@ -949,4 +995,6 @@ module.exports = {
   clienteDaPasta, guardarClientesDoMapa,
   // o marcador de mudanças fora da raiz (teste-consumo.js)
   lerMarcador, gravarMarcador,
+  // a memória do que já foi gravado, em disco (teste-consumo.js)
+  usarArquivoDaMemoria, salvarMemoria, esquecerMemoria,
 };
