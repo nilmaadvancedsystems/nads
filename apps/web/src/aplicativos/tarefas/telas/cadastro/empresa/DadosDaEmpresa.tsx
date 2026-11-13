@@ -1,7 +1,7 @@
 // Cadastro › a empresa, no estilo das configurações do Notion (Vitor, 14/10/2026: "adicionando na parte de empresa os
 // dados dela, e melhorando a parametrização no estilo do Notion; parametrizações por setor"). Três telas:
 //   - DadosDaEmpresa (Empresa): a identificação e a situação na Receita (o que o Entregas já tem), o contato e os sócios;
-//     a razão social, que o admin e o diretor trocam (13/11/2026);
+//     a razão social, que só o diretor troca (13/11/2026);
 //   - ParametrosContabeis (Contábil › Parâmetros): os cartões, a liquidação de cobrança e a nota de honorário;
 //   - ParametrosFiscais (Fiscal › Parâmetros): o regime tributário, se presta serviços e os parâmetros da planilha do
 //     Fiscal (29/10/2026: segmento, monofásico, ICMS-ST, antecipação, DIFAL, retenções, benefício, parcelamento…).
@@ -15,7 +15,7 @@ const dataBr = (iso: string) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso 
 const Valor = ({ v }: { v: string }) => <span className={'cfg-valor' + (v ? '' : ' vazio')}>{v || '—'}</span>;
 
 /**
- * A razão social (13/11/2026: "poder trocar a razão social pelo próprio sistema"): o admin e o diretor trocam aqui. A troca
+ * A razão social (13/11/2026: "poder trocar a razão social pelo próprio sistema"): só o diretor troca aqui. A troca
  * é só o nome que aparece e que a busca acha; os dados da empresa continuam presos ao nome de sempre (nada se perde).
  */
 function LinhaDaRazaoSocial({ vm }: { vm: ReturnType<typeof useDadosDaEmpresa> }) {

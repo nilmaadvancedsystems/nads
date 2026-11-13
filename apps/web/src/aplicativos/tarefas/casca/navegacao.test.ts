@@ -1,9 +1,20 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { aplicacoesDe, ehDiretor, podeMexerNoCadastro, podeVerOFinanceiro } from './navegacao';
+import { aplicacoesDe, ehDiretor, podeMexerNoCadastro, podeTrocarRazaoSocial, podeVerOFinanceiro } from './navegacao';
 import type { Operador } from './operador';
 
 const op = (nivel: Operador['nivel'], admin = false): Operador => ({ nome: 'X', departamento: 'contabil', nivel, admin, desenvolvedor: false });
 const cadastroDe = (o: Operador) => aplicacoesDe(o).find(a => a.id === 'cadastro');
+
+describe('a razão social (13/11/2026: "só diretor")', () => {
+  it('troca só o nível Diretor e o Dono; o admin sem esse nível, o sênior, o pleno e o júnior não', () => {
+    expect(podeTrocarRazaoSocial(op('diretor'))).toBe(true);
+    expect(podeTrocarRazaoSocial(op('dono'))).toBe(true);
+    expect(podeTrocarRazaoSocial(op('senior', true))).toBe(false);
+    expect(podeTrocarRazaoSocial(op(null, true))).toBe(false);
+    for (const n of ['senior', 'pleno', 'junior'] as const) expect(podeTrocarRazaoSocial(op(n))).toBe(false);
+    expect(podeTrocarRazaoSocial(null)).toBe(false);
+  });
+});
 
 describe('o Cadastro por nível (Vitor, 19/10/2026: o sênior vê e mexe no cadastro das empresas)', () => {
   it('mexem o admin, o diretor e o sênior; o pleno e o júnior não', () => {

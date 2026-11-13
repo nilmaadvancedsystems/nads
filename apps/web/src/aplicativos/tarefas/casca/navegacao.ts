@@ -220,6 +220,8 @@ export const podeMexerNoCadastro = (op: Operador | null) => !!op && (op.admin ||
 
 /** Só o nível Diretor: o admin sem esse nível não conta para o Financeiro (30/10/2026: "remova o acesso de admin ao financeiro"). */
 export const temNivelDiretor = (op: Operador | null) => usuarios.nivelDeDiretor(op?.nivel);
+/** Quem troca a razão social no Cadastro › Empresa: só o nível Diretor (e o Dono); o admin sem esse nível, não (13/11/2026: "só diretor"). */
+export const podeTrocarRazaoSocial = (op: Operador | null) => temNivelDiretor(op);
 /** Quem vê o Financeiro (Vitor, 09/11/2026): quem é Diretor já tem, sem como desligar; os outros, só com o papel Financeiro, que só o Diretor autoriza. */
 export const podeVerOFinanceiro = (op: Operador | null) => !!op && (temNivelDiretor(op) || !!op.financeiro);
 
