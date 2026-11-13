@@ -81,7 +81,7 @@ export function criarAvisosFirestore(): RepoAvisos {
       const em = new Date().toISOString();
       let anexo: ReturnType<typeof anexoDe> | null = null;
       if (pdf) {
-        const arquivoId = 'ax-' + idNovo();
+        const arquivoId = idNovo();
         const pedacos = entregas.partesDoArquivo(pdf.bytes);
         for (let n = 0; n < pedacos.length; n++) await setDoc(doc(db, 'nadsAvisos', ref.id, 'partes', arquivoId + '-' + n), { dados: Bytes.fromUint8Array(pedacos[n]) });
         anexo = anexoDe(pdf, { id: arquivoId, em, por, partes: pedacos.length });
