@@ -6520,6 +6520,13 @@ td.fs-fat-sem{color:var(--ink-faint);}
 .delegar-conta-nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
 /* Carteira (12/11/2026): o salário, as finanças e as comissões de cada pessoa */
+/* a janela dos Serviços das Comissões (13/11/2026, Vitor: "não to conseguindo mexer"): cabe na tela, o título e o Gravar
+   fixos e só o miolo rola (uma barra de rolagem; as tabelas dentro não rolam sozinhas) */
+.modal.registro-novo.cart-servicos-janela{max-height:calc(100dvh - 32px);}
+.cart-servicos-janela .registro-topo,.cart-servicos-janela .registro-pe{flex:none;}
+.cart-servicos-janela .registro-corpo{flex:1 1 auto;min-height:0;overflow-y:auto;}
+.cart-servicos-janela .registro-corpo > *{flex-shrink:0;}
+.cart-servicos-janela .table-wrap{max-height:none;overflow:visible;}
 .cart-em-breve{max-width:520px;margin:48px auto;text-align:center;gap:10px;display:flex;flex-direction:column;align-items:center;}
 .cart-em-breve-icone{display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:16px;background:var(--surface-2);border:1px solid var(--border);color:var(--accent);}
 .cart-em-breve-icone svg{width:26px;height:26px;}

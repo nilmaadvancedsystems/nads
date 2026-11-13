@@ -10,7 +10,7 @@ export function JanelaDosServicos({ fechar }: { fechar: () => void }) {
   useJanela(janela, fechar);
   return (
     <div className="modal-overlay" onMouseDown={e => { if (e.target === e.currentTarget) fechar(); }}>
-      <div ref={janela} className="modal registro-novo" role="dialog" aria-modal="true" aria-label="Serviços comissionados">
+      <div ref={janela} className="modal registro-novo cart-servicos-janela" role="dialog" aria-modal="true" aria-label="Serviços comissionados">
         <header className="registro-topo">
           <span className="registro-caminho"><Icone nome="dinheiro" />Comissões da equipe<Icone nome="chevronRight" /><b>Serviços comissionados</b></span>
           <BotaoFechar onClick={fechar} />
