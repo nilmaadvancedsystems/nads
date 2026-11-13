@@ -182,6 +182,8 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
     setJaFazendo: (sim: boolean) => mudar({ status: sim ? 'andamento' : 'pendente' }),
     /** o seletor de status é de quem criou (o controle de quem delegou); quem recebeu usa os botões */
     mudaStatus: !!tarefa && (tarefa.criadaPor.uid === uid || admin),
+    /** quem criou a tarefa (ou a nova): só ela muda o prazo, a prioridade, os clientes e para quem (o Início novo; 13/11/2026) */
+    criouEu: ehNova || (!!tarefa && tarefa.criadaPor.uid === uid),
     /** Iniciar, Pausar, Retomar e Concluir: de quem vai fazer a tarefa */
     acoes: tarefa && tarefa.responsavel.uid === uid ? d.acoesDaTarefa(tarefa, relogio) : [],
     /** o pedido de documentos: o aviso no alto da janela */
