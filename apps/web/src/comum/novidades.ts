@@ -9,6 +9,8 @@ export const NOVIDADES = {
   'inicio-novo': { desde: '13/11/2026', aprovada: false },
   /** o Administrativo, só para o Diretor e o Dono (13/11/2026: a entrada de clientes no escritório, "desenvolve o prototipo") */
   administrativo: { desde: '13/11/2026', aprovada: false },
+  /** a situação da tarefa não se escolhe mais (13/11/2026: "remove em todas, situacao nao deve ser setada"): só o selo e os botões de quem faz */
+  'tarefa-sem-situacao': { desde: '13/11/2026', aprovada: false },
 } satisfies Record<string, { desde: string; aprovada: boolean }>;
 
 export type IdNovidade = keyof typeof NOVIDADES;

@@ -598,7 +598,8 @@ describe('delegar documentos no Início novo (13/11/2026)', () => {
     expect(d.acoesDosDocumentos(enviada.tarefa, 'eu').map(a => a.id)).toEqual(['contestar', 'confirmarTudo']);
     expect(d.acoesDosDocumentos(enviada.tarefa, 'ana')).toEqual([]);
     const contestada = d.gravacaoDasMudancas(enviada.tarefa, { entrega: 'contestada' }, eu, '2026-11-13T12:00:00Z').tarefa;
-    expect(d.situacaoDosDocumentos(contestada)).toMatch(/^Contestado/);
+    expect(d.situacaoDosDocumentos(contestada)).toBe('Contestado: Ana precisa mandar o que faltou.');
+    expect(d.situacaoDosDocumentos({ ...contestada, pareceres: [{ por: 'Eu', em: '', texto: 'Falta outubro' }] })).toBe('Contestado ("Falta outubro"): Ana precisa mandar o que faltou.');
     expect(d.acoesDosDocumentos(contestada, 'ana').map(a => a.id)).toEqual(['repassar', 'enviarDocumentos']);
     const concluida = d.gravacaoDasMudancas(enviada.tarefa, { status: 'concluida' }, eu, '2026-11-13T12:00:00Z');
     expect(concluida.linhas.map(l => l.texto)).toEqual(['Conferiu: veio tudo', 'Concluiu a tarefa']);

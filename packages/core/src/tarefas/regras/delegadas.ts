@@ -596,13 +596,17 @@ export function acoesDosDocumentos(t: Pick<TarefaDelegada, 'tipo' | 'status' | '
 }
 
 /** Onde estão os documentos, em uma frase (o aviso no alto da tarefa). */
-export function situacaoDosDocumentos(t: Pick<TarefaDelegada, 'tipo' | 'status' | 'entrega' | 'visualizadaEm' | 'responsavel'>): string {
+export function situacaoDosDocumentos(t: Pick<TarefaDelegada, 'tipo' | 'status' | 'entrega' | 'visualizadaEm' | 'responsavel'> & Partial<Pick<TarefaDelegada, 'pareceres' | 'criadaPor'>>): string {
   if (enviaDocumentos(t)) return t.status === 'concluida' ? t.responsavel.nome + ' confirmou o recebimento.' : t.visualizadaEm ? t.responsavel.nome + ' visualizou e ainda não confirmou o recebimento.' : t.responsavel.nome + ' ainda não visualizou.';
   if (!requerDocumentos(t)) return '';
   if (t.status === 'concluida') return 'Concluído: veio tudo.';
   if (t.status === 'cancelada') return 'Cancelado.';
   if (t.entrega === 'enviada') return t.responsavel.nome + ' enviou os documentos: falta conferir.';
-  if (t.entrega === 'contestada') return 'Contestado: ' + t.responsavel.nome + ' precisa mandar o que faltou.';
+  if (t.entrega === 'contestada') {
+    // o motivo é o último comentário de quem pediu (a janela do Início novo não tem mais a conversa; 13/11/2026)
+    const motivo = [...(t.pareceres || [])].reverse().find(p => p.por === t.criadaPor?.nome)?.texto;
+    return 'Contestado' + (motivo ? ' ("' + motivo + '")' : '') + ': ' + t.responsavel.nome + ' precisa mandar o que faltou.';
+  }
   return 'Esperando ' + t.responsavel.nome + ' anexar e enviar os documentos.';
 }
 

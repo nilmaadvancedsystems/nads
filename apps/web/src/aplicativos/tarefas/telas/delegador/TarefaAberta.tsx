@@ -9,6 +9,7 @@ import { AnexosDaTarefa } from './partes/AnexosDaTarefa';
 import { Link } from 'react-router';
 import { LinhaDoTempoDaTarefa } from './partes/LinhaDoTempoDaTarefa';
 import { SeloDoStatus } from './partes/SelosDaTarefa';
+import { useNovidade } from '../../../../comum/novidades';
 import { useTarefaAberta } from './useTarefaAberta';
 
 type Vm = ReturnType<typeof useTarefaAberta>;
@@ -17,6 +18,7 @@ function FormularioDaTarefa({ vm }: { vm: Vm }) {
   const id = useId();
   const r = vm.rascunho;
   const so = !vm.podeMudar;
+  const semSituacao = useNovidade('tarefa-sem-situacao');
   return (
     <>
       <div className="tdl-form">
@@ -62,7 +64,7 @@ function FormularioDaTarefa({ vm }: { vm: Vm }) {
           )}
           {vm.prazoInvalido && <p className="hint tdl-atrasada">Data incompleta ou que não existe.</p>}
         </div>
-        {!vm.ehNova && (
+        {!vm.ehNova && !semSituacao && (
           <div className="field tdl-campo-largo">
             <span className="tdl-rotulo">Status</span>
             {so || !vm.mudaStatus ? <SeloDoStatus rotulo={vm.status?.rotulo || ''} tom={vm.status?.tom || 'neutral'} />
