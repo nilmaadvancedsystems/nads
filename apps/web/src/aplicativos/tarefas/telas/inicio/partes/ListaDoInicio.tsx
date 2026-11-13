@@ -55,7 +55,9 @@ export function ListaDoInicio({ documentos = false, lista: qual = 'minhas', busc
               </thead>
               <tbody>
                 {g.linhas.map(l => {
-                  const concluir = l.acoes?.find(a => a.id === 'concluir');
+                  // os documentos (o envio e o requerer) não concluem pela caixinha: o requerer termina quando quem pediu confere e o
+                  // envio quando quem recebeu confirma, na janela (13/11/2026)
+                  const concluir = tarefas.delegadas.pedeDocumentos(l) ? undefined : l.acoes?.find(a => a.id === 'concluir');
                   return (
                     <tr key={l.id} className="ini-tr" onClick={() => abrir(l.id)} title="Abrir a tarefa">
                       <td className="ini-marca" onClick={e => e.stopPropagation()}>
