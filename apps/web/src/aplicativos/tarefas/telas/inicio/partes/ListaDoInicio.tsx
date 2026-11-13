@@ -5,8 +5,9 @@
 // do alto (uma busca só na tela); aqui ficam a prioridade, a pessoa e a planilha. O ViewModel é o da Central
 // (useCentralDeTarefas), com os grupos do print e, nos Documentos, todos os documentos delegados juntos.
 import { tarefas } from '@nads/core';
-import { Icone, LogoExcel, MenuSuspenso, Vazio } from '@nads/ui';
+import { BotaoIcone, Icone, LogoExcel, MenuSuspenso, Vazio } from '@nads/ui';
 import { createPortal } from 'react-dom';
+import { useNovidade } from '../../../../../comum/novidades';
 import { MenuDeFiltro } from '../../dp/MenuDeFiltro';
 import { SeloDaPrioridade, SeloDoStatus } from '../../delegador/partes/SelosDaTarefa';
 import { useCentralDeTarefas, type AbaDaCentral } from '../../delegador/useCentralDeTarefas';
@@ -21,6 +22,8 @@ export function ListaDoInicio({ documentos = false, lista: qual = 'minhas', busc
   lugarDosFiltros?: HTMLElement | null; lugarDoFim?: HTMLElement | null;
 }) {
   const vm = useCentralDeTarefas(qual, { agenda: true, documentos, semDocumentos: !documentos, busca, filtrar });
+  // o sino de cobrar (a novidade 'cobrar-tarefa', só no modo desenvolvedor até o Vitor aprovar)
+  const cobrarLigado = useNovidade('cobrar-tarefa');
   const filtros = !vm.abaVazia && (
     <>
       <MenuDeFiltro rotulo="Prioridade" valor={vm.prioridade} mudar={vm.setPrioridade} todos="Todas as prioridades" opcoes={vm.opcoesDePrioridade} />
@@ -73,7 +76,16 @@ export function ListaDoInicio({ documentos = false, lista: qual = 'minhas', busc
                           ? <button type="button" className="subnav-caixa vazia" title="Concluir" aria-label={'Concluir ' + l.titulo} onClick={() => vm.fazerAcao(l.id, concluir.status)} />
                           : <span className={'subnav-caixa ' + (l.status.valor === 'concluida' ? 'marcada' : 'vazia')} aria-hidden="true">{l.status.valor === 'concluida' && <Icone nome="check" />}</span>}
                       </td>
-                      <td><button type="button" className="ini-abrir" onClick={e => { e.stopPropagation(); abrir(l.id); }}>{l.titulo}</button></td>
+                      <td>
+                        <span className="ini-tarefa-com-sino">
+                          <button type="button" className="ini-abrir" onClick={e => { e.stopPropagation(); abrir(l.id); }}>{l.titulo}</button>
+                          {cobrarLigado && l.cobranca === 'cobrada' && <span className="ini-sino" title="Cobraram uma atualização: abra a tarefa e responda"><Icone nome="sino" />Cobrada</span>}
+                          {cobrarLigado && l.cobranca === 'esperando' && <span className="ini-sino" title="Você cobrou uma atualização: esperando a resposta"><Icone nome="sino" /></span>}
+                          {cobrarLigado && l.cobranca === 'cobrar' && (
+                            <span onClick={e => e.stopPropagation()}><BotaoIcone pequeno icone="sino" titulo={'Cobrar uma atualização de ' + l.responsavel.nome} onClick={() => { void vm.cobrar(l.id); }} /></span>
+                          )}
+                        </span>
+                      </td>
                       <td className={l.atrasada ? 'tdl-atrasada' : undefined}>{l.prazoCurto || '—'}</td>
                       <td><SeloDoStatus rotulo={l.status.rotulo} tom={TOM[l.status.valor] || 'neutral'} /></td>
                       <td><SeloDaPrioridade valor={l.prioridade.valor} rotulo={l.prioridade.rotulo} /></td>

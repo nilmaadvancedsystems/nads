@@ -14,7 +14,14 @@ export interface Pessoa { uid: string; nome: string }
 /** O cliente vinculado (o código do ERP e o nome; o código pode faltar na empresa nova). */
 export interface ClienteVinculado { codigo: number | null; nome: string }
 /** Uma linha do parecer ou do histórico: quem (o nome), quando (ISO) e o texto. */
-export interface Nota { por: string; em: string; texto: string }
+export interface Nota {
+  por: string; em: string; texto: string;
+  /**
+   * o parecer que é a cobrança de quem delegou ou a resposta de quem faz (13/11/2026: "um icone de sino, nas tarefas delegadas,
+   * para meio que 'Cobrar' a tarefa"); sem o campo, é um parecer comum
+   */
+  tipo?: 'cobranca' | 'resposta';
+}
 /**
  * Um anexo: o arquivo vai em pedaços no banco; aqui só o que a lista mostra. tamanho = o do arquivo (o que a pessoa baixa);
  * gzip = os pedaços estão em gzip (descomprime ao baixar; sem o campo, os bytes são o próprio arquivo).
@@ -440,6 +447,8 @@ const MIN = 60_000;
 const FUSO_DE_BRASILIA = -3 * 60;
 /** os trechos do dia em que a tarefa em andamento corre, em minutos desde a meia-noite: 07:00–11:05 e 13:00–18:05 */
 export const EXPEDIENTE: readonly { de: number; ate: number }[] = [{ de: 7 * 60, ate: 11 * 60 + 5 }, { de: 13 * 60, ate: 18 * 60 + 5 }];
+/** na sexta-feira a tarde acaba uma hora antes: 07:00–11:05 e 13:00–17:05 (Vitor, 13/11/2026: "sexta feira o cronometro das tarefas delegadas pausa as 17:05") */
+export const EXPEDIENTE_DE_SEXTA: readonly { de: number; ate: number }[] = [{ de: 7 * 60, ate: 11 * 60 + 5 }, { de: 13 * 60, ate: 17 * 60 + 5 }];
 
 const hhmm = (m: number) => String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
 const msDe = (quando: Date | string) => (typeof quando === 'string' ? Date.parse(quando) : quando.getTime());
@@ -450,19 +459,24 @@ function noDiaDeBrasilia(ms: number): { meiaNoite: number; minuto: number } {
   return { meiaNoite: meiaNoiteLocal - FUSO_DE_BRASILIA * MIN, minuto: Math.floor((local - meiaNoiteLocal) / MIN) };
 }
 
-/** Agora é intervalo (11:05–13:00 ou 18:05–07:00)? */
+/** O expediente do dia de Brasília que começa em "meiaNoite" (ms UTC): o da sexta acaba às 17:05, os outros às 18:05. */
+export function expedienteDoDia(meiaNoite: number): readonly { de: number; ate: number }[] {
+  return new Date(meiaNoite + FUSO_DE_BRASILIA * MIN).getUTCDay() === 5 ? EXPEDIENTE_DE_SEXTA : EXPEDIENTE;
+}
+
+/** Agora é intervalo (11:05–13:00, ou 18:05–07:00; na sexta, 17:05–07:00)? */
 export function noIntervalo(agora: Date | string): boolean {
   const ms = msDe(agora);
   if (!Number.isFinite(ms)) return false;
-  const { minuto } = noDiaDeBrasilia(ms);
-  return !EXPEDIENTE.some(e => minuto >= e.de && minuto < e.ate);
+  const { meiaNoite, minuto } = noDiaDeBrasilia(ms);
+  return !expedienteDoDia(meiaNoite).some(e => minuto >= e.de && minuto < e.ate);
 }
 
 /** A próxima virada (pausa ou volta) depois de agora: a tela se redesenha nela. */
 export function proximaVirada(agora: Date | string): Date {
   const ms = msDe(agora);
   const { meiaNoite } = noDiaDeBrasilia(ms);
-  const viradas = [0, 1].flatMap(dia => EXPEDIENTE.flatMap(e => [e.de, e.ate]).map(m => meiaNoite + (dia * 1440 + m) * MIN));
+  const viradas = [0, 1].flatMap(dia => expedienteDoDia(meiaNoite + dia * 1440 * MIN).flatMap(e => [e.de, e.ate]).map(m => meiaNoite + (dia * 1440 + m) * MIN));
   return new Date(viradas.find(v => v > ms) as number);
 }
 
@@ -491,12 +505,12 @@ export function acoesNoHorario(t: Pick<TarefaDelegada, 'status'>, agora: Date | 
   return situacaoNoHorario(t, agora).automatica ? acoes.filter(a => a.id === 'concluir') : acoes;
 }
 
-/** Os minutos de expediente entre dois instantes (ms UTC): o que cai fora de 07:00–11:05 e 13:00–18:05 não conta. */
+/** Os minutos de expediente entre dois instantes (ms UTC): o que cai fora de 07:00–11:05 e 13:00–18:05 (na sexta, 17:05) não conta. */
 export function minutosDeExpediente(inicio: number, fim: number): number {
   if (!(fim > inicio)) return 0;
   let total = 0;
   for (let dia = noDiaDeBrasilia(inicio).meiaNoite; dia < fim; dia += 1440 * MIN) {
-    for (const e of EXPEDIENTE) total += Math.max(0, Math.min(fim, dia + e.ate * MIN) - Math.max(inicio, dia + e.de * MIN));
+    for (const e of expedienteDoDia(dia)) total += Math.max(0, Math.min(fim, dia + e.ate * MIN) - Math.max(inicio, dia + e.de * MIN));
   }
   return Math.round(total / MIN);
 }
@@ -711,6 +725,79 @@ export function historicoDaMudanca(antes: TarefaDelegada, r: Rascunho, por: stri
 export const historicoDoAnexo = (acao: 'anexou' | 'tirou', nome: string, por: string, em: string): Nota =>
   ({ por, em, texto: (acao === 'anexou' ? 'Anexou o arquivo ' : 'Tirou o arquivo ') + nome });
 export const historicoDoParecer = (por: string, em: string): Nota => ({ por, em, texto: 'Escreveu um parecer' });
+
+// ---------------------------------------------------------------------------------------------------------------------
+// cobrar (13/11/2026: "Adiciona um icone de sino, nas tarefas delegadas, para meio que 'Cobrar' a tarefa e cobrar atualizacoes,
+// o usuario cobrado vai ter o botao, 'Responder cobranca'"). A cobrança e a resposta vão nos pareceres (o campo que o banco já
+// aceita), marcadas pelo tipo; a cobrança fica aberta até a resposta de quem faz.
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** o texto da cobrança quando quem cobra não escreve nada */
+export const TEXTO_DA_COBRANCA = 'Como está esta tarefa? Me passa uma atualização, por favor.';
+
+/** A cobrança ainda sem resposta (a última cobrança depois da última resposta), ou null. */
+export function cobrancaAberta(t: Pick<TarefaDelegada, 'pareceres'>): Nota | null {
+  for (let i = t.pareceres.length - 1; i >= 0; i--) {
+    const p = t.pareceres[i];
+    if (p.tipo === 'resposta') return null;
+    if (p.tipo === 'cobranca') return p;
+  }
+  return null;
+}
+
+/** A última resposta a uma cobrança (para quem cobrou ver), se ela é a mais nova das duas; null sem resposta ou com cobrança nova. */
+export function ultimaResposta(t: Pick<TarefaDelegada, 'pareceres'>): Nota | null {
+  for (let i = t.pareceres.length - 1; i >= 0; i--) {
+    const p = t.pareceres[i];
+    if (p.tipo === 'cobranca') return null;
+    if (p.tipo === 'resposta') return p;
+  }
+  return null;
+}
+
+/** Quem delegou cobra: só a tarefa em aberto, delegada a outra pessoa, e sem outra cobrança esperando resposta. */
+export function podeCobrar(t: Pick<TarefaDelegada, 'criadaPor' | 'responsavel' | 'status' | 'pareceres'>, uid: string): boolean {
+  return !!uid && t.criadaPor.uid === uid && t.responsavel.uid !== uid && emAberto(t) && !cobrancaAberta(t);
+}
+
+/** Quem faz a tarefa tem uma cobrança para responder. */
+export function deveResponderCobranca(t: Pick<TarefaDelegada, 'responsavel' | 'pareceres'>, uid: string): boolean {
+  return !!uid && t.responsavel.uid === uid && !!cobrancaAberta(t);
+}
+
+/** O que impede de cobrar ('' = pode). */
+export function problemaDaCobranca(t: Pick<TarefaDelegada, 'criadaPor' | 'responsavel' | 'status' | 'pareceres'>, uid: string, texto = ''): string {
+  if (t.criadaPor.uid !== uid) return 'Só quem delegou a tarefa cobra.';
+  if (t.responsavel.uid === uid) return 'A tarefa está com você mesmo.';
+  if (!emAberto(t)) return 'A tarefa já foi encerrada.';
+  if (cobrancaAberta(t)) return 'Já tem uma cobrança esperando a resposta.';
+  if (limparTexto(texto).length > MAIOR_PARECER) return 'A cobrança passou de ' + MAIOR_PARECER + ' caracteres.';
+  if (t.pareceres.length >= MAIS_PARECERES) return 'A tarefa chegou ao limite de ' + MAIS_PARECERES + ' pareceres.';
+  return '';
+}
+
+/** O que impede de responder ('' = pode). */
+export function problemaDaResposta(t: Pick<TarefaDelegada, 'responsavel' | 'pareceres'>, uid: string, texto: string): string {
+  if (t.responsavel.uid !== uid) return 'Só quem faz a tarefa responde à cobrança.';
+  if (!cobrancaAberta(t)) return 'Não tem cobrança esperando resposta.';
+  const x = limparTexto(texto);
+  if (!x) return 'Escreva a resposta: como está a tarefa.';
+  if (x.length > MAIOR_PARECER) return 'A resposta passou de ' + MAIOR_PARECER + ' caracteres.';
+  if (t.pareceres.length >= MAIS_PARECERES) return 'A tarefa chegou ao limite de ' + MAIS_PARECERES + ' pareceres.';
+  return '';
+}
+
+/** A cobrança (o texto escrito, ou o de sempre). */
+export const notaDaCobranca = (texto: string, por: string, em: string): Nota => ({ por, em, texto: limparTexto(texto) || TEXTO_DA_COBRANCA, tipo: 'cobranca' });
+/** A resposta de quem faz. */
+export const notaDaResposta = (texto: string, por: string, em: string): Nota => ({ por, em, texto: limparTexto(texto), tipo: 'resposta' });
+export const historicoDaCobranca = (por: string, em: string, quem: string): Nota => ({ por, em, texto: 'Cobrou uma atualização de ' + quem });
+export const historicoDaRespostaDaCobranca = (por: string, em: string): Nota => ({ por, em, texto: 'Respondeu à cobrança' });
+
+/** A tarefa com a cobrança (ou a resposta) e a linha do histórico (o repositório em memória e os testes). */
+export function comCobranca<T extends TarefaDelegada>(t: T, nota: Nota, linha: Nota): T {
+  return { ...t, pareceres: [...t.pareceres, nota], historico: noHistorico(t.historico, [linha]), atualizadaEm: nota.em };
+}
 
 // ---------------------------------------------------------------------------------------------------------------------
 // criar e mudar

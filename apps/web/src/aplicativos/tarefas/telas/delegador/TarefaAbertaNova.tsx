@@ -6,12 +6,13 @@
 // Prazo, prioridade, cliuentes, fica com e remova situação"; "Remove comentários e remove históricos!"). Clicar fora não fecha;
 // o Esc e o ✕ perguntam antes de largar o que mudou.
 import { tarefas } from '@nads/core';
-import { Alerta, BotaoAcao, BotaoFechar, BotaoIcone, CalendarioDoMes, CampoData, Esqueleto, Icone, Interruptor, MenuSuspenso, Segmentado, useJanela, Vazio, type NomeIcone } from '@nads/ui';
+import { Alerta, BotaoAcao, BotaoFechar, BotaoIcone, CampoData, Esqueleto, Icone, Interruptor, MenuSuspenso, Segmentado, useJanela, Vazio, type NomeIcone } from '@nads/ui';
 import { useEffect, useId, useRef, useState, type RefObject } from 'react';
 import { Link } from 'react-router';
 import { Propriedade } from '../financeiro/partes/Propriedade';
 import { SeloDoStatus } from './partes/SelosDaTarefa';
 import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
+import { useNovidade } from '../../../../comum/novidades';
 import { lembrarAgora } from './useLembreteDoRecebimento';
 import { ClientesDaTarefa, EscolherPessoa, FicaComVoce, FotoDaPessoa } from './TarefaAberta';
 import { useTarefaAberta } from './useTarefaAberta';
@@ -46,22 +47,15 @@ function DatasDaTarefa({ datas }: { datas: readonly { rotulo: string; valor: str
   );
 }
 
-/** as horas para escolher no prazo: de meia em meia hora, das 7h às 19h */
-const HORAS_DO_PRAZO = Array.from({ length: 25 }, (_, i) => String(7 + Math.floor(i / 2)).padStart(2, '0') + (i % 2 ? ':30' : ':00'));
-
 /**
  * O prazo da tarefa (Vitor, 13/11/2026: "De a opcao 'Colocar prazo', marcando na criacao o sistema faz uma animacao, que aparece
- * data e hora, a data ele consegue selecionar tbm, aparecendo o calendario, nao precisa ser manual, mesma coisa da hora"): a chave
- * Colocar prazo (desligada, a tarefa fica sem prazo e nada mais aparece); ligada, abre com animação a data, escolhida no
- * calendário (com o Hoje e o Amanhã de atalho), e a hora, escolhida na lista (ou sem hora). Desligar apaga a data e a hora.
+ * data e hora"; no mesmo dia: "Tira esse hj e amanha, reduza um pouco a quantidade de botoes... a data e a hora pode ser input
+ * normal"): a chave Colocar prazo (desligada, a tarefa fica sem prazo e nada mais aparece); ligada, entram com animação a data e
+ * a hora, nos campos do navegador (o calendário e o relógio dele). Desligar apaga a data e a hora.
  */
 function PrazoDaTarefa({ vm }: { vm: Vm }) {
   const [ligado, setLigado] = useState(() => !!vm.prazoTexto || !!vm.prazoHora);
-  const hojeIso = d.hojeIso();
-  const escolhido = d.prazoDaTela(vm.prazoTexto) || null;
-  const [mes, setMes] = useState(() => (escolhido || hojeIso).slice(0, 7));
-  const hoje = d.prazoParaTela(hojeIso);
-  const amanha = d.prazoParaTela(tarefas.agenda.somarDias(hojeIso, 1));
+  const iso = d.prazoDaTela(vm.prazoTexto) || '';
   const alternar = () => {
     if (ligado) { vm.setPrazo(''); vm.setPrazoHora(''); }
     setLigado(!ligado);
@@ -74,26 +68,45 @@ function PrazoDaTarefa({ vm }: { vm: Vm }) {
       </span>
       {ligado && (
         <span className="tdl-prazo-escolhas">
-          <MenuSuspenso flutuante largura={300} icone="calendar" className={'btn btn-outline tdl-prazo-data' + (vm.prazoTexto ? '' : ' vazio')}
-            titulo="A data do prazo" rotulo={vm.prazoTexto || 'Escolher a data'}
-            conteudo={fechar => (
-              <div className="tdl-prazo-calendario">
-                <CalendarioDoMes mes={mes} hoje={hojeIso} escolhido={escolhido} onMes={setMes}
-                  onDia={dia => { if (dia) { vm.setPrazo(d.prazoParaTela(dia)); fechar(); } }} />
-              </div>
-            )} />
-          <button type="button" className={'chip-f' + (vm.prazoTexto === hoje ? ' on' : '')} aria-pressed={vm.prazoTexto === hoje} onClick={() => { vm.setPrazo(hoje); setMes(hojeIso.slice(0, 7)); }}>Hoje</button>
-          <button type="button" className={'chip-f' + (vm.prazoTexto === amanha ? ' on' : '')} aria-pressed={vm.prazoTexto === amanha} onClick={() => { vm.setPrazo(amanha); setMes(tarefas.agenda.somarDias(hojeIso, 1).slice(0, 7)); }}>Amanhã</button>
-          <MenuSuspenso flutuante compacto largura={150} icone="clock" className={'btn btn-outline tdl-prazo-hora' + (vm.prazoHora ? '' : ' vazio')}
-            titulo="A hora do prazo" rotulo={vm.prazoHora || 'Sem hora'}
-            itens={[
-              { rotulo: 'Sem hora', marcado: !vm.prazoHora, onClick: () => vm.setPrazoHora('') },
-              'separador',
-              ...HORAS_DO_PRAZO.map(h => ({ rotulo: h, marcado: vm.prazoHora === h, onClick: () => vm.setPrazoHora(h) })),
-            ]} />
+          <input type="date" value={iso} aria-label="A data do prazo" onChange={e => vm.setPrazo(d.prazoParaTela(e.target.value))} />
+          <input type="time" value={vm.prazoHora} aria-label="A hora do prazo" onChange={e => vm.setPrazoHora(e.target.value)} />
         </span>
       )}
     </span>
+  );
+}
+
+/**
+ * A cobrança da tarefa (Vitor, 13/11/2026: "Adiciona um icone de sino, nas tarefas delegadas, para meio que 'Cobrar' a tarefa e
+ * cobrar atualizacoes, o usuario cobrado vai ter o botao, 'Responder cobranca'"): quem faz vê a cobrança e responde; quem
+ * cobrou vê que está esperando, e depois a resposta.
+ */
+function CobrancaDaTarefa({ vm }: { vm: Vm }) {
+  const c = vm.cobranca;
+  if (!c || (!c.aberta && !c.resposta)) return null;
+  if (c.aberta && c.responder) {
+    return (
+      <div className="tdl-cobranca cobrada" role="status">
+        <p className="tdl-cobranca-topo"><Icone nome="sino" /><b>{c.aberta.por} cobrou uma atualização</b><span className="fraco">{c.aberta.quando}</span></p>
+        <p className="tdl-cobranca-texto">{c.aberta.texto}</p>
+        <textarea rows={2} value={vm.resposta} maxLength={vm.maiorParecer} placeholder="Como está a tarefa? O que já foi feito, o que falta" aria-label="A resposta à cobrança"
+          onChange={e => vm.setResposta(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); void vm.responderCobranca(); } }} />
+        <span className="tdl-cobranca-acoes">
+          <BotaoAcao className="btn btn-primary" carregando={c.ocupado} textoCarregando="Enviando" disabled={!vm.resposta.trim()} onClick={() => { void vm.responderCobranca(); }}>
+            <Icone nome="envelope" />Responder cobrança
+          </BotaoAcao>
+        </span>
+      </div>
+    );
+  }
+  if (c.aberta) {
+    return <p className="tdl-cobranca"><Icone nome="sino" /><span>Você cobrou uma atualização em {c.aberta.quando}. Esperando a resposta.</span></p>;
+  }
+  return (
+    <div className="tdl-cobranca respondida">
+      <p className="tdl-cobranca-topo"><Icone nome="sino" /><b>{c.resposta?.por} respondeu à cobrança</b><span className="fraco">{c.resposta?.quando}</span></p>
+      <p className="tdl-cobranca-texto">{c.resposta?.texto}</p>
+    </div>
   );
 }
 
@@ -286,7 +299,8 @@ function PessoasDosDocumentos({ vm }: { vm: Vm }) {
   const varias = vm.documentos.modo === 'enviar';
   const escolhidas = vm.equipe.filter(p => vm.documentos.pessoas.includes(p.uid));
   const rotulo = escolhidas.length
-    ? <span className="pessoa-escolhida">{escolhidas.length === 1 && <FotoDaPessoa p={escolhidas[0]} />}<span>{escolhidas.map(p => p.nome).join(', ')}</span></span>
+    // o ícone da pessoa (13/11/2026: "Para quem coloca o icone"): a foto quando tem; sem foto, o ícone no lugar da inicial
+    ? <span className="pessoa-escolhida">{escolhidas.length === 1 && escolhidas[0].foto ? <FotoDaPessoa p={escolhidas[0]} /> : <Icone nome="usuario" />}<span>{escolhidas.map(p => p.nome).join(', ')}</span></span>
     : <span className="pessoa-escolhida fraco">{varias ? 'Escolha as pessoas' : 'Escolha a pessoa'}</span>;
   return (
     <MenuSuspenso rotulo={rotulo} flutuante className="btn btn-outline pessoa-botao" titulo="Para quem" dica={varias ? 'Uma ou mais pessoas' : 'Uma pessoa'}
@@ -405,6 +419,8 @@ export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
   // sem Salvar nem Excluir; o título, os detalhes, os anexos e as informações continuam à vista
   const concluida = !aberta.ehNova && aberta.rascunho.status === 'concluida';
   const vm: typeof aberta = concluida ? { ...aberta, podeMudar: false, podeExcluir: false, acoes: [] } : aberta;
+  // o sino de cobrar e o Responder cobrança (a novidade 'cobrar-tarefa', só no modo desenvolvedor até o Vitor aprovar)
+  const cobrarLigado = useNovidade('cobrar-tarefa');
   useEffect(() => {
     saida.current = depois => { void vm.largar(depois); };
     return () => { saida.current = null; };
@@ -439,6 +455,11 @@ export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
       ) : (
         <button key={a.id} type="button" className="btn btn-outline" onClick={() => { void vm.fazerAcao(a.status); }}><Icone nome={ICONE[a.id]} />{a.rotulo}</button>
       ))}
+      {cobrarLigado && vm.cobranca?.podeCobrar && (
+        <BotaoAcao className="btn btn-outline btn-so-icone" carregando={vm.cobranca.ocupado} title={'Cobrar uma atualização de ' + (vm.rascunho.responsavel?.nome || 'quem faz')} aria-label="Cobrar uma atualização" onClick={() => { void vm.cobrar(); }}>
+          <Icone nome="sino" />
+        </BotaoAcao>
+      )}
       <span className="tarefas-barra-espaco" />
       <button type="button" className="btn btn-outline" onClick={vm.cancelar}>Cancelar</button>
       <BotaoAcao className="btn btn-primary" carregando={vm.salvando} textoCarregando="Salvando" onClick={() => { void vm.salvar(); }}>
@@ -449,7 +470,7 @@ export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
 
   return (
     <div className="modal-overlay">
-      <div ref={janela} className="modal registro-novo" role="dialog" aria-modal="true" aria-label={nome}>
+      <div ref={janela} className="modal registro-novo tdl-janela-nova" role="dialog" aria-modal="true" aria-label={nome}>
         <header className="registro-topo">
           <span className="registro-caminho"><b>{nome}</b></span>
           {vm.status && <SeloDoStatus rotulo={vm.status.rotulo} tom={vm.status.tom} />}
@@ -516,6 +537,7 @@ export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
         ) : (
           <>
             <div className="registro-corpo">
+              {cobrarLigado && <CobrancaDaTarefa vm={vm} />}
               {deDocumentos && <p className="registro-dica"><Icone nome="clipe" />{vm.documentos.situacao}</p>}
               {/* o que faltou, para contestar o requerer (sem a conversa na janela, o motivo é escrito aqui; 13/11/2026) */}
               {vm.documentos.acoes.some(a => a.id === 'contestar') && (

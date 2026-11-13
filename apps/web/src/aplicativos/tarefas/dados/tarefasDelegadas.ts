@@ -41,6 +41,10 @@ export interface RepoTarefasDelegadas {
    */
   salvar(id: string, mudancas: Partial<tarefas.delegadas.Rascunho>): Promise<void>;
   comentar(id: string, texto: string): Promise<void>;
+  /** quem delegou cobra uma atualização (o sino; 13/11/2026); texto vazio = o texto de sempre */
+  cobrar(id: string, texto: string): Promise<void>;
+  /** quem faz responde à cobrança aberta */
+  responderCobranca(id: string, texto: string): Promise<void>;
   /** quem recebeu abriu a tarefa: grava a hora (o Visualizado de quem delegou; 12/11/2026) */
   marcarVisualizada(id: string): Promise<void>;
   /** a conta da etapa delegada marcada (ou desmarcada) como feita por quem recebeu */
@@ -116,7 +120,10 @@ function maisExemplos(agora: Date, eu: Pessoa): TarefaDelegada[] {
       pareceres: [{ por: 'Sávio', em: ha(3), texto: 'As horas extras do mês vieram na planilha anexada.' }],
       historico: [...criada(savio, eu, 30), { por: eu.nome, em: ha(10), texto: 'Iniciou a tarefa' }, { por: 'Sávio', em: ha(3), texto: 'Escreveu um parecer' }] }),
     t(6, { titulo: 'Conferir as notas de entrada', clientes: [beta], prioridade: 'normal', prazo: dia(0), status: 'pendente', criadaPor: heverton, responsavel: eu, criadaEm: ha(28), atualizadaEm: ha(28), historico: criada(heverton, eu, 28) }),
-    t(7, { titulo: 'Emitir a guia do FGTS', clientes: [gama], prioridade: 'urgente', prazo: dia(1), status: 'pendente', criadaPor: savio, responsavel: eu, criadaEm: ha(12), atualizadaEm: ha(12), historico: criada(savio, eu, 12) }),
+    // a cobrança esperando a resposta de quem está testando (o sino; 13/11/2026)
+    t(7, { titulo: 'Emitir a guia do FGTS', clientes: [gama], prioridade: 'urgente', prazo: dia(1), status: 'pendente', criadaPor: savio, responsavel: eu, criadaEm: ha(12), atualizadaEm: ha(2),
+      pareceres: [{ por: savio.nome, em: ha(2), texto: 'O cliente ligou perguntando da guia. Já conseguiu emitir?', tipo: 'cobranca' }],
+      historico: [...criada(savio, eu, 12), { por: savio.nome, em: ha(2), texto: 'Cobrou uma atualização de ' + eu.nome }] }),
     t(8, { titulo: 'Responder o e-mail do sócio sobre o pró-labore', clientes: [alfa], prioridade: 'baixa', prazo: dia(1), status: 'pendente', criadaPor: eu, responsavel: eu, criadaEm: ha(6), atualizadaEm: ha(6),
       historico: [{ por: eu.nome, em: ha(6), texto: 'Criou a tarefa' }] }),
     t(9, { titulo: 'Lançar o extrato do Sicoob', clientes: [delta], prioridade: 'normal', prazo: dia(3), status: 'pausada', criadaPor: vitor, responsavel: eu, criadaEm: ha(40), atualizadaEm: ha(9),
@@ -215,6 +222,20 @@ export function criarTarefasDelegadasMemoria(quem: () => Pessoa | null, paraQuem
       const problema = d.problemaDoParecer(texto, t);
       if (problema) throw new Error(problema);
       trocar(d.comParecer(t, texto, eu().nome, new Date().toISOString()));
+    },
+    async cobrar(id, texto) {
+      const t = daTarefa(id);
+      const problema = d.problemaDaCobranca(t, eu().uid, texto);
+      if (problema) throw new Error(problema);
+      const em = new Date().toISOString();
+      trocar(d.comCobranca(t, d.notaDaCobranca(texto, eu().nome, em), d.historicoDaCobranca(eu().nome, em, t.responsavel.nome)));
+    },
+    async responderCobranca(id, texto) {
+      const t = daTarefa(id);
+      const problema = d.problemaDaResposta(t, eu().uid, texto);
+      if (problema) throw new Error(problema);
+      const em = new Date().toISOString();
+      trocar(d.comCobranca(t, d.notaDaResposta(texto, eu().nome, em), d.historicoDaRespostaDaCobranca(eu().nome, em)));
     },
     async anexar(id, arquivos) {
       const t = daTarefa(id);

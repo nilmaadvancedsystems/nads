@@ -195,6 +195,8 @@ export function useInicioNovo() {
       linhas: doDia.slice(0, 6).map(t => ({
         id: t.id, titulo: t.titulo, prazo: ag.prazoCurto(t.prazo, hoje) || 'Sem prazo', atrasada: d.atrasada(t, hoje, agora),
         concluir: () => concluir(t),
+        /** quem faz foi cobrado e ainda não respondeu (o sino; 13/11/2026) */
+        cobrada: d.deveResponderCobranca(t, uid),
       })),
     },
     /**
@@ -215,6 +217,10 @@ export function useInicioNovo() {
         minutos: t.status === 'andamento' || t.status === 'pausada' ? (agora: Date) => d.minutosTrabalhados(t, agora) : null,
         /** o relógio pisca enquanto está em andamento; pausada, para (Vitor, 13/11/2026: "em progresso o icone fica piscando, se ela pausar, para de piscar") */
         andando: t.status === 'andamento',
+        /** o sino (13/11/2026): cobrar uma atualização, ou a cobrança esperando a resposta */
+        cobranca: d.podeCobrar(t, uid) ? 'cobrar' as const : d.cobrancaAberta(t) ? 'esperando' as const : null,
+        cobrar: () => repo.cobrar(t.id, '').then(() => toast('Cobrança enviada para ' + t.responsavel.nome + '.'))
+          .catch((e: unknown) => toast('Não cobrei: ' + (e instanceof Error ? e.message : String(e)))),
       };
     }),
     // as próximas: as reuniões aprovadas (ou remarcadas) e os comunicados de reunião, a mais perto primeiro

@@ -391,6 +391,21 @@ describe('o expediente: pausa sozinha no almoço e à noite (12/11/2026)', () =>
     expect(d.noIntervalo(br('2026-11-13', '06:59'))).toBe(true);
     expect(d.noIntervalo(br('2026-11-13', '07:00'))).toBe(false);
   });
+
+  it('na sexta-feira a tarde pausa às 17:05 (13/11/2026); quinta segue 18:05', () => {
+    const SEXTA = '2026-11-13';
+    expect(new Date(SEXTA + 'T12:00:00.000-03:00').getUTCDay()).toBe(5);
+    expect(d.noIntervalo(br(SEXTA, '17:04'))).toBe(false);
+    expect(d.noIntervalo(br(SEXTA, '17:05'))).toBe(true);
+    expect(d.noIntervalo(br(SEXTA, '18:00'))).toBe(true);
+    expect(d.noIntervalo(br(DIA, '17:30'))).toBe(false);
+    // a tela se redesenha às 17:05 e volta às 07:00 do dia seguinte (o fim de semana não mudou)
+    expect(d.proximaVirada(br(SEXTA, '16:00')).toISOString()).toBe(br(SEXTA, '17:05').toISOString());
+    expect(d.voltaDoIntervalo(br(SEXTA, '17:30'))).toBe('07:00');
+    // o tempo trabalhado da sexta à tarde para nas 17:05: 13:00–17:05 = 245 min
+    expect(d.minutosDeExpediente(br(SEXTA, '13:00').getTime(), br(SEXTA, '19:00').getTime())).toBe(245);
+    expect(d.minutosDeExpediente(br(DIA, '13:00').getTime(), br(DIA, '19:00').getTime())).toBe(305);
+  });
   it('não depende do fuso do computador: 11:05 em Brasília é 14:05 UTC', () => {
     expect(d.noIntervalo('2026-11-12T14:04:00.000Z')).toBe(false);
     expect(d.noIntervalo('2026-11-12T14:05:00.000Z')).toBe(true);
