@@ -67,8 +67,7 @@ function NovaReuniao({ vm, fechar }: { vm: Vm; fechar: () => void }) {
   const [link, setLink] = useState('');
   const [pauta, setPauta] = useState('');
   const [participantes, setParticipantes] = useState<Pessoa[]>([]);
-  const [comDiretor, setComDiretor] = useState(false);
-  const pedido = { titulo, pauta, link, quando: dataDoCampo(data, hora), participantes, comDiretor };
+  const pedido = { titulo, pauta, link, quando: dataDoCampo(data, hora), participantes };
   const problema = vm.problemaDoPedido(pedido);
   const enviar = async () => { if (!problema && await vm.pedir(pedido)) fechar(); };
   const alternar = (p: Pessoa) => setParticipantes(x => (x.some(y => y.uid === p.uid) ? x.filter(y => y.uid !== p.uid) : [...x, p]));
@@ -86,7 +85,6 @@ function NovaReuniao({ vm, fechar }: { vm: Vm; fechar: () => void }) {
           </span>
         </Propriedade>
         <Propriedade icone="usuario" rotulo="Quem vai"><EscolherPessoas equipe={vm.equipe} escolhidas={participantes} alternar={alternar} vazio="Escolher os convidados" /></Propriedade>
-        {!direta && <label className="tdl-ja-fazendo"><input type="checkbox" checked={comDiretor} onChange={e => setComDiretor(e.target.checked)} />O Diretor ou o Dono participa</label>}
         <Propriedade icone="link" rotulo="Link"><input type="url" value={link} onChange={e => setLink(e.target.value)} placeholder="Opcional (https://…)" aria-label="Link da reunião" /></Propriedade>
       </div>
       <div className="field">

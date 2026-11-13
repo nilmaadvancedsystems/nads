@@ -35,6 +35,10 @@ export function useReunioesDoInicio() {
   const uid = useTarefasDelegadas().eu()?.uid || '';
   const acesso = useAcesso();
   const agora = agoraLocal();
+  const ativos = acesso.equipe().lista.filter(u => u.ativo);
+  // o pedido da tela (sem a caixinha): o Diretor ou o Dono participa quando algum convidado é Diretor ou Dono
+  type PedidoDaTela = Omit<tarefas.reunioes.PedidoDeReuniao, 'comDiretor'>;
+  const comNivel = (p: PedidoDaTela): tarefas.reunioes.PedidoDeReuniao => ({ ...p, comDiretor: r.comDiretorEntre(p.participantes, ativos) });
   const { carregadas, reunioes } = repo.lista();
   const visiveis = r.ordenar(reunioes.filter(x => r.ve(x, uid, aprova)), agora);
   const erro = (titulo: string) => (e: unknown) => aviso({ tom: 'erro', titulo, texto: e instanceof Error ? e.message : String(e) });
@@ -58,11 +62,11 @@ export function useReunioesDoInicio() {
     /** as próximas, para o Painel e o calendário (aprovadas ou remarcadas, de hoje em diante) */
     proximas: visiveis.filter(x => (x.status === 'aprovada' || x.status === 'remarcada') && x.quando >= agora.slice(0, 10)).map(item),
     /** quem pode ir (a equipe ativa, sem a própria pessoa) */
-    equipe: acesso.equipe().lista.filter(u => u.ativo && u.uid !== uid && !usuarios.ehContaReservada(u.email)).map(u => ({ uid: u.uid, nome: u.nome })),
+    equipe: ativos.filter(u => u.uid !== uid && !usuarios.ehContaReservada(u.email)).map(u => ({ uid: u.uid, nome: u.nome })),
     aceita: ACEITA_NA_REUNIAO,
-    problemaDoPedido: (p: tarefas.reunioes.PedidoDeReuniao) => r.problemaDoPedido(p),
-    async pedir(p: tarefas.reunioes.PedidoDeReuniao): Promise<boolean> {
-      try { await repo.pedir(p, aprova); toast(aprova ? 'Reunião marcada: já aparece para todos.' : 'Reunião pedida: o Diretor vai aprovar ou não.'); return true; }
+    problemaDoPedido: (p: PedidoDaTela) => r.problemaDoPedido(comNivel(p)),
+    async pedir(p: PedidoDaTela): Promise<boolean> {
+      try { await repo.pedir(comNivel(p), aprova); toast(aprova ? 'Reunião marcada: já aparece para todos.' : 'Reunião pedida: o Diretor vai aprovar ou não.'); return true; }
       catch (e) { erro('A reunião não foi pedida')(e); return false; }
     },
     revisar: (id: string, prazo: string) => fazer('Não deu para revisar', () => repo.revisar(id, prazo), 'Em revisão, com o prazo de resposta.'),

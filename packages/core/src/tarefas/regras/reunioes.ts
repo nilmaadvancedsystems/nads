@@ -40,7 +40,7 @@ export interface Reuniao {
   origem: 'pedido' | 'direta';
   /** quem vai (sem quem criou): só eles comentam */
   participantes: Pessoa[];
-  /** o Diretor ou o Dono participa (o Sênior marca ao pedir) */
+  /** o Diretor ou o Dono participa (o sistema descobre pelo nível dos convidados: comDiretorEntre) */
   comDiretor: boolean;
   status: StatusGuardado;
   /** Revisando: até quando o Diretor responde ('aaaa-mm-dd') */
@@ -106,6 +106,11 @@ export function acoes(r: Reuniao, quem: { uid: string; aprova: boolean }, agora:
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface PedidoDeReuniao { titulo: string; pauta: string; quando: string; link: string; participantes: Pessoa[]; comDiretor: boolean }
+
+/** Algum convidado é Diretor ou Dono? (Vitor, 13/11/2026: sem a caixinha, "o sistema vai identificar a hierarquia de cada um") */
+export function comDiretorEntre(participantes: Pick<Pessoa, 'uid'>[], equipe: { uid: string; nivel: Nivel | null }[]): boolean {
+  return participantes.some(p => nivelDeDiretor(equipe.find(u => u.uid === p.uid)?.nivel));
+}
 
 /** O que impede de pedir (ou marcar) a reunião ('' quando pode). */
 export function problemaDoPedido(p: PedidoDeReuniao): string {

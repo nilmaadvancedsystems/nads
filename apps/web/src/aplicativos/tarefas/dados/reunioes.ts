@@ -39,11 +39,11 @@ function exemplos(eu: Pessoa): Reuniao[] {
   const fernando = { uid: 'exemplo-4', nome: 'Fernando' }, nilma = { uid: 'exemplo-1', nome: 'Nilma' }, clara = { uid: 'exemplo-6', nome: 'Clara' }, felipe = { uid: 'exemplo-5', nome: 'Felipe' };
   const arquivo = (id: string, nome: string, por: string) => ({ id, nome, extensao: nome.split('.').pop() || '', tamanho: 48_200, em: ha(2), por, partes: 1 });
   const base = (id: string, titulo: string, pauta: string, quando: string, criadaPor: Pessoa, participantes: Pessoa[], h: number) =>
-    r.nova({ titulo, pauta, quando, link: '', participantes, comDiretor: false }, { id, por: criadaPor, em: ha(h), direta: false });
+    r.nova({ titulo, pauta, quando, link: '', participantes, comDiretor: participantes.some(p => p.uid === nilma.uid) }, { id, por: criadaPor, em: ha(h), direta: false });
   return [
     // as que pedem a decisão do Diretor
     base('rn-1', 'Revisão das empresas do Simples', 'Passar as empresas que mudam de faixa no mês que vem.', dia(2, '15:00'), fernando, [clara, eu], 5),
-    r.revisar(base('rn-2', 'Treinamento do eSocial', 'Uma hora com a equipe do DP sobre o leiaute novo.', dia(4, '10:00'), eu, [felipe, clara], 8), dia(1, '00:00').slice(0, 10), nilma.nome, ha(4)),
+    r.revisar(base('rn-2', 'Treinamento do eSocial', 'Uma hora com a equipe do DP sobre o leiaute novo.', dia(4, '10:00'), eu, [felipe, clara, nilma], 8), dia(1, '00:00').slice(0, 10), nilma.nome, ha(4)),
     // aprovada, para daqui a pouco
     r.confirmarPresenca(r.decidir(base('rn-3', 'Alinhamento com o cliente novo', 'Entender a rotina da empresa antes do primeiro fechamento.', dia(1, '09:30'), eu, [clara, felipe], 30), true, 'Pode usar a sala de reunião.', nilma.nome, ha(20)), clara, true, ha(18)),
     // aprovada, pedida por outro, esperando a minha presença

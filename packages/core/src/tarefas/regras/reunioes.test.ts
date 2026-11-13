@@ -19,6 +19,12 @@ describe('reuniões', () => {
     expect(r.papelPeloNivel('pleno')).toBe('participa');
   });
 
+  it('o Diretor ou o Dono participa: pelo nível dos convidados', () => {
+    const equipe = [{ uid: 'c', nivel: 'pleno' as const }, { uid: 'd', nivel: 'dono' as const }];
+    expect(r.comDiretorEntre([CLARA, FELIPE], equipe)).toBe(false);
+    expect(r.comDiretorEntre([CLARA, DIRETOR], equipe)).toBe(true);
+  });
+
   it('confere o pedido', () => {
     expect(r.problemaDoPedido(pedido({ titulo: ' ' }))).toMatch(/título/);
     expect(r.problemaDoPedido(pedido({ quando: '2026-11-14' }))).toMatch(/dia e a hora/);
