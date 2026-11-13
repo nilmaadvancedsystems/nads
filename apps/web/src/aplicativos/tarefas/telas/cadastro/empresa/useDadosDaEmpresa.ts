@@ -2,7 +2,7 @@
 // (Vitor, 30/09/2026: a regra fica no Cadastro): decide a aba Prestados na Importação e os serviços prestados
 // na Conferência. Grava na hora, com o registro no histórico.
 import { empresas, tarefas } from '@nads/core';
-import { ehDiretor } from '../../../casca/navegacao';
+import { podeTrocarRazaoSocial } from '../../../casca/navegacao';
 import { useOperador } from '../../../casca/operador';
 import { empresasNovas, regimeNoEntregas } from '../../../dados/fonte';
 import { useDadosDaEmpresaNoEntregas, useRegimesDoEntregas } from '../../../dados/repo';
@@ -54,11 +54,11 @@ export function useDadosDaEmpresa(rota: string) {
       const daReceita = empresas.cadastro.razaoSocialLimpa(identificacao.dados?.receita?.razaoSocial || '');
       return daReceita && daReceita !== empresas.cadastro.razaoSocialDoCadastro(c.cadastro, c.empresa?.nome) ? daReceita : '';
     })(),
-    /** só o admin e o diretor trocam a razão social */
-    podeTrocarRazao: ehDiretor(operador),
+    /** só o nível Diretor (e o Dono) troca a razão social; o admin sem esse nível, não (13/11/2026: "só diretor") */
+    podeTrocarRazao: podeTrocarRazaoSocial(operador),
     /** troca a razão social; devolve o erro (null = trocou ou não mudou) */
     trocarRazaoSocial(nova: string): string | null {
-      if (c.carregando || !ehDiretor(operador)) return 'Só o admin e o diretor trocam a razão social.';
+      if (c.carregando || !podeTrocarRazaoSocial(operador)) return 'Só o diretor troca a razão social.';
       const outras = [...empresas.EMPRESAS_COM_DP, ...empresasNovas()].map(e => ({ codigo: e.codigo, nome: e.nome, razaoSocial: empresas.nomeParaMostrar(e) }));
       const r = empresas.cadastro.trocarRazaoSocial(c.cadastro, nova, outras, c.por, new Date());
       if ('erro' in r) return r.erro;

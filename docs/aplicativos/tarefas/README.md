@@ -133,7 +133,7 @@ Cadastro usa o login do Entregas do Drive; sem ele (ou dentro da página do Entr
 - `cadastro/{slug}`: `{ nome, codigo, bancos?, contasPadrao?, historico, atualizadoEm }` (campo ausente = nunca cadastrado);
 - `cadastro/{slug}/plano/atual`: `{ contas: [{ codigo, nome, classificacao?, grupo?, sintetica?, ordem }], origem, arquivo?, importadoEm, por? }`.
 
-**Razão social (13/11/2026).** O admin e o diretor trocam a razão social em Cadastro › Empresa (o lápis da linha
+**Razão social (13/11/2026).** Só o diretor (o nível Diretor ou Dono; o admin sem esse nível, não) troca a razão social em Cadastro › Empresa (o lápis da linha
 "Razão social", ou "Usar a da Receita"). O nome da empresa é a **chave** de quase tudo do nads (o slug dele é o id do
 cadastro, de `extrator/`, de `empresas/` da Conferência, das `rotinas/`, do cofre, de `nadsGuardado/` e das chaves do
 "onde parou"), então o nome não muda: a razão nova vai em `cadastro/{slug}.razaoSocial` = `{ atual, em, por,

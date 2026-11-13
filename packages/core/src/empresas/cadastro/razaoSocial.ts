@@ -1,7 +1,7 @@
 // A troca da razão social pelo nads (13/11/2026: "poder trocar a razão social pelo próprio sistema, sem pedir a ninguém
 // para mexer no código"). A razão social nova é só para mostrar e buscar: a chave da empresa continua o nome de sempre
 // (o slug dele é o id do cadastro, dos extratos, da Conferência, das rotinas, do cofre e do "onde parou"), então trocar
-// não tira nada da empresa. Só o admin e o diretor trocam (a tela confere: ehDiretor).
+// não tira nada da empresa. Só o nível Diretor (e o Dono) troca; o admin sem esse nível, não (a tela confere: podeTrocarRazaoSocial).
 import { slug } from '../../formatos';
 import type { CadastroDaEmpresa, RazaoSocialAnterior, RazaoSocialDoCadastro } from './tipos';
 
