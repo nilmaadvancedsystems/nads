@@ -10,7 +10,7 @@ const EM = '2026-11-13T12:00:00.000Z';
 const ANTES = '2026-11-14T08:00';
 const DEPOIS = '2026-11-14T10:00';
 const arquivo = (nome: string): Anexo => ({ id: nome, nome, extensao: 'pdf', tamanho: 10, em: EM, por: 'Fernando', partes: 1 });
-const pedido = (p: Partial<r.PedidoDeReuniao> = {}): r.PedidoDeReuniao => ({ titulo: 'Fechamento', pauta: 'A pauta', quando: '2026-11-14T09:00', link: '', participantes: [CLARA, FELIPE], comDiretor: false, ...p });
+const pedido = (p: Partial<r.PedidoDeReuniao> = {}): r.PedidoDeReuniao => ({ titulo: 'Fechamento', pauta: 'A pauta', quando: '2026-11-14T09:00', link: '', participantes: [CLARA, FELIPE], comDiretor: false, tipo: 'equipe', duracao: 60, ...p });
 
 describe('reuniões', () => {
   it('o papel pelo nível', () => {
@@ -29,7 +29,24 @@ describe('reuniões', () => {
     expect(r.problemaDoPedido(pedido({ titulo: ' ' }))).toMatch(/título/);
     expect(r.problemaDoPedido(pedido({ quando: '2026-11-14' }))).toMatch(/dia e a hora/);
     expect(r.problemaDoPedido(pedido({ pauta: '' }))).toMatch(/pauta/);
+    expect(r.problemaDoPedido(pedido({ duracao: 0 }))).toMatch(/duração/);
+    expect(r.problemaDoPedido(pedido({ tipo: 'live' }))).toMatch(/link da LIVE/);
     expect(r.problemaDoPedido(pedido())).toBe('');
+  });
+
+  it('o link só na LIVE; a duração fica', () => {
+    const equipe = r.nova(pedido({ link: 'https://meet.google.com/x' }), { id: '1', por: SENIOR, em: EM, direta: false });
+    expect(equipe.link).toBeUndefined();
+    expect(equipe.duracao).toBe(60);
+    const live = r.nova(pedido({ tipo: 'live', link: 'https://meet.google.com/x' }), { id: '2', por: SENIOR, em: EM, direta: false });
+    expect(live).toMatchObject({ tipo: 'live', link: 'https://meet.google.com/x' });
+    expect(r.rotuloDaDuracao(90)).toBe('1 h 30 min');
+  });
+
+  it('a recusa pede a justificativa', () => {
+    const x = r.nova(pedido(), { id: '1', por: SENIOR, em: EM, direta: false });
+    expect(() => r.decidir(x, false, ' ', 'Nilma', EM)).toThrow(/justificativa/);
+    expect(r.decidir(x, false, 'Sem sala livre', 'Nilma', EM)).toMatchObject({ status: 'recusada', observacao: 'Sem sala livre' });
   });
 
   it('a do Sênior: em análise → revisando → aprovada → em andamento → finalizada → concluída → encerrada', () => {
@@ -71,7 +88,7 @@ describe('reuniões', () => {
 
   it('recusa com a observação e remarca', () => {
     const x = r.nova(pedido(), { id: '3', por: SENIOR, em: EM, direta: false });
-    expect(r.decidir(x, false, '', DIRETOR.nome, EM).status).toBe('recusada');
+    expect(r.decidir(x, false, 'Fica para dezembro', DIRETOR.nome, EM).status).toBe('recusada');
     const rem = r.remarcar(r.decidir(x, true, '', DIRETOR.nome, EM), '2026-11-20T14:00', SENIOR.nome, EM);
     expect(rem).toMatchObject({ status: 'remarcada', quando: '2026-11-20T14:00' });
     expect(r.statusDaReuniao(rem, '2026-11-20T14:00')).toBe('em-andamento');

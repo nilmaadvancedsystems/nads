@@ -536,3 +536,25 @@ describe('os links fixados na tarefa (o Início novo)', () => {
     expect(d.lerTarefa('x', { links: [{ url: 'https://b.com', por: 'V', em: EM }, { url: '' }] }).links).toEqual([{ url: 'https://b.com', por: 'V', em: EM }]);
   });
 });
+
+describe('delegar documentos no Início novo (13/11/2026)', () => {
+  const vazio = d.rascunhoVazio(null);
+  it('pedir: o título do pedido e o tipo documentos, sem prazo nem prioridade', () => {
+    const r = d.rascunhoDosDocumentos({ ...vazio, prazo: '2026-11-20', prazoHora: '10:00', prioridade: 'urgente' }, 'pedir');
+    expect(r).toMatchObject({ titulo: 'Pedido de documentos', tipo: 'documentos', prazo: '', prazoHora: '', prioridade: 'normal', status: 'pendente' });
+  });
+  it('enviar: uma tarefa comum (sem o tipo), com o título do envio', () => {
+    const r = d.rascunhoDosDocumentos(d.rascunhoDosDocumentos(vazio, 'pedir'), 'enviar');
+    expect(r.titulo).toBe('Envio de documentos');
+    expect('tipo' in r).toBe(false);
+  });
+  it('o que falta: o modo, o cliente, a pessoa e, no enviar, o arquivo ou o link', () => {
+    const ok = { modo: 'pedir' as const, clientes: 1, pessoas: 2, anexos: 0, links: 0 };
+    expect(d.problemaDosDocumentos(ok)).toBe('');
+    expect(d.problemaDosDocumentos({ ...ok, modo: null })).toMatch(/pedir ou enviar/);
+    expect(d.problemaDosDocumentos({ ...ok, clientes: 0 })).toMatch(/cliente/);
+    expect(d.problemaDosDocumentos({ ...ok, pessoas: 0 })).toMatch(/para quem/);
+    expect(d.problemaDosDocumentos({ ...ok, modo: 'enviar' })).toMatch(/arquivos ou cole o link/);
+    expect(d.problemaDosDocumentos({ ...ok, modo: 'enviar', links: 1 })).toBe('');
+  });
+});

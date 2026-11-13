@@ -6912,3 +6912,6 @@ td.fs-fat-sem{color:var(--ink-faint);}
 .ini-calendario-aviso{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:8px;background:var(--fundo-janela);}
 .ini-calendario-cartao{display:flex;flex-direction:column;gap:6px;padding:16px;max-width:100%;width:340px;}
 .ini-calendario-texto{margin:0;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+/* os pedidos de reunião nas Solicitações (o Início novo): um cartão por pedido */
+.ini-solicitacao{display:flex;flex-direction:column;align-items:stretch;gap:4px;width:100%;padding:12px 14px;margin-bottom:8px;text-align:left;cursor:pointer;}
+.ini-solicitacao-topo{display:flex;align-items:center;justify-content:space-between;gap:8px;}
