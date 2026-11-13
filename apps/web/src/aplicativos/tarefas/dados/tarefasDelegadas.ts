@@ -126,6 +126,10 @@ function maisExemplos(agora: Date, eu: Pessoa): TarefaDelegada[] {
     t(14, { titulo: 'Conferir o ICMS do mês', clientes: [beta], prioridade: 'alta', prazo: dia(4), status: 'pendente', criadaPor: eu, responsavel: heverton, criadaEm: ha(3), atualizadaEm: ha(3), historico: criada(eu, heverton, 3) }),
     // os documentos delegados (a aba Documentos)
     t(15, { tipo: 'documentos', titulo: d.TITULO_DO_PEDIDO, descricao: 'Os contratos de locação assinados.', clientes: [delta], prioridade: 'normal', prazo: dia(2), status: 'pendente', criadaPor: vitor, responsavel: eu, criadaEm: ha(8), atualizadaEm: ha(8), historico: criada(vitor, eu, 8) }),
+    t(17, { tipo: 'documentos', titulo: d.TITULO_DO_PEDIDO, descricao: 'As notas de serviço de outubro.', clientes: [beta], prioridade: 'normal', prazo: dia(-4), status: 'concluida', criadaPor: heverton, responsavel: eu, criadaEm: ha(110), concluidaEm: ha(50), atualizadaEm: ha(50),
+      anexos: [{ id: 'ax-17', nome: 'notas-outubro.pdf', extensao: 'pdf', tamanho: 182400, em: ha(50), por: eu.nome, partes: 1 }],
+      historico: [...criada(heverton, eu, 110), { por: eu.nome, em: ha(50), texto: 'Anexou o arquivo notas-outubro.pdf' }, { por: eu.nome, em: ha(50), texto: 'Mudou o status de Pendente para Concluída' }] }),
+    t(18, { tipo: 'documentos', titulo: d.TITULO_DO_PEDIDO, descricao: 'O contrato social atualizado.', clientes: [gama], prioridade: 'alta', prazo: dia(0), status: 'pendente', criadaPor: eu, responsavel: fernando, criadaEm: ha(4), atualizadaEm: ha(4), historico: criada(eu, fernando, 4) }),
     t(16, { tipo: 'documentos', titulo: d.TITULO_DO_PEDIDO, descricao: 'Os recibos de aluguel de setembro e outubro.', clientes: [alfa], prioridade: 'normal', prazo: dia(6), status: 'pendente', criadaPor: eu, responsavel: clara, criadaEm: ha(14), atualizadaEm: ha(14), historico: criada(eu, clara, 14) }),
   ];
 }

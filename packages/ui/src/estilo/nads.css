@@ -4294,6 +4294,13 @@ button.cofre-pessoa:hover{background:var(--hover-bg);}
    Receita, as propriedades em linhas (ícone e nome à esquerda, o valor sem caixa até passar o mouse) e o rodapé com
    "Cadastrar outra" */
 .modal.registro-novo{max-width:560px;display:flex;flex-direction:column;}
+/* toda janela cabe na tela (13/11/2026, "Tela bugada": a janela mais alta que a tela cortava o topo, sem como chegar nele):
+   o título e o rodapé ficam, só o miolo rola; a janela simples rola inteira. O mesmo da janela dos Serviços (0.0.627), para todas */
+.modal{max-height:calc(100dvh - 32px);}
+.modal:not(.registro-novo){overflow-y:auto;}
+.modal.registro-novo > .registro-topo,.modal.registro-novo > .registro-pe{flex:none;}
+.modal.registro-novo > .registro-corpo{flex:1 1 auto;min-height:0;overflow-y:auto;}
+.modal.registro-novo > .registro-corpo > *{flex-shrink:0;}
 .registro-topo{display:flex;align-items:center;gap:8px;padding:12px 14px 0 18px;}
 .registro-caminho{flex:1;display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-12);color:var(--ink-muted);}
 .registro-caminho svg{width:14px;height:14px;}
@@ -6765,10 +6772,9 @@ td.fs-fat-sem{color:var(--ink-faint);}
 .ini-busca-pop .chip-row{padding:0 8px 6px;flex-wrap:wrap;}
 .ini-busca-vazio{padding:4px 8px;margin:0;}
 .ini-novo > .imp-abas{margin-bottom:16px;}
-.ini-painel{display:grid;grid-template-columns:minmax(260px,1fr) minmax(300px,1.35fr) minmax(240px,1fr);gap:16px;align-items:start;}
-@media (max-width:1100px){.ini-painel{grid-template-columns:1fr 1fr;}}
+.ini-painel{display:grid;grid-template-columns:minmax(280px,1fr) minmax(360px,1.6fr);gap:20px;align-items:start;}
 @media (max-width:720px){.ini-painel{grid-template-columns:1fr;}}
-.ini-coluna{display:flex;flex-direction:column;gap:16px;min-width:0;}
+.ini-coluna{display:flex;flex-direction:column;gap:20px;min-width:0;}
 .ini-coluna > .card{margin-bottom:0;}
 .ini-cartao .card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;}
 .ini-linha{display:flex;align-items:center;gap:8px;min-height:40px;padding:4px 0;border-bottom:1px solid var(--border);}
@@ -6799,21 +6805,27 @@ td.fs-fat-sem{color:var(--ink-faint);}
 .ini-prazo .chip-row{margin:0;}
 .ini-delegar{display:inline-flex;align-items:center;gap:12px;flex-wrap:wrap;}
 .modal.registro-novo.ini-tarefa{max-width:min(980px,calc(100vw - 32px));}
-.ini-tarefa-corpo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0;min-height:0;flex:1;overflow:auto;}
-@media (max-width:760px){.ini-tarefa-corpo{grid-template-columns:1fr;}}
-.ini-tarefa-esquerda{display:flex;flex-direction:column;gap:10px;padding:14px 18px;border-right:1px solid var(--border);}
+.ini-tarefa-corpo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0;min-height:0;flex:1 1 auto;overflow:hidden;}
+@media (max-width:760px){.ini-tarefa-corpo{grid-template-columns:1fr;overflow-y:auto;}.ini-tarefa-esquerda,.ini-tarefa-direita{overflow:visible !important;}}
+.ini-tarefa-esquerda{display:flex;flex-direction:column;gap:10px;padding:14px 18px;border-right:1px solid var(--border);min-height:0;overflow-y:auto;}
+.ini-tarefa-esquerda > *,.ini-tarefa-rola > *{flex-shrink:0;}
 .ini-tarefa-sub{font-size:var(--fs-14);font-weight:600;margin:6px 0 0;}
-.ini-tarefa-direita{display:flex;flex-direction:column;gap:10px;padding:14px 18px;min-height:0;background:var(--surface-2);}
-.ini-tarefa-rola{flex:1;display:flex;flex-direction:column;gap:12px;min-height:0;}
+.ini-tarefa-direita{display:flex;flex-direction:column;gap:10px;padding:14px 18px;min-height:0;overflow:hidden;background:var(--surface-2);}
+.ini-tarefa-direita > .steps,.ini-escrever{flex:none;}
+.ini-tarefa-rola{flex:1 1 auto;display:flex;flex-direction:column;gap:12px;min-height:0;overflow-y:auto;}
 .ini-escrever{display:flex;align-items:flex-end;gap:8px;}
 .ini-escrever textarea{flex:1;}
 /* as colunas iguais em todos os grupos (cada grupo é uma tabela) */
 .ini-tabela{table-layout:fixed;width:100%;}
-.ini-tabela td{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ini-tabela td:nth-child(2),.ini-tabela td:nth-child(6){overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .ini-tabela th:nth-child(1){width:44px;}
 .ini-tabela th:nth-child(3){width:110px;}
-.ini-tabela th:nth-child(4){width:130px;}
-.ini-tabela th:nth-child(5){width:100px;}
+.ini-tabela th:nth-child(4){width:150px;}
+.ini-tabela th:nth-child(5){width:110px;}
 .ini-tabela th:nth-child(6){width:26%;}
 .ini-tabela th:nth-child(7){width:150px;}
 .ini-linha > svg{width:16px;height:16px;flex:none;color:var(--ink-muted);}
+.ini-marca .subnav-caixa{width:18px;height:18px;cursor:pointer;background:none;padding:0;}
+.ini-marca button.subnav-caixa:hover{border-color:var(--success);}
+.ini-marca .subnav-caixa svg{width:12px;height:12px;}
+.ini-filtro-cliente{max-width:320px;overflow:hidden;}

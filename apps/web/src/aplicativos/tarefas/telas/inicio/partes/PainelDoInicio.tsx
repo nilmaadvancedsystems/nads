@@ -1,7 +1,7 @@
-// O Painel do Início novo (o print do Dashboard): três colunas de cartões. À esquerda, o calendário do mês (os dias com
-// prazo têm a bolinha; clicar num dia mostra as tarefas dele) e as tarefas por cliente ("Por cliente", no lugar das
-// categorias). No meio, as próximas tarefas (o círculo conclui) e as delegadas por mim (no lugar do acompanhamento de
-// tempo). À direita, os comentários novos e as próximas reuniões (das Notificações).
+// O Painel do Início novo (o print do Dashboard), em duas colunas. À esquerda, o calendário do mês (os dias com prazo ou
+// reunião têm a bolinha; clicar num dia mostra as tarefas dele) e as próximas reuniões (das Notificações). À direita, as
+// próximas tarefas (a caixinha conclui) e as delegadas por mim (no lugar do acompanhamento de tempo). O "Por cliente" e os
+// "Comentários novos" saíram (Vitor, 13/11/2026: "Pode deletar essas duas sessoes").
 import { CalendarioDoMes, Icone, Vazio } from '@nads/ui';
 import type { ReactNode } from 'react';
 import { SeloDoStatus } from '../../delegador/partes/SelosDaTarefa';
@@ -31,17 +31,15 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
     <div className="ini-painel">
       <div className="ini-coluna">
         <Cartao titulo="Calendário">
-          <CalendarioDoMes mes={c.mes} hoje={c.hoje} marcados={c.marcados} escolhido={c.dia} onDia={c.escolher} onMes={c.setMes} dicaDoMarcado={n => quantas(n) + ' com prazo'} />
+          <CalendarioDoMes mes={c.mes} hoje={c.hoje} marcados={c.marcados} escolhido={c.dia} onDia={c.escolher} onMes={c.setMes} dicaDoMarcado={n => quantas(n) + ' ou reuniões'} />
         </Cartao>
-        <Cartao titulo="Por cliente">
-          {vm.porCliente.length ? vm.porCliente.map(x => (
-            <div key={x.nome} className="ini-linha">
-              <Icone nome="briefcase" />
-              <span className="ini-linha-texto" title={x.nome}>{x.nome}</span>
-              <span className="hint num">{x.quantas}</span>
-              <span className="ini-fotos">{x.pessoas.slice(0, 3).map(p => <Foto key={p.uid} p={p} />)}</span>
-            </div>
-          )) : <Vazio compacto icone="briefcase" titulo="Nenhuma tarefa com cliente" />}
+        <Cartao titulo="Próximas reuniões" acao={<button type="button" className="btn btn-ghost" onClick={() => vm.mudarAba('notificacoes')}>Notificações<Icone nome="chevronRight" /></button>}>
+          {vm.reunioes.length ? vm.reunioes.map(r => (
+            <button key={r.id} type="button" className="popover-item" onClick={() => { vm.escolherComunicado(r.id); vm.mudarAba('notificacoes'); }}>
+              <Icone nome="calendar" />
+              <span className="popover-texto"><b>{r.tituloNaLista}</b><br /><span className="hint">{r.reuniao}</span></span>
+            </button>
+          )) : <Vazio compacto icone="calendar" titulo="Nenhuma reunião marcada" />}
         </Cartao>
       </div>
       <div className="ini-coluna">
@@ -50,7 +48,7 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
             : <button type="button" className="btn btn-ghost" onClick={() => vm.mudarAba('tarefas')}>Ver todas<Icone nome="chevronRight" /></button>}>
           {vm.proximas.linhas.length ? vm.proximas.linhas.map(t => (
             <div key={t.id} className="ini-linha">
-              <button type="button" className="icon-btn icon-btn-sm" title="Concluir" aria-label={'Concluir ' + t.titulo} onClick={t.concluir}><Icone nome="checkCircle" /></button>
+              <span className="ini-marca"><button type="button" className="subnav-caixa vazia" title="Concluir" aria-label={'Concluir ' + t.titulo} onClick={t.concluir} /></span>
               <button type="button" className="ini-linha-texto ini-abrir" onClick={() => vm.abrir(t.id)}>{t.titulo}</button>
               <span className={'hint' + (t.atrasada ? ' tdl-atrasada' : '')}>{t.prazo}</span>
             </div>
@@ -67,24 +65,6 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
               <SeloDoStatus rotulo={t.status.rotulo} tom={t.status.tom} />
             </div>
           )) : <Vazio compacto icone="aviao" titulo="Nada delegado em aberto" />}
-        </Cartao>
-      </div>
-      <div className="ini-coluna">
-        <Cartao titulo="Comentários novos">
-          {vm.comentarios.length ? vm.comentarios.map((x, i) => (
-            <button key={x.tarefa + i} type="button" className="popover-item ini-comentario" onClick={() => vm.abrir(x.tarefa)}>
-              <span className="popover-texto"><b>{x.titulo}</b><br /><span className="hint">{x.por} · {x.quando}</span><br />{x.texto}</span>
-              <Icone nome="chevronRight" />
-            </button>
-          )) : <Vazio compacto icone="mensagem" titulo="Nenhum comentário novo" />}
-        </Cartao>
-        <Cartao titulo="Próximas reuniões" acao={<button type="button" className="btn btn-ghost" onClick={() => vm.mudarAba('notificacoes')}>Notificações<Icone nome="chevronRight" /></button>}>
-          {vm.reunioes.length ? vm.reunioes.map(r => (
-            <button key={r.id} type="button" className="popover-item" onClick={() => { vm.escolherComunicado(r.id); vm.mudarAba('notificacoes'); }}>
-              <Icone nome="calendar" />
-              <span className="popover-texto"><b>{r.tituloNaLista}</b><br /><span className="hint">{r.reuniao}</span></span>
-            </button>
-          )) : <Vazio compacto icone="calendar" titulo="Nenhuma reunião marcada" />}
         </Cartao>
       </div>
     </div>

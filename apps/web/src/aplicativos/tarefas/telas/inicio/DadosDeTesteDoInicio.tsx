@@ -11,6 +11,9 @@ export function DadosDeTesteDoInicio({ teste: t }: { teste: ReturnType<typeof us
   return (
     <MenuSuspenso rotulo="Dados de teste" icone="zap" className="btn btn-outline" direita largura={280} titulo="Modo desenvolvedor · nada vai para o banco"
       itens={[
+        // tudo de uma vez (Vitor, 13/11/2026: "Coloca mais dados de teste, de notificações e tudo")
+        { rotulo: 'Tudo de exemplo', icone: 'zap', marcado: t.tarefas && t.avisos, onClick: () => { const ligar = !(t.tarefas && t.avisos); t.ligar('tarefas', ligar); t.ligar('avisos', ligar); } },
+        'separador',
         { rotulo: 'Tarefas de exemplo', icone: 'checklist', marcado: t.tarefas, onClick: () => t.ligar('tarefas', !t.tarefas) },
         { rotulo: 'Avisos de exemplo', icone: 'alert', marcado: t.avisos, onClick: () => t.ligar('avisos', !t.avisos) },
         'separador',

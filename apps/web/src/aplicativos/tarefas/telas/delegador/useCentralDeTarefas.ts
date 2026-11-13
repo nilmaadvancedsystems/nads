@@ -43,6 +43,8 @@ export function useCentralDeTarefas(abaInicial: AbaDaCentral, opcoes: { agenda?:
   const [filtro, setFiltro] = useState<Filtro>('');
   const [prioridade, setPrioridade] = useState('');
   const [quem, setQuem] = useState('');
+  // o cliente (o Início novo; Vitor, 13/11/2026: "Coloca filtro por cliente")
+  const [cliente, setCliente] = useState('');
   // a tarefa aberta no lugar da lista: o id, 'nova' ou null (a lista)
   const [aberta, setAberta] = useState<string | null>(null);
   const [erroDaAcao, setErroDaAcao] = useState('');
@@ -64,10 +66,10 @@ export function useCentralDeTarefas(abaInicial: AbaDaCentral, opcoes: { agenda?:
     return t.responsavel.uid === uid ? 'de ' + t.criadaPor.nome : 'para ' + t.responsavel.nome;
   };
   // os filtros de cima e a busca valem para os números; o número clicado só escolhe o que a lista mostra
-  const filtradas = d.buscar(daAba, busca).filter(t => (!prioridade || t.prioridade === prioridade) && (!quem || pessoa(t) === quem));
+  const filtradas = d.buscar(daAba, busca).filter(t => (!prioridade || t.prioridade === prioridade) && (!quem || pessoa(t) === quem) && (!cliente || t.clientes.some(x => nomeDoCliente(x) === cliente)));
   const lista = d.ordenar(d.filtrarPorSituacao(filtradas, filtro, hoje, agora), hoje, agora);
-  const algumFiltro = !!filtro || !!prioridade || !!quem || !!busca.trim();
-  const limparFiltros = () => { setFiltro(''); setPrioridade(''); setQuem(''); setBusca(''); };
+  const algumFiltro = !!filtro || !!prioridade || !!quem || !!cliente || !!busca.trim();
+  const limparFiltros = () => { setFiltro(''); setPrioridade(''); setQuem(''); setCliente(''); setBusca(''); };
   const nomeDoArquivo = 'tarefas-' + aba + '-' + hoje;
   const linha = (t: tarefas.delegadas.TarefaDelegada) => ({
     id: t.id, numero: t.numero, titulo: t.titulo,
@@ -102,6 +104,9 @@ export function useCentralDeTarefas(abaInicial: AbaDaCentral, opcoes: { agenda?:
     opcoesDePrioridade: d.PRIORIDADES.map(x => ({ valor: x.valor as string, rotulo: x.rotulo })),
     /** o filtro da pessoa, com o nome da coluna da aba */
     quem, setQuem,
+    cliente, setCliente,
+    /** os clientes das tarefas da aba (o filtro por cliente) */
+    clientes: [...new Set(daAba.flatMap(t => t.clientes.map(nomeDoCliente)))].sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true })),
     pessoas: [...new Set(daAba.map(pessoa))].sort((a, b) => a.localeCompare(b, 'pt-BR')),
     algumFiltro, limparFiltros,
     /** a aba não tem tarefa nenhuma (o Vazio chama para criar; com filtro, para limpar) */

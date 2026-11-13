@@ -1,8 +1,7 @@
 // O Início novo das tarefas (Vitor, 13/11/2026: "Quero fazer o tarefas nesse estilo… só quero o posicionamento das coisas"):
-// a lista agrupada em Hoje, Amanhã e Esta semana, o prazo curto ("Hoje", "Quarta"), os dias com prazo no calendário do
-// mês, os comentários novos, as notificações (o que os outros fizeram nas tarefas) e as tarefas em aberto por cliente.
-// Tudo a partir das tarefas delegadas (tarefas.delegadas); só lê, não grava nada.
-import { atrasada, emAberto, type ClienteVinculado, type Nota, type Pessoa, type TarefaDelegada } from './delegadas';
+// a lista agrupada em Hoje, Amanhã e Esta semana, o prazo curto ("Hoje", "Quarta") e os dias com prazo no calendário do
+// mês. Tudo a partir das tarefas delegadas (tarefas.delegadas); só lê, não grava nada.
+import { atrasada, emAberto, type TarefaDelegada } from './delegadas';
 
 type ComPrazo = Pick<TarefaDelegada, 'status' | 'prazo'> & { prazoHora?: string };
 
@@ -54,38 +53,4 @@ export function diasComPrazo(lista: readonly ComPrazo[], mes: string): Record<nu
     dias[dia] = (dias[dia] || 0) + 1;
   }
   return dias;
-}
-
-/** Um comentário (parecer) ou um movimento (do histórico) de outra pessoa, com a tarefa em que foi. */
-export interface Recado extends Nota { tarefa: string; titulo: string; numero: number }
-
-/** Os pareceres de outras pessoas nas tarefas, do mais novo para o mais velho (o cartão "Comentários novos"). */
-export function comentariosNovos(lista: readonly TarefaDelegada[], meuNome: string, limite = 5): Recado[] {
-  return lista.flatMap(t => t.pareceres.filter(p => p.por !== meuNome).map(p => ({ ...p, tarefa: t.id, titulo: t.titulo, numero: t.numero })))
-    .sort((a, b) => b.em.localeCompare(a.em)).slice(0, limite);
-}
-
-/** O que as outras pessoas fizeram nas tarefas (o histórico), do mais novo para o mais velho (as Notificações). */
-export function notificacoes(lista: readonly TarefaDelegada[], meuNome: string, limite = 30): Recado[] {
-  return lista.flatMap(t => t.historico.filter(h => h.por !== meuNome).map(h => ({ ...h, tarefa: t.id, titulo: t.titulo, numero: t.numero })))
-    .sort((a, b) => b.em.localeCompare(a.em)).slice(0, limite);
-}
-
-/** As tarefas em aberto de um cliente e as pessoas que estão nelas (o cartão "Por cliente"). */
-export interface DoCliente { cliente: ClienteVinculado; quantas: number; pessoas: Pessoa[] }
-
-/** Os clientes com tarefa em aberto, o que tem mais primeiro (a tarefa sem cliente não entra). */
-export function porCliente(lista: readonly TarefaDelegada[], limite = 6): DoCliente[] {
-  const mapa = new Map<string, DoCliente>();
-  for (const t of lista) {
-    if (!emAberto(t)) continue;
-    for (const c of t.clientes) {
-      const chave = String(c.codigo) + '|' + c.nome;
-      const x = mapa.get(chave) || { cliente: c, quantas: 0, pessoas: [] };
-      x.quantas++;
-      if (!x.pessoas.some(p => p.uid === t.responsavel.uid)) x.pessoas.push(t.responsavel);
-      mapa.set(chave, x);
-    }
-  }
-  return [...mapa.values()].sort((a, b) => b.quantas - a.quantas || a.cliente.nome.localeCompare(b.cliente.nome, 'pt-BR')).slice(0, limite);
 }

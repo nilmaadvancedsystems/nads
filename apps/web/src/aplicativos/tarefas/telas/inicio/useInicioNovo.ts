@@ -1,7 +1,7 @@
 // ViewModel do Início novo (Vitor, 13/11/2026: "Quero fazer o tarefas nesse estilo… só quero o posicionamento das coisas e
 // tudo com a UI do nads"; a novidade 'inicio-novo', só no modo desenvolvedor). As abas no alto ("O menu lateral é superior"):
-// Painel, Minhas tarefas, Documentos e Notificações. O Painel tem os cartões do print: o calendário do mês, as próximas
-// tarefas, os comentários novos, as tarefas por cliente, as delegadas por mim e as próximas reuniões. As Notificações são a
+// Painel, Minhas tarefas, Documentos e Notificações. O Painel tem os cartões do print: o calendário do mês (prazos e reuniões),
+// as próximas tarefas, as delegadas por mim e as próximas reuniões. As Notificações são a
 // comunicação da equipe ("Reuniões, avisos vai ficar fixado nessa pagina, links de estudos da legislação… sem chats"). A tarefa
 // abre numa janela só, por cima de qualquer aba. As regras são do core (tarefas.agenda, tarefas.delegadas, o mural).
 import { tarefas, usuarios } from '@nads/core';
@@ -28,6 +28,13 @@ export const FILTROS_DA_BUSCA = [
   { id: 'documentos', rotulo: 'Documentos', icone: 'clipe' },
 ] as const;
 type FiltroDaBusca = (typeof FILTROS_DA_BUSCA)[number]['id'];
+
+/** os dias do calendário mais os dias de reunião (cada reunião conta um) */
+function somarDias(dias: Record<number, number>, mais: number[]): Record<number, number> {
+  const r = { ...dias };
+  for (const d of mais) r[d] = (r[d] || 0) + 1;
+  return r;
+}
 
 const quandoCurto = (iso: string) => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 
@@ -65,6 +72,17 @@ export function useInicioNovo() {
   // a tarefa aberta (o id, 'nova' ou 'documentos'), por cima de qualquer aba
   const [aberta, setAberta] = useState<string | null>(null);
 
+  // as Notificações: os comunicados da equipe (o mural), os fixados em cima
+  const avisos = useAvisos();
+  const mural = avisos.lista();
+  const agoraIso = new Date();
+  const comunicados = tarefas.ordenarAvisos(mural.avisos).map(a => ({
+    ...a,
+    tipoRotulo: tarefas.rotuloDoComunicado(a.tipo),
+    tituloNaLista: a.titulo || a.texto.split('\n')[0].slice(0, 80),
+    quandoFoi: tarefas.quandoFoi(a.em, agoraIso),
+    reuniao: a.quando ? new Date(a.quando).toLocaleString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '',
+  }));
   // o calendário: o mês mostrado e o dia escolhido (filtra as próximas tarefas)
   const [mes, setMes] = useState(hoje.slice(0, 7));
   const [dia, setDia] = useState<string | null>(null);
@@ -77,17 +95,6 @@ export function useInicioNovo() {
       .catch((e: unknown) => aviso({ tom: 'erro', titulo: 'Não deu para concluir', texto: e instanceof Error ? e.message : String(e) }));
   };
 
-  // as Notificações: os comunicados da equipe (o mural), os fixados em cima
-  const avisos = useAvisos();
-  const mural = avisos.lista();
-  const agoraIso = new Date();
-  const comunicados = tarefas.ordenarAvisos(mural.avisos).map(a => ({
-    ...a,
-    tipoRotulo: tarefas.rotuloDoComunicado(a.tipo),
-    tituloNaLista: a.titulo || a.texto.split('\n')[0].slice(0, 80),
-    quandoFoi: tarefas.quandoFoi(a.em, agoraIso),
-    reuniao: a.quando ? new Date(a.quando).toLocaleString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '',
-  }));
   const [comunicado, setComunicado] = useState<string | null>(null);
   const agoraLocal = d.hojeIso() + 'T' + agora;
 
@@ -119,7 +126,8 @@ export function useInicioNovo() {
     calendario: {
       mes, setMes, hoje, dia,
       escolher: (x: string | null) => { setDia(x); if (x) setMes(x.slice(0, 7)); },
-      marcados: ag.diasComPrazo(abertas, mes),
+      // os dias com prazo de tarefa e os dias com reunião (das Notificações)
+      marcados: somarDias(ag.diasComPrazo(abertas, mes), comunicados.filter(c => c.tipo === 'reuniao' && c.quando?.startsWith(mes + '-')).map(c => Number(c.quando!.slice(8, 10)))),
     },
     proximas: {
       titulo: dia ? 'Prazo em ' + d.prazoParaTela(dia) : 'Minhas tarefas',
@@ -129,8 +137,6 @@ export function useInicioNovo() {
         concluir: () => concluir(t),
       })),
     },
-    comentarios: ag.comentariosNovos(todas, meuNome, 4).map(c => ({ ...c, quando: quandoCurto(c.em) })),
-    porCliente: ag.porCliente(todas, 5).map(c => ({ ...c, nome: (c.cliente.codigo != null ? c.cliente.codigo + ' · ' : '') + c.cliente.nome, pessoas: c.pessoas.map(comFoto) })),
     delegadasPorMim: delegadas.slice(0, 5).map(t => {
       const m = d.ultimoMovimento(t);
       return {

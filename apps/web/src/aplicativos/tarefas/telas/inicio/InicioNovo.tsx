@@ -31,8 +31,8 @@ export function InicioNovo() {
         <button type="button" className="btn btn-primary" onClick={vm.nova}><Icone nome="plus" />Nova tarefa</button>
       </div>
       {vm.aba === 'painel' && <PainelDoInicio vm={vm} />}
-      {vm.aba === 'tarefas' && <ListaDoInicio key="tarefas" abrir={vm.abrir} comFoto={vm.comFoto} />}
-      {vm.aba === 'documentos' && <ListaDoInicio key="documentos" documentos abrir={vm.abrir} comFoto={vm.comFoto} />}
+      {/* uma lista só, trocada pela aba (13/11/2026: "Nenhum documento delegado… ta aparecendo em tudo") */}
+      {(vm.aba === 'tarefas' || vm.aba === 'documentos') && <ListaDoInicio key={vm.aba} documentos={vm.aba === 'documentos'} abrir={vm.abrir} comFoto={vm.comFoto} />}
       {vm.aba === 'notificacoes' && <NotificacoesDoInicio vm={vm} mural={mural} />}
       {vm.aberta && <TarefaAbertaNova key={vm.aberta} alvo={vm.aberta} voltar={vm.fechar} criada={vm.criada} saida={saida} />}
     </section>

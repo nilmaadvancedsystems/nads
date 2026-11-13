@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { comentariosNovos, diasComPrazo, grupoDaAgenda, notificacoes, porCliente, prazoCurto, somarDias } from './agenda';
+import { diasComPrazo, grupoDaAgenda, prazoCurto, somarDias } from './agenda';
 import type { TarefaDelegada } from './delegadas';
 
 const NILMA = { uid: 'u1', nome: 'Nilma' };
@@ -43,24 +43,5 @@ describe('agenda do Início novo', () => {
   it('conta os dias com prazo em aberto no mês', () => {
     const lista = [tarefa({ prazo: '2026-11-13' }), tarefa({ prazo: '2026-11-13' }), tarefa({ prazo: '2026-11-20', status: 'concluida' }), tarefa({ prazo: '2026-12-01' })];
     expect(diasComPrazo(lista, '2026-11')).toEqual({ 13: 2 });
-  });
-
-  it('comentários e notificações só dos outros, o mais novo primeiro', () => {
-    const t = tarefa({
-      pareceres: [{ por: 'Vitor', em: '2026-11-12T10:00:00Z', texto: 'a' }, { por: 'Nilma', em: '2026-11-12T11:00:00Z', texto: 'b' }, { por: 'Vitor', em: '2026-11-13T10:00:00Z', texto: 'c' }],
-      historico: [{ por: 'Vitor', em: '2026-11-12T09:00:00Z', texto: 'Criou a tarefa' }, { por: 'Nilma', em: '2026-11-12T12:00:00Z', texto: 'Iniciou a tarefa' }],
-    });
-    expect(comentariosNovos([t], 'Nilma').map(c => c.texto)).toEqual(['c', 'a']);
-    expect(notificacoes([t], 'Nilma').map(n => n.texto)).toEqual(['Criou a tarefa']);
-  });
-
-  it('agrupa as tarefas em aberto por cliente, com as pessoas', () => {
-    const alfa = { codigo: 14, nome: 'ALFA' }, beta = { codigo: 15, nome: 'BETA' };
-    const lista = [
-      tarefa({ clientes: [alfa] }), tarefa({ clientes: [alfa, beta], responsavel: VITOR }), tarefa({ clientes: [beta], status: 'concluida' }), tarefa(),
-    ];
-    const r = porCliente(lista);
-    expect(r.map(x => [x.cliente.codigo, x.quantas])).toEqual([[14, 2], [15, 1]]);
-    expect(r[0].pessoas.map(p => p.nome)).toEqual(['Nilma', 'Vitor']);
   });
 });

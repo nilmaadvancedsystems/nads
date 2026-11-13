@@ -30,6 +30,10 @@ export function criarAvisosMemoria(completo = false): RepoAvisos {
       { id: 'av-4', tipo: 'estudo' as const, titulo: 'Reforma tributária: o que muda em 2027', texto: 'Leiam antes da reunião: o resumo da Receita sobre a CBS e o IBS.', por: 'Vitor', em: ha(26), link: 'https://www.gov.br/receitafederal/' },
       { id: 'av-5', tipo: 'geral' as const, titulo: 'Novo horário do almoço', texto: 'A partir de segunda, o almoço passa a ser das 11h às 13h.', por: 'Sávio', em: ha(50) },
       { id: 'av-6', tipo: 'reuniao' as const, titulo: 'Treinamento do nads', texto: 'Como usar o Início novo e as Notificações.', por: 'Vitor', em: ha(2), quando: diaEHora(1, '14:00') },
+      { id: 'av-7', tipo: 'estudo' as const, titulo: 'eSocial: a nova versão do leiaute', texto: 'O que muda nos eventos de folha a partir do ano que vem. Vale a leitura para o DP.', por: 'Sávio', em: ha(75), link: 'https://www.gov.br/esocial/' },
+      { id: 'av-8', tipo: 'aviso' as const, titulo: 'Senha do Wi-Fi trocada', texto: 'A senha nova está colada na recepção.', por: 'Nilma', em: ha(96) },
+      { id: 'av-9', tipo: 'reuniao' as const, titulo: 'Alinhamento do Fiscal', texto: 'As apurações de novembro e quem fica com cada empresa.', por: 'Heverton', em: ha(1), quando: diaEHora(7, '10:30'), fixado: true },
+      { id: 'av-10', tipo: 'geral' as const, titulo: 'Confraternização de fim de ano', texto: 'Dia 18 de dezembro, depois do expediente. Confirmem até o dia 10.', por: 'Vitor', em: ha(120) },
     ] : []),
   ];
   return {
