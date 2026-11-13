@@ -6815,6 +6815,20 @@ td.fs-fat-sem{color:var(--ink-faint);}
 /* o código e o nome da empresa em negrito, em todo o Início novo: o Painel, as listas, a busca e a janela da tarefa (Vitor,
    13/11/2026: "Coloca em negrito o nome das empresas, codigo e nome, em todo o inicio") */
 .ini-empresa{font-weight:600;}
+/* a janela da tarefa do Início novo (13/11/2026): o botão só com o ícone, quadrado na altura dos outros; a lixeira toda vermelha
+   ("botao da lixeira todo vermelho"); e as datas numa caixa leve, lado a lado ("Melhora o visual da box") */
+.btn.btn-so-icone{padding-left:0;padding-right:0;width:32px;justify-content:center;flex:none;}
+.btn.btn-so-icone svg{margin:0;}
+.btn.btn-lixeira{background:var(--destructive);border-color:var(--destructive);color:#FFFFFF;}
+.btn.btn-lixeira svg{color:#FFFFFF;}
+.btn.btn-lixeira:hover:not(:disabled){background:var(--destructive);border-color:var(--destructive);color:#FFFFFF;filter:brightness(1.1);}
+.tdl-datas{margin:8px 0 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px 16px;padding:12px 14px;
+  background:var(--hover-bg);border:1px solid var(--border-muted);border-radius:8px;}
+.tdl-data{display:flex;flex-direction:column;gap:4px;min-width:0;}
+.tdl-data dt{display:flex;align-items:center;gap:6px;color:var(--ink-muted);font-size:var(--fs-12);}
+.tdl-data dt svg{width:14px;height:14px;flex:none;}
+.tdl-data dd{margin:0;font-size:var(--fs-13);font-weight:500;color:var(--ink);overflow-wrap:anywhere;}
+.tdl-data dd .fraco{display:block;font-weight:400;font-size:var(--fs-12);}
 /* o cronômetro das delegadas (Início novo): o relógio pequeno e o tempo numa linha só; em andamento, o relógio pisca devagar
    (só a opacidade); pausada, fica parado. Pisca em qualquer nível de animação, porque diz a situação (Vitor, 13/11/2026: "em
    progresso o icone fica piscando, se ela pausar, para de piscar"); com "menos movimento" no sistema, fica parado */
