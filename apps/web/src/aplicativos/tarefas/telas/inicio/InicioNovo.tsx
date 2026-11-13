@@ -32,7 +32,7 @@ export function InicioNovo() {
   useCarregando(vm.carregando);
   // a tarefa aberta pergunta antes de ser largada (se mudou algo)
   const saida = useRef<((depois: () => void) => void) | null>(null);
-  // os dois lugares da fileira do alto onde a lista põe os filtros (começo) e a planilha (fim)
+  // os dois lugares da fileira do alto onde a lista põe os filtros (começo) e a planilha (antes dos botões)
   const [lugarDosFiltros, setLugarDosFiltros] = useState<HTMLElement | null>(null);
   const [lugarDoFim, setLugarDoFim] = useState<HTMLElement | null>(null);
   // a proteção: trocou de aba, a caixa de outra aba que ficou na tela (sem o React saber dela) sai, com o aviso no console
@@ -53,7 +53,7 @@ export function InicioNovo() {
       {/* a fileira na linha do "Bom dia" (o título da casca), em todas as abas (Vitor, 13/11/2026: "Na mesma linha do bom dia, em todo o inicio!") */}
       {/* tudo numa linha só, em todas as abas (Vitor, 13/11/2026: "Da pra deixar todos esses elementos em uma linha so? no inicio
           todo, em todas as paginas"): os filtros da lista (Prioridade, Quem delegou) entram no começo da fileira e a planilha
-          no fim, pelos dois lugares abaixo (a ListaDoInicio desenha neles) */}
+          antes dos botões, pelos dois lugares abaixo (a ListaDoInicio desenha neles) */}
       <AcoesDoTopo>
       <div className="ini-topo">
         <span ref={setLugarDosFiltros} className="ini-topo-lugar" />
@@ -62,6 +62,9 @@ export function InicioNovo() {
         <BuscaDoInicio vm={vm} />
         {vm.exemplos && <span className="badge badge-neutral">Exemplos</span>}
         {mural.dev && <DadosDeTesteDoInicio teste={mural.teste} />}
+        {/* a planilha antes dos botões: o botão principal sempre por último (Vitor, 13/11/2026: "Deixa o excel antes do botao
+            principal, sempre botao principal por ultimo") */}
+        <span ref={setLugarDoFim} className="ini-topo-lugar" />
         {daSolicitacao ? <BotoesDasNotificacoes vm={vm.reunioesVm} escolher={vm.escolherComunicado} /> : (
           <>
             {/* o Delegar documentos no Painel e nos Documentos; nos Documentos, só ele (Vitor, 13/11/2026: "No documentos nova
@@ -70,7 +73,6 @@ export function InicioNovo() {
             {vm.aba !== 'documentos' && <button type="button" className="btn btn-primary" onClick={vm.nova}><Icone nome="plus" />Nova tarefa</button>}
           </>
         )}
-        <span ref={setLugarDoFim} className="ini-topo-lugar" />
       </div>
       </AcoesDoTopo>
       {/* cada aba numa caixa com o nome dela (13/11/2026, "Tem negocio de documento delegado bugando o programa": na conta do

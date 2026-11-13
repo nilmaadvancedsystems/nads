@@ -6807,7 +6807,7 @@ td.fs-fat-sem{color:var(--ink-faint);}
 .topbar-saudacao #topbarActions{flex:1;min-width:0;flex-wrap:nowrap !important;}
 .topbar-saudacao .ini-topo{flex-wrap:nowrap;}
 /* em todas as abas do Início, com ou sem a saudação, a fileira é uma linha só: os filtros da lista (começo), a busca, o ⚡, os
-   botões e a planilha (fim) (Vitor, 13/11/2026: "todos esses elementos em uma linha so? no inicio todo, em todas as paginas") */
+   planilha e os botões, o principal por último (Vitor, 13/11/2026: "todos esses elementos em uma linha so? no inicio todo, em todas as paginas") */
 .topbar:has(.ini-topo){flex-wrap:nowrap;align-items:center;}
 .topbar:has(.ini-topo) #topbarActions{flex:1;min-width:0;flex-wrap:nowrap !important;}
 .ini-topo{flex-wrap:nowrap;}
