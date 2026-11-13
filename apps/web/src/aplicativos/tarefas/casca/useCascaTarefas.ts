@@ -7,9 +7,13 @@ import { useLocation, useNavigate } from 'react-router';
 import { VERSAO_SISTEMA } from '../../../versao';
 import { aplicacao, aplicacoesDe, BASE, caminhoDaPagina, FERRAMENTAS_DO_FISCAL, type IdAplicacao } from './navegacao';
 import { useOperador, type Operador } from './operador';
-import { useAcesso } from '../dados/repo';
+import { useAcesso, useTarefasDelegadas } from '../dados/repo';
 import { usePessoal } from '../telas/pessoal/contexto';
 import { useModoDesenvolvedor } from '../../../comum/modoDesenvolvedor';
+import { useNovidade } from '../../../comum/novidades';
+import { tarefas } from '@nads/core';
+import { abaDaUrl, ABAS_DO_INICIO, LISTAS_DAS_TAREFAS, listaDaUrl } from '../telas/inicio/abasDoInicio';
+import { aplicarSimulacao, useSaudacaoSimulada } from '../telas/inicio/saudacaoSimulada';
 
 export function useCascaTarefas(app: IdAplicacao, pagina: string) {
   const navegar = useNavigate();
@@ -22,7 +26,9 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
   // o Fiscal com as páginas no alto, para a tabela usar a tela toda (Vitor, 09/11/2026: "quero colocar esse menu lateral, superior")
   // a Carteira também (Vitor, 12/11/2026: "coloque tudo do menu lateral, no superior"); quem ainda não tem a Carteira só tem
   // a tela "em desenvolvimento", sem abas. O Financeiro também (Vitor, 12/11/2026: "coloca o menu superior") e o DP ("para aumentar o espaço da tabela")
-  const comAbas = app === 'fiscal' || app === 'financeiro' || app === 'dp' || (app === 'carteira' && (a?.paginas.length ?? 0) > 1);
+  // o Início novo (só no modo desenvolvedor) também (Vitor, 13/11/2026: "Menu superior abaixo do cabeçalho!")
+  const inicioNovo = useNovidade('inicio-novo') && app === 'inicio';
+  const comAbas = inicioNovo || app === 'administrativo' || app === 'fiscal' || app === 'financeiro' || app === 'dp' || (app === 'carteira' && (a?.paginas.length ?? 0) > 1);
   // dentro da aba Ferramentas do Fiscal, as ferramentas ficam na barra lateral
   const ehFerramenta = (id: string) => FERRAMENTAS_DO_FISCAL.includes(id);
   const emFerramentas = comAbas && ehFerramenta(pagina);
@@ -35,32 +41,53 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
   const podeDev = op.desenvolvedor;
   useEffect(() => { if (dev && !podeDev) setDev(false); }, [dev, podeDev, setDev]);
   const { aviso } = useRetorno();
+  // o Início novo (só no modo desenvolvedor): a saudação no lugar do título "Início" (Vitor, 13/11/2026: "Olá, Vitor. deixa no
+  // lugar do inicio"; "Fica variando, as frases"), a mesma frase dentro do turno; e as abas no alto ("Menu superior abaixo do
+  // cabeçalho!")
+  const simulada = useSaudacaoSimulada();
+  const daEquipe = acesso.equipe().lista.find(u => u.nome === op.nome);
+  const real = { agora: new Date(), aniversario: String((daEquipe && acesso.equipe().docs[daEquipe.uid]?.aniversario) || '') };
+  const s = dev ? aplicarSimulacao(real.agora, real.aniversario, simulada) : real;
+  const abaDoInicio = abaDaUrl(new URLSearchParams(search).get('aba'));
+  // a saudação só no Painel (Vitor, 13/11/2026: "Saudações só no painel principal, remova dessas paginas"): nas outras abas, a linha
+  // do título fica só com as ações
+  const tituloDoInicio = inicioNovo && abaDoInicio === 'painel' ? tarefas.saudacao.saudacao({ nome: op.nome, quem: daEquipe?.uid || op.nome, agora: s.agora, aniversario: s.aniversario, troca: dev ? simulada.troca : 0, simulando: dev && Object.keys(simulada).length > 0 }) : '';
+  // as Tarefas do Início novo com a barra lateral padrão do nads (Vitor, 13/11/2026: "Menu lateral padrão nads!"): Minhas tarefas,
+  // Delegadas por mim e Concluídas, com quantas tem (sem os documentos delegados, que ficam só na aba Documentos)
+  const tarefasNoInicio = inicioNovo && abaDoInicio === 'tarefas';
+  const listaDoInicio = listaDaUrl(new URLSearchParams(search).get('lista'));
+  const delegadas = useTarefasDelegadas();
+  const quantas = tarefasNoInicio ? tarefas.delegadas.contarAbas(delegadas.lista().tarefas.filter(t => !tarefas.delegadas.pedeDocumentos(t)), delegadas.eu()?.uid || '') : null;
   return {
     // a Tarefas não tem uma empresa aberta: a trilha fica só com o caminho (Vitor, 05/10/2026: sem o "Vitor · Sair da
     // conta" — sair fica no avatar)
     empresa: null,
     versao: VERSAO_SISTEMA,
-    titulo: a?.paginas.find(p => p.id === pagina)?.titulo || a?.nome || '',
+    titulo: inicioNovo ? tituloDoInicio : a?.paginas.find(p => p.id === pagina)?.titulo || a?.nome || '',
     // o Cadastro com as páginas em abas no alto (Empresas, Usuários, Configurações; Vitor, 05/10/2026), sem a barra lateral
     comAbas,
     /** sem a barra lateral: as abas no alto dão conta (só a aba Ferramentas do Fiscal tem barra) */
-    soAbas: comAbas && !emFerramentas,
+    soAbas: comAbas && !emFerramentas && !tarefasNoInicio,
     /** as tabelas do Fiscal sem o título, que repetia a aba (09/11/2026: "um aproveitamento maior da tela") */
+    /** o título é a saudação do Início novo (maior e digitada; 13/11/2026) */
+    saudacao: inicioNovo && !!tituloDoInicio,
     semTitulo: app === 'fiscal' && ['relatorio-simples', 'relatorio-presumido', 'reinf'].includes(pagina),
     // os blocos com nome (as Configurações: Cadastro e Admin; 28/10/2026): o nome em cima da primeira página de cada um
-    secoes: comAbas && !emFerramentas ? [] : (a?.paginas || []).filter(p => !comAbas || ehFerramenta(p.id)).map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, marca: p.marca === 'fgts' ? p.marca : undefined, grupo: p.secao ? 1 + [...new Set(a?.paginas.map(x => x.secao))].indexOf(p.secao) : 1, titulo: p.secao, ativa: p.id === pagina, travada: !!p.emDesenvolvimento })),
-    paginas: comAbas ? [
+    secoes: tarefasNoInicio ? LISTAS_DAS_TAREFAS.map(l => ({ id: l.id, rotulo: l.rotulo, icone: l.icone, grupo: 1, ativa: l.id === listaDoInicio, contador: quantas && quantas[l.id] ? String(quantas[l.id]) : undefined }))
+      : comAbas && !emFerramentas ? [] : (a?.paginas || []).filter(p => !comAbas || ehFerramenta(p.id)).map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, marca: p.marca === 'fgts' ? p.marca : undefined, grupo: p.secao ? 1 + [...new Set(a?.paginas.map(x => x.secao))].indexOf(p.secao) : 1, titulo: p.secao, ativa: p.id === pagina, travada: !!p.emDesenvolvimento })),
+    paginas: inicioNovo ? ABAS_DO_INICIO.map(x => ({ id: x.id, rotulo: x.rotulo, icone: x.icone as NomeIcone, ativa: x.id === abaDoInicio })) : comAbas ? [
       ...(a?.paginas || []).filter(p => !ehFerramenta(p.id)).map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone as NomeIcone, marca: p.marca === 'fgts' ? undefined : p.marca, ativa: p.id === pagina })),
       ...(app === 'fiscal' ? [{ id: 'ferramentas', rotulo: 'Ferramentas', icone: 'wrench' as NomeIcone, ativa: emFerramentas }] : []),
     ] : [],
     /** a aba do alto (o Cadastro): a página, mantendo a competência */
-    onPagina: (id: string) => navegar(caminhoDaPagina(app, id === 'ferramentas' ? FERRAMENTAS_DO_FISCAL[0] : id) + search),
+    onPagina: (id: string) => inicioNovo ? navegar(BASE + '/inicio?aba=' + id, { replace: true }) : navegar(caminhoDaPagina(app, id === 'ferramentas' ? FERRAMENTAS_DO_FISCAL[0] : id) + search),
     // o Início já tem o item dele no alto da gaveta
     // as Configurações saem da lista: ficam no pé da gaveta, só com o ícone da engrenagem (Vitor, 28/10/2026)
     aplicacoes: aplicacoesDe(op).filter(x => x.id !== 'inicio' && x.id !== 'cadastro' && x.id !== 'ferramentas').map(x => ({ id: x.id, nome: x.nome, icone: x.icone, grupo: x.grupo, marca: x.marca, ativo: x.id === app })),
     // páginas da mesma aplicação mantêm a competência escolhida (fica na URL)
     // a página em desenvolvimento não abre: só o aviso (21/10/2026)
     onSecao: (id: string) => {
+      if (tarefasNoInicio) { navegar(BASE + '/inicio?aba=tarefas&lista=' + id, { replace: true }); return; }
       const p = a?.paginas.find(x => x.id === id);
       if (p?.emDesenvolvimento) { aviso({ tom: 'info', titulo: p.rotulo + ': em desenvolvimento', texto: 'Esta tela ainda não está liberada.' }); return; }
       navegar(caminhoDaPagina(app, id) + search);

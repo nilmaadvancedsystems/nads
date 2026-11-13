@@ -1,9 +1,20 @@
-import { describe, expect, it } from 'vitest';
-import { aplicacoesDe, ehDiretor, podeMexerNoCadastro, podeVerOFinanceiro } from './navegacao';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { aplicacoesDe, ehDiretor, podeMexerNoCadastro, podeTrocarRazaoSocial, podeVerOFinanceiro } from './navegacao';
 import type { Operador } from './operador';
 
 const op = (nivel: Operador['nivel'], admin = false): Operador => ({ nome: 'X', departamento: 'contabil', nivel, admin, desenvolvedor: false });
 const cadastroDe = (o: Operador) => aplicacoesDe(o).find(a => a.id === 'cadastro');
+
+describe('a razão social (13/11/2026: "só diretor")', () => {
+  it('troca só o nível Diretor e o Dono; o admin sem esse nível, o sênior, o pleno e o júnior não', () => {
+    expect(podeTrocarRazaoSocial(op('diretor'))).toBe(true);
+    expect(podeTrocarRazaoSocial(op('dono'))).toBe(true);
+    expect(podeTrocarRazaoSocial(op('senior', true))).toBe(false);
+    expect(podeTrocarRazaoSocial(op(null, true))).toBe(false);
+    for (const n of ['senior', 'pleno', 'junior'] as const) expect(podeTrocarRazaoSocial(op(n))).toBe(false);
+    expect(podeTrocarRazaoSocial(null)).toBe(false);
+  });
+});
 
 describe('o Cadastro por nível (Vitor, 19/10/2026: o sênior vê e mexe no cadastro das empresas)', () => {
   it('mexem o admin, o diretor e o sênior; o pleno e o júnior não', () => {
@@ -76,5 +87,25 @@ describe('os usuários cadastrados só para o Diretor e o admin (Vitor, 06/11/20
       expect(paginas(o, 'cadastro')).toContain('usuarios');
       expect(paginas(o, 'senhas')).toContain('acesso');
     }
+  });
+});
+
+// o módulo Desenvolvedor (13/11/2026): a Área do Cliente e a Central dos robôs dentro do nads, só no modo desenvolvedor
+describe('o módulo Desenvolvedor', () => {
+  afterEach(() => { vi.unstubAllGlobals(); });
+  const comModoDev = (ligado: boolean) => vi.stubGlobal('localStorage', { getItem: (k: string) => (ligado && k === 'nads-modo-desenvolvedor' ? '1' : null) });
+  const vê = (o: Operador) => aplicacoesDe(o).some(a => a.id === 'desenvolvedor');
+
+  it('aparece para quem é desenvolvedor, só com o modo ligado', () => {
+    comModoDev(true);
+    expect(vê({ ...op('diretor', true), desenvolvedor: true })).toBe(true);
+    comModoDev(false);
+    expect(vê({ ...op('diretor', true), desenvolvedor: true })).toBe(false);
+  });
+
+  it('quem não é desenvolvedor não vê, nem o admin, nem com a chave ligada', () => {
+    comModoDev(true);
+    expect(vê(op('diretor', true))).toBe(false);
+    expect(vê(op('pleno'))).toBe(false);
   });
 });

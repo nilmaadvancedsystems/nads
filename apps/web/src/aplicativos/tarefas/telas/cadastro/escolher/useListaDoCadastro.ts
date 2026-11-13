@@ -31,6 +31,8 @@ export interface LinhaEmpresa {
   rota: string;
   codigo: number | null;
   nome: string;
+  /** o nome para mostrar: a razão social trocada no cadastro, ou o nome */
+  nomeNaTela: string;
   regime: string;
   /** de onde vêm os bancos da linha */
   origem: 'cadastro' | 'robo' | 'nenhum';
@@ -67,6 +69,8 @@ export function useListaDoCadastro() {
       rota: empresas.rotaDaEmpresa(x),
       codigo: x.codigo,
       nome: x.nome,
+      // a razão social trocada no Cadastro › Empresa (13/11/2026); o nome continua a chave
+      nomeNaTela: empresas.nomeParaMostrar(x),
       // o do cadastro, quando escolhido (13/10/2026); senão, o da lista
       regime: (c && cad.regimeDoCadastro(c)) || x.regime,
       origem,

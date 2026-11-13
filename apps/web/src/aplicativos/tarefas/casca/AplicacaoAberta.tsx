@@ -1,6 +1,7 @@
 // Rota de uma aplicação da Tarefas: /tarefas/:app/:pagina. Monta a casca e escolhe a tela; as
 // aplicações que ainda não foram feitas mostram "Em desenvolvimento". O Cadastro tem rota própria (CadastroAberto).
-import { Navigate, useParams } from 'react-router';
+import { Navigate, useParams, useSearchParams } from 'react-router';
+import { useNovidade } from '../../../comum/novidades';
 import { NaEspera, pedaco } from '../../../comum/pedaco';
 import { TopoProvider } from '../../../comum/topo';
 import { ABAS_DO_PAINEL, type AbaDoPainel } from '../telas/dp/abasDoPainel';
@@ -24,6 +25,8 @@ const CaixaDoRobo = pedaco(() => import('../telas/gmail/CaixaDoRobo'), 'CaixaDoR
 const HistoricoDoRobo = pedaco(() => import('../telas/gmail/HistoricoDoRobo'), 'HistoricoDoRobo');
 const MinhasEmpresas = pedaco(() => import('../telas/empresas/MinhasEmpresas'), 'MinhasEmpresas');
 const Inicio = pedaco(() => import('../telas/inicio/Inicio'), 'Inicio');
+const Administrativo = pedaco(() => import('../telas/administrativo/Administrativo'), 'Administrativo');
+const OutrosSites = pedaco(() => import('../telas/desenvolvedor/OutrosSites'), 'OutrosSites');
 const EmDesenvolvimento = pedaco(() => import('../telas/em-desenvolvimento/EmDesenvolvimento'), 'EmDesenvolvimento');
 const Reinf = pedaco(() => import('../telas/fiscal/reinf/Reinf'), 'Reinf');
 const PainelDoDp = pedaco(() => import('../telas/dp/PainelDoDp'), 'PainelDoDp');
@@ -85,6 +88,9 @@ function Tela({ app, pagina }: { app: IdAplicacao; pagina: string }) {
     case 'contato': return pagina === 'historico' ? <HistoricoDoRobo /> : <CaixaDoRobo />;
     // a Carteira (12/11/2026): por enquanto só o Vitor; os outros, a tela "em desenvolvimento"
     case 'carteira': return <Carteira pagina={pagina} />;
+    case 'administrativo': return <Administrativo pagina={pagina} />;
+    // o Desenvolvedor (13/11/2026): a Área do Cliente e a Central dos robôs, só no modo desenvolvedor
+    case 'desenvolvedor': return <OutrosSites />;
     default: return <EmDesenvolvimento nome={aplicacao(app)?.nome || app} />;
   }
 }
@@ -94,6 +100,9 @@ export function AplicacaoAberta() {
   // o Início é /tarefas/inicio (sem página no endereço); o endereço de antes (minhas-empresas/inicio) leva para lá
   const pagina = app === 'inicio' && !naUrl ? 'inicio' : naUrl;
   const op = useOperador().operador as Operador;
+  // as Tarefas do Início novo usam a barra lateral padrão (Minhas tarefas, Delegadas por mim, Concluídas)
+  const [params] = useSearchParams();
+  const tarefasNoInicioNovo = useNovidade('inicio-novo') && app === 'inicio' && params.get('aba') === 'tarefas';
   // o Mandei entrou na Área do Cliente (19/10/2026): os links antigos levam para lá, na mesma página
   if (app === 'minhas-empresas' && pagina === 'inicio') return <Navigate to={BASE + '/inicio'} replace />;
   // as tarefas foram para o Início (09/11/2026): os links antigos levam para lá, na mesma página
@@ -111,7 +120,7 @@ export function AplicacaoAberta() {
   if (!a.paginas.some(p => p.id === pagina && !p.emDesenvolvimento)) return <Navigate to={caminhoDaPagina(a.id, (a.paginas.find(p => !p.emDesenvolvimento) || a.paginas[0]).id)} replace />;
   return (
     <TopoProvider>
-      <CascaTarefas app={a.id} pagina={pagina} telaInteira={a.id === 'drive'} semLateral={a.id === 'inicio' || a.id === 'minhas-empresas' || a.id === 'contato' || a.id === 'ferramentas'} larga>
+      <CascaTarefas app={a.id} pagina={pagina} telaInteira={a.id === 'drive'} semLateral={(a.id === 'inicio' && !tarefasNoInicioNovo) || a.id === 'minhas-empresas' || a.id === 'contato' || a.id === 'ferramentas' || a.id === 'desenvolvedor'} larga>
         <NaEspera><Tela app={a.id} pagina={pagina} /></NaEspera>
       </CascaTarefas>
     </TopoProvider>

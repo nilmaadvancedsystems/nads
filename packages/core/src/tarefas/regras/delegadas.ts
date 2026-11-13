@@ -19,6 +19,9 @@ export interface Nota { por: string; em: string; texto: string }
  * Um anexo: o arquivo vai em pedaços no banco; aqui só o que a lista mostra. tamanho = o do arquivo (o que a pessoa baixa);
  * gzip = os pedaços estão em gzip (descomprime ao baixar; sem o campo, os bytes são o próprio arquivo).
  */
+/** Um link fixado na tarefa: o endereço, quem fixou e quando. */
+export interface LinkDaTarefa { url: string; por: string; em: string }
+
 export interface Anexo { id: string; nome: string; extensao: string; tamanho: number; em: string; por: string; partes: number; gzip?: true }
 
 /**
@@ -75,9 +78,13 @@ export interface TarefaDelegada {
   pareceres: Nota[];
   historico: Nota[];
   anexos: Anexo[];
+  /** os links fixados (o Início novo; 13/11/2026: "coloque o icone de link, para fixar o link") */
+  links?: LinkDaTarefa[];
   etapaDelegada?: EtapaDelegada;
-  /** o pedido de documentos (12/11/2026): quem recebeu anexa e confirma "Anexei tudo, concluir" */
-  tipo?: 'documentos';
+  /** o pedido de documentos (12/11/2026): quem recebeu anexa e confirma "Anexei tudo, concluir"; o envio (13/11/2026): quem recebe baixa e confirma o recebimento */
+  tipo?: TipoDaTarefa;
+  /** o requerer de documentos (13/11/2026): quem recebeu enviou para conferir, ou quem pediu contestou ('' = ainda não enviou) */
+  entrega?: Entrega;
   /** ISO de quando quem recebeu abriu a tarefa pela primeira vez (o Visualizado de quem delegou; 12/11/2026) */
   visualizadaEm?: string;
 }
@@ -94,9 +101,16 @@ export interface Rascunho {
   responsavel: Pessoa | null;
   /** só ao criar: a etapa que esta tarefa delega */
   etapaDelegada?: EtapaDelegada;
-  /** só ao criar: o pedido de documentos */
-  tipo?: 'documentos';
+  /** só ao criar: o pedido de documentos ou o envio */
+  tipo?: TipoDaTarefa;
+  /** o requerer de documentos: enviou para conferir, contestou ou voltou ao começo ('', no repasse) */
+  entrega?: Entrega;
 }
+
+/** Os documentos (13/11/2026): 'documentos' = requerer (quem recebe anexa e envia); 'envio' = quem delega manda os arquivos. */
+export type TipoDaTarefa = 'documentos' | 'envio';
+/** Onde está o requerer: '' (esperando os documentos), 'enviada' (para quem pediu conferir) ou 'contestada' (faltou algo). */
+export type Entrega = '' | 'enviada' | 'contestada';
 
 // ---------------------------------------------------------------------------------------------------------------------
 // rótulos e limites
@@ -529,10 +543,82 @@ export const minutosTrabalhados = (t: Pick<TarefaDelegada, 'status' | 'historico
 // tarefa ou não": a primeira vez que quem recebeu abre a tarefa fica gravada.
 
 export const TITULO_DO_PEDIDO = 'Documentos delegados';
-export const pedeDocumentos = (t: Pick<TarefaDelegada, 'tipo'>): boolean => t.tipo === 'documentos';
+/** É de documentos (o requerer ou o envio): a aba Documentos e a janela própria. */
+export const pedeDocumentos = (t: Pick<TarefaDelegada, 'tipo'>): boolean => t.tipo === 'documentos' || t.tipo === 'envio';
+/** O requerer de documentos: quem recebe anexa e envia; quem pediu confirma ou contesta. */
+export const requerDocumentos = (t: Pick<TarefaDelegada, 'tipo'>): boolean => t.tipo === 'documentos';
+/** O envio de documentos: quem recebe baixa e confirma o recebimento. */
+export const enviaDocumentos = (t: Pick<TarefaDelegada, 'tipo'>): boolean => t.tipo === 'envio';
+
+/**
+ * Delegar documentos no Início novo (Vitor, 13/11/2026: "a pergunta se o cara quer enviar ou requerer documentos / E qual
+ * cliente é"). Enviar: "para quem, uma ou mais pessoas", sem prazo nem prioridade; "a pessoa de lá consegue baixar, e ela
+ * deve confirmar o recebimento". Requerer: "só pode pedir PARA UMA PESSOA, ela deve colocar o prazo, sem hora definida,
+ * prioridade ela tem tbm"; quem recebe anexa e envia, quem pediu confirma ou contesta, e quem recebeu pode repassar.
+ */
+export type ModoDosDocumentos = 'enviar' | 'requerer';
+export const TITULO_DO_PEDIDO_NOVO = 'Pedido de documentos';
+export const TITULO_DO_ENVIO = 'Envio de documentos';
+
+/** O rascunho no modo escolhido: o título e o tipo do modo; sem a hora do prazo, e o envio sem prazo nem prioridade. */
+export function rascunhoDosDocumentos(r: Rascunho, modo: ModoDosDocumentos): Rascunho {
+  const base = { ...r, prazoHora: '', status: 'pendente' as const };
+  return modo === 'requerer' ? { ...base, titulo: TITULO_DO_PEDIDO_NOVO, tipo: 'documentos' } : { ...base, prazo: '', prioridade: 'normal', titulo: TITULO_DO_ENVIO, tipo: 'envio' };
+}
+
+/** O que falta para delegar os documentos (vazio = pode): o envio leva um arquivo ou um link; o requerer, uma pessoa só e o prazo. */
+export function problemaDosDocumentos(o: { modo: ModoDosDocumentos | null; clientes: number; pessoas: number; anexos: number; links: number; prazo?: string }): string {
+  if (!o.modo) return 'Escolha se vai enviar ou requerer os documentos.';
+  if (!o.clientes) return 'Escolha o cliente (ou um avulso).';
+  if (!o.pessoas) return 'Escolha para quem.';
+  if (o.modo === 'requerer' && o.pessoas > 1) return 'O requerer vai para uma pessoa só.';
+  if (o.modo === 'requerer' && !o.prazo) return 'Coloque o prazo.';
+  if (o.modo === 'enviar' && !o.anexos && !o.links) return 'Anexe os arquivos ou cole o link do que vai enviar.';
+  return '';
+}
+
+/** Os botões dos documentos, de quem está com a tarefa agora. */
+export type AcaoDosDocumentos = 'confirmarRecebimento' | 'enviarDocumentos' | 'repassar' | 'contestar' | 'confirmarTudo';
+
+/**
+ * O envio: quem recebe confirma o recebimento. O requerer: quem recebe envia os documentos (com algum arquivo ou link) ou
+ * repassa; enviado, quem pediu contesta ou confirma que veio tudo (e a tarefa conclui). Encerrada, nada.
+ */
+export function acoesDosDocumentos(t: Pick<TarefaDelegada, 'tipo' | 'status' | 'entrega' | 'criadaPor' | 'responsavel' | 'anexos' | 'links'>, uid: string): { id: AcaoDosDocumentos; rotulo: string }[] {
+  if (!uid || !emAberto(t)) return [];
+  const recebeu = t.responsavel.uid === uid, pediu = t.criadaPor.uid === uid;
+  if (enviaDocumentos(t)) return recebeu ? [{ id: 'confirmarRecebimento', rotulo: 'Confirmar recebimento' }] : [];
+  if (!requerDocumentos(t)) return [];
+  if (t.entrega === 'enviada') return pediu ? [{ id: 'contestar', rotulo: 'Contestar' }, { id: 'confirmarTudo', rotulo: 'Veio tudo, concluir' }] : [];
+  if (!recebeu || pediu) return [];
+  const temAlgo = t.anexos.length > 0 || (t.links?.length ?? 0) > 0;
+  return [{ id: 'repassar', rotulo: 'Repassar' }, ...(temAlgo ? [{ id: 'enviarDocumentos' as const, rotulo: 'Enviar os documentos' }] : [])];
+}
+
+/** Onde estão os documentos, em uma frase (o aviso no alto da tarefa). */
+export function situacaoDosDocumentos(t: Pick<TarefaDelegada, 'tipo' | 'status' | 'entrega' | 'visualizadaEm' | 'responsavel'> & Partial<Pick<TarefaDelegada, 'pareceres' | 'criadaPor'>>): string {
+  if (enviaDocumentos(t)) return t.status === 'concluida' ? t.responsavel.nome + ' confirmou o recebimento.' : t.visualizadaEm ? t.responsavel.nome + ' visualizou e ainda não confirmou o recebimento.' : t.responsavel.nome + ' ainda não visualizou.';
+  if (!requerDocumentos(t)) return '';
+  if (t.status === 'concluida') return 'Concluído: veio tudo.';
+  if (t.status === 'cancelada') return 'Cancelado.';
+  if (t.entrega === 'enviada') return t.responsavel.nome + ' enviou os documentos: falta conferir.';
+  if (t.entrega === 'contestada') {
+    // o motivo é o último comentário de quem pediu (a janela do Início novo não tem mais a conversa; 13/11/2026)
+    const motivo = [...(t.pareceres || [])].reverse().find(p => p.por === t.criadaPor?.nome)?.texto;
+    return 'Contestado' + (motivo ? ' ("' + motivo + '")' : '') + ': ' + t.responsavel.nome + ' precisa mandar o que faltou.';
+  }
+  return 'Esperando ' + t.responsavel.nome + ' anexar e enviar os documentos.';
+}
+
+/** De quanto em quanto tempo o sistema pede para confirmar o recebimento (Vitor: "de 10 em 10 min"). */
+export const LEMBRETE_DE_RECEBIMENTO_MS = 10 * 60_000;
+
+/** O envio que a pessoa já visualizou e ainda não confirmou: o sistema pede a confirmação. */
+export const lembraDeConfirmar = (t: Pick<TarefaDelegada, 'tipo' | 'status' | 'visualizadaEm' | 'responsavel' | 'criadaPor'>, uid: string): boolean =>
+  !!uid && enviaDocumentos(t) && emAberto(t) && !!t.visualizadaEm && t.responsavel.uid === uid && t.criadaPor.uid !== uid;
 
 /** O pedido de documentos com anexo e em aberto: quem recebeu já pode confirmar que anexou tudo. */
-export const podeConfirmarDocumentos = (t: Pick<TarefaDelegada, 'tipo' | 'anexos' | 'status'>): boolean => pedeDocumentos(t) && t.anexos.length > 0 && emAberto(t);
+export const podeConfirmarDocumentos = (t: Pick<TarefaDelegada, 'tipo' | 'anexos' | 'status'>): boolean => requerDocumentos(t) && t.anexos.length > 0 && emAberto(t);
 
 /** Os botões do pedido de documentos: o Concluir vira "Anexei tudo, concluir" quando já tem anexo. */
 export function acoesDaTarefa(t: Pick<TarefaDelegada, 'status' | 'tipo' | 'anexos'>, agora: Date | string): AcaoDaTarefa[] {
@@ -606,6 +692,12 @@ export function historicoDaMudanca(antes: TarefaDelegada, r: Rascunho, por: stri
     for (const c of entraram) linhas.push('Vinculou o cliente ' + nomeDoCliente(c));
   }
   if (r.responsavel && r.responsavel.uid !== antes.responsavel.uid) linhas.push('Delegou de ' + antes.responsavel.nome + ' para ' + r.responsavel.nome);
+  if (r.entrega !== undefined && r.entrega !== (antes.entrega ?? '')) {
+    if (r.entrega === 'enviada') linhas.push('Enviou os documentos para conferir');
+    if (r.entrega === 'contestada') linhas.push('Contestou os documentos');
+  }
+  if (r.status !== antes.status && r.status === 'concluida' && enviaDocumentos(antes)) linhas.push('Confirmou o recebimento');
+  if (r.status !== antes.status && r.status === 'concluida' && requerDocumentos(antes) && antes.entrega === 'enviada') linhas.push('Conferiu: veio tudo');
   if (r.status !== antes.status) linhas.push(linhaDoStatus(antes.status, r.status));
   if (r.prioridade !== antes.prioridade) linhas.push('Mudou a prioridade de ' + rotuloDaPrioridade(antes.prioridade) + ' para ' + rotuloDaPrioridade(r.prioridade));
   if (r.prazo !== antes.prazo || r.prazoHora !== antes.prazoHora) {
@@ -650,7 +742,7 @@ export function nova(r: Rascunho, o: { id: string; numero: number; por: Pessoa; 
     // a que nasce em andamento ("Já estava fazendo") já leva o Iniciou: o tempo trabalhado conta dali (12/11/2026)
     pareceres: [], historico: [...historicoDaCriacao(base, o.em), ...(r.status === 'andamento' ? [{ por: o.por.nome, em: o.em, texto: 'Iniciou a tarefa' }] : [])], anexos: [],
     ...(r.etapaDelegada ? { etapaDelegada: r.etapaDelegada } : {}),
-    ...(r.tipo === 'documentos' ? { tipo: 'documentos' as const } : {}),
+    ...(r.tipo === 'documentos' || r.tipo === 'envio' ? { tipo: r.tipo } : {}),
   };
 }
 
@@ -693,6 +785,7 @@ export function mudar(antes: TarefaDelegada, r: Rascunho, por: Pessoa, em: strin
     ...antes, titulo: limparTexto(r.titulo), descricao: limparTexto(r.descricao), ...comOsClientes(r.clientes),
     prioridade: r.prioridade, prazo: r.prazo, prazoHora: r.prazoHora, status: r.status, responsavel: r.responsavel || antes.responsavel,
     concluidaEm, atualizadaEm: em, historico: noHistorico(antes.historico, linhas),
+    ...(r.entrega !== undefined && r.entrega !== (antes.entrega ?? '') ? { entrega: r.entrega } : {}),
   };
 }
 
@@ -717,7 +810,7 @@ export function mudancasDoRascunho(inicial: Rascunho, r: Rascunho): Partial<Rasc
 /** O rascunho da tarefa como está agora com as mudanças da pessoa por cima (o resto fica como está no banco). */
 export const comMudancas = (t: TarefaDelegada, m: Partial<Rascunho>): Rascunho => ({ ...rascunhoDe(t), ...m });
 
-const CAMPOS_DA_MUDANCA = ['titulo', 'descricao', 'cliente', 'clientes', 'prioridade', 'prazo', 'prazoHora', 'status', 'responsavel', 'concluidaEm'] as const;
+const CAMPOS_DA_MUDANCA = ['titulo', 'descricao', 'cliente', 'clientes', 'prioridade', 'prazo', 'prazoHora', 'status', 'responsavel', 'concluidaEm', 'entrega'] as const;
 export type CampoDaMudanca = typeof CAMPOS_DA_MUDANCA[number];
 
 /**
@@ -743,6 +836,33 @@ export function comParecer(t: TarefaDelegada, texto: string, por: string, em: st
 export function comAnexos(t: TarefaDelegada, anexos: readonly Anexo[], por: string, em: string): TarefaDelegada {
   if (!anexos.length) return t;
   return { ...t, anexos: [...t.anexos, ...anexos], historico: noHistorico(t.historico, anexos.map(a => historicoDoAnexo('anexou', a.nome, por, em))), atualizadaEm: em };
+}
+
+/** Até quantos links e o maior endereço. */
+export const MAIS_LINKS = 20;
+export const MAIOR_LINK_DA_TAREFA = 500;
+
+/** O que impede de fixar o link ('' quando pode): só http(s), sem repetir e até MAIS_LINKS. */
+export function problemaDoLink(url: string, atuais: readonly Pick<LinkDaTarefa, 'url'>[] = []): string {
+  const u = url.trim();
+  if (!u) return 'Cole o link.';
+  if (u.length > MAIOR_LINK_DA_TAREFA) return 'O link passou de ' + MAIOR_LINK_DA_TAREFA + ' caracteres.';
+  try { const x = new URL(u); if (x.protocol !== 'https:' && x.protocol !== 'http:') return 'O link precisa começar com https://'; } catch { return 'O link precisa começar com https://'; }
+  if (atuais.some(l => l.url === u)) return 'Este link já está na tarefa.';
+  if (atuais.length >= MAIS_LINKS) return 'Até ' + MAIS_LINKS + ' links por tarefa.';
+  return '';
+}
+
+export const historicoDoLink = (acao: 'fixou' | 'tirou', url: string, por: string, em: string): Nota => ({ por, em, texto: (acao === 'fixou' ? 'Fixou o link ' : 'Tirou o link ') + url });
+
+export function comLink(t: TarefaDelegada, url: string, por: string, em: string): TarefaDelegada {
+  const u = url.trim();
+  return { ...t, links: [...(t.links || []), { url: u, por, em }], historico: noHistorico(t.historico, [historicoDoLink('fixou', u, por, em)]), atualizadaEm: em };
+}
+
+export function semLink(t: TarefaDelegada, url: string, por: string, em: string): TarefaDelegada {
+  if (!(t.links || []).some(l => l.url === url)) return t;
+  return { ...t, links: (t.links || []).filter(l => l.url !== url), historico: noHistorico(t.historico, [historicoDoLink('tirou', url, por, em)]), atualizadaEm: em };
 }
 
 export function semAnexo(t: TarefaDelegada, anexoId: string, por: string, em: string): TarefaDelegada {
@@ -791,8 +911,10 @@ export function lerTarefa(id: string, x: Record<string, unknown>): TarefaDelegad
     pareceres: lerNotas(x.pareceres), historico: lerNotas(x.historico),
     anexos: anexos.map(a => ({ id: texto(a.id), nome: texto(a.nome), extensao: texto(a.extensao), tamanho: Number(a.tamanho) || 0, em: texto(a.em), por: texto(a.por), partes: Number(a.partes) || 0, ...(a.gzip === true ? { gzip: true as const } : {}) }))
       .filter(a => a.id && a.partes > 0),
+    ...(Array.isArray(x.links) && x.links.length ? { links: x.links.map(obj).filter((l): l is Record<string, unknown> => !!l && !!texto(l.url)).map(l => ({ url: texto(l.url), por: texto(l.por), em: texto(l.em) })) } : {}),
     ...(etapaDelegada ? { etapaDelegada } : {}),
-    ...(x.tipo === 'documentos' ? { tipo: 'documentos' as const } : {}),
+    ...(x.tipo === 'documentos' || x.tipo === 'envio' ? { tipo: x.tipo } : {}),
+    ...(x.entrega === 'enviada' || x.entrega === 'contestada' || x.entrega === '' ? { entrega: x.entrega } : {}),
     ...(texto(x.visualizadaEm) ? { visualizadaEm: texto(x.visualizadaEm) } : {}),
   };
 }

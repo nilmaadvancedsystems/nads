@@ -24,6 +24,7 @@ import { rotasTarefas } from './aplicativos/tarefas/rotas';
 import { rotasMandei } from './aplicativos/mandei/rotas';
 import { rotasRobos } from './aplicativos/robos/rotas';
 import { ErroDaTela } from './comum/ErroDaTela';
+import { rotasDoModoDev } from './rotasDoModoDev';
 import { NOMES_DOS_APLICATIVOS, tituloDoAplicativo } from './nomesDosAplicativos';
 
 const SO = import.meta.env.VITE_APLICATIVO || '';
@@ -41,7 +42,8 @@ const APLICATIVOS: Record<string, { nome: string; rotas: RouteObject[]; raiz: st
   admin: { nome: NOMES_DOS_APLICATIVOS['admin'], rotas: SO === 'admin' ? rotasAdmin : [], raiz: '/admin' },
   // a Central dos robôs (Vitor, 07/11/2026): os robôs das três máquinas, num site próprio; no build do site, o rotasDosRobos.tsx
   robos: { nome: NOMES_DOS_APLICATIVOS['robos'], rotas: SO === 'robos' ? rotasRobos : [], raiz: '/robos' },
-  tarefas: { nome: NOMES_DOS_APLICATIVOS['tarefas'], rotas: SO === 'tarefas' ? [...rotasTarefas, ...rotasMandei] : [], raiz: '/tarefas' },
+  // com a Área do Cliente e a Central dos robôs só no modo desenvolvedor (o módulo Desenvolvedor; 13/11/2026, rotasDoModoDev.tsx)
+  tarefas: { nome: NOMES_DOS_APLICATIVOS['tarefas'], rotas: SO === 'tarefas' ? [...rotasTarefas, ...rotasMandei, ...rotasDoModoDev(true)] : [], raiz: '/tarefas' },
 };
 
 const so = APLICATIVOS[SO];
@@ -54,9 +56,9 @@ export const roteador = createBrowserRouter(comErro(so
   : !TODOS ? [] : [
     ...rotasConversor,
     ...rotasMandei,
-    ...rotasCliente,
+    // a Área do Cliente e a Central dos robôs abrem sempre aqui; no modo desenvolvedor, com a faixa de volta ao módulo
+    ...rotasDoModoDev(false),
     ...rotasAdmin,
-    ...rotasRobos,
     ...rotasComponentes,
     ...rotasTarefas,
     { path: '/', element: <Navigate to="/tarefas" replace /> },

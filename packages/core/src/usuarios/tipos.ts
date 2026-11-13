@@ -28,6 +28,8 @@ export interface DocUsuario {
   role?: string;
   criadoEm?: string;
   fotoPerfil?: string;
+  /** o aniversário ('aaaa-mm-dd', 'mm-dd' ou 'dd/mm'): a saudação do Início novo (13/11/2026; as datas o Vitor manda depois) */
+  aniversario?: string;
   departamento?: string;
   nivel?: string;
   /** false = desativado (o Entregas já lê este campo na Tarefas e nos robôs) */

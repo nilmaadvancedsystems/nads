@@ -9,6 +9,7 @@ import { AnexosDaTarefa } from './partes/AnexosDaTarefa';
 import { Link } from 'react-router';
 import { LinhaDoTempoDaTarefa } from './partes/LinhaDoTempoDaTarefa';
 import { SeloDoStatus } from './partes/SelosDaTarefa';
+import { useNovidade } from '../../../../comum/novidades';
 import { useTarefaAberta } from './useTarefaAberta';
 
 type Vm = ReturnType<typeof useTarefaAberta>;
@@ -17,6 +18,7 @@ function FormularioDaTarefa({ vm }: { vm: Vm }) {
   const id = useId();
   const r = vm.rascunho;
   const so = !vm.podeMudar;
+  const semSituacao = useNovidade('tarefa-sem-situacao');
   return (
     <>
       <div className="tdl-form">
@@ -62,7 +64,7 @@ function FormularioDaTarefa({ vm }: { vm: Vm }) {
           )}
           {vm.prazoInvalido && <p className="hint tdl-atrasada">Data incompleta ou que não existe.</p>}
         </div>
-        {!vm.ehNova && (
+        {!vm.ehNova && !semSituacao && (
           <div className="field tdl-campo-largo">
             <span className="tdl-rotulo">Status</span>
             {so || !vm.mudaStatus ? <SeloDoStatus rotulo={vm.status?.rotulo || ''} tom={vm.status?.tom || 'neutral'} />
@@ -107,15 +109,15 @@ function ParecerDaTarefa({ vm }: { vm: Vm }) {
  * saida: a Central pergunta por aqui antes de largar a tarefa (o Esc, o ×, clicar fora, trocar de aba): se mudou algo,
  * a janela "Descartar as mudanças?".
  */
-type Pessoa = ReturnType<typeof useTarefaAberta>['equipe'][number];
+export type Pessoa = ReturnType<typeof useTarefaAberta>['equipe'][number];
 
 /** a foto de perfil (ou as iniciais) de uma pessoa da equipe, redonda */
-function FotoDaPessoa({ p }: { p: Pessoa }) {
+export function FotoDaPessoa({ p }: { p: Pessoa }) {
   return <span className="pessoa-foto" aria-hidden="true">{p.foto ? <img src={p.foto} alt="" /> : p.iniciais}</span>;
 }
 
 /** os clientes vinculados: um selo para cada um (o × tira) e o "+", que abre a busca */
-function ClientesDaTarefa({ vm, so }: { vm: Vm; so: boolean }) {
+export function ClientesDaTarefa({ vm, so }: { vm: Vm; so: boolean }) {
   const nome = (c: { codigo: number | null; nome: string }) => <>{c.codigo != null && <><b>{c.codigo}</b> · </>}{c.nome}</>;
   if (so) return vm.clientes.length ? <div className="tdl-clientes">{vm.clientes.map(c => <span key={String(c.codigo) + c.nome}>{nome(c)}</span>)}</div> : <span>—</span>;
   return (
@@ -161,13 +163,13 @@ function BuscaDeCliente({ vm }: { vm: Vm }) {
 }
 
 /** o Delegar desligado: a tarefa fica com quem está escrevendo */
-function FicaComVoce({ vm }: { vm: ReturnType<typeof useTarefaAberta> }) {
+export function FicaComVoce({ vm }: { vm: ReturnType<typeof useTarefaAberta> }) {
   const eu = vm.equipe.find(p => p.voce);
   return <div className="pessoa-escolhida-fixa"><span className="pessoa-escolhida">{eu && <FotoDaPessoa p={eu} />}<span>{eu ? eu.nome : 'Você'}{eu && <span className="fraco"> (você)</span>}</span></span></div>;
 }
 
 /** o "Delegar para": o menu do nads com a foto de cada pessoa (no celular, no lugar da lista do sistema) */
-function EscolherPessoa({ vm, so, rotuloId }: { vm: ReturnType<typeof useTarefaAberta>; so: boolean; rotuloId: string }) {
+export function EscolherPessoa({ vm, so, rotuloId }: { vm: ReturnType<typeof useTarefaAberta>; so: boolean; rotuloId: string }) {
   const atual = vm.equipe.find(p => p.uid === vm.rascunho.responsavel?.uid) || null;
   const rotulo = atual
     ? <span className="pessoa-escolhida"><FotoDaPessoa p={atual} /><span>{atual.nome}{atual.voce && <span className="fraco"> (você)</span>}</span></span>

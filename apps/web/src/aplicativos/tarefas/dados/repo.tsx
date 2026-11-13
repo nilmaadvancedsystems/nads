@@ -4,7 +4,7 @@ import type { empresas, entregas, tarefas, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { RepoAcesso } from './acesso';
-import { repoDeBoletos, assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, dadosDaEmpresaNoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDaAreaCliente, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDoPainelRobo, repoDaIA, repoDeFeedback, repoDeAvisos, repoDeUso, repoDeParcelamentos, repoDeCategoriasDp, repoDoControleTributos, repoDeLegislacaoDp, repoDoLcdpr, repoDoArquivador, repoDosAgentes, repoDoFgts, repoDoAlterdata, repoDeEnviosDp, repoDoLoteDp, repoDoLoteFiscal, repoDasCartasDoFiscal, repoDeNfse, repoDoCaixa, repoDeHonorarios, repoDeContasPagar, repoDoSieg, repoPessoal, repoDoCofre, repoDeTarefasDelegadas, assinarTesteDoInicio, versaoDoTesteDoInicio, testeDoInicioLigado, ligarTesteDoInicio, repoDaCarteira } from './fonte';
+import { repoDeBoletos, assinarRegimesDoEntregas, bancosDoEntregas, contatosDoEntregas, dadosDaEmpresaNoEntregas, versaoDosRegimesDoEntregas, gravarLeituraDoRobo, ouvirLeituraDoRobo, repoDaAreaCliente, repoDeAcesso, repoDoCadastro, repoDoDrive, repoDoGmail, repoDaSaude, repoDoPainelRobo, repoDaIA, repoDeFeedback, repoDeAvisos, repoDeReunioes, repoDasEntradas, assinarTesteDasEntradas, versaoDoTesteDasEntradas, testeDasEntradasLigado, ligarTesteDasEntradas, repoDeUso, repoDeParcelamentos, repoDeCategoriasDp, repoDoControleTributos, repoDeLegislacaoDp, repoDoLcdpr, repoDoArquivador, repoDosAgentes, repoDoFgts, repoDoAlterdata, repoDeEnviosDp, repoDoLoteDp, repoDoLoteFiscal, repoDasCartasDoFiscal, repoDeNfse, repoDoCaixa, repoDeHonorarios, repoDeContasPagar, repoDoSieg, repoPessoal, repoDoCofre, repoDeTarefasDelegadas, assinarTesteDoInicio, versaoDoTesteDoInicio, testeDoInicioLigado, ligarTesteDoInicio, repoDaCarteira, assinarTesteDaCarteira, versaoDoTesteDaCarteira, testeDaCarteiraLigado, ligarTesteDaCarteira } from './fonte';
 import type { RepoCofre } from './cofre';
 import type { RepoAgentes } from './agentes';
 import type { RepoSieg } from './sieg';
@@ -283,9 +283,16 @@ export function useBoletos(): RepoBoletos {
 /** As contas a pagar e os fornecedores do financeiro, ao vivo (28/10/2026). */
 /** A Carteira da pessoa (e o lado do Financeiro), ao vivo (12/11/2026). */
 export function useCarteira(): RepoCarteira {
+  useSyncExternalStore(assinarTesteDaCarteira, versaoDoTesteDaCarteira, versaoDoTesteDaCarteira);
   const repo = repoDaCarteira();
   useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
   return repo;
+}
+
+/** Os dados de teste da Carteira (o ⚡ das Comissões da equipe): o que está ligado e como ligar. */
+export function useTesteDaCarteira() {
+  useSyncExternalStore(assinarTesteDaCarteira, versaoDoTesteDaCarteira, versaoDoTesteDaCarteira);
+  return { ...testeDaCarteiraLigado(), ligar: ligarTesteDaCarteira };
 }
 
 /** Os Insumos da Carteira (12/11/2026). */
@@ -370,6 +377,22 @@ export function useAvisos() {
   const repo = repoDeAvisos();
   useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
   return repo;
+}
+
+/** As reuniões das Notificações do Início novo, ao vivo (o ⚡ troca pelas de exemplo). */
+export function useReunioes() {
+  useSyncExternalStore(assinarTesteDoInicio, versaoDoTesteDoInicio, versaoDoTesteDoInicio);
+  const repo = repoDeReunioes();
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  return repo;
+}
+
+/** As entradas de clientes do Administrativo, ao vivo (o ⚡ troca pelas de exemplo). */
+export function useEntradas() {
+  useSyncExternalStore(assinarTesteDasEntradas, versaoDoTesteDasEntradas, versaoDoTesteDasEntradas);
+  const repo = repoDasEntradas();
+  useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
+  return { repo, teste: testeDasEntradasLigado(), ligarTeste: ligarTesteDasEntradas };
 }
 
 /** Os dados de teste do Início (o ⚡ do modo desenvolvedor): o que está ligado e como ligar. */

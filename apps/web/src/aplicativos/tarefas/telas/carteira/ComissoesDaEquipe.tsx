@@ -3,13 +3,26 @@
 // Aprovar tudo e Marcar como pago; abrir a pessoa mostra as comissões dela, uma a uma (aprovar, recusar com o motivo,
 // voltar para lançada).
 import { carteira, formatos } from '@nads/core';
-import { BotaoIcone, Icone, useCarregando, Vazio } from '@nads/ui';
+import { BotaoIcone, Icone, MenuSuspenso, useCarregando, Vazio } from '@nads/ui';
 import { Fragment } from 'react';
 import type { Decisao } from '../../dados/carteira';
 import { SeletorDoMes, SeloDaComissao } from './comum';
 import { JanelaDaComissao } from './JanelaDaComissao';
 import { JanelaDosServicos } from './JanelaDosServicos';
 import { useComissoesDaEquipe } from './useCarteiraDaPessoa';
+
+// o ⚡ do modo desenvolvedor, como no Início: marcar põe os exemplos na tela; nada vai para o banco
+function DadosDeTeste({ t }: { t: ReturnType<typeof useComissoesDaEquipe>['teste'] }) {
+  return (
+    <MenuSuspenso rotulo="Dados de teste" icone="zap" className="btn btn-outline" direita largura={280} titulo="Modo desenvolvedor · nada vai para o banco"
+      itens={[
+        { rotulo: 'Comissões de exemplo', icone: 'dinheiro', marcado: t.comissoes && !t.propria, onClick: () => t.ligar(t.comissoes && !t.propria ? false : 'comissoes') },
+        { rotulo: 'Comissões com a % própria (50%)', icone: 'usuario', marcado: t.propria, onClick: () => t.ligar(t.propria ? false : 'propria') },
+        'separador',
+        { rotulo: 'Apagar os dados de teste', icone: 'x', desabilitado: !t.comissoes, onClick: () => t.ligar(false) },
+      ]} />
+  );
+}
 
 export function ComissoesDaEquipe() {
   const vm = useComissoesDaEquipe();
@@ -24,6 +37,7 @@ export function ComissoesDaEquipe() {
         <SeletorDoMes {...m} />
         <span className="tarefas-barra-espaco" />
         {vm.exemplos && <span className="badge badge-neutral">Exemplos</span>}
+        {vm.dev && <DadosDeTeste t={vm.teste} />}
         <button type="button" className="btn btn-outline" onClick={() => vm.setJanela('servicos')}><Icone nome="settings" />Serviços</button>
         <button type="button" className="btn btn-primary" onClick={() => vm.setJanela('registrar')}><Icone nome="plus" />Registrar comissão</button>
       </div>

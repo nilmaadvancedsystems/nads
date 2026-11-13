@@ -1,13 +1,19 @@
 // Os ViewModels da Carteira (12/11/2026): o que cada tela mostra e faz, a partir do repositório (as telas não falam com
 // ele). A lógica de conta é do core (carteira); aqui fica o estado da tela e as ações com o aviso de erro.
-import { carteira, empresas, type financeiro } from '@nads/core';
+import { carteira, empresas, usuarios, type financeiro } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useMemo, useState } from 'react';
 import type { Decisao } from '../../dados/carteira';
 import { empresasNovas } from '../../dados/fonte';
-import { useAcesso, useCarteira, useTodosOsCadastros } from '../../dados/repo';
+import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
+import { useOperador } from '../../casca/operador';
+import { useAcesso, useCarteira, useTesteDaCarteira, useTodosOsCadastros } from '../../dados/repo';
 import { dataBr, hoje, isoDaData, valorDigitado, valorNoCampo } from '../financeiro/formatosDaNota';
 import { abrirBytes, baixarDaCarteira, mensagem, useMes } from './comum';
+
+/** a % própria por pessoa: só o Diretor (e o Dono) vê e mexe (Vitor, 13/11/2026: "só os diretores podem ver a comissão de vitor 50%") */
+const SEM_PROPRIA: { carregada: boolean; lista: carteira.PercentualDaPessoa[]; erro: string } = { carregada: true, lista: [], erro: '' };
+function useVePropria() { return usuarios.nivelDeDiretor(useOperador().operador?.nivel); }
 
 /** as contas ligadas à pessoa (a consulta já é só dela) como os pagamentos da Carteira */
 const pagamentosDe = (contas: readonly financeiro.ContaAPagar[]) => carteira.pagamentosDaCarteira(contas, contas[0]?.funcionario?.uid ?? '');
@@ -47,7 +53,7 @@ export function useJanelaDaComissao(comissao: carteira.Comissao | null, fechar: 
   const equipe = useAcesso().equipe();
   const clientes = useClientesDoEscritorio();
   const servicos = repo.servicos();
-  const porPessoa = repo.porPessoa();
+  const porPessoa = useVePropria() ? repo.porPessoa() : SEM_PROPRIA;
   const agora = new Date();
   const [competencia, setCompetencia] = useState(comissao?.competencia ?? (doFinanceiro ? carteira.competenciaDe(agora) : carteira.mesDoPagamento(agora)));
   const [para, setPara] = useState<{ uid: string; nome: string } | null>(null);
@@ -114,7 +120,8 @@ export function useJanelaDosServicos(fechar: () => void) {
   const repo = useCarteira();
   const { toast } = useRetorno();
   const salvos = repo.servicos();
-  const salvasPorPessoa = repo.porPessoa();
+  const vePropria = useVePropria();
+  const salvasPorPessoa = vePropria ? repo.porPessoa() : SEM_PROPRIA;
   const equipe = useAcesso().equipe();
   const [pessoas, setPessoas] = useState<{ uid: string; nome: string; percentual: string }[] | null>(null);
   const [lista, setLista] = useState<{ id: string; nome: string; percentual: string }[] | null>(null);
@@ -130,7 +137,7 @@ export function useJanelaDosServicos(fechar: () => void) {
   const semPropria = equipe.lista.filter(u => u.ativo && !pessoasAtuais.some(p => p.uid === u.uid)).map(u => ({ uid: u.uid, nome: u.nome })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
   return {
     carregada: salvos.carregada, erro: salvos.erro, lista: atual, novo, setNovo, erros, salvando,
-    pessoas: pessoasAtuais, semPropria,
+    vePropria, pessoas: pessoasAtuais, semPropria,
     acrescentarPessoa: (p: { uid: string; nome: string }) => setPessoas([...pessoasAtuais, { ...p, percentual: '' }]),
     mudarPessoa: (uid: string, v: string) => setPessoas(pessoasAtuais.map(p => (p.uid === uid ? { ...p, percentual: v } : p))),
     tirarPessoa: (uid: string) => setPessoas(pessoasAtuais.filter(p => p.uid !== uid)),
@@ -144,8 +151,8 @@ export function useJanelaDosServicos(fechar: () => void) {
     },
     async salvar() {
       const l = comoServicos();
-      const p = comoPorPessoa();
-      const problemas = [...carteira.conferirServicos(l), ...carteira.conferirPorPessoa(p)];
+      const p = vePropria ? comoPorPessoa() : null;
+      const problemas = [...carteira.conferirServicos(l), ...(p ? carteira.conferirPorPessoa(p) : [])];
       setErros(problemas);
       if (problemas.length) return;
       setSalvando(true);
@@ -186,8 +193,9 @@ export function useComissoesDaEquipe() {
   // as janelas do Financeiro: registrar a comissão de alguém (a retroativa) e os serviços comissionados com a %
   const [janela, setJanela] = useState<'' | 'registrar' | 'servicos'>('');
   const doMes = repo.comissoesDoMes(m.mes);
+  const [dev] = useModoDesenvolvedor();
   return {
-    m, exemplos: repo.exemplos, carregada: doMes.carregada, erro: doMes.erro, todas: doMes.lista,
+    m, exemplos: repo.exemplos, dev, teste: useTesteDaCarteira(), carregada: doMes.carregada, erro: doMes.erro, todas: doMes.lista,
     resumo: carteira.resumoParaPagar(doMes.lista), totais: carteira.totaisDasComissoes(doMes.lista),
     aberta, alternar: (uid: string) => setAberta(a => (a === uid ? '' : uid)), fazendo, janela, setJanela,
     /** aprovar, recusar (com o motivo), marcar como pago (confirma antes) ou voltar para lançada */

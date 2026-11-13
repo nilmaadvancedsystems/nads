@@ -198,6 +198,24 @@ export function criarTarefasDelegadasFirestore(quem: () => Pessoa | null): RepoT
       });
       await reler();
     },
+    async fixarLink(id, url) {
+      const por = eu();
+      const t = await noBanco(id);
+      const problema = d.problemaDoLink(url, t.links);
+      if (problema) throw new Error(problema);
+      const em = new Date().toISOString();
+      const nova = d.comLink(t, url, por.nome, em);
+      await updateDoc(doc(db, COLECAO, id), { links: nova.links, historico: historicoNovo(t, [d.historicoDoLink('fixou', url.trim(), por.nome, em)]), atualizadaEm: em });
+      await reler();
+    },
+    async tirarLink(id, url) {
+      const por = eu();
+      const t = await noBanco(id);
+      if (!(t.links || []).some(l => l.url === url)) return;
+      const em = new Date().toISOString();
+      await updateDoc(doc(db, COLECAO, id), { links: (t.links || []).filter(l => l.url !== url), historico: historicoNovo(t, [d.historicoDoLink('tirou', url, por.nome, em)]), atualizadaEm: em });
+      await reler();
+    },
     async tirarAnexo(id, anexoId) {
       const por = eu();
       const t = await noBanco(id);
