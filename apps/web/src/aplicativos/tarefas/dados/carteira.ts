@@ -37,7 +37,8 @@ export interface RepoCarteira {
   decidirComissoes(ids: string[], situacao: Decisao, motivo?: string): Promise<void>;
   /** a comissão que o Financeiro registra para a pessoa (a retroativa, em qualquer mês): já entra aprovada */
   registrarComissaoDe(para: { uid: string; nome: string }, c: carteira.ComissaoParaSalvar): Promise<void>;
-  salvarServicos(lista: readonly carteira.ServicoComissionado[], porPessoa: readonly carteira.PercentualDaPessoa[]): Promise<void>;
+  /** porPessoa null: não mexe na % própria (quem não é Diretor nem a vê; Vitor, 13/11/2026) */
+  salvarServicos(lista: readonly carteira.ServicoComissionado[], porPessoa: readonly carteira.PercentualDaPessoa[] | null): Promise<void>;
   enviarDocumento(d: DocumentoParaEnviar, arquivo: ArquivoDaCarteira): Promise<void>;
   apagarDocumento(id: string): Promise<void>;
   assinar(aoMudar: () => void): () => void;
@@ -105,7 +106,7 @@ export function criarCarteiraMemoria(quem: QuemNaCarteira, propria = false): Rep
     servicos: () => lista(servicos),
     porPessoa: () => lista(porPessoa),
     meuUid: () => eu().uid,
-    async salvarServicos(l, p) { servicos = l.map(s => ({ ...s, percentual: r2(s.percentual) })); porPessoa = p.map(x => ({ ...x, percentual: r2(x.percentual) })); mudou(); },
+    async salvarServicos(l, p) { servicos = l.map(s => ({ ...s, percentual: r2(s.percentual) })); if (p) porPessoa = p.map(x => ({ ...x, percentual: r2(x.percentual) })); mudou(); },
     async registrarComissaoDe(para, x) {
       comissoes = [...comissoes, { ...comissaoDe(x), id: novoId('c'), uid: para.uid, nome: para.nome, situacao: 'aprovada', criadoEm: agora(), decididoPor: eu().nome, decididoEm: agora() }];
       mudou();
