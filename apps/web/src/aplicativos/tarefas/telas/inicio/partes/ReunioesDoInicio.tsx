@@ -75,7 +75,7 @@ function NovaReuniao({ vm, fechar }: { vm: Vm; fechar: () => void }) {
     <Janela titulo={direta ? 'Marcar reunião' : 'Solicitar reunião'} fechar={fechar}
       pe={<><span className="tarefas-barra-espaco" /><button type="button" className="btn btn-outline" onClick={fechar}>Cancelar</button>
         <button type="button" className="btn btn-primary" disabled={!!problema} title={problema || undefined} onClick={() => void enviar()}><Icone nome={direta ? 'check' : 'envelope'} />{direta ? 'Marcar' : 'Solicitar'}</button></>}>
-      <p className="registro-dica"><Icone nome="lampada" />{direta ? 'Marcada por você, a reunião já aparece para todos.' : 'O Diretor ou o Dono aprova ou não; aprovada, os convidados confirmam a presença.'}</p>
+      <p className="registro-dica"><Icone nome="lampada" />{direta ? 'Marcada por você, a reunião já aparece para todos.' : 'Solicite a reunião com seus colegas preenchendo os dados abaixo.'}</p>
       <input className="tdl-janela-titulo" type="text" value={titulo} autoFocus maxLength={tarefas.MAIOR_TITULO_DO_COMUNICADO} placeholder="O assunto da reunião" aria-label="O assunto da reunião" onChange={e => setTitulo(e.target.value)} />
       <div className="registro-props">
         <Propriedade icone="calendar" rotulo="Dia e hora">

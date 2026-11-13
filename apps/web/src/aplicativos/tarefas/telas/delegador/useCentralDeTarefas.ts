@@ -36,9 +36,10 @@ function movimentoDe(t: tarefas.delegadas.TarefaDelegada): string {
  * opcoes, do Início novo (13/11/2026, só no modo desenvolvedor): agenda = os grupos Hoje, Amanhã e Esta semana (o print) em
  * vez dos do prazo; documentos = só os documentos delegados (a aba Documentos), todos juntos (recebidos, enviados e
  * concluídos; 13/11/2026: os filtros ficam na busca do alto); busca e filtrar = a busca e as pílulas do alto do Início novo
- * (uma busca só na tela).
+ * (uma busca só na tela); semDocumentos = a aba Tarefas, sem os documentos delegados (Vitor, 13/11/2026: "e documentos da
+ * pagina de tarefas": eles ficam só na aba Documentos).
  */
-export function useCentralDeTarefas(abaInicial: AbaDaCentral, opcoes: { agenda?: boolean; documentos?: boolean; busca?: string; filtrar?: (t: tarefas.delegadas.TarefaDelegada) => boolean } = {}) {
+export function useCentralDeTarefas(abaInicial: AbaDaCentral, opcoes: { agenda?: boolean; documentos?: boolean; semDocumentos?: boolean; busca?: string; filtrar?: (t: tarefas.delegadas.TarefaDelegada) => boolean } = {}) {
   const repo = useTarefasDelegadas();
   const [aba, setAba] = useState<AbaDaCentral>(abaInicial);
   const [busca, setBusca] = useState('');
@@ -53,7 +54,7 @@ export function useCentralDeTarefas(abaInicial: AbaDaCentral, opcoes: { agenda?:
   const uid = repo.eu()?.uid || '';
   const lidas = repo.lista();
   const { carregadas, erro } = lidas;
-  const todas = opcoes.documentos ? lidas.tarefas.filter(d.pedeDocumentos) : lidas.tarefas;
+  const todas = opcoes.documentos ? lidas.tarefas.filter(d.pedeDocumentos) : opcoes.semDocumentos ? lidas.tarefas.filter(t => !d.pedeDocumentos(t)) : lidas.tarefas;
   const hoje = d.hojeIso();
   const agora = new Date().toTimeString().slice(0, 5);
   // a em andamento aparece Pausada nos intervalos (11:05–13:00 e 18:05–07:00); o banco segue Em andamento

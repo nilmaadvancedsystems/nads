@@ -54,7 +54,8 @@ export function InicioNovo() {
         {mural.dev && <DadosDeTesteDoInicio teste={mural.teste} />}
         {daSolicitacao ? <BotoesDasNotificacoes vm={vm.reunioesVm} escolher={vm.escolherComunicado} /> : (
           <>
-            <button type="button" className="btn btn-outline" onClick={vm.pedirDocumentos} title="Delegar a alguém do escritório: quem recebe anexa os documentos e confirma"><Icone nome="clipe" />Delegar documentos</button>
+            {/* o Delegar documentos só no Painel (Vitor, 13/11/2026: "Remova o botao delegar documentos" da aba Documentos e da aba Tarefas) */}
+            {vm.aba === 'painel' && <button type="button" className="btn btn-outline" onClick={vm.pedirDocumentos} title="Delegar a alguém do escritório: quem recebe anexa os documentos e confirma"><Icone nome="clipe" />Delegar documentos</button>}
             <button type="button" className="btn btn-primary" onClick={vm.nova}><Icone nome="plus" />Nova tarefa</button>
           </>
         )}

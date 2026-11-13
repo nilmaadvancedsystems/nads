@@ -1,5 +1,7 @@
 // O Painel do Início novo (o print do Dashboard), em duas colunas. À esquerda, o calendário do mês (os dias com prazo ou
-// reunião têm a bolinha; clicar num dia mostra as tarefas dele) e as próximas reuniões (das Notificações). À direita, as
+// reunião têm a bolinha; clicar num dia mostra as tarefas dele) e o Quadro de avisos (as próximas reuniões, das Notificações;
+// Vitor, 13/11/2026: "pode trocar o nome para Quadro de avisos"). O que pede confirmação (a presença na reunião, o Recebido
+// do aviso) fica por cima do calendário, com ele embaçado, até a pessoa responder. À direita, as
 // próximas tarefas (a caixinha conclui) e as delegadas por mim (no lugar do acompanhamento de tempo). O "Por cliente" e os
 // "Comentários novos" saíram (Vitor, 13/11/2026: "Pode deletar essas duas sessoes").
 import { CalendarioDoMes, Icone, Vazio } from '@nads/ui';
@@ -27,15 +29,39 @@ const quantas = (n: number) => n + (n === 1 ? ' tarefa' : ' tarefas');
 
 export function PainelDoInicio({ vm }: { vm: Vm }) {
   const c = vm.calendario;
+  const p = vm.paraConfirmar[0];
+  const abrir = (id: string) => { vm.escolherComunicado(id); vm.mudarAba('notificacoes'); };
   return (
     <div className="ini-painel">
       <div className="ini-coluna">
         <Cartao titulo="Calendário">
-          <CalendarioDoMes mes={c.mes} hoje={c.hoje} marcados={c.marcados} escolhido={c.dia} onDia={c.escolher} onMes={c.setMes} dicaDoMarcado={n => quantas(n) + ' ou reuniões'} />
+          <div className="ini-calendario-caixa">
+            <div className={p ? 'ini-calendario-embacado' : undefined} aria-hidden={p ? true : undefined}>
+              <CalendarioDoMes mes={c.mes} hoje={c.hoje} marcados={c.marcados} escolhido={c.dia} onDia={c.escolher} onMes={c.setMes} dicaDoMarcado={n => quantas(n) + ' ou reuniões'} />
+            </div>
+            {p && (
+              <div className="ini-calendario-aviso" role="alertdialog" aria-label={p.tipo === 'reuniao' ? 'Reunião: confirme a presença' : 'Aviso: confirme que leu'}>
+                <div className="card ini-calendario-cartao">
+                  <span className="badge badge-suave badge-warn">{p.tipo === 'reuniao' ? 'Reunião: confirme a presença' : 'Aviso: confirme que leu'}</span>
+                  <b>{p.titulo}</b>
+                  <span className="hint">{p.quem} · {p.quando}</span>
+                  {p.texto && <p className="ini-calendario-texto">{p.texto}</p>}
+                  <div className="ini-reuniao-linha">
+                    {p.tipo === 'reuniao' ? <>
+                      <button type="button" className="btn btn-primary" onClick={() => vm.reunioesVm.confirmar(p.id, true)}><Icone nome="check" />Confirmar presença</button>
+                      <button type="button" className="btn btn-outline" onClick={() => vm.reunioesVm.confirmar(p.id, false)}>Não vou</button>
+                    </> : <button type="button" className="btn btn-primary" onClick={() => void vm.marcarRecebido(p.id)}><Icone nome="check" />Recebido</button>}
+                    <button type="button" className="btn btn-ghost" onClick={() => abrir(p.id)}>Abrir</button>
+                    {vm.paraConfirmar.length > 1 && <span className="hint">+{vm.paraConfirmar.length - 1} esperando</span>}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </Cartao>
-        <Cartao titulo="Próximas reuniões" acao={<button type="button" className="btn btn-ghost" onClick={() => vm.mudarAba('notificacoes')}>Notificações<Icone nome="chevronRight" /></button>}>
+        <Cartao titulo="Quadro de avisos" acao={<button type="button" className="btn btn-ghost" onClick={() => vm.mudarAba('notificacoes')}>Notificações<Icone nome="chevronRight" /></button>}>
           {vm.reunioes.length ? vm.reunioes.map(r => (
-            <button key={r.id} type="button" className="popover-item" onClick={() => { vm.escolherComunicado(r.id); vm.mudarAba('notificacoes'); }}>
+            <button key={r.id} type="button" className="popover-item" onClick={() => abrir(r.id)}>
               <Icone nome="calendar" />
               <span className="popover-texto"><b>{r.tituloNaLista}</b><br /><span className="hint">{r.reuniao}</span></span>
             </button>
