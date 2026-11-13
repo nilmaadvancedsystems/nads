@@ -31,6 +31,7 @@ function lerReuniao(id: string, x: Record<string, unknown>): Reuniao {
   return {
     id, titulo: t(x.titulo), pauta: t(x.pauta), quando: t(x.quando), ...(x.link ? { link: t(x.link) } : {}),
     criadaPor: pessoa(x.criadaPor), origem: x.origem === 'direta' ? 'direta' : 'pedido', participantes: lista(x.participantes).map(pessoa), comDiretor: x.comDiretor === true,
+    ...(x.tipo === 'live' ? { tipo: 'live' as const } : {}), ...(Number(x.duracao) > 0 ? { duracao: Number(x.duracao) } : {}),
     status, ...(x.prazoDaRevisao ? { prazoDaRevisao: t(x.prazoDaRevisao) } : {}), ...(x.decididoPor ? { decididoPor: t(x.decididoPor) } : {}), ...(x.observacao ? { observacao: t(x.observacao) } : {}),
     ...(problema ? { problema } : {}), ...(solucao ? { solucao } : {}),
     comentarios: lista(x.comentarios).map(c => ({ uid: t(c.uid), nome: t(c.nome), texto: t(c.texto), em: t(c.em) })),

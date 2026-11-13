@@ -39,7 +39,7 @@ function exemplos(eu: Pessoa): Reuniao[] {
   const fernando = { uid: 'exemplo-4', nome: 'Fernando' }, nilma = { uid: 'exemplo-1', nome: 'Nilma' }, clara = { uid: 'exemplo-6', nome: 'Clara' }, felipe = { uid: 'exemplo-5', nome: 'Felipe' };
   const arquivo = (id: string, nome: string, por: string) => ({ id, nome, extensao: nome.split('.').pop() || '', tamanho: 48_200, em: ha(2), por, partes: 1 });
   const base = (id: string, titulo: string, pauta: string, quando: string, criadaPor: Pessoa, participantes: Pessoa[], h: number) =>
-    r.nova({ titulo, pauta, quando, link: '', participantes, comDiretor: participantes.some(p => p.uid === nilma.uid) }, { id, por: criadaPor, em: ha(h), direta: false });
+    r.nova({ titulo, pauta, quando, link: '', participantes, comDiretor: participantes.some(p => p.uid === nilma.uid), tipo: 'equipe', duracao: 60 }, { id, por: criadaPor, em: ha(h), direta: false });
   return [
     // as que pedem a decisão do Diretor
     base('rn-1', 'Revisão das empresas do Simples', 'Passar as empresas que mudam de faixa no mês que vem.', dia(2, '15:00'), fernando, [clara, eu], 5),
@@ -57,7 +57,7 @@ function exemplos(eu: Pessoa): Reuniao[] {
     // recusada, com a observação
     r.decidir(base('rn-7', 'Folga coletiva de dezembro', 'Combinar os dias de folga do fim do ano.', dia(6, '17:00'), eu, [], 60), false, 'Vamos tratar na reunião geral do dia 18.', nilma.nome, ha(48)),
     // marcada direto pelo Diretor (todos veem)
-    r.nova({ titulo: 'Reunião geral do escritório', pauta: 'Metas de dezembro e a confraternização.', quando: dia(3, '08:30'), link: 'https://meet.google.com/', participantes: [], comDiretor: true }, { id: 'rn-8', por: nilma, em: ha(10), direta: true }),
+    r.nova({ titulo: 'Reunião geral do escritório', pauta: 'Metas de dezembro e a confraternização.', quando: dia(3, '08:30'), link: 'https://meet.google.com/', participantes: [], comDiretor: true, tipo: 'live', duracao: 90 }, { id: 'rn-8', por: nilma, em: ha(10), direta: true }),
   ];
 }
 

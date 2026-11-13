@@ -2,6 +2,7 @@
 // como avisos, ultima empresa que foi mexida e progresso dela"; "a parte de minhas empresas vai virar um dashboard de
 // progresso das empresas"): o mural de avisos do escritório (o admin e o diretor escrevem, todos leem) e o resumo do
 // progresso das empresas na competência.
+import type { Anexo } from './delegadas';
 import type { SituacaoGeral } from './execucao';
 
 /** Um aviso do mural do escritório. */
@@ -33,6 +34,27 @@ export interface AvisoDoEscritorio {
   recebidos?: { uid: string; nome: string; em: string }[];
   /** para quem é (sem isto, todos) */
   para?: DestinoDoAviso;
+  /** o jeito do aviso (sem isto, o aviso normal) e, na norma da empresa, o PDF */
+  jeito?: JeitoDoAviso;
+  anexo?: Anexo;
+}
+
+/**
+ * O jeito do aviso (Vitor, 13/11/2026: "Clicou em aviso / Tipo: Norma da empresa (vo mandar o pdf) / Aviso de datas (Feriados,
+ * recessos) / Aviso normal / Avisos nao tem link"): a norma leva o PDF; nenhum aviso tem link.
+ */
+export type JeitoDoAviso = 'normal' | 'datas' | 'norma';
+export const JEITOS_DO_AVISO: readonly { valor: JeitoDoAviso; rotulo: string }[] = [
+  { valor: 'normal', rotulo: 'Aviso normal' },
+  { valor: 'datas', rotulo: 'Aviso de datas (feriados, recessos)' },
+  { valor: 'norma', rotulo: 'Norma da empresa' },
+];
+export const ehJeitoDoAviso = (v: unknown): v is JeitoDoAviso => JEITOS_DO_AVISO.some(x => x.valor === v);
+
+/** O nome do tipo na tela: o do jeito, no aviso que tem ("Norma da empresa"), senão o do tipo. */
+export function rotuloDoTipoDoAviso(a: Pick<AvisoDoEscritorio, 'tipo' | 'jeito'>): string {
+  if ((a.tipo || 'aviso') === 'aviso' && a.jeito && a.jeito !== 'normal') return JEITOS_DO_AVISO.find(x => x.valor === a.jeito)?.rotulo || 'Aviso';
+  return rotuloDoComunicado(a.tipo);
 }
 
 /** Para quem é o aviso: todos, os setores escolhidos ou as pessoas escolhidas. */
@@ -91,12 +113,13 @@ export function linkValido(link: string): boolean {
 }
 
 /** O que vai além do texto num comunicado novo. */
-export interface ExtrasDoComunicado { tipo: TipoDeComunicado; titulo: string; link: string; quando: string; pedeConfirmacao?: boolean; para?: DestinoDoAviso }
+export interface ExtrasDoComunicado { tipo: TipoDeComunicado; titulo: string; link: string; quando: string; pedeConfirmacao?: boolean; para?: DestinoDoAviso; jeito?: JeitoDoAviso; comPdf?: boolean }
 
 /** O que impede de publicar o comunicado ('' quando pode): o texto, o título, o link e, na reunião, o dia e a hora. */
 export function problemaDoComunicado(texto: string, x: ExtrasDoComunicado): string {
   if (x.titulo.trim().length > MAIOR_TITULO_DO_COMUNICADO) return 'O título passou de ' + MAIOR_TITULO_DO_COMUNICADO + ' caracteres.';
-  if (x.link.trim() && !linkValido(x.link.trim())) return 'O link precisa começar com https://';
+  if (x.tipo !== 'aviso' && x.link.trim() && !linkValido(x.link.trim())) return 'O link precisa começar com https://';
+  if (x.tipo === 'aviso' && x.jeito === 'norma' && !x.comPdf) return 'Anexe o PDF da norma.';
   if (x.tipo === 'estudo' && !x.link.trim()) return 'Ponha o link do estudo.';
   if (x.tipo === 'reuniao' && !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(x.quando)) return 'Escolha o dia e a hora da reunião.';
   if (x.para?.tipo === 'setor' && !x.para.setores.length) return 'Escolha o setor.';
@@ -105,11 +128,13 @@ export function problemaDoComunicado(texto: string, x: ExtrasDoComunicado): stri
 }
 
 /** Os campos de um comunicado novo para gravar (só os que têm valor; o aviso simples fica como o antigo). */
-export function camposDoComunicado(x: ExtrasDoComunicado): Partial<Pick<AvisoDoEscritorio, 'tipo' | 'titulo' | 'link' | 'quando' | 'pedeConfirmacao' | 'para'>> {
+export function camposDoComunicado(x: ExtrasDoComunicado): Partial<Pick<AvisoDoEscritorio, 'tipo' | 'titulo' | 'link' | 'quando' | 'pedeConfirmacao' | 'para' | 'jeito'>> {
   return {
     ...(x.tipo !== 'aviso' ? { tipo: x.tipo } : {}),
     ...(x.titulo.trim() ? { titulo: x.titulo.trim() } : {}),
-    ...(x.link.trim() ? { link: x.link.trim() } : {}),
+    // o aviso não tem link; o jeito só no aviso (o normal fica sem, como o antigo)
+    ...(x.tipo !== 'aviso' && x.link.trim() ? { link: x.link.trim() } : {}),
+    ...(x.tipo === 'aviso' && x.jeito && x.jeito !== 'normal' ? { jeito: x.jeito } : {}),
     ...(x.tipo === 'reuniao' && x.quando ? { quando: x.quando } : {}),
     ...(x.pedeConfirmacao ? { pedeConfirmacao: true } : {}),
     ...(x.para && x.para.tipo !== 'todos' ? { para: x.para } : {}),

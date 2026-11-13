@@ -1,7 +1,9 @@
 // O mural de avisos no banco do Entregas (coleção nadsAvisos; regra em firestore.rules): toda a equipe no nads lê; só o
 // admin e o diretor criam, fixam e apagam. Sem a regra no ar, o banco recusa: o mural fica vazio e publicar avisa o erro.
-import { arrayUnion, collection, deleteDoc as deleteDocBruto, doc, limit, onSnapshot, orderBy, query, setDoc as setDocBruto, updateDoc as updateDocBruto, where, type QuerySnapshot } from 'firebase/firestore';
-import { tarefas as t } from '@nads/core';
+import { arrayUnion, Bytes, collection, deleteDoc as deleteDocBruto, doc, getDoc, limit, onSnapshot, orderBy, query, setDoc as setDocBruto, updateDoc as updateDocBruto, where, type QuerySnapshot } from 'firebase/firestore';
+import { entregas, tarefas as t } from '@nads/core';
+import { bytesDoAnexo } from './encolherAnexo';
+import { anexoDe, idNovo } from './tarefasDelegadas';
 import { bancoDoEntregas } from './entregas.firestore';
 import type { RepoAvisos } from './avisos';
 import { guardar } from '../../../comum/modoDesenvolvedor';
@@ -26,8 +28,13 @@ const avisosDe = (s: QuerySnapshot): t.AvisoDoEscritorio[] => s.docs.map(d => {
     ...(x.pedeConfirmacao === true ? { pedeConfirmacao: true } : {}),
     ...(Array.isArray(x.recebidos) ? { recebidos: (x.recebidos as Record<string, unknown>[]).map(r => ({ uid: texto(r.uid), nome: texto(r.nome), em: texto(r.em) })).filter(r => r.uid) } : {}),
     ...(destino(x.para) ? { para: destino(x.para)! } : {}),
+    // o jeito do aviso e o PDF da norma (13/11/2026)
+    ...(t.ehJeitoDoAviso(x.jeito) ? { jeito: x.jeito } : {}),
+    ...(x.anexo && (x.anexo as Record<string, unknown>).id ? { anexo: anexoLido(x.anexo as Record<string, unknown>) } : {}),
   };
 });
+
+const anexoLido = (a: Record<string, unknown>) => ({ id: texto(a.id), nome: texto(a.nome), extensao: texto(a.extensao), tamanho: Number(a.tamanho) || 0, em: texto(a.em), por: texto(a.por), partes: Number(a.partes) || 0, ...(a.gzip === true ? { gzip: true as const } : {}) });
 
 /** o destino lido do banco (um formato que não conhece fica para todos) */
 function destino(v: unknown): t.DestinoDoAviso | null {
@@ -66,14 +73,35 @@ export function criarAvisosFirestore(): RepoAvisos {
       return estado;
     },
     // os campos do comunicado (extras) só passam no banco quando a regra do nadsAvisos aceitar (ainda não publicada: 13/11/2026)
-    async publicar(textoDoAviso, por, extras, porUid) {
-      const problema = extras ? t.problemaDoComunicado(textoDoAviso, extras) : t.problemaDoAviso(textoDoAviso);
+    // o PDF da norma vai em pedaços em nadsAvisos/{id}/partes/{arquivo}-{n} (como os arquivos das reuniões), antes do aviso
+    async publicar(textoDoAviso, por, extras, porUid, pdf) {
+      const problema = extras ? t.problemaDoComunicado(textoDoAviso, { ...extras, comPdf: !!pdf }) : t.problemaDoAviso(textoDoAviso);
       if (problema) throw new Error(problema);
-      await setDoc(doc(collection(db, 'nadsAvisos')), { texto: t.limparAviso(textoDoAviso), por, em: new Date().toISOString(), fixado: false, ...(porUid ? { porUid } : {}), ...(extras ? t.camposDoComunicado(extras) : {}) });
+      const ref = doc(collection(db, 'nadsAvisos'));
+      const em = new Date().toISOString();
+      let anexo: ReturnType<typeof anexoDe> | null = null;
+      if (pdf) {
+        const arquivoId = 'ax-' + idNovo();
+        const pedacos = entregas.partesDoArquivo(pdf.bytes);
+        for (let n = 0; n < pedacos.length; n++) await setDoc(doc(db, 'nadsAvisos', ref.id, 'partes', arquivoId + '-' + n), { dados: Bytes.fromUint8Array(pedacos[n]) });
+        anexo = anexoDe(pdf, { id: arquivoId, em, por, partes: pedacos.length });
+      }
+      await setDoc(ref, { texto: t.limparAviso(textoDoAviso), por, em, fixado: false, ...(porUid ? { porUid } : {}), ...(extras ? t.camposDoComunicado(extras) : {}), ...(anexo ? { anexo } : {}) });
     },
     async fixar(id, fixado) { await updateDoc(doc(db, 'nadsAvisos', id), { fixado }); },
     async marcarRecebido(id, quem) { await updateDoc(doc(db, 'nadsAvisos', id), { recebidos: arrayUnion({ uid: quem.uid, nome: quem.nome, em: new Date().toISOString() }) }); },
     async apagar(id) { await deleteDoc(doc(db, 'nadsAvisos', id)); },
+    async baixar(id) {
+      const a = (estado?.avisos || []).find(x => x.id === id)?.anexo;
+      if (!a) return null;
+      const docs = await Promise.all(Array.from({ length: a.partes }, (_, n) => getDoc(doc(db, 'nadsAvisos', id, 'partes', a.id + '-' + n))));
+      if (docs.some(x => !x.exists())) return null;
+      const pedacos = docs.map(x => (x.data()?.dados as Bytes).toUint8Array());
+      const bytes = new Uint8Array(pedacos.reduce((s, p) => s + p.length, 0));
+      let k = 0;
+      for (const p of pedacos) { bytes.set(p, k); k += p.length; }
+      return bytesDoAnexo(bytes, a.gzip);
+    },
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,
   };

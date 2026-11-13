@@ -14,7 +14,10 @@ import { DetalheDaReuniao, EscolherPessoas, SeloDaReuniao } from './ReunioesDoIn
 const ICONE_DO_TIPO: Record<string, NomeIcone> = { aviso: 'alert', reuniao: 'calendar', estudo: 'lampada', geral: 'mensagem' };
 const ESCOLHA = 'btn btn-ghost registro-escolha';
 
-/** a janela do Novo comunicado (o + Adicionar aviso do Diretor e do Dono: Reunião ou Aviso geral) */
+/**
+ * a janela do Novo comunicado (o + Adicionar aviso do Diretor e do Dono › Aviso geral): o Tipo é o jeito do aviso (normal, de
+ * datas ou a norma da empresa, com o PDF), o estudo ou o comunicado; o aviso não tem link (Vitor, 13/11/2026)
+ */
 export function NovoComunicado({ fechar, tipo = 'aviso' }: { fechar: () => void; tipo?: 'aviso' | 'reuniao' | 'estudo' | 'geral' }) {
   const vm = useNovoComunicado(fechar, tipo);
   const janela = useRef<HTMLDivElement>(null);
@@ -30,9 +33,21 @@ export function NovoComunicado({ fechar, tipo = 'aviso' }: { fechar: () => void;
           <input className="tdl-janela-titulo" type="text" value={vm.titulo} maxLength={vm.maiorTitulo} autoFocus placeholder="Título" aria-label="Título do comunicado" onChange={e => vm.setTitulo(e.target.value)} />
           <div className="registro-props">
             <Propriedade icone="list" rotulo="Tipo">
-              <MenuSuspenso rotulo={vm.rotuloDoTipo} className={ESCOLHA} titulo="O tipo do comunicado" flutuante largura={240}
-                itens={vm.tipos.map(t => ({ rotulo: t.rotulo, icone: ICONE_DO_TIPO[t.valor], marcado: t.valor === vm.tipo, onClick: () => vm.setTipo(t.valor) }))} />
+              <MenuSuspenso rotulo={vm.rotuloDoTipo} className={ESCOLHA} titulo="O tipo do comunicado" flutuante largura={280}
+                itens={vm.opcoes.map(o => ({ rotulo: o.rotulo, icone: o.jeito === 'norma' ? 'clipe' : o.jeito === 'datas' ? 'calendar' : ICONE_DO_TIPO[o.tipo], marcado: o.marcada, onClick: () => vm.escolher(o) }))} />
             </Propriedade>
+            {vm.norma && (
+              <Propriedade icone="clipe" rotulo="PDF da norma">
+                <span className="ini-destino">
+                  {vm.pdf && <span>{vm.pdf.nome}</span>}
+                  <label className="btn btn-outline">
+                    <Icone nome="upload" />{vm.pdf ? 'Trocar' : 'Anexar o PDF'}
+                    <input type="file" accept=".pdf,application/pdf" className="sr-only" onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void vm.escolherPdf(f); }} />
+                  </label>
+                  {vm.pdf && <button type="button" className="btn btn-ghost" onClick={vm.tirarPdf}><Icone nome="x" />Tirar</button>}
+                </span>
+              </Propriedade>
+            )}
             {vm.tipo === 'reuniao' && (
               <Propriedade icone="calendar" rotulo="Dia e hora">
                 <span className="tdl-prazo-campos">
@@ -56,9 +71,11 @@ export function NovoComunicado({ fechar, tipo = 'aviso' }: { fechar: () => void;
               </span>
             </Propriedade>
             {vm.podePedirConfirmacao && <label className="tdl-ja-fazendo"><input type="checkbox" checked={vm.pedeConfirmacao} onChange={e => vm.setPedeConfirmacao(e.target.checked)} />Pedir confirmação (cada um marca "Recebido")</label>}
-            <Propriedade icone="link" rotulo="Link">
-              <input type="url" value={vm.link} onChange={e => vm.setLink(e.target.value)} placeholder={vm.tipo === 'estudo' ? 'O link do estudo (https://…)' : 'Opcional (https://…)'} aria-label="Link" />
-            </Propriedade>
+            {vm.temLink && (
+              <Propriedade icone="link" rotulo="Link">
+                <input type="url" value={vm.link} onChange={e => vm.setLink(e.target.value)} placeholder={vm.tipo === 'estudo' ? 'O link do estudo (https://…)' : 'Opcional (https://…)'} aria-label="Link" />
+              </Propriedade>
+            )}
           </div>
           <div className="field">
             <label htmlFor="ini-comunicado-texto">Texto</label>
@@ -136,6 +153,7 @@ export function NotificacoesDoInicio({ vm, mural, podeMexer }: { vm: ReturnType<
                 <Propriedade icone="clock" rotulo="Publicado"><span title={new Date(c.em).toLocaleString('pt-BR')}>{c.quandoFoi}</span></Propriedade>
                 {c.reuniao && <Propriedade icone="calendar" rotulo="Reunião"><b>{c.reuniao}</b></Propriedade>}
                 {c.link && <Propriedade icone="link" rotulo="Link"><a href={c.link} target="_blank" rel="noopener noreferrer">{c.link}</a></Propriedade>}
+                {c.anexo && <Propriedade icone="clipe" rotulo="PDF"><button type="button" className="ini-abrir" title="Baixar" onClick={() => void vm.baixarPdf(c.id)}>{c.anexo.nome}</button></Propriedade>}
                 {c.para && <Propriedade icone="usuario" rotulo="Para"><span>{c.destino}</span></Propriedade>}
                 {c.acompanha && <Propriedade icone="checkCircle" rotulo="Recebido"><span>{(c.recebidos || []).map(x => x.nome).join(', ') || 'Ninguém ainda'}{c.faltaReceber.length > 0 && <><br /><span className="fraco">Falta: {c.faltaReceber.join(', ')}</span></>}</span></Propriedade>}
               </div>
