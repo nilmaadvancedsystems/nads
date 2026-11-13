@@ -3,7 +3,7 @@
 // prioridade, o cliente (no lugar de Team) e o responsável. Em cima, quais (Minhas, Delegadas por mim, Concluídas; nos
 // Documentos, Recebidos, Enviados, Concluídos), a busca e os filtros (a prioridade, o cliente e a pessoa). O ViewModel é o da Central (useCentralDeTarefas), com
 // os grupos do print e, nos Documentos, só os documentos delegados.
-import { Icone, LogoExcel, MenuSuspenso, Segmentado, Vazio } from '@nads/ui';
+import { Icone, LogoExcel, MenuSuspenso, Segmentado, Vazio, type NomeIcone } from '@nads/ui';
 import { useState } from 'react';
 import { MenuDeFiltro } from '../../dp/MenuDeFiltro';
 import { SeloDaPrioridade, SeloDoStatus } from '../../delegador/partes/SelosDaTarefa';
@@ -13,6 +13,7 @@ import { Foto } from './PainelDoInicio';
 
 const TOM: Record<string, 'warn' | 'info' | 'neutral' | 'ok'> = { pendente: 'warn', andamento: 'info', pausada: 'neutral', concluida: 'ok', cancelada: 'neutral' };
 const ROTULO_DOS_DOCUMENTOS: Record<AbaDaCentral, string> = { minhas: 'Recebidos', delegadas: 'Enviados', concluidas: 'Concluídos' };
+const ICONE_DA_LATERAL: Record<AbaDaCentral, NomeIcone> = { minhas: 'caixaEntrada', delegadas: 'aviao', concluidas: 'checkCircle' };
 
 /** o filtro por cliente (Vitor, 13/11/2026: "Coloca filtro por cliente"): o menu com a busca, como o cliente da comissão */
 function FiltroDeCliente({ valor, mudar, opcoes }: { valor: string; mudar: (v: string) => void; opcoes: readonly string[] }) {
@@ -47,11 +48,13 @@ function FiltroDeCliente({ valor, mudar, opcoes }: { valor: string; mudar: (v: s
 
 export function ListaDoInicio({ documentos = false, abrir, comFoto }: { documentos?: boolean; abrir: (id: string) => void; comFoto: (p: { uid: string; nome: string }) => PessoaComFoto }) {
   const vm = useCentralDeTarefas('minhas', { agenda: true, documentos });
-  return (
+  // nas Tarefas, Minhas tarefas / Delegadas por mim / Concluídas num menu lateral (Vitor, 13/11/2026: "Abre um menu lateral, minhas
+  // tarefas/Delegadas"); nos Documentos, continuam em cima
+  const lista = (
     <section className="ini-lista">
       <div className="tarefas-barra-topo">
-        <Segmentado valor={vm.aba} onMudar={vm.mudarAba}
-          opcoes={vm.abas.map(a => ({ valor: a.id, rotulo: (documentos ? ROTULO_DOS_DOCUMENTOS[a.id] : a.rotulo) + (a.qtd ? ' (' + a.qtd + ')' : '') }))} />
+        {documentos && <Segmentado valor={vm.aba} onMudar={vm.mudarAba}
+          opcoes={vm.abas.map(a => ({ valor: a.id, rotulo: ROTULO_DOS_DOCUMENTOS[a.id] + (a.qtd ? ' (' + a.qtd + ')' : '') }))} />}
         {!vm.abaVazia && (
           <>
             <label className="busca-curta">
@@ -105,7 +108,7 @@ export function ListaDoInicio({ documentos = false, abrir, comFoto }: { document
                       <td className={l.atrasada ? 'tdl-atrasada' : undefined}>{l.prazoCurto || '—'}</td>
                       <td><SeloDoStatus rotulo={l.status.rotulo} tom={TOM[l.status.valor] || 'neutral'} /></td>
                       <td><SeloDaPrioridade valor={l.prioridade.valor} rotulo={l.prioridade.rotulo} /></td>
-                      <td title={l.clientes}>{l.cliente || '—'}{l.maisClientes ? <span className="fraco"> +{l.maisClientes}</span> : null}</td>
+                      <td title={l.clientes}>{l.cliente || '—'}{(l.maisClientes ?? 0) > 0 && <span className="fraco"> +{l.maisClientes}</span>}</td>
                       <td>
                         {vm.aba === 'minhas' ? l.pessoa
                           : <span className="ini-pessoa"><Foto p={comFoto(l.responsavel)} />{l.responsavel.nome}</span>}
@@ -119,5 +122,19 @@ export function ListaDoInicio({ documentos = false, abrir, comFoto }: { document
         </section>
       ))}
     </section>
+  );
+  if (documentos) return lista;
+  return (
+    <div className="ini-tarefas">
+      <nav className="subnav ini-lateral" aria-label="Tarefas">
+        {vm.abas.map(a => (
+          <button key={a.id} type="button" className={'subnav-item' + (a.ativa ? ' active' : '')} aria-current={a.ativa ? 'page' : undefined} onClick={() => vm.mudarAba(a.id)}>
+            <Icone nome={ICONE_DA_LATERAL[a.id]} /><span>{a.rotulo}</span>
+            {a.qtd > 0 && <span className="subnav-count">{a.qtd}</span>}
+          </button>
+        ))}
+      </nav>
+      {lista}
+    </div>
   );
 }

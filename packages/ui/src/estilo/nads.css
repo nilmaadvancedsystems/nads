@@ -6775,9 +6775,9 @@ td.fs-fat-sem{color:var(--ink-faint);}
 .ini-busca-pop .chip-f svg{flex:none;}
 .ini-busca-vazio{padding:4px 8px;margin:0;}
 .ini-novo > .imp-abas{margin-bottom:16px;}
-.ini-painel{display:grid;grid-template-columns:minmax(280px,1fr) minmax(360px,1.6fr);gap:20px;align-items:start;}
+.ini-painel{display:grid;grid-template-columns:minmax(280px,1fr) minmax(360px,1.6fr);gap:28px;align-items:start;}
 @media (max-width:720px){.ini-painel{grid-template-columns:1fr;}}
-.ini-coluna{display:flex;flex-direction:column;gap:20px;min-width:0;}
+.ini-coluna{display:flex;flex-direction:column;gap:28px;min-width:0;}
 .ini-coluna > .card{margin-bottom:0;}
 .ini-cartao .card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;}
 .ini-linha{display:flex;align-items:center;gap:8px;min-height:40px;padding:4px 0;border-bottom:1px solid var(--border);}
@@ -6832,3 +6832,7 @@ td.fs-fat-sem{color:var(--ink-faint);}
 .ini-marca button.subnav-caixa:hover{border-color:var(--success);}
 .ini-marca .subnav-caixa svg{width:12px;height:12px;}
 .ini-filtro-cliente{max-width:320px;overflow:hidden;}
+/* as Tarefas do Início novo: o menu lateral (Minhas tarefas, Delegadas por mim, Concluídas) e a lista ao lado */
+.ini-tarefas{display:grid;grid-template-columns:220px minmax(0,1fr);gap:24px;align-items:start;}
+.ini-lateral.subnav{min-height:0;padding:0 12px 0 0;}
+@media (max-width:760px){.ini-tarefas{grid-template-columns:1fr;}.ini-lateral.subnav{border-right:none;padding:0;}}
