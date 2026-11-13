@@ -6851,6 +6851,13 @@ td.fs-fat-sem{color:var(--ink-faint);}
 /* a data e a hora nos campos do navegador (13/11/2026: "a data e a hora pode ser input normal") */
 .tdl-prazo-escolhas input[type=date]{width:160px;}
 .tdl-prazo-escolhas input[type=time]{width:110px;}
+/* a data com o mesmo desenho dos outros campos (o navegador desenhava o dele) */
+.tdl-prazo-escolhas input[type=date]{border:1px solid var(--border);background:var(--input-bg);color:var(--ink);border-radius:6px;padding:5px 12px;
+  min-height:32px;font-size:var(--fs-14);line-height:20px;font-family:var(--font-body);box-shadow:var(--shadow-inset);color-scheme:light dark;}
+.tdl-prazo-escolhas input[type=date]:focus{outline:none;border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);}
+.tdl-prazo-escolhas.sem-animacao,.tdl-prazo-escolhas.sem-animacao > *{animation:none;}
+/* o Voltar no canto superior esquerdo da janela, antes do título */
+.registro-topo .registro-voltar{margin-left:-8px;padding-left:4px;padding-right:8px;flex:none;}
 /* os clientes em cápsula na janela da tarefa (13/11/2026: "Clientes, coloca em capsula") */
 .tdl-janela-nova .tdl-clientes{display:flex;flex-wrap:wrap;align-items:center;gap:6px;}
 .tdl-janela-nova .tdl-clientes .btn{min-height:28px;padding:2px 10px 2px 8px;border-radius:999px;font-size:var(--fs-13);gap:6px;}
@@ -6876,6 +6883,11 @@ p.tdl-cobranca{flex-direction:row;align-items:center;}
 .ini-sino{display:inline-flex;align-items:center;gap:4px;font-size:var(--fs-12);color:var(--warn);white-space:nowrap;}
 .ini-sino svg{width:14px;height:14px;flex:none;}
 .ini-pessoa-com-sino{display:inline-flex;align-items:center;gap:8px;min-width:0;}
+/* o botão de cobrar, leve (Vitor, 13/11/2026: "Melhora isso"): só o sino, sem caixa, apagado; acende em amarelo ao passar o mouse */
+.icon-btn.ini-sino-cobrar{width:24px;height:24px;border-color:transparent;background:transparent;color:var(--ink-faint);flex:none;}
+.icon-btn.ini-sino-cobrar svg{width:15px;height:15px;}
+.icon-btn.ini-sino-cobrar:hover:not(:disabled),.icon-btn.ini-sino-cobrar:focus-visible{background:var(--warn-soft);color:var(--warn);}
+tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{color:var(--ink-muted);}
 /* o cronômetro das delegadas (Início novo): o relógio pequeno e o tempo numa linha só; em andamento, o relógio pisca devagar
    (só a opacidade); pausada, fica parado. Pisca em qualquer nível de animação, porque diz a situação (Vitor, 13/11/2026: "em
    progresso o icone fica piscando, se ela pausar, para de piscar"); com "menos movimento" no sistema, fica parado */

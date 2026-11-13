@@ -339,9 +339,6 @@ function DocumentosPasso1({ vm }: { vm: Vm }) {
 
 /** o passo 2 dos documentos: para quem e, no requerer, o prazo (sem hora) e a prioridade */
 function PropriedadesDosDocumentos({ vm }: { vm: Vm }) {
-  const id = useId();
-  const hoje = d.prazoParaTela(d.hojeIso());
-  const amanha = d.prazoParaTela(tarefas.agenda.somarDias(d.hojeIso(), 1));
   const prioridade = vm.prioridades.find(p => p.valor === vm.rascunho.prioridade)?.rotulo || '';
   return (
     <div className="registro-props">
@@ -349,12 +346,9 @@ function PropriedadesDosDocumentos({ vm }: { vm: Vm }) {
       {vm.documentos.modo === 'requerer' && (
         <>
           <Propriedade icone="clock" rotulo="Prazo">
-            <span className="ini-prazo">
-              <span className="chip-row">
-                <button type="button" className={'chip-f' + (vm.prazoTexto === hoje ? ' on' : '')} aria-pressed={vm.prazoTexto === hoje} onClick={() => vm.setPrazo(vm.prazoTexto === hoje ? '' : hoje)}>Hoje</button>
-                <button type="button" className={'chip-f' + (vm.prazoTexto === amanha ? ' on' : '')} aria-pressed={vm.prazoTexto === amanha} onClick={() => vm.setPrazo(vm.prazoTexto === amanha ? '' : amanha)}>Amanhã</button>
-              </span>
-              <CampoData id={id + '-prazo'} rotulo="Prazo" valor={vm.prazoTexto} onMudar={vm.setPrazo} />
+            {/* a data no campo do navegador, sem o Hoje e o Amanhã (13/11/2026: "Tira esse hj e amanha... a data e a hora pode ser input normal") */}
+            <span className="tdl-prazo-escolhas sem-animacao">
+              <input type="date" value={d.prazoDaTela(vm.prazoTexto) || ''} aria-label="A data do prazo" onChange={e => vm.setPrazo(d.prazoParaTela(e.target.value))} />
             </span>
           </Propriedade>
           {vm.prazoInvalido && <p className="hint tdl-atrasada">Data incompleta ou que não existe.</p>}
@@ -473,6 +467,8 @@ export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
     <div className="modal-overlay">
       <div ref={janela} className="modal registro-novo tdl-janela-nova" role="dialog" aria-modal="true" aria-label={nome}>
         <header className="registro-topo">
+          {/* o Voltar sempre no canto superior esquerdo (Vitor, 13/11/2026: "Voltar sempre lado esquerdo superior, sempre! na aplicacao toda") */}
+          {docs && passo === 'tarefa' && <button type="button" className="btn btn-ghost registro-voltar" onClick={() => setPasso('cliente')}><Icone nome="chevronLeft" />Voltar</button>}
           <span className="registro-caminho"><b>{nome}</b></span>
           {vm.status && <SeloDoStatus rotulo={vm.status.rotulo} tom={vm.status.tom} />}
           {docs && <TesteDosDocumentos vm={vm} />}
@@ -498,7 +494,6 @@ export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
               <div className="ini-cliente-escolhido">
                 <Icone nome="briefcase" />
                 <span className="ini-empresa">{vm.clientes.map(nomeDoCliente).join(', ')}</span>
-                <button type="button" className="btn btn-ghost" onClick={() => setPasso('cliente')}><Icone nome="chevronLeft" />Voltar</button>
               </div>
               <PropriedadesDosDocumentos vm={vm} />
               <Descricao vm={vm} />

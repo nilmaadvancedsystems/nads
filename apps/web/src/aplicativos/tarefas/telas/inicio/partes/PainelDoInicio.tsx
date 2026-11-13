@@ -121,7 +121,7 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
                 <button type="button" className="ini-abrir" onClick={() => vm.abrir(t.id)}>{t.cliente ? <span className="ini-empresa">{t.cliente}</span> : t.titulo}</button>
                 {t.cliente && <><br /><span className="hint">{t.titulo}</span></>}
               </span>
-              {cobrarLigado && t.cobranca === 'cobrar' && <BotaoIcone pequeno icone="sino" titulo={'Cobrar uma atualização de ' + t.responsavel.nome} onClick={() => { void t.cobrar(); }} />}
+              {cobrarLigado && t.cobranca === 'cobrar' && <BotaoIcone pequeno className="ini-sino-cobrar" icone="sino" titulo={'Cobrar uma atualização de ' + t.responsavel.nome} onClick={() => { void t.cobrar(); }} />}
               {cobrarLigado && t.cobranca === 'esperando' && <span className="ini-sino" title="Você cobrou uma atualização: esperando a resposta"><Icone nome="sino" /></span>}
               <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
                 <SeloDoStatus rotulo={t.status.rotulo} tom={t.status.tom} />

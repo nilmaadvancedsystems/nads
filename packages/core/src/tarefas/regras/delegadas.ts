@@ -439,7 +439,8 @@ export function ultimoMovimento(t: Pick<TarefaDelegada, 'historico'>): Nota | nu
 // o expediente: a pausa sozinha no almoço e à noite (12/11/2026)
 // ---------------------------------------------------------------------------------------------------------------------
 // "a pessoa clica em Iniciar; o sistema pausa sozinho às 11:05 e despausa às 13:00; pausa de novo às 18:05 e despausa às
-// 07:00 do dia seguinte". O banco não muda: a tarefa segue Em andamento e a tela mostra Pausada nos intervalos; o tempo
+// 07:00 do dia seguinte". O horário de cada dia (13/11/2026): "Seg a quin: 07:00 as 11:05 13:00 ate 18:05 e sex 07:00 as 11:05 e
+// das 13:00 ate as 17:05"; "sabado e domingo nao funciona". O banco não muda: a tarefa segue Em andamento e a tela mostra Pausada nos intervalos; o tempo
 // trabalhado conta só o que caiu dentro do expediente. Os horários são os de Brasília (UTC−3, sem horário de verão desde
 // 2019), não os do computador.
 
@@ -459,12 +460,21 @@ function noDiaDeBrasilia(ms: number): { meiaNoite: number; minuto: number } {
   return { meiaNoite: meiaNoiteLocal - FUSO_DE_BRASILIA * MIN, minuto: Math.floor((local - meiaNoiteLocal) / MIN) };
 }
 
-/** O expediente do dia de Brasília que começa em "meiaNoite" (ms UTC): o da sexta acaba às 17:05, os outros às 18:05. */
+/** O dia da semana (0 = domingo) do dia de Brasília que começa em "meiaNoite" (ms UTC). */
+const diaDaSemana = (meiaNoite: number) => new Date(meiaNoite + FUSO_DE_BRASILIA * MIN).getUTCDay();
+
+/**
+ * O expediente do dia de Brasília que começa em "meiaNoite" (ms UTC): de segunda a quinta até 18:05, na sexta até 17:05, e no
+ * sábado e no domingo nada (o cronômetro não anda).
+ */
 export function expedienteDoDia(meiaNoite: number): readonly { de: number; ate: number }[] {
-  return new Date(meiaNoite + FUSO_DE_BRASILIA * MIN).getUTCDay() === 5 ? EXPEDIENTE_DE_SEXTA : EXPEDIENTE;
+  const dia = diaDaSemana(meiaNoite);
+  return dia === 0 || dia === 6 ? [] : dia === 5 ? EXPEDIENTE_DE_SEXTA : EXPEDIENTE;
 }
 
-/** Agora é intervalo (11:05–13:00, ou 18:05–07:00; na sexta, 17:05–07:00)? */
+const DIAS_DA_SEMANA = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+
+/** Agora é intervalo (11:05–13:00, ou 18:05–07:00; na sexta, 17:05–07:00; o sábado e o domingo inteiros)? */
 export function noIntervalo(agora: Date | string): boolean {
   const ms = msDe(agora);
   if (!Number.isFinite(ms)) return false;
@@ -472,19 +482,25 @@ export function noIntervalo(agora: Date | string): boolean {
   return !expedienteDoDia(meiaNoite).some(e => minuto >= e.de && minuto < e.ate);
 }
 
-/** A próxima virada (pausa ou volta) depois de agora: a tela se redesenha nela. */
+/** A próxima virada (pausa ou volta) depois de agora: a tela se redesenha nela (no fim de semana, a de segunda). */
 export function proximaVirada(agora: Date | string): Date {
   const ms = msDe(agora);
   const { meiaNoite } = noDiaDeBrasilia(ms);
-  const viradas = [0, 1].flatMap(dia => expedienteDoDia(meiaNoite + dia * 1440 * MIN).flatMap(e => [e.de, e.ate]).map(m => meiaNoite + (dia * 1440 + m) * MIN));
+  // até 8 dias à frente: pula o sábado e o domingo, que não têm expediente
+  const viradas = [0, 1, 2, 3, 4, 5, 6, 7].flatMap(dia => expedienteDoDia(meiaNoite + dia * 1440 * MIN).flatMap(e => [e.de, e.ate]).map(m => meiaNoite + (dia * 1440 + m) * MIN));
   return new Date(viradas.find(v => v > ms) as number);
 }
 
-/** A hora em que o intervalo de agora acaba ('13:00' ou '07:00'); fora do intervalo, ''. */
+/**
+ * Quando o intervalo de agora acaba: '13:00' ou '07:00' (hoje ou amanhã); depois do fim de semana, com o dia ('segunda 07:00');
+ * fora do intervalo, ''.
+ */
 export function voltaDoIntervalo(agora: Date | string): string {
   if (!noIntervalo(agora)) return '';
-  const { minuto } = noDiaDeBrasilia(msDe(proximaVirada(agora)));
-  return hhmm(minuto);
+  const ms = msDe(agora);
+  const volta = noDiaDeBrasilia(msDe(proximaVirada(agora)));
+  const dias = Math.round((volta.meiaNoite - noDiaDeBrasilia(ms).meiaNoite) / (1440 * MIN));
+  return (dias > 1 ? DIAS_DA_SEMANA[diaDaSemana(volta.meiaNoite)] + ' ' : '') + hhmm(volta.minuto);
 }
 
 /** A situação da tarefa na tela agora: a em andamento aparece Pausada nos intervalos (automatica), e diz quando volta. */
@@ -505,7 +521,7 @@ export function acoesNoHorario(t: Pick<TarefaDelegada, 'status'>, agora: Date | 
   return situacaoNoHorario(t, agora).automatica ? acoes.filter(a => a.id === 'concluir') : acoes;
 }
 
-/** Os minutos de expediente entre dois instantes (ms UTC): o que cai fora de 07:00–11:05 e 13:00–18:05 (na sexta, 17:05) não conta. */
+/** Os minutos de expediente entre dois instantes (ms UTC): o que cai fora de 07:00–11:05 e 13:00–18:05 (na sexta, 17:05; sábado e domingo, nada) não conta. */
 export function minutosDeExpediente(inicio: number, fim: number): number {
   if (!(fim > inicio)) return 0;
   let total = 0;

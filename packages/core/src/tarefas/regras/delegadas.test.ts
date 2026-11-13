@@ -399,12 +399,28 @@ describe('o expediente: pausa sozinha no almoço e à noite (12/11/2026)', () =>
     expect(d.noIntervalo(br(SEXTA, '17:05'))).toBe(true);
     expect(d.noIntervalo(br(SEXTA, '18:00'))).toBe(true);
     expect(d.noIntervalo(br(DIA, '17:30'))).toBe(false);
-    // a tela se redesenha às 17:05 e volta às 07:00 do dia seguinte (o fim de semana não mudou)
+    // a tela se redesenha às 17:05 e a tarefa volta só na segunda às 07:00 (o fim de semana não tem expediente)
     expect(d.proximaVirada(br(SEXTA, '16:00')).toISOString()).toBe(br(SEXTA, '17:05').toISOString());
-    expect(d.voltaDoIntervalo(br(SEXTA, '17:30'))).toBe('07:00');
+    expect(d.voltaDoIntervalo(br(SEXTA, '17:30'))).toBe('segunda 07:00');
     // o tempo trabalhado da sexta à tarde para nas 17:05: 13:00–17:05 = 245 min
     expect(d.minutosDeExpediente(br(SEXTA, '13:00').getTime(), br(SEXTA, '19:00').getTime())).toBe(245);
     expect(d.minutosDeExpediente(br(DIA, '13:00').getTime(), br(DIA, '19:00').getTime())).toBe(305);
+  });
+
+  it('sábado e domingo não funcionam (13/11/2026: "sabado e domingo nao funciona")', () => {
+    const SABADO = '2026-11-14', DOMINGO = '2026-11-15', SEGUNDA = '2026-11-16';
+    expect(d.noIntervalo(br(SABADO, '09:00'))).toBe(true);
+    expect(d.noIntervalo(br(DOMINGO, '14:00'))).toBe(true);
+    expect(d.noIntervalo(br(SEGUNDA, '07:00'))).toBe(false);
+    expect(d.proximaVirada(br(SABADO, '09:00')).toISOString()).toBe(br(SEGUNDA, '07:00').toISOString());
+    expect(d.voltaDoIntervalo(br(SABADO, '09:00'))).toBe('segunda 07:00');
+    // domingo à noite: a segunda é amanhã, sem o dia na frente
+    expect(d.voltaDoIntervalo(br(DOMINGO, '20:00'))).toBe('07:00');
+    expect(d.rotuloNoHorario({ status: 'andamento' }, br(SABADO, '09:00'))).toBe('Pausada até segunda 07:00');
+    // sexta 17:00 até segunda 08:00: 5 min na sexta e 60 na segunda; o fim de semana não conta
+    expect(d.minutosDeExpediente(br('2026-11-13', '17:00').getTime(), br(SEGUNDA, '08:00').getTime())).toBe(65);
+    // a semana inteira: 4 dias de 550 min (07:00–11:05 e 13:00–18:05) e a sexta com 490
+    expect(d.minutosDeExpediente(br(SEGUNDA, '00:00').getTime(), br('2026-11-23', '00:00').getTime())).toBe(4 * 550 + 490);
   });
   it('não depende do fuso do computador: 11:05 em Brasília é 14:05 UTC', () => {
     expect(d.noIntervalo('2026-11-12T14:04:00.000Z')).toBe(false);
