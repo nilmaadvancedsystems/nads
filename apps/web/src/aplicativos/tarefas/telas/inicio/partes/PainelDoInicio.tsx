@@ -5,7 +5,7 @@
 // próximas tarefas (a caixinha conclui) e as delegadas por mim (no lugar do acompanhamento de tempo). O "Por cliente" e os
 // "Comentários novos" saíram (Vitor, 13/11/2026: "Pode deletar essas duas sessoes").
 import { CalendarioDoMes, Icone, Vazio } from '@nads/ui';
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { SeloDoStatus } from '../../delegador/partes/SelosDaTarefa';
 import type { PessoaComFoto, useInicioNovo } from '../useInicioNovo';
 
@@ -26,6 +26,17 @@ function Cartao({ titulo, acao, children }: { titulo: ReactNode; acao?: ReactNod
 }
 
 const quantas = (n: number) => n + (n === 1 ? ' tarefa' : ' tarefas');
+
+/** O cronômetro da em andamento (horas:minutos trabalhados): se redesenha sozinho na virada de cada minuto, sem animação. */
+function Cronometro({ minutos }: { minutos: (agora: Date) => number }) {
+  const [agora, setAgora] = useState(() => new Date());
+  useEffect(() => {
+    const id = setTimeout(() => setAgora(new Date()), 60_000 - (Date.now() % 60_000) + 50);
+    return () => clearTimeout(id);
+  }, [agora]);
+  const m = minutos(agora);
+  return <span className="hint num" title="Tempo trabalhado desde que foi iniciada">{String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0')}</span>;
+}
 
 export function PainelDoInicio({ vm }: { vm: Vm }) {
   const c = vm.calendario;
@@ -85,10 +96,13 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
             <div key={t.id} className="ini-linha">
               <Foto p={t.responsavel} />
               <span className="ini-linha-texto">
-                <button type="button" className="ini-abrir" onClick={() => vm.abrir(t.id)}>{t.titulo}</button>
-                <br /><span className="hint">{t.responsavel.nome} · {t.movimento}</span>
+                <button type="button" className="ini-abrir" onClick={() => vm.abrir(t.id)}>{t.cliente || t.titulo}</button>
+                {t.cliente && <><br /><span className="hint">{t.titulo}</span></>}
               </span>
-              <SeloDoStatus rotulo={t.status.rotulo} tom={t.status.tom} />
+              <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                <SeloDoStatus rotulo={t.status.rotulo} tom={t.status.tom} />
+                {t.minutos && <Cronometro minutos={t.minutos} />}
+              </span>
             </div>
           )) : <Vazio compacto icone="aviao" titulo="Nada delegado em aberto" />}
         </Cartao>
