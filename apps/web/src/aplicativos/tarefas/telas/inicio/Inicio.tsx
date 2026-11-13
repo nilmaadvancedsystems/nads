@@ -4,7 +4,9 @@
 import { Alerta, BotaoFechar, BotaoIcone, Esqueleto, Icone, MenuSuspenso, useCarregando, useJanela } from '@nads/ui';
 import { useRef } from 'react';
 import { useSearchParams } from 'react-router';
+import { useNovidade } from '../../../../comum/novidades';
 import { PaginaDeTarefas } from '../delegador/PaginaDeTarefas';
+import { InicioNovo } from './InicioNovo';
 import { useInicio } from './useInicio';
 
 type Vm = ReturnType<typeof useInicio>;
@@ -71,7 +73,13 @@ function DadosDeTeste({ vm }: { vm: Vm }) {
   );
 }
 
+// o Início novo é uma novidade em teste (comum/novidades.ts): só no modo desenvolvedor até o Vitor aprovar; os outros
+// continuam neste, sem mudança nenhuma
 export function Inicio() {
+  return useNovidade('inicio-novo') ? <InicioNovo deHoje={<InicioDeHoje />} /> : <InicioDeHoje />;
+}
+
+function InicioDeHoje() {
   const vm = useInicio();
   useCarregando(vm.carregandoAvisos);
   // as tarefas na mesma tela (Vitor, 09/11/2026: "coloque o que está no menu lateral em uma tela só"); ?aba= diz por qual abrir
