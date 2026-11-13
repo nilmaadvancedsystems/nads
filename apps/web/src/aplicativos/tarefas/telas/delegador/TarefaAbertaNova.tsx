@@ -394,8 +394,7 @@ export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
     <div className="modal-overlay">
       <div ref={janela} className={'modal registro-novo' + (vm.ehNova ? '' : ' ini-tarefa')} role="dialog" aria-modal="true" aria-label={nome}>
         <header className="registro-topo">
-          {docs || deDocumentos ? <span className="registro-caminho"><b>{nome}</b></span>
-            : <span className="registro-caminho"><Icone nome="checklist" />Início<Icone nome="chevronRight" /><b>{nome}</b></span>}
+          <span className="registro-caminho"><b>{nome}</b></span>
           {vm.status && <SeloDoStatus rotulo={vm.status.rotulo} tom={vm.status.tom} />}
           {docs && <TesteDosDocumentos vm={vm} />}
           <BotaoFechar onClick={vm.cancelar} />

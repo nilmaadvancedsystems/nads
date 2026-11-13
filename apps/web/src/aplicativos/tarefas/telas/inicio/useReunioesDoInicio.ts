@@ -26,7 +26,6 @@ export function useNivelDoInicio() {
 }
 
 export function useReunioesDoInicio() {
-  const op = useOperador().operador as Operador;
   const { toast, aviso } = useRetorno();
   const nivel = useNivelDoInicio();
   const papel = r.papelPeloNivel(nivel);
@@ -48,6 +47,7 @@ export function useReunioesDoInicio() {
     return {
       ...x, statusAgora: status, rotulo: r.ROTULO_DO_STATUS[status], tom: r.TOM_DO_STATUS[status],
       quandoTexto: quandoTexto(x.quando), pedidaEm: quandoTexto(x.em), acoes: r.acoes(x, { uid, aprova }, agora),
+      duracaoTexto: r.rotuloDaDuracao(x.duracao), tipoRotulo: r.rotuloDoTipoDaReuniao(x.tipo),
       faltaComentar: r.faltaComentar(x).map(p => p.nome), souResponsavel: r.responsavel(x, uid),
       /** a minha resposta (true vai, false não vai, null ainda não respondi) e quem não respondeu */
       minhaPresenca: x.presencas.find(p => p.uid === uid)?.vai ?? null, semResposta: r.semResposta(x).map(p => p.nome),
@@ -64,6 +64,8 @@ export function useReunioesDoInicio() {
     /** quem pode ir (a equipe ativa, sem a própria pessoa) */
     equipe: ativos.filter(u => u.uid !== uid && !usuarios.ehContaReservada(u.email)).map(u => ({ uid: u.uid, nome: u.nome })),
     aceita: ACEITA_NA_REUNIAO,
+    tipos: r.TIPOS_DA_REUNIAO, duracoes: r.DURACOES.map(m => ({ valor: m, rotulo: r.rotuloDaDuracao(m) })),
+    problemaDaRecusa: r.problemaDaRecusa,
     problemaDoPedido: (p: PedidoDaTela) => r.problemaDoPedido(comNivel(p)),
     async pedir(p: PedidoDaTela): Promise<boolean> {
       try { await repo.pedir(comNivel(p), aprova); toast(aprova ? 'Reunião marcada: já aparece para todos.' : 'Reunião pedida: o Diretor vai aprovar ou não.'); return true; }

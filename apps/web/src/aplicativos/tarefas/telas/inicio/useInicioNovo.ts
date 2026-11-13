@@ -5,10 +5,12 @@
 // comunicação da equipe ("Reuniões, avisos vai ficar fixado nessa pagina, links de estudos da legislação… sem chats"). A tarefa
 // abre numa janela só, por cima de qualquer aba. As regras são do core (tarefas.agenda, tarefas.delegadas, o mural).
 import { tarefas, usuarios } from '@nads/core';
-import { useRetorno } from '@nads/ui';
+import { baixarBytes, useRetorno } from '@nads/ui';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useAcesso, useAvisos, useTarefasDelegadas } from '../../dados/repo';
+import { encolherAnexo } from '../../dados/encolherAnexo';
+import type { ArquivoParaAnexar } from '../../dados/tarefasDelegadas';
 import { useOperador, type Operador } from '../../casca/operador';
 import { useAgoraDoExpediente } from '../delegador/useAgoraDoExpediente';
 import { abaDaUrl, ABAS_DO_INICIO, type AbaDoInicio } from './abasDoInicio';
@@ -119,7 +121,7 @@ export function useInicioNovo() {
   const paraMim = (a: tarefas.AvisoDoEscritorio) => veTodos || tarefas.avisoParaMim(a, { uid, departamento: op.departamento });
   const comunicados = tarefas.ordenarAvisos(mural.avisos.filter(paraMim).filter(passaComunicado)).map(a => ({
     ...a,
-    tipoRotulo: tarefas.rotuloDoComunicado(a.tipo),
+    tipoRotulo: tarefas.rotuloDoTipoDoAviso(a),
     tituloNaLista: a.titulo || a.texto.split('\n')[0].slice(0, 80),
     quandoFoi: tarefas.quandoFoi(a.em, agoraIso),
     reuniao: a.quando ? new Date(a.quando).toLocaleString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '',
@@ -234,6 +236,13 @@ export function useInicioNovo() {
     escolherComunicado: setComunicado,
     /** as reuniões na lista das Notificações (a busca e a pílula Reuniões valem para elas) */
     reunioesNaLista: reunioes.lista.filter(x => (!q || (x.titulo + ' ' + x.pauta + ' ' + x.criadaPor.nome).toLowerCase().includes(q)) && filtros.every(f => f === 'reunioes')),
+    /** o PDF da norma da empresa */
+    async baixarPdf(id: string) {
+      const a = mural.avisos.find(x => x.id === id)?.anexo;
+      const bytes = await avisos.baixar(id).catch(() => null);
+      if (!a || !bytes) { toast('O PDF não foi encontrado.'); return; }
+      baixarBytes(bytes, a.nome, 'application/pdf');
+    },
     marcarRecebido: (id: string) => avisos.marcarRecebido(id, { uid, nome: meuNome }).then(() => toast('Marcado como recebido.'))
       .catch((e: unknown) => aviso({ tom: 'erro', titulo: 'Não deu para marcar', texto: e instanceof Error ? e.message : String(e) })),
   };
@@ -246,6 +255,8 @@ export function useNovoComunicado(fechar: () => void, tipoInicial: tarefas.TipoD
   const repo = useAvisos();
   const nivel = useNivelDoInicio();
   const [tipo, setTipo] = useState<tarefas.TipoDeComunicado>(tipoInicial);
+  const [jeito, setJeito] = useState<tarefas.JeitoDoAviso>('normal');
+  const [pdf, setPdf] = useState<ArquivoParaAnexar | null>(null);
   const [titulo, setTitulo] = useState('');
   const [link, setLink] = useState('');
   const [data, setData] = useState('');
@@ -261,10 +272,22 @@ export function useNovoComunicado(fechar: () => void, tipoInicial: tarefas.TipoD
   const uid = useTarefasDelegadas().eu()?.uid || '';
   const para: tarefas.DestinoDoAviso = destino === 'setor' ? { tipo: 'setor', setores } : destino === 'pessoas' ? { tipo: 'pessoas', pessoas } : { tipo: 'todos' };
   const dia = d.prazoDaTela(data);
-  const extras: tarefas.ExtrasDoComunicado = { tipo, titulo, link, quando: tipo === 'reuniao' && dia && hora ? dia + 'T' + hora : '', pedeConfirmacao, para };
+  const norma = tipo === 'aviso' && jeito === 'norma';
+  const extras: tarefas.ExtrasDoComunicado = { tipo, titulo, link: tipo === 'aviso' ? '' : link, quando: tipo === 'reuniao' && dia && hora ? dia + 'T' + hora : '', pedeConfirmacao, para, jeito, comPdf: norma && !!pdf };
+  // o menu do Tipo: os jeitos do aviso (o aviso não tem link; a norma leva o PDF), o estudo e o comunicado
+  const opcoes = [
+    ...tarefas.JEITOS_DO_AVISO.map(j => ({ tipo: 'aviso' as const, jeito: j.valor, rotulo: j.rotulo })),
+    ...tarefas.TIPOS_DE_COMUNICADO.filter(t => t.valor === 'estudo' || t.valor === 'geral').map(t => ({ tipo: t.valor, jeito: 'normal' as const, rotulo: t.rotulo })),
+  ];
   const problema = tarefas.problemaDoComunicado(texto, extras);
   return {
-    tipo, setTipo, tipos: tarefas.TIPOS_DE_COMUNICADO, rotuloDoTipo: tarefas.rotuloDoComunicado(tipo),
+    tipo, jeito, norma, pdf,
+    opcoes: opcoes.map(o => ({ ...o, marcada: o.tipo === tipo && (tipo !== 'aviso' || o.jeito === jeito) })),
+    escolher: (o: { tipo: tarefas.TipoDeComunicado; jeito: tarefas.JeitoDoAviso }) => { setTipo(o.tipo); setJeito(o.jeito); },
+    rotuloDoTipo: opcoes.find(o => o.tipo === tipo && (tipo !== 'aviso' || o.jeito === jeito))?.rotulo || tarefas.rotuloDoComunicado(tipo),
+    temLink: tipo !== 'aviso',
+    async escolherPdf(f: File) { setPdf(await encolherAnexo(f)); },
+    tirarPdf: () => setPdf(null),
     titulo, setTitulo, maiorTitulo: tarefas.MAIOR_TITULO_DO_COMUNICADO,
     link, setLink, data, setData, hora, setHora, texto, setTexto,
     faltam: tarefas.MAIOR_AVISO - tarefas.limparAviso(texto).length,
@@ -281,7 +304,7 @@ export function useNovoComunicado(fechar: () => void, tipoInicial: tarefas.TipoD
     async publicar() {
       if (problema) { aviso({ tom: 'erro', titulo: problema }); return; }
       setPublicando(true);
-      try { await repo.publicar(texto, op.nome, extras, uid || undefined); toast('Publicado nas Notificações.'); fechar(); }
+      try { await repo.publicar(texto, op.nome, extras, uid || undefined, norma && pdf ? pdf : undefined); toast('Publicado nas Notificações.'); fechar(); }
       catch (e) { aviso({ tom: 'erro', titulo: 'Não foi publicado', texto: e instanceof Error ? e.message : String(e) }); }
       finally { setPublicando(false); }
     },

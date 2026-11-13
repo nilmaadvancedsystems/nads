@@ -319,7 +319,7 @@ export function Executor() {
 
   return (
     <Casca sistema="Tarefas" temaNaGaveta={false} larga rotuloLateral="Etapas" lateral={semLateral ? 'nenhuma' : undefined} topoDireita={topo} acimaDoCabecalho={avisos}
-      empresa={{ codigo: (vm.empresa.codigo != null ? vm.empresa.codigo + ' · ' : '') + vm.empresa.nome, nome: '' }}
+      empresa={{ codigo: (vm.empresa.codigo != null ? vm.empresa.codigo + ' · ' : '') + vm.nomeNaTela, nome: '' }}
 
       versao={casca.versao} secoes={checklist} paginas={vm.tela && abasDaTela ? abasDaTela.paginas : []} titulo=""
       onSecao={abrirEtapa} onPagina={vm.tela && abasDaTela ? abasDaTela.abrir : () => {}} onInicio={vm.sair} onAplicativos={casca.inicio}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { avisoParaMim, comRecebido, faltaReceber, rotuloDoDestino, camposDoComunicado, juntarAvisos, limparAviso, linkValido, MAIOR_AVISO, ordenarAvisos, porcentagemDe, problemaDoAviso, problemaDoComunicado, proximasReunioes, resumoDoProgresso, type AvisoDoEscritorio, type ExtrasDoComunicado } from './inicio';
+import { avisoParaMim, comRecebido, faltaReceber, rotuloDoDestino, camposDoComunicado, juntarAvisos, limparAviso, linkValido, MAIOR_AVISO, ordenarAvisos, porcentagemDe, problemaDoAviso, problemaDoComunicado, proximasReunioes, resumoDoProgresso, type AvisoDoEscritorio, type ExtrasDoComunicado, rotuloDoTipoDoAviso } from './inicio';
 
 describe('avisos do escritório', () => {
   it('limpa as pontas e as linhas em branco repetidas', () => {
@@ -95,5 +95,17 @@ describe('o aviso com destinatários e o Recebido', () => {
     expect(camposDoComunicado({ tipo: 'aviso', titulo: '', link: '', quando: '', pedeConfirmacao: true, para: { tipo: 'pessoas', pessoas: [{ uid: 'c', nome: 'Caio' }] } }))
       .toEqual({ pedeConfirmacao: true, para: { tipo: 'pessoas', pessoas: [{ uid: 'c', nome: 'Caio' }] } });
     expect(problemaDoComunicado('x', { tipo: 'aviso', titulo: '', link: '', quando: '', para: { tipo: 'setor', setores: [] } })).toMatch(/setor/);
+  });
+});
+
+describe('o jeito do aviso', () => {
+  const base = { tipo: 'aviso' as const, titulo: '', link: 'https://x.com', quando: '' };
+  it('a norma pede o PDF; o aviso não tem link', () => {
+    expect(problemaDoComunicado('x', { ...base, jeito: 'norma' })).toMatch(/PDF/);
+    expect(problemaDoComunicado('x', { ...base, jeito: 'norma', comPdf: true })).toBe('');
+    expect(camposDoComunicado({ ...base, jeito: 'datas' })).toEqual({ jeito: 'datas' });
+    expect(camposDoComunicado({ ...base, jeito: 'normal' })).toEqual({});
+    expect(rotuloDoTipoDoAviso({ jeito: 'norma' })).toBe('Norma da empresa');
+    expect(rotuloDoTipoDoAviso({ tipo: 'estudo' })).toBe('Estudo da legislação');
   });
 });
