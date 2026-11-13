@@ -309,6 +309,7 @@ export function criarRepoAreaClienteFirestore(banco: () => Firestore = bancoDoCl
     baixarComprovante: (token, id) => de(token).baixarComprovante(tk(token), id),
     baixarDocumentoDp: (token, id) => de(token).baixarDocumentoDp(tk(token), id),
     notasDoMes: (token, codigo, mes) => de(token).notasDoMes(tk(token), codigo, mes),
+    extratoDoMes: (token, codigo, mes) => de(token).extratoDoMes(tk(token), codigo, mes),
     pedirDanfe: (token, chave) => de(token).pedirDanfe(tk(token), chave),
   };
 }
