@@ -536,6 +536,33 @@ export const minutosTrabalhados = (t: Pick<TarefaDelegada, 'status' | 'historico
 export const TITULO_DO_PEDIDO = 'Documentos delegados';
 export const pedeDocumentos = (t: Pick<TarefaDelegada, 'tipo'>): boolean => t.tipo === 'documentos';
 
+/**
+ * Delegar documentos no Início novo (Vitor, 13/11/2026: "Primeira tela, pedir ou enviar?", "selecionar o cliente (Pode
+ * selecionar avulso)", "as pessoas"; "na próxima tela… não tem prazo… nem prioridade… descrição e anexos em link e arquivo").
+ * Pedir: quem recebe anexa e confirma (o tipo 'documentos'). Enviar: quem delega já manda os arquivos ou os links e quem
+ * recebe só confere e conclui (uma tarefa comum). O título é o do modo, sem prazo nem prioridade; uma tarefa para cada pessoa.
+ */
+export type ModoDosDocumentos = 'pedir' | 'enviar';
+export const TITULO_DO_PEDIDO_NOVO = 'Pedido de documentos';
+export const TITULO_DO_ENVIO = 'Envio de documentos';
+
+/** O rascunho no modo escolhido: o título e o tipo do modo; o prazo e a prioridade ficam de fora. */
+export function rascunhoDosDocumentos(r: Rascunho, modo: ModoDosDocumentos): Rascunho {
+  const resto: Rascunho = { ...r };
+  delete resto.tipo;
+  const base = { ...resto, prazo: '', prazoHora: '', prioridade: 'normal' as const, status: 'pendente' as const };
+  return modo === 'pedir' ? { ...base, titulo: TITULO_DO_PEDIDO_NOVO, tipo: 'documentos' } : { ...base, titulo: TITULO_DO_ENVIO };
+}
+
+/** O que falta para delegar os documentos (vazio = pode). O Enviar precisa de um arquivo ou de um link. */
+export function problemaDosDocumentos(o: { modo: ModoDosDocumentos | null; clientes: number; pessoas: number; anexos: number; links: number }): string {
+  if (!o.modo) return 'Escolha se vai pedir ou enviar os documentos.';
+  if (!o.clientes) return 'Escolha o cliente (ou um avulso).';
+  if (!o.pessoas) return 'Escolha para quem.';
+  if (o.modo === 'enviar' && !o.anexos && !o.links) return 'Anexe os arquivos ou cole o link do que vai enviar.';
+  return '';
+}
+
 /** O pedido de documentos com anexo e em aberto: quem recebeu já pode confirmar que anexou tudo. */
 export const podeConfirmarDocumentos = (t: Pick<TarefaDelegada, 'tipo' | 'anexos' | 'status'>): boolean => pedeDocumentos(t) && t.anexos.length > 0 && emAberto(t);
 

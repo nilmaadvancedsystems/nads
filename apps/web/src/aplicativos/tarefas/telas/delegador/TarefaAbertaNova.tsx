@@ -11,7 +11,8 @@ import { Link } from 'react-router';
 import { Propriedade } from '../financeiro/partes/Propriedade';
 import { LinhaDoTempoDaTarefa } from './partes/LinhaDoTempoDaTarefa';
 import { SeloDoStatus } from './partes/SelosDaTarefa';
-import { ClientesDaTarefa, EscolherPessoa, FicaComVoce } from './TarefaAberta';
+import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
+import { ClientesDaTarefa, EscolherPessoa, FicaComVoce, FotoDaPessoa } from './TarefaAberta';
 import { useTarefaAberta } from './useTarefaAberta';
 
 type Vm = ReturnType<typeof useTarefaAberta>;
@@ -135,15 +136,25 @@ function Anexos({ vm }: { vm: Vm }) {
 
 /** o passo 1 da tarefa nova: o cliente do menu (com a busca) ou o Avulso (o nome e o ✓); ou sem cliente */
 function QualCliente({ vm, seguir }: { vm: Vm; seguir: () => void }) {
+  return (
+    <div className="registro-corpo ini-qual-cliente">
+      <h2 className="ini-passo-titulo">Qual cliente vai ser essa tarefa?</h2>
+      <EscolherCliente vm={vm} depois={seguir} />
+      <button type="button" className="btn btn-ghost ini-sem-cliente" onClick={seguir}>Tarefa sem cliente<Icone nome="chevronRight" /></button>
+    </div>
+  );
+}
+
+/** o cliente do menu (com a busca) ou o Avulso (o nome e o ✓) */
+function EscolherCliente({ vm, depois }: { vm: Vm; depois: () => void }) {
   const [q, setQ] = useState('');
   const [avulso, setAvulso] = useState(false);
   const [nome, setNome] = useState('');
   const achadas = vm.achadasPara(q);
-  const escolher = (fechar: () => void, e: { codigo: number | null; nome: string }) => { fechar(); vm.adicionarCliente(e); setQ(''); seguir(); };
-  const doAvulso = () => { const n = nome.trim(); if (!n) return; vm.adicionarCliente({ codigo: null, nome: n }); seguir(); };
+  const escolher = (fechar: () => void, e: { codigo: number | null; nome: string }) => { fechar(); vm.adicionarCliente(e); setQ(''); depois(); };
+  const doAvulso = () => { const n = nome.trim(); if (!n) return; vm.adicionarCliente({ codigo: null, nome: n }); depois(); };
   return (
-    <div className="registro-corpo ini-qual-cliente">
-      <h2 className="ini-passo-titulo">Qual cliente vai ser essa tarefa?</h2>
+    <>
       <MenuSuspenso rotulo="Escolher o cliente" className="btn btn-outline ini-qual-menu" titulo="O cliente da tarefa" flutuante largura={420}
         conteudo={fechar => (
           <>
@@ -171,8 +182,76 @@ function QualCliente({ vm, seguir }: { vm: Vm; seguir: () => void }) {
           <BotaoIcone icone="check" titulo="Usar este nome" disabled={!nome.trim()} onClick={doAvulso} />
         </span>
       )}
-      <button type="button" className="btn btn-ghost ini-sem-cliente" onClick={seguir}>Tarefa sem cliente<Icone nome="chevronRight" /></button>
+    </>
+  );
+}
+
+// ---- delegar documentos (Vitor, 13/11/2026: "Primeira tela, pedir ou enviar?", "selecionar o cliente (Pode selecionar
+// avulso)", "as pessoas"; "na próxima tela… não tem prazo… nem prioridade… descrição e anexos em link e arquivo")
+
+const nomeDoCliente = (c: { codigo: number | null; nome: string }) => (c.codigo != null ? c.codigo + ' · ' : '') + c.nome;
+
+/** o cliente dos documentos (obrigatório, um só): escolhido, o nome com Trocar */
+function ClienteDosDocumentos({ vm }: { vm: Vm }) {
+  const c = vm.clientes[0];
+  if (!c) return <span className="ini-qual-cliente"><EscolherCliente vm={vm} depois={() => undefined} /></span>;
+  return (
+    <span className="ini-cliente-escolhido">
+      <span>{nomeDoCliente(c)}{c.codigo == null && <span className="fraco"> · avulso</span>}</span>
+      <button type="button" className="btn btn-ghost" onClick={() => vm.tirarCliente(0)}><Icone nome="repeat" />Trocar</button>
+    </span>
+  );
+}
+
+/** para quem: uma ou mais pessoas (cada uma recebe a sua tarefa) */
+function PessoasDosDocumentos({ vm }: { vm: Vm }) {
+  const escolhidas = vm.equipe.filter(p => vm.documentos.pessoas.includes(p.uid));
+  const rotulo = escolhidas.length
+    ? <span className="pessoa-escolhida">{escolhidas.length === 1 && <FotoDaPessoa p={escolhidas[0]} />}<span>{escolhidas.map(p => p.nome).join(', ')}</span></span>
+    : <span className="pessoa-escolhida fraco">Escolha as pessoas</span>;
+  return (
+    <MenuSuspenso rotulo={rotulo} flutuante className="btn btn-outline pessoa-botao" titulo="Para quem" dica="Uma ou mais pessoas"
+      conteudo={() => (
+        <div className="pessoa-lista" role="listbox" aria-multiselectable="true" aria-label="Para quem">
+          {vm.equipe.filter(p => !p.voce).map(p => {
+            const sim = vm.documentos.pessoas.includes(p.uid);
+            return (
+              <button key={p.uid} type="button" className="popover-item" role="option" aria-selected={sim} onClick={() => vm.documentos.alternarPessoa(p.uid)}>
+                <FotoDaPessoa p={p} />
+                <span className="popover-texto">{p.nome}</span>
+                {sim && <Icone nome="check" width={16} height={16} />}
+              </button>
+            );
+          })}
+        </div>
+      )} />
+  );
+}
+
+/** o passo 1 dos documentos: pedir ou enviar, o cliente e para quem */
+function DocumentosPasso1({ vm }: { vm: Vm }) {
+  const m = vm.documentos.modo;
+  return (
+    <div className="registro-corpo ini-qual-cliente">
+      <h2 className="ini-passo-titulo">Pedir ou enviar documentos?</h2>
+      <Segmentado<'' | tarefas.delegadas.ModoDosDocumentos> valor={m ?? ''} onMudar={v => { if (v) vm.documentos.escolherModo(v); }}
+        opcoes={[{ valor: 'pedir', rotulo: 'Pedir documentos' }, { valor: 'enviar', rotulo: 'Enviar documentos' }]} />
+      {m && <p className="registro-dica"><Icone nome="clipe" />{m === 'pedir' ? 'Quem recebe anexa os arquivos e confirma; a tarefa fica concluída.' : 'Você anexa os arquivos ou o link; quem recebe confere e conclui.'}</p>}
+      <div className="registro-props">
+        <Propriedade icone="briefcase" rotulo="Cliente"><ClienteDosDocumentos vm={vm} /></Propriedade>
+        <Propriedade icone="usuario" rotulo="Para quem"><PessoasDosDocumentos vm={vm} /></Propriedade>
+      </div>
     </div>
+  );
+}
+
+/** o ⚡ Dados de teste da janela (só no modo desenvolvedor): preenche com o exemplo, e o Criar não grava nada */
+function TesteDosDocumentos({ vm }: { vm: Vm }) {
+  const [dev] = useModoDesenvolvedor();
+  if (!dev) return null;
+  return (
+    <MenuSuspenso rotulo="Dados de teste" icone="zap" className="btn btn-outline" direita largura={260} titulo="Modo desenvolvedor · nada vai para o banco"
+      itens={[{ rotulo: 'Preencher com exemplo', icone: 'zap', marcado: vm.documentos.deTeste, onClick: vm.documentos.preencherExemplo }]} />
   );
 }
 
@@ -215,6 +294,8 @@ export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
   const so = !vm.podeMudar;
   // a tarefa nova começa pelo cliente (o passo 1); com o cliente escolhido (ou sem cliente), vai para o resto
   const [passo, setPasso] = useState<'cliente' | 'tarefa'>('cliente');
+  // os documentos no Início novo: a janela própria em dois passos (sem o título, o prazo e a prioridade)
+  const docs = vm.ehNova && vm.pedeDocumentos;
   const trocarCliente = () => { vm.clientes.forEach(() => vm.tirarCliente(0)); setPasso('cliente'); };
   const nome = vm.ehNova ? (vm.pedeDocumentos ? 'Delegar documentos' : 'Nova tarefa') : 'Tarefa ' + (vm.numero || '');
 
@@ -246,10 +327,43 @@ export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
         <header className="registro-topo">
           <span className="registro-caminho"><Icone nome="checklist" />Início<Icone nome="chevronRight" /><b>{nome}</b></span>
           {vm.status && <SeloDoStatus rotulo={vm.status.rotulo} tom={vm.status.tom} />}
+          {docs && <TesteDosDocumentos vm={vm} />}
           <BotaoFechar onClick={vm.cancelar} />
         </header>
         {vm.carregando ? <div className="registro-corpo"><Esqueleto linhas={6} /></div> : vm.sumiu ? (
           <div className="registro-corpo"><Vazio icone="checklist" titulo="Esta tarefa não está mais na sua lista" texto="Ela foi excluída ou delegada para outra pessoa." /></div>
+        ) : docs && passo === 'cliente' ? (
+          <>
+            <DocumentosPasso1 vm={vm} />
+            <footer className="registro-pe">
+              <span className="tarefas-barra-espaco" />
+              <button type="button" className="btn btn-outline" onClick={vm.cancelar}>Cancelar</button>
+              <button type="button" className="btn btn-primary" disabled={!!vm.documentos.faltaNoPasso1} title={vm.documentos.faltaNoPasso1 || undefined} onClick={() => setPasso('tarefa')}>
+                Continuar<Icone nome="chevronRight" />
+              </button>
+            </footer>
+          </>
+        ) : docs ? (
+          <>
+            <div className="registro-corpo">
+              <p className="registro-dica"><Icone nome="clipe" />{vm.documentos.modo === 'enviar' ? 'Anexe os arquivos ou cole o link do que vai enviar.' : 'Diga quais documentos precisa; quem receber anexa e confirma.'}</p>
+              <div className="ini-cliente-escolhido">
+                <Icone nome="briefcase" />
+                <span>{vm.clientes.map(nomeDoCliente).join(', ')}<span className="fraco"> · para {vm.equipe.filter(p => vm.documentos.pessoas.includes(p.uid)).map(p => p.nome).join(', ')}</span></span>
+                <button type="button" className="btn btn-ghost" onClick={() => setPasso('cliente')}><Icone nome="chevronLeft" />Voltar</button>
+              </div>
+              <Descricao vm={vm} />
+              <Anexos vm={vm} />
+              {vm.erro && <Alerta naLinha titulo={vm.erro} />}
+            </div>
+            <footer className="registro-pe">
+              <span className="tarefas-barra-espaco" />
+              <button type="button" className="btn btn-outline" onClick={vm.cancelar}>Cancelar</button>
+              <BotaoAcao className="btn btn-primary" carregando={vm.salvando} textoCarregando="Delegando" onClick={() => { void vm.salvar(); }}>
+                <Icone nome="check" />{vm.documentos.modo === 'enviar' ? 'Enviar documentos' : 'Pedir documentos'}
+              </BotaoAcao>
+            </footer>
+          </>
         ) : vm.ehNova && passo === 'cliente' ? (
           <>
             <QualCliente vm={vm} seguir={() => setPasso('tarefa')} />

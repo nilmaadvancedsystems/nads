@@ -65,6 +65,12 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
   // pessoa não mexe, segue a tarefa (de outra pessoa = ligado; a nova e a dela mesma = desligado)
   // (o pedido de documentos já abre delegando: é para outra pessoa anexar)
   const [delegarEscolhido, setDelegarEscolhido] = useState<boolean | null>(pedido ? true : null);
+  // delegar documentos no Início novo (13/11/2026): pedir ou enviar, o cliente obrigatório e uma ou mais pessoas (uma tarefa
+  // para cada); a janela antiga não escolhe o modo e segue como era
+  const [modoDocs, setModoDocs] = useState<tarefas.delegadas.ModoDosDocumentos | null>(null);
+  const [pessoasDocs, setPessoasDocs] = useState<string[]>([]);
+  // o ⚡ preencheu com o exemplo: o Criar não grava nada (modo desenvolvedor)
+  const [deTeste, setDeTeste] = useState(false);
 
   // a tarefa que chega do banco depois de aberta (a lista ainda carregava, ou outra pessoa mudou; 29/10/2026: "não salva
   // nada"): o formulário acompanha o banco nos campos que a pessoa não mexeu, e o que ela mudou fica por cima (30/10/2026:
@@ -92,7 +98,7 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
   // o que a pessoa mudou desde que abriu: é só isso que o Salvar grava
   const mudancas = ehNova ? {} : d.mudancasDoRascunho(inicial, final);
   const mudou = ehNova
-    ? !!(r.titulo.trim() !== inicial.titulo || r.descricao.trim() || r.clientes.length || r.responsavel || prazoTexto || r.prazoHora || pendentes.length || r.prioridade !== 'normal' || r.status !== 'pendente' || linksPendentes.length)
+    ? !!(r.titulo.trim() !== inicial.titulo || r.descricao.trim() || r.clientes.length || r.responsavel || prazoTexto || r.prazoHora || pendentes.length || r.prioridade !== 'normal' || r.status !== 'pendente' || linksPendentes.length || !!modoDocs || pessoasDocs.length)
     : !!tarefa && (Object.keys(mudancas).length > 0 || prazo === null);
   const podeMudar = ehNova || (!!tarefa && d.podeMudar(tarefa, uid));
   // a etapa delegada a esta pessoa (Vitor, 10/11/2026): abre só ela, com o resto da empresa bloqueado
@@ -181,6 +187,25 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
     /** o pedido de documentos: o aviso no alto da janela */
     pedeDocumentos: pedido || (!!tarefa && d.pedeDocumentos(tarefa)),
     souQuemFaz: !!tarefa && tarefa.responsavel.uid === uid,
+    /** delegar documentos no Início novo: o passo 1 (pedir ou enviar, o cliente, para quem) e o ⚡ */
+    documentos: {
+      modo: modoDocs,
+      escolherModo(m: tarefas.delegadas.ModoDosDocumentos) { setModoDocs(m); setR(x => d.rascunhoDosDocumentos(x, m)); setErro(''); },
+      pessoas: pessoasDocs,
+      alternarPessoa(u: string) { setPessoasDocs(p => (p.includes(u) ? p.filter(x => x !== u) : [...p, u])); setErro(''); },
+      /** o que falta no passo 1 (o arquivo e o link são do passo 2) */
+      faltaNoPasso1: d.problemaDosDocumentos({ modo: modoDocs, clientes: r.clientes.length, pessoas: pessoasDocs.length, anexos: 1, links: 1 }),
+      deTeste,
+      /** o ⚡ Dados de teste: preenche com o exemplo; nada vai para o banco */
+      preencherExemplo() {
+        setModoDocs('pedir');
+        setR(x => ({ ...d.rascunhoDosDocumentos(x, 'pedir'), clientes: [{ codigo: null, nome: 'Cliente de teste (EXEMPLO)' }], descricao: 'O extrato de outubro e as notas de entrada do mês (EXEMPLO)' }));
+        const outro = equipe.find(p => !p.voce) || equipe[0];
+        setPessoasDocs(outro ? [outro.uid] : []);
+        setDeTeste(true);
+        setErro('');
+      },
+    },
     async fazerAcao(status: tarefas.delegadas.Status) {
       if (!tarefa) return;
       try {
@@ -283,6 +308,26 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
       try { await repo.tirarLink(tarefa.id, url); } catch (e) { toast('Não tirei: ' + (e instanceof Error ? e.message : String(e))); }
     },
     async salvar() {
+      if (pedido && modoDocs) {
+        const problema = d.problemaDosDocumentos({ modo: modoDocs, clientes: r.clientes.length, pessoas: pessoasDocs.length, anexos: pendentes.length, links: linksPendentes.length });
+        if (problema) { setErro(problema); return; }
+        if (deTeste) { toast('Teste: nada foi gravado no banco.'); voltar(); return; }
+        const para = pessoasDocs.map(u => equipe.find(p => p.uid === u)).filter((p): p is (typeof equipe)[number] => !!p);
+        const feitos: string[] = [];
+        setOcupado('salvar');
+        try {
+          for (const p of para) {
+            const id = await repo.criar({ ...r, responsavel: { uid: p.uid, nome: p.nome }, status: 'pendente' }, pendentes);
+            for (const u of linksPendentes) await repo.fixarLink(id, u);
+            feitos.push(p.nome);
+          }
+          toast((modoDocs === 'pedir' ? 'Pedido delegado para ' : 'Documentos enviados para ') + feitos.join(', ') + '.');
+          criada(false);
+        } catch (e) {
+          setErro('Não delegei' + (feitos.length ? ' para todos (já foi para ' + feitos.join(', ') + ')' : '') + ': ' + (e instanceof Error ? e.message : String(e)));
+        } finally { setOcupado(''); }
+        return;
+      }
       if (prazo === null) { setErro('O prazo não é uma data válida (dd/mm/aaaa).'); return; }
       const problema = d.problemaDaTarefa(final);
       if (problema) { setErro(problema); setAba('tarefa'); return; }
