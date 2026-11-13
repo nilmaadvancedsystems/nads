@@ -248,7 +248,7 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
           if (id === 'confirmarTudo') { await repo.salvar(tarefa.id, { status: 'concluida' }); toast('Tarefa concluída.'); voltar(); }
           if (id === 'contestar') {
             // o que faltou vai no comentário (Vitor: "se faltou algo, pode contestar")
-            if (!parecer.trim()) { setErro('Escreva no comentário o que faltou e clique em Contestar.'); return; }
+            if (!parecer.trim()) { setErro('Escreva o que faltou e clique em Contestar.'); return; }
             if (!(await gravarParecer())) return;
             await repo.salvar(tarefa.id, { entrega: 'contestada' });
             toast('Contestado: volta para ' + tarefa.responsavel.nome + '.');

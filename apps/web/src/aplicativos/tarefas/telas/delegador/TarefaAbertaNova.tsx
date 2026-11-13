@@ -430,6 +430,13 @@ export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
           <>
             <div className="registro-corpo">
               {deDocumentos && <p className="registro-dica"><Icone nome="clipe" />{vm.documentos.situacao}</p>}
+              {/* o que faltou, para contestar o requerer (sem a conversa na janela, o motivo é escrito aqui; 13/11/2026) */}
+              {vm.documentos.acoes.some(a => a.id === 'contestar') && (
+                <div className="field">
+                  <label htmlFor="docs-faltou">O que faltou? (para contestar)</label>
+                  <textarea id="docs-faltou" rows={2} value={vm.parecer} maxLength={vm.maiorParecer} placeholder="Escreva o que faltou e clique em Contestar" onChange={e => vm.setParecer(e.target.value)} />
+                </div>
+              )}
               {vm.caminhoDaEtapa && <Link className="btn btn-primary" to={vm.caminhoDaEtapa}><Icone nome="play" />Abrir a etapa</Link>}
               {titulo}
               <Descricao vm={vm} />
