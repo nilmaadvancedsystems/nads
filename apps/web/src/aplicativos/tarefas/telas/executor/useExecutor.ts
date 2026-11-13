@@ -441,6 +441,8 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     bancosDaEmpresa,
     departamento: rotina.departamento,
     grupos, abrirGrupo,
+    /** o nome para mostrar: a razão social trocada no Cadastro › Empresa (13/11/2026), ou o nome */
+    nomeNaTela: empresa ? empresas.nomeParaMostrar(empresa) : '',
     empresa, competencia, periodo, meses, varios, rotuloCompetencia: t.rotuloDoPeriodo(meses.length ? meses : [competencia]),
     carregando: !carregada,
     etapas: rotina.etapas.map((e, i) => {

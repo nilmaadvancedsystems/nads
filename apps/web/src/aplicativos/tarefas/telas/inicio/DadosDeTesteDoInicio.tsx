@@ -2,10 +2,10 @@
 // (13/11/2026: "SEMPRE desenvolver formas de preenchimento de dados ficticios para meu teste"). E a saudação simulada: o turno,
 // a segunda-feira, o aniversário e o "Outra frase" ("No ⚡ Dados de teste, uma opção para simular hora, dia e aniversário").
 import { MenuSuspenso } from '@nads/ui';
-import type { useTesteDoInicio } from '../../dados/repo';
+import type { useInicio } from './useInicio';
 import { simularSaudacao, useSaudacaoSimulada } from './saudacaoSimulada';
 
-export function DadosDeTesteDoInicio({ teste: t }: { teste: ReturnType<typeof useTesteDoInicio> }) {
+export function DadosDeTesteDoInicio({ teste: t }: { teste: ReturnType<typeof useInicio>['teste'] }) {
   const s = useSaudacaoSimulada();
   const turno = (x: 'manha' | 'tarde' | 'noite') => () => simularSaudacao({ turno: s.turno === x ? undefined : x, troca: 0 });
   return (

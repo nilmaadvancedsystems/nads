@@ -210,6 +210,9 @@ export function repoDoCadastro(): empresas.cadastro.RepoCadastro {
     cadastro = noBanco
       ? empresas.cadastro.criarRepoCadastro(demo.portaCadastroComDemo(portaCadastroFirestore()), false)
       : empresas.cadastro.criarRepoCadastro(demo.portaCadastroComDemo(empresas.cadastro.portaCadastroMemoria()), true);
+    // a razão social trocada no Cadastro › Empresa (13/11/2026) vale para mostrar e buscar; a chave continua o nome
+    const c = cadastro;
+    empresas.usarRazoesSociais(nome => c.todos().porId.get(formatos.slug(nome))?.razaoSocial?.atual || '');
   }
   return cadastro;
 }
