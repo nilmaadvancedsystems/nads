@@ -150,8 +150,10 @@ a{color:var(--accent);}
 .emp-reg{font-size:var(--fs-12);color:var(--ink-muted);margin-top:1px;}
 
 /* ---------------------------------- app shell: cabeçalho + abas ---------------------------------- */
-#app{display:none;min-height:100vh;}
-#app.on{display:block;}
+#app{display:none;min-height:100vh;min-height:100dvh;}
+/* a página numa coluna que ocupa a tela toda: com pouco conteúdo, o rodapé fica no pé da tela, sem o vão enorme embaixo dele
+   (Vitor, 13/11/2026: "olha o tamanho desse footer, pelo amor de deus, deixa ele em uma altura fixa, em todo o nads") */
+#app.on{display:flex;flex-direction:column;}
 .gh-header{background:var(--header-bg);border-bottom:1px solid var(--border);position:relative;z-index:25;}
 /* tamanhos do cabeçalho do GitHub (AppHeader): 16px em volta, 64px de altura, o local em 14px, as abas com 48px */
 .gh-header-top{display:flex;align-items:center;gap:12px;padding:16px 16px 8px;min-height:56px;}
@@ -1660,8 +1662,13 @@ html.na-etapa .imp-aviso{top:calc(var(--vista-topo,0px) + 12px);}
 @media (max-width:599px){.imp-robo-meses,.imp-robo-atencao{padding-left:12px;}}
 
 /* o rodapé da Casca: depois de tudo, na largura toda (só se vê rolando até o fim); a logo oficial (o tigre) */
-.rodape{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;padding:10px 16px;border-top:1px solid var(--border);
-  font-size:var(--fs-12);line-height:20px;color:var(--ink-muted);}
+.rodape{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:nowrap;padding:0 16px;border-top:1px solid var(--border);
+  font-size:var(--fs-12);line-height:20px;color:var(--ink-muted);
+  /* altura fixa e sempre no pé (o #app é uma coluna da altura da tela) */
+  height:40px;flex:none;margin-top:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rodape > span{overflow:hidden;text-overflow:ellipsis;}
+/* a barra lateral ocupa a tela menos o cabeçalho e o rodapé: o rodapé fica à vista, sem rolar 40px a mais */
+#app:has(> .rodape) .subnav{min-height:calc(100vh - var(--hdr-h,113px) - 40px);min-height:calc(100dvh - var(--hdr-h,113px) - 40px);}
 /* no tema escuro, a logo com as cores invertidas (círculo preto, tigre branco), como o Vitor mandou */
 @media print{.rodape{display:none;}}
 
