@@ -11,6 +11,9 @@ import { useAcesso } from '../dados/repo';
 import { usePessoal } from '../telas/pessoal/contexto';
 import { useModoDesenvolvedor } from '../../../comum/modoDesenvolvedor';
 import { useNovidade } from '../../../comum/novidades';
+import { tarefas } from '@nads/core';
+import { abaDaUrl, ABAS_DO_INICIO } from '../telas/inicio/abasDoInicio';
+import { aplicarSimulacao, useSaudacaoSimulada } from '../telas/inicio/saudacaoSimulada';
 
 export function useCascaTarefas(app: IdAplicacao, pagina: string) {
   const navegar = useNavigate();
@@ -23,7 +26,9 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
   // o Fiscal com as páginas no alto, para a tabela usar a tela toda (Vitor, 09/11/2026: "quero colocar esse menu lateral, superior")
   // a Carteira também (Vitor, 12/11/2026: "coloque tudo do menu lateral, no superior"); quem ainda não tem a Carteira só tem
   // a tela "em desenvolvimento", sem abas. O Financeiro também (Vitor, 12/11/2026: "coloca o menu superior") e o DP ("para aumentar o espaço da tabela")
-  const comAbas = app === 'fiscal' || app === 'financeiro' || app === 'dp' || (app === 'carteira' && (a?.paginas.length ?? 0) > 1);
+  // o Início novo (só no modo desenvolvedor) também (Vitor, 13/11/2026: "Menu superior abaixo do cabeçalho!")
+  const inicioNovo = useNovidade('inicio-novo') && app === 'inicio';
+  const comAbas = inicioNovo || app === 'fiscal' || app === 'financeiro' || app === 'dp' || (app === 'carteira' && (a?.paginas.length ?? 0) > 1);
   // dentro da aba Ferramentas do Fiscal, as ferramentas ficam na barra lateral
   const ehFerramenta = (id: string) => FERRAMENTAS_DO_FISCAL.includes(id);
   const emFerramentas = comAbas && ehFerramenta(pagina);
@@ -36,14 +41,21 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
   const podeDev = op.desenvolvedor;
   useEffect(() => { if (dev && !podeDev) setDev(false); }, [dev, podeDev, setDev]);
   const { aviso } = useRetorno();
-  // o Início novo (só no modo desenvolvedor): o "Olá, Vitor." no lugar do título "Início" (Vitor, 13/11/2026: "Olá, Vitor. deixa no lugar do inicio")
-  const inicioNovo = useNovidade('inicio-novo');
+  // o Início novo (só no modo desenvolvedor): a saudação no lugar do título "Início" (Vitor, 13/11/2026: "Olá, Vitor. deixa no
+  // lugar do inicio"; "Fica variando, as frases"), a mesma frase dentro do turno; e as abas no alto ("Menu superior abaixo do
+  // cabeçalho!")
+  const simulada = useSaudacaoSimulada();
+  const daEquipe = acesso.equipe().lista.find(u => u.nome === op.nome);
+  const real = { agora: new Date(), aniversario: String((daEquipe && acesso.equipe().docs[daEquipe.uid]?.aniversario) || '') };
+  const s = dev ? aplicarSimulacao(real.agora, real.aniversario, simulada) : real;
+  const tituloDoInicio = inicioNovo ? tarefas.saudacao.saudacao({ nome: op.nome, quem: daEquipe?.uid || op.nome, agora: s.agora, aniversario: s.aniversario, troca: dev ? simulada.troca : 0, simulando: dev && Object.keys(simulada).length > 0 }) : '';
+  const abaDoInicio = abaDaUrl(new URLSearchParams(search).get('aba'));
   return {
     // a Tarefas não tem uma empresa aberta: a trilha fica só com o caminho (Vitor, 05/10/2026: sem o "Vitor · Sair da
     // conta" — sair fica no avatar)
     empresa: null,
     versao: VERSAO_SISTEMA,
-    titulo: app === 'inicio' && inicioNovo ? 'Olá, ' + op.nome.split(/[ .]/)[0] + '.' : a?.paginas.find(p => p.id === pagina)?.titulo || a?.nome || '',
+    titulo: inicioNovo ? tituloDoInicio : a?.paginas.find(p => p.id === pagina)?.titulo || a?.nome || '',
     // o Cadastro com as páginas em abas no alto (Empresas, Usuários, Configurações; Vitor, 05/10/2026), sem a barra lateral
     comAbas,
     /** sem a barra lateral: as abas no alto dão conta (só a aba Ferramentas do Fiscal tem barra) */
@@ -52,12 +64,12 @@ export function useCascaTarefas(app: IdAplicacao, pagina: string) {
     semTitulo: app === 'fiscal' && ['relatorio-simples', 'relatorio-presumido', 'reinf'].includes(pagina),
     // os blocos com nome (as Configurações: Cadastro e Admin; 28/10/2026): o nome em cima da primeira página de cada um
     secoes: comAbas && !emFerramentas ? [] : (a?.paginas || []).filter(p => !comAbas || ehFerramenta(p.id)).map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone, marca: p.marca === 'fgts' ? p.marca : undefined, grupo: p.secao ? 1 + [...new Set(a?.paginas.map(x => x.secao))].indexOf(p.secao) : 1, titulo: p.secao, ativa: p.id === pagina, travada: !!p.emDesenvolvimento })),
-    paginas: comAbas ? [
+    paginas: inicioNovo ? ABAS_DO_INICIO.map(x => ({ id: x.id, rotulo: x.rotulo, icone: x.icone as NomeIcone, ativa: x.id === abaDoInicio })) : comAbas ? [
       ...(a?.paginas || []).filter(p => !ehFerramenta(p.id)).map(p => ({ id: p.id, rotulo: p.rotulo, icone: p.icone as NomeIcone, marca: p.marca === 'fgts' ? undefined : p.marca, ativa: p.id === pagina })),
       ...(app === 'fiscal' ? [{ id: 'ferramentas', rotulo: 'Ferramentas', icone: 'wrench' as NomeIcone, ativa: emFerramentas }] : []),
     ] : [],
     /** a aba do alto (o Cadastro): a página, mantendo a competência */
-    onPagina: (id: string) => navegar(caminhoDaPagina(app, id === 'ferramentas' ? FERRAMENTAS_DO_FISCAL[0] : id) + search),
+    onPagina: (id: string) => inicioNovo ? navegar(BASE + '/inicio?aba=' + id, { replace: true }) : navegar(caminhoDaPagina(app, id === 'ferramentas' ? FERRAMENTAS_DO_FISCAL[0] : id) + search),
     // o Início já tem o item dele no alto da gaveta
     // as Configurações saem da lista: ficam no pé da gaveta, só com o ícone da engrenagem (Vitor, 28/10/2026)
     aplicacoes: aplicacoesDe(op).filter(x => x.id !== 'inicio' && x.id !== 'cadastro' && x.id !== 'ferramentas').map(x => ({ id: x.id, nome: x.nome, icone: x.icone, grupo: x.grupo, marca: x.marca, ativo: x.id === app })),

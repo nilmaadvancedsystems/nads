@@ -11,23 +11,10 @@ import { useSearchParams } from 'react-router';
 import { useAcesso, useAvisos, useTarefasDelegadas } from '../../dados/repo';
 import { useOperador, type Operador } from '../../casca/operador';
 import { useAgoraDoExpediente } from '../delegador/useAgoraDoExpediente';
+import { abaDaUrl, ABAS_DO_INICIO, type AbaDoInicio } from './abasDoInicio';
 
 const d = tarefas.delegadas;
 const ag = tarefas.agenda;
-
-export type AbaDoInicio = 'painel' | 'tarefas' | 'documentos' | 'notificacoes';
-export const ABAS_DO_INICIO: readonly { id: AbaDoInicio; rotulo: string; icone: 'painel' | 'checklist' | 'clipe' | 'sino' }[] = [
-  { id: 'painel', rotulo: 'Painel', icone: 'painel' },
-  { id: 'tarefas', rotulo: 'Minhas tarefas', icone: 'checklist' },
-  { id: 'documentos', rotulo: 'Documentos', icone: 'clipe' },
-  { id: 'notificacoes', rotulo: 'Notificações', icone: 'sino' },
-];
-
-/** As abas de antes (?aba=minhas, delegadas, concluidas) caem em Minhas tarefas. */
-function abaDaUrl(v: string | null): AbaDoInicio {
-  if (v === 'painel' || v === 'tarefas' || v === 'documentos' || v === 'notificacoes') return v;
-  return v === 'minhas' || v === 'delegadas' || v === 'concluidas' ? 'tarefas' : 'painel';
-}
 
 /** Uma pessoa com a foto (a do Entregas) ou as iniciais. */
 export interface PessoaComFoto { uid: string; nome: string; foto: string | null; iniciais: string }

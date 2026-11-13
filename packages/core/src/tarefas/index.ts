@@ -51,4 +51,6 @@ export * as painel from './painel';
 export * as delegadas from './regras/delegadas';
 // o Início novo (13/11/2026): os grupos Hoje / Amanhã / Esta semana, o calendário, os comentários e as notificações
 export * as agenda from './regras/agenda';
+// a saudação do Início novo (13/11/2026): pelo turno, a segunda-feira, o aniversário e as frases personalizadas
+export * as saudacao from './regras/saudacao';
 export * from './regras/historicosDoContabil';
