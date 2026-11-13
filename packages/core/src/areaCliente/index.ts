@@ -21,3 +21,10 @@ export interface AreaDoCliente {
   criadoEm: string;
   atualizadoEm: string;
 }
+export * from './pessoal';
+export * from './dp';
+export * from './folhaLida';
+export * from './faturamento';
+export * from './notasDoMes';
+export * from './logo';
+export * from './pedidoDeDanfe';

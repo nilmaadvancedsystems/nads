@@ -3,15 +3,14 @@
 // 12/11/2026 ("melhorar o visual e as funcionalidades"): o arquivo entra arrastando; as páginas em miniatura à
 // esquerda e as opções com o botão à direita; o Juntar arrasta para mudar a ordem; e as novas (Comprimir, Numerar,
 // Imagem → PDF, o OCR).
-import { BotaoAcao, BotaoIcone, CampoArquivo, Icone, IconeDeArquivo, Segmentado, SoltarArquivos, Vazio, formatoPeloNome } from '@nads/ui';
+import { BlocosDeEscolha, BotaoAcao, BotaoIcone, CampoArquivo, Icone, IconeDeArquivo, Segmentado, SoltarArquivos, Vazio, formatoPeloNome } from '@nads/ui';
 import { ferramentas } from '@nads/core';
 import type { ReactNode } from 'react';
-import { COM_UM_PDF, FERRAMENTAS, useFerramentas, type Ferramenta, type ItemDaLista } from './useFerramentas';
+import { COM_UM_PDF, FERRAMENTAS, GRUPOS_DAS_FERRAMENTAS, useFerramentas, type Ferramenta, type ItemDaLista } from './useFerramentas';
 
 type Vm = ReturnType<typeof useFerramentas>;
 type Lista = Vm['juntar'];
 
-const ABAS = FERRAMENTAS.map(f => ({ valor: f.valor, rotulo: f.rotulo }));
 const AVISO_LOCAL = 'O arquivo é aberto aqui no navegador: nada sai do seu computador.';
 const plural = (n: number, um: string, varios: string) => n + ' ' + (n === 1 ? um : varios);
 
@@ -20,7 +19,7 @@ export function Ferramentas() {
   const icone = FERRAMENTAS.find(f => f.valor === vm.ferramenta)?.icone ?? 'upload';
   return (
     <div className="ferramentas">
-      <Segmentado<Ferramenta> valor={vm.ferramenta} onMudar={vm.setFerramenta} opcoes={ABAS} />
+      <BlocosDeEscolha<Ferramenta> valor={vm.ferramenta} onMudar={vm.setFerramenta} grupos={GRUPOS_DAS_FERRAMENTAS} rotulo="A ferramenta" />
       <p className="ferramentas-descricao"><Icone nome={icone} />{vm.descricao}</p>
       {COM_UM_PDF.includes(vm.ferramenta) && <ComPdf vm={vm} />}
       {vm.ferramenta === 'juntar' && <Juntar vm={vm} />}

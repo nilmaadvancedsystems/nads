@@ -5,6 +5,8 @@
 //     registra a de qualquer pessoa, em qualquer mês, já aprovada (a retroativa; 12/11/2026);
 //   - carteiraConfig/servicos: {lista: [{id, nome, percentual}], atualizadoEm, atualizadoPor} — os serviços comissionados e a %
 //     de cada um; todos leem, o Financeiro grava (12/11/2026);
+//   - carteiraConfig/porPessoa: {lista: [{uid, nome, percentual}], atualizadoEm, atualizadoPor} — a % própria da pessoa, para
+//     todos os serviços dela; só o Diretor (e o Dono) lê e grava (Vitor, 13/11/2026: "só os diretores podem ver");
 //   - usuarios/{uid}/carteiraLancamentos/{id}: {tipo, data, descricao, categoria, valor} — as finanças pessoais: só a dona
 //     (nem o admin, como as Anotações);
 //   - carteiraDocumentos/{id}: {uid, nome, tipo 'holerite'|'comprovante', competencia, valor, arquivo, tamanho, partes,
@@ -49,6 +51,10 @@ function servicosDoBanco(d: Record<string, unknown> | undefined): carteira.Servi
   const l = Array.isArray(d?.lista) ? (d!.lista as Record<string, unknown>[]) : null;
   if (!l) return carteira.servicosPadrao();
   return l.map(x => ({ id: texto(x.id), nome: texto(x.nome), percentual: numero(x.percentual) })).filter(x => x.id && x.nome);
+}
+function porPessoaDoBanco(d: Record<string, unknown> | undefined): carteira.PercentualDaPessoa[] {
+  const l = Array.isArray(d?.lista) ? (d!.lista as Record<string, unknown>[]) : [];
+  return l.map(x => ({ uid: texto(x.uid), nome: texto(x.nome), percentual: numero(x.percentual) })).filter(x => x.uid && x.percentual > 0);
 }
 /** os campos da comissão no banco (a descrição é o nome do serviço; o valor sai do valor do serviço × a %) */
 const camposDaComissao = (c: carteira.ComissaoParaSalvar) => ({
@@ -139,12 +145,31 @@ export function criarCarteiraFirestore(quem: QuemNaCarteira): RepoCarteira {
 
   // os serviços comissionados: um documento só, ouvido quando a tela pede
   let servicos = vazia<carteira.ServicoComissionado>();
+  let porPessoa = vazia<carteira.PercentualDaPessoa>();
   let ouvindoServicos = false;
   function ouvirServicos() {
     if (ouvindoServicos) return;
     ouvindoServicos = true;
-    onSnapshot(doc(db, 'carteiraConfig', 'servicos'), s => { servicos = { carregada: true, lista: servicosDoBanco(s.data()), erro: '' }; mudou(); },
-      err => { servicos = { carregada: true, lista: carteira.servicosPadrao(), erro: erroDe(err) }; mudou(); });
+    onSnapshot(doc(db, 'carteiraConfig', 'servicos'), s => {
+      servicos = { carregada: true, lista: servicosDoBanco(s.data()), erro: '' };
+      mudou();
+    }, err => {
+      servicos = { carregada: true, lista: carteira.servicosPadrao(), erro: erroDe(err) };
+      mudou();
+    });
+  }
+  // a % própria: outro documento, que só o Diretor lê (a tela só pede para quem é Diretor)
+  let ouvindoPorPessoa = false;
+  function ouvirPorPessoa() {
+    if (ouvindoPorPessoa) return;
+    ouvindoPorPessoa = true;
+    onSnapshot(doc(db, 'carteiraConfig', 'porPessoa'), s => {
+      porPessoa = { carregada: true, lista: porPessoaDoBanco(s.data()), erro: '' };
+      mudou();
+    }, err => {
+      porPessoa = { carregada: true, lista: [], erro: erroDe(err) };
+      mudou();
+    });
   }
 
   const precisa = () => { const q = quem(); if (!q) throw new Error('Entre com a conta do Entregas.'); return q; };
@@ -162,11 +187,15 @@ export function criarCarteiraFirestore(quem: QuemNaCarteira): RepoCarteira {
       else await addDoc(collection(db, 'carteiraComissoes'), { ...camposDaComissao(c), competencia: c.competencia, uid: q.uid, nome: q.nome, situacao: 'lancada', criadoEm: new Date().toISOString() });
     },
     servicos: () => { ouvirServicos(); return servicos; },
-    async salvarServicos(lista) {
+    porPessoa: () => { ouvirPorPessoa(); return porPessoa; },
+    meuUid: () => quem()?.uid ?? null,
+    async salvarServicos(lista, pessoas) {
       const q = precisa();
+      const em = new Date().toISOString();
       await setDoc(doc(db, 'carteiraConfig', 'servicos'), {
-        lista: lista.map(s => ({ id: s.id, nome: s.nome.trim(), percentual: centavos(s.percentual) })), atualizadoEm: new Date().toISOString(), atualizadoPor: q.nome,
+        lista: lista.map(s => ({ id: s.id, nome: s.nome.trim(), percentual: centavos(s.percentual) })), atualizadoEm: em, atualizadoPor: q.nome,
       });
+      if (pessoas) await setDoc(doc(db, 'carteiraConfig', 'porPessoa'), { lista: pessoas.map(p => ({ uid: p.uid, nome: p.nome, percentual: centavos(p.percentual) })), atualizadoEm: em, atualizadoPor: q.nome });
     },
     async registrarComissaoDe(para, c) {
       const q = precisa();

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { nomeDeOutroDocumento, preVerificarExtrato, preVerificarOfx } from './preVerificacao';
+import { bancoDoTexto, deOutroBanco, nomeDeOutroDocumento, preVerificarExtrato, preVerificarOfx } from './preVerificacao';
 import type { Lancamento } from '../tipos';
 
 const lanc = (...historicos: string[]) => historicos.map((historico, i) => ({ data: '2026-03-0' + (i + 1), historico, valor: i % 2 ? -10 : 10 })) as Lancamento[];
@@ -70,5 +70,21 @@ describe('o resto da porta de entrada', () => {
     expect(nomeDeOutroDocumento('APLICAÇÃO 03-2026.pdf')).toBe(true);
     expect(nomeDeOutroDocumento('03-2026.pdf')).toBe(false);
     expect(nomeDeOutroDocumento('Extrato Sicoob 03-2026.pdf')).toBe(false);
+  });
+});
+
+describe('o banco do arquivo pelo cabeçalho (12/11/2026)', () => {
+  it('diz o banco quando o topo cita um só', () => {
+    expect(bancoDoTexto('Relatório de movimentações CloudWalk Instituição de Pagamento Agência 0001 Saldo')).toBe('infinitepay');
+    expect(bancoDoTexto('EXTRATO CONSOLIDADO agosto/2026 Prezado Cliente, O Santander tem soluções financeiras')).toBe('santander');
+    expect(bancoDoTexto('Extrato de conta corrente Agência 1 Conta 2 Saldo anterior')).toBeNull();
+    expect(bancoDoTexto('Santander e Bradesco no mesmo cabeçalho')).toBeNull();
+    expect(bancoDoTexto('x '.repeat(400) + 'PIX recebido do Santander')).toBeNull();
+  });
+  it('outro banco só quando os dois são conhecidos e diferentes', () => {
+    expect(deOutroBanco('infinitepay', 'santander')).toBe(true);
+    expect(deOutroBanco('santander', 'santander')).toBe(false);
+    expect(deOutroBanco(undefined, 'santander')).toBe(false);
+    expect(deOutroBanco('santander', 'banco')).toBe(false);
   });
 });

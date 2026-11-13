@@ -13,6 +13,14 @@
 //      (G:\Meu Drive\<ano>\<cód> - <nome>\ÁREA DO CLIENTE\<MM>), registra em areaClienteRecebidos/{id}, devolve o recibo
 //      em areasCliente/{token}/envios/{id} e apaga o pedido. Até 50 por link por dia. Drive fora do ar: o envio espera.
 //   5. uma vez por dia apaga os espelhos órfãos (subcoleções de um token que não existe mais).
+//   6. o Registro (12/11/2026, junto do espelho de cada link): resumo/pessoal (os funcionários pelas guias do FGTS, o CPF
+//      mascarado) e os documentos do DP dos últimos meses (a lista dpArquivos; o arquivo lido da pasta do cliente no Drive
+//      deste PC) em documentos/{id} (tipo 'dp') com os bytes em documentos/{id}~{n}. As regras são do core
+//      (areaCliente/pessoal.ts, pelo robo/gerado/danfse.js).
+//   7. o Faturamento (12/11/2026): resumo/faturamento, os meses de cada empresa pelas notas emitidas no SIEG
+//      (siegSaidas, a mesma fonte da relação de faturamento do Fiscal; ouvidas a partir de janeiro do ano passado, para
+//      o acumulado do ano comparar com o ano passado) e o regime (o limite do Simples/MEI); e o painel do mês, pelo
+//      resumo das notas (siegNotas) das empresas com link: a venda por dia, os maiores clientes e as operações.
 //
 // As guias de DAS/DAE do espelho são do envios-do-nads.js (ids das-/dae-…): este robô nunca as apaga nem regrava; só
 // mexe nas guias com tipo 'FGTS'.
@@ -34,6 +42,13 @@ const ESPERA_ENTRE_EMPRESAS_MS = 1000;
 const ESPERA_ENTRE_LINKS_MS = 2000;
 const CLIENTES_VALEM_MS = 6 * 36e5;
 const MESES_DE_GUIAS = 12;
+// o Registro: os documentos do DP do mês atual e dos dois anteriores; os funcionários pelas guias de seis meses
+const MESES_DO_DP = 3;
+const MESES_DO_REGISTRO = 6;
+const MAIOR_ARQUIVO_DP = 5 * 1024 * 1024;
+const DP_VALE_MS = 10 * 60 * 1000;
+let geradoDoCore = null;
+const doCore = () => geradoDoCore || (geradoDoCore = require('./gerado/danfse'));
 const CORE = path.join(__dirname, '..', 'packages', 'core', 'src');
 
 const dormir = ms => new Promise(r => setTimeout(r, ms));
@@ -100,6 +115,10 @@ function iniciarAreaDoCliente(db, log) {
   // ---------- o que os ouvintes guardam ----------
   const links = new Map();            // token → { codigos, nome }
   const pedidosFgts = new Map();      // id → pedido pronto
+  const saidasSieg = new Map();       // '<código>_<AAAA-MM>' → as saídas do SIEG do mês (o Faturamento)
+  const notasDoMesSieg = new Map();   // '<código>_<AAAA-MM>' → o resumo das notas do mês (o painel do mês; a nota não fica)
+  const listaDeNotasSieg = new Map(); // '<código>_<AAAA-MM>' → as notas do mês em lista enxuta (o relatório do dia)
+  const logosDasEmpresas = new Map(); // código → a logo (data URL) que o gestor pôs no nads (logosDasEmpresas/{código})
   const cadastroPorCodigo = new Map();
   const cadastroPorSlug = new Map();
   const execucoes = new Map();        // 'codigo|competencia|departamento' → execução
@@ -169,6 +188,7 @@ function iniciarAreaDoCliente(db, log) {
   function esquecer(token) {
     for (const m of [hashes, pdfsNoEspelho]) for (const k of [...m.keys()]) if (k.startsWith(token + '/')) m.delete(k);
     fgtsNoEspelho.delete(token);
+    dpNoEspelho.delete(token);
     historicoLido.delete(token);
   }
 
@@ -231,6 +251,161 @@ function iniciarAreaDoCliente(db, log) {
     return gravar(token, 'chamados/' + id, R.chamadoDoCliente(R.chamadoInterno(id, c)), 'chamado');
   }
 
+  // ---------- 6. o Registro ----------
+  const dpNoEspelho = new Map();      // token → Set(ids dos documentos do DP no espelho)
+  const dpDoMes = new Map();          // 'AAAA-MM' → { em, clientes } (a lista dpArquivos do mês)
+  const guiasLidas = new Map();       // 'origem|id|tamanho' → as guias do FGTS lidas daquele PDF
+  const folhasLidas = new Map();      // 'folha|id|tamanho' → { holerites, ferias } lidos daquele PDF (13/11/2026)
+
+  /**
+   * Os holerites e a previsão de férias de um PDF do DP (folhaLida.ts), lidos uma vez por arquivo. O CPF do holerite só
+   * fica nesta memória (serve para achar a pessoa); para o espelho vai o que a lista branca deixa.
+   */
+  async function folhaDoPdf(chave, bytes) {
+    if (folhasLidas.has(chave)) return folhasLidas.get(chave);
+    let lido = { holerites: [], ferias: null };
+    try {
+      const P = doCore();
+      const paginas = await P.itensDoPdf(new Uint8Array(bytes));
+      lido = { holerites: P.holeritesDasPaginas(paginas), ferias: P.feriasDasPaginas(paginas) };
+    } catch (e) { log('Registro: não li a folha ' + chave + ' -', e.message); }
+    folhasLidas.set(chave, lido);
+    return lido;
+  }
+
+  async function arquivosDoDp(mes) {
+    const c = dpDoMes.get(mes);
+    if (c && Date.now() - c.em < DP_VALE_MS) return c.clientes;
+    let clientesDoMes = {};
+    try { const s = await db.collection('dpArquivos').doc(mes).get(); clientesDoMes = (s.exists && s.get('clientes')) || {}; } catch (e) { log('Registro: dpArquivos/' + mes + ' não veio -', e.message); }
+    dpDoMes.set(mes, { em: Date.now(), clientes: clientesDoMes });
+    return clientesDoMes;
+  }
+
+  /** As guias do FGTS de um PDF (o "Detalhe da Guia Emitida"), lidas uma vez por arquivo. */
+  async function guiasDoPdf(chave, bytes) {
+    if (guiasLidas.has(chave)) return guiasLidas.get(chave);
+    let guias = [];
+    try {
+      const P = doCore();
+      guias = P.guiasDoFgtsDasLinhas(P.linhasDaGuiaDoFgts(await P.itensDoPdf(new Uint8Array(bytes))));
+    } catch (e) { log('Registro: não li a guia do FGTS ' + chave + ' -', e.message); }
+    guiasLidas.set(chave, guias);
+    return guias;
+  }
+
+  /** O id do documento no espelho, a partir do id do arquivo no Drive (só letras, números, - e _). */
+  const idDoDocumentoDp = i => 'dp-' + String(i).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 120);
+  /** Quantos pedaços de base64 (como os do PDF da guia) o arquivo de tantos bytes dá. */
+  const pedacosDe = bytes => { const t = Math.floor(R.PEDACO_PDF / 4) * 4; return Math.max(1, Math.ceil((4 * Math.ceil(bytes / 3)) / t)); };
+
+  async function apagarDocumentoDp(token, id) {
+    const col = espelhoDe(token).collection('documentos');
+    const pedacos = await col.where('de', '==', id).select().get();
+    await Promise.all(pedacos.docs.map(d => d.ref.delete()));
+    await col.doc(id).delete();
+    hashes.delete(token + '/documentos/' + id);
+  }
+
+  /**
+   * O Registro do link: os funcionários pelas guias do FGTS (as do robô do FGTS e as da pasta FGTS do Drive) e os
+   * documentos do DP dos últimos meses. Grava só o que mudou; o arquivo só é lido do Drive quando muda (o tamanho).
+   */
+  async function espelharPessoal(token, link, empresas, hoje) {
+    const P = doCore();
+    let gravados = 0;
+    // os funcionários: as guias do robô do FGTS (pedidosFgts, com o PDF no banco)
+    const guias = [];
+    for (const g of R.guiasDoFgtsDoLink([...pedidosFgts.values()], link.codigos, hoje, MESES_DO_REGISTRO).filter(x => x.temPdf)) {
+      const chave = 'fgts|' + g.id + '|' + R.assinaturaDoPdf(g);
+      if (!guiasLidas.has(chave)) {
+        const arq = await db.collection('pedidosFgts').doc(g.id).collection('arquivo').doc('pdf').get().catch(() => null);
+        const b64 = arq && arq.exists ? arq.get('base64') : '';
+        if (!b64) { guiasLidas.set(chave, []); continue; }
+        await guiasDoPdf(chave, Buffer.from(b64, 'base64'));
+      }
+      guias.push(...guiasLidas.get(chave));
+    }
+    // os documentos do DP dos últimos meses, de cada empresa do link
+    const meses = Array.from({ length: MESES_DO_DP }, (_, k) => R.competenciaDe(new Date(hoje.getFullYear(), hoje.getMonth() - k, 1)));
+    const docs = [];
+    for (const mes of meses) {
+      const clientesDoMes = await arquivosDoDp(mes);
+      for (const e of empresas) {
+        const lista = (clientesDoMes[String(e.codigo)] || {}).arquivos || [];
+        for (const a of lista) {
+          if (!a || !a.i || !a.n || !P.ehDoDp(String(a.c || ''))) continue;
+          const pasta = pastaDoCliente(mes.slice(0, 4), e.codigo, e.nome);
+          docs.push({ id: idDoDocumentoDp(a.i), nome: String(a.n).slice(0, 200), pasta: String(a.c), categoria: P.categoriaDoArquivoDp(String(a.n), String(a.c)), competencia: mes,
+            tamanho: Number(a.s) || 0, arquivo: path.join(pasta, ...String(a.c).split('/'), String(a.n)) });
+        }
+      }
+    }
+    // as guias da pasta FGTS do Drive (o Detalhe da Guia, quando o DP salvou lá)
+    for (const d of docs.filter(x => x.categoria === 'fgts' && /\.pdf$/i.test(x.nome) && x.tamanho <= MAIOR_ARQUIVO_DP)) {
+      const chave = 'drive|' + d.id + '|' + d.tamanho;
+      if (!guiasLidas.has(chave)) {
+        try { await guiasDoPdf(chave, fs.readFileSync(d.arquivo)); } catch (e) { guiasLidas.set(chave, []); }
+      }
+      guias.push(...guiasLidas.get(chave));
+    }
+    // (13/11/2026) a folha de verdade: os holerites (a folha e os recibos de salário) e a previsão de férias do DP
+    // completam o que as guias dão; sem eles, fica a estimativa pelas guias
+    const holerites = [];
+    const feriasDaFolha = [];
+    for (const d of docs.filter(x => ['folha', 'recibo', 'ferias'].includes(x.categoria) && /\.pdf$/i.test(x.nome) && x.tamanho <= MAIOR_ARQUIVO_DP)) {
+      const chave = 'folha|' + d.id + '|' + d.tamanho;
+      if (!folhasLidas.has(chave)) {
+        let bytes;
+        try { bytes = fs.readFileSync(d.arquivo); } catch (e) { continue; } // ainda não sincronizou neste PC
+        await folhaDoPdf(chave, bytes);
+      }
+      const lido = folhasLidas.get(chave);
+      if (d.categoria !== 'ferias') holerites.push(...lido.holerites);
+      if (lido.ferias) feriasDaFolha.push(lido.ferias);
+    }
+    const reg = P.registroComAFolha(P.registroDasGuias(guias), holerites, feriasDaFolha);
+    const vivos = new Set();
+    for (const d of docs) {
+      if (vivos.has(d.id)) continue;
+      const doc = { tipo: 'dp', id: d.id, nome: d.nome, categoria: d.categoria, competencia: d.competencia, tamanho: d.tamanho,
+        funcionario: P.donoDoArquivo(d.nome, reg.funcionarios), partes: d.tamanho > MAIOR_ARQUIVO_DP ? 0 : pedacosDe(d.tamanho) };
+      const ref = espelhoDe(token).collection('documentos').doc(d.id);
+      const chave = token + '/documentos/' + d.id;
+      if (await hashAtual(ref, chave) === R.hashDoEspelho(doc)) { vivos.add(d.id); continue; }
+      if (doc.partes) {
+        let bytes;
+        try { bytes = fs.readFileSync(d.arquivo); } catch (e) { continue; } // ainda não sincronizou neste PC: tenta na próxima volta
+        doc.tamanho = bytes.length;
+        if (bytes.length > MAIOR_ARQUIVO_DP) doc.partes = 0;
+        else {
+          const pedacos = R.pedacosDoPdf(bytes.toString('base64'));
+          doc.partes = pedacos.length;
+          const col = espelhoDe(token).collection('documentos');
+          for (const pd of pedacos) await col.doc(d.id + '~' + pd.n).set(R.conferirListaBranca('pedacoDp', { base64: pd.base64, n: pd.n, total: pd.total, de: d.id }));
+          const velhos = await col.where('de', '==', d.id).select().get();
+          await Promise.all(velhos.docs.filter(x => Number(x.id.split('~')[1]) >= pedacos.length).map(x => x.ref.delete()));
+        }
+      }
+      if (await gravar(token, 'documentos/' + d.id, doc, 'documentoDp')) gravados++;
+      vivos.add(d.id);
+    }
+    // os que saíram (o mês ficou velho, o arquivo foi tirado da pasta)
+    let antes = dpNoEspelho.get(token);
+    if (!antes) antes = new Set((await espelhoDe(token).collection('documentos').where('tipo', '==', 'dp').select().get()).docs.map(x => x.id));
+    for (const id of antes) if (!vivos.has(id)) await apagarDocumentoDp(token, id);
+    dpNoEspelho.set(token, vivos);
+    // o resumo do pessoal: só quando tem funcionário ou documento (sem nada, a aba nem aparece para o cliente)
+    if (reg.funcionarios.length || vivos.size) {
+      // (13/11/2026) e a folha mês a mês pelas mesmas guias: o custo da folha no Registro
+      if (await gravar(token, 'resumo/pessoal', { funcionarios: reg.funcionarios, competencia: reg.competencia, total: reg.total, historico: P.historicoComAFolha(P.historicoDaFolha(guias), holerites), atualizadoEm: hoje.toISOString() }, 'pessoal')) gravados++;
+    } else if (await hashAtual(espelhoDe(token).collection('resumo').doc('pessoal'), token + '/resumo/pessoal')) {
+      await espelhoDe(token).collection('resumo').doc('pessoal').delete();
+      hashes.set(token + '/resumo/pessoal', '');
+    }
+    return gravados;
+  }
+
   async function espelhar(token) {
     const link = links.get(token);
     if (!link) return;
@@ -257,6 +432,45 @@ function iniciarAreaDoCliente(db, log) {
       await dormir(ESPERA_ENTRE_EMPRESAS_MS / 4);
     }
     await limparGuiasDoFgts(token, new Set(guias.map(g => g.id)));
+
+    // o Registro (os funcionários e os documentos do DP): um erro aqui não para o resto do espelho
+    try { gravados += await espelharPessoal(token, link, empresas, hoje); } catch (e) { log('Registro: ' + (link.nome || token.slice(0, 6)) + ' falhou -', e.message); }
+    // o Faturamento: os 12 meses de cada empresa pelas notas emitidas no SIEG; sem nenhum mês, o resumo sai
+    try {
+      const P = doCore();
+      const fat = P.faturamentoDoCliente(empresas.map(e => ({ codigo: e.codigo, nome: e.nome, regime: e.regime || '' })), P.competenciasDoFaturamento(hoje),
+        (c, m) => saidasSieg.get(c + '_' + m), hoje, (c, m) => notasDoMesSieg.get(c + '_' + m));
+      const ref = espelhoDe(token).collection('resumo').doc('faturamento');
+      // o que entrou no banco em cada mês, pelos extratos que o escritório leu (13/11/2026); sem acesso, o faturamento segue sem
+      const banco = fat ? await entradasDoBanco(empresas) : new Map();
+      const fatComBanco = fat && banco.size ? P.comOBanco(fat, c => banco.get(c) || null) : fat;
+      if (fatComBanco) { if (await gravar(token, 'resumo/faturamento', fatComBanco, 'faturamento')) gravados++; }
+      else if (await hashAtual(ref, token + '/resumo/faturamento')) { await ref.delete(); hashes.set(token + '/resumo/faturamento', ''); }
+      // os lançamentos de cada mês com extrato (os últimos 6), um documento por empresa e mês (13/11/2026)
+      for (const emp of empresas) {
+        const lancs = lancamentosEmCache.get(emp.codigo);
+        if (!lancs) continue;
+        for (const [mes, l] of lancs) {
+          if (await gravar(token, 'resumo/extrato-' + emp.codigo + '-' + mes, { codigo: emp.codigo, competencia: mes, lancamentos: l.lancamentos, cortados: l.cortados, atualizadoEm: agora }, 'extratoLista')) gravados++;
+        }
+      }
+      // o relatório do dia: a lista das notas de cada mês, um documento por empresa e mês (resumo/notas-{código}-{mês})
+      for (const emp of empresas) {
+        for (const [k, l] of listaDeNotasSieg) {
+          if (!k.startsWith(emp.codigo + '_')) continue;
+          const mes = k.slice(k.indexOf('_') + 1);
+          if (await gravar(token, 'resumo/notas-' + emp.codigo + '-' + mes, { codigo: emp.codigo, competencia: mes, notas: l.notas, cortadas: l.cortadas, atualizadoEm: agora }, 'notasLista')) gravados++;
+        }
+      }
+    } catch (e) { log('Faturamento: ' + (link.nome || token.slice(0, 6)) + ' falhou -', e.message); }
+
+    // a logo da empresa (12/11/2026): a primeira empresa do link que tem logo no nads; sem nenhuma, a marca sai
+    try {
+      const comLogo = empresas.map(e => logosDasEmpresas.get(e.codigo)).find(Boolean);
+      const ref = espelhoDe(token).collection('resumo').doc('marca');
+      if (comLogo) { if (await gravar(token, 'resumo/marca', { logo: comLogo, atualizadoEm: agora }, 'marca')) gravados++; }
+      else if (await hashAtual(ref, token + '/resumo/marca')) { await ref.delete(); hashes.set(token + '/resumo/marca', ''); }
+    } catch (e) { log('Logo: ' + (link.nome || token.slice(0, 6)) + ' falhou -', e.message); }
 
     for (const a of R.agendaDoLink(empresas, comps)) {
       if (await gravar(token, 'agenda/' + a.mes, { mes: a.mes, itens: a.itens, atualizadoEm: agora }, 'agenda')) gravados++;
@@ -306,6 +520,7 @@ function iniciarAreaDoCliente(db, log) {
     for (const t of links.keys()) if (!novos.has(t)) esquecer(t);
     links.clear();
     for (const [t, l] of novos) links.set(t, l);
+    ouvirNotas();
     for (const ch of snap.docChanges()) {
       if (ch.type !== 'removed' && links.has(ch.doc.id)) fila.add(ch.doc.id);
       // revogado ou trocado (o nads apaga o link e deixa o espelho): o espelho dele sai já
@@ -322,6 +537,110 @@ function iniciarAreaDoCliente(db, log) {
     if (!primeiraFgts) for (const ch of snap.docChanges()) tokensDaEmpresa(ch.doc.get('codigo')).forEach(t => fila.add(t));
     primeiraFgts = false;
     pronto('fgts');
+    agendar();
+  }, log);
+
+  // as notas do mês (siegNotas, o "Baixar XMLs do SIEG") só das empresas com link (12/11/2026, o painel do mês do
+  // Faturamento): cada documento vira o resumo (por dia, os clientes, as operações) e só ele fica na memória. O ouvinte
+  // troca quando as empresas dos links mudam; o "in" do Firestore aceita até 30 códigos.
+  let codigosDasNotas = null, pararNotas = null, primeirasNotas = true;
+  // ---------------------------------------------------------------------------------------------------------------
+  // Os extratos (13/11/2026: "no faturamento quero comparação com os extratos bancários"): ficam no projeto da Conferência
+  // (conferencia-nilma, extrator/{nome da empresa}/arquivos), não no do Entregas. Um app do firebase-admin com nome
+  // próprio para ele (o padrão é o do Entregas); as entradas de cada empresa guardadas por 6 horas (cada leitura traz os
+  // arquivos inteiros). Sem permissão nesse projeto, avisa uma vez e o faturamento segue sem o banco.
+  const EXTRATOS_A_CADA_MS = 6 * 36e5;
+  const entradasEmCache = new Map(); // codigo -> { em, porMes }
+  const lancamentosEmCache = new Map(); // codigo -> Map(mês -> { lancamentos, cortados }), os últimos 6 meses com extrato
+  let dbConferencia = null, semConferencia = false;
+  function conferencia() {
+    if (dbConferencia || semConferencia) return dbConferencia;
+    try {
+      const admin = require('firebase-admin');
+      const app = admin.apps.find(a => a && a.name === 'conferencia') || admin.initializeApp({ projectId: 'conferencia-nilma' }, 'conferencia');
+      dbConferencia = admin.firestore(app);
+    } catch (e) { semConferencia = true; log('Área do Cliente: os extratos da Conferência não abriram -', e.message); }
+    return dbConferencia;
+  }
+  async function entradasDoBanco(empresas) {
+    const porCodigo = new Map();
+    const dbc = conferencia();
+    if (!dbc) return porCodigo;
+    for (const e of empresas) {
+      const guardado = entradasEmCache.get(e.codigo);
+      if (guardado && Date.now() - guardado.em < EXTRATOS_A_CADA_MS) { if (guardado.porMes) porCodigo.set(e.codigo, guardado.porMes); continue; }
+      try {
+        const doc = dbc.collection('extrator').doc(R.slug(e.nome));
+        const snap = await doc.collection('arquivos').where('lado', '==', 'banco').get();
+        // os bancos da empresa no Extrator (o nome e a marca de cada conta, para a escolha do banco no Faturamento)
+        const bancos = snap.empty ? [] : ((await doc.get()).data()?.bancos || []).map(b => ({ id: String(b.id || ''), nome: String(b.nome || ''), marca: b.marca ? String(b.marca) : undefined })).filter(b => b.id);
+        const arquivos = snap.docs.map(d => d.data());
+        const porMes = snap.empty ? null : doCore().entradasDosExtratos(arquivos, bancos);
+        // os lançamentos dos últimos 6 meses com extrato (a lista do mês na aba Banco do Faturamento)
+        if (porMes) {
+          const meses = Object.keys(porMes).sort().slice(-6);
+          lancamentosEmCache.set(e.codigo, new Map(meses.map(m => [m, doCore().lancamentosDoMes(arquivos, m, bancos)])));
+        } else lancamentosEmCache.delete(e.codigo);
+        entradasEmCache.set(e.codigo, { em: Date.now(), porMes: porMes && Object.keys(porMes).length ? porMes : null });
+        if (porMes && Object.keys(porMes).length) porCodigo.set(e.codigo, porMes);
+      } catch (x) {
+        if (/permission|PERMISSION_DENIED|7 /i.test(String(x.message))) { semConferencia = true; log('Área do Cliente: sem permissão nos extratos da Conferência; o faturamento segue sem o banco -', x.message); break; }
+        log('Área do Cliente: extratos de ' + e.nome + ' falharam -', x.message);
+      }
+    }
+    return porCodigo;
+  }
+
+  function ouvirNotas() {
+    const codigos = [...new Set([...links.values()].flatMap(l => l.codigos))].sort((a, b) => a - b);
+    if (codigos.length > 30) log('Área do Cliente: mais de 30 empresas com link; o painel do mês só das 30 primeiras');
+    const chave = codigos.slice(0, 30).join();
+    if (chave === codigosDasNotas) return;
+    if (pararNotas) { pararNotas(); pararNotas = null; }
+    codigosDasNotas = chave;
+    notasDoMesSieg.clear();
+    primeirasNotas = true;
+    if (!codigos.length) return;
+    const desde = (new Date().getFullYear() - 1) + '-01';
+    pararNotas = ouvir('Área do Cliente: notas do SIEG', () => db.collection('siegNotas').where('codigo', 'in', codigos.slice(0, 30).map(String)), snap => {
+      const P = doCore();
+      for (const ch of snap.docChanges()) {
+        const d = ch.doc.data();
+        const k = Number(d.codigo) + '_' + d.competencia;
+        if (ch.type === 'removed' || !(String(d.competencia || '') >= desde)) { notasDoMesSieg.delete(k); listaDeNotasSieg.delete(k); continue; }
+        try {
+          const r = P.notasDoMes(d); if (r) notasDoMesSieg.set(k, r); else notasDoMesSieg.delete(k);
+          const l = P.listaDeNotasDoMes(d); if (l) listaDeNotasSieg.set(k, l); else listaDeNotasSieg.delete(k);
+        } catch (e) { log('Área do Cliente: notas de', ch.doc.id, 'falharam -', e.message); }
+        if (!primeirasNotas) tokensDaEmpresa(d.codigo).forEach(t => fila.add(t));
+      }
+      primeirasNotas = false;
+      agendar();
+    }, log);
+  }
+
+  // as logos das empresas (12/11/2026): o gestor põe no nads (logosDasEmpresas/{código}); só a que passa no erroDaLogo
+  // (PNG, JPG ou WebP em data URL, dentro do tamanho) vai para o espelho
+  ouvir('Área do Cliente: logos', () => db.collection('logosDasEmpresas'), snap => {
+    const P = doCore();
+    for (const ch of snap.docChanges()) {
+      const cod = Number(ch.doc.id);
+      const logo = ch.doc.get('logo');
+      if (ch.type === 'removed' || P.erroDaLogo(logo)) logosDasEmpresas.delete(cod); else logosDasEmpresas.set(cod, logo);
+      tokensDaEmpresa(cod).forEach(t => fila.add(t));
+    }
+    agendar();
+  }, log);
+
+  // as saídas do SIEG dos últimos 12 meses (o Faturamento): lidas uma vez ao ligar; depois, só o mês que muda
+  let primeirasSaidas = true;
+  ouvir('Área do Cliente: saídas do SIEG', () => db.collection('siegSaidas').where('competencia', '>=', (new Date().getFullYear() - 1) + '-01'), snap => {
+    for (const ch of snap.docChanges()) {
+      const s = ch.doc.data();
+      if (ch.type === 'removed') saidasSieg.delete(ch.doc.id); else saidasSieg.set(ch.doc.id, s);
+      if (!primeirasSaidas) tokensDaEmpresa(s.codigo).forEach(t => fila.add(t));
+    }
+    primeirasSaidas = false;
     agendar();
   }, log);
 
@@ -414,6 +733,9 @@ function iniciarAreaDoCliente(db, log) {
       // o snapshot pode ser de antes de o pedido ser tratado e apagado: relê (senão a resposta entraria duas vezes)
       const atual = await doc.ref.get();
       if (!atual.exists) return;
+      // o pedido de DANFE do relatório do dia (12/11/2026) vem pela mesma caixa, marcado: não vira chamado
+      const chaveDanfe = doCore().chaveDoPedidoDeDanfe(atual.data());
+      if (chaveDanfe) { await tratarDanfe(doc, atual.data(), chaveDanfe); return; }
       const v = R.validarPedidoDeChamado(atual.data());
       const token = v.pedido ? v.pedido.token : '';
       const linkSnap = token ? await espelhoDe(token).get() : null;
@@ -458,6 +780,60 @@ function iniciarAreaDoCliente(db, log) {
       painel.erro('area-cliente', 'Um chamado da Área do Cliente ficou esperando', err.message);
     } finally { tratandoChamados.delete(doc.id); }
   }
+  // ---------- a DANFE pedida pelo relatório do dia (12/11/2026: "quero poder clicar e ver a danfe da nota") ----------
+  // O cliente pede pela caixa dos chamados (título "DANFE", texto "danfe:<chave>"). Só a nota de uma empresa do link (o
+  // CNPJ do emitente na chave); o XML vem do Drive pela mesma busca do robô do SIEG (a pasta arquivada do cliente e a do
+  // Claudio Secretario); a DANFE é o desenho do nads (desenharDanfe). Sem o XML, o documento sai com o erro (a tela diz).
+  const LIMITE_DANFES_POR_DIA = 200;
+  const danfesHoje = { dia: '', porToken: {} };
+  let xmlsGuardados = { chave: '', em: 0, xmls: [] };   // os XMLs do último mês lido (10 min): várias DANFEs do mesmo mês
+  async function xmlDaNota(codigo, competencia, chave) {
+    const k = codigo + '_' + competencia;
+    if (xmlsGuardados.chave !== k || Date.now() - xmlsGuardados.em > 10 * 60_000) {
+      const n = await db.collection('siegNotas').doc(k).get();
+      const pasta = n.exists ? path.basename(String(n.get('pasta') || '').replace(/\\/g, '/')) : '';
+      const r = await require('./sieg').xmlsJaNoDrive(codigo, pasta || String(codigo), competencia, db);
+      xmlsGuardados = { chave: k, em: Date.now(), xmls: r.xmls };
+    }
+    return xmlsGuardados.xmls.find(x => x.includes('Id="NFe' + chave + '"')) || null;
+  }
+  async function tratarDanfe(doc, p, chave) {
+    const P = doCore();
+    const token = R.tokenValido(p.token) ? p.token : '';
+    const linkSnap = token ? await espelhoDe(token).get() : null;
+    if (!linkSnap || !linkSnap.exists) { log('Área do Cliente: pedido de DANFE descartado (o link não existe)'); await doc.ref.delete(); return; }
+    const dia = hojeIso();
+    if (danfesHoje.dia !== dia) { danfesHoje.dia = dia; danfesHoje.porToken = {}; }
+    if ((danfesHoje.porToken[token] || 0) >= LIMITE_DANFES_POR_DIA) { log('Área do Cliente: pedido de DANFE descartado (passou de ' + LIMITE_DANFES_POR_DIA + ' hoje)'); await doc.ref.delete(); return; }
+    danfesHoje.porToken[token] = (danfesHoje.porToken[token] || 0) + 1;
+    const id = P.idDaDanfe(chave);
+    const col = espelhoDe(token).collection('documentos');
+    const ja = await col.doc(id).get();
+    if (ja.exists && !ja.get('erro')) { await doc.ref.delete(); return; }
+    const link = Object.assign({ codigos: [] }, linkSnap.data());
+    const partes = P.partesDaChave(chave);
+    const nome = 'DANFE ' + partes.numero + '.pdf';
+    const mapa = await clientesDoEntregas();
+    const emp = (link.codigos || []).map(Number).map(c => empresaDoCodigo(c, mapa, link)).find(e => e.cnpj === partes.cnpj);
+    const gravarMeta = extra => col.doc(id).set(R.conferirListaBranca('documentoDanfe', Object.assign({ tipo: 'danfe', id, nome, chave, partes: 0, atualizadoEm: new Date().toISOString() }, extra)));
+    if (!emp) { await gravarMeta({ erro: 'Esta nota não é de uma empresa deste link.' }); await doc.ref.delete(); return; }
+    const xml = await xmlDaNota(emp.codigo, partes.competencia, chave);
+    if (!xml) {
+      await gravarMeta({ erro: 'O XML desta nota ainda não chegou ao Drive do escritório. Tente de novo mais tarde.' });
+      await doc.ref.delete();
+      log('Área do Cliente: DANFE sem o XML no Drive -', emp.nome, chave);
+      return;
+    }
+    const bytes = Buffer.from(await require('./gerado/danfse').desenharDanfe(xml));
+    const pedacos = R.pedacosDoPdf(bytes.toString('base64'));
+    // os pedaços primeiro; o documento por último (a tela espera por ele)
+    for (const pd of pedacos) await col.doc(id + '~' + pd.n).set(R.conferirListaBranca('pedacoDp', { base64: pd.base64, n: pd.n, total: pd.total, de: id }));
+    await gravarMeta({ partes: pedacos.length });
+    await doc.ref.delete();
+    log('Área do Cliente: DANFE no espelho -', emp.nome, '· nota', partes.numero);
+    painel.atividade('area-cliente', 'DANFE pedida pelo cliente' + (link.nome ? ' — ' + link.nome : ''), 'nota ' + partes.numero);
+  }
+
   let filaChamados = Promise.resolve();
   ouvir('Área do Cliente: caixa dos chamados', () => db.collection('areaClienteChamados').limit(20), snap => {
     snap.docs.forEach(d => { filaChamados = filaChamados.then(() => tratarChamado(d)); });

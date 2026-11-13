@@ -1,39 +1,19 @@
-// A Central de documentos da Área do Cliente (Vitor, 16/10/2026), no layout do protótipo com as peças do nads: o título com
-// "Enviar documento" (abre a janela de envio) e "Baixar o mês"; a barra com a busca, a área e o mês; e a tabela do nads com
-// o documento, a categoria, a competência, a data de envio, se já foi baixado e as ações (ver e baixar).
-// Versão D: o ícone desenhado de cada tipo de arquivo (PDF, planilha, XML, ZIP, DOC, imagem), o selo só no que falta baixar, a busca com a lupa.
-import { Icone, IconeDeArquivo, useRetorno } from '@nads/ui';
-import type { DocumentoDoCliente } from '../dados/areaCliente';
+// A Central de documentos como biblioteca (12/11/2026: "retrabalhe completamente a central de documentos"; a escolhida:
+// "biblioteca com pastas"; 13/11/2026: "preciso de mais melhoras", "tudo isso"). No alto, as pastas em cartões com o
+// ícone e a contagem; embaixo a busca e o mês e a lista por mês de referência: marcar, o ícone do arquivo, o nome (clicar
+// abre a visualização, com as setas para o anterior e o próximo), a pasta num selo colorido, a data e as ações (ver e
+// baixar, que aparecem ao passar o mouse). Marcar vários (ou "Baixar o mês") junta tudo num .zip. O que o cliente enviou
+// aparece como "Recebido": o arquivo fica com o escritório. Só desenha: o estado e as ações vêm de useDocumentos.ts.
+import { CampoEscolha, Icone, IconeDeArquivo } from '@nads/ui';
+import { JanelaDoArquivo } from '../partes/JanelaDoArquivo';
 import { Vazio } from '../partes/Vazio';
 import { useJanelaDeEnvio } from './JanelaDeEnvio';
 import { useDocumentos } from './useDocumentos';
 import type { DaCasca } from './useAreaCliente';
 
-
 export function Documentos(props: DaCasca) {
   const vm = useDocumentos(props);
-  const { modal } = useRetorno();
-
-  const visualizar = async (d: DocumentoDoCliente) => {
-    const baixar = await modal({
-      titulo: d.nome, texto: d.descricao,
-      corpo: (
-        <div className="cli-app cli-janela">
-          <dl className="cli-dados">
-            <dt>Categoria</dt><dd>{vm.rotuloDaArea(d)}</dd>
-            <dt>Competência</dt><dd>{vm.competencia(d)}</dd>
-            <dt>Enviado em</dt><dd>{vm.enviadoEm(d)}</dd>
-            <dt>Formato</dt><dd>{d.formato === 'XLSX' ? 'Planilha (XLSX)' : d.formato === 'DOCX' ? 'Documento do Word (DOCX)' : d.formato}</dd>
-          </dl>
-        </div>
-      ),
-      botoes: [{ rotulo: 'Baixar', valor: true, variante: 'btn-primary' }, { rotulo: 'Fechar', valor: false, variante: 'btn-outline' }],
-    });
-    if (baixar) await vm.baixar(d.id);
-  };
-
   const enviar = useJanelaDeEnvio(props);
-
   return (
     <>
       <div className="cli-titulo">
@@ -42,69 +22,89 @@ export function Documentos(props: DaCasca) {
         </div>
         <div className="cli-acoes">
           <button type="button" className="btn btn-primary" onClick={enviar}><Icone nome="upload" width={16} height={16} />Enviar documento</button>
-          <button type="button" className="btn" disabled={!vm.totalDoLote} onClick={() => void vm.baixarOMes()}
-            title={vm.totalDoLote ? 'Baixa os ' + vm.totalDoLote + ' arquivos de ' + vm.mesDoLote + ', um por um' : 'Nenhum documento no mês'}>
-            <Icone nome="download" width={16} height={16} />Baixar o mês
+        </div>
+      </div>
+
+      {/* as pastas em cartões */}
+      <nav className="cli-pastas-cartoes" aria-label="Pastas">
+        {vm.pastas.map(p => (
+          <button key={p.id || 'tudo'} type="button" className={'cli-pasta-cartao t-' + p.tom + (p.ativa ? ' ativa' : '')} aria-current={p.ativa ? 'true' : undefined} onClick={() => vm.escolherPasta(p.id)}>
+            <span className="cli-pasta-cartao-ico" aria-hidden="true"><Icone nome={p.icone} width={17} height={17} /></span>
+            <span className="cli-pasta-cartao-txt"><b>{p.n}</b><span>{p.rotulo}</span></span>
           </button>
-        </div>
-      </div>
+        ))}
+      </nav>
 
-      <div className="card cli-filtros">
-        <label className="cli-busca">
-          <Icone nome="search" width={16} height={16} />
-          <input type="text" value={vm.busca} onChange={e => vm.mudarBusca(e.target.value)} placeholder="Buscar documento" aria-label="Buscar documento" />
-        </label>
-        <div className="cli-filtros-dir">
-          <select value={vm.area} onChange={e => vm.mudarArea(e.target.value)} aria-label="Área">
-            <option value="">Todas as áreas</option>
-            {vm.areas.map(a => <option key={a.valor} value={a.valor}>{a.rotulo}</option>)}
-          </select>
-          <select value={vm.mes} onChange={e => vm.mudarMes(e.target.value)} aria-label="Mês">
-            <option value="">Todos os meses</option>
-            {vm.meses.map(m => <option key={m.valor} value={m.valor}>{m.rotulo}</option>)}
-          </select>
+      <section className="card cli-biblioteca-lista">
+        <div className="cli-biblioteca-filtros">
+          <label className="cli-marcar-todos" title="Marcar todos os que abrem">
+            <input type="checkbox" checked={vm.todosMarcados} onChange={vm.marcarTodos} aria-label="Marcar todos" />
+          </label>
+          <label className="cli-busca">
+            <Icone nome="search" width={16} height={16} />
+            <input type="text" value={vm.busca} onChange={e => vm.mudarBusca(e.target.value)} placeholder="Buscar pelo nome" aria-label="Buscar documento" />
+          </label>
+          <span className="cli-biblioteca-mes-campo">
+            <CampoEscolha rotulo="Mês de referência" valor={vm.mes} opcoes={[{ valor: '', rotulo: 'Todos os meses' }, ...vm.meses]} onMudar={vm.mudarMes} />
+          </span>
         </div>
-      </div>
 
-      <div className="table-wrap cli-tabela">
-        <table>
-          <thead>
-            <tr>
-              <th>Documento</th><th className="cli-so-largo">Categoria</th><th className="cli-so-largo">Competência</th><th className="cli-so-largo">Data de envio</th>
-              <th className="cli-so-largo">Leitura</th><th className="num">Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {vm.docs.map(d => (
-              <tr key={d.id}>
-                <td className="wrap">
-                  <div className="cli-doc">
-                    <IconeDeArquivo formato={d.formato} tamanho={36} />
-                    <div><b>{d.nome}</b><span className="hint">{d.descricao}</span></div>
-                  </div>
-                </td>
-                <td className="cli-so-largo">{vm.rotuloDaArea(d)}</td>
-                <td className="cli-so-largo">{vm.competencia(d)}</td>
-                <td className="cli-so-largo cli-suave">{vm.enviadoEm(d)}</td>
-                <td className="cli-so-largo">{d.novo ? <span className="badge badge-warn">Não baixado</span> : <span className="cli-suave">Baixado</span>}</td>
-                <td className="num">
-                  <span className="cli-acoes-linha">
-                    <button type="button" className="icon-btn" title="Ver" aria-label={'Ver ' + d.nome} onClick={() => void visualizar(d)}><Icone nome="olho" width={16} height={16} /></button>
-                    <button type="button" className="icon-btn" title="Baixar" aria-label={'Baixar ' + d.nome} disabled={vm.baixando === d.id} onClick={() => void vm.baixar(d.id)}><Icone nome="download" width={16} height={16} /></button>
+        {vm.grupos.length ? vm.grupos.map(g => (
+          <div key={g.mes} className="cli-biblioteca-mes">
+            <div className="cli-biblioteca-mes-topo">
+              <p className="cli-biblioteca-mes-titulo">{g.titulo}</p>
+              {g.abrem > 1 && <button type="button" className="cli-baixar-tudo" disabled={!!vm.juntando} onClick={g.baixarMes} title="Baixar os documentos do mês num .zip"><Icone nome="download" width={15} height={15} />Baixar o mês<span className="cli-baixar-n">{g.abrem}</span></button>}
+            </div>
+            <ul>
+              {g.itens.map(i => (
+                <li key={i.chave} className={'cli-biblioteca-item' + (i.marcado ? ' marcado' : '') + (i.novo ? ' novo' : '')}>
+                  {i.abre
+                    ? <input type="checkbox" className="cli-biblioteca-marca" checked={i.marcado} onChange={() => vm.marcar(i.chave)} aria-label={'Marcar ' + i.nome} />
+                    : <span className="cli-biblioteca-marca" aria-hidden="true" />}
+                  <IconeDeArquivo formato={i.formato} tamanho={34} />
+                  {i.abre ? (
+                    <button type="button" className="cli-biblioteca-txt cli-biblioteca-abrir" disabled={vm.vista.abrindo === i.chave} onClick={() => vm.ver(i)} title={'Ver ' + i.nome}>
+                      <b>{i.nome}{i.novo && <span className="badge badge-warn cli-biblioteca-novo">Novo</span>}</b>
+                      <span className="hint">{i.detalhe}</span>
+                    </button>
+                  ) : (
+                    <span className="cli-biblioteca-txt">
+                      <b>{i.nome}</b>
+                      <span className="hint">{i.detalhe}</span>
+                    </span>
+                  )}
+                  <span className="cli-biblioteca-pasta cli-so-largo"><span className={'cli-selo-pasta t-' + i.tomDaPasta}>{i.rotuloDaPasta}</span></span>
+                  <span className="cli-biblioteca-data cli-so-largo">{i.quando}</span>
+                  <span className="cli-biblioteca-acoes">
+                    {i.abre ? (
+                      <>
+                        <button type="button" className="icon-btn" title="Ver" aria-label={'Ver ' + i.nome} disabled={vm.vista.abrindo === i.chave} onClick={() => vm.ver(i)}><Icone nome="olho" width={16} height={16} /></button>
+                        <button type="button" className="icon-btn" title="Baixar" aria-label={'Baixar ' + i.nome} disabled={vm.baixando === i.chave} onClick={() => vm.baixar(i)}><Icone nome="download" width={16} height={16} /></button>
+                      </>
+                    ) : <span className="cli-biblioteca-recebido"><Icone nome="check" width={14} height={14} />Recebido</span>}
                   </span>
-                </td>
-              </tr>
-            ))}
-            {!vm.docs.length && (
-              <tr className="cli-sem-passar"><td colSpan={6}>
-                {vm.total
-                  ? <Vazio icone="search" titulo="Nenhum documento com esse filtro" acao={{ rotulo: 'Limpar os filtros', onClick: vm.limpar }} />
-                  : <Vazio icone="pastaAberta" titulo="Nenhum documento ainda" texto="Quando o escritório deixar um documento, ele aparece aqui." />}
-              </td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )) : vm.total ? (
+          <Vazio icone="search" titulo="Nada com esse filtro" acao={{ rotulo: 'Limpar os filtros', onClick: vm.limpar }} />
+        ) : (
+          <Vazio icone="pastaAberta" titulo="Nenhum documento ainda" texto="As guias, a folha e o que você enviar ao escritório aparecem aqui." />
+        )}
+      </section>
+
+      {/* a barra dos marcados: baixar todos num .zip */}
+      {(vm.marcadosN > 0 || vm.juntando) && (
+        <div className="cli-barra-marcados" role="region" aria-label="Documentos marcados">
+          <b>{vm.juntando || (vm.marcadosN === 1 ? '1 marcado' : vm.marcadosN + ' marcados')}</b>
+          {!vm.juntando && <button type="button" className="btn btn-ghost btn-sm" onClick={vm.desmarcar}>Desmarcar</button>}
+          <button type="button" className="btn btn-primary btn-sm" disabled={!!vm.juntando} onClick={vm.baixarMarcados}><Icone nome="download" width={16} height={16} />Baixar .zip</button>
+        </div>
+      )}
+
+      {vm.vista.aberto && <JanelaDoArquivo arquivo={vm.vista.aberto} onBaixar={vm.vista.baixar} onFechar={vm.vista.fechar}
+        onAnterior={vm.anterior} onProximo={vm.proximo} posicao={vm.posicao} abrindo={!!vm.vista.abrindo} />}
     </>
   );
 }

@@ -21,6 +21,10 @@ export interface RepoCarteira {
   salvarComissao(c: carteira.ComissaoParaSalvar, id?: string): Promise<void>;
   /** os serviços comissionados e a % de cada um (o Financeiro define; sem nada gravado, os 9 do começo, sem a %) */
   servicos(): ListaAoVivo<carteira.ServicoComissionado>;
+  /** a % própria por pessoa, para todos os serviços dela (no mesmo documento dos serviços; 12/11/2026) */
+  porPessoa(): ListaAoVivo<carteira.PercentualDaPessoa>;
+  /** quem está na Carteira (o uid, para a % própria) */
+  meuUid(): string | null;
   apagarComissao(id: string): Promise<void>;
   salvarLancamento(l: carteira.LancamentoParaSalvar, id?: string): Promise<void>;
   apagarLancamento(id: string): Promise<void>;
@@ -33,7 +37,8 @@ export interface RepoCarteira {
   decidirComissoes(ids: string[], situacao: Decisao, motivo?: string): Promise<void>;
   /** a comissão que o Financeiro registra para a pessoa (a retroativa, em qualquer mês): já entra aprovada */
   registrarComissaoDe(para: { uid: string; nome: string }, c: carteira.ComissaoParaSalvar): Promise<void>;
-  salvarServicos(lista: readonly carteira.ServicoComissionado[]): Promise<void>;
+  /** porPessoa null: não mexe na % própria (quem não é Diretor nem a vê; Vitor, 13/11/2026) */
+  salvarServicos(lista: readonly carteira.ServicoComissionado[], porPessoa: readonly carteira.PercentualDaPessoa[] | null): Promise<void>;
   enviarDocumento(d: DocumentoParaEnviar, arquivo: ArquivoDaCarteira): Promise<void>;
   apagarDocumento(id: string): Promise<void>;
   assinar(aoMudar: () => void): () => void;
@@ -45,8 +50,8 @@ export type QuemNaCarteira = () => { uid: string; nome: string } | null;
 const agora = () => new Date().toISOString();
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
-/** Nos exemplos: algumas comissões, lançamentos, um holerite e uma conta de salário paga, para quem está. */
-export function criarCarteiraMemoria(quem: QuemNaCarteira): RepoCarteira {
+/** Nos exemplos: algumas comissões, lançamentos, um holerite e uma conta de salário paga, para quem está; com propria, a % própria de 50% para quem está e uma colega. */
+export function criarCarteiraMemoria(quem: QuemNaCarteira, propria = false): RepoCarteira {
   let ver = 0;
   const ouvintes = new Set<() => void>();
   const mudou = () => { ver++; for (const f of ouvintes) f(); };
@@ -61,6 +66,7 @@ export function criarCarteiraMemoria(quem: QuemNaCarteira): RepoCarteira {
     clienteCodigo: null, porte: 'MEI', servico: 'Abertura de MEI', valorServico: valor * 10, percentual: 10,
   });
   let servicos = carteira.servicosPadrao().map((s, i) => ({ ...s, percentual: i < 3 ? 10 : 0 }));
+  let porPessoa: carteira.PercentualDaPessoa[] = propria ? [{ uid: eu().uid, nome: eu().nome, percentual: 50 }, { uid: 'uid-clara', nome: 'Clara', percentual: 50 }] : [];
   const comissaoDe = (x: carteira.ComissaoParaSalvar) => ({ ...x, descricao: x.servico, valor: carteira.valorDaComissao(x.valorServico, x.percentual) });
   let comissoes: carteira.Comissao[] = [
     c('c1', eu().uid, eu().nome, mes, 'PADARIA EXEMPLO LTDA', 350, 'lancada'),
@@ -98,7 +104,9 @@ export function criarCarteiraMemoria(quem: QuemNaCarteira): RepoCarteira {
       else { comissoes = [...comissoes, { ...comissaoDe(x), id: novoId('c'), uid: eu().uid, nome: eu().nome, situacao: 'lancada', criadoEm: agora() }]; mudou(); }
     },
     servicos: () => lista(servicos),
-    async salvarServicos(l) { servicos = l.map(s => ({ ...s, percentual: r2(s.percentual) })); mudou(); },
+    porPessoa: () => lista(porPessoa),
+    meuUid: () => eu().uid,
+    async salvarServicos(l, p) { servicos = l.map(s => ({ ...s, percentual: r2(s.percentual) })); if (p) porPessoa = p.map(x => ({ ...x, percentual: r2(x.percentual) })); mudou(); },
     async registrarComissaoDe(para, x) {
       comissoes = [...comissoes, { ...comissaoDe(x), id: novoId('c'), uid: para.uid, nome: para.nome, situacao: 'aprovada', criadoEm: agora(), decididoPor: eu().nome, decididoEm: agora() }];
       mudou();

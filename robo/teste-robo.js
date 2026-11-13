@@ -1251,7 +1251,44 @@ const esperarFaxina = (async () => {
 })();
 
 // os testes que leem PDF são assíncronos: o resultado espera por eles
-Promise.all([esperarExtratos, esperarSieg, esperarFaxina, esperarSubstituidos]).then(() => {
+// a data da entrega do impresso no Relatório do Fiscal (13/11/2026): a entrega confirmada preenche a data da linha Impresso
+const esperarDataDoImpresso = (async () => {
+  const F = require('./lote-fiscal');
+  const linha = { competencia: '2026-10', codigo: 58, grupo: 'sn', valores: { das: '100,00' }, data: '', marcas: {}, entregue: 'impresso' };
+  igual('fiscal impresso entregue: a linha Impresso sem data ganha o dia da entrega', F.linhaComADataDaEntrega(linha, '2026-11-13', 'x').data, '2026-11-13');
+  igual('fiscal impresso entregue: os valores e o resto ficam', F.linhaComADataDaEntrega(linha, '2026-11-13', 'x').valores, { das: '100,00' });
+  igual('fiscal impresso entregue: a data escrita à mão fica', F.linhaComADataDaEntrega(Object.assign({}, linha, { data: '2026-11-10' }), '2026-11-13', 'x'), null);
+  igual('fiscal impresso entregue: o Entregue trocado (não é mais Impresso) fica', F.linhaComADataDaEntrega(Object.assign({}, linha, { entregue: 'email' }), '2026-11-13', 'x'), null);
+  igual('fiscal impresso entregue: sem a linha, não cria', F.linhaComADataDaEntrega(null, '2026-11-13', 'x'), null);
+  // o fluxo com um banco de mentira: o registro do envio aponta a entrega; a linha do Relatório ganha a data
+  const banco = (registros, linhas) => {
+    const gravadas = {};
+    const db = {
+      collection: nome => ({
+        where: (campo, op, valor) => ({ limit: () => ({ get: async () => ({ docs: registros.filter(r => r[campo] === valor).map(r => ({ data: () => r })) }) }) }),
+        doc: id => ({ nome, id }),
+      }),
+      runTransaction: async fn => fn({
+        get: async ref => ({ exists: !!linhas[ref.id], data: () => linhas[ref.id] }),
+        set: (ref, v) => { gravadas[ref.id] = v; },
+      }),
+    };
+    return { db, gravadas };
+  };
+  const regs = [
+    { tipo: 'envioFiscal', via: 'impresso', entregaId: 'e1', competencia: '2026-10', codigo: '58' },
+    { tipo: 'envioFiscal', via: 'email', entregaId: 'e1', competencia: '2026-10', codigo: '77' },
+  ];
+  const b1 = banco(regs, { '2026-10_58': linha, '2026-10_77': Object.assign({}, linha, { codigo: 77 }) });
+  // confirmada às 01h UTC do dia 14 = dia 13 em Brasília
+  const feitas = await F.dataDaEntregaDoImpresso(b1.db, { id: 'e1', status: 'confirmada', confirmadoEm: '2026-11-14T01:30:00Z' });
+  igual('fiscal impresso entregue: só a linha do registro impresso, com o dia de Brasília', [feitas, b1.gravadas['2026-10_58'] && b1.gravadas['2026-10_58'].data, Object.keys(b1.gravadas)], [['2026-10_58'], '2026-11-13', ['2026-10_58']]);
+  const b2 = banco(regs, { '2026-10_58': linha });
+  igual('fiscal impresso entregue: a entrega não realizada (falha) não preenche', await F.dataDaEntregaDoImpresso(b2.db, { id: 'e1', status: 'falha', confirmadoEm: '2026-11-13T15:00:00Z' }), []);
+  igual('fiscal impresso entregue: a entrega que não veio do Fiscal não mexe no Relatório', await F.dataDaEntregaDoImpresso(b2.db, { id: 'outra', status: 'confirmada', confirmadoEm: '2026-11-13T15:00:00Z' }), []);
+})();
+
+Promise.all([esperarExtratos, esperarSieg, esperarFaxina, esperarSubstituidos, esperarDataDoImpresso]).then(() => {
   console.log(falhas ? '\n' + falhas + ' de ' + total + ' testes FALHARAM' : total + ' testes, todos passaram');
   process.exit(falhas ? 1 : 0);
 });

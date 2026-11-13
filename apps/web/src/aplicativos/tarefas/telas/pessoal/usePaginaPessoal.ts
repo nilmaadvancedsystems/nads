@@ -197,6 +197,7 @@ export function usePaginaPessoal() {
     // Minha conta
     conta: {
       nome: op.nome,
+      completo: usuarios.nomeCompleto({ nome: op.nome, sobrenome: sessao?.usuario?.sobrenome }),
       iniciais: usuarios.iniciais(op.nome),
       foto,
       salvandoFoto,
@@ -215,6 +216,14 @@ export function usePaginaPessoal() {
         if (!sessao) return 'Sem login.';
         try { await sessao.trocarNome(limpo); toast('Nome trocado para ' + limpo + '.'); return null; } catch (err) { return err instanceof Error ? err.message : String(err); }
       },
+      /** o sobrenome (12/11/2026): aparece junto do nome nas telas; o login continua pelo nome */
+      sobrenome: sessao?.usuario?.sobrenome || '',
+      trocarSobrenome: async (sobrenome: string): Promise<string | null> => {
+        const limpo = sobrenome.replace(/\s+/g, ' ').trim();
+        if (limpo.replace(/[^\p{L}]/gu, '').length < 2) return 'O sobrenome precisa ter pelo menos 2 letras.';
+        if (!sessao) return 'Sem login.';
+        try { await sessao.trocarSobrenome(limpo); toast('Sobrenome trocado para ' + limpo + '.'); return null; } catch (err) { return err instanceof Error ? err.message : String(err); }
+      },
       trocarSenha: async (atual: string, nova: string, confirma: string): Promise<string | null> => {
         if (!atual) return 'Digite a senha atual.';
         if (nova.length < 6) return 'A senha nova precisa ter pelo menos 6 caracteres.';
@@ -227,12 +236,14 @@ export function usePaginaPessoal() {
        * o próprio e-mail de entrada (Vitor, 12/11/2026: "deixa o próprio usuário alterar o e-mail dele também"): o robô da
        * nuvem troca o login e o cadastro; a senha continua a mesma
        */
-      trocarEmail: async (email: string): Promise<string | null> => {
+      trocarEmail: async (email: string, senha: string): Promise<string | null> => {
         const novo = email.trim().toLowerCase();
         if (!usuarios.ehEmailDeLogin(novo)) return 'Escreva um e-mail válido (por exemplo, nome@gmail.com).';
-        if (!u) return 'Sem login.';
+        if (!u || !sessao) return 'Sem login.';
         if (novo === u.email.trim().toLowerCase()) return null;
-        try { await acesso.trocarEmail(u.uid, novo); toast('E-mail trocado. Da próxima vez, entre com ' + novo + ' (a senha é a mesma).'); return null; } catch (err) { return err instanceof Error ? err.message : String(err); }
+        if (!senha) return 'Digite a sua senha.';
+        // o Firebase derruba as sessões quando o e-mail muda: a sessão confere a senha, espera o robô e entra de novo
+        try { await sessao.trocarMeuEmail(novo, senha, () => acesso.trocarEmail(u.uid, novo)); toast('E-mail trocado. Você entra com ' + novo + ' ou pelo nome (a senha é a mesma).'); return null; } catch (err) { return err instanceof Error ? err.message : String(err); }
       },
       // só o setor (Vitor, 02/10/2026: "coloque só o setor"), sem o nível
       setor: usuarios.rotuloDoCargo({ departamento: op.departamento, nivel: null, papeis: u?.papeis || [] }),

@@ -519,3 +519,103 @@ describe('o pedido de documentos e o Visualizado (12/11/2026)', () => {
     expect('tipo' in u || 'visualizadaEm' in u).toBe(false);
   });
 });
+
+describe('os links fixados na tarefa (o Início novo)', () => {
+  it('aceita só http(s), sem repetir', () => {
+    expect(d.problemaDoLink('https://www.gov.br')).toBe('');
+    expect(d.problemaDoLink('javascript:alert(1)')).toMatch(/https/);
+    expect(d.problemaDoLink('')).toBe('Cole o link.');
+    expect(d.problemaDoLink('https://a.com', [{ url: 'https://a.com' }])).toMatch(/já está/);
+  });
+  it('fixa e tira, com o histórico', () => {
+    const t = d.comLink(tarefa(), ' https://a.com ', 'Vitor', EM);
+    expect(t.links).toEqual([{ url: 'https://a.com', por: 'Vitor', em: EM }]);
+    expect(t.historico.at(-1)?.texto).toBe('Fixou o link https://a.com');
+    const sem = d.semLink(t, 'https://a.com', 'Vitor', EM);
+    expect(sem.links).toEqual([]);
+    expect(d.lerTarefa('x', { links: [{ url: 'https://b.com', por: 'V', em: EM }, { url: '' }] }).links).toEqual([{ url: 'https://b.com', por: 'V', em: EM }]);
+  });
+});
+
+describe('delegar documentos no Início novo (13/11/2026)', () => {
+  const vazio = d.rascunhoVazio(null);
+  const eu = { uid: 'eu', nome: 'Eu' }, ana = { uid: 'ana', nome: 'Ana' }, bia = { uid: 'bia', nome: 'Bia' };
+  const tarefa = (x: Partial<d.TarefaDelegada>): d.TarefaDelegada => ({ ...d.nova({ ...vazio, titulo: 'T', clientes: [{ codigo: null, nome: 'C' }], responsavel: ana }, { id: 'x', numero: 1, por: eu, em: '2026-11-13T10:00:00Z' }), ...x });
+
+  it('requerer: o tipo documentos, com o prazo e a prioridade, sem a hora', () => {
+    const r = d.rascunhoDosDocumentos({ ...vazio, prazo: '2026-11-20', prazoHora: '10:00', prioridade: 'urgente' }, 'requerer');
+    expect(r).toMatchObject({ titulo: 'Pedido de documentos', tipo: 'documentos', prazo: '2026-11-20', prazoHora: '', prioridade: 'urgente', status: 'pendente' });
+  });
+  it('enviar: o tipo envio, sem prazo nem prioridade', () => {
+    const r = d.rascunhoDosDocumentos({ ...vazio, prazo: '2026-11-20', prioridade: 'alta' }, 'enviar');
+    expect(r).toMatchObject({ titulo: 'Envio de documentos', tipo: 'envio', prazo: '', prioridade: 'normal' });
+  });
+  it('o que falta: o modo, o cliente, a pessoa; o requerer para uma só e com prazo; o enviar com arquivo ou link', () => {
+    const ok = { modo: 'requerer' as const, clientes: 1, pessoas: 1, anexos: 0, links: 0, prazo: '2026-11-20' };
+    expect(d.problemaDosDocumentos(ok)).toBe('');
+    expect(d.problemaDosDocumentos({ ...ok, modo: null })).toMatch(/enviar ou requerer/);
+    expect(d.problemaDosDocumentos({ ...ok, clientes: 0 })).toMatch(/cliente/);
+    expect(d.problemaDosDocumentos({ ...ok, pessoas: 0 })).toMatch(/para quem/);
+    expect(d.problemaDosDocumentos({ ...ok, pessoas: 2 })).toMatch(/uma pessoa só/);
+    expect(d.problemaDosDocumentos({ ...ok, prazo: '' })).toMatch(/prazo/);
+    expect(d.problemaDosDocumentos({ ...ok, modo: 'enviar', pessoas: 3, prazo: '' })).toMatch(/arquivos ou cole o link/);
+    expect(d.problemaDosDocumentos({ ...ok, modo: 'enviar', pessoas: 3, links: 1 })).toBe('');
+  });
+  it('o envio e o requerer ficam na aba Documentos', () => {
+    expect(d.pedeDocumentos({ tipo: 'envio' })).toBe(true);
+    expect(d.pedeDocumentos({ tipo: 'documentos' })).toBe(true);
+    expect(d.pedeDocumentos({})).toBe(false);
+    expect(d.requerDocumentos({ tipo: 'envio' })).toBe(false);
+  });
+  it('envio: quem recebe confirma o recebimento; quem enviou vê se visualizou e se confirmou', () => {
+    const t = tarefa({ tipo: 'envio' });
+    expect(d.acoesDosDocumentos(t, 'ana').map(a => a.id)).toEqual(['confirmarRecebimento']);
+    expect(d.acoesDosDocumentos(t, 'eu')).toEqual([]);
+    expect(d.situacaoDosDocumentos(t)).toBe('Ana ainda não visualizou.');
+    expect(d.situacaoDosDocumentos({ ...t, visualizadaEm: '2026-11-13T10:05:00Z' })).toMatch(/visualizou e ainda não confirmou/);
+    const confirmada = d.gravacaoDasMudancas(t, { status: 'concluida' }, ana, '2026-11-13T11:00:00Z');
+    expect(confirmada.linhas.map(l => l.texto)).toEqual(['Confirmou o recebimento', 'Concluiu a tarefa']);
+    expect(d.situacaoDosDocumentos(confirmada.tarefa)).toBe('Ana confirmou o recebimento.');
+  });
+  it('o lembrete de 10 em 10 min: só o envio visualizado e sem confirmar, para quem recebeu', () => {
+    const t = tarefa({ tipo: 'envio', visualizadaEm: '2026-11-13T10:05:00Z' });
+    expect(d.LEMBRETE_DE_RECEBIMENTO_MS).toBe(600_000);
+    expect(d.lembraDeConfirmar(t, 'ana')).toBe(true);
+    expect(d.lembraDeConfirmar(t, 'eu')).toBe(false);
+    expect(d.lembraDeConfirmar({ ...t, visualizadaEm: undefined }, 'ana')).toBe(false);
+    expect(d.lembraDeConfirmar({ ...t, status: 'concluida' }, 'ana')).toBe(false);
+    expect(d.lembraDeConfirmar({ ...t, tipo: 'documentos' }, 'ana')).toBe(false);
+  });
+  it('requerer: quem recebe repassa ou envia (com algo anexado); quem pediu contesta ou confirma', () => {
+    const t = tarefa({ tipo: 'documentos' });
+    expect(d.acoesDosDocumentos(t, 'ana').map(a => a.id)).toEqual(['repassar']);
+    const comAnexo = { ...t, anexos: [{ id: 'a', nome: 'a.pdf', extensao: 'pdf', tamanho: 1, em: '', por: 'Ana', partes: 1 }] };
+    expect(d.acoesDosDocumentos(comAnexo, 'ana').map(a => a.id)).toEqual(['repassar', 'enviarDocumentos']);
+    expect(d.acoesDosDocumentos(comAnexo, 'eu')).toEqual([]);
+    const enviada = d.gravacaoDasMudancas(comAnexo, { entrega: 'enviada' }, ana, '2026-11-13T11:00:00Z');
+    expect(enviada.campos).toEqual({ entrega: 'enviada' });
+    expect(enviada.linhas.map(l => l.texto)).toEqual(['Enviou os documentos para conferir']);
+    expect(d.acoesDosDocumentos(enviada.tarefa, 'eu').map(a => a.id)).toEqual(['contestar', 'confirmarTudo']);
+    expect(d.acoesDosDocumentos(enviada.tarefa, 'ana')).toEqual([]);
+    const contestada = d.gravacaoDasMudancas(enviada.tarefa, { entrega: 'contestada' }, eu, '2026-11-13T12:00:00Z').tarefa;
+    expect(d.situacaoDosDocumentos(contestada)).toBe('Contestado: Ana precisa mandar o que faltou.');
+    expect(d.situacaoDosDocumentos({ ...contestada, pareceres: [{ por: 'Eu', em: '', texto: 'Falta outubro' }] })).toBe('Contestado ("Falta outubro"): Ana precisa mandar o que faltou.');
+    expect(d.acoesDosDocumentos(contestada, 'ana').map(a => a.id)).toEqual(['repassar', 'enviarDocumentos']);
+    const concluida = d.gravacaoDasMudancas(enviada.tarefa, { status: 'concluida' }, eu, '2026-11-13T12:00:00Z');
+    expect(concluida.linhas.map(l => l.texto)).toEqual(['Conferiu: veio tudo', 'Concluiu a tarefa']);
+  });
+  it('repassar: o novo responsável segue o mesmo fluxo, do começo', () => {
+    const t = tarefa({ tipo: 'documentos', entrega: 'contestada' });
+    const g = d.gravacaoDasMudancas(t, { responsavel: bia, entrega: '' }, ana, '2026-11-13T13:00:00Z');
+    expect(g.campos).toMatchObject({ responsavel: bia, entrega: '' });
+    expect(g.linhas.map(l => l.texto)).toEqual(['Delegou de Ana para Bia']);
+    expect(d.pessoasDaTarefa(g.tarefa)).toEqual(['eu', 'bia']);
+    expect(d.acoesDosDocumentos(g.tarefa, 'bia').map(a => a.id)).toEqual(['repassar']);
+  });
+  it('lê o tipo envio e a entrega do banco', () => {
+    const t = d.lerTarefa('x', { numero: 1, titulo: 'T', tipo: 'envio', entrega: 'enviada', criadaPor: eu, responsavel: ana });
+    expect(t.tipo).toBe('envio');
+    expect(t.entrega).toBe('enviada');
+    expect(d.lerTarefa('x', { tipo: 'outro', entrega: 'x' })).not.toHaveProperty('tipo');
+  });
+});

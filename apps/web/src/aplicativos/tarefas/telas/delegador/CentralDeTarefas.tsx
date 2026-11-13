@@ -88,8 +88,8 @@ export function ListaDaCentral({ vm, semTitulo }: { vm: ReturnType<typeof useCen
               { rotulo: 'Texto separado (.csv)', icone: 'relatorio', desabilitado: !vm.podeExportar, onClick: () => vm.exportar('csv') },
             ]} />
         )}
-        {/* pedir documentos a alguém do escritório (12/11/2026): a nova já como pedido; quem recebe anexa e confirma */}
-        <button type="button" className="btn btn-outline" onClick={vm.pedirDocumentos} title="Delegar a alguém do escritório um pedido de documentos"><Icone nome="clipe" />Pedir documentos</button>
+        {/* delegar documentos a alguém do escritório (12/11/2026; "Delegar documentos fica mais auto explicativo"): quem recebe anexa e confirma */}
+        <button type="button" className="btn btn-outline" onClick={vm.pedirDocumentos} title="Delegar a alguém do escritório: quem recebe anexa os documentos e confirma"><Icone nome="clipe" />Delegar documentos</button>
         <button type="button" className="btn btn-primary" onClick={vm.nova}><Icone nome="plus" />Nova tarefa</button>
       </div>
       {vm.erro && <p className="registro-dica registro-dica-erro"><Icone nome="alert" />{vm.erro}</p>}

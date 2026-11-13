@@ -2,7 +2,7 @@
 // de cada tipo dá o código (BT-01, BT-02…): peça nova entra no FIM do tipo, para os códigos não mudarem.
 import {
   LogoSieg, LogoSimplesDaAba, LogoSped, Alerta, AnelDeContagem, BarrasEmColuna, BotaoAcao, BotaoFechar, Vazio, CartaoComAnel, RoscaComLegenda, ConfigLinha, ConfigSecao, Dica, MedalhaGov, classeDaJanela, ordemDosBotoes, BotaoIcone, CampoArquivos, CampoData, Esqueleto, Icone, Interruptor, LogoBanco, LogoDrive, LogoEcontador, LogoGmail, LogoSciReport, MapaDeCalor, Variacao,
-  LogoFgts, LogoGovernoMinas, LogoInss, LogoReceitaFederal, LogoSimplesNacional, LogoWhatsApp, MarcaN, MenuSuspenso, Segmentado, SoltarArquivos, SeletorMes, SeletorTema, Stat, type NomeIcone, type OpcoesModal,
+  CalendarioDoMes, LogoFgts, LogoGovernoMinas, LogoInss, LogoReceitaFederal, LogoSimplesNacional, LogoWhatsApp, MarcaN, MenuSuspenso, Segmentado, SoltarArquivos, BlocosDeEscolha, SeletorMes, SeletorTema, Stat, type NomeIcone, type OpcoesModal,
 } from '@nads/ui';
 import { useState, type ReactNode } from 'react';
 import { CampoAssinatura, FORMATOS_DE_ARQUIVO, IconeDeArquivo } from '@nads/ui';
@@ -57,6 +57,16 @@ const TAREFAS_DE_EXEMPLO: LinhaDaListaDeTarefas[] = [
   { id: '2', numero: 2, titulo: 'Mandar a guia do DAS para o cliente', status: { valor: 'andamento', rotulo: 'Em andamento' }, prioridade: { valor: 'urgente', rotulo: 'Urgente' }, prazo: '29/10/2026', atrasada: false, cliente: '14 · ALFA COMERCIO LTDA', pessoa: 'Heverton', anexos: 0, pareceres: 0 },
   { id: '3', numero: 3, titulo: 'Atualizar o cadastro dos sócios', status: { valor: 'pendente', rotulo: 'Pendente' }, prioridade: { valor: 'normal', rotulo: 'Normal' }, prazo: '', atrasada: false, cliente: '', pessoa: 'Você mesmo', anexos: 0, pareceres: 0 },
 ];
+/** A escolha em blocos do catálogo (as Ferramentas de documentos), trocando de verdade. */
+function DemoBlocos() {
+  const [v, setV] = useState('separar');
+  return (
+    <BlocosDeEscolha valor={v} onMudar={setV} rotulo="A ferramenta" grupos={[
+      { titulo: 'Organizar', opcoes: [{ valor: 'separar', rotulo: 'Separar', icone: 'tesoura' }, { valor: 'juntar', rotulo: 'Juntar', icone: 'folhas' }, { valor: 'girar', rotulo: 'Girar e tirar', icone: 'girar' }] },
+      { titulo: 'Otimizar', opcoes: [{ valor: 'comprimir', rotulo: 'Comprimir', icone: 'minimizar' }, { valor: 'numerar', rotulo: 'Numerar', icone: 'hash' }] },
+    ]} />
+  );
+}
 /** A calculadora do catálogo, funcionando pelas teclas da tela. */
 function DemoDaCalculadora() {
   const [e, setE] = useState<financeiro.EstadoDaCalculadora>(financeiro.CALCULADORA_INICIAL);
@@ -169,7 +179,14 @@ function Lateral({ itens, titulo }: { titulo?: string; itens: { rotulo: string; 
 
 function SegmentadoVivo() {
   const [v, setV] = useState('resumido');
-  return <Segmentado valor={v} opcoes={[{ valor: 'resumido', rotulo: 'Resumido' }, { valor: 'detalhado', rotulo: 'Detalhado' }]} onMudar={setV} />;
+  const [via, setVia] = useState('email');
+  // com a logo antes do nome (icone; 12/11/2026, o WhatsApp no Envio das guias do Fiscal)
+  return (
+    <div style={{ display: 'grid', gap: 10, justifyItems: 'start' }}>
+      <Segmentado valor={v} opcoes={[{ valor: 'resumido', rotulo: 'Resumido' }, { valor: 'detalhado', rotulo: 'Detalhado' }]} onMudar={setV} />
+      <Segmentado valor={via} opcoes={[{ valor: 'email', rotulo: 'Gmail' }, { valor: 'impresso', rotulo: 'Impresso' }, { valor: 'zap', rotulo: 'WhatsApp', icone: <LogoWhatsApp /> }]} onMudar={setVia} />
+    </div>
+  );
 }
 function InterruptorVivo() {
   const [v, setV] = useState(true);
@@ -355,7 +372,7 @@ export const PECAS_BASE: Peca[] = [
   // ─── Logos ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   { id: 'logos-bancos', tipo: 'logos', nome: 'Bancos (cinza e colorido)', componente: 'LogoBanco', telas: ['e-importacao', 't-exec-importacao', 't-exec-cheque', 't-cadastro-janela'], largo: true, uso: '<LogoBanco banco="sicoob" cor />',
     demo: () => <div className="cat-icones">{BANCOS.map(b => <span key={b} className="cat-icone"><span style={{ display: 'flex', gap: 8 }}><span className="imp-logo" style={{ width: 28, height: 28 }}><LogoBanco banco={b} /></span><span className="imp-logo" style={{ width: 28, height: 28 }}><LogoBanco banco={b} cor /></span></span>{b}</span>)}</div> },
-  { id: 'logos-apps', tipo: 'logos', nome: 'Aplicativos', componente: 'LogoDrive · LogoGmail · LogoWhatsApp · LogoEcontador · LogoSciReport · LogoSieg · LogoSimplesDaAba · LogoSped', telas: ['e-importacao', 't-drive', 't-gmail', 't-fiscal-relatorio'],
+  { id: 'logos-apps', tipo: 'logos', nome: 'Aplicativos', descricao: 'As logos dos aplicativos. O WhatsApp é o balão verde com o telefone branco que o Vitor mandou (12/11/2026, ticket 1ORUBY: "O icone"), sem o fundo, em logos-bancos/whatsapp.png (a original em originais/whatsapp.jpg)', componente: 'LogoDrive · LogoGmail · LogoWhatsApp · LogoEcontador · LogoSciReport · LogoSieg · LogoSimplesDaAba · LogoSped', telas: ['e-importacao', 't-drive', 't-gmail', 't-fiscal-relatorio'],
     demo: () => <><span style={{ width: 24, height: 24, display: 'inline-flex' }}><LogoSieg /></span><span style={{ width: 24, height: 24, display: 'inline-flex' }}><LogoSimplesDaAba /></span><span style={{ width: 24, height: 24, display: 'inline-flex' }}><LogoSped /></span><span style={{ width: 24, height: 24, display: 'inline-flex' }}><LogoDrive /></span><span style={{ width: 24, height: 24, display: 'inline-flex' }}><LogoDrive cor /></span><span style={{ width: 24, height: 24, display: 'inline-flex' }}><LogoGmail /></span><span style={{ width: 24, height: 24, display: 'inline-flex' }}><LogoWhatsApp /></span><span style={{ width: 24, height: 24, display: 'inline-flex' }}><LogoEcontador /></span><span style={{ width: 24, height: 24, display: 'inline-flex' }}><LogoSciReport /></span></> },
 
   // ─── Campos ─────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -369,6 +386,8 @@ export const PECAS_BASE: Peca[] = [
     demo: () => <><input type="checkbox" /><input type="checkbox" defaultChecked /><input type="checkbox" disabled /><input type="checkbox" className="chk-auto" defaultChecked /></> },
   { id: 'interruptor', tipo: 'campos', nome: 'Interruptor', componente: 'Interruptor', classes: ['toggle-switch'], telas: ['c-consulta', 'a-sistema', 't-fiscal-controle'], demo: () => <InterruptorVivo /> },
   { id: 'data', tipo: 'campos', nome: 'Data (dd/mm/aaaa)', componente: 'CampoData', classes: ['data-mask'], telas: ['c-consulta', 'e-cheque', 'c-cliente-dp'], demo: () => <DataVivo /> },
+  { id: 'calendario-mes', tipo: 'campos', nome: 'Calendário do mês', descricao: 'O mês com ‹ › (e o botão de voltar ao mês de hoje, quando está em outro), a semana de domingo a sábado e os dias em quadradinhos de canto arredondado, como no GitHub, sem animação: hoje cheio na cor da marca e o dia da semana em destaque (sem a semana de hoje num fundo leve: "Deixa normal"); o dia marcado (prazo de tarefa, reunião ou aviso) com o fundo da marca clarinho e até 3 pontinhos; o escolhido com o contorno; os que já passaram mais apagados e os de fora do mês quase sumidos. Clicar escolhe o dia; de novo, solta (13/11/2026, o Início novo: "Pode criar"; redesenhado no mesmo dia: "Tem como fazer outro calendário mais bonitinho?")', componente: 'CalendarioDoMes', classes: ['cal-mes', 'cal-mes-dia', 'hoje', 'passou', 'escolhido', 'marcado', 'cal-mes-pontos'], telas: ['t-inicio'],
+    demo: () => <div style={{ width: 320 }}><CalendarioDoMes mes="2026-11" hoje="2026-11-13" escolhido="2026-11-18" marcados={{ 4: 1, 13: 2, 16: 1, 18: 3, 19: 1, 25: 4 }} dicaDoMarcado={n => n + (n === 1 ? ' tarefa' : ' tarefas')} onDia={nada} onMes={nada} /></div> },
   { id: 'mes', tipo: 'campos', nome: 'Seletor de mês', componente: 'SeletorMes', classes: ['seletor-mes'], telas: ['t-empresas', 't-contabil', 'c-cliente-guias'], demo: () => <MesVivo /> },
   { id: 'arquivos', tipo: 'campos', nome: 'Escolher arquivos', componente: 'CampoArquivos', classes: ['file-picker'], telas: ['t-empresa-lcdpr', 'c-importacao', 'e-cheque', 'e-creditor', 'c-cliente-chamados'],
     demo: () => <><CampoArquivos id="cat-arq" onEscolher={nada} aceitar=".xls,.xlsx" /><CampoArquivos id="cat-arq2" onEscolher={nada} aceitar=".xls" compacto rotulo="Importar todos os meses" /></> },
@@ -443,7 +462,8 @@ export const PECAS_BASE: Peca[] = [
 
   // ─── Menus suspensos ────────────────────────────────────────────────────────────────────────────────────────────────
   { id: 'menu-suspenso', tipo: 'menus', nome: 'Menu suspenso (▾)', componente: 'MenuSuspenso', classes: ['popover menu-pop', 'popover-item', 'popover-sep'], telas: TODAS,
-    uso: "<MenuSuspenso rotulo=\"Ações\" itens={[{ rotulo: 'Copiar', icone: 'copiar', onClick }, 'separador']} />  ·  dentro de uma tabela que rola (o celular): flutuante — o menu abre por cima da página (revisão da UI, 18/10/2026)",
+    descricao: 'Abre sempre para baixo, colado no botão; faltando espaço embaixo, a lista rola por dentro em vez de subir (12/11/2026: "bota eles para abrirem para baixo, não para cima"). Só sobe com o botão no pé da tela, quando embaixo não cabem três itens. Com a busca (conteudo), a busca fica parada e só a lista (.menu-busca-lista) rola',
+    uso: "<MenuSuspenso rotulo=\"Ações\" itens={[{ rotulo: 'Copiar', icone: 'copiar', onClick }, 'separador']} />  ·  dentro de uma tabela que rola ou de uma janela: flutuante — o menu abre por cima da página, para baixo (revisão da UI, 18/10/2026; 12/11/2026)",
     demo: () => <MenuSuspenso rotulo="Pedir extratos" setaAntes itens={[{ rotulo: 'E-mail', icone: 'envelope', onClick: nada }, { rotulo: 'Histórico', icone: 'clock', dica: '3', onClick: nada }, 'separador', { rotulo: 'Desligado', icone: 'lock', desabilitado: true, onClick: nada }]} /> },
   { id: 'menu-grupos', tipo: 'menus', nome: 'Menu suspenso sem nome', descricao: 'Só o ícone e o ▾: os grupos da rotina e as saídas da etapa; o dos grupos tem as abas Tarefas e Em lote (alterar e cancelar), como o Code ▾ do GitHub', componente: 'MenuSuspenso', classes: ['gh-topo-btn gh-topo-menu'], telas: EXECUTOR,
     demo: () => <MenuSuspenso rotulo="" icone="fileUp" className="gh-topo-btn gh-topo-menu" largura={260} conteudo={fechar => <MenuDaRotina fechar={fechar} grupos={[{ rotulo: 'Preparação', icone: 'fileUp', marcado: true, onClick: nada }, 'separador', { rotulo: 'Ativo', icone: 'landmark', desabilitado: true, onClick: nada }, { rotulo: 'Passivo', icone: 'relatorio', desabilitado: true, onClick: nada }, { rotulo: 'Resultado', icone: 'barChart', desabilitado: true, onClick: nada }, 'separador', { rotulo: 'Fechamento', icone: 'checkCircle', desabilitado: true, onClick: nada }]} emLote={{ rotulo: 'Janeiro a Setembro/2026 · 9 meses', onAlterar: nada, onCancelar: nada }} />} /> },
@@ -498,6 +518,21 @@ export const PECAS_BASE: Peca[] = [
   janela('jn-desmarcar', 'Desmarcar Conferência fiscal?', EXECUTOR, { icone: 'checkCircle', titulo: 'Desmarcar Conferência fiscal?', texto: 'A etapa volta a ficar pendente em todos os meses do período.', botoes: [{ rotulo: 'Cancelar' }, { rotulo: 'Desmarcar', variante: 'btn-primary' }] }),
   janela('jn-presta', 'Esta empresa presta serviço?', ['c-relatorio', 'c-importacao'], { icone: 'briefcase', titulo: 'Esta empresa presta serviços?', texto: 'Decide a aba Prestados e os serviços prestados na conferência.', botoes: [{ rotulo: 'Não' }, { rotulo: 'Sim', variante: 'btn-primary' }], obrigatoria: true }),
   virouAviso(janela('jn-orientacao', 'Como resolver (orientação de uma saída)', EXECUTOR, { icone: 'alert', titulo: 'O razão da conta ainda não foi gerado no sistema', texto: 'Gere o razão da conta do banco no Alterdata (Excel ou PDF) e importe na linha "Lançamentos contábeis".', botoes: [{ rotulo: 'Entendi', variante: 'btn-primary' }] }), 'av-orientacao'),
+  { id: 'jn-interromper', removida: { como: 'excluida', em: '12/11/2026', motivo: 'Vitor, 12/11: não quer mais o Por que interromper. O ✕ e as outras saídas só saem da etapa.' }, tipo: 'janelas', nome: 'Por que interromper?', descricao: 'O ✕ do executor, ou sair da etapa por qualquer lugar do app: os motivos em cartões e a observação', componente: 'JanelaInterromper', classes: ['interromper-janela', 'interromper-opcao', 'interromper-obs'], telas: EXECUTOR,
+    demo: () => (
+      <div className={classeDaJanela({}) + ' interromper-janela cat-parado'} role="dialog">
+        <button type="button" className="modal-x" aria-label="Fechar"><Icone nome="x" /></button>
+        <h3>Por que interromper?</h3>
+        <p className="interromper-etapa">Importação</p>
+        <div className="interromper-opcoes">
+          {['O cliente não enviou o extrato', 'O extrato está no Drive do cliente', 'O razão da conta ainda não foi gerado no sistema', 'Outro motivo'].map((m, k) => (
+            <label key={m} className={'interromper-opcao' + (k === 0 ? ' on' : '')}><input type="radio" name="cat-motivo" defaultChecked={k === 0} /><span>{m}</span></label>
+          ))}
+        </div>
+        <label className="interromper-obs"><span>Observação (opcional)</span><textarea rows={3} /></label>
+        <div className="modal-actions"><button className="btn btn-danger" type="button">Interromper</button></div>
+      </div>
+    ) },
   { id: 'jn-cadastro', tipo: 'janelas', nome: 'Janela da empresa (Cadastro)', descricao: 'A janela grande, com abas', classes: ['cad-janela-fundo', 'cad-janela', 'cad-janela-topo', 'cad-janela-abas', 'cad-janela-aba'], telas: ['t-cadastro', 't-cadastro-janela'], largo: true,
     demo: () => (
       <div className="cad-janela cat-parado" style={{ maxWidth: 760, width: '100%' }}>
@@ -564,7 +599,7 @@ export const PECAS_BASE: Peca[] = [
     demo: () => <AvisoParado tom="erro" titulo="Falta preencher antes de conferir" texto="Escolha a conta · Importe o relatório da conta" />, aoVivo: c => c.aviso({ tom: 'erro', titulo: 'Falta preencher antes de conferir', texto: 'Escolha a conta · Importe o relatório da conta' }) },
   { id: 'abas-menu', tipo: 'abas', nome: 'Abas sublinhadas', classes: ['menu', 'menu-item', 'menu-contador'], telas: TODAS, largo: true,
     demo: () => <nav className="menu">{([['Bancos', 'landmark', true], ['Balancete', 'scale'], ['Entradas', 'arrowDown'], ['Saídas', 'arrowUp'], ['Tomados', 'fileDown']] as [string, NomeIcone, boolean?][]).map(([r, i, a]) => <button key={r} type="button" className={'menu-item' + (a ? ' active' : '')}><Icone nome={i} /><span>{r}</span></button>)}</nav> },
-  { id: 'segmentado', tipo: 'abas', nome: 'Segmentado', componente: 'Segmentado', classes: ['steps', 'step-pill'], telas: ['c-relatorio', 'c-cadastro', 'c-consulta', 'a-arquivador'], demo: () => <SegmentadoVivo /> },
+  { id: 'segmentado', tipo: 'abas', nome: 'Segmentado', descricao: 'A escolha entre poucas opções, com o fundo deslizando até a escolhida. A opção pode ter uma logo antes do nome (icone, 14 px; 12/11/2026: o WhatsApp no Envio das guias do Fiscal)', componente: 'Segmentado', classes: ['steps', 'step-pill'], telas: ['c-relatorio', 'c-cadastro', 'c-consulta', 'a-arquivador'], demo: () => <SegmentadoVivo /> },
   { id: 'imp-meses', tipo: 'abas', nome: 'Meses do período (Em lote)', descricao: 'Uma tabela: meses em cima (clicar abre), Extrato e Razão nas linhas, um ícone por mês', classes: ['imp-meses', 'imp-meses-mes', 'atual', 'imp-mes-sem'], telas: ['e-importacao', 't-exec-importacao'], largo: true,
     demo: () => {
       const ok = <button className="icon-btn icon-btn-sm imp-btn imp-feito" type="button"><Icone nome="check" className="imp-feito-ok" /><Icone nome="x" className="imp-feito-x" /></button>;
@@ -1163,6 +1198,9 @@ export const PECAS_BASE: Peca[] = [
   { id: 'soltar-arquivos', tipo: 'campos', nome: 'Área de soltar arquivos (nads)', descricao: 'Arrastar o arquivo para cima dela ou clicar para escolher, no desenho da área do certificado A1: a moldura tracejada grande, o ícone na bolinha (pula quando o arquivo está por cima), o título, "ou clique para escolher" e a dica do que aceita. Com children ela não desenha a caixa: aceita soltar em cima do que estiver dentro (o arquivo escolhido, para trocar soltando outro) e mostra a moldura por cima', componente: 'SoltarArquivos', classes: ['soltar', 'soltar-icone', 'sobre', 'soltar-por-cima'], telas: ['t-ferramentas'], largo: true,
     uso: '<SoltarArquivos aceitar=".pdf" titulo="Arraste o PDF para cá" dica="…" onArquivos={fs => …} />',
     demo: () => <div style={{ width: '100%' }}><SoltarArquivos aceitar=".pdf" titulo="Arraste o PDF para cá" icone="copiar" dica="O arquivo é aberto aqui no navegador: nada sai do seu computador." onArquivos={nada} /></div> },
+  { id: 'blocos-de-escolha', tipo: 'abas', nome: 'Escolha em blocos com ícone', descricao: 'A escolha da ferramenta nas Ferramentas de documentos (12/11/2026: "deixa essa seleção mais bonita"; eram nove abas numa barra só): os grupos (Organizar, Otimizar, Converter) com o título pequeno em cima e as opções numa faixa cinza; cada opção é um bloco com o ícone num quadradinho e o nome embaixo. O escolhido ganha o ícone cheio da cor de destaque e o fundo com a borda suave, que desliza até o clicado (o indicador do Segmentado). A frase de cada opção vai na dica. No celular os blocos viram uma grade', componente: 'BlocosDeEscolha', classes: ['blocos-escolha', 'blocos-escolha-grupo', 'blocos-escolha-titulo', 'blocos-escolha-opcoes', 'bloco-escolha', 'bloco-escolha-icone'], telas: ['t-ferramentas'], largo: true,
+    uso: '<BlocosDeEscolha valor={v} onMudar={setV} grupos={[{ titulo: "Organizar", opcoes: [{ valor: "separar", rotulo: "Separar", icone: "tesoura" }] }]} />',
+    demo: () => <DemoBlocos /> },
   { id: 'paginas-em-miniatura', tipo: 'listas', nome: 'Páginas em miniatura', descricao: 'A grade das páginas do PDF nas Ferramentas: a folha num quadrado (a imagem girada como vai ficar), o número embaixo e, por cima, o selo (Arquivo 2, 90°, Sai) e os botões que aparecem ao passar o mouse. A página que começa um arquivo novo no Separar leva a barra de corte à esquerda; a que sai no Girar e tirar fica vermelha e apagada; enquanto a imagem não chega, a folha cinza pulsando', classes: ['paginas-grade', 'pagina-mini', 'pagina-mini-folha', 'pagina-mini-num', 'pagina-mini-selo', 'pagina-mini-acoes', 'corte', 'tirada', 'girada'], telas: ['t-ferramentas'], largo: true,
     demo: () => (
       <ol className="paginas-grade" style={{ width: '100%' }}>

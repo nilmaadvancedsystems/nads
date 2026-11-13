@@ -9,7 +9,7 @@
 // Qualquer outro é um link inválido e não mostra dado nenhum. No modo banco, só o "exemplo" vem daqui (repo.ts).
 import { areaCliente as ac, formatos, mandei } from '@nads/core';
 import { exemplo as mandeiExemplo } from '../../../comum/mandeiExemplo';
-import { AREA_VAZIA, TODAS_AS_SECOES, type DocumentoDoCliente, type Empregado, type EstadoDaArea, type RepoAreaCliente } from './areaCliente';
+import { AREA_VAZIA, TODAS_AS_SECOES, type DocumentoDoCliente, type EstadoDaArea, type RepoAreaCliente } from './areaCliente';
 import { documentoFormatado, estadoDoEspelho } from './espelho';
 
 export const TOKEN_DE_EXEMPLO = 'exemplo';
@@ -75,7 +75,7 @@ export function areaDeExemplo(hoje: Date): EstadoDaArea {
       id: 'c1', tipo: 'admissao', titulo: 'Admissão da Maria Souza (auxiliar administrativo)', situacao: 'em andamento',
       mensagens: [
         { de: 'cliente', autor: 'Você', texto: 'Vamos contratar a Maria Souza para auxiliar administrativo, começando dia 1º. O que vocês precisam de nós?', em: comHora(emDias(hoje, -4), 10, 5) },
-        { de: 'escritorio', autor: 'Escritório', texto: 'Oi! Precisamos de cópia do RG, CPF, título de eleitor, comprovante de residência e da carteira de trabalho digital. Pode mandar por aqui, na aba Enviar.', em: comHora(emDias(hoje, -4), 11, 20) },
+        { de: 'escritorio', autor: 'Carla', texto: 'Oi! Precisamos de cópia do RG, CPF, título de eleitor, comprovante de residência e da carteira de trabalho digital. Pode mandar por aqui, na aba Enviar.', em: comHora(emDias(hoje, -4), 11, 20) },
         { de: 'cliente', autor: 'Você', texto: 'Mandei os documentos agora.', em: comHora(emDias(hoje, -2), 14, 2) },
       ],
     },
@@ -83,7 +83,7 @@ export function areaDeExemplo(hoje: Date): EstadoDaArea {
       id: 'c2', tipo: 'ferias', titulo: 'Dúvida sobre as férias do João', situacao: 'respondido',
       mensagens: [
         { de: 'cliente', autor: 'Você', texto: 'O João pode tirar 10 dias de férias e vender os outros 20?', em: comHora(emDias(hoje, -9), 9, 40) },
-        { de: 'escritorio', autor: 'Escritório', texto: 'Pode tirar 20 dias e vender até 10. Quando ele quiser sair, nos avise com 30 dias de antecedência para a gente preparar o aviso e o recibo.', em: comHora(emDias(hoje, -8), 8, 55) },
+        { de: 'escritorio', autor: 'Carla', texto: 'Pode tirar 20 dias e vender até 10. Quando ele quiser sair, nos avise com 30 dias de antecedência para a gente preparar o aviso e o recibo.', em: comHora(emDias(hoje, -8), 8, 55) },
       ],
     },
   ];
@@ -104,7 +104,11 @@ export function areaDeExemplo(hoje: Date): EstadoDaArea {
     ],
     documentos: documentosDeExemplo(hoje),
     certificado: { tipo: 'A1', titular: 'PERSONALY COMPANY LTDA', validoAte: iso(emDias(hoje, 25)) },
-    empregados: empregadosDeExemplo(hoje),
+    pessoal: pessoalDeExemplo(hoje), documentosDp: documentosDpDeExemplo(hoje), faturamento: faturamentoDeExemplo(hoje), logo: LOGO_DE_EXEMPLO,
+    danfes: [
+      { id: 'danfe-' + chaveDeExemplo('55', 1842), nome: 'DANFE 1842.pdf', chave: chaveDeExemplo('55', 1842), atualizadoEm: comHora(hoje, 9, 12) },
+      { id: 'danfe-' + chaveDeExemplo('65', 23367), nome: 'DANFE 23367.pdf', chave: chaveDeExemplo('65', 23367), atualizadoEm: comHora(hoje, 9, 15) },
+    ],
     ficha: {
       razaoSocial: 'Personaly Company Ltda', nomeFantasia: 'Personaly', cnpj: '00.000.000/0001-91', inscricaoEstadual: '000.000.000.0000',
       inscricaoMunicipal: '000000-0', regime: 'Simples Nacional', cnae: '47.12-1-00 (comércio varejista de mercadorias em geral)', abertura: '2019-04-02',
@@ -113,7 +117,7 @@ export function areaDeExemplo(hoje: Date): EstadoDaArea {
     },
     atendimento: {
       equipe: 'Equipe Nilma Contabilidade', horario: 'Segunda a sexta, das 8h às 18h',
-      setores: [{ nome: 'Fiscal', email: 'fiscal@nilma.example' }, { nome: 'Pessoal', email: 'dp@nilma.example' }, { nome: 'Contábil', email: 'contabil@nilma.example' }],
+      setores: [{ nome: 'Fiscal', email: 'fiscal@nilma.example', whatsapp: '(31) 98888-0001' }, { nome: 'Pessoal', email: 'dp@nilma.example', whatsapp: '(31) 98888-0002' }, { nome: 'Contábil', email: 'contabil@nilma.example', whatsapp: '(31) 98888-0003' }],
     },
     avisos: [
       { id: 'a1', titulo: 'Extratos de ' + formatos.rot(mesDe(hoje)).toLowerCase(), texto: 'Mande os extratos bancários do mês até o dia 5 de ' + formatos.rot(mesDe(new Date(hoje.getFullYear(), hoje.getMonth() + 1, 1))).toLowerCase() + ' para o escritório fechar a contabilidade.', ir: 'documentos' },
@@ -143,7 +147,7 @@ export function areaComoNoBanco(hoje: Date, vazio = false): EstadoDaArea {
       id: 'c1', tipo: 'documento', titulo: 'Certidão negativa estadual', situacao: 'respondido',
       mensagens: [
         { de: 'cliente', autor: 'Você', texto: 'Preciso da certidão negativa estadual para uma licitação.', em: comHora(emDias(hoje, -3), 10, 5) },
-        { de: 'escritorio', autor: 'Escritório', texto: 'Já emitimos. Está no seu e-mail e vale por 30 dias.', em: comHora(emDias(hoje, -2), 9, 40) },
+        { de: 'escritorio', autor: 'Rafael', texto: 'Já emitimos. Está no seu e-mail e vale por 30 dias.', em: comHora(emDias(hoje, -2), 9, 40) },
       ],
     }],
   });
@@ -172,16 +176,177 @@ function documentosDeExemplo(hoje: Date): DocumentoDoCliente[] {
   ];
 }
 
-/** Os funcionários ativos (CPF mascarado). */
-function empregadosDeExemplo(hoje: Date): Empregado[] {
-  const ano = hoje.getFullYear();
-  return [
-    { id: 'f1', nome: 'Ana Luiza Ferreira', cpf: '***.491.826-**', cargo: 'Gerente financeira', admissao: '2021-03-12', salario: 5400, ferias: 'vencidas' },
-    { id: 'f2', nome: 'Carlos Eduardo Santos', cpf: '***.102.396-**', cargo: 'Assistente de vendas', admissao: '2023-08-01', salario: 2450, ferias: 'em ferias', retornoEm: iso(emDias(hoje, 9)) },
-    { id: 'f3', nome: 'João Pereira', cpf: '***.774.105-**', cargo: 'Vendedor', admissao: '2022-06-20', salario: 2300, ferias: 'em dia' },
-    { id: 'f4', nome: 'Mariana Oliveira Silva', cpf: '***.883.216-**', cargo: 'Analista de marketing', admissao: ano + '-01-15', salario: 3800, ferias: 'periodo aquisitivo' },
-    { id: 'f5', nome: 'Rodrigo de Almeida', cpf: '***.554.906-**', cargo: 'Auxiliar de estoque', admissao: ano + '-05-10', salario: 1850, ferias: 'periodo aquisitivo' },
+/** O mês 'aaaa-mm' de k meses atrás. */
+const mesAtras = (hoje: Date, k: number) => { const d = new Date(hoje.getFullYear(), hoje.getMonth() - k, 1); return d.getFullYear() + '-' + dois(d.getMonth() + 1); };
+
+/** O Registro de exemplo (12/11/2026), no formato do robô: os funcionários pelas guias do FGTS (o CPF mascarado). */
+function pessoalDeExemplo(hoje: Date): ac.ResumoDoPessoal {
+  const ultimo = mesAtras(hoje, 1);
+  const ano = String(hoje.getFullYear());
+  const funcionarios: ac.FuncionarioDoRegistro[] = [
+    { id: 'f1', nome: 'ANA LUIZA FERREIRA', cpf: '***.491.826-**', matricula: '001', remuneracao: 5400, desde: '2021-03', ultimo, ativo: true,
+      cargo: 'Gerente administrativa', admissao: '2021-03-08', salarioBase: 5400, liquido: 4321.87, fonte: 'folha' },
+    { id: 'f2', nome: 'CARLOS EDUARDO SANTOS', cpf: '***.102.396-**', matricula: '004', remuneracao: 2450, desde: '2023-08', ultimo, ativo: true,
+      cargo: 'Auxiliar de logística', admissao: '2023-08-14', salarioBase: 2450, liquido: 2143.12, fonte: 'folha',
+      periodosDeFerias: [{ inicio: '2024-08-14', fim: '2025-08-13', direito: 30, gozados: 30, aGozar: 0, concederAte: '2026-08-13' }, { inicio: '2025-08-14', fim: '2026-08-13', direito: 30, gozados: 0, aGozar: 30, concederAte: '2027-08-13' }] },
+    { id: 'f3', nome: 'JOAO PEREIRA', cpf: '***.774.105-**', matricula: '003', remuneracao: 2300, desde: '2022-06', ultimo, ativo: true,
+      cargo: 'Vendedor', admissao: '2022-06-01', salarioBase: 2300, liquido: 2032.4, fonte: 'folha', afastadoDe: mesAtras(hoje, 1) + '-20', afastadoAte: mesAtras(hoje, 1) + '-24' },
+    { id: 'f4', nome: 'MARIANA OLIVEIRA SILVA', cpf: '***.883.216-**', matricula: '007', remuneracao: 3800, desde: ano + '-01', ultimo, ativo: true },
+    { id: 'f5', nome: 'RODRIGO DE ALMEIDA', cpf: '***.554.906-**', matricula: '008', remuneracao: 1850, desde: ano + '-05', ultimo, ativo: true },
+    { id: 'f6', nome: 'PAULO HENRIQUE COSTA', cpf: '***.330.487-**', matricula: '005', remuneracao: 2100, desde: '2022-02', ultimo: mesAtras(hoje, 3), ativo: false },
   ];
+  // a folha mês a mês (13/11/2026): 12 meses, crescendo com as admissões do ano
+  const historico = Array.from({ length: 12 }, (_, k) => {
+    const competencia = mesAtras(hoje, 12 - k);
+    const ativosNoMes = funcionarios.filter(f => f.desde <= competencia && (f.ativo || f.ultimo >= competencia));
+    const base = Math.round(ativosNoMes.reduce((t, f) => t + f.remuneracao, 0) * (0.97 + (k % 3) * 0.015) * 100) / 100;
+    // os três últimos meses com os holerites (13/11/2026: a folha de verdade)
+    const holerite = k >= 9 ? { proventos: base, inss: Math.round(base * 0.085 * 100) / 100, irrf: Math.round(base * 0.021 * 100) / 100, descontos: Math.round(base * 0.142 * 100) / 100, liquido: Math.round(base * 0.858 * 100) / 100, holerites: ativosNoMes.length } : {};
+    return { competencia, base, fgts: Math.round(base * 0.08 * 100) / 100, funcionarios: ativosNoMes.length, ...holerite };
+  });
+  return { funcionarios, competencia: ultimo, total: 15800, historico, atualizadoEm: comHora(hoje, 7, 30) };
+}
+
+/** O faturamento de exemplo (12/11/2026): 12 meses de notas emitidas, como o robô monta pelo SIEG (o mês de hoje ainda sem dado). */
+/** A logo de exemplo (um monograma; só para ver o topo: o robô aceita só PNG, JPG e WebP). */
+const LOGO_DE_EXEMPLO = 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#1f6feb"/><text x="32" y="42" font-family="Arial,sans-serif" font-size="28" font-weight="700" fill="#fff" text-anchor="middle">PC</text></svg>');
+
+/** Uma chave de exemplo: MG, out/2026, o CNPJ de exemplo, o modelo e o número no lugar certo (o resto zerado). */
+const chaveDeExemplo = (modelo: string, numero: number) => '31' + '2610' + '00000000000191' + modelo + '001' + String(numero).padStart(9, '0') + '1' + '00000000' + '0';
+
+/** As notas de exemplo do relatório do dia: a venda de cada dia em notas (o atacado em NF-e, o balcão em NFC-e). */
+function notasDoDiaDeExemplo(n: ac.NotasDoMes): ac.NotaDoRelatorio[] {
+  const notas: ac.NotaDoRelatorio[] = [];
+  let nfe = 1840, nfce = 23360;
+  const atacado = n.clientes.filter(c => c.nome !== ac.CONSUMIDOR_FINAL).map(c => c.nome);
+  n.porDia.forEach((valor, i) => {
+    if (!valor) return;
+    const partes = 3 + (i % 5);
+    const doAtacado = Math.round(valor * 0.6 * 100) / 100;
+    notas.push({ dia: i + 1, tipo: 'NF-e', numero: String(nfe), serie: '1', cliente: atacado[i % Math.max(1, atacado.length)] ?? 'Loja Estrela', cfop: i % 4 ? '5102' : '5405', valor: doAtacado, chave: chaveDeExemplo('55', nfe++) });
+    for (let k = 0; k < partes; k++) {
+      notas.push({ dia: i + 1, tipo: 'NFC-e', numero: String(nfce), serie: '1', cliente: ac.CONSUMIDOR_FINAL, cfop: '5102', valor: Math.round(((valor - doAtacado) / partes) * 100) / 100, chave: chaveDeExemplo('65', nfce++) });
+    }
+    if (i % 9 === 4) notas.push({ dia: i + 1, tipo: 'NFC-e', numero: String(nfce), serie: '1', cliente: ac.CONSUMIDOR_FINAL, cfop: '5102', valor: 48.9, cancelada: true, chave: chaveDeExemplo('65', nfce++) });
+  });
+  return notas;
+}
+
+/** O painel do mês de exemplo: a venda espalhada pelos dias (mais no sábado), 5 clientes do atacado e o balcão. */
+function notasDoMesDeExemplo(competencia: string, total: number, nfe: number, ateODia: number): ac.NotasDoMes {
+  const ano = Number(competencia.slice(0, 4)), mes = Number(competencia.slice(5, 7));
+  const dias = ateODia || new Date(ano, mes, 0).getDate();
+  const pesos = Array.from({ length: new Date(ano, mes, 0).getDate() }, (_, i) => {
+    if (i >= dias) return 0;
+    const semana = new Date(ano, mes - 1, i + 1).getDay();
+    return semana === 0 ? 0.25 : (semana === 6 ? 1.6 : 1) * (1 + 0.35 * Math.sin((i + mes) * 1.7)) * (i < 6 ? 1.2 : 1);
+  });
+  const soma = pesos.reduce((t, p) => t + p, 0) || 1;
+  const porDia = pesos.map(p => Math.round((total * p) / soma * 100) / 100);
+  const atacado = [['Mercado Bom Preço Ltda', 0.31], ['Distribuidora Central', 0.22], ['Casa & Cia Utilidades', 0.15], ['Loja Estrela', 0.09], ['Bazar da Praça', 0.06]] as const;
+  const clientes = atacado.map(([nome, p], k) => ({ nome, valor: Math.round(nfe * p * 100) / 100, notas: 14 - k * 2 }));
+  const balcao = Math.round((total - clientes.reduce((t, c) => t + c.valor, 0)) * 100) / 100;
+  const maiorDia = porDia.indexOf(Math.max(...porDia));
+  return {
+    porDia,
+    clientes: [{ nome: 'Consumidor final', valor: balcao, notas: 260 }, ...clientes].sort((a, b) => b.valor - a.valor).slice(0, 5),
+    totalClientes: 23,
+    outrosClientes: { clientes: 18, valor: Math.round(nfe * 0.17 * 100) / 100 },
+    cfops: [
+      { cfop: '5102', descricao: 'Venda de mercadoria', valor: Math.round(total * 0.58 * 100) / 100 },
+      { cfop: '5405', descricao: 'Venda com ICMS já retido (ST)', valor: Math.round(total * 0.27 * 100) / 100 },
+      { cfop: '6102', descricao: 'Venda de mercadoria (outro estado)', valor: Math.round(total * 0.11 * 100) / 100 },
+      { cfop: '5910', descricao: 'Bonificação, doação ou brinde', valor: Math.round(total * 0.04 * 100) / 100 },
+    ],
+    servicos: { notas: 3, valor: 4200 },
+    maiorVenda: { valor: Math.round(nfe * 0.08 * 100) / 100, dia: maiorDia + 1, cliente: 'Mercado Bom Preço Ltda' },
+    em: competencia + '-28T06:00:00Z',
+  };
+}
+
+function faturamentoDeExemplo(hoje: Date): ac.ResumoDoFaturamento {
+  // de janeiro do ano passado ao mês de hoje (como o robô junta); o ano passado ~12% abaixo; o mês de hoje, pela metade
+  const valores = [84200, 79350, 91840, 88010, 95760, 102300, 97480, 99120, 108650, 112400, 118930, 121300];
+  const competencias = ac.competenciasDoFaturamento(hoje);
+  let anterior: number | null = null;
+  const meses: ac.MesDoFaturamento[] = competencias.map((competencia, i) => {
+    const k = Number(competencia.slice(5, 7)) - 1;
+    const atual = i === competencias.length - 1;
+    const total = Math.round((valores[k] ?? 0) * (competencia.startsWith(String(hoje.getFullYear())) ? 1 : 0.88) * (atual ? 0.45 : 1) * 100) / 100;
+    const variacao = total != null && anterior ? Math.round(((total - anterior) / anterior) * 1000) / 10 : null;
+    if (total != null) anterior = total;
+    return total == null ? { competencia, nfe: null, nfce: null, notas: 0, total: null, variacao: null }
+      : (() => {
+        const nfe = Math.round(total * 0.62 * 100) / 100, nfce = Math.round((total - nfe) * 100) / 100, notas = 180 + i * 7;
+        const nNfe = Math.round(notas * 0.18), inicioNfe = 1000 + i * 40, inicioNfce = 20000 + i * 160;
+        return {
+          competencia, nfe, nfce, notas, total, variacao, canceladas: i % 3, notasDoMes: notasDoMesDeExemplo(competencia, total, nfe, atual ? hoje.getDate() : 0),
+          // o que entrou nas contas pelos extratos (13/11/2026); o mês de hoje ainda sem extrato
+          ...(atual ? {} : (() => {
+            const entradas = Math.round(total * [0.96, 1.04, 0.92, 0.98, 1.12, 0.95, 0.83, 1.01, 0.97, 0.94, 1.06, 0.99][k] * 100) / 100;
+            const itau = Math.round(entradas * (0.58 + (k % 4) * 0.04) * 100) / 100;
+            const sicoob = Math.round((entradas - itau) * 100) / 100;
+            const saiItau = Math.round(itau * (0.86 + (k % 3) * 0.05) * 100) / 100, saiSicoob = Math.round(sicoob * (0.78 + (k % 2) * 0.1) * 100) / 100;
+            // o saldo no último dia do mês (o extrato imprime): cresce devagar mês a mês
+            const fim = competencia + '-' + String(new Date(Number(competencia.slice(0, 4)), Number(competencia.slice(5, 7)), 0).getDate()).padStart(2, '0');
+            const sItau = Math.round((18400 + i * 1210.5) * 100) / 100, sSicoob = Math.round((7300 + i * 640.25) * 100) / 100;
+            return { banco: { entradas, saidas: Math.round((saiItau + saiSicoob) * 100) / 100, contas: 2, saldo: { valor: Math.round((sItau + sSicoob) * 100) / 100, data: fim }, porBanco: [
+              { id: 'itau-3001-12345', nome: 'Itaú', marca: 'itau', entradas: itau, saidas: saiItau, saldo: { valor: sItau, data: fim } },
+              { id: 'sicoob-4027-998', nome: 'Sicoob', marca: 'sicoob', entradas: sicoob, saidas: saiSicoob, saldo: { valor: sSicoob, data: fim } },
+            ] } };
+          })()),
+          series: [
+            { modelo: '55', serie: '1', primeira: inicioNfe, ultima: inicioNfe + nNfe - 1 + (i % 3), notas: nNfe, canceladas: i % 3, valor: nfe },
+            { modelo: '65', serie: '1', primeira: inicioNfce, ultima: inicioNfce + notas - nNfe - 1, notas: notas - nNfe, canceladas: 0, valor: nfce },
+          ],
+        };
+      })();
+  });
+  return { empresas: [{ codigo: 9999, nome: 'Personaly Company', regime: 'Simples', meses }], fonte: 'SIEG · NF-e/NFC-e emitidas', atualizadoEm: comHora(hoje, 7, 30) };
+}
+
+/** Os documentos do DP de exemplo: os três últimos meses, como os da pasta DEPARTAMENTO PESSOAL do Drive. */
+function documentosDpDeExemplo(hoje: Date): ac.DocumentoDoDp[] {
+  const docs: ac.DocumentoDoDp[] = [];
+  const doc = (mes: string, nome: string, categoria: ac.CategoriaDoDp, tamanho: number, funcionario = '') =>
+    docs.push({ tipo: 'dp', id: 'dp-' + mes + '-' + docs.length, nome, categoria, competencia: mes, tamanho, funcionario, partes: 1 });
+  for (const k of [1, 2, 3]) {
+    const mes = mesAtras(hoje, k);
+    const mm = mes.slice(5, 7) + '-' + mes.slice(0, 4);
+    doc(mes, 'Folha de pagamento ' + mm + '.pdf', 'folha', 182000);
+    doc(mes, 'Recibo de Salário ' + mm + '.pdf', 'recibo', 241000);
+    doc(mes, 'Pró-labore ' + mm + '.pdf', 'pro-labore', 64000);
+    doc(mes, 'FGTS ' + mm + '.pdf', 'fgts', 96000);
+    doc(mes, 'DARF INSS ' + mm + '.pdf', 'inss', 58000);
+    doc(mes, 'Cartão de ponto - Carlos Eduardo.xlsx', 'ponto', 21000, 'f2');
+  }
+  doc(mesAtras(hoje, 1), 'Recibo de Férias - Carlos Eduardo Santos.pdf', 'ferias', 88000, 'f2');
+  doc(mesAtras(hoje, 1), 'Previsão - Vencimento de Férias.pdf', 'ferias', 45000);
+  doc(mesAtras(hoje, 3), 'TRCT - Paulo Henrique Costa.pdf', 'rescisao', 120000, 'f6');
+  return docs;
+}
+
+/** Os lançamentos de exemplo de um mês (13/11/2026): as entradas e as saídas de cada conta, espalhadas pelos dias, somando o
+ *  que o resumo do mês diz. */
+function lancamentosDeExemplo(mes: string, contas: readonly ac.EntradaDoBanco[]): { lancamentos: ac.LancamentoDoCliente[]; cortados: number } {
+  const ENTRA = ['PIX RECEBIDO', 'TED RECEBIDA', 'CARTAO CREDITO - REPASSE', 'CARTAO DEBITO - REPASSE', 'DEPOSITO', 'BOLETO RECEBIDO'];
+  const SAI = ['PAG BOLETO FORNECEDOR', 'PIX ENVIADO', 'TARIFA BANCARIA', 'DEBITO AUTOMATICO ENERGIA', 'PAG SALARIOS', 'DAS SIMPLES NACIONAL', 'TED ENVIADA'];
+  const dias = new Date(Number(mes.slice(0, 4)), Number(mes.slice(5, 7)), 0).getDate();
+  const lancamentos: ac.LancamentoDoCliente[] = [];
+  for (const c of contas) {
+    const reparte = (total: number, n: number, sinal: 1 | -1, nomes: string[]) => {
+      let resto = Math.round(total * 100);
+      for (let k = 0; k < n; k++) {
+        const v = k === n - 1 ? resto : Math.round((resto / (n - k)) * (0.6 + ((k * 37) % 9) / 10));
+        resto -= v;
+        lancamentos.push({ dia: 1 + ((k * 7 + (sinal > 0 ? 2 : 5)) % dias), historico: nomes[k % nomes.length] + (nomes === ENTRA && k % 3 === 0 ? ' - CLIENTE ' + (100 + k) : ''), valor: (sinal * v) / 100, conta: c.id });
+      }
+    };
+    reparte(c.entradas, 14, 1, ENTRA);
+    if (c.saidas) reparte(c.saidas, 11, -1, SAI);
+  }
+  lancamentos.sort((a, b) => a.dia - b.dia);
+  return { lancamentos, cortados: 0 };
 }
 
 /** Um PDF mínimo (uma página com um texto) para o "Baixar guia" do exemplo. */
@@ -263,10 +428,25 @@ export function criarRepoAreaClienteMemoria(agora: () => Date = () => new Date()
           : { ...c, situacao: 'aberto', mensagens: [...c.mensagens, { de: 'cliente', autor: 'Você', texto: texto.trim(), em: agora().toISOString() }] }),
       }));
     },
-    async enviarFotoDoFuncionario(token, funcionarioId, base64Jpeg) {
-      if (!base64Jpeg) return;
-      const foto = 'data:image/jpeg;base64,' + base64Jpeg;
-      mudar(token, e => ({ ...e, empregados: e.empregados.map(f => f.id === funcionarioId ? { ...f, foto } : f) }));
+    async pedirDanfe(_token, chave) {
+      const c = ac.chaveDeNota(chave);
+      if (!c) return { erro: 'Esta nota não tem DANFE.' };
+      await new Promise(r => setTimeout(r, 700));
+      const p = ac.partesDaChave(c);
+      return { nome: 'DANFE ' + p.numero + '.pdf', arquivo: pdfDeExemplo(['DANFE DE EXEMPLO (nao vale como documento)', (p.modelo === '65' ? 'NFC-e' : 'NF-e') + ' numero ' + p.numero, 'Chave ' + c.replace(/(\d{4})(?=\d)/g, '$1 '), 'Na versao de verdade, a DANFE e desenhada pelo XML da nota.']) };
+    },
+    async extratoDoMes(token, codigo, mes) {
+      const m = de(token)?.faturamento?.empresas.find(e => e.codigo === codigo)?.meses.find(x => x.competencia === mes);
+      return m?.banco?.porBanco ? lancamentosDeExemplo(mes, m.banco.porBanco) : null;
+    },
+    async notasDoMes(token, codigo, mes) {
+      const m = de(token)?.faturamento?.empresas.find(e => e.codigo === codigo)?.meses.find(x => x.competencia === mes);
+      return m?.notasDoMes ? notasDoDiaDeExemplo(m.notasDoMes) : null;
+    },
+    async baixarDocumentoDp(token, id) {
+      const d = de(token)?.documentosDp.find(x => x.id === id);
+      if (!d) return null;
+      return { nome: d.nome.replace(/\.[a-z0-9]{2,5}$/i, '') + '.pdf', arquivo: pdfDeExemplo(['DOCUMENTO DE EXEMPLO', d.nome, 'Referente a ' + formatos.rot(d.competencia), 'Nilma Contabilidade']) };
     },
     async baixarDocumento(token, id) {
       const d = de(token)?.documentos.find(x => x.id === id);

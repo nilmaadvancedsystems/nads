@@ -7,6 +7,7 @@
 // preenche, e `secoes` diz à tela o que esconder quando o repositório não tem de onde tirar.
 import type { areaCliente as ac, mandei } from '@nads/core';
 import type { FormatoDoArquivo } from '@nads/ui';
+import type { DanfeNoEspelho } from './biblioteca';
 
 /** a área do escritório que mandou o documento */
 export type AreaDoDocumento = 'fiscal' | 'dp' | 'contabil' | 'societario';
@@ -34,26 +35,6 @@ export type { FormatoDoArquivo };
 /** O certificado digital da empresa (o e-CNPJ). */
 export interface CertificadoDigital { tipo: 'A1' | 'A3'; titular: string; /** 'aaaa-mm-dd' */ validoAte: string }
 
-export type SituacaoDasFerias = 'em dia' | 'em ferias' | 'periodo aquisitivo' | 'vencidas';
-export const ROTULO_DAS_FERIAS: Record<SituacaoDasFerias, string> = { 'em dia': 'Em dia', 'em ferias': 'Em férias', 'periodo aquisitivo': 'Período aquisitivo', vencidas: 'Férias vencidas' };
-
-/** Um empregado ativo (o CPF já vem mascarado). */
-export interface Empregado {
-  id: string;
-  nome: string;
-  /** '***.491.826-**' */
-  cpf: string;
-  cargo: string;
-  /** 'aaaa-mm-dd' */
-  admissao: string;
-  salario: number;
-  ferias: SituacaoDasFerias;
-  /** 'aaaa-mm-dd', quando está de férias */
-  retornoEm?: string;
-  /** a foto (Vitor, 16/10/2026: "subir a foto da pessoa que foi contratada"): o JPEG 256×256 como data URL */
-  foto?: string;
-}
-
 /** A ficha cadastral da empresa. */
 export interface FichaDaEmpresa {
   razaoSocial: string;
@@ -73,7 +54,8 @@ export interface FichaDaEmpresa {
 export interface Atendimento {
   equipe: string;
   horario: string;
-  setores: { nome: string; email: string }[];
+  /** cada setor com o e-mail e o WhatsApp dele (13/11/2026: "colocar número dos setores do WhatsApp") */
+  setores: { nome: string; email: string; whatsapp?: string }[];
 }
 
 /** Um recado do escritório (ex.: mandar os extratos até o dia 5). */
@@ -93,14 +75,17 @@ export interface GuiaPaga { id: string; /** de que é (a logo do órgão no quad
 export interface SecoesDaArea {
   /** a Central de documentos (os documentos que o escritório deixa para o cliente) */
   documentos: boolean;
-  /** o Departamento pessoal (os funcionários e os pedidos de admissão, férias e desligamento com a foto) */
+  /** o Registro (12/11/2026): os funcionários pelas guias do FGTS e os documentos do DP; no banco, quando o robô gravou */
   dp: boolean;
   /** as guias já pagas, com o comprovante */
   pagas: boolean;
 }
 export const TODAS_AS_SECOES: SecoesDaArea = { documentos: true, dp: true, pagas: true };
-/** o que o banco tem hoje (17/10/2026): o robô espelha guias, agenda, recibos de envio e chamados, e nada disto */
-export const SECOES_DO_BANCO: SecoesDaArea = { documentos: false, dp: false, pagas: false };
+/**
+ * o que o banco tem hoje (17/10/2026): o robô espelha guias, agenda, recibos de envio e chamados; o Registro (12/11/2026)
+ * fica sempre no menu ("as opções do dp que pedi"): sem funcionário nem documento ainda, a aba diz o que vai aparecer
+ */
+export const SECOES_DO_BANCO: SecoesDaArea = { documentos: false, dp: true, pagas: false };
 
 /** Tudo o que o link mostra, já filtrado pelo robô. */
 export interface EstadoDaArea {
@@ -124,7 +109,15 @@ export interface EstadoDaArea {
   chamados: ac.ChamadoDoCliente[];
   documentos: DocumentoDoCliente[];
   certificado: CertificadoDigital | null;
-  empregados: Empregado[];
+  /** o Registro (12/11/2026): os funcionários (resumo/pessoal) e os documentos do DP (documentos com tipo 'dp') */
+  pessoal: ac.ResumoDoPessoal | null;
+  documentosDp: ac.DocumentoDoDp[];
+  /** o Faturamento (12/11/2026): os 12 meses de cada empresa pelas notas emitidas no SIEG (resumo/faturamento) */
+  faturamento: ac.ResumoDoFaturamento | null;
+  /** a logo da empresa (12/11/2026), que o gestor põe no nads: data URL (resumo/marca); null = o ícone do prédio */
+  logo: string | null;
+  /** as DANFEs que o cliente já pediu e estão no espelho (documentos/danfe-<chave>): a pasta Notas da Central */
+  danfes: DanfeNoEspelho[];
   ficha: FichaDaEmpresa | null;
   atendimento: Atendimento | null;
   avisos: AvisoDoEscritorio[];
@@ -137,7 +130,7 @@ export interface EstadoDaArea {
 
 export const AREA_VAZIA: EstadoDaArea = {
   carregado: false, valido: false, erro: '', exemplos: false, secoes: SECOES_DO_BANCO, resumo: null, guias: [], codigos: {}, pagas: [], agenda: [], envios: [], chamados: [],
-  documentos: [], certificado: null, empregados: [], ficha: null, atendimento: null, avisos: [], tickets: [],
+  documentos: [], certificado: null, pessoal: null, documentosDp: [], faturamento: null, logo: null, danfes: [], ficha: null, atendimento: null, avisos: [], tickets: [],
 };
 
 export interface RepoAreaCliente {
@@ -149,9 +142,6 @@ export interface RepoAreaCliente {
    *  (o JPEG 256×256 em base64, sem o prefixo data:; só no exemplo: a caixa do banco ainda não tem campo para ela).
    *  Erro (link revogado, sem rede): joga um Error com a mensagem em português */
   abrirChamado(token: string, dados: { tipo: ac.TipoDeChamado; texto: string; foto?: string }): Promise<string>;
-  /** a foto de um funcionário (o JPEG 256×256 em base64, sem o prefixo data:). No banco vai pela caixa areaClienteEnvios
-   *  com o tipo 'foto' e o id do funcionário, e o robô grava no espelho e no Drive (o contrato e as regras ainda faltam) */
-  enviarFotoDoFuncionario(token: string, funcionarioId: string, base64Jpeg: string): Promise<void>;
   /** a resposta do cliente num chamado que já existe */
   responderChamado(token: string, id: string, texto: string): Promise<void>;
   /** o PDF da guia; null quando não tem */
@@ -160,4 +150,12 @@ export interface RepoAreaCliente {
   baixarDocumento(token: string, id: string): Promise<{ nome: string; arquivo: Blob } | null>;
   /** o comprovante de uma guia paga; null quando não tem */
   baixarComprovante(token: string, id: string): Promise<{ nome: string; arquivo: Blob } | null>;
+  /** um documento do DP do Registro (a folha, o recibo, as férias…); null quando não tem */
+  baixarDocumentoDp(token: string, id: string): Promise<{ nome: string; arquivo: Blob } | null>;
+  /** as notas emitidas de um mês da empresa (o relatório do dia; resumo/notas-{código}-{mês}); null = ainda não chegou */
+  notasDoMes(token: string, codigo: number, mes: string): Promise<ac.NotaDoRelatorio[] | null>;
+  /** os lançamentos do mês pelos extratos (13/11/2026; resumo/extrato-{código}-{mês}); null = ainda não chegou */
+  extratoDoMes(token: string, codigo: number, mes: string): Promise<{ lancamentos: ac.LancamentoDoCliente[]; cortados: number } | null>;
+  /** a DANFE da nota (12/11/2026): pede ao robô pela caixa dos chamados e espera o PDF no espelho; ou o porquê de não vir */
+  pedirDanfe(token: string, chave: string): Promise<{ nome: string; arquivo: Blob } | { erro: string }>;
 }

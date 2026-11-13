@@ -5,6 +5,7 @@
 // do PC processa a caixa). Funções puras, sem Firebase: o repositório (areaCliente.firestore.ts) só lê e grava.
 import { areaCliente as ac } from '@nads/core';
 import { AREA_VAZIA, SECOES_DO_BANCO, type EstadoDaArea } from './areaCliente';
+import type { DanfeNoEspelho } from './biblioteca';
 
 /** O token do link: 40 letras hexadecimais minúsculas (o mesmo que as regras do banco e o robô aceitam). */
 export const ehTokenDoLink = (t: string) => /^[0-9a-f]{40}$/.test(t);
@@ -44,6 +45,155 @@ export function lerResumo(x: unknown): ac.ResumoDoCliente | null {
   const escritorio: ac.ResumoDoCliente['escritorio'] = {};
   for (const k of ['telefone', 'email', 'whatsapp'] as const) if (texto(esc[k]).trim()) escritorio[k] = texto(esc[k]).trim();
   return { empresas, escritorio, atualizadoEm: instante(r.atualizadoEm) };
+}
+
+/**
+ * O que o holerite e a previsão de férias do DP acrescentam ao funcionário (13/11/2026, folhaLida.ts): o cargo, a
+ * admissão, o salário base, o líquido, as férias vencidas, o afastamento e os períodos de férias. O que vier torto fica de fora.
+ */
+function daFolha(f: Solto): Partial<ac.FuncionarioDoRegistro> {
+  const x: Partial<ac.FuncionarioDoRegistro> = {};
+  if (texto(f.cargo).trim()) x.cargo = texto(f.cargo).trim().slice(0, 80);
+  if (DIA.test(texto(f.admissao))) x.admissao = texto(f.admissao);
+  if (numeroOuNulo(f.salarioBase) != null) x.salarioBase = f.salarioBase as number;
+  if (numeroOuNulo(f.liquido) != null) x.liquido = f.liquido as number;
+  if (f.feriasVencidas === true) x.feriasVencidas = true;
+  if (DIA.test(texto(f.afastadoDe)) && DIA.test(texto(f.afastadoAte))) { x.afastadoDe = texto(f.afastadoDe); x.afastadoAte = texto(f.afastadoAte); }
+  const periodos = lista(f.periodosDeFerias).map(objeto).filter((p): p is Solto => !!p && DIA.test(texto(p.inicio)) && DIA.test(texto(p.fim)) && DIA.test(texto(p.concederAte)))
+    .map(p => ({ inicio: texto(p.inicio), fim: texto(p.fim), concederAte: texto(p.concederAte), direito: numeroOuNulo(p.direito) ?? 0, gozados: numeroOuNulo(p.gozados) ?? 0, aGozar: numeroOuNulo(p.aGozar) ?? 0 }));
+  if (periodos.length) x.periodosDeFerias = periodos;
+  if (f.fonte === 'folha') x.fonte = 'folha';
+  return x;
+}
+
+/** resumo/pessoal (o Registro): { funcionarios: [{ id, nome, cpf (mascarado), matricula, remuneracao, desde, ultimo, ativo }],
+ *  competencia, total, atualizadoEm }. O CPF que não vier mascarado fica de fora. */
+export function lerPessoal(x: unknown): ac.ResumoDoPessoal | null {
+  const r = objeto(x);
+  if (!r) return null;
+  const funcionarios = lista(r.funcionarios).map(objeto).filter((f): f is Solto => !!f && !!texto(f.id) && !!texto(f.nome).trim())
+    .map(f => ({
+      id: texto(f.id), nome: texto(f.nome).trim(), cpf: /^\*{3}\.\d{3}\.\d{3}-\*{2}$/.test(texto(f.cpf)) ? texto(f.cpf) : '', matricula: texto(f.matricula),
+      remuneracao: typeof f.remuneracao === 'number' ? f.remuneracao : 0, desde: COMPETENCIA.test(texto(f.desde)) ? texto(f.desde) : '',
+      ultimo: COMPETENCIA.test(texto(f.ultimo)) ? texto(f.ultimo) : '', ativo: f.ativo === true,
+      ...daFolha(f),
+    }));
+  // a folha mês a mês (13/11/2026); com as somas dos holerites quando o DP salvou a folha do mês
+  const historico = lista(r.historico).map(objeto).filter((m): m is Solto => !!m && COMPETENCIA.test(texto(m.competencia)) && typeof m.base === 'number')
+    .map(m => {
+      const extra: Partial<ac.MesDaFolha> = {};
+      for (const k of ['proventos', 'descontos', 'liquido', 'inss', 'irrf', 'holerites'] as const) if (typeof m[k] === 'number' && Number.isFinite(m[k])) extra[k] = m[k] as number;
+      return { competencia: texto(m.competencia), base: m.base as number, fgts: typeof m.fgts === 'number' ? m.fgts : 0, funcionarios: typeof m.funcionarios === 'number' ? m.funcionarios : 0, ...extra };
+    });
+  return { funcionarios, competencia: COMPETENCIA.test(texto(r.competencia)) ? texto(r.competencia) : '', total: typeof r.total === 'number' ? r.total : 0,
+    ...(historico.length ? { historico } : {}), atualizadoEm: instante(r.atualizadoEm) };
+}
+
+const numeroOuNulo = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+const numeroOuZero = (v: unknown) => numeroOuNulo(v) ?? 0;
+
+/** o painel do mês dentro de cada mês do resumo/faturamento (12/11/2026): { porDia, clientes, totalClientes, outrosClientes?, cfops, servicos?, maiorVenda?, em } */
+function lerNotasDoMes(x: unknown): ac.NotasDoMes | null {
+  const n = objeto(x);
+  if (!n || !Array.isArray(n.porDia)) return null;
+  const outros = objeto(n.outrosClientes), servicos = objeto(n.servicos), maior = objeto(n.maiorVenda);
+  return {
+    porDia: lista(n.porDia).map(numeroOuZero),
+    clientes: lista(n.clientes).map(objeto).filter((c): c is Solto => !!c).map(c => ({ nome: texto(c.nome).trim() || 'Cliente sem nome', valor: numeroOuZero(c.valor), notas: numeroOuZero(c.notas) })),
+    totalClientes: numeroOuZero(n.totalClientes),
+    ...(outros ? { outrosClientes: { clientes: numeroOuZero(outros.clientes), valor: numeroOuZero(outros.valor) } } : {}),
+    cfops: lista(n.cfops).map(objeto).filter((c): c is Solto => !!c).map(c => ({ cfop: texto(c.cfop), descricao: texto(c.descricao), valor: numeroOuZero(c.valor) })),
+    ...(servicos ? { servicos: { notas: numeroOuZero(servicos.notas), valor: numeroOuZero(servicos.valor) } } : {}),
+    ...(maior ? { maiorVenda: { valor: numeroOuZero(maior.valor), dia: numeroOuZero(maior.dia), cliente: texto(maior.cliente) } } : {}),
+    em: texto(n.em),
+  };
+}
+
+/** resumo/faturamento (12/11/2026): { empresas: [{ codigo, nome, regime, meses: [{ competencia, nfe, nfce, notas, total, variacao }] }], fonte, atualizadoEm }. */
+/** o saldo de fim de mês de uma conta (ou de todas): { valor, data 'aaaa-mm-dd' } */
+function lerSaldo(x: unknown): { valor: number; data: string } | null {
+  const s = objeto(x);
+  return s && typeof s.valor === 'number' && Number.isFinite(s.valor) && /^\d{4}-\d{2}-\d{2}$/.test(texto(s.data)) ? { valor: s.valor, data: texto(s.data) } : null;
+}
+
+export function lerFaturamento(x: unknown): ac.ResumoDoFaturamento | null {
+  const r = objeto(x);
+  if (!r) return null;
+  const empresas = lista(r.empresas).map(objeto).filter((e): e is Solto => !!e).map(e => ({
+    codigo: typeof e.codigo === 'number' ? e.codigo : Number(e.codigo) || 0, nome: texto(e.nome).trim(), regime: texto(e.regime).trim(),
+    meses: lista(e.meses).map(objeto).filter((m): m is Solto => !!m && COMPETENCIA.test(texto(m.competencia))).map(m => ({
+      competencia: texto(m.competencia), nfe: numeroOuNulo(m.nfe), nfce: numeroOuNulo(m.nfce), notas: typeof m.notas === 'number' ? m.notas : 0,
+      total: numeroOuNulo(m.total), variacao: numeroOuNulo(m.variacao),
+      ...(typeof m.canceladas === 'number' ? { canceladas: m.canceladas } : {}),
+      ...(Array.isArray(m.series) ? { series: lista(m.series).map(objeto).filter((x): x is Solto => !!x).map(x => ({
+        modelo: texto(x.modelo), serie: texto(x.serie), primeira: numeroOuNulo(x.primeira), ultima: numeroOuNulo(x.ultima),
+        notas: typeof x.notas === 'number' ? x.notas : 0, canceladas: typeof x.canceladas === 'number' ? x.canceladas : 0, valor: numeroOuNulo(x.valor) ?? 0,
+      })) } : {}),
+      ...(() => { const n = lerNotasDoMes(m.notasDoMes); return n ? { notasDoMes: n } : {}; })(),
+      // o que entrou no banco pelos extratos (13/11/2026)
+      ...(() => {
+        const b = objeto(m.banco);
+        if (!b || typeof b.entradas !== 'number') return {};
+        const porBanco = lista(b.porBanco).map(objeto).filter((x): x is Solto => !!x && !!texto(x.id) && typeof x.entradas === 'number')
+          .map(x => ({ id: texto(x.id), nome: texto(x.nome) || texto(x.id), ...(texto(x.marca) ? { marca: texto(x.marca) } : {}), entradas: x.entradas as number,
+            ...(typeof x.saidas === 'number' ? { saidas: x.saidas } : {}), ...(() => { const sd = lerSaldo(x.saldo); return sd ? { saldo: sd } : {}; })() }));
+        const saldo = lerSaldo(b.saldo);
+        return { banco: { entradas: b.entradas, ...(typeof b.saidas === 'number' ? { saidas: b.saidas } : {}), contas: typeof b.contas === 'number' ? b.contas : 0, ...(saldo ? { saldo } : {}), ...(porBanco.length ? { porBanco } : {}) } };
+      })(),
+    })),
+  })).filter(e => e.meses.length);
+  return empresas.length ? { empresas, fonte: texto(r.fonte), atualizadoEm: instante(r.atualizadoEm) } : null;
+}
+
+/** resumo/marca (12/11/2026): { logo, atualizadoEm }; só a imagem PNG/JPG/WebP em data URL (erroDaLogo) passa. */
+export function lerMarca(x: unknown): string | null {
+  const logo = objeto(x)?.logo;
+  return typeof logo === 'string' && !ac.erroDaLogo(logo) ? logo : null;
+}
+
+const TIPOS_DE_NOTA = new Set(['NF-e', 'NFC-e', 'NFS-e']);
+
+/** documentos/danfe-<chave> (12/11/2026): { tipo: 'danfe', id, nome, chave, partes, erro?, atualizadoEm }; só a pronta (sem erro, com pedaços). */
+export function lerDanfe(id: string, x: unknown): DanfeNoEspelho | null {
+  const d = objeto(x);
+  if (!d || d.tipo !== 'danfe' || d.erro || !(typeof d.partes === 'number' && d.partes > 0)) return null;
+  const chave = ac.chaveDeNota(d.chave);
+  return chave ? { id, nome: texto(d.nome) || 'DANFE.pdf', chave, atualizadoEm: instante(d.atualizadoEm) } : null;
+}
+
+/** resumo/extrato-{código}-{mês} (13/11/2026): { codigo, competencia, lancamentos: [{ dia, historico, valor, conta }], cortados }. */
+export function lerExtratoDoMes(x: unknown): { lancamentos: ac.LancamentoDoCliente[]; cortados: number } | null {
+  const r = objeto(x);
+  if (!r || !Array.isArray(r.lancamentos)) return null;
+  return {
+    lancamentos: lista(r.lancamentos).map(objeto).filter((l): l is Solto => !!l && typeof l.dia === 'number' && typeof l.valor === 'number' && Number.isFinite(l.valor))
+      .map(l => ({ dia: l.dia as number, historico: texto(l.historico), valor: l.valor as number, conta: texto(l.conta) })),
+    cortados: typeof r.cortados === 'number' ? r.cortados : 0,
+  };
+}
+
+/** resumo/notas-{código}-{mês} (12/11/2026, o relatório do dia): { codigo, competencia, notas: [{ dia, tipo, numero, serie, cliente, cfop, valor, cancelada?, chave }], cortadas }. */
+export function lerListaDeNotas(x: unknown): ac.NotaDoRelatorio[] | null {
+  const r = objeto(x);
+  if (!r || !Array.isArray(r.notas)) return null;
+  return lista(r.notas).map(objeto).filter((n): n is Solto => !!n && TIPOS_DE_NOTA.has(texto(n.tipo)) && typeof n.dia === 'number').map(n => ({
+    dia: n.dia as number, tipo: texto(n.tipo) as ac.NotaDoRelatorio['tipo'], numero: texto(n.numero), serie: texto(n.serie),
+    cliente: texto(n.cliente) || ac.CONSUMIDOR_FINAL, cfop: texto(n.cfop), valor: numeroOuNulo(n.valor) ?? 0,
+    ...(n.cancelada === true ? { cancelada: true } : {}), chave: texto(n.chave).replace(/\D/g, ''),
+  }));
+}
+
+const CATEGORIAS_DP = new Set<string>(ac.ORDEM_DAS_CATEGORIAS_DP);
+
+/** documentos/{id} com tipo 'dp' (o Registro): { tipo, id, nome, categoria, competencia, tamanho, funcionario, partes }. */
+export function lerDocumentoDp(id: string, x: unknown): ac.DocumentoDoDp | null {
+  const d = objeto(x);
+  if (!d || d.tipo !== 'dp' || !texto(d.nome).trim() || !COMPETENCIA.test(texto(d.competencia))) return null;
+  return {
+    tipo: 'dp', id, nome: texto(d.nome).trim(), categoria: (CATEGORIAS_DP.has(texto(d.categoria)) ? texto(d.categoria) : 'outro') as ac.CategoriaDoDp,
+    competencia: texto(d.competencia), tamanho: typeof d.tamanho === 'number' ? d.tamanho : 0, funcionario: texto(d.funcionario),
+    partes: typeof d.partes === 'number' && d.partes >= 0 ? Math.floor(d.partes) : 0,
+  };
 }
 
 const TIPOS_DE_GUIA = new Set<string>(['FGTS', 'DAS', 'DAE', 'outra']);
@@ -95,12 +245,12 @@ export function lerRecibo(id: string, x: unknown): ac.ReciboDeEnvio | null {
   return ac.reciboDoEnvio({ id, nome: texto(e.nome), tipo: texto(e.tipo), tamanho, recebidoEm: instante(e.recebidoEm) });
 }
 
-/** chamados/{id}: { id, tipo, titulo, situacao, mensagens: [{ de, autor, texto, em }] } (o autor do escritório já vem "Escritório"). */
+/** chamados/{id}: { id, tipo, titulo, situacao, mensagens: [{ de, autor, texto, em }] } (do escritório, o primeiro nome de quem respondeu ou "Escritório"). */
 export function lerChamado(id: string, x: unknown): ac.ChamadoDoCliente | null {
   const c = objeto(x);
   if (!c) return null;
   const mensagens = lista(c.mensagens).map(objeto).filter((m): m is Solto => !!m && !!texto(m.texto))
-    .map(m => ({ de: texto(m.de), texto: texto(m.texto), em: instante(m.em) }));
+    .map(m => ({ de: texto(m.de), autor: texto(m.autor), texto: texto(m.texto), em: instante(m.em) }));
   // a mesma lista branca do robô (chamadoDoCliente): tipo e situação desconhecidos viram "outro" e "aberto"
   return ac.chamadoDoCliente({ id, tipo: texto(c.tipo), titulo: texto(c.titulo) || 'Chamado', situacao: texto(c.situacao), mensagens });
 }
@@ -152,6 +302,14 @@ export function comPendentes(chamados: ac.ChamadoDoCliente[], novos: ChamadoPend
 
 export interface PartesDoEspelho {
   resumo: ac.ResumoDoCliente | null;
+  /** o Registro (12/11/2026): resumo/pessoal e os documentos do DP (opcionais: o link antigo, ou sem DP, não tem) */
+  pessoal?: ac.ResumoDoPessoal | null;
+  documentosDp?: ac.DocumentoDoDp[];
+  faturamento?: ac.ResumoDoFaturamento | null;
+  /** a logo (resumo/marca) */
+  logo?: string | null;
+  /** as DANFEs prontas (documentos com tipo 'danfe') */
+  danfes?: DanfeNoEspelho[];
   /** o nome do link (o documento areasCliente/{token}): só para o topo enquanto o robô não gravou o resumo */
   nomeDoLink: string;
   guias: ac.GuiaDoCliente[];
@@ -163,9 +321,12 @@ export interface PartesDoEspelho {
 /** O que a tela recebe de um link do banco: o que o espelho tem; as seções sem fonte ficam vazias e escondidas. */
 export function estadoDoEspelho(p: PartesDoEspelho, novos: ChamadoPendente[] = [], respostas: RespostaPendente[] = []): EstadoDaArea {
   const resumo = p.resumo ?? (p.nomeDoLink ? { empresas: [{ codigo: 0, nome: p.nomeDoLink, cnpj: '' }], escritorio: {}, atualizadoEm: '' } : null);
+  const pessoal = p.pessoal ?? null;
+  const documentosDp = p.documentosDp ?? [];
   return {
-    ...AREA_VAZIA, carregado: true, valido: true, exemplos: false, secoes: SECOES_DO_BANCO,
-    resumo,
+    ...AREA_VAZIA, carregado: true, valido: true, exemplos: false,
+    secoes: SECOES_DO_BANCO,
+    resumo, pessoal, documentosDp, faturamento: p.faturamento ?? null, logo: p.logo ?? null, danfes: p.danfes ?? [],
     guias: p.guias,
     agenda: [...p.agenda].sort((a, b) => a.mes.localeCompare(b.mes)),
     envios: [...p.envios].sort((a, b) => b.recebidoEm.localeCompare(a.recebidoEm)),

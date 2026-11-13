@@ -1,6 +1,6 @@
 // O repositório do banco da Área do Cliente com um Firestore de mentira (vi.mock): o que ele ouve, quando a tela vira
 // "link inválido" e o que ele grava nas caixas (as chaves exatas das regras). Nada vai ao banco de verdade.
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { EstadoDaArea } from './areaCliente';
 
 type Dados = Record<string, unknown>;
@@ -22,6 +22,9 @@ vi.mock('firebase/firestore', () => {
     getFirestore: () => ({ path: '' }),
     doc: ref,
     collection: ref,
+    // a consulta fica com o caminho da coleção (o filtro do Registro: documentos com tipo 'dp', ou os pedaços de um)
+    query: (r: { path: string }) => r,
+    where: () => null,
     serverTimestamp: () => 'HORA-DO-SERVIDOR',
     onSnapshot: (r: { path: string }, proximo: Ouvinte['proximo'], erro: Ouvinte['erro']) => {
       const o = { caminho: r.path, proximo, erro, ativo: true };
@@ -33,6 +36,7 @@ vi.mock('firebase/firestore', () => {
       falso.gravados.push({ caminho: r.path, dados });
       return { id: 'pedido' + falso.gravados.length };
     },
+    getDoc: async (r: { path: string }) => { falso.lidos.push(r.path); return { data: () => undefined }; },
     getDocs: async (r: { path: string }) => { falso.lidos.push(r.path); return { docs: falso.pdf.map((x, i) => ({ id: String(i), data: () => x })) }; },
   };
 });
@@ -60,6 +64,10 @@ function abrirComEspelho(repo: ReturnType<typeof criarRepoAreaClienteFirestore>)
   ouvinte(RAIZ + '/agenda').proximo(colSnap({ '2026-10': { mes: '2026-10', itens: [{ id: 'das', nome: 'DAS do Simples Nacional', vence: '2026-10-20', situacao: 'a fazer' }], atualizadoEm: 'x' } }));
   ouvinte(RAIZ + '/envios').proximo(colSnap({ e1: { id: 'e1', nome: 'extrato.pdf', tipo: 'extrato', tamanho: 10, recebidoEm: '2026-10-17T09:00:00.000Z' } }));
   ouvinte(RAIZ + '/chamados').proximo(colSnap({ c1: CHAMADO }));
+  ouvinte(RAIZ + '/resumo/pessoal').proximo(docSnap(null));
+  ouvinte(RAIZ + '/documentos').proximo(colSnap({}));
+  ouvinte(RAIZ + '/resumo/faturamento').proximo(docSnap(null));
+  ouvinte(RAIZ + '/resumo/marca').proximo(docSnap(null));
   return { telas, parar };
 }
 
@@ -94,10 +102,10 @@ describe('abrir o link', () => {
 
   it('link bom: ouve o espelho e só mostra quando tudo chegou; nada do documento do link além do nome', () => {
     const { telas } = abrirComEspelho(criarRepoAreaClienteFirestore());
-    expect(falso.ouvintes.map(o => o.caminho).sort()).toEqual([RAIZ, RAIZ + '/agenda', RAIZ + '/chamados', RAIZ + '/envios', RAIZ + '/guias', RAIZ + '/resumo/atual'].sort());
+    expect(falso.ouvintes.map(o => o.caminho).sort()).toEqual([RAIZ, RAIZ + '/agenda', RAIZ + '/chamados', RAIZ + '/envios', RAIZ + '/guias', RAIZ + '/resumo/atual', RAIZ + '/resumo/pessoal', RAIZ + '/documentos', RAIZ + '/documentos', RAIZ + '/resumo/faturamento', RAIZ + '/resumo/marca'].sort());
     expect(telas).toHaveLength(1);
     const e = telas[0];
-    expect(e).toMatchObject({ carregado: true, valido: true, exemplos: false, secoes: { documentos: false, dp: false, pagas: false } });
+    expect(e).toMatchObject({ carregado: true, valido: true, exemplos: false, secoes: { documentos: false, dp: true, pagas: false } });
     expect(e.resumo?.empresas).toEqual([{ codigo: 58, nome: 'Padaria Boa Ltda', cnpj: '12.345.678/0001-90' }]);
     expect(e.guias.map(g => g.id)).toEqual(['das-2026-09-58']);
     expect(e.agenda[0].itens).toHaveLength(1);
@@ -180,5 +188,80 @@ describe('o PDF da guia', () => {
     falso.pdf.push({ base64: btoa('x'), n: 1, total: 2 });
     expect(await repo.baixarGuia(TOKEN, 'g1')).toBeNull();
     expect(await repo.baixarGuia(TOKEN, '../segredo')).toBeNull();
+  });
+});
+
+describe('o Registro (12/11/2026)', () => {
+  it('os funcionários e os documentos do DP do espelho; o CPF sem máscara fica de fora; a aba aparece', () => {
+    const telas: EstadoDaArea[] = [];
+    const repo = criarRepoAreaClienteFirestore();
+    repo.assinar(TOKEN, e => telas.push(e));
+    ouvinte(RAIZ).proximo(docSnap({ codigos: [58], nome: 'Padaria Boa' }));
+    ouvinte(RAIZ + '/resumo/atual').proximo(docSnap(null));
+    for (const c of ['guias', 'agenda', 'envios', 'chamados']) ouvinte(RAIZ + '/' + c).proximo(colSnap({}));
+    ouvinte(RAIZ + '/resumo/pessoal').proximo(docSnap({ competencia: '2026-10', total: 2000, atualizadoEm: 'x', funcionarios: [
+      { id: 'f1', nome: 'MARIA SOUZA', cpf: '***.456.789-**', matricula: '1', remuneracao: 2000, desde: '2026-08', ultimo: '2026-10', ativo: true },
+      { id: 'f2', nome: 'VAZOU', cpf: '123.456.789-09', matricula: '2', remuneracao: 1, desde: '2026-08', ultimo: '2026-10', ativo: true },
+    ] }));
+    ouvinte(RAIZ + '/resumo/marca').proximo(docSnap({ logo: 'data:image/svg+xml;base64,PHN2Zz4=' }));
+    ouvinte(RAIZ + '/resumo/faturamento').proximo(docSnap({ fonte: 'SIEG', atualizadoEm: 'x', empresas: [{ codigo: 58, nome: 'Padaria', meses: [{ competencia: '2026-10', nfe: 800, nfce: null, notas: 3, total: 800, variacao: null }, { competencia: 'ruim' }] }] }));
+    expect(telas).toHaveLength(0);
+    ouvinte(RAIZ + '/documentos').proximo(colSnap({
+      'dp-a': { tipo: 'dp', id: 'dp-a', nome: 'Folha de pagamento 10-2026.pdf', categoria: 'folha', competencia: '2026-10', tamanho: 1000, funcionario: '', partes: 1 },
+      'dp-a~0': { base64: 'AAAA', n: 0, total: 1, de: 'dp-a' },
+    }));
+    const e = telas[telas.length - 1];
+    expect(e.secoes.dp).toBe(true);
+    expect(e.pessoal?.funcionarios.map(f => [f.nome, f.cpf])).toEqual([['MARIA SOUZA', '***.456.789-**'], ['VAZOU', '']]);
+    expect(e.documentosDp.map(d => [d.id, d.categoria])).toEqual([['dp-a', 'folha']]);
+    expect(e.faturamento?.empresas[0].meses.map(m => [m.competencia, m.total])).toEqual([['2026-10', 800]]);
+    // a logo em SVG não passa (pode carregar código): o topo fica com o ícone
+    expect(e.logo).toBeNull();
+  });
+
+  it('baixar o documento do DP: os pedaços dele, com o nome e o tipo pelo arquivo', async () => {
+    const repo = criarRepoAreaClienteFirestore();
+    repo.assinar(TOKEN, () => undefined);
+    ouvinte(RAIZ).proximo(docSnap({ codigos: [58], nome: 'Padaria Boa' }));
+    ouvinte(RAIZ + '/resumo/atual').proximo(docSnap(null));
+    for (const c of ['guias', 'agenda', 'envios', 'chamados']) ouvinte(RAIZ + '/' + c).proximo(colSnap({}));
+    ouvinte(RAIZ + '/resumo/pessoal').proximo(docSnap(null));
+    ouvinte(RAIZ + '/resumo/faturamento').proximo(docSnap(null));
+  ouvinte(RAIZ + '/resumo/marca').proximo(docSnap(null));
+    ouvinte(RAIZ + '/documentos').proximo(colSnap({ 'dp-x': { tipo: 'dp', id: 'dp-x', nome: 'Cartão de ponto - Elisene.xlsx', categoria: 'ponto', competencia: '2026-10', tamanho: 3, funcionario: '', partes: 1 } }));
+    falso.pdf.push({ base64: btoa('abc'), n: 0, total: 1, de: 'dp-x' });
+    const r = await repo.baixarDocumentoDp(TOKEN, 'dp-x');
+    expect(r?.nome).toBe('Cartão de ponto - Elisene.xlsx');
+    expect(r?.arquivo.type).toBe('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    expect(falso.lidos).toEqual([RAIZ + '/documentos']);
+    expect(await repo.baixarDocumentoDp(TOKEN, '../outro')).toBeNull();
+  });
+});
+
+// o modo desenvolvedor do nads (13/11/2026): a Área do Cliente aberta dentro da Tarefas lê o banco, mas nada sai dela
+describe('no modo desenvolvedor', () => {
+  beforeEach(() => {
+    vi.stubGlobal('localStorage', { getItem: (k: string) => (k === 'nads-modo-desenvolvedor' ? '1' : null) });
+    vi.stubGlobal('window', { dispatchEvent: () => true });
+  });
+  afterEach(() => { vi.unstubAllGlobals(); });
+
+  it('lê o espelho do link como sempre', () => {
+    const { telas } = abrirComEspelho(criarRepoAreaClienteFirestore());
+    expect(telas.at(-1)).toMatchObject({ carregado: true, valido: true });
+  });
+
+  it('solicitação, resposta, envio e pedido de DANFE: nada chega às caixas do banco', async () => {
+    const repo = criarRepoAreaClienteFirestore();
+    const { telas } = abrirComEspelho(repo);
+    await expect(repo.abrirChamado(TOKEN, { tipo: 'documento', texto: 'Preciso da CND estadual' })).rejects.toThrow('Modo desenvolvedor: nada foi enviado.');
+    await expect(repo.responderChamado(TOKEN, 'c1', 'Obrigado')).rejects.toThrow('Modo desenvolvedor: nada foi enviado.');
+    await expect(repo.enviar(TOKEN, 'extrato', [new File([new Uint8Array(10)], 'a.pdf')])).rejects.toThrow('Modo desenvolvedor: nada foi enviado.');
+    // a DANFE que ainda não está no espelho seria pedida ao robô: o pedido não sai
+    const chave = '31' + '2610' + '11222333000181' + '55' + '001' + '000001842' + '1' + '12345678' + '9';
+    await expect(repo.pedirDanfe(TOKEN, chave)).resolves.toEqual({ erro: 'Modo desenvolvedor: nada foi enviado.' });
+    expect(falso.gravados).toEqual([]);
+    // e a tela não mostra como enviado o que não foi
+    expect(telas.at(-1)!.chamados.map(c => c.id)).toEqual(['c1']);
   });
 });

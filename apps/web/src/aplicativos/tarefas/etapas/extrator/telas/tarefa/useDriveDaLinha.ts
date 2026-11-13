@@ -142,7 +142,7 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
   async function trazer(linha: Linha, arquivos: creditor.ArquivoAchado[], mes?: string): Promise<boolean | 'vazio'> {
     for (const [i, a] of arquivos.entries()) {
       const conteudo = await drive.baixar(a.id, a.nome);
-      const ok = await vm.importarDoDrive(linha.id, { id: a.id, nome: a.nome }, conteudo, mes, i < arquivos.length - 1);
+      const ok = await vm.importarDoDrive(linha.id, { id: a.id, nome: a.nome }, conteudo, mes, i < arquivos.length - 1, linha.marca);
       if (ok !== 'vazio') return ok;
     }
     return 'vazio';
@@ -151,12 +151,13 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
    * Mais de um arquivo no mês: baixa e passa cada um pela pré-verificação; se só um for o extrato da conta, é ele (Vitor,
    * 10/11/2026: a fatura e a aplicação na pasta do banco empatavam com o extrato). Sobrando dois ou mais, a pessoa escolhe.
    */
-  async function soOExtrato(r: creditor.BuscaNoDrive): Promise<creditor.BuscaNoDrive> {
+  async function soOExtrato(r: creditor.BuscaNoDrive, marca?: string): Promise<creditor.BuscaNoDrive> {
     if (r.situacao !== 'varios') return r;
     const extratos: creditor.ArquivoAchado[] = [];
     for (const c of r.candidatos.filter(a => a.daCompetencia).slice(0, 6)) {
       const lido = await x.lerArquivo(c.nome, new Uint8Array(await drive.baixar(c.id, c.nome)), 'banco');
-      if (!lido.faturaDeCartao && !lido.naoEExtrato) extratos.push(c);
+      // (e o de outro banco, pelo cabeçalho: 12/11/2026)
+      if (!lido.faturaDeCartao && !lido.naoEExtrato && !x.deOutroBanco(lido.bancoNoTexto, marca)) extratos.push(c);
     }
     return extratos.length === 1 ? { ...r, situacao: 'achou', arquivo: extratos[0] } : r;
   }
@@ -199,7 +200,7 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
     setBuscando(linha.id);
     try {
       const pasta = await pastaComOsMeses(linha, [vm.competencia]);
-      const r = await soOExtrato(x.acharExtratoNoDrive(pasta?.itens || [], pasta?.raiz || null, vm.competencia, { nome: linha.nome, marca: linha.marca, conta: linha.numeroConta }));
+      const r = await soOExtrato(x.acharExtratoNoDrive(pasta?.itens || [], pasta?.raiz || null, vm.competencia, { nome: linha.nome, marca: linha.marca, conta: linha.numeroConta }), linha.marca);
       if (r.situacao === 'achou' && r.arquivo) await usar(linha, r.arquivo, doMes(r).slice(1));
       else setEscolha({ linha, texto: x.mensagemDaBuscaDoExtrato(r, vm.competencia.slice(5) + '/' + vm.competencia.slice(0, 4)), candidatos: r.candidatos });
     } catch (e) {
@@ -237,7 +238,7 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
           return;
         }
         setMesAtual(mes);
-        const r = await soOExtrato(x.acharExtratoNoDrive(pasta?.itens || [], pasta?.raiz || null, mes, { nome: linha.nome, marca: linha.marca, conta: linha.numeroConta }));
+        const r = await soOExtrato(x.acharExtratoNoDrive(pasta?.itens || [], pasta?.raiz || null, mes, { nome: linha.nome, marca: linha.marca, conta: linha.numeroConta }), linha.marca);
         const rotulo = mes.slice(5) + '/' + mes.slice(0, 4);
         if (r.situacao !== 'achou' || !r.arquivo) { faltam.push(rotulo); passou(rotulo, false, seguinte); continue; }
         // só conta como trazido o que entrou (Vitor, 19/10/2026: "fala que traz, mas não traz nada")
@@ -286,13 +287,13 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
    * certo, então ele sobe e o do Drive vai para a pasta SUBSTITUÍDOS (o robô move; nada é apagado). Só nos meses em que a
    * pessoa importou (meses; sem eles, todos os do arquivo) e quando o do Drive é um só; mais de um, ou só candidato, não vai.
    */
-  async function subirAoDrive(linha: Linha, fs: File[], cliente: string, meses?: string[]) {
+  async function subirAoDrive(linha: Linha, fs: File[], cliente: string, meses?: string[], soOsMeses = false) {
     if (!drive.enviarAoDrive || !fs.length) return;
     // sem o Drive conectado, pede o login e manda depois (Vitor, 19/10/2026: na 289, o 06 e o 07 do Sicoob entraram e nunca
     // foram para o Drive, sem aviso; o olhinho não tinha o PDF para abrir)
     if (!acesso.entrou) {
       if (drive.loginDeFora || drive.exemplos) return;
-      depois.current = () => { void subirAoDrive(linha, fs, cliente, meses); };
+      depois.current = () => { void subirAoDrive(linha, fs, cliente, meses, soOsMeses); };
       setLogin(l => ({ ...l, aberto: true, erro: '' }));
       return;
     }
@@ -309,6 +310,8 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
         const pedacos = lido.semMovimento?.length === 1 ? [{ mes: lido.semMovimento[0], nome: x.nomeDoExtratoDoMes(linha.nome, lido.semMovimento[0], ext), bytes }]
           : lido.erro ? [] : await x.extratoPorMes(f.name, bytes, lido, linha.nome);
         for (const p of pedacos) {
+          // só os meses escolhidos (o Enviar vários meses, com o mês escolhido no extrato de vários meses)
+          if (soOsMeses && meses && !meses.includes(p.mes)) continue;
           const r = x.acharExtratoNoDrive(pasta?.itens || [], pasta?.raiz || null, p.mes, conta);
           // já tem o extrato DESTE mês no Drive: não manda de novo. (Vitor, 19/10/2026: "não está sendo armazenado" — o mês
           // sem arquivo devolve como candidatos os extratos dos OUTROS meses, e o envio era pulado em toda empresa que já
@@ -417,7 +420,7 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
     cancelando,
     cancelar: () => { cancelado.current = true; setCancelando(true); },
     buscar: (linha: Linha) => { void buscar(linha); },
-    subirAoDrive: (linha: Linha, fs: File[], cliente: string, meses?: string[]) => { void subirAoDrive(linha, fs, cliente, meses); },
+    subirAoDrive: (linha: Linha, fs: File[], cliente: string, meses?: string[], soOsMeses = false) => { void subirAoDrive(linha, fs, cliente, meses, soOsMeses); },
     buscarNoPeriodo: (linha: Linha, meses: string[]) => { void buscarNoPeriodo(linha, meses); },
     login: { ...login, set: (m: Partial<typeof login>) => setLogin(l => ({ ...l, ...m })), entrar: () => { void entrar(); }, fechar: () => { setPendente(null); depois.current = null; setLogin(l => ({ ...l, aberto: false })); } },
     /** pede o login do Entregas e, ao entrar, faz `f` */

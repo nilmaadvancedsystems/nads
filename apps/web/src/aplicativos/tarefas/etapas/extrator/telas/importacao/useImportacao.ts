@@ -53,6 +53,15 @@ function novoId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
 
+/** O arquivo lido só com os lançamentos (e saldos do dia) destes meses; o saldo anterior só vale se o primeiro mês ficou. */
+function soDosMeses(lido: x.ArquivoLido, meses: string[]): x.ArquivoLido {
+  const doMes = (data: string) => meses.includes(data.slice(0, 7));
+  const lancamentos = lido.lancamentos.filter(l => doMes(l.data));
+  const primeiro = lido.lancamentos.map(l => l.data).sort()[0];
+  return { ...lido, lancamentos, saldosDoDia: lido.saldosDoDia?.filter(s => doMes(s.data)),
+    saldoAnterior: primeiro && doMes(primeiro) ? lido.saldoAnterior : undefined, conferenciaPeloSaldo: undefined };
+}
+
 export function useImportacao() {
   const s = useSessao();
   const { toast, modal } = useRetorno();
@@ -146,12 +155,16 @@ export function useImportacao() {
   /** Importar direto (na linha do banco): escolheu os arquivos, já importa para aquele banco. */
   /** Devolve se importou (o extrato que entrou pode ir para o Drive: useDriveDaLinha.subirAoDrive). */
   /** `mesesDaBusca`: o mês da coluna ou da busca no e-mail, para o extrato sem movimento que não diz o mês. */
-  async function importarArquivos(banco: string, lado: x.Lado, fs: File[], mesesDaBusca?: string[]): Promise<boolean> {
+  /** `soOsMeses`: do extrato de vários meses, entram só os lançamentos destes (o Enviar vários meses, quando a pessoa escolhe o mês). */
+  async function importarArquivos(banco: string, lado: x.Lado, fs: File[], mesesDaBusca?: string[], soOsMeses?: string[]): Promise<boolean> {
     if (!fs.length) return false;
     setMensagemBruta(null);
     setLendoLinha(banco + '|' + lado);
     const lidos: x.ArquivoLido[] = [];
-    for (const f of fs) lidos.push(await x.lerArquivo(f.name, new Uint8Array(await f.arrayBuffer()), lado));
+    for (const f of fs) {
+      const lido = await x.lerArquivo(f.name, new Uint8Array(await f.arrayBuffer()), lado);
+      lidos.push(soOsMeses ? soDosMeses(lido, soOsMeses) : lido);
+    }
     const ok = await gravarLidos(lado, lidos, banco, undefined, undefined, mesesDaBusca);
     setLendoLinha(null);
     return ok;
@@ -162,10 +175,15 @@ export function useImportacao() {
    * arquivo sem nada (sem lançamento e sem o "sem movimento") não grava nem avisa e volta 'vazio', para quem chama tentar o
    * próximo arquivo do mês (Vitor, 19/10/2026, na 450: o "MM-2026 (1).pdf" eram comprovantes e o nads dizia que trouxe).
    */
-  async function importarDoDrive(banco: string, arquivo: { id: string; nome: string }, conteudo: ArrayBuffer, mes?: string, tentativa = false): Promise<boolean | 'vazio'> {
+  async function importarDoDrive(banco: string, arquivo: { id: string; nome: string }, conteudo: ArrayBuffer, mes?: string, tentativa = false, marca?: string): Promise<boolean | 'vazio'> {
     setMensagemBruta(null);
     setLendoLinha(banco + '|banco');
-    const lido = await x.lerArquivo(arquivo.nome, new Uint8Array(conteudo), 'banco');
+    let lido = await x.lerArquivo(arquivo.nome, new Uint8Array(conteudo), 'banco');
+    // o arquivo de outro banco na pasta desta conta não entra (Vitor, 12/11/2026, na 429: a InfinitePay no Santander)
+    if (x.deOutroBanco(lido.bancoNoTexto, marca)) {
+      const nomeDe = (id?: string) => empresas.BANCOS_CONHECIDOS.find(b => b.id === id)?.nome || id || '';
+      lido = { ...lido, lancamentos: [], semMovimento: undefined, naoEExtrato: true, erro: 'É o extrato do ' + nomeDe(lido.bancoNoTexto) + ', não do ' + nomeDe(marca) + '.' };
+    }
     if (tentativa && !lido.semMovimento && (lido.erro || !lido.lancamentos.length)) { setLendoLinha(null); return 'vazio'; }
     const ok = await gravarLidos('banco', [lido], banco, arquivo, undefined, mes ? [mes] : undefined);
     setLendoLinha(null);

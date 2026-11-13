@@ -46,6 +46,12 @@ export interface RepoTarefasDelegadas {
   /** a conta da etapa delegada marcada (ou desmarcada) como feita por quem recebeu */
   marcarContaFeita(id: string, conta: tarefas.delegadas.ContaDelegada, feita: boolean): Promise<void>;
   anexar(id: string, arquivos: ArquivoParaAnexar[]): Promise<void>;
+  /**
+   * fixa um link na tarefa e tira (o Início novo; 13/11/2026). No banco, o campo links só passa quando a regra do
+   * nadsTarefasDelegadas aceitar (ainda não publicada)
+   */
+  fixarLink(id: string, url: string): Promise<void>;
+  tirarLink(id: string, url: string): Promise<void>;
   tirarAnexo(id: string, anexoId: string): Promise<void>;
   /** os bytes do anexo, para baixar (null = não achou) */
   baixarAnexo(id: string, anexoId: string): Promise<Uint8Array | null>;
@@ -86,6 +92,68 @@ function exemplos(agora = new Date(), eu: Pessoa | null = null): TarefaDelegada[
     { ...base, id: 'td-4', numero: 4, titulo: 'Revisar as férias de outubro', prioridade: 'normal', prazo: dia(-3), status: 'concluida', criadaPor: savio, responsavel: nilma,
       criadaEm: ha(120), concluidaEm: ha(30), atualizadaEm: ha(30),
       historico: [{ por: 'Sávio', em: ha(120), texto: 'Criou a tarefa' }, { por: 'Sávio', em: ha(120), texto: 'Delegou para ' + nilma.nome }, { por: nilma.nome, em: ha(30), texto: 'Mudou o status de Pendente para Concluída' }] },
+    ...(eu ? maisExemplos(agora, eu) : []),
+  ];
+}
+
+/**
+ * Mais tarefas para o ⚡ do Início (o modo desenvolvedor; 13/11/2026: "SEMPRE desenvolver formas de preenchimento de dados
+ * ficticios para meu teste"): enchem Hoje, Amanhã e Esta semana, os documentos delegados, os comentários e o Por cliente
+ * do Início novo. Só empresas fictícias (o repositório é público).
+ */
+function maisExemplos(agora: Date, eu: Pessoa): TarefaDelegada[] {
+  const ha = (h: number) => new Date(agora.getTime() - h * 3600_000).toISOString();
+  const dia = (n: number) => d.hojeIso(new Date(agora.getTime() + n * 86400_000));
+  const p = (uid: string, nome: string) => ({ uid, nome });
+  const savio = p('exemplo-2', 'Sávio'), vitor = p('exemplo-3', 'Vitor'), clara = p('exemplo-6', 'Clara'), heverton = p('exemplo-7', 'Heverton'), fernando = p('exemplo-4', 'Fernando');
+  const alfa = { codigo: 14, nome: 'ALFA COMERCIO LTDA' }, beta = { codigo: 27, nome: 'BETA SERVICOS LTDA' }, gama = { codigo: 33, nome: 'GAMA TRANSPORTES LTDA' }, delta = { codigo: 41, nome: 'DELTA AGROPECUARIA LTDA' };
+  const base = { descricao: '', prazoHora: '', concluidaEm: '', pareceres: [], anexos: [] };
+  const criada = (de: Pessoa, para: Pessoa, h: number) => [{ por: de.nome, em: ha(h), texto: 'Criou a tarefa' }, { por: de.nome, em: ha(h), texto: 'Delegou para ' + para.nome }];
+  const t = (n: number, x: Omit<TarefaDelegada, 'id' | 'numero' | 'cliente' | 'descricao' | 'prazoHora' | 'concluidaEm' | 'pareceres' | 'anexos'> & Partial<TarefaDelegada>): TarefaDelegada =>
+    ({ ...base, id: 'td-' + n, numero: n, cliente: x.clientes[0] || null, ...x });
+  return [
+    t(5, { titulo: 'Fechar a folha de novembro', clientes: [alfa], prioridade: 'alta', prazo: dia(0), prazoHora: '17:00', status: 'andamento', criadaPor: savio, responsavel: eu, criadaEm: ha(30), atualizadaEm: ha(3),
+      pareceres: [{ por: 'Sávio', em: ha(3), texto: 'As horas extras do mês vieram na planilha anexada.' }],
+      historico: [...criada(savio, eu, 30), { por: eu.nome, em: ha(10), texto: 'Iniciou a tarefa' }, { por: 'Sávio', em: ha(3), texto: 'Escreveu um parecer' }] }),
+    t(6, { titulo: 'Conferir as notas de entrada', clientes: [beta], prioridade: 'normal', prazo: dia(0), status: 'pendente', criadaPor: heverton, responsavel: eu, criadaEm: ha(28), atualizadaEm: ha(28), historico: criada(heverton, eu, 28) }),
+    t(7, { titulo: 'Emitir a guia do FGTS', clientes: [gama], prioridade: 'urgente', prazo: dia(1), status: 'pendente', criadaPor: savio, responsavel: eu, criadaEm: ha(12), atualizadaEm: ha(12), historico: criada(savio, eu, 12) }),
+    t(8, { titulo: 'Responder o e-mail do sócio sobre o pró-labore', clientes: [alfa], prioridade: 'baixa', prazo: dia(1), status: 'pendente', criadaPor: eu, responsavel: eu, criadaEm: ha(6), atualizadaEm: ha(6),
+      historico: [{ por: eu.nome, em: ha(6), texto: 'Criou a tarefa' }] }),
+    t(9, { titulo: 'Lançar o extrato do Sicoob', clientes: [delta], prioridade: 'normal', prazo: dia(3), status: 'pausada', criadaPor: vitor, responsavel: eu, criadaEm: ha(40), atualizadaEm: ha(9),
+      pareceres: [{ por: 'Vitor', em: ha(9), texto: 'O extrato de outubro ainda não chegou, pedi para o cliente.' }],
+      historico: [...criada(vitor, eu, 40), { por: eu.nome, em: ha(20), texto: 'Iniciou a tarefa' }, { por: eu.nome, em: ha(9), texto: 'Pausou a tarefa' }, { por: 'Vitor', em: ha(9), texto: 'Escreveu um parecer' }] }),
+    t(10, { titulo: 'Revisar o balancete do trimestre', clientes: [beta, gama], prioridade: 'alta', prazo: dia(5), status: 'pendente', criadaPor: fernando, responsavel: eu, criadaEm: ha(16), atualizadaEm: ha(16), historico: criada(fernando, eu, 16) }),
+    t(11, { titulo: 'Organizar a pasta do Drive', clientes: [], prioridade: 'baixa', prazo: '', status: 'pendente', criadaPor: eu, responsavel: eu, criadaEm: ha(70), atualizadaEm: ha(70), historico: [{ por: eu.nome, em: ha(70), texto: 'Criou a tarefa' }] }),
+    t(12, { titulo: 'Apurar o Simples de outubro', clientes: [delta], prioridade: 'normal', prazo: dia(12), status: 'pendente', criadaPor: heverton, responsavel: eu, criadaEm: ha(5), atualizadaEm: ha(5), historico: criada(heverton, eu, 5) }),
+    // o que eu deleguei (o cartão Delegadas por mim)
+    t(13, { titulo: 'Cadastrar os funcionários novos', clientes: [gama], prioridade: 'normal', prazo: dia(2), status: 'andamento', criadaPor: eu, responsavel: savio, criadaEm: ha(26), atualizadaEm: ha(4), visualizadaEm: ha(20),
+      pareceres: [{ por: 'Sávio', em: ha(4), texto: 'Faltam os documentos de dois funcionários.' }],
+      historico: [...criada(eu, savio, 26), { por: 'Sávio', em: ha(18), texto: 'Iniciou a tarefa' }, { por: 'Sávio', em: ha(4), texto: 'Escreveu um parecer' }] }),
+    t(14, { titulo: 'Conferir o ICMS do mês', clientes: [beta], prioridade: 'alta', prazo: dia(4), status: 'pendente', criadaPor: eu, responsavel: heverton, criadaEm: ha(3), atualizadaEm: ha(3), historico: criada(eu, heverton, 3) }),
+    // os documentos delegados (a aba Documentos)
+    t(15, { tipo: 'documentos', titulo: d.TITULO_DO_PEDIDO, descricao: 'Os contratos de locação assinados.', clientes: [delta], prioridade: 'normal', prazo: dia(2), status: 'pendente', criadaPor: vitor, responsavel: eu, criadaEm: ha(8), atualizadaEm: ha(8), historico: criada(vitor, eu, 8) }),
+    t(17, { tipo: 'documentos', titulo: d.TITULO_DO_PEDIDO, descricao: 'As notas de serviço de outubro.', clientes: [beta], prioridade: 'normal', prazo: dia(-4), status: 'concluida', criadaPor: heverton, responsavel: eu, criadaEm: ha(110), concluidaEm: ha(50), atualizadaEm: ha(50),
+      anexos: [{ id: 'ax-17', nome: 'notas-outubro.pdf', extensao: 'pdf', tamanho: 182400, em: ha(50), por: eu.nome, partes: 1 }],
+      historico: [...criada(heverton, eu, 110), { por: eu.nome, em: ha(50), texto: 'Anexou o arquivo notas-outubro.pdf' }, { por: eu.nome, em: ha(50), texto: 'Mudou o status de Pendente para Concluída' }] }),
+    t(18, { tipo: 'documentos', titulo: d.TITULO_DO_PEDIDO, descricao: 'O contrato social atualizado.', clientes: [gama], prioridade: 'alta', prazo: dia(0), status: 'pendente', criadaPor: eu, responsavel: fernando, criadaEm: ha(4), atualizadaEm: ha(4), historico: criada(eu, fernando, 4) }),
+    t(16, { tipo: 'documentos', titulo: d.TITULO_DO_PEDIDO, descricao: 'Os recibos de aluguel de setembro e outubro.', clientes: [alfa], prioridade: 'normal', prazo: dia(6), status: 'pendente', criadaPor: eu, responsavel: clara, criadaEm: ha(14), atualizadaEm: ha(14), visualizadaEm: ha(10), historico: criada(eu, clara, 14) }),
+    // o envio e o requerer (13/11/2026): enviado aguardando a confirmação, recebido para confirmar, requerido contestado e
+    // repassado, e requerido para mim (para anexar e enviar)
+    t(19, { tipo: 'envio', titulo: d.TITULO_DO_ENVIO, descricao: 'O contrato social e a última alteração. (EXEMPLO)', clientes: [alfa], prioridade: 'normal', prazo: '', status: 'pendente', criadaPor: eu, responsavel: clara,
+      criadaEm: ha(3), atualizadaEm: ha(3), visualizadaEm: ha(2), historico: criada(eu, clara, 3),
+      anexos: [{ id: 'ax-1', nome: 'contrato-social.txt', extensao: 'txt', tamanho: 74, em: ha(3), por: eu.nome, partes: 1 }] }),
+    t(20, { tipo: 'envio', titulo: d.TITULO_DO_ENVIO, descricao: 'As guias de outubro para conferir. (EXEMPLO)', clientes: [beta], prioridade: 'normal', prazo: '', status: 'pendente', criadaPor: savio, responsavel: eu,
+      criadaEm: ha(1), atualizadaEm: ha(1), visualizadaEm: ha(1), historico: criada(savio, eu, 1),
+      links: [{ url: 'https://exemplo.com/guias-outubro', por: 'Sávio', em: ha(1) }] }),
+    t(21, { tipo: 'documentos', titulo: d.TITULO_DO_PEDIDO_NOVO, descricao: 'Os extratos do Itaú de setembro e outubro. (EXEMPLO)', clientes: [gama], prioridade: 'alta', prazo: dia(1), status: 'pendente', criadaPor: eu, responsavel: heverton,
+      entrega: 'contestada', criadaEm: ha(30), atualizadaEm: ha(2), visualizadaEm: ha(5),
+      pareceres: [{ por: 'Clara', em: ha(20), texto: 'Quem tem os extratos do Itaú é o Heverton.' }, { por: eu.nome, em: ha(2), texto: 'Veio só setembro; falta outubro.' }],
+      anexos: [{ id: 'ax-21', nome: 'itau-setembro.pdf', extensao: 'pdf', tamanho: 95200, em: ha(4), por: 'Heverton', partes: 1 }],
+      historico: [...criada(eu, clara, 30), { por: 'Clara', em: ha(20), texto: 'Escreveu um parecer' }, { por: 'Clara', em: ha(20), texto: 'Delegou de Clara para Heverton' },
+        { por: 'Heverton', em: ha(4), texto: 'Anexou o arquivo itau-setembro.pdf' }, { por: 'Heverton', em: ha(4), texto: 'Enviou os documentos para conferir' },
+        { por: eu.nome, em: ha(2), texto: 'Escreveu um parecer' }, { por: eu.nome, em: ha(2), texto: 'Contestou os documentos' }] }),
+    t(22, { tipo: 'documentos', titulo: d.TITULO_DO_PEDIDO_NOVO, descricao: 'O comprovante do aluguel de novembro. (EXEMPLO)', clientes: [delta], prioridade: 'normal', prazo: dia(2), status: 'pendente', criadaPor: fernando, responsavel: eu,
+      entrega: '', criadaEm: ha(6), atualizadaEm: ha(6), historico: criada(fernando, eu, 6) }),
   ];
 }
 
@@ -154,6 +222,13 @@ export function criarTarefasDelegadasMemoria(quem: () => Pessoa | null, paraQuem
       const em = new Date().toISOString();
       trocar(d.comAnexos(t, subir(arquivos, eu().nome, em), eu().nome, em));
     },
+    async fixarLink(id, url) {
+      const t = daTarefa(id);
+      const problema = d.problemaDoLink(url, t.links);
+      if (problema) throw new Error(problema);
+      trocar(d.comLink(t, url, eu().nome, new Date().toISOString()));
+    },
+    async tirarLink(id, url) { trocar(d.semLink(daTarefa(id), url, eu().nome, new Date().toISOString())); },
     async tirarAnexo(id, anexoId) {
       bytes.delete(anexoId);
       trocar(d.semAnexo(daTarefa(id), anexoId, eu().nome, new Date().toISOString()));

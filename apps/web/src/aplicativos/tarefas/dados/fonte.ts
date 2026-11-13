@@ -24,6 +24,8 @@ import { criarLoteDpFirestore } from './loteDp.firestore';
 import { criarBoletosFirestore } from './boletos.firestore';
 import { criarLoteFiscalMemoria, type RepoLoteFiscal } from './loteFiscal';
 import { criarLoteFiscalFirestore } from './loteFiscal.firestore';
+import { criarCartasFiscalMemoria, type RepoCartasFiscal } from './cartasFiscal';
+import { criarCartasFiscalFirestore } from './cartasFiscal.firestore';
 import { criarCaixaMemoria, type RepoCaixa } from './caixa';
 import { criarCaixaFirestore } from './caixa.firestore';
 import { criarHonorariosMemoria, type RepoHonorarios } from './honorarios';
@@ -58,6 +60,9 @@ import { criarLcdprFirestore } from './lcdpr.firestore';
 import { criarFeedbackFirestore } from './feedback.firestore';
 import { criarAvisosFirestore } from './avisos.firestore';
 import { criarAvisosMemoria, type RepoAvisos } from './avisos';
+import { criarReunioesFirestore } from './reunioes.firestore';
+import { criarReunioesMemoria, type RepoReunioes } from './reunioes';
+import { criarEntradasMemoria, type RepoEntradas } from './administrativo';
 import { criarTarefasDelegadasMemoria, type RepoTarefasDelegadas } from './tarefasDelegadas';
 import { criarTarefasDelegadasFirestore } from './tarefasDelegadas.firestore';
 import { criarUsoMemoria, type RepoUso } from './uso';
@@ -205,6 +210,9 @@ export function repoDoCadastro(): empresas.cadastro.RepoCadastro {
     cadastro = noBanco
       ? empresas.cadastro.criarRepoCadastro(demo.portaCadastroComDemo(portaCadastroFirestore()), false)
       : empresas.cadastro.criarRepoCadastro(demo.portaCadastroComDemo(empresas.cadastro.portaCadastroMemoria()), true);
+    // a razão social trocada no Cadastro › Empresa (13/11/2026) vale para mostrar e buscar; a chave continua o nome
+    const c = cadastro;
+    empresas.usarRazoesSociais(nome => c.todos().porId.get(formatos.slug(nome))?.razaoSocial?.atual || '');
   }
   return cadastro;
 }
@@ -417,6 +425,14 @@ export function repoDoLoteFiscal(): RepoLoteFiscal {
   return loteFiscal;
 }
 
+let cartasDoFiscal: RepoCartasFiscal | null = null;
+
+/** Fiscal › Cartas (12/11/2026): a Carta de balanço (pedidos ao robô) e o Checklist mensal (o que o robô mandou). */
+export function repoDasCartasDoFiscal(): RepoCartasFiscal {
+  if (!cartasDoFiscal) cartasDoFiscal = noBanco ? criarCartasFiscalFirestore(quemPede) : criarCartasFiscalMemoria();
+  return cartasDoFiscal;
+}
+
 let notasFiscais: RepoNfse | null = null;
 
 /** O emissor de NFS-e do financeiro (15/10/2026): as notas de honorários, a configuração e o token, emitidas pelo robô da nuvem. */
@@ -464,8 +480,25 @@ export function repoDeHonorarios(): RepoHonorarios {
 
 let carteiraRepo: RepoCarteira | null = null;
 
+// o ⚡ das Comissões da equipe no modo desenvolvedor (13/11/2026: "SEMPRE desenvolver formas de preenchimento de dados
+// ficticios"): enquanto ligado, a Carteira vem da memória (com ou sem a % própria de exemplo), nada vai para o banco
+const testeDaCarteira: { repo: RepoCarteira | null; propria: boolean; ver: number } = { repo: null, propria: false, ver: 0 };
+const ouvintesDaCarteira = new Set<() => void>();
+export const assinarTesteDaCarteira = (f: () => void) => { ouvintesDaCarteira.add(f); return () => { ouvintesDaCarteira.delete(f); }; };
+export const versaoDoTesteDaCarteira = () => testeDaCarteira.ver;
+export const testeDaCarteiraLigado = () => ({ comissoes: !!testeDaCarteira.repo, propria: testeDaCarteira.propria });
+
+/** Liga as comissões de exemplo (propria: com a % própria de 50% para quem está e uma colega) ou desliga (volta ao que estava). */
+export function ligarTesteDaCarteira(ligar: false | 'comissoes' | 'propria') {
+  testeDaCarteira.repo = ligar ? criarCarteiraMemoria(quemDasTarefas, ligar === 'propria') : null;
+  testeDaCarteira.propria = ligar === 'propria';
+  testeDaCarteira.ver++;
+  for (const f of ouvintesDaCarteira) f();
+}
+
 /** A Carteira (12/11/2026): as comissões, as finanças, os holerites e as contas ligadas à pessoa; e o lado do Financeiro. */
 export function repoDaCarteira(): RepoCarteira {
+  if (testeDaCarteira.repo) return testeDaCarteira.repo;
   if (!carteiraRepo) carteiraRepo = noBanco ? criarCarteiraFirestore(quemDasTarefas) : criarCarteiraMemoria(quemDasTarefas);
   return carteiraRepo;
 }
@@ -530,7 +563,7 @@ export function repoDeFeedback(): RepoFeedback {
 
 // o ⚡ do Início no modo desenvolvedor (10/11/2026; "em todas as telas, no modo desenvolvedor, a opção de nutrir com dados de
 // teste"): enquanto ligado, as tarefas e os avisos vêm da memória, nada vai para o banco, e somem ao recarregar
-const teste: { tarefas: RepoTarefasDelegadas | null; avisos: RepoAvisos | null; ver: number } = { tarefas: null, avisos: null, ver: 0 };
+const teste: { tarefas: RepoTarefasDelegadas | null; avisos: RepoAvisos | null; reunioes: RepoReunioes | null; ver: number } = { tarefas: null, avisos: null, reunioes: null, ver: 0 };
 const ouvintesDoTeste = new Set<() => void>();
 
 export type DadosDeTesteDoInicio = 'tarefas' | 'avisos';
@@ -540,10 +573,30 @@ export const testeDoInicioLigado = (q: DadosDeTesteDoInicio) => !!teste[q];
 
 /** Liga ou desliga os dados de teste do Início (desligar volta ao que estava na tela). */
 export function ligarTesteDoInicio(q: DadosDeTesteDoInicio, ligar: boolean) {
-  if (q === 'avisos') teste.avisos = ligar ? criarAvisosMemoria() : null;
+  // os avisos de exemplo levam junto as reuniões de exemplo (as Notificações do Início novo)
+  if (q === 'avisos') { teste.avisos = ligar ? criarAvisosMemoria(true) : null; teste.reunioes = ligar ? criarReunioesMemoria(quemDasTarefas, true) : null; }
   else teste.tarefas = ligar ? criarTarefasDelegadasMemoria(quemDasTarefas, true) : null;
   teste.ver++;
   for (const f of ouvintesDoTeste) f();
+}
+
+// o Administrativo (13/11/2026, protótipo do modo desenvolvedor): as entradas de clientes só na memória; o ⚡ troca pelas de exemplo
+let entradas: RepoEntradas | null = null;
+let entradasDeTeste: RepoEntradas | null = null;
+const ouvintesDasEntradas = new Set<() => void>();
+let versaoDasEntradas = 0;
+export const assinarTesteDasEntradas = (f: () => void) => { ouvintesDasEntradas.add(f); return () => { ouvintesDasEntradas.delete(f); }; };
+export const versaoDoTesteDasEntradas = () => versaoDasEntradas;
+export const testeDasEntradasLigado = () => !!entradasDeTeste;
+export function ligarTesteDasEntradas(ligar: boolean) {
+  entradasDeTeste = ligar ? criarEntradasMemoria(true) : null;
+  versaoDasEntradas++;
+  for (const f of ouvintesDasEntradas) f();
+}
+export function repoDasEntradas(): RepoEntradas {
+  if (entradasDeTeste) return entradasDeTeste;
+  if (!entradas) entradas = criarEntradasMemoria();
+  return entradas;
 }
 
 let avisos: RepoAvisos | null = null;
@@ -553,6 +606,15 @@ export function repoDeAvisos(): RepoAvisos {
   if (teste.avisos) return teste.avisos;
   if (!avisos) avisos = noBanco ? criarAvisosFirestore() : criarAvisosMemoria();
   return avisos;
+}
+
+let reunioes: RepoReunioes | null = null;
+
+/** As reuniões das Notificações (13/11/2026): no banco, a coleção nadsReunioes do Entregas; nos exemplos, na memória. */
+export function repoDeReunioes(): RepoReunioes {
+  if (teste.reunioes) return teste.reunioes;
+  if (!reunioes) reunioes = noBanco ? criarReunioesFirestore(() => { const q = quemPede(); return q ? { uid: q.uid, nome: q.nome } : null; }) : criarReunioesMemoria(quemDasTarefas);
+  return reunioes;
 }
 
 let tarefasDelegadas: RepoTarefasDelegadas | null = null;

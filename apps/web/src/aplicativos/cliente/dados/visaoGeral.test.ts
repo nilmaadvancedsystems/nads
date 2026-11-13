@@ -1,7 +1,7 @@
 import type { areaCliente as ac } from '@nads/core';
 import { describe, expect, it } from 'vitest';
 import { areaComoNoBanco, areaDeExemplo } from './areaCliente.memoria';
-import { atividadeRecente, guiasDoMomento, pendenciasDoCliente, quandoFoi, vereditoDoMes } from './visaoGeral';
+import { atividadeRecente, guiasDoMomento, pendenciasDoCliente, proximosDoCliente, quandoFoi, vereditoDoMes } from './visaoGeral';
 
 const hoje = new Date(2026, 9, 17, 10, 0);
 const guia = (id: string, tipo: ac.TipoDeGuia, vencimento: string, temPdf = true): ac.GuiaDoCliente =>
@@ -55,7 +55,7 @@ describe('pendenciasDoCliente e vereditoDoMes', () => {
   });
   it('uma só: o veredito é ela', () => {
     const p = pendenciasDoCliente({ ...vazio, chamados: [{ id: 'c1', tipo: 'documento', titulo: 'Certidão negativa', situacao: 'respondido', mensagens: [] }] }, hoje);
-    expect(vereditoDoMes(p, [])).toEqual({ tom: 'warn', titulo: 'O escritório respondeu', texto: 'Certidão negativa' });
+    expect(vereditoDoMes(p, [])).toEqual({ tom: 'warn', titulo: 'O escritório respondeu', texto: 'Sua solicitação "Certidão negativa" tem resposta.' });
   });
   it('sem PDF, a guia de hoje leva para Guias; o recado sem destino não entra', () => {
     const p = pendenciasDoCliente({ ...vazio, guias: [guia('fgts', 'FGTS', '17/10/2026', false)], avisos: [{ id: 'a', titulo: 'Oi', texto: 'só um recado' }, { id: 'b', titulo: 'Extratos', texto: 'mande', ir: 'documentos' }] }, hoje);
@@ -99,5 +99,31 @@ describe('quandoFoi', () => {
     expect(quandoFoi(new Date(2026, 9, 16, 16, 40).toISOString(), hoje)).toBe('ontem, 16:40');
     expect(quandoFoi(new Date(2026, 9, 11, 9, 0).toISOString(), hoje)).toBe('11/10');
     expect(quandoFoi('', hoje)).toBe('');
+  });
+});
+
+describe('proximosDoCliente (os próximos vencimentos da Visão geral)', () => {
+  const HOJE = new Date(2026, 10, 12);
+  const g = (id: string, vencimento: string, situacao: ac.GuiaDoCliente['situacao']): ac.GuiaDoCliente =>
+    ({ id, tipo: 'DAS', competencia: '2026-10', vencimento, valor: 100, situacao, temPdf: true });
+  const agenda: ac.AgendaDoMes[] = [{ mes: '2026-11', itens: [
+    { id: 'a', nome: 'DCTFWeb', vence: '2026-11-13', situacao: 'a fazer' },
+    { id: 'b', nome: 'EFD', vence: '2026-11-10', situacao: 'a fazer' },
+    { id: 'c', nome: 'eSocial', vence: '2026-11-20', situacao: 'feito' },
+  ] }, { mes: '2026-12', itens: [{ id: 'd', nome: 'DIRF', vence: '2027-01-30', situacao: 'a fazer' }] }];
+
+  it('a vencida no dia dela (atrasada), depois por data; a entrega a fazer dos próximos 30 dias; a guia antes da entrega', () => {
+    const p = proximosDoCliente([g('x', '15/11/2026', 'a vencer'), g('y', '07/11/2026', 'vencida'), g('z', '13/11/2026', 'a vencer')], agenda, HOJE, x => x.tipo + ' ' + x.id);
+    expect(p.map(d => [d.data, d.semana, d.atrasado, d.itens.map(i => i.chave)])).toEqual([
+      ['2026-11-07', 'SÁB', true, ['g-y']],
+      ['2026-11-13', 'SEX', false, ['g-z', 'e-2026-11-a']],
+      ['2026-11-15', 'DOM', false, ['g-x']],
+    ]);
+    expect(p[0].itens[0]).toMatchObject({ tom: 'vencida', situacao: 'Vencida', valor: 100, guia: 'y' });
+  });
+
+  it('no máximo `limite` datas', () => {
+    const muitas = Array.from({ length: 8 }, (_, i) => g('n' + i, String(13 + i).padStart(2, '0') + '/11/2026', 'a vencer'));
+    expect(proximosDoCliente(muitas, [], HOJE, x => x.id, 30, 5).length).toBe(5);
   });
 });

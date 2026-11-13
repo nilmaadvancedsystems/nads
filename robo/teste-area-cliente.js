@@ -132,12 +132,13 @@ const interno = {
   ],
 };
 const vistoPeloCliente = R.chamadoDoCliente(R.chamadoInterno('c1', interno));
-igual('o chamado: a nota interna não sai, o nome de quem respondeu vira "Escritório", a hora vira ISO', vistoPeloCliente, {
+igual('o chamado: a nota interna não sai, de quem respondeu só o primeiro nome, a hora vira ISO', vistoPeloCliente, {
   id: 'c1', tipo: 'duvida', titulo: 'Dúvida', situacao: 'respondido',
-  mensagens: [{ de: 'cliente', autor: 'Você', texto: 'oi', em: '2026-10-16T10:00:00Z' }, { de: 'escritorio', autor: 'Escritório', texto: 'olá', em: '2026-10-16T11:00:00.000Z' }],
+  mensagens: [{ de: 'cliente', autor: 'Você', texto: 'oi', em: '2026-10-16T10:00:00Z' }, { de: 'escritorio', autor: 'Clara', texto: 'olá', em: '2026-10-16T11:00:00.000Z' }],
 });
 semInternos('o chamado não leva campo interno', vistoPeloCliente);
-igual('o nome de quem respondeu não aparece em lugar nenhum', JSON.stringify(vistoPeloCliente).includes('Clara'), false);
+igual('o sobrenome de quem respondeu não sai', JSON.stringify(vistoPeloCliente).includes('Souza'), false);
+igual('sem nome ou com e-mail, "Escritório"', [R.autorDoEscritorio(''), R.autorDoEscritorio('ana@nilma.com.br'), R.autorDoEscritorio('ANA paula')], ['Escritório', 'Escritório', 'Ana']);
 igual('o chamado passa na lista branca', joga(() => R.conferirListaBranca('chamado', vistoPeloCliente)), '');
 
 const recibo = R.reciboDoEnvio({ id: 'e1', nome: 'extrato.pdf', tipo: 'extrato', tamanho: 10, recebidoEm: 'z', pastaDrive: '2026\\58 - X', token: TOKEN, codigo: 58 });
@@ -308,6 +309,59 @@ if (modulo) {
   esperar.push(modulo.limparEspelhosOrfaos(db3, new Set(), () => {}, { so: [VIVO], pausaMs: 0 }).then(apagados => {
     igual('o ouvinte atrasado acha que sumiu, mas o link existe: não apaga', apagados, []);
   }));
+}
+
+// ---------- o Registro (12/11/2026): o pessoal e os documentos do DP passam na lista branca; o CPF vai mascarado ----------
+{
+  const G = require('./gerado/danfse');
+  const reg = G.registroDasGuias([{ numero: '1', competencia: '2026-10', vencimento: '', emissao: '', total: 0, trabalhadores: [{ nome: 'MARIA SOUZA', cpf: '123.456.789-09', matricula: '1', base: 2000, valor: 160 }] }]);
+  const pessoal = { funcionarios: reg.funcionarios, competencia: reg.competencia, total: reg.total, atualizadoEm: '2026-11-12T10:00:00.000Z' };
+  igual('o pessoal passa na lista branca', joga(() => R.conferirListaBranca('pessoal', pessoal)), '');
+  igual('o CPF do funcionário vai mascarado', reg.funcionarios[0].cpf, '***.456.789-**');
+  igual('nada do CPF inteiro no espelho', JSON.stringify(pessoal).includes('12345678909') || JSON.stringify(pessoal).includes('123.456.789-09'), false);
+  const doc = { tipo: 'dp', id: 'dp-x', nome: 'Folha.pdf', categoria: G.categoriaDoArquivoDp('Folha de pagamento 10-2026.pdf', 'DEPARTAMENTO PESSOAL/10/FOLHA'), competencia: '2026-10', tamanho: 10, funcionario: '', partes: 1 };
+  igual('o documento do DP passa na lista branca', joga(() => R.conferirListaBranca('documentoDp', doc)), '');
+  igual('a lista branca recusa a pasta do Drive no documento', joga(() => R.conferirListaBranca('documentoDp', Object.assign({}, doc, { pasta: 'G:/x' }))), 'espelho: campo pasta não pode sair em documentoDp');
+  igual('o pedaço do documento passa', joga(() => R.conferirListaBranca('pedacoDp', { base64: 'AAAA', n: 0, total: 1, de: 'dp-x' })), '');
+  // a folha de verdade (13/11/2026): o holerite completa o funcionário; o CPF inteiro, as rubricas e o motivo do afastamento não vão
+  {
+    const h = { empresa: '00999', competencia: '2026-10', matricula: '000001', nome: 'MARIA SOUZA', cpf: '12345678909', cargo: 'VENDEDORA', admissao: '2023-06-15',
+      rubricas: [{ codigo: '642', descricao: 'Empréstimo consignado', referencia: '', valor: 100, tipo: 'desconto' }], proventos: 2000, descontos: 100, liquido: 1900,
+      salarioBase: 2000, baseInss: 2000, baseFgts: 2000, fgts: 160, baseIrrf: 1800, inss: 0, irrf: 0, feriasVencidas: false,
+      afastamentos: [{ de: '2026-10-08', ate: '2026-10-22', motivo: 'Auxílio Doença' }], confere: true };
+    const ferias = { empresa: '999', dataBase: '2026-11-30', funcionarios: [{ matricula: '1', nome: 'MARIA SOUZA', admissao: '2023-06-15', periodos: [{ inicio: '2025-06-15', fim: '2026-06-14', faltas: 0, gozados: 0, direito: 30, aGozar: 30, concederAte: '2027-05-15' }] }] };
+    const regFolha = G.registroComAFolha(reg, [h], [ferias]);
+    const comFolha = { funcionarios: regFolha.funcionarios, competencia: regFolha.competencia, total: regFolha.total, historico: G.historicoComAFolha([], [h]), atualizadoEm: '2026-11-13T10:00:00.000Z' };
+    igual('o pessoal com a folha passa na lista branca', joga(() => R.conferirListaBranca('pessoal', comFolha)), '');
+    igual('a folha completa o funcionário', [regFolha.funcionarios[0].cargo, regFolha.funcionarios[0].liquido, regFolha.funcionarios[0].periodosDeFerias.length], ['VENDEDORA', 1900, 1]);
+    const texto = JSON.stringify(comFolha);
+    igual('nada do CPF inteiro, das rubricas nem do motivo do afastamento', ['12345678909', 'consignado', 'Doen'].filter(x => texto.includes(x)), []);
+    igual('a lista branca recusa as rubricas no funcionário', joga(() => R.conferirListaBranca('pessoal', Object.assign({}, comFolha, { funcionarios: [Object.assign({}, regFolha.funcionarios[0], { rubricas: [] })] }))), 'espelho: campo rubricas não pode sair em funcionario');
+  }
+  // o Faturamento (12/11/2026)
+  const fat = G.faturamentoDoCliente([{ codigo: 292, nome: 'FITO', regime: 'Simples' }], ['2026-10'], () => ({ codigo: '292', competencia: '2026-10', em: '', series: [{ modelo: '55', serie: '1', numeros: [1], canceladas: [], valor: 500 }] }), new Date(2026, 10, 12));
+  igual('o faturamento passa na lista branca', joga(() => R.conferirListaBranca('faturamento', fat)), '');
+  igual('o faturamento: o mês do SIEG', fat.empresas[0].meses[0].total, 500);
+  igual('o faturamento: o regime (o limite do Simples/MEI)', fat.empresas[0].regime, 'Simples');
+  igual('o faturamento: as séries do mês (o detalhamento)', fat.empresas[0].meses[0].series.length, 1);
+  {
+    const notas = { codigo: '292', competencia: '2026-10', em: '2026-11-01', pasta: '', arquivos: 1, novos: 0, recebidas: [], emitidas: [
+      { tipo: 'NF-e', chave: '3126', numero: '1', serie: '1', data: '05/10/2026', emitente: { doc: '', nome: '' }, destinatario: { doc: '11222333000181', nome: 'LOJA X' }, valor: 500, cfop: '5102' },
+    ] };
+    const comNotas = G.faturamentoDoCliente([{ codigo: 292, nome: 'FITO', regime: 'Simples' }], ['2026-10'], () => ({ codigo: '292', competencia: '2026-10', em: '', series: [{ modelo: '55', serie: '1', numeros: [1], canceladas: [], valor: 500 }] }), new Date(2026, 10, 12), () => G.notasDoMes(notas));
+    igual('o painel do mês passa na lista branca', joga(() => R.conferirListaBranca('faturamento', comNotas)), '');
+    igual('o painel do mês: o maior cliente', comNotas.empresas[0].meses[0].notasDoMes.clientes[0].nome, 'LOJA X');
+    igual('o painel do mês: o CNPJ de quem comprou não sai', JSON.stringify(comNotas).includes('11222333000181'), false);
+    const lista = G.listaDeNotasDoMes(notas);
+    igual('o relatório do dia passa na lista branca', joga(() => R.conferirListaBranca('notasLista', { codigo: 292, competencia: '2026-10', notas: lista.notas, cortadas: lista.cortadas, atualizadoEm: 'x' })), '');
+    igual('o relatório do dia: o CNPJ de quem comprou não sai', JSON.stringify(lista).includes('11222333000181'), false);
+    igual('a logo passa na lista branca', joga(() => R.conferirListaBranca('marca', { logo: 'data:image/png;base64,AA==', atualizadoEm: 'x' })), '');
+    igual('a logo: o SVG não vale', G.erroDaLogo('data:image/svg+xml;base64,PHN2Zz4=') !== '', true);
+    const chave = '31261011222333000181550010000018421123456789';
+    igual('o pedido de DANFE: a chave pela marca', G.chaveDoPedidoDeDanfe({ tipo: 'documento', titulo: 'DANFE', texto: 'danfe:' + chave }), chave);
+    igual('o chamado comum não é DANFE', G.chaveDoPedidoDeDanfe({ tipo: 'documento', titulo: 'Certidão', texto: 'preciso da certidão' }), '');
+    igual('a DANFE no espelho passa na lista branca', joga(() => R.conferirListaBranca('documentoDanfe', { tipo: 'danfe', id: G.idDaDanfe(chave), nome: 'DANFE 1842.pdf', chave, partes: 1, atualizadoEm: 'x' })), '');
+  }
 }
 
 Promise.all(esperar).then(() => {

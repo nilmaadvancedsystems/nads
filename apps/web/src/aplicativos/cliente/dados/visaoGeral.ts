@@ -89,7 +89,8 @@ export function pendenciasDoCliente(e: Pick<EstadoDaArea, 'guias' | 'chamados' |
     }
   }
   for (const c of e.chamados) {
-    if (c.situacao === 'respondido') lista.push({ id: 'c-' + c.id, origem: 'chamado', tom: 'warn', titulo: 'O escritório respondeu', texto: c.titulo, rotulo: 'Ver resposta', acao: { tipo: 'ver-chamado', chamado: c.id } });
+    // o assunto por extenso (12/11/2026: o título sozinho, "12", não dizia nada)
+    if (c.situacao === 'respondido') lista.push({ id: 'c-' + c.id, origem: 'chamado', tom: 'warn', titulo: 'O escritório respondeu', texto: 'Sua solicitação "' + c.titulo + '" tem resposta.', rotulo: 'Ver resposta', acao: { tipo: 'ver-chamado', chamado: c.id } });
   }
   if (e.certificado) {
     const s = situacaoDoCertificado(e.certificado, hoje);
@@ -170,4 +171,41 @@ export function quandoFoi(iso: string, hoje: Date): string {
   if (dias === 0) return 'hoje, ' + hora;
   if (dias === 1) return 'ontem, ' + hora;
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+}
+
+// ---------- os próximos vencimentos da Visão geral (12/11/2026, o painel do mês: o mesmo extrato das Guias) ----------
+
+export interface ItemDoProximo { chave: string; tipo: 'guia' | 'entrega'; tom: 'vencida' | 'hoje' | 'aberta'; nome: string; situacao: string; valor: number | null; guia?: string }
+export interface DiaDoProximo { data: string; dia: number; semana: string; hoje: boolean; atrasado: boolean; itens: ItemDoProximo[] }
+
+const SEMANA = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
+const isoDe = (d: Date) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+
+/**
+ * Os próximos vencimentos: as guias do momento (a vencida no dia dela, marcada como atrasada) e as entregas do escritório
+ * ainda a fazer nos próximos `dias`, agrupadas por data, da mais antiga à mais nova; até `limite` datas.
+ */
+export function proximosDoCliente(guias: readonly ac.GuiaDoCliente[], agenda: readonly ac.AgendaDoMes[], hoje: Date, rotulo: (g: ac.GuiaDoCliente) => string, dias = 30, limite = 5): DiaDoProximo[] {
+  const hojeIso = isoDe(hoje);
+  const ate = isoDe(new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + dias));
+  const porData = new Map<string, ItemDoProximo[]>();
+  const por = (data: string, item: ItemDoProximo) => porData.set(data, [...(porData.get(data) ?? []), item]);
+  for (const g of guiasDoMomento([...guias], hoje)) {
+    const v = ac.dataDoVencimento(g.vencimento);
+    if (!v) continue;
+    por(isoDe(v), {
+      chave: 'g-' + g.id, tipo: 'guia', guia: g.id, nome: rotulo(g), valor: g.valor,
+      tom: g.situacao === 'vencida' ? 'vencida' : g.situacao === 'vence hoje' ? 'hoje' : 'aberta',
+      situacao: g.situacao === 'vencida' ? 'Vencida' : g.situacao === 'vence hoje' ? 'Vence hoje' : 'A pagar',
+    });
+  }
+  for (const m of agenda) for (const i of m.itens) {
+    if (i.situacao !== 'a fazer' || i.vence < hojeIso || i.vence > ate) continue;
+    por(i.vence, { chave: 'e-' + m.mes + '-' + i.id, tipo: 'entrega', tom: i.vence === hojeIso ? 'hoje' : 'aberta', nome: i.nome, situacao: 'O escritório entrega', valor: null });
+  }
+  return [...porData.entries()].sort((a, b) => a[0].localeCompare(b[0])).slice(0, limite).map(([data, itens]) => {
+    const d = new Date(Number(data.slice(0, 4)), Number(data.slice(5, 7)) - 1, Number(data.slice(8, 10)));
+    return { data, dia: d.getDate(), semana: SEMANA[d.getDay()], hoje: data === hojeIso, atrasado: data < hojeIso,
+      itens: [...itens.filter(x => x.tipo === 'guia'), ...itens.filter(x => x.tipo === 'entrega')] };
+  });
 }

@@ -8,3 +8,4 @@ export * from './entregas';
 export * from './receita';
 export * from './repo';
 export { criarRepoCadastroMemoria, portaCadastroMemoria } from './repo.memoria';
+export * from './razaoSocial';

@@ -81,7 +81,14 @@ const TIPOS_CH = new Set(TIPOS_DE_CHAMADO.map(t => t.valor));
 const SITUACOES_CH = new Set(['aberto', 'em andamento', 'respondido', 'concluido']);
 const MAIOR_TEXTO_DO_CHAMADO = 4000;
 
-/** O chamado que o cliente vê: lista branca; o autor do escritório vira "Escritório"; nota interna não sai. */
+/** O nome de quem do escritório respondeu, como o cliente vê: só o primeiro nome (12/11/2026); sem nome ou com e-mail, "Escritório". */
+function autorDoEscritorio(autor) {
+  const primeiro = String(autor || '').trim().split(/\s+/)[0] || '';
+  if (!primeiro || primeiro.includes('@') || /^escrit[oó]rio$/i.test(primeiro)) return 'Escritório';
+  return primeiro.charAt(0).toUpperCase() + primeiro.slice(1).toLowerCase();
+}
+
+/** O chamado que o cliente vê: lista branca; do escritório, só o primeiro nome de quem respondeu; nota interna não sai. */
 function chamadoDoCliente(c) {
   return {
     id: c.id,
@@ -90,7 +97,7 @@ function chamadoDoCliente(c) {
     situacao: SITUACOES_CH.has(c.situacao) ? c.situacao : 'aberto',
     mensagens: c.mensagens.filter(m => !m.interna).map(m => {
       const doCliente = m.de === 'cliente';
-      return { de: doCliente ? 'cliente' : 'escritorio', autor: doCliente ? 'Você' : 'Escritório', texto: m.texto, em: m.em };
+      return { de: doCliente ? 'cliente' : 'escritorio', autor: doCliente ? 'Você' : autorDoEscritorio(m.autor), texto: m.texto, em: m.em };
     }),
   };
 }
@@ -645,8 +652,48 @@ const CAMPOS_DO_ESPELHO = {
   chamado: ['id', 'tipo', 'titulo', 'situacao', 'mensagens'],
   mensagem: ['de', 'autor', 'texto', 'em'],
   recibo: ['id', 'nome', 'tipo', 'tamanho', 'recebidoEm'],
+  // o Registro (12/11/2026): resumo/pessoal (os funcionários pelas guias do FGTS, o CPF mascarado) e os documentos do DP
+  // (documentos/{id} com tipo 'dp'; os bytes em documentos/{id}~{n}, com 'de' = o id do documento)
+  pessoal: ['funcionarios', 'competencia', 'total', 'historico', 'atualizadoEm'],
+  // a folha mês a mês pelas guias do FGTS (13/11/2026): só as somas, nenhum nome
+  // (13/11/2026) e, quando o DP salvou a folha do mês, as somas dos holerites (folhaLida.ts)
+  mesFolha: ['competencia', 'base', 'fgts', 'funcionarios', 'proventos', 'descontos', 'liquido', 'inss', 'irrf', 'holerites'],
+  // (13/11/2026) o que o holerite e a previsão de férias acrescentam: nunca o CPF inteiro, banco/agência/conta, as rubricas
+  // uma a uma (o consignado) nem o motivo do afastamento (dado de saúde)
+  funcionario: ['id', 'nome', 'cpf', 'matricula', 'remuneracao', 'desde', 'ultimo', 'ativo',
+    'cargo', 'admissao', 'salarioBase', 'liquido', 'feriasVencidas', 'afastadoDe', 'afastadoAte', 'periodosDeFerias', 'fonte'],
+  periodoFerias: ['inicio', 'fim', 'direito', 'gozados', 'aGozar', 'concederAte'],
+  documentoDp: ['tipo', 'id', 'nome', 'categoria', 'competencia', 'tamanho', 'funcionario', 'partes'],
+  pedacoDp: ['base64', 'n', 'total', 'de'],
+  // a DANFE pedida pelo relatório do dia (12/11/2026): documentos/danfe-<chave> (os pedaços como os do DP)
+  documentoDanfe: ['tipo', 'id', 'nome', 'chave', 'partes', 'erro', 'atualizadoEm'],
+  // o Faturamento (12/11/2026): resumo/faturamento, os meses de cada empresa pelas notas emitidas no SIEG
+  faturamento: ['empresas', 'fonte', 'atualizadoEm'],
+  empresaFat: ['codigo', 'nome', 'regime', 'meses'],
+  mesFat: ['competencia', 'nfe', 'nfce', 'notas', 'total', 'variacao', 'canceladas', 'series', 'notasDoMes', 'banco'],
+  // o que entrou nas contas pelos extratos (13/11/2026): só a soma do mês e quantas contas, nenhum lançamento
+  bancoFat: ['entradas', 'saidas', 'contas', 'saldo', 'porBanco'],
+  saldoFat: ['valor', 'data'],
+  // cada conta do mês: o id, o nome, a marca (o logo) e o que entrou (13/11/2026: a escolha do banco)
+  bancoDoMesFat: ['id', 'nome', 'marca', 'entradas', 'saidas', 'saldo'],
+  // os lançamentos do mês pelos extratos (13/11/2026): resumo/extrato-{código}-{mês}
+  extratoLista: ['codigo', 'competencia', 'lancamentos', 'cortados', 'atualizadoEm'],
+  lancExt: ['dia', 'historico', 'valor', 'conta'],
+  // o painel do mês (12/11/2026): só o resumo; nunca a nota, a chave ou o CPF/CNPJ de quem comprou
+  notasFat: ['porDia', 'clientes', 'totalClientes', 'outrosClientes', 'cfops', 'servicos', 'maiorVenda', 'em'],
+  clienteFat: ['nome', 'valor', 'notas'],
+  outrosFat: ['clientes', 'valor'],
+  cfopFat: ['cfop', 'descricao', 'valor'],
+  servicoFat: ['notas', 'valor'],
+  vendaFat: ['valor', 'dia', 'cliente'],
+  // o relatório do dia (12/11/2026): resumo/notas-{código}-{mês}, as notas emitidas sem o documento de quem comprou
+  notasLista: ['codigo', 'competencia', 'notas', 'cortadas', 'atualizadoEm'],
+  notaRel: ['dia', 'tipo', 'numero', 'serie', 'cliente', 'cfop', 'valor', 'cancelada', 'chave'],
+  // a logo da empresa (12/11/2026): resumo/marca
+  marca: ['logo', 'atualizadoEm'],
+  serieFat: ['modelo', 'serie', 'primeira', 'ultima', 'notas', 'canceladas', 'valor'],
 };
-const DENTRO = { resumo: { empresas: 'empresa', escritorio: 'escritorio' }, agenda: { itens: 'item' }, chamado: { mensagens: 'mensagem' } };
+const DENTRO = { resumo: { empresas: 'empresa', escritorio: 'escritorio' }, agenda: { itens: 'item' }, chamado: { mensagens: 'mensagem' }, pessoal: { funcionarios: 'funcionario', historico: 'mesFolha' }, funcionario: { periodosDeFerias: 'periodoFerias' },faturamento: { empresas: 'empresaFat' }, empresaFat: { meses: 'mesFat' }, mesFat: { series: 'serieFat', notasDoMes: 'notasFat', banco: 'bancoFat' }, bancoFat: { porBanco: 'bancoDoMesFat', saldo: 'saldoFat' }, bancoDoMesFat: { saldo: 'saldoFat' }, extratoLista: { lancamentos: 'lancExt' }, notasLista: { notas: 'notaRel' }, notasFat: { clientes: 'clienteFat', outrosClientes: 'outrosFat', cfops: 'cfopFat', servicos: 'servicoFat', maiorVenda: 'vendaFat' } };
 
 /** Joga erro se o documento tiver um campo fora da lista branca (em qualquer nível). Devolve o próprio documento. */
 function conferirListaBranca(tipo, doc) {
@@ -678,7 +725,7 @@ module.exports = {
   // core: guias
   valorEmReais, dataDoVencimento, situacaoDaGuia, guiaPrecisaLiberar, guiaDoFgts,
   // core: chamados
-  TIPOS_DE_CHAMADO, MAIOR_TEXTO_DO_CHAMADO, chamadoDoCliente, erroDoNovoChamado, tituloDoChamado, chamadoAceitaResposta,
+  TIPOS_DE_CHAMADO, MAIOR_TEXTO_DO_CHAMADO, autorDoEscritorio, chamadoDoCliente, erroDoNovoChamado, tituloDoChamado, chamadoAceitaResposta,
   // core: envios
   TIPOS_DE_ENVIO, EXTENSOES_ACEITAS, MAIOR_ENVIO, LIMITE_DO_ENVIO, MIME_DO_ENVIO, mimeDoEnvio, erroDoEnvio, reciboDoEnvio,
   // core: vencimentos

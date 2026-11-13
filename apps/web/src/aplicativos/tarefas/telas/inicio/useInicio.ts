@@ -3,12 +3,13 @@ import { tarefas as t, usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useState } from 'react';
 import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
-import { useAvisos, useTesteDoInicio } from '../../dados/repo';
+import { useAvisos, useTarefasDelegadas, useTesteDoInicio } from '../../dados/repo';
 import { useOperador, type Operador } from '../../casca/operador';
 import { useMuralLido } from '../../casca/useMuralNovo';
 
 export function useInicio() {
   const op = useOperador().operador as Operador;
+  const meuUid = useTarefasDelegadas().eu()?.uid || '';
   const { toast, aviso, modal } = useRetorno();
   const repo = useAvisos();
   const [dev] = useModoDesenvolvedor();
@@ -30,7 +31,8 @@ export function useInicio() {
     teste,
     // o mural
     carregandoAvisos: !mural.carregados,
-    avisos: t.ordenarAvisos(mural.avisos).map(x => ({ ...x, quando: t.quandoFoi(x.em, agora), quandoCompleto: new Date(x.em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) })),
+    // só os avisos para a pessoa (13/11/2026: o aviso para um setor ou para algumas pessoas); quem escreve no mural vê todos
+    avisos: t.ordenarAvisos(mural.avisos.filter(x => escreve || t.avisoParaMim(x, { uid: meuUid, departamento: op.departamento }))).map(x => ({ ...x, quando: t.quandoFoi(x.em, agora), quandoCompleto: new Date(x.em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) })),
     escreve,
     novoAberto, abrirNovo: () => setNovoAberto(true), fecharNovo: () => setNovoAberto(false),
     texto, setTexto,

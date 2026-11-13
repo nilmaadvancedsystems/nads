@@ -98,7 +98,6 @@ export function PainelDoDp({ aba }: { aba: AbaDoPainel }) {
         <MenuDeFiltroVarios rotulo="Responsável" valores={f.responsavel} mudar={f.setResponsavel} opcoes={f.responsaveis} />
         {/* o Status com a situação da coluna (21/10/2026: "preciso de um filtro melhor de status"); pode marcar mais de um */}
         <MenuDeFiltroVarios rotulo="Status" valores={f.status} mudar={f.setStatus} opcoes={f.statusOpcoes} />
-        <MenuDeFiltroVarios rotulo="Pendente em" valores={f.pendenteEm} mudar={f.setPendenteEm} opcoes={f.partes} todos="Todas as partes" />
         <button type="button" className={'btn btn-outline' + (algumAvancado ? ' ativo' : '')} aria-pressed={avancados} onClick={() => setAvancados(a => !a)}
           title={avancados ? 'Esconder os filtros avançados' : 'Filtros avançados: movimento, enquadramento, entrega, REINF e agrupamento'}
           aria-label="Filtros avançados"><Icone nome="funil" /></button>

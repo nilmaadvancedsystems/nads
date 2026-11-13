@@ -58,17 +58,21 @@ const mensagemDoAuth = (e: unknown) => {
 };
 
 /** O convite 'novo': cria o login e o cadastro da pessoa e queima o convite. Devolve o login (e-mail). */
-export async function aceitarCadastro(c: ConviteDoNads, nome: string, senha: string): Promise<string> {
+export async function aceitarCadastro(c: ConviteDoNads, nome: string, sobrenome: string, senha: string): Promise<string> {
   const limpo = nome.trim().replace(/\s+/g, ' ');
   const email = usuarios.emailDoNome(limpo);
   return comAppAParte(async app => {
     const auth = getAuth(app);
+    const db = initializeFirestore(app, { ignoreUndefinedProperties: true });
+    // o nome é único (12/11/2026): quem trocou o e-mail não ocupa mais nome@nilma.local, mas o nome continua dele
+    // (loginPorNome, o índice que o robô mantém); sem o índice, o Firebase Auth recusa o nome@nilma.local repetido
+    const ocupado = await getDoc(doc(db, 'loginPorNome', usuarios.chaveDoNome(limpo))).then(d => d.exists(), () => false);
+    if (ocupado) throw new Error('Já existe um acesso com esse nome. Escolha outro (por exemplo, com o sobrenome).');
     let uid: string;
     try { uid = (await createUserWithEmailAndPassword(auth, email, senha)).user.uid; } catch (e) { throw new Error(mensagemDoAuth(e), { cause: e }); }
-    const db = initializeFirestore(app, { ignoreUndefinedProperties: true });
     const agora = new Date().toISOString();
     await setDoc(doc(db, 'usuarios', uid), {
-      nome: limpo, email, roles: c.roles, codigoConvite: c.codigo, ativo: true, criadoEm: agora,
+      nome: limpo, sobrenome, email, roles: c.roles, codigoConvite: c.codigo, ativo: true, criadoEm: agora,
       ...(c.departamento ? { departamento: c.departamento } : {}), ...(c.nivel ? { nivel: c.nivel } : {}),
     });
     await updateDoc(doc(db, 'convites', c.codigo), { usado: true, usadoEm: agora, nome: limpo }).catch(() => undefined);

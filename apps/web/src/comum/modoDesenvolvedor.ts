@@ -8,11 +8,11 @@
 import { useRetorno } from '@nads/ui';
 import { useEffect, useSyncExternalStore } from 'react';
 import { travar, travarLote, travarPedido } from './disjuntorDeGravacao';
+import { CHAVE_DO_MODO_DEV as CHAVE, EVENTO_BLOQUEADO, MENSAGEM_BLOQUEADO, modoDevLigado } from './travaDoModoDev';
 
-const CHAVE = 'nads-modo-desenvolvedor';
+// a chave e a mensagem moram em travaDoModoDev.ts (sem imports, para a Área do Cliente usar sem levar o disjuntor)
+export { EVENTO_BLOQUEADO, MENSAGEM_BLOQUEADO };
 const EVENTO = 'nads-modo-desenvolvedor';
-export const EVENTO_BLOQUEADO = 'nads-gravacao-bloqueada';
-export const MENSAGEM_BLOQUEADO = 'Modo desenvolvedor: nada foi enviado.';
 
 /** O que pode gravar mesmo no modo desenvolvedor (não altera dado de ninguém). */
 // o pedido do balancete ao robô do Alterdata (Vitor, 14/10/2026: "não tem como pedir o balancete no modo dev"): o robô só
@@ -20,7 +20,7 @@ export const MENSAGEM_BLOQUEADO = 'Modo desenvolvedor: nada foi enviado.';
 const LIVRES = [/^aberturasDrive(\/|$)/, /^pedidosMapaDrive(\/|$)/, /^nadsSessoes(\/|$)/];
 
 export function modoDesenvolvedor(): boolean {
-  try { return localStorage.getItem(CHAVE) === '1'; } catch { return false; }
+  return modoDevLigado();
 }
 
 // a interface azul (o CSS troca o vermelho da marca pelo azul quando o <html> tem data-dev)

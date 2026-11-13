@@ -8,6 +8,8 @@ import { carteira, tarefas as t, usuarios, type uso } from '@nads/core';
 import type { NomeIcone } from '@nads/ui';
 import { PAGINAS_DO_ADMIN } from '../../admin/casca/navegacao';
 import type { Operador } from './operador';
+import { novidadeLigada } from '../../../comum/novidades';
+import { modoDesenvolvedor } from '../../../comum/modoDesenvolvedor';
 
 export const BASE = '/tarefas';
 
@@ -17,7 +19,7 @@ export const BASE = '/tarefas';
  */
 export const FERRAMENTAS_DO_FISCAL: readonly string[] = ['sintegra', 'faturamento', 'rateio-frete', 'simples', 'antecipacao-es', 'auditoria-itens'];
 
-export type IdAplicacao = 'inicio' | 'minhas-empresas' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'financeiro' | 'entregas' | 'area-cliente' | 'ferramentas' | 'carteira';
+export type IdAplicacao = 'inicio' | 'minhas-empresas' | 'contabil' | 'cadastro' | 'fiscal' | 'dp' | 'senhas' | 'drive' | 'contato' | 'mandei' | 'financeiro' | 'entregas' | 'area-cliente' | 'ferramentas' | 'carteira' | 'administrativo' | 'desenvolvedor';
 
 export interface Pagina {
   id: string; rotulo: string; icone: NomeIcone; titulo: string; /** a logo da marca no lugar do ícone (fgts na lateral; as outras nas abas do Fiscal) */ marca?: 'fgts' | 'simples' | 'receita' | 'sped' | 'sieg';
@@ -82,6 +84,9 @@ export const APLICACOES: readonly Aplicacao[] = [
     // a auditoria tributária dos itens (04/11/2026: o prompt "Gestor Fiscal e Auditor Tributário" virou ferramenta): a
     // planilha de itens ganha o PIS/COFINS (monofásico, alíquota zero) e o ICMS-ST de MG, e sai auditada
     { id: 'auditoria-itens', rotulo: 'Auditoria de itens', icone: 'checklist', titulo: 'Auditoria de itens — PIS/COFINS e ICMS-ST MG', secao: 'Ferramentas' },
+    // as cartas aos clientes (12/11/2026: "preciso de um envio de carta de balanco para varios clientes para o final do ano,
+    // e todo mês enviar mandar um cheklist do que ele tem que enviar"): a Carta de balanço e o Checklist mensal, pelo robô
+    { id: 'cartas', rotulo: 'Cartas aos clientes', icone: 'envelope', titulo: 'Cartas aos clientes', secao: 'Ferramentas' },
   ] },
   // o DP (Vitor, 06/10/2026: o Checklist Folha "seria a rotina do dp"): as empresas com a rotina do DP, o painel da
   // planilha (números, gráficos, o progresso por responsável e as obrigações de cada cliente), a visão e as paradas
@@ -157,6 +162,13 @@ export const APLICACOES: readonly Aplicacao[] = [
     // criadas"): para toda a equipe, mesmo quem ainda não tem a Carteira
     { id: 'insumos', rotulo: 'Insumos', icone: 'impressora', titulo: 'Insumos' },
   ] },
+  // o Administrativo (Vitor, 13/11/2026: "Coloca um botão Admistrativo. Quem vai ter acesso só diretor e dono. Dentro dessa
+  // pagina vai ter funcoes do administrativo, contratos, fichar pre cadastrais etc"): a novidade 'administrativo', só no modo
+  // desenvolvedor por enquanto
+  { id: 'administrativo', nome: 'Administrativo', icone: 'briefcase', grupo: 'Escritório', pronta: true, paginas: [
+    { id: 'entradas', rotulo: 'Entrada de clientes', icone: 'usuario', titulo: 'Entrada de clientes' },
+    { id: 'contratos', rotulo: 'Contratos', icone: 'fileText', titulo: 'Contratos', emDesenvolvimento: true },
+  ] },
   // as Configurações (Vitor, 28/10/2026: "Cadastro, esse admin, colocar tudo em um botão Configurações; todos esses botões
   // dos menus nessa tela"): o Cadastro (Empresas e Equipe; o endereço continua /tarefas/cadastro/...) e, só para o admin,
   // as páginas do site do admin, as mesmas telas, aqui dentro (o link Admin da gaveta saiu)
@@ -184,6 +196,12 @@ export const APLICACOES: readonly Aplicacao[] = [
     { id: 'meus', rotulo: 'Meus tickets', icone: 'usuario', titulo: 'Meus tickets' },
     { id: 'central', rotulo: 'Central de tickets', icone: 'list', titulo: 'Central de tickets' },
   ] },
+  // o Desenvolvedor (Vitor, 13/11/2026: "quero que a Área do Cliente e a do robô estejam no modo dev do nads"; "um botão que
+  // só aparece ou funciona no modo dev"): só com o modo desenvolvedor ligado. Abre, dentro do nads, a Área do Cliente de uma
+  // empresa (como o cliente vê) e a Central dos robôs, lendo o banco de verdade e sem gravar nada (rotasDoModoDev.tsx)
+  { id: 'desenvolvedor', nome: 'Desenvolvedor', icone: 'monitor', grupo: 'Escritório', pronta: true, paginas: [
+    { id: 'sites', rotulo: 'Outros sites', icone: 'monitor', titulo: 'Outros sites no modo desenvolvedor' },
+  ] },
   { id: 'drive', nome: 'Drive', icone: 'pasta', grupo: 'Comunicação', marca: 'drive', pronta: true, paginas: [
     { id: 'pastas', rotulo: 'Pastas', icone: 'pasta', titulo: 'Pasta do ano' },
   ] },
@@ -202,6 +220,8 @@ export const podeMexerNoCadastro = (op: Operador | null) => !!op && (op.admin ||
 
 /** Só o nível Diretor: o admin sem esse nível não conta para o Financeiro (30/10/2026: "remova o acesso de admin ao financeiro"). */
 export const temNivelDiretor = (op: Operador | null) => usuarios.nivelDeDiretor(op?.nivel);
+/** Quem troca a razão social no Cadastro › Empresa: só o nível Diretor (e o Dono); o admin sem esse nível, não (13/11/2026: "só diretor"). */
+export const podeTrocarRazaoSocial = (op: Operador | null) => temNivelDiretor(op);
 /** Quem vê o Financeiro (Vitor, 09/11/2026): quem é Diretor já tem, sem como desligar; os outros, só com o papel Financeiro, que só o Diretor autoriza. */
 export const podeVerOFinanceiro = (op: Operador | null) => !!op && (temNivelDiretor(op) || !!op.financeiro);
 
@@ -244,7 +264,11 @@ export function aplicacoesDe(op: Operador): Aplicacao[] {
     // o Cadastro (empresas e equipe): o admin, o diretor (Vitor, 05/10/2026) e o sênior (19/10/2026)
     (a.id !== 'cadastro' || podeMexerNoCadastro(op)) &&
     // o Financeiro (as notas fiscais do escritório): o Diretor e quem ele autorizar (09/11/2026)
-    (a.id !== 'financeiro' || podeVerOFinanceiro(op)))
+    (a.id !== 'financeiro' || podeVerOFinanceiro(op)) &&
+    // o Administrativo: só o Diretor e o Dono (o nível, não o admin), e só no modo desenvolvedor até o Vitor aprovar
+    (a.id !== 'administrativo' || (usuarios.nivelDeDiretor(op.nivel) && novidadeLigada('administrativo'))) &&
+    // o Desenvolvedor: só para quem é desenvolvedor, com o modo ligado (ligar e desligar recarrega a página)
+    (a.id !== 'desenvolvedor' || (op.desenvolvedor && modoDesenvolvedor())))
     // as páginas só do admin (as do Admin, nas Configurações) ficam de fora para os outros
     .map(a => (op.admin || !a.paginas.some(p => p.soAdmin) ? a : { ...a, paginas: a.paginas.filter(p => !p.soAdmin) }))
     // a Carteira: quem ainda não tem, só a página de abertura (a tela "em desenvolvimento"); e, no Financeiro, as páginas da
@@ -271,7 +295,7 @@ const ORDEM_DOS_GRUPOS: readonly Aplicacao['grupo'][] = ['Rotinas', 'Comunicaç�
 export function telasDaNavegacao(): uso.TelaDaNavegacao[] {
   const telas: uso.TelaDaNavegacao[] = [];
   for (const a of APLICACOES) {
-    if (a.id === 'mandei') continue;
+    if (a.id === 'mandei' || a.id === 'desenvolvedor') continue;
     for (const p of a.paginas) {
       if (p.emDesenvolvimento) continue;
       if (a.id === 'cadastro' && p.id === 'empresas') {

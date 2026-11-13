@@ -3,7 +3,7 @@
 import * as XLSX from 'xlsx';
 import { ehFaturaDeCartao, ehRelatorioDeTitulos, extratoDoPdf, mesesSemMovimento, saldoAnteriorDoPdf } from '../regras/extrato';
 import { ehOfx, lancamentosDoOfx, saldoAnteriorDoOfx } from '../regras/ofx';
-import { preVerificarExtrato, preVerificarOfx } from '../regras/preVerificacao';
+import { bancoDoTexto, preVerificarExtrato, preVerificarOfx } from '../regras/preVerificacao';
 import { lancamentosDaPlanilha, type Celula } from '../regras/planilha';
 import type { ArquivoLido, Lado } from '../tipos';
 import type { ItemDeTexto } from '../regras/extrato';
@@ -51,13 +51,16 @@ export async function lerArquivo(nome: string, bytes: Uint8Array, lado: Lado, an
     // a pré-verificação (Vitor, 10/11/2026): a aplicação, o comprovante e os outros que caem na pasta do extrato não entram
     const outro = lado === 'banco' ? preVerificarExtrato(paginas.map(p => p.map(i => i.texto).join(' ')).join('\n'), l, porOcr) : null;
     if (outro) return { nome, lancamentos: [], erro: outro.motivo, naoEExtrato: true, ...marca };
+    // de qual banco é (o cabeçalho): quem traz do Drive para uma conta não aceita o de outro banco
+    const doBanco = lado === 'banco' ? bancoDoTexto(paginas.map(p => p.map(i => i.texto).join(' ')).join('\n')) : null;
+    const comBanco = doBanco ? { bancoNoTexto: doBanco } : {};
     // o extrato que diz que não teve movimento: o mês fica marcado como sem movimento (não é erro de leitura)
     const semMov = !l.length && lado === 'banco' ? mesesSemMovimento(paginas.map(p => p.map(i => i.texto).join(' ')).join('\n')) : null;
-    if (semMov) return { nome, lancamentos: [], erro: 'Extrato sem movimento.', semMovimento: semMov, ...marca };
+    if (semMov) return { nome, lancamentos: [], erro: 'Extrato sem movimento.', semMovimento: semMov, ...marca, ...comBanco };
     // sem a linha do saldo anterior, o da coluna Saldo (o Stone; 26/10/2026); no Bradesco escaneado, o saldo anterior conferido
     // com a 1ª linha (o OCR leu o "−11.234,56" como "71.234,56"; Vitor, 06/11/2026)
     const saldo = lado === 'banco' ? saldoAnteriorConferido ?? saldoAnteriorDoPdf(paginas) ?? saldoAnteriorPelaLinha : null;
-    return { nome, lancamentos: l, erro: l.length ? null : 'Não achei lançamentos com data e valor neste ' + (porOcr ? 'arquivo, nem pelo OCR' : 'PDF') + '.', ...(saldo != null ? { saldoAnterior: saldo } : {}), ...(conferenciaPeloSaldo && l.length ? { conferenciaPeloSaldo } : {}), ...marca };
+    return { nome, lancamentos: l, erro: l.length ? null : 'Não achei lançamentos com data e valor neste ' + (porOcr ? 'arquivo, nem pelo OCR' : 'PDF') + '.', ...(saldo != null ? { saldoAnterior: saldo } : {}), ...(conferenciaPeloSaldo && l.length ? { conferenciaPeloSaldo } : {}), ...marca, ...comBanco };
   };
   try {
     const ocr = ocrDefinido();
@@ -94,7 +97,8 @@ export async function lerArquivo(nome: string, bytes: Uint8Array, lado: Lado, an
     // na planilha, só o título barra: muita exportação de banco vem sem a coluna do saldo
     const outraPlanilha = lado === 'banco' && melhor.lancamentos.length ? preVerificarExtrato(topoDaPlanilha, melhor.lancamentos, true) : null;
     if (outraPlanilha) return { nome, lancamentos: [], erro: outraPlanilha.motivo, naoEExtrato: true };
-    return { nome, ...melhor };
+    const doBanco = lado === 'banco' ? bancoDoTexto(topoDaPlanilha) : null;
+    return { nome, ...melhor, ...(doBanco ? { bancoNoTexto: doBanco } : {}) };
   } catch (e) {
     return { nome, lancamentos: [], erro: 'Não consegui ler o arquivo' + (e instanceof Error && e.message ? ' (' + e.message + ')' : '') + '.' };
   }

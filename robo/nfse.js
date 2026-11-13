@@ -381,6 +381,8 @@ function lerCertificadoComChave(caminhoPfx = CERTIFICADO, caminhoSenha = SENHA) 
     return {
       chavePem: forge.pki.privateKeyToPem(par.k),
       certPem: forge.pki.certificateToPem(par.c),
+      // a cadeia (as autoridades certificadoras que vêm no .pfx): a assinatura do PDF da Carta de balanço leva junto
+      cadeiaPem: certs.filter(x => x !== par.c).map(x => forge.pki.certificateToPem(x)),
       titular: cn.split(':')[0].trim(),
       documento: (cn.split(':')[1] || '').replace(/\D/g, ''),
       validade: validade.toISOString().slice(0, 10),
