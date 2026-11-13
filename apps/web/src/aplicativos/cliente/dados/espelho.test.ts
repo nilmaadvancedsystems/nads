@@ -62,17 +62,19 @@ describe('o espelho que o robô grava, lido de volta sem perder campo', () => {
     R.conferirListaBranca('recibo', gravado);
     expect(lerRecibo('e1', gravado)).toEqual(gravado);
   });
-  it('o chamado: "Você" e "Escritório"; a nota interna nunca chegou ao espelho', () => {
+  it('o chamado: "Você" e o primeiro nome de quem respondeu; a nota interna nunca chegou ao espelho', () => {
     const interno = { tipo: 'ferias', titulo: 'Férias da Maria', situacao: 'respondido', mensagens: [
       { de: 'cliente', autor: 'Cliente', texto: 'Posso?', em: '2026-10-10T09:00:00.000Z' },
-      { de: 'escritorio', autor: 'Clara', texto: 'Pode.', em: '2026-10-10T10:00:00.000Z' },
+      { de: 'escritorio', autor: 'Clara Souza', texto: 'Pode.', em: '2026-10-10T10:00:00.000Z' },
       { de: 'escritorio', autor: 'Clara', texto: 'nota nossa', em: '2026-10-10T10:01:00.000Z', interna: true },
     ] };
     const gravado = R.chamadoDoCliente(R.chamadoInterno('c1', interno));
     R.conferirListaBranca('chamado', gravado);
     const lido = lerChamado('c1', gravado)!;
     expect(lido).toEqual(gravado);
-    expect(JSON.stringify(lido)).not.toContain('Clara');
+    expect(lido.mensagens[1].autor).toBe('Clara');
+    expect(JSON.stringify(lido)).not.toContain('Souza');
+    expect(JSON.stringify(lido)).not.toContain('nota nossa');
   });
   it('os campos lidos são exatamente os que o robô pode gravar (lista branca)', () => {
     const C = R.CAMPOS_DO_ESPELHO;

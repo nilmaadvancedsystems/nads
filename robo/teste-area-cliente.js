@@ -132,12 +132,13 @@ const interno = {
   ],
 };
 const vistoPeloCliente = R.chamadoDoCliente(R.chamadoInterno('c1', interno));
-igual('o chamado: a nota interna não sai, o nome de quem respondeu vira "Escritório", a hora vira ISO', vistoPeloCliente, {
+igual('o chamado: a nota interna não sai, de quem respondeu só o primeiro nome, a hora vira ISO', vistoPeloCliente, {
   id: 'c1', tipo: 'duvida', titulo: 'Dúvida', situacao: 'respondido',
-  mensagens: [{ de: 'cliente', autor: 'Você', texto: 'oi', em: '2026-10-16T10:00:00Z' }, { de: 'escritorio', autor: 'Escritório', texto: 'olá', em: '2026-10-16T11:00:00.000Z' }],
+  mensagens: [{ de: 'cliente', autor: 'Você', texto: 'oi', em: '2026-10-16T10:00:00Z' }, { de: 'escritorio', autor: 'Clara', texto: 'olá', em: '2026-10-16T11:00:00.000Z' }],
 });
 semInternos('o chamado não leva campo interno', vistoPeloCliente);
-igual('o nome de quem respondeu não aparece em lugar nenhum', JSON.stringify(vistoPeloCliente).includes('Clara'), false);
+igual('o sobrenome de quem respondeu não sai', JSON.stringify(vistoPeloCliente).includes('Souza'), false);
+igual('sem nome ou com e-mail, "Escritório"', [R.autorDoEscritorio(''), R.autorDoEscritorio('ana@nilma.com.br'), R.autorDoEscritorio('ANA paula')], ['Escritório', 'Escritório', 'Ana']);
 igual('o chamado passa na lista branca', joga(() => R.conferirListaBranca('chamado', vistoPeloCliente)), '');
 
 const recibo = R.reciboDoEnvio({ id: 'e1', nome: 'extrato.pdf', tipo: 'extrato', tamanho: 10, recebidoEm: 'z', pastaDrive: '2026\\58 - X', token: TOKEN, codigo: 58 });

@@ -81,7 +81,14 @@ const TIPOS_CH = new Set(TIPOS_DE_CHAMADO.map(t => t.valor));
 const SITUACOES_CH = new Set(['aberto', 'em andamento', 'respondido', 'concluido']);
 const MAIOR_TEXTO_DO_CHAMADO = 4000;
 
-/** O chamado que o cliente vê: lista branca; o autor do escritório vira "Escritório"; nota interna não sai. */
+/** O nome de quem do escritório respondeu, como o cliente vê: só o primeiro nome (12/11/2026); sem nome ou com e-mail, "Escritório". */
+function autorDoEscritorio(autor) {
+  const primeiro = String(autor || '').trim().split(/\s+/)[0] || '';
+  if (!primeiro || primeiro.includes('@') || /^escrit[oó]rio$/i.test(primeiro)) return 'Escritório';
+  return primeiro.charAt(0).toUpperCase() + primeiro.slice(1).toLowerCase();
+}
+
+/** O chamado que o cliente vê: lista branca; do escritório, só o primeiro nome de quem respondeu; nota interna não sai. */
 function chamadoDoCliente(c) {
   return {
     id: c.id,
@@ -90,7 +97,7 @@ function chamadoDoCliente(c) {
     situacao: SITUACOES_CH.has(c.situacao) ? c.situacao : 'aberto',
     mensagens: c.mensagens.filter(m => !m.interna).map(m => {
       const doCliente = m.de === 'cliente';
-      return { de: doCliente ? 'cliente' : 'escritorio', autor: doCliente ? 'Você' : 'Escritório', texto: m.texto, em: m.em };
+      return { de: doCliente ? 'cliente' : 'escritorio', autor: doCliente ? 'Você' : autorDoEscritorio(m.autor), texto: m.texto, em: m.em };
     }),
   };
 }
@@ -703,7 +710,7 @@ module.exports = {
   // core: guias
   valorEmReais, dataDoVencimento, situacaoDaGuia, guiaPrecisaLiberar, guiaDoFgts,
   // core: chamados
-  TIPOS_DE_CHAMADO, MAIOR_TEXTO_DO_CHAMADO, chamadoDoCliente, erroDoNovoChamado, tituloDoChamado, chamadoAceitaResposta,
+  TIPOS_DE_CHAMADO, MAIOR_TEXTO_DO_CHAMADO, autorDoEscritorio, chamadoDoCliente, erroDoNovoChamado, tituloDoChamado, chamadoAceitaResposta,
   // core: envios
   TIPOS_DE_ENVIO, EXTENSOES_ACEITAS, MAIOR_ENVIO, LIMITE_DO_ENVIO, MIME_DO_ENVIO, mimeDoEnvio, erroDoEnvio, reciboDoEnvio,
   // core: vencimentos

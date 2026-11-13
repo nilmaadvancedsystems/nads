@@ -115,7 +115,8 @@ describe('as solicitações sem chat (11/11/2026)', () => {
       { de: 'escritorio', autor: 'Escritório', texto: 'Está em Documentos', em: '2026-10-02T10:00:00Z' },
       { de: 'cliente', autor: 'Você', texto: 'A estadual também', em: '2026-10-03T10:00:00Z' },
     ] });
-    expect(p).toEqual({ pedido: 'Preciso da certidão', complementos: ['A estadual também'], respostas: [{ texto: 'Está em Documentos', em: '2026-10-02T10:00:00Z' }] });
+    expect(p).toEqual({ pedido: 'Preciso da certidão', complementos: ['A estadual também'], respostas: [{ texto: 'Está em Documentos', em: '2026-10-02T10:00:00Z', autor: '' }] });
+    expect(partesDaSolicitacao({ mensagens: [{ de: 'escritorio', autor: 'Carla', texto: 'Ok', em: '2026-10-02T10:00:00Z' }] }).respostas[0].autor).toBe('Carla');
   });
   it('o WhatsApp com o assunto; sem número, nada', () => {
     expect(whatsappDaSolicitacao('(31) 99999-0000', 'Certidão & CND')).toBe('https://wa.me/5531999990000?text=' + encodeURIComponent('Olá! Sobre a solicitação "Certidão & CND":'));

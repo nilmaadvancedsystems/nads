@@ -4,9 +4,8 @@
 //   - os documentos do DP dos últimos meses (a folha, os recibos, o pró-labore, as férias, as rescisões, o FGTS, o INSS e o
 //     cartão de ponto), da pasta da empresa no Drive, mês a mês e por categoria; o de um funcionário vai na ficha dele.
 // E os pedidos de admissão, férias e desligamento (Vitor, 16/10/2026), que viram uma solicitação do tipo certo.
-// Refeito como equipe + ficha ao lado (12/11/2026: "agora o registro"; a escolhida: "equipe + ficha ao lado", o mesmo
-// desenho das Solicitações): a equipe (ativos ou quem saiu, com a busca) e a ficha da pessoa escolhida; embaixo, a folha
-// do mês por categoria. No celular, a equipe e a ficha um de cada vez.
+// Refeito (12/11/2026): a equipe (ativos ou quem saiu, com a busca) na largura toda e a ficha numa janela flutuante;
+// embaixo, a folha do mês por categoria.
 import { areaCliente as ac, formatos } from '@nads/core';
 import { formatoPeloNome, useRetorno } from '@nads/ui';
 import { useState } from 'react';
@@ -29,8 +28,6 @@ export function useDp({ token, area, hoje }: DaCasca) {
   const { toast } = useRetorno();
   const [busca, setBusca] = useState('');
   const [mostrarSaidas, setMostrarSaidas] = useState(false);
-  const [escolhido, setEscolhido] = useState('');
-  const [fichaNoCelular, setFichaNoCelular] = useState(false);
   const vista = useVisualizar();
   const meses = ac.mesesDosDocumentosDp(area.documentosDp);
   const [mesEscolhido, setMes] = useState('');
@@ -75,7 +72,6 @@ export function useDp({ token, area, hoje }: DaCasca) {
   // a equipe: os ativos ou quem saiu (um ou outro), com a busca
   const visiveis = funcionarios.filter(f => (mostrarSaidas ? !f.ativo : f.ativo) && (!b || sem(f.nome + ' ' + f.cpf + ' ' + f.matricula).includes(b)))
     .sort((x, y) => nomeDaPessoa(x.nome).localeCompare(nomeDaPessoa(y.nome)));
-  const atualId = visiveis.some(f => f.id === escolhido) ? escolhido : visiveis[0]?.id ?? '';
   const iniciais = (nome: string) => nome.split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0]).join('').toUpperCase();
 
   return {
@@ -84,15 +80,13 @@ export function useDp({ token, area, hoje }: DaCasca) {
     temFuncionarios: funcionarios.length > 0,
     funcionarios: visiveis.map(f => ({
       id: f.id, nome: nomeDaPessoa(f.nome), iniciais: iniciais(nomeDaPessoa(f.nome)), cpf: f.cpf, matricula: f.matricula, desde: mesBr(f.desde), remuneracao: formatos.reais(f.remuneracao),
-      ativo: f.ativo, situacao: f.ativo ? 'Ativo' : 'Saiu em ' + mesBr(f.ultimo), documentos: docsDe(f.id).length, escolhido: f.id === atualId,
+      ativo: f.ativo, situacao: f.ativo ? 'Ativo' : 'Saiu em ' + mesBr(f.ultimo), documentos: docsDe(f.id).length,
       /** os documentos dele, o mais novo primeiro (a ficha) */
       docs: docsDe(f.id).sort((x, y) => y.competencia.localeCompare(x.competencia)).map(d => linhaDoDoc(d, true)),
     })),
     ativosN: funcionarios.filter(f => f.ativo).length,
     saidas: funcionarios.filter(f => !f.ativo).length,
     mostrarSaidas, verAtivos: () => setMostrarSaidas(false), verSaidas: () => setMostrarSaidas(true),
-    escolher: (id: string) => { setEscolhido(id); setFichaNoCelular(true); },
-    fichaNoCelular, voltar: () => setFichaNoCelular(false),
     vista, verDoc: (id: string) => vista.ver(id, () => repoAreaCliente.baixarDocumentoDp(token, id)),
     busca, mudarBusca: setBusca,
     // os documentos do mês, por categoria

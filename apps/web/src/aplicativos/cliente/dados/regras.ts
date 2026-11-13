@@ -178,12 +178,12 @@ export function passoDaSolicitacao(situacao: ac.SituacaoDoChamado): { passo: num
 }
 
 /** O pedido do cliente (as mensagens dele, na ordem) e as respostas do escritório, sem o formato de conversa. */
-export function partesDaSolicitacao(c: Pick<ac.ChamadoDoCliente, 'mensagens'>): { pedido: string; complementos: string[]; respostas: { texto: string; em: string }[] } {
+export function partesDaSolicitacao(c: Pick<ac.ChamadoDoCliente, 'mensagens'>): { pedido: string; complementos: string[]; respostas: { texto: string; em: string; autor: string }[] } {
   const doCliente = c.mensagens.filter(m => m.de === 'cliente');
   return {
     pedido: doCliente[0]?.texto ?? '',
     complementos: doCliente.slice(1).map(m => m.texto),
-    respostas: c.mensagens.filter(m => m.de === 'escritorio').map(m => ({ texto: m.texto, em: m.em })),
+    respostas: c.mensagens.filter(m => m.de === 'escritorio').map(m => ({ texto: m.texto, em: m.em, autor: m.autor && m.autor !== 'Escritório' ? m.autor : '' })),
   };
 }
 

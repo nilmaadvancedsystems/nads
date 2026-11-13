@@ -114,6 +114,7 @@ a{color:var(--accent);}
 .seletor-mes-atual{min-width:190px;justify-content:flex-start;}
 .seletor-mes-atual span{flex:1;text-align:left;font-weight:600;}
 .seletor-mes-pop{top:calc(100% + 4px);left:36px;width:260px;}
+.seletor-mes-pop.direita{left:auto;right:0;}
 .seletor-mes-ano{display:flex;align-items:center;justify-content:space-between;padding:0 0 8px;margin-bottom:8px;border-bottom:1px solid var(--border);}
 .seletor-mes-grade{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;}
 .seletor-mes-item{appearance:none;border:1px solid transparent;background:none;color:var(--ink);border-radius:6px;min-height:36px;font-size:var(--fs-14);cursor:pointer;}
@@ -6721,3 +6722,12 @@ td.fs-fat-sem{color:var(--ink-faint);}
   .bloco-escolha{min-width:78px;padding:8px 6px 6px;font-size:12px;}
   .bloco-escolha-icone{width:32px;height:32px;}
 }
+/* o campo de escolha (CampoEscolha, 12/11/2026): parece o campo de texto, com a seta; a lista no menu flutuante do nads, por
+   cima das janelas */
+.popover-wrap:has(> .campo-escolha){display:block;width:100%;}
+.campo-escolha{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-height:32px;padding:5px 10px 5px 12px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);box-shadow:var(--shadow-inset);color:var(--ink);font:inherit;font-size:var(--fs-14);line-height:20px;text-align:left;cursor:pointer;}
+.campo-escolha:focus-visible,.campo-escolha[aria-expanded="true"]{outline:none;border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);}
+.campo-escolha.vazio .campo-escolha-txt{color:var(--ink-muted);}
+.campo-escolha-txt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.campo-escolha .menu-seta{flex:none;width:16px;height:16px;color:var(--ink-muted);}
+.popover.menu-pop.flutuante{z-index:1300;}

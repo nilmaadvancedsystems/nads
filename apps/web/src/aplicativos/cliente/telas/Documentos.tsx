@@ -3,7 +3,7 @@
 // busca e o mês e a lista por mês de referência, no estilo extrato: o ícone do arquivo, o nome com o detalhe, a pasta, a
 // data e as ações (ver na janela de visualização e baixar). O que o cliente enviou aparece como "Recebido": o arquivo fica
 // com o escritório. Só desenha: o estado e as ações vêm de useDocumentos.ts.
-import { Icone, IconeDeArquivo } from '@nads/ui';
+import { CampoEscolha, Icone, IconeDeArquivo } from '@nads/ui';
 import { JanelaDoArquivo } from '../partes/JanelaDoArquivo';
 import { Vazio } from '../partes/Vazio';
 import { useJanelaDeEnvio } from './JanelaDeEnvio';
@@ -18,7 +18,6 @@ export function Documentos(props: DaCasca) {
       <div className="cli-titulo">
         <div>
           <h1 className="page-title">Central de documentos</h1>
-          <p className="hint cli-titulo-sub">{vm.total ? vm.total + (vm.total === 1 ? ' documento' : ' documentos') + ' seus e do escritório' : 'Seus documentos e os do escritório'}</p>
         </div>
         <div className="cli-acoes">
           <button type="button" className="btn btn-primary" onClick={enviar}><Icone nome="upload" width={16} height={16} />Enviar documento</button>
@@ -42,10 +41,9 @@ export function Documentos(props: DaCasca) {
               <Icone nome="search" width={16} height={16} />
               <input type="text" value={vm.busca} onChange={e => vm.mudarBusca(e.target.value)} placeholder="Buscar pelo nome" aria-label="Buscar documento" />
             </label>
-            <select value={vm.mes} onChange={e => vm.mudarMes(e.target.value)} aria-label="Mês de referência">
-              <option value="">Todos os meses</option>
-              {vm.meses.map(m => <option key={m.valor} value={m.valor}>{m.rotulo}</option>)}
-            </select>
+            <span className="cli-biblioteca-mes-campo">
+              <CampoEscolha rotulo="Mês de referência" valor={vm.mes} opcoes={[{ valor: '', rotulo: 'Todos os meses' }, ...vm.meses]} onMudar={vm.mudarMes} />
+            </span>
           </div>
 
           {vm.grupos.length ? vm.grupos.map(g => (

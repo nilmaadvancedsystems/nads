@@ -190,12 +190,12 @@ export function lerRecibo(id: string, x: unknown): ac.ReciboDeEnvio | null {
   return ac.reciboDoEnvio({ id, nome: texto(e.nome), tipo: texto(e.tipo), tamanho, recebidoEm: instante(e.recebidoEm) });
 }
 
-/** chamados/{id}: { id, tipo, titulo, situacao, mensagens: [{ de, autor, texto, em }] } (o autor do escritório já vem "Escritório"). */
+/** chamados/{id}: { id, tipo, titulo, situacao, mensagens: [{ de, autor, texto, em }] } (do escritório, o primeiro nome de quem respondeu ou "Escritório"). */
 export function lerChamado(id: string, x: unknown): ac.ChamadoDoCliente | null {
   const c = objeto(x);
   if (!c) return null;
   const mensagens = lista(c.mensagens).map(objeto).filter((m): m is Solto => !!m && !!texto(m.texto))
-    .map(m => ({ de: texto(m.de), texto: texto(m.texto), em: instante(m.em) }));
+    .map(m => ({ de: texto(m.de), autor: texto(m.autor), texto: texto(m.texto), em: instante(m.em) }));
   // a mesma lista branca do robô (chamadoDoCliente): tipo e situação desconhecidos viram "outro" e "aberto"
   return ac.chamadoDoCliente({ id, tipo: texto(c.tipo), titulo: texto(c.titulo) || 'Chamado', situacao: texto(c.situacao), mensagens });
 }

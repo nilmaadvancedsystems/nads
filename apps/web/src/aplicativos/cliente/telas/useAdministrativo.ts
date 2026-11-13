@@ -6,37 +6,47 @@ import { useRetorno } from '@nads/ui';
 import { useState } from 'react';
 import { baixarArquivo } from '../dados/baixar';
 import { repoAreaCliente } from '../dados/repo';
-import { dataBr } from '../dados/regras';
+import { dataBr, iniciaisDaEmpresa } from '../dados/regras';
 import type { DaCasca } from './useAreaCliente';
 
 /** Os Dados cadastrais: a ficha da empresa em blocos (a identificação, a tributação, o endereço e os sócios). */
+/**
+ * Os Dados cadastrais como o cartão da empresa (12/11/2026: "refaz esses 2"): no alto a logo (ou as iniciais), a razão
+ * social, o nome fantasia, o CNPJ com o copiar e o regime; embaixo os outros dados em duas colunas (a atividade e o
+ * endereço na largura toda) e os sócios numa linha só, com a participação.
+ */
 export function useEmpresa({ area, copiar }: DaCasca) {
   const f = area.ficha;
-  const pct = (p: string) => Math.max(0, Math.min(100, Number(p.replace(',', '.').replace(/[^\d.]/g, '')) || 0));
+  const campos: { rotulo: string; valor: string; copiar?: boolean; largo?: boolean }[] = f ? [
+    ...(f.inscricaoEstadual ? [{ rotulo: 'Inscrição estadual', valor: f.inscricaoEstadual, copiar: true }] : []),
+    ...(f.inscricaoMunicipal ? [{ rotulo: 'Inscrição municipal', valor: f.inscricaoMunicipal, copiar: true }] : []),
+    ...(f.abertura ? [{ rotulo: 'Abertura', valor: dataBr(f.abertura) }] : []),
+    ...(f.cnae ? [{ rotulo: 'Atividade principal', valor: f.cnae, largo: true }] : []),
+    ...(f.endereco ? [{ rotulo: 'Endereço', valor: f.endereco, copiar: true, largo: true }] : []),
+  ] : [];
   return {
     tem: !!f,
-    identificacao: f ? [
-      { rotulo: 'Razão social', valor: f.razaoSocial },
-      ...(f.nomeFantasia ? [{ rotulo: 'Nome fantasia', valor: f.nomeFantasia }] : []),
-      { rotulo: 'CNPJ', valor: f.cnpj, copiar: true },
-      ...(f.inscricaoEstadual ? [{ rotulo: 'Inscrição estadual', valor: f.inscricaoEstadual, copiar: true }] : []),
-      ...(f.inscricaoMunicipal ? [{ rotulo: 'Inscrição municipal', valor: f.inscricaoMunicipal, copiar: true }] : []),
-      ...(f.abertura ? [{ rotulo: 'Abertura', valor: dataBr(f.abertura) }] : []),
-    ] : [],
-    regime: f?.regime ?? '', cnae: f?.cnae ?? '', endereco: f?.endereco ?? '',
-    socios: (f?.socios ?? []).map(s => ({ nome: s.nome, participacao: s.participacao, largura: pct(s.participacao) })),
+    razaoSocial: f?.razaoSocial ?? '', nomeFantasia: f?.nomeFantasia ?? '', cnpj: f?.cnpj ?? '', regime: f?.regime ?? '',
+    logo: area.logo, iniciais: iniciaisDaEmpresa(f?.nomeFantasia || f?.razaoSocial || ''),
+    campos,
+    socios: (f?.socios ?? []).map(s => ({ nome: s.nome, participacao: s.participacao })),
     copiar: (valor: string, rotulo: string) => copiar(valor, rotulo),
   };
 }
 
-/** O Fale com o escritório: o WhatsApp em destaque, o telefone e os e-mails de cada setor, com copiar e escrever. */
+/**
+ * O Fale com o escritório (12/11/2026: "refaz esses 2"): o WhatsApp em destaque e, num cartão só, uma linha por contato
+ * (o telefone e o e-mail de cada setor) com o ícone, o setor, o contato, a ação (ligar ou escrever) e o copiar.
+ */
 export function useContato({ copiar, irPara }: DaCasca, contato: { whatsapp?: string; telefone?: string; email?: string; horario: string; setores: { nome: string; email: string }[] }) {
   const emails = [{ nome: 'Atendimento', email: contato.email ?? '' }, ...contato.setores].filter(s => s.email);
-  return {
-    whatsapp: contato.whatsapp ?? '', telefone: contato.telefone ?? '', horario: contato.horario,
+  const linhas: { chave: string; icone: 'telefone' | 'envelope'; setor: string; valor: string; usuario: string; dominio: string; href: string; acao: string; rotuloDoCopiar: string }[] = [
+    ...(contato.telefone ? [{ chave: 'tel', icone: 'telefone' as const, setor: 'Telefone', valor: contato.telefone, usuario: contato.telefone, dominio: '', href: 'tel:' + contato.telefone.replace(/\D/g, ''), acao: 'Ligar', rotuloDoCopiar: 'Telefone' }] : []),
     // o e-mail quebra só antes do @ (12/11/2026: "o gmail tá clipando": quebrava no meio do domínio)
-    emails: emails.map(s => ({ setor: s.nome, email: s.email, usuario: s.email.split('@')[0], dominio: s.email.includes('@') ? '@' + s.email.split('@').slice(1).join('@') : '', mailto: 'mailto:' + s.email })),
-    telLink: contato.telefone ? 'tel:' + contato.telefone.replace(/\D/g, '') : '',
+    ...emails.map(s => ({ chave: 'e-' + s.nome, icone: 'envelope' as const, setor: s.nome, valor: s.email, usuario: s.email.split('@')[0], dominio: s.email.includes('@') ? '@' + s.email.split('@').slice(1).join('@') : '', href: 'mailto:' + s.email, acao: 'Escrever', rotuloDoCopiar: 'E-mail' })),
+  ];
+  return {
+    whatsapp: contato.whatsapp ?? '', horario: contato.horario, linhas,
     copiar: (valor: string, rotulo: string) => copiar(valor, rotulo),
     novaSolicitacao: () => irPara('chamados'),
   };
@@ -113,6 +123,7 @@ export function useFaturamento({ token, area, hoje, copiar }: DaCasca) {
   const [escolhida, setEscolhida] = useState(0);
   const [mesEscolhido, setMesEscolhido] = useState<string | null>(null);
   const [diaEmFoco, setDiaEmFoco] = useState<number | null>(null);
+  const [anoAberto, setAnoAberto] = useState(false);
   const e = empresas[Math.min(escolhida, Math.max(0, empresas.length - 1))];
   const todos = e?.meses ?? [];
   const p = ac.painelDoFaturamento(todos, e?.regime, hoje);
@@ -202,6 +213,10 @@ export function useFaturamento({ token, area, hoje, copiar }: DaCasca) {
     /** troca o mês do painel (o seletor, a coluna do ano, a linha da tabela) */
     abrirMes: (c: string) => { setMesEscolhido(c); setDiaEmFoco(null); },
     focarDia: (i: number | null) => setDiaEmFoco(i),
+    // o ano fica recolhido (12/11/2026: "ficou muita informação"); a linha do botão já diz o acumulado
+    anoAberto, alternarAno: () => setAnoAberto(v => !v),
+    anoResumo: (p.ano ? 'acumulado de ' + formatos.reais(p.ano.total) + (p.ano.variacao != null ? ' · ' + porcento(p.ano.variacao) + ' sobre ' + (p.ano.ano - 1) : '') : 'os 12 meses')
+      + (p.limite && p.limite.situacao !== 'ok' ? ' · atenção ao limite do ' + p.limite.nome : ''),
     /** o relatório do dia (12/11/2026: "quando eu clico no dia, um relatório do dia com as notas no estilo do SIEG") */
     async relatorioDoDia(i: number): Promise<VistaDoRelatorio | null> {
       if (!e) return null;

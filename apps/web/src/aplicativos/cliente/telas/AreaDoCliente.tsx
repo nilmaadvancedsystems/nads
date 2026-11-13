@@ -153,7 +153,9 @@ export function AreaDoCliente() {
                     </div>
                     {vm.avisos.length ? vm.avisos.map(n => (
                       <button key={n.id} type="button" className={'cli-aviso-item' + (vm.lida(n.id) ? ' lida' : '')} onClick={() => { fecharMenu(); vm.irPara(n.ir); }}>
-                        <b>{n.titulo}</b><span>{n.texto}</span>
+                        <span className={'cli-notif-ico t-' + n.tom} aria-hidden="true"><Icone nome={n.icone} width={16} height={16} /></span>
+                        <span className="cli-notif-txt"><b>{n.titulo}</b><span>{n.texto}</span></span>
+                        <Icone nome="chevronRight" width={16} height={16} className="cli-notif-seta" />
                       </button>
                     )) : <Vazio icone="sino" titulo="Nada novo" texto="Quando o escritório mandar algo, aparece aqui." />}
                   </div>

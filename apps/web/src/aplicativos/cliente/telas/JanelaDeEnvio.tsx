@@ -9,7 +9,8 @@ export function useJanelaDeEnvio(props: DaCasca): () => void {
   const { modal } = useRetorno();
   return () => void modal({
     titulo: 'Enviar documento', texto: 'Extratos, notas, comprovantes ou outro documento para o escritório.',
-    corpo: <div className="cli-app cli-janela"><Enviar {...props} /></div>,
-    botoes: [{ rotulo: 'Fechar', valor: null, variante: 'btn-outline' }],
+    corpo: <div className="cli-app cli-janela cli-janela-envio"><Enviar {...props} /></div>,
+    // só o × no canto (12/11/2026: o "Fechar" embaixo repetia o ×)
+    botoes: [{ rotulo: 'Voltar', valor: null, variante: 'btn-outline' }],
   });
 }

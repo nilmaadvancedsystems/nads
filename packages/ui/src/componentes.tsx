@@ -404,6 +404,13 @@ export function SeletorMes({ valor, onMudar, id, rotulo, max, semValor }: { valo
   const ano = m ? Number(m[1]) : new Date().getFullYear();
   const mes = m ? Number(m[2]) : new Date().getMonth() + 1;
   const [anoGrade, setAnoGrade] = useState(ano);
+  // perto da borda direita da tela, a grade abre alinhada à direita do botão (12/11/2026: saía cortada, sem Mar, Jun, Set e Dez)
+  const [aDireita, setADireita] = useState(false);
+  useLayoutEffect(() => {
+    if (!aberto) return;
+    const b = ref.current?.getBoundingClientRect();
+    setADireita(!!b && b.left + 36 + 260 > window.innerWidth - 8);
+  }, [aberto]);
   const chave = (a: number, n: number) => a + '-' + String(n).padStart(2, '0');
   const passou = (v: string) => !!max && v > max;
   useEffect(() => {
@@ -426,7 +433,7 @@ export function SeletorMes({ valor, onMudar, id, rotulo, max, semValor }: { valo
         <Icone nome="calendar" /><span>{m || !semValor ? MESES[mes - 1] + ' de ' + ano : semValor}</span><Icone nome="caretDown" className="menu-seta" />
       </button>
       {aberto && (
-        <div className="popover seletor-mes-pop" role="dialog" aria-label={rotulo}>
+        <div className={'popover seletor-mes-pop' + (aDireita ? ' direita' : '')} role="dialog" aria-label={rotulo}>
           <div className="seletor-mes-ano">
             <button type="button" className="btn btn-ghost" aria-label="Ano anterior" onClick={() => setAnoGrade(a => a - 1)}><Icone nome="chevronLeft" /></button>
             <b>{anoGrade}</b>
@@ -548,7 +555,7 @@ export type ItemMenu = { rotulo: ReactNode; icone?: NomeIcone; marcado?: boolean
  * preenchido (padrão do app todo). Fecha ao escolher, ao clicar
  * fora e no Esc. Em vez de `itens`, pode receber `conteudo` (ex.: uma lista com busca), que ganha o `fechar`.
  */
-export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn-outline', classeAberto, itens, conteudo, direita, acima, largura, setaAntes, semSeta, animado, flutuante, compacto }: {
+export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn-outline', classeAberto, itens, conteudo, direita, acima, largura, setaAntes, semSeta, animado, flutuante, compacto, larguraDoBotao }: {
   rotulo: ReactNode;
   icone?: NomeIcone;
   titulo?: string;
@@ -577,29 +584,32 @@ export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn
   flutuante?: boolean;
   /** o menu pequeno, para as linhas das tabelas (30/10/2026: "esse dropdown muito grande") */
   compacto?: boolean;
+  /** (com flutuante) o menu da largura do botão: o campo de escolha (CampoEscolha, 12/11/2026) */
+  larguraDoBotao?: boolean;
 }) {
   const [aberto, setAberto] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const pop = useRef<HTMLDivElement>(null);
   const botao = useRef<HTMLButtonElement>(null);
-  const [lugar, setLugar] = useState<{ left: number; top?: number; bottom?: number; alto: number } | null>(null);
+  const [lugar, setLugar] = useState<{ left: number; top?: number; bottom?: number; alto: number; largura?: number } | null>(null);
   useLayoutEffect(() => {
     if (!aberto || !flutuante) { setLugar(null); return; }
     const medir = () => {
       const b = botao.current?.getBoundingClientRect(); if (!b) return;
-      const w = Math.min(largura || pop.current?.offsetWidth || 200, window.innerWidth - 16);
+      const w = Math.min(largura || (larguraDoBotao ? b.width : 0) || pop.current?.offsetWidth || 200, window.innerWidth - 16);
       const left = Math.max(8, Math.min(direita ? b.right - w : b.left, window.innerWidth - w - 8));
       // o espaço livre embaixo e em cima do botão (4px de folga dele e 8px da borda da tela)
       const embaixo = window.innerHeight - b.bottom - 12;
       const emCima = b.top - 12;
       const sobe = acima || (embaixo < MENU_ALTURA_MINIMA && emCima > embaixo);
-      setLugar(sobe ? { left, bottom: window.innerHeight - b.top + 4, alto: Math.min(MENU_ALTURA, emCima) } : { left, top: b.bottom + 4, alto: Math.min(MENU_ALTURA, embaixo) });
+      const larg = larguraDoBotao ? { largura: w } : {};
+      setLugar(sobe ? { left, bottom: window.innerHeight - b.top + 4, alto: Math.min(MENU_ALTURA, emCima), ...larg } : { left, top: b.bottom + 4, alto: Math.min(MENU_ALTURA, embaixo), ...larg });
     };
     medir();
     window.addEventListener('scroll', medir, true);
     window.addEventListener('resize', medir);
     return () => { window.removeEventListener('scroll', medir, true); window.removeEventListener('resize', medir); };
-  }, [aberto, flutuante, direita, acima, largura]);
+  }, [aberto, flutuante, direita, acima, largura, larguraDoBotao]);
   useLayoutEffect(() => {
     const el = pop.current;
     if (!aberto || !animado || !el || !animacoesPedidas()) return;
@@ -632,7 +642,7 @@ export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn
       {aberto && (() => {
         const menu = (
         <div ref={pop} className={'popover menu-pop' + (direita ? ' direita' : '') + (acima ? ' acima' : '') + (animado ? ' animado' : '') + (flutuante ? ' flutuante' : '') + (compacto ? ' compacto' : '')} data-entrada-propria={animado ? '' : undefined} role="menu" aria-label={titulo}
-          style={{ ...(largura ? { width: largura } : {}), ...(flutuante ? { position: 'fixed', right: 'auto', left: lugar?.left ?? -9999, top: lugar?.top ?? 'auto', bottom: lugar?.bottom ?? 'auto', maxHeight: lugar?.alto, visibility: lugar ? undefined : 'hidden' } : {}) }}>
+          style={{ ...(largura ? { width: largura } : {}), ...(lugar?.largura ? { width: lugar.largura, minWidth: 0 } : {}), ...(flutuante ? { position: 'fixed', right: 'auto', left: lugar?.left ?? -9999, top: lugar?.top ?? 'auto', bottom: lugar?.bottom ?? 'auto', maxHeight: lugar?.alto, visibility: lugar ? undefined : 'hidden' } : {}) }}>
           {/* sem título em cima (Vitor, 02/10/2026): o título fica só para o leitor de tela */}
           {itens?.map((it, i) => it === 'separador' ? <hr key={i} className="popover-sep" /> : (
             <button key={i} type="button" className={'popover-item' + (it.perigo ? ' perigo' : '')} role="menuitem" disabled={it.desabilitado}
@@ -656,6 +666,29 @@ export function MenuSuspenso({ rotulo, icone, titulo, dica, className = 'btn btn
  * O nome de uma conta na tabela: o código em negrito e o nome normal (Vitor, 02/10/2026), ex.: **81009** — Honorários
  * Contábeis; com várias contas ("81009 + 81010 — …"), cada código em negrito.
  */
+
+/**
+ * Um campo de escolha no desenho do nads (12/11/2026: a lista do <select> nativo, com o azul do sistema, destoava da Área do
+ * Cliente): parece um campo (a borda, o fundo e a seta), e a lista abre no menu flutuante do nads, da largura do campo, com o
+ * ✓ na escolhida. Flutuante: abre por cima da janela em que estiver (não é cortado por ela).
+ */
+export function CampoEscolha<T extends string>({ valor, opcoes, onMudar, vazio = 'Escolha', rotulo }: {
+  valor: T | '';
+  opcoes: readonly (T | { valor: T; rotulo: string })[];
+  onMudar: (v: T) => void;
+  /** o texto sem nada escolhido */
+  vazio?: string;
+  /** o nome do campo para o leitor de tela */
+  rotulo?: string;
+}) {
+  const lista = opcoes.map(o => (typeof o === 'string' ? { valor: o, rotulo: o } : o));
+  const atual = lista.find(o => o.valor === valor);
+  return (
+    <MenuSuspenso className={'campo-escolha' + (atual ? '' : ' vazio')} titulo={rotulo} dica={rotulo} flutuante larguraDoBotao
+      rotulo={<span className="campo-escolha-txt">{atual?.rotulo ?? vazio}</span>}
+      itens={lista.map(o => ({ rotulo: o.rotulo, marcado: o.valor === valor, onClick: () => onMudar(o.valor) }))} />
+  );
+}
 export function TituloDaConta({ titulo }: { titulo: string }) {
   const partes = titulo.split(/(\b\d{4,6}\b)/);
   return <>{partes.map((p, i) => (i % 2 ? <b key={i}>{p}</b> : p))}</>;

@@ -124,55 +124,45 @@ export function Empresa(props: DaCasca) {
   return (
     <>
       <div className="cli-titulo"><div><h1 className="page-title">Dados cadastrais</h1></div></div>
-      <div className="cli-duas cli-iguais-adm">
-        <section className="card">
-          <div className="card-head"><h3>Identificação</h3></div>
-          <dl className="cli-campos">
-            {vm.identificacao.map(c => (
-              <div key={c.rotulo} className="cli-campo">
-                <dt>{c.rotulo}</dt>
+      {/* o cartão da empresa: a identificação no alto, os dados em duas colunas e os sócios embaixo */}
+      <section className="card cli-ce">
+        <div className="cli-ce-topo">
+          <span className="cli-ce-marca">{vm.logo ? <img src={vm.logo} alt={'Logo de ' + vm.razaoSocial} /> : vm.iniciais}</span>
+          <div className="cli-ce-nome">
+            <h2>{vm.razaoSocial}</h2>
+            {vm.nomeFantasia && <span className="hint">{vm.nomeFantasia}</span>}
+            <span className="cli-ce-selos">
+              <button type="button" className="cli-ce-cnpj" title="Copiar o CNPJ" onClick={() => vm.copiar(vm.cnpj, 'CNPJ')}>
+                <span className="cli-sobre">CNPJ</span><b>{vm.cnpj}</b><Icone nome="copiar" width={13} height={13} />
+              </button>
+              {vm.regime && <span className="badge badge-neutral">{vm.regime}</span>}
+            </span>
+          </div>
+        </div>
+        {vm.campos.length > 0 && (
+          <dl className="cli-ce-campos">
+            {vm.campos.map(f => (
+              <div key={f.rotulo} className={'cli-ce-campo' + (f.largo ? ' largo' : '')}>
+                <dt>{f.rotulo}</dt>
                 <dd>
-                  <span>{c.valor}</span>
-                  {c.copiar && <button type="button" className="icon-btn icon-btn-sm" title={'Copiar ' + c.rotulo} aria-label={'Copiar ' + c.rotulo} onClick={() => vm.copiar(c.valor, c.rotulo)}><Icone nome="copiar" width={14} height={14} /></button>}
+                  <span>{f.valor}</span>
+                  {f.copiar && <button type="button" className="icon-btn icon-btn-sm" title={'Copiar ' + f.rotulo.toLowerCase()} aria-label={'Copiar ' + f.rotulo.toLowerCase()} onClick={() => vm.copiar(f.valor, f.rotulo)}><Icone nome="copiar" width={14} height={14} /></button>}
                 </dd>
               </div>
             ))}
           </dl>
-        </section>
-        <div className="cli-coluna">
-          <section className="card">
-            <div className="card-head"><h3>Tributação</h3></div>
-            <dl className="cli-campos">
-              <div className="cli-campo"><dt>Regime tributário</dt><dd><span className="badge badge-neutral">{vm.regime}</span></dd></div>
-              <div className="cli-campo"><dt>Atividade principal</dt><dd><span>{vm.cnae}</span></dd></div>
-            </dl>
-          </section>
-          <section className="card">
-            <div className="card-head"><h3>Endereço</h3></div>
-            <div className="cli-endereco">
-              <Icone nome="mapaPin" width={18} height={18} />
-              <span>{vm.endereco}</span>
-              <button type="button" className="icon-btn icon-btn-sm" title="Copiar o endereço" aria-label="Copiar o endereço" onClick={() => vm.copiar(vm.endereco, 'Endereço')}><Icone nome="copiar" width={14} height={14} /></button>
-            </div>
-          </section>
-        </div>
-      </div>
-      {vm.socios.length > 0 && (
-        <section className="card">
-          <div className="card-head"><h3>Sócios</h3></div>
-          <ul className="cli-socios">
-            {vm.socios.map(s => (
-              <li key={s.nome}>
-                <Avatar nome={s.nome} />
-                <div className="cli-socio-txt">
-                  <span className="cli-socio-topo"><b>{s.nome}</b><span className="cli-valor">{s.participacao}</span></span>
-                  <span className="cli-barra-socio" aria-hidden="true"><span style={{ width: s.largura + '%' }} /></span>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+        )}
+        {vm.socios.length > 0 && (
+          <div className="cli-ce-socios">
+            <span className="cli-sobre">Sócios</span>
+            <ul>
+              {vm.socios.map(s => (
+                <li key={s.nome}><Avatar nome={s.nome} tamanho={28} /><b>{s.nome}</b>{s.participacao && <span className="cli-ce-pct">{s.participacao}</span>}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </section>
     </>
   );
 }
@@ -199,30 +189,24 @@ export function Contato(props: DaCasca & { contato: Parameters<typeof useContato
           </span>
         </section>
       )}
-      <div className="cli-contato-grade">
-        {vm.telefone && (
-          <section className="card cli-contato-cartao">
-            <span className="cli-contato-ico" aria-hidden="true"><Icone nome="telefone" width={18} height={18} /></span>
-            <span className="cli-sobre">Telefone</span>
-            <b>{vm.telefone}</b>
-            <span className="cli-acoes">
-              <a className="btn" href={vm.telLink}><Icone nome="telefone" width={16} height={16} />Ligar</a>
-              <button type="button" className="icon-btn" title="Copiar o telefone" aria-label="Copiar o telefone" onClick={() => vm.copiar(vm.telefone, 'Telefone')}><Icone nome="copiar" width={16} height={16} /></button>
-            </span>
-          </section>
-        )}
-        {vm.emails.map(e => (
-          <section key={e.setor} className="card cli-contato-cartao">
-            <span className="cli-contato-ico" aria-hidden="true"><Icone nome="envelope" width={18} height={18} /></span>
-            <span className="cli-sobre">{e.setor}</span>
-            <b className="cli-email">{e.usuario}<wbr />{e.dominio}</b>
-            <span className="cli-acoes">
-              <a className="btn" href={e.mailto}><Icone nome="envelope" width={16} height={16} />Escrever</a>
-              <button type="button" className="icon-btn" title={'Copiar o e-mail do ' + e.setor} aria-label={'Copiar o e-mail ' + e.email} onClick={() => vm.copiar(e.email, 'E-mail')}><Icone nome="copiar" width={16} height={16} /></button>
-            </span>
-          </section>
-        ))}
-      </div>
+      {/* os outros contatos num cartão só, uma linha por contato */}
+      {vm.linhas.length > 0 && (
+        <section className="card cli-fc">
+          <div className="card-head"><h3>Telefone e e-mails</h3></div>
+          <ul className="cli-fc-lista">
+            {vm.linhas.map(l => (
+              <li key={l.chave} className="cli-fc-linha">
+                <span className="cli-fc-ico" aria-hidden="true"><Icone nome={l.icone} width={16} height={16} /></span>
+                <span className="cli-fc-txt"><span className="cli-sobre">{l.setor}</span><b>{l.usuario}{l.dominio && <><wbr />{l.dominio}</>}</b></span>
+                <span className="cli-fc-acoes">
+                  <a className="btn btn-sm" href={l.href}>{l.acao}</a>
+                  <button type="button" className="icon-btn" title={'Copiar ' + (l.icone === 'telefone' ? 'o telefone' : 'o e-mail')} aria-label={'Copiar ' + l.valor} onClick={() => vm.copiar(l.valor, l.rotuloDoCopiar)}><Icone nome="copiar" width={16} height={16} /></button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </>
   );
 }
@@ -242,7 +226,7 @@ export function Faturamento(props: DaCasca) {
   return (
     <>
       <div className="cli-titulo cli-titulo-fat" ref={topo}>
-        <div><h1 className="page-title">Faturamento</h1>{vm.fonte && <p className="hint">{vm.fonte}</p>}</div>
+        <div><h1 className="page-title">Faturamento</h1></div>
         {vm.tem && (
           <span className="cli-acoes">
             {vm.empresas.length > 1 && (
@@ -279,11 +263,6 @@ export function Faturamento(props: DaCasca) {
               <span className="cli-numero-valor menor">{p.numeros.ticket}</span>
               <span className="hint">{p.numeros.clientes !== '—' ? p.numeros.clientes + ' clientes ' + p.numeros.clientesDica : p.numeros.clientesDica}</span>
             </div>
-            <div className="cli-numero">
-              <span className="cli-sobre">Contra o ano passado</span>
-              <span className="cli-numero-valor menor">{p.numeros.anoPassado ? (p.numeros.anoPassado.variacao || p.numeros.anoPassado.diferenca) : '—'}</span>
-              <span className="hint">{p.numeros.anoPassado ? p.numeros.anoPassado.mes.toLowerCase() + ': ' + p.numeros.anoPassado.valor : 'sem o mesmo mês de ' + (Number(vm.mes.slice(0, 4)) - 1)}</span>
-            </div>
           </div>
 
           {!p.temNotas && p.tem && (
@@ -294,7 +273,7 @@ export function Faturamento(props: DaCasca) {
             <section className="card cli-painel-dias">
               <div className="card-head">
                 <h3>Venda por dia</h3>
-                {p.temNotas && <span className="card-head-ctl hint">{p.dias.diasComVenda} · média de {p.dias.media} · clique no dia para ver as notas</span>}
+                {p.temNotas && <span className="card-head-ctl hint">{p.dias.diasComVenda}</span>}
               </div>
               {p.temNotas ? (
                 <>
@@ -322,41 +301,25 @@ export function Faturamento(props: DaCasca) {
                     <li><span><i className="cli-chave cli-parte-nfce" />NFC-e <span className="hint">cupom do balcão</span></span><b>{p.composicao.nfce}</b></li>
                     {p.composicao.servicos && <li><span><i className="cli-chave cli-parte-servico" />Serviços <span className="hint">{p.composicao.servicos.notas}</span></span><b>{p.composicao.servicos.valor}</b></li>}
                   </ul>
-                  {p.composicao.maiorVenda && (
-                    <div className="cli-maior-venda">
-                      <span className="cli-sobre">Maior venda</span>
-                      <b>{p.composicao.maiorVenda.valor}</b>
-                      <span className="hint">{p.composicao.maiorVenda.quando}</span>
-                    </div>
-                  )}
-                  {p.composicao.series.length > 0 && (
-                    <div className="cli-series">
-                      <span className="cli-sobre">Séries</span>
-                      {p.composicao.series.map(x => <span key={x.chave} className="hint"><b>{x.nome}</b> · {[x.faixa, x.notas].filter(Boolean).join(' · ')}</span>)}
-                    </div>
-                  )}
                 </>
               ) : <Vazio icone="recibo" titulo="Nenhuma nota no mês" texto="Sem venda de produto neste mês." />}
             </section>
           </div>
 
-          {p.temNotas && (
-            <div className="cli-duas cli-iguais-adm">
+          {p.temNotas && p.clientes.length > 0 && (
               <section className="card">
                 <div className="card-head"><h3>Maiores clientes</h3><span className="card-head-ctl hint">{p.numeros.clientes} no mês</span></div>
                 {p.clientes.length ? <Ranking itens={p.clientes.map(c => ({ chave: c.chave, nome: c.nome, detalhe: c.notas, valor: c.valor, parte: c.parte, largura: c.largura }))} fim={p.outrosClientes} />
                   : <p className="hint">Só serviço neste mês.</p>}
               </section>
-              <section className="card">
-                <div className="card-head"><h3>Operações</h3><span className="card-head-ctl hint">pelo CFOP das notas</span></div>
-                {p.cfops.length ? <Ranking itens={p.cfops.map(c => ({ chave: c.chave, nome: c.descricao, detalhe: c.cfop ? 'CFOP ' + c.cfop : undefined, valor: c.valor, parte: c.parte, largura: c.largura }))} />
-                  : <p className="hint">Só serviço neste mês.</p>}
-              </section>
-            </div>
           )}
 
-          {/* ---------- o ano ---------- */}
-          <h2 className="cli-secao-fat">O ano</h2>
+          {/* ---------- o ano: recolhido (12/11/2026: "ficou muita informação") ---------- */}
+          <button type="button" className="cli-ver-ano" aria-expanded={vm.anoAberto} onClick={vm.alternarAno}>
+            <span><b>O ano</b><span className="hint">{vm.anoResumo}</span></span>
+            <Icone nome="chevronDown" width={16} height={16} className={vm.anoAberto ? 'aberta' : ''} />
+          </button>
+          {vm.anoAberto && <>
           <div className="cli-numeros cli-numeros-fat">
             {vm.ano.acumulado && (
               <div className="cli-numero">
@@ -398,7 +361,7 @@ export function Faturamento(props: DaCasca) {
           )}
 
           <section className="card">
-            <div className="card-head"><h3>Mês a mês</h3><span className="card-head-ctl hint cli-dica-grafico">Clique num mês para abrir o painel dele</span></div>
+            <div className="card-head"><h3>Mês a mês</h3></div>
             <Colunas colunas={vm.ano.colunas} eixo={vm.ano.eixo} rotulo="O faturamento de cada mês" onClique={abrir} />
           </section>
 
@@ -419,7 +382,7 @@ export function Faturamento(props: DaCasca) {
               </tbody>
             </table>
           </section>
-          <p className="hint">Pelas notas emitidas (NF-e e NFC-e) que chegaram ao escritório, sem as canceladas. As notas de serviço só entram no "Como vendeu".</p>
+          </>}
         </>
       )}
     </>

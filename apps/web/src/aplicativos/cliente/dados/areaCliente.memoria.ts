@@ -75,7 +75,7 @@ export function areaDeExemplo(hoje: Date): EstadoDaArea {
       id: 'c1', tipo: 'admissao', titulo: 'Admissão da Maria Souza (auxiliar administrativo)', situacao: 'em andamento',
       mensagens: [
         { de: 'cliente', autor: 'Você', texto: 'Vamos contratar a Maria Souza para auxiliar administrativo, começando dia 1º. O que vocês precisam de nós?', em: comHora(emDias(hoje, -4), 10, 5) },
-        { de: 'escritorio', autor: 'Escritório', texto: 'Oi! Precisamos de cópia do RG, CPF, título de eleitor, comprovante de residência e da carteira de trabalho digital. Pode mandar por aqui, na aba Enviar.', em: comHora(emDias(hoje, -4), 11, 20) },
+        { de: 'escritorio', autor: 'Carla', texto: 'Oi! Precisamos de cópia do RG, CPF, título de eleitor, comprovante de residência e da carteira de trabalho digital. Pode mandar por aqui, na aba Enviar.', em: comHora(emDias(hoje, -4), 11, 20) },
         { de: 'cliente', autor: 'Você', texto: 'Mandei os documentos agora.', em: comHora(emDias(hoje, -2), 14, 2) },
       ],
     },
@@ -83,7 +83,7 @@ export function areaDeExemplo(hoje: Date): EstadoDaArea {
       id: 'c2', tipo: 'ferias', titulo: 'Dúvida sobre as férias do João', situacao: 'respondido',
       mensagens: [
         { de: 'cliente', autor: 'Você', texto: 'O João pode tirar 10 dias de férias e vender os outros 20?', em: comHora(emDias(hoje, -9), 9, 40) },
-        { de: 'escritorio', autor: 'Escritório', texto: 'Pode tirar 20 dias e vender até 10. Quando ele quiser sair, nos avise com 30 dias de antecedência para a gente preparar o aviso e o recibo.', em: comHora(emDias(hoje, -8), 8, 55) },
+        { de: 'escritorio', autor: 'Carla', texto: 'Pode tirar 20 dias e vender até 10. Quando ele quiser sair, nos avise com 30 dias de antecedência para a gente preparar o aviso e o recibo.', em: comHora(emDias(hoje, -8), 8, 55) },
       ],
     },
   ];
@@ -147,7 +147,7 @@ export function areaComoNoBanco(hoje: Date, vazio = false): EstadoDaArea {
       id: 'c1', tipo: 'documento', titulo: 'Certidão negativa estadual', situacao: 'respondido',
       mensagens: [
         { de: 'cliente', autor: 'Você', texto: 'Preciso da certidão negativa estadual para uma licitação.', em: comHora(emDias(hoje, -3), 10, 5) },
-        { de: 'escritorio', autor: 'Escritório', texto: 'Já emitimos. Está no seu e-mail e vale por 30 dias.', em: comHora(emDias(hoje, -2), 9, 40) },
+        { de: 'escritorio', autor: 'Rafael', texto: 'Já emitimos. Está no seu e-mail e vale por 30 dias.', em: comHora(emDias(hoje, -2), 9, 40) },
       ],
     }],
   });

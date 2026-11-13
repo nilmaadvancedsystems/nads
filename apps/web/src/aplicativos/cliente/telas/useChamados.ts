@@ -67,8 +67,10 @@ export function useChamados({ token, area }: DaCasca) {
       atualizada: ultima ? dia(ultima.em) : '',
       previa: resposta ? resposta.texto : partes.pedido,
       previaDoEscritorio: !!resposta,
+      // quem respondeu por último, na prévia da lista: o primeiro nome (ou "Escritório")
+      quemRespondeu: resposta ? resposta.autor || 'Escritório' : '',
       pedido: partes.pedido, complementos: partes.complementos,
-      respostas: partes.respostas.map(r => ({ texto: r.texto, quando: quando(r.em) })),
+      respostas: partes.respostas.map(r => ({ texto: r.texto, quando: quando(r.em), autor: r.autor })),
       escolhida: c.id === atualId,
       whatsapp: whatsappDaSolicitacao(whatsapp, c.titulo),
       aceitaArquivo: c.situacao !== 'concluido',

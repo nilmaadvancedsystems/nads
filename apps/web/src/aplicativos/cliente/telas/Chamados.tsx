@@ -7,6 +7,7 @@ import { Icone, type NomeIcone } from '@nads/ui';
 import { useId } from 'react';
 import type { areaCliente as ac } from '@nads/core';
 import { AreaDeSoltar } from '../partes/AreaDeSoltar';
+import { MarcaDoEscritorio } from '../partes/MarcaDoEscritorio';
 import { Vazio } from '../partes/Vazio';
 import { useChamados } from './useChamados';
 import type { DaCasca } from './useAreaCliente';
@@ -23,7 +24,6 @@ export function Chamados(props: DaCasca) {
       <div className="cli-titulo">
         <div>
           <h1 className="page-title">Solicitações</h1>
-          <p className="hint cli-titulo-sub">Peça o que precisar ao escritório e acompanhe a resposta aqui.</p>
         </div>
         <div className="cli-acoes">
           <button type="button" className="btn btn-primary" onClick={vm.nova}><Icone nome="plus" width={16} height={16} />Nova solicitação</button>
@@ -47,7 +47,7 @@ export function Chamados(props: DaCasca) {
                   <button type="button" className={'cli-sol-item s-' + c.situacao.replace(' ', '-') + (c.escolhida ? ' escolhida' : '')} aria-current={c.escolhida ? 'true' : undefined} onClick={() => vm.abrir(c.id)}>
                     <span className="cli-sol-item-topo"><b>{c.titulo}</b><span className="cli-sol-data">{c.atualizada}</span></span>
                     <span className="cli-sol-item-meio"><span className={SELO[c.situacao]}>{c.rotulo}</span><span className="hint">{c.assunto}</span></span>
-                    <span className={'cli-sol-previa' + (c.previaDoEscritorio ? ' do-escritorio' : '')}>{c.previaDoEscritorio && <b>Escritório: </b>}{c.previa}</span>
+                    <span className={'cli-sol-previa' + (c.previaDoEscritorio ? ' do-escritorio' : '')}>{c.previaDoEscritorio && <b>{c.quemRespondeu}: </b>}{c.previa}</span>
                   </button>
                 </li>
               ))}
@@ -77,30 +77,45 @@ export function Chamados(props: DaCasca) {
               </>
             ) : (
               <>
-                <div className="cli-sol-cabeca">
+                <div className="cli-sol-cabeca cli-sol-cabeca-nova">
                   <h2>Nova solicitação</h2>
-                  <p className="hint">Assunto: <b>{vm.rotuloDoTipo}</b> · <button type="button" className="cli-link-mini" onClick={() => vm.escolherTipo('')}>trocar</button></p>
+                  {/* o assunto escolhido num selo, com o trocar ao lado (12/11/2026: "melhora isso também") */}
+                  <span className="cli-sol-assunto-selo">
+                    <span className="cli-sol-assunto-ico"><Icone nome={ICONE_DO_ASSUNTO[vm.tipo]} width={15} height={15} /></span>
+                    {vm.rotuloDoTipo}
+                    <button type="button" className="cli-link-mini" onClick={() => vm.escolherTipo('')}>Trocar</button>
+                  </span>
                 </div>
                 <div className="cli-sol-form">
-                  <div className="field">
-                    <label htmlFor="cli-titulo-chamado">Título resumido</label>
-                    <input id="cli-titulo-chamado" type="text" value={vm.titulo} onChange={e => vm.mudarTitulo(e.target.value)} placeholder="Ex.: certidão negativa estadual" />
+                  <div className="cli-sol-form-linha">
+                    <div className="field">
+                      <label htmlFor="cli-titulo-chamado">Título resumido</label>
+                      <input id="cli-titulo-chamado" type="text" value={vm.titulo} onChange={e => vm.mudarTitulo(e.target.value)} placeholder="Ex.: certidão negativa estadual" />
+                    </div>
+                    <div className="field">
+                      <span className="cli-sol-form-rotulo" id="cli-prioridade">Prioridade</span>
+                      <span className="cli-sol-prioridade" role="radiogroup" aria-labelledby="cli-prioridade">
+                        {vm.prioridades.map(p => <button key={p} type="button" role="radio" aria-checked={vm.prioridade === p} className={'p-' + p.toLowerCase() + (vm.prioridade === p ? ' on' : '')} onClick={() => vm.mudarPrioridade(p)}>{p}</button>)}
+                      </span>
+                    </div>
                   </div>
                   <div className="field">
                     <label htmlFor="cli-texto">O que você precisa</label>
-                    <textarea id="cli-texto" rows={5} value={vm.texto} onChange={e => vm.mudarTexto(e.target.value)} placeholder="Os dados, os nomes, os prazos ou o que mais for importante." />
+                    <textarea id="cli-texto" rows={4} value={vm.texto} onChange={e => vm.mudarTexto(e.target.value)} placeholder="Os dados, os nomes, os prazos ou o que mais for importante." />
                   </div>
-                  <div className="field">
-                    <span className="cli-sol-rotulo">Prioridade</span>
-                    <span className="chip-row" role="radiogroup" aria-label="Prioridade" style={{ margin: 0 }}>
-                      {vm.prioridades.map(p => <button key={p} type="button" role="radio" aria-checked={vm.prioridade === p} className={'chip-f' + (vm.prioridade === p ? ' on' : '')} onClick={() => vm.mudarPrioridade(p)}>{p}</button>)}
-                    </span>
-                  </div>
-                  <div className="cli-sol-anexo">
-                    <label className="btn btn-ghost btn-sm" htmlFor={idAnexo}><Icone nome="clipe" width={16} height={16} />{vm.anexo ? vm.anexo.name : 'Anexar um arquivo'}</label>
-                    <input id={idAnexo} type="file" className="sr-only" accept={vm.aceitar} onChange={e => { vm.mudarAnexo(e.target.files?.[0] ?? null); e.target.value = ''; }} />
-                    {vm.anexo ? <button type="button" className="btn btn-ghost btn-sm" onClick={() => vm.mudarAnexo(null)}>Tirar</button> : <span className="hint">até {vm.limite}</span>}
-                  </div>
+                  {vm.anexo ? (
+                    <div className="cli-sol-anexo tem">
+                      <Icone nome="clipe" width={16} height={16} />
+                      <span className="cli-sol-anexo-txt"><b>{vm.anexo.name}</b><span className="hint">anexado</span></span>
+                      <button type="button" className="icon-btn" title="Tirar o anexo" aria-label="Tirar o anexo" onClick={() => vm.mudarAnexo(null)}><Icone nome="x" width={16} height={16} /></button>
+                    </div>
+                  ) : (
+                    <label className="cli-sol-anexo" htmlFor={idAnexo}>
+                      <Icone nome="clipe" width={16} height={16} />
+                      <span className="cli-sol-anexo-txt"><b>Anexar um arquivo</b><span className="hint">opcional · PDF, imagem, XML ou ZIP até {vm.limite}</span></span>
+                    </label>
+                  )}
+                  <input id={idAnexo} type="file" className="sr-only" accept={vm.aceitar} onChange={e => { vm.mudarAnexo(e.target.files?.[0] ?? null); e.target.value = ''; }} />
                   {vm.erro && <p className="cli-erro" role="alert">{vm.erro}</p>}
                 </div>
                 <div className="cli-sol-rodape">
@@ -111,41 +126,53 @@ export function Chamados(props: DaCasca) {
             )
           ) : s ? (
             <>
+              {/* a solicitação como linha do tempo (12/11/2026: "refaz essa"): o título com a situação, as etapas numa
+                  linha fina, o pedido e as respostas do escritório em ordem, e embaixo enviar arquivos e o WhatsApp */}
               <div className="cli-sol-cabeca">
                 <h2>{s.titulo}</h2>
-                <p className="hint">{s.assunto} · aberta em {s.abertaEm}</p>
+                <p className="cli-sol-meta"><span className={SELO[s.situacao]}>{s.rotulo}</span><span className="hint">{s.assunto} · aberta em {s.abertaEm}</span></p>
               </div>
-              {/* as etapas: onde a solicitação está */}
-              <ol className="cli-sol-etapas" aria-label="Situação">
+              <ol className="cli-sol-passos" aria-label="Situação">
                 {vm.passos.map((p, i) => (
-                  <li key={p} className={i < s.passo ? 'feito' : i === s.passo ? 'atual' : ''} aria-current={i === s.passo ? 'step' : undefined}>
-                    <span className="cli-sol-etapa-ponto">{i < s.passo ? <Icone nome="check" width={12} height={12} /> : i + 1}</span>
-                    <span>{i === vm.passos.length - 1 && s.passo === i ? s.rotulo : p}</span>
+                  <li key={p} className={i < s.passo || (i === s.passo && i === vm.passos.length - 1) ? 'feito' : i === s.passo ? 'atual' : ''} aria-current={i === s.passo ? 'step' : undefined}>
+                    <span className="cli-sol-passo-ponto">{i < s.passo || (i === s.passo && i === vm.passos.length - 1) ? <Icone nome="check" width={11} height={11} /> : null}</span>
+                    <span className="cli-sol-passo-nome">{i === vm.passos.length - 1 && s.passo === i ? s.rotulo : p}</span>
                   </li>
                 ))}
               </ol>
-              <div className="cli-sol-bloco">
-                <p className="cli-sol-rotulo">Seu pedido</p>
-                <p className="cli-sol-texto">{s.pedido}</p>
-                {s.complementos.map((t, i) => <p key={i} className="cli-sol-texto cli-sol-complemento">{t}</p>)}
-              </div>
-              <div className={'cli-sol-bloco cli-sol-resposta' + (s.respostas.length ? ' tem' : '')}>
-                <p className="cli-sol-rotulo">Resposta do escritório</p>
-                {s.respostas.length
-                  ? s.respostas.map((r, i) => <p key={i} className="cli-sol-texto">{r.texto}<span className="hint"> · {r.quando}</span></p>)
-                  : <p className="hint">Ainda sem resposta. Quando o escritório responder, aparece aqui.</p>}
-              </div>
-              {s.aceitaArquivo && (
-                <div className="cli-sol-bloco">
-                  <p className="cli-sol-rotulo">Enviar arquivos para esta solicitação</p>
-                  <AreaDeSoltar aceitar={vm.aceitar} dica={s.anexando ? 'Enviando…' : 'PDF, JPG, PNG, XML ou ZIP, até ' + vm.limite + ' cada'} desabilitada={s.anexando} onArquivos={fs => vm.anexar(s.id, fs)} />
-                  {s.erroDoAnexo && <p className="cli-erro" role="alert">{s.erroDoAnexo}</p>}
-                </div>
-              )}
-              {s.whatsapp && (
-                <div className="cli-sol-rodape">
-                  <span className="hint">Quer conversar sobre isso?</span>
-                  <a className="btn" href={s.whatsapp} target="_blank" rel="noreferrer"><Icone nome="celular" width={16} height={16} />Falar no WhatsApp</a>
+              <ol className="cli-sol-tempo">
+                <li className="cli-sol-evento voce">
+                  <span className="cli-sol-quem" aria-hidden="true"><Icone nome="usuario" width={15} height={15} /></span>
+                  <div className="cli-sol-fala">
+                    <p className="cli-sol-fala-topo"><b>Você</b><span className="hint">{s.abertaEm}</span></p>
+                    <p className="cli-sol-texto">{s.pedido}</p>
+                    {s.complementos.map((t, i) => <p key={i} className="cli-sol-texto cli-sol-complemento">{t}</p>)}
+                  </div>
+                </li>
+                {s.respostas.length ? s.respostas.map((r, i) => (
+                  <li key={i} className="cli-sol-evento escritorio">
+                    <span className="cli-sol-quem" aria-hidden="true"><MarcaDoEscritorio tamanho={30} /></span>
+                    <div className="cli-sol-fala">
+                      <p className="cli-sol-fala-topo"><b>{r.autor || 'Escritório'}</b>{r.autor && <span className="cli-sol-do-escritorio">Escritório</span>}<span className="hint">{r.quando}</span></p>
+                      <p className="cli-sol-texto">{r.texto}</p>
+                    </div>
+                  </li>
+                )) : (
+                  <li className="cli-sol-evento esperando">
+                    <span className="cli-sol-quem" aria-hidden="true"><Icone nome="clock" width={15} height={15} /></span>
+                    <div className="cli-sol-fala"><p className="hint">Aguardando o escritório. Quando ele responder, aparece aqui e no sino.</p></div>
+                  </li>
+                )}
+              </ol>
+              {(s.aceitaArquivo || s.whatsapp) && (
+                <div className="cli-sol-fim">
+                  {s.aceitaArquivo && (
+                    <div className="cli-sol-fim-envio">
+                      <AreaDeSoltar compacta titulo={s.anexando ? 'Enviando…' : 'Enviar arquivos para esta solicitação'} aceitar={vm.aceitar} dica={'até ' + vm.limite + ' cada'} desabilitada={s.anexando} onArquivos={fs => vm.anexar(s.id, fs)} />
+                      {s.erroDoAnexo && <p className="cli-erro" role="alert">{s.erroDoAnexo}</p>}
+                    </div>
+                  )}
+                  {s.whatsapp && <a className="btn" href={s.whatsapp} target="_blank" rel="noreferrer"><Icone nome="celular" width={16} height={16} />Falar no WhatsApp</a>}
                 </div>
               )}
             </>

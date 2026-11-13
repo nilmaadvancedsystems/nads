@@ -4,10 +4,9 @@
 // mascarado; quem saiu, no interruptor) com a ficha de cada um e os documentos dele; e os documentos do DP mês a mês, por
 // categoria (a folha, os recibos, o pró-labore, as férias, as rescisões, o ponto, o FGTS e o INSS), para baixar. Os
 // pedidos abrem em janela, como no protótipo, e viram uma solicitação do tipo certo.
-// Refeito (12/11/2026: "agora o registro"; a escolhida: "equipe + ficha ao lado"): os números no alto; a equipe à esquerda
-// (os ativos ou quem saiu, a busca) e a ficha da pessoa à direita (os dados, os documentos dela e as ações); embaixo, a
-// folha do mês por categoria, no estilo extrato. No celular, a equipe e a ficha um de cada vez.
-import { CampoData, Icone, IconeDeArquivo, useRetorno } from '@nads/ui';
+// Refeito (12/11/2026): os números no alto; a equipe na largura toda (os ativos ou quem saiu, a busca), a ficha numa janela
+// flutuante ("prefiro janela flutuante do que essa lateral"); embaixo, a folha do mês por categoria, no estilo extrato.
+import { CampoData, CampoEscolha, Icone, IconeDeArquivo, useRetorno } from '@nads/ui';
 import { useState } from 'react';
 import { Avatar } from '../partes/Avatar';
 import { JanelaDoArquivo } from '../partes/JanelaDoArquivo';
@@ -31,13 +30,13 @@ function CampoDaFoto({ nome, foto, aoMudar }: { nome: string; foto?: string; aoM
     try { aoMudar(await fotoQuadrada(f)); setErro(''); } catch (x) { setErro(x instanceof Error ? x.message : 'Não deu para usar esta imagem.'); }
   };
   return (
-    <div className="field">
-      <label htmlFor="cli-foto-adm">Foto do funcionário <span className="hint">(opcional)</span></label>
+    <div className="field cli-largo">
       <div className="cli-campo-foto">
-        <Avatar nome={nome || '?'} foto={foto ? urlDaFoto(foto) : undefined} tamanho={48} />
-        <label className="btn" htmlFor="cli-foto-adm"><Icone nome="camera" width={16} height={16} />{foto ? 'Trocar foto' : 'Escolher foto'}</label>
+        <Avatar nome={nome || '?'} foto={foto ? urlDaFoto(foto) : undefined} tamanho={40} />
+        <span className="cli-campo-foto-txt"><b>Foto do funcionário</b><span className="hint">opcional · para o crachá e a ficha</span></span>
+        <label className="btn btn-sm" htmlFor="cli-foto-adm"><Icone nome="camera" width={16} height={16} />{foto ? 'Trocar' : 'Escolher'}</label>
         <input id="cli-foto-adm" type="file" className="sr-only" accept={ACEITA_FOTO} onChange={ev => { const f = ev.target.files?.[0]; ev.target.value = ''; if (f) void escolheu(f); }} />
-        {foto && <button type="button" className="btn btn-ghost" onClick={() => aoMudar(undefined)}>Tirar</button>}
+        {foto && <button type="button" className="btn btn-ghost btn-sm" onClick={() => aoMudar(undefined)}>Tirar</button>}
       </div>
       {erro && <p className="cli-erro" role="alert">{erro}</p>}
     </div>
@@ -50,29 +49,26 @@ function FormDoPedido({ pedido, inicial, erro, nomes, aoMudar }: { pedido: Pedid
   const mudar = (m: Partial<PedidoDeAdmissao & PedidoDeFerias & PedidoDeDemissao>) => { const novo = { ...d, ...m } as DadosDoPedido; setD(novo); aoMudar(novo); };
   const a = d as PedidoDeAdmissao, f = d as PedidoDeFerias, x = d as PedidoDeDemissao;
   const funcionario = (valor: string) => (
-    <div className="field">
-      <label htmlFor="cli-func">Funcionário</label>
-      <select id="cli-func" value={valor} onChange={ev => mudar({ empregado: ev.target.value })}>
-        <option value="" disabled>Escolha</option>
-        {nomes.map(n => <option key={n} value={n}>{n}</option>)}
-      </select>
+    <div className="field cli-largo">
+      <label>Funcionário</label>
+      <CampoEscolha rotulo="Funcionário" valor={valor} opcoes={nomes} onMudar={v => mudar({ empregado: v })} />
     </div>
   );
   return (
-    <div className="cli-app cli-janela">
+    <div className="cli-app cli-janela cli-pedido">
       {pedido === 'admissao' && (
         <>
-          <p className="hint" style={{ marginBottom: 12 }}>O eSocial pede o registro até um dia antes do primeiro dia de trabalho.</p>
+          <p className="hint cli-largo cli-pedido-aviso"><Icone nome="ajuda" width={14} height={14} />O eSocial pede o registro até um dia antes do primeiro dia de trabalho.</p>
           <div className="field"><label htmlFor="cli-nome">Nome completo</label><input id="cli-nome" type="text" value={a.nome} onChange={e => mudar({ nome: e.target.value })} /></div>
           <div className="field"><label htmlFor="cli-cpf">CPF</label><input id="cli-cpf" type="text" inputMode="numeric" value={a.cpf} onChange={e => mudar({ cpf: e.target.value })} placeholder="000.000.000-00" /></div>
           <div className="field"><label htmlFor="cli-cargo">Cargo</label><input id="cli-cargo" type="text" value={a.cargo} onChange={e => mudar({ cargo: e.target.value })} /></div>
           <div className="field"><label htmlFor="cli-sal">Salário</label><input id="cli-sal" type="text" value={a.salario} onChange={e => mudar({ salario: e.target.value })} placeholder="R$ 2.000,00" /></div>
           <div className="field"><label htmlFor="cli-inicio">Primeiro dia</label><CampoData id="cli-inicio" rotulo="Primeiro dia" valor={a.inicio} onMudar={v => mudar({ inicio: v })} /></div>
           <div className="field">
-            <label htmlFor="cli-contrato">Contrato</label>
-            <select id="cli-contrato" value={a.contrato} onChange={e => mudar({ contrato: e.target.value })}>{CONTRATOS.map(c => <option key={c}>{c}</option>)}</select>
+            <label>Contrato</label>
+            <CampoEscolha rotulo="Contrato" valor={a.contrato} opcoes={CONTRATOS} onMudar={v => mudar({ contrato: v })} />
           </div>
-          <div className="field"><label htmlFor="cli-obs">Horário, vale-transporte e outros detalhes</label><textarea id="cli-obs" rows={2} value={a.observacoes} onChange={e => mudar({ observacoes: e.target.value })} /></div>
+          <div className="field cli-largo"><label htmlFor="cli-obs">Horário, vale-transporte e outros detalhes</label><textarea id="cli-obs" rows={2} value={a.observacoes} onChange={e => mudar({ observacoes: e.target.value })} /></div>
           <CampoDaFoto nome={a.nome} foto={a.foto} aoMudar={foto => mudar({ foto })} />
         </>
       )}
@@ -81,27 +77,27 @@ function FormDoPedido({ pedido, inicial, erro, nomes, aoMudar }: { pedido: Pedid
           {funcionario(f.empregado)}
           <div className="field"><label htmlFor="cli-fi">Primeiro dia das férias</label><CampoData id="cli-fi" rotulo="Primeiro dia das férias" valor={f.inicio} onMudar={v => mudar({ inicio: v })} /></div>
           <div className="field">
-            <label htmlFor="cli-dias">Quantos dias</label>
-            <select id="cli-dias" value={f.dias} onChange={e => mudar({ dias: e.target.value })}>{DIAS.map(o => <option key={o}>{o}</option>)}</select>
+            <label>Quantos dias</label>
+            <CampoEscolha rotulo="Quantos dias" valor={f.dias} opcoes={DIAS} onMudar={v => mudar({ dias: v })} />
           </div>
-          <div className="field"><label className="cli-marcar"><input type="checkbox" checked={f.adiantar13} onChange={e => mudar({ adiantar13: e.target.checked })} />Adiantar metade do 13º</label></div>
+          <div className="field cli-largo"><label className="cli-marcar"><input type="checkbox" checked={f.adiantar13} onChange={e => mudar({ adiantar13: e.target.checked })} />Adiantar metade do 13º</label></div>
         </>
       )}
       {pedido === 'demissao' && (
         <>
           {funcionario(x.empregado)}
           <div className="field"><label htmlFor="cli-ud">Último dia de trabalho</label><CampoData id="cli-ud" rotulo="Último dia de trabalho" valor={x.ultimoDia} onMudar={v => mudar({ ultimoDia: v })} /></div>
-          <div className="field">
-            <label htmlFor="cli-motivo">Motivo</label>
-            <select id="cli-motivo" value={x.motivo} onChange={e => mudar({ motivo: e.target.value })}><option value="" disabled>Escolha</option>{MOTIVOS.map(m => <option key={m}>{m}</option>)}</select>
+          <div className="field cli-pedido-motivo">
+            <label>Motivo</label>
+            <CampoEscolha rotulo="Motivo" valor={x.motivo} opcoes={MOTIVOS} onMudar={v => mudar({ motivo: v })} />
           </div>
           <div className="field">
-            <label htmlFor="cli-aviso">Aviso prévio</label>
-            <select id="cli-aviso" value={x.aviso} onChange={e => mudar({ aviso: e.target.value })}>{AVISOS.map(o => <option key={o}>{o}</option>)}</select>
+            <label>Aviso prévio</label>
+            <CampoEscolha rotulo="Aviso prévio" valor={x.aviso} opcoes={AVISOS} onMudar={v => mudar({ aviso: v })} />
           </div>
         </>
       )}
-      {erro && <p className="cli-erro" role="alert">{erro}</p>}
+      {erro && <p className="cli-erro cli-largo" role="alert">{erro}</p>}
     </div>
   );
 }
@@ -133,6 +129,39 @@ export function DepartamentoPessoal(props: DaCasca) {
   const { modal } = useRetorno();
 
   /** abre a janela do pedido; se faltar algo, abre de novo com o que já foi preenchido e o aviso */
+  /** a ficha numa janela flutuante: a situação e a matrícula, os dados em blocos, os documentos dela (ver e baixar) e as ações */
+  const ficha = async (f: VM['funcionarios'][number]) => {
+    const escolha = await modal<'ferias' | 'demissao' | null>({
+      titulo: f.nome,
+      corpo: (
+        <div className="cli-app cli-janela cli-ficha">
+          <div className="cli-ficha-topo">
+            <span className={'badge ' + (f.ativo ? 'badge-ok' : 'badge-neutral')}>{f.situacao}</span>
+            {f.matricula && <span className="hint">Matrícula {f.matricula}</span>}
+          </div>
+          <div className="cli-ficha-dados">
+            <div className="cli-ficha-dado"><span className="cli-sobre">CPF</span><b>{f.cpf || '—'}</b></div>
+            <div className="cli-ficha-dado"><span className="cli-sobre">No registro desde</span><b>{f.desde || '—'}</b></div>
+            <div className="cli-ficha-dado cli-ficha-largo">
+              <span className="cli-sobre">Remuneração{vm.competencia && f.ativo ? ' · ' + vm.competencia : ''}</span>
+              <b className="cli-ficha-valor">{f.remuneracao}</b>
+            </div>
+          </div>
+          {f.docs.length > 0 && <>
+            <p className="cli-grupo">Documentos</p>
+            <ul className="cli-reg-docs">{f.docs.map(d => <LinhaDoDocumento key={d.id} d={d} vm={vm} />)}</ul>
+          </>}
+          <p className="hint cli-ficha-dica">Para mudar um dado ou mandar um atestado, abra uma solicitação.</p>
+        </div>
+      ),
+      botoes: f.ativo
+        ? [{ rotulo: 'Voltar', valor: null, variante: 'btn-outline' }, { rotulo: 'Programar férias', valor: 'ferias', variante: 'btn-primary' }, { rotulo: 'Pedir desligamento', valor: 'demissao', variante: 'btn-danger', classe: 'cli-perigo' }]
+        : [{ rotulo: 'Voltar', valor: null, variante: 'btn-outline' }],
+    });
+    if (escolha === 'ferias') await abrirPedido('ferias', vm.novasFerias(f.nome));
+    if (escolha === 'demissao') await abrirPedido('demissao', vm.novaDemissao(f.nome));
+  };
+
   const abrirPedido = async (pedido: Pedido, dados: DadosDoPedido, erro = ''): Promise<void> => {
     let atual = dados;
     const enviar = await modal<boolean>({
@@ -160,78 +189,41 @@ export function DepartamentoPessoal(props: DaCasca) {
       <div className="cli-numeros cli-numeros-reg">
         <div className="cli-numero"><span className="cli-sobre">Funcionários ativos</span><span className="cli-numero-valor menor">{vm.numeros.ativos}</span><span className="hint">no registro</span></div>
         <div className="cli-numero"><span className="cli-sobre">Folha{vm.competencia ? ' de ' + vm.competencia : ''}</span><span className="cli-numero-valor menor">{formatos.reais(vm.numeros.folha)}</span><span className="hint">remuneração dos ativos</span></div>
-        <div className="cli-numero"><span className="cli-sobre">Entraram no ano</span><span className="cli-numero-valor menor">{vm.numeros.admissoesNoAno}</span><span className="hint">admissões</span></div>
-        <div className="cli-numero"><span className="cli-sobre">Saíram</span><span className="cli-numero-valor menor">{vm.numeros.saidas}</span><span className="hint">desligamentos</span></div>
       </div>
 
-      <div className={'cli-sol cli-reg' + (vm.fichaNoCelular ? ' painel-aberto' : '')}>
-        {/* a equipe */}
-        <section className="card cli-sol-lista">
-          <div className="cli-sol-filtros" role="tablist" aria-label="Equipe">
-            <button type="button" role="tab" aria-selected={!vm.mostrarSaidas} className={'cli-sol-filtro' + (!vm.mostrarSaidas ? ' ativo' : '')} onClick={vm.verAtivos}>Ativos<b>{vm.ativosN}</b></button>
-            <button type="button" role="tab" aria-selected={vm.mostrarSaidas} className={'cli-sol-filtro' + (vm.mostrarSaidas ? ' ativo' : '')} onClick={vm.verSaidas}>Saíram<b>{vm.saidas}</b></button>
-          </div>
-          <label className="cli-busca cli-reg-busca">
-            <Icone nome="search" width={16} height={16} />
-            <input type="text" value={vm.busca} onChange={e => vm.mudarBusca(e.target.value)} placeholder="Nome, CPF ou matrícula" aria-label="Buscar funcionário" />
-          </label>
-          {vm.funcionarios.length ? (
-            <ul>
-              {vm.funcionarios.map(f => (
-                <li key={f.id}>
-                  <button type="button" className={'cli-reg-pessoa' + (f.escolhido ? ' escolhida' : '') + (f.ativo ? '' : ' saiu')} aria-current={f.escolhido ? 'true' : undefined} onClick={() => vm.escolher(f.id)}>
-                    <Avatar nome={f.nome} />
-                    <span className="cli-reg-pessoa-txt"><b>{f.nome}</b><span className="hint">{f.ativo ? 'desde ' + f.desde : f.situacao}{f.matricula ? ' · mat. ' + f.matricula : ''}</span></span>
-                    <span className="cli-reg-pessoa-valor">{f.remuneracao}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : vm.temFuncionarios && vm.busca ? <p className="hint cli-sol-vazio">Ninguém com esse nome. <button type="button" className="cli-link-mini" onClick={() => vm.mudarBusca('')}>Limpar a busca</button></p>
-            : vm.temFuncionarios ? <p className="hint cli-sol-vazio">{vm.mostrarSaidas ? 'Ninguém saiu do registro.' : 'Nenhum funcionário ativo.'}</p>
-            : <Vazio icone="usuario" titulo="Nenhum funcionário no registro" texto="Os funcionários aparecem aqui quando o escritório emite a guia do FGTS do mês." />}
-        </section>
-
-        {/* a ficha */}
-        <section className="card cli-sol-painel cli-reg-ficha">
-          <button type="button" className="btn btn-ghost btn-sm cli-sol-voltar" onClick={vm.voltar}><Icone nome="chevronLeft" width={16} height={16} />Voltar à equipe</button>
-          {(() => {
-            const f = vm.funcionarios.find(x => x.escolhido);
-            if (!f) return <Vazio icone="usuario" titulo="Escolha alguém da equipe" texto="A ficha mostra os dados e os documentos da pessoa." />;
-            return (
-              <>
-                <div className="cli-reg-cabeca">
-                  <Avatar nome={f.nome} tamanho={52} />
-                  <div>
-                    <h2>{f.nome}</h2>
-                    <p className="hint"><span className={'badge ' + (f.ativo ? 'badge-ok' : 'badge-neutral')}>{f.situacao}</span>{f.matricula && <> · Matrícula {f.matricula}</>}</p>
-                  </div>
-                </div>
-                <div className="cli-ficha-dados">
-                  <div className="cli-ficha-dado"><span className="cli-sobre">CPF</span><b>{f.cpf || '—'}</b></div>
-                  <div className="cli-ficha-dado"><span className="cli-sobre">No registro desde</span><b>{f.desde || '—'}</b></div>
-                  <div className="cli-ficha-dado cli-ficha-largo">
-                    <span className="cli-sobre">Remuneração{vm.competencia && f.ativo ? ' · ' + vm.competencia : ''}</span>
-                    <b className="cli-ficha-valor">{f.remuneracao}</b>
-                  </div>
-                </div>
-                <div className="cli-sol-bloco">
-                  <p className="cli-sol-rotulo">Documentos de {f.nome.split(' ')[0]}</p>
-                  {f.docs.length ? <ul className="cli-reg-docs">{f.docs.map(d => <LinhaDoDocumento key={d.id} d={d} vm={vm} />)}</ul>
-                    : <p className="hint">Nenhum documento só dela(e) nos últimos meses.</p>}
-                </div>
-                <div className="cli-sol-rodape">
-                  <span className="hint">Para mudar um dado ou mandar um atestado, abra uma solicitação.</span>
-                  {f.ativo && <>
-                    <button type="button" className="btn btn-ghost cli-perigo" onClick={() => void abrirPedido('demissao', vm.novaDemissao(f.nome))}>Pedir desligamento</button>
-                    <button type="button" className="btn btn-primary" onClick={() => void abrirPedido('ferias', vm.novasFerias(f.nome))}><Icone nome="calendar" width={16} height={16} />Programar férias</button>
-                  </>}
-                </div>
-              </>
-            );
-          })()}
-        </section>
-      </div>
+      {/* a equipe na largura toda; a ficha abre numa janela flutuante (12/11/2026: "prefiro janela flutuante do que essa
+          lateral") */}
+      <section className="card cli-reg-equipe">
+        {vm.temFuncionarios ? (
+          <>
+            <div className="cli-reg-equipe-topo">
+              <div className="cli-sol-filtros" role="tablist" aria-label="Equipe">
+                <button type="button" role="tab" aria-selected={!vm.mostrarSaidas} className={'cli-sol-filtro' + (!vm.mostrarSaidas ? ' ativo' : '')} onClick={vm.verAtivos}>Ativos<b>{vm.ativosN}</b></button>
+                <button type="button" role="tab" aria-selected={vm.mostrarSaidas} className={'cli-sol-filtro' + (vm.mostrarSaidas ? ' ativo' : '')} onClick={vm.verSaidas}>Saíram<b>{vm.saidas}</b></button>
+              </div>
+              <label className="cli-busca cli-reg-busca">
+                <Icone nome="search" width={16} height={16} />
+                <input type="text" value={vm.busca} onChange={e => vm.mudarBusca(e.target.value)} placeholder="Nome, CPF ou matrícula" aria-label="Buscar funcionário" />
+              </label>
+            </div>
+            {vm.funcionarios.length ? (
+              <ul className="cli-reg-lista">
+                {vm.funcionarios.map(f => (
+                  <li key={f.id}>
+                    <button type="button" className={'cli-reg-pessoa' + (f.ativo ? '' : ' saiu')} onClick={() => void ficha(f)}>
+                      <Avatar nome={f.nome} />
+                      <span className="cli-reg-pessoa-txt"><b>{f.nome}</b><span className="hint">{f.ativo ? 'desde ' + f.desde : f.situacao}{f.matricula ? ' · mat. ' + f.matricula : ''}</span></span>
+                      <span className="cli-reg-pessoa-valor">{f.remuneracao}</span>
+                      <Icone nome="chevronRight" width={16} height={16} className="cli-reg-seta" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : vm.busca ? <p className="hint cli-sol-vazio">Ninguém com esse nome. <button type="button" className="cli-link-mini" onClick={() => vm.mudarBusca('')}>Limpar a busca</button></p>
+              : <p className="hint cli-sol-vazio">{vm.mostrarSaidas ? 'Ninguém saiu do registro.' : 'Nenhum funcionário ativo.'}</p>}
+          </>
+        ) : <Vazio icone="usuario" titulo="Nenhum funcionário no registro" texto="Os funcionários aparecem aqui quando o escritório emite a guia do FGTS do mês." />}
+      </section>
 
       {/* a folha do mês: os documentos do DP por categoria (a folha, os recibos, as férias…), no estilo extrato */}
       <section className="card cli-reg-folha">

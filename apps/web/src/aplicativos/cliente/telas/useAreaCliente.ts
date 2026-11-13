@@ -98,7 +98,12 @@ export function useAreaCliente() {
 
   // o sino: o que pede atenção; "Marcar como lidas" esconde as que já estavam lá (nesta página)
   const [lidas, setLidas] = useState<Set<string>>(() => new Set());
-  const avisos = notificacoes({ ...area, guias }, hoje, g => g.tipo === 'outra' ? 'Guia' : g.tipo);
+  // cada notificação com o ícone e o tom pelo que é (12/11/2026: o sino refeito): a guia, os documentos, a resposta, o certificado
+  const avisos = notificacoes({ ...area, guias }, hoje, g => g.tipo === 'outra' ? 'Guia' : g.tipo).map(n => ({
+    ...n,
+    icone: (n.id.startsWith('g-') ? 'recibo' : n.id.startsWith('docs-') ? 'pastaAberta' : n.id.startsWith('cert-') ? 'escudo' : 'mensagem') as NomeIcone,
+    tom: n.id.startsWith('g-') && n.titulo.endsWith('vencida') ? 'ruim' : n.id.startsWith('g-') || n.id.startsWith('cert-') ? 'atencao' : n.id.startsWith('c-') ? 'bom' : 'neutro',
+  }));
   const naoLidas = avisos.filter(n => !lidas.has(n.id));
 
   return {

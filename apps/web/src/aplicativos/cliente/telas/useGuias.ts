@@ -145,7 +145,6 @@ export function useGuias({ token, area, hoje, irPara, copiar }: DaCasca) {
     numeros: [
       { chave: 'apagar', rotulo: 'A pagar no mês', valor: formatos.reais(p.aPagar.valor), dica: p.aPagar.guias ? qtas(p.aPagar.guias) : 'nenhuma guia', tom: '' },
       { chave: 'vencidas', rotulo: 'Vencidas', valor: p.vencidas.guias ? formatos.reais(p.vencidas.valor) : 'Nenhuma', dica: p.vencidas.guias ? qtas(p.vencidas.guias) + ' · peça uma nova' : 'tudo em dia', tom: p.vencidas.guias ? 'perigo' : 'ok' },
-      ...(area.secoes.pagas ? [{ chave: 'pagas', rotulo: 'Pago no mês', valor: formatos.reais(p.pagas.valor), dica: p.pagas.guias ? qtas(p.pagas.guias) : 'nada pago ainda', tom: '' }] : []),
       { chave: 'proxima', rotulo: 'Próximo vencimento', valor: proxima ? proxima.vencimento.slice(0, 5) : '—', dica: proxima ? ac.ROTULO_DA_GUIA[proxima.tipo].replace(/ \(.*\)$/, '') + ' · ' + (faltam(proxima) || 'hoje') : 'nenhum no mês', tom: '' },
     ],
     titulo: 'Agenda de ' + nomeDoMes,
