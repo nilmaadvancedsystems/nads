@@ -11,8 +11,9 @@ import { useNovoComunicado, type useInicioNovo } from '../useInicioNovo';
 const ICONE_DO_TIPO: Record<string, NomeIcone> = { aviso: 'alert', reuniao: 'calendar', estudo: 'lampada', geral: 'mensagem' };
 const ESCOLHA = 'btn btn-ghost registro-escolha';
 
-function NovoComunicado({ fechar }: { fechar: () => void }) {
-  const vm = useNovoComunicado(fechar);
+/** a janela do Novo comunicado (o + Adicionar aviso do Diretor e do Dono: Reunião ou Aviso geral) */
+export function NovoComunicado({ fechar, tipo = 'aviso' }: { fechar: () => void; tipo?: 'aviso' | 'reuniao' | 'estudo' | 'geral' }) {
+  const vm = useNovoComunicado(fechar, tipo);
   const janela = useRef<HTMLDivElement>(null);
   useJanela(janela, fechar);
   return (
@@ -61,16 +62,9 @@ function NovoComunicado({ fechar }: { fechar: () => void }) {
 }
 
 export function NotificacoesDoInicio({ vm, mural }: { vm: ReturnType<typeof useInicioNovo>; mural: ReturnType<typeof useInicio> }) {
-  const [novo, setNovo] = useState(false);
   const c = vm.comunicado;
   return (
     <section className="ini-lista">
-      {mural.escreve && (
-        <div className="tarefas-barra-topo">
-          <span className="tarefas-barra-espaco" />
-          <button type="button" className="btn btn-primary" onClick={() => setNovo(true)}><Icone nome="plus" />Novo comunicado</button>
-        </div>
-      )}
       {!vm.carregandoMural && !vm.comunicados.length ? (
         <section className="card"><Vazio icone="sino" titulo="Nada por aqui" texto="Os avisos, as reuniões e os estudos da equipe aparecem aqui." /></section>
       ) : (
@@ -110,7 +104,6 @@ export function NotificacoesDoInicio({ vm, mural }: { vm: ReturnType<typeof useI
           )}
         </div>
       )}
-      {novo && <NovoComunicado fechar={() => setNovo(false)} />}
     </section>
   );
 }

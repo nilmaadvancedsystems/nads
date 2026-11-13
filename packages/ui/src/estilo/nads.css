@@ -6855,3 +6855,10 @@ td.fs-fat-sem{color:var(--ink-faint);}
 .ini-anexos-lista li > svg{width:14px;height:14px;flex:none;color:var(--ink-muted);}
 .ini-anexos-lista li > a,.ini-anexos-lista li > .ini-abrir{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .ini-anexos-lista li > .hint{margin-left:auto;white-space:nowrap;}
+/* as solicitações de reunião (as Notificações do Início novo) */
+.ini-solicitacao{margin-bottom:0;display:flex;flex-direction:column;gap:6px;}
+.ini-solicitacao-topo{display:flex;align-items:center;gap:8px;justify-content:space-between;}
+.ini-solicitacao > *{margin:0;}
+.ini-solicitacao{padding:12px 14px;}
+.ini-solicitacao-decidir{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px;}
+.ini-solicitacao-decidir input{flex:1;min-width:180px;}

@@ -158,11 +158,11 @@ export function useInicioNovo() {
 }
 
 /** A janela do Novo comunicado (as Notificações): o tipo, o título, o dia e a hora da reunião, o link e o texto. */
-export function useNovoComunicado(fechar: () => void) {
+export function useNovoComunicado(fechar: () => void, tipoInicial: tarefas.TipoDeComunicado = 'aviso') {
   const op = useOperador().operador as Operador;
   const { toast, aviso } = useRetorno();
   const repo = useAvisos();
-  const [tipo, setTipo] = useState<tarefas.TipoDeComunicado>('aviso');
+  const [tipo, setTipo] = useState<tarefas.TipoDeComunicado>(tipoInicial);
   const [titulo, setTitulo] = useState('');
   const [link, setLink] = useState('');
   const [data, setData] = useState('');

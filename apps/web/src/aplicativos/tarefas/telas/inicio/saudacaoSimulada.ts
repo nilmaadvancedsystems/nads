@@ -2,9 +2,10 @@
 // dia e aniversário"): o turno, a segunda-feira e o aniversário de mentira, e o "Outra frase" (troca a escolhida). Fica só nesta
 // aba do navegador (sessionStorage); fora do modo desenvolvedor não vale.
 import { useSyncExternalStore } from 'react';
-import type { tarefas } from '@nads/core';
+import type { tarefas, usuarios } from '@nads/core';
 
-export interface SaudacaoSimulada { turno?: tarefas.saudacao.Turno; segunda?: boolean; aniversario?: 'mes' | 'dia'; troca?: number }
+// e o nível simulado das Notificações (o Sênior pede reunião, o Diretor aprova; 13/11/2026)
+export interface SaudacaoSimulada { turno?: tarefas.saudacao.Turno; segunda?: boolean; aniversario?: 'mes' | 'dia'; troca?: number; nivel?: usuarios.Nivel }
 
 const CHAVE = 'nads-saudacao-simulada';
 const ouvintes = new Set<() => void>();

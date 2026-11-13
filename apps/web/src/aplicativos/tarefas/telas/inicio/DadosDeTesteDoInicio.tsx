@@ -25,6 +25,11 @@ export function DadosDeTesteDoInicio({ teste: t }: { teste: ReturnType<typeof us
         { rotulo: 'Saudação: dia do aniversário', icone: 'trofeu', marcado: s.aniversario === 'dia', onClick: () => simularSaudacao({ aniversario: s.aniversario === 'dia' ? undefined : 'dia', troca: 0 }) },
         { rotulo: 'Saudação: outra frase', icone: 'repeat', onClick: () => simularSaudacao({ troca: (s.troca || 0) + 1 }) },
         'separador',
+        // o nível nas Notificações: o Sênior pede reunião, o Diretor aprova, os outros ficam com Delegar documentos e Nova tarefa
+        { rotulo: 'Nível: Sênior', icone: 'usuario', marcado: s.nivel === 'senior', onClick: () => simularSaudacao({ nivel: s.nivel === 'senior' ? undefined : 'senior' }) },
+        { rotulo: 'Nível: Diretor', icone: 'usuario', marcado: s.nivel === 'diretor', onClick: () => simularSaudacao({ nivel: s.nivel === 'diretor' ? undefined : 'diretor' }) },
+        { rotulo: 'Nível: Pleno', icone: 'usuario', marcado: s.nivel === 'pleno', onClick: () => simularSaudacao({ nivel: s.nivel === 'pleno' ? undefined : 'pleno' }) },
+        'separador',
         { rotulo: 'Apagar os dados de teste', icone: 'x', desabilitado: !t.tarefas && !t.avisos && !Object.keys(s).length, onClick: () => { t.ligar('tarefas', false); t.ligar('avisos', false); simularSaudacao(null); } },
       ]} />
   );

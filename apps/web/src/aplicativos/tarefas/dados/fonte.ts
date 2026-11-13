@@ -60,6 +60,8 @@ import { criarLcdprFirestore } from './lcdpr.firestore';
 import { criarFeedbackFirestore } from './feedback.firestore';
 import { criarAvisosFirestore } from './avisos.firestore';
 import { criarAvisosMemoria, type RepoAvisos } from './avisos';
+import { criarSolicitacoesFirestore } from './solicitacoes.firestore';
+import { criarSolicitacoesMemoria, type RepoSolicitacoes } from './solicitacoes';
 import { criarTarefasDelegadasMemoria, type RepoTarefasDelegadas } from './tarefasDelegadas';
 import { criarTarefasDelegadasFirestore } from './tarefasDelegadas.firestore';
 import { criarUsoMemoria, type RepoUso } from './uso';
@@ -557,7 +559,7 @@ export function repoDeFeedback(): RepoFeedback {
 
 // o ⚡ do Início no modo desenvolvedor (10/11/2026; "em todas as telas, no modo desenvolvedor, a opção de nutrir com dados de
 // teste"): enquanto ligado, as tarefas e os avisos vêm da memória, nada vai para o banco, e somem ao recarregar
-const teste: { tarefas: RepoTarefasDelegadas | null; avisos: RepoAvisos | null; ver: number } = { tarefas: null, avisos: null, ver: 0 };
+const teste: { tarefas: RepoTarefasDelegadas | null; avisos: RepoAvisos | null; solicitacoes: RepoSolicitacoes | null; ver: number } = { tarefas: null, avisos: null, solicitacoes: null, ver: 0 };
 const ouvintesDoTeste = new Set<() => void>();
 
 export type DadosDeTesteDoInicio = 'tarefas' | 'avisos';
@@ -567,7 +569,8 @@ export const testeDoInicioLigado = (q: DadosDeTesteDoInicio) => !!teste[q];
 
 /** Liga ou desliga os dados de teste do Início (desligar volta ao que estava na tela). */
 export function ligarTesteDoInicio(q: DadosDeTesteDoInicio, ligar: boolean) {
-  if (q === 'avisos') teste.avisos = ligar ? criarAvisosMemoria(true) : null;
+  // os avisos de exemplo levam junto as solicitações de reunião de exemplo (as Notificações do Início novo)
+  if (q === 'avisos') { teste.avisos = ligar ? criarAvisosMemoria(true) : null; teste.solicitacoes = ligar ? criarSolicitacoesMemoria(quemDasTarefas, true) : null; }
   else teste.tarefas = ligar ? criarTarefasDelegadasMemoria(quemDasTarefas, true) : null;
   teste.ver++;
   for (const f of ouvintesDoTeste) f();
@@ -580,6 +583,15 @@ export function repoDeAvisos(): RepoAvisos {
   if (teste.avisos) return teste.avisos;
   if (!avisos) avisos = noBanco ? criarAvisosFirestore() : criarAvisosMemoria();
   return avisos;
+}
+
+let solicitacoes: RepoSolicitacoes | null = null;
+
+/** As solicitações de reunião (13/11/2026): no banco, a coleção nadsSolicitacoes do Entregas; nos exemplos, na memória. */
+export function repoDeSolicitacoes(): RepoSolicitacoes {
+  if (teste.solicitacoes) return teste.solicitacoes;
+  if (!solicitacoes) solicitacoes = noBanco ? criarSolicitacoesFirestore(() => { const q = quemPede(); return q ? { uid: q.uid, nome: q.nome } : null; }) : criarSolicitacoesMemoria(quemDasTarefas);
+  return solicitacoes;
 }
 
 let tarefasDelegadas: RepoTarefasDelegadas | null = null;

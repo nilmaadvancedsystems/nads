@@ -10,6 +10,8 @@ import { BuscaDoInicio } from './partes/BuscaDoInicio';
 import { ListaDoInicio } from './partes/ListaDoInicio';
 import { NotificacoesDoInicio } from './partes/NotificacoesDoInicio';
 import { PainelDoInicio } from './partes/PainelDoInicio';
+import { BotoesDasNotificacoes } from './partes/SolicitacoesDoInicio';
+import { useSolicitacoesDoInicio } from './useSolicitacoesDoInicio';
 import { DadosDeTesteDoInicio } from './DadosDeTesteDoInicio';
 import { useInicio } from './useInicio';
 import { useInicioNovo } from './useInicioNovo';
@@ -17,6 +19,9 @@ import { useInicioNovo } from './useInicioNovo';
 export function InicioNovo() {
   const vm = useInicioNovo();
   const mural = useInicio();
+  const solicitacoes = useSolicitacoesDoInicio();
+  // nas Notificações, o Sênior, o Diretor e o Dono trocam o Delegar documentos e o Nova tarefa pelas solicitações de reunião
+  const daSolicitacao = vm.aba === 'notificacoes' && solicitacoes.papel !== 'nenhum';
   useCarregando(vm.carregando);
   // a tarefa aberta pergunta antes de ser largada (se mudou algo)
   const saida = useRef<((depois: () => void) => void) | null>(null);
@@ -41,8 +46,12 @@ export function InicioNovo() {
         <BuscaDoInicio vm={vm} />
         {vm.exemplos && <span className="badge badge-neutral">Exemplos</span>}
         {mural.dev && <DadosDeTesteDoInicio teste={mural.teste} />}
-        <button type="button" className="btn btn-outline" onClick={vm.pedirDocumentos} title="Delegar a alguém do escritório: quem recebe anexa os documentos e confirma"><Icone nome="clipe" />Delegar documentos</button>
-        <button type="button" className="btn btn-primary" onClick={vm.nova}><Icone nome="plus" />Nova tarefa</button>
+        {daSolicitacao ? <BotoesDasNotificacoes vm={solicitacoes} /> : (
+          <>
+            <button type="button" className="btn btn-outline" onClick={vm.pedirDocumentos} title="Delegar a alguém do escritório: quem recebe anexa os documentos e confirma"><Icone nome="clipe" />Delegar documentos</button>
+            <button type="button" className="btn btn-primary" onClick={vm.nova}><Icone nome="plus" />Nova tarefa</button>
+          </>
+        )}
       </div>
       {/* cada aba numa caixa com o nome dela (13/11/2026, "Tem negocio de documento delegado bugando o programa": na conta do
           Vitor, o bloco dos Documentos ficava na tela depois de trocar de aba, um a cada visita; aqui não se repetiu) */}
