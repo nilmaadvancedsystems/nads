@@ -85,6 +85,8 @@ export function useCentralDeTarefas(abaInicial: AbaDaCentral, opcoes: { agenda?:
     pessoa: pessoa(t), anexos: t.anexos.length, pareceres: t.pareceres.length,
     // o Início novo: o prazo curto ("Hoje", "Quarta") e o responsável (a foto na coluna)
     prazoCurto: ag.prazoCurto(t.prazo, hoje) + (t.prazoHora ? ' ' + t.prazoHora : ''), responsavel: t.responsavel,
+    // o tipo (os documentos não concluem pela caixinha da lista)
+    ...(t.tipo ? { tipo: t.tipo } : {}),
     // os botões de quem faz a tarefa (Minhas tarefas)
     acoes: (aba === 'minhas' || (opcoes.documentos && t.responsavel.uid === uid)) ? d.acoesNoHorario(doBanco.get(t.id) || t, relogio) : [],
     // o que aconteceu por último (Delegadas por mim)

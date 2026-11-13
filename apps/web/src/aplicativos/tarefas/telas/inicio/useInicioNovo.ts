@@ -137,8 +137,8 @@ export function useInicioNovo() {
   const doDia = dia ? abertas.filter(t => t.prazo === dia) : minhas;
 
   const concluir = (t: tarefas.delegadas.TarefaDelegada) => {
-    // concluir pelo círculo só quando a tarefa deixa (o pedido de documentos pede os anexos): senão, abre a tarefa
-    if (!d.acoesDaTarefa(t, relogio).some(a => a.id === 'concluir')) { setAberta(t.id); return; }
+    // concluir pelo círculo só quando a tarefa deixa: os documentos (o envio e o requerer) e as que não deixam abrem a janela
+    if (d.pedeDocumentos(t) || !d.acoesDaTarefa(t, relogio).some(a => a.id === 'concluir')) { setAberta(t.id); return; }
     repo.salvar(t.id, { status: 'concluida' }).then(() => toast('Tarefa concluída.'))
       .catch((e: unknown) => aviso({ tom: 'erro', titulo: 'Não deu para concluir', texto: e instanceof Error ? e.message : String(e) }));
   };
