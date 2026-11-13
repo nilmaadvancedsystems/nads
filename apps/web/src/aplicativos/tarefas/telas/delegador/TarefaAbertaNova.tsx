@@ -435,7 +435,8 @@ export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
   // a tarefa de documentos que já existe: o fluxo dela no lugar do Iniciar, Pausar e Concluir
   const deDocumentos = !vm.ehNova && vm.pedeDocumentos;
   const trocarCliente = () => { vm.clientes.forEach(() => vm.tirarCliente(0)); setPasso('cliente'); };
-  const nome = vm.ehNova ? (vm.pedeDocumentos ? 'Delegar documentos' : 'Nova tarefa') : 'Tarefa ' + (vm.numero || '');
+  // sem o número (Vitor, 13/11/2026: "Nao quero que o numero da tarefa apareca para o usuario"); ele segue só no banco
+  const nome = vm.ehNova ? (vm.pedeDocumentos ? 'Delegar documentos' : 'Nova tarefa') : 'Tarefa';
 
   const titulo = so ? <h2 className="tdl-tarefa-titulo">{vm.rascunho.titulo}</h2> : (
     <input className="tdl-janela-titulo" type="text" value={vm.rascunho.titulo} maxLength={vm.maiorTitulo} autoFocus={vm.ehNova}
