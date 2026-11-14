@@ -56,7 +56,7 @@ function Linha({ l, colunaDaPessoa, comAcoes, abrir, fazerAcao }: {
       <span className={'tdl-marca painel-' + s.tom} title={l.status.rotulo} aria-hidden="true"><Icone nome={s.icone} width={13} height={13} /></span>
       <div className="tdl-corpo">
         <div className="tdl-corpo-titulo">
-          <button type="button" className="tdl-abrir" onClick={e => { e.stopPropagation(); abrir(l.id); }} title={'Abrir a tarefa ' + l.numero}>
+          <button type="button" className="tdl-abrir" onClick={e => { e.stopPropagation(); abrir(l.id); }} title="Abrir a tarefa">
             <span className="tdl-titulo-texto">{l.titulo}</span>
           </button>
           {pedeAtencao && <SeloDaPrioridade valor={l.prioridade.valor} rotulo={l.prioridade.rotulo} />}
@@ -65,7 +65,6 @@ function Linha({ l, colunaDaPessoa, comAcoes, abrir, fazerAcao }: {
         </div>
         <p className="tdl-meta">
           <span>{l.status.rotulo}</span>
-          <span className="num">#{l.numero}</span>
           {l.cliente && <span className="tdl-meta-cliente" title={l.clientes || l.cliente}>{l.cliente}{!!l.maisClientes && l.maisClientes > 0 && ' +' + l.maisClientes}</span>}
           {l.movimento && <span className="tdl-meta-cliente">{l.movimento}</span>}
         </p>

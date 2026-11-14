@@ -6,12 +6,13 @@
 // Prazo, prioridade, cliuentes, fica com e remova situação"; "Remove comentários e remove históricos!"). Clicar fora não fecha;
 // o Esc e o ✕ perguntam antes de largar o que mudou.
 import { tarefas } from '@nads/core';
-import { Alerta, BotaoAcao, BotaoFechar, BotaoIcone, CampoData, Esqueleto, Icone, Interruptor, MenuSuspenso, Segmentado, useJanela, Vazio } from '@nads/ui';
+import { Alerta, BotaoAcao, BotaoFechar, BotaoIcone, CampoData, Esqueleto, Icone, Interruptor, MenuSuspenso, Segmentado, useJanela, Vazio, type NomeIcone } from '@nads/ui';
 import { useEffect, useId, useRef, useState, type RefObject } from 'react';
 import { Link } from 'react-router';
 import { Propriedade } from '../financeiro/partes/Propriedade';
 import { SeloDoStatus } from './partes/SelosDaTarefa';
 import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
+import { useNovidade } from '../../../../comum/novidades';
 import { lembrarAgora } from './useLembreteDoRecebimento';
 import { ClientesDaTarefa, EscolherPessoa, FicaComVoce, FotoDaPessoa } from './TarefaAberta';
 import { useTarefaAberta } from './useTarefaAberta';
@@ -20,6 +21,94 @@ type Vm = ReturnType<typeof useTarefaAberta>;
 const d = tarefas.delegadas;
 const ESCOLHA = 'btn btn-ghost registro-escolha';
 const ICONE = { iniciar: 'play', retomar: 'play', pausar: 'clock', concluir: 'check' } as const;
+/** as ações que ficam só com o ícone no pé da janela (13/11/2026: "Iniciar e excluir, deixa apenas o icone") */
+const SO_ICONE = new Set<string>(['iniciar', 'retomar']);
+
+/**
+ * As datas da tarefa numa caixa (Vitor, 13/11/2026: "Melhora o visual da box"): cada uma com o ícone e o nome em cima e o
+ * valor embaixo, lado a lado; o "por quem" numa linha própria, mais apagado; a que ainda não aconteceu ("—") some.
+ */
+const ICONE_DA_DATA: Record<string, NomeIcone> = { 'Criada em': 'calendar', 'Concluída em': 'checkCircle', Visualizado: 'olho', 'Tempo trabalhado': 'clock' };
+function DatasDaTarefa({ datas }: { datas: readonly { rotulo: string; valor: string }[] }) {
+  const visiveis = datas.filter(x => x.valor && x.valor !== '—');
+  if (!visiveis.length) return null;
+  return (
+    <dl className="tdl-datas">
+      {visiveis.map(x => {
+        const [valor, por] = x.valor.split(' por ');
+        return (
+          <div key={x.rotulo} className="tdl-data">
+            <dt><Icone nome={ICONE_DA_DATA[x.rotulo] || 'calendar'} />{x.rotulo.replace(/ em$/, '')}</dt>
+            <dd>{valor}{por && <span className="fraco">por {por}</span>}</dd>
+          </div>
+        );
+      })}
+    </dl>
+  );
+}
+
+/**
+ * O prazo da tarefa (Vitor, 13/11/2026: "De a opcao 'Colocar prazo', marcando na criacao o sistema faz uma animacao, que aparece
+ * data e hora"; no mesmo dia: "Tira esse hj e amanha, reduza um pouco a quantidade de botoes... a data e a hora pode ser input
+ * normal"): a chave Colocar prazo (desligada, a tarefa fica sem prazo e nada mais aparece); ligada, entram com animação a data e
+ * a hora, nos campos do navegador (o calendário e o relógio dele). Desligar apaga a data e a hora.
+ */
+function PrazoDaTarefa({ vm }: { vm: Vm }) {
+  const [ligado, setLigado] = useState(() => !!vm.prazoTexto || !!vm.prazoHora);
+  const iso = d.prazoDaTela(vm.prazoTexto) || '';
+  const alternar = () => {
+    if (ligado) { vm.setPrazo(''); vm.setPrazoHora(''); }
+    setLigado(!ligado);
+  };
+  return (
+    <span className="tdl-prazo">
+      <span className="tdl-prazo-chave">
+        <Interruptor ligado={ligado} onMudar={alternar} rotulo="Colocar prazo" />
+        <button type="button" className="tdl-prazo-rotulo" onClick={alternar}>Colocar prazo</button>
+      </span>
+      {ligado && (
+        <span className="tdl-prazo-escolhas">
+          <input type="date" value={iso} aria-label="A data do prazo" onChange={e => vm.setPrazo(d.prazoParaTela(e.target.value))} />
+          <input type="time" value={vm.prazoHora} aria-label="A hora do prazo" onChange={e => vm.setPrazoHora(e.target.value)} />
+        </span>
+      )}
+    </span>
+  );
+}
+
+/**
+ * A cobrança da tarefa (Vitor, 13/11/2026: "Adiciona um icone de sino, nas tarefas delegadas, para meio que 'Cobrar' a tarefa e
+ * cobrar atualizacoes, o usuario cobrado vai ter o botao, 'Responder cobranca'"): quem faz vê a cobrança e responde; quem
+ * cobrou vê que está esperando, e depois a resposta.
+ */
+function CobrancaDaTarefa({ vm }: { vm: Vm }) {
+  const c = vm.cobranca;
+  if (!c || (!c.aberta && !c.resposta)) return null;
+  if (c.aberta && c.responder) {
+    return (
+      <div className="tdl-cobranca cobrada" role="status">
+        <p className="tdl-cobranca-topo"><Icone nome="sino" /><b>{c.aberta.por} cobrou uma atualização</b><span className="fraco">{c.aberta.quando}</span></p>
+        <p className="tdl-cobranca-texto">{c.aberta.texto}</p>
+        <textarea rows={2} value={vm.resposta} maxLength={vm.maiorParecer} placeholder="Como está a tarefa? O que já foi feito, o que falta" aria-label="A resposta à cobrança"
+          onChange={e => vm.setResposta(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); void vm.responderCobranca(); } }} />
+        <span className="tdl-cobranca-acoes">
+          <BotaoAcao className="btn btn-primary" carregando={c.ocupado} textoCarregando="Enviando" disabled={!vm.resposta.trim()} onClick={() => { void vm.responderCobranca(); }}>
+            <Icone nome="envelope" />Responder cobrança
+          </BotaoAcao>
+        </span>
+      </div>
+    );
+  }
+  if (c.aberta) {
+    return <p className="tdl-cobranca"><Icone nome="sino" /><span>Você cobrou uma atualização em {c.aberta.quando}. Esperando a resposta.</span></p>;
+  }
+  return (
+    <div className="tdl-cobranca respondida">
+      <p className="tdl-cobranca-topo"><Icone nome="sino" /><b>{c.resposta?.por} respondeu à cobrança</b><span className="fraco">{c.resposta?.quando}</span></p>
+      <p className="tdl-cobranca-texto">{c.resposta?.texto}</p>
+    </div>
+  );
+}
 
 /** as propriedades da tarefa (a nova e a coluna da esquerda da que existe) */
 function Propriedades({ vm }: { vm: Vm }) {
@@ -37,7 +126,7 @@ function Propriedades({ vm }: { vm: Vm }) {
     <div className="registro-props">
       {/* o prazo em branco, só para ler: some (Vitor, 13/11/2026: "Se o prazo nao foi preenchido, so oculta ele... nao deixa exposto") */}
       {!envio && !(travado && !vm.prazoTexto) && <Propriedade icone="clock" rotulo="Prazo">
-        {travado ? <span>{vm.prazoTexto ? vm.prazoTexto + (vm.prazoHora ? ' ' + vm.prazoHora : '') : '—'}</span> : (
+        {travado ? <span>{vm.prazoTexto ? vm.prazoTexto + (vm.prazoHora ? ' ' + vm.prazoHora : '') : '—'}</span> : !docs ? <PrazoDaTarefa vm={vm} /> : (
           <span className="ini-prazo">
             <span className="chip-row">
               <button type="button" className={'chip-f' + (vm.prazoTexto === hoje ? ' on' : '')} aria-pressed={vm.prazoTexto === hoje} onClick={() => vm.setPrazo(vm.prazoTexto === hoje ? '' : hoje)}>Hoje</button>
@@ -210,7 +299,8 @@ function PessoasDosDocumentos({ vm }: { vm: Vm }) {
   const varias = vm.documentos.modo === 'enviar';
   const escolhidas = vm.equipe.filter(p => vm.documentos.pessoas.includes(p.uid));
   const rotulo = escolhidas.length
-    ? <span className="pessoa-escolhida">{escolhidas.length === 1 && <FotoDaPessoa p={escolhidas[0]} />}<span>{escolhidas.map(p => p.nome).join(', ')}</span></span>
+    // o ícone da pessoa (13/11/2026: "Para quem coloca o icone"): a foto quando tem; sem foto, o ícone no lugar da inicial
+    ? <span className="pessoa-escolhida">{escolhidas.length === 1 && escolhidas[0].foto ? <FotoDaPessoa p={escolhidas[0]} /> : <Icone nome="usuario" />}<span>{escolhidas.map(p => p.nome).join(', ')}</span></span>
     : <span className="pessoa-escolhida fraco">{varias ? 'Escolha as pessoas' : 'Escolha a pessoa'}</span>;
   return (
     <MenuSuspenso rotulo={rotulo} flutuante className="btn btn-outline pessoa-botao" titulo="Para quem" dica={varias ? 'Uma ou mais pessoas' : 'Uma pessoa'}
@@ -249,9 +339,6 @@ function DocumentosPasso1({ vm }: { vm: Vm }) {
 
 /** o passo 2 dos documentos: para quem e, no requerer, o prazo (sem hora) e a prioridade */
 function PropriedadesDosDocumentos({ vm }: { vm: Vm }) {
-  const id = useId();
-  const hoje = d.prazoParaTela(d.hojeIso());
-  const amanha = d.prazoParaTela(tarefas.agenda.somarDias(d.hojeIso(), 1));
   const prioridade = vm.prioridades.find(p => p.valor === vm.rascunho.prioridade)?.rotulo || '';
   return (
     <div className="registro-props">
@@ -259,12 +346,9 @@ function PropriedadesDosDocumentos({ vm }: { vm: Vm }) {
       {vm.documentos.modo === 'requerer' && (
         <>
           <Propriedade icone="clock" rotulo="Prazo">
-            <span className="ini-prazo">
-              <span className="chip-row">
-                <button type="button" className={'chip-f' + (vm.prazoTexto === hoje ? ' on' : '')} aria-pressed={vm.prazoTexto === hoje} onClick={() => vm.setPrazo(vm.prazoTexto === hoje ? '' : hoje)}>Hoje</button>
-                <button type="button" className={'chip-f' + (vm.prazoTexto === amanha ? ' on' : '')} aria-pressed={vm.prazoTexto === amanha} onClick={() => vm.setPrazo(vm.prazoTexto === amanha ? '' : amanha)}>Amanhã</button>
-              </span>
-              <CampoData id={id + '-prazo'} rotulo="Prazo" valor={vm.prazoTexto} onMudar={vm.setPrazo} />
+            {/* a data no campo do navegador, sem o Hoje e o Amanhã (13/11/2026: "Tira esse hj e amanha... a data e a hora pode ser input normal") */}
+            <span className="tdl-prazo-escolhas sem-animacao">
+              <input type="date" value={d.prazoDaTela(vm.prazoTexto) || ''} aria-label="A data do prazo" onChange={e => vm.setPrazo(d.prazoParaTela(e.target.value))} />
             </span>
           </Propriedade>
           {vm.prazoInvalido && <p className="hint tdl-atrasada">Data incompleta ou que não existe.</p>}
@@ -329,6 +413,8 @@ export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
   // sem Salvar nem Excluir; o título, os detalhes, os anexos e as informações continuam à vista
   const concluida = !aberta.ehNova && aberta.rascunho.status === 'concluida';
   const vm: typeof aberta = concluida ? { ...aberta, podeMudar: false, podeExcluir: false, acoes: [] } : aberta;
+  // o sino de cobrar e o Responder cobrança (a novidade 'cobrar-tarefa', aprovada para todos em 13/11/2026)
+  const cobrarLigado = useNovidade('cobrar-tarefa');
   useEffect(() => {
     saida.current = depois => { void vm.largar(depois); };
     return () => { saida.current = null; };
@@ -343,7 +429,8 @@ export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
   // a tarefa de documentos que já existe: o fluxo dela no lugar do Iniciar, Pausar e Concluir
   const deDocumentos = !vm.ehNova && vm.pedeDocumentos;
   const trocarCliente = () => { vm.clientes.forEach(() => vm.tirarCliente(0)); setPasso('cliente'); };
-  const nome = vm.ehNova ? (vm.pedeDocumentos ? 'Delegar documentos' : 'Nova tarefa') : 'Tarefa ' + (vm.numero || '');
+  // sem o número (Vitor, 13/11/2026: "Nao quero que o numero da tarefa apareca para o usuario"); ele segue só no banco
+  const nome = vm.ehNova ? (vm.pedeDocumentos ? 'Delegar documentos' : 'Nova tarefa') : 'Tarefa';
 
   const titulo = so ? <h2 className="tdl-tarefa-titulo">{vm.rascunho.titulo}</h2> : (
     <input className="tdl-janela-titulo" type="text" value={vm.rascunho.titulo} maxLength={vm.maiorTitulo} autoFocus={vm.ehNova}
@@ -352,13 +439,22 @@ export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
   const pe = vm.podeMudar && (
     <footer className="registro-pe">
       {!vm.ehNova && vm.podeExcluir && (
-        <BotaoAcao className="btn btn-outline btn-danger" carregando={vm.excluindo} textoCarregando="Excluindo" onClick={() => { void vm.excluir(); }}>
-          <Icone nome="lixeira" />Excluir
+        // a lixeira só com o ícone, toda vermelha (Vitor, 13/11/2026: "Iniciar e excluir, deixa apenas o icone, botao da lixeira todo vermelho")
+        <BotaoAcao className="btn btn-so-icone btn-lixeira" carregando={vm.excluindo} title="Excluir a tarefa" aria-label="Excluir a tarefa" onClick={() => { void vm.excluir(); }}>
+          <Icone nome="lixeira" />
         </BotaoAcao>
       )}
-      {deDocumentos ? <AcoesDosDocumentos vm={vm} /> : vm.acoes.map(a => (
+      {deDocumentos ? <AcoesDosDocumentos vm={vm} /> : vm.acoes.map(a => SO_ICONE.has(a.id) ? (
+        // o Iniciar (e o Retomar, o mesmo play) só com o ícone; o nome fica na dica
+        <button key={a.id} type="button" className="btn btn-outline btn-so-icone" title={a.rotulo} aria-label={a.rotulo} onClick={() => { void vm.fazerAcao(a.status); }}><Icone nome={ICONE[a.id]} /></button>
+      ) : (
         <button key={a.id} type="button" className="btn btn-outline" onClick={() => { void vm.fazerAcao(a.status); }}><Icone nome={ICONE[a.id]} />{a.rotulo}</button>
       ))}
+      {cobrarLigado && vm.cobranca?.podeCobrar && (
+        <BotaoAcao className="btn btn-outline btn-so-icone" carregando={vm.cobranca.ocupado} title={'Cobrar uma atualização de ' + (vm.rascunho.responsavel?.nome || 'quem faz')} aria-label="Cobrar uma atualização" onClick={() => { void vm.cobrar(); }}>
+          <Icone nome="sino" />
+        </BotaoAcao>
+      )}
       <span className="tarefas-barra-espaco" />
       <button type="button" className="btn btn-outline" onClick={vm.cancelar}>Cancelar</button>
       <BotaoAcao className="btn btn-primary" carregando={vm.salvando} textoCarregando="Salvando" onClick={() => { void vm.salvar(); }}>
@@ -369,8 +465,10 @@ export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
 
   return (
     <div className="modal-overlay">
-      <div ref={janela} className="modal registro-novo" role="dialog" aria-modal="true" aria-label={nome}>
+      <div ref={janela} className="modal registro-novo tdl-janela-nova" role="dialog" aria-modal="true" aria-label={nome}>
         <header className="registro-topo">
+          {/* o Voltar sempre no canto superior esquerdo (Vitor, 13/11/2026: "Voltar sempre lado esquerdo superior, sempre! na aplicacao toda") */}
+          {docs && passo === 'tarefa' && <button type="button" className="btn btn-ghost registro-voltar" onClick={() => setPasso('cliente')}><Icone nome="chevronLeft" />Voltar</button>}
           <span className="registro-caminho"><b>{nome}</b></span>
           {vm.status && <SeloDoStatus rotulo={vm.status.rotulo} tom={vm.status.tom} />}
           {docs && <TesteDosDocumentos vm={vm} />}
@@ -396,7 +494,6 @@ export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
               <div className="ini-cliente-escolhido">
                 <Icone nome="briefcase" />
                 <span className="ini-empresa">{vm.clientes.map(nomeDoCliente).join(', ')}</span>
-                <button type="button" className="btn btn-ghost" onClick={() => setPasso('cliente')}><Icone nome="chevronLeft" />Voltar</button>
               </div>
               <PropriedadesDosDocumentos vm={vm} />
               <Descricao vm={vm} />
@@ -436,6 +533,7 @@ export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
         ) : (
           <>
             <div className="registro-corpo">
+              {cobrarLigado && <CobrancaDaTarefa vm={vm} />}
               {deDocumentos && <p className="registro-dica"><Icone nome="clipe" />{vm.documentos.situacao}</p>}
               {/* o que faltou, para contestar o requerer (sem a conversa na janela, o motivo é escrito aqui; 13/11/2026) */}
               {vm.documentos.acoes.some(a => a.id === 'contestar') && (
@@ -448,9 +546,8 @@ export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
               {titulo}
               <Descricao vm={vm} />
               <Anexos vm={vm} />
-              <h3 className="ini-tarefa-sub">Informações</h3>
               <Propriedades vm={vm} />
-              {vm.datas.length > 0 && <dl className="ent-dados">{vm.datas.map(x => <div key={x.rotulo}><dt>{x.rotulo}</dt><dd>{x.valor}</dd></div>)}</dl>}
+              <DatasDaTarefa datas={vm.datas} />
               {concluida ? <p className="hint">Tarefa concluída: fica só para consulta.</p>
                 : so ? <p className="hint">Só quem criou a tarefa e o responsável mudam esta tarefa.</p>
                 : !vm.criouEu && <p className="hint">O prazo, a prioridade, os clientes e para quem só quem criou a tarefa muda.</p>}

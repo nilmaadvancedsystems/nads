@@ -187,6 +187,29 @@ export function criarTarefasDelegadasFirestore(quem: () => Pessoa | null): RepoT
       });
       await reler();
     },
+    // a cobrança e a resposta (13/11/2026) vão nos pareceres, que a regra do nadsTarefasDelegadas já aceita (sem campo novo)
+    async cobrar(id, texto) {
+      const por = eu();
+      const t = await noBanco(id);
+      const problema = d.problemaDaCobranca(t, por.uid, texto);
+      if (problema) throw new Error(problema);
+      const em = new Date().toISOString();
+      await updateDoc(doc(db, COLECAO, id), {
+        pareceres: arrayUnion(d.notaDaCobranca(texto, por.nome, em)), historico: historicoNovo(t, [d.historicoDaCobranca(por.nome, em, t.responsavel.nome)]), atualizadaEm: em,
+      });
+      await reler();
+    },
+    async responderCobranca(id, texto) {
+      const por = eu();
+      const t = await noBanco(id);
+      const problema = d.problemaDaResposta(t, por.uid, texto);
+      if (problema) throw new Error(problema);
+      const em = new Date().toISOString();
+      await updateDoc(doc(db, COLECAO, id), {
+        pareceres: arrayUnion(d.notaDaResposta(texto, por.nome, em)), historico: historicoNovo(t, [d.historicoDaRespostaDaCobranca(por.nome, em)]), atualizadaEm: em,
+      });
+      await reler();
+    },
     async anexar(id, arquivos) {
       const por = eu();
       const t = await noBanco(id);

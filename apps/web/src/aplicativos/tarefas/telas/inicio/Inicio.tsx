@@ -60,8 +60,8 @@ function NovoAviso({ vm }: { vm: Vm }) {
   );
 }
 
-// o Início novo é uma novidade em teste (comum/novidades.ts): só no modo desenvolvedor até o Vitor aprovar; os outros
-// continuam neste, sem mudança nenhuma
+// o Início novo é uma novidade (comum/novidades.ts), aprovada para todos em 13/11/2026; antes, só no modo desenvolvedor, e os outros
+// ficavam neste (InicioDeHoje), que sai numa limpeza
 export function Inicio() {
   return useNovidade('inicio-novo') ? <InicioNovo /> : <InicioDeHoje />;
 }

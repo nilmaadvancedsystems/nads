@@ -4,8 +4,9 @@
 // do aviso) fica por cima do calendário, com ele embaçado, até a pessoa responder. À direita, as
 // próximas tarefas (a caixinha conclui) e as delegadas por mim (no lugar do acompanhamento de tempo). O "Por cliente" e os
 // "Comentários novos" saíram (Vitor, 13/11/2026: "Pode deletar essas duas sessoes").
-import { CalendarioDoMes, Icone, Vazio } from '@nads/ui';
+import { BotaoIcone, CalendarioDoMes, Icone, Vazio } from '@nads/ui';
 import { useEffect, useState, type ReactNode } from 'react';
+import { useNovidade } from '../../../../../comum/novidades';
 import { SeloDoStatus } from '../../delegador/partes/SelosDaTarefa';
 import type { PessoaComFoto, useInicioNovo } from '../useInicioNovo';
 
@@ -58,6 +59,8 @@ function Cronometro({ minutos, andando }: { minutos: (agora: Date) => number; an
 
 export function PainelDoInicio({ vm }: { vm: Vm }) {
   const c = vm.calendario;
+  // o sino de cobrar (a novidade 'cobrar-tarefa', aprovada para todos em 13/11/2026)
+  const cobrarLigado = useNovidade('cobrar-tarefa');
   const p = vm.paraConfirmar[0];
   const abrir = (id: string) => { vm.escolherComunicado(id); vm.mudarAba('notificacoes'); };
   return (
@@ -105,6 +108,7 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
             <div key={t.id} className="ini-linha">
               <span className="ini-marca"><button type="button" className="subnav-caixa vazia" title="Concluir" aria-label={'Concluir ' + t.titulo} onClick={t.concluir} /></span>
               <button type="button" className="ini-linha-texto ini-abrir" onClick={() => vm.abrir(t.id)}>{t.titulo}</button>
+              {cobrarLigado && t.cobrada && <span className="ini-sino" title="Cobraram uma atualização: abra a tarefa e responda"><Icone nome="sino" />Cobrada</span>}
               <span className={'hint' + (t.atrasada ? ' tdl-atrasada' : '')}>{t.prazo}</span>
             </div>
           )) : <Vazio compacto icone="checkCircle" titulo={c.dia ? 'Nada com prazo neste dia' : 'Tudo em dia'} />}
@@ -117,6 +121,8 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
                 <button type="button" className="ini-abrir" onClick={() => vm.abrir(t.id)}>{t.cliente ? <span className="ini-empresa">{t.cliente}</span> : t.titulo}</button>
                 {t.cliente && <><br /><span className="hint">{t.titulo}</span></>}
               </span>
+              {cobrarLigado && t.cobranca === 'cobrar' && <BotaoIcone pequeno className="ini-sino-cobrar" icone="sino" titulo={'Cobrar uma atualização de ' + t.responsavel.nome} onClick={() => { void t.cobrar(); }} />}
+              {cobrarLigado && t.cobranca === 'esperando' && <span className="ini-sino" title="Você cobrou uma atualização: esperando a resposta"><Icone nome="sino" /></span>}
               <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
                 <SeloDoStatus rotulo={t.status.rotulo} tom={t.status.tom} />
                 {t.minutos && <Cronometro minutos={t.minutos} andando={t.andando} />}

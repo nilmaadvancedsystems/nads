@@ -92,6 +92,9 @@ export function useCentralDeTarefas(abaInicial: AbaDaCentral, opcoes: { agenda?:
     // o que aconteceu por último (Delegadas por mim)
     // e se quem recebeu já abriu a tarefa (o Visualizado, 12/11/2026)
     movimento: aba === 'delegadas' ? [movimentoDe(t), d.rotuloDaVisualizacao(t)].filter(Boolean).join(' · ') : '',
+    // a cobrança (o sino; 13/11/2026): quem faz foi cobrado; quem delegou pode cobrar, ou está esperando a resposta
+    cobranca: d.deveResponderCobranca(t, uid) ? 'cobrada' as const : d.podeCobrar(doBanco.get(t.id) || t, uid) ? 'cobrar' as const
+      : t.criadaPor.uid === uid && d.cobrancaAberta(t) ? 'esperando' as const : null,
   });
   return {
     carregando: !carregadas,
@@ -119,6 +122,7 @@ export function useCentralDeTarefas(abaInicial: AbaDaCentral, opcoes: { agenda?:
     colunaDaPessoa: opcoes.documentos ? 'Delegação' : COLUNA_DA_PESSOA[aba],
     /** os botões de quem faz a tarefa, só nas minhas (nas delegadas, o andamento vai na linha: 09/11/2026 "eu tenha esse controle") */
     comAcoes: aba === 'minhas',
+    cobrar: (id: string) => repo.cobrar(id, '').catch((e: unknown) => setErroDaAcao('Não cobrei: ' + (e instanceof Error ? e.message : String(e)))),
     fazerAcao: (id: string, novo: Status) => { repo.salvar(id, { status: novo }).catch((e: unknown) => setErroDaAcao('Não gravei: ' + (e instanceof Error ? e.message : String(e)))); },
     vazio: daAba.length ? { titulo: 'Nenhuma tarefa com isso', texto: '' } : VAZIO_DA_ABA[aba],
     /** as linhas agrupadas pelo prazo, na ordem do core em cada grupo; as encerradas num grupo só */

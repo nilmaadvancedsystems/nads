@@ -60,7 +60,9 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
   // os links da tarefa nova esperam o Criar, como os anexos (o Início novo; 13/11/2026)
   const [linksPendentes, setLinksPendentes] = useState<string[]>([]);
   const [parecer, setParecer] = useState('');
-  const [ocupado, setOcupado] = useState<'' | 'salvar' | 'excluir' | 'anexar' | 'parecer'>('');
+  const [ocupado, setOcupado] = useState<'' | 'salvar' | 'excluir' | 'anexar' | 'parecer' | 'cobranca'>('');
+  // a resposta à cobrança, escrita na janela (13/11/2026)
+  const [resposta, setResposta] = useState('');
   const [erro, setErro] = useState('');
   // o toggle Delegar (09/11/2026: "caso esteja off, não é para a tarefa ser delegada, é para o próprio usuário"): enquanto a
   // pessoa não mexe, segue a tarefa (de outra pessoa = ligado; a nova e a dela mesma = desligado)
@@ -127,6 +129,20 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
     if (problema) { toast(problema); return false; }
     setOcupado('parecer');
     try { await repo.comentar(tarefa.id, parecer); setParecer(''); return true; } catch (e) { toast('Não gravei o parecer: ' + (e instanceof Error ? e.message : String(e))); return false; } finally { setOcupado(''); }
+  }
+
+  /** o sino (13/11/2026): quem delegou cobra uma atualização; quem faz responde */
+  async function cobrar() {
+    if (!tarefa) return;
+    setOcupado('cobranca');
+    try { await repo.cobrar(tarefa.id, ''); toast('Cobrança enviada para ' + tarefa.responsavel.nome + '.'); } catch (e) { toast('Não cobrei: ' + (e instanceof Error ? e.message : String(e))); } finally { setOcupado(''); }
+  }
+  async function responderCobranca() {
+    if (!tarefa) return;
+    const problema = d.problemaDaResposta(tarefa, uid, resposta);
+    if (problema) { toast(problema); return; }
+    setOcupado('cobranca');
+    try { await repo.responderCobranca(tarefa.id, resposta); setResposta(''); toast('Resposta enviada para ' + tarefa.criadaPor.nome + '.'); } catch (e) { toast('Não respondi: ' + (e instanceof Error ? e.message : String(e))); } finally { setOcupado(''); }
   }
 
   /** pergunta antes de largar o que mudou (e o parecer escrito); sem mudança, segue direto */
@@ -282,6 +298,19 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
     achadasPara: (q: string) => (q.trim() ? emp.buscarEmpresas(empresas, q) : empresas).filter(e => !r.clientes.some(c => mesmaEmpresa(c, e))).slice(0, 8),
     adicionarCliente: (e: { codigo: number | null; nome: string }) => { if (r.clientes.length < d.MAIS_CLIENTES) mudar({ clientes: [...r.clientes, { codigo: e.codigo, nome: e.nome }] }); },
     tirarCliente: (i: number) => mudar({ clientes: r.clientes.filter((_, n) => n !== i) }),
+    // a cobrança (o sino; 13/11/2026): a aberta, a última resposta, quem cobra e quem responde
+    cobranca: tarefa ? (() => {
+      const aberta = d.cobrancaAberta(tarefa);
+      const respondida = d.ultimaResposta(tarefa);
+      return {
+        podeCobrar: d.podeCobrar(tarefa, uid),
+        responder: d.deveResponderCobranca(tarefa, uid),
+        aberta: aberta ? { por: aberta.por, quando: quando(aberta.em), texto: aberta.texto } : null,
+        resposta: respondida && tarefa.criadaPor.uid === uid ? { por: respondida.por, quando: quando(respondida.em), texto: respondida.texto } : null,
+        ocupado: ocupado === 'cobranca',
+      };
+    })() : null,
+    cobrar, resposta, setResposta, responderCobranca,
     datas: tarefa ? [
       { rotulo: 'Criada em', valor: quando(tarefa.criadaEm) + ' por ' + tarefa.criadaPor.nome },
       { rotulo: 'Concluída em', valor: tarefa.concluidaEm ? quando(tarefa.concluidaEm) : '—' },

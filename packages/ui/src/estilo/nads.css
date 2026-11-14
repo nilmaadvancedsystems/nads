@@ -150,8 +150,10 @@ a{color:var(--accent);}
 .emp-reg{font-size:var(--fs-12);color:var(--ink-muted);margin-top:1px;}
 
 /* ---------------------------------- app shell: cabeçalho + abas ---------------------------------- */
-#app{display:none;min-height:100vh;}
-#app.on{display:block;}
+#app{display:none;min-height:100vh;min-height:100dvh;}
+/* a página numa coluna que ocupa a tela toda: com pouco conteúdo, o rodapé fica no pé da tela, sem o vão enorme embaixo dele
+   (Vitor, 13/11/2026: "olha o tamanho desse footer, pelo amor de deus, deixa ele em uma altura fixa, em todo o nads") */
+#app.on{display:flex;flex-direction:column;}
 .gh-header{background:var(--header-bg);border-bottom:1px solid var(--border);position:relative;z-index:25;}
 /* tamanhos do cabeçalho do GitHub (AppHeader): 16px em volta, 64px de altura, o local em 14px, as abas com 48px */
 .gh-header-top{display:flex;align-items:center;gap:12px;padding:16px 16px 8px;min-height:56px;}
@@ -1660,8 +1662,13 @@ html.na-etapa .imp-aviso{top:calc(var(--vista-topo,0px) + 12px);}
 @media (max-width:599px){.imp-robo-meses,.imp-robo-atencao{padding-left:12px;}}
 
 /* o rodapé da Casca: depois de tudo, na largura toda (só se vê rolando até o fim); a logo oficial (o tigre) */
-.rodape{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;padding:10px 16px;border-top:1px solid var(--border);
-  font-size:var(--fs-12);line-height:20px;color:var(--ink-muted);}
+.rodape{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:nowrap;padding:0 16px;border-top:1px solid var(--border);
+  font-size:var(--fs-12);line-height:20px;color:var(--ink-muted);
+  /* altura fixa e sempre no pé (o #app é uma coluna da altura da tela) */
+  height:40px;flex:none;margin-top:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rodape > span{overflow:hidden;text-overflow:ellipsis;}
+/* a barra lateral ocupa a tela menos o cabeçalho e o rodapé: o rodapé fica à vista, sem rolar 40px a mais */
+#app:has(> .rodape) .subnav{min-height:calc(100vh - var(--hdr-h,113px) - 40px);min-height:calc(100dvh - var(--hdr-h,113px) - 40px);}
 /* no tema escuro, a logo com as cores invertidas (círculo preto, tigre branco), como o Vitor mandou */
 @media print{.rodape{display:none;}}
 
@@ -6815,6 +6822,72 @@ td.fs-fat-sem{color:var(--ink-faint);}
 /* o código e o nome da empresa em negrito, em todo o Início novo: o Painel, as listas, a busca e a janela da tarefa (Vitor,
    13/11/2026: "Coloca em negrito o nome das empresas, codigo e nome, em todo o inicio") */
 .ini-empresa{font-weight:600;}
+/* a janela da tarefa do Início novo (13/11/2026): o botão só com o ícone, quadrado na altura dos outros; a lixeira toda vermelha
+   ("botao da lixeira todo vermelho"); e as datas numa caixa leve, lado a lado ("Melhora o visual da box") */
+.btn.btn-so-icone{padding-left:0;padding-right:0;width:32px;justify-content:center;flex:none;}
+.btn.btn-so-icone svg{margin:0;}
+.btn.btn-lixeira{background:var(--destructive);border-color:var(--destructive);color:#FFFFFF;}
+.btn.btn-lixeira svg{color:#FFFFFF;}
+.btn.btn-lixeira:hover:not(:disabled){background:var(--destructive);border-color:var(--destructive);color:#FFFFFF;filter:brightness(1.1);}
+.tdl-datas{margin:8px 0 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px 16px;padding:12px 14px;
+  background:var(--hover-bg);border:1px solid var(--border-muted);border-radius:8px;}
+.tdl-data{display:flex;flex-direction:column;gap:4px;min-width:0;}
+.tdl-data dt{display:flex;align-items:center;gap:6px;color:var(--ink-muted);font-size:var(--fs-12);}
+.tdl-data dt svg{width:14px;height:14px;flex:none;}
+.tdl-data dd{margin:0;font-size:var(--fs-13);font-weight:500;color:var(--ink);overflow-wrap:anywhere;}
+.tdl-data dd .fraco{display:block;font-weight:400;font-size:var(--fs-12);}
+/* o prazo da tarefa (13/11/2026: "De a opcao 'Colocar prazo'... o sistema faz uma animacao, que aparece data e hora"): a chave e,
+   ligada, a data (calendário), o Hoje e o Amanhã e a hora (lista) entrando com a curva da casa */
+.tdl-prazo{display:flex;flex-direction:column;align-items:flex-start;gap:8px;min-width:0;}
+.tdl-prazo-chave{display:inline-flex;align-items:center;gap:8px;}
+.tdl-prazo-chave .toggle-txt{display:none;}
+.tdl-prazo-rotulo{appearance:none;background:none;border:0;padding:0;font:inherit;color:var(--ink);cursor:pointer;}
+.tdl-prazo-escolhas{display:flex;align-items:center;gap:6px;flex-wrap:wrap;animation:prazoAbre .36s cubic-bezier(.23,1,.32,1) both;}
+.tdl-prazo-escolhas > *{animation:prazoPeca .42s cubic-bezier(.23,1,.32,1) both;}
+.tdl-prazo-escolhas > :nth-child(2){animation-delay:.04s;}
+@keyframes prazoAbre{from{opacity:0;}to{opacity:1;}}
+@keyframes prazoPeca{from{opacity:0;transform:translateY(-6px) scale(.97);}to{opacity:1;transform:none;}}
+@media (prefers-reduced-motion: reduce){.tdl-prazo-escolhas,.tdl-prazo-escolhas > *{animation:none;}}
+/* a data e a hora nos campos do navegador (13/11/2026: "a data e a hora pode ser input normal") */
+.tdl-prazo-escolhas input[type=date]{width:160px;}
+.tdl-prazo-escolhas input[type=time]{width:110px;}
+/* a data com o mesmo desenho dos outros campos (o navegador desenhava o dele) */
+.tdl-prazo-escolhas input[type=date]{border:1px solid var(--border);background:var(--input-bg);color:var(--ink);border-radius:6px;padding:5px 12px;
+  min-height:32px;font-size:var(--fs-14);line-height:20px;font-family:var(--font-body);box-shadow:var(--shadow-inset);color-scheme:light dark;}
+.tdl-prazo-escolhas input[type=date]:focus{outline:none;border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);}
+.tdl-prazo-escolhas.sem-animacao,.tdl-prazo-escolhas.sem-animacao > *{animation:none;}
+/* o Voltar no canto superior esquerdo da janela, antes do título */
+.registro-topo .registro-voltar{margin-left:-8px;padding-left:4px;padding-right:8px;flex:none;}
+/* os clientes em cápsula na janela da tarefa (13/11/2026: "Clientes, coloca em capsula") */
+.tdl-janela-nova .tdl-clientes{display:flex;flex-wrap:wrap;align-items:center;gap:6px;}
+.tdl-janela-nova .tdl-clientes .btn{min-height:28px;padding:2px 10px 2px 8px;border-radius:999px;font-size:var(--fs-13);gap:6px;}
+.tdl-janela-nova .tdl-clientes .btn svg{width:14px;height:14px;}
+.tdl-janela-nova .tdl-clientes .popover-wrap > .btn{width:28px;padding:0;justify-content:center;}
+.tdl-janela-nova .tdl-clientes > span{display:inline-flex;align-items:center;min-height:26px;padding:2px 10px;border:1px solid var(--border);border-radius:999px;font-size:var(--fs-13);}
+/* o ícone da pessoa no Para quem, do tamanho da foto */
+.tdl-janela-nova .pessoa-escolhida > svg{width:16px;height:16px;flex:none;color:var(--ink-muted);}
+/* a cobrança (o sino; 13/11/2026): quem faz vê em amarelo, com a resposta; quem cobrou, a espera e a resposta */
+.tdl-cobranca{display:flex;flex-direction:column;gap:6px;margin:0 0 4px;padding:10px 12px;border:1px solid var(--border-muted);border-radius:8px;
+  background:var(--hover-bg);font-size:var(--fs-13);color:var(--ink-muted);}
+p.tdl-cobranca{flex-direction:row;align-items:center;}
+.tdl-cobranca svg{width:16px;height:16px;flex:none;}
+.tdl-cobranca.cobrada{border-color:var(--warn);background:var(--warn-soft);color:var(--ink);}
+.tdl-cobranca.cobrada .tdl-cobranca-topo svg{color:var(--warn);}
+.tdl-cobranca.respondida{border-color:var(--success);background:var(--success-soft);color:var(--ink);}
+.tdl-cobranca-topo{display:flex;align-items:center;gap:6px;margin:0;}
+.tdl-cobranca-topo .fraco{margin-left:auto;font-size:var(--fs-12);}
+.tdl-cobranca-texto{margin:0;white-space:pre-line;overflow-wrap:anywhere;}
+.tdl-cobranca textarea{width:100%;resize:vertical;}
+.tdl-cobranca-acoes{display:flex;justify-content:flex-end;}
+/* o sino nas listas: quem faz vê que foi cobrado; quem delegou, o botão de cobrar */
+.ini-sino{display:inline-flex;align-items:center;gap:4px;font-size:var(--fs-12);color:var(--warn);white-space:nowrap;}
+.ini-sino svg{width:14px;height:14px;flex:none;}
+.ini-pessoa-com-sino{display:inline-flex;align-items:center;gap:8px;min-width:0;}
+/* o botão de cobrar, leve (Vitor, 13/11/2026: "Melhora isso"): só o sino, sem caixa, apagado; acende em amarelo ao passar o mouse */
+.icon-btn.ini-sino-cobrar{width:24px;height:24px;border-color:transparent;background:transparent;color:var(--ink-faint);flex:none;}
+.icon-btn.ini-sino-cobrar svg{width:15px;height:15px;}
+.icon-btn.ini-sino-cobrar:hover:not(:disabled),.icon-btn.ini-sino-cobrar:focus-visible{background:var(--warn-soft);color:var(--warn);}
+tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{color:var(--ink-muted);}
 /* o cronômetro das delegadas (Início novo): o relógio pequeno e o tempo numa linha só; em andamento, o relógio pisca devagar
    (só a opacidade); pausada, fica parado. Pisca em qualquer nível de animação, porque diz a situação (Vitor, 13/11/2026: "em
    progresso o icone fica piscando, se ela pausar, para de piscar"); com "menos movimento" no sistema, fica parado */

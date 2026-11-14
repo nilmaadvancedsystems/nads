@@ -5,8 +5,9 @@
 // do alto (uma busca só na tela); aqui ficam a prioridade, a pessoa e a planilha. O ViewModel é o da Central
 // (useCentralDeTarefas), com os grupos do print e, nos Documentos, todos os documentos delegados juntos.
 import { tarefas } from '@nads/core';
-import { Icone, LogoExcel, MenuSuspenso, Vazio } from '@nads/ui';
+import { BotaoIcone, Icone, LogoExcel, MenuSuspenso, Vazio } from '@nads/ui';
 import { createPortal } from 'react-dom';
+import { useNovidade } from '../../../../../comum/novidades';
 import { MenuDeFiltro } from '../../dp/MenuDeFiltro';
 import { SeloDaPrioridade, SeloDoStatus } from '../../delegador/partes/SelosDaTarefa';
 import { useCentralDeTarefas, type AbaDaCentral } from '../../delegador/useCentralDeTarefas';
@@ -21,6 +22,8 @@ export function ListaDoInicio({ documentos = false, lista: qual = 'minhas', busc
   lugarDosFiltros?: HTMLElement | null; lugarDoFim?: HTMLElement | null;
 }) {
   const vm = useCentralDeTarefas(qual, { agenda: true, documentos, semDocumentos: !documentos, busca, filtrar });
+  // o sino de cobrar (a novidade 'cobrar-tarefa', aprovada para todos em 13/11/2026)
+  const cobrarLigado = useNovidade('cobrar-tarefa');
   const filtros = !vm.abaVazia && (
     <>
       <MenuDeFiltro rotulo="Prioridade" valor={vm.prioridade} mudar={vm.setPrioridade} todos="Todas as prioridades" opcoes={vm.opcoesDePrioridade} />
@@ -79,8 +82,17 @@ export function ListaDoInicio({ documentos = false, lista: qual = 'minhas', busc
                       <td><SeloDaPrioridade valor={l.prioridade.valor} rotulo={l.prioridade.rotulo} /></td>
                       <td title={l.clientes}>{l.cliente ? <span className="ini-empresa">{l.cliente}</span> : '—'}{(l.maisClientes ?? 0) > 0 && <span className="fraco"> +{l.maisClientes}</span>}</td>
                       <td>
-                        {vm.aba === 'minhas' || documentos ? l.pessoa
-                          : <span className="ini-pessoa"><Foto p={comFoto(l.responsavel)} />{l.responsavel.nome}</span>}
+                        {/* o sino ao lado da pessoa (Vitor, 13/11/2026: "Coloca o sino do lado do responsavel"): cobrar quem faz, a
+                            cobrança esperando a resposta, ou (em Minhas tarefas) que quem delegou cobrou */}
+                        <span className="ini-pessoa-com-sino">
+                          {vm.aba === 'minhas' || documentos ? l.pessoa
+                            : <span className="ini-pessoa"><Foto p={comFoto(l.responsavel)} />{l.responsavel.nome}</span>}
+                          {cobrarLigado && l.cobranca === 'cobrada' && <span className="ini-sino" title="Cobraram uma atualização: abra a tarefa e responda"><Icone nome="sino" />Cobrada</span>}
+                          {cobrarLigado && l.cobranca === 'esperando' && <span className="ini-sino" title="Você cobrou uma atualização: esperando a resposta"><Icone nome="sino" /></span>}
+                          {cobrarLigado && l.cobranca === 'cobrar' && (
+                            <span onClick={e => e.stopPropagation()}><BotaoIcone pequeno className="ini-sino-cobrar" icone="sino" titulo={'Cobrar uma atualização de ' + l.responsavel.nome} onClick={() => { void vm.cobrar(l.id); }} /></span>
+                          )}
+                        </span>
                       </td>
                     </tr>
                   );
