@@ -17,13 +17,16 @@ export function AreaDeSoltar({ aceitar, dica, desabilitada, onArquivos, compacta
       {compacta ? (
         <>
           <Icone nome="upload" width={18} height={18} />
-          <span className="cli-soltar-txt"><b>{titulo ?? 'Enviar arquivos'}</b><small className="hint">Arraste para cá ou clique · {dica}</small></span>
+          <span className="cli-soltar-txt"><b>{titulo ?? 'Enviar arquivos'}</b><small className="hint"><span className="cli-so-pc">Arraste para cá ou clique</span><span className="cli-so-toque">Toque para escolher</span> · {dica}</small></span>
         </>
       ) : (
         <>
           <Icone nome="upload" width={24} height={24} />
-          <b>Arraste os arquivos para cá</b>
-          <span>ou clique para escolher no seu aparelho</span>
+          {/* no telefone não dá para arrastar (13/11/2026): lá vira "Toque para escolher os arquivos" */}
+          <b className="cli-so-pc">Arraste os arquivos para cá</b>
+          <span className="cli-so-pc">ou clique para escolher no seu aparelho</span>
+          <b className="cli-so-toque">Toque para escolher os arquivos</b>
+          <span className="cli-so-toque">do celular: fotos, PDFs e outros</span>
           <small className="hint">{dica}</small>
         </>
       )}

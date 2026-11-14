@@ -1,0 +1,170 @@
+/* Guias e obrigações refeita (13/11/2026: "refaça esses 3"; "muita informação", "desalinhado"), na linguagem da tela de
+   Solicitações: o resumo numa linha embaixo do título, as abas dentro do cartão da lista, as linhas limpas (a situação
+   só como palavra em cor), o calendário discreto e listas finas alinhadas. Só a tela de Guias usa (prefixo cli-gu-). Os
+   seletores pesam mais que as regras antigas do cliente.css que tocam nas classes guardadas para o tutorial
+   (cli-g-acoes, cli-legenda-cal, cli-calendario), porque a ordem de carga dos CSS não é garantida. */
+
+/* o resumo embaixo do título */
+.cli-app .cli-gu-resumo{display:flex;flex-wrap:wrap;row-gap:2px;line-height:1.5;}
+.cli-app .cli-gu-trecho b{font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;}
+.cli-app .cli-gu-trecho.t-perigo b{color:var(--danger-ink);}
+.cli-app .cli-gu-trecho + .cli-gu-trecho::before{content:"·";margin:0 7px;color:var(--ink-muted);}
+
+/* as duas colunas: as guias e as entregas à esquerda; o calendário e os avisos à direita; terminam juntas */
+.cli-app .cli-gu{display:grid;grid-template-columns:minmax(0,1fr);gap:20px;align-items:start;}
+.cli-app .cli-gu-col{display:flex;flex-direction:column;gap:20px;min-width:0;}
+@media (min-width:1000px){
+  .cli-app .cli-gu.com-lado{grid-template-columns:minmax(0,1fr) 336px;align-items:stretch;}
+  .cli-app .cli-gu.com-lado .cli-gu-col > :last-child{flex:1;}
+}
+@media (max-width:999px){
+  /* uma coluna: as guias, os avisos, o calendário e as entregas */
+  .cli-app .cli-gu-col{display:contents;}
+  .cli-app .cli-gu .cli-gu-lista{order:1;}
+  .cli-app .cli-gu .cli-gu-avisos{order:2;}
+  .cli-app .cli-gu .cli-gu-agenda{order:3;}
+  .cli-app .cli-gu .cli-gu-entregas{order:4;}
+}
+
+/* o cabeçalho dos cartões menores */
+.cli-app .cli-gu .card.cli-gu-entregas,.cli-app .cli-gu .card.cli-gu-agenda,.cli-app .cli-gu .card.cli-gu-avisos{padding:18px 20px;}
+.cli-app .cli-gu-cabeca{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:0 0 10px;}
+.cli-app .cli-gu-cabeca h3{margin:0;}
+.cli-app .cli-gu-cabeca-dir{flex:none;font-size:12.5px;color:var(--ink-muted);font-variant-numeric:tabular-nums;}
+
+/* ---------- as guias do mês ---------- */
+.cli-app .cli-gu .card.cli-gu-lista{display:flex;flex-direction:column;padding:0;overflow:hidden;}
+.cli-app .cli-gu-barra{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px 0 6px;border-bottom:1px solid var(--cli-fio);}
+.cli-app .cli-gu-abas{display:flex;min-width:0;overflow-x:auto;scrollbar-width:none;}
+.cli-app .cli-gu-aba{position:relative;display:inline-flex;flex:none;align-items:center;gap:6px;padding:8px 8px 11px;border:0;background:none;color:var(--ink-muted);font:inherit;font-size:13px;font-weight:600;cursor:pointer;}
+.cli-app .cli-gu-aba:hover,.cli-app .cli-gu-aba.ativa{color:var(--ink);}
+.cli-app .cli-gu-aba.ativa::after{content:"";position:absolute;left:8px;right:8px;bottom:-1px;height:2px;border-radius:2px;background:var(--accent);}
+.cli-app .cli-gu-aba:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;border-radius:6px;}
+.cli-app .cli-gu-conta{min-width:18px;padding:0 6px;border-radius:99px;background:var(--surface-3);font-size:11px;line-height:18px;text-align:center;color:var(--ink-muted);font-variant-numeric:tabular-nums;}
+.cli-app .cli-gu-todas{display:inline-flex;flex:none;align-items:center;gap:6px;height:30px;margin-bottom:6px;padding:0 10px;border:1px solid var(--cli-linha);border-radius:8px;background:none;color:var(--ink);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;}
+.cli-app .cli-gu-todas svg{color:var(--ink-muted);}
+.cli-app .cli-gu-todas:hover:not(:disabled){background:var(--cli-passa);}
+.cli-app .cli-gu-todas:disabled{cursor:progress;opacity:.75;}
+
+.cli-app .cli-gu-itens{margin:0;padding:6px;list-style:none;}
+/* a linha fina entre as guias (um traço por cima, sem curvar nos cantos arredondados do destaque) */
+.cli-app .cli-gu-itens > li{position:relative;}
+.cli-app .cli-gu-itens > li + li::before{content:"";position:absolute;top:0;left:10px;right:10px;border-top:1px solid var(--cli-fio);}
+.cli-app .cli-gu-itens > li.escolhida::before,.cli-app .cli-gu-itens > li.escolhida + li::before{display:none;}
+.cli-app .cli-gu-itens .cli-gu-linha{display:grid;grid-template-columns:34px minmax(0,1fr) 116px auto;grid-template-areas:"logo txt valor acoes";align-items:center;column-gap:14px;padding:12px 10px;border-radius:10px;transition:background .12s;}
+.cli-app .cli-gu-itens .cli-gu-linha.escolhida{background:color-mix(in srgb,var(--accent) 9%,transparent);}
+.cli-app .cli-gu-logo{grid-area:logo;display:flex;}
+.cli-app .cli-gu-txt{grid-area:txt;display:flex;flex-direction:column;gap:3px;min-width:0;}
+.cli-app .cli-gu-txt b{font-size:14px;font-weight:600;overflow-wrap:anywhere;}
+.cli-app .cli-gu-sub{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 6px;font-size:12.5px;color:var(--ink-muted);}
+.cli-app .cli-gu-junto{white-space:nowrap;}
+.cli-app .cli-gu-sit{font-weight:600;}
+.cli-app .cli-gu-linha.s-vencida .cli-gu-sit{color:var(--danger-ink);}
+.cli-app .cli-gu-linha.s-hoje .cli-gu-sit{color:var(--warn);}
+.cli-app .cli-gu-linha.s-paga .cli-gu-sit{color:var(--success-ink);}
+.cli-app .cli-gu-valor{grid-area:valor;text-align:right;font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.cli-app .cli-gu-linha.s-paga .cli-gu-valor{font-weight:500;color:var(--ink-muted);}
+/* as três casas das ações, sempre no mesmo lugar */
+.cli-app .cli-gu-itens .cli-gu-linha .cli-g-acoes{grid-area:acoes;display:grid;grid-template-columns:34px 34px 128px;gap:6px;align-items:center;justify-content:end;}
+.cli-app .cli-gu-itens .cli-gu-acoes .icon-btn{width:34px;height:34px;min-height:34px;}
+.cli-app .cli-gu-itens .cli-gu-acoes .cli-gu-principal{display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;height:34px;min-height:34px;padding:0 10px;font-size:13px;white-space:nowrap;}
+/* (13/11/2026, revisão) o "Pedir nova" neutro: a vencida já diz "Vencida" em cor e o único botão em cor é o Baixar da
+   próxima guia (eram dois vermelhos um embaixo do outro) */
+.cli-app .cli-gu-vaga{display:block;}
+.cli-app .cli-gu-vazio{display:flex;align-items:center;justify-content:center;gap:8px;margin:0;padding:40px 16px;font-size:13.5px;color:var(--ink-muted);text-align:center;}
+.cli-app .cli-gu-vazio svg{flex:none;}
+
+/* ---------- o que o escritório entrega ---------- */
+.cli-app .cli-gu-entregas-lista{margin:0;padding:0;list-style:none;}
+.cli-app .cli-gu-entregas-lista .cli-gu-entrega{display:grid;grid-template-columns:48px minmax(0,1fr) auto;align-items:baseline;gap:12px;margin:0 -10px;padding:11px 10px;border-radius:8px;}
+.cli-app .cli-gu-entregas-lista > li{position:relative;}
+.cli-app .cli-gu-entregas-lista > li + li::before{content:"";position:absolute;top:0;left:10px;right:10px;border-top:1px solid var(--cli-fio);}
+.cli-app .cli-gu-entregas-lista > li.escolhida::before,.cli-app .cli-gu-entregas-lista > li.escolhida + li::before{display:none;}
+.cli-app .cli-gu-entregas-lista .cli-gu-entrega.escolhida{background:color-mix(in srgb,var(--accent) 9%,transparent);}
+.cli-app .cli-gu-data{font-size:13px;color:var(--ink-muted);font-variant-numeric:tabular-nums;}
+.cli-app .cli-gu-entrega.hoje .cli-gu-data{color:var(--ink);font-weight:700;}
+.cli-app .cli-gu-entrega-nome{min-width:0;font-size:14px;overflow-wrap:anywhere;}
+.cli-app .cli-gu-entrega.feita .cli-gu-entrega-nome{color:var(--ink-muted);}
+.cli-app .cli-gu-entrega-sit{display:inline-flex;align-items:center;gap:4px;font-size:12.5px;color:var(--ink-muted);white-space:nowrap;}
+.cli-app .cli-gu-entrega.feita .cli-gu-entrega-sit{color:var(--success-ink);}
+.cli-app .cli-gu-entrega.hoje:not(.feita) .cli-gu-entrega-sit{color:var(--ink);font-weight:600;}
+
+/* ---------- o calendário ---------- */
+/* (13/11/2026, revisão) a legenda logo embaixo dos dias: quando o cartão estica para acompanhar a outra coluna, a sobra
+   fica no pé (antes a legenda descia e ficava solta, longe do calendário) */
+.cli-app .cli-gu .card.cli-gu-agenda{display:flex;flex-direction:column;}
+.cli-app .cli-gu-semana,.cli-app .cli-gu-agenda .cli-gu-cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));}
+.cli-app .cli-gu-semana{margin:2px 0 4px;}
+.cli-app .cli-gu-semana span{font-size:11px;font-weight:600;letter-spacing:.06em;color:var(--ink-muted);text-align:center;}
+.cli-app .cli-gu-agenda .cli-gu-cal{row-gap:1px;width:100%;margin-bottom:12px;}
+.cli-app .cli-gu-cal .cli-gu-dia{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0;padding:2px 0 3px;border:0;border-radius:8px;background:none;color:var(--ink);font:inherit;opacity:1;cursor:default;}
+.cli-app .cli-gu-cal .cli-gu-dia.tem{cursor:pointer;}
+.cli-app .cli-gu-cal .cli-gu-dia:focus-visible{outline:none;}
+.cli-app .cli-gu-cal .cli-gu-dia:focus-visible .cli-gu-num{box-shadow:0 0 0 2px var(--accent);}
+.cli-app .cli-gu-num{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;font-size:13px;font-weight:500;line-height:1;font-variant-numeric:tabular-nums;color:var(--ink-muted);transition:background .12s;}
+.cli-app .cli-gu-dia.tem .cli-gu-num{font-weight:700;color:var(--ink);}
+.cli-app .cli-gu-dia.tem:hover .cli-gu-num{background:var(--cli-passa);}
+.cli-app .cli-gu-dia.passou .cli-gu-num{color:var(--ink-muted);}
+.cli-app .cli-gu-dia.escolhido .cli-gu-num{box-shadow:inset 0 0 0 2px var(--accent);color:var(--ink);}
+.cli-app .cli-gu-dia.hoje .cli-gu-num,.cli-app .cli-gu-dia.hoje.tem:hover .cli-gu-num{background:var(--accent);color:#fff;font-weight:700;}
+.cli-app .cli-gu-dia.hoje.escolhido .cli-gu-num{box-shadow:0 0 0 2px var(--cli-cartao),0 0 0 4px var(--accent);}
+.cli-app .cli-gu-pontos{display:flex;justify-content:center;gap:3px;height:5px;}
+/* as cores dos pontos (no calendário e na legenda): a pagar cinza, vencida laranja, paga verde, do escritório um anel */
+.cli-app .cli-gu-agenda :is(.cli-gu-pontos,.cli-gu-legenda) i{display:block;flex:none;width:5px;height:5px;border-radius:50%;background:var(--ink-muted);}
+.cli-app .cli-gu-agenda .cli-gu-legenda i{width:7px;height:7px;}
+.cli-app .cli-gu-agenda :is(.cli-gu-pontos,.cli-gu-legenda) i.guia-hoje{background:var(--warn);}
+.cli-app .cli-gu-agenda :is(.cli-gu-pontos,.cli-gu-legenda) i.guia-vencida{background:var(--danger);}
+.cli-app .cli-gu-agenda :is(.cli-gu-pontos,.cli-gu-legenda) i.paga-feita{background:var(--success);}
+.cli-app .cli-gu-agenda :is(.cli-gu-pontos,.cli-gu-legenda) i:is(.entrega-aberta,.entrega-feita){background:none;box-shadow:inset 0 0 0 1.5px var(--ink-muted);}
+.cli-app .cli-gu-agenda .cli-gu-pontos i:is(.entrega-aberta,.entrega-feita){box-shadow:inset 0 0 0 1.2px var(--ink-muted);}
+.cli-app .cli-gu-agenda .cli-gu-legenda{display:flex;flex-wrap:wrap;justify-content:flex-start;gap:6px 14px;margin:0;padding:12px 0 0;border-top:1px solid var(--cli-fio);font-size:12px;color:var(--ink-muted);}
+.cli-app .cli-gu-agenda .cli-gu-legenda > span{display:inline-flex;align-items:center;gap:6px;}
+
+/* ---------- os avisos ---------- */
+.cli-app .cli-gu-avisos-lista{margin:0;padding:0;list-style:none;}
+.cli-app .cli-gu-avisos-lista > li{display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:12px 0;}
+.cli-app .cli-gu-avisos-lista > li:first-child{padding-top:2px;}
+.cli-app .cli-gu-avisos-lista > li:last-child{padding-bottom:0;}
+.cli-app .cli-gu-avisos-lista > li + li{border-top:1px solid var(--cli-fio);}
+.cli-app .cli-gu-avisos-lista b{font-size:14px;font-weight:600;}
+.cli-app .cli-gu-avisos-lista p{margin:0;font-size:13px;line-height:1.45;color:var(--ink-muted);}
+.cli-app .cli-gu-aviso-topo{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 10px;width:100%;}
+.cli-app .cli-gu-tom{font-size:12.5px;font-weight:600;}
+.cli-app .cli-gu-tom.t-warn{color:var(--warn);}
+.cli-app .cli-gu-tom.t-bad{color:var(--danger-ink);}
+.cli-app .cli-gu-tom.t-ok{color:var(--success-ink);}
+.cli-app .cli-gu-link{display:inline-flex;align-items:center;gap:2px;margin-top:4px;padding:2px 0;border:0;background:none;color:var(--accent);font:inherit;font-size:13px;font-weight:600;cursor:pointer;}
+.cli-app .cli-gu-link:hover{text-decoration:underline;}
+
+/* ---------- lista estreita (celular e tablet): pela largura da lista, não da tela ---------- */
+.cli-app .cli-gu-itens{container:gu-itens / inline-size;}
+@container gu-itens (max-width:720px){
+  /* a logo, o nome e o valor na primeira linha; embaixo, a situação (a competência numa linha só dela) e as ações, com a
+     principal ocupando o resto */
+  .cli-app .cli-gu-itens .cli-gu-linha{grid-template-columns:32px minmax(0,1fr) auto;grid-template-areas:"logo nome valor" "logo sub sub" ". acoes acoes";column-gap:12px;row-gap:0;align-items:start;}
+  .cli-app .cli-gu-itens .cli-gu-txt{display:contents;}
+  .cli-app .cli-gu-itens .cli-gu-logo{align-self:start;}
+  .cli-app .cli-gu-itens .cli-gu-nome{grid-area:nome;align-self:center;}
+  .cli-app .cli-gu-itens .cli-gu-sub{grid-area:sub;margin-top:3px;}
+  .cli-app .cli-gu-itens .cli-gu-sep-comp{display:none;}
+  .cli-app .cli-gu-itens .cli-gu-comp{flex-basis:100%;}
+  .cli-app .cli-gu-itens .cli-gu-valor{align-self:start;padding-top:1px;}
+  .cli-app .cli-gu-itens .cli-gu-linha .cli-g-acoes{grid-template-columns:34px 34px minmax(0,1fr);justify-content:stretch;margin-top:10px;}
+}
+/* o resumo, um número por linha quando não cabe numa (sem o ponto no começo da linha) */
+@media (max-width:999px){
+  .cli-app .cli-gu-resumo{flex-direction:column;}
+  .cli-app .cli-gu-trecho + .cli-gu-trecho::before{content:none;}
+}
+
+/* ---------- celular ---------- */
+@media (max-width:767px){
+  .cli-app .cli-gu .card.cli-gu-entregas,.cli-app .cli-gu .card.cli-gu-agenda,.cli-app .cli-gu .card.cli-gu-avisos{padding:16px;}
+  .cli-app .cli-gu-barra{padding:6px 8px 0 4px;}
+  .cli-app .cli-gu-itens{padding:4px;}
+  .cli-app .cli-gu-itens .cli-gu-acoes .icon-btn{width:40px;height:40px;min-height:40px;}
+  .cli-app .cli-gu-itens .cli-gu-linha .cli-g-acoes{grid-template-columns:40px 40px minmax(0,1fr);}
+  .cli-app .cli-gu-itens .cli-gu-acoes .cli-gu-principal{height:40px;min-height:40px;}
+  .cli-app .cli-gu-cal .cli-gu-dia{padding:3px 0 4px;}
+  .cli-app .cli-gu-num{width:34px;height:34px;font-size:14px;}
+}

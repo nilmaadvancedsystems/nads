@@ -2206,3 +2206,112 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
 .cli-app .cli-pf-lado > .cli-pf-chave{margin-top:auto;}
 .cli-app .cli-pf-lado .cli-pf-dia{min-height:46px;}
 .cli-app .cli-pf-ficha{height:32px;}
+
+/* Dados cadastrais refeitos (13/11/2026: "arrumar o visual"): o regime no alto, à direita; os dados em blocos do mesmo
+   tamanho que se alinham sempre (rótulo em cima, valor embaixo, o copiar no canto); o quadro societário numa barra só */
+.cli-app .cli-fi-topo{gap:16px;}
+.cli-app .cli-fi-nome{flex:1;}
+.cli-app .cli-fi-regime{flex:none;align-self:center;}
+.cli-app .cli-fi-secao{padding:18px 24px 20px;}
+.cli-app .cli-fi-secao h3{margin:0 0 12px;font-size:13px;font-weight:600;color:var(--ink-muted);}
+/* os sócios */
+.cli-app .cli-fi-socios{padding:0;}
+.cli-app .cli-fi-socios li{grid-template-columns:10px 28px minmax(0,1fr) auto;gap:12px;padding:10px 0;}
+.cli-app .cli-fi-socios li:first-child{border-top:0;}
+.cli-app .cli-fi-socio-pct{font-size:14px;}
+.cli-app .cli-fi-pe{display:flex;align-items:center;gap:6px;border-top:0;}
+@media (max-width:767px){
+  .cli-app .cli-fi-topo{flex-wrap:wrap;}
+  .cli-app .cli-fi-regime{order:3;margin-left:68px;}
+  .cli-app .cli-fi-secao{padding:16px 18px 18px;}
+  .cli-app .cli-fi-socios li{grid-template-columns:10px 28px minmax(0,1fr) auto;}
+}
+@media (max-width:767px){
+  .cli-app .cli-fi-nome{flex:1 1 calc(100% - 70px);}
+  .cli-app .cli-fi-regime{margin-left:68px;}
+}
+
+/* Dados cadastrais como lista simples alinhada (13/11/2026: "não gostei" dos blocos): uma coluna, o rótulo numa largura
+   fixa, o valor sempre começando no mesmo ponto, uma linha fina entre os dados */
+.cli-app .cli-fl-lista{margin:0;padding:6px 24px 10px;}
+.cli-app .cli-fl-linha{display:grid;grid-template-columns:190px minmax(0,1fr);align-items:baseline;gap:16px;padding:13px 0;border-top:1px solid var(--cli-fio);}
+.cli-app .cli-fl-linha:first-child{border-top:0;}
+.cli-app .cli-fl-linha dt{font-size:13px;color:var(--ink-muted);}
+.cli-app .cli-fl-linha dd{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;min-width:0;margin:0;}
+.cli-app .cli-fl-valor{font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
+.cli-app .cli-fl-linha .cli-fi-copiar{width:24px;height:24px;margin:-4px 0;}
+@media (hover:hover){.cli-app .cli-fl-linha .cli-fi-copiar{opacity:0;}.cli-app .cli-fl-linha:is(:hover,:focus-within) .cli-fi-copiar{opacity:1;}}
+.cli-app .cli-fl-linha .cli-fi-cnae{margin:0;}
+.cli-app .cli-fl-linha .cli-fi-mapa{font-size:13px;}
+.cli-app .cli-fl-socios ul{display:grid;grid-template-columns:auto auto auto;justify-content:start;column-gap:10px;row-gap:10px;margin:0;padding:0;list-style:none;}
+.cli-app .cli-fl-socios li{display:contents;}
+.cli-app .cli-fl-socios .cli-avatar{align-self:center;}
+.cli-app .cli-fl-socios .cli-fl-valor{align-self:center;padding-right:24px;}
+.cli-app .cli-fl-pct{align-self:center;font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink-muted);text-align:right;}
+.cli-app .cli-fl .cli-fi-pe{border-top:1px solid var(--cli-fio);}
+@media (max-width:767px){
+  .cli-app .cli-fl-lista{padding:4px 18px 8px;}
+  .cli-app .cli-fl-linha{grid-template-columns:minmax(0,1fr);gap:4px;padding:11px 0;}
+}
+
+/* Solicitações, a volta "impecável" (13/11/2026): os filtros como abas dentro da lista, os itens limpos com o ponto da
+   situação, a lista e o painel da mesma altura, a empresa na conversa e o WhatsApp com a logo */
+.cli-app .cli-subtitulo{margin:4px 0 0;font-size:13.5px;color:var(--ink-muted);}
+@media (min-width:1000px){.cli-app .cli-sol.cli-sc{grid-template-columns:minmax(320px,400px) minmax(0,1fr);align-items:stretch;}}
+.cli-app .cli-sc-lista{display:flex;flex-direction:column;padding:0;overflow:hidden;}
+.cli-app .cli-sc-filtros{display:flex;gap:2px;padding:10px 10px 0;border-bottom:1px solid var(--cli-fio);overflow-x:auto;scrollbar-width:none;}
+.cli-app .cli-sc-filtro{position:relative;display:inline-flex;flex:none;align-items:center;gap:6px;padding:8px 10px 11px;border:0;background:none;color:var(--ink-muted);font:inherit;font-size:13px;font-weight:600;cursor:pointer;}
+.cli-app .cli-sc-filtro:hover{color:var(--ink);}
+.cli-app .cli-sc-filtro.ativo{color:var(--ink);}
+.cli-app .cli-sc-filtro.ativo::after{content:"";position:absolute;left:8px;right:8px;bottom:-1px;height:2px;border-radius:2px;background:var(--accent);}
+.cli-app .cli-sc-conta{min-width:18px;padding:0 6px;border-radius:99px;background:var(--surface-3);font-size:11px;line-height:18px;text-align:center;color:var(--ink-muted);}
+.cli-app .cli-sc-conta.alerta{background:var(--success);color:#fff;}
+.cli-app .cli-sc-itens{display:flex;flex-direction:column;margin:0;padding:6px;list-style:none;overflow-y:auto;}
+.cli-app .cli-sc-item{display:grid;grid-template-columns:10px minmax(0,1fr);gap:10px;width:100%;padding:12px 12px 12px 10px;border:0;border-radius:10px;background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer;transition:background .12s;}
+.cli-app .cli-sc-itens li + li{border-top:1px solid var(--cli-fio);}
+.cli-app .cli-sc-itens li:has(.escolhida) + li,.cli-app .cli-sc-itens li:has(+ li .escolhida){border-color:transparent;}
+.cli-app .cli-sc-item:hover{background:var(--cli-passa);}
+.cli-app .cli-sc-item.escolhida{background:color-mix(in srgb,var(--accent) 9%,transparent);}
+.cli-app .cli-sc-ponto{width:8px;height:8px;margin-top:6px;border-radius:50%;background:var(--ink-muted);}
+.cli-app .cli-sc-item.s-respondido .cli-sc-ponto{background:var(--success);box-shadow:0 0 0 3px color-mix(in srgb,var(--success) 22%,transparent);}
+.cli-app .cli-sc-item:is(.s-aberto,.s-em-andamento) .cli-sc-ponto{background:var(--warn);}
+.cli-app .cli-sc-item.s-concluido .cli-sc-ponto{background:color-mix(in srgb,var(--ink-muted) 55%,transparent);}
+.cli-app .cli-sc-item-txt{display:flex;flex-direction:column;gap:3px;min-width:0;}
+.cli-app .cli-sc-item-topo{display:flex;align-items:baseline;justify-content:space-between;gap:10px;min-width:0;}
+.cli-app .cli-sc-item-topo b{font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cli-app .cli-sc-item.s-respondido .cli-sc-item-topo b{font-weight:700;}
+.cli-app .cli-sc-data{flex:none;font-size:12px;color:var(--ink-muted);font-variant-numeric:tabular-nums;}
+.cli-app .cli-sc-item-meio{display:flex;flex-wrap:wrap;align-items:center;gap:5px;font-size:12px;color:var(--ink-muted);}
+.cli-app .cli-sc-situacao{font-weight:600;}
+.cli-app .cli-sc-item.s-respondido .cli-sc-situacao{color:var(--success-ink);}
+.cli-app .cli-sc-item:is(.s-aberto,.s-em-andamento) .cli-sc-situacao{color:var(--warn);}
+.cli-app .cli-sc-previa{margin-top:2px;font-size:12.5px;line-height:1.45;color:var(--ink-muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.cli-app .cli-sc-previa b{color:var(--ink);font-weight:600;}
+.cli-app .cli-sc-item.s-concluido{opacity:.75;}
+.cli-app .cli-sc-vazio{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;margin:auto 0;padding:36px 16px;font-size:13px;color:var(--ink-muted);text-align:center;}
+/* o painel */
+.cli-app .cli-sc .cli-sol-painel{min-height:0;}
+.cli-app .cli-sc-voltar{display:inline-flex;align-items:center;gap:4px;align-self:flex-start;margin:-4px 0 -6px -6px;padding:4px 8px 4px 2px;border:0;border-radius:8px;background:none;color:var(--ink-muted);font:inherit;font-size:13px;font-weight:600;cursor:pointer;}
+.cli-app .cli-sc-voltar:hover{color:var(--ink);background:var(--cli-passa);}
+.cli-app .cli-sc .cli-sol-passos{max-width:520px;padding:14px 8px 12px;border-radius:12px;background:var(--surface-2);}
+.cli-app .cli-sc-voce{overflow:hidden;background:none;}
+.cli-app .cli-sc-voce img{width:100%;height:100%;object-fit:contain;background:#fff;border-radius:50%;}
+.cli-app .cli-sc .cli-sol-evento.voce .cli-sol-fala{background:var(--surface-2);border-color:transparent;}
+.cli-app .cli-sc .cli-sol-fim{align-items:stretch;}
+.cli-app .cli-sc .cli-sol-fim > .btn{height:auto;min-height:50px;}
+.cli-app .cli-sc-whats{gap:8px;border-color:color-mix(in srgb,#25d366 45%,var(--cli-linha));}
+.cli-app .cli-sc-whats:hover{background:color-mix(in srgb,#25d366 10%,transparent);}
+@media (min-width:1000px){.cli-app .cli-sc-voltar{display:none;}}
+@media (max-width:999px){
+  .cli-app .cli-sc-lista{overflow:visible;}
+  .cli-app .cli-sc-itens{overflow:visible;}
+}
+.cli-app .cli-sc .cli-sol-evento.voce .cli-sol-fala{background:color-mix(in srgb,var(--ink) 5%,transparent);}
+.cli-app .cli-sc .cli-sol-passos{background:color-mix(in srgb,var(--ink) 4%,transparent);}
+.cli-app .cli-sc-filtros{gap:0;padding:8px 6px 0;}
+.cli-app .cli-sc-filtro{padding:8px 8px 11px;}
+.cli-app .cli-sc-conta.zero{display:none;}
+
+/* a área de soltar no toque (13/11/2026): no celular não se arrasta arquivo, então o texto diz para tocar */
+.cli-app .cli-so-toque{display:none;}
+@media (pointer:coarse),(max-width:767px){.cli-app .cli-so-pc{display:none;}.cli-app .cli-so-toque{display:inline;}.cli-app .cli-soltar > .cli-so-toque{display:block;}}

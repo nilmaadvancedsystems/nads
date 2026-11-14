@@ -124,6 +124,14 @@ export function useChamados({ token, area }: DaCasca) {
     })),
     escolherFiltro: setFiltro,
     lista: visiveis.map(vista), total: todas.length,
+    // a linha embaixo do título (13/11/2026: "essa tem que ficar impecável"): no lugar dos cartões do alto
+    resumo: !todas.length ? '' : [
+      todas.length + (todas.length === 1 ? ' solicitação' : ' solicitações'),
+      contagem.respondidas ? contagem.respondidas + (contagem.respondidas === 1 ? ' respondida esperando você' : ' respondidas esperando você') : '',
+      contagem.abertas ? contagem.abertas + (contagem.abertas === 1 ? ' em andamento no escritório' : ' em andamento no escritório') : '',
+    ].filter(Boolean).join(' · '),
+    // quem fala na conversa: a empresa (o "Você") com a logo ou as iniciais
+    empresa: { nome: area.ficha?.nomeFantasia || area.ficha?.razaoSocial || area.resumo?.empresas?.[0]?.nome || 'Você', logo: area.logo },
     modo, atual: atual ? vista(atual) : null, passos: PASSOS_DA_SOLICITACAO, painelNoCelular,
     abrir: (id: string) => { setEscolhida(id); setModo('ver'); setPainelNoCelular(true); },
     nova: () => { setModo('nova'); setErro(''); setPainelNoCelular(true); },

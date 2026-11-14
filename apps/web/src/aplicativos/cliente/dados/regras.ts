@@ -438,3 +438,63 @@ export function marcarNoCalendario(p: Pick<PedidoDeFerias, 'inicio' | 'dias'>, c
   if (fase === 'inicio' || !ini || meioDia(c) <= meioDia(ini)) return { inicio: clicado, dias: p.dias, fase: 'fim' };
   return { inicio: p.inicio, dias: textoDosDias(Math.round((meioDia(c) - meioDia(ini)) / DIA) + 1), fase: 'inicio' };
 }
+
+// ---------- Guias e obrigações refeita (13/11/2026: "refaça esses 3") ----------
+
+/** Um pedaço da linha de resumo embaixo do título das Guias: [antes] <b>valor</b> [depois]; o tom pinta o valor. */
+export interface TrechoDoResumo { antes?: string; valor: string; depois?: string; tom?: 'perigo' }
+
+/**
+ * A linha de resumo das Guias (13/11/2026: no lugar dos três cartões grandes do alto): quanto há a pagar no mês e em
+ * quantas guias, as vencidas (o valor) e o próximo vencimento. Sem nada a pagar, diz isso (e quantas foram pagas).
+ * Os valores já chegam formatados (R$).
+ */
+export function resumoDasGuias(r: {
+  nomeDoMes: string; aPagar: { valor: string; guias: number }; vencidas: { valor: string; guias: number };
+  proxima: { data: string; nome: string; faltam: string } | null; pagas: number;
+}): TrechoDoResumo[] {
+  const qtas = (n: number, um: string, varios: string) => n + ' ' + (n === 1 ? um : varios);
+  if (!r.aPagar.guias) {
+    return [{ valor: 'Nada a pagar', depois: 'em ' + r.nomeDoMes }, ...(r.pagas ? [{ valor: qtas(r.pagas, 'guia paga', 'guias pagas'), depois: 'no mês' }] : [])];
+  }
+  return [
+    { valor: r.aPagar.valor, depois: 'a pagar em ' + r.nomeDoMes + ' (' + qtas(r.aPagar.guias, 'guia', 'guias') + ')' },
+    ...(r.vencidas.guias ? [{ valor: qtas(r.vencidas.guias, 'vencida', 'vencidas'), depois: '(' + r.vencidas.valor + ')', tom: 'perigo' as const }] : []),
+    ...(r.proxima ? [{ antes: 'próximo vencimento', valor: r.proxima.data, depois: '(' + r.proxima.nome + ', ' + (r.proxima.faltam || 'hoje') + ')' }] : []),
+  ];
+}
+
+/**
+ * A aba que o clique num dia da agenda abre (13/11/2026): a das guias a pagar se o dia tem uma; senão a das pagas se o dia
+ * tem uma paga; senão fica a aba de agora (o dia só tem entregas do escritório).
+ */
+export function abaDoDia<A extends string>(dia: number, diasAPagar: readonly number[], diasPagos: readonly number[], atual: A, aPagar: A, pagas: A): A {
+  if (diasAPagar.includes(dia)) return aPagar;
+  if (diasPagos.includes(dia)) return pagas;
+  return atual;
+}
+
+/**
+ * A linha menor de cada guia a pagar (13/11/2026, revisão: "A pagar" se repetia em todas as linhas da aba A pagar e a
+ * vencida dizia "Vencida · venceu em"): a palavra em cor só quando a guia pede atenção (Vencida, Vence hoje) e o
+ * vencimento numa frase só. `dias` é quantos dias faltam (negativo: já venceu; null: data que não deu para ler).
+ */
+export function vencimentoDaGuia(situacao: string, vencimento: string, dias: number | null): { palavra: string; texto: string } {
+  const data = vencimento.slice(0, 5);
+  const plural = (n: number) => n + (n === 1 ? ' dia' : ' dias');
+  if (!/^\d\d\/\d\d$/.test(data)) return situacao === 'vencida' ? { palavra: 'Vencida', texto: '' } : situacao === 'vence hoje' ? { palavra: 'Vence hoje', texto: '' } : { palavra: '', texto: 'A pagar' };
+  if (situacao === 'vencida') return { palavra: 'Vencida', texto: 'em ' + data + (dias != null && dias < 0 ? ', há ' + plural(-dias) : '') };
+  if (situacao === 'vence hoje') return { palavra: 'Vence hoje', texto: '' };
+  if (dias === 1) return { palavra: '', texto: 'Vence amanhã, ' + data };
+  return { palavra: '', texto: 'Vence em ' + data + (dias != null && dias > 1 ? ', daqui a ' + plural(dias) : '') };
+}
+
+/**
+ * A legenda do calendário das Guias (13/11/2026, revisão): só as cores que aparecem no mês, na ordem fixa (a legenda
+ * mostrava "a pagar" num mês só com a vencida, e o ponto de "vence hoje" ficava sem legenda). `classe` é a do ponto.
+ */
+export function legendaDoCalendario(marcas: readonly Pick<MarcaDoMes, 'tipo' | 'tom'>[]): { classe: string; rotulo: string }[] {
+  const tem = new Set(marcas.map(m => m.tipo === 'entrega' ? 'entrega-aberta' : m.tipo + '-' + m.tom));
+  return ([['guia-aberta', 'a pagar'], ['guia-hoje', 'vence hoje'], ['guia-vencida', 'vencida'], ['paga-feita', 'paga'], ['entrega-aberta', 'do escritório']] as const)
+    .filter(([c]) => tem.has(c)).map(([classe, rotulo]) => ({ classe, rotulo }));
+}

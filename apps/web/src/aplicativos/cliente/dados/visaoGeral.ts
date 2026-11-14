@@ -173,6 +173,49 @@ export function quandoFoi(iso: string, hoje: Date): string {
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 }
 
+// ---------- a Visão geral refeita (13/11/2026: "refaça esses 3"): a linha do resumo e as próximas guias ----------
+
+/**
+ * A linha embaixo da saudação, como nas Solicitações: "Novembro de 2026 · 4 pendências · atualizado hoje, 07:30".
+ * (13/11/2026, revisão: sem pendência a linha não diz "nada pendente": o cartão logo embaixo já diz "Tudo em dia".)
+ */
+export function linhaDoResumo(mes: string, pendencias: number, atualizado: string): string {
+  const conta = pendencias === 0 ? [] : [pendencias === 1 ? '1 pendência' : pendencias + ' pendências'];
+  return [mes, ...conta, ...(atualizado ? ['atualizado ' + (/^\d/.test(atualizado) ? 'em ' : '') + atualizado] : [])].join(' · ');
+}
+
+/**
+ * O rótulo do total das próximas guias. (13/11/2026, revisão: a lista mostra só as primeiras; quando há mais, o rótulo
+ * diz quantas ficaram fora, para a soma não parecer errada.)
+ */
+export function rotuloDoTotal(quantas: number, mostradas: number): string {
+  if (quantas <= 1) return 'Total a pagar';
+  const fora = quantas - mostradas;
+  return 'Total das ' + quantas + ' guias' + (fora > 0 ? ' (mais ' + fora + ' em Ver todas)' : '');
+}
+
+export interface ProximaGuia { guia: ac.GuiaDoCliente; /** 'dd/mm' */ dia: string; /** 'seg' */ semana: string; /** 'amanhã', 'em 3 dias' */ faltam: string }
+
+const SEMANA_CURTA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+
+/**
+ * As próximas guias a pagar da Visão geral: só as "a vencer" (a vencida e a que vence hoje já estão no "Precisa de você";
+ * 13/11/2026: a lista repetia a agenda e fazia a página rolar), da mais próxima à mais distante, até `limite`; com quantas
+ * são e o total de todas.
+ */
+export function proximasGuias(guias: readonly ac.GuiaDoCliente[], hoje: Date, limite = 4): { itens: ProximaGuia[]; quantas: number; total: number } {
+  const dia0 = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()).getTime();
+  const todas = guiasDoMomento([...guias], hoje).filter(g => g.situacao === 'a vencer')
+    .map(g => ({ g, v: ac.dataDoVencimento(g.vencimento) }))
+    .filter((x): x is { g: ac.GuiaDoCliente; v: Date } => !!x.v)
+    .sort((a, b) => a.v.getTime() - b.v.getTime());
+  const itens = todas.slice(0, limite).map(({ g, v }) => {
+    const dias = Math.round((new Date(v.getFullYear(), v.getMonth(), v.getDate()).getTime() - dia0) / 86_400_000);
+    return { guia: g, dia: g.vencimento.slice(0, 5), semana: SEMANA_CURTA[v.getDay()], faltam: dias === 1 ? 'amanhã' : 'em ' + dias + ' dias' };
+  });
+  return { itens, quantas: todas.length, total: todas.reduce((s, x) => s + x.g.valor, 0) };
+}
+
 // ---------- os próximos vencimentos da Visão geral (12/11/2026, o painel do mês: o mesmo extrato das Guias) ----------
 
 export interface ItemDoProximo { chave: string; tipo: 'guia' | 'entrega'; tom: 'vencida' | 'hoje' | 'aberta'; nome: string; situacao: string; valor: number | null; guia?: string }

@@ -3,7 +3,7 @@
 // desenham: os dados vêm de useAdministrativo.ts.
 import { Icone, LogoBanco, LogoExcel, LogoGmail, SeletorMes, useRetorno } from '@nads/ui';
 import { WhatsAppContorno } from '../partes/WhatsAppContorno';
-import { useRef } from 'react';
+import { useRef, type ReactNode } from 'react';
 import { MarcaDoEscritorio } from '../partes/MarcaDoEscritorio';
 import { Avatar } from '../partes/Avatar';
 import { Vazio } from '../partes/Vazio';
@@ -122,12 +122,17 @@ function Ranking({ itens, fim }: { itens: { chave: string; nome: string; detalhe
 export function Empresa(props: DaCasca) {
   const vm = useEmpresa(props);
   if (!vm.tem) return <Vazio icone="predio" titulo="Os dados da empresa ainda não chegaram" texto="Quando o escritório completar o cadastro, eles aparecem aqui." />;
-  // um valor com o copiar ao lado (aparece ao passar o mouse; no toque, sempre)
-  const comCopiar = (valor: string, rotulo: string) => (
-    <span className="cli-fi-valor">
-      <span>{valor}</span>
-      <button type="button" className="cli-fi-copiar" title={'Copiar ' + rotulo.toLowerCase()} aria-label={'Copiar ' + rotulo.toLowerCase()} onClick={() => vm.copiar(valor, rotulo)}><Icone nome="copiar" width={14} height={14} /></button>
-    </span>
+  // (13/11/2026: "não gostei" dos blocos; escolhida a "lista simples alinhada") uma coluna só: o rótulo à esquerda, o valor
+  // à direita, todos na mesma linha de partida, sem caixas; o copiar logo depois do valor (ao passar o mouse; no toque, sempre)
+  const linha = (rotulo: string, valor: string, extra?: ReactNode, copiavel = true) => (
+    <div className="cli-fl-linha">
+      <dt>{rotulo}</dt>
+      <dd>
+        <span className="cli-fl-valor">{valor}</span>
+        {copiavel && <button type="button" className="cli-fi-copiar" title={'Copiar ' + rotulo.toLowerCase()} aria-label={'Copiar ' + rotulo.toLowerCase()} onClick={() => vm.copiar(valor, rotulo)}><Icone nome="copiar" width={14} height={14} /></button>}
+        {extra}
+      </dd>
+    </div>
   );
   return (
     <>
@@ -135,55 +140,40 @@ export function Empresa(props: DaCasca) {
         <div><h1 className="page-title">Dados cadastrais</h1></div>
         <div className="cli-acoes"><button type="button" className="btn" onClick={vm.copiarTudo}><Icone nome="copiar" width={16} height={16} />Copiar todos os dados</button></div>
       </div>
-      {/* a ficha da empresa (13/11/2026: "tá com muita cara de IA"): o nome no alto e os dados em linhas, rótulo e valor, por seção */}
-      <section className="card cli-fi">
+      <section className="card cli-fi cli-fl">
         <header className="cli-fi-topo">
           <span className="cli-fi-marca">{vm.logo ? <img src={vm.logo} alt={'Logo de ' + vm.razaoSocial} /> : vm.iniciais}</span>
           <div className="cli-fi-nome">
             <h2>{vm.razaoSocial}</h2>
-            <p>{[vm.nomeFantasia && 'Nome fantasia: ' + vm.nomeFantasia, vm.tempo && 'aberta ' + vm.tempo].filter(Boolean).join(' · ')}</p>
+            <p>{[vm.nomeFantasia && 'Nome fantasia: ' + vm.nomeFantasia, vm.abertura && 'aberta em ' + vm.abertura + (vm.tempo ? ' (' + vm.tempo + ')' : '')].filter(Boolean).join(' · ')}</p>
           </div>
+          {vm.regime && <span className={'cli-fi-regime ' + vm.seloDoRegime}>{vm.regime}</span>}
         </header>
 
-        <div className="cli-fi-secao">
-          <h3>Identificação</h3>
-          <dl>
-            <div><dt>CNPJ</dt><dd>{comCopiar(vm.cnpj, 'CNPJ')}</dd></div>
-            {vm.regime && <div><dt>Regime tributário</dt><dd><span className={vm.seloDoRegime}>{vm.regime}</span></dd></div>}
-            {vm.abertura && <div><dt>Abertura</dt><dd>{vm.abertura}{vm.tempo && <span className="cli-fi-fraco"> · {vm.tempo}</span>}</dd></div>}
-            {vm.inscricaoEstadual && <div><dt>Inscrição estadual</dt><dd>{comCopiar(vm.inscricaoEstadual, 'Inscrição estadual')}</dd></div>}
-            {vm.inscricaoMunicipal && <div><dt>Inscrição municipal</dt><dd>{comCopiar(vm.inscricaoMunicipal, 'Inscrição municipal')}</dd></div>}
-            {(vm.cnaeCodigo || vm.cnaeTexto) && <div className="largo"><dt>Atividade principal</dt><dd>{vm.cnaeCodigo && <code className="cli-fi-cnae">{vm.cnaeCodigo}</code>}{vm.cnaeTexto}</dd></div>}
-          </dl>
-        </div>
-
-        {vm.endereco && (
-          <div className="cli-fi-secao">
-            <h3>Endereço</h3>
-            <dl>
-              <div className="largo"><dt>Sede</dt><dd>
-                {comCopiar(vm.endereco, 'Endereço')}
-                <a className="cli-fi-mapa" href={vm.mapa} target="_blank" rel="noreferrer"><Icone nome="mapaPin" width={14} height={14} />Ver no mapa</a>
-              </dd></div>
-            </dl>
-          </div>
-        )}
-
-        {vm.socios.length > 0 && (
-          <div className="cli-fi-secao">
-            <h3>Quadro societário</h3>
-            <ul className="cli-fi-socios">
-              {vm.socios.map(s => (
-                <li key={s.nome}>
-                  <Avatar nome={s.nome} tamanho={32} />
-                  <span className="cli-fi-socio-nome">{s.nome}</span>
-                  <span className="cli-fi-socio-barra" aria-hidden="true"><span style={{ width: s.largura + '%' }} /></span>
-                  <span className="cli-fi-socio-pct">{s.participacao}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+        <dl className="cli-fl-lista">
+          {linha('CNPJ', vm.cnpj)}
+          {vm.inscricaoEstadual && linha('Inscrição estadual', vm.inscricaoEstadual)}
+          {vm.inscricaoMunicipal && linha('Inscrição municipal', vm.inscricaoMunicipal)}
+          {(vm.cnaeCodigo || vm.cnaeTexto) && (
+            <div className="cli-fl-linha">
+              <dt>Atividade principal</dt>
+              <dd>{vm.cnaeCodigo && <code className="cli-fi-cnae">{vm.cnaeCodigo}</code>}<span className="cli-fl-valor">{vm.cnaeTexto}</span></dd>
+            </div>
+          )}
+          {vm.endereco && linha('Endereço', vm.endereco, <a className="cli-fi-mapa" href={vm.mapa} target="_blank" rel="noreferrer"><Icone nome="mapaPin" width={14} height={14} />Ver no mapa</a>)}
+          {vm.socios.length > 0 && (
+            <div className="cli-fl-linha cli-fl-socios">
+              <dt>{vm.socios.length === 1 ? 'Sócio' : 'Sócios'}</dt>
+              <dd>
+                <ul>
+                  {vm.socios.map(s => (
+                    <li key={s.nome}><Avatar nome={s.nome} tamanho={24} /><span className="cli-fl-valor">{s.nome}</span><span className="cli-fl-pct">{s.participacao}</span></li>
+                  ))}
+                </ul>
+              </dd>
+            </div>
+          )}
+        </dl>
         <p className="cli-fi-pe">Algum dado mudou? <button type="button" className="cli-link-mini" onClick={() => props.irPara('chamados')}>Avise o escritório</button></p>
       </section>
     </>

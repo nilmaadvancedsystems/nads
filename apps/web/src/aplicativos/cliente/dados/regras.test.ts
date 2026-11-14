@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { areaCliente as ac } from '@nads/core';
 import type { DocumentoDoCliente } from './areaCliente';
-import { linkDoWhatsapp, mimeDoArquivo, nomeDaPessoa, partesDaSolicitacao, passoDaSolicitacao, whatsappDaSolicitacao, erroDaAdmissao, erroDaDemissao, erroDasFerias, filtrarDocumentos, juntarPedacosDoPdf, mesesDosDocumentos, notificacoes, resumoDoPessoal, situacaoDoCertificado, textoDaAdmissao, textoDoChamado, textoDosAnexos, painelDasGuias, perfisComEste, iniciaisDaEmpresa, MAIS_PERFIS, ultimaEmpresa, abasDoCelular, seloDoRegime, tempoDeEmpresa, dadosParaCopiar, tokenDoLink, diaRelativo, contaDasFerias, contaDaAdmissao, primeiraDataDasFerias, mesDasFerias, marcarNoCalendario, textoDosDias } from './regras';
+import { linkDoWhatsapp, mimeDoArquivo, nomeDaPessoa, partesDaSolicitacao, passoDaSolicitacao, whatsappDaSolicitacao, erroDaAdmissao, erroDaDemissao, erroDasFerias, filtrarDocumentos, juntarPedacosDoPdf, mesesDosDocumentos, notificacoes, resumoDoPessoal, situacaoDoCertificado, textoDaAdmissao, textoDoChamado, textoDosAnexos, painelDasGuias, perfisComEste, iniciaisDaEmpresa, MAIS_PERFIS, ultimaEmpresa, abasDoCelular, seloDoRegime, tempoDeEmpresa, dadosParaCopiar, tokenDoLink, diaRelativo, contaDasFerias, contaDaAdmissao, primeiraDataDasFerias, mesDasFerias, marcarNoCalendario, textoDosDias, resumoDasGuias, abaDoDia, vencimentoDaGuia, legendaDoCalendario } from './regras';
 
 const hoje = new Date(2026, 9, 16, 9, 0);
 
@@ -286,5 +286,58 @@ describe('marcar as férias no calendário, como hotel (13/11/2026)', () => {
     const dez = mesDasFerias('2026-12', { inicio: '14/12/2026', dias: '30 dias' }, agora, '18/12/2026');
     expect(dez.find(d => d.br === '18/12/2026')).toMatchObject({ fim: true, ferias: true });
     expect(dez.find(d => d.br === '19/12/2026')).toMatchObject({ volta: true, ferias: false });
+  });
+});
+describe('resumoDasGuias (a linha embaixo do título das Guias)', () => {
+  const base = { nomeDoMes: 'novembro', aPagar: { valor: 'R$ 2.633,89', guias: 3 }, vencidas: { valor: 'R$ 1.284,37', guias: 1 }, proxima: { data: '16/11', nome: 'FGTS', faltam: 'em 3 dias' }, pagas: 1 };
+  it('o total, as vencidas e o próximo vencimento', () => {
+    expect(resumoDasGuias(base)).toEqual([
+      { valor: 'R$ 2.633,89', depois: 'a pagar em novembro (3 guias)' },
+      { valor: '1 vencida', depois: '(R$ 1.284,37)', tom: 'perigo' },
+      { antes: 'próximo vencimento', valor: '16/11', depois: '(FGTS, em 3 dias)' },
+    ]);
+  });
+  it('sem vencida e com o vencimento hoje', () => {
+    const r = resumoDasGuias({ ...base, aPagar: { valor: 'R$ 10,00', guias: 1 }, vencidas: { valor: 'R$ 0,00', guias: 0 }, proxima: { data: '13/11', nome: 'DAS', faltam: '' } });
+    expect(r).toEqual([{ valor: 'R$ 10,00', depois: 'a pagar em novembro (1 guia)' }, { antes: 'próximo vencimento', valor: '13/11', depois: '(DAS, hoje)' }]);
+  });
+  it('só vencidas: sem próximo vencimento', () => {
+    const r = resumoDasGuias({ ...base, aPagar: { valor: 'R$ 5,00', guias: 2 }, vencidas: { valor: 'R$ 5,00', guias: 2 }, proxima: null });
+    expect(r.map(t => t.valor)).toEqual(['R$ 5,00', '2 vencidas']);
+  });
+  it('nada a pagar, com e sem pagas', () => {
+    const nada = { ...base, aPagar: { valor: 'R$ 0,00', guias: 0 }, vencidas: { valor: 'R$ 0,00', guias: 0 }, proxima: null };
+    expect(resumoDasGuias(nada)).toEqual([{ valor: 'Nada a pagar', depois: 'em novembro' }, { valor: '1 guia paga', depois: 'no mês' }]);
+    expect(resumoDasGuias({ ...nada, pagas: 0 })).toEqual([{ valor: 'Nada a pagar', depois: 'em novembro' }]);
+  });
+});
+
+describe('abaDoDia (o clique num dia da agenda das Guias)', () => {
+  it('a pagar primeiro, depois as pagas; só entrega fica onde está', () => {
+    expect(abaDoDia(8, [8, 16], [7], 'pagas', 'apagar', 'pagas')).toBe('apagar');
+    expect(abaDoDia(7, [8, 16], [7], 'apagar', 'apagar', 'pagas')).toBe('pagas');
+    expect(abaDoDia(20, [8, 16], [7], 'pagas', 'apagar', 'pagas')).toBe('pagas');
+  });
+});
+
+describe('vencimentoDaGuia (a linha menor de cada guia a pagar)', () => {
+  it('a palavra em cor só quando pede atenção; o resto numa frase', () => {
+    expect(vencimentoDaGuia('vencida', '08/11/2026', -5)).toEqual({ palavra: 'Vencida', texto: 'em 08/11, há 5 dias' });
+    expect(vencimentoDaGuia('vencida', '12/11/2026', -1)).toEqual({ palavra: 'Vencida', texto: 'em 12/11, há 1 dia' });
+    expect(vencimentoDaGuia('vence hoje', '13/11/2026', 0)).toEqual({ palavra: 'Vence hoje', texto: '' });
+    expect(vencimentoDaGuia('a vencer', '14/11/2026', 1)).toEqual({ palavra: '', texto: 'Vence amanhã, 14/11' });
+    expect(vencimentoDaGuia('a vencer', '16/11/2026', 3)).toEqual({ palavra: '', texto: 'Vence em 16/11, daqui a 3 dias' });
+  });
+  it('sem data legível, sem frase pela metade', () => {
+    expect(vencimentoDaGuia('a vencer', '', null)).toEqual({ palavra: '', texto: 'A pagar' });
+    expect(vencimentoDaGuia('vencida', '', null)).toEqual({ palavra: 'Vencida', texto: '' });
+  });
+});
+
+describe('legendaDoCalendario (só as cores que aparecem no mês)', () => {
+  it('na ordem fixa, sem repetir', () => {
+    const r = legendaDoCalendario([{ tipo: 'entrega', tom: 'feita' }, { tipo: 'guia', tom: 'vencida' }, { tipo: 'entrega', tom: 'aberta' }, { tipo: 'guia', tom: 'hoje' }]);
+    expect(r).toEqual([{ classe: 'guia-hoje', rotulo: 'vence hoje' }, { classe: 'guia-vencida', rotulo: 'vencida' }, { classe: 'entrega-aberta', rotulo: 'do escritório' }]);
+    expect(legendaDoCalendario([{ tipo: 'paga', tom: 'feita' }, { tipo: 'guia', tom: 'aberta' }]).map(x => x.rotulo)).toEqual(['a pagar', 'paga']);
   });
 });

@@ -7,13 +7,16 @@ import { Icone, type NomeIcone } from '@nads/ui';
 import { useId } from 'react';
 import type { areaCliente as ac } from '@nads/core';
 import { AreaDeSoltar } from '../partes/AreaDeSoltar';
+import { Avatar } from '../partes/Avatar';
+import { WhatsAppContorno } from '../partes/WhatsAppContorno';
 import { MarcaDoEscritorio } from '../partes/MarcaDoEscritorio';
 import { Vazio } from '../partes/Vazio';
 import { useChamados } from './useChamados';
 import type { DaCasca } from './useAreaCliente';
 
 const SELO: Record<string, string> = { respondido: 'badge badge-ok', concluido: 'badge badge-neutral', aberto: 'badge badge-warn', 'em andamento': 'badge badge-warn' };
-const ICONE_DO_ASSUNTO: Record<ac.TipoDeChamado, NomeIcone> = { admissao: 'usuario', ferias: 'calendar', demissao: 'usuario', duvida: 'ajuda', documento: 'arquivo', outro: 'mensagem' };
+const VAZIO_DO_FILTRO: Record<string, string> = { todas: 'Nenhuma solicitação.', abertas: 'Nada em andamento no escritório.', respondidas: 'Nenhuma resposta esperando você.', concluidas: 'Nenhuma solicitação concluída.' };
+const ICONE_DO_ASSUNTO: Record<ac.TipoDeChamado, NomeIcone> = { admissao: 'usuario', ferias: 'calendar', demissao: 'logOut', duvida: 'ajuda', documento: 'arquivo', outro: 'mensagem' };
 
 export function Chamados(props: DaCasca) {
   const vm = useChamados(props);
@@ -24,44 +27,47 @@ export function Chamados(props: DaCasca) {
       <div className="cli-titulo">
         <div>
           <h1 className="page-title">Solicitações</h1>
+          {vm.resumo && <p className="cli-subtitulo">{vm.resumo}</p>}
         </div>
         <div className="cli-acoes">
           <button type="button" className="btn btn-primary" data-tutorial="nova-solicitacao" onClick={vm.nova}><Icone nome="plus" width={16} height={16} />Nova solicitação</button>
         </div>
       </div>
 
-      {/* os filtros em cartões no alto, como as pastas da Central (13/11/2026) */}
-      <nav className="cli-pastas-cartoes cli-sol-cartoes" aria-label="Filtrar as solicitações">
-        {vm.filtros.map(f => (
-          <button key={f.id} type="button" className={'cli-pasta-cartao t-' + f.tom + (f.ativo ? ' ativa' : '')} aria-pressed={f.ativo} onClick={() => vm.escolherFiltro(f.id)}>
-            <span className="cli-pasta-cartao-ico" aria-hidden="true"><Icone nome={f.icone} width={17} height={17} /></span>
-            <span className="cli-pasta-cartao-txt"><b>{f.n}</b><span>{f.rotulo}</span></span>
-          </button>
-        ))}
-      </nav>
-
-      <div className={'cli-sol' + (vm.painelNoCelular ? ' painel-aberto' : '')}>
-        {/* a lista */}
-        <section className="card cli-sol-lista">
+      {/* (13/11/2026: "essa tem que ficar impecável") os filtros viraram abas dentro da lista; cada item com o ponto da
+          situação, o título, o assunto e a prévia de quem falou por último; a respondida (que espera você) em destaque */}
+      <div className={'cli-sol cli-sc' + (vm.painelNoCelular ? ' painel-aberto' : '')}>
+        <section className="card cli-sol-lista cli-sc-lista">
+          <div className="cli-sc-filtros" role="tablist" aria-label="Filtrar as solicitações">
+            {vm.filtros.map(f => (
+              <button key={f.id} type="button" role="tab" aria-selected={f.ativo} className={'cli-sc-filtro' + (f.ativo ? ' ativo' : '')} onClick={() => vm.escolherFiltro(f.id)}>
+                {f.rotulo}<span className={'cli-sc-conta' + (f.id === 'respondidas' && f.n ? ' alerta' : '') + (f.n ? '' : ' zero')}>{f.n}</span>
+              </button>
+            ))}
+          </div>
           {vm.lista.length ? (
-            <ul>
+            <ul className="cli-sc-itens">
               {vm.lista.map(c => (
                 <li key={c.id}>
-                  <button type="button" className={'cli-sol-item s-' + c.situacao.replace(' ', '-') + (c.escolhida ? ' escolhida' : '')} aria-current={c.escolhida ? 'true' : undefined} onClick={() => vm.abrir(c.id)}>
-                    <span className="cli-sol-item-topo"><b>{c.titulo}</b><span className="cli-sol-data">{c.atualizada}</span></span>
-                    <span className="cli-sol-item-meio"><span className={SELO[c.situacao]}>{c.rotulo}</span><span className="hint">{c.assunto}</span></span>
-                    <span className={'cli-sol-previa' + (c.previaDoEscritorio ? ' do-escritorio' : '')}>{c.previaDoEscritorio && <b>{c.quemRespondeu}: </b>}{c.previa}</span>
+                  <button type="button" className={'cli-sc-item s-' + c.situacao.replace(' ', '-') + (c.escolhida ? ' escolhida' : '')} aria-current={c.escolhida ? 'true' : undefined} onClick={() => vm.abrir(c.id)}>
+                    <span className="cli-sc-ponto" aria-hidden="true" />
+                    <span className="cli-sc-item-txt">
+                      <span className="cli-sc-item-topo"><b>{c.titulo}</b><span className="cli-sc-data">{c.atualizada}</span></span>
+                      <span className="cli-sc-item-meio"><span className="cli-sc-situacao">{c.rotulo}</span><span aria-hidden="true">·</span><span>{c.assunto}</span></span>
+                      <span className="cli-sc-previa">{c.previaDoEscritorio && <b>{c.quemRespondeu}: </b>}{c.previa}</span>
+                    </span>
                   </button>
                 </li>
               ))}
             </ul>
-          ) : vm.total ? <p className="hint cli-sol-vazio">Nenhuma solicitação neste filtro.</p>
-            : <Vazio icone="mensagem" titulo="Nenhuma solicitação ainda" texto="Use a Nova solicitação para pedir o que precisar." />}
+          ) : vm.total ? (
+            <div className="cli-sc-vazio"><Icone nome="check" width={18} height={18} /><span>{VAZIO_DO_FILTRO[vm.filtros.find(f => f.ativo)?.id ?? 'todas']}</span><button type="button" className="cli-link-mini" onClick={() => vm.escolherFiltro('todas')}>Ver todas</button></div>
+          ) : <Vazio icone="mensagem" titulo="Nenhuma solicitação ainda" texto="Use a Nova solicitação para pedir o que precisar ao escritório." />}
         </section>
 
         {/* o painel */}
         <section className="card cli-sol-painel" aria-live="polite">
-          <button type="button" className="btn btn-ghost btn-sm cli-sol-voltar" onClick={vm.voltar}><Icone nome="chevronLeft" width={16} height={16} />Voltar à lista</button>
+          <button type="button" className="cli-sc-voltar cli-sol-voltar" onClick={vm.voltar}><Icone nome="chevronLeft" width={16} height={16} />Solicitações</button>
 
           {vm.modo === 'nova' ? (
             !vm.tipo ? (
@@ -145,7 +151,7 @@ export function Chamados(props: DaCasca) {
               </ol>
               <ol className="cli-sol-tempo">
                 <li className="cli-sol-evento voce">
-                  <span className="cli-sol-quem" aria-hidden="true"><Icone nome="usuario" width={15} height={15} /></span>
+                  <span className="cli-sol-quem cli-sc-voce" aria-hidden="true">{vm.empresa.logo ? <img src={vm.empresa.logo} alt="" /> : <Avatar nome={vm.empresa.nome} tamanho={30} />}</span>
                   <div className="cli-sol-fala">
                     <p className="cli-sol-fala-topo"><b>Você</b><span className="hint">{s.abertaEm}</span></p>
                     <p className="cli-sol-texto">{s.pedido}</p>
@@ -175,7 +181,7 @@ export function Chamados(props: DaCasca) {
                       {s.erroDoAnexo && <p className="cli-erro" role="alert">{s.erroDoAnexo}</p>}
                     </div>
                   )}
-                  {s.whatsapp && <a className="btn" href={s.whatsapp} target="_blank" rel="noreferrer"><Icone nome="celular" width={16} height={16} />Falar no WhatsApp</a>}
+                  {s.whatsapp && <a className="btn cli-sc-whats" href={s.whatsapp} target="_blank" rel="noreferrer"><span className="cli-st-logo" aria-hidden="true"><WhatsAppContorno /></span>Falar no WhatsApp</a>}
                 </div>
               )}
             </>
