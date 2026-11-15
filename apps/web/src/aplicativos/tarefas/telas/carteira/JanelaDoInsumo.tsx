@@ -26,8 +26,12 @@ export function JanelaDoInsumo({ insumo, fechar }: { insumo: carteira.Insumo | n
         </header>
         <div className="registro-corpo">
           <div className="registro-props">
-            <Propriedade icone="list" rotulo="Tipo">
-              <Segmentado valor={vm.tipo} opcoes={carteira.TIPOS_DE_INSUMO.map(t => ({ valor: t.valor, rotulo: t.rotulo }))} onMudar={vm.setTipo} />
+            <Propriedade icone="list" rotulo="Insumo">
+              {/* os insumos da lista do Financeiro; com muitos, num menu (15/11/2026: "o usuário só registra o tipo e quantidade") */}
+              {vm.tipos.length <= 4
+                ? <Segmentado valor={vm.tipo} opcoes={vm.tipos} onMudar={vm.setTipo} />
+                : <MenuSuspenso rotulo={vm.tipos.find(t => t.valor === vm.tipo)?.rotulo || 'Escolher o insumo'} className="btn btn-outline" flutuante largura={280} titulo="O insumo"
+                    itens={vm.tipos.map(t => ({ rotulo: t.rotulo, marcado: t.valor === vm.tipo, onClick: () => vm.setTipo(t.valor) }))} />}
             </Propriedade>
             <Propriedade icone="calendar" rotulo="Data"><CampoData valor={vm.data} onMudar={vm.setData} rotulo="Data" /></Propriedade>
             <Propriedade icone="predio" rotulo="Cliente">

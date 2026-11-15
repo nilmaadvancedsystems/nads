@@ -7,7 +7,7 @@ import { useMemo, useState } from 'react';
 import { podeVerOFinanceiro } from '../../casca/navegacao';
 import { useOperador } from '../../casca/operador';
 import { useInsumos as useRepoDosInsumos, useTodosOsCadastros } from '../../dados/repo';
-import { dataBr, hoje, isoDaData } from '../financeiro/formatosDaNota';
+import { dataBr, hoje, isoDaData, valorDigitado, valorNoCampo } from '../financeiro/formatosDaNota';
 import { mensagem, useMes } from './comum';
 
 export function useInsumos() {
@@ -19,12 +19,17 @@ export function useInsumos() {
   // banco: podeNoFinanceiroNads), com a coluna da pessoa
   const veTodos = podeVerOFinanceiro(operador);
   const [aberto, setAberto] = useState<carteira.Insumo | null | 'novo'>(null);
+  // a lista dos insumos e os preços do Financeiro (15/11/2026): quem é do Financeiro vê os valores e muda a lista
+  const [configurando, setConfigurando] = useState(false);
+  const tipos = repo.tipos();
   const fonte = veTodos ? repo.insumosDoMes(m.mes) : repo.meusInsumos();
   const lista = fonte.lista.filter(x => x.competencia === m.mes);
   return {
-    m, exemplos: repo.exemplos, veTodos,
+    m, exemplos: repo.exemplos, veTodos, configurando, setConfigurando,
     carregada: fonte.carregada, erro: fonte.erro, lista,
-    totais: carteira.totaisDosInsumos(lista),
+    totais: carteira.totaisDosInsumos(lista, tipos.lista),
+    nomeDe: (x: carteira.Insumo) => carteira.rotuloDoInsumo(x, tipos.lista),
+    valorDe: (x: carteira.Insumo) => carteira.valorDoInsumo(x),
     /** só os da própria pessoa abrem para mudar */
     podeAbrir: (x: carteira.Insumo) => x.uid === repo.meuUid(),
     aberto, setAberto,
@@ -49,10 +54,13 @@ function buscar<T extends { codigo: number | null; nome: string }>(lista: readon
 
 export function useJanelaDoInsumo(insumo: carteira.Insumo | null, fechar: () => void) {
   const repo = useRepoDosInsumos();
+  const tipos = repo.tipos().lista;
   const { toast, modal } = useRetorno();
   const cadastros = useTodosOsCadastros();
   const empresas = useMemo(() => [...cadastros.porId.values()].sort((a, b) => a.nome.localeCompare(b.nome)), [cadastros]);
-  const [tipo, setTipo] = useState<carteira.TipoDeInsumo>(insumo && carteira.ehTipoRegistravel(insumo.tipo) ? insumo.tipo : 'impressao');
+  // o insumo: um da lista do Financeiro (o do registro, se ainda está nela; senão o primeiro)
+  const [escolhido, setTipo] = useState<carteira.TipoDeInsumo>(insumo?.tipo ?? '');
+  const tipo = tipos.some(t => t.id === escolhido) ? escolhido : tipos[0]?.id ?? '';
   const [data, setData] = useState(dataBr(insumo?.data ?? hoje()));
   const [cliente, setCliente] = useState<{ nome: string; codigo: number | null } | null>(insumo ? { nome: insumo.cliente, codigo: insumo.codigo } : null);
   const [busca, setBusca] = useState('');
@@ -63,6 +71,7 @@ export function useJanelaDoInsumo(insumo: carteira.Insumo | null, fechar: () => 
   const [erros, setErros] = useState<string[]>([]);
   const [salvando, setSalvando] = useState(false);
   return {
+    tipos: tipos.map(t => ({ valor: t.id, rotulo: t.nome })),
     tipo, setTipo, data, setData, quantidade, setQuantidade, erros, salvando, busca, setBusca, avulso, setAvulso, nomeAvulso, setNomeAvulso,
     /** o cliente escolhido, como aparece no botão ('' = nenhum) */
     cliente: cliente ? (cliente.codigo != null ? cliente.codigo + ' · ' : '') + cliente.nome : '',
@@ -71,7 +80,7 @@ export function useJanelaDoInsumo(insumo: carteira.Insumo | null, fechar: () => 
     async salvar() {
       const doCliente = avulso ? { nome: nomeAvulso.trim().toUpperCase(), codigo: null } : { nome: cliente?.nome ?? '', codigo: cliente?.codigo ?? null };
       const x: carteira.InsumoParaSalvar = { data: isoDaData(data), tipo, quantidade: carteira.quantidadeDigitada(quantidade), cliente: doCliente.nome, codigo: doCliente.codigo };
-      const problemas = carteira.conferirInsumo(x);
+      const problemas = carteira.conferirInsumo(x, tipos);
       setErros(problemas);
       if (problemas.length) return;
       setSalvando(true);
@@ -81,10 +90,47 @@ export function useJanelaDoInsumo(insumo: carteira.Insumo | null, fechar: () => 
     },
     async apagar() {
       if (!insumo) return;
-      const ok = await modal<boolean>({ icone: 'alert', titulo: 'Apagar o registro?', texto: insumo.quantidade + ' · ' + carteira.rotuloDoInsumo(insumo.tipo) + ' · ' + insumo.cliente,
+      const ok = await modal<boolean>({ icone: 'alert', titulo: 'Apagar o registro?', texto: insumo.quantidade + ' · ' + carteira.rotuloDoInsumo(insumo, tipos) + ' · ' + insumo.cliente,
         botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Apagar', valor: true, variante: 'btn-danger' }] });
       if (!ok) return;
       try { await repo.apagarInsumo(insumo.id); toast('Registro apagado.'); fechar(); } catch (e) { toast(mensagem(e, 'Não consegui apagar.')); }
+    },
+  };
+}
+
+/**
+ * A lista dos insumos do Financeiro (15/11/2026: "o preço do insumo é o financeiro que decide, e quais insumos são"): o nome e o
+ * preço de cada um; acrescentar, mudar e tirar. Mudar o preço não mexe no que já foi registrado (cada registro guarda o do dia).
+ */
+export function useJanelaDosInsumos(fechar: () => void) {
+  const repo = useRepoDosInsumos();
+  const { toast } = useRetorno();
+  const salvos = repo.tipos();
+  const [lista, setLista] = useState<{ id: string; nome: string; preco: string }[] | null>(null);
+  const [novo, setNovo] = useState('');
+  const [erros, setErros] = useState<string[]>([]);
+  const [salvando, setSalvando] = useState(false);
+  const atual = lista ?? salvos.lista.map(t => ({ id: t.id, nome: t.nome, preco: t.preco ? valorNoCampo(t.preco) : '' }));
+  const comoTipos = (): carteira.TipoConfigurado[] => atual.map(t => ({ id: t.id, nome: t.nome, preco: t.preco.trim() ? valorDigitado(t.preco) : 0 }));
+  return {
+    carregada: salvos.carregada, erro: salvos.erro, lista: atual, novo, setNovo, erros, salvando,
+    mudar: (id: string, campo: 'nome' | 'preco', v: string) => setLista(atual.map(t => (t.id === id ? { ...t, [campo]: v } : t))),
+    tirar: (id: string) => setLista(atual.filter(t => t.id !== id)),
+    acrescentar() {
+      const nome = novo.trim();
+      if (!nome) return;
+      setLista([...atual, { id: carteira.idDoInsumo(nome, atual.map(t => t.id)), nome, preco: '' }]);
+      setNovo('');
+    },
+    async salvar() {
+      const x = comoTipos();
+      const problemas = carteira.conferirTipos(x);
+      setErros(problemas);
+      if (problemas.length) return;
+      setSalvando(true);
+      try { await repo.salvarTipos(x); toast('Insumos e preços gravados.'); fechar(); }
+      catch (e) { setErros([mensagem(e, 'Não consegui gravar.')]); }
+      finally { setSalvando(false); }
     },
   };
 }
