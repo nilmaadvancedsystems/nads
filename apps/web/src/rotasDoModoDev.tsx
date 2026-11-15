@@ -27,11 +27,12 @@ export const CAMINHO_DO_MODULO_DEV = '/tarefas/desenvolvedor/sites';
 function FaixaDoModoDev() {
   const ir = useNavigate();
   return (
+    // no alto, com o Voltar à esquerda (Vitor, 13/11/2026: "Voltar sempre lado esquerdo superior, sempre! na aplicacao toda")
     <div className="faixa-modo-dev" role="status">
-      <span className="faixa-modo-dev-txt"><b>Modo desenvolvedor</b><small>Lê o banco; nada é gravado nem enviado.</small></span>
       <button type="button" className="btn" onClick={() => ir(CAMINHO_DO_MODULO_DEV)}>
         <Icone nome="chevronLeft" width={14} height={14} />Voltar ao nads
       </button>
+      <span className="faixa-modo-dev-txt"><b>Modo desenvolvedor</b><small>Lê o banco; nada é gravado nem enviado.</small></span>
     </div>
   );
 }
@@ -41,7 +42,7 @@ function NoModoDev({ exigir, children }: { exigir: boolean; children: ReactNode 
   // o pedido recusado pela trava (enviar, solicitar, comandar um robô): o aviso em cima, como na Tarefas
   useAvisoDeBloqueio();
   if (!dev) return exigir ? <Navigate to="/tarefas" replace /> : <>{children}</>;
-  return <>{children}<FaixaDoModoDev /></>;
+  return <><FaixaDoModoDev />{children}</>;
 }
 
 const cliente = <NaEspera inteira><AreaDoCliente /></NaEspera>;

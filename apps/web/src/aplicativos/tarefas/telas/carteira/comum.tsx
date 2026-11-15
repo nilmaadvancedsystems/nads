@@ -1,6 +1,7 @@
 // Peças da Carteira (12/11/2026): o seletor do mês, abrir e baixar um arquivo da Carteira e o tipo de cada arquivo.
 import { carteira } from '@nads/core';
 import { baixarBytes, MenuSuspenso } from '@nads/ui';
+import { useDadosDeTesteDaCarteira } from './useCarteiraDaPessoa';
 import { useState } from 'react';
 
 export const tipoDoArquivo = (nome: string) => (/\.pdf$/i.test(nome) ? 'application/pdf' : /\.png$/i.test(nome) ? 'image/png' : /\.jpe?g$/i.test(nome) ? 'image/jpeg' : 'application/octet-stream');
@@ -45,4 +46,23 @@ export async function abrirBytes(buscar: () => Promise<Uint8Array>, nome: string
 
 export async function baixarDaCarteira(buscar: () => Promise<Uint8Array>, nome: string, falhou: (m: string) => void) {
   try { baixarBytes(await buscar(), nome, tipoDoArquivo(nome)); } catch (e) { falhou(mensagem(e, 'Não consegui baixar o arquivo.')); }
+}
+
+/**
+ * O ⚡ do modo desenvolvedor em todas as páginas da Carteira e no lado dela no Financeiro (13/11/2026: "coloca dados testes para a
+ * carteira, por favor, todos os tipos"): marcar põe os exemplos de tudo (comissões, holerites, pagamentos e insumos); nada vai
+ * para o banco.
+ */
+export function DadosDeTesteDaCarteira() {
+  const { dev, t } = useDadosDeTesteDaCarteira();
+  if (!dev) return null;
+  return (
+    <MenuSuspenso rotulo="Dados de teste" icone="zap" className="btn btn-outline" direita largura={300} titulo="Modo desenvolvedor · nada vai para o banco"
+      itens={[
+        { rotulo: 'Tudo de exemplo (comissões, holerites e insumos)', icone: 'zap', marcado: t.comissoes && !t.propria, onClick: () => t.ligar(t.comissoes && !t.propria ? false : 'comissoes') },
+        { rotulo: 'Tudo, com a % própria (50%) nas comissões', icone: 'usuario', marcado: t.propria, onClick: () => t.ligar(t.propria ? false : 'propria') },
+        'separador',
+        { rotulo: 'Apagar os dados de teste', icone: 'x', desabilitado: !t.comissoes, onClick: () => t.ligar(false) },
+      ]} />
+  );
 }

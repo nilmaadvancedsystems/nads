@@ -74,6 +74,8 @@ export function criarCarteiraMemoria(quem: QuemNaCarteira, propria = false): Rep
     c('c3', eu().uid, eu().nome, antes, 'TRANSPORTES EXEMPLO', 410, 'paga'),
     c('c4', 'uid-clara', 'Clara', mes, 'OFICINA EXEMPLO', 280, 'aprovada'),
     c('c5', 'uid-felipe', 'Felipe', mes, 'FARMÁCIA EXEMPLO', 190, 'lancada'),
+    // a recusada também (13/11/2026: "coloca dados testes para a carteira, por favor, todos os tipos")
+    c('c6', eu().uid, eu().nome, mes, 'OFICINA EXEMPLO', 240, 'recusada'),
   ];
   let lancamentos: carteira.Lancamento[] = [
     { id: 'l1', tipo: 'entrada', data: mes + '-05', descricao: 'Salário', categoria: 'Salário', valor: 3200 },

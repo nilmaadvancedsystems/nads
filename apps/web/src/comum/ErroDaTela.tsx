@@ -51,11 +51,12 @@ export function ErroDaTela() {
   // recarregando sozinho (o pedaço que sumiu): só a bolinha, sem o "não abriu" (Vitor, 28/10/2026)
   if (recarregando) return <Recarregando />;
   return (
-    <main className="main" style={{ paddingTop: 48 }}>
+    <main className="main" style={{ paddingTop: 16 }}>
+      {/* o Voltar no canto superior esquerdo (Vitor, 13/11/2026: "Voltar sempre lado esquerdo superior, sempre! na aplicacao toda") */}
+      {!recarregando && <a className="btn btn-ghost" href="/" style={{ marginBottom: 16 }}>‹ Voltar ao início</a>}
       <Vazio icone="alert" titulo={recarregando ? 'Recarregando…' : 'Esta tela não abriu'}
         texto={falhouDeNovo ? texto + ' (quebrou de novo; o Tentar de novo agora recarrega a página)' : texto}
         onTentarDeNovo={recarregando ? undefined : tentarDeNovo}>
-        {!recarregando && <a className="btn btn-ghost" href="/">Voltar ao início</a>}
       </Vazio>
     </main>
   );

@@ -3181,12 +3181,12 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 }
 /* a faixa do modo desenvolvedor na Área do Cliente e na Central dos robôs abertas pelo nads (13/11/2026, rotasDoModoDev.tsx):
    no canto, por cima das telas deles, com o caminho de volta ao módulo Desenvolvedor */
-.faixa-modo-dev{position:fixed;right:16px;bottom:16px;z-index:9000;display:flex;align-items:center;gap:12px;max-width:calc(100vw - 32px);
-  padding:8px 8px 8px 14px;border-radius:12px;background:light-dark(#0550AE, #0D419D);color:#FFFFFF;box-shadow:0 8px 24px #0000003D;font-size:var(--fs-13);}
+.faixa-modo-dev{position:sticky;top:0;z-index:9000;display:flex;align-items:center;justify-content:flex-start;gap:12px;width:100%;
+  padding:6px 16px;background:light-dark(#0550AE, #0D419D);color:#FFFFFF;font-size:var(--fs-13);}
 .faixa-modo-dev-txt{display:flex;flex-direction:column;line-height:1.25;min-width:0;}
 .faixa-modo-dev-txt small{color:#FFFFFFCC;font-size:var(--fs-12);}
 .faixa-modo-dev .btn{flex:none;background:#FFFFFF;color:#0550AE;border-color:transparent;}
-@media (max-width:640px){.faixa-modo-dev{bottom:76px;}.faixa-modo-dev-txt small{display:none;}}
+@media (max-width:640px){.faixa-modo-dev-txt small{display:none;}}
 /* o módulo Desenvolvedor da Tarefas (13/11/2026): a Área do Cliente de uma empresa e a Central dos robôs */
 .outros-sites{display:flex;flex-direction:column;gap:16px;max-width:760px;}
 .outros-sites .card{margin:0;}
@@ -6838,10 +6838,9 @@ td.fs-fat-sem{color:var(--ink-faint);}
 .tdl-data dd .fraco{display:block;font-weight:400;font-size:var(--fs-12);}
 /* o prazo da tarefa (13/11/2026: "De a opcao 'Colocar prazo'... o sistema faz uma animacao, que aparece data e hora"): a chave e,
    ligada, a data (calendário), o Hoje e o Amanhã e a hora (lista) entrando com a curva da casa */
-.tdl-prazo{display:flex;flex-direction:column;align-items:flex-start;gap:8px;min-width:0;}
-.tdl-prazo-chave{display:inline-flex;align-items:center;gap:8px;}
-.tdl-prazo-chave .toggle-txt{display:none;}
-.tdl-prazo-rotulo{appearance:none;background:none;border:0;padding:0;font:inherit;color:var(--ink);cursor:pointer;}
+/* a chave, a data e a hora numa linha só (13/11/2026: "coloca tudo na mesma linha, se possivel"); quebra só sem espaço */
+.tdl-prazo{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:8px 10px;min-width:0;}
+.tdl-prazo-escolhas{gap:6px;}
 .tdl-prazo-escolhas{display:flex;align-items:center;gap:6px;flex-wrap:wrap;animation:prazoAbre .36s cubic-bezier(.23,1,.32,1) both;}
 .tdl-prazo-escolhas > *{animation:prazoPeca .42s cubic-bezier(.23,1,.32,1) both;}
 .tdl-prazo-escolhas > :nth-child(2){animation-delay:.04s;}
@@ -6849,14 +6848,18 @@ td.fs-fat-sem{color:var(--ink-faint);}
 @keyframes prazoPeca{from{opacity:0;transform:translateY(-6px) scale(.97);}to{opacity:1;transform:none;}}
 @media (prefers-reduced-motion: reduce){.tdl-prazo-escolhas,.tdl-prazo-escolhas > *{animation:none;}}
 /* a data e a hora nos campos do navegador (13/11/2026: "a data e a hora pode ser input normal") */
-.tdl-prazo-escolhas input[type=date]{width:160px;}
-.tdl-prazo-escolhas input[type=time]{width:110px;}
+.tdl-prazo-escolhas input[type=date]{width:136px;padding-left:8px !important;padding-right:6px !important;}
+.tdl-prazo-escolhas input[type=time]{width:92px;padding-left:8px;padding-right:6px;}
 /* a data com o mesmo desenho dos outros campos (o navegador desenhava o dele) */
 .tdl-prazo-escolhas input[type=date]{border:1px solid var(--border);background:var(--input-bg);color:var(--ink);border-radius:6px;padding:5px 12px;
   min-height:32px;font-size:var(--fs-14);line-height:20px;font-family:var(--font-body);box-shadow:var(--shadow-inset);color-scheme:light dark;}
 .tdl-prazo-escolhas input[type=date]:focus{outline:none;border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);}
 .tdl-prazo-escolhas.sem-animacao,.tdl-prazo-escolhas.sem-animacao > *{animation:none;}
+/* as caixinhas Delegar e Colocar prazo, ao lado do valor, sem o negrito do "Já estava fazendo" */
+.registro-props .tdl-ja-fazendo{font-weight:400;font-size:var(--fs-13);color:var(--ink-muted);white-space:nowrap;}
 /* o Voltar no canto superior esquerdo da janela, antes do título */
+.pedir-titulo .registro-voltar{margin-left:-8px;padding-left:4px;padding-right:8px;flex:none;}
+.executor-fim-voltar{margin:16px 0 0 16px;align-self:flex-start;}
 .registro-topo .registro-voltar{margin-left:-8px;padding-left:4px;padding-right:8px;flex:none;}
 /* os clientes em cápsula na janela da tarefa (13/11/2026: "Clientes, coloca em capsula") */
 .tdl-janela-nova .tdl-clientes{display:flex;flex-wrap:wrap;align-items:center;gap:6px;}
@@ -6883,6 +6886,16 @@ p.tdl-cobranca{flex-direction:row;align-items:center;}
 .ini-sino{display:inline-flex;align-items:center;gap:4px;font-size:var(--fs-12);color:var(--warn);white-space:nowrap;}
 .ini-sino svg{width:14px;height:14px;flex:none;}
 .ini-pessoa-com-sino{display:inline-flex;align-items:center;gap:8px;min-width:0;}
+/* o campo de reais (CampoReais, 13/11/2026): o R$ fixo dentro da caixa, à esquerda; o número alinhado à direita */
+.campo-reais{display:flex;align-items:center;width:100%;max-width:240px;border:1px solid var(--border);background:var(--input-bg);border-radius:6px;
+  box-shadow:var(--shadow-inset);min-height:32px;padding-left:10px;}
+.campo-reais:focus-within{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);}
+.campo-reais-cifrao{color:var(--ink-muted);font-size:var(--fs-14);flex:none;}
+.campo-reais input[type="text"]{border:0 !important;background:transparent !important;box-shadow:none !important;min-height:30px;text-align:right;font-variant-numeric:tabular-nums;}
+.campo-reais.desabilitado{opacity:.6;}
+/* o cliente do insumo: o menu do Cadastro (ou o nome do avulso) e a caixinha Avulso embaixo, com respiro (13/11/2026) */
+.insumo-cliente{display:flex;flex-direction:column;align-items:flex-start;gap:8px;width:100%;}
+.insumo-cliente > input{width:100%;}
 /* o botão de cobrar, leve (Vitor, 13/11/2026: "Melhora isso"): só o sino, sem caixa, apagado; acende em amarelo ao passar o mouse */
 .icon-btn.ini-sino-cobrar{width:24px;height:24px;border-color:transparent;background:transparent;color:var(--ink-faint);flex:none;}
 .icon-btn.ini-sino-cobrar svg{width:15px;height:15px;}
@@ -6892,7 +6905,7 @@ tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{co
    (só a opacidade); pausada, fica parado. Pisca em qualquer nível de animação, porque diz a situação (Vitor, 13/11/2026: "em
    progresso o icone fica piscando, se ela pausar, para de piscar"); com "menos movimento" no sistema, fica parado */
 .ini-cronometro{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;}
-.ini-cronometro svg{width:14px;height:14px;flex:none;}
+.ini-cronometro svg{width:14px;height:14px;flex:none;color:var(--ink-muted);}
 @keyframes cronometroPisca{0%,100%{opacity:1;}50%{opacity:.25;}}
 .ini-cronometro.andando svg{color:var(--accent);animation:cronometroPisca 1.6s ease-in-out infinite !important;}
 @media (prefers-reduced-motion: reduce){.ini-cronometro.andando svg{animation:none !important;}}
@@ -6974,6 +6987,11 @@ tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{co
 .ini-qual-cliente{gap:12px;}
 .ini-qual-menu{align-self:flex-start;min-width:280px;justify-content:space-between;}
 .ini-avulso{display:flex;align-items:center;gap:8px;}
+/* o cliente dos documentos: o menu e o Avulso um embaixo do outro, com respiro (13/11/2026: "Escolher cliente e cliente avulso, ta grudado") */
+.registro-props .ini-qual-cliente{display:flex;flex-direction:column;align-items:flex-start;gap:10px;}
+/* Enviar e Requerer: os dois do mesmo tamanho, na largura toda (13/11/2026: "resolve esses dois botoes, ta feio") */
+.ini-qual-cliente > .steps{display:grid;grid-template-columns:1fr 1fr;width:100%;}
+.ini-qual-cliente > .steps .step-pill{justify-content:center;text-align:center;}
 .ini-avulso input{flex:1;}
 .ini-sem-cliente{align-self:flex-start;}
 .ini-cliente-escolhido{display:flex;align-items:center;gap:8px;font-size:var(--fs-13);color:var(--ink-muted);}

@@ -149,6 +149,8 @@ export const APLICACOES: readonly Aplicacao[] = [
     // remova do carteira"): as comissões do mês de todos (aprovar, recusar, pagar) e o envio dos holerites e comprovantes
     { id: 'comissoes-equipe', rotulo: 'Comissões da equipe', icone: 'checklist', titulo: 'Comissões da equipe' },
     { id: 'holerites-equipe', rotulo: 'Enviar holerites', icone: 'upload', titulo: 'Holerites e comprovantes da equipe' },
+    // os Insumos de todos (Vitor, 13/11/2026: "é um só, simples, que aparece no financeiro"): a mesma lista da Carteira
+    { id: 'insumos-equipe', rotulo: 'Insumos', icone: 'impressora', titulo: 'Insumos da equipe' },
     { id: 'configuracoes', rotulo: 'Configurações', icone: 'settings', titulo: 'Configurações do emissor' },
   ] },
   // a Carteira (12/11/2026): as comissões de cada pessoa e os holerites e pagamentos (o lado do Financeiro foi para o

@@ -2,7 +2,7 @@
 // recusada com o motivo). Em cima, os números do mês; clicar numa linha abre a comissão (muda enquanto está lançada).
 import { carteira, formatos } from '@nads/core';
 import { Icone, useCarregando, Vazio } from '@nads/ui';
-import { SeletorDoMes, SeloDaComissao } from './comum';
+import { DadosDeTesteDaCarteira, SeletorDoMes, SeloDaComissao } from './comum';
 import { JanelaDaComissao } from './JanelaDaComissao';
 import { useMinhasComissoes } from './useCarteiraDaPessoa';
 
@@ -24,6 +24,7 @@ export function MinhasComissoes() {
         <SeletorDoMes {...m} />
         <span className="tarefas-barra-espaco" />
         {vm.exemplos && <span className="badge badge-neutral">Exemplos</span>}
+        <DadosDeTesteDaCarteira />
         <button type="button" className="btn btn-primary" onClick={() => setAberta('nova')}><Icone nome="plus" />Registrar comissão</button>
       </div>
       {todas.erro && <p className="registro-dica registro-dica-erro"><Icone nome="alert" />{todas.erro}</p>}

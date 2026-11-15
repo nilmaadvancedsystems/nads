@@ -5,7 +5,7 @@
 import { carteira, formatos } from '@nads/core';
 import { Icone, useCarregando, Vazio, type NomeIcone } from '@nads/ui';
 import { dataBr } from '../financeiro/formatosDaNota';
-import { mesCurto, SeletorDoMes, tamanhoBr } from './comum';
+import { DadosDeTesteDaCarteira, mesCurto, SeletorDoMes, tamanhoBr } from './comum';
 
 function Numero({ rotulo, valor, dica, icone, tom }: { rotulo: string; valor: string; dica: string; icone: NomeIcone; tom: 'neutro' | 'aviso' | 'ok' }) {
   return (
@@ -31,6 +31,7 @@ export function HoleritesEPagamentos() {
         <SeletorDoMes {...m} />
         <span className="tarefas-barra-espaco" />
         {vm.exemplos && <span className="badge badge-neutral">Exemplos</span>}
+        <DadosDeTesteDaCarteira />
       </div>
       {erro && <p className="registro-dica registro-dica-erro"><Icone nome="alert" />{erro}</p>}
 

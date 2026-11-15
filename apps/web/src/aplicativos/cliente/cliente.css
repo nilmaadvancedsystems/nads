@@ -1476,6 +1476,10 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
 .cli-tut-balao h2{margin:10px 0 6px;font-size:17px;font-weight:700;letter-spacing:-.01em;line-height:1.3;}
 .cli-tut-balao p{margin:0;font-size:14px;line-height:1.55;color:var(--ink-muted);}
 .cli-tut-topo{display:flex;align-items:center;gap:10px;}
+/* o passo anterior no canto superior esquerdo do balão (13/11/2026: "Voltar sempre lado esquerdo superior") */
+.cli-tut-voltar{display:inline-flex;align-items:center;gap:4px;align-self:flex-start;margin:0 0 4px -6px;padding:4px 6px;border:0;border-radius:8px;background:none;color:var(--ink-muted);font:inherit;font-size:13px;cursor:pointer;}
+.cli-tut-voltar:hover{background:var(--hover-bg);color:var(--ink);}
+.cli-tut-topo .cli-tut-voltar{margin:0 0 0 -6px;}
 .cli-tut-ico{display:flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:9px;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent-ink);}
 .cli-tut-conta{font-size:12px;font-weight:600;letter-spacing:.04em;color:var(--ink-muted);}
 .cli-tut-x{display:flex;align-items:center;justify-content:center;width:28px;height:28px;margin-left:auto;border:0;border-radius:8px;background:none;color:var(--ink-muted);cursor:pointer;}

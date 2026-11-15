@@ -6,7 +6,7 @@
 // Prazo, prioridade, cliuentes, fica com e remova situação"; "Remove comentários e remove históricos!"). Clicar fora não fecha;
 // o Esc e o ✕ perguntam antes de largar o que mudou.
 import { tarefas } from '@nads/core';
-import { Alerta, BotaoAcao, BotaoFechar, BotaoIcone, CampoData, Esqueleto, Icone, Interruptor, MenuSuspenso, Segmentado, useJanela, Vazio, type NomeIcone } from '@nads/ui';
+import { Alerta, BotaoAcao, BotaoFechar, BotaoIcone, CampoData, Esqueleto, Icone, MenuSuspenso, Segmentado, useJanela, Vazio, type NomeIcone } from '@nads/ui';
 import { useEffect, useId, useRef, useState, type RefObject } from 'react';
 import { Link } from 'react-router';
 import { Propriedade } from '../financeiro/partes/Propriedade';
@@ -29,8 +29,9 @@ const SO_ICONE = new Set<string>(['iniciar', 'retomar']);
  * valor embaixo, lado a lado; o "por quem" numa linha própria, mais apagado; a que ainda não aconteceu ("—") some.
  */
 const ICONE_DA_DATA: Record<string, NomeIcone> = { 'Criada em': 'calendar', 'Concluída em': 'checkCircle', Visualizado: 'olho', 'Tempo trabalhado': 'clock' };
-function DatasDaTarefa({ datas }: { datas: readonly { rotulo: string; valor: string }[] }) {
-  const visiveis = datas.filter(x => x.valor && x.valor !== '—');
+function DatasDaTarefa({ datas, envio = false }: { datas: readonly { rotulo: string; valor: string }[]; envio?: boolean }) {
+  // o envio de arquivos não tem tempo trabalhado (13/11/2026: "Envio de arquivos nao tem prioridade, apenas pedir, tambem nao tem tempo trabalhando")
+  const visiveis = datas.filter(x => x.valor && x.valor !== '—' && !(envio && x.rotulo === 'Tempo trabalhado'));
   if (!visiveis.length) return null;
   return (
     <dl className="tdl-datas">
@@ -62,10 +63,8 @@ function PrazoDaTarefa({ vm }: { vm: Vm }) {
   };
   return (
     <span className="tdl-prazo">
-      <span className="tdl-prazo-chave">
-        <Interruptor ligado={ligado} onMudar={alternar} rotulo="Colocar prazo" />
-        <button type="button" className="tdl-prazo-rotulo" onClick={alternar}>Colocar prazo</button>
-      </span>
+      {/* a caixinha, como o Delegar (13/11/2026: "tire esse botao dual de onoff") */}
+      <label className="tdl-ja-fazendo"><input type="checkbox" checked={ligado} onChange={alternar} />Colocar prazo</label>
       {ligado && (
         <span className="tdl-prazo-escolhas">
           <input type="date" value={iso} aria-label="A data do prazo" onChange={e => vm.setPrazo(d.prazoParaTela(e.target.value))} />
@@ -150,7 +149,8 @@ function Propriedades({ vm }: { vm: Vm }) {
       <Propriedade icone="usuario" rotulo={vm.delegar || travado ? 'Para quem' : 'Fica com'}>
         <span className="ini-delegar">
           {travado || vm.delegar ? <EscolherPessoa vm={vm} so={travado} rotuloId={id + '-quem'} /> : <FicaComVoce vm={vm} />}
-          {!travado && !docs && <Interruptor ligado={vm.delegar} onMudar={vm.alternarDelegar} rotulo="Delegar para outra pessoa" />}
+          {/* a caixinha Delegar no lugar da chave Sim/Não (Vitor, 13/11/2026: "coloca um check delegar, e tire esse botao dual de onoff") */}
+          {!travado && !docs && <label className="tdl-ja-fazendo" title="Delegar para outra pessoa"><input type="checkbox" checked={vm.delegar} onChange={vm.alternarDelegar} />Delegar</label>}
         </span>
       </Propriedade>
       {vm.ehNova && !vm.delegar && (
@@ -174,11 +174,13 @@ function Descricao({ vm }: { vm: Vm }) {
 }
 
 /**
- * os anexos e os links, curtos (Vitor, 13/11/2026: "Anexos a box tá muito grande, deixa só o icone do clip, tambem coloque o
- * icone de link, para fixar o link"): o clipe escolhe os arquivos, a corrente abre o campo do link; a lista só com algum
+ * os anexos e os links (Vitor, 13/11/2026: "Anexos a box tá muito grande, deixa só o icone do clip, tambem coloque o icone de
+ * link"; no mesmo dia: "Substitua esses dois botoes por um botao 'Anexo', e dentro da popup vai ter, link e arquivo"): o botão
+ * Anexo abre o menu com Arquivo (escolhe os arquivos) e Link (abre o campo do link); a lista só com algum
  */
 function Anexos({ vm }: { vm: Vm }) {
   const id = useId();
+  const arquivo = useRef<HTMLInputElement>(null);
   const [link, setLink] = useState<string | null>(null);
   const fixar = async () => { if (link != null && await vm.fixarLink(link)) setLink(null); };
   const tem = vm.anexos.length > 0 || vm.links.length > 0;
@@ -186,11 +188,13 @@ function Anexos({ vm }: { vm: Vm }) {
     <section className="ini-anexos" aria-label="Anexos e links">
       {vm.podeMudar && (
         <div className="ini-anexos-botoes">
-          <label className={'icon-btn' + (vm.anexando ? ' is-disabled' : '')} title="Anexar arquivos" htmlFor={id}>
-            <Icone nome="clipe" />
-            <input id={id} type="file" multiple className="sr-only" disabled={vm.anexando} onChange={e => { const fs = Array.from(e.target.files || []); e.target.value = ''; if (fs.length) void vm.anexar(fs); }} />
-          </label>
-          <BotaoIcone icone="link" titulo="Fixar um link" aria-pressed={link != null} onClick={() => setLink(link == null ? '' : null)} />
+          <MenuSuspenso rotulo="Anexo" icone="clipe" flutuante largura={200} titulo="Anexar" dica="Anexar um arquivo ou fixar um link"
+            itens={[
+              { rotulo: 'Arquivo', icone: 'arquivo', desabilitado: vm.anexando, onClick: () => arquivo.current?.click() },
+              { rotulo: 'Link', icone: 'link', onClick: () => setLink('') },
+            ]} />
+          <input ref={arquivo} id={id} type="file" multiple className="sr-only" disabled={vm.anexando} aria-label="Escolher os arquivos"
+            onChange={e => { const fs = Array.from(e.target.files || []); e.target.value = ''; if (fs.length) void vm.anexar(fs); }} />
           {link != null && (
             <span className="ini-anexos-link">
               <input type="url" value={link} autoFocus placeholder="Cole o link (https://…)" aria-label="O link" onChange={e => setLink(e.target.value)}
@@ -289,7 +293,8 @@ function ClienteDosDocumentos({ vm }: { vm: Vm }) {
   return (
     <span className="ini-cliente-escolhido">
       <span><span className="ini-empresa">{nomeDoCliente(c)}</span>{c.codigo == null && <span className="fraco"> · avulso</span>}</span>
-      <button type="button" className="btn btn-ghost" onClick={() => vm.tirarCliente(0)}><Icone nome="repeat" />Trocar</button>
+      {/* só o ícone (Vitor, 13/11/2026: "Trocar tbm ta bugado. deixa so o icone") */}
+      <BotaoIcone pequeno icone="repeat" titulo="Trocar o cliente" onClick={() => vm.tirarCliente(0)} />
     </span>
   );
 }
@@ -327,6 +332,7 @@ function DocumentosPasso1({ vm }: { vm: Vm }) {
   return (
     <div className="registro-corpo ini-qual-cliente">
       <h2 className="ini-passo-titulo">Enviar ou requerer documentos?</h2>
+      {/* os dois do mesmo tamanho, na largura toda (13/11/2026: "resolve esses dois botoes, ta feio") */}
       <Segmentado<'' | tarefas.delegadas.ModoDosDocumentos> valor={m ?? ''} onMudar={v => { if (v) vm.documentos.escolherModo(v); }}
         opcoes={[{ valor: 'enviar', rotulo: 'Enviar documentos' }, { valor: 'requerer', rotulo: 'Requerer documentos' }]} />
       {m && <p className="registro-dica"><Icone nome="clipe" />{m === 'requerer' ? 'Quem recebe anexa os arquivos e envia; você confere e conclui, ou contesta o que faltou.' : 'Quem recebe baixa os arquivos e confirma o recebimento.'}</p>}
@@ -451,8 +457,9 @@ export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
         <button key={a.id} type="button" className="btn btn-outline" onClick={() => { void vm.fazerAcao(a.status); }}><Icone nome={ICONE[a.id]} />{a.rotulo}</button>
       ))}
       {cobrarLigado && vm.cobranca?.podeCobrar && (
-        <BotaoAcao className="btn btn-outline btn-so-icone" carregando={vm.cobranca.ocupado} title={'Cobrar uma atualização de ' + (vm.rascunho.responsavel?.nome || 'quem faz')} aria-label="Cobrar uma atualização" onClick={() => { void vm.cobrar(); }}>
-          <Icone nome="sino" />
+        // o botão com o nome, no lugar do sininho (Vitor, 13/11/2026: "O sininho troque pelo botao 'cobrar atualizacao'")
+        <BotaoAcao className="btn btn-outline" carregando={vm.cobranca.ocupado} textoCarregando="Cobrando" title={'Cobrar uma atualização de ' + (vm.rascunho.responsavel?.nome || 'quem faz')} onClick={() => { void vm.cobrar(); }}>
+          <Icone nome="sino" />Cobrar atualização
         </BotaoAcao>
       )}
       <span className="tarefas-barra-espaco" />
@@ -520,7 +527,7 @@ export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
               <div className="ini-cliente-escolhido">
                 <Icone nome="briefcase" />
                 <span>{vm.clientes.length ? <span className="ini-empresa">{vm.clientes.map(nomeDoCliente).join(', ')}</span> : 'Sem cliente'}{vm.clientes.some(c => c.codigo == null) && <span className="fraco"> · avulso</span>}</span>
-                <button type="button" className="btn btn-ghost" onClick={trocarCliente}><Icone nome="repeat" />Trocar</button>
+                <BotaoIcone pequeno icone="repeat" titulo="Trocar o cliente" onClick={trocarCliente} />
               </div>
               {titulo}
               <Propriedades vm={vm} />
@@ -547,8 +554,9 @@ export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
               <Descricao vm={vm} />
               <Anexos vm={vm} />
               <Propriedades vm={vm} />
-              <DatasDaTarefa datas={vm.datas} />
-              {concluida ? <p className="hint">Tarefa concluída: fica só para consulta.</p>
+              <DatasDaTarefa datas={vm.datas} envio={vm.documentos.ehEnvio} />
+              {/* sem a frase da concluída (Vitor, 13/11/2026: "Tarefa concluída: fica só para consulta. remove essa frase") */}
+              {concluida ? null
                 : so ? <p className="hint">Só quem criou a tarefa e o responsável mudam esta tarefa.</p>
                 : !vm.criouEu && <p className="hint">O prazo, a prioridade, os clientes e para quem só quem criou a tarefa muda.</p>}
               {vm.erro && <Alerta naLinha titulo={vm.erro} />}

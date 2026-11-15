@@ -3,7 +3,7 @@
 // o serviço é um dos comissionados e a comissão sai sozinha, do valor do serviço × a % que o Financeiro definiu. Pelo
 // Financeiro (doFinanceiro): a pessoa e qualquer mês (a retroativa), já aprovada. Depois de decidida, só ver.
 import { carteira, formatos } from '@nads/core';
-import { BotaoFechar, CampoData, Icone, MenuSuspenso, useJanela } from '@nads/ui';
+import { BotaoFechar, CampoData, CampoReais, Icone, MenuSuspenso, useJanela } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
 import { Propriedade } from '../financeiro/partes/Propriedade';
 import { useJanelaDaComissao, type ClienteDaLista } from './useCarteiraDaPessoa';
@@ -65,7 +65,6 @@ export function JanelaDaComissao({ comissao, fechar, doFinanceiro = false }: { c
     document.addEventListener('keydown', tecla);
     return () => document.removeEventListener('keydown', tecla);
   });
-  const doServico = vm.servicos.find(s => s.nome === vm.servico);
 
   return (
     <div className="modal-overlay" onMouseDown={e => { if (e.target === e.currentTarget) fechar(); }}>
@@ -113,15 +112,17 @@ export function JanelaDaComissao({ comissao, fechar, doFinanceiro = false }: { c
             <Propriedade icone="checklist" rotulo="Serviço">
               {travada ? <span>{vm.servico || comissao?.descricao || '—'}</span> : (
                 <MenuSuspenso rotulo={vm.servico || 'Escolher o serviço'} className={ESCOLHA + (vm.servico ? '' : ' vazio')} titulo="O serviço comissionado" flutuante largura={320}
-                  itens={vm.servicos.map(s => ({ rotulo: s.nome + (vm.propria ? '' : s.percentual ? ' · ' + s.percentual.toLocaleString('pt-BR') + '%' : ' · sem %'), marcado: s.nome === vm.servico, onClick: () => vm.setServico(s.nome) }))} />
+                  itens={vm.servicos.map(s => ({ rotulo: s.nome, marcado: s.nome === vm.servico, onClick: () => vm.setServico(s.nome) }))} />
               )}
             </Propriedade>
             <Propriedade icone="dinheiro" rotulo="Valor do serviço">
-              <input type="text" inputMode="decimal" value={vm.valorServico} disabled={travada} onChange={e => vm.setValorServico(e.target.value)} placeholder="Quanto o cliente pagou" aria-label="Valor do serviço" />
+              {/* o R$ pronto e a máscara (Vitor, 13/11/2026: "deixa um cifrao ja pronto") */}
+              <CampoReais valor={vm.valorServico} desabilitado={travada} onMudar={vm.setValorServico} rotulo="Valor do serviço (quanto o cliente pagou)" />
             </Propriedade>
             <Propriedade icone="check" rotulo="Comissão">
-              <span className="num"><b>{formatos.reais(vm.valor)}</b>{vm.percentual > 0 && <span className="fraco"> · {vm.percentual.toLocaleString('pt-BR')}% {vm.propria ? '(a % própria da pessoa)' : 'do serviço'}</span>}
-                {!travada && !vm.propria && vm.servico && doServico && !doServico.percentual && <span className="fraco"> · o Financeiro ainda não definiu a %</span>}</span>
+              {/* só o valor, sem a porcentagem (Vitor, 13/11/2026: "oculte a porcentagem para o usuario"; "o valor da comissao aparece, menos a
+                  porcentagem..., tira isso de financeiro ainda nao decidiu") */}
+              <span className="num"><b>{formatos.reais(vm.valor)}</b></span>
             </Propriedade>
           </div>
           {erros.length > 0 && <ul className="registro-erros">{erros.map(e => <li key={e}><Icone nome="alert" />{e}</li>)}</ul>}
