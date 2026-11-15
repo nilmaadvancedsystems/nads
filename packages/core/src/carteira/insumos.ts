@@ -1,18 +1,26 @@
 // Os Insumos da Carteira (Vitor, 12/11/2026: "um menu de Insumos, onde a pessoa registra impressões, pastas, envelopes e
-// caixas criadas"): cada registro é de uma pessoa, de um dia e de um cliente (obrigatório). Cada um vê os seus; o Diretor e
-// quem tem o Financeiro veem os de todos, somados por pessoa e por cliente. Só a lógica (sem tela e sem banco).
+// caixas criadas"; 13/11/2026: "só vai ser, impressão, envelope, caixa, ele tem que selecionar um cliente registrado ou avulso,
+// não há comissão descontada... é um só, simples, que aparece no financeiro"): cada registro é de uma pessoa, de um dia e de
+// um cliente (do Cadastro ou avulso). Cada um vê os seus; o Diretor e o Financeiro veem os de todos. Só a lógica.
 
 export type TipoDeInsumo = 'impressao' | 'pasta' | 'envelope' | 'caixa';
 
+/**
+ * Os que se registram (Vitor, 13/11/2026: "Esse insumos só vai ser, impressão, envelope, caixa"). A pasta saiu: os registros
+ * antigos de pasta continuam lidos e mostrados (TODOS_OS_TIPOS), mas não se registra mais.
+ */
 export const TIPOS_DE_INSUMO: readonly { valor: TipoDeInsumo; rotulo: string; plural: string }[] = [
   { valor: 'impressao', rotulo: 'Impressão', plural: 'Impressões' },
-  { valor: 'pasta', rotulo: 'Pasta', plural: 'Pastas' },
   { valor: 'envelope', rotulo: 'Envelope', plural: 'Envelopes' },
   { valor: 'caixa', rotulo: 'Caixa', plural: 'Caixas' },
 ];
+const TODOS_OS_TIPOS: readonly { valor: TipoDeInsumo; rotulo: string }[] = [...TIPOS_DE_INSUMO, { valor: 'pasta', rotulo: 'Pasta' }];
 
-export const rotuloDoInsumo = (t: TipoDeInsumo) => TIPOS_DE_INSUMO.find(x => x.valor === t)?.rotulo ?? t;
-export const ehTipoDeInsumo = (t: unknown): t is TipoDeInsumo => TIPOS_DE_INSUMO.some(x => x.valor === t);
+export const rotuloDoInsumo = (t: TipoDeInsumo) => TODOS_OS_TIPOS.find(x => x.valor === t)?.rotulo ?? t;
+/** o tipo lido do banco (a pasta dos registros antigos vale) */
+export const ehTipoDeInsumo = (t: unknown): t is TipoDeInsumo => TODOS_OS_TIPOS.some(x => x.valor === t);
+/** o tipo que se registra hoje (impressão, envelope ou caixa) */
+export const ehTipoRegistravel = (t: unknown): t is TipoDeInsumo => TIPOS_DE_INSUMO.some(x => x.valor === t);
 
 /** O máximo de um registro (o mesmo da regra do banco). */
 export const QUANTIDADE_MAXIMA = 100000;
@@ -39,7 +47,7 @@ export interface InsumoParaSalvar { data: string; tipo: TipoDeInsumo; quantidade
 export function conferirInsumo(x: InsumoParaSalvar): string[] {
   const erros: string[] = [];
   if (!/^\d{4}-\d{2}-\d{2}$/.test(x.data)) erros.push('Escolha a data.');
-  if (!ehTipoDeInsumo(x.tipo)) erros.push('Escolha o tipo.');
+  if (!ehTipoRegistravel(x.tipo)) erros.push('Escolha o tipo: impressão, envelope ou caixa.');
   if (!x.cliente.trim()) erros.push('Escolha o cliente.');
   if (!Number.isInteger(x.quantidade) || x.quantidade <= 0) erros.push('A quantidade é um número inteiro maior que zero.');
   else if (x.quantidade > QUANTIDADE_MAXIMA) erros.push('A quantidade passa de ' + QUANTIDADE_MAXIMA.toLocaleString('pt-BR') + '.');

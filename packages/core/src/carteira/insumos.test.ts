@@ -7,10 +7,13 @@ const i = (uid: string, tipo: Insumo['tipo'], quantidade: number, cliente: strin
 
 describe('os Insumos da Carteira (12/11/2026)', () => {
   it('o cliente é obrigatório e a quantidade é inteira', () => {
-    expect(conferirInsumo({ data: '2026-11-10', tipo: 'pasta', quantidade: 2, cliente: 'EMPRESA EXEMPLO', codigo: 1 })).toEqual([]);
-    expect(conferirInsumo({ data: '2026-11-10', tipo: 'pasta', quantidade: 2, cliente: ' ', codigo: null })).toContain('Escolha o cliente.');
-    expect(conferirInsumo({ data: '2026-11-10', tipo: 'pasta', quantidade: 1.5, cliente: 'X', codigo: null })).toHaveLength(1);
-    expect(conferirInsumo({ data: '', tipo: 'pasta', quantidade: 0, cliente: 'X', codigo: null })).toHaveLength(2);
+    expect(conferirInsumo({ data: '2026-11-10', tipo: 'envelope', quantidade: 2, cliente: 'EMPRESA EXEMPLO', codigo: 1 })).toEqual([]);
+    expect(conferirInsumo({ data: '2026-11-10', tipo: 'envelope', quantidade: 2, cliente: ' ', codigo: null })).toContain('Escolha o cliente.');
+    expect(conferirInsumo({ data: '2026-11-10', tipo: 'envelope', quantidade: 1.5, cliente: 'X', codigo: null })).toHaveLength(1);
+    expect(conferirInsumo({ data: '', tipo: 'envelope', quantidade: 0, cliente: 'X', codigo: null })).toHaveLength(2);
+    // o cliente avulso (sem código) vale; a pasta não se registra mais (13/11/2026: "só vai ser, impressão, envelope, caixa")
+    expect(conferirInsumo({ data: '2026-11-10', tipo: 'caixa', quantidade: 1, cliente: 'CLIENTE AVULSO', codigo: null })).toEqual([]);
+    expect(conferirInsumo({ data: '2026-11-10', tipo: 'pasta', quantidade: 2, cliente: 'X', codigo: null })).toEqual(['Escolha o tipo: impressão, envelope ou caixa.']);
   });
 
   it('a quantidade digitada', () => {

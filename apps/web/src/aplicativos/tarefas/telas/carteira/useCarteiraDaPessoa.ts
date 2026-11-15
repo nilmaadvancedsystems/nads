@@ -271,3 +271,9 @@ export function useJanelaDoDocumento(para: { uid: string; nome: string; tipo: ca
     },
   };
 }
+
+/** O ⚡ da Carteira (13/11/2026): no modo desenvolvedor, o que está ligado dos exemplos e como ligar. */
+export function useDadosDeTesteDaCarteira() {
+  const [dev] = useModoDesenvolvedor();
+  return { dev, t: useTesteDaCarteira() };
+}

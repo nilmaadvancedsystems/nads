@@ -33,13 +33,15 @@ export function criarInsumosMemoria(quem: QuemNaCarteira): RepoInsumos {
   const r = (id: string, uid: string, nome: string, dia: string, tipo: carteira.TipoDeInsumo, quantidade: number, cliente: string, codigo: number | null): carteira.Insumo => ({
     id, uid, nome, competencia: mes, data: mes + '-' + dia, tipo, quantidade, cliente, codigo, criadoEm: mes + '-' + dia + 'T10:00:00.000Z',
   });
+  // os três tipos (impressão, envelope e caixa), de clientes do Cadastro e avulsos (sem código)
   let lista: carteira.Insumo[] = [
     r('i1', eu().uid, eu().nome, '03', 'impressao', 48, 'PADARIA EXEMPLO LTDA', 9001),
-    r('i2', eu().uid, eu().nome, '03', 'pasta', 2, 'PADARIA EXEMPLO LTDA', 9001),
-    r('i3', eu().uid, eu().nome, '05', 'envelope', 6, 'MERCADO EXEMPLO', 9002),
-    r('i4', 'uid-clara', 'Clara', '04', 'impressao', 120, 'MERCADO EXEMPLO', 9002),
-    r('i5', 'uid-clara', 'Clara', '06', 'caixa', 1, 'OFICINA EXEMPLO', 9003),
-    r('i6', 'uid-felipe', 'Felipe', '07', 'impressao', 35, 'PADARIA EXEMPLO LTDA', 9001),
+    r('i2', eu().uid, eu().nome, '03', 'envelope', 4, 'PADARIA EXEMPLO LTDA', 9001),
+    r('i3', eu().uid, eu().nome, '05', 'caixa', 2, 'MERCADO EXEMPLO', 9002),
+    r('i4', eu().uid, eu().nome, '06', 'impressao', 15, 'JOÃO DA SILVA (AVULSO)', null),
+    r('i5', 'uid-clara', 'Clara', '04', 'impressao', 120, 'MERCADO EXEMPLO', 9002),
+    r('i6', 'uid-clara', 'Clara', '06', 'caixa', 1, 'OFICINA EXEMPLO', 9003),
+    r('i7', 'uid-felipe', 'Felipe', '07', 'envelope', 10, 'MARIA SOUZA (AVULSO)', null),
   ];
   const ao = (l: carteira.Insumo[]): ListaAoVivo<carteira.Insumo> => ({ carregada: true, lista: l, erro: '' });
   return {

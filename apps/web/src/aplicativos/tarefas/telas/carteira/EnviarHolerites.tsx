@@ -3,7 +3,7 @@
 // que falta), o Enviar de cada um e o Tirar (enviou errado).
 import { carteira, formatos } from '@nads/core';
 import { BotaoIcone, Icone, useCarregando } from '@nads/ui';
-import { SeletorDoMes } from './comum';
+import { DadosDeTesteDaCarteira, SeletorDoMes } from './comum';
 import { JanelaDoDocumento } from './JanelaDoDocumento';
 import { useEnviarHolerites } from './useCarteiraDaPessoa';
 
@@ -37,6 +37,7 @@ export function EnviarHolerites() {
         <span className="fraco">{comHolerite} de {pessoas.length} com o holerite de {carteira.mesPorExtenso(m.mes)}</span>
         <span className="tarefas-barra-espaco" />
         {vm.exemplos && <span className="badge badge-neutral">Exemplos</span>}
+        <DadosDeTesteDaCarteira />
       </div>
       {vm.erro && <p className="registro-dica registro-dica-erro"><Icone nome="alert" />{vm.erro}</p>}
       <p className="registro-dica"><Icone nome="dinheiro" />O pagamento em si (o salário, a comissão) também pode ir para a Carteira pelas Contas a pagar: na conta, escolha o funcionário.</p>

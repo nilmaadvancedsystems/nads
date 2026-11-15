@@ -482,15 +482,20 @@ let carteiraRepo: RepoCarteira | null = null;
 
 // o ⚡ das Comissões da equipe no modo desenvolvedor (13/11/2026: "SEMPRE desenvolver formas de preenchimento de dados
 // ficticios"): enquanto ligado, a Carteira vem da memória (com ou sem a % própria de exemplo), nada vai para o banco
-const testeDaCarteira: { repo: RepoCarteira | null; propria: boolean; ver: number } = { repo: null, propria: false, ver: 0 };
+const testeDaCarteira: { repo: RepoCarteira | null; insumos: RepoInsumos | null; propria: boolean; ver: number } = { repo: null, insumos: null, propria: false, ver: 0 };
 const ouvintesDaCarteira = new Set<() => void>();
 export const assinarTesteDaCarteira = (f: () => void) => { ouvintesDaCarteira.add(f); return () => { ouvintesDaCarteira.delete(f); }; };
 export const versaoDoTesteDaCarteira = () => testeDaCarteira.ver;
 export const testeDaCarteiraLigado = () => ({ comissoes: !!testeDaCarteira.repo, propria: testeDaCarteira.propria });
 
-/** Liga as comissões de exemplo (propria: com a % própria de 50% para quem está e uma colega) ou desliga (volta ao que estava). */
+/**
+ * Liga os exemplos da Carteira inteira (13/11/2026: "coloca dados testes para a carteira, por favor, todos os tipos"): as
+ * comissões (lançada, aprovada, recusada e paga), os holerites e os pagamentos e os insumos (impressão, envelope e caixa, do
+ * Cadastro e avulsos). propria: com a % própria de 50% para quem está e uma colega. false desliga (volta ao que estava).
+ */
 export function ligarTesteDaCarteira(ligar: false | 'comissoes' | 'propria') {
   testeDaCarteira.repo = ligar ? criarCarteiraMemoria(quemDasTarefas, ligar === 'propria') : null;
+  testeDaCarteira.insumos = ligar ? criarInsumosMemoria(quemDasTarefas) : null;
   testeDaCarteira.propria = ligar === 'propria';
   testeDaCarteira.ver++;
   for (const f of ouvintesDaCarteira) f();
@@ -507,6 +512,7 @@ let insumosRepo: RepoInsumos | null = null;
 
 /** Os Insumos da Carteira (12/11/2026): impressões, pastas, envelopes e caixas de cada pessoa, por cliente. */
 export function repoDosInsumos(): RepoInsumos {
+  if (testeDaCarteira.insumos) return testeDaCarteira.insumos;
   if (!insumosRepo) insumosRepo = noBanco ? criarInsumosFirestore(quemDasTarefas) : criarInsumosMemoria(quemDasTarefas);
   return insumosRepo;
 }

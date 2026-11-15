@@ -6893,6 +6893,9 @@ p.tdl-cobranca{flex-direction:row;align-items:center;}
 .campo-reais-cifrao{color:var(--ink-muted);font-size:var(--fs-14);flex:none;}
 .campo-reais input[type="text"]{border:0 !important;background:transparent !important;box-shadow:none !important;min-height:30px;text-align:right;font-variant-numeric:tabular-nums;}
 .campo-reais.desabilitado{opacity:.6;}
+/* o cliente do insumo: o menu do Cadastro (ou o nome do avulso) e a caixinha Avulso embaixo, com respiro (13/11/2026) */
+.insumo-cliente{display:flex;flex-direction:column;align-items:flex-start;gap:8px;width:100%;}
+.insumo-cliente > input{width:100%;}
 /* o botão de cobrar, leve (Vitor, 13/11/2026: "Melhora isso"): só o sino, sem caixa, apagado; acende em amarelo ao passar o mouse */
 .icon-btn.ini-sino-cobrar{width:24px;height:24px;border-color:transparent;background:transparent;color:var(--ink-faint);flex:none;}
 .icon-btn.ini-sino-cobrar svg{width:15px;height:15px;}

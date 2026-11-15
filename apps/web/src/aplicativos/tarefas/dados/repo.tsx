@@ -289,7 +289,7 @@ export function useCarteira(): RepoCarteira {
   return repo;
 }
 
-/** Os dados de teste da Carteira (o ⚡ das Comissões da equipe): o que está ligado e como ligar. */
+/** Os dados de teste da Carteira (o ⚡ de todas as páginas da Carteira e do lado dela no Financeiro): o que está ligado e como ligar. */
 export function useTesteDaCarteira() {
   useSyncExternalStore(assinarTesteDaCarteira, versaoDoTesteDaCarteira, versaoDoTesteDaCarteira);
   return { ...testeDaCarteiraLigado(), ligar: ligarTesteDaCarteira };
@@ -297,6 +297,7 @@ export function useTesteDaCarteira() {
 
 /** Os Insumos da Carteira (12/11/2026). */
 export function useInsumos(): RepoInsumos {
+  useSyncExternalStore(assinarTesteDaCarteira, versaoDoTesteDaCarteira, versaoDoTesteDaCarteira);
   const repo = repoDosInsumos();
   useSyncExternalStore(repo.assinar, repo.versao, repo.versao);
   return repo;

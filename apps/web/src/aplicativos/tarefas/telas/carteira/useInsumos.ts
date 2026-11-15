@@ -1,6 +1,6 @@
-// Os ViewModels dos Insumos (12/11/2026: "um menu de Insumos, onde a pessoa registra impressões, pastas, envelopes e caixas
-// criadas"): a lista do mês de quem está e, para o Diretor e o Financeiro, a de todos somada por pessoa e por cliente; e a
-// janela de registrar, com o cliente (obrigatório) pela busca no Cadastro. A conta é do core (carteira).
+// Os ViewModels dos Insumos (12/11/2026; 13/11/2026: "só vai ser, impressão, envelope, caixa... cliente registrado ou avulso...
+// é um só, simples, que aparece no financeiro"): a lista do mês (a da pessoa; para o Diretor e o Financeiro, a de todos) e a
+// janela de registrar, com o cliente do Cadastro (pela busca) ou avulso. A conta é do core (carteira).
 import { carteira, formatos } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useMemo, useState } from 'react';
@@ -10,27 +10,23 @@ import { useInsumos as useRepoDosInsumos, useTodosOsCadastros } from '../../dado
 import { dataBr, hoje, isoDaData } from '../financeiro/formatosDaNota';
 import { mensagem, useMes } from './comum';
 
-export type VisaoDosInsumos = 'meus' | 'equipe';
-
 export function useInsumos() {
   const repo = useRepoDosInsumos();
   const { operador } = useOperador();
   const m = useMes();
-  // o Diretor (e o Dono) e quem tem o Financeiro veem os de todos (a mesma conta da regra do banco: podeNoFinanceiroNads)
+  // uma lista só, sem o Meus e o Da equipe (Vitor, 13/11/2026: "não tem meus e nem da equipe, é um só, simples, que aparece no
+  // financeiro"): cada pessoa vê os dela; o Diretor (e o Dono) e quem tem o Financeiro, os de todos (a mesma conta da regra do
+  // banco: podeNoFinanceiroNads), com a coluna da pessoa
   const veTodos = podeVerOFinanceiro(operador);
-  const [visao, setVisao] = useState<VisaoDosInsumos>('meus');
   const [aberto, setAberto] = useState<carteira.Insumo | null | 'novo'>(null);
-  const daEquipe = veTodos && visao === 'equipe';
-  const fonte = daEquipe ? repo.insumosDoMes(m.mes) : repo.meusInsumos();
+  const fonte = veTodos ? repo.insumosDoMes(m.mes) : repo.meusInsumos();
   const lista = fonte.lista.filter(x => x.competencia === m.mes);
   return {
-    m, exemplos: repo.exemplos, veTodos, visao, setVisao, daEquipe,
+    m, exemplos: repo.exemplos, veTodos,
     carregada: fonte.carregada, erro: fonte.erro, lista,
     totais: carteira.totaisDosInsumos(lista),
-    porPessoa: daEquipe ? carteira.porPessoa(lista) : [],
-    porCliente: carteira.porCliente(lista),
     /** só os da própria pessoa abrem para mudar */
-    podeAbrir: (x: carteira.Insumo) => !daEquipe || x.uid === repo.meuUid(),
+    podeAbrir: (x: carteira.Insumo) => x.uid === repo.meuUid(),
     aberto, setAberto,
   };
 }
@@ -56,21 +52,25 @@ export function useJanelaDoInsumo(insumo: carteira.Insumo | null, fechar: () => 
   const { toast, modal } = useRetorno();
   const cadastros = useTodosOsCadastros();
   const empresas = useMemo(() => [...cadastros.porId.values()].sort((a, b) => a.nome.localeCompare(b.nome)), [cadastros]);
-  const [tipo, setTipo] = useState<carteira.TipoDeInsumo>(insumo?.tipo ?? 'impressao');
+  const [tipo, setTipo] = useState<carteira.TipoDeInsumo>(insumo && carteira.ehTipoRegistravel(insumo.tipo) ? insumo.tipo : 'impressao');
   const [data, setData] = useState(dataBr(insumo?.data ?? hoje()));
   const [cliente, setCliente] = useState<{ nome: string; codigo: number | null } | null>(insumo ? { nome: insumo.cliente, codigo: insumo.codigo } : null);
   const [busca, setBusca] = useState('');
+  // o cliente avulso (13/11/2026: "ele tem que selecionar um cliente registrado ou avulso"): só o nome, sem o código
+  const [avulso, setAvulso] = useState(!!insumo && insumo.codigo == null);
+  const [nomeAvulso, setNomeAvulso] = useState(insumo && insumo.codigo == null ? insumo.cliente : '');
   const [quantidade, setQuantidade] = useState(insumo ? String(insumo.quantidade) : '');
   const [erros, setErros] = useState<string[]>([]);
   const [salvando, setSalvando] = useState(false);
   return {
-    tipo, setTipo, data, setData, quantidade, setQuantidade, erros, salvando, busca, setBusca,
+    tipo, setTipo, data, setData, quantidade, setQuantidade, erros, salvando, busca, setBusca, avulso, setAvulso, nomeAvulso, setNomeAvulso,
     /** o cliente escolhido, como aparece no botão ('' = nenhum) */
     cliente: cliente ? (cliente.codigo != null ? cliente.codigo + ' · ' : '') + cliente.nome : '',
     achadas: buscar(empresas, busca).map(e => ({ nome: e.nome, codigo: e.codigo })),
     escolherCliente: (c: { nome: string; codigo: number | null }) => { setCliente(c); setBusca(''); },
     async salvar() {
-      const x: carteira.InsumoParaSalvar = { data: isoDaData(data), tipo, quantidade: carteira.quantidadeDigitada(quantidade), cliente: cliente?.nome ?? '', codigo: cliente?.codigo ?? null };
+      const doCliente = avulso ? { nome: nomeAvulso.trim().toUpperCase(), codigo: null } : { nome: cliente?.nome ?? '', codigo: cliente?.codigo ?? null };
+      const x: carteira.InsumoParaSalvar = { data: isoDaData(data), tipo, quantidade: carteira.quantidadeDigitada(quantidade), cliente: doCliente.nome, codigo: doCliente.codigo };
       const problemas = carteira.conferirInsumo(x);
       setErros(problemas);
       if (problemas.length) return;
