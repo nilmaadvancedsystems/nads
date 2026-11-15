@@ -69,7 +69,7 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
         <Cartao titulo="Calendário">
           <div className="ini-calendario-caixa">
             <div className={p ? 'ini-calendario-embacado' : undefined} aria-hidden={p ? true : undefined}>
-              <CalendarioDoMes mes={c.mes} hoje={c.hoje} marcados={c.marcados} escolhido={c.dia} onDia={c.escolher} onMes={c.setMes} dicaDoMarcado={n => quantas(n) + ' ou reuniões'} />
+              <CalendarioDoMes mes={c.mes} hoje={c.hoje} marcados={c.marcados} feriados={c.feriados} escolhido={c.dia} onDia={c.escolher} onMes={c.setMes} dicaDoMarcado={n => quantas(n) + ' ou reuniões'} />
             </div>
             {p && (
               <div className="ini-calendario-aviso" role="alertdialog" aria-label={p.tipo === 'reuniao' ? 'Reunião: confirme a presença' : 'Aviso: confirme que leu'}>
@@ -90,6 +90,17 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
               </div>
             )}
           </div>
+          {c.feriadosDoMes.length > 0 && (
+            <ul className="ini-feriados" aria-label="Feriados do mês">
+              {c.feriadosDoMes.map(f => (
+                <li key={f.data} className={'ini-feriado ' + f.tipo + (f.passou ? ' passou' : '')}>
+                  <span className="ini-feriado-dia">{f.dia}</span>
+                  <span className="ini-feriado-nome">{f.nome === f.rotulo ? f.rotulo : f.nome}</span>
+                  {f.nome !== f.rotulo && <span className="hint">{f.rotulo}</span>}
+                </li>
+              ))}
+            </ul>
+          )}
         </Cartao>
         <Cartao titulo="Quadro de avisos" acao={<button type="button" className="btn btn-ghost" onClick={() => vm.mudarAba('notificacoes')}>Notificações<Icone nome="chevronRight" /></button>}>
           {vm.reunioes.length ? vm.reunioes.map(r => (

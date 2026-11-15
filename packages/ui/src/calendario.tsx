@@ -4,7 +4,8 @@
 // na cor da marca e o nome do dia da semana em destaque (a semana de hoje num fundo leve saiu: Vitor, 13/11/2026, "Tira esse
 // negocio da semana", "Deixa normal"); o dia marcado (prazo de tarefa,
 // reunião ou aviso) com o fundo da marca clarinho e até 3 pontinhos (um por evento); os dias que já passaram mais
-// apagados; os do mês de antes e do de depois quase sumidos, sem clique. Fora do mês de hoje, o botão volta para ele.
+// apagados; os do mês de antes e do de depois quase sumidos, sem clique. Os feriados com o número em vermelho (o ponto
+// facultativo e o meio expediente em laranja) e o nome na dica (15/11/2026). Fora do mês de hoje, o botão volta para ele.
 import { BotaoIcone } from './componentes';
 
 const SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -17,13 +18,15 @@ export function somarMeses(mes: string, n: number): string {
   return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0');
 }
 
-export function CalendarioDoMes({ mes, hoje, marcados = {}, escolhido = null, onDia, onMes, dicaDoMarcado }: {
+export function CalendarioDoMes({ mes, hoje, marcados = {}, feriados = {}, escolhido = null, onDia, onMes, dicaDoMarcado }: {
   /** o mês mostrado, 'aaaa-mm' */
   mes: string;
   /** hoje, 'aaaa-mm-dd' */
   hoje: string;
   /** o dia (1 a 31) → quantos (a bolinha e a dica) */
   marcados?: Record<number, number>;
+  /** o dia (1 a 31) → o feriado ou ponto facultativo (o número em vermelho e a dica: "Tiradentes · Feriado"; 15/11/2026) */
+  feriados?: Record<number, { dica: string; tipo: 'feriado' | 'facultativo' | 'meio-expediente' }>;
   /** o dia escolhido, 'aaaa-mm-dd' */
   escolhido?: string | null;
   onDia?: (dia: string | null) => void;
@@ -64,8 +67,10 @@ export function CalendarioDoMes({ mes, hoje, marcados = {}, escolhido = null, on
           if (c.fora) return <span key={i} className={'cal-mes-dia fora'} aria-hidden="true">{c.n}</span>;
           const dia = iso(c.n);
           const qtd = marcados[c.n] || 0;
-          const classe = 'cal-mes-dia' + (dia === hoje ? ' hoje' : dia < hoje ? ' passou' : '') + (dia === escolhido ? ' escolhido' : '') + (qtd ? ' marcado' : '');
-          const dica = qtd ? (dicaDoMarcado ? dicaDoMarcado(qtd) : String(qtd)) : undefined;
+          const fer = feriados[c.n];
+          const classe = 'cal-mes-dia' + (dia === hoje ? ' hoje' : dia < hoje ? ' passou' : '') + (dia === escolhido ? ' escolhido' : '') + (qtd ? ' marcado' : '')
+            + (fer ? ' feriado ' + fer.tipo : '');
+          const dica = [fer?.dica, qtd ? (dicaDoMarcado ? dicaDoMarcado(qtd) : String(qtd)) : ''].filter(Boolean).join(' · ') || undefined;
           return (
             <button key={i} type="button" className={classe} role="gridcell" aria-pressed={dia === escolhido} aria-current={dia === hoje ? 'date' : undefined}
               title={dica} aria-label={c.n + (dia === hoje ? ', hoje' : '') + (dica ? ', ' + dica : '')} disabled={!onDia} onClick={() => onDia?.(dia === escolhido ? null : dia)}>

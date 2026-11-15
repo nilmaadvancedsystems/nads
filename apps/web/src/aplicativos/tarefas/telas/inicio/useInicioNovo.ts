@@ -18,6 +18,7 @@ import { useNivelDoInicio, useReunioesDoInicio } from './useReunioesDoInicio';
 
 const d = tarefas.delegadas;
 const ag = tarefas.agenda;
+const fe = tarefas.feriados;
 
 /** Uma pessoa com a foto (a do Entregas) ou as iniciais. */
 export interface PessoaComFoto { uid: string; nome: string; foto: string | null; iniciais: string }
@@ -188,6 +189,10 @@ export function useInicioNovo() {
         ...comunicados.filter(c => c.tipo === 'reuniao' && c.quando?.startsWith(mes + '-')).map(c => Number(c.quando!.slice(8, 10))),
         ...reunioes.proximas.filter(x => x.quando.startsWith(mes + '-')).map(x => Number(x.quando.slice(8, 10))),
       ]),
+      // os feriados e os pontos facultativos do mês (o Decreto 4068/2026 de Taiobeiras; 15/11/2026: "Atualiza o calendário com essas datas")
+      feriados: Object.fromEntries(fe.feriadosDoMes(mes).map(f => [Number(f.data.slice(8, 10)), { dica: fe.dicaDoFeriado(f), tipo: f.tipo }])),
+      /** a lista embaixo do calendário: "20 · São Sebastião · Feriado" */
+      feriadosDoMes: fe.feriadosDoMes(mes).map(f => ({ data: f.data, dia: f.data.slice(8, 10), nome: f.nome, rotulo: fe.rotuloDoFeriado(f), tipo: f.tipo, passou: f.data < hoje })),
     },
     proximas: {
       titulo: dia ? 'Prazo em ' + d.prazoParaTela(dia) : 'Minhas tarefas',
