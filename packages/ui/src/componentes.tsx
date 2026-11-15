@@ -377,6 +377,27 @@ export function BotaoIcone({ icone, titulo, pequeno, className, ...resto }: { ic
 }
 
 /** Campo de data dd/mm/aaaa com máscara. */
+/**
+ * O valor em reais (Vitor, 13/11/2026: "deixa algo interativo no valor, ao inves de digitar, ou deixa um cifrao ja pronto"): o R$
+ * fixo à esquerda e a máscara que enche da direita, sem precisar da vírgula (digitar 15000 dá 150,00). Devolve o texto já
+ * formatado ("1.500,00"), que os leitores de valor do app entendem.
+ */
+export function CampoReais({ valor, onMudar, rotulo, id, desabilitado, placeholder = '0,00', autoFocus }: {
+  valor: string; onMudar: (v: string) => void; rotulo: string; id?: string; desabilitado?: boolean; placeholder?: string; autoFocus?: boolean;
+}) {
+  const formatar = (texto: string) => {
+    const centavos = Number(texto.replace(/\D/g, '').slice(0, 13) || '0');
+    return centavos ? (centavos / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
+  };
+  return (
+    <label className={'campo-reais' + (desabilitado ? ' desabilitado' : '')}>
+      <span className="campo-reais-cifrao" aria-hidden="true">R$</span>
+      <input type="text" id={id} inputMode="numeric" value={valor} placeholder={placeholder} disabled={desabilitado} aria-label={rotulo} autoFocus={autoFocus}
+        onChange={ev => onMudar(formatar(ev.target.value))} />
+    </label>
+  );
+}
+
 export function CampoData({ valor, onMudar, rotulo, id, onEnter }: { valor: string; onMudar: (v: string) => void; rotulo: string; id?: string; onEnter?: () => void }) {
   return (
     <input type="text" className="data-mask" id={id} value={valor} placeholder="dd/mm/aaaa" inputMode="numeric" maxLength={10} aria-label={rotulo}

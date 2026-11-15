@@ -6886,6 +6886,13 @@ p.tdl-cobranca{flex-direction:row;align-items:center;}
 .ini-sino{display:inline-flex;align-items:center;gap:4px;font-size:var(--fs-12);color:var(--warn);white-space:nowrap;}
 .ini-sino svg{width:14px;height:14px;flex:none;}
 .ini-pessoa-com-sino{display:inline-flex;align-items:center;gap:8px;min-width:0;}
+/* o campo de reais (CampoReais, 13/11/2026): o R$ fixo dentro da caixa, à esquerda; o número alinhado à direita */
+.campo-reais{display:flex;align-items:center;width:100%;max-width:240px;border:1px solid var(--border);background:var(--input-bg);border-radius:6px;
+  box-shadow:var(--shadow-inset);min-height:32px;padding-left:10px;}
+.campo-reais:focus-within{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);}
+.campo-reais-cifrao{color:var(--ink-muted);font-size:var(--fs-14);flex:none;}
+.campo-reais input[type="text"]{border:0 !important;background:transparent !important;box-shadow:none !important;min-height:30px;text-align:right;font-variant-numeric:tabular-nums;}
+.campo-reais.desabilitado{opacity:.6;}
 /* o botão de cobrar, leve (Vitor, 13/11/2026: "Melhora isso"): só o sino, sem caixa, apagado; acende em amarelo ao passar o mouse */
 .icon-btn.ini-sino-cobrar{width:24px;height:24px;border-color:transparent;background:transparent;color:var(--ink-faint);flex:none;}
 .icon-btn.ini-sino-cobrar svg{width:15px;height:15px;}
