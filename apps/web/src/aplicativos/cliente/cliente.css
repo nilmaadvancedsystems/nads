@@ -2315,3 +2315,67 @@ button.cli-numero:hover{border-color:var(--border);box-shadow:var(--cli-sombra-a
 /* a área de soltar no toque (13/11/2026): no celular não se arrasta arquivo, então o texto diz para tocar */
 .cli-app .cli-so-toque{display:none;}
 @media (pointer:coarse),(max-width:767px){.cli-app .cli-so-pc{display:none;}.cli-app .cli-so-toque{display:inline;}.cli-app .cli-soltar > .cli-so-toque{display:block;}}
+
+/* Os ícones mais firmes (15/11/2026: "vamos melhorar mais", escolhido o "traço mais firme"): o traço 2 em vez de 1,75 em
+   toda a Área (as janelas também levam o cli-app) e os do menu um tom mais claros; o desenho é o mesmo */
+.cli-app svg[stroke-width="1.75"]{stroke-width:2;}
+.cli-app .subnav-item svg{color:color-mix(in srgb,var(--ink) 72%,var(--ink-muted));}
+/* o ícone do arquivo de traço, com a extensão dentro da folha (partes/IconeDoArquivo) */
+.cli-app .cli-arq{display:block;flex:none;}
+.cli-app .cli-arq-folha{fill:color-mix(in srgb,var(--arq) 12%,transparent);stroke:var(--arq);stroke-width:1.6;stroke-linejoin:round;}
+.cli-app .cli-arq-canto{fill:none;stroke:var(--arq);stroke-width:1.6;stroke-linejoin:round;stroke-linecap:round;}
+.cli-app .cli-arq-ext{fill:var(--arq);font-family:var(--font-body);font-size:8px;font-weight:750;letter-spacing:-.1px;}
+
+/* o "?" ao lado do título de cada tela (15/11/2026: o tutorial só da tela) */
+.cli-app .cli-titulo h1.page-title{display:inline-block;vertical-align:middle;}
+.cli-app .cli-ajuda-tela{display:inline-grid;place-items:center;width:30px;height:30px;margin-left:8px;padding:0;border:1px solid var(--cli-linha);border-radius:50%;background:none;color:var(--ink-muted);vertical-align:middle;cursor:pointer;transition:color .15s,border-color .15s,background .15s;}
+.cli-app .cli-ajuda-tela:hover{color:var(--accent-ink);border-color:color-mix(in srgb,var(--accent) 45%,var(--cli-linha));background:color-mix(in srgb,var(--accent) 8%,transparent);}
+.cli-app .cli-ajuda-tela:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+
+/* as marcas numeradas do tutorial (15/11/2026: "ta meio desalinhado os numeros"): um contorno tracejado em volta da parte
+   e o número sempre no mesmo canto dele, em cima e à esquerda */
+.cli-tut .cli-tut-marca-caixa{position:absolute;top:0;left:0;z-index:1;box-sizing:border-box;border:1.5px dashed color-mix(in srgb,var(--accent) 85%,#fff);border-radius:9px;pointer-events:none;}
+.cli-tut .cli-tut-marca-caixa .cli-tut-marca-n{position:absolute;top:-11px;left:-11px;transform:none;}
+
+/* o balão do jeito dos tours do Slack e do Asana (15/11/2026: "use como base"): uma parte por passo, os tópicos sem
+   número e o progresso em pontos, o atual comprido */
+.cli-tut .cli-tut-topicos{display:flex;flex-direction:column;gap:5px;margin:10px 0 0;padding:0;list-style:none;}
+.cli-tut .cli-tut-topicos li{position:relative;padding-left:14px;font-size:13px;line-height:1.45;color:var(--ink);}
+.cli-tut .cli-tut-topicos li::before{content:"";position:absolute;left:2px;top:.62em;width:5px;height:5px;border-radius:50%;background:var(--accent);}
+.cli-tut .cli-tut-pontos{display:flex;align-items:center;gap:5px;margin:14px 0 2px;}
+.cli-tut .cli-tut-pontos span{width:6px;height:6px;border-radius:3px;background:color-mix(in srgb,var(--ink) 18%,transparent);transition:width .25s,background .25s;}
+.cli-tut .cli-tut-pontos span.feito{background:color-mix(in srgb,var(--accent) 55%,transparent);}
+.cli-tut .cli-tut-pontos span.atual{width:18px;background:var(--accent);}
+
+/* A cor de cada tela (15/11/2026: "Sim, mais visíveis", escolhida a "cor por seção"): o ícone num quadradinho suave na cor
+   da tela, no menu, na barra de baixo do celular e ao lado do título; a tela aberta fica com o quadradinho cheio. As
+   cores casam com as pastas da Central (as Guias em âmbar, a Folha em azul); no claro, um tom mais escuro. */
+.cli-app .sec-inicio{--sec:light-dark(#dc2626,#f87171);}
+.cli-app .sec-documentos{--sec:light-dark(#0d9488,#2dd4bf);}
+.cli-app .sec-guias{--sec:light-dark(#d97706,#fbbf24);}
+.cli-app .sec-dp{--sec:light-dark(#2563eb,#60a5fa);}
+.cli-app .sec-chamados{--sec:light-dark(#7c3aed,#a78bfa);}
+.cli-app .sec-faturamento{--sec:light-dark(#059669,#34d399);}
+.cli-app .sec-empresa{--sec:light-dark(#db2777,#f472b6);}
+.cli-app .sec-contato{--sec:light-dark(#ea580c,#fb923c);}
+.cli-app .cli-sec-ico{display:inline-grid;place-items:center;flex:none;width:30px;height:30px;border-radius:9px;background:color-mix(in srgb,var(--sec,var(--ink-muted)) 15%,transparent);color:var(--sec,var(--ink-muted));transition:background .15s,color .15s;}
+.cli-app .cli-sec-ico svg{stroke-width:2;}
+/* o menu: a linha um pouco mais alta para o quadradinho; a aberta com o quadradinho cheio e o texto forte */
+.cli-app .cli-menu .subnav-item.cli-sec{gap:11px;min-height:40px;padding:5px 8px;}
+.cli-app .cli-menu .subnav-item.cli-sec svg{width:17px;height:17px;color:inherit;}
+.cli-app .cli-menu .subnav-item.cli-sec.active{background:var(--cli-passa);color:var(--ink);}
+.cli-app .cli-menu .subnav-item.cli-sec.active svg{color:inherit;}
+.cli-app .cli-menu .subnav-item.cli-sec.active .cli-sec-ico,.cli-app .cli-marca-tela{background:var(--sec);color:light-dark(#fff,#141518);}
+.cli-app .cli-menu .subnav-item.cli-sec:hover .cli-sec-ico{background:color-mix(in srgb,var(--sec) 24%,transparent);}
+.cli-app .cli-menu .subnav-item.cli-sec.active:hover .cli-sec-ico{background:var(--sec);}
+/* ao lado do título */
+.cli-app .cli-marca-tela{width:34px;height:34px;margin-right:10px;border-radius:10px;vertical-align:middle;}
+/* a barra de baixo do celular: o ícone na cor da tela; a aberta com o fundo na cor dela */
+.cli-app .cli-aba-baixo.cli-sec .cli-aba-baixo-ico{color:var(--sec);}
+.cli-app .cli-aba-baixo.cli-sec.ativa .cli-aba-baixo-ico{background:color-mix(in srgb,var(--sec) 22%,transparent);color:var(--sec);}
+/* o quadradinho é o primeiro span da linha do menu: não estica (o nome, o segundo, é que ocupa o resto); com o menu
+   recolhido, fica só o quadradinho */
+.cli-app .cli-menu .subnav-item.cli-sec > span.cli-sec-ico{flex:none;overflow:visible;}
+.cli-app .cli-menu .subnav-item.cli-sec > span:nth-of-type(2){flex:1;min-width:0;}
+.cli-app.cli-recolhida .cli-menu .subnav-item.cli-sec > span.cli-sec-ico,.cli-app.sidebar-oculta .cli-menu .subnav-item.cli-sec > span.cli-sec-ico{display:inline-grid;}
+.cli-app.cli-recolhida .cli-menu .subnav-item.cli-sec > span:nth-of-type(2){display:none;}

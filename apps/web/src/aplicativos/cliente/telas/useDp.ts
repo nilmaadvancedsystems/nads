@@ -125,7 +125,7 @@ export function useDp({ token, area, hoje }: DaCasca) {
   return {
     aba: abaDoRegistro, escolherAba: setAbaDoRegistro,
     abas: [
-      { id: 'equipe' as const, rotulo: 'Equipe', icone: 'usuario' as const, conta: 0 },
+      { id: 'equipe' as const, rotulo: 'Equipe', icone: 'equipe' as const, conta: 0 },
       { id: 'ferias' as const, rotulo: 'Férias', icone: 'calendar' as const, conta: feriasUrgentes },
       { id: 'folha' as const, rotulo: 'Folha', icone: 'barChart' as const, conta: 0 },
       { id: 'calendario' as const, rotulo: 'Calendário', icone: 'clock' as const, conta: 0 },

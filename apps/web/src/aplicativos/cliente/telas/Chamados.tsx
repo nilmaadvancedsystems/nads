@@ -13,6 +13,8 @@ import { MarcaDoEscritorio } from '../partes/MarcaDoEscritorio';
 import { Vazio } from '../partes/Vazio';
 import { useChamados } from './useChamados';
 import type { DaCasca } from './useAreaCliente';
+import { AjudaDaTela } from '../partes/AjudaDaTela';
+import { MarcaDaTela } from '../partes/MarcaDaTela';
 
 const SELO: Record<string, string> = { respondido: 'badge badge-ok', concluido: 'badge badge-neutral', aberto: 'badge badge-warn', 'em andamento': 'badge badge-warn' };
 const VAZIO_DO_FILTRO: Record<string, string> = { todas: 'Nenhuma solicitação.', abertas: 'Nada em andamento no escritório.', respondidas: 'Nenhuma resposta esperando você.', concluidas: 'Nenhuma solicitação concluída.' };
@@ -26,7 +28,7 @@ export function Chamados(props: DaCasca) {
     <>
       <div className="cli-titulo">
         <div>
-          <h1 className="page-title">Solicitações</h1>
+          <MarcaDaTela /><h1 className="page-title">Solicitações</h1><AjudaDaTela />
           {vm.resumo && <p className="cli-subtitulo">{vm.resumo}</p>}
         </div>
         <div className="cli-acoes">

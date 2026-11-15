@@ -11,6 +11,8 @@ import type { DaCasca } from './useAreaCliente';
 import { useContato, useEmpresa, useFaturamento, type ColunaDoGrafico, type VistaDoRelatorio } from './useAdministrativo';
 import { useVisualizar } from './useVisualizar';
 import { JanelaDoArquivo } from '../partes/JanelaDoArquivo';
+import { AjudaDaTela } from '../partes/AjudaDaTela';
+import { MarcaDaTela } from '../partes/MarcaDaTela';
 
 /** O relatório do dia, no estilo da lista do portal do SIEG: os totais no alto e uma linha por nota. */
 function RelatorioDoDia({ r, onCopiar, pegarDanfe }: { r: VistaDoRelatorio; onCopiar: (chave: string) => void; pegarDanfe: (chave: string) => Promise<{ nome: string; arquivo: Blob } | { erro: string }> }) {
@@ -137,7 +139,7 @@ export function Empresa(props: DaCasca) {
   return (
     <>
       <div className="cli-titulo">
-        <div><h1 className="page-title">Dados cadastrais</h1></div>
+        <div><MarcaDaTela /><h1 className="page-title">Dados cadastrais</h1><AjudaDaTela /></div>
         <div className="cli-acoes"><button type="button" className="btn" onClick={vm.copiarTudo}><Icone nome="copiar" width={16} height={16} />Copiar todos os dados</button></div>
       </div>
       <section className="card cli-fi cli-fl">
@@ -185,7 +187,7 @@ export function Contato(props: DaCasca & { contato: Parameters<typeof useContato
   return (
     <>
       <div className="cli-titulo">
-        <div><h1 className="page-title">Fale com o escritório</h1></div>
+        <div><MarcaDaTela /><h1 className="page-title">Fale com o escritório</h1><AjudaDaTela /></div>
       </div>
       {/* o WhatsApp em destaque: é por onde o escritório conversa (12/11/2026: sem chat no site) */}
       {vm.whatsapp && (
@@ -197,8 +199,8 @@ export function Contato(props: DaCasca & { contato: Parameters<typeof useContato
             {vm.horario && <span className="hint">{vm.horario}</span>}
           </div>
           <span className="cli-acoes">
-            {vm.emailGeral && <a className="btn" href={'mailto:' + vm.emailGeral} title={vm.emailGeral}><Icone nome="envelope" width={16} height={16} />E-mail</a>}
-            {props.onWhatsapp && <button type="button" className="btn btn-primary" onClick={props.onWhatsapp}><Icone nome="mensagem" width={16} height={16} />Abrir conversa</button>}
+            {vm.emailGeral && <a className="btn" href={'mailto:' + vm.emailGeral} title={vm.emailGeral}><span className="cli-st-logo" aria-hidden="true"><LogoGmail /></span>E-mail</a>}
+            {props.onWhatsapp && <button type="button" className="btn cli-sc-whats" onClick={props.onWhatsapp}><span className="cli-st-logo" aria-hidden="true"><WhatsAppContorno /></span>Abrir conversa</button>}
           </span>
         </section>
       )}
@@ -240,7 +242,7 @@ export function Faturamento(props: DaCasca) {
   return (
     <>
       <div className="cli-titulo cli-titulo-fat" ref={topo}>
-        <div><h1 className="page-title">Faturamento</h1></div>
+        <div><MarcaDaTela /><h1 className="page-title">Faturamento</h1><AjudaDaTela /></div>
         {vm.tem && (
           <span className="cli-acoes">
             {vm.empresas.length > 1 && (
@@ -263,8 +265,8 @@ export function Faturamento(props: DaCasca) {
           {vm.secoes.length > 1 && (
             <nav className="cli-fat-abas" role="tablist" aria-label="Partes do faturamento">
               {vm.secoes.map(x => (
-                <button key={x.id} type="button" role="tab" aria-selected={x.ativa} className={'cli-fat-aba' + (x.ativa ? ' ativa' : '')} onClick={() => vm.escolherSecao(x.id)}>
-                  <Icone nome={x.icone} width={15} height={15} />{x.rotulo}
+                <button key={x.id} type="button" role="tab" data-aba={x.id} aria-selected={x.ativa} className={'cli-fat-aba' + (x.ativa ? ' ativa' : '')} onClick={() => vm.escolherSecao(x.id)}>
+                  <Icone nome={x.icone} width={17} height={17} />{x.rotulo}
                 </button>
               ))}
             </nav>
