@@ -1150,7 +1150,7 @@ export function TarefaExtratos() {
             </div>
             {d.login.erro && <p className="hint drive-login-erro">{d.login.erro}</p>}
             <div className="modal-actions">
-              <button type="button" className="btn btn-outline" onClick={d.login.fechar}>Voltar</button>
+              <button type="button" className="btn btn-outline" onClick={d.login.fechar}>Cancelar</button>
             </div>
           </div>
         </div>

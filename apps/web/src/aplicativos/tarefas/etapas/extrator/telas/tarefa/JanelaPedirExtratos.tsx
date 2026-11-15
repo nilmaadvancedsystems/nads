@@ -41,6 +41,8 @@ export function JanelaPedirExtratos({ p }: { p: P }) {
     <div className="modal-overlay" onMouseDown={e => { if (e.target === e.currentTarget) p.fechar(); }}>
       <div className={'modal pedir-modal' + (conferir ? ' conferir' : '')} role="dialog" aria-modal="true" aria-label="Pedir documentos">
         <h3 className="pedir-titulo">
+          {/* o Voltar no canto superior esquerdo (Vitor, 13/11/2026: "Voltar sempre lado esquerdo superior, sempre! na aplicacao toda") */}
+          {conferir && <button type="button" className="btn btn-ghost registro-voltar" disabled={!!p.enviando} onClick={p.voltar}><Icone nome="chevronLeft" />Voltar</button>}
           <span className="pedir-app"><LogoGmail /></span>
           {conferir ? 'Conferir o e-mail' : 'Pedir documentos por e-mail'}
           <span className="pedir-passos" aria-hidden="true"><span className={conferir ? '' : 'on'}>1 Montar</span><span className={conferir ? 'on' : ''}>2 Conferir</span></span>
@@ -153,9 +155,7 @@ export function JanelaPedirExtratos({ p }: { p: P }) {
 
         <div className="modal-actions">
           {p.enviando && <span className="hint pedir-andamento"><span className="btn-spinner" />{p.enviando}</span>}
-          {conferir
-            ? <button type="button" className="btn btn-outline" disabled={!!p.enviando} onClick={p.voltar}>Voltar</button>
-            : <button type="button" className="btn btn-outline" onClick={p.fechar}>Cancelar</button>}
+          {!conferir && <button type="button" className="btn btn-outline" onClick={p.fechar}>Cancelar</button>}
           {conferir ? (
             <button type="button" className="btn btn-primary" disabled={!p.podeContinuar || !!p.enviando} onClick={enviar}>
               {p.exemplos ? 'Enviar (exemplo)' : p.whatsapp.ligado ? 'Enviar e-mail e WhatsApp' : 'Enviar e-mail'}

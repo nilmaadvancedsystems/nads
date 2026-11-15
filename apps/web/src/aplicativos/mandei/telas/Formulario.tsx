@@ -49,8 +49,11 @@ export function Formulario() {
       ) : !vm.valido ? (
         <Vazio icone="clock" titulo="Este link venceu" texto="Se ainda precisar responder, fale com o escritório: enviamos um novo link." />
       ) : vm.enviado ? (
-        <Vazio icone="checkCircle" titulo="Recebemos a sua resposta" texto={'Obrigado! Até ' + vm.validoAte + ' dá para voltar por este mesmo link e mandar mais arquivos.'}
-          acao={<button type="button" className="btn" onClick={vm.voltar}>Voltar às respostas</button>} />
+        <>
+          {/* o Voltar no canto superior esquerdo (Vitor, 13/11/2026: "Voltar sempre lado esquerdo superior, sempre! na aplicacao toda") */}
+          <button type="button" className="btn btn-ghost" style={{ marginTop: 12 }} onClick={vm.voltar}><Icone nome="chevronLeft" />Voltar às respostas</button>
+          <Vazio icone="checkCircle" titulo="Recebemos a sua resposta" texto={'Obrigado! Até ' + vm.validoAte + ' dá para voltar por este mesmo link e mandar mais arquivos.'} />
+        </>
       ) : <Respostas vm={vm} />}
     </div>
   );

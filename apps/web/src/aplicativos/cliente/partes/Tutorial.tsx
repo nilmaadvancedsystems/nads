@@ -142,12 +142,15 @@ export function Tutorial({ passos, abaAtual, irPara, onFechar }: {
 
       <div ref={balao} key={passo.id} className={'cli-tut-balao' + (noMeio ? ' cartao' : '') + (lugar ? ' lado-' + lugar.lado : '') + (escondido ? ' escondido' : '')}
         style={lugar ? { left: lugar.x, top: lugar.y, ['--seta' as string]: seta + 'px' } : undefined} aria-live="polite">
+        {/* o passo anterior no canto superior esquerdo (Vitor, 13/11/2026: "Voltar sempre lado esquerdo superior, sempre! na aplicacao toda") */}
+        {!primeiro && noMeio && <button type="button" className="cli-tut-voltar" onClick={() => ir(i - 1)}><Icone nome="chevronLeft" width={14} height={14} />Voltar</button>}
         {noMeio ? (
           <div className="cli-tut-heroi" aria-hidden="true">
             {primeiro ? <span className="cli-tut-marca"><MarcaN /></span> : <Icone nome={passo.icone} width={30} height={30} />}
           </div>
         ) : (
           <div className="cli-tut-topo">
+            {!primeiro && <button type="button" className="cli-tut-voltar" onClick={() => ir(i - 1)} aria-label="Voltar ao passo anterior"><Icone nome="chevronLeft" width={14} height={14} />Voltar</button>}
             <span className="cli-tut-ico" aria-hidden="true"><Icone nome={passo.icone} width={16} height={16} /></span>
             <span className="cli-tut-conta"><b>{passo.capitulo}</b>{noCapitulo.length > 1 && <> · {posNoCapitulo + 1} de {noCapitulo.length}</>}</span>
             <button type="button" className="cli-tut-x" onClick={() => onFechar(false)} aria-label="Fechar o tutorial" title="Fechar (Esc)"><Icone nome="x" width={14} height={14} /></button>
@@ -184,14 +187,13 @@ export function Tutorial({ passos, abaAtual, irPara, onFechar }: {
             </>
           ) : ultimo ? (
             <>
-              <button type="button" className="btn btn-ghost" onClick={() => ir(i - 1)}>Voltar</button>
+              <span />
               <button type="button" ref={principal} className="btn btn-primary" onClick={proximo}><Icone nome="check" width={16} height={16} />Concluir</button>
             </>
           ) : (
             <>
               <button type="button" className="cli-tut-pular" onClick={() => onFechar(false)}>Pular</button>
               <span className="cli-tut-botoes">
-                <button type="button" className="btn btn-sm" onClick={() => ir(i - 1)} aria-label="Passo anterior"><Icone nome="chevronLeft" width={16} height={16} /></button>
                 <button type="button" ref={principal} className="btn btn-sm btn-primary" onClick={proximo}>Próximo<Icone nome="chevronRight" width={16} height={16} /></button>
               </span>
             </>

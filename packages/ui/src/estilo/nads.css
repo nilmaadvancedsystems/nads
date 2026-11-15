@@ -3181,12 +3181,12 @@ html.tabelas-compactas thead th{padding-top:6px;padding-bottom:6px;}
 }
 /* a faixa do modo desenvolvedor na Área do Cliente e na Central dos robôs abertas pelo nads (13/11/2026, rotasDoModoDev.tsx):
    no canto, por cima das telas deles, com o caminho de volta ao módulo Desenvolvedor */
-.faixa-modo-dev{position:fixed;right:16px;bottom:16px;z-index:9000;display:flex;align-items:center;gap:12px;max-width:calc(100vw - 32px);
-  padding:8px 8px 8px 14px;border-radius:12px;background:light-dark(#0550AE, #0D419D);color:#FFFFFF;box-shadow:0 8px 24px #0000003D;font-size:var(--fs-13);}
+.faixa-modo-dev{position:sticky;top:0;z-index:9000;display:flex;align-items:center;justify-content:flex-start;gap:12px;width:100%;
+  padding:6px 16px;background:light-dark(#0550AE, #0D419D);color:#FFFFFF;font-size:var(--fs-13);}
 .faixa-modo-dev-txt{display:flex;flex-direction:column;line-height:1.25;min-width:0;}
 .faixa-modo-dev-txt small{color:#FFFFFFCC;font-size:var(--fs-12);}
 .faixa-modo-dev .btn{flex:none;background:#FFFFFF;color:#0550AE;border-color:transparent;}
-@media (max-width:640px){.faixa-modo-dev{bottom:76px;}.faixa-modo-dev-txt small{display:none;}}
+@media (max-width:640px){.faixa-modo-dev-txt small{display:none;}}
 /* o módulo Desenvolvedor da Tarefas (13/11/2026): a Área do Cliente de uma empresa e a Central dos robôs */
 .outros-sites{display:flex;flex-direction:column;gap:16px;max-width:760px;}
 .outros-sites .card{margin:0;}
@@ -6838,10 +6838,9 @@ td.fs-fat-sem{color:var(--ink-faint);}
 .tdl-data dd .fraco{display:block;font-weight:400;font-size:var(--fs-12);}
 /* o prazo da tarefa (13/11/2026: "De a opcao 'Colocar prazo'... o sistema faz uma animacao, que aparece data e hora"): a chave e,
    ligada, a data (calendário), o Hoje e o Amanhã e a hora (lista) entrando com a curva da casa */
-.tdl-prazo{display:flex;flex-direction:column;align-items:flex-start;gap:8px;min-width:0;}
-.tdl-prazo-chave{display:inline-flex;align-items:center;gap:8px;}
-.tdl-prazo-chave .toggle-txt{display:none;}
-.tdl-prazo-rotulo{appearance:none;background:none;border:0;padding:0;font:inherit;color:var(--ink);cursor:pointer;}
+/* a chave, a data e a hora numa linha só (13/11/2026: "coloca tudo na mesma linha, se possivel"); quebra só sem espaço */
+.tdl-prazo{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:8px 10px;min-width:0;}
+.tdl-prazo-escolhas{gap:6px;}
 .tdl-prazo-escolhas{display:flex;align-items:center;gap:6px;flex-wrap:wrap;animation:prazoAbre .36s cubic-bezier(.23,1,.32,1) both;}
 .tdl-prazo-escolhas > *{animation:prazoPeca .42s cubic-bezier(.23,1,.32,1) both;}
 .tdl-prazo-escolhas > :nth-child(2){animation-delay:.04s;}
@@ -6849,14 +6848,18 @@ td.fs-fat-sem{color:var(--ink-faint);}
 @keyframes prazoPeca{from{opacity:0;transform:translateY(-6px) scale(.97);}to{opacity:1;transform:none;}}
 @media (prefers-reduced-motion: reduce){.tdl-prazo-escolhas,.tdl-prazo-escolhas > *{animation:none;}}
 /* a data e a hora nos campos do navegador (13/11/2026: "a data e a hora pode ser input normal") */
-.tdl-prazo-escolhas input[type=date]{width:160px;}
-.tdl-prazo-escolhas input[type=time]{width:110px;}
+.tdl-prazo-escolhas input[type=date]{width:136px;padding-left:8px !important;padding-right:6px !important;}
+.tdl-prazo-escolhas input[type=time]{width:92px;padding-left:8px;padding-right:6px;}
 /* a data com o mesmo desenho dos outros campos (o navegador desenhava o dele) */
 .tdl-prazo-escolhas input[type=date]{border:1px solid var(--border);background:var(--input-bg);color:var(--ink);border-radius:6px;padding:5px 12px;
   min-height:32px;font-size:var(--fs-14);line-height:20px;font-family:var(--font-body);box-shadow:var(--shadow-inset);color-scheme:light dark;}
 .tdl-prazo-escolhas input[type=date]:focus{outline:none;border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);}
 .tdl-prazo-escolhas.sem-animacao,.tdl-prazo-escolhas.sem-animacao > *{animation:none;}
+/* as caixinhas Delegar e Colocar prazo, ao lado do valor, sem o negrito do "Já estava fazendo" */
+.registro-props .tdl-ja-fazendo{font-weight:400;font-size:var(--fs-13);color:var(--ink-muted);white-space:nowrap;}
 /* o Voltar no canto superior esquerdo da janela, antes do título */
+.pedir-titulo .registro-voltar{margin-left:-8px;padding-left:4px;padding-right:8px;flex:none;}
+.executor-fim-voltar{margin:16px 0 0 16px;align-self:flex-start;}
 .registro-topo .registro-voltar{margin-left:-8px;padding-left:4px;padding-right:8px;flex:none;}
 /* os clientes em cápsula na janela da tarefa (13/11/2026: "Clientes, coloca em capsula") */
 .tdl-janela-nova .tdl-clientes{display:flex;flex-wrap:wrap;align-items:center;gap:6px;}
