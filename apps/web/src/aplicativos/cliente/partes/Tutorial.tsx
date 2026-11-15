@@ -19,8 +19,6 @@ export function Tutorial({ passos, abaAtual, irPara, onFechar }: {
 }) {
   const [i, setI] = useState(0);
   const [alvo, setAlvo] = useState<Caixa | null>(null);
-  // onde está cada marca numerada (só as que estão na tela)
-  const [marcas, setMarcas] = useState<{ n: number; x: number; y: number }[]>([]);
   const [procurando, setProcurando] = useState(false);
   const [tamanho, setTamanho] = useState({ w: 360, h: 220 });
   const balao = useRef<HTMLDivElement>(null);
@@ -49,7 +47,6 @@ export function Tutorial({ passos, abaAtual, irPara, onFechar }: {
     return () => clearTimeout(t);
   }, [passo]);
   useEffect(() => {
-    setMarcas([]);
     if (!passo?.alvo) { setAlvo(null); setProcurando(false); return; }
     setProcurando(true);
     let quadro = 0;
@@ -57,7 +54,16 @@ export function Tutorial({ passos, abaAtual, irPara, onFechar }: {
     let el: Element | null = null;
     let ultima = '';
     let quieto: ReturnType<typeof setTimeout> | undefined;
+    // (15/11/2026) o passo de uma aba de dentro da tela (a Folha, as Férias do Registro): toca nela uma vez, assim que aparecer
+    let clicou = !passo.clicar;
     const seguir = () => {
+      if (!clicou) {
+        const b = document.querySelector<HTMLElement>(passo.clicar!);
+        if (b) { if (b.getAttribute('aria-selected') !== 'true') b.click(); clicou = true; }
+        else if (performance.now() - inicio > 2500) clicou = true;
+        quadro = requestAnimationFrame(seguir);
+        return;
+      }
       if (!el || !el.isConnected) {
         el = document.querySelector(passo.alvo!);
         // rola na hora e só se a parte não está inteira na tela (13/11/2026: "tá demorando para aparecer"): rolagem
@@ -65,25 +71,30 @@ export function Tutorial({ passos, abaAtual, irPara, onFechar }: {
         if (el) {
           const r0 = el.getBoundingClientRect();
           const cabe = r0.height < window.innerHeight - 40;
-          if (r0.top < 60 || (cabe ? r0.bottom > window.innerHeight - 20 : r0.top > window.innerHeight * 0.5)) el.scrollIntoView({ block: cabe ? 'center' : 'start', inline: 'nearest', behavior: 'auto' });
+          if (r0.top < 60 || (cabe ? r0.bottom > window.innerHeight - 20 : r0.top > window.innerHeight * 0.5)) {
+            el.scrollIntoView({ block: cabe ? 'center' : 'start', inline: 'nearest', behavior: 'auto' });
+            // (15/11/2026) a parte comprida rolada para o alto ficava embaixo do topo fixo: desce o que ele cobre
+            const { cima } = faixaVisivel();
+            const r1 = el.getBoundingClientRect();
+            if (!el.closest('.cli-topo, .cli-abas-baixo, .cli-lateral') && r1.top < cima + 8) window.scrollBy({ top: r1.top - cima - 12, behavior: 'auto' });
+          }
         }
         else if (performance.now() - inicio > 2500) { setProcurando(false); return; }
       }
       if (el) {
         const r = el.getBoundingClientRect();
+        // (15/11/2026) o que fica embaixo do topo ou da barra de baixo do celular não aparece: o destaque e as marcas param
+        // neles (a não ser que a parte seja do próprio topo, da barra ou do menu)
+        const { cima, baixo } = faixaVisivel();
+        const preso = (e: Element) => !!e.closest('.cli-topo, .cli-abas-baixo, .cli-lateral');
+        const de = preso(el) ? 4 : cima, ate = preso(el) ? window.innerHeight - 4 : baixo;
         // o que passa da tela fica dentro dela (a lateral inteira, uma lista comprida)
-        const y = Math.max(r.top, 4), b = Math.min(r.bottom, window.innerHeight - 4);
+        const y = Math.max(r.top, de), b = Math.min(r.bottom, ate);
         const x = Math.max(r.left, 4), d = Math.min(r.right, window.innerWidth - 4);
         const c = { x: x - FOLGA, y: y - FOLGA, w: d - x + FOLGA * 2, h: Math.max(b - y, 0) + FOLGA * 2 };
-        // as marcas: o canto de cima, à esquerda, de cada parte de dentro que aparece
-        const ms = (passo.marcas ?? []).map((m, k) => {
-          const e = document.querySelector(m.alvo);
-          const q = e?.getBoundingClientRect();
-          return q && q.width > 0 && q.bottom > 0 && q.top < window.innerHeight ? { n: k + 1, x: Math.max(q.left - 9, 2), y: Math.max(q.top - 9, 2) } : null;
-        }).filter((m): m is { n: number; x: number; y: number } => !!m);
-        const chave = [c.x, c.y, c.w, c.h, ...ms.flatMap(m => [m.x, m.y])].map(Math.round).join(',');
+        const chave = [c.x, c.y, c.w, c.h].map(Math.round).join(',');
         if (chave !== ultima) {
-          ultima = chave; setAlvo({ ...c, id: passo.id }); setMarcas(ms); setProcurando(false);
+          ultima = chave; setAlvo({ ...c, id: passo.id }); setProcurando(false);
           // o balão aparece logo depois de a parte ser achada (uma vez por passo; a parte que se mexe não o segura)
           if (!quieto) quieto = setTimeout(() => setAssentou(true), 40);
         }
@@ -119,13 +130,14 @@ export function Tutorial({ passos, abaAtual, irPara, onFechar }: {
   const escondido = !noMeio && (!pronto || !assentou);
   const lugar = alvo && !noMeio ? ondeFicaOBalao(alvo, tamanho) : null;
   const n = passos.length;
-  const primeiro = i === 0;
-  // os capítulos: a barra de progresso em pedaços, um por capítulo, cheios até onde já foi
+  // o cartão do começo e o do fim (o tutorial de uma tela só, pelo "?", não tem nenhum dos dois)
+  const comCartoes = !passos[0]?.alvo;
+  const primeiro = i === 0 && comCartoes;
+  const fim = ultimo && !passo.alvo;
+  const totalDePassos = comCartoes ? n - 2 : n;
+  const nDoPasso = comCartoes ? i : i + 1;
+  // os capítulos: o roteiro do cartão do começo e o resumo do fim
   const capitulos = capitulosDoTutorial(passos);
-  const noCapitulo = passos.filter(p => p.capitulo === passo.capitulo);
-  const posNoCapitulo = noCapitulo.indexOf(passo);
-  const capituloAtual = capitulos.indexOf(passo.capitulo);
-  const cheio = (k: number) => (k < capituloAtual ? 1 : k > capituloAtual ? 0 : (posNoCapitulo + 1) / noCapitulo.length);
   // a setinha do balão aponta para o meio da parte (no lado em que o balão está)
   const seta = lugar && alvo ? (lugar.lado === 'baixo' || lugar.lado === 'cima'
     ? Math.max(20, Math.min(alvo.x + alvo.w / 2 - lugar.x, tamanho.w - 20))
@@ -138,45 +150,42 @@ export function Tutorial({ passos, abaAtual, irPara, onFechar }: {
         ? <div className={'cli-tut-destaque' + (andando ? ' anda' : '')} style={{ transform: `translate(${alvo.x}px, ${alvo.y}px)`, width: alvo.w, height: alvo.h }} aria-hidden="true" />
         : <div className="cli-tut-fundo" aria-hidden="true" />}
       <div className="cli-tut-trava" aria-hidden="true" />
-      {!noMeio && !escondido && marcas.map(m => <span key={m.n} className="cli-tut-marca-n" style={{ transform: `translate(${m.x}px, ${m.y}px)` }} aria-hidden="true">{m.n}</span>)}
 
       <div ref={balao} key={passo.id} className={'cli-tut-balao' + (noMeio ? ' cartao' : '') + (lugar ? ' lado-' + lugar.lado : '') + (escondido ? ' escondido' : '')}
         style={lugar ? { left: lugar.x, top: lugar.y, ['--seta' as string]: seta + 'px' } : undefined} aria-live="polite">
         {/* o passo anterior no canto superior esquerdo (Vitor, 13/11/2026: "Voltar sempre lado esquerdo superior, sempre! na aplicacao toda") */}
-        {!primeiro && noMeio && <button type="button" className="cli-tut-voltar" onClick={() => ir(i - 1)}><Icone nome="chevronLeft" width={14} height={14} />Voltar</button>}
+        {i > 0 && noMeio && <button type="button" className="cli-tut-voltar" onClick={() => ir(i - 1)}><Icone nome="chevronLeft" width={14} height={14} />Voltar</button>}
         {noMeio ? (
           <div className="cli-tut-heroi" aria-hidden="true">
             {primeiro ? <span className="cli-tut-marca"><MarcaN /></span> : <Icone nome={passo.icone} width={30} height={30} />}
           </div>
         ) : (
           <div className="cli-tut-topo">
-            {!primeiro && <button type="button" className="cli-tut-voltar" onClick={() => ir(i - 1)} aria-label="Voltar ao passo anterior"><Icone nome="chevronLeft" width={14} height={14} />Voltar</button>}
+            {i > 0 && <button type="button" className="cli-tut-voltar" onClick={() => ir(i - 1)} aria-label="Voltar ao passo anterior"><Icone nome="chevronLeft" width={14} height={14} />Voltar</button>}
             <span className="cli-tut-ico" aria-hidden="true"><Icone nome={passo.icone} width={16} height={16} /></span>
-            <span className="cli-tut-conta"><b>{passo.capitulo}</b>{noCapitulo.length > 1 && <> · {posNoCapitulo + 1} de {noCapitulo.length}</>}</span>
+            <span className="cli-tut-conta"><b>{passo.capitulo}</b> · {nDoPasso} de {totalDePassos}</span>
             <button type="button" className="cli-tut-x" onClick={() => onFechar(false)} aria-label="Fechar o tutorial" title="Fechar (Esc)"><Icone nome="x" width={14} height={14} /></button>
           </div>
         )}
         <h2 id="cli-tut-titulo">{passo.titulo}</h2>
         <p>{passo.texto}</p>
-        {!noMeio && passo.marcas && marcas.length > 0 && (
-          <ol className="cli-tut-marcas">
-            {passo.marcas.map((m, k) => marcas.some(x => x.n === k + 1) && <li key={k}><span className="cli-tut-num">{k + 1}</span>{m.texto}</li>)}
-          </ol>
+        {!noMeio && !!passo.marcas?.length && (
+          <ul className="cli-tut-topicos">
+            {passo.marcas.map(m => <li key={m.alvo}>{m.texto}</li>)}
+          </ul>
         )}
         {/* o roteiro no começo e o resumo no fim: os capítulos com o ícone */}
-        {noMeio && (primeiro || ultimo) && (
-          <ul className={'cli-tut-roteiro' + (ultimo ? ' visto' : '')} aria-label={ultimo ? 'O que você viu' : 'O que vamos ver'}>
+        {noMeio && (primeiro || fim) && (
+          <ul className={'cli-tut-roteiro' + (fim ? ' visto' : '')} aria-label={fim ? 'O que você viu' : 'O que vamos ver'}>
             {capitulos.map(c => (
-              <li key={c}><span className="cli-tut-roteiro-ico"><Icone nome={ultimo ? 'check' : ICONE_DO_CAPITULO[c] ?? 'checkCircle'} width={14} height={14} /></span>{c}</li>
+              <li key={c}><span className="cli-tut-roteiro-ico"><Icone nome={fim ? 'check' : ICONE_DO_CAPITULO[c] ?? 'checkCircle'} width={14} height={14} /></span>{c}</li>
             ))}
           </ul>
         )}
-        {primeiro && <p className="cli-tut-tempo"><Icone nome="clock" width={13} height={13} />Cerca de 1 minuto · {n - 2} passos</p>}
+        {primeiro && <p className="cli-tut-tempo"><Icone nome="clock" width={13} height={13} />Menos de 1 minuto · {totalDePassos} passos</p>}
         {!noMeio && (
-          <div className="cli-tut-capitulos" aria-label={'Passo ' + i + ' de ' + (n - 2)}>
-            {capitulos.map((c, k) => (
-              <span key={c} className={'cli-tut-cap' + (k === capituloAtual ? ' atual' : '')} title={c}><span style={{ width: cheio(k) * 100 + '%' }} /></span>
-            ))}
+          <div className="cli-tut-pontos" role="progressbar" aria-valuemin={1} aria-valuemax={totalDePassos} aria-valuenow={nDoPasso} aria-label={'Passo ' + nDoPasso + ' de ' + totalDePassos}>
+            {Array.from({ length: totalDePassos }, (_, k) => <span key={k} className={k + 1 === nDoPasso ? 'atual' : k + 1 < nDoPasso ? 'feito' : ''} />)}
           </div>
         )}
         <div className="cli-tut-pe">
@@ -185,7 +194,7 @@ export function Tutorial({ passos, abaAtual, irPara, onFechar }: {
               <button type="button" className="btn btn-ghost" onClick={() => onFechar(false)}>Agora não</button>
               <button type="button" ref={principal} className="btn btn-primary" onClick={proximo}>Começar<Icone nome="chevronRight" width={16} height={16} /></button>
             </>
-          ) : ultimo ? (
+          ) : fim ? (
             <>
               <span />
               <button type="button" ref={principal} className="btn btn-primary" onClick={proximo}><Icone nome="check" width={16} height={16} />Concluir</button>
@@ -194,7 +203,9 @@ export function Tutorial({ passos, abaAtual, irPara, onFechar }: {
             <>
               <button type="button" className="cli-tut-pular" onClick={() => onFechar(false)}>Pular</button>
               <span className="cli-tut-botoes">
-                <button type="button" ref={principal} className="btn btn-sm btn-primary" onClick={proximo}>Próximo<Icone nome="chevronRight" width={16} height={16} /></button>
+                {ultimo
+                  ? <button type="button" ref={principal} className="btn btn-sm btn-primary" onClick={proximo}><Icone nome="check" width={16} height={16} />Entendi</button>
+                  : <button type="button" ref={principal} className="btn btn-sm btn-primary" onClick={proximo}>Próximo<Icone nome="chevronRight" width={16} height={16} /></button>}
               </span>
             </>
           )}
@@ -203,6 +214,16 @@ export function Tutorial({ passos, abaAtual, irPara, onFechar }: {
     </div>,
     document.body,
   );
+}
+
+/** A faixa da tela que aparece: embaixo do topo fixo e acima da barra de baixo do celular. */
+function faixaVisivel(): { cima: number; baixo: number } {
+  const topo = document.querySelector('.cli-topo')?.getBoundingClientRect();
+  const barra = document.querySelector('.cli-abas-baixo')?.getBoundingClientRect();
+  return {
+    cima: topo && topo.height ? Math.max(topo.bottom, 4) : 4,
+    baixo: barra && barra.height && barra.top < window.innerHeight ? Math.min(barra.top, window.innerHeight - 4) : window.innerHeight - 4,
+  };
 }
 
 /**

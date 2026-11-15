@@ -46,7 +46,7 @@ export function Aparencia({ recolhida }: { recolhida?: boolean }) {
         {opcoes.map(o => (
           <button key={o.id} type="button" role="radio" aria-checked={atual === o.id} title={o.titulo} aria-label={o.titulo}
             className={'cli-aparencia-opcao' + (atual === o.id ? ' ativa' : '')} onClick={() => escolher(o.id)}>
-            {o.icone ? <><Icone nome={o.icone} width={15} height={15} />{!recolhida && <span className="cli-aparencia-nome">{o.titulo}</span>}</> : <span className="cli-aparencia-oled" aria-hidden="true">OLED</span>}
+            {o.icone ? <><Icone nome={o.icone} width={16} height={16} />{!recolhida && <span className="cli-aparencia-nome">{o.titulo}</span>}</> : <span className="cli-aparencia-oled" aria-hidden="true">OLED</span>}
           </button>
         ))}
       </div>

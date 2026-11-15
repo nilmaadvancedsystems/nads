@@ -10,20 +10,25 @@ import { Enviar } from './Enviar';
 import { useInicio } from './useInicio';
 import { useJanelaDeEnvio } from './JanelaDeEnvio';
 import type { AreaCliente, DaCasca } from './useAreaCliente';
+import { PrimeirosPassos } from '../partes/PrimeirosPassos';
+import { AjudaDaTela } from '../partes/AjudaDaTela';
+import { MarcaDaTela } from '../partes/MarcaDaTela';
 
-export function Inicio(props: DaCasca & { empresa: string; contato: AreaCliente['contato']; onWhatsapp?: () => void }) {
+export function Inicio(props: DaCasca & { empresa: string; contato: AreaCliente['contato']; onWhatsapp?: () => void; primeiros: AreaCliente['primeiros'] }) {
   const abrirEnvio = useJanelaDeEnvio(props);
   const vm = useInicio(props, abrirEnvio);
   return (
     <>
       <div className="cli-titulo cli-saudacao">
         <div>
-          <h1 className="page-title">{vm.saudacao}</h1>
+          <MarcaDaTela /><h1 className="page-title">{vm.saudacao}</h1><AjudaDaTela />
           <p className="cli-subtitulo">{vm.resumo}</p>
         </div>
       </div>
 
       <div className="cli-vg">
+        {/* os primeiros passos (15/11/2026): some quando tudo está feito ou no "x" */}
+        {props.primeiros && <PrimeirosPassos lista={props.primeiros} irPara={props.irPara} enviar={abrirEnvio} />}
         {/* o que precisa do cliente, o mais urgente primeiro (o ponto vermelho); ou o tudo em dia no mesmo cartão */}
         {vm.pendencias.length ? (
           <section className="card cli-vg-cartao cli-vg-precisa cli-precisa">

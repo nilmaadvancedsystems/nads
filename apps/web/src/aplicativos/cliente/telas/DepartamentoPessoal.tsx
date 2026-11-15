@@ -6,7 +6,8 @@
 // pedidos abrem em janela, como no protótipo, e viram uma solicitação do tipo certo.
 // Refeito (12/11/2026): os números no alto; a equipe na largura toda (os ativos ou quem saiu, a busca), a ficha numa janela
 // flutuante ("prefiro janela flutuante do que essa lateral"); embaixo, a folha do mês por categoria, no estilo extrato.
-import { CampoData, CampoEscolha, Icone, IconeDeArquivo, useRetorno } from '@nads/ui';
+import { CampoData, CampoEscolha, Icone, useRetorno } from '@nads/ui';
+import { IconeDoArquivo } from '../partes/IconeDoArquivo';
 import { useState } from 'react';
 import { Avatar } from '../partes/Avatar';
 import { JanelaDoArquivo } from '../partes/JanelaDoArquivo';
@@ -17,6 +18,8 @@ import { formatos } from '@nads/core';
 import { Colunas } from './Administrativo';
 import { useDp, type DadosDoPedido, type Pedido } from './useDp';
 import type { DaCasca } from './useAreaCliente';
+import { AjudaDaTela } from '../partes/AjudaDaTela';
+import { MarcaDaTela } from '../partes/MarcaDaTela';
 
 const CONTRATOS = ['Prazo indeterminado', 'Experiência (45 + 45 dias)', 'Estágio', 'Aprendiz'];
 const DIAS = ['30 dias', '20 dias e vender 10', '15 dias (primeira parte)', '10 dias (uma parte)'];
@@ -258,7 +261,7 @@ type Doc = VM['grupos'][number]['docs'][number];
 function LinhaDoDocumento({ d, vm }: { d: Doc; vm: VM }) {
   return (
     <li className="cli-reg-doc">
-      <IconeDeArquivo formato={d.formato} tamanho={30} />
+      <IconeDoArquivo formato={d.formato} tamanho={30} />
       {/* clicar no nome abre a visualização (13/11/2026: o mesmo padrão da Central) */}
       {d.podeBaixar ? (
         <button type="button" className="cli-reg-doc-txt cli-biblioteca-abrir" disabled={vm.vista.abrindo === d.id} onClick={() => vm.verDoc(d.id)} title={'Ver ' + d.nome}>
@@ -348,7 +351,7 @@ export function DepartamentoPessoal(props: DaCasca) {
     <>
       <div className="cli-titulo">
         <div>
-          <h1 className="page-title">Registro</h1>
+          <MarcaDaTela /><h1 className="page-title">Registro</h1><AjudaDaTela />
         </div>
         <div className="cli-acoes">
           <button type="button" className="btn btn-primary" onClick={() => void abrirPedido('admissao', vm.novaAdmissao())}><Icone nome="plus" width={16} height={16} />Solicitar admissão</button>
@@ -368,8 +371,8 @@ export function DepartamentoPessoal(props: DaCasca) {
       {/* as abas (13/11/2026: "quero trabalhar no DP"): a equipe, as férias, a folha e o calendário, uma parte por vez */}
       <nav className="cli-fat-abas" role="tablist" aria-label="Partes do Registro">
         {vm.abas.map(x => (
-          <button key={x.id} type="button" role="tab" aria-selected={vm.aba === x.id} className={'cli-fat-aba' + (vm.aba === x.id ? ' ativa' : '')} onClick={() => vm.escolherAba(x.id)}>
-            <Icone nome={x.icone} width={15} height={15} />{x.rotulo}{x.conta > 0 && <span className="cli-aba-conta">{x.conta}</span>}
+          <button key={x.id} type="button" role="tab" data-aba={x.id} aria-selected={vm.aba === x.id} className={'cli-fat-aba' + (vm.aba === x.id ? ' ativa' : '')} onClick={() => vm.escolherAba(x.id)}>
+            <Icone nome={x.icone} width={17} height={17} />{x.rotulo}{x.conta > 0 && <span className="cli-aba-conta">{x.conta}</span>}
           </button>
         ))}
       </nav>
@@ -410,7 +413,7 @@ export function DepartamentoPessoal(props: DaCasca) {
             ) : vm.busca ? <p className="hint cli-sol-vazio">Ninguém com esse nome. <button type="button" className="cli-link-mini" onClick={() => vm.mudarBusca('')}>Limpar a busca</button></p>
               : <p className="hint cli-sol-vazio">{vm.mostrarSaidas ? 'Ninguém saiu do registro.' : 'Nenhum funcionário ativo.'}</p>}
           </>
-        ) : <Vazio icone="usuario" titulo="Nenhum funcionário no registro" texto="Os funcionários aparecem aqui quando o escritório emite a guia do FGTS do mês." />}
+        ) : <Vazio icone="equipe" titulo="Nenhum funcionário no registro" texto="Os funcionários aparecem aqui quando o escritório emite a guia do FGTS do mês." />}
       </section>}
 
       {/* as férias de cada um (13/11/2026: os avisos de férias): a vencida primeiro, com o Programar férias */}

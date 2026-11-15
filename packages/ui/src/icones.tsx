@@ -1,5 +1,5 @@
 // Ícones do nads (traço 1,75). Mapa copiado de conferencia.html ICONS (~L1335, L1673-1677).
-import type { SVGProps } from 'react';
+import { createContext, useContext, type ReactNode, type SVGProps } from 'react';
 
 const ICONS = {
   relatorio: '<path d="M14.5 2.5H6.5a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7.5Z"/><path d="M14.5 2.5v5h5"/><path d="M8.5 18v-2"/><path d="M12 18v-5"/><path d="M15.5 18v-3.5"/>',
@@ -106,15 +106,29 @@ const ICONS = {
   // as Ferramentas de documentos (12/11/2026): a tesoura do Separar e as folhas uma sobre a outra do Juntar
   tesoura: '<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.12 15.88"/><path d="M14.47 14.48 20 20"/><path d="M8.12 8.12 12 12"/>',
   folhas: '<path d="M8 3h7l4 4v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M15 3v4h4"/><path d="M3 8v11a2 2 0 0 0 2 2h9"/>',
+  // as pessoas (a equipe, mais de uma) e o fone de atendimento (15/11/2026: os ícones do menu da Área do Cliente)
+  equipe: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9"/><path d="M16 3.1a4 4 0 0 1 0 7.8"/>',
+  atendimento: '<path d="M3 11h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5Zm0 0a9 9 0 1 1 18 0m0 0v5a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3Z"/><path d="M21 16v2a4 4 0 0 1-4 4h-5"/>',
 } as const;
 
 export type NomeIcone = keyof typeof ICONS;
 
+/**
+ * Outros desenhos para alguns ícones, só dentro de um aplicativo (15/11/2026: a Área do Cliente com o jogo dela, por cima
+ * deste): os nomes são os mesmos, e o que o jogo não traz fica com o desenho daqui.
+ */
+const OutrosDesenhos = createContext<Partial<Record<NomeIcone, string>> | null>(null);
+
+export function JogoDeIcones({ desenhos, children }: { desenhos: Partial<Record<NomeIcone, string>>; children: ReactNode }) {
+  return <OutrosDesenhos.Provider value={desenhos}>{children}</OutrosDesenhos.Provider>;
+}
+
 /** <Icone nome="upload" /> — SVG de traço, na cor do texto. */
 export function Icone({ nome, ...resto }: { nome: NomeIcone } & SVGProps<SVGSVGElement>) {
+  const outros = useContext(OutrosDesenhos);
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round"
-      aria-hidden="true" {...resto} dangerouslySetInnerHTML={{ __html: ICONS[nome] }} />
+      aria-hidden="true" {...resto} dangerouslySetInnerHTML={{ __html: outros?.[nome] ?? ICONS[nome] }} />
   );
 }
 

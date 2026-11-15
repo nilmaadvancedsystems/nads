@@ -15,7 +15,8 @@ import { TOKEN_COMO_NO_BANCO, TOKEN_DE_EXEMPLO } from '../dados/areaCliente.memo
 import { guiasDoMomento } from '../dados/visaoGeral';
 import { bibliotecaDoCliente, PASTAS_DA_BIBLIOTECA } from '../dados/biblioteca';
 import { indiceDaBusca, type ItemDaBusca } from '../dados/busca';
-import { passosDoTutorial } from '../dados/tutorial';
+import { passosDaTela, passosDoTutorial } from '../dados/tutorial';
+import { lerPrimeirosPassos, marcarTelaVista, marcarTourConcluido, ocultarPrimeirosPassos, primeirosPassos } from '../dados/primeirosPassos';
 import { jaViuOTutorial, marcarTutorialVisto } from '../dados/tutorialVisto';
 import { useCopiar } from './useCopiar';
 
@@ -26,11 +27,11 @@ export const ABAS: { id: IdAba; rotulo: string; icone: NomeIcone; administrativo
   { id: 'inicio', rotulo: 'Visão geral', icone: 'home' },
   { id: 'documentos', rotulo: 'Central de documentos', icone: 'pastaAberta' },
   { id: 'guias', rotulo: 'Guias e obrigações', icone: 'recibo' },
-  { id: 'dp', rotulo: 'Registro', icone: 'usuario' },
+  { id: 'dp', rotulo: 'Registro', icone: 'equipe' },
   { id: 'chamados', rotulo: 'Solicitações', icone: 'mensagem' },
   { id: 'faturamento', rotulo: 'Faturamento', icone: 'barChart', administrativo: true },
   { id: 'empresa', rotulo: 'Dados cadastrais', icone: 'predio', administrativo: true },
-  { id: 'contato', rotulo: 'Fale com o escritório', icone: 'telefone', administrativo: true },
+  { id: 'contato', rotulo: 'Fale com o escritório', icone: 'atendimento', administrativo: true },
 ];
 /** O que a aba aberta pelo irPara já faz ao abrir: abrir a conversa de um chamado, ou o formulário com o assunto e o título. */
 export interface PedidoDaTela { chamado?: string; novoChamado?: { tipo: ac.TipoDeChamado; titulo: string }; /** a busca já preenchida (a busca geral, 13/11/2026) */ busca?: string }
@@ -134,8 +135,21 @@ export function useAreaCliente() {
   const [tutorial, setTutorial] = useState<'pc' | 'celular' | null>(null);
   // os passos guardados (o mesmo objeto entre um desenho e outro: o tutorial acompanha o passo pelo objeto)
   const idsDasAbas = abas.map(a => a.id).join(',');
-  const passosDoTutorialMemo = useMemo(() => (tutorial ? passosDoTutorial(tutorial, idsDasAbas.split(',')) : []), [tutorial, idsDasAbas]);
-  const abrirTutorial = () => { setMenuAberto(false); setTutorial(window.matchMedia('(max-width: 767px)').matches ? 'celular' : 'pc'); };
+  // só de uma tela (15/11/2026: o "?" ao lado do título): a aba dela; null, o tutorial inteiro
+  const [soDaTela, setSoDaTela] = useState<string | null>(null);
+  const passosDoTutorialMemo = useMemo(() => (!tutorial ? [] : soDaTela ? passosDaTela(tutorial, idsDasAbas.split(','), soDaTela) : passosDoTutorial(tutorial, idsDasAbas.split(','))), [tutorial, idsDasAbas, soDaTela]);
+  const modoDaTela = (): 'pc' | 'celular' => (window.matchMedia('(max-width: 767px)').matches ? 'celular' : 'pc');
+  const abrirTutorial = () => { setMenuAberto(false); setSoDaTela(null); setTutorial(modoDaTela()); };
+  const temDaTela = passosDaTela(modoDaTela(), idsDasAbas.split(','), atual).length > 0;
+  const abrirDaTela = () => { setMenuAberto(false); setSoDaTela(atual); setTutorial(modoDaTela()); };
+
+  // os primeiros passos (15/11/2026): o que já foi feito, guardado neste navegador; cada tela aberta conta
+  const [guardado, setGuardado] = useState(() => lerPrimeirosPassos(token));
+  useEffect(() => { setGuardado(lerPrimeirosPassos(token)); }, [token]);
+  useEffect(() => { if (area.carregado && area.valido && token) setGuardado(marcarTelaVista(token, atual)); }, [token, atual, area.carregado, area.valido]);
+  const listaDosPrimeiros = area.carregado && area.valido
+    ? primeirosPassos({ abas: idsDasAbas.split(','), guardado, temEnvio: area.envios.length > 0, temPedido: area.chamados.length > 0 })
+    : null;
   useEffect(() => {
     if (area.carregado && area.valido && token && !jaViuOTutorial(token)) setTutorial(window.matchMedia('(max-width: 767px)').matches ? 'celular' : 'pc');
   }, [area.carregado, area.valido, token]);
@@ -169,10 +183,15 @@ export function useAreaCliente() {
     abrirPeloLink: (texto: string) => { const t = tokenDoLink(texto); if (!t) return 'Não parece um link da Área do Cliente. Copie o link inteiro que o escritório mandou.'; trocarDeEmpresa(t); return ''; },
     copiarLink: () => copiar(window.location.origin + '/cliente/' + encodeURIComponent(token), 'Link da área'),
     tutorial: {
-      modo: tutorial, abrir: abrirTutorial,
+      modo: tutorial, abrir: abrirTutorial, daTela: temDaTela ? abrirDaTela : null,
       passos: passosDoTutorialMemo,
-      fechar: (concluiu: boolean) => { marcarTutorialVisto(token); setTutorial(null); if (concluiu) irPara('inicio'); },
+      fechar: (concluiu: boolean) => { marcarTutorialVisto(token); setTutorial(null); if (concluiu && !soDaTela) { setGuardado(marcarTourConcluido(token)); irPara('inicio'); } setSoDaTela(null); },
       irPara: (aba: string) => irPara(aba as IdAba),
+    },
+    primeiros: listaDosPrimeiros && {
+      ...listaDosPrimeiros,
+      ocultar: () => setGuardado(ocultarPrimeirosPassos(token)),
+      abrirTutorial,
     },
     busca: {
       aberta: buscaAberta, abrir: () => setBuscaAberta(true), fechar: () => setBuscaAberta(false), indice: indiceDaArea,

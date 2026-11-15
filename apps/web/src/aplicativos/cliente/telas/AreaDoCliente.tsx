@@ -9,13 +9,16 @@
 // "Enviar documento" vai para o topo); sem token (a raiz do site), o aviso para usar o link que o escritório mandou.
 // Polida de 17/10/2026: a gaveta do celular leva o foco para o ✕ ao abrir e devolve ao ☰ ao fechar; o WhatsApp do cartão
 // de atendimento abre a conversa. "Melhora mais" de 17/10/2026: na Visão geral o envio fica no cartão dela, sem o botão do topo.
-import { Icone, MarcaN, MenuSuspenso, useRetorno } from '@nads/ui';
+import { Icone, JogoDeIcones, MarcaN, MenuSuspenso, useRetorno } from '@nads/ui';
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router';
 import { Aparencia } from '../partes/Aparencia';
 import { BuscaGeral } from '../partes/BuscaGeral';
 import { Tutorial } from '../partes/Tutorial';
+import { AjudaDaTelaContexto } from '../partes/AjudaDaTela';
+import { TelaAbertaContexto } from '../partes/MarcaDaTela';
 import { EsqueletoDaArea } from '../partes/EsqueletoDaArea';
+import { ICONES_DO_CLIENTE } from '../partes/iconesDoCliente';
 import { MarcaDoEscritorio } from '../partes/MarcaDoEscritorio';
 import { Vazio } from '../partes/Vazio';
 import { Chamados } from './Chamados';
@@ -52,7 +55,12 @@ function AbrirPeloLink({ abrir }: { abrir: (texto: string) => string }) {
   );
 }
 
+// a Área inteira com os ícones dela (15/11/2026: "podia melhorar os icones"), até o que abre por cima (janelas, menus)
 export function AreaDoCliente() {
+  return <JogoDeIcones desenhos={ICONES_DO_CLIENTE}><Area /></JogoDeIcones>;
+}
+
+function Area() {
   const vm = useAreaCliente();
   const { toast } = useRetorno();
   const { area } = vm;
@@ -93,8 +101,8 @@ export function AreaDoCliente() {
                 {vm.abas.filter(a => !a.administrativo).map(a => {
                   const conta = vm.contadores[a.id];
                   return (
-                    <button key={a.id} type="button" title={a.rotulo} className={'subnav-item' + (vm.aba === a.id ? ' active' : '')} aria-current={vm.aba === a.id ? 'page' : undefined} onClick={() => vm.irPara(a.id)}>
-                      <Icone nome={a.icone} width={16} height={16} /><span>{a.rotulo}</span>
+                    <button key={a.id} type="button" title={a.rotulo} className={'subnav-item cli-sec sec-' + a.id + (vm.aba === a.id ? ' active' : '')} aria-current={vm.aba === a.id ? 'page' : undefined} onClick={() => vm.irPara(a.id)}>
+                      <span className="cli-sec-ico" aria-hidden="true"><Icone nome={a.icone} width={17} height={17} /></span><span>{a.rotulo}</span>
                       {!!conta && <span className={'subnav-count' + (a.id === 'guias' ? ' cli-conta-ruim' : '')} title={a.id === 'guias' ? 'Guias vencidas' : 'Documentos novos'}>{conta}</span>}
                     </button>
                   );
@@ -102,8 +110,8 @@ export function AreaDoCliente() {
                 <p className="subnav-title">Administrativo</p>
                 {/* o Faturamento, os Dados cadastrais e o Fale com o escritório viraram telas (12/11/2026) */}
                 {vm.abas.filter(a => a.administrativo).map(a => (
-                  <button key={a.id} type="button" title={a.rotulo} className={'subnav-item' + (vm.aba === a.id ? ' active' : '')} aria-current={vm.aba === a.id ? 'page' : undefined} onClick={() => vm.irPara(a.id)}>
-                    <Icone nome={a.icone} width={16} height={16} /><span>{a.rotulo}</span>
+                  <button key={a.id} type="button" title={a.rotulo} className={'subnav-item cli-sec sec-' + a.id + (vm.aba === a.id ? ' active' : '')} aria-current={vm.aba === a.id ? 'page' : undefined} onClick={() => vm.irPara(a.id)}>
+                    <span className="cli-sec-ico" aria-hidden="true"><Icone nome={a.icone} width={17} height={17} /></span><span>{a.rotulo}</span>
                   </button>
                 ))}
               </nav>
@@ -253,8 +261,10 @@ export function AreaDoCliente() {
               )}
             </div>
           ) : (
-            <>
-              {vm.aba === 'inicio' && <Inicio key={chaveDaTela} {...daCasca} empresa={vm.empresa} contato={c} onWhatsapp={c.whatsappLink ? abrirWhatsapp : undefined} />}
+            // o "?" ao lado do título abre o tutorial só desta tela (15/11/2026); some durante o tutorial
+            <TelaAbertaContexto.Provider value={vm.abas.find(a => a.id === vm.aba) ?? null}>
+            <AjudaDaTelaContexto.Provider value={vm.tutorial.modo ? null : vm.tutorial.daTela}>
+              {vm.aba === 'inicio' && <Inicio key={chaveDaTela} {...daCasca} primeiros={vm.primeiros} empresa={vm.empresa} contato={c} onWhatsapp={c.whatsappLink ? abrirWhatsapp : undefined} />}
               {vm.aba === 'documentos' && <Documentos key={chaveDaTela} {...daCasca} />}
               {vm.aba === 'guias' && <Guias key={chaveDaTela} {...daCasca} />}
               {vm.aba === 'dp' && <DepartamentoPessoal key={chaveDaTela} {...daCasca} />}
@@ -262,7 +272,8 @@ export function AreaDoCliente() {
               {vm.aba === 'faturamento' && <Faturamento {...daCasca} />}
               {vm.aba === 'empresa' && <Empresa {...daCasca} />}
               {vm.aba === 'contato' && <Contato {...daCasca} contato={c} onWhatsapp={c.whatsappLink ? abrirWhatsapp : undefined} />}
-            </>
+            </AjudaDaTelaContexto.Provider>
+            </TelaAbertaContexto.Provider>
           )}
         </main>
       </div>
@@ -272,7 +283,7 @@ export function AreaDoCliente() {
       {valido && (
         <nav className="cli-abas-baixo" aria-label="Seções principais">
           {vm.abasDeBaixo.map(a => (
-            <button key={a.id} type="button" className={'cli-aba-baixo' + (a.ativa ? ' ativa' : '')} aria-current={a.ativa ? 'page' : undefined} onClick={() => vm.irPara(a.id)}>
+            <button key={a.id} type="button" className={'cli-aba-baixo cli-sec sec-' + a.id + (a.ativa ? ' ativa' : '')} aria-current={a.ativa ? 'page' : undefined} onClick={() => vm.irPara(a.id)}>
               <span className="cli-aba-baixo-ico"><Icone nome={a.icone} width={20} height={20} />{a.conta > 0 && <span className="cli-aba-baixo-conta">{a.conta}</span>}</span>
               <span>{a.rotulo}</span>
             </button>

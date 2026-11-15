@@ -11,6 +11,8 @@ import { JanelaDoArquivo } from '../partes/JanelaDoArquivo';
 import { LinhaGuiaDoMes, LinhaPagaDoMes } from '../partes/LinhaGuiaDoMes';
 import { useGuias } from './useGuias';
 import type { DaCasca } from './useAreaCliente';
+import { AjudaDaTela } from '../partes/AjudaDaTela';
+import { MarcaDaTela } from '../partes/MarcaDaTela';
 
 const SEMANA = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 const TOM_DO_CERTIFICADO = { ok: 'Em dia', warn: 'Vence logo', bad: 'Vencido' } as const;
@@ -31,7 +33,7 @@ export function Guias(props: DaCasca) {
     <>
       <div className="cli-titulo">
         <div>
-          <h1 className="page-title">Guias e obrigações</h1>
+          <MarcaDaTela /><h1 className="page-title">Guias e obrigações</h1><AjudaDaTela />
           {/* os números do mês numa linha (13/11/2026: no lugar dos três cartões grandes do alto) */}
           <p className="cli-subtitulo cli-gu-resumo cli-numeros-guias">
             {vm.resumo.map((t, i) => (

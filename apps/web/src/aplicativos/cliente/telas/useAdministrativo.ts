@@ -277,7 +277,7 @@ export function useFaturamento({ token, area, hoje, copiar }: DaCasca) {
   const secoes = [
     { id: 'mes' as const, rotulo: 'O mês', icone: 'barChart' as const },
     ...(banco ? [{ id: 'banco' as const, rotulo: 'Banco', icone: 'landmark' as const }] : []),
-    ...(n ? [{ id: 'clientes' as const, rotulo: 'Clientes', icone: 'usuario' as const }] : []),
+    ...(n ? [{ id: 'clientes' as const, rotulo: 'Clientes', icone: 'equipe' as const }] : []),
   ];
   const secao = secoes.some(x => x.id === secaoEscolhida) ? secaoEscolhida : 'mes';
 

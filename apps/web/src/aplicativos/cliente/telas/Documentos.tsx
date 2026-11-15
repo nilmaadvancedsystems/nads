@@ -4,12 +4,15 @@
 // abre a visualização, com as setas para o anterior e o próximo), a pasta num selo colorido, a data e as ações (ver e
 // baixar, que aparecem ao passar o mouse). Marcar vários (ou "Baixar o mês") junta tudo num .zip. O que o cliente enviou
 // aparece como "Recebido": o arquivo fica com o escritório. Só desenha: o estado e as ações vêm de useDocumentos.ts.
-import { CampoEscolha, Icone, IconeDeArquivo } from '@nads/ui';
+import { CampoEscolha, Icone } from '@nads/ui';
+import { IconeDoArquivo } from '../partes/IconeDoArquivo';
 import { JanelaDoArquivo } from '../partes/JanelaDoArquivo';
 import { Vazio } from '../partes/Vazio';
 import { useJanelaDeEnvio } from './JanelaDeEnvio';
 import { useDocumentos } from './useDocumentos';
 import type { DaCasca } from './useAreaCliente';
+import { AjudaDaTela } from '../partes/AjudaDaTela';
+import { MarcaDaTela } from '../partes/MarcaDaTela';
 
 export function Documentos(props: DaCasca) {
   const vm = useDocumentos(props);
@@ -18,7 +21,7 @@ export function Documentos(props: DaCasca) {
     <>
       <div className="cli-titulo">
         <div>
-          <h1 className="page-title">Central de documentos</h1>
+          <MarcaDaTela /><h1 className="page-title">Central de documentos</h1><AjudaDaTela />
         </div>
         <div className="cli-acoes">
           <button type="button" className="btn btn-primary" onClick={enviar}><Icone nome="upload" width={16} height={16} />Enviar documento</button>
@@ -61,7 +64,7 @@ export function Documentos(props: DaCasca) {
                   {i.abre
                     ? <input type="checkbox" className="cli-biblioteca-marca" checked={i.marcado} onChange={() => vm.marcar(i.chave)} aria-label={'Marcar ' + i.nome} />
                     : <span className="cli-biblioteca-marca" aria-hidden="true" />}
-                  <IconeDeArquivo formato={i.formato} tamanho={34} />
+                  <IconeDoArquivo formato={i.formato} tamanho={34} />
                   {i.abre ? (
                     <button type="button" className="cli-biblioteca-txt cli-biblioteca-abrir" disabled={vm.vista.abrindo === i.chave} onClick={() => vm.ver(i)} title={'Ver ' + i.nome}>
                       <b>{i.nome}{i.novo && <span className="badge badge-warn cli-biblioteca-novo">Novo</span>}</b>
