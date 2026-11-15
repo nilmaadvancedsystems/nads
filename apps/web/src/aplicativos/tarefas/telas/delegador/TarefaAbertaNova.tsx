@@ -293,7 +293,8 @@ function ClienteDosDocumentos({ vm }: { vm: Vm }) {
   return (
     <span className="ini-cliente-escolhido">
       <span><span className="ini-empresa">{nomeDoCliente(c)}</span>{c.codigo == null && <span className="fraco"> · avulso</span>}</span>
-      <button type="button" className="btn btn-ghost" onClick={() => vm.tirarCliente(0)}><Icone nome="repeat" />Trocar</button>
+      {/* só o ícone (Vitor, 13/11/2026: "Trocar tbm ta bugado. deixa so o icone") */}
+      <BotaoIcone pequeno icone="repeat" titulo="Trocar o cliente" onClick={() => vm.tirarCliente(0)} />
     </span>
   );
 }
@@ -331,6 +332,7 @@ function DocumentosPasso1({ vm }: { vm: Vm }) {
   return (
     <div className="registro-corpo ini-qual-cliente">
       <h2 className="ini-passo-titulo">Enviar ou requerer documentos?</h2>
+      {/* os dois do mesmo tamanho, na largura toda (13/11/2026: "resolve esses dois botoes, ta feio") */}
       <Segmentado<'' | tarefas.delegadas.ModoDosDocumentos> valor={m ?? ''} onMudar={v => { if (v) vm.documentos.escolherModo(v); }}
         opcoes={[{ valor: 'enviar', rotulo: 'Enviar documentos' }, { valor: 'requerer', rotulo: 'Requerer documentos' }]} />
       {m && <p className="registro-dica"><Icone nome="clipe" />{m === 'requerer' ? 'Quem recebe anexa os arquivos e envia; você confere e conclui, ou contesta o que faltou.' : 'Quem recebe baixa os arquivos e confirma o recebimento.'}</p>}
@@ -525,7 +527,7 @@ export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
               <div className="ini-cliente-escolhido">
                 <Icone nome="briefcase" />
                 <span>{vm.clientes.length ? <span className="ini-empresa">{vm.clientes.map(nomeDoCliente).join(', ')}</span> : 'Sem cliente'}{vm.clientes.some(c => c.codigo == null) && <span className="fraco"> · avulso</span>}</span>
-                <button type="button" className="btn btn-ghost" onClick={trocarCliente}><Icone nome="repeat" />Trocar</button>
+                <BotaoIcone pequeno icone="repeat" titulo="Trocar o cliente" onClick={trocarCliente} />
               </div>
               {titulo}
               <Propriedades vm={vm} />

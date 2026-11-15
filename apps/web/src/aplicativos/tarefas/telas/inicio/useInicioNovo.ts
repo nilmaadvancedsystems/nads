@@ -216,7 +216,9 @@ export function useInicioNovo() {
         /** em andamento ou pausada: os minutos trabalhados até "agora" (o cronômetro da tela pede de minuto em minuto) */
         minutos: t.status === 'andamento' || t.status === 'pausada' ? (agora: Date) => d.minutosTrabalhados(t, agora) : null,
         /** o relógio pisca enquanto está em andamento; pausada, para (Vitor, 13/11/2026: "em progresso o icone fica piscando, se ela pausar, para de piscar") */
-        andando: t.status === 'andamento',
+        // pela situação de agora, não pela do banco: na pausa do intervalo (o banco segue Em andamento) o relógio para e fica cinza
+        // (Vitor, 13/11/2026: "pausadas, para de piscar e fica cinza o reloginho")
+        andando: d.situacaoNoHorario(t, relogio).status === 'andamento',
         /** o sino (13/11/2026): cobrar uma atualização, ou a cobrança esperando a resposta */
         cobranca: d.podeCobrar(t, uid) ? 'cobrar' as const : d.cobrancaAberta(t) ? 'esperando' as const : null,
         cobrar: () => repo.cobrar(t.id, '').then(() => toast('Cobrança enviada para ' + t.responsavel.nome + '.'))

@@ -6895,7 +6895,7 @@ tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{co
    (só a opacidade); pausada, fica parado. Pisca em qualquer nível de animação, porque diz a situação (Vitor, 13/11/2026: "em
    progresso o icone fica piscando, se ela pausar, para de piscar"); com "menos movimento" no sistema, fica parado */
 .ini-cronometro{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;}
-.ini-cronometro svg{width:14px;height:14px;flex:none;}
+.ini-cronometro svg{width:14px;height:14px;flex:none;color:var(--ink-muted);}
 @keyframes cronometroPisca{0%,100%{opacity:1;}50%{opacity:.25;}}
 .ini-cronometro.andando svg{color:var(--accent);animation:cronometroPisca 1.6s ease-in-out infinite !important;}
 @media (prefers-reduced-motion: reduce){.ini-cronometro.andando svg{animation:none !important;}}
@@ -6977,6 +6977,11 @@ tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{co
 .ini-qual-cliente{gap:12px;}
 .ini-qual-menu{align-self:flex-start;min-width:280px;justify-content:space-between;}
 .ini-avulso{display:flex;align-items:center;gap:8px;}
+/* o cliente dos documentos: o menu e o Avulso um embaixo do outro, com respiro (13/11/2026: "Escolher cliente e cliente avulso, ta grudado") */
+.registro-props .ini-qual-cliente{display:flex;flex-direction:column;align-items:flex-start;gap:10px;}
+/* Enviar e Requerer: os dois do mesmo tamanho, na largura toda (13/11/2026: "resolve esses dois botoes, ta feio") */
+.ini-qual-cliente > .steps{display:grid;grid-template-columns:1fr 1fr;width:100%;}
+.ini-qual-cliente > .steps .step-pill{justify-content:center;text-align:center;}
 .ini-avulso input{flex:1;}
 .ini-sem-cliente{align-self:flex-start;}
 .ini-cliente-escolhido{display:flex;align-items:center;gap:8px;font-size:var(--fs-13);color:var(--ink-muted);}
