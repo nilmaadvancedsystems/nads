@@ -558,6 +558,17 @@ describe('os links fixados na tarefa (o Início novo)', () => {
     expect(d.problemaDoLink('')).toBe('Cole o link.');
     expect(d.problemaDoLink('https://a.com', [{ url: 'https://a.com' }])).toMatch(/já está/);
   });
+  it('o colado sem o https:// ganha o https://; a lista mostra o site e o caminho', () => {
+    expect(d.linkCompleto(' www.gov.br/receita ')).toBe('https://www.gov.br/receita');
+    expect(d.linkCompleto('drive.google.com')).toBe('https://drive.google.com');
+    expect(d.linkCompleto('http://a.com')).toBe('http://a.com');
+    expect(d.linkCompleto('javascript:alert(1)')).toBe('javascript:alert(1)');
+    expect(d.linkCompleto('não é link')).toBe('não é link');
+    expect(d.linkCompleto('relatorio')).toBe('relatorio');
+    expect(d.rotuloDoLink('https://www.gov.br/receita/?x=1')).toBe('gov.br/receita');
+    expect(d.rotuloDoLink('https://drive.google.com/')).toBe('drive.google.com');
+    expect(d.rotuloDoLink('xx')).toBe('xx');
+  });
   it('fixa e tira, com o histórico', () => {
     const t = d.comLink(tarefa(), ' https://a.com ', 'Vitor', EM);
     expect(t.links).toEqual([{ url: 'https://a.com', por: 'Vitor', em: EM }]);

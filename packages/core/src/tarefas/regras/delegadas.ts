@@ -956,6 +956,25 @@ export function problemaDoLink(url: string, atuais: readonly Pick<LinkDaTarefa, 
   return '';
 }
 
+/**
+ * O link como vai para a tarefa: o colado sem o https:// (www.site.com.br/x) ganha o https:// (15/11/2026: "melhora a questao dos
+ * links"); o resto fica como veio (o problemaDoLink diz se não serve).
+ */
+export function linkCompleto(texto: string): string {
+  const u = texto.trim();
+  if (!u || /^[a-z][a-z0-9+.-]*:/i.test(u) || /\s/.test(u) || !/^[^/]+\.[a-z]{2,}(?:[/:?#]|$)/i.test(u)) return u;
+  return 'https://' + u.replace(/^\/+/, '');
+}
+
+/** O nome curto do link na lista: o site sem o www e o caminho (sem o https://, a consulta e a barra do fim). */
+export function rotuloDoLink(url: string): string {
+  try {
+    const x = new URL(url);
+    const caminho = decodeURIComponent(x.pathname).replace(/\/+$/, '');
+    return x.hostname.replace(/^www\./, '') + caminho;
+  } catch { return url; }
+}
+
 export const historicoDoLink = (acao: 'fixou' | 'tirou', url: string, por: string, em: string): Nota => ({ por, em, texto: (acao === 'fixou' ? 'Fixou o link ' : 'Tirou o link ') + url });
 
 export function comLink(t: TarefaDelegada, url: string, por: string, em: string): TarefaDelegada {

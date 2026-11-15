@@ -380,9 +380,10 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
     salvando: ocupado === 'salvar',
     excluindo: ocupado === 'excluir',
     // ---- os links fixados (o Início novo): na nova, esperando o Criar; na que existe, gravam na hora
-    links: ehNova ? linksPendentes.map(u => ({ url: u, detalhe: 'vai ao salvar' })) : (tarefa?.links || []).map(l => ({ url: l.url, detalhe: [l.por, quando(l.em)].filter(Boolean).join(' · ') })),
+    links: ehNova ? linksPendentes.map(u => ({ url: u, rotulo: d.rotuloDoLink(u), detalhe: 'vai ao salvar' }))
+      : (tarefa?.links || []).map(l => ({ url: l.url, rotulo: d.rotuloDoLink(l.url), detalhe: [l.por, quando(l.em)].filter(Boolean).join(' · ') })),
     async fixarLink(url: string): Promise<boolean> {
-      const u = url.trim();
+      const u = d.linkCompleto(url);
       const problema = d.problemaDoLink(u, ehNova ? linksPendentes.map(x => ({ url: x })) : tarefa?.links);
       if (problema) { toast(problema); return false; }
       if (ehNova) { setLinksPendentes(x => [...x, u]); return true; }

@@ -176,7 +176,8 @@ function Descricao({ vm }: { vm: Vm }) {
 /**
  * os anexos e os links (Vitor, 13/11/2026: "Anexos a box tá muito grande, deixa só o icone do clip, tambem coloque o icone de
  * link"; no mesmo dia: "Substitua esses dois botoes por um botao 'Anexo', e dentro da popup vai ter, link e arquivo"): o botão
- * Anexo abre o menu com Arquivo (escolhe os arquivos) e Link (abre o campo do link); a lista só com algum
+ * Anexo abre o menu com Arquivo (escolhe os arquivos) e Link (abre o campo do link, numa linha só dele, com o ícone, o × e o Fixar;
+ * o colado sem o https:// ganha o https://; 15/11/2026: "melhora a questao dos links"); a lista só com algum (o link pelo site)
  */
 function Anexos({ vm }: { vm: Vm }) {
   const id = useId();
@@ -195,14 +196,17 @@ function Anexos({ vm }: { vm: Vm }) {
             ]} />
           <input ref={arquivo} id={id} type="file" multiple className="sr-only" disabled={vm.anexando} aria-label="Escolher os arquivos"
             onChange={e => { const fs = Array.from(e.target.files || []); e.target.value = ''; if (fs.length) void vm.anexar(fs); }} />
-          {link != null && (
-            <span className="ini-anexos-link">
-              <input type="url" value={link} autoFocus placeholder="Cole o link (https://…)" aria-label="O link" onChange={e => setLink(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); void fixar(); } if (e.key === 'Escape') { e.stopPropagation(); setLink(null); } }} />
-              <BotaoIcone icone="check" titulo="Fixar o link" onClick={() => void fixar()} />
-            </span>
-          )}
           {vm.anexando && <span className="hint">Anexando…</span>}
+        </div>
+      )}
+      {vm.podeMudar && link != null && (
+        <div className="ini-link-campo">
+          <Icone nome="link" />
+          <input type="text" inputMode="url" value={link} autoFocus placeholder="Cole o link aqui" aria-label="O link" spellCheck={false}
+            onChange={e => setLink(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); void fixar(); } if (e.key === 'Escape') { e.stopPropagation(); setLink(null); } }} />
+          <BotaoIcone pequeno icone="x" titulo="Cancelar" onClick={() => setLink(null)} />
+          <button type="button" className="btn btn-primary ini-link-fixar" disabled={!link.trim()} onClick={() => void fixar()}>Fixar</button>
         </div>
       )}
       {tem && (
@@ -218,7 +222,7 @@ function Anexos({ vm }: { vm: Vm }) {
           {vm.links.map(l => (
             <li key={l.url}>
               <Icone nome="link" />
-              <a href={l.url} target="_blank" rel="noopener noreferrer">{l.url}</a>
+              <a href={l.url} target="_blank" rel="noopener noreferrer" title={l.url}>{l.rotulo}</a>
               <span className="hint">{l.detalhe}</span>
               {vm.podeMudar && <BotaoIcone pequeno icone="x" titulo="Tirar o link" onClick={() => void vm.tirarLink(l.url)} />}
             </li>

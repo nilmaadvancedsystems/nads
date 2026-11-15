@@ -6999,8 +6999,15 @@ tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{co
 .ini-cliente-escolhido > span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink);}
 .ini-anexos{display:flex;flex-direction:column;gap:6px;}
 .ini-anexos-botoes{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
-.ini-anexos-link{display:inline-flex;align-items:center;gap:6px;flex:1;min-width:220px;}
-.ini-anexos-link input{flex:1;}
+/* o campo do link (15/11/2026: "melhora a questao dos links"): uma linha só dele, a caixa com o ícone, o × e o Fixar dentro */
+.ini-link-campo{display:flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--input-bg);border-radius:8px;
+  box-shadow:var(--shadow-inset);min-height:38px;padding:3px 4px 3px 10px;animation:ini-link-entra .16s ease-out;}
+.ini-link-campo:focus-within{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);}
+.ini-link-campo > svg{width:15px;height:15px;flex:none;color:var(--ink-muted);}
+.ini-link-campo input{flex:1;min-width:0;border:0 !important;background:transparent !important;box-shadow:none !important;outline:none;min-height:28px;padding:0 2px;}
+.ini-link-campo .btn{flex:none;}
+.ini-link-campo .ini-link-fixar{min-height:30px;height:30px;padding:0 14px;}
+@keyframes ini-link-entra{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}
 .ini-anexos-lista{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px;}
 .ini-anexos-lista li{display:flex;align-items:center;gap:8px;min-height:30px;font-size:var(--fs-13);}
 .ini-anexos-lista li > svg{width:14px;height:14px;flex:none;color:var(--ink-muted);}
