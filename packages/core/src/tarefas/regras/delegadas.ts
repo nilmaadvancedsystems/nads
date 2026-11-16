@@ -587,6 +587,37 @@ export const requerDocumentos = (t: Pick<TarefaDelegada, 'tipo'>): boolean => t.
 export const enviaDocumentos = (t: Pick<TarefaDelegada, 'tipo'>): boolean => t.tipo === 'envio';
 
 /**
+ * Quem recebe os documentos da tarefa (Vitor, 16/11/2026: "os documentos enviados para pessoa, dê a opção de quem recebeu, baixar
+ * tudo, e cair em .zip"): no envio, a pessoa para quem foram; no pedido, quem pediu (os anexos são de quem atendeu).
+ */
+export function recebeOsDocumentos(t: Pick<TarefaDelegada, 'tipo' | 'responsavel' | 'criadaPor'>, uid: string): boolean {
+  if (!uid) return false;
+  if (t.tipo === 'envio') return t.responsavel.uid === uid;
+  if (t.tipo === 'documentos') return t.criadaPor.uid === uid;
+  return false;
+}
+
+/** O nome do .zip dos documentos: "Documentos - 389 LATORRES DISTRIBUIDORA LTDA.zip" (sem cliente, o título da tarefa). */
+export function nomeDoZipDosDocumentos(t: Pick<TarefaDelegada, 'titulo' | 'clientes'>): string {
+  const c = t.clientes[0];
+  const base = c ? 'Documentos - ' + (c.codigo != null ? c.codigo + ' ' : '') + c.nome : t.titulo || 'Documentos';
+  return base.replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120) + '.zip';
+}
+
+/** Os nomes dos arquivos dentro do .zip, sem repetir: o segundo "extrato.pdf" vira "extrato (2).pdf". */
+export function nomesSemRepetir(nomes: readonly string[]): string[] {
+  const usados = new Set<string>();
+  return nomes.map(n => {
+    const limpo = n.replace(/[\\/]+/g, '-').trim() || 'arquivo';
+    const m = /^(.*?)(\.[^.]*)?$/.exec(limpo) as RegExpExecArray;
+    let nome = limpo;
+    for (let k = 2; usados.has(nome.toLowerCase()); k++) nome = m[1] + ' (' + k + ')' + (m[2] || '');
+    usados.add(nome.toLowerCase());
+    return nome;
+  });
+}
+
+/**
  * Delegar documentos no Início novo (Vitor, 13/11/2026: "a pergunta se o cara quer enviar ou requerer documentos / E qual
  * cliente é"). Enviar: "para quem, uma ou mais pessoas", sem prazo nem prioridade; "a pessoa de lá consegue baixar, e ela
  * deve confirmar o recebimento". Requerer: "só pode pedir PARA UMA PESSOA, ela deve colocar o prazo, sem hora definida,

@@ -60,7 +60,7 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
   // os links da tarefa nova esperam o Criar, como os anexos (o Início novo; 13/11/2026)
   const [linksPendentes, setLinksPendentes] = useState<string[]>([]);
   const [parecer, setParecer] = useState('');
-  const [ocupado, setOcupado] = useState<'' | 'salvar' | 'excluir' | 'anexar' | 'parecer' | 'cobranca'>('');
+  const [ocupado, setOcupado] = useState<'' | 'salvar' | 'excluir' | 'anexar' | 'parecer' | 'cobranca' | 'zip'>('');
   // a resposta à cobrança, escrita na janela (13/11/2026)
   const [resposta, setResposta] = useState('');
   const [erro, setErro] = useState('');
@@ -365,6 +365,29 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
         botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Tirar', valor: true, variante: 'btn-primary' }] });
       if (!ok) return;
       try { await repo.tirarAnexo(tarefa.id, id); toast('Arquivo tirado.'); } catch (e) { toast('Não tirei: ' + (e instanceof Error ? e.message : String(e))); }
+    },
+    /**
+     * Baixar tudo num .zip (Vitor, 16/11/2026: "os documentos enviados para pessoa, dê a opção de quem recebeu, baixar tudo, e
+     * cair em .zip"): para quem recebe os documentos, com dois anexos ou mais
+     */
+    podeBaixarTudo: !ehNova && !!tarefa && (tarefa.anexos || []).length > 1 && d.recebeOsDocumentos(tarefa, uid),
+    baixandoTudo: ocupado === 'zip',
+    async baixarTudo() {
+      if (!tarefa || ocupado) return;
+      setOcupado('zip');
+      try {
+        const lista = tarefa.anexos || [];
+        const faltaram: string[] = [];
+        const achados: { nome: string; bytes: Uint8Array }[] = [];
+        for (const a of lista) {
+          const bytes = await repo.baixarAnexo(tarefa.id, a.id);
+          if (bytes) achados.push({ nome: a.nome, bytes }); else faltaram.push(a.nome);
+        }
+        if (!achados.length) { toast('Os arquivos não estão mais no banco.'); return; }
+        const nomes = d.nomesSemRepetir(achados.map(a => a.nome));
+        baixarBytes(tarefas.zipSemCompressao(achados.map((a, i) => ({ nome: nomes[i], bytes: a.bytes }))), d.nomeDoZipDosDocumentos(tarefa), 'application/zip');
+        if (faltaram.length) toast('Baixei ' + achados.length + ' de ' + lista.length + ': ' + faltaram.join(', ') + (faltaram.length === 1 ? ' não está' : ' não estão') + ' mais no banco.');
+      } catch (e) { toast('Não baixei: ' + (e instanceof Error ? e.message : String(e))); } finally { setOcupado(''); }
     },
     async baixarAnexo(id: string) {
       if (ehNova) { const a = pendentes.find((_, i) => 'p' + i === id); if (a) baixarBytes(await bytesDoAnexo(a.bytes, a.gzip), a.nome, tipoDoArquivo(d.extensaoDe(a.nome))); return; }

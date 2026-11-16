@@ -209,6 +209,14 @@ function Anexos({ vm }: { vm: Vm }) {
           <button type="button" className="btn btn-primary ini-link-fixar" disabled={!link.trim()} onClick={() => void fixar()}>Fixar</button>
         </div>
       )}
+      {vm.podeBaixarTudo && (
+        <div className="ini-anexos-tudo">
+          <span className="hint">{vm.anexos.length} arquivos</span>
+          <button type="button" className="btn btn-outline" disabled={vm.baixandoTudo} onClick={() => void vm.baixarTudo()}>
+            {vm.baixandoTudo ? <span className="btn-spinner" /> : <Icone nome="download" />}{vm.baixandoTudo ? 'Juntando…' : 'Baixar tudo (.zip)'}
+          </button>
+        </div>
+      )}
       {tem && (
         <ul className="ini-anexos-lista">
           {vm.anexos.map(a => (

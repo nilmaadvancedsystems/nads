@@ -157,7 +157,10 @@ function maisExemplos(agora: Date, eu: Pessoa): TarefaDelegada[] {
       anexos: [{ id: 'ax-1', nome: 'contrato-social.txt', extensao: 'txt', tamanho: 74, em: ha(3), por: eu.nome, partes: 1 }] }),
     t(20, { tipo: 'envio', titulo: d.TITULO_DO_ENVIO, descricao: 'As guias de outubro para conferir. (EXEMPLO)', clientes: [beta], prioridade: 'normal', prazo: '', status: 'pendente', criadaPor: savio, responsavel: eu,
       criadaEm: ha(1), atualizadaEm: ha(1), visualizadaEm: ha(1), historico: criada(savio, eu, 1),
-      links: [{ url: 'https://exemplo.com/guias-outubro', por: 'Sávio', em: ha(1) }] }),
+      links: [{ url: 'https://exemplo.com/guias-outubro', por: 'Sávio', em: ha(1) }],
+      // dois anexos, para o Baixar tudo (.zip) de quem recebe (16/11/2026)
+      anexos: [{ id: 'ax-20a', nome: 'guia-das-outubro.txt', extensao: 'txt', tamanho: 52, em: ha(1), por: savio.nome, partes: 1 },
+        { id: 'ax-20b', nome: 'guia-fgts-outubro.txt', extensao: 'txt', tamanho: 46, em: ha(1), por: savio.nome, partes: 1 }] }),
     t(21, { tipo: 'documentos', titulo: d.TITULO_DO_PEDIDO_NOVO, descricao: 'Os extratos do Itaú de setembro e outubro. (EXEMPLO)', clientes: [gama], prioridade: 'alta', prazo: dia(1), status: 'pendente', criadaPor: eu, responsavel: heverton,
       entrega: 'contestada', criadaEm: ha(30), atualizadaEm: ha(2), visualizadaEm: ha(5),
       pareceres: [{ por: 'Clara', em: ha(20), texto: 'Quem tem os extratos do Itaú é o Heverton.' }, { por: eu.nome, em: ha(2), texto: 'Veio só setembro; falta outubro.' }],
@@ -178,7 +181,12 @@ export function criarTarefasDelegadasMemoria(quem: () => Pessoa | null, paraQuem
   let lista = exemplos(new Date(), paraQuemUsa ? quem() : null);
   let cache: { ver: number; uid: string; estado: { carregadas: boolean; tarefas: TarefaDelegada[] } } | null = null;
   // os bytes dos anexos (na memória; somem ao recarregar)
-  const bytes = new Map<string, Uint8Array>([['ax-1', new TextEncoder().encode('Extrato do Sicoob de 09/2026: conferir a tarifa do dia 30 (R$ 12,90).')]]);
+  const texto = (t: string) => new TextEncoder().encode(t);
+  const bytes = new Map<string, Uint8Array>([
+    ['ax-1', texto('Extrato do Sicoob de 09/2026: conferir a tarifa do dia 30 (R$ 12,90).')],
+    ['ax-20a', texto('Guia do DAS de outubro/2026 (EXEMPLO): R$ 1.234,56.')],
+    ['ax-20b', texto('Guia do FGTS de outubro/2026 (EXEMPLO): R$ 789,00.')],
+  ]);
   const eu = () => { const q = quem(); if (!q) throw new Error('escolha quem está usando'); return q; };
   const daTarefa = (id: string) => { const t = lista.find(x => x.id === id); if (!t) throw new Error('a tarefa não existe mais'); return t; };
   const trocar = (t: TarefaDelegada) => { lista = lista.map(x => (x.id === t.id ? t : x)); mudou(); };
