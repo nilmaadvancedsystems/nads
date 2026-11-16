@@ -32,8 +32,8 @@ export const NOVIDADES = {
    *  print, nos detalhes, para requerer os pagamentos") */
   'colar-print': { desde: '16/11/2026', aprovada: false },
   /** o Em Lote no seletor de competência da Visão geral da empresa, o mesmo do cabeçalho da Importação (16/11/2026: "Coloca o
-   *  iniciar em lote nessa tela tb") */
-  'em-lote-na-empresa': { desde: '16/11/2026', aprovada: false },
+   *  iniciar em lote nessa tela tb"); aprovada para todos no mesmo dia ("pode publicar na versão original") */
+  'em-lote-na-empresa': { desde: '16/11/2026', aprovada: true },
 } satisfies Record<string, { desde: string; aprovada: boolean }>;
 
 export type IdNovidade = keyof typeof NOVIDADES;
