@@ -482,24 +482,64 @@ def abrir_a_tela(principal):
         contar_tela(principal, 'a janela principal do Fiscal')
         falhar('não achei ' + caminho + ' (' + ' · '.join(erros) + ')')
 
+    fechados = []
+
     def nova():
+        # os avisos do Alterdata que abrem junto (16/11/2026, no PC do Vitor: a "Apresentação" da Reforma Tributária, só
+        # com o Fechar, abriu no lugar da tela): fecha e continua esperando a tela de verdade
+        fechar_avisos(fechados)
         for h in topo_do_fiscal():
-            if h not in antes_topo and h != principal and win32gui.GetClassName(h).startswith('Tfrm'):
+            if h not in antes_topo and h != principal and win32gui.GetClassName(h).startswith('Tfrm') and not eh_aviso(h):
                 return h
         for h in janelas_tfrm_dentro(principal):
-            if h not in antes_dentro:
+            if h not in antes_dentro and not eh_aviso(h):
                 return h
         return None
-    h = esperar(nova, 30)
+    h = esperar(nova, 40)
+    if fechados:
+        print('TELA: fechei o aviso do Alterdata (' + ', '.join(fechados) + ')', flush=True)
+        diag('fechei os avisos do Alterdata: ' + ', '.join(fechados))
     if not h:
         mensagem_na_frente('ao abrir ' + TELA)
         falhar('cliquei em ' + caminho + ' e nenhuma janela nova abriu (janelas: ' + '; '.join(descrever(x) for x in topo_do_fiscal()) + ')')
     FORM['h'] = h
     time.sleep(1.5)
-    # a tela de novidade do Alterdata: Fechar
-    for n in [x for x in topo_do_fiscal() if win32gui.GetClassName(x) == 'TfrmAvaNotificacaoEstendida']:
-        responder_nao(n)
+    fechar_avisos(fechados)
     return h
+
+
+AVISOS = ('aviso', 'apresentacao', 'notificacao', 'novidade', 'tour', 'dica', 'propaganda', 'informativo')
+
+
+def eh_aviso(h):
+    """Uma janela de aviso do Alterdata (apresentação, novidade, reforma tributária…): pelo nome da classe ou por só ter o Fechar."""
+    try:
+        cls = norm(win32gui.GetClassName(h))
+    except Exception:
+        return False
+    if any(a in cls for a in AVISOS):
+        return True
+    return False
+
+
+def fechar_avisos(fechados):
+    for h in topo_do_fiscal():
+        if not eh_aviso(h):
+            continue
+        nomecls = win32gui.GetClassName(h)
+        b = None
+        for e in itens(h):
+            if tipo(e) == 'Button' and norm(nome(e)) in ('fechar', 'ok', 'ver depois', 'agora nao', 'nao mostrar', 'pular'):
+                b = e
+                break
+        if b:
+            clique('Fechar (' + nomecls + ')')
+            mouse.click(coords=meio(b))
+        else:
+            win32gui.PostMessage(h, win32con.WM_CLOSE, 0, 0)
+        if nomecls not in fechados:
+            fechados.append(nomecls)
+        time.sleep(.8)
 
 
 class _W:
@@ -765,6 +805,7 @@ try:
     time.sleep(.6)
     for m in mensagens():
         responder_nao(m)
+    fechar_avisos([])
     form = abrir_a_tela(principal)
     preencher(form)
     arquivo = exportar(form, principal)
