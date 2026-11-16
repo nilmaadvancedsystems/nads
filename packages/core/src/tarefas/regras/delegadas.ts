@@ -280,6 +280,21 @@ export function nomeDaImagemEncolhida(nome: string): string {
   return (ext ? nome.slice(0, -ext.length - 1) : nome) + '.webp';
 }
 
+const PRINT_COLADO = /^Print colado (\d+)\.[A-Za-z0-9]{1,10}$/;
+
+/** O anexo veio de um print colado nos Detalhes? (mostra a miniatura embaixo do campo) */
+export const ehPrintColado = (nome: string) => PRINT_COLADO.test(nome);
+
+/**
+ * O nome do print colado nos Detalhes (16/11/2026: "Coloca a opção de colar print, nos detalhes, para requerer os
+ * pagamentos"): "Print colado 3.png", o número seguinte ao maior que a tarefa já tem; a extensão pelo tipo da imagem.
+ */
+export function nomeDoPrintColado(nomesAtuais: readonly string[], tipo: string): string {
+  const maior = nomesAtuais.reduce((n, nome) => Math.max(n, Number(PRINT_COLADO.exec(nome)?.[1] || 0)), 0);
+  const ext = tipo === 'image/jpeg' ? 'jpg' : tipo === 'image/webp' ? 'webp' : tipo === 'image/bmp' ? 'bmp' : 'png';
+  return 'Print colado ' + (maior + 1) + '.' + ext;
+}
+
 /**
  * O que impede de anexar estes arquivos à tarefa ('' quando pode): vazio, maior que 10 MB, mais de 20 na tarefa ou a
  * tarefa passando de 30 MB somando os que já tem.

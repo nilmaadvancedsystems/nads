@@ -24,6 +24,9 @@ export const NOVIDADES = {
   'importar-ao-soltar': { desde: '16/11/2026', aprovada: false },
   /** o extrato arrastado até a célula do mês da Importação entra naquele mês (16/11/2026: "Da a opção de arrastar, até o campo do mes, o extrato tbm") */
   'arrastar-no-mes': { desde: '16/11/2026', aprovada: false },
+  /** o print colado com Ctrl+V nos Detalhes vira anexo, com a miniatura embaixo do campo (16/11/2026: "Coloca a opção de colar
+   *  print, nos detalhes, para requerer os pagamentos") */
+  'colar-print': { desde: '16/11/2026', aprovada: false },
 } satisfies Record<string, { desde: string; aprovada: boolean }>;
 
 export type IdNovidade = keyof typeof NOVIDADES;

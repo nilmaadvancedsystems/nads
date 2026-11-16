@@ -7,7 +7,7 @@
 // o Esc e o ✕ perguntam antes de largar o que mudou.
 import { tarefas } from '@nads/core';
 import { Alerta, BotaoAcao, BotaoFechar, BotaoIcone, CampoData, Esqueleto, Icone, MenuSuspenso, Segmentado, useJanela, Vazio, type NomeIcone } from '@nads/ui';
-import { useEffect, useId, useRef, useState, type RefObject } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type ClipboardEvent, type RefObject } from 'react';
 import { Link } from 'react-router';
 import { Propriedade } from '../financeiro/partes/Propriedade';
 import { SeloDoStatus } from './partes/SelosDaTarefa';
@@ -15,7 +15,7 @@ import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
 import { useNovidade } from '../../../../comum/novidades';
 import { lembrarAgora } from './useLembreteDoRecebimento';
 import { ClientesDaTarefa, EscolherPessoa, FicaComVoce, FotoDaPessoa } from './TarefaAberta';
-import { useTarefaAberta } from './useTarefaAberta';
+import { printDeExemplo, useTarefaAberta } from './useTarefaAberta';
 
 type Vm = ReturnType<typeof useTarefaAberta>;
 const d = tarefas.delegadas;
@@ -196,12 +196,40 @@ function Descricao({ vm }: { vm: Vm }) {
   const id = useId();
   // em branco e só para ler (a concluída, ou de quem não muda): some, como o prazo (13/11/2026: "so oculta ele... nao deixa exposto")
   if (!vm.podeMudar && !vm.rascunho.descricao.trim()) return null;
+  // o print colado (a novidade 'colar-print'): a imagem da área de transferência vira anexo; o que vem com texto (o Excel
+  // manda texto e imagem) cola como texto, como no suporte
+  const colar = (e: ClipboardEvent<HTMLTextAreaElement>) => {
+    if (!vm.podeColarPrint || e.clipboardData.getData('text/plain').trim()) return;
+    const imagens = Array.from(e.clipboardData.files).filter(f => f.type.startsWith('image/'));
+    if (!imagens.length) return;
+    e.preventDefault();
+    void vm.anexar(vm.nomearPrints(imagens));
+  };
   return (
     <div className="field">
       <label htmlFor={id}>Detalhes</label>
-      <textarea id={id} rows={4} value={vm.rascunho.descricao} maxLength={vm.maiorDescricao} readOnly={!vm.podeMudar}
-        placeholder="Os detalhes, o que já foi visto, onde estão os documentos" onChange={e => vm.setDescricao(e.target.value)} />
+      <textarea id={id} rows={4} value={vm.rascunho.descricao} maxLength={vm.maiorDescricao} readOnly={!vm.podeMudar} onPaste={colar}
+        placeholder={'Os detalhes, o que já foi visto, onde estão os documentos' + (vm.podeColarPrint ? '. Cole um print com Ctrl+V' : '')}
+        onChange={e => vm.setDescricao(e.target.value)} />
+      <PrintsColados vm={vm} />
     </div>
+  );
+}
+
+/** as miniaturas dos prints colados nos Detalhes, cada uma com o × para tirar (a nova; na que existe, eles vão aos anexos) */
+function PrintsColados({ vm }: { vm: Vm }) {
+  const imagens = useMemo(() => vm.prints.map(p => ({ ...p, url: URL.createObjectURL(new Blob([p.bytes as BlobPart], { type: p.tipo })) })), [vm.prints]);
+  useEffect(() => () => { for (const p of imagens) URL.revokeObjectURL(p.url); }, [imagens]);
+  if (!imagens.length) return null;
+  return (
+    <ul className="ini-prints" aria-label="Prints colados">
+      {imagens.map(p => (
+        <li key={p.id}>
+          <img src={p.url} alt={p.nome} title={p.nome} />
+          {vm.podeMudar && <BotaoIcone pequeno icone="x" titulo={'Tirar ' + p.nome} onClick={() => void vm.tirarAnexo(p.id)} />}
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -441,6 +469,8 @@ function TesteDosDocumentos({ vm }: { vm: Vm }) {
       itens={[
         { rotulo: 'Exemplo de envio', icone: 'zap', marcado: vm.documentos.deTeste && vm.documentos.modo === 'enviar', onClick: () => vm.documentos.preencherExemplo('enviar') },
         { rotulo: 'Exemplo de requerer', icone: 'zap', marcado: vm.documentos.deTeste && vm.documentos.modo === 'requerer', onClick: () => vm.documentos.preencherExemplo('requerer') },
+        // o print colado (a novidade 'colar-print'): um comprovante de exemplo, como se tivesse colado com Ctrl+V nos Detalhes
+        ...(vm.podeColarPrint ? [{ rotulo: 'Colar um print de exemplo', icone: 'zap' as const, onClick: () => { void printDeExemplo().then(f => vm.anexar(vm.nomearPrints([f]))); } }] : []),
         'separador',
         { rotulo: 'Mostrar o lembrete de confirmar', icone: 'clock', onClick: lembrarAgora },
       ]} />

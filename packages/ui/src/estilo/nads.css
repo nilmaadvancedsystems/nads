@@ -7089,6 +7089,11 @@ tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{co
 .ini-anexos-lista li > svg{width:14px;height:14px;flex:none;color:var(--ink-muted);}
 .ini-anexos-lista li > a,.ini-anexos-lista li > .ini-abrir{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .ini-anexos-lista li > .hint{margin-left:auto;white-space:nowrap;}
+/* os prints colados nos Detalhes (16/11/2026): as miniaturas embaixo do campo, cada uma com o × no canto */
+.ini-prints{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:8px;}
+.ini-prints li{position:relative;}
+.ini-prints img{display:block;height:72px;max-width:180px;object-fit:cover;border:1px solid var(--border);border-radius:8px;}
+.ini-prints .icon-btn{position:absolute;top:2px;right:2px;background:var(--surface);}
 /* as solicitações de reunião (as Notificações do Início novo) */
 .ini-solicitacao{margin-bottom:0;display:flex;flex-direction:column;gap:6px;}
 .ini-solicitacao-topo{display:flex;align-items:center;gap:8px;justify-content:space-between;}
