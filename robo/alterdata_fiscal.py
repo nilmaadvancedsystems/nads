@@ -144,15 +144,28 @@ def exe_do_fiscal():
                 continue
             achados.append(exe)
     diag('o Fiscal em ' + PACK + ': ' + (', '.join(achados) or 'nenhum .exe numa pasta com "fisc" no nome; pastas: ' + ', '.join(os.path.basename(p) for p in glob.glob(os.path.join(PACK, '*')))))
+    # o programa do Fiscal é o wfiscal.exe (16/11/2026, no PC do Vitor: na pasta também há o wfiscal1, o importanfe, o DIEF…)
+    certo = [e for e in achados if os.path.basename(e).lower() == 'wfiscal.exe']
     w = [e for e in achados if os.path.basename(e).lower().startswith('w')]
-    return (w or achados or [''])[0]
+    return (certo or w or achados or [''])[0]
+
+
+def tem_credencial():
+    r = subprocess.run([sys.executable, '-I', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'alterdata_login.py'), '--tem'],
+                       capture_output=True, text=True, encoding='utf-8', timeout=60)
+    return 'TEM: sim' in (r.stdout or '')
 
 
 def entrar_no_fiscal():
     """O Fiscal aberto e logado: devolve a janela principal (abre e entra com o usuário do robô se precisar)."""
     p = principal_do_fiscal()
-    if p and not login_do_fiscal():
+    if p:
+        # o Fiscal aberto e logado (uma tela de login de outro Fiscal ao lado não importa)
         return p
+    # sem a credencial do robô neste PC, abrir o Fiscal não adianta: ele pararia na tela de login (16/11/2026)
+    if not tem_credencial():
+        fim(ok=False, erro='o Alterdata Fiscal não está aberto e logado neste ' + ('servidor' if os.environ.get('ARQ_SO_SERVIDOR') == '1' else 'PC')
+            + ' (e o robô não tem a credencial para entrar): abra o Fiscal, entre e peça de novo')
     if not login_do_fiscal():
         exe = exe_do_fiscal()
         if not exe or not os.path.exists(exe):
@@ -177,7 +190,9 @@ def entrar_no_fiscal():
         except Exception:
             res = {'ok': False, 'erro': 'o login parou sem resultado'}
         if not res.get('ok'):
-            fim(ok=False, login=True, erro='o login do robô no Fiscal não deu: ' + str(res.get('erro', ''))[:200])
+            # login=True só quando a senha foi tentada e recusada: a fila para os próximos (a conta pode ser bloqueada)
+            tentou = not str(res.get('erro', '')).startswith('sem a credencial') and not res.get('semTela')
+            fim(ok=False, login=tentou, erro='o login do robô no Fiscal não deu: ' + str(res.get('erro', ''))[:200])
     p = esperar(lambda: not login_do_fiscal() and principal_do_fiscal(), 120, 1)
     if not p:
         fim(ok=False, erro='o Fiscal não abriu a janela principal depois do login (janelas: ' + '; '.join(descrever(x) for x in topo_do_fiscal()) + ')')
