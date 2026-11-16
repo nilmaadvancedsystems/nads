@@ -22,6 +22,8 @@ export const NOVIDADES = {
   'cobranca-notificada': { desde: '16/11/2026', aprovada: false },
   /** o Enviar vários meses da Importação importa ao soltar os extratos, sem o botão Enviar (16/11/2026: "Ja importe com todos marcados") */
   'importar-ao-soltar': { desde: '16/11/2026', aprovada: false },
+  /** o extrato arrastado até a célula do mês da Importação entra naquele mês (16/11/2026: "Da a opção de arrastar, até o campo do mes, o extrato tbm") */
+  'arrastar-no-mes': { desde: '16/11/2026', aprovada: false },
 } satisfies Record<string, { desde: string; aprovada: boolean }>;
 
 export type IdNovidade = keyof typeof NOVIDADES;

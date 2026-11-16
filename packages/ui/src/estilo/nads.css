@@ -2698,6 +2698,9 @@ html:not([data-animacoes=todas]) .modal-ok-barra{display:none;}
 .imp-meses .popover{text-align:left;}
 /* só o ícone, do tamanho dos outros: as opções abrem ao clicar */
 .imp-meses .imp-mes-menu{width:28px;height:28px;padding:0;}
+/* o extrato arrastado até a célula do mês (16/11/2026): a célula toda recebe, e a moldura do soltar fica dentro dela */
+.imp-meses .imp-mes-soltar{display:flex;align-items:center;justify-content:center;height:41px;}
+.imp-meses .imp-mes-soltar.sobre::after{content:'Solte aqui';inset:2px;border-radius:6px;font-size:var(--fs-12);}
 .imp-meses .imp-mes-menu .menu-seta{display:none;}
 .imp-meses .imp-mes-sem{min-width:56px;}
 /* na janela, o de apagar é todo vermelho (Vitor, 02/10/2026: "Excluir, botão todo vermelho") */
