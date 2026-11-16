@@ -60,16 +60,18 @@ export function ehEmailDeLogin(email: string): boolean {
 
 /** O login feito do nome (nome@nilma.local): não é um e-mail de verdade, ninguém recebe nada nele. */
 export function ehEmailDoNome(email: string): boolean {
-  return email.trim().toLowerCase().endsWith(DOMINIO_LOGIN);
+  // o nome@nilma.local e qualquer outro "@…local" (Vitor, 16/11/2026: "só insista e apareça essa popup para usuários que têm @local")
+  return /@([a-z0-9-]+\.)*local$/.test(email.trim().toLowerCase());
 }
 
 /**
- * Falta o e-mail principal? (Vitor, 16/11/2026: "para concluir seu cadastro do NADS precisamos do seu e-mail principal"; "você
- * atrela o login ao email, não ao usuario"). O e-mail principal É o e-mail de entrada (o do Firebase Auth): falta quando a
- * conta ainda entra pelo nome@nilma.local, ou quando tem um e-mail que a pessoa nunca confirmou (o Diretor pode ter posto).
+ * Falta o e-mail pessoal? (Vitor, 16/11/2026: "para concluir seu cadastro do NADS precisamos do seu e-mail principal"; "você
+ * atrela o login ao email, não ao usuario"; no mesmo dia: "quem registrou e não ficar lá no registro do usuário '@local' pode
+ * parar de pedir que a pessoa já atualizou, só insista e apareça essa popup para usuários que têm '@local'"). O e-mail pessoal É o
+ * e-mail de entrada (o do Firebase Auth): falta só enquanto a conta entra por um "@…local" (o nome@nilma.local) ou sem e-mail.
  */
-export function precisaDoEmailPrincipal(u: { email: string; emailPrincipalEm?: string | null }): boolean {
-  return !u.email.trim() || ehEmailDoNome(u.email) || !u.emailPrincipalEm;
+export function precisaDoEmailPrincipal(u: { email: string }): boolean {
+  return !u.email.trim() || ehEmailDoNome(u.email);
 }
 
 /** O que está errado no e-mail principal digitado na janela ('' = pode enviar); duas vezes, para não errar o login. */

@@ -181,11 +181,13 @@ describe('nome único (12/11/2026)', () => {
 });
 
 describe('o e-mail principal (16/11/2026)', () => {
-  it('falta enquanto a conta entra pelo nome@nilma.local ou o e-mail não foi confirmado', () => {
-    expect(precisaDoEmailPrincipal({ email: 'fulana@nilma.local', emailPrincipalEm: null })).toBe(true);
-    expect(precisaDoEmailPrincipal({ email: 'fulana@nilma.local', emailPrincipalEm: '2026-11-16T10:00:00.000Z' })).toBe(true);
-    expect(precisaDoEmailPrincipal({ email: 'fulana@exemplo.com', emailPrincipalEm: null })).toBe(true);
-    expect(precisaDoEmailPrincipal({ email: 'fulana@exemplo.com', emailPrincipalEm: '2026-11-16T10:00:00.000Z' })).toBe(false);
+  it('falta só enquanto a conta entra por um "@…local" (16/11/2026: "só insista para usuários que têm @local")', () => {
+    expect(precisaDoEmailPrincipal({ email: 'fulana@nilma.local' })).toBe(true);
+    expect(precisaDoEmailPrincipal({ email: 'Fulana@Local' })).toBe(true);
+    expect(precisaDoEmailPrincipal({ email: '' })).toBe(true);
+    // quem já tem um e-mail de verdade não é mais perguntado (nem para confirmar)
+    expect(precisaDoEmailPrincipal({ email: 'fulana@exemplo.com' })).toBe(false);
+    expect(precisaDoEmailPrincipal({ email: 'fulana@localiza.com.br' })).toBe(false);
   });
 
   it('o e-mail é válido, de verdade e digitado igual duas vezes', () => {

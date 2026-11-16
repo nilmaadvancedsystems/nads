@@ -1,6 +1,6 @@
 // ViewModel da janela do e-mail principal (Vitor, 16/11/2026: "mande uma requisição a todos os usuarios ao atualizarem o
-// sistema, de colocar o email principal que eles usam ... Dessa maneira, voce atrela o login ao email, não ao usuario"). Quem
-// ainda entra pelo nome@nilma.local, ou tem um e-mail que nunca confirmou, vê a janela por cima da Tarefas. O e-mail principal
+// sistema, de colocar o email principal que eles usam ... Dessa maneira, voce atrela o login ao email, não ao usuario"). Só quem
+// ainda entra por um "@…local" (o nome@nilma.local) vê a janela por cima da Tarefas; quem já tem e-mail de verdade, não. O e-mail principal
 // É o login: trocado, vai pelo mesmo caminho da Minha conta (a senha, o robô da nuvem troca o login e o cadastro, a sessão
 // entra de novo com o e-mail novo); igual ao de hoje, só confirma (usuarios/{uid}.emailPrincipalEm). Obrigatória (Vitor,
 // 16/11/2026: "o usuário vai ser obrigado a colocar o e-mail pessoal"): não fecha sem responder; a única saída é sair da conta.
