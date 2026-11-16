@@ -313,9 +313,9 @@ export function useImportacao() {
    * arquivo de vários meses fica nos outros (Vitor, 21/10/2026: "deixa eu conseguir excluir apenas o mês que selecionei,
    * ao invés de excluir tudo"; no extrato e no razão).
    */
-  async function excluirDoBanco(banco: string, lado: x.Lado, competencia = competenciaDeTeste) {
+  async function excluirDoBanco(banco: string, lado: x.Lado, competencia = competenciaDeTeste): Promise<boolean> {
     const arqs = arquivosDe(banco, lado, competencia);
-    if (!arqs.length) return;
+    if (!arqs.length) return true;
     const nomeBanco = bancos.find(b => b.id === banco)?.nome || 'banco';
     const ficam = outrosMeses(arqs, [competencia]);
     const ok = await modal<boolean>({
@@ -323,20 +323,21 @@ export function useImportacao() {
       ...(ficam.length ? { html: 'Só <b>' + rotuloMes(competencia) + '</b> sai. ' + (arqs.length === 1 ? 'O arquivo' : 'Os arquivos') + ' também ' + (arqs.length === 1 ? 'tem' : 'têm') + ' ' + ficam.map(rotuloMes).join(', ') + ', que ' + (ficam.length === 1 ? 'fica' : 'ficam') + '.' } : {}),
       botoes: [{ rotulo: 'Excluir', valor: true, variante: 'btn-danger' }, { rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }],
     });
-    if (!ok) return;
+    if (!ok) return false;
     s.aplicar(e => arqs.reduce((acc, a) => x.excluirMesesDoArquivo(acc, a.id, [competencia], new Date()), e));
     setMensagem({ tom: 'ok', titulo: 'Importação excluída', textos: [{ texto: nomeBanco + ' · ' + (lado === 'banco' ? 'extrato' : 'razão') + ' · ' + rotuloMes(competencia) }] });
+    return true;
   }
 
   /**
    * Em Lote, "Remover todos": exclui o extrato (ou o razão) do banco em todos os meses do período, com uma pergunta só. Só
    * os meses do período: o arquivo que passa dele fica com os meses de fora (21/10/2026).
    */
-  async function excluirDoPeriodo(banco: string, lado: x.Lado, meses: string[]) {
+  async function excluirDoPeriodo(banco: string, lado: x.Lado, meses: string[]): Promise<boolean> {
     const porId = new Map<string, x.ArquivoImportado>();
     for (const m of meses) for (const a of arquivosDe(banco, lado, m)) porId.set(a.id, a);
     const arqs = [...porId.values()];
-    if (!arqs.length) return;
+    if (!arqs.length) return true;
     const nomeBanco = bancos.find(b => b.id === banco)?.nome || 'banco';
     const oQue = lado === 'banco' ? 'extrato' : 'razão';
     const qtd = arqs.reduce((t, a) => t + a.lancamentos.filter(l => meses.includes(l.data.slice(0, 7))).length, 0);
@@ -347,9 +348,10 @@ export function useImportacao() {
         ' (' + qtd + ' lançamentos). Dá para importar de novo depois.' + (ficam.length ? ' Fora do período, ' + ficam.map(rotuloMes).join(', ') + (ficam.length === 1 ? ' fica.' : ' ficam.') : ''),
       botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Remover todos', valor: true, variante: 'btn-danger' }],
     });
-    if (!ok) return;
+    if (!ok) return false;
     s.aplicar(e => arqs.reduce((acc, a) => x.excluirMesesDoArquivo(acc, a.id, meses, new Date()), e));
     setMensagem({ tom: 'ok', titulo: 'Importações removidas', textos: [{ texto: nomeBanco + ' · ' + oQue + ' · ' + meses.length + ' meses' }] });
+    return true;
   }
 
   /**

@@ -95,6 +95,16 @@ export function extratosDeTeste(meses: readonly string[]): ArquivoLido[] {
   }));
 }
 
+/**
+ * O extrato de teste como arquivo OFX (o texto), para quem testa soltando arquivos (o Enviar vários meses): os lançamentos
+ * de cada mês, um arquivo com um ou mais meses.
+ */
+export function ofxDeTeste(meses: readonly string[]): string {
+  const trn = meses.slice().sort().flatMap((mes, i) => lancamentosDoMes(mes, i)).map(l =>
+    '<STMTTRN><DTPOSTED>' + l.data.replace(/-/g, '') + '<TRNAMT>' + (l.valor / 100).toFixed(2) + '<MEMO>' + l.historico + '</STMTTRN>');
+  return 'OFXHEADER:100\n<OFX><BANKTRANLIST>\n' + trn.join('\n') + '\n</BANKTRANLIST></OFX>\n';
+}
+
 export type RazaoDeTeste = 'bate' | 'cheque' | 'erros';
 
 /**

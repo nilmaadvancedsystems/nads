@@ -35,6 +35,7 @@ import { useEnviarVariosMeses } from './useEnviarVariosMeses';
 import { JanelaVariosMeses } from './JanelaVariosMeses';
 import { CANCELAR_LOTE_A_QUALQUER_HORA } from '../../../../../../comum/desenvolvimento';
 import { modoDesenvolvedor } from '../../../../../../comum/modoDesenvolvedor';
+import { useNovidade } from '../../../../../../comum/novidades';
 import { useColunaAjustavel } from '../../../../../../comum/GradeDosMeses';
 import { ContabilNaImportacao } from '../../../../../../comum/ContabilNaImportacao';
 import { BlocoDoRobo } from './BlocoDoRobo';
@@ -676,15 +677,27 @@ export function TarefaExtratos() {
   // meses: de onde o extrato veio (a coluna do mês, a busca no e-mail), para o sem movimento que não diz o mês
   const importarExtrato = (b: (typeof vm.bancos)[number], fs: File[], depois?: () => void, meses?: string[]) => { void vm.importarArquivos(b.id, 'banco', fs, meses).then(ok => { if (ok) { d.subirAoDrive(b, fs, s.nome, meses); depois?.(); } }); };
   // "Enviar vários meses": cada arquivo no seu mês, igual ao enviar de um mês (importa, vai para o Drive e fica para o olhinho)
+  const importarAoSoltar = useNovidade('importar-ao-soltar');
   const varios = useEnviarVariosMeses(vm.periodo.length > 1 ? vm.periodo : [vm.competencia],
     (conta, mes) => vm.mesesDoBanco(conta, ponte.semMovimentoPorMes).some(m => m.mes === mes && (m.extrato || m.ladoExtrato.doDrive.length > 0)),
-    async (conta, f, meses, soOsMeses) => {
+    async (conta, f, meses, soOsMeses, deTeste) => {
       const b = vm.bancos.find(x => x.id === conta);
       if (!b || !(await vm.importarArquivos(b.id, 'banco', [f], meses, soOsMeses ? meses : undefined))) return false;
+      // o do ⚡ Dados de teste não vai para o Drive
+      if (deTeste) return true;
       d.subirAoDrive(b, [f], s.nome, meses, soOsMeses);
       guardarPuxado(chaveDoExtrato(s.codigo, b.id), f.name, f, 'computador', meses);
       return true;
-    });
+    },
+    // desfazer o que entrou (a novidade importar-ao-soltar): o sem movimento desmarca o mês; o extrato sai dos meses dele,
+    // igual ao × da célula (pergunta antes; o arquivo no Drive fica)
+    async (conta, a) => {
+      if (a.semMovimento) { for (const m of a.meses) ponte.marcarSemMovimento(conta, false, m); return true; }
+      const ok = a.meses.length === 1 ? await vm.excluirDoBanco(conta, 'banco', a.meses[0]) : await vm.excluirDoPeriodo(conta, 'banco', a.meses);
+      if (ok) for (const m of a.meses) esquecerPuxado(chaveDoExtrato(s.codigo, conta), m);
+      return ok;
+    },
+    importarAoSoltar);
   // "Buscar no e-mail": o anexo escolhido entra como se viesse do computador (Vitor, 13/10/2026); fica para o olhinho dos meses dele
   const em = useBuscarNoEmail((linha, fs, meses) => {
     const b = vm.bancos.find(x => x.id === linha.id);
@@ -1156,7 +1169,7 @@ export function TarefaExtratos() {
         </div>
       )}
       <JanelaBuscarNoEmail vm={em} />
-      <JanelaVariosMeses vm={varios} aceitar={cxExtrato.aceitar} />
+      <JanelaVariosMeses vm={varios} aceitar={cxExtrato.aceitar} teste={ehTeste} />
       <JanelaPedirExtratos p={pe} />
       <JanelaHistoricoDePedidos p={pe} />
     </section>
