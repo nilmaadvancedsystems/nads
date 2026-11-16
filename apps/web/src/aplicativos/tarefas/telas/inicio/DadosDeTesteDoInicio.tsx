@@ -21,7 +21,7 @@ export function DadosDeTesteDoInicio({ teste: t }: { teste: ReturnType<typeof us
         { rotulo: 'Saudação: tarde', icone: 'sun', marcado: s.turno === 'tarde', onClick: turno('tarde') },
         { rotulo: 'Saudação: noite', icone: 'moon', marcado: s.turno === 'noite', onClick: turno('noite') },
         { rotulo: 'Saudação: segunda-feira', icone: 'calendar', marcado: !!s.segunda, onClick: () => simularSaudacao({ segunda: !s.segunda, sexta: false, feriado: false, troca: 0 }) },
-        { rotulo: 'Saudação: sexta-feira (sextou)', icone: 'calendar', marcado: !!s.sexta, onClick: () => simularSaudacao({ sexta: !s.sexta, segunda: false, feriado: false, troca: 0 }) },
+        { rotulo: 'Saudação: sexta-feira', icone: 'calendar', marcado: !!s.sexta, onClick: () => simularSaudacao({ sexta: !s.sexta, segunda: false, feriado: false, troca: 0 }) },
         { rotulo: 'Saudação: semana com feriado', icone: 'calendar', marcado: !!s.feriado, onClick: () => simularSaudacao({ feriado: !s.feriado, segunda: false, sexta: false, troca: 0 }) },
         { rotulo: 'Saudação: mês do aniversário', icone: 'trofeu', marcado: s.aniversario === 'mes', onClick: () => simularSaudacao({ aniversario: s.aniversario === 'mes' ? undefined : 'mes', troca: 0 }) },
         { rotulo: 'Saudação: dia do aniversário', icone: 'trofeu', marcado: s.aniversario === 'dia', onClick: () => simularSaudacao({ aniversario: s.aniversario === 'dia' ? undefined : 'dia', troca: 0 }) },

@@ -2,7 +2,9 @@
 // Boa tarde, Vitor / Boa noite, Vitor / Segunda feira: Como foi o final de semana Vitor? / Perto do aniversário… Melhor mês
 // do ano chegou! / Mensagens personalizadas"). E "Só que não pela atualização, pode ser em diferentes turnos": a frase é
 // escolhida por pessoa, dia e turno (manhã, tarde, noite), então recarregar a página no mesmo turno mostra a mesma frase.
-// 15/11/2026: "coloca algo de piada se tiver feriado na semana" e "se tiver sexta, coloca sextou tbm".
+// 15/11/2026: "coloca algo de piada se tiver feriado na semana" e "se tiver sexta, coloca sextou tbm". Revisto em 16/11/2026: "As
+// frases de saudação cuidado, que elas podem desmotivar o trabalho (...) remova as que desmotivam/transmitem preguiça (ansiedade
+// para chegar feriado, isso é ruim!)": nada de contagem para o feriado ou o fim de semana; só frases que animam o trabalho.
 
 import { feriadoDoDia, type Feriado } from './feriados';
 
@@ -25,8 +27,10 @@ export const FRASES_PERSONALIZADAS: readonly { texto: string; turno?: Turno }[] 
   { texto: 'Bom te ver por aqui, {nome}' },
   { texto: 'Bora fazer o dia render, {nome}?', turno: 'manha' },
   { texto: 'Café tomado, {nome}? Vamos lá', turno: 'manha' },
-  { texto: 'Metade do dia já foi, {nome}. Vamos com tudo', turno: 'tarde' },
-  { texto: 'Ainda por aqui, {nome}? Não esquece de descansar', turno: 'noite' },
+  { texto: 'Que bom ter você no time, {nome}' },
+  { texto: 'Cada tarefa concluída conta, {nome}' },
+  { texto: 'Tarde boa para avançar, {nome}', turno: 'tarde' },
+  { texto: 'Obrigado pelo empenho de hoje, {nome}', turno: 'noite' },
 ];
 
 /** O aniversário ('aaaa-mm-dd', 'mm-dd' ou 'dd/mm') como 'mm-dd'; '' quando não dá para ler. */
@@ -63,16 +67,12 @@ export function feriadoDaSemana(agora: Date): { feriado: Feriado; dias: number; 
   return null;
 }
 
-/** As piadas da semana com feriado (com o {nome}; curtas, para caber na linha do título). */
-function piadasDoFeriado(x: { feriado: Feriado; dias: number; diaDaSemana: number }): string[] {
-  if (x.dias === 0) return ['Feriado e você aqui, {nome}?', 'Hoje é feriado, {nome}! Que dedicação'];
-  if (x.diaDaSemana === 0 || x.diaDaSemana === 6) return ['Feriado ' + NO_DIA[x.diaDaSemana] + ', {nome}? Não colou'];
-  const piadas = x.dias === 1
-    ? ['Amanhã é feriado, {nome}! Força', 'Amanhã tem feriado, {nome}. Já sente o churrasco?']
-    : ['Feriado ' + NO_DIA[x.diaDaSemana] + ', {nome}! Semana boa', 'Tem feriado ' + NO_DIA[x.diaDaSemana] + ', {nome}. Segura a ansiedade'];
-  // na segunda ou na sexta: o feriadão
-  if (x.diaDaSemana === 1 || x.diaDaSemana === 5) piadas.push('Feriadão vem aí, {nome}!');
-  return piadas;
+/** A frase da semana com feriado (com o {nome}): no próprio dia, o obrigado; antes, adiantar as entregas (sem contagem). */
+function frasesDoFeriado(x: { dias: number; diaDaSemana: number }): string[] {
+  if (x.dias === 0) return ['Hoje é feriado, {nome}. Obrigado pela dedicação'];
+  // o feriado no sábado ou no domingo não muda a semana
+  if (x.diaDaSemana === 0 || x.diaDaSemana === 6) return [];
+  return ['Semana mais curta, {nome}. Vamos adiantar as entregas'];
 }
 
 const dataLocal = (d: Date) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -86,12 +86,12 @@ export function frasesDaSaudacao(nome: string, agora: Date, aniversario?: string
   if (niver && niver === hoje) return [com('Feliz aniversário, {nome}!')];
   const turno = turnoDe(agora.getHours());
   const daHora = com(POR_TURNO[turno]);
-  // as especiais aparecem mais (duas vezes na lista): a segunda-feira, a sexta (o "Sextou"), a semana com feriado e o mês do aniversário
+  // as especiais aparecem mais (duas vezes na lista): a segunda-feira, a sexta, a semana com feriado e o mês do aniversário
   const feriado = feriadoDaSemana(agora);
   const especiais = [
     ...(agora.getDay() === 1 ? [com('Como foi o final de semana, {nome}?')] : []),
-    ...(agora.getDay() === 5 ? [com('Sextou, {nome}!'), com('Sextou, {nome}! Fecha com tudo')] : []),
-    ...(feriado ? piadasDoFeriado(feriado).map(com) : []),
+    ...(agora.getDay() === 5 ? [com('Sexta é dia de deixar tudo em dia, {nome}'), com('Vamos fechar a semana com tudo, {nome}')] : []),
+    ...(feriado ? frasesDoFeriado(feriado).map(com) : []),
     ...(niver && niver.slice(0, 2) === hoje.slice(0, 2) ? [com('Melhor mês do ano chegou, {nome}!')] : []),
   ];
   const personalizadas = FRASES_PERSONALIZADAS.filter(f => !f.turno || f.turno === turno).map(f => com(f.texto));

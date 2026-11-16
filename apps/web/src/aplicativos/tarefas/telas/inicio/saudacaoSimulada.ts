@@ -5,7 +5,7 @@ import { useSyncExternalStore } from 'react';
 import { tarefas, type usuarios } from '@nads/core';
 
 // e o nível simulado das Notificações (o Sênior pede reunião, o Diretor aprova; 13/11/2026)
-// a sexta e a semana com feriado (o "Sextou" e a piada do feriado; 15/11/2026)
+// a sexta e a semana com feriado (15/11/2026; as frases revistas em 16/11/2026, sem contagem para o descanso)
 export interface SaudacaoSimulada { turno?: tarefas.saudacao.Turno; segunda?: boolean; sexta?: boolean; feriado?: boolean; aniversario?: 'mes' | 'dia'; troca?: number; nivel?: usuarios.Nivel }
 
 const CHAVE = 'nads-saudacao-simulada';
