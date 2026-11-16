@@ -7003,6 +7003,9 @@ tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{co
 /* as pílulas com o ícone: 6px entre o ícone e o texto, o ícone no meio, todas da mesma altura ("tá torto") */
 .ini-busca-pop .chip-f{display:inline-flex;align-items:center;gap:6px;height:28px;}
 .ini-busca-pop .chip-f svg{flex:none;}
+/* o Cliente (MenuSuspenso numa pílula): o ícone de 14px e a seta pequena, como as outras (16/11/2026: "Front end bugado") */
+.ini-busca-pop .popover-wrap > .chip-f > svg{width:14px;height:14px;}
+.ini-busca-pop .popover-wrap > .chip-f > .menu-seta{width:12px;height:12px;margin-left:-2px;color:var(--ink-muted);}
 .ini-busca-vazio{padding:4px 8px;margin:0;}
 .ini-novo > .imp-abas{margin-bottom:16px;}
 .ini-painel{display:grid;grid-template-columns:minmax(280px,1fr) minmax(360px,1.6fr);gap:28px;align-items:start;}
