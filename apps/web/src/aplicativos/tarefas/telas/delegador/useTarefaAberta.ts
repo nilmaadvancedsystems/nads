@@ -9,7 +9,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNovidade } from '../../../../comum/novidades';
 import { ehDiretor, caminhoDoExecutor } from '../../casca/navegacao';
 import { useOperador } from '../../casca/operador';
-import { useAcesso, useRepo, useTarefasDelegadas } from '../../dados/repo';
+import { useAcesso, useEntregasDeDocumentos, useRepo, useTarefasDelegadas } from '../../dados/repo';
 import { bytesDoAnexo, encolherAnexo } from '../../dados/encolherAnexo';
 import { tamanhoDoArquivo, type ArquivoParaAnexar } from '../../dados/tarefasDelegadas';
 import { useEmpresasPermitidas } from '../empresas/andamento';
@@ -17,6 +17,7 @@ import { useAgoraDoExpediente } from './useAgoraDoExpediente';
 
 const d = tarefas.delegadas;
 type Rascunho = tarefas.delegadas.Rascunho;
+type TipoDaEntrega = (typeof entregas.TIPOS_DA_ENTREGA_DA_TAREFA)[number]['valor'];
 export type AbaDaTarefa = 'tarefa' | 'parecer' | 'historico';
 
 const quando = (iso: string) => (iso ? new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '');
@@ -99,6 +100,11 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
   const [pessoasDocs, setPessoasDocs] = useState<string[]>([]);
   // o ⚡ preencheu com o exemplo: o Criar não grava nada (modo desenvolvedor)
   const [deTeste, setDeTeste] = useState(false);
+  // a Entrega (a novidade 'entrega-do-office-boy', 16/11/2026): a nova delegada ao office boy vai para a fila dele no Entregas
+  // (Entregas › Solicitações) em vez de virar tarefa; null = a caixinha desmarcada
+  const entregaLigada = useNovidade('entrega-do-office-boy');
+  const repoDasEntregas = useEntregasDeDocumentos();
+  const [tipoDaEntrega, setTipoDaEntrega] = useState<TipoDaEntrega | null>(null);
 
   // a tarefa que chega do banco depois de aberta (a lista ainda carregava, ou outra pessoa mudou; 29/10/2026: "não salva
   // nada"): o formulário acompanha o banco nos campos que a pessoa não mexeu, e o que ela mudou fica por cima (30/10/2026:
@@ -123,6 +129,11 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
     // a nova que vai para outra pessoa nasce pendente: quem recebe é que inicia
     status: ehNova && delegar ? 'pendente' : r.status,
   };
+  // a Entrega só aparece na nova (não a de documentos) delegada a quem é office boy; marcada, o Criar manda para o Entregas
+  const papeisDe = (u: string) => acesso.equipe().lista.find(x => x.uid === u)?.papeis || [];
+  const podeEntrega = entregaLigada && ehNova && !pedido && delegar && !!r.responsavel && entregas.ehOfficeBoy(papeisDe(r.responsavel.uid));
+  const emEntrega = podeEntrega && tipoDaEntrega !== null;
+  const tarefaParaEntrega = { titulo: final.titulo, descricao: final.descricao, clientes: final.clientes, prioridade: final.prioridade, prazo: final.prazo, prazoHora: final.prazoHora };
   // o que a pessoa mudou desde que abriu: é só isso que o Salvar grava
   const mudancas = ehNova ? {} : d.mudancasDoRascunho(inicial, final);
   const mudou = ehNova
@@ -311,6 +322,16 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
     },
     equipe,
     delegar,
+    /** a Entrega ao office boy (a novidade 'entrega-do-office-boy'): pode = a caixinha aparece; tipo = null, desmarcada */
+    entrega: {
+      pode: podeEntrega,
+      marcada: emEntrega,
+      tipo: tipoDaEntrega,
+      tipos: entregas.TIPOS_DA_ENTREGA_DA_TAREFA,
+      /** marcar já escolhe o tipo pelo nome da tarefa ("Retirada…" = Buscar) */
+      alternar: () => { setTipoDaEntrega(t => (t === null ? entregas.tipoProvavelDaEntrega(r.titulo) : null)); setErro(''); },
+      setTipo: (t: TipoDaEntrega) => setTipoDaEntrega(t),
+    },
     /** ligar numa tarefa que era da própria pessoa pede para escolher alguém; desligar deixa a tarefa com ela (no Salvar) */
     alternarDelegar: () => {
       setDelegarEscolhido(!delegar);
@@ -483,6 +504,18 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
       if (prazo === null) { setErro('O prazo não é uma data válida (dd/mm/aaaa).'); return; }
       const problema = d.problemaDaTarefa(final);
       if (problema) { setErro(problema); setAba('tarefa'); return; }
+      // a Entrega: nenhuma tarefa é criada; o pedido vai para a fila do office boy no Entregas
+      if (emEntrega && tipoDaEntrega) {
+        const problemaDaEntrega = entregas.problemaDaEntregaDaTarefa({ ...tarefaParaEntrega, anexos: pendentes.length, links: linksPendentes.length }, tipoDaEntrega);
+        if (problemaDaEntrega) { setErro(problemaDaEntrega); return; }
+        setOcupado('salvar');
+        try {
+          const onde = await repoDasEntregas.enviarSolicitacao(entregas.solicitacaoDaTarefa(tarefaParaEntrega, tipoDaEntrega));
+          toast(onde === 'aparelho' ? 'Sem conexão: a entrega fica no aparelho e sobe sozinha quando a rede voltar.' : 'Entrega enviada para a fila do office boy (Solicitações do Entregas).');
+          criada(false);
+        } catch (e) { setErro('Não enviei a entrega: ' + (e instanceof Error ? e.message : String(e))); } finally { setOcupado(''); }
+        return;
+      }
       setOcupado('salvar');
       try {
         if (ehNova) {

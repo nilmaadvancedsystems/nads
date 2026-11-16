@@ -37,6 +37,9 @@ export const NOVIDADES = {
   /** a comissão escondida (16/11/2026): quem tem uma % própria registra a comissão sem ver o valor; a % fica num lugar do banco
    *  que nenhuma tela lê e o robô da nuvem calcula; o Financeiro vê o valor, sem o do serviço */
   'comissao-oculta': { desde: '16/11/2026', aprovada: false },
+  /** a Entrega na tarefa nova delegada ao office boy (16/11/2026: "quando for delegado para o officeboy, a opcao 'entrega' que vai
+   *  jogar direto no modulo de entregas"): marcada, nenhuma tarefa é criada; o pedido vai para Entregas › Solicitações */
+  'entrega-do-office-boy': { desde: '16/11/2026', aprovada: false },
 } satisfies Record<string, { desde: string; aprovada: boolean }>;
 
 export type IdNovidade = keyof typeof NOVIDADES;
