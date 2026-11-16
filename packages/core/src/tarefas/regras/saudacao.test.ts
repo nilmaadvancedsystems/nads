@@ -32,30 +32,38 @@ describe('saudação do Início novo', () => {
     expect(frasesDaSaudacao('Vitor', em('2026-11-13', 9), null).some(f => f.includes('Melhor mês'))).toBe(false);
   });
 
-  it('a sexta anima a fechar a semana, sem o "Sextou" (16/11/2026: "remova as que desmotivam/transmitem preguiça")', () => {
+  it('sextou na sexta, com as que animam a fechar a semana', () => {
     const sexta = frasesDaSaudacao('Vitor', em('2026-11-27', 9));
+    expect(sexta).toContain('Sextou, Vitor!');
     expect(sexta).toContain('Vamos fechar a semana com tudo, Vitor');
-    expect(sexta.some(f => f.startsWith('Sextou'))).toBe(false);
-    expect(frasesDaSaudacao('Vitor', em('2026-11-26', 9))).not.toContain('Vamos fechar a semana com tudo, Vitor');
+    expect(frasesDaSaudacao('Vitor', em('2026-11-26', 9)).some(f => f.startsWith('Sextou'))).toBe(false);
   });
 
-  it('a semana com feriado sem contagem nem ansiedade pelo descanso (16/11/2026)', () => {
+  it('a semana com feriado, com o texto do Vitor (16/11/2026)', () => {
     // segunda 16/11: a Consciência Negra na sexta 20/11
     expect(feriadoDaSemana(em('2026-11-16', 9))).toMatchObject({ dias: 4, diaDaSemana: 5 });
-    expect(frasesDaSaudacao('Vitor', em('2026-11-16', 9))).toContain('Semana mais curta, Vitor. Vamos adiantar as entregas');
-    expect(frasesDaSaudacao('Vitor', em('2026-11-20', 9))).toContain('Hoje é feriado, Vitor. Obrigado pela dedicação');
-    // o feriado no domingo (15/11) não muda a semana
-    expect(frasesDaSaudacao('Vitor', em('2026-11-12', 9)).some(f => /feriado|semana mais curta/i.test(f))).toBe(false);
+    expect(frasesDaSaudacao('Vitor', em('2026-11-16', 9))).toContain('Feriado na sexta, Vitor! Ôh semana boa');
+    // na terça e na quarta, nada do feriado ("deixa só na segunda e um dia antes do feriado")
+    for (const dia of ['2026-11-17', '2026-11-18']) expect(frasesDaSaudacao('Vitor', em(dia, 9)).some(f => /feriado|semana mais curta/i.test(f))).toBe(false);
+    // a véspera e o próprio dia
+    expect(frasesDaSaudacao('Vitor', em('2026-11-19', 9))).toContain('Amanhã é feriado, Vitor! Bora que bora!');
+    expect(frasesDaSaudacao('Vitor', em('2026-11-19', 9))).toContain('Vai fazer churrasco no feriado, Vitor? Me chama');
+    expect(frasesDaSaudacao('Vitor', em('2026-11-20', 9))).toContain('Feriado e você aqui, Vitor? Vai descansar, anda...');
+    // o feriado no domingo (15/11): na segunda 09/11, não na quinta 12/11
+    expect(frasesDaSaudacao('Vitor', em('2026-11-09', 9))).toContain('Feriadão no final de semana, Vitor. Deu ruim');
+    expect(frasesDaSaudacao('Vitor', em('2026-11-12', 9)).some(f => /feriad/i.test(f))).toBe(false);
+    // a sexta antes do feriado na segunda (07/09) é a véspera
+    expect(frasesDaSaudacao('Vitor', em('2026-09-04', 9))).toContain('Segunda é feriado, Vitor! Bora que bora!');
     // da sexta, a segunda seguinte entra (o 07/09); o ponto facultativo não conta; semana sem feriado, nada
     expect(feriadoDaSemana(em('2026-09-04', 9))).toMatchObject({ dias: 3, diaDaSemana: 1 });
     expect(feriadoDaSemana(em('2026-06-01', 9))?.feriado.nome).not.toBe('Corpus Christi');
     expect(feriadoDaSemana(em('2026-11-24', 9))).toBeNull();
   });
 
-  it('nenhuma frase conta o tempo para o descanso', () => {
+  it('o "Segura a ansiedade" e o "Feriadão vem aí" saíram de vez (16/11/2026)', () => {
     const dias = ['2026-11-12', '2026-11-16', '2026-11-19', '2026-11-20', '2026-11-27', '2026-09-04'];
     const todas = dias.flatMap(d => [9, 15, 21].flatMap(h => frasesDaSaudacao('Vitor', em(d, h))));
-    expect(todas.filter(f => /sextou|feriadão|amanhã|churrasco|ansiedade|não colou|descansar|já foi/i.test(f))).toEqual([]);
+    expect(todas.filter(f => /ansiedade|feriadão vem/i.test(f))).toEqual([]);
   });
 
   it('no dia do aniversário, só os parabéns', () => {
