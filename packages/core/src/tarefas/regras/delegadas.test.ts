@@ -419,8 +419,21 @@ describe('o expediente: pausa sozinha no almoço e à noite (12/11/2026)', () =>
     expect(d.rotuloNoHorario({ status: 'andamento' }, br(SABADO, '09:00'))).toBe('Pausada até segunda 07:00');
     // sexta 17:00 até segunda 08:00: 5 min na sexta e 60 na segunda; o fim de semana não conta
     expect(d.minutosDeExpediente(br('2026-11-13', '17:00').getTime(), br(SEGUNDA, '08:00').getTime())).toBe(65);
-    // a semana inteira: 4 dias de 550 min (07:00–11:05 e 13:00–18:05) e a sexta com 490
-    expect(d.minutosDeExpediente(br(SEGUNDA, '00:00').getTime(), br('2026-11-23', '00:00').getTime())).toBe(4 * 550 + 490);
+    // a semana de 16 a 20/11: 4 dias de 550 min (07:00–11:05 e 13:00–18:05); a sexta 20/11 é feriado (Consciência Negra)
+    expect(d.minutosDeExpediente(br(SEGUNDA, '00:00').getTime(), br('2026-11-23', '00:00').getTime())).toBe(4 * 550);
+    // uma semana sem feriado (23 a 27/11): 4 dias de 550 e a sexta com 490
+    expect(d.minutosDeExpediente(br('2026-11-23', '00:00').getTime(), br('2026-11-30', '00:00').getTime())).toBe(4 * 550 + 490);
+  });
+  it('o feriado não funciona; o ponto facultativo e o meio expediente, sim (15/11/2026: "Só nos feriados")', () => {
+    // Tiradentes (terça, 21/04): parado o dia inteiro; volta na quarta às 07:00
+    expect(d.noIntervalo(br('2026-04-21', '09:00'))).toBe(true);
+    expect(d.voltaDoIntervalo(br('2026-04-20', '18:30'))).toBe('quarta 07:00');
+    expect(d.minutosDeExpediente(br('2026-04-21', '00:00').getTime(), br('2026-04-22', '00:00').getTime())).toBe(0);
+    // a Consciência Negra (sexta, 20/11): na quinta às 18:05 a tarefa só volta na segunda
+    expect(d.rotuloNoHorario({ status: 'andamento' }, br('2026-11-19', '19:00'))).toBe('Pausada até segunda 07:00');
+    // o ponto facultativo (segunda, 20/04) e a véspera de Natal (meio expediente) contam o dia inteiro
+    expect(d.noIntervalo(br('2026-04-20', '09:00'))).toBe(false);
+    expect(d.noIntervalo(br('2026-12-24', '15:00'))).toBe(false);
   });
   it('não depende do fuso do computador: 11:05 em Brasília é 14:05 UTC', () => {
     expect(d.noIntervalo('2026-11-12T14:04:00.000Z')).toBe(false);

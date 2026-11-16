@@ -2,10 +2,11 @@
 // dia e aniversário"): o turno, a segunda-feira e o aniversário de mentira, e o "Outra frase" (troca a escolhida). Fica só nesta
 // aba do navegador (sessionStorage); fora do modo desenvolvedor não vale.
 import { useSyncExternalStore } from 'react';
-import type { tarefas, usuarios } from '@nads/core';
+import { tarefas, type usuarios } from '@nads/core';
 
 // e o nível simulado das Notificações (o Sênior pede reunião, o Diretor aprova; 13/11/2026)
-export interface SaudacaoSimulada { turno?: tarefas.saudacao.Turno; segunda?: boolean; aniversario?: 'mes' | 'dia'; troca?: number; nivel?: usuarios.Nivel }
+// a sexta e a semana com feriado (o "Sextou" e a piada do feriado; 15/11/2026)
+export interface SaudacaoSimulada { turno?: tarefas.saudacao.Turno; segunda?: boolean; sexta?: boolean; feriado?: boolean; aniversario?: 'mes' | 'dia'; troca?: number; nivel?: usuarios.Nivel }
 
 const CHAVE = 'nads-saudacao-simulada';
 const ouvintes = new Set<() => void>();
@@ -36,6 +37,16 @@ const HORA_DO_TURNO = { manha: 9, tarde: 15, noite: 21 } as const;
 export function aplicarSimulacao(agora: Date, aniversario: string, s: SaudacaoSimulada): { agora: Date; aniversario: string } {
   const d = new Date(agora);
   if (s.segunda) d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  if (s.sexta) d.setDate(d.getDate() - ((d.getDay() + 6) % 7) + 4);
+  if (s.feriado) {
+    // a segunda da semana do próximo feriado em dia útil (na segunda, a sexta de antes: o feriadão)
+    const hoje = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    const f = tarefas.feriados.FERIADOS.find(x => x.tipo === 'feriado' && x.data >= hoje && ![0, 6].includes(new Date(x.data + 'T12:00:00').getDay()));
+    if (f) {
+      const dia = new Date(f.data + 'T12:00:00');
+      d.setFullYear(dia.getFullYear(), dia.getMonth(), dia.getDate() - (dia.getDay() === 1 ? 3 : dia.getDay() - 1));
+    }
+  }
   if (s.turno) d.setHours(HORA_DO_TURNO[s.turno], 0, 0, 0);
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');

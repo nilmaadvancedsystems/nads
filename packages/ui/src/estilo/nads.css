@@ -6829,6 +6829,11 @@ td.fs-fat-sem{color:var(--ink-faint);}
    planilha e os botões, o principal por último (Vitor, 13/11/2026: "todos esses elementos em uma linha so? no inicio todo, em todas as paginas") */
 .topbar:has(.ini-topo){flex-wrap:nowrap;align-items:center;}
 .topbar:has(.ini-topo) #topbarActions{flex:1;min-width:0;flex-wrap:nowrap !important;}
+/* a saudação comprida (as piadas do feriado; 15/11/2026) termina em "…" quando não cabe, em vez de cortar a letra no meio */
+.topbar:has(.ini-topo) > div:has(> .page-title){min-width:0;flex:0 1 auto;}
+/* e a fileira não encolhe por baixo do título (passava por cima dele): quem cede é o título */
+.topbar:has(.ini-topo) > #topbarActions{flex:1 0 auto;}
+.topbar:has(.ini-topo) .page-title{overflow:hidden;text-overflow:ellipsis;}
 .ini-topo{flex-wrap:nowrap;}
 .ini-topo-lugar{display:contents;}
 /* o código e o nome da empresa em negrito, em todo o Início novo: o Painel, as listas, a busca e a janela da tarefa (Vitor,

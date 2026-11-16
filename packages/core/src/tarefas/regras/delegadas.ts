@@ -5,6 +5,7 @@
 // Aqui só as regras (TypeScript puro): validar, ordenar, filtrar por aba, buscar, montar o histórico de cada mudança e ler
 // o documento do banco. A gravação é do repositório da Tarefas (dados/tarefasDelegadas*.ts).
 import { diaEmBrasilia, nomeNorm } from '../../formatos';
+import { feriadoDoDia } from './feriados';
 
 export type Prioridade = 'baixa' | 'normal' | 'alta' | 'urgente';
 export type Status = 'pendente' | 'andamento' | 'pausada' | 'cancelada' | 'concluida';
@@ -463,18 +464,23 @@ function noDiaDeBrasilia(ms: number): { meiaNoite: number; minuto: number } {
 /** O dia da semana (0 = domingo) do dia de Brasília que começa em "meiaNoite" (ms UTC). */
 const diaDaSemana = (meiaNoite: number) => new Date(meiaNoite + FUSO_DE_BRASILIA * MIN).getUTCDay();
 
+/** O dia de Brasília que começa em "meiaNoite" (ms UTC), 'AAAA-MM-DD'. */
+const dataDoDia = (meiaNoite: number) => new Date(meiaNoite + FUSO_DE_BRASILIA * MIN).toISOString().slice(0, 10);
+
 /**
  * O expediente do dia de Brasília que começa em "meiaNoite" (ms UTC): de segunda a quinta até 18:05, na sexta até 17:05, e no
- * sábado e no domingo nada (o cronômetro não anda).
+ * sábado, no domingo e nos feriados nada (o cronômetro não anda). Os feriados são os do calendário de Taiobeiras (feriados.ts);
+ * o ponto facultativo e o meio expediente seguem como um dia comum (Vitor, 15/11/2026: "Só nos feriados").
  */
 export function expedienteDoDia(meiaNoite: number): readonly { de: number; ate: number }[] {
   const dia = diaDaSemana(meiaNoite);
-  return dia === 0 || dia === 6 ? [] : dia === 5 ? EXPEDIENTE_DE_SEXTA : EXPEDIENTE;
+  if (dia === 0 || dia === 6 || feriadoDoDia(dataDoDia(meiaNoite))?.tipo === 'feriado') return [];
+  return dia === 5 ? EXPEDIENTE_DE_SEXTA : EXPEDIENTE;
 }
 
 const DIAS_DA_SEMANA = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
 
-/** Agora é intervalo (11:05–13:00, ou 18:05–07:00; na sexta, 17:05–07:00; o sábado e o domingo inteiros)? */
+/** Agora é intervalo (11:05–13:00, ou 18:05–07:00; na sexta, 17:05–07:00; o sábado, o domingo e o feriado inteiros)? */
 export function noIntervalo(agora: Date | string): boolean {
   const ms = msDe(agora);
   if (!Number.isFinite(ms)) return false;
@@ -482,12 +488,12 @@ export function noIntervalo(agora: Date | string): boolean {
   return !expedienteDoDia(meiaNoite).some(e => minuto >= e.de && minuto < e.ate);
 }
 
-/** A próxima virada (pausa ou volta) depois de agora: a tela se redesenha nela (no fim de semana, a de segunda). */
+/** A próxima virada (pausa ou volta) depois de agora: a tela se redesenha nela (no fim de semana e no feriado, a do próximo dia útil). */
 export function proximaVirada(agora: Date | string): Date {
   const ms = msDe(agora);
   const { meiaNoite } = noDiaDeBrasilia(ms);
-  // até 8 dias à frente: pula o sábado e o domingo, que não têm expediente
-  const viradas = [0, 1, 2, 3, 4, 5, 6, 7].flatMap(dia => expedienteDoDia(meiaNoite + dia * 1440 * MIN).flatMap(e => [e.de, e.ate]).map(m => meiaNoite + (dia * 1440 + m) * MIN));
+  // até 15 dias à frente: pula o sábado, o domingo e os feriados, que não têm expediente
+  const viradas = Array.from({ length: 15 }, (_, i) => i).flatMap(dia => expedienteDoDia(meiaNoite + dia * 1440 * MIN).flatMap(e => [e.de, e.ate]).map(m => meiaNoite + (dia * 1440 + m) * MIN));
   return new Date(viradas.find(v => v > ms) as number);
 }
 
@@ -521,7 +527,7 @@ export function acoesNoHorario(t: Pick<TarefaDelegada, 'status'>, agora: Date | 
   return situacaoNoHorario(t, agora).automatica ? acoes.filter(a => a.id === 'concluir') : acoes;
 }
 
-/** Os minutos de expediente entre dois instantes (ms UTC): o que cai fora de 07:00–11:05 e 13:00–18:05 (na sexta, 17:05; sábado e domingo, nada) não conta. */
+/** Os minutos de expediente entre dois instantes (ms UTC): o que cai fora de 07:00–11:05 e 13:00–18:05 (na sexta, 17:05; sábado, domingo e feriado, nada) não conta. */
 export function minutosDeExpediente(inicio: number, fim: number): number {
   if (!(fim > inicio)) return 0;
   let total = 0;
