@@ -303,6 +303,26 @@ export function useImportacao() {
         : { tom: 'erro', titulo: 'Nada para importar', textos: falhas.map(f => ({ texto: f.nome + ': ' + (f.erro || 'nenhum lançamento') })) });
       return false;
     }
+    // o extrato que não tem nenhum mês dentro do período da Tarefa (Vitor, 16/11/2026, na 429: os "pdf gerado - 012026" do
+    // Santander eram de janeiro a junho de 2025, e entraram calados num período de 2026): pergunta antes, no envio do computador
+    if (arquivos) {
+      const periodo = (params.get('meses') || '').split(',').filter(m => /^\d{4}-\d{2}$/.test(m));
+      const daTarefa = periodo.length ? periodo : [competenciaDeTeste];
+      const mesesLidos = [...new Set(bons.flatMap(l => l.lancamentos.map(y => y.data.slice(0, 7))))].sort();
+      if (mesesLidos.length && !mesesLidos.some(m => daTarefa.includes(m))) {
+        const mm = (m: string) => m.slice(5) + '/' + m.slice(0, 4);
+        const faixa = (ms: string[]) => (ms.length === 1 ? mm(ms[0]) : mm(ms[0]) + ' a ' + mm(ms[ms.length - 1]));
+        setAndamento(a => a && { ...a, etapa: 'perguntando' });
+        const seguir = await modal<boolean>({
+          icone: 'alert', titulo: 'Este extrato é de outro período',
+          html: (bons.length === 1 ? 'O arquivo é' : 'Os arquivos são') + ' de <b>' + faixa(mesesLidos) + '</b>, e a Tarefa está em <b>' + faixa([...daTarefa].sort()) + '</b>.<br><br>'
+            + 'Confira se pegou o ano certo: o nome do arquivo pode não bater com o que está dentro dele.',
+          botoes: [{ rotulo: 'Importar mesmo assim', valor: true, variante: 'btn-outline' }, { rotulo: 'Não importar', valor: false, variante: 'btn-primary' }],
+        });
+        if (!seguir) { setLendo(null); setMensagem({ tom: 'info', titulo: 'Nada foi importado', textos: [{ texto: 'O extrato era de ' + faixa(mesesLidos) + ', fora do período da Tarefa.' }] }); return false; }
+        setAndamento(a => a && { ...a, etapa: 'gravando' });
+      }
+    }
     const qtdLida = bons.reduce((t, l) => t + l.lancamentos.length, 0);
     let modo: x.ModoImportacao | 'primeira' = 'primeira';
     // de um banco só: "apenas novas" e "sobrepor" olham só os arquivos daquele banco

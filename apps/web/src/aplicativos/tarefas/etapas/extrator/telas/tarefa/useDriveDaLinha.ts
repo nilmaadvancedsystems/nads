@@ -362,10 +362,21 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
   // erro, ou mais de 15 minutos sem aparecer no mapa, desiste (fica o check, como antes)
   const chavesSubindo = Object.keys(subindo).join(',');
   const { ligarMesAoDrive } = vm;
+  // uma conferência por vez, e o robô relê a pasta da empresa no máximo uma vez por minuto (Vitor, 16/11/2026, na 429: "tem algo
+  // rodando que travou minha aplicação" — a cada 10 s começava outra conferência sem a anterior acabar, cada uma pedindo ao robô
+  // para reler a pasta inteira, até 90 s, e baixando o mapa todo de novo: com o extrato que não aparece no mapa, eram umas 9 de
+  // uma vez, por até 15 minutos)
+  const conferindo = useRef(false);
+  const releuOMapaEm = useRef(0);
   useEffect(() => {
     if (!chavesSubindo || !drive.situacaoDosEnvios || !acesso.entrou) return;
     let vivo = true;
     async function conferir() {
+      if (conferindo.current) return;
+      conferindo.current = true;
+      try { await conferirAgora(); } finally { conferindo.current = false; }
+    }
+    async function conferirAgora() {
       const lista = Object.entries(subindo);
       const sit = await drive.situacaoDosEnvios!(lista.map(([, v]) => v.envio));
       const prontos = lista.filter(([, v]) => sit[v.envio]?.status === 'pronto');
@@ -376,7 +387,10 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
       const arquivados: string[] = [];
       if (prontos.length) {
         const antes = await drive.pastaDoCliente(codigo);
-        if (antes?.raiz && drive.atualizarMapaDoCliente) await drive.atualizarMapaDoCliente(antes.raiz);
+        if (antes?.raiz && drive.atualizarMapaDoCliente && Date.now() - releuOMapaEm.current > 60e3) {
+          releuOMapaEm.current = Date.now();
+          await drive.atualizarMapaDoCliente(antes.raiz);
+        }
         const pasta = await drive.pastaDoCliente(codigo);
         for (const [k] of prontos) {
           const [banco, mes] = k.split('|');
