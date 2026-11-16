@@ -30,8 +30,9 @@ export function useChequeEspecial() {
   // foi lançado" interrompe)
   useRequisitosDaEtapa({ pronto: true, faltam: [] });
 
-  const linhas = bancos.map(b => {
-    const ch = x.chequeEspecialDoBanco(empresa, b.id, primeiro, meses);
+  // só os bancos que precisam (16/11/2026: "don't compute the cheque especial in banks with the balance right"): o que nunca fecha
+  // negativo e o que já tem o cheque no razão ficam de fora
+  const linhas = bancos.map(b => ({ b, ch: x.chequeEspecialDoBanco(empresa, b.id, primeiro, meses) })).filter(({ ch }) => ch.calcula).map(({ b, ch }) => {
     const cad = cadastro?.bancos?.find(c => c.id === b.id);
     return {
       id: b.id, nome: b.nome, marca: b.marca || b.id,
@@ -43,6 +44,8 @@ export function useChequeEspecial() {
       dias: ch.faltam.map(d => ({ data: x.dataBR(d.data), saldo: x.reaisBR(d.saldo) })),
       total: x.reaisBR(ch.faltam.reduce((t, d) => t + Math.abs(d.saldo), 0)),
       faltam: ch.faltam,
+      /** as pendências entre o extrato e o razão do período: o cheque sai mesmo assim, mas a pessoa confere a Importação */
+      pendencias: ch.pendencias,
     };
   });
 

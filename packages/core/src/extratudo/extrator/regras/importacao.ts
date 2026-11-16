@@ -24,9 +24,10 @@ import { dataBR } from './texto';
  * nome de alguém (10/11/2026); 17 = o resumo do Bradesco Unificado fora, o saldo do Itaú sem a aplicação
  * automática, o valor do Sicoob na virada da página e o pedaço com ano impossível fora (10/11/2026); 18 = a conferência pelo
  * saldo impresso, em todo banco: cada extrato guarda quantos saldos fecharam e quais não (10/11/2026); 19 = o quadro "Saldos por
- * Período" do fim do Santander fora (cada dia virava uma saída do tamanho do saldo; 16/11/2026, na 429).
+ * Período" do fim do Santander fora (cada dia virava uma saída do tamanho do saldo; 16/11/2026, na 429); 20 = a data centrada na
+ * linha de duas alturas volta para a linha do valor (o lançamento ficava com o dia anterior; 16/11/2026).
  */
-export const VERSAO_DO_LEITOR = 19;
+export const VERSAO_DO_LEITOR = 20;
 
 export function empresaNova(nome: string): EmpresaExtrator {
   return { nome, arquivos: [], auditoria: [] };

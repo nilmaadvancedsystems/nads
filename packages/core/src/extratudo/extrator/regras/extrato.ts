@@ -197,6 +197,34 @@ export function juntarPedacosSoltos(linhas: Linha[]): Linha[] {
  * R$ 23.236,51 e o saldo de todos os dias seguintes ficava errado). Leva o valor para a linha da data. Não é o caso do layout com
  * o valor embaixo da data: ali o número é da data que ficou em cima dele, e a data que abre a página tem o seu logo depois.
  */
+/**
+ * A data no meio da linha de duas alturas (16/11/2026: "Datas ou mês errados", o Pix de 16/01 lido no 15/01): quando o histórico
+ * ocupa duas linhas, o banco (o BB, entre outros) imprime a data centrada na altura das duas, uns 4 pontos abaixo do valor; a data
+ * virava uma linha sozinha logo abaixo e o valor, lido antes dela, ficava com o dia anterior. A data sozinha na linha volta para a
+ * linha de valor de cima quando está mais perto dela (até 6 pontos) que do próximo valor; a data que abre o dia acima dos
+ * lançamentos (mais longe do valor de cima) fica onde está.
+ */
+function dataNaLinhaDoValor(linhas: Linha[]): Linha[] {
+  const saida = linhas.slice();
+  const temValor = (l: Linha) => l.tokens.some(t => RE_VALOR.test(t.s));
+  const comecaComData = (l: Linha) => RE_DATA.test(l.tokens[0]?.s || '');
+  for (let i = 1; i < saida.length; i++) {
+    const l = saida[i];
+    if (l.tokens.length !== 1 || !comecaComData(l)) continue;
+    const acima = saida[i - 1];
+    if (!temValor(acima) || comecaComData(acima)) continue;
+    const proximo = saida.slice(i + 1).find(temValor);
+    const longeDeCima = acima.y - l.y;
+    const longeDeBaixo = proximo ? l.y - proximo.y : Infinity;
+    if (longeDeCima > 6 || longeDeCima >= longeDeBaixo) continue;
+    const tokens = [l.tokens[0], ...acima.tokens].sort((a, b) => a.x - b.x);
+    saida[i - 1] = { ...acima, tokens, texto: tokens.map(t => t.s).join(' ') };
+    saida.splice(i, 1);
+    i--;
+  }
+  return saida;
+}
+
 function juntarValorDaVirada(paginas: Linha[][]): Linha[][] {
   const saida = paginas.map(p => p.slice());
   for (let i = 0; i + 1 < saida.length; i++) {
@@ -705,7 +733,7 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
   const textoDoPdf = paginas.map(p => p.map(i => i.texto).join(' ')).join('\n');
   const itauMensal = lado === 'banco' && ehItauMensal(textoDoPdf);
   const unificado = lado === 'banco' && ehBradescoUnificado(textoDoPdf);
-  const lidas = juntarValorDaVirada((itauMensal ? paginas.map(semALegendaDoItau) : paginas).map(p => juntarPedacosSoltos(montarLinhas(p))));
+  const lidas = juntarValorDaVirada((itauMensal ? paginas.map(semALegendaDoItau) : paginas).map(p => dataNaLinhaDoValor(juntarPedacosSoltos(montarLinhas(p)))));
   const todas = unificado ? soAContaDoUnificado(lidas) : lidas;
   if (lado === 'banco') {
     const texto = todas.map(p => p.map(l => l.texto).join('\n')).join('\n');
