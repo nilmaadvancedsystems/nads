@@ -2,9 +2,10 @@
 // do core dizem como ela fica); os arquivos (o Problema e a Solução) vão em pedaços em partes/{arquivo}-{n}, como os anexos
 // das tarefas. A regra ainda não está no ar: até o Vitor aprovar, o banco recusa e a lista fica vazia (no modo
 // desenvolvedor nada grava mesmo).
-import { Bytes, collection, doc, getDoc, limit, onSnapshot, orderBy, query, setDoc as setDocBruto } from 'firebase/firestore';
+import { Bytes, collection, doc, getDoc, limit, orderBy, query, setDoc as setDocBruto } from 'firebase/firestore';
 import { entregas, tarefas } from '@nads/core';
 import { bancoDoEntregas } from './entregas.firestore';
+import { ouvirInsistindo } from './ouvirInsistindo.firestore';
 import { bytesDoAnexo } from './encolherAnexo';
 import { anexoDe } from './tarefasDelegadas';
 import type { RepoReunioes } from './reunioes';
@@ -58,7 +59,7 @@ export function criarReunioesFirestore(quem: () => { uid: string; nome: string }
     lista() {
       if (!estado) {
         estado = { carregadas: false, reunioes: [] };
-        onSnapshot(query(collection(db, COLECAO), orderBy('em', 'desc'), limit(200)),
+        ouvirInsistindo(query(collection(db, COLECAO), orderBy('em', 'desc'), limit(200)),
           s => { estado = { carregadas: true, reunioes: s.docs.map(d => lerReuniao(d.id, d.data())) }; mudou(); },
           e => { console.warn('As reuniões não abriram:', e instanceof Error ? e.message : e); estado = { carregadas: true, reunioes: [] }; mudou(); });
       }
