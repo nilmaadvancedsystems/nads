@@ -11,7 +11,10 @@
 // Por fim, "Corrigidas que quero exatamente (tem sotaque é menos robotizado)": o texto de cada frase é o dele, letra por letra; e
 // nas que "pode colocar apelido", o {apelido} às vezes vira um dos apelidos da pessoa (usuarios/{uid}.apelidos, no banco: o
 // repositório é público, nome da equipe não entra no código). "Não exagere nos apelidos, diminua muito e a chance de aparecer":
-// no máximo dois por pessoa, e o apelido em cerca de 1 de cada 10 saudações; no resto, o primeiro nome.
+// no máximo dois por pessoa, e o apelido em cerca de 1 de cada 10 saudações; no resto, o primeiro nome. E "Deixe muito bem
+// dosado, maioria das vezes, bom dia, boa tarde e boa noite, APENAS, o resto deixa muito raro de acontecer": em 88 de cada 100
+// turnos, só o "Bom dia/Boa tarde/Boa noite" com o nome; as outras frases (e o apelido nelas) dividem os 12 que sobram. O dia do
+// aniversário continua só com os parabéns.
 
 import { feriadoDoDia, type Feriado } from './feriados';
 
@@ -97,7 +100,10 @@ export function primeiroNome(nome: string): string {
   return p.charAt(0).toLocaleUpperCase('pt-BR') + p.slice(1).toLocaleLowerCase('pt-BR');
 }
 
-/** Quantos apelidos por pessoa entram (os primeiros da lista) e a chance do apelido: 1 em APELIDO_UMA_EM saudações. */
+/** Em quantos turnos, de cada 100, sai só o "Bom dia/Boa tarde/Boa noite" com o nome. */
+export const SO_O_TURNO_EM_CEM = 88;
+
+/** Quantos apelidos por pessoa entram (os primeiros da lista) e a chance do apelido nas frases raras: 1 em APELIDO_UMA_EM. */
 export const MAX_APELIDOS = 2;
 export const APELIDO_UMA_EM = 10;
 
@@ -128,18 +134,40 @@ export function frasesDaSaudacao(nome: string, agora: Date, aniversario?: string
   return [...especiais, ...doFeriado, daHora, ...especiais, daHora, ...personalizadas];
 }
 
+/** Só o "Bom dia/Boa tarde/Boa noite" com o primeiro nome (a saudação da grande maioria das vezes). */
+export function saudacaoDoTurno(nome: string, agora: Date): string {
+  const primeiro = primeiroNome(nome);
+  return POR_TURNO[turnoDe(agora.getHours())].replace('{nome}', primeiro).replace('{apelido}', primeiro);
+}
+
+const ehDoTurno = (f: string) => /^(Bom dia|Boa tarde|Boa noite) /.test(f);
+
+/** Embaralha o número (para sorteios diferentes da mesma chave não andarem juntos). */
+function misturar(h: number): number {
+  h = Math.imul(h ^ (h >>> 16), 0x45d9f3b);
+  h = Math.imul(h ^ (h >>> 16), 0x45d9f3b);
+  return (h ^ (h >>> 16)) >>> 0;
+}
+
 /**
- * A saudação de agora: uma das frases, escolhida pela pessoa (quem), pelo dia e pelo turno, e mais nada; recarregar no
- * mesmo turno dá a mesma frase (e o mesmo nome ou apelido). O apelido sai em cerca de 1 de cada APELIDO_UMA_EM turnos. troca:
- * soma ao número (o "Outra frase" do ⚡, para testar); simulando: começa pela primeira frase (a especial, quando tem: a
- * segunda-feira ou o aniversário simulados aparecem logo), a troca anda uma a uma e, com apelido simulado, ele sai sempre.
+ * A saudação de agora, escolhida pela pessoa (quem), pelo dia e pelo turno; recarregar no mesmo turno dá a mesma. Em
+ * SO_O_TURNO_EM_CEM de cada 100 turnos, só o "Bom dia/Boa tarde/Boa noite" com o nome; nos outros, uma das outras frases,
+ * e nelas o apelido em cerca de 1 de cada APELIDO_UMA_EM. troca: soma ao número (o "Outra frase" do ⚡, para testar);
+ * simulando: anda por todas as frases a partir da primeira (a especial, quando tem: a segunda-feira ou o aniversário simulados
+ * aparecem logo), uma a uma e, com apelido simulado, ele sai sempre.
  */
 export function saudacao(o: { nome: string; quem: string; agora: Date; aniversario?: string | null; apelidos?: readonly string[] | null; troca?: number; simulando?: boolean }): string {
   const chave = o.quem + '|' + dataLocal(o.agora) + '|' + turnoDe(o.agora.getHours());
   const n = o.simulando ? (o.troca || 0) : numeroDe(chave) + (o.troca || 0);
   const apelidos = jeitosDeChamar(o.nome, o.apelidos).slice(1, 1 + MAX_APELIDOS);
-  const sorte = o.simulando ? n : numeroDe(chave + '|apelido');
+  const sorte = o.simulando ? n : misturar(numeroDe(chave + '|apelido'));
   const comApelido = apelidos.length > 0 && (o.simulando || sorte % APELIDO_UMA_EM === 0);
   const frases = frasesDaSaudacao(o.nome, o.agora, o.aniversario, comApelido ? apelidos[Math.floor(sorte / APELIDO_UMA_EM) % apelidos.length] : undefined);
-  return frases[n % frases.length];
+  // o aniversário (sozinho) e o ⚡ (anda por todas)
+  if (frases.length === 1 || o.simulando) return frases[n % frases.length];
+  const doTurno = saudacaoDoTurno(o.nome, o.agora);
+  if (misturar(numeroDe(chave + '|raro')) % 100 < SO_O_TURNO_EM_CEM) return doTurno;
+  // as raras: todas menos a do turno (com o nome ou o apelido), sem repetidas
+  const raras = frases.filter((f, i) => !ehDoTurno(f) && frases.indexOf(f) === i);
+  return raras.length ? raras[n % raras.length] : doTurno;
 }
