@@ -4,6 +4,7 @@
 import { normalizarTexto } from '../../../formatos';
 import type { ConferenciaPeloSaldo, Lado, Lancamento } from '../tipos';
 import { centavos, lerData, temSinal } from './texto';
+import { ehExtratoDeConta } from './preVerificacao';
 
 /** Um pedaço de texto da página: x/y do canto de baixo à esquerda (y cresce para cima), w = largura. */
 export interface ItemDeTexto { texto: string; x: number; y: number; largura: number }
@@ -197,6 +198,63 @@ export function juntarPedacosSoltos(linhas: Linha[]): Linha[] {
  * R$ 23.236,51 e o saldo de todos os dias seguintes ficava errado). Leva o valor para a linha da data. Não é o caso do layout com
  * o valor embaixo da data: ali o número é da data que ficou em cima dele, e a data que abre a página tem o seu logo depois.
  */
+/**
+ * A data no meio da linha de duas alturas (16/11/2026: "Datas ou mês errados", o Pix de 16/01 lido no 15/01): quando o histórico
+ * ocupa duas linhas, o banco (o BB, entre outros) imprime a data centrada na altura das duas, uns 4 pontos abaixo do valor; a data
+ * virava uma linha sozinha logo abaixo e o valor, lido antes dela, ficava com o dia anterior. A data sozinha na linha volta para a
+ * linha de valor de cima quando está mais perto dela (até 6 pontos) que do próximo valor; a data que abre o dia acima dos
+ * lançamentos (mais longe do valor de cima) fica onde está.
+ */
+function dataNaLinhaDoValor(linhas: Linha[]): Linha[] {
+  const saida = linhas.slice();
+  const temValor = (l: Linha) => l.tokens.some(t => RE_VALOR.test(t.s));
+  const comecaComData = (l: Linha) => RE_DATA.test(l.tokens[0]?.s || '');
+  for (let i = 1; i < saida.length; i++) {
+    const l = saida[i];
+    if (l.tokens.length !== 1 || !comecaComData(l)) continue;
+    const acima = saida[i - 1];
+    if (!temValor(acima) || comecaComData(acima)) continue;
+    const proximo = saida.slice(i + 1).find(temValor);
+    const longeDeCima = acima.y - l.y;
+    const longeDeBaixo = proximo ? l.y - proximo.y : Infinity;
+    if (longeDeCima > 6 || longeDeCima >= longeDeBaixo) continue;
+    const tokens = [l.tokens[0], ...acima.tokens].sort((a, b) => a.x - b.x);
+    saida[i - 1] = { ...acima, tokens, texto: tokens.map(t => t.s).join(' ') };
+    saida.splice(i, 1);
+    i--;
+  }
+  return saida;
+}
+
+/**
+ * O ano cortado na virada da página (Vitor, 16/11/2026, o BB "Extrato de Conta Corrente": "no extrato puxa o 6 pra baixo"): a
+ * última linha da página abre com "16/01/202" e o "6" que falta cai sozinho na coluna Dia da página seguinte, antes do primeiro
+ * lançamento dela. O dígito volta para a data (e sai de lá, onde ia parar no histórico do lançamento de baixo).
+ */
+function completarAnoDaVirada(paginas: Linha[][]): Linha[][] {
+  const saida = paginas.map(p => p.slice());
+  const cortada = /^\d{1,2}[/.-]\d{1,2}[/.-]\d{3}$/;
+  for (let i = 0; i + 1 < saida.length; i++) {
+    const pagina = saida[i];
+    let k = pagina.length - 1;
+    while (k >= 0 && !cortada.test(pagina[k].tokens[0]?.s || '')) k--;
+    if (k < 0 || pagina.slice(k + 1).some(l => RE_DATA.test(l.tokens[0]?.s || ''))) continue;
+    const corte = pagina[k].tokens[0];
+    const prox = saida[i + 1];
+    const primeiroValor = prox.findIndex(l => l.tokens.some(t => RE_VALOR.test(t.s)));
+    const ate = primeiroValor < 0 ? prox.length : primeiroValor;
+    const j = prox.slice(0, ate).findIndex(l => /^\d$/.test(l.tokens[0]?.s || '') && Math.abs(l.tokens[0].x - corte.x) <= 30);
+    if (j < 0) continue;
+    const digito = prox[j].tokens[0];
+    const tokens = [{ ...corte, s: corte.s + digito.s, x2: Math.max(corte.x2, digito.x2) }, ...pagina[k].tokens.slice(1)];
+    pagina[k] = { ...pagina[k], tokens, texto: tokens.map(t => t.s).join(' ') };
+    const resto = prox[j].tokens.slice(1);
+    if (resto.length) prox[j] = { ...prox[j], tokens: resto, texto: resto.map(t => t.s).join(' ') };
+    else prox.splice(j, 1);
+  }
+  return saida;
+}
+
 function juntarValorDaVirada(paginas: Linha[][]): Linha[][] {
   const saida = paginas.map(p => p.slice());
   for (let i = 0; i + 1 < saida.length; i++) {
@@ -229,11 +287,16 @@ function colunas(linhas: Linha[]): Colunas | null {
   return null;
 }
 
-/** O ano que mais aparece no texto (para datas "05/09" sem ano). */
+/**
+ * O ano que mais aparece no texto (para datas "05/09" sem ano). O mês por extenso conta também com a barra ("junho/2026",
+ * "MAIO / 2026"). A data do nome do modelo no rodapé ("Extrato_PJ_A4_Basico - 2/4/2024", em toda página do Extrato
+ * Consolidado do Santander) não conta: é a versão do formulário, não o extrato (Vitor, 16/11/2026: o junho/2026 virava 06/2024).
+ */
 export function anoDoTexto(texto: string, padrao: number): number {
   const conta: Record<string, number> = {};
-  for (const m of texto.matchAll(/\b\d{1,2}[/.-]\d{1,2}[/.-](20\d{2})\b/g)) conta[m[1]] = (conta[m[1]] || 0) + 1;
-  for (const m of normalizarTexto(texto).matchAll(/\b(?:jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)[a-z]* (?:de )?(20\d{2})\b/g)) conta[m[1]] = (conta[m[1]] || 0) + 1;
+  const semModelo = texto.split('\n').filter(l => !/[a-z0-9]_[a-z0-9]+_/i.test(l)).join('\n');
+  for (const m of semModelo.matchAll(/\b\d{1,2}[/.-]\d{1,2}[/.-](20\d{2})\b/g)) conta[m[1]] = (conta[m[1]] || 0) + 1;
+  for (const m of normalizarTexto(texto).matchAll(/\b(?:jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)[a-z]* ?(?:de |\/ ?)?(20\d{2})\b/g)) conta[m[1]] = (conta[m[1]] || 0) + 1;
   let melhor: string | null = null;
   for (const a of Object.keys(conta)) if (!melhor || conta[a] > conta[melhor]) melhor = a;
   return melhor ? +melhor : padrao;
@@ -270,6 +333,23 @@ export function mesesSemMovimento(texto: string): string[] | null {
     const ref = t.match(new RegExp('\\bmes (' + MESES_POR_EXTENSO.join('|') + ') (\\d{4})\\b'));
     return ref ? [ref[2] + '-' + String(MESES_POR_EXTENSO.indexOf(ref[1]) + 1).padStart(2, '0')] : [];
   }
+  return mesesDoPeriodo(texto);
+}
+
+/**
+ * O extrato da conta sem nenhum lançamento e sem a frase do sem movimento (Vitor, 16/11/2026: "mesmo se for sem movimento, deve
+ * ser arquivado! Em todos os bancos possiveis"; o BB vem só com o "Saldo Anterior" e o "S A L D O" do período): o título da
+ * conta e o saldo dizem que é o extrato, e quase nenhuma data diz que não é um extrato com lançamentos que a leitura não pegou.
+ * Os meses como no mesesSemMovimento; não é extrato vazio, null.
+ */
+export function mesesDoExtratoVazio(texto: string): string[] | null {
+  if (!ehExtratoDeConta(texto)) return null;
+  if ((texto.match(/\b\d{2}\/\d{2}(?:\/\d{2,4})?\b/g) || []).length > 8) return null;
+  return mesesDoPeriodo(texto);
+}
+
+/** Os meses do período escrito no extrato; sem ele, o do "Período do extrato"; nada disso, []. */
+function mesesDoPeriodo(texto: string): string[] {
   const p = texto.match(/(\d{2})\/(\d{2})\/(\d{4})\s*(?:at[eé]|a)\s*(\d{2})\/(\d{2})\/(\d{4})/i);
   if (p) {
     const meses: string[] = [];
@@ -288,6 +368,9 @@ export function mesesSemMovimento(texto: string): string[] | null {
     while ((a < fimA || (a === fimA && m <= fimM)) && meses.length < 24) { meses.push(a + '-' + String(m).padStart(2, '0')); m++; if (m > 12) { m = 1; a++; } }
     return meses;
   }
+  // o período dentro de um mês só, como o do BB: "Período: 01 a 30/09/2026"
+  const d = texto.match(/\b\d{2}\s*(?:a|at[eé])\s*\d{2}\/(\d{2})\/(\d{4})\b/i);
+  if (d && Number(d[1]) >= 1 && Number(d[1]) <= 12) return [d[2] + '-' + d[1]];
   const um = periodoDoExtrato(texto);
   return um ? [um] : [];
 }
@@ -700,7 +783,7 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
   const textoDoPdf = paginas.map(p => p.map(i => i.texto).join(' ')).join('\n');
   const itauMensal = lado === 'banco' && ehItauMensal(textoDoPdf);
   const unificado = lado === 'banco' && ehBradescoUnificado(textoDoPdf);
-  const lidas = juntarValorDaVirada((itauMensal ? paginas.map(semALegendaDoItau) : paginas).map(p => juntarPedacosSoltos(montarLinhas(p))));
+  const lidas = juntarValorDaVirada(completarAnoDaVirada((itauMensal ? paginas.map(semALegendaDoItau) : paginas).map(p => dataNaLinhaDoValor(juntarPedacosSoltos(montarLinhas(p))))));
   const todas = unificado ? soAContaDoUnificado(lidas) : lidas;
   if (lado === 'banco') {
     const texto = todas.map(p => p.map(l => l.texto).join('\n')).join('\n');
@@ -825,6 +908,10 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
         if (/^saldo anterior\b/.test(normalizarTexto(t.slice(1).map(k => k.s).join(' ')))) continue;
       }
       if (itauMensal && /^(saldo final|totalizador de aplicacoes)\b/.test(normalizarTexto(l.texto))) { juntarPerto(); noFim = true; continue; }
+      // o quadro "Saldos por Período" do fim do Santander (o Extrato Consolidado): uma linha por dia com o saldo, o bloqueio e a
+      // provisão ("02 27.073,84- 0,00 0,00 0,00 4.262,08 0,00 27.073,84-"); não é lançamento, e dali para baixo nada é (Vitor,
+      // 16/11/2026, na 429: cada dia virava uma saída de uns R$ 27 mil, com o histórico "02", "03"…)
+      if (lado === 'banco' && /^saldos por periodo\b/.test(normalizarTexto(l.texto))) { juntarPerto(); noFim = true; continue; }
       // o depósito bloqueado (Sicoob: "DEP.CHEQUE BLOQ.1D 2.300,00*"): o valor com * ainda não entrou no saldo; a linha e o
       // texto embaixo dela ("ENVELOPE: …") ficam de fora, sem data nem histórico para os outros — o lançamento é a
       // "LIBERAÇÃO DE DEPÓSITO BLOQUEADO" (Vitor, 13/10/2026: a 58 juntava o texto e a data dele no lançamento de cima)

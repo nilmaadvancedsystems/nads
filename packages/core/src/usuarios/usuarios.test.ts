@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   chaveDoNome, conferirNovaConta, nomeCompleto, departamentoDaConta, mesmoNome, ehContaReservada, docDaContaNova, emailDoLogin, emailDoNome, EQUIPE_EXEMPLO, iniciais, lerUsuario, mensagemDeErroDeLogin,
-  mudancaDeCargo, nivelPeloMenos, papeisAoMudarCargo, papeisDaContaNova, papeisDoDoc, papeisFaltando, pode, podeAlgum, recursosDe, rotuloDoCargo,
+  mudancaDeCargo, nivelPeloMenos, papeisAoMudarCargo, precisaDoEmailPrincipal, problemaDoEmailPrincipal, papeisDaContaNova, papeisDoDoc, papeisFaltando, pode, podeAlgum, recursosDe, rotuloDoCargo,
 } from '.';
 
 describe('login pelo nome (igual ao Entregas)', () => {
@@ -177,5 +177,29 @@ describe('nome único (12/11/2026)', () => {
     const c = { nome: 'Fulana', sobrenome: 'Silva', senha: '123456', departamento: 'fiscal', nivel: 'pleno' } as const;
     expect(conferirNovaConta(c, ['fulana@exemplo.com'], ['FULANA'])).toContain('Já existe um acesso com esse nome.');
     expect(conferirNovaConta(c, [], ['Beltrana'])).toEqual([]);
+  });
+});
+
+describe('o e-mail principal (16/11/2026)', () => {
+  it('falta só enquanto a conta entra pelo nome@nilma.local (16/11/2026: "só insista para usuários que têm @nilma.local")', () => {
+    expect(precisaDoEmailPrincipal({ email: 'fulana@nilma.local' })).toBe(true);
+    expect(precisaDoEmailPrincipal({ email: 'Fulana@Nilma.Local' })).toBe(true);
+    expect(precisaDoEmailPrincipal({ email: '' })).toBe(true);
+    // quem já tem um e-mail de verdade não é mais perguntado (nem para confirmar)
+    expect(precisaDoEmailPrincipal({ email: 'fulana@exemplo.com' })).toBe(false);
+    expect(precisaDoEmailPrincipal({ email: 'fulana@localiza.com.br' })).toBe(false);
+  });
+
+  it('o e-mail é válido, de verdade e digitado igual duas vezes', () => {
+    expect(problemaDoEmailPrincipal('', '')).toBe('Escreva o seu e-mail pessoal.');
+    expect(problemaDoEmailPrincipal('fulana', 'fulana')).toContain('e-mail válido');
+    expect(problemaDoEmailPrincipal('fulana@nilma.local', 'fulana@nilma.local')).toContain('login feito do nome');
+    expect(problemaDoEmailPrincipal('fulana@exemplo.com', 'fulana@exemplo.co')).toContain('não são iguais');
+    expect(problemaDoEmailPrincipal(' Fulana@Exemplo.com ', 'fulana@exemplo.com')).toBe('');
+  });
+
+  it('o lerUsuario traz quando foi confirmado', () => {
+    expect(lerUsuario('u1', { nome: 'Fulana', email: 'fulana@exemplo.com', roles: ['staff'], emailPrincipalEm: '2026-11-16T10:00:00.000Z' }).emailPrincipalEm).toBe('2026-11-16T10:00:00.000Z');
+    expect(lerUsuario('u1', { nome: 'Fulana', email: 'fulana@nilma.local', roles: ['staff'] }).emailPrincipalEm).toBeNull();
   });
 });

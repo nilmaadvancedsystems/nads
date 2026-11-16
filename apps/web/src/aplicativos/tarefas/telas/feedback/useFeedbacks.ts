@@ -1,11 +1,13 @@
 // ViewModel dos Feedbacks (o pé da gaveta ☰, só o admin): os feedbacks da equipe (o print, o texto, quem, quando, de qual
 // tela e a prioridade), com o filtro Novos / Vistos / Feitos / Todos e o Visto / Feito. A prioridade (Vitor, 19/10/2026):
-// filtrar por Alta, Média ou Baixa e ordenar pelos mais novos ou pela prioridade.
-import { suporte, tarefas } from '@nads/core';
+// filtrar por Alta, Média ou Baixa e ordenar pelos mais novos ou pela prioridade. O Delegar (16/11/2026): passar a
+// solicitação a quem tem a função de desenvolvedor.
+import { suporte, tarefas, usuarios } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
 import { useState } from 'react';
 import { ordenarPorPrioridade, PRIORIDADES, type PrioridadeDoFeedback, type SituacaoDoFeedback } from '../../dados/feedback';
-import { useFeedback } from '../../dados/repo';
+import { useOperador } from '../../casca/operador';
+import { useAcesso, useFeedback } from '../../dados/repo';
 
 /** O bug em blocos para quem resolve: o comentário, os campos (mais a tela e a versão) e o report sem o veredito repetido. */
 function lerOBug(f: { texto: string; relatorio: string; tela: string; versao: string }) {
@@ -25,10 +27,15 @@ export function useFeedbacks() {
   // o feedback aberto na janela dele (Vitor, 07/10/2026: "quando eu clique no feedback abra outra janela flutuante")
   const [aberto, setAberto] = useState('');
   const { toast } = useRetorno();
+  const acesso = useAcesso();
+  const operador = useOperador().operador;
+  // quem pode receber a solicitação: a equipe com a função de desenvolvedor (o core escolhe), com a foto
+  const docs = acesso.equipe().docs;
+  const desenvolvedores = suporte.quemRecebeOFeedback(acesso.equipe().lista);
   const comQuando = (f: (typeof todos.lista)[number]) => ({
     ...f, veredito: f.tipo === 'bug' ? suporte.vereditoDoReport(f.relatorio) : null,
     // o bug para ler (28/10/2026): o que a pessoa disse, onde foi (os campos, com a tela e a versão) e o report do robô
-    lido: f.tipo === 'bug' ? lerOBug(f) : null, pedido: f.tipo === 'bug' ? suporte.codigoDoPedido(f.id) : '', quando: f.criadoEm ? new Date(f.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '',
+    lido: f.tipo === 'bug' ? lerOBug(f) : null, delegada: suporte.textoDaDelegacao(f.delegacao), seloDaConversa: suporte.seloDaConversa(f.conversa), pedido: f.tipo === 'bug' ? suporte.codigoDoPedido(f.id) : '', quando: f.criadoEm ? new Date(f.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '',
   });
   const doAberto = todos.lista.find(f => f.id === aberto);
   const conta = (s: SituacaoDoFeedback) => todos.lista.filter(f => f.status === s).length;
@@ -61,6 +68,19 @@ export function useFeedbacks() {
     /** a imagem aberta em tamanho grande */
     aberta, setAberta,
     marcar: (id: string, status: SituacaoDoFeedback) => void repo.marcar(id, status),
+    /** a quem dá para delegar (a função de desenvolvedor), com a foto */
+    desenvolvedores: desenvolvedores.map(p => ({ ...p, foto: String(docs[p.uid]?.fotoPerfil || '') || null, iniciais: usuarios.iniciais(p.nome) })),
+    /** passa a solicitação a quem tem a função de desenvolvedor: grava quem, quem passou e quando */
+    delegar: async (id: string, uid: string) => {
+      const p = desenvolvedores.find(x => x.uid === uid);
+      if (!p) return;
+      try {
+        await repo.delegar(id, suporte.delegacaoNova(p, desenvolvedores, operador?.nome || '', new Date()));
+        toast('Delegada a ' + p.nome + '.');
+      } catch (e) {
+        toast('Não consegui delegar: ' + (e instanceof Error ? e.message : String(e)));
+      }
+    },
     /** o arquivo do bug, para baixar (o que a pessoa mandou pelo balão) */
     baixarArquivoDoBug: async (id: string, i = 0) => { const a = await repo.arquivoDoBug(id, i); if (a) baixarBytes(a.bytes, a.nome, 'application/octet-stream'); },
     /**

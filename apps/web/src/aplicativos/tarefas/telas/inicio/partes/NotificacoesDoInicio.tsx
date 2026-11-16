@@ -103,11 +103,24 @@ export function NotificacoesDoInicio({ vm, mural, podeMexer }: { vm: ReturnType<
   const r = vm.reuniao;
   return (
     <section className="ini-lista">
-      {!vm.carregandoMural && !vm.comunicados.length && !vm.reunioesNaLista.length ? (
+      {!vm.carregandoMural && !vm.comunicados.length && !vm.reunioesNaLista.length && !vm.cobrancas.length ? (
         <section className="card"><Vazio icone="sino" titulo="Nada por aqui" texto="Os avisos, as reuniões e os estudos da equipe aparecem aqui." /></section>
       ) : (
         <div className="ini-notificacoes">
           <div className="ini-coluna">
+          {/* as cobranças das tarefas que a pessoa faz (16/11/2026: "faça aparecer em notificações que houve uma cobrança"): clicar abre a tarefa */}
+          {vm.cobrancas.length > 0 && (
+            <section className="card ini-cartao">
+              <div className="card-head"><h3>Cobranças</h3></div>
+              {vm.cobrancas.map(x => (
+                <button key={x.id} type="button" className="popover-item ini-comunicado" title="Abrir a tarefa" onClick={() => vm.abrir(x.tarefa)}>
+                  <Icone nome={x.icone} />
+                  <span className="popover-texto"><b>{x.texto}</b><br /><span className="hint" title={x.quandoFoi}>{x.quando}</span></span>
+                  {x.aberta && <span className="badge badge-suave badge-warn">Responder</span>}
+                </button>
+              ))}
+            </section>
+          )}
           {vm.reunioesNaLista.length > 0 && (
             <section className="card ini-cartao">
               <div className="card-head"><h3>Reuniões</h3></div>

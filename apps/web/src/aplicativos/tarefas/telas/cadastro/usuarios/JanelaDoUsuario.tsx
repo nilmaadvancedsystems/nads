@@ -50,7 +50,20 @@ function EmailDaConta({ vm, p }: { vm: VmUsuarios; p: usuarios.Usuario }) {
   );
 }
 
-const DICA_FINANCEIRO = 'Quem é Diretor sempre tem. Os outros, só com a autorização do Diretor.';
+/** Excluir usuário (16/11/2026): só aparece para o Diretor e o Dono, numa conta inativa; sem registro, o botão; com registro, o porquê. */
+function ExcluirConta({ vm, p }: { vm: VmUsuarios; p: usuarios.Usuario }) {
+  const s = vm.exclusao(p);
+  if (s.tipo === 'nada') return null;
+  if (s.tipo === 'conferindo') return <Linha rotulo="Excluir conta" dica="Conferindo se a pessoa tem registro no sistema…"><span className="btn-spinner" aria-hidden="true" /></Linha>;
+  if (s.tipo === 'nao-pode') return <Linha rotulo="Excluir conta" dica={s.motivo} />;
+  return (
+    <Linha rotulo="Excluir conta" dica="Não tem nenhum registro no sistema. A exclusão não tem volta.">
+      <BotaoAcao className="btn btn-danger" carregando={vm.excluindo} textoCarregando="Excluindo…" onClick={() => void vm.excluir(p)}><Icone nome="lixeira" />Excluir</BotaoAcao>
+    </Linha>
+  );
+}
+
+const DICA_FINANCEIRO ='Quem é Diretor sempre tem. Os outros, só com a autorização do Diretor.';
 const SempreLigado = () => <span className="badge badge-neutral">Sempre ligado</span>;
 const DICA_DEV = 'Libera o Modo desenvolvedor no menu do avatar (só ver, sem gravar nada).';
 
@@ -135,6 +148,7 @@ export function JanelaDoUsuario({ vm }: { vm: VmUsuarios }) {
             <Linha rotulo="Conta ativa">
               <Interruptor ligado={p.ativo} onMudar={() => void vm.ativar(p)} rotulo={(p.ativo ? 'Desativar ' : 'Ativar ') + p.nome} />
             </Linha>
+            <ExcluirConta vm={vm} p={p} />
           </Cartao>
           {vm.admin && (
             <Cartao titulo="Senha">

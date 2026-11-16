@@ -56,7 +56,16 @@ export interface Comissao {
   servico?: string;
   valorServico?: number;
   percentual?: number;
+  /**
+   * A comissão escondida (16/11/2026): a de quem tem uma % própria, que nenhuma tela lê. Vai sem o valor e sem a %; o robô da
+   * nuvem calcula o valor e tira o valor do serviço (calculo 'fila' → 'feito', ou 'erro'). A pessoa não vê o valor; o
+   * Financeiro vê o valor, sem o do serviço.
+   */
+  oculta?: boolean;
+  calculo?: CalculoDaComissao;
 }
+
+export type CalculoDaComissao = 'fila' | 'feito' | 'erro';
 
 /** O porte do cliente avulso (Vitor, 12/11/2026). */
 export type Porte = 'MEI' | 'ME' | 'EPP' | 'Demais';
@@ -76,6 +85,8 @@ export interface ComissaoParaSalvar {
   servico: string;
   valorServico: number;
   percentual: number;
+  /** a escondida: vai sem a % (percentual 0) e o robô calcula */
+  oculta?: boolean;
 }
 
 // ── serviços comissionados ──────────────────────────────────────────────────
@@ -114,28 +125,14 @@ export function conferirServicos(lista: readonly ServicoComissionado[]): string[
   return erros;
 }
 
-/**
- * A % própria de uma pessoa (Vitor, 12/11/2026: "as todas as comissões [dele] são de 50%"): vale para todos os serviços
- * dela, no lugar da % de cada serviço. O Financeiro define em Serviços comissionados.
- */
-export interface PercentualDaPessoa { uid: string; nome: string; percentual: number }
+/** A % do serviço (0 = ainda sem %). A % própria de uma pessoa não passa por aqui: é a da comissão escondida (16/11/2026). */
+export const percentualDoServico = (servicos: readonly ServicoComissionado[], servico: string): number => servicos.find(s => s.nome === servico)?.percentual ?? 0;
 
-/** A % da comissão: a própria da pessoa, quando tem; senão, a do serviço (0 = ainda sem %). */
-export function percentualDaComissao(servicos: readonly ServicoComissionado[], porPessoa: readonly PercentualDaPessoa[], uid: string | null | undefined, servico: string): number {
-  const propria = uid ? porPessoa.find(p => p.uid === uid)?.percentual ?? 0 : 0;
-  if (propria > 0) return propria;
-  return servicos.find(s => s.nome === servico)?.percentual ?? 0;
-}
+/** A escondida que o robô ainda não calculou (ou não conseguiu): sem valor, o Financeiro não aprova. */
+export const esperandoCalculo = (c: Comissao) => !!c.oculta && c.calculo !== 'feito';
 
-/** O que está errado nas % por pessoa (lista vazia = pode gravar). */
-export function conferirPorPessoa(lista: readonly PercentualDaPessoa[]): string[] {
-  const erros: string[] = [];
-  if (lista.some(p => !p.uid)) erros.push('Escolha a pessoa.');
-  if (lista.some(p => !(p.percentual > 0 && p.percentual <= 100))) erros.push('A % própria fica entre 0 e 100 (maior que zero).');
-  if (new Set(lista.map(p => p.uid)).size !== lista.length) erros.push('Há pessoa repetida.');
-  if (lista.length > 50) erros.push('São pessoas demais (até 50).');
-  return erros;
-}
+/** As que mostram o valor para a própria pessoa: as escondidas não (nem no total, senão a conta mostra a %). */
+export const comValorParaAPessoa = (lista: readonly Comissao[]) => lista.filter(c => !c.oculta);
 
 /** A comissão: o valor do serviço × a % (em centavos). */
 export const valorDaComissao = (valorServico: number, percentual: number) => Math.round(valorServico * percentual) / 100;
@@ -154,10 +151,10 @@ export function conferirComissao(c: ComissaoParaSalvar): string[] {
   if (!c.cliente.trim()) erros.push(c.clienteCodigo == null ? 'Escreva o nome do cliente avulso.' : 'Escolha o cliente.');
   if (c.clienteCodigo == null && !c.porte) erros.push('Escolha o porte do cliente avulso.');
   if (!c.servico.trim()) erros.push('Escolha o serviço.');
-  else if (!(c.percentual > 0)) erros.push('O Financeiro ainda não definiu a % de ' + c.servico + '.');
+  else if (!c.oculta && !(c.percentual > 0)) erros.push('O Financeiro ainda não definiu a % de ' + c.servico + '.');
   if (!(c.valorServico > 0)) erros.push('Informe quanto o cliente pagou pelo serviço.');
   if (c.valorServico >= 10_000_000) erros.push('Confira o valor do serviço.');
-  else if (c.valorServico > 0 && c.percentual > 0 && !(valorDaComissao(c.valorServico, c.percentual) > 0)) erros.push('A comissão deu zero: confira o valor.');
+  else if (!c.oculta && c.valorServico > 0 && c.percentual > 0 && !(valorDaComissao(c.valorServico, c.percentual) > 0)) erros.push('A comissão deu zero: confira o valor.');
   if (c.cliente.length > 150 || c.servico.length > 80) erros.push('O texto está grande demais.');
   return erros;
 }
@@ -186,7 +183,8 @@ export function resumoParaPagar(lista: readonly Comissao[]): ResumoParaPagar[] {
     const t = totaisDasComissoes(cs);
     return {
       uid, nome: cs[0].nome, aRevisar: t.lancadas, aPagar: t.aprovadas, pagas: t.pagas, quantas: t.quantas,
-      ids: { aprovadas: cs.filter(c => c.situacao === 'aprovada').map(c => c.id), lancadas: cs.filter(c => c.situacao === 'lancada').map(c => c.id) },
+      // a escondida ainda sem o valor fica fora do Aprovar tudo
+      ids: { aprovadas: cs.filter(c => c.situacao === 'aprovada').map(c => c.id), lancadas: cs.filter(c => c.situacao === 'lancada' && !esperandoCalculo(c)).map(c => c.id) },
     };
   }).sort((a, b) => b.aPagar - a.aPagar || a.nome.localeCompare(b.nome, 'pt-BR'));
 }

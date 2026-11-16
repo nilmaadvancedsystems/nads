@@ -305,9 +305,11 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
       for (const f of fs) {
         const bytes = new Uint8Array(await f.arrayBuffer());
         const lido = await x.lerArquivo(f.name, bytes.slice(), 'banco');
-        // o extrato sem movimento vai inteiro, no mês dele (Vitor, 13/10/2026)
+        // o extrato sem movimento vai inteiro, no mês dele (Vitor, 13/10/2026); o que não diz o mês, no mês para onde foi mandado
+        // (16/11/2026: "mesmo se for sem movimento, deve ser arquivado!")
         const ext = (/\.[a-z0-9]+$/i.exec(f.name)?.[0] || '.pdf').toLowerCase();
-        const pedacos = lido.semMovimento?.length === 1 ? [{ mes: lido.semMovimento[0], nome: x.nomeDoExtratoDoMes(linha.nome, lido.semMovimento[0], ext), bytes }]
+        const mesSemMov = lido.semMovimento?.length === 1 ? lido.semMovimento[0] : lido.semMovimento && meses?.length === 1 ? meses[0] : null;
+        const pedacos = mesSemMov ? [{ mes: mesSemMov, nome: x.nomeDoExtratoDoMes(linha.nome, mesSemMov, ext), bytes }]
           : lido.erro ? [] : await x.extratoPorMes(f.name, bytes, lido, linha.nome);
         for (const p of pedacos) {
           // só os meses escolhidos (o Enviar vários meses, com o mês escolhido no extrato de vários meses)
@@ -362,10 +364,21 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
   // erro, ou mais de 15 minutos sem aparecer no mapa, desiste (fica o check, como antes)
   const chavesSubindo = Object.keys(subindo).join(',');
   const { ligarMesAoDrive } = vm;
+  // uma conferência por vez, e o robô relê a pasta da empresa no máximo uma vez por minuto (Vitor, 16/11/2026, na 429: "tem algo
+  // rodando que travou minha aplicação" — a cada 10 s começava outra conferência sem a anterior acabar, cada uma pedindo ao robô
+  // para reler a pasta inteira, até 90 s, e baixando o mapa todo de novo: com o extrato que não aparece no mapa, eram umas 9 de
+  // uma vez, por até 15 minutos)
+  const conferindo = useRef(false);
+  const releuOMapaEm = useRef(0);
   useEffect(() => {
     if (!chavesSubindo || !drive.situacaoDosEnvios || !acesso.entrou) return;
     let vivo = true;
     async function conferir() {
+      if (conferindo.current) return;
+      conferindo.current = true;
+      try { await conferirAgora(); } finally { conferindo.current = false; }
+    }
+    async function conferirAgora() {
       const lista = Object.entries(subindo);
       const sit = await drive.situacaoDosEnvios!(lista.map(([, v]) => v.envio));
       const prontos = lista.filter(([, v]) => sit[v.envio]?.status === 'pronto');
@@ -376,7 +389,10 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
       const arquivados: string[] = [];
       if (prontos.length) {
         const antes = await drive.pastaDoCliente(codigo);
-        if (antes?.raiz && drive.atualizarMapaDoCliente) await drive.atualizarMapaDoCliente(antes.raiz);
+        if (antes?.raiz && drive.atualizarMapaDoCliente && Date.now() - releuOMapaEm.current > 60e3) {
+          releuOMapaEm.current = Date.now();
+          await drive.atualizarMapaDoCliente(antes.raiz);
+        }
         const pasta = await drive.pastaDoCliente(codigo);
         for (const [k] of prontos) {
           const [banco, mes] = k.split('|');

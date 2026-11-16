@@ -44,9 +44,17 @@ if '--tem' in sys.argv:
     sys.exit(0)
 
 
+# ALTERDATA_PID (16/11/2026): só as janelas desse processo (o login do Fiscal, chamado pelo alterdata_fiscal.py, com o
+# Contábil aberto ao lado: sem o filtro, a principal do Contábil parecia "já entrou")
+SO_PID = int(os.environ.get('ALTERDATA_PID') or 0)
+
+
 def topo():
     r = []
     win32gui.EnumWindows(lambda h, _: r.append(h) or True, None)
+    if SO_PID:
+        import win32process
+        r = [h for h in r if win32process.GetWindowThreadProcessId(h)[1] == SO_PID]
     return [(h, win32gui.GetClassName(h)) for h in r if win32gui.IsWindowVisible(h)]
 
 

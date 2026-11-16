@@ -23,14 +23,15 @@ const numeros = require('./alterdata-numeros');
 const { garantirTelaAtiva } = require('./sessao-no-console');
 
 const DRIVE = process.env.ARQUIVO_DRIVE || 'G:\\Meu Drive';
-const ONDE = process.env.ARQ_SO_SERVIDOR === '1' ? 'servidor' : 'pc';
+// ALTERDATA_ONDE: o nome de outro PC com o robô (alterdata-no-pc.js, 16/11/2026: "pc-<computador>")
+const ONDE = process.env.ARQ_SO_SERVIDOR === '1' ? 'servidor' : (process.env.ALTERDATA_ONDE || 'pc');
 // a pasta de trabalho de cada pedido: no servidor, o disco local (o G: de lá está em "transmitir" e leva ~30 s por arquivo;
 // os arquivos sobem direto para o banco, a pasta é só o rascunho); no PC, o Drive, como no teste de 04/11/2026
 const PASTA_PEDIDOS = process.env.ALTERDATA_PEDIDOS
   || (ONDE === 'servidor' ? 'D:\\nads-dados\\alterdata\\pedidos' : path.join(DRIVE, 'Claudio Secretario', 'Alterdata', 'pedidos'));
 // o Python do servidor fica em D:\Programas\Python313 (fora do PATH); no PC, o do PATH
 const PYTHON = process.env.PYTHON_EXE || ['D:\\Programas\\Python313\\python.exe'].find(p => fs.existsSync(p)) || 'python';
-const ROTEIROS = { balancete: path.join(__dirname, 'alterdata_balancete.py'), razao: path.join(__dirname, 'alterdata_razao.py'), dinamico: path.join(__dirname, 'alterdata_dinamico.py'), importar: path.join(__dirname, 'alterdata_importar.py') };
+const ROTEIROS = { balancete: path.join(__dirname, 'alterdata_balancete.py'), razao: path.join(__dirname, 'alterdata_razao.py'), dinamico: path.join(__dirname, 'alterdata_dinamico.py'), importar: path.join(__dirname, 'alterdata_importar.py'), fiscal: path.join(__dirname, 'alterdata_fiscal.py') };
 const ROTEIRO_ESTADO = path.join(__dirname, 'alterdata_estado.py');
 // a tela como o robô a vê (09/11/2026: tudo dava "não abriu" e o log não dizia o que havia na tela): os roteiros põem o
 // tamanho da tela e uma foto no erro de janela que não abriu (ALTERDATA_TELA) e, a pedido (o arquivo tela.pedido com
@@ -70,10 +71,11 @@ function estadoDoContabil() {
       const c = String(out || '').match(/CAMPOS:\s*(.+)/);
       const d = String(out || '').match(/DIAG:\s*(.+)/);
       const aviso = String(out || '').match(/AVISO:\s*(\d+)\s*(.*)/);
+      const fiscal = String(out || '').match(/FISCAL:\s*(\w+)/);
       if (c && d) d[1] = d[1] + ' · campos: ' + c[1];
       // o porquê, para o log: o DIAG do roteiro, ou o fim do erro do Python, ou o prazo
       const porque = d ? d[1].trim() : err ? (err.killed ? 'passou de 90 s' : String(errs || err.message).trim().split('\n').pop().slice(0, 200)) : '';
-      resolve({ estado: m ? m[1] : 'erro', porque, prazo: !m && !!err && !!err.killed, aviso: aviso ? { janela: aviso[1], qual: aviso[2].trim() } : null });
+      resolve({ estado: m ? m[1] : 'erro', porque, prazo: !m && !!err && !!err.killed, aviso: aviso ? { janela: aviso[1], qual: aviso[2].trim() } : null, fiscal: fiscal ? fiscal[1] : '' });
     });
   });
 }
@@ -88,15 +90,18 @@ function matar(filho) {
 
 // o que o roteiro fez com a tela (TELA: …, de alterdata_tela.preparar_tela) vai para o log, sem repetir a mesma frase
 let registrarTela = () => {};
+let registrarDiag = () => {};
 
 /** Roda um roteiro; PASSO: … vira passo; RESULTADO: {…} é o fim; o sinal (o prazo da fila) mata o roteiro. */
 function rodarRoteiro(relatorio, a, passo, sinal, clique = () => {}) {
   const args = relatorio === 'razao' ? [String(a.codigo), a.inicio, a.fim, a.pasta, a.destino]
     : relatorio === 'importar' ? [String(a.codigo), a.lote, a.destino]
+      : relatorio === 'fiscal' ? [a.relatorio, String(a.codigo), a.inicio, a.fim, a.destino]
       : [String(a.codigo), a.inicio, a.fim, a.destino];
   return new Promise(resolve => {
     const filho = spawn(PYTHON, ['-I', ROTEIROS[relatorio], ...args], { cwd: __dirname, windowsHide: true, env: { ...process.env, ALTERDATA_TELA: PASTA_TELA } });
     let resto = '', erros = '', resultado = null;
+    const diags = [];
     filho.stdout.on('data', b => {
       resto += b.toString('utf8');
       const linhas = resto.split(/\r?\n/);
@@ -108,6 +113,9 @@ function rodarRoteiro(relatorio, a, passo, sinal, clique = () => {}) {
         if (c) void clique(c[1]);
         const t = l.match(/^TELA:\s*(.+)$/);
         if (t) registrarTela(t[1].trim());
+        // o que o roteiro do Fiscal viu na tela (16/11/2026: as telas do Fiscal ainda estão sendo aprendidas)
+        const dg = l.match(/^DIAG:\s*(.+)$/);
+        if (dg) { registrarDiag(dg[1].trim()); diags.push(dg[1].trim().slice(0, 300)); }
         const r = l.match(/^RESULTADO:\s*(\{.*\})\s*$/);
         if (r) { try { resultado = JSON.parse(r[1]); } catch (_) { /* mal escrito */ } }
       }
@@ -115,7 +123,8 @@ function rodarRoteiro(relatorio, a, passo, sinal, clique = () => {}) {
     filho.stderr.on('data', b => { erros += b.toString('utf8'); if (erros.length > 2000) erros = erros.slice(-2000); });
     if (sinal) sinal.addEventListener('abort', () => matar(filho));
     filho.on('error', err => resolve({ ok: false, erro: 'não consegui rodar o Python: ' + err.message }));
-    filho.on('close', () => resolve(resultado || { ok: false, erro: 'o roteiro parou sem resultado' + (erros ? ': ' + erros.trim().split('\n').pop().slice(0, 200) : '') }));
+    // o que o roteiro viu na tela (DIAG:) vai junto no resultado: a fila guarda no pedido (o Fiscal, 16/11/2026)
+    filho.on('close', () => resolve(Object.assign(resultado || { ok: false, erro: 'o roteiro parou sem resultado' + (erros ? ': ' + erros.trim().split('\n').pop().slice(0, 200) : '') }, diags.length ? { diag: diags.slice(-60) } : {})));
   });
 }
 
@@ -124,9 +133,10 @@ function iniciarAlterdata(db, log) {
   if (faltam.length) { log('Alterdata: desligado (falta ' + faltam.map(f => path.basename(f)).join(', ') + ')'); painel.modulo('alterdata', 'Alterdata', false, 'falta o roteiro'); return; }
   const estadoDoc = db.collection('robo').doc('alterdata');
   const pedidos = db.collection('pedidosAlterdata');
-  log('Alterdata: ligado neste ' + ONDE + ' (balancete e razão do Contábil; Python ' + PYTHON + ')');
+  log('Alterdata: ligado neste ' + ONDE + ' (balancete e razão do Contábil, notas do Fiscal; Python ' + PYTHON + ')');
   let ultimaTela = '';
   registrarTela = t => { if (t !== ultimaTela) { ultimaTela = t; log('Alterdata: ' + t); } };
+  registrarDiag = t => log('Alterdata Fiscal: ' + t);
 
   // o Contábil daqui: verificado a cada minuto e antes de cada pedido; vai para o banco e para o painel
   let estado = '';
@@ -147,6 +157,7 @@ function iniciarAlterdata(db, log) {
   }
 
   let ultimoConsole = '';
+  let estadoFiscal = '';
   async function verificar() {
     // no servidor: a sessão do robô desconectada (o RDP fechado) vai para o console, senão nenhum clique funciona
     if (ONDE === 'servidor') {
@@ -173,7 +184,8 @@ function iniciarAlterdata(db, log) {
     if (estado === 'ok') loginParado = '';   // alguém (ou o robô) entrou: se o login tinha falhado, vale tentar de novo depois
     // só quando o estado ou o login mudam ou, sem mudança, a cada 5 min (batimento.js; 10/11/2026, consumo do banco: era a
     // cada verificação, 1 por minuto; a página Alterdata da empresa dá o sinal por velho depois de 12 min)
-    const sinal = { ligado: true, maquinas: { [ONDE]: { contabil: estado, login: loginParado, em: agora() } }, atualizadoEm: agora() };
+    if (r.fiscal && r.fiscal !== estadoFiscal) { log('Alterdata: o Fiscal deste ' + ONDE + ' está ' + (ESTADOS[r.fiscal] || r.fiscal)); estadoFiscal = r.fiscal; }
+    const sinal = { ligado: true, maquinas: { [ONDE]: { contabil: estado, fiscal: estadoFiscal, login: loginParado, em: agora() } }, atualizadoEm: agora() };
     if (batidaDoEstado.vale(sinal)) await estadoDoc.set(sinal, { merge: true }).catch(() => batidaDoEstado.falhou());
     if (estado === 'login' || estado === 'fechado') void entrarSozinho(estado);
     return estado;
@@ -292,9 +304,14 @@ function iniciarAlterdata(db, log) {
     async ler(id) { const s = await pedidos.doc(id).get(); return s.exists ? s.data() : null; },
     async pegar(id) {
       if (diagnosticando) { setTimeout(() => fila.chegou(id), 30 * 1000).unref(); return null; }
-      if (await verificar() !== 'ok') return null;   // fica para a máquina que estiver com o Contábil pronto
+      const est = await verificar();
+      // o pedido do Fiscal (16/11/2026) precisa do Fiscal aberto e logado, não do Contábil (no PC do Vitor, o Contábil
+      // ficou com a janela oculta e o pedido do Fiscal esperou à toa)
+      const ped = await pedidos.doc(id).get();
+      const doFiscal = ped.exists && ped.data().tipo === 'fiscal';
+      if (doFiscal ? estadoFiscal !== 'ok' : est !== 'ok') return null;   // fica para a máquina que estiver pronta
       // acabou de abrir: espera assentar e tenta de novo (o pedido continua pendente)
-      const falta = ASSENTAR_MS - (Date.now() - okDesde);
+      const falta = doFiscal ? 0 : ASSENTAR_MS - (Date.now() - okDesde);
       if (falta > 0) { setTimeout(() => fila.chegou(id), falta + 1000).unref(); return null; }
       const ref = pedidos.doc(id);
       return db.runTransaction(async t => {
@@ -378,7 +395,7 @@ function iniciarAlterdata(db, log) {
   void verificar();
   setInterval(async () => {
     await diagnostico();
-    if (await verificar() === 'ok') for (const id of pendentes) fila.chegou(id);
+    if (await verificar() === 'ok' || estadoFiscal === 'ok') for (const id of pendentes) fila.chegou(id);
   }, VERIFICAR_MS).unref();
 }
 

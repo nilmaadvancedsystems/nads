@@ -17,14 +17,14 @@ import { GravacaoNaNuvem } from './casca/GravacaoNaNuvem';
 /**
  * prestaServico: a regra do Cadastro da empresa (a Conferência fica igual); null = não informado.
  */
-export function ImportacaoNaEtapa({ nome, tipo, prestaServico, meses }: { nome: string; tipo: c.PaginaImportacao; prestaServico: boolean | null; meses?: readonly string[] }) {
+export function ImportacaoNaEtapa({ nome, tipo, prestaServico, meses, codigo }: { nome: string; tipo: c.PaginaImportacao; prestaServico: boolean | null; meses?: readonly string[]; codigo?: number | null }) {
   const repo = repoDaConferencia();
   const { toast } = useRetorno();
   useEffect(() => { avisarErrosDoBanco(repo, toast); }, [repo, toast]);
-  return <RepoProvider repo={repo}><DaEmpresa nome={nome} tipo={tipo} prestaServico={prestaServico} meses={meses} /><GravacaoNaNuvem /></RepoProvider>;
+  return <RepoProvider repo={repo}><DaEmpresa nome={nome} tipo={tipo} prestaServico={prestaServico} meses={meses} codigo={codigo} /><GravacaoNaNuvem /></RepoProvider>;
 }
 
-function DaEmpresa({ nome, tipo, prestaServico, meses }: { nome: string; tipo: c.PaginaImportacao; prestaServico: boolean | null; meses?: readonly string[] }) {
+function DaEmpresa({ nome, tipo, prestaServico, meses, codigo }: { nome: string; tipo: c.PaginaImportacao; prestaServico: boolean | null; meses?: readonly string[]; codigo?: number | null }) {
   const repo = useRepo();
   useVersaoDoRepo();
   useCarregando(!repo.pronto());
@@ -39,7 +39,7 @@ function DaEmpresa({ nome, tipo, prestaServico, meses }: { nome: string; tipo: c
           <div><h2 className="page-title">{paginaPorId(pagina)?.titulo || ''}</h2></div>
           <div className="imp-conf-acoes"><LugarDasAcoes /></div>
         </header>
-        <Importacao key={tipo} tipo={tipo} naEtapa meses={meses} />
+        <Importacao key={tipo} tipo={tipo} naEtapa meses={meses} codigo={codigo} />
       </TopoProvider>
     </SessaoProvider>
   );

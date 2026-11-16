@@ -196,6 +196,12 @@ describe('lista', () => {
     expect(podeExcluir(t, 'u2')).toBe(true);
     expect(podeExcluir(t, 'u3', true)).toBe(true);
   });
+  it('os Detalhes da concluída não se editam mais, nem de quem criou (16/11/2026)', () => {
+    expect(d.detalhesTravados(tarefa({ status: 'concluida' }))).toBe(true);
+    expect(d.detalhesTravados(tarefa({ status: 'concluida', tipo: 'documentos' }))).toBe(true);
+    expect(d.detalhesTravados(tarefa({ status: 'concluida', tipo: 'envio' }))).toBe(true);
+    for (const s of ['pendente', 'andamento', 'pausada', 'cancelada'] as const) expect(d.detalhesTravados(tarefa({ status: s }))).toBe(false);
+  });
 });
 
 describe('histórico', () => {
@@ -351,6 +357,13 @@ describe('encolher os anexos', () => {
     expect(nomeDaImagemEncolhida('Print 1.PNG')).toBe('Print 1.webp');
     expect(nomeDaImagemEncolhida('foto')).toBe('foto.webp');
   });
+  it('o print colado nos Detalhes ganha o número seguinte e é reconhecido depois de virar WebP', () => {
+    expect(d.nomeDoPrintColado([], 'image/png')).toBe('Print colado 1.png');
+    expect(d.nomeDoPrintColado(['contrato.pdf', 'Print colado 1.webp', 'Print colado 4.webp'], 'image/jpeg')).toBe('Print colado 5.jpg');
+    expect(d.ehPrintColado(nomeDaImagemEncolhida(d.nomeDoPrintColado([], 'image/png')))).toBe(true);
+    expect(d.ehPrintColado('Print 1.webp')).toBe(false);
+    expect(d.ehPrintColado('contrato.pdf')).toBe(false);
+  });
   it('lê o gzip do banco só quando é true', () => {
     const base = { id: 'a', nome: 'n.xml', extensao: 'xml', tamanho: 10, em: EM, por: 'Nilma', partes: 1 };
     expect(lerTarefa('t', { anexos: [{ ...base, gzip: true }] }).anexos[0].gzip).toBe(true);
@@ -419,8 +432,21 @@ describe('o expediente: pausa sozinha no almoço e à noite (12/11/2026)', () =>
     expect(d.rotuloNoHorario({ status: 'andamento' }, br(SABADO, '09:00'))).toBe('Pausada até segunda 07:00');
     // sexta 17:00 até segunda 08:00: 5 min na sexta e 60 na segunda; o fim de semana não conta
     expect(d.minutosDeExpediente(br('2026-11-13', '17:00').getTime(), br(SEGUNDA, '08:00').getTime())).toBe(65);
-    // a semana inteira: 4 dias de 550 min (07:00–11:05 e 13:00–18:05) e a sexta com 490
-    expect(d.minutosDeExpediente(br(SEGUNDA, '00:00').getTime(), br('2026-11-23', '00:00').getTime())).toBe(4 * 550 + 490);
+    // a semana de 16 a 20/11: 4 dias de 550 min (07:00–11:05 e 13:00–18:05); a sexta 20/11 é feriado (Consciência Negra)
+    expect(d.minutosDeExpediente(br(SEGUNDA, '00:00').getTime(), br('2026-11-23', '00:00').getTime())).toBe(4 * 550);
+    // uma semana sem feriado (23 a 27/11): 4 dias de 550 e a sexta com 490
+    expect(d.minutosDeExpediente(br('2026-11-23', '00:00').getTime(), br('2026-11-30', '00:00').getTime())).toBe(4 * 550 + 490);
+  });
+  it('o feriado não funciona; o ponto facultativo e o meio expediente, sim (15/11/2026: "Só nos feriados")', () => {
+    // Tiradentes (terça, 21/04): parado o dia inteiro; volta na quarta às 07:00
+    expect(d.noIntervalo(br('2026-04-21', '09:00'))).toBe(true);
+    expect(d.voltaDoIntervalo(br('2026-04-20', '18:30'))).toBe('quarta 07:00');
+    expect(d.minutosDeExpediente(br('2026-04-21', '00:00').getTime(), br('2026-04-22', '00:00').getTime())).toBe(0);
+    // a Consciência Negra (sexta, 20/11): na quinta às 18:05 a tarefa só volta na segunda
+    expect(d.rotuloNoHorario({ status: 'andamento' }, br('2026-11-19', '19:00'))).toBe('Pausada até segunda 07:00');
+    // o ponto facultativo (segunda, 20/04) e a véspera de Natal (meio expediente) contam o dia inteiro
+    expect(d.noIntervalo(br('2026-04-20', '09:00'))).toBe(false);
+    expect(d.noIntervalo(br('2026-12-24', '15:00'))).toBe(false);
   });
   it('não depende do fuso do computador: 11:05 em Brasília é 14:05 UTC', () => {
     expect(d.noIntervalo('2026-11-12T14:04:00.000Z')).toBe(false);
@@ -557,6 +583,17 @@ describe('os links fixados na tarefa (o Início novo)', () => {
     expect(d.problemaDoLink('javascript:alert(1)')).toMatch(/https/);
     expect(d.problemaDoLink('')).toBe('Cole o link.');
     expect(d.problemaDoLink('https://a.com', [{ url: 'https://a.com' }])).toMatch(/já está/);
+  });
+  it('o colado sem o https:// ganha o https://; a lista mostra o site e o caminho', () => {
+    expect(d.linkCompleto(' www.gov.br/receita ')).toBe('https://www.gov.br/receita');
+    expect(d.linkCompleto('drive.google.com')).toBe('https://drive.google.com');
+    expect(d.linkCompleto('http://a.com')).toBe('http://a.com');
+    expect(d.linkCompleto('javascript:alert(1)')).toBe('javascript:alert(1)');
+    expect(d.linkCompleto('não é link')).toBe('não é link');
+    expect(d.linkCompleto('relatorio')).toBe('relatorio');
+    expect(d.rotuloDoLink('https://www.gov.br/receita/?x=1')).toBe('gov.br/receita');
+    expect(d.rotuloDoLink('https://drive.google.com/')).toBe('drive.google.com');
+    expect(d.rotuloDoLink('xx')).toBe('xx');
   });
   it('fixa e tira, com o histórico', () => {
     const t = d.comLink(tarefa(), ' https://a.com ', 'Vitor', EM);

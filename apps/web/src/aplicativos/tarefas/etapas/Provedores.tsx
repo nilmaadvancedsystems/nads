@@ -5,7 +5,7 @@ import { extrator } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import workerDoPdf from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import { useEffect, type ReactNode } from 'react';
-import { ocrDoArquivo } from '../../../comum/ocr';
+import { ocrQueAvisa } from '../../../comum/ocr';
 import { GravacaoNaNuvem } from './conferencia/casca/GravacaoNaNuvem';
 import { avisarErrosDoBanco as avisarDaConferencia, repoDaConferencia } from './conferencia/dados/fonte';
 import { RepoProvider as RepoDaConferencia } from './conferencia/dados/repo';
@@ -14,7 +14,7 @@ import { RepoProvider as RepoDoExtrator } from './extrator/dados/repo';
 
 extrator.definirWorkerDoPdf(workerDoPdf);
 // o extrato escaneado (PDF sem texto ou foto) passa pelo OCR do navegador (Vitor, 13/10/2026)
-extrator.definirOcr(ocrDoArquivo);
+extrator.definirOcr(ocrQueAvisa);
 
 /** O repositório do Extrator (a Importação, o Creditor e o Cartões). */
 export function ComExtrator({ children }: { children: ReactNode }) {

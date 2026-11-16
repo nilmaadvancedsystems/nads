@@ -30,8 +30,9 @@ export function useChequeEspecial() {
   // foi lançado" interrompe)
   useRequisitosDaEtapa({ pronto: true, faltam: [] });
 
-  const linhas = bancos.map(b => {
-    const ch = x.chequeEspecialDoBanco(empresa, b.id, primeiro, meses);
+  // só os bancos que precisam (16/11/2026: "don't compute the cheque especial in banks with the balance right"): o que nunca fecha
+  // negativo e o que já tem o cheque no razão ficam de fora
+  const linhas = bancos.map(b => ({ b, ch: x.chequeEspecialDoBanco(empresa, b.id, primeiro, meses) })).filter(({ ch }) => ch.calcula).map(({ b, ch }) => {
     const cad = cadastro?.bancos?.find(c => c.id === b.id);
     return {
       id: b.id, nome: b.nome, marca: b.marca || b.id,
@@ -43,6 +44,10 @@ export function useChequeEspecial() {
       dias: ch.faltam.map(d => ({ data: x.dataBR(d.data), saldo: x.reaisBR(d.saldo) })),
       total: x.reaisBR(ch.faltam.reduce((t, d) => t + Math.abs(d.saldo), 0)),
       faltam: ch.faltam,
+      /** as pendências entre o extrato e o razão do período: o cheque sai mesmo assim, mas a pessoa confere a Importação */
+      pendencias: ch.pendencias,
+      /** os meses sem o razão (16/11/2026): os dias negativos deles saem todos do extrato */
+      semRazao: ch.semRazao.map(m => tarefas.rotuloNumericoCompetencia(m)),
     };
   });
 
@@ -68,7 +73,15 @@ export function useChequeEspecial() {
     aviso({ tom: 'ok', titulo: l.nome + ': ' + lanc.length + ' lançamentos', texto: arquivo + ' · lance no Alterdata e importe o razão do banco de novo' });
   }
 
+  /** o link desta etapa nesta empresa e período (16/11/2026): abre direto no Cheque especial */
+  const link = typeof window === 'undefined' ? '' : window.location.origin + window.location.pathname + '?etapa=cheque-especial';
+  async function copiarLink() {
+    try { await navigator.clipboard.writeText(link); aviso({ tom: 'ok', titulo: 'Link copiado', texto: link }); }
+    catch { aviso({ tom: 'erro', titulo: 'Não copiei o link', texto: link }); }
+  }
+
   return {
+    link, copiarLink,
     periodo: meses.length > 1 ? tarefas.rotuloNumericoCompetencia(meses[0]) + ' a ' + tarefas.rotuloNumericoCompetencia(meses[meses.length - 1]) : meses[0] ? tarefas.rotuloNumericoCompetencia(meses[0]) : '',
     carregado: !!cadastro,
     bancos: linhas.map(({ faltam: _f, ...r }, i) => ({

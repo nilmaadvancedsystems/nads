@@ -26,7 +26,7 @@ import {
 } from './clienteDaEntrega';
 import { clientesSemEntrega, entregasPorDia, idsComEntregaConfirmada, metaDaEquipe, rankingDaEquipe } from './numerosDasEntregas';
 import type { ItemDoDrive } from './drive';
-import { dadosDaSolicitacao, faltaNaSolicitacao, linhaDaSolicitacao, pendentesPeloPrazo, podeConcluirSolicitacao, solicitacaoDoDocumento } from './solicitacoes';
+import { dadosDaSolicitacao, ehOfficeBoy, faltaNaSolicitacao, linhaDaSolicitacao, pendentesPeloPrazo, podeConcluirSolicitacao, problemaDaEntregaDaTarefa, solicitacaoDaTarefa, solicitacaoDoDocumento, tipoProvavelDaEntrega } from './solicitacoes';
 
 const cliente = (id: string, nome: string, extra: Record<string, unknown> = {}): ClienteDaRota =>
   clienteDaRotaDoDocumento(id, { nome, codigoOrigem: id.replace(/\D/g, ''), documento: '', entrega: true, ...extra });
@@ -631,5 +631,40 @@ describe('as solicitações', () => {
     const d = dadosDaSolicitacao({ tipo: 'atestado', local: '', descricao: '', clinica: 'Assegi', funcionario: ' Ana ', empresa: { id: 'c1', nome: 'ALFA', codigoOrigem: '1' }, prazo: '2026-10-20', urgente: true }, { email: 'm@x', nome: 'M' }, 't');
     expect(d).toMatchObject({ tipo: 'atestado', local: 'Assegi', descricao: 'Buscar atestado de Ana — 1 - ALFA (clínica Assegi)', atestadoEmpresaId: 'c1', status: 'pendente', criadoPor: 'm@x', urgente: true });
     expect(linhaDaSolicitacao(s('1', { prazo: '2026-10-15' }), 'a@x', new Date(2026, 9, 16)).atrasada).toBe(true);
+  });
+});
+
+describe('a tarefa delegada ao office boy vira solicitação', () => {
+  const hoje = new Date(2026, 10, 16);
+  const t = { titulo: 'Retirada de documentação - ME ATACADO', descricao: '', clientes: [{ codigo: 501, nome: 'ME ATACADO LTDA' }], prioridade: 'normal', prazo: '', prazoHora: '' };
+  it('quem é office boy e o tipo que já vem marcado', () => {
+    expect(ehOfficeBoy(['staff', 'office_boy'])).toBe(true);
+    expect(ehOfficeBoy(['admin', 'contabil'])).toBe(false);
+    expect(tipoProvavelDaEntrega('Retirada de documentação - ME ATACADO')).toBe('buscar');
+    expect(tipoProvavelDaEntrega('Buscar a procuração no cartório')).toBe('buscar');
+    expect(tipoProvavelDaEntrega('Levar o contrato social')).toBe('entregar');
+    expect(tipoProvavelDaEntrega('Pagar a taxa na prefeitura')).toBe('outro');
+    expect(tipoProvavelDaEntrega('Levantamento do estoque')).toBe('entregar');
+  });
+  it('o pedido que vai para a fila: o local, a descrição, o prazo e a prioridade', () => {
+    expect(solicitacaoDaTarefa(t, 'buscar', hoje)).toEqual({
+      tipo: 'buscar', local: 'ME ATACADO LTDA', descricao: 'Retirada de documentação - ME ATACADO', clinica: '', funcionario: '', empresa: null, prazo: '2026-11-18', urgente: false,
+    });
+    const n = solicitacaoDaTarefa({ ...t, descricao: 'Com a Joana,\n\nno balcão.', clientes: [], prioridade: 'urgente', prazo: '2026-11-17', prazoHora: '14:00' }, 'entregar', hoje);
+    expect(n).toMatchObject({ local: '', descricao: 'Retirada de documentação - ME ATACADO — Com a Joana, no balcão. (até 14:00)', prazo: '2026-11-17', urgente: true });
+    expect(solicitacaoDaTarefa({ ...t, prioridade: 'alta' }, 'outro', hoje).urgente).toBe(false);
+    // o documento sai como o da janela de Solicitações
+    expect(dadosDaSolicitacao(solicitacaoDaTarefa(t, 'buscar', hoje), { email: 'v@x', nome: 'Vitor' }, 't')).toEqual({
+      tipo: 'buscar', local: 'ME ATACADO LTDA', descricao: 'Retirada de documentação - ME ATACADO', urgente: false, prazo: '2026-11-18', status: 'pendente', criadoPor: 'v@x', criadoPorNome: 'Vitor', criadoEm: 't',
+    });
+  });
+  it('o que impede', () => {
+    const c = { ...t, anexos: 0, links: 0 };
+    expect(problemaDaEntregaDaTarefa(c, 'buscar', hoje)).toBe('');
+    expect(problemaDaEntregaDaTarefa({ ...c, anexos: 1 }, 'buscar', hoje)).toBe('A entrega não leva anexos nem links: tire-os ou desmarque Entrega.');
+    expect(problemaDaEntregaDaTarefa({ ...c, links: 1 }, 'buscar', hoje)).toMatch(/anexos nem links/);
+    expect(problemaDaEntregaDaTarefa({ ...c, titulo: ' ' }, 'buscar', hoje)).toBe('Dê um nome à entrega.');
+    expect(problemaDaEntregaDaTarefa({ ...c, prazo: '2026-11-15' }, 'buscar', hoje)).toBe('O prazo da entrega já passou: escolha hoje ou depois.');
+    expect(problemaDaEntregaDaTarefa({ ...c, prazo: '2026-11-16' }, 'buscar', hoje)).toBe('');
   });
 });

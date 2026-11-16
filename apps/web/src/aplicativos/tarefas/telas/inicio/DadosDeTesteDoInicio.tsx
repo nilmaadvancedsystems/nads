@@ -4,9 +4,12 @@
 import { MenuSuspenso } from '@nads/ui';
 import type { useInicio } from './useInicio';
 import { simularSaudacao, useSaudacaoSimulada } from './saudacaoSimulada';
+import { useNovidade } from '../../../../comum/novidades';
+import { simularEmailPrincipal } from '../../casca/simulacaoDoEmailPrincipal';
 
 export function DadosDeTesteDoInicio({ teste: t }: { teste: ReturnType<typeof useInicio>['teste'] }) {
   const s = useSaudacaoSimulada();
+  const emailPrincipal = useNovidade('email-principal');
   const turno = (x: 'manha' | 'tarde' | 'noite') => () => simularSaudacao({ turno: s.turno === x ? undefined : x, troca: 0 });
   return (
     <MenuSuspenso rotulo="Dados de teste" icone="zap" className="btn btn-outline" direita largura={280} titulo="Modo desenvolvedor · nada vai para o banco"
@@ -20,15 +23,21 @@ export function DadosDeTesteDoInicio({ teste: t }: { teste: ReturnType<typeof us
         { rotulo: 'Saudação: manhã', icone: 'sun', marcado: s.turno === 'manha', onClick: turno('manha') },
         { rotulo: 'Saudação: tarde', icone: 'sun', marcado: s.turno === 'tarde', onClick: turno('tarde') },
         { rotulo: 'Saudação: noite', icone: 'moon', marcado: s.turno === 'noite', onClick: turno('noite') },
-        { rotulo: 'Saudação: segunda-feira', icone: 'calendar', marcado: !!s.segunda, onClick: () => simularSaudacao({ segunda: !s.segunda, troca: 0 }) },
+        { rotulo: 'Saudação: segunda-feira', icone: 'calendar', marcado: !!s.segunda, onClick: () => simularSaudacao({ segunda: !s.segunda, sexta: false, feriado: false, troca: 0 }) },
+        { rotulo: 'Saudação: sexta-feira', icone: 'calendar', marcado: !!s.sexta, onClick: () => simularSaudacao({ sexta: !s.sexta, segunda: false, feriado: false, troca: 0 }) },
+        { rotulo: 'Saudação: semana com feriado', icone: 'calendar', marcado: !!s.feriado, onClick: () => simularSaudacao({ feriado: !s.feriado, segunda: false, sexta: false, troca: 0 }) },
         { rotulo: 'Saudação: mês do aniversário', icone: 'trofeu', marcado: s.aniversario === 'mes', onClick: () => simularSaudacao({ aniversario: s.aniversario === 'mes' ? undefined : 'mes', troca: 0 }) },
         { rotulo: 'Saudação: dia do aniversário', icone: 'trofeu', marcado: s.aniversario === 'dia', onClick: () => simularSaudacao({ aniversario: s.aniversario === 'dia' ? undefined : 'dia', troca: 0 }) },
+        { rotulo: 'Saudação: com apelido', icone: 'usuario', marcado: !!s.apelido, onClick: () => simularSaudacao({ apelido: !s.apelido, troca: 0 }) },
         { rotulo: 'Saudação: outra frase', icone: 'repeat', onClick: () => simularSaudacao({ troca: (s.troca || 0) + 1 }) },
         'separador',
         // o nível nas Notificações: o Sênior pede reunião, o Diretor aprova, os outros ficam com Delegar documentos e Nova tarefa
         { rotulo: 'Nível: Sênior', icone: 'usuario', marcado: s.nivel === 'senior', onClick: () => simularSaudacao({ nivel: s.nivel === 'senior' ? undefined : 'senior' }) },
         { rotulo: 'Nível: Diretor', icone: 'usuario', marcado: s.nivel === 'diretor', onClick: () => simularSaudacao({ nivel: s.nivel === 'diretor' ? undefined : 'diretor' }) },
         { rotulo: 'Nível: Pleno', icone: 'usuario', marcado: s.nivel === 'pleno', onClick: () => simularSaudacao({ nivel: s.nivel === 'pleno' ? undefined : 'pleno' }) },
+        // a janela obrigatória do e-mail, como quem entra pelo nome@nilma.local vê ao atualizar (Vitor, 16/11/2026: "dEIXA AQUI,
+        // PRA EU COLOCAR A POPUP OBRIGANDO O EMAIL"); simulação: não grava nada nem troca o login
+        ...(emailPrincipal ? ['separador' as const, { rotulo: 'E-mail pessoal: pedir agora', icone: 'envelope' as const, onClick: () => simularEmailPrincipal('so-nome') }] : []),
         'separador',
         { rotulo: 'Apagar os dados de teste', icone: 'x', desabilitado: !t.tarefas && !t.avisos && !Object.keys(s).length, onClick: () => { t.ligar('tarefas', false); t.ligar('avisos', false); simularSaudacao(null); } },
       ]} />

@@ -37,6 +37,13 @@ export interface RepoAcesso {
   /** a empresa e a etapa do Contábil abertas por quem está logado (usuarios/{uid}.nadsOnde); null = saiu da etapa */
   marcarOnde(onde: usuarios.OndeNoNads | null): Promise<void>;
   ativar(uid: string, ativo: boolean): Promise<void>;
+  /**
+   * onde a pessoa está gravada no sistema (16/11/2026, excluir usuário): os rótulos dos lugares de usuarios.LUGARES_DE_REGISTRO
+   * em que achou o uid, o nome ou o e-mail dela, e os que não conseguiu ler
+   */
+  registrosDe(p: usuarios.Usuario): Promise<usuarios.BuscaDosRegistros>;
+  /** só o Diretor e o Dono, e só o inativo sem registro (a tela confere com usuarios.situacaoDaExclusao): apaga usuarios/{uid} */
+  excluir(uid: string): Promise<void>;
   /** só o admin: cria a conta (o login no Entregas e o cadastro em usuarios/{uid}); devolve o e-mail do login */
   criarConta(c: usuarios.NovaConta): Promise<string>;
   /** só o admin: o convite para a pessoa se cadastrar sozinha (convites/{codigo}, 24 h), com o cargo e os papéis; devolve o código */
@@ -61,9 +68,13 @@ export function criarAcessoMemoria(quem: () => { nome: string } | null): RepoAce
   let codigo = '';
   let liberada = false;
   let sessoes: usuarios.SessaoLiberada[] = [];
+  // o Vitor e o Fernando com a função de desenvolvedor (16/11/2026), para o Delegar dos Feedbacks ter a quem passar
+  const DEVS = ['Vitor', 'Fernando'];
   const docs: Record<string, usuarios.DocUsuario> = Object.fromEntries(usuarios.EQUIPE_EXEMPLO.map(u => [u.uid, {
-    nome: u.nome, email: u.email, roles: [...u.papeis], departamento: u.departamento || undefined, nivel: u.nivel || undefined, ativo: u.ativo,
+    nome: u.nome, email: u.email, roles: [...u.papeis, ...(DEVS.includes(u.nome) ? ['desenvolvedor' as const] : [])], departamento: u.departamento || undefined, nivel: u.nivel || undefined, ativo: u.ativo,
   } as usuarios.DocUsuario]));
+  // o Joaquim, office boy (16/11/2026), para a Entrega da tarefa nova ter para quem ir
+  docs['exemplo-office-boy'] = { nome: 'Joaquim', email: usuarios.emailDoNome('Joaquim'), roles: ['staff', 'office_boy'], ativo: true } as usuarios.DocUsuario;
   const equipe = () => Object.entries(docs).map(([uid, d]) => usuarios.lerUsuario(uid, d));
   const agora = () => new Date().toISOString();
   return {
@@ -115,6 +126,9 @@ export function criarAcessoMemoria(quem: () => { nome: string } | null): RepoAce
       if (d) { d.fotoPerfil = foto || undefined; mudou(); }
     },
     async ativar(uid, ativo) { docs[uid].ativo = ativo; mudou(); },
+    // nos exemplos, a equipe de exemplo aparece nas tarefas, nos avisos e nas reuniões de exemplo; quem foi criado agora, em nada
+    async registrosDe(p) { return { achados: usuarios.EQUIPE_EXEMPLO.some(x => x.uid === p.uid) ? ['Tarefas', 'Avisos', 'Reuniões'] : [], semConferir: [] }; },
+    async excluir(uid) { delete docs[uid]; mudou(); },
     async criarConta(c) {
       const erros = usuarios.conferirNovaConta(c, Object.values(docs).map(d => String(d.email || '')), Object.values(docs).map(d => String(d.nome || '')));
       if (erros.length) throw new Error(erros.join(' '));

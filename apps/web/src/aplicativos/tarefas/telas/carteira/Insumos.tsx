@@ -33,6 +33,7 @@ export function Insumos() {
         <button type="button" className="btn btn-primary" onClick={() => setAberto('novo')}><Icone nome="plus" />Registrar insumo</button>
       </div>
       {vm.erro && <p className="registro-dica registro-dica-erro"><Icone nome="alert" />{vm.erro}</p>}
+      {vm.semLiberacao && <p className="registro-dica"><Icone nome="lock" />Aqui estão só os seus. Os de toda a equipe e os preços ficam no Financeiro › Insumos da equipe, que abre com o login liberado.</p>}
       <div className="stat-grid dp-numeros">
         {/* cada insumo da lista do Financeiro: as unidades do mês; para o Financeiro, também o valor */}
         {totais.porInsumo.map(t => (

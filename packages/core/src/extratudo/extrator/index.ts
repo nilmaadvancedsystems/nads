@@ -16,7 +16,7 @@ export {
   empresaNova, normalizarEmpresa, lancamentosDe, periodo, rotuloPeriodo, competencias, jaTemNoPeriodo, soNovos,
   importar, excluirArquivo, excluirMesesDoArquivo, bytesNoBanco, linhasAuditoria, extratosParaReler, extratosParaRelerPeloDrive, leituraCobreOArquivo, releituraPerderiaMes, releituraPioraOSaldo, tirarSobreposicaoDosExtratos, relerExtrato, VERSAO_DO_LEITOR, type ResultadoImportacao,
 } from './regras/importacao';
-export { EXTENSOES_EXTRATO, EXTENSOES_SISTEMA, EXTENSOES_IMAGEM, abasDaPlanilha, lerArquivo } from './arquivos/leitura';
+export { EXTENSOES_EXTRATO, EXTENSOES_SISTEMA, EXTENSOES_IMAGEM, MAIOR_ARQUIVO_PARA_IMPORTAR, abasDaPlanilha, lerArquivo, problemaDoArquivoParaImportar } from './arquivos/leitura';
 export { definirWorkerDoPdf, definirOcr, ehPdf, itensDoPdf, type Ocr } from './arquivos/pdf';
 export type { RepoExtrator } from './repo';
 export { arquivoDeTeste } from './regras/teste';

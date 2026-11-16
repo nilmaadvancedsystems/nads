@@ -2,7 +2,7 @@
 // (o logo, o nome e a conta; no canto, o Ok ou a cápsula laranja com os dias negativos) e, no banco que falta o cheque
 // especial, os dias negativos na tabela padrão, a conta do banco e a do cheque especial (o campo com o nome em cima)
 // e o Baixar .xls. O histórico é sempre o 92029.
-import { Icone, LogoBanco } from '@nads/ui';
+import { Icone, LogoBanco, Vazio } from '@nads/ui';
 import { useEffect, useState } from 'react';
 import { useChequeEspecial } from './useChequeEspecial';
 import { BotaoImportarNoAlterdata } from '../../../../../../comum/BotaoImportarNoAlterdata';
@@ -14,10 +14,14 @@ export function ChequeEspecial() {
   const vm = useChequeEspecial();
   return (
     <section>
-      <header className="topbar"><div><h2 className="page-title">Cheque especial</h2></div></header>
+      <header className="topbar">
+        <div><h2 className="page-title">Cheque especial</h2></div>
+        <button type="button" className="btn btn-outline" onClick={() => void vm.copiarLink()} title={vm.link}><Icone nome="link" />Copiar link</button>
+      </header>
       {vm.carregado && (
         <div className="imp-lista" style={{ gap: 16 }}>
-          {vm.bancos.map(b => <BlocoDoBanco key={b.id} b={b} vm={vm} />)}
+          {vm.bancos.length ? vm.bancos.map(b => <BlocoDoBanco key={b.id} b={b} vm={vm} />)
+            : <Vazio icone="checkCircle" titulo="Nenhum banco precisa do cheque especial" texto="No período, os saldos não fecham negativos ou o razão já tem o cheque especial." />}
         </div>
       )}
     </section>
@@ -58,6 +62,8 @@ function BlocoDoBanco({ b, vm }: { b: Banco; vm: Vm }) {
             </button>
           </div>
           {!b.noCadastro && <p className="hint">Cadastre esta conta em Cadastro › Contas bancárias para gravar as contas contábeis.</p>}
+          {b.semRazao.length > 0 && <p className="hint">{'Sem o razão de ' + b.semRazao.join(', ') + ' na Importação: os dias negativos ' + (b.semRazao.length === 1 ? 'deste mês' : 'destes meses') + ' saem todos do extrato. Confira se o cheque especial já não foi lançado.'}</p>}
+          {b.pendencias > 0 && <p className="hint">{b.pendencias === 1 ? 'Há 1 pendência' : 'Há ' + b.pendencias + ' pendências'} entre o extrato e o razão deste banco na Importação: o cheque especial sai igual, mas confira lá.</p>}
         </div>
       )}
     </div>

@@ -13,7 +13,7 @@ import { useRetorno } from '@nads/ui';
 import workerDoPdf from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { ocrDoArquivo } from '../../../../comum/ocr';
+import { ocrQueAvisa } from '../../../../comum/ocr';
 import { caminhoDaPagina, caminhoDoCadastro } from '../../casca/navegacao';
 import { useOperador } from '../../casca/operador';
 import { useCadastro, useCaixa } from '../../dados/repo';
@@ -21,7 +21,7 @@ import { useCadastro, useCaixa } from '../../dados/repo';
 extrator.definirWorkerDoPdf(workerDoPdf);
 // o extrato escaneado (o PDF sem texto ou a foto) passa pelo OCR do navegador, como no Extratudo (23/10/2026: "ele diz
 // que não achou valor no pdf")
-extrator.definirOcr(ocrDoArquivo);
+extrator.definirOcr(ocrQueAvisa);
 
 const ESCRITORIO = financeiro.EMPRESA_DO_ESCRITORIO;
 

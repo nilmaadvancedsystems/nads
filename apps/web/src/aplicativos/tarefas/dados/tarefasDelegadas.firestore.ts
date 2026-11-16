@@ -9,13 +9,14 @@
 // salvou às 17:28 vendo ainda o Savio como responsável, que já tinha devolvido a tarefa às 17:27): o que muda parte da
 // tarefa como está no banco agora, e depois de cada gravação a lista é relida do banco.
 import {
-  arrayRemove, arrayUnion, Bytes, collection, deleteDoc as deleteDocBruto, doc, getDoc, getDocFromServer, getDocs, getDocsFromServer, limit, onSnapshot, orderBy, query, setDoc as setDocBruto,
-  updateDoc as updateDocBruto, where, type Unsubscribe,
+  arrayRemove, arrayUnion, Bytes, collection, deleteDoc as deleteDocBruto, doc, getDoc, getDocFromServer, getDocs, getDocsFromServer, limit, orderBy, query, setDoc as setDocBruto,
+  updateDoc as updateDocBruto, where,
 } from 'firebase/firestore';
 import { entregas, tarefas } from '@nads/core';
 import { bancoDoEntregas } from './entregas.firestore';
 import { anexoDe, conferirAnexos, type ArquivoParaAnexar, type RepoTarefasDelegadas } from './tarefasDelegadas';
 import { bytesDoAnexo } from './encolherAnexo';
+import { ouvirInsistindo } from './ouvirInsistindo.firestore';
 import { guardar, guardarPedido, modoDesenvolvedor } from '../../../comum/modoDesenvolvedor';
 
 // o erro do banco em português (29/10/2026: a tela mostrava "Missing or insufficient permissions." e parecia que o Salvar
@@ -50,7 +51,7 @@ export function criarTarefasDelegadasFirestore(quem: () => Pessoa | null): RepoT
   const ouvintes = new Set<() => void>();
   const mudou = () => { ver++; for (const f of ouvintes) f(); };
   let estado: { uid: string; carregadas: boolean; tarefas: TarefaDelegada[]; erro?: string } | null = null;
-  let parar: Unsubscribe | null = null;
+  let parar: (() => void) | null = null;
 
   const eu = () => { const q = quem(); if (!q) throw new Error('entre com a conta do Entregas'); return q; };
   const daTarefa = (id: string) => {
@@ -110,15 +111,16 @@ export function criarTarefasDelegadasFirestore(quem: () => Pessoa | null): RepoT
         parar?.();
         const este: NonNullable<typeof estado> = { uid: q.uid, carregadas: false, tarefas: [] };
         estado = este;
-        // sem orderBy (a ordem é a do core): a busca por um campo só não pede índice composto
-        parar = onSnapshot(daPessoa(q.uid), s => {
+        // sem orderBy (a ordem é a do core): a busca por um campo só não pede índice composto. Negada, tenta de novo
+        // (ouvirInsistindo.firestore.ts): o login recém-liberado ainda não chegou ao banco, e a lista ficava vazia até recarregar
+        parar = ouvirInsistindo(daPessoa(q.uid), s => {
           if (estado !== este) return;
           estado = { uid: q.uid, carregadas: true, tarefas: s.docs.map(x => d.lerTarefa(x.id, x.data())) };
           mudou();
         }, e => {
           if (estado !== este) return;
           console.warn('As tarefas delegadas não abriram:', e instanceof Error ? e.message : e);
-          estado = { uid: q.uid, carregadas: true, tarefas: [], erro: 'Não consegui abrir as tarefas (o banco recusou). Tente de novo mais tarde.' };
+          estado = { uid: q.uid, carregadas: true, tarefas: [], erro: 'Não consegui abrir as tarefas (o banco recusou). Vou tentar de novo sozinho a cada minuto.' };
           mudou();
         });
       }
@@ -207,6 +209,18 @@ export function criarTarefasDelegadasFirestore(quem: () => Pessoa | null): RepoT
       const em = new Date().toISOString();
       await updateDoc(doc(db, COLECAO, id), {
         pareceres: arrayUnion(d.notaDaResposta(texto, por.nome, em)), historico: historicoNovo(t, [d.historicoDaRespostaDaCobranca(por.nome, em)]), atualizadaEm: em,
+      });
+      await reler();
+    },
+    // o pedido de mais tempo (16/11/2026) também vai nos pareceres: a regra não muda
+    async adiarCobranca(id, minutos, justificativa) {
+      const por = eu();
+      const t = await noBanco(id);
+      const problema = d.problemaDoAdiamento(t, por.uid, minutos, justificativa);
+      if (problema) throw new Error(problema);
+      const em = new Date().toISOString();
+      await updateDoc(doc(db, COLECAO, id), {
+        pareceres: arrayUnion(d.notaDoAdiamento(minutos, justificativa, por.nome, em)), historico: historicoNovo(t, [d.historicoDoAdiamento(por.nome, em, minutos)]), atualizadaEm: em,
       });
       await reler();
     },

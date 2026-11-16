@@ -157,6 +157,42 @@ function novo(id, tipo, codigo, competencia) {
   assert.strictEqual(new Set(rodados).size, 12);
   for (const id of ids) assert.strictEqual(st(id), 'pronto', id);
 
+  // ── as notas do Alterdata Fiscal (16/11/2026): o relatório e o período vão para o roteiro; a planilha sobe em fiscal;
+  // o login que não deu para os próximos pedidos do Fiscal (uma tentativa só)
+  {
+    const recebidos = [];
+    let recusar = false;
+    const f3 = criarFilaAlterdata({ banco, limiteMs: 300, pastaDoPedido: id => path.join(BASE, 'fiscal', id),
+      rodar: async (rel, a3) => {
+        recebidos.push([rel, a3.relatorio, a3.codigo, a3.inicio, a3.fim].join(' '));
+        if (recusar) return { ok: false, login: true, erro: 'o login do robô no Fiscal não deu: senha' };
+        const arq = a3.destino.replace(/\.xls$/, '.xlsx');   // o Fiscal pode salvar com outra extensão
+        fs.writeFileSync(arq, 'planilha ' + a3.relatorio);
+        return { ok: true, arquivo: arq };
+      } });
+    const fiscal = (id, relatorio, competencia, ate) => { pedidos.set(id, { status: 'pendente', tipo: 'fiscal', relatorio, codigo: 301, competencia, ate, criadoEm: new Date().toISOString() }); f3.chegou(id); };
+    fiscal('fe', 'entradas', '2026-01', '2026-03');
+    fiscal('ft', 'tomados', '2026-02');
+    fiscal('fx', 'xmls', '2026-02');
+    fiscal('fl', 'saidas', '2025-01', '2026-03');
+    await espera(5);
+    await f3.ocioso();
+    assert.deepStrictEqual(recebidos, ['fiscal entradas 301 01/01/2026 31/03/2026', 'fiscal tomados 301 01/02/2026 28/02/2026']);
+    assert.strictEqual(st('fe'), 'pronto');
+    assert.strictEqual(pedidos.get('fe').arquivos.fiscal.nome, 'Entradas 301 2026-01 a 2026-03.xlsx');
+    assert.strictEqual(partes.get('fe').fiscal.toString(), 'planilha entradas');
+    assert.strictEqual(pedidos.get('ft').arquivos.fiscal.nome, 'Tomados 301 2026-02.xlsx');
+    assert.strictEqual(st('fx'), 'erro');
+    assert.match(pedidos.get('fl').erro, /passa de 12 meses/);
+    recusar = true;
+    fiscal('fr1', 'saidas', '2026-02');
+    await espera(5); await f3.ocioso();
+    fiscal('fr2', 'saidas', '2026-03');
+    await espera(5); await f3.ocioso();
+    assert.strictEqual(recebidos.length, 3, 'depois do login recusado, o Fiscal não tenta de novo');
+    assert.match(pedidos.get('fr2').erro, /login do robô no Alterdata Fiscal não deu/);
+  }
+
   fs.rmSync(BASE, { recursive: true, force: true });
   console.log('ok: ' + pedidos.size + ' pedidos, ' + chamadas.length + ' roteiros, no máximo ' + maximo + ' ao mesmo tempo; o travado virou erro e a fila seguiu; duas máquinas: ' + porMaquina.s.length / 2 + ' no servidor + ' + porMaquina.p.length / 2 + ' no PC, nenhum repetido');
 })().catch(err => { console.error('FALHOU:', err.message); process.exit(1); });

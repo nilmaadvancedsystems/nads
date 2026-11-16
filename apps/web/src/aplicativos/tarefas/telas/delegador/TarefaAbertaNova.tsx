@@ -7,7 +7,7 @@
 // o Esc e o ✕ perguntam antes de largar o que mudou.
 import { tarefas } from '@nads/core';
 import { Alerta, BotaoAcao, BotaoFechar, BotaoIcone, CampoData, Esqueleto, Icone, MenuSuspenso, Segmentado, useJanela, Vazio, type NomeIcone } from '@nads/ui';
-import { useEffect, useId, useRef, useState, type RefObject } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type ClipboardEvent, type RefObject } from 'react';
 import { Link } from 'react-router';
 import { Propriedade } from '../financeiro/partes/Propriedade';
 import { SeloDoStatus } from './partes/SelosDaTarefa';
@@ -15,7 +15,7 @@ import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
 import { useNovidade } from '../../../../comum/novidades';
 import { lembrarAgora } from './useLembreteDoRecebimento';
 import { ClientesDaTarefa, EscolherPessoa, FicaComVoce, FotoDaPessoa } from './TarefaAberta';
-import { useTarefaAberta } from './useTarefaAberta';
+import { printDeExemplo, useTarefaAberta } from './useTarefaAberta';
 
 type Vm = ReturnType<typeof useTarefaAberta>;
 const d = tarefas.delegadas;
@@ -82,7 +82,9 @@ function PrazoDaTarefa({ vm }: { vm: Vm }) {
  */
 function CobrancaDaTarefa({ vm }: { vm: Vm }) {
   const c = vm.cobranca;
+  const discreta = useNovidade('cobranca-notificada');
   if (!c || (!c.aberta && !c.resposta)) return null;
+  if (discreta) return <CobrancaDiscreta vm={vm} />;
   if (c.aberta && c.responder) {
     return (
       <div className="tdl-cobranca cobrada" role="status">
@@ -106,6 +108,36 @@ function CobrancaDaTarefa({ vm }: { vm: Vm }) {
       <p className="tdl-cobranca-topo"><Icone nome="sino" /><b>{c.resposta?.por} respondeu à cobrança</b><span className="fraco">{c.resposta?.quando}</span></p>
       <p className="tdl-cobranca-texto">{c.resposta?.texto}</p>
     </div>
+  );
+}
+
+/**
+ * A cobrança discreta (a novidade 'cobranca-notificada'; Vitor, 16/11/2026: "isso tá horrivel… faça uma bela popup"): o
+ * destaque é a janela grande (JanelaDaCobranca). Aqui ficam só as linhas do andamento (quem cobrou vê o mais tempo pedido,
+ * com a justificativa, e a resposta) e, para quem faz, o responder sem a caixa amarela.
+ */
+function CobrancaDiscreta({ vm }: { vm: Vm }) {
+  const c = vm.cobranca!;
+  return (
+    <>
+      <div className="tdl-cobranca-linhas" role="status">
+        {c.andamento.map(p => (
+          <p key={p.quando + p.texto}><Icone nome={p.tipo === 'adiamento' ? 'clock' : p.tipo === 'resposta' ? 'checkCircle' : 'sino'} /><span>{p.texto} <span className="fraco">· {p.quando}</span></span></p>
+        ))}
+        {c.aberta && !c.responder && <p><Icone nome="clock" /><span>Esperando a resposta.</span></p>}
+      </div>
+      {c.aberta && c.responder && (
+        <div className="tdl-cobranca">
+          <textarea rows={2} value={vm.resposta} maxLength={vm.maiorParecer} placeholder="Responder à cobrança: como está a tarefa?" aria-label="A resposta à cobrança"
+            onChange={e => vm.setResposta(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); void vm.responderCobranca(); } }} />
+          <span className="tdl-cobranca-acoes">
+            <BotaoAcao className="btn btn-outline" carregando={c.ocupado} textoCarregando="Enviando" disabled={!vm.resposta.trim()} onClick={() => { void vm.responderCobranca(); }}>
+              <Icone nome="envelope" />Responder cobrança
+            </BotaoAcao>
+          </span>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -156,27 +188,86 @@ function Propriedades({ vm }: { vm: Vm }) {
       {vm.ehNova && !vm.delegar && (
         <label className="tdl-ja-fazendo"><input type="checkbox" checked={vm.jaFazendo} onChange={e => vm.setJaFazendo(e.target.checked)} />Já estava fazendo</label>
       )}
+      {!travado && <EntregaDoOfficeBoy vm={vm} />}
     </div>
+  );
+}
+
+/**
+ * a Entrega (a novidade 'entrega-do-office-boy', 16/11/2026): escolhido o office boy em "Para quem", a caixinha Entrega; marcada,
+ * o tipo (Entregar, Buscar, Outro) e o Criar manda o pedido para a fila dele no Entregas, sem criar a tarefa
+ */
+function EntregaDoOfficeBoy({ vm }: { vm: Vm }) {
+  const e = vm.entrega;
+  if (!e.pode) return null;
+  return (
+    <>
+      <Propriedade icone="caminhao" rotulo="Entrega">
+        <span className="ini-delegar">
+          <label className="tdl-ja-fazendo" title="Mandar para a fila do office boy no Entregas, em vez de criar a tarefa">
+            <input type="checkbox" checked={e.marcada} onChange={e.alternar} />Entrega
+          </label>
+          {e.marcada && e.tipo && <Segmentado valor={e.tipo} opcoes={[...e.tipos]} onMudar={e.setTipo} />}
+        </span>
+      </Propriedade>
+      {e.marcada && <p className="registro-dica"><Icone nome="caminhao" />Vai para as Solicitações do Entregas, a fila do office boy. Não vira tarefa: acompanhe por lá.</p>}
+    </>
   );
 }
 
 function Descricao({ vm }: { vm: Vm }) {
   const id = useId();
   // em branco e só para ler (a concluída, ou de quem não muda): some, como o prazo (13/11/2026: "so oculta ele... nao deixa exposto")
-  if (!vm.podeMudar && !vm.rascunho.descricao.trim()) return null;
+  if (!vm.podeMudarDetalhes && !vm.rascunho.descricao.trim()) return null;
+  // só para ler, o texto sem a caixa (16/11/2026: "Detalhes depois das tarefas e documentos concluidas não pode ser editadas")
+  if (!vm.podeMudarDetalhes) return (
+    <div className="field">
+      <span className="field-rotulo">Detalhes</span>
+      <p className="ini-detalhe-texto">{vm.rascunho.descricao}</p>
+    </div>
+  );
+  // o print colado (a novidade 'colar-print'): a imagem da área de transferência vira anexo; o que vem com texto (o Excel
+  // manda texto e imagem) cola como texto, como no suporte
+  const colar = (e: ClipboardEvent<HTMLTextAreaElement>) => {
+    if (!vm.podeColarPrint || e.clipboardData.getData('text/plain').trim()) return;
+    const imagens = Array.from(e.clipboardData.files).filter(f => f.type.startsWith('image/'));
+    if (!imagens.length) return;
+    e.preventDefault();
+    void vm.anexar(vm.nomearPrints(imagens));
+  };
   return (
     <div className="field">
       <label htmlFor={id}>Detalhes</label>
-      <textarea id={id} rows={4} value={vm.rascunho.descricao} maxLength={vm.maiorDescricao} readOnly={!vm.podeMudar}
-        placeholder="Os detalhes, o que já foi visto, onde estão os documentos" onChange={e => vm.setDescricao(e.target.value)} />
+      <textarea id={id} rows={4} value={vm.rascunho.descricao} maxLength={vm.maiorDescricao} onPaste={colar}
+        placeholder={'Os detalhes, o que já foi visto, onde estão os documentos' + (vm.podeColarPrint ? '. Cole um print com Ctrl+V' : '')}
+        onChange={e => vm.setDescricao(e.target.value)} />
+      <PrintsColados vm={vm} />
     </div>
+  );
+}
+
+/** as miniaturas dos prints colados nos Detalhes, cada uma com o × para tirar (a nova; na que existe, eles vão aos anexos) */
+function PrintsColados({ vm }: { vm: Vm }) {
+  const imagens = useMemo(() => vm.prints.map(p => ({ ...p, url: URL.createObjectURL(new Blob([p.bytes as BlobPart], { type: p.tipo })) })), [vm.prints]);
+  useEffect(() => () => { for (const p of imagens) URL.revokeObjectURL(p.url); }, [imagens]);
+  if (!imagens.length) return null;
+  return (
+    <ul className="ini-prints" aria-label="Prints colados">
+      {imagens.map(p => (
+        <li key={p.id}>
+          <img src={p.url} alt={p.nome} title={p.nome} />
+          {vm.podeMudar && <BotaoIcone pequeno icone="x" titulo={'Tirar ' + p.nome} onClick={() => void vm.tirarAnexo(p.id)} />}
+        </li>
+      ))}
+    </ul>
   );
 }
 
 /**
  * os anexos e os links (Vitor, 13/11/2026: "Anexos a box tá muito grande, deixa só o icone do clip, tambem coloque o icone de
  * link"; no mesmo dia: "Substitua esses dois botoes por um botao 'Anexo', e dentro da popup vai ter, link e arquivo"): o botão
- * Anexo abre o menu com Arquivo (escolhe os arquivos) e Link (abre o campo do link); a lista só com algum
+ * Anexo abre o menu com Arquivo (escolhe os arquivos) e Link (abre o campo do link, numa linha só dele, com o ícone, o × e o Fixar;
+ * o colado sem o https:// ganha o https://; 15/11/2026: "melhora a questao dos links"); a lista só com algum (o link pelo site)
  */
 function Anexos({ vm }: { vm: Vm }) {
   const id = useId();
@@ -195,14 +286,25 @@ function Anexos({ vm }: { vm: Vm }) {
             ]} />
           <input ref={arquivo} id={id} type="file" multiple className="sr-only" disabled={vm.anexando} aria-label="Escolher os arquivos"
             onChange={e => { const fs = Array.from(e.target.files || []); e.target.value = ''; if (fs.length) void vm.anexar(fs); }} />
-          {link != null && (
-            <span className="ini-anexos-link">
-              <input type="url" value={link} autoFocus placeholder="Cole o link (https://…)" aria-label="O link" onChange={e => setLink(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); void fixar(); } if (e.key === 'Escape') { e.stopPropagation(); setLink(null); } }} />
-              <BotaoIcone icone="check" titulo="Fixar o link" onClick={() => void fixar()} />
-            </span>
-          )}
           {vm.anexando && <span className="hint">Anexando…</span>}
+        </div>
+      )}
+      {vm.podeMudar && link != null && (
+        <div className="ini-link-campo">
+          <Icone nome="link" />
+          <input type="text" inputMode="url" value={link} autoFocus placeholder="Cole o link aqui" aria-label="O link" spellCheck={false}
+            onChange={e => setLink(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); void fixar(); } if (e.key === 'Escape') { e.stopPropagation(); setLink(null); } }} />
+          <BotaoIcone pequeno icone="x" titulo="Cancelar" onClick={() => setLink(null)} />
+          <button type="button" className="btn btn-primary ini-link-fixar" disabled={!link.trim()} onClick={() => void fixar()}>Fixar</button>
+        </div>
+      )}
+      {vm.podeBaixarTudo && (
+        <div className="ini-anexos-tudo">
+          <span className="hint">{vm.anexos.length} arquivos</span>
+          <button type="button" className="btn btn-outline" disabled={vm.baixandoTudo} onClick={() => void vm.baixarTudo()}>
+            {vm.baixandoTudo ? <span className="btn-spinner" /> : <Icone nome="download" />}{vm.baixandoTudo ? 'Juntando…' : 'Baixar tudo (.zip)'}
+          </button>
         </div>
       )}
       {tem && (
@@ -218,7 +320,7 @@ function Anexos({ vm }: { vm: Vm }) {
           {vm.links.map(l => (
             <li key={l.url}>
               <Icone nome="link" />
-              <a href={l.url} target="_blank" rel="noopener noreferrer">{l.url}</a>
+              <a href={l.url} target="_blank" rel="noopener noreferrer" title={l.url}>{l.rotulo}</a>
               <span className="hint">{l.detalhe}</span>
               {vm.podeMudar && <BotaoIcone pequeno icone="x" titulo="Tirar o link" onClick={() => void vm.tirarLink(l.url)} />}
             </li>
@@ -405,6 +507,8 @@ function TesteDosDocumentos({ vm }: { vm: Vm }) {
       itens={[
         { rotulo: 'Exemplo de envio', icone: 'zap', marcado: vm.documentos.deTeste && vm.documentos.modo === 'enviar', onClick: () => vm.documentos.preencherExemplo('enviar') },
         { rotulo: 'Exemplo de requerer', icone: 'zap', marcado: vm.documentos.deTeste && vm.documentos.modo === 'requerer', onClick: () => vm.documentos.preencherExemplo('requerer') },
+        // o print colado (a novidade 'colar-print'): um comprovante de exemplo, como se tivesse colado com Ctrl+V nos Detalhes
+        ...(vm.podeColarPrint ? [{ rotulo: 'Colar um print de exemplo', icone: 'zap' as const, onClick: () => { void printDeExemplo().then(f => vm.anexar(vm.nomearPrints([f]))); } }] : []),
         'separador',
         { rotulo: 'Mostrar o lembrete de confirmar', icone: 'clock', onClick: lembrarAgora },
       ]} />
@@ -418,7 +522,7 @@ export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
   // a tarefa concluída não se edita mais (Vitor, 13/11/2026: "Tarefa concluida nao pode ser editada"): tudo só para leitura,
   // sem Salvar nem Excluir; o título, os detalhes, os anexos e as informações continuam à vista
   const concluida = !aberta.ehNova && aberta.rascunho.status === 'concluida';
-  const vm: typeof aberta = concluida ? { ...aberta, podeMudar: false, podeExcluir: false, acoes: [] } : aberta;
+  const vm: typeof aberta = concluida ? { ...aberta, podeMudar: false, podeMudarDetalhes: false, podeColarPrint: false, podeExcluir: false, acoes: [] } : aberta;
   // o sino de cobrar e o Responder cobrança (a novidade 'cobrar-tarefa', aprovada para todos em 13/11/2026)
   const cobrarLigado = useNovidade('cobrar-tarefa');
   useEffect(() => {
@@ -465,7 +569,7 @@ export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
       <span className="tarefas-barra-espaco" />
       <button type="button" className="btn btn-outline" onClick={vm.cancelar}>Cancelar</button>
       <BotaoAcao className="btn btn-primary" carregando={vm.salvando} textoCarregando="Salvando" onClick={() => { void vm.salvar(); }}>
-        <Icone nome="check" />{vm.ehNova ? (vm.delegar ? 'Criar e delegar' : 'Criar tarefa') : 'Salvar'}
+        <Icone nome={vm.entrega.marcada ? 'caminhao' : 'check'} />{vm.ehNova ? (vm.entrega.marcada ? 'Enviar para Entregas' : vm.delegar ? 'Criar e delegar' : 'Criar tarefa') : 'Salvar'}
       </BotaoAcao>
     </footer>
   );

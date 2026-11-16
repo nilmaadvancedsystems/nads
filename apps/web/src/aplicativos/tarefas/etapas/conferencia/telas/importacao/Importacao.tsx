@@ -7,13 +7,14 @@ import { BoasVindasBalancete } from './partes/BoasVindasBalancete';
 import { NotasImportadas, ServicosImportados } from './partes/Importados';
 import { PlanoDeContas } from './partes/PlanoDeContas';
 import { useImportacao, type Mensagem } from './useImportacao';
+import type { NotasDoRobo } from './useNotasDoRobo';
 
 /**
  * naEtapa: dentro da primeira etapa da Tarefas. Dentro da Tarefa (a Importação ou a Conferência fiscal), sem o "Apagar ao sair"
  * do balancete nem a pergunta sobre ele (Vitor, 05/11/2026: "remove esse apagar ao sair"); só na Conferência aberta sozinha.
  */
-export function Importacao({ tipo, naEtapa, meses }: { tipo: c.PaginaImportacao; naEtapa?: boolean; meses?: readonly string[] }) {
-  const vm = useImportacao(tipo, meses);
+export function Importacao({ tipo, naEtapa, meses, codigo }: { tipo: c.PaginaImportacao; naEtapa?: boolean; meses?: readonly string[]; codigo?: number | null }) {
+  const vm = useImportacao(tipo, meses, codigo);
   useCarregando(vm.carregando);
   const [naTarefa] = useState(() => !!naEtapa || !!origemDoPai());
   return (
@@ -34,9 +35,16 @@ export function Importacao({ tipo, naEtapa, meses }: { tipo: c.PaginaImportacao;
           <h3><span className="import-card-ico"><Icone nome={vm.cfg.icone} /></span>{vm.cfg.titulo}</h3>
           <div className="import-box-row">
             <CampoArquivo id={vm.cfg.idArquivo} arquivo={vm.arquivo} onEscolher={vm.setArquivo} aceitar={vm.cfg.aceitar} abrirAgora={vm.abrirArquivo} />
+            {vm.robo.disponivel && (
+              <BotaoAcao className="btn btn-outline" carregando={vm.robo.pedindo || vm.robo.andando} textoCarregando="Com o robô…" disabled={vm.carregando}
+                onClick={vm.robo.pedir} title={'O robô do servidor puxa ' + vm.nomeDoTipo + ' de ' + vm.periodo + ' no Alterdata Fiscal e importa aqui'}>
+                <Icone nome="robo" />Pedir ao robô
+              </BotaoAcao>
+            )}
             <BotaoAcao carregando={vm.carregando} textoCarregando="Importando…" disabled={!vm.arquivo} onClick={vm.importar}>Importar</BotaoAcao>
           </div>
           <p className="hint">{vm.cfg.dica}</p>
+          {vm.robo.disponivel && <RoboDoFiscal r={vm.robo} />}
           {/* a empresa que não teve essas notas no período (Clara, 29/10/2026): a etapa segue sem o arquivo */}
           {vm.podeMarcarSemMovimento && (
             <div className="btn-row" style={{ justifyContent: 'flex-end', marginTop: 0 }}>
@@ -94,6 +102,24 @@ export function Importacao({ tipo, naEtapa, meses }: { tipo: c.PaginaImportacao;
         </div>
       )}
     </section>
+  );
+}
+
+/** O andamento do robô do Fiscal embaixo da caixa: a barra e o que ele está fazendo; o erro em vermelho. */
+function RoboDoFiscal({ r }: { r: NotasDoRobo }) {
+  if (!r.situacao && !r.falha && !r.lendo) return null;
+  return (
+    <div className={'imp-robo-fiscal' + (r.erro || r.falha ? ' ext-neg' : '')} role="status">
+      {r.andando && <div className="imp-robo-barra"><span style={{ width: r.pct + '%' }} /></div>}
+      <span>{r.lendo ? 'A planilha chegou: importando…' : r.falha || r.situacao}{r.clique ? ' · ' + r.clique : ''}</span>
+      {r.andando && <button type="button" className="btn btn-ghost btn-sm" onClick={() => { void r.cancelar(); }}>Cancelar</button>}
+      {r.diag.length > 0 && (
+        <details className="imp-robo-diag">
+          <summary>O que o robô viu na tela</summary>
+          <pre>{r.diag.join('\n')}</pre>
+        </details>
+      )}
+    </div>
   );
 }
 

@@ -44,6 +44,8 @@ export interface SessaoEntregas {
   trocarMeuEmail(novo: string, senha: string, pedir: () => Promise<void>): Promise<void>;
   /** troca o próprio sobrenome (usuarios/{uid}.sobrenome; 12/11/2026) */
   trocarSobrenome(sobrenome: string): Promise<void>;
+  /** a pessoa confirmou o e-mail principal, que é o login dela (usuarios/{uid}.emailPrincipalEm; 16/11/2026) */
+  confirmarEmailPrincipal(): Promise<void>;
   assinar(aoMudar: () => void): () => void;
   versao(): number;
 }
@@ -182,6 +184,14 @@ export function criarSessaoEntregas(): SessaoEntregas {
       if (!u || !estado.usuario) throw new Error('Sem login.');
       await updateDoc(doc(db, 'usuarios', u.uid), { sobrenome });
       mudar({ ...estado, usuario: { ...estado.usuario, sobrenome } });
+    },
+    async confirmarEmailPrincipal() {
+      const u = auth.currentUser;
+      if (!u || !estado.usuario) throw new Error('Sem login.');
+      const emailPrincipalEm = new Date().toISOString();
+      await updateDoc(doc(db, 'usuarios', u.uid), { emailPrincipalEm });
+      // o e-mail que vale é o do login de agora (depois da troca, o novo)
+      mudar({ ...estado, usuario: { ...estado.usuario, email: u.email || estado.usuario.email, emailPrincipalEm } });
     },
     async trocarMeuEmail(novo, senha, pedir) {
       const u = auth.currentUser;

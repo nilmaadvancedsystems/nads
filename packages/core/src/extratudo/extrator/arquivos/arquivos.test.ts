@@ -65,6 +65,26 @@ describe('leitura dos arquivos', () => {
     expect(r.lancamentos).toEqual([{ data: '2026-08-05', valor: -150, historico: 'TARIFA' }]);
   });
 
+  it('o extrato da conta sem nenhum lançamento entra como sem movimento, PDF e OFX (16/11/2026)', async () => {
+    // fictício, no jeito do BB: só o saldo anterior e o saldo do período
+    const pdf = pdfMinimo([
+      [40, 760, 'Extrato de Conta Corrente'], [40, 745, 'Cliente: EMPRESA EXEMPLO LTDA Agencia: 1234-5 Conta: 67890-1'],
+      [40, 730, 'Periodo: 01 a 30/09/2026'], [40, 700, 'Dia Documento Valor Lote Historico'],
+      [40, 680, '31/08/2026'], [200, 680, '0,00 (+)'], [300, 680, 'Saldo Anterior'],
+      [40, 665, '30/09/2026'], [200, 665, '0,00 (+)'], [300, 665, 'S A L D O'],
+    ]);
+    const r = await lerArquivo('bb 092026.pdf', pdf, 'banco');
+    expect(r.semMovimento).toEqual(['2026-09']);
+    expect(r.naoEExtrato).toBeFalsy();
+    const ofx = 'OFXHEADER:100\n<OFX><BANKMSGSRSV1><STMTTRNRS><STMTRS><BANKTRANLIST><DTSTART>20260901<DTEND>20260930</BANKTRANLIST><LEDGERBAL><BALAMT>0.00</LEDGERBAL></STMTRS></STMTTRNRS></BANKMSGSRSV1></OFX>';
+    expect((await lerArquivo('extrato.ofx', new TextEncoder().encode(ofx), 'banco')).semMovimento).toEqual(['2026-09']);
+    // o que não é extrato continua não entrando
+    const comprovante = pdfMinimo([[40, 760, 'Comprovante de pagamento'], [40, 740, 'Data 10/09/2026 Valor 50,00 Favorecido EXEMPLO']]);
+    const c = await lerArquivo('comprovante.pdf', comprovante, 'banco');
+    expect(c.semMovimento).toBeFalsy();
+    expect(c.erro).toBeTruthy();
+  });
+
   it('arquivo que não é planilha', async () => {
     const r = await lerArquivo('x.xlsx', new TextEncoder().encode('isso não é uma planilha'), 'banco');
     expect(r.lancamentos).toEqual([]);

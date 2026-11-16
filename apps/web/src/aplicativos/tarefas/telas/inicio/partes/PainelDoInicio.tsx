@@ -61,6 +61,8 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
   const c = vm.calendario;
   // o sino de cobrar (a novidade 'cobrar-tarefa', aprovada para todos em 13/11/2026)
   const cobrarLigado = useNovidade('cobrar-tarefa');
+  // com a janela grande da cobrança (16/11/2026), o Cobrada da lista fica só o sino
+  const discreta = useNovidade('cobranca-notificada');
   const p = vm.paraConfirmar[0];
   const abrir = (id: string) => { vm.escolherComunicado(id); vm.mudarAba('notificacoes'); };
   return (
@@ -69,7 +71,7 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
         <Cartao titulo="Calendário">
           <div className="ini-calendario-caixa">
             <div className={p ? 'ini-calendario-embacado' : undefined} aria-hidden={p ? true : undefined}>
-              <CalendarioDoMes mes={c.mes} hoje={c.hoje} marcados={c.marcados} escolhido={c.dia} onDia={c.escolher} onMes={c.setMes} dicaDoMarcado={n => quantas(n) + ' ou reuniões'} />
+              <CalendarioDoMes mes={c.mes} hoje={c.hoje} marcados={c.marcados} feriados={c.feriados} escolhido={c.dia} onDia={c.escolher} onMes={c.setMes} dicaDoMarcado={n => quantas(n) + ' ou reuniões'} />
             </div>
             {p && (
               <div className="ini-calendario-aviso" role="alertdialog" aria-label={p.tipo === 'reuniao' ? 'Reunião: confirme a presença' : 'Aviso: confirme que leu'}>
@@ -90,6 +92,17 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
               </div>
             )}
           </div>
+          {c.feriadosDoMes.length > 0 && (
+            <ul className="ini-feriados" aria-label="Feriados do mês">
+              {c.feriadosDoMes.map(f => (
+                <li key={f.data} className={'ini-feriado ' + f.tipo + (f.passou ? ' passou' : '')}>
+                  <span className="ini-feriado-dia">{f.dia}</span>
+                  <span className="ini-feriado-nome">{f.nome === f.rotulo ? f.rotulo : f.nome}</span>
+                  {f.nome !== f.rotulo && <span className="hint">{f.rotulo}</span>}
+                </li>
+              ))}
+            </ul>
+          )}
         </Cartao>
         <Cartao titulo="Quadro de avisos" acao={<button type="button" className="btn btn-ghost" onClick={() => vm.mudarAba('notificacoes')}>Notificações<Icone nome="chevronRight" /></button>}>
           {vm.reunioes.length ? vm.reunioes.map(r => (
@@ -108,7 +121,7 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
             <div key={t.id} className="ini-linha">
               <span className="ini-marca"><button type="button" className="subnav-caixa vazia" title="Concluir" aria-label={'Concluir ' + t.titulo} onClick={t.concluir} /></span>
               <button type="button" className="ini-linha-texto ini-abrir" onClick={() => vm.abrir(t.id)}>{t.titulo}</button>
-              {cobrarLigado && t.cobrada && <span className="ini-sino" title="Cobraram uma atualização: abra a tarefa e responda"><Icone nome="sino" />Cobrada</span>}
+              {cobrarLigado && t.cobrada && <span className="ini-sino" title={t.dicaDaCobranca}><Icone nome="sino" />{!discreta && 'Cobrada'}</span>}
               <span className={'hint' + (t.atrasada ? ' tdl-atrasada' : '')}>{t.prazo}</span>
             </div>
           )) : <Vazio compacto icone="checkCircle" titulo={c.dia ? 'Nada com prazo neste dia' : 'Tudo em dia'} />}

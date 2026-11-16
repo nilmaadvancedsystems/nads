@@ -35,10 +35,9 @@ describe('contas bancárias', () => {
     expect(r.cadastro.historico[0]).toMatchObject({ por: 'Vitor', acao: 'Incluiu conta' });
   });
 
-  it('não aceita conta repetida nem sem agência', () => {
+  it('não aceita conta repetida', () => {
     const um = salvarConta(vazio(), null, { marca: 'itau', agencia: '0412', conta: '1' }, partida, 'V', AGORA).cadastro;
     expect(salvarConta(um, null, { marca: 'itau', agencia: '0412', conta: '1' }, partida, 'V', AGORA).erro).toMatch(/já está/);
-    expect(salvarConta(um, null, { marca: 'itau', agencia: '', conta: '1' }, partida, 'V', AGORA).erro).toMatch(/agência/);
   });
 
   it('ao editar, o id não muda (os arquivos do Extrator continuam na conta)', () => {
@@ -47,13 +46,21 @@ describe('contas bancárias', () => {
     expect(r.cadastro.bancos?.[0]).toMatchObject({ id: 'sicoob', agencia: '3001', conta: '555' });
   });
 
-  it('a conta que já estava sem número salva só a conta contábil; a nova continua pedindo agência e conta (20/10/2026)', () => {
+  it('a agência e a conta são opcionais; no formulário, a conta contábil é obrigatória (16/11/2026)', () => {
     const r = salvarConta(vazio(), 'sicoob', { marca: 'sicoob', agencia: '', conta: '', contaContabil: '10502' }, partida, 'V', AGORA);
     expect(r.erro).toBeNull();
     expect(r.cadastro.bancos?.[0]).toMatchObject({ id: 'sicoob', contaContabil: '10502' });
     expect(r.cadastro.bancos?.[0].agencia).toBeUndefined();
-    expect(salvarConta(vazio(), 'sicoob', { marca: 'sicoob', agencia: '3001', conta: '' }, partida, 'V', AGORA).erro).toMatch(/agência/);
-    expect(salvarConta(vazio(), null, { marca: 'caixa', agencia: '', conta: '' }, partida, 'V', AGORA).erro).toMatch(/agência/);
+    // só a agência, ou nem agência nem conta: grava
+    expect(salvarConta(vazio(), 'sicoob', { marca: 'sicoob', agencia: '3001', conta: '' }, partida, 'V', AGORA).erro).toBeNull();
+    const caixa = salvarConta(vazio(), null, { marca: 'caixa', agencia: '', conta: '', contaContabil: '10.503' }, partida, 'V', AGORA, { exigeContaContabil: true });
+    expect(caixa.erro).toBeNull();
+    expect(caixa.cadastro.bancos?.find(b => b.marca === 'caixa')).toMatchObject({ id: 'caixa-10503', contaContabil: '10.503' });
+    // a segunda conta do mesmo banco sem número, com outra conta contábil, entra; com a mesma, é repetida
+    expect(salvarConta(caixa.cadastro, null, { marca: 'caixa', agencia: '', conta: '', contaContabil: '10504' }, partida, 'V', AGORA, { exigeContaContabil: true }).erro).toBeNull();
+    expect(salvarConta(caixa.cadastro, null, { marca: 'caixa', agencia: '', conta: '', contaContabil: '10503' }, partida, 'V', AGORA, { exigeContaContabil: true }).erro).toMatch(/já está/);
+    // no formulário, sem a conta contábil não grava
+    expect(salvarConta(vazio(), null, { marca: 'itau', agencia: '0412', conta: '1' }, partida, 'V', AGORA, { exigeContaContabil: true }).erro).toBe('Informe a conta contábil.');
   });
 
   it('encerrada, some das competências seguintes; reaberta, volta', () => {
@@ -87,11 +94,12 @@ describe('confirmar os bancos na Importação (21/10/2026)', () => {
     expect(r.cadastro.bancos).toEqual([{ id: 'sicoob', marca: 'sicoob', nome: 'Sicoob', agencia: '3144-5', conta: '24.046-0', contaContabil: '10501' }]);
     expect(r.cadastro.historico[0].acao).toBe('Confirmou os bancos');
   });
-  it('sem conta contábil, fora do plano, sintética, banco novo sem agência ou nada marcado: não grava', () => {
+  it('sem conta contábil, fora do plano, sintética ou nada marcado: não grava; o banco novo sem agência entra', () => {
     expect(confirmarBancos(vazio(), [L('nubank', 'nubank', '')], partida, plano, 'Vitor', AGORA).erro).toBe('Nubank: informe a conta contábil.');
     expect(confirmarBancos(vazio(), [L('nubank', 'nubank', '99999')], partida, plano, 'Vitor', AGORA).erro).toBe('Nubank: A conta 99999 não está no plano de contas.');
     expect(confirmarBancos(vazio(), [L('nubank', 'nubank', '105')], partida, plano, 'Vitor', AGORA).erro).toBe('Nubank: A conta 105 é sintética (não recebe lançamento).');
-    expect(confirmarBancos(vazio(), [L(null, 'itau', '10501')], partida, plano, 'Vitor', AGORA).erro).toBe('Itaú: preencha a agência e a conta.');
+    // o banco novo sem agência e conta entra, com a conta contábil (16/11/2026)
+    expect(confirmarBancos(vazio(), [L(null, 'itau', '10501')], partida, plano, 'Vitor', AGORA).cadastro.bancos?.[0]).toMatchObject({ id: 'itau-10501', contaContabil: '10501' });
     expect(confirmarBancos(vazio(), [L('nubank', 'nubank', '10504', false)], partida, plano, 'Vitor', AGORA).erro).toBe('Marque os bancos que a empresa tem.');
     // o banco novo, com agência e conta, entra com o id da conta
     expect(confirmarBancos(vazio(), [L(null, 'itau', '10501', true, '0412', '99887-7')], partida, null, 'Vitor', AGORA).cadastro.bancos?.[0].id).toBe('itau-0412-998877');

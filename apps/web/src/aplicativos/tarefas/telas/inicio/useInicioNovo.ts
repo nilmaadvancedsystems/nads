@@ -15,9 +15,11 @@ import { useOperador, type Operador } from '../../casca/operador';
 import { useAgoraDoExpediente } from '../delegador/useAgoraDoExpediente';
 import { abaDaUrl, ABAS_DO_INICIO, type AbaDoInicio } from './abasDoInicio';
 import { useNivelDoInicio, useReunioesDoInicio } from './useReunioesDoInicio';
+import { useNovidade } from '../../../../comum/novidades';
 
 const d = tarefas.delegadas;
 const ag = tarefas.agenda;
+const fe = tarefas.feriados;
 
 /** Uma pessoa com a foto (a do Entregas) ou as iniciais. */
 export interface PessoaComFoto { uid: string; nome: string; foto: string | null; iniciais: string }
@@ -54,6 +56,8 @@ export const FILTROS_POR_ABA: Record<AbaDoInicio, Filtro[]> = {
 };
 const PLACEHOLDER: Record<AbaDoInicio, string> = { painel: 'Buscar nas tarefas', tarefas: 'Buscar nas tarefas', documentos: 'Buscar nos documentos', notificacoes: 'Buscar nas notificações' };
 const nomeDoCliente = (c: tarefas.delegadas.ClienteVinculado) => (c.codigo != null ? c.codigo + ' · ' : '') + c.nome;
+/** a data e a hora da cobrança: "16/11/2026, 10:30" */
+const dataHora = (iso: string) => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 /** os dias do calendário mais os dias de reunião (cada reunião conta um) */
 function somarDias(dias: Record<number, number>, mais: number[]): Record<number, number> {
@@ -146,6 +150,31 @@ export function useInicioNovo() {
   const [comunicado, setComunicado] = useState<string | null>(null);
   const agoraLocal = d.hojeIso() + 'T' + agora;
 
+  // as cobranças que a pessoa recebeu, nas Notificações, e quem cobrou no Cobrada (a novidade 'cobranca-notificada'; 16/11/2026:
+  // "faça aparecer em notificações que houve uma cobrança"); a busca vale para elas e qualquer pílula as esconde
+  const cobrancaNotificada = useNovidade('cobranca-notificada');
+  const recebidas = cobrancaNotificada ? d.cobrancasRecebidas(todas, uid) : [];
+  // e, para quem cobrou, o que voltou: o mais tempo pedido (com a justificativa) e a resposta (16/11/2026: "para quem cobrou
+  // aparece que o usuario pediu + 5 +10 minutos")
+  const retornos = cobrancaNotificada ? d.retornosDasCobrancas(todas, uid) : [];
+  const cobrancas = [
+    ...recebidas.map(c => ({ tarefa: c.tarefa, nota: c.nota, aberta: c.aberta, icone: 'sino' as const, texto: c.nota.por + ' cobrou atualização da tarefa ' + c.tarefa.titulo })),
+    ...retornos.map(c => ({
+      tarefa: c.tarefa, nota: c.nota, aberta: false, icone: c.nota.tipo === 'adiamento' ? 'clock' as const : 'checkCircle' as const,
+      texto: c.nota.tipo === 'adiamento' ? c.nota.por + ' pediu mais ' + (c.nota.minutos || 0) + ' minutos na tarefa ' + c.tarefa.titulo + ': ' + c.nota.texto
+        : c.nota.por + ' respondeu à cobrança da tarefa ' + c.tarefa.titulo + ': ' + c.nota.texto,
+    })),
+  ].sort((a, b) => b.nota.em.localeCompare(a.nota.em))
+    .filter(c => aba !== 'notificacoes' || (!filtros.length && (!q || (c.texto + ' ' + c.nota.por).toLowerCase().includes(q))))
+    .map(c => ({
+      id: c.tarefa.id + '|' + c.nota.em + '|' + (c.nota.tipo || ''), tarefa: c.tarefa.id, aberta: c.aberta, icone: c.icone, texto: c.texto,
+      quando: dataHora(c.nota.em), quandoFoi: tarefas.quandoFoi(c.nota.em, agoraIso),
+    }));
+  const dicaDoCobrada = (t: tarefas.delegadas.TarefaDelegada) => {
+    const n = d.cobrancaAberta(t);
+    return cobrancaNotificada && n ? d.dicaDaCobranca(n, dataHora(n.em)) : 'Cobraram uma atualização: abra a tarefa e responda';
+  };
+
   return {
     nome: op.nome.split(/[ .]/)[0],
     carregando: !carregadas,
@@ -153,7 +182,7 @@ export function useInicioNovo() {
     aba, mudarAba,
     abas: ABAS_DO_INICIO.map(a => ({
       ...a, ativa: a.id === aba,
-      qtd: a.id === 'tarefas' ? minhas.filter(t => !d.pedeDocumentos(t)).length : a.id === 'documentos' ? abertas.filter(d.pedeDocumentos).length : a.id === 'notificacoes' ? mural.avisos.length : 0,
+      qtd: a.id === 'tarefas' ? minhas.filter(t => !d.pedeDocumentos(t)).length : a.id === 'documentos' ? abertas.filter(d.pedeDocumentos).length : a.id === 'notificacoes' ? mural.avisos.length + recebidas.filter(c => c.aberta).length : 0,
     })),
     // a tarefa aberta
     aberta, abrir: (id: string) => setAberta(id), nova: () => setAberta('nova'), pedirDocumentos: () => setAberta('documentos'), fechar: () => setAberta(null),
@@ -188,6 +217,11 @@ export function useInicioNovo() {
         ...comunicados.filter(c => c.tipo === 'reuniao' && c.quando?.startsWith(mes + '-')).map(c => Number(c.quando!.slice(8, 10))),
         ...reunioes.proximas.filter(x => x.quando.startsWith(mes + '-')).map(x => Number(x.quando.slice(8, 10))),
       ]),
+      // os feriados e os pontos facultativos do mês (o Decreto 4068/2026 de Taiobeiras; 15/11/2026: "Atualiza o calendário com essas datas")
+      feriados: Object.fromEntries(fe.feriadosDoMes(mes).map(f => [Number(f.data.slice(8, 10)), { dica: fe.dicaDoFeriado(f), tipo: f.tipo }])),
+      /** a lista embaixo do calendário: "20 · São Sebastião · Feriado"; só os de hoje em diante (16/11/2026: "os feriados que já
+       * passaram, pode tirar da parte inferior"; no calendário eles continuam marcados) */
+      feriadosDoMes: fe.feriadosDoMes(mes).filter(f => f.data >= hoje).map(f => ({ data: f.data, dia: f.data.slice(8, 10), nome: f.nome, rotulo: fe.rotuloDoFeriado(f), tipo: f.tipo, passou: false })),
     },
     proximas: {
       titulo: dia ? 'Prazo em ' + d.prazoParaTela(dia) : 'Minhas tarefas',
@@ -197,6 +231,8 @@ export function useInicioNovo() {
         concluir: () => concluir(t),
         /** quem faz foi cobrado e ainda não respondeu (o sino; 13/11/2026) */
         cobrada: d.deveResponderCobranca(t, uid),
+        /** ao passar o mouse no Cobrada: quem cobrou e quando */
+        dicaDaCobranca: dicaDoCobrada(t),
       })),
     },
     /**
@@ -247,6 +283,8 @@ export function useInicioNovo() {
 
     // as Notificações
     carregandoMural: !mural.carregados,
+    /** as cobranças que a pessoa recebeu, a mais nova primeiro (aberta = ainda sem resposta); clicar abre a tarefa */
+    cobrancas,
     comunicados,
     comunicado: comunicados.find(c => c.id === comunicado) || (reunioes.lista.some(x => x.id === comunicado) ? null : comunicados[0]) || null,
     /** a reunião escolhida (o mesmo escolher dos comunicados: o id diz qual é) */

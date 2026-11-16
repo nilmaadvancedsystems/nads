@@ -5,6 +5,7 @@
 // Aqui só as regras (TypeScript puro): validar, ordenar, filtrar por aba, buscar, montar o histórico de cada mudança e ler
 // o documento do banco. A gravação é do repositório da Tarefas (dados/tarefasDelegadas*.ts).
 import { diaEmBrasilia, nomeNorm } from '../../formatos';
+import { feriadoDoDia } from './feriados';
 
 export type Prioridade = 'baixa' | 'normal' | 'alta' | 'urgente';
 export type Status = 'pendente' | 'andamento' | 'pausada' | 'cancelada' | 'concluida';
@@ -20,7 +21,9 @@ export interface Nota {
    * o parecer que é a cobrança de quem delegou ou a resposta de quem faz (13/11/2026: "um icone de sino, nas tarefas delegadas,
    * para meio que 'Cobrar' a tarefa"); sem o campo, é um parecer comum
    */
-  tipo?: 'cobranca' | 'resposta';
+  tipo?: 'cobranca' | 'resposta' | 'adiamento';
+  /** o adiamento (16/11/2026: "Mais 5 minutos, + 10minutos… mas que tenha uma justificativa escrita"): quantos minutos; o texto é a justificativa */
+  minutos?: number;
 }
 /**
  * Um anexo: o arquivo vai em pedaços no banco; aqui só o que a lista mostra. tamanho = o do arquivo (o que a pessoa baixa);
@@ -277,6 +280,21 @@ export function nomeDaImagemEncolhida(nome: string): string {
   return (ext ? nome.slice(0, -ext.length - 1) : nome) + '.webp';
 }
 
+const PRINT_COLADO = /^Print colado (\d+)\.[A-Za-z0-9]{1,10}$/;
+
+/** O anexo veio de um print colado nos Detalhes? (mostra a miniatura embaixo do campo) */
+export const ehPrintColado = (nome: string) => PRINT_COLADO.test(nome);
+
+/**
+ * O nome do print colado nos Detalhes (16/11/2026: "Coloca a opção de colar print, nos detalhes, para requerer os
+ * pagamentos"): "Print colado 3.png", o número seguinte ao maior que a tarefa já tem; a extensão pelo tipo da imagem.
+ */
+export function nomeDoPrintColado(nomesAtuais: readonly string[], tipo: string): string {
+  const maior = nomesAtuais.reduce((n, nome) => Math.max(n, Number(PRINT_COLADO.exec(nome)?.[1] || 0)), 0);
+  const ext = tipo === 'image/jpeg' ? 'jpg' : tipo === 'image/webp' ? 'webp' : tipo === 'image/bmp' ? 'bmp' : 'png';
+  return 'Print colado ' + (maior + 1) + '.' + ext;
+}
+
 /**
  * O que impede de anexar estes arquivos à tarefa ('' quando pode): vazio, maior que 10 MB, mais de 20 na tarefa ou a
  * tarefa passando de 30 MB somando os que já tem.
@@ -408,6 +426,9 @@ export function buscar<T extends Pick<TarefaDelegada, 'numero' | 'titulo' | 'des
 
 /** Quem pode mudar a tarefa: quem criou ou o responsável. */
 export const podeMudar = (t: Pick<TarefaDelegada, 'criadaPor' | 'responsavel'>, uid: string): boolean => !!uid && (t.criadaPor.uid === uid || t.responsavel.uid === uid);
+/** Os Detalhes da tarefa concluída (a normal e a de documentos) não se editam mais, para ninguém, nem para quem criou
+ *  (Vitor, 16/11/2026: "Detalhes depois das tarefas e documentos concluidas não pode ser editadas"). */
+export const detalhesTravados = (t: Pick<TarefaDelegada, 'status'>): boolean => t.status === 'concluida';
 /** Quem pode excluir: quem criou (ou o admin). */
 export const podeExcluir = (t: Pick<TarefaDelegada, 'criadaPor'>, uid: string, admin = false): boolean => admin || (!!uid && t.criadaPor.uid === uid);
 
@@ -463,18 +484,23 @@ function noDiaDeBrasilia(ms: number): { meiaNoite: number; minuto: number } {
 /** O dia da semana (0 = domingo) do dia de Brasília que começa em "meiaNoite" (ms UTC). */
 const diaDaSemana = (meiaNoite: number) => new Date(meiaNoite + FUSO_DE_BRASILIA * MIN).getUTCDay();
 
+/** O dia de Brasília que começa em "meiaNoite" (ms UTC), 'AAAA-MM-DD'. */
+const dataDoDia = (meiaNoite: number) => new Date(meiaNoite + FUSO_DE_BRASILIA * MIN).toISOString().slice(0, 10);
+
 /**
  * O expediente do dia de Brasília que começa em "meiaNoite" (ms UTC): de segunda a quinta até 18:05, na sexta até 17:05, e no
- * sábado e no domingo nada (o cronômetro não anda).
+ * sábado, no domingo e nos feriados nada (o cronômetro não anda). Os feriados são os do calendário de Taiobeiras (feriados.ts);
+ * o ponto facultativo e o meio expediente seguem como um dia comum (Vitor, 15/11/2026: "Só nos feriados").
  */
 export function expedienteDoDia(meiaNoite: number): readonly { de: number; ate: number }[] {
   const dia = diaDaSemana(meiaNoite);
-  return dia === 0 || dia === 6 ? [] : dia === 5 ? EXPEDIENTE_DE_SEXTA : EXPEDIENTE;
+  if (dia === 0 || dia === 6 || feriadoDoDia(dataDoDia(meiaNoite))?.tipo === 'feriado') return [];
+  return dia === 5 ? EXPEDIENTE_DE_SEXTA : EXPEDIENTE;
 }
 
 const DIAS_DA_SEMANA = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
 
-/** Agora é intervalo (11:05–13:00, ou 18:05–07:00; na sexta, 17:05–07:00; o sábado e o domingo inteiros)? */
+/** Agora é intervalo (11:05–13:00, ou 18:05–07:00; na sexta, 17:05–07:00; o sábado, o domingo e o feriado inteiros)? */
 export function noIntervalo(agora: Date | string): boolean {
   const ms = msDe(agora);
   if (!Number.isFinite(ms)) return false;
@@ -482,12 +508,12 @@ export function noIntervalo(agora: Date | string): boolean {
   return !expedienteDoDia(meiaNoite).some(e => minuto >= e.de && minuto < e.ate);
 }
 
-/** A próxima virada (pausa ou volta) depois de agora: a tela se redesenha nela (no fim de semana, a de segunda). */
+/** A próxima virada (pausa ou volta) depois de agora: a tela se redesenha nela (no fim de semana e no feriado, a do próximo dia útil). */
 export function proximaVirada(agora: Date | string): Date {
   const ms = msDe(agora);
   const { meiaNoite } = noDiaDeBrasilia(ms);
-  // até 8 dias à frente: pula o sábado e o domingo, que não têm expediente
-  const viradas = [0, 1, 2, 3, 4, 5, 6, 7].flatMap(dia => expedienteDoDia(meiaNoite + dia * 1440 * MIN).flatMap(e => [e.de, e.ate]).map(m => meiaNoite + (dia * 1440 + m) * MIN));
+  // até 15 dias à frente: pula o sábado, o domingo e os feriados, que não têm expediente
+  const viradas = Array.from({ length: 15 }, (_, i) => i).flatMap(dia => expedienteDoDia(meiaNoite + dia * 1440 * MIN).flatMap(e => [e.de, e.ate]).map(m => meiaNoite + (dia * 1440 + m) * MIN));
   return new Date(viradas.find(v => v > ms) as number);
 }
 
@@ -521,7 +547,7 @@ export function acoesNoHorario(t: Pick<TarefaDelegada, 'status'>, agora: Date | 
   return situacaoNoHorario(t, agora).automatica ? acoes.filter(a => a.id === 'concluir') : acoes;
 }
 
-/** Os minutos de expediente entre dois instantes (ms UTC): o que cai fora de 07:00–11:05 e 13:00–18:05 (na sexta, 17:05; sábado e domingo, nada) não conta. */
+/** Os minutos de expediente entre dois instantes (ms UTC): o que cai fora de 07:00–11:05 e 13:00–18:05 (na sexta, 17:05; sábado, domingo e feriado, nada) não conta. */
 export function minutosDeExpediente(inicio: number, fim: number): number {
   if (!(fim > inicio)) return 0;
   let total = 0;
@@ -579,6 +605,37 @@ export const pedeDocumentos = (t: Pick<TarefaDelegada, 'tipo'>): boolean => t.ti
 export const requerDocumentos = (t: Pick<TarefaDelegada, 'tipo'>): boolean => t.tipo === 'documentos';
 /** O envio de documentos: quem recebe baixa e confirma o recebimento. */
 export const enviaDocumentos = (t: Pick<TarefaDelegada, 'tipo'>): boolean => t.tipo === 'envio';
+
+/**
+ * Quem recebe os documentos da tarefa (Vitor, 16/11/2026: "os documentos enviados para pessoa, dê a opção de quem recebeu, baixar
+ * tudo, e cair em .zip"): no envio, a pessoa para quem foram; no pedido, quem pediu (os anexos são de quem atendeu).
+ */
+export function recebeOsDocumentos(t: Pick<TarefaDelegada, 'tipo' | 'responsavel' | 'criadaPor'>, uid: string): boolean {
+  if (!uid) return false;
+  if (t.tipo === 'envio') return t.responsavel.uid === uid;
+  if (t.tipo === 'documentos') return t.criadaPor.uid === uid;
+  return false;
+}
+
+/** O nome do .zip dos documentos: "Documentos - 389 LATORRES DISTRIBUIDORA LTDA.zip" (sem cliente, o título da tarefa). */
+export function nomeDoZipDosDocumentos(t: Pick<TarefaDelegada, 'titulo' | 'clientes'>): string {
+  const c = t.clientes[0];
+  const base = c ? 'Documentos - ' + (c.codigo != null ? c.codigo + ' ' : '') + c.nome : t.titulo || 'Documentos';
+  return base.replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120) + '.zip';
+}
+
+/** Os nomes dos arquivos dentro do .zip, sem repetir: o segundo "extrato.pdf" vira "extrato (2).pdf". */
+export function nomesSemRepetir(nomes: readonly string[]): string[] {
+  const usados = new Set<string>();
+  return nomes.map(n => {
+    const limpo = n.replace(/[\\/]+/g, '-').trim() || 'arquivo';
+    const m = /^(.*?)(\.[^.]*)?$/.exec(limpo) as RegExpExecArray;
+    let nome = limpo;
+    for (let k = 2; usados.has(nome.toLowerCase()); k++) nome = m[1] + ' (' + k + ')' + (m[2] || '');
+    usados.add(nome.toLowerCase());
+    return nome;
+  });
+}
 
 /**
  * Delegar documentos no Início novo (Vitor, 13/11/2026: "a pergunta se o cara quer enviar ou requerer documentos / E qual
@@ -803,6 +860,105 @@ export function problemaDaResposta(t: Pick<TarefaDelegada, 'responsavel' | 'pare
   return '';
 }
 
+/** Uma cobrança que a pessoa recebeu (as Notificações do Início; 16/11/2026): a tarefa, quem cobrou, quando e se ainda espera a resposta. */
+export interface CobrancaRecebida { tarefa: TarefaDelegada; nota: Nota; aberta: boolean }
+
+/**
+ * As cobranças das tarefas que a pessoa faz, a mais nova primeiro (16/11/2026: "faça aparecer em notificações que houve uma
+ * cobrança"); aberta = a última cobrança da tarefa, ainda sem resposta.
+ */
+export function cobrancasRecebidas(lista: readonly TarefaDelegada[], uid: string): CobrancaRecebida[] {
+  if (!uid) return [];
+  return lista.filter(t => t.responsavel.uid === uid && t.criadaPor.uid !== uid).flatMap(t => {
+    const aberta = cobrancaAberta(t);
+    return t.pareceres.filter(p => p.tipo === 'cobranca').map(nota => ({ tarefa: t, nota, aberta: nota === aberta }));
+  }).sort((a, b) => b.nota.em.localeCompare(a.nota.em));
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// mais tempo para responder (16/11/2026: "assim que cobrar, não deixa o usuario sair enquanto nao responder a cobrança, faça
+// uma bela popup. Deixa com a opção 'Mais 5 minutos, + 10minutos'… E para quem cobrou aparece que o usuario pediu + 5 +10
+// minutos..., mas que tenha uma justificativa escrita"). O adiamento também vai nos pareceres (tipo 'adiamento', com os
+// minutos e a justificativa no texto): a cobrança continua aberta, e a janela volta quando o tempo acaba.
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** as opções de mais tempo, em minutos */
+export const MINUTOS_DE_ADIAMENTO = [5, 10] as const;
+
+/** O último pedido de mais tempo depois da cobrança aberta, ou null. */
+export function adiamentoDaCobranca(t: Pick<TarefaDelegada, 'pareceres'>): Nota | null {
+  for (let i = t.pareceres.length - 1; i >= 0; i--) {
+    const p = t.pareceres[i];
+    if (p.tipo === 'adiamento') return cobrancaAberta(t) ? p : null;
+    if (p.tipo === 'cobranca' || p.tipo === 'resposta') return null;
+  }
+  return null;
+}
+
+/** Até quando a cobrança aberta está adiada (ISO), ou '' (sem adiamento). */
+export function cobrancaAdiadaAte(t: Pick<TarefaDelegada, 'pareceres'>): string {
+  const a = adiamentoDaCobranca(t);
+  const em = a ? Date.parse(a.em) : NaN;
+  return a && Number.isFinite(em) ? new Date(em + (a.minutos || 0) * 60_000).toISOString() : '';
+}
+
+/** A janela da cobrança aparece para quem faz: cobrança aberta e sem mais tempo correndo. */
+export function deveMostrarCobranca(t: Pick<TarefaDelegada, 'responsavel' | 'pareceres'>, uid: string, agora: Date): boolean {
+  if (!deveResponderCobranca(t, uid)) return false;
+  const ate = cobrancaAdiadaAte(t);
+  return !ate || Date.parse(ate) <= agora.getTime();
+}
+
+/** O que impede de pedir mais tempo ('' = pode). */
+export function problemaDoAdiamento(t: Pick<TarefaDelegada, 'responsavel' | 'pareceres'>, uid: string, minutos: number, justificativa: string, agora = new Date()): string {
+  if (t.responsavel.uid !== uid) return 'Só quem faz a tarefa pede mais tempo.';
+  if (!cobrancaAberta(t)) return 'Não tem cobrança esperando resposta.';
+  if (!(MINUTOS_DE_ADIAMENTO as readonly number[]).includes(minutos)) return 'Escolha mais 5 ou mais 10 minutos.';
+  const ate = cobrancaAdiadaAte(t);
+  if (ate && Date.parse(ate) > agora.getTime()) return 'O tempo pedido ainda não acabou.';
+  const x = limparTexto(justificativa);
+  if (!x) return 'Escreva a justificativa: por que precisa de mais tempo.';
+  if (x.length > MAIOR_PARECER) return 'A justificativa passou de ' + MAIOR_PARECER + ' caracteres.';
+  if (t.pareceres.length >= MAIS_PARECERES) return 'A tarefa chegou ao limite de ' + MAIS_PARECERES + ' pareceres.';
+  return '';
+}
+
+/** O pedido de mais tempo (a justificativa no texto). */
+export const notaDoAdiamento = (minutos: number, justificativa: string, por: string, em: string): Nota => ({ por, em, texto: limparTexto(justificativa), tipo: 'adiamento', minutos });
+export const historicoDoAdiamento = (por: string, em: string, minutos: number): Nota => ({ por, em, texto: 'Pediu mais ' + minutos + ' minutos para responder à cobrança' });
+
+/**
+ * O andamento da última cobrança, na ordem: a cobrança, os pedidos de mais tempo e a resposta (quem cobrou vê na tarefa;
+ * 16/11/2026). Vazio sem cobrança.
+ */
+export function andamentoDaCobranca(t: Pick<TarefaDelegada, 'pareceres'>): Nota[] {
+  for (let i = t.pareceres.length - 1; i >= 0; i--) {
+    if (t.pareceres[i].tipo === 'cobranca') return t.pareceres.slice(i).filter(p => p.tipo === 'cobranca' || p.tipo === 'adiamento' || p.tipo === 'resposta');
+  }
+  return [];
+}
+
+/** O texto de um passo da cobrança para a tela ("Fulano pediu mais 10 minutos: …", "Fulano respondeu: …"). */
+export function textoDoPassoDaCobranca(n: Nota): string {
+  if (n.tipo === 'adiamento') return n.por + ' pediu mais ' + (n.minutos || 0) + ' minutos: ' + n.texto;
+  if (n.tipo === 'resposta') return n.por + ' respondeu: ' + n.texto;
+  return n.por + ' cobrou uma atualização: ' + n.texto;
+}
+
+/**
+ * O que quem cobrou recebe de volta (as Notificações do Início; 16/11/2026): os pedidos de mais tempo e as respostas das
+ * tarefas que a pessoa delegou, o mais novo primeiro.
+ */
+export function retornosDasCobrancas(lista: readonly TarefaDelegada[], uid: string): { tarefa: TarefaDelegada; nota: Nota }[] {
+  if (!uid) return [];
+  return lista.filter(t => t.criadaPor.uid === uid && t.responsavel.uid !== uid)
+    .flatMap(t => t.pareceres.filter(p => p.tipo === 'adiamento' || p.tipo === 'resposta').map(nota => ({ tarefa: t, nota })))
+    .sort((a, b) => b.nota.em.localeCompare(a.nota.em));
+}
+
+/** O que aparece ao passar o mouse no Cobrada (quando = a data e a hora já escritas para a tela). */
+export const dicaDaCobranca = (n: Pick<Nota, 'por'>, quando: string) => n.por + ' cobrou uma atualização em ' + quando + '. Abra a tarefa e responda.';
+
 /** A cobrança (o texto escrito, ou o de sempre). */
 export const notaDaCobranca = (texto: string, por: string, em: string): Nota => ({ por, em, texto: limparTexto(texto) || TEXTO_DA_COBRANCA, tipo: 'cobranca' });
 /** A resposta de quem faz. */
@@ -956,6 +1112,25 @@ export function problemaDoLink(url: string, atuais: readonly Pick<LinkDaTarefa, 
   return '';
 }
 
+/**
+ * O link como vai para a tarefa: o colado sem o https:// (www.site.com.br/x) ganha o https:// (15/11/2026: "melhora a questao dos
+ * links"); o resto fica como veio (o problemaDoLink diz se não serve).
+ */
+export function linkCompleto(texto: string): string {
+  const u = texto.trim();
+  if (!u || /^[a-z][a-z0-9+.-]*:/i.test(u) || /\s/.test(u) || !/^[^/]+\.[a-z]{2,}(?:[/:?#]|$)/i.test(u)) return u;
+  return 'https://' + u.replace(/^\/+/, '');
+}
+
+/** O nome curto do link na lista: o site sem o www e o caminho (sem o https://, a consulta e a barra do fim). */
+export function rotuloDoLink(url: string): string {
+  try {
+    const x = new URL(url);
+    const caminho = decodeURIComponent(x.pathname).replace(/\/+$/, '');
+    return x.hostname.replace(/^www\./, '') + caminho;
+  } catch { return url; }
+}
+
 export const historicoDoLink = (acao: 'fixou' | 'tirou', url: string, por: string, em: string): Nota => ({ por, em, texto: (acao === 'fixou' ? 'Fixou o link ' : 'Tirou o link ') + url });
 
 export function comLink(t: TarefaDelegada, url: string, por: string, em: string): TarefaDelegada {
@@ -984,7 +1159,13 @@ export const pessoasDaTarefa = (t: Pick<TarefaDelegada, 'criadaPor' | 'responsav
 const texto = (v: unknown) => (v == null ? '' : String(v));
 const obj = (v: unknown): Record<string, unknown> | null => (v && typeof v === 'object' && !Array.isArray(v) ? v as Record<string, unknown> : null);
 const lerPessoa = (v: unknown): Pessoa => { const p = obj(v); return { uid: texto(p?.uid), nome: texto(p?.nome) }; };
-const lerNotas = (v: unknown): Nota[] => (Array.isArray(v) ? v.map(obj).filter((x): x is Record<string, unknown> => !!x).map(x => ({ por: texto(x.por), em: texto(x.em), texto: texto(x.texto) })) : []);
+// o tipo da cobrança e da resposta vem junto (16/11/2026: "O cobrar atualizacoes tbm não ta funcionando": a leitura jogava o
+// tipo fora, a cobrança gravava no banco e voltava como parecer comum, sem o Cobrada nem o Responder cobrança)
+const lerNotas = (v: unknown): Nota[] => (Array.isArray(v) ? v.map(obj).filter((x): x is Record<string, unknown> => !!x)
+  .map(x => ({
+    por: texto(x.por), em: texto(x.em), texto: texto(x.texto), ...(x.tipo === 'cobranca' || x.tipo === 'resposta' || x.tipo === 'adiamento' ? { tipo: x.tipo } : {}),
+    ...(x.tipo === 'adiamento' && Number.isInteger(x.minutos) && Number(x.minutos) > 0 && Number(x.minutos) <= 60 ? { minutos: Number(x.minutos) } : {}),
+  })) : []);
 
 /** O documento do banco como tarefa (o que falta ou veio torto fica no padrão, sem quebrar a lista). */
 export function lerTarefa(id: string, x: Record<string, unknown>): TarefaDelegada {

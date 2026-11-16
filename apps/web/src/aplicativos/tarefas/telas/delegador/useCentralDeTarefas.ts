@@ -7,6 +7,7 @@ import { baixarArquivo, baixarBytes } from '@nads/ui';
 import { useState } from 'react';
 import { useTarefasDelegadas } from '../../dados/repo';
 import { useAgoraDoExpediente } from './useAgoraDoExpediente';
+import { useNovidade } from '../../../../comum/novidades';
 
 const d = tarefas.delegadas;
 const ag = tarefas.agenda;
@@ -59,6 +60,13 @@ export function useCentralDeTarefas(abaInicial: AbaDaCentral, opcoes: { agenda?:
   const agora = new Date().toTimeString().slice(0, 5);
   // a em andamento aparece Pausada nos intervalos (11:05–13:00 e 18:05–07:00); o banco segue Em andamento
   const relogio = useAgoraDoExpediente();
+  // quem cobrou e quando, ao passar o mouse no Cobrada (a novidade 'cobranca-notificada'; 16/11/2026)
+  const cobrancaNotificada = useNovidade('cobranca-notificada');
+  const dicaDoCobrada = (t: tarefas.delegadas.TarefaDelegada) => {
+    const n = d.cobrancaAberta(t);
+    return cobrancaNotificada && n ? d.dicaDaCobranca(n, new Date(n.em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }))
+      : 'Cobraram uma atualização: abra a tarefa e responda';
+  };
   const doBanco = new Map(todas.map(t => [t.id, t]));
   const contadores = d.contarAbas(todas, uid);
   const daAba = (opcoes.documentos ? todas : d.daAba(todas, aba, uid)).map(t => ({ ...t, status: d.situacaoNoHorario(t, relogio).status }));
@@ -95,6 +103,8 @@ export function useCentralDeTarefas(abaInicial: AbaDaCentral, opcoes: { agenda?:
     // a cobrança (o sino; 13/11/2026): quem faz foi cobrado; quem delegou pode cobrar, ou está esperando a resposta
     cobranca: d.deveResponderCobranca(t, uid) ? 'cobrada' as const : d.podeCobrar(doBanco.get(t.id) || t, uid) ? 'cobrar' as const
       : t.criadaPor.uid === uid && d.cobrancaAberta(t) ? 'esperando' as const : null,
+    /** ao passar o mouse no Cobrada: quem cobrou e quando */
+    dicaDaCobranca: dicaDoCobrada(t),
   });
   return {
     carregando: !carregadas,

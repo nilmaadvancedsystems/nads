@@ -10,6 +10,7 @@ import { useCadastroDaEmpresa } from '../../dados/repo';
 import { useGuardado } from '../../../../../../comum/guardado';
 import { useParametrosDaEtapa } from '../../../../telas/executor/etapas/ponte';
 import { criarTravaDeRepeticao } from '../../../../../../comum/travaDeRepeticao';
+import { ouvirOcr } from '../../../../../../comum/ocr';
 
 /** 'aaaa-mm' do mês passado (a competência que o escritório trabalha). */
 function mesPassado(): string {
@@ -40,12 +41,42 @@ export const CAIXAS: ConfigCaixa[] = [
   },
 ];
 
+/** Cada arquivo no cartão do andamento e no do resultado: esperando, lendo, e o que deu (16/11/2026). */
+export interface ArquivoNoAndamento { nome: string; situacao: 'esperando' | 'lendo' | 'ok' | 'aviso' | 'erro'; detalhe: string }
+
+/**
+ * O andamento da importação de arquivos (Vitor, 16/11/2026: "refaça o código dos extratos em relação a quando o usuário upa
+ * o arquivo, para um feedback visual melhor, está falhando"): o cartão por cima da tela mostra cada arquivo (esperando,
+ * lendo, quantos lançamentos ou o motivo de ficar de fora), a página do OCR no escaneado e o "guardando" no fim. Some na
+ * pergunta "apenas novas / sobrepor" (a janela fica na frente) e vira o resultado no fim.
+ */
+export interface Andamento {
+  titulo: string;
+  etapa: 'lendo' | 'perguntando' | 'gravando';
+  arquivos: ArquivoNoAndamento[];
+  /** o escaneado: as páginas lidas pelo OCR do arquivo que está lendo */
+  ocr: { feitas: number; total: number } | null;
+}
+
 /** O que a mensagem flutuante mostra (a View desenha). */
 export interface Mensagem {
   tom: 'erro' | 'ok' | 'info';
   titulo: string;
   textos: { texto: string; tom?: 'aviso' }[];
+  /** os arquivos da importação, um por linha, com o que deu em cada um */
+  arquivos?: ArquivoNoAndamento[];
 }
+
+/** O que deu na leitura de um arquivo, para a linha dele no cartão. */
+function resultadoDoArquivo(l: x.ArquivoLido): ArquivoNoAndamento {
+  if (l.semMovimento) return { nome: l.nome, situacao: 'aviso', detalhe: 'Sem movimento' };
+  if (l.erro || !l.lancamentos.length) return { nome: l.nome, situacao: 'erro', detalhe: l.erro || 'Nenhum lançamento' };
+  const n = l.lancamentos.length;
+  return { nome: l.nome, situacao: l.ocr ? 'aviso' : 'ok', detalhe: n + (n === 1 ? ' lançamento' : ' lançamentos') + (l.ocr ? ' · pelo OCR, confira' : '') };
+}
+
+/** O erro inesperado em palavras (o que vai no cartão). */
+const textoDoErro = (e: unknown) => (e instanceof Error && e.message ? e.message : String(e || 'erro desconhecido'));
 
 const NOME: Record<x.Lado, string> = { banco: 'o extrato', sistema: 'o sistema' };
 
@@ -126,6 +157,9 @@ export function useImportacao() {
     const chave = s.empresa.nome + '|' + r.tirados + '|' + s.empresa.arquivos.filter(a => a.lado === 'banco').map(a => a.id + ':' + a.lancamentos.length).join(',');
     if (podeLimpar(chave)) aplicar(e => x.tirarSobreposicaoDosExtratos(e, bancoDe, new Date()).empresa);
   }, [s.empresa, primeiro, aplicar, podeLimpar]);
+  const [andamento, setAndamento] = useState<Andamento | null>(null);
+  // a página do OCR do arquivo que está lendo (o escaneado demora: a pessoa vê que está andando)
+  useEffect(() => ouvirOcr((feitas, total) => setAndamento(a => (a && a.etapa === 'lendo' ? { ...a, ocr: { feitas, total } } : a))), []);
   const [mensagem, setMensagemBruta] = useState<Mensagem | null>(null);
   const [seqMensagem, setSeq] = useState(0);
   const setMensagem = (m: Mensagem | null) => { setMensagemBruta(m); setSeq(v => v + 1); };
@@ -147,9 +181,41 @@ export function useImportacao() {
     setMensagemBruta(null);
     if (!fs.length) { setMensagem({ tom: 'erro', titulo: 'Escolha o arquivo', textos: [{ texto: lado === 'banco' ? 'Selecione os PDFs do extrato antes de importar.' : 'Selecione o razão da conta do banco antes de importar.' }] }); return; }
     setLendo(lado);
+    try {
+      const { lidos, arquivos } = await lerComAndamento((lado === 'banco' ? 'Extrato' : 'Razão'), lado, fs);
+      await gravarLidos(lado, lidos, undefined, undefined, undefined, undefined, arquivos);
+    } catch (e) {
+      setMensagem({ tom: 'erro', titulo: 'A importação parou no meio', textos: [{ texto: textoDoErro(e) + '. Nada foi alterado: tente de novo.' }] });
+    } finally { setLendo(null); setAndamento(null); }
+  }
+
+  /**
+   * Lê os arquivos um a um, mostrando cada um no cartão do andamento. O que não serve (outro tipo, vazio, enorme) fica de fora
+   * antes de ler; o que não abre (o arquivo da nuvem que não baixou, o corrompido) fica de fora com o motivo, sem parar os outros.
+   */
+  async function lerComAndamento(titulo: string, lado: x.Lado, fs: File[]): Promise<{ lidos: x.ArquivoLido[]; arquivos: ArquivoNoAndamento[] }> {
+    const arquivos: ArquivoNoAndamento[] = fs.map(f => ({ nome: f.name, situacao: 'esperando', detalhe: '' }));
+    const mostrar = () => setAndamento({ titulo, etapa: 'lendo', arquivos: [...arquivos], ocr: null });
+    mostrar();
     const lidos: x.ArquivoLido[] = [];
-    for (const f of fs) lidos.push(await x.lerArquivo(f.name, new Uint8Array(await f.arrayBuffer()), lado));
-    await gravarLidos(lado, lidos);
+    for (const [i, f] of fs.entries()) {
+      const problema = x.problemaDoArquivoParaImportar(f.name, f.size, lado);
+      let lido: x.ArquivoLido;
+      if (problema) lido = { nome: f.name, lancamentos: [], erro: problema };
+      else {
+        arquivos[i] = { nome: f.name, situacao: 'lendo', detalhe: 'Lendo…' };
+        mostrar();
+        try {
+          lido = await x.lerArquivo(f.name, new Uint8Array(await f.arrayBuffer()), lado);
+        } catch (e) {
+          lido = { nome: f.name, lancamentos: [], erro: 'Não consegui abrir o arquivo (' + textoDoErro(e) + '). Se ele está numa pasta da nuvem, baixe para o computador e tente de novo.' };
+        }
+      }
+      arquivos[i] = resultadoDoArquivo(lido);
+      mostrar();
+      lidos.push(lido);
+    }
+    return { lidos, arquivos };
   }
 
   /** Importar direto (na linha do banco): escolheu os arquivos, já importa para aquele banco. */
@@ -160,14 +226,14 @@ export function useImportacao() {
     if (!fs.length) return false;
     setMensagemBruta(null);
     setLendoLinha(banco + '|' + lado);
-    const lidos: x.ArquivoLido[] = [];
-    for (const f of fs) {
-      const lido = await x.lerArquivo(f.name, new Uint8Array(await f.arrayBuffer()), lado);
-      lidos.push(soOsMeses ? soDosMeses(lido, soOsMeses) : lido);
-    }
-    const ok = await gravarLidos(lado, lidos, banco, undefined, undefined, mesesDaBusca);
-    setLendoLinha(null);
-    return ok;
+    const titulo = (lado === 'banco' ? 'Extrato' : 'Razão') + ' · ' + (bancos.find(b => b.id === banco)?.nome || 'banco');
+    try {
+      const { lidos, arquivos } = await lerComAndamento(titulo, lado, fs);
+      return await gravarLidos(lado, soOsMeses ? lidos.map(l => soDosMeses(l, soOsMeses)) : lidos, banco, undefined, undefined, mesesDaBusca, arquivos);
+    } catch (e) {
+      setMensagem({ tom: 'erro', titulo: 'A importação parou no meio', textos: [{ texto: textoDoErro(e) + '. Nada foi alterado: tente de novo.' }] });
+      return false;
+    } finally { setLendoLinha(null); setAndamento(null); }
   }
 
   /**
@@ -178,31 +244,39 @@ export function useImportacao() {
   async function importarDoDrive(banco: string, arquivo: { id: string; nome: string }, conteudo: ArrayBuffer, mes?: string, tentativa = false, marca?: string): Promise<boolean | 'vazio'> {
     setMensagemBruta(null);
     setLendoLinha(banco + '|banco');
+    try {
     let lido = await x.lerArquivo(arquivo.nome, new Uint8Array(conteudo), 'banco');
     // o arquivo de outro banco na pasta desta conta não entra (Vitor, 12/11/2026, na 429: a InfinitePay no Santander)
     if (x.deOutroBanco(lido.bancoNoTexto, marca)) {
       const nomeDe = (id?: string) => empresas.BANCOS_CONHECIDOS.find(b => b.id === id)?.nome || id || '';
       lido = { ...lido, lancamentos: [], semMovimento: undefined, naoEExtrato: true, erro: 'É o extrato do ' + nomeDe(lido.bancoNoTexto) + ', não do ' + nomeDe(marca) + '.' };
     }
-    if (tentativa && !lido.semMovimento && (lido.erro || !lido.lancamentos.length)) { setLendoLinha(null); return 'vazio'; }
-    const ok = await gravarLidos('banco', [lido], banco, arquivo, undefined, mes ? [mes] : undefined);
-    setLendoLinha(null);
-    return ok;
+    if (tentativa && !lido.semMovimento && (lido.erro || !lido.lancamentos.length)) return 'vazio';
+    return await gravarLidos('banco', [lido], banco, arquivo, undefined, mes ? [mes] : undefined);
+    } catch (e) {
+      setMensagem({ tom: 'erro', titulo: 'Não importei ' + arquivo.nome, textos: [{ texto: textoDoErro(e) }] });
+      return false;
+    } finally { setLendoLinha(null); }
   }
 
   /** O extrato que chegou por e-mail (08/10/2026): lê e importa para aquele banco (o arquivo não fica guardado). */
   async function importarRecebido(banco: string, nome: string, conteudo: ArrayBuffer, sozinho = false) {
     setMensagemBruta(null);
     setLendoLinha(banco + '|banco');
-    const lido = await x.lerArquivo(nome, new Uint8Array(conteudo), 'banco');
-    // sozinho (ao abrir a tarefa): sem pergunta — se já houver movimento nas datas, só o que é novo (nunca apaga)
-    const ok = await gravarLidos('banco', [lido], banco, undefined, sozinho ? 'novas' : undefined);
-    setLendoLinha(null);
-    return ok;
+    try {
+      const lido = await x.lerArquivo(nome, new Uint8Array(conteudo), 'banco');
+      // sozinho (ao abrir a tarefa): sem pergunta — se já houver movimento nas datas, só o que é novo (nunca apaga)
+      return await gravarLidos('banco', [lido], banco, undefined, sozinho ? 'novas' : undefined);
+    } catch (e) {
+      setMensagem({ tom: 'erro', titulo: 'Não importei ' + nome, textos: [{ texto: textoDoErro(e) }] });
+      return false;
+    } finally { setLendoLinha(null); }
   }
 
   /** O que vem depois de ler: pergunta o modo (se já houver movimento nas datas), importa e avisa. */
-  async function gravarLidos(lado: x.Lado, lidos: x.ArquivoLido[], banco?: string, doDrive?: { id: string; nome: string }, modoFixo?: x.ModoImportacao, mesesDaBusca?: string[]): Promise<boolean> {
+  /** `arquivos`: os do cartão do andamento (o resultado mostra cada um, no lugar do "ficou de fora" junto no texto). */
+  async function gravarLidos(lado: x.Lado, lidos: x.ArquivoLido[], banco?: string, doDrive?: { id: string; nome: string }, modoFixo?: x.ModoImportacao, mesesDaBusca?: string[], arquivos?: ArquivoNoAndamento[]): Promise<boolean> {
+    const comArquivos = arquivos && (arquivos.length > 1 || arquivos.some(a => a.situacao !== 'ok')) ? { arquivos } : {};
     // o extrato que diz que não teve movimento ("Nenhuma movimentação encontrada"): marca o mês como sem movimento e avisa
     // (Vitor, 13/10/2026), em vez de "Nada para importar"
     const semMov = lado === 'banco' && banco ? lidos.filter(l => l.semMovimento) : [];
@@ -217,7 +291,7 @@ export function useImportacao() {
       const rotulo = meses.map(m => m.slice(5) + '/' + m.slice(0, 4)).join(', ');
       if (!lidos.length) {
         setLendo(null);
-        setMensagem({ tom: 'info', titulo: 'Extrato sem movimento' + (rotulo ? ': ' + rotulo : ''), textos: [{ texto: meses.length ? (meses.length === 1 ? 'O mês ficou marcado' : 'Os meses ficaram marcados') + ' como sem movimento neste banco.' : 'O extrato não diz o mês: marque o mês como sem movimento na grade.' }] });
+        setMensagem({ tom: 'info', titulo: 'Extrato sem movimento' + (rotulo ? ': ' + rotulo : ''), textos: [{ texto: meses.length ? (meses.length === 1 ? 'O mês ficou marcado' : 'Os meses ficaram marcados') + ' como sem movimento neste banco.' : 'O extrato não diz o mês: marque o mês como sem movimento na grade.' }], ...comArquivos });
         return meses.length > 0;
       }
     }
@@ -225,8 +299,29 @@ export function useImportacao() {
     const bons = lidos.filter(l => !l.erro && l.lancamentos.length);
     if (!bons.length) {
       setLendo(null);
-      setMensagem({ tom: 'erro', titulo: 'Nada para importar', textos: falhas.map(f => ({ texto: f.nome + ': ' + (f.erro || 'nenhum lançamento') })) });
+      setMensagem(arquivos ? { tom: 'erro', titulo: arquivos.length === 1 ? 'Este arquivo não entrou' : 'Nenhum arquivo entrou', textos: [], arquivos }
+        : { tom: 'erro', titulo: 'Nada para importar', textos: falhas.map(f => ({ texto: f.nome + ': ' + (f.erro || 'nenhum lançamento') })) });
       return false;
+    }
+    // o extrato que não tem nenhum mês dentro do período da Tarefa (Vitor, 16/11/2026, na 429: os "pdf gerado - 012026" do
+    // Santander eram de janeiro a junho de 2025, e entraram calados num período de 2026): pergunta antes, no envio do computador
+    if (arquivos) {
+      const periodo = (params.get('meses') || '').split(',').filter(m => /^\d{4}-\d{2}$/.test(m));
+      const daTarefa = periodo.length ? periodo : [competenciaDeTeste];
+      const mesesLidos = [...new Set(bons.flatMap(l => l.lancamentos.map(y => y.data.slice(0, 7))))].sort();
+      if (mesesLidos.length && !mesesLidos.some(m => daTarefa.includes(m))) {
+        const mm = (m: string) => m.slice(5) + '/' + m.slice(0, 4);
+        const faixa = (ms: string[]) => (ms.length === 1 ? mm(ms[0]) : mm(ms[0]) + ' a ' + mm(ms[ms.length - 1]));
+        setAndamento(a => a && { ...a, etapa: 'perguntando' });
+        const seguir = await modal<boolean>({
+          icone: 'alert', titulo: 'Este extrato é de outro período',
+          html: (bons.length === 1 ? 'O arquivo é' : 'Os arquivos são') + ' de <b>' + faixa(mesesLidos) + '</b>, e a Tarefa está em <b>' + faixa([...daTarefa].sort()) + '</b>.<br><br>'
+            + 'Confira se pegou o ano certo: o nome do arquivo pode não bater com o que está dentro dele.',
+          botoes: [{ rotulo: 'Importar mesmo assim', valor: true, variante: 'btn-outline' }, { rotulo: 'Não importar', valor: false, variante: 'btn-primary' }],
+        });
+        if (!seguir) { setLendo(null); setMensagem({ tom: 'info', titulo: 'Nada foi importado', textos: [{ texto: 'O extrato era de ' + faixa(mesesLidos) + ', fora do período da Tarefa.' }] }); return false; }
+        setAndamento(a => a && { ...a, etapa: 'gravando' });
+      }
     }
     const qtdLida = bons.reduce((t, l) => t + l.lancamentos.length, 0);
     let modo: x.ModoImportacao | 'primeira' = 'primeira';
@@ -236,6 +331,8 @@ export function useImportacao() {
     const existentes = x.jaTemNoPeriodo(base, lado, bons);
     if (existentes && modoFixo) modo = modoFixo;
     else if (existentes) {
+      // a pergunta fica na frente: o cartão do andamento sai e volta no "guardando"
+      setAndamento(a => a && { ...a, etapa: 'perguntando' });
       const escolha = await modal<x.ModoImportacao | null>({
         icone: 'upload', titulo: 'Como importar ' + NOME[lado] + '?',
         html: 'Já existem <b>' + existentes + ' lançamento(s)</b> nas datas destes arquivos; os arquivos têm <b>' + qtdLida + '</b>.<br><br>' +
@@ -246,6 +343,7 @@ export function useImportacao() {
       if (!escolha) { setLendo(null); toast('Importação cancelada — nada foi alterado.'); return false; }
       modo = escolha;
     }
+    setAndamento(a => a && { ...a, etapa: 'gravando', ocr: null });
     // importa sobre a empresa guardada agora (não a desta tela): "Todos pelo Drive" grava um mês atrás do outro
     const feito: { res?: ReturnType<typeof x.importar> } = {};
     s.aplicar(e => {
@@ -264,10 +362,10 @@ export function useImportacao() {
     const textos: Mensagem['textos'] = [];
     if (res.jaExistiam) textos.push({ texto: res.jaExistiam + ' já estavam guardados e ficaram como estavam.' });
     if (res.substituidos) textos.push({ texto: res.substituidos + ' lançamento(s) que estavam guardados nessas datas foram substituídos.' });
-    for (const f of falhas) textos.push({ texto: f.nome + ' ficou de fora: ' + (f.erro || 'nenhum lançamento') + '.', tom: 'aviso' });
+    if (!arquivos) for (const f of falhas) textos.push({ texto: f.nome + ' ficou de fora: ' + (f.erro || 'nenhum lançamento') + '.', tom: 'aviso' });
     // o escaneado lido pelo OCR (Vitor, 13/10/2026): o reconhecimento pode errar um dígito, então pede para conferir
     const porOcr = bons.filter(l => l.ocr).map(l => l.nome);
-    if (porOcr.length) textos.push({ texto: porOcr.join(', ') + ' era imagem e foi lido pelo OCR: confira os valores com o arquivo.', tom: 'aviso' });
+    if (porOcr.length && !arquivos) textos.push({ texto: porOcr.join(', ') + ' era imagem e foi lido pelo OCR: confira os valores com o arquivo.', tom: 'aviso' });
     // a conferência pelo saldo (10/11/2026), em todo banco: o extrato cujo saldo impresso não fecha com os lançamentos lidos
     for (const l of bons) {
       const c = l.conferenciaPeloSaldo;
@@ -276,7 +374,8 @@ export function useImportacao() {
       textos.push({ tom: 'aviso', texto: l.nome + ': a leitura não fecha com o saldo do banco em ' + c.naoFecham + ' de ' + c.conferidos + ' ponto(s)'
         + (p ? ' (em ' + x.dataBR(p.data) + ' o banco mostra ' + x.reaisBR(p.impresso) + ' e a soma dá ' + x.reaisBR(p.calculado) + ')' : '') + '. Confira esse arquivo.' });
     }
-    setMensagem({ tom: 'ok', titulo: res.gravados + ' lançamento(s) importado(s)' + (modo === 'sobrepor' ? ' — movimento sobreposto' : ''), textos });
+    const n = res.gravados;
+    setMensagem({ tom: 'ok', titulo: (n === 1 ? '1 lançamento importado' : n + ' lançamentos importados') + (modo === 'sobrepor' ? ' · movimento sobreposto' : ''), textos, ...comArquivos });
     return true;
   }
 
@@ -313,9 +412,9 @@ export function useImportacao() {
    * arquivo de vários meses fica nos outros (Vitor, 21/10/2026: "deixa eu conseguir excluir apenas o mês que selecionei,
    * ao invés de excluir tudo"; no extrato e no razão).
    */
-  async function excluirDoBanco(banco: string, lado: x.Lado, competencia = competenciaDeTeste) {
+  async function excluirDoBanco(banco: string, lado: x.Lado, competencia = competenciaDeTeste): Promise<boolean> {
     const arqs = arquivosDe(banco, lado, competencia);
-    if (!arqs.length) return;
+    if (!arqs.length) return true;
     const nomeBanco = bancos.find(b => b.id === banco)?.nome || 'banco';
     const ficam = outrosMeses(arqs, [competencia]);
     const ok = await modal<boolean>({
@@ -323,20 +422,21 @@ export function useImportacao() {
       ...(ficam.length ? { html: 'Só <b>' + rotuloMes(competencia) + '</b> sai. ' + (arqs.length === 1 ? 'O arquivo' : 'Os arquivos') + ' também ' + (arqs.length === 1 ? 'tem' : 'têm') + ' ' + ficam.map(rotuloMes).join(', ') + ', que ' + (ficam.length === 1 ? 'fica' : 'ficam') + '.' } : {}),
       botoes: [{ rotulo: 'Excluir', valor: true, variante: 'btn-danger' }, { rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }],
     });
-    if (!ok) return;
+    if (!ok) return false;
     s.aplicar(e => arqs.reduce((acc, a) => x.excluirMesesDoArquivo(acc, a.id, [competencia], new Date()), e));
     setMensagem({ tom: 'ok', titulo: 'Importação excluída', textos: [{ texto: nomeBanco + ' · ' + (lado === 'banco' ? 'extrato' : 'razão') + ' · ' + rotuloMes(competencia) }] });
+    return true;
   }
 
   /**
    * Em Lote, "Remover todos": exclui o extrato (ou o razão) do banco em todos os meses do período, com uma pergunta só. Só
    * os meses do período: o arquivo que passa dele fica com os meses de fora (21/10/2026).
    */
-  async function excluirDoPeriodo(banco: string, lado: x.Lado, meses: string[]) {
+  async function excluirDoPeriodo(banco: string, lado: x.Lado, meses: string[]): Promise<boolean> {
     const porId = new Map<string, x.ArquivoImportado>();
     for (const m of meses) for (const a of arquivosDe(banco, lado, m)) porId.set(a.id, a);
     const arqs = [...porId.values()];
-    if (!arqs.length) return;
+    if (!arqs.length) return true;
     const nomeBanco = bancos.find(b => b.id === banco)?.nome || 'banco';
     const oQue = lado === 'banco' ? 'extrato' : 'razão';
     const qtd = arqs.reduce((t, a) => t + a.lancamentos.filter(l => meses.includes(l.data.slice(0, 7))).length, 0);
@@ -347,9 +447,10 @@ export function useImportacao() {
         ' (' + qtd + ' lançamentos). Dá para importar de novo depois.' + (ficam.length ? ' Fora do período, ' + ficam.map(rotuloMes).join(', ') + (ficam.length === 1 ? ' fica.' : ' ficam.') : ''),
       botoes: [{ rotulo: 'Cancelar', valor: false, variante: 'btn-outline' }, { rotulo: 'Remover todos', valor: true, variante: 'btn-danger' }],
     });
-    if (!ok) return;
+    if (!ok) return false;
     s.aplicar(e => arqs.reduce((acc, a) => x.excluirMesesDoArquivo(acc, a.id, meses, new Date()), e));
     setMensagem({ tom: 'ok', titulo: 'Importações removidas', textos: [{ texto: nomeBanco + ' · ' + oQue + ' · ' + meses.length + ' meses' }] });
+    return true;
   }
 
   /**
@@ -509,10 +610,14 @@ export function useImportacao() {
       return m;
     },
     marcarLendo: (banco: string | null) => setLendoLinha(banco ? banco + '|banco' : null),
-    avisar: (titulo: string) => setMensagem({ tom: 'info', titulo, textos: [] }),
-    avisarErro: (titulo: string, texto: string) => setMensagem({ tom: 'erro', titulo, textos: [{ texto }] }),
+    // o aviso de depois (o "Mandado para o Drive") entra no cartão do resultado que está na tela, em vez de tomar o lugar dele
+    // (16/11/2026: o "ficou de fora" sumia na hora, coberto pelo aviso do Drive)
+    avisar: (titulo: string) => { setMensagemBruta(m => (m && m.tom !== 'info' ? { ...m, textos: [...m.textos, { texto: titulo }] } : { tom: 'info', titulo, textos: [] })); setSeq(v => v + 1); },
+    avisarErro: (titulo: string, texto: string) => { setMensagemBruta(m => (m && m.tom !== 'info' ? { ...m, textos: [...m.textos, { texto: titulo + ': ' + texto, tom: 'aviso' }] } : { tom: 'erro', titulo, textos: [{ texto }] })); setSeq(v => v + 1); },
     ocupado: lendo !== null,
     mensagem, seqMensagem, fecharMensagem,
+    /** o cartão do andamento da importação (null = nada importando) */
+    andamento,
     arquivos,
   };
 }
