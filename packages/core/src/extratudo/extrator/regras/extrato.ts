@@ -225,6 +225,35 @@ function dataNaLinhaDoValor(linhas: Linha[]): Linha[] {
   return saida;
 }
 
+/**
+ * O ano cortado na virada da página (Vitor, 16/11/2026, o BB "Extrato de Conta Corrente": "no extrato puxa o 6 pra baixo"): a
+ * última linha da página abre com "16/01/202" e o "6" que falta cai sozinho na coluna Dia da página seguinte, antes do primeiro
+ * lançamento dela. O dígito volta para a data (e sai de lá, onde ia parar no histórico do lançamento de baixo).
+ */
+function completarAnoDaVirada(paginas: Linha[][]): Linha[][] {
+  const saida = paginas.map(p => p.slice());
+  const cortada = /^\d{1,2}[/.-]\d{1,2}[/.-]\d{3}$/;
+  for (let i = 0; i + 1 < saida.length; i++) {
+    const pagina = saida[i];
+    let k = pagina.length - 1;
+    while (k >= 0 && !cortada.test(pagina[k].tokens[0]?.s || '')) k--;
+    if (k < 0 || pagina.slice(k + 1).some(l => RE_DATA.test(l.tokens[0]?.s || ''))) continue;
+    const corte = pagina[k].tokens[0];
+    const prox = saida[i + 1];
+    const primeiroValor = prox.findIndex(l => l.tokens.some(t => RE_VALOR.test(t.s)));
+    const ate = primeiroValor < 0 ? prox.length : primeiroValor;
+    const j = prox.slice(0, ate).findIndex(l => /^\d$/.test(l.tokens[0]?.s || '') && Math.abs(l.tokens[0].x - corte.x) <= 30);
+    if (j < 0) continue;
+    const digito = prox[j].tokens[0];
+    const tokens = [{ ...corte, s: corte.s + digito.s, x2: Math.max(corte.x2, digito.x2) }, ...pagina[k].tokens.slice(1)];
+    pagina[k] = { ...pagina[k], tokens, texto: tokens.map(t => t.s).join(' ') };
+    const resto = prox[j].tokens.slice(1);
+    if (resto.length) prox[j] = { ...prox[j], tokens: resto, texto: resto.map(t => t.s).join(' ') };
+    else prox.splice(j, 1);
+  }
+  return saida;
+}
+
 function juntarValorDaVirada(paginas: Linha[][]): Linha[][] {
   const saida = paginas.map(p => p.slice());
   for (let i = 0; i + 1 < saida.length; i++) {
@@ -733,7 +762,7 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
   const textoDoPdf = paginas.map(p => p.map(i => i.texto).join(' ')).join('\n');
   const itauMensal = lado === 'banco' && ehItauMensal(textoDoPdf);
   const unificado = lado === 'banco' && ehBradescoUnificado(textoDoPdf);
-  const lidas = juntarValorDaVirada((itauMensal ? paginas.map(semALegendaDoItau) : paginas).map(p => dataNaLinhaDoValor(juntarPedacosSoltos(montarLinhas(p)))));
+  const lidas = juntarValorDaVirada(completarAnoDaVirada((itauMensal ? paginas.map(semALegendaDoItau) : paginas).map(p => dataNaLinhaDoValor(juntarPedacosSoltos(montarLinhas(p))))));
   const todas = unificado ? soAContaDoUnificado(lidas) : lidas;
   if (lado === 'banco') {
     const texto = todas.map(p => p.map(l => l.texto).join('\n')).join('\n');

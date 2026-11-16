@@ -73,6 +73,9 @@ export function lerData(v: unknown, anoPadrao: number): string | null {
   // com a hora depois ("05/09/2026 10:30"), como o aaaa-mm-dd já aceitava
   if ((m = bruto.match(/^(\d{1,2})[/.-](\d{1,2})(?:[/.-](\d{2,4}))?(?:[ T]\d{1,2}:\d{2}(?::\d{2})?)?$/))) {
     let a = m[3] ? +m[3] : anoPadrao;
+    // o ano cortado ("16/01/202": o BB parte a linha na virada da página e o último dígito vai para a página seguinte; 16/11/2026):
+    // é o ano do extrato quando começa igual a ele; senão, não dá para saber
+    if (m[3]?.length === 3) { if (!String(anoPadrao).startsWith(m[3])) return null; a = anoPadrao; }
     if (a < 100) a += 2000;
     return iso(a, +m[2], +m[1]);
   }
