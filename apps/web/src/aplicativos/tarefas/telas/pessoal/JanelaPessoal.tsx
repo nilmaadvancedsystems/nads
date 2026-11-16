@@ -142,8 +142,8 @@ function DadosDeTesteDoEmailPrincipal() {
     <ConfigLinha titulo="E-mail pessoal" descricao="A janela obrigatória que pede o e-mail e a entrada pelo e-mail, como cada pessoa vai ver.">
       <MenuSuspenso rotulo="Dados de teste" icone="zap" className="btn btn-outline" direita largura={340} titulo="Modo desenvolvedor · nada é gravado"
         itens={[
-          // (a conta que já tem e-mail de verdade não vê mais a janela: 16/11/2026, só quem entra por "@…local")
-          { rotulo: 'Janela: conta que entra pelo nome (@…local)', icone: 'usuario', onClick: () => simularEmailPrincipal('so-nome') },
+          // (a conta que já tem e-mail de verdade não vê mais a janela: 16/11/2026, só quem entra pelo nome@nilma.local)
+          { rotulo: 'Janela: conta que entra pelo nome (@nilma.local)', icone: 'usuario', onClick: () => simularEmailPrincipal('so-nome') },
           'separador',
           { rotulo: 'Tela de entrada pelo e-mail', icone: 'logOut', onClick: () => simularEmailPrincipal('entrada') },
         ]} />

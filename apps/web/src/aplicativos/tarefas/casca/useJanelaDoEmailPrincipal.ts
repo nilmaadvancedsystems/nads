@@ -1,6 +1,8 @@
 // ViewModel da janela do e-mail principal (Vitor, 16/11/2026: "mande uma requisição a todos os usuarios ao atualizarem o
 // sistema, de colocar o email principal que eles usam ... Dessa maneira, voce atrela o login ao email, não ao usuario"). Só quem
-// ainda entra por um "@…local" (o nome@nilma.local) vê a janela por cima da Tarefas; quem já tem e-mail de verdade, não. O e-mail principal
+// ainda entra pelo nome@nilma.local vê a janela por cima da Tarefas; quem já tem e-mail de verdade, não. Depois de gravar, a
+// mesma janela avisa que da próxima vez a entrada é pelo e-mail (16/11/2026: "assim que a pessoa registrar, avise que o login
+// agora vai ser por e-mail, da próxima vez"). O e-mail principal
 // É o login: trocado, vai pelo mesmo caminho da Minha conta (a senha, o robô da nuvem troca o login e o cadastro, a sessão
 // entra de novo com o e-mail novo); igual ao de hoje, só confirma (usuarios/{uid}.emailPrincipalEm). Obrigatória (Vitor,
 // 16/11/2026: "o usuário vai ser obrigado a colocar o e-mail pessoal"): não fecha sem responder; a única saída é sair da conta.
@@ -24,13 +26,15 @@ export function useJanelaDoEmailPrincipal() {
   // respondida: no modo desenvolvedor a gravação é de mentira e o cadastro continua sem a confirmação, então a janela não pode
   // depender só dele para sair
   const [respondida, setRespondida] = useState(false);
+  /** gravou: o e-mail novo, para o aviso "da próxima vez, entre com ele" (a janela fica aberta até o Entendi) */
+  const [feito, setFeito] = useState<string | null>(null);
   const [form, setForm] = useState({ de: '', email: '', confirmacao: '', senha: '', erro: '' });
   const [enviando, setEnviando] = useState(false);
 
   const deTeste = simulacao === 'so-nome' || simulacao === 'com-email';
   const u = sessao?.usuario || null;
   const atual = deTeste ? EMAIL_DE_TESTE[simulacao] : u?.email || '';
-  const aberta = deTeste || (ligada && !!u && !respondida && usuarios.precisaDoEmailPrincipal(u));
+  const aberta = !!feito || deTeste || (ligada && !!u && !respondida && usuarios.precisaDoEmailPrincipal(u));
   // quem já tem um e-mail de verdade começa com ele no campo (é só confirmar); o nome@nilma.local não vai para o campo
   const inicial = atual && !usuarios.ehEmailDoNome(atual) ? atual : '';
   const f = form.de === atual + '|' + simulacao ? form : { de: atual + '|' + simulacao, email: inicial, confirmacao: '', senha: '', erro: '' };
@@ -56,7 +60,8 @@ export function useJanelaDoEmailPrincipal() {
       if (deTeste) {
         await espera(900);
         simularEmailPrincipal(null);
-        toast('Simulação: ' + (troca ? 'o login passaria a ser ' + novo : 'o e-mail ' + novo + ' ficaria confirmado') + '. Nada foi gravado.');
+        setFeito(novo);
+        toast('Simulação: nada foi gravado.');
         return;
       }
       if (!u || !sessao) throw new Error('Sem login.');
@@ -64,7 +69,7 @@ export function useJanelaDoEmailPrincipal() {
       if (troca) await sessao.trocarMeuEmail(novo, f.senha, () => acesso.trocarEmail(u.uid, novo));
       await sessao.confirmarEmailPrincipal();
       setRespondida(true);
-      toast('Obrigado! Agora você entra com ' + novo + ' e a senha de sempre.');
+      setFeito(novo);
     } catch (e) {
       mudar({ erro: e instanceof Error ? e.message : String(e) });
     } finally {
@@ -74,6 +79,9 @@ export function useJanelaDoEmailPrincipal() {
 
   return {
     aberta,
+    /** o aviso do fim: o e-mail com que a pessoa entra da próxima vez (null = ainda pedindo) */
+    feito,
+    entendi: () => setFeito(null),
     deTeste,
     /** o e-mail de entrada de hoje, quando é um e-mail de verdade ('' = a conta entra pelo nome) */
     loginDeHoje: inicial,

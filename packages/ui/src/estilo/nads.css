@@ -7206,5 +7206,15 @@ tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{co
 .modal-overlay.email-principal-fundo{z-index:91;}
 /* o Sair da conta à esquerda, longe do Confirmar (a janela é obrigatória: é a única saída; 16/11/2026) */
 .email-principal-sair{margin-right:auto;}
+/* o fim da janela do e-mail pessoal: o certo que se desenha (o círculo, depois o traço) e o aviso do login por e-mail (16/11/2026) */
+.email-principal-pronto{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding:28px 24px 8px;}
+.email-principal-pronto h3{border:0;padding:0;margin:4px 0 0;}
+.email-principal-pronto p{margin:0;max-width:360px;color:var(--ink-muted);}
+.email-principal-pronto p b{color:var(--ink);overflow-wrap:anywhere;}
+.email-principal-certo{width:64px;height:64px;stroke:var(--success);stroke-width:3;stroke-linecap:round;stroke-linejoin:round;}
+.email-principal-certo circle{stroke-dasharray:151;stroke-dashoffset:151;animation:email-certo-risco .5s ease-out forwards;}
+.email-principal-certo path{stroke-dasharray:36;stroke-dashoffset:36;animation:email-certo-risco .3s ease-out .45s forwards;}
+@keyframes email-certo-risco{to{stroke-dashoffset:0;}}
+@media (prefers-reduced-motion:reduce){.email-principal-certo circle,.email-principal-certo path{animation:none;stroke-dashoffset:0;}}
 .entrada-de-teste{position:fixed;inset:0;z-index:92;overflow:auto;background:var(--bg);}
 .entrada-de-teste-voltar{position:absolute;top:16px;left:16px;}

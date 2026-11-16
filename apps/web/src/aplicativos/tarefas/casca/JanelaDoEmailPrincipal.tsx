@@ -13,6 +13,28 @@ export function JanelaDoEmailPrincipal() {
   // sem o fechar: o Esc não fecha (obrigatória)
   useJanela(janela, null, vm.aberta);
   if (!vm.aberta) return null;
+  // gravou: o aviso de que a entrada agora é pelo e-mail (16/11/2026: "assim que a pessoa registrar, avise que o login agora vai
+  // ser por e-mail, da próxima vez")
+  if (vm.feito) {
+    return (
+      <div className="modal-overlay email-principal-fundo">
+        <form ref={janela} className="modal" role="dialog" aria-modal="true" aria-labelledby={id + '-pronto'} onSubmit={e => { e.preventDefault(); vm.entendi(); }}>
+          {/* o certo animado (16/11/2026: "deixa a mesma popup, com uma animação de certo dando esse aviso") */}
+          <div className="email-principal-pronto">
+            <svg className="email-principal-certo" viewBox="0 0 52 52" aria-hidden="true">
+              <circle cx="26" cy="26" r="24" fill="none" />
+              <path fill="none" d="M15 27 l7 7 l15 -16" />
+            </svg>
+            <h3 id={id + '-pronto'}>E-mail registrado</h3>
+            <p>A partir de agora, o seu login é o <b>e-mail e a senha</b>: entre com <b>{vm.feito}</b> e a mesma senha de sempre.</p>
+          </div>
+          <div className="modal-actions">
+            <button type="submit" className="btn btn-primary" autoFocus>Entendi</button>
+          </div>
+        </form>
+      </div>
+    );
+  }
   return (
     <div className="modal-overlay email-principal-fundo">
       <form ref={janela} className="modal" role="dialog" aria-modal="true" aria-labelledby={id + '-titulo'}
