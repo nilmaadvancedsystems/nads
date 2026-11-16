@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type { ArquivoImportado, ArquivoLido, EmpresaExtrator } from '../extratudo/extrator/tipos';
 import { situacaoDoBancoNoPeriodo } from '../extratudo/extrator/regras/situacaoDoBanco';
 import { checklistDaFolha } from '../tarefas/regras/folha';
-import { comNotasFiscaisDeTeste, conferenciaDeTeste, semNotasFiscaisDeTeste, EMPRESA_DEMO, ehEmpresaDemo, extratosDeTeste, razaoDeTeste } from './index';
+import { comNotasFiscaisDeTeste, conferenciaDeTeste, semNotasFiscaisDeTeste, EMPRESA_DEMO, ehEmpresaDemo, extratosDeTeste, ofxDeTeste, razaoDeTeste } from './index';
+import { lerArquivo } from '../extratudo/extrator/arquivos/leitura';
 
 const MESES = ['2026-07', '2026-08'];
 const arqs = (lado: 'banco' | 'sistema', lidos: ArquivoLido[]): ArquivoImportado[] =>
@@ -42,5 +43,14 @@ describe('as notas de teste do Fiscal', () => {
     expect(comNotasFiscaisDeTeste(com, ['2026-09'], 'completo').saidas.length).toBe(com.saidas.length);
     expect(comNotasFiscaisDeTeste(base, ['2026-09'], 'mercadorias').servTomados.length).toBe(base.servTomados.length);
     expect(semNotasFiscaisDeTeste(com)).toEqual(base);
+  });
+});
+
+describe('o OFX de teste (o ⚡ do Enviar vários meses)', () => {
+  it('lido de volta, traz os lançamentos dos meses pedidos, iguais aos do extrato de teste', async () => {
+    const lido = await lerArquivo('TESTE.ofx', new TextEncoder().encode(ofxDeTeste(MESES)), 'banco');
+    expect(lido.erro).toBeFalsy();
+    expect([...new Set(lido.lancamentos.map(l => l.data.slice(0, 7)))]).toEqual(MESES);
+    expect(lido.lancamentos).toEqual(extratosDeTeste(MESES).flatMap(l => l.lancamentos));
   });
 });
