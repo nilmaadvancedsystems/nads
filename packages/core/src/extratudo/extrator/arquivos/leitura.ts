@@ -39,6 +39,23 @@ export function abasDaPlanilha(bytes: Uint8Array, csv: boolean): Celula[][][] {
   return wb.SheetNames.map(n => XLSX.utils.sheet_to_json<Celula[]>(wb.Sheets[n], { header: 1, raw: true, defval: '', blankrows: false }));
 }
 
+/** O maior arquivo que a Importação aceita (o PDF do banco tem centenas de KB; 40 MB já é um escaneado enorme ou outro arquivo). */
+export const MAIOR_ARQUIVO_PARA_IMPORTAR = 40 * 1024 * 1024;
+
+/**
+ * Antes de ler (Vitor, 16/11/2026: "refaça o código dos extratos em relação a quando o usuário upa o arquivo, para um feedback
+ * visual melhor, está falhando"): o arquivo de outro tipo, o vazio e o enorme ficam de fora logo, com o motivo, em vez de
+ * passarem pelo leitor (e pelo OCR) para nada.
+ */
+export function problemaDoArquivoParaImportar(nome: string, tamanho: number, lado: Lado): string {
+  const ext = extensao(nome);
+  const aceitas = lado === 'banco' ? EXTENSOES_EXTRATO : EXTENSOES_SISTEMA;
+  if (!aceitas.includes(ext)) return (ext ? 'O arquivo ' + ext.slice(1).toUpperCase() : 'Este arquivo') + ' não serve aqui: ' + (lado === 'banco' ? 'mande o PDF, o OFX ou a foto do extrato.' : 'mande o razão em Excel, CSV, PDF ou OFX.');
+  if (tamanho <= 0) return 'O arquivo está vazio (0 KB): baixe de novo.';
+  if (tamanho > MAIOR_ARQUIVO_PARA_IMPORTAR) return 'O arquivo tem ' + Math.round(tamanho / 1024 / 1024) + ' MB: grande demais para um extrato.';
+  return '';
+}
+
 export async function lerArquivo(nome: string, bytes: Uint8Array, lado: Lado, anoPadrao = new Date().getFullYear()): Promise<ArquivoLido> {
   const ext = extensao(nome);
   const letrasDe = (ps: ItemDeTexto[][]) => ps.reduce((s, p) => s + p.reduce((t, i) => t + i.texto.length, 0), 0);
@@ -100,6 +117,10 @@ export async function lerArquivo(nome: string, bytes: Uint8Array, lado: Lado, an
     const doBanco = lado === 'banco' ? bancoDoTexto(topoDaPlanilha) : null;
     return { nome, ...melhor, ...(doBanco ? { bancoNoTexto: doBanco } : {}) };
   } catch (e) {
-    return { nome, lancamentos: [], erro: 'Não consegui ler o arquivo' + (e instanceof Error && e.message ? ' (' + e.message + ')' : '') + '.' };
+    // o erro do leitor de PDF em português (16/11/2026: o "Invalid PDF structure." aparecia no cartão da importação)
+    const msg = e instanceof Error ? e.message : '';
+    if (/invalid pdf|pdf structure|InvalidPDF/i.test(msg)) return { nome, lancamentos: [], erro: 'O PDF está corrompido ou não é um PDF de verdade: baixe de novo pelo site do banco.' };
+    if (/password|senha|encrypted/i.test(msg)) return { nome, lancamentos: [], erro: 'O PDF tem senha: baixe o extrato sem senha (ou abra e salve de novo sem ela).' };
+    return { nome, lancamentos: [], erro: 'Não consegui ler o arquivo' + (msg ? ' (' + msg + ')' : '') + '.' };
   }
 }

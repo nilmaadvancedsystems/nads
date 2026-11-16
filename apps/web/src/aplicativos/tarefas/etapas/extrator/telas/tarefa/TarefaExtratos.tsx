@@ -8,14 +8,15 @@
 //   Razão: importar à mão (check verde / × para excluir);
 //   à direita: "Não teve movimento" (trava a linha e vira "Desfazer"); com o extrato vindo do Drive, um
 //     botãozinho de PDF (abre pelo link temporário). O movimento se vê pela setinha.
-// Ao importar, só uma barrinha por cima da tela, que some em 2,7 s.
+// Ao importar, um cartão por cima da tela com cada arquivo (lendo, a página do OCR, guardando) que vira o resultado no fim:
+// some sozinho quando deu tudo certo; com erro ou aviso, fica até fechar (16/11/2026).
 import { clientes as cl, creditor, demo, extrator as x, type conferencia, tarefas } from '@nads/core';
 import { Alerta, BotaoFechar, classeDaJanela, destacarNaTela, Icone, LogoBanco, LogoDrive, LogoGmail, MensagemFlutuante, MenuSuspenso, preCarregarLogosDosApps, urlDoLogoBanco, urlDoLogoNilma, useCarregando, type AbaDaEtapa } from '@nads/ui';
 import { useAbasDaEtapa } from '../../../../telas/executor/etapas/contexto';
 import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { useDadosDeTesteNaTarefa, usePonteDaTarefa, useRequisitosParaATarefa, type OpcaoDeTeste } from '../../../../telas/executor/etapas/ponte';
 import { useSessao } from '../../casca/sessao';
-import { useImportacao, type Mensagem } from '../importacao/useImportacao';
+import { useImportacao, type Andamento, type ArquivoNoAndamento, type Mensagem } from '../importacao/useImportacao';
 import { BotaoGoogle } from '../../../../../../comum/BotaoGoogle';
 import { BotaoImportarNoAlterdata } from '../../../../../../comum/BotaoImportarNoAlterdata';
 import { FaixaQueAbre } from '../../../../../../comum/FaixaQueAbre';
@@ -1148,10 +1149,13 @@ export function TarefaExtratos() {
       )}
       <JanelaBuscarNoEmail vm={comp.em} />
       {/* o aviso do topo (Bancos e Comprovantes) */}
-      <MensagemFlutuante id="impAviso" className="imp-aviso" chave={vm.seqMensagem} onFechar={vm.fecharMensagem}
-        duracao={vm.mensagem?.tom === 'erro' ? null : 2700}>
-        {vm.mensagem && <Aviso m={vm.mensagem} onFechar={vm.fecharMensagem} />}
-      </MensagemFlutuante>
+      {vm.andamento && vm.andamento.etapa !== 'perguntando' ? (
+        <div className="imp-aviso"><CartaoDoAndamento a={vm.andamento} /></div>
+      ) : (
+        <MensagemFlutuante id="impAviso" className="imp-aviso" chave={vm.seqMensagem} onFechar={vm.fecharMensagem} duracao={vm.mensagem && ficaNaTela(vm.mensagem) ? null : 4500}>
+          {vm.mensagem && <Aviso m={vm.mensagem} onFechar={vm.fecharMensagem} />}
+        </MensagemFlutuante>
+      )}
       {/* o login do Drive (Bancos e Comprovantes) */}
       {d.login.aberto && (
         <div className="modal-overlay" role="presentation" onClick={d.login.fechar}>
@@ -1176,12 +1180,68 @@ export function TarefaExtratos() {
   );
 }
 
-function Aviso({ m, onFechar }: { m: Mensagem; onFechar: () => void }) {
+/** O erro e o aviso ficam até a pessoa fechar; o que deu tudo certo some sozinho. */
+const ficaNaTela = (m: Mensagem) => m.tom === 'erro' || m.textos.some(t => t.tom === 'aviso') || !!m.arquivos?.some(a => a.situacao === 'erro' || a.situacao === 'aviso');
+
+const ICONE_DO_ARQUIVO = { ok: 'checkCircle', aviso: 'alert', erro: 'alert', esperando: 'clock', lendo: 'clock' } as const;
+
+/** Os arquivos, um por linha: o ícone (ou o girando), o nome e o que deu. */
+function ListaDeArquivos({ arquivos }: { arquivos: ArquivoNoAndamento[] }) {
   return (
-    <div className={'imp-aviso-barra ' + m.tom} role="status">
-      <Icone nome={m.tom === 'erro' ? 'alert' : m.tom === 'info' ? 'clock' : 'checkCircle'} />
-      <span><b>{m.titulo}</b>{m.textos.length > 0 && <span className="hint"> · {m.textos.map(t => t.texto).join(' · ')}</span>}</span>
-      <button type="button" aria-label="Fechar" title="Fechar" onClick={onFechar}>×</button>
+    <ul className="imp-cartao-arquivos">
+      {arquivos.map((a, i) => (
+        <li key={i} className={a.situacao}>
+          {a.situacao === 'lendo' ? <span className="btn-spinner" aria-hidden="true" /> : <Icone nome={ICONE_DO_ARQUIVO[a.situacao]} />}
+          <span className="imp-cartao-nome" title={a.nome}>{a.nome}</span>
+          {a.detalhe && <span className="imp-cartao-detalhe">{a.detalhe}</span>}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/**
+ * O andamento da importação (16/11/2026: "para um feedback visual melhor"): o título com o banco, a barra (os arquivos lidos
+ * e a página do OCR), o que está fazendo agora e cada arquivo.
+ */
+function CartaoDoAndamento({ a }: { a: Andamento }) {
+  const total = a.arquivos.length;
+  const prontos = a.arquivos.filter(x => x.situacao !== 'esperando' && x.situacao !== 'lendo').length;
+  const doOcr = a.ocr && a.ocr.total ? a.ocr.feitas / a.ocr.total : 0;
+  const pct = a.etapa === 'gravando' ? 100 : Math.max(4, Math.round(((prontos + doOcr) / Math.max(1, total)) * 100));
+  const lendo = a.arquivos.find(x => x.situacao === 'lendo');
+  const agora = a.etapa === 'gravando' ? 'Guardando os lançamentos…'
+    : a.ocr ? 'O arquivo é escaneado: lendo pelo OCR, página ' + Math.min(a.ocr.feitas + 1, a.ocr.total) + ' de ' + a.ocr.total + ' (demora um pouco)'
+    : lendo ? 'Lendo ' + (total > 1 ? 'o arquivo ' + (a.arquivos.indexOf(lendo) + 1) + ' de ' + total : 'o arquivo') + '…' : 'Preparando…';
+  return (
+    <div className="imp-cartao" role="status" aria-live="polite">
+      <div className="imp-cartao-topo">
+        <span className="btn-spinner" aria-hidden="true" />
+        <b>Importando: {a.titulo}</b>
+      </div>
+      <div className="imp-cartao-barra" aria-hidden="true"><i style={{ width: pct + '%' }} /></div>
+      <p className="imp-cartao-agora">{agora}</p>
+      {total > 1 && <ListaDeArquivos arquivos={a.arquivos} />}
+    </div>
+  );
+}
+
+/** O resultado: o título (quantos entraram, ou o que deu errado), os avisos um por linha e cada arquivo. */
+function Aviso({ m, onFechar }: { m: Mensagem; onFechar: () => void }) {
+  const avisos = m.textos.some(t => t.tom === 'aviso') || !!m.arquivos?.some(a => a.situacao === 'aviso' || a.situacao === 'erro');
+  const tom = m.tom === 'ok' && avisos ? 'aviso' : m.tom;
+  const temCorpo = m.textos.length > 0 || !!m.arquivos?.length;
+  return (
+    <div className={'imp-cartao imp-cartao-fim ' + tom + (temCorpo ? '' : ' so-titulo')} role={m.tom === 'erro' ? 'alert' : 'status'}>
+      <div className="imp-cartao-topo">
+        <Icone nome={m.tom === 'erro' || tom === 'aviso' ? 'alert' : m.tom === 'info' ? 'clock' : 'checkCircle'} />
+        <b>{m.titulo}</b>
+        <button type="button" className="imp-cartao-fechar" aria-label="Fechar" title="Fechar" onClick={onFechar}>×</button>
+      </div>
+      {m.textos.length > 0 && (
+        <ul className="imp-cartao-textos">{m.textos.map((t, i) => <li key={i} className={t.tom}>{t.texto}</li>)}</ul>
+      )}
+      {m.arquivos && m.arquivos.length > 0 && <ListaDeArquivos arquivos={m.arquivos} />}
     </div>
   );
 }
