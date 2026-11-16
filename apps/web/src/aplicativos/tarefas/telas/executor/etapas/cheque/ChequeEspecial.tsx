@@ -62,6 +62,7 @@ function BlocoDoBanco({ b, vm }: { b: Banco; vm: Vm }) {
             </button>
           </div>
           {!b.noCadastro && <p className="hint">Cadastre esta conta em Cadastro › Contas bancárias para gravar as contas contábeis.</p>}
+          {b.semRazao.length > 0 && <p className="hint">{'Sem o razão de ' + b.semRazao.join(', ') + ' na Importação: os dias negativos ' + (b.semRazao.length === 1 ? 'deste mês' : 'destes meses') + ' saem todos do extrato. Confira se o cheque especial já não foi lançado.'}</p>}
           {b.pendencias > 0 && <p className="hint">{b.pendencias === 1 ? 'Há 1 pendência' : 'Há ' + b.pendencias + ' pendências'} entre o extrato e o razão deste banco na Importação: o cheque especial sai igual, mas confira lá.</p>}
         </div>
       )}
