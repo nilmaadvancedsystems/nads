@@ -3681,6 +3681,9 @@ button.dp-marca:disabled{cursor:default;opacity:.6;}
 .feedback-abre .feedback-mini{width:96px;height:60px;cursor:pointer;}
 .feedback-txt-curto{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
 .feedback-janela .pessoal-topo{gap:10px;}
+/* a quem a solicitação foi delegada (16/11/2026) e o menu sem ninguém com a função de desenvolvedor */
+.feedback-delegada{margin:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:var(--fs-13);}
+.feedback-sem-dev{margin:0;padding:10px 12px;max-width:280px;}
 .feedback-amplia{padding:0;cursor:zoom-in;}
 /* a prioridade do feedback (19/10/2026): na janela de enviar, embaixo do texto; nos Feedbacks, o filtro e a ordem em cima */
 .feedback-prioridade{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}

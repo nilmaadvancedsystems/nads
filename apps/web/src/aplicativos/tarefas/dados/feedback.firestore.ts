@@ -2,7 +2,7 @@
 // uid dele, status 'novo' e a prioridade baixa/media/alta); só o admin lê todos e muda o status. A imagem vai no próprio
 // documento (JPEG comprimido, até ~900 KB), sem Storage. Quem mandou lê os seus (o aviso do Resolvendo; 26/10/2026).
 import { Bytes, collection, doc, getDocs, limit, onSnapshot, orderBy, query, where, setDoc as setDocBruto, updateDoc as updateDocBruto } from 'firebase/firestore';
-import { entregas } from '@nads/core';
+import { entregas, suporte } from '@nads/core';
 import { bancoDoEntregas } from './entregas.firestore';
 import { ehPrioridade, type Feedback, type MeuFeedback, type RepoFeedback, type SituacaoDoFeedback } from './feedback';
 import { guardar, guardarPedido } from '../../../comum/modoDesenvolvedor';
@@ -100,6 +100,7 @@ export function criarFeedbackFirestore(quem: () => Quem): RepoFeedback {
                   : [],
                 analise: (['pendente', 'analisando', 'pronta', 'erro'].includes(x.analise) ? x.analise : '') as Feedback['analise'],
                 relatorio: texto(x.relatorio),
+                delegacao: suporte.lerDelegacao(x.delegacao),
               };
             }),
           };
@@ -109,6 +110,14 @@ export function criarFeedbackFirestore(quem: () => Quem): RepoFeedback {
       return todos;
     },
     async marcar(id, status) { await updateDoc(doc(db, 'feedbacks', id), { status, ...(status === 'feito' ? { resolvidoEm: new Date().toISOString() } : {}) }); },
+    // a quem foi delegada (16/11/2026): o mapa delegacao { uid, nome, por, em }; a regra deixa só o admin gravar
+    async delegar(id, d) {
+      try { await updateDoc(doc(db, 'feedbacks', id), { delegacao: { uid: d.uid, nome: d.nome, por: d.por, em: d.em } }); }
+      catch (e) {
+        if ((e as { code?: string } | null)?.code === 'permission-denied') throw new Error('o banco ainda não aceita a delegação (falta publicar a regra dos feedbacks).', { cause: e });
+        throw e;
+      }
+    },
     // quem mandou responde o teste (a regra só deixa o dono, e só com o ticket em Testando)
     async responderTeste(id, funcionou) { await updateDoc(doc(db, 'feedbacks', id), funcionou ? { status: 'feito', resolvidoEm: new Date().toISOString() } : { status: 'resolvendo' }); },
     // os seus (Vitor, 26/10/2026: o aviso do Resolvendo): a regra deixa cada um ler os que mandou (uid); sem orderBy, para

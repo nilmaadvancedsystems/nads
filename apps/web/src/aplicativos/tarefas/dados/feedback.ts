@@ -3,6 +3,7 @@
 // vê todos nos Feedbacks (o pé da gaveta ☰) e marca como visto ou feito. Desde 19/10/2026, com a prioridade (Baixa, Média,
 // Alta) que quem manda escolhe; o admin filtra e ordena por ela. Interface + a versão de exemplo; a do banco é
 // feedback.firestore.ts (coleção feedbacks do Entregas).
+import type { suporte } from '@nads/core';
 
 /** resolvendo (Vitor, 26/10/2026): o admin está resolvendo; quem mandou é avisado */
 /** testando (Vitor, 09/11/2026): quem resolveu pediu para quem mandou testar; ele confirma no chat */
@@ -67,6 +68,8 @@ export interface Feedback {
   /** o bug: a análise do robô ('pendente' → 'analisando' → 'pronta' ou 'erro') e o report */
   analise: 'pendente' | 'analisando' | 'pronta' | 'erro' | '';
   relatorio: string;
+  /** a quem foi delegada (16/11/2026: passar a solicitação a quem tem a função de desenvolvedor); null = a ninguém */
+  delegacao: suporte.DelegacaoDoFeedback | null;
 }
 
 /** O bug mandado pelo balão do suporte. */
@@ -91,6 +94,8 @@ export interface RepoFeedback {
   /** todos os feedbacks (só o admin lê); pedir já começa a ouvir */
   todos(): { carregados: boolean; lista: Feedback[] };
   marcar(id: string, status: SituacaoDoFeedback): Promise<void>;
+  /** só o admin: passa a solicitação a quem tem a função de desenvolvedor (o core monta: suporte.delegacaoNova) */
+  delegar(id: string, d: suporte.DelegacaoDoFeedback): Promise<void>;
   /** quem mandou responde o teste: funcionou (resolvido) ou ainda com problema (volta a Resolvendo) */
   responderTeste(id: string, funcionou: boolean): Promise<void>;
   /** os feedbacks de quem está usando (a regra deixa ler os seus); pedir já começa a ouvir */
@@ -105,7 +110,7 @@ export function criarFeedbackMemoria(quem: () => string): RepoFeedback {
   const mudou = () => { ver++; for (const f of ouvintes) f(); };
   // uns de exemplo, para ver a lista do admin com as prioridades (nada vai para o banco)
   const ha = (h: number) => new Date(Date.now() - h * 3600000).toISOString();
-  const base = { imagem: '', versao: '', email: '', status: 'novo' as const, tipo: 'feedback' as const, caminho: '', empresa: '', arquivo: null, arquivos: [], analise: '' as const, relatorio: '' };
+  const base = { imagem: '', versao: '', email: '', status: 'novo' as const, tipo: 'feedback' as const, caminho: '', empresa: '', arquivo: null, arquivos: [], analise: '' as const, relatorio: '', delegacao: null };
   let lista: Feedback[] = [
     { id: 'fx-1', ...base, nome: 'Vitor', tela: '/tarefas/cadastro/empresas', criadoEm: ha(3), prioridade: 'alta', texto: 'No Cadastro, o sênior precisa trocar o regime sem pedir para o diretor.' },
     { id: 'fx-2', ...base, nome: 'Clara', tela: '/tarefas/minhas-empresas/empresas', criadoEm: ha(1), prioridade: 'baixa', texto: 'Seria bom a lista de empresas lembrar o filtro quando eu volto.' },
@@ -121,7 +126,7 @@ export function criarFeedbackMemoria(quem: () => string): RepoFeedback {
     async enviar({ arquivos: anexos = [], ...f }) {
       lista = [{ id: 'f' + Date.now(), ...f, nome: quem(), email: '', criadoEm: new Date().toISOString(), status: 'novo', tipo: 'feedback', caminho: '', empresa: '',
         arquivo: anexos[0] ? { nome: anexos[0].nome, tamanho: anexos[0].bytes.length, partes: 1 } : null,
-        arquivos: anexos.map((a, i) => ({ nome: a.nome, tamanho: a.bytes.length, de: i, partes: 1 })), analise: '', relatorio: '' }, ...lista];
+        arquivos: anexos.map((a, i) => ({ nome: a.nome, tamanho: a.bytes.length, de: i, partes: 1 })), analise: '', relatorio: '', delegacao: null }, ...lista];
       mudou();
     },
     async enviarBug(b) {
@@ -130,7 +135,7 @@ export function criarFeedbackMemoria(quem: () => string): RepoFeedback {
         id, texto: b.texto, imagem: '', tela: b.tela, versao: b.versao, nome: quem(), email: '', criadoEm: new Date().toISOString(),
         status: 'novo', prioridade: 'alta', tipo: 'bug', caminho: b.caminho, empresa: b.contexto.empresa,
         arquivo: b.arquivos[0] ? { nome: b.arquivos[0].nome, tamanho: b.arquivos[0].bytes.length, partes: 1 } : null,
-        arquivos: b.arquivos.map((a, i) => ({ nome: a.nome, tamanho: a.bytes.length, de: i, partes: 1 })), analise: 'pendente', relatorio: '',
+        arquivos: b.arquivos.map((a, i) => ({ nome: a.nome, tamanho: a.bytes.length, de: i, partes: 1 })), analise: 'pendente', relatorio: '', delegacao: null,
       }, ...lista];
       mudou();
       return id;
@@ -138,6 +143,7 @@ export function criarFeedbackMemoria(quem: () => string): RepoFeedback {
     async arquivoDoBug() { return null; },
     todos: () => ({ carregados: true, lista }),
     async marcar(id, status) { lista = lista.map(x => (x.id === id ? { ...x, status, ...(status === 'feito' ? { resolvidoEm: new Date().toISOString() } : {}) } : x)); mudou(); },
+    async delegar(id, d) { lista = lista.map(x => (x.id === id ? { ...x, delegacao: d } : x)); mudou(); },
     async responderTeste(id, funcionou) { lista = lista.map(x => (x.id === id ? { ...x, status: funcionou ? 'feito' as const : 'resolvendo' as const, ...(funcionou ? { resolvidoEm: new Date().toISOString() } : {}) } : x)); mudou(); },
     meus: () => lista.filter(x => x.nome === quem()).map(x => ({ id: x.id, texto: x.texto, status: x.status, criadoEm: x.criadoEm, tipo: x.tipo, caminho: x.caminho, resolvidoEm: x.resolvidoEm })),
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },

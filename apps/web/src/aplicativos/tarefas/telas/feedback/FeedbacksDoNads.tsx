@@ -2,8 +2,9 @@
 // à esquerda Novos / Vistos / Feitos / Todos; à direita cada feedback com o print (clicar amplia), o texto, quem,
 // quando, a tela e a versão; Visto e Feito. A prioridade (Vitor, 19/10/2026) no selo suave, com o filtro (Todas, Alta,
 // Média, Baixa) e a ordem (Mais novos ou Prioridade) em cima da lista.
-import { Alerta, BotaoFechar, BotaoIcone, Esqueleto, Icone, Segmentado, useJanela, Vazio, BotaoAcao } from '@nads/ui';
+import { Alerta, BotaoFechar, BotaoIcone, Esqueleto, Icone, MenuSuspenso, Segmentado, useJanela, Vazio, BotaoAcao } from '@nads/ui';
 import { useRef, useState } from 'react';
+import { FotoDaPessoa } from '../cadastro/responsaveis/FotoDaPessoa';
 import { JanelaLateral, type TopicoDaJanela } from '../janela/JanelaLateral';
 import { PRIORIDADES, type PrioridadeDoFeedback, type SituacaoDoFeedback } from '../../dados/feedback';
 import { useFeedbacks } from './useFeedbacks';
@@ -67,6 +68,7 @@ export function ListaDosFeedbacks({ vm }: { vm: ReturnType<typeof useFeedbacks> 
                     <SeloDaPrioridade p={f.prioridade} />
                     <SeloDoBug f={f} />
                     <span className={'badge ' + SELO[f.status]}>{NOME[f.status]}</span>
+                    {f.delegada && <span className="badge badge-neutral">{f.delegada.titulo}</span>}
                   </span>
                   <span className="feedback-txt feedback-txt-curto">{f.tipo === 'bug' && f.empresa ? f.empresa + ' · ' : ''}{f.texto}</span>
                 </span>
@@ -75,7 +77,8 @@ export function ListaDosFeedbacks({ vm }: { vm: ReturnType<typeof useFeedbacks> 
           ))}
         </ul>
       )}
-      {vm.aberto && <JanelaDoFeedback f={vm.aberto} fechar={vm.fecharAberto} ampliar={vm.setAberta} marcar={vm.marcar} baixar={(id, i) => { void vm.baixarArquivoDoBug(id, i); }} baixarTudo={vm.baixarTudo} copiar={vm.copiarSolicitacao} />}
+      {vm.aberto && <JanelaDoFeedback f={vm.aberto} fechar={vm.fecharAberto} ampliar={vm.setAberta} marcar={vm.marcar} baixar={(id, i) => { void vm.baixarArquivoDoBug(id, i); }} baixarTudo={vm.baixarTudo} copiar={vm.copiarSolicitacao}
+        desenvolvedores={vm.desenvolvedores} delegar={(id, uid) => { void vm.delegar(id, uid); }} />}
       {vm.aberta && (
         <div className="modal-overlay pessoal-fundo feedback-zoom" onMouseDown={() => vm.setAberta('')}>
           <img src={vm.aberta} alt="O print do feedback" />
@@ -86,12 +89,14 @@ export function ListaDosFeedbacks({ vm }: { vm: ReturnType<typeof useFeedbacks> 
 }
 
 /** A solicitação inteira numa janela flutuante por cima da lista: o print (clicar amplia), o texto, quem, quando, a tela
- * e a versão; embaixo Visto / Feito / Reabrir. O Esc fecha só esta janela. */
-function JanelaDoFeedback({ f, fechar, ampliar, marcar, baixar, baixarTudo, copiar }: {
+ * e a versão; embaixo Delegar / Visto / Feito / Reabrir. O Esc fecha só esta janela. */
+function JanelaDoFeedback({ f, fechar, ampliar, marcar, baixar, baixarTudo, copiar, desenvolvedores, delegar }: {
   f: NonNullable<ReturnType<typeof useFeedbacks>['aberto']>; fechar: () => void; ampliar: (img: string) => void; marcar: (id: string, s: SituacaoDoFeedback) => void;
   baixar: (id: string, i: number) => void;
   baixarTudo: (id: string) => Promise<void>;
   copiar: (id: string) => void;
+  desenvolvedores: ReturnType<typeof useFeedbacks>['desenvolvedores'];
+  delegar: (id: string, uid: string) => void;
 }) {
   const [zipando, setZipando] = useState(false);
   // revisão da UI, 16/10/2026: Esc, foco preso e o foco de volta pela peça useJanela (antes, um Esc à mão por janela)
@@ -110,6 +115,8 @@ function JanelaDoFeedback({ f, fechar, ampliar, marcar, baixar, baixarTudo, copi
           <BotaoFechar onClick={fechar} />
         </header>
         <div className="feedback-corpo">
+          {/* a quem foi delegada (16/11/2026), com quem passou e quando */}
+          {f.delegada && <p className="feedback-delegada"><Icone nome="usuario" width={16} height={16} /><b>{f.delegada.titulo}</b>{f.delegada.detalhe && <span className="fraco">{f.delegada.detalhe}</span>}</p>}
           {f.imagem && (
             <button type="button" className="feedback-imagem feedback-amplia" title="Ampliar" onClick={() => ampliar(f.imagem)}>
               <img src={f.imagem} alt="O print do feedback" />
@@ -159,6 +166,23 @@ function JanelaDoFeedback({ f, fechar, ampliar, marcar, baixar, baixarTudo, copi
           {/* o texto da solicitação, para colar (Vitor, 27/10/2026) */}
           <button type="button" className="btn btn-outline" title="Copiar o texto da solicitação" onClick={() => copiar(f.id)}><Icone nome="copiar" />Copiar solicitação</button>
           <span className="tarefas-barra-espaco" />
+          {/* Delegar (16/11/2026): o menu com quem tem a função de desenvolvedor; junto de Visto e Resolvendo, o Feito por último */}
+          {f.status !== 'feito' && (
+            <MenuSuspenso icone="usuario" rotulo={f.delegacao ? 'Delegar de novo' : 'Delegar'} flutuante acima className="btn btn-outline" titulo="Delegar a" dica="Passar a solicitação a quem tem a função de desenvolvedor"
+              conteudo={fecharMenu => !desenvolvedores.length
+                ? <p className="hint feedback-sem-dev">Ninguém da equipe tem a função de desenvolvedor. Dá para ligar em Cadastro › Usuários.</p>
+                : (
+                  <div className="pessoa-lista" role="listbox" aria-label="Delegar a">
+                    {desenvolvedores.map(p => (
+                      <button key={p.uid} type="button" className="popover-item" role="option" aria-selected={p.uid === f.delegacao?.uid} onClick={() => { delegar(f.id, p.uid); fecharMenu(); }}>
+                        <FotoDaPessoa foto={p.foto} iniciais={p.iniciais} />
+                        <span className="popover-texto">{p.nome}</span>
+                        {p.uid === f.delegacao?.uid && <Icone nome="check" width={16} height={16} />}
+                      </button>
+                    ))}
+                  </div>
+                )} />
+          )}
           {f.status === 'novo' && <button type="button" className="btn btn-outline" onClick={() => marcar(f.id, 'visto')}><Icone nome="olho" />Visto</button>}
           {/* Resolvendo (Vitor, 26/10/2026): quem mandou é avisado no Tarefas */}
           {(f.status === 'novo' || f.status === 'visto') && <button type="button" className="btn btn-outline" title="Avisa quem mandou que está sendo resolvido" onClick={() => marcar(f.id, 'resolvendo')}><Icone nome="clock" />Resolvendo</button>}

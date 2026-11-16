@@ -68,8 +68,10 @@ export function criarAcessoMemoria(quem: () => { nome: string } | null): RepoAce
   let codigo = '';
   let liberada = false;
   let sessoes: usuarios.SessaoLiberada[] = [];
+  // o Vitor e o Fernando com a função de desenvolvedor (16/11/2026), para o Delegar dos Feedbacks ter a quem passar
+  const DEVS = ['Vitor', 'Fernando'];
   const docs: Record<string, usuarios.DocUsuario> = Object.fromEntries(usuarios.EQUIPE_EXEMPLO.map(u => [u.uid, {
-    nome: u.nome, email: u.email, roles: [...u.papeis], departamento: u.departamento || undefined, nivel: u.nivel || undefined, ativo: u.ativo,
+    nome: u.nome, email: u.email, roles: [...u.papeis, ...(DEVS.includes(u.nome) ? ['desenvolvedor' as const] : [])], departamento: u.departamento || undefined, nivel: u.nivel || undefined, ativo: u.ativo,
   } as usuarios.DocUsuario]));
   const equipe = () => Object.entries(docs).map(([uid, d]) => usuarios.lerUsuario(uid, d));
   const agora = () => new Date().toISOString();
