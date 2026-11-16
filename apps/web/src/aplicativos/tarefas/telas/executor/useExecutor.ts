@@ -317,6 +317,18 @@ export function useExecutor(rotaEmpresa: string, periodo: string) {
     if (meses.some(c => concluidaEm(id, c))) { setVendo(id); setAviso(null); }
   }
 
+  // o link que abre numa etapa (16/11/2026: "generate a new link with the cheque especial app" → "Etapa de uma empresa"):
+  // ?etapa=cheque-especial abre a etapa quando a empresa carrega, com as mesmas regras do clique no checklist (a etapa que
+  // ainda não pode, porque falta a de antes, fica na da vez)
+  const etapaDaUrl = paramsDaUrl.get('etapa');
+  const abriuDaUrl = useRef(false);
+  useEffect(() => {
+    if (abriuDaUrl.current || !etapaDaUrl || carregando || !etapa) return;
+    abriuDaUrl.current = true;
+    if (etapaDaUrl !== etapa.id && rotina.etapas.some(e => e.id === etapaDaUrl)) abrirEtapa(etapaDaUrl);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [etapaDaUrl, carregando, etapa?.id]);
+
   const ultimo = meses[meses.length - 1] || competencia;
   const voltar = () => navegar(lista + 'competencia=' + ultimo);
   const rotuloCurto = (c: string) => t.rotuloCurtoCompetencia(c);

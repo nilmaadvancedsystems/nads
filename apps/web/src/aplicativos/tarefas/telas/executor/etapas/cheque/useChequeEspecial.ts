@@ -71,7 +71,15 @@ export function useChequeEspecial() {
     aviso({ tom: 'ok', titulo: l.nome + ': ' + lanc.length + ' lançamentos', texto: arquivo + ' · lance no Alterdata e importe o razão do banco de novo' });
   }
 
+  /** o link desta etapa nesta empresa e período (16/11/2026): abre direto no Cheque especial */
+  const link = typeof window === 'undefined' ? '' : window.location.origin + window.location.pathname + '?etapa=cheque-especial';
+  async function copiarLink() {
+    try { await navigator.clipboard.writeText(link); aviso({ tom: 'ok', titulo: 'Link copiado', texto: link }); }
+    catch { aviso({ tom: 'erro', titulo: 'Não copiei o link', texto: link }); }
+  }
+
   return {
+    link, copiarLink,
     periodo: meses.length > 1 ? tarefas.rotuloNumericoCompetencia(meses[0]) + ' a ' + tarefas.rotuloNumericoCompetencia(meses[meses.length - 1]) : meses[0] ? tarefas.rotuloNumericoCompetencia(meses[0]) : '',
     carregado: !!cadastro,
     bancos: linhas.map(({ faltam: _f, ...r }, i) => ({

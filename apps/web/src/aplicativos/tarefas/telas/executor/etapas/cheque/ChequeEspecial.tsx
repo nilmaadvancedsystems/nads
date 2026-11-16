@@ -14,7 +14,10 @@ export function ChequeEspecial() {
   const vm = useChequeEspecial();
   return (
     <section>
-      <header className="topbar"><div><h2 className="page-title">Cheque especial</h2></div></header>
+      <header className="topbar">
+        <div><h2 className="page-title">Cheque especial</h2></div>
+        <button type="button" className="btn btn-outline" onClick={() => void vm.copiarLink()} title={vm.link}><Icone nome="link" />Copiar link</button>
+      </header>
       {vm.carregado && (
         <div className="imp-lista" style={{ gap: 16 }}>
           {vm.bancos.length ? vm.bancos.map(b => <BlocoDoBanco key={b.id} b={b} vm={vm} />)
