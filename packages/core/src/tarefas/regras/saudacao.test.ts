@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { feriadoDaSemana, frasesDaSaudacao, jeitosDeChamar, mesEDia, primeiroNome, saudacao, turnoDe } from './saudacao';
+import { feriadoDaSemana, frasesDaSaudacao, jeitosDeChamar, MAX_APELIDOS, mesEDia, primeiroNome, saudacao, saudacaoDoTurno, SO_O_TURNO_EM_CEM, turnoDe } from './saudacao';
 
 // 13/11/2026 é sexta-feira; 16/11/2026, segunda; 24/11/2026, uma terça sem feriado na semana
 const em = (dia: string, hora: number) => new Date(dia + 'T' + String(hora).padStart(2, '0') + ':30:00');
@@ -85,18 +85,42 @@ describe('saudação do Início novo', () => {
     const manha = frasesDaSaudacao('Vitor', em('2026-11-24', 9), null, 'Craque');
     expect(manha).toEqual(expect.arrayContaining(['Bom dia Craque!', 'Vamo que vamo Craque?', 'Eae, já tomou café?']));
     expect(frasesDaSaudacao('Vitor', em('2026-11-24', 21), null, 'Craque')).toContain('Boa noite Vitor, bom descanso');
-    // com apelidos, o sorteio usa os dois jeitos ao longo dos dias
-    const o = { nome: 'Vitor', quem: 'u1', apelidos: ['Craque'] };
-    const dias = Array.from({ length: 60 }, (_, i) => new Date(2026, 0, 1 + i, 9, 30));
-    const ditas = dias.map(agora => saudacao({ ...o, agora }));
-    expect(ditas.some(t => t.includes('Craque'))).toBe(true);
-    expect(ditas.some(t => t.includes('Vitor'))).toBe(true);
+    // "Não exagere nos apelidos, diminua muito e a chance de aparecer": no máximo dois, e cerca de 1 de cada 10 saudações
+    expect(MAX_APELIDOS).toBe(2);
+    const turnos = Array.from({ length: 365 }, (_, i) => [9, 15, 21].map(h => new Date(2026, 0, 1 + i, h, 30))).flat();
+    const ditas = ['u1', 'u2', 'u3', 'u4', 'u5', 'u6', 'u7', 'u8', 'u9', 'u10'].flatMap(quem =>
+      turnos.map(agora => saudacao({ nome: 'Vitor', quem, agora, apelidos: ['Craque', 'Fera', 'Terceiro'] })));
+    const comApelido = ditas.filter(t => /Craque|Fera/.test(t)).length;
+    expect(ditas.some(t => t.includes('Terceiro'))).toBe(false);
+    expect(comApelido).toBeGreaterThan(0);
+    // só nas frases raras, e nelas 1 em 10: bem menos de 1 em 100
+    expect(comApelido / ditas.length).toBeLessThan(0.01);
+    const o = { nome: 'Vitor', quem: 'u1', apelidos: ['Craque', 'Fera', 'Terceiro'] };
+    // simulando com apelido (o ⚡), ele sai sempre que a frase tem lugar para ele
+    expect(saudacao({ ...o, agora: new Date(2026, 10, 24, 9, 30), simulando: true, troca: 0 })).toBe('Bom dia Craque!');
   });
 
   it('a mesma frase no mesmo turno; pode mudar em outro turno ou dia', () => {
     const o = { nome: 'Vitor', quem: 'u1' };
     expect(saudacao({ ...o, agora: em('2026-11-13', 8) })).toBe(saudacao({ ...o, agora: em('2026-11-13', 11) }));
-    const doDia = new Set(['2026-11-10', '2026-11-11', '2026-11-12', '2026-11-13', '2026-11-14', '2026-11-15', '2026-11-17', '2026-11-18'].map(dia => saudacao({ ...o, agora: em(dia, 9) })));
-    expect(doDia.size).toBeGreaterThan(1);
+    const doAno = new Set(Array.from({ length: 365 }, (_, i) => saudacao({ ...o, agora: new Date(2026, 0, 1 + i, 9, 30) })));
+    expect(doAno.size).toBeGreaterThan(1);
+  });
+
+  it('na grande maioria das vezes, só bom dia, boa tarde e boa noite (16/11/2026: "o resto deixa muito raro")', () => {
+    const turnos = Array.from({ length: 365 }, (_, i) => [9, 15, 21].map(h => new Date(2026, 0, 1 + i, h, 30))).flat();
+    let doTurno = 0, total = 0;
+    for (const quem of ['u1', 'u2', 'u3', 'u4', 'u5', 'u6', 'u7', 'u8', 'u9', 'u10']) {
+      for (const agora of turnos) {
+        total++;
+        if (saudacao({ nome: 'Vitor', quem, agora }) === saudacaoDoTurno('Vitor', agora)) doTurno++;
+      }
+    }
+    expect(SO_O_TURNO_EM_CEM).toBe(88);
+    expect(doTurno / total).toBeGreaterThanOrEqual(0.85);
+    expect(doTurno / total).toBeLessThanOrEqual(0.9);
+    expect(saudacaoDoTurno('Vitor', em('2026-11-24', 21))).toBe('Boa noite Vitor, bom descanso');
+    // o dia do aniversário continua só com os parabéns
+    expect(saudacao({ nome: 'Vitor', quem: 'u1', agora: em('2026-11-13', 9), aniversario: '13/11' })).toBe('Feliz aniversário Vitor!');
   });
 });
