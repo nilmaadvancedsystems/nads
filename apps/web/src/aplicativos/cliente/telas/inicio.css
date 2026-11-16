@@ -16,14 +16,14 @@
 .cli-app .cli-vg .tom-bad > .cli-vg-ponto{background:var(--danger);box-shadow:0 0 0 3px color-mix(in srgb,var(--danger) 22%,transparent);}
 .cli-app .cli-vg .tom-warn > .cli-vg-ponto{background:var(--warn);}
 
-/* ---- Precisa de você: o ponto, o título e o texto, e UM botão igual em todos, sempre no mesmo lugar ---- */
+/* ---- Precisa de você: o ponto, UMA linha (o título e o detalhe curto) e UM botão igual em todos, sempre no mesmo lugar.
+   (16/11/2026: o dono apresentou a área e ouviu "muita informação": eram duas linhas por item, com a explicação inteira) ---- */
 .cli-app .cli-vg .cli-vg-itens{display:flex;flex-direction:column;margin:0;padding:0;list-style:none;}
-.cli-app .cli-vg .cli-vg-pend{display:grid;grid-template-columns:8px minmax(0,1fr) 150px;align-items:center;column-gap:14px;padding:11px 0;border-top:1px solid var(--cli-fio);}
+.cli-app .cli-vg .cli-vg-pend{display:grid;grid-template-columns:8px minmax(0,1fr) 150px;align-items:center;column-gap:14px;min-height:50px;padding:8px 0;border-top:1px solid var(--cli-fio);}
 .cli-app .cli-vg .cli-vg-pend:first-child{border-top:0;}
-.cli-app .cli-vg .cli-vg-pend > .cli-vg-ponto{align-self:start;margin-top:7px;}
-.cli-app .cli-vg .cli-vg-pend-txt{display:flex;flex-direction:column;gap:2px;min-width:0;}
-.cli-app .cli-vg .cli-vg-pend-txt b{font-size:14px;font-weight:600;color:var(--ink);}
-.cli-app .cli-vg .cli-vg-pend-txt span{font-size:13px;line-height:1.45;color:var(--ink-muted);}
+.cli-app .cli-vg .cli-vg-pend-txt{display:flex;align-items:baseline;gap:10px;min-width:0;white-space:nowrap;}
+.cli-app .cli-vg .cli-vg-pend-txt b{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:14px;font-weight:600;color:var(--ink);}
+.cli-app .cli-vg .cli-vg-pend-txt span{flex:0 10 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:13px;color:var(--ink-muted);font-variant-numeric:tabular-nums;}
 .cli-app .cli-vg .cli-vg-acao{justify-content:center;width:100%;min-height:32px;padding:0 12px;white-space:nowrap;}
 
 /* o tudo em dia: o mesmo cartão, uma linha com o ponto verde (sem a faixa verde de antes) */
@@ -36,88 +36,85 @@
 .cli-app .cli-vg .cli-vg-baixo{display:grid;grid-template-columns:minmax(0,1fr);gap:20px;}
 @media (min-width:1024px){.cli-app .cli-vg .cli-vg-baixo{grid-template-columns:minmax(0,1.35fr) minmax(320px,1fr);align-items:stretch;}}
 
-/* as próximas guias: a data à esquerda, o nome, quanto falta e o valor sempre no mesmo ponto (como os Dados cadastrais) */
-.cli-app .cli-vg .cli-vg-guias{display:flex;flex-direction:column;margin:0 -8px;padding:0;list-style:none;}
+/* as próximas guias (16/11/2026, "muita informação"; o desenho das Guias): o nome com "Vence 19/11" embaixo, o valor e
+   duas casas iguais em todas as linhas (o botão e o "⋯"), para o valor e os botões ficarem no mesmo prumo; o total no
+   pé com o valor na coluna dos valores */
+.cli-app .cli-vg .cli-vg-proximos{--vg-valor:104px;--vg-acoes:144px;}
+.cli-app .cli-vg .cli-vg-guias{display:flex;flex-direction:column;margin:0;padding:0;list-style:none;}
 .cli-app .cli-vg .cli-vg-guias > li + li{border-top:1px solid var(--cli-fio);}
-.cli-app .cli-vg .cli-vg-proximos .cli-vg-guia{display:grid;grid-template-columns:62px minmax(0,1fr) auto 104px 14px;align-items:center;column-gap:12px;width:100%;min-height:46px;padding:10px 8px;border:0;border-radius:8px;background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer;}
-.cli-app .cli-vg .cli-vg-proximos .cli-vg-guia:hover{background:var(--cli-passa);}
-.cli-app .cli-vg .cli-vg-proximos .cli-vg-guia:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;}
-.cli-app .cli-vg .cli-vg-data{display:flex;align-items:baseline;gap:5px;font-size:13.5px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;}
-.cli-app .cli-vg .cli-vg-data small{font-size:12px;font-weight:400;color:var(--ink-muted);}
-.cli-app .cli-vg .cli-vg-nome{min-width:0;font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.cli-app .cli-vg .cli-vg-faltam{font-size:12.5px;color:var(--ink-muted);white-space:nowrap;}
+.cli-app .cli-vg .cli-vg-proximos .cli-vg-guia{display:grid;grid-template-columns:minmax(0,1fr) var(--vg-valor) var(--vg-acoes);align-items:center;column-gap:14px;min-height:56px;padding:8px 0;border-radius:0;background:none;cursor:default;}
+/* a linha não é mais clicável (as ações estão nos botões): sem o fundo do passar o mouse do cliente.css */
+.cli-app .cli-vg .cli-vg-proximos .cli-vg-guia:hover{background:none;}
+.cli-app .cli-vg .cli-vg-guia-txt{display:flex;flex-direction:column;gap:1px;min-width:0;}
+.cli-app .cli-vg .cli-vg-nome{min-width:0;font-size:14px;font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cli-app .cli-vg .cli-vg-quando{font-size:12.5px;color:var(--ink-muted);font-variant-numeric:tabular-nums;}
 .cli-app .cli-vg .cli-vg-valor{font-size:14px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;}
-.cli-app .cli-vg .cli-vg-seta{color:var(--ink-muted);transition:transform .15s;}
-.cli-app .cli-vg .cli-vg-guias > li.aberta .cli-vg-seta{transform:rotate(180deg);}
-.cli-app .cli-vg .cli-vg-guias > li.aberta .cli-vg-guia{background:var(--cli-passa);border-radius:8px 8px 0 0;}
-.cli-app .cli-vg .cli-vg-guia-acoes{display:flex;flex-wrap:wrap;gap:8px;padding:4px 8px 12px 82px;background:var(--cli-passa);border-radius:0 0 8px 8px;}
-.cli-app .cli-vg .cli-vg-guia-acoes .btn{min-height:30px;padding:0 12px;font-size:12.5px;}
-/* (13/11/2026, revisão) o total no pé do cartão: com poucas guias, ele fica na mesma base da área de soltar ao lado */
-.cli-app .cli-vg .cli-vg-total{display:grid;grid-template-columns:minmax(0,1fr) 104px 14px;column-gap:12px;align-items:baseline;margin:auto -8px 0;padding:12px 8px 0;border-top:1px solid var(--cli-linha);font-size:13px;color:var(--ink-muted);}
+.cli-app .cli-vg .cli-vg-guia-acoes{display:flex;align-items:center;justify-content:flex-end;gap:6px;}
+.cli-app .cli-vg .cli-vg-baixar{flex:1;justify-content:center;gap:6px;min-height:32px;padding:0 10px;white-space:nowrap;}
+.cli-app .cli-vg .cli-vg-ainda{flex:1;font-size:12.5px;color:var(--ink-muted);text-align:center;white-space:nowrap;}
+.cli-app .cli-vg .cli-vg-mais,.cli-app .cli-vg .cli-vg-vaga{flex:none;width:32px;height:32px;}
+.cli-app .cli-vg .cli-vg-guia-acoes > .popover-wrap{flex:none;}
+.cli-app .cli-vg .cli-vg-total{display:grid;grid-template-columns:minmax(0,1fr) var(--vg-valor) var(--vg-acoes);column-gap:14px;align-items:baseline;margin:auto 0 0;padding:12px 0 0;border-top:1px solid var(--cli-linha);font-size:13px;color:var(--ink-muted);}
 .cli-app .cli-vg .cli-vg-total b{font-size:14px;font-weight:700;color:var(--ink);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;}
 /* sem guia a pagar: a frase no meio do cartão (o vazio das Solicitações), não perdida no alto */
 .cli-app .cli-vg .cli-vg-nada{display:flex;flex-direction:column;gap:2px;margin:auto 0;padding:28px 12px;font-size:13px;color:var(--ink-muted);text-align:center;}
 .cli-app .cli-vg .cli-vg-nada b{font-size:14px;font-weight:600;color:var(--ink);}
 .cli-app .cli-vg .cli-vg-nada span{text-wrap:balance;}
 
-/* o enviar: os tipos como escolha (a bolinha marcada), sem os ícones; a área de soltar ocupa o resto do cartão */
-.cli-app .cli-vg .cli-vg-enviar .cli-envio-tipos{gap:8px;margin:4px 0 12px;}
-.cli-app .cli-vg .cli-vg-enviar .cli-envio-tipo{gap:10px;height:38px;padding:0 12px;font-weight:500;}
+/* o enviar: os tipos como escolha (a bolinha marcada), sem os ícones; a área de soltar ocupa o resto do cartão.
+   (16/11/2026, "muita informação") mais baixo: os tipos menores e, na área de soltar, só o título e os formatos */
+.cli-app .cli-vg .cli-vg-enviar .cli-envio-tipos{gap:8px;margin:4px 0 10px;}
+.cli-app .cli-vg .cli-vg-enviar .cli-envio-tipo{gap:10px;height:34px;padding:0 12px;font-size:13px;font-weight:500;}
 .cli-app .cli-vg .cli-vg-enviar .cli-envio-tipo svg{display:none;}
 .cli-app .cli-vg .cli-vg-enviar .cli-envio-tipo::before{content:"";flex:none;box-sizing:border-box;width:14px;height:14px;border:1.5px solid color-mix(in srgb,var(--ink) 35%,transparent);border-radius:50%;}
 .cli-app .cli-vg .cli-vg-enviar .cli-envio-tipo.on{border-color:color-mix(in srgb,var(--accent) 70%,var(--cli-linha));background:color-mix(in srgb,var(--accent) 7%,transparent);color:var(--ink);font-weight:600;}
 .cli-app .cli-vg .cli-vg-enviar .cli-envio-tipo.on::before{border:4px solid var(--accent);}
-.cli-app .cli-vg .cli-vg-enviar .cli-soltar{flex:1;justify-content:center;padding:18px 14px;}
-.cli-app .cli-vg .cli-vg-enviar .cli-soltar svg{margin-bottom:4px;}
+.cli-app .cli-vg .cli-vg-enviar .cli-soltar{flex:1;justify-content:center;gap:2px;padding:12px 14px;}
+.cli-app .cli-vg .cli-vg-enviar .cli-soltar svg{width:20px;height:20px;margin-bottom:4px;}
+.cli-app .cli-vg .cli-vg-enviar .cli-soltar > span.cli-so-pc,.cli-app .cli-vg .cli-vg-enviar .cli-soltar > span.cli-so-toque{display:none;}
 
-/* ---- o celular: o botão vira um link curto embaixo do texto; a lista das guias em duas linhas ---- */
+/* ---- o celular: o botão vira um link curto embaixo do texto; nas guias, o Baixar só com o ícone ---- */
 @media (max-width:640px){
   .cli-app .cli-vg{gap:16px;}
   .cli-app .cli-vg .cli-vg-cartao,.cli-app .cli-vg .cli-vg-precisa.cli-tudo-em-dia{padding:16px;}
   .cli-app .cli-vg .cli-vg-baixo{gap:16px;}
-  .cli-app .cli-vg .cli-vg-pend{grid-template-columns:8px minmax(0,1fr);row-gap:0;padding:12px 0 6px;}
-  .cli-app .cli-vg .cli-vg-pend:first-child{padding-top:4px;}
-  .cli-app .cli-vg .cli-vg-acao{grid-column:2;justify-self:start;width:auto;min-height:34px;margin-left:-13px;border-color:transparent;background:none;box-shadow:none;color:var(--accent-ink);}
+  .cli-app .cli-vg .cli-vg-pend{grid-template-columns:8px minmax(0,1fr);row-gap:0;min-height:0;padding:10px 0 2px;}
+  .cli-app .cli-vg .cli-vg-pend:first-child{padding-top:2px;}
+  .cli-app .cli-vg .cli-vg-pend > .cli-vg-ponto{align-self:start;margin-top:7px;}
+  /* o título e o detalhe quebram juntos, sem cortar */
+  .cli-app .cli-vg .cli-vg-pend-txt{flex-wrap:wrap;column-gap:8px;row-gap:0;white-space:normal;line-height:1.45;}
+  .cli-app .cli-vg .cli-vg-pend-txt b,.cli-app .cli-vg .cli-vg-pend-txt span{overflow:visible;}
+  .cli-app .cli-vg .cli-vg-acao{grid-column:2;justify-self:start;width:auto;min-height:32px;margin-left:-13px;border-color:transparent;background:none;box-shadow:none;color:var(--accent-ink);}
   .cli-app .cli-vg .cli-vg-acao::after{content:"›";margin-left:-3px;font-size:16px;line-height:1;}
-  /* (13/11/2026, revisão) sem a setinha, o "›" do "Ver todas" encosta na borda dos valores */
   .cli-app .cli-vg .cli-vg-cartao > .card-head > .btn-ghost{padding-right:0;margin-right:-6px;}
-  .cli-app .cli-vg .cli-vg-proximos .cli-vg-guia{grid-template-columns:48px minmax(0,1fr) auto;row-gap:2px;}
-  /* a data e o dia da semana nas mesmas bases do nome e do "em 3 dias" */
-  .cli-app .cli-vg .cli-vg-data{flex-direction:column;gap:0;grid-row:1 / span 2;align-self:start;line-height:20px;}
-  .cli-app .cli-vg .cli-vg-data small{margin-top:2px;line-height:18px;}
-  .cli-app .cli-vg .cli-vg-nome{grid-column:2;grid-row:1;line-height:20px;}
-  .cli-app .cli-vg .cli-vg-faltam{grid-column:2;grid-row:2;line-height:18px;}
-  .cli-app .cli-vg .cli-vg-valor{grid-column:3;grid-row:1 / span 2;align-self:center;}
-  .cli-app .cli-vg .cli-vg-seta{display:none;}
-  .cli-app .cli-vg .cli-vg-guia-acoes{padding-left:68px;}
-  .cli-app .cli-vg .cli-vg-total{grid-template-columns:minmax(0,1fr) auto;}
+  .cli-app .cli-vg .cli-vg-proximos{--vg-valor:auto;--vg-acoes:74px;}
+  .cli-app .cli-vg .cli-vg-proximos .cli-vg-guia,.cli-app .cli-vg .cli-vg-total{column-gap:12px;}
+  .cli-app .cli-vg .cli-vg-nome{white-space:normal;}
+  .cli-app .cli-vg .cli-vg-baixar{flex:none;width:36px;min-height:36px;padding:0;}
+  .cli-app .cli-vg .cli-vg-baixar > .cli-vg-rotulo{display:none;}
+  .cli-app .cli-vg .cli-vg-mais,.cli-app .cli-vg .cli-vg-vaga{width:32px;height:36px;}
   .cli-app .cli-vg .cli-vg-nada{padding:14px 8px 6px;}
 }
 
 /* os primeiros passos na Visão geral (15/11/2026: a lista do Notion, do Asana e do Stripe): uma faixa compacta, o
-   título com o progresso e os itens lado a lado; o feito fica riscado de leve com o visto verde */
-.cli-app .cli-pp{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px 22px;padding:12px 12px 12px 18px;}
-.cli-app .cli-pp-topo{display:flex;flex-direction:column;gap:6px;min-width:0;}
-.cli-app .cli-pp-topo b{font-size:14px;}
+   título com o progresso e os itens lado a lado. (16/11/2026, "muita informação") mais discreta: uma linha baixa, o
+   título e o progresso lado a lado, só os passos que faltam, em pílulas menores (no celular também lado a lado) */
+.cli-app .card.cli-pp{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px 20px;padding:8px 10px 8px 18px;}
+.cli-app .cli-pp-topo{display:flex;align-items:center;gap:12px;min-width:0;}
+.cli-app .cli-pp-topo b{font-size:13.5px;font-weight:600;white-space:nowrap;}
 .cli-app .cli-pp-conta{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-muted);white-space:nowrap;}
-.cli-app .cli-pp-barra{display:block;width:70px;height:5px;border-radius:3px;background:color-mix(in srgb,var(--ink) 12%,transparent);overflow:hidden;}
+.cli-app .cli-pp-barra{display:block;width:56px;height:4px;border-radius:3px;background:color-mix(in srgb,var(--ink) 12%,transparent);overflow:hidden;}
 .cli-app .cli-pp-barra span{display:block;height:100%;border-radius:3px;background:var(--success);transition:width .3s;}
 .cli-app .cli-pp-itens{display:flex;flex-wrap:wrap;gap:6px;margin:0;padding:0;list-style:none;}
-.cli-app .cli-pp-item{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 12px 0 6px;border:1px solid var(--cli-linha);border-radius:999px;background:var(--surface);color:var(--ink);font:inherit;font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer;transition:border-color .15s,background .15s;}
+.cli-app .cli-pp-item{display:inline-flex;align-items:center;gap:8px;height:30px;padding:0 12px 0 10px;border:1px solid var(--cli-linha);border-radius:999px;background:var(--surface);color:var(--ink);font:inherit;font-size:12.5px;font-weight:500;white-space:nowrap;cursor:pointer;transition:border-color .15s,background .15s;}
 .cli-app .cli-pp-item:hover{border-color:color-mix(in srgb,var(--accent) 50%,var(--cli-linha));background:color-mix(in srgb,var(--accent) 6%,var(--surface));}
-.cli-app .cli-pp-marca{display:grid;place-items:center;width:22px;height:22px;border:1.5px solid color-mix(in srgb,var(--ink) 30%,transparent);border-radius:50%;font-size:11px;font-weight:700;color:var(--ink-muted);}
-.cli-app .cli-pp-item.feito{cursor:default;color:var(--ink-muted);background:none;}
-.cli-app .cli-pp-item.feito:hover{border-color:var(--cli-linha);background:none;}
-.cli-app .cli-pp-item.feito .cli-pp-rotulo{text-decoration:line-through;text-decoration-color:color-mix(in srgb,var(--ink) 35%,transparent);}
-.cli-app .cli-pp-item.feito .cli-pp-marca{border-color:var(--success);background:var(--success);color:#fff;}
+.cli-app .cli-pp-marca{flex:none;box-sizing:border-box;width:12px;height:12px;border:1.5px solid color-mix(in srgb,var(--ink) 35%,transparent);border-radius:50%;}
 .cli-app .cli-pp-x{grid-column:3;grid-row:1;align-self:center;}
 @media (max-width:1100px){
-  .cli-app .cli-pp{grid-template-columns:minmax(0,1fr) auto;}
+  .cli-app .card.cli-pp{grid-template-columns:minmax(0,1fr) auto;}
   .cli-app .cli-pp-itens{grid-column:1 / -1;grid-row:2;}
-  .cli-app .cli-pp-x{grid-column:2;grid-row:1;align-self:start;}
+  .cli-app .cli-pp-x{grid-column:2;grid-row:1;}
 }
-@media (max-width:767px){
-  .cli-app .cli-pp-itens{flex-direction:column;}
-  .cli-app .cli-pp-itens{gap:6px;}
-  .cli-app .cli-pp-item{width:100%;height:38px;}
+@media (max-width:640px){
+  .cli-app .card.cli-pp{padding:10px 10px 12px 16px;}
 }

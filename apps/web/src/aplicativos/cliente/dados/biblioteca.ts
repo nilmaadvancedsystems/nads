@@ -143,3 +143,22 @@ export function nomeDoZip(empresa: string, mes?: string, oQue = 'Documentos'): s
   const quando = mes ? ' ' + formatos.capital(formatos.rot(mes).toLowerCase()) : '';
   return (oQue + ' ' + quem + quando).replace(/\s+/g, ' ').trim() + '.zip';
 }
+
+/**
+ * A linha de baixo enxuta da Central (16/11/2026: o dono apresentou a área e ouviu "muita informação"). Tira da linha
+ * de baixo o que já está na mesma linha ou no título do mês: o vencimento ("vence em 24/11" — a data já está na coluna),
+ * o "referente a 10/2026" (é o mês do grupo), o "recebido pelo escritório em …" (já tem o Recebido no fim), o número e a
+ * série da nota (o número já está no nome), o código interno do funcionário no DP ("f2") e o que repete o nome
+ * ("Folha de pagamento" em "Folha de pagamento 10-2026"). Da guia fica só o valor. O detalhe completo continua no item (a busca usa ele); vazio = sem linha de baixo.
+ */
+export function detalheCurto(i: Pick<ItemDaBiblioteca, 'pasta' | 'nome' | 'detalhe'>): string {
+  const nome = semAcento(i.nome);
+  return i.detalhe.split(' · ')
+    .map(s => s.replace(/ nº \d+$/, '').trim())
+    // do DP só a categoria: o segundo pedaço é o id interno do funcionário ("f2"), não o nome
+    .filter((s, n) => s && (i.pasta !== 'dp' || n === 0)
+      && !/^(vence em|referente a|recebido pelo escritório em|série) /.test(s)
+      && !nome.includes(semAcento(s))
+      && (i.pasta !== 'guias' || s.startsWith('R$')))
+    .join(' · ');
+}

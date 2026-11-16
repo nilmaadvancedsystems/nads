@@ -2,9 +2,13 @@
 // com uma linha de resumo do mês; o "Precisa de você" com o ponto da urgência, o texto e UM botão igual em todos (ou o
 // "tudo em dia" no mesmo cartão); embaixo, lado a lado e da mesma altura, as próximas guias numa lista curta e alinhada
 // (o clique abre ver, copiar o código e baixar; "Ver todas" leva às Guias) e o enviar documento.
+// Enxugada em 16/11/2026 (o dono apresentou a área e ouviu "tinha muita informação"; o mesmo critério das outras telas):
+// o resumo com dois fatos; cada pendência numa linha só (o título, um detalhe curto e o botão); cada próxima guia com o
+// nome, "Vence 19/11", o valor e UM botão (Baixar), o ver e o copiar no "⋯"; o enviar mais baixo; os primeiros passos
+// discretos, só com o que falta.
 // Só desenha: o estado e as ações vêm de useInicio.ts.
 import './inicio.css';
-import { Icone } from '@nads/ui';
+import { Icone, MenuSuspenso } from '@nads/ui';
 import { JanelaDoArquivo } from '../partes/JanelaDoArquivo';
 import { Enviar } from './Enviar';
 import { useInicio } from './useInicio';
@@ -37,7 +41,8 @@ export function Inicio(props: DaCasca & { empresa: string; contato: AreaCliente[
               {vm.pendencias.map(p => (
                 <li key={p.id} className={'cli-vg-pend tom-' + p.tom}>
                   <span className="cli-vg-ponto" aria-hidden="true" />
-                  <span className="cli-vg-pend-txt"><b>{p.titulo}</b><span>{p.texto}</span></span>
+                  {/* (16/11/2026, "muita informação") uma linha: o título e o detalhe curto; a explicação longa no title */}
+                  <span className="cli-vg-pend-txt" title={p.texto}><b>{p.titulo}</b>{p.detalhe && <span>{p.detalhe}</span>}</span>
                   <button type="button" className="btn btn-sm cli-vg-acao" disabled={p.acao.tipo === 'baixar-guia' && vm.baixando === p.acao.guia} onClick={() => vm.agir(p.acao)}>{p.rotulo}</button>
                 </li>
               ))}
@@ -59,24 +64,22 @@ export function Inicio(props: DaCasca & { empresa: string; contato: AreaCliente[
             </div>
             {vm.proximas.length ? (
               <>
+                {/* (16/11/2026, "muita informação") o nome, "Vence 19/11", o valor, UM botão e o "⋯" (ver, copiar o código) */}
                 <ul className="cli-vg-guias">
                   {vm.proximas.map(g => (
-                    <li key={g.id} className={g.aberta ? 'aberta' : undefined}>
-                      <button type="button" className="cli-vg-guia cli-extrato-linha" aria-expanded={g.aberta} onClick={() => vm.abrirGuia(g.id)}>
-                        <span className="cli-vg-data">{g.dia}<small>{g.semana}</small></span>
-                        <span className="cli-vg-nome">{g.nome}</span>
-                        <span className="cli-vg-faltam">{g.faltam}</span>
-                        <span className="cli-vg-valor">{g.valor}</span>
-                        <Icone nome="chevronDown" className="cli-vg-seta" width={14} height={14} />
-                      </button>
-                      {g.aberta && (
-                        <div className="cli-vg-guia-acoes">
-                          {g.temPdf && <button type="button" className="btn btn-sm" disabled={vm.vista.abrindo === g.id} onClick={() => vm.verGuia(g.id)}>Ver</button>}
-                          {g.codigo && <button type="button" className="btn btn-sm" onClick={() => vm.copiarCodigo(g.codigo)}>Copiar código</button>}
-                          {g.temPdf && <button type="button" className="btn btn-sm btn-primary" disabled={vm.baixando === g.id} onClick={() => void vm.baixar(g.id)}>Baixar</button>}
-                          {!g.temPdf && !g.codigo && <span className="hint">O arquivo desta guia ainda não chegou.</span>}
-                        </div>
-                      )}
+                    <li key={g.id} className="cli-vg-guia cli-extrato-linha">
+                      <span className="cli-vg-guia-txt"><b className="cli-vg-nome">{g.nome}</b><span className="cli-vg-quando">{g.quando}</span></span>
+                      <span className="cli-vg-valor">{g.valor}</span>
+                      <span className="cli-vg-guia-acoes">
+                        {g.principal ? (
+                          <button type="button" className="btn btn-sm cli-vg-baixar" disabled={vm.baixando === g.id} onClick={g.principal.acao} aria-label={g.principal.rotulo + ': ' + g.nome}>
+                            <Icone nome={g.principal.icone} width={15} height={15} /><span className="cli-vg-rotulo">{g.principal.rotulo}</span>
+                          </button>
+                        ) : <span className="cli-vg-ainda">Ainda não chegou</span>}
+                        {g.mais.length ? (
+                          <MenuSuspenso rotulo="" icone="mais" className="icon-btn cli-vg-mais" semSeta direita flutuante compacto dica="Mais ações" titulo={'Mais ações: ' + g.nome} itens={g.mais} />
+                        ) : <span className="cli-vg-vaga" aria-hidden="true" />}
+                      </span>
                     </li>
                   ))}
                 </ul>

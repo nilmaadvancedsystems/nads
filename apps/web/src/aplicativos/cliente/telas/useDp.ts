@@ -14,10 +14,11 @@ import { baixarArquivo } from '../dados/baixar';
 import { repoAreaCliente } from '../dados/repo';
 import { nomeDoZip } from '../dados/biblioteca';
 import { tempoDeEmpresa } from '../dados/regras';
+import { donoQueNaoRepete, fraseCurtaDasFerias, notaDasFerias, resumoDoRegistro } from '../dados/registroEnxuto';
 import { useBaixarVarios } from './useBaixarVarios';
 import { useVisualizar } from './useVisualizar';
 import {
-  dataBr, erroDaAdmissao, erroDaDemissao, erroDasFerias, nomeDaPessoa, resumoDoPessoal, textoDaAdmissao, textoDaDemissao, textoDasFerias,
+  dataBr, erroDaAdmissao, erroDaDemissao, erroDasFerias, nomeDaPessoa, textoDaAdmissao, textoDaDemissao, textoDasFerias,
   type PedidoDeAdmissao, type PedidoDeDemissao, type PedidoDeFerias,
 } from '../dados/regras';
 import type { DaCasca, PedidoDaTela } from './useAreaCliente';
@@ -106,9 +107,13 @@ export function useDp({ token, area, hoje }: DaCasca) {
   const ROTULO_DAS_FERIAS: Record<ac.SituacaoDasFerias, string> = { vencida: 'Venceu', 'vence-logo': 'Vence logo', tem: 'Pode tirar', 'a-adquirir': 'Em dia' };
   const ferias = ativos.map(f => ({ f, x: feriasDe.get(f.id)! }))
     .sort((a, b) => ac.ORDEM_DAS_FERIAS[a.x.situacao] - ac.ORDEM_DAS_FERIAS[b.x.situacao] || a.f.nome.localeCompare(b.f.nome))
-    .map(({ f, x }) => ({ id: f.id, nome: nomeDaPessoa(f.nome), tom: TOM_DAS_FERIAS[x.situacao], rotulo: ROTULO_DAS_FERIAS[x.situacao], texto: x.texto, podeProgramar: x.situacao !== 'a-adquirir', pelaFolha: x.pelaFolha }));
+    .map(({ f, x }) => ({ id: f.id, nome: nomeDaPessoa(f.nome), tom: TOM_DAS_FERIAS[x.situacao], rotulo: ROTULO_DAS_FERIAS[x.situacao], texto: x.texto, podeProgramar: x.situacao !== 'a-adquirir', pelaFolha: x.pelaFolha,
+      // (16/11/2026: "muita informação") a linha da lista só com a data; o período aquisitivo fica com o escritório
+      frase: fraseCurtaDasFerias(x.texto) }));
   const feriasUrgentes = ferias.filter(x => x.tom === 'ruim' || x.tom === 'atencao').length;
   const feriasParaTirar = ferias.filter(x => x.podeProgramar).length;
+  // de onde vieram as férias: todas pela previsão do DP, algumas, ou nenhuma (a estimativa)
+  const feriasFonte: 'folha' | 'misto' | 'guias' = !ferias.length || !ferias.some(x => x.pelaFolha) ? 'guias' : ferias.every(x => x.pelaFolha) ? 'folha' : 'misto';
 
   // o custo da folha mês a mês (as guias do FGTS): os salários (a base) e o FGTS, empilhados
   const historico = area.pessoal?.historico ?? [];
@@ -132,8 +137,11 @@ export function useDp({ token, area, hoje }: DaCasca) {
     ],
     // as férias (13/11/2026: os avisos de férias)
     ferias, feriasParaTirar, feriasUrgentes,
-    // de onde vieram as férias: todas pela previsão do DP, algumas, ou nenhuma (a estimativa)
-    feriasFonte: !ferias.length || !ferias.some(x => x.pelaFolha) ? 'guias' as const : ferias.every(x => x.pelaFolha) ? 'folha' as const : 'misto' as const,
+    feriasFonte,
+    // (16/11/2026: "muita informação") a nota do pé das férias numa frase; os três cartões de número viram dois fatos
+    // curtos embaixo do título
+    notaDasFerias: notaDasFerias(feriasFonte),
+    resumo: resumoDoRegistro({ ativos: funcionarios.filter(f => f.ativo).length, paraTirar: feriasParaTirar, urgentes: feriasUrgentes }),
     feriasDoFuncionario: (id: string) => { const x = feriasDe.get(id); return x ? { rotulo: ROTULO_DAS_FERIAS[x.situacao], tom: TOM_DAS_FERIAS[x.situacao], texto: x.texto } : null; },
     // o custo da folha
     // as colunas do custo, no mesmo gráfico do Faturamento
@@ -169,7 +177,6 @@ export function useDp({ token, area, hoje }: DaCasca) {
         return { chave: k + d.tipo, dia: d.dia ? String(d.dia).padStart(2, '0') : '', semana: data ? DIAS_DA_SEMANA[data.getDay()] : 'no mês', titulo: d.titulo, detalhe: d.detalhe, tipo: d.tipo, passou };
       }),
     },
-    numeros: resumoDoPessoal(area.pessoal, hoje),
     competencia: mesBr(area.pessoal?.competencia ?? ''),
     temFuncionarios: funcionarios.length > 0,
     funcionarios: visiveis.map(f => ({
@@ -183,6 +190,12 @@ export function useDp({ token, area, hoje }: DaCasca) {
       afastado: f.ativo && f.afastadoDe ? 'Afastado ' + (f.afastadoAte ? 'de ' + dataBr(f.afastadoDe) + ' a ' + dataBr(f.afastadoAte) : 'desde ' + dataBr(f.afastadoDe)) : '',
       pelaFolha: f.fonte === 'folha',
       ferias: f.ativo ? (() => { const x = feriasDe.get(f.id); return x ? { rotulo: ROTULO_DAS_FERIAS[x.situacao], tom: TOM_DAS_FERIAS[x.situacao] } : null; })() : null,
+      // o cartão da equipe mais limpo (16/11/2026: "muita informação"): uma frase (o cargo; sem ele, o tempo na empresa;
+      // quem saiu, quando saiu) e um selo só quando pede atenção (afastado, férias vencidas ou vencendo); "Em dia" e
+      // "Pode tirar" ficam na aba Férias
+      linha: !f.ativo ? 'Saiu em ' + mesBr(f.ultimo) : f.cargo || (f.admissao || f.desde ? tempoDeEmpresa(f.admissao ?? f.desde + '-01', hoje).replace(/^há /, '') + ' na empresa' : ''),
+      selo: f.ativo && f.afastadoDe ? { rotulo: 'Afastado', tom: 'neutro' }
+        : f.ativo ? (() => { const x = feriasDe.get(f.id); return x && (x.situacao === 'vencida' || x.situacao === 'vence-logo') ? { rotulo: ROTULO_DAS_FERIAS[x.situacao], tom: TOM_DAS_FERIAS[x.situacao] } : null; })() : null,
       /** os documentos dele, o mais novo primeiro (a ficha) */
       docs: docsDe(f.id).sort((x, y) => y.competencia.localeCompare(x.competencia)).map(d => linhaDoDoc(d, true)),
     })),
@@ -198,7 +211,8 @@ export function useDp({ token, area, hoje }: DaCasca) {
     // os documentos do mês, por categoria
     meses: meses.map(m => ({ valor: m, rotulo: formatos.capital(formatos.rot(m).toLowerCase()) })),
     mes, mudarMes: setMes,
-    grupos: gruposDoMes.map(g => ({ categoria: g.categoria, rotulo: g.rotulo, docs: g.documentos.map(d => linhaDoDoc(d)) })),
+    // (16/11/2026: "muita informação") de quem é, só quando o nome do arquivo ainda não diz
+    grupos: gruposDoMes.map(g => ({ categoria: g.categoria, rotulo: g.rotulo, docs: g.documentos.map(d => { const l = linhaDoDoc(d); return { ...l, quem: donoQueNaoRepete(l.nome, l.dono) }; }) })),
     baixar: (id: string) => { void baixar(id); }, baixando,
     // os pedidos
     pedir, nomes: funcionarios.filter(f => f.ativo).map(f => nomeDaPessoa(f.nome)).sort(),

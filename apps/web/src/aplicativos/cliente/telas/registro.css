@@ -1,0 +1,60 @@
+/* O Registro enxuto (16/11/2026: o dono apresentou a área e ouviu "muita informação"). Só a tela do Registro usa (prefixo
+   cli-rg-). Os seletores começam em .cli-app e somam uma classe a mais que as regras antigas do cliente.css que tocam nas
+   classes guardadas para o tutorial (cli-eq-cartao, cli-reg-doc, cli-cf), porque a ordem de carga dos CSS não é garantida. */
+
+/* o resumo embaixo do título: dois fatos numa linha; o das férias leva à aba Férias */
+.cli-app .cli-subtitulo.cli-rg-resumo{display:flex;flex-wrap:wrap;align-items:baseline;row-gap:2px;line-height:1.5;}
+.cli-app .cli-rg-resumo .cli-rg-trecho b{font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;}
+.cli-app .cli-rg-resumo .cli-rg-trecho + .cli-rg-trecho::before{content:"·";margin:0 7px;color:var(--ink-muted);}
+.cli-app .cli-rg-resumo .cli-rg-trecho-link{padding:0;border:0;background:none;color:inherit;font:inherit;cursor:pointer;text-underline-offset:3px;}
+.cli-app .cli-rg-resumo .cli-rg-trecho-link:hover{color:var(--ink);text-decoration:underline;}
+.cli-app .cli-rg-resumo .cli-rg-trecho-link:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px;}
+.cli-app .cli-rg-resumo .cli-rg-trecho-link.t-atencao,.cli-app .cli-rg-resumo .cli-rg-trecho-link.t-atencao b{color:var(--warn);}
+
+/* a equipe: um cartão baixo por pessoa, em duas linhas alinhadas (o nome e o salário; o cargo e o selo), a foto ao lado */
+.cli-app .cli-reg-equipe .cli-eq-grade{grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;}
+.cli-app .cli-reg-equipe .cli-eq-cartao.cli-rg-cartao{display:grid;grid-template-columns:40px minmax(0,1fr) auto;grid-template-rows:auto auto;align-content:center;column-gap:12px;row-gap:3px;height:100%;min-height:68px;padding:12px 14px;}
+.cli-app .cli-rg-cartao > :first-child{grid-row:1 / span 2;grid-column:1;align-self:center;}
+.cli-app .cli-rg-quem,.cli-app .cli-rg-lado{display:contents;}
+.cli-app .cli-rg-quem b{grid-row:1;grid-column:2;align-self:end;min-width:0;font-size:14px;font-weight:600;line-height:20px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cli-app .cli-rg-quem .hint{grid-row:2;grid-column:2;align-self:start;min-width:0;margin:0;font-size:12.5px;line-height:20px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cli-app .cli-rg-lado .cli-valor{grid-row:1;grid-column:3;align-self:end;justify-self:end;font-size:14px;font-weight:600;line-height:20px;white-space:nowrap;font-variant-numeric:tabular-nums;}
+.cli-app .cli-rg-lado .cli-eq-ferias{grid-row:2;grid-column:3;align-self:center;justify-self:end;height:20px;padding:0 8px;font-size:11px;}
+
+/* o custo da folha: o total, três números e o "Ver detalhes" dos holerites */
+.cli-app .cli-rg-cf .cli-rg-detalhes{margin-top:-6px;}
+.cli-app .cli-rg-cf .cli-rg-detalhes > summary{display:inline-flex;align-items:center;gap:6px;padding:2px 0;color:var(--ink-muted);font-size:13px;font-weight:600;list-style:none;cursor:pointer;}
+.cli-app .cli-rg-cf .cli-rg-detalhes > summary::-webkit-details-marker{display:none;}
+.cli-app .cli-rg-cf .cli-rg-detalhes > summary:hover{color:var(--ink);}
+.cli-app .cli-rg-cf .cli-rg-detalhes > summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px;}
+.cli-app .cli-rg-cf .cli-rg-detalhes > summary svg{transition:transform .15s ease;}
+.cli-app .cli-rg-cf .cli-rg-detalhes[open] > summary svg{transform:rotate(90deg);}
+.cli-app .cli-rg-cf .cli-cf-partes.cli-rg-detalhes-corpo{margin-top:8px;padding-top:0;border-top:0;}
+
+/* os documentos da folha: o nome e, à direita, o Baixar e o "⋯" */
+.cli-app .cli-reg-docs .cli-reg-doc.cli-rg-doc{grid-template-columns:30px minmax(0,1fr) auto;}
+.cli-app .cli-rg-doc-acoes{display:flex;align-items:center;gap:4px;}
+.cli-app .cli-rg-doc-acoes .cli-rg-baixar{gap:6px;}
+.cli-app .cli-rg-doc-acoes .cli-rg-mais{width:30px;height:30px;}
+
+@media (max-width:640px){
+  .cli-app .cli-reg-equipe .cli-eq-grade{grid-template-columns:minmax(0,1fr);}
+}
+
+/* o Baixar das linhas na cor do texto (o vermelho fica para o que é principal na tela) */
+.cli-app .cli-rg-doc-acoes .btn.cli-rg-baixar{color:var(--ink);}
+.cli-app .cli-rg-doc-acoes .btn.cli-rg-baixar svg{color:var(--ink-muted);}
+
+/* no celular, as quatro abas cabem na largura: sem os ícones e mais juntas */
+@media (max-width:560px){
+  .cli-app .cli-fat-abas.cli-rg-abas{gap:2px;}
+  .cli-app .cli-fat-abas.cli-rg-abas .cli-fat-aba{flex:1 1 auto;min-width:0;padding:0 6px;}
+  .cli-app .cli-fat-abas.cli-rg-abas .cli-fat-aba > svg{display:none;}
+}
+
+/* no celular, o Baixar só com o ícone: o nome do documento fica com a largura */
+@media (max-width:640px){
+  .cli-app .cli-rg-doc-acoes .btn.cli-rg-baixar{width:36px;height:36px;padding:0;justify-content:center;}
+  .cli-app .cli-rg-doc-acoes .cli-rg-baixar-txt{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
+  .cli-app .cli-rg-doc-acoes .cli-rg-mais{width:36px;height:36px;}
+}

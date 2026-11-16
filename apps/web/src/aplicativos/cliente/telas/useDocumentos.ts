@@ -3,13 +3,14 @@
 // (Tudo, Guias, Folha e DP, Notas, Do escritório, Enviados por você) com a contagem; a busca e o mês; a lista por mês de
 // referência; ver (a janela de visualização, com as setas para o anterior e o próximo) e baixar; marcar vários (ou o mês
 // inteiro) e baixar num .zip. As regras (o que entra, a pasta, o mês, o filtro, os nomes do .zip) estão em
-// dados/biblioteca.ts; aqui só o estado da tela e as ações.
+// dados/biblioteca.ts; aqui só o estado da tela e as ações. 16/11/2026 ("muita informação"): a linha de baixo enxuta
+// (detalheCurto) e o selo da pasta só no "Tudo" (numa pasta escolhida o selo repetia a mesma pasta em toda linha).
 import { formatos } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useState } from 'react';
 import { useLocation } from 'react-router';
 import { baixarArquivo } from '../dados/baixar';
-import { bibliotecaDoCliente, contagemDasPastas, filtrarBiblioteca, nomeDoZip, PASTAS_DA_BIBLIOTECA, porMesDaBiblioteca, type ItemDaBiblioteca, type PastaDaBiblioteca } from '../dados/biblioteca';
+import { bibliotecaDoCliente, contagemDasPastas, detalheCurto, filtrarBiblioteca, nomeDoZip, PASTAS_DA_BIBLIOTECA, porMesDaBiblioteca, type ItemDaBiblioteca, type PastaDaBiblioteca } from '../dados/biblioteca';
 import { repoAreaCliente } from '../dados/repo';
 import { useBaixarVarios } from './useBaixarVarios';
 import { useVisualizar } from './useVisualizar';
@@ -75,13 +76,15 @@ export function useDocumentos({ token, area }: DaCasca) {
       .map(p => ({ ...p, ativa: p.id === pasta })),
     escolherPasta: (p: PastaDaBiblioteca | '') => setPasta(p),
     busca, mudarBusca: setBusca, mes, mudarMes: setMes,
+    /** o selo da pasta em cada linha só no "Tudo" (16/11/2026) */
+    comPasta: pasta === '',
     meses: meses.map(m => ({ valor: m, rotulo: formatos.capital(formatos.rot(m).toLowerCase()) })),
     grupos: grupos.map(g => ({
       mes: g.mes, titulo: formatos.rot(g.mes).toUpperCase(),
       // o mês inteiro num .zip (os que abrem)
       abrem: g.itens.filter(i => i.abre).length,
       baixarMes: () => { void baixarVarios(g.itens, g.mes); },
-      itens: g.itens.map(i => ({ ...i, rotuloDaPasta: PASTA.get(i.pasta)?.rotulo ?? '', tomDaPasta: PASTA.get(i.pasta)?.tom ?? 'neutro', quando: i.data.slice(8, 10) + '/' + i.data.slice(5, 7), marcado: marcados.has(i.chave) })),
+      itens: g.itens.map(i => ({ ...i, linha: detalheCurto(i), rotuloDaPasta: PASTA.get(i.pasta)?.rotulo ?? '', tomDaPasta: PASTA.get(i.pasta)?.tom ?? 'neutro', quando: i.data.slice(8, 10) + '/' + i.data.slice(5, 7), marcado: marcados.has(i.chave) })),
     })),
     // marcar vários e baixar num .zip
     marcar: (chave: string) => setMarcados(m => { const n2 = new Set(m); if (n2.has(chave)) n2.delete(chave); else n2.add(chave); return n2; }),

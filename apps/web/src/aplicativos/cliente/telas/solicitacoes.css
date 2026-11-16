@@ -1,0 +1,15 @@
+/* Solicitações mais enxutas (16/11/2026: o dono apresentou a Área do Cliente e ouviu "muita informação"). Na lista,
+   cada item em duas linhas: o título com a data, e a situação com a prévia da última fala numa linha só (o assunto
+   saiu; continua no painel). Só a tela de Solicitações usa; os seletores começam por .cli-app .cli-sc para pesar mais
+   que as regras do cliente.css, porque a ordem de carga dos CSS não é garantida. */
+.cli-app .cli-sc .cli-sc-linha-previa{display:flex;align-items:baseline;gap:5px;min-width:0;font-size:12.5px;line-height:1.45;color:var(--ink-muted);}
+.cli-app .cli-sc .cli-sc-linha-previa > span{flex:none;}
+.cli-app .cli-sc .cli-sc-linha-previa .cli-sc-situacao{font-size:12px;}
+.cli-app .cli-sc .cli-sc-linha-previa .cli-sc-previa{flex:1 1 auto;min-width:0;margin:0;display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+
+/* (16/11/2026, revisão de consistência: "muita informação") no celular as quatro abas cabem no cartão: a "Concluídas"
+   encostava na borda direita (a faixa rola, mas a última ficava cortada) */
+@media (max-width:480px){
+  .cli-app .cli-sc .cli-sc-filtros{padding:8px 4px 0;}
+  .cli-app .cli-sc .cli-sc-filtros .cli-sc-filtro{padding:8px 6px 11px;gap:5px;}
+}

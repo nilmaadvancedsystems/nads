@@ -1,4 +1,4 @@
-import type { areaCliente as ac } from '@nads/core';
+import { formatos, type areaCliente as ac } from '@nads/core';
 import { describe, expect, it } from 'vitest';
 import { areaComoNoBanco, areaDeExemplo } from './areaCliente.memoria';
 import { atividadeRecente, guiasDoMomento, linhaDoResumo, pendenciasDoCliente, proximasGuias, proximosDoCliente, quandoFoi, rotuloDoTotal, vereditoDoMes } from './visaoGeral';
@@ -33,6 +33,8 @@ describe('pendenciasDoCliente e vereditoDoMes', () => {
     }, hoje);
     expect(p.map(x => [x.id, x.tom, x.rotulo])).toEqual([['g-das', 'bad', 'Pedir guia nova'], ['g-fgts', 'warn', 'Baixar guia'], ['c-c1', 'warn', 'Ver resposta']]);
     expect(p[0].titulo).toBe('O DAS venceu em 12/10');
+    // (16/11/2026, "muita informação") a linha curta da Visão geral: o título e o detalhe
+    expect(p.map(x => x.detalhe)).toEqual([formatos.reais(100), formatos.reais(100), 'Certidão']);
     expect(p[0].acao).toEqual({ tipo: 'pedir-guia', titulo: 'Guia nova do DAS (competência 09/2026)' });
     expect(p[1].acao).toEqual({ tipo: 'baixar-guia', guia: 'fgts' });
     expect(vereditoDoMes(p, [])).toEqual({ tom: 'bad', titulo: 'Você tem 3 pendências', texto: '1 guia vencida, 1 guia vence hoje e 1 resposta do escritório.' });
@@ -50,6 +52,7 @@ describe('pendenciasDoCliente e vereditoDoMes', () => {
       ['ticket', 'warn', 'Continuar', 'O escritório pediu para rever 1 resposta. Responda até 21/10.'],
     ]);
     expect(p[0].titulo).toBe('O escritório pediu: Extratos de 09/2026');
+    expect(p.map(x => x.detalhe)).toEqual(['até hoje', 'até 21/10']);
     expect(p[0].acao).toEqual({ tipo: 'abrir-ticket', codigo: 'ABC' });
     expect(vereditoDoMes(p, []).texto).toBe('2 pedidos do escritório para responder.');
   });
@@ -60,6 +63,12 @@ describe('pendenciasDoCliente e vereditoDoMes', () => {
   it('sem PDF, a guia de hoje leva para Guias; o recado sem destino não entra', () => {
     const p = pendenciasDoCliente({ ...vazio, guias: [guia('fgts', 'FGTS', '17/10/2026', false)], avisos: [{ id: 'a', titulo: 'Oi', texto: 'só um recado' }, { id: 'b', titulo: 'Extratos', texto: 'mande', ir: 'documentos' }] }, hoje);
     expect(p.map(x => x.acao)).toEqual([{ tipo: 'ir', aba: 'guias' }, { tipo: 'enviar' }]);
+  });
+  it('o certificado com a data no título, numa linha só (16/11/2026, "muita informação")', () => {
+    const perto = pendenciasDoCliente({ ...vazio, certificado: { tipo: 'A1', titular: 'X', validoAte: '2026-11-01' } }, hoje);
+    expect(perto.map(x => [x.titulo, x.detalhe, x.tom])).toEqual([['Certificado digital vence em 01/11', '', 'warn']]);
+    const vencido = pendenciasDoCliente({ ...vazio, certificado: { tipo: 'A1', titular: 'X', validoAte: '2026-10-01' } }, hoje);
+    expect(vencido[0].titulo).toBe('Certificado digital venceu em 01/10');
   });
   it('o exemplo como no banco: a guia vencida e a resposta; o vazio: tudo em dia', () => {
     const real = areaComoNoBanco(hoje);
@@ -103,11 +112,11 @@ describe('quandoFoi', () => {
 });
 
 describe('linhaDoResumo e proximasGuias (a Visão geral de 13/11/2026)', () => {
-  it('a linha: o mês, quantas pendências e quando atualizou', () => {
-    expect(linhaDoResumo('Novembro de 2026', 4, 'hoje, 07:30')).toBe('Novembro de 2026 · 4 pendências · atualizado hoje, 07:30');
-    expect(linhaDoResumo('Novembro de 2026', 1, '11/11')).toBe('Novembro de 2026 · 1 pendência · atualizado em 11/11');
-    expect(linhaDoResumo('Novembro de 2026', 0, '')).toBe('Novembro de 2026');
-    expect(linhaDoResumo('Novembro de 2026', 0, 'hoje, 07:30')).toBe('Novembro de 2026 · atualizado hoje, 07:30');
+  it('a linha: no máximo dois fatos, quantas pendências e quando atualizou (16/11/2026: saiu o mês)', () => {
+    expect(linhaDoResumo(4, 'hoje, 07:30')).toBe('4 pendências · atualizado hoje, 07:30');
+    expect(linhaDoResumo(1, '11/11')).toBe('1 pendência · atualizado em 11/11');
+    expect(linhaDoResumo(0, '')).toBe('');
+    expect(linhaDoResumo(0, 'hoje, 07:30')).toBe('Atualizado hoje, 07:30');
   });
   it('o rótulo do total diz quantas ficaram fora da lista', () => {
     expect(rotuloDoTotal(1, 1)).toBe('Total a pagar');
@@ -120,7 +129,8 @@ describe('linhaDoResumo e proximasGuias (a Visão geral de 13/11/2026)', () => {
       ({ id, tipo: 'FGTS', competencia: '2026-10', vencimento, valor, situacao, temPdf: true });
     const gs = [g('d', '21/11/2026', 400, 'a vencer'), g('v', '08/11/2026', 50, 'vencida'), g('h', '13/11/2026', 60, 'vence hoje'), g('a', '14/11/2026', 100, 'a vencer'), g('c', '16/11/2026', 300, 'a vencer')];
     const p = proximasGuias(gs, HOJE, 2);
-    expect(p.itens.map(x => [x.guia.id, x.dia, x.semana, x.faltam])).toEqual([['a', '14/11', 'sáb', 'amanhã'], ['c', '16/11', 'seg', 'em 3 dias']]);
+    // (16/11/2026, "muita informação") só "Vence dd/mm": sem o dia da semana e sem o "em 3 dias"
+    expect(p.itens.map(x => [x.guia.id, x.quando])).toEqual([['a', 'Vence 14/11'], ['c', 'Vence 16/11']]);
     expect([p.quantas, p.total]).toEqual([3, 800]);
     expect(proximasGuias([], HOJE)).toEqual({ itens: [], quantas: 0, total: 0 });
   });
