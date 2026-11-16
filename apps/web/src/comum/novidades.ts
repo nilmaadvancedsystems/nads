@@ -37,6 +37,10 @@ export const NOVIDADES = {
   /** a comissão escondida (16/11/2026): quem tem uma % própria registra a comissão sem ver o valor; a % fica num lugar do banco
    *  que nenhuma tela lê e o robô da nuvem calcula; o Financeiro vê o valor, sem o do serviço */
   'comissao-oculta': { desde: '16/11/2026', aprovada: false },
+  /** a conversa de cada feedback (16/11/2026: "preciso de um chat onde eu possa responder os feedbacks, para entender mais,
+   *  fazendo perguntas"): o Perguntar na janela do feedback do admin; quem mandou responde na janela grande e no balão (só aparece
+   *  depois que o admin pergunta) */
+  'conversa-feedback': { desde: '16/11/2026', aprovada: false },
 } satisfies Record<string, { desde: string; aprovada: boolean }>;
 
 export type IdNovidade = keyof typeof NOVIDADES;

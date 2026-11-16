@@ -10,6 +10,7 @@ import { PRIORIDADES, type PrioridadeDoFeedback, type SituacaoDoFeedback } from 
 import { useFeedbacks } from './useFeedbacks';
 import { ConversaDoFeedback } from './ConversaDoFeedback';
 import { useConversaDoFeedback } from './useConversaDoFeedback';
+import { useNovidade } from '../../../../comum/novidades';
 
 const SELO = { novo: 'badge-warn', visto: 'badge-neutral', resolvendo: 'badge-suave badge-warn', testando: 'badge-suave badge-warn', feito: 'badge-ok' } as const;
 const NOME = { novo: 'Novo', visto: 'Visto', resolvendo: 'Resolvendo', testando: 'Testando', feito: 'Feito' } as const;
@@ -127,6 +128,8 @@ function JanelaDoFeedback({ f, fechar, ampliar, marcar, baixar, baixarTudo, copi
   delegar: (id: string, uid: string) => void;
 }) {
   const [zipando, setZipando] = useState(false);
+  // a conversa (16/11/2026) é novidade: no modo desenvolvedor até o Vitor aprovar
+  const comConversa = useNovidade('conversa-feedback');
   // revisão da UI, 16/10/2026: Esc, foco preso e o foco de volta pela peça useJanela (antes, um Esc à mão por janela)
   const janela = useRef<HTMLDivElement>(null);
   useJanela(janela, fechar);
@@ -189,7 +192,7 @@ function JanelaDoFeedback({ f, fechar, ampliar, marcar, baixar, baixarTudo, copi
             </section>
           )}
           {!f.lido && <span className="fraco feedback-onde">{f.tela}{f.versao ? ' · ' + f.versao : ''}</span>}
-          <ConversaComQuemMandou f={f} />
+          {comConversa && <ConversaComQuemMandou f={f} />}
         </div>
         <footer className="usuario-pe">
           {/* o texto da solicitação, para colar (Vitor, 27/10/2026) */}
