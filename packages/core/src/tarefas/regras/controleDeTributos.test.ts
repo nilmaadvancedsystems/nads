@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { linhasDoProtocolo } from './protocoloDeTributos';
-import { alternarRetificacaoDaLinha, linhaRetificada, colunaDaGuia, competenciaDaApuracao, grupoDoControle, htmlDoControle, linhaEmBranco, numeroDoControle, preencherComSugestao, situacaoDaLinha, somarMesesDaCompetencia, sugestoesDoEntregas, valorDoControle } from './controleDeTributos';
+import { adicionarRetificacao, alternarRetificacaoDaLinha, cabeRetificacao, guardarRetificacao, linhaRetificada, MAX_RETIFICACOES, quadroDeRetificacao, referenciaDaRetificacao, removerRetificacao, retificacaoEmBranco, situacaoDaRetificacao, colunaDaGuia, competenciaDaApuracao, grupoDoControle, htmlDoControle, linhaEmBranco, numeroDoControle, preencherComSugestao, situacaoDaLinha, somarMesesDaCompetencia, sugestoesDoEntregas, valorDoControle } from './controleDeTributos';
 
 const logo = { definicao: '<svg id="def"></svg>', uso: '<svg><use href="#x"/></svg>' };
 
@@ -135,5 +135,78 @@ describe('o controle de tributos do Fiscal (27/10/2026)', () => {
     expect(html).toContain('>08/2026<');
     expect(html).not.toContain('OUTRA LTDA');
     expect(quadro(new Map())).not.toContain('RETIFICADA LTDA');
+  });
+});
+
+describe('o quadro de retificação do Relatório (16/11/2026: o botão como o do 13º)', () => {
+  const empresas = [{ codigo: 12, nome: 'DOZE LTDA' }, { codigo: 13, nome: 'TREZE LTDA' }, { codigo: 14, nome: 'QUATORZE LTDA' }];
+  const ligada = (codigo: number) => alternarRetificacaoDaLinha(linhaEmBranco('2026-10', codigo, 'sn'));
+  const vazia = { observacoes: [], retificacoes: [] };
+
+  it('as empresas ligadas entram em branco com a referência do mês; as guardadas, como estão; em ordem de código', () => {
+    const folha = { observacoes: [], retificacoes: [{ ...retificacaoEmBranco(14, '08/2026'), valores: { das: '10,00' } }] };
+    const q = quadroDeRetificacao({ competencia: '2026-10', empresas, linhas: new Map([[12, ligada(12)], [13, linhaEmBranco('2026-10', 13, 'sn')]]), folha });
+    expect(q.map(l => [l.retificacao.codigo, l.retificacao.referencia, l.indice, l.ligada])).toEqual([[12, '10/2026', null, true], [14, '08/2026', 0, false]]);
+  });
+
+  it('a empresa ligada que já tem uma guardada não aparece duas vezes (nem no protocolo)', () => {
+    const folha = { observacoes: [], retificacoes: [{ ...retificacaoEmBranco(12, '09/2026'), valores: { das: '5,00' } }] };
+    const linhas = new Map([[12, ligada(12)]]);
+    const q = quadroDeRetificacao({ competencia: '2026-10', empresas, linhas, folha });
+    expect(q).toHaveLength(1);
+    expect(q[0]).toMatchObject({ indice: 0, ligada: true });
+    const html = htmlDoControle({ competencia: '2026-10', grupo: grupoDoControle('sn'), empresas, linhas, folha, logo }).split('<h2>RETIFICAÇÃO</h2>')[1];
+    expect(html.split('DOZE LTDA')).toHaveLength(2);
+    expect(html).toContain('09/2026');
+  });
+
+  it('a mesma empresa em dois meses fica junta, na ordem da referência', () => {
+    const folha = { observacoes: [], retificacoes: [retificacaoEmBranco(13, '09/2026'), retificacaoEmBranco(12, '01/2026'), retificacaoEmBranco(13, '12/2025')] };
+    const q = quadroDeRetificacao({ competencia: '2026-10', empresas, linhas: new Map(), folha });
+    expect(q.map(l => l.retificacao.codigo + ' ' + l.retificacao.referencia)).toEqual(['12 01/2026', '13 12/2025', '13 09/2026']);
+  });
+
+  it('escrever na linha da empresa ligada a guarda na folha; na guardada, troca no lugar', () => {
+    const q = quadroDeRetificacao({ competencia: '2026-10', empresas, linhas: new Map([[12, ligada(12)]]), folha: vazia });
+    const f1 = guardarRetificacao(vazia, q[0], { ...q[0].retificacao, valores: { das: '1,00' } });
+    expect(f1.retificacoes).toEqual([{ ...retificacaoEmBranco(12, '10/2026'), valores: { das: '1,00' } }]);
+    const f2 = guardarRetificacao(f1, { indice: 0 }, { ...f1.retificacoes[0], entregue: 'zap' });
+    expect(f2.retificacoes).toHaveLength(1);
+    expect(f2.retificacoes[0].entregue).toBe('zap');
+  });
+
+  it('+ Retificação: entra uma vez por empresa e referência, até o limite da folha', () => {
+    const f = adicionarRetificacao(vazia, 13, '07/2026');
+    expect(f.retificacoes).toEqual([retificacaoEmBranco(13, '07/2026')]);
+    expect(adicionarRetificacao(f, 13, '07/2026')).toBe(f);
+    expect(adicionarRetificacao(f, 13, '08/2026').retificacoes).toHaveLength(2);
+    const cheia = { observacoes: [], retificacoes: Array.from({ length: MAX_RETIFICACOES }, (_, i) => retificacaoEmBranco(i, '01/2026')) };
+    expect(cabeRetificacao(cheia)).toBe(false);
+    expect(adicionarRetificacao(cheia, 99, '01/2026')).toBe(cheia);
+  });
+
+  it('tirar a linha: a guardada sai; a empresa ligada se desliga quando não sobra outra dela', () => {
+    const linhas = new Map([[12, ligada(12)], [13, ligada(13)]]);
+    const folha = { observacoes: [], retificacoes: [retificacaoEmBranco(12, '09/2026'), retificacaoEmBranco(12, '08/2026')] };
+    const q = quadroDeRetificacao({ competencia: '2026-10', empresas, linhas, folha });
+    const treze = q.find(l => l.retificacao.codigo === 13)!;
+    expect(removerRetificacao(folha, treze)).toEqual({ folha: null, desligar: 13 });
+    const primeira = removerRetificacao(folha, q[0]);
+    expect(primeira).toEqual({ folha: { observacoes: [], retificacoes: [retificacaoEmBranco(12, '09/2026')] }, desligar: null });
+    const ultima = quadroDeRetificacao({ competencia: '2026-10', empresas, linhas, folha: primeira.folha! })[0];
+    expect(removerRetificacao(primeira.folha!, ultima)).toEqual({ folha: vazia, desligar: 12 });
+  });
+
+  it('a referência como fica e a situação da retificação', () => {
+    expect(referenciaDaRetificacao('9/2026')).toBe('09/2026');
+    expect(referenciaDaRetificacao('092026')).toBe('09/2026');
+    expect(referenciaDaRetificacao('2026-09')).toBe('09/2026');
+    expect(referenciaDaRetificacao(' ')).toBe('');
+    expect(referenciaDaRetificacao('13/2026')).toBeNull();
+    expect(referenciaDaRetificacao('setembro')).toBeNull();
+    const r = retificacaoEmBranco(12, '09/2026');
+    expect(situacaoDaRetificacao(r)).toBe('branco');
+    expect(situacaoDaRetificacao({ ...r, marcas: { s: 'ok' } })).toBe('comecada');
+    expect(situacaoDaRetificacao({ ...r, entregue: 'email' })).toBe('entregue');
   });
 });

@@ -6083,6 +6083,16 @@ html[data-sem-animacao] .mx-gaveta-fundo,html[data-sem-animacao] .mx-gaveta{anim
 .fr-tabela col.fr-c-sit{width:36px;}
 .fr-tabela col.fr-c-ret{width:52px;}
 .fr-retif .toggle-txt{display:none;}
+/* o quadro de retificação (16/11/2026): o + Retificação no topo, a referência e a lixeira */
+.fr-ret-titulo{font-size:var(--fs-13);font-weight:600;}
+.fr-ret-novo{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.fr-ret-novo input{height:28px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius-sm,6px);background:var(--surface);color:var(--ink);font-size:var(--fs-12);}
+.fr-ret-novo .fr-ret-empresa{width:240px;max-width:100%;}
+.fr-ret-novo .fr-ret-ref{width:84px;}
+.fr-tabela col.fr-c-ref{width:78px;}
+.fr-tabela col.fr-c-tirar{width:40px;}
+.fr-ret-tirar{width:26px;height:26px;color:var(--ink-muted);}
+.fr-ret-tirar:hover{color:var(--danger,#c0392b);}
 /* a REINF, nas mesmas linhas */
 .fr-tabela.fr-reinf{min-width:1190px;}
 .fr-tabela col.fr-c-ate{width:112px;}

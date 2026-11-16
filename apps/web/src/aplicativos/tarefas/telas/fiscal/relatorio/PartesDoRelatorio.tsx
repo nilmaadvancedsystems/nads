@@ -21,6 +21,13 @@ export function Valor({ valor, sugestao, molde, rotulo, pode, aoSalvar, largo, e
   );
 }
 
+/** A conferência da tabela: a bolinha pequena (vazia a fazer, ✓ feita, – não se aplica); clicável quando pode. */
+export function Bolinha({ estado, dica, pode, clicar }: { estado: 'nao-tem' | 'a-fazer' | 'feita'; dica: string; pode: boolean; clicar?: () => void }) {
+  const conteudo = estado === 'feita' ? <Icone nome="check" width={11} height={11} /> : estado === 'nao-tem' ? '–' : null;
+  if (!pode || !clicar) return <span className={'fr-marca ' + estado} title={dica} aria-label={dica}>{conteudo}</span>;
+  return <button type="button" className={'fr-marca ' + estado} onClick={clicar} title={dica} aria-label={dica} aria-pressed={estado === 'feita'}>{conteudo}</button>;
+}
+
 /** A conferência: em branco, OK ou não se aplica (—); clicar passa para a próxima */
 export function MarcaDoControle({ marca, rotulo, pode, aoVirar }: { marca: t.MarcaDoControle | undefined; rotulo: string; pode: boolean; aoVirar: () => void }) {
   const m = marca || '';

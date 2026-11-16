@@ -11,17 +11,9 @@ import { useState, type CSSProperties } from 'react';
 import { useColunasAjustaveis } from '../../../../../comum/ColunasAjustaveis';
 import { MenuDeFiltro } from '../../dp/MenuDeFiltro';
 import { JanelaDasGuias } from './JanelaDasGuias';
-import { Entrega, Valor } from './PartesDoRelatorio';
+import { Bolinha, Entrega, Valor } from './PartesDoRelatorio';
+import { QuadroDeRetificacao } from './QuadroDeRetificacao';
 import { dataBr, useRelatorioGeral, type RegimeDoRelatorio } from './useRelatorioGeral';
-
-type EstadoDaMarca = 'nao-tem' | 'a-fazer' | 'feita';
-
-/** A conferência: a bolinha pequena (vazia a fazer, ✓ feita, – não se aplica); clicável quando pode. */
-function Bolinha({ estado, dica, pode, clicar }: { estado: EstadoDaMarca; dica: string; pode: boolean; clicar?: () => void }) {
-  const conteudo = estado === 'feita' ? <Icone nome="check" width={11} height={11} /> : estado === 'nao-tem' ? '–' : null;
-  if (!pode || !clicar) return <span className={'fr-marca ' + estado} title={dica} aria-label={dica}>{conteudo}</span>;
-  return <button type="button" className={'fr-marca ' + estado} onClick={clicar} title={dica} aria-label={dica} aria-pressed={estado === 'feita'}>{conteudo}</button>;
-}
 
 export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
   const vm = useRelatorioGeral(regime);
@@ -44,9 +36,9 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
         <MenuDeFiltro rotulo="Status" valor={f.status} mudar={f.setStatus} opcoes={f.statusOpcoes} />
         <MenuDeFiltro rotulo="Pendente em" valor={f.pendenteEm} mudar={f.setPendenteEm} opcoes={f.partes} todos="Todas as partes" />
         <MenuDeFiltro rotulo="Entrega" valor={f.entrega} mudar={f.setEntrega} opcoes={f.entregas} />
-        {/* quantas empresas por página (28/10/2026); a busca sempre corre todas as empresas */}
-        <MenuSuspenso rotulo={'Por página: ' + (f.porPagina || 'Todas')} titulo="Empresas por página" dica="Quantas empresas por página" className="btn btn-outline"
-          itens={f.porPaginaOpcoes.map(o => ({ rotulo: o.rotulo, marcado: o.valor === f.porPagina, onClick: () => f.setPorPagina(o.valor) }))} />
+        {/* quantas empresas por página (28/10/2026); a busca sempre corre todas as empresas; o quadro de retificação não tem páginas */}
+        {!vm.retificacao.ligada && <MenuSuspenso rotulo={'Por página: ' + (f.porPagina || 'Todas')} titulo="Empresas por página" dica="Quantas empresas por página" className="btn btn-outline"
+          itens={f.porPaginaOpcoes.map(o => ({ rotulo: o.rotulo, marcado: o.valor === f.porPagina, onClick: () => f.setPorPagina(o.valor) }))} />}
         {f.algum && <button type="button" className="btn btn-ghost dp-limpar" onClick={f.limpar}><Icone nome="x" />Limpar filtros</button>}
         <span className="tarefas-barra-espaco" />
         {vm.podeGravar && (
@@ -59,7 +51,7 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
           <input type="text" value={f.busca} onChange={e => f.setBusca(e.target.value)} placeholder="Buscar cliente" aria-label="Buscar cliente (nome ou código)"
             onKeyDown={e => { if (e.key === 'Escape') f.setBusca(''); }} />
         </label>
-        <button type="button" className="icon-btn" title="Exportar a tabela para o Excel" aria-label="Exportar a tabela para o Excel" disabled={vm.carregando || !vm.linhas.length}
+        <button type="button" className="icon-btn" title="Exportar a tabela para o Excel" aria-label="Exportar a tabela para o Excel" disabled={vm.carregando || !(vm.retificacao.ligada ? vm.retificacao.linhas : vm.linhas).length}
           onClick={() => { const x = vm.exportar(); baixarBytes(x.bytes, x.nome, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); }}>
           <LogoExcel />
         </button>
@@ -68,7 +60,7 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
       {vm.exemplos && <p className="hint drive-aviso">Dados de exemplo: o que se escreve fica só nesta aba.</p>}
       {!vm.podeGravar && <p className="hint">Só o Fiscal preenche o relatório; você está vendo.</p>}
 
-      {vm.carregando ? <Esqueleto linhas={8} /> : (
+      {vm.carregando ? <Esqueleto linhas={8} /> : vm.retificacao.ligada ? <QuadroDeRetificacao vm={vm} regime={regime} /> : (
         <section className={'card fr-cartao fr-regime-' + regime} aria-label={g.rotulo}>
           <div className="fr-cartao-topo">
             {/* o andamento: quantas das empresas achadas já estão concluídas */}
@@ -84,6 +76,9 @@ export function RelatorioGeral({ regime }: { regime: RegimeDoRelatorio }) {
                 <BotaoIcone pequeno icone="chevronRight" titulo={'Próxima página (está na ' + (vm.pagina.atual + 1) + ' de ' + vm.pagina.paginas + ')'} disabled={vm.pagina.atual >= vm.pagina.paginas - 1} onClick={vm.pagina.proxima} />
               </>
             )}
+            {/* a retificação (16/11/2026: "um botão parecido com o do 13º"): ligado, a tabela vira o quadro de retificação do mês */}
+            <span className="hint">Retificação{vm.retificacao.total ? ' (' + vm.retificacao.total + ')' : ''}</span>
+            <Interruptor ligado={false} onMudar={vm.retificacao.ligar} rotulo="Mostrar o quadro de retificação do mês" />
           </div>
           {!vm.total ? <p className="hint dp-vazio">Nenhuma empresa do {g.rotulo} no Cadastro: as empresas entram pelo regime.</p>
             : !vm.linhas.length ? <p className="hint dp-vazio">Nenhum cliente com esses filtros.</p> : (
