@@ -53,5 +53,5 @@ export function aplicarSimulacao(agora: Date, aniversario: string, s: SaudacaoSi
   const dd = String(d.getDate()).padStart(2, '0');
   // no mês do aniversário: outro dia do mesmo mês (o dia 1, ou o 2 quando hoje é dia 1)
   const outroDia = d.getDate() === 1 ? '02' : '01';
-  return { agora: d, aniversario: s.aniversario === 'dia' ? mm + '-' + dd : s.aniversario === 'mes' ? mm + '-' + outroDia : aniversario, apelidos: s.apelido ? ['Craque'] : apelidos };
+  return { agora: d, aniversario: s.aniversario === 'dia' ? mm + '-' + dd : s.aniversario === 'mes' ? mm + '-' + outroDia : aniversario, apelidos: s.apelido ? ['Craque'] : Object.keys(s).length ? [] : apelidos };
 }

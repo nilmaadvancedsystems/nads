@@ -9,8 +9,9 @@
 // "Segura a ansiedade" e o "Feriadão vem aí" saíram de vez. E "Feriado na semana, dose mais, não apareça com tanta frequência,
 // deixa só na segunda e um dia antes do feriado": fora o próprio dia, o feriado só aparece nesses dois dias, e sem peso dobrado.
 // Por fim, "Corrigidas que quero exatamente (tem sotaque é menos robotizado)": o texto de cada frase é o dele, letra por letra; e
-// nas que "pode colocar apelido", o {apelido} sorteia entre o primeiro nome e os apelidos da pessoa (usuarios/{uid}.apelidos,
-// no banco: o repositório é público, nome da equipe não entra no código).
+// nas que "pode colocar apelido", o {apelido} às vezes vira um dos apelidos da pessoa (usuarios/{uid}.apelidos, no banco: o
+// repositório é público, nome da equipe não entra no código). "Não exagere nos apelidos, diminua muito e a chance de aparecer":
+// no máximo dois por pessoa, e o apelido em cerca de 1 de cada 10 saudações; no resto, o primeiro nome.
 
 import { feriadoDoDia, type Feriado } from './feriados';
 
@@ -96,6 +97,10 @@ export function primeiroNome(nome: string): string {
   return p.charAt(0).toLocaleUpperCase('pt-BR') + p.slice(1).toLocaleLowerCase('pt-BR');
 }
 
+/** Quantos apelidos por pessoa entram (os primeiros da lista) e a chance do apelido: 1 em APELIDO_UMA_EM saudações. */
+export const MAX_APELIDOS = 2;
+export const APELIDO_UMA_EM = 10;
+
 /** Os jeitos de chamar a pessoa: o primeiro nome e os apelidos (sem repetidos nem vazios). */
 export function jeitosDeChamar(nome: string, apelidos?: readonly string[] | null): string[] {
   const todos = [primeiroNome(nome), ...(apelidos || []).map(a => String(a).trim()).filter(Boolean)];
@@ -125,13 +130,16 @@ export function frasesDaSaudacao(nome: string, agora: Date, aniversario?: string
 
 /**
  * A saudação de agora: uma das frases, escolhida pela pessoa (quem), pelo dia e pelo turno, e mais nada; recarregar no
- * mesmo turno dá a mesma frase (e o mesmo apelido). troca: soma ao número (o "Outra frase" do ⚡, para testar); simulando:
- * começa pela primeira frase (a especial, quando tem: a segunda-feira ou o aniversário simulados aparecem logo) e a troca anda
- * uma a uma, e o apelido junto.
+ * mesmo turno dá a mesma frase (e o mesmo nome ou apelido). O apelido sai em cerca de 1 de cada APELIDO_UMA_EM turnos. troca:
+ * soma ao número (o "Outra frase" do ⚡, para testar); simulando: começa pela primeira frase (a especial, quando tem: a
+ * segunda-feira ou o aniversário simulados aparecem logo), a troca anda uma a uma e, com apelido simulado, ele sai sempre.
  */
 export function saudacao(o: { nome: string; quem: string; agora: Date; aniversario?: string | null; apelidos?: readonly string[] | null; troca?: number; simulando?: boolean }): string {
-  const jeitos = jeitosDeChamar(o.nome, o.apelidos);
-  const n = o.simulando ? (o.troca || 0) : numeroDe(o.quem + '|' + dataLocal(o.agora) + '|' + turnoDe(o.agora.getHours())) + (o.troca || 0);
-  const frases = frasesDaSaudacao(o.nome, o.agora, o.aniversario, jeitos[(o.simulando ? n : Math.floor(n / 7)) % jeitos.length]);
+  const chave = o.quem + '|' + dataLocal(o.agora) + '|' + turnoDe(o.agora.getHours());
+  const n = o.simulando ? (o.troca || 0) : numeroDe(chave) + (o.troca || 0);
+  const apelidos = jeitosDeChamar(o.nome, o.apelidos).slice(1, 1 + MAX_APELIDOS);
+  const sorte = o.simulando ? n : numeroDe(chave + '|apelido');
+  const comApelido = apelidos.length > 0 && (o.simulando || sorte % APELIDO_UMA_EM === 0);
+  const frases = frasesDaSaudacao(o.nome, o.agora, o.aniversario, comApelido ? apelidos[Math.floor(sorte / APELIDO_UMA_EM) % apelidos.length] : undefined);
   return frases[n % frases.length];
 }
