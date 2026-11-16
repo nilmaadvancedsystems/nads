@@ -360,3 +360,6 @@ export function lerReport(texto: string): ReportLido {
 
 // Delegar a solicitação a quem tem a função de desenvolvedor (16/11/2026)
 export * from './delegacao';
+
+// A conversa de cada feedback: o admin pergunta, quem mandou responde (16/11/2026)
+export * from './conversa';

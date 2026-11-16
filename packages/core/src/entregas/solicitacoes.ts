@@ -146,3 +146,61 @@ export function dadosDaSolicitacao(n: SolicitacaoNova, quem: { email: string; no
     ...(atestado && n.empresa ? { atestadoClinica: n.clinica, atestadoFuncionario: n.funcionario.trim(), atestadoEmpresa: empresa, atestadoEmpresaId: n.empresa.id } : {}),
   };
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+// a tarefa delegada ao office boy vira solicitação (16/11/2026: "quando for delegado para o officeboy, a opcao 'entrega' que vai
+// jogar direto no modulo de entregas"): na Nova tarefa, escolhido o office boy, a caixinha Entrega; marcada, nenhuma tarefa é
+// criada, o pedido vai para a fila do office boy (Entregas › Solicitações) e quem pediu acompanha lá
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** Os tipos que a tarefa escolhe (o atestado tem o formulário próprio, na janela de Solicitações). */
+export const TIPOS_DA_ENTREGA_DA_TAREFA: readonly { valor: Exclude<TipoDaSolicitacao, 'atestado'>; rotulo: string }[] = [
+  { valor: 'entregar', rotulo: 'Entregar' },
+  { valor: 'buscar', rotulo: 'Buscar' },
+  { valor: 'outro', rotulo: 'Outro' },
+];
+
+/** A pessoa é office boy? (é quem cuida da fila das solicitações) */
+export const ehOfficeBoy = veTodasAsSolicitacoes;
+
+/** O tipo que já vem marcado, pelo nome da tarefa ("Retirada de documentação" → Buscar); sem pista, Entregar. */
+export function tipoProvavelDaEntrega(titulo: string): Exclude<TipoDaSolicitacao, 'atestado'> {
+  const t = semAcento(titulo);
+  if (/\b(retir|busc|recolh|colet|trazer|traga|pegar|pega)/.test(t)) return 'buscar';
+  if (/\b(entreg|levar|leva\b|deixar|protocol)/.test(t)) return 'entregar';
+  if (/\b(pagar|pagamento|cartorio|prefeitura|reconhec|autentic)/.test(t)) return 'outro';
+  return 'entregar';
+}
+
+/** O que a tarefa leva para a solicitação. */
+export interface TarefaParaEntrega {
+  titulo: string;
+  descricao: string;
+  clientes: readonly { codigo: number | null; nome: string }[];
+  prioridade: string;
+  /** 'aaaa-mm-dd' ou '' */
+  prazo: string;
+  /** 'hh:mm' ou '' */
+  prazoHora: string;
+}
+
+/**
+ * A solicitação da tarefa: o local são os clientes, a descrição é o nome com os Detalhes (e a hora do prazo, que a solicitação
+ * não tem), o prazo sem data vira o padrão (daqui a 2 dias) e só a prioridade Urgente vira urgente.
+ */
+export function solicitacaoDaTarefa(t: TarefaParaEntrega, tipo: Exclude<TipoDaSolicitacao, 'atestado'>, hoje = new Date()): SolicitacaoNova {
+  const detalhes = t.descricao.replace(/\s+/g, ' ').trim();
+  const descricao = t.titulo.trim() + (detalhes ? ' — ' + detalhes : '') + (t.prazo && t.prazoHora ? ' (até ' + t.prazoHora + ')' : '');
+  return {
+    tipo, local: t.clientes.map(c => c.nome.trim()).filter(Boolean).join(', '), descricao, clinica: '', funcionario: '', empresa: null,
+    prazo: t.prazo || prazoPadraoDaSolicitacao(hoje), urgente: t.prioridade === 'urgente',
+  };
+}
+
+/** Por que a tarefa não vai como entrega ('' = vai): os anexos e os links não cabem na solicitação, e o que a solicitação exige. */
+export function problemaDaEntregaDaTarefa(t: TarefaParaEntrega & { anexos: number; links: number }, tipo: Exclude<TipoDaSolicitacao, 'atestado'>, hoje = new Date()): string {
+  if (t.anexos || t.links) return 'A entrega não leva anexos nem links: tire-os ou desmarque Entrega.';
+  if (!t.titulo.trim()) return 'Dê um nome à entrega.';
+  if (t.prazo && t.prazo < isoDoDia(hoje)) return 'O prazo da entrega já passou: escolha hoje ou depois.';
+  return faltaNaSolicitacao(solicitacaoDaTarefa(t, tipo, hoje), hoje).texto;
+}

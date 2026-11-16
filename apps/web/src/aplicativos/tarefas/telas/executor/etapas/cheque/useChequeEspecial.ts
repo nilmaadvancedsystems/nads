@@ -46,6 +46,8 @@ export function useChequeEspecial() {
       faltam: ch.faltam,
       /** as pendências entre o extrato e o razão do período: o cheque sai mesmo assim, mas a pessoa confere a Importação */
       pendencias: ch.pendencias,
+      /** os meses sem o razão (16/11/2026): os dias negativos deles saem todos do extrato */
+      semRazao: ch.semRazao.map(m => tarefas.rotuloNumericoCompetencia(m)),
     };
   });
 

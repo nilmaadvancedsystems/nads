@@ -4,6 +4,7 @@
 import { normalizarTexto } from '../../../formatos';
 import type { ConferenciaPeloSaldo, Lado, Lancamento } from '../tipos';
 import { centavos, lerData, temSinal } from './texto';
+import { ehExtratoDeConta } from './preVerificacao';
 
 /** Um pedaço de texto da página: x/y do canto de baixo à esquerda (y cresce para cima), w = largura. */
 export interface ItemDeTexto { texto: string; x: number; y: number; largura: number }
@@ -332,6 +333,23 @@ export function mesesSemMovimento(texto: string): string[] | null {
     const ref = t.match(new RegExp('\\bmes (' + MESES_POR_EXTENSO.join('|') + ') (\\d{4})\\b'));
     return ref ? [ref[2] + '-' + String(MESES_POR_EXTENSO.indexOf(ref[1]) + 1).padStart(2, '0')] : [];
   }
+  return mesesDoPeriodo(texto);
+}
+
+/**
+ * O extrato da conta sem nenhum lançamento e sem a frase do sem movimento (Vitor, 16/11/2026: "mesmo se for sem movimento, deve
+ * ser arquivado! Em todos os bancos possiveis"; o BB vem só com o "Saldo Anterior" e o "S A L D O" do período): o título da
+ * conta e o saldo dizem que é o extrato, e quase nenhuma data diz que não é um extrato com lançamentos que a leitura não pegou.
+ * Os meses como no mesesSemMovimento; não é extrato vazio, null.
+ */
+export function mesesDoExtratoVazio(texto: string): string[] | null {
+  if (!ehExtratoDeConta(texto)) return null;
+  if ((texto.match(/\b\d{2}\/\d{2}(?:\/\d{2,4})?\b/g) || []).length > 8) return null;
+  return mesesDoPeriodo(texto);
+}
+
+/** Os meses do período escrito no extrato; sem ele, o do "Período do extrato"; nada disso, []. */
+function mesesDoPeriodo(texto: string): string[] {
   const p = texto.match(/(\d{2})\/(\d{2})\/(\d{4})\s*(?:at[eé]|a)\s*(\d{2})\/(\d{2})\/(\d{4})/i);
   if (p) {
     const meses: string[] = [];
@@ -350,6 +368,9 @@ export function mesesSemMovimento(texto: string): string[] | null {
     while ((a < fimA || (a === fimA && m <= fimM)) && meses.length < 24) { meses.push(a + '-' + String(m).padStart(2, '0')); m++; if (m > 12) { m = 1; a++; } }
     return meses;
   }
+  // o período dentro de um mês só, como o do BB: "Período: 01 a 30/09/2026"
+  const d = texto.match(/\b\d{2}\s*(?:a|at[eé])\s*\d{2}\/(\d{2})\/(\d{4})\b/i);
+  if (d && Number(d[1]) >= 1 && Number(d[1]) <= 12) return [d[2] + '-' + d[1]];
   const um = periodoDoExtrato(texto);
   return um ? [um] : [];
 }

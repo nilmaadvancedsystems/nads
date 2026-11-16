@@ -1,8 +1,8 @@
 // Lê um arquivo escolhido (ou baixado) e devolve os lançamentos. Aceita PDF, OFX, Excel e CSV.
 // Nada do arquivo é guardado: quem chama recebe só os lançamentos (ou o motivo de não dar).
 import * as XLSX from 'xlsx';
-import { ehFaturaDeCartao, ehRelatorioDeTitulos, extratoDoPdf, mesesSemMovimento, saldoAnteriorDoPdf } from '../regras/extrato';
-import { ehOfx, lancamentosDoOfx, saldoAnteriorDoOfx } from '../regras/ofx';
+import { ehFaturaDeCartao, ehRelatorioDeTitulos, extratoDoPdf, mesesDoExtratoVazio, mesesSemMovimento, saldoAnteriorDoPdf } from '../regras/extrato';
+import { ehOfx, lancamentosDoOfx, mesesDoOfxVazio, saldoAnteriorDoOfx } from '../regras/ofx';
 import { bancoDoTexto, preVerificarExtrato, preVerificarOfx } from '../regras/preVerificacao';
 import { lancamentosDaPlanilha, type Celula } from '../regras/planilha';
 import type { ArquivoLido, Lado } from '../tipos';
@@ -71,8 +71,10 @@ export async function lerArquivo(nome: string, bytes: Uint8Array, lado: Lado, an
     // de qual banco é (o cabeçalho): quem traz do Drive para uma conta não aceita o de outro banco
     const doBanco = lado === 'banco' ? bancoDoTexto(paginas.map(p => p.map(i => i.texto).join(' ')).join('\n')) : null;
     const comBanco = doBanco ? { bancoNoTexto: doBanco } : {};
-    // o extrato que diz que não teve movimento: o mês fica marcado como sem movimento (não é erro de leitura)
-    const semMov = !l.length && lado === 'banco' ? mesesSemMovimento(paginas.map(p => p.map(i => i.texto).join(' ')).join('\n')) : null;
+    // o extrato que diz que não teve movimento, ou o da conta sem nenhum lançamento (16/11/2026): o mês fica marcado como sem
+    // movimento e o arquivo é guardado (não é erro de leitura)
+    const textoTodo = paginas.map(p => p.map(i => i.texto).join(' ')).join('\n');
+    const semMov = !l.length && lado === 'banco' ? mesesSemMovimento(textoTodo) ?? mesesDoExtratoVazio(textoTodo) : null;
     if (semMov) return { nome, lancamentos: [], erro: 'Extrato sem movimento.', semMovimento: semMov, ...marca, ...comBanco };
     // sem a linha do saldo anterior, o da coluna Saldo (o Stone; 26/10/2026); no Bradesco escaneado, o saldo anterior conferido
     // com a 1ª linha (o OCR leu o "−11.234,56" como "71.234,56"; Vitor, 06/11/2026)
@@ -102,6 +104,8 @@ export async function lerArquivo(nome: string, bytes: Uint8Array, lado: Lado, an
       const outroOfx = lado === 'banco' ? preVerificarOfx(texto) : null;
       if (outroOfx) return { nome, lancamentos: [], erro: outroOfx.motivo, naoEExtrato: true };
       const l = lancamentosDoOfx(texto);
+      const semMovOfx = !l.length && lado === 'banco' ? mesesDoOfxVazio(texto) : null;
+      if (semMovOfx) return { nome, lancamentos: [], erro: 'Extrato sem movimento.', semMovimento: semMovOfx };
       const saldo = lado === 'banco' ? saldoAnteriorDoOfx(texto, l) : null;
       return { nome, lancamentos: l, erro: l.length ? null : 'Não achei lançamentos neste OFX.', ...(saldo != null ? { saldoAnterior: saldo } : {}) };
     }

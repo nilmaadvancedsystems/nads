@@ -79,7 +79,8 @@ export function MinhasComissoes() {
                       <span className="fraco">{c.descricao}</span>
                       {c.situacao === 'recusada' && c.motivo && <span className="cmc-motivo">Recusada: {c.motivo}</span>}
                     </span>
-                    <b className="cmc-quanto num">{formatos.reais(c.valor)}</b>
+                    {/* a escondida (16/11/2026): sem o valor */}
+                    <b className="cmc-quanto num">{c.oculta ? '—' : formatos.reais(c.valor)}</b>
                     <span className="cmc-situacao">
                       <SeloDaComissao s={c.situacao} />
                       {c.pagoEm && <span className="fraco">em {ddmm(c.pagoEm)}</span>}

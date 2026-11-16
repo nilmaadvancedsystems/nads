@@ -1,6 +1,7 @@
 // Os serviços comissionados (Vitor, 12/11/2026: "no financeiro, pode adicionar mais serviços e definir qual a porcentagem de
 // cada serviço"): a lista que aparece na janela de registrar a comissão e a % de cada um. Começa com os 9 do Vitor, sem a %.
-import { BotaoFechar, BotaoIcone, Icone, MenuSuspenso, useJanela } from '@nads/ui';
+// A % própria por pessoa saiu daqui (16/11/2026): fica num lugar do banco que nenhuma tela lê (a comissão escondida).
+import { BotaoFechar, BotaoIcone, Icone, useJanela } from '@nads/ui';
 import { useRef } from 'react';
 import { useJanelaDosServicos } from './useCarteiraDaPessoa';
 
@@ -37,30 +38,6 @@ export function JanelaDosServicos({ fechar }: { fechar: () => void }) {
               </tbody>
             </table>
           </div>
-          {/* a % própria por pessoa (Vitor, 12/11/2026): vale para todos os serviços dela, no lugar da % do serviço; só o Diretor vê (13/11/2026) */}
-          {vm.vePropria && <>
-          <p className="registro-dica"><Icone nome="usuario" />% própria por pessoa: vale para todos os serviços dela, no lugar da % de cada serviço.</p>
-          <div className="table-wrap">
-            <table className="dp-tabela">
-              <thead><tr><th>Pessoa</th><th className="num">% própria</th><th aria-label="Tirar" /></tr></thead>
-              <tbody>
-                {vm.pessoas.map(p => (
-                  <tr key={p.uid}>
-                    <td>{p.nome}</td>
-                    <td className="num"><input type="text" inputMode="decimal" value={p.percentual} onChange={e => vm.mudarPessoa(p.uid, e.target.value)} placeholder="0" aria-label={'% própria de ' + p.nome} /></td>
-                    <td><BotaoIcone icone="lixeira" titulo={'Tirar ' + p.nome} pequeno onClick={() => vm.tirarPessoa(p.uid)} /></td>
-                  </tr>
-                ))}
-                <tr>
-                  <td colSpan={3}>
-                    <MenuSuspenso rotulo="Acrescentar pessoa" icone="plus" className="btn btn-outline" titulo="A pessoa com % própria" flutuante largura={260}
-                      itens={vm.semPropria.length ? vm.semPropria.map(p => ({ rotulo: p.nome, onClick: () => vm.acrescentarPessoa(p) })) : [{ rotulo: 'Todos já têm % própria', desabilitado: true, onClick: () => {} }]} />
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          </>}
           {vm.erros.length > 0 && <ul className="registro-erros">{vm.erros.map(e => <li key={e}><Icone nome="alert" />{e}</li>)}</ul>}
         </div>
         <footer className="registro-pe">

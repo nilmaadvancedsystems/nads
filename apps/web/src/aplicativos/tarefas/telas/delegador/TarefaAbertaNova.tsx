@@ -188,7 +188,30 @@ function Propriedades({ vm }: { vm: Vm }) {
       {vm.ehNova && !vm.delegar && (
         <label className="tdl-ja-fazendo"><input type="checkbox" checked={vm.jaFazendo} onChange={e => vm.setJaFazendo(e.target.checked)} />Já estava fazendo</label>
       )}
+      {!travado && <EntregaDoOfficeBoy vm={vm} />}
     </div>
+  );
+}
+
+/**
+ * a Entrega (a novidade 'entrega-do-office-boy', 16/11/2026): escolhido o office boy em "Para quem", a caixinha Entrega; marcada,
+ * o tipo (Entregar, Buscar, Outro) e o Criar manda o pedido para a fila dele no Entregas, sem criar a tarefa
+ */
+function EntregaDoOfficeBoy({ vm }: { vm: Vm }) {
+  const e = vm.entrega;
+  if (!e.pode) return null;
+  return (
+    <>
+      <Propriedade icone="caminhao" rotulo="Entrega">
+        <span className="ini-delegar">
+          <label className="tdl-ja-fazendo" title="Mandar para a fila do office boy no Entregas, em vez de criar a tarefa">
+            <input type="checkbox" checked={e.marcada} onChange={e.alternar} />Entrega
+          </label>
+          {e.marcada && e.tipo && <Segmentado valor={e.tipo} opcoes={[...e.tipos]} onMudar={e.setTipo} />}
+        </span>
+      </Propriedade>
+      {e.marcada && <p className="registro-dica"><Icone nome="caminhao" />Vai para as Solicitações do Entregas, a fila do office boy. Não vira tarefa: acompanhe por lá.</p>}
+    </>
   );
 }
 
@@ -546,7 +569,7 @@ export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
       <span className="tarefas-barra-espaco" />
       <button type="button" className="btn btn-outline" onClick={vm.cancelar}>Cancelar</button>
       <BotaoAcao className="btn btn-primary" carregando={vm.salvando} textoCarregando="Salvando" onClick={() => { void vm.salvar(); }}>
-        <Icone nome="check" />{vm.ehNova ? (vm.delegar ? 'Criar e delegar' : 'Criar tarefa') : 'Salvar'}
+        <Icone nome={vm.entrega.marcada ? 'caminhao' : 'check'} />{vm.ehNova ? (vm.entrega.marcada ? 'Enviar para Entregas' : vm.delegar ? 'Criar e delegar' : 'Criar tarefa') : 'Salvar'}
       </BotaoAcao>
     </footer>
   );

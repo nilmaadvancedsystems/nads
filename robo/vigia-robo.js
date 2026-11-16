@@ -1148,6 +1148,9 @@ async function iniciar() {
     // a troca do e-mail de entrada (12/11/2026, nads › Cadastro › Usuários › Acesso): o Diretor ou o Dono pede, o robô troca
     try { tarefa('pedidos-de-conta', () => require('./contas-pedidos').iniciarPedidosDeConta(db, log)); }
     catch (err) { log('pedidos de conta desligados:', err.message); }
+    // a comissão escondida (16/11/2026, nads › Carteira): a % própria que nenhuma tela lê; o robô calcula o valor
+    try { tarefa('comissoes-ocultas', () => require('./comissoes-ocultas').iniciarComissoesOcultas(db, log)); }
+    catch (err) { log('comissões escondidas desligadas:', err.message); }
     // o login pelo nome (12/11/2026): o índice loginPorNome, para quem trocou o e-mail ou o nome continuar entrando pelo nome
     try { tarefa('login-por-nome', () => require('./login-por-nome').iniciarLoginPorNome(db, log)); }
     catch (err) { log('login pelo nome desligado:', err.message); }

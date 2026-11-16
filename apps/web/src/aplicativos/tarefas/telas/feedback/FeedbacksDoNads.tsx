@@ -8,6 +8,9 @@ import { FotoDaPessoa } from '../cadastro/responsaveis/FotoDaPessoa';
 import { JanelaLateral, type TopicoDaJanela } from '../janela/JanelaLateral';
 import { PRIORIDADES, type PrioridadeDoFeedback, type SituacaoDoFeedback } from '../../dados/feedback';
 import { useFeedbacks } from './useFeedbacks';
+import { ConversaDoFeedback } from './ConversaDoFeedback';
+import { useConversaDoFeedback } from './useConversaDoFeedback';
+import { useNovidade } from '../../../../comum/novidades';
 
 const SELO = { novo: 'badge-warn', visto: 'badge-neutral', resolvendo: 'badge-suave badge-warn', testando: 'badge-suave badge-warn', feito: 'badge-ok' } as const;
 const NOME = { novo: 'Novo', visto: 'Visto', resolvendo: 'Resolvendo', testando: 'Testando', feito: 'Feito' } as const;
@@ -22,6 +25,31 @@ function SeloDoBug({ f }: { f: { tipo: string; analise: keyof typeof ANALISE; ve
   return <span className="badge badge-neutral">{ANALISE[f.analise] || 'Bug'}</span>;
 }
 const TODOS = 'todos';
+
+/** A conversa com quem mandou (16/11/2026): Esperando resposta (a última é sua) ou Respondeu (a última é de quem mandou). */
+function SeloDaConversa({ s }: { s: { rotulo: string; tom: 'neutro' | 'novo' } | null }) {
+  if (!s) return null;
+  return <span className={'badge badge-suave ' + (s.tom === 'novo' ? 'badge-ok' : 'badge-neutral')} title="A conversa com quem mandou"><Icone nome="mensagem" width={12} height={12} />{s.rotulo}</span>;
+}
+
+type Aberto = NonNullable<ReturnType<typeof useFeedbacks>['aberto']>;
+
+/**
+ * A conversa na janela do feedback (Vitor, 16/11/2026: "um chat onde eu possa responder os feedbacks, para entender mais,
+ * fazendo perguntas"): o histórico e o Perguntar; quem mandou recebe numa janela grande na tela e responde.
+ */
+function ConversaComQuemMandou({ f }: { f: Aberto }) {
+  const vm = useConversaDoFeedback(f.id, 'admin', f.status, f.conversa);
+  const quem = (f.nome || f.email || 'quem mandou').split(/\s+/)[0];
+  return (
+    <section className="feedback-bloco">
+      <p className="feedback-rotulo">Conversa com {quem}</p>
+      <ConversaDoFeedback vm={vm} rotulo={f.conversa ? 'Enviar' : 'Perguntar'} campo={'Pergunte a ' + quem + ' o que precisar entender'}
+        vazia={'Nenhuma pergunta ainda. ' + quem + ' recebe a pergunta numa janela na tela e responde por ela.'}
+        fechada="Resolvido: a conversa fica só para ler. Reabra o feedback para perguntar de novo." />
+    </section>
+  );
+}
 const SELO_DA_PRIORIDADE = { alta: 'badge-bad', media: 'badge-warn', baixa: 'badge-neutral' } as const;
 
 /** A prioridade no selo suave (os mandados antes dela não têm selo). */
@@ -68,6 +96,7 @@ export function ListaDosFeedbacks({ vm }: { vm: ReturnType<typeof useFeedbacks> 
                     <SeloDaPrioridade p={f.prioridade} />
                     <SeloDoBug f={f} />
                     <span className={'badge ' + SELO[f.status]}>{NOME[f.status]}</span>
+                    <SeloDaConversa s={f.seloDaConversa} />
                     {f.delegada && <span className="badge badge-neutral">{f.delegada.titulo}</span>}
                   </span>
                   <span className="feedback-txt feedback-txt-curto">{f.tipo === 'bug' && f.empresa ? f.empresa + ' · ' : ''}{f.texto}</span>
@@ -99,6 +128,8 @@ function JanelaDoFeedback({ f, fechar, ampliar, marcar, baixar, baixarTudo, copi
   delegar: (id: string, uid: string) => void;
 }) {
   const [zipando, setZipando] = useState(false);
+  // a conversa (16/11/2026) é novidade: no modo desenvolvedor até o Vitor aprovar
+  const comConversa = useNovidade('conversa-feedback');
   // revisão da UI, 16/10/2026: Esc, foco preso e o foco de volta pela peça useJanela (antes, um Esc à mão por janela)
   const janela = useRef<HTMLDivElement>(null);
   useJanela(janela, fechar);
@@ -161,6 +192,7 @@ function JanelaDoFeedback({ f, fechar, ampliar, marcar, baixar, baixarTudo, copi
             </section>
           )}
           {!f.lido && <span className="fraco feedback-onde">{f.tela}{f.versao ? ' · ' + f.versao : ''}</span>}
+          {comConversa && <ConversaComQuemMandou f={f} />}
         </div>
         <footer className="usuario-pe">
           {/* o texto da solicitação, para colar (Vitor, 27/10/2026) */}

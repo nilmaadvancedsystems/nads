@@ -34,6 +34,16 @@ export const NOVIDADES = {
   /** o Em Lote no seletor de competência da Visão geral da empresa, o mesmo do cabeçalho da Importação (16/11/2026: "Coloca o
    *  iniciar em lote nessa tela tb"); aprovada para todos no mesmo dia ("pode publicar na versão original") */
   'em-lote-na-empresa': { desde: '16/11/2026', aprovada: true },
+  /** a comissão escondida (16/11/2026): quem tem uma % própria registra a comissão sem ver o valor; a % fica num lugar do banco
+   *  que nenhuma tela lê e o robô da nuvem calcula; o Financeiro vê o valor, sem o do serviço */
+  'comissao-oculta': { desde: '16/11/2026', aprovada: false },
+  /** a Entrega na tarefa nova delegada ao office boy (16/11/2026: "quando for delegado para o officeboy, a opcao 'entrega' que vai
+   *  jogar direto no modulo de entregas"): marcada, nenhuma tarefa é criada; o pedido vai para Entregas › Solicitações */
+  'entrega-do-office-boy': { desde: '16/11/2026', aprovada: false },
+  /** a conversa de cada feedback (16/11/2026: "preciso de um chat onde eu possa responder os feedbacks, para entender mais,
+   *  fazendo perguntas"): o Perguntar na janela do feedback do admin; quem mandou responde na janela grande e no balão (só aparece
+   *  depois que o admin pergunta); aprovada para todos no mesmo dia ("Aprova para todos") */
+  'conversa-feedback': { desde: '16/11/2026', aprovada: true },
 } satisfies Record<string, { desde: string; aprovada: boolean }>;
 
 export type IdNovidade = keyof typeof NOVIDADES;

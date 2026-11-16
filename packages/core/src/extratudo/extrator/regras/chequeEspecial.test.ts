@@ -36,6 +36,20 @@ describe('o cheque especial do banco, direto do extrato (Vitor, 13/10/2026)', ()
       arq('r', 'sistema', [L('2026-03-03', -15000, 'Pagamento'), L('2026-03-03', 5000, 'Cheque especial 92029'), L('2026-03-04', -5000, 'Cheque especial 92029'), L('2026-03-04', 8000, 'Recebimento')])] };
     expect(chequeEspecialDoBanco(feito, 'b', 'b', M)).toMatchObject({ faltam: [], calcula: false });
   });
+  it('sem o razão do mês, os dias negativos saem todos do extrato (16/11/2026: "Tem bancos no cheque especial")', () => {
+    const soExtrato: EmpresaExtrator = { ...e, arquivos: e.arquivos.filter(a => a.lado === 'banco') };
+    expect(chequeEspecialDoBanco(soExtrato, 'b', 'b', M)).toMatchObject({ faltam: [{ data: '2026-03-03', saldo: -5000 }], calcula: true, semRazao: ['2026-03'] });
+    // um mês com o razão (o cheque já feito) e outro sem: só o sem razão entra inteiro
+    const doisMeses: EmpresaExtrator = { ...e, arquivos: [
+      arq('e', 'banco', [L('2026-03-03', -15000, 'PIX ENVIADO'), L('2026-03-04', 8000, 'PIX RECEBIDO'), L('2026-04-02', -4000, 'PIX ENVIADO'), L('2026-04-03', 9000, 'PIX RECEBIDO')], 10000),
+      arq('r', 'sistema', [L('2026-03-03', -15000, 'Pagamento'), L('2026-03-03', 5000, 'Cheque especial 92029'), L('2026-03-04', -5000, 'Cheque especial 92029'), L('2026-03-04', 8000, 'Recebimento')]),
+    ] };
+    const ch = chequeEspecialDoBanco(doisMeses, 'b', 'b', ['2026-03', '2026-04']);
+    expect(ch.faltam).toEqual([{ data: '2026-04-02', saldo: -1000 }]);
+    expect(ch.semRazao).toEqual(['2026-04']);
+    // com o razão de todos os meses, nada muda
+    expect(chequeEspecialDoBanco(e, 'b', 'b', M).semRazao).toEqual([]);
+  });
   it('o ajuste no dia (D banco / C cheque) e o estorno no dia seguinte do extrato, histórico 92029', () => {
     const lanc = lancamentosDoChequeEspecial(e, 'b', 'b', M, chequeEspecialDoBanco(e, 'b', 'b', M).faltam, '10506', '90503');
     expect(lanc.map(l => [l.tipo, l.data.getDate(), l.debito, l.credito, l.valor, l.historico])).toEqual([
