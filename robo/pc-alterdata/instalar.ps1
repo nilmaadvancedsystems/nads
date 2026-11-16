@@ -23,17 +23,40 @@ function Instalar($id) {
 Passo 'Programas (Git, Node, Python)'
 if (-not (Tem git)) { Instalar 'Git.Git' } else { Write-Host 'Git: ok' }
 if (-not (Tem node)) { Instalar 'OpenJS.NodeJS.LTS' } else { Write-Host ('Node: ' + (node --version)) }
-$py = $null
-foreach ($c in @('python', 'py')) {
-  if (Tem $c) {
-    try { $x = & $c -c "import sys; print(sys.executable)" 2>$null; if ($x -and (Test-Path $x)) { $py = $x; break } } catch { }
+# o Python: o do PATH, o do lançador "py", ou o instalado para todos (Program Files, o PowerShell como Administrador) ou só
+# para o usuário (AppData). O "python" da Microsoft Store (WindowsApps) não serve: não devolve o caminho.
+function AcharPython() {
+  foreach ($c in @('py', 'python')) {
+    if (Tem $c) {
+      try {
+        $x = if ($c -eq 'py') { & py -3 -c "import sys; print(sys.executable)" 2>$null } else { & python -c "import sys; print(sys.executable)" 2>$null }
+        if ($x -and (Test-Path $x) -and ($x -notmatch 'WindowsApps')) { return $x }
+      } catch { }
+    }
+  }
+  $achados = @(Get-ChildItem -Path @("$env:ProgramFiles\Python3*\python.exe", "$env:LOCALAPPDATA\Programs\Python\Python3*\python.exe") -ErrorAction SilentlyContinue | Sort-Object FullName -Descending)
+  if ($achados.Count) { return $achados[0].FullName }
+  return $null
+}
+$py = AcharPython
+if (-not $py) {
+  if (Tem winget) {
+    Write-Host 'instalando o Python 3.12 pelo winget...'
+    winget install --id Python.Python.3.12 -e --silent --accept-source-agreements --accept-package-agreements
+    Recarregar
+    $py = AcharPython
   }
 }
 if (-not $py) {
-  Instalar 'Python.Python.3.12'
-  $py = Join-Path $env:LOCALAPPDATA 'Programs\Python\Python312\python.exe'
-  if (-not (Test-Path $py)) { throw 'Instalei o Python, mas não achei o python.exe. Feche e abra o PowerShell e rode de novo.' }
+  # sem o winget (ou ele não instalou): o instalador oficial do python.org, sem perguntas, com o "py" e no PATH
+  Write-Host 'baixando o instalador oficial do Python (python.org)...'
+  $exe = Join-Path $env:TEMP 'python-3.12.10-amd64.exe'
+  Invoke-WebRequest -Uri 'https://www.python.org/ftp/python/3.12.10/python-3.12.10-amd64.exe' -OutFile $exe -UseBasicParsing
+  Start-Process -FilePath $exe -ArgumentList '/quiet', 'InstallAllUsers=0', 'PrependPath=1', 'Include_launcher=1', 'Include_test=0' -Wait
+  Recarregar
+  $py = AcharPython
 }
+if (-not $py) { throw 'Não consegui instalar o Python. Instale pelo python.org (marque "Add python.exe to PATH") e rode este instalador de novo.' }
 Write-Host "Python: $py"
 
 Passo "Código do nads em $Pasta"
