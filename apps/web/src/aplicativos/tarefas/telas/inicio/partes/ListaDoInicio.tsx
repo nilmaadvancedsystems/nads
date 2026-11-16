@@ -87,7 +87,7 @@ export function ListaDoInicio({ documentos = false, lista: qual = 'minhas', busc
                         <span className="ini-pessoa-com-sino">
                           {vm.aba === 'minhas' || documentos ? l.pessoa
                             : <span className="ini-pessoa"><Foto p={comFoto(l.responsavel)} />{l.responsavel.nome}</span>}
-                          {cobrarLigado && l.cobranca === 'cobrada' && <span className="ini-sino" title="Cobraram uma atualização: abra a tarefa e responda"><Icone nome="sino" />Cobrada</span>}
+                          {cobrarLigado && l.cobranca === 'cobrada' && <span className="ini-sino" title={l.dicaDaCobranca}><Icone nome="sino" />Cobrada</span>}
                           {cobrarLigado && l.cobranca === 'esperando' && <span className="ini-sino" title="Você cobrou uma atualização: esperando a resposta"><Icone nome="sino" /></span>}
                           {cobrarLigado && l.cobranca === 'cobrar' && (
                             <span onClick={e => e.stopPropagation()}><BotaoIcone pequeno className="ini-sino-cobrar" icone="sino" titulo={'Cobrar uma atualização de ' + l.responsavel.nome} onClick={() => { void vm.cobrar(l.id); }} /></span>

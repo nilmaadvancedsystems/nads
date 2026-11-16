@@ -15,6 +15,7 @@ import { useOperador, type Operador } from '../../casca/operador';
 import { useAgoraDoExpediente } from '../delegador/useAgoraDoExpediente';
 import { abaDaUrl, ABAS_DO_INICIO, type AbaDoInicio } from './abasDoInicio';
 import { useNivelDoInicio, useReunioesDoInicio } from './useReunioesDoInicio';
+import { useNovidade } from '../../../../comum/novidades';
 
 const d = tarefas.delegadas;
 const ag = tarefas.agenda;
@@ -55,6 +56,8 @@ export const FILTROS_POR_ABA: Record<AbaDoInicio, Filtro[]> = {
 };
 const PLACEHOLDER: Record<AbaDoInicio, string> = { painel: 'Buscar nas tarefas', tarefas: 'Buscar nas tarefas', documentos: 'Buscar nos documentos', notificacoes: 'Buscar nas notificações' };
 const nomeDoCliente = (c: tarefas.delegadas.ClienteVinculado) => (c.codigo != null ? c.codigo + ' · ' : '') + c.nome;
+/** a data e a hora da cobrança: "16/11/2026, 10:30" */
+const dataHora = (iso: string) => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 /** os dias do calendário mais os dias de reunião (cada reunião conta um) */
 function somarDias(dias: Record<number, number>, mais: number[]): Record<number, number> {
@@ -147,6 +150,22 @@ export function useInicioNovo() {
   const [comunicado, setComunicado] = useState<string | null>(null);
   const agoraLocal = d.hojeIso() + 'T' + agora;
 
+  // as cobranças que a pessoa recebeu, nas Notificações, e quem cobrou no Cobrada (a novidade 'cobranca-notificada'; 16/11/2026:
+  // "faça aparecer em notificações que houve uma cobrança"); a busca vale para elas e qualquer pílula as esconde
+  const cobrancaNotificada = useNovidade('cobranca-notificada');
+  const recebidas = cobrancaNotificada ? d.cobrancasRecebidas(todas, uid) : [];
+  const cobrancas = recebidas
+    .filter(c => aba !== 'notificacoes' || (!filtros.length && (!q || (c.tarefa.titulo + ' ' + c.nota.por).toLowerCase().includes(q))))
+    .map(c => ({
+      id: c.tarefa.id + '|' + c.nota.em, tarefa: c.tarefa.id, aberta: c.aberta,
+      texto: c.nota.por + ' cobrou atualização da tarefa ' + c.tarefa.titulo,
+      quando: dataHora(c.nota.em), quandoFoi: tarefas.quandoFoi(c.nota.em, agoraIso),
+    }));
+  const dicaDoCobrada = (t: tarefas.delegadas.TarefaDelegada) => {
+    const n = d.cobrancaAberta(t);
+    return cobrancaNotificada && n ? d.dicaDaCobranca(n, dataHora(n.em)) : 'Cobraram uma atualização: abra a tarefa e responda';
+  };
+
   return {
     nome: op.nome.split(/[ .]/)[0],
     carregando: !carregadas,
@@ -154,7 +173,7 @@ export function useInicioNovo() {
     aba, mudarAba,
     abas: ABAS_DO_INICIO.map(a => ({
       ...a, ativa: a.id === aba,
-      qtd: a.id === 'tarefas' ? minhas.filter(t => !d.pedeDocumentos(t)).length : a.id === 'documentos' ? abertas.filter(d.pedeDocumentos).length : a.id === 'notificacoes' ? mural.avisos.length : 0,
+      qtd: a.id === 'tarefas' ? minhas.filter(t => !d.pedeDocumentos(t)).length : a.id === 'documentos' ? abertas.filter(d.pedeDocumentos).length : a.id === 'notificacoes' ? mural.avisos.length + recebidas.filter(c => c.aberta).length : 0,
     })),
     // a tarefa aberta
     aberta, abrir: (id: string) => setAberta(id), nova: () => setAberta('nova'), pedirDocumentos: () => setAberta('documentos'), fechar: () => setAberta(null),
@@ -202,6 +221,8 @@ export function useInicioNovo() {
         concluir: () => concluir(t),
         /** quem faz foi cobrado e ainda não respondeu (o sino; 13/11/2026) */
         cobrada: d.deveResponderCobranca(t, uid),
+        /** ao passar o mouse no Cobrada: quem cobrou e quando */
+        dicaDaCobranca: dicaDoCobrada(t),
       })),
     },
     /**
@@ -252,6 +273,8 @@ export function useInicioNovo() {
 
     // as Notificações
     carregandoMural: !mural.carregados,
+    /** as cobranças que a pessoa recebeu, a mais nova primeiro (aberta = ainda sem resposta); clicar abre a tarefa */
+    cobrancas,
     comunicados,
     comunicado: comunicados.find(c => c.id === comunicado) || (reunioes.lista.some(x => x.id === comunicado) ? null : comunicados[0]) || null,
     /** a reunião escolhida (o mesmo escolher dos comunicados: o id diz qual é) */

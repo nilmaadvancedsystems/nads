@@ -809,6 +809,24 @@ export function problemaDaResposta(t: Pick<TarefaDelegada, 'responsavel' | 'pare
   return '';
 }
 
+/** Uma cobrança que a pessoa recebeu (as Notificações do Início; 16/11/2026): a tarefa, quem cobrou, quando e se ainda espera a resposta. */
+export interface CobrancaRecebida { tarefa: TarefaDelegada; nota: Nota; aberta: boolean }
+
+/**
+ * As cobranças das tarefas que a pessoa faz, a mais nova primeiro (16/11/2026: "faça aparecer em notificações que houve uma
+ * cobrança"); aberta = a última cobrança da tarefa, ainda sem resposta.
+ */
+export function cobrancasRecebidas(lista: readonly TarefaDelegada[], uid: string): CobrancaRecebida[] {
+  if (!uid) return [];
+  return lista.filter(t => t.responsavel.uid === uid && t.criadaPor.uid !== uid).flatMap(t => {
+    const aberta = cobrancaAberta(t);
+    return t.pareceres.filter(p => p.tipo === 'cobranca').map(nota => ({ tarefa: t, nota, aberta: nota === aberta }));
+  }).sort((a, b) => b.nota.em.localeCompare(a.nota.em));
+}
+
+/** O que aparece ao passar o mouse no Cobrada (quando = a data e a hora já escritas para a tela). */
+export const dicaDaCobranca = (n: Pick<Nota, 'por'>, quando: string) => n.por + ' cobrou uma atualização em ' + quando + '. Abra a tarefa e responda.';
+
 /** A cobrança (o texto escrito, ou o de sempre). */
 export const notaDaCobranca = (texto: string, por: string, em: string): Nota => ({ por, em, texto: limparTexto(texto) || TEXTO_DA_COBRANCA, tipo: 'cobranca' });
 /** A resposta de quem faz. */
@@ -1009,7 +1027,10 @@ export const pessoasDaTarefa = (t: Pick<TarefaDelegada, 'criadaPor' | 'responsav
 const texto = (v: unknown) => (v == null ? '' : String(v));
 const obj = (v: unknown): Record<string, unknown> | null => (v && typeof v === 'object' && !Array.isArray(v) ? v as Record<string, unknown> : null);
 const lerPessoa = (v: unknown): Pessoa => { const p = obj(v); return { uid: texto(p?.uid), nome: texto(p?.nome) }; };
-const lerNotas = (v: unknown): Nota[] => (Array.isArray(v) ? v.map(obj).filter((x): x is Record<string, unknown> => !!x).map(x => ({ por: texto(x.por), em: texto(x.em), texto: texto(x.texto) })) : []);
+// o tipo da cobrança e da resposta vem junto (16/11/2026: "O cobrar atualizacoes tbm não ta funcionando": a leitura jogava o
+// tipo fora, a cobrança gravava no banco e voltava como parecer comum, sem o Cobrada nem o Responder cobrança)
+const lerNotas = (v: unknown): Nota[] => (Array.isArray(v) ? v.map(obj).filter((x): x is Record<string, unknown> => !!x)
+  .map(x => ({ por: texto(x.por), em: texto(x.em), texto: texto(x.texto), ...(x.tipo === 'cobranca' || x.tipo === 'resposta' ? { tipo: x.tipo } : {}) })) : []);
 
 /** O documento do banco como tarefa (o que falta ou veio torto fica no padrão, sem quebrar a lista). */
 export function lerTarefa(id: string, x: Record<string, unknown>): TarefaDelegada {
