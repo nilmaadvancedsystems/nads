@@ -8,6 +8,7 @@ import { Icone } from '@nads/ui';
 import { useEffect, useId, useRef, useState } from 'react';
 import { suporte } from '@nads/core';
 import { useBalaoDoSuporte } from './useBalaoDoSuporte';
+import { JanelaDaConversa } from './JanelaDaConversa';
 
 /** O tempo do "digitando" antes de cada fala do suporte. */
 const DIGITANDO_MS = 650;
@@ -30,7 +31,7 @@ function FalaDoSuporte({ passo }: { passo: suporte.PassoDoSuporte }) {
 type Ticket = ReturnType<typeof useBalaoDoSuporte>['tickets'][number];
 
 /** O ticket no chat (09/11/2026): o que a pessoa pediu, a barra de andamento, a resposta pronta e, em Testando, a confirmação. */
-function TicketNoChat({ t, responder }: { t: Ticket; responder: (funcionou: boolean) => void }) {
+function TicketNoChat({ t, responder, abrirConversa }: { t: Ticket; responder: (funcionou: boolean) => void; abrirConversa: () => void }) {
   return (
     <div className="suporte-troca">
       <div className="suporte-msg suporte-eu suporte-pedido">{t.resumo}</div>
@@ -44,6 +45,18 @@ function TicketNoChat({ t, responder }: { t: Ticket; responder: (funcionou: bool
           <div className="suporte-capsulas">
             <button type="button" className="badge badge-ok" onClick={() => responder(true)}><Icone nome="check" />Funcionou</button>
             <button type="button" className="badge badge-neutral" onClick={() => responder(false)}>Ainda com problema</button>
+          </div>
+        )}
+        {/* a conversa com o suporte (16/11/2026): a última mensagem; abrir leva à janela grande */}
+        {t.conversa && (
+          <div className={'suporte-conversa' + (t.conversa.esperando ? ' esperando' : '')}>
+            <span className="suporte-conversa-quem">{t.conversa.quem}</span>
+            <span className="suporte-conversa-texto">{t.conversa.texto}</span>
+            <div className="suporte-capsulas">
+              <button type="button" className={'badge ' + (t.conversa.esperando ? 'badge-ok' : 'badge-neutral')} onClick={abrirConversa}>
+                <Icone nome="mensagem" />{t.conversa.esperando ? 'Responder' : 'Ver a conversa (' + t.conversa.qtd + ')'}
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -90,19 +103,22 @@ export function BalaoDoSuporte() {
   // o botão fica sempre no canto (Vitor, 21/10/2026: "deixe o botão de suporte como aberto"): aberto, o chat fica apoiado logo
   // acima dele. Com ticket em aberto ele só oculta, com a setinha (09/11/2026: "até o feedback for resolvido")
   const fecha = vm.emAberto > 0 ? 'Ocultar o suporte' : 'Fechar o suporte';
+  // a janela grande da conversa, por cima de tudo, com o balão aberto ou fechado
+  const janelaDaConversa = vm.conversaAberta && <JanelaDaConversa key={vm.conversaAberta.id} c={vm.conversaAberta} fechar={vm.fecharConversa} />;
   const botao = (
     <button type="button" className="btn btn-primary suporte-botao" aria-expanded={vm.aberto}
-      title={vm.aberto ? fecha : vm.paraTestar ? 'Suporte: tem pedido para você testar' : 'Suporte: arquivo lido errado ou que travou'} aria-label={vm.aberto ? fecha : 'Abrir o suporte'}
+      title={vm.aberto ? fecha : vm.paraResponder ? 'Suporte: tem pergunta para você responder' : vm.paraTestar ? 'Suporte: tem pedido para você testar' : 'Suporte: arquivo lido errado ou que travou'} aria-label={vm.aberto ? fecha : 'Abrir o suporte'}
       onClick={vm.aberto ? vm.fechar : vm.abrir}>
       <Icone nome={vm.aberto ? (vm.emAberto > 0 ? 'chevronDown' : 'x') : 'mensagem'} />
-      {!vm.aberto && vm.emAberto > 0 && <span className={'suporte-botao-qtd' + (vm.paraTestar ? ' testar' : '')} aria-hidden="true">{vm.emAberto}</span>}
+      {!vm.aberto && vm.emAberto > 0 && <span className={'suporte-botao-qtd' + (vm.paraResponder ? ' responder' : vm.paraTestar ? ' testar' : '')} aria-hidden="true">{vm.emAberto}</span>}
     </button>
   );
-  if (!vm.aberto) return botao;
+  if (!vm.aberto) return <>{botao}{janelaDaConversa}</>;
   const p = vm.passo;
   return (
     <>
       {botao}
+      {janelaDaConversa}
       <section className="card suporte-balao" role="dialog" aria-label="Suporte">
         {/* sem o "Suporte / digitando…" (Vitor, 09/11/2026): a barra de cima só existe na conversa, com as ações dela */}
         {vm.conversando && (
@@ -117,7 +133,7 @@ export function BalaoDoSuporte() {
           <div className="suporte-msg">
             {vm.nomeDaPessoa ? 'Oi, ' + vm.nomeDaPessoa + '!' : 'Oi!'} {vm.tickets.length ? 'Aqui ficam os seus pedidos até serem resolvidos.' : 'Me diga o que aconteceu que eu te guio.'}
           </div>
-          {vm.tickets.map(t => <TicketNoChat key={t.id} t={t} responder={funcionou => vm.responderTeste(t.id, funcionou)} />)}
+          {vm.tickets.map(t => <TicketNoChat key={t.id} t={t} responder={funcionou => vm.responderTeste(t.id, funcionou)} abrirConversa={() => vm.abrirConversa(t.id)} />)}
           {vm.erro && !vm.conversando && <p className="hint ext-neg">{vm.erro}</p>}
           {!vm.conversando && (
             <div className="suporte-capsulas">

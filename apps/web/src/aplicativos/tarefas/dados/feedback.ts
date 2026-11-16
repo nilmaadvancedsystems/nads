@@ -3,14 +3,18 @@
 // vê todos nos Feedbacks (o pé da gaveta ☰) e marca como visto ou feito. Desde 19/10/2026, com a prioridade (Baixa, Média,
 // Alta) que quem manda escolhe; o admin filtra e ordena por ela. Interface + a versão de exemplo; a do banco é
 // feedback.firestore.ts (coleção feedbacks do Entregas).
-import type { suporte } from '@nads/core';
+import { suporte } from '@nads/core';
 
 /** resolvendo (Vitor, 26/10/2026): o admin está resolvendo; quem mandou é avisado */
 /** testando (Vitor, 09/11/2026): quem resolveu pediu para quem mandou testar; ele confirma no chat */
 export type SituacaoDoFeedback = 'novo' | 'visto' | 'resolvendo' | 'testando' | 'feito';
 
 /** Um feedback de quem mandou (o aviso do Resolvendo): o que a regra deixa a pessoa ler dos seus. */
-export interface MeuFeedback { id: string; texto: string; status: SituacaoDoFeedback; criadoEm: string; tipo: 'feedback' | 'bug'; caminho: string; resolvidoEm?: string }
+export interface MeuFeedback {
+  id: string; texto: string; status: SituacaoDoFeedback; criadoEm: string; tipo: 'feedback' | 'bug'; caminho: string; resolvidoEm?: string;
+  /** a conversa com o suporte (16/11/2026): o resumo; null = o admin ainda não perguntou nada */
+  conversa: suporte.ResumoDaConversa | null;
+}
 
 /** A prioridade que quem manda escolhe (Vitor, 19/10/2026: feedbacks com "prioridade"). */
 export type PrioridadeDoFeedback = 'baixa' | 'media' | 'alta';
@@ -70,6 +74,8 @@ export interface Feedback {
   relatorio: string;
   /** a quem foi delegada (16/11/2026: passar a solicitação a quem tem a função de desenvolvedor); null = a ninguém */
   delegacao: suporte.DelegacaoDoFeedback | null;
+  /** a conversa com quem mandou (16/11/2026): o resumo (quantas, de quem a última); as mensagens, em ouvirMensagens */
+  conversa: suporte.ResumoDaConversa | null;
 }
 
 /** O bug mandado pelo balão do suporte. */
@@ -98,6 +104,13 @@ export interface RepoFeedback {
   delegar(id: string, d: suporte.DelegacaoDoFeedback): Promise<void>;
   /** quem mandou responde o teste: funcionou (resolvido) ou ainda com problema (volta a Resolvendo) */
   responderTeste(id: string, funcionou: boolean): Promise<void>;
+  /**
+   * as mensagens da conversa de um feedback (16/11/2026), da mais velha para a mais nova; ouve só enquanto a conversa está
+   * aberta (devolve o parar)
+   */
+  ouvirMensagens(id: string, aoMudar: (m: { carregadas: boolean; lista: suporte.MensagemDoFeedback[] }) => void): () => void;
+  /** escreve na conversa: o admin pergunta; quem mandou responde (a regra do core: suporte.mensagemNova) */
+  escrever(id: string, de: suporte.LadoDaConversa, texto: string): Promise<void>;
   /** os feedbacks de quem está usando (a regra deixa ler os seus); pedir já começa a ouvir */
   meus(): MeuFeedback[];
   assinar(aoMudar: () => void): () => void;
@@ -110,23 +123,33 @@ export function criarFeedbackMemoria(quem: () => string): RepoFeedback {
   const mudou = () => { ver++; for (const f of ouvintes) f(); };
   // uns de exemplo, para ver a lista do admin com as prioridades (nada vai para o banco)
   const ha = (h: number) => new Date(Date.now() - h * 3600000).toISOString();
-  const base = { imagem: '', versao: '', email: '', status: 'novo' as const, tipo: 'feedback' as const, caminho: '', empresa: '', arquivo: null, arquivos: [], analise: '' as const, relatorio: '', delegacao: null };
+  const base = { imagem: '', versao: '', email: '', status: 'novo' as const, tipo: 'feedback' as const, caminho: '', empresa: '', arquivo: null, arquivos: [], analise: '' as const, relatorio: '', delegacao: null, conversa: null };
   let lista: Feedback[] = [
     { id: 'fx-1', ...base, nome: 'Vitor', tela: '/tarefas/cadastro/empresas', criadoEm: ha(3), prioridade: 'alta', texto: 'No Cadastro, o sênior precisa trocar o regime sem pedir para o diretor.' },
-    { id: 'fx-2', ...base, nome: 'Clara', tela: '/tarefas/minhas-empresas/empresas', criadoEm: ha(1), prioridade: 'baixa', texto: 'Seria bom a lista de empresas lembrar o filtro quando eu volto.' },
+    { id: 'fx-2', ...base, nome: 'Clara', tela: '/tarefas/minhas-empresas/empresas', criadoEm: ha(1), prioridade: 'baixa', texto: 'Seria bom a lista de empresas lembrar o filtro quando eu volto.',
+      conversa: { qtd: 1, ultimaDe: 'admin', ultimaEm: ha(0.5), ultimoTexto: 'Qual filtro: o da situação ou o do departamento?' } },
     { id: 'fx-3', ...base, nome: 'Heverton', tela: '/tarefas/fiscal/painel', criadoEm: ha(26), prioridade: 'media', texto: 'O painel do Fiscal demora para abrir de manhã.' },
     { id: 'fx-5', ...base, nome: 'Clara', tela: '/tarefas/executar/1/2026-08', criadoEm: ha(2), prioridade: 'alta', tipo: 'bug', empresa: '1 · EMPRESA EXEMPLO',
       caminho: 'Faltou lançamento › Bradesco › 08/2026 › Não resolveu', arquivo: { nome: 'extrato 08-2026.pdf', tamanho: 70000, partes: 1 }, arquivos: [{ nome: 'extrato 08-2026.pdf', tamanho: 70000, de: 0, partes: 1 }], analise: 'pronta',
       texto: 'Faltou a tarifa do dia 31.',
-      relatorio: 'O extrato termina com o quadro "Últimos Lançamentos", e o leitor juntava esse quadro ao mês.\n\nRealmente, isso é erro do sistema' },
+      relatorio: 'O extrato termina com o quadro "Últimos Lançamentos", e o leitor juntava esse quadro ao mês.\n\nRealmente, isso é erro do sistema',
+      conversa: { qtd: 2, ultimaDe: 'autor', ultimaEm: ha(1), ultimoTexto: 'Do Bradesco, a conta 1234-5.' } },
     { id: 'fx-4', ...base, nome: 'Sávio', tela: '/tarefas/dp/resumo', criadoEm: ha(50), prioridade: null, status: 'visto', texto: 'Mandado antes da prioridade: a etiqueta da folha saiu cortada.' },
   ];
+  // as conversas de exemplo (o fx-2 esperando a Clara responder; o fx-5 já respondido)
+  const mensagens = new Map<string, suporte.MensagemDoFeedback[]>([
+    ['fx-2', [{ id: 'm1', de: 'admin', nome: 'Vitor', texto: 'Qual filtro: o da situação ou o do departamento?', em: ha(0.5) }]],
+    ['fx-5', [
+      { id: 'm1', de: 'admin', nome: 'Vitor', texto: 'De qual conta é esse extrato?', em: ha(1.5) },
+      { id: 'm2', de: 'autor', nome: 'Clara', texto: 'Do Bradesco, a conta 1234-5.', em: ha(1) },
+    ]],
+  ]);
   return {
     exemplos: true,
     async enviar({ arquivos: anexos = [], ...f }) {
       lista = [{ id: 'f' + Date.now(), ...f, nome: quem(), email: '', criadoEm: new Date().toISOString(), status: 'novo', tipo: 'feedback', caminho: '', empresa: '',
         arquivo: anexos[0] ? { nome: anexos[0].nome, tamanho: anexos[0].bytes.length, partes: 1 } : null,
-        arquivos: anexos.map((a, i) => ({ nome: a.nome, tamanho: a.bytes.length, de: i, partes: 1 })), analise: '', relatorio: '', delegacao: null }, ...lista];
+        arquivos: anexos.map((a, i) => ({ nome: a.nome, tamanho: a.bytes.length, de: i, partes: 1 })), analise: '', relatorio: '', delegacao: null, conversa: null }, ...lista];
       mudou();
     },
     async enviarBug(b) {
@@ -135,7 +158,7 @@ export function criarFeedbackMemoria(quem: () => string): RepoFeedback {
         id, texto: b.texto, imagem: '', tela: b.tela, versao: b.versao, nome: quem(), email: '', criadoEm: new Date().toISOString(),
         status: 'novo', prioridade: 'alta', tipo: 'bug', caminho: b.caminho, empresa: b.contexto.empresa,
         arquivo: b.arquivos[0] ? { nome: b.arquivos[0].nome, tamanho: b.arquivos[0].bytes.length, partes: 1 } : null,
-        arquivos: b.arquivos.map((a, i) => ({ nome: a.nome, tamanho: a.bytes.length, de: i, partes: 1 })), analise: 'pendente', relatorio: '', delegacao: null,
+        arquivos: b.arquivos.map((a, i) => ({ nome: a.nome, tamanho: a.bytes.length, de: i, partes: 1 })), analise: 'pendente', relatorio: '', delegacao: null, conversa: null,
       }, ...lista];
       mudou();
       return id;
@@ -145,7 +168,22 @@ export function criarFeedbackMemoria(quem: () => string): RepoFeedback {
     async marcar(id, status) { lista = lista.map(x => (x.id === id ? { ...x, status, ...(status === 'feito' ? { resolvidoEm: new Date().toISOString() } : {}) } : x)); mudou(); },
     async delegar(id, d) { lista = lista.map(x => (x.id === id ? { ...x, delegacao: d } : x)); mudou(); },
     async responderTeste(id, funcionou) { lista = lista.map(x => (x.id === id ? { ...x, status: funcionou ? 'feito' as const : 'resolvendo' as const, ...(funcionou ? { resolvidoEm: new Date().toISOString() } : {}) } : x)); mudou(); },
-    meus: () => lista.filter(x => x.nome === quem()).map(x => ({ id: x.id, texto: x.texto, status: x.status, criadoEm: x.criadoEm, tipo: x.tipo, caminho: x.caminho, resolvidoEm: x.resolvidoEm })),
+    ouvirMensagens(id, aoMudar) {
+      const avisar = () => aoMudar({ carregadas: true, lista: suporte.emOrdem(mensagens.get(id) || []) });
+      ouvintes.add(avisar);
+      avisar();
+      return () => { ouvintes.delete(avisar); };
+    },
+    async escrever(id, de, texto) {
+      const f = lista.find(x => x.id === id);
+      if (!f) throw new Error('o feedback não existe');
+      if (!suporte.podeEscrever(de, f.status, f.conversa)) throw new Error('a conversa está fechada');
+      const { mensagem, resumo } = suporte.mensagemNova(f.conversa, de, quem() || (de === 'admin' ? 'Suporte' : 'Você'), texto, new Date());
+      mensagens.set(id, [...(mensagens.get(id) || []), { id: 'm' + Date.now().toString(36), ...mensagem }]);
+      lista = lista.map(x => (x.id === id ? { ...x, conversa: resumo } : x));
+      mudou();
+    },
+    meus: () => lista.filter(x => x.nome === quem()).map(x => ({ id: x.id, texto: x.texto, status: x.status, criadoEm: x.criadoEm, tipo: x.tipo, caminho: x.caminho, resolvidoEm: x.resolvidoEm, conversa: x.conversa })),
     assinar(f) { ouvintes.add(f); return () => { ouvintes.delete(f); }; },
     versao: () => ver,
   };

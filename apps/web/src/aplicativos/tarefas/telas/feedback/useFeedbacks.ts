@@ -35,7 +35,7 @@ export function useFeedbacks() {
   const comQuando = (f: (typeof todos.lista)[number]) => ({
     ...f, veredito: f.tipo === 'bug' ? suporte.vereditoDoReport(f.relatorio) : null,
     // o bug para ler (28/10/2026): o que a pessoa disse, onde foi (os campos, com a tela e a versão) e o report do robô
-    lido: f.tipo === 'bug' ? lerOBug(f) : null, delegada: suporte.textoDaDelegacao(f.delegacao), pedido: f.tipo === 'bug' ? suporte.codigoDoPedido(f.id) : '', quando: f.criadoEm ? new Date(f.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '',
+    lido: f.tipo === 'bug' ? lerOBug(f) : null, delegada: suporte.textoDaDelegacao(f.delegacao), seloDaConversa: suporte.seloDaConversa(f.conversa), pedido: f.tipo === 'bug' ? suporte.codigoDoPedido(f.id) : '', quando: f.criadoEm ? new Date(f.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '',
   });
   const doAberto = todos.lista.find(f => f.id === aberto);
   const conta = (s: SituacaoDoFeedback) => todos.lista.filter(f => f.status === s).length;
