@@ -7,7 +7,7 @@
 // o Esc e o ✕ perguntam antes de largar o que mudou.
 import { tarefas } from '@nads/core';
 import { Alerta, BotaoAcao, BotaoFechar, BotaoIcone, CampoData, Esqueleto, Icone, MenuSuspenso, Segmentado, useJanela, Vazio, type NomeIcone } from '@nads/ui';
-import { useEffect, useId, useRef, useState, type RefObject } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type ClipboardEvent, type RefObject } from 'react';
 import { Link } from 'react-router';
 import { Propriedade } from '../financeiro/partes/Propriedade';
 import { SeloDoStatus } from './partes/SelosDaTarefa';
@@ -15,7 +15,7 @@ import { useModoDesenvolvedor } from '../../../../comum/modoDesenvolvedor';
 import { useNovidade } from '../../../../comum/novidades';
 import { lembrarAgora } from './useLembreteDoRecebimento';
 import { ClientesDaTarefa, EscolherPessoa, FicaComVoce, FotoDaPessoa } from './TarefaAberta';
-import { useTarefaAberta } from './useTarefaAberta';
+import { printDeExemplo, useTarefaAberta } from './useTarefaAberta';
 
 type Vm = ReturnType<typeof useTarefaAberta>;
 const d = tarefas.delegadas;
@@ -82,7 +82,9 @@ function PrazoDaTarefa({ vm }: { vm: Vm }) {
  */
 function CobrancaDaTarefa({ vm }: { vm: Vm }) {
   const c = vm.cobranca;
+  const discreta = useNovidade('cobranca-notificada');
   if (!c || (!c.aberta && !c.resposta)) return null;
+  if (discreta) return <CobrancaDiscreta vm={vm} />;
   if (c.aberta && c.responder) {
     return (
       <div className="tdl-cobranca cobrada" role="status">
@@ -106,6 +108,36 @@ function CobrancaDaTarefa({ vm }: { vm: Vm }) {
       <p className="tdl-cobranca-topo"><Icone nome="sino" /><b>{c.resposta?.por} respondeu à cobrança</b><span className="fraco">{c.resposta?.quando}</span></p>
       <p className="tdl-cobranca-texto">{c.resposta?.texto}</p>
     </div>
+  );
+}
+
+/**
+ * A cobrança discreta (a novidade 'cobranca-notificada'; Vitor, 16/11/2026: "isso tá horrivel… faça uma bela popup"): o
+ * destaque é a janela grande (JanelaDaCobranca). Aqui ficam só as linhas do andamento (quem cobrou vê o mais tempo pedido,
+ * com a justificativa, e a resposta) e, para quem faz, o responder sem a caixa amarela.
+ */
+function CobrancaDiscreta({ vm }: { vm: Vm }) {
+  const c = vm.cobranca!;
+  return (
+    <>
+      <div className="tdl-cobranca-linhas" role="status">
+        {c.andamento.map(p => (
+          <p key={p.quando + p.texto}><Icone nome={p.tipo === 'adiamento' ? 'clock' : p.tipo === 'resposta' ? 'checkCircle' : 'sino'} /><span>{p.texto} <span className="fraco">· {p.quando}</span></span></p>
+        ))}
+        {c.aberta && !c.responder && <p><Icone nome="clock" /><span>Esperando a resposta.</span></p>}
+      </div>
+      {c.aberta && c.responder && (
+        <div className="tdl-cobranca">
+          <textarea rows={2} value={vm.resposta} maxLength={vm.maiorParecer} placeholder="Responder à cobrança: como está a tarefa?" aria-label="A resposta à cobrança"
+            onChange={e => vm.setResposta(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); void vm.responderCobranca(); } }} />
+          <span className="tdl-cobranca-acoes">
+            <BotaoAcao className="btn btn-outline" carregando={c.ocupado} textoCarregando="Enviando" disabled={!vm.resposta.trim()} onClick={() => { void vm.responderCobranca(); }}>
+              <Icone nome="envelope" />Responder cobrança
+            </BotaoAcao>
+          </span>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -164,12 +196,40 @@ function Descricao({ vm }: { vm: Vm }) {
   const id = useId();
   // em branco e só para ler (a concluída, ou de quem não muda): some, como o prazo (13/11/2026: "so oculta ele... nao deixa exposto")
   if (!vm.podeMudar && !vm.rascunho.descricao.trim()) return null;
+  // o print colado (a novidade 'colar-print'): a imagem da área de transferência vira anexo; o que vem com texto (o Excel
+  // manda texto e imagem) cola como texto, como no suporte
+  const colar = (e: ClipboardEvent<HTMLTextAreaElement>) => {
+    if (!vm.podeColarPrint || e.clipboardData.getData('text/plain').trim()) return;
+    const imagens = Array.from(e.clipboardData.files).filter(f => f.type.startsWith('image/'));
+    if (!imagens.length) return;
+    e.preventDefault();
+    void vm.anexar(vm.nomearPrints(imagens));
+  };
   return (
     <div className="field">
       <label htmlFor={id}>Detalhes</label>
-      <textarea id={id} rows={4} value={vm.rascunho.descricao} maxLength={vm.maiorDescricao} readOnly={!vm.podeMudar}
-        placeholder="Os detalhes, o que já foi visto, onde estão os documentos" onChange={e => vm.setDescricao(e.target.value)} />
+      <textarea id={id} rows={4} value={vm.rascunho.descricao} maxLength={vm.maiorDescricao} readOnly={!vm.podeMudar} onPaste={colar}
+        placeholder={'Os detalhes, o que já foi visto, onde estão os documentos' + (vm.podeColarPrint ? '. Cole um print com Ctrl+V' : '')}
+        onChange={e => vm.setDescricao(e.target.value)} />
+      <PrintsColados vm={vm} />
     </div>
+  );
+}
+
+/** as miniaturas dos prints colados nos Detalhes, cada uma com o × para tirar (a nova; na que existe, eles vão aos anexos) */
+function PrintsColados({ vm }: { vm: Vm }) {
+  const imagens = useMemo(() => vm.prints.map(p => ({ ...p, url: URL.createObjectURL(new Blob([p.bytes as BlobPart], { type: p.tipo })) })), [vm.prints]);
+  useEffect(() => () => { for (const p of imagens) URL.revokeObjectURL(p.url); }, [imagens]);
+  if (!imagens.length) return null;
+  return (
+    <ul className="ini-prints" aria-label="Prints colados">
+      {imagens.map(p => (
+        <li key={p.id}>
+          <img src={p.url} alt={p.nome} title={p.nome} />
+          {vm.podeMudar && <BotaoIcone pequeno icone="x" titulo={'Tirar ' + p.nome} onClick={() => void vm.tirarAnexo(p.id)} />}
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -417,6 +477,8 @@ function TesteDosDocumentos({ vm }: { vm: Vm }) {
       itens={[
         { rotulo: 'Exemplo de envio', icone: 'zap', marcado: vm.documentos.deTeste && vm.documentos.modo === 'enviar', onClick: () => vm.documentos.preencherExemplo('enviar') },
         { rotulo: 'Exemplo de requerer', icone: 'zap', marcado: vm.documentos.deTeste && vm.documentos.modo === 'requerer', onClick: () => vm.documentos.preencherExemplo('requerer') },
+        // o print colado (a novidade 'colar-print'): um comprovante de exemplo, como se tivesse colado com Ctrl+V nos Detalhes
+        ...(vm.podeColarPrint ? [{ rotulo: 'Colar um print de exemplo', icone: 'zap' as const, onClick: () => { void printDeExemplo().then(f => vm.anexar(vm.nomearPrints([f]))); } }] : []),
         'separador',
         { rotulo: 'Mostrar o lembrete de confirmar', icone: 'clock', onClick: lembrarAgora },
       ]} />

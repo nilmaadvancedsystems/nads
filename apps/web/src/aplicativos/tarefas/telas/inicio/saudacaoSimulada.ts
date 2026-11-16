@@ -5,8 +5,9 @@ import { useSyncExternalStore } from 'react';
 import { tarefas, type usuarios } from '@nads/core';
 
 // e o nível simulado das Notificações (o Sênior pede reunião, o Diretor aprova; 13/11/2026)
-// a sexta e a semana com feriado (o "Sextou" e a piada do feriado; 15/11/2026)
-export interface SaudacaoSimulada { turno?: tarefas.saudacao.Turno; segunda?: boolean; sexta?: boolean; feriado?: boolean; aniversario?: 'mes' | 'dia'; troca?: number; nivel?: usuarios.Nivel }
+// o apelido de mentira (16/11/2026: os apelidos da equipe ficam no banco)
+// a sexta e a semana com feriado (15/11/2026; as frases revistas em 16/11/2026, sem contagem para o descanso)
+export interface SaudacaoSimulada { turno?: tarefas.saudacao.Turno; segunda?: boolean; sexta?: boolean; feriado?: boolean; aniversario?: 'mes' | 'dia'; apelido?: boolean; troca?: number; nivel?: usuarios.Nivel }
 
 const CHAVE = 'nads-saudacao-simulada';
 const ouvintes = new Set<() => void>();
@@ -34,7 +35,7 @@ export function useSaudacaoSimulada(): SaudacaoSimulada {
 const HORA_DO_TURNO = { manha: 9, tarde: 15, noite: 21 } as const;
 
 /** A hora e o aniversário de verdade, trocados pelo que está simulado. */
-export function aplicarSimulacao(agora: Date, aniversario: string, s: SaudacaoSimulada): { agora: Date; aniversario: string } {
+export function aplicarSimulacao(agora: Date, aniversario: string, s: SaudacaoSimulada, apelidos: string[] = []): { agora: Date; aniversario: string; apelidos: string[] } {
   const d = new Date(agora);
   if (s.segunda) d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
   if (s.sexta) d.setDate(d.getDate() - ((d.getDay() + 6) % 7) + 4);
@@ -52,5 +53,5 @@ export function aplicarSimulacao(agora: Date, aniversario: string, s: SaudacaoSi
   const dd = String(d.getDate()).padStart(2, '0');
   // no mês do aniversário: outro dia do mesmo mês (o dia 1, ou o 2 quando hoje é dia 1)
   const outroDia = d.getDate() === 1 ? '02' : '01';
-  return { agora: d, aniversario: s.aniversario === 'dia' ? mm + '-' + dd : s.aniversario === 'mes' ? mm + '-' + outroDia : aniversario };
+  return { agora: d, aniversario: s.aniversario === 'dia' ? mm + '-' + dd : s.aniversario === 'mes' ? mm + '-' + outroDia : aniversario, apelidos: s.apelido ? ['Craque'] : Object.keys(s).length ? [] : apelidos };
 }

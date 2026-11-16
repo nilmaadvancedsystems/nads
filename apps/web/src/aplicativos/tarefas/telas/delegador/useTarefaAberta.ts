@@ -5,7 +5,8 @@
 // anexos sobem e saem na hora; na nova, ficam esperando o Salvar.
 import { empresas as emp, entregas, tarefas, usuarios } from '@nads/core';
 import { baixarBytes, useRetorno } from '@nads/ui';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useNovidade } from '../../../../comum/novidades';
 import { ehDiretor, caminhoDoExecutor } from '../../casca/navegacao';
 import { useOperador } from '../../casca/operador';
 import { useAcesso, useRepo, useTarefasDelegadas } from '../../dados/repo';
@@ -21,6 +22,20 @@ export type AbaDaTarefa = 'tarefa' | 'parecer' | 'historico';
 const quando = (iso: string) => (iso ? new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '');
 const tipoDoArquivo = (ext: string) =>
   (ext === 'pdf' ? 'application/pdf' : ext === 'txt' ? 'text/plain' : ext === 'webp' ? 'image/webp' : 'application/octet-stream');
+const tipoDaImagem = (ext: string) => 'image/' + (ext === 'jpg' ? 'jpeg' : ext);
+
+/** O print de exemplo do ⚡ Dados de teste (um comprovante desenhado na hora; nada vai para o banco). */
+export async function printDeExemplo(): Promise<File> {
+  const tela = new OffscreenCanvas(520, 180);
+  const c = tela.getContext('2d');
+  if (c) {
+    c.fillStyle = '#ffffff'; c.fillRect(0, 0, tela.width, tela.height);
+    c.fillStyle = '#1f2328'; c.font = 'bold 20px sans-serif'; c.fillText('Comprovante de pagamento (EXEMPLO)', 24, 56);
+    c.font = '16px sans-serif'; c.fillText('Boleto · R$ 1.234,56 · vencimento 20/11/2026', 24, 100); c.fillText('Pago em 16/11/2026', 24, 132);
+  }
+  const blob = await tela.convertToBlob({ type: 'image/png' });
+  return new File([blob], 'image.png', { type: 'image/png' });
+}
 
 /** Lê os arquivos escolhidos, já encolhidos para gastar o mínimo no banco (a imagem em WebP, o resto em gzip). */
 const lerArquivos = (fs: File[]): Promise<ArquivoParaAnexar[]> => Promise.all(fs.map(encolherAnexo));
@@ -32,8 +47,6 @@ const lerArquivos = (fs: File[]): Promise<ArquivoParaAnexar[]> => Promise.all(fs
 export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraMim: boolean) => void, novo = false) {
   const repo = useTarefasDelegadas();
   const acesso = useAcesso();
-  // o cliente vinculado: só as empresas da pessoa (29/10/2026)
-  const empresas = useEmpresasPermitidas().filtrar(useRepo().listarEmpresas());
   const { operador } = useOperador();
   const admin = !!operador?.admin;
   const { toast, modal } = useRetorno();
@@ -41,6 +54,12 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
   const uid = eu?.uid || '';
   // 'documentos': a nova já como pedido de documentos (o botão Delegar documentos do Início; 12/11/2026)
   const pedido = alvo === 'documentos';
+  // o cliente vinculado: só as empresas da pessoa (29/10/2026). No Delegar documentos, todas (16/11/2026: "pode liberar
+  // todas as empresas para o usuario selecionar"; no Fiscal sem nenhuma empresa marcada a lista vinha vazia e não dava
+  // para enviar nem requerer). O filtro do Fiscal continua nas outras escolhas de empresa.
+  const todasAsEmpresas = useRepo().listarEmpresas();
+  const permitidas = useEmpresasPermitidas().filtrar(todasAsEmpresas);
+  const empresas = pedido ? todasAsEmpresas : permitidas;
   const ehNova = alvo === 'nova' || pedido;
   const { carregadas, tarefas: todas } = repo.lista();
   const tarefa = ehNova ? null : todas.find(t => t.id === alvo) || null;
@@ -57,6 +76,12 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
   const [prazoTexto, setPrazoTexto] = useState(() => d.prazoParaTela(inicial.prazo));
   const [aba, setAba] = useState<AbaDaTarefa>('tarefa');
   const [pendentes, setPendentes] = useState<ArquivoParaAnexar[]>([]);
+  // o print colado nos Detalhes (a novidade 'colar-print', 16/11/2026): na nova, a miniatura embaixo do campo no lugar da
+  // linha da lista de anexos; o arquivo é um anexo como os outros (as mesmas partes no banco, sem campo novo)
+  const colarPrint = useNovidade('colar-print');
+  const prints = useMemo(() => (colarPrint && ehNova
+    ? pendentes.flatMap((a, i) => (d.ehPrintColado(a.nome) ? [{ id: 'p' + i, nome: a.nome, bytes: a.bytes, tipo: tipoDaImagem(d.extensaoDe(a.nome)) }] : []))
+    : []), [colarPrint, ehNova, pendentes]);
   // os links da tarefa nova esperam o Criar, como os anexos (o Início novo; 13/11/2026)
   const [linksPendentes, setLinksPendentes] = useState<string[]>([]);
   const [parecer, setParecer] = useState('');
@@ -294,7 +319,7 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
     /** os clientes vinculados (opcional; 09/11/2026: "deixe eu colocar mais de um", com um botão "+") */
     clientes: r.clientes,
     podeMaisClientes: r.clientes.length < d.MAIS_CLIENTES,
-    /** as empresas da pessoa que a busca acha e que ainda não estão na tarefa (sem busca, as primeiras) */
+    /** as empresas da pessoa (no Delegar documentos, todas) que a busca acha e que ainda não estão na tarefa (sem busca, as primeiras) */
     achadasPara: (q: string) => (q.trim() ? emp.buscarEmpresas(empresas, q) : empresas).filter(e => !r.clientes.some(c => mesmaEmpresa(c, e))).slice(0, 8),
     adicionarCliente: (e: { codigo: number | null; nome: string }) => { if (r.clientes.length < d.MAIS_CLIENTES) mudar({ clientes: [...r.clientes, { codigo: e.codigo, nome: e.nome }] }); },
     tirarCliente: (i: number) => mudar({ clientes: r.clientes.filter((_, n) => n !== i) }),
@@ -308,6 +333,8 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
         aberta: aberta ? { por: aberta.por, quando: quando(aberta.em), texto: aberta.texto } : null,
         resposta: respondida && tarefa.criadaPor.uid === uid ? { por: respondida.por, quando: quando(respondida.em), texto: respondida.texto } : null,
         ocupado: ocupado === 'cobranca',
+        /** o andamento da última cobrança: a cobrança, os pedidos de mais tempo e a resposta (16/11/2026) */
+        andamento: d.andamentoDaCobranca(tarefa).map(n => ({ tipo: n.tipo, texto: d.textoDoPassoDaCobranca(n), quando: quando(n.em) })),
       };
     })() : null,
     cobrar, resposta, setResposta, responderCobranca,
@@ -321,10 +348,19 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
 
     // ---- os anexos: na nova, esperando o Salvar; na que existe, sobem na hora
     anexos: ehNova
-      ? pendentes.map((a, i) => ({ id: 'p' + i, nome: a.nome, detalhe: entregas.tamanhoLegivel(tamanhoDoArquivo(a)) + ' · vai ao salvar' }))
+      ? pendentes.flatMap((a, i) => (prints.some(p => p.id === 'p' + i) ? [] : [{ id: 'p' + i, nome: a.nome, detalhe: entregas.tamanhoLegivel(tamanhoDoArquivo(a)) + ' · vai ao salvar' }]))
       : (tarefa?.anexos || []).map(a => ({ id: a.id, nome: a.nome, detalhe: [a.extensao.toUpperCase(), entregas.tamanhoLegivel(a.tamanho), quando(a.em), a.por].filter(Boolean).join(' · ') })),
     limiteDosAnexos: 'Até ' + d.MAIS_ANEXOS + ' arquivos de ' + d.MAIOR_ANEXO / 1024 / 1024 + ' MB cada (' + d.MAIOR_TOTAL_DE_ANEXOS / 1024 / 1024 + ' MB por tarefa).',
     anexando: ocupado === 'anexar',
+    /** o Ctrl+V de imagem nos Detalhes vira anexo (a novidade 'colar-print') */
+    podeColarPrint: colarPrint && podeMudar,
+    /** os prints colados da nova, para a miniatura embaixo dos Detalhes (o × tira com o tirarAnexo) */
+    prints,
+    /** as imagens coladas com o nome "Print colado N" (o número seguinte aos que a tarefa já tem); depois vão ao anexar */
+    nomearPrints(fs: File[]): File[] {
+      const nomes = ehNova ? pendentes.map(a => a.nome) : (tarefa?.anexos || []).map(a => a.nome);
+      return fs.map(f => { const nome = d.nomeDoPrintColado(nomes, f.type); nomes.push(nome); return new File([f], nome, { type: f.type }); });
+    },
     async anexar(fs: File[]) {
       if (!fs.length) return;
       const arquivos = await lerArquivos(fs);

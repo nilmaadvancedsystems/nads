@@ -61,6 +61,8 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
   const c = vm.calendario;
   // o sino de cobrar (a novidade 'cobrar-tarefa', aprovada para todos em 13/11/2026)
   const cobrarLigado = useNovidade('cobrar-tarefa');
+  // com a janela grande da cobrança (16/11/2026), o Cobrada da lista fica só o sino
+  const discreta = useNovidade('cobranca-notificada');
   const p = vm.paraConfirmar[0];
   const abrir = (id: string) => { vm.escolherComunicado(id); vm.mudarAba('notificacoes'); };
   return (
@@ -119,7 +121,7 @@ export function PainelDoInicio({ vm }: { vm: Vm }) {
             <div key={t.id} className="ini-linha">
               <span className="ini-marca"><button type="button" className="subnav-caixa vazia" title="Concluir" aria-label={'Concluir ' + t.titulo} onClick={t.concluir} /></span>
               <button type="button" className="ini-linha-texto ini-abrir" onClick={() => vm.abrir(t.id)}>{t.titulo}</button>
-              {cobrarLigado && t.cobrada && <span className="ini-sino" title={t.dicaDaCobranca}><Icone nome="sino" />Cobrada</span>}
+              {cobrarLigado && t.cobrada && <span className="ini-sino" title={t.dicaDaCobranca}><Icone nome="sino" />{!discreta && 'Cobrada'}</span>}
               <span className={'hint' + (t.atrasada ? ' tdl-atrasada' : '')}>{t.prazo}</span>
             </div>
           )) : <Vazio compacto icone="checkCircle" titulo={c.dia ? 'Nada com prazo neste dia' : 'Tudo em dia'} />}

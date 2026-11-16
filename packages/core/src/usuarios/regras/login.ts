@@ -57,3 +57,27 @@ export function mensagemDeErroDeLogin(codigo: string, digitado = ''): string {
 export function ehEmailDeLogin(email: string): boolean {
   return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim());
 }
+
+/** O login feito do nome (nome@nilma.local): não é um e-mail de verdade, ninguém recebe nada nele. */
+export function ehEmailDoNome(email: string): boolean {
+  return email.trim().toLowerCase().endsWith(DOMINIO_LOGIN);
+}
+
+/**
+ * Falta o e-mail principal? (Vitor, 16/11/2026: "para concluir seu cadastro do NADS precisamos do seu e-mail principal"; "você
+ * atrela o login ao email, não ao usuario"). O e-mail principal É o e-mail de entrada (o do Firebase Auth): falta quando a
+ * conta ainda entra pelo nome@nilma.local, ou quando tem um e-mail que a pessoa nunca confirmou (o Diretor pode ter posto).
+ */
+export function precisaDoEmailPrincipal(u: { email: string; emailPrincipalEm?: string | null }): boolean {
+  return !u.email.trim() || ehEmailDoNome(u.email) || !u.emailPrincipalEm;
+}
+
+/** O que está errado no e-mail principal digitado na janela ('' = pode enviar); duas vezes, para não errar o login. */
+export function problemaDoEmailPrincipal(email: string, confirmacao: string): string {
+  const e = email.trim().toLowerCase();
+  if (!e) return 'Escreva o seu e-mail principal.';
+  if (!ehEmailDeLogin(e)) return 'Escreva um e-mail válido (por exemplo, nome@gmail.com).';
+  if (ehEmailDoNome(e)) return 'Esse é o login feito do nome, não um e-mail. Escreva o e-mail que você usa.';
+  if (e !== confirmacao.trim().toLowerCase()) return 'Os dois e-mails não são iguais. Confira e digite de novo.';
+  return '';
+}

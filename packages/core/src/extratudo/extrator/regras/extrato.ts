@@ -229,11 +229,16 @@ function colunas(linhas: Linha[]): Colunas | null {
   return null;
 }
 
-/** O ano que mais aparece no texto (para datas "05/09" sem ano). */
+/**
+ * O ano que mais aparece no texto (para datas "05/09" sem ano). O mês por extenso conta também com a barra ("junho/2026",
+ * "MAIO / 2026"). A data do nome do modelo no rodapé ("Extrato_PJ_A4_Basico - 2/4/2024", em toda página do Extrato
+ * Consolidado do Santander) não conta: é a versão do formulário, não o extrato (Vitor, 16/11/2026: o junho/2026 virava 06/2024).
+ */
 export function anoDoTexto(texto: string, padrao: number): number {
   const conta: Record<string, number> = {};
-  for (const m of texto.matchAll(/\b\d{1,2}[/.-]\d{1,2}[/.-](20\d{2})\b/g)) conta[m[1]] = (conta[m[1]] || 0) + 1;
-  for (const m of normalizarTexto(texto).matchAll(/\b(?:jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)[a-z]* (?:de )?(20\d{2})\b/g)) conta[m[1]] = (conta[m[1]] || 0) + 1;
+  const semModelo = texto.split('\n').filter(l => !/[a-z0-9]_[a-z0-9]+_/i.test(l)).join('\n');
+  for (const m of semModelo.matchAll(/\b\d{1,2}[/.-]\d{1,2}[/.-](20\d{2})\b/g)) conta[m[1]] = (conta[m[1]] || 0) + 1;
+  for (const m of normalizarTexto(texto).matchAll(/\b(?:jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)[a-z]* ?(?:de |\/ ?)?(20\d{2})\b/g)) conta[m[1]] = (conta[m[1]] || 0) + 1;
   let melhor: string | null = null;
   for (const a of Object.keys(conta)) if (!melhor || conta[a] > conta[melhor]) melhor = a;
   return melhor ? +melhor : padrao;

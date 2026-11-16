@@ -212,6 +212,18 @@ export function criarTarefasDelegadasFirestore(quem: () => Pessoa | null): RepoT
       });
       await reler();
     },
+    // o pedido de mais tempo (16/11/2026) também vai nos pareceres: a regra não muda
+    async adiarCobranca(id, minutos, justificativa) {
+      const por = eu();
+      const t = await noBanco(id);
+      const problema = d.problemaDoAdiamento(t, por.uid, minutos, justificativa);
+      if (problema) throw new Error(problema);
+      const em = new Date().toISOString();
+      await updateDoc(doc(db, COLECAO, id), {
+        pareceres: arrayUnion(d.notaDoAdiamento(minutos, justificativa, por.nome, em)), historico: historicoNovo(t, [d.historicoDoAdiamento(por.nome, em, minutos)]), atualizadaEm: em,
+      });
+      await reler();
+    },
     async anexar(id, arquivos) {
       const por = eu();
       const t = await noBanco(id);

@@ -2698,6 +2698,9 @@ html:not([data-animacoes=todas]) .modal-ok-barra{display:none;}
 .imp-meses .popover{text-align:left;}
 /* só o ícone, do tamanho dos outros: as opções abrem ao clicar */
 .imp-meses .imp-mes-menu{width:28px;height:28px;padding:0;}
+/* o extrato arrastado até a célula do mês (16/11/2026): a célula toda recebe, e a moldura do soltar fica dentro dela */
+.imp-meses .imp-mes-soltar{display:flex;align-items:center;justify-content:center;height:41px;}
+.imp-meses .imp-mes-soltar.sobre::after{content:'Solte aqui';inset:2px;border-radius:6px;font-size:var(--fs-12);}
 .imp-meses .imp-mes-menu .menu-seta{display:none;}
 .imp-meses .imp-mes-sem{min-width:56px;}
 /* na janela, o de apagar é todo vermelho (Vitor, 02/10/2026: "Excluir, botão todo vermelho") */
@@ -6934,6 +6937,27 @@ p.tdl-cobranca{flex-direction:row;align-items:center;}
 .tdl-cobranca-texto{margin:0;white-space:pre-line;overflow-wrap:anywhere;}
 .tdl-cobranca textarea{width:100%;resize:vertical;}
 .tdl-cobranca-acoes{display:flex;justify-content:flex-end;}
+/* a cobrança discreta dentro da tarefa (a novidade 'cobranca-notificada', 16/11/2026: o destaque é a janela grande): só as
+   linhas do andamento, sem a caixa amarela */
+.tdl-cobranca-linhas{display:flex;flex-direction:column;gap:2px;margin:0 0 4px;font-size:var(--fs-12);color:var(--ink-muted);}
+.tdl-cobranca-linhas p{display:flex;align-items:flex-start;gap:6px;margin:0;overflow-wrap:anywhere;}
+.tdl-cobranca-linhas svg{width:13px;height:13px;flex:none;margin-top:2px;}
+/* a janela da cobrança (Vitor, 16/11/2026: "tome a tela inicial toda… faça uma bela popup"): por cima de tudo, mais larga
+   que a janela comum, o sino grande no alto e a mensagem de quem cobrou em destaque; não fecha até responder */
+.modal-overlay.cobranca-fundo{z-index:90;}
+.modal.cobranca-janela{max-width:560px;border-top:4px solid var(--warn);max-height:calc(100vh - 32px);overflow:auto;}
+.cobranca-topo{display:flex;align-items:center;gap:14px;padding:22px 24px 6px;}
+.cobranca-topo h2{margin:0 0 2px;font-size:var(--fs-18);font-weight:600;}
+.cobranca-sino{display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:50%;flex:none;background:var(--warn-soft);color:var(--warn);}
+.cobranca-sino svg{width:22px;height:22px;}
+.cobranca-corpo{display:flex;flex-direction:column;gap:12px;padding:12px 24px 22px;}
+.cobranca-tarefa{display:flex;flex-direction:column;gap:2px;}
+.cobranca-mensagem{margin:0;padding:12px 14px;border-left:3px solid var(--warn);border-radius:0 8px 8px 0;background:var(--warn-soft);color:var(--ink);
+  font-size:var(--fs-14);white-space:pre-line;overflow-wrap:anywhere;}
+.modal .cobranca-adiado{display:flex;align-items:flex-start;gap:6px;margin:0;padding:0;font-size:var(--fs-12);}
+.cobranca-corpo textarea{width:100%;resize:vertical;}
+.cobranca-acoes{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;}
+.cobranca-tempo{display:flex;flex-direction:column;gap:8px;padding-top:12px;border-top:1px solid var(--border-muted);}
 /* o sino nas listas: quem faz vê que foi cobrado; quem delegou, o botão de cobrar */
 .ini-sino{display:inline-flex;align-items:center;gap:4px;font-size:var(--fs-12);color:var(--warn);white-space:nowrap;}
 .ini-sino svg{width:14px;height:14px;flex:none;}
@@ -7067,6 +7091,11 @@ tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{co
 .ini-anexos-lista li > svg{width:14px;height:14px;flex:none;color:var(--ink-muted);}
 .ini-anexos-lista li > a,.ini-anexos-lista li > .ini-abrir{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .ini-anexos-lista li > .hint{margin-left:auto;white-space:nowrap;}
+/* os prints colados nos Detalhes (16/11/2026): as miniaturas embaixo do campo, cada uma com o × no canto */
+.ini-prints{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:8px;}
+.ini-prints li{position:relative;}
+.ini-prints img{display:block;height:72px;max-width:180px;object-fit:cover;border:1px solid var(--border);border-radius:8px;}
+.ini-prints .icon-btn{position:absolute;top:2px;right:2px;background:var(--surface);}
 /* as solicitações de reunião (as Notificações do Início novo) */
 .ini-solicitacao{margin-bottom:0;display:flex;flex-direction:column;gap:6px;}
 .ini-solicitacao-topo{display:flex;align-items:center;gap:8px;justify-content:space-between;}
@@ -7172,3 +7201,8 @@ tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{co
   .cmc-linha{grid-template-columns:auto minmax(0,1fr) auto;row-gap:6px;}
   .cmc-situacao{grid-column:2 / -1;flex-direction:row;align-items:center;gap:8px;}
 }
+/* a janela do e-mail principal (16/11/2026): por cima de tudo, até da Minha conta (o ⚡ simula de lá); a tela de entrada
+   simulada cobre a tela inteira, com o Voltar no canto de cima à esquerda */
+.modal-overlay.email-principal-fundo{z-index:91;}
+.entrada-de-teste{position:fixed;inset:0;z-index:92;overflow:auto;background:var(--bg);}
+.entrada-de-teste-voltar{position:absolute;top:16px;left:16px;}

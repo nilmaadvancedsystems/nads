@@ -45,6 +45,8 @@ export interface RepoTarefasDelegadas {
   cobrar(id: string, texto: string): Promise<void>;
   /** quem faz responde à cobrança aberta */
   responderCobranca(id: string, texto: string): Promise<void>;
+  /** quem faz pede mais 5 ou 10 minutos para responder, com a justificativa (a janela da cobrança; 16/11/2026) */
+  adiarCobranca(id: string, minutos: number, justificativa: string): Promise<void>;
   /** quem recebeu abriu a tarefa: grava a hora (o Visualizado de quem delegou; 12/11/2026) */
   marcarVisualizada(id: string): Promise<void>;
   /** a conta da etapa delegada marcada (ou desmarcada) como feita por quem recebeu */
@@ -139,10 +141,23 @@ function maisExemplos(agora: Date, eu: Pessoa): TarefaDelegada[] {
     t(11, { titulo: 'Organizar a pasta do Drive', clientes: [], prioridade: 'baixa', prazo: '', status: 'pendente', criadaPor: eu, responsavel: eu, criadaEm: ha(70), atualizadaEm: ha(70), historico: [{ por: eu.nome, em: ha(70), texto: 'Criou a tarefa' }] }),
     t(12, { titulo: 'Apurar o Simples de outubro', clientes: [delta], prioridade: 'normal', prazo: dia(12), status: 'pendente', criadaPor: heverton, responsavel: eu, criadaEm: ha(5), atualizadaEm: ha(5), historico: criada(heverton, eu, 5) }),
     // o que eu deleguei (o cartão Delegadas por mim)
-    t(13, { titulo: 'Cadastrar os funcionários novos', clientes: [gama], prioridade: 'normal', prazo: dia(2), status: 'andamento', criadaPor: eu, responsavel: savio, criadaEm: ha(26), atualizadaEm: ha(4), visualizadaEm: ha(20),
-      pareceres: [{ por: 'Sávio', em: ha(4), texto: 'Faltam os documentos de dois funcionários.' }],
-      historico: [...criada(eu, savio, 26), { por: 'Sávio', em: ha(18), texto: 'Iniciou a tarefa' }, { por: 'Sávio', em: ha(4), texto: 'Escreveu um parecer' }] }),
-    t(14, { titulo: 'Conferir o ICMS do mês', clientes: [beta], prioridade: 'alta', prazo: dia(4), status: 'pendente', criadaPor: eu, responsavel: heverton, criadaEm: ha(3), atualizadaEm: ha(3), historico: criada(eu, heverton, 3) }),
+    // e as cobranças que eu fiz (16/11/2026): uma respondida depois de pedir mais tempo, outra com mais tempo correndo
+    t(13, { titulo: 'Cadastrar os funcionários novos', clientes: [gama], prioridade: 'normal', prazo: dia(2), status: 'andamento', criadaPor: eu, responsavel: savio, criadaEm: ha(26), atualizadaEm: ha(3), visualizadaEm: ha(20),
+      pareceres: [
+        { por: 'Sávio', em: ha(4), texto: 'Faltam os documentos de dois funcionários.' },
+        { por: eu.nome, em: ha(3.5), texto: d.TEXTO_DA_COBRANCA, tipo: 'cobranca' },
+        { por: 'Sávio', em: ha(3.4), texto: 'Estou no telefone com o RH do cliente, já respondo.', tipo: 'adiamento', minutos: 5 },
+        { por: 'Sávio', em: ha(3.3), texto: 'Os documentos chegaram, termino o cadastro hoje.', tipo: 'resposta' },
+      ],
+      historico: [...criada(eu, savio, 26), { por: 'Sávio', em: ha(18), texto: 'Iniciou a tarefa' }, { por: 'Sávio', em: ha(4), texto: 'Escreveu um parecer' },
+        { por: eu.nome, em: ha(3.5), texto: 'Cobrou uma atualização de Sávio' }, { por: 'Sávio', em: ha(3.4), texto: 'Pediu mais 5 minutos para responder à cobrança' },
+        { por: 'Sávio', em: ha(3.3), texto: 'Respondeu à cobrança' }] }),
+    t(14, { titulo: 'Conferir o ICMS do mês', clientes: [beta], prioridade: 'alta', prazo: dia(4), status: 'pendente', criadaPor: eu, responsavel: heverton, criadaEm: ha(3), atualizadaEm: ha(0.05),
+      pareceres: [
+        { por: eu.nome, em: ha(0.2), texto: 'O cliente quer o valor do ICMS ainda hoje.', tipo: 'cobranca' },
+        { por: 'Heverton', em: ha(0.05), texto: 'Estou fechando a apuração de outra empresa, termino e já vejo.', tipo: 'adiamento', minutos: 10 },
+      ],
+      historico: [...criada(eu, heverton, 3), { por: eu.nome, em: ha(0.2), texto: 'Cobrou uma atualização de Heverton' }, { por: 'Heverton', em: ha(0.05), texto: 'Pediu mais 10 minutos para responder à cobrança' }] }),
     // os documentos delegados (a aba Documentos)
     t(15, { tipo: 'documentos', titulo: d.TITULO_DO_PEDIDO, descricao: 'Os contratos de locação assinados.', clientes: [delta], prioridade: 'normal', prazo: dia(2), status: 'pendente', criadaPor: vitor, responsavel: eu, criadaEm: ha(8), atualizadaEm: ha(8), historico: criada(vitor, eu, 8) }),
     t(17, { tipo: 'documentos', titulo: d.TITULO_DO_PEDIDO, descricao: 'As notas de serviço de outubro.', clientes: [beta], prioridade: 'normal', prazo: dia(-4), status: 'concluida', criadaPor: heverton, responsavel: eu, criadaEm: ha(110), concluidaEm: ha(50), atualizadaEm: ha(50),
@@ -250,6 +265,13 @@ export function criarTarefasDelegadasMemoria(quem: () => Pessoa | null, paraQuem
       if (problema) throw new Error(problema);
       const em = new Date().toISOString();
       trocar(d.comCobranca(t, d.notaDaResposta(texto, eu().nome, em), d.historicoDaRespostaDaCobranca(eu().nome, em)));
+    },
+    async adiarCobranca(id, minutos, justificativa) {
+      const t = daTarefa(id);
+      const problema = d.problemaDoAdiamento(t, eu().uid, minutos, justificativa);
+      if (problema) throw new Error(problema);
+      const em = new Date().toISOString();
+      trocar(d.comCobranca(t, d.notaDoAdiamento(minutos, justificativa, eu().nome, em), d.historicoDoAdiamento(eu().nome, em, minutos)));
     },
     async anexar(id, arquivos) {
       const t = daTarefa(id);

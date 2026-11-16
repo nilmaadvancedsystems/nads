@@ -11,7 +11,7 @@
 // Ao importar, um cartão por cima da tela com cada arquivo (lendo, a página do OCR, guardando) que vira o resultado no fim:
 // some sozinho quando deu tudo certo; com erro ou aviso, fica até fechar (16/11/2026).
 import { clientes as cl, creditor, demo, extrator as x, type conferencia, tarefas } from '@nads/core';
-import { Alerta, BotaoFechar, classeDaJanela, destacarNaTela, Icone, LogoBanco, LogoDrive, LogoGmail, MensagemFlutuante, MenuSuspenso, preCarregarLogosDosApps, urlDoLogoBanco, urlDoLogoNilma, useCarregando, type AbaDaEtapa } from '@nads/ui';
+import { Alerta, baixarArquivo, BotaoFechar, classeDaJanela, destacarNaTela, Icone, LogoBanco, LogoDrive, LogoGmail, MensagemFlutuante, MenuSuspenso, preCarregarLogosDosApps, urlDoLogoBanco, urlDoLogoNilma, SoltarArquivos, useCarregando, type AbaDaEtapa } from '@nads/ui';
 import { useAbasDaEtapa } from '../../../../telas/executor/etapas/contexto';
 import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { useDadosDeTesteNaTarefa, usePonteDaTarefa, useRequisitosParaATarefa, type OpcaoDeTeste } from '../../../../telas/executor/etapas/ponte';
@@ -127,6 +127,8 @@ const OPCOES_DE_TESTE: OpcaoDeTeste[] = [
   // o balancete dinâmico de teste da empresa toda (a aba Balancete e razões; 16/10/2026)
   { id: 'dinamico-certo', rotulo: 'Balancete dinâmico de teste (tudo certo)' },
   { id: 'dinamico-erros', rotulo: 'Balancete dinâmico de teste (com pendências)' },
+  // o arquivo para arrastar até a célula do mês (a novidade arrastar-no-mes; 16/11/2026)
+  { id: 'ofx-para-arrastar', rotulo: 'Baixar um extrato OFX de teste (para arrastar até o mês)' },
   { id: 'apagar', rotulo: 'Apagar os dados de teste' },
 ];
 
@@ -316,10 +318,12 @@ function DriveDoSemMovimento({ subindo, arquivo }: { subindo: boolean; arquivo: 
   return <span className="icon-btn icon-btn-sm imp-btn imp-drive" title={'Arquivado no Drive: ' + arquivo.nome} aria-label="Arquivado no Drive"><LogoDrive /></span>;
 }
 
-function MesesDoBanco({ meses, competencia, buscandoMes, travado, aceitarExtrato, aceitarRazao, onMes, onArquivos, onExcluir, onDrive, onEmail, onVer, onVerImportado, onSemMovimento, naTarefa, puxados, subindo, semMovimentoDoDrive }: {
+function MesesDoBanco({ meses, competencia, soltar, buscandoMes, travado, aceitarExtrato, aceitarRazao, onMes, onArquivos, onExcluir, onDrive, onEmail, onVer, onVerImportado, onSemMovimento, naTarefa, puxados, subindo, semMovimentoDoDrive }: {
   meses: ReturnType<Vm['mesesDoBanco']>;
   /** o mês que o "Todos pelo Drive" está buscando agora: a célula do extrato gira */
   buscandoMes?: string | null;
+  /** o extrato arrastado até a célula do mês entra nele (a novidade arrastar-no-mes; Vitor, 16/11/2026: "Da a opção de arrastar, até o campo do mes, o extrato tbm") */
+  soltar?: boolean;
   competencia: string; travado: boolean; aceitarExtrato: string; aceitarRazao: string; naTarefa: boolean;
   onMes: (m: string) => void; onArquivos: (lado: 'banco' | 'sistema', fs: File[], mes: string) => void; onExcluir: (lado: 'banco' | 'sistema', mes: string) => void;
   onDrive: (mes: string) => void; onEmail?: (mes: string) => void; onVer: (arquivo: { id: string; nome: string }) => void; onSemMovimento: (mes: string, marcado: boolean) => void;
@@ -393,7 +397,14 @@ function MesesDoBanco({ meses, competencia, buscandoMes, travado, aceitarExtrato
           </tr>
         </thead>
         <tbody>
-          <tr><th scope="row">Extrato</th>{meses.map((m, n) => <td key={m.mes} className={m.mes === competencia ? 'atual' : undefined}>{celula(m, 'banco', n)}</td>)}</tr>
+          <tr><th scope="row">Extrato</th>{meses.map((m, n) => (
+            <td key={m.mes} className={m.mes === competencia ? 'atual' : undefined}>
+              {/* o mês sem movimento não recebe: desmarca primeiro */}
+              {soltar && !travado && !m.semMovimento
+                ? <SoltarArquivos multiplo aceitar={aceitarExtrato} className="imp-mes-soltar" onArquivos={fs => onArquivos('banco', fs, m.mes)}>{celula(m, 'banco', n)}</SoltarArquivos>
+                : celula(m, 'banco', n)}
+            </td>
+          ))}</tr>
           <tr><th scope="row">Razão</th>{meses.map((m, n) => <td key={m.mes} className={m.mes === competencia ? 'atual' : undefined}>{celula(m, 'sistema', n)}</td>)}</tr>
         </tbody>
       </table>
@@ -654,6 +665,7 @@ export function TarefaExtratos() {
   useDadosDeTesteNaTarefa(!ehTeste ? [] : vm.etapaFiscal ? [...demo.OPCOES_FISCAIS_DE_TESTE] : primeiroBanco ? OPCOES_DE_TESTE : [], tipo => {
     if (vm.etapaFiscal) { implantarNotasFiscaisDeTeste(s.nome, vm.periodo.length > 1 ? vm.periodo : [vm.competencia], tipo); return; }
     if (tipo === 'apagar') { vm.apagarDadosDeTeste(); return; }
+    if (tipo === 'ofx-para-arrastar') { const m = mesesDaEtapa[0]; baixarArquivo(demo.ofxDeTeste([m]), 'TESTE extrato ' + m + '.ofx', 'text/plain'); return; }
     if (tipo === 'dinamico-certo' || tipo === 'dinamico-erros') { contabil.usarDinamico('TESTE balancete dinâmico.xls', cl.dinamicoCompletoDeTeste(mesesDaEtapa, tipo === 'dinamico-erros')); return; }
     if (primeiroBanco && (tipo === 'extratos' || tipo === 'bate' || tipo === 'cheque' || tipo === 'erros')) void vm.implantarDadosDeTeste(primeiroBanco, tipo);
   });
@@ -679,6 +691,7 @@ export function TarefaExtratos() {
   const importarExtrato = (b: (typeof vm.bancos)[number], fs: File[], depois?: () => void, meses?: string[]) => { void vm.importarArquivos(b.id, 'banco', fs, meses).then(ok => { if (ok) { d.subirAoDrive(b, fs, s.nome, meses); depois?.(); } }); };
   // "Enviar vários meses": cada arquivo no seu mês, igual ao enviar de um mês (importa, vai para o Drive e fica para o olhinho)
   const importarAoSoltar = useNovidade('importar-ao-soltar');
+  const soltarNoMes = useNovidade('arrastar-no-mes');
   const varios = useEnviarVariosMeses(vm.periodo.length > 1 ? vm.periodo : [vm.competencia],
     (conta, mes) => vm.mesesDoBanco(conta, ponte.semMovimentoPorMes).some(m => m.mes === mes && (m.extrato || m.ladoExtrato.doDrive.length > 0)),
     async (conta, f, meses, soOsMeses, deTeste) => {
@@ -1059,7 +1072,7 @@ export function TarefaExtratos() {
                   </div>
                 )}
               </div>
-              {emLote && gradeAberta && <MesesDoBanco meses={meses} competencia={vm.competencia} naTarefa={ponte.naTarefa} buscandoMes={d.buscando === b.id ? d.mesAtual : null}
+              {emLote && gradeAberta && <MesesDoBanco meses={meses} competencia={vm.competencia} naTarefa={ponte.naTarefa} soltar={soltarNoMes} buscandoMes={d.buscando === b.id ? d.mesAtual : null}
                 travado={ocupadoGeral} aceitarExtrato={cxExtrato.aceitar} aceitarRazao={cxRazao.aceitar}
                 onMes={vm.setCompetencia} onArquivos={(lado, fs, mes) => {
                   if (lado === 'banco') importarExtrato(b, fs, () => { for (const f of fs) guardarPuxado(chaveDoExtrato(s.codigo, b.id), f.name, f, 'computador', [mes]); }, [mes]);

@@ -351,6 +351,13 @@ describe('encolher os anexos', () => {
     expect(nomeDaImagemEncolhida('Print 1.PNG')).toBe('Print 1.webp');
     expect(nomeDaImagemEncolhida('foto')).toBe('foto.webp');
   });
+  it('o print colado nos Detalhes ganha o número seguinte e é reconhecido depois de virar WebP', () => {
+    expect(d.nomeDoPrintColado([], 'image/png')).toBe('Print colado 1.png');
+    expect(d.nomeDoPrintColado(['contrato.pdf', 'Print colado 1.webp', 'Print colado 4.webp'], 'image/jpeg')).toBe('Print colado 5.jpg');
+    expect(d.ehPrintColado(nomeDaImagemEncolhida(d.nomeDoPrintColado([], 'image/png')))).toBe(true);
+    expect(d.ehPrintColado('Print 1.webp')).toBe(false);
+    expect(d.ehPrintColado('contrato.pdf')).toBe(false);
+  });
   it('lê o gzip do banco só quando é true', () => {
     const base = { id: 'a', nome: 'n.xml', extensao: 'xml', tamanho: 10, em: EM, por: 'Nilma', partes: 1 };
     expect(lerTarefa('t', { anexos: [{ ...base, gzip: true }] }).anexos[0].gzip).toBe(true);

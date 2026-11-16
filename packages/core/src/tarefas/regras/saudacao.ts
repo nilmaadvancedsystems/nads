@@ -2,7 +2,19 @@
 // Boa tarde, Vitor / Boa noite, Vitor / Segunda feira: Como foi o final de semana Vitor? / Perto do aniversário… Melhor mês
 // do ano chegou! / Mensagens personalizadas"). E "Só que não pela atualização, pode ser em diferentes turnos": a frase é
 // escolhida por pessoa, dia e turno (manhã, tarde, noite), então recarregar a página no mesmo turno mostra a mesma frase.
-// 15/11/2026: "coloca algo de piada se tiver feriado na semana" e "se tiver sexta, coloca sextou tbm".
+// 15/11/2026: "coloca algo de piada se tiver feriado na semana" e "se tiver sexta, coloca sextou tbm". Revisto em 16/11/2026: "As
+// frases de saudação cuidado, que elas podem desmotivar o trabalho (...) remova as que desmotivam/transmitem preguiça (ansiedade
+// para chegar feriado, isso é ruim!)"; e no mesmo dia, as que ele gostava voltaram com o texto dele (o Sextou, a véspera do
+// feriado, o churrasco, a semana boa, o feriado no fim de semana, o feriado e você aqui, a metade do dia e as da noite); o
+// "Segura a ansiedade" e o "Feriadão vem aí" saíram de vez. E "Feriado na semana, dose mais, não apareça com tanta frequência,
+// deixa só na segunda e um dia antes do feriado": fora o próprio dia, o feriado só aparece nesses dois dias, e sem peso dobrado.
+// Por fim, "Corrigidas que quero exatamente (tem sotaque é menos robotizado)": o texto de cada frase é o dele, letra por letra; e
+// nas que "pode colocar apelido", o {apelido} às vezes vira um dos apelidos da pessoa (usuarios/{uid}.apelidos, no banco: o
+// repositório é público, nome da equipe não entra no código). "Não exagere nos apelidos, diminua muito e a chance de aparecer":
+// no máximo dois por pessoa, e o apelido em cerca de 1 de cada 10 saudações; no resto, o primeiro nome. E "Deixe muito bem
+// dosado, maioria das vezes, bom dia, boa tarde e boa noite, APENAS, o resto deixa muito raro de acontecer": em 88 de cada 100
+// turnos, só o "Bom dia/Boa tarde/Boa noite" com o nome; as outras frases (e o apelido nelas) dividem os 12 que sobram. O dia do
+// aniversário continua só com os parabéns.
 
 import { feriadoDoDia, type Feriado } from './feriados';
 
@@ -15,18 +27,21 @@ export function turnoDe(hora: number): Turno {
   return 'noite';
 }
 
-const POR_TURNO: Record<Turno, string> = { manha: 'Bom dia, {nome}', tarde: 'Boa tarde, {nome}', noite: 'Boa noite, {nome}' };
+const POR_TURNO: Record<Turno, string> = { manha: 'Bom dia {apelido}!', tarde: 'Boa tarde {apelido}!', noite: 'Boa noite {nome}, bom descanso' };
 
 /**
- * As mensagens personalizadas: entram no sorteio com as do turno. {nome} vira o primeiro nome; turno: só naquele turno.
- * Para ampliar, é só pôr mais uma linha aqui.
+ * As mensagens personalizadas: entram no sorteio com as do turno. {nome} vira o primeiro nome, {apelido} o nome ou um dos
+ * apelidos; turno: só naquele turno. Para ampliar, é só pôr mais uma linha aqui.
  */
 export const FRASES_PERSONALIZADAS: readonly { texto: string; turno?: Turno }[] = [
-  { texto: 'Bom te ver por aqui, {nome}' },
-  { texto: 'Bora fazer o dia render, {nome}?', turno: 'manha' },
-  { texto: 'Café tomado, {nome}? Vamos lá', turno: 'manha' },
-  { texto: 'Metade do dia já foi, {nome}. Vamos com tudo', turno: 'tarde' },
-  { texto: 'Ainda por aqui, {nome}? Não esquece de descansar', turno: 'noite' },
+  { texto: 'Bom te ver por aqui {apelido}' },
+  { texto: 'Vamo que vamo {apelido}?', turno: 'manha' },
+  { texto: 'Eae, já tomou café?', turno: 'manha' },
+  { texto: 'Sol tá quente?', turno: 'tarde' },
+  { texto: 'Metade do dia já foi, vamo pra cima!', turno: 'tarde' },
+  { texto: 'Obrigado pelo empenho de hoje <3', turno: 'noite' },
+  { texto: 'Tá apertado aí, né? Entendo... Mas não esqueça de você!', turno: 'noite' },
+  { texto: 'Já matou o leão do dia e já tá querendo o da noite? Descanso é importante', turno: 'noite' },
 ];
 
 /** O aniversário ('aaaa-mm-dd', 'mm-dd' ou 'dd/mm') como 'mm-dd'; '' quando não dá para ler. */
@@ -63,49 +78,96 @@ export function feriadoDaSemana(agora: Date): { feriado: Feriado; dias: number; 
   return null;
 }
 
-/** As piadas da semana com feriado (com o {nome}; curtas, para caber na linha do título). */
-function piadasDoFeriado(x: { feriado: Feriado; dias: number; diaDaSemana: number }): string[] {
-  if (x.dias === 0) return ['Feriado e você aqui, {nome}?', 'Hoje é feriado, {nome}! Que dedicação'];
-  if (x.diaDaSemana === 0 || x.diaDaSemana === 6) return ['Feriado ' + NO_DIA[x.diaDaSemana] + ', {nome}? Não colou'];
-  const piadas = x.dias === 1
-    ? ['Amanhã é feriado, {nome}! Força', 'Amanhã tem feriado, {nome}. Já sente o churrasco?']
-    : ['Feriado ' + NO_DIA[x.diaDaSemana] + ', {nome}! Semana boa', 'Tem feriado ' + NO_DIA[x.diaDaSemana] + ', {nome}. Segura a ansiedade'];
-  // na segunda ou na sexta: o feriadão
-  if (x.diaDaSemana === 1 || x.diaDaSemana === 5) piadas.push('Feriadão vem aí, {nome}!');
-  return piadas;
+/**
+ * As frases da semana com feriado (curtas, para caber na linha do título): só na segunda-feira da semana, na véspera (da sexta, o
+ * feriado na segunda) e no próprio dia; nos outros dias, nenhuma.
+ */
+function frasesDoFeriado(x: { dias: number; diaDaSemana: number }, hojeDia: number): string[] {
+  if (x.dias === 0) return ['Feriado e você aqui? Vai descansar, anda!'];
+  const vespera = x.dias === 1 || (hojeDia === 5 && x.dias === 3);
+  if (!vespera && hojeDia !== 1) return [];
+  if (x.diaDaSemana === 0 || x.diaDaSemana === 6) return ['Feriadão no final de semana! Deu ruim :('];
+  if (vespera && x.dias === 3) return ['Segunda é feriado {apelido}! Bora que bora!'];
+  if (vespera) return ['Amanhã é feriadão, bora que bora!', 'Vai fazer churrasco no feriado? Vai me chamar não?'];
+  return ['Feriado ' + NO_DIA[x.diaDaSemana] + ' em! Ôh semana boa', 'Semana mais curta, cuidado com os prazos!'];
 }
 
 const dataLocal = (d: Date) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 
-/** As frases que valem agora para a pessoa (a do aniversário, sozinha, no próprio dia). */
-export function frasesDaSaudacao(nome: string, agora: Date, aniversario?: string | null): string[] {
-  const primeiro = nome.trim().split(/[ .]/)[0] || nome;
-  const com = (t: string) => t.replace('{nome}', primeiro);
+/** O primeiro nome, com só a inicial maiúscula ("ADIVÂNIA" vira "Adivânia"; "Gustavo.S", "Gustavo"). */
+export function primeiroNome(nome: string): string {
+  const p = nome.trim().split(/[ .]/)[0] || nome.trim();
+  return p.charAt(0).toLocaleUpperCase('pt-BR') + p.slice(1).toLocaleLowerCase('pt-BR');
+}
+
+/** Em quantos turnos, de cada 100, sai só o "Bom dia/Boa tarde/Boa noite" com o nome. */
+export const SO_O_TURNO_EM_CEM = 88;
+
+/** Quantos apelidos por pessoa entram (os primeiros da lista) e a chance do apelido nas frases raras: 1 em APELIDO_UMA_EM. */
+export const MAX_APELIDOS = 2;
+export const APELIDO_UMA_EM = 10;
+
+/** Os jeitos de chamar a pessoa: o primeiro nome e os apelidos (sem repetidos nem vazios). */
+export function jeitosDeChamar(nome: string, apelidos?: readonly string[] | null): string[] {
+  const todos = [primeiroNome(nome), ...(apelidos || []).map(a => String(a).trim()).filter(Boolean)];
+  return todos.filter((a, i) => todos.findIndex(b => b.toLowerCase() === a.toLowerCase()) === i);
+}
+
+/** As frases que valem agora para a pessoa (a do aniversário, sozinha, no próprio dia). apelido: o {apelido} (o nome, sem ele). */
+export function frasesDaSaudacao(nome: string, agora: Date, aniversario?: string | null, apelido?: string): string[] {
+  const primeiro = primeiroNome(nome);
+  const com = (t: string) => t.replace('{nome}', primeiro).replace('{apelido}', apelido || primeiro);
   const niver = mesEDia(aniversario);
   const hoje = dataLocal(agora).slice(5);
-  if (niver && niver === hoje) return [com('Feliz aniversário, {nome}!')];
+  if (niver && niver === hoje) return [com('Feliz aniversário {apelido}!')];
   const turno = turnoDe(agora.getHours());
   const daHora = com(POR_TURNO[turno]);
-  // as especiais aparecem mais (duas vezes na lista): a segunda-feira, a sexta (o "Sextou"), a semana com feriado e o mês do aniversário
+  // as especiais aparecem mais (duas vezes na lista): a segunda-feira, a sexta e o mês do aniversário; as do feriado, uma vez só
   const feriado = feriadoDaSemana(agora);
   const especiais = [
-    ...(agora.getDay() === 1 ? [com('Como foi o final de semana, {nome}?')] : []),
-    ...(agora.getDay() === 5 ? [com('Sextou, {nome}!'), com('Sextou, {nome}! Fecha com tudo')] : []),
-    ...(feriado ? piadasDoFeriado(feriado).map(com) : []),
-    ...(niver && niver.slice(0, 2) === hoje.slice(0, 2) ? [com('Melhor mês do ano chegou, {nome}!')] : []),
+    ...(agora.getDay() === 1 ? [com('Como foi o final de semana {apelido}?')] : []),
+    ...(agora.getDay() === 5 ? [com('Sextou!'), com('Sexta é dia!'), com('Vamos fechar a semana com tudo {apelido}')] : []),
+    ...(niver && niver.slice(0, 2) === hoje.slice(0, 2) ? [com('Melhor mês do ano chegou {apelido}!')] : []),
   ];
   const personalizadas = FRASES_PERSONALIZADAS.filter(f => !f.turno || f.turno === turno).map(f => com(f.texto));
-  return [...especiais, daHora, ...especiais, daHora, ...personalizadas];
+  const doFeriado = feriado ? frasesDoFeriado(feriado, agora.getDay()).map(com) : [];
+  return [...especiais, ...doFeriado, daHora, ...especiais, daHora, ...personalizadas];
+}
+
+/** Só o "Bom dia/Boa tarde/Boa noite" com o primeiro nome (a saudação da grande maioria das vezes). */
+export function saudacaoDoTurno(nome: string, agora: Date): string {
+  const primeiro = primeiroNome(nome);
+  return POR_TURNO[turnoDe(agora.getHours())].replace('{nome}', primeiro).replace('{apelido}', primeiro);
+}
+
+const ehDoTurno = (f: string) => /^(Bom dia|Boa tarde|Boa noite) /.test(f);
+
+/** Embaralha o número (para sorteios diferentes da mesma chave não andarem juntos). */
+function misturar(h: number): number {
+  h = Math.imul(h ^ (h >>> 16), 0x45d9f3b);
+  h = Math.imul(h ^ (h >>> 16), 0x45d9f3b);
+  return (h ^ (h >>> 16)) >>> 0;
 }
 
 /**
- * A saudação de agora: uma das frases, escolhida pela pessoa (quem), pelo dia e pelo turno, e mais nada; recarregar no
- * mesmo turno dá a mesma frase. troca: soma ao número (o "Outra frase" do ⚡, para testar); simulando: começa pela primeira
- * frase (a especial, quando tem: a segunda-feira ou o aniversário simulados aparecem logo) e a troca anda uma a uma.
+ * A saudação de agora, escolhida pela pessoa (quem), pelo dia e pelo turno; recarregar no mesmo turno dá a mesma. Em
+ * SO_O_TURNO_EM_CEM de cada 100 turnos, só o "Bom dia/Boa tarde/Boa noite" com o nome; nos outros, uma das outras frases,
+ * e nelas o apelido em cerca de 1 de cada APELIDO_UMA_EM. troca: soma ao número (o "Outra frase" do ⚡, para testar);
+ * simulando: anda por todas as frases a partir da primeira (a especial, quando tem: a segunda-feira ou o aniversário simulados
+ * aparecem logo), uma a uma e, com apelido simulado, ele sai sempre.
  */
-export function saudacao(o: { nome: string; quem: string; agora: Date; aniversario?: string | null; troca?: number; simulando?: boolean }): string {
-  const frases = frasesDaSaudacao(o.nome, o.agora, o.aniversario);
-  if (o.simulando) return frases[(o.troca || 0) % frases.length];
-  const n = numeroDe(o.quem + '|' + dataLocal(o.agora) + '|' + turnoDe(o.agora.getHours())) + (o.troca || 0);
-  return frases[n % frases.length];
+export function saudacao(o: { nome: string; quem: string; agora: Date; aniversario?: string | null; apelidos?: readonly string[] | null; troca?: number; simulando?: boolean }): string {
+  const chave = o.quem + '|' + dataLocal(o.agora) + '|' + turnoDe(o.agora.getHours());
+  const n = o.simulando ? (o.troca || 0) : numeroDe(chave) + (o.troca || 0);
+  const apelidos = jeitosDeChamar(o.nome, o.apelidos).slice(1, 1 + MAX_APELIDOS);
+  const sorte = o.simulando ? n : misturar(numeroDe(chave + '|apelido'));
+  const comApelido = apelidos.length > 0 && (o.simulando || sorte % APELIDO_UMA_EM === 0);
+  const frases = frasesDaSaudacao(o.nome, o.agora, o.aniversario, comApelido ? apelidos[Math.floor(sorte / APELIDO_UMA_EM) % apelidos.length] : undefined);
+  // o aniversário (sozinho) e o ⚡ (anda por todas)
+  if (frases.length === 1 || o.simulando) return frases[n % frases.length];
+  const doTurno = saudacaoDoTurno(o.nome, o.agora);
+  if (misturar(numeroDe(chave + '|raro')) % 100 < SO_O_TURNO_EM_CEM) return doTurno;
+  // as raras: todas menos a do turno (com o nome ou o apelido), sem repetidas
+  const raras = frases.filter((f, i) => !ehDoTurno(f) && frases.indexOf(f) === i);
+  return raras.length ? raras[n % raras.length] : doTurno;
 }

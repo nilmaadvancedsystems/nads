@@ -154,11 +154,20 @@ export function useInicioNovo() {
   // "faça aparecer em notificações que houve uma cobrança"); a busca vale para elas e qualquer pílula as esconde
   const cobrancaNotificada = useNovidade('cobranca-notificada');
   const recebidas = cobrancaNotificada ? d.cobrancasRecebidas(todas, uid) : [];
-  const cobrancas = recebidas
-    .filter(c => aba !== 'notificacoes' || (!filtros.length && (!q || (c.tarefa.titulo + ' ' + c.nota.por).toLowerCase().includes(q))))
+  // e, para quem cobrou, o que voltou: o mais tempo pedido (com a justificativa) e a resposta (16/11/2026: "para quem cobrou
+  // aparece que o usuario pediu + 5 +10 minutos")
+  const retornos = cobrancaNotificada ? d.retornosDasCobrancas(todas, uid) : [];
+  const cobrancas = [
+    ...recebidas.map(c => ({ tarefa: c.tarefa, nota: c.nota, aberta: c.aberta, icone: 'sino' as const, texto: c.nota.por + ' cobrou atualização da tarefa ' + c.tarefa.titulo })),
+    ...retornos.map(c => ({
+      tarefa: c.tarefa, nota: c.nota, aberta: false, icone: c.nota.tipo === 'adiamento' ? 'clock' as const : 'checkCircle' as const,
+      texto: c.nota.tipo === 'adiamento' ? c.nota.por + ' pediu mais ' + (c.nota.minutos || 0) + ' minutos na tarefa ' + c.tarefa.titulo + ': ' + c.nota.texto
+        : c.nota.por + ' respondeu à cobrança da tarefa ' + c.tarefa.titulo + ': ' + c.nota.texto,
+    })),
+  ].sort((a, b) => b.nota.em.localeCompare(a.nota.em))
+    .filter(c => aba !== 'notificacoes' || (!filtros.length && (!q || (c.texto + ' ' + c.nota.por).toLowerCase().includes(q))))
     .map(c => ({
-      id: c.tarefa.id + '|' + c.nota.em, tarefa: c.tarefa.id, aberta: c.aberta,
-      texto: c.nota.por + ' cobrou atualização da tarefa ' + c.tarefa.titulo,
+      id: c.tarefa.id + '|' + c.nota.em + '|' + (c.nota.tipo || ''), tarefa: c.tarefa.id, aberta: c.aberta, icone: c.icone, texto: c.texto,
       quando: dataHora(c.nota.em), quandoFoi: tarefas.quandoFoi(c.nota.em, agoraIso),
     }));
   const dicaDoCobrada = (t: tarefas.delegadas.TarefaDelegada) => {

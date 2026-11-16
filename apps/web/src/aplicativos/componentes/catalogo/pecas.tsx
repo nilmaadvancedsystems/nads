@@ -543,6 +543,25 @@ export const PECAS_BASE: Peca[] = [
         </div>
       </div>
     ) },
+  { id: 'jn-cobranca', tipo: 'janelas', nome: 'Janela da cobrança (quem foi cobrado)', descricao: 'Vitor, 16/11/2026: "tome a tela inicial toda… não deixa o usuario sair enquanto nao responder a cobrança, faça uma bela popup". Por cima de qualquer tela da Tarefas, com o fundo coberto e a borda de cima em amarelo: o sino grande, quem cobrou e quando, a tarefa e o cliente, a mensagem em destaque e a resposta. Sem X, sem Esc e sem clique fora: só sai respondendo ou com Mais 5 / Mais 10 minutos, que pedem a justificativa (a janela volta quando o tempo acaba). Na novidade cobranca-notificada', componente: 'JanelaDaCobranca', classes: ['modal-overlay cobranca-fundo', 'modal cobranca-janela', 'cobranca-topo', 'cobranca-sino', 'cobranca-mensagem', 'cobranca-tempo'], telas: TAREFAS,
+    demo: () => (
+      <div className="modal cobranca-janela cat-parado" role="dialog" style={{ position: 'static', boxShadow: 'none' }}>
+        <header className="cobranca-topo">
+          <span className="cobranca-sino"><Icone nome="sino" /></span>
+          <span><h2>Sávio cobrou uma atualização</h2><span className="hint">16/11/2026, 10:30</span></span>
+        </header>
+        <div className="cobranca-corpo">
+          <div className="cobranca-tarefa"><b>Emitir a guia do FGTS</b><span className="hint">33 · GAMA TRANSPORTES LTDA</span></div>
+          <blockquote className="cobranca-mensagem">O cliente ligou perguntando da guia. Já conseguiu emitir?</blockquote>
+          <div className="field"><label>Sua resposta</label><textarea rows={2} readOnly aria-label="Exemplo" placeholder="Como está a tarefa? O que já foi feito, o que falta" /></div>
+          <div className="cobranca-acoes"><button type="button" className="btn btn-primary" disabled><Icone nome="envelope" />Responder cobrança</button></div>
+          <div className="cobranca-tempo">
+            <div className="field"><label>Precisa de mais tempo? Escreva o motivo</label><textarea rows={1} readOnly aria-label="Exemplo" /></div>
+            <div className="cobranca-acoes"><button type="button" className="btn btn-outline" disabled><Icone nome="clock" />Mais 5 minutos</button><button type="button" className="btn btn-outline" disabled><Icone nome="clock" />Mais 10 minutos</button></div>
+          </div>
+        </div>
+      </div>
+    ) },
   { id: 'jn-etiquetas', tipo: 'janelas', nome: 'Parâmetros das etiquetas da folha (DP › Obrigações)', descricao: 'Savio, 15/10/2026: a janela do gerador de etiquetas. Os dois textos que saem impressos (a competência, que já vem da tela, e a data de pagamento, sugerida no 5º dia útil do mês seguinte) e a quantidade de etiquetas (uma página cheia por padrão); embaixo, quantas páginas A4 saem. Imprimir abre a impressão', componente: 'JanelaDasEtiquetas', classes: ['modal etq-janela', 'etq-campo', 'etq-dica', 'etq-total'], telas: ['t-dp-obrigacoes'],
     demo: () => (
       <div className="modal etq-janela cat-parado" role="dialog" style={{ position: 'static', boxShadow: 'none' }}>

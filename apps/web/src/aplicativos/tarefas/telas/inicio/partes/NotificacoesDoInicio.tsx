@@ -114,7 +114,7 @@ export function NotificacoesDoInicio({ vm, mural, podeMexer }: { vm: ReturnType<
               <div className="card-head"><h3>Cobranças</h3></div>
               {vm.cobrancas.map(x => (
                 <button key={x.id} type="button" className="popover-item ini-comunicado" title="Abrir a tarefa" onClick={() => vm.abrir(x.tarefa)}>
-                  <Icone nome="sino" />
+                  <Icone nome={x.icone} />
                   <span className="popover-texto"><b>{x.texto}</b><br /><span className="hint" title={x.quandoFoi}>{x.quando}</span></span>
                   {x.aberta && <span className="badge badge-suave badge-warn">Responder</span>}
                 </button>
