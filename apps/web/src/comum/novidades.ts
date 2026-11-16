@@ -25,8 +25,9 @@ export const NOVIDADES = {
   /** o extrato arrastado até a célula do mês da Importação entra naquele mês (16/11/2026: "Da a opção de arrastar, até o campo do mes, o extrato tbm") */
   'arrastar-no-mes': { desde: '16/11/2026', aprovada: false },
   /** a janela do e-mail principal e a entrada pelo e-mail (16/11/2026: "mande uma requisição a todos os usuarios ao atualizarem o
-   *  sistema, de colocar o email principal que eles usam"; "se o usuario for logar, peça o email, ao inves do usuario") */
-  'email-principal': { desde: '16/11/2026', aprovada: false },
+   *  sistema, de colocar o email principal que eles usam"; "se o usuario for logar, peça o email, ao inves do usuario"); aprovada
+   *  para todos no mesmo dia ("Pode publicar"): obrigatória, só para quem entra pelo nome@nilma.local */
+  'email-principal': { desde: '16/11/2026', aprovada: true },
   /** o print colado com Ctrl+V nos Detalhes vira anexo, com a miniatura embaixo do campo (16/11/2026: "Coloca a opção de colar
    *  print, nos detalhes, para requerer os pagamentos") */
   'colar-print': { desde: '16/11/2026', aprovada: false },
