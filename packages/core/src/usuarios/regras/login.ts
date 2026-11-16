@@ -75,7 +75,7 @@ export function precisaDoEmailPrincipal(u: { email: string; emailPrincipalEm?: s
 /** O que está errado no e-mail principal digitado na janela ('' = pode enviar); duas vezes, para não errar o login. */
 export function problemaDoEmailPrincipal(email: string, confirmacao: string): string {
   const e = email.trim().toLowerCase();
-  if (!e) return 'Escreva o seu e-mail principal.';
+  if (!e) return 'Escreva o seu e-mail pessoal.';
   if (!ehEmailDeLogin(e)) return 'Escreva um e-mail válido (por exemplo, nome@gmail.com).';
   if (ehEmailDoNome(e)) return 'Esse é o login feito do nome, não um e-mail. Escreva o e-mail que você usa.';
   if (e !== confirmacao.trim().toLowerCase()) return 'Os dois e-mails não são iguais. Confira e digite de novo.';

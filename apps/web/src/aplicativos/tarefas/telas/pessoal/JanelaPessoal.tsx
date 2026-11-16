@@ -139,7 +139,7 @@ function DadosDeTesteDoEmailPrincipal() {
   const ligada = useNovidade('email-principal');
   if (!ligada) return null;
   return (
-    <ConfigLinha titulo="E-mail principal" descricao="A janela que pede o e-mail e a entrada pelo e-mail, como cada pessoa vai ver.">
+    <ConfigLinha titulo="E-mail pessoal" descricao="A janela obrigatória que pede o e-mail e a entrada pelo e-mail, como cada pessoa vai ver.">
       <MenuSuspenso rotulo="Dados de teste" icone="zap" className="btn btn-outline" direita largura={340} titulo="Modo desenvolvedor · nada é gravado"
         itens={[
           { rotulo: 'Janela: conta que entra pelo nome', icone: 'usuario', onClick: () => simularEmailPrincipal('so-nome') },

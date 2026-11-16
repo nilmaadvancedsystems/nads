@@ -2,8 +2,9 @@
 // sistema, de colocar o email principal que eles usam ... Dessa maneira, voce atrela o login ao email, não ao usuario"). Quem
 // ainda entra pelo nome@nilma.local, ou tem um e-mail que nunca confirmou, vê a janela por cima da Tarefas. O e-mail principal
 // É o login: trocado, vai pelo mesmo caminho da Minha conta (a senha, o robô da nuvem troca o login e o cadastro, a sessão
-// entra de novo com o e-mail novo); igual ao de hoje, só confirma (usuarios/{uid}.emailPrincipalEm). "Agora não" fecha até a
-// próxima vez que o nads abrir. Na novidade 'email-principal' (só no modo desenvolvedor); o ⚡ da Minha conta simula.
+// entra de novo com o e-mail novo); igual ao de hoje, só confirma (usuarios/{uid}.emailPrincipalEm). Obrigatória (Vitor,
+// 16/11/2026: "o usuário vai ser obrigado a colocar o e-mail pessoal"): não fecha sem responder; a única saída é sair da conta.
+// Na novidade 'email-principal' (só no modo desenvolvedor); o ⚡ da Minha conta simula.
 import { usuarios } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useState } from 'react';
@@ -20,9 +21,8 @@ export function useJanelaDoEmailPrincipal() {
   const acesso = useAcesso();
   const simulacao = useSimulacaoDoEmailPrincipal();
   const { toast } = useRetorno();
-  // Agora não: até a próxima vez que o nads abrir; respondida: no modo desenvolvedor a gravação é de mentira e o cadastro
-  // continua sem a confirmação, então a janela não pode depender só dele para sair
-  const [adiada, setAdiada] = useState(false);
+  // respondida: no modo desenvolvedor a gravação é de mentira e o cadastro continua sem a confirmação, então a janela não pode
+  // depender só dele para sair
   const [respondida, setRespondida] = useState(false);
   const [form, setForm] = useState({ de: '', email: '', confirmacao: '', senha: '', erro: '' });
   const [enviando, setEnviando] = useState(false);
@@ -30,7 +30,7 @@ export function useJanelaDoEmailPrincipal() {
   const deTeste = simulacao === 'so-nome' || simulacao === 'com-email';
   const u = sessao?.usuario || null;
   const atual = deTeste ? EMAIL_DE_TESTE[simulacao] : u?.email || '';
-  const aberta = deTeste || (ligada && !!u && !adiada && !respondida && usuarios.precisaDoEmailPrincipal(u));
+  const aberta = deTeste || (ligada && !!u && !respondida && usuarios.precisaDoEmailPrincipal(u));
   // quem já tem um e-mail de verdade começa com ele no campo (é só confirmar); o nome@nilma.local não vai para o campo
   const inicial = atual && !usuarios.ehEmailDoNome(atual) ? atual : '';
   const f = form.de === atual + '|' + simulacao ? form : { de: atual + '|' + simulacao, email: inicial, confirmacao: '', senha: '', erro: '' };
@@ -38,9 +38,10 @@ export function useJanelaDoEmailPrincipal() {
   /** o e-mail digitado é outro que o login de hoje: troca o login (pede a confirmação e a senha) */
   const troca = f.email.trim().toLowerCase() !== atual.trim().toLowerCase();
 
-  function fechar() {
-    if (deTeste) simularEmailPrincipal(null); else setAdiada(true);
+  /** a única saída sem responder: sair da conta (na simulação, só fecha) */
+  function sair() {
     setForm({ de: '', email: '', confirmacao: '', senha: '', erro: '' });
+    if (deTeste) simularEmailPrincipal(null); else sessao?.sair();
   }
 
   async function enviar() {
@@ -84,6 +85,6 @@ export function useJanelaDoEmailPrincipal() {
     enviando,
     podeEnviar: !!f.email.trim() && !enviando,
     enviar,
-    fechar,
+    sair,
   };
 }

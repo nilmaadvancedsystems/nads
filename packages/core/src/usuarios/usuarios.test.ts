@@ -189,7 +189,7 @@ describe('o e-mail principal (16/11/2026)', () => {
   });
 
   it('o e-mail é válido, de verdade e digitado igual duas vezes', () => {
-    expect(problemaDoEmailPrincipal('', '')).toBe('Escreva o seu e-mail principal.');
+    expect(problemaDoEmailPrincipal('', '')).toBe('Escreva o seu e-mail pessoal.');
     expect(problemaDoEmailPrincipal('fulana', 'fulana')).toContain('e-mail válido');
     expect(problemaDoEmailPrincipal('fulana@nilma.local', 'fulana@nilma.local')).toContain('login feito do nome');
     expect(problemaDoEmailPrincipal('fulana@exemplo.com', 'fulana@exemplo.co')).toContain('não são iguais');

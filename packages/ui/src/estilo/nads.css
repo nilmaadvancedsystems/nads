@@ -7204,5 +7204,7 @@ tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{co
 /* a janela do e-mail principal (16/11/2026): por cima de tudo, até da Minha conta (o ⚡ simula de lá); a tela de entrada
    simulada cobre a tela inteira, com o Voltar no canto de cima à esquerda */
 .modal-overlay.email-principal-fundo{z-index:91;}
+/* o Sair da conta à esquerda, longe do Confirmar (a janela é obrigatória: é a única saída; 16/11/2026) */
+.email-principal-sair{margin-right:auto;}
 .entrada-de-teste{position:fixed;inset:0;z-index:92;overflow:auto;background:var(--bg);}
 .entrada-de-teste-voltar{position:absolute;top:16px;left:16px;}
