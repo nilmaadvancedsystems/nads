@@ -1,10 +1,11 @@
 // O mural de avisos no banco do Entregas (coleção nadsAvisos; regra em firestore.rules): toda a equipe no nads lê; só o
 // admin e o diretor criam, fixam e apagam. Sem a regra no ar, o banco recusa: o mural fica vazio e publicar avisa o erro.
-import { arrayUnion, Bytes, collection, deleteDoc as deleteDocBruto, doc, getDoc, limit, onSnapshot, orderBy, query, setDoc as setDocBruto, updateDoc as updateDocBruto, where, type QuerySnapshot } from 'firebase/firestore';
+import { arrayUnion, Bytes, collection, deleteDoc as deleteDocBruto, doc, getDoc, limit, orderBy, query, setDoc as setDocBruto, updateDoc as updateDocBruto, where, type QuerySnapshot } from 'firebase/firestore';
 import { entregas, tarefas as t } from '@nads/core';
 import { bytesDoAnexo } from './encolherAnexo';
 import { anexoDe, idNovo } from './tarefasDelegadas';
 import { bancoDoEntregas } from './entregas.firestore';
+import { ouvirInsistindo } from './ouvirInsistindo.firestore';
 import type { RepoAvisos } from './avisos';
 import { guardar } from '../../../comum/modoDesenvolvedor';
 
@@ -67,8 +68,9 @@ export function criarAvisosFirestore(): RepoAvisos {
           lidas[qual] = [];
           juntar();
         };
-        onSnapshot(query(collection(db, 'nadsAvisos'), orderBy('em', 'desc'), limit(50)), s => { lidas.recentes = avisosDe(s); juntar(); }, falhou('recentes'));
-        onSnapshot(query(collection(db, 'nadsAvisos'), where('fixado', '==', true)), s => { lidas.fixados = avisosDe(s); juntar(); }, falhou('fixados'));
+        // negada, tenta de novo (ouvirInsistindo.firestore.ts): o login recém-liberado ainda não chegou ao banco
+        ouvirInsistindo(query(collection(db, 'nadsAvisos'), orderBy('em', 'desc'), limit(50)), s => { lidas.recentes = avisosDe(s); juntar(); }, falhou('recentes'));
+        ouvirInsistindo(query(collection(db, 'nadsAvisos'), where('fixado', '==', true)), s => { lidas.fixados = avisosDe(s); juntar(); }, falhou('fixados'));
       }
       return estado;
     },
