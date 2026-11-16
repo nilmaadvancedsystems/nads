@@ -210,8 +210,9 @@ export function useInicioNovo() {
       ]),
       // os feriados e os pontos facultativos do mês (o Decreto 4068/2026 de Taiobeiras; 15/11/2026: "Atualiza o calendário com essas datas")
       feriados: Object.fromEntries(fe.feriadosDoMes(mes).map(f => [Number(f.data.slice(8, 10)), { dica: fe.dicaDoFeriado(f), tipo: f.tipo }])),
-      /** a lista embaixo do calendário: "20 · São Sebastião · Feriado" */
-      feriadosDoMes: fe.feriadosDoMes(mes).map(f => ({ data: f.data, dia: f.data.slice(8, 10), nome: f.nome, rotulo: fe.rotuloDoFeriado(f), tipo: f.tipo, passou: f.data < hoje })),
+      /** a lista embaixo do calendário: "20 · São Sebastião · Feriado"; só os de hoje em diante (16/11/2026: "os feriados que já
+       * passaram, pode tirar da parte inferior"; no calendário eles continuam marcados) */
+      feriadosDoMes: fe.feriadosDoMes(mes).filter(f => f.data >= hoje).map(f => ({ data: f.data, dia: f.data.slice(8, 10), nome: f.nome, rotulo: fe.rotuloDoFeriado(f), tipo: f.tipo, passou: false })),
     },
     proximas: {
       titulo: dia ? 'Prazo em ' + d.prazoParaTela(dia) : 'Minhas tarefas',
