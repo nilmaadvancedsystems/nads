@@ -33,6 +33,16 @@ def fim(**r):
     sys.exit(0 if r.get('ok') else 1)
 
 
+
+def so_contabil(ws):
+    """Só as janelas do Contábil (o Fiscal aberto no mesmo servidor tem janelas com as mesmas classes; 16/11/2026)."""
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # o -I tira a pasta do roteiro do caminho
+        import alterdata_processo
+        return [w for w in ws if alterdata_processo.do_contabil(w.handle)]
+    except Exception:
+        return ws
+
 def janelas(cls=None, titulo=None):
     r = []
     for w in d.windows():
@@ -175,9 +185,9 @@ def preparar_tela():
         print('TELA: ' + t, flush=True)
 
 try:
-    if [w for w in janelas() if w.class_name().startswith('TfrmLogin')]:
+    if so_contabil([w for w in janelas() if w.class_name().startswith('TfrmLogin')]):
         fim(ok=False, erro='o Alterdata Contábil está na tela de login')
-    principais = janelas('TfrmPrincipal')
+    principais = so_contabil(janelas('TfrmPrincipal'))
     if not principais:
         fim(ok=False, erro='o Alterdata Contábil não está aberto')
     if len(principais) > 1:

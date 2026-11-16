@@ -824,7 +824,7 @@ export function TarefaExtratos() {
         </nav>
       )}
       {aba === 'contabil' ? <div data-destaque="contabil"><ContabilNaImportacao nome={s.nome} codigo={s.codigo} meses={mesesDaEtapa} soDiario={ponte.naTarefa && !ponte.etapaConcluida} blocoDoRobo={ROBO_NAS_ETAPAS ? <BlocoDoRobo robo={razaoDoRobo} /> : null} /></div>
-        : aba !== 'bancos' ? <div data-destaque="importacao"><ImportacaoNaEtapa nome={s.nome} tipo={aba} prestaServico={vm.prestaServico} meses={mesesDaEtapa} /></div> : (<>
+        : aba !== 'bancos' ? <div data-destaque="importacao"><ImportacaoNaEtapa nome={s.nome} tipo={aba} prestaServico={vm.prestaServico} meses={mesesDaEtapa} codigo={s.codigo} /></div> : (<>
       <div className={'imp-topo' + (ocupadoGeral ? ' travado' : '')} aria-busy={ocupadoGeral}>
         {/* à esquerda, como o "⎇ main ▾  6 Branches" do GitHub: a competência e o número de bancos */}
         {/* o Em lote (escolher, alterar, cancelar): dentro da Tarefa, no cabeçalho dela (Vitor, 04/11/2026: "o em lote deixa no

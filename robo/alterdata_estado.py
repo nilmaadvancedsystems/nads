@@ -31,6 +31,34 @@ except Exception as e:  # o pywin32 não carregou ou a área de trabalho não de
     sys.exit(0)
 
 
+# o Fiscal aberto no mesmo servidor (16/11/2026) tem janelas com as mesmas classes (TfrmPrincipal, TfrmLogin): só as do
+# Contábil (o wcont.exe) contam para o estado dele; as do Fiscal saem numa linha FISCAL: ok | login | fechado
+try:
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # o -I tira a pasta do roteiro do caminho
+    import alterdata_processo
+
+    def _contabil(pid):
+        exe = alterdata_processo.exe_do_pid(pid)
+        return not exe or os.path.basename(exe) == os.path.basename(alterdata_processo.CONTABIL).lower()
+
+    def _fiscal(pid):
+        exe = alterdata_processo.exe_do_pid(pid)
+        return '\\alterdata\\' in exe and 'fisc' in exe.split('\\alterdata\\', 1)[1] and not _contabil(pid)
+except Exception:
+    _contabil = lambda pid: True   # noqa: E731
+    _fiscal = lambda pid: False    # noqa: E731
+do_fiscal = [j for j in janelas if _fiscal(j[3])]
+janelas = [j for j in janelas if _contabil(j[3])]
+if any(c.startswith('TfrmLogin') and v for c, v, _, _ in do_fiscal):
+    print('FISCAL: login', flush=True)
+elif any(c == 'TfrmPrincipal' and v for c, v, _, _ in do_fiscal):
+    print('FISCAL: ok', flush=True)
+elif any(v for _, v, _, _ in do_fiscal):
+    print('FISCAL: abrindo', flush=True)
+else:
+    print('FISCAL: fechado', flush=True)
+
+
 def visiveis(cls):
     return [j for j in janelas if j[0] == cls and j[1]]
 

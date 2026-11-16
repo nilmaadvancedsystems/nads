@@ -6,6 +6,7 @@ import { conferencia as c, formatos } from '@nads/core';
 import { useRetorno } from '@nads/ui';
 import { useCallback, useState } from 'react';
 import { useSessao } from '../../casca/sessao';
+import { useNotasDoRobo } from './useNotasDoRobo';
 
 type TipoImp = c.PaginaImportacao;
 
@@ -45,8 +46,11 @@ const rotuloDoPeriodo = (ms?: readonly string[]) => {
   return !o.length ? '' : o.length === 1 ? r(o[0]) : r(o[0]) + ' a ' + r(o[o.length - 1]);
 };
 
-/** mesesDaEtapa: os meses do período da Tarefa; as notas fora deles ficam de fora (Vitor, 19/10/2026) */
-export function useImportacao(tipo: TipoImp, mesesDaEtapa?: readonly string[]) {
+/**
+ * mesesDaEtapa: os meses do período da Tarefa; as notas fora deles ficam de fora (Vitor, 19/10/2026).
+ * codigoDaTarefa: o código da empresa no Alterdata (o da Tarefa), para o robô do Fiscal (16/11/2026); sem ele, o da Conferência.
+ */
+export function useImportacao(tipo: TipoImp, mesesDaEtapa?: readonly string[], codigoDaTarefa?: number | null) {
   const s = useSessao();
   const { toast, modal } = useRetorno();
   const e = s.empresa;
@@ -84,12 +88,14 @@ export function useImportacao(tipo: TipoImp, mesesDaEtapa?: readonly string[]) {
   }
 
   // ---------- importar ----------
-  async function importar() {
+  function importar() { return importarArquivo(arquivo); }
+  /** f: o arquivo escolhido ou a planilha que o robô do Fiscal trouxe (useNotasDoRobo, 16/11/2026) */
+  async function importarArquivo(f: File | null) {
     setMensagemBruta(null);
-    if (!arquivo) { erro('Escolha o arquivo', tipo === 'balancete' ? 'Selecione o balancete em Excel antes de continuar.' : 'Selecione o relatório em Excel antes de importar.'); return; }
+    if (!f) { erro('Escolha o arquivo', tipo === 'balancete' ? 'Selecione o balancete em Excel antes de continuar.' : 'Selecione o relatório em Excel antes de importar.'); return; }
     setCarregando(true);
     try {
-      const rows = await lerArquivo(arquivo);
+      const rows = await lerArquivo(f);
       if (tipo === 'balancete') await importarBalancete(rows);
       else if (tipo === 'entradas' || tipo === 'saidas') await importarNotas(tipo, rows);
       else await importarServicos(tipo, rows);
@@ -289,7 +295,11 @@ export function useImportacao(tipo: TipoImp, mesesDaEtapa?: readonly string[]) {
   const mesesMarcadosSemNota = semNotaNoGuardado.filter(m => marcadosSemNota.includes(m)).map(mesDaTela);
   const servicos = tipo === 'tomados' || tipo === 'prestados' ? resumoServicos(e[c.SV[tipo].campo], tipo) : null;
 
+  // o robô do servidor puxa a planilha no Alterdata Fiscal e ela entra pela mesma importação (16/11/2026)
+  const robo = useNotasDoRobo({ tipo, codigo: codigoDaTarefa ?? s.codigo, empresa: s.nome, meses: mesesDaEtapa, importar: importarArquivo });
+
   return {
+    robo,
     cfg, ja, mostrarCaixa, reimportando, alternarReimportar, abrirArquivo,
     arquivo, setArquivo, carregando, importar, excluir,
     mensagem, seqMensagem, fecharMensagem,
