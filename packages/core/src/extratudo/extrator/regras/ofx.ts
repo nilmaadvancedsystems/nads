@@ -29,6 +29,20 @@ export function saldoAnteriorDoOfx(texto: string, lancamentos: readonly Lancamen
   return final - lancamentos.reduce((t, l) => t + l.valor, 0);
 }
 
+/**
+ * O OFX da conta sem nenhum <STMTTRN> (Vitor, 16/11/2026: "mesmo se for sem movimento, deve ser arquivado"): os meses do período
+ * (<DTSTART> a <DTEND>), [] sem ele; o que não é a lista de lançamentos da conta, null.
+ */
+export function mesesDoOfxVazio(texto: string): string[] | null {
+  if (!/<BANKTRANLIST>/i.test(texto) || /<STMTTRN>/i.test(texto)) return null;
+  const ini = /^(\d{4})(\d{2})/.exec(campo(texto, 'DTSTART')), fim = /^(\d{4})(\d{2})/.exec(campo(texto, 'DTEND'));
+  if (!ini || !fim) return [];
+  const meses: string[] = [];
+  let a = Number(ini[1]), m = Number(ini[2]);
+  while ((a < Number(fim[1]) || (a === Number(fim[1]) && m <= Number(fim[2]))) && m >= 1 && m <= 12 && meses.length < 24) { meses.push(a + '-' + String(m).padStart(2, '0')); m++; if (m > 12) { m = 1; a++; } }
+  return meses;
+}
+
 export function lancamentosDoOfx(texto: string): Lancamento[] {
   const saida: Lancamento[] = [];
   const re = /<STMTTRN>([\s\S]*?)(?:<\/STMTTRN>|(?=<STMTTRN>)|(?=<\/BANKTRANLIST>))/gi;
