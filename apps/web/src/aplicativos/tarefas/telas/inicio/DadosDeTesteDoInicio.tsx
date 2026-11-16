@@ -25,6 +25,7 @@ export function DadosDeTesteDoInicio({ teste: t }: { teste: ReturnType<typeof us
         { rotulo: 'Saudação: semana com feriado', icone: 'calendar', marcado: !!s.feriado, onClick: () => simularSaudacao({ feriado: !s.feriado, segunda: false, sexta: false, troca: 0 }) },
         { rotulo: 'Saudação: mês do aniversário', icone: 'trofeu', marcado: s.aniversario === 'mes', onClick: () => simularSaudacao({ aniversario: s.aniversario === 'mes' ? undefined : 'mes', troca: 0 }) },
         { rotulo: 'Saudação: dia do aniversário', icone: 'trofeu', marcado: s.aniversario === 'dia', onClick: () => simularSaudacao({ aniversario: s.aniversario === 'dia' ? undefined : 'dia', troca: 0 }) },
+        { rotulo: 'Saudação: com apelido', icone: 'usuario', marcado: !!s.apelido, onClick: () => simularSaudacao({ apelido: !s.apelido, troca: 0 }) },
         { rotulo: 'Saudação: outra frase', icone: 'repeat', onClick: () => simularSaudacao({ troca: (s.troca || 0) + 1 }) },
         'separador',
         // o nível nas Notificações: o Sênior pede reunião, o Diretor aprova, os outros ficam com Delegar documentos e Nova tarefa

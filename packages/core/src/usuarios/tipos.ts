@@ -30,6 +30,8 @@ export interface DocUsuario {
   fotoPerfil?: string;
   /** o aniversário ('aaaa-mm-dd', 'mm-dd' ou 'dd/mm'): a saudação do Início novo (13/11/2026; as datas o Vitor manda depois) */
   aniversario?: string;
+  /** os apelidos, que a saudação do Início usa no lugar do nome às vezes (16/11/2026: "Apelidos da equipe por usuário") */
+  apelidos?: string[];
   departamento?: string;
   nivel?: string;
   /** false = desativado (o Entregas já lê este campo na Tarefas e nos robôs) */
