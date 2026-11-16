@@ -92,12 +92,31 @@ export interface BuscaNoDrive {
  * 2. sem "credliquid", qualquer arquivo lido pelo Creditor com a competência.
  * Um só → achou. Mais de um → o mais novo vai na frente, mas a pessoa escolhe.
  */
+/**
+ * Os itens de cada pasta do mapa do Drive (o id da pasta → os que estão nela), montado uma vez por mapa e guardado enquanto ele
+ * existir (Vitor, 16/11/2026: "nessa parte o sistema fica todo travado"; "ta travando muito"): antes cada busca remontava isso
+ * copiando a lista inteira da pasta a cada arquivo — com os milhares de arquivos de um cliente, milhões de cópias por busca, e o
+ * Pedir documentos fazia dezenas de buscas ao abrir.
+ */
+const FILHOS_DO_MAPA = new WeakMap<readonly ItemDrive[], Map<string, ItemDrive[]>>();
+export function filhosDoMapa(itens: readonly ItemDrive[]): Map<string, ItemDrive[]> {
+  let filhos = FILHOS_DO_MAPA.get(itens);
+  if (!filhos) {
+    filhos = new Map<string, ItemDrive[]>();
+    for (const it of itens) {
+      const lista = filhos.get(it.p);
+      if (lista) lista.push(it); else filhos.set(it.p, [it]);
+    }
+    FILHOS_DO_MAPA.set(itens, filhos);
+  }
+  return filhos;
+}
+
 export function acharRelatorioNoDrive(itens: readonly ItemDrive[], raizDoCliente: string | null, c: Competencia): BuscaNoDrive {
   if (!raizDoCliente) return { situacao: 'sem-cliente', arquivo: null, candidatos: [] };
   const rec = pastaDoRecebimento(itens, raizDoCliente);
   if (!rec) return { situacao: 'sem-pasta', arquivo: null, candidatos: [] };
-  const filhos = new Map<string, ItemDrive[]>();
-  for (const it of itens) filhos.set(it.p, [...(filhos.get(it.p) || []), it]);
+  const filhos = filhosDoMapa(itens);
   const achados: ArquivoAchado[] = [];
   const andar = (pasta: string, caminho: string[]) => {
     for (const it of filhos.get(pasta) || []) {

@@ -107,10 +107,13 @@ export function usePedirExtratos(vm: VmDoPedido, codigo: number | null, empresa:
     // os comprovantes (Vitor, 04/11/2026: "faz a verificação, não deixa eu pedir tendo eles"): ficam no Drive, na pasta
     // COMPROVANTES do mês (aba Comprovantes); o mês trava quando já tem comprovante lá, de qualquer banco (os pagamentos
     // costumam sair de um banco só: na 10, só o BB tem comprovante)
-    const comprovantes = pasta ? x.comprovantesNoDrive(pasta.itens, pasta.raiz, meses) : {};
-    for (const c of meses) {
-      if ((comprovantes[c] || []).length > 0) m.set(chave('comprovantes', c), 'no Drive');
-      for (const b of vm.bancos) {
+    // ao abrir, só o mês da tela; os outros meses de um documento só quando a pessoa abre o "Outros meses" dele (16/11/2026: "vamos
+    // ter que mudar a dinâmica de pedir para parar de travar")
+    const mesesDe = (doc: string) => (mesesAbertos.includes(doc) ? meses : [vm.competencia]);
+    const comprovantes = pasta ? x.comprovantesNoDrive(pasta.itens, pasta.raiz, mesesDe('comprovantes')) : {};
+    for (const c of mesesDe('comprovantes')) if ((comprovantes[c] || []).length > 0) m.set(chave('comprovantes', c), 'no Drive');
+    for (const b of vm.bancos) {
+      for (const c of mesesDe('extrato:' + b.id)) {
         if (vm.extratoImportado(b.id, c)) m.set(chave('extrato:' + b.id, c), 'importado');
         else if (pasta && x.acharExtratoNoDrive(pasta.itens, pasta.raiz, c, { nome: b.nome, marca: b.marca, conta: b.conta || undefined }).situacao === 'achou') m.set(chave('extrato:' + b.id, c), 'no Drive');
       }
@@ -118,7 +121,7 @@ export function usePedirExtratos(vm: VmDoPedido, codigo: number | null, empresa:
     return m;
     // (as funções e listas do vm mudam a cada desenho; o que importa está nas chaves)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [aberta, pasta, chaveDosBancos, meses.join(',')]);
+  }, [aberta, pasta, chaveDosBancos, meses.join(','), mesesAbertos.join(',')]);
 
   /** Por que o documento daquele mês não dá para pedir ('' = dá): já importado no sistema ou já no Drive. */
   const travado = (docId: string, comp: string): Travado => travados.get(chave(docId, comp)) || '';
