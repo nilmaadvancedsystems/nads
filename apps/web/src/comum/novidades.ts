@@ -15,6 +15,8 @@ export const NOVIDADES = {
   /** o sino de cobrar a tarefa delegada e o Responder cobrança de quem faz (13/11/2026: "Adiciona um icone de sino, nas tarefas delegadas");
    *  aprovado no mesmo dia, para todos ("Aprova para todos") */
   'cobrar-tarefa': { desde: '13/11/2026', aprovada: true },
+  /** o Enviar vários meses da Importação importa ao soltar os extratos, sem o botão Enviar (16/11/2026: "Ja importe com todos marcados") */
+  'importar-ao-soltar': { desde: '16/11/2026', aprovada: false },
 } satisfies Record<string, { desde: string; aprovada: boolean }>;
 
 export type IdNovidade = keyof typeof NOVIDADES;
