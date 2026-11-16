@@ -305,9 +305,11 @@ export function useDriveDaLinha(vm: Vm, codigo: number | null) {
       for (const f of fs) {
         const bytes = new Uint8Array(await f.arrayBuffer());
         const lido = await x.lerArquivo(f.name, bytes.slice(), 'banco');
-        // o extrato sem movimento vai inteiro, no mês dele (Vitor, 13/10/2026)
+        // o extrato sem movimento vai inteiro, no mês dele (Vitor, 13/10/2026); o que não diz o mês, no mês para onde foi mandado
+        // (16/11/2026: "mesmo se for sem movimento, deve ser arquivado!")
         const ext = (/\.[a-z0-9]+$/i.exec(f.name)?.[0] || '.pdf').toLowerCase();
-        const pedacos = lido.semMovimento?.length === 1 ? [{ mes: lido.semMovimento[0], nome: x.nomeDoExtratoDoMes(linha.nome, lido.semMovimento[0], ext), bytes }]
+        const mesSemMov = lido.semMovimento?.length === 1 ? lido.semMovimento[0] : lido.semMovimento && meses?.length === 1 ? meses[0] : null;
+        const pedacos = mesSemMov ? [{ mes: mesSemMov, nome: x.nomeDoExtratoDoMes(linha.nome, mesSemMov, ext), bytes }]
           : lido.erro ? [] : await x.extratoPorMes(f.name, bytes, lido, linha.nome);
         for (const p of pedacos) {
           // só os meses escolhidos (o Enviar vários meses, com o mês escolhido no extrato de vários meses)

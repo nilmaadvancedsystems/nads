@@ -34,6 +34,9 @@ export const NOVIDADES = {
   /** o Em Lote no seletor de competência da Visão geral da empresa, o mesmo do cabeçalho da Importação (16/11/2026: "Coloca o
    *  iniciar em lote nessa tela tb"); aprovada para todos no mesmo dia ("pode publicar na versão original") */
   'em-lote-na-empresa': { desde: '16/11/2026', aprovada: true },
+  /** a comissão escondida (16/11/2026): quem tem uma % própria registra a comissão sem ver o valor; a % fica num lugar do banco
+   *  que nenhuma tela lê e o robô da nuvem calcula; o Financeiro vê o valor, sem o do serviço */
+  'comissao-oculta': { desde: '16/11/2026', aprovada: false },
 } satisfies Record<string, { desde: string; aprovada: boolean }>;
 
 export type IdNovidade = keyof typeof NOVIDADES;

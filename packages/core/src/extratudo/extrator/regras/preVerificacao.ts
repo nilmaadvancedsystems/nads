@@ -75,6 +75,12 @@ export function preVerificarExtrato(texto: string, lancamentos: readonly Lancame
   return null;
 }
 
+/** O título do extrato da conta no topo e o saldo da conta: é o extrato, mesmo sem nenhum lançamento (o sem movimento). */
+export function ehExtratoDeConta(texto: string): boolean {
+  const t = normalizarTexto(texto);
+  return TITULO_DE_CONTA.test(t.slice(0, TOPO)) && SALDO_DA_CONTA.test(t);
+}
+
 /** O OFX de cartão ou de investimento (a mensagem do arquivo diz qual é); o de conta corrente é STMTRS/BANKMSGSRS. */
 export function preVerificarOfx(texto: string): NaoEExtrato | null {
   if (/<CCSTMTRS>|<CREDITCARDMSGSRS/i.test(texto)) return nao('fatura');

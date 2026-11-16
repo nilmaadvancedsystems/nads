@@ -61,10 +61,11 @@ export function ComissoesDaEquipe() {
                         <tr key={c.id} className="cart-sublinha">
                           <td className="fraco">{c.data.split('-').reverse().join('/')} · {c.cliente}</td>
                           <td colSpan={2} className="fraco">{c.descricao}{c.motivo ? ' · ' + c.motivo : ''}</td>
-                          <td className="num">{formatos.reais(c.valor)}</td>
+                          {/* a escondida (16/11/2026): o valor só depois que o robô calcula; o do serviço não aparece */}
+                          <td className="num">{carteira.esperandoCalculo(c) ? <span className="fraco">{c.calculo === 'erro' ? 'Sem cálculo' : 'Calculando…'}</span> : formatos.reais(c.valor)}</td>
                           <td><SeloDaComissao s={c.situacao} /></td>
                           <td className="cart-acoes">
-                            {c.situacao === 'lancada' && <BotaoIcone icone="check" titulo="Aprovar" pequeno disabled={!!fazendo} onClick={() => void decidir(c.id, [c.id], 'aprovada', 'Aprovada.')} />}
+                            {c.situacao === 'lancada' && <BotaoIcone icone="check" titulo="Aprovar" pequeno disabled={!!fazendo || carteira.esperandoCalculo(c)} onClick={() => void decidir(c.id, [c.id], 'aprovada', 'Aprovada.')} />}
                             {c.situacao === 'lancada' && <BotaoIcone icone="x" titulo="Recusar" pequeno disabled={!!fazendo} onClick={() => void decidir(c.id, [c.id], 'recusada', 'Recusada.')} />}
                             {(c.situacao === 'aprovada' || c.situacao === 'recusada') && <BotaoIcone icone="repeat" titulo="Voltar para lançada" pequeno disabled={!!fazendo} onClick={() => void decidir(c.id, [c.id], 'lancada', 'Voltou para lançada.')} />}
                           </td>
