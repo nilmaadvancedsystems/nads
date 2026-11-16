@@ -825,6 +825,10 @@ function lancamentosComPagina(paginas: ItemDeTexto[][], lado: Lado, anoPadrao: n
         if (/^saldo anterior\b/.test(normalizarTexto(t.slice(1).map(k => k.s).join(' ')))) continue;
       }
       if (itauMensal && /^(saldo final|totalizador de aplicacoes)\b/.test(normalizarTexto(l.texto))) { juntarPerto(); noFim = true; continue; }
+      // o quadro "Saldos por Período" do fim do Santander (o Extrato Consolidado): uma linha por dia com o saldo, o bloqueio e a
+      // provisão ("02 27.073,84- 0,00 0,00 0,00 4.262,08 0,00 27.073,84-"); não é lançamento, e dali para baixo nada é (Vitor,
+      // 16/11/2026, na 429: cada dia virava uma saída de uns R$ 27 mil, com o histórico "02", "03"…)
+      if (lado === 'banco' && /^saldos por periodo\b/.test(normalizarTexto(l.texto))) { juntarPerto(); noFim = true; continue; }
       // o depósito bloqueado (Sicoob: "DEP.CHEQUE BLOQ.1D 2.300,00*"): o valor com * ainda não entrou no saldo; a linha e o
       // texto embaixo dela ("ENVELOPE: …") ficam de fora, sem data nem histórico para os outros — o lançamento é a
       // "LIBERAÇÃO DE DEPÓSITO BLOQUEADO" (Vitor, 13/10/2026: a 58 juntava o texto e a data dele no lançamento de cima)
