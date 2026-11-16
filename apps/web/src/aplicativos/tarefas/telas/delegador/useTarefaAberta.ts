@@ -308,6 +308,8 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
         aberta: aberta ? { por: aberta.por, quando: quando(aberta.em), texto: aberta.texto } : null,
         resposta: respondida && tarefa.criadaPor.uid === uid ? { por: respondida.por, quando: quando(respondida.em), texto: respondida.texto } : null,
         ocupado: ocupado === 'cobranca',
+        /** o andamento da última cobrança: a cobrança, os pedidos de mais tempo e a resposta (16/11/2026) */
+        andamento: d.andamentoDaCobranca(tarefa).map(n => ({ tipo: n.tipo, texto: d.textoDoPassoDaCobranca(n), quando: quando(n.em) })),
       };
     })() : null,
     cobrar, resposta, setResposta, responderCobranca,

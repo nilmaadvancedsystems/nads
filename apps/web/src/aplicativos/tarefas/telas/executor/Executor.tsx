@@ -42,6 +42,7 @@ import { TelaDaEtapa } from './etapas/TelaDaEtapa';
 import { PeriodoDaTarefa } from './partes/PeriodoDaTarefa';
 import { SeletorDoPeriodo } from './partes/SeletorDoPeriodo';
 import { publicarOndeEsta } from '../suporte/contextoDoSuporte';
+import { JanelaDaCobranca } from '../../casca/JanelaDaCobranca';
 
 // as etapas cuja ferramenta (o Extrator) já tem a linha do período: a Importação, com o seletor que troca, e o Cheque especial
 const COM_A_LINHA_DO_PERIODO = new Set(['cheque-especial']);
@@ -327,6 +328,8 @@ export function Executor() {
       peDaGaveta={peDaGaveta(casca, () => setFeedbacks(true))}>
       {feedbacks && <JanelaDosFeedbacks fechar={() => setFeedbacks(false)} />}
       {conjunto.aberta && <JanelaEmConjunto vm={conjunto} />}
+      {/* a cobrança de quem delegou, por cima de tudo até responder (16/11/2026; só no modo desenvolvedor) */}
+      <JanelaDaCobranca />
       {/* o fim: o Voltar às empresas no canto superior esquerdo (Vitor, 13/11/2026: "Voltar sempre lado esquerdo superior, sempre! na aplicacao toda") */}
       {!vm.carregando && (vm.minhasFeitas || !vm.etapa) && (
         <button type="button" className="btn btn-ghost executor-fim-voltar" onClick={vm.sair}><Icone nome="chevronLeft" />Voltar às empresas</button>

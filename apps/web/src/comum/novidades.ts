@@ -17,7 +17,8 @@ export const NOVIDADES = {
   'cobrar-tarefa': { desde: '13/11/2026', aprovada: true },
   /** a cobrança nas Notificações do Início ("Fulano cobrou atualização da tarefa X") e, no Cobrada de Minhas tarefas, quem cobrou e
    *  quando ao passar o mouse (16/11/2026: "faça aparecer em notificações que houve uma cobrança e em minhas tarefas a tarefa ficar
-   *  com alguma simbologia que foi cobrada") */
+   *  com alguma simbologia que foi cobrada"); e a janela grande da cobrança, que só sai respondendo ou pedindo mais 5 ou 10 minutos
+   *  com justificativa, e o andamento para quem cobrou (16/11/2026: "faça uma bela popup") */
   'cobranca-notificada': { desde: '16/11/2026', aprovada: false },
   /** o Enviar vários meses da Importação importa ao soltar os extratos, sem o botão Enviar (16/11/2026: "Ja importe com todos marcados") */
   'importar-ao-soltar': { desde: '16/11/2026', aprovada: false },

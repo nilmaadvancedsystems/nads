@@ -82,7 +82,9 @@ function PrazoDaTarefa({ vm }: { vm: Vm }) {
  */
 function CobrancaDaTarefa({ vm }: { vm: Vm }) {
   const c = vm.cobranca;
+  const discreta = useNovidade('cobranca-notificada');
   if (!c || (!c.aberta && !c.resposta)) return null;
+  if (discreta) return <CobrancaDiscreta vm={vm} />;
   if (c.aberta && c.responder) {
     return (
       <div className="tdl-cobranca cobrada" role="status">
@@ -106,6 +108,36 @@ function CobrancaDaTarefa({ vm }: { vm: Vm }) {
       <p className="tdl-cobranca-topo"><Icone nome="sino" /><b>{c.resposta?.por} respondeu à cobrança</b><span className="fraco">{c.resposta?.quando}</span></p>
       <p className="tdl-cobranca-texto">{c.resposta?.texto}</p>
     </div>
+  );
+}
+
+/**
+ * A cobrança discreta (a novidade 'cobranca-notificada'; Vitor, 16/11/2026: "isso tá horrivel… faça uma bela popup"): o
+ * destaque é a janela grande (JanelaDaCobranca). Aqui ficam só as linhas do andamento (quem cobrou vê o mais tempo pedido,
+ * com a justificativa, e a resposta) e, para quem faz, o responder sem a caixa amarela.
+ */
+function CobrancaDiscreta({ vm }: { vm: Vm }) {
+  const c = vm.cobranca!;
+  return (
+    <>
+      <div className="tdl-cobranca-linhas" role="status">
+        {c.andamento.map(p => (
+          <p key={p.quando + p.texto}><Icone nome={p.tipo === 'adiamento' ? 'clock' : p.tipo === 'resposta' ? 'checkCircle' : 'sino'} /><span>{p.texto} <span className="fraco">· {p.quando}</span></span></p>
+        ))}
+        {c.aberta && !c.responder && <p><Icone nome="clock" /><span>Esperando a resposta.</span></p>}
+      </div>
+      {c.aberta && c.responder && (
+        <div className="tdl-cobranca">
+          <textarea rows={2} value={vm.resposta} maxLength={vm.maiorParecer} placeholder="Responder à cobrança: como está a tarefa?" aria-label="A resposta à cobrança"
+            onChange={e => vm.setResposta(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); void vm.responderCobranca(); } }} />
+          <span className="tdl-cobranca-acoes">
+            <BotaoAcao className="btn btn-outline" carregando={c.ocupado} textoCarregando="Enviando" disabled={!vm.resposta.trim()} onClick={() => { void vm.responderCobranca(); }}>
+              <Icone nome="envelope" />Responder cobrança
+            </BotaoAcao>
+          </span>
+        </div>
+      )}
+    </>
   );
 }
 

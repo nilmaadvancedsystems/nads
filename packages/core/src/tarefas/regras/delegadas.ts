@@ -21,7 +21,9 @@ export interface Nota {
    * o parecer que é a cobrança de quem delegou ou a resposta de quem faz (13/11/2026: "um icone de sino, nas tarefas delegadas,
    * para meio que 'Cobrar' a tarefa"); sem o campo, é um parecer comum
    */
-  tipo?: 'cobranca' | 'resposta';
+  tipo?: 'cobranca' | 'resposta' | 'adiamento';
+  /** o adiamento (16/11/2026: "Mais 5 minutos, + 10minutos… mas que tenha uma justificativa escrita"): quantos minutos; o texto é a justificativa */
+  minutos?: number;
 }
 /**
  * Um anexo: o arquivo vai em pedaços no banco; aqui só o que a lista mostra. tamanho = o do arquivo (o que a pessoa baixa);
@@ -824,6 +826,87 @@ export function cobrancasRecebidas(lista: readonly TarefaDelegada[], uid: string
   }).sort((a, b) => b.nota.em.localeCompare(a.nota.em));
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+// mais tempo para responder (16/11/2026: "assim que cobrar, não deixa o usuario sair enquanto nao responder a cobrança, faça
+// uma bela popup. Deixa com a opção 'Mais 5 minutos, + 10minutos'… E para quem cobrou aparece que o usuario pediu + 5 +10
+// minutos..., mas que tenha uma justificativa escrita"). O adiamento também vai nos pareceres (tipo 'adiamento', com os
+// minutos e a justificativa no texto): a cobrança continua aberta, e a janela volta quando o tempo acaba.
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** as opções de mais tempo, em minutos */
+export const MINUTOS_DE_ADIAMENTO = [5, 10] as const;
+
+/** O último pedido de mais tempo depois da cobrança aberta, ou null. */
+export function adiamentoDaCobranca(t: Pick<TarefaDelegada, 'pareceres'>): Nota | null {
+  for (let i = t.pareceres.length - 1; i >= 0; i--) {
+    const p = t.pareceres[i];
+    if (p.tipo === 'adiamento') return cobrancaAberta(t) ? p : null;
+    if (p.tipo === 'cobranca' || p.tipo === 'resposta') return null;
+  }
+  return null;
+}
+
+/** Até quando a cobrança aberta está adiada (ISO), ou '' (sem adiamento). */
+export function cobrancaAdiadaAte(t: Pick<TarefaDelegada, 'pareceres'>): string {
+  const a = adiamentoDaCobranca(t);
+  const em = a ? Date.parse(a.em) : NaN;
+  return a && Number.isFinite(em) ? new Date(em + (a.minutos || 0) * 60_000).toISOString() : '';
+}
+
+/** A janela da cobrança aparece para quem faz: cobrança aberta e sem mais tempo correndo. */
+export function deveMostrarCobranca(t: Pick<TarefaDelegada, 'responsavel' | 'pareceres'>, uid: string, agora: Date): boolean {
+  if (!deveResponderCobranca(t, uid)) return false;
+  const ate = cobrancaAdiadaAte(t);
+  return !ate || Date.parse(ate) <= agora.getTime();
+}
+
+/** O que impede de pedir mais tempo ('' = pode). */
+export function problemaDoAdiamento(t: Pick<TarefaDelegada, 'responsavel' | 'pareceres'>, uid: string, minutos: number, justificativa: string, agora = new Date()): string {
+  if (t.responsavel.uid !== uid) return 'Só quem faz a tarefa pede mais tempo.';
+  if (!cobrancaAberta(t)) return 'Não tem cobrança esperando resposta.';
+  if (!(MINUTOS_DE_ADIAMENTO as readonly number[]).includes(minutos)) return 'Escolha mais 5 ou mais 10 minutos.';
+  const ate = cobrancaAdiadaAte(t);
+  if (ate && Date.parse(ate) > agora.getTime()) return 'O tempo pedido ainda não acabou.';
+  const x = limparTexto(justificativa);
+  if (!x) return 'Escreva a justificativa: por que precisa de mais tempo.';
+  if (x.length > MAIOR_PARECER) return 'A justificativa passou de ' + MAIOR_PARECER + ' caracteres.';
+  if (t.pareceres.length >= MAIS_PARECERES) return 'A tarefa chegou ao limite de ' + MAIS_PARECERES + ' pareceres.';
+  return '';
+}
+
+/** O pedido de mais tempo (a justificativa no texto). */
+export const notaDoAdiamento = (minutos: number, justificativa: string, por: string, em: string): Nota => ({ por, em, texto: limparTexto(justificativa), tipo: 'adiamento', minutos });
+export const historicoDoAdiamento = (por: string, em: string, minutos: number): Nota => ({ por, em, texto: 'Pediu mais ' + minutos + ' minutos para responder à cobrança' });
+
+/**
+ * O andamento da última cobrança, na ordem: a cobrança, os pedidos de mais tempo e a resposta (quem cobrou vê na tarefa;
+ * 16/11/2026). Vazio sem cobrança.
+ */
+export function andamentoDaCobranca(t: Pick<TarefaDelegada, 'pareceres'>): Nota[] {
+  for (let i = t.pareceres.length - 1; i >= 0; i--) {
+    if (t.pareceres[i].tipo === 'cobranca') return t.pareceres.slice(i).filter(p => p.tipo === 'cobranca' || p.tipo === 'adiamento' || p.tipo === 'resposta');
+  }
+  return [];
+}
+
+/** O texto de um passo da cobrança para a tela ("Fulano pediu mais 10 minutos: …", "Fulano respondeu: …"). */
+export function textoDoPassoDaCobranca(n: Nota): string {
+  if (n.tipo === 'adiamento') return n.por + ' pediu mais ' + (n.minutos || 0) + ' minutos: ' + n.texto;
+  if (n.tipo === 'resposta') return n.por + ' respondeu: ' + n.texto;
+  return n.por + ' cobrou uma atualização: ' + n.texto;
+}
+
+/**
+ * O que quem cobrou recebe de volta (as Notificações do Início; 16/11/2026): os pedidos de mais tempo e as respostas das
+ * tarefas que a pessoa delegou, o mais novo primeiro.
+ */
+export function retornosDasCobrancas(lista: readonly TarefaDelegada[], uid: string): { tarefa: TarefaDelegada; nota: Nota }[] {
+  if (!uid) return [];
+  return lista.filter(t => t.criadaPor.uid === uid && t.responsavel.uid !== uid)
+    .flatMap(t => t.pareceres.filter(p => p.tipo === 'adiamento' || p.tipo === 'resposta').map(nota => ({ tarefa: t, nota })))
+    .sort((a, b) => b.nota.em.localeCompare(a.nota.em));
+}
+
 /** O que aparece ao passar o mouse no Cobrada (quando = a data e a hora já escritas para a tela). */
 export const dicaDaCobranca = (n: Pick<Nota, 'por'>, quando: string) => n.por + ' cobrou uma atualização em ' + quando + '. Abra a tarefa e responda.';
 
@@ -1030,7 +1113,10 @@ const lerPessoa = (v: unknown): Pessoa => { const p = obj(v); return { uid: text
 // o tipo da cobrança e da resposta vem junto (16/11/2026: "O cobrar atualizacoes tbm não ta funcionando": a leitura jogava o
 // tipo fora, a cobrança gravava no banco e voltava como parecer comum, sem o Cobrada nem o Responder cobrança)
 const lerNotas = (v: unknown): Nota[] => (Array.isArray(v) ? v.map(obj).filter((x): x is Record<string, unknown> => !!x)
-  .map(x => ({ por: texto(x.por), em: texto(x.em), texto: texto(x.texto), ...(x.tipo === 'cobranca' || x.tipo === 'resposta' ? { tipo: x.tipo } : {}) })) : []);
+  .map(x => ({
+    por: texto(x.por), em: texto(x.em), texto: texto(x.texto), ...(x.tipo === 'cobranca' || x.tipo === 'resposta' || x.tipo === 'adiamento' ? { tipo: x.tipo } : {}),
+    ...(x.tipo === 'adiamento' && Number.isInteger(x.minutos) && Number(x.minutos) > 0 && Number(x.minutos) <= 60 ? { minutos: Number(x.minutos) } : {}),
+  })) : []);
 
 /** O documento do banco como tarefa (o que falta ou veio torto fica no padrão, sem quebrar a lista). */
 export function lerTarefa(id: string, x: Record<string, unknown>): TarefaDelegada {
