@@ -65,6 +65,7 @@ function pretoEBranco(ctx: CanvasRenderingContext2D, w: number, h: number) {
 /** O OCR do arquivo: uma lista de pedaços por página (o formato do extrator.ItemDeTexto). aoAndar: as páginas já lidas (as Ferramentas mostram o andamento). */
 export async function ocrDoArquivo(bytes: Uint8Array, tipo: 'pdf' | 'imagem', aoAndar?: (feitas: number, total: number) => void): Promise<Item[][]> {
   if (tipo === 'imagem') {
+    aoAndar?.(0, 1);
     // a foto também em preto e branco (o OCR erra menos)
     const bmp = await createImageBitmap(new Blob([bytes.slice()]));
     const canvas = document.createElement('canvas');
@@ -76,6 +77,7 @@ export async function ocrDoArquivo(bytes: Uint8Array, tipo: 'pdf' | 'imagem', ao
     pretoEBranco(ctx, canvas.width, canvas.height);
     const itens = await itensDaImagem(canvas, canvas.height, canvas.width / LARGURA_A4);
     canvas.width = canvas.height = 0;
+    aoAndar?.(1, 1);
     return [itens];
   }
   const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
@@ -83,6 +85,7 @@ export async function ocrDoArquivo(bytes: Uint8Array, tipo: 'pdf' | 'imagem', ao
   const doc = await tarefa.promise;
   try {
     const paginas: Item[][] = [];
+    aoAndar?.(0, doc.numPages);
     for (let n = 1; n <= doc.numPages; n++) {
       const pagina = await doc.getPage(n);
       const vista = pagina.getViewport({ scale: ESCALA });
@@ -107,3 +110,14 @@ export async function ocrDoArquivo(bytes: Uint8Array, tipo: 'pdf' | 'imagem', ao
     await tarefa.destroy();
   }
 }
+
+/**
+ * O OCR que avisa quem está ouvindo (16/11/2026: o andamento da Importação mostra "lendo pelo OCR, página 2 de 5" em vez de
+ * só girar): é o que vai no extrator.definirOcr; ouvirOcr devolve o desligar.
+ */
+const ouvintesDoOcr = new Set<(feitas: number, total: number) => void>();
+export function ouvirOcr(f: (feitas: number, total: number) => void): () => void {
+  ouvintesDoOcr.add(f);
+  return () => { ouvintesDoOcr.delete(f); };
+}
+export const ocrQueAvisa = (bytes: Uint8Array, tipo: 'pdf' | 'imagem') => ocrDoArquivo(bytes, tipo, (feitas, total) => { for (const f of ouvintesDoOcr) f(feitas, total); });
