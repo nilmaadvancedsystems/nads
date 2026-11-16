@@ -59,8 +59,9 @@ export function DadosDeTesteDaCarteira() {
   return (
     <MenuSuspenso rotulo="Dados de teste" icone="zap" className="btn btn-outline" direita largura={300} titulo="Modo desenvolvedor · nada vai para o banco"
       itens={[
-        { rotulo: 'Tudo de exemplo (comissões, holerites e insumos)', icone: 'zap', marcado: t.comissoes && !t.propria, onClick: () => t.ligar(t.comissoes && !t.propria ? false : 'comissoes') },
-        { rotulo: 'Tudo, com a % própria (50%) nas comissões', icone: 'usuario', marcado: t.propria, onClick: () => t.ligar(t.propria ? false : 'propria') },
+        { rotulo: 'Tudo de exemplo (comissões, holerites e insumos)', icone: 'zap', marcado: t.comissoes && !t.oculta, onClick: () => t.ligar(t.comissoes && !t.oculta ? false : 'comissoes') },
+        // a comissão escondida (16/11/2026): você registra sem ver o valor; o "robô" daqui calcula num instante, com uma % de mentira
+        { rotulo: 'Tudo, com a comissão escondida (você não vê o valor)', icone: 'lock', marcado: t.oculta, onClick: () => t.ligar(t.oculta ? false : 'oculta') },
         'separador',
         { rotulo: 'Apagar os dados de teste', icone: 'x', desabilitado: !t.comissoes, onClick: () => t.ligar(false) },
       ]} />

@@ -5,8 +5,11 @@
 //     registra a de qualquer pessoa, em qualquer mês, já aprovada (a retroativa; 12/11/2026);
 //   - carteiraConfig/servicos: {lista: [{id, nome, percentual}], atualizadoEm, atualizadoPor} — os serviços comissionados e a %
 //     de cada um; todos leem, o Financeiro grava (12/11/2026);
-//   - carteiraConfig/porPessoa: {lista: [{uid, nome, percentual}], atualizadoEm, atualizadoPor} — a % própria da pessoa, para
-//     todos os serviços dela; só o Diretor (e o Dono) lê e grava (Vitor, 13/11/2026: "só os diretores podem ver");
+//   - a comissão escondida (16/11/2026: a % própria de uma pessoa, que nenhuma tela vê, nem a do Diretor):
+//     carteiraPropriaSegredo/{uid}: {percentual} — ninguém lê nem grava pelo nads; só o robô da nuvem (Admin SDK) lê;
+//     carteiraPropria/{uid}: {ligada} — só a própria pessoa lê: a marca de que as comissões dela vão escondidas;
+//     a comissão dela vai com {oculta: true, calculo: 'fila'}, sem valor e sem %; o robô (comissoes-ocultas.js) põe o
+//     valor, tira o valorServico e marca calculo 'feito' (ou 'erro'). O carteiraConfig/porPessoa de antes saiu;
 //   - usuarios/{uid}/carteiraLancamentos/{id}: {tipo, data, descricao, categoria, valor} — as finanças pessoais: só a dona
 //     (nem o admin, como as Anotações);
 //   - carteiraDocumentos/{id}: {uid, nome, tipo 'holerite'|'comprovante', competencia, valor, arquivo, tamanho, partes,
@@ -45,6 +48,7 @@ function comissaoDoBanco(id: string, d: Record<string, unknown>): carteira.Comis
     motivo: texto(d.motivo) || undefined, pagoEm: texto(d.pagoEm) || undefined,
     clienteCodigo: typeof d.clienteCodigo === 'number' ? d.clienteCodigo : null, porte: carteira.PORTES.includes(d.porte as carteira.Porte) ? (d.porte as carteira.Porte) : null,
     servico: texto(d.servico) || undefined, valorServico: typeof d.valorServico === 'number' ? d.valorServico : undefined, percentual: typeof d.percentual === 'number' ? d.percentual : undefined,
+    ...(d.oculta === true ? { oculta: true, calculo: d.calculo === 'feito' || d.calculo === 'erro' ? d.calculo : 'fila' } : {}),
   };
 }
 function servicosDoBanco(d: Record<string, unknown> | undefined): carteira.ServicoComissionado[] {
@@ -52,10 +56,11 @@ function servicosDoBanco(d: Record<string, unknown> | undefined): carteira.Servi
   if (!l) return carteira.servicosPadrao();
   return l.map(x => ({ id: texto(x.id), nome: texto(x.nome), percentual: numero(x.percentual) })).filter(x => x.id && x.nome);
 }
-function porPessoaDoBanco(d: Record<string, unknown> | undefined): carteira.PercentualDaPessoa[] {
-  const l = Array.isArray(d?.lista) ? (d!.lista as Record<string, unknown>[]) : [];
-  return l.map(x => ({ uid: texto(x.uid), nome: texto(x.nome), percentual: numero(x.percentual) })).filter(x => x.uid && x.percentual > 0);
-}
+/** a escondida: sem o valor e sem a %, que o robô calcula */
+const camposDaOculta = (c: carteira.ComissaoParaSalvar) => ({
+  data: c.data, cliente: c.cliente.trim(), clienteCodigo: c.clienteCodigo, porte: c.clienteCodigo == null ? c.porte : null,
+  servico: c.servico, descricao: c.servico, valorServico: centavos(c.valorServico), oculta: true, calculo: 'fila',
+});
 /** os campos da comissão no banco (a descrição é o nome do serviço; o valor sai do valor do serviço × a %) */
 const camposDaComissao = (c: carteira.ComissaoParaSalvar) => ({
   data: c.data, cliente: c.cliente.trim(), clienteCodigo: c.clienteCodigo, porte: c.clienteCodigo == null ? c.porte : null,
@@ -145,7 +150,6 @@ export function criarCarteiraFirestore(quem: QuemNaCarteira): RepoCarteira {
 
   // os serviços comissionados: um documento só, ouvido quando a tela pede
   let servicos = vazia<carteira.ServicoComissionado>();
-  let porPessoa = vazia<carteira.PercentualDaPessoa>();
   let ouvindoServicos = false;
   function ouvirServicos() {
     if (ouvindoServicos) return;
@@ -158,18 +162,21 @@ export function criarCarteiraFirestore(quem: QuemNaCarteira): RepoCarteira {
       mudou();
     });
   }
-  // a % própria: outro documento, que só o Diretor lê (a tela só pede para quem é Diretor)
-  let ouvindoPorPessoa = false;
-  function ouvirPorPessoa() {
-    if (ouvindoPorPessoa) return;
-    ouvindoPorPessoa = true;
-    onSnapshot(doc(db, 'carteiraConfig', 'porPessoa'), s => {
-      porPessoa = { carregada: true, lista: porPessoaDoBanco(s.data()), erro: '' };
-      mudou();
-    }, err => {
-      porPessoa = { carregada: true, lista: [], erro: erroDe(err) };
-      mudou();
-    });
+  // a marca da comissão escondida (carteiraPropria/{uid}, que só a própria pessoa lê): uma vez por login; sem a regra no ar
+  // ou sem a marca, as comissões vão como sempre
+  let marcaDe = '';
+  let pararMarca: Unsubscribe | null = null;
+  let oculta = { carregada: false, ligada: false };
+  function ouvirMarca() {
+    const uid = quem()?.uid || '';
+    if (uid === marcaDe) return;
+    marcaDe = uid;
+    pararMarca?.();
+    pararMarca = null;
+    oculta = { carregada: !uid, ligada: false };
+    if (!uid) return;
+    pararMarca = onSnapshot(doc(db, 'carteiraPropria', uid), s => { oculta = { carregada: true, ligada: s.data()?.ligada === true }; mudou(); },
+      () => { oculta = { carregada: true, ligada: false }; mudou(); });
   }
 
   const precisa = () => { const q = quem(); if (!q) throw new Error('Entre com a conta do Entregas.'); return q; };
@@ -183,19 +190,19 @@ export function criarCarteiraFirestore(quem: QuemNaCarteira): RepoCarteira {
     async salvarComissao(c, id) {
       const q = precisa();
       // o mês do pagamento fica o de quando foi registrada (a pessoa não troca)
-      if (id) await updateDoc(doc(db, 'carteiraComissoes', id), camposDaComissao(c));
+      if (c.oculta && !id) await addDoc(collection(db, 'carteiraComissoes'), { ...camposDaOculta(c), competencia: c.competencia, uid: q.uid, nome: q.nome, situacao: 'lancada', criadoEm: new Date().toISOString() });
+      else if (id) await updateDoc(doc(db, 'carteiraComissoes', id), camposDaComissao(c));
       else await addDoc(collection(db, 'carteiraComissoes'), { ...camposDaComissao(c), competencia: c.competencia, uid: q.uid, nome: q.nome, situacao: 'lancada', criadoEm: new Date().toISOString() });
     },
     servicos: () => { ouvirServicos(); return servicos; },
-    porPessoa: () => { ouvirPorPessoa(); return porPessoa; },
+    minhaComissaoOculta: () => { ouvirMarca(); return oculta; },
     meuUid: () => quem()?.uid ?? null,
-    async salvarServicos(lista, pessoas) {
+    async salvarServicos(lista) {
       const q = precisa();
       const em = new Date().toISOString();
       await setDoc(doc(db, 'carteiraConfig', 'servicos'), {
         lista: lista.map(s => ({ id: s.id, nome: s.nome.trim(), percentual: centavos(s.percentual) })), atualizadoEm: em, atualizadoPor: q.nome,
       });
-      if (pessoas) await setDoc(doc(db, 'carteiraConfig', 'porPessoa'), { lista: pessoas.map(p => ({ uid: p.uid, nome: p.nome, percentual: centavos(p.percentual) })), atualizadoEm: em, atualizadoPor: q.nome });
     },
     async registrarComissaoDe(para, c) {
       const q = precisa();
