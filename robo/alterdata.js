@@ -304,9 +304,14 @@ function iniciarAlterdata(db, log) {
     async ler(id) { const s = await pedidos.doc(id).get(); return s.exists ? s.data() : null; },
     async pegar(id) {
       if (diagnosticando) { setTimeout(() => fila.chegou(id), 30 * 1000).unref(); return null; }
-      if (await verificar() !== 'ok') return null;   // fica para a máquina que estiver com o Contábil pronto
+      const est = await verificar();
+      // o pedido do Fiscal (16/11/2026) precisa do Fiscal aberto e logado, não do Contábil (no PC do Vitor, o Contábil
+      // ficou com a janela oculta e o pedido do Fiscal esperou à toa)
+      const ped = await pedidos.doc(id).get();
+      const doFiscal = ped.exists && ped.data().tipo === 'fiscal';
+      if (doFiscal ? estadoFiscal !== 'ok' : est !== 'ok') return null;   // fica para a máquina que estiver pronta
       // acabou de abrir: espera assentar e tenta de novo (o pedido continua pendente)
-      const falta = ASSENTAR_MS - (Date.now() - okDesde);
+      const falta = doFiscal ? 0 : ASSENTAR_MS - (Date.now() - okDesde);
       if (falta > 0) { setTimeout(() => fila.chegou(id), falta + 1000).unref(); return null; }
       const ref = pedidos.doc(id);
       return db.runTransaction(async t => {
@@ -390,7 +395,7 @@ function iniciarAlterdata(db, log) {
   void verificar();
   setInterval(async () => {
     await diagnostico();
-    if (await verificar() === 'ok') for (const id of pendentes) fila.chegou(id);
+    if (await verificar() === 'ok' || estadoFiscal === 'ok') for (const id of pendentes) fila.chegou(id);
   }, VERIFICAR_MS).unref();
 }
 
