@@ -691,24 +691,29 @@ export interface ResultadoCadastro {
  * Inclui (id = null) ou edita uma conta. Ao editar, o id NÃO muda (os arquivos do Extrator ficam presos a ele),
  * mesmo que a agência ou a conta sejam corrigidas. Se a empresa ainda não tinha bancos, começa pelo ponto de partida.
  */
-export function salvarConta(c: CadastroDaEmpresa, id: string | null, d: DadosDaConta, partida: readonly ContaBancaria[], por: string, agora: Date): ResultadoCadastro {
+/**
+ * (Vitor, 16/11/2026: "tirar a obrigatoriedade de banco e agência do registro do banco, obrigatório só a conta contábil"): a agência
+ * e a conta são opcionais; no formulário do Cadastro (exigeContaContabil), a conta contábil é obrigatória. Sem agência e conta, o id
+ * leva a conta contábil, para o mesmo banco poder ter mais de uma conta assim.
+ */
+export function salvarConta(c: CadastroDaEmpresa, id: string | null, d: DadosDaConta, partida: readonly ContaBancaria[], por: string, agora: Date, opcoes: { exigeContaContabil?: boolean } = {}): ResultadoCadastro {
   const marca = texto(d.marca);
   const agencia = texto(d.agencia);
   const conta = texto(d.conta);
   if (!marca) return { cadastro: c, erro: 'Escolha o banco.' };
+  if (opcoes.exigeContaContabil && !texto(d.contaContabil)) return { cadastro: c, erro: 'Informe a conta contábil.' };
   const bancos = c.bancos ?? [...partida];
   const antes = id ? bancos.find(b => b.id === id) : undefined;
   if (id && !antes) return { cadastro: c, erro: 'Essa conta não está mais no cadastro.' };
-  // a conta que já está sem número (veio do Extrator ou do ponto de partida) salva sem ele: a conta contábil, o tipo… (Vitor,
-  // 20/10/2026: "não tá deixando eu salvar" a Caixa sem agência e conta). A nova, ou a que tinha número, precisa dos dois.
-  const semNumero = !!antes && !texto(antes.agencia) && !texto(antes.conta) && !agencia && !conta;
-  if (!semNumero && (!agencia || !conta)) return { cadastro: c, erro: 'Preencha a agência e a conta.' };
+  // sem agência e sem conta (Vitor, 20/10/2026: "não tá deixando eu salvar" a Caixa sem agência e conta; 16/11/2026: opcionais)
+  const semNumero = !agencia && !conta;
   if (d.desde && !competencia(d.desde)) return { cadastro: c, erro: 'A competência de início está inválida.' };
-  const chave = idDaConta(marca, agencia, conta);
+  const contabil = texto(d.contaContabil).replace(/\D/g, '');
+  const chave = semNumero ? idDaConta(marca, '', '') + (contabil ? '-' + contabil : '') : idDaConta(marca, agencia, conta);
   const novoId = antes ? antes.id : chave;
-  const repetida = !semNumero && bancos.some(b => b.id !== antes?.id && (b.id === chave || idDaConta(b.marca, b.agencia || '', b.conta || '') === chave));
+  const repetida = bancos.some(b => b.id !== antes?.id && (b.id === chave || (!semNumero && idDaConta(b.marca, b.agencia || '', b.conta || '') === chave)));
   if (repetida) return { cadastro: c, erro: 'Essa conta já está cadastrada.' };
-  const nova: ContaBancaria = semNumero ? { id: novoId, marca, nome: antes?.nome || nomeDoBanco(marca) } : { id: novoId, marca, nome: nomeDoBanco(marca), agencia, conta };
+  const nova: ContaBancaria = { id: novoId, marca, nome: semNumero ? antes?.nome || nomeDoBanco(marca) : nomeDoBanco(marca), ...(agencia ? { agencia } : {}), ...(conta ? { conta } : {}) };
   if (d.tipo) nova.tipo = d.tipo;
   if (texto(d.apelido)) nova.apelido = texto(d.apelido);
   if (texto(d.contaContabil)) nova.contaContabil = texto(d.contaContabil);
@@ -791,7 +796,8 @@ export interface BancoParaConfirmar {
 
 /**
  * Grava os bancos marcados como o cadastro da empresa, cada um com a conta contábil (obrigatória; com o plano importado,
- * tem de ser uma conta dele que recebe lançamento). A conta do ponto de partida guarda o id; a nova precisa de agência e conta.
+ * tem de ser uma conta dele que recebe lançamento). A conta do ponto de partida guarda o id; a agência e a conta são opcionais
+ * (16/11/2026).
  * Com o plano vindo de um balancete, a conta que não está nele não trava (30/10/2026): o balancete só lista as contas com
  * saldo no mês, e o banco parado não aparece; fica o aviso leve da linha (avisoDaConta).
  */
@@ -805,11 +811,10 @@ export function confirmarBancos(c: CadastroDaEmpresa, linhas: readonly BancoPara
     const antes = l.id ? partida.find(b => b.id === l.id) : undefined;
     const nome = antes?.nome || nomeDoBanco(marca);
     if (!marca) return { cadastro: c, erro: 'Escolha o banco.' };
-    if (!antes && (!agencia || !conta)) return { cadastro: c, erro: nome + ': preencha a agência e a conta.' };
     if (!contaContabil) return { cadastro: c, erro: nome + ': informe a conta contábil.' };
     const aviso = avisoDaConta(contaContabil, plano);
     if (aviso && !foraDoBalancete(contaContabil, plano)) return { cadastro: c, erro: nome + ': ' + aviso };
-    const id = antes ? antes.id : idDaConta(marca, agencia, conta);
+    const id = antes ? antes.id : agencia || conta ? idDaConta(marca, agencia, conta) : idDaConta(marca, '', '') + '-' + contaContabil.replace(/\D/g, '');
     if (bancos.some(b => b.id === id)) return { cadastro: c, erro: nome + ': essa conta está duas vezes na lista.' };
     const nova: ContaBancaria = { ...(antes || { id, marca, nome }), id, contaContabil };
     if (agencia) nova.agencia = agencia; else delete nova.agencia;
