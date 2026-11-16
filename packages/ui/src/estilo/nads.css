@@ -7199,3 +7199,8 @@ tr:hover .icon-btn.ini-sino-cobrar,.ini-linha:hover .icon-btn.ini-sino-cobrar{co
   .cmc-linha{grid-template-columns:auto minmax(0,1fr) auto;row-gap:6px;}
   .cmc-situacao{grid-column:2 / -1;flex-direction:row;align-items:center;gap:8px;}
 }
+/* a janela do e-mail principal (16/11/2026): por cima de tudo, até da Minha conta (o ⚡ simula de lá); a tela de entrada
+   simulada cobre a tela inteira, com o Voltar no canto de cima à esquerda */
+.modal-overlay.email-principal-fundo{z-index:91;}
+.entrada-de-teste{position:fixed;inset:0;z-index:92;overflow:auto;background:var(--bg);}
+.entrada-de-teste-voltar{position:absolute;top:16px;left:16px;}

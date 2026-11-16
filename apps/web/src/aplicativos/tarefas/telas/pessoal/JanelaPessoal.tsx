@@ -5,6 +5,9 @@
 import { animacoesPedidas, BotaoFechar, CampoArquivo, ConfigLinha, ConfigSecao, definirNivelDeAnimacao, Icone, MenuSuspenso, NIVEIS_DE_ANIMACAO, nivelDeAnimacao, SeletorTema, useIndicador, useJanela, type NivelDeAnimacao, type NomeIcone } from '@nads/ui';
 import { animate, cleanInlineStyles, spring, stagger, type JSAnimation } from 'animejs';
 import { useLayoutEffect, useRef, useState } from 'react';
+import { useNovidade } from '../../../../comum/novidades';
+import { simularEmailPrincipal } from '../../casca/simulacaoDoEmailPrincipal';
+import { EntradaDeTeste } from '../entrar/EntradaDeTeste';
 
 // As animações (14/10/2026: "faça do clique ao perfil as configurações pessoais", com o animejs): a janela chega com mola e
 // a lateral em cascata; trocar de tópico desliza o conteúdo e as linhas chegam em cascata (os ícones de perfil saltam);
@@ -131,6 +134,24 @@ function TrocarSenha({ salvar }: { salvar: (atual: string, nova: string, confirm
   );
 }
 
+/** O ⚡ do e-mail principal (16/11/2026, a novidade 'email-principal'; só no modo desenvolvedor): a janela e a entrada por e-mail com uma conta de mentira */
+function DadosDeTesteDoEmailPrincipal() {
+  const ligada = useNovidade('email-principal');
+  if (!ligada) return null;
+  return (
+    <ConfigLinha titulo="E-mail principal" descricao="A janela que pede o e-mail e a entrada pelo e-mail, como cada pessoa vai ver.">
+      <MenuSuspenso rotulo="Dados de teste" icone="zap" className="btn btn-outline" direita largura={340} titulo="Modo desenvolvedor · nada é gravado"
+        itens={[
+          { rotulo: 'Janela: conta que entra pelo nome', icone: 'usuario', onClick: () => simularEmailPrincipal('so-nome') },
+          { rotulo: 'Janela: conta que já tem e-mail (só confirmar)', icone: 'envelope', onClick: () => simularEmailPrincipal('com-email') },
+          'separador',
+          { rotulo: 'Tela de entrada pelo e-mail', icone: 'logOut', onClick: () => simularEmailPrincipal('entrada') },
+        ]} />
+      <EntradaDeTeste />
+    </ConfigLinha>
+  );
+}
+
 function MinhaConta({ vm }: { vm: VmPessoal }) {
   const c = vm.conta;
   const arquivo = useRef<HTMLInputElement>(null);
@@ -176,6 +197,7 @@ function MinhaConta({ vm }: { vm: VmPessoal }) {
         </ConfigLinha>
         <ConfigLinha titulo="Setor" descricao="Quem muda é um administrador."><span className="cfg-valor">{c.setor}</span></ConfigLinha>
         {c.comLogin && <TrocarSenha salvar={c.trocarSenha} />}
+        <DadosDeTesteDoEmailPrincipal />
       </ConfigSecao>
       <ConfigSecao titulo="Preferências">
         <ConfigLinha titulo="Tema"><SeletorTema /></ConfigLinha>

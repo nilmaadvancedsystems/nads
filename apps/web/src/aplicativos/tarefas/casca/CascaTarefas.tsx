@@ -9,6 +9,7 @@ import { JanelaDosFeedbacks } from '../telas/feedback/FeedbacksDoNads';
 import { peDaGaveta } from './PeDaGaveta';
 import { AvisoDeCertificados } from './AvisoDeCertificados';
 import { JanelaDaCobranca } from './JanelaDaCobranca';
+import { JanelaDoEmailPrincipal } from './JanelaDoEmailPrincipal';
 import { useAvisoDosMeusFeedbacks } from './useAvisoDosMeusFeedbacks';
 import { CartaoDaEmpresa } from './CartaoDaEmpresa';
 import { useCorreioDeTarefas } from './useCorreioDeTarefas';
@@ -74,6 +75,8 @@ export function CascaTarefas({ app, pagina, telaInteira, semLateral, larga, empr
       {children}
       {/* a cobrança de quem delegou, por cima de tudo até responder (16/11/2026; só no modo desenvolvedor) */}
       <JanelaDaCobranca />
+      {/* o e-mail principal de quem ainda entra pelo nome (16/11/2026; só no modo desenvolvedor) */}
+      <JanelaDoEmailPrincipal />
     </Casca>
   );
 }

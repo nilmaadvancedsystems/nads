@@ -23,6 +23,8 @@ export interface DocUsuario {
   /** o sobrenome (Vitor, 12/11/2026: "pede nome e sobrenome no cadastro"); as contas antigas não têm até alguém completar */
   sobrenome?: string;
   email?: string;
+  /** quando a pessoa confirmou o e-mail principal, que é o login dela (ISO; 16/11/2026, a janela do e-mail principal) */
+  emailPrincipalEm?: string;
   roles?: string[];
   /** legado: papel único, antes de existir `roles` */
   role?: string;
@@ -52,6 +54,8 @@ export interface Usuario {
   /** '' nas contas antigas, até completar */
   sobrenome?: string;
   email: string;
+  /** quando confirmou o e-mail principal (ISO), ou null: a janela do e-mail principal pede até confirmar */
+  emailPrincipalEm?: string | null;
   departamento: Departamento | null;
   nivel: Nivel | null;
   /** todos os papéis (os do departamento/nível + os dados à mão, como office_boy) */
