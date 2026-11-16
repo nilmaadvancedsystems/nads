@@ -196,6 +196,12 @@ describe('lista', () => {
     expect(podeExcluir(t, 'u2')).toBe(true);
     expect(podeExcluir(t, 'u3', true)).toBe(true);
   });
+  it('os Detalhes da concluída não se editam mais, nem de quem criou (16/11/2026)', () => {
+    expect(d.detalhesTravados(tarefa({ status: 'concluida' }))).toBe(true);
+    expect(d.detalhesTravados(tarefa({ status: 'concluida', tipo: 'documentos' }))).toBe(true);
+    expect(d.detalhesTravados(tarefa({ status: 'concluida', tipo: 'envio' }))).toBe(true);
+    for (const s of ['pendente', 'andamento', 'pausada', 'cancelada'] as const) expect(d.detalhesTravados(tarefa({ status: s }))).toBe(false);
+  });
 });
 
 describe('histórico', () => {

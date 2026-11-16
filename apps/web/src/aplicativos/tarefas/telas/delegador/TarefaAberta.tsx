@@ -30,11 +30,19 @@ function FormularioDaTarefa({ vm }: { vm: Vm }) {
             <input type="checkbox" checked={vm.jaFazendo} onChange={e => vm.setJaFazendo(e.target.checked)} />Já estava fazendo
           </label>
         )}
-        <div className="field tdl-campo-largo">
-          <label htmlFor={id + '-descricao'}>Descrição detalhada</label>
-          <textarea id={id + '-descricao'} rows={5} value={r.descricao} maxLength={vm.maiorDescricao} readOnly={so}
-            placeholder="Os detalhes, o que já foi visto, onde estão os documentos" onChange={e => vm.setDescricao(e.target.value)} />
-        </div>
+        {/* na concluída (e de quem não muda), o texto só para ler, sem a caixa (16/11/2026) */}
+        {vm.podeMudarDetalhes ? (
+          <div className="field tdl-campo-largo">
+            <label htmlFor={id + '-descricao'}>Descrição detalhada</label>
+            <textarea id={id + '-descricao'} rows={5} value={r.descricao} maxLength={vm.maiorDescricao}
+              placeholder="Os detalhes, o que já foi visto, onde estão os documentos" onChange={e => vm.setDescricao(e.target.value)} />
+          </div>
+        ) : r.descricao.trim() ? (
+          <div className="field tdl-campo-largo">
+            <span className="field-rotulo">Descrição detalhada</span>
+            <p className="ini-detalhe-texto">{r.descricao}</p>
+          </div>
+        ) : null}
         <div className="field tdl-campo-largo">
           <span className="tdl-rotulo">Clientes vinculados <span className="fraco">(opcional)</span></span>
           <ClientesDaTarefa vm={vm} so={so} />

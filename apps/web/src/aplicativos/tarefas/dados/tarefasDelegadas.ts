@@ -185,6 +185,13 @@ function maisExemplos(agora: Date, eu: Pessoa): TarefaDelegada[] {
         { por: eu.nome, em: ha(2), texto: 'Escreveu um parecer' }, { por: eu.nome, em: ha(2), texto: 'Contestou os documentos' }] }),
     t(22, { tipo: 'documentos', titulo: d.TITULO_DO_PEDIDO_NOVO, descricao: 'O comprovante do aluguel de novembro. (EXEMPLO)', clientes: [delta], prioridade: 'normal', prazo: dia(2), status: 'pendente', criadaPor: fernando, responsavel: eu,
       entrega: '', criadaEm: ha(6), atualizadaEm: ha(6), historico: criada(fernando, eu, 6) }),
+    // concluídas criadas por mim (16/11/2026): os Detalhes só para ler, nem quem criou muda
+    t(23, { titulo: 'Conferir o DAS de outubro', descricao: 'Comparar o DAS com o faturamento do mês. (EXEMPLO)', clientes: [beta], prioridade: 'normal', prazo: dia(-2), status: 'concluida', criadaPor: eu, responsavel: clara,
+      criadaEm: ha(60), concluidaEm: ha(20), atualizadaEm: ha(20), visualizadaEm: ha(55),
+      historico: [...criada(eu, clara, 60), { por: 'Clara', em: ha(20), texto: 'Mudou o status de Pendente para Concluída' }] }),
+    t(24, { tipo: 'envio', titulo: d.TITULO_DO_ENVIO, descricao: 'O comprovante de pagamento da guia. (EXEMPLO)', clientes: [delta], prioridade: 'normal', prazo: '', status: 'concluida', criadaPor: eu, responsavel: fernando,
+      criadaEm: ha(30), concluidaEm: ha(25), atualizadaEm: ha(25), visualizadaEm: ha(28), historico: [...criada(eu, fernando, 30), { por: 'Fernando', em: ha(25), texto: 'Confirmou o recebimento' }],
+      anexos: [{ id: 'ax-24', nome: 'comprovante.txt', extensao: 'txt', tamanho: 46, em: ha(30), por: eu.nome, partes: 1 }] }),
   ];
 }
 
@@ -201,6 +208,7 @@ export function criarTarefasDelegadasMemoria(quem: () => Pessoa | null, paraQuem
     ['ax-1', texto('Extrato do Sicoob de 09/2026: conferir a tarifa do dia 30 (R$ 12,90).')],
     ['ax-20a', texto('Guia do DAS de outubro/2026 (EXEMPLO): R$ 1.234,56.')],
     ['ax-20b', texto('Guia do FGTS de outubro/2026 (EXEMPLO): R$ 789,00.')],
+    ['ax-24', texto('Comprovante de pagamento (EXEMPLO): R$ 456,78.')],
   ]);
   const eu = () => { const q = quem(); if (!q) throw new Error('escolha quem está usando'); return q; };
   const daTarefa = (id: string) => { const t = lista.find(x => x.id === id); if (!t) throw new Error('a tarefa não existe mais'); return t; };

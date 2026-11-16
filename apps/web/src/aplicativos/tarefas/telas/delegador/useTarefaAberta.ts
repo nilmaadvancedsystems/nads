@@ -129,6 +129,8 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
     ? !!(r.titulo.trim() !== inicial.titulo || r.descricao.trim() || r.clientes.length || r.responsavel || prazoTexto || r.prazoHora || pendentes.length || r.prioridade !== 'normal' || r.status !== 'pendente' || linksPendentes.length || !!modoDocs || pessoasDocs.length)
     : !!tarefa && (Object.keys(mudancas).length > 0 || prazo === null);
   const podeMudar = ehNova || (!!tarefa && d.podeMudar(tarefa, uid));
+  // os Detalhes da concluída ficam só para ler, para todos (16/11/2026)
+  const podeMudarDetalhes = podeMudar && !(tarefa && d.detalhesTravados(tarefa));
   // a etapa delegada a esta pessoa (Vitor, 10/11/2026): abre só ela, com o resto da empresa bloqueado
   const caminhoDaEtapa = tarefa?.etapaDelegada && tarefa.responsavel.uid === uid && tarefa.status !== 'cancelada' ? caminhoDoExecutor(tarefa.etapaDelegada.rota, tarefa.etapaDelegada.periodo) + '?delegada=' + tarefa.id : null;
 
@@ -207,7 +209,9 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
     // ---- a aba Tarefa
     rascunho: r,
     setTitulo: (titulo: string) => mudar({ titulo }),
-    setDescricao: (descricao: string) => mudar({ descricao }),
+    /** os Detalhes: na concluída, só para ler (nem quem criou muda; 16/11/2026) */
+    podeMudarDetalhes,
+    setDescricao: (descricao: string) => { if (podeMudarDetalhes) mudar({ descricao }); },
     maiorTitulo: d.MAIOR_TITULO,
     maiorDescricao: d.MAIOR_DESCRICAO,
     prazoTexto,
@@ -353,7 +357,7 @@ export function useTarefaAberta(alvo: string, voltar: () => void, criada: (paraM
     limiteDosAnexos: 'Até ' + d.MAIS_ANEXOS + ' arquivos de ' + d.MAIOR_ANEXO / 1024 / 1024 + ' MB cada (' + d.MAIOR_TOTAL_DE_ANEXOS / 1024 / 1024 + ' MB por tarefa).',
     anexando: ocupado === 'anexar',
     /** o Ctrl+V de imagem nos Detalhes vira anexo (a novidade 'colar-print') */
-    podeColarPrint: colarPrint && podeMudar,
+    podeColarPrint: colarPrint && podeMudarDetalhes,
     /** os prints colados da nova, para a miniatura embaixo dos Detalhes (o × tira com o tirarAnexo) */
     prints,
     /** as imagens coladas com o nome "Print colado N" (o número seguinte aos que a tarefa já tem); depois vão ao anexar */

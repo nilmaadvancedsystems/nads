@@ -426,6 +426,9 @@ export function buscar<T extends Pick<TarefaDelegada, 'numero' | 'titulo' | 'des
 
 /** Quem pode mudar a tarefa: quem criou ou o responsável. */
 export const podeMudar = (t: Pick<TarefaDelegada, 'criadaPor' | 'responsavel'>, uid: string): boolean => !!uid && (t.criadaPor.uid === uid || t.responsavel.uid === uid);
+/** Os Detalhes da tarefa concluída (a normal e a de documentos) não se editam mais, para ninguém, nem para quem criou
+ *  (Vitor, 16/11/2026: "Detalhes depois das tarefas e documentos concluidas não pode ser editadas"). */
+export const detalhesTravados = (t: Pick<TarefaDelegada, 'status'>): boolean => t.status === 'concluida';
 /** Quem pode excluir: quem criou (ou o admin). */
 export const podeExcluir = (t: Pick<TarefaDelegada, 'criadaPor'>, uid: string, admin = false): boolean => admin || (!!uid && t.criadaPor.uid === uid);
 
