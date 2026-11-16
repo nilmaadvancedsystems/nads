@@ -6589,6 +6589,39 @@ td.fs-fat-sem{color:var(--ink-faint);}
 .suporte-progresso li.feita{color:var(--ink);}
 .suporte-botao-qtd{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;background:var(--surface);color:var(--ink);border:1px solid var(--border);font-size:var(--fs-11);font-weight:700;line-height:1;}
 .suporte-botao-qtd.testar{background:var(--success);border-color:var(--success);color:#fff;}
+/* A conversa do feedback (16/11/2026): o admin pergunta na janela do feedback; quem mandou responde na janela grande, que
+   depois fica no ticket do balão. Os balões são os do suporte (.suporte-msg), com o nome e a hora em cima. */
+.suporte-botao-qtd.responder{background:var(--accent);border-color:var(--accent);color:var(--on-accent);}
+.conversa{display:flex;flex-direction:column;gap:10px;min-height:0;}
+.conversa-lista{display:flex;flex-direction:column;gap:10px;max-height:320px;overflow:auto;padding:12px;border:1px solid var(--border-muted);border-radius:var(--radius);background:var(--surface-2);}
+.conversa-grande{flex:1;}
+.conversa-grande .conversa-lista{flex:1;max-height:none;min-height:160px;}
+.conversa-item{display:flex;flex-direction:column;gap:3px;align-items:flex-start;}
+.conversa-item.minha{align-items:flex-end;}
+.conversa-quem{font-size:var(--fs-12);font-weight:600;color:var(--ink-muted);padding:0 4px;}
+.conversa-msg{max-width:min(85%,620px);white-space:pre-wrap;overflow-wrap:anywhere;}
+.conversa-vazia,.conversa-fechada{margin:0;}
+.conversa-envio{display:flex;flex-direction:column;gap:8px;}
+.conversa-envio textarea{width:100%;resize:vertical;min-height:0;}
+.conversa-envio-linha{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.conversa-envio-linha .hint{margin:0;}
+.conversa-erro{margin:0;}
+/* a janela grande de quem mandou: o que mandou em cima, a conversa ocupando o resto */
+.conversa-janela{--janela-l:min(860px,94vw);--janela-a:min(720px,88vh);flex-direction:column;}
+.conversa-janela .pessoal-topo{gap:10px;}
+.conversa-janela .pessoal-topo h2{margin:0;font-size:var(--fs-18);}
+.conversa-janela-corpo{flex:1;min-height:0;display:flex;flex-direction:column;gap:14px;padding:16px 24px 20px;overflow:auto;}
+.conversa-contexto .feedback-txt{max-height:140px;overflow:auto;}
+/* no ticket do balão: a última mensagem; faltando responder, na cor de destaque */
+.suporte-conversa{display:flex;flex-direction:column;gap:4px;padding:8px 10px;border-radius:10px;border:1px solid color-mix(in srgb,var(--ink) 10%,transparent);}
+.suporte-conversa.esperando{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent);}
+.suporte-conversa-quem{font-size:var(--fs-12);font-weight:600;color:var(--ink-muted);}
+.suporte-conversa-texto{overflow-wrap:anywhere;}
+.suporte-conversa .suporte-capsulas{justify-content:flex-start;margin-top:4px;}
+@media (max-width:640px){
+  .conversa-janela-corpo{padding:12px 16px 16px;}
+  .conversa-janela .pessoal-topo .btn-ghost{display:none;}
+}
 
 /* o popup de delegar (Vitor, 10/11/2026: "um grid proporcional e alinhado"): colunas iguais; a caixinha, o código e o nome sempre nos mesmos lugares */
 .delegar-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:2px 16px;max-height:42vh;overflow:auto;}
