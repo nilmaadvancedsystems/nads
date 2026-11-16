@@ -28,6 +28,8 @@ export interface PedidoDoFiscal {
   etapa: string;
   clique: string;
   criadoEm: string;
+  /** o que o robô viu nas telas do Fiscal (enquanto ele aprende as telas: os itens de cada janela) */
+  diag: string[];
   /** a planilha no banco (pronto) */
   arquivo: { nome: string; partes: number } | null;
 }
@@ -44,6 +46,7 @@ function doBanco(id: string, d: Record<string, unknown>): PedidoDoFiscal {
   return {
     id, relatorio: texto(d.relatorio) as RelatorioDoFiscal, competencia: texto(d.competencia), ate: texto(d.ate || d.competencia), status: texto(d.status),
     erro: texto(d.erro), pct: Math.max(0, Math.min(100, Number(and.pct) || 0)), etapa: texto(and.etapa), clique: texto(and.clique), criadoEm: texto(d.criadoEm),
+    diag: Array.isArray(d.diag) ? (d.diag as unknown[]).map(texto) : [],
     arquivo: a && a.status === 'pronto' && Number(a.partes) > 0 ? { nome: texto(a.nome), partes: Number(a.partes) } : null,
   };
 }

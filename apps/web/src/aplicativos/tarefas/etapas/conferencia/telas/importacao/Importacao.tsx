@@ -113,6 +113,12 @@ function RoboDoFiscal({ r }: { r: NotasDoRobo }) {
       {r.andando && <div className="imp-robo-barra"><span style={{ width: r.pct + '%' }} /></div>}
       <span>{r.lendo ? 'A planilha chegou: importando…' : r.falha || r.situacao}{r.clique ? ' · ' + r.clique : ''}</span>
       {r.andando && <button type="button" className="btn btn-ghost btn-sm" onClick={() => { void r.cancelar(); }}>Cancelar</button>}
+      {r.diag.length > 0 && (
+        <details className="imp-robo-diag">
+          <summary>O que o robô viu na tela</summary>
+          <pre>{r.diag.join('\n')}</pre>
+        </details>
+      )}
     </div>
   );
 }

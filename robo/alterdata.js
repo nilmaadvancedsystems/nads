@@ -23,7 +23,8 @@ const numeros = require('./alterdata-numeros');
 const { garantirTelaAtiva } = require('./sessao-no-console');
 
 const DRIVE = process.env.ARQUIVO_DRIVE || 'G:\\Meu Drive';
-const ONDE = process.env.ARQ_SO_SERVIDOR === '1' ? 'servidor' : 'pc';
+// ALTERDATA_ONDE: o nome de outro PC com o robô (alterdata-no-pc.js, 16/11/2026: "pc-<computador>")
+const ONDE = process.env.ARQ_SO_SERVIDOR === '1' ? 'servidor' : (process.env.ALTERDATA_ONDE || 'pc');
 // a pasta de trabalho de cada pedido: no servidor, o disco local (o G: de lá está em "transmitir" e leva ~30 s por arquivo;
 // os arquivos sobem direto para o banco, a pasta é só o rascunho); no PC, o Drive, como no teste de 04/11/2026
 const PASTA_PEDIDOS = process.env.ALTERDATA_PEDIDOS
@@ -100,6 +101,7 @@ function rodarRoteiro(relatorio, a, passo, sinal, clique = () => {}) {
   return new Promise(resolve => {
     const filho = spawn(PYTHON, ['-I', ROTEIROS[relatorio], ...args], { cwd: __dirname, windowsHide: true, env: { ...process.env, ALTERDATA_TELA: PASTA_TELA } });
     let resto = '', erros = '', resultado = null;
+    const diags = [];
     filho.stdout.on('data', b => {
       resto += b.toString('utf8');
       const linhas = resto.split(/\r?\n/);
@@ -113,7 +115,7 @@ function rodarRoteiro(relatorio, a, passo, sinal, clique = () => {}) {
         if (t) registrarTela(t[1].trim());
         // o que o roteiro do Fiscal viu na tela (16/11/2026: as telas do Fiscal ainda estão sendo aprendidas)
         const dg = l.match(/^DIAG:\s*(.+)$/);
-        if (dg) registrarDiag(dg[1].trim());
+        if (dg) { registrarDiag(dg[1].trim()); diags.push(dg[1].trim().slice(0, 300)); }
         const r = l.match(/^RESULTADO:\s*(\{.*\})\s*$/);
         if (r) { try { resultado = JSON.parse(r[1]); } catch (_) { /* mal escrito */ } }
       }
@@ -121,7 +123,8 @@ function rodarRoteiro(relatorio, a, passo, sinal, clique = () => {}) {
     filho.stderr.on('data', b => { erros += b.toString('utf8'); if (erros.length > 2000) erros = erros.slice(-2000); });
     if (sinal) sinal.addEventListener('abort', () => matar(filho));
     filho.on('error', err => resolve({ ok: false, erro: 'não consegui rodar o Python: ' + err.message }));
-    filho.on('close', () => resolve(resultado || { ok: false, erro: 'o roteiro parou sem resultado' + (erros ? ': ' + erros.trim().split('\n').pop().slice(0, 200) : '') }));
+    // o que o roteiro viu na tela (DIAG:) vai junto no resultado: a fila guarda no pedido (o Fiscal, 16/11/2026)
+    filho.on('close', () => resolve(Object.assign(resultado || { ok: false, erro: 'o roteiro parou sem resultado' + (erros ? ': ' + erros.trim().split('\n').pop().slice(0, 200) : '') }, diags.length ? { diag: diags.slice(-60) } : {})));
   });
 }
 

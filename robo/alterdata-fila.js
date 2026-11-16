@@ -459,7 +459,7 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
     if (!arquivo) {
       if (r.login) fiscalSemLogin = String(r.erro || 'recusado').slice(0, 200);
       const msg = String(r.erro || 'a planilha não apareceu').slice(0, 500);
-      await banco.atualizar(id, { status: 'erro', erro: msg, arquivos: { fiscal: { status: 'erro', nome: '', tamanho: 0, partes: 0, erro: msg.slice(0, 300) } }, andamento: andamentoFim('erro'), fimEm: agora() });
+      await banco.atualizar(id, { status: 'erro', erro: msg, diag: Array.isArray(r.diag) ? r.diag : [], arquivos: { fiscal: { status: 'erro', nome: '', tamanho: 0, partes: 0, erro: msg.slice(0, 300) } }, andamento: andamentoFim('erro'), fimEm: agora() });
       if (painel) painel.erro('alterdata', 'Fiscal ' + RELATORIOS_FISCAIS[rel] + ' ' + codigo + ' ' + lote, msg, { pedido: id });
       log('Alterdata: fim do Fiscal', id, 'erro:', msg);
       return;
@@ -470,7 +470,7 @@ function criarFilaAlterdata({ banco, rodar, pastaDoPedido, log = () => {}, paine
     const g = await banco.gravarArquivo(id, 'fiscal', buf, nome, 'fiscal');
     deuCerto();
     if (apagarPasta) { try { fs.rmSync(pasta, { recursive: true, force: true }); } catch (err) { log('Alterdata: não apaguei a pasta', pasta, err.message); } }
-    await banco.atualizar(id, { status: 'pronto', erro: '', arquivos: { fiscal: { status: 'pronto', nome, tamanho: buf.length, partes: g.partes, erro: '' } }, andamento: andamentoFim('pronto'), fimEm: agora() });
+    await banco.atualizar(id, { status: 'pronto', erro: '', diag: Array.isArray(r.diag) ? r.diag : [], arquivos: { fiscal: { status: 'pronto', nome, tamanho: buf.length, partes: g.partes, erro: '' } }, andamento: andamentoFim('pronto'), fimEm: agora() });
     if (painel) painel.atividade('alterdata', 'Puxou ' + RELATORIOS_FISCAIS[rel].toLowerCase() + ' ' + codigo + ' ' + lote + ' no Alterdata Fiscal', p.criadoPor ? 'pedido de ' + p.criadoPor : '');
     log('Alterdata: fim do Fiscal', id, nome, buf.length, 'bytes');
   }

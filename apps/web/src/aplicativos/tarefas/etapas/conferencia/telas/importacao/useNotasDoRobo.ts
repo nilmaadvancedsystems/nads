@@ -68,6 +68,8 @@ export function useNotasDoRobo(o: { tipo: c.PaginaImportacao; codigo: number | n
   return {
     disponivel, pedindo, andando, lendo, pct: atual?.pct || 0, situacao, clique: andando ? atual?.clique || '' : '',
     erro: atual?.status === 'erro' && !andando, falha, pedir, cancelar,
+    /** o que o robô viu nas telas do Fiscal (o modo desenvolvedor mostra embaixo) */
+    diag: !andando ? atual?.diag || [] : [],
   };
 }
 
