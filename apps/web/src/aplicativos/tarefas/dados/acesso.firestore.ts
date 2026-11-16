@@ -8,7 +8,7 @@
 // As regras do Entregas (firestore.rules) só deixam ler e gravar os dados do nads (rotinas, cadastro) com o login
 // liberado, quando a proteção está ligada; o admin não precisa de liberação.
 import { usuarios as u } from '@nads/core';
-import { addDoc as addDocBruto, collection, deleteField, doc, getDoc, onSnapshot, orderBy, query, setDoc as setDocBruto, Timestamp, updateDoc as updateDocBruto, where, writeBatch as writeBatchBruto, limit } from 'firebase/firestore';
+import { addDoc as addDocBruto, collection, collectionGroup, deleteDoc as deleteDocBruto, deleteField, doc, getDoc, getDocs, onSnapshot, orderBy, query, setDoc as setDocBruto, Timestamp, updateDoc as updateDocBruto, where, writeBatch as writeBatchBruto, limit } from 'firebase/firestore';
 import type { RepoAcesso } from './acesso';
 import { bancoDoEntregas, criarLoginNoEntregas, horaDoLogin } from './entregas.firestore';
 import { guardar, guardarLote, guardarPedido } from '../../../comum/modoDesenvolvedor';
@@ -17,6 +17,7 @@ import { guardar, guardarLote, guardarPedido } from '../../../comum/modoDesenvol
 const setDoc = guardar(setDocBruto) as typeof setDocBruto;
 const addDoc = guardarPedido(addDocBruto) as typeof addDocBruto;
 const updateDoc = guardar(updateDocBruto) as typeof updateDocBruto;
+const deleteDoc = guardar(deleteDocBruto) as typeof deleteDocBruto;
 const writeBatch = ((...a: Parameters<typeof writeBatchBruto>) => guardarLote(writeBatchBruto(...a))) as typeof writeBatchBruto;
 
 type Quem = { uid: string; nome: string; email: string; admin: boolean } | null;
@@ -174,6 +175,32 @@ export function criarAcessoFirestore(quem: () => Quem): RepoAcesso {
       await updateDoc(doc(db, 'usuarios', q.uid), { nadsOnde: onde ?? deleteField(), nadsVistoEm: new Date().toISOString() });
     },
     async ativar(uid, ativo) { await updateDoc(doc(db, 'usuarios', uid), { ativo }); },
+    // excluir usuário (16/11/2026): um documento basta em cada lugar (limit 1); as buscas vão juntas. O lugar que não deu para
+    // ler (negado, fora do ar) volta em semConferir, e a tela não deixa excluir sem conferir
+    async registrosDe(p) {
+      const buscas = u.LUGARES_DE_REGISTRO.flatMap(l => u.buscasDoLugar(l, p));
+      const consultas = buscas.map(b => getDocs(query(b.lugar.grupo ? collectionGroup(db, b.lugar.colecao) : collection(db, b.lugar.colecao),
+        where(b.lugar.campo, b.lugar.forma === 'lista' ? 'array-contains' : '==', b.valor), limit(1))).then(r => !r.empty));
+      // as listas de objetos (participantes, histórico, quem leu): a coleção inteira, procurando a pessoa em cada documento
+      const varridas = u.COLECOES_VARRIDAS.map(v => getDocs(collection(db, v.colecao)).then(r => r.docs.some(d => u.contemAPessoa(d.data(), p))));
+      const lugares = [...buscas.map(b => ({ rotulo: b.lugar.rotulo, onde: b.lugar.colecao + '.' + b.lugar.campo })), ...u.COLECOES_VARRIDAS.map(v => ({ rotulo: v.rotulo, onde: v.colecao }))];
+      const r = await Promise.allSettled([...consultas, ...varridas]);
+      const achados: string[] = [];
+      const semConferir: string[] = [];
+      r.forEach((x, i) => {
+        if (x.status === 'fulfilled') { if (x.value) achados.push(lugares[i].rotulo); return; }
+        console.warn('Excluir usuário: não consegui ler ' + lugares[i].onde, x.reason);
+        semConferir.push(lugares[i].rotulo);
+      });
+      return { achados: [...new Set(achados)], semConferir: [...new Set(semConferir)] };
+    },
+    // a regra do banco: só o Diretor e o Dono apagam, e nunca o Dono (o login no Firebase fica, mas sem o cadastro não entra em nada)
+    async excluir(uid) {
+      const d = equipe.docs[uid];
+      if (!d) throw new Error('Não achei essa pessoa.');
+      if (d.ativo !== false) throw new Error('Só uma conta inativa pode ser excluída.');
+      await deleteDoc(doc(db, 'usuarios', uid));
+    },
     // o "Criar acesso" do Entregas: o login (numa instância à parte) e o cadastro gravado pela sessão do admin (a regra
     // só deixa o admin criar usuarios/{uid} de outra pessoa)
     async criarConta(c) {
