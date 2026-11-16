@@ -1,12 +1,13 @@
-# Regra do banco: a conversa dos Feedbacks (16/11/2026) — NÃO PUBLICADA
+# Regra do banco: a conversa dos Feedbacks (16/11/2026)
+
+**PUBLICADA em 16/11/2026 às 16:41 (ruleset 1bed0f73-b40b-49cf-83c4-8b9d0ff21d7a no entregas-2e5e2), com o ok do
+usuário, pelo Firebase CLI.** Foi feita sobre a regra que estava no ar (ruleset 1a14fe0b…, das 14:26, que já tinha o
+`delegacao` dos feedbacks), mudando só o bloco dos feedbacks (o `allow update`, o `match /mensagens` e a função
+`conversaDoFeedbackOk`); o resto ficou igual. O `firestore.rules` do repositório do Entregas ainda não tem essa mudança:
+quem mexer lá precisa trazer este bloco, ou a próxima publicação desfaz.
 
 Pedido do usuário: "preciso de um chat onde eu possa responder os feedbacks, para entender mais, fazendo perguntas".
-Código na branch `claude/feedback-conversa` (worktree `nads/.claude/worktrees/feedback-conversa`). Sem esta regra, o
-Perguntar do admin e a resposta de quem mandou dão "o banco ainda não aceita a conversa".
-
-Base: a cópia `entregas.rules` de 11/11/2026 15:57 (scratchpad de outra sessão). **Conferir a regra no ar antes de
-publicar** — no mesmo dia, a sessão do Delegar (feedbacks › `delegacao`) também pediu para o admin gravar `delegacao`; o
-bloco abaixo já inclui o `delegacao` no update do admin. Se essa regra ainda não estiver no ar, publicar junto.
+No site, a conversa é a novidade `conversa-feedback` (só no modo desenvolvedor até o Vitor aprovar).
 
 ## O desenho no banco
 
@@ -19,6 +20,9 @@ bloco abaixo já inclui o `delegacao` no update do admin. Se essa regra ainda n�
   e enquanto não está `feito`.
 
 ## O bloco (troca o `allow update` do feedbacks e acrescenta o `match /mensagens`)
+
+O texto exato publicado é o do ruleset acima: o ramo do admin também confere o `delegacao` com
+`delegacaoDoFeedbackValida`, que já estava no ar e ficou como era.
 
 ```
     match /feedbacks/{id} {
