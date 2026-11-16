@@ -1,28 +1,34 @@
 // O período da Importação no cabeçalho da Tarefa (Vitor, 04/11/2026: "o em lote deixa no cabeçalho"): o mesmo seletor que ficava
 // na aba Bancos, com as duas abas — Competência (num mês só, troca o mês; no Em lote, mostra os meses dele) e Em Lote (de / até e
 // Iniciar; no lote, os meses e o Cancelar função). Só a Importação troca o período; nas outras etapas fica o PeriodoDaTarefa.
+// A Visão geral da empresa usa o mesmo (16/11/2026: "Coloca o iniciar em lote nessa tela tb"), com os meses dela e sem o lote aberto.
 import { tarefas } from '@nads/core';
 import { Icone, MenuSuspenso } from '@nads/ui';
 import { useState } from 'react';
 import { CANCELAR_LOTE_A_QUALQUER_HORA } from '../../../../../comum/desenvolvimento';
 
-export function SeletorDoPeriodo({ meses, competencia, concluido, trocar, encerrar }: {
+export function SeletorDoPeriodo({ meses, competencia, concluido, trocar, encerrar, competencias: daTela, rotulo: rotuloDaTela }: {
   /** os meses do Em lote (vazio ou um só = um mês) */
   meses: readonly string[];
   competencia: string;
   /** todos os meses do lote concluídos */
   concluido: boolean;
   trocar: (competenciaOuPeriodo: string) => void;
-  encerrar: () => void;
+  /** o Cancelar função (só com o lote aberto) */
+  encerrar?: () => void;
+  /** os meses da lista (sem eles, os últimos 24) */
+  competencias?: readonly string[];
+  /** o rótulo do botão num mês só (sem ele, "set 2026") */
+  rotulo?: string;
 }) {
   const mmaaaa = tarefas.rotuloNumericoCompetencia;
   const periodo = meses.length > 1 ? meses : [];
-  const competencias = tarefas.competenciasRecentes(new Date(), 24).filter(c => c >= tarefas.PRIMEIRA_COMPETENCIA);
+  const competencias = daTela || tarefas.competenciasRecentes(new Date(), 24).filter(c => c >= tarefas.PRIMEIRA_COMPETENCIA);
   const [aba, setAba] = useState<'mes' | 'varios'>(periodo.length ? 'varios' : 'mes');
   const [de, setDe] = useState(competencias[Math.min(2, competencias.length - 1)] || competencia);
   const [ate, setAte] = useState(competencias[0] || competencia);
   const qtd = tarefas.competenciasDoPeriodo(tarefas.rotaDoPeriodo(de, ate)).length;
-  const rotulo = periodo.length ? mmaaaa(periodo[0]) + ' a ' + mmaaaa(periodo[periodo.length - 1]) : tarefas.rotuloCurtoCompetencia(competencia);
+  const rotulo = periodo.length ? mmaaaa(periodo[0]) + ' a ' + mmaaaa(periodo[periodo.length - 1]) : rotuloDaTela || tarefas.rotuloCurtoCompetencia(competencia);
   return (
     <MenuSuspenso icone="calendar" rotulo={rotulo} largura={300} direita
       dica={periodo.length ? 'Em lote: ' + periodo.map(mmaaaa).join(', ') : 'Trocar a competência'}
@@ -59,7 +65,7 @@ export function SeletorDoPeriodo({ meses, competencia, concluido, trocar, encerr
                 : CANCELAR_LOTE_A_QUALQUER_HORA
                   ? <p className="hint">Em desenvolvimento: dá para cancelar mesmo sem os meses concluídos. O que já foi feito em cada mês continua.</p>
                   : <p className="hint">Para cancelar a função, os {periodo.length} meses precisam estar 100% concluídos (todas as etapas). Até lá, a empresa abre sempre nesses meses.</p>}
-              <button type="button" className="btn btn-primary comp-varios-botao" disabled={!concluido && !CANCELAR_LOTE_A_QUALQUER_HORA} onClick={() => { fechar(); encerrar(); }}>Cancelar função</button>
+              <button type="button" className="btn btn-primary comp-varios-botao" disabled={!concluido && !CANCELAR_LOTE_A_QUALQUER_HORA} onClick={() => { fechar(); encerrar?.(); }}>Cancelar função</button>
             </div>
           ) : (
             <div className="comp-varios">

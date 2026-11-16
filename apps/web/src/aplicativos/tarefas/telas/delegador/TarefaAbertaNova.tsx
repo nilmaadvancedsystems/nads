@@ -195,7 +195,14 @@ function Propriedades({ vm }: { vm: Vm }) {
 function Descricao({ vm }: { vm: Vm }) {
   const id = useId();
   // em branco e só para ler (a concluída, ou de quem não muda): some, como o prazo (13/11/2026: "so oculta ele... nao deixa exposto")
-  if (!vm.podeMudar && !vm.rascunho.descricao.trim()) return null;
+  if (!vm.podeMudarDetalhes && !vm.rascunho.descricao.trim()) return null;
+  // só para ler, o texto sem a caixa (16/11/2026: "Detalhes depois das tarefas e documentos concluidas não pode ser editadas")
+  if (!vm.podeMudarDetalhes) return (
+    <div className="field">
+      <span className="field-rotulo">Detalhes</span>
+      <p className="ini-detalhe-texto">{vm.rascunho.descricao}</p>
+    </div>
+  );
   // o print colado (a novidade 'colar-print'): a imagem da área de transferência vira anexo; o que vem com texto (o Excel
   // manda texto e imagem) cola como texto, como no suporte
   const colar = (e: ClipboardEvent<HTMLTextAreaElement>) => {
@@ -208,7 +215,7 @@ function Descricao({ vm }: { vm: Vm }) {
   return (
     <div className="field">
       <label htmlFor={id}>Detalhes</label>
-      <textarea id={id} rows={4} value={vm.rascunho.descricao} maxLength={vm.maiorDescricao} readOnly={!vm.podeMudar} onPaste={colar}
+      <textarea id={id} rows={4} value={vm.rascunho.descricao} maxLength={vm.maiorDescricao} onPaste={colar}
         placeholder={'Os detalhes, o que já foi visto, onde estão os documentos' + (vm.podeColarPrint ? '. Cole um print com Ctrl+V' : '')}
         onChange={e => vm.setDescricao(e.target.value)} />
       <PrintsColados vm={vm} />
@@ -492,7 +499,7 @@ export function TarefaAbertaNova({ alvo, voltar, criada, saida }: {
   // a tarefa concluída não se edita mais (Vitor, 13/11/2026: "Tarefa concluida nao pode ser editada"): tudo só para leitura,
   // sem Salvar nem Excluir; o título, os detalhes, os anexos e as informações continuam à vista
   const concluida = !aberta.ehNova && aberta.rascunho.status === 'concluida';
-  const vm: typeof aberta = concluida ? { ...aberta, podeMudar: false, podeExcluir: false, acoes: [] } : aberta;
+  const vm: typeof aberta = concluida ? { ...aberta, podeMudar: false, podeMudarDetalhes: false, podeColarPrint: false, podeExcluir: false, acoes: [] } : aberta;
   // o sino de cobrar e o Responder cobrança (a novidade 'cobrar-tarefa', aprovada para todos em 13/11/2026)
   const cobrarLigado = useNovidade('cobrar-tarefa');
   useEffect(() => {

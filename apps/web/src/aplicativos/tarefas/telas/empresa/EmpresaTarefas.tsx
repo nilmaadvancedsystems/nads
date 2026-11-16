@@ -7,6 +7,7 @@ import { Esqueleto, Icone, MenuSuspenso, useCarregando, Vazio } from '@nads/ui';
 import { Navigate } from 'react-router';
 import { BASE } from '../../casca/navegacao';
 import { EmDesenvolvimento } from '../em-desenvolvimento/EmDesenvolvimento';
+import { SeletorDoPeriodo } from '../executor/partes/SeletorDoPeriodo';
 import { useEmpresa } from './useEmpresa';
 
 export function EmpresaTarefas({ rota, parte }: { rota: string; parte: 'tarefas' | 'visao' }) {
@@ -26,8 +27,23 @@ export function EmpresaTarefas({ rota, parte }: { rota: string; parte: 'tarefas'
           </div>
         </div>
         <div className="empresa-acoes">
-          <MenuSuspenso icone="calendar" className="btn btn-primary" rotulo={vm.rotuloCompetencia} titulo="Competência" direita
-            itens={vm.competencias.map(c => ({ rotulo: c.rotulo, marcado: c.valor === vm.competencia, onClick: () => vm.setCompetencia(c.valor) }))} />
+          {/* o ⚡ do modo desenvolvedor: o Em lote na empresa de teste, que não grava no banco */}
+          {vm.emLote && vm.dev && (
+            <MenuSuspenso rotulo="Dados de teste" icone="zap" className="btn btn-outline" direita largura={300} titulo="Modo desenvolvedor · nada vai para o banco"
+              itens={[
+                { rotulo: 'Abrir a empresa de teste (9999)', icone: 'briefcase', desabilitado: vm.teste.ehDeTeste, onClick: vm.teste.abrirVisaoGeral },
+                'separador',
+                { rotulo: 'Iniciar em lote: 07/2026 a 08/2026 (empresa de teste)', icone: 'zap', onClick: vm.teste.iniciarEmLote },
+                { rotulo: 'Iniciar em lote: os 3 últimos meses (empresa de teste)', icone: 'zap', onClick: vm.teste.iniciarTresMeses },
+              ]} />
+          )}
+          {/* o Em Lote, o mesmo do cabeçalho da Importação (16/11/2026: "Coloca o iniciar em lote nessa tela tb"): um mês troca a
+              competência daqui; De/Até abre o executor nos meses juntos */}
+          {vm.emLote
+            ? <SeletorDoPeriodo meses={[]} competencia={vm.competencia} concluido={false} rotulo={vm.rotuloCompetencia}
+                competencias={vm.competencias.map(c => c.valor)} trocar={vm.trocarCompetenciaOuPeriodo} />
+            : <MenuSuspenso icone="calendar" className="btn btn-primary" rotulo={vm.rotuloCompetencia} titulo="Competência" direita
+                itens={vm.competencias.map(c => ({ rotulo: c.rotulo, marcado: c.valor === vm.competencia, onClick: () => vm.setCompetencia(c.valor) }))} />}
           <button type="button" className={'btn ' + (vm.situacao === 'concluida' ? 'btn-outline' : 'btn-primary')} onClick={vm.abrirExecutor}>
             <Icone nome="play" />{vm.acao}
           </button>
